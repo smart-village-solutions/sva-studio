@@ -14,6 +14,6 @@
 ## 4. Nächste Schritte (Nx Ausbau)
 - [x] 4.1 Plugins auswählen/installieren für geplante Stacks (z. B. `@nx/react`, `@nx/node`, `@nx/jest`, `@nx/eslint`)
 - [x] 4.2 Standard-Targets/Defaults setzen (z. B. `targetDefaults` für `lint`, `test`, `build`, `format`)
-- [ ] 4.3 Workspace-Config für CI vorbereiten (Cache/Pipeline: `nx.json` + CI-Job mit `nx affected`)
+- [x] 4.3 Workspace-Config für CI vorbereiten (Cache/Pipeline: `nx.json` + CI-Job mit `nx affected`)
 - [ ] 4.4 Editor/Dev-Ergonomie: VS Code Extensions/Settings empfehlen, ggf. `tools/`-Skripte ergänzen
 - [ ] 4.5 Security/Policy: Audit der neuen Dependencies, SBOM/Lizenz-Check in Pipeline vorsehen

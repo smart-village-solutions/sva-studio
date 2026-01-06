@@ -1,0 +1,17 @@
+{
+  "name": "sva-studio",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "nx": "NX_WRAPPER_SKIP_INSTALL=1 ./nx",
+    "lint": "NX_WRAPPER_SKIP_INSTALL=1 ./nx format:check --files=\"**/*\"",
+    "test": "echo \"No tests yet\"",
+    "format": "NX_WRAPPER_SKIP_INSTALL=1 ./nx format"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.30",
+    "prettier": "^3.2.5",
+    "nx": "22.3.3",
+    "typescript": "^5.6.3"
+  }
+}

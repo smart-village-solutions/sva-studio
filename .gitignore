@@ -1,0 +1,36 @@
+# macOS
+.DS_Store
+
+# Editors/IDE
+.vscode/
+.idea/
+
+# Node/JavaScript
+node_modules/
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+dist/
+build/
+coverage/
+.next/
+out/
+.turbo/
+
+# Environments
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Logs
+*.log
+log/
+
+# Caches
+.cache/

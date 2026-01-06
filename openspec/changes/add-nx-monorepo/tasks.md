@@ -16,4 +16,4 @@
 - [x] 4.2 Standard-Targets/Defaults setzen (z. B. `targetDefaults` für `lint`, `test`, `build`, `format`)
 - [x] 4.3 Workspace-Config für CI vorbereiten (Cache/Pipeline: `nx.json` + CI-Job mit `nx affected`)
 - [x] 4.4 Editor/Dev-Ergonomie: VS Code Extensions/Settings empfehlen, ggf. `tools/`-Skripte ergänzen
-- [ ] 4.5 Security/Policy: Audit der neuen Dependencies, SBOM/Lizenz-Check in Pipeline vorsehen
+- [x] 4.5 Security/Policy: Audit der neuen Dependencies, SBOM/Lizenz-Check in Pipeline vorsehen

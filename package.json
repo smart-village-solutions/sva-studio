@@ -9,11 +9,13 @@
     "format": "NX_WRAPPER_SKIP_INSTALL=1 ./nx format"
   },
   "devDependencies": {
+    "@cyclonedx/cyclonedx-npm": "^4.1.2",
     "@nx/eslint": "^22.3.3",
     "@nx/jest": "^22.3.3",
     "@nx/node": "^22.3.3",
     "@nx/react": "^22.3.3",
     "@types/node": "^20.11.30",
+    "license-checker": "^25.0.1",
     "nx": "22.3.3",
     "prettier": "^3.2.5",
     "typescript": "^5.6.3"

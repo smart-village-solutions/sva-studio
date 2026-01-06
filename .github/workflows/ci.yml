@@ -29,6 +29,15 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Security audit (prod)
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: License summary (prod)
+        run: npx license-checker --summary --production
+
+      - name: Generate SBOM (CycloneDX)
+        run: npx @cyclonedx/cyclonedx-npm --omit dev --output-format xml --output-file bom.xml
+
       - name: Nx format:check (all files)
         run: npx nx format:check --files="**/*"
 

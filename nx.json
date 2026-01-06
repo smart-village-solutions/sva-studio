@@ -8,5 +8,22 @@
       "@nx/eslint": "22.3.3"
     }
   },
-  "$schema": "./node_modules/nx/schemas/nx-schema.json"
+  "$schema": "./node_modules/nx/schemas/nx-schema.json",
+  "targetDefaults": {
+    "format": {
+      "inputs": ["default"]
+    },
+    "lint": {
+      "inputs": ["default"]
+    },
+    "test": {
+      "inputs": ["default"],
+      "outputs": ["{workspaceRoot}/coverage/{projectRoot}"]
+    },
+    "build": {
+      "inputs": ["production"],
+      "outputs": ["{workspaceRoot}/dist/{projectRoot}"],
+      "dependsOn": ["^build"]
+    }
+  }
 }

@@ -1,0 +1,14 @@
+version: '3.8'
+services:
+  web:
+    build:
+      context: ..
+      dockerfile: ops/Dockerfile
+    ports:
+      - "8080:80"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/health.html"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s

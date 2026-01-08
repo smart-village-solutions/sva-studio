@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <title>Accessibility Demo (Test-Fixures)</title>
+</head>
+<body>
+  <!-- Intentionally missing label for testing -->
+  <input type="text" id="username" placeholder="" aria-describedby="username-help">
+  <div id="username-help" hidden>Benutzername eingeben</div>
+
+  <!-- Button only with aria-label, no visible text (no hardcoded UI text) -->
+  <button aria-label="Formular absenden"></button>
+
+  <!-- Focusable element to check focus outline -->
+  <a href="#" style="display:inline-block; padding:8px" aria-label="Weiter"></a>
+</body>
+</html>

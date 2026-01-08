@@ -1,0 +1,82 @@
+openapi: 3.0.3
+info:
+  title: SVA Studio Test API
+  version: 0.1.0
+  description: Minimal spec to exercise Interop & Architecture reviews.
+servers:
+  - url: https://example.local/api
+paths:
+  /health:
+    get:
+      summary: Health check
+      operationId: getHealth
+      responses:
+        '200':
+          description: OK
+  /v1/users:
+    get:
+      summary: List users
+      operationId: listUsersV1
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserV1'
+  /v2/users:
+    get:
+      summary: List users (v2)
+      operationId: listUsersV2
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserV2'
+components:
+  schemas:
+    UserV1:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+          deprecated: true
+          description: Deprecated in v2; use contact.email
+    UserV2:
+      type: object
+      properties:
+        id:
+          type: string
+        displayName:
+          type: string
+        contact:
+          type: object
+          properties:
+            email:
+              type: string
+              format: email

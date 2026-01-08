@@ -4,7 +4,7 @@ The workspace SHALL provide initial Nx projects for the admin app and core packa
 
 #### Scenario: Projects scaffolded with targets
 - **WHEN** the foundation is set up
-- **THEN** `apps/cms-admin` and the packages `sdk`, `core`, `data`, `auth`, `ui-contracts`, `runtime-react`, `theme-engine`, `app-config` exist
+- **THEN** `apps/studio` and the packages `sdk`, `core`, `data`, `auth`, `ui-contracts`, `runtime-react`, `theme-engine`, `app-config` exist
 - **AND** each project has lint/test/build targets configured
 - **AND** targets complete successfully on a clean checkout
 

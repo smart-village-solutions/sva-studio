@@ -1,0 +1,19 @@
+{
+  "name": "runtime-react",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/runtime-react/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/packages/runtime-react",
+        "main": "packages/runtime-react/src/index.ts",
+        "tsConfig": "packages/runtime-react/tsconfig.lib.json",
+        "assets": ["packages/runtime-react/*.md"]
+      }
+    }
+  }
+}

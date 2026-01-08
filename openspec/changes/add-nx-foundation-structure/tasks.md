@@ -1,5 +1,5 @@
 ## 1. Scaffold Basisstruktur
-- [ ] 1.1 Projekte anlegen: `apps/cms-admin` (React Shell, leer) und Packages: `packages/sdk`, `packages/core`, `packages/data`, `packages/auth`, `packages/ui-contracts`, `packages/runtime-react`, `packages/theme-engine`, `packages/app-config`
+- [ ] 1.1 Projekte anlegen: `apps/studio` (React Shell, leer) und Packages: `packages/sdk`, `packages/core`, `packages/data`, `packages/auth`, `packages/ui-contracts`, `packages/runtime-react`, `packages/theme-engine`, `packages/app-config`
 - [ ] 1.2 Nx-Projekte/`project.json`/`workspace`-Einträge erstellen (lint/test/build Targets, auch wenn minimal)
 - [ ] 1.3 Platzhalter-Code/README pro Projekt, damit Targets laufen (keine Feature-Logik)
 

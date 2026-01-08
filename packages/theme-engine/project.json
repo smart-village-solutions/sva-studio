@@ -1,0 +1,19 @@
+{
+  "name": "theme-engine",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/theme-engine/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/packages/theme-engine",
+        "main": "packages/theme-engine/src/index.ts",
+        "tsConfig": "packages/theme-engine/tsconfig.lib.json",
+        "assets": ["packages/theme-engine/*.md"]
+      }
+    }
+  }
+}

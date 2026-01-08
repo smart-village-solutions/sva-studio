@@ -1,0 +1,58 @@
+{
+  "name": "studio",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/studio/src",
+  "projectType": "application",
+  "tags": [],
+  "// targets": "to see all targets run: nx show project studio --web",
+  "targets": {
+    "build": {
+      "executor": "@nx/vite:build",
+      "outputs": ["{options.outputPath}"],
+      "defaultConfiguration": "production",
+      "options": {
+        "outputPath": "dist/apps/studio",
+        "configFile": "apps/studio/vite.config.mts"
+      },
+      "configurations": {
+        "development": {
+          "mode": "development"
+        },
+        "production": {
+          "mode": "production"
+        }
+      }
+    },
+    "serve": {
+      "executor": "@nx/vite:dev-server",
+      "defaultConfiguration": "development",
+      "options": {
+        "buildTarget": "studio:build"
+      },
+      "configurations": {
+        "development": {
+          "buildTarget": "studio:build:development"
+        },
+        "production": {
+          "buildTarget": "studio:build:production"
+        }
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "outputs": ["{options.outputFile}"],
+      "options": {
+        "lintFilePatterns": ["apps/studio/**/*.{ts,tsx,js,jsx}"]
+      }
+    },
+    "test": {
+      "executor": "@nx/vitest:test",
+      "outputs": ["{workspaceRoot}/coverage/apps/studio"],
+      "options": {
+        "passWithNoTests": true,
+        "reportsDirectory": "coverage/apps/studio",
+        "configFile": "apps/studio/vite.config.mts"
+      }
+    }
+  }
+}

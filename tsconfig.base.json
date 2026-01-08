@@ -9,6 +9,17 @@
     "strict": true,
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@cms/sdk": ["packages/sdk/src/index.ts"],
+      "@cms/core": ["packages/core/src/index.ts"],
+      "@cms/data": ["packages/data/src/index.ts"],
+      "@cms/auth": ["packages/auth/src/index.ts"],
+      "@cms/ui-contracts": ["packages/ui-contracts/src/index.ts"],
+      "@cms/runtime-react": ["packages/runtime-react/src/index.ts"],
+      "@cms/theme-engine": ["packages/theme-engine/src/index.ts"],
+      "@cms/app-config": ["packages/app-config/src/index.ts"]
+    }
   }
 }

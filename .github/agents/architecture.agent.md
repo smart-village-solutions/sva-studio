@@ -42,7 +42,7 @@ gh issue list --search "label:architecture" --state all
 **Wenn es ein Duplikat gibt**: Schließe es und verlinke zum Original
 **Wenn es verwandt ist**: Verlinke es im neuen Issue
 
-Danach kopierst du den Befehl und führst ihn aus:
+Wähle einen der oben stehenden Befehle aus, kopiere ihn und führe ihn in deiner Shell aus.
 
 Detaillierte Richtlinien: [ISSUE_CREATION_GUIDE.md](ISSUE_CREATION_GUIDE.md#-architecture-agent)
 

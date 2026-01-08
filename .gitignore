@@ -34,3 +34,6 @@ log/
 
 # Caches
 .cache/
+
+# NX
+.nx/

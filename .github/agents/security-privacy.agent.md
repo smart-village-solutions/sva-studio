@@ -47,7 +47,7 @@ gh issue list --search "label:security" --state all
 **Wenn es ein Duplikat gibt**: Schließe es und verlinke zum Original
 **Wenn es verwandt ist**: Verlinke es im neuen Issue
 
-Danach kopierst du den Befehl und führst ihn aus:
+Nutze bei Bedarf die oben gezeigten `gh`-Befehle in deinem Terminal, um nach bestehenden Issues zu suchen.
 
 Detaillierte Richtlinien: [ISSUE_CREATION_GUIDE.md](ISSUE_CREATION_GUIDE.md#-security--privacy-agent)
 

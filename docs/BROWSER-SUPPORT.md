@@ -173,9 +173,9 @@ Ticket: #1234
 ## API-Kompatibilität & Fallbacks
 - Kritische APIs: Intl, WebCrypto, WebSockets/EventSource, WebAuthn, Intersection/Resize Observer
 - Fallback-Strategie:
-	- Feature-Detection und Polyfills nur für fehlende Features
-	- Server-seitige Fallbacks (z.B. Formatierung/Internationalisierung) bei fehlenden Client-Fähigkeiten
-	- Downgrade-Pfade für Echtzeit (Fallback auf Polling, wenn WebSockets nicht verfügbar)
+  - Feature-Detection und Polyfills nur für fehlende Features
+  - Server-seitige Fallbacks (z.B. Formatierung/Internationalisierung) bei fehlenden Client-Fähigkeiten
+  - Downgrade-Pfade für Echtzeit (Fallback auf Polling, wenn WebSockets nicht verfügbar)
 
 ## Rationale & Kommunikation
 - Auswahl Mindestversionen: Marktanteile, Sicherheitspatches, Supportaufwand, Kompatibilität mit eingesetzten Frameworks

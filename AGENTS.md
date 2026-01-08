@@ -16,3 +16,9 @@ Use `@/openspec/AGENTS.md` to learn:
 Keep this managed block so 'openspec update' can refresh the instructions.
 
 <!-- OPENSPEC:END -->
+
+---
+
+## Development Rules
+
+Die verbindlichen Entwicklungsrichtlinien liegen unter [rules/DEVELOPMENT_RULES.md](rules/DEVELOPMENT_RULES.md). Alle Agenten-Reviews sind im Zweifel an diesen Regeln auszurichten.

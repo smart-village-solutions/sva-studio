@@ -42,7 +42,7 @@ gh issue list --search "label:accessibility" --state all
 **Wenn es ein Duplikat gibt**: Schließe es und verlinke zum Original
 **Wenn es verwandt ist**: Verlinke es im neuen Issue
 
-Danach kopierst du den Befehl und führst ihn aus:
+Danach kopierst du den passenden Befehl aus dem obigen Codeblock und führst ihn in deinem Terminal aus.
 
 Detaillierte Richtlinien: [ISSUE_CREATION_GUIDE.md](ISSUE_CREATION_GUIDE.md#-ux--accessibility-agent)
 

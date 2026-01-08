@@ -312,6 +312,21 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
 
 ---
 
+## 7. Branching & PR Workflow
+
+### ✅ REQUIRED
+- Create a dedicated branch for every change; never commit directly to main
+- Use branch prefixes that describe the change: `feature/`, `fix/`, `chore/`, `docs/`, `setup/`, `adr/`
+- Keep one topic per branch and keep branches/PRs small and focused
+- Rebase (or merge) main into your branch before opening a PR to resolve drift early
+- Require green CI and at least one review before merge; prefer squash merges to keep history clean
+
+### ❌ FORBIDDEN
+- Mixing unrelated changes in one branch or PR
+- Force-pushing after review without explicit reviewer consent (except to fix CI/rebase conflicts)
+
+---
+
 ## Translation System Architecture
 
 ### How it works
@@ -505,7 +520,7 @@ function MyComponent() {
 
 ---
 
-## 7. User Manual Maintenance
+## 8. User Manual Maintenance
 
 ### 🚨 MANDATORY - Keep Documentation Current
 

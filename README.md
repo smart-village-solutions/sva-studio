@@ -1,5 +1,7 @@
 # SVA Studio
 
+![Mockup 01 2026](docs/images/mockup-01-2026.png)
+
 Wir modernisieren das Redaktionssystem der Smart Village App zu einer integrierten Plattform für Content-Management, Benutzerverwaltung, App-Design, Module und Schnittstellen. Fokus: nutzerfreundlich, sicher, erweiterbar.
 
 ## Einleitung

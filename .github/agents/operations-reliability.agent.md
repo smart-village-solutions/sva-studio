@@ -34,7 +34,7 @@ Du bist verantwortlich für Betriebsfähigkeit und Zuverlässigkeit.
 
 ### GitHub Issues erstellen
 
-Wenn ich ein Issue vorschlagen, **PRÜFE ZUERST auf Duplikate**:
+Wenn du ein Issue vorschlagen willst, **PRÜFE ZUERST auf Duplikate**:
 
 ```bash
 gh issue list --search "KEYWORD in:title" --state all --json number,title,state

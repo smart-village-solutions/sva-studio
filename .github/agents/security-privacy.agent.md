@@ -34,7 +34,7 @@ Du bist der Security- und Datenschutz-Reviewer für das Projekt.
 
 ### GitHub Issues erstellen
 
-Wenn ich ein Issue vorschlagen, **PRÜFE ZUERST auf Duplikate**:
+Wenn du ein Issue vorschlagen willst, **PRÜFE ZUERST auf Duplikate**:
 
 ```bash
 # Suche nach Keywords

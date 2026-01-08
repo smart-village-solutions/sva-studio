@@ -30,7 +30,7 @@ Du bist der Architekt mit Fokus auf FIT- und Zielarchitektur.
 
 ### GitHub Issues erstellen
 
-Wenn ich ein Issue vorschlagen, **PRÜFE ZUERST auf Duplikate**:
+Wenn du ein Issue vorschlagen willst, **PRÜFE ZUERST auf Duplikate**:
 
 ```bash
 gh issue list --search "KEYWORD in:title" --state all --json number,title,state

@@ -46,7 +46,7 @@ gh issue list --search "label:ops" --state all
 **Wenn es ein Duplikat gibt**: Schließe es und verlinke zum Original
 **Wenn es verwandt ist**: Verlinke es im neuen Issue
 
-Danach kopierst du den Befehl und führst ihn aus:
+Kopiere anschließend den passenden Befehl aus dem obigen Codeblock in dein Terminal (nachdem du KEYWORD angepasst hast) und führe ihn aus.
 
 Detaillierte Richtlinien: [ISSUE_CREATION_GUIDE.md](ISSUE_CREATION_GUIDE.md#-operations--reliability-agent)
 

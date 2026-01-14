@@ -44,7 +44,7 @@ gh issue list --search "label:architecture" --state all
 
 Danach kopierst du den Befehl und führst ihn aus:
 
-Detaillierte Richtlinien: [ISSUE_CREATION_GUIDE.md](ISSUE_CREATION_GUIDE.md#-architecture-agent)
+Detaillierte Richtlinien: [skills/ISSUE_CREATION_GUIDE.md](skillsISSUE_CREATION_GUIDE.md#-architecture-agent)
 
 ### Review-Output (Template)
 

@@ -37,3 +37,6 @@ log/
 
 # NX
 .nx/
+.nx/installation
+.nx/cache
+.nx/workspace-data

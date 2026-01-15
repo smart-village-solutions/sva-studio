@@ -1,0 +1,9 @@
+**/.nx/cache
+**/.nx/workspace-data
+**/build
+**/coverage
+**/dist
+**/node_modules
+**/.output
+**/src/routeTree.gen.ts
+pnpm-lock.yaml

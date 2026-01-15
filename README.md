@@ -40,3 +40,14 @@ Das bestehende Redaktionssystem ist umständlich, schwer erweiterbar und limitie
 - **Community-Contributions:** Aktive Einbindung von Entwickler:innen, Designer:innen und Anwender:innen
 - **Nachhaltiger Betrieb:** Organisation und Finanzierung über die Förderphase hinaus sicherstellen
 - **Standards & Compliance:** IT-Sicherheits-Leitlinie, BSI-Grundschutz, BITV, Föderale IT-Architekturrichtlinien, DSGVO, Open-Source-Vorgaben (MPSC), relevante Datenstandards (xZuFi, OParl, Open311, schema.org, ...)
+
+## Entwicklung: Package Manager
+
+Wir nutzen `pnpm` (Version in `package.json` / `.tool-versions`).
+
+Option A: Corepack (Node.js)
+```bash
+corepack enable
+corepack prepare pnpm@9.12.2 --activate
+pnpm install
+```

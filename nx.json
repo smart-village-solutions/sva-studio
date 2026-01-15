@@ -1,0 +1,11 @@
+{
+  "$schema": "./node_modules/nx/schemas/nx-schema.json",
+  "defaultBase": "main",
+  "installation": {
+    "version": "22.3.3"
+  },
+  "workspaceLayout": {
+    "appsDir": "apps",
+    "libsDir": "packages"
+  }
+}

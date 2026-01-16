@@ -10,9 +10,10 @@ SVA Studio (ehemals "CMS 2.0") modernisiert das Redaktionssystem der Smart Villa
 - DSGVO-konform, sicher, erweiterbar durch Plugin-Architektur
 
 ## Tech Stack
-- **Monorepo:** Nx (Integrated Monorepo Setup) mit pnpm
-- **Frontend:** TypeScript, React (geplant)
-- **Backend:** Node.js, GraphQL API (bestehend, wird punktuell erweitert)
+- **Monorepo:** Nx (Integrated Monorepo Setup) mit pnpm (>=9.12.2)
+- **Runtime:** Node.js (>=22.12.0)
+- **Frontend:** TypeScript, React, Vite, TanStack Router, Tailwind CSS
+- **Backend:** Node.js, GraphQL API (externe Smart Village App Backend, wird punktuell erweitert)
 - **Testing:** (noch festzulegen; Anforderung: hohe Test-Coverage für neue Logik)
 - **Code Quality:** Prettier (aktiviert), Linter/Type-Checks (noch zu konfigurieren)
 - **Deployment:** (noch offen; Cloud/On-Premise hybrid möglich)
@@ -26,10 +27,13 @@ SVA Studio (ehemals "CMS 2.0") modernisiert das Redaktionssystem der Smart Villa
 - **Commits:** Conventional Commits (z.B. `feat:`, `fix:`, `docs:`, `chore:`)
 
 ### Architecture Patterns
-- **API-First / Headless:** GraphQL-basierte Backend-API
-- **Modulare Architektur:** Vorbereitung für Plugin-System; klar abgegrenzte Features
-- **Monorepo:** Nx Integrated Setup für gemeinsame Bibliotheken, Apps, Tools
+- **API-First / Headless:** GraphQL-basierte Backend-API (extern gehostet)
+- **Modulare Architektur:** Plugin-System implementiert; klar abgegrenzte Features
+- **Monorepo:** Nx Integrated Setup mit:
+  - **Apps:** `studio` (Frontend-Anwendung mit Router, Styling, Components)
+  - **Packages:** `core` (Routing Registry), `sdk` (Plugin SDK), `data` (Datenmodelle), `plugin-example` (Beispiel)
 - **Separation of Concerns:** Backend/Frontend klar getrennt; API als zentrale Schnittstelle
+- **OpenSpec:** Strukturierte Change-Proposals und Specs in `openspec/` für Architektur-Entscheidungen
 
 ### Testing Strategy
 - **Pflicht:** Neue Logik benötigt Tests; Bugfixes benötigen Repro-Tests
@@ -60,8 +64,8 @@ SVA Studio (ehemals "CMS 2.0") modernisiert das Redaktionssystem der Smart Villa
 - **Abhängigkeiten:** Externe Pakete nur nach gründlicher Prüfung (Mehrwert, Qualität, Lizenz, SBOM)
 
 ## External Dependencies
-- **Bestehende GraphQL-API:** Smart Village App Backend (wird punktuell erweitert, aber nicht komplett neu strukturiert)
-- **Mobile App:** Nicht Teil des Projekts; bleibt unverändert; CMS liefert nur Daten
+- **Smart Village App Backend:** GraphQL-API ist extern gehostet (nicht in diesem Repo). SVA Studio ist Client für diese API; Backend wird nur punktuell erweitert.
+- **Mobile App:** Nicht Teil des Projekts; bleibt unverändert; CMS liefert nur Daten über existierende GraphQL-API
 - **Kommunale Fachverfahren:** Perspektivisch anbindbar (z.B. DMS, Tourismus-Hubs), aber nicht im initialen Scope
 - **Urbane Datenplattformen:** Optional; System muss auch ohne funktionieren
-- **Hosting/Betrieb:** Cloud/On-Premise hybrid; nicht Teil des Projekts (aber mitgedacht)
+- **Hosting/Betrieb:** Cloud/On-Premise hybrid; nicht Teil dieses Repos (aber mitgedacht)

@@ -1,18 +1,17 @@
 <!-- OPENSPEC:START -->
-# OpenSpec Instructions
+# OpenSpec-Anweisungen
 
-These instructions are for AI assistants working in this project.
+Diese Anweisungen sind für KI-Assistenten gedacht, die in diesem Projekt arbeiten.
 
-Always open `@/openspec/AGENTS.md` when the request:
-- Mentions planning or proposals (words like proposal, spec, change, plan)
-- Introduces new capabilities, breaking changes, architecture shifts, or big performance/security work
-- Sounds ambiguous and you need the authoritative spec before coding
+Öffne immer `@/openspec/AGENTS.md`, wenn die Anfrage:
+- Planung oder Vorschläge erwähnt (Wörter wie Vorschlag, Spezifikation, Änderung, Plan)
+- Neue Funktionen, Breaking Changes, Architekturänderungen oder umfangreiche Performance-/Sicherheitsarbeiten einführt
+- Mehrdeutig klingt und du die maßgebliche Spezifikation vor dem Programmieren benötigst
 
-Use `@/openspec/AGENTS.md` to learn:
-- How to create and apply change proposals
-- Spec format and conventions
-- Project structure and guidelines
+Nutze `@/openspec/AGENTS.md`, um Folgendes zu lernen:
+- Wie man Änderungsvorschläge erstellt und anwendet
+- Spezifikationsformat und Konventionen
+- Projektstruktur und Richtlinien
 
-Keep this managed block so 'openspec update' can refresh the instructions.
-
+Behalte diesen verwalteten Block bei, damit 'openspec update' die Anweisungen aktualisieren kann.
 <!-- OPENSPEC:END -->

@@ -1,13 +1,13 @@
-import { TanStackDevtools } from '@tanstack/react-devtools'
-import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
-import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
-import { RootLayout } from '../components/RootLayout'
-import { ThemeProvider } from '../contexts/ThemeContext'
-import '../i18n/config'
+import { TanStackDevtools } from '@tanstack/react-devtools';
+import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router';
+import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools';
+import { RootLayout } from '../components/RootLayout';
+import { ThemeProvider } from '../contexts/ThemeContext';
+import '../i18n/config';
 
-import globalsCss from '../globals.css?url'
-import appCss from '../styles.css?url'
-import designTokensCss from '@sva-studio/ui-contracts/design-tokens.css?url'
+import globalsCss from '../globals.css?url';
+import appCss from '../styles.css?url';
+import designTokensCss from '@sva-studio/ui-contracts/design-tokens.css?url';
 
 export const Route = createRootRoute({
   head: () => ({
@@ -40,9 +40,9 @@ export const Route = createRootRoute({
   }),
 
   shellComponent: RootDocument,
-})
+});
 
-export const rootRoute = Route
+export const rootRoute = Route;
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
@@ -52,9 +52,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       </head>
       <body>
         <ThemeProvider>
-          <RootLayout>
-            {children}
-          </RootLayout>
+          <RootLayout>{children}</RootLayout>
           <TanStackDevtools
             config={{
               position: 'bottom-right',
@@ -70,5 +68,5 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <Scripts />
       </body>
     </html>
-  )
+  );
 }

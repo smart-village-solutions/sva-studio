@@ -9,6 +9,12 @@
     "settings": "Settings",
     "logout": "Logout"
   },
+  "theme": {
+    "lightMode": "Light Mode",
+    "darkMode": "Dark Mode",
+    "systemMode": "System",
+    "toggleTheme": "Toggle Theme"
+  },
   "sidebar": {
     "dashboard": "Dashboard",
     "content": "Content",

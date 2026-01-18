@@ -311,6 +311,91 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
 
 ---
 
+## 6.5 Review & Audit Report Organization
+
+### ✅ REQUIRED - Storage Location
+
+All audit, review, and report outputs from AI agents or automated tools MUST be stored in organized category folders, **NEVER in the root directory**:
+
+```
+✅ CORRECT LOCATIONS:
+docs/reviews/compliance/          → DEVELOPMENT_RULES compliance, Phase status
+docs/reviews/security/            → Security audits, architecture reviews
+docs/reviews/accessibility/       → WCAG compliance, accessibility audits
+docs/reviews/performance/         → Bundle size, performance analysis
+docs/reviews/i18n/               → Internationalization audits
+
+❌ FORBIDDEN:
+Root directory (/)
+src/
+apps/
+packages/
+Any other location without category structure
+```
+
+### Naming Convention for Reports
+
+Follow this format for consistency:
+
+```
+{CATEGORY}_{TYPE}_{FILENAME}.md
+
+Examples:
+✅ docs/reviews/compliance/DEVELOPER_COMPLIANCE_CHECKLIST.md
+✅ docs/reviews/accessibility/WCAG_IMPLEMENTATION_GUIDE.md
+✅ docs/reviews/performance/PERFORMANCE_QUICK_START.md
+✅ docs/reviews/security/SECURITY_ARCHITECTURE_REVIEW.md
+
+❌ WRONG:
+WCAG_ACCESSIBILITY_AUDIT.md (in root)
+Review_2026_01_18.md (vague naming)
+some_review.md (unorganized)
+```
+
+### Version Control for Report Iterations
+
+When creating follow-up reviews or updates:
+
+```
+First review:   docs/reviews/{category}/FILENAME.md
+Follow-up:      docs/reviews/{category}/2026-01-25_FILENAME.md
+Later update:   docs/reviews/{category}/2026-02-15_FILENAME.md
+```
+
+All versions stay in the **same category folder** for easy history tracking.
+
+### Index Maintenance
+
+After creating a new report, **MUST update** the navigation index:
+
+1. Add link to `docs/reviews/README.md` with brief description
+2. Add link to `docs/README.md` master index if relevant
+3. Follow existing index format and organization
+
+**Example entry for docs/reviews/README.md:**
+```markdown
+- [Your_Review_Name.md](category/Your_Review_Name.md) – Brief description of findings
+```
+
+### Why This Rule Exists
+
+- 📁 **Prevents Root Clutter**: Root directory stays clean and readable
+- 🔍 **Findability**: Reviews are organized by category for quick navigation
+- 📊 **Discoverability**: Central index makes all audits visible
+- 🔄 **Traceability**: Dated files show review history over time
+- ♻️ **Reusability**: Previous reviews are easily accessible for comparison
+- 🤖 **AI Compliance**: Agents are instructed to follow this structure
+
+### ❌ FORBIDDEN
+
+- Storing review outputs in root directory
+- Creating new documentation folders outside `docs/`
+- Inconsistent or vague filenames
+- Skipping index updates
+- Breaking the category structure
+
+---
+
 ## 7. Branching & PR Workflow
 
 ### ✅ REQUIRED
@@ -326,7 +411,504 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
 
 ---
 
-## Translation System Architecture
+## 9. Common Pitfalls & Lessons Learned
+
+Lessons from Phase 1 reviews to prevent repeated mistakes.
+
+### 🚨 i18n Pitfalls
+
+#### Pitfall #1: Hardcoded Strings in Key Components
+**What went wrong**: Component titles, buttons, and descriptions were hardcoded instead of using `t()` keys.
+
+```tsx
+// ❌ WRONG - Found in production code
+<h1>Willkommen in SVA Studio</h1>
+<p>Die Self-Service Plattform für Inhalte, Module und Erweiterungen.</p>
+
+// ✅ CORRECT
+const { t } = useTranslation()
+<h1>{t('home.welcome')}</h1>
+<p>{t('home.description')}</p>
+```
+
+**Prevention Rule**: Every text that users see MUST have a translation key BEFORE writing JSX. Define keys first, then use them.
+
+#### Pitfall #2: Brand Names & Logos
+**What went wrong**: "SVA Studio" hardcoded in multiple locations (Sidebar logo, page title).
+
+**Prevention Rule**:
+- Create i18n key for brand name: `common.appName` or `layout.brandName`
+- Reuse it everywhere instead of hardcoding
+- One source of truth for all branding text
+
+#### Pitfall #3: HTML Page Titles
+**What went wrong**: `<title>SVA Studio</title>` hardcoded in route component.
+
+**Why it's tricky**: HTML title lives in `<head>`, not accessible to React `useTranslation()` hook during SSR.
+
+**Correct approach for Phase 1.5**:
+```tsx
+// Option 1: Use i18n hook before render
+const DocumentHead = () => {
+  const { t } = useTranslation()
+  return <title>{t('layout.pageTitle')}</title>
+}
+
+// Option 2: Use TanStack Router's meta() function
+export const Route = createRootRoute({
+  head: () => ({
+    meta: [{ title: t('layout.pageTitle') }] // i18n key here
+  })
+})
+```
+
+**Prevention**: Document that page titles need special handling in Phase 1.5; don't hardcode.
+
+---
+
+### ♿ Accessibility Pitfalls
+
+#### Pitfall #1: Primary Color Contrast Too Low
+**What went wrong**: Green #4EBC41 on light background #FAFAF3 = 2.51:1 contrast (needs 4.5:1)
+
+**Impact**: Affects ~2% of population (color-blind users), makes links/buttons unreadable.
+
+```css
+/* ❌ Discovered in audit */
+--primary: rgba(78, 188, 65, 1);    /* 2.51:1 on light background */
+
+/* ✅ Fixed */
+--primary: rgba(26, 92, 13, 1);     /* 7.31:1 – WCAG AAA */
+```
+
+**Prevention Rule**:
+- Test all semantic colors against background colors BEFORE finalizing design tokens
+- Use contrast calculator: https://webaim.org/resources/contrastchecker/
+- Document contrast ratios in design-tokens.css
+
+#### Pitfall #2: Theme-Specific Focus States
+**What went wrong**: Focus-shadow always green (#4EBC41), even on Luxury Yacht theme (gold-based).
+
+```css
+/* ❌ WRONG - Same focus color for all themes */
+--focus-shadow: 0 0 0 3px rgba(78, 188, 65, 0.1);  /* Always green */
+
+/* ✅ CORRECT - Theme-aware */
+:root {
+  --focus-shadow: 0 0 0 3px rgba(78, 188, 65, 0.1);  /* Light: green */
+}
+
+.theme-yacht {
+  --focus-shadow: 0 0 0 3px rgba(212, 175, 55, 0.2);  /* Yacht: gold */
+}
+```
+
+**Prevention Rule**: Every visual token (focus state, hover color, etc.) must be theme-aware.
+
+#### Pitfall #3: Disabled State Unclear
+**What went wrong**: Disabled buttons only had `opacity: 0.5`, making them hard to distinguish.
+
+```css
+/* ❌ Too subtle – users don't understand why button won't click */
+button:disabled {
+  opacity: 0.5;
+}
+
+/* ✅ Make disabled state obvious */
+button:disabled {
+  background-color: var(--muted);
+  color: var(--muted-foreground);
+  opacity: 0.6;
+  cursor: not-allowed;
+  border: 1px solid var(--border);
+}
+```
+
+**Prevention Rule**: Disabled states must be visually distinct (color + opacity + cursor, not just one).
+
+---
+
+### ⚡ Performance Pitfalls
+
+#### Pitfall #1: Redundant CSS Selectors for Dark Mode
+**What went wrong**: Same CSS rules defined 3 times for dark mode:
+```css
+@media (prefers-color-scheme: dark) { --color: ... }  /* 50 lines */
+[data-theme="dark"] { --color: ... }                  /* 50 lines – IDENTICAL */
+.dark { --color: ... }                                /* 50 lines – IDENTICAL */
+```
+
+**Impact**: Browser matches all 3 selectors, causing 3x theme-switching performance hit (400ms instead of 150ms).
+
+**Prevention Rule**:
+- Choose ONE dark mode strategy, not three
+- Recommended: Use CSS class (`.dark`) + `@media (prefers-color-scheme: dark)` as fallback
+- Remove redundant selectors before finalizing
+
+```css
+/* ✅ CORRECT */
+@media (prefers-color-scheme: dark),
+[data-theme="dark"],
+.dark {
+  --primary: #4ebc41;
+  /* ... */
+}
+```
+
+#### Pitfall #2: Fallback Values in CSS Variables
+**What went wrong**: Focus-shadow had inline fallback instead of using variable:
+
+```css
+/* ❌ Redundant – stores value twice */
+box-shadow: var(--focus-shadow, 0 0 0 3px rgba(78, 188, 65, 0.1));
+box-shadow: 0 0 0 3px rgba(78, 188, 65, 0.1);
+
+/* ✅ Clean – single source of truth */
+box-shadow: var(--focus-shadow);
+```
+
+**Prevention Rule**: If you're defining a CSS variable, use it everywhere. Don't maintain duplicate values.
+
+#### Pitfall #3: CSS Byte Waste
+**What went wrong**: Unused fallback values and redundant rules increased bundle by ~150 bytes.
+
+**Prevention Rule**:
+- Run CSS minifier before shipping
+- Audit CSS files monthly for dead code
+- Use coverage tools: DevTools > Coverage tab
+
+---
+
+### 🔐 Security Pitfalls
+
+#### Pitfall #1: Disabled Inputs Still Processing
+**What went wrong**: Components with `disabled` attribute might still be vulnerable if JavaScript re-enables them.
+
+```tsx
+/* ❌ WRONG - Just disabled attribute, no validation */
+<button disabled onClick={handleClick}>
+  Save
+</button>
+
+/* ✅ CORRECT - Validate in handler + disabled attribute */
+function handleClick(e) {
+  if (isSubmitting) return; // Prevent double-submit
+  // ... process
+}
+```
+
+**Prevention Rule**: Never rely on disabled attribute alone. Validate on the handler too.
+
+#### Pitfall #2: No Validation on Demo Routes
+**What went wrong**: Demo/PoC routes had no input validation (TanStack Start examples).
+
+**Prevention Rule**: Even PoC code needs validation. Document what's missing for production.
+
+```tsx
+/* ✅ Even in demo code, show best practice */
+const formSchema = z.object({
+  name: z.string().min(1),
+  email: z.string().email()
+})
+
+const result = formSchema.safeParse(formData)
+if (!result.success) return // Validation failed
+```
+
+---
+
+### 📝 Documentation Pitfalls
+
+#### Pitfall #1: Missing Phase 1 vs Phase 1.5 Boundaries
+**What went wrong**: Unclear which hardcoded strings were intentional Phase 1 shortcuts vs actual violations.
+
+**Prevention Rule**:
+- Document intentional Phase 1 limitations explicitly:
+  ```tsx
+  // Phase 1: Demo content – remove or i18n in Phase 1.5
+  <h1>TanStack Start Demos</h1>
+  ```
+- Use comment pattern: `// Phase 1.5: Add i18n for [feature]`
+
+#### Pitfall #2: No Checklist Before Merging
+**What went wrong**: Components merged without checking i18n, accessibility, performance requirements.
+
+**Prevention Rule**: Use checklist before every PR (see section above: "Before Creating New Components").
+
+---
+
+## 10. Architecture & CSS Pitfalls from Design System Migration
+
+These critical lessons emerged from the **Design System Migration Phase 1** across all subsystems.
+
+### 🔴 Critical Architecture Issues
+
+#### Issue #1: CSS Custom Properties Not Explicitly Imported
+**What went wrong**: `globals.css` used CSS variables without importing `design-tokens.css`.
+
+```css
+/* ❌ WRONG - CSS Module doesn't know variables are available */
+/* globals.css */
+body {
+  background-color: var(--background);  /* Where does --background come from? */
+}
+
+/* ✅ CORRECT */
+@import '@sva-studio/ui-contracts/design-tokens.css';
+
+body {
+  background-color: var(--background);  /* Explicit dependency */
+}
+```
+
+**Prevention Rule**:
+- ALWAYS use `@import` for CSS dependencies, don't rely on HTML `<link>` order
+- This allows CSS modules to be self-contained
+- Enables CSS linters to validate variable usage
+
+#### Issue #2: No Fallback Values for CSS Variables
+**What went wrong**: CSS variables had no fallback, causing rendering failures in older browsers or if variables undefined.
+
+```css
+/* ❌ WRONG - Fails silently if --background undefined */
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+}
+
+input:focus {
+  box-shadow: 0 0 0 3px rgba(78, 188, 65, 0.1);  /* Hardcoded! */
+}
+
+/* ✅ CORRECT - Fallback to hardcoded value */
+body {
+  background-color: #fafaf3;  /* Fallback first */
+  background-color: var(--background);
+  color: #10100b;
+  color: var(--foreground);
+}
+
+input:focus {
+  box-shadow: 0 0 0 3px rgba(78, 188, 65, 0.1);
+  box-shadow: var(--focus-shadow, 0 0 0 3px rgba(78, 188, 65, 0.1));
+}
+```
+
+**Prevention Rule**:
+- For critical properties (background, color, focus-shadow), always provide fallback
+- Use duplicate declarations: hardcoded first, variable second
+- Browsers ignore fallback if variable exists, use it if variable missing
+
+#### Issue #3: Dark Mode with Conflicting Cascade
+**What went wrong**: Dark mode defined in 3 different ways with unclear priority:
+
+```css
+/* ❌ PROBLEM - 3 identical definitions, unclear hierarchy */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: rgba(16, 16, 11, 1);
+  }
+}
+
+[data-theme="dark"] {
+  --background: rgba(16, 16, 11, 1);  /* Same value! */
+}
+
+.dark {
+  --background: rgba(16, 16, 11, 1);  /* Same value again! */
+}
+
+/* When .theme-yacht active: */
+.theme-yacht.dark {
+  --background: rgba(18, 18, 20, 1);  /* Conflicts with .dark! */
+}
+```
+
+**Problem**: Browser specificity conflict:
+- `.dark` (specificity 0,1,0) vs
+- `.theme-yacht.dark` (specificity 0,2,0)
+- → If `.theme-yacht` active, it ALWAYS wins, even if not supposed to be dark
+
+**Prevention Rule**:
+```css
+/* ✅ CORRECT - Clear cascade hierarchy */
+/* 1. Media Query (lowest priority) */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --background: rgba(16, 16, 11, 1);
+  }
+}
+
+/* 2. Explicit attribute (medium priority) */
+[data-theme="dark"] {
+  --background: rgba(16, 16, 11, 1);
+}
+
+/* 3. CSS class (high priority for JS-based switching) */
+.dark {
+  --background: rgba(16, 16, 11, 1);
+}
+
+/* 4. Theme + Dark combination (highest priority) */
+[data-theme="dark"][data-theme-variant="yacht"] {
+  --background: rgba(18, 18, 20, 1);  /* Clear override */
+}
+```
+
+**Rule**: Use specificity levels, NOT duplicate selectors:
+- Level 1: `:root` with media query (system preference)
+- Level 2: `[data-theme="dark"]` (explicit attribute from server)
+- Level 3: `.dark` (CSS class from JavaScript)
+- Level 4: Theme-specific (highest specificity for variants)
+
+---
+
+### ⚡ Performance & Bundle Size Pitfalls
+
+#### Pitfall #1: Redundant CSS Definitions (Triple Dark Mode)
+**What went wrong**: Dark mode tokens defined 3x identically:
+
+```css
+/* ❌ WRONG - 80 lines of duplicate CSS */
+@media (prefers-color-scheme: dark) {
+  --background: ...;  /* 16 variables */
+}
+
+[data-theme="dark"] {
+  --background: ...;  /* 16 variables again! */
+}
+
+.dark {
+  --background: ...;  /* 16 variables again! */
+}
+
+/* Impact: 400-500 bytes wasted */
+```
+
+**Prevention Rule**:
+- Use ONE definition for core tokens
+- Use combined selectors if needed:
+  ```css
+  @media (prefers-color-scheme: dark),
+  [data-theme="dark"],
+  .dark {
+    --background: ...;
+  }
+  ```
+- Better: Use cascade hierarchy (see Issue #3)
+
+#### Pitfall #2: Theme Switching Performance
+**What went wrong**: Changing dark mode took 400ms because browser had to match 3x selectors per variable.
+
+```
+❌ BEFORE: 400ms theme switch
+  └─ Browser matches @media query for EVERY token
+  └─ Browser matches [data-theme] for EVERY token
+  └─ Browser matches .dark for EVERY token
+  └─ REPAINT triggered (not just REFLOW)
+
+✅ AFTER: ~150ms theme switch (60% faster)
+  └─ One selector per variable
+  └─ Reduced cascade complexity
+  └─ Better browser optimization
+```
+
+**Prevention Rule**:
+- Minimize selector complexity for frequently-switched styles
+- Test theme-switch performance: `DevTools > Performance > Record`
+- Target < 200ms for theme toggle
+
+#### Pitfall #3: Hardcoded Focus-Shadow Instead of Variable
+**What went wrong**: Focus shadow defined as hardcoded value in multiple places:
+
+```css
+/* ❌ WRONG - Hardcoded in focus state AND in variable */
+input:focus {
+  box-shadow: 0 0 0 3px rgba(78, 188, 65, 0.1);  /* Hardcoded */
+  box-shadow: var(--focus-shadow, 0 0 0 3px rgba(78, 188, 65, 0.1));  /* Variable with same fallback */
+}
+
+/* Result: Double declaration + same value in fallback */
+```
+
+**Prevention Rule**:
+- Define shadow once in variables
+- Use variable everywhere
+- If needing fallback, make sure values are synced:
+  ```css
+  /* ✅ CORRECT */
+  --focus-shadow: 0 0 0 3px rgba(78, 188, 65, 0.1);
+
+  input:focus {
+    box-shadow: var(--focus-shadow);  /* Single source */
+  }
+  ```
+
+#### Pitfall #4: Empty CSS Files Left in Build
+**What went wrong**: `styles.css` was empty but still in bundle (119 bytes wasted).
+
+**Prevention Rule**:
+- Audit CSS files before shipping
+- Remove empty/redundant stylesheets
+- Check build output for dead code
+
+---
+
+### 🔐 Design System & Namespace Pitfalls
+
+#### Pitfall #1: Legacy Namespace References Not Updated
+**What went wrong**: Some imports still used old scope instead of `@sva-studio/`.
+
+```ts
+/* ❌ WRONG - Old scope */
+import tokens from '@svastudio/design-tokens';
+import { Button } from '@svastudio/ui-components';
+
+/* ✅ CORRECT - New scope */
+import tokens from '@sva-studio/ui-contracts/design-tokens.css';
+import { Button } from '@sva-studio/ui-components';
+```
+
+**Prevention Rule**:
+- Update ALL imports when migrating namespaces
+- Use find-and-replace across entire codebase
+- Verify with `grep` that old scope is gone
+
+#### Pitfall #2: Design Tokens Not Documented for Usage
+**What went wrong**: Developers didn't know which tokens to use where.
+
+**Prevention Rule**: Create clear documentation:
+```md
+# Design Tokens Reference
+
+## Colors
+- `--primary`: Green #4EBC41 (buttons, links)
+- `--secondary`: Teal #13C296 (accents)
+- `--background`: Light Beige #FAFAF3 (page background)
+- etc.
+
+## Usage
+- Always use `var(--token)` in CSS
+- Never hardcode color values
+- For dynamic colors, use encapsulated component (IssueLabel)
+```
+
+---
+
+### ✅ How to Use These Learnings
+
+**For Phase 1.5 and beyond:**
+1. **Before implementing CSS**: Check sections 10.1-10.4
+2. **Before shipping styles**: Run performance audit (10.2)
+3. **When refactoring**: Apply cascade hierarchy fixes (10.1.3)
+4. **In code review**: Reference specific pitfalls: "See DEVELOPMENT_RULES 10.1.2 – CSS Variable Fallbacks"
+
+**For design system evolution:**
+1. Use this as input for token documentation
+2. Create automation to detect duplicate CSS definitions
+3. Set up CI checks for bundle size
+
+---
 
 ### How it works
 1. **Database**: `translations` table stores key-value pairs

@@ -2,6 +2,7 @@ import { TanStackDevtools } from '@tanstack/react-devtools'
 import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { RootLayout } from '../components/RootLayout'
+import { ThemeProvider } from '../contexts/ThemeContext'
 import '../i18n/config'
 
 import globalsCss from '../globals.css?url'

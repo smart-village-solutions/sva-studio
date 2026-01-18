@@ -13,7 +13,7 @@ i18next.use(initReactI18next).init({
   lng: 'de',
   fallbackLng: 'de',
   interpolation: {
-    escapeValue: false,
+    escapeValue: true,
   },
 })
 

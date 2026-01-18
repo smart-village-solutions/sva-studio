@@ -4,7 +4,18 @@ import styles from './Header.module.css'
 
 export function Header() {
   const { t } = useTranslation()
-  const { theme, toggleTheme } = useTheme()
+
+  // Use a try-catch to handle SSR scenarios where ThemeProvider might not be available yet
+  let theme = 'light'
+  let toggleTheme = () => {}
+
+  try {
+    const themeContext = useTheme()
+    theme = themeContext.theme
+    toggleTheme = themeContext.toggleTheme
+  } catch (error) {
+    // ThemeProvider not available during SSR, use default light theme
+  }
 
   const isLightMode = theme === 'light'
   const themeLabel = isLightMode ? t('theme.darkMode') : t('theme.lightMode')

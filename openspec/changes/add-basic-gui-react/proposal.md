@@ -13,15 +13,66 @@ The CMS needs a foundational UI shell that can serve as the host application con
 - **BREAKING:** Rename `apps/studio/` to `apps/sva-studio-react/` to clarify framework-specific implementation
 
 ## Impact
-- Affected specs: `layout`, `navigation`, `header`, `app-config`
+- Affected specs: `layout`, `navigation`, `header`, `app-config`, `auth-context` (new)
 - Affected code: `apps/studio/` → `apps/sva-studio-react/`, new SDK integrations
 - Enables: Plugin system can now render routes and widgets into the shell
-- Dependency: Requires `@cms/sdk`, `@cms/app-config`, `@cms/ui-contracts` packages to exist
+- Dependencies (MUST EXIST):
+  - `@cms/sdk` - Navigation/Theme/App-Config registries
+  - `@cms/app-config` - App configuration and theme settings
+  - `@cms/ui-contracts` - Design tokens and CSS variables
+  - `@cms/auth` - Basic RBAC for permission checks
+- New packages to extract:
+  - `@cms/auth-context` - Auth provider and hooks (Phase 1.5)
 
-## Implementation Order
+## Implementation Order (Phase 1: MVP)
 1. Rename app folder to `sva-studio-react`
 2. Implement RootLayout component with sidebar/header/content structure
 3. Wire SDK registries for navigation rendering
-4. Add theme and language switcher components
-5. Add user menu and authentication context
-6. Implement CSS module structure for framework independence
+4. Add theme and language switcher components (UI with localStorage MVP)
+5. Add user menu with logout functionality
+6. Implement i18n integration for all UI labels (CRITICAL)
+7. Integrate Auth-Context for RBAC navigation filtering (CRITICAL)
+8. Implement CSS modules with design token variables (CRITICAL)
+
+## Phase 1 Scope: MVP (Minimal Viable Product)
+
+### ✅ Included in Phase 1
+- Static layouts (sidebar, header, content area)
+- Navigation registry rendering with permission-based filtering
+- Theme toggle (light/dark CSS) with **localStorage persistence** (MVP)
+- Language selector (UI) with i18n integration
+- User menu with profile info and logout
+- Search bar (placeholder, disabled)
+- CSS modules sourcing design tokens from `@cms/ui-contracts`
+- Basic Auth-Context for permission checks
+
+### ⏳ Deferred to Phase 2+
+- **Backend-persisted User Preferences** (currently localStorage MVP, will migrate in Phase 2)
+- Full-text search integration (Search bar is placeholder)
+- Advanced theme customization (Theme Editor package)
+- Auth-Context complete separation into `@cms/auth-context` package
+- Multi-device preference sync
+- Accessibility audit & WCAG 2.1 AA compliance (in-progress)
+
+## Critical Requirements for Phase 1 (Non-Negotiable)
+
+### Requirement 1: i18n Integration (DEVELOPMENT_RULES 2.1)
+All UI text MUST use translation keys; no hardcoded strings allowed.
+- Header labels: search placeholder, theme label, language label → `t('...')`
+- Language names: "Deutsch", "English" → fetched from translations
+- User menu: profile, settings, logout → `t('...')`
+- Sidebar: navigation labels → from registry (already i18n-compatible)
+
+### Requirement 2: Design Token Sourcing
+CSS Modules MUST import design variables from `@cms/ui-contracts` package.
+- No hardcoded colors (e.g., `#2563eb`)
+- Colors via CSS variables: `var(--color-primary)`, `var(--color-sidebar-bg)`
+- Spacing via tokens: `var(--spacing-sm)`, `var(--spacing-md)`, `var(--spacing-lg)`
+- Note: Design tokens in `@cms/ui-contracts` will be created in parallel task
+
+### Requirement 3: RBAC Navigation Filtering
+Navigation items filtered by user capabilities during render.
+- Each navigation item checked against `userCapabilities` before rendering
+- Items without required capability completely hidden (not disabled)
+- Parent menu hides if all children hidden
+- Permission source: Auth-Context (to be clarified in Phase 1.5)

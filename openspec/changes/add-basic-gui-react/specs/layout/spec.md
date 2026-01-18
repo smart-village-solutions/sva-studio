@@ -9,7 +9,7 @@ The CMS SHALL provide a root layout component that combines sidebar, header, and
 
 #### Scenario: Layout is responsive
 - **WHEN** the viewport width is less than 768px
-- **THEN** the sidebar collapses automatically or uses a mobile menu pattern
+- **THEN** the sidebar collapses automatically or uses a mobile menu pattern (icon-only)
 
 ### Requirement: Dynamic Navigation from Registry
 The CMS sidebar SHALL render menu items dynamically from the SDK's navigation registry, enabling plugins to register their menu items without modifying the shell.
@@ -33,61 +33,41 @@ The CMS sidebar SHALL support a toggle between expanded and minimized states to 
 - **WHEN** user clicks the toggle button
 - **THEN** the sidebar collapses to show only icons, and labels are hidden
 
-#### Scenario: Sidebar toggle state persists
+#### Scenario: Sidebar toggle state persists (Phase 1)
 - **WHEN** user collapses the sidebar and navigates
-- **THEN** the collapsed state is preserved across page loads (stored in localStorage)
+- **THEN** the collapsed state is preserved across page loads (stored in localStorage MVP - Phase 2: backend user profile)
 
-### Requirement: Theme Switcher in Header
-The CMS header SHALL provide a theme toggle (light/dark mode) accessible to all users.
+### Requirement: Design Token Sourcing for Layout Styling
+Layout components CSS MUST source colors and spacing from `@cms/ui-contracts` design tokens, not hardcoded values.
 
-#### Scenario: User switches theme from light to dark
-- **WHEN** user clicks the theme toggle button
-- **THEN** the application applies dark theme CSS and saves preference
+#### Scenario: Layout uses CSS variables for styling
+- **WHEN** RootLayout.module.css, Sidebar.module.css, Header.module.css are created
+- **THEN** they import design tokens from `@cms/ui-contracts/design-tokens.css` and use:
+  - Colors: `var(--color-sidebar-bg)`, `var(--color-header-bg)`, `var(--color-content-bg)` (NOT `#fff`, `#000`, `rgb(...)`)
+  - Spacing: `var(--spacing-sm)`, `var(--spacing-md)`, `var(--spacing-lg)` (NOT `16px`, `24px`)
+  - Typography variables
 
-#### Scenario: Theme preference persists
-- **WHEN** user closes and reopens the application
-- **THEN** the previously selected theme is applied automatically
-
-### Requirement: Language Selector in Header
-The CMS header SHALL provide a dropdown language selector that changes the UI language across the entire application.
-
-#### Scenario: User selects a different language
-- **WHEN** user selects a language from the language dropdown
-- **THEN** the entire UI updates to display text in the selected language
-
-#### Scenario: Language preference persists
-- **WHEN** user logs in again
-- **THEN** the previously selected language is applied
-
-### Requirement: User Menu in Header
-The CMS header SHALL provide a user menu with profile, settings, and logout options.
-
-#### Scenario: User opens the user menu
-- **WHEN** user clicks their avatar/name in the header
-- **THEN** a dropdown menu appears with profile, settings, and logout options
-
-#### Scenario: User logs out
-- **WHEN** user clicks logout
-- **THEN** the session ends and the user is redirected to login page
-
-### Requirement: Search Bar in Header
-The CMS header SHALL provide a search input field for global content search (placeholder for future full-text search integration).
-
-#### Scenario: Search input is accessible
-- **WHEN** the header is rendered
-- **THEN** a search bar is visible with placeholder text
-
-#### Scenario: Search bar focuses on keyboard shortcut
-- **WHEN** user presses Cmd+K (macOS) or Ctrl+K (Windows/Linux)
-- **THEN** the search input receives focus
+#### Scenario: Design tokens file exists in @cms/ui-contracts
+- **WHEN** CSS Module imports from `@cms/ui-contracts/design-tokens.css`
+- **THEN** the file contains definitions for:
+  - Primary/secondary colors
+  - Sidebar/header/content background colors
+  - Text/border colors
+  - Spacing scale (xs, sm, md, lg, xl)
+  - Typography (font-size, font-weight, line-height)
 
 ### Requirement: Framework-Agnostic Layout Structure
 The layout components and styling SHALL be designed to support future migration from React to Vue (or other frameworks) without requiring changes to core business logic.
 
 #### Scenario: Layout uses CSS modules for styling
 - **WHEN** the sidebar, header, and content area components are implemented
-- **THEN** they use CSS modules (not Tailwind classes) for styling, enabling easy framework migration
+- **THEN** they use CSS modules (not Tailwind inline classes) for styling, enabling easy framework migration
 
 #### Scenario: Layout imports from SDK, not host-specific modules
 - **WHEN** layout components are implemented
 - **THEN** they import only from `@cms/sdk`, `@cms/app-config`, and `@cms/ui-contracts`, never from `apps/sva-studio-react/src/routes` or internal host logic
+
+#### Scenario: No React-specific patterns in styles
+- **WHEN** CSS Modules are written
+- **THEN** they use pure CSS with CSS variables (no CSS-in-JS, emotion, styled-components)
+- **AND** can be ported to Vue with minimal changes (rename .tsx files to .vue, change JSX syntax)

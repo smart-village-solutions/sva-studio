@@ -13,12 +13,16 @@ interface ThemeProviderProps {
   children: React.ReactNode
 }
 
+// Helper to check if we're on the client side
+const isClient = typeof window !== 'undefined' && typeof document !== 'undefined'
+
 export function ThemeProvider({ children }: ThemeProviderProps) {
   const [theme, setTheme] = useState<Theme>('light')
   const [mounted, setMounted] = useState(false)
 
   // Initialize theme from localStorage or system preference
   useEffect(() => {
+    // This effect only runs on the client
     const storedTheme = localStorage.getItem('theme') as Theme | null
 
     let initialTheme: Theme = 'light'
@@ -38,12 +42,16 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     setTheme((prevTheme) => {
       const newTheme = prevTheme === 'light' ? 'dark' : 'light'
       applyTheme(newTheme)
-      localStorage.setItem('theme', newTheme)
+      if (isClient) {
+        localStorage.setItem('theme', newTheme)
+      }
       return newTheme
     })
   }
 
   const applyTheme = (newTheme: Theme) => {
+    if (!isClient) return
+
     const htmlElement = document.documentElement
     if (newTheme === 'dark') {
       htmlElement.classList.add('dark')

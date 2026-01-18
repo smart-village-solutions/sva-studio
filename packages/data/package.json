@@ -1,5 +1,5 @@
 {
-  "name": "@sva/data",
+  "name": "@sva-studio/data",
   "version": "0.0.1",
   "type": "module",
   "main": "src/index.ts",
@@ -12,6 +12,6 @@
     }
   },
   "dependencies": {
-    "@sva/core": "workspace:*"
+    "@sva-studio/core": "workspace:*"
   }
 }

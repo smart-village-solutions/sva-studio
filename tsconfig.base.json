@@ -5,12 +5,15 @@
     "moduleResolution": "Bundler",
     "jsx": "react-jsx",
     "strict": true,
+    "skipLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "@sva/core": ["packages/core/src/index.ts"],
-      "@sva/data": ["packages/data/src/index.ts"],
-      "@sva/sdk": ["packages/sdk/src/index.ts"],
-      "@sva/plugin-example": ["packages/plugin-example/src/index.ts"]
+      "@sva-studio/core": ["packages/core/src/index.ts"],
+      "@sva-studio/data": ["packages/data/src/index.ts"],
+      "@sva-studio/sdk": ["packages/sdk/src/index.ts"],
+      "@sva-studio/plugin-example": ["packages/plugin-example/src/index.ts"],
+      "ui-contracts": ["packages/ui-contracts/src/index.ts"],
+      "app-config": ["packages/app-config/src/index.ts"]
     }
   }
 }

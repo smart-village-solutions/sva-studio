@@ -1,0 +1,33 @@
+{
+  "common": {
+    "search": "Search",
+    "theme": "Theme",
+    "language": "Language",
+    "languageDe": "Deutsch",
+    "languageEn": "English",
+    "profile": "Profile",
+    "settings": "Settings",
+    "logout": "Logout"
+  },
+  "sidebar": {
+    "dashboard": "Dashboard",
+    "content": "Content",
+    "settings": "Settings"
+  },
+  "header": {
+    "searchPlaceholder": "Search...",
+    "userMenu": "User Menu"
+  },
+  "navigation": {
+    "unavailable": "Navigation unavailable",
+    "reload": "Reload"
+  },
+  "home": {
+    "welcome": "Welcome to SVA Studio",
+    "description": "The self-service platform for content, modules, and extensions."
+  },
+  "layout": {
+    "brandName": "SVA Studio",
+    "title": "SVA Studio"
+  }
+}

@@ -1,0 +1,18 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../konzeption-cms-2"
+		}
+	],
+	"settings": {
+		"chat.tools.terminal.autoApprove": {
+			"/^pnpm exec nx run sva-studio-react:build$/": {
+				"approve": true,
+				"matchCommandLine": true
+			}
+		}
+	}
+}

@@ -1,5 +1,9 @@
 # Agents
 
+## Development Rules
+
+Die verbindlichen Entwicklungsrichtlinien liegen unter [rules/DEVELOPMENT_RULES.md](rules/DEVELOPMENT_RULES.md). Alle Agenten-Reviews sind im Zweifel an diesen Regeln auszurichten.
+
 ## Code-Stil
 
 - TypeScript Strict-Mode mit hoher Typsicherheit
@@ -77,9 +81,21 @@ Diese Anweisungen sind für KI-Assistenten gedacht, die in diesem Projekt arbeit
 - Mehrdeutig klingt und du die maßgebliche Spezifikation vor dem Programmieren benötigst
 
 Nutze `@/openspec/AGENTS.md`, um Folgendes zu lernen:
+
 - Wie man Änderungsvorschläge erstellt und anwendet
 - Spezifikationsformat und Konventionen
 - Projektstruktur und Richtlinien
 
 Behalte diesen verwalteten Block bei, damit 'openspec update' die Anweisungen aktualisieren kann.
 <!-- OPENSPEC:END -->
+
+---
+
+## Development Rules
+
+Die verbindlichen Entwicklungsrichtlinien liegen unter:
+
+- [rules/DEVELOPMENT_RULES.md](rules/DEVELOPMENT_RULES.md) - Entwicklungsstandards und -richtlinien
+- [rules/DEBUGGING.md](rules/DEBUGGING.md) - Debugging-Leitfaden und Best Practices
+
+Alle Agenten-Reviews sind im Zweifel an diesen Regeln auszurichten.

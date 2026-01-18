@@ -1,0 +1,13 @@
+/* ✅ PHASE 1 FIX #1 & #9: Ensure correct CSS loading order */
+/* 1. Design Tokens MUST load first */
+@import '@sva-studio/ui-contracts/design-tokens.css';
+
+/* 2. External fonts */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+/* 3. App-specific styles */
+html,
+body,
+#root {
+  height: 100%;
+}

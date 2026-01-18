@@ -1,0 +1,13 @@
+{
+  "name": "@sva-studio/ui-contracts",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./index.js",
+  "types": "./index.d.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./design-tokens.css": "./src/design-tokens.css"
+  },
+  "dependencies": {}
+}

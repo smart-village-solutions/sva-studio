@@ -28,6 +28,17 @@ Das bestehende Redaktionssystem ist umständlich, schwer erweiterbar und limitie
 - Schnittstellen-Manager:innen: Offene APIs/Standards, Doku, Monitoring der Datenflüsse.
 - Redakteur:innen: Einfache Text/Bild-Bearbeitung, Workflows, Versionierung/Archiv.
 - Moderator:innen/Support: Nutzerbetreuung, Feedback-Kanäle, einfache Hilfen.
+
+## 📚 Dokumentation & Reviews
+
+**📖 Projekt-Dokumentation:** Siehe [docs/README.md](docs/README.md)
+
+**🔍 Review & Audit Reports:** Alle Reviews sind organisiert unter [docs/reviews/](docs/reviews/README.md)
+- [Compliance](docs/reviews/compliance/) – DEVELOPMENT_RULES & Phase Status
+- [Security](docs/reviews/security/) – Security & Architecture
+- [Accessibility](docs/reviews/accessibility/) – WCAG 2.1 Audits
+- [Performance](docs/reviews/performance/) – Bundle Size & Optimization
+- [i18n](docs/reviews/i18n/) – Internationalization
 - Inhaltsersteller:innen: Sehr einfache Bedienung, klare Struktur, eingeschränkte Rechte.
 - Entscheider:innen: KPI-Dashboards, Kampagnensteuerung, Ressourcen/Budget-Planung.
 

@@ -1,0 +1,110 @@
+.header {
+  height: var(--header-height);
+  background-color: var(--card);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 2rem;
+}
+
+.headerContent {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.pageTitle {
+  margin: 0;
+  font-size: var(--text-h4);
+  font-weight: var(--font-weight-semibold);
+  color: var(--foreground);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.searchInput {
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: var(--text-sm);
+  color: var(--foreground);
+  background-color: var(--input-background);
+}
+
+.searchInput:focus {
+  outline: none;
+  border-color: #1a5c0d; /* Fallback updated primary */
+  border-color: var(--ring);
+  box-shadow: var(--focus-shadow);
+}
+
+.searchInput:disabled {
+  background-color: var(--muted);
+  color: var(--muted-foreground);
+  border-color: var(--border);
+  cursor: not-allowed;
+}
+
+.searchInput::placeholder {
+  color: var(--muted-foreground);
+}
+
+.themeButton,
+.userButton {
+  padding: 0.75rem 1rem;
+  background-color: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: var(--text-sm);
+  color: var(--foreground);
+  transition: all 0.2s;
+}
+
+.themeButton:hover:not(:disabled),
+.userButton:hover:not(:disabled) {
+  background-color: var(--muted);
+  border-color: var(--muted-foreground);
+}
+
+.themeButton:focus,
+.userButton:focus {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.themeButton:disabled,
+.userButton:disabled {
+  background-color: var(--muted);
+  color: var(--muted-foreground);
+  border-color: var(--border);
+  cursor: not-allowed;
+}
+
+.languageSelect {
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: var(--text-sm);
+  color: var(--foreground);
+  background-color: var(--input-background);
+}
+
+.languageSelect:focus {
+  outline: none;
+  border-color: #1a5c0d; /* Fallback updated primary */
+  border-color: var(--ring);
+  box-shadow: var(--focus-shadow);
+}
+
+.languageSelect:disabled {
+  background-color: var(--muted);
+  color: var(--muted-foreground);
+  border-color: var(--border);
+  cursor: not-allowed;
+}

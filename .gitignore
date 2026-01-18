@@ -40,3 +40,4 @@ log/
 .nx/installation
 .nx/cache
 .nx/workspace-data
+vite.config.*.timestamp*

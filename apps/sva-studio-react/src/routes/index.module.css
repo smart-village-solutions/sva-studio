@@ -1,0 +1,21 @@
+/* ✅ PHASE 1 FIX #4: CSS Module instead of inline styles */
+
+.page {
+  padding: 2rem;
+  color: var(--foreground);
+  background-color: #fafaf3; /* Fallback */
+  background-color: var(--background);
+}
+
+.heading {
+  font-size: var(--text-h1);
+  font-weight: var(--font-weight-bold);
+  margin-bottom: 1rem;
+}
+
+.description {
+  font-size: var(--text-base);
+  color: #637381; /* Fallback */
+  color: var(--muted-foreground);
+  max-width: 600px;
+}

@@ -1,5 +1,9 @@
 # Agents
 
+## Development Rules
+
+Die verbindlichen Entwicklungsrichtlinien liegen unter [rules/DEVELOPMENT_RULES.md](rules/DEVELOPMENT_RULES.md). Alle Agenten-Reviews sind im Zweifel an diesen Regeln auszurichten.
+
 ## Code-Stil
 
 - TypeScript Strict-Mode mit hoher Typsicherheit
@@ -31,6 +35,8 @@
   - Mit `-t "pattern"` gezielt auf Funktionalität fokussieren
   - Mit `--exclude`-Mustern Unrelevantes überspringen
   - Nx-Package-Targeting mit Vitest-File-Targeting kombinieren (maximale Präzision)
+
+
 
 ## PR-Anweisungen
 
@@ -88,4 +94,8 @@ Behalte diesen verwalteten Block bei, damit 'openspec update' die Anweisungen ak
 
 ## Development Rules
 
-Die verbindlichen Entwicklungsrichtlinien liegen unter [rules/DEVELOPMENT_RULES.md](rules/DEVELOPMENT_RULES.md). Alle Agenten-Reviews sind im Zweifel an diesen Regeln auszurichten.
+Die verbindlichen Entwicklungsrichtlinien liegen unter:
+- [rules/DEVELOPMENT_RULES.md](rules/DEVELOPMENT_RULES.md) - Entwicklungsstandards und -richtlinien
+- [rules/DEBUGGING.md](rules/DEBUGGING.md) - Debugging-Leitfaden und Best Practices
+
+Alle Agenten-Reviews sind im Zweifel an diesen Regeln auszurichten.

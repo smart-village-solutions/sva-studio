@@ -36,8 +36,6 @@ Die verbindlichen Entwicklungsrichtlinien liegen unter [rules/DEVELOPMENT_RULES.
   - Mit `--exclude`-Mustern Unrelevantes überspringen
   - Nx-Package-Targeting mit Vitest-File-Targeting kombinieren (maximale Präzision)
 
-
-
 ## PR-Anweisungen
 
 - Vor dem Commit immer `pnpm test:eslint`, `pnpm test:types` und `pnpm test:unit` ausführen
@@ -83,6 +81,7 @@ Diese Anweisungen sind für KI-Assistenten gedacht, die in diesem Projekt arbeit
 - Mehrdeutig klingt und du die maßgebliche Spezifikation vor dem Programmieren benötigst
 
 Nutze `@/openspec/AGENTS.md`, um Folgendes zu lernen:
+
 - Wie man Änderungsvorschläge erstellt und anwendet
 - Spezifikationsformat und Konventionen
 - Projektstruktur und Richtlinien
@@ -95,6 +94,7 @@ Behalte diesen verwalteten Block bei, damit 'openspec update' die Anweisungen ak
 ## Development Rules
 
 Die verbindlichen Entwicklungsrichtlinien liegen unter:
+
 - [rules/DEVELOPMENT_RULES.md](rules/DEVELOPMENT_RULES.md) - Entwicklungsstandards und -richtlinien
 - [rules/DEBUGGING.md](rules/DEBUGGING.md) - Debugging-Leitfaden und Best Practices
 

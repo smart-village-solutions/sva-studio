@@ -85,7 +85,8 @@ Examples:
 ### Update the Review Index
 After creating a new review, **add a link** to `docs/reviews/README.md`:
 ```markdown
-- [Your_Review_Name.md](category/Your_Review_Name.md) – Brief description
+<!-- Example (replace category and filename): -->
+- [ACTUAL_REVIEW_NAME.md](../reviews/compliance/ACTUAL_REVIEW_NAME.md) – Brief description
 ```
 
 ### Version Control for Reviews

@@ -38,17 +38,17 @@ The CMS sidebar SHALL support a toggle between expanded and minimized states to 
 - **THEN** the collapsed state is preserved across page loads (stored in localStorage MVP - Phase 2: backend user profile)
 
 ### Requirement: Design Token Sourcing for Layout Styling
-Layout components CSS MUST source colors and spacing from `@cms/ui-contracts` design tokens, not hardcoded values.
+Layout components CSS MUST source colors and spacing from `@sva-studio/ui-contracts` design tokens, not hardcoded values.
 
 #### Scenario: Layout uses CSS variables for styling
-- **WHEN** RootLayout.module.css, Sidebar.module.css, Header.module.css are created
-- **THEN** they import design tokens from `@cms/ui-contracts/design-tokens.css` and use:
+- **WHEN** the sidebar, header, and content area components are implemented
+- **THEN** they import design tokens from `@sva-studio/ui-contracts/design-tokens.css` and use:
   - Colors: `var(--color-sidebar-bg)`, `var(--color-header-bg)`, `var(--color-content-bg)` (NOT `#fff`, `#000`, `rgb(...)`)
   - Spacing: `var(--spacing-sm)`, `var(--spacing-md)`, `var(--spacing-lg)` (NOT `16px`, `24px`)
   - Typography variables
 
-#### Scenario: Design tokens file exists in @cms/ui-contracts
-- **WHEN** CSS Module imports from `@cms/ui-contracts/design-tokens.css`
+#### Scenario: Design tokens file exists in @sva-studio/ui-contracts
+- **WHEN** CSS Module imports from `@sva-studio/ui-contracts/design-tokens.css`
 - **THEN** the file contains definitions for:
   - Primary/secondary colors
   - Sidebar/header/content background colors
@@ -56,18 +56,13 @@ Layout components CSS MUST source colors and spacing from `@cms/ui-contracts` de
   - Spacing scale (xs, sm, md, lg, xl)
   - Typography (font-size, font-weight, line-height)
 
-### Requirement: Framework-Agnostic Layout Structure
-The layout components and styling SHALL be designed to support future migration from React to Vue (or other frameworks) without requiring changes to core business logic.
+### Requirement: Layout imports from SDK, not host-specific modules
+The layout components and styling SHALL support framework migration without touching business logic.
 
-#### Scenario: Layout uses CSS modules for styling
-- **WHEN** the sidebar, header, and content area components are implemented
-- **THEN** they use CSS modules (not Tailwind inline classes) for styling, enabling easy framework migration
-
-#### Scenario: Layout imports from SDK, not host-specific modules
+#### Scenario: Layout imports from SDK only
 - **WHEN** layout components are implemented
-- **THEN** they import only from `@cms/sdk`, `@cms/app-config`, and `@cms/ui-contracts`, never from `apps/sva-studio-react/src/routes` or internal host logic
+- **THEN** they import only from `@sva-studio/sdk`, `@sva-studio/app-config`, and `@sva-studio/ui-contracts`, never from `apps/sva-studio-react/src/routes` or internal host logic
 
 #### Scenario: No React-specific patterns in styles
 - **WHEN** CSS Modules are written
-- **THEN** they use pure CSS with CSS variables (no CSS-in-JS, emotion, styled-components)
-- **AND** can be ported to Vue with minimal changes (rename .tsx files to .vue, change JSX syntax)
+- **THEN** they use pure CSS with CSS variables (no CSS-in-JS, emotion, styled-components) and can be ported to Vue with minimal changes

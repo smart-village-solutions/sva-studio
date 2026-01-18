@@ -17,12 +17,12 @@ The CMS needs a foundational UI shell that can serve as the host application con
 - Affected code: `apps/studio/` → `apps/sva-studio-react/`, new SDK integrations
 - Enables: Plugin system can now render routes and widgets into the shell
 - Dependencies (MUST EXIST):
-  - `@cms/sdk` - Navigation/Theme/App-Config registries
-  - `@cms/app-config` - App configuration and theme settings
-  - `@cms/ui-contracts` - Design tokens and CSS variables
-  - `@cms/auth` - Basic RBAC for permission checks
+  - `@sva-studio/sdk` - Navigation/Theme/App-Config registries
+  - `@sva-studio/app-config` - App configuration and theme settings
+  - `@sva-studio/ui-contracts` - Design tokens and CSS variables
+  - `@sva-studio/auth` - Basic RBAC for permission checks
 - New packages to extract:
-  - `@cms/auth-context` - Auth provider and hooks (Phase 1.5)
+  - `@sva-studio/auth-context` - Auth provider and hooks (Phase 1.5)
 
 ## Implementation Order (Phase 1: MVP)
 1. Rename app folder to `sva-studio-react`
@@ -43,14 +43,14 @@ The CMS needs a foundational UI shell that can serve as the host application con
 - Language selector (UI) with i18n integration
 - User menu with profile info and logout
 - Search bar (placeholder, disabled)
-- CSS modules sourcing design tokens from `@cms/ui-contracts`
+- CSS modules sourcing design tokens from `@sva-studio/ui-contracts`
 - Basic Auth-Context for permission checks
 
 ### ⏳ Deferred to Phase 2+
 - **Backend-persisted User Preferences** (currently localStorage MVP, will migrate in Phase 2)
 - Full-text search integration (Search bar is placeholder)
 - Advanced theme customization (Theme Editor package)
-- Auth-Context complete separation into `@cms/auth-context` package
+- Auth-Context complete separation into `@sva-studio/auth-context` package
 - Multi-device preference sync
 - Accessibility audit & WCAG 2.1 AA compliance (in-progress)
 
@@ -64,11 +64,11 @@ All UI text MUST use translation keys; no hardcoded strings allowed.
 - Sidebar: navigation labels → from registry (already i18n-compatible)
 
 ### Requirement 2: Design Token Sourcing
-CSS Modules MUST import design variables from `@cms/ui-contracts` package.
+CSS Modules MUST import design variables from `@sva-studio/ui-contracts` package.
 - No hardcoded colors (e.g., `#2563eb`)
 - Colors via CSS variables: `var(--color-primary)`, `var(--color-sidebar-bg)`
 - Spacing via tokens: `var(--spacing-sm)`, `var(--spacing-md)`, `var(--spacing-lg)`
-- Note: Design tokens in `@cms/ui-contracts` will be created in parallel task
+- Note: Design tokens in `@sva-studio/ui-contracts` will be created in parallel task
 
 ### Requirement 3: RBAC Navigation Filtering
 Navigation items filtered by user capabilities during render.

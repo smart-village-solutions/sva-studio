@@ -71,7 +71,7 @@ The header language selector SHALL display available languages and allow users t
 
 #### Scenario: Language dropdown shows available languages
 - **WHEN** user clicks the language selector
-- **THEN** a dropdown appears with available language options fetched from `@cms/app-config`
+- **THEN** a dropdown appears with available language options fetched from `@sva-studio/app-config`
 
 #### Scenario: Language changes on selection
 - **WHEN** user selects a language from the dropdown
@@ -97,11 +97,11 @@ The header user menu SHALL display the current user's name/avatar and provide qu
 - **THEN** the authentication session ends, Auth-Context clears, and user is redirected to login page
 
 ### Requirement: Design Token Sourcing for Header Styling
-Header component CSS MUST source colors and spacing from `@cms/ui-contracts` design tokens, not hardcoded values.
+Header component CSS MUST source colors and spacing from `@sva-studio/ui-contracts` design tokens, not hardcoded values.
 
 #### Scenario: Header uses CSS variables for styling
 - **WHEN** Header.module.css is created
-- **THEN** it imports design tokens from `@cms/ui-contracts` and uses:
+- **THEN** it imports design tokens from `@sva-studio/ui-contracts` and uses:
   - Colors: `var(--color-header-bg)`, `var(--color-text-primary)` (NOT `#fff`, `#000`, `rgb(...)`)
   - Spacing: `var(--spacing-md)`, `var(--spacing-lg)` (NOT `16px`, `24px`)
   - Typography: `var(--font-size-base)`, `var(--font-weight-medium)`

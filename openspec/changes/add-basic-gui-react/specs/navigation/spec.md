@@ -45,11 +45,11 @@ Navigation items SHALL respect user permissions; menu items for which the user l
 
 #### Scenario: Permission source from Auth-Context
 - **WHEN** Sidebar initializes
-- **THEN** it reads `currentUser.capabilities` from Auth-Context (or `@cms/auth` package)
+- **THEN** it reads `currentUser.capabilities` from Auth-Context (or `@sva-studio/auth` package)
 - **AND** uses this to filter navigation items
 
 ### Requirement: Design Token Sourcing for Sidebar Styling
-Sidebar component CSS MUST source colors and spacing from `@cms/ui-contracts` design tokens, not hardcoded values.
+Sidebar component CSS MUST source colors and spacing from `@sva-studio/ui-contracts` design tokens, not hardcoded values.
 
 #### Scenario: Sidebar uses CSS variables for styling
 - **WHEN** Sidebar.module.css is created

@@ -1,9 +1,9 @@
 ## 0. Pre-Implementation (Setup Dependencies)
-- [ ] 0.1 Ensure `@cms/sdk` package exports NavigationRegistry interface
-- [ ] 0.2 Ensure `@cms/app-config` package exports theme/language config types
-- [ ] 0.3 Ensure `@cms/ui-contracts` package exists with design token definitions
-- [ ] 0.4 Create `@cms/ui-contracts/design-tokens.css` with CSS variables (colors, spacing, typography)
-- [ ] 0.5 Create Auth-Context or integration point with `@cms/auth` package for RBAC
+- [ ] 0.1 Ensure `@sva-studio/sdk` package exports NavigationRegistry interface
+- [ ] 0.2 Ensure `@sva-studio/app-config` package exports theme/language config types
+- [ ] 0.3 Ensure `@sva-studio/ui-contracts` package exists with design token definitions
+- [ ] 0.4 Create `@sva-studio/ui-contracts/design-tokens.css` with CSS variables (colors, spacing, typography)
+- [ ] 0.5 Create Auth-Context or integration point with `@sva-studio/auth` package for RBAC
 - [ ] 0.6 Verify i18n system is set up (`react-i18next` configuration)
 
 ## 1. Folder Restructuring
@@ -17,7 +17,7 @@
 - [ ] 2.2 Implement flex layout structure (sidebar + header + content)
 - [ ] 2.3 Add Outlet for plugin routes
 - [ ] 2.4 Create CSS module: `RootLayout.module.css`
-- [ ] 2.5 Style with CSS variables from `@cms/ui-contracts` (no hardcoded colors)
+- [ ] 2.5 Style with CSS variables from `@sva-studio/ui-contracts` (no hardcoded colors)
 - [ ] 2.6 Implement responsive breakpoint (768px) for mobile sidebar collapse
 - [ ] 2.7 Export RootLayout from layout index
 
@@ -43,7 +43,7 @@
   - [ ] 4.2c Placeholder text from i18n (NOT hardcoded)
 - [ ] 4.3 Create `LanguageSelector.tsx` component
   - [ ] 4.3a Integrate with `useTranslation()` hook
-  - [ ] 4.3b Get available languages from `@cms/app-config`
+  - [ ] 4.3b Get available languages from `@sva-studio/app-config`
   - [ ] 4.3c Language names from translations (NOT hardcoded "Deutsch", "English")
   - [ ] 4.3d Store selection in localStorage (MVP)
 - [ ] 4.4 Create `ThemeToggle.tsx` component (light/dark mode)
@@ -81,7 +81,7 @@
 - [ ] 7.4 All user-facing text uses `t('key')` function
 
 ## 8. Design Token Integration (CRITICAL)
-- [ ] 8.1 Create/verify `@cms/ui-contracts/design-tokens.css`
+- [ ] 8.1 Create/verify `@sva-studio/ui-contracts/design-tokens.css`
   - [ ] 8.1a Color tokens: `--color-primary`, `--color-sidebar-bg`, `--color-header-bg`, `--color-text-*`
   - [ ] 8.1b Spacing tokens: `--spacing-xs`, `--spacing-sm`, `--spacing-md`, `--spacing-lg`, `--spacing-xl`
   - [ ] 8.1c Typography: `--font-size-*`, `--font-weight-*`
@@ -91,7 +91,7 @@
 - [ ] 8.5 Use CSS variables throughout: `var(--color-primary)`, `var(--spacing-md)`
 
 ## 9. Auth/RBAC Integration (CRITICAL)
-- [ ] 9.1 Set up Auth-Context (or use `@cms/auth` package)
+- [ ] 9.1 Set up Auth-Context (or use `@sva-studio/auth` package)
   - [ ] 9.1a Auth-Provider wraps RootLayout
   - [ ] 9.1b Provides `currentUser` and `userCapabilities`
   - [ ] 9.1c Provides `logout()` function
@@ -124,8 +124,8 @@
 - [ ] 11.6 Document RBAC filtering logic in Sidebar
 
 ## Phase 1.5+ (Deferred)
-- [ ] Extract Auth-Context to `@cms/auth-context` package
+- [ ] Extract Auth-Context to `@sva-studio/auth-context` package
 - [ ] Migrate localStorage preferences to backend (User Profile)
-- [ ] Implement full-text search (wire Search bar to `@cms/search-client`)
+- [ ] Implement full-text search (wire Search bar to `@sva-studio/search-client`)
 - [ ] WCAG 2.1 AA compliance audit
 - [ ] Storybook entries for components

@@ -1,4 +1,4 @@
-import { coreVersion } from '@sva/core';
+import { coreVersion } from '@sva-studio/core';
 
 type CacheEntry<T> = {
   value: T;

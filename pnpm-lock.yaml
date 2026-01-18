@@ -29,10 +29,10 @@ importers:
 
   apps/studio:
     dependencies:
-      '@sva/core':
+      '@sva-studio/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@sva/plugin-example':
+      '@sva-studio/plugin-example':
         specifier: workspace:*
         version: link:../../packages/plugin-example
       '@tanstack/react-devtools':
@@ -110,13 +110,13 @@ importers:
 
   packages/data:
     dependencies:
-      '@sva/core':
+      '@sva-studio/core':
         specifier: workspace:*
         version: link:../core
 
   packages/plugin-example:
     dependencies:
-      '@sva/core':
+      '@sva-studio/core':
         specifier: workspace:*
         version: link:../core
       '@tanstack/react-router':
@@ -128,10 +128,17 @@ importers:
       react-dom:
         specifier: ^19.2.0
         version: 19.2.3(react@19.2.3)
+    devDependencies:
+      '@types/react':
+        specifier: ^19.2.0
+        version: 19.2.8
+      '@types/react-dom':
+        specifier: ^19.2.0
+        version: 19.2.3(@types/react@19.2.8)
 
   packages/sdk:
     dependencies:
-      '@sva/core':
+      '@sva-studio/core':
         specifier: workspace:*
         version: link:../core
 

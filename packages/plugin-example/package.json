@@ -1,5 +1,5 @@
 {
-  "name": "@sva/plugin-example",
+  "name": "@sva-studio/plugin-example",
   "version": "0.0.1",
   "type": "module",
   "main": "src/index.ts",
@@ -12,11 +12,15 @@
     }
   },
   "dependencies": {
-    "@sva/core": "workspace:*"
+    "@sva-studio/core": "workspace:*"
   },
   "peerDependencies": {
     "@tanstack/react-router": "^1.132.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0"
   }
 }

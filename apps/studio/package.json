@@ -9,8 +9,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@sva/core": "workspace:*",
-    "@sva/plugin-example": "workspace:*",
+    "@sva-studio/core": "workspace:*",
+    "@sva-studio/plugin-example": "workspace:*",
     "@tanstack/react-devtools": "^0.7.0",
     "@tanstack/react-router": "^1.132.0",
     "@tanstack/react-router-devtools": "^1.132.0",

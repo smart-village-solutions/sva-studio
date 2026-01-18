@@ -5,7 +5,7 @@ const PluginExamplePage = () => {
   return (
     <div>
       <h2>Plugin Example</h2>
-      <p>Diese Route kommt aus @sva/plugin-example.</p>
+      <p>Diese Route kommt aus @sva-studio/plugin-example.</p>
     </div>
   );
 };

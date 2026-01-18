@@ -51,50 +51,47 @@ The header search bar SHALL provide a text input for global content search with 
 - **WHEN** user types in search bar (Phase 1)
 - **THEN** nothing happens (placeholder for Phase 2 full-text search integration)
 
-### Requirement: Theme Toggle (Light/Dark Mode)
-The header theme toggle SHALL switch between light and dark CSS themes and persist the preference.
+### Requirement: Theme Toggle (Button Only, No Persistence in Phase 1)
+The header theme toggle button SHALL display a toggle for light/dark mode (UI only - no functionality yet).
 
-#### Scenario: User toggles theme
-- **WHEN** user clicks the theme toggle button
-- **THEN** the application CSS theme changes from light to dark or vice versa
+#### Scenario: Theme toggle button is displayed
+- **WHEN** the header renders
+- **THEN** a theme toggle button is visible with icon or label: `t('common.theme')`
 
-#### Scenario: Theme preference is saved (Phase 1)
-- **WHEN** user toggles the theme
-- **THEN** the preference is stored in `localStorage` under key `cms-theme` (MVP - Phase 2: backend sync)
+#### Scenario: Theme toggle is keyboard-accessible
+- **WHEN** user tabs to theme toggle
+- **THEN** it receives visible focus, has `aria-label`, and Space/Enter can interact with it
 
-#### Scenario: Theme is applied on load
-- **WHEN** the application initializes
-- **THEN** the saved theme preference is applied (or system preference if not saved)
+### Requirement: Language Selector (UI Only, No Persistence in Phase 1)
+The header language selector button/dropdown SHALL display available languages (UI only - no language switching logic yet).
 
-### Requirement: Language Selector
-The header language selector SHALL display available languages and allow users to switch the UI language via i18n system.
-
-#### Scenario: Language dropdown shows available languages
+#### Scenario: Language selector displays available options
 - **WHEN** user clicks the language selector
-- **THEN** a dropdown appears with available language options fetched from `@sva-studio/app-config`
+- **THEN** a dropdown appears showing "Deutsch" and "English" (from translations)
 
-#### Scenario: Language changes on selection
-- **WHEN** user selects a language from the dropdown
-- **THEN** the entire UI re-renders in the selected language using i18n
+#### Scenario: Language selector is keyboard-accessible
+- **WHEN** user tabs to language selector
+- **THEN** it opens with Enter/Space, items navigate with arrow keys
+- **AND** Escape closes and returns focus to selector
 
-#### Scenario: Language preference is persistent (Phase 1)
-- **WHEN** user selects a language
-- **THEN** the preference is stored in `localStorage` (MVP - Phase 2: user backend profile)
+### Requirement: User Menu (Placeholder, No Logout Logic in Phase 1)
+The header user menu button SHALL display a placeholder for user avatar and menu items (UI only - no auth logic yet).
 
-### Requirement: User Menu
-The header user menu SHALL display the current user's name/avatar and provide quick access to profile, settings, and logout options.
+#### Scenario: User avatar placeholder is displayed
+- **WHEN** the header renders
+- **THEN** a placeholder avatar/initials button is visible
 
-#### Scenario: User avatar is displayed
-- **WHEN** the application initializes
-- **THEN** the current user's avatar or initials are visible in the header (from Auth-Context)
+#### Scenario: User menu dropdown displays placeholder items
+- **WHEN** user clicks the avatar
+- **THEN** a dropdown menu appears with hardcoded items:
+  - `t('common.profile')`
+  - `t('common.settings')`
+  - `t('common.logout')`
 
-#### Scenario: User menu dropdown opens
-- **WHEN** user clicks their avatar
-- **THEN** a dropdown menu appears with profile (`t('common.profile')`), settings (`t('common.settings')`), and logout (`t('common.logout')`) options
-
-#### Scenario: User can log out
-- **WHEN** user clicks logout
-- **THEN** the authentication session ends, Auth-Context clears, and user is redirected to login page
+#### Scenario: User menu is keyboard-accessible
+- **WHEN** user clicks avatar
+- **THEN** menu items are keyboard-navigable (arrows, Enter to select)
+- **AND** Escape closes and returns focus to avatar
 
 ### Requirement: Design Token Sourcing for Header Styling
 Header component CSS MUST source colors and spacing from `@sva-studio/ui-contracts` design tokens, not hardcoded values.
@@ -105,3 +102,24 @@ Header component CSS MUST source colors and spacing from `@sva-studio/ui-contrac
   - Colors: `var(--color-header-bg)`, `var(--color-text-primary)` (NOT `#fff`, `#000`, `rgb(...)`)
   - Spacing: `var(--spacing-md)`, `var(--spacing-lg)` (NOT `16px`, `24px`)
   - Typography: `var(--font-size-base)`, `var(--font-weight-medium)`
+
+### Requirement: Accessible Interactive Components in Header
+All header buttons and dropdowns SHALL be keyboard-operable and have proper ARIA labels.
+
+#### Scenario: Search input is labeled
+- **WHEN** the search bar renders
+- **THEN** it has either a visible label or `aria-label="Search"`
+
+#### Scenario: All dropdowns are keyboard-navigable
+- **WHEN** user tabs through header
+- **THEN** all interactive elements receive focus and are operable with keyboard
+
+---
+
+## Note: Phase 1.5+ Features (Deferred)
+- Theme toggle actual switching (CSS class application)
+- Theme preference persistence (localStorage/backend)
+- Language selector actual language switching (i18n re-render)
+- Language preference persistence
+- User menu logout functionality (Auth-Context integration)
+- User avatar from Auth-Context (currently hardcoded)

@@ -1,14 +1,19 @@
 ## 0. Pre-Implementation (Setup Dependencies)
-- [ ] 0.1 Ensure `@sva-studio/sdk` package exports NavigationRegistry interface
-- [ ] 0.2 Ensure `@sva-studio/app-config` package exports theme/language config types
-- [ ] 0.3 Ensure `@sva-studio/ui-contracts` package exists with design token definitions
+- [ ] 0.1 Ensure `@sva-studio/sdk` exports NavigationRegistry interface
+- [ ] 0.2 Ensure `@sva-studio/app-config` exports theme/language config types
+- [ ] 0.3 Ensure `@sva-studio/ui-contracts` exists with design token definitions
 - [ ] 0.4 Create `@sva-studio/ui-contracts/design-tokens.css` with CSS variables (colors, spacing, typography)
-- [ ] 0.5 Create Auth-Context or integration point with `@sva-studio/auth` package for RBAC
-- [ ] 0.6 Verify i18n system is set up (`react-i18next` configuration)
+- [ ] 0.5 Verify i18n system is set up (`react-i18next` configuration)
 
-## 1. Folder Restructuring
+## 1. Folder Restructuring & Nx Configuration
 - [ ] 1.1 Rename `apps/studio/` to `apps/sva-studio-react/`
-- [ ] 1.2 Update references in `nx.json` project configuration
+- [ ] 1.2 Update `nx.json` project configuration:
+  - [ ] 1.2a Create/update `apps/sva-studio-react/project.json` with targets:
+    - [ ] `serve` target (vite dev server on port 4200)
+    - [ ] `build` target (vite production build)
+    - [ ] `lint` target (eslint)
+    - [ ] `test` target (vitest, optional for PoC)
+  - [ ] 1.2b Add dependencies in project.json: [@sva-studio/sdk, @sva-studio/ui-contracts, @sva-studio/app-config]
 - [ ] 1.3 Update tsconfig paths in `tsconfig.base.json`
 - [ ] 1.4 Update all import paths in the project
 
@@ -18,45 +23,38 @@
 - [ ] 2.3 Add Outlet for plugin routes
 - [ ] 2.4 Create CSS module: `RootLayout.module.css`
 - [ ] 2.5 Style with CSS variables from `@sva-studio/ui-contracts` (no hardcoded colors)
-- [ ] 2.6 Implement responsive breakpoint (768px) for mobile sidebar collapse
-- [ ] 2.7 Export RootLayout from layout index
+- [ ] 2.6 Export RootLayout from layout index
+- [ ] 2.7 (Optional: Use `nx generate @nx/react:component RootLayout --directory=src/components/layout` for scaffolding)
 
-## 3. Sidebar Component (with RBAC Filtering)
+## 3. Sidebar Component (Registry Rendering)
 - [ ] 3.1 Create `apps/sva-studio-react/src/components/sidebar/Sidebar.tsx`
 - [ ] 3.2 Integrate `navigationRegistry.getItems()` from SDK
-- [ ] 3.3 **CRITICAL:** Filter items by user capabilities (RBAC)
-  - [ ] 3.3a Get user context (Auth-Context or props)
-  - [ ] 3.3b Check each item against `userCapabilities`
-  - [ ] 3.3c Hide items without required capability
-  - [ ] 3.3d Hide parent if all children hidden
-- [ ] 3.4 Implement expanded/collapsed state (localStorage MVP)
+- [ ] 3.3 Render navigation items from registry (hardcoded demo data in Phase 1, no RBAC filtering yet)
+- [ ] 3.4 Implement collapsed state toggle (UI state only, no persistence yet)
 - [ ] 3.5 Create `SidebarToggle.tsx` for collapse button
 - [ ] 3.6 Create `SidebarNav.tsx` for recursive menu rendering
 - [ ] 3.7 Create `Sidebar.module.css` (CSS variables from design tokens)
-- [ ] 3.8 Responsive design for mobile (hide labels, show icons only)
+- [ ] 3.8 (Optional: Use `nx generate @nx/react:component Sidebar` for scaffolding)
 
-## 4. Header Component (with i18n)
+## 4. Header Component (Placeholders + i18n)
 - [ ] 4.1 Create `apps/sva-studio-react/src/components/header/Header.tsx`
-- [ ] 4.2 Create `SearchBar.tsx` component
+- [ ] 4.2 Create `SearchBar.tsx` (placeholder, disabled, no search logic)
   - [ ] 4.2a Input with placeholder: `t('common.search')`
-  - [ ] 4.2b Keyboard shortcut (Cmd+K / Ctrl+K)
-  - [ ] 4.2c Placeholder text from i18n (NOT hardcoded)
-- [ ] 4.3 Create `LanguageSelector.tsx` component
-  - [ ] 4.3a Integrate with `useTranslation()` hook
-  - [ ] 4.3b Get available languages from `@sva-studio/app-config`
-  - [ ] 4.3c Language names from translations (NOT hardcoded "Deutsch", "English")
-  - [ ] 4.3d Store selection in localStorage (MVP)
-- [ ] 4.4 Create `ThemeToggle.tsx` component (light/dark mode)
-  - [ ] 4.4a Toggle button label: `t('common.theme')` or icon
-  - [ ] 4.4b Apply dark/light CSS class
-  - [ ] 4.4c Store preference in localStorage (MVP, Phase 2 → backend)
-- [ ] 4.5 Create `UserMenu.tsx` component
-  - [ ] 4.5a Display user avatar/initials (from Auth-Context)
-  - [ ] 4.5b Menu items: Profile (`t('common.profile')`), Settings (`t('common.settings')`), Logout (`t('common.logout')`)
+  - [ ] 4.2b Disabled/readonly input for now (no wiring)
+- [ ] 4.3 Create `LanguageSelector.tsx` (placeholder)
+  - [ ] 4.3a Dropdown showing available languages from i18n
+  - [ ] 4.3b Language names from translations (not hardcoded)
+  - [ ] 4.3c NO functionality yet (Phase 1.5)
+- [ ] 4.4 Create `ThemeToggle.tsx` (placeholder button, no logic)
+  - [ ] 4.4a Toggle button with icon or label: `t('common.theme')`
+  - [ ] 4.4b NO theme switching logic (Phase 1.5)
+- [ ] 4.5 Create `UserMenu.tsx` (placeholder)
+  - [ ] 4.5a Hardcoded user name/avatar (no Auth-Context)
+  - [ ] 4.5b Menu items as UI only (no logout logic)
   - [ ] 4.5c All labels via i18n
-  - [ ] 4.5d Logout clears auth context
 - [ ] 4.6 Create `Header.module.css` (CSS variables from design tokens)
 - [ ] 4.7 All UI labels use `t()` function (CRITICAL - DEVELOPMENT_RULES)
+- [ ] 4.8 (Optional: Use `nx generate @nx/react:component` for sub-components)
 
 ## 5. Content Area Component
 - [ ] 5.1 Create `apps/sva-studio-react/src/components/layout/ContentArea.tsx`
@@ -69,63 +67,55 @@
 - [ ] 6.2 Ensure RootLayout wraps all child routes
 - [ ] 6.3 Create default dashboard/home route
 
-## 7. i18n Integration (CRITICAL - DEVELOPMENT_RULES)
-- [ ] 7.1 Set up `react-i18next` configuration
-- [ ] 7.2 Create translation keys file with German (de) and English (en):
-  - [ ] 7.2a `common.search`
-  - [ ] 7.2b `common.theme`, `common.themeDark`, `common.themeLight`
-  - [ ] 7.2c `common.profile`, `common.settings`, `common.logout`
-  - [ ] 7.2d Language names: `common.language`, `common.languageDe`, `common.languageEn`
-  - [ ] 7.2e Navigation/sidebar labels (if not from registry)
-- [ ] 7.3 Verify NO hardcoded strings in components
-- [ ] 7.4 All user-facing text uses `t('key')` function
+## 7. i18n & Design Tokens Integration (CRITICAL)
 
-## 8. Design Token Integration (CRITICAL)
-- [ ] 8.1 Create/verify `@sva-studio/ui-contracts/design-tokens.css`
-  - [ ] 8.1a Color tokens: `--color-primary`, `--color-sidebar-bg`, `--color-header-bg`, `--color-text-*`
-  - [ ] 8.1b Spacing tokens: `--spacing-xs`, `--spacing-sm`, `--spacing-md`, `--spacing-lg`, `--spacing-xl`
-  - [ ] 8.1c Typography: `--font-size-*`, `--font-weight-*`
-- [ ] 8.2 All CSS Modules import from design-tokens.css
-- [ ] 8.3 NO hardcoded colors (e.g., `#2563eb`, `rgb(0,0,0)`)
-- [ ] 8.4 NO hardcoded spacing values
-- [ ] 8.5 Use CSS variables throughout: `var(--color-primary)`, `var(--spacing-md)`
+### i18n Setup
+- [ ] 7.1 Set up `react-i18next` configuration (if not already)
+- [ ] 7.2 Create translation files:
+  - [ ] `apps/sva-studio-react/src/locales/de.json` with keys:
+    - `common.search`, `common.theme`, `common.language`
+    - `common.languageDe`, `common.languageEn`
+    - `common.profile`, `common.settings`, `common.logout`
+  - [ ] `apps/sva-studio-react/src/locales/en.json` with translations
+- [ ] 7.3 All UI labels use `t('key')` function (CRITICAL - DEVELOPMENT_RULES)
+- [ ] 7.4 Verify NO hardcoded strings in components (grep for quotes)
 
-## 9. Auth/RBAC Integration (CRITICAL)
-- [ ] 9.1 Set up Auth-Context (or use `@sva-studio/auth` package)
-  - [ ] 9.1a Auth-Provider wraps RootLayout
-  - [ ] 9.1b Provides `currentUser` and `userCapabilities`
-  - [ ] 9.1c Provides `logout()` function
-- [ ] 9.2 Integration in Sidebar component:
-  - [ ] 9.2a Filter navigation items by capability
-  - [ ] 9.2b Hide items user cannot access
-- [ ] 9.3 Integration in UserMenu:
-  - [ ] 9.3a Display current user name/avatar
-  - [ ] 9.3b Logout function calls Auth-Provider
-- [ ] 9.4 Document Auth-Context interface for Phase 1.5 extraction
+### Design Tokens Setup
+- [ ] 7.5 Verify `@sva-studio/ui-contracts/design-tokens.css` exists with:
+  - [ ] Color tokens: `--color-sidebar-bg`, `--color-header-bg`, `--color-text-primary`
+  - [ ] Spacing tokens: `--spacing-sm`, `--spacing-md`, `--spacing-lg`
+  - [ ] Typography: `--font-size-base`, `--font-weight-regular`
+- [ ] 7.6 All CSS Modules import from design-tokens.css
+- [ ] 7.7 Grep verification: NO hardcoded colors (`#`, `rgb(`, `hsl(`)
 
-## 10. Testing & Validation
-- [ ] 10.1 Test sidebar render with registry navigation
-- [ ] 10.1a Test nested menu items
-- [ ] 10.1b Test permission-based hiding
-- [ ] 10.2 Test theme toggle (light/dark CSS)
-- [ ] 10.3 Test language selector (i18n re-render)
-- [ ] 10.4 Test responsive layout (768px breakpoint, mobile sidebar)
-- [ ] 10.5 Test user menu (profile display, logout)
-- [ ] 10.6 Verify NO hardcoded text strings (use grep for hardcoded quotes)
-- [ ] 10.7 Verify CSS only uses design tokens (no hardcoded colors)
-- [ ] 10.8 Test Cmd+K / Ctrl+K search bar focus
+## 8. Error Handling (Staging Stability)
+- [ ] 8.1 Wrap `navigationRegistry.getItems()` in try-catch
+- [ ] 8.2 On error: log to console with `console.error('Registry error:', error)`
+- [ ] 8.3 Display fallback UI: "<nav><p>Navigation unavailable</p><button>Reload</button></nav>"
+- [ ] 8.4 Reload button calls location.reload()
 
-## 11. Documentation
-- [ ] 11.1 Update README.md with new folder structure
-- [ ] 11.2 Document RootLayout component structure and composition
-- [ ] 11.3 Document design token usage (CSS Modules imports)
-- [ ] 11.4 Document i18n key structure and translation process
-- [ ] 11.5 Document Auth-Context interface (pending Phase 1.5)
-- [ ] 11.6 Document RBAC filtering logic in Sidebar
+## 9. Testing & Validation
+- [ ] 9.1 Sidebar renders menu items from registry
+- [ ] 9.2 Header displays all placeholder components
+- [ ] 9.3 Keyboard: Tab through all interactive elements works
+- [ ] 9.4 Keyboard: Focus indicators visible on all buttons/inputs
+- [ ] 9.5 Browser console: NO hardcoded text errors (all `t('...')`)
+- [ ] 9.6 Registry error: Fallback UI shows instead of blank page
+- [ ] 9.7 Semantic HTML: `<header>`, `<nav>`, `<main>` present
 
-## Phase 1.5+ (Deferred)
-- [ ] Extract Auth-Context to `@sva-studio/auth-context` package
-- [ ] Migrate localStorage preferences to backend (User Profile)
-- [ ] Implement full-text search (wire Search bar to `@sva-studio/search-client`)
-- [ ] WCAG 2.1 AA compliance audit
-- [ ] Storybook entries for components
+## 10. Documentation
+- [ ] 10.1 Update README with: "Local PoC GUI Shell - Error handling, i18n keys, design tokens"
+- [ ] 10.2 Document: How to trigger registry error for testing
+- [ ] 10.3 Document: How to add new i18n keys (de.json + en.json sync)
+
+## Phase 1.5+ (All Logic & Ops Deferred)
+- Auth-Context & session management
+- RBAC navigation filtering
+- Theme/language switching (actual functionality)
+- Preferences persistence
+- Search bar functionality
+- Structured logging & monitoring
+- Full accessibility audit
+- Responsive breakpoints (768px mobile design)
+- Runbook & deployment docs
+- Migration guides

@@ -26,28 +26,6 @@ Clicking a navigation item SHALL trigger routing to the item's associated plugin
 - **WHEN** user clicks a navigation item without a `route` property
 - **THEN** the submenu expands/collapses without navigation
 
-### Requirement: RBAC-Based Navigation Filtering (CRITICAL)
-Navigation items SHALL respect user permissions; menu items for which the user lacks required capabilities SHALL be completely hidden, not rendered to DOM.
-
-#### Scenario: Hidden menu item for insufficient permissions
-- **WHEN** user lacks the required capability for a menu item
-- **THEN** the menu item is NOT rendered in the sidebar (completely hidden from DOM)
-
-#### Scenario: Submenu hides if all children are hidden
-- **WHEN** all children of a navigation group are hidden due to permissions
-- **THEN** the parent group is also hidden
-
-#### Scenario: Navigation filtering happens during render
-- **WHEN** Sidebar component renders
-- **THEN** for each navigation item, it calls permission check:
-  - `canAccess(userCapabilities, navigationItem.requiredCapability)`
-  - Only renders item if check returns `true`
-
-#### Scenario: Permission source from Auth-Context
-- **WHEN** Sidebar initializes
-- **THEN** it reads `currentUser.capabilities` from Auth-Context (or `@sva-studio/auth` package)
-- **AND** uses this to filter navigation items
-
 ### Requirement: Design Token Sourcing for Sidebar Styling
 Sidebar component CSS MUST source colors and spacing from `@sva-studio/ui-contracts` design tokens, not hardcoded values.
 
@@ -57,3 +35,26 @@ Sidebar component CSS MUST source colors and spacing from `@sva-studio/ui-contra
   - Colors: `var(--color-sidebar-bg)`, `var(--color-text-primary)` (NOT hardcoded colors)
   - Spacing: `var(--spacing-md)`, `var(--spacing-lg)`
   - Typography: `var(--font-size-sm)`, `var(--font-weight-regular)`
+
+### Requirement: Accessible Navigation and Keyboard Interaction
+The sidebar navigation SHALL be fully keyboard-operable with visible focus indicators.
+
+#### Scenario: Navigation items are keyboard-accessible
+- **WHEN** user tabs through navigation
+- **THEN** all menu items are reachable with visible focus indicators
+- **AND** pressing Enter navigates to the item's route
+
+#### Scenario: Menu groups are keyboard-operable
+- **WHEN** user focuses a menu group with children
+- **THEN** Space or Enter toggles expansion
+
+#### Scenario: Sidebar toggle is accessible
+- **WHEN** sidebar toggle is focused
+- **THEN** it has visible focus, `aria-label`, and Space/Enter toggles state
+
+---
+
+## Note: Phase 1.5+ Features (Deferred)
+- RBAC-based navigation filtering (requires Auth-Context)
+- Permission-based menu item hiding
+- Screen reader announcements with `aria-expanded`

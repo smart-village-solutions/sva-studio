@@ -1,58 +1,53 @@
-# Change: Add Basic GUI Shell in React
+# Change: Add Basic GUI Shell (React) – Proof of Concept
 
 ## Why
-The CMS needs a foundational UI shell that can serve as the host application container. This shell provides the layout infrastructure (sidebar, header, content area) and integrates with the SDK registries for navigation, theming, and app configuration. Without this, plugins have no place to render and the CMS cannot function as an application.
+The CMS needs a minimal UI shell that demonstrates the framework structure. This PoC provides layout placeholders (sidebar, header, content area) and validates SDK registry integration. It serves as a foundation for the plugin system and allows continued development with real components.
 
 ## What Changes
 - **NEW:** Basic GUI shell with React implementation (`apps/sva-studio-react/`)
-- **NEW:** Root layout component combining sidebar, header, and content area
-- **NEW:** Navigation registry integration for dynamic menu items
-- **NEW:** Theme and language switcher in header
-- **NEW:** User menu in header
-- **NEW:** Framework-agnostic UI structure ready for Vue adaptation
-- **BREAKING:** Rename `apps/studio/` to `apps/sva-studio-react/` to clarify framework-specific implementation
+- **NEW:** Root layout component with sidebar, header, and content structure
+- **NEW:** Sidebar with navigation registry integration (hardcoded demo data)
+- **NEW:** Header with search bar, theme toggle, language selector, user menu (placeholders)
+- **BREAKING:** Rename `apps/studio/` to `apps/sva-studio-react/`
 
 ## Impact
-- Affected specs: `layout`, `navigation`, `header`, `app-config`, `auth-context` (new)
-- Affected code: `apps/studio/` → `apps/sva-studio-react/`, new SDK integrations
-- Enables: Plugin system can now render routes and widgets into the shell
+- Affected code: `apps/studio/` → `apps/sva-studio-react/`, SDK integrations
+- Enables: Plugin system can now render routes into the shell
 - Dependencies (MUST EXIST):
-  - `@sva-studio/sdk` - Navigation/Theme/App-Config registries
-  - `@sva-studio/app-config` - App configuration and theme settings
-  - `@sva-studio/ui-contracts` - Design tokens and CSS variables
-  - `@sva-studio/auth` - Basic RBAC for permission checks
-- New packages to extract:
-  - `@sva-studio/auth-context` - Auth provider and hooks (Phase 1.5)
+  - `@sva-studio/sdk` - Navigation registry interface
+  - `@sva-studio/app-config` - App configuration
+  - `@sva-studio/ui-contracts` - Design tokens (CSS variables)
+- No new packages required (Auth-Context extracted later in Phase 1.5)
 
-## Implementation Order (Phase 1: MVP)
+## Implementation Order (Phase 1: PoC)
 1. Rename app folder to `sva-studio-react`
-2. Implement RootLayout component with sidebar/header/content structure
-3. Wire SDK registries for navigation rendering
-4. Add theme and language switcher components (UI with localStorage MVP)
-5. Add user menu with logout functionality
-6. Implement i18n integration for all UI labels (CRITICAL)
-7. Integrate Auth-Context for RBAC navigation filtering (CRITICAL)
-8. Implement CSS modules with design token variables (CRITICAL)
+2. Implement RootLayout component (semantic HTML: `<header>`, `<nav>`, `<main>`)
+3. Implement Sidebar with navigation registry integration (hardcoded demo data)
+4. Implement Header with placeholder components
+5. Integrate i18n for all UI labels (CRITICAL - DEVELOPMENT_RULES)
+6. Integrate CSS design tokens (CRITICAL - no hardcoded colors)
+7. Wire up basic keyboard navigation
 
-## Phase 1 Scope: MVP (Minimal Viable Product)
+## Phase 1 Scope: Proof of Concept (UI Shell Only)
 
 ### ✅ Included in Phase 1
-- Static layouts (sidebar, header, content area)
-- Navigation registry rendering with permission-based filtering
-- Theme toggle (light/dark CSS) with **localStorage persistence** (MVP)
-- Language selector (UI) with i18n integration
-- User menu with profile info and logout
-- Search bar (placeholder, disabled)
-- CSS modules sourcing design tokens from `@sva-studio/ui-contracts`
-- Basic Auth-Context for permission checks
+- **Layout Structure:** RootLayout with sidebar, header, content area
+- **Navigation Registry Rendering:** Sidebar fetches and displays menu items (hardcoded demo data, no RBAC yet)
+- **Placeholder Components:** Search bar, Theme toggle button, Language selector, User menu (UI only, no functionality)
+- **i18n Keys:** All labels via `t()` function (DEVELOPMENT_RULES 2.1 compliant)
+- **Design Tokens:** All styling via CSS variables from `@sva-studio/ui-contracts` (no hardcoded colors)
+- **Keyboard Navigation:** Tab/Enter/Escape work on buttons, menus, inputs
+- **Semantic HTML:** Proper landmarks (`<header>`, `<nav>`, `<main>`), visible focus indicators
 
-### ⏳ Deferred to Phase 2+
-- **Backend-persisted User Preferences** (currently localStorage MVP, will migrate in Phase 2)
-- Full-text search integration (Search bar is placeholder)
-- Advanced theme customization (Theme Editor package)
-- Auth-Context complete separation into `@sva-studio/auth-context` package
-- Multi-device preference sync
-- Accessibility audit & WCAG 2.1 AA compliance (in-progress)
+### ⏳ Deferred to Phase 1.5+
+- **Auth-Context** (login/logout, user data, session management)
+- **RBAC Navigation Filtering** (permission checks, hide menu items)
+- **Theme Switching** (actual light/dark CSS application)
+- **Preferences Persistence** (localStorage/backend sync)
+- **Language Switching** (actual i18n re-render)
+- **Search Bar Functionality** (real search integration)
+- **User Menu Logic** (logout, profile navigation)
+- **Full Accessibility Audit** (WCAG 2.1 AA compliance testing)
 
 ## Critical Requirements for Phase 1 (Non-Negotiable)
 
@@ -60,19 +55,22 @@ The CMS needs a foundational UI shell that can serve as the host application con
 All UI text MUST use translation keys; no hardcoded strings allowed.
 - Header labels: search placeholder, theme label, language label → `t('...')`
 - Language names: "Deutsch", "English" → fetched from translations
-- User menu: profile, settings, logout → `t('...')`
-- Sidebar: navigation labels → from registry (already i18n-compatible)
+- Sidebar: navigation labels → from registry
 
 ### Requirement 2: Design Token Sourcing
 CSS Modules MUST import design variables from `@sva-studio/ui-contracts` package.
-- No hardcoded colors (e.g., `#2563eb`)
+- No hardcoded colors
 - Colors via CSS variables: `var(--color-primary)`, `var(--color-sidebar-bg)`
 - Spacing via tokens: `var(--spacing-sm)`, `var(--spacing-md)`, `var(--spacing-lg)`
-- Note: Design tokens in `@sva-studio/ui-contracts` will be created in parallel task
 
-### Requirement 3: RBAC Navigation Filtering
-Navigation items filtered by user capabilities during render.
-- Each navigation item checked against `userCapabilities` before rendering
-- Items without required capability completely hidden (not disabled)
-- Parent menu hides if all children hidden
-- Permission source: Auth-Context (to be clarified in Phase 1.5)
+### Requirement 3: Semantic HTML & Keyboard Navigation
+UI MUST use semantic landmarks and be keyboard-operable.
+- Structure: `<header>`, `<nav>`, `<main>` landmarks
+- All interactive elements Tab-accessible
+- Visible focus indicators
+
+### Requirement 4: Error Handling (Staging Stability)
+Registry failures MUST NOT crash the UI (blank page).
+- Catch `navigationRegistry.getItems()` errors
+- Log errors to console (for developer debugging)
+- Display fallback message: "Navigation unavailable" with manual reload button

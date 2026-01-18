@@ -7,9 +7,9 @@ The CMS SHALL provide a root layout component that combines sidebar, header, and
 - **WHEN** the root route is accessed
 - **THEN** the page displays a sidebar on the left, header at the top, and content area filling the remaining space
 
-#### Scenario: Layout is responsive
-- **WHEN** the viewport width is less than 768px
-- **THEN** the sidebar collapses automatically or uses a mobile menu pattern (icon-only)
+#### Scenario: Layout has collapsible sidebar
+- **WHEN** user clicks the sidebar toggle button
+- **THEN** the sidebar collapses to icon-only mode (no responsive breakpoint in PoC)
 
 ### Requirement: Dynamic Navigation from Registry
 The CMS sidebar SHALL render menu items dynamically from the SDK's navigation registry, enabling plugins to register their menu items without modifying the shell.
@@ -66,3 +66,19 @@ The layout components and styling SHALL support framework migration without touc
 #### Scenario: No React-specific patterns in styles
 - **WHEN** CSS Modules are written
 - **THEN** they use pure CSS with CSS variables (no CSS-in-JS, emotion, styled-components) and can be ported to Vue with minimal changes
+
+### Requirement: Semantic HTML and Accessibility Landmarks
+The layout SHALL use semantic HTML5 elements (`<header>`, `<nav>`, `<main>`) to define page regions.
+
+#### Scenario: Layout uses semantic landmarks
+- **WHEN** the root layout is rendered
+- **THEN** it contains: `<header>` for top bar, `<nav>` for sidebar, `<main>` for content area
+- **AND** landmarks are properly nested (header and nav as siblings at root level)
+
+### Requirement: Visible Focus Management
+All interactive elements SHALL have clearly visible focus indicators.
+
+#### Scenario: Focus indicators are visible
+- **WHEN** user tabs through the layout
+- **THEN** every focusable element has a visible outline or border
+- **AND** focus color is clearly distinguishable

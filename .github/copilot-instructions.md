@@ -1,3 +1,9 @@
+# Copilot Custom Instructions
+
+Bitte antworte im Rahmen von Code‑Reviews ausschließlich auf Deutsch. Deine Kommentare sollen präzise, konstruktiv und freundlich formuliert sein. Konzentriere dich auf Lesbarkeit, Sicherheit, Wartbarkeit und Performance.
+
+---
+
 # Copilot / AI Instructions – NON-NEGOTIABLE
 
 This repository is governed by strict, non-negotiable development rules.
@@ -87,7 +93,7 @@ After creating a new review, **add a link** to `docs/reviews/README.md`:
 - Store all in same directory for easy history tracking
 
 ---
-- Introducing “temporary” hardcoded text
+- Introducing "temporary" hardcoded text
 - Adding inline styles for convenience
 - Ignoring accessibility or validation for speed
 - Suggesting rule violations as shortcuts

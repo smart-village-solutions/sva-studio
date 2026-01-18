@@ -17,21 +17,21 @@ Der Change `add-basic-gui-react` ist architektonisch **konform** mit den Paket-A
 ## 1. Architektur-Bewertung
 
 ### ✅ KONFORM: SDK-First Ansatz
-- Layout-Komponenten importieren AUSSCHLIESSLICH aus `@cms/sdk`, `@cms/app-config`, `@cms/ui-contracts`
+- Layout-Komponenten importieren AUSSCHLIESSLICH aus `@cms-studio/sdk`, `@cms-studio/app-config`, `@cms-studio/ui-contracts`
 - Keine direkten Plugin-Importe
 - Navigation wird über Registry geladen (registries-driven UI) ✅
 - Sidebar und Header sind generisch und framework-agnostisch ✅
 
-**Zitat aus Spec (layout/spec.md):**
-> "Layout imports from SDK, not host-specific modules: ...they import only from `@cms/sdk`, `@cms/app-config`, and `@cms/ui-contracts`, never from `apps/sva-studio-react/src/routes` or internal host logic"
+**Zitat aus Spec (layout-studio/spec.md):**
+> "Layout imports from SDK, not host-specific modules: ...they import only from `@cms-studio/sdk`, `@cms-studio/app-config`, and `@cms-studio/ui-contracts`, never from `apps-studio/sva-studio-react-studio/src-studio/routes` or internal host logic"
 
 **Bewertung:** Korrekt. Das ist der richtige Weg für Framework-Agnostik.
 
 ---
 
 ### ✅ KONFORM: Modulgrenzen & Entkopplung
-- Klarheit: `apps/sva-studio-react/` ist explizit Framework-spezifisch
-- Zukünftige `apps/sva-studio-vue/` wird identischen SDK nutzen
+- Klarheit: `apps-studio/sva-studio-react-studio/` ist explizit Framework-spezifisch
+- Zukünftige `apps-studio/sva-studio-vue-studio/` wird identischen SDK nutzen
 - Keine Vermischung von Business Logic und UI-Rendering
 - Registry-Pattern ermöglicht Plugin-Isolation
 
@@ -68,11 +68,11 @@ SHALL use the translation system via i18n keys, not hardcoded strings.
 - **THEN** these are fetched from translations, not hardcoded
 ```
 
-**Action:** Requirement muss in `specs/header/spec.md` HINZUGEFÜGT werden vor Approval.
+**Action:** Requirement muss in `specs-studio/header-studio/spec.md` HINZUGEFÜGT werden vor Approval.
 
 ---
 
-### ⚠️ KRITISCH: Permissions/RBAC Integration
+### ⚠️ KRITISCH: Permissions-studio/RBAC Integration
 
 Der Change erwähnt im Navigation Spec:
 > "Navigation items SHALL respect user permissions; menu items for which the user lacks capabilities SHALL be hidden."
@@ -80,16 +80,16 @@ Der Change erwähnt im Navigation Spec:
 Aber:
 
 - **KEINE Anforderung** für Auth-Context Integration
-- **KEINE Anforderung** für `@cms/auth` Paket-Nutzung
+- **KEINE Anforderung** für `@cms-studio/auth` Paket-Nutzung
 - **KEINE Szenarien** für RBAC-Enforcement
 
 **Was MUSS hinzugefügt werden:**
 
 ```markdown
-### Requirement: RBAC-Based Navigation Filtering (MODIFIED in navigation/spec.md)
+### Requirement: RBAC-Based Navigation Filtering (MODIFIED in navigation-studio/spec.md)
 [Bestehender Text + neuer Absatz:]
 
-The sidebar SHALL integrate with the `@cms/auth` package to enforce permissions
+The sidebar SHALL integrate with the `@cms-studio/auth` package to enforce permissions
 on all navigation items. No menu item SHALL be rendered if the current user lacks
 the required capability.
 
@@ -103,7 +103,7 @@ the required capability.
 - **THEN** user permissions come from a centralized auth context, not local state
 ```
 
-**Action:** Requirement muss in `specs/navigation/spec.md` klargestellt werden.
+**Action:** Requirement muss in `specs-studio/navigation-studio/spec.md` klargestellt werden.
 
 ---
 
@@ -114,7 +114,7 @@ Die Spec sagt:
 
 Aber das steht im Konflikt mit:
 
-1. **Paketarchitektur-Vorgabe:** `packages/ui-contracts` definiert Design Tokens als Zentrale Quelle
+1. **Paketarchitektur-Vorgabe:** `packages-studio/ui-contracts` definiert Design Tokens als Zentrale Quelle
 2. **DEVELOPMENT_RULES:** Tailwind mit Semantic Tokens ist Standard
 3. **Framework-Agnostik:** Reine CSS Modules sind gut, aber brauchen Token-Abstraktion
 
@@ -123,26 +123,26 @@ Aber das steht im Konflikt mit:
 ```markdown
 ### Requirement: Design System Compliance (MODIFIED)
 The layout components SHALL use CSS Modules for styling, but MUST source
-all colors, spacing, and typography from `@cms/ui-contracts` design tokens.
+all colors, spacing, and typography from `@cms-studio/ui-contracts` design tokens.
 
 #### Scenario: CSS Modules reference design tokens
 - **WHEN** RootLayout.module.css is imported
-- **THEN** it imports design token variables from @cms/ui-contracts
+- **THEN** it imports design token variables from @cms-studio/ui-contracts
 - **AND** does NOT use hardcoded colors or spacing values
 
 Example:
 ```css
-/* RootLayout.module.css */
-@import '@cms/ui-contracts/design-tokens.css';
+-studio/* RootLayout.module.css *-studio/
+@import '@cms-studio/ui-contracts-studio/design-tokens.css';
 
 .sidebar {
-  background-color: var(--color-sidebar-bg);  /* From tokens, not hardcoded */
-  padding: var(--spacing-md);                 /* From tokens */
+  background-color: var(--color-sidebar-bg);  -studio/* From tokens, not hardcoded *-studio/
+  padding: var(--spacing-md);                 -studio/* From tokens *-studio/
 }
 ```
 ```
 
-**Action:** Clarify in `specs/layout/spec.md` how CSS Modules source design tokens.
+**Action:** Clarify in `specs-studio/layout-studio/spec.md` how CSS Modules source design tokens.
 
 ---
 
@@ -157,13 +157,13 @@ Example:
 ### 🔴 **Schuld 2: localStorage für State (Theme, Sidebar Collapse)**
 - **Problem:** Spec empfiehlt localStorage für User Preferences
 - **Risiko:** Multi-Device Support bricht (User kollaboriert auf 2 Geräten)
-- **Besser:** Backend-basierte User Preferences via `@cms/data` Paket
+- **Besser:** Backend-basierte User Preferences via `@cms-studio/data` Paket
 - **Lösung:** Requirement anpassen: "...stored in user profile (backend), not localStorage"
 - **Timeline:** MUSS vor Implementierung geklärt sein
 
 ### 🟡 **Schuld 3: Search-Bar ist Placeholder**
 - **Problem:** Search Bar hat keine Implementation Spec
-- **Risiko:** Integration mit `@cms/search-client` (MeiliSearch) ist unklar
+- **Risiko:** Integration mit `@cms-studio/search-client` (MeiliSearch) ist unklar
 - **Lösung:** Optional für MVP: Search-Bar nur als UI-Platzhalter (disabled),
   echte Integration in separatem Change
 - **Empfehlung:** In `proposal.md` dokumentieren: "Search functionality implemented in Phase 2"
@@ -187,7 +187,7 @@ Example:
 ### ✅ Offene Standards
 - Semantic HTML für Accessibility
 - CSS Modules (CSS Standard)
-- REST/GraphQL für Daten (via `@cms/data`)
+- REST-studio/GraphQL für Daten (via `@cms-studio/data`)
 - Registry Pattern (nicht proprietär)
 
 **Bewertung:** Gut. Keine proprietären Frameworks.
@@ -202,7 +202,7 @@ Example:
 
 ### ⚠️ Performance (nicht in Scope, aber beachten)
 - Navigation Registry könnte bei 1000+ Menu Items langsam werden
-- **Empfehlung für Zukunft:** Lazy Loading / Pagination für tiefe Menüs
+- **Empfehlung für Zukunft:** Lazy Loading -studio/ Pagination für tiefe Menüs
 
 ### ✅ Multi-Tenancy Ready
 - Theme Selector ist Tenant-agnostisch
@@ -216,9 +216,9 @@ Example:
 | Rule | Compliance | Status |
 |------|-----------|--------|
 | **Text & Data:** Translation Keys obligatorisch | ❌ **NICHT in Spec** | 🔴 CRITICAL |
-| **CSS:** Design System + Tailwind/CSS Modules | ⚠️ **Unklar ob Tokens genutzt** | 🔴 CRITICAL |
+| **CSS:** Design System + Tailwind-studio/CSS Modules | ⚠️ **Unklar ob Tokens genutzt** | 🔴 CRITICAL |
 | **Accessibility:** WCAG 2.1 AA | ⚠️ **Erwähnt aber nicht spezifiziert** | 🟡 SHOULD |
-| **Security:** Auth/Permissions | ❌ **NICHT spezifiziert** | 🔴 CRITICAL |
+| **Security:** Auth-studio/Permissions | ❌ **NICHT spezifiziert** | 🔴 CRITICAL |
 | **No Hardcoding:** UI-Strings | ❌ **NICHT erwähnt** | 🔴 CRITICAL |
 
 ---
@@ -234,12 +234,12 @@ Nach Approval muss FOLGENDES dokumentiert werden:
 
 ### ADR-002: CSS Module Design System Integration
 - **Frage:** Wie sourced CSS Modules die Design Tokens?
-- **Entscheidung:** @cms/ui-contracts exportiert CSS Variable Sheets
+- **Entscheidung:** @cms-studio/ui-contracts exportiert CSS Variable Sheets
 - **Impact:** Framework-unabhängige Token, Vue-kompatibel
 
 ### ADR-003: Auth Context Architecture
 - **Frage:** Wo lives der Auth-Context? Welche Package?
-- **Entscheidung:** Neuer `@cms/auth-context` Package mit React Hooks + Vue Composables
+- **Entscheidung:** Neuer `@cms-studio/auth-context` Package mit React Hooks + Vue Composables
 - **Impact:** Plugins können Auth auch nutzen
 
 ---
@@ -248,32 +248,32 @@ Nach Approval muss FOLGENDES dokumentiert werden:
 
 ### ✅ APPROVE mit REQUIREMENTS:
 
-**Vor Implementierung MÜSSEN folgende Requirements hinzugefügt/geklärt werden:**
+**Vor Implementierung MÜSSEN folgende Requirements hinzugefügt-studio/geklärt werden:**
 
 1. **i18n Integration (CRITICAL):**
    - Header labels MÜSSEN Translation Keys nutzen
    - Language Names MÜSSEN aus Translations kommen
-   - Hinzufügen: `specs/header/spec.md` → "i18n Integration in Header" Requirement
+   - Hinzufügen: `specs-studio/header-studio/spec.md` → "i18n Integration in Header" Requirement
 
-2. **RBAC/Auth Integration (CRITICAL):**
+2. **RBAC-studio/Auth Integration (CRITICAL):**
    - Navigation Items MÜSSEN gegen User Capabilities gefiltert werden
    - Auth-Context MUSS spezifiziert sein
-   - Hinzufügen: `specs/navigation/spec.md` → "Auth-Based Navigation Filtering" Requirement
+   - Hinzufügen: `specs-studio/navigation-studio/spec.md` → "Auth-Based Navigation Filtering" Requirement
 
 3. **Design System Sourcing (CRITICAL):**
-   - CSS Modules MÜSSEN Design Tokens aus `@cms/ui-contracts` nutzen
-   - KEINE hardcoded Farben/Spacing
-   - Clarify: `specs/layout/spec.md` → "Framework-Agnostic Layout Structure" erweitern
+   - CSS Modules MÜSSEN Design Tokens aus `@cms-studio/ui-contracts` nutzen
+   - KEINE hardcoded Farben-studio/Spacing
+   - Clarify: `specs-studio/layout-studio/spec.md` → "Framework-Agnostic Layout Structure" erweitern
 
 4. **User Preferences Storage (HIGH):**
    - Theme Preference → Backend User Settings (nicht localStorage)
    - Sidebar State → Backend User Settings (nicht localStorage)
-   - Modify: `specs/header/spec.md` + `specs/layout/spec.md` → "Theme/Sidebar preference" Requirement aktualisieren
+   - Modify: `specs-studio/header-studio/spec.md` + `specs-studio/layout-studio/spec.md` → "Theme-studio/Sidebar preference" Requirement aktualisieren
 
 5. **Auth Context Documentation (MEDIUM):**
    - Wo liegt der Auth-Context?
-   - Welche Signale / Hooks sind verfügbar?
-   - Hinzufügen: neuer `specs/auth-context/spec.md` oder im proposal.md dokumentieren
+   - Welche Signale -studio/ Hooks sind verfügbar?
+   - Hinzufügen: neuer `specs-studio/auth-context-studio/spec.md` oder im proposal.md dokumentieren
 
 6. **Search Bar Scope (MEDIUM):**
    - Ist Search-Bar ein MVP Feature oder Placeholder?
@@ -294,9 +294,9 @@ Alle 3 kritischen Punkte (i18n, RBAC, Design System) sind **NICHT optional** per
 
 ## Checkliste für Implementierung
 
-- [ ] i18n Requirements hinzufügen (specs/header/spec.md)
-- [ ] Auth/RBAC Requirements klarstellen (specs/navigation/spec.md)
-- [ ] Design Token Sourcing dokumentieren (specs/layout/spec.md)
+- [ ] i18n Requirements hinzufügen (specs-studio/header-studio/spec.md)
+- [ ] Auth-studio/RBAC Requirements klarstellen (specs-studio/navigation-studio/spec.md)
+- [ ] Design Token Sourcing dokumentieren (specs-studio/layout-studio/spec.md)
 - [ ] Preference Storage Strategy aktualisieren (Backend statt localStorage)
 - [ ] Auth-Context Spezifikation (separater Spec oder in proposal.md)
 - [ ] Search Bar Scope klären (MVP vs. Phase 2)
@@ -305,7 +305,7 @@ Alle 3 kritischen Punkte (i18n, RBAC, Design System) sind **NICHT optional** per
 - [ ] Code-Review Checklist für Implementier:
   - [ ] Keine hardcoded Text Strings
   - [ ] Alle Labels nutzen `t()` Function
-  - [ ] Alle Colors/Spacing aus Design Tokens
+  - [ ] Alle Colors-studio/Spacing aus Design Tokens
   - [ ] Auth Context wird genutzt für Permissions
   - [ ] WCAG 2.1 AA Compliance (semantic HTML, keyboard nav, focus management)
 

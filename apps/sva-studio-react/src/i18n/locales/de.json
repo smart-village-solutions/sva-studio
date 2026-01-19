@@ -9,6 +9,12 @@
     "settings": "Einstellungen",
     "logout": "Abmelden"
   },
+  "theme": {
+    "lightMode": "Helles Design",
+    "darkMode": "Dunkles Design",
+    "systemMode": "System",
+    "toggleTheme": "Modus wechseln"
+  },
   "sidebar": {
     "dashboard": "Dashboard",
     "content": "Inhalte",

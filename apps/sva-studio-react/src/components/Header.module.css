@@ -72,6 +72,13 @@
   border-color: var(--muted-foreground);
 }
 
+.themeButton:active:not(:disabled),
+.userButton:active:not(:disabled) {
+  background-color: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-foreground);
+}
+
 .themeButton:focus,
 .userButton:focus {
   outline: 2px solid var(--ring);

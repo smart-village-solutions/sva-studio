@@ -1,8 +1,13 @@
-import { useTranslation } from 'react-i18next'
-import styles from './Header.module.css'
+import { useTranslation } from 'react-i18next';
+import { useTheme } from '../contexts/ThemeContext';
+import styles from './Header.module.css';
 
 export function Header() {
-  const { t } = useTranslation()
+  const { t } = useTranslation();
+  const { theme, toggleTheme } = useTheme();
+
+  const isLightMode = theme === 'light';
+  const themeLabel = isLightMode ? t('theme.darkMode') : t('theme.lightMode');
 
   return (
     <header className={styles.header}>
@@ -15,8 +20,13 @@ export function Header() {
             placeholder={t('header.searchPlaceholder')}
             disabled
           />
-          <button className={styles.themeButton} disabled title={t('common.theme')}>
-            ◐
+          <button
+            className={styles.themeButton}
+            onClick={toggleTheme}
+            title={themeLabel}
+            aria-label={t('theme.toggleTheme')}
+          >
+            {isLightMode ? '☀️' : '🌙'}
           </button>
           <select className={styles.languageSelect} disabled title={t('common.language')}>
             <option value="de">{t('common.languageDe')}</option>
@@ -28,7 +38,7 @@ export function Header() {
         </div>
       </div>
     </header>
-  )
+  );
 }
 
-export default Header
+export default Header;

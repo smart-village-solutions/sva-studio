@@ -66,6 +66,10 @@
 - **Framework-agnostisch**: Kernlogik getrennt von Framework-Bindings
 - **Code-basiertes Routing**: Unterstützung für code-basiertes Routing (dynamische Routen aus Plugins)
 
+## Development Rules
+
+Die verbindlichen Entwicklungsrichtlinien liegen unter [DEVELOPMENT_RULES.md](DEVELOPMENT_RULES.md). Alle Agenten-Reviews sind im Zweifel an diesen Regeln auszurichten.
+
 <!-- OPENSPEC:START -->
 ## OpenSpec-Anweisungen
 

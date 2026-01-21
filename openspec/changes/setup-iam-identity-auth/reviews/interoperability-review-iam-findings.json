@@ -1,0 +1,505 @@
+{
+  "review": {
+    "title": "Interoperability & Data Integration Review - IAM Proposal",
+    "reviewer": "Interoperability & Data Integration Specialist",
+    "date": "2026-01-21",
+    "projectId": "setup-iam-identity-auth",
+    "overallRating": {
+      "score": 65,
+      "level": "MEDIUM",
+      "status": "CONDITIONAL_GO"
+    }
+  },
+
+  "ratings": {
+    "api_versioning": {
+      "score": 20,
+      "level": "LOW",
+      "status": "MISSING"
+    },
+    "standards_compliance": {
+      "score": 90,
+      "level": "HIGH",
+      "status": "GOOD"
+    },
+    "data_migration": {
+      "score": 50,
+      "level": "MEDIUM",
+      "status": "INCOMPLETE"
+    },
+    "external_integration": {
+      "score": 30,
+      "level": "LOW",
+      "status": "MISSING"
+    },
+    "exit_capability": {
+      "score": 55,
+      "level": "MEDIUM",
+      "status": "INCOMPLETE"
+    },
+    "data_model_stability": {
+      "score": 85,
+      "level": "HIGH",
+      "status": "GOOD"
+    },
+    "api_documentation": {
+      "score": 0,
+      "level": "LOW",
+      "status": "MISSING"
+    },
+    "bulk_operations": {
+      "score": 10,
+      "level": "LOW",
+      "status": "MISSING"
+    }
+  },
+
+  "blockers": [
+    {
+      "id": "B001",
+      "title": "No Export/Import APIs",
+      "description": "Commune cannot migrate data if switching vendors",
+      "severity": "CRITICAL",
+      "section": 5,
+      "evidence": [
+        "Only audit-log export mentioned in tasks.md",
+        "No user/org/role export endpoints",
+        "No import endpoints for bulk operations"
+      ],
+      "impact": "Exit capability impossible",
+      "solution": "Implement comprehensive Export/Import Framework",
+      "effort_hours": 80,
+      "effort_weeks": 3,
+      "priority": "P0"
+    },
+    {
+      "id": "B002",
+      "title": "No API Documentation (OpenAPI/SDKs)",
+      "description": "Integration partners cannot work productively",
+      "severity": "CRITICAL",
+      "section": 11,
+      "evidence": [
+        "No OpenAPI 3.0 specification",
+        "No SDKs in any language",
+        "No Postman collection",
+        "No code examples"
+      ],
+      "impact": "Partner integration blocked",
+      "solution": "Generate OpenAPI spec + auto-generate SDKs",
+      "effort_hours": 20,
+      "effort_weeks": 1,
+      "priority": "P0"
+    },
+    {
+      "id": "B003",
+      "title": "No Webhook/Event APIs",
+      "description": "Cascading provisioning to partner systems impossible",
+      "severity": "CRITICAL",
+      "section": 7,
+      "evidence": [
+        "No pub/sub mechanism defined",
+        "No webhook subscriptions",
+        "No GraphQL subscriptions",
+        "No event schema"
+      ],
+      "impact": "Real-time integration impossible",
+      "solution": "Implement Event-streaming architecture (Kafka/Redis)",
+      "effort_hours": 60,
+      "effort_weeks": 2,
+      "priority": "P0"
+    },
+    {
+      "id": "B004",
+      "title": "No API Versioning Strategy",
+      "description": "Breaking changes can crash partner systems without warning",
+      "severity": "CRITICAL",
+      "section": 1,
+      "evidence": [
+        "No URL versioning scheme defined",
+        "No deprecation policy",
+        "No breaking-change communication process"
+      ],
+      "impact": "Vendor lock-in risk, API instability",
+      "solution": "Implement semantic versioning with deprecation window",
+      "effort_hours": 10,
+      "effort_weeks": 0.2,
+      "priority": "P0"
+    }
+  ],
+
+  "high_priority": [
+    {
+      "id": "HP001",
+      "title": "JWT Claims Standardization",
+      "description": "Custom claims (org, roles) not precisely specified",
+      "severity": "HIGH",
+      "section": 2,
+      "effort_hours": 15,
+      "effort_weeks": 0.3,
+      "priority": "P1",
+      "deadline": "Q1 2026"
+    },
+    {
+      "id": "HP002",
+      "title": "Bulk-Operation APIs",
+      "description": "10 critical endpoints missing (batch import, bulk assign, etc)",
+      "severity": "HIGH",
+      "section": 9,
+      "effort_hours": 40,
+      "effort_weeks": 1,
+      "priority": "P1",
+      "deadline": "Q1 2026"
+    },
+    {
+      "id": "HP003",
+      "title": "GraphQL vs REST Decision",
+      "description": "API design consistency unclear",
+      "severity": "HIGH",
+      "section": 3,
+      "effort_hours": 5,
+      "effort_weeks": 0.1,
+      "priority": "P1",
+      "deadline": "Q1 2026"
+    }
+  ],
+
+  "findings": [
+    {
+      "section": 1,
+      "title": "API-Versionierung & Deprecation-Strategie",
+      "status": "MISSING",
+      "rating": "LOW",
+      "findings": [
+        "No URL versioning pattern defined",
+        "No deprecation policy documented",
+        "No breaking-change management process",
+        "No communication strategy for API changes"
+      ],
+      "recommendations": [
+        "Implement semantic versioning (MAJOR.MINOR.PATCH)",
+        "Include major version in URL path (/api/iam/v1/...)",
+        "Define 6-month deprecation window minimum",
+        "Establish communication process (email, blog, changelog)"
+      ]
+    },
+    {
+      "section": 2,
+      "title": "JWT-Claims Standardisierung",
+      "status": "PARTIAL",
+      "rating": "MEDIUM",
+      "findings": [
+        "Standard OIDC claims present (iss, sub, aud, exp, etc)",
+        "SVA custom claims not precisely specified (org, roles)",
+        "No JWT claims registry (/.well-known/sva-iam-claims.json)",
+        "Claims structure for organizations unclear"
+      ],
+      "recommendations": [
+        "Publish precise JWT claims schema",
+        "Create /.well-known/sva-iam-claims.json endpoint",
+        "Document organization claims: {id, name, path, level}",
+        "Define role claim format: {system_roles, organization_roles}"
+      ]
+    },
+    {
+      "section": 3,
+      "title": "API-Design & REST vs GraphQL",
+      "status": "UNDECIDED",
+      "rating": "MEDIUM",
+      "findings": [
+        "No decision between REST and GraphQL",
+        "No resource definitions documented",
+        "Design.md talks about APIs but structure unclear",
+        "No OpenAPI or GraphQL SDL"
+      ],
+      "recommendations": [
+        "Adopt HYBRID approach: REST primary + GraphQL secondary",
+        "REST for simple CRUD (users, orgs, roles)",
+        "GraphQL for complex queries (permissions, audits)",
+        "Publish OpenAPI 3.0 + GraphQL SDL"
+      ]
+    },
+    {
+      "section": 4,
+      "title": "Abwärtskompatibilität & Upgrade-Pfade",
+      "status": "PARTIAL",
+      "rating": "MEDIUM",
+      "findings": [
+        "Parallel auth mentioned but not detailed",
+        "No SQL migration strategy for RLS",
+        "No database rollback strategy",
+        "Gradual rollout planned (10% → 50% → 100%) but not formalized"
+      ],
+      "recommendations": [
+        "Document migration strategy for iam.account_organizations",
+        "Implement database snapshots before RLS activation",
+        "Define 48-hour rollback window with clear triggers",
+        "Formalize canary rollout process with automated rollback"
+      ]
+    },
+    {
+      "section": 5,
+      "title": "Datenmigration & Import/Export",
+      "status": "CRITICAL_GAP",
+      "rating": "LOW",
+      "findings": [
+        "Only audit-log export defined",
+        "No user/organization export APIs",
+        "No import APIs for bulk operations",
+        "No dry-run mode for imports",
+        "No idempotency guarantees"
+      ],
+      "recommendations": [
+        "Implement Export APIs for: Orgs, Users, Roles, Permissions, Assignments",
+        "Implement Import APIs with dry-run mode",
+        "Use JSON/CSV standard formats",
+        "Add checksums for data integrity verification",
+        "Guarantee idempotency (same import twice = same result)"
+      ]
+    },
+    {
+      "section": 6,
+      "title": "Offene Standards & Federation",
+      "status": "GOOD",
+      "rating": "HIGH",
+      "findings": [
+        "OIDC Authorization Code Flow (RFC 6749) ✅",
+        "PKCE (RFC 7636) ✅",
+        "JWT RS256 (RFC 7519) ✅",
+        "HttpOnly Cookies ✅",
+        "SAML/LDAP not planned until Q2 2026"
+      ],
+      "recommendations": [
+        "Publish OIDC Metadata Endpoint",
+        "Plan SAML 2.0 federation for Q2 2026",
+        "Document external IdP integration roadmap",
+        "Consider SCIM 2.0 for user provisioning"
+      ]
+    },
+    {
+      "section": 7,
+      "title": "Webhooks & Event-APIs",
+      "status": "MISSING",
+      "rating": "LOW",
+      "findings": [
+        "No webhook mechanism defined",
+        "No event pub/sub architecture",
+        "No GraphQL subscriptions",
+        "No event schema or examples",
+        "Partner systems cannot react to IAM changes"
+      ],
+      "recommendations": [
+        "Implement Kafka/Redis topics for IAM events",
+        "Create Webhook subscription REST API",
+        "Implement GraphQL subscriptions for real-time",
+        "Define event schema with versioning",
+        "Include retry policy + dead-letter-queue",
+        "Provide SDKs for webhook consumers"
+      ]
+    },
+    {
+      "section": 8,
+      "title": "Exit-Fähigkeit & Vendor Lock-in",
+      "status": "PARTIAL",
+      "rating": "MEDIUM",
+      "findings": [
+        "Keycloak is open source (low lock-in) ✅",
+        "OIDC is standard (portability) ✅",
+        "Postgres RLS is standard SQL ✅",
+        "ABAC scope format is proprietary (JSONB)",
+        "No export APIs (see section 5)",
+        "Org hierarchy model is SVA-specific"
+      ],
+      "recommendations": [
+        "Prioritize Export/Import APIs (section 5)",
+        "Plan for XACML/OPA export of permissions",
+        "Document org model mapping for other systems",
+        "Create 4-week migration playbook",
+        "Define data retention after exit (7 years, legal hold)"
+      ]
+    },
+    {
+      "section": 9,
+      "title": "Fehlende API-Endpunkte & Datenformate",
+      "status": "CRITICAL_GAP",
+      "rating": "LOW",
+      "findings": [
+        "Missing P0: User-Org assignment endpoints",
+        "Missing P0: Bulk assignment APIs",
+        "Missing P1: Permission validation endpoints",
+        "Missing P1: Organization hierarchy queries",
+        "Missing P1: Effective permissions queries",
+        "Missing P2: Authority delegation endpoints",
+        "Missing P2: Anomaly detection queries"
+      ],
+      "recommendations": [
+        "Add PATCH /users/{id}/organizations/{org_id}",
+        "Add DELETE /users/{id}/organizations/{org_id}",
+        "Add POST /organizations/{id}/users/bulk-assign (CSV)",
+        "Add GET /organizations/{id}/hierarchy-path",
+        "Add POST /permissions/validate-scope",
+        "Add GET /roles/{id}/effective-permissions",
+        "Add POST /users/{id}/delegate-authority",
+        "Add POST /audit-logs/analyze-anomalies"
+      ]
+    },
+    {
+      "section": 10,
+      "title": "Datenmodell-Stabilität",
+      "status": "GOOD",
+      "rating": "HIGH",
+      "findings": [
+        "Hierarchical org structure (recursive parent_id) ✅",
+        "Many-to-many user-org mapping ✅",
+        "JSONB for ABAC scopes (extensible) ✅",
+        "Immutable audit logs ✅",
+        "RLS-ready schema ✅",
+        "Temporal constraints not fully thought through",
+        "No schema versioning strategy"
+      ],
+      "recommendations": [
+        "Implement temporal tables for time-travel queries",
+        "Add version tracking to roles/permissions",
+        "Document schema evolution patterns",
+        "Use Flyway/Alembic for migrations",
+        "Create materialized views for performance"
+      ]
+    },
+    {
+      "section": 11,
+      "title": "API-Dokumentation & SDK-Qualität",
+      "status": "MISSING",
+      "rating": "LOW",
+      "findings": [
+        "No OpenAPI 3.0 specification",
+        "No GraphQL schema definition",
+        "No SDKs in any language",
+        "No Postman collection",
+        "No code examples or recipes",
+        "No API reference documentation website"
+      ],
+      "recommendations": [
+        "Generate OpenAPI 3.0 spec from code",
+        "Auto-generate SDKs (Python, TypeScript, Go)",
+        "Create Swagger UI + Redoc documentation",
+        "Publish developer portal (api-docs.sva-studio.de)",
+        "Create Postman collection",
+        "Provide code examples (5+ languages)",
+        "Launch API reference documentation"
+      ]
+    },
+    {
+      "section": 12,
+      "title": "Integrations-Risiken & Migrations-Fähigkeit",
+      "status": "MEDIUM",
+      "rating": "MEDIUM",
+      "findings": [
+        "No third-party IdP integration planned until Q2",
+        "Bulk-APIs missing (no batch-import)",
+        "No webhook delivery guarantees",
+        "Permission cache invalidation race conditions possible",
+        "Data portability gaps (see section 5)",
+        "No CLI tool for admin operations"
+      ],
+      "recommendations": [
+        "Plan SAML/LDAP federation for Q2 2026",
+        "Implement bulk-operation APIs",
+        "Use event-driven cache invalidation",
+        "Create detailed migration runbooks",
+        "Build CLI tool for admin operations",
+        "Establish pre-launch integration testing"
+      ]
+    }
+  ],
+
+  "efforts": {
+    "p0_total_hours": 185,
+    "p0_total_weeks": 4,
+    "p0_parallel": true,
+    "p1_total_hours": 100,
+    "p1_weeks_distributed": 12,
+    "assumption_team_size": "2-3 FTE"
+  },
+
+  "timeline": {
+    "week_1": [
+      "API Versioning Strategy",
+      "OpenAPI Spec Generation"
+    ],
+    "week_2_3": [
+      "Export/Import Framework",
+      "SDK Auto-generation"
+    ],
+    "week_3_4": [
+      "Event/Webhook Framework"
+    ],
+    "week_5_plus": [
+      "JWT Claims Finalization",
+      "Bulk-Operations",
+      "GraphQL Implementation"
+    ]
+  },
+
+  "deployment_order": [
+    {
+      "phase": 1,
+      "name": "API Versioning + OpenAPI",
+      "weeks": 1,
+      "items": ["B004", "OpenAPI spec"]
+    },
+    {
+      "phase": 2,
+      "name": "Export/Import Framework",
+      "weeks": 3,
+      "items": ["B001", "Bulk-ops"]
+    },
+    {
+      "phase": 3,
+      "name": "Event/Webhook API",
+      "weeks": 2,
+      "items": ["B003"]
+    },
+    {
+      "phase": 4,
+      "name": "Documentation + SDKs",
+      "weeks": 1,
+      "items": ["B002"]
+    },
+    {
+      "phase": 5,
+      "name": "Testing + Polish",
+      "weeks": 1,
+      "items": ["Integration tests", "Performance validation"]
+    }
+  ],
+
+  "success_criteria": [
+    "Export APIs functional (Orgs, Users, Roles)",
+    "Import APIs functional (dry-run + execute)",
+    "OpenAPI 3.0 spec published",
+    "SDKs auto-generated (Python, TypeScript, Go)",
+    "Webhook subscriptions working",
+    "Event schema validated",
+    "API rate-limiting documented",
+    "Versioning strategy implemented",
+    "Error handling standardized",
+    "Developer Portal launched"
+  ],
+
+  "go_no_go_decision": {
+    "recommendation": "CONDITIONAL_GO",
+    "condition": "After fixing all P0 blockers",
+    "blockers_count": 4,
+    "effort_weeks": 4,
+    "then_proceed_with": "P1 roadmap (Q1 2026)",
+    "final_approval_required": true
+  },
+
+  "documents_generated": [
+    "interoperability-review-iam.md (55 KB, full review)",
+    "interoperability-review-iam-EXECUTIVE-SUMMARY.md (6.6 KB)",
+    "interoperability-review-iam-IMPLEMENTATION-CHECKLIST.md (13 KB)",
+    "interoperability-review-iam-QUICK-REFERENCE.md (7.4 KB)",
+    "interoperability-review-iam-INDEX.md (10 KB)",
+    "interoperability-review-iam-findings.json (this file)"
+  ]
+}

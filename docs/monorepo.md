@@ -1,7 +1,7 @@
 # Monorepo Struktur
 
 ## Ordner
-- apps/: laufende Anwendungen (z. B. studio)
+- apps/: laufende Anwendungen (z. B. sva-studio-react)
 - packages/: publishable Libraries und Plugins
 - tooling/: gemeinsame Tools und Konfigurationen
 - scripts/: Automations-Skripte

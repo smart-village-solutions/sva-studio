@@ -30,7 +30,7 @@ SVA Studio (ehemals "CMS 2.0") modernisiert das Redaktionssystem der Smart Villa
 - **API-First / Headless:** GraphQL-basierte Backend-API (extern gehostet)
 - **Modulare Architektur:** Plugin-System implementiert; klar abgegrenzte Features
 - **Monorepo:** Nx Integrated Setup mit:
-  - **Apps:** `studio` (Frontend-Anwendung mit Router, Styling, Components)
+  - **Apps:** `sva-studio-react` (Frontend-Anwendung mit Router, Styling, Components)
   - **Packages:** `core` (Routing Registry), `sdk` (Plugin SDK), `data` (Datenmodelle), `plugin-example` (Beispiel)
 - **Separation of Concerns:** Backend/Frontend klar getrennt; API als zentrale Schnittstelle
 - **OpenSpec:** Strukturierte Change-Proposals und Specs in `openspec/` für Architektur-Entscheidungen

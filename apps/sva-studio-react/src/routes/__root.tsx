@@ -1,10 +1,10 @@
-import { TanStackDevtools } from '@tanstack/react-devtools'
-import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
-import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
+import { TanStackDevtools } from '@tanstack/react-devtools';
+import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router';
+import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools';
 
-import Header from '../components/Header'
+import Header from '../components/Header';
 
-import appCss from '../styles.css?url'
+import appCss from '../styles.css?url';
 
 export const Route = createRootRoute({
   head: () => ({
@@ -29,9 +29,9 @@ export const Route = createRootRoute({
   }),
 
   shellComponent: RootDocument,
-})
+});
 
-export const rootRoute = Route
+export const rootRoute = Route;
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
@@ -42,9 +42,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       <body className="min-h-screen bg-slate-950 text-slate-100">
         <Header />
         <main className="min-h-[calc(100vh-80px)]">
-          <div className="mx-auto w-full max-w-5xl px-6 py-10">
-            {children}
-          </div>
+          <div className="mx-auto w-full max-w-5xl px-6 py-10">{children}</div>
         </main>
         <TanStackDevtools
           config={{
@@ -60,5 +58,5 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <Scripts />
       </body>
     </html>
-  )
+  );
 }

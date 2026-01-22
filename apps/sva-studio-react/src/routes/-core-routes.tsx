@@ -11,15 +11,13 @@ const getNames = createServerFn().handler(async () => {
   return demoNames;
 });
 
-const submitGreeting = createServerFn({ method: 'POST' }).handler(
-  async ({ data }) => {
-    const name = data?.name?.trim() || 'Welt';
-    return {
-      message: `Hallo ${name}!`,
-      serverTime: new Date().toISOString(),
-    };
-  },
-);
+const submitGreeting = createServerFn({ method: 'POST' }).handler(async ({ data }) => {
+  const name = data?.name?.trim() || 'Welt';
+  return {
+    message: `Hallo ${name}!`,
+    serverTime: new Date().toISOString(),
+  };
+});
 
 const getPunkSongs = () => {
   return [
@@ -103,13 +101,15 @@ const ServerFuncsDemo = () => {
   return (
     <div className="flex flex-col gap-6 text-slate-100">
       <div className="flex flex-col gap-2">
-        <Link className="flex items-center gap-2 text-sm text-slate-400 hover:text-slate-200" to="../..">
+        <Link
+          className="flex items-center gap-2 text-sm text-slate-400 hover:text-slate-200"
+          to="../.."
+        >
           ← Zurück
         </Link>
         <h2 className="text-2xl font-semibold">Server Functions</h2>
         <p className="text-slate-300">
-          Dieses Beispiel ruft eine serverseitige Funktion auf und liefert eine
-          Antwort zurück.
+          Dieses Beispiel ruft eine serverseitige Funktion auf und liefert eine Antwort zurück.
         </p>
       </div>
       <form className="flex flex-col gap-3" onSubmit={handleSubmit}>
@@ -155,7 +155,10 @@ const ApiRequestDemo = () => {
   return (
     <div className="flex flex-col gap-6 text-slate-100">
       <div className="flex flex-col gap-2">
-        <Link className="flex items-center gap-2 text-sm text-slate-400 hover:text-slate-200" to="../..">
+        <Link
+          className="flex items-center gap-2 text-sm text-slate-400 hover:text-slate-200"
+          to="../.."
+        >
           ← Zurück
         </Link>
         <h2 className="text-2xl font-semibold">API Request</h2>
@@ -189,7 +192,10 @@ const SsrLayout = () => {
 const SsrHome = () => {
   return (
     <div className="flex flex-col gap-4">
-      <Link className="flex items-center gap-2 text-sm text-slate-400 hover:text-slate-200" to="../..">
+      <Link
+        className="flex items-center gap-2 text-sm text-slate-400 hover:text-slate-200"
+        to="../.."
+      >
         ← Zurück
       </Link>
       <h2 className="text-2xl font-semibold">SSR Demos</h2>
@@ -274,7 +280,10 @@ const ApiHome = () => {
 const ApiNames = ({ names }: { names: string[] }) => {
   return (
     <div className="flex flex-col gap-4 text-slate-100">
-      <Link className="flex items-center gap-2 text-sm text-slate-400 hover:text-slate-200" to="../..">
+      <Link
+        className="flex items-center gap-2 text-sm text-slate-400 hover:text-slate-200"
+        to="../.."
+      >
         ← Zurück
       </Link>
       <h2 className="text-2xl font-semibold">API Names</h2>
@@ -386,12 +395,7 @@ export const coreRouteFactories = [
       startHomeRoute,
       serverFuncsRoute,
       apiRequestRoute,
-      ssrRoute.addChildren([
-        ssrHomeRoute,
-        ssrSpaModeRoute,
-        ssrFullRoute,
-        ssrDataOnlyRoute,
-      ]),
+      ssrRoute.addChildren([ssrHomeRoute, ssrSpaModeRoute, ssrFullRoute, ssrDataOnlyRoute]),
     ]);
 
     const apiRouteTree = apiRoute.addChildren([apiHomeRoute, apiNamesRoute]);

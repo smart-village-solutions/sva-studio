@@ -1,14 +1,15 @@
 {
-  "name": "studio",
+  "name": "sva-studio-react",
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
-  "sourceRoot": "apps/studio/src",
+  "sourceRoot": "apps/sva-studio-react/src",
   "projectType": "application",
+  "tags": ["scope:app", "type:app"],
   "targets": {
     "serve": {
       "executor": "nx:run-commands",
       "options": {
         "command": "pnpm run dev",
-        "cwd": "apps/studio"
+        "cwd": "apps/sva-studio-react"
       }
     },
     "build": {
@@ -16,29 +17,28 @@
       "outputs": ["{projectRoot}/dist"],
       "options": {
         "command": "pnpm run build",
-        "cwd": "apps/studio"
+        "cwd": "apps/sva-studio-react"
       }
     },
     "preview": {
       "executor": "nx:run-commands",
       "options": {
         "command": "pnpm run preview",
-        "cwd": "apps/studio"
+        "cwd": "apps/sva-studio-react"
       }
     },
     "test": {
       "executor": "nx:run-commands",
       "options": {
         "command": "pnpm run test",
-        "cwd": "apps/studio"
+        "cwd": "apps/sva-studio-react"
       }
     },
     "lint": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "node -e \"console.log('lint not configured for studio')\""
+        "command": "node -e \"console.log('lint not configured for sva-studio-react')\""
       }
     }
-  },
-  "tags": ["scope:app", "type:app"]
+  }
 }

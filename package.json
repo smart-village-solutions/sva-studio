@@ -39,12 +39,13 @@
     "@nx/eslint": "^22.3.3",
     "@nx/eslint-plugin": "^22.3.3",
     "@nx/js": "^22.3.3",
+    "@types/node": "^22.10.2",
     "autoprefixer": "10.4.20",
     "eslint": "^9.39.2",
     "nx": "^22.3.3",
     "postcss": "8.4.49",
     "tailwindcss": "3.4.14",
     "tsx": "^4.21.0",
-    "typescript": "^5.6.3"
+    "typescript": "^5.9.3"
   }
 }

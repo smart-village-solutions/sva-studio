@@ -9,6 +9,7 @@
     "paths": {
       "@sva/core": ["packages/core/src/index.ts"],
       "@sva/data": ["packages/data/src/index.ts"],
+      "@sva/auth": ["packages/auth/src/index.ts"],
       "@sva/sdk": ["packages/sdk/src/index.ts"],
       "@sva/plugin-example": ["packages/plugin-example/src/index.ts"]
     }

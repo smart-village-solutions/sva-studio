@@ -62,6 +62,18 @@ These rules are **NON-NEGOTIABLE** and must be followed in all development work.
 
 ---
 
+## 1.1 Tooling: LSP Diagnostics
+
+### ✅ REQUIRED
+- Install the TypeScript language server globally for LSP diagnostics:
+  - `npm install -g typescript-language-server typescript`
+
+**Why this is required:**
+- The `lsp_diagnostics` tooling used in this workspace resolves `typescript-language-server` from the global PATH.
+- A local devDependency is not sufficient for the diagnostics tool.
+
+---
+
 ## 2. Translation System
 
 ### Process for UI Texts

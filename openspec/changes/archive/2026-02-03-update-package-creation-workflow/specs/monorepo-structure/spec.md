@@ -1,48 +1,4 @@
-# Capability: monorepo-structure
-
-## Purpose
-Definiert die Nx-basierte Monorepo-Struktur für SVA Studio, inklusive Package-Management, Build-Konventionen und Generatoren für konsistente Entwicklungs-Workflows.
-
-## Requirements
-
-### Requirement: Monorepo-Grundstruktur
-Das System SHALL eine Nx Integrated Monorepo-Struktur mit getrennten Bereichen für Apps und Packages bereitstellen.
-
-#### Scenario: Workspace-Struktur vorhanden
-- **WHEN** das Repository initialisiert ist
-- **THEN** existieren mindestens apps/, packages/, tooling/ und scripts/
-
-### Requirement: Publishable Packages und Plugins
-Das System SHALL Packages als eigenständige npm-Module organisieren, inklusive klarer Namenskonventionen für Core und Plugins.
-
-#### Scenario: Package-Namensschema
-- **WHEN** ein neues Paket erstellt wird
-- **THEN** verwendet es ein Scope wie @sva/* und Plugins verwenden @sva/plugin-*
-
-### Requirement: App-Stack Definition
-Das System SHALL eine Web-App unter apps/sva-studio-react mit React und TanStack Start bereitstellen.
-
-#### Scenario: Start-App vorhanden
-- **WHEN** das Workspace-Setup abgeschlossen ist
-- **THEN** existiert apps/sva-studio-react als TanStack-Start-App
-
-### Requirement: Build- und Target-Konventionen
-Das System SHALL standardisierte Nx Targets für build, test und lint bereitstellen, vorrangig über Nx-Generatoren (@nx/js:lib) erstellt.
-
-#### Scenario: Standardisierte Targets
-- **WHEN** ein neues Package oder eine App erstellt wird
-- **THEN** sind build, test und lint als Nx Targets definiert
-
-#### Scenario: Automatische Targets via Generator
-- **WHEN** ein Package via `nx g @nx/js:lib` erstellt wird
-- **THEN** werden build (tsc), test (vitest optional), lint (eslint optional) automatisch konfiguriert
-- **AND** project.json wird mit korrekten Executor-Definitionen generiert
-- **AND** `nx build <package>`, `nx test <package>` sind sofort verfügbar
-
-#### Scenario: Targets im Projektgraph sichtbar
-- **WHEN** `nx graph` ausgeführt wird
-- **THEN** sind alle Targets und deren Abhängigkeiten sichtbar
-- **AND** affected-Commands funktionieren zuverlässig
+## ADDED Requirements
 
 ### Requirement: Package-Erstellung via @nx/js:lib Generator
 Das System SHALL neue Packages primär über `nx g @nx/js:lib` mit SVA-Konventionen erstellen, um automatisch korrekte Targets, TypeScript-Setup und Projektgraph-Integration zu garantieren.
@@ -93,3 +49,19 @@ Das System SHALL klare, wiederverwendbare Generator-Commands und Workflows dokum
 - **THEN** findet er Copy-Paste-Ready Commands mit SVA-Defaults
 - **AND** Erklärungen für jeden Flag sind vorhanden
 - **AND** Verlinkung zu Nx-Dokumentation ist enthalten
+
+## MODIFIED Requirements
+
+### Requirement: Build- und Target-Konventionen
+Das System SHALL standardisierte Nx Targets für build, test und lint bereitstellen, **vorrangig über Nx-Generatoren (@nx/js:lib) erstellt**.
+
+#### Scenario: Automatische Targets via Generator
+- **WHEN** ein Package via `nx g @nx/js:lib` erstellt wird
+- **THEN** werden build (tsc), test (vitest optional), lint (eslint optional) automatisch konfiguriert
+- **AND** project.json wird mit korrekten Executor-Definitionen generiert
+- **AND** `nx build <package>`, `nx test <package>` sind sofort verfügbar
+
+#### Scenario: Targets im Projektgraph sichtbar
+- **WHEN** `nx graph` ausgeführt wird
+- **THEN** sind alle Targets und deren Abhängigkeiten sichtbar
+- **AND** affected-Commands funktionieren zuverlässig

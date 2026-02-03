@@ -6,10 +6,7 @@
     "declarationMap": true,
     "outDir": "dist",
     "rootDir": "src",
-    "types": ["react", "react-dom"],
-    "paths": {
-      "@sva/core": ["packages/core/dist/index.d.ts"]
-    }
+    "types": ["node"]
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx"]
+  "include": ["src/**/*.ts"]
 }

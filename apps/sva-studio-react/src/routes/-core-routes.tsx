@@ -1,3 +1,4 @@
+import { authRoutePaths } from '@sva/auth';
 import type { RootRoute } from '@tanstack/react-router';
 import { Link, Outlet, createRoute } from '@tanstack/react-router';
 import { createServerFn, useServerFn } from '@tanstack/react-start';
@@ -11,13 +12,15 @@ const getNames = createServerFn().handler(async () => {
   return demoNames;
 });
 
-const submitGreeting = createServerFn({ method: 'POST' }).handler(async ({ data }) => {
-  const name = data?.name?.trim() || 'Welt';
-  return {
-    message: `Hallo ${name}!`,
-    serverTime: new Date().toISOString(),
-  };
-});
+const submitGreeting = createServerFn({ method: 'POST' })
+  .inputValidator((data: { name?: string }) => data)
+  .handler(async ({ data }) => {
+    const name = data?.name?.trim() || 'Welt';
+    return {
+      message: `Hallo ${name}!`,
+      serverTime: new Date().toISOString(),
+    };
+  });
 
 const getPunkSongs = () => {
   return [
@@ -39,20 +42,51 @@ const DemoHome = () => {
   return (
     <div className="flex flex-col gap-4">
       <h2 className="text-2xl font-semibold">TanStack Start Demos</h2>
+      <div className="flex flex-wrap gap-3 text-sm text-slate-400">
+        <span className="rounded-full border text-xs border-slate-800 px-4 py-2">Nx Monorepo</span>
+        <span className="rounded-full border text-xs border-slate-800 px-4 py-2">
+          TanStack Start
+        </span>
+        <span className="rounded-full border text-xs border-slate-800 px-4 py-2">
+          Core + Plugins
+        </span>
+      </div>
+      <div className="flex flex-wrap text-sm text-slate-300">
+        <Link
+          className="text-sm font-semibold"
+          to="https://tanstack.com/start"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          ☛ TanStack Start Docs
+        </Link>
+      </div>
       <p className="text-slate-300">
         Diese Routen entsprechen den Standard-Demos aus dem Start-Template.
       </p>
       <div className="flex flex-wrap gap-3 text-sm text-slate-300">
-        <Link className="rounded border border-slate-800 px-3 py-2" to="/demo/start/server-funcs">
+        <Link
+          className="rounded border border-slate-800 px-3 py-2 transition hover:text-white hover:border-slate-400"
+          to="/demo/start/server-funcs"
+        >
           Server Functions
         </Link>
-        <Link className="rounded border border-slate-800 px-3 py-2" to="/demo/start/api-request">
+        <Link
+          className="rounded border border-slate-800 px-3 py-2 transition hover:text-white hover:border-slate-400"
+          to="/demo/start/api-request"
+        >
           API Request
         </Link>
-        <Link className="rounded border border-slate-800 px-3 py-2" to="/demo/start/ssr">
+        <Link
+          className="rounded border border-slate-800 px-3 py-2 transition hover:text-white hover:border-slate-400"
+          to="/demo/start/ssr"
+        >
           SSR Demos
         </Link>
-        <Link className="rounded border border-slate-800 px-3 py-2" to="/demo/api/names">
+        <Link
+          className="rounded border border-slate-800 px-3 py-2 transition hover:text-white hover:border-slate-400"
+          to="/demo/api/names"
+        >
           API Names
         </Link>
       </div>
@@ -296,7 +330,28 @@ const ApiNames = ({ names }: { names: string[] }) => {
   );
 };
 
-export const coreRouteFactories = [
+const authRouteFactories = import.meta.env.SSR
+  ? (await import('@sva/auth/server')).authRouteDefinitions.map(
+      (definition) => (rootRoute: RootRoute) =>
+        createRoute({
+          getParentRoute: () => rootRoute,
+          path: definition.path,
+          component: () => null,
+          server: {
+            handlers: definition.handlers,
+          },
+        })
+    )
+  : authRoutePaths.map(
+      (path) => (rootRoute: RootRoute) =>
+        createRoute({
+          getParentRoute: () => rootRoute,
+          path,
+          component: () => null,
+        })
+    );
+
+export const coreRouteFactoriesBase = [
   (rootRoute: RootRoute) =>
     createRoute({
       getParentRoute: () => rootRoute,
@@ -403,3 +458,5 @@ export const coreRouteFactories = [
     return demoRoute.addChildren([demoHomeRoute, startRouteTree, apiRouteTree]);
   },
 ];
+
+export const coreRouteFactories = [...coreRouteFactoriesBase, ...authRouteFactories];

@@ -1,0 +1,21 @@
+{
+  "name": "@sva/auth",
+  "version": "0.0.1",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "module": "src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./server": {
+      "types": "./src/index.server.ts",
+      "default": "./src/index.server.ts"
+    }
+  },
+  "dependencies": {
+    "openid-client": "^6.4.0"
+  }
+}

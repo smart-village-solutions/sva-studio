@@ -1,4 +1,4 @@
-import { Link } from '@tanstack/react-router'
+import { Link } from '@tanstack/react-router';
 
 export default function Header() {
   return (
@@ -20,5 +20,5 @@ export default function Header() {
         </div>
       </nav>
     </header>
-  )
+  );
 }

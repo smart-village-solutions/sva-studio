@@ -12,7 +12,7 @@
 - Dies ist ein pnpm-Workspace-Monorepo; Packages sind nach Funktionalität organisiert
 - Nx bietet Caching, affected-Testing, Targeting und parallele Ausführung für mehr Effizienz
 - Alle verfügbaren Packages anzeigen: `npx nx show projects`
-- Ein einzelnes Projekt gezielt starten: `npx nx run studio:serve`
+- Ein einzelnes Projekt gezielt starten: `npx nx run sva-studio-react:serve`
 - Nur betroffene Tests ausführen: `npx nx affected --target=test:unit`
 - Ausschlussmuster verwenden: `npx nx run-many --target=test:unit --exclude="examples/**,e2e/**"`
 
@@ -24,7 +24,7 @@
 - **Formatierung beheben:** `pnpm format`
 - **Effizienter, zielgerichteter Test-Workflow:**
   1. **Nur affected:** `npx nx affected --target=test:unit` (vergleicht mit `main`-Branch)
-  2. **Spezifische Packages:** `npx nx run studio:test:unit`
+  2. **Spezifische Packages:** `npx nx run sva-studio-react:test:unit`
   3. **Spezifische Dateien:** `cd packages/data && npx vitest run tests/xyz.test.tsx`
 - **Pro-Tipps:**
   - Mit `npx vitest list` verfügbare Tests vorab ansehen

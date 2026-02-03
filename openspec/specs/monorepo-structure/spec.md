@@ -15,11 +15,11 @@ Das System SHALL Packages als eigenständige npm-Module organisieren, inklusive 
 - **THEN** verwendet es ein Scope wie @sva/* und Plugins verwenden @sva/plugin-*
 
 ### Requirement: App-Stack Definition
-Das System SHALL eine Web-App unter apps/studio mit React und TanStack Start bereitstellen.
+Das System SHALL eine Web-App unter apps/sva-studio-react mit React und TanStack Start bereitstellen.
 
 #### Scenario: Start-App vorhanden
 - **WHEN** das Workspace-Setup abgeschlossen ist
-- **THEN** existiert apps/studio als TanStack-Start-App
+- **THEN** existiert apps/sva-studio-react als TanStack-Start-App
 
 ### Requirement: Build- und Target-Konventionen
 Das System SHALL standardisierte Nx Targets für build, test und lint bereitstellen.

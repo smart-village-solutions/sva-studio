@@ -1,4 +1,5 @@
 import { getRedisClient } from './redis.server';
+import { encryptToken, decryptToken } from './crypto.server';
 import type { Session } from './types';
 
 const SESSION_PREFIX = 'session:';
@@ -7,7 +8,50 @@ const DEFAULT_SESSION_TTL = 60 * 60 * 24 * 7; // 7 days in seconds
 const DEFAULT_LOGIN_STATE_TTL = 60 * 10; // 10 minutes in seconds
 
 /**
- * Create a new session in Redis with TTL.
+ * Get encryption key from environment
+ */
+const getEncryptionKey = (): string => {
+  return process.env.ENCRYPTION_KEY || '';
+};
+
+/**
+ * Apply token encryption to session data if configured
+ */
+const encryptSessionTokens = (session: Session): Session => {
+  const encryptionKey = getEncryptionKey();
+  if (!encryptionKey) return session;
+
+  return {
+    ...session,
+    accessToken: session.accessToken ? encryptToken(session.accessToken, encryptionKey) : undefined,
+    refreshToken: session.refreshToken ? encryptToken(session.refreshToken, encryptionKey) : undefined,
+    idToken: session.idToken ? encryptToken(session.idToken, encryptionKey) : undefined,
+  };
+};
+
+/**
+ * Decrypt session tokens if configured
+ */
+const decryptSessionTokens = (session: Session): Session => {
+  const encryptionKey = getEncryptionKey();
+  if (!encryptionKey) return session;
+
+  try {
+    return {
+      ...session,
+      accessToken: session.accessToken ? decryptToken(session.accessToken, encryptionKey) : undefined,
+      refreshToken: session.refreshToken ? decryptToken(session.refreshToken, encryptionKey) : undefined,
+      idToken: session.idToken ? decryptToken(session.idToken, encryptionKey) : undefined,
+    };
+  } catch (err) {
+    console.error('[SESSION] Token decryption failed:', err);
+    // Return as-is if decryption fails (might be unencrypted legacy data)
+    return session;
+  }
+};
+
+/**
+ * Create a new session in Redis with TTL (tokens encrypted if ENCRYPTION_KEY set).
  */
 export async function createSession(
   sessionId: string,
@@ -17,13 +61,16 @@ export async function createSession(
   const redis = getRedisClient();
   const key = SESSION_PREFIX + sessionId;
 
-  await redis.set(key, JSON.stringify(session), 'EX', ttl);
+  // Encrypt tokens before storing
+  const encryptedSession = encryptSessionTokens(session);
+
+  await redis.set(key, JSON.stringify(encryptedSession), 'EX', ttl);
 
   console.log(`[REDIS] Session created: ${sessionId} (TTL: ${ttl}s)`);
 }
 
 /**
- * Get a session from Redis.
+ * Get a session from Redis (tokens decrypted if ENCRYPTION_KEY set).
  */
 export async function getSession(sessionId: string): Promise<Session | undefined> {
   const redis = getRedisClient();
@@ -36,7 +83,10 @@ export async function getSession(sessionId: string): Promise<Session | undefined
     return undefined;
   }
 
-  const session = JSON.parse(data) as Session;
+  let session = JSON.parse(data) as Session;
+
+  // Decrypt tokens if needed
+  session = decryptSessionTokens(session);
 
   // Check if session is expired
   if (session.expiresAt && new Date(session.expiresAt) < new Date()) {
@@ -50,7 +100,7 @@ export async function getSession(sessionId: string): Promise<Session | undefined
 }
 
 /**
- * Update an existing session in Redis (preserves TTL).
+ * Update an existing session in Redis (preserves TTL, encrypts tokens).
  */
 export async function updateSession(
   sessionId: string,
@@ -68,11 +118,14 @@ export async function updateSession(
   // Merge updates
   const updatedSession: Session = { ...currentSession, ...updates };
 
+  // Encrypt tokens before storing
+  const encryptedSession = encryptSessionTokens(updatedSession);
+
   // Get remaining TTL to preserve it
   const ttl = await redis.ttl(key);
   const finalTtl = ttl > 0 ? ttl : DEFAULT_SESSION_TTL;
 
-  await redis.set(key, JSON.stringify(updatedSession), 'EX', finalTtl);
+  await redis.set(key, JSON.stringify(encryptedSession), 'EX', finalTtl);
 
   console.log(`[REDIS] Session updated: ${sessionId} (TTL: ${finalTtl}s)`);
 }
@@ -107,9 +160,9 @@ export async function createLoginState(
 ): Promise<void> {
   const redis = getRedisClient();
   const key = LOGIN_STATE_PREFIX + state;
-  
+
   await redis.set(key, JSON.stringify(data), 'EX', DEFAULT_LOGIN_STATE_TTL);
-  
+
   console.log(`[REDIS] Login state created: ${state} (TTL: ${DEFAULT_LOGIN_STATE_TTL}s)`);
 }
 
@@ -121,19 +174,19 @@ export async function consumeLoginState(
 ): Promise<{ codeVerifier: string; nonce: string; createdAt: number; redirectTo?: string } | undefined> {
   const redis = getRedisClient();
   const key = LOGIN_STATE_PREFIX + state;
-  
+
   const data = await redis.get(key);
-  
+
   if (!data) {
     console.log(`[REDIS] Login state not found: ${state}`);
     return undefined;
   }
-  
+
   // Delete immediately (one-time use)
   await redis.del(key);
-  
+
   const result = JSON.parse(data) as { codeVerifier: string; nonce: string; createdAt: number; redirectTo?: string };
-  
+
   console.log(`[REDIS] Login state consumed: ${state}`);
   return result;
 }

@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "cookie-es": "^1.2.2",
+    "ioredis": "^5.4.2",
     "openid-client": "^6.4.0"
   },
   "devDependencies": {

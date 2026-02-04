@@ -6,13 +6,13 @@ export type SessionUser = {
 };
 
 export type Session = {
-  id: string;
-  user: SessionUser;
-  accessToken: string;
-  createdAt: number;
+  userId: string;
+  user?: SessionUser;
+  accessToken?: string;
+  createdAt: string;
   refreshToken?: string;
   idToken?: string;
-  expiresAt?: number;
+  expiresAt?: string;
 };
 
 export type LoginState = {

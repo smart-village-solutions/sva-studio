@@ -41,3 +41,9 @@ log/
 .nx/installation
 .nx/cache
 .nx/workspace-data
+
+# TLS Certificates (local dev only)
+*.pem
+*.crt
+*.key
+dev/redis-tls/

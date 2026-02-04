@@ -30,8 +30,8 @@
 - [x] 3.5 Security-Review durchführen (siehe SECURITY_REVIEW_COMPLETED.md) ✅ **READY FOR STAGING**
 
 ## 4. Betrieb
-- [ ] 4.1 Monitoring/Alerting-Anforderungen dokumentieren
-- [ ] 4.2 Backup/Restore-Runbook skizzieren
+- [x] 4.1 Monitoring/Alerting-Anforderungen dokumentieren ✅ (monitoring-alerting-requirements.md)
+- [x] 4.2 Backup/Restore-Runbook skizzieren ✅ (backup-restore-runbook.md)
 
 ## 5. Rollout
 - [ ] 5.1 Staging-Konfiguration (Managed/Self-Hosted) festlegen

@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import { deleteCookie, getCookie, getResponseHeaders, setCookie } from '@tanstack/react-start/server';
+import { parse as parseCookie, serialize as serializeCookie } from 'cookie-es';
 
 import { createLoginUrl, getSessionUser, handleCallback, logoutSession } from './auth.server';
 import { getAuthConfig } from './config';
@@ -8,28 +8,6 @@ import type { LoginState } from './types';
 
 type LoginStateCookiePayload = LoginState & {
   state: string;
-};
-
-const attachStartSetCookieHeaders = (response: Response): Response => {
-  const headers = getResponseHeaders();
-  const headersWithGetSetCookie = headers as Headers & {
-    getSetCookie?: () => Array<string>;
-  };
-
-  const setCookies =
-    typeof headersWithGetSetCookie.getSetCookie === 'function'
-      ? headersWithGetSetCookie.getSetCookie()
-      : headers.get('set-cookie')
-        ? [headers.get('set-cookie') ?? '']
-        : [];
-
-  for (const cookie of setCookies) {
-    if (cookie) {
-      response.headers.append('set-cookie', cookie);
-    }
-  }
-
-  return response;
 };
 
 const encodeLoginStateCookie = (payload: LoginStateCookiePayload, secret: string) => {
@@ -66,8 +44,7 @@ export const loginHandler = async (): Promise<Response> => {
   const { loginStateCookieName, loginStateSecret } = getAuthConfig();
   const cookiePayload: LoginStateCookiePayload = { state, ...loginState };
 
-  // Use TanStack Start cookie API
-  setCookie(
+  const cookie = serializeCookie(
     loginStateCookieName,
     encodeLoginStateCookie(cookiePayload, loginStateSecret),
     {
@@ -78,17 +55,19 @@ export const loginHandler = async (): Promise<Response> => {
     }
   );
 
-    // Redirect to Keycloak
-    return attachStartSetCookieHeaders(
-      new Response(null, {
-        status: 302,
-        headers: { Location: url },
-      })
-    );
+  return new Response(null, {
+    status: 302,
+    headers: {
+      Location: url,
+      'Set-Cookie': cookie,
+    }
+  });
 };
 
 /**
  * Handles the IdP callback, creates a session, and redirects to the app.
+ *
+ * TEST VERSION: Using TanStack Start Cookie API
  */
 export const callbackHandler = async (request: Request): Promise<Response> => {
   const url = new URL(request.url);
@@ -112,11 +91,8 @@ export const callbackHandler = async (request: Request): Promise<Response> => {
   }
 
   const { loginStateCookieName, loginStateSecret, sessionCookieName } = getAuthConfig();
-
-  // Use TanStack Start getCookie API
-  const loginStateCookieValue = await getCookie(loginStateCookieName);
-  const loginStateCookie = decodeLoginStateCookie(loginStateCookieValue, loginStateSecret);
-
+  const cookies = parseCookie(request.headers.get('Cookie') || '');
+  const loginStateCookie = decodeLoginStateCookie(cookies[loginStateCookieName], loginStateSecret);
   const now = Date.now();
   const cookieLoginState =
     loginStateCookie && loginStateCookie.state === state
@@ -126,15 +102,18 @@ export const callbackHandler = async (request: Request): Promise<Response> => {
           createdAt: loginStateCookie.createdAt,
         }
       : null;
-
   if (cookieLoginState && now - cookieLoginState.createdAt > 10 * 60 * 1000) {
-    deleteCookie(loginStateCookieName, { path: '/' });
-    return attachStartSetCookieHeaders(
-      new Response(null, {
-        status: 302,
-        headers: { Location: '/?auth=state-expired' },
-      })
-    );
+    const deleteCookie = serializeCookie(loginStateCookieName, '', {
+      path: '/',
+      maxAge: 0,
+    });
+    return new Response(null, {
+      status: 302,
+      headers: {
+        Location: '/?auth=state-expired',
+        'Set-Cookie': deleteCookie,
+      },
+    });
   }
 
   try {
@@ -145,36 +124,81 @@ export const callbackHandler = async (request: Request): Promise<Response> => {
       loginState: cookieLoginState,
     });
 
-    console.log('[AUTH] Session created:', sessionId);
-    console.log('[AUTH] Using TanStack Start setCookie API');
+    console.log('[AUTH-TEST] Session created:', sessionId);
 
-    // ✅ Use TanStack Start cookie APIs
-    deleteCookie(loginStateCookieName, { path: '/' });
+    // ✅ EXPERIMENT: Try TanStack Start cookie API
+    try {
+      // Option 1: Import from @tanstack/start
+      const { setCookie } = await import('@tanstack/start').catch(() => ({ setCookie: null }));
 
-    setCookie(sessionCookieName, sessionId, {
+      if (setCookie) {
+        console.log('[AUTH-TEST] Using TanStack Start setCookie API');
+
+        // Set session cookie
+        setCookie(sessionCookieName, sessionId, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          path: '/',
+        });
+
+        // Delete login state cookie
+        setCookie(loginStateCookieName, '', {
+          path: '/',
+          maxAge: 0,
+        });
+
+        console.log('[AUTH-TEST] Cookies set via setCookie() - testing redirect');
+
+        // Redirect
+        return new Response(null, {
+          status: 302,
+          headers: { Location: '/?auth=ok&method=tanstack-api' },
+        });
+      } else {
+        console.log('[AUTH-TEST] setCookie not available, falling back to manual headers');
+      }
+    } catch (importError) {
+      console.error('[AUTH-TEST] Failed to import TanStack Start:', importError);
+    }
+
+    // Fallback: Manual header setting (original method)
+    const sessionCookie = serializeCookie(sessionCookieName, sessionId, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
     });
 
-    console.log('[AUTH] Cookies set successfully, redirecting...');
+    const deleteCookie = serializeCookie(loginStateCookieName, '', {
+      path: '/',
+      maxAge: 0,
+    });
 
-    return attachStartSetCookieHeaders(
-      new Response(null, {
-        status: 302,
-        headers: { Location: '/?auth=ok' },
-      })
-    );
+    console.log('[AUTH-TEST] Fallback: Setting cookies manually');
+    console.log('[AUTH-TEST] Session cookie:', sessionCookie);
+
+    const headers = new Headers();
+    headers.set('Location', '/?auth=ok&method=manual-headers');
+    headers.append('Set-Cookie', sessionCookie);
+    headers.append('Set-Cookie', deleteCookie);
+
+    console.log('[AUTH-TEST] Headers:', Array.from(headers.entries()));
+
+    return new Response(null, { status: 302, headers });
   } catch (error) {
-    console.error('Auth callback error:', error);
-    deleteCookie(loginStateCookieName, { path: '/' });
-    return attachStartSetCookieHeaders(
-      new Response(null, {
-        status: 302,
-        headers: { Location: '/?auth=error' },
-      })
-    );
+    console.error('[AUTH-TEST] Callback error:', error);
+    const deleteCookie = serializeCookie(loginStateCookieName, '', {
+      path: '/',
+      maxAge: 0,
+    });
+    return new Response(null, {
+      status: 302,
+      headers: {
+        Location: '/?auth=error',
+        'Set-Cookie': deleteCookie,
+      },
+    });
   }
 };
 
@@ -183,12 +207,15 @@ export const callbackHandler = async (request: Request): Promise<Response> => {
  */
 export const meHandler = async (request: Request): Promise<Response> => {
   const { sessionCookieName } = getAuthConfig();
+  const cookieHeader = request.headers.get('Cookie') || '';
 
   console.log('[AUTH] /auth/me request');
+  console.log('[AUTH] Cookie header from browser:', cookieHeader);
 
-  // Use TanStack Start getCookie API
-  const sessionId = await getCookie(sessionCookieName);
+  const cookies = parseCookie(cookieHeader);
+  const sessionId = cookies[sessionCookieName];
 
+  console.log('[AUTH] Parsed cookies:', Object.keys(cookies));
   console.log('[AUTH] Session ID:', sessionId);
 
   if (!sessionId) {
@@ -219,9 +246,8 @@ export const meHandler = async (request: Request): Promise<Response> => {
  */
 export const logoutHandler = async (request: Request): Promise<Response> => {
   const { sessionCookieName, postLogoutRedirectUri } = getAuthConfig();
-
-  // Use TanStack Start getCookie API
-  const sessionId = await getCookie(sessionCookieName);
+  const cookies = parseCookie(request.headers.get('Cookie') || '');
+  const sessionId = cookies[sessionCookieName];
 
   let logoutUrl = postLogoutRedirectUri;
   if (sessionId) {
@@ -232,15 +258,18 @@ export const logoutHandler = async (request: Request): Promise<Response> => {
     }
   }
 
-  // Use TanStack Start deleteCookie API
-  deleteCookie(sessionCookieName, { path: '/' });
+  const deleteCookie = serializeCookie(sessionCookieName, '', {
+    path: '/',
+    maxAge: 0,
+  });
 
-  return attachStartSetCookieHeaders(
-    new Response(null, {
-      status: 302,
-      headers: { Location: logoutUrl },
-    })
-  );
+  return new Response(null, {
+    status: 302,
+    headers: {
+      Location: logoutUrl,
+      'Set-Cookie': deleteCookie,
+    }
+  });
 };
 
 /**

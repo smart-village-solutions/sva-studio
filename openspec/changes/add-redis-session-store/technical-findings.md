@@ -59,6 +59,18 @@ Nach erfolgreicher Keycloak-Authentifizierung werden Sessions serverseitig korre
 
 **Das Cookie erreicht den Browser nie.**
 
+## Neue Erkenntnis (Feb 2026): Set-Cookie Reihenfolge entscheidet
+
+Bei `/auth/callback` wurden zwei Cookies gesetzt:
+- `sva_auth_state` (Delete)
+- `sva_auth_session` (Session)
+
+Im Response kam **nur ein** `Set-Cookie` im Browser an. Offenbar wird in diesem Setup nur **der zuletzt gesetzte** `Set-Cookie` übernommen.
+
+**Fix:** Reihenfolge umdrehen — zuerst `deleteCookie(loginState)`, **danach** `setCookie(session)`.
+
+**Ergebnis:** Session-Cookie kommt an, `/auth/me` liefert 200.
+
 ## Versuchte Lösungen (alle fehlgeschlagen)
 
 ### 1. Standard HTTP 302 Redirect mit Set-Cookie ❌

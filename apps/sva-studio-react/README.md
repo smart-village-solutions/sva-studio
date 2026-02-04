@@ -1,20 +1,36 @@
-Welcome to your new TanStack app!
+# SVA Studio – React App
 
-# Getting Started
+## Getting Started
 
-To run this application:
+### Voraussetzungen
+- Node.js (>= 22.12.0)
+- pnpm (>= 9.12.2)
+
+### Abhängigkeiten installieren (Repo-Root)
 
 ```bash
 pnpm install
+```
+
+### App starten (empfohlen, im Repo-Root)
+
+```bash
+nx run sva-studio-react:serve
+```
+
+### Alternativ: App-Ordner
+
+```bash
+cd apps/sva-studio-react
 pnpm run dev
 ```
 
-# Building For Production
+## Building For Production
 
 To build this application for production:
 
 ```bash
-pnpm run build
+nx run sva-studio-react:build
 ```
 
 ## Testing
@@ -22,12 +38,12 @@ pnpm run build
 This project uses [Vitest](https://vitest.dev/) for testing. You can run the tests with:
 
 ```bash
-pnpm run test
+nx run sva-studio-react:test
 ```
 
 ## Styling
 
-This project uses CSS for styling.
+Dieses Projekt nutzt Tailwind CSS (siehe tailwind.config.cjs) und eine globale styles.css.
 
 ## Routing
 

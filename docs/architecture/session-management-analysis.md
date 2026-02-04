@@ -1,7 +1,7 @@
 # Session Management: Analyse & Handlungsempfehlung
 
-**Erstellt:** 2026-02-04  
-**Status:** Vorschlag für Architekturentscheidung  
+**Erstellt:** 2026-02-04
+**Status:** Vorschlag für Architekturentscheidung
 **Kontext:** [Issue zur Auth-Implementierung] & Milestone 1
 
 ---
@@ -196,8 +196,8 @@ const redis = createClient({
 export const createSession = async (session: Session) => {
   const ttl = 60 * 60 * 24 * 7; // 7 Tage
   await redis.setEx(
-    `session:${session.id}`, 
-    ttl, 
+    `session:${session.id}`,
+    ttl,
     JSON.stringify(session)
   );
 };
@@ -241,7 +241,7 @@ await Promise.all([
 ]);
 
 // Cleanup alter DB-Sessions via Cron
-await db.sessions.deleteMany({ 
+await db.sessions.deleteMany({
   expiresAt: { lt: new Date() },
   createdAt: { lt: subMonths(new Date(), 3) } // 3-Monats-Retention
 });
@@ -259,7 +259,7 @@ await db.sessions.deleteMany({
 
 **Performance-Tuning:**
 ```sql
-CREATE INDEX idx_sessions_lookup ON iam.sessions(id, expires_at) 
+CREATE INDEX idx_sessions_lookup ON iam.sessions(id, expires_at)
 WHERE expires_at > NOW();
 
 -- Partitionierung nach Monat für große Installationen
@@ -311,8 +311,8 @@ const encrypt = (data: string): string => {
 };
 
 await redis.setEx(
-  `session:${id}`, 
-  ttl, 
+  `session:${id}`,
+  ttl,
   encrypt(JSON.stringify(session))
 );
 ```
@@ -528,3 +528,33 @@ const client = createClient({
 ---
 
 **Nächster Schritt:** Implementierungs-Ticket erstellen + Tech-Review im Team.
+
+---
+
+## 10. Stellungnahme (Security & Privacy)
+
+Aus Security-Sicht ist die Redis-Strategie grundsätzlich passend und skalierbar. Vor Umsetzung müssen jedoch Key-Management (KMS/Rotation), Token-Schutz im Session-Store sowie ein verbindliches Retention-/Löschkonzept festgelegt werden, um DSGVO/BSI-Anforderungen zu erfüllen.
+
+---
+
+## 11. Stellungnahme (UX & Accessibility)
+
+**Statement (UX & Accessibility Reviewer):** Die Analyse adressiert UX/A11y nur indirekt. Für die Umsetzung sollten klare Session-Timeout- und Re-Login-Flows mit barrierefreien Hinweisen (Screenreader-Text, Fokus-Management, eindeutige Fehlermeldungen) verbindlich ergänzt werden, damit Nutzer:innen nicht unerwartet aus Sitzungen fallen.
+
+---
+
+## 12. Stellungnahme (Operations & Reliability)
+
+**Statement (Operations & Reliability Reviewer):** Die Analyse benennt Redis als zentrale Betriebsabhängigkeit, aber es fehlen konkrete Runbooks, RTO/RPO‑Ziele, Backup/Restore‑Verfahren und ein belastbarer HA‑Plan (Sentinel/Cluster) inkl. Monitoring/Alerting. Für einen 24/7‑Betrieb müssen diese Punkte verbindlich festgelegt und getestet werden (insb. Failover‑Tests, Restore‑Drills, Ressourcen‑Sizing).
+
+---
+
+## 13. Stellungnahme (Interoperabilität & Daten)
+
+**Statement (Interoperability & Data Reviewer):** Die Analyse ist technisch schlüssig, adressiert aber Interoperabilität nur indirekt. Für Wechsel- und Migrationsfähigkeit fehlen klare Vorgaben zu Export/Import von Sessions/Audit-Daten, Versionierung der Auth-API sowie ein dokumentierter Deprecation‑Pfad. Ohne diese Standards ist die Exit‑Fähigkeit eingeschränkt und ein Anbieterwechsel risikobehaftet.
+
+---
+
+## 14. Stellungnahme (Architektur & FIT)
+
+**Statement (Architecture & FIT Compliance Reviewer):** Die Redis-Empfehlung ist aus Skalierungs- und API‑First‑Sicht plausibel und kompatibel mit dem Headless‑Ansatz. Für FIT‑Konformität fehlen jedoch explizite ADRs zur Abgrenzung Keycloak vs. CMS‑IAM, zum Vendor‑Lock‑in‑Risiko (Redis/Keycloak) sowie zu offenen Standards (OIDC/SAML/SCIM‑Erweiterungen). Diese Entscheidungen sollten dokumentiert werden, um Abweichungen nachvollziehbar zu machen.

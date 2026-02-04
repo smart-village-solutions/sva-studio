@@ -4,15 +4,13 @@ import { randomUUID } from 'node:crypto';
 import { getAuthConfig } from './config';
 import { client, getOidcConfig } from './oidc.server';
 import {
-  clearExpiredLoginStates,
-  clearExpiredSessions,
   consumeLoginState,
   createLoginState,
   createSession,
   deleteSession,
   getSession,
   updateSession,
-} from './session';
+} from './redis-session.server';
 import type { LoginState, SessionUser } from './types';
 
 /**
@@ -118,7 +116,7 @@ export const createLoginUrl = async () => {
   const createdAt = Date.now();
 
   const loginState = { codeVerifier, nonce, createdAt };
-  createLoginState(state, loginState);
+  await createLoginState(state, loginState);
 
   const url = client.buildAuthorizationUrl(config, {
     redirect_uri: authConfig.redirectUri,
@@ -144,9 +142,7 @@ export const handleCallback = async (params: {
   const authConfig = getAuthConfig();
   const config = await getOidcConfig();
 
-  clearExpiredLoginStates(Date.now(), 10 * 60 * 1000);
-
-  const loginState = params.loginState ?? consumeLoginState(params.state);
+  const loginState = params.loginState ?? (await consumeLoginState(params.state));
   if (!loginState) {
     throw new Error('Invalid login state');
   }
@@ -176,11 +172,13 @@ export const handleCallback = async (params: {
   };
 
   const sessionId = randomUUID();
-  const now = Date.now();
-  const expiresAt = tokenSet.expiresIn() ? now + tokenSet.expiresIn()! * 1000 : undefined;
+  const now = new Date().toISOString();
+  const expiresAt = tokenSet.expiresIn()
+    ? new Date(Date.now() + tokenSet.expiresIn()! * 1000).toISOString()
+    : undefined;
 
-  createSession({
-    id: sessionId,
+  await createSession(sessionId, {
+    userId: user.id,
     user,
     accessToken: tokenSet.access_token,
     refreshToken: tokenSet.refresh_token,
@@ -188,8 +186,6 @@ export const handleCallback = async (params: {
     expiresAt,
     createdAt: now,
   });
-
-  clearExpiredSessions(now, authConfig.sessionTtlMs);
 
   return { sessionId, user };
 };
@@ -199,7 +195,7 @@ export const handleCallback = async (params: {
  */
 export const getSessionUser = async (sessionId: string) => {
   const authConfig = getAuthConfig();
-  const session = getSession(sessionId);
+  const session = await getSession(sessionId);
   if (!session) {
     return null;
   }
@@ -221,27 +217,30 @@ export const getSessionUser = async (sessionId: string) => {
         email: typeof claims.email === 'string' ? claims.email : undefined,
         roles: extractRoles(roleClaims, authConfig.clientId),
       };
-      updateSession(sessionId, {
+      const expiresAt = refreshed.expiresIn()
+        ? new Date(now + refreshed.expiresIn()! * 1000).toISOString()
+        : session.expiresAt;
+      await updateSession(sessionId, {
         user: updatedUser,
         accessToken: refreshed.access_token,
         refreshToken: refreshed.refresh_token ?? session.refreshToken,
         idToken: refreshed.id_token ?? session.idToken,
-        expiresAt: refreshed.expiresIn() ? now + refreshed.expiresIn()! * 1000 : session.expiresAt,
+        expiresAt,
       });
     } catch (error) {
       console.error('Auth refresh error:', error);
-      if (session.expiresAt && session.expiresAt < now) {
-        deleteSession(sessionId);
+      if (session.expiresAt && new Date(session.expiresAt) < new Date(now)) {
+        await deleteSession(sessionId);
         return null;
       }
     }
-  } else if (session.expiresAt && session.expiresAt < now) {
-    deleteSession(sessionId);
+  } else if (session.expiresAt && new Date(session.expiresAt) < new Date(now)) {
+    await deleteSession(sessionId);
     return null;
   }
 
-  clearExpiredSessions(now, authConfig.sessionTtlMs);
-  return getSession(sessionId)?.user ?? null;
+  const updatedSession = await getSession(sessionId);
+  return updatedSession?.user ?? null;
 };
 
 /**
@@ -250,8 +249,8 @@ export const getSessionUser = async (sessionId: string) => {
 export const logoutSession = async (sessionId: string): Promise<string> => {
   const authConfig = getAuthConfig();
   const config = await getOidcConfig();
-  const session = getSession(sessionId);
-  deleteSession(sessionId);
+  const session = await getSession(sessionId);
+  await deleteSession(sessionId);
 
   if (!session?.idToken) {
     return authConfig.postLogoutRedirectUri;

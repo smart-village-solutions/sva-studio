@@ -1,69 +1,67 @@
+import { createHmac, timingSafeEqual } from 'node:crypto';
+import { parse as parseCookie, serialize as serializeCookie } from 'cookie-es';
+
 import { createLoginUrl, getSessionUser, handleCallback, logoutSession } from './auth.server';
 import { getAuthConfig } from './config';
 import type { AuthRoutePath } from './routes.shared';
+import type { LoginState } from './types';
 
-/**
- * Cookie serialization options for response headers.
- */
-type CookieOptions = {
-  httpOnly?: boolean;
-  secure?: boolean;
-  sameSite?: 'Lax' | 'Strict' | 'None';
-  path?: string;
-  maxAge?: number;
+type LoginStateCookiePayload = LoginState & {
+  state: string;
 };
 
-/**
- * Serializes a cookie name/value pair with the provided options.
- */
-const serializeCookie = (name: string, value: string, options: CookieOptions) => {
-  let cookie = `${encodeURIComponent(name)}=${encodeURIComponent(value)}`;
-  if (options.httpOnly) cookie += '; HttpOnly';
-  if (options.secure) cookie += '; Secure';
-  if (options.sameSite) cookie += `; SameSite=${options.sameSite}`;
-  if (options.path) cookie += `; Path=${options.path}`;
-  if (options.maxAge) cookie += `; Max-Age=${options.maxAge}`;
-  return cookie;
+const encodeLoginStateCookie = (payload: LoginStateCookiePayload, secret: string) => {
+  const json = JSON.stringify(payload);
+  const data = Buffer.from(json, 'utf8').toString('base64url');
+  const signature = createHmac('sha256', secret).update(data).digest('base64url');
+  return `${data}.${signature}`;
 };
 
-/**
- * Creates a cookie string that expires immediately for deletion.
- */
-const deleteCookie = (name: string, path: string) =>
-  `${encodeURIComponent(name)}=; Path=${path}; Expires=Thu, 01 Jan 1970 00:00:00 GMT`;
-
-/**
- * Parses the Cookie header into a name/value map.
- */
-const parseCookies = (cookieHeader: string | null): Record<string, string> => {
-  if (!cookieHeader) return {};
-  return Object.fromEntries(
-    cookieHeader.split(';').map((cookie) => {
-      const [key, ...rest] = cookie.trim().split('=');
-      return [decodeURIComponent(key), decodeURIComponent(rest.join('='))];
-    })
-  );
+const decodeLoginStateCookie = (value: string | undefined, secret: string) => {
+  if (!value) return null;
+  const [data, signature] = value.split('.');
+  if (!data || !signature) return null;
+  const expected = createHmac('sha256', secret).update(data).digest('base64url');
+  const signatureBuffer = Buffer.from(signature);
+  const expectedBuffer = Buffer.from(expected);
+  if (signatureBuffer.length !== expectedBuffer.length) return null;
+  if (!timingSafeEqual(signatureBuffer, expectedBuffer)) return null;
+  try {
+    const json = Buffer.from(data, 'base64url').toString('utf8');
+    const parsed = JSON.parse(json) as LoginStateCookiePayload;
+    if (!parsed || typeof parsed !== 'object') return null;
+    return parsed;
+  } catch {
+    return null;
+  }
 };
 
 /**
  * Redirects to the IdP login URL and stores the login state in a cookie.
  */
 export const loginHandler = async (): Promise<Response> => {
-  const { url, state } = await createLoginUrl();
-  const { loginStateCookieName } = getAuthConfig();
+  const { url, state, loginState } = await createLoginUrl();
+  const { loginStateCookieName, loginStateSecret } = getAuthConfig();
+  const cookiePayload: LoginStateCookiePayload = { state, ...loginState };
 
-  const headers = new Headers({ Location: url });
-  headers.append(
-    'Set-Cookie',
-    serializeCookie(loginStateCookieName, state, {
+  const cookie = serializeCookie(
+    loginStateCookieName,
+    encodeLoginStateCookie(cookiePayload, loginStateSecret),
+    {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'Lax',
+      sameSite: 'lax',
       path: '/',
-    })
+    }
   );
 
-  return new Response(null, { status: 302, headers });
+  return new Response(null, {
+    status: 302,
+    headers: {
+      Location: url,
+      'Set-Cookie': cookie,
+    }
+  });
 };
 
 /**
@@ -90,29 +88,79 @@ export const callbackHandler = async (request: Request): Promise<Response> => {
     });
   }
 
-  const { loginStateCookieName, sessionCookieName } = getAuthConfig();
+  const { loginStateCookieName, loginStateSecret, sessionCookieName } = getAuthConfig();
+  const cookies = parseCookie(request.headers.get('Cookie') || '');
+  const loginStateCookie = decodeLoginStateCookie(cookies[loginStateCookieName], loginStateSecret);
+  const now = Date.now();
+  const cookieLoginState =
+    loginStateCookie && loginStateCookie.state === state
+      ? {
+          codeVerifier: loginStateCookie.codeVerifier,
+          nonce: loginStateCookie.nonce,
+          createdAt: loginStateCookie.createdAt,
+        }
+      : null;
+  if (cookieLoginState && now - cookieLoginState.createdAt > 10 * 60 * 1000) {
+    const deleteCookie = serializeCookie(loginStateCookieName, '', {
+      path: '/',
+      maxAge: 0,
+    });
+    return new Response(null, {
+      status: 302,
+      headers: {
+        Location: '/?auth=state-expired',
+        'Set-Cookie': deleteCookie,
+      },
+    });
+  }
 
   try {
-    const { sessionId } = await handleCallback({ code, state, iss });
-    const headers = new Headers({ Location: '/' });
+    const { sessionId } = await handleCallback({
+      code,
+      state,
+      iss,
+      loginState: cookieLoginState,
+    });
 
-    headers.append(
-      'Set-Cookie',
-      serializeCookie(sessionCookieName, sessionId, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'Lax',
-        path: '/',
-      })
-    );
-    headers.append('Set-Cookie', deleteCookie(loginStateCookieName, '/'));
+    console.log('[AUTH] Session created:', sessionId);
+
+    const sessionCookie = serializeCookie(sessionCookieName, sessionId, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+    });
+
+    const deleteCookie = serializeCookie(loginStateCookieName, '', {
+      path: '/',
+      maxAge: 0,
+    });
+
+    console.log('[AUTH] Setting session cookie:', sessionCookie);
+    console.log('[AUTH] Deleting login state cookie');
+
+    // Use 302 redirect with proper Location header - browser should respect Set-Cookie with this
+    const headers = new Headers();
+    headers.set('Location', '/?auth=ok');
+    headers.append('Set-Cookie', sessionCookie);
+    headers.append('Set-Cookie', deleteCookie);
+
+    console.log('[AUTH] Returning 302 redirect');
+    console.log('[AUTH] Headers:', Array.from(headers.entries()));
 
     return new Response(null, { status: 302, headers });
   } catch (error) {
     console.error('Auth callback error:', error);
+    const deleteCookie = serializeCookie(loginStateCookieName, '', {
+      path: '/',
+      maxAge: 0,
+    });
     return new Response(null, {
       status: 302,
-      headers: { Location: '/?auth=error' },
+      headers: {
+        Location: '/?auth=error',
+        'Set-Cookie': deleteCookie,
+      },
     });
   }
 };
@@ -122,8 +170,16 @@ export const callbackHandler = async (request: Request): Promise<Response> => {
  */
 export const meHandler = async (request: Request): Promise<Response> => {
   const { sessionCookieName } = getAuthConfig();
-  const cookies = parseCookies(request.headers.get('Cookie'));
+  const cookieHeader = request.headers.get('Cookie') || '';
+
+  console.log('[AUTH] /auth/me request');
+  console.log('[AUTH] Cookie header from browser:', cookieHeader);
+
+  const cookies = parseCookie(cookieHeader);
   const sessionId = cookies[sessionCookieName];
+
+  console.log('[AUTH] Parsed cookies:', Object.keys(cookies));
+  console.log('[AUTH] Session ID:', sessionId);
 
   if (!sessionId) {
     return new Response(JSON.stringify({ error: 'unauthorized' }), {
@@ -133,6 +189,8 @@ export const meHandler = async (request: Request): Promise<Response> => {
   }
 
   const user = await getSessionUser(sessionId);
+  console.log('[AUTH] User from session:', user ? user.id : 'null');
+
   if (!user) {
     return new Response(JSON.stringify({ error: 'unauthorized' }), {
       status: 401,
@@ -151,7 +209,7 @@ export const meHandler = async (request: Request): Promise<Response> => {
  */
 export const logoutHandler = async (request: Request): Promise<Response> => {
   const { sessionCookieName, postLogoutRedirectUri } = getAuthConfig();
-  const cookies = parseCookies(request.headers.get('Cookie'));
+  const cookies = parseCookie(request.headers.get('Cookie') || '');
   const sessionId = cookies[sessionCookieName];
 
   let logoutUrl = postLogoutRedirectUri;
@@ -163,10 +221,18 @@ export const logoutHandler = async (request: Request): Promise<Response> => {
     }
   }
 
-  const headers = new Headers({ Location: logoutUrl });
-  headers.append('Set-Cookie', deleteCookie(sessionCookieName, '/'));
+  const deleteCookie = serializeCookie(sessionCookieName, '', {
+    path: '/',
+    maxAge: 0,
+  });
 
-  return new Response(null, { status: 302, headers });
+  return new Response(null, {
+    status: 302,
+    headers: {
+      Location: logoutUrl,
+      'Set-Cookie': deleteCookie,
+    }
+  });
 };
 
 /**

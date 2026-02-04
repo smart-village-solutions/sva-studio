@@ -16,6 +16,10 @@
     }
   },
   "dependencies": {
+    "cookie-es": "^1.2.2",
     "openid-client": "^6.4.0"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.8"
   }
 }

@@ -51,3 +51,20 @@ corepack enable
 corepack prepare pnpm@9.12.2 --activate
 pnpm install
 ```
+
+## Lokale Entwicklung: Redis TLS
+
+Für lokale Tests mit Redis TLS müssen Entwickler:innen eigene Zertifikate generieren. Die Zertifikate sind **absichtlich** nicht im Repository versioniert.
+
+1. Zertifikate generieren:
+```bash
+./dev/generate-tls-certs.sh
+```
+
+2. Zertifikate liegen danach unter `dev/redis-tls/` (wird von Git ignoriert).
+
+3. Redis mit TLS starten (docker-compose) und Verbindung testen:
+```bash
+docker-compose up -d redis
+redis-cli -h localhost -p 6380 --cacert dev/redis-tls/ca.pem ping
+```

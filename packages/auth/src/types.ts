@@ -25,6 +25,7 @@ export type AuthConfig = {
   issuer: string;
   clientId: string;
   clientSecret: string;
+  loginStateSecret: string;
   redirectUri: string;
   postLogoutRedirectUri: string;
   scopes: string;

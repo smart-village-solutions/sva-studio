@@ -25,14 +25,19 @@ export const consumeLoginState = (state: string) => {
  * Store a new session record by its id.
  */
 export const createSession = (session: Session) => {
+  console.log('[SESSION] Creating session:', session.id);
   sessions.set(session.id, session);
+  console.log('[SESSION] Total sessions in store:', sessions.size);
 };
 
 /**
  * Returns the session for the given id, or null if missing.
  */
 export const getSession = (sessionId: string) => {
-  return sessions.get(sessionId) ?? null;
+  console.log('[SESSION] Getting session:', sessionId, '| Available:', sessions.size);
+  const session = sessions.get(sessionId) ?? null;
+  console.log('[SESSION] Found:', session ? 'yes' : 'no');
+  return session;
 };
 
 /**

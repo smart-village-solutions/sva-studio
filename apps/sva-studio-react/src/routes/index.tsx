@@ -10,25 +10,49 @@ type AuthUser = {
 export const HomePage = () => {
   const [user, setUser] = React.useState<AuthUser | null>(null);
   const [loading, setLoading] = React.useState(true);
+  const [authError, setAuthError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     let active = true;
+    const search = new URLSearchParams(window.location.search);
+    const authState = search.get('auth');
+    if (authState === 'error') {
+      setAuthError('Login fehlgeschlagen. Bitte erneut versuchen.');
+    } else if (authState === 'state-expired') {
+      setAuthError('Login abgebrochen oder abgelaufen. Bitte erneut anmelden.');
+    } else {
+      setAuthError(null);
+    }
     const loadUser = async () => {
       try {
+        console.log('[AUTH] Loading user via fetch /auth/me...');
         const response = await fetch('/auth/me', { credentials: 'include' });
+
+        if (!active) return;
+
         if (!response.ok) {
-          if (active) {
-            setUser(null);
+          console.log('[AUTH] Response not OK:', response.status);
+          setUser(null);
+          if (authState === 'ok') {
+            setAuthError(
+              'Login erfolgreich, aber Session konnte nicht geladen werden. ' +
+              'BEKANNTES PROBLEM: TanStack Router blockiert Set-Cookie Headers. ' +
+              'Lösung wird mit Redis Session Store implementiert.'
+            );
           }
           return;
         }
+
         const payload = (await response.json()) as { user: AuthUser };
         if (active) {
           setUser(payload.user);
+          console.log('[AUTH] User erfolgreich geladen:', payload.user.name);
         }
-      } catch {
+      } catch (error) {
         if (active) {
           setUser(null);
+          console.error('[AUTH] Fehler beim Laden der Session:', error);
+          setAuthError('Fehler beim Laden der Session. Bitte erneut anmelden.');
         }
       } finally {
         if (active) {
@@ -69,6 +93,11 @@ export const HomePage = () => {
               <p className="text-slate-300">Nicht eingeloggt.</p>
             )}
           </div>
+          {authError ? (
+            <div className="mt-4 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+              {authError}
+            </div>
+          ) : null}
           <div className="mt-6 grid gap-4 md:grid-cols-2">
             <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
               <p className="text-sm font-semibold text-slate-200">Admin-Bereich</p>

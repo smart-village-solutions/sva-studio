@@ -13,7 +13,7 @@ import {
   getSession,
   updateSession,
 } from './session';
-import type { SessionUser } from './types';
+import type { LoginState, SessionUser } from './types';
 
 /**
  * Resolve a display name from standard OIDC claims with fallbacks.
@@ -115,8 +115,10 @@ export const createLoginUrl = async () => {
   const codeChallenge = await client.calculatePKCECodeChallenge(codeVerifier);
   const state = client.randomState();
   const nonce = client.randomNonce();
+  const createdAt = Date.now();
 
-  createLoginState(state, { codeVerifier, nonce, createdAt: Date.now() });
+  const loginState = { codeVerifier, nonce, createdAt };
+  createLoginState(state, loginState);
 
   const url = client.buildAuthorizationUrl(config, {
     redirect_uri: authConfig.redirectUri,
@@ -127,7 +129,7 @@ export const createLoginUrl = async () => {
     nonce,
   });
 
-  return { url: url.href, state };
+  return { url: url.href, state, loginState };
 };
 
 /**
@@ -137,13 +139,14 @@ export const handleCallback = async (params: {
   code: string;
   state: string;
   iss?: string | null;
+  loginState?: LoginState | null;
 }) => {
   const authConfig = getAuthConfig();
   const config = await getOidcConfig();
 
   clearExpiredLoginStates(Date.now(), 10 * 60 * 1000);
 
-  const loginState = consumeLoginState(params.state);
+  const loginState = params.loginState ?? consumeLoginState(params.state);
   if (!loginState) {
     throw new Error('Invalid login state');
   }

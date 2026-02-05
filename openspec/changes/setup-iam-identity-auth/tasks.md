@@ -2,21 +2,23 @@
 
 ## Phase 1: Keycloak-Integration und IAM-Service-Architektur
 
+**Status:** 🟢 **65% COMPLETE** (13/20 Tasks)
+
 ### 1.1 Keycloak-Konfiguration
 
-- [ ] 1.1.1 OIDC-Client im Keycloak für SVA Studio erstellen
-- [ ] 1.1.2 Redirect-URIs konfigurieren (dev, staging, prod)
-- [ ] 1.1.3 Web Origins für CORS festlegen
-- [ ] 1.1.4 Client-Scopes definieren (openid, profile, email, roles, org)
-- [ ] 1.1.5 Keycloak-Mappers für Role- und Organization-Claims konfigurieren
+- [x] 1.1.1 OIDC-Client im Keycloak für SVA Studio erstellen
+- [x] 1.1.2 Redirect-URIs konfigurieren (dev, staging, prod)
+- [ ] 1.1.3 Web Origins für CORS festlegen ⚠️ *Keycloak-seitig zu verifizieren*
+- [x] 1.1.4 Client-Scopes definieren (openid, profile, email, roles, org)
+- [ ] 1.1.5 Keycloak-Mappers für Role- und Organization-Claims konfigurieren ⚠️ *Für Phase 2/3 benötigt*
 
 ### 1.2 IAM-Service-Grundstruktur
 
-- [ ] 1.2.1 `packages/core/src/iam/` Verzeichnis struktu­rieren
-- [ ] 1.2.2 Token-Validator implementieren (JWT-Verifizierung mit Keycloak Public Key)
-- [ ] 1.2.3 User-Context-Resolver entwickeln (Claims auslesen, User-ID bereitstellen)
-- [ ] 1.2.4 Keycloak-Config-Management (URL, Realm, Client-ID)
-- [ ] 1.2.5 Error-Handling für invalid/expired Tokens
+- [ ] 1.2.1 `packages/core/src/iam/` Verzeichnis struktu­rieren ⚠️ *Aktuell in `packages/auth/src/`*
+- [x] 1.2.2 Token-Validator implementieren (JWT-Verifizierung mit Keycloak Public Key)
+- [x] 1.2.3 User-Context-Resolver entwickeln (Claims auslesen, User-ID bereitstellen)
+- [x] 1.2.4 Keycloak-Config-Management (URL, Realm, Client-ID)
+- [x] 1.2.5 Error-Handling für invalid/expired Tokens
 
 ### 1.3 Frontend-Integration
 
@@ -28,22 +30,26 @@
 
 ### 1.4 Backend-Authentication-Middleware
 
-- [ ] 1.4.1 Express/Framework-Middleware für Token-Validierung schreiben
-- [ ] 1.4.2 Protected-Routes etablieren
-- [ ] 1.4.3 User-Context in Request-Object injizieren
-- [ ] 1.4.4 Unit-Tests für Token-Validierung
+- [ ] 1.4.1 Express/Framework-Middleware für Token-Validierung schreiben ⚠️ *Routing-Handler vorhanden, aber keine Middleware*
+- [x] 1.4.2 Protected-Routes etablieren
+- [x] 1.4.3 User-Context in Request-Object injizieren
+- [x] 1.4.4 Unit-Tests für Token-Validierung
 
 ### 1.5 Security & Testing
 
-- [ ] 1.5.1 HTTPS-Konfiguration für lokal und in allen Umgebungen
+- [x] 1.5.1 HTTPS-Konfiguration für lokal und in allen Umgebungen
 - [ ] 1.5.2 SSO-Flow testen (Multi-Tab, Session-Konsistenz)
-- [ ] 1.5.3 Token-Expiration und Refresh testen
-- [ ] 1.5.4 E2E-Tests für Login-Logout-Szenarios
-- [ ] 1.5.5 Security-Audit (Token-Claims, No Secrets in Frontend)
+- [x] 1.5.3 Token-Expiration und Refresh testen
+- [x] 1.5.4 E2E-Tests für Login-Logout-Szenarios
+- [x] 1.5.5 Security-Audit (Token-Claims, No Secrets in Frontend)
+
+**Implementiert:** `packages/auth/src/` mit OIDC, Redis-Sessions, AES-256-GCM Token-Encryption
 
 ---
 
 ## Phase 2: Organisationsstruktur und Benutzer-Mapping
+
+**Status:** ❌ **0% COMPLETE** (0/23 Tasks) - *Benötigt Datenbank-Setup*
 
 ### 2.1 Datenmodellierung
 
@@ -80,6 +86,8 @@
 ---
 
 ## Phase 3: Rollenmodell und Berechtigungslogik
+
+**Status:** ❌ **0% COMPLETE** (0/43 Tasks) - *Benötigt Phase 2 als Grundlage*
 
 ### 3.1 Rollen-Datenmodellierung
 
@@ -151,12 +159,27 @@
 
 ## Acceptance Criteria
 
-- ✅ Phase 1: Ein Nutzer kann sich über Keycloak anmelden, Token wird validiert, User-Context ist verfügbar
-- ✅ Phase 2: Nutzer ist automatisch zu seiner Organisation zugeordnet, Org-Isolation funktioniert
-- ✅ Phase 3: Ein Redakteur kann mit seiner Rolle News erstellen, sieht nur erlaubte Operationen, Audit-Log dokumentiert alles
-- ✅ Alle Unit-Tests grün, E2E-Tests für kritische Flows
-- ✅ Performance: Permission-Checks < 50ms
+**Phase 1:** 🟡 **PARTIAL** (65%)
+- ✅ Ein Nutzer kann sich über Keycloak anmelden
+- ✅ Token wird validiert, User-Context ist verfügbar
+- ✅ Session-Management mit Redis und AES-256-GCM Encryption
+- ✅ E2E-Tests für kritische Auth-Flows
+- ❌ Frontend-Integration fehlt noch (React-Komponenten)
+
+**Phase 2:** ❌ **BLOCKED** (0%)
+- ❌ Nutzer ist automatisch zu seiner Organisation zugeordnet
+- ❌ Org-Isolation funktioniert
+- *Datenbank-Schema muss erst erstellt werden*
+
+**Phase 3:** ❌ **BLOCKED** (0%)
+- ❌ Ein Redakteur kann mit seiner Rolle News erstellen
+- ❌ sieht nur erlaubte Operationen
+- ❌ Audit-Log dokumentiert alles
+- ❌ Performance: Permission-Checks < 50ms
+- *Benötigt Phase 2 als Grundlage*
 
 ---
 
-**Last Updated:** 21. Januar 2026
+**Overall Progress:** 🟡 **22% COMPLETE** (13/86 Tasks across all phases)
+
+**Last Updated:** 5. Februar 2026 (Status aktualisiert basierend auf `feature/redis-session-store-security`)

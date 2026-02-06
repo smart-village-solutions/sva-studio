@@ -40,11 +40,13 @@ Architecture Decision Records dokumentieren **wichtige technische Entscheidungen
 | # | Titel | Status | Entscheidungsdatum | Thema |
 |---|---|---|---|---|
 | 000 | ADR Template | 📋 | - | Dokumentation |
-| 001 | Frontend Framework auswählen | 📋 | TBD | Architektur |
-| 002 | State Management | 📋 | TBD | Architektur |
-| 003 | Testing Framework | 📋 | TBD | Quality |
-| 004 | Build Tool & Bundler | 📋 | TBD | DevOps |
-| 005 | Node.js Version & LTS-Policy | 📋 | TBD | Infrastruktur |
+| 001 | Frontend Framework Selection | ✅ | 2026-01-18 | Architektur |
+| 002 | Plugin Architecture Pattern | ✅ | 2026-01-18 | Architektur |
+| 003 | Design Token Architecture | ✅ | 2026-01-18 | UI/Design System |
+| 004 | Monitoring Stack – Loki, Grafana & Prometheus | ✅ | 2026-02-05 | Observability |
+| 005 | Observability Module Ownership | 📋 | 2026-02-06 | Observability |
+| 006 | Logging Pipeline Strategy | 📋 | 2026-02-06 | Observability |
+| 007 | Label Schema & PII Policy | 📋 | 2026-02-06 | Security/Observability |
 
 ---
 

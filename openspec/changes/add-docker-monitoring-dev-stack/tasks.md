@@ -1,9 +1,9 @@
 # Implementation Tasks
 
 ## 0. Architecture Decision Records (ADRs)
-- [ ] 0.1 Erstelle ADR-004: "Observability Module Ownership" (Core, SDK, oder Monitoring-Client?)
-- [ ] 0.2 Erstelle ADR-005: "Logging Pipeline Strategy" (OTEL vs. Logger vs. Promtail)
-- [ ] 0.3 Erstelle ADR-006: "Label Schema & PII Policy" (Whitelisting, Redaction, Retention)
+- [x] 0.1 Erstelle ADR-005: "Observability Module Ownership" (Core, SDK, oder Monitoring-Client?)
+- [x] 0.2 Erstelle ADR-006: "Logging Pipeline Strategy" (OTEL vs. Logger vs. Promtail)
+- [x] 0.3 Erstelle ADR-007: "Label Schema & PII Policy" (Whitelisting, Redaction, Retention)
 - [ ] 0.4 Team-Review aller ADRs vor Phase 1 Implementierung
 
 ## 1. Docker Infrastructure

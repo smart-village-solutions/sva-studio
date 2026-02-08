@@ -6,20 +6,5 @@
  */
 
 export { authRouteFactories, authRoutePaths } from './auth.routes';
+export { coreRouteFactories } from './core.routes';
 
-/**
- * Core route factories - all routes that should be registered in all SVA apps
- */
-export const coreRouteFactories = [
-  // Auth routes
-  ...(() => {
-    const { authRouteFactories } = require('./auth.routes');
-    return authRouteFactories;
-  })(),
-
-  // Additional core routes can be added here as the app grows:
-  // - Data routes
-  // - Admin routes
-  // - Public routes
-  // etc.
-];

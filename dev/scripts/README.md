@@ -241,6 +241,6 @@ Siehe [STAGING-TODOS.md](../../STAGING-TODOS.md):
 
 ---
 
-**Erstellt:** 2026-02-08  
-**Getestet:** ✅ Lokal (macOS, Docker Desktop)  
+**Erstellt:** 2026-02-08
+**Getestet:** ✅ Lokal (macOS, Docker Desktop)
 **Production-ready:** ⏳ Nach S3-Integration

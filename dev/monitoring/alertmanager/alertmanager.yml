@@ -1,6 +1,6 @@
 # AlertManager Configuration
 # Lokale Entwicklung - Alerts werden nur geloggt
-# 
+#
 # TODO: Für Staging/Production Slack/Email/PagerDuty Integration hinzufügen
 # Siehe: https://prometheus.io/docs/alerting/latest/configuration/
 
@@ -14,7 +14,7 @@ route:
   group_interval: 10s
   repeat_interval: 12h
   receiver: 'default-receiver'
-  
+
   # Severity-basiertes Routing (vorbereitet für Staging/Production)
   routes:
     - match:
@@ -22,7 +22,7 @@ route:
       receiver: 'critical-alerts'
       group_wait: 0s
       repeat_interval: 5m
-    
+
     - match:
         severity: warning
       receiver: 'warning-alerts'
@@ -36,7 +36,7 @@ receivers:
     webhook_configs:
       - url: 'http://localhost:5001/alerts'
         send_resolved: true
-  
+
   - name: 'critical-alerts'
     # TODO: Slack Webhook für Critical Alerts
     # webhook_configs:
@@ -45,7 +45,7 @@ receivers:
     webhook_configs:
       - url: 'http://localhost:5001/alerts/critical'
         send_resolved: true
-  
+
   - name: 'warning-alerts'
     # TODO: Email Notification für Warnings
     # email_configs:

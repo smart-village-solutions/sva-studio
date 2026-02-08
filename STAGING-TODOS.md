@@ -300,13 +300,13 @@ scrape_configs:
   - [ ] Slack Webhook konfiguriert
   - [ ] Test-Alert erfolgreich empfangen
   - [ ] Email SMTP konfiguriert
-  
+
 - [ ] **Backup**
   - [ ] S3 Bucket erstellt
   - [ ] Cron-Job eingerichtet
   - [ ] Restore-Test durchgeführt
   - [ ] Backup-Monitoring aktiv
-  
+
 - [ ] **Monitoring**
   - [ ] cAdvisor deployed (optional)
   - [ ] Resource Alerts getestet
@@ -318,12 +318,12 @@ scrape_configs:
   - [ ] Redis Cluster/Sentinel für Sessions
   - [ ] Prometheus Federation oder Grafana Mimir
   - [ ] AlertManager Cluster (3 Nodes)
-  
+
 - [ ] **Security**
   - [ ] TLS für alle Services
   - [ ] Authentifizierung für Grafana (OAuth2/SSO)
   - [ ] Network Policies (Kubernetes)
-  
+
 - [ ] **Compliance**
   - [ ] Backup-Retention Policy dokumentiert
   - [ ] DSGVO: Logs > 90 Tage löschen
@@ -341,6 +341,6 @@ scrape_configs:
 
 ---
 
-**Erstellt:** 2026-02-08  
-**Nächstes Review:** Bei Staging-Deployment  
+**Erstellt:** 2026-02-08
+**Nächstes Review:** Bei Staging-Deployment
 **Owner:** DevOps/SRE Team

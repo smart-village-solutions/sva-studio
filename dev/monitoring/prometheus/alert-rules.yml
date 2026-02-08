@@ -15,7 +15,7 @@ groups:
         annotations:
           summary: "Prometheus ist down"
           description: "Prometheus auf {{ $labels.instance }} ist seit {{ $value }} Minuten nicht erreichbar"
-      
+
       # Loki
       - alert: LokiDown
         expr: up{job="loki"} == 0
@@ -26,7 +26,7 @@ groups:
         annotations:
           summary: "Loki ist down"
           description: "Loki ist seit 5 Minuten nicht erreichbar. Logs werden nicht gesammelt."
-      
+
       # Grafana
       - alert: GrafanaDown
         expr: up{job="grafana"} == 0
@@ -37,7 +37,7 @@ groups:
         annotations:
           summary: "Grafana ist down"
           description: "Grafana ist nicht erreichbar. Dashboards sind offline."
-      
+
       # OTEL Collector
       - alert: OTelCollectorDown
         expr: up{job="otel-collector"} == 0
@@ -63,7 +63,7 @@ groups:
         annotations:
           summary: "Container Memory über 80%"
           description: "Container {{ $labels.name }} nutzt {{ $value | humanizePercentage }} seines Memory-Limits"
-      
+
       - alert: ContainerMemoryCritical
         expr: |
           (container_memory_usage_bytes / container_spec_memory_limit_bytes) > 0.90
@@ -74,7 +74,7 @@ groups:
         annotations:
           summary: "Container Memory über 90% - OOMKiller Risk!"
           description: "Container {{ $labels.name }} nutzt {{ $value | humanizePercentage }} seines Memory-Limits. OOMKiller droht!"
-      
+
       # Prometheus TSDB Size
       - alert: PrometheusTSDBFull
         expr: |
@@ -86,7 +86,7 @@ groups:
         annotations:
           summary: "Prometheus TSDB bei 85% Retention"
           description: "Prometheus TSDB nutzt {{ $value | humanizePercentage }} der 5GB Retention. Alte Daten werden bald gelöscht."
-      
+
       # Loki Storage
       - alert: LokiStorageLow
         expr: |
@@ -113,7 +113,7 @@ groups:
         annotations:
           summary: "Prometheus kann {{ $labels.job }} nicht scrapen"
           description: "Job {{ $labels.job }} auf {{ $labels.instance }} ist seit 3 Minuten unreachable."
-      
+
       # Hohe Scrape Duration
       - alert: PrometheusScrapeSlow
         expr: |

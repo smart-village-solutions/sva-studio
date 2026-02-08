@@ -14,6 +14,13 @@
 
 set -euo pipefail
 
+# Kompatibilität: macOS verwendet 'shasum -a 256' statt 'sha256sum'
+if ! command -v sha256sum &> /dev/null; then
+    sha256sum() {
+        shasum -a 256 "$@"
+    }
+fi
+
 # Farben
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -87,7 +94,7 @@ docker volume create sva-studio_alertmanager-data
 # 4. Prometheus Restore
 if [ -f "${BACKUP_PATH}/prometheus-snapshot.tar.gz" ]; then
     log "Stelle Prometheus Daten wieder her..."
-    
+
     # Checksum validieren
     if [ -f "${BACKUP_PATH}/prometheus-snapshot.tar.gz.sha256" ]; then
         cd "${BACKUP_PATH}"
@@ -99,10 +106,10 @@ if [ -f "${BACKUP_PATH}/prometheus-snapshot.tar.gz" ]; then
         fi
         cd -
     fi
-    
+
     # Temporären Container starten
     docker run --rm -v sva-studio_prometheus-data:/prometheus -v "${BACKUP_PATH}":/backup alpine sh -c "
-        cd /prometheus && 
+        cd /prometheus &&
         tar -xzf /backup/prometheus-snapshot.tar.gz --strip-components=1
     "
     log "✓ Prometheus Daten wiederhergestellt"
@@ -113,7 +120,7 @@ fi
 # 5. Loki Restore
 if [ -f "${BACKUP_PATH}/loki-data.tar.gz" ]; then
     log "Stelle Loki Daten wieder her..."
-    
+
     # Checksum validieren
     if [ -f "${BACKUP_PATH}/loki-data.tar.gz.sha256" ]; then
         cd "${BACKUP_PATH}"
@@ -125,9 +132,9 @@ if [ -f "${BACKUP_PATH}/loki-data.tar.gz" ]; then
         fi
         cd -
     fi
-    
+
     docker run --rm -v sva-studio_loki-data:/loki -v "${BACKUP_PATH}":/backup alpine sh -c "
-        cd /loki && 
+        cd /loki &&
         tar -xzf /backup/loki-data.tar.gz --strip-components=1
     "
     log "✓ Loki Daten wiederhergestellt"
@@ -138,7 +145,7 @@ fi
 # 6. AlertManager Restore
 if [ -f "${BACKUP_PATH}/alertmanager-data.tar.gz" ]; then
     log "Stelle AlertManager Daten wieder her..."
-    
+
     # Checksum validieren
     if [ -f "${BACKUP_PATH}/alertmanager-data.tar.gz.sha256" ]; then
         cd "${BACKUP_PATH}"
@@ -150,9 +157,9 @@ if [ -f "${BACKUP_PATH}/alertmanager-data.tar.gz" ]; then
         fi
         cd -
     fi
-    
+
     docker run --rm -v sva-studio_alertmanager-data:/alertmanager -v "${BACKUP_PATH}":/backup alpine sh -c "
-        cd /alertmanager && 
+        cd /alertmanager &&
         tar -xzf /backup/alertmanager-data.tar.gz --strip-components=1
     "
     log "✓ AlertManager Daten wiederhergestellt"

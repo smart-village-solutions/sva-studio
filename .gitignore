@@ -47,3 +47,4 @@ log/
 *.crt
 *.key
 dev/redis-tls/
+/backups/

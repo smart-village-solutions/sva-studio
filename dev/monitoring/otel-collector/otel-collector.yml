@@ -19,7 +19,8 @@ exporters:
 
 extensions:
   health_check:
-    endpoint: "0.0.0.0:13133"
+    endpoint: "127.0.0.1:13133"
+    path: "/healthz"
 
 service:
   extensions: [health_check]

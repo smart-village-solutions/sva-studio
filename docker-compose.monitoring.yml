@@ -8,12 +8,22 @@ services:
       - "127.0.0.1:9090:9090"
     volumes:
       - ./dev/monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./dev/monitoring/prometheus/alert-rules.yml:/etc/prometheus/alert-rules.yml:ro
       - prometheus-data:/prometheus
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
       - "--storage.tsdb.path=/prometheus"
       - "--storage.tsdb.retention.time=7d"
       - "--storage.tsdb.retention.size=5GB"
+      - "--web.enable-admin-api"
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:9090/-/healthy >/dev/null 2>&1"]
       interval: 30s
@@ -30,6 +40,14 @@ services:
       - ./dev/monitoring/loki/loki-config.yml:/etc/loki/config.yml:ro
       - loki-data:/loki
     command: ["-config.file=/etc/loki/config.yml"]
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:3100/ready >/dev/null 2>&1"]
       interval: 30s
@@ -51,6 +69,14 @@ services:
       - grafana-data:/var/lib/grafana
       - ./dev/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
       - ./dev/monitoring/grafana/dashboards:/etc/grafana/dashboards:ro
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
     depends_on:
       - prometheus
       - loki
@@ -71,6 +97,14 @@ services:
       - "127.0.0.1:4317:4317"
       - "127.0.0.1:4318:4318"
       - "127.0.0.1:13133:13133"
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.25'
+        reservations:
+          memory: 128M
+          cpus: '0.1'
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:13133/healthz >/dev/null 2>&1 || exit 1"]
       interval: 30s
@@ -90,6 +124,14 @@ services:
     command: ["-config.file=/etc/promtail/config.yml"]
     ports:
       - "127.0.0.1:3101:3101"
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.25'
+        reservations:
+          memory: 64M
+          cpus: '0.1'
     depends_on:
       - loki
     healthcheck:
@@ -99,10 +141,40 @@ services:
       retries: 3
     restart: unless-stopped
 
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: sva-studio-alertmanager
+    ports:
+      - "127.0.0.1:9093:9093"
+    volumes:
+      - ./dev/monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager-data:/alertmanager
+    command:
+      - "--config.file=/etc/alertmanager/alertmanager.yml"
+      - "--storage.path=/alertmanager"
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.25'
+        reservations:
+          memory: 64M
+          cpus: '0.1'
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:9093/-/healthy >/dev/null 2>&1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+
 volumes:
   prometheus-data:
     driver: local
   loki-data:
     driver: local
   grafana-data:
+    driver: local
+  alertmanager-data:
     driver: local

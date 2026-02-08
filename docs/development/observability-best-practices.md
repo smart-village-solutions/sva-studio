@@ -228,12 +228,12 @@ import { getSessionFromRedis, createSessionInRedis } from '@sva/sdk';
 describe('PII Redaction', () => {
   it('redacts email addresses in logs', async () => {
     const logger = createSdkLogger({ component: 'test' });
-    
+
     logger.info('User login', {
       email: 'john.doe@example.com',  // ← Will be masked
       workspace_id: 'test-ws'
     });
-    
+
     // Verify in Loki that email was masked
     const logs = await queryLoki('{workspace_id="test-ws"}');
     expect(logs[0].email).toBe('j***@example.com');

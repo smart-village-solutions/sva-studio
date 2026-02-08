@@ -2,6 +2,17 @@ global:
   scrape_interval: 15s
   evaluation_interval: 15s
 
+# Alerting Configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - "alertmanager:9093"
+
+# Alert Rules
+rule_files:
+  - "/etc/prometheus/alert-rules.yml"
+
 scrape_configs:
   - job_name: "prometheus"
     dns_sd_configs:

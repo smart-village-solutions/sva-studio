@@ -30,6 +30,54 @@ Du bist verantwortlich fuer die Qualitaet der Logging-Implementierung und ihre D
 - Performance: kein exzessives Logging, Sampling/Rate-Limits wo noetig
 - Betrieb: Retention, Suche/Filterbarkeit, Zugriffskontrollen
 
+### Code-Beispiele (Quick Reference)
+
+**Backend (Server-Code):**
+```typescript
+import { createSdkLogger } from '@sva/sdk';
+
+const logger = createSdkLogger({ 
+  component: 'auth-redis',  // Eindeutig pro Modul
+  level: 'info' 
+});
+
+// ✅ Session-Operation
+logger.debug('Session created', {
+  operation: 'create_session',
+  ttl_seconds: 3600,
+  has_access_token: true,
+  // ❌ NICHT: session_id (PII!)
+});
+
+// ✅ Error mit vollständigem Context
+logger.error('Redis connection failed', {
+  operation: 'redis_connect',
+  error: err.message,
+  error_type: err.constructor.name,
+  tls_enabled: true,
+});
+```
+
+**Frontend (Dev-Only):**
+```typescript
+if (process.env.NODE_ENV !== 'production') {
+  console.info('[Header] Auth check failed', {
+    component: 'Header',
+    endpoint: '/auth/me',
+    status: response.status,
+    auth_state: 'unauthenticated',
+  });
+}
+```
+
+**PII-Schutz Checkliste:**
+- ❌ Session-IDs direkt: `sessionId: 'abc123'`
+- ✅ Session-Flags: `session_created: true`, `session_exists: false`
+- ❌ Tokens: `token: 'eyJ...'`
+- ✅ Token-Status: `has_refresh_token: true`
+- ❌ User-Email: `email: 'user@example.com'`
+- ✅ User-ID: `user_id: 'usr_123'` (interne ID, OK)
+
 ### Leitfrage
 > Koennen wir einen Fehler in Produktion nur anhand der Logs nachvollziehen und gezielt beheben?
 

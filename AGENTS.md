@@ -70,6 +70,16 @@
 
 Die verbindlichen Entwicklungsrichtlinien liegen unter [DEVELOPMENT_RULES.md](DEVELOPMENT_RULES.md). Alle Agenten-Reviews sind im Zweifel an diesen Regeln auszurichten.
 
+### Kritische Regeln (Non-Negotiable)
+
+1. **Texte & Übersetzungen**: Keine hardcoded Strings, immer `t('key')` verwenden
+2. **Logging**: Server-Code nutzt SDK Logger (`@sva/sdk`), nie `console.*`
+3. **Security**: Input-Validation client+server, PII-Schutz in Logs
+4. **CSS**: Design-System verwenden, keine inline-styles (außer dynamische Daten)
+5. **Accessibility**: WCAG 2.1 AA compliant
+
+**Details:** Siehe [DEVELOPMENT_RULES.md](DEVELOPMENT_RULES.md)
+
 <!-- OPENSPEC:START -->
 
 ## OpenSpec-Anweisungen

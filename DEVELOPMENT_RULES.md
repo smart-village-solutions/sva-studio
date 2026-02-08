@@ -339,6 +339,51 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
 
 ---
 
+## 8. Logging & Observability
+
+### ✅ REQUIRED
+- **Server-Code**: SDK Logger verwenden (`createSdkLogger` aus `@sva/sdk`)
+- **Strukturierte Logs**: Immer mit Context-Feldern (component, operation, error, etc.)
+- **PII-Schutz**: Keine Session-IDs, Tokens, Emails direkt loggen
+- **Component-Labels**: Jeder Logger braucht eindeutigen `component` (z.B. `auth`, `auth-redis`)
+- **Error-Context**: Bei Errors immer `error`, `error_type`, `operation` mitloggen
+
+### ❌ FORBIDDEN
+- `console.log/info/warn/error` in Production-Server-Code
+- Session-IDs, Access-Tokens, Refresh-Tokens in Klartext
+- Unstrukturierte Error-Messages ohne Context
+- Logs ohne `component`-Label
+
+### ✅ APPROVED - Frontend Dev-Only Logs
+Frontend darf `console.*` nutzen, aber:
+- Nur in Development (`if (process.env.NODE_ENV !== 'production')`)
+- Mit strukturierten Feldern `{ component, endpoint, status, error }`
+- Keine PII (User-Email, Session-IDs)
+
+**Backend-Beispiel:**
+```typescript
+import { createSdkLogger } from '@sva/sdk';
+
+const logger = createSdkLogger({ component: 'auth' });
+
+logger.info('Session created', {
+  operation: 'create_session',
+  ttl_seconds: 3600,
+  has_refresh_token: true,
+});
+
+logger.error('Auth failed', {
+  operation: 'login',
+  error: err.message,
+  error_type: err.constructor.name,
+});
+```
+
+**Detaillierte Richtlinien:** [observability-best-practices.md](docs/development/observability-best-practices.md)
+**Logging-Agent:** [.github/agents/logging.agent.md](.github/agents/logging.agent.md)
+
+---
+
 ## Translation System Architecture
 
 ### How it works

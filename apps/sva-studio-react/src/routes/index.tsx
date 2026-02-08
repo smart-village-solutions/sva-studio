@@ -7,6 +7,28 @@ type AuthUser = {
   roles: string[];
 };
 
+type LogLevel = 'info' | 'warn' | 'error';
+
+const logAuth = (level: LogLevel, message: string, meta: Record<string, unknown> = {}) => {
+  if (!import.meta.env.DEV) {
+    return;
+  }
+
+  const payload = { component: 'auth', ...meta };
+
+  if (level === 'error') {
+    console.error(message, payload);
+    return;
+  }
+
+  if (level === 'warn') {
+    console.warn(message, payload);
+    return;
+  }
+
+  console.info(message, payload);
+};
+
 export const HomePage = () => {
   const [user, setUser] = React.useState<AuthUser | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -25,13 +47,20 @@ export const HomePage = () => {
     }
     const loadUser = async () => {
       try {
-        console.log('[AUTH] Loading user via fetch /auth/me...');
+        logAuth('info', 'Loading user via /auth/me', {
+          route: 'home',
+          auth_state: authState ?? 'none'
+        });
         const response = await fetch('/auth/me', { credentials: 'include' });
 
         if (!active) return;
 
         if (!response.ok) {
-          console.log('[AUTH] Response not OK:', response.status);
+          logAuth('warn', 'Auth response not OK', {
+            route: 'home',
+            status: response.status,
+            auth_state: authState ?? 'none'
+          });
           setUser(null);
           if (authState === 'ok') {
             setAuthError(
@@ -46,12 +75,19 @@ export const HomePage = () => {
         const payload = (await response.json()) as { user: AuthUser };
         if (active) {
           setUser(payload.user);
-          console.log('[AUTH] User erfolgreich geladen:', payload.user.name);
+          logAuth('info', 'User loaded', {
+            route: 'home',
+            has_user: Boolean(payload.user),
+            roles_count: payload.user.roles.length
+          });
         }
       } catch (error) {
         if (active) {
           setUser(null);
-          console.error('[AUTH] Fehler beim Laden der Session:', error);
+          logAuth('error', 'Failed to load session', {
+            route: 'home',
+            error_message: error instanceof Error ? error.message : String(error)
+          });
           setAuthError('Fehler beim Laden der Session. Bitte erneut anmelden.');
         }
       } finally {

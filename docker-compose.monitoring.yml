@@ -1,0 +1,108 @@
+version: '3.8'
+
+services:
+  prometheus:
+    image: prom/prometheus:v2.52.0
+    container_name: sva-studio-prometheus
+    ports:
+      - "127.0.0.1:9090:9090"
+    volumes:
+      - ./dev/monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=7d"
+      - "--storage.tsdb.retention.size=5GB"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:9090/-/healthy >/dev/null 2>&1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  loki:
+    image: grafana/loki:2.9.6
+    container_name: sva-studio-loki
+    ports:
+      - "127.0.0.1:3100:3100"
+    volumes:
+      - ./dev/monitoring/loki/loki-config.yml:/etc/loki/config.yml:ro
+      - loki-data:/loki
+    command: ["-config.file=/etc/loki/config.yml"]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3100/ready >/dev/null 2>&1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:10.4.3
+    container_name: sva-studio-grafana
+    ports:
+      - "127.0.0.1:3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: "admin"
+      GF_SECURITY_ADMIN_PASSWORD: "${GF_SECURITY_ADMIN_PASSWORD:-admin}"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SERVER_HTTP_PORT: "3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./dev/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./dev/monitoring/grafana/dashboards:/etc/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+      - loki
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/health >/dev/null 2>&1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.95.0
+    container_name: sva-studio-otel-collector
+    command: ["--config=/etc/otel-collector.yml"]
+    volumes:
+      - ./dev/monitoring/otel-collector/otel-collector.yml:/etc/otel-collector.yml:ro
+    ports:
+      - "127.0.0.1:4317:4317"
+      - "127.0.0.1:4318:4318"
+      - "127.0.0.1:13133:13133"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:13133/ >/dev/null 2>&1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  promtail:
+    image: grafana/promtail:2.9.8
+    container_name: sva-studio-promtail
+    environment:
+      DOCKER_API_VERSION: "1.44"
+    volumes:
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./dev/monitoring/promtail/promtail-config.yml:/etc/promtail/config.yml:ro
+    command: ["-config.file=/etc/promtail/config.yml"]
+    ports:
+      - "127.0.0.1:3101:3101"
+    depends_on:
+      - loki
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3101/ready >/dev/null 2>&1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+volumes:
+  prometheus-data:
+    driver: local
+  loki-data:
+    driver: local
+  grafana-data:
+    driver: local

@@ -1,0 +1,26 @@
+server:
+  http_listen_port: 3101
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: "docker"
+    static_configs:
+      - targets: ["localhost"]
+        labels:
+          component: "docker"
+          environment: "development"
+          workspace_id: "local-dev"
+          __path__: /var/lib/docker/containers/*/*-json.log
+    pipeline_stages:
+      - docker: {}
+    relabel_configs:
+      - action: labeldrop
+        regex: "(user_id|session_id|email|request_id|token|authorization|api_key|secret|ip|password|card|credit|ssn|pii|sensitive)"
+      - action: labelkeep
+        regex: "(workspace_id|component|environment|level|__path__)"

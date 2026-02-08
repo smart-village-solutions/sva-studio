@@ -71,6 +71,13 @@ export const createWorkspaceContextMiddleware = (options: WorkspaceMiddlewareOpt
   const headerNames = options.headerNames ?? ['x-workspace-id', 'x-sva-workspace-id'];
   const environment = options.environment ?? (process.env.NODE_ENV as WorkspaceMiddlewareOptions['environment']) ?? 'development';
 
+  // Note: Cannot use SDK logger here due to circular dependency (context.ts is used BY logger)
+  const warn = (message: string, meta?: Record<string, unknown>) => {
+    if (environment === 'development') {
+      console.warn(`[WorkspaceContext] ${message}`, meta ?? {});
+    }
+  };
+
   return (req, _res, next): void => {
     const workspaceId = extractWorkspaceId(req.headers, headerNames);
 
@@ -80,7 +87,10 @@ export const createWorkspaceContextMiddleware = (options: WorkspaceMiddlewareOpt
     }
 
     if (!workspaceId && environment === 'development') {
-      console.warn('workspace_id header missing');
+      warn('workspace_id header missing', {
+        header_names: headerNames,
+        headers_present: req.headers ? Object.keys(req.headers) : [],
+      });
     }
 
     runWithWorkspaceContext({ workspaceId }, () => {

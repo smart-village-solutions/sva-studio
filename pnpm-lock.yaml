@@ -41,6 +41,9 @@ importers:
       '@sva/plugin-example':
         specifier: workspace:*
         version: link:../../packages/plugin-example
+      '@sva/routing':
+        specifier: workspace:*
+        version: link:../../packages/routing
       '@tanstack/react-devtools':
         specifier: ^0.7.0
         version: 0.7.11(@types/react-dom@19.2.3(@types/react@19.2.8))(@types/react@19.2.8)(csstype@3.2.3)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(solid-js@1.9.10)
@@ -193,6 +196,22 @@ importers:
       '@types/react-dom':
         specifier: ^19.2.0
         version: 19.2.3(@types/react@19.2.8)
+
+  packages/routing:
+    dependencies:
+      '@sva/auth':
+        specifier: workspace:*
+        version: link:../auth
+      '@sva/core':
+        specifier: workspace:*
+        version: link:../core
+      '@tanstack/react-router':
+        specifier: ^1.59.0
+        version: 1.149.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+    devDependencies:
+      typescript:
+        specifier: ^5.3.3
+        version: 5.9.3
 
   packages/sdk:
     dependencies:

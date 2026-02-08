@@ -1,6 +1,9 @@
 import { getRedisClient } from './redis.server';
 import { encryptToken, decryptToken } from './crypto.server';
 import type { Session } from './types';
+import { createSdkLogger } from '@sva/sdk';
+
+const logger = createSdkLogger({ component: 'auth-session', level: 'info' });
 
 const SESSION_PREFIX = 'session:';
 const LOGIN_STATE_PREFIX = 'login_state:';
@@ -44,7 +47,11 @@ const decryptSessionTokens = (session: Session): Session => {
       idToken: session.idToken ? decryptToken(session.idToken, encryptionKey) : undefined,
     };
   } catch (err) {
-    console.error('[SESSION] Token decryption failed:', err);
+    logger.error('Session token decryption failed', {
+      operation: 'decrypt_session',
+      error: err instanceof Error ? err.message : String(err),
+      fallback: 'return_encrypted',
+    });
     // Return as-is if decryption fails (might be unencrypted legacy data)
     return session;
   }
@@ -66,7 +73,12 @@ export async function createSession(
 
   await redis.set(key, JSON.stringify(encryptedSession), 'EX', ttl);
 
-  console.log(`[REDIS] Session created: ${sessionId} (TTL: ${ttl}s)`);
+  logger.debug('Session created', {
+    operation: 'create_session',
+    ttl_seconds: ttl,
+    has_access_token: !!session.accessToken,
+    has_refresh_token: !!session.refreshToken,
+  });
 }
 
 /**
@@ -79,7 +91,10 @@ export async function getSession(sessionId: string): Promise<Session | undefined
   const data = await redis.get(key);
 
   if (!data) {
-    console.log(`[REDIS] Session not found: ${sessionId}`);
+    logger.debug('Session not found', {
+      operation: 'get_session',
+      found: false,
+    });
     return undefined;
   }
 
@@ -90,12 +105,20 @@ export async function getSession(sessionId: string): Promise<Session | undefined
 
   // Check if session is expired
   if (session.expiresAt && new Date(session.expiresAt) < new Date()) {
-    console.log(`[REDIS] Session expired: ${sessionId}`);
+    logger.info('Session expired', {
+      operation: 'get_session',
+      expired: true,
+      expires_at: session.expiresAt,
+    });
     await deleteSession(sessionId);
     return undefined;
   }
 
-  console.log(`[REDIS] Session retrieved: ${sessionId}`);
+  logger.debug('Session retrieved', {
+    operation: 'get_session',
+    found: true,
+    has_user: !!session.user,
+  });
   return session;
 }
 
@@ -127,7 +150,11 @@ export async function updateSession(
 
   await redis.set(key, JSON.stringify(encryptedSession), 'EX', finalTtl);
 
-  console.log(`[REDIS] Session updated: ${sessionId} (TTL: ${finalTtl}s)`);
+  logger.debug('Session updated', {
+    operation: 'update_session',
+    ttl_seconds: finalTtl,
+    fields_updated: Object.keys(updates).length,
+  });
 }
 
 /**
@@ -139,7 +166,9 @@ export async function deleteSession(sessionId: string): Promise<void> {
 
   await redis.del(key);
 
-  console.log(`[REDIS] Session deleted: ${sessionId}`);
+  logger.debug('Session deleted', {
+    operation: 'delete_session',
+  });
 }
 
 /**
@@ -147,7 +176,10 @@ export async function deleteSession(sessionId: string): Promise<void> {
  * This is mainly for compatibility with the in-memory implementation.
  */
 export async function clearExpiredSessions(): Promise<void> {
-  console.log('[REDIS] TTL-based expiration active, manual cleanup not needed');
+  logger.debug('Expired sessions cleanup skipped', {
+    operation: 'cleanup_sessions',
+    reason: 'redis_ttl_handles_expiration',
+  });
   // Redis automatically removes expired keys, so this is a no-op
 }
 
@@ -163,7 +195,11 @@ export async function createLoginState(
 
   await redis.set(key, JSON.stringify(data), 'EX', DEFAULT_LOGIN_STATE_TTL);
 
-  console.log(`[REDIS] Login state created: ${state} (TTL: ${DEFAULT_LOGIN_STATE_TTL}s)`);
+  logger.debug('Login state created', {
+    operation: 'create_login_state',
+    ttl_seconds: DEFAULT_LOGIN_STATE_TTL,
+    has_redirect: !!data.redirectTo,
+  });
 }
 
 /**
@@ -178,7 +214,10 @@ export async function consumeLoginState(
   const data = await redis.get(key);
 
   if (!data) {
-    console.log(`[REDIS] Login state not found: ${state}`);
+    logger.debug('Login state not found', {
+      operation: 'consume_login_state',
+      found: false,
+    });
     return undefined;
   }
 
@@ -187,7 +226,11 @@ export async function consumeLoginState(
 
   const result = JSON.parse(data) as { codeVerifier: string; nonce: string; createdAt: number; redirectTo?: string };
 
-  console.log(`[REDIS] Login state consumed: ${state}`);
+  logger.debug('Login state consumed', {
+    operation: 'consume_login_state',
+    consumed: true,
+    one_time_use: true,
+  });
   return result;
 }
 

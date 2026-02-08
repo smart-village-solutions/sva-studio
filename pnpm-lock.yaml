@@ -114,6 +114,9 @@ importers:
 
   packages/auth:
     dependencies:
+      '@sva/sdk':
+        specifier: workspace:*
+        version: link:../sdk
       cookie-es:
         specifier: ^1.2.2
         version: 1.2.2

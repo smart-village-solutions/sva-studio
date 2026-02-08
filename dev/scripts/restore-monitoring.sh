@@ -39,6 +39,34 @@ warn() {
     echo -e "${YELLOW}[$(date +'%Y-%m-%d %H:%M:%S')] WARNING:${NC} $1"
 }
 
+verify_checksum() {
+    local file_path="$1"
+    local checksum_path="${file_path}.sha256"
+
+    if [ ! -f "${checksum_path}" ]; then
+        return 0
+    fi
+
+    local dir
+    local base
+    local tmp_checksum
+
+    dir=$(dirname "${file_path}")
+    base=$(basename "${file_path}")
+    tmp_checksum=$(mktemp)
+
+    # Normalize checksum file to use basename only for portable verification.
+    sed "s|  .*${base}$|  ${base}|" "${checksum_path}" > "${tmp_checksum}"
+
+    if (cd "${dir}" && sha256sum -c "${tmp_checksum}"); then
+        rm -f "${tmp_checksum}"
+        return 0
+    fi
+
+    rm -f "${tmp_checksum}"
+    return 1
+}
+
 # Argument Check
 if [ $# -eq 0 ]; then
     error "Kein Backup-Pfad angegeben"
@@ -96,21 +124,18 @@ if [ -f "${BACKUP_PATH}/prometheus-snapshot.tar.gz" ]; then
     log "Stelle Prometheus Daten wieder her..."
 
     # Checksum validieren
-    if [ -f "${BACKUP_PATH}/prometheus-snapshot.tar.gz.sha256" ]; then
-        cd "${BACKUP_PATH}"
-        if sha256sum -c prometheus-snapshot.tar.gz.sha256; then
-            log "✓ Prometheus Checksum OK"
-        else
-            error "Prometheus Checksum fehlgeschlagen!"
-            exit 1
-        fi
-        cd -
+    if verify_checksum "${BACKUP_PATH}/prometheus-snapshot.tar.gz"; then
+        log "✓ Prometheus Checksum OK"
+    else
+        error "Prometheus Checksum fehlgeschlagen!"
+        exit 1
     fi
 
     # Temporären Container starten
     docker run --rm -v sva-studio_prometheus-data:/prometheus -v "${BACKUP_PATH}":/backup alpine sh -c "
         cd /prometheus &&
-        tar -xzf /backup/prometheus-snapshot.tar.gz --strip-components=1
+        tar -xzf /backup/prometheus-snapshot.tar.gz --strip-components=1 &&
+        chown -R 65534:65534 /prometheus
     "
     log "✓ Prometheus Daten wiederhergestellt"
 else
@@ -122,20 +147,19 @@ if [ -f "${BACKUP_PATH}/loki-data.tar.gz" ]; then
     log "Stelle Loki Daten wieder her..."
 
     # Checksum validieren
-    if [ -f "${BACKUP_PATH}/loki-data.tar.gz.sha256" ]; then
-        cd "${BACKUP_PATH}"
-        if sha256sum -c loki-data.tar.gz.sha256; then
-            log "✓ Loki Checksum OK"
-        else
-            error "Loki Checksum fehlgeschlagen!"
-            exit 1
-        fi
-        cd -
+    if verify_checksum "${BACKUP_PATH}/loki-data.tar.gz"; then
+        log "✓ Loki Checksum OK"
+    else
+        error "Loki Checksum fehlgeschlagen!"
+        exit 1
     fi
 
     docker run --rm -v sva-studio_loki-data:/loki -v "${BACKUP_PATH}":/backup alpine sh -c "
         cd /loki &&
-        tar -xzf /backup/loki-data.tar.gz --strip-components=1
+        tar -xzf /backup/loki-data.tar.gz --strip-components=1 &&
+        find /loki -name '._*' -delete &&
+        rm -rf /loki/boltdb-shipper-cache &&
+        chown -R 10001:10001 /loki
     "
     log "✓ Loki Daten wiederhergestellt"
 else
@@ -147,20 +171,17 @@ if [ -f "${BACKUP_PATH}/alertmanager-data.tar.gz" ]; then
     log "Stelle AlertManager Daten wieder her..."
 
     # Checksum validieren
-    if [ -f "${BACKUP_PATH}/alertmanager-data.tar.gz.sha256" ]; then
-        cd "${BACKUP_PATH}"
-        if sha256sum -c alertmanager-data.tar.gz.sha256; then
-            log "✓ AlertManager Checksum OK"
-        else
-            error "AlertManager Checksum fehlgeschlagen!"
-            exit 1
-        fi
-        cd -
+    if verify_checksum "${BACKUP_PATH}/alertmanager-data.tar.gz"; then
+        log "✓ AlertManager Checksum OK"
+    else
+        error "AlertManager Checksum fehlgeschlagen!"
+        exit 1
     fi
 
     docker run --rm -v sva-studio_alertmanager-data:/alertmanager -v "${BACKUP_PATH}":/backup alpine sh -c "
         cd /alertmanager &&
-        tar -xzf /backup/alertmanager-data.tar.gz --strip-components=1
+        tar -xzf /backup/alertmanager-data.tar.gz --strip-components=1 &&
+        chown -R 65534:65534 /alertmanager
     "
     log "✓ AlertManager Daten wiederhergestellt"
 else

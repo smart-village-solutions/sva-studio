@@ -1,5 +1,6 @@
 // Server-side OIDC helpers for login, session management, and logout flows.
 import { randomUUID } from 'node:crypto';
+import { createSdkLogger } from '@sva/sdk';
 
 import { getAuthConfig } from './config';
 import { client, getOidcConfig } from './oidc.server';
@@ -12,6 +13,8 @@ import {
   updateSession,
 } from './redis-session.server';
 import type { LoginState, SessionUser } from './types';
+
+const logger = createSdkLogger({ component: 'auth-oauth', level: 'info' });
 
 /**
  * Resolve a display name from standard OIDC claims with fallbacks.
@@ -228,7 +231,12 @@ export const getSessionUser = async (sessionId: string) => {
         expiresAt,
       });
     } catch (error) {
-      console.error('Auth refresh error:', error);
+      logger.error('Token refresh failed', {
+        operation: 'refresh_token',
+        error: error instanceof Error ? error.message : String(error),
+        error_type: error instanceof Error ? error.constructor.name : typeof error,
+        session_expired: session.expiresAt ? new Date(session.expiresAt) < new Date(now) : false,
+      });
       if (session.expiresAt && new Date(session.expiresAt) < new Date(now)) {
         await deleteSession(sessionId);
         return null;

@@ -1,4 +1,7 @@
 import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'node:crypto';
+import { createSdkLogger } from '@sva/sdk';
+
+const logger = createSdkLogger({ component: 'auth-crypto', level: 'info' });
 
 /**
  * Token encryption helper using AES-256-GCM
@@ -24,7 +27,12 @@ const deriveKey = (password: string, salt: Buffer): Buffer => {
 export const encryptToken = (token: string, encryptionKey: string): string => {
   if (!token) return token;
   if (!encryptionKey) {
-    console.warn('[CRYPTO] No encryption key provided, storing token unencrypted');
+    logger.warn('Token encryption disabled', {
+      operation: 'encrypt',
+      encryption_key_present: false,
+      security_impact: 'tokens_stored_unencrypted',
+      recommendation: 'Set ENCRYPTION_KEY environment variable',
+    });
     return token;
   }
 
@@ -49,7 +57,11 @@ export const encryptToken = (token: string, encryptionKey: string): string => {
 
     return encrypted.toString('base64');
   } catch (err) {
-    console.error('[CRYPTO] Encryption failed:', err);
+    logger.error('Token encryption failed', {
+      operation: 'encrypt',
+      error: err instanceof Error ? err.message : String(err),
+      error_type: err instanceof Error ? err.constructor.name : typeof err,
+    });
     throw err;
   }
 };
@@ -61,7 +73,12 @@ export const encryptToken = (token: string, encryptionKey: string): string => {
 export const decryptToken = (encrypted: string, encryptionKey: string): string => {
   if (!encrypted) return encrypted;
   if (!encryptionKey) {
-    console.warn('[CRYPTO] No encryption key provided, treating as unencrypted');
+    logger.warn('Token decryption disabled', {
+      operation: 'decrypt',
+      encryption_key_present: false,
+      security_impact: 'treating_as_unencrypted',
+      recommendation: 'Set ENCRYPTION_KEY environment variable',
+    });
     return encrypted;
   }
 
@@ -86,7 +103,11 @@ export const decryptToken = (encrypted: string, encryptionKey: string): string =
 
     return plaintext;
   } catch (err) {
-    console.error('[CRYPTO] Decryption failed:', err);
+    logger.error('Token decryption failed', {
+      operation: 'decrypt',
+      error: err instanceof Error ? err.message : String(err),
+      error_type: err instanceof Error ? err.constructor.name : typeof err,
+    });
     throw err;
   }
 };

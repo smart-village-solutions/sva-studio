@@ -1,4 +1,3 @@
-import { authRoutePaths } from '@sva/auth';
 import type { RootRoute } from '@tanstack/react-router';
 import { Link, Outlet, createRoute } from '@tanstack/react-router';
 import { createServerFn, useServerFn } from '@tanstack/react-start';
@@ -330,26 +329,57 @@ const ApiNames = ({ names }: { names: string[] }) => {
   );
 };
 
-const authRouteFactories = import.meta.env.SSR
-  ? (await import('@sva/auth/server')).authRouteDefinitions.map(
-      (definition) => (rootRoute: RootRoute) =>
-        createRoute({
-          getParentRoute: () => rootRoute,
-          path: definition.path,
-          component: () => null,
-          server: {
-            handlers: definition.handlers,
-          },
-        })
-    )
-  : authRoutePaths.map(
-      (path) => (rootRoute: RootRoute) =>
-        createRoute({
-          getParentRoute: () => rootRoute,
-          path,
-          component: () => null,
-        })
-    );
+// Static auth route factories with dynamic handler delegation
+// This avoids module loading errors by deferring the handler import
+const authRoutePaths = ['/auth/login', '/auth/callback', '/auth/me', '/auth/logout'];
+
+const authRouteFactories: Array<(rootRoute: RootRoute) => Route.ImplicitChildren | Route.ImplicitNotFoundRouteOptions> = authRoutePaths.map(
+  (path) => (rootRoute: RootRoute) => {
+    // Create a route with dynamic handler delegation
+    // The handler is loaded on first request, not during module initialization
+    const createDynamicHandler = (handlerName: 'loginHandler' | 'callbackHandler' | 'meHandler' | 'logoutHandler') => {
+      return async (ctx: any) => {
+        try {
+          const handlers = await import('@sva/auth/server');
+          const handler = handlers[handlerName];
+          if (!handler) {
+            return new Response(
+              JSON.stringify({ error: `Handler ${handlerName} not found` }),
+              { status: 500 }
+            );
+          }
+          // Call handler with request context if needed
+          return 'request' in ctx ? handler(ctx.request) : handler();
+        } catch (error) {
+          console.error(`Error loading handler ${handlerName}:`, error);
+          return new Response(
+            JSON.stringify({ error: `Failed to load ${handlerName}` }),
+            { status: 500 }
+          );
+        }
+      };
+    };
+
+    // Map paths to handlers
+    const handlerMap: Record<string, any> = {
+      '/auth/login': { GET: createDynamicHandler('loginHandler') },
+      '/auth/callback': { GET: createDynamicHandler('callbackHandler') },
+      '/auth/me': { GET: createDynamicHandler('meHandler') },
+      '/auth/logout': { POST: createDynamicHandler('logoutHandler') },
+    };
+
+    const handlers = handlerMap[path];
+
+    return createRoute({
+      getParentRoute: () => rootRoute,
+      path,
+      component: () => null,
+      server: import.meta.env.SSR
+        ? { handlers }
+        : undefined,
+    });
+  }
+);
 
 export const coreRouteFactoriesBase = [
   (rootRoute: RootRoute) =>

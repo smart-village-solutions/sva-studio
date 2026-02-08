@@ -12,6 +12,8 @@
     }
   },
   "dependencies": {
-    "@sva/core": "workspace:*"
+    "@opentelemetry/winston-transport": "^0.21.0",
+    "@sva/core": "workspace:*",
+    "winston": "^3.19.0"
   }
 }

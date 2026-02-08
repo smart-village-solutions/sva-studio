@@ -7,6 +7,28 @@ type AuthUser = {
   roles: string[];
 };
 
+type LogLevel = 'info' | 'warn' | 'error';
+
+const logAuth = (level: LogLevel, message: string, meta: Record<string, unknown> = {}) => {
+  if (!import.meta.env.DEV) {
+    return;
+  }
+
+  const payload = { component: 'auth', ...meta };
+
+  if (level === 'error') {
+    console.error(message, payload);
+    return;
+  }
+
+  if (level === 'warn') {
+    console.warn(message, payload);
+    return;
+  }
+
+  console.info(message, payload);
+};
+
 export const HomePage = () => {
   const [user, setUser] = React.useState<AuthUser | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -23,10 +45,16 @@ export const HomePage = () => {
     } else {
       setAuthError(null);
     }
+
     const loadUser = async () => {
       const controller = new AbortController();
       const timeoutId = window.setTimeout(() => controller.abort(), 8000);
       try {
+        logAuth('info', 'Loading user via /auth/me', {
+          route: 'home',
+          auth_state: authState ?? 'none',
+        });
+
         const response = await fetch('/auth/me', {
           credentials: 'include',
           signal: controller.signal,
@@ -35,6 +63,11 @@ export const HomePage = () => {
         if (!active) return;
 
         if (!response.ok) {
+          logAuth('warn', 'Auth response not OK', {
+            route: 'home',
+            status: response.status,
+            auth_state: authState ?? 'none',
+          });
           setUser(null);
           if (authState === 'ok') {
             setAuthError('Login erfolgreich, aber Session konnte nicht geladen werden. Bitte erneut anmelden.');
@@ -45,10 +78,19 @@ export const HomePage = () => {
         const payload = (await response.json()) as { user: AuthUser };
         if (active) {
           setUser(payload.user);
+          logAuth('info', 'User loaded', {
+            route: 'home',
+            has_user: Boolean(payload.user),
+            roles_count: payload.user.roles.length,
+          });
         }
       } catch (error) {
         if (active) {
           setUser(null);
+          logAuth('error', 'Failed to load session', {
+            route: 'home',
+            error_message: error instanceof Error ? error.message : String(error),
+          });
           setAuthError(
             error instanceof DOMException && error.name === 'AbortError'
               ? 'Session-Request hat zu lange gedauert. Bitte erneut anmelden.'

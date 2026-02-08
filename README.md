@@ -68,3 +68,13 @@ Für lokale Tests mit Redis TLS müssen Entwickler:innen eigene Zertifikate gene
 docker-compose up -d redis
 redis-cli -h localhost -p 6380 --cacert dev/redis-tls/ca.pem ping
 ```
+
+## Lokale Entwicklung: Monitoring-Stack
+
+Siehe [docs/development/monitoring-stack.md](docs/development/monitoring-stack.md) für Setup, Health-Checks und Dashboards.
+
+**Label-Schema (Whitelist):**
+- `workspace_id`, `component`, `environment`, `level`
+
+**Verbotene Labels (PII / High Cardinality):**
+- `user_id`, `session_id`, `email`, `request_id`, `token`, `authorization`, `api_key`, `secret`, `ip`

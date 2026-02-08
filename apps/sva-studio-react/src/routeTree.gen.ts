@@ -10,35 +10,11 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AuthMeRouteImport } from './routes/auth/me'
-import { Route as AuthLogoutRouteImport } from './routes/auth/logout'
-import { Route as AuthLoginRouteImport } from './routes/auth/login'
-import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
 import { Route as AdminApiPhase1TestRouteImport } from './routes/admin/api/phase1-test'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthMeRoute = AuthMeRouteImport.update({
-  id: '/auth/me',
-  path: '/auth/me',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthLogoutRoute = AuthLogoutRouteImport.update({
-  id: '/auth/logout',
-  path: '/auth/logout',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthLoginRoute = AuthLoginRouteImport.update({
-  id: '/auth/login',
-  path: '/auth/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthCallbackRoute = AuthCallbackRouteImport.update({
-  id: '/auth/callback',
-  path: '/auth/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminApiPhase1TestRoute = AdminApiPhase1TestRouteImport.update({
@@ -49,62 +25,27 @@ const AdminApiPhase1TestRoute = AdminApiPhase1TestRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/auth/callback': typeof AuthCallbackRoute
-  '/auth/login': typeof AuthLoginRoute
-  '/auth/logout': typeof AuthLogoutRoute
-  '/auth/me': typeof AuthMeRoute
   '/admin/api/phase1-test': typeof AdminApiPhase1TestRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/auth/callback': typeof AuthCallbackRoute
-  '/auth/login': typeof AuthLoginRoute
-  '/auth/logout': typeof AuthLogoutRoute
-  '/auth/me': typeof AuthMeRoute
   '/admin/api/phase1-test': typeof AdminApiPhase1TestRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/auth/callback': typeof AuthCallbackRoute
-  '/auth/login': typeof AuthLoginRoute
-  '/auth/logout': typeof AuthLogoutRoute
-  '/auth/me': typeof AuthMeRoute
   '/admin/api/phase1-test': typeof AdminApiPhase1TestRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | '/auth/callback'
-    | '/auth/login'
-    | '/auth/logout'
-    | '/auth/me'
-    | '/admin/api/phase1-test'
+  fullPaths: '/' | '/admin/api/phase1-test'
   fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/'
-    | '/auth/callback'
-    | '/auth/login'
-    | '/auth/logout'
-    | '/auth/me'
-    | '/admin/api/phase1-test'
-  id:
-    | '__root__'
-    | '/'
-    | '/auth/callback'
-    | '/auth/login'
-    | '/auth/logout'
-    | '/auth/me'
-    | '/admin/api/phase1-test'
+  to: '/' | '/admin/api/phase1-test'
+  id: '__root__' | '/' | '/admin/api/phase1-test'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AuthCallbackRoute: typeof AuthCallbackRoute
-  AuthLoginRoute: typeof AuthLoginRoute
-  AuthLogoutRoute: typeof AuthLogoutRoute
-  AuthMeRoute: typeof AuthMeRoute
   AdminApiPhase1TestRoute: typeof AdminApiPhase1TestRoute
 }
 
@@ -115,34 +56,6 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/auth/me': {
-      id: '/auth/me'
-      path: '/auth/me'
-      fullPath: '/auth/me'
-      preLoaderRoute: typeof AuthMeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/auth/logout': {
-      id: '/auth/logout'
-      path: '/auth/logout'
-      fullPath: '/auth/logout'
-      preLoaderRoute: typeof AuthLogoutRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/auth/login': {
-      id: '/auth/login'
-      path: '/auth/login'
-      fullPath: '/auth/login'
-      preLoaderRoute: typeof AuthLoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/auth/callback': {
-      id: '/auth/callback'
-      path: '/auth/callback'
-      fullPath: '/auth/callback'
-      preLoaderRoute: typeof AuthCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/api/phase1-test': {
@@ -157,10 +70,6 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AuthCallbackRoute: AuthCallbackRoute,
-  AuthLoginRoute: AuthLoginRoute,
-  AuthLogoutRoute: AuthLogoutRoute,
-  AuthMeRoute: AuthMeRoute,
   AdminApiPhase1TestRoute: AdminApiPhase1TestRoute,
 }
 export const routeTree = rootRouteImport

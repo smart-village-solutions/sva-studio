@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import { runWithWorkspaceContext } from '../observability/context';
-import type { WorkspaceContext } from '../observability/context';
+import { runWithWorkspaceContext } from '../observability/context.server';
+import type { WorkspaceContext } from '../observability/context.server';
 
 /**
  * Extrahiert Headers aus verschiedenen Request-Formaten

@@ -1,7 +1,8 @@
 import winston, { type Logger } from 'winston';
-import { OpenTelemetryTransportV3 } from '@opentelemetry/winston-transport';
+import Transport from 'winston-transport';
 
-import { getWorkspaceContext } from '../observability/context';
+import { getWorkspaceContext } from '../observability/context.server';
+import { getGlobalLoggerProvider } from '@sva/monitoring-client/server';
 
 const sensitiveKeys = new Set([
   'password',
@@ -82,6 +83,71 @@ export interface LoggerOptions {
   enableOtel?: boolean;
 }
 
+/**
+ * Custom Winston Transport der Logs direkt an den OTEL Logger Provider sendet.
+ * Umgeht das Timing-Problem mit der Winston-Instrumentation.
+ *
+ * Nutzt winston-transport für vollständige Kompatibilität.
+ */
+class DirectOtelTransport extends Transport {
+  private otelLogger: any = null;
+  private loggerAttempted = false;
+
+  log(info: any, callback?: () => void) {
+    // Winston-kompatible async operation mit setImmediate
+    setImmediate(() => {
+      // Lazy-Init: Versuche nur einmal, den Logger zu holen
+      if (!this.otelLogger && !this.loggerAttempted) {
+        this.loggerAttempted = true;
+        try {
+          // Hole den globalen Logger Provider
+          const provider = getGlobalLoggerProvider();
+          if (provider && typeof provider.getLogger === 'function') {
+            this.otelLogger = provider.getLogger('@sva/winston', '1.0.0');
+          }
+        } catch (e) {
+          // Provider noch nicht verfügbar - log wird dann über Console gesendet
+          this.emit('error', e);
+        }
+      }
+
+      // Wenn Logger verfügbar, sende Log
+      if (this.otelLogger && this.otelLogger.emit) {
+        try {
+          const { timestamp, level, message, component, environment, workspace_id, context, ...rest } = info;
+
+          // Map Winston level to OTEL severity
+          const severityMap: Record<string, number> = {
+            error: 17,
+            warn: 13,
+            info: 9,
+            debug: 5,
+            verbose: 1,
+          };
+
+          this.otelLogger.emit({
+            severityNumber: severityMap[level] || 9,
+            severityText: level.toUpperCase(),
+            body: message,
+            attributes: {
+              component,
+              environment,
+              workspace_id,
+              ...rest,
+            },
+          });
+        } catch (e) {
+          this.emit('error', e);
+        }
+      }
+
+      if (callback) {
+        callback();
+      }
+    });
+  }
+}
+
 export const createSdkLogger = ({
   component,
   environment = process.env.NODE_ENV ?? 'development',
@@ -89,14 +155,15 @@ export const createSdkLogger = ({
   enableConsole = environment !== 'production',
   enableOtel = true
 }: LoggerOptions): Logger => {
-  const transports: winston.transport[] = [];
+  const transportsArray: winston.transport[] = [];
 
+  // Nutze direkten OTEL Transport (umgeht Winston-Instrumentation-Timing-Problem)
   if (enableOtel) {
-    transports.push(new OpenTelemetryTransportV3());
+    transportsArray.push(new DirectOtelTransport() as any);
   }
 
   if (enableConsole) {
-    transports.push(
+    transportsArray.push(
       new winston.transports.Console({
         format: winston.format.combine(
           winston.format.colorize(),
@@ -119,6 +186,6 @@ export const createSdkLogger = ({
       environment
     },
     format: winston.format.combine(winston.format.timestamp(), enrichWithContext(), redactSensitive(), winston.format.json()),
-    transports
+    transports: transportsArray
   });
 };

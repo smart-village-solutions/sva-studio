@@ -14,8 +14,10 @@ import { OTLPLogExporter } from '@opentelemetry/exporter-logs-otlp-http';
 import { PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics';
 import { BatchLogRecordProcessor, LogRecordProcessor, type SdkLogRecord } from '@opentelemetry/sdk-logs';
 import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
+import { logs } from '@opentelemetry/api-logs';
 
-import { getWorkspaceContext } from '@sva/sdk';
+import { getWorkspaceContext } from '@sva/sdk/server';
+import { setGlobalLoggerProvider } from './logger-provider.server';
 
 const allowedLabelKeys = new Set(['workspace_id', 'component', 'environment', 'level']);
 
@@ -131,10 +133,29 @@ export const createOtelSdk = (config: OtelConfig): NodeSDK => {
     url: `${otlpEndpoint}/v1/logs`
   });
 
-  const logProcessor = new RedactingLogProcessor(new BatchLogRecordProcessor(logExporter));
+  // Optimiere BatchLogRecordProcessor für schnelle Log-Übertragung
+  // In Development: Kurze Delays für sofortige Sichtbarkeit
+  // In Production: Längere Delays für bessere Batching Performance
+  const isDevMode = config.environment === 'development';
+  const batchSize = isDevMode ? 10 : 512;
+  const scheduleDelayMs = isDevMode ? 500 : 5000; // 500ms in dev vs 5s in prod
+  const expoTimeoutMs = isDevMode ? 10000 : 30000;
+
+  const logProcessor = new RedactingLogProcessor(
+    new BatchLogRecordProcessor(logExporter, {
+      maxQueueSize: 4096,
+      maxExportBatchSize: batchSize,
+      scheduledDelayMillis: scheduleDelayMs,
+      exportTimeoutMillis: expoTimeoutMs
+    })
+  );
 
   return new NodeSDK({
     resource,
+    // Disable trace exporter - we only use logs and metrics
+    // This prevents 404 errors when collector has no traces pipeline
+    traceExporter: undefined,
+    spanProcessors: [], // Explicitly no span processors
     metricReader: new PeriodicExportingMetricReader({
       exporter: metricExporter
     }),
@@ -152,5 +173,14 @@ export const createOtelSdk = (config: OtelConfig): NodeSDK => {
 export const startOtelSdk = async (config: OtelConfig): Promise<NodeSDK> => {
   const sdk = createOtelSdk(config);
   await sdk.start();
+
+  // Get global logger provider from OTEL API after SDK started
+  // Note: Type casting needed as API logs and SDK logs use different LoggerProvider types at runtime
+  // but they are compatible (the API returns what SDK expects)
+  const globalLoggerProvider = logs.getLoggerProvider() as any;
+  if (globalLoggerProvider) {
+    setGlobalLoggerProvider(globalLoggerProvider);
+  }
+
   return sdk;
 };

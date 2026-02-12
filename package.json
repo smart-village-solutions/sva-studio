@@ -17,8 +17,11 @@
     "test:coverage": "nx run-many -t test:coverage",
     "test:coverage:affected": "nx affected --target=test:coverage --base=origin/main",
     "test:integration": "nx run-many -t test:integration",
-    "test:ci": "pnpm test:unit && pnpm test:coverage",
-    "coverage-gate": "tsx scripts/ci/coverage-gate.ts"
+    "test:ci": "pnpm check:file-placement && pnpm test:unit && pnpm test:coverage",
+    "coverage-gate": "tsx scripts/ci/coverage-gate.ts",
+    "check:file-placement": "node scripts/ci/check-file-placement.mjs",
+    "check:file-placement:staged": "node scripts/ci/check-file-placement.mjs --staged",
+    "hooks:install": "git config core.hooksPath .githooks"
   },
   "repository": {
     "type": "git",

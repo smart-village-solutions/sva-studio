@@ -62,6 +62,50 @@ These rules are **NON-NEGOTIABLE** and must be followed in all development work.
 
 ---
 
+## 1.1 Tooling: LSP Diagnostics
+
+### ✅ REQUIRED
+- Install the TypeScript language server globally for LSP diagnostics:
+  - `npm install -g typescript-language-server typescript`
+
+**Why this is required:**
+- The `lsp_diagnostics` tooling used in this workspace resolves `typescript-language-server` from the global PATH.
+- A local devDependency is not sufficient for the diagnostics tool.
+
+---
+
+## 1.2 Repository File Placement (Enforced)
+
+### ✅ REQUIRED
+- Run `pnpm check:file-placement` before opening a PR
+- Store debug scripts only in:
+  - `scripts/debug/auth/`
+  - `scripts/debug/otel/`
+- Store staging docs only in: `docs/staging/YYYY-MM/`
+- Store PR docs only in: `docs/pr/<number>/`
+- Store operational reports only in: `docs/reports/`
+
+### ❌ FORBIDDEN
+- New markdown files in repository root (except: `README.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `DEBUGGING.md`, `DEVELOPMENT_RULES.md`, `AGENTS.md`)
+- Legacy document paths such as:
+  - `docs/STAGING-TODOS.md`
+  - `docs/SECTION_7_VALIDATION_REPORT.md`
+  - `docs/pr45-*.md`
+  - `docs/pr-45-*.md`
+- Root-level debug scripts like:
+  - `debug_test.py`
+  - `test_session_loading.py`
+  - `test-otel-phase1.ts`
+  - `test-otel-provider-creation.mjs`
+  - `test-otlp-direct.ts`
+
+**Enforcement**
+- CI workflow `File Placement` blocks non-compliant changes.
+- Optional local pre-commit hook:
+  1. `pnpm hooks:install`
+  2. commit (hook runs `pnpm check:file-placement:staged`)
+
+---
 ## 2. Translation System
 
 ### Process for UI Texts

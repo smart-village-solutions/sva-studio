@@ -41,6 +41,17 @@
 - Für jede Code-Änderung Tests hinzufügen oder anpassen
 - Interne Doku-Links relativ zum Ordner `docs/` schreiben (z. B. `./guide/data-loading`)
 
+## Repository File Placement (Enforced)
+
+- Root-Level Markdown ist gesperrt (Ausnahme: `README.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `DEBUGGING.md`, `DEVELOPMENT_RULES.md`, `AGENTS.md`)
+- Debug-Skripte gehören ausschließlich nach `scripts/debug/auth/` oder `scripts/debug/otel/`
+- Operative Reports gehören nach `docs/reports/`
+- Staging-Dokumente gehören nach `docs/staging/YYYY-MM/`
+- PR-Dokumente gehören nach `docs/pr/<nummer>/`
+- Legacy-Dateinamen wie `docs/STAGING-TODOS.md`, `docs/pr45-*.md`, `docs/pr-45-*.md` sind verboten
+- Verbindlicher Check: `pnpm check:file-placement`
+- Für lokale Hook-Aktivierung: `pnpm hooks:install`
+
 ## Package-Struktur
 
 **Core packages:**

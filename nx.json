@@ -7,5 +7,42 @@
   "workspaceLayout": {
     "appsDir": "apps",
     "libsDir": "packages"
+  },
+  "targetDefaults": {
+    "test:unit": {
+      "cache": true,
+      "inputs": ["default", "^production", "testing"]
+    },
+    "test:coverage": {
+      "cache": true,
+      "inputs": [
+        "default",
+        "^production",
+        "testing",
+        "{workspaceRoot}/vitest.config.ts",
+        "{workspaceRoot}/vitest.workspace.ts"
+      ],
+      "outputs": ["{projectRoot}/coverage"]
+    }
+  },
+  "namedInputs": {
+    "default": ["{projectRoot}/**/*", "sharedGlobals"],
+    "production": [
+      "default",
+      "!{projectRoot}/**/*.test.{ts,tsx,js,jsx}",
+      "!{projectRoot}/**/*.spec.{ts,tsx,js,jsx}",
+      "!{projectRoot}/**/__tests__/**"
+    ],
+    "testing": [
+      "{projectRoot}/**/*.test.{ts,tsx,js,jsx}",
+      "{projectRoot}/**/*.spec.{ts,tsx,js,jsx}",
+      "{projectRoot}/**/__tests__/**",
+      "{workspaceRoot}/vitest.config.ts",
+      "{workspaceRoot}/vitest.workspace.ts"
+    ],
+    "sharedGlobals": [
+      "{workspaceRoot}/tsconfig.base.json",
+      "{workspaceRoot}/pnpm-lock.yaml"
+    ]
   }
 }

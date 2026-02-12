@@ -1,0 +1,16 @@
+{
+  "projects": {
+    "sva-studio-react": {
+      "lines": 0,
+      "statements": 0,
+      "functions": 25,
+      "branches": 25
+    },
+    "sdk": {
+      "lines": 0,
+      "statements": 0,
+      "functions": 0,
+      "branches": 0
+    }
+  }
+}

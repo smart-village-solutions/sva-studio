@@ -120,6 +120,9 @@ importers:
       '@sva/sdk':
         specifier: workspace:*
         version: link:../sdk
+      '@tanstack/react-start':
+        specifier: ^1.132.0
+        version: 1.149.4(crossws@0.4.1(srvx@0.10.0))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(vite@5.4.21(@types/node@22.19.6)(terser@5.46.0))
       cookie-es:
         specifier: ^1.2.2
         version: 1.2.2
@@ -147,6 +150,9 @@ importers:
       '@opentelemetry/api':
         specifier: ^1.9.0
         version: 1.9.0
+      '@opentelemetry/api-logs':
+        specifier: ^0.211.0
+        version: 0.211.0
       '@opentelemetry/auto-instrumentations-node':
         specifier: ^0.69.0
         version: 0.69.0(@opentelemetry/api@1.9.0)(@opentelemetry/core@2.5.0(@opentelemetry/api@1.9.0))
@@ -215,15 +221,27 @@ importers:
 
   packages/sdk:
     dependencies:
+      '@opentelemetry/api':
+        specifier: ^1.9.0
+        version: 1.9.0
+      '@opentelemetry/sdk-node':
+        specifier: ^0.211.0
+        version: 0.211.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/winston-transport':
         specifier: ^0.21.0
         version: 0.21.0
       '@sva/core':
         specifier: workspace:*
         version: link:../core
+      '@sva/monitoring-client':
+        specifier: workspace:*
+        version: link:../monitoring-client
       winston:
         specifier: ^3.19.0
         version: 3.19.0
+      winston-transport:
+        specifier: ^4.9.0
+        version: 4.9.0
 
 packages:
 
@@ -6757,6 +6775,26 @@ snapshots:
     transitivePeerDependencies:
       - crossws
 
+  '@tanstack/react-start@1.149.4(crossws@0.4.1(srvx@0.10.0))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(vite@5.4.21(@types/node@22.19.6)(terser@5.46.0))':
+    dependencies:
+      '@tanstack/react-router': 1.149.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@tanstack/react-start-client': 1.149.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@tanstack/react-start-server': 1.149.3(crossws@0.4.1(srvx@0.10.0))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@tanstack/router-utils': 1.143.11
+      '@tanstack/start-client-core': 1.149.3
+      '@tanstack/start-plugin-core': 1.149.4(@tanstack/react-router@1.149.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(crossws@0.4.1(srvx@0.10.0))(vite@5.4.21(@types/node@22.19.6)(terser@5.46.0))
+      '@tanstack/start-server-core': 1.149.3(crossws@0.4.1(srvx@0.10.0))
+      pathe: 2.0.3
+      react: 19.2.3
+      react-dom: 19.2.3(react@19.2.3)
+      vite: 5.4.21(@types/node@22.19.6)(terser@5.46.0)
+    transitivePeerDependencies:
+      - '@rsbuild/core'
+      - crossws
+      - supports-color
+      - vite-plugin-solid
+      - webpack
+
   '@tanstack/react-start@1.149.4(crossws@0.4.1(srvx@0.10.0))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(vite@7.3.1(@types/node@22.19.6)(jiti@2.6.1)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))':
     dependencies:
       '@tanstack/react-router': 1.149.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
@@ -6816,6 +6854,28 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  '@tanstack/router-plugin@1.149.3(@tanstack/react-router@1.149.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(vite@5.4.21(@types/node@22.19.6)(terser@5.46.0))':
+    dependencies:
+      '@babel/core': 7.28.6
+      '@babel/plugin-syntax-jsx': 7.28.6(@babel/core@7.28.6)
+      '@babel/plugin-syntax-typescript': 7.28.6(@babel/core@7.28.6)
+      '@babel/template': 7.28.6
+      '@babel/traverse': 7.28.6
+      '@babel/types': 7.28.6
+      '@tanstack/router-core': 1.149.3
+      '@tanstack/router-generator': 1.149.3
+      '@tanstack/router-utils': 1.143.11
+      '@tanstack/virtual-file-routes': 1.145.4
+      babel-dead-code-elimination: 1.0.12
+      chokidar: 3.6.0
+      unplugin: 2.3.11
+      zod: 3.25.76
+    optionalDependencies:
+      '@tanstack/react-router': 1.149.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      vite: 5.4.21(@types/node@22.19.6)(terser@5.46.0)
+    transitivePeerDependencies:
+      - supports-color
+
   '@tanstack/router-plugin@1.149.3(@tanstack/react-router@1.149.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(vite@7.3.1(@types/node@22.19.6)(jiti@2.6.1)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))':
     dependencies:
       '@babel/core': 7.28.6
@@ -6865,6 +6925,37 @@ snapshots:
       tiny-warning: 1.0.3
 
   '@tanstack/start-fn-stubs@1.143.8': {}
+
+  '@tanstack/start-plugin-core@1.149.4(@tanstack/react-router@1.149.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(crossws@0.4.1(srvx@0.10.0))(vite@5.4.21(@types/node@22.19.6)(terser@5.46.0))':
+    dependencies:
+      '@babel/code-frame': 7.27.1
+      '@babel/core': 7.28.6
+      '@babel/types': 7.28.6
+      '@rolldown/pluginutils': 1.0.0-beta.40
+      '@tanstack/router-core': 1.149.3
+      '@tanstack/router-generator': 1.149.3
+      '@tanstack/router-plugin': 1.149.3(@tanstack/react-router@1.149.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(vite@5.4.21(@types/node@22.19.6)(terser@5.46.0))
+      '@tanstack/router-utils': 1.143.11
+      '@tanstack/start-client-core': 1.149.3
+      '@tanstack/start-server-core': 1.149.3(crossws@0.4.1(srvx@0.10.0))
+      babel-dead-code-elimination: 1.0.12
+      cheerio: 1.1.2
+      exsolve: 1.0.8
+      pathe: 2.0.3
+      srvx: 0.10.0
+      tinyglobby: 0.2.15
+      ufo: 1.6.2
+      vite: 5.4.21(@types/node@22.19.6)(terser@5.46.0)
+      vitefu: 1.1.1(vite@5.4.21(@types/node@22.19.6)(terser@5.46.0))
+      xmlbuilder2: 4.0.3
+      zod: 3.25.76
+    transitivePeerDependencies:
+      - '@rsbuild/core'
+      - '@tanstack/react-router'
+      - crossws
+      - supports-color
+      - vite-plugin-solid
+      - webpack
 
   '@tanstack/start-plugin-core@1.149.4(@tanstack/react-router@1.149.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(crossws@0.4.1(srvx@0.10.0))(vite@7.3.1(@types/node@22.19.6)(jiti@2.6.1)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))':
     dependencies:
@@ -8953,6 +9044,10 @@ snapshots:
       terser: 5.46.0
       tsx: 4.21.0
       yaml: 2.8.2
+
+  vitefu@1.1.1(vite@5.4.21(@types/node@22.19.6)(terser@5.46.0)):
+    optionalDependencies:
+      vite: 5.4.21(@types/node@22.19.6)(terser@5.46.0)
 
   vitefu@1.1.1(vite@7.3.1(@types/node@22.19.6)(jiti@2.6.1)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)):
     optionalDependencies:

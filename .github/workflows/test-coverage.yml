@@ -41,6 +41,8 @@ jobs:
         run: pnpm test:coverage
 
       - name: Evaluate coverage gates
+        env:
+          COVERAGE_GATE_REQUIRE_SUMMARIES: "1"
         run: node scripts/ci/coverage-gate.mjs
 
       - name: Upload coverage artifacts

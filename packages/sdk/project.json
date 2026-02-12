@@ -20,13 +20,15 @@
     "test:unit": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "cd packages/sdk && vitest run tests --reporter=verbose --passWithNoTests"
+        "command": "pnpm exec vitest run tests --reporter=verbose --passWithNoTests",
+        "cwd": "packages/sdk"
       }
     },
     "test:coverage": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "cd packages/sdk && vitest run tests --coverage --coverage.reporter=text-summary --coverage.reporter=json-summary --coverage.reporter=lcov --reporter=verbose --passWithNoTests"
+        "command": "pnpm exec vitest run tests --coverage --coverage.reporter=text-summary --coverage.reporter=json-summary --coverage.reporter=lcov --reporter=verbose --passWithNoTests",
+        "cwd": "packages/sdk"
       }
     },
     "test:integration": {

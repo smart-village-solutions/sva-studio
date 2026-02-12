@@ -4,13 +4,18 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const rootDir = process.cwd();
+const workspaceRoots = ['apps', 'packages'].map((dir) => path.join(rootDir, dir));
 const policyPath = path.join(rootDir, 'tooling/testing/coverage-policy.json');
 const baselinePath = path.join(rootDir, 'tooling/testing/coverage-baseline.json');
 const updateBaseline = process.argv.includes('--update-baseline');
+const requireSummaries = process.env.COVERAGE_GATE_REQUIRE_SUMMARIES === '1';
 
 const readJson = (filePath) => JSON.parse(fs.readFileSync(filePath, 'utf8'));
 
 const findCoverageSummaries = (dir, results = []) => {
+  if (!fs.existsSync(dir)) {
+    return results;
+  }
   const entries = fs.readdirSync(dir, { withFileTypes: true });
   for (const entry of entries) {
     const entryPath = path.join(dir, entry.name);
@@ -78,11 +83,16 @@ if (!fs.existsSync(policyPath)) {
 const policy = readJson(policyPath);
 const baseline = fs.existsSync(baselinePath)
   ? readJson(baselinePath)
-  : { generatedAt: new Date().toISOString(), projects: {} };
+  : { projects: {} };
 
-const summaries = findCoverageSummaries(rootDir);
+const summaries = workspaceRoots.flatMap((dir) => findCoverageSummaries(dir));
 if (summaries.length === 0) {
-  console.warn('No coverage-summary.json files found. Skipping coverage gate.');
+  const message = 'No coverage-summary.json files found.';
+  if (requireSummaries) {
+    console.error(`${message} Failing coverage gate because COVERAGE_GATE_REQUIRE_SUMMARIES=1.`);
+    process.exit(1);
+  }
+  console.warn(`${message} Skipping coverage gate.`);
   process.exit(0);
 }
 
@@ -95,10 +105,7 @@ for (const summaryPath of summaries) {
 }
 
 if (updateBaseline) {
-  const nextBaseline = {
-    generatedAt: new Date().toISOString(),
-    projects,
-  };
+  const nextBaseline = { projects };
   fs.writeFileSync(baselinePath, JSON.stringify(nextBaseline, null, 2) + '\n', 'utf8');
   console.log(`Updated baseline at ${baselinePath}`);
   process.exit(0);
@@ -116,6 +123,15 @@ reportLines.push('| Project | Lines | Statements | Functions | Branches |');
 reportLines.push('| --- | ---: | ---: | ---: | ---: |');
 
 const activeProjects = Object.entries(projects).filter(([name]) => !exemptProjects.has(name));
+const expectedProjects = Object.keys(policy.perProjectFloors ?? {}).filter(
+  (name) => !exemptProjects.has(name)
+);
+
+for (const projectName of expectedProjects) {
+  if (!projects[projectName]) {
+    errors.push(`[${projectName}] missing coverage-summary.json`);
+  }
+}
 for (const [name, values] of Object.entries(projects)) {
   reportLines.push(
     `| ${name} | ${formatPct(values.lines)} | ${formatPct(values.statements)} | ${formatPct(values.functions)} | ${formatPct(values.branches)} |`

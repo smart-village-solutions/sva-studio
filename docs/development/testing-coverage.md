@@ -80,4 +80,4 @@ Diese Liste wird schrittweise reduziert, sobald echte Unit-Tests vorhanden sind.
 
 ## PR-Checkliste
 
-Die Merge-Checkliste fuer Coverage-Nachweise steht unter `../reports/PR_CHECKLIST.md`.
+Die Merge-Checkliste für Coverage-Nachweise steht unter `../reports/PR_CHECKLIST.md`.

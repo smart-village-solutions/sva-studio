@@ -1,6 +1,6 @@
 /**
  * Phase 1.1: OTEL SDK & Logger Provider Creation Test
- * Run: cd /Users/wilimzig/Documents/Projects/SVA/sva-studio && pnpm exec tsx test-otel-phase1.ts
+ * Run: cd /Users/wilimzig/Documents/Projects/SVA/sva-studio && pnpm exec tsx scripts/debug/otel/test-otel-phase1.ts
  *
  * This test is deliberately kept simple:
  * - No Vitest (too complex to setup)

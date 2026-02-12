@@ -8,7 +8,7 @@
  * Success = All assertions pass, we can move to Phase 1.2
  * Failure = OTEL SDK problem, needs library-level fix
  *
- * Run: node test-otel-provider-creation.mjs
+ * Run: node scripts/debug/otel/test-otel-provider-creation.mjs
  */
 
 import { NodeSDK } from '@opentelemetry/sdk-node';

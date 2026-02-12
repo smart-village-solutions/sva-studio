@@ -6,13 +6,14 @@ export type SessionUser = {
 };
 
 export type Session = {
+  id: string; // Session ID for storage/retrieval
   userId: string;
   user?: SessionUser;
   accessToken?: string;
-  createdAt: string;
+  createdAt: number; // Unix timestamp in milliseconds (Date.now())
   refreshToken?: string;
   idToken?: string;
-  expiresAt?: string;
+  expiresAt?: number; // Unix timestamp in milliseconds
 };
 
 export type LoginState = {

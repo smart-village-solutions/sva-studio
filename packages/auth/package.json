@@ -2,21 +2,22 @@
   "name": "@sva/auth",
   "version": "0.0.1",
   "type": "module",
-  "main": "src/index.ts",
-  "types": "src/index.ts",
-  "module": "src/index.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "module": "dist/index.js",
   "exports": {
     ".": {
-      "types": "./src/index.ts",
-      "default": "./src/index.ts"
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
     },
     "./server": {
-      "types": "./src/index.server.ts",
-      "default": "./src/index.server.ts"
+      "types": "./dist/index.server.d.ts",
+      "default": "./dist/index.server.js"
     }
   },
   "dependencies": {
     "@sva/sdk": "workspace:*",
+    "@tanstack/react-start": "^1.132.0",
     "cookie-es": "^1.2.2",
     "ioredis": "^5.4.2",
     "openid-client": "^6.4.0"

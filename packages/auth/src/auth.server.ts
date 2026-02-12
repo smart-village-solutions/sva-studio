@@ -1,6 +1,6 @@
 // Server-side OIDC helpers for login, session management, and logout flows.
 import { randomUUID } from 'node:crypto';
-import { createSdkLogger } from '@sva/sdk';
+import { createSdkLogger } from '@sva/sdk/server';
 
 import { getAuthConfig } from './config';
 import { client, getOidcConfig } from './oidc.server';
@@ -15,6 +15,7 @@ import {
 import type { LoginState, SessionUser } from './types';
 
 const logger = createSdkLogger({ component: 'auth-oauth', level: 'info' });
+const TOKEN_REFRESH_SKEW_MS = 60_000;
 
 /**
  * Resolve a display name from standard OIDC claims with fallbacks.
@@ -175,12 +176,11 @@ export const handleCallback = async (params: {
   };
 
   const sessionId = randomUUID();
-  const now = new Date().toISOString();
-  const expiresAt = tokenSet.expiresIn()
-    ? new Date(Date.now() + tokenSet.expiresIn()! * 1000).toISOString()
-    : undefined;
+  const now = Date.now();
+  const expiresAt = tokenSet.expiresIn() ? now + tokenSet.expiresIn()! * 1000 : undefined;
 
   await createSession(sessionId, {
+    id: sessionId,
     userId: user.id,
     user,
     accessToken: tokenSet.access_token,
@@ -204,6 +204,13 @@ export const getSessionUser = async (sessionId: string) => {
   }
 
   const now = Date.now();
+  const hasValidUnexpiredToken =
+    typeof session.expiresAt !== 'number' || session.expiresAt > now + TOKEN_REFRESH_SKEW_MS;
+
+  if (hasValidUnexpiredToken) {
+    return session.user ?? null;
+  }
+
   if (session.refreshToken) {
     try {
       const config = await getOidcConfig();
@@ -221,7 +228,7 @@ export const getSessionUser = async (sessionId: string) => {
         roles: extractRoles(roleClaims, authConfig.clientId),
       };
       const expiresAt = refreshed.expiresIn()
-        ? new Date(now + refreshed.expiresIn()! * 1000).toISOString()
+        ? now + refreshed.expiresIn()! * 1000
         : session.expiresAt;
       await updateSession(sessionId, {
         user: updatedUser,
@@ -235,12 +242,15 @@ export const getSessionUser = async (sessionId: string) => {
         operation: 'refresh_token',
         error: error instanceof Error ? error.message : String(error),
         error_type: error instanceof Error ? error.constructor.name : typeof error,
-        session_expired: session.expiresAt ? new Date(session.expiresAt) < new Date(now) : false,
+        session_expired: session.expiresAt && session.expiresAt < now,
       });
-      if (session.expiresAt && new Date(session.expiresAt) < new Date(now)) {
+      if (session.expiresAt && session.expiresAt < now) {
         await deleteSession(sessionId);
         return null;
       }
+
+      // Keep the current session user when token is still within grace period.
+      return session.user ?? null;
     }
   } else if (session.expiresAt && new Date(session.expiresAt) < new Date(now)) {
     await deleteSession(sessionId);

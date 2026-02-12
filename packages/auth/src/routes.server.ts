@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { deleteCookie, getCookie, getResponseHeaders, setCookie } from '@tanstack/react-start/server';
-import { createSdkLogger, withRequestContext } from '@sva/sdk';
+import { createSdkLogger, withRequestContext, initializeOtelSdk } from '@sva/sdk/server';
 
 import { createLoginUrl, getSessionUser, handleCallback, logoutSession } from './auth.server';
 import { getAuthConfig } from './config';
@@ -8,6 +8,19 @@ import type { AuthRoutePath } from './routes.shared';
 import type { LoginState } from './types';
 
 const logger = createSdkLogger({ component: 'auth', level: 'info' });
+
+// Initialisiere OTEL SDK einmalig beim ersten Laden des Auth-Moduls
+let otelInitialized = false;
+if (!otelInitialized) {
+  otelInitialized = true;
+  // Fire-and-forget: SDK wird asynchon initialisiert
+  initializeOtelSdk().catch((error) => {
+    logger.error('Fehler bei OTEL SDK Initialisierung im Auth-Modul', {
+      error: error instanceof Error ? error.message : String(error),
+      component: 'auth'
+    });
+  });
+}
 
 type LoginStateCookiePayload = LoginState & {
   state: string;
@@ -72,17 +85,23 @@ export const loginHandler = async (): Promise<Response> => {
       const { loginStateCookieName, loginStateSecret } = getAuthConfig();
       const cookiePayload: LoginStateCookiePayload = { state, ...loginState };
 
-  // Use TanStack Start cookie API
-  setCookie(
-    loginStateCookieName,
-    encodeLoginStateCookie(cookiePayload, loginStateSecret),
-    {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-    }
-  );
+      logger.info('Login-Flow initiiert', {
+        idp: 'keycloak',
+        state: state.substring(0, 8) + '...', // Nur Prefix für Security
+        nonce: loginState.nonce.substring(0, 8) + '...'
+      });
+
+      // Use TanStack Start cookie API
+      setCookie(
+        loginStateCookieName,
+        encodeLoginStateCookie(cookiePayload, loginStateSecret),
+        {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          path: '/',
+        }
+      );
 
       // Redirect to Keycloak
       return attachStartSetCookieHeaders(

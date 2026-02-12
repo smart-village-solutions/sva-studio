@@ -1,4 +1,4 @@
-import type { RedisClientType } from 'redis';
+import type { Redis } from 'ioredis';
 
 export interface SessionData {
   userId: string;
@@ -18,7 +18,7 @@ const SESSION_KEY_PREFIX = 'session:';
  * @returns sessionId
  */
 export const createSessionInRedis = async (
-  redis: RedisClientType,
+  redis: Redis,
   sessionData: SessionData
 ): Promise<string> => {
   if (!redis) {
@@ -29,7 +29,7 @@ export const createSessionInRedis = async (
   const key = `${SESSION_KEY_PREFIX}${sessionId}`;
 
   try {
-    await redis.setEx(key, SESSION_TTL, JSON.stringify(sessionData));
+    await redis.setex(key, SESSION_TTL, JSON.stringify(sessionData));
     return sessionId;
   } catch (error) {
     throw new Error(`Failed to create session in Redis: ${error instanceof Error ? error.message : String(error)}`);
@@ -43,7 +43,7 @@ export const createSessionInRedis = async (
  * @returns SessionData or null if not found/expired
  */
 export const getSessionFromRedis = async (
-  redis: RedisClientType,
+  redis: Redis,
   sessionId: string
 ): Promise<SessionData | null> => {
   if (!redis) {
@@ -69,7 +69,7 @@ export const getSessionFromRedis = async (
  * @param sessionId Session ID
  */
 export const deleteSessionFromRedis = async (
-  redis: RedisClientType,
+  redis: Redis,
   sessionId: string
 ): Promise<void> => {
   if (!redis) {
@@ -92,7 +92,7 @@ export const deleteSessionFromRedis = async (
  * @returns true if session was refreshed, false if not found
  */
 export const refreshSessionInRedis = async (
-  redis: RedisClientType,
+  redis: Redis,
   sessionId: string
 ): Promise<boolean> => {
   if (!redis) {

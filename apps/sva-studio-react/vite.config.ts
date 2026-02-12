@@ -2,6 +2,7 @@ import { defineConfig } from 'vite';
 import { devtools } from '@tanstack/devtools-vite';
 import { tanstackStart } from '@tanstack/react-start/plugin/vite';
 import viteReact from '@vitejs/plugin-react';
+import { codecovVitePlugin } from '@codecov/vite-plugin';
 import viteTsConfigPaths from 'vite-tsconfig-paths';
 import { fileURLToPath, URL } from 'url';
 import { nitro } from 'nitro/vite';
@@ -22,6 +23,11 @@ const config = defineConfig({
 
     tanstackStart(),
     viteReact(),
+    codecovVitePlugin({
+      enableBundleAnalysis: process.env.CODECOV_TOKEN !== undefined,
+      bundleName: 'sva-studio-react',
+      uploadToken: process.env.CODECOV_TOKEN,
+    }),
   ],
 });
 

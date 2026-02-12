@@ -30,15 +30,13 @@
     "test:unit": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "pnpm run test",
-        "cwd": "apps/sva-studio-react"
+        "command": "pnpm --filter sva-studio-react run test"
       }
     },
     "test:coverage": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "pnpm exec vitest run --coverage --coverage.reporter=text-summary --coverage.reporter=json-summary --coverage.reporter=lcov --passWithNoTests",
-        "cwd": "apps/sva-studio-react"
+        "command": "pnpm --filter sva-studio-react exec vitest run --coverage --config vitest.config.ts --passWithNoTests"
       }
     },
     "test:integration": {

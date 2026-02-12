@@ -4,9 +4,9 @@
 
 - [ ] `pnpm test:unit` erfolgreich
 - [ ] `pnpm test:coverage` erfolgreich
-- [ ] Coverage-Gate erfolgreich (`node scripts/ci/coverage-gate.mjs`)
+- [ ] Coverage-Gate erfolgreich (`pnpm coverage-gate`)
 - [ ] Coverage-Artefakte in CI vorhanden (`coverage-summary.json`, `lcov.info`)
-	- GitHub UI: PR → Checks → Job `coverage` → "Details" (öffnet den Actions Run) → Abschnitt "Artifacts" (Download)
+  - GitHub UI: PR → Checks → Job `coverage` → "Details" (oeffnet den Actions Run) → Abschnitt "Artifacts" (Download)
 
 ## Coverage-Nachweise im PR
 

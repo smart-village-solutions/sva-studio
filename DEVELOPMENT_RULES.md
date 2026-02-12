@@ -165,7 +165,49 @@ Inline styles are permitted ONLY when styling depends on dynamic data from the d
 
 ---
 
-## 5. Security & Input Validation
+## 5. Test Coverage Requirements
+
+### ✅ REQUIRED
+- Neue Features und Verhaltensaenderungen muessen Unit-Tests erhalten.
+- Coverage darf pro Projekt und global nicht unter die Baseline bzw. definierte Floors fallen.
+- Kritische Module (`auth`, `payment`) muessen mindestens 90% Coverage auf `lines`, `functions` und `branches` erreichen.
+- Coverage-Gate muss vor dem Merge erfolgreich sein.
+
+### ❌ FORBIDDEN
+- PRs mit neuer Funktionalitaet ohne zugehoerige Tests.
+- Baseline-Updates ohne dokumentierte Team-Freigabe.
+- Exemptions als dauerhafte Umgehung des Coverage-Gates.
+
+### Process
+1. Tests parallel zur Feature-Implementierung schreiben.
+2. Lokal Coverage ausfuehren: `pnpm test:coverage`.
+3. Gate vor PR pruefen: `pnpm coverage-gate`.
+4. Bei Exemption: Ticket erstellen, Ablaufdatum setzen, Team-Genehmigung dokumentieren.
+
+### Enforcement
+- PRs ohne angemessene Tests werden in Reviews abgelehnt.
+- Baseline- oder Policy-Aenderungen brauchen eine explizite Begruendung im PR.
+- Die PR-Checkliste muss Coverage-Nachweise enthalten: `docs/reports/PR_CHECKLIST.md`.
+
+**Example:**
+```ts
+// WRONG: neue Feature-Logik ohne Testabdeckung
+export function calculateDiscount(price: number): number {
+  return price * 0.9;
+}
+
+// CORRECT: Feature + Testdatei
+export function calculateDiscount(price: number): number {
+  return price * 0.9;
+}
+// plus tests/calculateDiscount.test.ts
+```
+
+Weitere Details und Troubleshooting: `docs/development/testing-coverage.md`.
+
+---
+
+## 6. Security & Input Validation
 
 ### 🚨 MANDATORY SECURITY REQUIREMENTS
 
@@ -268,7 +310,7 @@ Before any implementation goes live, verify:
 
 ---
 
-## 6. Documentation
+## 7. Documentation
 
 ### Required Documentation
 
@@ -312,7 +354,7 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
 
 ---
 
-## 7. Branching & PR Workflow
+## 8. Branching & PR Workflow
 
 ### ✅ REQUIRED
 - Create a dedicated branch for every change; never commit directly to main
@@ -520,7 +562,7 @@ function MyComponent() {
 
 ---
 
-## 8. User Manual Maintenance
+## 9. User Manual Maintenance
 
 ### 🚨 MANDATORY - Keep Documentation Current
 

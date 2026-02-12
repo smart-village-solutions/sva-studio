@@ -1,5 +1,9 @@
 name: Test Coverage
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 on:
   pull_request:
   push:
@@ -47,17 +51,36 @@ jobs:
       - name: Evaluate coverage gates
         env:
           COVERAGE_GATE_REQUIRE_SUMMARIES: "1"
-        run: node scripts/ci/coverage-gate.mjs
+        run: pnpm coverage-gate
+
+      - name: Build app for Codecov bundle analysis
+        if: env.CODECOV_TOKEN != ''
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        run: pnpm nx run sva-studio-react:build
+
+      - name: Upload to Codecov
+        if: always() && env.CODECOV_TOKEN != ''
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ env.CODECOV_TOKEN }}
+          files: ./apps/**/coverage/lcov.info,./packages/**/coverage/lcov.info
+          fail_ci_if_error: false
+          flags: unittests
+          name: coverage-${{ github.run_id }}
 
       - name: Upload coverage artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-reports
+          name: coverage-reports-${{ github.run_id }}
           path: |
             **/coverage/coverage-summary.json
             **/coverage/lcov.info
           if-no-files-found: warn
+          retention-days: 7
 
   integration-pr:
     if: github.event_name == 'pull_request'

@@ -38,7 +38,7 @@ pnpm test:coverage:affected
 Nur nach bewusstem Team-Entscheid:
 
 ```bash
-node scripts/ci/coverage-gate.mjs --update-baseline
+pnpm coverage-gate --update-baseline
 ```
 
 ## Coverage-Gates
@@ -81,6 +81,7 @@ Diese Liste wird schrittweise reduziert, sobald echte Unit-Tests vorhanden sind.
 ## PR-Checkliste
 
 Die Merge-Checkliste für Coverage-Nachweise steht unter `../reports/PR_CHECKLIST.md`.
+Policy und Floors liegen in `../../tooling/testing/coverage-policy.json`.
 
 ## Troubleshooting
 
@@ -139,7 +140,7 @@ Wenn der PR Änderungen enthält, aber kein Projekt als betroffen erkannt wird, 
 - Primär: Tests ergänzen oder bestehende Tests reparieren, bis die Regression behoben ist.
 - Falls die Baseline bewusst angepasst werden soll (z. B. Refactor mit geänderter Messbasis): Baseline nur nach Team-Entscheid aktualisieren:
   ```bash
-  node scripts/ci/coverage-gate.mjs --update-baseline
+  pnpm coverage-gate --update-baseline
   ```
 
 **Hinweis:** Baseline-Updates sind kein Ersatz für fehlende Tests.
@@ -170,3 +171,51 @@ Wenn der PR Änderungen enthält, aber kein Projekt als betroffen erkannt wird, 
 **Vorgehen:**
 - Mindestens einen Unit-Test hinzufügen (damit Coverage erzeugt wird).
 - Optional (je nach Governance-Entscheid): `--passWithNoTests` entfernen, damit fehlende Tests früh sichtbar werden.
+
+## Migration Guide
+
+### Neues Package zur Coverage hinzufügen
+
+1. Dependencies für Tests und Coverage installieren:
+   ```bash
+   pnpm --filter <package-name> add -D vitest @vitest/coverage-v8
+   ```
+2. Nx Targets im `project.json` ergänzen:
+   - `test:unit`
+   - `test:coverage`
+3. Mindestens einen Unit-Test anlegen:
+   ```bash
+   mkdir -p packages/<package-dir>/tests
+   ```
+4. Policy aktualisieren:
+   - Projekt aus `exemptProjects` in `tooling/testing/coverage-policy.json` entfernen
+   - Optional `perProjectFloors.<project>` setzen
+5. Baseline neu erzeugen:
+   ```bash
+   pnpm test:coverage
+   pnpm coverage-gate --update-baseline
+   ```
+6. Validierung lokal ausführen:
+   ```bash
+   npx nx run <project>:test:coverage
+   COVERAGE_GATE_REQUIRE_SUMMARIES=1 pnpm coverage-gate
+   ```
+
+### Quick Reference
+
+```bash
+# Alle Coverage-Targets
+pnpm test:coverage
+
+# Nur betroffene Coverage-Targets
+pnpm test:coverage:affected
+
+# Gate lokal prüfen
+pnpm coverage-gate
+```
+
+### Relevante Links
+
+- Coverage Policy: `../../tooling/testing/coverage-policy.json`
+- Coverage Baseline: `../../tooling/testing/coverage-baseline.json`
+- PR-Checklist: `../reports/PR_CHECKLIST.md`

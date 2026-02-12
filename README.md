@@ -1,4 +1,5 @@
 # SVA Studio
+[![codecov](https://codecov.io/gh/smart-village-solutions/sva-studio/graph/badge.svg)](https://codecov.io/gh/smart-village-solutions/sva-studio)
 
 ![Mockup 01 2026](docs/images/mockup-01-2026.png)
 

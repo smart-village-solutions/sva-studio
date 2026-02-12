@@ -20,6 +20,7 @@
 
 - **Kritisch:** Während der Entwicklung immer Unit- und Type-Tests ausführen – bei Fehlschlägen nicht weitermachen
 - **Testarten:** `pnpm test:unit`, `pnpm test:types`, `pnpm test:eslint`, `pnpm test:e2e`, `pnpm test:build`
+- **Coverage-Gate lokal:** `pnpm coverage-gate` (Baseline nur nach Team-Entscheid mit `pnpm coverage-gate --update-baseline`)
 - **Komplette CI-Suite:** `pnpm test:ci`
 - **Formatierung beheben:** `pnpm format`
 - **Effizienter, zielgerichteter Test-Workflow:**
@@ -71,19 +72,47 @@
 Die verbindlichen Entwicklungsrichtlinien liegen unter [DEVELOPMENT_RULES.md](DEVELOPMENT_RULES.md). Alle Agenten-Reviews sind im Zweifel an diesen Regeln auszurichten.
 
 <!-- OPENSPEC:START -->
+
 ## OpenSpec-Anweisungen
 
 Diese Anweisungen sind für KI-Assistenten gedacht, die in diesem Projekt arbeiten.
 
 Öffne immer `@/openspec/AGENTS.md`, wenn die Anfrage:
+
 - Planung oder Vorschläge erwähnt (Wörter wie Vorschlag, Spezifikation, Änderung, Plan)
 - Neue Funktionen, Breaking Changes, Architekturänderungen oder umfangreiche Performance-/Sicherheitsarbeiten einführt
 - Mehrdeutig klingt und du die maßgebliche Spezifikation vor dem Programmieren benötigst
 
 Nutze `@/openspec/AGENTS.md`, um Folgendes zu lernen:
+
 - Wie man Änderungsvorschläge erstellt und anwendet
 - Spezifikationsformat und Konventionen
 - Projektstruktur und Richtlinien
 
 Behalte diesen verwalteten Block bei, damit 'openspec update' die Anweisungen aktualisieren kann.
+
 <!-- OPENSPEC:END -->
+
+<!-- nx configuration start-->
+<!-- Leave the start & end comments to automatically receive updates. -->
+
+# General Guidelines for working with Nx
+
+- For navigating/exploring the workspace, invoke the `nx-workspace` skill first - it has patterns for querying projects, targets, and dependencies
+- When running tasks (for example build, lint, test, e2e, etc.), always prefer running the task through `nx` (i.e. `nx run`, `nx run-many`, `nx affected`) instead of using the underlying tooling directly
+- Prefix nx commands with the workspace's package manager (e.g., `pnpm nx build`, `npm exec nx test`) - avoids using globally installed CLI
+- You have access to the Nx MCP server and its tools, use them to help the user
+- For Nx plugin best practices, check `node_modules/@nx/<plugin>/PLUGIN.md`. Not all plugins have this file - proceed without it if unavailable.
+- NEVER guess CLI flags - always check nx_docs or `--help` first when unsure
+
+## Scaffolding & Generators
+
+- For scaffolding tasks (creating apps, libs, project structure, setup), ALWAYS invoke the `nx-generate` skill FIRST before exploring or calling MCP tools
+
+## When to use nx_docs
+
+- USE for: advanced config options, unfamiliar flags, migration guides, plugin configuration, edge cases
+- DON'T USE for: basic generator syntax (`nx g @nx/react:app`), standard commands, things you already know
+- The `nx-generate` skill handles generator discovery internally - don't call nx_docs just to look up generator syntax
+
+<!-- nx configuration end-->

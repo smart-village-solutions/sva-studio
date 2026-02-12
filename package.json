@@ -17,7 +17,8 @@
     "test:coverage": "nx run-many -t test:coverage",
     "test:coverage:affected": "nx affected --target=test:coverage --base=origin/main",
     "test:integration": "nx run-many -t test:integration",
-    "test:ci": "pnpm test:unit && pnpm test:coverage"
+    "test:ci": "pnpm test:unit && pnpm test:coverage",
+    "coverage-gate": "tsx scripts/ci/coverage-gate.ts"
   },
   "repository": {
     "type": "git",
@@ -36,6 +37,7 @@
     "nx": "^22.3.3",
     "postcss": "8.4.49",
     "tailwindcss": "3.4.14",
+    "tsx": "^4.21.0",
     "typescript": "^5.6.3"
   }
 }

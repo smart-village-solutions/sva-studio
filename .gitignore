@@ -34,9 +34,26 @@ log/
 
 # Caches
 .cache/
+*.tsbuildinfo
 
 # NX
 .nx/
 .nx/installation
 .nx/cache
 .nx/workspace-data
+
+# Local backups
+backups/
+*.bak
+*.backup
+
+# Local TLS/cert material
+dev/redis-tls/
+*.pem
+*.key
+*.crt
+*.cer
+*.p12
+*.pfx
+*.jks
+*.keystore

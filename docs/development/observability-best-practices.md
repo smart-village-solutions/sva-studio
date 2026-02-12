@@ -2,6 +2,8 @@
 
 Dieses Dokument beschreibt Best Practices für Logging, Metriken und Tracing im sva-studio Projekt.
 
+Architektur-Referenz: [Logging Architecture](../architecture/logging-architecture.md)
+
 ## Logging Best Practices
 
 ### Grundprinzipien

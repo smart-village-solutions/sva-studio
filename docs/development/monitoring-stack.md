@@ -2,6 +2,8 @@
 
 Dieses Dokument beschreibt den lokalen Observability-Stack für die Entwicklung mit Docker Compose.
 
+Architektur-Referenz: [Logging Architecture](../architecture/logging-architecture.md)
+
 ## Überblick
 
 Der Stack besteht aus:

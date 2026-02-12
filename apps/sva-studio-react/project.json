@@ -27,11 +27,24 @@
         "cwd": "apps/sva-studio-react"
       }
     },
-    "test": {
+    "test:unit": {
       "executor": "nx:run-commands",
       "options": {
         "command": "pnpm run test",
         "cwd": "apps/sva-studio-react"
+      }
+    },
+    "test:coverage": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm exec vitest run --coverage --coverage.reporter=text-summary --coverage.reporter=json-summary --coverage.reporter=lcov --passWithNoTests",
+        "cwd": "apps/sva-studio-react"
+      }
+    },
+    "test:integration": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node -e \"console.log('no integration tests configured for sva-studio-react')\""
       }
     },
     "lint": {

@@ -12,7 +12,12 @@
     "nx": "nx",
     "build": "nx run-many -t build",
     "lint": "nx run-many -t lint",
-    "test": "nx run-many -t test"
+    "test": "pnpm test:unit",
+    "test:unit": "nx run-many -t test:unit",
+    "test:coverage": "nx run-many -t test:coverage",
+    "test:coverage:affected": "nx affected --target=test:coverage --base=main",
+    "test:integration": "nx run-many -t test:integration",
+    "test:ci": "pnpm test:unit && pnpm test:coverage"
   },
   "repository": {
     "type": "git",

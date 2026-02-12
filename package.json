@@ -15,7 +15,7 @@
     "test": "pnpm test:unit",
     "test:unit": "nx run-many -t test:unit",
     "test:coverage": "nx run-many -t test:coverage",
-    "test:coverage:affected": "nx affected --target=test:coverage --base=main",
+    "test:coverage:affected": "nx affected --target=test:coverage --base=origin/main",
     "test:integration": "nx run-many -t test:integration",
     "test:ci": "pnpm test:unit && pnpm test:coverage"
   },

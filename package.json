@@ -12,7 +12,11 @@
     "nx": "nx",
     "build": "nx run-many -t build",
     "lint": "nx run-many -t lint",
-    "test": "nx run-many -t test"
+    "test": "nx run-many -t test",
+    "check:file-placement": "node scripts/ci/check-file-placement.mjs",
+    "check:file-placement:staged": "node scripts/ci/check-file-placement.mjs --staged",
+    "hooks:install": "git config core.hooksPath .githooks",
+    "test:ci": "pnpm check:file-placement && nx run-many -t test"
   },
   "repository": {
     "type": "git",

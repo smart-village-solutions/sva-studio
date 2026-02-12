@@ -75,4 +75,4 @@ DOCUMENTATION (SHOULD):
 
 ---
 
-**Full Review:** See [pr-45-agent-reviews-summary.md](pr-45-agent-reviews-summary.md)
+**Full Review:** See [agent-reviews-summary.md](agent-reviews-summary.md)

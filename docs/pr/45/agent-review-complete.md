@@ -81,7 +81,7 @@ Code Quality:
 All reviews have been saved to `docs/`:
 
 ### 1. **Comprehensive Summary**
-📄 [`pr-45-agent-reviews-summary.md`](docs/pr-45-agent-reviews-summary.md) (9 pages)
+📄 [`agent-reviews-summary.md`](./agent-reviews-summary.md) (9 pages)
 - Full details from all 5 agents
 - Detailed findings for each dimension
 - Specific code examples and recommendations
@@ -89,14 +89,14 @@ All reviews have been saved to `docs/`:
 - Merge checklist with all tasks
 
 ### 2. **Executive Brief**
-📄 [`pr-45-brief.md`](docs/pr-45-brief.md) (2 pages)
+📄 [`brief.md`](./brief.md) (2 pages)
 - Top 3 critical issues
 - Quick overview of all issues
 - 2-minute read format
 - Pre-merge checklist
 
 ### 3. **Visual Summary**
-📄 [`pr-45-visual-summary.md`](docs/pr-45-visual-summary.md) (5 pages)
+📄 [`visual-summary.md`](./visual-summary.md) (5 pages)
 - ASCII-based quality metrics
 - Agent score comparison
 - Issue severity distribution

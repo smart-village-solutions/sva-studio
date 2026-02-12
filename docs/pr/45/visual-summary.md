@@ -297,13 +297,13 @@ MERGE READINESS: ✅ After above checklist complete
 ## 📞 Questions?
 
 **Full Reviews:**
-- [Architecture & FIT](pr-45-agent-reviews-summary.md#architecture--fit-compliance-findings)
-- [Security & Privacy](pr-45-agent-reviews-summary.md#security--privacy-findings)
-- [Operations & Reliability](pr-45-agent-reviews-summary.md#operations--reliability-findings)
-- [Interoperability & Data](pr-45-agent-reviews-summary.md#interoperability--data-portability-findings)
-- [UX & Accessibility](pr-45-agent-reviews-summary.md#ux--accessibility-findings)
+- [Architecture & FIT](agent-reviews-summary.md#architecture--fit-compliance-findings)
+- [Security & Privacy](agent-reviews-summary.md#security--privacy-findings)
+- [Operations & Reliability](agent-reviews-summary.md#operations--reliability-findings)
+- [Interoperability & Data](agent-reviews-summary.md#interoperability--data-portability-findings)
+- [UX & Accessibility](agent-reviews-summary.md#ux--accessibility-findings)
 
-**Quick Brief:** [pr-45-brief.md](pr-45-brief.md)
+**Quick Brief:** [brief.md](brief.md)
 
 ---
 

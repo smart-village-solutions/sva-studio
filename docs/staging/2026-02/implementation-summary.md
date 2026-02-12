@@ -45,7 +45,7 @@ Alle Services haben jetzt Memory/CPU Limits:
 - ✅ AlertManager erreichbar: `http://localhost:9093`
 - ✅ Prometheus sendet Alerts an AlertManager
 - ✅ Webhook-Receiver (lokal): `http://localhost:5001/alerts`
-- ⏳ **TODO:** Slack/Email Integration (siehe STAGING-TODOS.md)
+- ⏳ **TODO:** Slack/Email Integration (siehe `staging-todos.md`)
 
 **Test:**
 ```bash
@@ -70,7 +70,7 @@ curl -X POST http://localhost:9093/api/v2/alerts -H "Content-Type: application/j
 - ✅ AlertManager Daten
 - ✅ SHA256 Checksums für Integrität
 - ✅ Automatische Rotation (> 30 Tage)
-- ⏳ **TODO:** S3 Upload, Cron-Jobs (siehe STAGING-TODOS.md)
+- ⏳ **TODO:** S3 Upload, Cron-Jobs (siehe `staging-todos.md`)
 
 **Test:**
 ```bash
@@ -85,7 +85,7 @@ curl -X POST http://localhost:9093/api/v2/alerts -H "Content-Type: application/j
 
 ## 📋 TODOs für Staging/Production
 
-**Vollständige Liste:** Siehe [STAGING-TODOS.md](STAGING-TODOS.md)
+**Vollständige Liste:** Siehe [staging-todos.md](./staging-todos.md)
 
 ### High Priority (Staging Blockers):
 1. **Slack Integration** – AlertManager Webhooks konfigurieren
@@ -256,10 +256,10 @@ docker inspect sva-studio-prometheus | grep -A 5 "Memory"
 3. ✅ CI/CD Checks prüfen
 
 ### Staging Prep (nächste 1–2 Wochen):
-1. ⏳ Slack Webhook konfigurieren (STAGING-TODOS.md #1)
-2. ⏳ S3 Bucket erstellen (STAGING-TODOS.md #4)
-3. ⏳ Cron-Jobs einrichten (STAGING-TODOS.md #5)
-4. ⏳ Backup Monitoring aktivieren (STAGING-TODOS.md #6)
+1. ⏳ Slack Webhook konfigurieren (`staging-todos.md` #1)
+2. ⏳ S3 Bucket erstellen (`staging-todos.md` #4)
+3. ⏳ Cron-Jobs einrichten (`staging-todos.md` #5)
+4. ⏳ Backup Monitoring aktivieren (`staging-todos.md` #6)
 
 ### Production Prep (2–4 Wochen):
 1. ⏳ PagerDuty Integration
@@ -273,8 +273,8 @@ docker inspect sva-studio-prometheus | grep -A 5 "Memory"
 
 **Dokumentation:**
 - [Backup/Restore README](dev/scripts/README.md)
-- [Staging TODOs](STAGING-TODOS.md)
-- [PR #45 Agent Reviews](docs/pr-45-agent-reviews-summary.md)
+- [Staging TODOs](./staging-todos.md)
+- [PR #45 Agent Reviews](../../pr/45/agent-reviews-summary.md)
 
 **Common Issues:**
 - **AlertManager 404:** Prometheus Config nicht korrekt → Check `prometheus.yml` Zeile 4–11
@@ -285,4 +285,4 @@ docker inspect sva-studio-prometheus | grep -A 5 "Memory"
 
 **Status:** ✅ **Implementation Complete – Ready for Testing**
 **Merge-Ready:** Nach erfolgreichen Tests (siehe Checkliste)
-**Staging-Ready:** Nach Slack/S3 Integration (siehe STAGING-TODOS.md)
+**Staging-Ready:** Nach Slack/S3 Integration (siehe `staging-todos.md`)

@@ -103,7 +103,7 @@ open http://localhost:3001  # Grafana
 
 ### Backup-Status via Prometheus
 
-**TODO:** Pushgateway Integration (siehe STAGING-TODOS.md)
+**TODO:** Pushgateway Integration (siehe docs/staging/2026-02/staging-todos.md)
 
 Aktuell: Manuell via Logs prüfen
 ```bash
@@ -116,7 +116,7 @@ du -sh backups/
 
 ### Alerts bei fehlgeschlagenen Backups
 
-**TODO:** Alert-Rule hinzufügen (siehe STAGING-TODOS.md)
+**TODO:** Alert-Rule hinzufügen (siehe docs/staging/2026-02/staging-todos.md)
 
 ---
 
@@ -231,7 +231,7 @@ find "${BACKUP_DIR}" -maxdepth 1 -type d -name "monitoring-backup-*" -mtime +90 
 
 ## 🎯 Nächste Schritte
 
-Siehe [STAGING-TODOS.md](../../STAGING-TODOS.md):
+Siehe [docs/staging/2026-02/staging-todos.md](../../docs/staging/2026-02/staging-todos.md):
 
 - [ ] S3/MinIO Integration
 - [ ] Automatisierte Cron-Jobs

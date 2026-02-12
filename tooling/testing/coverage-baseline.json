@@ -1,0 +1,35 @@
+{
+  "generatedAt": "2026-02-12T19:26:22.967Z",
+  "projects": {
+    "sva-studio-react": {
+      "lines": 0,
+      "statements": 0,
+      "functions": 23.07,
+      "branches": 23.07
+    },
+    "auth": {
+      "lines": 14.21,
+      "statements": 14.21,
+      "functions": 56.25,
+      "branches": 73.58
+    },
+    "monitoring-client": {
+      "lines": 4.12,
+      "statements": 4.12,
+      "functions": 50,
+      "branches": 57.14
+    },
+    "routing": {
+      "lines": 0,
+      "statements": 0,
+      "functions": 80,
+      "branches": 80
+    },
+    "sdk": {
+      "lines": 32.7,
+      "statements": 32.7,
+      "functions": 52.94,
+      "branches": 40.54
+    }
+  }
+}

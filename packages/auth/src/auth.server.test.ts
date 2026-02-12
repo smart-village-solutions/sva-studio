@@ -39,6 +39,15 @@ vi.mock('./oidc.server', () => ({
   },
 }));
 
+vi.mock('@sva/sdk/server', () => ({
+  createSdkLogger: () => ({
+    error: vi.fn(),
+    warn: vi.fn(),
+    info: vi.fn(),
+    debug: vi.fn(),
+  }),
+}));
+
 describe('getSessionUser', () => {
   beforeEach(() => {
     vi.resetAllMocks();

@@ -36,5 +36,9 @@
     "@sva/monitoring-client": "workspace:*",
     "winston": "^3.19.0",
     "winston-transport": "^4.9.0"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^3.2.4",
+    "vitest": "^3.2.4"
   }
 }

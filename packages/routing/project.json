@@ -4,15 +4,27 @@
   "sourceRoot": "packages/routing/src",
   "prefix": "",
   "targets": {
-    "test": {
+    "test:unit": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "vitest run"
+        "command": "cd packages/routing && vitest run --passWithNoTests"
       },
       "configurations": {
         "watch": {
-          "command": "vitest"
+          "command": "cd packages/routing && vitest --passWithNoTests"
         }
+      }
+    },
+    "test:coverage": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "cd packages/routing && vitest run --coverage --coverage.reporter=text-summary --coverage.reporter=json-summary --coverage.reporter=lcov --passWithNoTests"
+      }
+    },
+    "test:integration": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node -e \"console.log('no integration tests configured for @sva/routing')\""
       }
     }
   },

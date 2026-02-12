@@ -10,7 +10,7 @@
  * Run: npx vitest run tests/phase1-provider-creation.test.ts
  */
 
-import { describe, it, expect, beforeAll, vi } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { NodeSDK } from '@opentelemetry/sdk-node';
 import { resourceFromAttributes } from '@opentelemetry/resources';
 import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions';
@@ -96,7 +96,7 @@ describe('Phase 1.1: OTEL SDK & Logger Provider Creation', () => {
   });
 
   describe('Logger Functionality', () => {
-    it('should emit single log record without error', async () => {
+    it('should emit single log record without error', () => {
       const logRecord = {
         severityNumber: 9,
         severityText: 'INFO',
@@ -107,10 +107,10 @@ describe('Phase 1.1: OTEL SDK & Logger Provider Creation', () => {
         }
       };
 
-      await expect(logger.emit(logRecord)).resolves.toEqual(undefined);
+      expect(() => logger.emit(logRecord)).not.toThrow();
     });
 
-    it('should emit multiple records without error', async () => {
+    it('should emit multiple records without error', () => {
       for (let i = 0; i < 5; i++) {
         const logRecord = {
           severityNumber: 9 + (i % 3),
@@ -118,11 +118,11 @@ describe('Phase 1.1: OTEL SDK & Logger Provider Creation', () => {
           body: `Message ${i + 1}`,
           attributes: { index: i, component: 'test' }
         };
-        await expect(logger.emit(logRecord)).resolves.toEqual(undefined);
+        expect(() => logger.emit(logRecord)).not.toThrow();
       }
     });
 
-    it('should handle all severity levels', async () => {
+    it('should handle all severity levels', () => {
       const levels = [
         { num: 1, text: 'TRACE' },
         { num: 5, text: 'DEBUG' },
@@ -139,11 +139,11 @@ describe('Phase 1.1: OTEL SDK & Logger Provider Creation', () => {
           body: `Test ${level.text}`,
           attributes: { level: level.text }
         };
-        await expect(logger.emit(logRecord)).resolves.toEqual(undefined);
+        expect(() => logger.emit(logRecord)).not.toThrow();
       }
     });
 
-    it('should accept attributes on log records', async () => {
+    it('should accept attributes on log records', () => {
       const attributes = {
         component: 'test',
         environment: 'test',
@@ -159,7 +159,7 @@ describe('Phase 1.1: OTEL SDK & Logger Provider Creation', () => {
         attributes
       };
 
-      await expect(logger.emit(logRecord)).resolves.toEqual(undefined);
+      expect(() => logger.emit(logRecord)).not.toThrow();
     });
   });
 

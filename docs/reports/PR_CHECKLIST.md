@@ -118,6 +118,9 @@ Before merging:
 - [ ] Code compiles without errors: `pnpm build`
 - [ ] No TypeScript errors: `pnpm test:types`
 - [ ] Linter passes: `pnpm test:eslint`
+- [ ] Unit tests pass: `pnpm test:unit`
+- [ ] Coverage gates pass: `pnpm test:coverage` + `node scripts/ci/coverage-gate.mjs`
+- [ ] Integration tests (if relevant) pass: `pnpm test:integration`
 - [ ] Server starts: `ENABLE_OTEL=true npx nx run sva-studio-react:serve`
 - [ ] Console logs appear: `curl http://localhost:3000/auth/login`
 - [ ] No OTEL debug statements remain

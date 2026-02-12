@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "metrics": ["lines", "statements", "functions", "branches"],
+  "globalFloors": {
+    "lines": 0,
+    "statements": 0,
+    "functions": 0,
+    "branches": 0
+  },
+  "maxAllowedDropPctPoints": 0.5,
+  "exemptProjects": [
+    "core",
+    "data",
+    "plugin-example"
+  ],
+  "perProjectFloors": {
+    "auth": {
+      "lines": 0,
+      "statements": 0,
+      "functions": 0,
+      "branches": 0
+    },
+    "monitoring-client": {
+      "lines": 0,
+      "statements": 0,
+      "functions": 0,
+      "branches": 0
+    },
+    "sdk": {
+      "lines": 0,
+      "statements": 0,
+      "functions": 0,
+      "branches": 0
+    },
+    "routing": {
+      "lines": 0,
+      "statements": 0,
+      "functions": 0,
+      "branches": 0
+    },
+    "sva-studio-react": {
+      "lines": 0,
+      "statements": 0,
+      "functions": 0,
+      "branches": 0
+    }
+  }
+}

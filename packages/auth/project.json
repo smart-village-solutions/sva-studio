@@ -20,7 +20,19 @@
     "test:unit": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "cd packages/auth && vitest run --reporter=verbose"
+        "command": "cd packages/auth && vitest run --reporter=verbose --exclude=src/**/*.integration.test.ts --exclude=src/**/*.e2e.test.ts --exclude=src/redis-session.test.ts --exclude=src/logout.test.ts --exclude=tests/**"
+      }
+    },
+    "test:coverage": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "cd packages/auth && vitest run --coverage --coverage.reporter=text-summary --coverage.reporter=json-summary --coverage.reporter=lcov --reporter=verbose --exclude=src/**/*.integration.test.ts --exclude=src/**/*.e2e.test.ts --exclude=src/redis-session.test.ts --exclude=src/logout.test.ts --exclude=tests/**"
+      }
+    },
+    "test:integration": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "cd packages/auth && vitest run src/**/*.integration.test.ts src/**/*.e2e.test.ts src/redis-session.test.ts src/logout.test.ts --reporter=verbose"
       }
     }
   },

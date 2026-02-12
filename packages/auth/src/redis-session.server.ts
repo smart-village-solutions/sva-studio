@@ -1,7 +1,7 @@
 import { getRedisClient } from './redis.server';
 import { encryptToken, decryptToken } from './crypto.server';
 import type { Session } from './types';
-import { createSdkLogger } from '@sva/sdk';
+import { createSdkLogger } from '@sva/sdk/server';
 
 const logger = createSdkLogger({ component: 'auth-session', level: 'info' });
 

@@ -1,5 +1,5 @@
 import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'node:crypto';
-import { createSdkLogger } from '@sva/sdk';
+import { createSdkLogger } from '@sva/sdk/server';
 
 const logger = createSdkLogger({ component: 'auth-crypto', level: 'info' });
 

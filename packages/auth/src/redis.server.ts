@@ -1,5 +1,5 @@
 import Redis from 'ioredis';
-import { createSdkLogger } from '@sva/sdk';
+import { createSdkLogger } from '@sva/sdk/server';
 
 const logger = createSdkLogger({ component: 'auth-redis', level: 'info' });
 
@@ -13,9 +13,9 @@ const MAX_CONNECTION_ERRORS = 10;
  * Use configureTlsForClient() to add TLS after module loading.
  */
 const buildRedisOptions = (tlsEnabled: boolean = false) => {
-  const options: Redis.RedisOptions = {
+  const options = {
     maxRetriesPerRequest: 3,
-    retryStrategy: (times) => {
+    retryStrategy: (times: number) => {
       // Stop retrying after threshold
       if (times > MAX_CONNECTION_ERRORS) {
         logger.error('Redis max retries exceeded', {
@@ -44,8 +44,8 @@ const buildRedisOptions = (tlsEnabled: boolean = false) => {
 
   // Add ACL authentication if credentials provided
   if (process.env.REDIS_USERNAME) {
-    options.username = process.env.REDIS_USERNAME;
-    options.password = process.env.REDIS_PASSWORD || '';
+    (options as any).username = process.env.REDIS_USERNAME;
+    (options as any).password = process.env.REDIS_PASSWORD || '';
     logger.info('Redis ACL enabled', {
       operation: 'redis_init',
       acl_enabled: true,

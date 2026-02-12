@@ -24,21 +24,20 @@ export const HomePage = () => {
       setAuthError(null);
     }
     const loadUser = async () => {
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), 8000);
       try {
-        console.log('[AUTH] Loading user via fetch /auth/me...');
-        const response = await fetch('/auth/me', { credentials: 'include' });
+        const response = await fetch('/auth/me', {
+          credentials: 'include',
+          signal: controller.signal,
+        });
 
         if (!active) return;
 
         if (!response.ok) {
-          console.log('[AUTH] Response not OK:', response.status);
           setUser(null);
           if (authState === 'ok') {
-            setAuthError(
-              'Login erfolgreich, aber Session konnte nicht geladen werden. ' +
-              'BEKANNTES PROBLEM: TanStack Router blockiert Set-Cookie Headers. ' +
-              'Lösung wird mit Redis Session Store implementiert.'
-            );
+            setAuthError('Login erfolgreich, aber Session konnte nicht geladen werden. Bitte erneut anmelden.');
           }
           return;
         }
@@ -46,15 +45,18 @@ export const HomePage = () => {
         const payload = (await response.json()) as { user: AuthUser };
         if (active) {
           setUser(payload.user);
-          console.log('[AUTH] User erfolgreich geladen:', payload.user.name);
         }
       } catch (error) {
         if (active) {
           setUser(null);
-          console.error('[AUTH] Fehler beim Laden der Session:', error);
-          setAuthError('Fehler beim Laden der Session. Bitte erneut anmelden.');
+          setAuthError(
+            error instanceof DOMException && error.name === 'AbortError'
+              ? 'Session-Request hat zu lange gedauert. Bitte erneut anmelden.'
+              : 'Fehler beim Laden der Session. Bitte erneut anmelden.'
+          );
         }
       } finally {
+        window.clearTimeout(timeoutId);
         if (active) {
           setLoading(false);
         }

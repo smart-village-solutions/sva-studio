@@ -3,10 +3,20 @@ import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router';
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools';
 
 import Header from '../components/Header';
+import NotFound from '../components/NotFound';
 
 import appCss from '../styles.css?url';
 
 export const Route = createRootRoute({
+  notFoundComponent: NotFound,
+  loader: async () => {
+    // Run SDK bootstrap only on the server to avoid client-side server-module imports.
+    if (import.meta.env.SSR) {
+      const { ensureSdkInitialized } = await import('../lib/init-sdk.server');
+      await ensureSdkInitialized();
+    }
+    return {};
+  },
   head: () => ({
     meta: [
       {

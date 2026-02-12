@@ -48,16 +48,7 @@ export default function Header() {
           <Link className="transition hover:text-white" to="/plugins/example">
             Plugin Example
           </Link>
-          {user ? (
-            <form action="/auth/logout" method="post" className="ml-2">
-              <button
-                type="submit"
-                className="rounded border border-red-800/50 bg-red-500/10 px-4 py-1 font-semibold text-red-400 transition hover:border-red-500 hover:bg-red-500/20"
-              >
-                Logout
-              </button>
-            </form>
-          ) : (
+          {!user ? (
             <Link
               className="ml-2 rounded border border-emerald-800/50 bg-emerald-500/10 px-4 py-1 font-semibold text-emerald-400 transition hover:border-emerald-500 hover:bg-emerald-500/20"
               to="/auth/login"
@@ -65,7 +56,15 @@ export default function Header() {
             >
               Login
             </Link>
-          )}
+          ) : null}
+          <form action="/auth/logout" method="post" className="ml-2">
+            <button
+              type="submit"
+              className="rounded border border-red-800/50 bg-red-500/10 px-4 py-1 font-semibold text-red-400 transition hover:border-red-500 hover:bg-red-500/20"
+            >
+              Logout
+            </button>
+          </form>
         </div>
       </nav>
     </header>

@@ -241,13 +241,13 @@ touch -t 202601010000 backups/monitoring-backup-20260101_000000
    - [ ] Memory-Limit-Tests (72h Stability)
 
 2. **Woche 1-2 (Staging Prep):**
-   - [ ] Slack Webhook Integration (STAGING-TODOS.md #1)
-   - [ ] S3/MinIO Upload (STAGING-TODOS.md #4)
-   - [ ] Cron Job für tägliches Backup (STAGING-TODOS.md #5)
-   - [ ] Backup Monitoring Metric (STAGING-TODOS.md #6)
+   - [ ] Slack Webhook Integration (../staging/2026-02/staging-todos.md #1)
+   - [ ] S3/MinIO Upload (../staging/2026-02/staging-todos.md #4)
+   - [ ] Cron Job für tägliches Backup (../staging/2026-02/staging-todos.md #5)
+   - [ ] Backup Monitoring Metric (../staging/2026-02/staging-todos.md #6)
 
 3. **Woche 2-4 (Production Prep):**
-   - [ ] PagerDuty Integration (STAGING-TODOS.md #3)
-   - [ ] Wöchentliche Restore-Tests (STAGING-TODOS.md #7)
-   - [ ] cAdvisor Integration (STAGING-TODOS.md #8)
-   - [ ] Email SMTP Notifications (STAGING-TODOS.md #2)
+   - [ ] PagerDuty Integration (../staging/2026-02/staging-todos.md #3)
+   - [ ] Wöchentliche Restore-Tests (../staging/2026-02/staging-todos.md #7)
+   - [ ] cAdvisor Integration (../staging/2026-02/staging-todos.md #8)
+   - [ ] Email SMTP Notifications (../staging/2026-02/staging-todos.md #2)

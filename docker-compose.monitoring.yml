@@ -91,6 +91,8 @@ services:
     image: otel/opentelemetry-collector-contrib:0.95.0
     container_name: sva-studio-otel-collector
     command: ["--config=/etc/otel-collector.yml"]
+    environment:
+      GOLOG_LEVEL: debug
     volumes:
       - ./dev/monitoring/otel-collector/otel-collector.yml:/etc/otel-collector.yml:ro
     ports:

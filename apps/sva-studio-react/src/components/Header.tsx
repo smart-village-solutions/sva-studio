@@ -16,30 +16,12 @@ export default function Header() {
       try {
         const response = await fetch('/auth/me', { credentials: 'include' });
         if (!response.ok) {
-          // Log auth check failure (non-blocking, expected for non-authenticated users)
-          if (process.env.NODE_ENV !== 'production') {
-            console.info('[Header] Auth check failed', {
-              component: 'Header',
-              endpoint: '/auth/me',
-              status: response.status,
-              auth_state: 'unauthenticated',
-            });
-          }
           if (active) setUser(null);
           return;
         }
         const payload = (await response.json()) as { user: AuthUser };
         if (active) setUser(payload.user);
-      } catch (err) {
-        // Log unexpected errors (network issues, JSON parse errors, etc.)
-        if (process.env.NODE_ENV !== 'production') {
-          console.error('[Header] Auth check error', {
-            component: 'Header',
-            endpoint: '/auth/me',
-            error: err instanceof Error ? err.message : String(err),
-            error_type: err instanceof Error ? err.constructor.name : typeof err,
-          });
-        }
+      } catch {
         if (active) setUser(null);
       }
     };
@@ -66,16 +48,7 @@ export default function Header() {
           <Link className="transition hover:text-white" to="/plugins/example">
             Plugin Example
           </Link>
-          {user ? (
-            <form action="/auth/logout" method="post" className="ml-2">
-              <button
-                type="submit"
-                className="rounded border border-red-800/50 bg-red-500/10 px-4 py-1 font-semibold text-red-400 transition hover:border-red-500 hover:bg-red-500/20"
-              >
-                Logout
-              </button>
-            </form>
-          ) : (
+          {!user ? (
             <Link
               className="ml-2 rounded border border-emerald-800/50 bg-emerald-500/10 px-4 py-1 font-semibold text-emerald-400 transition hover:border-emerald-500 hover:bg-emerald-500/20"
               to="/auth/login"
@@ -83,7 +56,15 @@ export default function Header() {
             >
               Login
             </Link>
-          )}
+          ) : null}
+          <form action="/auth/logout" method="post" className="ml-2">
+            <button
+              type="submit"
+              className="rounded border border-red-800/50 bg-red-500/10 px-4 py-1 font-semibold text-red-400 transition hover:border-red-500 hover:bg-red-500/20"
+            >
+              Logout
+            </button>
+          </form>
         </div>
       </nav>
     </header>

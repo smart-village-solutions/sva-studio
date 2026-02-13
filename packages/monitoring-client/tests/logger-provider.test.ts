@@ -1,6 +1,5 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { logs } from '@opentelemetry/api-logs';
-import { LoggerProvider } from '@opentelemetry/sdk-logs';
 import { getGlobalLoggerProvider, setGlobalLoggerProvider } from '../src/logger-provider.server';
 
 describe('OTEL Logger Provider Integration', () => {

@@ -48,7 +48,7 @@
     "lint": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "node -e \"console.log('lint not configured for sva-studio-react')\""
+        "command": "pnpm --filter sva-studio-react run build"
       }
     }
   }

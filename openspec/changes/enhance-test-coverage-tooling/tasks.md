@@ -121,7 +121,7 @@
 - [x] Workspace-Definition schreiben:
   ```typescript
   import { defineWorkspace } from 'vitest/config';
-  
+
   export default defineWorkspace([
     'apps/*/vitest.config.ts',
     'packages/*/vitest.config.ts',
@@ -161,16 +161,16 @@
     exemptProjects: string[];
     perProjectFloors: Record<string, MetricFloors>;
   }
-  
+
   type CoverageMetric = 'lines' | 'statements' | 'functions' | 'branches';
-  
+
   interface MetricFloors {
     lines: number;
     statements: number;
     functions: number;
     branches: number;
   }
-  
+
   interface CoverageBaseline {
     projects: Record<string, MetricFloors>;
   }
@@ -221,7 +221,7 @@
   ```typescript
   // ❌ WRONG - Neue Feature-Funktion ohne Tests
   export function calculateDiscount(price: number) { ... }
-  
+
   // ✅ CORRECT - Feature mit Tests
   export function calculateDiscount(price: number) { ... }
   // + tests/calculateDiscount.test.ts mit >80% Coverage

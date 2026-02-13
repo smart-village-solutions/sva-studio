@@ -189,6 +189,10 @@ importers:
       '@sva/sdk':
         specifier: workspace:*
         version: link:../sdk
+    devDependencies:
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.4(@types/node@22.19.6)(jiti@2.6.1)(jsdom@27.4.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)
 
   packages/plugin-example:
     dependencies:

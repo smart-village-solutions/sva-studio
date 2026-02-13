@@ -1,17 +1,22 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { setGlobalLoggerProvider, getGlobalLoggerProvider } from '@sva/monitoring-client/server';
+import { createSdkLogger } from '../../src/logger/index.server';
 
 /**
  * Test suite for DirectOtelTransport
  * Verifies that the transport can connect to a Logger Provider and emit logs
  */
 describe('DirectOtelTransport', () => {
+  const flushAsyncLogs = async () => {
+    await new Promise((resolve) => setImmediate(resolve));
+  };
+
   beforeEach(() => {
     // Clear global state
     setGlobalLoggerProvider(null as any);
   });
 
-  it('should connect to global logger provider on first log', () => {
+  it('should connect to global logger provider on first log', async () => {
     // Create mock provider
     const mockEmit = vi.fn();
     const mockLogger = {
@@ -25,7 +30,6 @@ describe('DirectOtelTransport', () => {
     setGlobalLoggerProvider(mockProvider);
 
     // Import and use DirectOtelTransport
-    const { createSdkLogger } = require('../src/logger/index.server');
     const logger = createSdkLogger({
       component: 'test',
       enableOtel: true,
@@ -34,6 +38,7 @@ describe('DirectOtelTransport', () => {
 
     // Log a message
     logger.info('Test message', { test_data: 'value' });
+    await flushAsyncLogs();
 
     // Transport should have called getLogger on provider
     expect(mockProvider.getLogger).toHaveBeenCalledWith('@sva/winston', '1.0.0');
@@ -42,7 +47,7 @@ describe('DirectOtelTransport', () => {
     expect(mockEmit).toHaveBeenCalled();
   });
 
-  it('should map log levels correctly to OTEL severity', () => {
+  it('should map log levels correctly to OTEL severity', async () => {
     const mockEmit = vi.fn();
     const mockLogger = {
       emit: mockEmit,
@@ -54,7 +59,6 @@ describe('DirectOtelTransport', () => {
 
     setGlobalLoggerProvider(mockProvider);
 
-    const { createSdkLogger } = require('../src/logger/index.server');
     const logger = createSdkLogger({
       component: 'test',
       enableOtel: true,
@@ -63,8 +67,11 @@ describe('DirectOtelTransport', () => {
 
     // Test different log levels
     logger.error('Error message');
+    await flushAsyncLogs();
     logger.warn('Warn message');
+    await flushAsyncLogs();
     logger.info('Info message');
+    await flushAsyncLogs();
 
     // Should have 3 emits (one per log level)
     expect(mockEmit).toHaveBeenCalledTimes(3);
@@ -78,7 +85,6 @@ describe('DirectOtelTransport', () => {
 
   it('should handle missing provider gracefully', () => {
     // No provider set
-    const { createSdkLogger } = require('../src/logger/index.server');
     const logger = createSdkLogger({
       component: 'test',
       enableOtel: true,
@@ -91,8 +97,7 @@ describe('DirectOtelTransport', () => {
     }).not.toThrow();
   });
 
-  it('should preserve log attributes through OTEL emit', () => {
-    const capturedRecord = { emit: vi.fn() };
+  it('should preserve log attributes through OTEL emit', async () => {
     let emittedData: any = null;
 
     const mockEmit = vi.fn((data) => {
@@ -109,7 +114,6 @@ describe('DirectOtelTransport', () => {
 
     setGlobalLoggerProvider(mockProvider);
 
-    const { createSdkLogger } = require('../src/logger/index.server');
     const logger = createSdkLogger({
       component: 'test-component',
       environment: 'test',
@@ -121,6 +125,7 @@ describe('DirectOtelTransport', () => {
       custom_data: 'custom_value',
       request_id: 'req-123',
     });
+    await flushAsyncLogs();
 
     // Verify emitted data
     expect(emittedData).toBeDefined();

@@ -1,6 +1,6 @@
 # ADR-[Nummer]: [Kurzer Titel]
 
-**Status:** Proposed | Accepted | Superseded
+**Status:** Proposed | Accepted | Superseded | Deprecated
 **Entscheidungsdatum:** YYYY-MM-DD
 **Entschieden durch:** [Person/Team/BDFL]
 **GitHub Issue:** #XYZ

@@ -234,8 +234,6 @@ describe('Redis Session Management', () => {
 
   describe('TTL (Time-To-Live)', () => {
     it('should automatically expire sessions after TTL', async () => {
-      const redis = getRedisClient();
-
       await createSession(
         'ttl-test',
         {

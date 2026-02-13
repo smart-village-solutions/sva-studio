@@ -56,7 +56,7 @@ const createAuthServerRouteFactory = (path: typeof authRoutePaths[number]) => {
       server: {
         handlers: resolveAuthHandlers(path),
       },
-    });
+    } as any);
   };
 };
 

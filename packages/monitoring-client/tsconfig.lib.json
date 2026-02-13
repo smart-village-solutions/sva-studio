@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "composite": true,
+    "declaration": true,
+    "declarationMap": true,
+    "paths": {
+      "@sva/sdk": ["../sdk/src/index.ts"],
+      "@sva/sdk/server": ["../sdk/src/server.ts"],
+      "@sva/sdk/observability/context.server": ["../sdk/src/observability/context.server.ts"]
+    }
+  },
+  "include": ["src/**/*.ts"]
+}

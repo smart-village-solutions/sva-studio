@@ -10,7 +10,7 @@
  * Run: npx vitest run tests/phase1-provider-creation.test.ts
  */
 
-import { describe, it, expect, beforeAll, vi } from 'vitest';
+import { describe, it, expect, afterAll } from 'vitest';
 import { NodeSDK } from '@opentelemetry/sdk-node';
 import { resourceFromAttributes } from '@opentelemetry/resources';
 import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions';
@@ -107,7 +107,7 @@ describe('Phase 1.1: OTEL SDK & Logger Provider Creation', () => {
         }
       };
 
-      await expect(logger.emit(logRecord)).resolves.toEqual(undefined);
+      expect(() => logger.emit(logRecord)).not.toThrow();
     });
 
     it('should emit multiple records without error', async () => {
@@ -118,7 +118,7 @@ describe('Phase 1.1: OTEL SDK & Logger Provider Creation', () => {
           body: `Message ${i + 1}`,
           attributes: { index: i, component: 'test' }
         };
-        await expect(logger.emit(logRecord)).resolves.toEqual(undefined);
+        expect(() => logger.emit(logRecord)).not.toThrow();
       }
     });
 
@@ -139,7 +139,7 @@ describe('Phase 1.1: OTEL SDK & Logger Provider Creation', () => {
           body: `Test ${level.text}`,
           attributes: { level: level.text }
         };
-        await expect(logger.emit(logRecord)).resolves.toEqual(undefined);
+        expect(() => logger.emit(logRecord)).not.toThrow();
       }
     });
 
@@ -159,7 +159,7 @@ describe('Phase 1.1: OTEL SDK & Logger Provider Creation', () => {
         attributes
       };
 
-      await expect(logger.emit(logRecord)).resolves.toEqual(undefined);
+      expect(() => logger.emit(logRecord)).not.toThrow();
     });
   });
 

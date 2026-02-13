@@ -1,17 +1,7 @@
 
 import { createFileRoute } from '@tanstack/react-router'
-import { serverFn } from '@tanstack/start'
 import { createServerFn } from '@tanstack/start'
-import { getEventHandler } from 'vinxi/http'
-import { NodeSDK } from '@opentelemetry/sdk-node'
-import { resourceFromAttributes } from '@opentelemetry/resources'
-import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions'
-import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http'
-import { OTLPLogExporter } from '@opentelemetry/exporter-logs-otlp-http'
-import { PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics'
-import { BatchLogRecordProcessor } from '@opentelemetry/sdk-logs'
-import { logs } from '@opentelemetry/api-logs'
-import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node'
+import type { NodeSDK } from '@opentelemetry/sdk-node'
 
 interface TestResult {
   name: string
@@ -20,6 +10,28 @@ interface TestResult {
 }
 
 export const runPhase1Test = createServerFn('GET /api/phase1-test', async () => {
+  const [
+    { resourceFromAttributes },
+    { SemanticResourceAttributes },
+    { OTLPMetricExporter },
+    { OTLPLogExporter },
+    { PeriodicExportingMetricReader },
+    { BatchLogRecordProcessor },
+    { logs },
+    { getNodeAutoInstrumentations },
+    { NodeSDK }
+  ] = await Promise.all([
+    import('@opentelemetry/resources'),
+    import('@opentelemetry/semantic-conventions'),
+    import('@opentelemetry/exporter-metrics-otlp-http'),
+    import('@opentelemetry/exporter-logs-otlp-http'),
+    import('@opentelemetry/sdk-metrics'),
+    import('@opentelemetry/sdk-logs'),
+    import('@opentelemetry/api-logs'),
+    import('@opentelemetry/auto-instrumentations-node'),
+    import('@opentelemetry/sdk-node')
+  ])
+
   const results: TestResult[] = []
 
   async function test(name: string, fn: () => Promise<void> | void): Promise<void> {
@@ -57,7 +69,6 @@ export const runPhase1Test = createServerFn('GET /api/phase1-test', async () => 
       ]
     })
 
-    if (!sdk) throw new Error('SDK not created')
   })
 
   // Test 2: Start SDK

@@ -64,7 +64,6 @@ export default eventHandler(async (event) => {
       ]
     });
 
-    if (!sdk) throw new Error('SDK not created');
   });
 
   // Test 2: Start SDK

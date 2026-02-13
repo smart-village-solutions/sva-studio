@@ -9,18 +9,13 @@ import type { LoginState } from './types';
 
 const logger = createSdkLogger({ component: 'auth', level: 'info' });
 
-// Initialisiere OTEL SDK einmalig beim ersten Laden des Auth-Moduls
-let otelInitialized = false;
-if (!otelInitialized) {
-  otelInitialized = true;
-  // Fire-and-forget: SDK wird asynchon initialisiert
-  initializeOtelSdk().catch((error: unknown) => {
-    logger.error('Fehler bei OTEL SDK Initialisierung im Auth-Modul', {
-      error: error instanceof Error ? error.message : String(error),
-      component: 'auth'
-    });
+// Fire-and-forget: SDK wird asynchron initialisiert.
+initializeOtelSdk().catch((error: unknown) => {
+  logger.error('Fehler bei OTEL SDK Initialisierung im Auth-Modul', {
+    error: error instanceof Error ? error.message : String(error),
+    component: 'auth'
   });
-}
+});
 
 type LoginStateCookiePayload = LoginState & {
   state: string;

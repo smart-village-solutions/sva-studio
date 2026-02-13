@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeEach, afterAll, vi } from 'vitest';
+import { describe, it, expect, afterAll } from 'vitest';
 import { serialize as serializeCookie, parse as parseCookie } from 'cookie-es';
 import type { Session } from './types';
-import { createSession, getSession, deleteSession } from './session';
-import { getRedisClient, closeRedis } from './redis.server';
+import { createSession, getSession } from './session';
+import { closeRedis } from './redis.server';
 
 /**
  * E2E-Test für Cookie-Transport-Flow:

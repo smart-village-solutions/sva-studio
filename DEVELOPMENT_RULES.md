@@ -106,6 +106,7 @@ These rules are **NON-NEGOTIABLE** and must be followed in all development work.
   2. commit (hook runs `pnpm check:file-placement:staged`)
 
 ---
+
 ## 2. Translation System
 
 ### Process for UI Texts
@@ -209,49 +210,7 @@ Inline styles are permitted ONLY when styling depends on dynamic data from the d
 
 ---
 
-## 5. Test Coverage Requirements
-
-### ✅ REQUIRED
-- Neue Features und Verhaltensaenderungen muessen Unit-Tests erhalten.
-- Coverage darf pro Projekt und global nicht unter die Baseline bzw. definierte Floors fallen.
-- Kritische Module (`auth`, `payment`) muessen mindestens 90% Coverage auf `lines`, `functions` und `branches` erreichen.
-- Coverage-Gate muss vor dem Merge erfolgreich sein.
-
-### ❌ FORBIDDEN
-- PRs mit neuer Funktionalitaet ohne zugehoerige Tests.
-- Baseline-Updates ohne dokumentierte Team-Freigabe.
-- Exemptions als dauerhafte Umgehung des Coverage-Gates.
-
-### Process
-1. Tests parallel zur Feature-Implementierung schreiben.
-2. Lokal Coverage ausfuehren: `pnpm test:coverage`.
-3. Gate vor PR pruefen: `pnpm coverage-gate`.
-4. Bei Exemption: Ticket erstellen, Ablaufdatum setzen, Team-Genehmigung dokumentieren.
-
-### Enforcement
-- PRs ohne angemessene Tests werden in Reviews abgelehnt.
-- Baseline- oder Policy-Aenderungen brauchen eine explizite Begruendung im PR.
-- Die PR-Checkliste muss Coverage-Nachweise enthalten: `docs/reports/PR_CHECKLIST.md`.
-
-**Example:**
-```ts
-// WRONG: neue Feature-Logik ohne Testabdeckung
-export function calculateDiscount(price: number): number {
-  return price * 0.9;
-}
-
-// CORRECT: Feature + Testdatei
-export function calculateDiscount(price: number): number {
-  return price * 0.9;
-}
-// plus tests/calculateDiscount.test.ts
-```
-
-Weitere Details und Troubleshooting: `docs/development/testing-coverage.md`.
-
----
-
-## 6. Security & Input Validation
+## 5. Security & Input Validation
 
 ### 🚨 MANDATORY SECURITY REQUIREMENTS
 
@@ -354,7 +313,7 @@ Before any implementation goes live, verify:
 
 ---
 
-## 7. Documentation
+## 6. Documentation
 
 ### Required Documentation
 
@@ -398,7 +357,7 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
 
 ---
 
-## 8. Branching & PR Workflow
+## 7. Branching & PR Workflow
 
 ### ✅ REQUIRED
 - Create a dedicated branch for every change; never commit directly to main
@@ -410,6 +369,51 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
 ### ❌ FORBIDDEN
 - Mixing unrelated changes in one branch or PR
 - Force-pushing after review without explicit reviewer consent (except to fix CI/rebase conflicts)
+
+---
+
+## 8. Logging & Observability
+
+### ✅ REQUIRED
+- **Server-Code**: SDK Logger verwenden (`createSdkLogger` aus `@sva/sdk`)
+- **Strukturierte Logs**: Immer mit Context-Feldern (component, operation, error, etc.)
+- **PII-Schutz**: Keine Session-IDs, Tokens, Emails direkt loggen
+- **Component-Labels**: Jeder Logger braucht eindeutigen `component` (z.B. `auth`, `auth-redis`)
+- **Error-Context**: Bei Errors immer `error`, `error_type`, `operation` mitloggen
+
+### ❌ FORBIDDEN
+- `console.log/info/warn/error` in Production-Server-Code
+- Session-IDs, Access-Tokens, Refresh-Tokens in Klartext
+- Unstrukturierte Error-Messages ohne Context
+- Logs ohne `component`-Label
+
+### ✅ APPROVED - Frontend Dev-Only Logs
+Frontend darf `console.*` nutzen, aber:
+- Nur in Development (`if (process.env.NODE_ENV !== 'production')`)
+- Mit strukturierten Feldern `{ component, endpoint, status, error }`
+- Keine PII (User-Email, Session-IDs)
+
+**Backend-Beispiel:**
+```typescript
+import { createSdkLogger } from '@sva/sdk';
+
+const logger = createSdkLogger({ component: 'auth' });
+
+logger.info('Session created', {
+  operation: 'create_session',
+  ttl_seconds: 3600,
+  has_refresh_token: true,
+});
+
+logger.error('Auth failed', {
+  operation: 'login',
+  error: err.message,
+  error_type: err.constructor.name,
+});
+```
+
+**Detaillierte Richtlinien:** [observability-best-practices.md](docs/development/observability-best-practices.md)
+**Logging-Agent:** [.github/agents/logging.agent.md](.github/agents/logging.agent.md)
 
 ---
 
@@ -606,7 +610,7 @@ function MyComponent() {
 
 ---
 
-## 9. User Manual Maintenance
+## 8. User Manual Maintenance
 
 ### 🚨 MANDATORY - Keep Documentation Current
 

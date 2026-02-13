@@ -1,0 +1,45 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+# Alerting Configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - "alertmanager:9093"
+
+# Alert Rules
+rule_files:
+  - "/etc/prometheus/alert-rules.yml"
+
+scrape_configs:
+  - job_name: "prometheus"
+    dns_sd_configs:
+      - names:
+          - "prometheus"
+        type: "A"
+        port: 9090
+
+  - job_name: "otel-collector"
+    dns_sd_configs:
+      - names:
+          - "otel-collector"
+        type: "A"
+        port: 8889
+
+  - job_name: "loki"
+    metrics_path: "/metrics"
+    dns_sd_configs:
+      - names:
+          - "loki"
+        type: "A"
+        port: 3100
+
+  - job_name: "grafana"
+    metrics_path: "/metrics"
+    dns_sd_configs:
+      - names:
+          - "grafana"
+        type: "A"
+        port: 3000

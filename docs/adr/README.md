@@ -192,7 +192,7 @@ gh pr merge <PR-Number> --squash
 ### Datei-Naming
 
 ```
-ADR-<Nummer>-<kurzer-beschreibung>.md
+ADR-<Nummer>-<short-description>.md
 
 Beispiele:
 - ADR-001-frontend-framework.md

@@ -17,7 +17,7 @@ export default function Header() {
         const response = await fetch('/auth/me', { credentials: 'include' });
         if (!response.ok) {
           // Log auth check failure (non-blocking, expected for non-authenticated users)
-          if (process.env.NODE_ENV !== 'production') {
+          if (import.meta.env.DEV) {
             console.info('[Header] Auth check failed', {
               component: 'Header',
               endpoint: '/auth/me',
@@ -32,7 +32,7 @@ export default function Header() {
         if (active) setUser(payload.user);
       } catch (err) {
         // Log unexpected errors (network issues, JSON parse errors, etc.)
-        if (process.env.NODE_ENV !== 'production') {
+        if (import.meta.env.DEV) {
           console.error('[Header] Auth check error', {
             component: 'Header',
             endpoint: '/auth/me',

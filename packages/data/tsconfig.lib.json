@@ -7,7 +7,7 @@
     "outDir": "dist",
     "rootDir": "src",
     "paths": {
-      "@sva/core": ["packages/core/dist/index.d.ts"]
+      "@sva/core": ["../core/dist/index.d.ts"]
     }
   },
   "include": ["src/**/*.ts"]

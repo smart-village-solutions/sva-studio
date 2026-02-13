@@ -132,11 +132,11 @@ Links zu Dokumentation, Tools, Communities, etc.:
 
 ## Diskussionshistorie
 
-- **2026-01-15:** Issue #XYZ eröffnet, erste Diskussion
-- **2026-01-20:** Vote durchgeführt, entschieden
-- **2026-01-22:** Implementierung begonnen
-- **2026-02-05:** Review & Feedback eingearbeitet
-- **2026-02-10:** Accepted nach finaler Abstimmung
+- **[YYYY-MM-DD]:** Issue #XYZ eröffnet, erste Diskussion
+- **[YYYY-MM-DD]:** Vote durchgeführt, entschieden
+- **[YYYY-MM-DD]:** Implementierung begonnen
+- **[YYYY-MM-DD]:** Review & Feedback eingearbeitet
+- **[YYYY-MM-DD]:** Accepted nach finaler Abstimmung
 
 ---
 

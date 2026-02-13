@@ -9,10 +9,16 @@
     ".": {
       "types": "./src/index.ts",
       "default": "./src/index.ts"
+    },
+    "./server": {
+      "types": "./src/server.ts",
+      "default": "./src/server.ts"
     }
   },
   "dependencies": {
-    "@sva/core": "workspace:*"
+    "@opentelemetry/winston-transport": "^0.21.0",
+    "@sva/core": "workspace:*",
+    "winston": "^3.19.0"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^3.2.4",

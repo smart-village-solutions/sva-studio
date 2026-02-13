@@ -203,7 +203,7 @@ Beispiele:
 ### Nummerierung
 
 - Laufende Nummern: ADR-001, ADR-002, ...
-- Nicht reusable Nummern (Lücken sind OK)
+- Nicht wiederverwendbare Nummern (Lücken sind OK)
 - Neue ADR = nächste höchste Nummer
 
 ### Titel-Format im GitHub Issue

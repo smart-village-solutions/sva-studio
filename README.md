@@ -5,7 +5,6 @@
 [![pnpm](https://img.shields.io/badge/pnpm-9.12.2-F69220?logo=pnpm&logoColor=white)](./package.json)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Strict-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Nx](https://img.shields.io/badge/Nx-Monorepo-143055?logo=nx&logoColor=white)](https://nx.dev/)
-[![License](https://img.shields.io/badge/license-ISC-blue.svg)](./package.json)
 
 ![Mockup 01 2026](docs/images/mockup-01-2026.png)
 

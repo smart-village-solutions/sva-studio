@@ -147,7 +147,7 @@ Diese ADR bleibt gültig, bis:
 - [ ] Ein besserer Ansatz gefunden wird
 - [ ] Anforderungen sich fundamental ändern
 
-**Nächste Überprüfung:** YYYY-MM-DD (regelmäßig, z.B. 1x pro Jahr)
+**Nächste Überprüfung:** YYYY-MM-DD (z.B. 1 Jahr nach Entscheidungsdatum; danach regelmäßig, z.B. 1x pro Jahr)
 
 ---
 

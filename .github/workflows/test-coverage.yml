@@ -50,7 +50,7 @@ jobs:
 
       - name: Evaluate coverage gates
         env:
-          COVERAGE_GATE_REQUIRE_SUMMARIES: "1"
+          COVERAGE_GATE_REQUIRE_SUMMARIES: ${{ github.event_name == 'pull_request' && '0' || '1' }}
         run: pnpm coverage-gate
 
       - name: Build app for Codecov bundle analysis

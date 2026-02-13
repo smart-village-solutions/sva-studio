@@ -25,7 +25,7 @@ Alle Services sind **lokal** gebunden (localhost) und nutzen eine **7-Tage-Reten
    - Prometheus: http://localhost:9090/-/healthy
    - Loki: http://localhost:3100/ready
    - Grafana: http://localhost:3001/api/health
-   - OTEL Collector: http://localhost:13133/
+   - OTEL Collector: http://localhost:13133/healthz
    - Promtail: http://localhost:3101/ready
 
 ## URLs & Credentials
@@ -119,6 +119,11 @@ Verbotene Labels (PII / High Cardinality):
 **Grafana zeigt keine Daten**
 - Datasources prüfen (Prometheus/Loki erreichbar?)
 - Health-Checks abrufen.
+
+**Loki meldet „entry too far behind“**
+- Ursache: Promtail liest alte Container-Logs mit Zeitstempeln außerhalb des akzeptierten Loki-Fensters.
+- Aktuelle Schutzmaßnahme: `drop`-Stage in `dev/monitoring/promtail/promtail-config.yml` mit `older_than: 1h`.
+- Wirkung: Alte Backfill-Zeilen werden vor dem Push verworfen; neue Logs werden normal ingestiert.
 
 ## Runbooks
 

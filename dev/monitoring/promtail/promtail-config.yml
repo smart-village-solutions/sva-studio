@@ -19,8 +19,29 @@ scrape_configs:
           __path__: /var/lib/docker/containers/*/*-json.log
     pipeline_stages:
       - docker: {}
-    relabel_configs:
-      - action: labeldrop
-        regex: "(user_id|session_id|email|request_id|token|authorization|api_key|secret|ip|password|card|credit|ssn|pii|sensitive)"
-      - action: labelkeep
-        regex: "(workspace_id|component|environment|level|__path__)"
+      - drop:
+          older_than: 1h
+          drop_counter_reason: stale_backfill
+      - labelallow:
+          - job
+          - component
+          - environment
+          - workspace_id
+          - level
+          - stream
+      - labeldrop:
+          - user_id
+          - session_id
+          - email
+          - request_id
+          - token
+          - authorization
+          - api_key
+          - secret
+          - ip
+          - password
+          - card
+          - credit
+          - ssn
+          - pii
+          - sensitive

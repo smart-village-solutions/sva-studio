@@ -14,13 +14,13 @@
     "lint": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "node -e \"console.log('lint not configured for @sva/monitoring-client')\""
+        "command": "pnpm --filter @sva/monitoring-client exec tsc -p tsconfig.lib.json --noEmit"
       }
     },
     "test:unit": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "node -e \"console.log('unit tests not configured for @sva/monitoring-client in this branch')\""
+        "command": "pnpm --filter @sva/monitoring-client exec vitest run tests --reporter=verbose --config vitest.config.ts --passWithNoTests"
       }
     }
   },

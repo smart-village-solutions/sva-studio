@@ -9,7 +9,7 @@
 - `OTEL_EXPORTER_OTLP_ENDPOINT` env var now respected
 
 ### 2. **packages/monitoring-client/src/otel.server.ts**
-✅ Fixed Logger Provider registration  
+✅ Fixed Logger Provider registration
 - Removed failed attempt to access `sdk.loggerProvider` (doesn't exist)
 - Now correctly uses `logs.getLoggerProvider()` from OTEL API
 - Provider is properly registered globally after SDK start
@@ -90,11 +90,11 @@ docker logs sva-studio-otel-collector | grep -i "received"
 
 ## What This PR Achieves
 
-✅ **Fixed all code-side OTEL logging issues**  
-✅ **App logs functional end-to-end**  
-✅ **Server ready for production (Loki bridge independent)**  
-✅ **Debug logging removed (clean code)**  
-✅ **Tests added (documentation of functionality)**  
+✅ **Fixed all code-side OTEL logging issues**
+✅ **App logs functional end-to-end**
+✅ **Server ready for production (Loki bridge independent)**
+✅ **Debug logging removed (clean code)**
+✅ **Tests added (documentation of functionality)**
 ✅ **Clear separation: App ✅ / Infrastructure ⏳**
 
 ---
@@ -135,7 +135,7 @@ feat(logging): fix OTEL SDK provider registration and endpoint configuration
 ### PR Description
 ```
 ## Summary
-Fixed OTEL logging integration issues on the application side. Logs now 
+Fixed OTEL logging integration issues on the application side. Logs now
 properly flow through SDK → BatchProcessor → OTLPExporter successfully.
 
 ## What Changed
@@ -157,7 +157,7 @@ properly flow through SDK → BatchProcessor → OTLPExporter successfully.
 - Server starts and logs successfully
 
 ## Notes
-Infrastructure issue (Collector → Loki) is separate and can be debugged 
+Infrastructure issue (Collector → Loki) is separate and can be debugged
 independently. App side is 100% ready.
 ```
 
@@ -168,3 +168,12 @@ independently. App side is 100% ready.
 ✅ **READY FOR MERGE**
 
 All code issues resolved. Can proceed independently of infrastructure debugging.
+
+---
+
+## Develop Quality Gates (Reviewer Quick Check)
+
+- [ ] `pnpm test:eslint` ist grün (führt reale `lint`-Targets aus, keine Platzhalter).
+- [ ] `pnpm test:unit` ist grün; insbesondere `@sva/monitoring-client:test:unit` läuft mit echtem Vitest-Run.
+- [ ] Bei Änderungen in coverage-exempt Projekten (`core`, `data`, `plugin-example`) ist ein expliziter Test-/Smoke-Nachweis im PR enthalten.
+- [ ] Exemption-Kontext wurde gegen `docs/development/testing-coverage.md` geprüft.

@@ -14,7 +14,7 @@
     "lint": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "node -e \"console.log('lint not configured for @sva/data')\""
+        "command": "pnpm --filter @sva/data exec tsc -p tsconfig.lib.json --noEmit"
       }
     },
     "test:unit": {

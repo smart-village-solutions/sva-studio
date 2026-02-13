@@ -1,4 +1,6 @@
 import Redis from 'ioredis';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { createSdkLogger } from '@sva/sdk/server';
 
 const logger = createSdkLogger({ component: 'auth-redis', level: 'info' });
@@ -9,8 +11,6 @@ const MAX_CONNECTION_ERRORS = 10;
 
 /**
  * Build Redis client options with optional TLS and ACL support.
- * NOTE: TLS is intentionally NOT configured here to avoid file I/O during module initialization.
- * Use configureTlsForClient() to add TLS after module loading.
  */
 const buildRedisOptions = (tlsEnabled: boolean = false) => {
   const options = {
@@ -58,18 +58,14 @@ const buildRedisOptions = (tlsEnabled: boolean = false) => {
 };
 
 /**
- * Configure TLS for Redis client after module is loaded.
- * This is a safe deferred operation that doesn't block module initialization.
+ * Build TLS options synchronously before opening the connection.
  */
-export const configureTlsForClient = async (client: Redis, tlsEnabled: boolean) => {
+const buildTlsOptions = (tlsEnabled: boolean) => {
   if (!tlsEnabled) {
-    return;
+    return null;
   }
 
   try {
-    const { readFileSync } = await import('node:fs');
-    const { resolve } = await import('node:path');
-
     const workspaceRoot = process.cwd();
     const caPath = process.env.REDIS_CA_PATH || resolve(workspaceRoot, 'dev/redis-tls/ca.pem');
     const certPath = process.env.REDIS_CERT_PATH || resolve(workspaceRoot, 'dev/redis-tls/redis.pem');
@@ -79,11 +75,10 @@ export const configureTlsForClient = async (client: Redis, tlsEnabled: boolean) 
     const cert = readFileSync(certPath, 'utf8');
     const key = readFileSync(keyPath, 'utf8');
 
-    // Apply TLS to the client's options
-    (client.options as any).tls = {
+    const tlsOptions = {
       ca: [caCert],
-      cert: cert,
-      key: key,
+      cert,
+      key,
       rejectUnauthorized: process.env.NODE_ENV === 'production',
     };
 
@@ -92,11 +87,13 @@ export const configureTlsForClient = async (client: Redis, tlsEnabled: boolean) 
       tls_enabled: true,
       reject_unauthorized: process.env.NODE_ENV === 'production',
     });
+    return tlsOptions;
   } catch (err) {
     logger.warn('Redis TLS configuration failed, continuing without TLS', {
       operation: 'redis_tls_init',
       error: err instanceof Error ? err.message : String(err),
     });
+    return null;
   }
 };
 
@@ -108,20 +105,12 @@ export const getRedisClient = (): Redis => {
     const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
     const tlsEnabled = process.env.TLS_ENABLED === 'true' || redisUrl.startsWith('rediss://');
     const options = buildRedisOptions(tlsEnabled);
-
-    // Create client without awaiting - keep module loading synchronous
-    redisClient = new Redis(redisUrl, options);
-
-    // Configure TLS asynchronously after the module is fully loaded
-    // This won't block module initialization
-    if (tlsEnabled) {
-      configureTlsForClient(redisClient, tlsEnabled).catch((err) => {
-        logger.error('Failed to configure TLS asynchronously', {
-          operation: 'redis_tls_async_init',
-          error: err instanceof Error ? err.message : String(err),
-        });
-      });
+    const tlsOptions = buildTlsOptions(tlsEnabled);
+    if (tlsOptions) {
+      (options as any).tls = tlsOptions;
     }
+
+    redisClient = new Redis(redisUrl, options);
 
     redisClient.on('error', (err) => {
       connectionErrorCount++;

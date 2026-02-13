@@ -28,6 +28,9 @@ const config = defineConfig({
       '@sva/sdk/middleware/request-context.server': fileURLToPath(new URL('../../packages/sdk/src/middleware/request-context.ts', import.meta.url)),
       '@sva/sdk/observability/context.server': fileURLToPath(new URL('../../packages/sdk/src/observability/context.ts', import.meta.url)),
       '@sva/monitoring-client/server': fileURLToPath(new URL('../../packages/monitoring-client/dist/server.js', import.meta.url)),
+      '@sva/monitoring-client/logger-provider.server': fileURLToPath(
+        new URL('../../packages/monitoring-client/dist/logger-provider.server.js', import.meta.url)
+      ),
       '@sva/monitoring-client': fileURLToPath(new URL('../../packages/monitoring-client/dist/index.js', import.meta.url)),
       '@sva/core': fileURLToPath(new URL('../../packages/core/src/index.ts', import.meta.url)),
     },

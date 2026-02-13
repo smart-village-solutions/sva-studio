@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { setGlobalLoggerProvider, getGlobalLoggerProvider } from '@sva/monitoring-client/server';
+import { setGlobalLoggerProvider } from '@sva/monitoring-client/server';
 import { createSdkLogger } from '../../src/logger/index.server';
 
 /**
@@ -13,7 +13,7 @@ describe('DirectOtelTransport', () => {
 
   beforeEach(() => {
     // Clear global state
-    setGlobalLoggerProvider(null as any);
+    setGlobalLoggerProvider(null);
   });
 
   it('should connect to global logger provider on first log', async () => {

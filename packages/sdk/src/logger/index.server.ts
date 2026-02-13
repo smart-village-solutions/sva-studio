@@ -2,7 +2,7 @@ import winston, { type Logger } from 'winston';
 import Transport from 'winston-transport';
 
 import { getWorkspaceContext } from '../observability/context.server';
-import { getGlobalLoggerProvider } from '@sva/monitoring-client/server';
+import { getGlobalLoggerProvider } from '@sva/monitoring-client/logger-provider.server';
 
 const sensitiveKeys = new Set([
   'password',
@@ -91,14 +91,12 @@ export interface LoggerOptions {
  */
 class DirectOtelTransport extends Transport {
   private otelLogger: any = null;
-  private loggerAttempted = false;
 
   log(info: any, callback?: () => void) {
     // Winston-kompatible async operation mit setImmediate
     setImmediate(() => {
-      // Lazy-Init: Versuche nur einmal, den Logger zu holen
-      if (!this.otelLogger && !this.loggerAttempted) {
-        this.loggerAttempted = true;
+      // Lazy-Init: Solange retryen, bis ein Logger Provider verfügbar ist.
+      if (!this.otelLogger) {
         try {
           // Hole den globalen Logger Provider
           const provider = getGlobalLoggerProvider();
@@ -130,9 +128,11 @@ class DirectOtelTransport extends Transport {
             severityText: level.toUpperCase(),
             body: message,
             attributes: {
+              level,
               component,
               environment,
               workspace_id,
+              context: context ?? {},
               ...rest,
             },
           });

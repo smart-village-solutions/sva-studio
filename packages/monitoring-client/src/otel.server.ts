@@ -16,7 +16,7 @@ import { BatchLogRecordProcessor, LogRecordProcessor, type SdkLogRecord } from '
 import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
 import { logs } from '@opentelemetry/api-logs';
 
-import { getWorkspaceContext } from '@sva/sdk/server';
+import { getWorkspaceContext } from '@sva/sdk/observability/context.server';
 import { setGlobalLoggerProvider } from './logger-provider.server';
 
 const allowedLabelKeys = new Set(['workspace_id', 'component', 'environment', 'level']);

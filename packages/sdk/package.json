@@ -31,7 +31,6 @@
   "dependencies": {
     "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/sdk-node": "^0.211.0",
-    "@opentelemetry/winston-transport": "^0.21.0",
     "@sva/core": "workspace:*",
     "@sva/monitoring-client": "workspace:*",
     "winston": "^3.19.0",

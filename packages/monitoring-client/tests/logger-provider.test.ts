@@ -6,7 +6,7 @@ import { getGlobalLoggerProvider, setGlobalLoggerProvider } from '../src/logger-
 describe('OTEL Logger Provider Integration', () => {
   afterEach(() => {
     // Clear global provider after each test
-    setGlobalLoggerProvider(null as any);
+    setGlobalLoggerProvider(null);
   });
 
   describe('Logger Provider Storage', () => {

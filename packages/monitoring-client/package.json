@@ -13,6 +13,10 @@
     "./server": {
       "types": "./dist/server.d.ts",
       "default": "./dist/server.js"
+    },
+    "./logger-provider.server": {
+      "types": "./dist/logger-provider.server.d.ts",
+      "default": "./dist/logger-provider.server.js"
     }
   },
   "dependencies": {

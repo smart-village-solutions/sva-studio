@@ -2,14 +2,14 @@
  * Globaler Logger Provider Singleton
  *
  * Dies wird vom OTEL SDK gesetzt wenn es initialisiert wird,
- * damit Windows Transport und andere Komponenten darauf zugreifen können.
+ * damit Winston Transport und andere Komponenten darauf zugreifen können.
  */
 
 import type { LoggerProvider } from '@opentelemetry/sdk-logs';
 
 let globalLoggerProvider: LoggerProvider | null = null;
 
-export const setGlobalLoggerProvider = (provider: LoggerProvider) => {
+export const setGlobalLoggerProvider = (provider: LoggerProvider | null) => {
   globalLoggerProvider = provider;
 };
 

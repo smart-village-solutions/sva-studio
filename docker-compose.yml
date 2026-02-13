@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: sva-studio-redis
+    ports:
+      - "6379:6379"
+      - "6380:6380"
+    volumes:
+      - redis-data:/data
+      - ./dev/redis-tls/redis.pem:/etc/redis/certs/redis.pem:ro
+      - ./dev/redis-tls/redis-key.pem:/etc/redis/certs/redis-key.pem:ro
+      - ./dev/redis-tls/ca.pem:/etc/redis/certs/ca.pem:ro
+    command: redis-server --port 6379 --tls-port 6380 --tls-cert-file /etc/redis/certs/redis.pem --tls-key-file /etc/redis/certs/redis-key.pem --tls-ca-cert-file /etc/redis/certs/ca.pem --tls-replication yes --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  redis-data:
+    driver: local

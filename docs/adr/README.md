@@ -252,7 +252,7 @@ Siehe [ADR-001-frontend-framework.md](./ADR-001-frontend-framework.md) (wird sp�
 **A:** Wenn die Entscheidung:
 - Die Architektur pr채gt (> 6 Monate G체ltigkeit)
 - Mehrere Team-Mitglieder betrifft
-- Schwer zu r체ckg채ngig zu machen ist
+- Schwer r체ckg채ngig zu machen ist
 - Langfristige Kosten/Nutzen hat
 
 **Nicht f체r:**

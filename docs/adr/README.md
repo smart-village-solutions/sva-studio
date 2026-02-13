@@ -200,7 +200,7 @@ Beispiele:
 - ADR-003-testing-framework.md
 ```
 
-### Nummering
+### Nummerierung
 
 - Laufende Nummern: ADR-001, ADR-002, ...
 - Nicht reusable Nummern (Lücken sind OK)

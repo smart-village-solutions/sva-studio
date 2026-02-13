@@ -101,8 +101,10 @@
   - Name: `coverage-reports-${{ github.run_id }}`
   - `retention-days: 7` hinzufügen
 - [x] Workflow lokal validieren: `actionlint .github/workflows/test-coverage.yml`
-- [ ] In PR testen: mehrere Commits schnell hintereinander pushen
-- [ ] Verifizieren: ältere Workflow-Runs werden gecancelt
+- [x] In PR testen: mehrere Commits schnell hintereinander pushen
+  - Nachweis (2026-02-13): Branch `setup/adr-infrastructure`, Runs `21999863397`, `21999873592`, `21999887560`, `21999895725`, `21999899015`, `21999944445` wurden als `cancelled` markiert.
+- [x] Verifizieren: ältere Workflow-Runs werden gecancelt
+  - Nachweis (2026-02-13): neuester Run `21999962010` erfolgreich, ältere Runs derselben Branch automatisch gecancelt.
 
 **Akzeptanzkriterien:**
 - ✅ Concurrency funktioniert (alte Runs werden gecancelt)
@@ -242,8 +244,10 @@
 ## Phase 3: Integration & Visualisierung (Optional)
 
 ### Task 3.1: Codecov Integration
-- [ ] Codecov Account einrichten (falls nicht vorhanden)
-- [ ] Codecov Token als GitHub Secret speichern: `CODECOV_TOKEN`
+- [x] Codecov Account einrichten (falls nicht vorhanden)
+  - Nachweis: Codecov-Bot-Kommentar in PR #46 bestätigt aktive Integration.
+- [x] Codecov Token als GitHub Secret speichern: `CODECOV_TOKEN`
+  - Nachweis (2026-02-13): `gh secret list` enthält `CODECOV_TOKEN` (updated `2026-02-12T22:16:41Z`).
 - [x] `.github/workflows/test-coverage.yml` erweitern:
   ```yaml
   - name: Upload to Codecov
@@ -267,7 +271,8 @@
         default:
           target: 80%
   ```
-- [ ] PR öffnen und Codecov-Kommentar verifizieren
+- [x] PR öffnen und Codecov-Kommentar verifizieren
+  - Nachweis: PR #46 enthält Kommentar von `codecov` ("Welcome to Codecov ...").
 - [x] Coverage-Badge in `README.md` einfügen (optional)
 
 **Alternative:** Erweiterte GitHub Actions Summary statt Codecov
@@ -300,7 +305,8 @@
 
 ### Integration Tests
 - [x] Full Coverage-Workflow lokal durchlaufen
-- [ ] CI-Workflow in Feature-Branch testen
+- [x] CI-Workflow in Feature-Branch testen
+  - Nachweis: `Test Coverage` lief mehrfach für `feature/test-coverage-governance-clean` (z. B. Runs `21966672782`, `21965350012`, `21963513001`).
 - [x] Verifizieren: Gate blockiert bei Coverage-Drop
 - [x] Verifizieren: Gate passiert bei ausreichender Coverage
 

@@ -115,7 +115,7 @@ Links zu anderen ADRs, die diese Entscheidung beeinflussen oder davon abhängen:
 
 - ADR-002: State Management (depends on this)
 - ADR-003: Testing Framework (builds on this)
-- ADR-XXX: [Supersedes ADR-YYY] (falls diese ADR eine ältere ersetzt)
+- ADR-XXX: [Superseded by ADR-YYY] (falls diese ADR eine ältere ersetzt)
 
 ---
 

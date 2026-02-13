@@ -2,9 +2,7 @@
 
 ## Purpose
 Definiert die Nx-basierte Monorepo-Struktur für SVA Studio, inklusive Package-Management, Build-Konventionen und Generatoren für konsistente Entwicklungs-Workflows.
-
 ## Requirements
-
 ### Requirement: Monorepo-Grundstruktur
 Das System SHALL eine Nx Integrated Monorepo-Struktur mit getrennten Bereichen für Apps und Packages bereitstellen.
 
@@ -27,22 +25,22 @@ Das System SHALL eine Web-App unter apps/sva-studio-react mit React und TanStack
 - **THEN** existiert apps/sva-studio-react als TanStack-Start-App
 
 ### Requirement: Build- und Target-Konventionen
-Das System SHALL standardisierte Nx Targets für build, test und lint bereitstellen, vorrangig über Nx-Generatoren (@nx/js:lib) erstellt.
+Das System SHALL standardisierte Nx Targets für `build`, `lint` und `test:unit` bereitstellen; produktionsrelevante Projekte dürfen für diese Targets keine Platzhalter-Kommandos verwenden.
 
-#### Scenario: Standardisierte Targets
-- **WHEN** ein neues Package oder eine App erstellt wird
-- **THEN** sind build, test und lint als Nx Targets definiert
+#### Scenario: Standardisierte Qualitäts-Targets vorhanden
+- **WHEN** ein neues Package oder eine neue App erstellt oder in den aktiven Entwicklungsfluss aufgenommen wird
+- **THEN** sind `build`, `lint` und `test:unit` als Nx Targets definiert
+- **AND** die Targets führen reale Tooling-Prüfungen aus
 
-#### Scenario: Automatische Targets via Generator
-- **WHEN** ein Package via `nx g @nx/js:lib` erstellt wird
-- **THEN** werden build (tsc), test (vitest optional), lint (eslint optional) automatisch konfiguriert
-- **AND** project.json wird mit korrekten Executor-Definitionen generiert
-- **AND** `nx build <package>`, `nx test <package>` sind sofort verfügbar
+#### Scenario: Platzhalter-Target ist unzulässig
+- **WHEN** ein Entwickler `nx run <project>:lint` oder `nx run <project>:test:unit` ausführt
+- **THEN** wird ein echter Lint- bzw. Test-Runner ausgeführt
+- **AND** das Ergebnis kann bei Regel-/Testverstößen fehlschlagen
 
-#### Scenario: Targets im Projektgraph sichtbar
-- **WHEN** `nx graph` ausgeführt wird
-- **THEN** sind alle Targets und deren Abhängigkeiten sichtbar
-- **AND** affected-Commands funktionieren zuverlässig
+#### Scenario: Target-Konvention für Workspace-Befehle
+- **WHEN** `nx run-many -t lint` oder `nx run-many -t test:unit` aufgerufen wird
+- **THEN** greifen die Befehle konsistent über alle relevanten Projekte
+- **AND** die Ergebnisse sind projektübergreifend vergleichbar
 
 ### Requirement: Package-Erstellung via @nx/js:lib Generator
 Das System SHALL neue Packages primär über `nx g @nx/js:lib` mit SVA-Konventionen erstellen, um automatisch korrekte Targets, TypeScript-Setup und Projektgraph-Integration zu garantieren.
@@ -93,3 +91,4 @@ Das System SHALL klare, wiederverwendbare Generator-Commands und Workflows dokum
 - **THEN** findet er Copy-Paste-Ready Commands mit SVA-Defaults
 - **AND** Erklärungen für jeden Flag sind vorhanden
 - **AND** Verlinkung zu Nx-Dokumentation ist enthalten
+

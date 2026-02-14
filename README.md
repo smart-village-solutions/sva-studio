@@ -52,36 +52,16 @@ corepack prepare pnpm@9.12.2 --activate
 pnpm install
 ```
 
-## Lokale Entwicklung: Redis TLS
+## Lokale Entwicklung: TLS/Monitoring
 
-Für lokale Tests mit Redis TLS müssen Entwickler:innen eigene Zertifikate generieren. Die Zertifikate sind **absichtlich** nicht im Repository versioniert.
-
-1. Zertifikate generieren:
-```bash
-./dev/generate-tls-certs.sh
-```
-
-2. Zertifikate liegen danach unter `dev/redis-tls/` (wird von Git ignoriert).
-
-3. Redis mit TLS starten (docker-compose) und Verbindung testen:
-```bash
-docker-compose up -d redis
-redis-cli -h localhost -p 6380 --cacert dev/redis-tls/ca.pem ping
-```
-
-## Lokale Entwicklung: Monitoring-Stack
-
-Siehe [docs/development/monitoring-stack.md](docs/development/monitoring-stack.md) für Setup, Health-Checks und Dashboards.
-
-**Label-Schema (Whitelist):**
-- `workspace_id`, `component`, `environment`, `level`
-
-**Verbotene Labels (PII / High Cardinality):**
-- `user_id`, `session_id`, `email`, `request_id`, `token`, `authorization`, `api_key`, `secret`, `ip`
+Der Branch enthaelt aktuell keine versionierten TLS-Skripte oder Compose-Manifeste
+fuer einen lokalen Monitoring-Stack.
+Wenn du diese lokal nutzt, halte die Doku bitte in `docs/development/` konsistent.
 
 ## Dokumentation
 
 - Architektur-Einstiegspunkt (arc42): [docs/architecture/README.md](docs/architecture/README.md)
+- Testing/Coverage: [docs/development/testing-coverage.md](docs/development/testing-coverage.md)
 
 ## Aktueller Implementierungsstand (Repo)
 
@@ -89,8 +69,8 @@ Der aktuelle Code-Stand dieses Repos bildet vor allem technische Grundlagen ab:
 
 - TanStack Start App `apps/sva-studio-react`
 - Typsicheres Routing mit Core-/Plugin-Route-Factories
-- OIDC Login + Session-Verwaltung (Redis) ueber `packages/auth`
-- SDK Logger + OpenTelemetry Pipeline (lokaler Monitoring-Stack)
+- Datenzugriff ueber `packages/data`
+- Gemeinsame Basispakete `packages/core`, `packages/sdk`, `packages/plugin-example`
 
 Das beigefuegte Konzept unter `concepts/konzeption-cms-v2/` liefert den fachlichen Hintergrund.
 Roadmap-/Milestone-Inhalte daraus sind nicht automatisch als implementiert zu verstehen.

@@ -14,7 +14,7 @@ Alle Architekturinformationen werden arc42-konform in den Abschnitten 1-12 gepfl
 | 5. Bausteinsicht | `./05-building-block-view.md` | Module/Packages, Verantwortlichkeiten, Abhaengigkeiten | Neue Module, geaenderte Modulgrenzen |
 | 6. Laufzeitsicht | `./06-runtime-view.md` | Wichtige Szenarien/Sequenzen, Request-Flows | Geaenderte Flows, neue kritische Laufzeitszenarien |
 | 7. Verteilungssicht | `./07-deployment-view.md` | Deployment-Topologie, Umgebungen, Betriebsgrenzen | Neue Laufzeitumgebungen, Infra- oder Deployment-Aenderungen |
-| 8. Querschnittliche Konzepte | `./08-cross-cutting-concepts.md` | Security, Logging, Observability, Fehlerbehandlung, i18n, A11y | Aenderung cross-cutting Policies oder Patterns |
+| 8. Querschnittliche Konzepte | `./08-cross-cutting-concepts.md` | Security, Logging, Fehlerbehandlung, i18n, A11y | Aenderung cross-cutting Policies oder Patterns |
 | 9. Architekturentscheidungen | `./09-architecture-decisions.md` | Relevante ADR-Liste, Status und Verweise | Neue/aktualisierte ADRs |
 | 10. Qualitaetsanforderungen | `./10-quality-requirements.md` | Qualitaetsziele, Szenarien, Metriken | Neue Qualitaetsziele oder geaenderte Priorisierung |
 | 11. Risiken und technische Schulden | `./11-risks-and-technical-debt.md` | Architektur-Risiken, Schulden, Gegenmassnahmen | Neue Risiken, geaenderte Risikobewertung |
@@ -31,5 +31,4 @@ Alle Architekturinformationen werden arc42-konform in den Abschnitten 1-12 gepfl
 
 - Routing: `./routing-architecture.md`
 - Logging und Observability: `./logging-architecture.md`
-- Session-Analyse: `./session-management-analysis.md`
-- ADRs: `./decisions/README.md`
+- ADRs: `./decisions/ADR-001-frontend-framework-selection.md`, `./decisions/ADR-002-plugin-architecture-pattern.md`, `./decisions/ADR-003-design-token-architecture.md`

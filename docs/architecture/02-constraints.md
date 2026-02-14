@@ -17,9 +17,8 @@ im IST-System direkt beeinflussen.
 
 - Node.js `>=22.12.0`, pnpm `>=9.12.2` (`package.json`)
 - Nx-Monorepo mit standardisierten Targets (`build`, `lint`, `test:unit`)
-- TanStack Start/Router fuer App und Server-Routen
-- Redis als Session-Store, lokal via Docker Compose
-- OTEL-basierte Logging-/Metrikpipeline ueber Collector
+- TanStack Start/Router fuer die Web-App
+- Package-Abhaengigkeiten intern ueber `workspace:*`
 
 ### Organisatorische Randbedingungen
 
@@ -29,13 +28,14 @@ im IST-System direkt beeinflussen.
 
 ### Regulatorische/Qualitaets-Randbedingungen
 
-- PII-Schutz im Logging (Redaction + Label-Whitelist)
 - Security- und Accessibility-Regeln aus `DEVELOPMENT_RULES.md`
 - Nachweisbare Test-/Lint-/Type-Checks im Entwicklungsworkflow
+- PR-Checks fuer Coverage und Integration ueber GitHub Actions
 
 Referenzen:
 
 - `package.json`
+- `pnpm-workspace.yaml`
 - `openspec/AGENTS.md`
 - `scripts/ci/check-file-placement.mjs`
-- `packages/monitoring-client/src/otel.server.ts`
+- `.github/workflows/test-coverage.yml`

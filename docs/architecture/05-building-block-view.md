@@ -18,38 +18,31 @@ Abhaengigkeiten des aktuellen Systems.
 1. App (`apps/sva-studio-react`)
    - TanStack Start App, UI, Root-Shell, Router-Erzeugung
 2. Core (`packages/core`)
-   - generische Route-Registry Utilities (`mergeRouteFactories`, `buildRouteTree`)
-3. Routing (`packages/routing`)
-   - zentrale Route-Factories (client + server)
-4. Auth (`packages/auth`)
-   - OIDC-Flows, Session-Store, auth HTTP-Handler
-5. SDK (`packages/sdk`)
-   - Logger, Context-Propagation, OTEL-Bootstrap
-6. Monitoring Client (`packages/monitoring-client`)
-   - OTEL SDK Setup, Exporter, Log-Redaction-Processor
-7. Data (`packages/data`)
-   - einfacher HTTP DataClient mit In-Memory Cache
-8. Plugin Example (`packages/plugin-example`)
+   - generische Route-Registry-Utilities (`mergeRouteFactories`, `buildRouteTree`)
+3. Data (`packages/data`)
+   - einfacher HTTP DataClient mit In-Memory-Cache
+4. SDK (`packages/sdk`)
+   - gemeinsamer Einstiegspunkt fuer paketuebergreifende Utilities
+5. Plugin Example (`packages/plugin-example`)
    - Beispielroute fuer Plugin-Erweiterbarkeit
 
 ### Abhaengigkeiten (vereinfacht)
 
-- App -> `@sva/core`, `@sva/routing`, `@sva/auth`, `@sva/plugin-example`
-- `@sva/routing` -> `@sva/auth`, `@sva/core`
-- `@sva/auth` -> `@sva/sdk`
-- `@sva/sdk` -> `@sva/core`, `@sva/monitoring-client`
-- `@sva/monitoring-client` -> OTEL Libraries, `@sva/sdk` Context API
+- `apps/sva-studio-react` -> `@sva/core`, `@sva/plugin-example`
+- `@sva/data` -> `@sva/core`
+- `@sva/sdk` -> `@sva/core`
+- `@sva/plugin-example` -> `@sva/core`
 
 ### Boundary Core vs. Framework Binding
 
 - Framework-agnostisch:
-  - `packages/core`, Teile von `packages/data`, SDK Context APIs
+  - `packages/core`, `packages/data`, `packages/sdk`
 - Framework-/Runtime-gebunden:
-  - `apps/sva-studio-react`, TanStack-Route-Definitionen, Auth-Handler fuer Start
+  - `apps/sva-studio-react`, `packages/plugin-example` (React Router Route-Definitionen)
 
 Referenzen:
 
+- `apps/sva-studio-react/src/router.tsx`
 - `packages/core/src/routing/registry.ts`
-- `packages/routing/src/index.ts`
-- `packages/auth/src/index.server.ts`
-- `packages/sdk/src/server.ts`
+- `packages/data/src/index.ts`
+- `packages/plugin-example/src/routes.tsx`

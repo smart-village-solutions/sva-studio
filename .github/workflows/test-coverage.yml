@@ -36,13 +36,13 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Ensure origin/main is available for affected
+      - name: Ensure base branch is available for affected
         if: github.event_name == 'pull_request'
         run: git fetch origin "${{ github.base_ref }}" --no-tags --prune --depth=1
 
       - name: Run affected coverage on PR
         if: github.event_name == 'pull_request'
-        run: npx nx affected --target=test:coverage --base=origin/${{ github.base_ref }}
+        run: pnpm nx affected --target=test:coverage --base=origin/${{ github.base_ref }}
 
       - name: Run full coverage on main/schedule
         if: github.event_name != 'pull_request'

@@ -48,7 +48,7 @@ gh issue list --search "label:ops" --state all
 
 Kopiere anschließend den passenden Befehl aus dem obigen Codeblock in dein Terminal (nachdem du KEYWORD angepasst hast) und führe ihn aus.
 
-Detaillierte Richtlinien: [./skills/ISSUE_CREATION_GUIDE.md](./skills/ISSUE_CREATION_GUIDE.md#-operations--reliability-agent)
+Detaillierte Richtlinien: [../skills/ISSUE_CREATION_GUIDE.md](../skills/ISSUE_CREATION_GUIDE.md#-operations--reliability-agent)
 
 ### Review-Output (Template)
 

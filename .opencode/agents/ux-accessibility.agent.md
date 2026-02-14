@@ -44,7 +44,7 @@ gh issue list --search "label:accessibility" --state all
 
 Danach kopierst du den passenden Befehl aus dem obigen Codeblock und führst ihn in deinem Terminal aus.
 
-Detaillierte Richtlinien: [./skills/ISSUE_CREATION_GUIDE.md](./skills/ISSUE_CREATION_GUIDE.md#-ux--accessibility-agent)
+Detaillierte Richtlinien: [../../.github/agents/skills/ISSUE_CREATION_GUIDE.md](../../.github/agents/skills/ISSUE_CREATION_GUIDE.md#-ux--accessibility-agent)
 
 ### Review-Output (Template)
 

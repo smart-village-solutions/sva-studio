@@ -6,7 +6,7 @@
     "jsx": "react-jsx",
     "module": "ESNext",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "types": ["vite/client"],
+    "types": ["vite/client", "node"],
 
     /* Bundler mode */
     "moduleResolution": "bundler",
@@ -26,6 +26,7 @@
       "@/*": ["./src/*"],
       "@sva/core": ["../../packages/core/src/index.ts"],
       "@sva/data": ["../../packages/data/src/index.ts"],
+      "@sva/auth": ["../../packages/auth/src/index.ts"],
       "@sva/sdk": ["../../packages/sdk/src/index.ts"],
       "@sva/plugin-example": ["../../packages/plugin-example/src/index.ts"]
     }

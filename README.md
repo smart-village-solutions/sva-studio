@@ -1,10 +1,4 @@
 # SVA Studio
-[![Test Coverage](https://github.com/smart-village-solutions/sva-studio/actions/workflows/test-coverage.yml/badge.svg?branch=main)](https://github.com/smart-village-solutions/sva-studio/actions/workflows/test-coverage.yml)
-[![Codecov](https://codecov.io/gh/smart-village-solutions/sva-studio/branch/main/graph/badge.svg)](https://codecov.io/gh/smart-village-solutions/sva-studio)
-[![Node.js](https://img.shields.io/badge/node-%3E%3D22.12.0-339933?logo=node.js&logoColor=white)](./package.json)
-[![pnpm](https://img.shields.io/badge/pnpm-9.12.2-F69220?logo=pnpm&logoColor=white)](./package.json)
-[![TypeScript](https://img.shields.io/badge/TypeScript-Strict-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Nx](https://img.shields.io/badge/Nx-Monorepo-143055?logo=nx&logoColor=white)](https://nx.dev/)
 
 ![Mockup 01 2026](docs/images/mockup-01-2026.png)
 
@@ -57,3 +51,46 @@ corepack enable
 corepack prepare pnpm@9.12.2 --activate
 pnpm install
 ```
+
+## Lokale Entwicklung: Redis TLS
+
+Für lokale Tests mit Redis TLS müssen Entwickler:innen eigene Zertifikate generieren. Die Zertifikate sind **absichtlich** nicht im Repository versioniert.
+
+1. Zertifikate generieren:
+```bash
+./dev/generate-tls-certs.sh
+```
+
+2. Zertifikate liegen danach unter `dev/redis-tls/` (wird von Git ignoriert).
+
+3. Redis mit TLS starten (docker-compose) und Verbindung testen:
+```bash
+docker-compose up -d redis
+redis-cli -h localhost -p 6380 --cacert dev/redis-tls/ca.pem ping
+```
+
+## Lokale Entwicklung: Monitoring-Stack
+
+Siehe [docs/development/monitoring-stack.md](docs/development/monitoring-stack.md) für Setup, Health-Checks und Dashboards.
+
+**Label-Schema (Whitelist):**
+- `workspace_id`, `component`, `environment`, `level`
+
+**Verbotene Labels (PII / High Cardinality):**
+- `user_id`, `session_id`, `email`, `request_id`, `token`, `authorization`, `api_key`, `secret`, `ip`
+
+## Dokumentation
+
+- Architektur-Einstiegspunkt (arc42): [docs/architecture/README.md](docs/architecture/README.md)
+
+## Aktueller Implementierungsstand (Repo)
+
+Der aktuelle Code-Stand dieses Repos bildet vor allem technische Grundlagen ab:
+
+- TanStack Start App `apps/sva-studio-react`
+- Typsicheres Routing mit Core-/Plugin-Route-Factories
+- OIDC Login + Session-Verwaltung (Redis) ueber `packages/auth`
+- SDK Logger + OpenTelemetry Pipeline (lokaler Monitoring-Stack)
+
+Das beigefuegte Konzept unter `concepts/konzeption-cms-v2/` liefert den fachlichen Hintergrund.
+Roadmap-/Milestone-Inhalte daraus sind nicht automatisch als implementiert zu verstehen.

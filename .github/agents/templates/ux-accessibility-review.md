@@ -31,6 +31,7 @@ Nutze dieses Template für UX/Barrierefreiheit-Reviews. Fokus: WCAG 2.1 AA / BIT
 - [ ] Alt-Texte & Struktur (Headings, Listen, Landmark Regions, Skip Links)
 - [ ] Dynamische Inhalte: Live-Regionen/Statusmeldungen
 - [ ] Redaktions-Workflow unterstützt barrierefreie Inhalte
+- [ ] Falls Architektur/System betroffen: relevante arc42-Abschnitte unter `docs/architecture/` aktualisiert/verlinkt (oder Abweichung begruendet)
 
 ## Anhänge
 - Eingesetzte Inputs: (Flows, Komponenten, Doku)

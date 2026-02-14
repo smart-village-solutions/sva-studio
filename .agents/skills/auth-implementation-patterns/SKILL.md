@@ -18,6 +18,10 @@ Build secure, scalable authentication and authorization systems using industry-s
 - Debugging auth issues
 - Implementing SSO or multi-tenancy
 
+## Repo-Konventionen (SVA Studio)
+
+- Wenn Auth-Aenderungen Architektur, Trust Boundaries oder Session-/Token-Flows wesentlich beeinflussen, aktualisiere die betroffenen arc42-Abschnitte unter `docs/architecture/` (Einstiegspunkt: `docs/architecture/README.md`) und referenziere (oder ergaenze) passende ADRs unter `docs/architecture/decisions/`.
+
 ## Core Concepts
 
 ### 1. Authentication vs Authorization

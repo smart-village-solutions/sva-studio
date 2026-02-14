@@ -1,6 +1,6 @@
 # Agent Issue Creation Guide
 
-Alle 5 Reviewer-Agents können dir GitHub-CLI-Befehle (`gh issue create`) geben. Du führst sie manuell aus, damit du volle Kontrolle über die Issue-Erstellung hast. Dieses Dokument legt die Standards fest.
+Alle 6 Reviewer-Agents können dir GitHub-CLI-Befehle (`gh issue create`) geben. Du führst sie manuell aus, damit du volle Kontrolle über die Issue-Erstellung hast. Dieses Dokument legt die Standards fest.
 
 ## Duplikat-Prüfung (Kritisch!)
 
@@ -211,6 +211,35 @@ gh issue list --search "Authentication in:title" --state all
 - Screenreader-Inkompatibilität
 - Fehlende oder falsche Alt-Texte für Inhalte
 - Tastaturzugang nicht möglich
+
+---
+
+### 📚 Documentation Agent
+
+**Labels**:
+- `documentation` (immer)
+- `docs-quality` (Konsistenz/Struktur)
+- `docs-architecture` (arc42/OpenSpec/ADR-Bezug)
+- `tech-debt` (veraltete/duplizierte Doku)
+- `good-first-issue` (optional bei klar abgegrenzten Aufraeumarbeiten)
+
+**Issue-Titel-Format**:
+```
+[Docs] <Bereich>: <Massnahme>
+```
+
+**Beispiele**:
+```
+[Docs] Architecture: arc42 Abschnitt 06 Laufzeitsicht aktualisieren
+[Docs] OpenSpec: Proposal-Template um arc42-Referenzen ergaenzen
+[Docs] Inline Docs: Veraltete Docstrings im Auth-Modul bereinigen
+```
+
+**Wann erstellen?**
+- Proposal/PR hat fachliche oder architektonische Aenderung ohne passende Doku-Updates
+- arc42/OpenSpec/ADR-Verlinkung fehlt oder ist inkonsistent
+- Doku-Duplikate/Drift fuehren zu Fehlinterpretation
+- Umfangreiche Doku-Aufraeumarbeiten sind noetig und nicht sinnvoll im aktuellen PR
 
 ---
 

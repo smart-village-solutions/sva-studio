@@ -1,4 +1,5 @@
 # SVA Studio
+
 [![Test Coverage](https://github.com/smart-village-solutions/sva-studio/actions/workflows/test-coverage.yml/badge.svg?branch=main)](https://github.com/smart-village-solutions/sva-studio/actions/workflows/test-coverage.yml)
 [![Codecov](https://codecov.io/gh/smart-village-solutions/sva-studio/branch/main/graph/badge.svg)](https://codecov.io/gh/smart-village-solutions/sva-studio)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D22.12.0-339933?logo=node.js&logoColor=white)](./package.json)
@@ -57,3 +58,26 @@ corepack enable
 corepack prepare pnpm@9.12.2 --activate
 pnpm install
 ```
+
+## Lokale Entwicklung: TLS/Monitoring
+
+Der Branch enthaelt aktuell keine versionierten TLS-Skripte oder Compose-Manifeste
+fuer einen lokalen Monitoring-Stack.
+Wenn du diese lokal nutzt, halte die Doku bitte in `docs/development/` konsistent.
+
+## Dokumentation
+
+- Architektur-Einstiegspunkt (arc42): [docs/architecture/README.md](docs/architecture/README.md)
+- Testing/Coverage: [docs/development/testing-coverage.md](docs/development/testing-coverage.md)
+
+## Aktueller Implementierungsstand (Repo)
+
+Der aktuelle Code-Stand dieses Repos bildet vor allem technische Grundlagen ab:
+
+- TanStack Start App `apps/sva-studio-react`
+- Typsicheres Routing mit Core-/Plugin-Route-Factories
+- Datenzugriff ueber `packages/data`
+- Gemeinsame Basispakete `packages/core`, `packages/sdk`, `packages/plugin-example`
+
+Das beigefuegte Konzept unter `concepts/konzeption-cms-v2/` liefert den fachlichen Hintergrund.
+Roadmap-/Milestone-Inhalte daraus sind nicht automatisch als implementiert zu verstehen.

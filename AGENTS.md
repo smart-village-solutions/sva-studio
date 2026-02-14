@@ -37,6 +37,7 @@
 - Vor dem Commit immer `pnpm test:eslint`, `pnpm test:types` und `pnpm test:unit` ausführen
 - Änderungen an den relevanten Stellen testen
 - Bei neuen Features die passende Doku im Verzeichnis `docs/` aktualisieren
+- Bei Architektur-/Systemänderungen die relevanten arc42-Abschnitte unter `docs/architecture/` aktualisieren und im PR verlinken
 - Für jede Code-Änderung Tests hinzufügen oder anpassen
 - Interne Doku-Links relativ zum Ordner `docs/` schreiben (z. B. `./guide/data-loading`)
 
@@ -116,7 +117,7 @@ Behalte diesen verwalteten Block bei, damit 'openspec update' die Anweisungen ak
 <!-- nx configuration start-->
 <!-- Leave the start & end comments to automatically receive updates. -->
 
-# General Guidelines for working with Nx
+## General Guidelines for working with Nx
 
 - When running tasks (for example build, lint, test, e2e, etc.), always prefer running the task through `nx` (i.e. `nx run`, `nx run-many`, `nx affected`) instead of using the underlying tooling directly
 - You have access to the Nx MCP server and its tools, use them to help the user

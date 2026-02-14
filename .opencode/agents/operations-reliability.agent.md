@@ -52,4 +52,4 @@ Detaillierte Richtlinien: [../skills/ISSUE_CREATION_GUIDE.md](../skills/ISSUE_CR
 
 ### Review-Output (Template)
 
-Nutze das zentrale Template unter [templates/operations-reliability-review.md](templates/operations-reliability-review.md).
+Nutze das zentrale Template unter [../templates/operations-reliability-review.md](../templates/operations-reliability-review.md).

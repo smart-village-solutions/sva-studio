@@ -3,21 +3,25 @@
 Nutze dieses Template für Betriebs-/Zuverlässigkeits-Reviews. Fokus: Deployments, Backups, Observability.
 
 ## Entscheidung
+
 - Betriebsreife: [Low | Medium | High]
 - Begründung (1–2 Sätze):
 
 ## Executive Summary (3–5 Punkte)
+
 - Punkt 1
 - Punkt 2
 - Punkt 3
 
 ## Befundübersicht
-| ID | Thema | Schwere | Bereich | Evidenz |
-|---:|-------|---------|---------|---------|
-| O1 | …     | 🔴/🟡/🟢 | Deploy/Backup/Monitor | Link/Zitat |
+
+| ID | Thema | Schwere | Bereich               | Evidenz   |
+|---:|-------|---------|-----------------------|-----------|
 
 ## Detail-Findings
+
 ### O1 – Kurztitel
+
 - Beschreibung: …
 - Impact/Risiko (Verfügbarkeit, Datenverlust, MTTR): …
 - Evidenz/Quelle: (Pipelines, Scripts, Dashboards)
@@ -25,6 +29,7 @@ Nutze dieses Template für Betriebs-/Zuverlässigkeits-Reviews. Fokus: Deploymen
 - Empfehlung/Abhilfe: …
 
 ## Checkliste (Status)
+
 - [ ] Installierbarkeit: Docker/Compose/K8s vorhanden + dokumentiert
 - [ ] Zero-Downtime-Deployments (Blue/Green, Rolling, Canary)
 - [ ] Rollback < X Minuten; Migrations rückwärtskompatibel
@@ -33,6 +38,8 @@ Nutze dieses Template für Betriebs-/Zuverlässigkeits-Reviews. Fokus: Deploymen
 - [ ] Wartungsmodus + Notfallszenarien (Runbooks, DR-Drills)
 - [ ] Ressourcenbedarf/Skalierung (Auto-Scaling, HPA, Limits)
 - [ ] SLO/SLA-Ziele (Uptime, MTTR) definiert
+- [ ] Falls Architektur/System betroffen: relevante arc42-Abschnitte unter `docs/architecture/` aktualisiert/verlinkt (oder Abweichung begründet)
 
 ## Anhänge
+
 - Eingesetzte Inputs: (Deploy-Files, Backup-Configs, Dashboards)

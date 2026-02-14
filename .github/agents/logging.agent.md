@@ -36,9 +36,9 @@ Du bist verantwortlich fuer die Qualitaet der Logging-Implementierung und ihre D
 ```typescript
 import { createSdkLogger } from '@sva/sdk';
 
-const logger = createSdkLogger({ 
+const logger = createSdkLogger({
   component: 'auth-redis',  // Eindeutig pro Modul
-  level: 'info' 
+  level: 'info'
 });
 
 // ✅ Session-Operation
@@ -86,6 +86,7 @@ if (process.env.NODE_ENV !== 'production') {
 - Konkrete Luecken in Struktur, Korrelation oder Schutz sensibler Daten
 - Priorisierte Empfehlungen (kurz, umsetzbar)
 - Hinweis, ob ADRs oder Konventionen fehlen
+- Hinweis, ob die betroffenen Architektur-/Systemaspekte in der arc42-Doku unter `docs/architecture/` ergänzt/aktualisiert werden sollten
 
 ### Regeln
 - Keine Feature-Diskussion

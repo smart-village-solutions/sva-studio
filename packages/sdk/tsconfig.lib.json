@@ -5,7 +5,10 @@
     "declaration": true,
     "declarationMap": true,
     "outDir": "dist",
-    "rootDir": "src"
+    "rootDir": "src",
+    "paths": {
+      "@sva/core": ["../core/dist/index.d.ts"]
+    }
   },
   "include": ["src/**/*.ts"]
 }

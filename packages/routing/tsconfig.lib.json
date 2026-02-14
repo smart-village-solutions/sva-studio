@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "composite": true,
+    "declaration": true,
+    "declarationMap": true,
+    "paths": {
+      "@sva/core": ["../core/src/index.ts"],
+      "@sva/auth": ["../auth/src/index.ts"],
+      "@sva/auth/server": ["../auth/src/index.server.ts"]
+    }
+  },
+  "include": ["src/**/*.ts"]
+}

@@ -3,7 +3,7 @@ import { buildRouteTree, mergeRouteFactories } from '@sva/core';
 import { pluginExampleRoutes } from '@sva/plugin-example';
 
 import { rootRoute } from './routes/__root';
-import { coreRouteFactories } from './routes/-core-routes';
+import { coreRouteFactories } from './routes/-core-routes.server';
 
 // Create a new router instance
 export const getRouter = () => {

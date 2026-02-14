@@ -57,3 +57,11 @@ dev/redis-tls/
 *.pfx
 *.jks
 *.keystore
+
+# Local monitoring artifacts
+artifacts/monitoring/
+
+# Generated outputs in @sva/core source tree
+packages/core/src/**/*.d.ts
+packages/core/src/**/*.d.ts.map
+packages/core/src/**/*.js

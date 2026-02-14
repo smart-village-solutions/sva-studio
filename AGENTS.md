@@ -20,7 +20,6 @@
 
 - **Kritisch:** Während der Entwicklung immer Unit- und Type-Tests ausführen – bei Fehlschlägen nicht weitermachen
 - **Testarten:** `pnpm test:unit`, `pnpm test:types`, `pnpm test:eslint`, `pnpm test:e2e`, `pnpm test:build`
-- **Coverage-Gate lokal:** `pnpm coverage-gate` (Baseline nur nach Team-Entscheid mit `pnpm coverage-gate --update-baseline`)
 - **Komplette CI-Suite:** `pnpm test:ci`
 - **Formatierung beheben:** `pnpm format`
 - **Effizienter, zielgerichteter Test-Workflow:**
@@ -38,6 +37,9 @@
 - Vor dem Commit immer `pnpm test:eslint`, `pnpm test:types` und `pnpm test:unit` ausführen
 - Änderungen an den relevanten Stellen testen
 - Bei neuen Features die passende Doku im Verzeichnis `docs/` aktualisieren
+- Bei Architektur-/Systemänderungen die relevanten arc42-Abschnitte unter `docs/architecture/` aktualisieren und im PR verlinken
+- Einstiegspunkt fuer Architekturdoku ist `docs/architecture/README.md` (Abschnitte 1-12)
+- Fuer Doku-Qualitaet und Doku-Abdeckung bei Proposals/PRs steht der Agent `documentation.agent.md` unter `.github/agents/` bereit
 - Für jede Code-Änderung Tests hinzufügen oder anpassen
 - Interne Doku-Links relativ zum Ordner `docs/` schreiben (z. B. `./guide/data-loading`)
 
@@ -82,6 +84,16 @@
 
 Die verbindlichen Entwicklungsrichtlinien liegen unter [DEVELOPMENT_RULES.md](DEVELOPMENT_RULES.md). Alle Agenten-Reviews sind im Zweifel an diesen Regeln auszurichten.
 
+### Kritische Regeln (Non-Negotiable)
+
+1. **Texte & Übersetzungen**: Keine hardcoded Strings, immer `t('key')` verwenden
+2. **Logging**: Server-Code nutzt SDK Logger (`@sva/sdk`), nie `console.*`
+3. **Security**: Input-Validation client+server, PII-Schutz in Logs
+4. **CSS**: Design-System verwenden, keine inline-styles (außer dynamische Daten)
+5. **Accessibility**: WCAG 2.1 AA compliant
+
+**Details:** Siehe [DEVELOPMENT_RULES.md](DEVELOPMENT_RULES.md)
+
 <!-- OPENSPEC:START -->
 
 ## OpenSpec-Anweisungen
@@ -107,23 +119,14 @@ Behalte diesen verwalteten Block bei, damit 'openspec update' die Anweisungen ak
 <!-- nx configuration start-->
 <!-- Leave the start & end comments to automatically receive updates. -->
 
-# General Guidelines for working with Nx
+## General Guidelines for working with Nx
 
-- For navigating/exploring the workspace, invoke the `nx-workspace` skill first - it has patterns for querying projects, targets, and dependencies
 - When running tasks (for example build, lint, test, e2e, etc.), always prefer running the task through `nx` (i.e. `nx run`, `nx run-many`, `nx affected`) instead of using the underlying tooling directly
-- Prefix nx commands with the workspace's package manager (e.g., `pnpm nx build`, `npm exec nx test`) - avoids using globally installed CLI
 - You have access to the Nx MCP server and its tools, use them to help the user
+- When answering questions about the repository, use the `nx_workspace` tool first to gain an understanding of the workspace architecture where applicable.
+- When working in individual projects, use the `nx_project_details` mcp tool to analyze and understand the specific project structure and dependencies
+- For questions around nx configuration, best practices or if you're unsure, use the `nx_docs` tool to get relevant, up-to-date docs. Always use this instead of assuming things about nx configuration
+- If the user needs help with an Nx configuration or project graph error, use the `nx_workspace` tool to get any errors
 - For Nx plugin best practices, check `node_modules/@nx/<plugin>/PLUGIN.md`. Not all plugins have this file - proceed without it if unavailable.
-- NEVER guess CLI flags - always check nx_docs or `--help` first when unsure
-
-## Scaffolding & Generators
-
-- For scaffolding tasks (creating apps, libs, project structure, setup), ALWAYS invoke the `nx-generate` skill FIRST before exploring or calling MCP tools
-
-## When to use nx_docs
-
-- USE for: advanced config options, unfamiliar flags, migration guides, plugin configuration, edge cases
-- DON'T USE for: basic generator syntax (`nx g @nx/react:app`), standard commands, things you already know
-- The `nx-generate` skill handles generator discovery internally - don't call nx_docs just to look up generator syntax
 
 <!-- nx configuration end-->

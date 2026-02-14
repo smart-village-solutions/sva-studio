@@ -31,6 +31,7 @@ Nutze dieses Template für Architektur-Reviews. Triff eine klare Entscheidung un
 - [ ] Offene Standards bevorzugt
 - [ ] Cloud-Portabilität (kein Hard-Lock-in)
 - [ ] Skalierbarkeit/Zukunftsfähigkeit
+- [ ] Relevante arc42-Abschnitte unter `docs/architecture/` aktualisiert/verlinkt (oder Abweichung begründet)
 
 ## Anhänge
 - Eingesetzte Inputs: (Diagramme, ADRs, Specs)

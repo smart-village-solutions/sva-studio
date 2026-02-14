@@ -231,13 +231,6 @@ Wichtig:
 2. Debug/Admin-Test-Routen koennen Route-Tree-Sicht erweitern, obwohl sie nicht Teil des Core-Flows sind.
 3. Strikte Import-Disziplin ist entscheidend; sonst drohen Bundling-/Hydration-Probleme.
 
-## Empfohlene Weiterentwicklung
-
-1. Debug-/Test-Routen klar hinter Feature-Flags oder Dev-Only Guards halten.
-2. Routing-Tests fuer Factory-Merge-Reihenfolge und Auth-Handler-Mapping ausbauen.
-3. Mittelfristig dokumentieren, welche Teile file-based vs. code-based als source of truth gelten.
-4. Optional: Routing-Architektur als ADR (Accepted) ergänzen.
-
 ## Referenzen
 
 - `docs/routing.md`

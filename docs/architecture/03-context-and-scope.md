@@ -13,6 +13,11 @@ aktuellen fachlich-technischen Scope.
 
 ## Aktueller Stand
 
+### Fachlicher Kontext (nur Kontext)
+
+Im Produktkontext adressiert SVA Studio die Verwaltung strukturierter Inhalte und Konfigurationen fuer die Smart Village App und angrenzende Kanaele (Headless/API-first).
+Im aktuellen Repo-Ist-Stand sind davon primaer die technischen Grundlagen umgesetzt (Routing, Auth, Observability, lokale Betriebsartefakte).
+
 ### In Scope (IST)
 
 - Web-App `sva-studio-react` mit TanStack Start
@@ -26,12 +31,15 @@ aktuellen fachlich-technischen Scope.
 - Betrieb und Quellcode des externen IdP (Keycloak Realm/Server)
 - Mobile App / externe Konsumenten
 - Vollstaendige Fachverfahren-Integrationen
+- Produkt-/Fachmodule (z. B. konkrete CMS-Content-Modelle) sind im Code derzeit nicht als stabile API/Implementierung vorhanden
 
 ### Externe Nachbarsysteme
 
 - OIDC Provider (per `openid-client`)
 - Redis (lokal/extern)
 - OTEL Collector, Loki, Prometheus, Grafana, Alertmanager
+
+Konzept-Referenz (Kontext): `concepts/konzeption-cms-v2/01_Einleitung/Einleitung.md`
 
 ### Verantwortungsgrenzen
 

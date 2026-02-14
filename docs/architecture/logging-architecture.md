@@ -239,13 +239,6 @@ In `dev/monitoring/promtail/promtail-config.yml`:
 2. Context-Middleware nutzt in einem Sonderfall `console.warn` (zirkulaere Abhaengigkeit zum Logger), bewusst begrenzt auf Development-Warnpfad.
 3. Bei fehlendem OTEL LoggerProvider faellt `DirectOtelTransport` auf no-op fuer OTEL-Emission, Console-Transport bleibt als Sicherheitsnetz.
 
-## Roadmap (empfohlen)
-
-1. Status der ADRs 005/006/007 von `Proposed` auf `Accepted`, sobald Review abgeschlossen ist.
-2. Optionales deduplizierendes Labeling zwischen OTEL-Pfad und Promtail-Fallback.
-3. Erweiterte Compliance-Tests fuer Label-Whitelist/PII als CI-Checks.
-4. Klare Naming-Konvention fuer `component` zentral in Development Rules.
-
 ## Referenzen
 
 - `packages/sdk/src/logger/index.server.ts`

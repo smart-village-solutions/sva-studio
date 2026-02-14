@@ -18,6 +18,10 @@ Build efficient, scalable monorepos that enable code sharing, consistent tooling
 - Versioning and publishing packages
 - Debugging monorepo-specific issues
 
+## Repo-Konventionen (SVA Studio)
+
+- Wenn Monorepo-Änderungen Architektur-/Systemgrenzen betreffen, dokumentiere das arc42-konform unter `docs/architecture/` und verlinke relevante ADRs unter `docs/architecture/decisions/`.
+
 ## Core Concepts
 
 ### 1. Why Monorepos?

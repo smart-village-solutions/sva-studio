@@ -19,6 +19,10 @@ Implement secure secrets management in CI/CD pipelines without hardcoding sensit
 - Rotate secrets automatically
 - Implement least-privilege access
 
+## Repo-Konventionen (SVA Studio)
+
+- Wenn Secrets-Handling (z. B. Vault/KeyVault/Rotation) die Systemarchitektur oder Betriebsmodelle verändert, dokumentiere das arc42-konform unter `docs/architecture/` und verweise auf relevante ADRs unter `docs/architecture/decisions/`.
+
 ## Secrets Management Tools
 
 ### HashiCorp Vault

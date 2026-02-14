@@ -1,0 +1,83 @@
+name: Wiki Sync
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'docs/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync-wiki:
+    runs-on: ubuntu-latest
+    env:
+      WIKI_SYNC_TOKEN: ${{ secrets.WIKI_SYNC_TOKEN }}
+
+    steps:
+      - name: Checkout source repository
+        uses: actions/checkout@v4
+
+      - name: Clone wiki repository
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          TOKEN="${WIKI_SYNC_TOKEN:-$GITHUB_TOKEN}"
+          WIKI_URL="https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.wiki.git"
+
+          if ! git clone --depth 1 "$WIKI_URL" wiki; then
+            echo "Wiki clone failed."
+            echo "Bitte pruefen:"
+            echo "1) Wiki ist aktiviert und initialisiert (mindestens eine Seite vorhanden)."
+            echo "2) Optionales Secret WIKI_SYNC_TOKEN hat repo-Rechte (empfohlen bei privaten Repos)."
+            exit 1
+          fi
+
+      - name: Sync docs to wiki/docs
+        run: |
+          mkdir -p wiki/docs
+          rsync -a --delete docs/ wiki/docs/
+
+      - name: Generate wiki entry pages
+        run: |
+          cat > wiki/Home.md <<'EOF'
+          # SVA Studio Wiki
+
+          Diese Wiki-Inhalte werden automatisch aus `docs/` synchronisiert.
+
+          ## Einstieg
+
+          - [Architekturuebersicht (arc42)](docs/architecture/README.md)
+          - [Monorepo Struktur](docs/monorepo.md)
+          - [Routing](docs/routing.md)
+          - [Monitoring Stack](docs/development/monitoring-stack.md)
+          - [Testing & Coverage Governance](docs/development/testing-coverage.md)
+          EOF
+
+          cat > wiki/_Sidebar.md <<'EOF'
+          - [Home](Home)
+          - [Architektur (arc42)](docs/architecture/README.md)
+          - [Architekturentscheidungen (ADRs)](docs/architecture/decisions/README.md)
+          - [Monorepo](docs/monorepo.md)
+          - [Routing](docs/routing.md)
+          - [Monitoring](docs/development/monitoring-stack.md)
+          - [Testing/Coverage](docs/development/testing-coverage.md)
+          EOF
+
+      - name: Commit and push wiki changes
+        run: |
+          if [[ -z "$(git -C wiki status --porcelain)" ]]; then
+            echo "No wiki changes to commit."
+            exit 0
+          fi
+
+          git -C wiki config user.name "github-actions[bot]"
+          git -C wiki config user.email "github-actions[bot]@users.noreply.github.com"
+          git -C wiki add .
+          git -C wiki commit -m "docs: sync wiki from docs/ (${GITHUB_SHA::7})"
+          git -C wiki push origin HEAD

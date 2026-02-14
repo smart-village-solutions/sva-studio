@@ -78,3 +78,19 @@ Siehe [docs/development/monitoring-stack.md](docs/development/monitoring-stack.m
 
 **Verbotene Labels (PII / High Cardinality):**
 - `user_id`, `session_id`, `email`, `request_id`, `token`, `authorization`, `api_key`, `secret`, `ip`
+
+## Dokumentation
+
+- Architektur-Einstiegspunkt (arc42): [docs/architecture/README.md](docs/architecture/README.md)
+
+## Aktueller Implementierungsstand (Repo)
+
+Der aktuelle Code-Stand dieses Repos bildet vor allem technische Grundlagen ab:
+
+- TanStack Start App `apps/sva-studio-react`
+- Typsicheres Routing mit Core-/Plugin-Route-Factories
+- OIDC Login + Session-Verwaltung (Redis) ueber `packages/auth`
+- SDK Logger + OpenTelemetry Pipeline (lokaler Monitoring-Stack)
+
+Das beigefuegte Konzept unter `concepts/konzeption-cms-v2/` liefert den fachlichen Hintergrund.
+Roadmap-/Milestone-Inhalte daraus sind nicht automatisch als implementiert zu verstehen.

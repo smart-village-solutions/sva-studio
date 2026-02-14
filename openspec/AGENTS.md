@@ -71,6 +71,7 @@ After deployment, create separate PR to:
 - [ ] Read `openspec/project.md` for conventions
 - [ ] Run `openspec list` to see active changes
 - [ ] Run `openspec list --specs` to see existing capabilities
+- [ ] Bei Architektur-/Systemwirkung: betroffene arc42-Abschnitte in `docs/architecture/README.md` identifizieren
 
 **Before Creating Specs:**
 - Always check if capability already exists
@@ -172,6 +173,7 @@ New request?
 ## Impact
 - Affected specs: [list capabilities]
 - Affected code: [key files/systems]
+- Affected arc42 sections: [e.g. 05-building-block-view, 08-cross-cutting-concepts]
 ```
 
 3. **Create spec deltas:** `specs/[capability]/spec.md`
@@ -202,6 +204,7 @@ If multiple capabilities are affected, create multiple delta files under `change
 - [ ] 1.2 Implement API endpoint
 - [ ] 1.3 Add frontend component
 - [ ] 1.4 Write tests
+- [ ] 1.5 Update referenced arc42 sections under `docs/architecture/` (or document justified deviation)
 ```
 
 5. **Create design.md when needed:**

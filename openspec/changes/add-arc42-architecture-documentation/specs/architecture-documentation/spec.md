@@ -22,3 +22,11 @@ Das System SHALL die Pflege der Architektur-Dokumentation als Teil des Delivery-
 - **WHEN** ein PR Architektur oder Systemgrenzen verändert
 - **THEN** enthält der PR eine Aktualisierung der relevanten arc42-Abschnitte
 - **AND** die Review-Checkliste prüft diese Aktualisierung
+
+### Requirement: Verankerung der arc42-Struktur in Agent- und Skill-Anweisungen
+Das System SHALL die Vorgabe „Architektur-/Systemdoku erfolgt arc42-konform“ in den relevanten Agent- und Skill-Anweisungen verankern, sodass die Doku laufend konsistent und gut strukturiert erweitert wird.
+
+#### Scenario: Agent schlägt Doku-Änderung vor
+- **WHEN** ein Agent (oder Skill) eine Änderung mit Architektur-/Systembezug bewertet oder vorschlägt
+- **THEN** referenziert er die betroffenen arc42-Abschnitte unter `docs/architecture/`
+- **AND** fordert er die Aktualisierung dieser Abschnitte ein (oder dokumentiert bewusst begründete Abweichungen)

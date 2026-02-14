@@ -78,3 +78,7 @@ Siehe [docs/development/monitoring-stack.md](docs/development/monitoring-stack.m
 
 **Verbotene Labels (PII / High Cardinality):**
 - `user_id`, `session_id`, `email`, `request_id`, `token`, `authorization`, `api_key`, `secret`, `ip`
+
+## Dokumentation
+
+- Architektur-Einstiegspunkt (arc42): [docs/architecture/README.md](docs/architecture/README.md)

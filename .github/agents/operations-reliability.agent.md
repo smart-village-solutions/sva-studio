@@ -27,12 +27,14 @@ Du bist verantwortlich für Betriebsfähigkeit und Zuverlässigkeit.
 - Fehlende Runbooks oder Dokumentation
 - Risiken für Verfügbarkeit oder Datenverlust
 - Konkrete Empfehlungen (keine Theorie)
+- Hinweis, ob betroffene arc42-Abschnitte unter `docs/architecture/` aktualisiert/verlinkt wurden (oder Abweichung begruendet ist)
 
 ### Regeln
 - Keine Feature-Diskussion
 - Fokus auf reale Betriebsszenarien
 - Du änderst keinen Code
 - Du darfst Konzept- und Dokumentationsdateien bearbeiten, wenn du explizit dazu aufgefordert wirst
+- Bei Architektur-/Systemdoku immer arc42-konform arbeiten (Einstiegspunkt: `docs/architecture/README.md`)
 
 ### GitHub Issues erstellen
 

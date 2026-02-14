@@ -50,7 +50,7 @@ wait_for_metric() {
 
   while (( SECONDS < deadline )); do
     response="$(curl -fsS --get --data-urlencode "query=${query}" "http://localhost:9090/api/v1/query")"
-    if echo "${response}" | rg -q '"result":\[[^]]'; then
+    if echo "${response}" | grep -Eq '"result":\[[^]]'; then
       echo "${response}"
       return 0
     fi
@@ -68,14 +68,14 @@ validate_label_schema() {
   local forbidden_labels=("user_id" "session_id" "email" "token" "api_key" "password")
 
   for label in "${allowed_labels[@]}"; do
-    rg -q "^[[:space:]]*-[[:space:]]*${label}$" "${config_file}" || {
+    grep -Eq "^[[:space:]]*-[[:space:]]*${label}$" "${config_file}" || {
       echo "[monitoring-ci] missing allowed label in promtail config: ${label}" >&2
       return 1
     }
   done
 
   for label in "${forbidden_labels[@]}"; do
-    rg -q "^[[:space:]]*-[[:space:]]*${label}$" "${config_file}" || {
+    grep -Eq "^[[:space:]]*-[[:space:]]*${label}$" "${config_file}" || {
       echo "[monitoring-ci] missing forbidden labeldrop in promtail config: ${label}" >&2
       return 1
     }
@@ -87,7 +87,7 @@ validate_label_schema() {
 main() {
   require_command docker
   require_command curl
-  require_command rg
+  require_command grep
   require_command pnpm
 
   mkdir -p "${ARTIFACT_DIR}"

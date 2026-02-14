@@ -43,6 +43,11 @@ artifacts/
 .nx/cache
 .nx/workspace-data
 
+# Generated artifacts should never live in package source folders
+packages/*/src/**/*.js
+packages/*/src/**/*.d.ts
+packages/*/src/**/*.d.ts.map
+
 # TLS Certificates (local dev only)
 *.pem
 *.crt

@@ -34,6 +34,7 @@ SVA Studio (ehemals "CMS 2.0") modernisiert das Redaktionssystem der Smart Villa
   - **Packages:** `core` (Routing Registry), `sdk` (Plugin SDK), `data` (Datenmodelle), `plugin-example` (Beispiel)
 - **Separation of Concerns:** Backend/Frontend klar getrennt; API als zentrale Schnittstelle
 - **OpenSpec:** Strukturierte Change-Proposals und Specs in `openspec/` für Architektur-Entscheidungen
+- **Architekturdoku (arc42):** Architektur-/Systemdoku unter `docs/architecture/README.md` mit Abschnitten 1-12; bei Architekturwirkung muessen betroffene Abschnitte in OpenSpec-Changes referenziert werden
 
 ### Testing Strategy
 - **Pflicht:** Neue Logik benötigt Tests; Bugfixes benötigen Repro-Tests

@@ -177,3 +177,9 @@ All code issues resolved. Can proceed independently of infrastructure debugging.
 - [ ] `pnpm test:unit` ist grün; insbesondere `@sva/monitoring-client:test:unit` läuft mit echtem Vitest-Run.
 - [ ] Bei Änderungen in coverage-exempt Projekten (`core`, `data`, `plugin-example`) ist ein expliziter Test-/Smoke-Nachweis im PR enthalten.
 - [ ] Exemption-Kontext wurde gegen `docs/development/testing-coverage.md` geprüft.
+
+## Architektur-Doku (arc42) - Reviewer Quick Check
+
+- [ ] Bei Architektur-/Systemaenderungen sind betroffene Abschnitte in `docs/architecture/README.md` identifiziert.
+- [ ] Relevante arc42-Dateien unter `docs/architecture/` wurden aktualisiert oder eine begruendete Abweichung ist dokumentiert.
+- [ ] OpenSpec-Change (`proposal.md`/`tasks.md`) referenziert die betroffenen arc42-Abschnitte.

@@ -20,7 +20,7 @@ Build secure, scalable authentication and authorization systems using industry-s
 
 ## Repo-Konventionen (SVA Studio)
 
-- Wenn Auth-Änderungen Architektur, Trust Boundaries oder Session-/Token-Flows wesentlich beeinflussen, aktualisiere die entsprechende Architektur-/Systemdoku arc42-konform unter `docs/architecture/` und referenziere (oder ergänze) passende ADRs unter `docs/architecture/decisions/`.
+- Wenn Auth-Aenderungen Architektur, Trust Boundaries oder Session-/Token-Flows wesentlich beeinflussen, aktualisiere die betroffenen arc42-Abschnitte unter `docs/architecture/` (Einstiegspunkt: `docs/architecture/README.md`) und referenziere (oder ergaenze) passende ADRs unter `docs/architecture/decisions/`.
 
 ## Core Concepts
 

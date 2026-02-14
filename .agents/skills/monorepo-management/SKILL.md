@@ -20,7 +20,7 @@ Build efficient, scalable monorepos that enable code sharing, consistent tooling
 
 ## Repo-Konventionen (SVA Studio)
 
-- Wenn Monorepo-Änderungen Architektur-/Systemgrenzen betreffen, dokumentiere das arc42-konform unter `docs/architecture/` und verlinke relevante ADRs unter `docs/architecture/decisions/`.
+- Wenn Monorepo-Aenderungen Architektur-/Systemgrenzen betreffen, dokumentiere die betroffenen arc42-Abschnitte unter `docs/architecture/` (Einstiegspunkt: `docs/architecture/README.md`) und verlinke relevante ADRs unter `docs/architecture/decisions/`.
 
 ## Core Concepts
 

@@ -21,7 +21,7 @@ Design robust, secure deployment pipelines that balance speed with safety throug
 
 ## Repo-Konventionen (SVA Studio)
 
-- Wenn Pipeline-/Deployment-Änderungen die Laufzeit- oder Deployment-Sicht wesentlich verändern, dokumentiere die System-/Architekturaspekte arc42-konform unter `docs/architecture/` und halte Entscheidungen als ADRs unter `docs/architecture/decisions/` fest.
+- Wenn Pipeline-/Deployment-Aenderungen die Laufzeit- oder Deployment-Sicht wesentlich veraendern, dokumentiere die betroffenen arc42-Abschnitte unter `docs/architecture/` (Einstiegspunkt: `docs/architecture/README.md`) und halte Entscheidungen als ADRs unter `docs/architecture/decisions/` fest.
 
 ## Pipeline Stages
 

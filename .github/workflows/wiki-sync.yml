@@ -14,17 +14,29 @@ permissions:
 jobs:
   sync-wiki:
     runs-on: ubuntu-latest
+    env:
+      WIKI_SYNC_TOKEN: ${{ secrets.WIKI_SYNC_TOKEN }}
 
     steps:
       - name: Checkout source repository
         uses: actions/checkout@v4
 
-      - name: Checkout wiki repository
-        uses: actions/checkout@v4
-        with:
-          repository: ${{ github.repository }}.wiki
-          path: wiki
-          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Clone wiki repository
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          TOKEN="${WIKI_SYNC_TOKEN:-$GITHUB_TOKEN}"
+          WIKI_URL="https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.wiki.git"
+
+          if ! git clone --depth 1 "$WIKI_URL" wiki; then
+            echo "Wiki clone failed."
+            echo "Bitte pruefen:"
+            echo "1) Wiki ist aktiviert und initialisiert (mindestens eine Seite vorhanden)."
+            echo "2) Optionales Secret WIKI_SYNC_TOKEN hat repo-Rechte (empfohlen bei privaten Repos)."
+            exit 1
+          fi
 
       - name: Sync docs to wiki/docs
         run: |
@@ -68,4 +80,4 @@ jobs:
           git -C wiki config user.email "github-actions[bot]@users.noreply.github.com"
           git -C wiki add .
           git -C wiki commit -m "docs: sync wiki from docs/ (${GITHUB_SHA::7})"
-          git -C wiki push
+          git -C wiki push origin HEAD

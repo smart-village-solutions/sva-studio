@@ -1,0 +1,143 @@
+# Prometheus Alert Rules
+# Monitoring Stack Health + Resource Alerts
+
+groups:
+  - name: monitoring_stack_health
+    interval: 30s
+    rules:
+      # Prometheus selbst
+      - alert: PrometheusCrash
+        expr: up{job="prometheus"} == 0
+        for: 5m
+        labels:
+          severity: critical
+          component: prometheus
+        annotations:
+          summary: "Prometheus ist down"
+          description: "Prometheus auf {{ $labels.instance }} ist seit {{ $value }} Minuten nicht erreichbar"
+
+      # Loki
+      - alert: LokiDown
+        expr: up{job="loki"} == 0
+        for: 5m
+        labels:
+          severity: critical
+          component: loki
+        annotations:
+          summary: "Loki ist down"
+          description: "Loki ist seit 5 Minuten nicht erreichbar. Logs werden nicht gesammelt."
+
+      # Grafana
+      - alert: GrafanaDown
+        expr: up{job="grafana"} == 0
+        for: 5m
+        labels:
+          severity: warning
+          component: grafana
+        annotations:
+          summary: "Grafana ist down"
+          description: "Grafana ist nicht erreichbar. Dashboards sind offline."
+
+      # OTEL Collector
+      - alert: OTelCollectorDown
+        expr: up{job="otel-collector"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: otel-collector
+        annotations:
+          summary: "OTEL Collector ist down"
+          description: "OTEL Collector ist offline. Metriken und Logs von der App werden nicht empfangen."
+
+  - name: resource_usage_alerts
+    interval: 1m
+    rules:
+      # Memory Usage (basiert auf Container-Metriken)
+      - alert: ContainerMemoryHigh
+        expr: |
+          (container_memory_usage_bytes / container_spec_memory_limit_bytes) > 0.80
+        for: 2m
+        labels:
+          severity: warning
+          component: "{{ $labels.name }}"
+        annotations:
+          summary: "Container Memory über 80%"
+          description: "Container {{ $labels.name }} nutzt {{ $value | humanizePercentage }} seines Memory-Limits"
+
+      - alert: ContainerMemoryCritical
+        expr: |
+          (container_memory_usage_bytes / container_spec_memory_limit_bytes) > 0.90
+        for: 1m
+        labels:
+          severity: critical
+          component: "{{ $labels.name }}"
+        annotations:
+          summary: "Container Memory über 90% - OOMKiller Risk!"
+          description: "Container {{ $labels.name }} nutzt {{ $value | humanizePercentage }} seines Memory-Limits. OOMKiller droht!"
+
+      # Prometheus TSDB Size
+      - alert: PrometheusTSDBFull
+        expr: |
+          prometheus_tsdb_storage_blocks_bytes / (5 * 1024 * 1024 * 1024) > 0.85
+        for: 10m
+        labels:
+          severity: warning
+          component: prometheus
+        annotations:
+          summary: "Prometheus TSDB bei 85% Retention"
+          description: "Prometheus TSDB nutzt {{ $value | humanizePercentage }} der 5GB Retention. Alte Daten werden bald gelöscht."
+
+      # Loki Storage
+      - alert: LokiStorageLow
+        expr: |
+          (loki_ingester_chunks_stored_total / loki_ingester_chunks_flushed_total) > 10
+        for: 15m
+        labels:
+          severity: warning
+          component: loki
+        annotations:
+          summary: "Loki speichert viele Chunks"
+          description: "Loki hat ein Chunk-Backlog. Möglicherweise zu viele Logs oder Disk I/O Problem."
+
+  - name: scrape_health_alerts
+    interval: 1m
+    rules:
+      # Scrape Failures
+      - alert: PrometheusScrapeFailures
+        expr: |
+          up == 0
+        for: 3m
+        labels:
+          severity: warning
+          component: "{{ $labels.job }}"
+        annotations:
+          summary: "Prometheus kann {{ $labels.job }} nicht scrapen"
+          description: "Job {{ $labels.job }} auf {{ $labels.instance }} ist seit 3 Minuten unreachable."
+
+      # Hohe Scrape Duration
+      - alert: PrometheusScrapeSlow
+        expr: |
+          scrape_duration_seconds > 10
+        for: 5m
+        labels:
+          severity: warning
+          component: "{{ $labels.job }}"
+        annotations:
+          summary: "Prometheus Scrape dauert zu lange"
+          description: "Scrape von {{ $labels.job }} dauert {{ $value }}s (sollte < 10s sein)"
+
+  - name: application_health_alerts
+    interval: 1m
+    rules:
+      # Beispiel: HTTP Error Rate
+      # TODO: Aktivieren sobald Application Metriken verfügbar sind
+      # - alert: HighErrorRate
+      #   expr: |
+      #     sum(rate(http_requests_total{status=~"5.."}[5m])) by (workspace_id) /
+      #     sum(rate(http_requests_total[5m])) by (workspace_id) > 0.05
+      #   for: 5m
+      #   labels:
+      #     severity: critical
+      #   annotations:
+      #     summary: "Hohe HTTP Error Rate in Workspace {{ $labels.workspace_id }}"
+      #     description: "{{ $value | humanizePercentage }} der Requests schlagen fehl"

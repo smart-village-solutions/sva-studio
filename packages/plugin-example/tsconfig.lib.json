@@ -5,7 +5,11 @@
     "declaration": true,
     "declarationMap": true,
     "outDir": "dist",
-    "rootDir": "src"
+    "rootDir": "src",
+    "types": ["react", "react-dom"],
+    "paths": {
+      "@sva/core": ["packages/core/dist/index.d.ts"]
+    }
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"]
 }

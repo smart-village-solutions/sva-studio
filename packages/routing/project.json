@@ -1,0 +1,20 @@
+{
+  "name": "routing",
+  "projectType": "library",
+  "sourceRoot": "packages/routing/src",
+  "prefix": "",
+  "targets": {
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "vitest run"
+      },
+      "configurations": {
+        "watch": {
+          "command": "vitest"
+        }
+      }
+    }
+  },
+  "tags": ["type:core", "scope:routing"]
+}

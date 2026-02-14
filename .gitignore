@@ -16,6 +16,7 @@ coverage/
 .next/
 out/
 .turbo/
+*.tsbuildinfo
 
 # Environments
 .env
@@ -34,7 +35,6 @@ log/
 
 # Caches
 .cache/
-*.tsbuildinfo
 
 # NX
 .nx/
@@ -42,18 +42,9 @@ log/
 .nx/cache
 .nx/workspace-data
 
-# Local backups
-backups/
-*.bak
-*.backup
-
-# Local TLS/cert material
-dev/redis-tls/
+# TLS Certificates (local dev only)
 *.pem
-*.key
 *.crt
-*.cer
-*.p12
-*.pfx
-*.jks
-*.keystore
+*.key
+dev/redis-tls/
+/backups/

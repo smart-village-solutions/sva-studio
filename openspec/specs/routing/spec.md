@@ -1,5 +1,9 @@
 # Capability: routing
 
+## Purpose
+Definiert die Anforderungen an das typsichere, code-basierte Routing mit kombinierbarer Route-Registry für Core und Plugins.
+
+## Requirements
 ### Requirement: Code-Route-Registry
 Das System SHALL eine programmatische Route-Registry bereitstellen, die Routen aus Core und Plugins kombiniert.
 

@@ -80,7 +80,7 @@ Das System SHALL eine vitest.workspace.ts im Root bereitstellen, die als Single 
 ---
 
 ### Requirement: TypeScript-basiertes Tooling
-Das System SHOULD TypeScript für kritisches Monorepo-Tooling verwenden, inklusive Coverage-Gate-Scripts.
+Das System SHALL TypeScript für kritisches Monorepo-Tooling verwenden, inklusive Coverage-Gate-Scripts.
 
 #### Scenario: TypeScript-Script-Execution via tsx
 - **GIVEN** `scripts/ci/coverage-gate.ts` existiert

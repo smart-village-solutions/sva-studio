@@ -10,8 +10,8 @@
 - [📄 Proposal](./proposal.md) - Das Was & Warum
 - [✅ Tasks](./tasks.md) - Implementation Checklist (3 Phasen)
 - [🏗️ Design](./design.md) - Technische Entscheidungen & Architektur
-- [📝 Spec Delta: test-coverage-governance](./test-coverage-governance.delta.md)
-- [📝 Spec Delta: monorepo-structure](./monorepo-structure.delta.md)
+- [📝 Spec Delta: test-coverage-governance](./specs/test-coverage-governance/spec.md)
+- [📝 Spec Delta: monorepo-structure](./specs/monorepo-structure/spec.md)
 
 ## Zusammenfassung
 

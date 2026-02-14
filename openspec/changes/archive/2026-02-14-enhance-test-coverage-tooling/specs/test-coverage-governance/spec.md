@@ -1,6 +1,6 @@
 # Spec Delta: test-coverage-governance
 
-## MODIFIED Requirements
+## ADDED Requirements
 
 ### Requirement: Performante Coverage-Ausführung via Nx Cache
 Das System SHALL Nx Caching für Coverage-Targets nutzen, um redundante Test-Runs zu vermeiden und CI-Performance zu optimieren.
@@ -145,10 +145,6 @@ Das System SHALL häufige Coverage-Fehlerszenarien mit Lösungen in Entwickler-D
 - **WHEN** er die PR-Checkliste verwendet
 - **THEN** findet er den GitHub UI-Pfad zum Download der Artifacts
 - **AND** Artefakt-Namen (coverage-summary.json, lcov.info) sind genannt
-
----
-
-## ADDED Requirements
 
 ### Requirement: CI-Workflow-Optimierung via Concurrency
 Das System SHALL redundante CI-Workflow-Runs via Concurrency-Control verhindern.

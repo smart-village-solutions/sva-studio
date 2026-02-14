@@ -105,7 +105,7 @@ gh issue list --search "KEYWORD in:title" --state all --json number,title,state
 gh issue list --search "label:logging" --state all
 ```
 
-**Wenn es ein Duplikat gibt**: Schliesse es und verlinke zum Original
+**Wenn es ein Duplikat gibt**: Schließe es und verlinke zum Original
 **Wenn es verwandt ist**: Verlinke es im neuen Issue
 
 Kopiere anschliessend den passenden Befehl aus dem obigen Codeblock in dein Terminal (nachdem du KEYWORD angepasst hast) und fuehre ihn aus.

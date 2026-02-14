@@ -39,6 +39,7 @@
 - Bei neuen Features die passende Doku im Verzeichnis `docs/` aktualisieren
 - Bei Architektur-/Systemänderungen die relevanten arc42-Abschnitte unter `docs/architecture/` aktualisieren und im PR verlinken
 - Einstiegspunkt fuer Architekturdoku ist `docs/architecture/README.md` (Abschnitte 1-12)
+- Fuer Doku-Qualitaet und Doku-Abdeckung bei Proposals/PRs steht der Agent `documentation.agent.md` unter `.github/agents/` bereit
 - Für jede Code-Änderung Tests hinzufügen oder anpassen
 - Interne Doku-Links relativ zum Ordner `docs/` schreiben (z. B. `./guide/data-loading`)
 

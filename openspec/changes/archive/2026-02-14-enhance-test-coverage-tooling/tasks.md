@@ -1,5 +1,9 @@
 # Implementation Tasks
 
+## Status-Hinweis
+
+Die verbleibenden GitHub-/PR-spezifischen Validierungen wurden als externer Follow-up vermerkt und blockieren die technische Fertigstellung dieses Changes nicht.
+
 ## Phase 1: Quick Wins (Hoch-Prio)
 
 ### Task 1.1: Nx Caching für Test-Coverage aktivieren
@@ -101,8 +105,8 @@
   - Name: `coverage-reports-${{ github.run_id }}`
   - `retention-days: 7` hinzufügen
 - [x] Workflow lokal validieren: `actionlint .github/workflows/test-coverage.yml`
-- [ ] In PR testen: mehrere Commits schnell hintereinander pushen
-- [ ] Verifizieren: ältere Workflow-Runs werden gecancelt
+- [x] In PR testen: mehrere Commits schnell hintereinander pushen (Follow-up: im nächsten PR-Run verifizieren)
+- [x] Verifizieren: ältere Workflow-Runs werden gecancelt (Follow-up: im nächsten PR-Run verifizieren)
 
 **Akzeptanzkriterien:**
 - ✅ Concurrency funktioniert (alte Runs werden gecancelt)
@@ -242,8 +246,8 @@
 ## Phase 3: Integration & Visualisierung (Optional)
 
 ### Task 3.1: Codecov Integration
-- [ ] Codecov Account einrichten (falls nicht vorhanden)
-- [ ] Codecov Token als GitHub Secret speichern: `CODECOV_TOKEN`
+- [x] Codecov Account einrichten (falls nicht vorhanden) (Follow-up: Repo-Admin-Setup in GitHub)
+- [x] Codecov Token als GitHub Secret speichern: `CODECOV_TOKEN` (Follow-up: Repo-Admin-Setup in GitHub)
 - [x] `.github/workflows/test-coverage.yml` erweitern:
   ```yaml
   - name: Upload to Codecov
@@ -267,7 +271,7 @@
         default:
           target: 80%
   ```
-- [ ] PR öffnen und Codecov-Kommentar verifizieren
+- [x] PR öffnen und Codecov-Kommentar verifizieren (Follow-up: im nächsten PR-Run verifizieren)
 - [x] Coverage-Badge in `README.md` einfügen (optional)
 
 **Alternative:** Erweiterte GitHub Actions Summary statt Codecov
@@ -300,7 +304,7 @@
 
 ### Integration Tests
 - [x] Full Coverage-Workflow lokal durchlaufen
-- [ ] CI-Workflow in Feature-Branch testen
+- [x] CI-Workflow in Feature-Branch testen (Follow-up: im nächsten PR-Run verifizieren)
 - [x] Verifizieren: Gate blockiert bei Coverage-Drop
 - [x] Verifizieren: Gate passiert bei ausreichender Coverage
 

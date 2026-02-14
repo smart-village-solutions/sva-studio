@@ -143,7 +143,7 @@ PR #46 hat erfolgreich Test-Coverage-Governance etabliert. Ein detailliertes Rev
 - [Proposal.md](./proposal.md) - Detaillierte Motivation & Impact-Analyse
 - [Tasks.md](./tasks.md) - Vollständige Implementation-Checkliste
 - [Design.md](./design.md) - Technische Architektur & Entscheidungen
-- [Spec Deltas](./test-coverage-governance.delta.md) - Geänderte Requirements
+- [Spec Deltas](./specs/test-coverage-governance/spec.md) - Geänderte Requirements
 
 ---
 

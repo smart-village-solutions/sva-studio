@@ -65,23 +65,6 @@ wait_tcp() {
   return 1
 }
 
-wait_redis() {
-  local attempts="${1:-30}"
-  local sleep_seconds="${2:-2}"
-
-  for ((i=1; i<=attempts; i+=1)); do
-    if docker compose "${COMPOSE_FILES[@]}" exec -T redis sh -lc \
-      "redis-cli -p 6379 ping >/dev/null 2>&1 || redis-cli --tls --cacert /etc/redis/certs/ca.pem -p 6380 ping >/dev/null 2>&1"; then
-      echo "[monitoring-ci] Redis ready (container check)"
-      return 0
-    fi
-    sleep "${sleep_seconds}"
-  done
-
-  echo "[monitoring-ci] ERROR: Redis not ready after ${attempts} attempts (container check)" >&2
-  return 1
-}
-
 ensure_redis_tls_material() {
   mkdir -p "${REDIS_TLS_DIR}"
 
@@ -119,9 +102,8 @@ docker compose "${COMPOSE_FILES[@]}" config >/dev/null
 ensure_redis_tls_material
 
 echo "[monitoring-ci] Start monitoring stack"
-docker compose "${COMPOSE_FILES[@]}" up -d redis prometheus loki grafana otel-collector promtail
+docker compose "${COMPOSE_FILES[@]}" up -d prometheus loki grafana otel-collector promtail
 
-wait_redis
 wait_http "Prometheus" "${PROMETHEUS_URL}/-/healthy"
 wait_http "Loki" "${LOKI_URL}/ready"
 wait_http "Grafana" "${GRAFANA_URL}/api/health"

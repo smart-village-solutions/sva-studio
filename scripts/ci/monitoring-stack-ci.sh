@@ -42,14 +42,43 @@ wait_tcp() {
   local sleep_seconds="${5:-2}"
 
   for ((i=1; i<=attempts; i+=1)); do
-    if nc -z "${host}" "${port}" >/dev/null 2>&1; then
-      echo "[monitoring-ci] ${name} ready (${host}:${port})"
-      return 0
+    if command -v nc >/dev/null 2>&1; then
+      if nc -z "${host}" "${port}" >/dev/null 2>&1; then
+        echo "[monitoring-ci] ${name} ready (${host}:${port})"
+        return 0
+      fi
+    elif command -v timeout >/dev/null 2>&1; then
+      if timeout 1 bash -c "cat </dev/tcp/${host}/${port}" >/dev/null 2>&1; then
+        echo "[monitoring-ci] ${name} ready (${host}:${port})"
+        return 0
+      fi
+    else
+      if bash -c "cat </dev/tcp/${host}/${port}" >/dev/null 2>&1; then
+        echo "[monitoring-ci] ${name} ready (${host}:${port})"
+        return 0
+      fi
     fi
     sleep "${sleep_seconds}"
   done
 
   echo "[monitoring-ci] ERROR: ${name} not ready after ${attempts} attempts (${host}:${port})" >&2
+  return 1
+}
+
+wait_redis() {
+  local attempts="${1:-30}"
+  local sleep_seconds="${2:-2}"
+
+  for ((i=1; i<=attempts; i+=1)); do
+    if docker compose "${COMPOSE_FILES[@]}" exec -T redis sh -lc \
+      "redis-cli -p 6379 ping >/dev/null 2>&1 || redis-cli --tls --cacert /etc/redis/certs/ca.pem -p 6380 ping >/dev/null 2>&1"; then
+      echo "[monitoring-ci] Redis ready (container check)"
+      return 0
+    fi
+    sleep "${sleep_seconds}"
+  done
+
+  echo "[monitoring-ci] ERROR: Redis not ready after ${attempts} attempts (container check)" >&2
   return 1
 }
 
@@ -92,7 +121,7 @@ ensure_redis_tls_material
 echo "[monitoring-ci] Start monitoring stack"
 docker compose "${COMPOSE_FILES[@]}" up -d redis prometheus loki grafana otel-collector promtail
 
-wait_tcp "Redis" "127.0.0.1" "6379"
+wait_redis
 wait_http "Prometheus" "${PROMETHEUS_URL}/-/healthy"
 wait_http "Loki" "${LOKI_URL}/ready"
 wait_http "Grafana" "${GRAFANA_URL}/api/health"

@@ -52,21 +52,23 @@ jobs:
 
           ## Einstieg
 
-          - [Architekturuebersicht (arc42)](docs/architecture/README.md)
-          - [Monorepo Struktur](docs/monorepo.md)
-          - [Routing](docs/routing.md)
-          - [Monitoring Stack](docs/development/monitoring-stack.md)
-          - [Testing & Coverage Governance](docs/development/testing-coverage.md)
+          - [Architekturuebersicht (arc42)](README)
+          - [Monorepo Struktur](monorepo)
+          - [Routing (Kurzueberblick)](routing)
+          - [Routing Architecture](routing-architecture)
+          - [Logging Architecture](logging-architecture)
+          - [Testing & Coverage Governance](testing-coverage)
           EOF
 
           cat > wiki/_Sidebar.md <<'EOF'
           - [Home](Home)
-          - [Architektur (arc42)](docs/architecture/README.md)
-          - [Architekturentscheidungen (ADRs)](docs/architecture/decisions/README.md)
-          - [Monorepo](docs/monorepo.md)
-          - [Routing](docs/routing.md)
-          - [Monitoring](docs/development/monitoring-stack.md)
-          - [Testing/Coverage](docs/development/testing-coverage.md)
+          - [Architektur (arc42)](README)
+          - [ADR 000 template](ADR-000-template)
+          - [Monorepo](monorepo)
+          - [Routing](routing)
+          - [Routing Architecture](routing-architecture)
+          - [Logging Architecture](logging-architecture)
+          - [Testing/Coverage](testing-coverage)
           EOF
 
       - name: Commit and push wiki changes

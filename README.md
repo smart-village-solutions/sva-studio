@@ -1,5 +1,12 @@
 # SVA Studio
 
+[![Test Coverage](https://github.com/smart-village-solutions/sva-studio/actions/workflows/test-coverage.yml/badge.svg?branch=main)](https://github.com/smart-village-solutions/sva-studio/actions/workflows/test-coverage.yml)
+[![Codecov](https://codecov.io/gh/smart-village-solutions/sva-studio/branch/main/graph/badge.svg)](https://codecov.io/gh/smart-village-solutions/sva-studio)
+[![Node.js](https://img.shields.io/badge/node-%3E%3D22.12.0-339933?logo=node.js&logoColor=white)](./package.json)
+[![pnpm](https://img.shields.io/badge/pnpm-9.12.2-F69220?logo=pnpm&logoColor=white)](./package.json)
+[![TypeScript](https://img.shields.io/badge/TypeScript-Strict-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Nx](https://img.shields.io/badge/Nx-Monorepo-143055?logo=nx&logoColor=white)](https://nx.dev/)
+
 ![Mockup 01 2026](docs/images/mockup-01-2026.png)
 
 Wir modernisieren das Redaktionssystem der Smart Village App zu einer integrierten Plattform für Content-Management, Benutzerverwaltung, App-Design, Module und Schnittstellen. Fokus: nutzerfreundlich, sicher, erweiterbar.
@@ -82,6 +89,7 @@ Siehe [docs/development/monitoring-stack.md](docs/development/monitoring-stack.m
 ## Dokumentation
 
 - Architektur-Einstiegspunkt (arc42): [docs/architecture/README.md](docs/architecture/README.md)
+- Testing/Coverage: [docs/development/testing-coverage.md](docs/development/testing-coverage.md)
 
 ## Aktueller Implementierungsstand (Repo)
 

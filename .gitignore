@@ -46,5 +46,18 @@ log/
 *.pem
 *.crt
 *.key
+*.cer
+*.p12
+*.pfx
+*.jks
+*.keystore
 dev/redis-tls/
 /backups/
+
+# Local monitoring artifacts
+artifacts/monitoring/
+
+# Generated outputs in @sva/core source tree
+packages/core/src/**/*.d.ts
+packages/core/src/**/*.d.ts.map
+packages/core/src/**/*.js

@@ -42,7 +42,7 @@ jobs:
 
       - name: Run affected coverage on PR
         if: github.event_name == 'pull_request'
-        run: npx nx affected --target=test:coverage --base=origin/${{ github.base_ref }}
+        run: pnpm nx affected --target=test:coverage --base=origin/${{ github.base_ref }}
 
       - name: Run full coverage on main/schedule
         if: github.event_name != 'pull_request'

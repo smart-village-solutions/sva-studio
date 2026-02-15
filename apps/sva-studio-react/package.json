@@ -6,7 +6,8 @@
     "dev": "TSS_DEV_SERVER=false vite dev --port 3000",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --passWithNoTests",
+    "test:e2e": "playwright test --config playwright.config.ts"
   },
   "dependencies": {
     "@sva/auth": "workspace:*",
@@ -27,6 +28,7 @@
   },
   "devDependencies": {
     "@codecov/vite-plugin": "^1.9.1",
+    "@playwright/test": "^1.58.2",
     "@tanstack/devtools-vite": "^0.3.11",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/react": "^16.2.0",

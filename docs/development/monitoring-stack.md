@@ -108,6 +108,19 @@ Verbotene Labels (PII / High Cardinality):
 - PII-Redaction aktiv.
 - Label-Whitelist enforced.
 
+## CI-Checks
+
+Fuer den Monitoring-Stack existiert ein dedizierter CI-Lauf:
+
+- Script: `scripts/ci/monitoring-stack-ci.sh`
+- Workflow: `.github/workflows/monitoring-stack-ci.yml`
+
+Der CI-Lauf prueft:
+
+- Docker-Compose Validierung + Service-Health
+- Label-Schema in Loki (required + forbidden labels)
+- Export von Basis-Metriken nach `artifacts/monitoring/*.json`
+
 ## Troubleshooting
 
 **Port-Konflikte**

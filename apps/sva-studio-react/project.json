@@ -3,7 +3,10 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "apps/sva-studio-react/src",
   "projectType": "application",
-  "tags": ["scope:app", "type:app"],
+  "tags": [
+    "scope:app",
+    "type:app"
+  ],
   "targets": {
     "serve": {
       "executor": "nx:run-commands",
@@ -14,7 +17,9 @@
     },
     "build": {
       "executor": "nx:run-commands",
-      "outputs": ["{projectRoot}/dist"],
+      "outputs": [
+        "{projectRoot}/dist"
+      ],
       "options": {
         "command": "pnpm run build",
         "cwd": "apps/sva-studio-react"
@@ -49,6 +54,12 @@
       "executor": "nx:run-commands",
       "options": {
         "command": "pnpm --filter sva-studio-react run build"
+      }
+    },
+    "test:e2e": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm --filter sva-studio-react run test:e2e"
       }
     }
   }

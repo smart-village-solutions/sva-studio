@@ -11,6 +11,7 @@ const allowedRootMarkdown = new Set([
   'DEBUGGING.md',
   'DEVELOPMENT_RULES.md',
   'AGENTS.md',
+  'SECURITY.md',
 ]);
 
 const movedDebugScripts = new Set([

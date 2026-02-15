@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { setGlobalLoggerProvider } from '@sva/monitoring-client/server';
+import { setGlobalLoggerProvider } from '@sva/monitoring-client/logger-provider.server';
 import { createSdkLogger } from '../../src/logger/index.server';
 
 /**

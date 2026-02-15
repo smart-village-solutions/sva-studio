@@ -3,14 +3,26 @@
     "sva-studio-react": {
       "lines": 0,
       "statements": 0,
-      "functions": 25,
-      "branches": 25
-    },
-    "sdk": {
-      "lines": 0,
-      "statements": 0,
       "functions": 0,
       "branches": 0
+    },
+    "auth": {
+      "lines": 14.21,
+      "statements": 14.21,
+      "functions": 56.25,
+      "branches": 73.58
+    },
+    "routing": {
+      "lines": 0,
+      "statements": 0,
+      "functions": 80,
+      "branches": 80
+    },
+    "sdk": {
+      "lines": 32.7,
+      "statements": 32.7,
+      "functions": 52.94,
+      "branches": 38.88
     }
   }
 }

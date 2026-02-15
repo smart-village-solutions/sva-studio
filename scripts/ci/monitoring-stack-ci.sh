@@ -96,6 +96,16 @@ EOF
   openssl x509 -req -days 3650 -in "${redis_csr}" -CA "${ca_cert}" -CAkey "${ca_key}" -CAcreateserial -extfile "${redis_ext}" -out "${redis_cert}" >/dev/null 2>&1
 }
 
+contains_text() {
+  local pattern="$1"
+  local file="$2"
+  if command -v rg >/dev/null 2>&1; then
+    rg -q "${pattern}" "${file}"
+    return $?
+  fi
+  grep -Fq "${pattern}" "${file}"
+}
+
 echo "[monitoring-ci] Validate compose files"
 docker compose "${COMPOSE_FILES[@]}" config >/dev/null
 
@@ -118,24 +128,24 @@ PROMTAIL_CONFIG="dev/monitoring/promtail/promtail-config.yml"
 OTEL_CONFIG_FILE="packages/monitoring-client/src/otel.server.ts"
 
 for required in workspace_id component environment level; do
-  if ! rg -q "${required}" "${PROMTAIL_CONFIG}"; then
+  if ! contains_text "${required}" "${PROMTAIL_CONFIG}"; then
     echo "[monitoring-ci] ERROR: required label '${required}' missing in ${PROMTAIL_CONFIG}" >&2
     exit 1
   fi
 
-  if ! rg -q "'${required}'" "${OTEL_CONFIG_FILE}"; then
+  if ! contains_text "'${required}'" "${OTEL_CONFIG_FILE}"; then
     echo "[monitoring-ci] ERROR: required label '${required}' missing in ${OTEL_CONFIG_FILE}" >&2
     exit 1
   fi
 done
 
 for forbidden in user_id session_id email request_id token authorization api_key secret ip; do
-  if ! rg -q "${forbidden}" "${PROMTAIL_CONFIG}"; then
+  if ! contains_text "${forbidden}" "${PROMTAIL_CONFIG}"; then
     echo "[monitoring-ci] ERROR: forbidden label '${forbidden}' missing in ${PROMTAIL_CONFIG} labeldrop list" >&2
     exit 1
   fi
 
-  if ! rg -q "'${forbidden}'" "${OTEL_CONFIG_FILE}"; then
+  if ! contains_text "'${forbidden}'" "${OTEL_CONFIG_FILE}"; then
     echo "[monitoring-ci] ERROR: forbidden label '${forbidden}' missing in ${OTEL_CONFIG_FILE}" >&2
     exit 1
   fi

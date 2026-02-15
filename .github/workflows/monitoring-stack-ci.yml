@@ -1,0 +1,56 @@
+name: Monitoring Stack CI
+
+on:
+  pull_request:
+    paths:
+      - 'docker-compose.monitoring.yml'
+      - 'dev/monitoring/**'
+      - 'packages/monitoring-client/**'
+      - 'packages/sdk/src/logger/**'
+      - 'packages/sdk/src/observability/**'
+      - 'scripts/ci/monitoring-stack-ci.sh'
+  push:
+    branches:
+      - main
+    paths:
+      - 'docker-compose.monitoring.yml'
+      - 'dev/monitoring/**'
+      - 'packages/monitoring-client/**'
+      - 'packages/sdk/src/logger/**'
+      - 'packages/sdk/src/observability/**'
+      - 'scripts/ci/monitoring-stack-ci.sh'
+  workflow_dispatch:
+
+jobs:
+  monitoring-ci:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.12.0
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run monitoring stack CI checks
+        run: bash scripts/ci/monitoring-stack-ci.sh
+
+      - name: Upload monitoring artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: monitoring-ci-artifacts-${{ github.run_id }}
+          path: artifacts/monitoring
+          if-no-files-found: warn
+          retention-days: 7

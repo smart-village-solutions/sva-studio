@@ -4,7 +4,7 @@
 - [x] 0.1 Erstelle ADR-005: "Observability Module Ownership" (Core, SDK, oder Monitoring-Client?)
 - [x] 0.2 Erstelle ADR-006: "Logging Pipeline Strategy" (OTEL vs. Logger vs. Promtail)
 - [x] 0.3 Erstelle ADR-007: "Label Schema & PII Policy" (Whitelisting, Redaction, Retention)
-- [ ] 0.4 Team-Review aller ADRs vor Phase 1 Implementierung
+- [x] 0.4 Team-Review aller ADRs vor Phase 1 Implementierung (dokumentiert in `docs/pr/45/`)
 
 ## 1. Docker Infrastructure
 - [x] 1.1 Erstelle `docker-compose.monitoring.yml` mit allen Services
@@ -83,6 +83,6 @@
 - [x] 7.11 Teste Dashboard-Accessibility (Tastatur-Navigation, Live-Tail Pause) – Grafana UI ✅
 
 ## 8. CI/CD Integration (optional, spätere Phase)
-- [ ] 8.1 Füge Docker Compose Health-Checks zu CI hinzu
-- [ ] 8.2 Validiere Label-Schema in CI-Tests
-- [ ] 8.3 Exportiere Metriken für Performance-Regression-Tests
+- [x] 8.1 Füge Docker Compose Health-Checks zu CI hinzu (`scripts/ci/monitoring-stack-ci.sh`, Workflow `monitoring-stack-ci.yml`)
+- [x] 8.2 Validiere Label-Schema in CI-Tests (required+forbidden labels via Loki API)
+- [x] 8.3 Exportiere Metriken für Performance-Regression-Tests (`artifacts/monitoring/*.json`)

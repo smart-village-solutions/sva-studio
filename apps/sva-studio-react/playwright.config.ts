@@ -14,6 +14,6 @@ export default defineConfig({
     command: 'pnpm --filter sva-studio-react run dev',
     url: 'http://127.0.0.1:3000',
     reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
+    timeout: 300_000,
   },
 });

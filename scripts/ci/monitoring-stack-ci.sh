@@ -7,6 +7,7 @@ PROMETHEUS_URL="http://127.0.0.1:9090"
 LOKI_URL="http://127.0.0.1:3100"
 GRAFANA_URL="http://127.0.0.1:3001"
 PROMTAIL_URL="http://127.0.0.1:3101"
+REDIS_TLS_DIR="dev/redis-tls"
 
 mkdir -p "${ARTIFACT_DIR}"
 
@@ -52,8 +53,41 @@ wait_tcp() {
   return 1
 }
 
+ensure_redis_tls_material() {
+  mkdir -p "${REDIS_TLS_DIR}"
+
+  local ca_key="${REDIS_TLS_DIR}/ca-key.pem"
+  local ca_cert="${REDIS_TLS_DIR}/ca.pem"
+  local redis_key="${REDIS_TLS_DIR}/redis-key.pem"
+  local redis_csr="${REDIS_TLS_DIR}/redis.csr"
+  local redis_cert="${REDIS_TLS_DIR}/redis.pem"
+  local redis_ext="${REDIS_TLS_DIR}/redis.ext"
+
+  if [[ -f "${ca_cert}" && -f "${redis_key}" && -f "${redis_cert}" ]]; then
+    return 0
+  fi
+
+  if ! command -v openssl >/dev/null 2>&1; then
+    echo "[monitoring-ci] ERROR: openssl is required to generate Redis TLS material" >&2
+    return 1
+  fi
+
+  echo "[monitoring-ci] Generate Redis TLS material for CI"
+  openssl genrsa -out "${ca_key}" 2048 >/dev/null 2>&1
+  openssl req -new -x509 -days 3650 -key "${ca_key}" -subj "/CN=sva-redis-ca" -out "${ca_cert}" >/dev/null 2>&1
+  openssl genrsa -out "${redis_key}" 2048 >/dev/null 2>&1
+  openssl req -new -key "${redis_key}" -subj "/CN=localhost" -out "${redis_csr}" >/dev/null 2>&1
+  cat > "${redis_ext}" <<EOF
+subjectAltName=DNS:localhost,IP:127.0.0.1
+extendedKeyUsage=serverAuth
+EOF
+  openssl x509 -req -days 3650 -in "${redis_csr}" -CA "${ca_cert}" -CAkey "${ca_key}" -CAcreateserial -extfile "${redis_ext}" -out "${redis_cert}" >/dev/null 2>&1
+}
+
 echo "[monitoring-ci] Validate compose files"
 docker compose "${COMPOSE_FILES[@]}" config >/dev/null
+
+ensure_redis_tls_material
 
 echo "[monitoring-ci] Start monitoring stack"
 docker compose "${COMPOSE_FILES[@]}" up -d redis prometheus loki grafana otel-collector promtail

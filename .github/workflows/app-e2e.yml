@@ -41,6 +41,21 @@ jobs:
       - name: Install Playwright browser
         run: pnpm --filter sva-studio-react exec playwright install --with-deps chromium
 
+      - name: Generate Redis TLS material for CI
+        run: |
+          mkdir -p dev/redis-tls
+          if [ ! -f dev/redis-tls/ca.pem ] || [ ! -f dev/redis-tls/redis-key.pem ] || [ ! -f dev/redis-tls/redis.pem ]; then
+            openssl genrsa -out dev/redis-tls/ca-key.pem 2048
+            openssl req -new -x509 -days 3650 -key dev/redis-tls/ca-key.pem -subj "/CN=sva-redis-ca" -out dev/redis-tls/ca.pem
+            openssl genrsa -out dev/redis-tls/redis-key.pem 2048
+            openssl req -new -key dev/redis-tls/redis-key.pem -subj "/CN=localhost" -out dev/redis-tls/redis.csr
+            cat > dev/redis-tls/redis.ext <<'EOF'
+          subjectAltName=DNS:localhost,IP:127.0.0.1
+          extendedKeyUsage=serverAuth
+          EOF
+            openssl x509 -req -days 3650 -in dev/redis-tls/redis.csr -CA dev/redis-tls/ca.pem -CAkey dev/redis-tls/ca-key.pem -CAcreateserial -extfile dev/redis-tls/redis.ext -out dev/redis-tls/redis.pem
+          fi
+
       - name: Start required services
         run: docker compose -f docker-compose.yml -f docker-compose.monitoring.yml up -d redis loki otel-collector promtail
 

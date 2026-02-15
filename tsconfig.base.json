@@ -12,6 +12,9 @@
       "@sva/data": ["packages/data/src/index.ts"],
       "@sva/auth": ["packages/auth/src/index.ts"],
       "@sva/sdk": ["packages/sdk/src/index.ts"],
+      "@sva/monitoring-client": ["packages/monitoring-client/src/index.ts"],
+      "@sva/monitoring-client/server": ["packages/monitoring-client/src/server.ts"],
+      "@sva/monitoring-client/logger-provider.server": ["packages/monitoring-client/src/logger-provider.server.ts"],
       "@sva/plugin-example": ["packages/plugin-example/src/index.ts"]
     }
   }

@@ -1,0 +1,76 @@
+name: App E2E
+
+on:
+  pull_request:
+    paths:
+      - 'apps/sva-studio-react/**'
+      - 'packages/auth/**'
+      - 'packages/routing/**'
+      - 'packages/plugin-example/**'
+      - 'docker-compose.yml'
+      - 'docker-compose.monitoring.yml'
+      - 'dev/monitoring/**'
+      - '.github/workflows/app-e2e.yml'
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.12.0
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browser
+        run: pnpm --filter sva-studio-react exec playwright install --with-deps chromium
+
+      - name: Generate Redis TLS material for CI
+        run: |
+          mkdir -p dev/redis-tls
+          if [ ! -f dev/redis-tls/ca.pem ] || [ ! -f dev/redis-tls/redis-key.pem ] || [ ! -f dev/redis-tls/redis.pem ]; then
+            openssl genrsa -out dev/redis-tls/ca-key.pem 2048
+            openssl req -new -x509 -days 3650 -key dev/redis-tls/ca-key.pem -subj "/CN=sva-redis-ca" -out dev/redis-tls/ca.pem
+            openssl genrsa -out dev/redis-tls/redis-key.pem 2048
+            openssl req -new -key dev/redis-tls/redis-key.pem -subj "/CN=localhost" -out dev/redis-tls/redis.csr
+            cat > dev/redis-tls/redis.ext <<'EOF'
+          subjectAltName=DNS:localhost,IP:127.0.0.1
+          extendedKeyUsage=serverAuth
+          EOF
+            openssl x509 -req -days 3650 -in dev/redis-tls/redis.csr -CA dev/redis-tls/ca.pem -CAkey dev/redis-tls/ca-key.pem -CAcreateserial -extfile dev/redis-tls/redis.ext -out dev/redis-tls/redis.pem
+          fi
+
+      - name: Start required services
+        run: docker compose -f docker-compose.yml -f docker-compose.monitoring.yml up -d redis loki otel-collector promtail
+
+      - name: Run app E2E smoke tests
+        run: pnpm nx run sva-studio-react:test:e2e
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-e2e-report-${{ github.run_id }}
+          path: apps/sva-studio-react/playwright-report
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Stop services
+        if: always()
+        run: docker compose -f docker-compose.yml -f docker-compose.monitoring.yml down

@@ -17,6 +17,7 @@
 
 - [ ] PR: Ergebnis von `pnpm test:integration` geprueft (optional, nicht blockierend)
 - [ ] Main/Nightly: Integrationstests sind als required Workflow aktiv
+- [ ] App-E2E-Smoke ausgefuehrt (`pnpm nx run sva-studio-react:test:e2e` oder Workflow `App E2E`)
 
 ## Architektur-Doku (arc42)
 

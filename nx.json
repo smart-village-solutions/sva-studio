@@ -15,6 +15,7 @@
     },
     "test:coverage": {
       "cache": true,
+      "dependsOn": ["^build"],
       "inputs": [
         "default",
         "^production",

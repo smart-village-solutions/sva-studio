@@ -1,15 +1,15 @@
-# 01 Einfuehrung und Ziele
+# 01 Einführung und Ziele
 
 ## Zweck
 
 SVA Studio ist eine TanStack-Start-basierte Webanwendung im Nx-Monorepo, die
-als modulares Studio fuer Content- und Systemfunktionen aufgebaut wird.
+als modulares Studio für Content- und Systemfunktionen aufgebaut wird.
 Der aktuelle Repo-Stand fokussiert auf:
 
 - Typsicheres Routing mit Core- und Plugin-Route-Factories
 - Demo-Routen mit TanStack Start Server Functions
-- Grundlagenpakete fuer Core, Data, SDK und Plugin-Integration
-- Monorepo-Governance fuer Build/Test/Qualitaet
+- Grundlagenpakete für Core, Data, SDK und Plugin-Integration
+- Monorepo-Governance für Build/Test/Qualität
 
 Referenzen:
 
@@ -20,21 +20,21 @@ Referenzen:
 
 ## Mindestinhalte
 
-Mindestinhalte fuer diesen Abschnitt:
+Mindestinhalte für diesen Abschnitt:
 
-- Systemkontext in 3-5 Saetzen
-- Primaere Stakeholder und deren wichtigste Beduerfnisse
-- Top-3 Architekturziele mit Prioritaet
+- Systemkontext in 3-5 Sätzen
+- Primäre Stakeholder und deren wichtigste Bedürfnisse
+- Top-3 Architekturziele mit Priorität
 
 ## Aktueller Stand
 
 ### Produkt- und Problemkontext (ohne Feature-Commitment)
 
-SVA Studio ist das technische Fundament fuer ein Redaktions- und Verwaltungsstudio im Smart-Village-Umfeld.
+SVA Studio ist das technische Fundament für ein Redaktions- und Verwaltungsstudio im Smart-Village-Umfeld.
 Der fachliche Hintergrund (Warum/wer/Rahmenbedingungen) ist im Konzept unter `concepts/konzeption-cms-v2/` beschrieben.
-Dieses Repository implementiert aktuell vor allem technische Enabler fuer Routing, UI-Demos und Paketstruktur.
+Dieses Repository implementiert aktuell vor allem technische Enabler für Routing, UI-Demos und Paketstruktur.
 
-Wichtig: Das Konzept enthaelt auch Roadmap-/Milestone-Inhalte; diese gelten nicht als dokumentierter Ist-Stand dieses Repos.
+Wichtig: Das Konzept enthält auch Roadmap-/Milestone-Inhalte; diese gelten nicht als dokumentierter Ist-Stand dieses Repos.
 
 ### Stakeholder (technisch)
 
@@ -44,7 +44,7 @@ Wichtig: Das Konzept enthaelt auch Roadmap-/Milestone-Inhalte; diese gelten nich
 
 ### Stakeholder (fachlich / Nutzerrollen)
 
-Die folgenden Rollen stammen aus dem Konzept und dienen hier als Kontext fuer Architekturentscheidungen.
+Die folgenden Rollen stammen aus dem Konzept und dienen hier als Kontext für Architekturentscheidungen.
 Sie sind nicht als bereits umgesetzte Feature-Liste zu verstehen.
 
 - System-Administrator:innen
@@ -58,7 +58,7 @@ Sie sind nicht als bereits umgesetzte Feature-Liste zu verstehen.
 
 1. Typsichere, erweiterbare Routing-Architektur (Core + Plugins)
 2. Klare Paketgrenzen mit framework-agnostischer Kernlogik
-3. Nachvollziehbare Qualitaets-Governance ueber Nx-/CI-Workflows und Doku
+3. Nachvollziehbare Qualitäts-Governance über Nx-/CI-Workflows und Doku
 
 ### Systemgrenze (Kurzfassung)
 

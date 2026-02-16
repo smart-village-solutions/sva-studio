@@ -1,22 +1,22 @@
-# 10 Qualitaetsanforderungen
+# 10 Qualitätsanforderungen
 
 ## Zweck
 
-Dieser Abschnitt beschreibt messbare Qualitaetsziele auf aktuellem Stand.
+Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
 
 ## Mindestinhalte
 
-- Qualitaetsziele (z. B. Sicherheit, Wartbarkeit, Verfuegbarkeit)
+- Qualitätsziele (z. B. Sicherheit, Wartbarkeit, Verfügbarkeit)
 - Priorisierung und messbare Akzeptanzkriterien
 - Bezug zu Tests, Monitoring und Quality Gates
 
 ## Aktueller Stand
 
-### Priorisierte Qualitaetsziele
+### Priorisierte Qualitätsziele
 
 1. Wartbarkeit und Nachvollziehbarkeit
-2. Typsicherheit und Integrationsstabilitaet
-3. Reproduzierbare CI-Qualitaetspruefungen
+2. Typsicherheit und Integrationsstabilität
+3. Reproduzierbare CI-Qualitätsprüfungen
 4. Security-/Privacy-Governance
 
 ### Messbare Kriterien (IST)
@@ -32,13 +32,13 @@ Dieser Abschnitt beschreibt messbare Qualitaetsziele auf aktuellem Stand.
 - Coverage Governance:
   - Gate-Logik und Baselines in `scripts/ci/coverage-gate.ts` und `tooling/testing/*`
 
-### Observability-Qualitaet
+### Observability-Qualität
 
-- Architekturziele fuer Logging/Observability sind dokumentiert
-- Eine vollstaendige Monitoring-Implementierung ist in diesem Branch nicht enthalten
-- CI-Artefakte (`coverage-summary.json`, `lcov.info`) dienen als verifizierbare Qualitaetsnachweise
+- Architekturziele für Logging/Observability sind dokumentiert
+- Eine vollständige Monitoring-Implementierung ist in diesem Branch nicht enthalten
+- CI-Artefakte (`coverage-summary.json`, `lcov.info`) dienen als verifizierbare Qualitätsnachweise
 
-### Aktuelle Luecken
+### Aktuelle Lücken
 
 - Nicht alle Projekte haben vollwertige Unit/Coverage-Suites (teils exempt)
 - App-Tests laufen derzeit mit `--passWithNoTests`, daher eingeschraenkte Aussagekraft

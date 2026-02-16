@@ -10,18 +10,18 @@
 ## Coverage-Nachweise im PR
 
 - [ ] Betroffene Projekte (`affected`) im PR-Text benannt
-- [ ] Relevante Coverage-Aenderungen im PR-Text dokumentiert
-- [ ] Bei Baseline-/Policy-Aenderungen: Begruendung + Verweis auf Team-Entscheidung enthalten
+- [ ] Relevante Coverage-Änderungen im PR-Text dokumentiert
+- [ ] Bei Baseline-/Policy-Änderungen: Begründung + Verweis auf Team-Entscheidung enthalten
 
 ## Integrationstests
 
-- [ ] PR: Ergebnis von `pnpm test:integration` geprueft (optional, nicht blockierend)
+- [ ] PR: Ergebnis von `pnpm test:integration` geprüft (optional, nicht blockierend)
 - [ ] Main/Nightly: Integrationstests sind als required Workflow aktiv
 
 ## Architektur-Doku (arc42)
 
-- [ ] Bei Architektur-/Systemaenderungen sind betroffene Abschnitte in `docs/architecture/README.md` identifiziert
-- [ ] Relevante arc42-Dateien unter `docs/architecture/` wurden aktualisiert oder Abweichung ist begruendet dokumentiert
+- [ ] Bei Architektur-/Systemänderungen sind betroffene Abschnitte in `docs/architecture/README.md` identifiziert
+- [ ] Relevante arc42-Dateien unter `docs/architecture/` wurden aktualisiert oder Abweichung ist begründet dokumentiert
 - [ ] OpenSpec-Change (`proposal.md`/`tasks.md`) referenziert die betroffenen arc42-Abschnitte
 
 ## Reviewer Quick Check

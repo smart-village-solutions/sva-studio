@@ -3,12 +3,12 @@
 ## Zweck
 
 Dieser Abschnitt beschreibt statische Bausteine, Verantwortlichkeiten und
-Abhaengigkeiten des aktuellen Systems.
+Abhängigkeiten des aktuellen Systems.
 
 ## Mindestinhalte
 
 - Hauptbausteine mit Verantwortung
-- Schnittstellen und Abhaengigkeiten zwischen Bausteinen
+- Schnittstellen und Abhängigkeiten zwischen Bausteinen
 - Grenzen zwischen framework-agnostischer Kernlogik und Bindings
 
 ## Aktueller Stand
@@ -22,11 +22,11 @@ Abhaengigkeiten des aktuellen Systems.
 3. Data (`packages/data`)
    - einfacher HTTP DataClient mit In-Memory-Cache
 4. SDK (`packages/sdk`)
-   - gemeinsamer Einstiegspunkt fuer paketuebergreifende Utilities
+   - gemeinsamer Einstiegspunkt für paketübergreifende Utilities
 5. Plugin Example (`packages/plugin-example`)
-   - Beispielroute fuer Plugin-Erweiterbarkeit
+   - Beispielroute für Plugin-Erweiterbarkeit
 
-### Abhaengigkeiten (vereinfacht)
+### Abhängigkeiten (vereinfacht)
 
 - `apps/sva-studio-react` -> `@sva/core`, `@sva/plugin-example`
 - `@sva/data` -> `@sva/core`

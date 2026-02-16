@@ -117,8 +117,32 @@ Details und Trade-offs: siehe openspec/specs/monorepo-structure/design.md
 ## Nx Targets
 Standardisierte Targets:
 - build: tsc -p packages/<name>/tsconfig.lib.json
-- lint: Platzhalter (noch zu konfigurieren)
-- test: Platzhalter (noch zu konfigurieren)
+- lint: ESLint via Nx (`@nx/eslint:lint`)
+- test: `test:unit`, `test:coverage`, `test:integration` je nach Projekt
+
+## Module Boundaries (verbindlich)
+Zur langfristigen Architektur-Governance erzwingen wir Import-Grenzen mit
+`@nx/enforce-module-boundaries` in `eslint.config.mjs`.
+
+### Aktive Scope-Regeln
+- `scope:core` darf nur von `scope:core` abhängen
+- `scope:data` darf von `scope:core`, `scope:data` abhängen
+- `scope:sdk` darf von `scope:core`, `scope:data`, `scope:sdk` abhängen
+- `scope:plugin` darf von `scope:core`, `scope:plugin` abhängen
+- `scope:app` darf von `scope:core`, `scope:data`, `scope:sdk`, `scope:plugin` abhängen
+
+### Wo sind die Regeln hinterlegt?
+- Lint-Regel: `eslint.config.mjs`
+- Tags pro Projekt: `apps/*/project.json` und `packages/*/project.json` (`tags`)
+
+### Validierung
+- Gesamter Workspace: `pnpm test:eslint`
+- Einzelprojekt: `npx nx run <project>:lint`
+
+### Wenn du ein neues Package anlegst
+1. Passende `tags` im `project.json` setzen (z. B. `scope:plugin,type:lib`)
+2. Falls eine neue Scope-Kategorie entsteht, `depConstraints` in `eslint.config.mjs` erweitern
+3. Lint lokal ausführen und Rule-Verletzungen vor dem Commit beheben
 
 ## Hinweise
 - TanStack Start benötigt Node >= 22.12.0

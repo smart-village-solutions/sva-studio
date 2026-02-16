@@ -12,9 +12,9 @@
       }
     },
     "lint": {
-      "executor": "nx:run-commands",
+      "executor": "@nx/eslint:lint",
       "options": {
-        "command": "node -e \"console.log('lint not configured for @sva/data')\""
+        "lintFilePatterns": ["packages/data/src/**/*.{ts,tsx,js,jsx}"]
       }
     },
     "test:unit": {

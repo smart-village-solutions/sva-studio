@@ -413,6 +413,18 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
 
 ---
 
+## 8.1 Monorepo Module Boundaries (Nx)
+
+### ✅ REQUIRED
+- Projektgrenzen und Layering werden über `@nx/enforce-module-boundaries` technisch erzwungen.
+- Jede neue Library/App MUSS korrekte Nx-Tags (`scope:*`, `type:*`) im `project.json` haben.
+- Architektur-ändernde Imports müssen gegen die definierten `depConstraints` geprüft werden.
+
+### Quelle der Regeln
+- Details und aktuelle Scope-Constraints: `docs/monorepo.md` (Abschnitt "Module Boundaries")
+
+---
+
 ## Translation System Architecture
 
 ### How it works

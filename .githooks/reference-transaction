@@ -1,0 +1,51 @@
+#!/usr/bin/env sh
+set -eu
+
+# Git calls this hook with one argument:
+# prepared | committed | aborted
+state="${1:-}"
+
+# Only validate before refs are written so we can reject invalid branch names.
+[ "$state" = "prepared" ] || exit 0
+
+# Allowed branch naming convention:
+#   <prefix>/<kebab-case-description>
+# Prefixes are aligned with DEVELOPMENT_RULES.md (section 8).
+branch_pattern='^(feature|fix|chore|docs|setup|adr|hotfix|release|refactor|dev)/[a-z0-9]+(-[a-z0-9]+)*$'
+
+# Long all-zero hash used by Git to indicate ref creation/deletion.
+zero_oid='0000000000000000000000000000000000000000'
+
+invalid_branches=''
+
+while IFS=' ' read -r old_oid new_oid ref_name; do
+  case "$ref_name" in
+    refs/heads/*)
+      branch_name="${ref_name#refs/heads/}"
+
+      # Allow primary branches that don't follow the feature-branch pattern.
+      case "$branch_name" in
+        main|develop)
+          continue
+          ;;
+      esac
+
+      # Validate only newly created branches.
+      [ "$old_oid" = "$zero_oid" ] || continue
+
+      if ! printf '%s\n' "$branch_name" | grep -Eq "$branch_pattern"; then
+        invalid_branches="${invalid_branches}${branch_name}\n"
+      fi
+      ;;
+  esac
+done
+
+if [ -n "$invalid_branches" ]; then
+  printf >&2 '\nERROR: Branch name violates naming convention.\n'
+  printf >&2 'Expected pattern: %s\n' '<feature|fix|chore|docs|setup|adr|hotfix|release|refactor|dev>/<kebab-case>'
+  printf >&2 'Example: %s\n' 'feature/add-login-flow'
+  printf >&2 'Invalid branch(es):\n'
+  # shellcheck disable=SC2059
+  printf >&2 "$invalid_branches"
+  exit 1
+fi

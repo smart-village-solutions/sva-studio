@@ -8,8 +8,8 @@ mit Bezug auf die arc42-Abschnitte.
 ## Mindestinhalte
 
 - Liste relevanter ADRs mit Status
-- Kurzbegruendung und Auswirkungen pro Entscheidung
-- Verknuepfung zu betroffenen arc42-Abschnitten
+- Kurzbegründung und Auswirkungen pro Entscheidung
+- Verknüpfung zu betroffenen arc42-Abschnitten
 
 ## Aktueller Stand
 
@@ -21,11 +21,11 @@ mit Bezug auf die arc42-Abschnitte.
 
 ### Zuordnung zu arc42-Abschnitten
 
-- Abschnitt 04 (Loesungsstrategie): ADR-001, ADR-002, ADR-003
+- Abschnitt 04 (Lösungsstrategie): ADR-001, ADR-002, ADR-003
 - Abschnitt 05 (Bausteinsicht): ADR-001, ADR-002
 - Abschnitt 06/07 (Laufzeit/Deployment): aktuell keine dedizierte ADR im Verzeichnis
 - Abschnitt 08 (Querschnitt): ADR-003
-- Abschnitt 10/11 (Qualitaet/Risiken): aktuell keine dedizierte ADR im Verzeichnis
+- Abschnitt 10/11 (Qualität/Risiken): aktuell keine dedizierte ADR im Verzeichnis
 
 ### Pflege-Regel
 

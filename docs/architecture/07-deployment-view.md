@@ -8,7 +8,7 @@ Laufzeitknoten auf Basis des aktuellen Repos.
 ## Mindestinhalte
 
 - Deployment-Topologie (lokal, CI, staging, production)
-- Abhaengigkeiten zu externen Diensten
+- Abhängigkeiten zu externen Diensten
 - Sicherheits- und Betriebsaspekte je Umgebung
 
 ## Aktueller Stand
@@ -16,12 +16,12 @@ Laufzeitknoten auf Basis des aktuellen Repos.
 ### Lokale Entwicklungsverteilung
 
 - App: `pnpm nx run sva-studio-react:serve` auf `localhost:3000`
-- Workspace-Pakete werden ueber `workspace:*` aufgeloest
-- Es gibt aktuell keine verbindlichen Compose-Manifeste fuer Runtime-Services in diesem Branch
+- Workspace-Pakete werden über `workspace:*` aufgelöst
+- Es gibt aktuell keine verbindlichen Compose-Manifeste für Runtime-Services in diesem Branch
 
 ### CI-Verteilung
 
-- Pull Requests: Coverage und Integration laufen ueber GitHub Actions
+- Pull Requests: Coverage und Integration laufen über GitHub Actions
 - Coverage auf PRs wird mit `nx affected` gegen den Base-Branch berechnet
 - Main/Schedule fuehren die komplette Coverage-Suite aus
 
@@ -29,12 +29,12 @@ Laufzeitknoten auf Basis des aktuellen Repos.
 
 - Web-App Runtime (TanStack Start / Node)
 - Nx-/pnpm-basierte Build- und Test-Pipeline
-- Externe Plattform (GitHub Actions) fuer CI-Ausfuehrung
+- Externe Plattform (GitHub Actions) für CI-Ausführung
 
 ### Noch offen (Stand heute)
 
 - Produktions-Topologie (z. B. K8s vs. VM) ist nicht repo-verbindlich dokumentiert
-- Betriebsdokumentation fuer produktive Infrastruktur ist als Folgeschritt vorgesehen
+- Betriebsdokumentation für produktive Infrastruktur ist als Folgeschritt vorgesehen
 
 Referenzen:
 

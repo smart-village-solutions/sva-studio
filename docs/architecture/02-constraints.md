@@ -17,8 +17,8 @@ im IST-System direkt beeinflussen.
 
 - Node.js `>=22.12.0`, pnpm `>=9.12.2` (`package.json`)
 - Nx-Monorepo mit standardisierten Targets (`build`, `lint`, `test:unit`)
-- TanStack Start/Router fuer die Web-App
-- Package-Abhaengigkeiten intern ueber `workspace:*`
+- TanStack Start/Router für die Web-App
+- Package-Abhängigkeiten intern über `workspace:*`
 
 ### Organisatorische Randbedingungen
 
@@ -30,7 +30,7 @@ im IST-System direkt beeinflussen.
 
 - Security- und Accessibility-Regeln aus `DEVELOPMENT_RULES.md`
 - Nachweisbare Test-/Lint-/Type-Checks im Entwicklungsworkflow
-- PR-Checks fuer Coverage und Integration ueber GitHub Actions
+- PR-Checks für Coverage und Integration über GitHub Actions
 
 Referenzen:
 

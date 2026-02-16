@@ -28,7 +28,7 @@ fi
 
 # Conventional Commit title line:
 # <type>(optional-scope)!: subject
-conventional_pattern='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-z0-9._/-]+\))?(!)?: [a-z0-9][a-z0-9 .,_()/:+-]*$'
+conventional_pattern='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-z0-9._/-]+\))?(!)?: [[:alpha:]0-9][[:alpha:]0-9 .,_()/:+-]*$'
 if ! printf '%s\n' "$subject_line" | grep -Eq "$conventional_pattern"; then
   printf >&2 '\nERROR: Invalid commit title.\n'
   printf >&2 'Use Conventional Commits: <type>(<scope>): <subject>\n'

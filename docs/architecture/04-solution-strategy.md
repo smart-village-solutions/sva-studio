@@ -1,4 +1,4 @@
-# 04 Loesungsstrategie
+# 04 Lösungsstrategie
 
 ## Zweck
 
@@ -15,20 +15,20 @@ Architekturprinzipien auf IST-Basis.
 
 ### Leitprinzipien
 
-- Monorepo mit klaren Paketgrenzen und Workspace-Abhaengigkeiten (`workspace:*`)
+- Monorepo mit klaren Paketgrenzen und Workspace-Abhängigkeiten (`workspace:*`)
 - Framework-agnostische Kernlogik in `@sva/core`, Integration in der App-Ebene
-- Route-Komposition ueber Factory-Pattern (`mergeRouteFactories`, `buildRouteTree`)
+- Route-Komposition über Factory-Pattern (`mergeRouteFactories`, `buildRouteTree`)
 - Doku-getriebene Architekturpflege (arc42 + OpenSpec + ADR)
 
 ### Architekturtreiber
 
 - Hohe Typsicherheit und Wartbarkeit bei wachsender Modulanzahl
 - Erweiterbarkeit durch Plugins und zentrale Route-Registry
-- Reproduzierbarkeit ueber standardisierte Nx-/pnpm-Workflows
+- Reproduzierbarkeit über standardisierte Nx-/pnpm-Workflows
 
 ### Zielkonflikte (aktuell sichtbar)
 
-- Hohe Flexibilitaet (code-based + file-based Routing) vs. Komplexitaet
+- Hohe Flexibilität (code-based + file-based Routing) vs. Komplexität
 - Schneller Dev-Flow vs. Governance-Anforderungen in CI
 - Multi-Tooling (Nx, TanStack, pnpm) vs. Einarbeitungsaufwand
 

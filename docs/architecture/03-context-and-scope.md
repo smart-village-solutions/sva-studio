@@ -15,13 +15,13 @@ aktuellen fachlich-technischen Scope.
 
 ### Fachlicher Kontext (nur Kontext)
 
-Im Produktkontext adressiert SVA Studio die Verwaltung strukturierter Inhalte und Konfigurationen fuer die Smart Village App und angrenzende Kanaele (Headless/API-first).
-Im aktuellen Repo-Ist-Stand sind primaer technische Grundlagen fuer Routing, Demo-Flows und Paketstruktur umgesetzt.
+Im Produktkontext adressiert SVA Studio die Verwaltung strukturierter Inhalte und Konfigurationen für die Smart Village App und angrenzende Kanäle (Headless/API-first).
+Im aktuellen Repo-Ist-Stand sind primär technische Grundlagen für Routing, Demo-Flows und Paketstruktur umgesetzt.
 
 ### In Scope (IST)
 
 - Web-App `sva-studio-react` mit TanStack Start
-- Routing-Komposition ueber `@sva/core` und `@sva/plugin-example`
+- Routing-Komposition über `@sva/core` und `@sva/plugin-example`
 - Demo-Server-Functions in der App (`createServerFn`)
 - Einfacher DataClient mit In-Memory-Cache in `@sva/data`
 - Architektur- und Governance-Dokumentation unter `docs/` und `openspec/`
@@ -31,12 +31,12 @@ Im aktuellen Repo-Ist-Stand sind primaer technische Grundlagen fuer Routing, Dem
 - Betrieb und Quellcode eines externen IdP
 - Produktive Auth-/Session-Implementierung als stabiles Paket
 - Produktiver Monitoring-Stack (Collector/Loki/Prometheus/Grafana) im Repository
-- Vollstaendige Fachverfahren-Integrationen
+- Vollständige Fachverfahren-Integrationen
 
 ### Externe Nachbarsysteme
 
 - HTTP-Backends, die vom DataClient aufgerufen werden
-- Externe Plattformen fuer CI/CD und Code-Hosting (GitHub)
+- Externe Plattformen für CI/CD und Code-Hosting (GitHub)
 
 Konzept-Referenz (Kontext): `concepts/konzeption-cms-v2/01_Einleitung/Einleitung.md`
 

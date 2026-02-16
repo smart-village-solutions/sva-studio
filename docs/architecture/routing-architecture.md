@@ -99,7 +99,7 @@ Definierte Pfade:
 
 - erstellt Routen mit `component: () => null`
 - **keine** Server-Handler
-- geeignet fuer clientseitige Route-Struktur/Linkbarkeit
+- geeignet für clientseitige Route-Struktur/Linkbarkeit
 
 #### Server-Variante (`auth.routes.server.ts`)
 
@@ -133,7 +133,7 @@ Server-Kombination:
 
 Export:
 
-- `coreRouteFactories` (serverfähige Endfassung fuer die App)
+- `coreRouteFactories` (serverfähige Endfassung für die App)
 
 ### 6) Router-Instanz (`apps/sva-studio-react/src/router.tsx`)
 
@@ -161,7 +161,7 @@ Beispiel in `packages/plugin-example/src/routes.tsx`:
 
 Damit kann jedes Plugin isoliert eigene Routen beitragen, ohne den App-Router direkt zu editieren.
 
-## Request/Response Routing fuer Auth
+## Request/Response Routing für Auth
 
 Auth-Endpunkte werden als TanStack Server Route Handler registriert und delegieren in `@sva/auth/server`:
 
@@ -186,7 +186,7 @@ Regeln:
 
 1. Server-Handler nur in `@sva/routing/server` und `.server.tsx` Pfaden verwenden.
 2. Keine server-only Imports in client-exponierten Route-Dateien.
-3. Lazy imports fuer Auth-Handler verhindern versehentliche Client-Bundle-Leaks.
+3. Lazy imports für Auth-Handler verhindern versehentliche Client-Bundle-Leaks.
 
 ## Beziehung zu `routeTree.gen.ts`
 
@@ -195,10 +195,10 @@ Regeln:
 Wichtig:
 
 - Runtime-Komposition erfolgt hier primär code-basiert via `buildRouteTree(...)`.
-- Das generierte File bleibt relevant fuer TanStack Start Typ-Registrierung/Integration.
+- Das generierte File bleibt relevant für TanStack Start Typ-Registrierung/Integration.
 - Bei refactors muss darauf geachtet werden, dass file-based und code-based Sicht konsistent bleiben.
 
-## Aktuelle Route-Sources (uebersichtlich)
+## Aktuelle Route-Sources (übersichtlich)
 
 1. File Routes:
   - `routes/__root.tsx`
@@ -210,7 +210,7 @@ Wichtig:
   - `@sva/routing`
   - `@sva/plugin-example`
 
-## Konventionen fuer neue Routen
+## Konventionen für neue Routen
 
 ### Do
 
@@ -228,7 +228,7 @@ Wichtig:
 ## Bekannte Trade-offs
 
 1. **Dualer Ansatz (file-based + code-based)** erhöht Flexibilität, aber auch Komplexität.
-2. Debug/Admin-Test-Routen koennen Route-Tree-Sicht erweitern, obwohl sie nicht Teil des Core-Flows sind.
+2. Debug/Admin-Test-Routen können Route-Tree-Sicht erweitern, obwohl sie nicht Teil des Core-Flows sind.
 3. Strikte Import-Disziplin ist entscheidend; sonst drohen Bundling-/Hydration-Probleme.
 
 ## Referenzen

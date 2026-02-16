@@ -8,14 +8,14 @@ Dieser Abschnitt beschreibt kritische Laufzeitszenarien und Interaktionen.
 
 - Mindestens 3 kritische End-to-End-Szenarien
 - Sequenz der beteiligten Bausteine pro Szenario
-- Fehler- und Ausnahmeverhalten fuer kritische Flows
+- Fehler- und Ausnahmeverhalten für kritische Flows
 
 ## Aktueller Stand
 
 ### Szenario 1: App-Start + Route-Komposition
 
-1. App laedt `getRouter()` in `apps/sva-studio-react/src/router.tsx`
-2. Core- und Plugin-Route-Factories werden zusammengefuehrt
+1. App lädt `getRouter()` in `apps/sva-studio-react/src/router.tsx`
+2. Core- und Plugin-Route-Factories werden zusammengeführt
 3. `buildRouteTree(...)` erzeugt den Runtime-RouteTree
 4. Router wird mit RouteTree und Kontext erstellt
 
@@ -37,11 +37,11 @@ Fehlerpfad:
 
 1. Client triggert eine Aktion in einer Demo-Route
 2. `createServerFn` verarbeitet den Request serverseitig
-3. Ergebnis wird an den Client zurueckgegeben und in der UI gerendert
+3. Ergebnis wird an den Client zurückgegeben und in der UI gerendert
 
 Fehlerpfad:
 
-- Ungueltige Eingaben liefern einen Fallback-Wert statt Hard-Fail.
+- Ungültige Eingaben liefern einen Fallback-Wert statt Hard-Fail.
 
 Referenzen:
 

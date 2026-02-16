@@ -15,7 +15,7 @@
     "@sva/core": "workspace:*"
   },
   "peerDependencies": {
-    "@tanstack/react-router": "^1.132.0",
+    "@tanstack/react-router": "^1.160.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   }

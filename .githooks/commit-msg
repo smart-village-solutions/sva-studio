@@ -1,0 +1,37 @@
+#!/usr/bin/env sh
+set -eu
+
+commit_msg_file="${1:?commit message file is required}"
+subject_line="$(sed -n '1p' "$commit_msg_file" | tr -d '\r')"
+
+# Ignore auto-generated or workflow helper commits.
+case "$subject_line" in
+  Merge\ *|Revert\ *|fixup!\ *|squash!\ *)
+    exit 0
+    ;;
+esac
+
+# English-only heuristic for title:
+# - reject German umlauts/Eszett
+if printf '%s\n' "$subject_line" | grep -Eq '[äöüÄÖÜß]'; then
+  printf >&2 '\nERROR: Commit title should be written in English (umlauts detected).\n'
+  exit 1
+fi
+
+# - reject common German function words
+german_words_pattern='(^|[^a-z])(und|oder|fuer|für|mit|ohne|nicht|ist|sind|ein|eine|einer|der|die|das|beim|zum|zur|dass|geaendert|aktualisiert|hinzugefuegt|entfernt|bereinigt)([^a-z]|$)'
+if printf '%s\n' "$subject_line" | tr '[:upper:]' '[:lower:]' | grep -Eq "$german_words_pattern"; then
+  printf >&2 '\nERROR: Commit title should be written in English (German words detected).\n'
+  exit 1
+fi
+
+
+# Conventional Commit title line:
+# <type>(optional-scope)!: subject
+conventional_pattern='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-z0-9._/-]+\))?(!)?: [a-z0-9][a-z0-9 .,_()/:+-]*$'
+if ! printf '%s\n' "$subject_line" | grep -Eq "$conventional_pattern"; then
+  printf >&2 '\nERROR: Invalid commit title.\n'
+  printf >&2 'Use Conventional Commits: <type>(<scope>): <subject>\n'
+  printf >&2 'Example: feat(router): add typed search params\n'
+  exit 1
+fi

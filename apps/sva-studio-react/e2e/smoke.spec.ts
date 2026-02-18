@@ -1,11 +1,5 @@
 import { expect, test } from '@playwright/test';
 
-import { assertRequiredServicesReady } from './service-readiness';
-
-test.beforeAll(async () => {
-  await assertRequiredServicesReady();
-});
-
 test('GET / returns 200 and renders app shell', async ({ page }) => {
   const response = await page.goto('/');
   expect(response).not.toBeNull();

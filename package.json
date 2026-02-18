@@ -19,6 +19,7 @@
     "test:coverage": "nx run-many -t test:coverage",
     "test:coverage:affected": "nx affected --target=test:coverage --base=origin/main",
     "test:integration": "nx run-many -t test:integration",
+    "test:e2e": "nx run sva-studio-react:test:e2e",
     "test:ci": "pnpm check:file-placement && pnpm test:unit && pnpm test:coverage",
     "coverage-gate": "tsx scripts/ci/coverage-gate.ts",
     "check:file-placement": "node scripts/ci/check-file-placement.mjs",

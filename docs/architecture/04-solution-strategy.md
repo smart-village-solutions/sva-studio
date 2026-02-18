@@ -37,11 +37,9 @@ Architekturprinzipien auf IST-Basis.
 - Frontend-Framework: `ADR-001`
 - Plugin-Architektur: `ADR-002`
 - Design-Token-Architektur: `ADR-003`
-- Coverage-Reporting mit externem Transparenz-Layer: `ADR-008`
 
 Referenzen:
 
 - `./decisions/ADR-001-frontend-framework-selection.md`
 - `./decisions/ADR-002-plugin-architecture-pattern.md`
 - `./decisions/ADR-003-design-token-architecture.md`
-- `./decisions/ADR-008-codecov-coverage-reporting-and-gates.md`

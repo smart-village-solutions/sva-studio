@@ -18,6 +18,7 @@ mit Bezug auf die arc42-Abschnitte.
 - `ADR-001-frontend-framework-selection.md`
 - `ADR-002-plugin-architecture-pattern.md`
 - `ADR-003-design-token-architecture.md`
+- `ADR-008-codecov-coverage-reporting-and-gates.md`
 
 ### Zuordnung zu arc42-Abschnitten
 
@@ -25,7 +26,7 @@ mit Bezug auf die arc42-Abschnitte.
 - Abschnitt 05 (Bausteinsicht): ADR-001, ADR-002
 - Abschnitt 06/07 (Laufzeit/Deployment): aktuell keine dedizierte ADR im Verzeichnis
 - Abschnitt 08 (Querschnitt): ADR-003
-- Abschnitt 10/11 (Qualität/Risiken): aktuell keine dedizierte ADR im Verzeichnis
+- Abschnitt 10/11 (Qualität/Risiken): ADR-008
 
 ### Pflege-Regel
 

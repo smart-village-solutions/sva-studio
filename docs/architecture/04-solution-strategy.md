@@ -40,9 +40,11 @@ Architekturprinzipien auf IST-Basis.
 - Plugin-Architektur: `ADR-002`
 - Monitoring-Stack: `ADR-004`
 - Logging-Pipeline und Label-Policy: `ADR-006`, `ADR-007`
+- Coverage-Reporting mit externem Transparenz-Layer: `ADR-008`
 
 Referenzen:
 
 - `./decisions/ADR-001-frontend-framework-selection.md`
 - `./decisions/ADR-002-plugin-architecture-pattern.md`
 - `./decisions/ADR-004-monitoring-stack-loki-grafana-prometheus.md`
+- `./decisions/ADR-008-codecov-coverage-reporting-and-gates.md`

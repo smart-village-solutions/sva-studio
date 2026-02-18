@@ -33,7 +33,7 @@ Insbesondere fehlte eine durchgängige Sicht auf:
 - zentrale Vergleichbarkeit über mehrere Packages
 
 Die internen Regeln nutzen bereits eine **Baseline** (Referenzwert als Ausgangspunkt) und **Floors** (Mindestwerte, die nicht unterschritten werden dürfen).
-Ohne zusätzliche Visualisierung bleiben diese Werte korrekt, aber für nicht-täglich technische Stakeholder schwerer einzuordnen.
+Ohne zusätzliche Visualisierung bleiben diese Werte korrekt, aber für nicht primär technische Stakeholder schwerer einzuordnen.
 
 ---
 

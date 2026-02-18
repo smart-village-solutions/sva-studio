@@ -8,7 +8,7 @@ Schulden auf IST-Basis.
 ## Mindestinhalte
 
 - Priorisierte Risiko-/Schuldenliste
-- Auswirkungen, Eintrittswahrscheinlichkeit, Gegenmaßnahmen
+- Auswirkungen, Eintrittswahrscheinlichkeit, Gegenmassnahmen
 - Verantwortliche und Zieltermine
 
 ## Aktueller Stand
@@ -18,33 +18,33 @@ Schulden auf IST-Basis.
 1. Geheimnisse in lokalen Env-Dateien
    - Impact: hoch (Credential Leak Risiko)
    - Wahrscheinlichkeit: mittel
-   - Maßnahme: Secrets rotieren, lokale Env-Dateien strikt aus VCS halten, Secret-Scan in CI
+   - Massnahme: Secrets rotieren, lokale Env-Dateien strikt aus VCS halten, Secret-Scan in CI
 
 2. Uneinheitliche Testabdeckung
-   - Impact: mittel bis hoch (Regressionen spät erkannt)
+   - Impact: mittel bis hoch (Regressionen spaet erkannt)
    - Wahrscheinlichkeit: hoch
-   - Maßnahme: Exempt-Projekte schrittweise abbauen, Coverage-Floors erhöhen
+   - Massnahme: Exempt-Projekte schrittweise abbauen, Coverage-Floors erhoehen
 
-3. Routing-Komplexität durch dualen Ansatz (file-based + code-based)
+3. Routing-Komplexitaet durch dualen Ansatz (file-based + code-based)
    - Impact: mittel (Fehlkonfiguration/Bundling-Fehler)
    - Wahrscheinlichkeit: mittel
-   - Maßnahme: klare Source-of-Truth Regeln und mehr Routing-Tests
+   - Massnahme: klare Source-of-Truth Regeln und mehr Routing-Tests
 
-4. Observability-Abhängigkeit von korrekter Initialisierung
+4. Observability-Abhaengigkeit von korrekter Initialisierung
    - Impact: mittel (blinde Flecken im Betrieb)
    - Wahrscheinlichkeit: mittel
-   - Maßnahme: robuste Startup-Checks und automatische Verifikation der OTEL-Pipeline
+   - Massnahme: robuste Startup-Checks und automatische Verifikation der OTEL-Pipeline
 
 5. Dokumentationsdrift bei schnell wandelnden Architekturteilen
    - Impact: mittel
    - Wahrscheinlichkeit: hoch
-   - Maßnahme: Doku-Agent Reviews bei Proposal/PR verpflichtend nutzen
+   - Massnahme: Doku-Agent Reviews bei Proposal/PR verpflichtend nutzen
 
 ### Technische Schulden (Auswahl)
 
 - Teilweise No-Op Testtargets in Libraries
 - Historisch gewachsene Doku mit gemischter Tiefe
-- Offene Produktionsentscheidungen für Deployment/HA
+- Offene Produktionsentscheidungen fuer Deployment/HA
 
 ### Nachverfolgung
 

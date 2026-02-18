@@ -15,39 +15,40 @@ aktuellen fachlich-technischen Scope.
 
 ### Fachlicher Kontext (nur Kontext)
 
-Im Produktkontext adressiert SVA Studio die Verwaltung strukturierter Inhalte und Konfigurationen für die Smart Village App und angrenzende Kanäle (Headless/API-first).
-Im aktuellen Repo-Ist-Stand sind primär technische Grundlagen für Routing, Demo-Flows und Paketstruktur umgesetzt.
+Im Produktkontext adressiert SVA Studio die Verwaltung strukturierter Inhalte und Konfigurationen fuer die Smart Village App und angrenzende Kanaele (Headless/API-first).
+Im aktuellen Repo-Ist-Stand sind davon primaer die technischen Grundlagen umgesetzt (Routing, Auth, Observability, lokale Betriebsartefakte).
 
 ### In Scope (IST)
 
 - Web-App `sva-studio-react` mit TanStack Start
-- Routing-Komposition über `@sva/core` und `@sva/plugin-example`
-- Demo-Server-Functions in der App (`createServerFn`)
-- Einfacher DataClient mit In-Memory-Cache in `@sva/data`
-- Architektur- und Governance-Dokumentation unter `docs/` und `openspec/`
+- Zentrales Routing (`@sva/core`, `@sva/routing`, Plugin-Routen)
+- Auth-BFF-Endpunkte (`/auth/login`, `/auth/callback`, `/auth/me`, `/auth/logout`)
+- Session-Verwaltung mit Redis (inkl. optionaler Token-Verschluesselung)
+- SDK Logger + OTEL Monitoring Client + lokale Monitoring-Stacks
 
 ### Out of Scope (in diesem Repo)
 
-- Betrieb und Quellcode eines externen IdP
-- Produktive Auth-/Session-Implementierung als stabiles Paket
-- Produktiver Monitoring-Stack (Collector/Loki/Prometheus/Grafana) im Repository
-- Vollständige Fachverfahren-Integrationen
+- Betrieb und Quellcode des externen IdP (Keycloak Realm/Server)
+- Mobile App / externe Konsumenten
+- Vollstaendige Fachverfahren-Integrationen
+- Produkt-/Fachmodule (z. B. konkrete CMS-Content-Modelle) sind im Code derzeit nicht als stabile API/Implementierung vorhanden
 
 ### Externe Nachbarsysteme
 
-- HTTP-Backends, die vom DataClient aufgerufen werden
-- Externe Plattformen für CI/CD und Code-Hosting (GitHub)
+- OIDC Provider (per `openid-client`)
+- Redis (lokal/extern)
+- OTEL Collector, Loki, Prometheus, Grafana, Alertmanager
 
 Konzept-Referenz (Kontext): `concepts/konzeption-cms-v2/01_Einleitung/Einleitung.md`
 
 ### Verantwortungsgrenzen
 
-- Repo verantwortet App-, Paket-, Build-/Test- und Doku-Logik
-- Externe Dienste werden angebunden, aber nicht in diesem Repository betrieben
+- Repo verantwortet App-, Routing-, Auth-, SDK- und Doku-Logik
+- Externe Dienste werden angebunden, aber nicht hier implementiert
 
 Referenzen:
 
-- `apps/sva-studio-react/src/router.tsx`
-- `apps/sva-studio-react/src/routes/-core-routes.tsx`
-- `packages/data/src/index.ts`
-- `.github/workflows/test-coverage.yml`
+- `packages/auth/src/oidc.server.ts`
+- `packages/auth/src/redis.server.ts`
+- `docker-compose.yml`
+- `docker-compose.monitoring.yml`

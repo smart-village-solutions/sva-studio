@@ -1,23 +1,23 @@
-# 10 Qualitätsanforderungen
+# 10 Qualitaetsanforderungen
 
 ## Zweck
 
-Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
+Dieser Abschnitt beschreibt messbare Qualitaetsziele auf aktuellem Stand.
 
 ## Mindestinhalte
 
-- Qualitätsziele (z. B. Sicherheit, Wartbarkeit, Verfügbarkeit)
+- Qualitaetsziele (z. B. Sicherheit, Wartbarkeit, Verfuegbarkeit)
 - Priorisierung und messbare Akzeptanzkriterien
 - Bezug zu Tests, Monitoring und Quality Gates
 
 ## Aktueller Stand
 
-### Priorisierte Qualitätsziele
+### Priorisierte Qualitaetsziele
 
-1. Wartbarkeit und Nachvollziehbarkeit
-2. Typsicherheit und Integrationsstabilität
-3. Reproduzierbare CI-Qualitätsprüfungen
-4. Security-/Privacy-Governance
+1. Sicherheit/Datenschutz
+2. Wartbarkeit und Nachvollziehbarkeit
+3. Beobachtbarkeit und Betrieb
+4. Typsicherheit und Integrationsstabilitaet
 
 ### Messbare Kriterien (IST)
 
@@ -32,13 +32,13 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
 - Coverage Governance:
   - Gate-Logik und Baselines in `scripts/ci/coverage-gate.ts` und `tooling/testing/*`
 
-### Observability-Qualität
+### Observability-Qualitaet
 
-- Architekturziele für Logging/Observability sind dokumentiert
-- Eine vollständige Monitoring-Implementierung ist in diesem Branch nicht enthalten
-- CI-Artefakte (`coverage-summary.json`, `lcov.info`) dienen als verifizierbare Qualitätsnachweise
+- Strukturierte Logs mit Pflichtfeldern (`component`, `environment`, `workspace_id`)
+- Label-Whitelist und PII-Redaction entlang der OTEL-Pipeline
+- Healthchecks fuer lokale Monitoring-Dienste in Compose
 
-### Aktuelle Lücken
+### Aktuelle Luecken
 
 - Nicht alle Projekte haben vollwertige Unit/Coverage-Suites (teils exempt)
 - App-Tests laufen derzeit mit `--passWithNoTests`, daher eingeschraenkte Aussagekraft
@@ -47,4 +47,4 @@ Referenzen:
 
 - `../development/testing-coverage.md`
 - `scripts/ci/coverage-gate.ts`
-- `.github/workflows/test-coverage.yml`
+- `packages/monitoring-client/src/otel.server.ts`

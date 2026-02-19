@@ -1,0 +1,9 @@
+Scenario: Broken-main SOP negative path
+File: docs/governance/merge-review-gates.md
+
+- broken_main_section_present: PASS (SOP-Abschnitt vorhanden)
+- owner_defined: PASS (primaerer und sekundaerer Owner benannt)
+- action_defined: PASS (Aktionstabelle mit klaren Schritten vorhanden)
+- max_response_time_defined: PASS (Maximalzeiten inkl. 30-Minuten-SLA dokumentiert)
+
+Verdict: PASS

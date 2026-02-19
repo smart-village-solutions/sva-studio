@@ -1,0 +1,19 @@
+QA Scenario 1: Verify max depth, TTL, rebase cadence numeric with enforcement owners
+Status: PASS
+File: docs/governance/stacked-pr-rules.md
+
+Matched lines:
+- 11: max_stack_depth: 3
+- 13: docs: 3
+- 14: fix: 3
+- 16: feature: 7
+- 17: epic: 14
+- 19: cadence_hours: 24
+- 20: after_parent_merge_hours: 2
+- 33: owner: pr_author
+- 37: owner: codeowners
+- 41: owner: repo_maintainers
+
+Conclusion:
+- Required numeric values exist for stack depth, TTL, and rebase cadence.
+- Enforcement owners are explicitly defined for escalation levels.

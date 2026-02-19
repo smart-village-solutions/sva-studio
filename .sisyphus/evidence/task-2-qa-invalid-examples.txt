@@ -1,0 +1,9 @@
+QA-Szenario 2: Invalid Examples Check
+Quelle Taxonomie: docs/governance/branch-taxonomy.md
+
+invalid_examples_total=5
+invalid_sections=5
+minimum_required=3
+
+Bewertung: PASS
+Begruendung: Es sind mindestens 3 ungueltige Beispiele dokumentiert; tatsaechlich vorhanden sind 5 (je 1 pro Klasse).

@@ -1,0 +1,12 @@
+Scenario: Gate matrix is complete
+File: docs/governance/merge-review-gates.md
+
+- lint_check_name: PASS (`Lint / lint` vorhanden)
+- unit_check_name: PASS (`Unit / unit` vorhanden)
+- types_check_name: PASS (`Types / types` vorhanden)
+- coverage_check_name: PASS (`Test Coverage / coverage` vorhanden)
+- e2e_rule_with_activation: PASS (`App E2E / e2e` mit expliziter Aktivierungsbedingung vorhanden)
+- numeric_review_minimum: PASS (Mindestanzahl Reviews = 1 numerisch dokumentiert)
+- merge_method_policy_present: PASS (Abschnitt `Merge-Methode pro Branch-Typ` vorhanden)
+
+Verdict: PASS

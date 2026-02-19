@@ -1,0 +1,12 @@
+QA-Szenario 1: Prefix Alignment Check
+Quelle Hook: .githooks/reference-transaction:14
+Quelle Taxonomie: docs/governance/branch-taxonomy.md
+
+doc_prefixes=chore,epic,feature,fix,stack
+hook_prefixes=adr,chore,dev,docs,epic,feature,fix,hotfix,refactor,release,setup
+missing_in_hook=stack
+extra_in_hook=adr,dev,docs,hotfix,refactor,release,setup
+alignment_status=MIGRATION_REQUIRED
+
+Bewertung: PASS
+Begruendung: Die Abweichung (`stack`) ist im Abschnitt "Hook-Abgleich und Migration" in docs/governance/branch-taxonomy.md explizit dokumentiert und mit Migrationsregel versehen.

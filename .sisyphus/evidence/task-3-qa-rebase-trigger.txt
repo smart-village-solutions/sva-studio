@@ -1,0 +1,13 @@
+QA Scenario 2: Verify rebase rule has automated trigger defined
+Status: PASS
+File: docs/governance/stacked-pr-rules.md
+
+Matched lines:
+- 22: automated_trigger:
+- 23: schedule_cron: "0 */6 * * *"
+- 24: pull_request_event: true
+- 25: push_event: true
+
+Conclusion:
+- Automated trigger exists and is machine-checkable.
+- Trigger includes schedule plus pull_request and push events.

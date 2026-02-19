@@ -1,0 +1,16 @@
+Task 5 - CODEOWNERS-Strategie und Pfadverantwortung
+
+1. Critical paths covered:
+- Apps: /apps/ (@sva-studio/frontend-leads) - PASSED
+- Core: /packages/core/, /packages/sdk/ (@sva-studio/core-maintainers) - PASSED
+- CI: .github/workflows/, nx.json, package.json (@sva-studio/infrastructure) - PASSED
+- Security: /packages/auth/, .github/SECURITY.md (@sva-studio/security-team) - PASSED
+- Infrastructure: nx.json, pnpm-lock.yaml, etc. (@sva-studio/infrastructure) - PASSED
+
+2. Fallback ownership exists:
+- Global fallback '*' defined for @sva-studio/maintainers - PASSED
+- Orchestration for orphaned paths described in Section 3 - PASSED
+
+Evidence created for Task 5 completion.
+File: docs/governance/codeowners-strategy.md
+Date: 2026-02-19

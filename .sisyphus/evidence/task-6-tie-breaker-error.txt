@@ -1,0 +1,19 @@
+Scenario: Tie-case handling
+Date: 2026-02-19
+Source: docs/governance/preview-platform-comparison.md
+
+Checks:
+- Tie-breaker rule exists and defines ordered criteria
+- Equal-score edge case can be resolved deterministically
+
+Simulation:
+- Input: Equal weighted score scenario for both options
+- Tie-break sequence verified: Security -> Isolation -> Kosten -> Setup-Geschwindigkeit -> Default
+- Final deterministic fallback verified: Vercel für Pilotphase bis 90 Tage, danach Re-Scoring
+
+Observed:
+- Missing tie-breaker rules: none
+- Simulated equal score winner: Vercel (Pilotphase bis 90 Tage, dann Re-Scoring)
+- Deterministic decision: True
+
+Result: PASS

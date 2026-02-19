@@ -62,3 +62,11 @@
 - Ein Fallback auf das Maintainer-Team wurde für alle nicht explizit zugewiesenen Pfade definiert.
 - Ein Template für die zukünftige .github/CODEOWNERS Datei wurde erstellt (geplant für T10).
 - Die Strategie ist in docs/governance/codeowners-strategy.md dokumentiert.
+
+## Task 6 Learnings (2026-02-19T17:31Z)
+
+- Eine belastbare Plattformentscheidung für Preview-Umgebungen braucht eine feste Skala (`1-5`) plus Gewichte mit Summe `100`, sonst bleiben Ergebnisse schwer vergleichbar.
+- `SLA/Verfügbarkeit` sollte als eigenes Kriterium geführt werden und nicht nur implizit unter Betrieb laufen, damit Stabilitätsrisiken separat messbar sind.
+- Für Governance-Readiness ist die Kombination aus `Kosten` und `Betrieb (Ops Burden)` entscheidend, weil reine Plattformpreise den internen Betriebsaufwand unterschätzen.
+- Ein deterministischer Tie-Breaker mit fester Reihenfolge (`Security -> Isolation -> Kosten -> Setup`) verhindert ad-hoc Entscheidungen bei Gleichstand.
+- Die Trennung zwischen Bewertungslogik (T6) und Umsetzungslogik (spätere Tasks) hält die Governance auditierbar und vermeidet verfrühte Migrationsfestlegungen.

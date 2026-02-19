@@ -456,7 +456,7 @@ Max Concurrent: 5 (Wave 1/2)
     Evidence: .sisyphus/evidence/task-5-owner-gap-error.txt
   ```
 
-- [ ] 6. Vergleichsmatrix Vercel vs Eigene Infrastruktur erstellen
+- [x] 6. Vergleichsmatrix Vercel vs Eigene Infrastruktur erstellen
 
   **What to do**:
   - Beide Optionen anhand gewichteter Kriterien vergleichen (Setup, DX, Isolation, Security, Kosten, Betrieb).

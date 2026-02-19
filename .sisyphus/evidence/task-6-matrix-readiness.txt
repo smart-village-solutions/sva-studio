@@ -1,0 +1,18 @@
+Scenario: Comparison matrix is decision-ready
+Date: 2026-02-19
+Source: docs/governance/preview-platform-comparison.md
+
+Checks:
+- Criteria list includes: Setup-Geschwindigkeit, Security, SLA/Verfügbarkeit, Kosten, Betrieb (Ops Burden)
+- Each criterion row has numeric weight
+- Each criterion row has scoring logic text
+- Required core criteria present: Setup, DX, Isolation, Security, Kosten, Betrieb
+
+Observed:
+- Missing required tokens: none
+- Criteria row count parsed: 7
+- Weights numeric: True
+- Scoring logic present: True
+- Required criteria present: True
+
+Result: PASS

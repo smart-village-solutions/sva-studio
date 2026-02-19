@@ -1,0 +1,26 @@
+QA Scenario 1: Evidence Naming Pattern Validation
+
+Test Date: 2026-02-19
+Test Command: bash /tmp/test-evidence-naming.sh
+
+Pattern: ^task-[0-9]{1,3}-[a-z0-9]+(-[a-z0-9]+)*\.(txt|json|log|md)$
+
+Valid examples (should all MATCH):
+  ✓ task-4-gate-matrix.txt
+  ✓ task-10-branch-protection.json
+  ✓ task-15-preview-cleanup-error.log
+  ✓ task-1-scope-baseline.md
+
+Invalid examples (should all FAIL):
+  ✓ task4_check.txt (correctly rejected)
+  ✓ branch-protection.txt (correctly rejected)
+  ✓ task-4-check (correctly rejected)
+  ✓ TASK-4-gate-matrix.txt (correctly rejected)
+
+RESULT: PASS - Evidence naming pattern is deterministic
+
+Verification:
+- All valid examples matched the regex pattern
+- All invalid examples were correctly rejected
+- No ambiguity in naming format: task-{N}-{slug}.{ext}
+- Extension guidance is deterministic (.txt, .json, .log, .md)

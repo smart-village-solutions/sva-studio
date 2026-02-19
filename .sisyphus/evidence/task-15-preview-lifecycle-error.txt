@@ -1,0 +1,19 @@
+Task 15 - Preview Lifecycle Error-Path Validation
+Date: 2026-02-19
+Source: docs/governance/preview-lifecycle-policy.md
+
+Executed validation command:
+grep -E "Retry 1: nach `5` Minuten|Retry 2: nach `15` Minuten|Retry 3: nach `60` Minuten|Incident-Label `preview-cleanup-failed`|Sweep-Job \(`24` Stunden Takt\)" docs/governance/preview-lifecycle-policy.md
+
+Observed evidence lines:
+- Retry 1: nach `5` Minuten
+- Retry 2: nach `15` Minuten
+- Retry 3: nach `60` Minuten
+- Maximal `3` automatisierte Retries, danach Eskalation an Maintainer-On-Call mit Incident-Label `preview-cleanup-failed`.
+- Zombie-Praevention aktivieren: taeglicher Sweep-Job (`24` Stunden Takt) sucht verwaiste Preview-Ressourcen und erzwingt Nach-Cleanup.
+
+Deterministic interpretation:
+- PASS if all five markers are present (3 retries + escalation label + sweep job cadence)
+- FAIL if any marker is missing
+
+Result: PASS

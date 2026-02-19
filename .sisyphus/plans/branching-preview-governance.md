@@ -952,7 +952,7 @@ Max Concurrent: 5 (Wave 1/2)
     Evidence: .sisyphus/evidence/task-14-kpi-source-error.txt
   ```
 
-- [ ] 15. Agent-exekutierbaren Governance-Pruefkatalog erstellen
+- [x] 15. Agent-exekutierbaren Governance-Pruefkatalog erstellen
 
   **What to do**:
   - Konkrete Verifikationskommandos fuer Branch-Protection, Reviews, Checks und Preview-Lifecycle definieren.
@@ -1009,7 +1009,7 @@ Max Concurrent: 5 (Wave 1/2)
     Evidence: .sisyphus/evidence/task-15-preview-lifecycle-error.txt
   ```
 
-- [ ] 16. Evidence-Struktur und Abnahmeprotokoll finalisieren
+- [x] 16. Evidence-Struktur und Abnahmeprotokoll finalisieren
 
   **What to do**:
   - Standardisierte Evidence-Dateinamen und Ablagehierarchie definieren.

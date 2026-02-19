@@ -131,6 +131,15 @@
   - `./.sisyphus/evidence/task-12-migration-coverage.txt`
   - `./.sisyphus/evidence/task-12-cutover-error.txt`
 
+## Task 15 Learnings (2026-02-19T18:02Z)
+
+- Ein Governance-Check ist erst agent-exekutierbar, wenn er vier feste Felder hat (`Tool`, `Command`, `Expected`, `Failure`) und der Output ohne menschliche Interpretation ausgewertet werden kann.
+- Hohe Abdeckung bleibt wartbar, wenn Regeln zuerst nach Domäne gruppiert werden (T2/T3/T4/T5/T7/T8/T9/T10/T13/T14) und dann pro Claim mindestens ein deterministischer Prüfschritt abgeleitet wird.
+- Lifecycle-Governance braucht immer Happy-Path und Fehlerpfad; erst Retry-/Eskalationsmarker plus SLA machen Preview-Cleanup operativ belastbar.
+- Evidence:
+  - `./.sisyphus/evidence/task-15-required-checks.json`
+  - `./.sisyphus/evidence/task-15-preview-lifecycle-error.txt`
+
 ## Task 14 Learnings (2026-02-19T20:30Z)
 
 - KPI-Governance bleibt nur belastbar, wenn jede Kennzahl strikt sieben Pflichtfelder hat: Definition, Formel, Quelle, Zielwert, Alert-Schwelle, Owner und Erhebungsrhythmus.
@@ -163,3 +172,14 @@
 - Evidence:
   - `./.sisyphus/evidence/task-12-migration-coverage.txt`
   - `./.sisyphus/evidence/task-12-cutover-error.txt`
+
+## Task 16 Learnings (2026-02-19T19:02Z)
+
+- Ein Evidence-Namensschema ist nur deterministisch, wenn es als Regex formuliert ist (z. B. task-N-slug.ext mit Regex-Pattern) und sowohl Valid- als auch Invalid-Beispiele nachweisbar korrekt klassifiziert.
+- Die "no evidence -> no done"-Regel funktioniert nur, wenn sie als harte Abschlussbedingung formuliert ist: Orchestrator muss Existenz **vor** Checkbox-Markierung prüfen, nicht danach.
+- Evidence-Extensions sollten nach Artefakttyp gewählt werden (.txt für Plain-Text, .json für strukturierte Daten, .log für Command-Logs, .md für Reports), nicht nach Belieben.
+- Ein Evidence-Lifecycle mit drei expliziten Phasen (Erstellung -> Validierung -> Archivierung) macht Verantwortlichkeiten zwischen Subagent und Orchestrator nachvollziehbar.
+- Evidence-Inventar-Tabellen mit realen Beispielen aus T1-T14 zeigen Pattern-Konsistenz und machen das Protokoll sofort anwendbar für zukünftige Tasks.
+- Evidence:
+  - `./.sisyphus/evidence/task-16-evidence-naming.txt`
+  - `./.sisyphus/evidence/task-16-missing-evidence-error.txt`

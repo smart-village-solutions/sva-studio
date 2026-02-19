@@ -1,0 +1,38 @@
+QA Scenario 2: Missing Evidence Blocks Completion
+
+Test Date: 2026-02-19
+Test Command: bash /tmp/test-missing-evidence-error.sh
+
+Simulated Task: Task 99 (hypothetical)
+Expected Evidence Files:
+  - .sisyphus/evidence/task-99-positive-validation.txt
+  - .sisyphus/evidence/task-99-error-handling.txt
+
+Test Execution:
+  ✗ .sisyphus/evidence/task-99-positive-validation.txt (MISSING)
+  ✗ .sisyphus/evidence/task-99-error-handling.txt (MISSING)
+
+COMPLETION STATUS: BLOCKED
+Reason: Evidence files missing (2 of 2)
+
+Protocol Rule Applied: No Evidence -> No Done
+
+RESULT: PASS - Completion correctly blocked due to missing evidence
+
+Verification:
+- Protocol enforces "no evidence -> no done" rule
+- Tasks cannot be marked complete without all evidence files present
+- Missing evidence files correctly prevent completion
+- Enforcement mechanism is explicit and deterministic
+
+Real-World Example:
+If Task 4 (Merge/Review Gates) was missing either:
+  - .sisyphus/evidence/task-4-gate-matrix.txt
+  - .sisyphus/evidence/task-4-broken-main-error.txt
+
+Then Task 4 status = INCOMPLETE, even if docs/governance/merge-review-gates.md exists.
+
+This rule ensures:
+1. No "claimed done, actually broken" failures
+2. Audit trail for governance compliance
+3. Reproducible verification by other agents or future reviews

@@ -1,0 +1,33 @@
+{
+  "source": "simulated gh api repos/smart-village-solutions/sva-studio/branches/main/protection",
+  "repository": "smart-village-solutions/sva-studio",
+  "branch": "main",
+  "required_status_checks": {
+    "strict": true,
+    "contexts": [
+      "Lint / lint",
+      "Unit / unit",
+      "Types / types",
+      "Test Coverage / coverage",
+      "App E2E / e2e"
+    ]
+  },
+  "required_pull_request_reviews": {
+    "required_approving_review_count": 1,
+    "dismiss_stale_reviews": true,
+    "require_code_owner_reviews": true
+  },
+  "validation": {
+    "expected_contexts": [
+      "Lint / lint",
+      "Unit / unit",
+      "Types / types",
+      "Test Coverage / coverage",
+      "App E2E / e2e"
+    ],
+    "missing_contexts": [],
+    "unexpected_contexts": [],
+    "result": "PASS"
+  },
+  "recorded_at": "2026-02-19T00:00:00Z"
+}

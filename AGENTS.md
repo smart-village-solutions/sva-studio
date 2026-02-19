@@ -11,20 +11,20 @@
 
 - Dies ist ein pnpm-Workspace-Monorepo; Packages sind nach Funktionalität organisiert
 - Nx bietet Caching, affected-Testing, Targeting und parallele Ausführung für mehr Effizienz
-- Alle verfügbaren Packages anzeigen: `npx nx show projects`
-- Ein einzelnes Projekt gezielt starten: `npx nx run sva-studio-react:serve`
-- Nur betroffene Tests ausführen: `npx nx affected --target=test:unit`
-- Ausschlussmuster verwenden: `npx nx run-many --target=test:unit --exclude="examples/**,e2e/**"`
+- Alle verfügbaren Packages anzeigen: `pnpm nx show projects`
+- Ein einzelnes Projekt gezielt starten: `pnpm nx run sva-studio-react:serve`
+- Nur betroffene Tests ausführen: `pnpm nx affected --target=test:unit`
+- Ausschlussmuster verwenden: `pnpm nx run-many --target=test:unit --exclude="examples/**,e2e/**"`
 
 ## Test-Anweisungen
 
 - **Kritisch:** Während der Entwicklung immer Unit- und Type-Tests ausführen – bei Fehlschlägen nicht weitermachen
-- **Testarten:** `pnpm test:unit`, `pnpm test:types`, `pnpm test:eslint`, `pnpm test:e2e`, `pnpm test:build`
+- **Testarten:** `pnpm test:unit`, `pnpm test:types`, `pnpm test:eslint`, `pnpm test:e2e`
 - **Komplette CI-Suite:** `pnpm test:ci`
-- **Formatierung beheben:** `pnpm format`
+- **ESLint ausführen:** `pnpm lint`
 - **Effizienter, zielgerichteter Test-Workflow:**
-  1. **Nur affected:** `npx nx affected --target=test:unit` (vergleicht mit `main`-Branch)
-  2. **Spezifische Packages:** `npx nx run sva-studio-react:test:unit`
+  1. **Nur affected:** `pnpm nx affected --target=test:unit` (vergleicht mit `main`-Branch)
+  2. **Spezifische Packages:** `pnpm nx run sva-studio-react:test:unit`
   3. **Spezifische Dateien:** `cd packages/data && npx vitest run tests/xyz.test.tsx`
 - **Pro-Tipps:**
   - Mit `npx vitest list` verfügbare Tests vorab ansehen
@@ -34,12 +34,12 @@
 
 ## PR-Anweisungen
 
-- Vor dem Commit immer `pnpm test:eslint`, `pnpm test:types` und `pnpm test:unit` ausführen
+- Vor dem Commit immer `pnpm test:unit`, `pnpm test:types`, `pnpm test:eslint` und `pnpm test:e2e` ausführen
 - Änderungen an den relevanten Stellen testen
 - Bei neuen Features die passende Doku im Verzeichnis `docs/` aktualisieren
 - Bei Architektur-/Systemänderungen die relevanten arc42-Abschnitte unter `docs/architecture/` aktualisieren und im PR verlinken
-- Einstiegspunkt fuer Architekturdoku ist `docs/architecture/README.md` (Abschnitte 1-12)
-- Fuer Doku-Qualitaet und Doku-Abdeckung bei Proposals/PRs steht der Agent `documentation.agent.md` unter `.github/agents/` bereit
+- Einstiegspunkt für Architekturdoku ist `docs/architecture/README.md` (Abschnitte 1-12)
+- Für Doku-Qualität und Doku-Abdeckung bei Proposals/PRs steht der Agent `documentation.agent.md` unter `.github/agents/` bereit
 - Für jede Code-Änderung Tests hinzufügen oder anpassen
 - Interne Doku-Links relativ zum Ordner `docs/` schreiben (z. B. `./guide/data-loading`)
 
@@ -91,8 +91,17 @@ Die verbindlichen Entwicklungsrichtlinien liegen unter [DEVELOPMENT_RULES.md](DE
 3. **Security**: Input-Validation client+server, PII-Schutz in Logs
 4. **CSS**: Design-System verwenden, keine inline-styles (außer dynamische Daten)
 5. **Accessibility**: WCAG 2.1 AA compliant
+6. **Docs**: Alle Änderungen müssen relevante Dokumentation aktualisieren (Code, Architektur, Guides)
 
 **Details:** Siehe [DEVELOPMENT_RULES.md](DEVELOPMENT_RULES.md)
+
+### Docs Regeln
+
+- *Ordner**: Alle Dokumente müssen in den entsprechenden Unterordnern von `docs/` liegen (z.B. `docs/architecture/`, `docs/guides/`, `docs/reports/`, `docs/staging/`, `docs/pr/`)
+- **Namenskonvention**: Dokumente müssen beschreibende Namen haben, die den Inhalt klar widerspiegeln (z.B. `docs/development/monitoring-stack.md`)
+- **Sprache*: Alle Dokumente müssen auf Deutsch verfasst sein und Umlaute korrekt verwenden (ä, ö, ü, ß statt ae, oe, ue, ss)
+- **Formatierung**: Markdown-Formatierung muss konsistent sein (z.B. Überschriften, Listen, Codeblöcke) und den Inhalt klar strukturieren
+- **Aktualität**: Alle Dokumente müssen aktuell gehalten werden; veraltete Informationen müssen entfernt oder aktualisiert werden
 
 <!-- OPENSPEC:START -->
 
@@ -116,17 +125,16 @@ Behalte diesen verwalteten Block bei, damit 'openspec update' die Anweisungen ak
 
 <!-- OPENSPEC:END -->
 
-<!-- nx configuration start-->
-<!-- Leave the start & end comments to automatically receive updates. -->
+<!-- NX CONFIGURATION:START-->
 
-## General Guidelines for working with Nx
+## Allgemeine Richtlinien für die Arbeit mit Nx
 
-- When running tasks (for example build, lint, test, e2e, etc.), always prefer running the task through `nx` (i.e. `nx run`, `nx run-many`, `nx affected`) instead of using the underlying tooling directly
-- You have access to the Nx MCP server and its tools, use them to help the user
-- When answering questions about the repository, use the `nx_workspace` tool first to gain an understanding of the workspace architecture where applicable.
-- When working in individual projects, use the `nx_project_details` mcp tool to analyze and understand the specific project structure and dependencies
-- For questions around nx configuration, best practices or if you're unsure, use the `nx_docs` tool to get relevant, up-to-date docs. Always use this instead of assuming things about nx configuration
-- If the user needs help with an Nx configuration or project graph error, use the `nx_workspace` tool to get any errors
-- For Nx plugin best practices, check `node_modules/@nx/<plugin>/PLUGIN.md`. Not all plugins have this file - proceed without it if unavailable.
+- Bei der Ausführung von Tasks (z.B. build, lint, test, e2e, etc.) sollte die Task immer über `nx` ausgeführt werden (d.h. `nx run`, `nx run-many`, `nx affected`) statt das zugrunde liegende Tooling direkt zu verwenden
+- Du hast Zugriff auf den Nx MCP Server und seine Tools – nutze sie, um dem Benutzer zu helfen
+- Bei Fragen zum Repository nutze das `nx_workspace` Tool zuerst, um die Workspace-Architektur zu verstehen (wo anwendbar)
+- Wenn du mit einzelnen Projekten arbeitest, nutze das `nx_project_details` MCP Tool, um die spezifische Projektstruktur und Abhängigkeiten zu analysieren
+- Bei Fragen zu Nx-Konfiguration, Best Practices oder im Zweifelsfall nutze das `nx_docs` Tool, um aktuelle Dokumentation zu erhalten. Nutze dieses statt Annahmen über Nx-Konfiguration zu treffen
+- Wenn der Benutzer Hilfe bei Nx-Konfiguration oder Project-Graph-Fehlern benötigt, nutze das `nx_workspace` Tool, um Fehler zu ermitteln
+- Für Best Practices bei Nx-Plugins prüfe `node_modules/@nx/<plugin>/PLUGIN.md`. Nicht alle Plugins haben diese Datei – fahre fort, wenn sie nicht verfügbar ist.
 
-<!-- nx configuration end-->
+<!-- NX CONFIGURATION:END -->

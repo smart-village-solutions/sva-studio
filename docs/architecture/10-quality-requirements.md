@@ -14,10 +14,10 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
 
 ### Priorisierte Qualitätsziele
 
-1. Wartbarkeit und Nachvollziehbarkeit
-2. Typsicherheit und Integrationsstabilität
-3. Reproduzierbare CI-Qualitätsprüfungen
-4. Security-/Privacy-Governance
+1. Sicherheit/Datenschutz
+2. Wartbarkeit und Nachvollziehbarkeit
+3. Beobachtbarkeit und Betrieb
+4. Typsicherheit und Integrationsstabilität
 
 ### Messbare Kriterien (IST)
 
@@ -34,9 +34,9 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
 
 ### Observability-Qualität
 
-- Architekturziele für Logging/Observability sind dokumentiert
-- Eine vollständige Monitoring-Implementierung ist in diesem Branch nicht enthalten
-- CI-Artefakte (`coverage-summary.json`, `lcov.info`) dienen als verifizierbare Qualitätsnachweise
+- Strukturierte Logs mit Pflichtfeldern (`component`, `environment`, `workspace_id`)
+- Label-Whitelist und PII-Redaction entlang der OTEL-Pipeline
+- Healthchecks fuer lokale Monitoring-Dienste in Compose
 
 ### Aktuelle Lücken
 
@@ -47,4 +47,4 @@ Referenzen:
 
 - `../development/testing-coverage.md`
 - `scripts/ci/coverage-gate.ts`
-- `.github/workflows/test-coverage.yml`
+- `packages/monitoring-client/src/otel.server.ts`

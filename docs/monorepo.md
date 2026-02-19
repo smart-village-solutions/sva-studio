@@ -181,6 +181,16 @@ Wir nutzen Nx, weil es als integrierte Monorepo-Plattform mehr liefert als „nu
 
 Details und Trade-offs: siehe openspec/specs/monorepo-structure/design.md
 
+## Warum Nx (statt Turborepo)?
+Wir nutzen Nx, weil es als integrierte Monorepo-Plattform mehr liefert als „nur“ Task-Running:
+
+- **Projektgraph & affected commands:** Nx modelliert Abhängigkeiten zwischen Apps und Packages und kann dadurch in CI/CD gezielt nur die betroffenen Projekte bauen/testen.
+- **Generatoren & Konsistenz:** Neue Apps/Packages/Plugins lassen sich mit wiederholbaren Konventionen scaffolden (geringerer Setup-Aufwand, weniger Drift).
+- **Architektur-Governance:** Mechanismen wie Tags/Boundaries helfen, Schichten (Core vs. Plugins) langfristig sauber zu halten.
+- **Caching & Skalierung:** Lokales/Remote-Caching ist integriert; optional kann Nx Cloud für Team-Setups genutzt werden.
+
+Details und Trade-offs: siehe openspec/specs/monorepo-structure/design.md
+
 ## Nx Targets
 Standardisierte Targets:
 - build: tsc -p packages/<name>/tsconfig.lib.json

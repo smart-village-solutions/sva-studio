@@ -17,7 +17,8 @@
         "lintFilePatterns": [
           "packages/sdk/src/**/*.{ts,tsx,js,jsx}",
           "packages/sdk/tests/**/*.{ts,tsx,js,jsx}"
-        ]
+        ],
+        "command": "pnpm --filter @sva/sdk exec tsc -p tsconfig.lib.json --noEmit"
       }
     },
     "test:unit": {

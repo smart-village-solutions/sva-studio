@@ -16,6 +16,7 @@ coverage/
 .next/
 out/
 .turbo/
+*.tsbuildinfo
 
 # Environments
 .env
@@ -34,7 +35,7 @@ log/
 
 # Caches
 .cache/
-*.tsbuildinfo
+artifacts/
 
 # NX
 .nx/
@@ -42,21 +43,22 @@ log/
 .nx/cache
 .nx/workspace-data
 
-# Local backups
-backups/
-*.bak
-*.backup
+# Generated artifacts should never live in package source folders
+packages/*/src/**/*.js
+packages/*/src/**/*.d.ts
+packages/*/src/**/*.d.ts.map
 
-# Local TLS/cert material
-dev/redis-tls/
+# TLS Certificates (local dev only)
 *.pem
-*.key
 *.crt
+*.key
 *.cer
 *.p12
 *.pfx
 *.jks
 *.keystore
+dev/redis-tls/
+/backups/
 
 # Local monitoring artifacts
 artifacts/monitoring/

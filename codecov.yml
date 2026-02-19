@@ -1,3 +1,6 @@
+ignore:
+  - "apps/sva-studio-react/tailwind.config.cjs"
+
 coverage:
   status:
     project:

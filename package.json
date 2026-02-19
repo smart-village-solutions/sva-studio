@@ -13,11 +13,13 @@
     "build": "nx run-many -t build",
     "lint": "nx run-many -t lint",
     "test:eslint": "nx run-many -t lint",
+    "test:types": "nx run-many -t build --projects=auth,core,data,monitoring-client,plugin-example,routing,sdk",
     "test": "pnpm test:unit",
-    "test:unit": "nx run-many -t test:unit",
+    "test:unit": "nx run-many -t test:unit --parallel=1",
     "test:coverage": "nx run-many -t test:coverage",
     "test:coverage:affected": "nx affected --target=test:coverage --base=origin/main",
     "test:integration": "nx run-many -t test:integration",
+    "test:e2e": "nx run sva-studio-react:test:e2e",
     "test:ci": "pnpm check:file-placement && pnpm test:unit && pnpm test:coverage",
     "coverage-gate": "tsx scripts/ci/coverage-gate.ts",
     "check:file-placement": "node scripts/ci/check-file-placement.mjs",
@@ -39,12 +41,22 @@
     "@nx/eslint": "^22.3.3",
     "@nx/eslint-plugin": "^22.3.3",
     "@nx/js": "^22.3.3",
+    "@types/node": "^22.10.2",
     "autoprefixer": "10.4.20",
     "eslint": "^9.39.2",
     "nx": "^22.3.3",
     "postcss": "8.4.49",
     "tailwindcss": "3.4.14",
     "tsx": "^4.21.0",
-    "typescript": "^5.6.3"
+    "typescript": "^5.9.3",
+    "typescript-eslint": "8.54.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "axios": "1.13.5",
+      "undici": "6.23.0",
+      "solid-js": "1.9.11",
+      "seroval": "1.4.2"
+    }
   }
 }

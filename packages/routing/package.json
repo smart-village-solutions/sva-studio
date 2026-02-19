@@ -1,0 +1,30 @@
+{
+  "name": "@sva/routing",
+  "version": "0.0.1",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "module": "dist/index.js",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./server": {
+      "types": "./dist/index.server.d.ts",
+      "default": "./dist/index.server.js"
+    },
+    "./auth": {
+      "types": "./dist/auth.routes.d.ts",
+      "default": "./dist/auth.routes.js"
+    }
+  },
+  "dependencies": {
+    "@sva/auth": "workspace:*",
+    "@sva/core": "workspace:*",
+    "@tanstack/react-router": "^1.59.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3"
+  }
+}

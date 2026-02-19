@@ -25,23 +25,22 @@ Das System SHALL eine Web-App unter apps/sva-studio-react mit React und TanStack
 - **THEN** existiert apps/sva-studio-react als TanStack-Start-App
 
 ### Requirement: Build- und Target-Konventionen
-Das System SHALL standardisierte Nx Targets für build, lint und Testarten bereitstellen, mit klarer Trennung zwischen Unit-, Coverage- und Integrationstests.
+Das System SHALL standardisierte Nx Targets für `build`, `lint` und `test:unit` bereitstellen; produktionsrelevante Projekte dürfen für diese Targets keine Platzhalter-Kommandos verwenden.
 
-#### Scenario: Standardisierte Targets
-- **WHEN** ein neues Package oder eine App erstellt wird
-- **THEN** sind mindestens `build`, `lint` und ein Testtarget definiert
-- **AND** Target-Namen folgen Workspace-Konventionen
+#### Scenario: Standardisierte Qualitäts-Targets vorhanden
+- **WHEN** ein neues Package oder eine neue App erstellt oder in den aktiven Entwicklungsfluss aufgenommen wird
+- **THEN** sind `build`, `lint` und `test:unit` als Nx Targets definiert
+- **AND** die Targets führen reale Tooling-Prüfungen aus
 
-#### Scenario: Testtarget-Konvention
-- **WHEN** ein Projekt Tests ausführt
-- **THEN** nutzt es `test:unit` für stabile Unit-Tests
-- **AND** nutzt es `test:coverage` für Coverage-Erzeugung
-- **AND** nutzt es `test:integration` für infra-abhängige Tests
+#### Scenario: Platzhalter-Target ist unzulässig
+- **WHEN** ein Entwickler `nx run <project>:lint` oder `nx run <project>:test:unit` ausführt
+- **THEN** wird ein echter Lint- bzw. Test-Runner ausgeführt
+- **AND** das Ergebnis kann bei Regel-/Testverstößen fehlschlagen
 
-#### Scenario: Targets im Projektgraph sichtbar
-- **WHEN** `nx graph` ausgeführt wird
-- **THEN** sind Testtargets und deren Abhängigkeiten sichtbar
-- **AND** affected-Commands funktionieren zuverlässig für Testtargets
+#### Scenario: Target-Konvention für Workspace-Befehle
+- **WHEN** `nx run-many -t lint` oder `nx run-many -t test:unit` aufgerufen wird
+- **THEN** greifen die Befehle konsistent über alle relevanten Projekte
+- **AND** die Ergebnisse sind projektübergreifend vergleichbar
 
 ### Requirement: Package-Erstellung via @nx/js:lib Generator
 Das System SHALL neue Packages primär über `nx g @nx/js:lib` mit SVA-Konventionen erstellen, um automatisch korrekte Targets, TypeScript-Setup und Projektgraph-Integration zu garantieren.

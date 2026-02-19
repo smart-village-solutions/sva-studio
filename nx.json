@@ -2,7 +2,12 @@
   "$schema": "./node_modules/nx/schemas/nx-schema.json",
   "defaultBase": "main",
   "installation": {
-    "version": "22.3.3"
+    "version": "22.5.1",
+    "plugins": {
+      "@nx/eslint": "22.5.1",
+      "@nx/eslint-plugin": "22.5.1",
+      "@nx/js": "22.5.1"
+    }
   },
   "workspaceLayout": {
     "appsDir": "apps",

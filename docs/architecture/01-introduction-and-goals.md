@@ -4,19 +4,19 @@
 
 SVA Studio ist eine TanStack-Start-basierte Webanwendung im Nx-Monorepo, die
 als modulares Studio für Content- und Systemfunktionen aufgebaut wird.
-Der aktuelle Repo-Stand fokussiert auf:
+Der aktuelle Stand fokussiert auf:
 
-- Typsicheres Routing mit Core- und Plugin-Route-Factories
-- Demo-Routen mit TanStack Start Server Functions
-- Grundlagenpakete für Core, Data, SDK und Plugin-Integration
+- Typsicheres Routing mit Core- und Plugin-Routen
+- OIDC-Login mit Session-Verwaltung (Redis)
+- Strukturiertes Server-Logging mit OTEL-Pipeline
 - Monorepo-Governance für Build/Test/Qualität
 
 Referenzen:
 
 - `apps/sva-studio-react/src/router.tsx`
-- `apps/sva-studio-react/src/routes/-core-routes.tsx`
-- `packages/core/src/routing/registry.ts`
-- `packages/data/src/index.ts`
+- `packages/routing/src/index.ts`
+- `packages/auth/src/routes.server.ts`
+- `packages/sdk/src/logger/index.server.ts`
 
 ## Mindestinhalte
 
@@ -32,7 +32,7 @@ Mindestinhalte für diesen Abschnitt:
 
 SVA Studio ist das technische Fundament für ein Redaktions- und Verwaltungsstudio im Smart-Village-Umfeld.
 Der fachliche Hintergrund (Warum/wer/Rahmenbedingungen) ist im Konzept unter `concepts/konzeption-cms-v2/` beschrieben.
-Dieses Repository implementiert aktuell vor allem technische Enabler für Routing, UI-Demos und Paketstruktur.
+Dieses Repository dokumentiert und implementiert aktuell vor allem technische Enabler (Routing, Auth, Observability, Monorepo-Governance).
 
 Wichtig: Das Konzept enthält auch Roadmap-/Milestone-Inhalte; diese gelten nicht als dokumentierter Ist-Stand dieses Repos.
 
@@ -40,30 +40,31 @@ Wichtig: Das Konzept enthält auch Roadmap-/Milestone-Inhalte; diese gelten nich
 
 - Produkt-/Architektur-Team: stabile Zielarchitektur und nachvollziehbare Entscheidungen
 - Entwickler:innen: hohe Typsicherheit, klare Modulgrenzen, reproduzierbare Workflows
-- Betrieb/SRE: standardisierte Build-/Test-Pipelines
+- Betrieb/SRE: beobachtbares und betreibbares System inkl. Logging/Monitoring
 
 ### Stakeholder (fachlich / Nutzerrollen)
 
 Die folgenden Rollen stammen aus dem Konzept und dienen hier als Kontext für Architekturentscheidungen.
 Sie sind nicht als bereits umgesetzte Feature-Liste zu verstehen.
 
-- System-Administrator:innen
-- App-Manager:innen
-- Feature-Manager:innen
-- Designer:innen
-- Schnittstellen-Manager:innen
-- Redakteur:innen/Inhaltsersteller:innen
+- System-Administrator:innen: Betrieb, Sicherheit, Rollen/Rechte, Observability
+- App-Manager:innen: Konfiguration und Steuerung (aus fachlicher Sicht)
+- Feature-Manager:innen: fachliche Verantwortung fuer einzelne Inhalts-/Modulbereiche
+- Designer:innen: Corporate Design, UI-Konsistenz
+- Schnittstellen-Manager:innen: Integrationen, Datenfluesse, Fehlertransparenz
+- Redakteur:innen/Inhaltsersteller:innen: effiziente Inhaltspflege
 
 ### Top-3 Architekturziele (priorisiert)
 
-1. Typsichere, erweiterbare Routing-Architektur (Core + Plugins)
-2. Klare Paketgrenzen mit framework-agnostischer Kernlogik
-3. Nachvollziehbare Qualitäts-Governance über Nx-/CI-Workflows und Doku
+1. Typsichere, erweiterbare Modul- und Routing-Architektur (Core + Plugins)
+2. Sichere Authentifizierung und Session-Management fuer Web-Workflows
+3. Einheitliche, PII-sichere Observability über OTEL -> Collector -> Loki
 
 ### Systemgrenze (Kurzfassung)
 
-In diesem Repo liegen die Web-App, gemeinsame Pakete (`core`, `data`, `sdk`, `plugin-example`)
-und die Doku-/Governance-Artefakte.
-Externe Fachsysteme werden konzeptionell adressiert, sind aber nicht Teil des aktuellen Codes.
+In diesem Repo liegen Frontend, Routing-Layer, Auth-BFF-Funktionen,
+SDK/Observability sowie lokale Betriebsartefakte.
+Externe Systeme (IdP/Keycloak, ggf. weitere Backends) werden integriert, aber
+nicht in diesem Repository betrieben.
 
 Konzept-Referenz (Kontext): `concepts/konzeption-cms-v2/01_Einleitung/Einleitung.md`

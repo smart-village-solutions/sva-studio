@@ -15,30 +15,33 @@ gleichzeitig beeinflussen.
 
 ### Security und Privacy
 
-- Sicherheits- und Datenschutzanforderungen sind als verbindliche Entwicklungsregeln dokumentiert
-- Der Branch enthält aktuell keine produktive Auth-/Session-Implementierung im Code
-- Architektur- und Security-Reviews sind über Agenten-Templates als Governance verankert
+- OIDC Authorization Code Flow mit PKCE
+- Signiertes Login-State-Cookie (HMAC)
+- Session-Cookies: `httpOnly`, `sameSite=lax`, `secure` in Production
+- Optionale Verschlüsselung von Tokens im Redis-Store via `ENCRYPTION_KEY`
+- Redaction sensibler Logfelder im SDK und im OTEL Processor
 
 ### Logging und Observability
 
-- Es existieren Architekturleitlinien in `docs/architecture/logging-architecture.md`
-- Eine produktive OTEL-Pipeline ist in diesem Branch nicht als laufende Implementierung enthalten
-- Observability wird daher als Zielbild dokumentiert, nicht als vollständiger IST-Flow
+- Einheitlicher Server-Logger über `@sva/sdk/server`
+- AsyncLocalStorage für `workspace_id`/request context
+- OTEL Pipeline für Logs + Metrics
+- Label-Whitelist und PII-Blockliste in OTEL/Promtail
 
 ### Fehlerbehandlung und Resilienz
 
-- `@sva/data` gibt bei HTTP-Fehlern klare Fehler zurück (`throw new Error(...)`)
-- Der DataClient nutzt einen TTL-basierten In-Memory-Cache zur Lastreduktion
-- CI-Prüfungen sichern Build-/Test-Basis regelmäßig ab
+- OTEL-Init ist fehlertolerant (App läuft weiter ohne Telemetrie)
+- Redis-Reconnect mit Backoff und Max-Retry Logik
+- Auth-Flow mit klaren Redirect-Fehlerpfaden (`auth=error`, `auth=state-expired`)
 
 ### i18n und Accessibility
 
-- i18n- und A11y-Anforderungen sind in `DEVELOPMENT_RULES.md` und Review-Templates festgelegt
-- Vollständige technische Durchsetzung ist projektweit noch nicht abgeschlossen
+- UI-Texte sind derzeit überwiegend direkt im Code und noch nicht durchgängig i18n-basiert
+- A11y wird pro Review/Template eingefordert, aber noch nicht zentral automatisiert
 
 Referenzen:
 
-- `DEVELOPMENT_RULES.md`
-- `docs/architecture/logging-architecture.md`
-- `packages/data/src/index.ts`
-- `.github/agents/templates/architecture-review.md`
+- `packages/auth/src/routes.server.ts`
+- `packages/auth/src/redis-session.server.ts`
+- `packages/sdk/src/logger/index.server.ts`
+- `packages/monitoring-client/src/otel.server.ts`

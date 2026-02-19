@@ -106,6 +106,7 @@ These rules are **NON-NEGOTIABLE** and must be followed in all development work.
   2. commit (hook runs `pnpm check:file-placement:staged`)
 
 ---
+
 ## 2. Translation System
 
 ### Process for UI Texts
@@ -354,7 +355,7 @@ Before any implementation goes live, verify:
 
 ---
 
-## 7. Documentation
+## 6. Documentation
 
 ### Required Documentation
 
@@ -398,7 +399,7 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
 
 ---
 
-## 8. Branching & PR Workflow
+## 7. Branching & PR Workflow
 
 ### ✅ REQUIRED
 - Create a dedicated branch for every change; never commit directly to main
@@ -407,13 +408,60 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
 - Rebase (or merge) main into your branch before opening a PR to resolve drift early
 - Require green CI and at least one review before merge; prefer squash merges to keep history clean
 
+### Base Branch Decision Tree
+- Frage 1: Ist die geplante Änderung unabhängig von ungemergten Änderungen?
+  - Ja -> neuen Branch von `main` erstellen
+  - Nein -> neuen Branch von dem Branch erstellen, von dem die Änderung fachlich/technisch abhängt
+- Frage 2: Würde der neue Branch ohne den bestehenden Branch nicht sinnvoll builden oder reviewbar sein?
+  - Ja -> vom bestehenden Branch starten (Stack)
+  - Nein -> von `main` starten
+
+### PR Target Rule (Invariant)
+- Invariante: Ein PR zeigt immer auf den Branch, von dem der eigene Branch abgeschnitten wurde.
+- Beispiele:
+  - Basisbranch `main` -> PR-Target `main`
+  - Basisbranch `feature/A` -> PR-Target `feature/A`
+  - Basisbranch `fix/session-timeout` -> PR-Target `fix/session-timeout`
+
+### Stacked Branch Workflow
+- Beispiel-Kette:
+  - `feature/A` basiert auf `main`
+  - `feature/B` basiert auf `feature/A`
+  - `feature/C` basiert auf `feature/B`
+- PR-Reihenfolge:
+  - PR A: `feature/A` -> `main`
+  - PR B: `feature/B` -> `feature/A`
+  - PR C: `feature/C` -> `feature/B`
+- Merge-Reihenfolge:
+  - Erst A, dann B, dann C
+- Retargeting-Regel nach Merge:
+  - Nach Merge von A in `main`: PR B auf `main` umstellen, Branch B mit `main` synchronisieren
+  - Nach Merge von B: PR C auf `main` umstellen, Branch C mit `main` synchronisieren
+  - Wenn ein Vorgänger-PR noch offen ist, bleiben nachfolgende PRs auf den direkten Vorgänger ausgerichtet
+
 ### ❌ FORBIDDEN
 - Mixing unrelated changes in one branch or PR
 - Force-pushing after review without explicit reviewer consent (except to fix CI/rebase conflicts)
+- Branch basiert auf `feature/*` oder `fix/*`, PR zeigt aber direkt auf `main` (falsches Review-Diff)
+- Gemischte Themen in einer Branch-Kette (erschwert Review, erhöht Merge-Risiko)
+- Keine Synchronisierung mit dem Upstream-Branch nach Merge des Vorgängers (veraltete Diffs, unnötige Konflikte)
+
+### Forbidden / Failure Modes (Warum)
+- Falsches PR-Target erzeugt verfälschte Diffs und Review-Rauschen.
+- Themenmix in Stacks macht Rückverfolgung, Testing und Rollback deutlich schwerer.
+- Fehlende Synchronisierung nach Upstream-Merge führt zu vermeidbaren Merge-Konflikten und CI-Instabilität.
+
+### Operational Checklist vor Branch/PR
+- [ ] Ist klar, ob die Änderung unabhängig ist (`main`) oder abhängig (bestehender Branch)?
+- [ ] Wurde der neue Branch vom fachlich korrekten Basisbranch erstellt?
+- [ ] Entspricht das PR-Target exakt dem Basisbranch?
+- [ ] Sind Abhängigkeiten zu Vorgänger-Branches im PR-Text dokumentiert?
+- [ ] Ist bei Stacks die PR-/Merge-Reihenfolge eindeutig festgelegt?
+- [ ] Wurde nach Merge eines Vorgänger-PRs korrekt retargeted und synchronisiert?
 
 ---
 
-## 8.1 Monorepo Module Boundaries (Nx)
+## 8 Monorepo Module Boundaries (Nx)
 
 ### ✅ REQUIRED
 - Projektgrenzen und Layering werden über `@nx/enforce-module-boundaries` technisch erzwungen.
@@ -425,7 +473,52 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
 
 ---
 
-## Translation System Architecture
+## 9. Logging & Observability
+
+### ✅ REQUIRED
+- **Server-Code**: SDK Logger verwenden (`createSdkLogger` aus `@sva/sdk`)
+- **Strukturierte Logs**: Immer mit Context-Feldern (component, operation, error, etc.)
+- **PII-Schutz**: Keine Session-IDs, Tokens, Emails direkt loggen
+- **Component-Labels**: Jeder Logger braucht eindeutigen `component` (z.B. `auth`, `auth-redis`)
+- **Error-Context**: Bei Errors immer `error`, `error_type`, `operation` mitloggen
+
+### ❌ FORBIDDEN
+- `console.log/info/warn/error` in Production-Server-Code
+- Session-IDs, Access-Tokens, Refresh-Tokens in Klartext
+- Unstrukturierte Error-Messages ohne Context
+- Logs ohne `component`-Label
+
+### ✅ APPROVED - Frontend Dev-Only Logs
+Frontend darf `console.*` nutzen, aber:
+- Nur in Development (`if (process.env.NODE_ENV !== 'production')`)
+- Mit strukturierten Feldern `{ component, endpoint, status, error }`
+- Keine PII (User-Email, Session-IDs)
+
+**Backend-Beispiel:**
+```typescript
+import { createSdkLogger } from '@sva/sdk';
+
+const logger = createSdkLogger({ component: 'auth' });
+
+logger.info('Session created', {
+  operation: 'create_session',
+  ttl_seconds: 3600,
+  has_refresh_token: true,
+});
+
+logger.error('Auth failed', {
+  operation: 'login',
+  error: err.message,
+  error_type: err.constructor.name,
+});
+```
+
+**Detaillierte Richtlinien:** [observability-best-practices.md](docs/development/observability-best-practices.md)
+**Logging-Agent:** [.github/agents/logging.agent.md](.github/agents/logging.agent.md)
+
+---
+
+## 10. Translation System Architecture
 
 ### How it works
 1. **Database**: `translations` table stores key-value pairs
@@ -448,7 +541,7 @@ src/
 
 ---
 
-## Translation Key Management
+## 11. Translation Key Management
 
 ### Finding Missing Translation Keys
 
@@ -556,7 +649,7 @@ This script will:
 
 ---
 
-## Design System Architecture
+## 12. Design System Architecture
 
 ### Color System (HSL-based)
 All colors must be defined as CSS variables in HSL format:
@@ -618,7 +711,7 @@ function MyComponent() {
 
 ---
 
-## 9. User Manual Maintenance
+## 13. User Manual Maintenance
 
 ### 🚨 MANDATORY - Keep Documentation Current
 
@@ -697,7 +790,7 @@ These rules are enforced through:
 
 If you're unsure about how to implement something following these rules:
 1. Check existing implementations in the codebase
-2. Review `IMPLEMENTATION.md` for architecture details
+2. Review docs folder for architecture details
 3. Consult this document for the rules
 4. Ask the team for clarification
 

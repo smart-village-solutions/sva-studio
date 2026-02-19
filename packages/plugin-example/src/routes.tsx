@@ -1,10 +1,10 @@
-import { createRoute } from '@tanstack/react-router';
 import type { RootRoute } from '@tanstack/react-router';
+import { createRoute } from '@tanstack/react-router';
 
 const PluginExamplePage = () => {
   return (
-    <div>
-      <h2>Plugin Example</h2>
+    <div className="flex flex-col gap-4">
+      <h2 className="text-2xl font-semibold">Plugin Example</h2>
       <p>Diese Route kommt aus @sva/plugin-example.</p>
     </div>
   );

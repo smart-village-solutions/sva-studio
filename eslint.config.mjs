@@ -14,7 +14,7 @@ export default [
         'error',
         {
           enforceBuildableLibDependency: true,
-          allow: [],
+          allow: ['../../../scripts/ci/coverage-gate.ts'],
           depConstraints: [
             {
               sourceTag: 'scope:core',
@@ -26,7 +26,7 @@ export default [
             },
             {
               sourceTag: 'scope:sdk',
-              onlyDependOnLibsWithTags: ['scope:core', 'scope:data', 'scope:sdk'],
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:data', 'scope:sdk', 'scope:monitoring'],
             },
             {
               sourceTag: 'scope:plugin',
@@ -34,7 +34,13 @@ export default [
             },
             {
               sourceTag: 'scope:app',
-              onlyDependOnLibsWithTags: ['scope:core', 'scope:data', 'scope:sdk', 'scope:plugin'],
+              onlyDependOnLibsWithTags: [
+                'scope:core',
+                'scope:data',
+                'scope:sdk',
+                'scope:plugin',
+                'scope:routing',
+              ],
             },
           ],
         },

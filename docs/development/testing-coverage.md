@@ -13,6 +13,7 @@ Dieses Dokument beschreibt den standardisierten Coverage-Workflow im Nx Monorepo
 
 Jedes Projekt soll folgende Targets bereitstellen:
 
+- `lint`: ausführbarer Qualitäts-Check (kein Platzhalter)
 - `test:unit`: schnelle, stabile Unit-Tests
 - `test:coverage`: Unit-Tests mit Coverage-Reporting
 - `test:integration`: infra-abhängige Tests (z. B. Redis, echte Services)
@@ -77,6 +78,20 @@ Aktuell als coverage-exempt markiert:
 - `plugin-example`
 
 Diese Liste wird schrittweise reduziert, sobald echte Unit-Tests vorhanden sind.
+
+### Reviewer-Workflow für Exemptions
+
+- Prüfen, ob Änderungen ein exemptes Projekt betreffen.
+- Prüfen, ob mindestens `lint` im betroffenen Projekt erfolgreich war.
+- Prüfen, ob angrenzende nicht-exempte Projekte (z. B. `auth`, `sdk`, `monitoring-client`) grüne `test:unit`-Runs haben.
+- Bei funktionalen Änderungen in exempten Projekten: expliziten Test-Nachweis im PR verlangen (mindestens Smoke/Contract-Run), bis die Exemption entfernt ist.
+
+### Aktueller Status nicht-exempter Unit-Targets
+
+- `auth`: echter `test:unit`-Run via Vitest
+- `sdk`: echter `test:unit`-Run via Vitest
+- `monitoring-client`: echter `test:unit`-Run via Vitest
+- `sva-studio-react`: echter `test:unit`-Run via Vitest (`--passWithNoTests`)
 
 ## PR-Checkliste
 

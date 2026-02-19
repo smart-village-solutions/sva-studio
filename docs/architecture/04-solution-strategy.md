@@ -16,8 +16,9 @@ Architekturprinzipien auf IST-Basis.
 ### Leitprinzipien
 
 - Monorepo mit klaren Paketgrenzen und Workspace-Abhängigkeiten (`workspace:*`)
-- Framework-agnostische Kernlogik in `@sva/core`, Integration in der App-Ebene
-- Route-Komposition über Factory-Pattern (`mergeRouteFactories`, `buildRouteTree`)
+- Framework-agnostische Kernlogik in `@sva/core`, Integration in App-Ebene
+- Trennung von client-sicheren und serverseitigen Routen/Handlern
+- Observability über OTEL-Standards statt vendor-spezifischer App-Anbindung
 - Doku-getriebene Architekturpflege (arc42 + OpenSpec + ADR)
 
 ### Architekturtreiber
@@ -25,21 +26,24 @@ Architekturprinzipien auf IST-Basis.
 - Hohe Typsicherheit und Wartbarkeit bei wachsender Modulanzahl
 - Erweiterbarkeit durch Plugins und zentrale Route-Registry
 - Reproduzierbarkeit über standardisierte Nx-/pnpm-Workflows
+- Betriebsfaehigkeit mit strukturierter Telemetrie
+- Security/Privacy-Anforderungen an Auth und Logging
 
 ### Zielkonflikte (aktuell sichtbar)
 
 - Hohe Flexibilität (code-based + file-based Routing) vs. Komplexität
-- Schneller Dev-Flow vs. Governance-Anforderungen in CI
-- Multi-Tooling (Nx, TanStack, pnpm) vs. Einarbeitungsaufwand
+- Schneller Dev-Flow vs. strenge Security-/PII-Kontrollen
+- Multi-Tooling (Nx, TanStack, OTEL) vs. Einarbeitungsaufwand
 
 ### Strategische Entscheidungen (Auswahl)
 
 - Frontend-Framework: `ADR-001`
 - Plugin-Architektur: `ADR-002`
-- Design-Token-Architektur: `ADR-003`
+- Monitoring-Stack: `ADR-004`
+- Logging-Pipeline und Label-Policy: `ADR-006`, `ADR-007`
 
 Referenzen:
 
 - `./decisions/ADR-001-frontend-framework-selection.md`
 - `./decisions/ADR-002-plugin-architecture-pattern.md`
-- `./decisions/ADR-003-design-token-architecture.md`
+- `./decisions/ADR-004-monitoring-stack-loki-grafana-prometheus.md`

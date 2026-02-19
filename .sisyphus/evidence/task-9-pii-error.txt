@@ -1,0 +1,6 @@
+Scenario: PII leak prevention negative test
+Result: PASS
+- sanitization_required_present: PASS
+- anonymization_or_sanitization_rule_present: PASS
+- violation_response_defined: PASS
+Expected Result: PII leakage path is blocked by policy

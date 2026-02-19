@@ -1,0 +1,8 @@
+PASS
+Szenario: PR close destroys preview
+Pruefung: Event `closed` mappt auf `DESTROY_AND_CLEANUP` inkl. Ressourcen- und Metadaten-Cleanup.
+Nachweis:
+- Mapping vorhanden: `closed -> DESTROY_AND_CLEANUP`
+- Cleanup umfasst Compute, Storage, DNS, GitHub Deployment-Objekte und Metadata.
+- Zombie-Prevention vorhanden: taeglicher Sweep-Job im 24h-Takt fuer verwaiste Ressourcen.
+Quelle: docs/governance/preview-lifecycle-policy.md

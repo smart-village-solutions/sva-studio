@@ -1,0 +1,16 @@
+PASS
+
+Scenario: Merge queue failure handling
+Policy-Datei: docs/governance/branch-protection-merge-queue-policy.md
+
+Validierte Kriterien:
+- Flaky check: Retry 2x, danach Eject
+- Failed check: sofortiger Eject
+- Timeout: 30 Minuten maximale Queue-Zeit, danach Eject
+- Eskalation: Owner-Benachrichtigung innerhalb von 15 Minuten nach Eject
+
+Bash-Validierung (grep):
+- Treffer fuer "Automatischer Retry bis zu `2` Mal."
+- Treffer fuer "Sofortiger Eject ohne Retry."
+- Treffer fuer "Maximale Queue-Zeit pro PR: `30` Minuten."
+- Treffer fuer "innerhalb von `15` Minuten"

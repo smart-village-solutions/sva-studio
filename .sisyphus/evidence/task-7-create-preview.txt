@@ -1,0 +1,7 @@
+PASS
+Szenario: PR open creates preview path
+Pruefung: Event `opened` mappt auf `CREATE_AND_PUBLISH` und definiert URL-Publishing.
+Nachweis:
+- Mapping vorhanden: `opened -> CREATE_AND_PUBLISH`
+- URL-Publishing klar dokumentiert ueber Deployment API, Status Check und sticky PR-Kommentar.
+Quelle: docs/governance/preview-lifecycle-policy.md

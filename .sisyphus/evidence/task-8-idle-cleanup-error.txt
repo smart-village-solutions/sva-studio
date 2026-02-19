@@ -1,0 +1,90 @@
+# QA Scenario 2: Idle Preview Cleanup Failure Path
+# =================================================
+
+## Test: Validate inactivity timeout is numeric
+
+SEARCH PATTERN: "Inaktivitäts-Timeout|Stale-Schwelle|Auto-Destroy-Schwelle"
+TARGET FILE: docs/governance/preview-cost-capacity-guardrails.md
+
+RESULT:
+✅ PASS - Found numeric timeout values:
+   Line: "- **Stale-Schwelle**: `7 Tage` ohne neue Commits"
+   Line: "- **Auto-Destroy-Schwelle**: `14 Tage` ohne Commits"
+   
+VALIDATION:
+- Stale threshold numeric: YES (7 days)
+- Destroy threshold numeric: YES (14 days)
+- Trigger conditions clear: YES ("ohne neue Commits")
+- Lifecycle documented: YES (Tag 0-6 → Tag 7 → Tag 14)
+
+ADDITIONAL CHECKS:
+- Opt-out mechanism: YES (/preview keep command, max 2x extensions = 42 days total)
+- GitHub automation: YES (labels, comments at each stage)
+
+---
+
+## Test: Validate failure handling (retry/escalation)
+
+SEARCH PATTERN: "Fehlerbehandlung|Cleanup-Job schlägt fehl|Retry"
+TARGET FILE: docs/governance/preview-cost-capacity-guardrails.md
+
+RESULT:
+✅ PASS - Found comprehensive failure handling:
+   Section: "### Fehlerbehandlung"
+   
+VALIDATION:
+- Retry logic: YES (3 attempts, 5 minute intervals)
+- Escalation trigger: YES (after 3 failed retries)
+- Incident logging: YES (Prometheus Alert: PreviewCleanupFailed)
+- Notification channels: YES (Slack #preview-ops + PagerDuty)
+- SLA defined: YES (SRE team 24h manual cleanup)
+
+FAILURE PATH VERIFIED:
+1. Cleanup fails (API error, network timeout, etc.)
+2. Retry 3x with 5min intervals
+3. After 3 failures:
+   - Prometheus alert: PreviewCleanupFailed
+   - AlertManager → Slack + PagerDuty (severity:critical)
+   - GitHub label: cleanup:failed
+   - PR comment with incident notice
+   - Escalation: SRE team 24h SLA
+
+SUCCESS PATH VERIFIED:
+- Cleanup succeeds → GitHub label preview:destroyed
+- PR comment with confirmation
+- Prometheus metric: preview_cleanup_duration_seconds
+
+---
+
+## Additional Verification: Alert Configuration
+
+SEARCH PATTERN: "PreviewCleanupFailed"
+TARGET FILE: docs/governance/preview-cost-capacity-guardrails.md
+
+RESULT:
+✅ PASS - Found Prometheus alert rule:
+   Section: "### Alerts"
+   
+ALERT DEFINITION:
+- Name: PreviewCleanupFailed
+- Trigger: increase(preview_cleanup_failures_total[5m]) > 0
+- Duration: 5m
+- Severity: critical
+- Summary: "Preview-Cleanup fehlgeschlagen"
+- Description: "Manuelle Intervention erforderlich (SLA: 24h)"
+
+---
+
+## Summary
+
+✅ SCENARIO 2: PASS
+
+All requirements met:
+- Inactivity timeout is numeric: YES (7 days stale, 14 days destroy)
+- Failure handling defined: YES (3x retry → escalation)
+- Retry logic: YES (5 minute intervals)
+- Escalation path: YES (Prometheus → AlertManager → Slack/PagerDuty → SRE 24h SLA)
+- Success path: YES (labels, comments, metrics)
+- Monitoring integration: YES (PreviewCleanupFailed alert)
+
+Evidence Date: 2026-02-19T18:00:00Z

@@ -1,0 +1,30 @@
+{
+  "task": "T10 - Branch-Protection- und Merge-Queue-Policy finalisieren",
+  "scenario": "Branch protection rule set completeness",
+  "repository": "smart-village-solutions/sva-studio",
+  "timestamp_utc": "2026-02-19T17:36:45Z",
+  "attempted_command": "gh api repos/smart-village-solutions/sva-studio/branches/main/protection",
+  "command_result": {
+    "success": false,
+    "stderr": "zsh:1: command not found: gh"
+  },
+  "policy_expected": {
+    "required_checks": [
+      "Lint / lint",
+      "Unit / unit",
+      "Types / types",
+      "Test Coverage / coverage",
+      "App E2E / e2e"
+    ],
+    "required_reviews": {
+      "standard_paths": 1,
+      "critical_paths": 2
+    }
+  },
+  "comparison": {
+    "actual_branch_protection": null,
+    "result": "DOCUMENTED_DELTA",
+    "gap": "GitHub CLI ('gh') ist in der Ausfuehrungsumgebung nicht verfuegbar; Ist-Konfiguration konnte nicht automatisiert abgefragt werden.",
+    "baseline_note": "Dieses Dokument dient als Policy-Baseline bis zur technischen Konfiguration/Validierung in GitHub."
+  }
+}

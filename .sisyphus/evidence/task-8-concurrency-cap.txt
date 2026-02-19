@@ -1,0 +1,54 @@
+# QA Scenario 1: Preview Concurrency Guardrail
+# =============================================
+
+## Test: Verify max active previews value exists
+
+SEARCH PATTERN: "max_active_previews"
+TARGET FILE: docs/governance/preview-cost-capacity-guardrails.md
+
+RESULT:
+✅ PASS - Found numeric value definition:
+   Line: "**Pilot-Phase (erste 90 Tage): 10 aktive Previews**"
+   Line: "- `max_active_previews`: `10`"
+   
+VALIDATION:
+- Value is numeric: YES (10)
+- Value is measurable: YES (hard limit, not qualitative)
+- Scope defined: YES ("Pro Workspace ... andernfalls global pro Repository")
+
+---
+
+## Test: Verify over-cap behavior defined
+
+SEARCH PATTERN: "Verhalten bei Überschreitung"
+TARGET FILE: docs/governance/preview-cost-capacity-guardrails.md
+
+RESULT:
+✅ PASS - Found detailed over-capacity behavior:
+   Section: "### Verhalten bei Überschreitung"
+   
+VALIDATION:
+- Priority-based scheduling: YES (priority:high vs priority:default)
+- Queue mechanism: YES (max 5 slots, FIFO)
+- Rejection handling: YES (GitHub comment with wait time)
+- Deterministic rules: YES (numeric triggers, no "sometimes")
+
+SPECIFIC BEHAVIORS VERIFIED:
+1. priority:high → immediate provisioning (destroy oldest priority:default)
+2. priority:default + over-cap → queue (max 5 slots)
+3. Queue overflow → GitHub comment with position/wait time
+4. Priority budget enforced: 2 labels per team per week
+
+---
+
+## Summary
+
+✅ SCENARIO 1: PASS
+
+All requirements met:
+- Max active previews value exists: 10 (numeric)
+- Over-cap behavior defined: Yes (priority-based + queue + rejection)
+- Platform-neutral: Yes (works for Vercel and self-hosted)
+- Operational: Yes (measurable triggers, no vague terms)
+
+Evidence Date: 2026-02-19T18:00:00Z

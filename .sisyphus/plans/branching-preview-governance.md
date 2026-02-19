@@ -512,7 +512,7 @@ Max Concurrent: 5 (Wave 1/2)
     Evidence: .sisyphus/evidence/task-6-tie-breaker-error.txt
   ```
 
-- [ ] 7. Preview-Lifecycle-Policy (Create/Update/Destroy) definieren
+- [x] 7. Preview-Lifecycle-Policy (Create/Update/Destroy) definieren
 
   **What to do**:
   - Trigger für PR opened/synchronize/closed definieren.
@@ -567,7 +567,7 @@ Max Concurrent: 5 (Wave 1/2)
     Evidence: .sisyphus/evidence/task-7-destroy-preview-error.txt
   ```
 
-- [ ] 8. Kosten- und Kapazitätsleitplanken für Previews festlegen
+- [x] 8. Kosten- und Kapazitätsleitplanken für Previews festlegen
 
   **What to do**:
   - Concurrent-Preview-Limit, Inaktivitäts-Timeout und Budget-Cap definieren.
@@ -622,7 +622,7 @@ Max Concurrent: 5 (Wave 1/2)
     Evidence: .sisyphus/evidence/task-8-idle-cleanup-error.txt
   ```
 
-- [ ] 9. Security- und Compliance-Leitplanken fuer Preview-Umgebungen definieren
+- [x] 9. Security- und Compliance-Leitplanken fuer Preview-Umgebungen definieren
 
   **What to do**:
   - Regeln fuer Secret-Handling, Zugriffsschutz, PII-Schutz und Datenquellen in Preview festlegen.
@@ -677,7 +677,7 @@ Max Concurrent: 5 (Wave 1/2)
     Evidence: .sisyphus/evidence/task-9-pii-error.txt
   ```
 
-- [ ] 10. Branch-Protection- und Merge-Queue-Policy finalisieren
+- [x] 10. Branch-Protection- und Merge-Queue-Policy finalisieren
 
   **What to do**:
   - Definieren, welche Branch-Protection-Regeln verpflichtend sind.

@@ -732,7 +732,7 @@ Max Concurrent: 5 (Wave 1/2)
     Evidence: .sisyphus/evidence/task-10-merge-queue-error.txt
   ```
 
-- [ ] 11. Rollout-Plan (Pilot -> Enforcement -> Standard) erstellen
+- [x] 11. Rollout-Plan (Pilot -> Enforcement -> Standard) erstellen
 
   **What to do**:
   - Phasen mit Eintritts-/Exit-Kriterien und Verantwortlichen definieren.

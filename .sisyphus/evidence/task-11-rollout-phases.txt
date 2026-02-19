@@ -1,0 +1,16 @@
+CHECK: Pilot phase exists
+RESULT: PASS (line 21: "## Phase 1: Pilot (Validierung)")
+CHECK: Transition phase exists
+RESULT: PASS (line 38: "## Phase 2: Transition (Onboarding)")
+CHECK: Enforcement phase exists
+RESULT: PASS (line 55: "## Phase 3: Enforcement (Durchsetzung)")
+CHECK: Standard phase exists
+RESULT: PASS (line 70: "## Phase 4: Standard (Optimierung)")
+CHECK: All phases have KPIs and Rollback Triggers
+RESULT: PASS (verified via grep)
+- Phase 1 KPIs: PR Cycle Time, Queue Eject Rate
+- Phase 2 KPIs: Preview-Adoption, Security-Compliance
+- Phase 3 KPIs: CI Green Rate, Unused Previews
+- Phase 4 KPIs: MTTR, Kosten-Effizienz
+- Rollback triggers defined for all active phases.
+VERIFIED: T11 Rollout Plan structure complete.

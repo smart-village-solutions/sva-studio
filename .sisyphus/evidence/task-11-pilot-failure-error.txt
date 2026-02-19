@@ -1,0 +1,5 @@
+CONDITION: Halting rollout on quality regression
+RESULT: PASS (line 34: "broken-main Vorfälle > 3 innerhalb von 7 Tagen", line 51: "Queue Eject Rate > 20 % über einen Zeitraum von 3 aufeinanderfolgenden Tagen")
+CONDITION: Fallback path to previous branch policy
+RESULT: PASS (line 82: "## Fallback-Strategie", line 85: "Deaktivierung der Merge-Queue: Rückkehr zum klassischen 'Merge nach Review'-Modell")
+VERIFIED: T11 Fallback and quality regression handling documented.

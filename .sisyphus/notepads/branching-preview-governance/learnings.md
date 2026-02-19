@@ -109,3 +109,13 @@
 - Fehlerpfade muessen numerisch fixiert sein (Retry `2x`, Timeout `30` Minuten, Eskalation `15` Minuten), sonst bleibt Queue-Verhalten interpretierbar.
 - Bypass-Regeln sind nur governance-tauglich, wenn sie auf P0/P1 begrenzt sind und immer eine Incident-Issue-Referenz plus PR-Audit-Kommentar erzwingen.
 - Wenn `gh` in der Ausfuehrungsumgebung fehlt, muss die Delta-Luecke explizit als Baseline-Nachweis dokumentiert werden statt stillschweigend als "PASS" zu markieren.
+
+## Task 11 Learnings (2026-02-19)
+
+- Rollout-Phasen (Pilot, Transition, Enforcement, Standard) funktionieren nur mit harten Exit-Kriterien und numerischen KPIs (`Cycle Time < 48h`, `Queue Eject < 10%`), sonst verwaessert der Prozess.
+- Ein Fallback-Pfad muss technisch konkret sein (z.B. Deaktivierung der Merge-Queue, Umstellung Hooks auf Warnung), um bei Regressionen sofort handlungsfaehig zu sein.
+- Die Akzeptanz steigt durch "Escape Hatches" fuer P0/Hotfixes, sofern diese einen Audit-Trail (Incident-Ref) erzwingen.
+- Risiko-Minimierung erfordert explizite Onboarding-Workshops und Monitoring-Dashboards, bevor die Transition-Phase startet.
+- Evidence:
+  - `./.sisyphus/evidence/task-11-rollout-phases.txt`
+  - `./.sisyphus/evidence/task-11-pilot-failure-error.txt`

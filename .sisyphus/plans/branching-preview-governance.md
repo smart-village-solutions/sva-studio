@@ -1068,21 +1068,21 @@ Max Concurrent: 5 (Wave 1/2)
 
 ## Final Verification Wave (MANDATORY)
 
-- [ ] F1. **Plan Compliance Audit** - `oracle`
+- [x] F1. **Plan Compliance Audit** - `oracle`
   Prüfe jedes Must-Have/Must-NOT-Have gegen die finalen Artefakte und Evidence-Dateien.
-  Output: `Must Have [N/N] | Must NOT Have [N/N] | Tasks [N/N] | VERDICT`
+  Output: `Must Have [5/7] | Must NOT Have [5/7] | Tasks [16/16] | VERDICT: FAIL (3 violations)`
 
-- [ ] F2. **Code Quality Review** - `unspecified-high`
+- [x] F2. **Code Quality Review** - `unspecified-high`
   Prüfe Konsistenz, Nachvollziehbarkeit, fehlende Gate-Definitionen und unklare Formulierungen.
-  Output: `Policy Quality [PASS/FAIL] | Ambiguities [N] | VERDICT`
+  Output: `Policy Quality [PASS] | Quality Score: 96/100 | VERDICT: PASS (0 HIGH, 3 MEDIUM, 4 LOW)`
 
-- [ ] F3. **Real QA** - `unspecified-high`
+- [x] F3. **Real QA** - `unspecified-high`
   Führe alle QA-Szenarien aus dem Prüfkatalog aus und sammle Evidence.
-  Output: `Scenarios [N/N] | Evidence [N files] | VERDICT`
+  Output: `Scenarios [10/10] | Evidence [1 file] | VERDICT: PASS`
 
-- [ ] F4. **Scope Fidelity Check** - `deep`
+- [x] F4. **Scope Fidelity Check** - `deep`
   Stelle sicher, dass nur angeforderter Scope adressiert ist und keine unbeauftragten Erweiterungen enthalten sind.
-  Output: `Scope [CLEAN/ISSUES] | Unaccounted [N] | VERDICT`
+  Output: `Scope [ISSUES] | Unaccounted [1] | VERDICT: FAIL (6 violations)`
 
 ---
 

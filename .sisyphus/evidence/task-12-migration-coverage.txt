@@ -1,0 +1,11 @@
+CHECK: New work rules present
+10:1. **Neue Arbeit:** Alle ab sofort (Beginn Phase 2) startenden Aufgaben müssen zwingend der neuen [Branch-Taxonomie](./branch-taxonomy.md) und den [Stacked-PR-Regeln](./stacked-pr-rules.md) folgen.
+25:## 3. Regeln für neue Arbeit (ab Phase 2)
+RESULT: PASS
+
+CHECK: Existing work rules present
+11:2. **Bestehende Arbeit:** Offene Pull Requests und laufende Branches, die vor Beginn der Phase 2 erstellt wurden, genießen einen begrenzten Bestandsschutz ("Grandfathering").
+15:## 2. Handhabung bestehender Arbeit (Open PRs)
+19:- **Bestandsschutz:** Bestehende PRs dürfen gegen ihre ursprünglichen Targets (z. B. `develop`) weitergeführt werden, bis sie gemerged oder geschlossen sind.
+RESULT: PASS
+VERIFIED: Migration covers both new and existing work

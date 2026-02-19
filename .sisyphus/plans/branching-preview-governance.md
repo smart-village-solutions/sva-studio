@@ -787,7 +787,7 @@ Max Concurrent: 5 (Wave 1/2)
     Evidence: .sisyphus/evidence/task-11-pilot-failure-error.txt
   ```
 
-- [ ] 12. Migrationspfad auf Trunk+Stacked definieren
+- [x] 12. Migrationspfad auf Trunk+Stacked definieren
 
   **What to do**:
   - Schrittfolge fuer Ablösung von develop-zentrierten Gewohnheiten dokumentieren.
@@ -842,7 +842,7 @@ Max Concurrent: 5 (Wave 1/2)
     Evidence: .sisyphus/evidence/task-12-cutover-error.txt
   ```
 
-- [ ] 13. Broken-Main- und Hotfix-SOP spezifizieren
+- [x] 13. Broken-Main- und Hotfix-SOP spezifizieren
 
   **What to do**:
   - Standardablauf bei rotem `main` definieren (Owner, Revert/Forward-Fix, Zeitgrenzen).
@@ -897,7 +897,7 @@ Max Concurrent: 5 (Wave 1/2)
     Evidence: .sisyphus/evidence/task-13-hotfix-audit-error.txt
   ```
 
-- [ ] 14. KPI- und Monitoring-Modell fuer Governance-Erfolg definieren
+- [x] 14. KPI- und Monitoring-Modell fuer Governance-Erfolg definieren
 
   **What to do**:
   - KPI-Set fuer Merge-Zeit, Konfliktrate, Queue-Stabilitaet, Preview-Kosten und Branch-Staleness festlegen.

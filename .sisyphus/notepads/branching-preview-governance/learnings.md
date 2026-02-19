@@ -119,3 +119,47 @@
 - Evidence:
   - `./.sisyphus/evidence/task-11-rollout-phases.txt`
   - `./.sisyphus/evidence/task-11-pilot-failure-error.txt`
+
+## Task 12 Learnings (2026-02-19)
+
+- Migrationspfade bleiben nur dann stabil, wenn sie **inkrementell** (Dual-Handling) angelegt sind und bestehende Arbeit nicht sofort zum Umbruch zwingen ("Grandfathering").
+- Eine **numerische Cutover-Deadline** (z. B. 30 Tage nach Eintritt in Phase 2) ist zwingend erforderlich, um ein dauerhaftes Auseinanderdriften der Workflows zu verhindern.
+- Ein **mehrstufiger Eskalationspfad** (Warnung -> Merge-Block -> Zwangs-Migration -> Archivierung) ist notwendig, um Altlasten nach der Deadline systematisch abzubauen.
+- Die **technische Hook-Migration** (-Präfix) muss zwingend zu Beginn der Transition-Phase erfolgen, da sonst die neue Governance lokal blockiert wird.
+- "Trunk-first" erfordert die **explizite Deaktivierung** des alten Integrations-Branches () für neue Aufgaben ab Tag 1 der Umstellung.
+- Evidence:
+  - `./.sisyphus/evidence/task-12-migration-coverage.txt`
+  - `./.sisyphus/evidence/task-12-cutover-error.txt`
+
+## Task 14 Learnings (2026-02-19T20:30Z)
+
+- KPI-Governance bleibt nur belastbar, wenn jede Kennzahl strikt sieben Pflichtfelder hat: Definition, Formel, Quelle, Zielwert, Alert-Schwelle, Owner und Erhebungsrhythmus.
+- Fuer Merge/Queue-Metriken ist die Kombination aus GitHub API (PR-/Run-Daten) und Prometheus-Aggregation im Monorepo robuster als nur eine Datenquelle.
+- Preview-Kosten sollten zweistufig gesteuert werden (Monatsbudget + Kosten pro Preview-Tag), damit absolute Budgettreue und Effizienz gleichzeitig sichtbar sind.
+- Branch-Staleness braucht eine TTL-basierte Formel pro Branch-Typ; nur Branch-Alter ohne Policy-Mapping fuehrt zu unklaren Eskalationen.
+- Eskalationslogik wird operational erst mit konsequenten Stufen (`8h/24h/48h`) und einem klaren Trigger fuer Emergency-Governance-Review bei mehreren roten KPIs.
+- Evidence:
+  - `./.sisyphus/evidence/task-14-kpi-integrity.txt`
+  - `./.sisyphus/evidence/task-14-kpi-source-error.txt`
+
+## Task 13 Learnings (2026-02-19T17:50Z)
+
+- Broken-Main-Prozesse sind nur dann deterministic, wenn die Kette explizit als `Detection -> Owner -> Mitigation -> Verification` mit festen Minutenbudgets modelliert ist.
+- Revert-first bleibt nur belastbar, wenn Forward-Fix als echter Ausnahmepfad mit harten Vorbedingungen formuliert wird (Maintainer-Freigabe + `time_to_fix < time_to_revert`).
+- Eine 30-Minuten-SLA braucht eine numerische Eskalationsleiter (`L1 15m`, `L2 +15m`, `L3 ab Minute 30`) mit klarer Rollenübergabe.
+- Hotfix-Escape-Hatches sind mit Trunk- und Protection-Regeln kompatibel, wenn Bypass strikt auf `P0/P1` begrenzt ist und Incident-Issue + PR-Audit-Kommentar verpflichtend bleiben.
+- Für Governance-Audits sind explizite Follow-up-Fristen nach Emergency-Merge wichtig (`48h` Incident-Review, `5` Arbeitstage Retrospektive).
+- Evidence:
+  - `./.sisyphus/evidence/task-13-broken-main-sop.txt`
+  - `./.sisyphus/evidence/task-13-hotfix-audit-error.txt`
+
+## Task 12 Learnings (2026-02-19)
+
+- Migrationspfade bleiben nur dann stabil, wenn sie **inkrementell** (Dual-Handling) angelegt sind und bestehende Arbeit nicht sofort zum Umbruch zwingen ("Grandfathering").
+- Eine **numerische Cutover-Deadline** (z. B. 30 Tage nach Eintritt in Phase 2) ist zwingend erforderlich, um ein dauerhaftes Auseinanderdriften der Workflows zu verhindern.
+- Ein **mehrstufiger Eskalationspfad** (Warnung -> Merge-Block -> Zwangs-Migration -> Archivierung) ist notwendig, um Altlasten nach der Deadline systematisch abzubauen.
+- Die **technische Hook-Migration** (`stack/`-Präfix) muss zwingend zu Beginn der Transition-Phase erfolgen, da sonst die neue Governance lokal blockiert wird.
+- "Trunk-first" erfordert die **explizite Deaktivierung** des alten Integrations-Branches (`develop`) für neue Aufgaben ab Tag 1 der Umstellung.
+- Evidence:
+  - `./.sisyphus/evidence/task-12-migration-coverage.txt`
+  - `./.sisyphus/evidence/task-12-cutover-error.txt`

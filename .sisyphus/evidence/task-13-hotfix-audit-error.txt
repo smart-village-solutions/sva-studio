@@ -1,0 +1,7 @@
+CHECK: Bypass-Bedingungen auf P0/P1 begrenzt
+RESULT: PASS (line 15: "Bypass-Grenze: Nur bei P0/P1-Produktionsvorfällen"; line 92: "Vorfall ist als P0 oder P1 klassifiziert"; line 39: "nur bei P0/P1: kontrollierter Bypass")
+VERIFIED: Emergency-Bypass ist explizit auf P0/P1 eingeschränkt und nicht allgemein freigegeben.
+
+CHECK: Audit-Pflichten für Bypass/Hotfix sind verpflichtend
+RESULT: PASS (line 93: "Incident-Issue ist vorhanden und im PR verlinkt"; line 94: "PR-Kommentar enthält Begründung, Risikoabschätzung und freigebende Rolle"; line 101: "Audit-Trail ... muss vollständig sein"; line 99-100: "Incident-Review innerhalb von 48 Stunden" und "Retrospektive ... innerhalb von 5 Arbeitstagen")
+VERIFIED: Audit-Trail und Nachverfolgung sind als Muss-Kriterien mit Fristen definiert.

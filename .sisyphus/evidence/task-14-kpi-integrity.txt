@@ -1,0 +1,7 @@
+CHECK: Alle 5 erforderlichen KPI-Domaenen vorhanden (Merge-Zeit, Konfliktrate, Queue-Stabilitaet, Preview-Kosten, Branch-Staleness)
+RESULT: PASS (line 24: "### KPI 1: Merge-Zeit (PR Open -> Merge)", line 34: "### KPI 2: Konfliktrate", line 47: "### KPI 3: Queue-Stabilität (Eject-Rate)", line 59: "### KPI 4: Preview-Kosten", line 77: "### KPI 5: Branch-Staleness")
+VERIFIED: Alle geforderten KPI-Bereiche sind in `docs/governance/kpi-monitoring-model.md` enthalten.
+
+CHECK: Pflichtfelder fuer KPI-Operationalisierung vorhanden (Formel/Quelle/Ziel/Schwelle)
+RESULT: PASS (`grep -E "Formel|Formula|Source|Quelle|Target|Ziel|Threshold|Schwelle" | wc -l` => 28, erwartet >= 20)
+VERIFIED: Jede KPI-Sektion enthaelt die notwendigen Pflichtmarker fuer Berechnung und Eskalation.

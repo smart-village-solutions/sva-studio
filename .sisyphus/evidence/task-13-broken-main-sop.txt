@@ -1,0 +1,7 @@
+CHECK: 4-Step-Runbook vorhanden (Detection -> Owner -> Mitigation -> Verification)
+RESULT: PASS (line 22: "| 1. Detection | 5 Minuten | ..."; line 23: "| 2. Owner-Übernahme | 10 Minuten | ..."; line 24: "| 3. Mitigation | 25 Minuten | ..."; line 25: "| 4. Verification | 30 Minuten | ...")
+VERIFIED: Deterministische Reaktionskette mit Verantwortlichkeit und Nachweis pro Schritt ist dokumentiert.
+
+CHECK: Numerische Zeitbudgets je Schritt vorhanden
+RESULT: PASS (line 22: "Detection | 5 Minuten"; line 23: "Owner-Übernahme | 10 Minuten"; line 24: "Mitigation | 25 Minuten"; line 25: "Verification | 30 Minuten"; line 37-39: "15 Minuten / weitere 15 Minuten / Minute 30")
+VERIFIED: Alle Kernschritte und Eskalationsstufen enthalten explizite Minutenwerte statt qualitativer Aussagen.

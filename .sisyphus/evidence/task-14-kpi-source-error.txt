@@ -1,0 +1,7 @@
+CHECK: Negativtest auf KPI-Abschnitte ohne Messquelle (`grep -A 10 -i "^###|^##.*KPI" ... | grep -v "Source|Quelle"`)
+RESULT: PASS (keine verbleibenden Treffer fuer fehlende Quellmarker in KPI-Naehe)
+VERIFIED: KPI-Eintraege ohne Messquelle werden durch den Check als unzulaessig erkennbar; im aktuellen Dokument fehlt keine Messquelle.
+
+CHECK: Positive Messquellen-Abdeckung (GitHub API, Prometheus, Git, Billing API)
+RESULT: PASS (`grep -Ei "github.*api|prometheus|git|billing.*api" ... | wc -l` => 16, erwartet >= 5)
+VERIFIED: Alle KPI-Domaenen sind an reale, messbare Datenquellen angebunden.

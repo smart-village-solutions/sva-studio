@@ -1,0 +1,16 @@
+CHECK: Explicit cutoff date or condition (numeric)
+20:- **Keine Pflicht-Umbenennung:** Eine manuelle Umbenennung bestehender Branches auf das neue Präfix-Schema (z. B. `stack/`) ist nicht erforderlich, wird aber empfohlen, falls der PR voraussichtlich länger als 7 Tage offen bleibt.
+40:- **Cutover-Datum:** **30 Tage nach Eintritt in Phase 2** (Onboarding).
+42:- **Deaktivierung:** Der Branch `develop` wird 14 Tage nach dem Cutover-Datum (T+44) archiviert oder gelöscht, sofern alle relevanten Änderungen in `main` integriert sind.
+50:1. **Warnung (T-7 Tage vor Deadline):** Automatisierter Kommentar in allen PRs, die noch auf `develop` zeigen, mit Aufforderung zum Retargeting auf `main`.
+52:3. **Zwangs-Migration (T+7 Tage nach Deadline):** Maintainer führen ein Force-Retargeting auf `main` durch. Entstehende Konflikte müssen vom Autor innerhalb von 48 Stunden gelöst werden.
+53:4. **Archivierung (T+14 Tage nach Deadline):** Stale PRs im alten Modell, die nicht migriert wurden, werden mit dem Hinweis "Workflow Deprecated" geschlossen.
+RESULT: PASS
+
+CHECK: Escalation path defined
+46:## 5. Eskalationspfad bei Altlasten
+50:1. **Warnung (T-7 Tage vor Deadline):** Automatisierter Kommentar in allen PRs, die noch auf `develop` zeigen, mit Aufforderung zum Retargeting auf `main`.
+51:2. **Merge-Block (T+0):** Die Merge-Berechtigung für PRs gegen `develop` wird entzogen.
+53:4. **Archivierung (T+14 Tage nach Deadline):** Stale PRs im alten Modell, die nicht migriert wurden, werden mit dem Hinweis "Workflow Deprecated" geschlossen.
+RESULT: PASS
+VERIFIED: Cutover deadline and escalation path defined

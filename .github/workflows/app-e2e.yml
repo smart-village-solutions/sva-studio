@@ -16,9 +16,19 @@ on:
       - main
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   e2e:
     runs-on: ubuntu-latest
+    env:
+      SVA_AUTH_ISSUER: https://accounts.google.com
+      SVA_AUTH_CLIENT_ID: gha-e2e-client
+      SVA_AUTH_CLIENT_SECRET: gha-e2e-secret
+      SVA_AUTH_REDIRECT_URI: http://localhost:3000/auth/callback
+      SVA_AUTH_POST_LOGOUT_REDIRECT_URI: http://localhost:3000/
+      REDIS_URL: redis://127.0.0.1:6379
 
     steps:
       - name: Checkout
@@ -41,23 +51,27 @@ jobs:
       - name: Install Playwright browser
         run: pnpm --filter sva-studio-react exec playwright install --with-deps chromium
 
-      - name: Generate Redis TLS material for CI
+      - name: Start Redis for E2E
         run: |
-          mkdir -p dev/redis-tls
-          if [ ! -f dev/redis-tls/ca.pem ] || [ ! -f dev/redis-tls/redis-key.pem ] || [ ! -f dev/redis-tls/redis.pem ]; then
-            openssl genrsa -out dev/redis-tls/ca-key.pem 2048
-            openssl req -new -x509 -days 3650 -key dev/redis-tls/ca-key.pem -subj "/CN=sva-redis-ca" -out dev/redis-tls/ca.pem
-            openssl genrsa -out dev/redis-tls/redis-key.pem 2048
-            openssl req -new -key dev/redis-tls/redis-key.pem -subj "/CN=localhost" -out dev/redis-tls/redis.csr
-            cat > dev/redis-tls/redis.ext <<'EOF'
-          subjectAltName=DNS:localhost,IP:127.0.0.1
-          extendedKeyUsage=serverAuth
-          EOF
-            openssl x509 -req -days 3650 -in dev/redis-tls/redis.csr -CA dev/redis-tls/ca.pem -CAkey dev/redis-tls/ca-key.pem -CAcreateserial -extfile dev/redis-tls/redis.ext -out dev/redis-tls/redis.pem
-          fi
+          docker run -d --name sva-studio-redis-e2e -p 6379:6379 redis:7-alpine
 
       - name: Start required services
-        run: docker compose -f docker-compose.yml -f docker-compose.monitoring.yml up -d redis loki otel-collector promtail
+        run: docker compose -f docker-compose.monitoring.yml up -d loki otel-collector promtail
+
+      - name: Wait for Redis readiness
+        run: |
+          set -euo pipefail
+          for i in {1..30}; do
+            if docker exec sva-studio-redis-e2e redis-cli -p 6379 ping | grep -q PONG; then
+              echo "Redis is ready"
+              exit 0
+            fi
+            echo "Waiting for Redis ($i/30)..."
+            sleep 2
+          done
+          echo "Redis did not become ready in time"
+          docker ps -a
+          exit 1
 
       - name: Run app E2E smoke tests
         run: pnpm nx run sva-studio-react:test:e2e
@@ -73,4 +87,6 @@ jobs:
 
       - name: Stop services
         if: always()
-        run: docker compose -f docker-compose.yml -f docker-compose.monitoring.yml down
+        run: |
+          docker compose -f docker-compose.monitoring.yml down
+          docker rm -f sva-studio-redis-e2e || true

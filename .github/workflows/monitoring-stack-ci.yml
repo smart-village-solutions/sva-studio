@@ -19,6 +19,9 @@ on:
       - ".github/workflows/monitoring-stack-ci.yml"
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   monitoring-stack:
     runs-on: ubuntu-latest

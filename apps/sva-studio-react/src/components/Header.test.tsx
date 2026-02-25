@@ -1,8 +1,14 @@
+/**
+ * Unit-Tests für Header-Auth-Aktionen und Loading-Zustand.
+ */
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import Header from './Header';
 
+/**
+ * Mockt den TanStack-Link für DOM-basierte Komponententests.
+ */
 vi.mock('@tanstack/react-router', () => ({
   Link: ({
     to,
@@ -20,7 +26,13 @@ vi.mock('@tanstack/react-router', () => ({
   ),
 }));
 
+/**
+ * Testet die Auth-bezogene Darstellung des Headers.
+ */
 describe('Header auth actions', () => {
+  /**
+   * Bereinigt DOM und globale Mocks nach jedem Test.
+   */
   afterEach(() => {
     cleanup();
     vi.unstubAllGlobals();
@@ -60,5 +72,16 @@ describe('Header auth actions', () => {
     });
 
     expect(screen.queryByRole('link', { name: 'Login' })).toBeNull();
+  });
+
+  it('zeigt Skeleton im Loading-Modus und ruft kein /auth/me auf', () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<Header isLoading />);
+
+    expect(screen.queryByRole('link', { name: 'Login' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Logout' })).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

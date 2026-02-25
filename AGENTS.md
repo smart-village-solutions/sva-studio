@@ -97,9 +97,9 @@ Die verbindlichen Entwicklungsrichtlinien liegen unter [DEVELOPMENT_RULES.md](DE
 
 ### Docs Regeln
 
-- \*Ordner\*\*: Alle Dokumente müssen in den entsprechenden Unterordnern von `docs/` liegen (z.B. `docs/architecture/`, `docs/guides/`, `docs/reports/`, `docs/staging/`, `docs/pr/`)
+- **Ordner**: Alle Dokumente müssen in den entsprechenden Unterordnern von `docs/` liegen (z.B. `docs/architecture/`, `docs/guides/`, `docs/reports/`, `docs/staging/`, `docs/pr/`)
 - **Namenskonvention**: Dokumente müssen beschreibende Namen haben, die den Inhalt klar widerspiegeln (z.B. `docs/development/monitoring-stack.md`)
-- \*_Sprache_: Alle Dokumente müssen auf Deutsch verfasst sein und Umlaute korrekt verwenden (ä, ö, ü, ß statt ae, oe, ue, ss)
+- **Sprache**: Alle Dokumente müssen auf Deutsch verfasst sein und Umlaute korrekt verwenden (ä, ö, ü, ß statt ae, oe, ue, ss)
 - **Formatierung**: Markdown-Formatierung muss konsistent sein (z.B. Überschriften, Listen, Codeblöcke) und den Inhalt klar strukturieren
 - **Aktualität**: Alle Dokumente müssen aktuell gehalten werden; veraltete Informationen müssen entfernt oder aktualisiert werden
 
@@ -124,20 +124,6 @@ Nutze `@/openspec/AGENTS.md`, um Folgendes zu lernen:
 Behalte diesen verwalteten Block bei, damit 'openspec update' die Anweisungen aktualisieren kann.
 
 <!-- OPENSPEC:END -->
-
-<!-- NX CONFIGURATION:START-->
-
-## Allgemeine Richtlinien für die Arbeit mit Nx
-
-- Bei der Ausführung von Tasks (z.B. build, lint, test, e2e, etc.) sollte die Task immer über `nx` ausgeführt werden (d.h. `nx run`, `nx run-many`, `nx affected`) statt das zugrunde liegende Tooling direkt zu verwenden
-- Du hast Zugriff auf den Nx MCP Server und seine Tools – nutze sie, um dem Benutzer zu helfen
-- Bei Fragen zum Repository nutze das `nx_workspace` Tool zuerst, um die Workspace-Architektur zu verstehen (wo anwendbar)
-- Wenn du mit einzelnen Projekten arbeitest, nutze das `nx_project_details` MCP Tool, um die spezifische Projektstruktur und Abhängigkeiten zu analysieren
-- Bei Fragen zu Nx-Konfiguration, Best Practices oder im Zweifelsfall nutze das `nx_docs` Tool, um aktuelle Dokumentation zu erhalten. Nutze dieses statt Annahmen über Nx-Konfiguration zu treffen
-- Wenn der Benutzer Hilfe bei Nx-Konfiguration oder Project-Graph-Fehlern benötigt, nutze das `nx_workspace` Tool, um Fehler zu ermitteln
-- Für Best Practices bei Nx-Plugins prüfe `node_modules/@nx/<plugin>/PLUGIN.md`. Nicht alle Plugins haben diese Datei – fahre fort, wenn sie nicht verfügbar ist.
-
-<!-- NX CONFIGURATION:END -->
 
 <!-- nx configuration start-->
 <!-- Leave the start & end comments to automatically receive updates. -->

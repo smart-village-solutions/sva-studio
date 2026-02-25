@@ -41,11 +41,12 @@ describe('Sidebar', () => {
   it('rendert im Non-Loading-Zustand alle erwarteten Links mit Labels', () => {
     render(<Sidebar />);
 
-    expect(screen.getByRole('link', { name: 'Übersicht' })).toHaveAttribute('href', '/');
-    expect(screen.getByRole('link', { name: 'Demos' })).toHaveAttribute('href', '/demo');
-    expect(screen.getByRole('link', { name: 'Plugin-Beispiel' })).toHaveAttribute('href', '/plugins/example');
-    expect(screen.getByRole('link', { name: 'Admin-API-Test' })).toHaveAttribute(
-      'href',
+    expect(screen.getByRole('link', { name: 'Übersicht' }).getAttribute('href')).toBe('/');
+    expect(screen.getByRole('link', { name: 'Demos' }).getAttribute('href')).toBe('/demo');
+    expect(screen.getByRole('link', { name: 'Plugin-Beispiel' }).getAttribute('href')).toBe(
+      '/plugins/example'
+    );
+    expect(screen.getByRole('link', { name: 'Admin-API-Test' }).getAttribute('href')).toBe(
       '/admin/api/phase1-test'
     );
   });

@@ -27,6 +27,10 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
   - `pnpm test:eslint` muss gruen sein
 - Unit-Test-Basis:
   - `pnpm test:unit` muss gruen sein
+- UI-Shell-Qualität:
+  - Landmarks (`header`, `aside`, `main`) und Skip-Link vorhanden
+  - Skeleton-Zustand für Sidebar, Kopfzeile und Contentbereich vorhanden
+  - Responsives Verhalten für mobile und desktop geprüft
 - File-Placement Governance:
   - `pnpm check:file-placement` muss gruen sein
 - Coverage Governance:

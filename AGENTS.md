@@ -97,9 +97,9 @@ Die verbindlichen Entwicklungsrichtlinien liegen unter [DEVELOPMENT_RULES.md](DE
 
 ### Docs Regeln
 
-- *Ordner**: Alle Dokumente müssen in den entsprechenden Unterordnern von `docs/` liegen (z.B. `docs/architecture/`, `docs/guides/`, `docs/reports/`, `docs/staging/`, `docs/pr/`)
+- \*Ordner\*\*: Alle Dokumente müssen in den entsprechenden Unterordnern von `docs/` liegen (z.B. `docs/architecture/`, `docs/guides/`, `docs/reports/`, `docs/staging/`, `docs/pr/`)
 - **Namenskonvention**: Dokumente müssen beschreibende Namen haben, die den Inhalt klar widerspiegeln (z.B. `docs/development/monitoring-stack.md`)
-- **Sprache*: Alle Dokumente müssen auf Deutsch verfasst sein und Umlaute korrekt verwenden (ä, ö, ü, ß statt ae, oe, ue, ss)
+- \*_Sprache_: Alle Dokumente müssen auf Deutsch verfasst sein und Umlaute korrekt verwenden (ä, ö, ü, ß statt ae, oe, ue, ss)
 - **Formatierung**: Markdown-Formatierung muss konsistent sein (z.B. Überschriften, Listen, Codeblöcke) und den Inhalt klar strukturieren
 - **Aktualität**: Alle Dokumente müssen aktuell gehalten werden; veraltete Informationen müssen entfernt oder aktualisiert werden
 
@@ -138,3 +138,27 @@ Behalte diesen verwalteten Block bei, damit 'openspec update' die Anweisungen ak
 - Für Best Practices bei Nx-Plugins prüfe `node_modules/@nx/<plugin>/PLUGIN.md`. Nicht alle Plugins haben diese Datei – fahre fort, wenn sie nicht verfügbar ist.
 
 <!-- NX CONFIGURATION:END -->
+
+<!-- nx configuration start-->
+<!-- Leave the start & end comments to automatically receive updates. -->
+
+## General Guidelines for working with Nx
+
+- For navigating/exploring the workspace, invoke the `nx-workspace` skill first - it has patterns for querying projects, targets, and dependencies
+- When running tasks (for example build, lint, test, e2e, etc.), always prefer running the task through `nx` (i.e. `nx run`, `nx run-many`, `nx affected`) instead of using the underlying tooling directly
+- Prefix nx commands with the workspace's package manager (e.g., `pnpm nx build`, `npm exec nx test`) - avoids using globally installed CLI
+- You have access to the Nx MCP server and its tools, use them to help the user
+- For Nx plugin best practices, check `node_modules/@nx/<plugin>/PLUGIN.md`. Not all plugins have this file - proceed without it if unavailable.
+- NEVER guess CLI flags - always check nx_docs or `--help` first when unsure
+
+## Scaffolding & Generators
+
+- For scaffolding tasks (creating apps, libs, project structure, setup), ALWAYS invoke the `nx-generate` skill FIRST before exploring or calling MCP tools
+
+## When to use nx_docs
+
+- USE for: advanced config options, unfamiliar flags, migration guides, plugin configuration, edge cases
+- DON'T USE for: basic generator syntax (`nx g @nx/react:app`), standard commands, things you already know
+- The `nx-generate` skill handles generator discovery internally - don't call nx_docs just to look up generator syntax
+
+<!-- nx configuration end-->

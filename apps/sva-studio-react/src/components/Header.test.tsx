@@ -80,6 +80,7 @@ describe('Header auth actions', () => {
 
     render(<Header isLoading />);
 
+    expect(screen.getByText('Authentifizierungsstatus wird geladen.')).toBeTruthy();
     expect(screen.queryByRole('link', { name: 'Login' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Logout' })).toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();

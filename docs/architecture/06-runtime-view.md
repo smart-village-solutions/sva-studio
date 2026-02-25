@@ -51,9 +51,22 @@ Fehlerpfad:
 - OTEL nicht initialisiert: Console-Fallback bleibt aktiv
 - fehlender LoggerProvider: OTEL-Emission no-op, App bleibt lauffähig
 
+### Szenario 4: Initialer Shell-Ladezustand mit Skeleton UI
+
+1. Root-Shell rendert initial in einem kurzen Loading-Zustand
+2. `Header` zeigt Skeleton für Auth-Aktion in der Kopfzeile
+3. `Sidebar` zeigt Skeleton-Navigation
+4. `AppShell` zeigt Skeleton-Platzhalter im Contentbereich
+5. Nach Abschluss des initialen Zustands wird auf regulären Inhalt gewechselt
+
+Fehlerpfad:
+
+- Falls Route-/Inhaltsdaten verzögert verfügbar sind, bleibt die Shell strukturell stabil (kein Layout-Springen), bis regulärer Inhalt rendert.
+
 Referenzen:
 
 - `apps/sva-studio-react/src/router.tsx`
+- `apps/sva-studio-react/src/routes/__root.tsx`
 - `packages/auth/src/routes.server.ts`
 - `packages/sdk/src/logger/index.server.ts`
 - `packages/monitoring-client/src/otel.server.ts`

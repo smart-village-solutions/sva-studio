@@ -47,7 +47,7 @@ Architecture Decision Records dokumentieren **wichtige technische Entscheidungen
 | 005 | Observability Module Ownership | 📋 | 2026-02-06 | Observability |
 | 006 | Logging Pipeline Strategy | 📋 | 2026-02-06 | Observability |
 | 007 | Label Schema & PII Policy | 📋 | 2026-02-06 | Security/Observability |
-| 008 | Layout Shell Skeleton Architecture | 📋 | 2026-02-25 | UI/Architektur |
+| 008 | Layout Shell Skeleton Architecture | ✅ | 2026-02-25 | UI/Architektur |
 
 ---
 

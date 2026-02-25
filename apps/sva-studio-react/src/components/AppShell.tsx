@@ -34,6 +34,9 @@ export default function AppShell({ children, isLoading = false, sidebarSlot }: A
       >
         {isLoading ? (
           <section aria-label="Inhalt lädt" className="space-y-4">
+            <output aria-live="polite" className="sr-only">
+              Inhalt wird geladen.
+            </output>
             <span aria-hidden="true" className="block h-8 w-48 animate-pulse rounded-md bg-slate-800" />
             <span aria-hidden="true" className="block h-24 w-full animate-pulse rounded-xl bg-slate-900" />
             <div className="grid gap-4 md:grid-cols-2">

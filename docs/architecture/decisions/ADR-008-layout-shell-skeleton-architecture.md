@@ -1,7 +1,7 @@
 # ADR-008: Layout-Shell mit Skeleton-Bereichen (Sidebar, Kopfzeile, Content)
 
 **Datum:** 25. Februar 2026
-**Status:** ⏳ Proposed
+**Status:** ✅ Accepted
 **Kontext:** UI-Architektur, Erweiterbarkeit, A11y und Responsivität
 **Entscheider:** SVA Studio Team
 

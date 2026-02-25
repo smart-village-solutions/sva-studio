@@ -88,7 +88,12 @@ export default function Header({ isLoading = false }: HeaderProps) {
 
   if (isLoading || user === undefined) {
     authAction = (
-      <span aria-hidden="true" className="ml-2 h-8 w-20 animate-pulse rounded-md bg-slate-800" />
+      <>
+        <output aria-live="polite" className="sr-only">
+          Authentifizierungsstatus wird geladen.
+        </output>
+        <span aria-hidden="true" className="ml-2 h-8 w-20 animate-pulse rounded-md bg-slate-800" />
+      </>
     );
   } else if (user === null) {
     authAction = (
@@ -124,13 +129,13 @@ export default function Header({ isLoading = false }: HeaderProps) {
         </Link>
         <div className="flex flex-wrap items-center gap-3 text-slate-300 sm:gap-4">
           <Link className="transition hover:text-white" to="/">
-            Home
+            Startseite
           </Link>
           <Link className="transition hover:text-white" to="/demo">
             Demos
           </Link>
           <Link className="transition hover:text-white" to="/plugins/example">
-            Plugin Example
+            Plugin-Beispiel
           </Link>
           {authAction}
         </div>

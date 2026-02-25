@@ -15,8 +15,8 @@ const sidebarSkeletonKeys = ['sidebar-skeleton-a', 'sidebar-skeleton-b', 'sideba
 const sidebarLinks: Array<{ to: '/' | '/demo' | '/plugins/example' | '/admin/api/phase1-test'; label: string }> = [
   { to: '/', label: 'Übersicht' },
   { to: '/demo', label: 'Demos' },
-  { to: '/plugins/example', label: 'Plugin Example' },
-  { to: '/admin/api/phase1-test', label: 'Admin API Test' },
+  { to: '/plugins/example', label: 'Plugin-Beispiel' },
+  { to: '/admin/api/phase1-test', label: 'Admin-API-Test' },
 ];
 
 /**
@@ -32,7 +32,7 @@ export default function Sidebar({ isLoading = false }: SidebarProps) {
       className="w-full border-b border-slate-800/70 bg-slate-950/80 lg:min-h-[calc(100vh-76px)] lg:w-64 lg:border-b-0 lg:border-r"
     >
       <div className="px-4 py-4">
-        <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Navigation</p>
+        <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Navigation</p>
         <nav aria-label="Bereichsnavigation" className="mt-3">
           {isLoading ? (
             <ul className="flex gap-2 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible lg:pb-0">

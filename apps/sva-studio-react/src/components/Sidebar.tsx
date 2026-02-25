@@ -29,7 +29,7 @@ export default function Sidebar({ isLoading = false }: SidebarProps) {
   return (
     <aside
       aria-label="Seitenleiste"
-      className="w-full border-b border-slate-800/70 bg-slate-950/80 lg:min-h-[calc(100vh-76px)] lg:w-64 lg:border-b-0 lg:border-r"
+      className="w-full border-b border-slate-800/70 bg-slate-950/80 lg:w-64 lg:border-b-0 lg:border-r"
     >
       <div className="px-4 py-4">
         <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Navigation</p>

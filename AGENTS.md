@@ -97,9 +97,9 @@ Die verbindlichen Entwicklungsrichtlinien liegen unter [DEVELOPMENT_RULES.md](DE
 
 ### Docs Regeln
 
-- \*Ordner\*\*: Alle Dokumente müssen in den entsprechenden Unterordnern von `docs/` liegen (z.B. `docs/architecture/`, `docs/guides/`, `docs/reports/`, `docs/staging/`, `docs/pr/`)
+- **Ordner**: Alle Dokumente müssen in den entsprechenden Unterordnern von `docs/` liegen (z.B. `docs/architecture/`, `docs/guides/`, `docs/reports/`, `docs/staging/`, `docs/pr/`)
 - **Namenskonvention**: Dokumente müssen beschreibende Namen haben, die den Inhalt klar widerspiegeln (z.B. `docs/development/monitoring-stack.md`)
-- \*_Sprache_: Alle Dokumente müssen auf Deutsch verfasst sein und Umlaute korrekt verwenden (ä, ö, ü, ß statt ae, oe, ue, ss)
+- **Sprache**: Alle Dokumente müssen auf Deutsch verfasst sein und Umlaute korrekt verwenden (ä, ö, ü, ß statt ae, oe, ue, ss)
 - **Formatierung**: Markdown-Formatierung muss konsistent sein (z.B. Überschriften, Listen, Codeblöcke) und den Inhalt klar strukturieren
 - **Aktualität**: Alle Dokumente müssen aktuell gehalten werden; veraltete Informationen müssen entfernt oder aktualisiert werden
 

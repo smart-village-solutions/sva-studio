@@ -217,6 +217,6 @@ Bitte bestätigen Sie folgende Punkte vor Start der Implementierung:
 
 ---
 
-**Created:** 21. Januar 2026  
-**Validation:** ✅ Passed (openspec validate --strict)  
+**Created:** 21. Januar 2026
+**Validation:** ✅ Passed (openspec validate --strict)
 **Status:** 🟡 Ready for Review

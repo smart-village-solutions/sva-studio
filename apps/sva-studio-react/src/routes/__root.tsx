@@ -61,21 +61,17 @@ export const rootRoute = Route;
 /**
  * Rendert das HTML-Grundgerüst mit Header, Shell-Layout und Devtools.
  *
- * Die Komponente aktiviert initial einen kurzen Skeleton-Zustand,
- * um den Übergang beim ersten Rendern zu glätten.
+ * Die Komponente zeigt Skeletons nur bis zur abgeschlossenen Hydration,
+ * damit serverseitig gerenderte Inhalte sofort verfügbar bleiben.
  */
 function RootDocument({ children }: Readonly<{ children: React.ReactNode }>) {
-  const [isShellLoading, setIsShellLoading] = React.useState(true);
+  const [isHydrated, setIsHydrated] = React.useState(import.meta.env.SSR);
 
   React.useEffect(() => {
-    const timeoutId = globalThis.setTimeout(() => {
-      setIsShellLoading(false);
-    }, 180);
-
-    return () => {
-      globalThis.clearTimeout(timeoutId);
-    };
+    setIsHydrated(true);
   }, []);
+
+  const isShellLoading = !isHydrated;
 
   return (
     <html lang="de">
@@ -85,6 +81,12 @@ function RootDocument({ children }: Readonly<{ children: React.ReactNode }>) {
       <body className="flex min-h-screen flex-col bg-slate-950 text-slate-100">
         <a
           href="#main-content"
+          onClick={() => {
+            const mainElement = globalThis.document.getElementById('main-content');
+            if (mainElement) {
+              mainElement.focus();
+            }
+          }}
           className="sr-only left-3 top-3 z-50 rounded-md bg-slate-100 px-3 py-2 text-sm font-medium text-slate-900 focus:not-sr-only focus:absolute"
         >
           Zum Inhalt springen

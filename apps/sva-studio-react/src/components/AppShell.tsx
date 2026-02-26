@@ -28,12 +28,13 @@ export default function AppShell({ children, isLoading = false, sidebarSlot }: A
       {sidebarSlot ?? <Sidebar isLoading={isLoading} />}
       <main
         id="main-content"
+        tabIndex={-1}
         className="flex min-h-0 flex-1 flex-col px-4 py-6 sm:px-6 sm:py-8"
         aria-busy={isLoading}
       >
         {isLoading ? (
           <section aria-label="Inhalt lädt" className="space-y-4">
-            <span aria-live="polite" aria-atomic="true" className="sr-only">
+            <span role="status" aria-live="polite" className="sr-only">
               Inhalt wird geladen.
             </span>
             <span aria-hidden="true" className="block h-8 w-48 animate-pulse rounded-md bg-slate-800" />

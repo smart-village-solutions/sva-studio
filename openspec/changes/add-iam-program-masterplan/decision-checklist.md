@@ -8,61 +8,77 @@ Ziel: Vor Umsetzung der Child-Changes die wesentlichen Architektur-, Security- u
 - Offene Punkte mit Owner und Fälligkeitsdatum versehen.
 - Master-Change gilt erst als umsetzungsbereit, wenn alle **Must**-Punkte entschieden sind.
 
+## Beschlussstand (26.02.2026)
+
+Die folgenden Einträge sind **bestätigte Entscheidungen** auf Basis von:
+
+- `concepts/konzeption-cms-v2/03_Systemarchitektur/Umsetzung-Rollen-Rechte.md`
+- `openspec/changes/setup-iam-identity-auth/*`
+- `DEVELOPMENT_RULES.md`
+
+Änderungen an diesen Entscheidungen erfolgen nur über explizites Update dieses Dokuments und der Masterplan-Spec.
+
 ---
 
 ## Must (vor Start Child A/B)
 
 ### 1) Zielumfang Phase 1
 - Entscheidung: [ ] Nur Auth + Session + RBAC-Basis
-- Entscheidung: [ ] Zusätzlich Multi-Org-Context-Switch
+- Entscheidung: [x] Zusätzlich Multi-Org-Context-Switch
 - Entscheidung: [ ] Sonstiges: ____________________
-- Owner: ____________________
-- Fällig am: ____________________
+- Vorschlag: Multi-Org-Switch früh aktivieren, damit Daten- und Rechtekontext von Anfang an konsistent ist.
+- Owner: Produkt + Architektur
+- Fällig am: vor Start Child B (`add-iam-core-data-layer`)
 
 ### 2) Verbindliche Rollenmatrix (7 Personas)
 - Liegt eine freigegebene Rechte-Matrix pro Persona vor (CRUD, Approve, Admin, Export)?
 - Entscheidung: [ ] Ja, freigegeben
-- Entscheidung: [ ] Nein, bis Datum finalisieren
-- Referenz-Dokument: ____________________
-- Owner: ____________________
+- Entscheidung: [x] Nein, bis Datum finalisieren
+- Referenz-Dokument: `Umsetzung-Rollen-Rechte.md` (Abschnitt 5) als fachliche Basis, um technische Matrix erweitern
+- Owner: Produkt + Fachseite (mit Security-Review)
+- Zieltermin-Vorschlag: vor Start Child C (`add-iam-authorization-rbac-v1`)
 
 ### 3) Tenant-Kanon und Hierarchie
-- Kanonischer Scope: [ ] organizationId [ ] tenantId [ ] workspaceId
-- Hierarchietiefe: [ ] 3 Ebenen fix [ ] beliebig tief
-- Cross-Tenant-Ausnahmen erlaubt: [ ] Nein [ ] Ja, nur für ____________________
-- Owner: ____________________
+- Kanonischer Scope: [x] instanceId [ ] organizationId [ ] tenantId [ ] workspaceId
+- Hierarchietiefe: [ ] 3 Ebenen fix [x] beliebig tief
+- Cross-Tenant-Ausnahmen erlaubt: [ ] Nein [x] Ja, nur für `support_admin`-Impersonation mit strengen Gates
+- Beschluss: Eine Instanz kann mehrere Organisationen enthalten; Benutzer werden innerhalb einer Instanz einer oder mehreren Organisationen zugeordnet.
+- Beschluss: Modell flexibel halten (`parentOrganizationId` rekursiv), UI darf initial 3 Ebenen optimieren.
+- Owner: Architektur + Datenmodell
 
 ### 4) Security-Gates
 - Impersonation verpflichtend mit:
-  - [ ] Ticketpflicht
-  - [ ] Vier-Augen-Freigabe
-  - [ ] Maximaldauer (Minuten/Stunden): ____________________
+  - [x] Ticketpflicht
+  - [x] Vier-Augen-Freigabe
+  - [x] Maximaldauer (Minuten/Stunden): 120 Minuten (Vorschlag)
 - PII in Logs:
-  - [ ] strikt minimiert/pseudonymisiert
+  - [x] strikt minimiert/pseudonymisiert
   - [ ] partiell sichtbar (welche Felder): ____________________
-- Owner (Security): ____________________
+- Vorschlag: Keine Klartext-PII in Audit-Details außer technisch notwendiger Referenz-IDs.
+- Owner (Security): Security + DSB
 
 ### 5) Compliance-Vorgaben
-- Audit-Retention: ____________________
-- Lösch-/Sperrregeln (DSGVO): ____________________
-- Nachweisformat für Audits: [ ] CSV [ ] JSON [ ] SIEM-Export
-- Owner (Legal/DSB): ____________________
+- Audit-Retention: 24 Monate (Vorschlag, mit rechtlicher Freigabe)
+- Lösch-/Sperrregeln (DSGVO): Soft-Delete + Sperrstatus für Betriebsnachweis, endgültige Löschung nach policy-gesteuerter Frist
+- Nachweisformat für Audits: [x] CSV [x] JSON [x] SIEM-Export
+- Owner (Legal/DSB): DSB + Legal
 
 ### 6) Performance- und Lastziele
-- `authorize`-SLO: [ ] P95 < 50 ms [ ] P99 < 50 ms [ ] anderer Wert: ____________________
-- Lastprofil (RPS, Concurrent Users, Peak): ____________________
-- Owner (Plattform): ____________________
+- `authorize`-SLO: [x] P95 < 50 ms [ ] P99 < 50 ms [ ] anderer Wert: ____________________
+- Lastprofil (RPS, Concurrent Users, Peak): initial 100 RPS, 500 concurrent, Peak-Faktor 3 (Vorschlag für Testbaseline)
+- Owner (Plattform): Plattform + Backend
 
 ### 7) Eventing-Entscheidung für Cache-Invalidierung
-- Primär: [ ] Postgres NOTIFY [ ] Redis Streams [ ] Broker (NATS/Kafka)
-- Fallback-Strategie: ____________________
-- Owner (Architektur): ____________________
+- Primär: [x] Postgres NOTIFY [ ] Redis Streams [ ] Broker (NATS/Kafka)
+- Fallback-Strategie: TTL-basierte Selbstheilung + periodisches Recompute kritischer Konten
+- Vorschlag: NOTIFY zuerst für geringe Komplexität, später optional auf Broker migrierbar.
+- Owner (Architektur): Architektur + Plattform
 
 ### 8) Rollout-Strategie
-- Rollout: [ ] Feature-Flags stufenweise [ ] Big Bang
-- Parallelbetrieb Altpfad bis: ____________________
-- Harte Go-Live-Kriterien: ____________________
-- Owner (Produkt): ____________________
+- Rollout: [x] Feature-Flags stufenweise [ ] Big Bang
+- Parallelbetrieb Altpfad bis: Abschluss Child C + 1 Release-Zyklus Stabilisierung
+- Harte Go-Live-Kriterien: Security-Tests grün, IAM-Regression grün, `authorize` P95 SLO erreicht, Audit-Nachweis exportierbar
+- Owner (Produkt): Produkt + Tech Lead
 
 ---
 
@@ -70,23 +86,27 @@ Ziel: Vor Umsetzung der Child-Changes die wesentlichen Architektur-, Security- u
 
 ### 9) ABAC-Attributkatalog
 - Pflichtattribute (z. B. Org, Geo, Zeitfenster, Acting-As) final definiert?
-- Entscheidung: [ ] Ja [ ] Nein
-- Owner: ____________________
+- Entscheidung: [ ] Ja [x] Nein
+- Vorschlag: Finalisierung im Child D (`add-iam-abac-hierarchy-cache`) mit verpflichtendem Security-Review.
+- Owner: Architektur + Security
 
 ### 10) Entscheidungsbegründungen (`reason`-Codes)
 - Standardisierte Denial-/Allow-Gründe freigegeben?
-- Entscheidung: [ ] Ja [ ] Nein
-- Owner: ____________________
+- Entscheidung: [ ] Ja [x] Nein
+- Vorschlag: reason-Codes als API-Vertrag in Child C einführen und in Child D erweitern.
+- Owner: Backend + SDK
 
 ### 11) Betriebs- und Incident-Prozesse
 - On-Call, Alarmierung, Runbook für IAM-Ausfälle definiert?
-- Entscheidung: [ ] Ja [ ] Nein
-- Owner: ____________________
+- Entscheidung: [ ] Ja [x] Nein
+- Vorschlag: Runbook + Alarmkatalog bis Ende Child C, inkl. Cache-Stale- und Keycloak-Degradationspfad.
+- Owner: Plattform
 
 ### 12) Datenmigration
 - Migrationsstrategie für Bestandsnutzer und Rollen final?
-- Entscheidung: [ ] Ja [ ] Nein
-- Owner: ____________________
+- Entscheidung: [ ] Ja [x] Nein
+- Vorschlag: JIT-Provisioning + Backfill-Job als duale Strategie, dry-run vor Produktivmigration.
+- Owner: Daten + Backend
 
 ---
 
@@ -94,15 +114,15 @@ Ziel: Vor Umsetzung der Child-Changes die wesentlichen Architektur-, Security- u
 
 ### 13) Policy-Simulation / Dry-Run
 - Vorab-Prüfung von Policy-Änderungen ohne produktive Wirkung
-- Entscheidung: [ ] Geplant [ ] Nicht geplant
+- Entscheidung: [x] Geplant [ ] Nicht geplant
 
 ### 14) Self-Service Rollenberichte
 - Organisationen können eigene Rollen-/Rechteberichte exportieren
-- Entscheidung: [ ] Geplant [ ] Nicht geplant
+- Entscheidung: [x] Geplant [ ] Nicht geplant
 
 ### 15) Realtime Permission Prewarming
 - Proaktives Neuaufbauen kritischer Permission-Snapshots
-- Entscheidung: [ ] Geplant [ ] Nicht geplant
+- Entscheidung: [x] Geplant [ ] Nicht geplant
 
 ---
 

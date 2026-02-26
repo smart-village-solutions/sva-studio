@@ -11,6 +11,18 @@ Das IAM-Vorhaben ist fachlich und technisch zu groß für ein einzelnes Proposal
 - Zerlegt das Vorhaben in eigenständige Child-Changes mit klaren Schnittstellen.
 - Verankert Governance-Regeln: Implementierung nur über freigegebene Child-Changes.
 
+### Verbindlich festgelegte Programmentscheidungen
+
+- Phase 1 umfasst **Auth + Session + RBAC-Basis inkl. Multi-Org-Context-Switch**.
+- Kanonischer Mandanten-Scope ist `instanceId`.
+- Pro Instanz sind mehrere Organisationen möglich; Benutzerzuordnungen erfolgen innerhalb der Instanz zu einer oder mehreren Organisationen.
+- Organisationsmodell unterstützt **beliebig tiefe Hierarchien** (UI kann initial 3 Ebenen optimieren).
+- Rollout erfolgt **stufenweise per Feature-Flags** (kein Big-Bang).
+- Performance-Ziel für `POST /iam/authorize`: **P95 < 50 ms**.
+- Cache-Invalidierung startet mit **Postgres NOTIFY** plus TTL-/Recompute-Fallback.
+- Impersonation ist nur mit **Ticketpflicht**, **Vier-Augen-Freigabe** und **zeitlicher Begrenzung** erlaubt.
+- Audit-Logs werden PII-minimiert/pseudonymisiert geführt; Nachweise via CSV/JSON/SIEM.
+
 ### Programmstruktur (Child-Changes)
 
 1. `setup-iam-identity-auth` (bestehend, als Child A weiterführen)
@@ -40,6 +52,7 @@ Das IAM-Vorhaben ist fachlich und technisch zu groß für ein einzelnes Proposal
 - Der Master-Change enthält **keine direkte Feature-Implementierung**.
 - Jede Umsetzung erfolgt ausschließlich über Child-Changes mit eigenen Spec-Deltas und Tasks.
 - Child-Changes werden in definierter Reihenfolge umgesetzt, außer eine explizite Entkopplung wurde in deren Design dokumentiert.
+- Der Beschlussstand wird in `decision-checklist.md` gepflegt und ist für Child-Starts bindend.
 
 ## Success Criteria
 
@@ -49,4 +62,4 @@ Das IAM-Vorhaben ist fachlich und technisch zu groß für ein einzelnes Proposal
 
 ## Status
 
-🟡 Proposal (Masterplanung) – bereit für Review
+🟡 Proposal (Masterplanung) – Entscheidungen bestätigt, bereit für Abschlussreview

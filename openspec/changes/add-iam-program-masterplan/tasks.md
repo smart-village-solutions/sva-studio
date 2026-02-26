@@ -2,10 +2,11 @@
 
 ## 1. Programmrahmen definieren
 
-- [ ] 1.1 Child-Change-Liste finalisieren (IDs, Scope, Reihenfolge)
-- [ ] 1.2 Abhängigkeiten und Schnittstellen zwischen Child-Changes dokumentieren
-- [ ] 1.3 Exit-Kriterien pro Child-Change festlegen
-- [ ] 1.4 Entscheidungs-Checkliste in `decision-checklist.md` vollständig ausfüllen und freigeben
+- [x] 1.1 Child-Change-Liste finalisieren (IDs, Scope, Reihenfolge)
+- [x] 1.2 Abhängigkeiten und Schnittstellen zwischen Child-Changes dokumentieren
+- [x] 1.3 Exit-Kriterien pro Child-Change festlegen
+- [x] 1.4 Entscheidungs-Checkliste in `decision-checklist.md` vollständig ausfüllen und freigeben
+- [x] 1.5 Kanonischen Mandanten-Scope `instanceId` festlegen (inkl. Instanz→Organisation-Modell)
 
 ## 2. Bestehenden IAM-Change einordnen
 
@@ -15,16 +16,16 @@
 
 ## 3. Child-Changes vorbereiten (Proposal-ready)
 
-- [ ] 3.1 `add-iam-core-data-layer` anlegen
-- [ ] 3.2 `add-iam-authorization-rbac-v1` anlegen
-- [ ] 3.3 `add-iam-abac-hierarchy-cache` anlegen
-- [ ] 3.4 `add-iam-governance-workflows` anlegen
+- [x] 3.1 `add-iam-core-data-layer` anlegen
+- [x] 3.2 `add-iam-authorization-rbac-v1` anlegen
+- [x] 3.3 `add-iam-abac-hierarchy-cache` anlegen
+- [x] 3.4 `add-iam-governance-workflows` anlegen
 
 ## 4. Architektur- und Qualitätsbezug absichern
 
-- [ ] 4.1 arc42-Abschnitte je Child-Change referenzieren
-- [ ] 4.2 Sicherheits- und Compliance-Anforderungen je Child-Change als Kriterien verankern
-- [ ] 4.3 Performance-Ziel (`authorize` < 50 ms) als messbares Kriterium verankern
+- [x] 4.1 arc42-Abschnitte je Child-Change referenzieren
+- [x] 4.2 Sicherheits- und Compliance-Anforderungen je Child-Change als Kriterien verankern
+- [x] 4.3 Performance-Ziel (`authorize` < 50 ms) als messbares Kriterium verankern
 
 ## 5. Review-Gates
 

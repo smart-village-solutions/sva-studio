@@ -66,7 +66,7 @@
 **Ref:** security-compliance-review.md - Phase 2
 
 - [ ] 7.1 **Audit-Logging**
-  - [ ] 7.1.1 Audit-Log-Service implementieren (PostgreSQL/Supabase)
+  - [ ] 7.1.1 Audit-Log-Service implementieren (PostgreSQL)
   - [ ] 7.1.2 Session-Events loggen (CREATE, ACCESS, DELETE, REVOKE)
   - [ ] 7.1.3 Login-State-Events loggen (CREATE, CONSUME, EXPIRE)
   - [ ] 7.1.4 Failed-Login-Events loggen

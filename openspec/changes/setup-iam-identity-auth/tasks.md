@@ -1,5 +1,15 @@
 # Tasks: setup-iam-identity-auth
 
+## Scope-Hinweis (Child A)
+
+Dieser Change ist auf Identity-Basis begrenzt (OIDC, Session, Token, User-Context).
+Folgende Themen sind ausgelagert und werden hier nicht mehr umgesetzt:
+
+- `add-iam-core-data-layer` (Datenmodell, RLS, Instanz-/Org-Zuordnung)
+- `add-iam-authorization-rbac-v1` (RBAC v1, Authorize-API)
+- `add-iam-abac-hierarchy-cache` (ABAC, Vererbung, Cache)
+- `add-iam-governance-workflows` (Delegation, Impersonation, Approval, Legal/Audit)
+
 ## Phase 1: Keycloak-Integration und IAM-Service-Architektur
 
 **Status:** 🟢 **65% COMPLETE** (13/20 Tasks)
@@ -9,8 +19,9 @@
 - [x] 1.1.1 OIDC-Client im Keycloak für SVA Studio erstellen
 - [x] 1.1.2 Redirect-URIs konfigurieren (dev, staging, prod)
 - [ ] 1.1.3 Web Origins für CORS festlegen ⚠️ *Keycloak-seitig zu verifizieren*
-- [x] 1.1.4 Client-Scopes definieren (openid, profile, email, roles, org)
-- [ ] 1.1.5 Keycloak-Mappers für Role- und Organization-Claims konfigurieren ⚠️ *Für Phase 2/3 benötigt*
+- [x] 1.1.4 Client-Scopes definieren (openid, profile, email)
+- [ ] 1.1.5 Keycloak-Mappers für Identity-Claims inkl. `instanceId` konfigurieren
+- [ ] 1.1.6 Keycloak-Version festlegen und dokumentieren (aktuell TBD)
 
 ### 1.2 IAM-Service-Grundstruktur
 
@@ -22,9 +33,9 @@
 
 ### 1.3 Frontend-Integration
 
-- [ ] 1.3.1 OIDC-Library wählen (@react-oauth/google oder equivalent)
+- [ ] 1.3.1 OIDC-Library wählen (z. B. `oidc-client-ts` oder `keycloak-js`) ⚠️ *Nicht `@react-oauth/google` – diese Library ist Google-spezifisch*
 - [ ] 1.3.2 Login-Flow im SVA Studio implementieren
-- [ ] 1.3.3 Session/Token-Speicherung (Memory + localStorage strategy)
+- [ ] 1.3.3 Token-Speicherung via HttpOnly Cookie (Secure, SameSite) ⚠️ *Kein localStorage – siehe Design-Entscheidung §5*
 - [ ] 1.3.4 Logout-Flow implementieren
 - [ ] 1.3.5 Token-Refresh-Mechanik
 
@@ -47,116 +58,6 @@
 
 ---
 
-## Phase 2: Organisationsstruktur und Benutzer-Mapping
-
-**Status:** ❌ **0% COMPLETE** (0/23 Tasks) - *Benötigt Datenbank-Setup*
-
-### 2.1 Datenmodellierung
-
-- [ ] 2.1.1 `iam.organizations` Tabelle mit Hierarchie (`parentOrganizationId`)
-- [ ] 2.1.2 `iam.accounts` Tabelle mit Keycloak-User-ID-Mapping
-- [ ] 2.1.3 `iam.account_organizations` Junction-Tabelle (Many-to-Many)
-- [ ] 2.1.4 Row-Level-Security (RLS) Policies für Multi-Tenancy
-- [ ] 2.1.5 Indexes für Performance (userId, organizationId, hierarchyLevel)
-- [ ] 2.1.6 Migrations-Skripte (Flyway/Alembic)
-
-### 2.2 Account-Synchronisation (Just-in-Time Provisioning)
-
-- [ ] 2.2.1 First-Login-Hook im IAM-Service implementieren
-- [ ] 2.2.2 Account aus Keycloak-JWT erstellen (keycloakId → PK)
-- [ ] 2.2.3 Basis-Profildaten übernehmen (email, name, preferred_username)
-- [ ] 2.2.4 Default-Organisation zuweisen (oder User-Eingabe in UI)
-- [ ] 2.2.5 Activity-Log für Account-Erstellung
-
-### 2.3 Organization-Assignment-Logik
-
-- [ ] 2.3.1 UI für Admin: Nutzer zu Organisationen zuweisen
-- [ ] 2.3.2 Bulk-Assignment ermöglichen (CSV-Import)
-- [ ] 2.3.3 Verification: User kann nur Inhalte seiner Orgs sehen
-- [ ] 2.3.4 Query-Scoping implementieren (immer `organizationId` in WHERE-Clause)
-- [ ] 2.3.5 Tests für Org-Isolation (Multi-Tenant-Sicherheit)
-
-### 2.4 Hierarchie-Support
-
-- [ ] 2.4.1 Hierarchie-Navigation (Parent/Children) in Datenbank-Abfragen
-- [ ] 2.4.2 Ancestor-Lookup für Berechtigungsprüfung
-- [ ] 2.4.3 Organization-Tree UI-Komponente
-- [ ] 2.4.4 Tests für 3+ Ebenen (County → Municipality → District → Org)
-
----
-
-## Phase 3: Rollenmodell und Berechtigungslogik
-
-**Status:** ❌ **0% COMPLETE** (0/43 Tasks) - *Benötigt Phase 2 als Grundlage*
-
-### 3.1 Rollen-Datenmodellierung
-
-- [ ] 3.1.1 `iam.roles` Tabelle (system vs. custom)
-- [ ] 3.1.2 `iam.permissions` Tabelle (action, resource_type, scope)
-- [ ] 3.1.3 `iam.role_permissions` Junction-Tabelle
-- [ ] 3.1.4 `iam.account_roles` mit temporal constraints (validFrom, validTo)
-- [ ] 3.1.5 Seed-Daten für 7 System-Personas
-
-### 3.2 7-Personas-System implementieren
-
-- [ ] 3.2.1 System-Administrator Persona (vollständige Rechte)
-- [ ] 3.2.2 App-Manager Persona (Org-Management, Accounts)
-- [ ] 3.2.3 Designer Persona (Branding, Layout)
-- [ ] 3.2.4 Redakteur Persona (Content-CRUD)
-- [ ] 3.2.5 Interface-Manager Persona (API, Integrations)
-- [ ] 3.2.6 Moderator Persona (Community, Support)
-- [ ] 3.2.7 Strategischer Entscheider Persona (Read-Only Reporting)
-
-### 3.3 RBAC Engine
-
-- [ ] 3.3.1 `canUserPerformAction(user, action, resource, context)` Funktion
-- [ ] 3.3.2 Role-Lookup aus DB für User + Organization
-- [ ] 3.3.3 Permission-Aggregation (alle Rollen mates)
-- [ ] 3.3.4 Scope-Matching (org, geo, time-based)
-- [ ] 3.3.5 Performance-Optimierung (< 50ms)
-
-### 3.4 ABAC Engine (Attribute-Based Access Control)
-
-- [ ] 3.4.1 Attribute-Definition (action, resource, context-attrs)
-- [ ] 3.4.2 Policy-Engine für conditional Permissions
-- [ ] 3.4.3 Examples: "edit news only in category:sport", "view reports only 9-17h"
-- [ ] 3.4.4 Tests für ABAC-Szenarien
-
-### 3.5 Hierarchische Rechte-Vererbung
-
-- [ ] 3.5.1 Vererbungslogik implementieren (parent org → child org)
-- [ ] 3.5.2 Scope-Level definieren (system, county, municipality, org_only)
-- [ ] 3.5.3 Override-Mechanik (untere Ebene kann einschränken, aber nicht erweitern)
-- [ ] 3.5.4 Vererb­ung-Visualisierung (Admin-UI)
-- [ ] 3.5.5 Tests für 3-Level Hierarchien
-
-### 3.6 Audit-Logging
-
-- [ ] 3.6.1 `iam.activity_logs` Tabelle (immutable)
-- [ ] 3.6.2 Alle IAM-Events loggen (role change, login, permission update)
-- [ ] 3.6.3 Activity-Log Export (CSV, JSON)
-- [ ] 3.6.4 Admin-Dashboard für Audit-Queries
-- [ ] 3.6.5 Data-Retention-Policy (z.B. 2 Jahre)
-
-### 3.7 Permission-Cache (Redis)
-
-- [ ] 3.7.1 Redis-Cluster-Integration planen
-- [ ] 3.7.2 Permission-Snapshot pro User+Org cachen
-- [ ] 3.7.3 Cache-Invalidation bei Rollenänderungen
-- [ ] 3.7.4 Fallback zu DB bei Cache-Miss
-- [ ] 3.7.5 Tests für Cache-Konsistenz
-
-### 3.8 Testing & Documentation
-
-- [ ] 3.8.1 Unit-Tests für alle Personas
-- [ ] 3.8.2 Unit-Tests für RBAC/ABAC Engine
-- [ ] 3.8.3 Integration-Tests für Vererbung
-- [ ] 3.8.4 E2E-Tests für Permission-Denials
-- [ ] 3.8.5 Developer-Dokumentation (SDK, API, Examples)
-- [ ] 3.8.6 Admin-Dokumentation (Role-Management, Audit)
-
----
-
 ## Acceptance Criteria
 
 **Phase 1:** 🟡 **PARTIAL** (65%)
@@ -166,20 +67,22 @@
 - ✅ E2E-Tests für kritische Auth-Flows
 - ❌ Frontend-Integration fehlt noch (React-Komponenten)
 
-**Phase 2:** ❌ **BLOCKED** (0%)
-- ❌ Nutzer ist automatisch zu seiner Organisation zugeordnet
-- ❌ Org-Isolation funktioniert
-- *Datenbank-Schema muss erst erstellt werden*
-
-**Phase 3:** ❌ **BLOCKED** (0%)
-- ❌ Ein Redakteur kann mit seiner Rolle News erstellen
-- ❌ sieht nur erlaubte Operationen
-- ❌ Audit-Log dokumentiert alles
-- ❌ Performance: Permission-Checks < 50ms
-- *Benötigt Phase 2 als Grundlage*
-
 ---
 
-**Overall Progress:** 🟡 **22% COMPLETE** (13/86 Tasks across all phases)
+**Overall Progress (Child A):** 🟡 **65% COMPLETE** (13/20 Tasks)
 
-**Last Updated:** 5. Februar 2026 (Status aktualisiert basierend auf `feature/redis-session-store-security`)
+## Phase 1.6: Architektur-Dokumentation (Review-Befund)
+
+- [ ] 1.6.1 ADR erstellen: „Keycloak als zentraler Identity Provider" (unter `docs/adr/`)
+- [ ] 1.6.2 Specs unter `specs/` auf Deutsch übersetzen oder Sprachwahl als ADR dokumentieren (aktuell EN, DEVELOPMENT_RULES fordern DE)
+- [x] 1.6.3 Spec-Scope bereinigen: `iam-access-control`, `iam-organizations`, `iam-auditing` auf Child-A-Scope reduziert (RBAC/ABAC/Hierarchie/Governance ausgelagert)
+## Phase 1.7: Operative Observability (Logging-Review 26.02.2026)
+
+- [ ] 1.7.1 SDK Logger in allen Auth-Modulen einsetzen: `createSdkLogger({ component: 'iam-auth' })` statt `console.*`
+- [ ] 1.7.2 `workspace_id` (= `instanceId`) als Pflichtfeld in allen Auth-Log-Einträgen sicherstellen
+- [ ] 1.7.3 Korrelations-IDs implementieren: `X-Request-Id`-Header generieren/propagieren, OTEL Trace-Context durchreichen
+- [ ] 1.7.4 Token-Fehler-Logging: jeden `TokenError`-Fall als SDK Logger `warn`-Eintrag emittieren (ohne Token-Werte/PII)
+- [ ] 1.7.5 Audit-Events Dual-Write: Login/Logout/Account-Erstellung parallel in DB und über SDK Logger in OTEL-Pipeline emittieren
+- [ ] 1.7.6 OIDC-Flow-Sequenzdiagramm um `request_id`/`trace_id`-Propagation erweitern (im design.md)
+- [ ] 1.7.7 Log-Level-Konvention für Child A validieren: info (Login), warn (Token-Fehler), debug (Refresh/Session), error (OIDC-Discovery)
+**Last Updated:** 26. Februar 2026

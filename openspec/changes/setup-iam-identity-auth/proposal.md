@@ -1,14 +1,14 @@
-# Change: Keycloak-Integration und IAM-Service-Architektur etablieren
+# Change: Child A – Keycloak-Integration und IAM-Identity-Basis
 
 ## Zusammenfassung
 
-Dieses Proposal etabliert die Fundamente für das Identity & Access Management (IAM) des SVA Studios. In drei Phasen wird die Integration mit Keycloak realisiert, die mandantenfähige Organisationsstruktur umgesetzt und das rollenbasierte Berechtigungssystem implementiert.
+Dieses Proposal ist **Child A** im IAM-Masterplan und etabliert ausschließlich die Identity-Basis: Keycloak/OIDC, Session-Lifecycle, Token-Validierung und User-Context-Auflösung. Datenmodellierung, RBAC/ABAC, Hierarchie und Governance-Workflows sind in nachgelagerte Child-Changes ausgelagert.
 
 ## Why
 
 Das SVA Studio erfordert ein **sicheres, skalierbares und mandantenfähiges IAM-System**:
 
-- **Sicherheit:** Zentrale Authentifizierung über Keycloak mit SSO und 2FA für alle Zugänge
+- **Sicherheit:** Zentrale Authentifizierung über Keycloak mit SSO als Basis (2FA in späterer Phase)
 - **Governance:** Granulare rollenbasierte Zugriffskontrolle (RBAC) und attributbasierte Kontrolle (ABAC)
 - **Betrieb:** Nahtlose Verwaltung von Organisationshierarchien (Landkreis → Gemeinde → Ortsteil) mit hierarchischer Rechtevererbung
 - **Compliance:** Revisionssichere Audit-Logs und DSGVO-Konformität
@@ -18,39 +18,30 @@ Ohne diese Fundamente können die nachfolgenden Module (News, Medienverwaltung, 
 
 ## What Changes
 
-### Phase 1: Keycloak-Integration und IAM-Service-Architektur
+### Child A Scope: Keycloak-Integration und IAM-Identity-Basis
 
 - **Client-Konfiguration:** OIDC-Integration des SVA Studios mit Keycloak (Redirect-URIs, Web Origins, Client Scopes)
-- **Token-Mapping:** Keycloak-Mappers für User-Informationen im JWT (Rollen, Organisationszugehörigkeiten)
+- **Token-Mapping:** Keycloak-Mappers für User-Informationen im JWT (Identity-Basis, inkl. `instanceId`-Kontext)
 - **IAM-Service:** Neuer interner Service zur Token-Validierung und User-Identity-Auflösung
-- **SSO/2FA:** Aktivierung und Test der Single-Sign-On und Zwei-Faktor-Authentifizierung
+- **SSO:** Aktivierung und Test der Single-Sign-On-Basis für lokale Entwicklung
+- **Nicht in Child A (lokal):** 2FA und externe IdP-Integrationen (AD, BundID)
 
-### Phase 2: Organisationsstruktur und Benutzer-Mapping
+### Ausgelagerter Scope (Masterplan-konform)
 
-- **Datenmodellierung:** Postgres-Schema für hierarchische Organisationen (`iam.organizations`, `iam.accounts`)
-- **Account-Synchronisation:** Just-in-Time Provisioning beim ersten Keycloak-Login
-- **Organizationsanbindung:** Automatische Zuweisung von Nutzern zu Organisationen und Hierarchiestufen
-
-### Phase 3: Rollenmodell und Berechtigungslogik
-
-- **7-Personas-System:** Implementierung der vordefinierten Systemrollen
-- **RBAC/ABAC Engine:** Rollenbasierte und attributbasierte Zugriffskontrolle
-- **Rechte-Vererbung:** Hierarchische Vererbung entlang der Organisationsstruktur
-- **Basis-Audit-Logging:** Revisionssichere Protokollierung von IAM-Ereignissen
+- `add-iam-core-data-layer`: Datenmodellierung, RLS, instanzgebundene Zuordnungen
+- `add-iam-authorization-rbac-v1`: RBAC, `GET /iam/me/permissions`, `POST /iam/authorize`
+- `add-iam-abac-hierarchy-cache`: ABAC, Vererbung, Cache-Invalidierung, Performance-Härtung
+- `add-iam-governance-workflows`: Delegation, Impersonation, Approval-Workflows, Legal/Audit-Ausbau
 
 ## Impact
 
-### Betroffene Specs (neu)
+### Betroffene Specs
 
 - `iam-core` – IAM-Architektur, Authentifizierung, Keycloak-Integration
-- `iam-organizations` – Organisationsmodell und Hierarchien
-- `iam-access-control` – Rollenmodell, RBAC/ABAC, Permissions
-- `iam-auditing` – Audit-Logs und Compliance
 
 ### Betroffene Packages
 
-- `packages/core/` – IAM-Services und Permission Engine
-- `packages/data/` – Postgres-Schemas für IAM-Tabellen
+- `packages/auth/` – OIDC-, Session- und Token-Logik
 - `apps/studio/` – Frontend-Integration mit Keycloak OIDC
 
 ### Breaking Changes
@@ -59,34 +50,43 @@ Ohne diese Fundamente können die nachfolgenden Module (News, Medienverwaltung, 
 
 ### Abhängigkeiten & Sequenzierung
 
-Alle nachfolgenden Arbeitspakete (Milestone 1 News-Modul, Milestone 2 Medienverwaltung, etc.) sind auf Phase 1–3 angewiesen:
+Child A ist Voraussetzung für die nachgelagerten IAM-Child-Changes im Masterplan:
 
 ```
-Phase 1: Keycloak + IAM-Service
+Child A: Identity-Basis (OIDC/Session/Token)
          ↓
-Phase 2: Organisationen + Account-Sync
+Child B: Core Data Layer
          ↓
-Phase 3: Rollen + Permissions
+Child C: RBAC v1
          ↓
-Milestone 1: News-Modul mit vollständigem IAM
+Child D: ABAC + Hierarchie + Cache
+         ↓
+Child E: Governance-Workflows
 ```
 
 ### Ressourcen-Impakt
 
 - **Frontend:** Integration OIDC-Login, Session-Management
-- **Backend:** 3 neue Services (IAM, Org-Sync, Permission Engine)
-- **Infrastruktur:** Keycloak-Instanz (bereits vorhanden), Redis für Permission-Caching, Postgres-Migration
-- **Testing:** Unit-Tests, E2E-Tests für Authentication & Authorization Flows
+- **Backend:** Auth/Identity-Service-Bausteine
+- **Infrastruktur:** Keycloak-Instanz (bereits vorhanden), Redis Session Store
+- **Testing:** Unit-Tests, E2E-Tests für Authentication-Flows
+
+### Ist-Stand Codebasis (bereits vorhanden)
+
+- OIDC-Discovery und Client-Initialisierung: `packages/auth/src/oidc.server.ts`
+- Auth-Konfiguration über Umgebungsvariablen: `packages/auth/src/config.ts`
+- Session- und Login-State-Handling via Redis: `packages/auth/src/redis-session.server.ts`
+- Serverseitige Auth-Flows und Route-Handler: `packages/auth/src/auth.server.ts`, `packages/auth/src/routes.server.ts`
 
 ## Approval Gate
 
 Vor Start der Implementierung müssen folgende Punkte geklärt sein:
 
 1. ✅ Keycloak-Instanz und Admin-Zugriff verfügbar?
-2. ✅ Postgres/Supabase-Schema-Migrations-Workflow etabliert?
-3. ✅ Redis/Caching-Strategie geklärt?
-4. ❓ Externe IdP-Anbindungen (AD, BundID) für Phase 1 relevant oder später?
+2. ✅ Keycloak-Basisintegration im Code vorhanden und als Child-A-Basis nutzbar?
+3. ✅ Externe IdP-Anbindungen (AD, BundID) und 2FA lokal explizit aus Child A ausgeklammert?
+4. ℹ️ Postgres-Verfügbarkeit und Caching-Strategie werden in Child B/D umgesetzt (kein Blocker für Child A)
 
 ---
 
-**Status:** 🟡 Proposal (bereit für Review)
+**Status:** 🟡 Proposal (Child A, Scope bereinigt; bereit für Review)

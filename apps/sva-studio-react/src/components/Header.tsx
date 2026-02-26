@@ -89,9 +89,9 @@ export default function Header({ isLoading = false }: HeaderProps) {
   if (isLoading || user === undefined) {
     authAction = (
       <>
-        <output aria-live="polite" className="sr-only">
+        <span role="status" aria-live="polite" className="sr-only">
           Authentifizierungsstatus wird geladen.
-        </output>
+        </span>
         <span aria-hidden="true" className="ml-2 h-8 w-20 animate-pulse rounded-md bg-slate-800" />
       </>
     );

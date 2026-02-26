@@ -30,13 +30,16 @@ Die folgenden Einträge sind **bestätigte Entscheidungen** auf Basis von:
 - Owner: Produkt + Architektur
 - Fällig am: vor Start Child B (`add-iam-core-data-layer`)
 
-### 2) Verbindliche Rollenmatrix (7 Personas)
-- Liegt eine freigegebene Rechte-Matrix pro Persona vor (CRUD, Approve, Admin, Export)?
-- Entscheidung: [ ] Ja, freigegeben
-- Entscheidung: [x] Nein, bis Datum finalisieren
-- Referenz-Dokument: `Umsetzung-Rollen-Rechte.md` (Abschnitt 5) als fachliche Basis, um technische Matrix erweitern
-- Owner: Produkt + Fachseite (mit Security-Review)
-- Zieltermin-Vorschlag: vor Start Child C (`add-iam-authorization-rbac-v1`)
+### 2) Permission-Kompositionsmodell und Seed-Defaults (7 Personas)
+- Entscheidung: [x] Die konkrete Rechte-Matrix pro Persona ist zur Laufzeit über das SVA Studio konfigurierbar – keine statische Vorab-Freigabe nötig
+- Vor Child C müssen folgende Teilentscheidungen stehen:
+  - [x] Permission-Schema: Welche `action`-Typen und `resource_type`-Typen existieren → definiert in `Umsetzung-Rollen-Rechte.md` (Abschnitt 5.2)
+  - [ ] Aggregationsregel: Permissions additiv (OR) oder restriktiv (AND)? Konfliktauflösung bei Hierarchien? → als ADR dokumentieren
+  - [x] 7 Default-Seed-Zuordnungen als initiale Konfiguration (nicht als unveränderliche Matrix) → Seeds in Child B
+- Beschluss (26.02.2026): System-Rollen (7 Personas) werden als Seed-Defaults ausgeliefert. Mandanten-spezifische Custom-Rollen und die konkrete Permission-Zuordnung pro Persona sind zur Laufzeit konfigurierbar. Nur das Permission-Kompositionsmodell (Aggregation, Konfliktauflösung) muss architektonisch fixiert sein.
+- Referenz-Dokument: `Umsetzung-Rollen-Rechte.md` (Abschnitt 5) – unterscheidet System-Rollen, Mandanten-Rollen und temporäre Rollen
+- Owner: Architektur + Backend
+- Fällig am: vor Start Child C (`add-iam-authorization-rbac-v1`) – nur Aggregationsregel-ADR offen
 
 ### 3) Tenant-Kanon und Hierarchie
 - Kanonischer Scope: [x] instanceId [ ] organizationId [ ] tenantId [ ] workspaceId
@@ -58,9 +61,10 @@ Die folgenden Einträge sind **bestätigte Entscheidungen** auf Basis von:
 - Owner (Security): Security + DSB
 
 ### 5) Compliance-Vorgaben
-- Audit-Retention: 24 Monate (Vorschlag, mit rechtlicher Freigabe)
+- Audit-Retention: [x] 24 Monate (bestätigt, 26.02.2026) – der Wert MUSS konfigurierbar sein (Admin-Setting, nicht hardcoded)
 - Lösch-/Sperrregeln (DSGVO): Soft-Delete + Sperrstatus für Betriebsnachweis, endgültige Löschung nach policy-gesteuerter Frist
 - Nachweisformat für Audits: [x] CSV [x] JSON [x] SIEM-Export
+- PII-Pseudonymisierungsstrategie: [x] bestätigt – Klartext-PII (E-Mail, IP, User-Agent) werden in Audit-Logs durch pseudonymisierte Referenzen ersetzt; Re-Identifikation nur durch autorisiertes Personal mit dokumentiertem Grund (siehe Leitplanke „PII-Pseudonymisierung")
 - Owner (Legal/DSB): DSB + Legal
 
 ### 6) Performance- und Lastziele
@@ -80,6 +84,23 @@ Die folgenden Einträge sind **bestätigte Entscheidungen** auf Basis von:
 - Harte Go-Live-Kriterien: Security-Tests grün, IAM-Regression grün, `authorize` P95 SLO erreicht, Audit-Nachweis exportierbar
 - Owner (Produkt): Produkt + Tech Lead
 
+### 8a) Operative Observability und Logging (Logging-Review 26.02.2026)
+- SDK Logger Pflicht für alle IAM-Module: [x] Ja
+- Beschluss: Alle IAM-Server-Module nutzen `createSdkLogger({ component: 'iam-<modul>' })` gemäß ADR-006. Kein `console.log` in IAM-Code.
+- `workspace_id`-Mapping: [x] `workspace_id` === `instanceId`
+- Beschluss (26.02.2026): In der Logging-Pipeline entspricht `workspace_id` dem kanonischen IAM-Scope `instanceId`. Alle IAM-Logger-Instanzen werden mit `{ workspace_id: ctx.instanceId, component: 'iam-...' }` initialisiert.
+- Korrelations-IDs: [x] `X-Request-Id` + OTEL Trace-Context in allen IAM-APIs
+- Dual-Write Audit-Events: [x] DB (`iam.activity_logs`) + OTEL-Pipeline (SDK Logger)
+- Beschluss: Sicherheitsrelevante Audit-Events werden parallel in die DB und über den SDK Logger in die OTEL→Loki-Pipeline emittiert, um Echtzeit-Monitoring und Alerting zu ermöglichen.
+- Log-Level-Konvention für IAM: [x] definiert
+- Beschluss:
+  - `error`: Systemfehler, RLS-Bypass-Versuche, Cache-Invalidierung fehlgeschlagen
+  - `warn`: Token-Validierungsfehler, Authorize-Denials, Impersonation-Start/-Ende, fehlgeschlagene Logins
+  - `info`: Erfolgreiche Logins, Account-Erstellung, Rollenänderungen
+  - `debug`: Token-Refresh, Cache-Hit/Miss, Authorize-Allow
+- Owner (Architektur): Architektur + Plattform
+- Referenz: `docs/development/observability-best-practices.md`, `docs/architecture/decisions/ADR-006-logging-pipeline-strategy.md`
+
 ---
 
 ## Should (vor Start Child C/D)
@@ -89,6 +110,16 @@ Die folgenden Einträge sind **bestätigte Entscheidungen** auf Basis von:
 - Entscheidung: [ ] Ja [x] Nein
 - Vorschlag: Finalisierung im Child D (`add-iam-abac-hierarchy-cache`) mit verpflichtendem Security-Review.
 - Owner: Architektur + Security
+
+### 9a) Datenklassifizierung für IAM-Entitäten
+- Schutzlevel pro IAM-Datenart definiert und in Schema dokumentiert?
+- Entscheidung: [x] Ja
+- Beschluss (26.02.2026):
+  - **Vertraulich:** Accounts (E-Mail, Credentials), Session-Daten, Audit-Logs mit PII-Referenzen
+  - **Intern:** Organisationsmetadaten, Rollenzuordnungen, Hierarchiebeziehungen
+  - **Öffentlich:** Rollennamen, Permission-Definitionen (Systemrollen)
+- Schutzmaßnahmen: Vertraulich → Encryption at Rest (Column-Level), Intern → Zugriffsbeschränkung, Öffentlich → Standard-Schutz
+- Owner: Architektur + DSB
 
 ### 10) Entscheidungsbegründungen (`reason`-Codes)
 - Standardisierte Denial-/Allow-Gründe freigegeben?
@@ -132,3 +163,25 @@ Master-Change kann in „bereit zur Umsetzung“ überführt werden, wenn:
 - alle **Must**-Punkte entschieden sind,
 - Owner benannt sind,
 - und offene **Should**-Punkte mit Termin im jeweiligen Child-Change verankert wurden.
+---
+
+## Explizit deferred (außerhalb aktueller Entwicklungsphase)
+
+Die folgenden Punkte werden bewusst auf einen späteren Zeitpunkt verschoben, da sie Keycloak-seitige Konfigurationen betreffen und kein Produktiv-Rollout geplant ist:
+
+### D1) Keycloak-Härtung
+- MFA-Enforcement für Admin-Personas (BSI IT-Grundschutz §3.1)
+- Passwortrichtlinie (BSI: 12 Zeichen, Komplexität, 90-Tage-Ablauf)
+- Session-Idle-Timeout (BSI: 30 Minuten Inaktivität)
+- Account-Lockout nach 5 fehlgeschlagenen Versuchen
+- Rate-Limiting auf Auth-Endpoints (WAF vs. App-Layer)
+- Brute-Force-Detection in Keycloak-Realm
+- **Trigger:** Wird adressiert, wenn Produktivbetrieb geplant wird
+
+### D2) Keycloak-Version
+- Festlegung auf eine spezifische LTS-Version
+- **Trigger:** Wird adressiert, wenn Produktivbetrieb geplant wird
+
+### D3) SAST/DAST/Container-Scans
+- Bereits in bestehenden Issues referenziert: #18, #72
+- **Trigger:** CI-Pipeline-Ausbau

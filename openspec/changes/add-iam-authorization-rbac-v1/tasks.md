@@ -8,7 +8,7 @@
 
 ## 2. RBAC Engine v1
 
-- [ ] 2.1 Rollenauflösung pro User/Organisation implementieren
+- [ ] 2.1 Rollenauflösung pro User/Instanz implementieren (inkl. organisationsspezifischem Kontext)
 - [ ] 2.2 Permission-Aggregation und Scope-Matching umsetzen
 - [ ] 2.3 Baseline-Performance messen und dokumentieren
 
@@ -16,4 +16,4 @@
 
 - [ ] 3.1 Nutzungspfad für mindestens ein Modul integrieren
 - [ ] 3.2 Unit-Tests für positive/negative Fälle ergänzen
-- [ ] 3.3 Integrationstests für org-spezifische Denials ergänzen
+- [ ] 3.3 Integrationstests für instanz- und organisationsspezifische Denials ergänzen

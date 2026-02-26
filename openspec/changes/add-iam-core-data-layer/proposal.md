@@ -10,6 +10,7 @@ Für belastbare Autorisierung und Mandantenfähigkeit fehlt eine konsistente IAM
 - Tabellen für `accounts`, `organizations`, `roles`, `permissions`, Zuordnungen
 - Migrationspfad inkl. Seeds für Systemrollen (7 Personas)
 - RLS-Baseline für mandantenfähige Isolation
+- Kanonischer Mandanten-Scope: `instanceId` (eine Instanz enthält mehrere Organisationen)
 
 ## Impact
 

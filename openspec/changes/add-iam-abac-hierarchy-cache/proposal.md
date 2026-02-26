@@ -10,6 +10,7 @@ RBAC allein deckt die fachliche Komplexität (Org-/Geo-Hierarchie, Kontextattrib
 - Vererbungslogik über Organisations- und Geo-Hierarchien
 - Permission-Snapshots im Cache + Event-basierte Invalidierung
 - Performance-Härtung für `authorize` mit Ziel < 50 ms
+- Primärer Mandanten-Scope `instanceId`; Organisation als untergeordneter Kontext
 
 ## Impact
 

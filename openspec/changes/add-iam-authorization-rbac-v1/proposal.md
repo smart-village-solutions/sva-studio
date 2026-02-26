@@ -7,9 +7,10 @@ Nach dem Datenfundament wird eine zentrale, wiederverwendbare Authorize-Schnitts
 ## What Changes
 
 - API-Endpunkte: `GET /iam/me/permissions`, `POST /iam/authorize`
-- RBAC-basierte Auswertung pro aktiver Organisation
+- RBAC-basierte Auswertung pro aktiver Instanz mit organisationsspezifischem Kontext
 - Einfache Reason-Codes für nachvollziehbare Denials
 - SDK-nahe Integrationsschicht für modulübergreifende Nutzung
+- Verbindliche Mandanten-Scoping-Regel: `instanceId` als Primärfilter
 
 ## Impact
 

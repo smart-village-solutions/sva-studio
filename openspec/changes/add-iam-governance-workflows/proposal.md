@@ -10,6 +10,7 @@ Für Enterprise- und Behördenkontext reichen reine Berechtigungsentscheidungen 
 - Delegationen (temporäre Vertretungen) mit Gültigkeitsfenstern
 - Sichere Impersonation mit starker Auditierbarkeit
 - Legal-Text-Akzeptanzen und Compliance-Events
+- Governance-Workflows instanzgebunden modellieren (`instanceId` als Primärscope)
 
 ## Impact
 

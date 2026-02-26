@@ -11,6 +11,7 @@
 - [ ] 2.1 Approval-Flow (Vier-Augen) implementieren
 - [ ] 2.2 Delegationsauflösung in Permission-Berechnung integrieren
 - [ ] 2.3 Impersonation mit Sicherheitsgrenzen und Sichtbarkeit implementieren
+- [ ] 2.4 Instanzgrenzen in allen Governance-Operationen erzwingen (`instanceId`)
 
 ## 3. Audit & Compliance
 
@@ -23,3 +24,4 @@
 - [ ] 4.1 Negativtests für Missbrauchsszenarien ergänzen
 - [ ] 4.2 Integrationstests für End-to-End Governance-Flows ergänzen
 - [ ] 4.3 Regressionstests für bestehende Authorize-Pfade ergänzen
+- [ ] 4.4 Isolationstests: keine Workflow-Wirkung über Instanzgrenzen hinweg

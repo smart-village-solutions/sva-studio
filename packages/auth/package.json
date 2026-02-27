@@ -16,6 +16,7 @@
     }
   },
   "dependencies": {
+    "@sva/core": "workspace:*",
     "@sva/sdk": "workspace:*",
     "cookie-es": "^1.2.2",
     "ioredis": "^5.4.2",

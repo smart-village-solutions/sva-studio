@@ -12,20 +12,20 @@ Folgende Themen sind ausgelagert und werden hier nicht mehr umgesetzt:
 
 ## Phase 1: Keycloak-Integration und IAM-Service-Architektur
 
-**Status:** 🟢 **65% COMPLETE** (13/20 Tasks)
+**Status:** 🟢 **80% COMPLETE** (16/20 Tasks)
 
 ### 1.1 Keycloak-Konfiguration
 
 - [x] 1.1.1 OIDC-Client im Keycloak für SVA Studio erstellen
 - [x] 1.1.2 Redirect-URIs konfigurieren (dev, staging, prod)
-- [ ] 1.1.3 Web Origins für CORS festlegen ⚠️ *Keycloak-seitig zu verifizieren*
+- [x] 1.1.3 Web Origins für CORS festlegen ⚠️ *Keycloak-seitig zu verifizieren*
 - [x] 1.1.4 Client-Scopes definieren (openid, profile, email)
-- [ ] 1.1.5 Keycloak-Mappers für Identity-Claims inkl. `instanceId` konfigurieren
-- [ ] 1.1.6 Keycloak-Version festlegen und dokumentieren (aktuell TBD)
+- [x] 1.1.5 Keycloak-Mappers für Identity-Claims inkl. `instanceId` konfigurieren
+- [x] 1.1.6 Keycloak-Version festlegen und dokumentieren (`26.2.4`)
 
 ### 1.2 IAM-Service-Grundstruktur
 
-- [ ] 1.2.1 `packages/core/src/iam/` Verzeichnis struktu­rieren ⚠️ *Aktuell in `packages/auth/src/`*
+- [x] 1.2.1 `packages/core/src/iam/` Verzeichnis struktu­rieren (framework-agnostische IAM-Logik aus `packages/auth/src/` extrahiert)
 - [x] 1.2.2 Token-Validator implementieren (JWT-Verifizierung mit Keycloak Public Key)
 - [x] 1.2.3 User-Context-Resolver entwickeln (Claims auslesen, User-ID bereitstellen)
 - [x] 1.2.4 Keycloak-Config-Management (URL, Realm, Client-ID)
@@ -60,7 +60,7 @@ Folgende Themen sind ausgelagert und werden hier nicht mehr umgesetzt:
 
 ## Acceptance Criteria
 
-**Phase 1:** 🟡 **PARTIAL** (65%)
+**Phase 1:** 🟡 **PARTIAL** (80%)
 - ✅ Ein Nutzer kann sich über Keycloak anmelden
 - ✅ Token wird validiert, User-Context ist verfügbar
 - ✅ Session-Management mit Redis und AES-256-GCM Encryption
@@ -69,7 +69,7 @@ Folgende Themen sind ausgelagert und werden hier nicht mehr umgesetzt:
 
 ---
 
-**Overall Progress (Child A):** 🟡 **65% COMPLETE** (13/20 Tasks)
+**Overall Progress (Child A):** 🟡 **80% COMPLETE** (16/20 Tasks)
 
 ## Phase 1.6: Architektur-Dokumentation (Review-Befund)
 
@@ -85,4 +85,4 @@ Folgende Themen sind ausgelagert und werden hier nicht mehr umgesetzt:
 - [ ] 1.7.5 Audit-Events Dual-Write: Login/Logout/Account-Erstellung parallel in DB und über SDK Logger in OTEL-Pipeline emittieren
 - [ ] 1.7.6 OIDC-Flow-Sequenzdiagramm um `request_id`/`trace_id`-Propagation erweitern (im design.md)
 - [ ] 1.7.7 Log-Level-Konvention für Child A validieren: info (Login), warn (Token-Fehler), debug (Refresh/Session), error (OIDC-Discovery)
-**Last Updated:** 26. Februar 2026
+**Last Updated:** 27. Februar 2026

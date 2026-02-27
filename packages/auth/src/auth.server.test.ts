@@ -53,6 +53,7 @@ describe('getSessionUser', () => {
         id: 'user-1',
         name: 'Max Mustermann',
         email: 'max@example.com',
+        instanceId: 'dev-local-1',
         roles: ['admin'],
       },
       refreshToken: 'refresh-token',
@@ -67,6 +68,7 @@ describe('getSessionUser', () => {
       id: 'user-1',
       name: 'Max Mustermann',
       email: 'max@example.com',
+      instanceId: 'dev-local-1',
       roles: ['admin'],
     });
     expect(refreshTokenGrantMock).not.toHaveBeenCalled();

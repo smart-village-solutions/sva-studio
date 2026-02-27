@@ -1,5 +1,6 @@
 // Server-side OIDC helpers for login, session management, and logout flows.
 import { randomUUID } from 'node:crypto';
+import { extractRoles, parseJwtPayload, resolveInstanceId, resolveUserName } from '@sva/core';
 import { createSdkLogger } from '@sva/sdk/server';
 
 import { getAuthConfig } from './config';
@@ -16,95 +17,6 @@ import type { LoginState, SessionUser } from './types';
 
 const logger = createSdkLogger({ component: 'auth-oauth', level: 'info' });
 const TOKEN_REFRESH_SKEW_MS = 60_000;
-
-/**
- * Resolve a display name from standard OIDC claims with fallbacks.
- */
-const resolveUserName = (claims: Record<string, unknown>) => {
-  const name = claims.name;
-  if (typeof name === 'string' && name.trim()) {
-    return name;
-  }
-  const preferredUsername = claims.preferred_username;
-  if (typeof preferredUsername === 'string' && preferredUsername.trim()) {
-    return preferredUsername;
-  }
-  const givenName = claims.given_name;
-  const familyName = claims.family_name;
-  if (typeof givenName === 'string' && typeof familyName === 'string') {
-    return `${givenName} ${familyName}`.trim();
-  }
-  return 'Unbekannt';
-};
-
-/**
- * Decode a JWT payload without verifying the signature.
- */
-const parseJwtPayload = (token: string): Record<string, unknown> | null => {
-  const parts = token.split('.');
-  if (parts.length < 2) {
-    return null;
-  }
-  const payload = parts[1];
-  const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
-  const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
-  try {
-    const json = Buffer.from(padded, 'base64').toString('utf8');
-    const data = JSON.parse(json);
-    return data && typeof data === 'object' ? (data as Record<string, unknown>) : null;
-  } catch {
-    return null;
-  }
-};
-
-type AccessRoles = {
-  roles?: unknown;
-};
-
-/**
- * Normalize a roles array and filter non-string values.
- */
-const readRoles = (value: unknown) =>
-  Array.isArray(value) ? value.filter((role): role is string => typeof role === 'string') : [];
-
-/**
- * Extract role strings from a realm/resource access object.
- */
-const readAccessRoles = (value: unknown) => {
-  if (!value || typeof value !== 'object') {
-    return [];
-  }
-  return readRoles((value as AccessRoles).roles);
-};
-
-/**
- * Collect roles from access claims, optionally scoped to a client.
- */
-const extractRoles = (claims: Record<string, unknown>, clientId?: string) => {
-  const roles = new Set<string>();
-  for (const role of readRoles(claims.roles)) {
-    roles.add(role);
-  }
-  for (const role of readAccessRoles(claims.realm_access)) {
-    roles.add(role);
-  }
-  const resourceAccess = claims.resource_access;
-  if (resourceAccess && typeof resourceAccess === 'object') {
-    const accessEntries = resourceAccess as Record<string, unknown>;
-    if (clientId && accessEntries[clientId]) {
-      for (const role of readAccessRoles(accessEntries[clientId])) {
-        roles.add(role);
-      }
-    } else {
-      for (const entry of Object.values(accessEntries)) {
-        for (const role of readAccessRoles(entry)) {
-          roles.add(role);
-        }
-      }
-    }
-  }
-  return [...roles];
-};
 
 /**
  * Builds the OIDC authorization URL and stores the login state.
@@ -172,6 +84,7 @@ export const handleCallback = async (params: {
     id: String(claims.sub ?? ''),
     name: resolveUserName(claims),
     email: typeof claims.email === 'string' ? claims.email : undefined,
+    instanceId: resolveInstanceId(claims),
     roles: extractRoles(roleClaims, authConfig.clientId),
   };
 
@@ -225,6 +138,7 @@ export const getSessionUser = async (sessionId: string) => {
         id: String(claims.sub ?? ''),
         name: resolveUserName(claims),
         email: typeof claims.email === 'string' ? claims.email : undefined,
+        instanceId: resolveInstanceId(claims),
         roles: extractRoles(roleClaims, authConfig.clientId),
       };
       const expiresAt = refreshed.expiresIn()

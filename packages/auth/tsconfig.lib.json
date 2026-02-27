@@ -7,7 +7,10 @@
     "outDir": "dist",
     "rootDir": "src",
     "types": ["node"],
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "paths": {
+      "@sva/core": ["packages/core/dist/index.d.ts"]
+    }
   },
   "include": ["src/**/*.ts"],
   "exclude": ["src/**/*.test.ts", "src/**/*.e2e.test.ts", "src/**/*.integration.test.ts", "src/routes.server.TEST.ts"]

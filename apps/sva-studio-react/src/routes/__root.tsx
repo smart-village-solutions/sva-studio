@@ -4,6 +4,7 @@
 import { TanStackDevtools } from '@tanstack/react-devtools';
 import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router';
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools';
+import { createServerFn } from '@tanstack/react-start';
 import React from 'react';
 
 import AppShell from '../components/AppShell';
@@ -15,10 +16,23 @@ import appCss from '../styles.css?url';
 /**
  * Initialisiert serverseitig notwendige SDK-Bausteine für die Root-Route.
  */
+let sdkInitialized = false;
+
+const ensureSdkInitialized = createServerFn().handler(async () => {
+  if (sdkInitialized) {
+    return { initialized: true };
+  }
+
+  const { initializeOtelSdk } = await import('@sva/sdk/server');
+  await initializeOtelSdk();
+  sdkInitialized = true;
+
+  return { initialized: true };
+});
+
 const loadRootData = async () => {
-  // Run SDK bootstrap only on the server to avoid client-side server-module imports.
+  // Run SDK bootstrap only on the server.
   if (import.meta.env.SSR) {
-    const { ensureSdkInitialized } = await import('../lib/init-sdk.server');
     await ensureSdkInitialized();
   }
   return {};
@@ -65,13 +79,7 @@ export const rootRoute = Route;
  * damit serverseitig gerenderte Inhalte sofort verfügbar bleiben.
  */
 function RootDocument({ children }: Readonly<{ children: React.ReactNode }>) {
-  const [isHydrated, setIsHydrated] = React.useState(import.meta.env.SSR);
-
-  React.useEffect(() => {
-    setIsHydrated(true);
-  }, []);
-
-  const isShellLoading = !isHydrated;
+  const isShellLoading = false;
 
   return (
     <html lang="de">

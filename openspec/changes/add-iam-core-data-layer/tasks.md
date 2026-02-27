@@ -2,8 +2,8 @@
 
 ## 1. Schema & Migration
 
-- [ ] 1.1 Lokale Postgres-Instanz per Docker bereitstellen (Compose, Volumes, Healthcheck)
-- [ ] 1.2 Verbindliche lokale Env-Konfiguration für DB-Connection definieren und dokumentieren
+- [x] 1.1 Lokale Postgres-Instanz per Docker bereitstellen (Compose, Volumes, Healthcheck)
+- [x] 1.2 Verbindliche lokale Env-Konfiguration für DB-Connection definieren und dokumentieren
 - [ ] 1.3 `iam`-Schema anlegen
 - [ ] 1.4 Kern-Tabellen modellieren (`accounts`, `organizations`, `roles`, `permissions`)
 - [ ] 1.5 Zuordnungstabellen modellieren (`account_roles`, `role_permissions`, `account_organizations`)
@@ -29,8 +29,8 @@
 
 ## 4. Verifikation & Dokumentation
 
-- [ ] 4.1 Nx-Task(s) für lokale DB-Initialisierung und Migration dokumentieren
-- [ ] 4.2 Kurze Betriebsnotiz für lokale Wiederherstellung/Reset ergänzen
+- [x] 4.1 Nx-Task(s) für lokale DB-Initialisierung und Migration dokumentieren
+- [x] 4.2 Kurze Betriebsnotiz für lokale Wiederherstellung/Reset ergänzen
 - [ ] 4.3 arc42-Referenzen in betroffenen Child-Dokumenten final gegenprüfen
 
 ## 4a. Encryption at Rest & Datenklassifizierung (Security-Review 26.02.2026)

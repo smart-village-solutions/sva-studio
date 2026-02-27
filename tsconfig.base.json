@@ -9,6 +9,7 @@
     "baseUrl": ".",
     "paths": {
       "@sva/core": ["packages/core/src/index.ts"],
+      "@sva/core/security": ["packages/core/src/security/index.ts"],
       "@sva/data": ["packages/data/src/index.ts"],
       "@sva/auth": ["packages/auth/src/index.ts"],
       "@sva/sdk": ["packages/sdk/src/index.ts"],

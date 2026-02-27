@@ -23,3 +23,43 @@ Das System MUST in Child A keine vollständige Organisationspersistenz, RLS-Poli
 - **THEN** werden diese in den zugehörigen Child-Changes (B/D) spezifiziert
 - **AND** Child A bleibt auf Identity- und Kontextbereitstellung begrenzt
 
+### Requirement: Instanzzentriertes Mandantenmodell
+
+Das System SHALL `instanceId` als kanonischen Mandanten-Scope verwenden. Organisationen sind Untereinheiten innerhalb einer Instanz.
+
+#### Scenario: Instanz mit mehreren Organisationen
+
+- **WHEN** eine Instanz mehrere Organisationen enthält
+- **THEN** können Benutzer innerhalb derselben Instanz einer oder mehreren Organisationen zugeordnet werden
+- **AND** diese Zuordnungen bleiben auf die Instanz begrenzt
+
+### Requirement: Lokale Postgres-Bereitstellung für IAM-Datenmodell
+
+Das System SHALL eine reproduzierbare lokale Postgres-Bereitstellung über Docker für Entwicklung und Tests bereitstellen.
+
+#### Scenario: Lokaler Start der IAM-Datenbank
+
+- **WHEN** ein Entwickler die lokale IAM-Umgebung startet
+- **THEN** ist die Postgres-Instanz erreichbar und health-checked
+- **AND** das `iam`-Schema kann durch Migrationen erstellt werden
+
+### Requirement: RLS-basierte Instanzisolation
+
+Das System SHALL instanzüberschreitende Datenzugriffe auf Datenbankebene durch Row-Level-Security verhindern.
+
+#### Scenario: Zugriff auf fremde Instanzdaten
+
+- **WHEN** ein Request-Kontext auf `instanceId=A` begrenzt ist
+- **AND** ein Datenzugriff auf Datensätze mit `instanceId=B` erfolgt
+- **THEN** liefert die Datenbank keinen Zugriff auf diese Datensätze
+
+### Requirement: Migrations- und Seed-Betriebssicherheit
+
+Das System SHALL versionierte Migrationen mit Rollback-Pfad und idempotenten Seeds für IAM-Basisdaten bereitstellen.
+
+#### Scenario: Wiederholte Seed-Ausführung
+
+- **WHEN** Seeds mehrfach ausgeführt werden
+- **THEN** entstehen keine doppelten Basisrollen oder inkonsistenten Zuordnungen
+- **AND** der Datenbestand bleibt konsistent
+

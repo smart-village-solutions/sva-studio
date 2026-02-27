@@ -2,8 +2,9 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 import { parse as parseCookie, serialize as serializeCookie } from 'cookie-es';
 import { createSdkLogger, withRequestContext, initializeOtelSdk } from '@sva/sdk/server';
 
-import { createLoginUrl, getSessionUser, handleCallback, logoutSession } from './auth.server';
+import { createLoginUrl, handleCallback, logoutSession } from './auth.server';
 import { getAuthConfig } from './config';
+import { withAuthenticatedUser } from './middleware.server';
 import type { AuthRoutePath } from './routes.shared';
 import type { LoginState } from './types';
 
@@ -212,45 +213,17 @@ export const meHandler = async (request: Request): Promise<Response> => {
   return withRequestContext(
     { request, fallbackWorkspaceId: 'default' },
     async () => {
-      const { sessionCookieName } = getAuthConfig();
-
-  const sessionId = readCookieFromRequest(request, sessionCookieName);
-
-  if (!sessionId) {
-    logger.debug('Auth check - no session', {
-      endpoint: '/auth/me',
-      auth_state: 'unauthenticated',
-    });
-    return new Response(JSON.stringify({ error: 'unauthorized' }), {
-      status: 401,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
-
-  const user = await getSessionUser(sessionId);
-
-  if (!user) {
-    logger.warn('Session found but user invalid', {
-      endpoint: '/auth/me',
-      session_exists: true,
-      user_exists: false,
-    });
-    return new Response(JSON.stringify({ error: 'unauthorized' }), {
-      status: 401,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
-
-  logger.debug('Auth check successful', {
-    endpoint: '/auth/me',
-    auth_state: 'authenticated',
-    user_id: user.id,
-    roles_count: user.roles?.length ?? 0,
-  });
-
-      return new Response(JSON.stringify({ user }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
+      return withAuthenticatedUser(request, ({ user }) => {
+        logger.debug('Auth check successful', {
+          endpoint: '/auth/me',
+          auth_state: 'authenticated',
+          user_id: user.id,
+          roles_count: user.roles?.length ?? 0,
+        });
+        return new Response(JSON.stringify({ user }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
       });
     }
   );

@@ -12,7 +12,7 @@ Folgende Themen sind ausgelagert und werden hier nicht mehr umgesetzt:
 
 ## Phase 1: Keycloak-Integration und IAM-Service-Architektur
 
-**Status:** 🟢 **80% COMPLETE** (16/20 Tasks)
+**Status:** 🟢 **100% COMPLETE** (25/25 Tasks)
 
 ### 1.1 Keycloak-Konfiguration
 
@@ -33,15 +33,15 @@ Folgende Themen sind ausgelagert und werden hier nicht mehr umgesetzt:
 
 ### 1.3 Frontend-Integration
 
-- [ ] 1.3.1 OIDC-Library wählen (z. B. `oidc-client-ts` oder `keycloak-js`) ⚠️ *Nicht `@react-oauth/google` – diese Library ist Google-spezifisch*
-- [ ] 1.3.2 Login-Flow im SVA Studio implementieren
-- [ ] 1.3.3 Token-Speicherung via HttpOnly Cookie (Secure, SameSite) ⚠️ *Kein localStorage – siehe Design-Entscheidung §5*
-- [ ] 1.3.4 Logout-Flow implementieren
-- [ ] 1.3.5 Token-Refresh-Mechanik
+- [x] 1.3.1 OIDC-Library wählen: keine Browser-OIDC-Library; serverseitiges BFF-Pattern mit `openid-client` in `@sva/auth` (Frontend nutzt `/auth/login`, `/auth/me`, `/auth/logout`)
+- [x] 1.3.2 Login-Flow im SVA Studio implementieren (Frontend-Trigger via `/auth/login`, Session-Loading via `/auth/me`, Redirect-Flow per E2E verifiziert)
+- [x] 1.3.3 Token-Speicherung via HttpOnly Cookie (Secure, SameSite) umgesetzt (`/auth/callback` setzt `httpOnly`, `sameSite=lax`, `secure` in prod; kein localStorage)
+- [x] 1.3.4 Logout-Flow implementieren (UI-Logout via `POST /auth/logout`, Session-Invalidierung + Cookie-Löschung + Redirect verifiziert)
+- [x] 1.3.5 Token-Refresh-Mechanik (Refresh bei expiring/expired Session via `refreshTokenGrant`; Erfolg- und Fehlerpfad durch Unit-Tests abgesichert)
 
 ### 1.4 Backend-Authentication-Middleware
 
-- [ ] 1.4.1 Express/Framework-Middleware für Token-Validierung schreiben ⚠️ *Routing-Handler vorhanden, aber keine Middleware*
+- [x] 1.4.1 Express/Framework-Middleware für Token-Validierung schreiben (`withAuthenticatedUser` in `packages/auth/src/middleware.server.ts`; in `/auth/me` integriert)
 - [x] 1.4.2 Protected-Routes etablieren
 - [x] 1.4.3 User-Context in Request-Object injizieren
 - [x] 1.4.4 Unit-Tests für Token-Validierung
@@ -49,7 +49,7 @@ Folgende Themen sind ausgelagert und werden hier nicht mehr umgesetzt:
 ### 1.5 Security & Testing
 
 - [x] 1.5.1 HTTPS-Konfiguration für lokal und in allen Umgebungen
-- [ ] 1.5.2 SSO-Flow testen (Multi-Tab, Session-Konsistenz)
+- [x] 1.5.2 SSO-Flow testen (Multi-Tab, Session-Konsistenz) per `sso-session-consistency.test.ts` verifiziert
 - [x] 1.5.3 Token-Expiration und Refresh testen
 - [x] 1.5.4 E2E-Tests für Login-Logout-Szenarios
 - [x] 1.5.5 Security-Audit (Token-Claims, No Secrets in Frontend)
@@ -60,16 +60,16 @@ Folgende Themen sind ausgelagert und werden hier nicht mehr umgesetzt:
 
 ## Acceptance Criteria
 
-**Phase 1:** 🟡 **PARTIAL** (80%)
+**Phase 1:** 🟢 **COMPLETE** (100%)
 - ✅ Ein Nutzer kann sich über Keycloak anmelden
 - ✅ Token wird validiert, User-Context ist verfügbar
 - ✅ Session-Management mit Redis und AES-256-GCM Encryption
 - ✅ E2E-Tests für kritische Auth-Flows
-- ❌ Frontend-Integration fehlt noch (React-Komponenten)
+- ✅ Frontend-Integration ist umgesetzt (Login-/Logout-Aktionen + `/auth/me` Session-Loading)
 
 ---
 
-**Overall Progress (Child A):** 🟡 **80% COMPLETE** (16/20 Tasks)
+**Overall Progress (Child A):** 🟢 **100% COMPLETE** (25/25 Tasks)
 
 ## Phase 1.6: Architektur-Dokumentation (Review-Befund)
 

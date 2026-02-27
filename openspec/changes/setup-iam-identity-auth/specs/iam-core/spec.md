@@ -4,129 +4,129 @@
 
 ### Requirement: Keycloak-OIDC-Integration
 
-The system SHALL provide OIDC-based authentication via Keycloak, enabling secure single sign-on (SSO) for both the SVA Studio CMS and the Smart Village App.
+Das System MUST eine OIDC-basierte Authentifizierung über Keycloak bereitstellen und sicheres Single Sign-on (SSO) sowohl für das SVA Studio CMS als auch für die Smart Village App ermöglichen.
 
 #### Scenario: User logs in via OIDC
 
-- **WHEN** a user navigates to the CMS login page
-- **AND** clicks "Login with Keycloak"
-- **THEN** the user is redirected to the Keycloak login UI
-- **AND** upon successful credential verification
-- **THEN** the user is redirected back to the CMS with an authorization code
-- **AND** the backend exchanges the code for an access token
-- **AND** a user session is established
+- **WHEN** ein Benutzer die CMS-Login-Seite aufruft
+- **AND** auf "Login with Keycloak" klickt
+- **THEN** wird der Benutzer zur Keycloak-Login-Oberfläche weitergeleitet
+- **AND** nach erfolgreicher Anmeldeprüfung
+- **THEN** wird der Benutzer mit einem Authorization Code zurück ins CMS geleitet
+- **AND** das Backend tauscht den Code gegen ein Access Token
+- **AND** eine Benutzersitzung wird aufgebaut
 
 #### Scenario: Invalid or expired token
 
-- **WHEN** a request includes an invalid JWT token
-- **THEN** the backend responds with HTTP 401 Unauthorized
-- **WHEN** a request includes an expired access token
-- **THEN** the backend attempts to refresh via the refresh token
-- **AND** if refresh succeeds, the request is retried
-- **AND** if refresh fails, HTTP 401 is returned
+- **WHEN** eine Anfrage ein ungültiges JWT-Token enthält
+- **THEN** antwortet das Backend mit HTTP 401 Unauthorized
+- **WHEN** eine Anfrage ein abgelaufenes Access Token enthält
+- **THEN** versucht das Backend eine Erneuerung über das Refresh Token
+- **AND** wenn die Erneuerung erfolgreich ist, wird die Anfrage erneut ausgeführt
+- **AND** wenn die Erneuerung fehlschlägt, wird HTTP 401 zurückgegeben
 
 ### Requirement: Token Validation & User Identity
 
-The system SHALL validate JWT tokens issued by Keycloak and extract user identity claims for authorization decision-making.
+Das System MUST von Keycloak ausgestellte JWT-Tokens validieren und Identity-Claims für nachgelagerte Autorisierungsentscheidungen extrahieren.
 
 #### Scenario: Token signature verification
 
-- **WHEN** a request arrives with a JWT token
-- **THEN** the backend verifies the signature using Keycloak's public key
-- **AND** validates claims (iss, aud, exp, nbf)
-- **AND** if any validation fails, the request is rejected
+- **WHEN** eine Anfrage mit einem JWT-Token eingeht
+- **THEN** verifiziert das Backend die Signatur mit dem öffentlichen Schlüssel von Keycloak
+- **AND** validiert die Claims (`iss`, `aud`, `exp`, `nbf`)
+- **AND** wenn eine Validierung fehlschlägt, wird die Anfrage abgelehnt
 
 #### Scenario: User context extraction
 
-- **WHEN** a token is valid
-- **THEN** the system extracts `sub` (user ID), `email`, `name` claims
-- **AND** loads additional user data from the CMS database (organizations, roles)
-- **AND** injects a `UserContext` object into the request for downstream handlers
+- **WHEN** ein Token gültig ist
+- **THEN** extrahiert das System die Claims `sub` (Benutzer-ID), `email` und `name`
+- **AND** lädt zusätzliche Benutzerdaten aus der CMS-Datenbank (Organisationen, Rollen)
+- **AND** injiziert ein `UserContext`-Objekt in die Anfrage für nachgelagerte Handler
 
 ### Requirement: Session Management
 
-The system SHALL manage user sessions securely, with automatic expiration and token refresh.
+Das System MUST Benutzersitzungen sicher verwalten, einschließlich automatischer Ablaufbehandlung und Token-Erneuerung.
 
 #### Scenario: Session expiration
 
-- **WHEN** a user's access token expires
-- **THEN** any API request fails with HTTP 401
-- **AND** the frontend triggers a token refresh
-- **AND** the new access token is stored securely (HttpOnly cookie)
+- **WHEN** das Access Token eines Benutzers abläuft
+- **THEN** schlägt eine API-Anfrage mit HTTP 401 fehl
+- **AND** das Frontend stößt eine Token-Erneuerung an
+- **AND** das neue Access Token wird sicher gespeichert (HttpOnly-Cookie)
 
 #### Scenario: Logout
 
-- **WHEN** a user clicks "Logout"
-- **THEN** the session is invalidated (cookies cleared, tokens revoked)
-- **AND** the user is redirected to Keycloak logout endpoint
-- **AND** then back to the public CMS home page
+- **WHEN** ein Benutzer auf "Logout" klickt
+- **THEN** wird die Sitzung invalidiert (Cookies gelöscht, Tokens widerrufen)
+- **AND** der Benutzer wird zum Keycloak-Logout-Endpunkt weitergeleitet
+- **AND** anschließend zurück zur öffentlichen CMS-Startseite
 
 ### Requirement: Multi-Organization Support
 
-The system SHALL support users belonging to multiple organizations and enforce organization-scoped data access.
+Das System MUST Benutzer mit mehreren Organisationszuordnungen unterstützen und organisationsgebundene Datenzugriffe erzwingen.
 
 #### Scenario: User with multiple org memberships
 
-- **WHEN** a user is member of Organization A, B, and C
-- **THEN** the user can switch between organizations in the CMS UI
-- **AND** when switched, all data queries are scoped to the selected organization
-- **AND** row-level security policies enforce this scoping
+- **WHEN** ein Benutzer Mitglied der Organisationen A, B und C ist
+- **THEN** kann der Benutzer in der CMS-Oberfläche zwischen Organisationen wechseln
+- **AND** nach dem Wechsel werden alle Datenabfragen auf die ausgewählte Organisation begrenzt
+- **AND** Row-Level-Security-Policies erzwingen diese Begrenzung
 
 #### Scenario: Cross-organization data isolation
 
-- **WHEN** User X (member of Org A) makes a request
-- **THEN** the system will NOT return data from Org B or C
-- **AND** even if the user directly queries the database with a manual SQL statement, RLS policies prevent access
+- **WHEN** Benutzer X (Mitglied in Org A) eine Anfrage stellt
+- **THEN** gibt das System KEINE Daten aus Org B oder C zurück
+- **AND** selbst bei direkter Datenbankabfrage mit manuellem SQL verhindern RLS-Policies den Zugriff
 
 ### Requirement: Audit Logging for IAM Events
 
-The system SHALL log all security-relevant IAM events immutably for compliance and troubleshooting.
+Das System MUST alle sicherheitsrelevanten IAM-Ereignisse unveränderbar protokollieren, um Compliance- und Analyseanforderungen zu erfüllen.
 
 #### Scenario: Login attempt logged
 
-- **WHEN** a user successfully logs in
-- **THEN** an event is recorded in `iam.activity_logs` with timestamp, pseudonymized user ID, anonymized IP address (last octet removed), user agent category
-- **AND** the log entry CANNOT be modified or deleted after creation
-- **AND** plain-text PII (email, full IP) is NOT stored in the audit log
+- **WHEN** ein Benutzer sich erfolgreich anmeldet
+- **THEN** wird ein Ereignis in `iam.activity_logs` mit Zeitstempel, pseudonymisierter Benutzer-ID, anonymisierter IP-Adresse (letztes Oktett entfernt) und User-Agent-Kategorie gespeichert
+- **AND** der Log-Eintrag KANN nach Erstellung nicht verändert oder gelöscht werden
+- **AND** Klartext-PII (E-Mail, vollständige IP) wird NICHT im Audit-Log gespeichert
 
 #### Scenario: Account creation triggered by first login
 
-- **WHEN** a user logs in for the first time via a new Keycloak account
-- **THEN** a new account record is created in `iam.accounts`
-- **AND** the creation event is logged with the Keycloak ID as the link
+- **WHEN** ein Benutzer sich erstmals über ein neues Keycloak-Konto anmeldet
+- **THEN** wird ein neuer Account-Datensatz in `iam.accounts` angelegt
+- **AND** das Erstellungsereignis wird mit der Keycloak-ID als Verknüpfung protokolliert
 
 ### Requirement: SDK Logger for IAM Server Modules
 
-The system SHALL use the SDK Logger (`createSdkLogger` from `@sva/sdk`) for all operative logging in IAM server modules, in accordance with ADR-006 and Observability Best Practices. `console.log`/`console.error` SHALL NOT be used in IAM server code.
+Das System MUST den SDK Logger (`createSdkLogger` aus `@sva/sdk`) für alle operativen Logs in IAM-Servermodulen verwenden, gemäß ADR-006 und Observability Best Practices. `console.log`/`console.error` DÜRFEN im IAM-Servercode NICHT verwendet werden.
 
 #### Scenario: Structured logging with mandatory fields
 
-- **WHEN** an IAM server module produces a log entry
-- **THEN** the entry contains at minimum: `workspace_id` (= `instanceId`), `component` (e.g. `iam-auth`), `environment`, `level`
-- **AND** PII redaction is applied automatically by the SDK Logger
-- **AND** no plain-text tokens, session IDs, or email addresses appear in log entries
+- **WHEN** ein IAM-Servermodul einen Log-Eintrag erzeugt
+- **THEN** enthält der Eintrag mindestens: `workspace_id` (= `instanceId`), `component` (z. B. `iam-auth`), `environment`, `level`
+- **AND** PII-Redaktion wird automatisch durch den SDK Logger angewendet
+- **AND** es erscheinen keine Klartext-Tokens, Session-IDs oder E-Mail-Adressen in Logs
 
 #### Scenario: Correlation IDs in authentication flows
 
-- **WHEN** an IAM API endpoint is called
-- **THEN** a `request_id` is generated or propagated from the `X-Request-Id` header
-- **AND** the OTEL trace context is propagated
-- **AND** all log entries within the request reference `request_id` and `trace_id`
+- **WHEN** ein IAM-API-Endpunkt aufgerufen wird
+- **THEN** wird eine `request_id` erzeugt oder aus dem `X-Request-Id`-Header übernommen
+- **AND** der OTEL-Trace-Kontext wird propagiert
+- **AND** alle Log-Einträge innerhalb der Anfrage referenzieren `request_id` und `trace_id`
 
 #### Scenario: Token validation error logging
 
-- **WHEN** a token validation fails (invalid, expired, audience mismatch, issuer mismatch)
-- **THEN** the SDK Logger emits a `warn`-level entry with `operation`, `error_type`, `has_refresh_token`, `request_id`
-- **AND** no token values or session IDs are included in the log entry
+- **WHEN** eine Token-Validierung fehlschlägt (invalid, expired, audience mismatch, issuer mismatch)
+- **THEN** emittiert der SDK Logger einen `warn`-Eintrag mit `operation`, `error_type`, `has_refresh_token`, `request_id`
+- **AND** es werden keine Tokenwerte oder Session-IDs im Log-Eintrag enthalten
 
 ---
 
 ## MODIFIED Requirements
 
-(None for Phase 1 – this is a foundation capability.)
+(Keine für Phase 1 – dies ist eine grundlegende Capability.)
 
 ---
 
 ## REMOVED Requirements
 
-(None for Phase 1.)
+(Keine für Phase 1.)

@@ -73,9 +73,10 @@ Folgende Themen sind ausgelagert und werden hier nicht mehr umgesetzt:
 
 ## Phase 1.6: Architektur-Dokumentation (Review-Befund)
 
-- [ ] 1.6.1 ADR erstellen: „Keycloak als zentraler Identity Provider" (unter `docs/adr/`)
-- [ ] 1.6.2 Specs unter `specs/` auf Deutsch übersetzen oder Sprachwahl als ADR dokumentieren (aktuell EN, DEVELOPMENT_RULES fordern DE)
+- [x] 1.6.1 ADR erstellen: „Keycloak als zentraler Identity Provider" (unter `docs/adr/ADR-009-keycloak-als-zentraler-identity-provider.md`)
+- [x] 1.6.2 Specs unter `specs/` auf Deutsch übersetzen oder Sprachwahl als ADR dokumentieren (Child-A-Specs unter `openspec/changes/setup-iam-identity-auth/specs/` auf Deutsch harmonisiert)
 - [x] 1.6.3 Spec-Scope bereinigen: `iam-access-control`, `iam-organizations`, `iam-auditing` auf Child-A-Scope reduziert (RBAC/ABAC/Hierarchie/Governance ausgelagert)
+
 ## Phase 1.7: Operative Observability (Logging-Review 26.02.2026)
 
 - [ ] 1.7.1 SDK Logger in allen Auth-Modulen einsetzen: `createSdkLogger({ component: 'iam-auth' })` statt `console.*`

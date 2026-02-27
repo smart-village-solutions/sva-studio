@@ -4,7 +4,7 @@
 
 ### Requirement: Authentifizierter Identity-Kontext als Vorbedingung
 
-The system SHALL nach erfolgreicher OIDC-Authentifizierung einen verlässlichen Identity-Kontext bereitstellen, der in nachgelagerten Child-Changes für RBAC/ABAC verwendet werden kann.
+Das System MUST nach erfolgreicher OIDC-Authentifizierung einen verlässlichen Identity-Kontext bereitstellen, der in nachgelagerten Child-Changes für RBAC/ABAC verwendet werden kann.
 
 #### Scenario: Identity-Kontext nach Login verfügbar
 
@@ -14,7 +14,7 @@ The system SHALL nach erfolgreicher OIDC-Authentifizierung einen verlässlichen 
 
 ### Requirement: Keine fachliche Autorisierungsentscheidung in Child A
 
-The system SHALL in Child A keine fachlichen RBAC-/ABAC-Entscheidungen implementieren; diese werden in Child C/D spezifiziert.
+Das System MUST in Child A keine fachlichen RBAC-/ABAC-Entscheidungen implementieren; diese werden in Child C/D spezifiziert.
 
 #### Scenario: Autorisierung außerhalb Child-A-Scope
 
@@ -24,8 +24,8 @@ The system SHALL in Child A keine fachlichen RBAC-/ABAC-Entscheidungen implement
 
 ## MODIFIED Requirements
 
-(None)
+(Keine)
 
 ## REMOVED Requirements
 
-(None)
+(Keine)

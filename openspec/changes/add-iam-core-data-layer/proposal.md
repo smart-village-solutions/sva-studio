@@ -11,7 +11,7 @@ Child B baut auf Child A auf und liefert das persistente Datenfundament für all
 ## What Changes
 
 - Einführung des `iam`-Schemas in Postgres
-- Tabellen für `accounts`, `organizations`, `roles`, `permissions`, Zuordnungen
+- Tabellen für `accounts`, `organizations`, `roles`, `permissions`, Zuordnungen und `activity_logs`
 - Migrationspfad inkl. Seeds für Systemrollen (7 Personas)
 - RLS-Baseline für mandantenfähige Isolation
 - Kanonischer Mandanten-Scope: `instanceId` (eine Instanz enthält mehrere Organisationen)
@@ -23,6 +23,7 @@ Child B baut auf Child A auf und liefert das persistente Datenfundament für all
 
 - Lokale Postgres-Bereitstellung für Entwicklung und Tests (Docker/Compose)
 - `iam`-Schema inkl. Instanz-/Organisationsmodell
+- `iam.activity_logs` als persistenter Audit-DB-Sink für Child-A-Dual-Write
 - Migrations- und Rollbackfähigkeit
 - Baseline-RLS für Instanzisolation
 - Seeds für initiale IAM-Systemrollen (7 Personas als Startset)
@@ -51,13 +52,13 @@ Child B baut auf Child A auf und liefert das persistente Datenfundament für all
 
 ## Dependencies
 
-- Requires: `setup-iam-identity-auth` (Identity-Basis)
+- Requires (erfüllt, archiviert am 27.02.2026): `setup-iam-identity-auth` (Identity-Basis)
 - Blocks: `add-iam-authorization-rbac-v1`, `add-iam-abac-hierarchy-cache`
 
 ## Risiken und Gegenmaßnahmen
 
-- **RLS-Fehlkonfiguration:** frühe Negativtests auf Instanzgrenzen + SQL-Policy-Reviews + Privilege-Escalation-Tests (Superuser-Zugriff, Connection-Pooling mit `SET ROLE`)
-- **RLS-Bypass durch Migrations-Scripts:** Migrationen explizit mit RLS-Bypass-Dokumentation versehen; Superuser-Zugriff ist nur für Migrationen erlaubt und wird auditiert
+- **RLS-Fehlkonfiguration:** frühe Negativtests auf Instanzgrenzen + SQL-Policy-Reviews + Privilege-Escalation-Tests (Runtime-Rollen, Connection-Pooling mit `SET ROLE`)
+- **RLS-Bypass durch privilegierte Rollen:** Anwendung nutzt ausschließlich Nicht-Superuser-Rollen ohne `BYPASSRLS`; privilegierte Zugriffe sind nur für Migrationen erlaubt und werden auditiert
 - **Schema-Churn:** Migrationen klein schneiden und mit Rollback-Pfaden absichern
 - **Lokale Drift (Docker/Env):** verbindliche Compose-Profile und dokumentierte Defaults
 - **Unverschlüsselte sensible Daten:** frühzeitig festlegen, welche Spalten verschlüsselt werden; Produktivbetrieb erfordert zusätzlich TDE oder Volume-Encryption
@@ -80,7 +81,7 @@ Vor Start der Implementierung müssen folgende Punkte geklärt sein:
 - Basistests für Migration + Isolation laufen grün.
 - Sensible IAM-Felder (Credentials, PII) werden at Rest verschlüsselt gespeichert.
 - Datenklassifizierung ist für alle IAM-Entitäten dokumentiert.
-- RLS-Negativtests decken Superuser-Bypass und Connection-Pooling-Szenarien ab.
+- RLS-Negativtests decken Runtime-Rollenhärtung (kein `SUPERUSER`/`BYPASSRLS`) und Connection-Pooling-Szenarien ab.
 
 ## Status
 

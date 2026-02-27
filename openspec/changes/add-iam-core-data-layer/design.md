@@ -17,11 +17,11 @@ Child B liefert das persistente Fundament für nachgelagerte IAM-Children (RBAC,
 2. Mandantenmodell über `instanceId` in allen mandantenrelevanten Tabellen
 3. Row-Level-Security als Default für Laufzeitzugriffe; Migrationen dokumentieren explizite Ausnahmen
 4. Idempotente Seeds für 7 Personas als deterministischer Startzustand
-5. Column-Level-Encryption für Credentials und PII-Felder
+5. Application-Level Column Encryption (Envelope Encryption) für Credentials und PII-Felder; Schlüsselmaterial liegt außerhalb der Datenbank
 
 ## Datenmodell (logisch)
 
-- Kern: `instances`, `accounts`, `organizations`, `roles`, `permissions`
+- Kern: `instances`, `accounts`, `organizations`, `roles`, `permissions`, `activity_logs`
 - Zuordnung: `instance_memberships`, `account_organizations`, `account_roles`, `role_permissions`
 - Audit-relevante Referenzen bleiben stabil, damit nachfolgende Children unveränderbare Nachweise erzeugen können
 
@@ -30,7 +30,8 @@ Child B liefert das persistente Fundament für nachgelagerte IAM-Children (RBAC,
 - Jeder Request setzt den aktiven Instanzkontext
 - Policies erlauben nur Zugriff auf Datensätze der aktiven `instanceId`
 - Fail-Closed: ohne gültigen Kontext kein Datenzugriff
-- Negativtests decken Superuser-/Pooling-Fehlkonfigurationen ab
+- Laufzeitzugriffe erfolgen nur über dedizierte App-Rollen ohne `SUPERUSER`/`BYPASSRLS`
+- Negativtests decken Rollenhärtung sowie Pooling-Fehlkonfigurationen ab
 
 ## Migrationsstrategie
 
@@ -47,6 +48,7 @@ Child B liefert das persistente Fundament für nachgelagerte IAM-Children (RBAC,
 
 - ADR: `instanceId` als kanonischer Mandanten-Scope
 - ADR: Postgres (Docker) als alleinige Datenbankplattform
+- ADR: Verschlüsselungsstrategie für sensible IAM-Daten (Application-Level Encryption + externes Key-Management)
 
 ## Alternativen und Abwägung
 

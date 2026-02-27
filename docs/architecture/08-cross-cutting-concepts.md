@@ -19,6 +19,8 @@ gleichzeitig beeinflussen.
 - Signiertes Login-State-Cookie (HMAC)
 - Session-Cookies: `httpOnly`, `sameSite=lax`, `secure` in Production
 - Optionale Verschlüsselung von Tokens im Redis-Store via `ENCRYPTION_KEY`
+- Application-Level Column Encryption für IAM-PII-Felder (`email_ciphertext`, `display_name_ciphertext`)
+- Schlüsselverwaltung über `IAM_PII_ACTIVE_KEY_ID` + `IAM_PII_KEYRING_JSON` (außerhalb der DB)
 - Redaction sensibler Logfelder im SDK und im OTEL Processor
 
 ### Logging und Observability
@@ -50,7 +52,10 @@ Referenzen:
 
 - `packages/auth/src/routes.server.ts`
 - `packages/auth/src/redis-session.server.ts`
+- `packages/auth/src/audit-db-sink.server.ts`
 - `packages/sdk/src/logger/index.server.ts`
 - `packages/monitoring-client/src/otel.server.ts`
+- `docs/architecture/iam-datenklassifizierung.md`
+- `docs/development/iam-schluesselmanagement-strategie.md`
 - `apps/sva-studio-react/src/routes/__root.tsx`
 - `apps/sva-studio-react/src/components/AppShell.tsx`

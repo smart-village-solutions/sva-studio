@@ -60,3 +60,12 @@ Child B liefert das persistente Fundament für nachgelagerte IAM-Children (RBAC,
 - Schema-/Seed-Tests auf Konsistenz und Idempotenz
 - Isolationstests für Instanzgrenzen und RLS-Bypass-Negativfälle
 - Security-Tests: verschlüsselte Felder sind via direktem SQL nicht im Klartext lesbar
+
+## Arc42-Gegenprüfung (Task 4.3)
+
+Für diesen Change wurden die betroffenen arc42-Abschnitte final geprüft und nachgezogen:
+
+- `docs/architecture/05-building-block-view.md`
+- `docs/architecture/07-deployment-view.md`
+- `docs/architecture/08-cross-cutting-concepts.md`
+- `docs/architecture/09-architecture-decisions.md`

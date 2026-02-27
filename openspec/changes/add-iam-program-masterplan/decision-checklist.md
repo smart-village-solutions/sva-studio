@@ -34,12 +34,12 @@ Die folgenden Einträge sind **bestätigte Entscheidungen** auf Basis von:
 - Entscheidung: [x] Die konkrete Rechte-Matrix pro Persona ist zur Laufzeit über das SVA Studio konfigurierbar – keine statische Vorab-Freigabe nötig
 - Vor Child C müssen folgende Teilentscheidungen stehen:
   - [x] Permission-Schema: Welche `action`-Typen und `resource_type`-Typen existieren → definiert in `Umsetzung-Rollen-Rechte.md` (Abschnitt 5.2)
-  - [ ] Aggregationsregel: Permissions additiv (OR) oder restriktiv (AND)? Konfliktauflösung bei Hierarchien? → als ADR dokumentieren
+  - [x] Aggregationsregel: Permissions additiv (OR) oder restriktiv (AND)? Konfliktauflösung bei Hierarchien? → als ADR dokumentiert (`docs/adr/ADR-012-permission-kompositionsmodell-rbac-v1.md`, 27.02.2026)
   - [x] 7 Default-Seed-Zuordnungen als initiale Konfiguration (nicht als unveränderliche Matrix) → Seeds in Child B
 - Beschluss (26.02.2026): System-Rollen (7 Personas) werden als Seed-Defaults ausgeliefert. Mandanten-spezifische Custom-Rollen und die konkrete Permission-Zuordnung pro Persona sind zur Laufzeit konfigurierbar. Nur das Permission-Kompositionsmodell (Aggregation, Konfliktauflösung) muss architektonisch fixiert sein.
 - Referenz-Dokument: `Umsetzung-Rollen-Rechte.md` (Abschnitt 5) – unterscheidet System-Rollen, Mandanten-Rollen und temporäre Rollen
 - Owner: Architektur + Backend
-- Fällig am: vor Start Child C (`add-iam-authorization-rbac-v1`) – nur Aggregationsregel-ADR offen
+- Fällig am: vor Start Child C (`add-iam-authorization-rbac-v1`) – erledigt (Aggregationsregel via ADR-012 fixiert)
 
 ### 3) Tenant-Kanon und Hierarchie
 - Kanonischer Scope: [x] instanceId [ ] organizationId [ ] tenantId [ ] workspaceId

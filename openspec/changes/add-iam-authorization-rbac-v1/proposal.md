@@ -39,8 +39,16 @@ Child C setzt auf Child B auf und liefert die erste produktiv nutzbare Autorisie
 ## Impact
 
 - Affected specs: `iam-access-control`
-- Affected code: `packages/core`, `packages/sdk`, `apps/studio`
+- Affected code: `packages/core`, `packages/auth`, `packages/routing`, `apps/sva-studio-react`
 - Affected arc42 sections: `05-building-block-view`, `06-runtime-view`, `10-quality-requirements`
+
+## arc42-Referenzen (Dateien)
+
+- `docs/architecture/05-building-block-view.md`
+- `docs/architecture/06-runtime-view.md`
+- `docs/architecture/08-cross-cutting-concepts.md`
+- `docs/architecture/09-architecture-decisions.md`
+- `docs/architecture/10-quality-requirements.md`
 
 ## Dependencies
 

@@ -42,7 +42,8 @@ Child C implementiert den ersten stabilen Autorisierungspfad auf Basis von Child
 ## Architekturartefakte
 
 - OpenAPI-Definition für `POST /iam/authorize` und `GET /iam/me/permissions`
-- ADR: RBAC+ABAC-Hybrid-Modell (RBAC in Child C, ABAC-Erweiterung in Child D)
+- ADR-012: Permission-Kompositionsmodell für RBAC v1 (additives OR-Modell)
+- ADR-013: RBAC+ABAC-Hybrid-Modell (RBAC in Child C, ABAC-Erweiterung in Child D)
 
 ## Alternativen und Abwägung
 
@@ -54,3 +55,11 @@ Child C implementiert den ersten stabilen Autorisierungspfad auf Basis von Child
 - Contract-Tests für beide Endpunkte
 - Denial-/Allow-Testmatrix für Instanz- und Organisationsgrenzen
 - P95-Baseline für `authorize` dokumentiert
+
+## arc42-Referenzen (final)
+
+- `docs/architecture/05-building-block-view.md`
+- `docs/architecture/06-runtime-view.md`
+- `docs/architecture/08-cross-cutting-concepts.md`
+- `docs/architecture/09-architecture-decisions.md`
+- `docs/architecture/10-quality-requirements.md`

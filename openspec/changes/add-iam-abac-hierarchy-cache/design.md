@@ -41,6 +41,7 @@ Child D erweitert RBAC v1 um ABAC-Regeln, Hierarchie-Vererbung und Cache-Invalid
 ## Architekturartefakte
 
 - ADR: Postgres NOTIFY als primärer Invalidation-Trigger mit TTL/Recompute-Fallback
+- ADR-013: RBAC+ABAC-Hybridmodell (Stage-Grenzen und Evaluationsreihenfolge Child C/D)
 
 ## Alternativen und Abwägung
 
@@ -52,3 +53,10 @@ Child D erweitert RBAC v1 um ABAC-Regeln, Hierarchie-Vererbung und Cache-Invalid
 - Konsistenztests Cache vs. DB
 - Failure-Mode-Tests (Eventverlust, Cache-Miss, Stale-Entry)
 - Lasttests für `authorize` unter ABAC-Bedingungen
+
+## arc42-Referenzen (final)
+
+- `docs/architecture/06-runtime-view.md`
+- `docs/architecture/08-cross-cutting-concepts.md`
+- `docs/architecture/09-architecture-decisions.md`
+- `docs/architecture/10-quality-requirements.md`

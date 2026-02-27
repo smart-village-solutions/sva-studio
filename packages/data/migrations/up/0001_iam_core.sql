@@ -123,3 +123,97 @@ CREATE INDEX IF NOT EXISTS idx_permissions_instance_id
 
 CREATE INDEX IF NOT EXISTS idx_activity_logs_instance_id_created_at
   ON iam.activity_logs(instance_id, created_at DESC);
+
+CREATE OR REPLACE FUNCTION iam.current_instance_id()
+RETURNS UUID
+LANGUAGE SQL
+STABLE
+AS $$
+  SELECT NULLIF(current_setting('app.instance_id', true), '')::uuid
+$$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'iam_app') THEN
+    CREATE ROLE iam_app NOINHERIT;
+  END IF;
+END
+$$;
+
+GRANT USAGE ON SCHEMA iam TO iam_app;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA iam TO iam_app;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA iam TO iam_app;
+ALTER DEFAULT PRIVILEGES IN SCHEMA iam GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO iam_app;
+ALTER DEFAULT PRIVILEGES IN SCHEMA iam GRANT USAGE, SELECT ON SEQUENCES TO iam_app;
+
+ALTER TABLE iam.instances ENABLE ROW LEVEL SECURITY;
+ALTER TABLE iam.instances FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS instances_isolation_policy ON iam.instances;
+CREATE POLICY instances_isolation_policy
+  ON iam.instances
+  USING (id = iam.current_instance_id())
+  WITH CHECK (id = iam.current_instance_id());
+
+ALTER TABLE iam.organizations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE iam.organizations FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS organizations_isolation_policy ON iam.organizations;
+CREATE POLICY organizations_isolation_policy
+  ON iam.organizations
+  USING (instance_id = iam.current_instance_id())
+  WITH CHECK (instance_id = iam.current_instance_id());
+
+ALTER TABLE iam.roles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE iam.roles FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS roles_isolation_policy ON iam.roles;
+CREATE POLICY roles_isolation_policy
+  ON iam.roles
+  USING (instance_id = iam.current_instance_id())
+  WITH CHECK (instance_id = iam.current_instance_id());
+
+ALTER TABLE iam.permissions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE iam.permissions FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS permissions_isolation_policy ON iam.permissions;
+CREATE POLICY permissions_isolation_policy
+  ON iam.permissions
+  USING (instance_id = iam.current_instance_id())
+  WITH CHECK (instance_id = iam.current_instance_id());
+
+ALTER TABLE iam.instance_memberships ENABLE ROW LEVEL SECURITY;
+ALTER TABLE iam.instance_memberships FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS instance_memberships_isolation_policy ON iam.instance_memberships;
+CREATE POLICY instance_memberships_isolation_policy
+  ON iam.instance_memberships
+  USING (instance_id = iam.current_instance_id())
+  WITH CHECK (instance_id = iam.current_instance_id());
+
+ALTER TABLE iam.account_organizations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE iam.account_organizations FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS account_organizations_isolation_policy ON iam.account_organizations;
+CREATE POLICY account_organizations_isolation_policy
+  ON iam.account_organizations
+  USING (instance_id = iam.current_instance_id())
+  WITH CHECK (instance_id = iam.current_instance_id());
+
+ALTER TABLE iam.account_roles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE iam.account_roles FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS account_roles_isolation_policy ON iam.account_roles;
+CREATE POLICY account_roles_isolation_policy
+  ON iam.account_roles
+  USING (instance_id = iam.current_instance_id())
+  WITH CHECK (instance_id = iam.current_instance_id());
+
+ALTER TABLE iam.role_permissions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE iam.role_permissions FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS role_permissions_isolation_policy ON iam.role_permissions;
+CREATE POLICY role_permissions_isolation_policy
+  ON iam.role_permissions
+  USING (instance_id = iam.current_instance_id())
+  WITH CHECK (instance_id = iam.current_instance_id());
+
+ALTER TABLE iam.activity_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE iam.activity_logs FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS activity_logs_isolation_policy ON iam.activity_logs;
+CREATE POLICY activity_logs_isolation_policy
+  ON iam.activity_logs
+  USING (instance_id = iam.current_instance_id())
+  WITH CHECK (instance_id = iam.current_instance_id());

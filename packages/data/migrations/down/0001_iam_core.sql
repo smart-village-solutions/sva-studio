@@ -10,4 +10,12 @@ DROP TABLE IF EXISTS iam.roles;
 DROP TABLE IF EXISTS iam.organizations;
 DROP TABLE IF EXISTS iam.accounts;
 DROP TABLE IF EXISTS iam.instances;
+DROP FUNCTION IF EXISTS iam.current_instance_id();
 DROP SCHEMA IF EXISTS iam;
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'iam_app') THEN
+    DROP ROLE iam_app;
+  END IF;
+END
+$$;

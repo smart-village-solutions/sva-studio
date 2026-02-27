@@ -23,6 +23,12 @@ pnpm nx run data:db:logs
 
 # SQL-Migrationen anwenden
 pnpm nx run data:db:migrate
+
+# Up/Down-Zyklus validieren
+pnpm nx run data:db:migrate:validate
+
+# RLS-Isolation testen
+pnpm nx run data:db:test:rls
 ```
 
 ## Verbindliche lokale Env-Konfiguration
@@ -34,11 +40,14 @@ POSTGRES_DB=sva_studio
 POSTGRES_USER=sva
 POSTGRES_PASSWORD=sva_local_dev_password
 IAM_DATABASE_URL=postgres://sva:sva_local_dev_password@localhost:5432/sva_studio
+IAM_PII_ACTIVE_KEY_ID=k1
+IAM_PII_KEYRING_JSON={"k1":"MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDE="}
 ```
 
 Hinweis:
 - `POSTGRES_*` wird von Docker Compose verwendet
 - `IAM_DATABASE_URL` ist die kanonische App-Connection für den IAM Core Data Layer
+- `IAM_PII_*` konfiguriert Application-Level Encryption für IAM-PII-Felder
 
 ## Betrieb und Reset
 
@@ -64,4 +73,21 @@ docker compose logs postgres --tail=200
 
 ## Migrations-Hinweis
 
-Migrationen liegen unter `packages/data/migrations/*.sql` und werden in lexikographischer Reihenfolge ausgeführt.
+Migrationen liegen unter:
+
+- `packages/data/migrations/up/*.sql`
+- `packages/data/migrations/down/*.sql`
+
+Ausführung:
+
+- `db:migrate` bzw. `db:migrate:up` führt alle Up-Migrationen lexikographisch aus
+- `db:migrate:down` führt Down-Migrationen in umgekehrter Reihenfolge aus
+- `db:migrate:validate` prüft `up -> down -> up`
+- `db:test:rls` prüft Instanzisolation, Fail-Closed ohne `app.instance_id`, Runtime-Rollenhärtung sowie Privilege-Escalation-Guards
+
+## RLS-Bypass-Dokumentation (Task 2.6)
+
+- Migrationen laufen lokal über den Compose-`postgres`-User und haben damit administrativen Zugriff.
+- Dieser administrative Pfad ist ausschließlich für Schemaänderungen/Recovery gedacht.
+- Laufzeitzugriffe müssen die dedizierte Rolle `iam_app` verwenden; diese ist ohne `SUPERUSER` und ohne `BYPASSRLS` angelegt.
+- Ohne gesetzten Instanzkontext (`SET app.instance_id = ...`) greifen RLS-Policies fail-closed und liefern keine mandantenbezogenen Zeilen.

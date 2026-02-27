@@ -69,7 +69,7 @@ Folgende Themen sind ausgelagert und werden hier nicht mehr umgesetzt:
 
 ---
 
-**Overall Progress (Child A):** 🟢 **100% COMPLETE** (25/25 Tasks)
+**Overall Progress (Child A):** 🟢 **97% COMPLETE** (34/35 Tasks)
 
 ## Phase 1.6: Architektur-Dokumentation (Review-Befund)
 
@@ -79,11 +79,11 @@ Folgende Themen sind ausgelagert und werden hier nicht mehr umgesetzt:
 
 ## Phase 1.7: Operative Observability (Logging-Review 26.02.2026)
 
-- [ ] 1.7.1 SDK Logger in allen Auth-Modulen einsetzen: `createSdkLogger({ component: 'iam-auth' })` statt `console.*`
-- [ ] 1.7.2 `workspace_id` (= `instanceId`) als Pflichtfeld in allen Auth-Log-Einträgen sicherstellen
-- [ ] 1.7.3 Korrelations-IDs implementieren: `X-Request-Id`-Header generieren/propagieren, OTEL Trace-Context durchreichen
-- [ ] 1.7.4 Token-Fehler-Logging: jeden `TokenError`-Fall als SDK Logger `warn`-Eintrag emittieren (ohne Token-Werte/PII)
-- [ ] 1.7.5 Audit-Events Dual-Write: Login/Logout/Account-Erstellung parallel in DB und über SDK Logger in OTEL-Pipeline emittieren
-- [ ] 1.7.6 OIDC-Flow-Sequenzdiagramm um `request_id`/`trace_id`-Propagation erweitern (im design.md)
-- [ ] 1.7.7 Log-Level-Konvention für Child A validieren: info (Login), warn (Token-Fehler), debug (Refresh/Session), error (OIDC-Discovery)
+- [x] 1.7.1 SDK Logger in allen Auth-Modulen einsetzen: `createSdkLogger({ component: 'iam-auth' })` statt `console.*`
+- [x] 1.7.2 `workspace_id` (= `instanceId`) als Pflichtfeld in allen Auth-Log-Einträgen sicherstellen
+- [x] 1.7.3 Korrelations-IDs implementieren: `X-Request-Id`-Header generieren/propagieren, OTEL Trace-Context durchreichen
+- [x] 1.7.4 Token-Fehler-Logging: jeden `TokenError`-Fall als SDK Logger `warn`-Eintrag emittieren (ohne Token-Werte/PII)
+- [x] 1.7.5 Audit-Events Dual-Write: Login/Logout/Account-Erstellung parallel in DB und über SDK Logger in OTEL-Pipeline emittieren (OTEL-Sink in Child A umgesetzt; DB-Sink explizit in Child B `add-iam-core-data-layer` Task 3.4 verankert)
+- [x] 1.7.6 OIDC-Flow-Sequenzdiagramm um `request_id`/`trace_id`-Propagation erweitern (im design.md)
+- [x] 1.7.7 Log-Level-Konvention für Child A validieren: info (Login), warn (Token-Fehler), debug (Refresh/Session), error (OIDC-Discovery)
 **Last Updated:** 27. Februar 2026

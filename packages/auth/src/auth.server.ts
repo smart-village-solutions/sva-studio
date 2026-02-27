@@ -1,7 +1,7 @@
 // Server-side OIDC helpers for login, session management, and logout flows.
 import { randomUUID } from 'node:crypto';
 import { extractRoles, parseJwtPayload, resolveInstanceId, resolveUserName } from '@sva/core';
-import { createSdkLogger } from '@sva/sdk/server';
+import { createSdkLogger, getWorkspaceContext } from '@sva/sdk/server';
 
 import { getAuthConfig } from './config';
 import { client, getOidcConfig } from './oidc.server';
@@ -15,8 +15,32 @@ import {
 } from './redis-session.server';
 import type { LoginState, SessionUser } from './types';
 
-const logger = createSdkLogger({ component: 'auth-oauth', level: 'info' });
+const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
 const TOKEN_REFRESH_SKEW_MS = 60_000;
+
+const buildLogContext = (workspaceId?: string) => {
+  const context = getWorkspaceContext();
+  return {
+    workspace_id: workspaceId ?? context.workspaceId ?? 'default',
+    request_id: context.requestId,
+  };
+};
+
+const isTokenErrorLike = (error: unknown) => {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+  const typed = error as { name?: unknown; code?: unknown; error?: unknown };
+  const name = typeof typed.name === 'string' ? typed.name.toLowerCase() : '';
+  const code = typeof typed.code === 'string' ? typed.code.toLowerCase() : '';
+  const oauthError = typeof typed.error === 'string' ? typed.error.toLowerCase() : '';
+  return (
+    name.includes('token') ||
+    name.includes('oauth') ||
+    code.includes('token') ||
+    oauthError.length > 0
+  );
+};
 
 /**
  * Builds the OIDC authorization URL and stores the login state.
@@ -103,6 +127,13 @@ export const handleCallback = async (params: {
     createdAt: now,
   });
 
+  logger.debug('Session created for authenticated user', {
+    operation: 'session_create',
+    user_id: user.id,
+    has_refresh_token: Boolean(tokenSet.refresh_token),
+    ...buildLogContext(user.instanceId),
+  });
+
   return { sessionId, user };
 };
 
@@ -126,6 +157,11 @@ export const getSessionUser = async (sessionId: string) => {
 
   if (session.refreshToken) {
     try {
+      logger.debug('Refreshing access token for session', {
+        operation: 'token_refresh',
+        has_refresh_token: true,
+        ...buildLogContext(session.user?.instanceId),
+      });
       const config = await getOidcConfig();
       const refreshed = await client.refreshTokenGrant(config, session.refreshToken);
       const tokenClaims = (refreshed.claims() ?? {}) as Record<string, unknown>;
@@ -151,13 +187,30 @@ export const getSessionUser = async (sessionId: string) => {
         idToken: refreshed.id_token ?? session.idToken,
         expiresAt,
       });
-    } catch (error) {
-      logger.error('Token refresh failed', {
-        operation: 'refresh_token',
-        error: error instanceof Error ? error.message : String(error),
-        error_type: error instanceof Error ? error.constructor.name : typeof error,
-        session_expired: session.expiresAt && session.expiresAt < now,
+      logger.debug('Token refresh succeeded', {
+        operation: 'token_refresh',
+        has_refresh_token: true,
+        ...buildLogContext(updatedUser.instanceId),
       });
+    } catch (error) {
+      const workspaceId = session.user?.instanceId;
+      if (isTokenErrorLike(error)) {
+        logger.warn('Token validation/refresh failed', {
+          operation: 'refresh_token',
+          error_type: error instanceof Error ? error.constructor.name : typeof error,
+          has_refresh_token: Boolean(session.refreshToken),
+          session_expired: session.expiresAt && session.expiresAt < now,
+          ...buildLogContext(workspaceId),
+        });
+      } else {
+        logger.error('Token refresh failed', {
+          operation: 'refresh_token',
+          error: error instanceof Error ? error.message : String(error),
+          error_type: error instanceof Error ? error.constructor.name : typeof error,
+          session_expired: session.expiresAt && session.expiresAt < now,
+          ...buildLogContext(workspaceId),
+        });
+      }
       if (session.expiresAt && session.expiresAt < now) {
         await deleteSession(sessionId);
         return null;

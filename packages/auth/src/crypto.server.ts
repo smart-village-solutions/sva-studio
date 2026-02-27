@@ -1,7 +1,7 @@
 import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'node:crypto';
 import { createSdkLogger } from '@sva/sdk/server';
 
-const logger = createSdkLogger({ component: 'auth-crypto', level: 'info' });
+const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
 
 /**
  * Token encryption helper using AES-256-GCM

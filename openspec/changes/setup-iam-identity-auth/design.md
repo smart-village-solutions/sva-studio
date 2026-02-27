@@ -143,6 +143,7 @@ iam.accounts (
 User              Frontend         Backend              Keycloak
  │                   │               │                    │
  ├─── Login Click ──→│               │                    │
+ │                   ├─ set/request_id, read traceparent │
  │                   ├─ Generate PKCE Challenge          │
  │                   ├─ Redirect to Keycloak Auth  ───→ │
  │                   │  (client_id, redirect_uri, pkce) │
@@ -159,6 +160,7 @@ User              Frontend         Backend              Keycloak
  │                   │                           │
  │                   ├─ GET /api/user ──→ │
  │                   │   (Cookie) ────────┤
+ │                   │   (request_id + trace_id)         │
  │                   │◄─ User Profile ────┤
  │                   │                    │
  └───────────────────┴────────────────────┴────────────────

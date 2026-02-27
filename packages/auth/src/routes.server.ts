@@ -1,20 +1,46 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { parse as parseCookie, serialize as serializeCookie } from 'cookie-es';
-import { createSdkLogger, withRequestContext, initializeOtelSdk } from '@sva/sdk/server';
+import { createSdkLogger, withRequestContext, initializeOtelSdk, getWorkspaceContext } from '@sva/sdk/server';
 
 import { createLoginUrl, handleCallback, logoutSession } from './auth.server';
+import { emitAuthAuditEvent } from './audit-events.server';
 import { getAuthConfig } from './config';
 import { withAuthenticatedUser } from './middleware.server';
 import type { AuthRoutePath } from './routes.shared';
 import type { LoginState } from './types';
 
-const logger = createSdkLogger({ component: 'auth', level: 'info' });
+const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
+
+const buildLogContext = (workspaceId?: string) => {
+  const context = getWorkspaceContext();
+  return {
+    workspace_id: workspaceId ?? context.workspaceId ?? 'default',
+    request_id: context.requestId,
+  };
+};
+
+const isTokenErrorLike = (error: unknown) => {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+  const typed = error as { name?: unknown; code?: unknown; error?: unknown };
+  const name = typeof typed.name === 'string' ? typed.name.toLowerCase() : '';
+  const code = typeof typed.code === 'string' ? typed.code.toLowerCase() : '';
+  const oauthError = typeof typed.error === 'string' ? typed.error.toLowerCase() : '';
+  return (
+    name.includes('token') ||
+    name.includes('oauth') ||
+    code.includes('token') ||
+    oauthError.length > 0
+  );
+};
 
 // Fire-and-forget: SDK wird asynchron initialisiert.
 initializeOtelSdk().catch((error: unknown) => {
   logger.error('Fehler bei OTEL SDK Initialisierung im Auth-Modul', {
     error: error instanceof Error ? error.message : String(error),
-    component: 'auth'
+    component: 'iam-auth',
+    ...buildLogContext('default'),
   });
 });
 
@@ -67,18 +93,20 @@ const decodeLoginStateCookie = (value: string | undefined, secret: string) => {
 /**
  * Redirects to the IdP login URL and stores the login state in a cookie.
  */
-export const loginHandler = async (): Promise<Response> => {
+export const loginHandler = async (request?: Request): Promise<Response> => {
   return withRequestContext(
-    { fallbackWorkspaceId: 'default' },
+    { request, fallbackWorkspaceId: 'default' },
     async () => {
       const { url, state, loginState } = await createLoginUrl();
       const { loginStateCookieName, loginStateSecret } = getAuthConfig();
       const cookiePayload: LoginStateCookiePayload = { state, ...loginState };
 
       logger.info('Login-Flow initiiert', {
+        operation: 'login_init',
         idp: 'keycloak',
         state: state.substring(0, 8) + '...', // Nur Prefix für Security
-        nonce: loginState.nonce.substring(0, 8) + '...'
+        nonce: loginState.nonce.substring(0, 8) + '...',
+        ...buildLogContext(),
       });
 
       const loginStateCookie = serializeCookie(
@@ -155,7 +183,7 @@ export const callbackHandler = async (request: Request): Promise<Response> => {
   }
 
   try {
-    const { sessionId } = await handleCallback({
+    const { sessionId, user } = await handleCallback({
       code,
       state,
       iss,
@@ -164,11 +192,13 @@ export const callbackHandler = async (request: Request): Promise<Response> => {
 
     logger.info('Auth callback successful', {
       auth_flow: 'callback',
+      operation: 'login_callback',
       session_created: true,
       redirect_target: '/?auth=ok',
       has_code: !!code,
       has_state: !!state,
       has_iss: !!iss,
+      ...buildLogContext(),
     });
 
     const response = new Response(null, {
@@ -185,16 +215,33 @@ export const callbackHandler = async (request: Request): Promise<Response> => {
         path: '/',
       })
     );
+    await emitAuthAuditEvent({
+      eventType: 'login',
+      actorUserId: user.id,
+      workspaceId: user.instanceId,
+      outcome: 'success',
+    });
     return response;
   } catch (error) {
-    logger.error('Auth callback failed', {
-      auth_flow: 'callback',
-      error: error instanceof Error ? error.message : String(error),
-      error_type: error instanceof Error ? error.constructor.name : typeof error,
-      has_code: !!code,
-      has_state: !!state,
-      has_iss: !!iss,
-    });
+    if (isTokenErrorLike(error)) {
+      logger.warn('Token validation failed in callback', {
+        operation: 'token_validate',
+        error_type: error instanceof Error ? error.constructor.name : typeof error,
+        has_refresh_token: false,
+        ...buildLogContext(),
+      });
+    } else {
+      logger.error('Auth callback failed', {
+        auth_flow: 'callback',
+        operation: 'login_callback',
+        error: error instanceof Error ? error.message : String(error),
+        error_type: error instanceof Error ? error.constructor.name : typeof error,
+        has_code: !!code,
+        has_state: !!state,
+        has_iss: !!iss,
+        ...buildLogContext(),
+      });
+    }
     const response = new Response(null, {
       status: 302,
       headers: { Location: '/?auth=error' },
@@ -217,8 +264,10 @@ export const meHandler = async (request: Request): Promise<Response> => {
         logger.debug('Auth check successful', {
           endpoint: '/auth/me',
           auth_state: 'authenticated',
+          operation: 'get_current_user',
           user_id: user.id,
           roles_count: user.roles?.length ?? 0,
+          ...buildLogContext(user.instanceId),
         });
         return new Response(JSON.stringify({ user }), {
           status: 200,
@@ -246,19 +295,29 @@ export const logoutHandler = async (request: Request): Promise<Response> => {
           logoutUrl = await logoutSession(sessionId);
           logger.info('Logout successful', {
             endpoint: '/auth/logout',
+            operation: 'logout',
             redirect_target: logoutUrl,
+            ...buildLogContext(),
+          });
+          await emitAuthAuditEvent({
+            eventType: 'logout',
+            outcome: 'success',
           });
         } catch (error) {
           logger.error('Logout failed', {
             endpoint: '/auth/logout',
+            operation: 'logout',
             error: error instanceof Error ? error.message : String(error),
             error_type: error instanceof Error ? error.constructor.name : typeof error,
+            ...buildLogContext(),
           });
         }
       } else {
         logger.debug('Logout without session', {
           endpoint: '/auth/logout',
+          operation: 'logout',
           session_exists: false,
+          ...buildLogContext(),
         });
       }
 
@@ -290,7 +349,7 @@ export const authRouteDefinitions: AuthRouteDefinition[] = [
   {
     path: '/auth/login',
     handlers: {
-      GET: async () => loginHandler(),
+      GET: async ({ request }) => loginHandler(request),
     },
   },
   {

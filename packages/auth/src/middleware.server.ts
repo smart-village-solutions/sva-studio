@@ -1,11 +1,19 @@
 import { parse as parseCookie } from 'cookie-es';
-import { createSdkLogger } from '@sva/sdk/server';
+import { createSdkLogger, getWorkspaceContext } from '@sva/sdk/server';
 
 import { getSessionUser } from './auth.server';
 import { getAuthConfig } from './config';
 import type { SessionUser } from './types';
 
-const logger = createSdkLogger({ component: 'auth-middleware', level: 'info' });
+const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
+
+const buildLogContext = (workspaceId?: string) => {
+  const context = getWorkspaceContext();
+  return {
+    workspace_id: workspaceId ?? context.workspaceId ?? 'default',
+    request_id: context.requestId,
+  };
+};
 
 export type AuthenticatedRequestContext = {
   sessionId: string;
@@ -36,6 +44,8 @@ export const withAuthenticatedUser = async (
     logger.debug('Auth middleware rejected request without session cookie', {
       endpoint: request.url,
       auth_state: 'unauthenticated',
+      operation: 'auth_middleware',
+      ...buildLogContext(),
     });
     return unauthorized();
   }
@@ -47,6 +57,8 @@ export const withAuthenticatedUser = async (
       auth_state: 'invalid_session',
       session_exists: true,
       user_exists: false,
+      operation: 'auth_middleware',
+      ...buildLogContext(),
     });
     return unauthorized();
   }

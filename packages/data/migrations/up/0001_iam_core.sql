@@ -29,6 +29,8 @@ CREATE TABLE IF NOT EXISTS iam.organizations (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   CONSTRAINT organizations_instance_key_uniq UNIQUE (instance_id, organization_key)
 );
+CREATE UNIQUE INDEX IF NOT EXISTS uq_organizations_instance_id_id
+  ON iam.organizations(instance_id, id);
 
 CREATE TABLE IF NOT EXISTS iam.roles (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -40,6 +42,8 @@ CREATE TABLE IF NOT EXISTS iam.roles (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   CONSTRAINT roles_instance_name_uniq UNIQUE (instance_id, role_name)
 );
+CREATE UNIQUE INDEX IF NOT EXISTS uq_roles_instance_id_id
+  ON iam.roles(instance_id, id);
 
 CREATE TABLE IF NOT EXISTS iam.permissions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -50,6 +54,8 @@ CREATE TABLE IF NOT EXISTS iam.permissions (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   CONSTRAINT permissions_instance_key_uniq UNIQUE (instance_id, permission_key)
 );
+CREATE UNIQUE INDEX IF NOT EXISTS uq_permissions_instance_id_id
+  ON iam.permissions(instance_id, id);
 
 CREATE TABLE IF NOT EXISTS iam.instance_memberships (
   instance_id UUID NOT NULL REFERENCES iam.instances(id) ON DELETE CASCADE,
@@ -67,8 +73,8 @@ CREATE TABLE IF NOT EXISTS iam.account_organizations (
   PRIMARY KEY (instance_id, account_id, organization_id),
   CONSTRAINT account_org_membership_fk FOREIGN KEY (instance_id, account_id)
     REFERENCES iam.instance_memberships(instance_id, account_id) ON DELETE CASCADE,
-  CONSTRAINT account_org_organization_fk FOREIGN KEY (organization_id)
-    REFERENCES iam.organizations(id) ON DELETE CASCADE
+  CONSTRAINT account_org_organization_fk FOREIGN KEY (instance_id, organization_id)
+    REFERENCES iam.organizations(instance_id, id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS iam.account_roles (
@@ -79,8 +85,8 @@ CREATE TABLE IF NOT EXISTS iam.account_roles (
   PRIMARY KEY (instance_id, account_id, role_id),
   CONSTRAINT account_roles_membership_fk FOREIGN KEY (instance_id, account_id)
     REFERENCES iam.instance_memberships(instance_id, account_id) ON DELETE CASCADE,
-  CONSTRAINT account_roles_role_fk FOREIGN KEY (role_id)
-    REFERENCES iam.roles(id) ON DELETE CASCADE
+  CONSTRAINT account_roles_role_fk FOREIGN KEY (instance_id, role_id)
+    REFERENCES iam.roles(instance_id, id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS iam.role_permissions (
@@ -89,10 +95,10 @@ CREATE TABLE IF NOT EXISTS iam.role_permissions (
   permission_id UUID NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   PRIMARY KEY (instance_id, role_id, permission_id),
-  CONSTRAINT role_permissions_role_fk FOREIGN KEY (role_id)
-    REFERENCES iam.roles(id) ON DELETE CASCADE,
-  CONSTRAINT role_permissions_permission_fk FOREIGN KEY (permission_id)
-    REFERENCES iam.permissions(id) ON DELETE CASCADE
+  CONSTRAINT role_permissions_role_fk FOREIGN KEY (instance_id, role_id)
+    REFERENCES iam.roles(instance_id, id) ON DELETE CASCADE,
+  CONSTRAINT role_permissions_permission_fk FOREIGN KEY (instance_id, permission_id)
+    REFERENCES iam.permissions(instance_id, id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS iam.activity_logs (

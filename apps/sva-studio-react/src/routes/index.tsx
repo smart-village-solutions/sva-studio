@@ -5,9 +5,15 @@ type AuthUser = {
   name: string;
   email?: string;
   roles: string[];
+  instanceId?: string;
 };
 
 type LogLevel = 'info' | 'warn' | 'error';
+
+type AuthorizeDecision = {
+  allowed: boolean;
+  reason: string;
+};
 
 const logAuth = (level: LogLevel, message: string, meta: Record<string, unknown> = {}) => {
   if (!import.meta.env.DEV) {
@@ -33,6 +39,8 @@ export const HomePage = () => {
   const [user, setUser] = React.useState<AuthUser | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [authError, setAuthError] = React.useState<string | null>(null);
+  const [authorizeLoading, setAuthorizeLoading] = React.useState(false);
+  const [authorizeDecision, setAuthorizeDecision] = React.useState<AuthorizeDecision | null>(null);
 
   React.useEffect(() => {
     let active = true;
@@ -78,6 +86,53 @@ export const HomePage = () => {
         const payload = (await response.json()) as { user: AuthUser };
         if (active) {
           setUser(payload.user);
+          if (payload.user.instanceId) {
+            setAuthorizeLoading(true);
+            try {
+              const authorizeResponse = await fetch('/iam/authorize', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  instanceId: payload.user.instanceId,
+                  action: 'content.read',
+                  resource: {
+                    type: 'content',
+                    id: 'home-dashboard',
+                  },
+                  context: {
+                    requestId: `home-${Date.now()}`,
+                  },
+                }),
+              });
+
+              if (authorizeResponse.ok) {
+                const decision = (await authorizeResponse.json()) as AuthorizeDecision;
+                if (active) {
+                  setAuthorizeDecision(decision);
+                }
+              } else if (active) {
+                setAuthorizeDecision({
+                  allowed: false,
+                  reason: `authorize_http_${authorizeResponse.status}`,
+                });
+              }
+            } catch (error) {
+              if (active) {
+                setAuthorizeDecision({
+                  allowed: false,
+                  reason: error instanceof Error ? error.message : String(error),
+                });
+              }
+            } finally {
+              if (active) {
+                setAuthorizeLoading(false);
+              }
+            }
+          } else {
+            setAuthorizeDecision(null);
+            setAuthorizeLoading(false);
+          }
           logAuth('info', 'User loaded', {
             route: 'home',
             has_user: Boolean(payload.user),
@@ -157,6 +212,18 @@ export const HomePage = () => {
                 {hasRole('editor')
                   ? 'Editor-Rolle erkannt: Redaktionsfunktionen sichtbar.'
                   : 'Nur sichtbar mit Rolle: editor.'}
+              </p>
+            </div>
+            <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4 md:col-span-2">
+              <p className="text-sm font-semibold text-slate-200">IAM-Authorize (Modulpfad)</p>
+              <p className="mt-2 text-sm text-slate-400">
+                {authorizeLoading
+                  ? 'Berechtigung wird geprüft ...'
+                  : authorizeDecision
+                    ? authorizeDecision.allowed
+                      ? `Erlaubt (${authorizeDecision.reason})`
+                      : `Verweigert (${authorizeDecision.reason})`
+                    : 'Keine Authorize-Entscheidung verfügbar.'}
               </p>
             </div>
           </div>

@@ -12,6 +12,7 @@ import { metrics } from '@opentelemetry/api';
 import { Pool, type PoolClient } from 'pg';
 
 import { parseInvalidationEvent, PermissionSnapshotCache } from './iam-authorization.cache';
+import { resolveImpersonationSubject } from './iam-governance.server';
 import { withAuthenticatedUser } from './middleware.server';
 
 export { evaluateAuthorizeDecision } from '@sva/core';
@@ -150,17 +151,25 @@ const listPermissionRows = async (
   if (input.organizationId) {
     const scopedQuery = await client.query<PermissionRow>(
       `
-SELECT
+SELECT DISTINCT
   p.permission_key,
-  ar.role_id,
+  source.role_id,
   $3::uuid AS organization_id
 FROM iam.accounts a
-JOIN iam.account_roles ar
-  ON ar.account_id = a.id
- AND ar.instance_id = $1
+JOIN (
+  SELECT ar.account_id, ar.role_id, ar.instance_id
+  FROM iam.account_roles ar
+  UNION
+  SELECT d.delegatee_account_id AS account_id, d.role_id, d.instance_id
+  FROM iam.delegations d
+  WHERE d.status = 'active'
+    AND now() BETWEEN d.starts_at AND d.ends_at
+) source
+  ON source.account_id = a.id
+ AND source.instance_id = $1
 JOIN iam.role_permissions rp
-  ON rp.instance_id = ar.instance_id
- AND rp.role_id = ar.role_id
+  ON rp.instance_id = source.instance_id
+ AND rp.role_id = source.role_id
 JOIN iam.permissions p
   ON p.instance_id = rp.instance_id
  AND p.id = rp.permission_id
@@ -179,19 +188,27 @@ WHERE a.keycloak_subject = $2
     return scopedQuery.rows;
   }
 
-  const unscopedQuery = await client.query<PermissionRow>(
-    `
+    const unscopedQuery = await client.query<PermissionRow>(
+      `
 SELECT DISTINCT
   p.permission_key,
-  ar.role_id,
+  source.role_id,
   NULL::uuid AS organization_id
 FROM iam.accounts a
-JOIN iam.account_roles ar
-  ON ar.account_id = a.id
- AND ar.instance_id = $1
+JOIN (
+  SELECT ar.account_id, ar.role_id, ar.instance_id
+  FROM iam.account_roles ar
+  UNION
+  SELECT d.delegatee_account_id AS account_id, d.role_id, d.instance_id
+  FROM iam.delegations d
+  WHERE d.status = 'active'
+    AND now() BETWEEN d.starts_at AND d.ends_at
+) source
+  ON source.account_id = a.id
+ AND source.instance_id = $1
 JOIN iam.role_permissions rp
-  ON rp.instance_id = ar.instance_id
- AND rp.role_id = ar.role_id
+  ON rp.instance_id = source.instance_id
+ AND rp.role_id = source.role_id
 JOIN iam.permissions p
   ON p.instance_id = rp.instance_id
  AND p.id = rp.permission_id
@@ -543,9 +560,34 @@ export const authorizeHandler = async (request: Request): Promise<Response> => {
         return jsonResponse(200, denied);
       }
 
+      const actingAsUserId = payload.context?.actingAsUserId;
+      if (actingAsUserId) {
+        const impersonation = await resolveImpersonationSubject({
+          instanceId: payload.instanceId,
+          actorKeycloakSubject: user.id,
+          targetKeycloakSubject: actingAsUserId,
+        });
+        if (!impersonation.ok) {
+          const denied: AuthorizeResponse = {
+            allowed: false,
+            reason: 'context_attribute_missing',
+            instanceId: payload.instanceId,
+            action: payload.action,
+            resourceType: payload.resource.type,
+            resourceId: payload.resource.id,
+            evaluatedAt: new Date().toISOString(),
+            requestId: payload.context?.requestId ?? getWorkspaceContext().requestId,
+            traceId: payload.context?.traceId ?? getWorkspaceContext().traceId,
+            diagnostics: { stage: 'impersonation', reason_code: impersonation.reasonCode },
+          };
+          recordLatency(false, denied.reason);
+          return jsonResponse(200, denied);
+        }
+      }
+
       const resolved = await resolveEffectivePermissions({
         instanceId: payload.instanceId,
-        keycloakSubject: user.id,
+        keycloakSubject: actingAsUserId ?? user.id,
         organizationId: payload.context?.organizationId ?? payload.resource.organizationId,
       });
       if (!resolved.ok) {

@@ -10,6 +10,7 @@ const testState = vi.hoisted(() => ({
   connectError: null as Error | null,
   queryHandler: null as null | ((text: string, values?: readonly unknown[]) => unknown),
   latencyMetrics: [] as Array<{ durationMs: number; attributes?: Record<string, unknown> }>,
+  impersonationResult: { ok: true } as { ok: true } | { ok: false; reasonCode: string },
 }));
 
 vi.mock('./middleware.server', () => ({
@@ -19,6 +20,10 @@ vi.mock('./middleware.server', () => ({
       user: testState.user,
     })
   ),
+}));
+
+vi.mock('./iam-governance.server', () => ({
+  resolveImpersonationSubject: vi.fn(async () => testState.impersonationResult),
 }));
 
 vi.mock('@sva/sdk/server', () => ({
@@ -91,6 +96,7 @@ describe('authorizeHandler', () => {
     testState.connectError = null;
     testState.queryHandler = null;
     testState.latencyMetrics = [];
+    testState.impersonationResult = { ok: true };
     testState.user = {
       id: 'keycloak-sub-1',
       name: 'Test User',
@@ -152,7 +158,7 @@ describe('authorizeHandler', () => {
 
   it('returns allowed decision for matching permission', async () => {
     testState.queryHandler = (text: string) => {
-      if (text.includes('SELECT\n  p.permission_key')) {
+      if (text.includes('p.permission_key')) {
         return {
           rowCount: 1,
           rows: [
@@ -225,7 +231,7 @@ describe('authorizeHandler', () => {
       id: 'keycloak-sub-cache-consistency',
     };
     testState.queryHandler = (text: string) => {
-      if (text.includes('SELECT\n  p.permission_key')) {
+      if (text.includes('p.permission_key')) {
         permissionSelects += 1;
         return {
           rowCount: 1,
@@ -266,5 +272,68 @@ describe('authorizeHandler', () => {
     expect(firstPayload).toMatchObject({ allowed: true, reason: 'allowed_by_rbac' });
     expect(secondPayload).toMatchObject({ allowed: true, reason: 'allowed_by_rbac' });
     expect(permissionSelects).toBe(1);
+  });
+
+  it('includes active delegations in permission snapshot query', async () => {
+    let usedDelegationJoin = false;
+    testState.queryHandler = (text: string) => {
+      if (text.includes('iam.delegations')) {
+        usedDelegationJoin = true;
+      }
+      if (text.includes('p.permission_key')) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              permission_key: 'content.read',
+              role_id: 'role-delegated-1',
+              organization_id: null,
+            },
+          ],
+        };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const request = new Request('http://localhost/iam/authorize', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        instanceId: '11111111-1111-1111-8111-111111111111',
+        action: 'content.read',
+        resource: { type: 'content', id: 'article-1' },
+      }),
+    });
+
+    const response = await authorizeHandler(request);
+    const payload = (await response.json()) as { allowed: boolean };
+    expect(response.status).toBe(200);
+    expect(payload.allowed).toBe(true);
+    expect(usedDelegationJoin).toBe(true);
+  });
+
+  it('denies acting-as authorize when impersonation session is not active', async () => {
+    testState.impersonationResult = { ok: false, reasonCode: 'DENY_TICKET_REQUIRED' };
+
+    const request = new Request('http://localhost/iam/authorize', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        instanceId: '11111111-1111-1111-8111-111111111111',
+        action: 'content.read',
+        resource: { type: 'content', id: 'article-1' },
+        context: {
+          actingAsUserId: 'target-sub-1',
+        },
+      }),
+    });
+
+    const response = await authorizeHandler(request);
+    const payload = (await response.json()) as { allowed: boolean; reason: string; diagnostics?: { reason_code?: string } };
+
+    expect(response.status).toBe(200);
+    expect(payload.allowed).toBe(false);
+    expect(payload.reason).toBe('context_attribute_missing');
+    expect(payload.diagnostics?.reason_code).toBe('DENY_TICKET_REQUIRED');
   });
 });

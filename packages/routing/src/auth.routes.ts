@@ -15,6 +15,8 @@ const authRoutePaths = [
   '/auth/logout',
   '/iam/me/permissions',
   '/iam/authorize',
+  '/iam/governance/workflows',
+  '/iam/governance/compliance/export',
 ] as const;
 
 /**

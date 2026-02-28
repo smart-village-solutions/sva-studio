@@ -20,9 +20,21 @@ Child F implementiert die DSGVO-Betroffenenrechte (Art. 15–21) für IAM-Daten 
 
 ## Prozessflüsse
 
-- Auskunft: Anfrage -> Datensammlung -> Exportgenerierung -> Bereitstellung
+- Auskunft/Portabilität: Anfrage -> Datensammlung -> (optional async) Exportgenerierung -> Statusverfolgung -> Bereitstellung
 - Löschung: Antrag -> Soft-Delete -> Fristüberwachung -> Löschkaskade/Pseudonymisierung
 - Berichtigung: Änderungsantrag -> Validierung -> Persistenz -> Audit-Event
+
+## Export-Mechanik
+
+- Kleine Exporte können synchron beantwortet werden.
+- Für große Datenmengen wird ein asynchroner Export-Request mit Statusmodell `queued|processing|completed|failed` genutzt.
+- Der Export ist instanzgebunden (`instanceId`) und nur für die anfragende Identität bzw. berechtigte Admin-Rolle abrufbar.
+
+## SLA und Eskalation
+
+- 48h-SLA bezieht sich auf den Zeitraum zwischen Annahme eines gültigen Löschantrags und Sperrung/Soft-Delete.
+- SLA-Metriken werden mit Zeitstempeln (`requestAcceptedAt`, `softDeletedAt`) gemessen und auditierbar gespeichert.
+- Bei SLA-Verstoß wird ein Eskalationsereignis erzeugt und im Operations-Monitoring sichtbar.
 
 ## Löschkaskaden
 
@@ -35,6 +47,11 @@ Child F implementiert die DSGVO-Betroffenenrechte (Art. 15–21) für IAM-Daten 
 - Vor finaler Löschung wird Legal-Hold-Status geprüft
 - Bei aktivem Hold: Prozessstatus auf blockiert, mit Begründung und Audit-Eintrag
 - Aufhebung des Holds reaktiviert nur berechtigte offene Anfragen
+
+## Backup- und Restore-Strategie
+
+- Es gibt keine punktuelle Löschung einzelner Datensätze in unveränderlichen Backups.
+- Compliance erfolgt über definierte Backup-Retention und einen Restore-Sanitization-Prozess, der bereits gelöschte Accounts nach Restore erneut bereinigt.
 
 ## Alternativen und Abwägung
 

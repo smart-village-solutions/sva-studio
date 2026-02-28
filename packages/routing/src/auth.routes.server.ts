@@ -71,6 +71,96 @@ const resolveAuthHandlers = (path: typeof authRoutePaths[number]): AuthHandlers 
     };
   }
 
+  if (path === '/iam/me/data-export') {
+    return {
+      GET: async ({ request }) => {
+        const mod = await import('@sva/auth/server');
+        return mod.dataExportHandler(request);
+      },
+    };
+  }
+
+  if (path === '/iam/me/data-export/status') {
+    return {
+      GET: async ({ request }) => {
+        const mod = await import('@sva/auth/server');
+        return mod.dataExportStatusHandler(request);
+      },
+    };
+  }
+
+  if (path === '/iam/me/data-subject-rights/requests') {
+    return {
+      POST: async ({ request }) => {
+        const mod = await import('@sva/auth/server');
+        return mod.dataSubjectRequestHandler(request);
+      },
+    };
+  }
+
+  if (path === '/iam/me/profile') {
+    return {
+      POST: async ({ request }) => {
+        const mod = await import('@sva/auth/server');
+        return mod.profileCorrectionHandler(request);
+      },
+    };
+  }
+
+  if (path === '/iam/me/optional-processing/execute') {
+    return {
+      POST: async ({ request }) => {
+        const mod = await import('@sva/auth/server');
+        return mod.optionalProcessingExecuteHandler(request);
+      },
+    };
+  }
+
+  if (path === '/iam/admin/data-subject-rights/export') {
+    return {
+      GET: async ({ request }) => {
+        const mod = await import('@sva/auth/server');
+        return mod.adminDataExportHandler(request);
+      },
+    };
+  }
+
+  if (path === '/iam/admin/data-subject-rights/export/status') {
+    return {
+      GET: async ({ request }) => {
+        const mod = await import('@sva/auth/server');
+        return mod.adminDataExportStatusHandler(request);
+      },
+    };
+  }
+
+  if (path === '/iam/admin/data-subject-rights/legal-holds/apply') {
+    return {
+      POST: async ({ request }) => {
+        const mod = await import('@sva/auth/server');
+        return mod.legalHoldApplyHandler(request);
+      },
+    };
+  }
+
+  if (path === '/iam/admin/data-subject-rights/legal-holds/release') {
+    return {
+      POST: async ({ request }) => {
+        const mod = await import('@sva/auth/server');
+        return mod.legalHoldReleaseHandler(request);
+      },
+    };
+  }
+
+  if (path === '/iam/admin/data-subject-rights/maintenance') {
+    return {
+      POST: async ({ request }) => {
+        const mod = await import('@sva/auth/server');
+        return mod.dataSubjectMaintenanceHandler(request);
+      },
+    };
+  }
+
   return {
     POST: async ({ request }) => {
       const mod = await import('@sva/auth/server');

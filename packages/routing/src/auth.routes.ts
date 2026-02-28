@@ -17,6 +17,16 @@ const authRoutePaths = [
   '/iam/authorize',
   '/iam/governance/workflows',
   '/iam/governance/compliance/export',
+  '/iam/me/data-export',
+  '/iam/me/data-export/status',
+  '/iam/me/data-subject-rights/requests',
+  '/iam/me/profile',
+  '/iam/me/optional-processing/execute',
+  '/iam/admin/data-subject-rights/export',
+  '/iam/admin/data-subject-rights/export/status',
+  '/iam/admin/data-subject-rights/legal-holds/apply',
+  '/iam/admin/data-subject-rights/legal-holds/release',
+  '/iam/admin/data-subject-rights/maintenance',
 ] as const;
 
 /**

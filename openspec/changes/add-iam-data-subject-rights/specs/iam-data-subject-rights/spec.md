@@ -79,6 +79,13 @@ Das System SHALL Benutzern den Export ihrer personenbezogenen Daten in maschinen
 - **THEN** erhält er seine Daten im gewünschten Format
 - **AND** die exportierten Daten sind vollständig und konsistent
 
+#### Scenario: Asynchroner Export mit Statusverfolgung
+
+- **WHEN** ein Export aufgrund Datenumfangs asynchron verarbeitet wird
+- **THEN** erhält der Benutzer einen eindeutig referenzierbaren Export-Request
+- **AND** der Bearbeitungsstatus ist als `queued|processing|completed|failed` nachvollziehbar
+- **AND** bei Status `completed` steht das angeforderte Zielformat zum Abruf bereit
+
 ### Requirement: Recht auf Widerspruch (Art. 21 DSGVO)
 
 Das System SHALL Benutzern den Widerspruch gegen nicht zwingend erforderliche Datenverarbeitungen ermöglichen.
@@ -105,6 +112,22 @@ Das System SHALL konfigurierbare Aufbewahrungsfristen für verschiedene Datenart
 - **WHEN** ein Administrator die Löschfrist für Account-Daten konfiguriert
 - **THEN** wird der neue Wert für zukünftige Löschvorgänge wirksam
 - **AND** die Änderung wird als Audit-Event protokolliert
+
+### Requirement: 48h-SLA für Löschanträge
+
+Das System SHALL für gültige Löschanträge eine Sperrung und Soft-Delete-Markierung innerhalb von 48 Stunden sicherstellen.
+
+#### Scenario: SLA-konforme Löschvorbereitung
+
+- **WHEN** ein gültiger Löschantrag angenommen wird
+- **THEN** wird der Account innerhalb von maximal 48 Stunden gesperrt und als Soft-Delete markiert
+- **AND** der Zeitstempel für Antragseingang und Soft-Delete ist auditierbar gespeichert
+
+#### Scenario: SLA-Verstoß führt zu Eskalation
+
+- **WHEN** die 48-Stunden-Grenze ohne Soft-Delete überschritten wird
+- **THEN** wird automatisch ein Eskalationsereignis erzeugt
+- **AND** der Verstoß ist im Monitoring und Audit-Trail nachvollziehbar
 
 ## MODIFIED Requirements
 

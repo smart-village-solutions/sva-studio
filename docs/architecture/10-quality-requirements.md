@@ -32,6 +32,12 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
 - IAM Cache-Invaliderung:
   - End-to-End-Latenz P95 <= 2 s, P99 <= 5 s
   - Snapshot-TTL = 300 s, maximal tolerierte Stale-Dauer = 300 s
+- DSGVO-Betroffenenrechte (IAM):
+  - Soft-Delete nach gültigem Löschantrag innerhalb von 48 Stunden
+  - Datenexport in JSON/CSV/XML verfügbar (sync/async je nach Datenumfang)
+  - Legal Holds blockieren finale Löschung deterministisch
+  - Art.-19-Nachweise für Berichtigung/Löschung/Einschränkung vollständig dokumentiert
+  - Wartungslauf verarbeitet Exportjobs, Eskalationen und Finalisierungen nachvollziehbar
 - UI-Shell-Qualität:
   - Landmarks (`header`, `aside`, `main`) und Skip-Link vorhanden
   - Skeleton-Zustand für Sidebar, Kopfzeile und Contentbereich vorhanden
@@ -47,6 +53,7 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
 - IAM-Authorize- und Cache-Logs enthalten zusätzlich `request_id` und `trace_id`
 - Label-Whitelist und PII-Redaction entlang der OTEL-Pipeline
 - Healthchecks fuer lokale Monitoring-Dienste in Compose
+- DSR-Audit-Events enthalten mindestens `instance_id`, `request_id`, `trace_id`, `event_type`, `result`
 
 ### Aktuelle Lücken
 

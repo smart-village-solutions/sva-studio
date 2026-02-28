@@ -1,39 +1,16 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { parse as parseCookie, serialize as serializeCookie } from 'cookie-es';
-import { createSdkLogger, withRequestContext, initializeOtelSdk, getWorkspaceContext } from '@sva/sdk/server';
+import { createSdkLogger, withRequestContext, initializeOtelSdk } from '@sva/sdk/server';
 
 import { createLoginUrl, handleCallback, logoutSession } from './auth.server';
 import { emitAuthAuditEvent } from './audit-events.server';
 import { getAuthConfig } from './config';
+import { buildLogContext, isTokenErrorLike } from './log-context.server';
 import { withAuthenticatedUser } from './middleware.server';
 import type { AuthRoutePath } from './routes.shared';
 import type { LoginState } from './types';
 
 const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
-
-const buildLogContext = (workspaceId?: string) => {
-  const context = getWorkspaceContext();
-  return {
-    workspace_id: workspaceId ?? context.workspaceId ?? 'default',
-    request_id: context.requestId,
-  };
-};
-
-const isTokenErrorLike = (error: unknown) => {
-  if (!error || typeof error !== 'object') {
-    return false;
-  }
-  const typed = error as { name?: unknown; code?: unknown; error?: unknown };
-  const name = typeof typed.name === 'string' ? typed.name.toLowerCase() : '';
-  const code = typeof typed.code === 'string' ? typed.code.toLowerCase() : '';
-  const oauthError = typeof typed.error === 'string' ? typed.error.toLowerCase() : '';
-  return (
-    name.includes('token') ||
-    name.includes('oauth') ||
-    code.includes('token') ||
-    oauthError.length > 0
-  );
-};
 
 // Fire-and-forget: SDK wird asynchron initialisiert.
 initializeOtelSdk().catch((error: unknown) => {

@@ -1,7 +1,7 @@
 # iam-auditing Specification
 
 ## Purpose
-TBD - created by archiving change setup-iam-identity-auth. Update Purpose after archive.
+Diese Spezifikation definiert die Auditierungsanforderungen für Child A. Sie stellt sicher, dass sicherheitsrelevante Identity-Basisereignisse unveränderbar, PII-minimiert und über Dual-Write (DB + OTEL) nachvollziehbar erfasst werden.
 ## Requirements
 ### Requirement: Immutable Logging für Identity-Basisereignisse
 
@@ -28,4 +28,3 @@ Das System MUST Child-A-Sicherheitsereignisse sowohl in `iam.activity_logs` als 
 - **WHEN** ein Login-Ereignis entsteht
 - **THEN** wird ein Audit-Record in `iam.activity_logs` geschrieben
 - **AND** ein strukturierter SDK-Logeintrag mit korrelierbaren IDs (`request_id`, `trace_id`) emittiert
-

@@ -1,19 +1,12 @@
 import { parse as parseCookie } from 'cookie-es';
-import { createSdkLogger, getWorkspaceContext } from '@sva/sdk/server';
+import { createSdkLogger } from '@sva/sdk/server';
 
 import { getSessionUser } from './auth.server';
 import { getAuthConfig } from './config';
+import { buildLogContext } from './log-context.server';
 import type { SessionUser } from './types';
 
 const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
-
-const buildLogContext = (workspaceId?: string) => {
-  const context = getWorkspaceContext();
-  return {
-    workspace_id: workspaceId ?? context.workspaceId ?? 'default',
-    request_id: context.requestId,
-  };
-};
 
 export type AuthenticatedRequestContext = {
   sessionId: string;

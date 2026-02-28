@@ -1,7 +1,7 @@
 # iam-core Specification
 
 ## Purpose
-TBD - created by archiving change setup-iam-identity-auth. Update Purpose after archive.
+Diese Spezifikation definiert die IAM-Kernanforderungen für Child A (Identity-Basis): OIDC-Authentifizierung, Tokenvalidierung, Sitzungsverwaltung, Multi-Organisations-Kontext sowie grundlegende Auditierungs- und Observability-Leitplanken.
 ## Requirements
 ### Requirement: Keycloak-OIDC-Integration
 
@@ -121,4 +121,3 @@ Das System MUST den SDK Logger (`createSdkLogger` aus `@sva/sdk`) für alle oper
 - **AND** es werden keine Tokenwerte oder Session-IDs im Log-Eintrag enthalten
 
 ---
-

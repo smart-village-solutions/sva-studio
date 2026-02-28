@@ -1,7 +1,7 @@
 # iam-organizations Specification
 
 ## Purpose
-TBD - created by archiving change setup-iam-identity-auth. Update Purpose after archive.
+Diese Spezifikation beschreibt für Child A den organisationsbezogenen Identity-Kontext. Im Fokus stehen Multi-Org-Kontextwechsel innerhalb der aktiven Instanz; Persistenz-, RLS- und Hierarchiemodellierung werden explizit in nachgelagerten Changes behandelt.
 ## Requirements
 ### Requirement: Multi-Org-Kontextwechsel im aktiven Instanzkontext
 
@@ -22,4 +22,3 @@ Das System MUST in Child A keine vollständige Organisationspersistenz, RLS-Poli
 - **WHEN** Anforderungen zu `iam.organizations`, RLS-Policies oder Hierarchie-Vererbung entstehen
 - **THEN** werden diese in den zugehörigen Child-Changes (B/D) spezifiziert
 - **AND** Child A bleibt auf Identity- und Kontextbereitstellung begrenzt
-

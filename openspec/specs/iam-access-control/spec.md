@@ -1,7 +1,7 @@
 # iam-access-control Specification
 
 ## Purpose
-TBD - created by archiving change setup-iam-identity-auth. Update Purpose after archive.
+Diese Spezifikation beschreibt die Zugriffssteuerungsanforderungen für die Identity-Basis (Child A). Sie begrenzt den Scope bewusst auf die Bereitstellung eines verlässlichen Identity-Kontexts und grenzt fachliche Autorisierungsentscheidungen auf nachgelagerte IAM-Changes ab.
 ## Requirements
 ### Requirement: Authentifizierter Identity-Kontext als Vorbedingung
 
@@ -22,4 +22,3 @@ Das System MUST in Child A keine fachlichen RBAC-/ABAC-Entscheidungen implementi
 - **WHEN** ein Fachmodul eine fachliche Berechtigungsentscheidung benötigt
 - **THEN** ist Child A nicht die entscheidende Instanz
 - **AND** die verbindliche Entscheidung erfolgt erst über die in Child C/D definierten Authorize-Pfade
-

@@ -61,11 +61,11 @@ export const rootRoute = Route;
 /**
  * Rendert das HTML-Grundgerüst mit Header, Shell-Layout und Devtools.
  *
- * Die Komponente zeigt Skeletons nur bis zur abgeschlossenen Hydration,
- * damit serverseitig gerenderte Inhalte sofort verfügbar bleiben.
+ * Die Komponente zeigt Skeletons bis zur abgeschlossenen Hydration.
+ * Der Initialzustand ist auf Server und Client identisch, um Hydration-Mismatches zu vermeiden.
  */
 function RootDocument({ children }: Readonly<{ children: React.ReactNode }>) {
-  const [isHydrated, setIsHydrated] = React.useState(import.meta.env.SSR);
+  const [isHydrated, setIsHydrated] = React.useState(false);
 
   React.useEffect(() => {
     setIsHydrated(true);

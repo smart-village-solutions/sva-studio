@@ -47,6 +47,12 @@ vi.mock('@opentelemetry/api', () => ({
           testState.latencyMetrics.push({ durationMs, attributes });
         }),
       })),
+      createCounter: vi.fn(() => ({
+        add: vi.fn(),
+      })),
+      createObservableGauge: vi.fn(() => ({
+        addCallback: vi.fn(),
+      })),
     })),
   },
 }));
@@ -210,5 +216,55 @@ describe('authorizeHandler', () => {
       reason: 'database_unavailable',
       endpoint: '/iam/authorize',
     });
+  });
+
+  it('reuses cached permission snapshot for repeated authorize requests', async () => {
+    let permissionSelects = 0;
+    testState.user = {
+      ...testState.user,
+      id: 'keycloak-sub-cache-consistency',
+    };
+    testState.queryHandler = (text: string) => {
+      if (text.includes('SELECT\n  p.permission_key')) {
+        permissionSelects += 1;
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              permission_key: 'content.read',
+              role_id: 'role-cache-1',
+              organization_id: '22222222-2222-2222-8222-222222222222',
+            },
+          ],
+        };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const makeRequest = () =>
+      new Request('http://localhost/iam/authorize', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          instanceId: '11111111-1111-1111-8111-111111111111',
+          action: 'content.read',
+          resource: {
+            type: 'content',
+            organizationId: '22222222-2222-2222-8222-222222222222',
+          },
+          context: {
+            organizationId: '22222222-2222-2222-8222-222222222222',
+          },
+        }),
+      });
+
+    const first = await authorizeHandler(makeRequest());
+    const second = await authorizeHandler(makeRequest());
+    const firstPayload = (await first.json()) as { allowed: boolean; reason: string };
+    const secondPayload = (await second.json()) as { allowed: boolean; reason: string };
+
+    expect(firstPayload).toMatchObject({ allowed: true, reason: 'allowed_by_rbac' });
+    expect(secondPayload).toMatchObject({ allowed: true, reason: 'allowed_by_rbac' });
+    expect(permissionSelects).toBe(1);
   });
 });

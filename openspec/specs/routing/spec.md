@@ -1,5 +1,10 @@
 # Capability: routing
 
+## Purpose
+Die Routing-Capability definiert, wie Routen aus Core und Plugins typsicher zusammengeführt und zur Laufzeit registriert werden.
+
+## Requirements
+
 ### Requirement: Code-Route-Registry
 Das System SHALL eine programmatische Route-Registry bereitstellen, die Routen aus Core und Plugins kombiniert.
 

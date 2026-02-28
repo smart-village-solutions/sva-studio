@@ -33,6 +33,26 @@ Das System SHALL Versionen von Rechtstexten und deren Akzeptanz durch Benutzer n
 - **THEN** kann das System Version, Zeitpunkt und zugehörigen Benutzerkontext bereitstellen
 - **AND** die Nachweise sind exportierbar
 
+### Requirement: Einheitlicher Exportvertrag für Governance-Events
+
+Das System SHALL Governance-Events in CSV, JSON und SIEM-formatiert mit feldäquivalenten Pflichtdaten exportieren.
+
+#### Scenario: Vergleich zweier Exportformate
+
+- **WHEN** derselbe Governance-Zeitraum als CSV und JSON exportiert wird
+- **THEN** enthalten beide Exporte mindestens `event_id`, `timestamp`, `instance_id`, `action`, `result`, `actor_pseudonym`, `target_ref`, `reason_code`, `request_id`, `trace_id`
+- **AND** es entsteht kein inhaltlicher Informationsverlust
+
+### Requirement: Governance-Reason-Codes sind auditierbar
+
+Das System SHALL für Governance-Denials standardisierte `reason_code`-Werte revisionssicher protokollieren.
+
+#### Scenario: Denial wegen Self-Approval
+
+- **WHEN** eine Freigabe wegen Self-Approval abgewiesen wird
+- **THEN** wird ein Audit-Event mit `reason_code=DENY_SELF_APPROVAL` gespeichert
+- **AND** das Event ist exportierbar
+
 ## MODIFIED Requirements
 
 (None)

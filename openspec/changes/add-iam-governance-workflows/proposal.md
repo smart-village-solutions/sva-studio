@@ -15,6 +15,7 @@ Child E schließt die IAM-Ausbaustufe ab und baut auf Child D auf. Fokus liegt a
 - Sichere Impersonation mit starker Auditierbarkeit
 - Legal-Text-Akzeptanzen und Compliance-Events
 - Governance-Workflows instanzgebunden modellieren (`instanceId` als Primärscope)
+- Keycloak-Identitätskontext (`sub`, Rollen/Groups) für Governance-Entscheidung und Audit-Korrelation verbindlich nutzen
 
 ### In Scope
 
@@ -28,6 +29,7 @@ Child E schließt die IAM-Ausbaustufe ab und baut auf Child D auf. Fokus liegt a
 - Ausbau externer IdP-Integrationen
 - Fachmodulspezifische UI-Workflows außerhalb IAM-Kerns
 - Erweiterte Analytics-/Reporting-Portale über den Compliance-Nachweis hinaus
+- Keycloak-Härtung (MFA/Password-Policy/Lockout) bleibt gemäß Masterplan deferred
 
 ### Delivery-Slices
 
@@ -61,6 +63,14 @@ Vor Start der Implementierung müssen folgende Punkte geklärt sein:
 3. ✅ Audit-Retention und Exportanforderungen mit Legal/DSB abgestimmt
 4. ✅ Instanzisolation als nicht verhandelbare Sicherheitsanforderung bestätigt
 
+### Bestätigte Defaults (28.02.2026)
+
+- Impersonation global hart gedeckelt auf 120 Minuten pro Sitzung
+- Delegation global hart gedeckelt auf 30 Tage pro Delegationsfenster
+- `support_admin`-Impersonation benötigt zusätzlichen Security-Approver
+- Zulässige Ticket-States: `open`, `in_progress`, `approved_for_execution`
+- Export-Pflichtfelder: `event_id`, `timestamp`, `instance_id`, `action`, `result`, `actor_pseudonym`, `target_ref`, `reason_code`, `request_id`, `trace_id`
+
 ## Akzeptanzkriterien (Change-Ebene)
 
 - Rechteänderungen laufen über nachvollziehbare Approval-Workflows mit Statushistorie.
@@ -71,4 +81,4 @@ Vor Start der Implementierung müssen folgende Punkte geklärt sein:
 
 ## Status
 
-🟡 Draft Proposal (inhaltlich vervollständigt, bereit für Review)
+🟢 Ready for Approval (inhaltlich konkretisiert, Defaults bestätigt)

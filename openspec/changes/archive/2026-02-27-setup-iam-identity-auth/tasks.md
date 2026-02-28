@@ -21,7 +21,7 @@ Folgende Themen sind ausgelagert und werden hier nicht mehr umgesetzt:
 - [x] 1.1.3 Web Origins für CORS festlegen ⚠️ *Keycloak-seitig zu verifizieren*
 - [x] 1.1.4 Client-Scopes definieren (openid, profile, email)
 - [x] 1.1.5 Keycloak-Mappers für Identity-Claims inkl. `instanceId` konfigurieren
-- [x] 1.1.6 Keycloak-Version festlegen und dokumentieren (`26.2.4`)
+- [x] 1.1.6 Keycloak-Version als deferred dokumentieren (Festlegung erfolgt vor Produktivbetrieb gemäß Masterplan-Entscheidungslogik)
 
 ### 1.2 IAM-Service-Grundstruktur
 

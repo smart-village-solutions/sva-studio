@@ -1,4 +1,4 @@
-# Organizations Specification (Child A Scope)
+# Organisations-Spezifikation (Child-A-Scope)
 
 ## ADDED Requirements
 

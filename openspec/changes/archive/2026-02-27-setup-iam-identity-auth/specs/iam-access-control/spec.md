@@ -1,4 +1,4 @@
-# Access Control Specification (Child A Scope)
+# Zugriffssteuerungs-Spezifikation (Child-A-Scope)
 
 ## ADDED Requirements
 

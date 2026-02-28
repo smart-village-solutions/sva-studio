@@ -31,6 +31,7 @@ Laufzeitknoten auf Basis des aktuellen Repos.
 - Web-App Runtime (TanStack Start / Node)
 - Nx-/pnpm-basierte Build- und Test-Pipeline
 - Externe Plattform (GitHub Actions) für CI-Ausführung
+- Keycloak als zentraler OIDC Identity Provider
 - Redis Session Store
 - Postgres IAM Core Data Layer
 - OTEL Collector als Telemetrie-Hub
@@ -43,6 +44,7 @@ Laufzeitknoten auf Basis des aktuellen Repos.
 - Postgres mit Healthcheck (`pg_isready`) und separatem Volume
 - Healthchecks für zentrale Monitoring-Services konfiguriert
 - Graceful OTEL Shutdown im SDK vorgesehen
+- Keycloak wird aktuell als externer Dienst angebunden (nicht über Repo-Compose provisioniert)
 
 ### Noch offen (Stand heute)
 

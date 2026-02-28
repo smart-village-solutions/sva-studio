@@ -92,6 +92,19 @@ Fehlerpfad:
 - Self-Approval: Aktion wird fail-closed abgewiesen.
 - Impersonation abgelaufen: Session wird als `expired` markiert, Acting-As wird verweigert.
 
+### Szenario 7: Cache-Invalidierung nach Rollen-/Policy-Änderung
+
+1. Änderung an Rollen, Permission-Zuordnung oder Policy wird in Postgres persistiert.
+2. Writer emittiert ein Invalidation-Ereignis über `NOTIFY` mit `instanceId` und betroffenem Scope.
+3. Cache-Worker in `packages/auth` empfängt das Ereignis und invalidiert passende Snapshots.
+4. Nachfolgende `POST /iam/authorize`-Aufrufe erzwingen Recompute für invalidierte Einträge.
+5. Invalidation und Recompute werden mit `request_id`/`trace_id` strukturiert geloggt.
+
+Fehlerpfad:
+
+- Event kommt verspätet oder gar nicht an: TTL + Recompute-Fallback begrenzen Stale-Dauer.
+- Invalidation schlägt fehl: `cache_invalidate_failed` wird geloggt, Entscheidungspfad bleibt fail-closed.
+
 Referenzen:
 
 - `apps/sva-studio-react/src/router.tsx`

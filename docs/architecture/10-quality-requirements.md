@@ -29,6 +29,9 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
   - `pnpm test:unit` muss gruen sein
 - IAM Authorize Performance:
   - P95 fuer `POST /iam/authorize` < 50 ms (mindestens 100 RPS / 500 gleichzeitige Nutzer als Zielprofil)
+- IAM Mandantenisolation (RLS):
+  - Kein Datenzugriff über Organisations-/Instanzgrenzen (`instanceId`) hinweg
+  - Negativtests für RLS-Bypass und Direktzugriff müssen gruen sein
 - IAM Cache-Invaliderung:
   - End-to-End-Latenz P95 <= 2 s, P99 <= 5 s
   - Snapshot-TTL = 300 s, maximal tolerierte Stale-Dauer = 300 s

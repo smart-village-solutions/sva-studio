@@ -38,6 +38,9 @@ Ohne diese Fundamente können die nachfolgenden Module (News, Medienverwaltung, 
 ### Betroffene Specs
 
 - `iam-core` – IAM-Architektur, Authentifizierung, Keycloak-Integration
+- `iam-access-control` – Identity-Kontext als Vorbedingung für nachgelagerte Autorisierung
+- `iam-organizations` – Multi-Org-Kontextwechsel im aktiven Instanzkontext
+- `iam-auditing` – Immutable Logging und Dual-Write für Identity-Basisereignisse
 
 ### Betroffene Packages
 

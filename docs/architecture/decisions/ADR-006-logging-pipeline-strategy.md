@@ -1,7 +1,7 @@
 # ADR-006: Logging Pipeline Strategy
 
 **Datum:** 6. Februar 2026
-**Status:** ⏳ Proposed
+**Status:** ✅ Accepted
 **Kontext:** Logging-Pipeline (OTEL vs. Logger vs. Promtail)
 **Entscheider:** SVA Studio Team
 

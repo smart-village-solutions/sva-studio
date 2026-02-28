@@ -312,6 +312,54 @@ describe('authorizeHandler', () => {
     expect(usedDelegationJoin).toBe(true);
   });
 
+  it('uses source alias for organization-scoped membership filter in permission query', async () => {
+    testState.user = {
+      ...testState.user,
+      id: 'keycloak-sub-alias-check',
+    };
+
+    let permissionQuery = '';
+    testState.queryHandler = (text: string) => {
+      if (text.includes('p.permission_key')) {
+        permissionQuery = text;
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              permission_key: 'content.read',
+              role_id: 'role-1',
+              organization_id: '22222222-2222-2222-8222-222222222222',
+            },
+          ],
+        };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const request = new Request('http://localhost/iam/authorize', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        instanceId: '11111111-1111-1111-8111-111111111111',
+        action: 'content.read',
+        resource: {
+          type: 'content',
+          id: 'article-1',
+          organizationId: '22222222-2222-2222-8222-222222222222',
+        },
+      }),
+    });
+
+    const response = await authorizeHandler(request);
+    const payload = (await response.json()) as { allowed: boolean };
+
+    expect(response.status).toBe(200);
+    expect(payload.allowed).toBe(true);
+    expect(permissionQuery).toContain('ao.instance_id = source.instance_id');
+    expect(permissionQuery).toContain('ao.account_id = source.account_id');
+    expect(permissionQuery).not.toContain('ao.instance_id = ar.instance_id');
+  });
+
   it('denies acting-as authorize when impersonation session is not active', async () => {
     testState.impersonationResult = { ok: false, reasonCode: 'DENY_TICKET_REQUIRED' };
 

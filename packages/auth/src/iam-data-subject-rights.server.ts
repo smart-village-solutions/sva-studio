@@ -703,12 +703,13 @@ const finalizeEligibleDeletions = async (
     `
 SELECT id, keycloak_subject
 FROM iam.accounts
-WHERE soft_deleted_at IS NOT NULL
+WHERE instance_id = $1
+  AND soft_deleted_at IS NOT NULL
   AND permanently_deleted_at IS NULL
   AND delete_after IS NOT NULL
   AND delete_after <= NOW();
 `,
-    []
+    [input.instanceId]
   );
 
   if (input.dryRun || candidates.rowCount <= 0) {
@@ -786,7 +787,8 @@ SET
   processing_restriction_reason = NULL,
   non_essential_processing_opt_out_at = NULL,
   updated_at = NOW()
-WHERE id = $2::uuid;
+WHERE instance_id = $1
+  AND id = $2::uuid;
 `,
       [input.instanceId, account.id, pseudonym]
     );

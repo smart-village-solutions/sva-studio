@@ -134,8 +134,8 @@ WHERE a.keycloak_subject = $2
   AND EXISTS (
     SELECT 1
     FROM iam.account_organizations ao
-    WHERE ao.instance_id = ar.instance_id
-      AND ao.account_id = ar.account_id
+    WHERE ao.instance_id = source.instance_id
+      AND ao.account_id = source.account_id
       AND ao.organization_id = $3::uuid
   );
 `,

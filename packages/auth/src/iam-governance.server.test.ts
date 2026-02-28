@@ -150,11 +150,42 @@ describe('governanceWorkflowHandler', () => {
     expect(payload.status).toBe('error');
     expect(payload.reasonCode).toBe('DENY_IMPERSONATION_DURATION_EXCEEDED');
   });
+
+  it('rejects privileged workflow operations for users without governance role', async () => {
+    state.user = {
+      ...state.user,
+      roles: [],
+    };
+
+    const request = new Request('http://localhost/iam/governance/workflows', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        operation: 'submit_permission_change',
+        instanceId: '11111111-1111-1111-8111-111111111111',
+        payload: {
+          targetKeycloakSubject: 'keycloak-sub-target',
+          roleId: '22222222-2222-2222-8222-222222222222',
+          ticketId: 'IAM-1',
+          ticketState: 'open',
+        },
+      }),
+    });
+
+    const response = await governanceWorkflowHandler(request);
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({ error: 'forbidden' });
+  });
 });
 
 describe('governanceComplianceExportHandler', () => {
   beforeEach(() => {
     process.env.IAM_DATABASE_URL = 'postgres://iam-test';
+    state.user = {
+      ...state.user,
+      roles: ['iam_admin'],
+    };
     state.queryHandler = (text) => {
       if (text.includes('FROM iam.activity_logs')) {
         return {
@@ -197,5 +228,21 @@ describe('governanceComplianceExportHandler', () => {
     expect(body).toContain('event_id,timestamp,instance_id,action,result,actor_pseudonym,target_ref,reason_code,request_id,trace_id,event_type');
     expect(body).toContain('evt-1');
     expect(body).toContain('DENY_TICKET_REQUIRED');
+  });
+
+  it('rejects compliance export for users without compliance role', async () => {
+    state.user = {
+      ...state.user,
+      roles: ['support_admin'],
+    };
+
+    const response = await governanceComplianceExportHandler(
+      new Request(
+        'http://localhost/iam/governance/compliance/export?instanceId=11111111-1111-1111-8111-111111111111&format=json'
+      )
+    );
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({ error: 'forbidden' });
   });
 });

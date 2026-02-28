@@ -107,8 +107,8 @@ Die folgenden Einträge sind **bestätigte Entscheidungen** auf Basis von:
 
 ### 9) ABAC-Attributkatalog
 - Pflichtattribute (z. B. Org, Geo, Zeitfenster, Acting-As) final definiert?
-- Entscheidung: [ ] Ja [x] Nein
-- Vorschlag: Finalisierung im Child D (`add-iam-abac-hierarchy-cache`) mit verpflichtendem Security-Review.
+- Entscheidung: [x] Ja [ ] Nein
+- Beschluss (28.02.2026): Minimaler Katalog für Child D festgelegt: `instanceId` (pflichtig), `organizationId` (optional), `geoScope` (optional), `timeWindow` (optional), `actingAs` (optional). Referenz: `openspec/changes/add-iam-abac-hierarchy-cache/design.md` ("Verbindlicher ABAC-Attributkatalog v1").
 - Owner: Architektur + Security
 
 ### 9a) Datenklassifizierung für IAM-Entitäten
@@ -123,8 +123,8 @@ Die folgenden Einträge sind **bestätigte Entscheidungen** auf Basis von:
 
 ### 10) Entscheidungsbegründungen (`reason`-Codes)
 - Standardisierte Denial-/Allow-Gründe freigegeben?
-- Entscheidung: [ ] Ja [x] Nein
-- Vorschlag: reason-Codes als API-Vertrag in Child C einführen und in Child D erweitern.
+- Entscheidung: [x] Ja [ ] Nein
+- Beschluss (28.02.2026): Child C stellt den Basiskatalog; Child D erweitert kompatibel um ABAC-/Hierarchie-spezifische Codes (`DENY_HIERARCHY_RESTRICTION`, `DENY_ABAC_CONDITION_UNMET`, `DENY_POLICY_CONFLICT_RESTRICTIVE_WINS`, `DENY_CACHE_STALE_GUARD`, `DENY_CONTEXT_ATTRIBUTE_MISSING`). Referenz: `openspec/changes/add-iam-abac-hierarchy-cache/design.md` ("Reason-Code-Katalog v1 (Child-D-Erweiterung)").
 - Owner: Backend + SDK
 
 ### 11) Betriebs- und Incident-Prozesse

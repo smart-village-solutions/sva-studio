@@ -1,8 +1,8 @@
-# IAM Authorization API Contract (Child C)
+# IAM Authorization API Contract (Child C + D)
 
 ## Ziel
 
-Diese Spezifikation definiert den stabilen API-Vertrag für die RBAC-v1-Endpunkte aus Child C:
+Diese Spezifikation definiert den stabilen API-Vertrag für:
 
 - `GET /iam/me/permissions`
 - `POST /iam/authorize`
@@ -32,8 +32,9 @@ Liefert die effektiven Berechtigungen für den aktuell authentifizierten Benutze
       "sourceRoleIds": ["aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa"]
     }
   ],
-  "evaluatedAt": "2026-02-27T11:00:00.000Z",
-  "requestId": "req-123"
+  "evaluatedAt": "2026-02-28T11:00:00.000Z",
+  "requestId": "req-123",
+  "traceId": "trace-abc"
 }
 ```
 
@@ -58,12 +59,27 @@ Führt eine deterministische Autorisierungsentscheidung für `action` + `resourc
   "resource": {
     "type": "content",
     "id": "article-1",
-    "organizationId": "22222222-2222-2222-8222-222222222222"
+    "organizationId": "22222222-2222-2222-8222-222222222222",
+    "attributes": {
+      "geoScope": "de-bw"
+    }
   },
   "context": {
     "organizationId": "22222222-2222-2222-8222-222222222222",
     "requestId": "req-123",
-    "traceId": "trace-abc"
+    "traceId": "trace-abc",
+    "attributes": {
+      "instanceId": "11111111-1111-1111-8111-111111111111",
+      "organizationHierarchy": [
+        "11111111-1111-1111-8111-111111111111",
+        "22222222-2222-2222-8222-222222222222"
+      ],
+      "allowedGeoScopes": ["de-bw"],
+      "timeWindow": {
+        "start": "07:00",
+        "end": "19:00"
+      }
+    }
   }
 }
 ```
@@ -73,12 +89,12 @@ Führt eine deterministische Autorisierungsentscheidung für `action` + `resourc
 ```json
 {
   "allowed": true,
-  "reason": "allowed_by_rbac",
+  "reason": "allowed_by_abac",
   "instanceId": "11111111-1111-1111-8111-111111111111",
   "action": "content.read",
   "resourceType": "content",
   "resourceId": "article-1",
-  "evaluatedAt": "2026-02-27T11:00:00.000Z",
+  "evaluatedAt": "2026-02-28T11:00:00.000Z",
   "requestId": "req-123",
   "traceId": "trace-abc"
 }
@@ -94,9 +110,15 @@ Führt eine deterministische Autorisierungsentscheidung für `action` + `resourc
 
 ## Reason-Codes (Authorize)
 
-- `allowed_by_rbac`: Anfrage ist im aktiven Kontext erlaubt
-- `permission_missing`: Keine passende effektive Permission gefunden
-- `instance_scope_mismatch`: Angefragte `instanceId` passt nicht zum authentifizierten User-Kontext
+- `allowed_by_rbac`
+- `allowed_by_abac`
+- `permission_missing`
+- `instance_scope_mismatch`
+- `context_attribute_missing`
+- `abac_condition_unmet`
+- `hierarchy_restriction`
+- `policy_conflict_restrictive_wins`
+- `cache_stale_guard`
 
 ## Error-Codes (API)
 
@@ -116,11 +138,11 @@ Führt eine deterministische Autorisierungsentscheidung für `action` + `resourc
 ## Architekturreferenzen
 
 - `docs/adr/ADR-011-instanceid-kanonischer-mandanten-scope.md`
-- `docs/adr/ADR-012-permission-kompositionsmodell-rbac-v1.md`
 - `docs/adr/ADR-013-rbac-abac-hybridmodell.md`
+- `docs/adr/ADR-014-postgres-notify-cache-invalidierung.md`
 
 ## Ergänzende Artefakte
 
 - Reason-Code-Katalog: `docs/guides/iam-authorization-reason-codes.md`
 - OpenAPI 3.0: `docs/guides/iam-authorization-openapi-3.0.yaml`
-- Testmatrix: `docs/reports/iam-authorization-testmatrix-2026-02-27.md`
+- Testmatrix: `docs/reports/iam-authorization-testmatrix-2026-02-28.md`

@@ -29,9 +29,16 @@ Data-Layer für SVA Studio – stellt einen framework-agnostischen HTTP-DataClie
 ### DataClient
 
 Leichtgewichtiger HTTP-Client mit TTL-basiertem In-Memory-Cache.
+Rückgabe:
+
+- `get<T>(path, schema, init?)` -> `Promise<T>`
+- Legacy-kompatibel: `get<T>(path, init?)` weiterhin möglich (liefert Deprecation-Warnung ohne Runtime-Schema)
+
+## Beispiel
 
 ```ts
 import { createDataClient } from '@sva/data';
+import { z } from 'zod';
 
 const client = createDataClient({
   baseUrl: 'https://api.example.invalid',
@@ -39,7 +46,8 @@ const client = createDataClient({
 });
 
 type Health = { ok: boolean };
-const health = await client.get<Health>('/health');
+const healthSchema = z.object({ ok: z.boolean() });
+const health = await client.get<Health>('/health', healthSchema);
 ```
 
 **Optionen:**

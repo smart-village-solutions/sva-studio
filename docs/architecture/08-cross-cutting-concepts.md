@@ -30,6 +30,8 @@ gleichzeitig beeinflussen.
 - Löschprozess zweistufig: Soft-Delete (SLA <= 48h) und finale Anonymisierung nach Retention
 - Legal Hold blockiert irreversible Löschschritte bis zur Freigabe
 - Art.-19-Nachweisdaten für Empfängerbenachrichtigung werden revisionssicher persistiert
+- Trust-Boundary-Validierung mit Zod in IAM-Endpoints (`authorize`, `governance`, `data-subject-rights`)
+- DataClient unterstützt optionale Runtime-Schema-Validierung (`get(path, schema)`) für API-Responses
 
 ### Logging und Observability
 
@@ -45,6 +47,9 @@ gleichzeitig beeinflussen.
 - PII-Schutz in Governance-Events: nur pseudonymisierte Actor-/Target-Referenzen
 - DSR-Wartungslauf emittiert strukturierte Audit-Events (`dsr_maintenance_executed`, `dsr_deletion_sla_escalated`)
 - Finale Löschung pseudonymisiert Audit-Referenzen (`subject_pseudonym`) statt Klartext-PII
+- SDK-Logger nutzt typisierte OTEL-Bridge (keine `any`-Casts in Transport/Bootstrap)
+- Sensitive-Keys-Redaction umfasst zusätzlich Cookie-, Session-, CSRF- und API-Key-Header/Felder
+- Workspace-Context-Warnungen erfolgen über lazy `process.emitWarning` statt `console.warn`
 
 ### Fehlerbehandlung und Resilienz
 

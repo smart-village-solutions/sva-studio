@@ -73,9 +73,18 @@ export const createWorkspaceContextMiddleware = (options: WorkspaceMiddlewareOpt
   const environment = options.environment ?? (process.env.NODE_ENV as WorkspaceMiddlewareOptions['environment']) ?? 'development';
 
   // Note: Cannot use SDK logger here due to circular dependency (context.ts is used BY logger)
+  let warnEmitter: ((message: string, meta?: Record<string, unknown>) => void) | null = null;
   const warn = (message: string, meta?: Record<string, unknown>) => {
     if (environment === 'development') {
-      console.warn(`[WorkspaceContext] ${message}`, meta ?? {});
+      if (!warnEmitter) {
+        warnEmitter = (msg, details) => {
+          process.emitWarning(`[WorkspaceContext] ${msg}`, {
+            code: 'SVA_WORKSPACE_CONTEXT',
+            detail: details ? JSON.stringify(details) : undefined,
+          });
+        };
+      }
+      warnEmitter(message, meta);
     }
   };
 

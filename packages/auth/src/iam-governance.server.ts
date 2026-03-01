@@ -1,15 +1,17 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { Pool, type PoolClient } from 'pg';
 import { createSdkLogger, getWorkspaceContext, withRequestContext } from '@sva/sdk/server';
 
 import { withAuthenticatedUser } from './middleware.server';
+import { createPoolResolver, jsonResponse, type QueryClient, withInstanceDb } from './shared/db-helpers';
+import { isUuid, readNumber, readObject, readString } from './shared/input-readers';
+import { buildLogContext } from './shared/log-context';
+import { governanceRequestSchema, type GovernanceRequestInput } from './shared/schemas';
 
 const logger = createSdkLogger({ component: 'iam-governance', level: 'info' });
 
 const MAX_IMPERSONATION_MINUTES = 120;
 const MAX_DELEGATION_DAYS = 30;
 const ALLOWED_TICKET_STATES = new Set(['open', 'in_progress', 'approved_for_execution']);
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 type GovernanceOperation =
   | 'submit_permission_change'
@@ -22,11 +24,7 @@ type GovernanceOperation =
   | 'accept_legal_text'
   | 'revoke_legal_acceptance';
 
-type GovernanceWorkflowRequest = {
-  operation: GovernanceOperation;
-  instanceId: string;
-  payload: Record<string, unknown>;
-};
+type GovernanceWorkflowRequest = GovernanceRequestInput;
 
 type GovernanceWorkflowResponse = {
   operation: GovernanceOperation;
@@ -34,18 +32,6 @@ type GovernanceWorkflowResponse = {
   workflowId?: string;
   reasonCode?: string;
   message?: string;
-};
-
-type QueryResult<TRow> = {
-  rowCount: number;
-  rows: TRow[];
-};
-
-type QueryClient = {
-  query<TRow = Record<string, unknown>>(
-    text: string,
-    values?: readonly unknown[]
-  ): Promise<QueryResult<TRow>>;
 };
 
 type GovernanceActor = {
@@ -56,65 +42,11 @@ type GovernanceActor = {
   traceId?: string;
 };
 
-let governancePool: Pool | null = null;
-
-const resolvePool = (): Pool | null => {
-  const databaseUrl = process.env.IAM_DATABASE_URL;
-  if (!databaseUrl) {
-    return null;
-  }
-
-  if (!governancePool) {
-    governancePool = new Pool({
-      connectionString: databaseUrl,
-      max: 5,
-      idleTimeoutMillis: 10_000,
-    });
-  }
-
-  return governancePool;
-};
-
-const readString = (value: unknown): string | undefined => {
-  if (typeof value !== 'string') {
-    return undefined;
-  }
-  const normalized = value.trim();
-  return normalized.length > 0 ? normalized : undefined;
-};
-
-const readNumber = (value: unknown): number | undefined => {
-  if (typeof value !== 'number' || !Number.isFinite(value)) {
-    return undefined;
-  }
-  return value;
-};
-
-const readRecord = (value: unknown): Record<string, unknown> | undefined => {
-  if (!value || typeof value !== 'object') {
-    return undefined;
-  }
-  return value as Record<string, unknown>;
-};
-
-const isUuid = (value: string) => UUID_PATTERN.test(value);
+const resolvePool = createPoolResolver(() => process.env.IAM_DATABASE_URL);
 
 const pseudonymize = (value: string) => createHash('sha256').update(value).digest('hex').slice(0, 16);
-
-const buildLogContext = (instanceId?: string) => {
-  const context = getWorkspaceContext();
-  return {
-    workspace_id: instanceId ?? context.workspaceId ?? 'default',
-    request_id: context.requestId,
-    trace_id: context.traceId,
-  };
-};
-
-const jsonResponse = (status: number, payload: unknown) =>
-  new Response(JSON.stringify(payload), {
-    status,
-    headers: { 'Content-Type': 'application/json' },
-  });
+const buildGovernanceLogContext = (instanceId?: string) =>
+  buildLogContext(instanceId, { includeTraceId: true });
 
 const parseWorkflowRequest = async (request: Request): Promise<GovernanceWorkflowRequest | null> => {
   let body: unknown;
@@ -124,42 +56,14 @@ const parseWorkflowRequest = async (request: Request): Promise<GovernanceWorkflo
     return null;
   }
 
-  if (!body || typeof body !== 'object') {
-    return null;
-  }
-
-  const typed = body as Record<string, unknown>;
-  const operation = readString(typed.operation) as GovernanceOperation | undefined;
-  const instanceId = readString(typed.instanceId);
-  const payload = readRecord(typed.payload);
-
-  if (!operation || !instanceId || !payload) {
-    return null;
-  }
-
-  return { operation, instanceId, payload };
+  const parsed = governanceRequestSchema.safeParse(body);
+  return parsed.success ? parsed.data : null;
 };
 
-const withInstanceDb = async <T>(instanceId: string, work: (client: QueryClient) => Promise<T>): Promise<T> => {
-  const pool = resolvePool();
-  if (!pool) {
-    throw new Error('IAM database not configured');
-  }
-
-  const client = (await pool.connect()) as PoolClient & QueryClient;
-  try {
-    await client.query('BEGIN');
-    await client.query('SELECT set_config($1, $2, true);', ['app.instance_id', instanceId]);
-    const result = await work(client);
-    await client.query('COMMIT');
-    return result;
-  } catch (error) {
-    await client.query('ROLLBACK');
-    throw error;
-  } finally {
-    client.release();
-  }
-};
+const withInstanceScopedDb = async <T>(
+  instanceId: string,
+  work: (client: QueryClient) => Promise<T>
+): Promise<T> => withInstanceDb(resolvePool, instanceId, work);
 
 const resolveAccountId = async (
   client: QueryClient,
@@ -265,7 +169,7 @@ const emitGovernanceAuditEvent = async (
     duration_s: input.durationSeconds,
     reason_code: input.reasonCode,
     sink: 'otel',
-    ...buildLogContext(input.instanceId),
+    ...buildGovernanceLogContext(input.instanceId),
   });
 
   await client.query(
@@ -634,7 +538,7 @@ RETURNING id;
     delegation_id: workflowId,
     actor_pseudonym: pseudonymize(delegatorSubject),
     target_pseudonym: pseudonymize(delegateeSubject),
-    ...buildLogContext(actor.instanceId),
+    ...buildGovernanceLogContext(actor.instanceId),
   });
 
   return { operation: 'create_delegation', status: 'ok', workflowId };
@@ -787,7 +691,7 @@ RETURNING id;
     actor_pseudonym: pseudonymize(actor.keycloakSubject),
     target_pseudonym: pseudonymize(targetSubject),
     max_duration_s: durationMinutes * 60,
-    ...buildLogContext(actor.instanceId),
+    ...buildGovernanceLogContext(actor.instanceId),
   });
 
   await emitGovernanceAuditEvent(client, {
@@ -858,7 +762,7 @@ RETURNING started_at, ticket_id;
     operation: 'impersonate_end',
     ticket_id: ticketId,
     duration_s: durationSeconds,
-    ...buildLogContext(actor.instanceId),
+    ...buildGovernanceLogContext(actor.instanceId),
   });
 
   await emitGovernanceAuditEvent(client, {
@@ -1098,28 +1002,28 @@ export const governanceWorkflowHandler = async (request: Request): Promise<Respo
       };
 
       try {
-        const result = await withInstanceDb(parsed.instanceId, async (client) => {
+        const result = await withInstanceScopedDb(parsed.instanceId, async (client) => {
           return executeWorkflow(client, actor, parsed);
         });
         if (result.status === 'error') {
           logger.error('Governance workflow rejected', {
             operation: parsed.operation,
             reason_code: result.reasonCode,
-            ...buildLogContext(parsed.instanceId),
+            ...buildGovernanceLogContext(parsed.instanceId),
           });
           return jsonResponse(400, result);
         }
         logger.info('Governance workflow completed', {
           operation: parsed.operation,
           workflow_id: result.workflowId,
-          ...buildLogContext(parsed.instanceId),
+          ...buildGovernanceLogContext(parsed.instanceId),
         });
         return jsonResponse(200, result);
       } catch (error) {
         logger.error('Governance workflow failed', {
           operation: parsed.operation,
           error: error instanceof Error ? error.message : String(error),
-          ...buildLogContext(parsed.instanceId),
+          ...buildGovernanceLogContext(parsed.instanceId),
         });
         return jsonResponse(503, { error: 'database_unavailable' });
       }
@@ -1144,7 +1048,7 @@ export const governanceComplianceExportHandler = async (request: Request): Promi
       }
 
       try {
-        const exportRows = await withInstanceDb(instanceId, async (client) => {
+        const exportRows = await withInstanceScopedDb(instanceId, async (client) => {
           const rows = await loadComplianceRows(client, { instanceId, from, to });
           return toExportRows(rows);
         });
@@ -1214,7 +1118,7 @@ export const governanceComplianceExportHandler = async (request: Request): Promi
           operation: 'compliance_export',
           error: error instanceof Error ? error.message : String(error),
           format,
-          ...buildLogContext(instanceId),
+          ...buildGovernanceLogContext(instanceId),
         });
         return jsonResponse(503, { error: 'database_unavailable' });
       }
@@ -1228,7 +1132,7 @@ export const resolveImpersonationSubject = async (input: {
   targetKeycloakSubject: string;
 }): Promise<{ ok: true } | { ok: false; reasonCode: string }> => {
   try {
-    return await withInstanceDb(input.instanceId, async (client) => {
+    return await withInstanceScopedDb(input.instanceId, async (client) => {
       const actorAccountId = await resolveAccountId(client, {
         instanceId: input.instanceId,
         keycloakSubject: input.actorKeycloakSubject,
@@ -1277,7 +1181,7 @@ WHERE id = $1
         logger.warn('Impersonation session expired', {
           operation: 'impersonate_timeout',
           ticket_id: session.ticket_id,
-          ...buildLogContext(input.instanceId),
+          ...buildGovernanceLogContext(input.instanceId),
         });
 
         await emitGovernanceAuditEvent(client, {

@@ -9,11 +9,15 @@ import type {
 import { evaluateAuthorizeDecision } from '@sva/core';
 import { createSdkLogger, getWorkspaceContext, withRequestContext } from '@sva/sdk/server';
 import { metrics } from '@opentelemetry/api';
-import { Pool, type PoolClient } from 'pg';
+import type { PoolClient } from 'pg';
 
 import { parseInvalidationEvent, PermissionSnapshotCache } from './iam-authorization.cache';
 import { resolveImpersonationSubject } from './iam-governance.server';
 import { withAuthenticatedUser } from './middleware.server';
+import { createPoolResolver, jsonResponse, type QueryClient, withInstanceDb } from './shared/db-helpers';
+import { isUuid, readString } from './shared/input-readers';
+import { buildLogContext } from './shared/log-context';
+import { authorizeRequestSchema } from './shared/schemas';
 
 export { evaluateAuthorizeDecision } from '@sva/core';
 
@@ -38,27 +42,12 @@ const iamCacheStaleEntriesGauge = authMeter.createObservableGauge('sva_iam_cache
   description: 'Ratio of stale cache lookups in IAM authorization path.',
 });
 
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
 type PermissionRow = {
   permission_key: string;
   role_id: string;
   organization_id: string | null;
 };
-
-type QueryResult<TRow> = {
-  rowCount: number;
-  rows: TRow[];
-};
-
-type QueryClient = {
-  query<TRow = Record<string, unknown>>(
-    text: string,
-    values?: readonly unknown[]
-  ): Promise<QueryResult<TRow>>;
-};
-
-let iamPool: Pool | null = null;
+const resolvePool = createPoolResolver(() => process.env.IAM_DATABASE_URL);
 const permissionSnapshotCache = new PermissionSnapshotCache(300_000, 300_000);
 const CACHE_INVALIDATION_CHANNEL = 'iam_permission_snapshot_invalidation';
 const cacheMetricsState = {
@@ -74,40 +63,8 @@ iamCacheStaleEntriesGauge.addCallback((result) => {
   result.observe(staleRate);
 });
 
-const resolvePool = (): Pool | null => {
-  const databaseUrl = process.env.IAM_DATABASE_URL;
-  if (!databaseUrl) {
-    return null;
-  }
-
-  if (!iamPool) {
-    iamPool = new Pool({
-      connectionString: databaseUrl,
-      max: 5,
-      idleTimeoutMillis: 10_000,
-    });
-  }
-
-  return iamPool;
-};
-
-const readString = (value: unknown): string | undefined => {
-  if (typeof value !== 'string') {
-    return undefined;
-  }
-  const normalized = value.trim();
-  return normalized.length > 0 ? normalized : undefined;
-};
-
-const isUuid = (value: string) => UUID_PATTERN.test(value);
-
 const buildRequestContext = (workspaceId?: string) => {
-  const context = getWorkspaceContext();
-  return {
-    workspace_id: workspaceId ?? context.workspaceId ?? 'default',
-    request_id: context.requestId,
-    trace_id: context.traceId,
-  };
+  return buildLogContext(workspaceId, { includeTraceId: true });
 };
 
 const readResourceType = (permissionKey: string) => permissionKey.split('.')[0] ?? permissionKey;
@@ -223,26 +180,7 @@ WHERE a.keycloak_subject = $2;
 const withInstanceScopedDb = async <T>(
   instanceId: string,
   work: (client: QueryClient) => Promise<T>
-): Promise<T> => {
-  const pool = resolvePool();
-  if (!pool) {
-    throw new Error('IAM database not configured');
-  }
-
-  const client = (await pool.connect()) as PoolClient & QueryClient;
-  try {
-    await client.query('BEGIN');
-    await client.query('SELECT set_config($1, $2, true);', ['app.instance_id', instanceId]);
-    const result = await work(client);
-    await client.query('COMMIT');
-    return result;
-  } catch (error) {
-    await client.query('ROLLBACK');
-    throw error;
-  } finally {
-    client.release();
-  }
-};
+): Promise<T> => withInstanceDb(resolvePool, instanceId, work);
 const ensureInvalidationListener = async (): Promise<void> => {
   if (invalidationListenerInit) {
     return invalidationListenerInit;
@@ -388,61 +326,9 @@ const parseAuthorizeRequest = async (request: Request): Promise<AuthorizeRequest
     return null;
   }
 
-  if (!payload || typeof payload !== 'object') {
-    return null;
-  }
-
-  const typed = payload as Record<string, unknown>;
-  const instanceId = readString(typed.instanceId);
-  const action = readString(typed.action);
-  const resourceRaw = typed.resource;
-  if (!instanceId || !action || !resourceRaw || typeof resourceRaw !== 'object') {
-    return null;
-  }
-
-  const resourceTyped = resourceRaw as Record<string, unknown>;
-  const resourceType = readString(resourceTyped.type);
-  if (!resourceType) {
-    return null;
-  }
-
-  const contextRaw = typed.context;
-  const contextTyped = contextRaw && typeof contextRaw === 'object'
-    ? (contextRaw as Record<string, unknown>)
-    : undefined;
-
-  return {
-    instanceId,
-    action,
-    resource: {
-      type: resourceType,
-      id: readString(resourceTyped.id),
-      organizationId: readString(resourceTyped.organizationId),
-      attributes:
-        resourceTyped.attributes && typeof resourceTyped.attributes === 'object'
-          ? (resourceTyped.attributes as Record<string, unknown>)
-          : undefined,
-    },
-    context: contextTyped
-      ? {
-          organizationId: readString(contextTyped.organizationId),
-          requestId: readString(contextTyped.requestId),
-          traceId: readString(contextTyped.traceId),
-          actingAsUserId: readString(contextTyped.actingAsUserId),
-          attributes:
-            contextTyped.attributes && typeof contextTyped.attributes === 'object'
-              ? (contextTyped.attributes as Record<string, unknown>)
-              : undefined,
-        }
-      : undefined,
-  };
+  const parsed = authorizeRequestSchema.safeParse(payload);
+  return parsed.success ? parsed.data : null;
 };
-
-const jsonResponse = (status: number, payload: unknown) =>
-  new Response(JSON.stringify(payload), {
-    status,
-    headers: { 'Content-Type': 'application/json' },
-  });
 
 const errorResponse = (status: number, error: IamApiErrorCode) =>
   jsonResponse(status, { error } satisfies IamApiErrorResponse);

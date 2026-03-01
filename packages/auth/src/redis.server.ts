@@ -1,6 +1,8 @@
 import Redis from 'ioredis';
+import type { RedisOptions } from 'ioredis';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import type { ConnectionOptions as TlsConnectionOptions } from 'node:tls';
 import { createSdkLogger } from '@sva/sdk/server';
 
 const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
@@ -12,8 +14,8 @@ const MAX_CONNECTION_ERRORS = 10;
 /**
  * Build Redis client options with optional TLS and ACL support.
  */
-const buildRedisOptions = (tlsEnabled: boolean = false) => {
-  const options = {
+const buildRedisOptions = (tlsEnabled: boolean = false): RedisOptions => {
+  const options: RedisOptions = {
     maxRetriesPerRequest: 3,
     retryStrategy: (times: number) => {
       // Stop retrying after threshold
@@ -44,8 +46,8 @@ const buildRedisOptions = (tlsEnabled: boolean = false) => {
 
   // Add ACL authentication if credentials provided
   if (process.env.REDIS_USERNAME) {
-    (options as any).username = process.env.REDIS_USERNAME;
-    (options as any).password = process.env.REDIS_PASSWORD || '';
+    options.username = process.env.REDIS_USERNAME;
+    options.password = process.env.REDIS_PASSWORD || '';
     logger.info('Redis ACL enabled', {
       operation: 'redis_init',
       acl_enabled: true,
@@ -60,7 +62,7 @@ const buildRedisOptions = (tlsEnabled: boolean = false) => {
 /**
  * Build TLS options synchronously before opening the connection.
  */
-const buildTlsOptions = (tlsEnabled: boolean) => {
+const buildTlsOptions = (tlsEnabled: boolean): TlsConnectionOptions | null => {
   if (!tlsEnabled) {
     return null;
   }
@@ -107,7 +109,7 @@ export const getRedisClient = (): Redis => {
     const options = buildRedisOptions(tlsEnabled);
     const tlsOptions = buildTlsOptions(tlsEnabled);
     if (tlsOptions) {
-      (options as any).tls = tlsOptions;
+      options.tls = tlsOptions;
     }
 
     redisClient = new Redis(redisUrl, options);

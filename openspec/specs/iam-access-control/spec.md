@@ -53,6 +53,12 @@ Das System SHALL eine zentrale Autorisierungsschnittstelle bereitstellen, die pr
 - **THEN** liefert das System eine Antwort mit `allowed` und `reason`
 - **AND** die Entscheidung ist bei identischem Kontext reproduzierbar
 
+#### Scenario: Keine internen Key-IDs in Exception-Messages
+
+- **WHEN** ein Verschlüsselungs- oder Entschlüsselungsfehler im Field-Encryption-Modul auftritt
+- **THEN** enthält die Exception-Message keine internen Key-IDs oder Keyring-Referenzen
+- **AND** die Key-ID wird ausschließlich im strukturierten Debug-Log ausgegeben
+
 ### Requirement: Instanzzentriertes Scoping in RBAC v1
 
 Das System SHALL `instanceId` als primären Scoping-Filter für RBAC-Entscheidungen erzwingen und organisationsspezifischen Kontext innerhalb der Instanz auswerten.

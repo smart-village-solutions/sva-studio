@@ -7,173 +7,132 @@ type AuthHandlers = {
   POST?: (ctx: { request: Request }) => Promise<Response> | Response;
 };
 
-const resolveAuthHandlers = (path: typeof authRoutePaths[number]): AuthHandlers => {
-  if (path === '/auth/login') {
-    return {
-      GET: async () => {
-        const mod = await import('@sva/auth/server');
-        return mod.loginHandler();
-      },
-    };
-  }
+type AuthRoutePath = (typeof authRoutePaths)[number];
 
-  if (path === '/auth/callback') {
-    return {
-      GET: async ({ request }) => {
-        const mod = await import('@sva/auth/server');
-        return mod.callbackHandler(request);
-      },
-    };
-  }
-
-  if (path === '/auth/me') {
-    return {
-      GET: async ({ request }) => {
-        const mod = await import('@sva/auth/server');
-        return mod.meHandler(request);
-      },
-    };
-  }
-
-  if (path === '/iam/me/permissions') {
-    return {
-      GET: async ({ request }) => {
-        const mod = await import('@sva/auth/server');
-        return mod.mePermissionsHandler(request);
-      },
-    };
-  }
-
-  if (path === '/iam/authorize') {
-    return {
-      POST: async ({ request }) => {
-        const mod = await import('@sva/auth/server');
-        return mod.authorizeHandler(request);
-      },
-    };
-  }
-
-  if (path === '/iam/governance/workflows') {
-    return {
-      POST: async ({ request }) => {
-        const mod = await import('@sva/auth/server');
-        return mod.governanceWorkflowHandler(request);
-      },
-    };
-  }
-
-  if (path === '/iam/governance/compliance/export') {
-    return {
-      GET: async ({ request }) => {
-        const mod = await import('@sva/auth/server');
-        return mod.governanceComplianceExportHandler(request);
-      },
-    };
-  }
-
-  if (path === '/iam/me/data-export') {
-    return {
-      GET: async ({ request }) => {
-        const mod = await import('@sva/auth/server');
-        return mod.dataExportHandler(request);
-      },
-    };
-  }
-
-  if (path === '/iam/me/data-export/status') {
-    return {
-      GET: async ({ request }) => {
-        const mod = await import('@sva/auth/server');
-        return mod.dataExportStatusHandler(request);
-      },
-    };
-  }
-
-  if (path === '/iam/me/data-subject-rights/requests') {
-    return {
-      POST: async ({ request }) => {
-        const mod = await import('@sva/auth/server');
-        return mod.dataSubjectRequestHandler(request);
-      },
-    };
-  }
-
-  if (path === '/iam/me/profile') {
-    return {
-      POST: async ({ request }) => {
-        const mod = await import('@sva/auth/server');
-        return mod.profileCorrectionHandler(request);
-      },
-    };
-  }
-
-  if (path === '/iam/me/optional-processing/execute') {
-    return {
-      POST: async ({ request }) => {
-        const mod = await import('@sva/auth/server');
-        return mod.optionalProcessingExecuteHandler(request);
-      },
-    };
-  }
-
-  if (path === '/iam/admin/data-subject-rights/export') {
-    return {
-      GET: async ({ request }) => {
-        const mod = await import('@sva/auth/server');
-        return mod.adminDataExportHandler(request);
-      },
-    };
-  }
-
-  if (path === '/iam/admin/data-subject-rights/export/status') {
-    return {
-      GET: async ({ request }) => {
-        const mod = await import('@sva/auth/server');
-        return mod.adminDataExportStatusHandler(request);
-      },
-    };
-  }
-
-  if (path === '/iam/admin/data-subject-rights/legal-holds/apply') {
-    return {
-      POST: async ({ request }) => {
-        const mod = await import('@sva/auth/server');
-        return mod.legalHoldApplyHandler(request);
-      },
-    };
-  }
-
-  if (path === '/iam/admin/data-subject-rights/legal-holds/release') {
-    return {
-      POST: async ({ request }) => {
-        const mod = await import('@sva/auth/server');
-        return mod.legalHoldReleaseHandler(request);
-      },
-    };
-  }
-
-  if (path === '/iam/admin/data-subject-rights/maintenance') {
-    return {
-      POST: async ({ request }) => {
-        const mod = await import('@sva/auth/server');
-        return mod.dataSubjectMaintenanceHandler(request);
-      },
-    };
-  }
-
-  return {
+/**
+ * Exhaustive handler mapping for all auth route paths.
+ * Adding a path to `authRoutePaths` without a corresponding handler entry
+ * causes a compile error via `satisfies`.
+ */
+const authHandlerMap = {
+  '/auth/login': {
+    GET: async () => {
+      const mod = await import('@sva/auth/server');
+      return mod.loginHandler();
+    },
+  },
+  '/auth/callback': {
+    GET: async ({ request }) => {
+      const mod = await import('@sva/auth/server');
+      return mod.callbackHandler(request);
+    },
+  },
+  '/auth/me': {
+    GET: async ({ request }) => {
+      const mod = await import('@sva/auth/server');
+      return mod.meHandler(request);
+    },
+  },
+  '/auth/logout': {
     POST: async ({ request }) => {
       const mod = await import('@sva/auth/server');
       return mod.logoutHandler(request);
     },
-  };
-};
+  },
+  '/iam/me/permissions': {
+    GET: async ({ request }) => {
+      const mod = await import('@sva/auth/server');
+      return mod.mePermissionsHandler(request);
+    },
+  },
+  '/iam/authorize': {
+    POST: async ({ request }) => {
+      const mod = await import('@sva/auth/server');
+      return mod.authorizeHandler(request);
+    },
+  },
+  '/iam/governance/workflows': {
+    POST: async ({ request }) => {
+      const mod = await import('@sva/auth/server');
+      return mod.governanceWorkflowHandler(request);
+    },
+  },
+  '/iam/governance/compliance/export': {
+    GET: async ({ request }) => {
+      const mod = await import('@sva/auth/server');
+      return mod.governanceComplianceExportHandler(request);
+    },
+  },
+  '/iam/me/data-export': {
+    GET: async ({ request }) => {
+      const mod = await import('@sva/auth/server');
+      return mod.dataExportHandler(request);
+    },
+  },
+  '/iam/me/data-export/status': {
+    GET: async ({ request }) => {
+      const mod = await import('@sva/auth/server');
+      return mod.dataExportStatusHandler(request);
+    },
+  },
+  '/iam/me/data-subject-rights/requests': {
+    POST: async ({ request }) => {
+      const mod = await import('@sva/auth/server');
+      return mod.dataSubjectRequestHandler(request);
+    },
+  },
+  '/iam/me/profile': {
+    POST: async ({ request }) => {
+      const mod = await import('@sva/auth/server');
+      return mod.profileCorrectionHandler(request);
+    },
+  },
+  '/iam/me/optional-processing/execute': {
+    POST: async ({ request }) => {
+      const mod = await import('@sva/auth/server');
+      return mod.optionalProcessingExecuteHandler(request);
+    },
+  },
+  '/iam/admin/data-subject-rights/export': {
+    GET: async ({ request }) => {
+      const mod = await import('@sva/auth/server');
+      return mod.adminDataExportHandler(request);
+    },
+  },
+  '/iam/admin/data-subject-rights/export/status': {
+    GET: async ({ request }) => {
+      const mod = await import('@sva/auth/server');
+      return mod.adminDataExportStatusHandler(request);
+    },
+  },
+  '/iam/admin/data-subject-rights/legal-holds/apply': {
+    POST: async ({ request }) => {
+      const mod = await import('@sva/auth/server');
+      return mod.legalHoldApplyHandler(request);
+    },
+  },
+  '/iam/admin/data-subject-rights/legal-holds/release': {
+    POST: async ({ request }) => {
+      const mod = await import('@sva/auth/server');
+      return mod.legalHoldReleaseHandler(request);
+    },
+  },
+  '/iam/admin/data-subject-rights/maintenance': {
+    POST: async ({ request }) => {
+      const mod = await import('@sva/auth/server');
+      return mod.dataSubjectMaintenanceHandler(request);
+    },
+  },
+} satisfies Record<AuthRoutePath, AuthHandlers>;
+
+const resolveAuthHandlers = (path: AuthRoutePath): AuthHandlers =>
+  authHandlerMap[path];
 
 /**
  * Server-side authentication route factory
  * Creates routes with actual handler implementations from @sva/auth/server
  */
-const createAuthServerRouteFactory = (path: typeof authRoutePaths[number]) => {
+const createAuthServerRouteFactory = (path: AuthRoutePath) => {
   return (rootRoute: RootRoute) => {
     return createRoute({
       getParentRoute: () => rootRoute,
@@ -194,4 +153,4 @@ export const authServerRouteFactories = authRoutePaths.map((path) =>
   createAuthServerRouteFactory(path)
 );
 
-export { authRoutePaths };
+export { authRoutePaths } from './auth.routes';

@@ -7,6 +7,7 @@ import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools';
 import React from 'react';
 
 import AppShell from '../components/AppShell';
+import ErrorFallback from '../components/ErrorFallback';
 import Header from '../components/Header';
 import NotFound from '../components/NotFound';
 
@@ -49,6 +50,7 @@ const getRootHead = () => ({
 });
 
 export const Route = createRootRoute({
+  errorComponent: ErrorFallback,
   notFoundComponent: NotFound,
   loader: loadRootData,
   head: getRootHead,

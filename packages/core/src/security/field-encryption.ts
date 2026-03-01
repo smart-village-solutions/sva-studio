@@ -22,7 +22,7 @@ const decodeBase64Key = (keyMaterialBase64: string): Buffer => {
 const getKeyMaterial = (keyring: FieldEncryptionKeyring, keyId: string): Buffer => {
   const keyMaterial = keyring[keyId];
   if (!keyMaterial) {
-    throw new Error(`Encryption key '${keyId}' is not configured.`);
+    throw new Error('Requested encryption key is not configured in keyring.');
   }
   return decodeBase64Key(keyMaterial);
 };
@@ -103,14 +103,14 @@ export const parseFieldEncryptionConfigFromEnv = (
   const keyring: FieldEncryptionKeyring = {};
   for (const [keyId, keyValue] of Object.entries(parsed)) {
     if (typeof keyValue !== 'string' || keyValue.length === 0) {
-      throw new Error(`Invalid key material for key '${keyId}'.`);
+      throw new Error('Invalid key material detected in keyring entry.');
     }
     decodeBase64Key(keyValue);
     keyring[keyId] = keyValue;
   }
 
   if (!keyring[activeKeyId]) {
-    throw new Error(`IAM_PII_ACTIVE_KEY_ID '${activeKeyId}' not found in keyring.`);
+    throw new Error('IAM_PII_ACTIVE_KEY_ID references a key not present in keyring.');
   }
 
   return {

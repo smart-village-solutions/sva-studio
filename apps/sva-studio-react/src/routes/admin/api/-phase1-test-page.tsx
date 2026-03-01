@@ -1,5 +1,3 @@
-
-import { createFileRoute } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/start'
 import type { NodeSDK } from '@opentelemetry/sdk-node'
 
@@ -197,8 +195,6 @@ export const runPhase1Test = createServerFn('GET /api/phase1-test', async () => 
   }
 })
 
-export const Route = createFileRoute('/admin/api/phase1-test')({
-  component: function Component() {
-    return null
-  }
-})
+export function Phase1TestPage() {
+  return null
+}

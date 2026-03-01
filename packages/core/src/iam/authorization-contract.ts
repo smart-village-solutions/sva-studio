@@ -44,6 +44,8 @@ export const iamApiErrorCodes = [
   'invalid_instance_id',
   'invalid_organization_id',
   'instance_scope_mismatch',
+  'impersonation_not_active',
+  'impersonation_expired',
   'database_unavailable',
 ] as const;
 export type IamApiErrorCode = (typeof iamApiErrorCodes)[number];
@@ -76,12 +78,20 @@ export type EffectivePermission = {
 export type MePermissionsRequest = {
   readonly instanceId: IamUuid;
   readonly organizationId?: IamUuid;
+  readonly actingAsUserId?: string;
+};
+
+export type MePermissionsSubject = {
+  readonly actorUserId: string;
+  readonly effectiveUserId: string;
+  readonly isImpersonating: boolean;
 };
 
 export type MePermissionsResponse = {
   readonly instanceId: IamUuid;
   readonly organizationId?: IamUuid;
   readonly permissions: readonly EffectivePermission[];
+  readonly subject: MePermissionsSubject;
   readonly evaluatedAt: string;
   readonly requestId?: string;
   readonly traceId?: string;

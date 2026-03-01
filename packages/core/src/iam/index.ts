@@ -14,6 +14,7 @@ export type {
   IamResourceRef,
   IamUuid,
   MePermissionsRequest,
+  MePermissionsSubject,
   MePermissionsResponse,
 } from './authorization-contract';
 export { allowReasonCodes, denyReasonCodes, iamApiErrorCodes } from './authorization-contract';

@@ -1,4 +1,3 @@
-import { createFileRoute } from '@tanstack/react-router';
 import React from 'react';
 
 type AuthUser = {
@@ -232,5 +231,3 @@ export const HomePage = () => {
     </div>
   );
 };
-
-export const Route = createFileRoute('/')({ component: HomePage });

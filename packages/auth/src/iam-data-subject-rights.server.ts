@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash } from 'node:crypto';
 import { Pool, type PoolClient } from 'pg';
 import { createSdkLogger, getWorkspaceContext, withRequestContext } from '@sva/sdk/server';
 import { decryptFieldValue, encryptFieldValue, parseFieldEncryptionConfigFromEnv } from '@sva/core/security';

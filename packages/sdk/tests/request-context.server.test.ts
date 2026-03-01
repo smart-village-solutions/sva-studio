@@ -34,6 +34,25 @@ describe('request-context middleware helpers', () => {
     expect(mixedCaseTraceId).toBe('cccccccccccccccccccccccccccccccc');
   });
 
+  it('ignores invalid request_id header values', () => {
+    const requestId = extractRequestIdFromHeaders({
+      'x-request-id': 'req-123\nmalicious',
+    });
+    expect(requestId).toBeUndefined();
+  });
+
+  it('validates trace_id fallback header format', () => {
+    const validTraceId = extractTraceIdFromHeaders({
+      'x-trace-id': '4bf92f3577b34da6a3ce929d0e0e4736',
+    });
+    const invalidTraceId = extractTraceIdFromHeaders({
+      'x-trace-id': 'trace-123',
+    });
+
+    expect(validTraceId).toBe('4bf92f3577b34da6a3ce929d0e0e4736');
+    expect(invalidTraceId).toBeUndefined();
+  });
+
   it('propagates workspace_id, request_id and trace_id via withRequestContext', async () => {
     const request = new Request('http://localhost/auth/me', {
       headers: {

@@ -4,6 +4,8 @@ export type AuthRoutePath =
   | '/auth/callback'
   | '/auth/me'
   | '/auth/logout'
+  | '/iam/me/permissions'
+  | '/iam/authorize'
   | '/iam/governance/workflows'
   | '/iam/governance/compliance/export'
   | '/iam/me/data-export'
@@ -22,6 +24,8 @@ export const authRoutePaths = [
   '/auth/callback',
   '/auth/me',
   '/auth/logout',
+  '/iam/me/permissions',
+  '/iam/authorize',
   '/iam/governance/workflows',
   '/iam/governance/compliance/export',
   '/iam/me/data-export',

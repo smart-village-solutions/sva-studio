@@ -11,6 +11,21 @@ export type FieldEncryptionConfig = {
   keyring: FieldEncryptionKeyring;
 };
 
+type FieldEncryptionError = Error & {
+  context?: Readonly<Record<string, string>>;
+};
+
+const createFieldEncryptionError = (
+  message: string,
+  context?: Readonly<Record<string, string>>
+): FieldEncryptionError => {
+  const error = new Error(message) as FieldEncryptionError;
+  if (context) {
+    error.context = context;
+  }
+  return error;
+};
+
 const decodeBase64Key = (keyMaterialBase64: string): Buffer => {
   const decoded = Buffer.from(keyMaterialBase64, 'base64');
   if (decoded.length !== 32) {
@@ -22,7 +37,9 @@ const decodeBase64Key = (keyMaterialBase64: string): Buffer => {
 const getKeyMaterial = (keyring: FieldEncryptionKeyring, keyId: string): Buffer => {
   const keyMaterial = keyring[keyId];
   if (!keyMaterial) {
-    throw new Error('Requested encryption key is not configured in keyring.');
+    throw createFieldEncryptionError('Requested encryption key is not configured in keyring.', {
+      keyId,
+    });
   }
   return decodeBase64Key(keyMaterial);
 };
@@ -57,7 +74,13 @@ export const decryptFieldValue = (
   keyring: FieldEncryptionKeyring,
   aad?: string
 ): string => {
-  const [prefix, keyId, ivBase64, authTagBase64, ciphertextBase64] = encryptedPayload.split(':');
+  const parts = encryptedPayload.split(':');
+  if (parts.length !== 6) {
+    throw new Error('Invalid encrypted payload format.');
+  }
+
+  const [prefixPartA, prefixPartB, keyId, ivBase64, authTagBase64, ciphertextBase64] = parts;
+  const prefix = `${prefixPartA}:${prefixPartB}`;
 
   if (prefix !== VERSION_PREFIX || !keyId || !ivBase64 || !authTagBase64 || !ciphertextBase64) {
     throw new Error('Invalid encrypted payload format.');
@@ -110,7 +133,9 @@ export const parseFieldEncryptionConfigFromEnv = (
   }
 
   if (!keyring[activeKeyId]) {
-    throw new Error('IAM_PII_ACTIVE_KEY_ID references a key not present in keyring.');
+    throw createFieldEncryptionError('IAM_PII_ACTIVE_KEY_ID references a key not present in keyring.', {
+      activeKeyId,
+    });
   }
 
   return {

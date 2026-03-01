@@ -180,7 +180,11 @@ importers:
         specifier: ^4.0.18
         version: 4.0.18(@opentelemetry/api@1.9.0)(@types/node@22.19.11)(jiti@2.6.1)(jsdom@27.4.0)(tsx@4.21.0)(yaml@2.8.2)
 
-  packages/core: {}
+  packages/core:
+    devDependencies:
+      vitest:
+        specifier: ^4.0.18
+        version: 4.0.18(@opentelemetry/api@1.9.0)(@types/node@22.19.11)(jiti@2.6.1)(jsdom@27.4.0)(tsx@4.21.0)(yaml@2.8.2)
 
   packages/data:
     dependencies:
@@ -262,6 +266,9 @@ importers:
       typescript:
         specifier: ^5.3.3
         version: 5.9.3
+      vitest:
+        specifier: ^4.0.18
+        version: 4.0.18(@opentelemetry/api@1.9.0)(@types/node@22.19.11)(jiti@2.6.1)(jsdom@27.4.0)(tsx@4.21.0)(yaml@2.8.2)
 
   packages/sdk:
     dependencies:

@@ -14,5 +14,8 @@
       "types": "./dist/security/index.d.ts",
       "default": "./dist/security/index.js"
     }
+  },
+  "devDependencies": {
+    "vitest": "^4.0.18"
   }
 }

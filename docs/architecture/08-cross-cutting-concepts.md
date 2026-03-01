@@ -21,6 +21,7 @@ gleichzeitig beeinflussen.
 - Optionale Verschlüsselung von Tokens im Redis-Store via `ENCRYPTION_KEY`
 - Application-Level Column Encryption für IAM-PII-Felder (`email_ciphertext`, `display_name_ciphertext`)
 - Schlüsselverwaltung über `IAM_PII_ACTIVE_KEY_ID` + `IAM_PII_KEYRING_JSON` (außerhalb der DB)
+- Fehlertexte der Feldverschlüsselung enthalten keine internen Key-IDs; technische Key-Kontexte werden nur als strukturierter Fehlerkontext geführt
 - Redaction sensibler Logfelder im SDK und im OTEL Processor
 - Governance-Gates: Ticketpflicht, Vier-Augen-Prinzip, keine Self-Approvals
 - Harte Laufzeitgrenzen: Impersonation max. 120 Minuten, Delegation max. 30 Tage
@@ -50,6 +51,7 @@ gleichzeitig beeinflussen.
 - OTEL-Init ist fehlertolerant (App läuft weiter ohne Telemetrie)
 - Redis-Reconnect mit Backoff und Max-Retry Logik
 - Auth-Flow mit klaren Redirect-Fehlerpfaden (`auth=error`, `auth=state-expired`)
+- Root-Route nutzt ein zentrales `errorComponent` für unbehandelte Laufzeitfehler mit Retry-Option
 - IAM-Cache-Invalidierung folgt Event-first (Postgres NOTIFY) mit TTL/Recompute-Fallback
 - Bei stale + Recompute-Fehler gilt fail-closed (`cache_stale_guard`)
 - DSR-Resilienz über asynchrones Export-Statusmodell (`queued|processing|completed|failed`)

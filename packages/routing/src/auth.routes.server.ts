@@ -125,8 +125,16 @@ const authHandlerMap = {
   },
 } satisfies Record<AuthRoutePath, AuthHandlers>;
 
-const resolveAuthHandlers = (path: AuthRoutePath): AuthHandlers =>
-  authHandlerMap[path];
+const isAuthRoutePath = (value: string): value is AuthRoutePath =>
+  (authRoutePaths as readonly string[]).includes(value);
+
+export const resolveAuthHandlers = (path: string): AuthHandlers => {
+  if (!isAuthRoutePath(path)) {
+    throw new Error(`Unknown auth route path: ${path}`);
+  }
+
+  return authHandlerMap[path];
+};
 
 /**
  * Server-side authentication route factory
@@ -141,6 +149,8 @@ const createAuthServerRouteFactory = (path: AuthRoutePath) => {
       server: {
         handlers: resolveAuthHandlers(path),
       },
+      // TanStack router types do not currently model the `server` option in this context.
+      // Keep the cast local until upstream types allow full inference here.
     } as any);
   };
 };

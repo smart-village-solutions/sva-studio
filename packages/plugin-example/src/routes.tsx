@@ -1,4 +1,5 @@
-import type { RootRoute } from '@tanstack/react-router';
+import type { RouteFactory } from '@sva/sdk';
+import type { AnyRoute, RootRoute } from '@tanstack/react-router';
 import { createRoute } from '@tanstack/react-router';
 
 const PluginExamplePage = () => {
@@ -10,7 +11,9 @@ const PluginExamplePage = () => {
   );
 };
 
-export const pluginExampleRoutes = [
+type PluginRouteFactory = RouteFactory<RootRoute, AnyRoute>;
+
+export const pluginExampleRoutes: PluginRouteFactory[] = [
   (rootRoute: RootRoute) =>
     createRoute({
       getParentRoute: () => rootRoute,

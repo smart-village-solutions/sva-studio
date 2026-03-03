@@ -1,4 +1,4 @@
-import { coreVersion } from '@sva/core';
+import { sdkVersion } from '@sva/sdk';
 export { pluginExampleRoutes } from './routes';
 
-export const pluginExampleVersion = coreVersion;
+export const pluginExampleVersion = sdkVersion;

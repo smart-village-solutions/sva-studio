@@ -237,9 +237,9 @@ importers:
 
   packages/plugin-example:
     dependencies:
-      '@sva/core':
+      '@sva/sdk':
         specifier: workspace:*
-        version: link:../core
+        version: link:../sdk
       '@tanstack/react-router':
         specifier: ^1.160.0
         version: 1.161.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4)

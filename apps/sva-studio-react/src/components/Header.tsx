@@ -1,7 +1,7 @@
 /**
  * Header-Komponente der App-Shell mit Hauptnavigation und Auth-Aktion.
  *
- * Die Komponente zeigt abhängig vom Auth-Status einen Login- oder Logout-Action,
+ * Die Komponente zeigt abhängig vom Auth-Status eine Login- oder Logout-Aktion
  * und unterstützt einen optionalen Loading-Zustand für Skeleton-Rendering.
  */
 import { Link } from '@tanstack/react-router';

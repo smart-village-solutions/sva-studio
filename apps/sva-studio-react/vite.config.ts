@@ -32,6 +32,7 @@ const config = defineConfig({
         new URL('../../packages/monitoring-client/src/logger-provider.server.ts', import.meta.url)
       ),
       '@sva/monitoring-client': fileURLToPath(new URL('../../packages/monitoring-client/src/index.ts', import.meta.url)),
+      '@sva/core/security': fileURLToPath(new URL('../../packages/core/src/security/index.ts', import.meta.url)),
       '@sva/core': fileURLToPath(new URL('../../packages/core/src/index.ts', import.meta.url)),
     },
   },

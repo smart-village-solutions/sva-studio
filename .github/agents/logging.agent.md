@@ -95,6 +95,11 @@ if (process.env.NODE_ENV !== 'production') {
 - Keine funktionalen Veraenderungen oder Logik-Aenderungen
 - Du darfst Konzept- und Dokumentationsdateien bearbeiten, wenn du explizit dazu aufgefordert wirst
 
+### Skill-Allowlist (verbindlich)
+- Erlaubte Skills: `nx-workspace`, `nx-run-tasks`, `context7`, `systematic-debugging`, `debugging-strategies`
+- Nicht erlaubte Skills nur nach Delegation an den Main-Agent nutzen
+- Bei fehlendem Skill: Eskalieren statt improvisieren
+
 ### GitHub Issues erstellen
 
 Wenn du ein Issue vorschlagen willst, **PRUEFE ZUERST auf Duplikate**:

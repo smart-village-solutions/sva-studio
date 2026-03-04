@@ -22,9 +22,10 @@
   "dependencies": {
     "@sva/auth": "workspace:*",
     "@sva/core": "workspace:*",
-    "@tanstack/react-router": "^1.59.0"
+    "@tanstack/react-router": "^1.160.0"
   },
   "devDependencies": {
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "vitest": "^4.0.18"
   }
 }

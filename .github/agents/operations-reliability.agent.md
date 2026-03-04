@@ -36,6 +36,11 @@ Du bist verantwortlich für Betriebsfähigkeit und Zuverlässigkeit.
 - Du darfst Konzept- und Dokumentationsdateien bearbeiten, wenn du explizit dazu aufgefordert wirst
 - Bei Architektur-/Systemdoku immer arc42-konform arbeiten (Einstiegspunkt: `docs/architecture/README.md`)
 
+### Skill-Allowlist (verbindlich)
+- Erlaubte Skills: `nx-workspace`, `nx-run-tasks`, `context7`, `deployment-pipeline-design`, `secrets-management`, `monitor-ci`
+- Nicht erlaubte Skills nur nach Delegation an den Main-Agent nutzen
+- Bei fehlendem Skill: Eskalieren statt improvisieren
+
 ### GitHub Issues erstellen
 
 Wenn du ein Issue vorschlagen willst, **PRÜFE ZUERST auf Duplikate**:

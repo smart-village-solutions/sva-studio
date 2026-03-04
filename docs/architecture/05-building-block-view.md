@@ -23,6 +23,7 @@ Abhängigkeiten des aktuellen Systems.
    - generische Route-Registry Utilities (`mergeRouteFactories`, `buildRouteTree`)
 3. Routing (`packages/routing`)
    - zentrale Route-Factories (client + server)
+   - exhaustives Auth-Handler-Mapping mit explizitem Fehler bei unbekanntem Auth-Pfad
 4. Auth (`packages/auth`)
    - OIDC-Flows, Session-Store, auth HTTP-Handler
 5. SDK (`packages/sdk`)

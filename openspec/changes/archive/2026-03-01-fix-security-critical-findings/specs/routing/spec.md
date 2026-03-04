@@ -1,8 +1,5 @@
-# Capability: routing
+## MODIFIED Requirements
 
-## Purpose
-Die Routing-Capability definiert, wie Routen aus Core und Plugins typsicher zusammengeführt und zur Laufzeit registriert werden.
-## Requirements
 ### Requirement: Code-Route-Registry
 Das System SHALL eine programmatische Route-Registry bereitstellen, die Routen aus Core und Plugins kombiniert.
 
@@ -20,12 +17,7 @@ Das System SHALL eine programmatische Route-Registry bereitstellen, die Routen a
 - **AND** kein Handler-Eintrag im Mapping existiert
 - **THEN** meldet der TypeScript-Compiler einen Fehler
 
-### Requirement: Plugin-Route-Exports
-Plugins SHALL eigene Routen als Exporte bereitstellen können, die von der Route-Registry aufgenommen werden.
-
-#### Scenario: Plugin liefert Route-Definition
-- **WHEN** ein Plugin eine Route exportiert
-- **THEN** kann die App diese Route registrieren
+## ADDED Requirements
 
 ### Requirement: Root-Level Error Boundary
 Die App SHALL auf Root-Route-Ebene ein `errorComponent` bereitstellen, das unbehandelte Runtime-Fehler abfängt und eine benutzerfreundliche Fehlerseite rendert.
@@ -50,4 +42,3 @@ Die App SHALL ausschließlich stabile Release-Versionen für Laufzeit-Dependenci
 #### Scenario: TanStack-Router-Version synchronisiert
 - **WHEN** `@tanstack/react-router` in mehreren Packages verwendet wird
 - **THEN** ist die aufgelöste Version im gesamten Workspace identisch
-

@@ -36,8 +36,8 @@ export type PersonaSeed = {
   readonly permissionKeys: readonly PermissionKey[];
   readonly accountId: IamUuid;
   readonly keycloakSubject: string;
-  readonly seedEmailCiphertext: string;
-  readonly seedDisplayNameCiphertext: string;
+  readonly seedEmailPlaceholder: string;
+  readonly seedDisplayNamePlaceholder: string;
 };
 
 export type IamSeedContext = {

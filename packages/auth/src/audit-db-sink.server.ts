@@ -1,5 +1,9 @@
 import { Pool, type PoolClient } from 'pg';
-import { encryptFieldValue, parseFieldEncryptionConfigFromEnv } from '@sva/core/security';
+import {
+  encryptFieldValue,
+  parseFieldEncryptionConfigFromEnv,
+  type FieldEncryptionConfig,
+} from '@sva/core/security';
 
 import type { AuthAuditEvent, AuthAuditEventType } from './audit-events.types';
 
@@ -24,6 +28,8 @@ export type AuditSqlClient = {
 };
 
 let auditPool: Pool | null = null;
+let cachedEncryptionConfig: FieldEncryptionConfig | null = null;
+let cachedEncryptionConfigSignature: string | null = null;
 
 const resolveAuditPool = (): Pool | null => {
   const databaseUrl = process.env.IAM_DATABASE_URL;
@@ -40,6 +46,20 @@ const resolveAuditPool = (): Pool | null => {
   }
 
   return auditPool;
+};
+
+const resolveEncryptionConfig = (): FieldEncryptionConfig | null => {
+  const activeKeyId = process.env.IAM_PII_ACTIVE_KEY_ID ?? '';
+  const keyringJson = process.env.IAM_PII_KEYRING_JSON ?? '';
+  const signature = `${activeKeyId}::${keyringJson}`;
+
+  if (signature === cachedEncryptionConfigSignature) {
+    return cachedEncryptionConfig;
+  }
+
+  cachedEncryptionConfig = parseFieldEncryptionConfigFromEnv(process.env);
+  cachedEncryptionConfigSignature = signature;
+  return cachedEncryptionConfig;
 };
 
 const resolveAccountId = async (client: AuditSqlClient, keycloakSubject: string) => {
@@ -65,12 +85,27 @@ const encryptOptionalPii = (plaintext: string | undefined, aad: string): string 
     return null;
   }
 
-  const config = parseFieldEncryptionConfigFromEnv(process.env);
+  const config = resolveEncryptionConfig();
   if (!config) {
     return null;
   }
 
   return encryptFieldValue(plaintext, config, aad);
+};
+
+const assertIamAppRuntimeRole = async (client: AuditSqlClient) => {
+  await client.query('SET LOCAL ROLE iam_app;');
+  const result = await client.query<{ rolsuper: boolean; rolbypassrls: boolean }>(
+    `
+SELECT rolsuper, rolbypassrls
+FROM pg_roles
+WHERE rolname = current_user;
+`
+  );
+  const role = result.rows[0];
+  if (!role || role.rolsuper || role.rolbypassrls) {
+    throw new Error('Unsafe runtime role for audit sink: current role must not be SUPERUSER or BYPASSRLS.');
+  }
 };
 
 const ensureAccount = async (
@@ -243,6 +278,7 @@ export const persistAuthAuditEventToDb = async (
   const client = (await pool.connect()) as PoolClient & AuditSqlClient;
   try {
     await client.query('BEGIN');
+    await assertIamAppRuntimeRole(client);
     await client.query('SELECT set_config($1, $2, true);', ['app.instance_id', event.workspaceId]);
 
     const result = await persistAuthAuditEventWithClient(client, event);

@@ -154,6 +154,23 @@ CREATE POLICY instances_isolation_policy
   USING (id = iam.current_instance_id())
   WITH CHECK (id = iam.current_instance_id());
 
+ALTER TABLE iam.accounts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE iam.accounts FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS accounts_isolation_policy ON iam.accounts;
+CREATE POLICY accounts_isolation_policy
+  ON iam.accounts
+  USING (
+    EXISTS (
+      SELECT 1
+      FROM iam.instance_memberships membership
+      WHERE membership.account_id = iam.accounts.id
+        AND membership.instance_id = iam.current_instance_id()
+    )
+  )
+  WITH CHECK (
+    iam.current_instance_id() IS NOT NULL
+  );
+
 ALTER TABLE iam.organizations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE iam.organizations FORCE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS organizations_isolation_policy ON iam.organizations;

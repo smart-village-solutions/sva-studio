@@ -26,8 +26,8 @@ const personas: readonly PersonaSeed[] = [
     permissionKeys: permissions.map(([, key]) => key),
     accountId: '50111111-1111-1111-1111-111111111111',
     keycloakSubject: 'seed:system_admin',
-    seedEmailCiphertext: 'enc:seed.system-admin@sva.local',
-    seedDisplayNameCiphertext: 'enc:System Administrator',
+    seedEmailPlaceholder: 'seed.system-admin@sva.local',
+    seedDisplayNamePlaceholder: 'System Administrator',
   },
   {
     personaKey: 'app_manager',
@@ -38,8 +38,8 @@ const personas: readonly PersonaSeed[] = [
     permissionKeys: ['iam.user.read', 'iam.user.write', 'iam.org.read', 'iam.org.write', 'content.read', 'feature.toggle'],
     accountId: '50222222-2222-2222-2222-222222222222',
     keycloakSubject: 'seed:app_manager',
-    seedEmailCiphertext: 'enc:seed.app-manager@sva.local',
-    seedDisplayNameCiphertext: 'enc:App Manager',
+    seedEmailPlaceholder: 'seed.app-manager@sva.local',
+    seedDisplayNamePlaceholder: 'App Manager',
   },
   {
     personaKey: 'feature_manager',
@@ -50,8 +50,8 @@ const personas: readonly PersonaSeed[] = [
     permissionKeys: ['content.read', 'content.update', 'feature.toggle'],
     accountId: '50333333-3333-3333-3333-333333333333',
     keycloakSubject: 'seed:feature_manager',
-    seedEmailCiphertext: 'enc:seed.feature-manager@sva.local',
-    seedDisplayNameCiphertext: 'enc:Feature Manager',
+    seedEmailPlaceholder: 'seed.feature-manager@sva.local',
+    seedDisplayNamePlaceholder: 'Feature Manager',
   },
   {
     personaKey: 'interface_manager',
@@ -62,8 +62,8 @@ const personas: readonly PersonaSeed[] = [
     permissionKeys: ['iam.org.read', 'content.read', 'integration.manage'],
     accountId: '50444444-4444-4444-4444-444444444444',
     keycloakSubject: 'seed:interface_manager',
-    seedEmailCiphertext: 'enc:seed.interface-manager@sva.local',
-    seedDisplayNameCiphertext: 'enc:Interface Manager',
+    seedEmailPlaceholder: 'seed.interface-manager@sva.local',
+    seedDisplayNamePlaceholder: 'Interface Manager',
   },
   {
     personaKey: 'designer',
@@ -74,8 +74,8 @@ const personas: readonly PersonaSeed[] = [
     permissionKeys: ['content.read', 'content.update'],
     accountId: '50555555-5555-5555-5555-555555555555',
     keycloakSubject: 'seed:designer',
-    seedEmailCiphertext: 'enc:seed.designer@sva.local',
-    seedDisplayNameCiphertext: 'enc:Designer',
+    seedEmailPlaceholder: 'seed.designer@sva.local',
+    seedDisplayNamePlaceholder: 'Designer',
   },
   {
     personaKey: 'editor',
@@ -86,8 +86,8 @@ const personas: readonly PersonaSeed[] = [
     permissionKeys: ['content.read', 'content.create', 'content.update'],
     accountId: '50666666-6666-6666-6666-666666666666',
     keycloakSubject: 'seed:editor',
-    seedEmailCiphertext: 'enc:seed.editor@sva.local',
-    seedDisplayNameCiphertext: 'enc:Editor',
+    seedEmailPlaceholder: 'seed.editor@sva.local',
+    seedDisplayNamePlaceholder: 'Editor',
   },
   {
     personaKey: 'moderator',
@@ -98,8 +98,8 @@ const personas: readonly PersonaSeed[] = [
     permissionKeys: ['content.read', 'content.publish', 'content.moderate'],
     accountId: '50777777-7777-7777-7777-777777777777',
     keycloakSubject: 'seed:moderator',
-    seedEmailCiphertext: 'enc:seed.moderator@sva.local',
-    seedDisplayNameCiphertext: 'enc:Moderator',
+    seedEmailPlaceholder: 'seed.moderator@sva.local',
+    seedDisplayNamePlaceholder: 'Moderator',
   },
 ];
 

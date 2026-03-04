@@ -1,7 +1,7 @@
 # iam-access-control Specification
 
 ## Purpose
-TBD - created by archiving change setup-iam-identity-auth. Update Purpose after archive.
+Diese Spezifikation beschreibt die technischen und fachlichen Anforderungen an das IAM-Access-Control-Modul. Sie legt fest, wie nach erfolgreicher OIDC-Authentifizierung ein verlässlicher Identity-Kontext bereitgestellt wird, wie RBAC-Basisdaten instanzgebunden persistiert werden und wie die Abgrenzung zu nachgelagerten Autorisierungsentscheidungen in Child C/D erfolgt.
 ## Requirements
 ### Requirement: Authentifizierter Identity-Kontext als Vorbedingung
 
@@ -42,4 +42,3 @@ Das System SHALL Basisrollen und Permission-Zuordnungen idempotent initialisiere
 - **WHEN** Seed-Skripte mehrfach ausgeführt werden
 - **THEN** existiert jede Basisrolle nur einmal
 - **AND** Rollen-Permission-Beziehungen bleiben konsistent
-

@@ -1,7 +1,7 @@
 # iam-auditing Specification
 
 ## Purpose
-TBD - created by archiving change setup-iam-identity-auth. Update Purpose after archive.
+Diese Spezifikation definiert Anforderungen an das Auditing im IAM-Kontext: unveränderbare Protokollierung sicherheitsrelevanter Identity-Ereignisse, duale Emission in `iam.activity_logs` und die OTEL-Pipeline sowie nachvollziehbare Dokumentation von Migrationen und RLS-Ausnahmepfaden.
 ## Requirements
 ### Requirement: Immutable Logging für Identity-Basisereignisse
 
@@ -48,4 +48,3 @@ Das System SHALL dokumentierte RLS-Ausnahmepfade in Migrationen oder Admin-Proze
 - **WHEN** ein legitimierter Prozess RLS temporär umgeht
 - **THEN** enthält der Vorgang einen dokumentierten Grund und Scope
 - **AND** nach Abschluss ist der Normalzustand wiederhergestellt und nachweisbar
-

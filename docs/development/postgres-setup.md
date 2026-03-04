@@ -39,15 +39,26 @@ Empfohlene `.env.local`:
 POSTGRES_DB=sva_studio
 POSTGRES_USER=sva
 POSTGRES_PASSWORD=sva_local_dev_password
-IAM_DATABASE_URL=postgres://sva:sva_local_dev_password@localhost:5432/sva_studio
+IAM_DATABASE_URL=postgres://sva_app:sva_app_local_dev_password@localhost:5432/sva_studio
 IAM_PII_ACTIVE_KEY_ID=k1
 IAM_PII_KEYRING_JSON={"k1":"MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDE="}
 ```
 
 Hinweis:
 - `POSTGRES_*` wird von Docker Compose verwendet
-- `IAM_DATABASE_URL` ist die kanonische App-Connection für den IAM Core Data Layer
+- `IAM_DATABASE_URL` ist die kanonische App-Connection für den IAM Core Data Layer und sollte auf einen dedizierten Login-User ohne `SUPERUSER`/`BYPASSRLS` zeigen (z. B. `sva_app`)
 - `IAM_PII_*` konfiguriert Application-Level Encryption für IAM-PII-Felder
+
+## Runtime-User korrekt auf `iam_app` begrenzen
+
+Für lokale Entwicklung den App-Login-User einmalig anlegen und auf die Runtime-Rolle `iam_app` festlegen:
+
+```sql
+CREATE ROLE sva_app LOGIN PASSWORD 'sva_app_local_dev_password' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT;
+GRANT iam_app TO sva_app;
+```
+
+Die Anwendung setzt Transaktionen auf `SET LOCAL ROLE iam_app`, damit RLS-Policies konsistent wirksam bleiben.
 
 ## Betrieb und Reset
 

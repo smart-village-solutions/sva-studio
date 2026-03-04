@@ -1,7 +1,7 @@
 # iam-organizations Specification
 
 ## Purpose
-TBD - created by archiving change setup-iam-identity-auth. Update Purpose after archive.
+Diese Spezifikation beschreibt das instanzzentrierte Mandanten- und Organisationsmodell im IAM, den Wechsel des Organisationskontexts innerhalb einer Instanz sowie die technischen Leitplanken für lokale Postgres-Bereitstellung, RLS-basierte Instanzisolation und betriebssichere Migrationen/Seeds.
 ## Requirements
 ### Requirement: Multi-Org-Kontextwechsel im aktiven Instanzkontext
 
@@ -62,4 +62,3 @@ Das System SHALL versionierte Migrationen mit Rollback-Pfad und idempotenten See
 - **WHEN** Seeds mehrfach ausgeführt werden
 - **THEN** entstehen keine doppelten Basisrollen oder inkonsistenten Zuordnungen
 - **AND** der Datenbestand bleibt konsistent
-

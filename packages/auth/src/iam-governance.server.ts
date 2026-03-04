@@ -3,7 +3,7 @@ import { createSdkLogger, getWorkspaceContext, withRequestContext } from '@sva/s
 
 import { withAuthenticatedUser } from './middleware.server';
 import { createPoolResolver, jsonResponse, type QueryClient, withInstanceDb } from './shared/db-helpers';
-import { isUuid, readNumber, readObject, readString } from './shared/input-readers';
+import { isUuid, readNumber, readString } from './shared/input-readers';
 import { buildLogContext } from './shared/log-context';
 import { governanceRequestSchema, type GovernanceRequestInput } from './shared/schemas';
 

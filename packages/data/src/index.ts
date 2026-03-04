@@ -1,5 +1,9 @@
 import { coreVersion } from '@sva/core';
 
+export * from './iam/repositories';
+export * from './iam/seed-plan';
+export * from './iam/types';
+
 type CacheEntry<T> = {
   value: T;
   expiresAt: number;

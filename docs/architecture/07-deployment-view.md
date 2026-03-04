@@ -16,6 +16,7 @@ Laufzeitknoten auf Basis des aktuellen Repos.
 ### Lokale Entwicklungsverteilung
 
 - App: `pnpm nx run sva-studio-react:serve` auf `localhost:3000`
+- Postgres IAM-DB: `docker-compose.yml` (`5432`)
 - Redis: `docker-compose.yml` (`6379`, optional TLS `6380`)
 - Monitoring Stack: `docker-compose.monitoring.yml`
   - Collector: `4317`, `4318`, `13133`
@@ -31,6 +32,7 @@ Laufzeitknoten auf Basis des aktuellen Repos.
 - Nx-/pnpm-basierte Build- und Test-Pipeline
 - Externe Plattform (GitHub Actions) für CI-Ausführung
 - Redis Session Store
+- Postgres IAM Core Data Layer
 - OTEL Collector als Telemetrie-Hub
 - Loki/Prometheus als Storage, Grafana für Auswertung
 
@@ -38,6 +40,7 @@ Laufzeitknoten auf Basis des aktuellen Repos.
 
 - Monitoring-Ports in Compose explizit auf `127.0.0.1` gebunden
 - Redis TLS-Unterstützung vorhanden, in local Dev optional
+- Postgres mit Healthcheck (`pg_isready`) und separatem Volume
 - Healthchecks für zentrale Monitoring-Services konfiguriert
 - Graceful OTEL Shutdown im SDK vorgesehen
 
@@ -50,4 +53,5 @@ Referenzen:
 
 - `docker-compose.yml`
 - `docker-compose.monitoring.yml`
+- `docs/development/postgres-setup.md`
 - `packages/sdk/src/server/bootstrap.server.ts`

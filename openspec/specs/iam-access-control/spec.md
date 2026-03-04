@@ -1,7 +1,7 @@
 # iam-access-control Specification
 
 ## Purpose
-Diese Spezifikation beschreibt die Zugriffssteuerungsanforderungen für die Identity-Basis (Child A). Sie begrenzt den Scope bewusst auf die Bereitstellung eines verlässlichen Identity-Kontexts und grenzt fachliche Autorisierungsentscheidungen auf nachgelagerte IAM-Changes ab.
+Diese Spezifikation beschreibt die technischen und fachlichen Anforderungen an das IAM-Access-Control-Modul. Sie legt fest, wie nach erfolgreicher OIDC-Authentifizierung ein verlässlicher Identity-Kontext bereitgestellt wird, wie RBAC-Basisdaten instanzgebunden persistiert werden und wie die Abgrenzung zu nachgelagerten Autorisierungsentscheidungen in Child C/D erfolgt.
 ## Requirements
 ### Requirement: Authentifizierter Identity-Kontext als Vorbedingung
 
@@ -22,3 +22,23 @@ Das System MUST in Child A keine fachlichen RBAC-/ABAC-Entscheidungen implementi
 - **WHEN** ein Fachmodul eine fachliche Berechtigungsentscheidung benötigt
 - **THEN** ist Child A nicht die entscheidende Instanz
 - **AND** die verbindliche Entscheidung erfolgt erst über die in Child C/D definierten Authorize-Pfade
+
+### Requirement: Persistente RBAC-Basisdaten
+
+Das System SHALL die für Autorisierung erforderlichen RBAC-Basisdaten (`roles`, `permissions`, Zuordnungen) konsistent und instanzgebunden persistieren.
+
+#### Scenario: Rollenauflösung im Instanzkontext
+
+- **WHEN** Rollen- und Permission-Zuordnungen für einen Benutzer abgefragt werden
+- **THEN** werden ausschließlich Zuordnungen der aktiven `instanceId` berücksichtigt
+- **AND** organisationsfremde Zuordnungen bleiben wirkungslos
+
+### Requirement: Idempotente Initialisierung von Basisrollen
+
+Das System SHALL Basisrollen und Permission-Zuordnungen idempotent initialisieren, damit wiederholte Deployments keine Dubletten erzeugen.
+
+#### Scenario: Wiederholte Seed-Ausführung für Rollen
+
+- **WHEN** Seed-Skripte mehrfach ausgeführt werden
+- **THEN** existiert jede Basisrolle nur einmal
+- **AND** Rollen-Permission-Beziehungen bleiben konsistent

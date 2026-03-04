@@ -80,6 +80,10 @@ redis-cli -h localhost -p 6380 --cacert dev/redis-tls/ca.pem ping
 
 Siehe [docs/development/monitoring-stack.md](docs/development/monitoring-stack.md) für Setup, Health-Checks und Dashboards.
 
+## Lokale Entwicklung: Postgres (IAM Core Data Layer)
+
+Siehe [docs/development/postgres-setup.md](docs/development/postgres-setup.md) für Setup, Env-Konfiguration, Health-Checks und Reset.
+
 **Label-Schema (Whitelist):**
 - `workspace_id`, `component`, `environment`, `level`
 

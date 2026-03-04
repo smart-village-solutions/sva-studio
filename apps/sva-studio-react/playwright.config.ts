@@ -11,7 +11,7 @@ export default defineConfig({
     trace: 'retain-on-failure',
   },
   webServer: {
-    command: 'pnpm --filter sva-studio-react run dev',
+    command: 'pnpm nx run core:build && pnpm --filter sva-studio-react run dev',
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
     timeout: 300_000,

@@ -30,7 +30,8 @@ Abhängigkeiten des aktuellen Systems.
 6. Monitoring Client (`packages/monitoring-client`)
    - OTEL SDK Setup, Exporter, Log-Redaction-Processor
 7. Data (`packages/data`)
-   - einfacher HTTP DataClient mit In-Memory Cache
+   - HTTP DataClient, IAM-Migrationen/Seeds und DB-Validierungstasks
+   - IAM-Persistenzmodell (`iam`-Schema) mit Multi-Tenant-Struktur
 8. Plugin Example (`packages/plugin-example`)
    - Beispielroute fuer Plugin-Erweiterbarkeit
 
@@ -41,6 +42,7 @@ Abhängigkeiten des aktuellen Systems.
 - `@sva/auth` -> `@sva/sdk`
 - `@sva/sdk` -> `@sva/core`, `@sva/monitoring-client`
 - `@sva/monitoring-client` -> OTEL Libraries, `@sva/sdk` Context API
+- `@sva/auth` -> `@sva/core` (IAM-Claims + Feldverschlüsselung), `pg`
 
 ### Boundary Core vs. Framework Binding
 
@@ -54,7 +56,9 @@ Referenzen:
 - `packages/core/src/routing/registry.ts`
 - `packages/routing/src/index.ts`
 - `packages/auth/src/index.server.ts`
+- `packages/auth/src/audit-db-sink.server.ts`
 - `packages/sdk/src/server.ts`
+- `packages/data/migrations/up/0001_iam_core.sql`
 - `apps/sva-studio-react/src/components/Header.tsx`
 - `apps/sva-studio-react/src/components/Sidebar.tsx`
 - `apps/sva-studio-react/src/components/AppShell.tsx`

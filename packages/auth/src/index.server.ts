@@ -1,5 +1,6 @@
 export { createLoginUrl, getSessionUser, handleCallback, logoutSession } from './auth.server';
 export { emitAuthAuditEvent } from './audit-events.server';
+export type { AuthAuditEvent, AuthAuditEventType } from './audit-events.types';
 export { getAuthConfig } from './config';
 export { withAuthenticatedUser } from './middleware.server';
 export { authRouteDefinitions, loginHandler, callbackHandler, meHandler, logoutHandler } from './routes.server';

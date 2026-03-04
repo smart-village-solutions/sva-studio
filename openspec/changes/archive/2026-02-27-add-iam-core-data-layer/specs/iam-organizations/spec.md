@@ -86,13 +86,13 @@ Das System SHALL IAM-Daten nach Schutzlevel klassifizieren und entsprechende Sch
 
 ### Requirement: RLS-Bypass-Schutz und Negativtests
 
-Das System SHALL sicherstellen, dass RLS-Policies nicht durch Privilege-Escalation, Superuser-Zugriff oder fehlerhafte Connection-Konfiguration umgangen werden können.
+Das System SHALL sicherstellen, dass RLS-Policies im Laufzeitbetrieb nicht durch Privilege-Escalation oder fehlerhafte Connection-Konfiguration umgangen werden können.
 
-#### Scenario: Superuser-Zugriff auf mandantenspezifische Daten
+#### Scenario: Laufzeitrollen ohne RLS-Bypass-Rechte
 
-- **WHEN** eine Datenbankverbindung mit Superuser-Rechten erfolgt (außerhalb von Migrationen)
-- **THEN** wird der Zugriff auf mandantenspezifische IAM-Daten durch zusätzliche Prüfungen eingeschränkt
-- **AND** der Superuser-Zugriff wird als Sicherheitsereignis auditiert
+- **WHEN** die Anwendung Datenbankzugriffe im Runtime-Pfad ausführt
+- **THEN** nutzt sie ausschließlich Rollen ohne `SUPERUSER` und ohne `BYPASSRLS`
+- **AND** privilegierte Rollen sind auf Migration/Breakglass-Pfade begrenzt und werden auditiert
 
 #### Scenario: Connection-Pooling mit korrektem Rollenkontext
 

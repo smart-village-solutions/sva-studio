@@ -26,7 +26,9 @@ let monitoringLoggerProviderModulePromise: Promise<MonitoringLoggerProviderModul
 
 const loadMonitoringServerModule = async (): Promise<MonitoringServerModule> => {
   if (!monitoringServerModulePromise) {
-    monitoringServerModulePromise = import('@sva/monitoring-client/server') as Promise<MonitoringServerModule>;
+    monitoringServerModulePromise = import(
+      '@sva/monitoring-client/server'
+    ) as unknown as Promise<MonitoringServerModule>;
   }
   return monitoringServerModulePromise;
 };
@@ -35,7 +37,7 @@ const loadMonitoringLoggerProviderModule = async (): Promise<MonitoringLoggerPro
   if (!monitoringLoggerProviderModulePromise) {
     monitoringLoggerProviderModulePromise = import(
       '@sva/monitoring-client/logger-provider.server'
-    ) as Promise<MonitoringLoggerProviderModule>;
+    ) as unknown as Promise<MonitoringLoggerProviderModule>;
   }
   return monitoringLoggerProviderModulePromise;
 };

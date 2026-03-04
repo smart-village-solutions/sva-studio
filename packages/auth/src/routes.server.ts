@@ -7,6 +7,7 @@ import { emitAuthAuditEvent } from './audit-events.server';
 import { getAuthConfig } from './config';
 import { buildLogContext, isTokenErrorLike } from './log-context.server';
 import { withAuthenticatedUser } from './middleware.server';
+import { getSession } from './redis-session.server';
 import type { AuthRoutePath } from './routes.shared';
 import type { LoginState } from './types';
 
@@ -195,6 +196,8 @@ export const callbackHandler = async (request: Request): Promise<Response> => {
     await emitAuthAuditEvent({
       eventType: 'login',
       actorUserId: user.id,
+      actorEmail: user.email,
+      actorDisplayName: user.name,
       workspaceId: user.instanceId,
       outcome: 'success',
     });
@@ -269,6 +272,7 @@ export const logoutHandler = async (request: Request): Promise<Response> => {
       let logoutUrl = postLogoutRedirectUri;
       if (sessionId) {
         try {
+          const sessionBeforeLogout = await getSession(sessionId);
           logoutUrl = await logoutSession(sessionId);
           logger.info('Logout successful', {
             endpoint: '/auth/logout',
@@ -278,6 +282,10 @@ export const logoutHandler = async (request: Request): Promise<Response> => {
           });
           await emitAuthAuditEvent({
             eventType: 'logout',
+            actorUserId: sessionBeforeLogout?.user?.id ?? sessionBeforeLogout?.userId,
+            actorEmail: sessionBeforeLogout?.user?.email,
+            actorDisplayName: sessionBeforeLogout?.user?.name,
+            workspaceId: sessionBeforeLogout?.user?.instanceId,
             outcome: 'success',
           });
         } catch (error) {

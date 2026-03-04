@@ -85,4 +85,16 @@ describe('Header auth actions', () => {
     expect(screen.queryByRole('button', { name: 'Logout' })).toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
   });
+
+  it('fällt bei Auth-Request-Fehler auf Login zurück', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network down')));
+
+    render(<Header />);
+
+    await waitFor(() => {
+      expect(screen.queryByRole('link', { name: 'Login' })).not.toBeNull();
+    });
+
+    expect(screen.queryByRole('button', { name: 'Logout' })).toBeNull();
+  });
 });

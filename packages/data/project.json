@@ -21,7 +21,7 @@
     "test:unit": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "node -e \"console.log('unit tests not configured for @sva/data (coverage-exempt)')\""
+        "command": "node --import tsx --test packages/data/src/**/*.test.ts"
       }
     },
     "test:coverage": {
@@ -33,7 +33,85 @@
     "test:integration": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "node -e \"console.log('integration tests not configured for @sva/data (coverage-exempt)')\""
+        "command": "bash packages/data/scripts/test-seeds.sh"
+      }
+    },
+    "db:up": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "docker compose up -d postgres"
+      }
+    },
+    "db:down": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "docker compose stop postgres"
+      }
+    },
+    "db:status": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "docker compose ps postgres"
+      }
+    },
+    "db:logs": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "docker compose logs postgres --tail=200"
+      }
+    },
+    "db:migrate": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "bash packages/data/scripts/run-migrations.sh up"
+      }
+    },
+    "db:migrate:up": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "bash packages/data/scripts/run-migrations.sh up"
+      }
+    },
+    "db:migrate:down": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "bash packages/data/scripts/run-migrations.sh down"
+      }
+    },
+    "db:migrate:validate": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "bash packages/data/scripts/validate-migrations.sh"
+      }
+    },
+    "db:seed": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "bash packages/data/scripts/run-seeds.sh"
+      }
+    },
+    "db:test:seeds": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "bash packages/data/scripts/test-seeds.sh"
+      }
+    },
+    "db:test:encryption": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "bash packages/data/scripts/test-encryption.sh"
+      }
+    },
+    "db:test:rls": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "bash packages/data/scripts/test-rls.sh"
+      }
+    },
+    "db:reset": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "docker compose stop postgres && docker compose rm -f postgres && docker volume rm sva-studio_postgres-data || true"
       }
     }
   },

@@ -1,24 +1,25 @@
 import { createRouter } from '@tanstack/react-router';
 import { buildRouteTree, mergeRouteFactories } from '@sva/core';
 import { pluginExampleRoutes } from '@sva/plugin-example';
+import { authRouteFactories } from '@sva/routing';
 
 import { rootRoute } from './routes/__root';
-import { coreRouteFactories as clientCoreRouteFactories } from './routes/-core-routes';
+import { coreRouteFactoriesBase } from './routes/-core-routes';
 
-const getCoreRouteFactories = async () => {
+const getAuthRouteFactories = async () => {
   if (import.meta.env.SSR) {
-    const mod = await import('./routes/-core-routes.server');
-    return mod.coreRouteFactories;
+    const mod = await import('@sva/routing/server');
+    return mod.authServerRouteFactories;
   }
-  return clientCoreRouteFactories;
+  return authRouteFactories;
 };
 
 // Create a new router instance
 export const getRouter = async () => {
-  const coreRouteFactories = await getCoreRouteFactories();
+  const runtimeAuthRouteFactories = await getAuthRouteFactories();
   const routeTree = buildRouteTree(
     rootRoute,
-    mergeRouteFactories(coreRouteFactories, pluginExampleRoutes)
+    mergeRouteFactories([...coreRouteFactoriesBase, ...runtimeAuthRouteFactories], pluginExampleRoutes)
   );
 
   const router = createRouter({

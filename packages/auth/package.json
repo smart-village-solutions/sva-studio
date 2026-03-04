@@ -20,9 +20,11 @@
     "@sva/sdk": "workspace:*",
     "cookie-es": "^1.2.2",
     "ioredis": "^5.4.2",
-    "openid-client": "^6.4.0"
+    "openid-client": "^6.4.0",
+    "pg": "^8.16.3"
   },
   "devDependencies": {
+    "@types/pg": "^8.15.5",
     "vitest": "^4.0.18"
   }
 }

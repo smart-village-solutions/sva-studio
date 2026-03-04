@@ -2,7 +2,6 @@ import type { RootRoute } from '@tanstack/react-router';
 import { Link, Outlet, createRoute } from '@tanstack/react-router';
 import { createServerFn, useServerFn } from '@tanstack/react-start';
 import React from 'react';
-import { authRouteFactories } from '@sva/routing';
 
 import { HomePage } from './index';
 
@@ -441,4 +440,4 @@ export const coreRouteFactoriesBase = [
   },
 ];
 
-export const coreRouteFactories = [...coreRouteFactoriesBase, ...authRouteFactories];
+export const coreRouteFactories = coreRouteFactoriesBase;

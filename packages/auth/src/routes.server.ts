@@ -5,7 +5,6 @@ import { createSdkLogger, withRequestContext, initializeOtelSdk } from '@sva/sdk
 import { createLoginUrl, handleCallback, logoutSession } from './auth.server';
 import { emitAuthAuditEvent } from './audit-events.server';
 import { getAuthConfig } from './config';
-import { buildLogContext, isTokenErrorLike } from './log-context.server';
 import {
   adminDataExportHandler,
   adminDataExportStatusHandler,

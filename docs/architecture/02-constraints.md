@@ -15,7 +15,7 @@ im IST-System direkt beeinflussen.
 
 ### Technische Randbedingungen
 
-- Node.js `>=22.12.0`, pnpm `>=9.12.2` (`package.json`)
+- Node.js `>=25.0.0`, pnpm `>=9.12.2` (`package.json`)
 - Nx-Monorepo mit standardisierten Targets (`build`, `lint`, `test:unit`)
 - TanStack Start/Router für App und Server-Routen
 - Redis als Session-Store, lokal via Docker Compose

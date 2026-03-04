@@ -370,8 +370,9 @@ export const mePermissionsHandler = async (request: Request): Promise<Response> 
       }
 
       const actingAsUserId = resolveActingAsUserIdFromRequest(request);
-      const isImpersonating = Boolean(actingAsUserId && actingAsUserId !== user.id);
-      const effectiveUserId = isImpersonating ? actingAsUserId : user.id;
+      const effectiveUserId: string =
+        actingAsUserId && actingAsUserId !== user.id ? actingAsUserId : user.id;
+      const isImpersonating = effectiveUserId !== user.id;
 
       if (isImpersonating) {
         const impersonation = await resolveImpersonationSubject({

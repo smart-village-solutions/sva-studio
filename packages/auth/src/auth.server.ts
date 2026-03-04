@@ -4,7 +4,6 @@ import { extractRoles, parseJwtPayload, resolveInstanceId, resolveUserName } fro
 import { createSdkLogger } from '@sva/sdk/server';
 
 import { getAuthConfig } from './config';
-import { buildLogContext, isTokenErrorLike } from './log-context.server';
 import { client, getOidcConfig } from './oidc.server';
 import {
   consumeLoginState,

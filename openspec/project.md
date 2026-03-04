@@ -11,7 +11,7 @@ SVA Studio (ehemals "CMS 2.0") modernisiert das Redaktionssystem der Smart Villa
 
 ## Tech Stack
 - **Monorepo:** Nx (Integrated Monorepo Setup) mit pnpm (>=9.12.2)
-- **Runtime:** Node.js (>=22.12.0)
+- **Runtime:** Node.js (>=25.0.0)
 - **Frontend:** TypeScript, React, Vite, TanStack Router, Tailwind CSS
 - **Backend:** Node.js, GraphQL API (externe Smart Village App Backend, wird punktuell erweitert)
 - **Testing:** (noch festzulegen; Anforderung: hohe Test-Coverage für neue Logik)

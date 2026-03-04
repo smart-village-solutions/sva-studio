@@ -1,10 +1,5 @@
 import type { WorkspaceContext } from './context.server';
-
-type LoggerProvider = {
-  getLogger?: (name: string, version?: string) => {
-    emit?: (payload: unknown) => void;
-  };
-} | null;
+import type { OtelLoggerProvider } from '../logger/otel-logger.types';
 
 type MonitoringServerModule = {
   setWorkspaceContextGetter: (getter: () => WorkspaceContext) => void;
@@ -17,18 +12,47 @@ type MonitoringServerModule = {
 };
 
 type MonitoringLoggerProviderModule = {
-  getGlobalLoggerProvider: () => LoggerProvider;
-  setGlobalLoggerProvider: (provider: LoggerProvider) => void;
+  getGlobalLoggerProvider: () => OtelLoggerProvider | null;
+  setGlobalLoggerProvider: (provider: OtelLoggerProvider | null) => void;
 };
 
 let monitoringServerModulePromise: Promise<MonitoringServerModule> | null = null;
 let monitoringLoggerProviderModulePromise: Promise<MonitoringLoggerProviderModule> | null = null;
 
+const isRecord = (value: unknown): value is Record<string, unknown> => {
+  return !!value && typeof value === 'object';
+};
+
+const isMonitoringServerModule = (value: unknown): value is MonitoringServerModule => {
+  if (!isRecord(value)) {
+    return false;
+  }
+  return (
+    typeof value.setWorkspaceContextGetter === 'function' &&
+    typeof value.startOtelSdk === 'function'
+  );
+};
+
+const isMonitoringLoggerProviderModule = (value: unknown): value is MonitoringLoggerProviderModule => {
+  if (!isRecord(value)) {
+    return false;
+  }
+  return (
+    typeof value.getGlobalLoggerProvider === 'function' &&
+    typeof value.setGlobalLoggerProvider === 'function'
+  );
+};
+
 const loadMonitoringServerModule = async (): Promise<MonitoringServerModule> => {
   if (!monitoringServerModulePromise) {
-    monitoringServerModulePromise = import(
-      '@sva/monitoring-client/server'
-    ) as unknown as Promise<MonitoringServerModule>;
+    monitoringServerModulePromise = import('@sva/monitoring-client/server').then((module) => {
+      if (!isMonitoringServerModule(module)) {
+        throw new Error(
+          'Invalid monitoring server module shape: expected setWorkspaceContextGetter() and startOtelSdk()'
+        );
+      }
+      return module;
+    });
   }
   return monitoringServerModulePromise;
 };
@@ -37,7 +61,14 @@ const loadMonitoringLoggerProviderModule = async (): Promise<MonitoringLoggerPro
   if (!monitoringLoggerProviderModulePromise) {
     monitoringLoggerProviderModulePromise = import(
       '@sva/monitoring-client/logger-provider.server'
-    ) as unknown as Promise<MonitoringLoggerProviderModule>;
+    ).then((module) => {
+      if (!isMonitoringLoggerProviderModule(module)) {
+        throw new Error(
+          'Invalid monitoring logger provider module shape: expected getGlobalLoggerProvider() and setGlobalLoggerProvider()'
+        );
+      }
+      return module;
+    });
   }
   return monitoringLoggerProviderModulePromise;
 };
@@ -59,13 +90,13 @@ export const startOtelSdkFromMonitoring = async (config: {
   return module.startOtelSdk(config);
 };
 
-export const getGlobalLoggerProviderFromMonitoring = async (): Promise<LoggerProvider> => {
+export const getGlobalLoggerProviderFromMonitoring = async (): Promise<OtelLoggerProvider | null> => {
   const module = await loadMonitoringLoggerProviderModule();
   return module.getGlobalLoggerProvider();
 };
 
 export const setGlobalLoggerProviderForMonitoring = async (
-  provider: LoggerProvider
+  provider: OtelLoggerProvider | null
 ): Promise<void> => {
   const module = await loadMonitoringLoggerProviderModule();
   module.setGlobalLoggerProvider(provider);

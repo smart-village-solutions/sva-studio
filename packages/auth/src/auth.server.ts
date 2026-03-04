@@ -15,6 +15,8 @@ import {
   updateSession,
 } from './redis-session.server';
 import type { LoginState, SessionUser } from './types';
+import { isTokenErrorLike } from './shared/error-guards';
+import { buildLogContext } from './shared/log-context';
 
 const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
 const TOKEN_REFRESH_SKEW_MS = 60_000;

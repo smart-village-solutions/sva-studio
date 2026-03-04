@@ -1,30 +1,26 @@
 import { createHash } from 'node:crypto';
-import { Pool, type PoolClient } from 'pg';
 import { createSdkLogger, getWorkspaceContext, withRequestContext } from '@sva/sdk/server';
 import { decryptFieldValue, encryptFieldValue, parseFieldEncryptionConfigFromEnv } from '@sva/core/security';
 
 import { withAuthenticatedUser } from './middleware.server';
+import {
+  createPoolResolver,
+  jsonResponse,
+  textResponse,
+  type QueryClient,
+  withInstanceDb as withScopedDbTransaction,
+} from './shared/db-helpers';
+import { isUuid, readBoolean, readNumber, readObject, readString } from './shared/input-readers';
+import { buildLogContext } from './shared/log-context';
+import { dataSubjectRightsRequestSchema } from './shared/schemas';
 
 const logger = createSdkLogger({ component: 'iam-dsr', level: 'info' });
 
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const EXPORT_FORMATS = new Set(['json', 'csv', 'xml']);
 const ADMIN_ROLES = new Set(['iam_admin', 'support_admin', 'system_admin']);
 const ART19_RECIPIENT_CLASSES = ['internal_processor', 'downstream_export', 'analytics_sink'] as const;
 const DELETE_SLA_HOURS = 48;
 const DEFAULT_DELETE_RETENTION_HOURS = 24;
-
-type QueryResult<TRow> = {
-  rowCount: number;
-  rows: TRow[];
-};
-
-type QueryClient = {
-  query<TRow = Record<string, unknown>>(
-    text: string,
-    values?: readonly unknown[]
-  ): Promise<QueryResult<TRow>>;
-};
 
 type ExportFormat = 'json' | 'csv' | 'xml';
 type DsrRequestType = 'access' | 'deletion' | 'rectification' | 'restriction' | 'objection';
@@ -78,97 +74,13 @@ type ExportPayload = {
   };
 };
 
-let dsrPool: Pool | null = null;
-
-const resolvePool = (): Pool | null => {
-  const databaseUrl = process.env.IAM_DATABASE_URL;
-  if (!databaseUrl) {
-    return null;
-  }
-
-  if (!dsrPool) {
-    dsrPool = new Pool({
-      connectionString: databaseUrl,
-      max: 5,
-      idleTimeoutMillis: 10_000,
-    });
-  }
-
-  return dsrPool;
-};
-
-const readString = (value: unknown): string | undefined => {
-  if (typeof value !== 'string') {
-    return undefined;
-  }
-  const normalized = value.trim();
-  return normalized.length > 0 ? normalized : undefined;
-};
-
-const readBoolean = (value: unknown): boolean | undefined => {
-  if (typeof value !== 'boolean') {
-    return undefined;
-  }
-  return value;
-};
-
-const readObject = (value: unknown): Record<string, unknown> | undefined => {
-  if (!value || typeof value !== 'object') {
-    return undefined;
-  }
-  return value as Record<string, unknown>;
-};
-
-const readNumber = (value: unknown): number | undefined => {
-  if (typeof value !== 'number' || !Number.isFinite(value)) {
-    return undefined;
-  }
-  return value;
-};
-
-const isUuid = (value: string) => UUID_PATTERN.test(value);
-
-const jsonResponse = (status: number, payload: unknown) =>
-  new Response(JSON.stringify(payload), {
-    status,
-    headers: { 'Content-Type': 'application/json' },
-  });
-
-const textResponse = (status: number, body: string, contentType: string) =>
-  new Response(body, {
-    status,
-    headers: { 'Content-Type': contentType },
-  });
-
-const buildLogContext = (instanceId?: string) => {
-  const context = getWorkspaceContext();
-  return {
-    workspace_id: instanceId ?? context.workspaceId ?? 'default',
-    request_id: context.requestId,
-    trace_id: context.traceId,
-  };
-};
-
-const withInstanceDb = async <T>(instanceId: string, work: (client: QueryClient) => Promise<T>): Promise<T> => {
-  const pool = resolvePool();
-  if (!pool) {
-    throw new Error('IAM database not configured');
-  }
-
-  const client = (await pool.connect()) as PoolClient & QueryClient;
-  try {
-    await client.query('BEGIN');
-    await client.query('SELECT set_config($1, $2, true);', ['app.instance_id', instanceId]);
-    const result = await work(client);
-    await client.query('COMMIT');
-    return result;
-  } catch (error) {
-    await client.query('ROLLBACK');
-    throw error;
-  } finally {
-    client.release();
-  }
-};
+const resolvePool = createPoolResolver(() => process.env.IAM_DATABASE_URL);
+const withInstanceScopedDb = async <T>(
+  instanceId: string,
+  work: (client: QueryClient) => Promise<T>
+): Promise<T> => withScopedDbTransaction(resolvePool, instanceId, work);
+const buildDsrLogContext = (instanceId?: string) =>
+  buildLogContext(instanceId, { includeTraceId: true });
 
 const isAdminRole = (roles: readonly string[]): boolean => roles.some((role) => ADMIN_ROLES.has(role));
 
@@ -961,10 +873,11 @@ const parseJsonBody = async (request: Request): Promise<Record<string, unknown> 
   } catch {
     return null;
   }
-  if (!body || typeof body !== 'object') {
+  const parsed = dataSubjectRightsRequestSchema.safeParse(body);
+  if (!parsed.success) {
     return null;
   }
-  return body as Record<string, unknown>;
+  return parsed.data;
 };
 
 const parseDsrRequestType = (raw: unknown): DsrRequestType | null => {
@@ -997,7 +910,7 @@ export const dataExportHandler = async (request: Request): Promise<Response> => 
       const useAsync = parseAsyncMode(request);
 
       try {
-        return await withInstanceDb(instanceId, async (client) => {
+        return await withInstanceScopedDb(instanceId, async (client) => {
           const account = await resolveAccountBySubject(client, {
             instanceId,
             keycloakSubject: user.id,
@@ -1098,7 +1011,7 @@ export const dataExportHandler = async (request: Request): Promise<Response> => 
         logger.error('DSR self export failed', {
           operation: 'data_export',
           error: error instanceof Error ? error.message : String(error),
-          ...buildLogContext(instanceId),
+          ...buildDsrLogContext(instanceId),
         });
         return jsonResponse(503, { error: 'database_unavailable' });
       }
@@ -1124,7 +1037,7 @@ export const dataExportStatusHandler = async (request: Request): Promise<Respons
       }
 
       try {
-        return await withInstanceDb(instanceId, async (client) => {
+        return await withInstanceScopedDb(instanceId, async (client) => {
           const requester = await resolveRequesterAccountId(client, {
             instanceId,
             keycloakSubject: user.id,
@@ -1183,7 +1096,7 @@ LIMIT 1;
         logger.error('DSR export status lookup failed', {
           operation: 'data_export_status',
           error: error instanceof Error ? error.message : String(error),
-          ...buildLogContext(instanceId),
+          ...buildDsrLogContext(instanceId),
         });
         return jsonResponse(503, { error: 'database_unavailable' });
       }
@@ -1218,7 +1131,7 @@ export const adminDataExportHandler = async (request: Request): Promise<Response
       }
 
       try {
-        return await withInstanceDb(instanceId, async (client) => {
+        return await withInstanceScopedDb(instanceId, async (client) => {
           const actor = await resolveRequesterAccountId(client, {
             instanceId,
             keycloakSubject: user.id,
@@ -1287,7 +1200,7 @@ export const adminDataExportHandler = async (request: Request): Promise<Response
         logger.error('DSR admin export failed', {
           operation: 'admin_data_export',
           error: error instanceof Error ? error.message : String(error),
-          ...buildLogContext(instanceId),
+          ...buildDsrLogContext(instanceId),
         });
         return jsonResponse(503, { error: 'database_unavailable' });
       }
@@ -1323,7 +1236,7 @@ export const profileCorrectionHandler = async (request: Request): Promise<Respon
       }
 
       try {
-        return await withInstanceDb(instanceId, async (client) => {
+        return await withInstanceScopedDb(instanceId, async (client) => {
           const account = await resolveAccountBySubject(client, {
             instanceId,
             keycloakSubject: user.id,
@@ -1439,7 +1352,7 @@ VALUES ($1, $2::uuid, $2::uuid, $3, $4, $5, $6, $7);
         logger.error('DSR profile correction failed', {
           operation: 'profile_correction',
           error: error instanceof Error ? error.message : String(error),
-          ...buildLogContext(instanceId),
+          ...buildDsrLogContext(instanceId),
         });
         return jsonResponse(503, { error: 'database_unavailable' });
       }
@@ -1644,7 +1557,7 @@ export const dataSubjectRequestHandler = async (request: Request): Promise<Respo
       }
 
       try {
-        return await withInstanceDb(instanceId, async (client) => {
+        return await withInstanceScopedDb(instanceId, async (client) => {
           const requesterAccountId = await resolveRequesterAccountId(client, {
             instanceId,
             keycloakSubject: user.id,
@@ -1708,7 +1621,7 @@ export const dataSubjectRequestHandler = async (request: Request): Promise<Respo
         logger.error('DSR self request failed', {
           operation: 'self_request',
           error: error instanceof Error ? error.message : String(error),
-          ...buildLogContext(instanceId),
+          ...buildDsrLogContext(instanceId),
         });
         return jsonResponse(503, { error: 'database_unavailable' });
       }
@@ -1728,7 +1641,7 @@ export const optionalProcessingExecuteHandler = async (request: Request): Promis
       }
 
       try {
-        return await withInstanceDb(instanceId, async (client) => {
+        return await withInstanceScopedDb(instanceId, async (client) => {
           const account = await resolveAccountBySubject(client, {
             instanceId,
             keycloakSubject: user.id,
@@ -1756,7 +1669,7 @@ export const optionalProcessingExecuteHandler = async (request: Request): Promis
         logger.error('Optional processing execution check failed', {
           operation: 'optional_processing_execute',
           error: error instanceof Error ? error.message : String(error),
-          ...buildLogContext(instanceId),
+          ...buildDsrLogContext(instanceId),
         });
         return jsonResponse(503, { error: 'database_unavailable' });
       }
@@ -1795,7 +1708,7 @@ export const legalHoldApplyHandler = async (request: Request): Promise<Response>
       }
 
       try {
-        return await withInstanceDb(instanceId, async (client) => {
+        return await withInstanceScopedDb(instanceId, async (client) => {
           const target = await resolveAccountBySubject(client, {
             instanceId,
             keycloakSubject: targetSubject,
@@ -1846,7 +1759,7 @@ RETURNING id;
         logger.error('Legal hold apply failed', {
           operation: 'legal_hold_apply',
           error: error instanceof Error ? error.message : String(error),
-          ...buildLogContext(instanceId),
+          ...buildDsrLogContext(instanceId),
         });
         return jsonResponse(503, { error: 'database_unavailable' });
       }
@@ -1881,7 +1794,7 @@ export const legalHoldReleaseHandler = async (request: Request): Promise<Respons
       }
 
       try {
-        return await withInstanceDb(instanceId, async (client) => {
+        return await withInstanceScopedDb(instanceId, async (client) => {
           const target = await resolveAccountBySubject(client, {
             instanceId,
             keycloakSubject: targetSubject,
@@ -1930,7 +1843,7 @@ RETURNING id;
         logger.error('Legal hold release failed', {
           operation: 'legal_hold_release',
           error: error instanceof Error ? error.message : String(error),
-          ...buildLogContext(instanceId),
+          ...buildDsrLogContext(instanceId),
         });
         return jsonResponse(503, { error: 'database_unavailable' });
       }
@@ -1963,7 +1876,7 @@ export const dataSubjectMaintenanceHandler = async (request: Request): Promise<R
       }
 
       try {
-        return await withInstanceDb(instanceId, async (client) => {
+        return await withInstanceScopedDb(instanceId, async (client) => {
           const queuedExports = await processQueuedExportJobs(client, { instanceId, dryRun });
           const escalated = await escalateOverdueDeleteRequests(client, { instanceId, dryRun });
           const finalizedDeletions = await finalizeEligibleDeletions(client, { instanceId, dryRun });
@@ -1994,7 +1907,7 @@ export const dataSubjectMaintenanceHandler = async (request: Request): Promise<R
         logger.error('DSR maintenance run failed', {
           operation: 'maintenance',
           error: error instanceof Error ? error.message : String(error),
-          ...buildLogContext(instanceId),
+          ...buildDsrLogContext(instanceId),
         });
         return jsonResponse(503, { error: 'database_unavailable' });
       }
@@ -2024,7 +1937,7 @@ export const adminDataExportStatusHandler = async (request: Request): Promise<Re
       }
 
       try {
-        return await withInstanceDb(instanceId, async (client) => {
+        return await withInstanceScopedDb(instanceId, async (client) => {
           const result = await client.query<{
             id: string;
             format: ExportFormat;
@@ -2074,7 +1987,7 @@ LIMIT 1;
         logger.error('DSR admin export status lookup failed', {
           operation: 'admin_data_export_status',
           error: error instanceof Error ? error.message : String(error),
-          ...buildLogContext(instanceId),
+          ...buildDsrLogContext(instanceId),
         });
         return jsonResponse(503, { error: 'database_unavailable' });
       }

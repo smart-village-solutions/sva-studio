@@ -1,16 +1,25 @@
-import winston, { type Logger } from 'winston';
+import winston, { type Logger, type Logform } from 'winston';
 import Transport from 'winston-transport';
+import type { OtelLogRecord, OtelLogger } from './otel-logger.types';
 
 import { getWorkspaceContext } from '../observability/context.server';
 import { getGlobalLoggerProviderFromMonitoring } from '../observability/monitoring-client.bridge.server';
 
-const sensitiveKeys = new Set([
+const SENSITIVE_KEYS = new Set([
   'password',
   'token',
   'authorization',
   'api_key',
   'secret',
-  'email'
+  'email',
+  'cookie',
+  'set-cookie',
+  'session',
+  'csrf',
+  'refresh_token',
+  'access_token',
+  'x-api-key',
+  'x-csrf-token'
 ]);
 
 const emailRegex = /([\w.%+-])([\w.%+-]*)(@[\w.-]+\.[A-Za-z]{2,})/g;
@@ -32,9 +41,9 @@ const redactValue = (value: unknown): unknown => {
   return value;
 };
 
-const redactObject = (value: Record<string, unknown>): Record<string, unknown> => {
+export const redactObject = (value: Record<string, unknown>): Record<string, unknown> => {
   return Object.entries(value).reduce<Record<string, unknown>>((acc, [key, entry]) => {
-    if (sensitiveKeys.has(key.toLowerCase())) {
+    if (SENSITIVE_KEYS.has(key.toLowerCase())) {
       acc[key] = '[REDACTED]';
       return acc;
     }
@@ -93,9 +102,9 @@ export interface LoggerOptions {
  * Nutzt winston-transport für vollständige Kompatibilität.
  */
 class DirectOtelTransport extends Transport {
-  private otelLogger: any = null;
+  private otelLogger: OtelLogger | null = null;
 
-  log(info: any, callback?: () => void) {
+  log(info: Logform.TransformableInfo, callback?: () => void) {
     // Winston-kompatible async operation mit setImmediate
     setImmediate(() => {
       void (async () => {
@@ -113,12 +122,12 @@ class DirectOtelTransport extends Transport {
         }
 
         // Wenn Logger verfügbar, sende Log
-        if (this.otelLogger && this.otelLogger.emit) {
+        if (this.otelLogger) {
           try {
-            const { timestamp, level, message, component, environment, workspace_id, context, ...rest } = info;
+            const { level, message, component, environment, workspace_id, context, ...rest } = info;
 
             // Map Winston level to OTEL severity
-            const severityMap: Record<string, number> = {
+            const severityMap: Record<string, OtelLogRecord['severityNumber']> = {
               error: 17,
               warn: 13,
               info: 9,
@@ -126,12 +135,15 @@ class DirectOtelTransport extends Transport {
               verbose: 1,
             };
 
+            const normalizedLevel = typeof level === 'string' ? level : 'info';
+            const normalizedMessage = typeof message === 'string' ? message : String(message);
+
             this.otelLogger.emit({
-              severityNumber: severityMap[level] || 9,
-              severityText: level.toUpperCase(),
-              body: message,
+              severityNumber: severityMap[normalizedLevel] || 9,
+              severityText: normalizedLevel.toUpperCase(),
+              body: normalizedMessage,
               attributes: {
-                level,
+                level: normalizedLevel,
                 component,
                 environment,
                 workspace_id,
@@ -164,7 +176,7 @@ export const createSdkLogger = ({
 
   // Nutze direkten OTEL Transport (umgeht Winston-Instrumentation-Timing-Problem)
   if (enableOtel) {
-    transportsArray.push(new DirectOtelTransport() as any);
+    transportsArray.push(new DirectOtelTransport());
   }
 
   if (enableConsole) {

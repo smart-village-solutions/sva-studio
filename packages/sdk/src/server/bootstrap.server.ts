@@ -15,8 +15,16 @@ import {
 
 const logger = createSdkLogger({ component: 'bootstrap', level: 'info', enableOtel: true });
 
+type SdkLoggerProvider = {
+  forceFlush: (timeoutMs?: number) => Promise<void>;
+};
+
+type SdkNodeInstance = NodeSDK & {
+  loggerProvider?: SdkLoggerProvider;
+};
+
 // Global reference um das SDK später zu flushen
-let globalSdk: any = null;
+let globalSdk: SdkNodeInstance | null = null;
 
 // Global flag um mehrfache Initialisierungen zu verhindern
 let otelSdkInitialized = false;
@@ -30,7 +38,7 @@ let otelSdkInitialized = false;
  * Achtung: Diese Funktion muss sehr früh im Server-Lifecycle aufgerufen werden,
  * bevor Auto-Instrumentationen nicht aktiv sind.
  */
-export const initializeOtelSdk = async (): Promise<NodeSDK | null> => {
+export const initializeOtelSdk = async (): Promise<SdkNodeInstance | null> => {
   // Verhindere mehrfache Initialisierungen
   if (otelSdkInitialized) {
     return globalSdk ?? null;
@@ -72,12 +80,12 @@ export const initializeOtelSdk = async (): Promise<NodeSDK | null> => {
     // Aktiviere Debug-Logging für OTEL SDK
     const { DiagLogLevel } = await import('@opentelemetry/api');
 
-    const sdk = await startOtelSdkFromMonitoring({
+    const sdk = (await startOtelSdkFromMonitoring({
       serviceName,
       environment: process.env.NODE_ENV,
       otlpEndpoint: endpoint,
       logLevel: DiagLogLevel.DEBUG // Aktiviere Debug-Logs
-    }) as NodeSDK;
+    })) as SdkNodeInstance;
 
     globalSdk = sdk;
 
@@ -90,9 +98,8 @@ export const initializeOtelSdk = async (): Promise<NodeSDK | null> => {
       logger.info(`${signal} empfangen, fahre OTEL SDK herunter...`);
       try {
         // Force flush von Log Records bevor wir herunterfahren
-        const sdkAny = sdk as any;
-        if (sdkAny.loggerProvider) {
-          await sdkAny.loggerProvider.forceFlush(5000);
+        if (sdk.loggerProvider) {
+          await sdk.loggerProvider.forceFlush(5000);
         }
         await sdk.shutdown();
       } catch (error) {
@@ -126,9 +133,8 @@ export const initializeOtelSdk = async (): Promise<NodeSDK | null> => {
 export const flushOtelSdk = async (timeoutMs = 5000): Promise<void> => {
   if (!globalSdk) return;
   try {
-    const sdkAny = globalSdk as any;
-    if (sdkAny.loggerProvider) {
-      await sdkAny.loggerProvider.forceFlush(timeoutMs);
+    if (globalSdk.loggerProvider) {
+      await globalSdk.loggerProvider.forceFlush(timeoutMs);
     }
   } catch (error) {
     logger.error('Fehler beim Flushen des OTEL SDK', {

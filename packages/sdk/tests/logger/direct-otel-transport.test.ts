@@ -98,9 +98,9 @@ describe('DirectOtelTransport', () => {
   });
 
   it('should preserve log attributes through OTEL emit', async () => {
-    let emittedData: any = null;
+    let emittedData: Record<string, unknown> | null = null;
 
-    const mockEmit = vi.fn((data) => {
+    const mockEmit = vi.fn((data: Record<string, unknown>) => {
       emittedData = data;
     });
 
@@ -129,8 +129,8 @@ describe('DirectOtelTransport', () => {
 
     // Verify emitted data
     expect(emittedData).toBeDefined();
-    expect(emittedData.body).toContain('Test message');
-    expect(emittedData.severityText).toBe('INFO');
-    expect(emittedData.attributes.component).toBe('test-component');
+    expect(emittedData?.body).toContain('Test message');
+    expect(emittedData?.severityText).toBe('INFO');
+    expect((emittedData?.attributes as Record<string, unknown>).component).toBe('test-component');
   });
 });

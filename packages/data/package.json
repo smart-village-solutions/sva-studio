@@ -12,6 +12,7 @@
     }
   },
   "dependencies": {
-    "@sva/core": "workspace:*"
+    "@sva/core": "workspace:*",
+    "zod": "^4.3.6"
   }
 }

@@ -17,6 +17,8 @@ Abhängigkeiten des aktuellen Systems.
 
 1. App (`apps/sva-studio-react`)
    - TanStack Start App, UI, Root-Shell, Router-Erzeugung
+   - Shell-Bausteine: `Header`, `Sidebar`, `AppShell` (Layout-Komposition)
+   - Skeleton-Bausteine für Kopfzeile, Seitenleiste und Contentbereich
 2. Core (`packages/core`)
    - generische Route-Registry Utilities (`mergeRouteFactories`, `buildRouteTree`)
 3. Routing (`packages/routing`)
@@ -53,3 +55,6 @@ Referenzen:
 - `packages/routing/src/index.ts`
 - `packages/auth/src/index.server.ts`
 - `packages/sdk/src/server.ts`
+- `apps/sva-studio-react/src/components/Header.tsx`
+- `apps/sva-studio-react/src/components/Sidebar.tsx`
+- `apps/sva-studio-react/src/components/AppShell.tsx`

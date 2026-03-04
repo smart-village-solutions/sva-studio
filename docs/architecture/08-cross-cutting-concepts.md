@@ -39,9 +39,18 @@ gleichzeitig beeinflussen.
 - UI-Texte sind derzeit überwiegend direkt im Code und noch nicht durchgängig i18n-basiert
 - A11y wird pro Review/Template eingefordert, aber noch nicht zentral automatisiert
 
+### UI-Shell, Responsivität und Skeleton UX
+
+- Die Root-Shell trennt die Bereiche Kopfzeile, Seitenleiste und Hauptinhalt explizit
+- Ein Skip-Link ermöglicht direkten Sprung in den Contentbereich (`#main-content`)
+- Skeleton-Zustände werden konsistent über alle drei Kernbereiche bereitgestellt
+- Mobile-first Layout: Sidebar bleibt auf kleinen Viewports nutzbar, auf großen Viewports als feste Seitenleiste
+
 Referenzen:
 
 - `packages/auth/src/routes.server.ts`
 - `packages/auth/src/redis-session.server.ts`
 - `packages/sdk/src/logger/index.server.ts`
 - `packages/monitoring-client/src/otel.server.ts`
+- `apps/sva-studio-react/src/routes/__root.tsx`
+- `apps/sva-studio-react/src/components/AppShell.tsx`

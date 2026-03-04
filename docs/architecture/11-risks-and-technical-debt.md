@@ -40,11 +40,28 @@ Schulden auf IST-Basis.
    - Wahrscheinlichkeit: hoch
    - Maßnahme: Doku-Agent Reviews bei Proposal/PR verpflichtend nutzen
 
+6. Globaler Pending-basierter Initial-Loading-Zustand in der Root-Shell
+   - Impact: mittel (inkonsistente Wahrnehmung bei langsamen/ schnellen Backends)
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: Loading-Orchestrierung an echte Pending-/Datenzustände koppeln
+
+7. Statisch verdrahtete Shell-Navigation
+   - Impact: mittel (höhere Kopplung, schlechtere Erweiterbarkeit)
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: Navigationsziele schrittweise über deklarative Route-/Plugin-Metadaten speisen
+
+8. i18n-Schulden in UI-Texten
+   - Impact: mittel (A11y-/Lokalisierungsqualität)
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: UI-Texte konsistent über Übersetzungsschlüssel (`t('key')`) verwalten
+
 ### Technische Schulden (Auswahl)
 
 - Teilweise No-Op Testtargets in Libraries
 - Historisch gewachsene Doku mit gemischter Tiefe
 - Offene Produktionsentscheidungen für Deployment/HA
+- Root-Shell nutzt derzeit einen globalen Router-Pending-Trigger statt datenquellenspezifischer Pending-Orchestrierung
+- Shell-Navigation ist aktuell nicht vollständig plugin-/metadatenbasiert
 
 ### Nachverfolgung
 

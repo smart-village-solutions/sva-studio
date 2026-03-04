@@ -41,7 +41,7 @@
     "@nx/eslint": "^22.5.3",
     "@nx/eslint-plugin": "^22.5.3",
     "@nx/js": "^22.5.3",
-    "@types/node": "^22.10.2",
+    "@types/node": "^25.3.3",
     "autoprefixer": "10.4.20",
     "eslint": "^9.39.2",
     "nx": "^22.5.3",

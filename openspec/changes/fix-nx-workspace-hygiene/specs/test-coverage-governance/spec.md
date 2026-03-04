@@ -1,4 +1,4 @@
-## MODIFIED Requirements
+## MODIFIED Rollout Requirements
 
 ### Requirement: Coverage-Gates pro Paket und Global
 Das System SHALL Coverage-Gates sowohl auf Paketebene als auch auf globaler Ebene erzwingen.

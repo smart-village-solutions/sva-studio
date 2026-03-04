@@ -104,7 +104,7 @@ Das bestehende Schema (`0001_iam_core.sql`) liefert bereits Multi-Tenancy (`inst
 ### Breaking Changes
 
 - **`Header.tsx` und `index.tsx`** werden refactored: Bestehende `fetch('/auth/me')`-Aufrufe werden durch `useAuth()` ersetzt
-- **API-Pfad-Migration:** Bestehende IAM-Endpunkte (`/iam/authorize`, `/iam/me/permissions`) werden auf `/api/v1/iam/...` migriert (einheitliche Prefix-Versionierung)
+- **API-Pfad-Konsolidierung:** Für diesen Change werden IAM-Endpunkte direkt unter `/api/v1/iam/...` umgesetzt. Legacy-Umleitungen von `/iam/*` sind in der Entwicklungsumgebung nicht erforderlich.
 - **API-Error-Format-Harmonisierung:** Bestehendes `IamApiErrorResponse` wird auf das neue einheitliche `ApiErrorResponse`-Envelope-Format migriert
 
 ## Referenz

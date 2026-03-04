@@ -229,8 +229,8 @@ Für diese Endpunkte gilt: `X-Idempotency-Key` (UUID v4) ist verpflichtend. Der 
 /api/v1/iam/users/me/profile → Self-Service
 ```
 
-**API-Pfad-Migration (Breaking Change):**
-Bestehende `/iam/*`-Endpunkte werden nach `/api/v1/iam/*` migriert. Während der Übergangsphase leiten die alten Pfade mit `301 Moved Permanently` auf die neuen um. Die Redirect-Phase endet mit dem nächsten Major-Release.
+**API-Pfad-Konsolidierung:**
+Für diesen Change werden IAM-Endpunkte direkt unter `/api/v1/iam/*` umgesetzt. Eine Kompatibilitätsphase mit `301`-Umleitungen von `/iam/*` ist in der aktuellen Entwicklungsumgebung nicht erforderlich.
 
 **OpenAPI-Spezifikation:**
 Alle IAM-Endpunkte werden mit einer OpenAPI 3.1 Spec dokumentiert (`docs/api/iam-v1.yaml`). Die Spec wird im CI validiert und dient als Single Source of Truth für API-Konsumenten.

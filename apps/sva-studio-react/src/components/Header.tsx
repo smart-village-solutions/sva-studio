@@ -7,6 +7,8 @@
 import { Link } from '@tanstack/react-router';
 import React from 'react';
 
+import { hasIamViewerAdminRole, isIamViewerEnabled } from '../lib/iam-viewer-access';
+
 type AuthUser = {
   id?: string;
   name: string;
@@ -34,12 +36,6 @@ const logHeaderInDev = (
 
   console.info(message, payload);
 };
-
-const isIamViewerEnabled = () =>
-  import.meta.env.DEV || import.meta.env.VITE_ENABLE_IAM_ADMIN_VIEWER === 'true';
-const ADMIN_ROLES = new Set(['admin', 'iam_admin', 'system_admin', 'support_admin']);
-const isAdminUser = (user: AuthUser | null | undefined) =>
-  Boolean(user && user.roles.some((role) => ADMIN_ROLES.has(role)));
 
 /**
  * Rendert die Kopfzeile inklusive Navigation und Auth-Aktion.
@@ -144,7 +140,7 @@ export default function Header({ isLoading = false }: HeaderProps) {
           <Link className="transition hover:text-white" to="/plugins/example">
             Plugin-Beispiel
           </Link>
-          {isIamViewerEnabled() && isAdminUser(user) ? (
+          {isIamViewerEnabled() && hasIamViewerAdminRole(user) ? (
             <Link className="transition hover:text-white" to="/admin/iam">
               IAM-Viewer
             </Link>

@@ -221,6 +221,49 @@ describe('IAM authorization integration denials', () => {
     expect(payload.error).toBe('impersonation_not_active');
   });
 
+  it('treats actingAsUserId equal to current user as self request', async () => {
+    integrationState.impersonationResult = { ok: false, reasonCode: 'DENY_TICKET_REQUIRED' };
+    integrationState.queryHandler = (text: string, values?: readonly unknown[]) => {
+      if (text.includes('SELECT DISTINCT')) {
+        expect(values?.[1]).toBe('keycloak-sub-integration');
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              permission_key: 'content.read',
+              role_id: 'cccccccc-cccc-cccc-8ccc-cccccccccccc',
+              organization_id: null,
+            },
+          ],
+        };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const request = new Request(
+      'http://localhost/iam/me/permissions?actingAsUserId=keycloak-sub-integration',
+      { method: 'GET' }
+    );
+
+    const response = await mePermissionsHandler(request);
+    const payload = (await response.json()) as {
+      permissions: unknown[];
+      subject: {
+        actorUserId: string;
+        effectiveUserId: string;
+        isImpersonating: boolean;
+      };
+    };
+
+    expect(response.status).toBe(200);
+    expect(payload.permissions.length).toBe(1);
+    expect(payload.subject).toEqual({
+      actorUserId: 'keycloak-sub-integration',
+      effectiveUserId: 'keycloak-sub-integration',
+      isImpersonating: false,
+    });
+  });
+
   it('returns impersonation_expired when actingAsUserId session expired', async () => {
     integrationState.impersonationResult = {
       ok: false,

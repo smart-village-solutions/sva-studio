@@ -1,6 +1,7 @@
 import type { AuthorizeResponse, EffectivePermission } from '@sva/core';
 import React from 'react';
 
+import { hasIamViewerAdminRole, isIamViewerEnabled } from '../../lib/iam-viewer-access';
 import {
   filterPermissions,
   mapAuthorizeDecision,
@@ -24,12 +25,6 @@ type AuthMePayload = {
 type IamApiErrorPayload = {
   error: string;
 };
-
-const ADMIN_ROLES = new Set(['admin', 'iam_admin', 'system_admin', 'support_admin']);
-const isIamViewerEnabled = () =>
-  import.meta.env.DEV || import.meta.env.VITE_ENABLE_IAM_ADMIN_VIEWER === 'true';
-
-const hasAdminRole = (roles: readonly string[]) => roles.some((role) => ADMIN_ROLES.has(role));
 
 const buildPermissionsPath = (query: IamPermissionsQuery) => {
   const searchParams = new URLSearchParams();
@@ -114,7 +109,7 @@ export function IamViewerPage() {
   const [isAuthorizing, setIsAuthorizing] = React.useState(false);
 
   const iamViewerFeatureFlag = isIamViewerEnabled();
-  const isAuthorizedAdmin = hasAdminRole(user?.roles ?? []);
+  const isAuthorizedAdmin = hasIamViewerAdminRole(user);
   const canAccessViewer = iamViewerFeatureFlag && isAuthorizedAdmin;
 
   React.useEffect(() => {
@@ -452,7 +447,7 @@ export function IamViewerPage() {
               disabled={isAuthorizing}
               className="rounded border border-slate-700 bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-900 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {isAuthorizing ? 'Pruefe ...' : 'Authorize pruefen'}
+              {isAuthorizing ? 'Prüfe ...' : 'Authorize prüfen'}
             </button>
           </form>
 
@@ -489,7 +484,7 @@ export function IamViewerPage() {
                 ) : null}
               </div>
             ) : (
-              <p className="text-xs text-slate-400">Noch keine Authorize-Entscheidung ausgefuehrt.</p>
+              <p className="text-xs text-slate-400">Noch keine Authorize-Entscheidung ausgeführt.</p>
             )}
           </div>
         </article>

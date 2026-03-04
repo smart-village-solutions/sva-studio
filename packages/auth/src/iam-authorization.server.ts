@@ -484,13 +484,14 @@ export const mePermissionsHandler = async (request: Request): Promise<Response> 
       }
 
       const actingAsUserId = resolveActingAsUserIdFromRequest(request);
-      const effectiveUserId = actingAsUserId ?? user.id;
+      const isImpersonating = Boolean(actingAsUserId && actingAsUserId !== user.id);
+      const effectiveUserId = isImpersonating ? actingAsUserId : user.id;
 
-      if (actingAsUserId) {
+      if (isImpersonating) {
         const impersonation = await resolveImpersonationSubject({
           instanceId,
           actorKeycloakSubject: user.id,
-          targetKeycloakSubject: actingAsUserId,
+          targetKeycloakSubject: effectiveUserId,
         });
 
         if (!impersonation.ok) {
@@ -526,7 +527,7 @@ export const mePermissionsHandler = async (request: Request): Promise<Response> 
               subject: {
                 actorUserId: user.id,
                 effectiveUserId,
-                isImpersonating: Boolean(actingAsUserId),
+                isImpersonating,
               },
               evaluatedAt: new Date().toISOString(),
               requestId: getWorkspaceContext().requestId,
@@ -542,7 +543,7 @@ export const mePermissionsHandler = async (request: Request): Promise<Response> 
         subject: {
           actorUserId: user.id,
           effectiveUserId,
-          isImpersonating: Boolean(actingAsUserId),
+          isImpersonating,
         },
         evaluatedAt: new Date().toISOString(),
         requestId: getWorkspaceContext().requestId,

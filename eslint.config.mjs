@@ -56,13 +56,13 @@ export default [
           paths: [
             {
               name: '@sva/core',
-              message: 'Plugins muessen ueber @sva/sdk auf Host-APIs zugreifen.',
+              message: 'Plugins müssen über @sva/sdk auf Host-APIs zugreifen.',
             },
           ],
           patterns: [
             {
               group: ['@sva/core/*'],
-              message: 'Plugins muessen ueber @sva/sdk auf Host-APIs zugreifen.',
+              message: 'Plugins müssen über @sva/sdk auf Host-APIs zugreifen.',
             },
           ],
         },

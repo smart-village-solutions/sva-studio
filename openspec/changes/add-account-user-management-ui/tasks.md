@@ -1,4 +1,3 @@
-```markdown
 # Tasks: add-account-user-management-ui
 
 ## Phase 1: Auth-Foundation (Frontend-State)
@@ -8,7 +7,7 @@
 ### 1.1 AuthProvider + useAuth() Hook
 
 - [ ] 1.1.1 `IamAccountProfile`-, `IamRole`-, `IamPermission`-Typen in `@sva/core` definieren (konsistent mit DB: `keycloakSubject`, `instanceId`, `roleName`, `permissionKey`, `isSystemRole`)
-- [ ] 1.1.2 `IdentityProviderPort`-Interface in `@sva/core` definieren
+- [ ] 1.1.2 `IdentityProviderPort`-Interface in `@sva/auth` definieren (nicht `@sva/core` – Port gehört zur Server-Schicht)
 - [ ] 1.1.3 `AuthProvider` React-Context in `sva-studio-react` implementieren (lädt `/auth/me`)
 - [ ] 1.1.4 `useAuth()` Hook exportieren mit `{ user, isAuthenticated, isLoading, error, refetch, logout, invalidatePermissions }`
 - [ ] 1.1.5 `AuthProvider` in Root-Layout (`__root.tsx`) einbinden
@@ -40,11 +39,11 @@
 ### 2.0 Keycloak Service-Account Setup
 
 - [ ] 2.0.1 Keycloak-Client `sva-studio-iam-service` anlegen (Confidential, Service Account Enabled)
-- [ ] 2.0.2 Client-Rolle `realm-management` zuweisen: nur `manage-users`, `view-users`, `manage-realm`
+- [ ] 2.0.2 Client-Rolle `realm-management` zuweisen: nur `manage-users`, `view-users`, `view-realm`
 - [ ] 2.0.3 Client-Secret über Secrets-Manager konfigurieren (nicht `.env`)
 - [ ] 2.0.4 Env-Variablen dokumentieren: `KEYCLOAK_ADMIN_CLIENT_ID`, `KEYCLOAK_ADMIN_CLIENT_SECRET`, `KEYCLOAK_ADMIN_REALM`, `KEYCLOAK_ADMIN_BASE_URL`
 - [ ] 2.0.5 Token-Lebensdauer auf 5 Minuten setzen
-- [ ] 2.0.6 Secret-Rotation alle 90 Tage einrichten (BSI-Grundschutz ORP.4)
+- [ ] 2.0.6 Secret-Rotation alle 90 Tage einrichten (BSI-Grundschutz ORP.4), Dual-Secret-Rotation mit Overlap-Fenster dokumentieren
 
 ### 2.1 Datenbank-Schema (Delta-Migration)
 
@@ -55,10 +54,12 @@
 - [ ] 2.1.3 `ALTER TABLE iam.account_roles`: Temporale Spalten `assigned_by`, `valid_from`, `valid_to` ergänzen
 - [ ] 2.1.4 `ALTER TABLE iam.activity_logs`: `subject_id` und `result`-Spalte ergänzen
 - [ ] 2.1.5 Immutabilitäts-Trigger `trg_immutable_activity_logs` erstellen
-- [ ] 2.1.6 Performance-Indizes erstellen: `idx_accounts_status`, `idx_accounts_keycloak_subject`, `idx_activity_logs_subject_created`, `idx_activity_logs_account_created`
-- [ ] 2.1.7 Down-Migration `0004_iam_account_profile.sql` in `packages/data/migrations/down/` erstellen
-- [ ] 2.1.8 Idempotentes Seed-Script für System-Rollen (Rollen sind vorläufig, werden sich entwickeln)
-- [ ] 2.1.9 Migration lokal testen: Up + Down + Re-Up
+- [ ] 2.1.6 Performance-Indizes erstellen: `idx_accounts_status`, `idx_accounts_keycloak_subject`, `idx_accounts_kc_subject_instance` (Unique für JIT), `idx_activity_logs_subject_created`, `idx_activity_logs_account_created`
+- [ ] 2.1.7 `role_level INTEGER` Spalte in `iam.roles` ergänzen (Level-Hierarchie, CHECK 0–100)
+- [ ] 2.1.8 `retention_days INTEGER DEFAULT 90` Spalte in `iam.instances` ergänzen (mandantenspezifische Retention)
+- [ ] 2.1.9 Down-Migration `0004_iam_account_profile.sql` in `packages/data/migrations/down/` erstellen (**Reihenfolge:** Trigger droppen VOR Spalten droppen)
+- [ ] 2.1.10 Idempotentes Seed-Script für System-Rollen mit role_level (Rollen sind vorläufig, werden sich entwickeln)
+- [ ] 2.1.11 Migration lokal testen: Up + Down + Re-Up
 
 ### 2.2 Keycloak Admin API Client (hinter IdentityProviderPort)
 
@@ -90,7 +91,7 @@
 - [ ] 2.3.14 Serverseitige Payload-Validierung mit Zod für alle mutierenden Endpunkte
 - [ ] 2.3.15 Serverseitige Rollenprüfung in allen IAM-Handlern (`system_admin`/`app_manager`)
 - [ ] 2.3.16 Privilege-Escalation-Schutz: Rollenzuweisung <= eigene höchste Rolle; Last-Admin-Schutz
-- [ ] 2.3.17 CSRF-Schutz: Double-Submit-Cookie oder SameSite=Strict + `X-Requested-With`-Header
+- [ ] 2.3.17 CSRF-Schutz: `SameSite=Lax` + `X-Requested-With: XMLHttpRequest`-Header serverseitig validieren
 - [ ] 2.3.18 Rate Limiting: 60 req/min Read, 10 req/min Write, 3 req/min Bulk
 - [ ] 2.3.19 Operatives Logging auf SDK Logger standardisieren (Component-Label `iam-service`); keine `console.*`
 - [ ] 2.3.20 Einheitliches API-Response-Format (`ApiListResponse`, `ApiItemResponse`, `ApiErrorResponse`) implementieren
@@ -100,7 +101,7 @@
 
 ### 2.4 JIT-Account-Erstellung
 
-- [ ] 2.4.1 Hook in `handleCallback()`: Beim Erst-Login Account via `INSERT ... ON CONFLICT (keycloak_subject, instance_id) DO UPDATE` erstellen (Race-Condition-sicher)
+- [ ] 2.4.1 Hook in `handleCallback()`: Beim Erst-Login Account via `INSERT ... ON CONFLICT (keycloak_subject, instance_id) DO UPDATE SET updated_at = NOW()` erstellen (nur nicht-administrative Felder updaten, keine Rollen/Status überschreiben)
 - [ ] 2.4.2 Account-Status `pending` bis Admin-Aktivierung
 - [ ] 2.4.3 `user.jit_provisioned`-Audit-Event loggen
 - [ ] 2.4.4 Tests für JIT-Provisioning (Erst-Login, Wieder-Login, gleichzeitiger Login)
@@ -110,7 +111,15 @@
 - [ ] 2.5.1 `GET /health/ready` – Prüft DB, Keycloak, Redis
 - [ ] 2.5.2 `GET /health/live` – Prozess-Liveness
 - [ ] 2.5.3 Prometheus-Metriken für IAM-Operationen (User-CRUD-Zähler, Keycloak-Latenz, Circuit-Breaker-State)
-- [ ] 2.5.4 Feature-Flag `iam-ui-enabled` als Kill-Switch implementieren
+- [ ] 2.5.4 Feature-Flag-Hierarchie implementieren: `iam-ui-enabled` (Kill-Switch gesamte UI), `iam-admin-enabled` (nur Admin-Bereich), `iam-bulk-enabled` (Bulk-Operationen)
+
+### 2.6 OpenAPI-Spezifikation und Alerting
+
+- [ ] 2.6.1 OpenAPI 3.1 Spezifikation für alle IAM-Endpunkte erstellen (`docs/api/iam-v1.yaml`)
+- [ ] 2.6.2 OpenAPI-Validierung im CI einrichten (z.B. `spectral` oder `redocly`)
+- [ ] 2.6.3 Alerting-Konzept: Alert-Rules für IAM (`iam_keycloak_request_duration_seconds > 5s`, `iam_circuit_breaker_state == 2`, `iam_user_operations_total{result="failure"} rate > 10/min`)
+- [ ] 2.6.4 Retention-Automation: Cron-Job für PII-Anonymisierung nach `retention_days`
+- [ ] 2.6.5 Reconciliation-Endpunkt `POST /api/v1/iam/admin/reconcile` (Folge-Task, nur Platzhalter)
 
 ---
 
@@ -212,21 +221,25 @@
 - [ ] 6.1.4 E2E-Tests: Login als Admin → User-Liste → User bearbeiten → Rolle zuweisen
 - [ ] 6.1.5 E2E-Tests: Login ohne Admin-Rolle → Admin-Bereich nicht erreichbar
 - [ ] 6.1.6 E2E-Tests: Direkter API-Aufruf ohne Admin-Rechte liefert `403 Forbidden`
-- [ ] 6.1.7 E2E-Tests: CSRF-Token-Prüfung bei mutierenden Endpunkten
+- [ ] 6.1.7 E2E-Tests: CSRF-Schutz-Prüfung (`X-Requested-With`-Header) bei mutierenden Endpunkten
 - [ ] 6.1.8 E2E-Tests: Responsive Layouts auf verschiedenen Viewports (320px, 768px, 1024px)
 
 ### 6.2 Dokumentation und ADRs
 
 - [ ] 6.2.1 arc42 `05-building-block-view` aktualisieren (IAM-Service, Account-UI-Module)
-- [ ] 6.2.2 arc42 `08-cross-cutting-concepts` aktualisieren (AuthProvider-Pattern, Permission-Checking)
-- [ ] 6.2.3 arc42 `09-architecture-decisions` aktualisieren (Keycloak Admin API, Hybrid-Profil)
-- [ ] 6.2.4 ADR erstellen: CSRF-Schutz-Strategie für Cookie-basierte Auth
-- [ ] 6.2.5 ADR erstellen: IdP-Abstraktionsschicht (`IdentityProviderPort`)
-- [ ] 6.2.6 Developer-Guide: IAM-Service-API-Dokumentation (Endpunkte, Response-Format, Error-Codes)
-- [ ] 6.2.7 Keycloak-Setup-Anleitung (Service-Account `sva-studio-iam-service`, Realm-Konfiguration)
-- [ ] 6.2.8 Deployment-Runbook: Delta-Migration, Feature-Flag, Keycloak-Voraussetzungen, Rollback-Verfahren
-- [ ] 6.2.9 i18n-Key-Abdeckung für `account.*`, `admin.users.*`, `admin.roles.*` dokumentieren und prüfbar machen
-- [ ] 6.2.10 OpenSpec-Validierung mit `openspec validate add-account-user-management-ui --strict` ausführen
+- [ ] 6.2.2 arc42 `06-runtime-view` ergänzen (Keycloak-Sync-Sequenzdiagramme, JIT-Provisioning-Flow)
+- [ ] 6.2.3 arc42 `07-deployment-view` ergänzen (Keycloak-Integration, Service-Account, Secrets-Injection)
+- [ ] 6.2.4 arc42 `08-cross-cutting-concepts` aktualisieren (AuthProvider-Pattern, Permission-Checking)
+- [ ] 6.2.5 arc42 `09-architecture-decisions` aktualisieren (Keycloak Admin API, Hybrid-Profil)
+- [ ] 6.2.6 arc42 `10-quality` ergänzen (Testabdeckung IAM, Performance-Ziele Keycloak-Sync)
+- [ ] 6.2.7 arc42 `11-risks-and-technical-debt` aktualisieren (Sync-Risiken, Vendor-Lock, Partitionierung als Tech-Debt)
+- [ ] 6.2.8 ADR erstellen: CSRF-Schutz-Strategie (`docs/adr/ADR-015-csrf-schutz-strategie.md`)
+- [ ] 6.2.9 ADR erstellen: IdP-Abstraktionsschicht (`docs/adr/ADR-016-idp-abstraktionsschicht.md`)
+- [ ] 6.2.10 Developer-Guide: IAM-Service-API-Dokumentation (Endpunkte, Response-Format, Error-Codes)
+- [ ] 6.2.11 Keycloak-Setup-Anleitung (Service-Account `sva-studio-iam-service`, Realm-Konfiguration)
+- [ ] 6.2.12 Deployment-Runbook: Delta-Migration, Feature-Flag, Keycloak-Voraussetzungen, Rollback-Verfahren
+- [ ] 6.2.13 i18n-Key-Abdeckung für `account.*`, `admin.users.*`, `admin.roles.*` dokumentieren und prüfbar machen
+- [ ] 6.2.14 OpenSpec-Validierung mit `openspec validate add-account-user-management-ui --strict` ausführen
 
 ---
 
@@ -274,7 +287,5 @@
 
 ---
 
-**Gesamtfortschritt:** 0% COMPLETE (0/~105 Tasks)
+**Gesamtfortschritt:** 0% COMPLETE (0/~115 Tasks)
 **Last Updated:** 4. März 2026
-
-```

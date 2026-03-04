@@ -38,7 +38,7 @@ Im Newcms existiert ein funktionierender Mock dieser Features (PersonsView, Acco
 
 Das bestehende Schema (`0001_iam_core.sql`) liefert bereits Multi-Tenancy (`instance_id` + RLS), PII-Verschlüsselung (`*_ciphertext`, ADR-010) und Activity-Logging. Diese Migration **ergänzt** das Schema:
 
-- **`iam.accounts` (ALTER TABLE):** Zusätzliche Profilfelder (`first_name_ciphertext`, `last_name_ciphertext`, `phone_ciphertext`, `position`, `department`, `status`, etc.)
+- **`iam.accounts` (ALTER TABLE):** `instance_id`-Spalte ergänzen (Accounts sind instanzgebunden); zusätzliche Profilfelder (`first_name_ciphertext`, `last_name_ciphertext`, `phone_ciphertext`, `position`, `department`, `status`, etc.); Unique-Constraint auf `(keycloak_subject, instance_id)` statt global-unique `keycloak_subject`
 - **`iam.account_roles` (ALTER TABLE):** Temporale Constraints (`valid_from`, `valid_to`, `assigned_by`)
 - **`iam.activity_logs` (ALTER TABLE):** `subject_id`- und `result`-Spalte; Immutabilitäts-Trigger
 - **Performance-Indizes:** Für `status`, `keycloak_subject`, Activity-Log-Queries
@@ -50,14 +50,14 @@ Das bestehende Schema (`0001_iam_core.sql`) liefert bereits Multi-Tenancy (`inst
 - **Audit-Dashboard:** Nur grundlegendes Activity-Logging im History-Tab
 - **Externe IdP-Integration (AD, BundID):** Spätere Phase
 - **DSGVO-Datenexport (Art. 20):** Wird als separater Change nachgerüstet
-- **SCIM 2.0-Konformität:** Bewusst nicht in Phase 1 (API ist erweiterbar gestaltet)
+- **SCIM 2.0-Konformität:** Bewusst nicht in Phase 1 (spätere Kompatibilitätsschicht geplant)
 
 > **Hinweis Multi-Tenancy:** Das bestehende IAM-Schema enthält bereits `instance_id` auf allen Tabellen mit RLS-Policies. Diese Infrastruktur wird genutzt, nicht nachgerüstet.
 
 ## Qualitäts- und Compliance-Leitplanken
 
 - **Typsicherheit:** Typsicheres Routing (Path- und Search-Params) in `@sva/routing`; keine untypisierten Route-Strings in UI-Code
-- **Sicherheit:** Input-Validierung für alle IAM-Endpunkte (Client + Server); CSRF-Schutz (Double-Submit-Cookie oder SameSite=Strict + Custom-Header) für alle mutierenden Endpunkte; Privilege-Escalation-Schutz bei Rollen-Zuweisung; Rate Limiting (60 req/min Read, 10 req/min Write)
+- **Sicherheit:** Input-Validierung für alle IAM-Endpunkte (Client + Server); CSRF-Schutz (`SameSite=Lax` + Custom-Header `X-Requested-With`, siehe ADR) für alle mutierenden Endpunkte; Privilege-Escalation-Schutz mit expliziter Rollen-Hierarchie (Level-Tabelle); Rate Limiting pro authentifizierter User-ID (60 req/min Read, 10 req/min Write, 3 req/min Bulk)
 - **API-Versionierung:** Alle IAM-Endpunkte unter `/api/v1/iam/...` (Prefix-Versionierung)
 - **Logging:** Operative Server-Logs ausschließlich über SDK Logger (`@sva/sdk`), keine `console.*`-Nutzung
 - **PII-Schutz:** Keine Klartext-PII in operativen Logs; PII-Felder ausschließlich als `*_ciphertext` in der DB (ADR-010); Audit-Logs folgen den bestehenden IAM-Redaktionsregeln
@@ -77,8 +77,8 @@ Das bestehende Schema (`0001_iam_core.sql`) liefert bereits Multi-Tenancy (`inst
 
 ### Betroffene Packages
 
-- **`packages/auth/`** – Keycloak Admin API Client, Profil-Update-Endpunkte, IAM-Service
-- **`packages/core/`** – User/Permission-Typen, IAM-Datenmodell-Typen
+- **`packages/auth/`** – Keycloak Admin API Client, `IdentityProviderPort`-Interface und `KeycloakAdapter`, Profil-Update-Endpunkte, IAM-Service
+- **`packages/core/`** – User/Permission-Typen (`IamAccountProfile`, `IamRole`, `IamPermission`), IAM-Datenmodell-Typen
 - **`packages/data/`** – Framework-agnostische IAM-Typen und Delta-Migration
 - **`packages/routing/`** – Route-Factories für `/account`, `/admin/users`, `/admin/roles`
 - **`apps/sva-studio-react/`** – `AuthProvider`, `useAuth()`, `useUsers()`, `useRoles()` Hooks; UI-Komponenten (Profil, User-Liste, User-Edit, Rollen-Verwaltung)
@@ -86,8 +86,12 @@ Das bestehende Schema (`0001_iam_core.sql`) liefert bereits Multi-Tenancy (`inst
 ### Betroffene arc42-Abschnitte
 
 - `05-building-block-view` – Neue IAM-Service-Komponente und UI-Module
-- `08-cross-cutting-concepts` – Auth-Provider-Pattern, Permission-Checking-Muster
-- `09-architecture-decisions` – Keycloak Admin API vs. reine DB-Verwaltung, Hybrid-Profilbearbeitung
+- `06-runtime-view` – Keycloak-First-Sync, Circuit-Breaker-Flows, JIT-Provisioning
+- `07-deployment-view` – IAM-Topologie, Keycloak-Service-Account-Konfiguration
+- `08-cross-cutting-concepts` – Auth-Provider-Pattern, Permission-Checking-Muster, CSRF-Strategie
+- `09-architecture-decisions` – Keycloak Admin API, Hybrid-Profilbearbeitung, Sync-Strategie (ADR-015), CSRF-Strategie, IdP-Abstraktionsschicht, Rollen-Hierarchie
+- `10-quality-requirements` – Verfügbarkeits-SLOs, Barrierefreiheits-Anforderungen
+- `11-risks-and-technical-debt` – Keycloak-Sync-Risiko, Audit-Log-Wachstum, Keycloak-UX-Abhängigkeit
 
 ### Abhängigkeiten
 
@@ -98,14 +102,15 @@ Das bestehende Schema (`0001_iam_core.sql`) liefert bereits Multi-Tenancy (`inst
 ### Breaking Changes
 
 - **`Header.tsx` und `index.tsx`** werden refactored: Bestehende `fetch('/auth/me')`-Aufrufe werden durch `useAuth()` ersetzt
-- Keine externen API-Breaking-Changes
+- **API-Pfad-Migration:** Bestehende IAM-Endpunkte (`/iam/authorize`, `/iam/me/permissions`) werden auf `/api/v1/iam/...` migriert (einheitliche Prefix-Versionierung)
+- **API-Error-Format-Harmonisierung:** Bestehendes `IamApiErrorResponse` wird auf das neue einheitliche `ApiErrorResponse`-Envelope-Format migriert
 
 ## Referenz
 
 - **Newcms User-Verwaltung:** `Newcms/src/components/PersonsViewNew.tsx`, `account/AccountEditView.tsx`, `RolesView.tsx` – dient als UX-Referenz, wird nicht 1:1 portiert
 - **IAM-Konzept:** `concepts/konzeption-cms-v2/03_Systemarchitektur/Umsetzung-Rollen-Rechte.md`
-- **Bestehender IAM-Change:** `openspec/changes/setup-iam-identity-auth/`
+- **Bestehender IAM-Change:** `openspec/specs/iam-core/spec.md` (archiviert aus `setup-iam-identity-auth`)
 
 ---
 
-**Status:** � Proposal (überarbeitet nach Review v2)
+**Status:** 📋 Proposal (überarbeitet nach Review v3)

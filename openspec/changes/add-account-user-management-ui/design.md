@@ -1,4 +1,3 @@
-````markdown
 # Design: Account- und User-Management-UI
 
 ## Kontext
@@ -57,7 +56,7 @@ Das Newcms liefert eine erprobte UX-Referenz (PersonsView, AccountEditView, Role
 | Schicht | Package | Verantwortung |
 |---------|---------|---------------|
 | Typen/Modelle | `@sva/core` | `IamAccountProfile`, `IamRole`, `IamPermission` |
-| Server-Logik | `@sva/auth` | Keycloak Admin API Client (als Adapter hinter `IdentityProviderPort`), IAM-Service-Endpunkte, DB-Zugriff |
+| Port-Interface + Server-Logik | `@sva/auth` | `IdentityProviderPort`, Keycloak Admin API Client (Adapter), IAM-Service-Endpunkte, DB-Zugriff |
 | Route-Factories | `@sva/routing` | `/account`, `/admin/users`, `/admin/users/:userId`, `/admin/roles` |
 | React-Bindings | `sva-studio-react` | `AuthProvider`, `useAuth()`, `useUsers()`, `useRoles()`, UI-Komponenten |
 
@@ -143,7 +142,7 @@ Browser → CMS-Backend (IAM-Service) → IAM-DB (Postgres)
                                      → IdentityProviderPort → KeycloakAdapter → Keycloak Admin API
 ```
 
-**IdP-Abstraktionsschicht (`@sva/core`):**
+**IdP-Abstraktionsschicht (`@sva/auth`):**
 ```typescript
 interface IdentityProviderPort {
   createUser(data: CreateUserInput): Promise<{ externalId: string }>;
@@ -171,10 +170,10 @@ Der `KeycloakAdminClient` implementiert dieses Interface als Adapter. Ein späte
 | **Realm** | `sva-studio` (oder der bestehende App-Realm) |
 | **Client-ID** | `sva-studio-iam-service` |
 | **Client-Typ** | Confidential, Service Account Enabled |
-| **Client-Rolle** | `realm-management` → nur `manage-users`, `view-users`, `manage-realm` |
+| **Client-Rolle** | `realm-management` → nur `manage-users`, `view-users`, `view-realm` |
 | **Secret-Injection** | Über Secrets-Manager (Vault/K8s-Secrets), **nicht** als `.env`-Datei |
 | **Token-Lebensdauer** | 5 Minuten (Service-Account-Token) |
-| **Secret-Rotation** | Alle 90 Tage (BSI-Grundschutz ORP.4) |
+| **Secret-Rotation** | Alle 90 Tage (BSI-Grundschutz ORP.4), Dual-Secret-Rotation (neues Secret parallel aktivieren, altes nach Overlap-Fenster deaktivieren) |
 
 **Env-Variablen:**
 ```
@@ -195,12 +194,14 @@ Für alle mutierenden Operationen gilt: Keycloak wird **zuerst** geschrieben, da
 | Profil-Self-Service | 1. Keycloak `PUT` → 2. IAM-DB `UPDATE` | DB-Fehler → Keycloak `PUT` Rollback |
 | User deaktivieren | 1. IAM-DB `UPDATE status` → 2. Keycloak `PUT enabled=false` | Keycloak-Fehler → IAM-DB Rollback |
 
+Jede mutierende Operation erhält einen **Idempotency-Key** (`X-Idempotency-Key` Header, UUID v4). Der Key wird in einer separaten Tabelle `iam.idempotency_keys` (key, result, expires_at) gespeichert. Wiederholte Requests mit demselben Key geben das gecachte Ergebnis zurück (TTL: 24h).
+
 **Circuit-Breaker für Keycloak-Ausfälle:**
 - Timeouts: 5s connect, 10s read für alle Keycloak Admin API Calls
 - Retry: Max. 3 Versuche mit Exponential Backoff (1s, 2s, 4s)
-- Circuit-Breaker: Nach 5 aufeinanderfolgenden Fehlern → Open-State für 30s
+- Circuit-Breaker (Bibliothek: `cockatiel` für TypeScript): Nach 5 aufeinanderfolgenden Fehlern → Open-State für 30s
 - Degraded-Mode: Read-Operationen (`GET /api/v1/iam/users`) nutzen IAM-DB als Fallback; Write-Operationen geben `503 Service Unavailable` zurück
-- Health-Check: `/health/ready` prüft Keycloak-Konnektivität
+- Health-Check: `/health/ready` prüft Keycloak-Konnektivität (response_time < 2s = healthy, 2–5s = degraded, > 5s oder Timeout = unhealthy)
 
 **Rationale:**
 - CMS-IAM-DB hält erweiterte Daten (PII-verschlüsselt, Audit-Logs)
@@ -226,6 +227,15 @@ Für alle mutierenden Operationen gilt: Keycloak wird **zuerst** geschrieben, da
 /api/v1/iam/users/me/profile → Self-Service
 ```
 
+**API-Pfad-Migration (Breaking Change):**
+Bestehende `/iam/*`-Endpunkte werden nach `/api/v1/iam/*` migriert. Während der Übergangsphase leiten die alten Pfade mit `301 Moved Permanently` auf die neuen um. Die Redirect-Phase endet mit dem nächsten Major-Release.
+
+**OpenAPI-Spezifikation:**
+Alle IAM-Endpunkte werden mit einer OpenAPI 3.1 Spec dokumentiert (`docs/api/iam-v1.yaml`). Die Spec wird im CI validiert und dient als Single Source of Truth für API-Konsumenten.
+
+**DELETE-Semantik:**
+`DELETE /api/v1/iam/users/:userId` führt eine **Deaktivierung** durch (Soft-Delete), keine harte Löschung. Der Account-Status wird auf `inactive` gesetzt, der Keycloak-Account deaktiviert (`enabled=false`). Die endgültige Anonymisierung erfolgt nach Ablauf der Retention-Frist.
+
 **Admin-Guard:**
 ```typescript
 // beforeLoad Guard in Route-Factory
@@ -247,8 +257,22 @@ const adminGuard = async ({ context }) => {
 - Serverseitige Schema-Validierung mit **Zod** für `POST`/`PATCH`/`DELETE`-Payloads (Zod ist bereits im Stack)
 - Rollenprüfung im Handler (`system_admin`/`app_manager`) auch dann, wenn ein Client den Frontend-Guard umgeht
 - **Privilege-Escalation-Schutz:** Ein Nutzer kann nur Rollen zuweisen, die <= seiner eigenen höchsten Rolle sind. `system_admin`-Zuweisung erfordert `system_admin`. Der letzte aktive `system_admin` kann nicht entfernt werden (Last-Admin-Schutz).
-- **CSRF-Schutz:** Double-Submit-Cookie-Pattern für alle mutierenden IAM-Endpunkte (`POST`, `PATCH`, `DELETE`). Alternativ `SameSite=Strict` für Session-Cookie + Custom-Header-Prüfung (`X-Requested-With`).
-- **Rate Limiting:** 60 req/min für Read-Endpunkte, 10 req/min für Write-Endpunkte pro Session/IP. Separate Limits für Bulk-Operationen (max. 3 req/min).
+
+**Rollen-Hierarchie (Explizite Level-Tabelle):**
+
+| Level | Rolle | Beschreibung | Darf zuweisen bis Level |
+|-------|-------|-------------|------------------------|
+| 100 | `system_admin` | Voller Systemzugriff | 100 (sich selbst) |
+| 80 | `app_manager` | App-Verwaltung, User-Management | 60 |
+| 60 | `content_editor` | Inhaltserstellung und -bearbeitung | – |
+| 40 | `reviewer` | Inhalte prüfen und freigeben | – |
+| 20 | `viewer` | Nur-Lese-Zugriff | – |
+
+Die Level sind als `role_level INTEGER` in `iam.roles` gespeichert. Custom-Rollen erhalten ein Level, das vom erstellenden Admin nicht höher als sein eigenes sein darf.
+
+- **Optimistic Concurrency Control:** Alle mutierenden IAM-Endpunkte verwenden `updated_at`-Timestamp als ETag. Client sendet `If-Match`-Header; bei Mismatch wird `409 Conflict` zurückgegeben. Verhindert Lost-Update-Probleme bei gleichzeitiger Admin-Bearbeitung.
+- **CSRF-Schutz:** `SameSite=Lax` für Session-Cookie + Custom-Header-Prüfung (`X-Requested-With: XMLHttpRequest`). Alle mutierenden IAM-Endpunkte (`POST`, `PATCH`, `DELETE`) validieren das Vorhandensein des Headers serverseitig. `SameSite=Lax` statt `Strict`, um nach Keycloak-Redirect (Account Console) die Session beizubehalten.
+- **Rate Limiting:** 60 req/min für Read-Endpunkte, 10 req/min für Write-Endpunkte pro User-ID (authentifiziert). Separate Limits für Bulk-Operationen (max. 3 req/min). Fallback auf IP-basiertes Limiting für nicht-authentifizierte Requests.
 - **Bulk-Aktionen:** Max. Batch-Größe 50 Nutzer. Aktueller Nutzer und letzter aktiver `system_admin` werden automatisch aus Bulk-Operationen ausgeschlossen (Self-Protection).
 - Operative Logs ausschließlich über SDK Logger (`@sva/sdk`), keine `console.*`
 - Keine Klartext-PII in operativen Logs; Audit-Events verwenden pseudonymisierte/strukturierte Felder
@@ -256,7 +280,7 @@ const adminGuard = async ({ context }) => {
 
 **DSGVO-Löschkonzept (zweistufig):**
 1. **Deaktivierung:** Account-Status wird auf `inactive` gesetzt, Keycloak-Account wird deaktiviert (`enabled=false`)
-2. **Anonymisierung:** Nach Ablauf der Aufbewahrungsfrist (konfigurierbar, Standard: 90 Tage nach Deaktivierung) werden PII-Felder anonymisiert (`SET NULL` bzw. anonymisierter Hash). Activity-Logs behalten `account_id` als Pseudonym, `actor_id`/`subject_id` werden durch Pseudonym ersetzt.
+2. **Anonymisierung:** Nach Ablauf der Aufbewahrungsfrist (mandantenspezifisch konfigurierbar via `iam.instances.retention_days`, Standard: 90 Tage nach Deaktivierung) werden PII-Felder anonymisiert (`SET NULL` bzw. anonymisierter Hash). Activity-Logs behalten `account_id` als Pseudonym, `actor_id`/`subject_id` werden durch Pseudonym ersetzt. Die Retention wird durch einen automatisierten Cron-Job erzwungen.
 
 **Rationale:**
 - Frontend-Guards sind UX, aber keine Sicherheitsgrenze
@@ -290,6 +314,7 @@ const adminGuard = async ({ context }) => {
 **Rationale:**
 - Konsistent mit bestehendem Tooling (kein neues Framework nötig)
 - Down-Migrations ermöglichen Rollback bei fehlgeschlagenem Deployment
+- **Wichtig:** Down-Migration muss den Immutabilitäts-Trigger **vor** den Spalten droppen (`DROP TRIGGER` vor `ALTER TABLE DROP COLUMN`)
 
 ### 9. Audit-Logging und Observability
 
@@ -298,7 +323,7 @@ const adminGuard = async ({ context }) => {
 **Log-Retention:**
 - Audit-Logs (`iam.activity_logs`): 365 Tage aktiv, dann Archivierung
 - Operative Logs (Loki/OTEL): 90 Tage
-- Partitionierung von `iam.activity_logs` nach `created_at` (monatlich)
+- Partitionierung von `iam.activity_logs` nach `created_at` (monatlich) – wird als separater Follow-up-Change umgesetzt, nicht Teil dieser Migration
 
 **Immutabilitäts-Durchsetzung:**
 ```sql
@@ -331,6 +356,12 @@ CREATE TRIGGER trg_immutable_activity_logs
 | `profile.self_updated` | Self-Service-Profilbearbeitung |
 | `auth.unauthorized_access` | 403 bei IAM-Endpunkt |
 | `keycloak.sync_failed` | Sync-Fehler mit Keycloak |
+| `profile.email_changed` | E-Mail-Änderung über Keycloak |
+| `profile.mfa_changed` | MFA-Status-Änderung über Keycloak |
+| `user.reactivated` | Account-Reaktivierung |
+| `role.updated` | Custom-Rolle bearbeitet |
+| `auth.login_success` | Erfolgreicher Login (via Keycloak Event) |
+| `auth.login_failed` | Fehlgeschlagener Login (via Keycloak Event) |
 
 **Correlation-IDs:**
 - Jeder IAM-Handler führt `request_id` als Context-Feld mit
@@ -342,6 +373,7 @@ CREATE TRIGGER trg_immutable_activity_logs
 | Feld | PII-Stufe | In operativen Logs? | In Audit-Logs? |
 |---|---|---|---|
 | `email` | PII (verschlüsselt) | Maskiert (`u***@example.com`) | Nur als `account_id` |
+| `display_name` | PII (verschlüsselt) | Nicht loggen | Nur als `account_id` |
 | `phone` | PII (verschlüsselt) | Nicht loggen | Nicht loggen |
 | `first_name`, `last_name` | PII (verschlüsselt) | Nicht loggen | Nur als `account_id` |
 | `keycloak_subject` | Intern | OK | OK |
@@ -355,6 +387,17 @@ CREATE TRIGGER trg_immutable_activity_logs
 | IAM-Service-Handler | `iam-service` |
 | Keycloak Admin API Client | `iam-keycloak` |
 | JIT-Provisioning | `iam-jit` |
+
+**Prometheus-Metriken (verbindlich):**
+
+| Metrik | Typ | Labels | Beschreibung |
+|--------|-----|--------|-------------|
+| `iam_user_operations_total` | Counter | `operation`, `result` | CRUD-Operationen auf User-Accounts |
+| `iam_keycloak_requests_total` | Counter | `method`, `status` | Keycloak Admin API Aufrufe |
+| `iam_keycloak_request_duration_seconds` | Histogram | `method` | Latenz der Keycloak-Aufrufe |
+| `iam_circuit_breaker_state` | Gauge | `target` | 0=closed, 1=half-open, 2=open |
+| `iam_active_users` | Gauge | `instance_id`, `status` | Anzahl aktiver/inaktiver User pro Mandant |
+| `iam_role_assignments_total` | Counter | `operation` | Rollen-Zuweisungen/Entfernungen |
 
 **Rationale:**
 - IAM-Daten sind compliance-kritisch – umfassendes Logging überwiegt Minimalismus
@@ -393,6 +436,8 @@ Das bestehende Schema in `0001_iam_core.sql` definiert:
 - `iam.accounts` – mit `keycloak_subject`, `email_ciphertext`, `display_name_ciphertext`
 - `iam.organizations` – Organisationseinheiten
 - `iam.roles` – mit `instance_id`, `role_name`, `is_system_role`
+
+> **Hinweis:** `instance_id` entspricht dem `workspace_id`-Konzept im Frontend. Das Mapping erfolgt im Auth-Context: `workspace_id` (Frontend) → `instance_id` (DB/IAM). Diese Zuordnung wird im `AuthProvider` transparent gehandhabt.
 - `iam.permissions` – mit `instance_id`, `permission_key`
 - `iam.instance_memberships`, `iam.account_organizations`, `iam.account_roles`, `iam.role_permissions`
 - `iam.activity_logs` – mit `instance_id`, `account_id`, `event_type`, `payload` (JSONB), `request_id`, `trace_id`
@@ -418,6 +463,20 @@ ALTER TABLE iam.accounts ADD COLUMN IF NOT EXISTS timezone VARCHAR(50) DEFAULT '
 ALTER TABLE iam.accounts ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'active'
   CHECK (status IN ('active', 'inactive', 'pending'));
 ALTER TABLE iam.accounts ADD COLUMN IF NOT EXISTS notes TEXT CHECK (length(notes) <= 2000);
+
+-- 1b. Explizite instance_id-Bindung sicherstellen
+-- iam.accounts hat bereits instance_id aus 0001_iam_core.sql;
+-- Unique-Constraint für JIT-Provisioning:
+CREATE UNIQUE INDEX IF NOT EXISTS idx_accounts_kc_subject_instance
+  ON iam.accounts(keycloak_subject, instance_id);
+
+-- 1c. Rollen-Hierarchie (Level-Spalte)
+ALTER TABLE iam.roles ADD COLUMN IF NOT EXISTS role_level INTEGER DEFAULT 0
+  CHECK (role_level >= 0 AND role_level <= 100);
+
+-- 1d. Mandantenspezifische Retention
+ALTER TABLE iam.instances ADD COLUMN IF NOT EXISTS retention_days INTEGER DEFAULT 90
+  CHECK (retention_days >= 30);
 
 -- 2. Temporale Constraints für Rollen-Zuweisungen
 ALTER TABLE iam.account_roles ADD COLUMN IF NOT EXISTS assigned_by UUID REFERENCES iam.accounts(id);
@@ -509,7 +568,7 @@ export type AccountProfileUpdate = Pick<IamAccountProfile,
   'position' | 'department' | 'avatarUrl' | 'preferredLanguage' | 'timezone'
 >;
 
-/** Port-Interface für IdP-Abstraktionsschicht */
+/** Port-Interface für IdP-Abstraktionsschicht (@sva/auth, nicht @sva/core) */
 export interface IdentityProviderPort {
   createUser(data: CreateUserInput): Promise<{ externalId: string }>;
   updateUser(externalId: string, data: UpdateUserInput): Promise<void>;
@@ -537,7 +596,7 @@ Alle `/api/v1/iam/*`-Endpunkte verwenden ein konsistentes Envelope-Format:
 // Erfolg (Liste)
 type ApiListResponse<T> = {
   data: T[];
-  meta: { total: number; page: number; pageSize: number };
+  meta: { total: number; page: number; pageSize: number; nextCursor?: string };
 };
 
 // Erfolg (Einzelobjekt)
@@ -555,12 +614,15 @@ type ApiErrorResponse = {
 };
 ```
 
+> **Hinweis:** Das Error-Format ist kompatibel mit [RFC 9457 (Problem Details)](https://www.rfc-editor.org/rfc/rfc9457). Ein Mapping auf `type`/`title`/`status`/`detail`/`instance` kann bei Bedarf als Wrapper nachgerüstet werden.
+
 **HTTP-Statuscodes pro Endpunkt:**
 
 | Situation | Status | Code |
 |-----------|--------|------|
 | Erfolg (Liste) | `200 OK` | – |
 | Erfolg (Erstellen) | `201 Created` | – |
+| Erfolg (Löschen/Deaktivierung) | `204 No Content` | – |
 | Validierungsfehler | `400 Bad Request` | `VALIDATION_ERROR` |
 | Nicht authentifiziert | `401 Unauthorized` | `UNAUTHORIZED` |
 | Nicht autorisiert | `403 Forbidden` | `FORBIDDEN` |
@@ -575,9 +637,9 @@ type ApiErrorResponse = {
 
 | Risiko | Schwere | Mitigation |
 |--------|---------|------------|
-| Keycloak Admin API erfordert hochprivilegierten Service-Account | Mittel | Principle of Least Privilege (nur `manage-users`, `view-users`), Secret-Rotation alle 90 Tage, Secrets-Manager |
-| Sync-Konflikte CMS-DB <-> Keycloak | Mittel | Keycloak-First-Sync mit Compensation; Reconciliation-Job als Folge-Change |
-| DB-Schema-Migration im laufenden Betrieb | Niedrig | Feature-Flag `iam-ui-enabled` als Kill-Switch, Backward-Compatible-Migrations (Expand/Contract) |
+| Keycloak Admin API erfordert hochprivilegierten Service-Account | Mittel | Principle of Least Privilege (nur `manage-users`, `view-users`, `view-realm`), Secret-Rotation alle 90 Tage mit Dual-Secret, Secrets-Manager |
+| Sync-Konflikte CMS-DB <-> Keycloak | Mittel | Keycloak-First-Sync mit Compensation + Idempotency-Keys; Reconciliation-Endpunkt (`POST /api/v1/iam/admin/reconcile`) als Folge-Change |
+| DB-Schema-Migration im laufenden Betrieb | Niedrig | Feature-Flag-Hierarchie: `iam-ui-enabled` (Kill-Switch für gesamte UI), `iam-admin-enabled` (nur Admin-Bereich), `iam-bulk-enabled` (Bulk-Operationen). Backward-Compatible-Migrations (Expand/Contract) |
 | Newcms-Features divergieren während Migration | Niedrig | Newcms als Referenz-Snapshot, nicht als Moving Target |
 | Rollen-Seed-Daten ändern sich | Niedrig | Migrations-basiertes Seeding, idempotente Scripts; Rollen sind vorläufig und werden sich entwickeln |
 | Keycloak-Ausfall blockiert IAM-Operationen | Mittel | Circuit-Breaker, Degraded-Mode für Read-Ops, Health-Checks |
@@ -597,7 +659,5 @@ type ApiErrorResponse = {
 
 ---
 
-**Document Version:** 2.0
+**Document Version:** 2.1
 **Last Updated:** 4. März 2026
-
-````

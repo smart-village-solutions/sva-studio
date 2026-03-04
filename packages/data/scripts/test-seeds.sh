@@ -26,6 +26,19 @@ if [ -z "$(docker compose ps -q postgres)" ]; then
   docker compose up -d postgres
 fi
 
+echo "Wait for Postgres readiness..."
+for _ in $(seq 1 30); do
+  if docker compose exec -T postgres pg_isready -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" >/dev/null 2>&1; then
+    break
+  fi
+  sleep 1
+done
+
+if ! docker compose exec -T postgres pg_isready -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" >/dev/null 2>&1; then
+  echo "Postgres did not become ready in time."
+  exit 1
+fi
+
 echo "Reset IAM tables for seed integration test..."
 docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" <<'SQL'
 TRUNCATE iam.activity_logs, iam.role_permissions, iam.account_roles, iam.account_organizations,

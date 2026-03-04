@@ -4,6 +4,7 @@
 import { TanStackDevtools } from '@tanstack/react-devtools';
 import { HeadContent, Scripts, createRootRoute, useRouterState } from '@tanstack/react-router';
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools';
+import { createServerOnlyFn } from '@tanstack/react-start';
 import React from 'react';
 
 import AppShell from '../components/AppShell';
@@ -13,14 +14,17 @@ import NotFound from '../components/NotFound';
 
 import appCss from '../styles.css?url';
 
+const ensureRootSdkInitialized = createServerOnlyFn().handler(async () => {
+  const { ensureSdkInitialized } = await import('../lib/init-sdk.server');
+  await ensureSdkInitialized();
+});
+
 /**
  * Initialisiert serverseitig notwendige SDK-Bausteine für die Root-Route.
  */
 const loadRootData = async () => {
-  // Run SDK bootstrap only on the server to avoid client-side server-module imports.
   if (import.meta.env.SSR) {
-    const { ensureSdkInitialized } = await import('../lib/init-sdk.server');
-    await ensureSdkInitialized();
+    await ensureRootSdkInitialized();
   }
   return {};
 };

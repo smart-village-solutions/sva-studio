@@ -19,7 +19,7 @@ jobs:
 
     steps:
       - name: Checkout source repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Clone wiki repository
         env:

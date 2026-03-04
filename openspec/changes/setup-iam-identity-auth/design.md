@@ -12,11 +12,11 @@ Das SVA Studio muss eine robuste, sichere und skalierbare Identitäts- und Zugri
 - IT-Sicherheit (Audit, Compliance, DSGVO)
 
 **Constraints:**
-- Bestehende Keycloak-Instanz (Version TBD)
-- Postgres/Supabase für IAM-Daten
-- Monorepo-Architektur (packages/core, packages/data, apps/studio)
+- Bestehende Keycloak-Instanz (Version als deferred bis Produktivbetrieb dokumentiert, siehe Task 1.1.6)
+- Postgres für IAM-Daten (lokal via Docker, kein Supabase)
+- Monorepo-Architektur (packages/auth, packages/core, apps/studio)
 - Typsicher (TypeScript strict-mode)
-- Performance-Anforderung: Permission-Checks < 50ms
+- Performance-Anforderung: Permission-Checks < 50 ms (siehe Child D)
 
 ---
 
@@ -81,189 +81,49 @@ Das SVA Studio muss eine robuste, sichere und skalierbare Identitäts- und Zugri
 
 ---
 
-### 2. Datenhaltung: Postgres + RLS
+### 2. Datenhaltung (Child-A-Relevanz)
 
-**Entscheidung:** IAM-Daten in Postgres (Supabase) mit Row-Level Security.
+> **Hinweis:** Das vollständige IAM-Datenbankschema (Tabellen, RLS, Migrationen, Seeds) wird in **Child B** (`add-iam-core-data-layer`) spezifiziert und umgesetzt. Hier wird nur die für Child A relevante Identity-Basis dokumentiert.
 
-**Rationale:**
-- ✅ Bereits Setup (Supabase)
-- ✅ RLS für Multi-Tenancy (automatische Org-Filtering)
-- ✅ ACID-Transaktionen für kritische Ops
-- ✅ Audit-Logging auf DB-Ebene
-- ✅ Migrations-Management (Flyway/Alembic)
+**Entscheidung:** IAM-Daten in Postgres mit Row-Level Security. Kanonischer Mandanten-Scope ist `instanceId` (Masterplan-Beschluss). Organisationen sind Untereinheiten innerhalb einer Instanz.
 
-**Schema-Struktur:**
+**Child-A-relevante Entität:**
 
 ```sql
--- Organizations (hierarchisch)
-iam.organizations (
-  id UUID PRIMARY KEY,
-  name TEXT NOT NULL,
-  parentOrganizationId UUID REFERENCES iam.organizations(id),
-  type ENUM ('county', 'municipality', 'district', 'organization'),
-  createdAt TIMESTAMP,
-  ...
-)
-
--- Accounts (User + Keycloak-Mapping)
+-- Accounts (User + Keycloak-Mapping) – wird in Child A für JIT-Provisioning benötigt
 iam.accounts (
   id UUID PRIMARY KEY,
   keycloakId TEXT UNIQUE NOT NULL,
+  instanceId UUID NOT NULL,  -- kanonischer Mandanten-Scope
   email TEXT,
   displayName TEXT,
-  internalExternalFlag ENUM ('internal', 'external'),
   createdAt TIMESTAMP,
   ...
 )
-
--- Account ↔ Organization Mapping (Many-to-Many)
-iam.account_organizations (
-  accountId UUID REFERENCES iam.accounts(id),
-  organizationId UUID REFERENCES iam.organizations(id),
-  role TEXT,  -- Primary Role in this org (optional)
-  joinedAt TIMESTAMP,
-  PRIMARY KEY (accountId, organizationId)
-)
-
--- Rollen (global + custom)
-iam.roles (
-  id UUID PRIMARY KEY,
-  name TEXT UNIQUE NOT NULL,
-  type ENUM ('system', 'custom'),
-  organizationId UUID REFERENCES iam.organizations(id),  -- NULL for system
-  description TEXT,
-  ...
-)
-
--- Permissions
-iam.permissions (
-  id UUID PRIMARY KEY,
-  action TEXT,
-  resourceType TEXT,
-  scope JSONB,  -- {org, geo, time, ...}
-  createdAt TIMESTAMP,
-  ...
-)
-
--- Role ↔ Permission Mapping
-iam.role_permissions (
-  roleId UUID REFERENCES iam.roles(id),
-  permissionId UUID REFERENCES iam.permissions(id),
-  PRIMARY KEY (roleId, permissionId)
-)
-
--- Account ↔ Role Mapping (mit Temporal Constraints)
-iam.account_roles (
-  accountId UUID REFERENCES iam.accounts(id),
-  roleId UUID REFERENCES iam.roles(id),
-  validFrom TIMESTAMP DEFAULT NOW(),
-  validTo TIMESTAMP,
-  assignedBy UUID REFERENCES iam.accounts(id),
-  PRIMARY KEY (accountId, roleId, validFrom)
-)
-
--- Activity Logs (immutable)
-iam.activity_logs (
-  id UUID PRIMARY KEY,
-  eventType TEXT,  -- 'account_created', 'role_assigned', 'login', ...
-  actor UUID REFERENCES iam.accounts(id),
-  subject UUID REFERENCES iam.accounts(id),
-  details JSONB,
-  createdAt TIMESTAMP NOT NULL
-)
 ```
+
+**Verweis auf nachgelagerte Child-Changes:**
+- Schema-Design, RLS, Migrationen, Seeds → `add-iam-core-data-layer` (Child B)
+- Rollen, Permissions, Zuordnungstabellen → `add-iam-core-data-layer` (Child B)
+- Activity Logs → `add-iam-governance-workflows` (Child E)
 
 ---
 
-### 3. Berechtigungsmodell: RBAC + ABAC + Hierarchie
+### 3. Berechtigungsmodell (außerhalb Child-A-Scope)
 
-**Entscheidung:** Hybrid RBAC/ABAC mit hierarchischer Vererbung.
-
-**Rationale:**
-- ✅ RBAC einfach & performant für 80% der Fälle
-- ✅ ABAC flexibel für komplexe Policies (z.B. "Freigabe nur 9-17h")
-- ✅ Hierarchie abbildbar ohne Query-Explosion
-
-**Permission-Checking Logik:**
-
-```typescript
-async function canUserPerformAction(
-  userId: string,
-  action: string,
-  resourceType: string,
-  resourceId?: string,
-  organizationId?: string,
-  context?: Record<string, unknown>
-): Promise<boolean> {
-  // 1. Load User + Current Org
-  const user = await loadUser(userId, organizationId)
-  if (!user) return false
-
-  // 2. Collect all Roles (direct + inherited from Org hierarchy)
-  const roles = await collectRoles(user, organizationId)
-
-  // 3. Aggregate Permissions
-  const permissions = await aggregatePermissions(roles)
-
-  // 4. Match Permission gegen (action, resourceType, scope)
-  const matching = permissions.filter(p =>
-    p.action === action && p.resourceType === resourceType
-  )
-
-  // 5. Apply ABAC (attribute-based conditions)
-  for (const perm of matching) {
-    if (matchABAC(perm.abacRules, context)) {
-      return true
-    }
-  }
-
-  return false
-}
-```
-
-**Hierarchie-Vererbung Beispiel:**
-
-```
-County Admin (Landkreis XY)
-├─ Rolle: "county_admin"
-├─ Permissions: ["manage_all_municipalities", "manage_accounts"]
-│
-├─ Municipal Admin (Gemeinde XY-1)
-│  ├─ Erbt: ["view_parent_data"]
-│  ├─ Eigene Rolle: "municipal_admin"
-│  ├─ Permissions: ["manage_local_content", "manage_local_accounts"]
-│
-├─ District Admin (Ortsteil XY-1-A)
-│  ├─ Erbt: ["view_parent_data"]
-│  ├─ Eigene Rolle: "district_admin"
-│  ├─ Permissions: ["manage_district_content"]
-```
+> **Hinweis:** Das RBAC/ABAC-Berechtigungsmodell mit hierarchischer Vererbung wird in den folgenden Child-Changes detailliert:
+> - **Child C** (`add-iam-authorization-rbac-v1`): RBAC v1, Authorize-API, Reason-Codes
+> - **Child D** (`add-iam-abac-hierarchy-cache`): ABAC-Erweiterung, Hierarchie-Vererbung, Cache-Strategie
+>
+> Die jeweiligen `design.md`-Dokumente dieser Children enthalten die Architekturentscheidungen, Pseudocode und Datenflüsse.
 
 ---
 
-### 4. Permission-Caching: Redis
+### 4. Permission-Caching (außerhalb Child-A-Scope)
 
-**Entscheidung:** Redis-Cluster für Permission-Snapshot-Caching.
-
-**Rationale:**
-- ✅ < 50ms Permission-Checks erfordern Caching
-- ✅ Redis performant für Key-Value
-- ✅ Einfache Cache-Invalidation via Pub/Sub
-- ✅ Horizontal skalierbar
-
-**Cache-Key-Schema:**
-
-```
-iam:permissions:{userId}:{organizationId} → Set<Permission>
-iam:roles:{userId}:{organizationId} → Set<RoleId>
-iam:user_orgs:{userId} → Set<OrgId>
-```
-
-**Cache-Invalidation Trigger:**
-- Bei Rollenänderung (`account_roles` INSERT/UPDATE/DELETE)
-- Bei Permission-Änderung (`role_permissions` UPDATE)
-- Bei Organization-Hierarchie-Änderung
-- Pub/Sub Message an IAM-Service → Redis-Key löschen
+> **Hinweis:** Die Redis-basierte Caching-Strategie für Permission-Snapshots wird in **Child D** (`add-iam-abac-hierarchy-cache`) spezifiziert.
+> Masterplan-Beschluss: Cache-Invalidierung primär über Postgres NOTIFY mit TTL-/Recompute-Fallback.
+> Cache-Key-Design, Invalidation-Events und Failure-Modes → siehe Child D `design.md`.
 
 ---
 
@@ -349,6 +209,26 @@ enum TokenError {
 // - NOTBEFORE → Reject 401
 ```
 
+**Logging bei Token-Fehlern (Masterplan-Leitplanke):**
+
+Jeder `TokenError`-Fall erzeugt einen SDK Logger `warn`-Eintrag:
+
+```typescript
+import { createSdkLogger } from '@sva/sdk';
+
+const logger = createSdkLogger({ component: 'iam-auth' });
+
+// Bei Token-Validierungsfehler:
+logger.warn('Token validation failed', {
+  workspace_id: ctx.instanceId,
+  operation: 'token_validate',
+  error_type: tokenError,        // z.B. 'token_expired'
+  has_refresh_token: !!refreshToken,
+  request_id: ctx.requestId,
+  // ❌ NICHT: token-Werte, session_id, email
+});
+```
+
 **Security Measures:**
 
 - ✅ HTTPS only (API + Frontend)
@@ -361,76 +241,86 @@ enum TokenError {
 
 ## Architektur-Komponenten
 
-### Backend (packages/core)
+### Backend (packages/auth)
 
 ```
-src/iam/
+packages/auth/src/   # Ist-Stand (Child A)
+├── oidc.server.ts            # OIDC-Discovery + Client-Init
+├── auth.server.ts            # Serverseitige Auth-Flows
+├── routes.server.ts          # Auth-Route-Handler
+├── config.ts                 # Auth-Konfiguration (Env)
+├── redis-session.server.ts   # Session-/Login-State via Redis
+└── ...
+```
+
+**Zielstruktur (nach Abschluss Child A):**
+
+```
+packages/auth/src/
 ├── token/
 │   ├── validator.ts          # JWT-Validierung
 │   ├── parser.ts             # Claims-Extraktion
-│   ├── refresher.ts          # Token-Refresh
-│   └── cache.ts              # Token-Caching
+│   └── refresher.ts          # Token-Refresh
 ├── identity/
-│   ├── user-context.ts       # User + Org-Context
-│   ├── account-resolver.ts   # DB-Lookup
-│   └── organization-loader.ts
-├── access-control/
-│   ├── rbac-engine.ts        # Role-Based Access
-│   ├── abac-engine.ts        # Attribute-Based Access
-│   ├── permission-checker.ts # Main API
-│   └── cache.ts              # Redis Caching
+│   ├── user-context.ts       # User + Instanz-Context
+│   └── account-resolver.ts   # JIT-Provisioning
 ├── middleware/
-│   ├── authenticate.ts       # Express Middleware
-│   ├── authorize.ts          # Permission Check Middleware
+│   ├── authenticate.ts       # Auth-Middleware
 │   └── error-handler.ts
+├── session/
+│   └── redis-session.ts      # Session-Management
 └── config/
     └── keycloak-config.ts    # OIDC Config
 ```
 
-### Frontend (apps/studio)
+> **Hinweis:** Access-Control-Module (`rbac-engine`, `abac-engine`, `permission-checker`, `authorize-middleware`) werden in Child C/D ergänzt. Data-Layer-Schemas und Migrationen in Child B.
+
+### Frontend (apps/studio) – Child-A-Scope
 
 ```
 src/
 ├── auth/
 │   ├── OIDCProvider.tsx      # OIDC Context
 │   ├── LoginPage.tsx         # Login UI
-│   ├── useAuth.ts            # Hook
+│   ├── useAuth.ts            # Auth-Hook
 │   └── api-client.ts         # Authenticated Requests
 ├── components/
 │   └── ProtectedRoute.tsx    # Gated Routes
 └── stores/
-    └── user-store.ts         # Zustand/Redux
-```
-
-### Data Layer (packages/data)
-
-```
-src/
-├── schema/
-│   ├── iam-organizations.sql
-│   ├── iam-accounts.sql
-│   ├── iam-roles.sql
-│   ├── iam-permissions.sql
-│   └── iam-activity-logs.sql
-└── migrations/
-    └── 001-iam-foundation.sql
+    └── user-store.ts         # Auth-State
 ```
 
 ---
 
 ## Performance-Anforderungen
 
-| Operation | Target | Strategie |
-|-----------|--------|-----------|
-| Login Flow | < 1s total | Keycloak + HTTP/2 |
-| Permission Check | < 50ms | Redis Cache + Optimized Queries |
-| List Orgs for User | < 200ms | Indexed Query + Caching |
-| Org Hierarchy Query | < 500ms | Recursive CTE + Caching |
+| Operation | Target | Strategie | Child-Change |
+|-----------|--------|-----------|-------------|
+| Login Flow | < 1s total | Keycloak + HTTP/2 | **Child A** |
+| Token-Validierung | < 10ms | RS256 + JWKS-Caching | **Child A** |
+| Permission Check | < 50ms | Redis Cache + Optimized Queries | Child C/D |
+| List Orgs for User | < 200ms | Indexed Query + Caching | Child B |
+| Org Hierarchy Query | < 500ms | Recursive CTE + Caching | Child B/D |
 
-**Monitoring:**
+**Monitoring & Observability (gemäß ADR-006 / Masterplan-Leitplanke):**
+- SDK Logger (`createSdkLogger({ component: 'iam-auth' })`) für alle operativen Logs
+- OTEL-Pipeline (SDK → Collector → Loki) für Echtzeit-Monitoring und Grafana-Dashboards
+- Korrelations-IDs: `X-Request-Id` + OTEL Trace-Context in allen Auth-Flows
+- Dual-Write: Audit-Events in DB + OTEL-Pipeline
 - APM (Application Performance Monitoring) für IAM-Operations
 - Redis Memory Usage & Hit-Rate
 - DB Query Performance (slow query log)
+
+**Log-Level-Konvention (Child A):**
+
+| Operation | Level | Pflichtfelder |
+|-----------|-------|---------------|
+| Erfolgreicher Login | `info` | `workspace_id`, `operation: 'login'`, `request_id` |
+| Account-Erstellung (JIT) | `info` | `workspace_id`, `operation: 'account_created'`, `request_id` |
+| Token-Validierungsfehler | `warn` | `workspace_id`, `operation: 'token_validate'`, `error_type`, `request_id` |
+| Token-Refresh | `debug` | `workspace_id`, `operation: 'token_refresh'`, `has_refresh: boolean` |
+| Session-Erstellung | `debug` | `workspace_id`, `operation: 'session_create'`, `ttl_seconds` |
+| OIDC-Discovery-Fehler | `error` | `component: 'iam-auth'`, `operation: 'oidc_discovery'`, `error` |
 
 ---
 
@@ -462,15 +352,21 @@ src/
 
 ---
 
-## Open Questions
+## Offene Fragen (Child A)
 
-- 🤔 Keycloak-Versionsanforderung?
-- 🤔 Redis-Cluster-Setup vorhanden?
-- 🤔 Keycloak-Realm Strategy (Single vs. Multi)?
-- 🤔 Token-Lifespan Policy (15m Access, 7d Refresh)?
+- ℹ️ Keycloak-Version bleibt bis Produktivbetrieb deferred (siehe Task 1.1.6)
+- 🤔 Keycloak-Realm-Strategie (Single vs. Multi)?
+- 🤔 Token-Lifespan-Policy (15m Access, 7d Refresh)?
 - 🤔 Rate-Limiting Backend? (WAF vs. App-Layer)
+
+**Bereits geklärt / in nachgelagerten Children:**
+- ✅ Redis-Setup vorhanden (Session-Store, Child D erweitert um Permission-Cache)
+- ✅ `instanceId` als kanonischer Mandanten-Scope (Masterplan-Beschluss)
+- ✅ Cache-Invalidierung via Postgres NOTIFY (Masterplan-Beschluss, Detail in Child D)
 
 ---
 
-**Document Version:** 1.0
-**Last Updated:** 21. Januar 2026
+**Document Version:** 3.0
+**Last Updated:** 26. Februar 2026
+**Scope-Bereinigung:** Abschnitte 2–4 auf Child-A-Scope reduziert; Verweise auf Child B–E ergänzt.
+**Logging-Review:** Observability-Abschnitt, Korrelations-IDs, Token-Error-Logging und Log-Level-Konvention ergänzt (26.02.2026).

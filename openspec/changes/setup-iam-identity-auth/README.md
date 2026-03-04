@@ -144,7 +144,7 @@ packages/core/src/iam/
 └── config/          → Keycloak-Konfiguration
 ```
 
-### Datenbank (Postgres/Supabase)
+### Datenbank (Postgres)
 
 ```sql
 iam.organizations        -- Hierarchische Org-Strukturen
@@ -176,7 +176,7 @@ iam:user_orgs:{userId}                     → Set<OrgId>
 
 ### 2. Vorbereitung
 - [ ] Keycloak-Instanz + Admin-Zugriff verfügbar?
-- [ ] Postgres/Supabase-Schema-Migrations-Workflow?
+- [ ] Postgres-Schema-Migrations-Workflow?
 - [ ] Redis-Cluster für Production?
 - [ ] Team-Assignments für 3 Phasen?
 
@@ -217,6 +217,6 @@ Bitte bestätigen Sie folgende Punkte vor Start der Implementierung:
 
 ---
 
-**Created:** 21. Januar 2026  
-**Validation:** ✅ Passed (openspec validate --strict)  
+**Created:** 21. Januar 2026
+**Validation:** ✅ Passed (openspec validate --strict)
 **Status:** 🟡 Ready for Review

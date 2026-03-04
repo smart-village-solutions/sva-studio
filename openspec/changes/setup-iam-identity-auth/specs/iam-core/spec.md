@@ -85,14 +85,40 @@ The system SHALL log all security-relevant IAM events immutably for compliance a
 #### Scenario: Login attempt logged
 
 - **WHEN** a user successfully logs in
-- **THEN** an event is recorded in `iam.activity_logs` with timestamp, user ID, IP address, user agent
+- **THEN** an event is recorded in `iam.activity_logs` with timestamp, pseudonymized user ID, anonymized IP address (last octet removed), user agent category
 - **AND** the log entry CANNOT be modified or deleted after creation
+- **AND** plain-text PII (email, full IP) is NOT stored in the audit log
 
 #### Scenario: Account creation triggered by first login
 
 - **WHEN** a user logs in for the first time via a new Keycloak account
 - **THEN** a new account record is created in `iam.accounts`
 - **AND** the creation event is logged with the Keycloak ID as the link
+
+### Requirement: SDK Logger for IAM Server Modules
+
+The system SHALL use the SDK Logger (`createSdkLogger` from `@sva/sdk/server`) for all operative logging in IAM server modules, in accordance with ADR-006 and Observability Best Practices. `console.log`/`console.error` SHALL NOT be used in IAM server code.
+
+#### Scenario: Structured logging with mandatory fields
+
+- **WHEN** an IAM server module produces a log entry
+- **THEN** the entry contains at minimum: `workspace_id` (= `instanceId`), `component` (e.g. `iam-auth`), `environment`, `level`
+- **AND** PII redaction is applied by the SDK Logger using project-defined sensitive key configuration
+- **AND** no plain-text tokens or email addresses appear in log entries
+- **AND** `session_id` is treated as sensitive and is either redacted or emitted only in pseudonymized form
+
+#### Scenario: Correlation IDs in authentication flows
+
+- **WHEN** an IAM API endpoint is called
+- **THEN** a `request_id` is generated or propagated from the `X-Request-Id` header
+- **AND** the OTEL trace context is propagated
+- **AND** all log entries within the request reference `request_id` and `trace_id`
+
+#### Scenario: Token validation error logging
+
+- **WHEN** a token validation fails (invalid, expired, audience mismatch, issuer mismatch)
+- **THEN** the SDK Logger emits a `warn`-level entry with `operation`, `error_type`, `has_refresh_token`, `request_id`
+- **AND** no token values or raw `session_id` values are included in the log entry
 
 ---
 

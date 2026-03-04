@@ -10,7 +10,13 @@ if ! docker compose config --services >/tmp/data-compose-services.txt 2>/tmp/dat
   exit 1
 fi
 
-if ! rg -qx 'postgres' /tmp/data-compose-services.txt; then
+if command -v rg >/dev/null 2>&1; then
+  service_exists_cmd=(rg -qx 'postgres' /tmp/data-compose-services.txt)
+else
+  service_exists_cmd=(grep -qx 'postgres' /tmp/data-compose-services.txt)
+fi
+
+if ! "${service_exists_cmd[@]}"; then
   echo "Postgres service not found in docker compose configuration."
   exit 1
 fi

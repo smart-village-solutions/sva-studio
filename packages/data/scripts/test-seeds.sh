@@ -27,7 +27,7 @@ if [ -z "$(docker compose ps -q postgres)" ]; then
 fi
 
 echo "Wait for Postgres readiness..."
-for _ in $(seq 1 30); do
+for _ in $(seq 1 120); do
   if docker compose exec -T postgres pg_isready -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" >/dev/null 2>&1; then
     break
   fi
@@ -36,6 +36,7 @@ done
 
 if ! docker compose exec -T postgres pg_isready -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" >/dev/null 2>&1; then
   echo "Postgres did not become ready in time."
+  docker compose logs postgres --tail=200 || true
   exit 1
 fi
 

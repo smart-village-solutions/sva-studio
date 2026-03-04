@@ -97,14 +97,15 @@ The system SHALL log all security-relevant IAM events immutably for compliance a
 
 ### Requirement: SDK Logger for IAM Server Modules
 
-The system SHALL use the SDK Logger (`createSdkLogger` from `@sva/sdk`) for all operative logging in IAM server modules, in accordance with ADR-006 and Observability Best Practices. `console.log`/`console.error` SHALL NOT be used in IAM server code.
+The system SHALL use the SDK Logger (`createSdkLogger` from `@sva/sdk/server`) for all operative logging in IAM server modules, in accordance with ADR-006 and Observability Best Practices. `console.log`/`console.error` SHALL NOT be used in IAM server code.
 
 #### Scenario: Structured logging with mandatory fields
 
 - **WHEN** an IAM server module produces a log entry
 - **THEN** the entry contains at minimum: `workspace_id` (= `instanceId`), `component` (e.g. `iam-auth`), `environment`, `level`
-- **AND** PII redaction is applied automatically by the SDK Logger
-- **AND** no plain-text tokens, session IDs, or email addresses appear in log entries
+- **AND** PII redaction is applied by the SDK Logger using project-defined sensitive key configuration
+- **AND** no plain-text tokens or email addresses appear in log entries
+- **AND** `session_id` is treated as sensitive and is either redacted or emitted only in pseudonymized form
 
 #### Scenario: Correlation IDs in authentication flows
 
@@ -117,7 +118,7 @@ The system SHALL use the SDK Logger (`createSdkLogger` from `@sva/sdk`) for all 
 
 - **WHEN** a token validation fails (invalid, expired, audience mismatch, issuer mismatch)
 - **THEN** the SDK Logger emits a `warn`-level entry with `operation`, `error_type`, `has_refresh_token`, `request_id`
-- **AND** no token values or session IDs are included in the log entry
+- **AND** no token values or raw `session_id` values are included in the log entry
 
 ---
 

@@ -4,7 +4,7 @@
 
 ### Requirement: Multi-Org-Kontextwechsel im aktiven Instanzkontext
 
-The system SHALL Benutzern mit mehreren Organisationszuordnungen den Kontextwechsel innerhalb der aktiven `instanceId` ermöglichen.
+Das System MUSS Benutzern mit mehreren Organisationszuordnungen den Kontextwechsel innerhalb der aktiven `instanceId` ermöglichen.
 
 #### Scenario: Benutzer wechselt Organisationskontext
 
@@ -14,7 +14,7 @@ The system SHALL Benutzern mit mehreren Organisationszuordnungen den Kontextwech
 
 ### Requirement: Keine Persistenz- und RLS-Modellierung in Child A
 
-The system SHALL in Child A keine vollständige Organisationspersistenz, RLS-Policy-Definition oder Hierarchieauswertung spezifizieren; diese liegen in Child B/D.
+Das System MUSS in Child A keine vollständige Organisationspersistenz, RLS-Policy-Definition oder Hierarchieauswertung spezifizieren; diese liegen in Child B/D.
 
 #### Scenario: Datenmodell außerhalb Child-A-Scope
 

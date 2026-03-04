@@ -14,7 +14,7 @@ Das SVA Studio erfordert ein **sicheres, skalierbares und mandantenfähiges IAM-
 - **Compliance:** Revisionssichere Audit-Logs und DSGVO-Konformität
 - **Skalierbarkeit:** Mandantenfähigkeit zur Unterstützung mehrerer Kommunen
 
-Ohne diese Fundamente können die nachfolgenden Module (News, Medienverwaltung, etc.) nicht mit den erforderlichen Sicherheits- und Organisationsanforderungen arbei­ten.
+Ohne diese Fundamente können die nachfolgenden Module (News, Medienverwaltung, etc.) nicht mit den erforderlichen Sicherheits- und Organisationsanforderungen arbeiten.
 
 ## What Changes
 

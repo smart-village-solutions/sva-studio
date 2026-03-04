@@ -260,6 +260,16 @@ Das System MUST alle sichtbaren Texte in Account- und Admin-Views über i18n-Key
 - **DANN** stammen alle sichtbaren Texte aus `t('admin.users.*')` bzw. `t('admin.roles.*')`
 - **UND** fehlende Übersetzungskeys werden als Build-/Test-Fehler behandelt
 
+### Requirement: Design-System-Konformität mit shadcn/ui
+
+Das System MUST interaktive UI-Bausteine in Account- und Admin-Views auf Basis der bestehenden `shadcn/ui`-Patterns implementieren.
+
+#### Scenario: Interaktive Komponenten werden umgesetzt
+
+- **WENN** Dialoge, Tabs, Form Controls, Tabelleninteraktionen oder Dropdown-Menüs in `/account`, `/admin/users` oder `/admin/roles` implementiert werden
+- **DANN** basieren diese auf den bestehenden `shadcn/ui`-Patterns der Anwendung
+- **UND** es wird keine parallele, inkompatible Eigenimplementierung für dieselben Basisbausteine eingeführt
+
 ### Requirement: Barrierefreie Bedienbarkeit nach WCAG 2.1 AA / BITV 2.0
 
 Das System MUST die Account- und Admin-Views so implementieren, dass alle Bedienflüsse per Tastatur und Screenreader nutzbar sind (WCAG 2.1 AA, BITV 2.0).

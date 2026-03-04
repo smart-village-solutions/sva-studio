@@ -192,9 +192,11 @@ Für alle mutierenden Operationen gilt: Keycloak wird **zuerst** geschrieben, da
 | User erstellen | 1. Keycloak `POST` → 2. IAM-DB `INSERT` | DB-Fehler → Keycloak `DELETE` (Compensation) |
 | User updaten | 1. Keycloak `PUT` → 2. IAM-DB `UPDATE` | DB-Fehler → Keycloak `PUT` mit alten Daten |
 | Profil-Self-Service | 1. Keycloak `PUT` → 2. IAM-DB `UPDATE` | DB-Fehler → Keycloak `PUT` Rollback |
-| User deaktivieren | 1. IAM-DB `UPDATE status` → 2. Keycloak `PUT enabled=false` | Keycloak-Fehler → IAM-DB Rollback |
+| User deaktivieren | 1. Keycloak `PUT enabled=false` → 2. IAM-DB `UPDATE status` | DB-Fehler → Keycloak `PUT enabled=true` (Compensation) |
 
-Jede mutierende Operation erhält einen **Idempotency-Key** (`X-Idempotency-Key` Header, UUID v4). Der Key wird in einer separaten Tabelle `iam.idempotency_keys` (key, result, expires_at) gespeichert. Wiederholte Requests mit demselben Key geben das gecachte Ergebnis zurück (TTL: 24h).
+Idempotency wird verbindlich für duplikatskritische Endpunkte umgesetzt: `POST /api/v1/iam/users`, `POST /api/v1/iam/users/bulk-deactivate`, `POST /api/v1/iam/roles` (optional zusätzlich `DELETE /api/v1/iam/roles/:id`).
+
+Für diese Endpunkte gilt: `X-Idempotency-Key` (UUID v4) ist verpflichtend. Der Key wird in `iam.idempotency_keys` gespeichert und pro Scope (`actor_account_id`, `endpoint`, `idempotency_key`) ausgewertet. Wiederholte Requests mit identischem Payload liefern das gecachte Ergebnis, Wiederverwendung desselben Keys mit abweichendem Payload führt zu `409 Conflict` (`IDEMPOTENCY_KEY_REUSE`). TTL: 24h.
 
 **Circuit-Breaker für Keycloak-Ausfälle:**
 - Timeouts: 5s connect, 10s read für alle Keycloak Admin API Calls
@@ -321,7 +323,7 @@ Die Level sind als `role_level INTEGER` in `iam.roles` gespeichert. Custom-Rolle
 **Entscheidung:** Umfassendes Compliance-Logging mit definierter Retention, technischer Immutabilität und vollständiger Event-Taxonomie. Compliance vor Minimalismus.
 
 **Log-Retention:**
-- Audit-Logs (`iam.activity_logs`): 365 Tage aktiv, dann Archivierung
+- Audit-Logs (`iam.activity_logs`): 365 Tage aktiv, dann Archivierung (mandantenspezifisch über `iam.instances.audit_retention_days`, Default 365)
 - Operative Logs (Loki/OTEL): 90 Tage
 - Partitionierung von `iam.activity_logs` nach `created_at` (monatlich) – wird als separater Follow-up-Change umgesetzt, nicht Teil dieser Migration
 
@@ -475,8 +477,13 @@ ALTER TABLE iam.roles ADD COLUMN IF NOT EXISTS role_level INTEGER DEFAULT 0
   CHECK (role_level >= 0 AND role_level <= 100);
 
 -- 1d. Mandantenspezifische Retention
+-- DSGVO-Anonymisierung (Account-PII)
 ALTER TABLE iam.instances ADD COLUMN IF NOT EXISTS retention_days INTEGER DEFAULT 90
   CHECK (retention_days >= 30);
+
+-- Audit-Archivierung (Activity-Logs)
+ALTER TABLE iam.instances ADD COLUMN IF NOT EXISTS audit_retention_days INTEGER DEFAULT 365
+  CHECK (audit_retention_days >= 365);
 
 -- 2. Temporale Constraints für Rollen-Zuweisungen
 ALTER TABLE iam.account_roles ADD COLUMN IF NOT EXISTS assigned_by UUID REFERENCES iam.accounts(id);

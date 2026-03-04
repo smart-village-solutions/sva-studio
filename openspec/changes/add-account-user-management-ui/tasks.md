@@ -30,6 +30,11 @@
 - [ ] 1.3.4 i18n-Key-Konventionen dokumentieren: `<bereich>.<seite>.<element>` (z. B. `admin.users.table.headerName`)
 - [ ] 1.3.5 Build-Check einrichten: Fehlende i18n-Keys erzeugen Fehler
 
+### 1.4 UI-Foundation (Design-System)
+
+- [ ] 1.4.1 Komponenten-Mapping für Account-UI dokumentieren (Dialog, Tabs, Dropdown, Table-Interaktionen, Form Controls -> `shadcn/ui`-Patterns)
+- [ ] 1.4.2 Sicherstellen, dass keine parallele Eigenbibliothek für dieselben interaktiven Basisbausteine im Scope eingeführt wird
+
 ---
 
 ## Phase 2: Backend – IAM-Service + Datenbank
@@ -56,10 +61,11 @@
 - [ ] 2.1.5 Immutabilitäts-Trigger `trg_immutable_activity_logs` erstellen
 - [ ] 2.1.6 Performance-Indizes erstellen: `idx_accounts_status`, `idx_accounts_keycloak_subject`, `idx_accounts_kc_subject_instance` (Unique für JIT), `idx_activity_logs_subject_created`, `idx_activity_logs_account_created`
 - [ ] 2.1.7 `role_level INTEGER` Spalte in `iam.roles` ergänzen (Level-Hierarchie, CHECK 0–100)
-- [ ] 2.1.8 `retention_days INTEGER DEFAULT 90` Spalte in `iam.instances` ergänzen (mandantenspezifische Retention)
-- [ ] 2.1.9 Down-Migration `0004_iam_account_profile.sql` in `packages/data/migrations/down/` erstellen (**Reihenfolge:** Trigger droppen VOR Spalten droppen)
-- [ ] 2.1.10 Idempotentes Seed-Script für System-Rollen mit role_level (Rollen sind vorläufig, werden sich entwickeln)
-- [ ] 2.1.11 Migration lokal testen: Up + Down + Re-Up
+- [ ] 2.1.8 `retention_days INTEGER DEFAULT 90` Spalte in `iam.instances` ergänzen (mandantenspezifische Retention für DSGVO-Anonymisierung)
+- [ ] 2.1.9 `audit_retention_days INTEGER DEFAULT 365` Spalte in `iam.instances` ergänzen (mandantenspezifische Retention für Audit-Archivierung)
+- [ ] 2.1.10 Down-Migration `0004_iam_account_profile.sql` in `packages/data/migrations/down/` erstellen (**Reihenfolge:** Trigger droppen VOR Spalten droppen)
+- [ ] 2.1.11 Idempotentes Seed-Script für System-Rollen mit role_level (Rollen sind vorläufig, werden sich entwickeln)
+- [ ] 2.1.12 Migration lokal testen: Up + Down + Re-Up
 
 ### 2.2 Keycloak Admin API Client (hinter IdentityProviderPort)
 
@@ -98,6 +104,10 @@
 - [ ] 2.3.21 Correlation-IDs: `request_id` in allen Logs und Audit-Events mitführen; OTEL Trace-Context propagieren
 - [ ] 2.3.22 PII-Maskierung in operativen Logs sicherstellen (Emails maskiert, Tokens/Secrets nie loggen)
 - [ ] 2.3.23 Cache-Invalidierung auslösen bei Rollen-Änderungen (`PermissionSnapshotCache`)
+- [ ] 2.3.24 Idempotency-Key-Validierung für duplikatskritische Endpunkte (`POST /users`, `POST /users/bulk-deactivate`, `POST /roles`)
+- [ ] 2.3.25 Tabelle `iam.idempotency_keys` (Scope: `actor_account_id`, `endpoint`, `idempotency_key`; TTL 24h) implementieren und migrieren
+- [ ] 2.3.26 Replay-Logik: identischer Payload -> gecachtes Ergebnis; abweichender Payload -> `409 IDEMPOTENCY_KEY_REUSE`
+- [ ] 2.3.27 Keycloak-First-Flows mit Idempotency verbinden (`IN_PROGRESS`/`COMPLETED`/`FAILED`) und Compensation deterministisch machen
 
 ### 2.4 JIT-Account-Erstellung
 
@@ -119,7 +129,8 @@
 - [ ] 2.6.2 OpenAPI-Validierung im CI einrichten (z.B. `spectral` oder `redocly`)
 - [ ] 2.6.3 Alerting-Konzept: Alert-Rules für IAM (`iam_keycloak_request_duration_seconds > 5s`, `iam_circuit_breaker_state == 2`, `iam_user_operations_total{result="failure"} rate > 10/min`)
 - [ ] 2.6.4 Retention-Automation: Cron-Job für PII-Anonymisierung nach `retention_days`
-- [ ] 2.6.5 Reconciliation-Endpunkt `POST /api/v1/iam/admin/reconcile` (Folge-Task, nur Platzhalter)
+- [ ] 2.6.5 Retention-Automation: Audit-Archivierung nach `audit_retention_days`
+- [ ] 2.6.6 Reconciliation-Endpunkt `POST /api/v1/iam/admin/reconcile` (Folge-Task, nur Platzhalter)
 
 ---
 
@@ -223,6 +234,7 @@
 - [ ] 6.1.6 E2E-Tests: Direkter API-Aufruf ohne Admin-Rechte liefert `403 Forbidden`
 - [ ] 6.1.7 E2E-Tests: CSRF-Schutz-Prüfung (`X-Requested-With`-Header) bei mutierenden Endpunkten
 - [ ] 6.1.8 E2E-Tests: Responsive Layouts auf verschiedenen Viewports (320px, 768px, 1024px)
+- [ ] 6.1.9 UI-Review: Interaktive Komponenten in Account-/Admin-Views entsprechen den `shadcn/ui`-Patterns
 
 ### 6.2 Dokumentation und ADRs
 

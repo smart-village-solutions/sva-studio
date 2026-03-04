@@ -76,7 +76,8 @@ Das bestehende IAM-Schema (`0001_iam_core.sql`) liefert bereits Multi-Tenancy (`
 
 - **WENN** ein Audit-Log-Eintrag älter als 365 Tage ist
 - **DANN** wird er archiviert (nicht gelöscht)
-- **UND** die Aufbewahrungsfrist ist mandantenspezifisch konfigurierbar via `iam.instances.retention_days` (Standard: 365 Tage)
+- **UND** die Aufbewahrungsfrist ist mandantenspezifisch konfigurierbar via `iam.instances.audit_retention_days` (Standard: 365 Tage)
+- **UND** die DSGVO-Anonymisierung für Account-PII wird separat über `iam.instances.retention_days` gesteuert (Standard: 90 Tage)
 - **UND** die Tabelle ist nach `created_at` partitioniert (monatlich) für effiziente Archivierung – wird als separater Follow-up-Change umgesetzt
 
 ### Requirement: Keycloak Admin API Integration
@@ -124,6 +125,28 @@ Das System MUST über einen dedizierten Service-Account mit der Keycloak Admin R
 - **UND** Read-Operationen fallen auf die IAM-DB als Fallback zurück
 - **UND** Write-Operationen geben `503 Service Unavailable` zurück
 - **UND** der Health-Check `/health/ready` meldet Keycloak als `degraded`
+
+### Requirement: Idempotency für duplikatskritische IAM-Endpunkte
+
+Das System MUST Idempotency für duplikatskritische Mutationen erzwingen, um doppelte Keycloak- und Datenbankoperationen bei Retries zu verhindern.
+
+#### Scenario: Erstanfrage mit Idempotency-Key
+
+- **WENN** ein Client `POST /api/v1/iam/users`, `POST /api/v1/iam/users/bulk-deactivate` oder `POST /api/v1/iam/roles` mit `X-Idempotency-Key` aufruft
+- **DANN** wird die Operation genau einmal ausgeführt und das Ergebnis serverseitig gespeichert
+- **UND** der Key wird im Scope (`actor_account_id`, `endpoint`, `idempotency_key`) ausgewertet
+
+#### Scenario: Retry mit identischem Payload
+
+- **WENN** ein Client denselben Endpunkt mit demselben `X-Idempotency-Key` und identischem Payload erneut aufruft
+- **DANN** liefert der Server das gespeicherte Ergebnis zurück
+- **UND** es erfolgt keine zweite mutierende Operation gegen Keycloak oder IAM-DB
+
+#### Scenario: Wiederverwendung mit abweichendem Payload
+
+- **WENN** ein Client denselben `X-Idempotency-Key` für denselben Endpunkt mit abweichendem Payload wiederverwendet
+- **DANN** antwortet der Server mit `409 Conflict`
+- **UND** der Fehlercode ist `IDEMPOTENCY_KEY_REUSE`
 
 ### Requirement: Serverseitige Autorisierung, CSRF-Schutz und Eingabevalidierung
 

@@ -14,7 +14,7 @@ Das SVA Studio hat bislang **keine Account- oder User-Management-Oberfläche**. 
 - **Rollen-Verwaltung:** Keine UI für die Zuweisung und Verwaltung der 7 Personas bzw. Custom-Rollen
 - **Berechtigungs-Übersicht:** Keine Darstellung der effektiven Berechtigungen eines Nutzers
 
-Im Newcms existiert ein funktionierender Mock dieser Features (PersonsView, AccountEditView mit 4 Tabs, RolesView). Dieser dient als bewährte UX-Referenz, wird aber nicht 1:1 portiert, sondern nach Studio-Patterns (TanStack Router, i18n, Design-System) neu implementiert.
+Im Newcms existiert ein funktionierender Mock dieser Features (PersonsView, AccountEditView mit 4 Tabs, RolesView). Dieser dient als bewährte UX-Referenz, wird aber nicht 1:1 portiert, sondern nach Studio-Patterns (TanStack Router, i18n, Tailwind + shadcn/ui) neu implementiert.
 
 ## What Changes
 
@@ -38,9 +38,10 @@ Im Newcms existiert ein funktionierender Mock dieser Features (PersonsView, Acco
 
 Das bestehende Schema (`0001_iam_core.sql`) liefert bereits Multi-Tenancy (`instance_id` + RLS), PII-Verschlüsselung (`*_ciphertext`, ADR-010) und Activity-Logging. Diese Migration **ergänzt** das Schema:
 
-- **`iam.accounts` (ALTER TABLE):** `instance_id`-Spalte ergänzen (Accounts sind instanzgebunden); zusätzliche Profilfelder (`first_name_ciphertext`, `last_name_ciphertext`, `phone_ciphertext`, `position`, `department`, `status`, etc.); Unique-Constraint auf `(keycloak_subject, instance_id)` statt global-unique `keycloak_subject`
+- **`iam.accounts` (ALTER TABLE):** bestehende `instance_id`-Bindung nutzen (Accounts sind instanzgebunden); zusätzliche Profilfelder (`first_name_ciphertext`, `last_name_ciphertext`, `phone_ciphertext`, `position`, `department`, `status`, etc.); Unique-Constraint auf `(keycloak_subject, instance_id)` statt global-unique `keycloak_subject`
 - **`iam.account_roles` (ALTER TABLE):** Temporale Constraints (`valid_from`, `valid_to`, `assigned_by`)
 - **`iam.activity_logs` (ALTER TABLE):** `subject_id`- und `result`-Spalte; Immutabilitäts-Trigger
+- **`iam.instances` (ALTER TABLE):** getrennte Retention-Konfiguration für DSGVO-Anonymisierung (`retention_days`, Default 90) und Audit-Archivierung (`audit_retention_days`, Default 365)
 - **Performance-Indizes:** Für `status`, `keycloak_subject`, Activity-Log-Queries
 
 ### Nicht im Scope (explizit ausgeklammert)
@@ -57,11 +58,12 @@ Das bestehende Schema (`0001_iam_core.sql`) liefert bereits Multi-Tenancy (`inst
 ## Qualitäts- und Compliance-Leitplanken
 
 - **Typsicherheit:** Typsicheres Routing (Path- und Search-Params) in `@sva/routing`; keine untypisierten Route-Strings in UI-Code
-- **Sicherheit:** Input-Validierung für alle IAM-Endpunkte (Client + Server); CSRF-Schutz (`SameSite=Lax` + Custom-Header `X-Requested-With`, siehe ADR) für alle mutierenden Endpunkte; Privilege-Escalation-Schutz mit expliziter Rollen-Hierarchie (Level-Tabelle); Rate Limiting pro authentifizierter User-ID (60 req/min Read, 10 req/min Write, 3 req/min Bulk)
+- **Sicherheit:** Input-Validierung für alle IAM-Endpunkte (Client + Server); CSRF-Schutz (`SameSite=Lax` + Custom-Header `X-Requested-With`, siehe ADR) für alle mutierenden Endpunkte; Privilege-Escalation-Schutz mit expliziter Rollen-Hierarchie (Level-Tabelle); Rate Limiting pro authentifizierter User-ID (60 req/min Read, 10 req/min Write, 3 req/min Bulk); Idempotency-Key-Verarbeitung für duplikatskritische Create/Bulk-Endpunkte
 - **API-Versionierung:** Alle IAM-Endpunkte unter `/api/v1/iam/...` (Prefix-Versionierung)
 - **Logging:** Operative Server-Logs ausschließlich über SDK Logger (`@sva/sdk`), keine `console.*`-Nutzung
 - **PII-Schutz:** Keine Klartext-PII in operativen Logs; PII-Felder ausschließlich als `*_ciphertext` in der DB (ADR-010); Audit-Logs folgen den bestehenden IAM-Redaktionsregeln
 - **Internationalisierung:** Keine hardcodierten UI-Texte, ausschließlich `t('...')`
+- **UI-Komponenten-Standard:** Interaktive Basisbausteine (Dialog, Dropdown, Tabs, Table, Form Controls, Badge) basieren auf `shadcn/ui`-Patterns; keine parallel eingeführte eigene Komponentenbibliothek im Scope dieses Changes
 - **Barrierefreiheit:** UI-Flows für Profil, User- und Rollenverwaltung erfüllen WCAG 2.1 AA / BITV 2.0
 - **Responsive Design:** Alle Views responsive ab 320px Viewport-Breite (Desktop-Tabelle → Mobile-Cards)
 

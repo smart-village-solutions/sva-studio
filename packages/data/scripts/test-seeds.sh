@@ -3,6 +3,7 @@ set -euo pipefail
 
 POSTGRES_DB="${POSTGRES_DB:-sva_studio}"
 POSTGRES_USER="${POSTGRES_USER:-sva}"
+POSTGRES_READY_DB="${POSTGRES_READY_DB:-postgres}"
 
 if ! docker compose config --services >/tmp/data-compose-services.txt 2>/tmp/data-compose-services.err; then
   echo "Failed to read docker compose services:"
@@ -27,17 +28,27 @@ if [ -z "$(docker compose ps -q postgres)" ]; then
 fi
 
 echo "Wait for Postgres readiness..."
-for _ in $(seq 1 120); do
-  if docker compose exec -T postgres pg_isready -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" >/dev/null 2>&1; then
+for _ in $(seq 1 180); do
+  if docker compose exec -T postgres pg_isready -U "${POSTGRES_USER}" -d "${POSTGRES_READY_DB}" >/dev/null 2>&1; then
     break
   fi
   sleep 1
 done
 
-if ! docker compose exec -T postgres pg_isready -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" >/dev/null 2>&1; then
+if ! docker compose exec -T postgres pg_isready -U "${POSTGRES_USER}" -d "${POSTGRES_READY_DB}" >/dev/null 2>&1; then
   echo "Postgres did not become ready in time."
   docker compose logs postgres --tail=200 || true
   exit 1
+fi
+
+echo "Ensure target database exists..."
+db_exists=$(
+  docker compose exec -T postgres psql -tA -U "${POSTGRES_USER}" -d postgres \
+    -c "SELECT 1 FROM pg_database WHERE datname = '${POSTGRES_DB}'"
+)
+if [ "${db_exists}" != "1" ]; then
+  docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U "${POSTGRES_USER}" -d postgres \
+    -c "CREATE DATABASE \"${POSTGRES_DB}\";"
 fi
 
 echo "Apply migrations..."

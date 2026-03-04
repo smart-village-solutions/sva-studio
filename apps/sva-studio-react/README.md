@@ -3,7 +3,7 @@
 ## Getting Started
 
 ### Voraussetzungen
-- Node.js (>= 22.12.0)
+- Node.js (>= 25.0.0)
 - pnpm (>= 9.12.2)
 
 ### Abhängigkeiten installieren (Repo-Root)

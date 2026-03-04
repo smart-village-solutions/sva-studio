@@ -222,6 +222,6 @@ Zur langfristigen Architektur-Governance erzwingen wir Import-Grenzen mit
 3. Lint lokal ausführen und Rule-Verletzungen vor dem Commit beheben
 
 ## Hinweise
-- TanStack Start benötigt Node >= 22.12.0
+- TanStack Start benötigt Node >= 25.0.0
 - Routing erfolgt über eine Code-Registry; siehe docs/routing.md
 - Package-Manager ist pnpm (siehe pnpm-workspace.yaml)

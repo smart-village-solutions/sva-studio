@@ -28,8 +28,10 @@ if [ -z "$(docker compose ps -q postgres)" ]; then
 fi
 
 echo "Wait for Postgres readiness..."
-for _ in $(seq 1 180); do
-  if docker compose exec -T postgres pg_isready -U "${POSTGRES_USER}" -d "${POSTGRES_READY_DB}" >/dev/null 2>&1; then
+attempt=0
+until docker compose exec -T postgres pg_isready -U "${POSTGRES_USER}" -d "${POSTGRES_READY_DB}" >/dev/null 2>&1; do
+  attempt=$((attempt + 1))
+  if [ "${attempt}" -ge 300 ]; then
     break
   fi
   sleep 1

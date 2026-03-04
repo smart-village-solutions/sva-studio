@@ -30,7 +30,7 @@ export default [
             },
             {
               sourceTag: 'scope:plugin',
-              onlyDependOnLibsWithTags: ['scope:core', 'scope:plugin'],
+              onlyDependOnLibsWithTags: ['scope:sdk', 'scope:plugin'],
             },
             {
               sourceTag: 'scope:app',
@@ -41,6 +41,28 @@ export default [
                 'scope:plugin',
                 'scope:routing',
               ],
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['packages/plugin-*/**/*.{ts,tsx,js,jsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '@sva/core',
+              message: 'Plugins müssen über @sva/sdk auf Host-APIs zugreifen.',
+            },
+          ],
+          patterns: [
+            {
+              group: ['@sva/core/*'],
+              message: 'Plugins müssen über @sva/sdk auf Host-APIs zugreifen.',
             },
           ],
         },

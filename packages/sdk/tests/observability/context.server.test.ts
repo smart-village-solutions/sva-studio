@@ -61,7 +61,7 @@ describe('workspace context', () => {
   });
 
   it('warns in development and continues when workspace id is missing', () => {
-    const emitWarningSpy = vi.spyOn(process, 'emitWarning').mockImplementation(() => {});
+    const emitWarningSpy = vi.spyOn(process, 'emitWarning').mockImplementation((..._args) => undefined);
     const middleware = createWorkspaceContextMiddleware({
       environment: 'development',
       headerNames: ['x-custom-workspace'],

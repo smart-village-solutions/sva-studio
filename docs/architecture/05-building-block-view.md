@@ -42,8 +42,21 @@ Abhängigkeiten des aktuellen Systems.
 - `@sva/routing` -> `@sva/auth`, `@sva/core`
 - `@sva/auth` -> `@sva/sdk`
 - `@sva/sdk` -> `@sva/core`, `@sva/monitoring-client`
+- `@sva/plugin-*` -> `@sva/sdk` (kein Direktimport aus `@sva/core`)
 - `@sva/monitoring-client` -> OTEL Libraries, `@sva/sdk` Context API
 - `@sva/auth` -> `@sva/core` (IAM-Claims + Feldverschlüsselung), `pg`
+
+### Schichtregel für Plugins
+
+Erlaubte Richtung für Host-APIs in Plugin-Code:
+
+```mermaid
+flowchart LR
+  C[@sva/core] --> S[@sva/sdk]
+  S --> P[@sva/plugin-*]
+```
+
+Nicht erlaubt: `@sva/plugin-*` -> `@sva/core`
 
 ### Boundary Core vs. Framework Binding
 

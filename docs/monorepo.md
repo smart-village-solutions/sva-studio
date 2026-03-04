@@ -46,7 +46,7 @@ Kriterien:
 Konvention:
 - Name: `@sva/plugin-<name>`
 - `tags`: `scope:plugin`, plus `type:lib`
-- Abhängigkeiten nur über definierte Platform-/Plugin-Contracts
+- Host-APIs nur über `@sva/sdk` importieren; direkte Imports aus `@sva/core` sind verboten
 
 ### 4) App-lokaler Code (kein eigenes Package)
 Code bleibt in `apps/<app>/src`, wenn:
@@ -205,7 +205,7 @@ Zur langfristigen Architektur-Governance erzwingen wir Import-Grenzen mit
 - `scope:core` darf nur von `scope:core` abhängen
 - `scope:data` darf von `scope:core`, `scope:data` abhängen
 - `scope:sdk` darf von `scope:core`, `scope:data`, `scope:sdk` abhängen
-- `scope:plugin` darf von `scope:core`, `scope:plugin` abhängen
+- `scope:plugin` darf von `scope:sdk`, `scope:plugin` abhängen
 - `scope:app` darf von `scope:core`, `scope:data`, `scope:sdk`, `scope:plugin` abhängen
 
 ### Wo sind die Regeln hinterlegt?

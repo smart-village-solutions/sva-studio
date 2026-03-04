@@ -2,7 +2,7 @@
  * Root-Route-Konfiguration der Anwendung inklusive Dokument-Shell.
  */
 import { TanStackDevtools } from '@tanstack/react-devtools';
-import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router';
+import { HeadContent, Scripts, createRootRoute, useRouterState } from '@tanstack/react-router';
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools';
 import React from 'react';
 
@@ -61,17 +61,12 @@ export const rootRoute = Route;
 /**
  * Rendert das HTML-Grundgerüst mit Header, Shell-Layout und Devtools.
  *
- * Die Komponente zeigt Skeletons nur bis zur abgeschlossenen Hydration,
- * damit serverseitig gerenderte Inhalte sofort verfügbar bleiben.
+ * Die Shell zeigt Loading-Skeletons ausschließlich bei aktiver Router-Pending-Phase.
  */
 function RootDocument({ children }: Readonly<{ children: React.ReactNode }>) {
-  const [isHydrated, setIsHydrated] = React.useState(import.meta.env.SSR);
-
-  React.useEffect(() => {
-    setIsHydrated(true);
-  }, []);
-
-  const isShellLoading = !isHydrated;
+  const isShellLoading = useRouterState({
+    select: (state) => state.status === 'pending' || state.isLoading,
+  });
 
   return (
     <html lang="de">

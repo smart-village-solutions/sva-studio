@@ -1,4 +1,4 @@
-# ADR-008: Layout-Shell mit Skeleton-Bereichen (Sidebar, Kopfzeile, Content)
+# ADR-009: Layout-Shell mit Skeleton-Bereichen (Sidebar, Kopfzeile, Content)
 
 **Datum:** 25. Februar 2026
 **Status:** ✅ Accepted

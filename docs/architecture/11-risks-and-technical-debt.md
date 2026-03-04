@@ -40,7 +40,7 @@ Schulden auf IST-Basis.
    - Wahrscheinlichkeit: hoch
    - Maßnahme: Doku-Agent Reviews bei Proposal/PR verpflichtend nutzen
 
-6. Zeitbasierter Initial-Loading-Zustand in der Root-Shell
+6. Globaler Pending-basierter Initial-Loading-Zustand in der Root-Shell
    - Impact: mittel (inkonsistente Wahrnehmung bei langsamen/ schnellen Backends)
    - Wahrscheinlichkeit: mittel
    - Maßnahme: Loading-Orchestrierung an echte Pending-/Datenzustände koppeln
@@ -60,7 +60,7 @@ Schulden auf IST-Basis.
 - Teilweise No-Op Testtargets in Libraries
 - Historisch gewachsene Doku mit gemischter Tiefe
 - Offene Produktionsentscheidungen für Deployment/HA
-- Root-Shell nutzt derzeit einen kurzen, timerbasierten Loading-Trigger statt datengetriebener Pending-Quelle
+- Root-Shell nutzt derzeit einen globalen Router-Pending-Trigger statt datenquellenspezifischer Pending-Orchestrierung
 - Shell-Navigation ist aktuell nicht vollständig plugin-/metadatenbasiert
 
 ### Nachverfolgung

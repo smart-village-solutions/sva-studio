@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { createWriteStream } from 'fs';
 import { mkdir } from 'fs/promises';
-import { join, dirname } from 'path';
+import { dirname } from 'path';
 
 /**
  * PII-Redaction Test: Validiert, dass sensible Labels von Promtail entfernt werden.

@@ -278,9 +278,11 @@ export function runCoverageGate(options: RunCoverageGateOptions = {}): RunCovera
     (name) => !exemptProjects.has(name)
   );
 
-  for (const projectName of expectedProjects) {
-    if (!projects[projectName]) {
-      errors.push({ scope: 'project', message: `[${projectName}] missing coverage-summary.json` });
+  if (requireSummaries) {
+    for (const projectName of expectedProjects) {
+      if (!projects[projectName]) {
+        errors.push({ scope: 'project', message: `[${projectName}] missing coverage-summary.json` });
+      }
     }
   }
 

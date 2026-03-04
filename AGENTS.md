@@ -125,20 +125,6 @@ Behalte diesen verwalteten Block bei, damit 'openspec update' die Anweisungen ak
 
 <!-- OPENSPEC:END -->
 
-<!-- NX CONFIGURATION:START-->
-
-## Allgemeine Richtlinien für die Arbeit mit Nx
-
-- Bei der Ausführung von Tasks (z.B. build, lint, test, e2e, etc.) sollte die Task immer über `nx` ausgeführt werden (d.h. `nx run`, `nx run-many`, `nx affected`) statt das zugrunde liegende Tooling direkt zu verwenden
-- Du hast Zugriff auf den Nx MCP Server und seine Tools – nutze sie, um dem Benutzer zu helfen
-- Bei Fragen zum Repository nutze das `nx_workspace` Tool zuerst, um die Workspace-Architektur zu verstehen (wo anwendbar)
-- Wenn du mit einzelnen Projekten arbeitest, nutze das `nx_project_details` MCP Tool, um die spezifische Projektstruktur und Abhängigkeiten zu analysieren
-- Bei Fragen zu Nx-Konfiguration, Best Practices oder im Zweifelsfall nutze das `nx_docs` Tool, um aktuelle Dokumentation zu erhalten. Nutze dieses statt Annahmen über Nx-Konfiguration zu treffen
-- Wenn der Benutzer Hilfe bei Nx-Konfiguration oder Project-Graph-Fehlern benötigt, nutze das `nx_workspace` Tool, um Fehler zu ermitteln
-- Für Best Practices bei Nx-Plugins prüfe `node_modules/@nx/<plugin>/PLUGIN.md`. Nicht alle Plugins haben diese Datei – fahre fort, wenn sie nicht verfügbar ist.
-
-<!-- NX CONFIGURATION:END -->
-
 <!-- nx configuration start-->
 <!-- Leave the start & end comments to automatically receive updates. -->
 

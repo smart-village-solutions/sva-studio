@@ -18,6 +18,8 @@ permissions:
 jobs:
   coverage:
     runs-on: ubuntu-latest
+    env:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
     steps:
       - name: Checkout
@@ -57,14 +59,14 @@ jobs:
         run: pnpm coverage-gate
 
       - name: Build app for Codecov bundle analysis
-        if: secrets.CODECOV_TOKEN != ''
+        if: env.CODECOV_TOKEN != ''
         run: pnpm nx run sva-studio-react:build
 
       - name: Upload to Codecov
-        if: always() && secrets.CODECOV_TOKEN != ''
+        if: always() && env.CODECOV_TOKEN != ''
         uses: codecov/codecov-action@v4
         with:
-          token: ${{ secrets.CODECOV_TOKEN }}
+          token: ${{ env.CODECOV_TOKEN }}
           files: ./apps/**/coverage/lcov.info,./packages/**/coverage/lcov.info
           fail_ci_if_error: false
           flags: unittests

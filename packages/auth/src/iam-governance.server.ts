@@ -1016,7 +1016,7 @@ export const governanceWorkflowHandler = async (request: Request): Promise<Respo
         logger.warn('Governance workflow denied due to missing role', {
           operation: parsed.operation,
           reason_code: 'forbidden',
-          ...buildLogContext(parsed.instanceId),
+          ...buildGovernanceLogContext(parsed.instanceId),
         });
         return jsonResponse(403, { error: 'forbidden' });
       }
@@ -1063,6 +1063,11 @@ export const governanceComplianceExportHandler = async (request: Request): Promi
   return withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
     return withAuthenticatedUser(request, async ({ user }) => {
       if (!hasRequiredRole(user.roles, GOVERNANCE_COMPLIANCE_EXPORT_ROLES)) {
+        logger.warn('Governance compliance export denied due to missing role', {
+          operation: 'compliance_export',
+          reason_code: 'forbidden',
+          ...buildGovernanceLogContext(user.instanceId),
+        });
         return jsonResponse(403, { error: 'forbidden' });
       }
 

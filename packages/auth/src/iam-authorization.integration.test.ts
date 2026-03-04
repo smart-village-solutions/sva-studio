@@ -8,6 +8,7 @@ const integrationState = vi.hoisted(() => ({
     instanceId: '11111111-1111-1111-8111-111111111111',
   },
   queryHandler: null as null | ((text: string, values?: readonly unknown[]) => unknown),
+  impersonationResult: { ok: true } as { ok: true } | { ok: false; reasonCode: string },
 }));
 
 vi.mock('./middleware.server', () => ({
@@ -70,6 +71,10 @@ vi.mock('pg', () => ({
   },
 }));
 
+vi.mock('./iam-governance.server', () => ({
+  resolveImpersonationSubject: vi.fn(async () => integrationState.impersonationResult),
+}));
+
 import { authorizeHandler, mePermissionsHandler } from './iam-authorization.server';
 
 describe('IAM authorization integration denials', () => {
@@ -82,6 +87,7 @@ describe('IAM authorization integration denials', () => {
       instanceId: '11111111-1111-1111-8111-111111111111',
     };
     integrationState.queryHandler = null;
+    integrationState.impersonationResult = { ok: true };
   });
 
   it('denies me/permissions for cross-instance request', async () => {
@@ -182,11 +188,140 @@ describe('IAM authorization integration denials', () => {
       requestId?: string;
       traceId?: string;
       permissions: unknown[];
+      subject: {
+        actorUserId: string;
+        effectiveUserId: string;
+        isImpersonating: boolean;
+      };
     };
 
     expect(response.status).toBe(200);
     expect(payload.requestId).toBe('req-integration');
     expect(payload.traceId).toBe('trace-integration');
     expect(payload.permissions.length).toBe(1);
+    expect(payload.subject).toEqual({
+      actorUserId: 'keycloak-sub-integration',
+      effectiveUserId: 'keycloak-sub-integration',
+      isImpersonating: false,
+    });
+  });
+
+  it('returns impersonation_not_active when actingAsUserId has no active session', async () => {
+    integrationState.impersonationResult = { ok: false, reasonCode: 'DENY_TICKET_REQUIRED' };
+
+    const request = new Request(
+      'http://localhost/iam/me/permissions?actingAsUserId=keycloak-sub-target',
+      { method: 'GET' }
+    );
+
+    const response = await mePermissionsHandler(request);
+    const payload = (await response.json()) as { error: string };
+
+    expect(response.status).toBe(403);
+    expect(payload.error).toBe('impersonation_not_active');
+  });
+
+  it('treats actingAsUserId equal to current user as self request', async () => {
+    integrationState.impersonationResult = { ok: false, reasonCode: 'DENY_TICKET_REQUIRED' };
+    integrationState.queryHandler = (text: string, values?: readonly unknown[]) => {
+      if (text.includes('SELECT DISTINCT')) {
+        expect(values?.[1]).toBe('keycloak-sub-integration');
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              permission_key: 'content.read',
+              role_id: 'cccccccc-cccc-cccc-8ccc-cccccccccccc',
+              organization_id: null,
+            },
+          ],
+        };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const request = new Request(
+      'http://localhost/iam/me/permissions?actingAsUserId=keycloak-sub-integration',
+      { method: 'GET' }
+    );
+
+    const response = await mePermissionsHandler(request);
+    const payload = (await response.json()) as {
+      permissions: unknown[];
+      subject: {
+        actorUserId: string;
+        effectiveUserId: string;
+        isImpersonating: boolean;
+      };
+    };
+
+    expect(response.status).toBe(200);
+    expect(payload.permissions.length).toBe(1);
+    expect(payload.subject).toEqual({
+      actorUserId: 'keycloak-sub-integration',
+      effectiveUserId: 'keycloak-sub-integration',
+      isImpersonating: false,
+    });
+  });
+
+  it('returns impersonation_expired when actingAsUserId session expired', async () => {
+    integrationState.impersonationResult = {
+      ok: false,
+      reasonCode: 'DENY_IMPERSONATION_DURATION_EXCEEDED',
+    };
+
+    const request = new Request(
+      'http://localhost/iam/me/permissions?actingAsUserId=keycloak-sub-target',
+      { method: 'GET' }
+    );
+
+    const response = await mePermissionsHandler(request);
+    const payload = (await response.json()) as { error: string };
+
+    expect(response.status).toBe(403);
+    expect(payload.error).toBe('impersonation_expired');
+  });
+
+  it('resolves permissions for actingAsUserId and sets subject metadata', async () => {
+    integrationState.impersonationResult = { ok: true };
+    integrationState.queryHandler = (text: string, values?: readonly unknown[]) => {
+      if (text.includes('SELECT DISTINCT')) {
+        expect(values?.[1]).toBe('keycloak-sub-target');
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              permission_key: 'content.read',
+              role_id: 'bbbbbbbb-bbbb-bbbb-8bbb-bbbbbbbbbbbb',
+              organization_id: null,
+            },
+          ],
+        };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const request = new Request(
+      'http://localhost/iam/me/permissions?actingAsUserId=keycloak-sub-target',
+      { method: 'GET' }
+    );
+
+    const response = await mePermissionsHandler(request);
+    const payload = (await response.json()) as {
+      permissions: unknown[];
+      subject: {
+        actorUserId: string;
+        effectiveUserId: string;
+        isImpersonating: boolean;
+      };
+    };
+
+    expect(response.status).toBe(200);
+    expect(payload.permissions.length).toBe(1);
+    expect(payload.subject).toEqual({
+      actorUserId: 'keycloak-sub-integration',
+      effectiveUserId: 'keycloak-sub-target',
+      isImpersonating: true,
+    });
   });
 });

@@ -3,7 +3,9 @@ import { Link, Outlet, createRoute } from '@tanstack/react-router';
 import { createServerFn, useServerFn } from '@tanstack/react-start';
 import React from 'react';
 
-import { HomePage } from './index';
+import { Phase1TestPage } from './admin/api/-phase1-test-page';
+import { IamViewerPage } from './admin/-iam-page';
+import { HomePage } from './-home-page';
 
 const demoNames = ['Aria', 'Jona', 'Mika', 'Lea', 'Noah'];
 
@@ -338,6 +340,18 @@ export const coreRouteFactoriesBase = [
       getParentRoute: () => rootRoute,
       path: '/',
       component: HomePage,
+    }),
+  (rootRoute: RootRoute) =>
+    createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/admin/iam',
+      component: IamViewerPage,
+    }),
+  (rootRoute: RootRoute) =>
+    createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/admin/api/phase1-test',
+      component: Phase1TestPage,
     }),
   (rootRoute: RootRoute) => {
     const demoRoute = createRoute({

@@ -2,7 +2,7 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { HomePage } from './index';
+import { HomePage } from './-home-page';
 
 vi.mock('@tanstack/react-router', () => ({
   createFileRoute: () => () => ({}),
@@ -55,7 +55,6 @@ describe('HomePage IAM integration', () => {
       })
     );
   });
-
   it('shows denied decision when /iam/authorize returns non-OK status', async () => {
     const fetchMock = vi
       .fn()

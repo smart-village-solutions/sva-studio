@@ -9,69 +9,27 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as AdminApiPhase1TestRouteImport } from './routes/admin/api/phase1-test'
 
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminApiPhase1TestRoute = AdminApiPhase1TestRouteImport.update({
-  id: '/admin/api/phase1-test',
-  path: '/admin/api/phase1-test',
-  getParentRoute: () => rootRouteImport,
-} as any)
-
-export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '/admin/api/phase1-test': typeof AdminApiPhase1TestRoute
-}
-export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '/admin/api/phase1-test': typeof AdminApiPhase1TestRoute
-}
+export interface FileRoutesByFullPath {}
+export interface FileRoutesByTo {}
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
-  '/admin/api/phase1-test': typeof AdminApiPhase1TestRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/admin/api/phase1-test'
+  fullPaths: never
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin/api/phase1-test'
-  id: '__root__' | '/' | '/admin/api/phase1-test'
+  to: never
+  id: '__root__'
   fileRoutesById: FileRoutesById
 }
-export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
-  AdminApiPhase1TestRoute: typeof AdminApiPhase1TestRoute
-}
+export interface RootRouteChildren {}
 
 declare module '@tanstack/react-router' {
-  interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin/api/phase1-test': {
-      id: '/admin/api/phase1-test'
-      path: '/admin/api/phase1-test'
-      fullPath: '/admin/api/phase1-test'
-      preLoaderRoute: typeof AdminApiPhase1TestRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-  }
+  interface FileRoutesByPath {}
 }
 
-const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
-  AdminApiPhase1TestRoute: AdminApiPhase1TestRoute,
-}
+const rootRouteChildren: RootRouteChildren = {}
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()

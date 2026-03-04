@@ -461,6 +461,11 @@ const resolveOrganizationIdFromRequest = (request: Request) => {
   return isUuid(organizationId) ? organizationId : null;
 };
 
+const resolveActingAsUserIdFromRequest = (request: Request) => {
+  const url = new URL(request.url);
+  return readString(url.searchParams.get('actingAsUserId'));
+};
+
 export const mePermissionsHandler = async (request: Request): Promise<Response> => {
   return withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
     return withAuthenticatedUser(request, async ({ user }) => {
@@ -478,9 +483,34 @@ export const mePermissionsHandler = async (request: Request): Promise<Response> 
         return errorResponse(400, 'invalid_organization_id');
       }
 
+      const actingAsUserId = resolveActingAsUserIdFromRequest(request);
+      const isImpersonating = Boolean(actingAsUserId && actingAsUserId !== user.id);
+      const effectiveUserId = isImpersonating ? actingAsUserId : user.id;
+
+      if (isImpersonating) {
+        const impersonation = await resolveImpersonationSubject({
+          instanceId,
+          actorKeycloakSubject: user.id,
+          targetKeycloakSubject: effectiveUserId,
+        });
+
+        if (!impersonation.ok) {
+          if (impersonation.reasonCode === 'DENY_TICKET_REQUIRED') {
+            return errorResponse(403, 'impersonation_not_active');
+          }
+          if (impersonation.reasonCode === 'DENY_IMPERSONATION_DURATION_EXCEEDED') {
+            return errorResponse(403, 'impersonation_expired');
+          }
+          if (impersonation.reasonCode === 'database_unavailable') {
+            return errorResponse(503, 'database_unavailable');
+          }
+          return errorResponse(403, 'instance_scope_mismatch');
+        }
+      }
+
       const resolved = await resolveEffectivePermissions({
         instanceId,
-        keycloakSubject: user.id,
+        keycloakSubject: effectiveUserId,
         organizationId: organizationId ?? undefined,
       });
       if (!resolved.ok) {
@@ -494,6 +524,11 @@ export const mePermissionsHandler = async (request: Request): Promise<Response> 
               instanceId,
               organizationId: organizationId ?? undefined,
               permissions: [] as EffectivePermission[],
+              subject: {
+                actorUserId: user.id,
+                effectiveUserId,
+                isImpersonating,
+              },
               evaluatedAt: new Date().toISOString(),
               requestId: getWorkspaceContext().requestId,
               traceId: getWorkspaceContext().traceId,
@@ -505,6 +540,11 @@ export const mePermissionsHandler = async (request: Request): Promise<Response> 
         instanceId,
         organizationId: organizationId ?? undefined,
         permissions: resolved.permissions,
+        subject: {
+          actorUserId: user.id,
+          effectiveUserId,
+          isImpersonating,
+        },
         evaluatedAt: new Date().toISOString(),
         requestId: getWorkspaceContext().requestId,
         traceId: getWorkspaceContext().traceId,

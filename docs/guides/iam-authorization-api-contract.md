@@ -17,6 +17,7 @@ Liefert die effektiven Berechtigungen für den aktuell authentifizierten Benutze
 
 - `instanceId` (optional, UUID): Überschreibt den Session-Kontext nur, wenn identisch zur User-Instanz
 - `organizationId` (optional, UUID): Filtert Berechtigungen auf Organisationskontext
+- `actingAsUserId` (optional, String): Effektives Ziel-Subjekt für Admin-Analyse, nur mit aktiver Impersonation-Session
 
 ### Erfolgsantwort (`200`)
 
@@ -32,6 +33,11 @@ Liefert die effektiven Berechtigungen für den aktuell authentifizierten Benutze
       "sourceRoleIds": ["aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa"]
     }
   ],
+  "subject": {
+    "actorUserId": "keycloak:user-admin",
+    "effectiveUserId": "keycloak:user-target",
+    "isImpersonating": true
+  },
   "evaluatedAt": "2026-02-28T11:00:00.000Z",
   "requestId": "req-123",
   "traceId": "trace-abc"
@@ -127,6 +133,8 @@ Führt eine deterministische Autorisierungsentscheidung für `action` + `resourc
 - `invalid_instance_id`
 - `invalid_organization_id`
 - `instance_scope_mismatch`
+- `impersonation_not_active`
+- `impersonation_expired`
 - `database_unavailable`
 
 ## Stabilitätszusage für SDK-Nutzung

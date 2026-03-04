@@ -7,7 +7,10 @@
 import { Link } from '@tanstack/react-router';
 import React from 'react';
 
+import { hasIamViewerAdminRole, isIamViewerEnabled } from '../lib/iam-viewer-access';
+
 type AuthUser = {
+  id?: string;
   name: string;
   email?: string;
   roles: string[];
@@ -137,6 +140,11 @@ export default function Header({ isLoading = false }: HeaderProps) {
           <Link className="transition hover:text-white" to="/plugins/example">
             Plugin-Beispiel
           </Link>
+          {isIamViewerEnabled() && hasIamViewerAdminRole(user) ? (
+            <Link className="transition hover:text-white" to="/admin/iam">
+              IAM-Viewer
+            </Link>
+          ) : null}
           {authAction}
         </div>
       </nav>

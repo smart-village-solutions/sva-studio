@@ -24,7 +24,7 @@ Im Newcms existiert ein funktionierender Mock dieser Features (PersonsView, Acco
 - **Protected-Route-Guard:** Generische rollenbasierte Route-Protection als Wrapper
 - **Account-Profilseite (`/account`):** Eigenes Profil anzeigen und Basis-Daten (Name, Telefon, Organisation) bearbeiten; Sicherheits-Daten (Passwort, MFA, E-Mail) werden an die Keycloak Account Console delegiert
 - **User-Admin-Liste (`/admin/users`):** Tabelle aller Nutzer mit Suche, Status-Filter, Sortierung, Bulk-Aktionen
-- **User-Bearbeitungsseite (`/admin/users/:id`):** 4-Tab-Ansicht (Persönliche Daten, Verwaltung, Berechtigungen, Historie) – angelehnt an das Newcms-AccountEditView-Konzept
+- **User-Bearbeitungsseite (`/admin/users/:userId`):** 4-Tab-Ansicht (Persönliche Daten, Verwaltung, Berechtigungen, Historie) – angelehnt an das Newcms-AccountEditView-Konzept
 - **Rollen-Verwaltungs-UI (`/admin/roles`):** Übersicht der System- und Custom-Rollen mit Berechtigungs-Matrix
 
 ### Backend – IAM-Service-Endpunkte
@@ -34,20 +34,36 @@ Im Newcms existiert ein funktionierender Mock dieser Features (PersonsView, Acco
 - **Rollen/Permissions-API:** CRUD für Rollen und Berechtigungs-Zuweisungen gegen `iam.roles` / `iam.permissions`
 - **Profil-Update-API:** Endpunkt für Self-Service-Profilbearbeitung (schreibt in IAM-DB + Keycloak)
 
-### Datenbank-Schema (Postgres)
+### Datenbank-Schema (Postgres, Delta-Migration)
 
-- **`iam.accounts`:** User-Stammdaten mit Keycloak-ID-Mapping (JIT-Provisioning beim Erst-Login)
-- **`iam.roles` + `iam.role_permissions`:** Rollen-Definitionen inkl. 7-Personas-Seed-Daten
-- **`iam.account_roles`:** User-Rollen-Zuordnung mit temporalen Constraints
-- **RLS-Policies:** Row-Level-Security für Multi-Tenancy-Vorbereitung
+Das bestehende Schema (`0001_iam_core.sql`) liefert bereits Multi-Tenancy (`instance_id` + RLS), PII-Verschlüsselung (`*_ciphertext`, ADR-010) und Activity-Logging. Diese Migration **ergänzt** das Schema:
+
+- **`iam.accounts` (ALTER TABLE):** Zusätzliche Profilfelder (`first_name_ciphertext`, `last_name_ciphertext`, `phone_ciphertext`, `position`, `department`, `status`, etc.)
+- **`iam.account_roles` (ALTER TABLE):** Temporale Constraints (`valid_from`, `valid_to`, `assigned_by`)
+- **`iam.activity_logs` (ALTER TABLE):** `subject_id`- und `result`-Spalte; Immutabilitäts-Trigger
+- **Performance-Indizes:** Für `status`, `keycloak_subject`, Activity-Log-Queries
 
 ### Nicht im Scope (explizit ausgeklammert)
 
-- **Multi-Tenancy / Org-Scoping:** Wird später mit `setup-iam-identity-auth` Phase 2 nachgerüstet
+- **Hierarchische Org-Vererbung:** Phase 2 von `setup-iam-identity-auth`
 - **ABAC-Engine:** Attributbasierte Zugriffskontrolle bleibt in Phase 3 von `setup-iam-identity-auth`
-- **Hierarchische Org-Vererbung:** Nicht in der ersten Version
 - **Audit-Dashboard:** Nur grundlegendes Activity-Logging im History-Tab
 - **Externe IdP-Integration (AD, BundID):** Spätere Phase
+- **DSGVO-Datenexport (Art. 20):** Wird als separater Change nachgerüstet
+- **SCIM 2.0-Konformität:** Bewusst nicht in Phase 1 (API ist erweiterbar gestaltet)
+
+> **Hinweis Multi-Tenancy:** Das bestehende IAM-Schema enthält bereits `instance_id` auf allen Tabellen mit RLS-Policies. Diese Infrastruktur wird genutzt, nicht nachgerüstet.
+
+## Qualitäts- und Compliance-Leitplanken
+
+- **Typsicherheit:** Typsicheres Routing (Path- und Search-Params) in `@sva/routing`; keine untypisierten Route-Strings in UI-Code
+- **Sicherheit:** Input-Validierung für alle IAM-Endpunkte (Client + Server); CSRF-Schutz (Double-Submit-Cookie oder SameSite=Strict + Custom-Header) für alle mutierenden Endpunkte; Privilege-Escalation-Schutz bei Rollen-Zuweisung; Rate Limiting (60 req/min Read, 10 req/min Write)
+- **API-Versionierung:** Alle IAM-Endpunkte unter `/api/v1/iam/...` (Prefix-Versionierung)
+- **Logging:** Operative Server-Logs ausschließlich über SDK Logger (`@sva/sdk`), keine `console.*`-Nutzung
+- **PII-Schutz:** Keine Klartext-PII in operativen Logs; PII-Felder ausschließlich als `*_ciphertext` in der DB (ADR-010); Audit-Logs folgen den bestehenden IAM-Redaktionsregeln
+- **Internationalisierung:** Keine hardcodierten UI-Texte, ausschließlich `t('...')`
+- **Barrierefreiheit:** UI-Flows für Profil, User- und Rollenverwaltung erfüllen WCAG 2.1 AA / BITV 2.0
+- **Responsive Design:** Alle Views responsive ab 320px Viewport-Breite (Desktop-Tabelle → Mobile-Cards)
 
 ## Impact
 
@@ -63,9 +79,9 @@ Im Newcms existiert ein funktionierender Mock dieser Features (PersonsView, Acco
 
 - **`packages/auth/`** – Keycloak Admin API Client, Profil-Update-Endpunkte, IAM-Service
 - **`packages/core/`** – User/Permission-Typen, IAM-Datenmodell-Typen
-- **`packages/data/`** – AuthProvider, `useAuth()`, `useUsers()`, `useRoles()` Hooks
+- **`packages/data/`** – Framework-agnostische IAM-Typen und Delta-Migration
 - **`packages/routing/`** – Route-Factories für `/account`, `/admin/users`, `/admin/roles`
-- **`apps/sva-studio-react/`** – UI-Komponenten (Profil, User-Liste, User-Edit, Rollen-Verwaltung)
+- **`apps/sva-studio-react/`** – `AuthProvider`, `useAuth()`, `useUsers()`, `useRoles()` Hooks; UI-Komponenten (Profil, User-Liste, User-Edit, Rollen-Verwaltung)
 
 ### Betroffene arc42-Abschnitte
 
@@ -77,7 +93,7 @@ Im Newcms existiert ein funktionierender Mock dieser Features (PersonsView, Acco
 
 - **`setup-iam-identity-auth` Phase 1** (65% fertig) – OIDC-Login, Redis-Sessions → **Voraussetzung**
 - **`setup-iam-identity-auth` Phase 2** (0%) – Org-Schema → **Nicht blockierend**, Org-Scoping wird später nachgerüstet
-- **`refactor-plugin-sdk-boundary`** – SDK-Grenze muss klar sein für Hook-Platzierung → **Zu koordinieren**
+- **`refactor-plugin-sdk-boundary`** – SDK-Grenze muss klar sein für Hook-Platzierung → **Zu koordinieren** (Hooks vorerst in `sva-studio-react`, Migration bei SDK-Grenzänderung)
 
 ### Breaking Changes
 
@@ -92,4 +108,4 @@ Im Newcms existiert ein funktionierender Mock dieser Features (PersonsView, Acco
 
 ---
 
-**Status:** 🟡 Proposal (bereit für Review)
+**Status:** � Proposal (überarbeitet nach Review v2)

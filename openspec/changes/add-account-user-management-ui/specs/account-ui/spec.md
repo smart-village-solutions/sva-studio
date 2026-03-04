@@ -1,229 +1,349 @@
-# Account UI Specification
+```markdown
+# Account-UI Spezifikation
 
-## ADDED Requirements
+## NEUE Anforderungen
 
-### Requirement: Auth State Provider
+### Anforderung: Auth-State-Provider
 
-The system SHALL provide a central React context (`AuthProvider`) that makes authentication state available application-wide and replaces distributed API calls to `/auth/me` with a unified `useAuth()` hook.
+Das System MUSS einen zentralen React-Context (`AuthProvider` in `sva-studio-react`) bereitstellen, der den Authentifizierungs-State anwendungsweit verfügbar macht und verteilte `/auth/me`-Aufrufe durch einen einheitlichen `useAuth()`-Hook ersetzt.
 
-#### Scenario: Authentifizierter Nutzer lädt die Anwendung
+#### Szenario: Authentifizierter Nutzer lädt die Anwendung
 
-- **WHEN** ein authentifizierter Nutzer die Anwendung öffnet
-- **THEN** lädt der `AuthProvider` die User-Daten über `/auth/me`
-- **AND** stellt `{ user, isAuthenticated: true, isLoading: false }` über `useAuth()` bereit
-- **AND** alle Komponenten, die `useAuth()` nutzen, erhalten denselben State ohne eigene API-Aufrufe
+- **WENN** ein authentifizierter Nutzer die Anwendung öffnet
+- **DANN** lädt der `AuthProvider` die User-Daten über `/auth/me`
+- **UND** stellt `{ user, isAuthenticated: true, isLoading: false }` über `useAuth()` bereit
+- **UND** alle Komponenten, die `useAuth()` nutzen, erhalten denselben State ohne eigene API-Aufrufe
 
-#### Scenario: Nicht-authentifizierter Nutzer
+#### Szenario: Nicht-authentifizierter Nutzer
 
-- **WHEN** ein nicht-authentifizierter Nutzer die Anwendung öffnet
-- **THEN** gibt der `AuthProvider` `{ user: null, isAuthenticated: false, isLoading: false }` zurück
-- **AND** der `/auth/me`-Aufruf wird nicht wiederholt, bis ein expliziter Refetch ausgelöst wird
+- **WENN** ein nicht-authentifizierter Nutzer die Anwendung öffnet
+- **DANN** gibt der `AuthProvider` `{ user: null, isAuthenticated: false, isLoading: false }` zurück
+- **UND** der `/auth/me`-Aufruf wird nicht wiederholt, bis ein expliziter Refetch ausgelöst wird
 
-#### Scenario: Token-Refresh während der Session
+#### Szenario: Token-Refresh während der Session
 
-- **WHEN** der Access-Token während einer aktiven Session abläuft
-- **AND** der Refresh-Token noch gültig ist
-- **THEN** aktualisiert der `AuthProvider` die User-Daten automatisch nach dem Server-seitigen Token-Refresh
-- **AND** die Anwendung zeigt keinen Ladeindikator während des stillen Refreshs
+- **WENN** der Access-Token während einer aktiven Session abläuft
+- **UND** der Refresh-Token noch gültig ist
+- **DANN** aktualisiert der `AuthProvider` die User-Daten automatisch nach dem Server-seitigen Token-Refresh
+- **UND** die Anwendung zeigt keinen Ladeindikator während des stillen Refreshs
 
-### Requirement: Protected Route Guard
+#### Szenario: Stale-Permissions-Erkennung
 
-The system SHALL provide a generic route guard that protects routes based on authentication status and role membership.
+- **WENN** ein API-Call `403 Forbidden` zurückgibt und der Nutzer eigentlich berechtigt sein sollte
+- **DANN** wird `invalidatePermissions()` aufgerufen
+- **UND** `/auth/me` wird refetcht, um den aktuellen Berechtigungsstand zu aktualisieren
 
-#### Scenario: Unauthentifizierter Zugriff auf geschützte Route
+### Anforderung: Protected-Route-Guard
 
-- **WHEN** ein nicht-authentifizierter Nutzer eine geschützte Route aufruft
-- **THEN** wird der Nutzer zur Login-Seite weitergeleitet
-- **AND** nach erfolgreicher Authentifizierung wird er zur ursprünglichen URL zurückgeleitet
+Das System MUSS einen generischen Route-Guard bereitstellen, der Routen basierend auf Authentifizierungsstatus und Rollenzugehörigkeit schützt.
 
-#### Scenario: Authentifizierter Nutzer ohne ausreichende Rolle
+#### Szenario: Unauthentifizierter Zugriff auf geschützte Route
 
-- **WHEN** ein authentifizierter Nutzer eine Route aufruft, die eine bestimmte Rolle erfordert (z. B. `admin`)
-- **AND** der Nutzer diese Rolle nicht besitzt
-- **THEN** wird der Nutzer auf die Startseite weitergeleitet
-- **AND** eine verständliche Fehlermeldung wird angezeigt
+- **WENN** ein nicht-authentifizierter Nutzer eine geschützte Route aufruft
+- **DANN** wird der Nutzer zur Login-Seite weitergeleitet
+- **UND** nach erfolgreicher Authentifizierung wird er zur ursprünglichen URL zurückgeleitet
 
-#### Scenario: Admin-Route-Schutz
+#### Szenario: Authentifizierter Nutzer ohne ausreichende Rolle
 
-- **WHEN** die Route `/admin/users` aufgerufen wird
-- **THEN** prüft der Guard, ob der Nutzer die Rolle `system_admin` oder `app_manager` besitzt
-- **AND** nur bei positiver Prüfung wird die Seite gerendert
+- **WENN** ein authentifizierter Nutzer eine Route aufruft, die eine bestimmte Rolle erfordert (z. B. `system_admin`)
+- **UND** der Nutzer diese Rolle nicht besitzt
+- **DANN** wird der Nutzer auf die Startseite weitergeleitet
+- **UND** eine verständliche Fehlermeldung wird angezeigt (`t('auth.insufficientRole')`)
 
-### Requirement: Account Profile Page
+#### Szenario: Admin-Route-Schutz
 
-The system SHALL provide an account profile page at `/account` where authenticated users can view and edit their own basic data.
+- **WENN** die Route `/admin/users` aufgerufen wird
+- **DANN** prüft der Guard über den `routerContext`, ob der Nutzer die Rolle `system_admin` oder `app_manager` besitzt
+- **UND** nur bei positiver Prüfung wird die Seite gerendert
 
-#### Scenario: Profil anzeigen
+### Anforderung: Account-Profilseite
 
-- **WHEN** ein authentifizierter Nutzer `/account` aufruft
-- **THEN** werden Name, E-Mail, Telefon, Position, Abteilung, Sprache und Zeitzone angezeigt
-- **AND** die aktuelle Rolle und der Account-Status sind sichtbar (read-only)
-- **AND** ein Avatar oder Platzhalter-Bild wird angezeigt
+Das System MUSS eine Account-Profilseite unter `/account` bereitstellen, auf der authentifizierte Nutzer ihre eigenen Basis-Daten einsehen und bearbeiten können.
 
-#### Scenario: Basis-Daten bearbeiten
+#### Szenario: Profil anzeigen
 
-- **WHEN** ein Nutzer seine Basis-Daten (Name, Telefon, Position, Abteilung, Sprache, Zeitzone) ändert
-- **AND** das Formular absendet
-- **THEN** werden die Änderungen in der IAM-Datenbank und in Keycloak gespeichert
-- **AND** eine Erfolgsbestätigung wird angezeigt
-- **AND** der `AuthProvider`-State wird aktualisiert
+- **WENN** ein authentifizierter Nutzer `/account` aufruft
+- **DANN** werden Name, E-Mail, Telefon, Position, Abteilung, Sprache und Zeitzone angezeigt
+- **UND** die aktuelle Rolle und der Account-Status sind sichtbar (read-only)
+- **UND** ein Avatar oder Platzhalter-Bild wird angezeigt
+- **UND** die Seite zeigt einen Loading-State (`aria-busy="true"`) während die Daten geladen werden
+- **UND** bei einem Ladefehler wird eine Fehlermeldung mit Retry-Button angezeigt
 
-#### Scenario: Sicherheits-Einstellungen ändern
+#### Szenario: Basis-Daten bearbeiten
 
-- **WHEN** ein Nutzer auf „Passwort ändern", „E-Mail ändern" oder „Zwei-Faktor-Authentifizierung" klickt
-- **THEN** wird er zur Keycloak Account Console weitergeleitet (`{issuer}/realms/{realm}/account/`)
-- **AND** nach Abschluss kehrt er über einen konfigurierten Redirect zum Studio zurück
+- **WENN** ein Nutzer seine Basis-Daten (Name, Telefon, Position, Abteilung, Sprache, Zeitzone) ändert
+- **UND** das Formular absendet
+- **DANN** werden die Änderungen in der IAM-Datenbank und in Keycloak gespeichert
+- **UND** eine Erfolgsbestätigung wird angezeigt (`role="status"`, `aria-live="polite"`)
+- **UND** der `AuthProvider`-State wird aktualisiert
+- **UND** der Fokus wird nach dem Speichern auf die Erfolgsbestätigung gesetzt
 
-#### Scenario: Validierungsfehler bei Profilbearbeitung
+#### Szenario: Sicherheits-Einstellungen ändern (Keycloak-Redirect)
 
-- **WHEN** ein Nutzer ungültige Daten eingibt (z. B. leerer Name, ungültiges Telefonnummerformat)
-- **THEN** werden feldspezifische Fehlermeldungen angezeigt
-- **AND** das Formular wird nicht abgesendet
+- **WENN** ein Nutzer auf „Passwort ändern", „E-Mail ändern" oder „Zwei-Faktor-Authentifizierung" klickt
+- **DANN** wird ein Hinweis angezeigt: „Sie werden zur Keycloak-Kontoverwaltung weitergeleitet" (`t('account.keycloakRedirectHint')`)
+- **UND** der Link zeigt ein externes-Link-Icon mit `aria-label` (z. B. „Passwort ändern – öffnet Keycloak-Kontoverwaltung")
+- **UND** nach Abschluss kehrt der Nutzer über `redirect_uri` → `/account?returnedFromKeycloak=true` zurück
+- **UND** die Weiterleitung öffnet im selben Tab (konsistente Navigation)
 
-### Requirement: User Administration List
+#### Szenario: Validierungsfehler bei Profilbearbeitung
 
-The system SHALL provide a user administration list view at `/admin/users` that enables administrators to manage all user accounts.
+- **WENN** ein Nutzer ungültige Daten eingibt (z. B. leerer Name, ungültiges Telefonnummerformat)
+- **DANN** werden feldspezifische Fehlermeldungen angezeigt (`aria-invalid="true"`, `aria-describedby`)
+- **UND** eine Error-Summary wird am Formularanfang angezeigt
+- **UND** der Fokus wird auf das erste fehlerhafte Feld gesetzt
+- **UND** das Formular wird nicht abgesendet
 
-#### Scenario: User-Liste laden
+### Anforderung: User-Administrationsliste
 
-- **WHEN** ein Administrator `/admin/users` aufruft
-- **THEN** wird eine Tabelle aller Nutzer angezeigt mit Spalten: Name, E-Mail, Rolle, Status, Letzter Login
-- **AND** die Tabelle unterstützt Sortierung nach jeder Spalte
-- **AND** die Tabelle paginiert bei mehr als 25 Einträgen
+Das System MUSS eine User-Administrationsliste unter `/admin/users` bereitstellen, mit der Administratoren alle Benutzer-Accounts verwalten können.
 
-#### Scenario: User-Suche
+#### Szenario: User-Liste laden
+
+- **WENN** ein Administrator `/admin/users` aufruft
+- **DANN** wird eine semantische Tabelle (`<table>` mit `<caption>` oder `aria-label`) aller Nutzer angezeigt
+- **UND** die Spalten sind: Name, E-Mail, Rolle, Status, Letzter Login
+- **UND** jede Tabellenkopfzelle hat `<th scope="col">`
+- **UND** sortierbare Spalten haben `aria-sort` (ascending|descending|none)
+- **UND** die Tabelle paginiert bei mehr als 25 Einträgen
+- **UND** ein Loading-State (`aria-busy="true"`) wird angezeigt, bis die Daten geladen sind
+- **UND** bei leerem Ergebnis wird ein Empty-State angezeigt (`t('admin.users.emptyState')`)
 
-- **WHEN** ein Administrator einen Suchbegriff eingibt
-- **THEN** werden die Ergebnisse nach Name, E-Mail und Organisation gefiltert
-- **AND** die Filterung erfolgt in Echtzeit (Debounce 300ms)
+#### Szenario: User-Suche
 
-#### Scenario: Status-Filter
+- **WENN** ein Administrator einen Suchbegriff eingibt
+- **DANN** werden die Ergebnisse nach Name, E-Mail und Organisation gefiltert
+- **UND** die Filterung erfolgt in Echtzeit (Debounce 300ms)
 
-- **WHEN** ein Administrator den Status-Filter auf „Aktiv", „Inaktiv" oder „Ausstehend" setzt
-- **THEN** zeigt die Tabelle nur Nutzer mit dem ausgewählten Status
-- **AND** der Filter ist mit der Suche kombinierbar
+#### Szenario: Status-Filter
 
-#### Scenario: Bulk-Aktionen
+- **WENN** ein Administrator den Status-Filter auf „Aktiv", „Inaktiv" oder „Ausstehend" setzt
+- **DANN** zeigt die Tabelle nur Nutzer mit dem ausgewählten Status
+- **UND** der Filter ist mit der Suche kombinierbar
 
-- **WHEN** ein Administrator mehrere Nutzer per Checkbox auswählt
-- **AND** eine Bulk-Aktion ausführt (z. B. „Deaktivieren", „Löschen")
-- **THEN** wird eine Bestätigungsmeldung angezeigt
-- **AND** nach Bestätigung werden alle ausgewählten Nutzer aktualisiert
-- **AND** ein Activity-Log-Eintrag wird pro betroffenem Nutzer erstellt
+#### Szenario: Status-Badge-Darstellung
 
-#### Scenario: Neuen Nutzer anlegen
+- **WENN** ein Account-Status angezeigt wird (aktiv/inaktiv/ausstehend)
+- **DANN** wird neben der Farbe immer ein Text-Label angezeigt (`t('admin.users.status.active')` etc.)
+- **UND** optional ein differenzierendes Icon (z. B. Häkchen, Pause, Uhr)
+- **UND** das Kontrastverhältnis beträgt mindestens 4.5:1 (WCAG 1.4.1 + 1.4.3)
 
-- **WHEN** ein Administrator auf „Nutzer anlegen" klickt
-- **THEN** öffnet sich ein Formular mit Pflichtfeldern: Name, E-Mail, Rolle
-- **AND** nach dem Speichern wird der Nutzer in der IAM-DB und in Keycloak erstellt
-- **AND** der Nutzer erhält eine Einladungs-E-Mail über Keycloak
+#### Szenario: Bulk-Aktionen
 
-### Requirement: User Edit Page
+- **WENN** ein Administrator mehrere Nutzer per Checkbox auswählt
+- **UND** eine Bulk-Aktion ausführt (z. B. „Deaktivieren")
+- **DANN** wird eine Bestätigungsmeldung in einem `role="alertdialog"` angezeigt
+- **UND** die maximale Batch-Größe beträgt 50 Nutzer
+- **UND** der aktuell angemeldete Nutzer wird automatisch aus der Auswahl ausgeschlossen (Self-Protection)
+- **UND** der letzte aktive `system_admin` wird automatisch aus der Auswahl ausgeschlossen
+- **UND** nach Bestätigung werden alle ausgewählten Nutzer aktualisiert
+- **UND** ein Activity-Log-Eintrag (`user.bulk_deactivated`) wird pro betroffenem Nutzer erstellt
 
-The system SHALL provide a user edit page at `/admin/users/:userId` that enables detailed editing of a user account in a tabbed view.
+#### Szenario: Neuen Nutzer anlegen
 
-#### Scenario: Tab-Navigation
+- **WENN** ein Administrator auf „Nutzer anlegen" klickt
+- **DANN** öffnet sich ein Formular-Dialog (`role="dialog"`, `aria-modal="true"`, Focus-Trap)
+- **UND** Pflichtfelder sind markiert mit `aria-required="true"`: Name, E-Mail, Rolle
+- **UND** nach dem Speichern wird der Nutzer in der IAM-DB und in Keycloak erstellt
+- **UND** der Nutzer erhält eine Einladungs-E-Mail über Keycloak
+- **UND** bei Escape oder Klick außerhalb wird der Dialog geschlossen
 
-- **WHEN** ein Administrator die User-Bearbeitungsseite aufruft
-- **THEN** werden 4 Tabs angezeigt: „Persönliche Daten", „Verwaltung", „Berechtigungen", „Historie"
-- **AND** der erste Tab ist standardmäßig ausgewählt
-- **AND** der Tab-Wechsel erfolgt ohne Seitenneuladung
+### Anforderung: User-Bearbeitungsseite
 
-#### Scenario: Persönliche Daten bearbeiten
+Das System MUSS eine User-Bearbeitungsseite unter `/admin/users/:userId` bereitstellen, die eine detaillierte Bearbeitung eines Benutzer-Accounts in einer Tab-Ansicht ermöglicht.
 
-- **WHEN** ein Administrator den Tab „Persönliche Daten" öffnet
-- **THEN** kann er Name, E-Mail, Telefon, Position, Abteilung und Adresse des Nutzers bearbeiten
-- **AND** Änderungen werden in IAM-DB und Keycloak synchronisiert
+#### Szenario: Tab-Navigation (WAI-ARIA Tabs Pattern)
 
-#### Scenario: Verwaltung – Status und Rollen
+- **WENN** ein Administrator die User-Bearbeitungsseite aufruft
+- **DANN** werden 4 Tabs angezeigt: „Persönliche Daten", „Verwaltung", „Berechtigungen", „Historie"
+- **UND** die Tabs implementieren das WAI-ARIA Tabs Pattern:
+  - `role="tablist"` auf dem Container, `role="tab"` auf jedem Tab, `role="tabpanel"` auf dem Inhaltsbereich
+  - `aria-selected="true"` für den aktiven Tab
+  - `aria-controls` verknüpft jeden Tab mit seinem Panel
+  - Arrow-Keys (Links/Rechts) wechseln den Fokus zwischen Tabs
+  - `Home`/`End` springen zum ersten/letzten Tab
+- **UND** der erste Tab ist standardmäßig ausgewählt
+- **UND** der Tab-Wechsel erfolgt ohne Seitenneuladung
 
-- **WHEN** ein Administrator den Tab „Verwaltung" öffnet
-- **THEN** kann er den Account-Status ändern (aktiv/inaktiv/ausstehend)
-- **AND** Rollen zuweisen oder entfernen
-- **AND** Sprach- und Zeitzone-Präferenzen setzen
-- **AND** administrative Notizen hinterlegen
+#### Szenario: Persönliche Daten bearbeiten
 
-#### Scenario: Berechtigungen einsehen
+- **WENN** ein Administrator den Tab „Persönliche Daten" öffnet
+- **DANN** kann er Name, E-Mail, Telefon, Position, Abteilung und Adresse des Nutzers bearbeiten
+- **UND** alle Pflichtfelder sind mit `aria-required="true"` markiert
+- **UND** Änderungen werden in IAM-DB und Keycloak synchronisiert
 
-- **WHEN** ein Administrator den Tab „Berechtigungen" öffnet
-- **THEN** werden die effektiven Berechtigungen des Nutzers angezeigt (aggregiert aus allen zugewiesenen Rollen)
-- **AND** die Anzeige ist gruppiert nach Ressourcentyp (Inhalte, Medien, Benutzer, Module, Design, Einstellungen)
+#### Szenario: Verwaltung – Status und Rollen
 
-#### Scenario: Historie einsehen
+- **WENN** ein Administrator den Tab „Verwaltung" öffnet
+- **DANN** kann er den Account-Status ändern (aktiv/inaktiv/ausstehend)
+- **UND** Rollen zuweisen oder entfernen (unter Beachtung des Privilege-Escalation-Schutzes)
+- **UND** Sprach- und Zeitzone-Präferenzen setzen
+- **UND** administrative Notizen hinterlegen (max. 2000 Zeichen)
 
-- **WHEN** ein Administrator den Tab „Historie" öffnet
-- **THEN** werden die letzten Activity-Log-Einträge des Nutzers chronologisch angezeigt
-- **AND** jeder Eintrag zeigt: Datum, Aktion, Beschreibung, Ausführender
-- **AND** die Liste ist scrollbar und paginiert
+#### Szenario: Berechtigungen einsehen
 
-#### Scenario: Unsaved-Changes-Warnung
+- **WENN** ein Administrator den Tab „Berechtigungen" öffnet
+- **DANN** werden die effektiven Berechtigungen des Nutzers angezeigt (aggregiert aus allen zugewiesenen Rollen)
+- **UND** die Anzeige ist gruppiert nach Ressourcentyp (Inhalte, Medien, Benutzer, Module, Design, Einstellungen)
 
-- **WHEN** ein Administrator ungespeicherte Änderungen hat
-- **AND** versucht, die Seite zu verlassen oder den Tab zu wechseln
-- **THEN** wird eine Warnmeldung angezeigt
-- **AND** der Nutzer kann wählen, ob er speichern, verwerfen oder abbrechen möchte
+#### Szenario: Historie einsehen
 
-### Requirement: Roles Management Page
+- **WENN** ein Administrator den Tab „Historie" öffnet
+- **DANN** werden die letzten Activity-Log-Einträge des Nutzers chronologisch angezeigt
+- **UND** jeder Eintrag zeigt: Datum, Aktion, Beschreibung, Ausführender
+- **UND** die Liste ist scrollbar und paginiert
+- **UND** bei leerem Verlauf wird ein Empty-State angezeigt (`t('admin.users.history.empty')`)
 
-The system SHALL provide a roles management page at `/admin/roles` that enables viewing and editing of system and custom roles.
+#### Szenario: Warnung bei ungespeicherten Änderungen
 
-#### Scenario: Rollen-Übersicht
+- **WENN** ein Administrator ungespeicherte Änderungen hat
+- **UND** versucht, die Seite zu verlassen oder den Tab zu wechseln
+- **DANN** wird eine Warnmeldung in einem `role="alertdialog"` angezeigt
+- **UND** der Nutzer kann wählen, ob er speichern, verwerfen oder abbrechen möchte
+- **UND** der Dialog ist per Tastatur bedienbar (Focus-Trap, Escape zum Abbrechen)
 
-- **WHEN** ein Administrator `/admin/roles` aufruft
-- **THEN** werden alle Rollen in einer Tabelle angezeigt mit: Name, Typ (System/Custom), Beschreibung, Anzahl zugewiesener Nutzer
-- **AND** System-Rollen (7 Personas) sind als nicht-löschbar gekennzeichnet
+### Anforderung: Rollen-Verwaltungsseite
 
-#### Scenario: Berechtigungs-Matrix einer Rolle
+Das System MUSS eine Rollen-Verwaltungsseite unter `/admin/roles` bereitstellen, die das Anzeigen und Bearbeiten von System- und Custom-Rollen ermöglicht.
 
-- **WHEN** ein Administrator eine Rolle expandiert oder anklickt
-- **THEN** wird eine Berechtigungs-Matrix angezeigt
-- **AND** die Matrix zeigt pro Ressourcentyp die Aktionen: Lesen, Erstellen, Bearbeiten, Löschen, Konfigurieren
-- **AND** für System-Rollen ist die Matrix read-only
+#### Szenario: Rollen-Übersicht
 
-#### Scenario: Custom-Rolle erstellen
+- **WENN** ein Administrator `/admin/roles` aufruft
+- **DANN** werden alle Rollen in einer semantischen Tabelle angezeigt mit: Name, Typ (System/Custom), Beschreibung, Anzahl zugewiesener Nutzer
+- **UND** System-Rollen sind als nicht-löschbar gekennzeichnet
+- **UND** die Rollennamen sind vorläufig und können sich im Laufe der Entwicklung ändern
+- **UND** ein Loading-State wird angezeigt, bis die Daten geladen sind
 
-- **WHEN** ein Administrator eine neue Custom-Rolle erstellt
-- **THEN** kann er einen Namen, eine Beschreibung und Berechtigungen aus der Matrix auswählen
-- **AND** die Rolle wird in der IAM-DB gespeichert
-- **AND** die Rolle ist sofort für User-Zuweisungen verfügbar
+#### Szenario: Berechtigungs-Matrix einer Rolle
 
-#### Scenario: Custom-Rolle löschen
+- **WENN** ein Administrator eine Rolle expandiert oder anklickt
+- **DANN** wird eine Berechtigungs-Matrix angezeigt
+- **UND** die expandierbare Zeile hat `aria-expanded` und `aria-controls`
+- **UND** die Matrix zeigt pro Ressourcentyp die Aktionen: Lesen, Erstellen, Bearbeiten, Löschen, Konfigurieren
+- **UND** für System-Rollen ist die Matrix read-only
 
-- **WHEN** ein Administrator eine Custom-Rolle löschen möchte
-- **AND** die Rolle noch Nutzern zugewiesen ist
-- **THEN** wird eine Warnung angezeigt mit der Anzahl betroffener Nutzer
-- **AND** der Administrator muss die Löschung explizit bestätigen
-- **AND** die Rollenzuweisung wird von allen betroffenen Nutzern entfernt
+#### Szenario: Custom-Rolle erstellen
 
-### Requirement: IAM Service API
+- **WENN** ein Administrator eine neue Custom-Rolle erstellt
+- **DANN** kann er einen Namen, eine Beschreibung und Berechtigungen aus der Matrix auswählen
+- **UND** die Rolle wird in der IAM-DB gespeichert
+- **UND** die Rolle ist sofort für User-Zuweisungen verfügbar
 
-The system SHALL provide server-side API endpoints for user CRUD, role management, and profile updates that keep the IAM database and Keycloak in sync.
+#### Szenario: Custom-Rolle löschen
 
-#### Scenario: User auflisten
+- **WENN** ein Administrator eine Custom-Rolle löschen möchte
+- **UND** die Rolle noch Nutzern zugewiesen ist
+- **DANN** wird eine Warnung in einem `role="alertdialog"` angezeigt mit der Anzahl betroffener Nutzer
+- **UND** der Administrator muss die Löschung explizit bestätigen
+- **UND** die Rollenzuweisung wird von allen betroffenen Nutzern entfernt
+- **UND** ein `role.deleted`-Audit-Event wird geloggt
 
-- **WHEN** ein authentifizierter Administrator `GET /api/iam/users` aufruft
-- **THEN** werden alle User-Accounts aus der IAM-DB zurückgegeben
-- **AND** die Antwort enthält Pagination-Metadaten (`total`, `page`, `pageSize`)
-- **AND** Query-Parameter für Filter (`status`, `role`, `search`) werden unterstützt
+### Anforderung: Vollständige Internationalisierung der UI
 
-#### Scenario: User erstellen mit Keycloak-Sync
+Das System MUSS alle sichtbaren Texte in Account- und Admin-Views über i18n-Keys rendern. Keine hardcodierten Strings in Komponenten.
 
-- **WHEN** ein Administrator `POST /api/iam/users` aufruft
-- **THEN** wird der Nutzer zunächst in Keycloak erstellt (über Admin API)
-- **AND** anschließend in der IAM-DB mit der Keycloak-ID als Referenz gespeichert
-- **AND** bei einem Fehler in einem der Schritte wird ein Rollback ausgeführt
+#### Szenario: Profilseite wird gerendert
 
-#### Scenario: Profil-Self-Service-Update
+- **WENN** die Profilseite `/account` gerendert wird
+- **DANN** stammen alle Labels, Titel, Buttons und Fehlermeldungen aus `t('account.*')`
+- **UND** es gibt keine inline-hardcodierten UI-Texte in der Komponente
 
-- **WHEN** ein Nutzer `PATCH /api/iam/users/me/profile` aufruft
-- **THEN** werden nur die erlaubten Felder aktualisiert (Name, Telefon, Position, Abteilung, Sprache, Zeitzone)
-- **AND** die Änderungen werden in IAM-DB und Keycloak User Attributes synchronisiert
-- **AND** Felder wie E-Mail, Status oder Rollen können über diesen Endpunkt NICHT geändert werden
+#### Szenario: Admin-Views werden gerendert
 
-#### Scenario: JIT-Account-Erstellung beim Erst-Login
+- **WENN** `/admin/users` oder `/admin/roles` gerendert wird
+- **DANN** stammen alle sichtbaren Texte aus `t('admin.users.*')` bzw. `t('admin.roles.*')`
+- **UND** fehlende Übersetzungskeys werden als Build-/Test-Fehler behandelt
 
-- **WHEN** ein Nutzer sich erstmals über Keycloak authentifiziert
-- **AND** kein Eintrag in `iam.accounts` für die Keycloak-ID existiert
-- **THEN** wird automatisch ein Account erstellt mit den Daten aus dem JWT (email, name)
-- **AND** der Account erhält den Status `pending` bis ein Administrator ihn aktiviert
-- **AND** ein Activity-Log-Eintrag wird geschrieben
+### Anforderung: Barrierefreie Bedienbarkeit nach WCAG 2.1 AA / BITV 2.0
+
+Das System MUSS die Account- und Admin-Views so implementieren, dass alle Bedienflüsse per Tastatur und Screenreader nutzbar sind (WCAG 2.1 AA, BITV 2.0).
+
+#### Szenario: Tastaturbedienung in Admin-Tabellen
+
+- **WENN** ein Nutzer ohne Maus die User- oder Rollenansicht bedient
+- **DANN** sind alle interaktiven Elemente (Filter, Sortierung, Bulk-Aktionen) per Tastatur erreichbar
+- **UND** der Fokus ist jederzeit sichtbar und logisch geführt
+
+#### Szenario: Formularvalidierung
+
+- **WENN** ein Validierungsfehler in Profil- oder User-Formularen auftritt
+- **DANN** wird der Fehler programmatisch dem Feld zugeordnet (`aria-invalid="true"`, `aria-describedby`)
+- **UND** eine Error-Summary wird am Formularanfang angezeigt
+- **UND** der Fokus wird auf das erste fehlerhafte Feld gesetzt
+- **UND** der Fehlertext wird von Screenreadern verständlich vorgelesen
+
+#### Szenario: Dialog-Barrierefreiheit
+
+- **WENN** ein Modal-Dialog geöffnet wird (Bestätigung, Formular, Warnung)
+- **DANN** hat der Dialog `role="dialog"` oder `role="alertdialog"` und `aria-modal="true"`
+- **UND** ein Focus-Trap hält den Fokus im Dialog
+- **UND** Escape schließt den Dialog
+- **UND** der Fokus kehrt nach dem Schließen zum auslösenden Element zurück
+
+#### Szenario: Loading- und Fehlerzustände
+
+- **WENN** Daten geladen werden
+- **DANN** wird `aria-busy="true"` auf dem Container gesetzt
+- **UND** ein Skeleton/Spinner mit `role="status"` wird angezeigt
+- **WENN** ein Ladefehler auftritt
+- **DANN** wird eine Fehlermeldung mit Retry-Button angezeigt
+
+### Anforderung: Responsive Design
+
+Alle Account- und Admin-Views MÜSSEN auf allen Gerätegrößen nutzbar sein.
+
+#### Szenario: Desktop-Layout (>= 1024px)
+
+- **WENN** der Viewport >= 1024px breit ist
+- **DANN** wird das Standard-Tabellen-Layout mit voller Sidebar angezeigt
+
+#### Szenario: Tablet-Layout (768px–1023px)
+
+- **WENN** der Viewport zwischen 768px und 1023px breit ist
+- **DANN** wird eine kompaktere Tabelle angezeigt
+- **UND** optionale Spalten werden ausgeblendet (z. B. Letzter Login)
+
+#### Szenario: Mobile-Layout (< 768px)
+
+- **WENN** der Viewport < 768px breit ist
+- **DANN** werden Tabellenzeilen als Cards dargestellt
+- **UND** Tabs werden als horizontale Scroll-Leiste oder Dropdown angezeigt
+- **UND** alle Touch-Targets sind mindestens 44x44px (WCAG 2.5.5)
+
+### Anforderung: IAM-Service-API
+
+Das System MUSS serverseitige API-Endpunkte unter `/api/v1/iam/` für User-CRUD, Rollen-Management und Profil-Updates bereitstellen, die IAM-DB und Keycloak synchron halten.
+
+#### Szenario: User auflisten
+
+- **WENN** ein authentifizierter Administrator `GET /api/v1/iam/users` aufruft
+- **DANN** werden alle User-Accounts aus der IAM-DB zurückgegeben
+- **UND** die Antwort enthält Pagination-Metadaten (`total`, `page`, `pageSize`)
+- **UND** Query-Parameter für Filter (`status`, `role`, `search`) werden unterstützt
+- **UND** die Ergebnisse sind auf den aktuellen `instance_id`-Scope beschränkt (RLS)
+
+#### Szenario: User erstellen mit Keycloak-Sync
+
+- **WENN** ein Administrator `POST /api/v1/iam/users` aufruft
+- **DANN** wird der Nutzer zunächst in Keycloak erstellt (über `IdentityProviderPort`)
+- **UND** anschließend in der IAM-DB mit `keycloak_subject` als Referenz gespeichert
+- **UND** bei einem Keycloak-Fehler wird kein DB-Eintrag erstellt
+- **UND** bei einem DB-Fehler nach erfolgreichem Keycloak-Call wird der Keycloak-User entfernt (Compensation)
+
+#### Szenario: Profil-Self-Service-Update
+
+- **WENN** ein Nutzer `PATCH /api/v1/iam/users/me/profile` aufruft
+- **DANN** werden nur die erlaubten Felder aktualisiert (Name, Telefon, Position, Abteilung, Sprache, Zeitzone)
+- **UND** PII-Felder werden als `*_ciphertext` verschlüsselt gespeichert
+- **UND** die Änderungen werden in IAM-DB und Keycloak User Attributes synchronisiert
+- **UND** Felder wie E-Mail, Status oder Rollen können über diesen Endpunkt NICHT geändert werden
+
+#### Szenario: JIT-Account-Erstellung beim Erst-Login
+
+- **WENN** ein Nutzer sich erstmals über Keycloak authentifiziert
+- **UND** kein Eintrag in `iam.accounts` für den `keycloak_subject` existiert
+- **DANN** wird automatisch ein Account erstellt via `INSERT ... ON CONFLICT (keycloak_subject, instance_id) DO UPDATE` (Race-Condition-sicher)
+- **UND** der Account erhält den Status `pending` bis ein Administrator ihn aktiviert
+- **UND** ein `user.jit_provisioned`-Activity-Log-Eintrag wird geschrieben
+
+```

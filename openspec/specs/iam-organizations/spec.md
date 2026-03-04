@@ -62,3 +62,15 @@ Das System SHALL versionierte Migrationen mit Rollback-Pfad und idempotenten See
 - **WHEN** Seeds mehrfach ausgeführt werden
 - **THEN** entstehen keine doppelten Basisrollen oder inkonsistenten Zuordnungen
 - **AND** der Datenbestand bleibt konsistent
+
+
+### Requirement: Instanzgebundene Hierarchieauswertung
+
+Das System SHALL Hierarchie- und Vererbungsentscheidungen strikt innerhalb der aktiven `instanceId` auswerten.
+
+#### Scenario: Hierarchiezugriff über Instanzgrenze
+
+- **WHEN** eine Hierarchieauswertung Daten außerhalb der aktiven `instanceId` referenziert
+- **THEN** werden diese Daten nicht in die effektive Berechnung einbezogen
+- **AND** die Autorisierungsentscheidung bleibt instanzisoliert
+

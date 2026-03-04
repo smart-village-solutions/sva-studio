@@ -37,6 +37,16 @@ vi.mock('@sva/sdk/server', () => ({
   ) => handler(),
 }));
 
+vi.mock('@opentelemetry/api', () => ({
+  metrics: {
+    getMeter: vi.fn(() => ({
+      createHistogram: vi.fn(() => ({ record: vi.fn() })),
+      createCounter: vi.fn(() => ({ add: vi.fn() })),
+      createObservableGauge: vi.fn(() => ({ addCallback: vi.fn() })),
+    })),
+  },
+}));
+
 vi.mock('pg', () => ({
   Pool: class MockPool {
     async connect() {

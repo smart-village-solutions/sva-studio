@@ -33,6 +33,12 @@ Das System SHALL effektive Berechtigungen als Snapshots im Cache pro Benutzer- u
 - **THEN** wird die Autorisierungsentscheidung auf Basis dieses Snapshots getroffen
 - **AND** die P95-Latenz von `POST /iam/authorize` bleibt unter 50 ms
 
+#### Scenario: Snapshot-TTL und Stale-Grenze
+
+- **WHEN** Snapshot-Caching für `authorize` aktiv ist
+- **THEN** beträgt die Snapshot-TTL maximal 300 Sekunden
+- **AND** die maximal tolerierte Dauer potenziell veralteter Entscheidungen beträgt 300 Sekunden
+
 ### Requirement: Event-basierte Invalidierung mit Fallback
 
 Das System SHALL Cache-Einträge bei relevanten Änderungen invalidieren und bei Event-Problemen über Fallback-Mechanismen konsistent bleiben.
@@ -42,6 +48,7 @@ Das System SHALL Cache-Einträge bei relevanten Änderungen invalidieren und bei
 - **WHEN** Rollen oder relevante Kontextzuordnungen eines Benutzers geändert werden
 - **THEN** wird der zugehörige Cache-Eintrag invalidiert
 - **AND** eine nachfolgende Anfrage berechnet Berechtigungen neu
+- **AND** die End-to-End-Invalidierungslatenz liegt bei P95 <= 2 Sekunden und P99 <= 5 Sekunden
 
 #### Scenario: Eventverlust wird abgefangen
 
@@ -58,6 +65,16 @@ Das System SHALL die ABAC-erweiterte Authorize-Strecke mit definiertem Lastprofi
 - **WHEN** `POST /iam/authorize` unter einem Lastprofil von mindestens 100 RPS und 500 gleichzeitigen Nutzern getestet wird
 - **THEN** liegt die gemessene P95-Latenz unter 50 ms
 - **AND** die Messergebnisse werden versioniert dokumentiert
+
+### Requirement: Operative Pflichtfelder im Authorize-/Cache-Logging
+
+Das System SHALL in Authorize- und Cache-bezogenen operativen Logs die Pflichtfelder für Korrelation und Mandantenkontext mitführen.
+
+#### Scenario: Strukturierter Log-Eintrag im Authorize-/Cache-Pfad
+
+- **WHEN** im Authorize-/Cache-Pfad ein operativer Log-Eintrag erzeugt wird
+- **THEN** enthält der Eintrag mindestens `workspace_id` (= `instanceId`), `component`, `environment`, `level`
+- **AND** der Eintrag referenziert `request_id` und `trace_id`
 
 ## MODIFIED Requirements
 

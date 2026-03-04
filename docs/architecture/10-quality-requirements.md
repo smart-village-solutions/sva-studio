@@ -27,6 +27,11 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
   - `pnpm test:eslint` muss gruen sein
 - Unit-Test-Basis:
   - `pnpm test:unit` muss gruen sein
+- IAM Authorize Performance:
+  - P95 fuer `POST /iam/authorize` < 50 ms (mindestens 100 RPS / 500 gleichzeitige Nutzer als Zielprofil)
+- IAM Cache-Invaliderung:
+  - End-to-End-Latenz P95 <= 2 s, P99 <= 5 s
+  - Snapshot-TTL = 300 s, maximal tolerierte Stale-Dauer = 300 s
 - UI-Shell-Qualität:
   - Landmarks (`header`, `aside`, `main`) und Skip-Link vorhanden
   - Skeleton-Zustand für Sidebar, Kopfzeile und Contentbereich vorhanden
@@ -39,6 +44,7 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
 ### Observability-Qualität
 
 - Strukturierte Logs mit Pflichtfeldern (`component`, `environment`, `workspace_id`)
+- IAM-Authorize- und Cache-Logs enthalten zusätzlich `request_id` und `trace_id`
 - Label-Whitelist und PII-Redaction entlang der OTEL-Pipeline
 - Healthchecks fuer lokale Monitoring-Dienste in Compose
 

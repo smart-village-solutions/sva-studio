@@ -63,10 +63,26 @@ Fehlerpfad:
 
 - Falls Route-/Inhaltsdaten verzögert verfügbar sind, bleibt die Shell strukturell stabil (kein Layout-Springen), bis regulärer Inhalt rendert.
 
+### Szenario 5: IAM Authorize mit ABAC, Hierarchie und Snapshot-Cache
+
+1. Client ruft `POST /iam/authorize` mit `instanceId`, `action`, `resource` und optionalem ABAC-Kontext auf.
+2. Server erzwingt Instanzgrenze und wertet Hard-Deny-Regeln zuerst aus.
+3. Permission-Snapshot wird über User-/Instanz-/Org-Kontext im Cache gesucht.
+4. Bei Cache-Hit erfolgt die Entscheidung direkt über RBAC+ABAC-Evaluator.
+5. Bei Miss/Stale erfolgt Recompute aus DB und anschließende Snapshot-Aktualisierung.
+6. Bei Recompute-Fehler im Stale-Pfad greift Fail-Closed (`cache_stale_guard`).
+
+Fehlerpfad:
+
+- Eventverlust bei Invalidation: TTL/Recompute begrenzen Stale-Dauer.
+- DB-Ausfall ohne nutzbaren Snapshot: `503 database_unavailable`.
+
 Referenzen:
 
 - `apps/sva-studio-react/src/router.tsx`
 - `apps/sva-studio-react/src/routes/__root.tsx`
 - `packages/auth/src/routes.server.ts`
+- `packages/auth/src/iam-authorization.server.ts`
+- `packages/auth/src/iam-authorization.cache.ts`
 - `packages/sdk/src/logger/index.server.ts`
 - `packages/monitoring-client/src/otel.server.ts`

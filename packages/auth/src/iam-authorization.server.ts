@@ -6,17 +6,35 @@ import type {
   IamApiErrorResponse,
   MePermissionsResponse,
 } from '@sva/core';
+import { evaluateAuthorizeDecision } from '@sva/core';
 import { createSdkLogger, getWorkspaceContext, withRequestContext } from '@sva/sdk/server';
 import { metrics } from '@opentelemetry/api';
 import { Pool, type PoolClient } from 'pg';
 
+import { parseInvalidationEvent, PermissionSnapshotCache } from './iam-authorization.cache';
 import { withAuthenticatedUser } from './middleware.server';
 
+export { evaluateAuthorizeDecision } from '@sva/core';
+
 const logger = createSdkLogger({ component: 'iam-authorize', level: 'info' });
+const cacheLogger = createSdkLogger({ component: 'iam-cache', level: 'info' });
 const authMeter = metrics.getMeter('sva.auth');
 const iamAuthorizeLatencyHistogram = authMeter.createHistogram('sva_iam_authorize_duration_ms', {
   description: 'Latency distribution for IAM authorize decisions in milliseconds.',
   unit: 'ms',
+});
+const iamCacheLookupCounter = authMeter.createCounter('sva_iam_cache_lookup_total', {
+  description: 'Cache lookups for IAM authorization snapshots.',
+});
+const iamCacheInvalidationLatencyHistogram = authMeter.createHistogram(
+  'sva_iam_cache_invalidation_duration_ms',
+  {
+    description: 'End-to-end latency for IAM cache invalidation events.',
+    unit: 'ms',
+  }
+);
+const iamCacheStaleEntriesGauge = authMeter.createObservableGauge('sva_iam_cache_stale_entry_rate', {
+  description: 'Ratio of stale cache lookups in IAM authorization path.',
 });
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -40,6 +58,20 @@ type QueryClient = {
 };
 
 let iamPool: Pool | null = null;
+const permissionSnapshotCache = new PermissionSnapshotCache(300_000, 300_000);
+const CACHE_INVALIDATION_CHANNEL = 'iam_permission_snapshot_invalidation';
+const cacheMetricsState = {
+  lookups: 0,
+  staleLookups: 0,
+};
+let invalidationListenerInit: Promise<void> | null = null;
+let invalidationListenerClient: PoolClient | null = null;
+
+iamCacheStaleEntriesGauge.addCallback((result) => {
+  const staleRate =
+    cacheMetricsState.lookups === 0 ? 0 : cacheMetricsState.staleLookups / cacheMetricsState.lookups;
+  result.observe(staleRate);
+});
 
 const resolvePool = (): Pool | null => {
   const databaseUrl = process.env.IAM_DATABASE_URL;
@@ -194,31 +226,141 @@ const withInstanceScopedDb = async <T>(
     client.release();
   }
 };
+const ensureInvalidationListener = async (): Promise<void> => {
+  if (invalidationListenerInit) {
+    return invalidationListenerInit;
+  }
 
-export const evaluateAuthorizeDecision = (
-  request: AuthorizeRequest,
-  permissions: readonly EffectivePermission[]
-): AuthorizeResponse => {
-  const allowed = permissions.some(
-    (permission) =>
-      permission.action === request.action &&
-      permission.resourceType === request.resource.type &&
-      (!permission.organizationId ||
-        permission.organizationId === request.context?.organizationId ||
-        permission.organizationId === request.resource.organizationId)
-  );
+  invalidationListenerInit = (async () => {
+    const pool = resolvePool();
+    if (!pool) {
+      return;
+    }
 
-  return {
-    allowed,
-    reason: allowed ? 'allowed_by_rbac' : 'permission_missing',
-    instanceId: request.instanceId,
-    action: request.action,
-    resourceType: request.resource.type,
-    resourceId: request.resource.id,
-    requestId: request.context?.requestId,
-    traceId: request.context?.traceId,
-    evaluatedAt: new Date().toISOString(),
-  };
+    const client = (await pool.connect()) as PoolClient & {
+      on?: (event: string, listener: (payload: { payload?: string }) => void) => void;
+    };
+    await client.query(`LISTEN ${CACHE_INVALIDATION_CHANNEL}`);
+    invalidationListenerClient = client;
+    cacheLogger.info('Cache invalidation listener initialized', {
+      operation: 'cache_invalidate',
+      trigger: 'pg_notify',
+      listener_ready: Boolean(invalidationListenerClient),
+      ...buildRequestContext(),
+    });
+    client.on?.('notification', (message) => {
+      if (!message.payload) {
+        return;
+      }
+      const receivedAt = Date.now();
+      const parsed = parseInvalidationEvent(message.payload);
+      if (!parsed) {
+        cacheLogger.warn('Cache invalidation payload could not be parsed', {
+          operation: 'cache_invalidate_failed',
+          trigger: 'pg_notify',
+          payload: message.payload,
+          ...buildRequestContext(),
+        });
+        return;
+      }
+
+      permissionSnapshotCache.invalidate({
+        instanceId: parsed.instanceId,
+        keycloakSubject: parsed.keycloakSubject,
+      });
+      iamCacheInvalidationLatencyHistogram.record(Date.now() - receivedAt, { trigger: parsed.trigger });
+      cacheLogger.info('Cache invalidation event received', {
+        operation: 'cache_invalidate',
+        trigger: parsed.trigger,
+        affected_scope: parsed.keycloakSubject ? 'user' : 'instance',
+        ...buildRequestContext(parsed.instanceId),
+      });
+    });
+  })().catch((error) => {
+    invalidationListenerInit = null;
+    cacheLogger.error('Failed to initialize cache invalidation listener', {
+      operation: 'cache_invalidate_failed',
+      trigger: 'pg_notify',
+      error: error instanceof Error ? error.message : String(error),
+      ...buildRequestContext(),
+    });
+  });
+
+  return invalidationListenerInit;
+};
+
+const loadPermissionsFromDb = async (input: {
+  instanceId: string;
+  keycloakSubject: string;
+  organizationId?: string;
+}): Promise<readonly EffectivePermission[]> => {
+  const rows = await withInstanceScopedDb(input.instanceId, async (client) => listPermissionRows(client, input));
+  return toEffectivePermissions(rows);
+};
+
+const resolveEffectivePermissions = async (input: {
+  instanceId: string;
+  keycloakSubject: string;
+  organizationId?: string;
+}): Promise<
+  | { ok: true; permissions: readonly EffectivePermission[] }
+  | { ok: false; error: 'database_unavailable' | 'cache_stale_guard' }
+> => {
+  await ensureInvalidationListener();
+
+  cacheMetricsState.lookups += 1;
+  const lookup = permissionSnapshotCache.get(input);
+
+  if (lookup.status === 'hit' && lookup.snapshot) {
+    iamCacheLookupCounter.add(1, { hit: true });
+    cacheLogger.debug('Permission snapshot cache lookup', {
+      operation: 'cache_lookup',
+      hit: true,
+      ttl_remaining_s: lookup.ttlRemainingSeconds,
+      ...buildRequestContext(input.instanceId),
+    });
+    return { ok: true, permissions: lookup.snapshot.permissions };
+  }
+
+  iamCacheLookupCounter.add(1, { hit: false });
+  cacheLogger.debug('Permission snapshot cache lookup', {
+    operation: 'cache_lookup',
+    hit: false,
+    ...buildRequestContext(input.instanceId),
+  });
+  if (lookup.status === 'stale') {
+    cacheMetricsState.staleLookups += 1;
+    cacheLogger.warn('Stale permission snapshot detected', {
+      operation: 'cache_stale_detected',
+      age_s: lookup.ageSeconds,
+      max_ttl_s: 300,
+      ...buildRequestContext(input.instanceId),
+    });
+  }
+
+  try {
+    const permissions = await loadPermissionsFromDb(input);
+    permissionSnapshotCache.set(input, permissions);
+    if (lookup.status === 'stale') {
+      cacheLogger.info('Permission snapshot recomputed after stale detection', {
+        operation: 'cache_invalidate',
+        trigger: 'recompute',
+        affected_keys: 1,
+        ...buildRequestContext(input.instanceId),
+      });
+    }
+    return { ok: true, permissions };
+  } catch (error) {
+    cacheLogger.error('Failed to recompute permission snapshot', {
+      operation: 'cache_invalidate_failed',
+      error: error instanceof Error ? error.message : String(error),
+      ...buildRequestContext(input.instanceId),
+    });
+    if (lookup.status === 'stale') {
+      return { ok: false, error: 'cache_stale_guard' };
+    }
+    return { ok: false, error: 'database_unavailable' };
+  }
 };
 
 const parseAuthorizeRequest = async (request: Request): Promise<AuthorizeRequest | null> => {
@@ -319,28 +461,33 @@ export const mePermissionsHandler = async (request: Request): Promise<Response> 
         return errorResponse(400, 'invalid_organization_id');
       }
 
-      let rows: readonly PermissionRow[];
-      try {
-        rows = await withInstanceScopedDb(instanceId, async (client) =>
-          listPermissionRows(client, {
-            instanceId,
-            keycloakSubject: user.id,
-            organizationId: organizationId ?? undefined,
-          })
-        );
-      } catch (error) {
-        logger.error('Failed to resolve permissions from database', {
+      const resolved = await resolveEffectivePermissions({
+        instanceId,
+        keycloakSubject: user.id,
+        organizationId: organizationId ?? undefined,
+      });
+      if (!resolved.ok) {
+        logger.error('Failed to resolve permissions from cache/database', {
           operation: 'me_permissions',
-          error: error instanceof Error ? error.message : String(error),
+          error: resolved.error,
           ...buildRequestContext(instanceId),
         });
-        return errorResponse(503, 'database_unavailable');
+        return resolved.error === 'cache_stale_guard'
+          ? jsonResponse(200, {
+              instanceId,
+              organizationId: organizationId ?? undefined,
+              permissions: [] as EffectivePermission[],
+              evaluatedAt: new Date().toISOString(),
+              requestId: getWorkspaceContext().requestId,
+              traceId: getWorkspaceContext().traceId,
+            } satisfies MePermissionsResponse)
+          : errorResponse(503, 'database_unavailable');
       }
 
       const response: MePermissionsResponse = {
         instanceId,
         organizationId: organizationId ?? undefined,
-        permissions: toEffectivePermissions(rows),
+        permissions: resolved.permissions,
         evaluatedAt: new Date().toISOString(),
         requestId: getWorkspaceContext().requestId,
         traceId: getWorkspaceContext().traceId,
@@ -396,26 +543,36 @@ export const authorizeHandler = async (request: Request): Promise<Response> => {
         return jsonResponse(200, denied);
       }
 
-      let rows: readonly PermissionRow[];
-      try {
-        rows = await withInstanceScopedDb(payload.instanceId, async (client) =>
-          listPermissionRows(client, {
-            instanceId: payload.instanceId,
-            keycloakSubject: user.id,
-            organizationId: payload.context?.organizationId ?? payload.resource.organizationId,
-          })
-        );
-      } catch (error) {
-        logger.error('Failed to evaluate authorize decision from database', {
+      const resolved = await resolveEffectivePermissions({
+        instanceId: payload.instanceId,
+        keycloakSubject: user.id,
+        organizationId: payload.context?.organizationId ?? payload.resource.organizationId,
+      });
+      if (!resolved.ok) {
+        logger.error('Failed to evaluate authorize decision from cache/database', {
           operation: 'authorize',
-          error: error instanceof Error ? error.message : String(error),
+          error: resolved.error,
           ...buildRequestContext(payload.instanceId),
         });
+        if (resolved.error === 'cache_stale_guard') {
+          const denied: AuthorizeResponse = {
+            allowed: false,
+            reason: 'cache_stale_guard',
+            instanceId: payload.instanceId,
+            action: payload.action,
+            resourceType: payload.resource.type,
+            resourceId: payload.resource.id,
+            evaluatedAt: new Date().toISOString(),
+            requestId: payload.context?.requestId ?? getWorkspaceContext().requestId,
+            traceId: payload.context?.traceId ?? getWorkspaceContext().traceId,
+          };
+          recordLatency(false, denied.reason);
+          return jsonResponse(200, denied);
+        }
         recordLatency(false, 'database_unavailable');
         return errorResponse(503, 'database_unavailable');
       }
-      const permissions = toEffectivePermissions(rows);
-      const decision = evaluateAuthorizeDecision(payload, permissions);
+      const decision = evaluateAuthorizeDecision(payload, resolved.permissions);
 
       logger[decision.allowed ? 'debug' : 'warn']('Authorize decision evaluated', {
         operation: 'authorize',

@@ -22,10 +22,18 @@ export type AuthorizeRequest = {
   };
 };
 
-export const allowReasonCodes = ['allowed_by_rbac'] as const;
+export const allowReasonCodes = ['allowed_by_rbac', 'allowed_by_abac'] as const;
 export type AllowReasonCode = (typeof allowReasonCodes)[number];
 
-export const denyReasonCodes = ['permission_missing', 'instance_scope_mismatch'] as const;
+export const denyReasonCodes = [
+  'permission_missing',
+  'instance_scope_mismatch',
+  'context_attribute_missing',
+  'abac_condition_unmet',
+  'hierarchy_restriction',
+  'policy_conflict_restrictive_wins',
+  'cache_stale_guard',
+] as const;
 export type DenyReasonCode = (typeof denyReasonCodes)[number];
 
 export type AuthorizeReasonCode = AllowReasonCode | DenyReasonCode;

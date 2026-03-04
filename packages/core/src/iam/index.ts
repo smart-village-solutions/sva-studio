@@ -1,5 +1,6 @@
 export { extractRoles, resolveInstanceId, resolveUserName } from './claims';
 export { parseJwtPayload } from './token';
+export { evaluateAuthorizeDecision } from './authorization-engine';
 export type {
   AllowReasonCode,
   AuthorizeRequest,

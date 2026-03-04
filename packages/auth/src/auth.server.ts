@@ -1,9 +1,10 @@
 // Server-side OIDC helpers for login, session management, and logout flows.
 import { randomUUID } from 'node:crypto';
 import { extractRoles, parseJwtPayload, resolveInstanceId, resolveUserName } from '@sva/core';
-import { createSdkLogger, getWorkspaceContext } from '@sva/sdk/server';
+import { createSdkLogger } from '@sva/sdk/server';
 
 import { getAuthConfig } from './config';
+import { buildLogContext, isTokenErrorLike } from './log-context.server';
 import { client, getOidcConfig } from './oidc.server';
 import {
   consumeLoginState,
@@ -17,30 +18,6 @@ import type { LoginState, SessionUser } from './types';
 
 const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
 const TOKEN_REFRESH_SKEW_MS = 60_000;
-
-const buildLogContext = (workspaceId?: string) => {
-  const context = getWorkspaceContext();
-  return {
-    workspace_id: workspaceId ?? context.workspaceId ?? 'default',
-    request_id: context.requestId,
-  };
-};
-
-const isTokenErrorLike = (error: unknown) => {
-  if (!error || typeof error !== 'object') {
-    return false;
-  }
-  const typed = error as { name?: unknown; code?: unknown; error?: unknown };
-  const name = typeof typed.name === 'string' ? typed.name.toLowerCase() : '';
-  const code = typeof typed.code === 'string' ? typed.code.toLowerCase() : '';
-  const oauthError = typeof typed.error === 'string' ? typed.error.toLowerCase() : '';
-  return (
-    name.includes('token') ||
-    name.includes('oauth') ||
-    code.includes('token') ||
-    oauthError.length > 0
-  );
-};
 
 /**
  * Builds the OIDC authorization URL and stores the login state.

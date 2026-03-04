@@ -4,7 +4,7 @@
 
 ### Requirement: Immutable Logging für Identity-Basisereignisse
 
-Das System MUST sicherheitsrelevante Identity-Ereignisse aus Child A unveränderbar protokollieren.
+Das System MUSS sicherheitsrelevante Identity-Ereignisse aus Child A unveränderbar protokollieren.
 
 #### Scenario: Login/Logout wird protokolliert
 
@@ -20,7 +20,7 @@ Das System MUST sicherheitsrelevante Identity-Ereignisse aus Child A unveränder
 
 ### Requirement: Dual-Write für Child-A-Sicherheitsereignisse
 
-Das System MUST Child-A-Sicherheitsereignisse sowohl in `iam.activity_logs` als auch über den SDK Logger in die OTEL-Pipeline emittieren.
+Das System MUSS Child-A-Sicherheitsereignisse sowohl in `iam.activity_logs` als auch über den SDK Logger in die OTEL-Pipeline emittieren.
 
 #### Scenario: Duale Emission bei Login-Ereignis
 

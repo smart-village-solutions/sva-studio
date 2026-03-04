@@ -2,9 +2,8 @@
  * Root-Route-Konfiguration der Anwendung inklusive Dokument-Shell.
  */
 import { TanStackDevtools } from '@tanstack/react-devtools';
-import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router';
+import { HeadContent, Scripts, createRootRoute, useRouterState } from '@tanstack/react-router';
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools';
-import { createServerFn } from '@tanstack/react-start';
 import React from 'react';
 
 import AppShell from '../components/AppShell';
@@ -16,23 +15,10 @@ import appCss from '../styles.css?url';
 /**
  * Initialisiert serverseitig notwendige SDK-Bausteine für die Root-Route.
  */
-let sdkInitialized = false;
-
-const ensureSdkInitialized = createServerFn().handler(async () => {
-  if (sdkInitialized) {
-    return { initialized: true };
-  }
-
-  const { initializeOtelSdk } = await import('@sva/sdk/server');
-  await initializeOtelSdk();
-  sdkInitialized = true;
-
-  return { initialized: true };
-});
-
 const loadRootData = async () => {
-  // Run SDK bootstrap only on the server.
+  // Run SDK bootstrap only on the server to avoid client-side server-module imports.
   if (import.meta.env.SSR) {
+    const { ensureSdkInitialized } = await import('../lib/init-sdk.server');
     await ensureSdkInitialized();
   }
   return {};
@@ -75,11 +61,12 @@ export const rootRoute = Route;
 /**
  * Rendert das HTML-Grundgerüst mit Header, Shell-Layout und Devtools.
  *
- * Die Komponente zeigt Skeletons nur bis zur abgeschlossenen Hydration,
- * damit serverseitig gerenderte Inhalte sofort verfügbar bleiben.
+ * Die Shell zeigt Loading-Skeletons ausschließlich bei aktiver Router-Pending-Phase.
  */
 function RootDocument({ children }: Readonly<{ children: React.ReactNode }>) {
-  const isShellLoading = false;
+  const isShellLoading = useRouterState({
+    select: (state) => state.status === 'pending' || state.isLoading,
+  });
 
   return (
     <html lang="de">

@@ -67,8 +67,15 @@ function writeBaseline(rootDir: string, lines = 0, statements = 0, functions = 0
   );
 }
 
-function writeCoverageSummary(rootDir: string, lines = 0, statements = 0, functions = 0, branches = 0): void {
-  const summaryPath = path.join(rootDir, 'packages/sdk/coverage');
+function writeCoverageSummary(
+  rootDir: string,
+  lines = 0,
+  statements = 0,
+  functions = 0,
+  branches = 0,
+  projectPath = 'packages/sdk'
+): void {
+  const summaryPath = path.join(rootDir, projectPath, 'coverage');
   fs.mkdirSync(summaryPath, { recursive: true });
 
   const summary = {
@@ -112,6 +119,66 @@ describe('coverage gate', () => {
         requireSummaries: true,
       })
     ).toThrow(/No coverage-summary\.json files found/);
+  });
+
+  it('passes in non-strict mode when expected project summaries are missing', () => {
+    const rootDir = createTempWorkspace();
+    writePolicy(rootDir, {
+      perProjectFloors: {
+        sdk: {
+          lines: 0,
+          statements: 0,
+          functions: 0,
+          branches: 0,
+        },
+        'sva-studio-react': {
+          lines: 0,
+          statements: 0,
+          functions: 0,
+          branches: 0,
+        },
+      },
+    });
+    writeBaseline(rootDir);
+    writeCoverageSummary(rootDir, 75, 75, 75, 75, 'apps/sva-studio-react');
+
+    const result = runCoverageGate({
+      rootDir,
+      requireSummaries: false,
+    });
+
+    expect(result.passed).toBe(true);
+    expect(result.errors.some((error) => error.includes('missing coverage-summary.json'))).toBe(false);
+  });
+
+  it('fails in strict mode when an expected project summary is missing', () => {
+    const rootDir = createTempWorkspace();
+    writePolicy(rootDir, {
+      perProjectFloors: {
+        sdk: {
+          lines: 0,
+          statements: 0,
+          functions: 0,
+          branches: 0,
+        },
+        'sva-studio-react': {
+          lines: 0,
+          statements: 0,
+          functions: 0,
+          branches: 0,
+        },
+      },
+    });
+    writeBaseline(rootDir);
+    writeCoverageSummary(rootDir, 75, 75, 75, 75, 'apps/sva-studio-react');
+
+    const result = runCoverageGate({
+      rootDir,
+      requireSummaries: true,
+    });
+
+    expect(result.passed).toBe(false);
+    expect(result.errors.some((error) => error.includes('[sdk] missing coverage-summary.json'))).toBe(true);
   });
 
   it('fails when per-project floor is not met', () => {

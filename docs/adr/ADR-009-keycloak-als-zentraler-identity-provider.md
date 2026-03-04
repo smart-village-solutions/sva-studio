@@ -9,7 +9,7 @@
 
 ## Entscheidung
 
-SVA Studio nutzt **Keycloak als zentralen Identity Provider (IdP)** fuer Authentifizierung und SSO.
+SVA Studio nutzt **Keycloak als zentralen Identity Provider (IdP)** für Authentifizierung und SSO.
 
 Die Anwendung folgt einem **serverseitigen BFF-Muster**:
 
@@ -19,38 +19,38 @@ Die Anwendung folgt einem **serverseitigen BFF-Muster**:
 - Im Browser werden keine Access-/Refresh-Token im `localStorage` oder `sessionStorage` persistiert.
 - Session-Transport erfolgt via HttpOnly-Cookie mit `SameSite=Lax` und `Secure` in Produktion.
 
-Zusatzentscheidung fuer Mandantenkontext:
+Zusatzentscheidung für Mandantenkontext:
 
-- `instanceId` wird als Identity-Claim in Tokens bereitgestellt und in den User-Kontext uebernommen.
-- Die langfristige automatische Vergabe von `instanceId` erfolgt ueber nachgelagerte Provisioning-/Datenmodell-Changes.
+- `instanceId` wird als Identity-Claim in Tokens bereitgestellt und in den User-Kontext übernommen.
+- Die langfristige automatische Vergabe von `instanceId` erfolgt über nachgelagerte Provisioning-/Datenmodell-Changes.
 
 ## Kontext und Problem
 
-Fuer das IAM-Programm wird eine belastbare Identity-Basis benoetigt, die folgende Anforderungen gleichzeitig erfuellt:
+Für das IAM-Programm wird eine belastbare Identity-Basis benötigt, die folgende Anforderungen gleichzeitig erfüllt:
 
 - Zentrale Authentifizierung mit OIDC und SSO
 - Klare Trennung von Identity und fachlicher Autorisierung
-- Gute Betriebsfaehigkeit (Session-Invalidierung, Logout, Refresh)
+- Gute Betriebsfähigkeit (Session-Invalidierung, Logout, Refresh)
 - Hohe Sicherheit im Browser-Kontext (keine Token-Persistenz im Client)
-- Erweiterbarkeit fuer spaetere IAM-Stufen (RBAC, ABAC, Governance)
+- Erweiterbarkeit für spätere IAM-Stufen (RBAC, ABAC, Governance)
 
-Ohne explizite Architekturentscheidung entsteht Inkonsistenz zwischen Frontend- und Backend-Auth-Strategie sowie ein hohes Risiko fuer unsichere Client-Token-Handhabung.
+Ohne explizite Architekturentscheidung entsteht Inkonsistenz zwischen Frontend- und Backend-Auth-Strategie sowie ein hohes Risiko für unsichere Client-Token-Handhabung.
 
 ## Betrachtete Optionen
 
 | Option | Kriterien | Bewertung | Kommentar |
 |---|---|---|---|
-| **A: Keycloak + serverseitiges BFF (entschieden)** | Sicherheit, SSO, Betriebsfaehigkeit, Erweiterbarkeit | 9/10 | Starker Fit fuer Child A und Folgeschritte |
-| B: Browserseitige OIDC-Library + Token im Frontend | Einfachere UI-Integration, aber hoehere Exposition | 5/10 | Erhoehtes Risiko durch Client-Token-Handling |
+| **A: Keycloak + serverseitiges BFF (entschieden)** | Sicherheit, SSO, Betriebsfähigkeit, Erweiterbarkeit | 9/10 | Starker Fit für Child A und Folgeschritte |
+| B: Browserseitige OIDC-Library + Token im Frontend | Einfachere UI-Integration, aber höhere Exposition | 5/10 | Erhöhtes Risiko durch Client-Token-Handling |
 | C: Eigene Auth-Implementierung ohne externen IdP | Kontrolle, aber hoher Aufwand/Risiko | 3/10 | Nicht wirtschaftlich, hoher Wartungsaufwand |
-| D: Externer SaaS-IdP statt Keycloak | Schnell startbar, aber Plattformabhaengigkeit | 6/10 | Vendor-/Betriebs-Trade-offs, nicht aktueller Projektpfad |
+| D: Externer SaaS-IdP statt Keycloak | Schnell startbar, aber Plattformabhängigkeit | 6/10 | Vendor-/Betriebs-Trade-offs, nicht aktueller Projektpfad |
 
-### Warum die gewaehlte Option?
+### Warum die gewählte Option?
 
 - ✅ OIDC/SSO ist standardisiert und in der Plattform bereits etabliert.
-- ✅ BFF reduziert Angriffsoberflaeche im Browser und vereinfacht Security Controls.
+- ✅ BFF reduziert Angriffsoberfläche im Browser und vereinfacht Security Controls.
 - ✅ Session-/Logout-/Refresh-Logik ist serverseitig kontrollierbar und testbar.
-- ✅ Die Entscheidung passt zur Child-A-Scope-Trennung (Identity jetzt, Autorisierung spaeter).
+- ✅ Die Entscheidung passt zur Child-A-Scope-Trennung (Identity jetzt, Autorisierung später).
 
 ## Trade-offs & Limitierungen
 
@@ -58,22 +58,22 @@ Ohne explizite Architekturentscheidung entsteht Inkonsistenz zwischen Frontend- 
 
 - ✅ Hohe Sicherheitskontrolle im Browser-Kontext
 - ✅ Klare technische Trennung zwischen Identity und Autorisierung
-- ✅ Gute Basis fuer Multi-Tenant-Kontext (`instanceId`)
+- ✅ Gute Basis für Multi-Tenant-Kontext (`instanceId`)
 
 ### Cons
 
-- ❌ Hoeherer serverseitiger Implementierungsaufwand (BFF + Session-Management)
-- ❌ Abhaengigkeit von Keycloak-Betrieb und dessen Verfuegbarkeit
-- ❌ Zusätzliche Betriebsaufgaben fuer Mapping/Provisioning von Claims
+- ❌ Höherer serverseitiger Implementierungsaufwand (BFF + Session-Management)
+- ❌ Abhängigkeit von Keycloak-Betrieb und dessen Verfügbarkeit
+- ❌ Zusätzliche Betriebsaufgaben für Mapping/Provisioning von Claims
 
 ## Implementierung / Ausblick
 
-- [x] OIDC-Flow ueber Keycloak implementiert (`@sva/auth`).
+- [x] OIDC-Flow über Keycloak implementiert (`@sva/auth`).
 - [x] Login/Callback/Me/Logout-Endpunkte integriert.
 - [x] Session-Transport via HttpOnly-Cookie umgesetzt.
-- [x] `instanceId`-Claim in User-Kontext uebernommen.
+- [x] `instanceId`-Claim in User-Kontext übernommen.
 - [ ] `instanceId`-Provisioning bei User-/Instanz-Anlage automatisieren (Folgearbeit, siehe Issue #89).
-- [ ] Observability-Haertung gemaess Child-A-Tasks 1.7.x abschliessen.
+- [ ] Observability-Härtung gemäß Child-A-Tasks 1.7.x abschließen.
 
 ## Scope-Abgrenzung
 
@@ -82,17 +82,17 @@ Diese ADR betrifft die Identity-Basis (Child A). Nicht Bestandteil dieser Entsch
 - RBAC-Entscheidungslogik (`add-iam-authorization-rbac-v1`)
 - ABAC/Hierarchie/Cache (`add-iam-abac-hierarchy-cache`)
 - Governance-Workflows (`add-iam-governance-workflows`)
-- Vollstaendige IAM-Datenmodellierung (`add-iam-core-data-layer`)
+- Vollständige IAM-Datenmodellierung (`add-iam-core-data-layer`)
 
 ## Migration / Exit-Strategie
 
-Ein Wechsel des IdP bleibt moeglich, weil die App ueber BFF-Endpunkte gekoppelt ist. Ein potenzieller Spaeterwechsel betrifft primaer:
+Ein Wechsel des IdP bleibt möglich, weil die App über BFF-Endpunkte gekoppelt ist. Ein potenzieller Späterwechsel betrifft primär:
 
 - OIDC-Client-/Discovery-Konfiguration
 - Claim-Mapping
 - Session- und Logout-Integration
 
-Die Frontend-Vertragsoberflaeche (`/auth/*`) kann dabei stabil bleiben.
+Die Frontend-Vertragsoberfläche (`/auth/*`) kann dabei stabil bleiben.
 
 ---
 

@@ -77,4 +77,4 @@ Das IAM-Vorhaben ist fachlich und technisch zu groß für ein einzelnes Proposal
 
 ## Status
 
-� Freigegeben (26.02.2026) – Alle Must-Entscheidungen getroffen, Child A und B startbereit
+Freigegeben (26.02.2026) – Alle Must-Entscheidungen getroffen, Child A und B startbereit

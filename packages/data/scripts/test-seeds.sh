@@ -39,6 +39,9 @@ if ! docker compose exec -T postgres pg_isready -U "${POSTGRES_USER}" -d "${POST
   exit 1
 fi
 
+echo "Apply migrations..."
+bash packages/data/scripts/run-migrations.sh up
+
 echo "Reset IAM tables for seed integration test..."
 docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" <<'SQL'
 TRUNCATE iam.activity_logs, iam.role_permissions, iam.account_roles, iam.account_organizations,
@@ -46,8 +49,7 @@ TRUNCATE iam.activity_logs, iam.role_permissions, iam.account_roles, iam.account
   RESTART IDENTITY CASCADE;
 SQL
 
-echo "Apply migrations and run seeds twice..."
-bash packages/data/scripts/run-migrations.sh up
+echo "Run seeds twice..."
 bash packages/data/scripts/run-seeds.sh
 bash packages/data/scripts/run-seeds.sh
 

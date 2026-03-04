@@ -25,6 +25,7 @@
 - [ ] 3.1 Seed-Daten für 7 Personas anlegen (idempotent)
 - [ ] 3.2 Repositories/Typen in Strict-TS ergänzen
 - [ ] 3.3 Unit-/Integrationstests für Datenzugriff ergänzen
+- [ ] 3.4 Audit-DB-Sink für Child-A-Dual-Write implementieren: Login/Logout/Account-Erstellung in `iam.activity_logs` persistieren (Referenz: `setup-iam-identity-auth` Task 1.7.5)
 
 ## 4. Verifikation & Dokumentation
 

@@ -1,10 +1,11 @@
-# Auditing Specification (Child A Scope)
+# iam-auditing Specification
 
-## ADDED Requirements
-
+## Purpose
+Diese Spezifikation definiert die Auditierungsanforderungen für Child A. Sie stellt sicher, dass sicherheitsrelevante Identity-Basisereignisse unveränderbar, PII-minimiert und über Dual-Write (DB + OTEL) nachvollziehbar erfasst werden.
+## Requirements
 ### Requirement: Immutable Logging für Identity-Basisereignisse
 
-Das System MUSS sicherheitsrelevante Identity-Ereignisse aus Child A unveränderbar protokollieren.
+Das System MUST sicherheitsrelevante Identity-Ereignisse aus Child A unveränderbar protokollieren.
 
 #### Scenario: Login/Logout wird protokolliert
 
@@ -20,18 +21,10 @@ Das System MUSS sicherheitsrelevante Identity-Ereignisse aus Child A unveränder
 
 ### Requirement: Dual-Write für Child-A-Sicherheitsereignisse
 
-Das System MUSS Child-A-Sicherheitsereignisse sowohl in `iam.activity_logs` als auch über den SDK Logger in die OTEL-Pipeline emittieren.
+Das System MUST Child-A-Sicherheitsereignisse sowohl in `iam.activity_logs` als auch über den SDK Logger in die OTEL-Pipeline emittieren.
 
 #### Scenario: Duale Emission bei Login-Ereignis
 
 - **WHEN** ein Login-Ereignis entsteht
 - **THEN** wird ein Audit-Record in `iam.activity_logs` geschrieben
 - **AND** ein strukturierter SDK-Logeintrag mit korrelierbaren IDs (`request_id`, `trace_id`) emittiert
-
-## MODIFIED Requirements
-
-(None)
-
-## REMOVED Requirements
-
-(None)

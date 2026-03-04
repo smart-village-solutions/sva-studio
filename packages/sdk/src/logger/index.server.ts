@@ -55,6 +55,9 @@ const enrichWithContext = winston.format((info) => {
   if (context.requestId && !nextContext.request_id) {
     nextContext.request_id = context.requestId;
   }
+  if (context.traceId && !nextContext.trace_id) {
+    nextContext.trace_id = context.traceId;
+  }
   if (context.userId && !nextContext.user_id) {
     nextContext.user_id = context.userId;
   }

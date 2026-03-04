@@ -3,7 +3,7 @@ import { encryptToken, decryptToken } from './crypto.server';
 import type { Session } from './types';
 import { createSdkLogger } from '@sva/sdk/server';
 
-const logger = createSdkLogger({ component: 'auth-session', level: 'info' });
+const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
 
 const SESSION_PREFIX = 'session:';
 const LOGIN_STATE_PREFIX = 'login_state:';

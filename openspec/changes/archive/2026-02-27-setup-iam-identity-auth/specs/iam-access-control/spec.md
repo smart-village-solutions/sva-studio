@@ -24,8 +24,8 @@ Das System MUSS in Child A keine fachlichen RBAC-/ABAC-Entscheidungen implementi
 
 ## MODIFIED Requirements
 
-(None)
+(Keine)
 
 ## REMOVED Requirements
 
-(None)
+(Keine)

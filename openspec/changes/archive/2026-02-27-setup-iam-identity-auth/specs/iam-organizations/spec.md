@@ -24,8 +24,8 @@ Das System MUSS in Child A keine vollständige Organisationspersistenz, RLS-Poli
 
 ## MODIFIED Requirements
 
-(None)
+(Keine)
 
 ## REMOVED Requirements
 
-(None)
+(Keine)

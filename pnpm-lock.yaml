@@ -151,6 +151,9 @@ importers:
 
   packages/auth:
     dependencies:
+      '@sva/core':
+        specifier: workspace:*
+        version: link:../core
       '@sva/sdk':
         specifier: workspace:*
         version: link:../sdk

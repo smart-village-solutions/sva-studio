@@ -20,6 +20,8 @@ export type { RequestContextOptions } from './middleware/request-context.server'
 export {
   getHeadersFromRequest,
   extractWorkspaceIdFromHeaders,
+  extractRequestIdFromHeaders,
+  extractTraceIdFromHeaders,
   withRequestContext
 } from './middleware/request-context.server';
 

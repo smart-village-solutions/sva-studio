@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createSdkLogger } from '@sva/sdk/server';
 
-const logger = createSdkLogger({ component: 'auth-redis', level: 'info' });
+const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
 
 let redisClient: Redis | null = null;
 let connectionErrorCount = 0;

@@ -78,7 +78,7 @@ jobs:
 
       - name: Upload Playwright report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: app-e2e-report-${{ github.run_id }}
           path: apps/sva-studio-react/playwright-report

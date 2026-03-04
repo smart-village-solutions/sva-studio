@@ -3,10 +3,16 @@ import { createSession, getSession } from './redis-session.server';
 import { closeRedis, getRedisClient } from './redis.server';
 import type { Session } from './types';
 
+const testKeyPrefix =
+  process.env.SVA_AUTH_REDIS_KEY_PREFIX ??
+  (process.env.NODE_ENV === 'test'
+    ? `vitest:${process.env.VITEST_WORKER_ID ?? process.env.VITEST_POOL_ID ?? 'default'}:`
+    : '');
+
 describe('Redis Session Persistenz (Restart/HMR)', () => {
   beforeEach(async () => {
     const redis = getRedisClient();
-    const keys = await redis.keys('session:*');
+    const keys = await redis.keys(`${testKeyPrefix}session:*`);
     if (keys.length > 0) {
       await redis.del(...keys);
     }
@@ -57,16 +63,16 @@ describe('Redis Session Persistenz (Restart/HMR)', () => {
 
     // Directly set data using Redis client with session prefix (required for ACL)
     const testData = { test: 'value', timestamp: Date.now() };
-    await redis.set(`session:verify-${sessionId}`, JSON.stringify(testData));
+    await redis.set(`${testKeyPrefix}session:verify-${sessionId}`, JSON.stringify(testData));
 
     // Verify it's there
-    const raw = await redis.get(`session:verify-${sessionId}`);
+    const raw = await redis.get(`${testKeyPrefix}session:verify-${sessionId}`);
     expect(raw).toBeDefined();
     const parsed = raw ? JSON.parse(raw) : null;
     expect(parsed?.test).toBe('value');
     console.log('[PERSIST] ✓ Redis persists direct data');
 
     // Clean up
-    await redis.del(`session:verify-${sessionId}`);
+    await redis.del(`${testKeyPrefix}session:verify-${sessionId}`);
   });
 });

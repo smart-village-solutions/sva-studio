@@ -6,8 +6,8 @@ const businessEventCounter = meter.createCounter('sva_business_events_total', {
   description: 'Counts domain-specific business events.'
 });
 
-const iamAuthorizeLatencyHistogram = meter.createHistogram('sva_iam_authorize_duration_ms', {
-  description: 'Latency distribution for IAM authorize decisions in milliseconds.',
+const iamAuthorizeClientLatencyHistogram = meter.createHistogram('sva_monitoring_authorize_duration_ms', {
+  description: 'Client-side latency distribution for authorize decision handling in milliseconds.',
   unit: 'ms',
 });
 
@@ -22,5 +22,5 @@ export const recordIamAuthorizeDecisionLatency = (
   durationMs: number,
   attributes: Attributes = {}
 ): void => {
-  iamAuthorizeLatencyHistogram.record(durationMs, attributes);
+  iamAuthorizeClientLatencyHistogram.record(durationMs, attributes);
 };

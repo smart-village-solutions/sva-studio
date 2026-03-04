@@ -17,6 +17,7 @@ export const getOidcConfig = async (): Promise<client.Configuration> => {
     const { issuer, clientId, clientSecret } = getAuthConfig();
     configPromise = client.discovery(new URL(issuer), clientId, clientSecret).catch((error: unknown) => {
       const context = getWorkspaceContext();
+      configPromise = undefined;
       logger.error('OIDC discovery failed', {
         operation: 'oidc_discovery',
         issuer,

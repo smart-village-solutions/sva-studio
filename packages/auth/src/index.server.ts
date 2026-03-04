@@ -2,6 +2,18 @@ export { createLoginUrl, getSessionUser, handleCallback, logoutSession } from '.
 export { emitAuthAuditEvent } from './audit-events.server';
 export type { AuthAuditEvent, AuthAuditEventType } from './audit-events.types';
 export { getAuthConfig } from './config';
+export {
+  adminDataExportHandler,
+  adminDataExportStatusHandler,
+  dataExportHandler,
+  dataExportStatusHandler,
+  dataSubjectMaintenanceHandler,
+  dataSubjectRequestHandler,
+  legalHoldApplyHandler,
+  legalHoldReleaseHandler,
+  optionalProcessingExecuteHandler,
+  profileCorrectionHandler,
+} from './iam-data-subject-rights.server';
 export { governanceComplianceExportHandler, governanceWorkflowHandler } from './iam-governance.server';
 export { authorizeHandler, mePermissionsHandler } from './iam-authorization.server';
 export { withAuthenticatedUser } from './middleware.server';

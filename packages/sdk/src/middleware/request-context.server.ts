@@ -2,6 +2,34 @@ import { randomUUID } from 'node:crypto';
 import { runWithWorkspaceContext } from '../observability/context.server';
 import type { WorkspaceContext } from '../observability/context.server';
 
+const HEADER_ID_MAX_LENGTH = 128;
+const SAFE_CONTEXT_ID_PATTERN = /^[A-Za-z0-9._:-]+$/;
+const TRACE_ID_PATTERN = /^[0-9a-f]{32}$/i;
+
+const readFirstHeaderValue = (value: string | string[] | undefined): string | undefined => {
+  const candidate = Array.isArray(value) ? value[0] : value;
+  if (typeof candidate !== 'string') {
+    return undefined;
+  }
+  const normalized = candidate.trim();
+  return normalized.length > 0 ? normalized : undefined;
+};
+
+const sanitizeHeaderContextValue = (
+  value: string | undefined,
+  options?: { maxLength?: number; pattern?: RegExp }
+): string | undefined => {
+  if (!value) {
+    return undefined;
+  }
+  const maxLength = options?.maxLength ?? HEADER_ID_MAX_LENGTH;
+  if (value.length > maxLength) {
+    return undefined;
+  }
+  const pattern = options?.pattern ?? SAFE_CONTEXT_ID_PATTERN;
+  return pattern.test(value) ? value : undefined;
+};
+
 /**
  * Extrahiert Headers aus verschiedenen Request-Formaten
  */
@@ -65,13 +93,8 @@ export const extractRequestIdFromHeaders = (
   headerNames: string[] = ['x-request-id', 'x-correlation-id']
 ): string | undefined => {
   for (const headerName of headerNames) {
-    const value = headers[headerName.toLowerCase()];
-    if (Array.isArray(value)) {
-      if (value.length > 0 && value[0]) {
-        return value[0];
-      }
-      continue;
-    }
+    const rawValue = headers[headerName.toLowerCase()];
+    const value = sanitizeHeaderContextValue(readFirstHeaderValue(rawValue));
     if (value) {
       return value;
     }
@@ -91,7 +114,7 @@ export const extractTraceIdFromHeaders = (
     headers['Traceparent'] ??
     headers['TRACEPARENT'] ??
     Object.entries(headers).find(([key]) => key.toLowerCase() === 'traceparent')?.[1];
-  const traceparent = Array.isArray(traceparentRaw) ? traceparentRaw[0] : traceparentRaw;
+  const traceparent = readFirstHeaderValue(traceparentRaw);
   if (traceparent) {
     const match = /^00-([0-9a-f]{32})-[0-9a-f]{16}-[0-9a-f]{2}$/i.exec(traceparent);
     if (match?.[1]) {
@@ -100,13 +123,11 @@ export const extractTraceIdFromHeaders = (
   }
 
   for (const headerName of fallbackHeaderNames) {
-    const value = headers[headerName.toLowerCase()];
-    if (Array.isArray(value)) {
-      if (value.length > 0 && value[0]) {
-        return value[0];
-      }
-      continue;
-    }
+    const rawValue = headers[headerName.toLowerCase()];
+    const value = sanitizeHeaderContextValue(readFirstHeaderValue(rawValue), {
+      pattern: TRACE_ID_PATTERN,
+      maxLength: 32,
+    });
     if (value) {
       return value;
     }

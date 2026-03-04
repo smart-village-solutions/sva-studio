@@ -5,8 +5,21 @@ import { createSdkLogger } from '@sva/sdk/server';
 
 const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
 
-const SESSION_PREFIX = 'session:';
-const LOGIN_STATE_PREFIX = 'login_state:';
+const resolveDefaultTestPrefix = (): string => {
+  if (process.env.NODE_ENV !== 'test') {
+    return '';
+  }
+
+  const workerId = process.env.VITEST_WORKER_ID ?? process.env.VITEST_POOL_ID;
+  return workerId ? `vitest:${workerId}:` : 'vitest:default:';
+};
+
+const resolveKeyPrefix = (): string =>
+  process.env.SVA_AUTH_REDIS_KEY_PREFIX ?? resolveDefaultTestPrefix();
+
+const sessionPrefix = () => `${resolveKeyPrefix()}session:`;
+const loginStatePrefix = () => `${resolveKeyPrefix()}login_state:`;
+
 const DEFAULT_SESSION_TTL = 60 * 60 * 24 * 7; // 7 days in seconds
 const DEFAULT_LOGIN_STATE_TTL = 60 * 10; // 10 minutes in seconds
 
@@ -66,7 +79,7 @@ export async function createSession(
   ttl: number = DEFAULT_SESSION_TTL
 ): Promise<void> {
   const redis = getRedisClient();
-  const key = SESSION_PREFIX + sessionId;
+  const key = sessionPrefix() + sessionId;
 
   // Encrypt tokens before storing
   const encryptedSession = encryptSessionTokens(session);
@@ -86,7 +99,7 @@ export async function createSession(
  */
 export async function getSession(sessionId: string): Promise<Session | undefined> {
   const redis = getRedisClient();
-  const key = SESSION_PREFIX + sessionId;
+  const key = sessionPrefix() + sessionId;
 
   const data = await redis.get(key);
 
@@ -130,7 +143,7 @@ export async function updateSession(
   updates: Partial<Session>
 ): Promise<void> {
   const redis = getRedisClient();
-  const key = SESSION_PREFIX + sessionId;
+  const key = sessionPrefix() + sessionId;
 
   // Get current session
   const currentSession = await getSession(sessionId);
@@ -162,7 +175,7 @@ export async function updateSession(
  */
 export async function deleteSession(sessionId: string): Promise<void> {
   const redis = getRedisClient();
-  const key = SESSION_PREFIX + sessionId;
+  const key = sessionPrefix() + sessionId;
 
   await redis.del(key);
 
@@ -191,7 +204,7 @@ export async function createLoginState(
   data: { codeVerifier: string; nonce: string; createdAt: number; redirectTo?: string }
 ): Promise<void> {
   const redis = getRedisClient();
-  const key = LOGIN_STATE_PREFIX + state;
+  const key = loginStatePrefix() + state;
 
   await redis.set(key, JSON.stringify(data), 'EX', DEFAULT_LOGIN_STATE_TTL);
 
@@ -209,7 +222,7 @@ export async function consumeLoginState(
   state: string
 ): Promise<{ codeVerifier: string; nonce: string; createdAt: number; redirectTo?: string } | undefined> {
   const redis = getRedisClient();
-  const key = LOGIN_STATE_PREFIX + state;
+  const key = loginStatePrefix() + state;
 
   const data = await redis.get(key);
 
@@ -239,8 +252,9 @@ export async function consumeLoginState(
  */
 export async function getAllSessionKeys(): Promise<string[]> {
   const redis = getRedisClient();
-  const keys = await redis.keys(SESSION_PREFIX + '*');
-  return keys.map((key) => key.replace(SESSION_PREFIX, ''));
+  const prefix = sessionPrefix();
+  const keys = await redis.keys(prefix + '*');
+  return keys.map((key) => key.replace(prefix, ''));
 }
 
 /**
@@ -248,6 +262,6 @@ export async function getAllSessionKeys(): Promise<string[]> {
  */
 export async function getSessionCount(): Promise<number> {
   const redis = getRedisClient();
-  const keys = await redis.keys(SESSION_PREFIX + '*');
+  const keys = await redis.keys(sessionPrefix() + '*');
   return keys.length;
 }

@@ -6,6 +6,18 @@ import { createLoginUrl, handleCallback, logoutSession } from './auth.server';
 import { emitAuthAuditEvent } from './audit-events.server';
 import { getAuthConfig } from './config';
 import { buildLogContext, isTokenErrorLike } from './log-context.server';
+import {
+  adminDataExportHandler,
+  adminDataExportStatusHandler,
+  dataExportHandler,
+  dataExportStatusHandler,
+  dataSubjectMaintenanceHandler,
+  dataSubjectRequestHandler,
+  legalHoldApplyHandler,
+  legalHoldReleaseHandler,
+  optionalProcessingExecuteHandler,
+  profileCorrectionHandler,
+} from './iam-data-subject-rights.server';
 import { governanceComplianceExportHandler, governanceWorkflowHandler } from './iam-governance.server';
 import { withAuthenticatedUser } from './middleware.server';
 import { getSession } from './redis-session.server';
@@ -366,6 +378,66 @@ export const authRouteDefinitions: AuthRouteDefinition[] = [
     path: '/iam/governance/compliance/export',
     handlers: {
       GET: async ({ request }) => governanceComplianceExportHandler(request),
+    },
+  },
+  {
+    path: '/iam/me/data-export',
+    handlers: {
+      GET: async ({ request }) => dataExportHandler(request),
+    },
+  },
+  {
+    path: '/iam/me/data-export/status',
+    handlers: {
+      GET: async ({ request }) => dataExportStatusHandler(request),
+    },
+  },
+  {
+    path: '/iam/me/data-subject-rights/requests',
+    handlers: {
+      POST: async ({ request }) => dataSubjectRequestHandler(request),
+    },
+  },
+  {
+    path: '/iam/me/profile',
+    handlers: {
+      POST: async ({ request }) => profileCorrectionHandler(request),
+    },
+  },
+  {
+    path: '/iam/me/optional-processing/execute',
+    handlers: {
+      POST: async ({ request }) => optionalProcessingExecuteHandler(request),
+    },
+  },
+  {
+    path: '/iam/admin/data-subject-rights/export',
+    handlers: {
+      GET: async ({ request }) => adminDataExportHandler(request),
+    },
+  },
+  {
+    path: '/iam/admin/data-subject-rights/export/status',
+    handlers: {
+      GET: async ({ request }) => adminDataExportStatusHandler(request),
+    },
+  },
+  {
+    path: '/iam/admin/data-subject-rights/legal-holds/apply',
+    handlers: {
+      POST: async ({ request }) => legalHoldApplyHandler(request),
+    },
+  },
+  {
+    path: '/iam/admin/data-subject-rights/legal-holds/release',
+    handlers: {
+      POST: async ({ request }) => legalHoldReleaseHandler(request),
+    },
+  },
+  {
+    path: '/iam/admin/data-subject-rights/maintenance',
+    handlers: {
+      POST: async ({ request }) => dataSubjectMaintenanceHandler(request),
     },
   },
 ];

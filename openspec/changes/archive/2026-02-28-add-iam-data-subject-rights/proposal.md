@@ -10,6 +10,10 @@ Die verbindlichen Anforderungen aus `Sicherheit-Datenschutz.md` (§7) definieren
 - Datenexport in 3 Formaten (JSON, XML, CSV)
 - 100% der DSGVO-Betroffenenrechte implementiert
 
+Für Child F wird das 48h-Kriterium wie folgt operationalisiert:
+- Innerhalb von maximal 48 Stunden nach gültigem Löschantrag wird der Account gesperrt und als Soft-Delete markiert.
+- Die endgültige physische Löschung erfolgt nach konfigurierbarer Karenz-/Aufbewahrungsfrist und nur ohne aktiven Legal Hold.
+
 ## Kontext
 
 Child F ergänzt das IAM-Programm um die DSGVO-Compliance-Schicht. Dieser Change kann parallel zu Child D/E vorbereitet werden, da er primär auf dem stabilen Datenmodell aus Child B aufbaut. Die Governance-Workflows (Child E) liefern ergänzende Audit-Infrastruktur, sind aber kein harter Blocker für die Grundfunktionalität.
@@ -29,12 +33,14 @@ Child F ergänzt das IAM-Programm um die DSGVO-Compliance-Schicht. Dieser Change
 ### In Scope
 
 - Datenexport-Endpunkt für Benutzer (JSON, XML, CSV)
+- Export-Prozess mit nachvollziehbarem Request-Status (queued, processing, completed, failed) für große Datenmengen
 - Account-Löschung mit Soft-Delete, Sperrung und endgültiger Löschung nach konfigurierbarer Frist
 - Löschkaskaden für abhängige IAM-Daten (Organisationszuordnungen, Rollenzuweisungen)
 - Anonymisierung statt Löschung für Statistik-relevante Daten
 - Audit-Log-Handling bei Löschung (Pseudonymisierung, Legal Hold)
 - API-Endpunkte für Self-Service-Betroffenenrechte
 - Admin-Endpunkte für manuelle Bearbeitung von Betroffenenanfragen
+- IAM-seitige Einwilligungs-/Opt-out-Flags, sofern diese im IAM-Datenmodell geführt werden
 
 ### Out of Scope
 
@@ -69,6 +75,12 @@ Child F ergänzt das IAM-Programm um die DSGVO-Compliance-Schicht. Dieser Change
 - **Backup-Konsistenz:** Löschung muss auch in Backup-Strategie berücksichtigt werden (dokumentieren)
 - **Fristüberschreitung:** Monitoring für offene Löschanfragen mit Eskalation bei Fristüberschreitung
 
+## Operationalisierung / Präzisierungen
+
+- **48h-Lösch-SLA:** Gemessen von `requestAcceptedAt` bis `softDeletedAt`; SLO-Überwachung und Eskalation bei Verstoß.
+- **Export-Abwicklung:** Für umfangreiche Exporte wird ein asynchroner Export-Request mit Statusverfolgung verwendet; Abschluss liefert das angeforderte Zielformat (JSON/CSV/XML).
+- **Backup-Handling:** Keine Einzelobjekt-Löschung in bestehenden Immutable-Backups; DSGVO-konforme Entfernung erfolgt über definierte Backup-Retention + dokumentierten Restore-Sanitization-Prozess.
+
 ## Approval Gate
 
 Vor Start der Implementierung müssen folgende Punkte geklärt sein:
@@ -77,6 +89,8 @@ Vor Start der Implementierung müssen folgende Punkte geklärt sein:
 2. ⬜ Löschfristen mit DSB/Legal abgestimmt (Standard-Frist + Ausnahmen)
 3. ⬜ Anonymisierungsstrategie für Audit-Logs bei Account-Löschung definiert
 4. ⬜ Legal-Hold-Prozess mit Legal abgestimmt
+5. ⬜ 48h-Lösch-SLA-Messung und Eskalationsweg mit Plattform/Operations abgestimmt
+6. ⬜ Backup-Retention und Restore-Sanitization-Prozess mit DSB/Legal freigegeben
 
 ## Akzeptanzkriterien (Change-Ebene)
 
@@ -87,6 +101,7 @@ Vor Start der Implementierung müssen folgende Punkte geklärt sein:
 - Legal Holds verhindern die Löschung betroffener Daten bis zur Aufhebung.
 - Offene Löschanfragen mit Fristüberschreitung werden automatisch eskaliert.
 - Alle Betroffenenanfragen erzeugen unveränderbare Audit-Events.
+- Das 48h-Lösch-SLA (Antrag angenommen -> Sperrung/Soft-Delete) wird messbar eingehalten.
 
 ## Status
 

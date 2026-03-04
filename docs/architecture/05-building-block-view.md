@@ -36,6 +36,19 @@ Abhängigkeiten des aktuellen Systems.
 8. Plugin Example (`packages/plugin-example`)
    - Beispielroute fuer Plugin-Erweiterbarkeit
 
+### IAM-Bausteine und Package-Zuordnung
+
+- Identity und OIDC-Flow:
+  - `packages/auth` (`routes.server.ts`, `oidc.server.ts`, `session.server.ts`)
+- Autorisierung (RBAC/ABAC) und Laufzeitentscheidungen:
+  - `packages/auth` (`iam-authorization.server.ts`, `iam-policy-evaluator.server.ts`)
+- Organisations- und Mandantenkontext (`instanceId`) inkl. RLS-nahe Datenmodelle:
+  - `packages/data` (IAM-Migrationen, Seeds, SQL-Policies)
+- Auditierung und Nachvollziehbarkeit:
+  - `packages/auth` (`audit-db-sink.server.ts`) + `packages/sdk` (`createSdkLogger`)
+- Governance und DSGVO-Betroffenenrechte:
+  - `packages/auth` (`iam-governance.server.ts`, `iam-data-subject-rights.server.ts`)
+
 ### Abhängigkeiten (vereinfacht)
 
 - App -> `@sva/core`, `@sva/routing`, `@sva/auth`, `@sva/plugin-example`

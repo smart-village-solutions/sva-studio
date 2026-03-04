@@ -464,6 +464,19 @@ describe('iam data subject rights handlers', () => {
     expect(executedStatements.some((entry) => entry.includes('UPDATE iam.activity_logs'))).toBe(true);
     expect(executedStatements.some((entry) => entry.includes('DELETE FROM iam.account_roles'))).toBe(true);
     expect(executedStatements.some((entry) => entry.includes('DELETE FROM iam.account_organizations'))).toBe(true);
+    expect(
+      executedStatements.some(
+        (entry) =>
+          entry.includes('FROM iam.accounts') &&
+          entry.includes('WHERE instance_id = $1') &&
+          entry.includes('delete_after <= NOW()')
+      )
+    ).toBe(true);
+    expect(
+      executedStatements.some(
+        (entry) => entry.includes('UPDATE iam.accounts') && entry.includes('WHERE instance_id = $1')
+      )
+    ).toBe(true);
   });
 
   it('rejects admin export endpoint for non-admin role', async () => {

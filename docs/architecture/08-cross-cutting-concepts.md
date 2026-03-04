@@ -33,6 +33,15 @@ gleichzeitig beeinflussen.
 - Trust-Boundary-Validierung mit Zod in IAM-Endpoints (`authorize`, `governance`, `data-subject-rights`)
 - DataClient unterstützt optionale Runtime-Schema-Validierung (`get(path, schema)`) für API-Responses
 
+### IAM Multi-Tenancy, Caching und Audit-Logging
+
+- Mandantenisolation basiert auf kanonischem Scope `instanceId` (inkl. Mapping zu `workspace_id` in Logs)
+- Autorisierungspfade erzwingen `instanceId`-Filterung vor Rollen-/Policy-Evaluation
+- RLS-Policies und service-seitige Guards verhindern organisationsfremde Datenzugriffe
+- Permission-Snapshot-Cache ist instanz- und kontextgebunden; Invalidation erfolgt event-first (Postgres `NOTIFY`) mit TTL-Fallback
+- Audit-Logging für IAM-Ereignisse folgt Dual-Write (`iam.activity_logs` + OTEL via SDK Logger)
+- Audit-Daten enthalten korrelierbare IDs (`request_id`, `trace_id`) und pseudonymisierte Actor-Referenzen
+
 ### Logging und Observability
 
 - Einheitlicher Server-Logger über `@sva/sdk/server`

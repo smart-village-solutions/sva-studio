@@ -12,6 +12,13 @@ const logger = createSdkLogger({ component: 'iam-governance', level: 'info' });
 const MAX_IMPERSONATION_MINUTES = 120;
 const MAX_DELEGATION_DAYS = 30;
 const ALLOWED_TICKET_STATES = new Set(['open', 'in_progress', 'approved_for_execution']);
+const GOVERNANCE_WORKFLOW_ROLES = new Set(['iam_admin', 'support_admin', 'system_admin']);
+const GOVERNANCE_COMPLIANCE_EXPORT_ROLES = new Set([
+  'iam_admin',
+  'system_admin',
+  'security_admin',
+  'compliance_officer',
+]);
 
 type GovernanceOperation =
   | 'submit_permission_change'
@@ -123,6 +130,16 @@ const validateTicketState = (ticketState: string | undefined): { ok: boolean; re
     return { ok: false, reasonCode: 'DENY_TICKET_STATE_INVALID' };
   }
   return { ok: true };
+};
+
+const hasRequiredRole = (userRoles: readonly string[], allowedRoles: ReadonlySet<string>): boolean =>
+  userRoles.some((role) => allowedRoles.has(role));
+
+const requiresPrivilegedWorkflowRole = (operation: GovernanceOperation): boolean => {
+  if (operation === 'accept_legal_text' || operation === 'revoke_legal_acceptance') {
+    return false;
+  }
+  return true;
 };
 
 const emitGovernanceAuditEvent = async (
@@ -992,6 +1009,17 @@ export const governanceWorkflowHandler = async (request: Request): Promise<Respo
       if (user.instanceId && user.instanceId !== parsed.instanceId) {
         return jsonResponse(403, { error: 'instance_scope_mismatch' });
       }
+      if (
+        requiresPrivilegedWorkflowRole(parsed.operation) &&
+        !hasRequiredRole(user.roles, GOVERNANCE_WORKFLOW_ROLES)
+      ) {
+        logger.warn('Governance workflow denied due to missing role', {
+          operation: parsed.operation,
+          reason_code: 'forbidden',
+          ...buildGovernanceLogContext(parsed.instanceId),
+        });
+        return jsonResponse(403, { error: 'forbidden' });
+      }
 
       const actor: GovernanceActor = {
         keycloakSubject: user.id,
@@ -1034,6 +1062,15 @@ export const governanceWorkflowHandler = async (request: Request): Promise<Respo
 export const governanceComplianceExportHandler = async (request: Request): Promise<Response> => {
   return withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
     return withAuthenticatedUser(request, async ({ user }) => {
+      if (!hasRequiredRole(user.roles, GOVERNANCE_COMPLIANCE_EXPORT_ROLES)) {
+        logger.warn('Governance compliance export denied due to missing role', {
+          operation: 'compliance_export',
+          reason_code: 'forbidden',
+          ...buildGovernanceLogContext(user.instanceId),
+        });
+        return jsonResponse(403, { error: 'forbidden' });
+      }
+
       const url = new URL(request.url);
       const instanceId = readString(url.searchParams.get('instanceId')) ?? user.instanceId;
       const format = (readString(url.searchParams.get('format')) ?? 'json').toLowerCase();

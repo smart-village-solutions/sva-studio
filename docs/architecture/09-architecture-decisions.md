@@ -42,6 +42,15 @@ mit Bezug auf die arc42-Abschnitte.
 - Abschnitt 08/10/11 (Querschnitt/Qualität/Risiken): ADR-010
 - Abschnitt 06/08/10 (Laufzeit/Querschnitt/Qualität): ADR-012, ADR-013, ADR-014
 
+### IAM-spezifische ADR-Verweise (Masterplan)
+
+- ADR-009: Keycloak als zentraler Identity Provider (Abschnitt 03, 06, 07)
+- ADR-010: Verschlüsselungsstrategie IAM Core Data Layer (Abschnitt 08, 10)
+- ADR-011: `instanceId` als kanonischer Mandanten-Scope (Abschnitt 05, 08, 10)
+- ADR-012: Permission-Kompositionsmodell RBAC v1 (Abschnitt 06, 10)
+- ADR-013: RBAC+ABAC-Hybridmodell (Abschnitt 05, 06, 08, 10)
+- ADR-014: Postgres `NOTIFY` für Cache-Invalidierung (Abschnitt 06, 08, 10)
+
 ### Pflege-Regel
 
 Bei Architekturentscheidungen in OpenSpec-Changes:

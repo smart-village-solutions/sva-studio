@@ -65,6 +65,11 @@ Schulden auf IST-Basis.
    - Wahrscheinlichkeit: mittel
    - Maßnahme: stabile Claim-Mappings (`sub`, Rollen/Groups), Korrelation in Audit-Events, Integrationstests
 
+11. Scope-Bleeding zwischen IAM-Child-Changes
+   - Impact: hoch (unklare Verantwortlichkeit, Architekturdrift, regressionsanfällige Implementierung)
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: Child-spezifische Delta-Specs strikt einhalten, Scope im PR gegen Masterplan prüfen, Review-Gates vor Implementierungsstart erzwingen
+
 ### Technische Schulden (Auswahl)
 
 - Teilweise No-Op Testtargets in Libraries
@@ -73,6 +78,7 @@ Schulden auf IST-Basis.
 - Root-Shell nutzt derzeit einen globalen Router-Pending-Trigger statt datenquellenspezifischer Pending-Orchestrierung
 - Shell-Navigation ist aktuell nicht vollständig plugin-/metadatenbasiert
 - Reifegrad von Governance-E2E-Tests muss im Produktiv-Rollout weiter erhöht werden
+- Risiko von Scope-Bleeding bei schnellen IAM-Iterationen ohne harte Gate-Disziplin
 
 ### Nachverfolgung
 

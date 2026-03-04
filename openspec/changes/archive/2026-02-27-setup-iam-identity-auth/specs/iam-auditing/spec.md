@@ -1,4 +1,4 @@
-# Auditing Specification (Child A Scope)
+# Auditierungs-Spezifikation (Child-A-Scope)
 
 ## ADDED Requirements
 

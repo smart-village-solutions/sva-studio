@@ -31,8 +31,8 @@
 ## 5. Review-Gates
 
 - [x] 5.1 Master-Change reviewen und freigeben (26.02.2026: Alle Must-Entscheidungen getroffen, Masterplan freigegeben)
-- [ ] 5.2 Child-Changes einzeln reviewen und freigeben
-- [ ] 5.3 Implementierung erst nach Freigabe des jeweiligen Child-Changes starten
+- [x] 5.2 Child-Changes einzeln reviewen und freigeben (28.02.2026: Child A–F einzeln reviewed; Changes liegen archiviert mit abgeschlossenen Tasklisten vor)
+- [x] 5.3 Implementierung erst nach Freigabe des jeweiligen Child-Changes starten (28.02.2026: Umsetzungspfad je Child nach Review-Gates dokumentiert und eingehalten)
 
 ## 6. Review-Befunde umsetzen (Architecture Review 26.02.2026)
 
@@ -40,7 +40,7 @@
 
 - [x] 6.1.1 ~~Spec-Ownership-Modell klären~~ → Entschieden (26.02.2026): Jeder Child-Change besitzt seine eigenen Specs (Delta-Specs). Keine zentrale Base-Spec-Ablage in `openspec/specs/` für IAM. Bereits umgesetzt: Child A–F haben jeweils eigene `specs/`-Verzeichnisse.
 - [x] 6.1.2 ~~ADR erstellen: „Spec-Ownership-Modell"~~ → Nicht als separater ADR nötig; Governance-Regel im Masterplan-Spec verankert (design.md-Pflicht + eigene Specs pro Child).
-- [ ] 6.1.3 Sprache der Specs vereinheitlichen: Alle 4 Base-Specs unter Child A sind Englisch, Delta-Specs in Child B–F sind Deutsch – Übersetzung der Base-Specs ins Deutsche priorisieren (sicherheitskritische zuerst: `iam-access-control`, `iam-auditing`)
+- [x] 6.1.3 Sprache der Specs vereinheitlichen: Base-Specs unter Child A sprachlich auf Deutsch vereinheitlicht (28.02.2026; priorisiert `iam-access-control`, `iam-auditing`)
 
 ### 6.2 Offene Entscheidungen absichern
 
@@ -52,13 +52,13 @@
 
 ### 6.3 arc42-Dokumentation
 
-- [ ] 6.3.1 arc42 `05-building-block-view` um IAM-Bausteine und Package-Zuordnung ergänzen
-- [ ] 6.3.2 arc42 `06-runtime-view` um OIDC-Flow, Authorize-Sequenz und Cache-Invalidierung ergänzen
-- [ ] 6.3.3 arc42 `07-deployment-view` um Keycloak, Postgres-Docker und Redis ergänzen
-- [ ] 6.3.4 arc42 `08-cross-cutting-concepts` um Multi-Tenancy, Caching und Audit-Logging ergänzen
-- [ ] 6.3.5 arc42 `09-architecture-decisions` um ADR-Verweise ergänzen (sobald ADRs existieren)
-- [ ] 6.3.6 arc42 `10-quality-requirements` um P95 < 50 ms und RLS-Isolation ergänzen
-- [ ] 6.3.7 arc42 `11-risks-and-technical-debt` um Scope-Bleeding ergänzen
+- [x] 6.3.1 arc42 `05-building-block-view` um IAM-Bausteine und Package-Zuordnung ergänzt (28.02.2026)
+- [x] 6.3.2 arc42 `06-runtime-view` um OIDC-Flow, Authorize-Sequenz und Cache-Invalidierung ergänzt (28.02.2026)
+- [x] 6.3.3 arc42 `07-deployment-view` um Keycloak, Postgres-Docker und Redis ergänzt (28.02.2026)
+- [x] 6.3.4 arc42 `08-cross-cutting-concepts` um Multi-Tenancy, Caching und Audit-Logging ergänzt (28.02.2026)
+- [x] 6.3.5 arc42 `09-architecture-decisions` um ADR-Verweise ergänzt (28.02.2026)
+- [x] 6.3.6 arc42 `10-quality-requirements` um P95 < 50 ms und RLS-Isolation ergänzt (28.02.2026)
+- [x] 6.3.7 arc42 `11-risks-and-technical-debt` um Scope-Bleeding ergänzt (28.02.2026)
 
 ### 6.4 Governance-Regeln verschärfen
 

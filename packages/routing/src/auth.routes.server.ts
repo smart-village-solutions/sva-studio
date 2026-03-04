@@ -53,6 +53,24 @@ const resolveAuthHandlers = (path: typeof authRoutePaths[number]): AuthHandlers 
     };
   }
 
+  if (path === '/iam/governance/workflows') {
+    return {
+      POST: async ({ request }) => {
+        const mod = await import('@sva/auth/server');
+        return mod.governanceWorkflowHandler(request);
+      },
+    };
+  }
+
+  if (path === '/iam/governance/compliance/export') {
+    return {
+      GET: async ({ request }) => {
+        const mod = await import('@sva/auth/server');
+        return mod.governanceComplianceExportHandler(request);
+      },
+    };
+  }
+
   return {
     POST: async ({ request }) => {
       const mod = await import('@sva/auth/server');

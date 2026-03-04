@@ -24,6 +24,7 @@ export const getOidcConfig = async (): Promise<client.Configuration> => {
         error_type: error instanceof Error ? error.constructor.name : typeof error,
         workspace_id: context.workspaceId ?? 'default',
         request_id: context.requestId,
+        trace_id: context.traceId,
       });
       throw error;
     });

@@ -55,6 +55,16 @@ Schulden auf IST-Basis.
    - Wahrscheinlichkeit: mittel
    - Maßnahme: UI-Texte konsistent über Übersetzungsschlüssel (`t('key')`) verwalten
 
+9. Governance-Workflow-Komplexität (Approval, Delegation, Impersonation)
+   - Impact: hoch (Fehlfreigaben oder Restberechtigungen)
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: harte Gates, Negativtests, Ablauf-/Widerrufstests, verpflichtendes Runbook
+
+10. Keycloak-Integrationsdrift bei Claims/Sessionvalidierung
+   - Impact: hoch (inkonsistente Identitäts-/Autorisierungskette)
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: stabile Claim-Mappings (`sub`, Rollen/Groups), Korrelation in Audit-Events, Integrationstests
+
 ### Technische Schulden (Auswahl)
 
 - Teilweise No-Op Testtargets in Libraries
@@ -62,6 +72,7 @@ Schulden auf IST-Basis.
 - Offene Produktionsentscheidungen für Deployment/HA
 - Root-Shell nutzt derzeit einen globalen Router-Pending-Trigger statt datenquellenspezifischer Pending-Orchestrierung
 - Shell-Navigation ist aktuell nicht vollständig plugin-/metadatenbasiert
+- Reifegrad von Governance-E2E-Tests muss im Produktiv-Rollout weiter erhöht werden
 
 ### Nachverfolgung
 
@@ -73,3 +84,5 @@ Referenzen:
 - `docs/reports/PR_CHECKLIST.md`
 - `openspec/AGENTS.md`
 - `docs/development/testing-coverage.md`
+- `docs/guides/iam-governance-runbook.md`
+- `docs/guides/iam-governance-freigabematrix.md`

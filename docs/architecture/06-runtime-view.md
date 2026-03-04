@@ -77,12 +77,28 @@ Fehlerpfad:
 - Eventverlust bei Invalidation: TTL/Recompute begrenzen Stale-Dauer.
 - DB-Ausfall ohne nutzbaren Snapshot: `503 database_unavailable`.
 
+### Szenario 6: IAM Governance-Workflow mit Approval, Delegation und Impersonation
+
+1. Client ruft `POST /iam/governance/workflows` mit `operation`, `instanceId` und `payload` auf.
+2. Server validiert Instanzscope, Ticketstatus und Vier-Augen-Regeln.
+3. Workflow-Status wird in Governance-Tabellen persistiert (Request, Delegation, Impersonation, Legal-Text-Akzeptanz).
+4. Sicherheitsrelevante Schritte erzeugen Dual-Write-Audit-Events (`iam.activity_logs` + SDK-Logger/OTEL).
+5. Bei Acting-As-Zugriff prüft `POST /iam/authorize` aktive, nicht abgelaufene Impersonation.
+6. Compliance-Nachweis wird über `GET /iam/governance/compliance/export` in CSV/JSON/SIEM exportiert.
+
+Fehlerpfad:
+
+- Ticket fehlt oder ist ungültig: Denial mit Governance-Reason-Code.
+- Self-Approval: Aktion wird fail-closed abgewiesen.
+- Impersonation abgelaufen: Session wird als `expired` markiert, Acting-As wird verweigert.
+
 Referenzen:
 
 - `apps/sva-studio-react/src/router.tsx`
 - `apps/sva-studio-react/src/routes/__root.tsx`
 - `packages/auth/src/routes.server.ts`
 - `packages/auth/src/iam-authorization.server.ts`
+- `packages/auth/src/iam-governance.server.ts`
 - `packages/auth/src/iam-authorization.cache.ts`
 - `packages/sdk/src/logger/index.server.ts`
 - `packages/monitoring-client/src/otel.server.ts`

@@ -6,6 +6,7 @@ import { createLoginUrl, handleCallback, logoutSession } from './auth.server';
 import { emitAuthAuditEvent } from './audit-events.server';
 import { getAuthConfig } from './config';
 import { buildLogContext, isTokenErrorLike } from './log-context.server';
+import { governanceComplianceExportHandler, governanceWorkflowHandler } from './iam-governance.server';
 import { withAuthenticatedUser } from './middleware.server';
 import { getSession } from './redis-session.server';
 import type { AuthRoutePath } from './routes.shared';
@@ -353,6 +354,18 @@ export const authRouteDefinitions: AuthRouteDefinition[] = [
     path: '/auth/logout',
     handlers: {
       POST: async ({ request }) => logoutHandler(request),
+    },
+  },
+  {
+    path: '/iam/governance/workflows',
+    handlers: {
+      POST: async ({ request }) => governanceWorkflowHandler(request),
+    },
+  },
+  {
+    path: '/iam/governance/compliance/export',
+    handlers: {
+      GET: async ({ request }) => governanceComplianceExportHandler(request),
     },
   },
 ];

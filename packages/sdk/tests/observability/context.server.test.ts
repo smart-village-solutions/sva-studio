@@ -61,7 +61,7 @@ describe('workspace context', () => {
   });
 
   it('warns in development and continues when workspace id is missing', () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const emitWarningSpy = vi.spyOn(process, 'emitWarning').mockImplementation(() => {});
     const middleware = createWorkspaceContextMiddleware({
       environment: 'development',
       headerNames: ['x-custom-workspace'],
@@ -75,7 +75,14 @@ describe('workspace context', () => {
 
     middleware({ headers: { 'x-another-header': 'value' } }, {}, next);
 
-    expect(warnSpy).toHaveBeenCalledTimes(1);
+    expect(emitWarningSpy).toHaveBeenCalledTimes(1);
+    expect(emitWarningSpy).toHaveBeenCalledWith('[WorkspaceContext] workspace_id header missing', {
+      code: 'SVA_WORKSPACE_CONTEXT',
+      detail: JSON.stringify({
+        header_names: ['x-custom-workspace'],
+        headers_present: ['x-another-header'],
+      }),
+    });
     expect(next).toHaveBeenCalledTimes(1);
     expect(observedContext).toEqual({ workspaceId: undefined });
   });

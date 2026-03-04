@@ -4,14 +4,20 @@ set -euo pipefail
 POSTGRES_DB="${POSTGRES_DB:-sva_studio}"
 POSTGRES_USER="${POSTGRES_USER:-sva}"
 
-if ! docker compose ps postgres >/dev/null 2>&1; then
-  echo "Postgres service not found in docker compose."
+if ! docker compose config --services >/tmp/data-compose-services.txt 2>/tmp/data-compose-services.err; then
+  echo "Failed to read docker compose services:"
+  cat /tmp/data-compose-services.err
+  exit 1
+fi
+
+if ! rg -qx 'postgres' /tmp/data-compose-services.txt; then
+  echo "Postgres service not found in docker compose configuration."
   exit 1
 fi
 
 if [ -z "$(docker compose ps -q postgres)" ]; then
-  echo "Postgres container is not running. Start it with: pnpm nx run data:db:up"
-  exit 1
+  echo "Postgres container is not running. Starting it via docker compose..."
+  docker compose up -d postgres
 fi
 
 echo "Reset IAM tables for seed integration test..."

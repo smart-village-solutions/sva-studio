@@ -157,7 +157,8 @@ Der `KeycloakAdminClient` implementiert dieses Interface als Adapter. Ein späte
 - `GET /admin/realms/{realm}/users` – User auflisten
 - `POST /admin/realms/{realm}/users` – User erstellen
 - `PUT /admin/realms/{realm}/users/{id}` – User updaten
-- `DELETE /admin/realms/{realm}/users/{id}` – User löschen (Deaktivierung)
+- `PUT /admin/realms/{realm}/users/{id}` – User deaktivieren via `enabled=false`
+- `DELETE /admin/realms/{realm}/users/{id}` – User dauerhaft löschen
 - `GET /admin/realms/{realm}/roles` – Realm-Rollen
 - `POST /admin/realms/{realm}/users/{id}/role-mappings/realm` – Rollen zuweisen
 
@@ -574,6 +575,11 @@ export type AccountProfileUpdate = Pick<IamAccountProfile,
   'displayName' | 'firstName' | 'lastName' | 'phone' |
   'position' | 'department' | 'avatarUrl' | 'preferredLanguage' | 'timezone'
 >;
+```
+
+### Port-Interface-Typen (`@sva/auth`)
+
+```typescript
 
 /** Port-Interface für IdP-Abstraktionsschicht (@sva/auth, nicht @sva/core) */
 export interface IdentityProviderPort {

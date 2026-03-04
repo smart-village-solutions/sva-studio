@@ -137,7 +137,8 @@ Das System MUST eine User-Administrationsliste unter `/admin/users` bereitstelle
 - **UND** der aktuell angemeldete Nutzer wird automatisch aus der Auswahl ausgeschlossen (Self-Protection)
 - **UND** der letzte aktive `system_admin` wird automatisch aus der Auswahl ausgeschlossen
 - **UND** nach Bestätigung werden alle ausgewählten Nutzer aktualisiert
-- **UND** ein Activity-Log-Eintrag (`user.bulk_deactivated`) wird pro betroffenem Nutzer erstellt- **UND** die „Alle auswählen“-Checkbox zeigt den `indeterminate`-Zustand, wenn nur ein Teil der Nutzer ausgewählt ist
+- **UND** ein Activity-Log-Eintrag (`user.bulk_deactivated`) wird pro betroffenem Nutzer erstellt
+- **UND** die „Alle auswählen“-Checkbox zeigt den `indeterminate`-Zustand, wenn nur ein Teil der Nutzer ausgewählt ist
 
 #### Scenario: Pagination-ARIA
 

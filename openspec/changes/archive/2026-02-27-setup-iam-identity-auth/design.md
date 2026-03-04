@@ -12,7 +12,7 @@ Das SVA Studio muss eine robuste, sichere und skalierbare Identitäts- und Zugri
 - IT-Sicherheit (Audit, Compliance, DSGVO)
 
 **Constraints:**
-- Bestehende Keycloak-Instanz (Version festlegen – siehe Task 1.1.6)
+- Bestehende Keycloak-Instanz (Version als deferred bis Produktivbetrieb dokumentiert, siehe Task 1.1.6)
 - Postgres für IAM-Daten (lokal via Docker, kein Supabase)
 - Monorepo-Architektur (packages/auth, packages/core, apps/studio)
 - Typsicher (TypeScript strict-mode)
@@ -243,7 +243,7 @@ logger.warn('Token validation failed', {
 
 ## Architektur-Komponenten
 
-### Backend (packages/core)
+### Backend (packages/auth)
 
 ```
 packages/auth/src/   # Ist-Stand (Child A)
@@ -356,7 +356,7 @@ src/
 
 ## Offene Fragen (Child A)
 
-- 🤔 Keycloak-Version festlegen (siehe Task 1.1.6)
+- ℹ️ Keycloak-Version bleibt bis Produktivbetrieb deferred (siehe Task 1.1.6)
 - 🤔 Keycloak-Realm-Strategie (Single vs. Multi)?
 - 🤔 Token-Lifespan-Policy (15m Access, 7d Refresh)?
 - 🤔 Rate-Limiting Backend? (WAF vs. App-Layer)

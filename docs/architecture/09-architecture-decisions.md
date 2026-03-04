@@ -22,7 +22,8 @@ mit Bezug auf die arc42-Abschnitte.
 - `ADR-005-observability-module-ownership.md`
 - `ADR-006-logging-pipeline-strategy.md`
 - `ADR-007-label-schema-and-pii-policy.md`
-- `ADR-008-layout-shell-skeleton-architecture.md`
+- `ADR-008-codecov-coverage-reporting-and-gates.md`
+- `ADR-009-layout-shell-skeleton-architecture.md`
 
 ### Zuordnung zu arc42-Abschnitten
 
@@ -31,7 +32,7 @@ mit Bezug auf die arc42-Abschnitte.
 - Abschnitt 06/07 (Laufzeit/Deployment): ADR-004, ADR-006
 - Abschnitt 08 (Querschnitt): ADR-005, ADR-006, ADR-007
 - Abschnitt 10/11 (Qualität/Risiken): ADR-004, ADR-007, ADR-008
-- Abschnitt 05/06 (Bausteine/Laufzeit): ADR-008
+- Abschnitt 05/06 (Bausteine/Laufzeit): ADR-009
 
 ### Pflege-Regel
 

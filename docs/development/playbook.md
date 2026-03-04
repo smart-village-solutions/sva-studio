@@ -34,43 +34,43 @@ Granularität: Große Features werden in kleine, klar abgegrenzte Aufgaben zerle
 Pro Task/Anfrage: Eine Funktion, ein Bug oder ein klarer Änderungspunkt. Nichts "noch eben mit optimieren"
 Iteratives Vorgehen: Nach jedem Schritt wird getestet und committet, bevor die nächste Aufgabe angegangen wird. Der Aufgabenstatus wird stetig aktualisiert.
 
-## Kontinuierliche Dokumentation
+## 5. Kontinuierliche Dokumentation
 Wir dokumentieren alle Anforderungen, Arbeitsschritte und die finalen Arbeitsergebnisse. Change- und Release-Logs machen Änderungen nachvollziehbar. Zeitstempel machen eine chronologische Nachvervollziehbarkeit möglich.
 
-## 5. Der KI ausreichend Kontext geben
+## 6. Der KI ausreichend Kontext geben
 Notwendige Informationen: Um präzise Vorschläge zu erhalten, übergeben wir relevante Code-Dateien, APIs, Architekturregeln und Coding-Konventionen.
 Einschränkungen: Es muss explizit kommuniziert werden, was nicht verändert werden darf.
 Faustregel: Wenn ein menschlicher Kollege bestimmte Informationen für die Aufgabe bräuchte, benötigt die KI diese ebenfalls.
 
-## 6. Umgang mit Halluzinationen und Wissenslücken
+## 7. Umgang mit Halluzinationen und Wissenslücken
 Faktencheck: KIs können Fakten oder Bibliotheken erfinden. Alle vorgeschlagenen Funktionen oder Pakete (Dependcy-Management, schlanke SBOM) müssen auf Existenz und Aktualität geprüft werden.
 Versions-Gap: Da KIs ein Wissenslimit haben (Cut-off), prüfen wir Vorschläge gegen die aktuelle Dokumentation unserer Frameworks.
 Kein blindes Vertrauen: Erklärungen der KI werden kritisch hinterfragt.
 
-## 7. Alles prüfen: Lesen, testen, verstehen
+## 8. Alles prüfen: Lesen, testen, verstehen
 Verständnis-Pflicht: Kein KI-Code wird übernommen, ohne dass ein Mensch ihn vollständig verstanden hat.
 Review-Prozess: Wir führen manuelle Reviews durch und nutzen bei Bedarf eine zweite KI-Instanz für eine Gegenprüfung.
 Vereinfachung: Ist der KI-Code zu komplex (wie messen wir das) oder unklar, wird er vereinfacht oder neu geschrieben.
 
-## 8. Tests als Sicherheitsnetz
+## 9. Tests als Sicherheitsnetz
 Absicherung: Wir nutzen KI aktiv zum Vorschlagen von Testfällen und zum Schreiben von Unit-Tests.
 Regeln: Neue Logik erfordert neue Tests. Ein Bugfix ist erst mit einem entsprechenden Test vollständig.
 Abnahmekriterium: Ohne Tests gilt eine Aufgabe nicht als abgeschlossen.
 Keine Lazy-Tests: KI neigt dazu, Tests zu schreiben, die erfolgreich sind. Hier ist der Mensch gefragt, damit auch die korrekten Logiken getestet werden.
 
-## 9. Häufig committen und Versionskontrolle
+## 10. Häufig committen und Versionskontrolle
 Rückfallpunkte: Da KI schnell große Mengen Code erzeugt, sind häufige und kleine Commits essenziell.
 Transparenz: Wir nutzen aussagekräftige Commit-Messages und führen Experimente konsequent in separaten Branches durch.
 Goldene Regel: Niemals Code committen, den man nicht selbst erklären kann.
 
-## 10. Team-Synchronisation und Standards
+## 11. Team-Synchronisation und Standards
 KI-Instruktionen: Wir geben der KI unsere Team-Standards (Stil, Patterns, Do’s & Don’ts) explizit mit.
 
-## 11. Automatisierung nutzen
+## 12. Automatisierung nutzen
 Kombination: Wir integrieren KI in unsere bestehende Tool-Kette (CI/CD, Linter, Type-Checks).
 Workflow: Die KI schreibt Code, die Pipeline validiert diesen. Fehler-Logs werden an die KI zurückgegeben, um Korrekturen zu beschleunigen.
 
-## 12. KI als Lernverstärker begreifen
+## 13. KI als Lernverstärker begreifen
 Wissensaufbau: KI hilft uns, neue Patterns zu lernen und Frameworks schneller zu verstehen.
 Grundlagen: Wir sind uns bewusst, dass nur fundiertes Basiswissen es ermöglicht, die Ergebnisse der KI qualitativ zu bewerten.
 Reflektion: Wir stellen aktiv “Warum”-Fragen und coden regelmäßig auch ohne KI, um unsere eigenen Fähigkeiten zu schärfen.

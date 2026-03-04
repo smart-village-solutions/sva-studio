@@ -25,7 +25,7 @@ Folgende Themen sind ausgelagert und werden hier nicht mehr umgesetzt:
 
 ### 1.2 IAM-Service-Grundstruktur
 
-- [x] 1.2.1 `packages/core/src/iam/` Verzeichnis struktu­rieren (framework-agnostische IAM-Logik aus `packages/auth/src/` extrahiert)
+- [x] 1.2.1 `packages/core/src/iam/` Verzeichnis strukturieren (framework-agnostische IAM-Logik aus `packages/auth/src/` extrahiert)
 - [x] 1.2.2 Token-Validator implementieren (JWT-Verifizierung mit Keycloak Public Key)
 - [x] 1.2.3 User-Context-Resolver entwickeln (Claims auslesen, User-ID bereitstellen)
 - [x] 1.2.4 Keycloak-Config-Management (URL, Realm, Client-ID)
@@ -74,7 +74,7 @@ Folgende Themen sind ausgelagert und werden hier nicht mehr umgesetzt:
 ## Phase 1.6: Architektur-Dokumentation (Review-Befund)
 
 - [x] 1.6.1 ADR erstellen: „Keycloak als zentraler Identity Provider" (unter `docs/adr/ADR-009-keycloak-als-zentraler-identity-provider.md`)
-- [x] 1.6.2 Specs unter `specs/` auf Deutsch übersetzen oder Sprachwahl als ADR dokumentieren (Child-A-Specs unter `openspec/changes/setup-iam-identity-auth/specs/` auf Deutsch harmonisiert)
+- [x] 1.6.2 Specs unter `specs/` auf Deutsch übersetzen oder Sprachwahl als ADR dokumentieren (Child-A-Specs unter `openspec/changes/archive/2026-02-27-setup-iam-identity-auth/specs/` auf Deutsch harmonisiert)
 - [x] 1.6.3 Spec-Scope bereinigen: `iam-access-control`, `iam-organizations`, `iam-auditing` auf Child-A-Scope reduziert (RBAC/ABAC/Hierarchie/Governance ausgelagert)
 
 ## Phase 1.7: Operative Observability (Logging-Review 26.02.2026)

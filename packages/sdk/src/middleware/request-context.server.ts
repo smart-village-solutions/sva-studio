@@ -86,7 +86,11 @@ export const extractTraceIdFromHeaders = (
   headers: Record<string, string | string[] | undefined>,
   fallbackHeaderNames: string[] = ['x-trace-id']
 ): string | undefined => {
-  const traceparentRaw = headers['traceparent'];
+  const traceparentRaw =
+    headers['traceparent'] ??
+    headers['Traceparent'] ??
+    headers['TRACEPARENT'] ??
+    Object.entries(headers).find(([key]) => key.toLowerCase() === 'traceparent')?.[1];
   const traceparent = Array.isArray(traceparentRaw) ? traceparentRaw[0] : traceparentRaw;
   if (traceparent) {
     const match = /^00-([0-9a-f]{32})-[0-9a-f]{16}-[0-9a-f]{2}$/i.exec(traceparent);

@@ -43,6 +43,13 @@ Child D erweitert die in Child C etablierte RBAC-Basis um ABAC-Regeln, Vererbung
 - Affected code: `packages/core`, `packages/data`, ggf. Infra-Integration
 - Affected arc42 sections: `06-runtime-view`, `08-cross-cutting-concepts`, `10-quality-requirements`
 
+## arc42-Referenzen (Dateien)
+
+- `docs/architecture/06-runtime-view.md`
+- `docs/architecture/08-cross-cutting-concepts.md`
+- `docs/architecture/09-architecture-decisions.md`
+- `docs/architecture/10-quality-requirements.md`
+
 ## Dependencies
 
 - Requires: `add-iam-authorization-rbac-v1`

@@ -8,7 +8,14 @@ import { createRoute } from '@tanstack/react-router';
  * Use @sva/routing/server for server-side route definitions with handlers.
  */
 
-const authRoutePaths = ['/auth/login', '/auth/callback', '/auth/me', '/auth/logout'] as const;
+const authRoutePaths = [
+  '/auth/login',
+  '/auth/callback',
+  '/auth/me',
+  '/auth/logout',
+  '/iam/me/permissions',
+  '/iam/authorize',
+] as const;
 
 /**
  * Client-safe authentication route factory

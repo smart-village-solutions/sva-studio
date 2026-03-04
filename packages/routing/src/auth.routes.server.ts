@@ -35,6 +35,24 @@ const resolveAuthHandlers = (path: typeof authRoutePaths[number]): AuthHandlers 
     };
   }
 
+  if (path === '/iam/me/permissions') {
+    return {
+      GET: async ({ request }) => {
+        const mod = await import('@sva/auth/server');
+        return mod.mePermissionsHandler(request);
+      },
+    };
+  }
+
+  if (path === '/iam/authorize') {
+    return {
+      POST: async ({ request }) => {
+        const mod = await import('@sva/auth/server');
+        return mod.authorizeHandler(request);
+      },
+    };
+  }
+
   return {
     POST: async ({ request }) => {
       const mod = await import('@sva/auth/server');

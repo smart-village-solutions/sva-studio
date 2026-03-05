@@ -34,7 +34,13 @@ vi.mock('../lib/iam-api', () => ({
     }
   },
   asIamError: (cause: unknown) => {
-    if (cause instanceof Error && 'status' in cause && 'code' in cause) {
+    if (
+      cause &&
+      typeof cause === 'object' &&
+      'status' in cause &&
+      'code' in cause &&
+      'message' in cause
+    ) {
       return cause;
     }
     return {

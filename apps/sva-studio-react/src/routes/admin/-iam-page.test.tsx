@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { IamViewerPage } from './-iam-page';
@@ -20,6 +20,7 @@ describe('IamViewerPage', () => {
   afterEach(() => {
     vi.useRealTimers();
     vi.restoreAllMocks();
+    cleanup();
   });
 
   it('renders loading state while auth is loading', () => {
@@ -118,7 +119,7 @@ describe('IamViewerPage', () => {
   });
 
   it('shows permissions fetch error and invalidates permissions on 403', async () => {
-    vi.useFakeTimers();
+    vi.useRealTimers();
     const invalidatePermissions = vi.fn().mockResolvedValue(undefined);
     vi.stubGlobal(
       'fetch',
@@ -141,16 +142,15 @@ describe('IamViewerPage', () => {
 
     render(<IamViewerPage />);
 
-    await vi.runAllTimersAsync();
-
     await waitFor(() => {
       expect(invalidatePermissions).toHaveBeenCalledTimes(1);
-      expect(screen.getByRole('alert').textContent).toContain('forbidden_scope');
     });
+
+    expect(screen.getByRole('alert').textContent).toContain('forbidden_scope');
   });
 
   it('submits authorize request and shows ALLOWED decision', async () => {
-    vi.useFakeTimers();
+    vi.useRealTimers();
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(
         new Response(
@@ -192,9 +192,14 @@ describe('IamViewerPage', () => {
 
     render(<IamViewerPage />);
 
-    await vi.runAllTimersAsync();
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('/iam/me/permissions?'),
+        expect.objectContaining({ credentials: 'include' })
+      );
+    });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Authorize prüfen' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Authorize prüfen' })[0]!);
 
     await waitFor(() => {
       expect(screen.getByText('ALLOWED')).toBeTruthy();

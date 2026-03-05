@@ -1,5 +1,5 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { RolesPage } from './-roles-page';
 
@@ -10,6 +10,10 @@ vi.mock('../../../hooks/use-roles', () => ({
 }));
 
 describe('RolesPage', () => {
+  afterEach(() => {
+    cleanup();
+  });
+
   it('renders role list and supports search, sort and permission expand', () => {
     useRolesMock.mockReturnValue({
       roles: [
@@ -61,7 +65,7 @@ describe('RolesPage', () => {
     const roleToggleButtons = screen.getAllByRole('button', { name: /system_admin|editor/ });
     expect(roleToggleButtons[0]?.textContent).toContain('system_admin');
 
-    fireEvent.click(screen.getByRole('button', { name: 'editor' }));
+    fireEvent.click(screen.getAllByRole('button', { name: /editor/i })[0]!);
     expect(screen.getByText('content.write')).toBeTruthy();
   });
 
@@ -80,7 +84,7 @@ describe('RolesPage', () => {
 
     render(<RolesPage />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Rolle anlegen' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Rolle anlegen' })[0]!);
     const dialog = screen.getByRole('dialog', { name: 'Neue Rolle erstellen' });
 
     fireEvent.change(within(dialog).getByLabelText('Rollenname'), {
@@ -101,7 +105,9 @@ describe('RolesPage', () => {
       roleLevel: 42,
       permissionIds: [],
     });
-    expect(screen.queryByRole('dialog', { name: 'Neue Rolle erstellen' })).toBeNull();
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'Neue Rolle erstellen' })).toBeNull();
+    });
   });
 
   it('shows retry on list error and keeps create dialog open on create failure', () => {
@@ -123,7 +129,7 @@ describe('RolesPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Erneut versuchen' }));
     expect(refetch).toHaveBeenCalledTimes(1);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Rolle anlegen' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Rolle anlegen' })[0]!);
     const dialog = screen.getByRole('dialog', { name: 'Neue Rolle erstellen' });
     fireEvent.change(within(dialog).getByLabelText('Rollenname'), {
       target: { value: 'Support' },
@@ -159,7 +165,9 @@ describe('RolesPage', () => {
 
     render(<RolesPage />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Rolle löschen' }));
+    const row = screen.getByText('custom_editor').closest('tr');
+    expect(row).toBeTruthy();
+    fireEvent.click(within(row!).getByRole('button', { name: 'Rolle löschen' }));
     const dialog = screen.getByRole('alertdialog', { name: 'Rolle löschen' });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Rolle löschen' }));
 

@@ -68,7 +68,7 @@ test('profile page supports loading and saving own profile', async ({ page }) =>
   });
 
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'SVA Studio' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'SVA Studio' })).toBeVisible();
   await navigateClientSide(page, '/account');
 
   await expect(page.getByRole('heading', { name: 'Mein Konto' })).toBeVisible();
@@ -173,7 +173,7 @@ test('admin user list and edit page are reachable for system_admin', async ({ pa
   });
 
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'SVA Studio' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'SVA Studio' })).toBeVisible();
   await navigateClientSide(page, '/admin/users');
   await expect(page.getByRole('heading', { name: 'Benutzerverwaltung' })).toBeVisible();
   await expect(page.getByRole('cell', { name: 'User Two', exact: true })).toBeVisible();
@@ -240,7 +240,7 @@ test('responsive IAM views render on mobile, tablet, desktop', async ({ page }) 
   ]) {
     await page.setViewportSize(viewport);
     await page.goto('/');
-    await expect(page.getByRole('heading', { name: 'SVA Studio' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'SVA Studio' })).toBeVisible();
     await navigateClientSide(page, '/admin/users');
     await expect(page.getByRole('heading', { name: 'Benutzerverwaltung' })).toBeVisible();
   }

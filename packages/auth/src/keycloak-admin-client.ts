@@ -128,7 +128,13 @@ type RequestExecutionOptions = {
 
 const encodePathSegment = (value: string): string => encodeURIComponent(value);
 
-const normalizeBaseUrl = (baseUrl: string): string => baseUrl.replace(/\/+$/, '');
+const normalizeBaseUrl = (baseUrl: string): string => {
+  let end = baseUrl.length;
+  while (end > 0 && baseUrl[end - 1] === '/') {
+    end -= 1;
+  }
+  return end === baseUrl.length ? baseUrl : baseUrl.slice(0, end);
+};
 
 const parseLocationHeader = (location: string | null): string | null => {
   if (!location) {

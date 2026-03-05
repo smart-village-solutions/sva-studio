@@ -97,7 +97,7 @@ const authHandlerMap = {
   },
   '/api/v1/iam/users/me/profile': {
     GET: async ({ request }) => {
-      const mod = (await import('@sva/auth/server')) as any;
+      const mod = await import('@sva/auth/server');
       return mod.getMyProfileHandler(request);
     },
     PATCH: async ({ request }) => {

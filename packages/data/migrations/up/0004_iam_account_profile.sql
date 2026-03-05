@@ -161,6 +161,9 @@ RETURNS trigger
 LANGUAGE plpgsql
 AS $$
 BEGIN
+  IF TG_OP = 'DELETE' AND current_setting('iam.retention_mode', true) = 'true' THEN
+    RETURN OLD;
+  END IF;
   RAISE EXCEPTION 'iam.activity_logs is immutable';
 END;
 $$;

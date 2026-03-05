@@ -95,6 +95,7 @@ const run = async () => {
     await client.query('BEGIN');
 
     const anonymized = await client.query(anonymizeSql);
+    await client.query("SET LOCAL iam.retention_mode = 'true';");
     const archived = await client.query(archiveSql);
 
     await client.query('COMMIT');

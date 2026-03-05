@@ -20,7 +20,7 @@ export const isIamAdminEnabled = () => isIamUiEnabled() && readFlag(import.meta.
 export const isIamBulkEnabled = () => isIamAdminEnabled() && readFlag(import.meta.env.VITE_IAM_BULK_ENABLED, true);
 
 export const hasIamAdminRole = (user: UserWithRoles | null | undefined) =>
-  Boolean(user?.roles.some((role) => ADMIN_ROLES.has(role)));
+  Boolean(user?.roles?.some((role) => ADMIN_ROLES.has(role)));
 
 export const hasSystemAdminRole = (user: UserWithRoles | null | undefined) =>
-  Boolean(user?.roles.some((role) => SYSTEM_ADMIN_ROLES.has(role)));
+  Boolean(user?.roles?.some((role) => SYSTEM_ADMIN_ROLES.has(role)));

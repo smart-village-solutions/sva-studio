@@ -3,7 +3,7 @@ export const i18nResources = {
     account: {
       profile: {
         title: 'Mein Konto',
-        subtitle: 'Persoenliche Daten und Einstellungen verwalten',
+        subtitle: 'Persönliche Daten und Einstellungen verwalten',
       },
       fields: {
         firstName: 'Vorname',
@@ -24,8 +24,8 @@ export const i18nResources = {
         saving: 'Speichern ...',
         cancel: 'Abbrechen',
         retry: 'Erneut versuchen',
-        openSecuritySettings: 'Sicherheitseinstellungen oeffnen',
-        openSecuritySettingsAria: 'Keycloak Sicherheitseinstellungen in neuem Kontext oeffnen',
+        openSecuritySettings: 'Sicherheitseinstellungen öffnen',
+        openSecuritySettingsAria: 'Keycloak Sicherheitseinstellungen in neuem Kontext öffnen',
       },
       status: {
         active: 'Aktiv',
@@ -44,7 +44,7 @@ export const i18nResources = {
       validation: {
         firstNameRequired: 'Vorname ist ein Pflichtfeld.',
         lastNameRequired: 'Nachname ist ein Pflichtfeld.',
-        phoneInvalid: 'Telefonnummer hat ein ungueltiges Format.',
+        phoneInvalid: 'Telefonnummer hat ein ungültiges Format.',
       },
     },
     admin: {
@@ -83,42 +83,42 @@ export const i18nResources = {
         },
         pagination: {
           pageLabel: 'Seite {{page}} von {{totalPages}}',
-          previous: 'Zurueck',
+          previous: 'Zurück',
           next: 'Weiter',
         },
         createDialog: {
           title: 'Nutzer anlegen',
           description: 'Erstellt ein neues Nutzerkonto in Keycloak und IAM.',
           roleLabel: 'Startrolle',
-          rolePlaceholder: 'Keine Rolle vorauswaehlen',
+          rolePlaceholder: 'Keine Rolle vorauswählen',
         },
         confirm: {
           singleTitle: 'Nutzer deaktivieren',
-          singleDescription: 'Die ausgewaehlte Person wird deaktiviert.',
+          singleDescription: 'Die ausgewählte Person wird deaktiviert.',
           bulkTitle: 'Mehrere Nutzer deaktivieren',
           bulkDescription: 'Alle markierten Nutzer werden deaktiviert (maximal 50).',
         },
         edit: {
           title: 'Nutzer bearbeiten',
           tabsAriaLabel: 'Nutzerdetails Tabs',
-          save: 'Aenderungen speichern',
+          save: 'Änderungen speichern',
           saveSuccess: 'Nutzerdaten wurden gespeichert.',
           rolesLabel: 'Rollen-Zuweisung',
           notesLabel: 'Notizen',
           notesCounter: '{{count}} / 2000 Zeichen',
           permissionsEmpty: 'Keine effektiven Berechtigungen vorhanden.',
-          historyEmpty: 'Keine Historieneintraege vorhanden.',
+          historyEmpty: 'Keine Historieneinträge vorhanden.',
           tab: {
-            personal: 'Persoenliche Daten',
+            personal: 'Persönliche Daten',
             management: 'Verwaltung',
             permissions: 'Berechtigungen',
             history: 'Historie',
           },
           unsavedDialog: {
-            title: 'Nicht gespeicherte Aenderungen',
-            description: 'Es gibt ungespeicherte Aenderungen. Trotzdem den Tab wechseln?',
+            title: 'Nicht gespeicherte Änderungen',
+            description: 'Es gibt ungespeicherte Änderungen. Trotzdem den Tab wechseln?',
             confirm: 'Verwerfen und wechseln',
-            cancel: 'Zurueck zum Formular',
+            cancel: 'Zurück zum Formular',
           },
         },
         messages: {
@@ -145,7 +145,7 @@ export const i18nResources = {
         actions: {
           create: 'Rolle anlegen',
           edit: 'Rolle bearbeiten',
-          delete: 'Rolle loeschen',
+          delete: 'Rolle löschen',
           sort: 'Sortierung wechseln',
           retry: 'Erneut versuchen',
         },
@@ -156,18 +156,18 @@ export const i18nResources = {
         labels: {
           systemRole: 'Systemrolle',
           customRole: 'Custom-Rolle',
-          temporaryNotice: 'Rollen sind vorlaeufig und werden weiterentwickelt.',
+          temporaryNotice: 'Rollen sind vorläufig und werden weiterentwickelt.',
         },
         createDialog: {
           title: 'Neue Rolle erstellen',
-          description: 'Custom-Rollen koennen spaeter weiter angepasst werden.',
+          description: 'Custom-Rollen können später weiter angepasst werden.',
           nameLabel: 'Rollenname',
           descriptionLabel: 'Beschreibung',
           levelLabel: 'Rollenlevel',
         },
         confirm: {
-          deleteTitle: 'Rolle loeschen',
-          deleteDescription: 'Die Rolle wird dauerhaft geloescht, sofern keine Abhaengigkeiten bestehen.',
+          deleteTitle: 'Rolle löschen',
+          deleteDescription: 'Die Rolle wird dauerhaft gelöscht, sofern keine Abhängigkeiten bestehen.',
         },
         messages: {
           emptyState: 'Keine Rollen gefunden.',

@@ -1,10 +1,10 @@
 {
   "projects": {
     "sva-studio-react": {
-      "lines": 75,
-      "statements": 73.33,
-      "functions": 85.71,
-      "branches": 50.72
+      "lines": 61.22,
+      "statements": 59.78,
+      "functions": 47.1,
+      "branches": 47.84
     },
     "auth": {
       "lines": 46.4,

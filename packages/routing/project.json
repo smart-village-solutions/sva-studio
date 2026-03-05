@@ -21,6 +21,12 @@
           "command": "pnpm --filter @sva/routing exec vitest"
         }
       }
+    },
+    "test:coverage": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm --filter @sva/routing exec vitest run --coverage --reporter=verbose --config vitest.config.ts --passWithNoTests"
+      }
     }
   },
   "tags": ["type:core", "scope:routing"]

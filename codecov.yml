@@ -52,12 +52,14 @@ coverage:
   flags:
     unittests:
       paths:
+        - apps/sva-studio-react/
         - packages/core/
         - packages/data/
         - packages/auth/
         - packages/sdk/
         - packages/routing/
         - packages/monitoring-client/
+        - packages/plugin-example/
 
 # Comment format optimized for PR reviews
 comment:

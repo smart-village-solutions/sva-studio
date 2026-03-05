@@ -1,10 +1,12 @@
 import { resolve } from 'node:path';
 import { defineConfig } from 'vitest/config';
+import { sharedCoverageConfig } from '../../vitest.config';
 
 export default defineConfig({
   test: {
     include: ['src/**/*.test.ts', 'src/**/*.integration.test.ts', 'src/**/*.e2e.test.ts'],
     exclude: ['dist/**', 'coverage/**', 'node_modules/**'],
+    coverage: sharedCoverageConfig,
   },
   resolve: {
     alias: {

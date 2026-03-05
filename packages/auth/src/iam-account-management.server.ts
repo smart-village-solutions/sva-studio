@@ -73,6 +73,11 @@ type ActorInfo = {
   readonly actorAccountId?: string;
 };
 
+type ResolveActorOptions = {
+  readonly createMissingInstanceFromKey?: boolean;
+  readonly requireActorMembership?: boolean;
+};
+
 type IamRoleRow = {
   id: string;
   role_name: string;
@@ -394,7 +399,66 @@ const validateCsrf = (request: Request, requestId?: string): Response | null => 
       requestId
     );
   }
+
+  if (!isTrustedRequestOrigin(request)) {
+    return createApiError(
+      403,
+      'csrf_validation_failed',
+      "Ungültige Request-Origin. 'Origin' oder 'Referer' muss vertrauenswürdig sein.",
+      requestId
+    );
+  }
+
   return null;
+};
+
+const normalizeOrigin = (value: string): string | null => {
+  try {
+    return new URL(value).origin;
+  } catch {
+    return null;
+  }
+};
+
+const readAllowedOrigins = (raw: string | undefined): ReadonlySet<string> => {
+  if (!raw) {
+    return new Set();
+  }
+
+  const normalized = raw
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0)
+    .map((entry) => normalizeOrigin(entry))
+    .filter((entry): entry is string => Boolean(entry));
+
+  return new Set(normalized);
+};
+
+export const isTrustedRequestOrigin = (
+  request: Request,
+  allowedOriginsRaw: string | undefined = process.env.IAM_CSRF_ALLOWED_ORIGINS
+): boolean => {
+  const requestOrigin = normalizeOrigin(request.url);
+  if (!requestOrigin) {
+    return false;
+  }
+
+  const allowedOrigins = new Set<string>([requestOrigin, ...readAllowedOrigins(allowedOriginsRaw)]);
+
+  const originHeader = readString(request.headers.get('origin'));
+  if (originHeader) {
+    const normalizedOrigin = normalizeOrigin(originHeader);
+    return Boolean(normalizedOrigin && allowedOrigins.has(normalizedOrigin));
+  }
+
+  const refererHeader = readString(request.headers.get('referer'));
+  if (refererHeader) {
+    const normalizedRefererOrigin = normalizeOrigin(refererHeader);
+    return Boolean(normalizedRefererOrigin && allowedOrigins.has(normalizedRefererOrigin));
+  }
+
+  return false;
 };
 
 const withInstanceScopedDb = async <T>(instanceId: string, work: (client: QueryClient) => Promise<T>): Promise<T> =>
@@ -709,9 +773,7 @@ const requireRoles = (ctx: AuthenticatedRequestContext, roles: ReadonlySet<strin
 const resolveActorInfo = async (
   request: Request,
   ctx: AuthenticatedRequestContext,
-  options?: {
-    createMissingInstanceFromKey?: boolean;
-  }
+  options?: ResolveActorOptions
 ): Promise<{ actor: ActorInfo } | { error: Response }> => {
   const requestedInstanceId = readInstanceIdFromRequest(request, ctx.user.instanceId);
   const requestContext = getWorkspaceContext();
@@ -750,6 +812,17 @@ const resolveActorInfo = async (
         503,
         'database_unavailable',
         'IAM-Datenbank ist nicht erreichbar.',
+        requestContext.requestId
+      ),
+    };
+  }
+
+  if (options?.requireActorMembership && !actorAccountId) {
+    return {
+      error: createApiError(
+        403,
+        'forbidden',
+        'Akteur-Account nicht gefunden.',
         requestContext.requestId
       ),
     };
@@ -1174,7 +1247,7 @@ const listUsersInternal = async (request: Request, ctx: AuthenticatedRequestCont
   if (roleCheck) {
     return roleCheck;
   }
-  const actorResolution = await resolveActorInfo(request, ctx);
+  const actorResolution = await resolveActorInfo(request, ctx, { requireActorMembership: true });
   if ('error' in actorResolution) {
     return actorResolution.error;
   }
@@ -1242,7 +1315,7 @@ const getUserInternal = async (request: Request, ctx: AuthenticatedRequestContex
   if (roleCheck) {
     return roleCheck;
   }
-  const actorResolution = await resolveActorInfo(request, ctx);
+  const actorResolution = await resolveActorInfo(request, ctx, { requireActorMembership: true });
   if ('error' in actorResolution) {
     return actorResolution.error;
   }
@@ -1290,7 +1363,7 @@ const createUserInternal = async (request: Request, ctx: AuthenticatedRequestCon
   if (roleCheck) {
     return roleCheck;
   }
-  const actorResolution = await resolveActorInfo(request, ctx);
+  const actorResolution = await resolveActorInfo(request, ctx, { requireActorMembership: true });
   if ('error' in actorResolution) {
     return actorResolution.error;
   }
@@ -1597,7 +1670,7 @@ const updateUserInternal = async (request: Request, ctx: AuthenticatedRequestCon
   if (roleCheck) {
     return roleCheck;
   }
-  const actorResolution = await resolveActorInfo(request, ctx);
+  const actorResolution = await resolveActorInfo(request, ctx, { requireActorMembership: true });
   if ('error' in actorResolution) {
     return actorResolution.error;
   }
@@ -1828,7 +1901,7 @@ const deactivateUserInternal = async (request: Request, ctx: AuthenticatedReques
   if (roleCheck) {
     return roleCheck;
   }
-  const actorResolution = await resolveActorInfo(request, ctx);
+  const actorResolution = await resolveActorInfo(request, ctx, { requireActorMembership: true });
   if ('error' in actorResolution) {
     return actorResolution.error;
   }
@@ -1972,7 +2045,7 @@ const bulkDeactivateInternal = async (request: Request, ctx: AuthenticatedReques
   if (roleCheck) {
     return roleCheck;
   }
-  const actorResolution = await resolveActorInfo(request, ctx);
+  const actorResolution = await resolveActorInfo(request, ctx, { requireActorMembership: true });
   if ('error' in actorResolution) {
     return actorResolution.error;
   }
@@ -2359,7 +2432,7 @@ const listRolesInternal = async (request: Request, ctx: AuthenticatedRequestCont
   if (roleCheck) {
     return roleCheck;
   }
-  const actorResolution = await resolveActorInfo(request, ctx);
+  const actorResolution = await resolveActorInfo(request, ctx, { requireActorMembership: true });
   if ('error' in actorResolution) {
     return actorResolution.error;
   }
@@ -2458,7 +2531,7 @@ const createRoleInternal = async (request: Request, ctx: AuthenticatedRequestCon
   if (roleCheck) {
     return roleCheck;
   }
-  const actorResolution = await resolveActorInfo(request, ctx);
+  const actorResolution = await resolveActorInfo(request, ctx, { requireActorMembership: true });
   if ('error' in actorResolution) {
     return actorResolution.error;
   }
@@ -2607,7 +2680,7 @@ const updateRoleInternal = async (request: Request, ctx: AuthenticatedRequestCon
   if (roleCheck) {
     return roleCheck;
   }
-  const actorResolution = await resolveActorInfo(request, ctx);
+  const actorResolution = await resolveActorInfo(request, ctx, { requireActorMembership: true });
   if ('error' in actorResolution) {
     return actorResolution.error;
   }
@@ -2737,7 +2810,7 @@ const deleteRoleInternal = async (request: Request, ctx: AuthenticatedRequestCon
   if (roleCheck) {
     return roleCheck;
   }
-  const actorResolution = await resolveActorInfo(request, ctx);
+  const actorResolution = await resolveActorInfo(request, ctx, { requireActorMembership: true });
   if ('error' in actorResolution) {
     return actorResolution.error;
   }
@@ -2924,7 +2997,7 @@ const reconcilePlaceholderInternal = async (request: Request, ctx: Authenticated
   if (roleCheck) {
     return roleCheck;
   }
-  const actorResolution = await resolveActorInfo(request, ctx);
+  const actorResolution = await resolveActorInfo(request, ctx, { requireActorMembership: true });
   if ('error' in actorResolution) {
     return actorResolution.error;
   }

@@ -25,6 +25,7 @@
     "@tanstack/react-router": "^1.163.3"
   },
   "devDependencies": {
+    "@vitest/coverage-v8": "^4.0.18",
     "typescript": "^5.3.3",
     "vitest": "^4.0.18"
   }

@@ -93,6 +93,14 @@ Diese Liste wird schrittweise reduziert, sobald echte Unit-Tests vorhanden sind.
 - `monitoring-client`: echter `test:unit`-Run via Vitest
 - `sva-studio-react`: echter `test:unit`-Run via Vitest (`--passWithNoTests`)
 
+### Aktueller Status nicht-exempter Coverage-Targets
+
+- `auth`: `test:coverage` via Vitest (`--coverage`)
+- `routing`: `test:coverage` via Vitest (`--coverage`)
+- `sdk`: `test:coverage` via Vitest (`--coverage`)
+- `monitoring-client`: `test:coverage` via Vitest (`--coverage`)
+- `sva-studio-react`: `test:coverage` via Vitest (`--coverage`)
+
 ## PR-Checkliste
 
 Die Merge-Checkliste für Coverage-Nachweise steht unter `../reports/PR_CHECKLIST.md`.

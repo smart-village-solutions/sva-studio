@@ -136,12 +136,18 @@ const normalizeBaseUrl = (baseUrl: string): string => {
   return end === baseUrl.length ? baseUrl : baseUrl.slice(0, end);
 };
 
+const MAX_LOCATION_HEADER_LENGTH = 2048;
+
 const parseLocationHeader = (location: string | null): string | null => {
-  if (!location) {
+  if (!location || location.length > MAX_LOCATION_HEADER_LENGTH) {
     return null;
   }
-  const parts = location.split('/').filter((part) => part.length > 0);
-  return parts.length > 0 ? (parts[parts.length - 1] ?? null) : null;
+  const lastSlash = location.lastIndexOf('/');
+  if (lastSlash === -1) {
+    return location || null;
+  }
+  const segment = location.slice(lastSlash + 1);
+  return segment || null;
 };
 
 const normalizeAttributes = (

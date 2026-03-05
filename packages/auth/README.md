@@ -117,6 +117,12 @@ Serverseitige Autorisierungsentscheidungen auf Basis des RBAC/ABAC-Modells aus `
 | `SVA_AUTH_SCOPES` | OIDC-Scopes | Nein |
 | `SVA_AUTH_SESSION_COOKIE` | Cookie-Name (Default: `sva_auth_session`) | Nein |
 | `SVA_AUTH_SESSION_TTL_MS` | Session-TTL in ms | Nein |
+| `KEYCLOAK_ADMIN_BASE_URL` | Keycloak-Basis-URL für Admin API | Für IAM-Admin-Client |
+| `KEYCLOAK_ADMIN_REALM` | Realm für Admin API | Für IAM-Admin-Client |
+| `KEYCLOAK_ADMIN_CLIENT_ID` | Service-Client-ID (z. B. `sva-studio-iam-service`) | Für IAM-Admin-Client |
+| `KEYCLOAK_ADMIN_CLIENT_SECRET` | Service-Client-Secret | Für IAM-Admin-Client |
+
+Hinweis: Der Keycloak Admin Client unterstützt Keycloak **>= 22.0**.
 
 ## Projektstruktur
 
@@ -141,6 +147,7 @@ src/
 │
 ├── iam-authorization.server.ts           # authorize + mePermissions
 ├── iam-authorization.cache.ts            # Authorization Cache
+├── keycloak-admin-client.ts              # Keycloak Admin API Adapter (IdentityProviderPort)
 ├── iam-governance.server.ts              # Governance-Workflows
 ├── iam-data-subject-rights.server.ts     # DSGVO-Betroffenenrechte
 │

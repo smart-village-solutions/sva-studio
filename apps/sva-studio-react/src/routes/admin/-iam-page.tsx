@@ -2,6 +2,7 @@ import type { AuthorizeResponse, EffectivePermission } from '@sva/core';
 import React from 'react';
 
 import { hasIamViewerAdminRole, isIamViewerEnabled } from '../../lib/iam-viewer-access';
+import { useAuth } from '../../providers/auth-provider';
 import {
   filterPermissions,
   mapAuthorizeDecision,
@@ -9,18 +10,6 @@ import {
   type IamPermissionsQuery,
   type IamPermissionsResponse,
 } from './-iam.models';
-
-type AuthUser = {
-  id: string;
-  name: string;
-  email?: string;
-  roles: string[];
-  instanceId?: string;
-};
-
-type AuthMePayload = {
-  user: AuthUser;
-};
 
 type IamApiErrorPayload = {
   error: string;
@@ -86,9 +75,7 @@ const PermissionTable = ({
 };
 
 export function IamViewerPage() {
-  const [user, setUser] = React.useState<AuthUser | null>(null);
-  const [isLoadingUser, setIsLoadingUser] = React.useState(true);
-  const [authError, setAuthError] = React.useState<string | null>(null);
+  const { user, isLoading: isLoadingUser, error: authError, invalidatePermissions } = useAuth();
 
   const [instanceId, setInstanceId] = React.useState('');
   const [organizationId, setOrganizationId] = React.useState('');
@@ -113,45 +100,8 @@ export function IamViewerPage() {
   const canAccessViewer = iamViewerFeatureFlag && isAuthorizedAdmin;
 
   React.useEffect(() => {
-    let active = true;
-
-    const loadUser = async () => {
-      setIsLoadingUser(true);
-      try {
-        const response = await fetch('/auth/me', { credentials: 'include' });
-        if (!response.ok) {
-          if (!active) {
-            return;
-          }
-          setUser(null);
-          setAuthError('Authentifizierung fehlgeschlagen.');
-          return;
-        }
-
-        const payload = (await response.json()) as AuthMePayload;
-        if (!active) {
-          return;
-        }
-        setUser(payload.user);
-        setInstanceId(payload.user.instanceId ?? '');
-      } catch (error) {
-        if (!active) {
-          return;
-        }
-        setUser(null);
-        setAuthError(error instanceof Error ? error.message : String(error));
-      } finally {
-        if (active) {
-          setIsLoadingUser(false);
-        }
-      }
-    };
-
-    loadUser();
-    return () => {
-      active = false;
-    };
-  }, []);
+    setInstanceId(user?.instanceId ?? '');
+  }, [user?.instanceId]);
 
   React.useEffect(() => {
     if (!canAccessViewer || !instanceId) {
@@ -178,6 +128,12 @@ export function IamViewerPage() {
         }
 
         if (!response.ok) {
+          if (response.status === 403) {
+            await invalidatePermissions();
+            if (!active) {
+              return;
+            }
+          }
           const payload = (await response.json().catch(() => null)) as IamApiErrorPayload | null;
           setPermissions([]);
           setPermissionsError(payload?.error ?? `http_${response.status}`);
@@ -203,7 +159,7 @@ export function IamViewerPage() {
       active = false;
       window.clearTimeout(timer);
     };
-  }, [actingAsUserId, canAccessViewer, instanceId, organizationId]);
+  }, [actingAsUserId, canAccessViewer, instanceId, invalidatePermissions, organizationId]);
 
   const filteredPermissions = React.useMemo(
     () =>
@@ -262,6 +218,9 @@ export function IamViewerPage() {
       });
 
       if (!response.ok) {
+        if (response.status === 403) {
+          await invalidatePermissions();
+        }
         const payload = (await response.json().catch(() => null)) as IamApiErrorPayload | null;
         setAuthorizeDecision(null);
         setAuthorizeError(payload?.error ?? `http_${response.status}`);
@@ -285,7 +244,7 @@ export function IamViewerPage() {
   if (authError) {
     return (
       <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-200" role="alert">
-        {authError}
+        {authError.message}
       </div>
     );
   }

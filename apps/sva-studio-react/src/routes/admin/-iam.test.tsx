@@ -4,13 +4,20 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { IamViewerPage } from './-iam-page';
 
+const useAuthMock = vi.fn();
+
 vi.mock('@tanstack/react-router', () => ({
   createFileRoute: () => () => ({}),
+}));
+
+vi.mock('../../providers/auth-provider', () => ({
+  useAuth: () => useAuthMock(),
 }));
 
 describe('IamViewerPage', () => {
   afterEach(() => {
     cleanup();
+    useAuthMock.mockReset();
     vi.unstubAllEnvs();
     vi.unstubAllGlobals();
     vi.useRealTimers();
@@ -18,20 +25,20 @@ describe('IamViewerPage', () => {
 
   it('shows access denied for non-admin users when feature flag is enabled', async () => {
     vi.stubEnv('VITE_ENABLE_IAM_ADMIN_VIEWER', 'true');
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({
-          user: {
-            id: 'user-1',
-            name: 'User',
-            roles: ['editor'],
-            instanceId: '11111111-1111-1111-8111-111111111111',
-          },
-        }),
-      } satisfies Partial<Response>)
-    );
+    useAuthMock.mockReturnValue({
+      user: {
+        id: 'user-1',
+        name: 'User',
+        roles: ['editor'],
+        instanceId: '11111111-1111-1111-8111-111111111111',
+      },
+      isAuthenticated: true,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      logout: vi.fn(),
+      invalidatePermissions: vi.fn(),
+    });
 
     render(<IamViewerPage />);
 
@@ -42,23 +49,23 @@ describe('IamViewerPage', () => {
 
   it('reloads permissions when scope input changes', async () => {
     vi.stubEnv('VITE_ENABLE_IAM_ADMIN_VIEWER', 'true');
+    useAuthMock.mockReturnValue({
+      user: {
+        id: 'user-1',
+        name: 'Admin',
+        roles: ['admin'],
+        instanceId: '11111111-1111-1111-8111-111111111111',
+      },
+      isAuthenticated: true,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      logout: vi.fn(),
+      invalidatePermissions: vi.fn(),
+    });
 
     const fetchMock = vi.fn(async (input: string | URL | Request) => {
       const path = typeof input === 'string' ? input : input.toString();
-      if (path === '/auth/me') {
-        return {
-          ok: true,
-          json: async () => ({
-            user: {
-              id: 'user-1',
-              name: 'Admin',
-              roles: ['admin'],
-              instanceId: '11111111-1111-1111-8111-111111111111',
-            },
-          }),
-        } satisfies Partial<Response>;
-      }
-
       if (path.startsWith('/iam/me/permissions')) {
         return {
           ok: true,

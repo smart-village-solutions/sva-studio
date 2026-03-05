@@ -11,10 +11,11 @@ describe('iam seed statements', () => {
       roleName: 'editor',
       description: 'Editor role',
       isSystemRole: true,
+      roleLevel: 30,
     });
 
     assert.match(statement.text, /ON CONFLICT \(instance_id, role_name\) DO UPDATE/);
-    assert.deepEqual(statement.values, ['role-id', 'instance-id', 'editor', 'Editor role', true]);
+    assert.deepEqual(statement.values, ['role-id', 'instance-id', 'editor', 'Editor role', true, 30]);
   });
 
   it('builds account-role assignment as idempotent insert', () => {
@@ -26,6 +27,19 @@ describe('iam seed statements', () => {
 
     assert.match(statement.text, /ON CONFLICT \(instance_id, account_id, role_id\) DO NOTHING/);
     assert.deepEqual(statement.values, ['instance-id', 'account-id', 'role-id']);
+  });
+
+  it('builds account upsert with keycloak subject and instance conflict target', () => {
+    const statement = iamSeedStatements.upsertAccount({
+      id: 'account-id',
+      instanceId: 'instance-id',
+      keycloakSubject: 'subject-id',
+      emailCiphertext: 'enc-email',
+      displayNameCiphertext: 'enc-display',
+    });
+
+    assert.match(statement.text, /ON CONFLICT \(keycloak_subject, instance_id\) DO UPDATE/);
+    assert.deepEqual(statement.values, ['account-id', 'instance-id', 'subject-id', 'enc-email', 'enc-display']);
   });
 });
 

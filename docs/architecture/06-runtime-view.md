@@ -115,3 +115,30 @@ Referenzen:
 - `packages/auth/src/iam-authorization.cache.ts`
 - `packages/sdk/src/logger/index.server.ts`
 - `packages/monitoring-client/src/otel.server.ts`
+
+### Szenario 8: Login -> JIT-Provisioning -> Profilpflege
+
+1. User meldet sich über `/auth/login` und `/auth/callback` an.
+2. `handleCallback()` erstellt Session und triggert `jitProvisionAccount(...)`.
+3. Account wird per `INSERT ... ON CONFLICT (keycloak_subject, instance_id)` idempotent angelegt/aktualisiert.
+4. Erstanlage wird als `user.jit_provisioned` auditierbar protokolliert.
+5. User öffnet `/account`, Profil wird über `GET /api/v1/iam/users/me/profile` geladen.
+6. Änderungen werden über `PATCH /api/v1/iam/users/me/profile` gespeichert.
+
+Fehlerpfad:
+
+- JIT-Fehler blockiert den Login nicht, wird aber strukturiert geloggt.
+- Profil-Update ohne gültigen CSRF-Header wird serverseitig abgewiesen.
+
+### Szenario 9: Admin-Flow User- und Rollenverwaltung
+
+1. `system_admin`/`app_manager` öffnet `/admin/users`.
+2. Liste wird paginiert über `GET /api/v1/iam/users` geladen.
+3. Bearbeitung erfolgt in `/admin/users/$userId` per Tabs und `PATCH /api/v1/iam/users/$userId`.
+4. Rollen-Änderungen triggern Permission-Invalidierung über `pg_notify`.
+5. `system_admin` verwaltet Custom-Rollen auf `/admin/roles` mit `POST/PATCH/DELETE /api/v1/iam/roles`.
+
+Fehlerpfad:
+
+- Nicht autorisierte Rollen werden via Route-Guard umgeleitet.
+- Last-Admin-/Self-Protection wird serverseitig mit Konfliktantwort geschützt.

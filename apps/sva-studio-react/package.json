@@ -4,7 +4,9 @@
   "type": "module",
   "scripts": {
     "dev": "TSS_DEV_SERVER=false vite dev --port 3000",
-    "build": "vite build",
+    "check:i18n": "node --import tsx ../../scripts/ci/check-i18n-keys.ts",
+    "check:account-ui-foundation": "node --import tsx ../../scripts/ci/check-account-ui-foundation.ts",
+    "build": "pnpm run check:i18n && pnpm run check:account-ui-foundation && vite build",
     "preview": "vite preview",
     "test": "vitest run --passWithNoTests",
     "test:e2e": "playwright test --config playwright.config.ts"

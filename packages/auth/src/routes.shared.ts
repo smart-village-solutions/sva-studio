@@ -4,8 +4,17 @@ export type AuthRoutePath =
   | '/auth/callback'
   | '/auth/me'
   | '/auth/logout'
+  | '/health/ready'
+  | '/health/live'
   | '/iam/me/permissions'
   | '/iam/authorize'
+  | '/api/v1/iam/users'
+  | '/api/v1/iam/users/$userId'
+  | '/api/v1/iam/users/bulk-deactivate'
+  | '/api/v1/iam/users/me/profile'
+  | '/api/v1/iam/roles'
+  | '/api/v1/iam/roles/$roleId'
+  | '/api/v1/iam/admin/reconcile'
   | '/iam/governance/workflows'
   | '/iam/governance/compliance/export'
   | '/iam/me/data-export'
@@ -24,8 +33,17 @@ export const authRoutePaths = [
   '/auth/callback',
   '/auth/me',
   '/auth/logout',
+  '/health/ready',
+  '/health/live',
   '/iam/me/permissions',
   '/iam/authorize',
+  '/api/v1/iam/users',
+  '/api/v1/iam/users/$userId',
+  '/api/v1/iam/users/bulk-deactivate',
+  '/api/v1/iam/users/me/profile',
+  '/api/v1/iam/roles',
+  '/api/v1/iam/roles/$roleId',
+  '/api/v1/iam/admin/reconcile',
   '/iam/governance/workflows',
   '/iam/governance/compliance/export',
   '/iam/me/data-export',

@@ -101,3 +101,16 @@ Referenzen:
 - `docs/guides/iam-data-subject-rights-runbook.md`
 - `apps/sva-studio-react/src/routes/__root.tsx`
 - `apps/sva-studio-react/src/components/AppShell.tsx`
+
+### Ergänzung 2026-03: AuthProvider-Pattern und Permission-Checking
+
+- `AuthProvider` kapselt Session-Status zentral in der Root-Shell.
+- UI-Bausteine konsumieren Auth-Daten ausschließlich über `useAuth()`.
+- Route-Guards (`createProtectedRoute`, `createAdminRoute`) erzwingen Auth/Rollenprüfung vor Seitenrendering.
+- Bei `403` in IAM-Hooks wird `invalidatePermissions()` ausgelöst, um Session-/Rollenkontext konsistent zu halten.
+
+### Ergänzung 2026-03: CSRF-Strategie in IAM-v1
+
+- Alle mutierenden IAM-Endpunkte prüfen serverseitig den Header `X-Requested-With: XMLHttpRequest`.
+- Client-Hooks setzen den Header standardisiert über gemeinsame API-Utilities.
+- Fehlercode bei Verstoß: `csrf_validation_failed`.

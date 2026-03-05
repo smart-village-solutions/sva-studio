@@ -6,18 +6,14 @@
  */
 import { Link } from '@tanstack/react-router';
 
+import { hasIamAdminRole, hasSystemAdminRole, isIamAdminEnabled, isIamUiEnabled } from '../lib/iam-admin-access';
+import { useAuth } from '../providers/auth-provider';
+
 type SidebarProps = Readonly<{
   isLoading?: boolean;
 }>;
 
 const sidebarSkeletonKeys = ['sidebar-skeleton-a', 'sidebar-skeleton-b', 'sidebar-skeleton-c', 'sidebar-skeleton-d'];
-
-const sidebarLinks: Array<{ to: '/' | '/demo' | '/plugins/example' | '/admin/api/phase1-test'; label: string }> = [
-  { to: '/', label: 'Übersicht' },
-  { to: '/demo', label: 'Demos' },
-  { to: '/plugins/example', label: 'Plugin-Beispiel' },
-  { to: '/admin/api/phase1-test', label: 'Admin-API-Test' },
-];
 
 /**
  * Rendert die Seitenleiste inklusive Navigation oder Skeleton-Platzhaltern.
@@ -26,6 +22,21 @@ const sidebarLinks: Array<{ to: '/' | '/demo' | '/plugins/example' | '/admin/api
  * @param props.isLoading - Steuert, ob Navigations-Skeletons angezeigt werden.
  */
 export default function Sidebar({ isLoading = false }: SidebarProps) {
+  const { user, isAuthenticated } = useAuth();
+  const canAccessAccount = isAuthenticated && isIamUiEnabled();
+  const canAccessAdminUsers = isAuthenticated && isIamAdminEnabled() && hasIamAdminRole(user);
+  const canAccessAdminRoles = canAccessAdminUsers && hasSystemAdminRole(user);
+
+  const sidebarLinks: Array<{ to: string; label: string }> = [
+    { to: '/', label: 'Übersicht' },
+    { to: '/demo', label: 'Demos' },
+    { to: '/plugins/example', label: 'Plugin-Beispiel' },
+    ...(canAccessAccount ? [{ to: '/account', label: 'Mein Konto' }] : []),
+    ...(canAccessAdminUsers ? [{ to: '/admin/users', label: 'Benutzerverwaltung' }] : []),
+    ...(canAccessAdminRoles ? [{ to: '/admin/roles', label: 'Rollenverwaltung' }] : []),
+    { to: '/admin/api/phase1-test', label: 'Admin-API-Test' },
+  ];
+
   return (
     <aside
       aria-label="Seitenleiste"

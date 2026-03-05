@@ -20,6 +20,7 @@ const personas: readonly PersonaSeed[] = [
   {
     personaKey: 'system_admin',
     roleSlug: 'system-admin',
+    roleLevel: 100,
     displayName: 'System Administrator',
     scopeDefault: 'instance',
     mfaPolicy: 'required',
@@ -32,6 +33,7 @@ const personas: readonly PersonaSeed[] = [
   {
     personaKey: 'app_manager',
     roleSlug: 'app-manager',
+    roleLevel: 80,
     displayName: 'App Manager',
     scopeDefault: 'instance',
     mfaPolicy: 'recommended',
@@ -44,6 +46,7 @@ const personas: readonly PersonaSeed[] = [
   {
     personaKey: 'feature_manager',
     roleSlug: 'feature-manager',
+    roleLevel: 60,
     displayName: 'Feature Manager',
     scopeDefault: 'instance',
     mfaPolicy: 'recommended',
@@ -56,6 +59,7 @@ const personas: readonly PersonaSeed[] = [
   {
     personaKey: 'interface_manager',
     roleSlug: 'interface-manager',
+    roleLevel: 50,
     displayName: 'Interface Manager',
     scopeDefault: 'instance',
     mfaPolicy: 'recommended',
@@ -68,6 +72,7 @@ const personas: readonly PersonaSeed[] = [
   {
     personaKey: 'designer',
     roleSlug: 'designer',
+    roleLevel: 40,
     displayName: 'Designer',
     scopeDefault: 'org',
     mfaPolicy: 'optional',
@@ -80,6 +85,7 @@ const personas: readonly PersonaSeed[] = [
   {
     personaKey: 'editor',
     roleSlug: 'editor',
+    roleLevel: 30,
     displayName: 'Editor',
     scopeDefault: 'org',
     mfaPolicy: 'optional',
@@ -92,6 +98,7 @@ const personas: readonly PersonaSeed[] = [
   {
     personaKey: 'moderator',
     roleSlug: 'moderator',
+    roleLevel: 35,
     displayName: 'Moderator',
     scopeDefault: 'org',
     mfaPolicy: 'optional',

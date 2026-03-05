@@ -31,6 +31,7 @@ export type IamSeedRepository = {
     roleName: string;
     description: string;
     isSystemRole: boolean;
+    roleLevel: number;
   }): Promise<void>;
   upsertPermission(input: {
     id: IamUuid;
@@ -40,6 +41,7 @@ export type IamSeedRepository = {
   }): Promise<void>;
   upsertAccount(input: {
     id: IamUuid;
+    instanceId: IamUuid;
     keycloakSubject: string;
     emailCiphertext: string;
     displayNameCiphertext: string;
@@ -96,17 +98,19 @@ SET
     roleName: string;
     description: string;
     isSystemRole: boolean;
+    roleLevel: number;
   }): SqlStatement => ({
     text: `
-INSERT INTO iam.roles (id, instance_id, role_name, description, is_system_role)
-VALUES ($1, $2, $3, $4, $5)
+INSERT INTO iam.roles (id, instance_id, role_name, description, is_system_role, role_level)
+VALUES ($1, $2, $3, $4, $5, $6)
 ON CONFLICT (instance_id, role_name) DO UPDATE
 SET
   description = EXCLUDED.description,
   is_system_role = EXCLUDED.is_system_role,
+  role_level = EXCLUDED.role_level,
   updated_at = NOW();
 `,
-    values: [input.id, input.instanceId, input.roleName, input.description, input.isSystemRole],
+    values: [input.id, input.instanceId, input.roleName, input.description, input.isSystemRole, input.roleLevel],
   }),
 
   upsertPermission: (input: {
@@ -128,20 +132,21 @@ SET
 
   upsertAccount: (input: {
     id: IamUuid;
+    instanceId: IamUuid;
     keycloakSubject: string;
     emailCiphertext: string;
     displayNameCiphertext: string;
   }): SqlStatement => ({
     text: `
-INSERT INTO iam.accounts (id, keycloak_subject, email_ciphertext, display_name_ciphertext)
-VALUES ($1, $2, $3, $4)
-ON CONFLICT (keycloak_subject) DO UPDATE
+INSERT INTO iam.accounts (id, instance_id, keycloak_subject, email_ciphertext, display_name_ciphertext)
+VALUES ($1, $2, $3, $4, $5)
+ON CONFLICT (keycloak_subject, instance_id) DO UPDATE
 SET
   email_ciphertext = EXCLUDED.email_ciphertext,
   display_name_ciphertext = EXCLUDED.display_name_ciphertext,
   updated_at = NOW();
 `,
-    values: [input.id, input.keycloakSubject, input.emailCiphertext, input.displayNameCiphertext],
+    values: [input.id, input.instanceId, input.keycloakSubject, input.emailCiphertext, input.displayNameCiphertext],
   }),
 
   upsertInstanceMembership: (input: {

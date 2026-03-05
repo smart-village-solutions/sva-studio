@@ -1,171 +1,101 @@
 import React from 'react';
-
-type AuthUser = {
-  name: string;
-  email?: string;
-  roles: string[];
-  instanceId?: string;
-};
-
-type LogLevel = 'info' | 'warn' | 'error';
+import { useAuth } from '../providers/auth-provider';
 
 type AuthorizeDecision = {
   allowed: boolean;
   reason: string;
 };
 
-const logAuth = (level: LogLevel, message: string, meta: Record<string, unknown> = {}) => {
-  if (!import.meta.env.DEV) {
-    return;
-  }
-
-  const payload = { component: 'auth', ...meta };
-
-  if (level === 'error') {
-    console.error(message, payload);
-    return;
-  }
-
-  if (level === 'warn') {
-    console.warn(message, payload);
-    return;
-  }
-
-  console.info(message, payload);
-};
-
 export const HomePage = () => {
-  const [user, setUser] = React.useState<AuthUser | null>(null);
-  const [loading, setLoading] = React.useState(true);
-  const [authError, setAuthError] = React.useState<string | null>(null);
+  const { user, isLoading, error, invalidatePermissions } = useAuth();
+  const [authStateError, setAuthStateError] = React.useState<string | null>(null);
   const [authorizeLoading, setAuthorizeLoading] = React.useState(false);
   const [authorizeDecision, setAuthorizeDecision] = React.useState<AuthorizeDecision | null>(null);
 
   React.useEffect(() => {
-    let active = true;
     const search = new URLSearchParams(window.location.search);
     const authState = search.get('auth');
     if (authState === 'error') {
-      setAuthError('Login fehlgeschlagen. Bitte erneut versuchen.');
+      setAuthStateError('Login fehlgeschlagen. Bitte erneut versuchen.');
     } else if (authState === 'state-expired') {
-      setAuthError('Login abgebrochen oder abgelaufen. Bitte erneut anmelden.');
+      setAuthStateError('Login abgebrochen oder abgelaufen. Bitte erneut anmelden.');
     } else {
-      setAuthError(null);
+      setAuthStateError(null);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    if (!user?.instanceId) {
+      setAuthorizeDecision(null);
+      setAuthorizeLoading(false);
+      return;
     }
 
-    const loadUser = async () => {
-      const controller = new AbortController();
-      const timeoutId = window.setTimeout(() => controller.abort(), 8000);
+    let active = true;
+    const loadAuthorizeDecision = async () => {
+      setAuthorizeLoading(true);
       try {
-        logAuth('info', 'Loading user via /auth/me', {
-          route: 'home',
-          auth_state: authState ?? 'none',
-        });
-
-        const response = await fetch('/auth/me', {
+        const authorizeResponse = await fetch('/iam/authorize', {
+          method: 'POST',
           credentials: 'include',
-          signal: controller.signal,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            instanceId: user.instanceId,
+            action: 'content.read',
+            resource: {
+              type: 'content',
+              id: 'home-dashboard',
+            },
+            context: {
+              requestId: `home-${Date.now()}`,
+            },
+          }),
         });
 
-        if (!active) return;
-
-        if (!response.ok) {
-          logAuth('warn', 'Auth response not OK', {
-            route: 'home',
-            status: response.status,
-            auth_state: authState ?? 'none',
-          });
-          setUser(null);
-          if (authState === 'ok') {
-            setAuthError('Login erfolgreich, aber Session konnte nicht geladen werden. Bitte erneut anmelden.');
-          }
+        if (!active) {
           return;
         }
 
-        const payload = (await response.json()) as { user: AuthUser };
-        if (active) {
-          setUser(payload.user);
-          if (payload.user.instanceId) {
-            setAuthorizeLoading(true);
-            try {
-              const authorizeResponse = await fetch('/iam/authorize', {
-                method: 'POST',
-                credentials: 'include',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  instanceId: payload.user.instanceId,
-                  action: 'content.read',
-                  resource: {
-                    type: 'content',
-                    id: 'home-dashboard',
-                  },
-                  context: {
-                    requestId: `home-${Date.now()}`,
-                  },
-                }),
-              });
+        if (authorizeResponse.ok) {
+          const decision = (await authorizeResponse.json()) as AuthorizeDecision;
+          setAuthorizeDecision(decision);
+          return;
+        }
 
-              if (authorizeResponse.ok) {
-                const decision = (await authorizeResponse.json()) as AuthorizeDecision;
-                if (active) {
-                  setAuthorizeDecision(decision);
-                }
-              } else if (active) {
-                setAuthorizeDecision({
-                  allowed: false,
-                  reason: `authorize_http_${authorizeResponse.status}`,
-                });
-              }
-            } catch (error) {
-              if (active) {
-                setAuthorizeDecision({
-                  allowed: false,
-                  reason: error instanceof Error ? error.message : String(error),
-                });
-              }
-            } finally {
-              if (active) {
-                setAuthorizeLoading(false);
-              }
-            }
-          } else {
-            setAuthorizeDecision(null);
-            setAuthorizeLoading(false);
+        if (authorizeResponse.status === 403) {
+          await invalidatePermissions();
+          if (!active) {
+            return;
           }
-          logAuth('info', 'User loaded', {
-            route: 'home',
-            has_user: Boolean(payload.user),
-            roles_count: payload.user.roles.length,
-          });
         }
-      } catch (error) {
-        if (active) {
-          setUser(null);
-          logAuth('error', 'Failed to load session', {
-            route: 'home',
-            error_message: error instanceof Error ? error.message : String(error),
-          });
-          setAuthError(
-            error instanceof DOMException && error.name === 'AbortError'
-              ? 'Session-Request hat zu lange gedauert. Bitte erneut anmelden.'
-              : 'Fehler beim Laden der Session. Bitte erneut anmelden.'
-          );
+
+        setAuthorizeDecision({
+          allowed: false,
+          reason: `authorize_http_${authorizeResponse.status}`,
+        });
+      } catch (cause) {
+        if (!active) {
+          return;
         }
+        setAuthorizeDecision({
+          allowed: false,
+          reason: cause instanceof Error ? cause.message : String(cause),
+        });
       } finally {
-        window.clearTimeout(timeoutId);
         if (active) {
-          setLoading(false);
+          setAuthorizeLoading(false);
         }
       }
     };
 
-    loadUser();
+    void loadAuthorizeDecision();
     return () => {
       active = false;
     };
-  }, []);
+  }, [invalidatePermissions, user?.instanceId]);
 
   const hasRole = (role: string) => user?.roles.includes(role) ?? false;
+  const authError = authStateError ?? (error ? 'Fehler beim Laden der Session. Bitte erneut anmelden.' : null);
 
   return (
     <div className="min-h-full bg-slate-950 text-slate-100">
@@ -179,7 +109,7 @@ export const HomePage = () => {
         <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6">
           <div className="flex flex-col gap-2">
             <p className="text-xs uppercase tracking-[0.3em] text-slate-500">Demo Session</p>
-            {loading ? (
+            {isLoading ? (
               <p className="text-slate-300">Lade Session ...</p>
             ) : user ? (
               <div className="flex flex-col gap-1 text-slate-200">

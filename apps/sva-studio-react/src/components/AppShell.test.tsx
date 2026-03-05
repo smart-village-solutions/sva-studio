@@ -18,6 +18,18 @@ vi.mock('@tanstack/react-router', () => ({
   ),
 }));
 
+vi.mock('../providers/auth-provider', () => ({
+  useAuth: () => ({
+    user: null,
+    isAuthenticated: false,
+    isLoading: false,
+    error: null,
+    refetch: vi.fn(),
+    logout: vi.fn(),
+    invalidatePermissions: vi.fn(),
+  }),
+}));
+
 /**
  * Führt nach jedem Test ein DOM-Cleanup aus.
  */

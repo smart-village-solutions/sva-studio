@@ -1,0 +1,576 @@
+openapi: 3.1.0
+info:
+  title: SVA IAM API
+  version: 1.0.0
+  description: IAM-API für Nutzer- und Rollenverwaltung im SVA Studio.
+servers:
+  - url: /
+paths:
+  /health/live:
+    get:
+      summary: Prozess-Liveness
+      responses:
+        '200':
+          description: Service lebt.
+  /health/ready:
+    get:
+      summary: Readiness (DB, Redis, Keycloak)
+      responses:
+        '200':
+          description: Service ist bereit.
+        '503':
+          description: Mindestens ein Dependency-Check ist fehlgeschlagen.
+  /api/v1/iam/users:
+    get:
+      summary: Nutzerliste (paginiert)
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+        - in: query
+          name: pageSize
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [active, inactive, pending]
+        - in: query
+          name: role
+          schema:
+            type: string
+        - in: query
+          name: search
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Erfolgreiche Nutzerliste.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserListResponse'
+    post:
+      summary: Nutzer anlegen (Keycloak-First)
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema:
+            type: string
+        - in: header
+          name: X-Requested-With
+          required: true
+          schema:
+            type: string
+            enum: [XMLHttpRequest]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+      responses:
+        '201':
+          description: Nutzer angelegt.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserItemResponse'
+        '409':
+          description: Idempotency-Key-Konflikt.
+        '503':
+          description: Keycloak nicht verfügbar.
+  /api/v1/iam/users/{userId}:
+    get:
+      summary: Einzelnen Nutzer abrufen
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Nutzerdetails.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserItemResponse'
+        '404':
+          description: Nutzer nicht gefunden.
+    patch:
+      summary: Nutzer aktualisieren
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: header
+          name: X-Requested-With
+          required: true
+          schema:
+            type: string
+            enum: [XMLHttpRequest]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
+      responses:
+        '200':
+          description: Nutzer aktualisiert.
+        '409':
+          description: Last-Admin-Schutz oder Konflikt.
+    delete:
+      summary: Nutzer deaktivieren
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: header
+          name: X-Requested-With
+          required: true
+          schema:
+            type: string
+            enum: [XMLHttpRequest]
+      responses:
+        '200':
+          description: Nutzer deaktiviert.
+        '409':
+          description: Self-/Last-Admin-Schutz.
+  /api/v1/iam/users/bulk-deactivate:
+    post:
+      summary: Mehrere Nutzer deaktivieren (max 50)
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema:
+            type: string
+        - in: header
+          name: X-Requested-With
+          required: true
+          schema:
+            type: string
+            enum: [XMLHttpRequest]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userIds]
+              properties:
+                userIds:
+                  type: array
+                  maxItems: 50
+                  items:
+                    type: string
+                    format: uuid
+      responses:
+        '200':
+          description: Bulk-Deaktivierung erfolgreich.
+        '409':
+          description: Self-/Last-Admin-/Idempotency-Konflikt.
+  /api/v1/iam/users/me/profile:
+    get:
+      summary: Eigenes Profil abrufen
+      responses:
+        '200':
+          description: Profil geladen.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserItemResponse'
+        '404':
+          description: Profil nicht gefunden.
+    patch:
+      summary: Eigenes Profil aktualisieren
+      parameters:
+        - in: header
+          name: X-Requested-With
+          required: true
+          schema:
+            type: string
+            enum: [XMLHttpRequest]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMyProfileRequest'
+      responses:
+        '200':
+          description: Profil aktualisiert.
+  /api/v1/iam/roles:
+    get:
+      summary: Rollenliste
+      responses:
+        '200':
+          description: Rollenliste.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoleListResponse'
+    post:
+      summary: Custom-Rolle anlegen
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema:
+            type: string
+        - in: header
+          name: X-Requested-With
+          required: true
+          schema:
+            type: string
+            enum: [XMLHttpRequest]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRoleRequest'
+      responses:
+        '201':
+          description: Rolle erstellt.
+  /api/v1/iam/roles/{roleId}:
+    patch:
+      summary: Custom-Rolle aktualisieren
+      parameters:
+        - in: path
+          name: roleId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: header
+          name: X-Requested-With
+          required: true
+          schema:
+            type: string
+            enum: [XMLHttpRequest]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateRoleRequest'
+      responses:
+        '200':
+          description: Rolle aktualisiert.
+    delete:
+      summary: Custom-Rolle löschen
+      parameters:
+        - in: path
+          name: roleId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: header
+          name: X-Requested-With
+          required: true
+          schema:
+            type: string
+            enum: [XMLHttpRequest]
+      responses:
+        '200':
+          description: Rolle gelöscht.
+        '409':
+          description: Abhängigkeit/System-Rolle.
+  /api/v1/iam/admin/reconcile:
+    post:
+      summary: Reconciliation (Placeholder)
+      responses:
+        '501':
+          description: Noch nicht implementiert.
+components:
+  schemas:
+    ApiErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        requestId:
+          type: string
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            details:
+              type: object
+              additionalProperties: true
+    UserRole:
+      type: object
+      required: [roleId, roleName, roleLevel]
+      properties:
+        roleId:
+          type: string
+          format: uuid
+        roleName:
+          type: string
+        roleLevel:
+          type: integer
+    User:
+      type: object
+      required: [id, keycloakSubject, displayName, status, roles]
+      properties:
+        id:
+          type: string
+          format: uuid
+        keycloakSubject:
+          type: string
+        displayName:
+          type: string
+        email:
+          type: string
+          format: email
+        firstName:
+          type: string
+        lastName:
+          type: string
+        phone:
+          type: string
+        position:
+          type: string
+        department:
+          type: string
+        preferredLanguage:
+          type: string
+        timezone:
+          type: string
+        avatarUrl:
+          type: string
+          format: uri
+        notes:
+          type: string
+        status:
+          type: string
+          enum: [active, inactive, pending]
+        lastLoginAt:
+          type: string
+          format: date-time
+        roles:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserRole'
+        permissions:
+          type: array
+          items:
+            type: string
+    UserItemResponse:
+      type: object
+      required: [data]
+      properties:
+        requestId:
+          type: string
+        data:
+          $ref: '#/components/schemas/User'
+    UserListResponse:
+      type: object
+      required: [data, pagination]
+      properties:
+        requestId:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+        pagination:
+          type: object
+          required: [page, pageSize, total]
+          properties:
+            page:
+              type: integer
+            pageSize:
+              type: integer
+            total:
+              type: integer
+    Role:
+      type: object
+      required: [id, roleName, isSystemRole, roleLevel, memberCount, permissions]
+      properties:
+        id:
+          type: string
+          format: uuid
+        roleName:
+          type: string
+        description:
+          type: string
+        isSystemRole:
+          type: boolean
+        roleLevel:
+          type: integer
+        memberCount:
+          type: integer
+        permissions:
+          type: array
+          items:
+            type: object
+            required: [id, permissionKey]
+            properties:
+              id:
+                type: string
+                format: uuid
+              permissionKey:
+                type: string
+              description:
+                type: string
+    RoleListResponse:
+      type: object
+      required: [data, pagination]
+      properties:
+        requestId:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Role'
+        pagination:
+          type: object
+          required: [page, pageSize, total]
+          properties:
+            page:
+              type: integer
+            pageSize:
+              type: integer
+            total:
+              type: integer
+    CreateUserRequest:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+          format: email
+        firstName:
+          type: string
+        lastName:
+          type: string
+        displayName:
+          type: string
+        phone:
+          type: string
+        position:
+          type: string
+        department:
+          type: string
+        preferredLanguage:
+          type: string
+        timezone:
+          type: string
+        avatarUrl:
+          type: string
+          format: uri
+        notes:
+          type: string
+        status:
+          type: string
+          enum: [active, inactive, pending]
+        roleIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+    UpdateUserRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        email:
+          type: string
+          format: email
+        firstName:
+          type: string
+        lastName:
+          type: string
+        displayName:
+          type: string
+        phone:
+          type: string
+        position:
+          type: string
+        department:
+          type: string
+        preferredLanguage:
+          type: string
+        timezone:
+          type: string
+        avatarUrl:
+          type: string
+          format: uri
+        notes:
+          type: string
+        status:
+          type: string
+          enum: [active, inactive, pending]
+        roleIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+    UpdateMyProfileRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        displayName:
+          type: string
+        phone:
+          type: string
+        position:
+          type: string
+        department:
+          type: string
+        preferredLanguage:
+          type: string
+        timezone:
+          type: string
+    CreateRoleRequest:
+      type: object
+      required: [roleName]
+      properties:
+        roleName:
+          type: string
+        description:
+          type: string
+        roleLevel:
+          type: integer
+        permissionIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+    UpdateRoleRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        description:
+          type: string
+        roleLevel:
+          type: integer
+        permissionIds:
+          type: array
+          items:
+            type: string
+            format: uuid

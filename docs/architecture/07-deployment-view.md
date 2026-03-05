@@ -57,3 +57,25 @@ Referenzen:
 - `docker-compose.monitoring.yml`
 - `docs/development/postgres-setup.md`
 - `packages/sdk/src/server/bootstrap.server.ts`
+
+### Ergänzung 2026-03: IAM-Admin-Integration
+
+Für den produktiven Betrieb der Account-/Admin-UI sind zusätzlich erforderlich:
+
+- Keycloak Service-Account `sva-studio-iam-service` mit Minimalrechten (`manage-users`, `view-users`, `view-realm`).
+- Secret-Injektion für `KEYCLOAK_ADMIN_CLIENT_SECRET` über Secrets-Manager (nicht im Repository).
+- Feature-Flags auf Backend-Seite:
+  - `IAM_UI_ENABLED`
+  - `IAM_ADMIN_ENABLED`
+  - `IAM_BULK_ENABLED`
+- Optional korrespondierende Frontend-Flags:
+  - `VITE_IAM_UI_ENABLED`
+  - `VITE_IAM_ADMIN_ENABLED`
+  - `VITE_IAM_BULK_ENABLED`
+
+Rollout-Reihenfolge:
+
+1. Datenbankmigrationen (`0004` bis `0006`) ausrollen.
+2. Backend mit Keycloak-Admin-Credentials deployen.
+3. Feature-Flags initial auf `false` verifizieren (Kill-Switch).
+4. Stufenweise aktivieren: UI -> Admin -> Bulk.

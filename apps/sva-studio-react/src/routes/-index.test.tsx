@@ -4,30 +4,42 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { HomePage } from './-home-page';
 
+const useAuthMock = vi.fn();
+
 vi.mock('@tanstack/react-router', () => ({
   createFileRoute: () => () => ({}),
+}));
+
+vi.mock('../providers/auth-provider', () => ({
+  useAuth: () => useAuthMock(),
 }));
 
 describe('HomePage IAM integration', () => {
   afterEach(() => {
     cleanup();
+    useAuthMock.mockReset();
     vi.unstubAllGlobals();
   });
 
-  it('calls /iam/authorize after authenticated /auth/me response', async () => {
+  it('calls /iam/authorize for authenticated users with instanceId', async () => {
+    useAuthMock.mockReturnValue({
+      user: {
+        id: 'user-1',
+        name: 'Test User',
+        roles: ['editor'],
+        instanceId: '11111111-1111-1111-8111-111111111111',
+      },
+      isAuthenticated: true,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      logout: vi.fn(),
+      invalidatePermissions: vi.fn(),
+    });
+
     const fetchMock = vi
       .fn()
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          user: {
-            name: 'Test User',
-            roles: ['editor'],
-            instanceId: '11111111-1111-1111-8111-111111111111',
-          },
-        }),
-      } satisfies Partial<Response>)
-      .mockResolvedValueOnce({
+      .mockResolvedValue({
         ok: true,
         json: async () => ({
           allowed: true,
@@ -44,10 +56,6 @@ describe('HomePage IAM integration', () => {
     });
 
     expect(fetchMock).toHaveBeenCalledWith(
-      '/auth/me',
-      expect.objectContaining({ credentials: 'include' })
-    );
-    expect(fetchMock).toHaveBeenCalledWith(
       '/iam/authorize',
       expect.objectContaining({
         method: 'POST',
@@ -55,20 +63,27 @@ describe('HomePage IAM integration', () => {
       })
     );
   });
+
   it('shows denied decision when /iam/authorize returns non-OK status', async () => {
+    const invalidatePermissions = vi.fn();
+    useAuthMock.mockReturnValue({
+      user: {
+        id: 'user-2',
+        name: 'Denied User',
+        roles: ['editor'],
+        instanceId: '11111111-1111-1111-8111-111111111111',
+      },
+      isAuthenticated: true,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      logout: vi.fn(),
+      invalidatePermissions,
+    });
+
     const fetchMock = vi
       .fn()
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          user: {
-            name: 'Denied User',
-            roles: ['editor'],
-            instanceId: '11111111-1111-1111-8111-111111111111',
-          },
-        }),
-      } satisfies Partial<Response>)
-      .mockResolvedValueOnce({
+      .mockResolvedValue({
         ok: false,
         status: 403,
       } satisfies Partial<Response>);
@@ -79,30 +94,31 @@ describe('HomePage IAM integration', () => {
     await waitFor(() => {
       expect(screen.getByText(/Verweigert \(authorize_http_403\)/)).toBeTruthy();
     });
+    expect(invalidatePermissions).toHaveBeenCalledTimes(1);
   });
 
-  it('does not call /iam/authorize when user has no instanceId', async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        user: {
-          name: 'No Instance User',
-          roles: ['editor'],
-        },
-      }),
-    } satisfies Partial<Response>);
+  it('does not call /iam/authorize when user has no instanceId', () => {
+    useAuthMock.mockReturnValue({
+      user: {
+        id: 'user-3',
+        name: 'No Instance User',
+        roles: ['editor'],
+      },
+      isAuthenticated: true,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      logout: vi.fn(),
+      invalidatePermissions: vi.fn(),
+    });
+
+    const fetchMock = vi.fn();
 
     vi.stubGlobal('fetch', fetchMock);
     render(<HomePage />);
 
-    await waitFor(() => {
-      expect(screen.getByText('No Instance User')).toBeTruthy();
-    });
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(fetchMock).toHaveBeenCalledWith(
-      '/auth/me',
-      expect.objectContaining({ credentials: 'include' })
-    );
+    expect(screen.getByText('No Instance User')).toBeTruthy();
+    expect(fetchMock).not.toHaveBeenCalled();
     expect(screen.getByText('Keine Authorize-Entscheidung verfügbar.')).toBeTruthy();
   });
 });

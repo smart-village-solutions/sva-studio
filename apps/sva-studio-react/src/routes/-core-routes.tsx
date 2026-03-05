@@ -3,8 +3,13 @@ import { Link, Outlet, createRoute } from '@tanstack/react-router';
 import { createServerFn, useServerFn } from '@tanstack/react-start';
 import React from 'react';
 
+import { accountUiRouteGuards } from '../lib/account-ui-route-guards';
+import { AccountProfilePage } from './account/-account-profile-page';
 import { Phase1TestPage } from './admin/api/-phase1-test-page';
 import { IamViewerPage } from './admin/-iam-page';
+import { RolesPage } from './admin/roles/-roles-page';
+import { UserEditPage } from './admin/users/-user-edit-page';
+import { UserListPage } from './admin/users/-user-list-page';
 import { HomePage } from './-home-page';
 
 const demoNames = ['Aria', 'Jona', 'Mika', 'Lea', 'Noah'];
@@ -340,6 +345,36 @@ export const coreRouteFactoriesBase = [
       getParentRoute: () => rootRoute,
       path: '/',
       component: HomePage,
+    }),
+  (rootRoute: RootRoute) =>
+    createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/account',
+      beforeLoad: accountUiRouteGuards.account,
+      component: AccountProfilePage,
+    }),
+  (rootRoute: RootRoute) =>
+    createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/admin/users',
+      beforeLoad: accountUiRouteGuards.adminUsers,
+      component: UserListPage,
+    }),
+  (rootRoute: RootRoute) => {
+    const userEditRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/admin/users/$userId',
+      beforeLoad: accountUiRouteGuards.adminUserDetail,
+      component: () => <UserEditPage userId={userEditRoute.useParams().userId} />,
+    });
+    return userEditRoute;
+  },
+  (rootRoute: RootRoute) =>
+    createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/admin/roles',
+      beforeLoad: accountUiRouteGuards.adminRoles,
+      component: RolesPage,
     }),
   (rootRoute: RootRoute) =>
     createRoute({

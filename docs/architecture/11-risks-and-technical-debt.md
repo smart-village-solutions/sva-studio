@@ -92,3 +92,20 @@ Referenzen:
 - `docs/development/testing-coverage.md`
 - `docs/guides/iam-governance-runbook.md`
 - `docs/guides/iam-governance-freigabematrix.md`
+
+### Ergänzung 2026-03: IAM-UI und Keycloak-Sync
+
+12. Keycloak-API-Latenz oder Ausfall bei Admin-Operationen
+   - Impact: hoch (Admin-Operationen blockieren)
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: Circuit-Breaker, Retry/Backoff, DB-Fallback für Reads, klare 503-Signale für Writes
+
+13. Vendor-Lock-in auf Keycloak-Admin-API
+   - Impact: mittel bis hoch
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: `IdentityProviderPort` als stabile Abstraktionsschicht, Adapterwechsel ohne UI-Bruch
+
+14. Wachstum von `iam.activity_logs`
+   - Impact: mittel (Storage/Kosten/Query-Latenz)
+   - Wahrscheinlichkeit: hoch
+   - Maßnahme: Retention-Automation (Anonymisierung + Archivierung) mit mandantenspezifischen Policies

@@ -63,3 +63,16 @@ Referenzen:
 
 - `./decisions/README.md`
 - `openspec/AGENTS.md`
+
+### Neue ADRs im Kontext Account-UI
+
+- `ADR-015-csrf-schutz-strategie.md`
+  - Begründet die Header-basierte CSRF-Absicherung für mutierende IAM-v1-Endpunkte.
+- `ADR-016-idp-abstraktionsschicht.md`
+  - Begründet die IdP-Abstraktion über `IdentityProviderPort` mit Keycloak-Adapter.
+
+Zuordnung:
+
+- Abschnitt 08 (Querschnitt): ADR-015, ADR-016
+- Abschnitt 06 (Laufzeit): ADR-016 (Keycloak-First + Compensation)
+- Abschnitt 07 (Deployment): ADR-016 (Service-Account/Secrets)

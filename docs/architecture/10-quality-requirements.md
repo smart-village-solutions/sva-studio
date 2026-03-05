@@ -68,3 +68,10 @@ Referenzen:
 - `../development/testing-coverage.md`
 - `scripts/ci/coverage-gate.ts`
 - `packages/monitoring-client/src/otel.server.ts`
+
+### Ergänzung 2026-03: Qualitätsziele IAM-UI
+
+- Account-/Admin-UI muss auf 320px, 768px und 1024px funktionsfähig bleiben.
+- IAM-Admin-Calls gegen Keycloak sollen bei Circuit-Breaker-Open deterministisch in den Degraded-Mode wechseln.
+- Mutierende IAM-Endpunkte müssen CSRF-Header validieren.
+- UI-Regressionen werden über Unit-Tests für Hooks und Seiten sowie E2E-Szenarien für Account/Admin abgesichert.

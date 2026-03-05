@@ -78,4 +78,52 @@ describe('UserListPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Nutzer anlegen' }));
     expect(screen.getByRole('dialog', { name: 'Nutzer anlegen' })).toBeTruthy();
   });
+
+  it('renders error state and triggers refetch via retry', () => {
+    const refetch = vi.fn();
+
+    useUsersMock.mockReturnValue({
+      users: [],
+      total: 0,
+      page: 1,
+      pageSize: 25,
+      isLoading: false,
+      error: new Error('failed'),
+      filters: {
+        page: 1,
+        pageSize: 25,
+        search: '',
+        status: 'all',
+        role: '',
+      },
+      setSearch: vi.fn(),
+      setStatus: vi.fn(),
+      setRole: vi.fn(),
+      setPage: vi.fn(),
+      refetch,
+      createUser: vi.fn(),
+      updateUser: vi.fn(),
+      deactivateUser: vi.fn(),
+      bulkDeactivate: vi.fn(),
+    });
+
+    useRolesMock.mockReturnValue({
+      roles: [],
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      createRole: vi.fn(),
+      updateRole: vi.fn(),
+      deleteRole: vi.fn(),
+    });
+
+    render(<UserListPage />);
+
+    const alert = screen.getByRole('alert');
+    const retryButton = alert.querySelector('button');
+    expect(retryButton).toBeTruthy();
+
+    fireEvent.click(retryButton as HTMLButtonElement);
+    expect(refetch).toHaveBeenCalledTimes(1);
+  });
 });

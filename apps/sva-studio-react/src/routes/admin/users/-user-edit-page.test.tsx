@@ -15,6 +15,54 @@ vi.mock('../../../hooks/use-roles', () => ({
 }));
 
 describe('UserEditPage', () => {
+  it('renders loading state', () => {
+    useUserMock.mockReturnValue({
+      user: null,
+      isLoading: true,
+      error: null,
+      refetch: vi.fn(),
+      save: vi.fn(),
+    });
+
+    useRolesMock.mockReturnValue({
+      roles: [],
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      createRole: vi.fn(),
+      updateRole: vi.fn(),
+      deleteRole: vi.fn(),
+    });
+
+    render(<UserEditPage userId="user-1" />);
+
+    expect(screen.getByRole('status')).toBeTruthy();
+  });
+
+  it('renders error state when user is missing', () => {
+    useUserMock.mockReturnValue({
+      user: null,
+      isLoading: false,
+      error: new Error('not found'),
+      refetch: vi.fn(),
+      save: vi.fn(),
+    });
+
+    useRolesMock.mockReturnValue({
+      roles: [],
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      createRole: vi.fn(),
+      updateRole: vi.fn(),
+      deleteRole: vi.fn(),
+    });
+
+    render(<UserEditPage userId="user-404" />);
+
+    expect(screen.getByRole('alert')).toBeTruthy();
+  });
+
   it('renders tabs and allows switching', () => {
     useUserMock.mockReturnValue({
       user: {

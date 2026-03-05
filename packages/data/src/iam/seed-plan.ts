@@ -19,7 +19,7 @@ const permissions = [
 const personas: readonly PersonaSeed[] = [
   {
     personaKey: 'system_admin',
-    roleSlug: 'system-admin',
+    roleSlug: 'system_admin',
     roleLevel: 100,
     displayName: 'System Administrator',
     scopeDefault: 'instance',
@@ -27,12 +27,12 @@ const personas: readonly PersonaSeed[] = [
     permissionKeys: permissions.map(([, key]) => key),
     accountId: '50111111-1111-1111-1111-111111111111',
     keycloakSubject: 'seed:system_admin',
-    seedEmailPlaceholder: 'seed.system-admin@sva.local',
+    seedEmailPlaceholder: 'seed.system_admin@sva.local',
     seedDisplayNamePlaceholder: 'System Administrator',
   },
   {
     personaKey: 'app_manager',
-    roleSlug: 'app-manager',
+    roleSlug: 'app_manager',
     roleLevel: 80,
     displayName: 'App Manager',
     scopeDefault: 'instance',
@@ -40,7 +40,7 @@ const personas: readonly PersonaSeed[] = [
     permissionKeys: ['iam.user.read', 'iam.user.write', 'iam.org.read', 'iam.org.write', 'content.read', 'feature.toggle'],
     accountId: '50222222-2222-2222-2222-222222222222',
     keycloakSubject: 'seed:app_manager',
-    seedEmailPlaceholder: 'seed.app-manager@sva.local',
+    seedEmailPlaceholder: 'seed.app_manager@sva.local',
     seedDisplayNamePlaceholder: 'App Manager',
   },
   {

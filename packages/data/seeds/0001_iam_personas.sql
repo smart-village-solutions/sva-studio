@@ -27,8 +27,8 @@ SET
 
 INSERT INTO iam.roles (id, instance_id, role_name, description, is_system_role, role_level)
 VALUES
-  ('30111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-111111111111', 'system-admin', 'System administration persona', true, 100),
-  ('30222222-2222-2222-2222-222222222222', '11111111-1111-1111-1111-111111111111', 'app-manager', 'Application management persona', true, 80),
+  ('30111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-111111111111', 'system_admin', 'System administration persona', true, 100),
+  ('30222222-2222-2222-2222-222222222222', '11111111-1111-1111-1111-111111111111', 'app_manager', 'Application management persona', true, 80),
   ('30333333-3333-3333-3333-333333333333', '11111111-1111-1111-1111-111111111111', 'feature-manager', 'Feature management persona', true, 60),
   ('30444444-4444-4444-4444-444444444444', '11111111-1111-1111-1111-111111111111', 'interface-manager', 'Interface management persona', true, 50),
   ('30555555-5555-5555-5555-555555555555', '11111111-1111-1111-1111-111111111111', 'designer', 'Design persona', true, 40),

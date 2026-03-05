@@ -772,10 +772,30 @@ const mapRoles = (roles: readonly IamRoleRow[]): readonly IamUserRoleAssignment[
     roleLevel: role.role_level,
   }));
 
+export const resolveUserDisplayName = (input: {
+  decryptedDisplayName?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  keycloakSubject: string;
+}): string => {
+  const fullName = [input.firstName, input.lastName]
+    .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+    .join(' ')
+    .trim();
+
+  if (input.decryptedDisplayName && input.decryptedDisplayName.trim().length > 0) {
+    return input.decryptedDisplayName;
+  }
+
+  return fullName || input.keycloakSubject;
+};
+
 const mapUserRowToListItem = (row: {
   id: string;
   keycloak_subject: string;
   display_name_ciphertext: string | null;
+  first_name_ciphertext?: string | null;
+  last_name_ciphertext?: string | null;
   email_ciphertext: string | null;
   position: string | null;
   department: string | null;
@@ -783,9 +803,18 @@ const mapUserRowToListItem = (row: {
   last_login_at: string | null;
   roles: readonly IamRoleRow[];
 }): IamUserListItem => {
-  const displayName =
-    revealField(row.display_name_ciphertext, `iam.accounts.display_name:${row.keycloak_subject}`) ??
-    row.keycloak_subject;
+  const decryptedDisplayName = revealField(
+    row.display_name_ciphertext,
+    `iam.accounts.display_name:${row.keycloak_subject}`
+  );
+  const firstName = revealField(row.first_name_ciphertext, `iam.accounts.first_name:${row.keycloak_subject}`);
+  const lastName = revealField(row.last_name_ciphertext, `iam.accounts.last_name:${row.keycloak_subject}`);
+  const displayName = resolveUserDisplayName({
+    decryptedDisplayName,
+    firstName,
+    lastName,
+    keycloakSubject: row.keycloak_subject,
+  });
   const email = revealField(row.email_ciphertext, `iam.accounts.email:${row.keycloak_subject}`);
   return {
     id: row.id,
@@ -843,6 +872,8 @@ WHERE ($2::text IS NULL OR a.status = $2)
     id: string;
     keycloak_subject: string;
     display_name_ciphertext: string | null;
+    first_name_ciphertext: string | null;
+    last_name_ciphertext: string | null;
     email_ciphertext: string | null;
     position: string | null;
     department: string | null;
@@ -861,6 +892,8 @@ SELECT
   a.id,
   a.keycloak_subject,
   a.display_name_ciphertext,
+  a.first_name_ciphertext,
+  a.last_name_ciphertext,
   a.email_ciphertext,
   a.position,
   a.department,
@@ -1032,6 +1065,8 @@ GROUP BY a.id;
     id: row.id,
     keycloak_subject: row.keycloak_subject,
     display_name_ciphertext: row.display_name_ciphertext,
+    first_name_ciphertext: row.first_name_ciphertext,
+    last_name_ciphertext: row.last_name_ciphertext,
     email_ciphertext: row.email_ciphertext,
     position: row.position,
     department: row.department,

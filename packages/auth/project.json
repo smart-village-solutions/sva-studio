@@ -20,7 +20,7 @@
     "test:unit": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "cd packages/auth && pnpm exec vitest run --reporter=verbose"
+        "command": "pnpm --filter @sva/auth exec vitest run --reporter=verbose"
       }
     },
     "test:coverage": {

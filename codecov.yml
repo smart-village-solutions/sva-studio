@@ -59,7 +59,6 @@ coverage:
         - packages/sdk/
         - packages/routing/
         - packages/monitoring-client/
-        - packages/plugin-example/
 
 # Comment format optimized for PR reviews
 comment:

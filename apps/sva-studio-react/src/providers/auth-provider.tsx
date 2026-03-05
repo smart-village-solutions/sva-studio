@@ -55,6 +55,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const isMountedRef = React.useRef(true);
 
   React.useEffect(() => {
+    isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
     };

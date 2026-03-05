@@ -125,7 +125,7 @@ const ensureAccount = async (
     `
 INSERT INTO iam.accounts (instance_id, keycloak_subject, email_ciphertext, display_name_ciphertext)
 VALUES ($1::uuid, $2, $3, $4)
-ON CONFLICT (keycloak_subject, instance_id) DO NOTHING
+ON CONFLICT (keycloak_subject, instance_id) WHERE instance_id IS NOT NULL DO NOTHING
 RETURNING id;
 `,
     [input.instanceId, input.keycloakSubject, input.encryptedEmailCiphertext, input.encryptedDisplayNameCiphertext]

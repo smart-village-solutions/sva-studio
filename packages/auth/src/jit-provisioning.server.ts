@@ -1,7 +1,7 @@
 import { createSdkLogger, getWorkspaceContext } from '@sva/sdk/server';
 
 import { createPoolResolver, type QueryClient, withInstanceDb } from './shared/db-helpers';
-import { isUuid } from './shared/input-readers';
+import { resolveInstanceId } from './shared/instance-id-resolution';
 
 const logger = createSdkLogger({ component: 'iam-service', level: 'info' });
 const resolvePool = createPoolResolver(() => process.env.IAM_DATABASE_URL);
@@ -34,7 +34,7 @@ INSERT INTO iam.accounts (
   status
 )
 VALUES ($1::uuid, $2, 'pending')
-ON CONFLICT (keycloak_subject, instance_id) DO UPDATE
+ON CONFLICT (keycloak_subject, instance_id) WHERE instance_id IS NOT NULL DO UPDATE
 SET updated_at = NOW()
 RETURNING id, (xmax = 0) AS created;
 `,
@@ -79,29 +79,38 @@ VALUES ($1::uuid, $2::uuid, $2::uuid, 'user.jit_provisioned', 'success', '{}'::j
 };
 
 export const jitProvisionAccount = async (input: JitProvisionInput): Promise<JitProvisionResult> => {
-  const instanceId = input.instanceId;
+  const rawInstanceId = input.instanceId;
   const keycloakSubject = input.keycloakSubject;
 
-  if (!instanceId) {
+  if (!rawInstanceId) {
     return { skipped: true, reason: 'missing_instance' };
-  }
-  if (!isUuid(instanceId)) {
-    return { skipped: true, reason: 'invalid_instance' };
   }
   if (!keycloakSubject) {
     return { skipped: true, reason: 'missing_subject' };
   }
 
-  const pool = resolvePool();
-  if (!pool) {
-    return { skipped: true, reason: 'missing_database' };
+  const resolvedInstance = await resolveInstanceId({
+    resolvePool,
+    candidate: rawInstanceId,
+    // In lokalen/test Umgebungen erlauben wir Bootstrap über instance_key.
+    createIfMissingFromKey: process.env.NODE_ENV !== 'production',
+    displayNameForCreate: rawInstanceId,
+  });
+  if (!resolvedInstance.ok) {
+    if (resolvedInstance.reason === 'database_unavailable') {
+      return { skipped: true, reason: 'missing_database' };
+    }
+    if (resolvedInstance.reason === 'missing_instance') {
+      return { skipped: true, reason: 'missing_instance' };
+    }
+    return { skipped: true, reason: 'invalid_instance' };
   }
 
   const context = getWorkspaceContext();
 
-  const result = await withInstanceDb(resolvePool, instanceId, (client) =>
+  const result = await withInstanceDb(resolvePool, resolvedInstance.instanceId, (client) =>
     jitProvisionAccountWithClient(client, {
-      instanceId,
+      instanceId: resolvedInstance.instanceId,
       keycloakSubject,
       requestId: context.requestId,
       traceId: context.traceId,
@@ -110,7 +119,9 @@ export const jitProvisionAccount = async (input: JitProvisionInput): Promise<Jit
 
   logger.info('JIT provisioning processed', {
     operation: 'jit_provision',
-    instance_id: instanceId,
+    instance_id: resolvedInstance.instanceId,
+    source_instance_id: rawInstanceId,
+    instance_bootstrapped: resolvedInstance.created,
     keycloak_subject: keycloakSubject,
     account_created: result.created,
     request_id: context.requestId,

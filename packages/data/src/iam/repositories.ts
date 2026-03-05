@@ -140,7 +140,7 @@ SET
     text: `
 INSERT INTO iam.accounts (id, instance_id, keycloak_subject, email_ciphertext, display_name_ciphertext)
 VALUES ($1, $2, $3, $4, $5)
-ON CONFLICT (keycloak_subject, instance_id) DO UPDATE
+ON CONFLICT (keycloak_subject, instance_id) WHERE instance_id IS NOT NULL DO UPDATE
 SET
   email_ciphertext = EXCLUDED.email_ciphertext,
   display_name_ciphertext = EXCLUDED.display_name_ciphertext,

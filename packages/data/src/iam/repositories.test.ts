@@ -38,7 +38,10 @@ describe('iam seed statements', () => {
       displayNameCiphertext: 'enc-display',
     });
 
-    assert.match(statement.text, /ON CONFLICT \(keycloak_subject, instance_id\) DO UPDATE/);
+    assert.match(
+      statement.text,
+      /ON CONFLICT \(keycloak_subject, instance_id\) WHERE instance_id IS NOT NULL DO UPDATE/
+    );
     assert.deepEqual(statement.values, ['account-id', 'instance-id', 'subject-id', 'enc-email', 'enc-display']);
   });
 });

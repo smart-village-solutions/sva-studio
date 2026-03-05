@@ -70,7 +70,7 @@ VALUES
   ('50555555-5555-5555-5555-555555555555', '11111111-1111-1111-1111-111111111111', 'seed:designer', 'enc:v1:seed:V4k9rMz0pA:9D8m4W2nV7qQf1eR6yU2dA:K6hPa9sV3wQ', 'enc:v1:seed:uM0w7Xn2cA:2f8N6d3Qv9sK1aP4rT7yBg:B9mPq2hV6xW'),
   ('50666666-6666-6666-6666-666666666666', '11111111-1111-1111-1111-111111111111', 'seed:editor', 'enc:v1:seed:G1y8nVb6qA:3r6M9d2Pq8wV4cT1mK7xJQ:L5pQw8nZ2vR', 'enc:v1:seed:mQ9k7Bv2dA:7t1P4nW8rQ6yV3fM9xJ2cQ:N4sLh7kP1wR'),
   ('50777777-7777-7777-7777-777777777777', '11111111-1111-1111-1111-111111111111', 'seed:moderator', 'enc:v1:seed:T8m4cN1vQw:8a2K5qP9rW3nX6dM1jF7yA:Q7wP2nK6vXs', 'enc:v1:seed:zR3n8Vq5mA:5y9J2kF6pQ4tW1dN8xM3rQ:P2hVk9mQ4wX')
-ON CONFLICT (keycloak_subject, instance_id) DO UPDATE
+ON CONFLICT (keycloak_subject, instance_id) WHERE instance_id IS NOT NULL DO UPDATE
 SET
   email_ciphertext = EXCLUDED.email_ciphertext,
   display_name_ciphertext = EXCLUDED.display_name_ciphertext,

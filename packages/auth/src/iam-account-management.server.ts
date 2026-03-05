@@ -20,11 +20,13 @@ import { metrics } from '@opentelemetry/api';
 import { z } from 'zod';
 
 import type { IdentityProviderPort } from './identity-provider-port';
+import { jitProvisionAccountWithClient } from './jit-provisioning.server';
 import { KeycloakAdminClient, getKeycloakAdminClientConfigFromEnv } from './keycloak-admin-client';
 import { withAuthenticatedUser, type AuthenticatedRequestContext } from './middleware.server';
 import { isRedisAvailable } from './redis.server';
 import { createPoolResolver, jsonResponse, type QueryClient, withInstanceDb } from './shared/db-helpers';
 import { isUuid, readNumber, readString } from './shared/input-readers';
+import { resolveInstanceId } from './shared/instance-id-resolution';
 
 const logger = createSdkLogger({ component: 'iam-service', level: 'info' });
 const meter = metrics.getMeter('sva.iam.service');
@@ -706,20 +708,36 @@ const requireRoles = (ctx: AuthenticatedRequestContext, roles: ReadonlySet<strin
 
 const resolveActorInfo = async (
   request: Request,
-  ctx: AuthenticatedRequestContext
+  ctx: AuthenticatedRequestContext,
+  options?: {
+    createMissingInstanceFromKey?: boolean;
+  }
 ): Promise<{ actor: ActorInfo } | { error: Response }> => {
-  const instanceId = readInstanceIdFromRequest(request, ctx.user.instanceId);
+  const requestedInstanceId = readInstanceIdFromRequest(request, ctx.user.instanceId);
   const requestContext = getWorkspaceContext();
-  if (!instanceId || !isUuid(instanceId)) {
+  const resolvedInstance = await resolveInstanceId({
+    resolvePool,
+    candidate: requestedInstanceId,
+    createIfMissingFromKey: options?.createMissingInstanceFromKey,
+    displayNameForCreate: requestedInstanceId,
+  });
+  if (!resolvedInstance.ok) {
+    const status = resolvedInstance.reason === 'database_unavailable' ? 503 : 400;
+    const code = resolvedInstance.reason === 'database_unavailable' ? 'database_unavailable' : 'invalid_instance_id';
+    const message =
+      resolvedInstance.reason === 'database_unavailable'
+        ? 'IAM-Datenbank ist nicht erreichbar.'
+        : 'Ungültige oder fehlende instanceId.';
     return {
       error: createApiError(
-        400,
-        'invalid_instance_id',
-        'Ungültige oder fehlende instanceId.',
+        status,
+        code,
+        message,
         requestContext.requestId
       ),
     };
   }
+  const instanceId = resolvedInstance.instanceId;
 
   let actorAccountId: string | undefined;
   try {
@@ -2120,7 +2138,9 @@ const updateMyProfileInternal = async (request: Request, ctx: AuthenticatedReque
   if (featureCheck) {
     return featureCheck;
   }
-  const actorResolution = await resolveActorInfo(request, ctx);
+  const actorResolution = await resolveActorInfo(request, ctx, {
+    createMissingInstanceFromKey: process.env.NODE_ENV !== 'production',
+  });
   if ('error' in actorResolution) {
     return actorResolution.error;
   }
@@ -2147,13 +2167,20 @@ const updateMyProfileInternal = async (request: Request, ctx: AuthenticatedReque
 
   try {
     const detail = await withInstanceScopedDb(actorResolution.actor.instanceId, async (client) => {
-      const accountId = await resolveActorAccountId(client, {
+      const existingAccountId = await resolveActorAccountId(client, {
         instanceId: actorResolution.actor.instanceId,
         keycloakSubject: ctx.user.id,
       });
-      if (!accountId) {
-        return undefined;
-      }
+      const accountId =
+        existingAccountId ??
+        (
+          await jitProvisionAccountWithClient(client, {
+            instanceId: actorResolution.actor.instanceId,
+            keycloakSubject: ctx.user.id,
+            requestId: actorResolution.actor.requestId,
+            traceId: actorResolution.actor.traceId,
+          })
+        ).accountId;
 
       await client.query(
         `
@@ -2228,7 +2255,9 @@ const getMyProfileInternal = async (request: Request, ctx: AuthenticatedRequestC
   if (featureCheck) {
     return featureCheck;
   }
-  const actorResolution = await resolveActorInfo(request, ctx);
+  const actorResolution = await resolveActorInfo(request, ctx, {
+    createMissingInstanceFromKey: process.env.NODE_ENV !== 'production',
+  });
   if ('error' in actorResolution) {
     return actorResolution.error;
   }
@@ -2245,13 +2274,20 @@ const getMyProfileInternal = async (request: Request, ctx: AuthenticatedRequestC
 
   try {
     const detail = await withInstanceScopedDb(actorResolution.actor.instanceId, async (client) => {
-      const accountId = await resolveActorAccountId(client, {
+      const existingAccountId = await resolveActorAccountId(client, {
         instanceId: actorResolution.actor.instanceId,
         keycloakSubject: ctx.user.id,
       });
-      if (!accountId) {
-        return undefined;
-      }
+      const accountId =
+        existingAccountId ??
+        (
+          await jitProvisionAccountWithClient(client, {
+            instanceId: actorResolution.actor.instanceId,
+            keycloakSubject: ctx.user.id,
+            requestId: actorResolution.actor.requestId,
+            traceId: actorResolution.actor.traceId,
+          })
+        ).accountId;
       return resolveUserDetail(client, { instanceId: actorResolution.actor.instanceId, userId: accountId });
     });
     if (!detail) {

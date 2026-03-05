@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { IamViewerPage } from './-iam-page';
@@ -52,6 +52,21 @@ describe('IamViewerPage', () => {
     expect(screen.getByText(/IAM-Viewer ist deaktiviert/)).toBeTruthy();
   });
 
+  it('renders auth error state', () => {
+    useAuthMock.mockReturnValue({
+      user: null,
+      isLoading: false,
+      error: new Error('auth failed'),
+      invalidatePermissions: vi.fn(),
+    });
+    isIamViewerEnabledMock.mockReturnValue(true);
+    hasIamViewerAdminRoleMock.mockReturnValue(true);
+
+    render(<IamViewerPage />);
+
+    expect(screen.getByRole('alert').textContent).toContain('auth failed');
+  });
+
   it('renders access denied for non-admin user', () => {
     useAuthMock.mockReturnValue({
       user: { id: 'user-1', instanceId: '11111111-1111-1111-8111-111111111111' },
@@ -100,5 +115,95 @@ describe('IamViewerPage', () => {
     render(<IamViewerPage />);
 
     expect(screen.getByRole('heading', { name: 'IAM Rechte-Matrix-Viewer' })).toBeTruthy();
+  });
+
+  it('shows permissions fetch error and invalidates permissions on 403', async () => {
+    vi.useFakeTimers();
+    const invalidatePermissions = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        new Response(JSON.stringify({ error: 'forbidden_scope' }), {
+          status: 403,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      )
+    );
+
+    useAuthMock.mockReturnValue({
+      user: { id: 'user-1', instanceId: '11111111-1111-1111-8111-111111111111' },
+      isLoading: false,
+      error: null,
+      invalidatePermissions,
+    });
+    isIamViewerEnabledMock.mockReturnValue(true);
+    hasIamViewerAdminRoleMock.mockReturnValue(true);
+
+    render(<IamViewerPage />);
+
+    await vi.runAllTimersAsync();
+
+    await waitFor(() => {
+      expect(invalidatePermissions).toHaveBeenCalledTimes(1);
+      expect(screen.getByRole('alert').textContent).toContain('forbidden_scope');
+    });
+  });
+
+  it('submits authorize request and shows ALLOWED decision', async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            permissions: [],
+            requestId: 'req-test',
+            traceId: 'trace-test',
+            subject: {
+              actorUserId: 'user-1',
+              effectiveUserId: 'user-1',
+              isImpersonating: false,
+            },
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            allowed: true,
+            reason: 'Policy matched',
+            reasonCode: 'policy_allow',
+            diagnostics: { evaluatedRules: 1 },
+            evaluatedAt: '2026-03-05T20:00:00.000Z',
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        )
+      );
+    vi.stubGlobal('fetch', fetchMock);
+
+    useAuthMock.mockReturnValue({
+      user: { id: 'user-1', instanceId: '11111111-1111-1111-8111-111111111111' },
+      isLoading: false,
+      error: null,
+      invalidatePermissions: vi.fn(),
+    });
+    isIamViewerEnabledMock.mockReturnValue(true);
+    hasIamViewerAdminRoleMock.mockReturnValue(true);
+
+    render(<IamViewerPage />);
+
+    await vi.runAllTimersAsync();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Authorize prüfen' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('ALLOWED')).toBeTruthy();
+      expect(screen.getByText(/Reason: Policy matched/)).toBeTruthy();
+    });
+
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      '/iam/authorize',
+      expect.objectContaining({ method: 'POST' })
+    );
   });
 });

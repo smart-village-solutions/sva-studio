@@ -92,6 +92,7 @@ Diese Anleitung beschreibt die im Change `add-account-user-management-ui` genutz
 - `idempotency_key_required`
 - `idempotency_key_reuse`
 - `idempotency_in_progress`
+- `invalid_instance_id`
 - `keycloak_unavailable`
 - `database_unavailable`
 - `last_admin_protection`

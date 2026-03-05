@@ -26,6 +26,15 @@ export class IamHttpError extends Error {
   }
 }
 
+export const asIamError = (error: unknown): IamHttpError =>
+  error instanceof IamHttpError
+    ? error
+    : new IamHttpError({
+        status: 500,
+        code: 'internal_error',
+        message: error instanceof Error ? error.message : String(error),
+      });
+
 export type UserStatusFilter = 'active' | 'inactive' | 'pending' | 'all';
 
 export type UsersQuery = {

@@ -2,6 +2,7 @@ import type { IamUserDetail, IamUserListItem } from '@sva/core';
 import React from 'react';
 
 import {
+  asIamError,
   bulkDeactivateUsers,
   createUser,
   deactivateUser,
@@ -48,15 +49,6 @@ const DEFAULT_FILTERS: UserFilters = {
   status: 'all',
   role: '',
 };
-
-const asIamError = (error: unknown) =>
-  error instanceof IamHttpError
-    ? error
-    : new IamHttpError({
-        status: 500,
-        code: 'internal_error',
-        message: error instanceof Error ? error.message : String(error),
-      });
 
 export const useUsers = (initial?: Partial<UserFilters>): UseUsersResult => {
   const { invalidatePermissions } = useAuth();

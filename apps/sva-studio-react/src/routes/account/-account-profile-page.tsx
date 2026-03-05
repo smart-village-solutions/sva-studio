@@ -1,7 +1,7 @@
 import type { IamUserDetail } from '@sva/core';
 import React from 'react';
 
-import { getMyProfile, IamHttpError, updateMyProfile } from '../../lib/iam-api';
+import { asIamError, getMyProfile, IamHttpError, updateMyProfile } from '../../lib/iam-api';
 import { t } from '../../i18n';
 import { useAuth } from '../../providers/auth-provider';
 
@@ -62,15 +62,6 @@ const validateForm = (values: ProfileFormValues): ProfileErrors => {
 
   return errors;
 };
-
-const asIamError = (error: unknown): IamHttpError =>
-  error instanceof IamHttpError
-    ? error
-    : new IamHttpError({
-        status: 500,
-        code: 'internal_error',
-        message: error instanceof Error ? error.message : String(error),
-      });
 
 const getSecuritySettingsHref = () => {
   return import.meta.env.VITE_KEYCLOAK_ACCOUNT_URL ?? '/auth/login?redirect=%2Faccount';

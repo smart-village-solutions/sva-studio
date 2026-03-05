@@ -2,6 +2,7 @@ import type { IamRoleListItem } from '@sva/core';
 import React from 'react';
 
 import {
+  asIamError,
   createRole,
   deleteRole,
   IamHttpError,
@@ -11,15 +12,6 @@ import {
   type UpdateRolePayload,
 } from '../lib/iam-api';
 import { useAuth } from '../providers/auth-provider';
-
-const asIamError = (error: unknown) =>
-  error instanceof IamHttpError
-    ? error
-    : new IamHttpError({
-        status: 500,
-        code: 'internal_error',
-        message: error instanceof Error ? error.message : String(error),
-      });
 
 type UseRolesResult = {
   readonly roles: readonly IamRoleListItem[];

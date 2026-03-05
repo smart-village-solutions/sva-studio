@@ -1,17 +1,8 @@
 import type { IamUserDetail } from '@sva/core';
 import React from 'react';
 
-import { getUser, IamHttpError, updateUser, type UpdateUserPayload } from '../lib/iam-api';
+import { asIamError, getUser, IamHttpError, updateUser, type UpdateUserPayload } from '../lib/iam-api';
 import { useAuth } from '../providers/auth-provider';
-
-const asIamError = (error: unknown) =>
-  error instanceof IamHttpError
-    ? error
-    : new IamHttpError({
-        status: 500,
-        code: 'internal_error',
-        message: error instanceof Error ? error.message : String(error),
-      });
 
 type UseUserResult = {
   readonly user: IamUserDetail | null;

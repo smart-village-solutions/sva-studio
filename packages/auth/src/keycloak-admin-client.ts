@@ -144,7 +144,7 @@ const parseLocationHeader = (location: string | null): string | null => {
   }
   const lastSlash = location.lastIndexOf('/');
   if (lastSlash === -1) {
-    return location || null;
+    return location;
   }
   const segment = location.slice(lastSlash + 1);
   return segment || null;

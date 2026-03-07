@@ -213,6 +213,12 @@ test('admin links are hidden for non-admin user and route guard redirects', asyn
   await expect(page).toHaveURL(/\?error=auth\.insufficientRole/);
 });
 
+test('direct access to admin users redirects unauthenticated clients to login', async ({ page }) => {
+  await page.goto('/admin/users');
+
+  await expect(page).toHaveURL(/\/protocol\/openid-connect\/auth\?/);
+});
+
 test('responsive IAM views render on mobile, tablet, desktop', async ({ page }) => {
   await page.route('**/auth/me', async (route) => {
     await route.fulfill({

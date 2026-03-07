@@ -65,6 +65,36 @@ vi.mock('pg', () => ({
   },
 }));
 
+vi.mock('./keycloak-admin-client', () => ({
+  getKeycloakAdminClientConfigFromEnv: () => ({
+    baseUrl: 'http://keycloak.local',
+    realm: 'test',
+    clientId: 'client',
+    clientSecret: 'secret',
+  }),
+  KeycloakAdminClient: class MockKeycloakAdminClient {
+    getCircuitBreakerState() {
+      return 0;
+    }
+
+    async updateUser() {
+      return undefined;
+    }
+
+    async deactivateUser() {
+      return undefined;
+    }
+
+    async syncRoles() {
+      return undefined;
+    }
+
+    async createUser() {
+      return { id: 'mock-user-id' };
+    }
+  },
+}));
+
 import {
   createUserHandler,
   deactivateUserHandler,
@@ -200,6 +230,140 @@ describe('iam-account-management handlers (guards)', () => {
     const payload = (await response.json()) as { error: { code: string } };
     expect(response.status).toBe(400);
     expect(payload.error.code).toBe('invalid_request');
+  });
+
+  it('rejects deactivation when target user exceeds actor role level', async () => {
+    state.queryHandler = (text, values) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+
+      if (text.includes('max_role_level') && text.includes('FROM iam.accounts a')) {
+        return { rowCount: 1, rows: [{ max_role_level: 10 }] };
+      }
+
+      if (text.includes('WHERE a.id = $2::uuid')) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              id: 'bbbbbbbb-bbbb-4111-8bbb-bbbbbbbbbbbb',
+              keycloak_subject: 'keycloak-target-1',
+              display_name_ciphertext: 'Target User',
+              email_ciphertext: 'target@example.com',
+              first_name_ciphertext: 'Target',
+              last_name_ciphertext: 'User',
+              phone_ciphertext: null,
+              position: null,
+              department: null,
+              preferred_language: null,
+              timezone: null,
+              avatar_url: null,
+              notes: null,
+              status: 'active',
+              last_login_at: null,
+              role_rows: [
+                {
+                  id: 'role-system-admin',
+                  role_name: 'system_admin',
+                  role_level: 90,
+                  is_system_role: true,
+                },
+              ],
+              permission_rows: [],
+            },
+          ],
+        };
+      }
+
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await deactivateUserHandler(
+      new Request('http://localhost/api/v1/iam/users/bbbbbbbb-bbbb-4111-8bbb-bbbbbbbbbbbb', {
+        method: 'DELETE',
+        headers: {
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'http://localhost',
+        },
+      })
+    );
+
+    const payload = (await response.json()) as { error: { code: string; message: string } };
+    expect(response.status).toBe(403);
+    expect(payload.error.code).toBe('forbidden');
+    expect(payload.error.message).toContain('Berechtigungsstufe');
+  });
+
+  it('fails closed when PII encryption is required but not configured', async () => {
+    process.env.IAM_PII_ALLOW_PLAINTEXT_FALLBACK = 'false';
+    delete process.env.IAM_PII_ACTIVE_KEY_ID;
+    delete process.env.IAM_PII_KEYRING_JSON;
+
+    state.queryHandler = (text, values) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+
+      if (text.includes('max_role_level') && text.includes('FROM iam.accounts a')) {
+        return { rowCount: 1, rows: [{ max_role_level: 90 }] };
+      }
+
+      if (text.includes('WHERE a.id = $2::uuid')) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              id: 'bbbbbbbb-bbbb-4111-8bbb-bbbbbbbbbbbb',
+              keycloak_subject: 'keycloak-target-2',
+              display_name_ciphertext: 'Target User',
+              email_ciphertext: 'target@example.com',
+              first_name_ciphertext: 'Target',
+              last_name_ciphertext: 'User',
+              phone_ciphertext: null,
+              position: null,
+              department: null,
+              preferred_language: null,
+              timezone: null,
+              avatar_url: null,
+              notes: null,
+              status: 'active',
+              last_login_at: null,
+              role_rows: [
+                {
+                  id: 'role-editor',
+                  role_name: 'editor',
+                  role_level: 10,
+                  is_system_role: false,
+                },
+              ],
+              permission_rows: [],
+            },
+          ],
+        };
+      }
+
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await updateUserHandler(
+      new Request('http://localhost/api/v1/iam/users/bbbbbbbb-bbbb-4111-8bbb-bbbbbbbbbbbb', {
+        method: 'PATCH',
+        headers: {
+          'content-type': 'application/json',
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'http://localhost',
+        },
+        body: JSON.stringify({
+          firstName: 'Updated',
+        }),
+      })
+    );
+
+    const payload = (await response.json()) as { error: { code: string; message: string } };
+    expect(response.status).toBe(503);
+    expect(payload.error.code).toBe('internal_error');
+    expect(payload.error.message).toContain('PII-Verschlüsselung');
   });
 });
 

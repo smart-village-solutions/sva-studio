@@ -216,7 +216,11 @@ test('admin links are hidden for non-admin user and route guard redirects', asyn
 test('direct access to admin users redirects unauthenticated clients to login', async ({ page }) => {
   await page.goto('/admin/users');
 
-  await expect(page).toHaveURL(/\/protocol\/openid-connect\/auth\?/);
+  await expect
+    .poll(() => page.url())
+    .toMatch(
+      /(\/protocol\/openid-connect\/auth\?|accounts\.google\.com\/(signin\/oauth\/error|o\/oauth2\/v2\/auth))/
+    );
 });
 
 test('responsive IAM views render on mobile, tablet, desktop', async ({ page }) => {

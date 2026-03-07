@@ -84,8 +84,16 @@ paths:
                 $ref: '#/components/schemas/UserItemResponse'
         '409':
           description: Idempotency-Key-Konflikt.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
         '503':
           description: Keycloak nicht verfügbar.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
   /api/v1/iam/users/{userId}:
     get:
       summary: Einzelnen Nutzer abrufen
@@ -129,8 +137,40 @@ paths:
       responses:
         '200':
           description: Nutzer aktualisiert.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserItemResponse'
+        '400':
+          description: Ungültiger Payload oder Rollenreferenz.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '403':
+          description: Zielnutzer oder Rollenzuweisung nicht erlaubt.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '404':
+          description: Nutzer nicht gefunden.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
         '409':
           description: Last-Admin-Schutz oder Konflikt.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '503':
+          description: Externe Abhängigkeit nicht verfügbar.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
     delete:
       summary: Nutzer deaktivieren
       parameters:
@@ -149,8 +189,34 @@ paths:
       responses:
         '200':
           description: Nutzer deaktiviert.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserItemResponse'
+        '403':
+          description: Zielnutzer darf nicht deaktiviert werden.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '404':
+          description: Nutzer nicht gefunden.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
         '409':
           description: Self-/Last-Admin-Schutz.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '503':
+          description: Externe Abhängigkeit nicht verfügbar.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
   /api/v1/iam/users/bulk-deactivate:
     post:
       summary: Mehrere Nutzer deaktivieren (max 50)
@@ -183,8 +249,34 @@ paths:
       responses:
         '200':
           description: Bulk-Deaktivierung erfolgreich.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkDeactivateResponse'
+        '400':
+          description: Ungültiger Payload.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '403':
+          description: Mindestens ein Zielnutzer darf nicht deaktiviert werden.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
         '409':
           description: Self-/Last-Admin-/Idempotency-Konflikt.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '503':
+          description: Externe Abhängigkeit nicht verfügbar.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
   /api/v1/iam/users/me/profile:
     get:
       summary: Eigenes Profil abrufen
@@ -215,6 +307,28 @@ paths:
       responses:
         '200':
           description: Profil aktualisiert.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserItemResponse'
+        '400':
+          description: Ungültiger Payload.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '404':
+          description: Nutzerprofil nicht gefunden.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '503':
+          description: PII-Verschlüsselung oder Datenbank nicht verfügbar.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
   /api/v1/iam/roles:
     get:
       summary: Rollenliste
@@ -248,6 +362,22 @@ paths:
       responses:
         '201':
           description: Rolle erstellt.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoleMutationResponse'
+        '400':
+          description: Ungültiger Payload.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '409':
+          description: Idempotency-Key-Konflikt.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
   /api/v1/iam/roles/{roleId}:
     patch:
       summary: Custom-Rolle aktualisieren
@@ -273,6 +403,28 @@ paths:
       responses:
         '200':
           description: Rolle aktualisiert.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoleMutationResponse'
+        '400':
+          description: Ungültiger Payload oder unbekannte Berechtigung.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '404':
+          description: Rolle nicht gefunden.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '409':
+          description: Systemrolle darf nicht bearbeitet werden.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
     delete:
       summary: Custom-Rolle löschen
       parameters:
@@ -291,8 +443,22 @@ paths:
       responses:
         '200':
           description: Rolle gelöscht.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoleMutationResponse'
+        '404':
+          description: Rolle nicht gefunden.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
         '409':
           description: Abhängigkeit/System-Rolle.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
   /api/v1/iam/admin/reconcile:
     post:
       summary: Reconciliation (Placeholder)
@@ -453,6 +619,38 @@ components:
             pageSize:
               type: integer
             total:
+              type: integer
+    RoleMutationResponse:
+      type: object
+      required: [data]
+      properties:
+        requestId:
+          type: string
+        data:
+          type: object
+          required: [id]
+          properties:
+            id:
+              type: string
+              format: uuid
+            roleName:
+              type: string
+    BulkDeactivateResponse:
+      type: object
+      required: [data]
+      properties:
+        requestId:
+          type: string
+        data:
+          type: object
+          required: [deactivatedUserIds, count]
+          properties:
+            deactivatedUserIds:
+              type: array
+              items:
+                type: string
+                format: uuid
+            count:
               type: integer
     CreateUserRequest:
       type: object

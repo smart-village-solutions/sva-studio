@@ -90,7 +90,7 @@ vi.mock('./keycloak-admin-client', () => ({
     }
 
     async createUser() {
-      return { id: 'mock-user-id' };
+      return { externalId: 'mock-user-id' };
     }
   },
 }));
@@ -144,6 +144,9 @@ describe('iam-account-management handlers (guards)', () => {
     delete process.env.IAM_UI_ENABLED;
     delete process.env.IAM_ADMIN_ENABLED;
     delete process.env.IAM_BULK_ENABLED;
+    delete process.env.IAM_PII_ALLOW_PLAINTEXT_FALLBACK;
+    delete process.env.IAM_PII_ACTIVE_KEY_ID;
+    delete process.env.IAM_PII_KEYRING_JSON;
 
     state.user = {
       id: `keycloak-admin-${Date.now()}`,
@@ -687,6 +690,130 @@ describe('iam-account-management handlers (guards)', () => {
     const payload = (await response.json()) as { data: { id: string } };
     expect(response.status).toBe(200);
     expect(payload.data.id).toBe(targetRoleId);
+  });
+
+  it('creates a user successfully on happy path', async () => {
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+
+      if (text.includes('max_role_level') && text.includes('FROM iam.accounts a')) {
+        return { rowCount: 1, rows: [{ max_role_level: 90 }] };
+      }
+
+      if (text.includes('INSERT INTO iam.idempotency_keys') && text.includes('ON CONFLICT')) {
+        return { rowCount: 1, rows: [{ status: 'IN_PROGRESS' }] };
+      }
+
+      if (text.includes('INSERT INTO iam.accounts')) {
+        return { rowCount: 1, rows: [{ id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd' }] };
+      }
+
+      if (text.includes('INSERT INTO iam.instance_memberships')) {
+        return { rowCount: 1, rows: [] };
+      }
+
+      if (text.includes('DELETE FROM iam.account_roles')) {
+        return { rowCount: 1, rows: [] };
+      }
+
+      if (text.includes('INSERT INTO iam.activity_log')) {
+        return { rowCount: 1, rows: [] };
+      }
+
+      if (text.includes('SELECT pg_notify')) {
+        return { rowCount: 1, rows: [] };
+      }
+
+      if (text.includes('UPDATE iam.idempotency_keys')) {
+        return { rowCount: 1, rows: [] };
+      }
+
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await createUserHandler(
+      new Request('http://localhost/api/v1/iam/users', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'http://localhost',
+          'idempotency-key': 'user-create-1',
+        },
+        body: JSON.stringify({
+          email: 'new.user@example.com',
+          firstName: 'New',
+          lastName: 'User',
+          roleIds: [],
+        }),
+      })
+    );
+
+    const payload = (await response.json()) as { data: { email: string; keycloakSubject: string } };
+    expect(response.status).toBe(201);
+    expect(payload.data.email).toBe('new.user@example.com');
+    expect(payload.data.keycloakSubject).toBe('mock-user-id');
+  });
+
+  it('returns idempotent replay response for createUser', async () => {
+    let payloadHash = '';
+
+    state.queryHandler = (text, values) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+
+      if (text.includes('INSERT INTO iam.idempotency_keys') && text.includes('ON CONFLICT')) {
+        payloadHash = String(values?.[4] ?? '');
+        return { rowCount: 0, rows: [] };
+      }
+
+      if (text.includes('SELECT status, payload_hash, response_status, response_body')) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              status: 'COMPLETED',
+              payload_hash: payloadHash,
+              response_status: 201,
+              response_body: {
+                data: {
+                  id: 'replayed-user',
+                  email: 'new.user@example.com',
+                },
+              },
+            },
+          ],
+        };
+      }
+
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await createUserHandler(
+      new Request('http://localhost/api/v1/iam/users', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'http://localhost',
+          'idempotency-key': 'user-create-replay',
+        },
+        body: JSON.stringify({
+          email: 'new.user@example.com',
+          firstName: 'Replay',
+          lastName: 'User',
+          roleIds: [],
+        }),
+      })
+    );
+
+    const payload = (await response.json()) as { data: { id: string; email: string } };
+    expect(response.status).toBe(201);
+    expect(payload.data.id).toBe('replayed-user');
+    expect(payload.data.email).toBe('new.user@example.com');
   });
 });
 

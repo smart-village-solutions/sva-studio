@@ -6,6 +6,7 @@
  */
 import { Link } from '@tanstack/react-router';
 
+import { t } from '../i18n';
 import { hasIamAdminRole, hasSystemAdminRole, isIamAdminEnabled, isIamUiEnabled } from '../lib/iam-admin-access';
 import { useAuth } from '../providers/auth-provider';
 
@@ -28,23 +29,23 @@ export default function Sidebar({ isLoading = false }: SidebarProps) {
   const canAccessAdminRoles = canAccessAdminUsers && hasSystemAdminRole(user);
 
   const sidebarLinks: Array<{ to: string; label: string }> = [
-    { to: '/', label: 'Übersicht' },
-    { to: '/demo', label: 'Demos' },
-    { to: '/plugins/example', label: 'Plugin-Beispiel' },
-    ...(canAccessAccount ? [{ to: '/account', label: 'Mein Konto' }] : []),
-    ...(canAccessAdminUsers ? [{ to: '/admin/users', label: 'Benutzerverwaltung' }] : []),
-    ...(canAccessAdminRoles ? [{ to: '/admin/roles', label: 'Rollenverwaltung' }] : []),
-    { to: '/admin/api/phase1-test', label: 'Admin-API-Test' },
+    { to: '/', label: t('shell.sidebar.overview') },
+    { to: '/demo', label: t('shell.sidebar.demos') },
+    { to: '/plugins/example', label: t('shell.sidebar.pluginExample') },
+    ...(canAccessAccount ? [{ to: '/account', label: t('shell.sidebar.account') }] : []),
+    ...(canAccessAdminUsers ? [{ to: '/admin/users', label: t('shell.sidebar.userManagement') }] : []),
+    ...(canAccessAdminRoles ? [{ to: '/admin/roles', label: t('shell.sidebar.roleManagement') }] : []),
+    { to: '/admin/api/phase1-test', label: t('shell.sidebar.adminApiTest') },
   ];
 
   return (
     <aside
-      aria-label="Seitenleiste"
+      aria-label={t('shell.sidebar.ariaLabel')}
       className="w-full border-b border-slate-800/70 bg-slate-950/80 lg:w-64 lg:border-b-0 lg:border-r"
     >
       <div className="px-4 py-4">
-        <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Navigation</p>
-        <nav aria-label="Bereichsnavigation" className="mt-3">
+        <p className="text-xs uppercase tracking-[0.2em] text-slate-400">{t('shell.sidebar.sectionLabel')}</p>
+        <nav aria-label={t('shell.sidebar.navAriaLabel')} className="mt-3">
           {isLoading ? (
             <ul className="flex gap-2 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible lg:pb-0">
               {sidebarSkeletonKeys.map((key) => (

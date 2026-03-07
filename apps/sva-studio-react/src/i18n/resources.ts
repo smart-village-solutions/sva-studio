@@ -1,5 +1,32 @@
 export const i18nResources = {
   de: {
+    shell: {
+      header: {
+        navAriaLabel: 'Hauptnavigation',
+        authLoading: 'Authentifizierungsstatus wird geladen.',
+        login: 'Login',
+        logout: 'Logout',
+        home: 'Startseite',
+        demos: 'Demos',
+        pluginExample: 'Plugin-Beispiel',
+        account: 'Konto',
+        adminUsers: 'Benutzer',
+        adminRoles: 'Rollen',
+        iamViewer: 'IAM-Viewer',
+      },
+      sidebar: {
+        ariaLabel: 'Seitenleiste',
+        sectionLabel: 'Navigation',
+        navAriaLabel: 'Bereichsnavigation',
+        overview: 'Übersicht',
+        demos: 'Demos',
+        pluginExample: 'Plugin-Beispiel',
+        account: 'Mein Konto',
+        userManagement: 'Benutzerverwaltung',
+        roleManagement: 'Rollenverwaltung',
+        adminApiTest: 'Admin-API-Test',
+      },
+    },
     account: {
       profile: {
         title: 'Mein Konto',
@@ -179,6 +206,33 @@ export const i18nResources = {
     },
   },
   en: {
+    shell: {
+      header: {
+        navAriaLabel: 'Main navigation',
+        authLoading: 'Loading authentication status.',
+        login: 'Login',
+        logout: 'Logout',
+        home: 'Home',
+        demos: 'Demos',
+        pluginExample: 'Plugin Example',
+        account: 'Account',
+        adminUsers: 'Users',
+        adminRoles: 'Roles',
+        iamViewer: 'IAM Viewer',
+      },
+      sidebar: {
+        ariaLabel: 'Sidebar',
+        sectionLabel: 'Navigation',
+        navAriaLabel: 'Section navigation',
+        overview: 'Overview',
+        demos: 'Demos',
+        pluginExample: 'Plugin Example',
+        account: 'My Account',
+        userManagement: 'User Management',
+        roleManagement: 'Role Management',
+        adminApiTest: 'Admin API Test',
+      },
+    },
     account: {
       profile: {
         title: 'My Account',

@@ -44,7 +44,8 @@ describe('translate', () => {
 
   it('returns key when translation is missing in all locales', () => {
     const t = createTranslator('de');
+    const missingKey = ['admin', 'users', 'page', 'unknown'].join('.') as never;
 
-    expect(t('admin.users.page.unknown' as never)).toBe('admin.users.page.unknown');
+    expect(t(missingKey)).toBe('admin.users.page.unknown');
   });
 });

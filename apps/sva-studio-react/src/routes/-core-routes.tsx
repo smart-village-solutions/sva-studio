@@ -3,8 +3,12 @@ import { Link, Outlet, createRoute } from '@tanstack/react-router';
 import { createServerFn, useServerFn } from '@tanstack/react-start';
 import React from 'react';
 
+import { AccountProfilePage } from './account/-account-profile-page';
 import { Phase1TestPage } from './admin/api/-phase1-test-page';
 import { IamViewerPage } from './admin/-iam-page';
+import { RolesPage } from './admin/roles/-roles-page';
+import { UserEditPage } from './admin/users/-user-edit-page';
+import { UserListPage } from './admin/users/-user-list-page';
 import { HomePage } from './-home-page';
 
 const demoNames = ['Aria', 'Jona', 'Mika', 'Lea', 'Noah'];
@@ -331,8 +335,19 @@ const ApiNames = ({ names }: { names: string[] }) => {
   );
 };
 
-// Auth routes are now imported from @sva/routing (centralized route registry)
-// This keeps apps focused on their own routes while maintaining a single source of truth
+type AccountUiGuardKey = 'account' | 'adminUsers' | 'adminUserDetail' | 'adminRoles';
+
+let accountUiGuardsPromise: Promise<typeof import('@sva/routing')> | null = null;
+
+const getAccountUiGuards = async () => {
+  accountUiGuardsPromise ??= import('@sva/routing');
+  return accountUiGuardsPromise;
+};
+
+const runAccountUiGuard = async (guardKey: AccountUiGuardKey, options: unknown) => {
+  const routing = await getAccountUiGuards();
+  return routing.accountUiRouteGuards[guardKey](options as never);
+};
 
 export const coreRouteFactoriesBase = [
   (rootRoute: RootRoute) =>
@@ -340,6 +355,36 @@ export const coreRouteFactoriesBase = [
       getParentRoute: () => rootRoute,
       path: '/',
       component: HomePage,
+    }),
+  (rootRoute: RootRoute) =>
+    createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/account',
+      beforeLoad: (options) => runAccountUiGuard('account', options),
+      component: AccountProfilePage,
+    }),
+  (rootRoute: RootRoute) =>
+    createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/admin/users',
+      beforeLoad: (options) => runAccountUiGuard('adminUsers', options),
+      component: UserListPage,
+    }),
+  (rootRoute: RootRoute) => {
+    const userEditRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/admin/users/$userId',
+      beforeLoad: (options) => runAccountUiGuard('adminUserDetail', options),
+      component: () => <UserEditPage userId={userEditRoute.useParams().userId} />,
+    });
+    return userEditRoute;
+  },
+  (rootRoute: RootRoute) =>
+    createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/admin/roles',
+      beforeLoad: (options) => runAccountUiGuard('adminRoles', options),
+      component: RolesPage,
     }),
   (rootRoute: RootRoute) =>
     createRoute({

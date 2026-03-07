@@ -1,28 +1,34 @@
 {
   "projects": {
     "sva-studio-react": {
-      "lines": 0,
-      "statements": 0,
-      "functions": 0,
-      "branches": 0
+      "lines": 61.22,
+      "statements": 59.78,
+      "functions": 47.1,
+      "branches": 47.84
     },
     "auth": {
-      "lines": 14.21,
-      "statements": 14.21,
-      "functions": 56.25,
-      "branches": 73.58
+      "lines": 46.4,
+      "statements": 46.43,
+      "functions": 51.03,
+      "branches": 32.36
+    },
+    "monitoring-client": {
+      "lines": 85.71,
+      "statements": 85.71,
+      "functions": 66.66,
+      "branches": 100
     },
     "routing": {
-      "lines": 0,
-      "statements": 0,
-      "functions": 80,
-      "branches": 80
+      "lines": 36.84,
+      "statements": 37.39,
+      "functions": 25,
+      "branches": 100
     },
     "sdk": {
-      "lines": 32.7,
-      "statements": 32.7,
-      "functions": 52.94,
-      "branches": 38.88
+      "lines": 78.6,
+      "statements": 77.92,
+      "functions": 78.72,
+      "branches": 62.7
     }
   }
 }

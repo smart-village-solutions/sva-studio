@@ -30,6 +30,7 @@ export type PermissionKey =
 export type PersonaSeed = {
   readonly personaKey: PersonaKey;
   readonly roleSlug: string;
+  readonly roleLevel: number;
   readonly displayName: string;
   readonly scopeDefault: PersonaScope;
   readonly mfaPolicy: MfaPolicy;

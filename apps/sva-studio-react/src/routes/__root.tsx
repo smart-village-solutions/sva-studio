@@ -11,6 +11,7 @@ import AppShell from '../components/AppShell';
 import ErrorFallback from '../components/ErrorFallback';
 import Header from '../components/Header';
 import NotFound from '../components/NotFound';
+import { AuthProvider } from '../providers/auth-provider';
 
 import appCss from '../styles.css?url';
 
@@ -92,8 +93,10 @@ function RootDocument({ children }: Readonly<{ children: React.ReactNode }>) {
         >
           Zum Inhalt springen
         </a>
-        <Header isLoading={isShellLoading} />
-        <AppShell isLoading={isShellLoading}>{children}</AppShell>
+        <AuthProvider>
+          <Header isLoading={isShellLoading} />
+          <AppShell isLoading={isShellLoading}>{children}</AppShell>
+        </AuthProvider>
         <TanStackDevtools
           config={{
             position: 'bottom-right',

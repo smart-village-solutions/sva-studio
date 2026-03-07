@@ -13,6 +13,7 @@ import {
   getSession,
   updateSession,
 } from './redis-session.server';
+import { jitProvisionAccount } from './jit-provisioning.server';
 import type { LoginState, SessionUser } from './types';
 import { isTokenErrorLike } from './shared/error-guards';
 import { buildLogContext } from './shared/log-context';
@@ -104,6 +105,21 @@ export const handleCallback = async (params: {
     expiresAt,
     createdAt: now,
   });
+
+  try {
+    await jitProvisionAccount({
+      instanceId: user.instanceId,
+      keycloakSubject: user.id,
+    });
+  } catch (error) {
+    logger.error('JIT provisioning failed after callback', {
+      operation: 'jit_provision',
+      user_id: user.id,
+      instance_id: user.instanceId,
+      error: error instanceof Error ? error.message : String(error),
+      ...buildLogContext(user.instanceId),
+    });
+  }
 
   logger.debug('Session created for authenticated user', {
     operation: 'session_create',

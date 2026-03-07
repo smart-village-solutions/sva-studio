@@ -5,6 +5,8 @@ import { authRoutePaths } from './auth.routes';
 type AuthHandlers = {
   GET?: (ctx: { request: Request }) => Promise<Response> | Response;
   POST?: (ctx: { request: Request }) => Promise<Response> | Response;
+  PATCH?: (ctx: { request: Request }) => Promise<Response> | Response;
+  DELETE?: (ctx: { request: Request }) => Promise<Response> | Response;
 };
 
 type AuthRoutePath = (typeof authRoutePaths)[number];
@@ -39,6 +41,18 @@ const authHandlerMap = {
       return mod.logoutHandler(request);
     },
   },
+  '/health/ready': {
+    GET: async ({ request }) => {
+      const mod = await import('@sva/auth/server');
+      return mod.healthReadyHandler(request);
+    },
+  },
+  '/health/live': {
+    GET: async ({ request }) => {
+      const mod = await import('@sva/auth/server');
+      return mod.healthLiveHandler(request);
+    },
+  },
   '/iam/me/permissions': {
     GET: async ({ request }) => {
       const mod = await import('@sva/auth/server');
@@ -49,6 +63,72 @@ const authHandlerMap = {
     POST: async ({ request }) => {
       const mod = await import('@sva/auth/server');
       return mod.authorizeHandler(request);
+    },
+  },
+  '/api/v1/iam/users': {
+    GET: async ({ request }) => {
+      const mod = await import('@sva/auth/server');
+      return mod.listUsersHandler(request);
+    },
+    POST: async ({ request }) => {
+      const mod = await import('@sva/auth/server');
+      return mod.createUserHandler(request);
+    },
+  },
+  '/api/v1/iam/users/$userId': {
+    GET: async ({ request }) => {
+      const mod = await import('@sva/auth/server');
+      return mod.getUserHandler(request);
+    },
+    PATCH: async ({ request }) => {
+      const mod = await import('@sva/auth/server');
+      return mod.updateUserHandler(request);
+    },
+    DELETE: async ({ request }) => {
+      const mod = await import('@sva/auth/server');
+      return mod.deactivateUserHandler(request);
+    },
+  },
+  '/api/v1/iam/users/bulk-deactivate': {
+    POST: async ({ request }) => {
+      const mod = await import('@sva/auth/server');
+      return mod.bulkDeactivateUsersHandler(request);
+    },
+  },
+  '/api/v1/iam/users/me/profile': {
+    GET: async ({ request }) => {
+      const mod = await import('@sva/auth/server');
+      return mod.getMyProfileHandler(request);
+    },
+    PATCH: async ({ request }) => {
+      const mod = await import('@sva/auth/server');
+      return mod.updateMyProfileHandler(request);
+    },
+  },
+  '/api/v1/iam/roles': {
+    GET: async ({ request }) => {
+      const mod = await import('@sva/auth/server');
+      return mod.listRolesHandler(request);
+    },
+    POST: async ({ request }) => {
+      const mod = await import('@sva/auth/server');
+      return mod.createRoleHandler(request);
+    },
+  },
+  '/api/v1/iam/roles/$roleId': {
+    PATCH: async ({ request }) => {
+      const mod = await import('@sva/auth/server');
+      return mod.updateRoleHandler(request);
+    },
+    DELETE: async ({ request }) => {
+      const mod = await import('@sva/auth/server');
+      return mod.deleteRoleHandler(request);
+    },
+  },
+  '/api/v1/iam/admin/reconcile': {
+    POST: async ({ request }) => {
+      const mod = await import('@sva/auth/server');
+      return mod.reconcileHandler(request);
     },
   },
   '/iam/governance/workflows': {

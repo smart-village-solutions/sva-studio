@@ -76,6 +76,17 @@ gleichzeitig beeinflussen.
 - UI-Texte sind derzeit überwiegend direkt im Code und noch nicht durchgängig i18n-basiert
 - A11y wird pro Review/Template eingefordert, aber noch nicht zentral automatisiert
 
+### Review-Governance
+
+- Proposal-Reviews werden über einen dedizierten Proposal-Orchestrator konsolidiert
+- PR- und Code-Reviews werden über einen separaten PR-Orchestrator konsolidiert
+- Spezialisierte Review-Agents decken ergänzend Testqualität, i18n/Content, User Journey & Usability und Performance ab
+- Normative Accessibility und heuristische Nutzersicht sind bewusst getrennt:
+  - `ux-accessibility.agent.md` für WCAG/BITV, Fokus, Tastatur und Screenreader
+  - `user-journey-usability.agent.md` für Friktion, Verständlichkeit und Aufgabenbewältigung
+- i18n/harte Strings werden als eigener Governance-Strang behandelt und nicht nur implizit im Code-Review geprüft
+- Konflikte zwischen Review-Perspektiven werden auf Orchestrator-Ebene explizit gemacht, die Entscheidung bleibt beim Menschen
+
 ### UI-Shell, Responsivität und Skeleton UX
 
 - Die Root-Shell trennt die Bereiche Kopfzeile, Seitenleiste und Hauptinhalt explizit
@@ -95,9 +106,23 @@ Referenzen:
 - `packages/monitoring-client/src/otel.server.ts`
 - `docs/adr/ADR-014-postgres-notify-cache-invalidierung.md`
 - `docs/architecture/iam-datenklassifizierung.md`
+- `docs/development/review-agent-governance.md`
 - `docs/development/iam-schluesselmanagement-strategie.md`
 - `docs/guides/iam-governance-runbook.md`
 - `docs/guides/iam-governance-freigabematrix.md`
 - `docs/guides/iam-data-subject-rights-runbook.md`
 - `apps/sva-studio-react/src/routes/__root.tsx`
 - `apps/sva-studio-react/src/components/AppShell.tsx`
+
+### Ergänzung 2026-03: AuthProvider-Pattern und Permission-Checking
+
+- `AuthProvider` kapselt Session-Status zentral in der Root-Shell.
+- UI-Bausteine konsumieren Auth-Daten ausschließlich über `useAuth()`.
+- Route-Guards (`createProtectedRoute`, `createAdminRoute`) erzwingen Auth/Rollenprüfung vor Seitenrendering.
+- Bei `403` in IAM-Hooks wird `invalidatePermissions()` ausgelöst, um Session-/Rollenkontext konsistent zu halten.
+
+### Ergänzung 2026-03: CSRF-Strategie in IAM-v1
+
+- Alle mutierenden IAM-Endpunkte prüfen serverseitig den Header `X-Requested-With: XMLHttpRequest`.
+- Client-Hooks setzen den Header standardisiert über gemeinsame API-Utilities.
+- Fehlercode bei Verstoß: `csrf_validation_failed`.

@@ -68,9 +68,13 @@ vi.mock('pg', () => ({
 
 import {
   adminDataExportHandler,
+  adminDataExportStatusHandler,
   dataExportHandler,
+  dataExportStatusHandler,
   dataSubjectMaintenanceHandler,
   dataSubjectRequestHandler,
+  legalHoldApplyHandler,
+  legalHoldReleaseHandler,
   optionalProcessingExecuteHandler,
 } from './iam-data-subject-rights.server';
 
@@ -187,6 +191,24 @@ describe('iam data subject rights handlers', () => {
     expect(response.status).toBe(202);
     expect(payload.status).toBe('queued');
     expect(payload.exportJobId).toBe('job-1');
+  });
+
+  it('rejects export for invalid format', async () => {
+    const response = await dataExportHandler(
+      new Request('http://localhost/iam/me/data-export?format=invalid', { method: 'GET' })
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: 'invalid_export_format' });
+  });
+
+  it('rejects export status when job id is invalid', async () => {
+    const response = await dataExportStatusHandler(
+      new Request('http://localhost/iam/me/data-export/status?jobId=invalid', { method: 'GET' })
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: 'invalid_job_id' });
   });
 
   it('exports csv format with flattened key-value rows', async () => {
@@ -489,5 +511,58 @@ describe('iam data subject rights handlers', () => {
 
     expect(response.status).toBe(403);
     expect(await response.json()).toEqual({ error: 'forbidden' });
+  });
+
+  it('rejects admin export status endpoint for non-admin role', async () => {
+    const response = await adminDataExportStatusHandler(
+      new Request('http://localhost/iam/admin/data-subject-rights/export/status?jobId=aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa', {
+        method: 'GET',
+      })
+    );
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({ error: 'forbidden' });
+  });
+
+  it('rejects legal hold apply with invalid holdUntil', async () => {
+    state.user = {
+      ...state.user,
+      roles: ['iam_admin'],
+    };
+
+    const response = await legalHoldApplyHandler(
+      new Request('http://localhost/iam/admin/data-subject-rights/legal-holds/apply', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          instanceId: '11111111-1111-1111-8111-111111111111',
+          targetKeycloakSubject: 'keycloak-sub-2',
+          holdUntil: 'not-a-date',
+        }),
+      })
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: 'invalid_hold_until' });
+  });
+
+  it('rejects legal hold release when target subject is missing', async () => {
+    state.user = {
+      ...state.user,
+      roles: ['iam_admin'],
+    };
+
+    const response = await legalHoldReleaseHandler(
+      new Request('http://localhost/iam/admin/data-subject-rights/legal-holds/release', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          instanceId: '11111111-1111-1111-8111-111111111111',
+        }),
+      })
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: 'missing_target_keycloak_subject' });
   });
 });

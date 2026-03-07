@@ -43,6 +43,17 @@
 - Für jede Code-Änderung Tests hinzufügen oder anpassen
 - Interne Doku-Links relativ zum Ordner `docs/` schreiben (z. B. `./guide/data-loading`)
 
+## Review-Agents
+
+- Für normale PRs und Code-Reviews steht `pr-review-orchestrator.agent.md` unter `.github/agents/` bereit.
+- Für Proposal-Reviews bleibt `proposal-review-orchestrator.agent.md` der Einstiegspunkt.
+- Spezialisierte Reviewer ergänzen die bestehende Matrix für:
+  - Testqualität (`test-quality.agent.md`)
+  - i18n & Content (`i18n-content.agent.md`)
+  - User Journey & Usability (`user-journey-usability.agent.md`)
+  - Performance (`performance.agent.md`)
+- Die zentrale Trigger-Matrix und Abgrenzung liegt unter `docs/development/review-agent-governance.md`.
+
 ## Repository File Placement (Enforced)
 
 - Root-Level Markdown ist gesperrt (Ausnahme: `README.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `DEBUGGING.md`, `DEVELOPMENT_RULES.md`, `AGENTS.md`)

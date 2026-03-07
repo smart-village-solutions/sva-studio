@@ -6,6 +6,23 @@ import { createLoginUrl, handleCallback, logoutSession } from './auth.server';
 import { emitAuthAuditEvent } from './audit-events.server';
 import { getAuthConfig } from './config';
 import {
+  bulkDeactivateUsersHandler,
+  createRoleHandler,
+  createUserHandler,
+  deactivateUserHandler,
+  deleteRoleHandler,
+  getMyProfileHandler,
+  getUserHandler,
+  healthLiveHandler,
+  healthReadyHandler,
+  listRolesHandler,
+  listUsersHandler,
+  reconcileHandler,
+  updateMyProfileHandler,
+  updateRoleHandler,
+  updateUserHandler,
+} from './iam-account-management.server';
+import {
   adminDataExportHandler,
   adminDataExportStatusHandler,
   dataExportHandler,
@@ -338,6 +355,8 @@ export type AuthRouteDefinition = {
   handlers: {
     GET?: (ctx: { request: Request }) => Promise<Response> | Response;
     POST?: (ctx: { request: Request }) => Promise<Response> | Response;
+    PATCH?: (ctx: { request: Request }) => Promise<Response> | Response;
+    DELETE?: (ctx: { request: Request }) => Promise<Response> | Response;
   };
 };
 
@@ -370,9 +389,69 @@ export const authRouteDefinitions: AuthRouteDefinition[] = [
     },
   },
   {
+    path: '/health/ready',
+    handlers: {
+      GET: async ({ request }) => healthReadyHandler(request),
+    },
+  },
+  {
+    path: '/health/live',
+    handlers: {
+      GET: async ({ request }) => healthLiveHandler(request),
+    },
+  },
+  {
     path: '/iam/governance/workflows',
     handlers: {
       POST: async ({ request }) => governanceWorkflowHandler(request),
+    },
+  },
+  {
+    path: '/api/v1/iam/users',
+    handlers: {
+      GET: async ({ request }) => listUsersHandler(request),
+      POST: async ({ request }) => createUserHandler(request),
+    },
+  },
+  {
+    path: '/api/v1/iam/users/$userId',
+    handlers: {
+      GET: async ({ request }) => getUserHandler(request),
+      PATCH: async ({ request }) => updateUserHandler(request),
+      DELETE: async ({ request }) => deactivateUserHandler(request),
+    },
+  },
+  {
+    path: '/api/v1/iam/users/bulk-deactivate',
+    handlers: {
+      POST: async ({ request }) => bulkDeactivateUsersHandler(request),
+    },
+  },
+  {
+    path: '/api/v1/iam/users/me/profile',
+    handlers: {
+      GET: async ({ request }) => getMyProfileHandler(request),
+      PATCH: async ({ request }) => updateMyProfileHandler(request),
+    },
+  },
+  {
+    path: '/api/v1/iam/roles',
+    handlers: {
+      GET: async ({ request }) => listRolesHandler(request),
+      POST: async ({ request }) => createRoleHandler(request),
+    },
+  },
+  {
+    path: '/api/v1/iam/roles/$roleId',
+    handlers: {
+      PATCH: async ({ request }) => updateRoleHandler(request),
+      DELETE: async ({ request }) => deleteRoleHandler(request),
+    },
+  },
+  {
+    path: '/api/v1/iam/admin/reconcile',
+    handlers: {
+      POST: async ({ request }) => reconcileHandler(request),
     },
   },
   {

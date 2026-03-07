@@ -20,6 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      REDIS_URL: redis://127.0.0.1:6379
 
     steps:
       - name: Checkout
@@ -40,6 +41,25 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Start Redis for coverage tests
+        run: |
+          docker run -d --name sva-studio-redis-coverage -p 6379:6379 redis:7-alpine
+
+      - name: Wait for Redis readiness
+        run: |
+          set -euo pipefail
+          for i in {1..30}; do
+            if docker exec sva-studio-redis-coverage redis-cli -p 6379 ping | grep -q PONG; then
+              echo "Redis is ready"
+              exit 0
+            fi
+            echo "Waiting for Redis ($i/30)..."
+            sleep 2
+          done
+          echo "Redis did not become ready in time"
+          docker ps -a
+          exit 1
 
       - name: Ensure origin/main is available for affected
         if: github.event_name == 'pull_request'
@@ -68,6 +88,7 @@ jobs:
         with:
           token: ${{ env.CODECOV_TOKEN }}
           files: ./apps/**/coverage/lcov.info,./packages/**/coverage/lcov.info
+          disable_search: true
           fail_ci_if_error: false
           flags: unittests
           name: coverage-${{ github.run_id }}
@@ -82,6 +103,10 @@ jobs:
             **/coverage/lcov.info
           if-no-files-found: warn
           retention-days: 7
+
+      - name: Stop Redis
+        if: always()
+        run: docker rm -f sva-studio-redis-coverage || true
 
   integration-pr:
     if: github.event_name == 'pull_request'

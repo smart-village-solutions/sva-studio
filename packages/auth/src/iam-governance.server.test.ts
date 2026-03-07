@@ -98,6 +98,41 @@ describe('governanceWorkflowHandler', () => {
     expect(payload.reasonCode).toBe('DENY_TICKET_STATE_INVALID');
   });
 
+  it('rejects workflow request with invalid payload body', async () => {
+    const request = new Request('http://localhost/iam/governance/workflows', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ invalid: true }),
+    });
+
+    const response = await governanceWorkflowHandler(request);
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: 'invalid_request' });
+  });
+
+  it('rejects workflow request with invalid instance id', async () => {
+    const request = new Request('http://localhost/iam/governance/workflows', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        operation: 'submit_permission_change',
+        instanceId: 'invalid',
+        payload: {
+          targetKeycloakSubject: 'keycloak-sub-target',
+          roleId: '22222222-2222-2222-8222-222222222222',
+          ticketId: 'IAM-1',
+          ticketState: 'open',
+        },
+      }),
+    });
+
+    const response = await governanceWorkflowHandler(request);
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: 'invalid_request' });
+  });
+
   it('rejects self-approval of permission change', async () => {
     state.queryHandler = (text, values) => {
       if (text.includes('SELECT a.id') && values?.[1] === 'keycloak-sub-actor') {
@@ -316,5 +351,14 @@ describe('governanceComplianceExportHandler', () => {
         trace_id: 'trace-governance',
       })
     );
+  });
+
+  it('rejects compliance export for invalid instance id', async () => {
+    const response = await governanceComplianceExportHandler(
+      new Request('http://localhost/iam/governance/compliance/export?instanceId=invalid&format=json')
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: 'invalid_instance_id' });
   });
 });

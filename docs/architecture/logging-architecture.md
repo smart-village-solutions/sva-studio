@@ -252,7 +252,4 @@ In `dev/monitoring/promtail/promtail-config.yml`:
 - `docker-compose.monitoring.yml`
 - `docs/development/observability-best-practices.md`
 - `docs/development/monitoring-stack.md`
-- `docs/architecture/decisions/ADR-004-monitoring-stack-loki-grafana-prometheus.md`
-- `docs/architecture/decisions/ADR-005-observability-module-ownership.md`
-- `docs/architecture/decisions/ADR-006-logging-pipeline-strategy.md`
-- `docs/architecture/decisions/ADR-007-label-schema-and-pii-policy.md`
+- `docs/adr/README.md`

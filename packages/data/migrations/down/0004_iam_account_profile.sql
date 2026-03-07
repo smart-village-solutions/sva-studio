@@ -44,7 +44,25 @@ END
 $$;
 
 DO $$
+DECLARE
+  conflicting_subject TEXT;
 BEGIN
+  IF to_regclass('iam.accounts') IS NOT NULL THEN
+    SELECT a.keycloak_subject
+    INTO conflicting_subject
+    FROM iam.accounts AS a
+    GROUP BY a.keycloak_subject
+    HAVING COUNT(*) > 1
+    LIMIT 1;
+
+    IF conflicting_subject IS NOT NULL THEN
+      RAISE EXCEPTION USING
+        MESSAGE = 'Rollback 0004 kann nicht durchgeführt werden: Mehrfachzuordnung von keycloak_subject erkannt.',
+        DETAIL = format('Konflikt bei keycloak_subject=%s', conflicting_subject),
+        HINT = 'Vor dem Rollback müssen doppelte keycloak_subject-Werte konsolidiert werden.';
+    END IF;
+  END IF;
+
   IF to_regclass('iam.accounts') IS NOT NULL AND NOT EXISTS (
     SELECT 1
     FROM pg_constraint

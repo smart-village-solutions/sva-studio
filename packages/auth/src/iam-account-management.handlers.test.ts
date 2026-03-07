@@ -96,15 +96,20 @@ vi.mock('./keycloak-admin-client', () => ({
 }));
 
 import {
+  createRoleHandler,
   createUserHandler,
   deactivateUserHandler,
+  deleteRoleHandler,
   getIamFeatureFlags,
   getUserHandler,
+  listRolesHandler,
   listUsersHandler,
+  updateRoleHandler,
   updateUserHandler,
 } from './iam-account-management.server';
 
 const targetUserId = 'bbbbbbbb-bbbb-4111-8bbb-bbbbbbbbbbbb';
+const targetRoleId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 
 const buildUserDetailRow = (status: 'active' | 'inactive' = 'active') => ({
   id: targetUserId,
@@ -476,6 +481,212 @@ describe('iam-account-management handlers (guards)', () => {
     expect(response.status).toBe(503);
     expect(payload.error.code).toBe('internal_error');
     expect(payload.error.message).toContain('PII-Verschlüsselung');
+  });
+
+  it('lists roles on happy path', async () => {
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+
+      if (text.includes('FROM iam.roles r')) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              id: targetRoleId,
+              role_name: 'editor',
+              description: 'Editor role',
+              is_system_role: false,
+              role_level: 20,
+              member_count: 3,
+              permission_rows: [{ id: 'perm-1', permission_key: 'content.read', description: 'read content' }],
+            },
+          ],
+        };
+      }
+
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await listRolesHandler(new Request('http://localhost/api/v1/iam/roles', { method: 'GET' }));
+    const payload = (await response.json()) as {
+      data: Array<{ id: string; roleName: string; permissions: Array<{ permissionKey: string }> }>;
+    };
+
+    expect(response.status).toBe(200);
+    expect(payload.data).toHaveLength(1);
+    expect(payload.data[0]?.id).toBe(targetRoleId);
+    expect(payload.data[0]?.roleName).toBe('editor');
+    expect(payload.data[0]?.permissions[0]?.permissionKey).toBe('content.read');
+  });
+
+  it('rejects createRole without CSRF header', async () => {
+    const response = await createRoleHandler(
+      new Request('http://localhost/api/v1/iam/roles', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({ roleName: 'custom_role', roleLevel: 20, permissionIds: [] }),
+      })
+    );
+
+    const payload = (await response.json()) as { error: { code: string } };
+    expect(response.status).toBe(403);
+    expect(payload.error.code).toBe('csrf_validation_failed');
+  });
+
+  it('creates a role successfully with idempotency key', async () => {
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+
+      if (text.includes('INSERT INTO iam.idempotency_keys') && text.includes('ON CONFLICT')) {
+        return { rowCount: 1, rows: [{ status: 'IN_PROGRESS' }] };
+      }
+
+      if (text.includes('INSERT INTO iam.roles') && text.includes('RETURNING id')) {
+        return { rowCount: 1, rows: [{ id: targetRoleId }] };
+      }
+
+      if (text.includes('INSERT INTO iam.activity_log')) {
+        return { rowCount: 1, rows: [] };
+      }
+
+      if (text.includes('SELECT pg_notify')) {
+        return { rowCount: 1, rows: [] };
+      }
+
+      if (text.includes('UPDATE iam.idempotency_keys')) {
+        return { rowCount: 1, rows: [] };
+      }
+
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await createRoleHandler(
+      new Request('http://localhost/api/v1/iam/roles', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'http://localhost',
+          'idempotency-key': 'role-create-1',
+        },
+        body: JSON.stringify({
+          roleName: 'custom_editor',
+          description: 'Custom Editor',
+          roleLevel: 25,
+          permissionIds: [],
+        }),
+      })
+    );
+
+    const payload = (await response.json()) as { data: { id: string; roleName: string } };
+    expect(response.status).toBe(201);
+    expect(payload.data.id).toBe(targetRoleId);
+    expect(payload.data.roleName).toBe('custom_editor');
+  });
+
+  it('updates a role successfully', async () => {
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+
+      if (text.includes('SELECT is_system_role') && text.includes('FROM iam.roles')) {
+        return { rowCount: 1, rows: [{ is_system_role: false }] };
+      }
+
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await updateRoleHandler(
+      new Request(`http://localhost/api/v1/iam/roles/${targetRoleId}`, {
+        method: 'PATCH',
+        headers: {
+          'content-type': 'application/json',
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'http://localhost',
+        },
+        body: JSON.stringify({
+          description: 'Updated',
+          roleLevel: 30,
+          permissionIds: [],
+        }),
+      })
+    );
+
+    const payload = (await response.json()) as { data: { id: string } };
+    expect(response.status).toBe(200);
+    expect(payload.data.id).toBe(targetRoleId);
+  });
+
+  it('rejects deleteRole when role has dependencies', async () => {
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+
+      if (text.includes('SELECT is_system_role') && text.includes('FROM iam.roles')) {
+        return { rowCount: 1, rows: [{ is_system_role: false }] };
+      }
+
+      if (text.includes('FROM iam.account_roles')) {
+        return { rowCount: 1, rows: [{ used: 2 }] };
+      }
+
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await deleteRoleHandler(
+      new Request(`http://localhost/api/v1/iam/roles/${targetRoleId}`, {
+        method: 'DELETE',
+        headers: {
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'http://localhost',
+        },
+      })
+    );
+
+    const payload = (await response.json()) as { error: { code: string; message: string } };
+    expect(response.status).toBe(409);
+    expect(payload.error.code).toBe('conflict');
+    expect(payload.error.message).toContain('verwendet');
+  });
+
+  it('deletes a role successfully when no dependencies exist', async () => {
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+
+      if (text.includes('SELECT is_system_role') && text.includes('FROM iam.roles')) {
+        return { rowCount: 1, rows: [{ is_system_role: false }] };
+      }
+
+      if (text.includes('FROM iam.account_roles')) {
+        return { rowCount: 1, rows: [{ used: 0 }] };
+      }
+
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await deleteRoleHandler(
+      new Request(`http://localhost/api/v1/iam/roles/${targetRoleId}`, {
+        method: 'DELETE',
+        headers: {
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'http://localhost',
+        },
+      })
+    );
+
+    const payload = (await response.json()) as { data: { id: string } };
+    expect(response.status).toBe(200);
+    expect(payload.data.id).toBe(targetRoleId);
   });
 });
 

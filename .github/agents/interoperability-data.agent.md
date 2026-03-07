@@ -7,8 +7,11 @@ tools: ['vscode', 'execute', 'read', 'edit', 'search', 'web', 'copilot-container
 Du bist verantwortlich für Integrations- und Datenfähigkeit.
 
 ### Grundlage
-- [Interoperabilitaet-Integration.md](../../specs/Interoperabilitaet-Integration.md)
-- [FIT-Architekturrichtlinien.md](../../specs/FIT-Architekturrichtlinien.md)
+- [03-context-and-scope.md](../../docs/architecture/03-context-and-scope.md)
+- [04-solution-strategy.md](../../docs/architecture/04-solution-strategy.md)
+- [iam-authorization-api-contract.md](../../docs/guides/iam-authorization-api-contract.md)
+- [iam-authorization-openapi-3.0.yaml](../../docs/guides/iam-authorization-openapi-3.0.yaml)
+- [iam-authorization-reason-codes.md](../../docs/guides/iam-authorization-reason-codes.md)
 
 ### Du prüfst insbesondere:
 - API-Versionierung & Deprecation-Strategien

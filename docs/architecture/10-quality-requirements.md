@@ -18,6 +18,9 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
 2. Wartbarkeit und Nachvollziehbarkeit
 3. Beobachtbarkeit und Betrieb
 4. Typsicherheit und Integrationsstabilität
+5. Testqualität und Verifikationsabdeckung
+6. Nutzbarkeit und internationale Konsistenz
+7. Performance-Effizienz
 
 ### Messbare Kriterien (IST)
 
@@ -49,6 +52,29 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
   - `pnpm check:file-placement` muss gruen sein
 - Coverage Governance:
   - Gate-Logik und Baselines in `scripts/ci/coverage-gate.ts` und `tooling/testing/*`
+- Review-Governance:
+  - Proposal- und PR-Reviews nutzen spezialisierte Agents mit standardisierten Templates
+  - Trigger-Matrix und Abgrenzungen sind in `docs/development/review-agent-governance.md` dokumentiert
+
+### Qualitätsattribute und Review-Zuordnung
+
+- Reliability:
+  - `test-quality.agent.md`
+  - `operations-reliability.agent.md`
+  - `logging.agent.md`
+- Usability:
+  - `user-journey-usability.agent.md`
+- Accessibility:
+  - `ux-accessibility.agent.md`
+- Maintainability:
+  - `code-quality-guardian.agent.md`
+  - `documentation.agent.md`
+- Security:
+  - `security-privacy.agent.md`
+- Performance Efficiency:
+  - `performance.agent.md`
+- Internationalization:
+  - `i18n-content.agent.md`
 
 ### Observability-Qualität
 
@@ -66,6 +92,7 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
 Referenzen:
 
 - `../development/testing-coverage.md`
+- `../development/review-agent-governance.md`
 - `scripts/ci/coverage-gate.ts`
 - `packages/monitoring-client/src/otel.server.ts`
 

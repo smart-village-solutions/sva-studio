@@ -9,18 +9,26 @@ type AuthorizeDecision = {
 export const HomePage = () => {
   const { user, isLoading, error, invalidatePermissions } = useAuth();
   const [authStateError, setAuthStateError] = React.useState<string | null>(null);
+  const [routeError, setRouteError] = React.useState<string | null>(null);
   const [authorizeLoading, setAuthorizeLoading] = React.useState(false);
   const [authorizeDecision, setAuthorizeDecision] = React.useState<AuthorizeDecision | null>(null);
 
   React.useEffect(() => {
     const search = new URLSearchParams(window.location.search);
     const authState = search.get('auth');
+    const routeErrorCode = search.get('error');
     if (authState === 'error') {
       setAuthStateError('Login fehlgeschlagen. Bitte erneut versuchen.');
     } else if (authState === 'state-expired') {
       setAuthStateError('Login abgebrochen oder abgelaufen. Bitte erneut anmelden.');
     } else {
       setAuthStateError(null);
+    }
+
+    if (routeErrorCode === 'auth.insufficientRole') {
+      setRouteError('Keine Berechtigung für diese Seite. Bitte wenden Sie sich an die Administration.');
+    } else {
+      setRouteError(null);
     }
   }, []);
 
@@ -95,7 +103,7 @@ export const HomePage = () => {
   }, [invalidatePermissions, user?.instanceId]);
 
   const hasRole = (role: string) => user?.roles.includes(role) ?? false;
-  const authError = authStateError ?? (error ? 'Fehler beim Laden der Session. Bitte erneut anmelden.' : null);
+  const authError = authStateError ?? routeError ?? (error ? 'Fehler beim Laden der Session. Bitte erneut anmelden.' : null);
 
   return (
     <div className="min-h-full bg-slate-950 text-slate-100">

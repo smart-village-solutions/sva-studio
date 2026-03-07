@@ -17,6 +17,7 @@ vi.mock('../providers/auth-provider', () => ({
 describe('HomePage IAM integration', () => {
   afterEach(() => {
     cleanup();
+    window.history.replaceState({}, '', '/');
     useAuthMock.mockReset();
     vi.unstubAllGlobals();
   });
@@ -120,5 +121,25 @@ describe('HomePage IAM integration', () => {
     expect(screen.getByText('No Instance User')).toBeTruthy();
     expect(fetchMock).not.toHaveBeenCalled();
     expect(screen.getByText('Keine Authorize-Entscheidung verfügbar.')).toBeTruthy();
+  });
+
+  it('shows a helpful message after insufficient role redirect', () => {
+    useAuthMock.mockReturnValue({
+      user: null,
+      isAuthenticated: false,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      logout: vi.fn(),
+      invalidatePermissions: vi.fn(),
+    });
+
+    window.history.replaceState({}, '', '/?error=auth.insufficientRole');
+
+    render(<HomePage />);
+
+    expect(
+      screen.getByText('Keine Berechtigung für diese Seite. Bitte wenden Sie sich an die Administration.')
+    ).toBeTruthy();
   });
 });

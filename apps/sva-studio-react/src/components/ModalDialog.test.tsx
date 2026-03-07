@@ -1,4 +1,5 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ModalDialog } from './ModalDialog';
@@ -66,5 +67,34 @@ describe('ModalDialog', () => {
     fireEvent.keyDown(screen.getByRole('dialog', { name: 'Dialog' }), { key: 'Tab' });
 
     expect(document.activeElement).toBe(first);
+  });
+
+  it('restores focus to trigger when dialog closes', () => {
+    const DialogHost = () => {
+      const [open, setOpen] = React.useState(false);
+      return (
+        <>
+          <button type="button" onClick={() => setOpen(true)}>
+            Open
+          </button>
+          <ModalDialog open={open} title="Dialog" onClose={() => setOpen(false)}>
+            <button type="button">Inside</button>
+          </ModalDialog>
+        </>
+      );
+    };
+
+    render(<DialogHost />);
+
+    const openButton = screen.getByRole('button', { name: 'Open' });
+    openButton.focus();
+
+    fireEvent.click(openButton);
+    expect(screen.getByRole('dialog', { name: 'Dialog' })).toBeTruthy();
+
+    fireEvent.mouseDown(screen.getByRole('dialog', { name: 'Dialog' }).parentElement as HTMLElement);
+
+    expect(screen.queryByRole('dialog', { name: 'Dialog' })).toBeNull();
+    expect(document.activeElement).toBe(openButton);
   });
 });

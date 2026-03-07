@@ -21,11 +21,14 @@ export const ModalDialog = ({
   children,
 }: ModalDialogProps) => {
   const panelRef = React.useRef<HTMLDivElement>(null);
+  const triggerRef = React.useRef<HTMLElement | null>(null);
 
   React.useEffect(() => {
     if (!open) {
       return;
     }
+
+    triggerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
 
     const panel = panelRef.current;
     if (!panel) {
@@ -67,6 +70,9 @@ export const ModalDialog = ({
     panel.addEventListener('keydown', onKeyDown);
     return () => {
       panel.removeEventListener('keydown', onKeyDown);
+      if (triggerRef.current?.isConnected) {
+        triggerRef.current.focus();
+      }
     };
   }, [onClose, open]);
 

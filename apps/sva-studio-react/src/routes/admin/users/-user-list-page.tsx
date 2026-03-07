@@ -256,51 +256,66 @@ export const UserListPage = () => {
                   onChange={(event) => onSelectAll(event.target.checked)}
                 />
               </th>
-              <th scope="col" className="px-3 py-3">
+              <th
+                scope="col"
+                className="px-3 py-3"
+                aria-sort={sortKey === 'displayName' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+              >
                 <button
                   type="button"
                   className="font-semibold"
-                  aria-sort={sortKey === 'displayName' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
                   onClick={() => onSort('displayName')}
                 >
                   {t('admin.users.table.headerName')}
                 </button>
               </th>
-              <th scope="col" className="px-3 py-3">
+              <th
+                scope="col"
+                className="px-3 py-3"
+                aria-sort={sortKey === 'email' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+              >
                 <button
                   type="button"
                   className="font-semibold"
-                  aria-sort={sortKey === 'email' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
                   onClick={() => onSort('email')}
                 >
                   {t('admin.users.table.headerEmail')}
                 </button>
               </th>
-              <th scope="col" className="px-3 py-3">
+              <th
+                scope="col"
+                className="px-3 py-3"
+                aria-sort={sortKey === 'role' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+              >
                 <button
                   type="button"
                   className="font-semibold"
-                  aria-sort={sortKey === 'role' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
                   onClick={() => onSort('role')}
                 >
                   {t('admin.users.table.headerRole')}
                 </button>
               </th>
-              <th scope="col" className="px-3 py-3">
+              <th
+                scope="col"
+                className="px-3 py-3"
+                aria-sort={sortKey === 'status' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+              >
                 <button
                   type="button"
                   className="font-semibold"
-                  aria-sort={sortKey === 'status' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
                   onClick={() => onSort('status')}
                 >
                   {t('admin.users.table.headerStatus')}
                 </button>
               </th>
-              <th scope="col" className="px-3 py-3">
+              <th
+                scope="col"
+                className="px-3 py-3"
+                aria-sort={sortKey === 'lastLoginAt' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+              >
                 <button
                   type="button"
                   className="font-semibold"
-                  aria-sort={sortKey === 'lastLoginAt' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
                   onClick={() => onSort('lastLoginAt')}
                 >
                   {t('admin.users.table.headerLastLogin')}

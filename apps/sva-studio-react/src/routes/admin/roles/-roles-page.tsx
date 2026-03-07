@@ -169,20 +169,6 @@ export const RolesPage = () => {
                       <div className="flex justify-end gap-2">
                         <button
                           type="button"
-                          className="rounded-md border border-slate-600 px-3 py-1 text-xs"
-                          disabled={role.isSystemRole}
-                          onClick={() =>
-                            void rolesApi.updateRole(role.id, {
-                              description: role.description,
-                              permissionIds: role.permissions.map((entry) => entry.id),
-                              roleLevel: role.roleLevel,
-                            })
-                          }
-                        >
-                          {t('admin.roles.actions.edit')}
-                        </button>
-                        <button
-                          type="button"
                           className="rounded-md border border-red-700 px-3 py-1 text-xs text-red-100 disabled:opacity-50"
                           disabled={role.isSystemRole}
                           onClick={() => setDeleteRoleId(role.id)}

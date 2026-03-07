@@ -104,6 +104,35 @@ import {
   updateUserHandler,
 } from './iam-account-management.server';
 
+const targetUserId = 'bbbbbbbb-bbbb-4111-8bbb-bbbbbbbbbbbb';
+
+const buildUserDetailRow = (status: 'active' | 'inactive' = 'active') => ({
+  id: targetUserId,
+  keycloak_subject: 'keycloak-target-2',
+  display_name_ciphertext: 'Target User',
+  email_ciphertext: 'target@example.com',
+  first_name_ciphertext: 'Target',
+  last_name_ciphertext: 'User',
+  phone_ciphertext: null,
+  position: null,
+  department: null,
+  preferred_language: null,
+  timezone: null,
+  avatar_url: null,
+  notes: null,
+  status,
+  last_login_at: null,
+  role_rows: [
+    {
+      id: 'role-editor',
+      role_name: 'editor',
+      role_level: 10,
+      is_system_role: false,
+    },
+  ],
+  permission_rows: [{ permission_key: 'content.read' }],
+});
+
 describe('iam-account-management handlers (guards)', () => {
   beforeEach(() => {
     process.env.IAM_DATABASE_URL = 'postgres://iam-test';
@@ -232,6 +261,89 @@ describe('iam-account-management handlers (guards)', () => {
     expect(payload.error.code).toBe('invalid_request');
   });
 
+  it('updates a user successfully on happy path', async () => {
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+
+      if (text.includes('max_role_level') && text.includes('FROM iam.accounts a')) {
+        return { rowCount: 1, rows: [{ max_role_level: 90 }] };
+      }
+
+      if (text.includes('WHERE a.id = $2::uuid')) {
+        return { rowCount: 1, rows: [buildUserDetailRow('active')] };
+      }
+
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await updateUserHandler(
+      new Request(`http://localhost/api/v1/iam/users/${targetUserId}`, {
+        method: 'PATCH',
+        headers: {
+          'content-type': 'application/json',
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'http://localhost',
+        },
+        body: JSON.stringify({
+          firstName: 'Updated',
+          lastName: 'Name',
+          status: 'active',
+        }),
+      })
+    );
+
+    const payload = (await response.json()) as { data: { id: string; status: string } };
+    expect(response.status).toBe(200);
+    expect(payload.data.id).toBe(targetUserId);
+    expect(payload.data.status).toBe('active');
+  });
+
+  it('deactivates a user successfully on happy path', async () => {
+    let userStatus: 'active' | 'inactive' = 'active';
+
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+
+      if (text.includes('max_role_level') && text.includes('FROM iam.accounts a')) {
+        return { rowCount: 1, rows: [{ max_role_level: 90 }] };
+      }
+
+      if (text.includes('SELECT EXISTS (')) {
+        return { rowCount: 1, rows: [{ has_role: false }] };
+      }
+
+      if (text.includes("SET\n  status = 'inactive'")) {
+        userStatus = 'inactive';
+        return { rowCount: 1, rows: [] };
+      }
+
+      if (text.includes('WHERE a.id = $2::uuid')) {
+        return { rowCount: 1, rows: [buildUserDetailRow(userStatus)] };
+      }
+
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await deactivateUserHandler(
+      new Request(`http://localhost/api/v1/iam/users/${targetUserId}`, {
+        method: 'DELETE',
+        headers: {
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'http://localhost',
+        },
+      })
+    );
+
+    const payload = (await response.json()) as { data: { id: string; status: string } };
+    expect(response.status).toBe(200);
+    expect(payload.data.id).toBe(targetUserId);
+    expect(payload.data.status).toBe('inactive');
+  });
+
   it('rejects deactivation when target user exceeds actor role level', async () => {
     state.queryHandler = (text, values) => {
       if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
@@ -247,7 +359,7 @@ describe('iam-account-management handlers (guards)', () => {
           rowCount: 1,
           rows: [
             {
-              id: 'bbbbbbbb-bbbb-4111-8bbb-bbbbbbbbbbbb',
+              id: targetUserId,
               keycloak_subject: 'keycloak-target-1',
               display_name_ciphertext: 'Target User',
               email_ciphertext: 'target@example.com',
@@ -280,7 +392,7 @@ describe('iam-account-management handlers (guards)', () => {
     };
 
     const response = await deactivateUserHandler(
-      new Request('http://localhost/api/v1/iam/users/bbbbbbbb-bbbb-4111-8bbb-bbbbbbbbbbbb', {
+      new Request(`http://localhost/api/v1/iam/users/${targetUserId}`, {
         method: 'DELETE',
         headers: {
           'x-requested-with': 'XMLHttpRequest',
@@ -314,7 +426,7 @@ describe('iam-account-management handlers (guards)', () => {
           rowCount: 1,
           rows: [
             {
-              id: 'bbbbbbbb-bbbb-4111-8bbb-bbbbbbbbbbbb',
+              id: targetUserId,
               keycloak_subject: 'keycloak-target-2',
               display_name_ciphertext: 'Target User',
               email_ciphertext: 'target@example.com',
@@ -347,7 +459,7 @@ describe('iam-account-management handlers (guards)', () => {
     };
 
     const response = await updateUserHandler(
-      new Request('http://localhost/api/v1/iam/users/bbbbbbbb-bbbb-4111-8bbb-bbbbbbbbbbbb', {
+      new Request(`http://localhost/api/v1/iam/users/${targetUserId}`, {
         method: 'PATCH',
         headers: {
           'content-type': 'application/json',

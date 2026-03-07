@@ -69,6 +69,76 @@ describe('ModalDialog', () => {
     expect(document.activeElement).toBe(first);
   });
 
+  it('cycles focus with Shift+Tab from first to last element', () => {
+    const onClose = vi.fn();
+
+    render(
+      <ModalDialog open title="Dialog" onClose={onClose}>
+        <button type="button">First</button>
+        <button type="button">Last</button>
+      </ModalDialog>
+    );
+
+    const first = screen.getByRole('button', { name: 'First' });
+    const last = screen.getByRole('button', { name: 'Last' });
+
+    expect(document.activeElement).toBe(first);
+    fireEvent.keyDown(screen.getByRole('dialog', { name: 'Dialog' }), { key: 'Tab', shiftKey: true });
+
+    expect(document.activeElement).toBe(last);
+  });
+
+  it('ignores Tab focus trap when no focusable elements are present', () => {
+    render(
+      <ModalDialog open title="Dialog" onClose={vi.fn()}>
+        <div>Static Content</div>
+      </ModalDialog>
+    );
+
+    fireEvent.keyDown(screen.getByRole('dialog', { name: 'Dialog' }), { key: 'Tab' });
+
+    expect(screen.getByText('Static Content')).toBeTruthy();
+  });
+
+  it('ignores non-Tab keys in focus trap handler', () => {
+    const onClose = vi.fn();
+
+    render(
+      <ModalDialog open title="Dialog" onClose={onClose}>
+        <button type="button">Only Button</button>
+      </ModalDialog>
+    );
+
+    fireEvent.keyDown(screen.getByRole('dialog', { name: 'Dialog' }), { key: 'Enter' });
+
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Only Button' })).toBeTruthy();
+  });
+
+  it('stops mousedown propagation inside panel', () => {
+    const onClose = vi.fn();
+
+    render(
+      <ModalDialog open title="Dialog" onClose={onClose}>
+        <button type="button">Inside</button>
+      </ModalDialog>
+    );
+
+    fireEvent.mouseDown(screen.getByRole('dialog', { name: 'Dialog' }));
+
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('renders optional description text', () => {
+    render(
+      <ModalDialog open title="Dialog" description="Dialog Beschreibung" onClose={vi.fn()}>
+        <button type="button">Inside</button>
+      </ModalDialog>
+    );
+
+    expect(screen.getByText('Dialog Beschreibung')).toBeTruthy();
+  });
+
   it('restores focus to trigger when dialog closes', () => {
     const DialogHost = () => {
       const [open, setOpen] = React.useState(false);

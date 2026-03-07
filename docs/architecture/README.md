@@ -24,7 +24,7 @@ Alle Architekturinformationen werden arc42-konform in den Abschnitten 1-12 gepfl
 
 - Architektur- oder Systemänderungen in PRs müssen die betroffenen arc42-Abschnitte aktualisieren oder eine begründete Abweichung dokumentieren.
 - OpenSpec-Changes mit Architekturwirkung müssen betroffene arc42-Abschnitte in `proposal.md` und `tasks.md` referenzieren.
-- Architekturentscheidungen werden als ADR unter `./decisions/` dokumentiert und in Abschnitt 9 verlinkt.
+- Architekturentscheidungen werden als ADR unter `../adr/` dokumentiert und in Abschnitt 9 verlinkt.
 - Referenzen sollen konsistent und klickbar sein (Dateipfade statt Freitext).
 
 ## Bestehende Architekturdokumente
@@ -33,4 +33,4 @@ Alle Architekturinformationen werden arc42-konform in den Abschnitten 1-12 gepfl
 - Logging und Observability: `./logging-architecture.md`
 - Session-Analyse: `./session-management-analysis.md`
 - IAM-Datenklassifizierung: `./iam-datenklassifizierung.md`
-- ADRs: `./decisions/README.md`
+- ADRs: `../adr/README.md`

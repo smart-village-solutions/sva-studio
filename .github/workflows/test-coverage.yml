@@ -88,6 +88,7 @@ jobs:
         with:
           token: ${{ env.CODECOV_TOKEN }}
           files: ./apps/**/coverage/lcov.info,./packages/**/coverage/lcov.info
+          disable_search: true
           fail_ci_if_error: false
           flags: unittests
           name: coverage-${{ github.run_id }}

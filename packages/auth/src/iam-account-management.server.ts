@@ -115,6 +115,14 @@ const createUserSchema = z.object({
   roleIds: z.array(z.string().uuid()).max(20).default([]),
 });
 
+const parseBooleanFlag = (value: string | undefined, defaultValue: boolean): boolean => {
+  if (!value) {
+    return defaultValue;
+  }
+  const lowered = value.trim().toLowerCase();
+  return lowered === '1' || lowered === 'true' || lowered === 'yes' || lowered === 'on';
+};
+
 const updateUserSchema = z
   .object({
     email: z.string().email().optional(),
@@ -183,14 +191,7 @@ let identityProviderCache:
   | undefined;
 
 const getFeatureFlags = (): FeatureFlags => {
-  const readFlag = (key: string, defaultValue: boolean) => {
-    const value = process.env[key];
-    if (!value) {
-      return defaultValue;
-    }
-    const lowered = value.trim().toLowerCase();
-    return lowered === '1' || lowered === 'true' || lowered === 'yes' || lowered === 'on';
-  };
+  const readFlag = (key: string, defaultValue: boolean) => parseBooleanFlag(process.env[key], defaultValue);
 
   const iamUiEnabled = readFlag('IAM_UI_ENABLED', true);
   const iamAdminEnabled = iamUiEnabled && readFlag('IAM_ADMIN_ENABLED', true);
@@ -250,6 +251,13 @@ const protectField = (value: string | undefined, aad: string): string | null => 
   }
   const config = getEncryptionConfig();
   if (!config) {
+    const allowPlaintextFallback =
+      process.env.IAM_PII_ALLOW_PLAINTEXT_FALLBACK !== undefined
+        ? parseBooleanFlag(process.env.IAM_PII_ALLOW_PLAINTEXT_FALLBACK, false)
+        : process.env.NODE_ENV !== 'production';
+    if (!allowPlaintextFallback) {
+      throw new Error('pii_encryption_required:PII-Verschlüsselung ist nicht konfiguriert.');
+    }
     return value;
   }
   return encryptFieldValue(value, config, aad);
@@ -531,6 +539,33 @@ WHERE instance_id = $1::uuid
 
 const canAssignRoles = (input: { actorMaxRoleLevel: number; targetRoles: readonly IamRoleRow[] }): boolean =>
   input.targetRoles.every((role) => role.role_level <= input.actorMaxRoleLevel);
+
+const ensureActorCanManageTarget = (input: {
+  actorMaxRoleLevel: number;
+  actorRoles: readonly string[];
+  targetRoles: readonly IamUserRoleAssignment[];
+}): { ok: true } | { ok: false; code: ApiErrorCode; message: string } => {
+  const targetMaxRoleLevel = input.targetRoles.reduce((maxLevel, role) => Math.max(maxLevel, role.roleLevel), 0);
+  if (targetMaxRoleLevel > input.actorMaxRoleLevel) {
+    return {
+      ok: false,
+      code: 'forbidden',
+      message: 'Zielnutzer überschreitet die eigene Berechtigungsstufe.',
+    };
+  }
+
+  const targetHasSystemAdmin = input.targetRoles.some((role) => role.roleName === 'system_admin');
+  const actorIsSystemAdmin = input.actorRoles.includes('system_admin');
+  if (targetHasSystemAdmin && !actorIsSystemAdmin) {
+    return {
+      ok: false,
+      code: 'forbidden',
+      message: 'Nur system_admin darf system_admin-Nutzer verwalten.',
+    };
+  }
+
+  return { ok: true };
+};
 
 const resolveSystemAdminCount = async (client: QueryClient, instanceId: string): Promise<number> => {
   const result = await client.query<{ admin_count: number }>(
@@ -1715,12 +1750,25 @@ const updateUserInternal = async (request: Request, ctx: AuthenticatedRequestCon
 
   try {
     const detail = await withInstanceScopedDb(actorResolution.actor.instanceId, async (client) => {
+      const actorMaxRoleLevel = await resolveActorMaxRoleLevel(client, {
+        instanceId: actorResolution.actor.instanceId,
+        keycloakSubject: ctx.user.id,
+      });
       const existing = await resolveUserDetail(client, {
         instanceId: actorResolution.actor.instanceId,
         userId,
       });
       if (!existing) {
         return undefined;
+      }
+
+      const targetAccessCheck = ensureActorCanManageTarget({
+        actorMaxRoleLevel,
+        actorRoles: ctx.user.roles,
+        targetRoles: existing.roles,
+      });
+      if (!targetAccessCheck.ok) {
+        throw new Error(`${targetAccessCheck.code}:${targetAccessCheck.message}`);
       }
 
       if (parsed.data.roleIds) {
@@ -1862,7 +1910,7 @@ WHERE id = $1::uuid
     return jsonResponse(200, asApiItem(detail, actorResolution.actor.requestId));
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    const [errorCode] = errorMessage.split(':');
+    const [errorCode, errorDetail] = errorMessage.split(':', 2);
     if (errorCode === 'last_admin_protection') {
       return createApiError(
         409,
@@ -1872,10 +1920,23 @@ WHERE id = $1::uuid
       );
     }
     if (errorCode === 'forbidden') {
-      return createApiError(403, 'forbidden', 'Rollenzuweisung nicht erlaubt.', actorResolution.actor.requestId);
+      return createApiError(
+        403,
+        'forbidden',
+        errorDetail ?? 'Änderung dieses Nutzers ist nicht erlaubt.',
+        actorResolution.actor.requestId
+      );
     }
     if (errorCode === 'invalid_request') {
       return createApiError(400, 'invalid_request', 'Ungültige Rolle.', actorResolution.actor.requestId);
+    }
+    if (errorCode === 'pii_encryption_required') {
+      return createApiError(
+        503,
+        'internal_error',
+        'PII-Verschlüsselung ist nicht konfiguriert.',
+        actorResolution.actor.requestId
+      );
     }
 
     logger.error('IAM user update failed', {
@@ -1941,12 +2002,25 @@ const deactivateUserInternal = async (request: Request, ctx: AuthenticatedReques
 
   try {
     const detail = await withInstanceScopedDb(actorResolution.actor.instanceId, async (client) => {
+      const actorMaxRoleLevel = await resolveActorMaxRoleLevel(client, {
+        instanceId: actorResolution.actor.instanceId,
+        keycloakSubject: ctx.user.id,
+      });
       const existing = await resolveUserDetail(client, {
         instanceId: actorResolution.actor.instanceId,
         userId,
       });
       if (!existing) {
         return undefined;
+      }
+
+      const targetAccessCheck = ensureActorCanManageTarget({
+        actorMaxRoleLevel,
+        actorRoles: ctx.user.roles,
+        targetRoles: existing.roles,
+      });
+      if (!targetAccessCheck.ok) {
+        throw new Error(`${targetAccessCheck.code}:${targetAccessCheck.message}`);
       }
 
       if (existing.keycloakSubject === ctx.user.id) {
@@ -2010,7 +2084,7 @@ WHERE id = $1::uuid
     return jsonResponse(200, asApiItem(detail, actorResolution.actor.requestId));
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    const [errorCode] = errorMessage.split(':');
+    const [errorCode, errorDetail] = errorMessage.split(':', 2);
     if (errorCode === 'self_protection') {
       return createApiError(409, 'self_protection', 'Eigener Nutzer kann nicht deaktiviert werden.', actorResolution.actor.requestId);
     }
@@ -2019,6 +2093,14 @@ WHERE id = $1::uuid
         409,
         'last_admin_protection',
         'Letzter aktiver system_admin kann nicht deaktiviert werden.',
+        actorResolution.actor.requestId
+      );
+    }
+    if (errorCode === 'forbidden') {
+      return createApiError(
+        403,
+        'forbidden',
+        errorDetail ?? 'Deaktivierung dieses Nutzers ist nicht erlaubt.',
         actorResolution.actor.requestId
       );
     }
@@ -2111,6 +2193,10 @@ const bulkDeactivateInternal = async (request: Request, ctx: AuthenticatedReques
   try {
     const uniqueUserIds = [...new Set(parsed.data.userIds)];
     const details = await withInstanceScopedDb(actorResolution.actor.instanceId, async (client) => {
+      const actorMaxRoleLevel = await resolveActorMaxRoleLevel(client, {
+        instanceId: actorResolution.actor.instanceId,
+        keycloakSubject: ctx.user.id,
+      });
       const users = (
         await Promise.all(
           uniqueUserIds.map((userId) =>
@@ -2127,6 +2213,15 @@ const bulkDeactivateInternal = async (request: Request, ctx: AuthenticatedReques
       }
 
       for (const user of users) {
+        const targetAccessCheck = ensureActorCanManageTarget({
+          actorMaxRoleLevel,
+          actorRoles: ctx.user.roles,
+          targetRoles: user.roles,
+        });
+        if (!targetAccessCheck.ok) {
+          throw new Error(`${targetAccessCheck.code}:${targetAccessCheck.message}`);
+        }
+
         const isAdmin = await isSystemAdminAccount(client, {
           instanceId: actorResolution.actor.instanceId,
           accountId: user.id,
@@ -2199,7 +2294,7 @@ WHERE instance_id = $1::uuid
     return jsonResponse(200, responseBody);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    const [errorCode] = errorMessage.split(':');
+    const [errorCode, errorDetail] = errorMessage.split(':', 2);
     if (errorCode === 'self_protection') {
       return createApiError(409, 'self_protection', 'Eigener Nutzer kann nicht deaktiviert werden.', actorResolution.actor.requestId);
     }
@@ -2208,6 +2303,14 @@ WHERE instance_id = $1::uuid
         409,
         'last_admin_protection',
         'Letzter aktiver system_admin kann nicht deaktiviert werden.',
+        actorResolution.actor.requestId
+      );
+    }
+    if (errorCode === 'forbidden') {
+      return createApiError(
+        403,
+        'forbidden',
+        errorDetail ?? 'Bulk-Deaktivierung enthält nicht erlaubte Zielnutzer.',
         actorResolution.actor.requestId
       );
     }
@@ -2340,12 +2443,22 @@ WHERE id = $1::uuid
     iamUserOperationsCounter.add(1, { action: 'update_my_profile', result: 'success' });
     return jsonResponse(200, asApiItem(detail, actorResolution.actor.requestId));
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const [errorCode] = errorMessage.split(':', 2);
+    if (errorCode === 'pii_encryption_required') {
+      return createApiError(
+        503,
+        'internal_error',
+        'PII-Verschlüsselung ist nicht konfiguriert.',
+        actorResolution.actor.requestId
+      );
+    }
     logger.error('IAM profile update failed', {
       operation: 'update_my_profile',
       instance_id: actorResolution.actor.instanceId,
       request_id: actorResolution.actor.requestId,
       trace_id: actorResolution.actor.traceId,
-      error: error instanceof Error ? error.message : String(error),
+      error: errorMessage,
     });
     iamUserOperationsCounter.add(1, { action: 'update_my_profile', result: 'failure' });
     return createApiError(

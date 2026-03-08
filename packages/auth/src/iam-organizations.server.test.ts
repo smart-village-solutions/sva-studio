@@ -10,6 +10,7 @@ const state = vi.hoisted(() => ({
   featureEnabled: true,
   rateLimitResponse: null as Response | null,
   roleCheckResponse: null as Response | null,
+  csrfResponse: null as Response | null,
   actorResolution: {
     actor: {
       instanceId: '11111111-1111-1111-8111-111111111111',
@@ -89,7 +90,7 @@ vi.mock('./iam-account-management/rate-limit', () => ({
 }));
 
 vi.mock('./iam-account-management/csrf', () => ({
-  validateCsrf: () => null,
+  validateCsrf: () => state.csrfResponse,
 }));
 
 vi.mock('./redis-session.server', () => ({
@@ -126,7 +127,16 @@ vi.mock('./iam-account-management/shared', () => ({
   resolveActorInfo: vi.fn(async () => state.actorResolution),
   withInstanceScopedDb: vi.fn(async (_instanceId: string, work: (client: unknown) => Promise<unknown>) => {
     if (state.dbResults.length > 0) {
-      return state.dbResults.shift();
+      const next = state.dbResults.shift();
+      if (
+        typeof next === 'object' &&
+        next !== null &&
+        '__throw' in next &&
+        Object.prototype.hasOwnProperty.call(next, '__throw')
+      ) {
+        throw (next as { __throw: unknown }).__throw;
+      }
+      return next;
     }
 
     return work({});
@@ -142,8 +152,10 @@ vi.mock('./iam-account-management/shared', () => ({
 }));
 
 import {
+  deactivateOrganizationHandler,
   getMyOrganizationContextHandler,
   listOrganizationsHandler,
+  updateOrganizationHandler,
   updateMyOrganizationContextHandler,
 } from './iam-organizations.server';
 
@@ -158,6 +170,7 @@ describe('iam organizations handlers', () => {
     state.featureEnabled = true;
     state.rateLimitResponse = null;
     state.roleCheckResponse = null;
+    state.csrfResponse = null;
     state.actorResolution = {
       actor: {
         instanceId: '11111111-1111-1111-8111-111111111111',
@@ -283,6 +296,115 @@ describe('iam organizations handlers', () => {
     expect(payload.error.code).toBe('organization_inactive');
     expect(state.updateSessionCalls).toHaveLength(0);
     expect(state.notifyCalls).toHaveLength(0);
+  });
+
+  it('rejects switching organization context without valid csrf contract', async () => {
+    state.csrfResponse = new Response(
+      JSON.stringify({
+        error: {
+          code: 'csrf_validation_failed',
+          message: 'csrf failed',
+        },
+        requestId: 'req-org-test',
+      }),
+      {
+        status: 403,
+        headers: { 'content-type': 'application/json' },
+      }
+    );
+
+    const response = await updateMyOrganizationContextHandler(
+      new Request('http://localhost/api/v1/iam/me/context', {
+        method: 'PUT',
+        headers: {
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({ organizationId: '33333333-3333-4333-8333-333333333333' }),
+      })
+    );
+    const payload = (await response.json()) as { error: { code: string } };
+
+    expect(response.status).toBe(403);
+    expect(payload.error.code).toBe('csrf_validation_failed');
+    expect(state.updateSessionCalls).toHaveLength(0);
+  });
+
+  it('rejects switching to an organization outside the allowed membership context', async () => {
+    state.dbResults = [
+      [
+        {
+          organizationId: '22222222-2222-4222-8222-222222222222',
+          organizationKey: 'gemeinde-beta',
+          displayName: 'Gemeinde Beta',
+          organizationType: 'municipality',
+          isActive: true,
+          isDefaultContext: true,
+        },
+      ],
+    ];
+
+    const response = await updateMyOrganizationContextHandler(
+      new Request('http://localhost/api/v1/iam/me/context', {
+        method: 'PUT',
+        headers: {
+          'content-type': 'application/json',
+          'x-csrf-token': 'csrf-token',
+        },
+        body: JSON.stringify({ organizationId: '44444444-4444-4444-8444-444444444444' }),
+      })
+    );
+    const payload = (await response.json()) as { error: { code: string } };
+
+    expect(response.status).toBe(400);
+    expect(payload.error.code).toBe('invalid_organization_id');
+    expect(state.updateSessionCalls).toHaveLength(0);
+  });
+
+  it('rejects organization updates that would create a cycle in the hierarchy', async () => {
+    state.dbResults = [
+      {
+        __throw: {
+          ok: false,
+          status: 409,
+          code: 'conflict',
+          message: 'Zyklische Organisationshierarchie ist unzulässig.',
+        },
+      },
+    ];
+
+    const response = await updateOrganizationHandler(
+      new Request('http://localhost/api/v1/iam/organizations/22222222-2222-4222-8222-222222222222', {
+        method: 'PATCH',
+        headers: {
+          'content-type': 'application/json',
+          'x-csrf-token': 'csrf-token',
+        },
+        body: JSON.stringify({
+          parentOrganizationId: '33333333-3333-4333-8333-333333333333',
+        }),
+      })
+    );
+    const payload = (await response.json()) as { error: { code: string } };
+
+    expect(response.status).toBe(409);
+    expect(payload.error.code).toBe('conflict');
+  });
+
+  it('rejects deactivation when organization still has children or memberships', async () => {
+    state.dbResults = [{ status: 'conflict' }];
+
+    const response = await deactivateOrganizationHandler(
+      new Request('http://localhost/api/v1/iam/organizations/22222222-2222-4222-8222-222222222222', {
+        method: 'DELETE',
+        headers: {
+          'x-csrf-token': 'csrf-token',
+        },
+      })
+    );
+    const payload = (await response.json()) as { error: { code: string } };
+
+    expect(response.status).toBe(409);
+    expect(payload.error.code).toBe('conflict');
   });
 
   it('switches the organization context, updates the session and emits invalidation', async () => {

@@ -441,7 +441,7 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     operation: string
   ): Promise<readonly KeycloakRoleMapping[]> {
     if (this.isCircuitOpen()) {
-      throw new KeycloakAdminUnavailableError('Keycloak unavailable and no read fallback configured.');
+      throw new KeycloakAdminUnavailableError('Keycloak unavailable and user role mapping reads are temporarily disabled.');
     }
 
     return this.executeWithResilience<KeycloakRoleMapping[]>({

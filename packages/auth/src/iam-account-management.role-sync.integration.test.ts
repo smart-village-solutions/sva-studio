@@ -343,7 +343,8 @@ vi.mock('./keycloak-admin-client', () => ({
       return undefined;
     }
 
-    async listUserRoleNames() {
+    async listUserRoleNames(externalId: string) {
+      void externalId;
       return [];
     }
 

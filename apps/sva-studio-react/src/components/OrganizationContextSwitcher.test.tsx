@@ -159,4 +159,86 @@ describe('OrganizationContextSwitcher', () => {
       'Inaktive Organisationen können nicht als aktiver Kontext gesetzt werden.'
     );
   });
+
+  it('renders the invalid-organization error variant', () => {
+    useOrganizationContextMock.mockReturnValue({
+      context: {
+        activeOrganizationId: 'org-1',
+        organizations: [
+          {
+            organizationId: 'org-1',
+            organizationKey: 'alpha',
+            displayName: 'Alpha',
+            organizationType: 'county',
+            isActive: true,
+            isDefaultContext: true,
+          },
+          {
+            organizationId: 'org-2',
+            organizationKey: 'beta',
+            displayName: 'Beta',
+            organizationType: 'municipality',
+            isActive: true,
+            isDefaultContext: false,
+          },
+        ],
+      },
+      isLoading: false,
+      isUpdating: false,
+      error: new IamHttpError({
+        status: 400,
+        code: 'invalid_organization_id',
+        message: 'invalid',
+      }),
+      refetch: vi.fn(),
+      switchOrganization: vi.fn(),
+    });
+
+    render(<OrganizationContextSwitcher />);
+
+    expect(screen.getByRole('alert').textContent).toContain(
+      'Diese Organisation steht im aktuellen Kontext nicht zur Auswahl.'
+    );
+  });
+
+  it('ignores empty organization selections', () => {
+    const switchOrganization = vi.fn();
+
+    useOrganizationContextMock.mockReturnValue({
+      context: {
+        activeOrganizationId: 'org-1',
+        organizations: [
+          {
+            organizationId: 'org-1',
+            organizationKey: 'alpha',
+            displayName: 'Alpha',
+            organizationType: 'county',
+            isActive: true,
+            isDefaultContext: true,
+          },
+          {
+            organizationId: 'org-2',
+            organizationKey: 'beta',
+            displayName: 'Beta',
+            organizationType: 'municipality',
+            isActive: true,
+            isDefaultContext: false,
+          },
+        ],
+      },
+      isLoading: false,
+      isUpdating: false,
+      error: null,
+      refetch: vi.fn(),
+      switchOrganization,
+    });
+
+    render(<OrganizationContextSwitcher />);
+
+    fireEvent.change(screen.getByLabelText('Aktive Organisation'), {
+      target: { value: '' },
+    });
+
+    expect(switchOrganization).not.toHaveBeenCalled();
+  });
 });

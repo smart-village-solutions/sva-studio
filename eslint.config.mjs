@@ -29,8 +29,20 @@ export default [
               onlyDependOnLibsWithTags: ['scope:core', 'scope:data', 'scope:sdk', 'scope:monitoring'],
             },
             {
+              sourceTag: 'scope:auth',
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:data', 'scope:sdk', 'scope:monitoring', 'scope:auth'],
+            },
+            {
+              sourceTag: 'scope:monitoring',
+              onlyDependOnLibsWithTags: ['scope:monitoring', 'scope:sdk', 'scope:core'],
+            },
+            {
               sourceTag: 'scope:plugin',
               onlyDependOnLibsWithTags: ['scope:sdk', 'scope:plugin'],
+            },
+            {
+              sourceTag: 'scope:routing',
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:data', 'scope:sdk', 'scope:auth', 'scope:monitoring', 'scope:routing'],
             },
             {
               sourceTag: 'scope:app',

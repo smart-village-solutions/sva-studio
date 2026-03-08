@@ -2,47 +2,52 @@
   "version": 1,
   "metrics": ["lines", "statements", "functions", "branches"],
   "globalFloors": {
-    "lines": 0,
-    "statements": 0,
-    "functions": 0,
-    "branches": 0
+    "lines": 10,
+    "statements": 10,
+    "functions": 20,
+    "branches": 20
   },
   "maxAllowedDropPctPoints": 0.5,
   "exemptProjects": [
-    "core",
     "data",
     "plugin-example"
   ],
   "perProjectFloors": {
+    "core": {
+      "lines": 70,
+      "statements": 70,
+      "functions": 80,
+      "branches": 60
+    },
     "auth": {
-      "lines": 0,
-      "statements": 0,
-      "functions": 0,
-      "branches": 0
+      "lines": 40,
+      "statements": 40,
+      "functions": 50,
+      "branches": 30
     },
     "monitoring-client": {
-      "lines": 0,
-      "statements": 0,
-      "functions": 0,
-      "branches": 0
+      "lines": 60,
+      "statements": 60,
+      "functions": 50,
+      "branches": 60
     },
     "routing": {
-      "lines": 0,
-      "statements": 0,
-      "functions": 0,
-      "branches": 0
+      "lines": 30,
+      "statements": 30,
+      "functions": 20,
+      "branches": 50
     },
     "sdk": {
-      "lines": 0,
-      "statements": 0,
-      "functions": 0,
-      "branches": 0
+      "lines": 30,
+      "statements": 30,
+      "functions": 50,
+      "branches": 30
     },
     "sva-studio-react": {
-      "lines": 0,
-      "statements": 0,
-      "functions": 0,
-      "branches": 0
+      "lines": 40,
+      "statements": 40,
+      "functions": 30,
+      "branches": 30
     }
   }
 }

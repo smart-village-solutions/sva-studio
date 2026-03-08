@@ -11,6 +11,12 @@ export interface SessionData {
 const SESSION_TTL = 7 * 24 * 60 * 60; // 7 days in seconds
 const SESSION_KEY_PREFIX = 'session:';
 
+function createErrorWithCause(message: string, cause: unknown): Error {
+  const error = new Error(message) as Error & { cause?: unknown };
+  error.cause = cause;
+  return error;
+}
+
 /**
  * Create and persist a session in Redis
  * @param redis Redis client instance
@@ -32,7 +38,10 @@ export const createSessionInRedis = async (
     await redis.setex(key, SESSION_TTL, JSON.stringify(sessionData));
     return sessionId;
   } catch (error) {
-    throw new Error(`Failed to create session in Redis: ${error instanceof Error ? error.message : String(error)}`);
+    throw createErrorWithCause(
+      `Failed to create session in Redis: ${error instanceof Error ? error.message : String(error)}`,
+      error
+    );
   }
 };
 
@@ -59,7 +68,10 @@ export const getSessionFromRedis = async (
     }
     return JSON.parse(data) as SessionData;
   } catch (error) {
-    throw new Error(`Failed to retrieve session from Redis: ${error instanceof Error ? error.message : String(error)}`);
+    throw createErrorWithCause(
+      `Failed to retrieve session from Redis: ${error instanceof Error ? error.message : String(error)}`,
+      error
+    );
   }
 };
 
@@ -81,7 +93,10 @@ export const deleteSessionFromRedis = async (
   try {
     await redis.del(key);
   } catch (error) {
-    throw new Error(`Failed to delete session from Redis: ${error instanceof Error ? error.message : String(error)}`);
+    throw createErrorWithCause(
+      `Failed to delete session from Redis: ${error instanceof Error ? error.message : String(error)}`,
+      error
+    );
   }
 };
 
@@ -105,7 +120,10 @@ export const refreshSessionInRedis = async (
     const result = await redis.expire(key, SESSION_TTL);
     return result === 1; // Redis returns 1 if timeout was set, 0 if key doesn't exist
   } catch (error) {
-    throw new Error(`Failed to refresh session in Redis: ${error instanceof Error ? error.message : String(error)}`);
+    throw createErrorWithCause(
+      `Failed to refresh session in Redis: ${error instanceof Error ? error.message : String(error)}`,
+      error
+    );
   }
 };
 

@@ -9,7 +9,7 @@ Dieses Dokument beschreibt den reproduzierbaren Smoke-Test für die laufende App
 3. Playwright Browser wurde installiert:
 
 ```bash
-pnpm --filter sva-studio-react exec playwright install --with-deps chromium
+pnpm exec playwright install --with-deps chromium
 ```
 
 ## Lokaler Lauf
@@ -52,5 +52,6 @@ Wenn ein Service fehlt, bricht der Test früh mit klarer Fehlermeldung ab.
 
 - Workflow: `.github/workflows/app-e2e.yml`
 - Startet dieselben Services via Docker Compose
+- startet die App über das Nx-Target `sva-studio-react:serve`
 - führt `pnpm nx run sva-studio-react:test:e2e` aus
 - lädt den Playwright-Report als Artifact hoch

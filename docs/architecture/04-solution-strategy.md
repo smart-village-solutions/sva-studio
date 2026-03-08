@@ -27,6 +27,7 @@ Architekturprinzipien auf IST-Basis.
 - Hohe Typsicherheit und Wartbarkeit bei wachsender Modulanzahl
 - Erweiterbarkeit durch Plugins und zentrale Route-Registry
 - Reproduzierbarkeit über standardisierte Nx-/pnpm-Workflows
+- Frontend-App-Workflows werden als explizite Nx-Targets mit dedizierten Executor-Semantiken modelliert
 - Betriebsfaehigkeit mit strukturierter Telemetrie
 - Security/Privacy-Anforderungen an Auth und Logging
 

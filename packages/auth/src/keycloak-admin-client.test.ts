@@ -785,6 +785,36 @@ describe('KeycloakAdminClient', () => {
       )
     ).toBe(true);
   });
+
+  it('blocks listUserRoleNames when the circuit breaker is open', async () => {
+    let nowMs = 0;
+    const { fetchImpl } = createFetchStub([
+      createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }),
+      createJsonResponse(503, { error: 'service_unavailable' }),
+      createJsonResponse(503, { error: 'service_unavailable' }),
+      createJsonResponse(503, { error: 'service_unavailable' }),
+      createJsonResponse(503, { error: 'service_unavailable' }),
+      createJsonResponse(503, { error: 'service_unavailable' }),
+    ]);
+
+    const client = new KeycloakAdminClient({
+      baseUrl: 'https://keycloak.example.com',
+      realm: 'demo',
+      clientId: 'svc-client',
+      clientSecret: 'svc-secret',
+      fetchImpl,
+      now: () => nowMs,
+      maxRetries: 0,
+      circuitBreakerFailureThreshold: 5,
+    });
+
+    for (let i = 0; i < 5; i += 1) {
+      await expect(client.listRoles()).rejects.toBeInstanceOf(KeycloakAdminRequestError);
+    }
+
+    await expect(client.listUserRoleNames('user-open')).rejects.toBeInstanceOf(KeycloakAdminUnavailableError);
+    nowMs += 1;
+  });
 });
 
 describe('getKeycloakAdminClientConfigFromEnv', () => {

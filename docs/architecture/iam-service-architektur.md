@@ -186,7 +186,7 @@ Außerhalb des Scopes:
 - Sicherheitsrelevante IAM-Ereignisse werden per Dual-Write dokumentiert:
   - DB-Nachweis in `iam.activity_logs`
   - operative Emission über SDK Logger und OTEL
-- Pflichtfelder in operativen Logs umfassen mindestens `workspace_id`, `component`, `request_id`, `trace_id`, `level`.
+- Pflichtfelder in operativen Logs umfassen mindestens `workspace_id`, `component`, `environment`, `level`; zusätzlich sind im IAM-Pfad `context.request_id` und `context.trace_id` als Kontextfelder zu setzen.
 - Klartext-PII, Tokens und Secrets sind weder in Audit- noch in operativen Logs zulässig.
 
 ## Offene Architekturgrenzen

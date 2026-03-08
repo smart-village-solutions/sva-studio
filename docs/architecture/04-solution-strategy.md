@@ -20,6 +20,8 @@ Architekturprinzipien auf IST-Basis.
 - Plugin-SDK-Boundary: Plugins greifen ausschließlich über `@sva/sdk` auf Host-APIs zu
 - Trennung von client-sicheren und serverseitigen Routen/Handlern
 - Observability über OTEL-Standards statt vendor-spezifischer App-Anbindung
+- IAM folgt einer klaren Verantwortungsgrenze: Keycloak für Identity, Postgres für IAM-Fachdaten, Redis nur als Laufzeit-Cache
+- `instanceId` ist der kanonische Mandanten-Scope für IAM-Datenzugriff und Autorisierung
 - Doku-getriebene Architekturpflege (arc42 + OpenSpec + ADR)
 
 ### Architekturtreiber
@@ -29,6 +31,7 @@ Architekturprinzipien auf IST-Basis.
 - Reproduzierbarkeit über standardisierte Nx-/pnpm-Workflows
 - Betriebsfaehigkeit mit strukturierter Telemetrie
 - Security/Privacy-Anforderungen an Auth und Logging
+- Konsistente, zentrale Autorisierungsentscheidungen statt verteilter Fachmodul-Logik
 
 ### Zielkonflikte (aktuell sichtbar)
 
@@ -44,6 +47,9 @@ Architekturprinzipien auf IST-Basis.
 - Monitoring-Stack: `ADR-004`
 - Logging-Pipeline und Label-Policy: `ADR-006`, `ADR-007`
 - Coverage-Reporting mit externem Transparenz-Layer: `ADR-008`
+- IAM-Identity-Basis und Scoping: `ADR-009`, `ADR-011`
+- IAM-Permission-Modell und Laufzeitpfad: `ADR-012`, `ADR-013`, `ADR-014`
+- IAM-IdP-Abstraktion für Keycloak-Admin-Pfade: `ADR-016`
 
 Referenzen:
 
@@ -54,3 +60,4 @@ Referenzen:
 - `./decisions/ADR-006-logging-pipeline-strategy.md`
 - `./decisions/ADR-007-label-schema-and-pii-policy.md`
 - `./decisions/ADR-008-codecov-coverage-reporting-and-gates.md`
+- `./iam-service-architektur.md`

@@ -36,9 +36,12 @@ gleichzeitig beeinflussen.
 ### IAM Multi-Tenancy, Caching und Audit-Logging
 
 - Mandantenisolation basiert auf kanonischem Scope `instanceId` (inkl. Mapping zu `workspace_id` in Logs)
+- Keycloak ist führend für Authentifizierung; Postgres ist führend für Studio-verwaltete IAM-Fachdaten
 - Autorisierungspfade erzwingen `instanceId`-Filterung vor Rollen-/Policy-Evaluation
+- Die zentrale Permission Engine arbeitet fail-closed bei fehlendem Kontext, unvollständigen Pflichtattributen oder inkonsistenten Laufzeitdaten
 - RLS-Policies und service-seitige Guards verhindern organisationsfremde Datenzugriffe
 - Permission-Snapshot-Cache ist instanz- und kontextgebunden; Invalidation erfolgt event-first (Postgres `NOTIFY`) mit TTL-Fallback
+- Permission-Snapshots sind reine Laufzeitoptimierung und keine fachliche Source of Truth
 - Audit-Logging für IAM-Ereignisse folgt Dual-Write (`iam.activity_logs` + OTEL via SDK Logger)
 - Audit-Daten enthalten korrelierbare IDs (`request_id`, `trace_id`) und pseudonymisierte Actor-Referenzen
 - Studio-verwaltete Rollen werden über `managed_by = 'studio'` und `instance_id` gegen fremdverwaltete Keycloak-Rollen abgegrenzt
@@ -114,6 +117,7 @@ Referenzen:
 - `packages/sdk/src/logger/index.server.ts`
 - `packages/monitoring-client/src/otel.server.ts`
 - `docs/adr/ADR-014-postgres-notify-cache-invalidierung.md`
+- `docs/architecture/iam-service-architektur.md`
 - `docs/architecture/iam-datenklassifizierung.md`
 - `docs/development/review-agent-governance.md`
 - `docs/development/iam-schluesselmanagement-strategie.md`

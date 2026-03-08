@@ -112,7 +112,10 @@ describe('iam seed statements', () => {
       'municipality',
       'org_or_personal',
       'parent-id',
-      ['root-id', 'parent-id'],
+      {
+        sqlType: 'uuid[]',
+        values: ['root-id', 'parent-id'],
+      },
       2,
       true,
     ]);
@@ -153,5 +156,43 @@ describe('iam seed repository', () => {
     assert.equal(captured.length, 1);
     assert.match(captured[0].text, /INSERT INTO iam\.permissions/);
     assert.deepEqual(captured[0].values, ['permission-id', 'instance-id', 'content.read', 'Read content']);
+  });
+
+  it('normalizes uuid array parameters before delegating organization statements to the executor', async () => {
+    const captured: SqlStatement[] = [];
+    const repository = createIamSeedRepository({
+      async execute(statement) {
+        captured.push(statement);
+        return { rowCount: 1, rows: [] };
+      },
+    });
+
+    await repository.upsertOrganization({
+      id: 'org-id',
+      instanceId: 'instance-id',
+      organizationKey: 'org-key',
+      displayName: 'Org Display',
+      metadata: '{"seed":true}',
+      organizationType: 'municipality',
+      contentAuthorPolicy: 'org_or_personal',
+      parentOrganizationId: 'parent-id',
+      hierarchyPath: ['root-id', 'parent-id'],
+      depth: 2,
+      isActive: true,
+    });
+
+    assert.deepEqual(captured[0]?.values, [
+      'org-id',
+      'instance-id',
+      'org-key',
+      'Org Display',
+      '{"seed":true}',
+      'municipality',
+      'org_or_personal',
+      'parent-id',
+      ['root-id', 'parent-id'],
+      2,
+      true,
+    ]);
   });
 });

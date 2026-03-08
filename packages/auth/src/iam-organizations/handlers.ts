@@ -116,8 +116,8 @@ LEFT JOIN iam.organizations parent
 const ORGANIZATION_LIST_FILTER_SQL = `
 WHERE organization.instance_id = $1::uuid
   AND ($2::text IS NULL
-    OR organization.display_name ILIKE '%' || $2 || '%'
-    OR organization.organization_key ILIKE '%' || $2 || '%')
+    OR organization.display_name ILIKE $2 ESCAPE '\\'
+    OR organization.organization_key ILIKE $2 ESCAPE '\\')
   AND ($3::text IS NULL OR organization.organization_type = $3)
   AND ($4::boolean IS NULL OR organization.is_active = $4)
 `;
@@ -197,6 +197,9 @@ const readOrganizationTypeFilter = (request: Request): IamOrganizationType | und
     : 'invalid';
 };
 
+const escapeIlikePattern = (value: string): string =>
+  value.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
+
 const loadOrganizationById = async (
   client: QueryClient,
   input: { instanceId: string; organizationId: string }
@@ -253,7 +256,8 @@ const loadOrganizationList = async (
   }
 ): Promise<{ items: readonly IamOrganizationListItem[]; total: number }> => {
   const offset = (input.page - 1) * input.pageSize;
-  const filterParams = [input.instanceId, input.search ?? null, input.organizationType ?? null, input.isActive ?? null] as const;
+  const searchPattern = input.search ? `%${escapeIlikePattern(input.search)}%` : null;
+  const filterParams = [input.instanceId, searchPattern, input.organizationType ?? null, input.isActive ?? null] as const;
   const totalResult = await client.query<{ total: number }>(
     `
 SELECT COUNT(*)::int AS total
@@ -265,6 +269,19 @@ ${ORGANIZATION_LIST_FILTER_SQL};
 
   const result = await client.query<OrganizationRow>(
     `
+WITH child_counts AS (
+  SELECT parent_organization_id AS organization_id, COUNT(*)::int AS child_count
+  FROM iam.organizations
+  WHERE instance_id = $1::uuid
+    AND parent_organization_id IS NOT NULL
+  GROUP BY parent_organization_id
+),
+membership_counts AS (
+  SELECT organization_id, COUNT(*)::int AS membership_count
+  FROM iam.account_organizations
+  WHERE instance_id = $1::uuid
+  GROUP BY organization_id
+)
 SELECT
   organization.id,
   organization.organization_key,
@@ -276,19 +293,13 @@ SELECT
   organization.is_active,
   organization.depth,
   organization.hierarchy_path,
-  (
-    SELECT COUNT(*)::int
-    FROM iam.organizations child
-    WHERE child.instance_id = organization.instance_id
-      AND child.parent_organization_id = organization.id
-  ) AS child_count,
-  (
-    SELECT COUNT(*)::int
-    FROM iam.account_organizations membership
-    WHERE membership.instance_id = organization.instance_id
-      AND membership.organization_id = organization.id
-  ) AS membership_count
+  COALESCE(child_counts.child_count, 0) AS child_count,
+  COALESCE(membership_counts.membership_count, 0) AS membership_count
 ${ORGANIZATION_LIST_SOURCE_SQL}
+LEFT JOIN child_counts
+  ON child_counts.organization_id = organization.id
+LEFT JOIN membership_counts
+  ON membership_counts.organization_id = organization.id
 ${ORGANIZATION_LIST_FILTER_SQL}
 ORDER BY organization.depth ASC, organization.display_name ASC
 LIMIT $5::int OFFSET $6::int;
@@ -431,7 +442,8 @@ WITH RECURSIVE organization_tree AS (
     organization.id,
     organization.instance_id,
     organization.hierarchy_path,
-    organization.depth
+    organization.depth,
+    ARRAY[organization.id]::uuid[] AS traversed_ids
   FROM iam.organizations organization
   WHERE organization.instance_id = $1::uuid
     AND organization.id = $2::uuid
@@ -442,11 +454,13 @@ WITH RECURSIVE organization_tree AS (
     child.id,
     child.instance_id,
     organization_tree.hierarchy_path || child.parent_organization_id,
-    organization_tree.depth + 1
+    organization_tree.depth + 1,
+    organization_tree.traversed_ids || child.id
   FROM iam.organizations child
   JOIN organization_tree
     ON organization_tree.instance_id = child.instance_id
    AND organization_tree.id = child.parent_organization_id
+  WHERE NOT child.id = ANY(organization_tree.traversed_ids)
 )
 UPDATE iam.organizations organization
 SET
@@ -818,6 +832,16 @@ const updateOrganizationInternal = async (
     return csrfError;
   }
 
+  const rateLimit = consumeRateLimit({
+    instanceId: actorResolution.actor.instanceId,
+    actorKeycloakSubject: ctx.user.id,
+    scope: 'write',
+    requestId: actorResolution.actor.requestId,
+  });
+  if (rateLimit) {
+    return rateLimit;
+  }
+
   const parsed = await parseRequestBody(request, updateOrganizationSchema);
   if (!parsed.ok) {
     return createApiError(400, 'invalid_request', 'Ungültiger Payload.', actorResolution.actor.requestId);
@@ -952,6 +976,16 @@ const deactivateOrganizationInternal = async (
   const csrfError = validateCsrf(request, actorResolution.actor.requestId);
   if (csrfError) {
     return csrfError;
+  }
+
+  const rateLimit = consumeRateLimit({
+    instanceId: actorResolution.actor.instanceId,
+    actorKeycloakSubject: ctx.user.id,
+    scope: 'write',
+    requestId: actorResolution.actor.requestId,
+  });
+  if (rateLimit) {
+    return rateLimit;
   }
 
   try {
@@ -1243,6 +1277,16 @@ const removeOrganizationMembershipInternal = async (
   const csrfError = validateCsrf(request, actorResolution.actor.requestId);
   if (csrfError) {
     return csrfError;
+  }
+
+  const rateLimit = consumeRateLimit({
+    instanceId: actorResolution.actor.instanceId,
+    actorKeycloakSubject: ctx.user.id,
+    scope: 'write',
+    requestId: actorResolution.actor.requestId,
+  });
+  if (rateLimit) {
+    return rateLimit;
   }
 
   try {

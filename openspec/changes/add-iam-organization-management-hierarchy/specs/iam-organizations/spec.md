@@ -130,8 +130,7 @@ Das System SHALL Organisationsdaten in einem für Admin-Views geeigneten Read-Mo
       "isActive": true,
       "depth": 1,
       "hierarchyPath": [
-        "9d44d4f2-8c78-4d44-9f1d-6f6fe44d1001",
-        "9d44d4f2-8c78-4d44-9f1d-6f6fe44d1002"
+        "9d44d4f2-8c78-4d44-9f1d-6f6fe44d1001"
       ],
       "childCount": 1,
       "membershipCount": 3

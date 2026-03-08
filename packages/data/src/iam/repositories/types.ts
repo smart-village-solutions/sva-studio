@@ -4,10 +4,14 @@ import type {
   OrganizationMembershipVisibility,
   OrganizationType,
 } from '../types';
+import type { RoleManagedBy, RoleSyncState } from './role-sync-types';
 
-export type SqlPrimitive = string | number | boolean | null | readonly string[];
-type RoleManagedBy = 'studio' | 'external';
-type RoleSyncState = 'synced' | 'pending' | 'failed';
+type SqlArrayPrimitive = Readonly<{
+  sqlType: 'uuid[]';
+  values: readonly string[];
+}>;
+
+export type SqlPrimitive = string | number | boolean | null | SqlArrayPrimitive;
 
 export type SqlStatement = {
   readonly text: string;

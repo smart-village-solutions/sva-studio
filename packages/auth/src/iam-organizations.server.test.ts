@@ -30,6 +30,7 @@ const state = vi.hoisted(() => ({
     | { error: Response },
   dbResults: [] as unknown[],
   queryResults: [] as unknown[],
+  queryCalls: [] as Array<{ text: string; values: readonly unknown[] }>,
   session: undefined as { activeOrganizationId?: string } | undefined,
   updateSessionCalls: [] as Array<{ sessionId: string; updates: Record<string, unknown> }>,
   notifyCalls: [] as Array<Record<string, unknown>>,
@@ -143,7 +144,8 @@ vi.mock('./iam-account-management/shared', () => ({
     }
 
     return work({
-      query: vi.fn(async () => {
+      query: vi.fn(async (text: string, values: readonly unknown[] = []) => {
+        state.queryCalls.push({ text, values });
         if (state.queryResults.length === 0) {
           return { rowCount: 0, rows: [] };
         }
@@ -203,6 +205,7 @@ describe('iam organizations handlers', () => {
     };
     state.dbResults = [];
     state.queryResults = [];
+    state.queryCalls = [];
     state.session = undefined;
     state.updateSessionCalls = [];
     state.notifyCalls = [];
@@ -292,6 +295,26 @@ describe('iam organizations handlers', () => {
       }),
     ]);
     expect(payload.pagination.total).toBe(1);
+  });
+
+  it('escapes wildcard search terms before issuing organization list queries', async () => {
+    state.queryResults = [
+      { rowCount: 1, rows: [{ total: 0 }] },
+      { rowCount: 0, rows: [] },
+    ];
+
+    const response = await listOrganizationsHandler(
+      new Request('http://localhost/api/v1/iam/organizations?page=1&pageSize=5&search=100%_alpha\\\\beta')
+    );
+
+    expect(response.status).toBe(200);
+    expect(state.queryCalls).toHaveLength(2);
+    expect(state.queryCalls[0]?.text).toContain("ILIKE $2 ESCAPE '\\'");
+    expect(state.queryCalls[1]?.text).toContain('WITH child_counts AS');
+    expect(typeof state.queryCalls[0]?.values[1]).toBe('string');
+    expect(state.queryCalls[0]?.values[1]).toEqual(expect.stringContaining('\\%'));
+    expect(state.queryCalls[0]?.values[1]).toEqual(expect.stringContaining('\\_'));
+    expect(state.queryCalls[0]?.values[1]).toEqual(expect.stringContaining('\\\\beta'));
   });
 
   it('rejects invalid organization type filters on the organization list', async () => {
@@ -832,6 +855,39 @@ describe('iam organizations handlers', () => {
     expect(payload.error.code).toBe('not_found');
   });
 
+  it('applies write rate limiting on organization updates', async () => {
+    state.rateLimitResponse = new Response(
+      JSON.stringify({
+        error: {
+          code: 'rate_limited',
+          message: 'Zu viele Anfragen.',
+        },
+        requestId: 'req-org-test',
+      }),
+      {
+        status: 429,
+        headers: { 'content-type': 'application/json' },
+      }
+    );
+
+    const response = await updateOrganizationHandler(
+      new Request('http://localhost/api/v1/iam/organizations/22222222-2222-4222-8222-222222222222', {
+        method: 'PATCH',
+        headers: {
+          'content-type': 'application/json',
+          'x-csrf-token': 'csrf-token',
+        },
+        body: JSON.stringify({
+          displayName: 'Neue Gemeinde',
+        }),
+      })
+    );
+    const payload = (await response.json()) as { error: { code: string } };
+
+    expect(response.status).toBe(429);
+    expect(payload.error.code).toBe('rate_limited');
+  });
+
   it('rejects deactivation when organization still has children or memberships', async () => {
     state.dbResults = [{ status: 'conflict' }];
 
@@ -891,6 +947,35 @@ describe('iam organizations handlers', () => {
         eventType: 'organization.deactivated',
       })
     );
+  });
+
+  it('applies write rate limiting on organization deactivation', async () => {
+    state.rateLimitResponse = new Response(
+      JSON.stringify({
+        error: {
+          code: 'rate_limited',
+          message: 'Zu viele Anfragen.',
+        },
+        requestId: 'req-org-test',
+      }),
+      {
+        status: 429,
+        headers: { 'content-type': 'application/json' },
+      }
+    );
+
+    const response = await deactivateOrganizationHandler(
+      new Request('http://localhost/api/v1/iam/organizations/22222222-2222-4222-8222-222222222222', {
+        method: 'DELETE',
+        headers: {
+          'x-csrf-token': 'csrf-token',
+        },
+      })
+    );
+    const payload = (await response.json()) as { error: { code: string } };
+
+    expect(response.status).toBe(429);
+    expect(payload.error.code).toBe('rate_limited');
   });
 
   it('assigns an organization membership and returns the refreshed detail', async () => {
@@ -1139,6 +1224,38 @@ describe('iam organizations handlers', () => {
 
     expect(response.status).toBe(404);
     expect(payload.error.code).toBe('not_found');
+  });
+
+  it('applies write rate limiting on membership removals', async () => {
+    state.rateLimitResponse = new Response(
+      JSON.stringify({
+        error: {
+          code: 'rate_limited',
+          message: 'Zu viele Anfragen.',
+        },
+        requestId: 'req-org-test',
+      }),
+      {
+        status: 429,
+        headers: { 'content-type': 'application/json' },
+      }
+    );
+
+    const response = await removeOrganizationMembershipHandler(
+      new Request(
+        'http://localhost/api/v1/iam/organizations/22222222-2222-4222-8222-222222222222/memberships/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+        {
+          method: 'DELETE',
+          headers: {
+            'x-csrf-token': 'csrf-token',
+          },
+        }
+      )
+    );
+    const payload = (await response.json()) as { error: { code: string } };
+
+    expect(response.status).toBe(429);
+    expect(payload.error.code).toBe('rate_limited');
   });
 
   it('switches the organization context, updates the session and emits invalidation', async () => {

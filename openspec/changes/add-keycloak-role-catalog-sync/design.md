@@ -18,12 +18,28 @@ Die aktuelle IAM-Implementierung kann Rollen im Studio verwalten und Nutzerrolle
 
 - Decision: IAM-Datenbank bleibt Source of Truth für Studio-verwaltete Rollen.
   - Rationale: Rollenmodell und Berechtigungsmatrix werden bereits im Studio gepflegt.
+- Decision: Role-Catalog-Sync wird über die IdP-Abstraktionsschicht (ADR-016) umgesetzt; Keycloak ist ein konkreter Adapter.
+  - Rationale: Reduziert direkte Anbieterkopplung und hält die Architektur austauschbar.
 - Decision: Write-Operationen folgen Keycloak-First mit Compensation.
   - Rationale: Verhindert „erfolgreich in UI, fehlt im IdP“-Zustände bei synchronen Admin-Operationen.
 - Decision: Reconciliation ergänzt den synchronen Pfad als Sicherheitsnetz.
   - Rationale: Netzwerkfehler, Timeouts oder externe manuelle Keycloak-Änderungen erzeugen sonst dauerhaft Drift.
 - Decision: Rolle erhält stabilen technischen Schlüssel (`role_key`) und getrennten Anzeigenamen.
   - Rationale: Vermeidet instabile externe Referenzen bei UI-Umbenennungen.
+- Decision: `role_key` ist nach Erstellung unveränderlich; editierbar ist nur `display_name`.
+  - Rationale: Verhindert Identitätswechsel durch Umbenennung und schützt Zuordnungen.
+- Decision: Managed-Scope wird deterministisch über `managed_by = "studio"` und `instance_id` bestimmt.
+  - Rationale: Verhindert Eingriffe in fremdverwaltete Keycloak-Rollen.
+- Decision: Orphaned, studio-verwaltete Keycloak-Rollen werden standardmäßig `report-only` behandelt; Löschung erfolgt nur explizit per Admin-Freigabe.
+  - Rationale: Minimiert Risiko unbeabsichtigter destruktiver Reconcile-Eingriffe.
+- Decision: `POST /api/v1/iam/admin/reconcile` ist eine privilegierte Admin-Operation mit serverseitigem RBAC-Enforcement (`system_admin`).
+  - Rationale: UI-only-Gates reichen für Sicherheitsgrenzen nicht aus.
+- Decision: Für produktive Umgebungen gilt ein Drift-SLO (`Erkennung <= 15 min`, `Korrektur oder Eskalation <= 60 min`).
+  - Rationale: Macht Drift-Betrieb messbar und alarmierbar.
+- Decision: Serverseitige Role-Sync-/Reconcile-Logs nutzen verpflichtend den SDK-Logger (`@sva/sdk`) mit strukturierten Feldern; `console.*` ist ausgeschlossen.
+  - Rationale: Einheitliche Observability, bessere Korrelation und Einhaltung der Logging-Guidelines.
+- Decision: Audit- und Fehlerdaten sind datensparsam (`No-PII`, `No-Secret`) und enthalten Korrelation (`request_id`, optional `trace_id`/`span_id`).
+  - Rationale: Sicheres Debugging ohne Preisgabe sensibler Informationen.
 
 ## Risks / Trade-offs
 
@@ -44,6 +60,4 @@ Die aktuelle IAM-Implementierung kann Rollen im Studio verwalten und Nutzerrolle
 
 ## Open Questions
 
-- Soll Reconciliation orphaned, studioverwaltete Keycloak-Rollen automatisch löschen oder nur melden?
-- Soll eine Umbenennung des technischen `role_key` erlaubt sein oder nur `display_name`?
-- Welche SLOs gelten für maximale Drift-Dauer in produktiven Umgebungen?
+- Welche initialen Alert-Schwellen sollen für Warnung/Kritisch in Produktion gelten?

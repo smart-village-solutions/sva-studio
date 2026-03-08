@@ -42,6 +42,13 @@ Das System SHALL pro studioverwalteter Rolle ein eindeutiges externes Mapping un
 - **AND** `syncState` wird auf `failed` gesetzt
 - **AND** ein maschinenlesbarer Fehlercode wird gespeichert
 
+#### Scenario: Keycloak ist nicht erreichbar
+
+- **WHEN** Keycloak für Rollen-CRUD nicht erreichbar ist (Timeout/5xx)
+- **THEN** antwortet die API deterministisch mit Fehler (`503` + Fehlercode `IDP_UNAVAILABLE`)
+- **AND** es bleibt kein unmarkierter Teilerfolg bestehen
+- **AND** `syncState` wird auf `failed` gesetzt
+
 ### Requirement: Reconciliation für Rollen-Drift
 
 Das System MUST eine Reconciliation-Funktion bereitstellen, die Drift zwischen IAM-Rollenbestand und Keycloak-Rollenbestand erkennt und im Managed-Scope behebt.
@@ -55,6 +62,34 @@ Das System MUST eine Reconciliation-Funktion bereitstellen, die Drift zwischen I
 
 #### Scenario: Manuelle Reconcile-Ausführung
 
-- **WHEN** ein berechtigter Admin `POST /api/v1/iam/admin/reconcile` ausführt
+- **WHEN** ein `system_admin` `POST /api/v1/iam/admin/reconcile` ausführt
 - **THEN** liefert das System einen strukturierten Bericht mit Anzahl geprüfter, korrigierter und fehlgeschlagener Rollen
 - **AND** unbehebbare Abweichungen werden mit klarer Fehlerursache zurückgegeben
+
+#### Scenario: Unberechtigter Reconcile-Aufruf
+
+- **WHEN** ein Nutzer ohne `system_admin` `POST /api/v1/iam/admin/reconcile` ausführt
+- **THEN** antwortet das System mit `403 Forbidden`
+- **AND** es erfolgt keine Reconcile-Ausführung
+
+#### Scenario: Orphaned, studio-verwaltete Keycloak-Rolle
+
+- **WHEN** eine studio-verwaltete Keycloak-Rolle ohne korrespondierende IAM-Rolle erkannt wird
+- **THEN** markiert der Reconcile-Lauf die Abweichung als `requires_manual_action`
+- **AND** die Rolle wird im Standardmodus nicht automatisch gelöscht
+
+### Requirement: Auditierbares und datensparsames Logging
+
+Das System MUST für Role-Sync und Reconciliation strukturierte Logs und Audit-Events mit Korrelation bereitstellen, ohne sensible Daten zu persistieren.
+
+#### Scenario: Korrelation in Sync-/Reconcile-Ereignissen
+
+- **WHEN** ein Role-Sync oder Reconcile ausgeführt wird
+- **THEN** enthalten Logs/Audit-Events mindestens `request_id` sowie, falls vorhanden, `trace_id` und `span_id`
+- **AND** das Event-Schema enthält `operation`, `result` und optional `error_code`
+
+#### Scenario: Fehlerdaten sind datensparsam
+
+- **WHEN** eine Sync-/Reconcile-Operation fehlschlägt
+- **THEN** werden keine Tokens, Secrets oder personenbezogenen Rohdaten in Logs/Auditdaten gespeichert
+- **AND** Fehler werden über maschinenlesbare Codes statt sensibler Rohdaten abgebildet

@@ -26,9 +26,16 @@ Das System MUST bei Synchronisierung und Reconciliation strikt zwischen studiove
 - **WHEN** eine Rolle in Keycloak existiert, aber nicht zum Studio-Managed-Scope gehört
 - **THEN** wird diese Rolle durch den Reconcile-Lauf nicht verändert oder gelöscht
 - **AND** sie hat keine automatische Wirkung auf den Studio-Rollenkatalog
+- **AND** der Managed-Scope wird ausschließlich über `managed_by = "studio"` und `instance_id` bestimmt
 
 #### Scenario: Drift innerhalb des Managed Scope
 
 - **WHEN** eine studioverwaltete Rolle im Managed-Scope in Keycloak abweicht
 - **THEN** darf der Reconcile-Lauf die Abweichung gemäß Richtlinie korrigieren
 - **AND** die Korrektur wird mit `request_id` und Ergebnisstatus auditierbar protokolliert
+
+#### Scenario: Versuch der `role_key`-Änderung
+
+- **WHEN** ein Admin eine Änderung des technischen `role_key` anfordert
+- **THEN** lehnt das System die Änderung mit verständlicher Begründung ab
+- **AND** verweist auf den erlaubten Weg über Änderung von `display_name`

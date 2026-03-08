@@ -10,6 +10,7 @@ export type Session = {
   id: string; // Session ID for storage/retrieval
   userId: string;
   user?: SessionUser;
+  activeOrganizationId?: string;
   accessToken?: string;
   createdAt: number; // Unix timestamp in milliseconds (Date.now())
   refreshToken?: string;

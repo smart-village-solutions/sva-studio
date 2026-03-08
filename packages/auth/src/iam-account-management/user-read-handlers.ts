@@ -23,6 +23,7 @@ import {
   trackKeycloakCall,
   withInstanceScopedDb,
 } from './shared';
+import { getRoleDisplayName } from './role-audit';
 import type { UserStatus } from './types';
 import { USER_STATUS } from './types';
 import { resolveUserDetail } from './user-detail-query';
@@ -34,10 +35,8 @@ const mapProjectedRoles = (
   roles.map((role) => ({
     roleId: role.id,
     roleKey: role.role_key,
-    roleName: role.role_name,
-    displayName: role.display_name ?? role.role_name,
+    roleName: getRoleDisplayName(role),
     roleLevel: role.role_level,
-    isSystemRole: role.is_system_role,
   }));
 
 const mergeProjectedRoles = (user: IamUserDetail, roles: readonly IamUserRoleAssignment[]): IamUserDetail => ({

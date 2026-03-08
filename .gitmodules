@@ -1,0 +1,3 @@
+[submodule "concepts/konzeption-cms-v2"]
+	path = concepts/konzeption-cms-v2
+	url = git@github.com:smart-village-solutions/konzeption-cms-v2.git

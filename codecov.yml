@@ -1,0 +1,87 @@
+ignore:
+  # Configuration files - no need to test config
+  - "**/*.config.{js,cjs,mjs,ts}"
+  - "apps/sva-studio-react/tailwind.config.cjs"
+
+  # Build artifacts and generated files
+  - "**/dist/**"
+  - "**/build/**"
+  - "**/.nx/**"
+  - "**/coverage/**"
+  - "**/.turbo/**"
+
+  # Test files - already tested by definition
+  - "**/*.test.{ts,tsx,js,jsx}"
+  - "**/*.spec.{ts,tsx,js,jsx}"
+  - "**/__tests__/**"
+  - "**/__mocks__/**"
+  - "**/test-utils/**"
+  - "**/vitest.config.ts"
+  - "**/vitest.workspace.ts"
+
+  # Type definitions and declarations
+  - "**/*.d.ts"
+
+  # Scripts and tooling
+  - "**/scripts/**"
+  - "**/tools/**"
+
+  # Examples, docs, and e2e
+  - "**/examples/**"
+  - "**/e2e/**"
+  - "docs/**"
+
+  # Node modules (should be ignored by default, but explicit for safety)
+  - "**/node_modules/**"
+
+coverage:
+  status:
+    project:
+      default:
+        target: auto
+        threshold: 0.5%
+        if_ci_failed: error
+        informational: true
+
+    patch:
+      default:
+        target: 80%
+        if_not_found: success
+        if_ci_failed: error
+
+  # Monorepo-specific flags aligned with CI workflow ("unittests")
+  flags:
+    unittests:
+      paths:
+        - apps/sva-studio-react/
+        - packages/core/
+        - packages/data/
+        - packages/auth/
+        - packages/sdk/
+        - packages/routing/
+        - packages/monitoring-client/
+
+# Comment format optimized for PR reviews
+comment:
+  layout: "diff, flags, components"
+  behavior: default
+  require_changes: true
+  require_base: false
+  require_head: true
+  after_n_builds: 1
+
+# Enable GitHub checks annotations
+github_checks:
+  annotations: true
+
+# Carryforward for better CI performance with nx affected
+flag_management:
+  default_rules:
+    carryforward: true
+    carryforward_mode: all
+
+# Notify settings for coverage changes
+codecov:
+  notify:
+    after_n_builds: 1
+    wait_for_ci: yes

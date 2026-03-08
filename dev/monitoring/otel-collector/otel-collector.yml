@@ -1,0 +1,34 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+      http:
+
+processors:
+  batch:
+    timeout: 1s
+    send_batch_size: 10
+
+exporters:
+  prometheus:
+    endpoint: "0.0.0.0:8889"
+
+  loki:
+    endpoint: "http://loki:3100/loki/api/v1/push"
+
+extensions:
+  health_check:
+    endpoint: "127.0.0.1:13133"
+    path: "/healthz"
+
+service:
+  extensions: [health_check]
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [prometheus]
+    logs:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [loki]

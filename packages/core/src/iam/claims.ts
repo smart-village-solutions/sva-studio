@@ -3,6 +3,7 @@ type AccessRoles = {
 };
 
 const ROLE_ALIASES: Readonly<Record<string, readonly string[]>> = {
+  // The external SVA Mainserver realm exposes the elevated studio role as `Admin`.
   Admin: ['system_admin'],
 };
 

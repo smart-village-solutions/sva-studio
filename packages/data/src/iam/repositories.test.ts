@@ -16,7 +16,47 @@ describe('iam seed statements', () => {
     });
 
     assert.match(statement.text, /ON CONFLICT \(instance_id, role_key\) DO UPDATE/);
-    assert.deepEqual(statement.values, ['role-id', 'instance-id', 'editor', 'editor', 'editor', 'Editor role', true, 30, 'synced']);
+    assert.deepEqual(statement.values, [
+      'role-id',
+      'instance-id',
+      'editor',
+      'editor',
+      'editor',
+      'Editor role',
+      true,
+      30,
+      'studio',
+      'synced',
+    ]);
+  });
+
+  it('allows explicit managedBy and external role mapping in role upserts', () => {
+    const statement = iamSeedStatements.upsertRole({
+      id: 'role-id',
+      instanceId: 'instance-id',
+      roleKey: 'mainserver_admin',
+      roleName: 'mainserver_admin',
+      description: 'Mainserver admin role',
+      isSystemRole: false,
+      roleLevel: 90,
+      externalRoleName: 'Admin',
+      managedBy: 'external',
+      syncState: 'pending',
+    });
+
+    assert.match(statement.text, /managed_by/);
+    assert.deepEqual(statement.values, [
+      'role-id',
+      'instance-id',
+      'mainserver_admin',
+      'mainserver_admin',
+      'Admin',
+      'Mainserver admin role',
+      false,
+      90,
+      'external',
+      'pending',
+    ]);
   });
 
   it('builds account-role assignment as idempotent insert', () => {

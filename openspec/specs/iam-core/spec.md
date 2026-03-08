@@ -228,7 +228,7 @@ Das System MUST über einen dedizierten Service-Account mit der Keycloak Admin R
 
 - **WENN** der IAM-Service startet
 - **DANN** authentifiziert er sich bei Keycloak mit dem Service-Account `sva-studio-iam-service`
-- **UND** der Service-Account hat nur die Rollen `manage-users`, `view-users`, `view-realm` (Principle of Least Privilege)
+- **UND** der Service-Account hat nur die Rollen `manage-users`, `view-users`, `view-realm` und `manage-realm` (Principle of Least Privilege für Benutzer- und Realm-Role-Verwaltung)
 - **UND** das Client-Secret wird über einen Secrets-Manager injiziert (nicht als `.env`-Datei)
 - **UND** das Secret wird alle 90 Tage rotiert (BSI-Grundschutz ORP.4) mit Dual-Secret-Rotation (Overlap-Fenster)
 
@@ -466,4 +466,3 @@ Das System MUST für Role-Sync und Reconciliation strukturierte Logs und Audit-E
 - **WHEN** eine Sync-/Reconcile-Operation fehlschlägt
 - **THEN** werden keine Tokens, Secrets oder personenbezogenen Rohdaten in Logs/Auditdaten gespeichert
 - **AND** Fehler werden über maschinenlesbare Codes statt sensibler Rohdaten abgebildet
-

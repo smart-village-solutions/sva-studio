@@ -106,6 +106,22 @@ type HierarchyResolution =
       message: string;
     };
 
+const ORGANIZATION_TYPE_VALUES = ['county', 'municipality', 'district', 'company', 'agency', 'other'] as const satisfies readonly IamOrganizationType[];
+const ORGANIZATION_LIST_SOURCE_SQL = `
+FROM iam.organizations organization
+LEFT JOIN iam.organizations parent
+  ON parent.instance_id = organization.instance_id
+ AND parent.id = organization.parent_organization_id
+`;
+const ORGANIZATION_LIST_FILTER_SQL = `
+WHERE organization.instance_id = $1::uuid
+  AND ($2::text IS NULL
+    OR organization.display_name ILIKE '%' || $2 || '%'
+    OR organization.organization_key ILIKE '%' || $2 || '%')
+  AND ($3::text IS NULL OR organization.organization_type = $3)
+  AND ($4::boolean IS NULL OR organization.is_active = $4)
+`;
+
 const mapOrganizationListItem = (row: OrganizationRow): IamOrganizationListItem => ({
   id: row.id,
   organizationKey: row.organization_key,
@@ -171,6 +187,16 @@ const readStatusFilter = (request: Request): boolean | undefined => {
   return undefined;
 };
 
+const readOrganizationTypeFilter = (request: Request): IamOrganizationType | undefined | 'invalid' => {
+  const organizationType = readString(new URL(request.url).searchParams.get('organizationType'));
+  if (!organizationType) {
+    return undefined;
+  }
+  return (ORGANIZATION_TYPE_VALUES as readonly string[]).includes(organizationType)
+    ? (organizationType as IamOrganizationType)
+    : 'invalid';
+};
+
 const loadOrganizationById = async (
   client: QueryClient,
   input: { instanceId: string; organizationId: string }
@@ -227,18 +253,14 @@ const loadOrganizationList = async (
   }
 ): Promise<{ items: readonly IamOrganizationListItem[]; total: number }> => {
   const offset = (input.page - 1) * input.pageSize;
+  const filterParams = [input.instanceId, input.search ?? null, input.organizationType ?? null, input.isActive ?? null] as const;
   const totalResult = await client.query<{ total: number }>(
     `
 SELECT COUNT(*)::int AS total
-FROM iam.organizations organization
-WHERE organization.instance_id = $1::uuid
-  AND ($2::text IS NULL
-    OR organization.display_name ILIKE '%' || $2 || '%'
-    OR organization.organization_key ILIKE '%' || $2 || '%')
-  AND ($3::text IS NULL OR organization.organization_type = $3)
-  AND ($4::boolean IS NULL OR organization.is_active = $4);
+${ORGANIZATION_LIST_SOURCE_SQL}
+${ORGANIZATION_LIST_FILTER_SQL};
 `,
-    [input.instanceId, input.search ?? null, input.organizationType ?? null, input.isActive ?? null]
+    filterParams
   );
 
   const result = await client.query<OrganizationRow>(
@@ -266,27 +288,12 @@ SELECT
     WHERE membership.instance_id = organization.instance_id
       AND membership.organization_id = organization.id
   ) AS membership_count
-FROM iam.organizations organization
-LEFT JOIN iam.organizations parent
-  ON parent.instance_id = organization.instance_id
- AND parent.id = organization.parent_organization_id
-WHERE organization.instance_id = $1::uuid
-  AND ($2::text IS NULL
-    OR organization.display_name ILIKE '%' || $2 || '%'
-    OR organization.organization_key ILIKE '%' || $2 || '%')
-  AND ($3::text IS NULL OR organization.organization_type = $3)
-  AND ($4::boolean IS NULL OR organization.is_active = $4)
+${ORGANIZATION_LIST_SOURCE_SQL}
+${ORGANIZATION_LIST_FILTER_SQL}
 ORDER BY organization.depth ASC, organization.display_name ASC
 LIMIT $5::int OFFSET $6::int;
 `,
-    [
-      input.instanceId,
-      input.search ?? null,
-      input.organizationType ?? null,
-      input.isActive ?? null,
-      input.pageSize,
-      offset,
-    ]
+    [...filterParams, input.pageSize, offset]
   );
 
   return {
@@ -503,7 +510,10 @@ const listOrganizationsInternal = async (
   const { page, pageSize } = readPage(request);
   const url = new URL(request.url);
   const search = readString(url.searchParams.get('search'));
-  const organizationType = readString(url.searchParams.get('organizationType')) as IamOrganizationType | undefined;
+  const organizationType = readOrganizationTypeFilter(request);
+  if (organizationType === 'invalid') {
+    return createApiError(400, 'invalid_request', 'Ungültiger organizationType-Filter.', actorResolution.actor.requestId);
+  }
   const isActive = readStatusFilter(request);
 
   try {
@@ -544,6 +554,16 @@ const getOrganizationInternal = async (
   const actorResolution = await resolveActorInfo(request, ctx, { requireActorMembership: true });
   if ('error' in actorResolution) {
     return actorResolution.error;
+  }
+
+  const rateLimit = consumeRateLimit({
+    instanceId: actorResolution.actor.instanceId,
+    actorKeycloakSubject: ctx.user.id,
+    scope: 'read',
+    requestId: actorResolution.actor.requestId,
+  });
+  if (rateLimit) {
+    return rateLimit;
   }
 
   const organizationId = readPathSegment(request, 4);

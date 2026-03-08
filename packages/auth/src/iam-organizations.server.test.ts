@@ -294,6 +294,16 @@ describe('iam organizations handlers', () => {
     expect(payload.pagination.total).toBe(1);
   });
 
+  it('rejects invalid organization type filters on the organization list', async () => {
+    const response = await listOrganizationsHandler(
+      new Request('http://localhost/api/v1/iam/organizations?page=1&pageSize=5&organizationType=invalid-type')
+    );
+    const payload = (await response.json()) as { error: { code: string } };
+
+    expect(response.status).toBe(400);
+    expect(payload.error.code).toBe('invalid_request');
+  });
+
   it('returns active organization context from session membership', async () => {
     state.dbResults = [
       [
@@ -462,6 +472,30 @@ describe('iam organizations handlers', () => {
 
     expect(response.status).toBe(404);
     expect(payload.error.code).toBe('not_found');
+  });
+
+  it('applies read rate limiting on organization detail reads', async () => {
+    state.rateLimitResponse = new Response(
+      JSON.stringify({
+        error: {
+          code: 'rate_limited',
+          message: 'Zu viele Anfragen.',
+        },
+        requestId: 'req-org-test',
+      }),
+      {
+        status: 429,
+        headers: { 'content-type': 'application/json' },
+      }
+    );
+
+    const response = await getOrganizationHandler(
+      new Request('http://localhost/api/v1/iam/organizations/22222222-2222-4222-8222-222222222222')
+    );
+    const payload = (await response.json()) as { error: { code: string } };
+
+    expect(response.status).toBe(429);
+    expect(payload.error.code).toBe('rate_limited');
   });
 
   it('creates an organization and completes idempotency tracking', async () => {

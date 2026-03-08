@@ -38,7 +38,7 @@
 ### ✅ 7.5 OTEL SDK Metriken
 - **Status:** PASS
 - **Metrik:** sva_business_events_total
-  - ✅ Smoke-Test erfolgreich (pnpm -C packages/monitoring-client exec node scripts/otel-metrics-smoke.mjs)
+  - ✅ Smoke-Test erfolgreich (pnpm -C packages/monitoring-client exec tsx scripts/otel-metrics-smoke.ts)
   - ✅ In Prometheus sichtbar: 1 time series
   - ✅ Labels: workspace_id, component, environment, level
 

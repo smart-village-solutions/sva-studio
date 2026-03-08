@@ -21,6 +21,12 @@ const state = vi.hoisted(() => ({
   deleteRoleImpl: null as null | ((externalName: string) => Promise<unknown> | unknown),
   getRoleByNameImpl: null as null | ((externalName: string) => Promise<unknown> | unknown),
   listRolesImpl: null as null | (() => Promise<unknown> | unknown),
+  createUserImpl: null as null | ((input: {
+    email: string;
+    firstName?: string;
+    lastName?: string;
+    enabled: boolean;
+  }) => Promise<unknown> | unknown),
   deactivateUserCalls: [] as string[],
   syncRolesImpl: null as null | ((keycloakSubject: string, roleNames: readonly string[]) => Promise<unknown> | unknown),
   syncRolesCalls: [] as Array<{ keycloakSubject: string; roleNames: readonly string[] }>,
@@ -176,7 +182,10 @@ vi.mock('./keycloak-admin-client', () => ({
       return [];
     }
 
-    async createUser() {
+    async createUser(input: { email: string; firstName?: string; lastName?: string; enabled: boolean }) {
+      if (state.createUserImpl) {
+        return state.createUserImpl(input);
+      }
       return { externalId: 'mock-user-id' };
     }
   },
@@ -271,6 +280,7 @@ describe('iam-account-management handlers (guards)', () => {
     state.deleteRoleImpl = null;
     state.getRoleByNameImpl = null;
     state.listRolesImpl = null;
+    state.createUserImpl = null;
     state.redisAvailable = true;
     state.deactivateUserCalls = [];
     state.syncRolesImpl = null;
@@ -300,12 +310,61 @@ describe('iam-account-management handlers (guards)', () => {
     expect(payload.error.code).toBe('invalid_request');
   });
 
+  it('returns database_unavailable when listing users fails', async () => {
+    state.queryHandler = () => {
+      throw new Error('db unavailable');
+    };
+
+    const response = await listUsersHandler(new Request('http://localhost/api/v1/iam/users', { method: 'GET' }));
+    const payload = (await response.json()) as { error: { code: string } };
+
+    expect(response.status).toBe(503);
+    expect(payload.error.code).toBe('database_unavailable');
+  });
+
   it('rejects getUser for invalid user id path segment', async () => {
     const response = await getUserHandler(new Request('http://localhost/api/v1/iam/users/not-a-uuid', { method: 'GET' }));
     const payload = (await response.json()) as { error: { code: string } };
 
     expect(response.status).toBe(400);
     expect(payload.error.code).toBe('invalid_request');
+  });
+
+  it('returns not_found when getUser cannot resolve the target user', async () => {
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+      if (text.includes('WHERE a.id = $2::uuid')) {
+        return { rowCount: 0, rows: [] };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await getUserHandler(
+      new Request(`http://localhost/api/v1/iam/users/${targetUserId}`, { method: 'GET' })
+    );
+    const payload = (await response.json()) as { error: { code: string } };
+
+    expect(response.status).toBe(404);
+    expect(payload.error.code).toBe('not_found');
+  });
+
+  it('returns database_unavailable when getUser encounters a db error', async () => {
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+      throw new Error('db unavailable');
+    };
+
+    const response = await getUserHandler(
+      new Request(`http://localhost/api/v1/iam/users/${targetUserId}`, { method: 'GET' })
+    );
+    const payload = (await response.json()) as { error: { code: string } };
+
+    expect(response.status).toBe(503);
+    expect(payload.error.code).toBe('database_unavailable');
   });
 
   it('rejects createUser without CSRF header', async () => {
@@ -340,6 +399,30 @@ describe('iam-account-management handlers (guards)', () => {
     expect(payload.error.code).toBe('idempotency_key_required');
   });
 
+  it('rejects createUser when the actor account cannot be resolved', async () => {
+    state.queryHandler = () => ({ rowCount: 0, rows: [] });
+
+    const response = await createUserHandler(
+      new Request('http://localhost/api/v1/iam/users', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'http://localhost',
+          'idempotency-key': 'user-create-missing-actor',
+        },
+        body: JSON.stringify({
+          email: 'new.user@example.com',
+          roleIds: [],
+        }),
+      })
+    );
+    const payload = (await response.json()) as { error: { code: string } };
+
+    expect(response.status).toBe(403);
+    expect(payload.error.code).toBe('forbidden');
+  });
+
   it('rejects updateUser for invalid user id', async () => {
     const response = await updateUserHandler(
       new Request('http://localhost/api/v1/iam/users/not-a-uuid', {
@@ -356,6 +439,47 @@ describe('iam-account-management handlers (guards)', () => {
     const payload = (await response.json()) as { error: { code: string } };
     expect(response.status).toBe(400);
     expect(payload.error.code).toBe('invalid_request');
+  });
+
+  it('returns not_found when updating an unknown user', async () => {
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+
+      if (text.includes('MAX(r.role_level)')) {
+        return { rowCount: 1, rows: [{ max_role_level: 90 }] };
+      }
+
+      if (text.includes('WHERE a.id = $2::uuid')) {
+        return { rowCount: 0, rows: [] };
+      }
+
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await updateUserHandler(
+      new Request(`http://localhost/api/v1/iam/users/${targetUserId}`, {
+        method: 'PATCH',
+        headers: {
+          'content-type': 'application/json',
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'http://localhost',
+        },
+        body: JSON.stringify({
+          firstName: 'Updated',
+        }),
+      })
+    );
+
+    expect(response.status).toBe(404);
+    expect(await response.json()).toEqual({
+      error: {
+        code: 'not_found',
+        message: 'Nutzer nicht gefunden.',
+      },
+      requestId: 'req-iam-handler',
+    });
   });
 
   it('rejects deactivateUser for invalid user id', async () => {
@@ -455,6 +579,161 @@ describe('iam-account-management handlers (guards)', () => {
     expect(response.status).toBe(200);
     expect(payload.data.id).toBe(targetUserId);
     expect(payload.data.status).toBe('inactive');
+  });
+
+  it('rejects user updates that would deactivate the last active system admin', async () => {
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+
+      if (text.includes('MAX(r.role_level)')) {
+        return { rowCount: 1, rows: [{ max_role_level: 90 }] };
+      }
+
+      if (text.includes('SELECT EXISTS (')) {
+        return { rowCount: 1, rows: [{ has_role: true }] };
+      }
+
+      if (text.includes('COUNT(DISTINCT a.id)::int AS admin_count')) {
+        return { rowCount: 1, rows: [{ admin_count: 1 }] };
+      }
+
+      if (text.includes('WHERE a.id = $2::uuid')) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              ...buildUserDetailRow('active'),
+              role_rows: [
+                {
+                  id: 'role-system-admin',
+                  role_key: 'system_admin',
+                  role_name: 'system_admin',
+                  display_name: 'System Admin',
+                  role_level: 90,
+                  is_system_role: true,
+                },
+              ],
+            },
+          ],
+        };
+      }
+
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await updateUserHandler(
+      new Request(`http://localhost/api/v1/iam/users/${targetUserId}`, {
+        method: 'PATCH',
+        headers: {
+          'content-type': 'application/json',
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'http://localhost',
+        },
+        body: JSON.stringify({
+          status: 'inactive',
+        }),
+      })
+    );
+    const payload = (await response.json()) as { error: { code: string } };
+
+    expect(response.status).toBe(409);
+    expect(payload.error.code).toBe('last_admin_protection');
+  });
+
+  it('rejects deactivation of the current user', async () => {
+    state.user = {
+      ...state.user,
+      id: 'keycloak-target-2',
+    };
+
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+
+      if (text.includes('MAX(r.role_level)')) {
+        return { rowCount: 1, rows: [{ max_role_level: 90 }] };
+      }
+
+      if (text.includes('WHERE a.id = $2::uuid')) {
+        return { rowCount: 1, rows: [buildUserDetailRow('active')] };
+      }
+
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await deactivateUserHandler(
+      new Request(`http://localhost/api/v1/iam/users/${targetUserId}`, {
+        method: 'DELETE',
+        headers: {
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'http://localhost',
+        },
+      })
+    );
+    const payload = (await response.json()) as { error: { code: string } };
+
+    expect(response.status).toBe(409);
+    expect(payload.error.code).toBe('self_protection');
+  });
+
+  it('rejects deactivation of the last active system admin', async () => {
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+
+      if (text.includes('MAX(r.role_level)')) {
+        return { rowCount: 1, rows: [{ max_role_level: 90 }] };
+      }
+
+      if (text.includes('SELECT EXISTS (')) {
+        return { rowCount: 1, rows: [{ has_role: true }] };
+      }
+
+      if (text.includes('COUNT(DISTINCT a.id)::int AS admin_count')) {
+        return { rowCount: 1, rows: [{ admin_count: 1 }] };
+      }
+
+      if (text.includes('WHERE a.id = $2::uuid')) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              ...buildUserDetailRow('active'),
+              role_rows: [
+                {
+                  id: 'role-system-admin',
+                  role_key: 'system_admin',
+                  role_name: 'system_admin',
+                  display_name: 'System Admin',
+                  role_level: 90,
+                  is_system_role: true,
+                },
+              ],
+            },
+          ],
+        };
+      }
+
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await deactivateUserHandler(
+      new Request(`http://localhost/api/v1/iam/users/${targetUserId}`, {
+        method: 'DELETE',
+        headers: {
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'http://localhost',
+        },
+      })
+    );
+    const payload = (await response.json()) as { error: { code: string } };
+
+    expect(response.status).toBe(409);
+    expect(payload.error.code).toBe('last_admin_protection');
   });
 
   it('rejects deactivation when target user exceeds actor role level', async () => {
@@ -627,6 +906,22 @@ describe('iam-account-management handlers (guards)', () => {
     expect(payload.data[0]?.id).toBe(targetRoleId);
     expect(payload.data[0]?.roleName).toBe('editor');
     expect(payload.data[0]?.permissions[0]?.permissionKey).toBe('content.read');
+  });
+
+  it('returns database_unavailable when listing roles fails', async () => {
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+
+      throw new Error('db unavailable');
+    };
+
+    const response = await listRolesHandler(new Request('http://localhost/api/v1/iam/roles', { method: 'GET' }));
+    const payload = (await response.json()) as { error: { code: string } };
+
+    expect(response.status).toBe(503);
+    expect(payload.error.code).toBe('database_unavailable');
   });
 
   it('rejects createRole without CSRF header', async () => {
@@ -1508,6 +1803,56 @@ describe('iam-account-management handlers (guards)', () => {
     expect(payload.data.keycloakSubject).toBe('mock-user-id');
   });
 
+  it('compensates externally created users when createUser fails after Keycloak provisioning', async () => {
+    state.createUserImpl = async () => ({ externalId: 'created-external-user' });
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+
+      if (text.includes('max_role_level') && text.includes('FROM iam.accounts a')) {
+        return { rowCount: 1, rows: [{ max_role_level: 90 }] };
+      }
+
+      if (text.includes('INSERT INTO iam.idempotency_keys') && text.includes('ON CONFLICT')) {
+        return { rowCount: 1, rows: [{ status: 'IN_PROGRESS' }] };
+      }
+
+      if (text.includes('INSERT INTO iam.accounts')) {
+        throw new Error('db_write_failed');
+      }
+
+      if (text.includes('UPDATE iam.idempotency_keys')) {
+        return { rowCount: 1, rows: [] };
+      }
+
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await createUserHandler(
+      new Request('http://localhost/api/v1/iam/users', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'http://localhost',
+          'idempotency-key': 'user-create-compensation',
+        },
+        body: JSON.stringify({
+          email: 'new.user@example.com',
+          firstName: 'New',
+          lastName: 'User',
+          roleIds: [],
+        }),
+      })
+    );
+    const payload = (await response.json()) as { error: { code: string } };
+
+    expect(response.status).toBe(500);
+    expect(payload.error.code).toBe('internal_error');
+    expect(state.deactivateUserCalls).toEqual(['created-external-user']);
+  });
+
   it('syncs external role names when creating a user', async () => {
     state.queryHandler = (text) => {
       if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
@@ -1717,6 +2062,7 @@ describe('iam-account-management additional handlers', () => {
     state.queryHandler = null;
     state.redisAvailable = true;
     state.listRolesImpl = null;
+    state.createUserImpl = null;
     state.deactivateUserCalls = [];
   });
 
@@ -1761,6 +2107,56 @@ describe('iam-account-management additional handlers', () => {
         keycloakSubject: 'keycloak-self-1',
       })
     );
+  });
+
+  it('returns not_found when the current profile cannot be resolved', async () => {
+    const selfAccountId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    state.user = {
+      id: 'keycloak-self-missing',
+      name: 'Self User',
+      roles: ['member'],
+      instanceId: '11111111-1111-1111-8111-111111111111',
+    };
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id')) {
+        return { rowCount: 1, rows: [{ account_id: selfAccountId }] };
+      }
+      if (text.includes('WHERE a.id = $2::uuid')) {
+        return { rowCount: 0, rows: [] };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await getMyProfileHandler(
+      new Request('http://localhost/api/v1/iam/users/me', { method: 'GET' })
+    );
+    const payload = (await response.json()) as { error: { code: string } };
+
+    expect(response.status).toBe(404);
+    expect(payload.error.code).toBe('not_found');
+  });
+
+  it('returns database_unavailable when resolving the current profile fails early', async () => {
+    state.user = {
+      id: 'keycloak-self-failure',
+      name: 'Self User',
+      roles: ['member'],
+      instanceId: '11111111-1111-1111-8111-111111111111',
+    };
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+      throw new Error('db unavailable');
+    };
+
+    const response = await getMyProfileHandler(
+      new Request('http://localhost/api/v1/iam/users/me', { method: 'GET' })
+    );
+    const payload = (await response.json()) as { error: { code: string } };
+
+    expect(response.status).toBe(503);
+    expect(payload.error.code).toBe('database_unavailable');
   });
 
   it('updates the current user profile', async () => {

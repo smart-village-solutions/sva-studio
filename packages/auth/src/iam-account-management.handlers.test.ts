@@ -443,9 +443,11 @@ describe('iam-account-management handlers (guards)', () => {
     ];
     const userDetailRow = buildUserDetailRow('active');
     userDetailRow.role_rows = [];
+    let roleWriteAttempted = false;
+    let invalidationAttempted = false;
 
     state.listUserRoleNamesImpl = async () => ['editor', 'system_admin', 'default-roles-test'];
-    state.queryHandler = (text, values) => {
+    state.queryHandler = (text) => {
       if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
         return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
       }
@@ -458,28 +460,12 @@ describe('iam-account-management handlers (guards)', () => {
         return { rowCount: keycloakRoleRows.length, rows: keycloakRoleRows };
       }
 
-      if (text.includes('DELETE FROM iam.account_roles')) {
-        userDetailRow.role_rows = [];
-        return { rowCount: 1, rows: [] };
-      }
-
-      if (text.includes('INSERT INTO iam.account_roles')) {
-        const roleIds = ((values?.[3] as readonly string[] | undefined) ?? []).map(String);
-        userDetailRow.role_rows = keycloakRoleRows
-          .filter((role) => roleIds.includes(role.id))
-          .map((role) => ({
-            id: role.id,
-            role_key: role.role_key,
-            role_name: role.role_name,
-            display_name: role.display_name,
-            role_level: role.role_level,
-            is_system_role: role.is_system_role,
-          }));
-        return { rowCount: roleIds.length, rows: [] };
-      }
-
       if (text.includes('SELECT pg_notify')) {
-        return { rowCount: 1, rows: [] };
+        invalidationAttempted = true;
+      }
+
+      if (text.includes('DELETE FROM iam.account_roles') || text.includes('INSERT INTO iam.account_roles')) {
+        roleWriteAttempted = true;
       }
 
       return { rowCount: 0, rows: [] };
@@ -504,6 +490,8 @@ describe('iam-account-management handlers (guards)', () => {
         expect.objectContaining({ roleId: 'role-admin', roleKey: 'system_admin' }),
       ])
     );
+    expect(roleWriteAttempted).toBe(false);
+    expect(invalidationAttempted).toBe(false);
   });
 
   it('maps Keycloak read failures during getUser to keycloak_unavailable', async () => {
@@ -534,12 +522,11 @@ describe('iam-account-management handlers (guards)', () => {
 
     expect(response.status).toBe(503);
     expect(payload.error.code).toBe('keycloak_unavailable');
-    expect(payload.error.message).toBe('Nutzerrollen konnten nicht aus Keycloak synchronisiert werden.');
+    expect(payload.error.message).toBe('Nutzerrollen konnten nicht aus Keycloak geladen werden.');
   });
 
   it('keeps existing user roles when no identity provider is configured', async () => {
     const userDetailRow = buildUserDetailRow('active');
-    userDetailRow.role_rows = [];
     vi.resetModules();
     state.keycloakConfigAvailable = false;
     state.queryHandler = (text) => {
@@ -567,7 +554,9 @@ describe('iam-account-management handlers (guards)', () => {
 
     expect(response.status).toBe(200);
     expect(payload.data.id).toBe(targetUserId);
-    expect(payload.data.roles).toEqual([]);
+    expect(payload.data.roles).toEqual([
+      expect.objectContaining({ roleId: 'role-editor', roleKey: 'editor' }),
+    ]);
   });
 
   it('skips role writes when Keycloak returns no mapped roles', async () => {
@@ -608,71 +597,6 @@ describe('iam-account-management handlers (guards)', () => {
     expect(response.status).toBe(200);
     expect(payload.data.roles).toEqual([]);
     expect(externalRoleLookupCalled).toBe(false);
-  });
-
-  it('falls back to the originally loaded user when the synchronized reread is missing', async () => {
-    const keycloakRoleRows = [
-      {
-        id: 'role-editor',
-        role_key: 'editor',
-        role_name: 'editor',
-        display_name: 'Editor',
-        external_role_name: 'editor',
-        role_level: 10,
-        is_system_role: false,
-      },
-    ];
-    const userDetailRow = buildUserDetailRow('active');
-    userDetailRow.role_rows = [];
-    let userDetailReadCount = 0;
-    let insertedRoleIds: readonly string[] = [];
-
-    state.listUserRoleNamesImpl = async () => ['editor'];
-    state.queryHandler = (text, values) => {
-      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
-        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
-      }
-
-      if (text.includes('WHERE a.id = $2::uuid')) {
-        userDetailReadCount += 1;
-        return userDetailReadCount === 1 ? { rowCount: 1, rows: [userDetailRow] } : { rowCount: 0, rows: [] };
-      }
-
-      if (text.includes('COALESCE(external_role_name, role_key) = ANY($2::text[])')) {
-        return { rowCount: keycloakRoleRows.length, rows: keycloakRoleRows };
-      }
-
-      if (text.includes('DELETE FROM iam.account_roles')) {
-        return { rowCount: 1, rows: [] };
-      }
-
-      if (text.includes('INSERT INTO iam.account_roles')) {
-        insertedRoleIds = [...(((values?.[3] as readonly string[] | undefined) ?? []).map(String))];
-        return { rowCount: insertedRoleIds.length, rows: [] };
-      }
-
-      if (text.includes('SELECT pg_notify')) {
-        return { rowCount: 1, rows: [] };
-      }
-
-      return { rowCount: 0, rows: [] };
-    };
-
-    const response = await getUserHandler(
-      new Request(`http://localhost/api/v1/iam/users/${targetUserId}`, { method: 'GET' })
-    );
-    const payload = (await response.json()) as {
-      data: {
-        id: string;
-        roles: Array<{ roleId: string; roleKey: string }>;
-      };
-    };
-
-    expect(response.status).toBe(200);
-    expect(payload.data.id).toBe(targetUserId);
-    expect(payload.data.roles).toEqual([]);
-    expect(userDetailReadCount).toBe(2);
-    expect(insertedRoleIds).toEqual(['role-editor']);
   });
 
   it('rejects createUser without CSRF header', async () => {

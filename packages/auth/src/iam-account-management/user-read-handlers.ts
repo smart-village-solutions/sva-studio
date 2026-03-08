@@ -1,3 +1,4 @@
+import type { IamUserDetail, IamUserRoleAssignment } from '@sva/core';
 import { getWorkspaceContext } from '@sva/sdk/server';
 
 import {
@@ -14,9 +15,7 @@ import { ensureFeature, getFeatureFlags } from './feature-flags';
 import { consumeRateLimit } from './rate-limit';
 import { buildRoleSyncFailure } from './role-audit';
 import {
-  assignRoles,
   logger,
-  notifyPermissionInvalidation,
   requireRoles,
   resolveActorInfo,
   resolveIdentityProvider,
@@ -29,88 +28,61 @@ import { USER_STATUS } from './types';
 import { resolveUserDetail } from './user-detail-query';
 import { resolveUsersWithPagination } from './user-list-query';
 
-const resolveMappedKeycloakRoleIds = async (input: {
-  client: Parameters<typeof resolveRolesByExternalNames>[0];
-  instanceId: string;
-  keycloakSubject: string;
-}): Promise<readonly string[]> => {
+const mapProjectedRoles = (
+  roles: Awaited<ReturnType<typeof resolveRolesByExternalNames>>
+): readonly IamUserRoleAssignment[] =>
+  roles.map((role) => ({
+    roleId: role.id,
+    roleKey: role.role_key,
+    roleName: role.role_name,
+    displayName: role.display_name ?? role.role_name,
+    roleLevel: role.role_level,
+    isSystemRole: role.is_system_role,
+  }));
+
+const mergeProjectedRoles = (user: IamUserDetail, roles: readonly IamUserRoleAssignment[]): IamUserDetail => ({
+  ...user,
+  roles,
+});
+
+const resolveKeycloakRoleNames = async (keycloakSubject: string): Promise<readonly string[] | null> => {
   const identityProvider = resolveIdentityProvider();
   if (!identityProvider) {
-    return [];
+    return null;
   }
 
-  const keycloakRoleNames = [
+  return [
     ...new Set(
-      await trackKeycloakCall('list_user_roles', () => identityProvider.provider.listUserRoleNames(input.keycloakSubject))
+      await trackKeycloakCall('list_user_roles', () => identityProvider.provider.listUserRoleNames(keycloakSubject))
     ),
   ];
+};
+
+const resolveProjectedUserDetail = async (input: {
+  client: Parameters<typeof resolveRolesByExternalNames>[0];
+  instanceId: string;
+  user: IamUserDetail;
+  keycloakRoleNames: readonly string[] | null;
+}): Promise<IamUserDetail> => {
+  if (input.keycloakRoleNames === null) {
+    return input.user;
+  }
+
   const mappedRoles = await resolveRolesByExternalNames(input.client, {
     instanceId: input.instanceId,
-    externalRoleNames: keycloakRoleNames,
+    externalRoleNames: input.keycloakRoleNames,
   });
-  return [...new Set(mappedRoles.map((role) => role.id))];
-};
-
-const synchronizeUserRolesFromKeycloak = async (input: {
-  client: Parameters<typeof resolveRolesByExternalNames>[0];
-  instanceId: string;
-  userId: string;
-  actorAccountId?: string;
-  existing: NonNullable<Awaited<ReturnType<typeof resolveUserDetail>>>;
-}): Promise<NonNullable<Awaited<ReturnType<typeof resolveUserDetail>>>> => {
-  const nextRoleIds = await resolveMappedKeycloakRoleIds({
-    client: input.client,
-    instanceId: input.instanceId,
-    keycloakSubject: input.existing.keycloakSubject,
-  });
-  const currentRoleIds = new Set(input.existing.roles.map((role) => role.roleId));
+  const projectedRoles = mapProjectedRoles(mappedRoles);
+  const currentRoleIds = new Set(input.user.roles.map((role) => role.roleId));
   const changed =
-    currentRoleIds.size !== nextRoleIds.length || nextRoleIds.some((roleId) => !currentRoleIds.has(roleId));
+    currentRoleIds.size !== projectedRoles.length ||
+    projectedRoles.some((role) => !currentRoleIds.has(role.roleId));
 
   if (!changed) {
-    return input.existing;
+    return input.user;
   }
 
-  await assignRoles(input.client, {
-    instanceId: input.instanceId,
-    accountId: input.userId,
-    roleIds: nextRoleIds,
-    assignedBy: input.actorAccountId,
-  });
-  await notifyPermissionInvalidation(input.client, {
-    instanceId: input.instanceId,
-    keycloakSubject: input.existing.keycloakSubject,
-    trigger: 'user_role_synced_from_keycloak',
-  });
-
-  const synchronized = await resolveUserDetail(input.client, {
-    instanceId: input.instanceId,
-    userId: input.userId,
-  });
-  return synchronized ?? input.existing;
-};
-
-const resolveSynchronizedUserDetail = async (input: {
-  client: Parameters<typeof resolveRolesByExternalNames>[0];
-  instanceId: string;
-  userId: string;
-  actorAccountId?: string;
-}): Promise<Awaited<ReturnType<typeof resolveUserDetail>>> => {
-  const existing = await resolveUserDetail(input.client, {
-    instanceId: input.instanceId,
-    userId: input.userId,
-  });
-  if (!existing) {
-    return undefined;
-  }
-
-  return synchronizeUserRolesFromKeycloak({
-    client: input.client,
-    instanceId: input.instanceId,
-    userId: input.userId,
-    actorAccountId: input.actorAccountId,
-    existing,
-  });
+  return mergeProjectedRoles(input.user, projectedRoles);
 };
 
 export const listUsersInternal = async (
@@ -223,23 +195,32 @@ export const getUserInternal = async (
 
   try {
     const user = await withInstanceScopedDb(actorResolution.actor.instanceId, (client) =>
-      resolveSynchronizedUserDetail({
-        client,
+      resolveUserDetail(client, {
         instanceId: actorResolution.actor.instanceId,
         userId,
-        actorAccountId: actorResolution.actor.actorAccountId,
       })
     );
     if (!user) {
       return createApiError(404, 'not_found', 'Nutzer nicht gefunden.', actorResolution.actor.requestId);
     }
-    return jsonResponse(200, asApiItem(user, actorResolution.actor.requestId));
+
+    const keycloakRoleNames = await resolveKeycloakRoleNames(user.keycloakSubject);
+    const projectedUser = await withInstanceScopedDb(actorResolution.actor.instanceId, (client) =>
+      resolveProjectedUserDetail({
+        client,
+        instanceId: actorResolution.actor.instanceId,
+        user,
+        keycloakRoleNames,
+      })
+    );
+
+    return jsonResponse(200, asApiItem(projectedUser, actorResolution.actor.requestId));
   } catch (error) {
     if (error instanceof KeycloakAdminRequestError || error instanceof KeycloakAdminUnavailableError) {
       return buildRoleSyncFailure({
         error,
         requestId: actorResolution.actor.requestId,
-        fallbackMessage: 'Nutzerrollen konnten nicht aus Keycloak synchronisiert werden.',
+        fallbackMessage: 'Nutzerrollen konnten nicht aus Keycloak geladen werden.',
       });
     }
     return createApiError(

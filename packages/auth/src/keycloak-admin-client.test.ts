@@ -759,7 +759,7 @@ describe('KeycloakAdminClient', () => {
     expect(removeCall).toBeDefined();
   });
 
-  it('lists a users mapped realm role names', async () => {
+  it("lists a user's mapped realm role names", async () => {
     const { fetchImpl, calls } = createFetchStub([
       createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }),
       createJsonResponse(200, [

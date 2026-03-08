@@ -76,7 +76,7 @@ const pickInitials = (displayName: string) => {
   return parts.map((entry) => entry.charAt(0).toUpperCase()).join('');
 };
 
-const userErrorMessage = (error: IamHttpError | null): string => {
+export const userErrorMessage = (error: IamHttpError | null): string => {
   if (!error) {
     return t('admin.users.messages.error');
   }

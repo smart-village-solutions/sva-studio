@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { UserEditPage } from './-user-edit-page';
+import { UserEditPage, userErrorMessage } from './-user-edit-page';
 
 const useUserMock = vi.fn();
 const useRolesMock = vi.fn();
@@ -293,5 +293,53 @@ describe('UserEditPage', () => {
       'Die Verbindung zu Keycloak ist derzeit nicht verfügbar. Bitte später erneut versuchen.'
     );
     expect(screen.getByRole('alert').textContent).not.toContain('Nutzer konnten nicht geladen werden.');
+  });
+
+  it.each([
+    ['forbidden', 'Unzureichende Berechtigungen für diese Nutzeraktion.'],
+    ['csrf_validation_failed', 'Sicherheitsprüfung fehlgeschlagen. Bitte Seite neu laden und erneut versuchen.'],
+    ['rate_limited', 'Zu viele Anfragen in kurzer Zeit. Bitte kurz warten und erneut versuchen.'],
+    ['conflict', 'Die Nutzeränderung steht in Konflikt mit dem aktuellen Zustand. Bitte aktualisieren und erneut versuchen.'],
+    ['keycloak_unavailable', 'Die Verbindung zu Keycloak ist derzeit nicht verfügbar. Bitte später erneut versuchen.'],
+    ['database_unavailable', 'Die IAM-Datenbank ist derzeit nicht erreichbar. Bitte später erneut versuchen.'],
+    ['last_admin_protection', 'Der letzte aktive System-Administrator kann nicht entfernt oder deaktiviert werden.'],
+    ['self_protection', 'Das aktuell angemeldete Konto kann nicht auf diese Weise deaktiviert werden.'],
+  ])('maps %s save errors to the localized alert message', (code, expectedMessage) => {
+    useUserMock.mockReturnValue({
+      user: baseUser,
+      isLoading: false,
+      error: {
+        status: 503,
+        code,
+        message: 'save failed',
+      },
+      refetch: vi.fn(),
+      save: vi.fn(),
+    });
+
+    useRolesMock.mockReturnValue({
+      roles: [{ id: 'role-1', roleName: 'system_admin' }],
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      createRole: vi.fn(),
+      updateRole: vi.fn(),
+      deleteRole: vi.fn(),
+    });
+
+    render(<UserEditPage userId="user-1" />);
+
+    expect(screen.getByRole('alert').textContent).toContain(expectedMessage);
+  });
+
+  it('falls back to the generic message for null and unknown errors', () => {
+    expect(userErrorMessage(null)).toBe('Nutzer konnten nicht geladen werden.');
+    expect(
+      userErrorMessage({
+        status: 500,
+        code: 'unknown_error',
+        message: 'unexpected failure',
+      } as never)
+    ).toBe('Nutzer konnten nicht geladen werden.');
   });
 });

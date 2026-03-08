@@ -6,10 +6,29 @@ import { codecovVitePlugin } from '@codecov/vite-plugin';
 import viteTsConfigPaths from 'vite-tsconfig-paths';
 import { fileURLToPath, URL } from 'url';
 
+process.env.TSS_DEV_SERVER ??= 'false';
+
+const appRoot = fileURLToPath(new URL('./', import.meta.url));
+const workspaceRoot = fileURLToPath(new URL('../../', import.meta.url));
+
+// Nx starts the Vite process from the workspace root, but TanStack Start
+// resolves framework dependencies from process.cwd() during dev-server setup.
+// Align the process cwd with the app root so the virtual client/server entries
+// can resolve React and @tanstack/react-start consistently.
+if (process.cwd() !== appRoot) {
+  process.chdir(appRoot);
+}
+
 const config = defineConfig({
+  root: appRoot,
   server: {
     // Disable HMR in this TanStack Start SSR setup to avoid React preamble runtime crashes.
     hmr: false,
+    fs: {
+      // Nx restricts dev-server access to the app root. TanStack Start resolves
+      // its virtual client/server entries into workspace-level pnpm store paths.
+      allow: [workspaceRoot, appRoot],
+    },
   },
   resolve: {
     alias: {

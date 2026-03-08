@@ -121,4 +121,4 @@ Vor Start der Implementierung müssen folgende Punkte geklärt sein:
 
 ## Status
 
-🟡 Draft Proposal (bereit für Review)
+🟢 Accepted Proposal (Review abgeschlossen, freigegeben zur Umsetzung am 2026-03-09)

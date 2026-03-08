@@ -102,6 +102,46 @@ Das System SHALL Organisationsdaten in einem für Admin-Views geeigneten Read-Mo
 - **AND** Child- und Membership-Zähler stehen für die Oberfläche zur Verfügung
 - **AND** Organisationstyp und Basispolicies sind für Filterung oder Detailansichten verfügbar
 
+#### Example: Read-Model für Organisationsliste
+
+```json
+{
+  "organizations": [
+    {
+      "organizationId": "9d44d4f2-8c78-4d44-9f1d-6f6fe44d1001",
+      "organizationKey": "lk-musterkreis",
+      "displayName": "Musterkreis",
+      "parentOrganizationId": null,
+      "organizationType": "county",
+      "contentAuthorPolicy": "org_only",
+      "isActive": true,
+      "depth": 0,
+      "hierarchyPath": [
+        "9d44d4f2-8c78-4d44-9f1d-6f6fe44d1001"
+      ],
+      "childCount": 2,
+      "memberCount": 4
+    },
+    {
+      "organizationId": "9d44d4f2-8c78-4d44-9f1d-6f6fe44d1002",
+      "organizationKey": "gemeinde-musterstadt",
+      "displayName": "Musterstadt",
+      "parentOrganizationId": "9d44d4f2-8c78-4d44-9f1d-6f6fe44d1001",
+      "organizationType": "municipality",
+      "contentAuthorPolicy": "org_or_personal",
+      "isActive": true,
+      "depth": 1,
+      "hierarchyPath": [
+        "9d44d4f2-8c78-4d44-9f1d-6f6fe44d1001",
+        "9d44d4f2-8c78-4d44-9f1d-6f6fe44d1002"
+      ],
+      "childCount": 1,
+      "memberCount": 3
+    }
+  ]
+}
+```
+
 ### Requirement: Membership-Metadaten für Organisationskontext
 
 Das System SHALL Organisationszuordnungen mit Metadaten für Default-Kontext und interne/externe Sicht modellieren.
@@ -117,6 +157,18 @@ Das System SHALL Organisationszuordnungen mit Metadaten für Default-Kontext und
 - **WHEN** eine Organisationszuordnung als extern markiert wird
 - **THEN** bleibt diese Kennzeichnung an der Membership gespeichert
 - **AND** nachgelagerte UI- und Governance-Funktionen können interne und externe Zuordnungen unterscheiden
+
+#### Example: Membership-Repräsentation mit Default-Kontext
+
+```json
+{
+  "organizationId": "9d44d4f2-8c78-4d44-9f1d-6f6fe44d1002",
+  "accountId": "0c2b5cbe-a8c0-4c87-a143-020f51488c41",
+  "membershipType": "internal",
+  "isDefaultContext": true,
+  "assignedAt": "2026-03-09T09:12:00.000Z"
+}
+```
 
 ### Requirement: Sichere mutierende Organisations-Endpunkte
 
@@ -165,6 +217,42 @@ Das System SHALL Organisationslisten, Detailansichten und Kontextoptionen über 
 - **WHEN** der Organisationskontext gesetzt oder gelesen wird
 - **THEN** bleibt der Contract auf einen leichten Kontextpfad begrenzt
 - **AND** die bestehende Leistungsleitplanke für `POST /iam/authorize` wird durch den Change nicht regressiv verschlechtert
+
+#### Example: Session-basierter Org-Kontext
+
+`GET /api/v1/iam/me/context`
+
+```json
+{
+  "activeOrganizationId": "9d44d4f2-8c78-4d44-9f1d-6f6fe44d1002",
+  "organizations": [
+    {
+      "organizationId": "9d44d4f2-8c78-4d44-9f1d-6f6fe44d1001",
+      "organizationKey": "lk-musterkreis",
+      "displayName": "Musterkreis",
+      "organizationType": "county",
+      "isActive": true,
+      "isDefaultContext": false
+    },
+    {
+      "organizationId": "9d44d4f2-8c78-4d44-9f1d-6f6fe44d1002",
+      "organizationKey": "gemeinde-musterstadt",
+      "displayName": "Musterstadt",
+      "organizationType": "municipality",
+      "isActive": true,
+      "isDefaultContext": true
+    }
+  ]
+}
+```
+
+`PUT /api/v1/iam/me/context`
+
+```json
+{
+  "organizationId": "9d44d4f2-8c78-4d44-9f1d-6f6fe44d1001"
+}
+```
 
 ## MODIFIED Requirements
 ### Requirement: Multi-Org-Kontextwechsel im aktiven Instanzkontext

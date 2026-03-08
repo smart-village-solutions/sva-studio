@@ -142,3 +142,13 @@ Referenzen:
    - Impact: hoch (potenzielle Rechteausweitung über falsche Claim-Quelle)
    - Wahrscheinlichkeit: mittel
    - Maßnahme: privilegierte Alias-Regeln nur aus `realm_access` ableiten, client-spezifische `resource_access`-Rollen strikt isolieren und per Tests absichern
+
+20. Drift zwischen aktivem Organisationskontext und Membership-Realität
+   - Impact: hoch (falscher Fachkontext in UI oder Folgepfaden)
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: kanonischer Session-Contract, fail-closed Validierung, stabile Fehlercodes und Audit bei Kontextwechseln
+
+21. Wachsende Komplexität in Organisationshierarchie und Deaktivierungsregeln
+   - Impact: mittel bis hoch (Konfliktfälle, fehlerhafte Parent-Beziehungen, spätere Vererbungsregressionen)
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: Negativtests für Zyklen/Konflikte, konservative Deaktivierung statt Delete und Folge-Change für Hierarchie-Vererbung getrennt halten

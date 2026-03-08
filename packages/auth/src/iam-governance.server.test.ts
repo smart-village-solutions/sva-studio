@@ -56,7 +56,11 @@ vi.mock('pg', () => ({
   },
 }));
 
-import { governanceComplianceExportHandler, governanceWorkflowHandler } from './iam-governance.server';
+import {
+  governanceComplianceExportHandler,
+  governanceWorkflowHandler,
+  resolveImpersonationSubject,
+} from './iam-governance.server';
 
 describe('governanceWorkflowHandler', () => {
   beforeEach(() => {
@@ -360,5 +364,219 @@ describe('governanceComplianceExportHandler', () => {
 
     expect(response.status).toBe(400);
     expect(await response.json()).toEqual({ error: 'invalid_instance_id' });
+  });
+
+  it('exports default json format when no format is provided', async () => {
+    const response = await governanceComplianceExportHandler(
+      new Request('http://localhost/iam/governance/compliance/export?instanceId=11111111-1111-1111-8111-111111111111')
+    );
+    const payload = (await response.json()) as {
+      format: string;
+      rows: Array<{ event_id: string; event_type: string }>;
+    };
+
+    expect(response.status).toBe(200);
+    expect(payload.format).toBe('json');
+    expect(payload.rows).toEqual([
+      expect.objectContaining({
+        event_id: 'evt-1',
+        event_type: 'governance_permission_change_submitted',
+      }),
+    ]);
+  });
+
+  it('exports siem format with @timestamp field', async () => {
+    const response = await governanceComplianceExportHandler(
+      new Request(
+        'http://localhost/iam/governance/compliance/export?instanceId=11111111-1111-1111-8111-111111111111&format=siem'
+      )
+    );
+    const payload = (await response.json()) as {
+      format: string;
+      rows: Array<{ '@timestamp': string; event_id: string; action: string }>;
+    };
+
+    expect(response.status).toBe(200);
+    expect(payload.format).toBe('siem');
+    expect(payload.rows).toEqual([
+      expect.objectContaining({
+        '@timestamp': '2026-02-28T12:00:00.000Z',
+        event_id: 'evt-1',
+        action: 'permission_change_submit',
+      }),
+    ]);
+  });
+
+  it('rejects compliance export for cross-instance requests', async () => {
+    const response = await governanceComplianceExportHandler(
+      new Request(
+        'http://localhost/iam/governance/compliance/export?instanceId=22222222-2222-2222-8222-222222222222&format=json'
+      )
+    );
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({ error: 'instance_scope_mismatch' });
+  });
+});
+
+describe('resolveImpersonationSubject', () => {
+  beforeEach(() => {
+    process.env.IAM_DATABASE_URL = 'postgres://iam-test';
+    state.logger.debug.mockReset();
+    state.logger.info.mockReset();
+    state.logger.warn.mockReset();
+    state.logger.error.mockReset();
+    state.queryHandler = null;
+  });
+
+  it('returns instance scope mismatch when actor or target account cannot be resolved', async () => {
+    state.queryHandler = () => ({ rowCount: 0, rows: [] });
+
+    const result = await resolveImpersonationSubject({
+      instanceId: '11111111-1111-1111-8111-111111111111',
+      actorKeycloakSubject: 'missing-actor',
+      targetKeycloakSubject: 'target-sub',
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      reasonCode: 'DENY_INSTANCE_SCOPE_MISMATCH',
+    });
+  });
+
+  it('returns ticket required when no active impersonation session exists', async () => {
+    state.queryHandler = (text, values) => {
+      if (text.includes('SELECT a.id')) {
+        const keycloakSubject = values?.[1];
+        if (keycloakSubject === 'actor-sub') {
+          return { rowCount: 1, rows: [{ id: 'acc-actor' }] };
+        }
+        if (keycloakSubject === 'target-sub') {
+          return { rowCount: 1, rows: [{ id: 'acc-target' }] };
+        }
+      }
+      if (text.includes('FROM iam.impersonation_sessions')) {
+        return { rowCount: 0, rows: [] };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const result = await resolveImpersonationSubject({
+      instanceId: '11111111-1111-1111-8111-111111111111',
+      actorKeycloakSubject: 'actor-sub',
+      targetKeycloakSubject: 'target-sub',
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      reasonCode: 'DENY_TICKET_REQUIRED',
+    });
+  });
+
+  it('expires stale impersonation sessions and returns duration exceeded', async () => {
+    const executedStatements: string[] = [];
+    state.queryHandler = (text, values) => {
+      executedStatements.push(text);
+      if (text.includes('SELECT a.id')) {
+        const keycloakSubject = values?.[1];
+        if (keycloakSubject === 'actor-sub') {
+          return { rowCount: 1, rows: [{ id: 'acc-actor' }] };
+        }
+        if (keycloakSubject === 'target-sub') {
+          return { rowCount: 1, rows: [{ id: 'acc-target' }] };
+        }
+      }
+      if (text.includes('FROM iam.impersonation_sessions')) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              id: 'session-1',
+              expires_at: '2026-02-01T10:00:00.000Z',
+              ticket_id: 'IAM-99',
+            },
+          ],
+        };
+      }
+      if (text.includes('UPDATE iam.impersonation_sessions')) {
+        return { rowCount: 1, rows: [] };
+      }
+      if (text.includes('INSERT INTO iam.activity_logs')) {
+        return { rowCount: 1, rows: [] };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const result = await resolveImpersonationSubject({
+      instanceId: '11111111-1111-1111-8111-111111111111',
+      actorKeycloakSubject: 'actor-sub',
+      targetKeycloakSubject: 'target-sub',
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      reasonCode: 'DENY_IMPERSONATION_DURATION_EXCEEDED',
+    });
+    expect(executedStatements.some((statement) => statement.includes('UPDATE iam.impersonation_sessions'))).toBe(true);
+    expect(executedStatements.some((statement) => statement.includes('INSERT INTO iam.activity_logs'))).toBe(true);
+    expect(state.logger.warn).toHaveBeenCalledWith(
+      'Impersonation session expired',
+      expect.objectContaining({
+        operation: 'impersonate_timeout',
+        ticket_id: 'IAM-99',
+      })
+    );
+  });
+
+  it('returns ok for active impersonation sessions', async () => {
+    state.queryHandler = (text, values) => {
+      if (text.includes('SELECT a.id')) {
+        const keycloakSubject = values?.[1];
+        if (keycloakSubject === 'actor-sub') {
+          return { rowCount: 1, rows: [{ id: 'acc-actor' }] };
+        }
+        if (keycloakSubject === 'target-sub') {
+          return { rowCount: 1, rows: [{ id: 'acc-target' }] };
+        }
+      }
+      if (text.includes('FROM iam.impersonation_sessions')) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              id: 'session-1',
+              expires_at: '2099-02-01T10:00:00.000Z',
+              ticket_id: 'IAM-100',
+            },
+          ],
+        };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const result = await resolveImpersonationSubject({
+      instanceId: '11111111-1111-1111-8111-111111111111',
+      actorKeycloakSubject: 'actor-sub',
+      targetKeycloakSubject: 'target-sub',
+    });
+
+    expect(result).toEqual({ ok: true });
+  });
+
+  it('returns database_unavailable when the lookup fails unexpectedly', async () => {
+    state.queryHandler = () => {
+      throw new Error('db down');
+    };
+
+    const result = await resolveImpersonationSubject({
+      instanceId: '11111111-1111-1111-8111-111111111111',
+      actorKeycloakSubject: 'actor-sub',
+      targetKeycloakSubject: 'target-sub',
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      reasonCode: 'database_unavailable',
+    });
   });
 });

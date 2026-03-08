@@ -76,6 +76,7 @@ vi.mock('./iam-governance.server', () => ({
 }));
 
 import { authorizeHandler, mePermissionsHandler } from './iam-authorization.server';
+import { permissionSnapshotCache } from './iam-authorization/shared';
 
 describe('IAM authorization integration denials', () => {
   beforeEach(() => {
@@ -103,6 +104,28 @@ describe('IAM authorization integration denials', () => {
 
     expect(response.status).toBe(403);
     expect(payload.error).toBe('instance_scope_mismatch');
+  });
+
+  it('rejects me/permissions for invalid instance id', async () => {
+    const request = new Request('http://localhost/iam/me/permissions?instanceId=invalid', {
+      method: 'GET',
+    });
+
+    const response = await mePermissionsHandler(request);
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: 'invalid_instance_id' });
+  });
+
+  it('rejects me/permissions for invalid organization id', async () => {
+    const request = new Request('http://localhost/iam/me/permissions?organizationId=invalid', {
+      method: 'GET',
+    });
+
+    const response = await mePermissionsHandler(request);
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: 'invalid_organization_id' });
   });
 
   it('denies authorize for cross-instance request', async () => {
@@ -221,6 +244,37 @@ describe('IAM authorization integration denials', () => {
     expect(payload.error).toBe('impersonation_not_active');
   });
 
+  it('returns database_unavailable when impersonation resolution cannot reach the database', async () => {
+    integrationState.impersonationResult = { ok: false, reasonCode: 'database_unavailable' };
+
+    const request = new Request(
+      'http://localhost/iam/me/permissions?actingAsUserId=keycloak-sub-target',
+      { method: 'GET' }
+    );
+
+    const response = await mePermissionsHandler(request);
+
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({ error: 'database_unavailable' });
+  });
+
+  it('maps unexpected impersonation denial reasons to instance_scope_mismatch', async () => {
+    integrationState.impersonationResult = {
+      ok: false,
+      reasonCode: 'DENY_INSTANCE_SCOPE_MISMATCH',
+    };
+
+    const request = new Request(
+      'http://localhost/iam/me/permissions?actingAsUserId=keycloak-sub-target',
+      { method: 'GET' }
+    );
+
+    const response = await mePermissionsHandler(request);
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({ error: 'instance_scope_mismatch' });
+  });
+
   it('treats actingAsUserId equal to current user as self request', async () => {
     integrationState.impersonationResult = { ok: false, reasonCode: 'DENY_TICKET_REQUIRED' };
     integrationState.queryHandler = (text: string, values?: readonly unknown[]) => {
@@ -323,5 +377,70 @@ describe('IAM authorization integration denials', () => {
       effectiveUserId: 'keycloak-sub-target',
       isImpersonating: true,
     });
+  });
+
+  it('returns an empty permission set when a stale cache entry cannot be recomputed', async () => {
+    integrationState.user = {
+      ...integrationState.user,
+      id: 'keycloak-sub-stale-guard',
+    };
+    const instanceId = integrationState.user.instanceId;
+    permissionSnapshotCache.set(
+      {
+        instanceId,
+        keycloakSubject: integrationState.user.id,
+      },
+      [
+        {
+          action: 'content.read',
+          resourceType: 'content',
+          sourceRoleIds: ['role-stale'],
+        },
+      ],
+      Date.now() - 300_000
+    );
+    integrationState.queryHandler = (text: string) => {
+      if (text.includes('SELECT DISTINCT')) {
+        throw new Error('db down');
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await mePermissionsHandler(new Request('http://localhost/iam/me/permissions'));
+    const payload = (await response.json()) as {
+      permissions: unknown[];
+      subject: { actorUserId: string; effectiveUserId: string; isImpersonating: boolean };
+    };
+
+    expect(response.status).toBe(200);
+    expect(payload.permissions).toEqual([]);
+    expect(payload.subject).toEqual({
+      actorUserId: 'keycloak-sub-stale-guard',
+      effectiveUserId: 'keycloak-sub-stale-guard',
+      isImpersonating: false,
+    });
+
+    permissionSnapshotCache.invalidate({
+      instanceId,
+      keycloakSubject: integrationState.user.id,
+    });
+  });
+
+  it('returns database_unavailable when permission resolution fails without a stale cache entry', async () => {
+    integrationState.user = {
+      ...integrationState.user,
+      id: 'keycloak-sub-db-failure',
+    };
+    integrationState.queryHandler = (text: string) => {
+      if (text.includes('SELECT DISTINCT')) {
+        throw new Error('db down');
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await mePermissionsHandler(new Request('http://localhost/iam/me/permissions'));
+
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({ error: 'database_unavailable' });
   });
 });

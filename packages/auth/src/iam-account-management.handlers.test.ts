@@ -8,6 +8,7 @@ const state = vi.hoisted(() => ({
     instanceId: '11111111-1111-1111-8111-111111111111',
   },
   queryHandler: null as null | ((text: string, values?: readonly unknown[]) => { rowCount: number; rows: unknown[] }),
+  redisAvailable: true,
   createRoleImpl: null as null | ((input: {
     externalName: string;
     description?: string;
@@ -20,6 +21,7 @@ const state = vi.hoisted(() => ({
   deleteRoleImpl: null as null | ((externalName: string) => Promise<unknown> | unknown),
   getRoleByNameImpl: null as null | ((externalName: string) => Promise<unknown> | unknown),
   listRolesImpl: null as null | (() => Promise<unknown> | unknown),
+  deactivateUserCalls: [] as string[],
   syncRolesImpl: null as null | ((keycloakSubject: string, roleNames: readonly string[]) => Promise<unknown> | unknown),
   syncRolesCalls: [] as Array<{ keycloakSubject: string; roleNames: readonly string[] }>,
 }));
@@ -57,6 +59,10 @@ vi.mock('@opentelemetry/api', () => ({
       createObservableGauge: vi.fn(() => ({ addCallback: vi.fn() })),
     })),
   },
+}));
+
+vi.mock('./redis.server', () => ({
+  isRedisAvailable: vi.fn(async () => state.redisAvailable),
 }));
 
 vi.mock('pg', () => ({
@@ -109,7 +115,8 @@ vi.mock('./keycloak-admin-client', () => ({
       return undefined;
     }
 
-    async deactivateUser() {
+    async deactivateUser(keycloakSubject: string) {
+      state.deactivateUserCalls.push(keycloakSubject);
       return undefined;
     }
 
@@ -176,15 +183,20 @@ vi.mock('./keycloak-admin-client', () => ({
 }));
 
 import {
+  bulkDeactivateUsersHandler,
   createRoleHandler,
   createUserHandler,
   deactivateUserHandler,
   deleteRoleHandler,
   getIamFeatureFlags,
+  getMyProfileHandler,
   getUserHandler,
+  healthLiveHandler,
+  healthReadyHandler,
   listRolesHandler,
   listUsersHandler,
   reconcileHandler,
+  updateMyProfileHandler,
   updateRoleHandler,
   updateUserHandler,
 } from './iam-account-management.server';
@@ -259,6 +271,8 @@ describe('iam-account-management handlers (guards)', () => {
     state.deleteRoleImpl = null;
     state.getRoleByNameImpl = null;
     state.listRolesImpl = null;
+    state.redisAvailable = true;
+    state.deactivateUserCalls = [];
     state.syncRolesImpl = null;
     state.syncRolesCalls = [];
   });
@@ -366,7 +380,7 @@ describe('iam-account-management handlers (guards)', () => {
         return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
       }
 
-      if (text.includes('max_role_level') && text.includes('FROM iam.accounts a')) {
+      if (text.includes('MAX(r.role_level)')) {
         return { rowCount: 1, rows: [{ max_role_level: 90 }] };
       }
 
@@ -407,7 +421,7 @@ describe('iam-account-management handlers (guards)', () => {
         return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
       }
 
-      if (text.includes('max_role_level') && text.includes('FROM iam.accounts a')) {
+      if (text.includes('MAX(r.role_level)')) {
         return { rowCount: 1, rows: [{ max_role_level: 90 }] };
       }
 
@@ -1681,6 +1695,343 @@ describe('iam-account-management handlers (guards)', () => {
         roleNames: ['Admin'],
       },
     ]);
+  });
+});
+
+describe('iam-account-management additional handlers', () => {
+  beforeEach(() => {
+    process.env.IAM_DATABASE_URL = 'postgres://iam-test';
+    delete process.env.IAM_UI_ENABLED;
+    delete process.env.IAM_ADMIN_ENABLED;
+    delete process.env.IAM_BULK_ENABLED;
+    delete process.env.IAM_PII_ALLOW_PLAINTEXT_FALLBACK;
+    delete process.env.IAM_PII_ACTIVE_KEY_ID;
+    delete process.env.IAM_PII_KEYRING_JSON;
+
+    state.user = {
+      id: `keycloak-admin-${Date.now()}`,
+      name: 'Admin User',
+      roles: ['system_admin'],
+      instanceId: '11111111-1111-1111-8111-111111111111',
+    };
+    state.queryHandler = null;
+    state.redisAvailable = true;
+    state.listRolesImpl = null;
+    state.deactivateUserCalls = [];
+  });
+
+  it('returns the current user profile', async () => {
+    const selfAccountId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    state.user = {
+      id: 'keycloak-self-1',
+      name: 'Self User',
+      roles: ['member'],
+      instanceId: '11111111-1111-1111-8111-111111111111',
+    };
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id')) {
+        return { rowCount: 1, rows: [{ account_id: selfAccountId }] };
+      }
+      if (text.includes('WHERE a.id = $2::uuid')) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              ...buildUserDetailRow('active'),
+              id: selfAccountId,
+              keycloak_subject: 'keycloak-self-1',
+              display_name_ciphertext: 'Self User',
+              email_ciphertext: 'self.user@example.com',
+            },
+          ],
+        };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await getMyProfileHandler(
+      new Request('http://localhost/api/v1/iam/users/me', { method: 'GET' })
+    );
+    const payload = (await response.json()) as { data: { id: string; keycloakSubject: string } };
+
+    expect(response.status).toBe(200);
+    expect(payload.data).toEqual(
+      expect.objectContaining({
+        id: selfAccountId,
+        keycloakSubject: 'keycloak-self-1',
+      })
+    );
+  });
+
+  it('updates the current user profile', async () => {
+    const selfAccountId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    state.user = {
+      id: 'keycloak-self-2',
+      name: 'Self User',
+      roles: ['member'],
+      instanceId: '11111111-1111-1111-8111-111111111111',
+    };
+
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id')) {
+        return { rowCount: 1, rows: [{ account_id: selfAccountId }] };
+      }
+      if (text.includes('UPDATE iam.accounts')) {
+        return { rowCount: 1, rows: [] };
+      }
+      if (text.includes('INSERT INTO iam.activity_logs')) {
+        return { rowCount: 1, rows: [] };
+      }
+      if (text.includes('WHERE a.id = $2::uuid')) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              ...buildUserDetailRow('active'),
+              id: selfAccountId,
+              keycloak_subject: 'keycloak-self-2',
+              display_name_ciphertext: 'Updated Self User',
+              email_ciphertext: 'self.user@example.com',
+              preferred_language: 'de',
+              timezone: 'Europe/Berlin',
+            },
+          ],
+        };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await updateMyProfileHandler(
+      new Request('http://localhost/api/v1/iam/users/me', {
+        method: 'PATCH',
+        headers: {
+          'content-type': 'application/json',
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'http://localhost',
+        },
+        body: JSON.stringify({
+          displayName: 'Updated Self User',
+          preferredLanguage: 'de',
+          timezone: 'Europe/Berlin',
+        }),
+      })
+    );
+    const payload = (await response.json()) as { data: { displayName: string; keycloakSubject: string } };
+
+    expect(response.status).toBe(200);
+    expect(payload.data).toEqual(
+      expect.objectContaining({
+        displayName: 'Updated Self User',
+        keycloakSubject: 'keycloak-self-2',
+      })
+    );
+  });
+
+  it('bulk-deactivates users and invalidates permission snapshots', async () => {
+    process.env.IAM_BULK_ENABLED = 'true';
+    const executedStatements: string[] = [];
+    state.queryHandler = (text) => {
+      executedStatements.push(text);
+      if (text.includes('SELECT a.id AS account_id')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+      if (text.includes('DELETE FROM iam.idempotency_keys')) {
+        return { rowCount: 0, rows: [] };
+      }
+      if (text.includes('INSERT INTO iam.idempotency_keys')) {
+        return { rowCount: 1, rows: [{ status: 'IN_PROGRESS' }] };
+      }
+      if (text.includes('max_role_level') && text.includes('FROM iam.accounts a')) {
+        return { rowCount: 1, rows: [{ max_role_level: 90 }] };
+      }
+      if (text.includes('WHERE a.id = $2::uuid')) {
+        return { rowCount: 1, rows: [buildUserDetailRow('active')] };
+      }
+      if (text.includes('SELECT EXISTS') && text.includes("r.role_key = 'system_admin'")) {
+        return { rowCount: 1, rows: [{ has_role: false }] };
+      }
+      if (text.includes("UPDATE iam.accounts") && text.includes("status = 'inactive'")) {
+        return { rowCount: 1, rows: [] };
+      }
+      if (text.includes('INSERT INTO iam.activity_logs')) {
+        return { rowCount: 1, rows: [] };
+      }
+      if (text.includes('SELECT pg_notify')) {
+        return { rowCount: 1, rows: [] };
+      }
+      if (text.includes('UPDATE iam.idempotency_keys')) {
+        return { rowCount: 1, rows: [] };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await bulkDeactivateUsersHandler(
+      new Request('http://localhost/api/v1/iam/users/bulk-deactivate', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'http://localhost',
+          'idempotency-key': 'bulk-deactivate-1',
+        },
+        body: JSON.stringify({
+          userIds: [targetUserId],
+        }),
+      })
+    );
+    const payload = (await response.json()) as { data: { count: number; deactivatedUserIds: string[] } };
+
+    expect(response.status).toBe(200);
+    expect(payload.data).toEqual({
+      count: 1,
+      deactivatedUserIds: [targetUserId],
+    });
+    expect(state.deactivateUserCalls).toEqual(['keycloak-target-2']);
+    expect(executedStatements.some((statement) => statement.includes('SELECT pg_notify'))).toBe(true);
+  });
+
+  it('protects against bulk self-deactivation', async () => {
+    process.env.IAM_BULK_ENABLED = 'true';
+    state.user = {
+      id: 'keycloak-self-protect',
+      name: 'Self Protect',
+      roles: ['system_admin'],
+      instanceId: '11111111-1111-1111-8111-111111111111',
+    };
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+      if (text.includes('DELETE FROM iam.idempotency_keys')) {
+        return { rowCount: 0, rows: [] };
+      }
+      if (text.includes('INSERT INTO iam.idempotency_keys')) {
+        return { rowCount: 1, rows: [{ status: 'IN_PROGRESS' }] };
+      }
+      if (text.includes('max_role_level') && text.includes('FROM iam.accounts a')) {
+        return { rowCount: 1, rows: [{ max_role_level: 90 }] };
+      }
+      if (text.includes('WHERE a.id = $2::uuid')) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              ...buildUserDetailRow('active'),
+              id: targetUserId,
+              keycloak_subject: 'keycloak-self-protect',
+            },
+          ],
+        };
+      }
+      if (text.includes('UPDATE iam.idempotency_keys')) {
+        return { rowCount: 1, rows: [] };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await bulkDeactivateUsersHandler(
+      new Request('http://localhost/api/v1/iam/users/bulk-deactivate', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'http://localhost',
+          'idempotency-key': 'bulk-deactivate-self',
+        },
+        body: JSON.stringify({
+          userIds: [targetUserId],
+        }),
+      })
+    );
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({
+      error: {
+        code: 'self_protection',
+        message: 'Eigener Nutzer kann nicht deaktiviert werden.',
+      },
+      requestId: 'req-iam-handler',
+    });
+    expect(state.deactivateUserCalls).toEqual([]);
+  });
+
+  it('returns readiness details for healthy dependencies', async () => {
+    state.redisAvailable = true;
+    state.listRolesImpl = async () => [];
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT 1;')) {
+        return { rowCount: 1, rows: [{ '?column?': 1 }] };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await healthReadyHandler(
+      new Request('http://localhost/api/v1/iam/health/ready', { method: 'GET' })
+    );
+    const payload = (await response.json()) as {
+      status: string;
+      checks: { db: boolean; redis: boolean; keycloak: boolean };
+    };
+
+    expect(response.status).toBe(200);
+    expect(payload).toEqual(
+      expect.objectContaining({
+        status: 'ready',
+        checks: {
+          db: true,
+          redis: true,
+          keycloak: true,
+        },
+      })
+    );
+  });
+
+  it('returns not_ready when dependencies fail', async () => {
+    state.redisAvailable = false;
+    state.listRolesImpl = async () => {
+      throw new Error('keycloak down');
+    };
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT 1;')) {
+        throw new Error('db down');
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await healthReadyHandler(
+      new Request('http://localhost/api/v1/iam/health/ready', { method: 'GET' })
+    );
+    const payload = (await response.json()) as {
+      status: string;
+      checks: { db: boolean; redis: boolean; keycloak: boolean };
+    };
+
+    expect(response.status).toBe(503);
+    expect(payload).toEqual(
+      expect.objectContaining({
+        status: 'not_ready',
+        checks: {
+          db: false,
+          redis: false,
+          keycloak: false,
+        },
+      })
+    );
+  });
+
+  it('returns a live heartbeat payload', async () => {
+    const response = await healthLiveHandler(
+      new Request('http://localhost/api/v1/iam/health/live', { method: 'GET' })
+    );
+    const payload = (await response.json()) as { status: string; path: string };
+
+    expect(response.status).toBe(200);
+    expect(payload).toEqual(
+      expect.objectContaining({
+        status: 'alive',
+        path: '/api/v1/iam/health/live',
+      })
+    );
   });
 });
 

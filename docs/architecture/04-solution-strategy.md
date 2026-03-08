@@ -22,6 +22,7 @@ Architekturprinzipien auf IST-Basis.
 - Observability über OTEL-Standards statt vendor-spezifischer App-Anbindung
 - IAM folgt einer klaren Verantwortungsgrenze: Keycloak für Identity, Postgres für IAM-Fachdaten, Redis nur als Laufzeit-Cache
 - `instanceId` ist der kanonische Mandanten-Scope für IAM-Datenzugriff und Autorisierung
+- IAM-Server-Module folgen einer Fassade-plus-Kernmodul-Strategie: dünne öffentliche Entry-Points, fachliche Unterordner und explizit dokumentierte Restschuld in `core.ts`
 - Doku-getriebene Architekturpflege (arc42 + OpenSpec + ADR)
 
 ### Architekturtreiber
@@ -51,6 +52,7 @@ Architekturprinzipien auf IST-Basis.
 - IAM-Identity-Basis und Scoping: `ADR-009`, `ADR-011`
 - IAM-Permission-Modell und Laufzeitpfad: `ADR-012`, `ADR-013`, `ADR-014`
 - IAM-IdP-Abstraktion für Keycloak-Admin-Pfade: `ADR-016`
+- IAM-Server-Modularisierung und Restschuld-Führung: `ADR-017`
 
 Referenzen:
 
@@ -62,3 +64,4 @@ Referenzen:
 - `./decisions/ADR-007-label-schema-and-pii-policy.md`
 - `./decisions/ADR-008-codecov-coverage-reporting-and-gates.md`
 - `./iam-service-architektur.md`
+- `../adr/ADR-017-modulare-iam-server-bausteine.md`

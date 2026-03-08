@@ -1,30 +1,30 @@
 ## Phase 1: Nx-Konfiguration bereinigen
 
 ### Task 1.1: tsconfig.base.json Paths ergänzen (NX-3, NX-4)
-- [ ] 1.1.1 `@sva/routing` Path-Mapping hinzufügen: `["packages/routing/src/index.ts"]`
-- [ ] 1.1.2 `@sva/sdk/server` Path-Mapping hinzufügen: `["packages/sdk/src/server.ts"]`
-- [ ] 1.1.3 `@sva/sdk/logger/index.server` prüfen und ggf. hinzufügen
-- [ ] 1.1.4 `@sva/sdk/middleware/request-context.server` prüfen und ggf. hinzufügen
-- [ ] 1.1.5 `@sva/sdk/observability/context.server` prüfen und ggf. hinzufügen
+- [x] 1.1.1 `@sva/routing` Path-Mapping hinzufügen: `["packages/routing/src/index.ts"]`
+- [x] 1.1.2 `@sva/sdk/server` Path-Mapping hinzufügen: `["packages/sdk/src/server.ts"]`
+- [x] 1.1.3 `@sva/sdk/logger/index.server` prüfen und ggf. hinzufügen
+- [x] 1.1.4 `@sva/sdk/middleware/request-context.server` prüfen und ggf. hinzufügen
+- [x] 1.1.5 `@sva/sdk/observability/context.server` prüfen und ggf. hinzufügen
 - [ ] 1.1.6 Verifizieren: IDE-Auflösung der neuen Imports funktioniert (z. B. `import { ... } from '@sva/routing'`)
-- [ ] 1.1.7 `pnpm nx affected --target=build` – keine neuen Fehler
+- [x] 1.1.7 `pnpm nx affected --target=build` – keine neuen Fehler
 
 ### Task 1.2: Routing-Package Nx-Konfiguration bereinigen (NX-6, NX-7)
-- [ ] 1.2.1 `packages/routing/project.json`: Target `test` → `test:unit` umbenennen
-- [ ] 1.2.2 `packages/routing/project.json`: Tag `type:core` → `type:lib` ändern
-- [ ] 1.2.3 `packages/routing/project.json`: `lint`-Target ergänzen (konsistent mit anderen Packages)
-- [ ] 1.2.4 `packages/routing/project.json`: `test:coverage`-Target ergänzen (konsistent mit anderen Packages)
-- [ ] 1.2.5 Verifizieren: `pnpm nx run routing:test:unit` und `pnpm nx run routing:lint` funktionieren
+- [x] 1.2.1 `packages/routing/project.json`: Target `test` → `test:unit` umbenennen
+- [x] 1.2.2 `packages/routing/project.json`: Tag `type:core` → `type:lib` ändern
+- [x] 1.2.3 `packages/routing/project.json`: `lint`-Target ergänzen (konsistent mit anderen Packages)
+- [x] 1.2.4 `packages/routing/project.json`: `test:coverage`-Target ergänzen (konsistent mit anderen Packages)
+- [x] 1.2.5 Verifizieren: `pnpm nx run routing:test:unit` und `pnpm nx run routing:lint` funktionieren
 
 ### Task 1.3: Lint-Executors vereinheitlichen (NX-5)
-- [ ] 1.3.1 `packages/auth/project.json`: `lint`-Target auf `@nx/eslint:lint` Executor umstellen
-- [ ] 1.3.2 `packages/monitoring-client/project.json`: `lint`-Target auf `@nx/eslint:lint` Executor umstellen
-- [ ] 1.3.3 Verifizieren: `pnpm nx run auth:lint && pnpm nx run monitoring-client:lint`
+- [x] 1.3.1 `packages/auth/project.json`: `lint`-Target auf `@nx/eslint:lint` Executor umstellen
+- [x] 1.3.2 `packages/monitoring-client/project.json`: `lint`-Target auf `@nx/eslint:lint` Executor umstellen
+- [x] 1.3.3 Verifizieren: `pnpm nx run auth:lint && pnpm nx run monitoring-client:lint`
 
 ### Task 1.4: Veraltete C-4-Annahme bereinigen
 - [x] 1.4.1 Verifiziert: `packages/core/src/iam/token.ts` nutzt keine Node.js-spezifischen APIs mehr (`Buffer.from()` entfällt)
 - [x] 1.4.2 Scope angepasst: kein `.server.ts`-Rename erforderlich
-- [ ] 1.4.3 `pnpm nx affected --target=build` nach Abschluss von Task 1.1–1.3 ohne neue Fehler ausführen
+- [x] 1.4.3 `pnpm nx affected --target=build` nach Abschluss von Task 1.1–1.3 ohne neue Fehler ausführen
 
 ---
 

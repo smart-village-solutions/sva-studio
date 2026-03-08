@@ -37,6 +37,7 @@ Empfohlene Startwerte:
 4. Bei erfolgreichem Abschluss wird `sync_state = 'synced'` gesetzt.
 5. Bei Fehlern setzt der Service `sync_state = 'failed'`, schreibt `last_error_code` und emittiert Audit-Events.
 6. Falls der synchrone Pfad nach erfolgreichem Keycloak-Schritt an der DB scheitert, läuft eine Compensation.
+7. Idempotency für mutierende Endpunkte ist pro Mandant isoliert (`instance_id`, `actor_account_id`, `endpoint`, `idempotency_key`) und verhindert damit Kollisionen über Instanzgrenzen.
 
 ## Sync-Zustände
 
@@ -58,7 +59,7 @@ Häufige Fehlercodes:
 
 1. Prüfen, ob der Incident tatsächlich nur eine einzelne `instance_id` betrifft.
 2. Alarm- und Audit-Kontext sammeln: `request_id`, `trace_id`, `role_key`, `external_role_name`, `error_code`.
-3. `POST /api/v1/iam/admin/reconcile?instanceId=<uuid>` als `system_admin` ausführen.
+3. `POST /api/v1/iam/admin/reconcile` als `system_admin` ausführen (wirkt auf die `instanceId` des authentifizierten Actors).
 4. Ergebnis bewerten:
    - `corrected`: Drift wurde behoben.
    - `failed`: Korrekturversuch ist fehlgeschlagen; Ursache im Keycloak-/DB-Pfad analysieren.

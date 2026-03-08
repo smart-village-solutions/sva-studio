@@ -119,3 +119,8 @@ Referenzen:
    - Impact: mittel bis hoch (anhaltende Inkonsistenz, manueller Betriebsaufwand)
    - Wahrscheinlichkeit: mittel
    - Maßnahme: geplanter Reconcile-Lauf, Alerting auf `iam_role_drift_backlog`, explizites Runbook für manuelle Freigaben
+
+17. Fehlzuordnung privilegierter Rollen-Aliasse aus externen Claims
+   - Impact: hoch (potenzielle Rechteausweitung über falsche Claim-Quelle)
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: privilegierte Alias-Regeln nur aus `realm_access` ableiten, client-spezifische `resource_access`-Rollen strikt isolieren und per Tests absichern

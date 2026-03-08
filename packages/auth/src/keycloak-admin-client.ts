@@ -184,6 +184,23 @@ const mapKeycloakRole = (role: KeycloakRealmRole): IdentityRole => ({
 
 const isRetryableStatus = (statusCode: number): boolean => statusCode === 429 || statusCode >= 500;
 
+const toRetryLogReason = (error: unknown): string => {
+  if (error instanceof KeycloakAdminRequestError) {
+    return `${error.code}:${error.statusCode}`;
+  }
+  if (error instanceof KeycloakAdminUnavailableError) {
+    return 'keycloak_unavailable';
+  }
+  if (error instanceof Error) {
+    const name = error.name || 'error';
+    if (name === 'AbortError') {
+      return 'aborted';
+    }
+    return name;
+  }
+  return 'unknown_error';
+};
+
 const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number, phase: TimeoutPhase): Promise<T> => {
   if (timeoutMs <= 0) {
     return promise;
@@ -410,7 +427,7 @@ export class KeycloakAdminClient implements IdentityProviderPort {
         logger.warn('Keycloak read failed; using listUsers fallback', {
           operation: 'list_users',
           source: 'fallback',
-          error: error instanceof Error ? error.message : String(error),
+          reason: toRetryLogReason(error),
         });
         return this.readFallback.listUsers(query);
       }
@@ -439,7 +456,7 @@ export class KeycloakAdminClient implements IdentityProviderPort {
         logger.warn('Keycloak read failed; using listRoles fallback', {
           operation: 'list_roles',
           source: 'fallback',
-          error: error instanceof Error ? error.message : String(error),
+          reason: toRetryLogReason(error),
         });
         return (await this.readFallback.listRoles()).map(mapKeycloakRole);
       }
@@ -603,7 +620,7 @@ export class KeycloakAdminClient implements IdentityProviderPort {
           attempt: attempt + 1,
           max_retries: this.maxRetries,
           retry_delay_ms: delay,
-          reason: error instanceof Error ? error.message : String(error),
+          reason: toRetryLogReason(error),
         });
         await this.sleep(delay);
       }
@@ -620,24 +637,47 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     if (error instanceof KeycloakAdminUnavailableError) {
       return true;
     }
-    return true;
+    return false;
+  }
+
+  private async executeFetchWithTimeout(url: string, init: RequestInit): Promise<Response> {
+    if (this.connectTimeoutMs <= 0) {
+      return this.fetchImpl(url, init);
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), this.connectTimeoutMs);
+    try {
+      return await this.fetchImpl(url, {
+        ...init,
+        signal: controller.signal,
+      });
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new KeycloakAdminRequestError({
+          message: `Keycloak connect timeout after ${this.connectTimeoutMs}ms`,
+          statusCode: 503,
+          code: 'connect_timeout',
+          retryable: true,
+        });
+      }
+      throw error;
+    } finally {
+      clearTimeout(timeoutId);
+    }
   }
 
   private async executeRequest<T>(request: RequestExecutionOptions): Promise<T> {
     const token = await this.getAccessToken();
     const url = `${this.baseUrl}${request.path}`;
-    const response = await withTimeout(
-      this.fetchImpl(url, {
+    const response = await this.executeFetchWithTimeout(url, {
         method: request.method,
         headers: {
           Authorization: `Bearer ${token}`,
           ...(request.body ? { 'Content-Type': 'application/json' } : {}),
         },
         body: request.body,
-      }),
-      this.connectTimeoutMs,
-      'connect'
-    );
+      });
 
     if (!response.ok) {
       const message = await this.buildErrorMessage(response, request.operation);
@@ -708,17 +748,13 @@ export class KeycloakAdminClient implements IdentityProviderPort {
       client_secret: this.clientSecret,
     });
 
-    const response = await withTimeout(
-      this.fetchImpl(tokenEndpoint, {
+    const response = await this.executeFetchWithTimeout(tokenEndpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
         body: body.toString(),
-      }),
-      this.connectTimeoutMs,
-      'connect'
-    );
+      });
 
     if (!response.ok) {
       const message = await this.buildErrorMessage(response, 'fetch_token');

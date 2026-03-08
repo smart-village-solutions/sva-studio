@@ -4,6 +4,7 @@ import { ConfirmDialog } from '../../../components/ConfirmDialog';
 import { ModalDialog } from '../../../components/ModalDialog';
 import { useRoles } from '../../../hooks/use-roles';
 import { t } from '../../../i18n';
+import type { IamHttpError } from '../../../lib/iam-api';
 
 type SortDirection = 'asc' | 'desc';
 
@@ -33,6 +34,29 @@ const roleTypeLabel = (role: { isSystemRole: boolean; managedBy: 'studio' | 'ext
     return t('admin.roles.labels.externalRole');
   }
   return t('admin.roles.labels.customRole');
+};
+
+const roleErrorMessage = (error: IamHttpError | null, fallbackKey: string): string => {
+  if (!error) {
+    return t(fallbackKey);
+  }
+
+  switch (error.code) {
+    case 'forbidden':
+      return t('admin.roles.errors.forbidden');
+    case 'csrf_validation_failed':
+      return t('admin.roles.errors.csrfValidationFailed');
+    case 'rate_limited':
+      return t('admin.roles.errors.rateLimited');
+    case 'conflict':
+      return t('admin.roles.errors.conflict');
+    case 'keycloak_unavailable':
+      return t('admin.roles.errors.keycloakUnavailable');
+    case 'database_unavailable':
+      return t('admin.roles.errors.databaseUnavailable');
+    default:
+      return t(fallbackKey);
+  }
 };
 
 export const RolesPage = () => {
@@ -201,7 +225,7 @@ export const RolesPage = () => {
 
       {rolesApi.error ? (
         <div className="rounded-xl border border-red-600/40 bg-red-500/10 p-4 text-sm text-red-100" role="alert">
-          <p>{rolesApi.error.message || t('admin.roles.messages.error')}</p>
+          <p>{roleErrorMessage(rolesApi.error, 'admin.roles.messages.error')}</p>
           <button
             type="button"
             className="mt-3 rounded-md border border-red-500/60 px-3 py-2 text-xs"
@@ -277,7 +301,7 @@ export const RolesPage = () => {
                       ) : null}
                     </td>
                     <td className="px-3 py-3 align-top">
-                      <p>{role.description ?? '-'}</p>
+                      <p>{role.description ?? t('admin.roles.messages.noDescription')}</p>
                       {role.lastSyncedAt ? (
                         <p className="mt-1 text-xs text-slate-400">
                           {t('admin.roles.messages.lastSyncedAt', { value: role.lastSyncedAt })}
@@ -359,7 +383,7 @@ export const RolesPage = () => {
         <form className="grid gap-4" onSubmit={onCreate}>
           {rolesApi.mutationError ? (
             <div className="rounded-md border border-red-600/40 bg-red-500/10 p-3 text-sm text-red-100" role="alert">
-              {rolesApi.mutationError.message || t('admin.roles.messages.error')}
+              {roleErrorMessage(rolesApi.mutationError, 'admin.roles.messages.error')}
             </div>
           ) : null}
           <label className="flex flex-col gap-2 text-sm text-slate-200">
@@ -433,7 +457,7 @@ export const RolesPage = () => {
         <form className="grid gap-4" onSubmit={onEdit}>
           {rolesApi.mutationError ? (
             <div className="rounded-md border border-red-600/40 bg-red-500/10 p-3 text-sm text-red-100" role="alert">
-              {rolesApi.mutationError.message || t('admin.roles.messages.error')}
+              {roleErrorMessage(rolesApi.mutationError, 'admin.roles.messages.error')}
             </div>
           ) : null}
           <label className="flex flex-col gap-2 text-sm text-slate-200">

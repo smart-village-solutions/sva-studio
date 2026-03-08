@@ -18,6 +18,19 @@ ALTER TABLE iam.roles
 
 DO $$
 BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM (
+      SELECT instance_id, role_name
+      FROM iam.roles
+      GROUP BY instance_id, role_name
+      HAVING COUNT(*) > 1
+    ) duplicates
+  ) THEN
+    RAISE EXCEPTION
+      'Rollback 0007 blocked: duplicate (instance_id, role_name) rows exist. Clean duplicates before restoring roles_instance_name_uniq.';
+  END IF;
+
   IF NOT EXISTS (
     SELECT 1
     FROM pg_constraint

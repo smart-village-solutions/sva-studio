@@ -158,7 +158,7 @@ export const i18nResources = {
       roles: {
         page: {
           title: 'Rollenverwaltung',
-          subtitle: 'System- und Custom-Rollen verwalten',
+          subtitle: 'System- und benutzerdefinierte Rollen verwalten',
         },
         table: {
           caption: 'Tabelle aller Rollen mit aufklappbarer Berechtigungsmatrix',
@@ -174,7 +174,7 @@ export const i18nResources = {
           create: 'Rolle anlegen',
           edit: 'Rolle bearbeiten',
           delete: 'Rolle löschen',
-          reconcile: 'Reconcile starten',
+          reconcile: 'Abgleich starten',
           retrySync: 'Erneut synchronisieren',
           sort: 'Sortierung wechseln',
           retry: 'Erneut versuchen',
@@ -185,13 +185,13 @@ export const i18nResources = {
         },
         labels: {
           systemRole: 'Systemrolle',
-          customRole: 'Custom-Rolle',
+          customRole: 'Benutzerdefinierte Rolle',
           externalRole: 'Externe Rolle',
           temporaryNotice: 'Rollen sind vorläufig und werden weiterentwickelt.',
         },
         createDialog: {
           title: 'Neue Rolle erstellen',
-          description: 'Custom-Rollen können später weiter angepasst werden.',
+          description: 'Benutzerdefinierte Rollen können später weiter angepasst werden.',
           keyLabel: 'Technischer Rollenschlüssel',
           nameLabel: 'Anzeigename',
           descriptionLabel: 'Beschreibung',
@@ -219,10 +219,19 @@ export const i18nResources = {
           loading: 'Rollen werden geladen ...',
           error: 'Rollen konnten nicht geladen werden.',
           permissionsEmpty: 'Keine Berechtigungen zugeordnet.',
-          syncErrorCode: 'Sync-Fehlercode: {{code}}',
+          syncErrorCode: 'Synchronisierungsfehlercode: {{code}}',
           lastSyncedAt: 'Zuletzt synchronisiert: {{value}}',
+          noDescription: 'Keine Beschreibung',
           reconcileSummary:
             'Reconcile abgeschlossen. Geprüft: {{checked}}, korrigiert: {{corrected}}, fehlgeschlagen: {{failed}}, manuell prüfen: {{manual}}.',
+        },
+        errors: {
+          forbidden: 'Unzureichende Berechtigungen für diese Rollenaktion.',
+          csrfValidationFailed: 'Sicherheitsprüfung fehlgeschlagen. Bitte Seite neu laden und erneut versuchen.',
+          rateLimited: 'Zu viele Anfragen in kurzer Zeit. Bitte kurz warten und erneut versuchen.',
+          conflict: 'Die Rollenänderung steht in Konflikt mit dem aktuellen Zustand. Bitte aktualisieren und erneut versuchen.',
+          keycloakUnavailable: 'Die Verbindung zu Keycloak ist derzeit nicht verfügbar. Bitte später erneut versuchen.',
+          databaseUnavailable: 'Die IAM-Datenbank ist derzeit nicht erreichbar. Bitte später erneut versuchen.',
         },
       },
     },
@@ -449,8 +458,17 @@ export const i18nResources = {
           permissionsEmpty: 'No permissions assigned.',
           syncErrorCode: 'Sync error code: {{code}}',
           lastSyncedAt: 'Last synced: {{value}}',
+          noDescription: 'No description',
           reconcileSummary:
             'Reconcile finished. Checked: {{checked}}, corrected: {{corrected}}, failed: {{failed}}, manual review: {{manual}}.',
+        },
+        errors: {
+          forbidden: 'You do not have sufficient permissions for this role action.',
+          csrfValidationFailed: 'Security validation failed. Please reload the page and try again.',
+          rateLimited: 'Too many requests in a short time. Please wait and try again.',
+          conflict: 'The role change conflicts with the current state. Please refresh and try again.',
+          keycloakUnavailable: 'The Keycloak connection is currently unavailable. Please try again later.',
+          databaseUnavailable: 'The IAM database is currently unavailable. Please try again later.',
         },
       },
     },

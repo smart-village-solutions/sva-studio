@@ -151,7 +151,7 @@ SET
       input.isSystemRole,
       input.roleLevel,
       input.managedBy ?? 'studio',
-      input.syncState ?? 'synced',
+      input.syncState ?? 'pending',
     ],
   }),
 

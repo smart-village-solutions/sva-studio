@@ -1245,6 +1245,10 @@ describe('iam-account-management handlers (guards)', () => {
     const response = await reconcileHandler(
       new Request('http://localhost/api/v1/iam/admin/reconcile', {
         method: 'POST',
+        headers: {
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'http://localhost',
+        },
       })
     );
 
@@ -1309,6 +1313,10 @@ describe('iam-account-management handlers (guards)', () => {
     const response = await reconcileHandler(
       new Request('http://localhost/api/v1/iam/admin/reconcile', {
         method: 'POST',
+        headers: {
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'http://localhost',
+        },
       })
     );
 
@@ -1383,6 +1391,10 @@ describe('iam-account-management handlers (guards)', () => {
     const response = await reconcileHandler(
       new Request('http://localhost/api/v1/iam/admin/reconcile', {
         method: 'POST',
+        headers: {
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'http://localhost',
+        },
       })
     );
 
@@ -1403,6 +1415,18 @@ describe('iam-account-management handlers (guards)', () => {
         externalRoleName: 'custom_editor',
       },
     ]);
+  });
+
+  it('rejects reconcile requests without CSRF headers', async () => {
+    const response = await reconcileHandler(
+      new Request('http://localhost/api/v1/iam/admin/reconcile', {
+        method: 'POST',
+      })
+    );
+
+    const payload = (await response.json()) as { error: { code: string } };
+    expect(response.status).toBe(403);
+    expect(payload.error.code).toBe('csrf_validation_failed');
   });
 
   it('creates a user successfully on happy path', async () => {

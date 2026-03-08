@@ -37,5 +37,5 @@ Referenzen:
 
 - `package.json`
 - `openspec/AGENTS.md`
-- `scripts/ci/check-file-placement.mjs`
+- `scripts/ci/check-file-placement.ts`
 - `packages/monitoring-client/src/otel.server.ts`

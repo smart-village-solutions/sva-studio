@@ -61,11 +61,15 @@ describe('UserEditPage', () => {
     expect(screen.getByRole('status')).toBeTruthy();
   });
 
-  it('renders error state when user is missing', () => {
+  it('renders localized initial load errors when user is missing', () => {
     useUserMock.mockReturnValue({
       user: null,
       isLoading: false,
-      error: new Error('not found'),
+      error: {
+        status: 503,
+        code: 'keycloak_unavailable',
+        message: 'sync failed',
+      },
       refetch: vi.fn(),
       save: vi.fn(),
     });
@@ -82,7 +86,9 @@ describe('UserEditPage', () => {
 
     render(<UserEditPage userId="user-404" />);
 
-    expect(screen.getByRole('alert')).toBeTruthy();
+    expect(screen.getByRole('alert').textContent).toContain(
+      'Die Verbindung zu Keycloak ist derzeit nicht verfügbar. Bitte später erneut versuchen.'
+    );
   });
 
   it('renders tabs and allows switching', () => {

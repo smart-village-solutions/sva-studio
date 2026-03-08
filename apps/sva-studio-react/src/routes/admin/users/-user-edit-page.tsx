@@ -223,7 +223,7 @@ export const UserEditPage = ({ userId }: UserEditPageProps) => {
       <section className="space-y-3">
         <h1 className="text-3xl font-semibold text-slate-100">{t('admin.users.edit.title')}</h1>
         <div className="rounded-xl border border-red-600/40 bg-red-500/10 p-4 text-sm text-red-100" role="alert">
-          {t('admin.users.messages.error')}
+          {userErrorMessage(userApi.error)}
         </div>
       </section>
     );

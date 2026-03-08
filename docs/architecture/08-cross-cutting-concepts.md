@@ -90,6 +90,10 @@ gleichzeitig beeinflussen.
 - Proposal-Reviews werden über einen dedizierten Proposal-Orchestrator konsolidiert
 - PR- und Code-Reviews werden über einen separaten PR-Orchestrator konsolidiert
 - Spezialisierte Review-Agents decken ergänzend Testqualität, i18n/Content, User Journey & Usability und Performance ab
+- Zentrale und kritische Module werden zusätzlich über ein eigenes Komplexitäts-Gate mit Ticketpflicht überwacht
+- Das Modulregister und die Schwellwerte liegen versioniert unter `tooling/quality/complexity-policy.json`
+- Bekannte Überschreitungen bleiben nur dann zulässig, wenn sie in `trackedFindings` mit Refactoring-Ticket hinterlegt sind
+- Kritische Coverage-Hotspots werden in `tooling/testing/coverage-policy.json` als `hotspotFloors` geführt
 - Normative Accessibility und heuristische Nutzersicht sind bewusst getrennt:
   - `ux-accessibility.agent.md` für WCAG/BITV, Fokus, Tastatur und Screenreader
   - `user-journey-usability.agent.md` für Friktion, Verständlichkeit und Aufgabenbewältigung
@@ -115,6 +119,7 @@ Referenzen:
 - `packages/monitoring-client/src/otel.server.ts`
 - `docs/adr/ADR-014-postgres-notify-cache-invalidierung.md`
 - `docs/architecture/iam-datenklassifizierung.md`
+- `docs/development/complexity-quality-governance.md`
 - `docs/development/review-agent-governance.md`
 - `docs/development/iam-schluesselmanagement-strategie.md`
 - `docs/guides/iam-governance-runbook.md`

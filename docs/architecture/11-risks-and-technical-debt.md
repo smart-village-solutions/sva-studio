@@ -70,6 +70,11 @@ Schulden auf IST-Basis.
    - Wahrscheinlichkeit: mittel
    - Maßnahme: Child-spezifische Delta-Specs strikt einhalten, Scope im PR gegen Masterplan prüfen, Review-Gates vor Implementierungsstart erzwingen
 
+12. Hohe strukturelle Komplexität in zentralen IAM- und Routing-Modulen
+   - Impact: hoch (Refactorings werden riskant, Sicherheits- und Routing-Fehler bleiben schwer lokalisierbar)
+   - Wahrscheinlichkeit: hoch
+   - Maßnahme: `complexity-gate`, ticketpflichtige tracked findings, Hotspot-Coverage für kritische Dateien
+
 ### Technische Schulden (Auswahl)
 
 - Teilweise No-Op Testtargets in Libraries
@@ -79,6 +84,7 @@ Schulden auf IST-Basis.
 - Shell-Navigation ist aktuell nicht vollständig plugin-/metadatenbasiert
 - Reifegrad von Governance-E2E-Tests muss im Produktiv-Rollout weiter erhöht werden
 - Risiko von Scope-Bleeding bei schnellen IAM-Iterationen ohne harte Gate-Disziplin
+- Mehrere historische IAM-Hotspots sind bewusst als tracked findings mit Refactoring-Backlog dokumentiert
 
 ### Nachverfolgung
 
@@ -90,6 +96,7 @@ Referenzen:
 - `docs/reports/PR_CHECKLIST.md`
 - `openspec/AGENTS.md`
 - `docs/development/testing-coverage.md`
+- `docs/development/complexity-quality-governance.md`
 - `docs/guides/iam-governance-runbook.md`
 - `docs/guides/iam-governance-freigabematrix.md`
 

@@ -215,24 +215,31 @@ Inline styles are permitted ONLY when styling depends on dynamic data from the d
 ### ✅ REQUIRED
 - Neue Features und Verhaltensänderungen müssen Unit-Tests erhalten.
 - Coverage darf pro Projekt und global nicht unter die Baseline bzw. definierte Floors fallen.
-- Kritische Module (`auth`, `payment`) müssen mindestens 90% Coverage auf `lines`, `functions` und `branches` erreichen.
+- Kritische Module müssen ihre definierten Mindest-Floors in `tooling/testing/coverage-policy.json` erfüllen.
+- Kritische Hotspots dürfen über `hotspotFloors` feiner granulierte Floors erhalten.
+- Für zentrale und kritische Module muss `pnpm complexity-gate` erfolgreich sein.
+- Neue Komplexitätsüberschreitungen sind nur mit dokumentiertem Refactoring-Ticket zulässig.
 - Coverage-Gate muss vor dem Merge erfolgreich sein.
 
 ### ❌ FORBIDDEN
 - PRs mit neuer Funktionalität ohne zugehörige Tests.
 - Baseline-Updates ohne dokumentierte Team-Freigabe.
 - Exemptions als dauerhafte Umgehung des Coverage-Gates.
+- Neue Komplexitäts-Findings ohne Ticket-Referenz in `tooling/quality/complexity-policy.json`.
+- Absenkung von Coverage-Floors, nur weil ein kritischer Hotspot komplexer geworden ist.
 
 ### Process
 1. Tests parallel zur Feature-Implementierung schreiben.
 2. Lokal Coverage ausführen: `pnpm test:coverage`.
 3. Gate vor PR prüfen: `pnpm coverage-gate`.
-4. Bei Exemption: Ticket erstellen, Ablaufdatum setzen, Team-Genehmigung dokumentieren.
+4. Komplexitäts-Gate prüfen: `pnpm complexity-gate`.
+5. Bei Exemption oder Komplexitätsüberschreitung: Ticket erstellen bzw. referenzieren und Team-Genehmigung dokumentieren.
 
 ### Enforcement
 - PRs ohne angemessene Tests werden in Reviews abgelehnt.
 - Baseline- oder Policy-Änderungen brauchen eine explizite Begründung im PR.
 - Die PR-Checkliste muss Coverage-Nachweise enthalten: `docs/reports/PR_CHECKLIST.md`.
+- Die PR-Checkliste muss auch Komplexitäts-Nachweise und Ticketbezüge enthalten.
 
 **Example:**
 ```ts
@@ -249,6 +256,7 @@ export function calculateDiscount(price: number): number {
 ```
 
 Weitere Details und Troubleshooting: `docs/development/testing-coverage.md`.
+Komplexitäts-Regeln und Ticket-Workflow: `docs/development/complexity-quality-governance.md`.
 
 ---
 

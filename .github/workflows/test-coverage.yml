@@ -78,6 +78,9 @@ jobs:
           COVERAGE_GATE_REQUIRE_SUMMARIES: ${{ github.event_name == 'pull_request' && '0' || '1' }}
         run: pnpm coverage-gate
 
+      - name: Evaluate complexity gates
+        run: pnpm complexity-gate
+
       - name: Build app for Codecov bundle analysis
         if: env.CODECOV_TOKEN != ''
         run: pnpm nx run sva-studio-react:build

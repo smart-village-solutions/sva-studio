@@ -8,59 +8,157 @@
     "type:app"
   ],
   "targets": {
-    "serve": {
+    "check:i18n": {
       "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": [
+        "default",
+        "{workspaceRoot}/scripts/ci/check-i18n-keys.ts"
+      ],
+      "outputs": [],
       "options": {
-        "command": "pnpm run dev",
-        "cwd": "apps/sva-studio-react"
+        "command": "pnpm --filter sva-studio-react run check:i18n"
+      }
+    },
+    "check:account-ui-foundation": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": [
+        "default",
+        "{workspaceRoot}/scripts/ci/check-account-ui-foundation.ts"
+      ],
+      "outputs": [],
+      "options": {
+        "command": "pnpm --filter sva-studio-react run check:account-ui-foundation"
+      }
+    },
+    "serve": {
+      "executor": "@nx/vite:dev-server",
+      "continuous": true,
+      "inputs": [
+        "default",
+        "^production",
+        "frontendTooling",
+        "frontendEnvServe"
+      ],
+      "outputs": [],
+      "options": {
+        "buildTarget": "sva-studio-react:build",
+        "port": 3000
       }
     },
     "build": {
-      "executor": "nx:run-commands",
+      "executor": "@nx/vite:build",
+      "cache": true,
+      "dependsOn": [
+        "check:i18n",
+        "check:account-ui-foundation"
+      ],
+      "inputs": [
+        "production",
+        "^production",
+        "frontendTooling",
+        "frontendEnvBuild"
+      ],
       "outputs": [
-        "{projectRoot}/dist"
+        "{options.outputPath}"
       ],
       "options": {
-        "command": "pnpm run build",
-        "cwd": "apps/sva-studio-react"
+        "configFile": "apps/sva-studio-react/vite.config.ts",
+        "outputPath": "apps/sva-studio-react/dist",
+        "skipTypeCheck": true
       }
     },
     "preview": {
-      "executor": "nx:run-commands",
+      "executor": "@nx/vite:preview-server",
+      "continuous": true,
+      "outputs": [],
       "options": {
-        "command": "pnpm run preview",
-        "cwd": "apps/sva-studio-react"
+        "buildTarget": "sva-studio-react:build",
+        "port": 4173
       }
     },
     "test:unit": {
-      "executor": "nx:run-commands",
+      "executor": "@nx/vitest:test",
+      "cache": true,
+      "inputs": [
+        "default",
+        "^production",
+        "testing",
+        "frontendTooling"
+      ],
+      "outputs": [],
       "options": {
-        "command": "pnpm --filter sva-studio-react run test"
+        "configFile": "apps/sva-studio-react/vitest.config.ts"
       }
     },
     "test:coverage": {
-      "executor": "nx:run-commands",
+      "executor": "@nx/vitest:test",
+      "cache": true,
+      "inputs": [
+        "default",
+        "^production",
+        "testing",
+        "frontendTooling"
+      ],
+      "outputs": [
+        "{projectRoot}/coverage"
+      ],
       "options": {
-        "command": "pnpm --filter sva-studio-react exec vitest run --coverage --config vitest.config.ts --passWithNoTests"
+        "configFile": "apps/sva-studio-react/vitest.config.ts",
+        "coverage": {
+          "enabled": true
+        }
       }
     },
     "test:integration": {
       "executor": "nx:run-commands",
+      "outputs": [],
       "options": {
         "command": "node -e \"console.log('no integration tests configured for sva-studio-react')\""
       }
     },
     "lint": {
       "executor": "@nx/eslint:lint",
+      "cache": true,
+      "inputs": [
+        "default",
+        "^production",
+        "frontendTooling"
+      ],
+      "outputs": [],
       "options": {
-        "lintFilePatterns": ["apps/sva-studio-react/src/**/*.{ts,tsx,js,jsx}"],
-        "command": "pnpm --filter sva-studio-react run build"
+        "lintFilePatterns": [
+          "apps/sva-studio-react/src/**/*.{ts,tsx,js,jsx}",
+          "apps/sva-studio-react/e2e/**/*.{ts,tsx,js,jsx}"
+        ]
       }
     },
     "test:e2e": {
-      "executor": "nx:run-commands",
+      "executor": "@nx/playwright:playwright",
+      "cache": true,
+      "dependsOn": [
+        {
+          "projects": [
+            "core"
+          ],
+          "target": "build"
+        }
+      ],
+      "inputs": [
+        "default",
+        "^production",
+        "frontendTooling",
+        "frontendEnvE2E",
+        "frontendEnvServe"
+      ],
+      "outputs": [
+        "{projectRoot}/playwright-report",
+        "{projectRoot}/test-results"
+      ],
       "options": {
-        "command": "pnpm --filter sva-studio-react run test:e2e"
+        "config": "apps/sva-studio-react/playwright.config.ts",
+        "skipInstall": true
       }
     }
   }

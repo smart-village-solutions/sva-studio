@@ -1,8 +1,9 @@
-# Keycloak Service-Account Setup für IAM-User-Management
+# Keycloak Service-Account Setup für IAM-User- und Rollen-Management
 
 ## Ziel
 
 Diese Anleitung beschreibt die minimale Keycloak-Konfiguration für den IAM-Service des SVA Studio (`sva-studio-iam-service`).
+Sie deckt sowohl User-Management als auch den Studio-verwalteten Rollen-Katalog-Sync nach Keycloak ab.
 
 ## Unterstützte Keycloak-Version
 
@@ -22,8 +23,25 @@ Dem Service-Account ausschließlich folgende `realm-management`-Rollen zuweisen:
 - `manage-users`
 - `view-users`
 - `view-realm`
+- `manage-realm`
 
-Keine zusätzlichen Admin-Rollen vergeben.
+Begründung und Scope:
+
+| Rolle | Erlaubte Operationen | Nicht damit begründete Operationen |
+| --- | --- | --- |
+| `manage-users` | User anlegen, aktualisieren, deaktivieren; Rollenzuweisungen an User schreiben | Realm-Rollenkatalog ändern |
+| `view-users` | User lesen, Detailansichten laden | Schreibzugriffe auf User oder Rollen |
+| `view-realm` | Realm-Metadaten und Rollenbestand lesen | Änderungen an Rollen, Clients oder Flows |
+| `manage-realm` | Studio-verwaltete Realm-Rollen anlegen, aktualisieren und löschen | Clients, Identity Provider oder Auth-Flows verwalten |
+
+Explizit verboten:
+
+- `realm-admin`
+- `manage-clients`
+- `view-clients`
+- `manage-identity-providers`
+- `manage-events`
+- zusätzliche globale Admin-Rollen außerhalb von `realm-management`
 
 ## 3. Secret-Handling
 
@@ -42,6 +60,13 @@ KEYCLOAK_ADMIN_CLIENT_ID=sva-studio-iam-service
 KEYCLOAK_ADMIN_CLIENT_SECRET=<injected-via-secrets-manager>
 ```
 
+Für den geplanten Reconcile-Lauf zusätzlich:
+
+```env
+IAM_ROLE_RECONCILE_INTERVAL_MS=900000
+IAM_ROLE_RECONCILE_INSTANCE_IDS=<uuid-1>,<uuid-2>
+```
+
 ## 5. Token-Lebensdauer
 
 Für den Service-Account die Access-Token-Lebensdauer auf 5 Minuten setzen.
@@ -57,12 +82,14 @@ Die Rotation erfolgt spätestens alle 90 Tage (BSI-Grundschutz ORP.4) im Dual-Se
 
 1. Neues Secret erzeugen (`secret_v2`) und im Secrets-Manager als neue aktive Version hinterlegen.
 2. Deployment mit `secret_v2` ausrollen, `secret_v1` bleibt im Overlap-Fenster gültig.
-3. Funktionstest der IAM-Admin-Calls (`list users`, `create user`) durchführen.
+3. Funktionstest der IAM-Admin-Calls (`list users`, `create user`, `create role`, `reconcile roles`) durchführen.
 4. Nach erfolgreicher Stabilitätsphase (`24h` empfohlen) `secret_v1` in Keycloak deaktivieren/löschen.
 5. Rotation mit Zeitstempel und Verantwortlichem im Betriebsprotokoll dokumentieren.
 
 ## 7. Operative Checks nach Setup/Rotation
 
 - IAM-Health-Check (`/health/ready`) meldet Keycloak als `healthy`.
+- `POST /api/v1/iam/roles`, `PATCH /api/v1/iam/roles/:id` und `DELETE /api/v1/iam/roles/:id` liefern keinen `keycloak_unavailable`-Fehler.
+- `POST /api/v1/iam/admin/reconcile` erzeugt keinen Berechtigungsfehler im Keycloak-Adapter.
 - Keine `401`/`403`-Fehler bei Keycloak-Admin-Aufrufen.
-- Keine Secrets oder Tokens in Logs.
+- Keine Secrets oder Tokens in Logs; Audit-Events enthalten nur `workspace_id`, `operation`, `result`, `error_code?`, `request_id`, `trace_id?`, `span_id?`.

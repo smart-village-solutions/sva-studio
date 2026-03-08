@@ -55,6 +55,27 @@ interface RunCoverageGateResult {
   projects: Record<string, MetricFloors>;
 }
 
+interface CoveragePaths {
+  rootDir: string;
+  policyPath: string;
+  baselinePath: string;
+  workspaceRoots: string[];
+}
+
+interface LoadedCoverageData {
+  paths: CoveragePaths;
+  policy: CoveragePolicy;
+  baseline: CoverageBaseline;
+  projects: Record<string, MetricFloors>;
+}
+
+interface CoverageEvaluationInput {
+  policy: CoveragePolicy;
+  baseline: CoverageBaseline;
+  projects: Record<string, MetricFloors>;
+  requireSummaries: boolean;
+}
+
 const isTTY = process.stdout.isTTY;
 const colorize = (code: string, text: string): string =>
   isTTY ? `\x1b[${code}m${text}\x1b[0m` : text;
@@ -204,29 +225,174 @@ function writeSummary(stepSummaryPath: string | null, summaryBody: string): void
   }
 }
 
+function resolveCoveragePaths(rootDir: string): CoveragePaths {
+  return {
+    rootDir,
+    policyPath: path.join(rootDir, 'tooling/testing/coverage-policy.json'),
+    baselinePath: path.join(rootDir, 'tooling/testing/coverage-baseline.json'),
+    workspaceRoots: ['apps', 'packages'].map((dir) => path.join(rootDir, dir)),
+  };
+}
+
+function loadCoverageData(rootDir: string): LoadedCoverageData {
+  const paths = resolveCoveragePaths(rootDir);
+  if (!fs.existsSync(paths.policyPath)) {
+    throw new Error(`Coverage policy not found: ${paths.policyPath}`);
+  }
+
+  const rawPolicy = readJson<unknown>(paths.policyPath);
+  assertCoveragePolicy(rawPolicy);
+
+  const baseline = fs.existsSync(paths.baselinePath)
+    ? readJson<CoverageBaseline>(paths.baselinePath)
+    : { projects: {} };
+
+  const summaries = paths.workspaceRoots.flatMap((dir) => findCoverageSummaries(dir));
+  const projects = summaries.reduce<Record<string, MetricFloors>>((acc, summaryPath) => {
+    const projectName = projectFromCoveragePath(summaryPath);
+    if (!projectName) {
+      return acc;
+    }
+
+    acc[projectName] = toMetricValues(readJson<CoverageSummary>(summaryPath));
+    return acc;
+  }, {});
+
+  return {
+    paths,
+    policy: rawPolicy,
+    baseline,
+    projects,
+  };
+}
+
+function evaluateFloors(
+  policy: CoveragePolicy,
+  projects: Record<string, MetricFloors>,
+  requireSummaries: boolean
+): GateError[] {
+  const exemptProjects = new Set<string>(policy.exemptProjects ?? []);
+  const metrics = policy.metrics;
+  const errors: GateError[] = [];
+  const expectedProjects = Object.keys(policy.perProjectFloors ?? {}).filter(
+    (name) => !exemptProjects.has(name)
+  );
+
+  if (requireSummaries) {
+    const missingSummaryErrors = expectedProjects
+      .filter((projectName) => !projects[projectName])
+      .map<GateError>((projectName) => ({
+        scope: 'project',
+        message: `[${projectName}] missing coverage-summary.json`,
+      }));
+    errors.push(...missingSummaryErrors);
+  }
+
+  const activeProjects = Object.entries(projects).filter(([name]) => !exemptProjects.has(name));
+  const projectFloorErrors = activeProjects.flatMap(([projectName, values]) => {
+    const floorConfig = policy.perProjectFloors?.[projectName] ?? policy.globalFloors;
+    return metrics.flatMap((metric) => {
+      const floor = Number(floorConfig[metric] ?? policy.globalFloors[metric] ?? 0);
+      const current = Number(values[metric] ?? 0);
+      if (current >= floor) {
+        return [];
+      }
+
+      return [
+        {
+          scope: 'project' as const,
+          message: `[${projectName}] ${metric} below floor: ${current.toFixed(2)} < ${floor.toFixed(2)}`,
+        },
+      ];
+    });
+  });
+  errors.push(...projectFloorErrors);
+
+  const globalCoverage = mergeGlobal(activeProjects.map(([, values]) => values));
+  const globalFloorErrors = metrics.flatMap((metric) => {
+    const floor = Number(policy.globalFloors?.[metric] ?? 0);
+    const current = Number(globalCoverage[metric] ?? 0);
+    if (current >= floor) {
+      return [];
+    }
+
+    return [
+      {
+        scope: 'global' as const,
+        message: `[global] ${metric} below floor: ${current.toFixed(2)} < ${floor.toFixed(2)}`,
+      },
+    ];
+  });
+  errors.push(...globalFloorErrors);
+
+  return errors;
+}
+
+function evaluateRegressions(
+  policy: CoveragePolicy,
+  baseline: CoverageBaseline,
+  projects: Record<string, MetricFloors>
+): GateError[] {
+  const exemptProjects = new Set<string>(policy.exemptProjects ?? []);
+  const maxAllowedDrop = Number(policy.maxAllowedDropPctPoints ?? 0);
+  const metrics = policy.metrics;
+  const activeProjects = Object.entries(projects).filter(([name]) => !exemptProjects.has(name));
+
+  return activeProjects.flatMap(([projectName, values]) => {
+    const baselineValues = baseline.projects?.[projectName] ?? null;
+    if (!baselineValues) {
+      return [];
+    }
+
+    return metrics.flatMap((metric) => {
+      if (typeof baselineValues[metric] !== 'number') {
+        return [];
+      }
+
+      const drop = Number(baselineValues[metric]) - Number(values[metric] ?? 0);
+      if (drop <= maxAllowedDrop) {
+        return [];
+      }
+
+      return [
+        {
+          scope: 'project' as const,
+          message: `[${projectName}] ${metric} dropped by ${drop.toFixed(2)}pp (allowed ${maxAllowedDrop.toFixed(2)}pp)`,
+        },
+      ];
+    });
+  });
+}
+
+function generateReport(policy: CoveragePolicy, projects: Record<string, MetricFloors>): string {
+  const sortedProjects = Object.entries(projects).sort(([a], [b]) => a.localeCompare(b));
+  const exemptProjects = new Set<string>(policy.exemptProjects ?? []);
+  const activeProjects = sortedProjects.filter(([name]) => !exemptProjects.has(name));
+  const globalCoverage = mergeGlobal(activeProjects.map(([, values]) => values));
+
+  const header = ['## Coverage Summary', '', '| Project | Lines | Statements | Functions | Branches |', '| --- | ---: | ---: | ---: | ---: |'];
+  const rows = sortedProjects.map(
+    ([projectName, values]) =>
+      `| ${projectName} | ${formatPct(values.lines)} | ${formatPct(values.statements)} | ${formatPct(values.functions)} | ${formatPct(values.branches)} |`
+  );
+  const footer = [
+    '',
+    `Global coverage (avg): lines ${formatPct(globalCoverage.lines)}, statements ${formatPct(globalCoverage.statements)}, functions ${formatPct(globalCoverage.functions)}, branches ${formatPct(globalCoverage.branches)}`,
+  ];
+
+  return [...header, ...rows, ...footer].join('\n') + '\n';
+}
+
 export function runCoverageGate(options: RunCoverageGateOptions = {}): RunCoverageGateResult {
   const rootDir = options.rootDir ?? process.cwd();
-  const workspaceRoots = ['apps', 'packages'].map((dir) => path.join(rootDir, dir));
-  const policyPath = path.join(rootDir, 'tooling/testing/coverage-policy.json');
-  const baselinePath = path.join(rootDir, 'tooling/testing/coverage-baseline.json');
   const updateBaseline = options.updateBaseline ?? false;
   const requireSummaries = options.requireSummaries ?? false;
   const stepSummaryPath = options.stepSummaryPath ?? process.env.GITHUB_STEP_SUMMARY ?? null;
 
-  if (!fs.existsSync(policyPath)) {
-    throw new Error(`Coverage policy not found: ${policyPath}`);
-  }
+  const loaded = loadCoverageData(rootDir);
+  const { paths, policy, baseline, projects } = loaded;
 
-  const rawPolicy = readJson<unknown>(policyPath);
-  assertCoveragePolicy(rawPolicy);
-  const policy: CoveragePolicy = rawPolicy;
-
-  const baseline = fs.existsSync(baselinePath)
-    ? readJson<CoverageBaseline>(baselinePath)
-    : { projects: {} };
-
-  const summaries = workspaceRoots.flatMap((dir) => findCoverageSummaries(dir));
-  if (summaries.length === 0) {
+  if (Object.keys(projects).length === 0) {
     if (requireSummaries) {
       throw new Error('No coverage-summary.json files found. Failing coverage gate because requireSummaries=true.');
     }
@@ -236,23 +402,13 @@ export function runCoverageGate(options: RunCoverageGateOptions = {}): RunCovera
       updatedBaseline: false,
       summaryBody: '',
       errors: [],
-      projects: {},
+      projects,
     };
-  }
-
-  const projects: Record<string, MetricFloors> = {};
-  for (const summaryPath of summaries) {
-    const projectName = projectFromCoveragePath(summaryPath);
-    if (!projectName) {
-      continue;
-    }
-    const summary = readJson<CoverageSummary>(summaryPath);
-    projects[projectName] = toMetricValues(summary);
   }
 
   if (updateBaseline) {
     const nextBaseline: CoverageBaseline = { projects };
-    fs.writeFileSync(baselinePath, JSON.stringify(nextBaseline, null, 2) + '\n', 'utf8');
+    fs.writeFileSync(paths.baselinePath, JSON.stringify(nextBaseline, null, 2) + '\n', 'utf8');
     return {
       passed: true,
       updatedBaseline: true,
@@ -262,80 +418,11 @@ export function runCoverageGate(options: RunCoverageGateOptions = {}): RunCovera
     };
   }
 
-  const metrics: CoverageMetric[] = policy.metrics;
-  const exemptProjects = new Set<string>(policy.exemptProjects ?? []);
-  const maxAllowedDrop = Number(policy.maxAllowedDropPctPoints ?? 0);
-  const errors: GateError[] = [];
+  const floorErrors = evaluateFloors(policy, projects, requireSummaries);
+  const regressionErrors = evaluateRegressions(policy, baseline, projects);
+  const errors = [...floorErrors, ...regressionErrors];
 
-  const reportLines: string[] = [];
-  reportLines.push('## Coverage Summary');
-  reportLines.push('');
-  reportLines.push('| Project | Lines | Statements | Functions | Branches |');
-  reportLines.push('| --- | ---: | ---: | ---: | ---: |');
-
-  const activeProjects = Object.entries(projects).filter(([name]) => !exemptProjects.has(name));
-  const expectedProjects = Object.keys(policy.perProjectFloors ?? {}).filter(
-    (name) => !exemptProjects.has(name)
-  );
-
-  if (requireSummaries) {
-    for (const projectName of expectedProjects) {
-      if (!projects[projectName]) {
-        errors.push({ scope: 'project', message: `[${projectName}] missing coverage-summary.json` });
-      }
-    }
-  }
-
-  for (const [projectName, values] of Object.entries(projects).sort(([a], [b]) => a.localeCompare(b))) {
-    reportLines.push(
-      `| ${projectName} | ${formatPct(values.lines)} | ${formatPct(values.statements)} | ${formatPct(values.functions)} | ${formatPct(values.branches)} |`
-    );
-  }
-
-  for (const [projectName, values] of activeProjects) {
-    const floorConfig = policy.perProjectFloors?.[projectName] ?? policy.globalFloors;
-    const baselineValues = baseline.projects?.[projectName] ?? null;
-
-    for (const metric of metrics) {
-      const floor = Number(floorConfig[metric] ?? policy.globalFloors[metric] ?? 0);
-      const current = Number(values[metric] ?? 0);
-      if (current < floor) {
-        errors.push({
-          scope: 'project',
-          message: `[${projectName}] ${metric} below floor: ${current.toFixed(2)} < ${floor.toFixed(2)}`,
-        });
-      }
-
-      if (baselineValues && typeof baselineValues[metric] === 'number') {
-        const drop = Number(baselineValues[metric]) - current;
-        if (drop > maxAllowedDrop) {
-          errors.push({
-            scope: 'project',
-            message: `[${projectName}] ${metric} dropped by ${drop.toFixed(2)}pp (allowed ${maxAllowedDrop.toFixed(2)}pp)`,
-          });
-        }
-      }
-    }
-  }
-
-  const globalCoverage = mergeGlobal(activeProjects.map(([, values]) => values));
-  reportLines.push('');
-  reportLines.push(
-    `Global coverage (avg): lines ${formatPct(globalCoverage.lines)}, statements ${formatPct(globalCoverage.statements)}, functions ${formatPct(globalCoverage.functions)}, branches ${formatPct(globalCoverage.branches)}`
-  );
-
-  for (const metric of metrics) {
-    const floor = Number(policy.globalFloors?.[metric] ?? 0);
-    const current = Number(globalCoverage[metric] ?? 0);
-    if (current < floor) {
-      errors.push({
-        scope: 'global',
-        message: `[global] ${metric} below floor: ${current.toFixed(2)} < ${floor.toFixed(2)}`,
-      });
-    }
-  }
-
-  const summaryBody = reportLines.join('\n') + '\n';
+  const summaryBody = generateReport(policy, projects);
   writeSummary(stepSummaryPath, summaryBody);
 
   const sortedErrors = errors

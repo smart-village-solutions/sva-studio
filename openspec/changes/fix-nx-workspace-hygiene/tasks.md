@@ -6,7 +6,7 @@
 - [x] 1.1.3 `@sva/sdk/logger/index.server` prüfen und ggf. hinzufügen
 - [x] 1.1.4 `@sva/sdk/middleware/request-context.server` prüfen und ggf. hinzufügen
 - [x] 1.1.5 `@sva/sdk/observability/context.server` prüfen und ggf. hinzufügen
-- [ ] 1.1.6 Verifizieren: IDE-Auflösung der neuen Imports funktioniert (z. B. `import { ... } from '@sva/routing'`)
+- [x] 1.1.6 Verifizieren: IDE-Auflösung der neuen Imports funktioniert (z. B. `import { ... } from '@sva/routing'`)
 - [x] 1.1.7 `pnpm nx affected --target=build` – keine neuen Fehler
 
 ### Task 1.2: Routing-Package Nx-Konfiguration bereinigen (NX-6, NX-7)
@@ -31,17 +31,18 @@
 ## Phase 2: Test-Coverage-Governance stärken
 
 ### Task 2.1: Coverage-Floors anheben (TEST-1)
-- [ ] 2.1.1 `tooling/testing/coverage-policy.json` öffnen und globale Floors setzen:
+- [x] 2.1.1 `tooling/testing/coverage-policy.json` öffnen und globale Floors setzen:
   - `lines`: 10 (Mindest-Einstieg)
   - `statements`: 10
   - `functions`: 20
   - `branches`: 20
-- [ ] 2.1.2 Package-spezifische Floors basierend auf Baseline:
-  - `auth`: lines ≥ 14, functions ≥ 50, branches ≥ 70
-  - `sdk`: lines ≥ 30, functions ≥ 50
-  - Routing/Core: bleiben vorerst exempt bis Tests existieren (Phase 2.2)
-- [ ] 2.1.3 `pnpm coverage-gate` lokal ausführen – Gate validiert mit neuen Floors
-- [ ] 2.1.4 Sicherstellen, dass `maxAllowedDropPctPoints` bei 0.5 bleibt
+- [x] 2.1.2 Package-spezifische Floors basierend auf Baseline setzen:
+  - `core`: lines 70, statements 70, functions 80, branches 60
+  - `auth`: lines 40, statements 40, functions 50, branches 30
+  - `sdk`: lines 30, statements 30, functions 50, branches 30
+  - `routing`: lines 30, statements 30, functions 20, branches 50
+- [x] 2.1.3 `pnpm coverage-gate` lokal ausführen – Gate validiert mit neuen Floors
+- [x] 2.1.4 Sicherstellen, dass `maxAllowedDropPctPoints` bei 0.5 bleibt
 
 ### Task 2.2: Basis-Tests für Core-Package (TEST-2)
 - [x] 2.2.1 `packages/core/vitest.config.ts` vorhanden
@@ -50,40 +51,40 @@
   - Key-Rotation (verschiedene KeyIds)
   - Ungültige Key-Länge
   - Ungültige Cipher-Text-Formate
-- [ ] 2.2.3 Test-Datei `packages/core/src/iam/authorization-engine.test.ts` erstellen:
+- [x] 2.2.3 Test-Datei `packages/core/src/iam/authorization-engine.test.ts` erstellen:
   - Alle 5 Evaluation-Stages
   - Edge Cases: leere Claims, fehlender instanceId, unbekannte Actions
-- [ ] 2.2.4 Test-Datei `packages/core/src/iam/claims.test.ts` erstellen:
+- [x] 2.2.4 Test-Datei `packages/core/src/iam/claims.test.ts` erstellen:
   - `extractDisplayName` mit verschiedenen Token-Payloads
   - `extractRoles` mit validen und invaliden Strukturen
-- [ ] 2.2.5 `pnpm nx run core:test:unit` – alle Tests grün
-- [ ] 2.2.6 Core-Package aus Coverage-Exemption-Liste entfernen
+- [x] 2.2.5 `pnpm nx run core:test:unit` – alle Tests grün
+- [x] 2.2.6 Core-Package aus Coverage-Exemption-Liste entfernen
 
 ### Task 2.3: Basis-Tests für Routing-Package
 - [x] 2.3.1 `packages/routing/vitest.config.ts` vorhanden
 - [x] 2.3.2 Test-Datei `packages/routing/src/auth.routes.server.test.ts` vorhanden:
   - Handler-Mapping enthält alle bekannten Pfade
   - Unbekannter Pfad führt zu Fehler (nach Fix R-2 aus Proposal 1)
-- [ ] 2.3.3 `pnpm nx run routing:test:unit` – alle Tests grün
+- [x] 2.3.3 `pnpm nx run routing:test:unit` – alle Tests grün
 
 ---
 
 ## Phase 3: Coverage-Gate-Refactoring & Validierung
 
 ### Task 3.1: Coverage-Gate-Komplexität reduzieren (COV-1)
-- [ ] 3.1.1 `scripts/ci/coverage-gate.ts`: `runCoverageGate`-Funktion in Subfunktionen aufteilen:
+- [x] 3.1.1 `scripts/ci/coverage-gate.ts`: `runCoverageGate`-Funktion in Subfunktionen aufteilen:
   - `loadCoverageData()` – Daten laden und parsen
   - `evaluateFloors()` – Floor-Checks durchführen
   - `evaluateRegressions()` – Baseline-Regressionen prüfen
   - `generateReport()` – Report-Markdown generieren
-- [ ] 3.1.2 Cognitive Complexity < 15 pro Funktion sicherstellen
-- [ ] 3.1.3 SonarQube `Array#push()` Finding beheben (concat oder `push(...items)` nutzen)
-- [ ] 3.1.4 Bestehende Tests für Coverage-Gate anpassen
+- [x] 3.1.2 Cognitive Complexity < 15 pro Funktion sicherstellen
+- [x] 3.1.3 SonarQube `Array#push()` Finding beheben (concat oder `push(...items)` nutzen)
+- [x] 3.1.4 Bestehende Tests für Coverage-Gate anpassen
 
 ### Task 3.2: Abschließende Validierung
-- [ ] 3.2.1 `pnpm nx affected --target=lint`
-- [ ] 3.2.2 `pnpm nx affected --target=test:unit`
-- [ ] 3.2.3 `pnpm nx affected --target=build`
-- [ ] 3.2.4 `pnpm test:ci` (vollständige CI-Suite lokal)
-- [ ] 3.2.5 `docs/architecture/05-building-block-view.md` prüfen: Routing-Modul-Konfiguration aktuell?
-- [ ] 3.2.6 `docs/architecture/10-quality-requirements.md` prüfen: Coverage-Ziele dokumentiert?
+- [x] 3.2.1 `pnpm nx affected --target=lint`
+- [x] 3.2.2 `pnpm nx affected --target=test:unit`
+- [x] 3.2.3 `pnpm nx affected --target=build`
+- [x] 3.2.4 `pnpm test:ci` (vollständige CI-Suite lokal)
+- [x] 3.2.5 `docs/architecture/05-building-block-view.md` prüfen: Routing-Modul-Konfiguration aktuell?
+- [x] 3.2.6 `docs/architecture/10-quality-requirements.md` prüfen: Coverage-Ziele dokumentiert?

@@ -69,13 +69,6 @@ interface LoadedCoverageData {
   projects: Record<string, MetricFloors>;
 }
 
-interface CoverageEvaluationInput {
-  policy: CoveragePolicy;
-  baseline: CoverageBaseline;
-  projects: Record<string, MetricFloors>;
-  requireSummaries: boolean;
-}
-
 const isTTY = process.stdout.isTTY;
 const colorize = (code: string, text: string): string =>
   isTTY ? `\x1b[${code}m${text}\x1b[0m` : text;

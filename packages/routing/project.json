@@ -11,7 +11,14 @@
         "command": "tsc -p packages/routing/tsconfig.lib.json"
       }
     },
-    "test": {
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "options": {
+        "lintFilePatterns": ["packages/routing/src/**/*.{ts,tsx,js,jsx}"],
+        "command": "pnpm --filter @sva/routing exec tsc -p tsconfig.lib.json --noEmit"
+      }
+    },
+    "test:unit": {
       "executor": "nx:run-commands",
       "options": {
         "command": "pnpm --filter @sva/routing exec vitest run"
@@ -29,5 +36,5 @@
       }
     }
   },
-  "tags": ["type:core", "scope:routing"]
+  "tags": ["type:lib", "scope:routing"]
 }

@@ -1,0 +1,380 @@
+import { describe, expect, it, vi } from 'vitest';
+
+import {
+  getKeycloakAdminClientConfigFromEnv,
+  KeycloakAdminClient,
+  KeycloakAdminRequestError,
+  KeycloakAdminUnavailableError,
+} from './keycloak-admin-client';
+
+type FetchCall = {
+  readonly input: string | URL;
+  readonly init?: RequestInit;
+};
+
+type Mutable<T> = {
+  -readonly [K in keyof T]: T[K];
+};
+
+const createJsonResponse = (status: number, body: unknown, headers?: HeadersInit): Response =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: headers
+      ? {
+          'Content-Type': 'application/json',
+          ...headers,
+        }
+      : {
+          'Content-Type': 'application/json',
+        },
+  });
+
+const createTextResponse = (status: number, body: string, headers?: HeadersInit): Response =>
+  new Response(status === 204 ? null : body, {
+    status,
+    headers: headers ?? {},
+  });
+
+const createFetchStub = (responses: Array<Response | (() => Response)>) => {
+  const queue: Mutable<typeof responses> = [...responses];
+  const calls: FetchCall[] = [];
+
+  const fetchImpl = async (input: string | URL, init?: RequestInit): Promise<Response> => {
+    calls.push({ input, init });
+    const entry = queue.shift();
+    if (!entry) {
+      throw new Error(`Unexpected fetch call for ${String(input)}`);
+    }
+    return typeof entry === 'function' ? entry() : entry;
+  };
+
+  return { fetchImpl, calls };
+};
+
+describe('KeycloakAdminClient', () => {
+  it('creates user and reads external id from location header', async () => {
+    const { fetchImpl, calls } = createFetchStub([
+      createJsonResponse(200, { access_token: 'token-1', expires_in: 300 }),
+      createTextResponse(201, '', {
+        Location: 'https://keycloak.example.com/admin/realms/demo/users/user-123',
+      }),
+    ]);
+
+    const client = new KeycloakAdminClient({
+      baseUrl: 'https://keycloak.example.com',
+      realm: 'demo',
+      clientId: 'svc-client',
+      clientSecret: 'svc-secret',
+      fetchImpl,
+    });
+
+    const result = await client.createUser({
+      email: 'user@example.com',
+      firstName: 'Max',
+      lastName: 'Mustermann',
+      enabled: true,
+    });
+
+    expect(result).toEqual({ externalId: 'user-123' });
+    expect(calls).toHaveLength(2);
+  });
+
+  it('fails createUser when location header is missing', async () => {
+    const { fetchImpl } = createFetchStub([
+      createJsonResponse(200, { access_token: 'token-1', expires_in: 300 }),
+      createTextResponse(201, ''),
+    ]);
+
+    const client = new KeycloakAdminClient({
+      baseUrl: 'https://keycloak.example.com',
+      realm: 'demo',
+      clientId: 'svc-client',
+      clientSecret: 'svc-secret',
+      fetchImpl,
+    });
+
+    await expect(
+      client.createUser({
+        email: 'user@example.com',
+      })
+    ).rejects.toMatchObject({
+      code: 'missing_location_header',
+      statusCode: 502,
+    });
+  });
+
+  it('uses raw location value without slash as external id', async () => {
+    const { fetchImpl } = createFetchStub([
+      createJsonResponse(200, { access_token: 'token-1', expires_in: 300 }),
+      createTextResponse(201, '', {
+        Location: 'user-plain-id',
+      }),
+    ]);
+
+    const client = new KeycloakAdminClient({
+      baseUrl: 'https://keycloak.example.com///',
+      realm: 'demo',
+      clientId: 'svc-client',
+      clientSecret: 'svc-secret',
+      fetchImpl,
+    });
+
+    const result = await client.createUser({
+      email: 'user@example.com',
+      attributes: {
+        source: 'iam',
+      },
+    });
+
+    expect(result.externalId).toBe('user-plain-id');
+  });
+
+  it('caches service-account token between requests', async () => {
+    let nowMs = 0;
+    const { fetchImpl, calls } = createFetchStub([
+      createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }),
+      createJsonResponse(200, []),
+      createJsonResponse(200, []),
+    ]);
+
+    const client = new KeycloakAdminClient({
+      baseUrl: 'https://keycloak.example.com',
+      realm: 'demo',
+      clientId: 'svc-client',
+      clientSecret: 'svc-secret',
+      fetchImpl,
+      now: () => nowMs,
+    });
+
+    await client.listRoles();
+    nowMs += 1_000;
+    await client.listRoles();
+
+    const tokenRequests = calls.filter((entry) =>
+      String(entry.input).includes('/protocol/openid-connect/token')
+    );
+    expect(tokenRequests).toHaveLength(1);
+  });
+
+  it('retries transient errors with exponential backoff delays', async () => {
+    const sleepCalls: number[] = [];
+    const { fetchImpl } = createFetchStub([
+      createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }),
+      createJsonResponse(503, { error: 'service_unavailable' }),
+      createJsonResponse(503, { error: 'service_unavailable' }),
+      createJsonResponse(200, []),
+    ]);
+
+    const client = new KeycloakAdminClient({
+      baseUrl: 'https://keycloak.example.com',
+      realm: 'demo',
+      clientId: 'svc-client',
+      clientSecret: 'svc-secret',
+      fetchImpl,
+      maxRetries: 2,
+      sleep: async (ms) => {
+        sleepCalls.push(ms);
+      },
+    });
+
+    const roles = await client.listRoles();
+    expect(roles).toEqual([]);
+    expect(sleepCalls).toEqual([1_000, 2_000]);
+  });
+
+  it('opens circuit after five failed operations and blocks writes with 503 error', async () => {
+    let nowMs = 0;
+    const { fetchImpl } = createFetchStub([
+      createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }),
+      createJsonResponse(503, { error: 'service_unavailable' }),
+      createJsonResponse(503, { error: 'service_unavailable' }),
+      createJsonResponse(503, { error: 'service_unavailable' }),
+      createJsonResponse(503, { error: 'service_unavailable' }),
+      createJsonResponse(503, { error: 'service_unavailable' }),
+    ]);
+
+    const client = new KeycloakAdminClient({
+      baseUrl: 'https://keycloak.example.com',
+      realm: 'demo',
+      clientId: 'svc-client',
+      clientSecret: 'svc-secret',
+      fetchImpl,
+      now: () => nowMs,
+      maxRetries: 0,
+      circuitBreakerFailureThreshold: 5,
+      circuitBreakerOpenMs: 30_000,
+    });
+
+    for (let i = 0; i < 5; i += 1) {
+      await expect(client.listRoles()).rejects.toBeInstanceOf(KeycloakAdminRequestError);
+    }
+
+    await expect(
+      client.updateUser('user-1', {
+        enabled: false,
+      })
+    ).rejects.toBeInstanceOf(KeycloakAdminUnavailableError);
+
+    nowMs += 30_001;
+  });
+
+  it('uses read fallback when circuit breaker is open', async () => {
+    let nowMs = 0;
+    const { fetchImpl } = createFetchStub([
+      createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }),
+      createJsonResponse(503, { error: 'service_unavailable' }),
+      createJsonResponse(503, { error: 'service_unavailable' }),
+      createJsonResponse(503, { error: 'service_unavailable' }),
+      createJsonResponse(503, { error: 'service_unavailable' }),
+      createJsonResponse(503, { error: 'service_unavailable' }),
+    ]);
+
+    const client = new KeycloakAdminClient({
+      baseUrl: 'https://keycloak.example.com',
+      realm: 'demo',
+      clientId: 'svc-client',
+      clientSecret: 'svc-secret',
+      fetchImpl,
+      now: () => nowMs,
+      maxRetries: 0,
+      circuitBreakerFailureThreshold: 5,
+      readFallback: {
+        listUsers: async () => [{ id: 'db-fallback-user' }],
+      },
+    });
+
+    for (let i = 0; i < 5; i += 1) {
+      await expect(client.listRoles()).rejects.toBeInstanceOf(KeycloakAdminRequestError);
+    }
+
+    const users = await client.listUsers({ max: 25 });
+    expect(users).toEqual([{ id: 'db-fallback-user' }]);
+    nowMs += 1;
+  });
+
+  it('uses listUsers fallback after retryable read error', async () => {
+    const { fetchImpl } = createFetchStub([
+      createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }),
+      createJsonResponse(503, { error: 'service_unavailable' }),
+    ]);
+
+    const fallbackListUsers = vi.fn(async () => [{ id: 'fallback-user-1' }]);
+    const client = new KeycloakAdminClient({
+      baseUrl: 'https://keycloak.example.com',
+      realm: 'demo',
+      clientId: 'svc-client',
+      clientSecret: 'svc-secret',
+      fetchImpl,
+      maxRetries: 0,
+      readFallback: {
+        listUsers: fallbackListUsers,
+      },
+    });
+
+    const users = await client.listUsers({ first: 1, max: 5, search: 'alice', email: 'a@example.com', username: 'alice', enabled: true });
+    expect(users).toEqual([{ id: 'fallback-user-1' }]);
+    expect(fallbackListUsers).toHaveBeenCalledTimes(1);
+  });
+
+  it('uses listRoles fallback after retryable read error', async () => {
+    const { fetchImpl } = createFetchStub([
+      createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }),
+      createJsonResponse(503, { error: 'service_unavailable' }),
+    ]);
+
+    const fallbackListRoles = vi.fn(async () => [{ id: 'role-fallback', name: 'fallback_role' }]);
+    const client = new KeycloakAdminClient({
+      baseUrl: 'https://keycloak.example.com',
+      realm: 'demo',
+      clientId: 'svc-client',
+      clientSecret: 'svc-secret',
+      fetchImpl,
+      maxRetries: 0,
+      readFallback: {
+        listRoles: fallbackListRoles,
+      },
+    });
+
+    const roles = await client.listRoles();
+    expect(roles).toEqual([{ id: 'role-fallback', name: 'fallback_role' }]);
+    expect(fallbackListRoles).toHaveBeenCalledTimes(1);
+  });
+
+  it('serializes updateUser attributes to string arrays', async () => {
+    const { fetchImpl, calls } = createFetchStub([
+      createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }),
+      createTextResponse(204, ''),
+    ]);
+
+    const client = new KeycloakAdminClient({
+      baseUrl: 'https://keycloak.example.com',
+      realm: 'demo',
+      clientId: 'svc-client',
+      clientSecret: 'svc-secret',
+      fetchImpl,
+    });
+
+    await client.updateUser('user-1', {
+      email: 'user@example.com',
+      firstName: 'Max',
+      attributes: {
+        locale: 'de',
+        teams: ['alpha', 'beta'],
+      },
+    });
+
+    const requestCall = calls.find((entry) => String(entry.input).includes('/users/user-1'));
+    expect(requestCall).toBeDefined();
+    const body = JSON.parse(String(requestCall?.init?.body)) as { attributes: Record<string, string[]> };
+    expect(body.attributes).toEqual({ locale: ['de'], teams: ['alpha', 'beta'] });
+  });
+
+  it('syncs realm roles by adding missing and removing stale roles', async () => {
+    const { fetchImpl, calls } = createFetchStub([
+      createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }),
+      createJsonResponse(200, [{ id: 'role-editor', name: 'editor' }]),
+      createJsonResponse(200, [
+        { id: 'role-editor', name: 'editor' },
+        { id: 'role-reviewer', name: 'reviewer' },
+      ]),
+      createTextResponse(204, ''),
+      createTextResponse(204, ''),
+    ]);
+
+    const client = new KeycloakAdminClient({
+      baseUrl: 'https://keycloak.example.com',
+      realm: 'demo',
+      clientId: 'svc-client',
+      clientSecret: 'svc-secret',
+      fetchImpl,
+    });
+
+    await client.syncRoles('user-1', ['reviewer']);
+
+    const addCall = calls.find((entry) =>
+      String(entry.input).includes('/users/user-1/role-mappings/realm') && entry.init?.method === 'POST'
+    );
+    const removeCall = calls.find((entry) =>
+      String(entry.input).includes('/users/user-1/role-mappings/realm') && entry.init?.method === 'DELETE'
+    );
+
+    expect(addCall).toBeDefined();
+    expect(removeCall).toBeDefined();
+  });
+});
+
+describe('getKeycloakAdminClientConfigFromEnv', () => {
+  it('reads required keycloak admin variables from environment', () => {
+    process.env.KEYCLOAK_ADMIN_BASE_URL = 'https://keycloak.example.com';
+    process.env.KEYCLOAK_ADMIN_REALM = 'demo';
+    process.env.KEYCLOAK_ADMIN_CLIENT_ID = 'svc-client';
+    process.env.KEYCLOAK_ADMIN_CLIENT_SECRET = 'svc-secret';
+
+    expect(getKeycloakAdminClientConfigFromEnv()).toEqual({
+      baseUrl: 'https://keycloak.example.com',
+      realm: 'demo',
+      clientId: 'svc-client',
+      clientSecret: 'svc-secret',
+    });
+  });
+});

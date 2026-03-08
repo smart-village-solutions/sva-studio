@@ -1,0 +1,8 @@
+name: SVA CodeQL Configuration
+
+paths-ignore:
+  - docs/**
+  - concepts/**
+  - '**/*.gen.ts'
+  - '**/dist/**'
+  - '**/coverage/**'

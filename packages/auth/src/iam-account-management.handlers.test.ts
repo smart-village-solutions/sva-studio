@@ -477,7 +477,7 @@ describe('iam-account-management handlers (guards)', () => {
     const payload = (await response.json()) as {
       data: {
         id: string;
-        roles: Array<{ roleId: string; roleKey: string }>;
+        roles: Array<{ roleId: string; roleKey: string; roleName: string }>;
       };
     };
 
@@ -486,8 +486,8 @@ describe('iam-account-management handlers (guards)', () => {
     expect(payload.data.roles).toHaveLength(2);
     expect(payload.data.roles).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ roleId: 'role-editor', roleKey: 'editor' }),
-        expect.objectContaining({ roleId: 'role-admin', roleKey: 'system_admin' }),
+        expect.objectContaining({ roleId: 'role-editor', roleKey: 'editor', roleName: 'Editor' }),
+        expect.objectContaining({ roleId: 'role-admin', roleKey: 'system_admin', roleName: 'System Admin' }),
       ])
     );
     expect(roleWriteAttempted).toBe(false);

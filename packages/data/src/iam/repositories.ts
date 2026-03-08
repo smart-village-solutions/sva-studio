@@ -1,6 +1,4 @@
-import type { IamUuid } from './types';
-import type { RoleManagedBy } from './types';
-import type { RoleSyncState } from './types';
+import type { IamUuid, RoleManagedBy, RoleSyncState } from './types';
 
 export type SqlPrimitive = string | number | boolean | null;
 

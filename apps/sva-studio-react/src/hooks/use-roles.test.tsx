@@ -243,6 +243,48 @@ describe('useRoles', () => {
     expect(result.current.mutationError).toBe(forbiddenError);
   });
 
+  it('invalidates permissions and stores page error when reconcile fails with 403', async () => {
+    const forbiddenError = { status: 403, code: 'forbidden', message: 'Forbidden' };
+    asIamErrorMock.mockReturnValue(forbiddenError);
+    listRolesMock.mockResolvedValueOnce({
+      data: [
+        {
+          id: 'role-c',
+          roleKey: 'reviewer',
+          roleName: 'reviewer',
+          externalRoleName: 'reviewer',
+          managedBy: 'studio',
+          isSystemRole: false,
+          roleLevel: 20,
+          memberCount: 0,
+          syncState: 'synced',
+          permissions: [],
+        },
+      ],
+      pagination: {
+        page: 1,
+        pageSize: 1,
+        total: 1,
+      },
+    });
+    reconcileRolesMock.mockRejectedValueOnce(new Error('forbidden-reconcile'));
+
+    const { result } = renderHook(() => useRoles());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    await act(async () => {
+      const reconciled = await result.current.reconcile();
+      expect(reconciled).toBe(false);
+    });
+
+    expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
+    expect(result.current.error).toBe(forbiddenError);
+    expect(result.current.mutationError).toBeNull();
+  });
+
   it('can clear a stored mutation error explicitly', async () => {
     const conflictError = { status: 409, code: 'conflict', message: 'Conflict' };
     asIamErrorMock.mockReturnValue(conflictError);

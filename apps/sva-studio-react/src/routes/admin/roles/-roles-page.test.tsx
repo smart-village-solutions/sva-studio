@@ -336,4 +336,219 @@ describe('RolesPage', () => {
     expect(screen.getByRole('button', { name: 'Erneut synchronisieren' }).hasAttribute('disabled')).toBe(true);
     expect(screen.getByRole('button', { name: 'Rolle löschen' }).hasAttribute('disabled')).toBe(true);
   });
+
+  it('renders pending sync roles and empty state when no roles match', () => {
+    useRolesMock.mockReturnValue({
+      roles: [
+        {
+          id: 'role-pending',
+          roleKey: 'account_manager',
+          roleName: 'Account Manager',
+          externalRoleName: 'account_manager',
+          managedBy: 'studio',
+          description: 'Pending sync role',
+          isSystemRole: false,
+          roleLevel: 30,
+          memberCount: 0,
+          syncState: 'pending',
+          permissions: [],
+        },
+      ],
+      isLoading: false,
+      error: null,
+      mutationError: null,
+      reconcileReport: null,
+      refetch: vi.fn(),
+      clearMutationError: vi.fn(),
+      createRole: vi.fn(),
+      updateRole: vi.fn(),
+      deleteRole: vi.fn(),
+      retryRoleSync: vi.fn(),
+      reconcile: vi.fn(),
+    });
+
+    render(<RolesPage />);
+
+    expect(screen.getByText('Ausstehend')).toBeTruthy();
+
+    fireEvent.change(screen.getByPlaceholderText('Nach Rolle oder Berechtigung suchen'), {
+      target: { value: 'does-not-exist' },
+    });
+
+    expect(screen.getByRole('status').textContent).toContain('Keine Rollen gefunden.');
+  });
+
+  it('clears mutation errors when create dialog is cancelled', async () => {
+    const clearMutationError = vi.fn();
+
+    useRolesMock.mockReturnValue({
+      roles: [],
+      isLoading: false,
+      error: null,
+      mutationError: new Error('temporär'),
+      reconcileReport: null,
+      refetch: vi.fn(),
+      clearMutationError,
+      createRole: vi.fn(),
+      updateRole: vi.fn(),
+      deleteRole: vi.fn(),
+      retryRoleSync: vi.fn(),
+      reconcile: vi.fn(),
+    });
+
+    render(<RolesPage />);
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Rolle anlegen' })[0]!);
+    const dialog = screen.getByRole('dialog', { name: 'Neue Rolle erstellen' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Abbrechen' }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'Neue Rolle erstellen' })).toBeNull();
+    });
+
+    expect(clearMutationError).toHaveBeenCalledTimes(2);
+  });
+
+  it('closes the create dialog when the overlay is clicked', async () => {
+    const clearMutationError = vi.fn();
+
+    useRolesMock.mockReturnValue({
+      roles: [],
+      isLoading: false,
+      error: null,
+      mutationError: null,
+      reconcileReport: null,
+      refetch: vi.fn(),
+      clearMutationError,
+      createRole: vi.fn(),
+      updateRole: vi.fn(),
+      deleteRole: vi.fn(),
+      retryRoleSync: vi.fn(),
+      reconcile: vi.fn(),
+    });
+
+    render(<RolesPage />);
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Rolle anlegen' })[0]!);
+    const dialog = screen.getByRole('dialog', { name: 'Neue Rolle erstellen' });
+    fireEvent.mouseDown(dialog.parentElement!);
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'Neue Rolle erstellen' })).toBeNull();
+    });
+
+    expect(clearMutationError).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps edit dialog open on failed save and clears mutation error on cancel', async () => {
+    const clearMutationError = vi.fn();
+    const updateRole = vi.fn().mockResolvedValue(false);
+
+    useRolesMock.mockReturnValue({
+      roles: [
+        {
+          id: 'role-edit',
+          roleKey: 'custom_editor',
+          roleName: 'Custom Editor',
+          externalRoleName: 'custom_editor',
+          managedBy: 'studio',
+          description: 'Custom',
+          isSystemRole: false,
+          roleLevel: 30,
+          memberCount: 0,
+          syncState: 'synced',
+          permissions: [],
+        },
+      ],
+      isLoading: false,
+      error: null,
+      mutationError: new Error('Speichern fehlgeschlagen.'),
+      reconcileReport: null,
+      refetch: vi.fn(),
+      clearMutationError,
+      createRole: vi.fn(),
+      updateRole,
+      deleteRole: vi.fn(),
+      retryRoleSync: vi.fn(),
+      reconcile: vi.fn(),
+    });
+
+    render(<RolesPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Rolle bearbeiten' }));
+
+    const dialog = screen.getByRole('dialog', { name: 'Rolle bearbeiten' });
+    fireEvent.change(within(dialog).getByLabelText('Anzeigename'), {
+      target: { value: 'Custom Editors' },
+    });
+    fireEvent.change(within(dialog).getByLabelText('Beschreibung'), {
+      target: { value: 'Updated custom role' },
+    });
+    fireEvent.change(within(dialog).getByLabelText('Rollenlevel'), {
+      target: { value: '31' },
+    });
+    fireEvent.submit(within(dialog).getByRole('button', { name: 'Rolle bearbeiten' }).closest('form')!);
+
+    await waitFor(() => {
+      expect(updateRole).toHaveBeenCalledWith('role-edit', {
+        displayName: 'Custom Editors',
+        description: 'Updated custom role',
+        roleLevel: 31,
+      });
+    });
+
+    expect(screen.getByRole('dialog', { name: 'Rolle bearbeiten' })).toBeTruthy();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Abbrechen' }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'Rolle bearbeiten' })).toBeNull();
+    });
+
+    expect(clearMutationError).toHaveBeenCalledTimes(2);
+  });
+
+  it('closes the edit dialog when the overlay is clicked', async () => {
+    const clearMutationError = vi.fn();
+
+    useRolesMock.mockReturnValue({
+      roles: [
+        {
+          id: 'role-edit-overlay',
+          roleKey: 'custom_editor',
+          roleName: 'Custom Editor',
+          externalRoleName: 'custom_editor',
+          managedBy: 'studio',
+          description: 'Custom',
+          isSystemRole: false,
+          roleLevel: 30,
+          memberCount: 0,
+          syncState: 'synced',
+          permissions: [],
+        },
+      ],
+      isLoading: false,
+      error: null,
+      mutationError: null,
+      reconcileReport: null,
+      refetch: vi.fn(),
+      clearMutationError,
+      createRole: vi.fn(),
+      updateRole: vi.fn(),
+      deleteRole: vi.fn(),
+      retryRoleSync: vi.fn(),
+      reconcile: vi.fn(),
+    });
+
+    render(<RolesPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Rolle bearbeiten' }));
+    const dialog = screen.getByRole('dialog', { name: 'Rolle bearbeiten' });
+    fireEvent.mouseDown(dialog.parentElement!);
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'Rolle bearbeiten' })).toBeNull();
+    });
+
+    expect(clearMutationError).toHaveBeenCalledTimes(2);
+  });
 });

@@ -2,7 +2,7 @@
 
 ## 0. Voraussetzungen
 
-- [ ] 0.1 Dependency `add-account-user-management-ui` ist gemerged und in Zielumgebung verfügbar (Nachweis im PR verlinkt)
+- [x] 0.1 Dependency `add-account-user-management-ui` ist gemerged und in Zielumgebung verfügbar (Nachweis: PR #119 / #120 gemerged; Benutzer-/Admin-UI im aktuellen Workspace und in der genutzten Umgebung verfügbar)
 
 ## 1. Domain- und Datenmodell
 

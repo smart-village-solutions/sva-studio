@@ -252,6 +252,42 @@ describe('KeycloakAdminClient', () => {
     nowMs += 1;
   });
 
+  it('uses listRoles fallback when circuit breaker is open', async () => {
+    let nowMs = 0;
+    const { fetchImpl } = createFetchStub([
+      createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }),
+      createJsonResponse(503, { error: 'service_unavailable' }),
+      createJsonResponse(503, { error: 'service_unavailable' }),
+      createJsonResponse(503, { error: 'service_unavailable' }),
+      createJsonResponse(503, { error: 'service_unavailable' }),
+      createJsonResponse(503, { error: 'service_unavailable' }),
+    ]);
+
+    const fallbackListRoles = vi.fn(async () => [{ id: 'db-fallback-role', name: 'db_fallback_role' }]);
+    const client = new KeycloakAdminClient({
+      baseUrl: 'https://keycloak.example.com',
+      realm: 'demo',
+      clientId: 'svc-client',
+      clientSecret: 'svc-secret',
+      fetchImpl,
+      now: () => nowMs,
+      maxRetries: 0,
+      circuitBreakerFailureThreshold: 5,
+      readFallback: {
+        listRoles: fallbackListRoles,
+      },
+    });
+
+    for (let i = 0; i < 5; i += 1) {
+      await expect(client.getRoleByName(`role-${i}`)).rejects.toBeInstanceOf(KeycloakAdminRequestError);
+    }
+
+    const roles = await client.listRoles();
+    expect(roles).toEqual([expect.objectContaining({ id: 'db-fallback-role', externalName: 'db_fallback_role' })]);
+    expect(fallbackListRoles).toHaveBeenCalledTimes(1);
+    nowMs += 1;
+  });
+
   it('uses listUsers fallback after retryable read error', async () => {
     const { fetchImpl } = createFetchStub([
       createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }),
@@ -327,6 +363,277 @@ describe('KeycloakAdminClient', () => {
     expect(requestCall).toBeDefined();
     const body = JSON.parse(String(requestCall?.init?.body)) as { attributes: Record<string, string[]> };
     expect(body.attributes).toEqual({ locale: ['de'], teams: ['alpha', 'beta'] });
+  });
+
+  it('returns null from getRoleByName when Keycloak responds with 404', async () => {
+    const { fetchImpl } = createFetchStub([
+      createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }),
+      createJsonResponse(404, { error: 'not_found' }),
+    ]);
+
+    const client = new KeycloakAdminClient({
+      baseUrl: 'https://keycloak.example.com',
+      realm: 'demo',
+      clientId: 'svc-client',
+      clientSecret: 'svc-secret',
+      fetchImpl,
+      maxRetries: 0,
+    });
+
+    await expect(client.getRoleByName('missing-role')).resolves.toBeNull();
+  });
+
+  it('blocks getRoleByName when the circuit breaker is open', async () => {
+    let nowMs = 0;
+    const { fetchImpl } = createFetchStub([
+      createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }),
+      createJsonResponse(503, { error: 'service_unavailable' }),
+      createJsonResponse(503, { error: 'service_unavailable' }),
+      createJsonResponse(503, { error: 'service_unavailable' }),
+      createJsonResponse(503, { error: 'service_unavailable' }),
+      createJsonResponse(503, { error: 'service_unavailable' }),
+    ]);
+
+    const client = new KeycloakAdminClient({
+      baseUrl: 'https://keycloak.example.com',
+      realm: 'demo',
+      clientId: 'svc-client',
+      clientSecret: 'svc-secret',
+      fetchImpl,
+      now: () => nowMs,
+      maxRetries: 0,
+      circuitBreakerFailureThreshold: 5,
+    });
+
+    for (let i = 0; i < 5; i += 1) {
+      await expect(client.getRoleByName(`role-${i}`)).rejects.toBeInstanceOf(KeycloakAdminRequestError);
+    }
+
+    await expect(client.getRoleByName('role-open')).rejects.toBeInstanceOf(KeycloakAdminUnavailableError);
+    nowMs += 1;
+  });
+
+  it('creates realm roles and reads the created role back', async () => {
+    const { fetchImpl, calls } = createFetchStub([
+      createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }),
+      createTextResponse(201, ''),
+      createJsonResponse(200, {
+        id: 'role-created',
+        name: 'custom_editor',
+        description: 'Custom Editor',
+        attributes: {
+          managed_by: ['studio'],
+          instance_id: ['instance-1'],
+          role_key: ['custom_editor'],
+          display_name: ['Custom Editor'],
+        },
+        composite: false,
+        clientRole: false,
+        containerId: 'realm-1',
+      }),
+    ]);
+
+    const client = new KeycloakAdminClient({
+      baseUrl: 'https://keycloak.example.com',
+      realm: 'demo',
+      clientId: 'svc-client',
+      clientSecret: 'svc-secret',
+      fetchImpl,
+    });
+
+    const created = await client.createRole({
+      externalName: 'custom_editor',
+      description: 'Custom Editor',
+      attributes: {
+        managedBy: 'studio',
+        instanceId: 'instance-1',
+        roleKey: 'custom_editor',
+        displayName: 'Custom Editor',
+      },
+    });
+
+    expect(created).toEqual({
+      id: 'role-created',
+      externalName: 'custom_editor',
+      description: 'Custom Editor',
+      attributes: {
+        managed_by: ['studio'],
+        instance_id: ['instance-1'],
+        role_key: ['custom_editor'],
+        display_name: ['Custom Editor'],
+      },
+      composite: false,
+      clientRole: false,
+      containerId: 'realm-1',
+    });
+
+    const createCall = calls.find(
+      (entry) =>
+        String(entry.input).includes('/admin/realms/demo/roles') &&
+        entry.init?.method === 'POST'
+    );
+    expect(createCall).toBeDefined();
+    expect(JSON.parse(String(createCall?.init?.body))).toEqual({
+      name: 'custom_editor',
+      description: 'Custom Editor',
+      attributes: {
+        managed_by: ['studio'],
+        instance_id: ['instance-1'],
+        role_key: ['custom_editor'],
+        display_name: ['Custom Editor'],
+      },
+    });
+  });
+
+  it('fails createRole when post-create lookup returns no role', async () => {
+    const { fetchImpl } = createFetchStub([
+      createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }),
+      createTextResponse(201, ''),
+      createJsonResponse(404, { error: 'not_found' }),
+    ]);
+
+    const client = new KeycloakAdminClient({
+      baseUrl: 'https://keycloak.example.com',
+      realm: 'demo',
+      clientId: 'svc-client',
+      clientSecret: 'svc-secret',
+      fetchImpl,
+      maxRetries: 0,
+    });
+
+    await expect(
+      client.createRole({
+        externalName: 'custom_editor',
+        attributes: {
+          managedBy: 'studio',
+          instanceId: 'instance-1',
+          roleKey: 'custom_editor',
+          displayName: 'Custom Editor',
+        },
+      })
+    ).rejects.toMatchObject({
+      code: 'role_lookup_failed',
+      statusCode: 502,
+    });
+  });
+
+  it('updates realm roles and reads the updated role back', async () => {
+    const { fetchImpl, calls } = createFetchStub([
+      createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }),
+      createTextResponse(204, ''),
+      createJsonResponse(200, {
+        id: 'role-updated',
+        name: 'custom_editor',
+        description: 'Updated Custom Editor',
+        attributes: {
+          managed_by: ['studio'],
+          instance_id: ['instance-1'],
+          role_key: ['custom_editor'],
+          display_name: ['Updated Custom Editor'],
+        },
+        composite: false,
+        clientRole: false,
+        containerId: 'realm-1',
+      }),
+    ]);
+
+    const client = new KeycloakAdminClient({
+      baseUrl: 'https://keycloak.example.com',
+      realm: 'demo',
+      clientId: 'svc-client',
+      clientSecret: 'svc-secret',
+      fetchImpl,
+    });
+
+    const updated = await client.updateRole('custom_editor', {
+      description: 'Updated Custom Editor',
+      attributes: {
+        managedBy: 'studio',
+        instanceId: 'instance-1',
+        roleKey: 'custom_editor',
+        displayName: 'Updated Custom Editor',
+      },
+    });
+
+    expect(updated).toEqual(
+      expect.objectContaining({
+        id: 'role-updated',
+        externalName: 'custom_editor',
+        description: 'Updated Custom Editor',
+      })
+    );
+
+    const updateCall = calls.find(
+      (entry) =>
+        String(entry.input).includes('/admin/realms/demo/roles/custom_editor') &&
+        entry.init?.method === 'PUT'
+    );
+    expect(updateCall).toBeDefined();
+    expect(JSON.parse(String(updateCall?.init?.body))).toEqual({
+      name: 'custom_editor',
+      description: 'Updated Custom Editor',
+      attributes: {
+        managed_by: ['studio'],
+        instance_id: ['instance-1'],
+        role_key: ['custom_editor'],
+        display_name: ['Updated Custom Editor'],
+      },
+    });
+  });
+
+  it('fails updateRole when post-update lookup returns no role', async () => {
+    const { fetchImpl } = createFetchStub([
+      createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }),
+      createTextResponse(204, ''),
+      createJsonResponse(404, { error: 'not_found' }),
+    ]);
+
+    const client = new KeycloakAdminClient({
+      baseUrl: 'https://keycloak.example.com',
+      realm: 'demo',
+      clientId: 'svc-client',
+      clientSecret: 'svc-secret',
+      fetchImpl,
+      maxRetries: 0,
+    });
+
+    await expect(
+      client.updateRole('custom_editor', {
+        attributes: {
+          managedBy: 'studio',
+          instanceId: 'instance-1',
+          roleKey: 'custom_editor',
+          displayName: 'Custom Editor',
+        },
+      })
+    ).rejects.toMatchObject({
+      code: 'role_lookup_failed',
+      statusCode: 502,
+    });
+  });
+
+  it('deletes realm roles via DELETE endpoint', async () => {
+    const { fetchImpl, calls } = createFetchStub([
+      createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }),
+      createTextResponse(204, ''),
+    ]);
+
+    const client = new KeycloakAdminClient({
+      baseUrl: 'https://keycloak.example.com',
+      realm: 'demo',
+      clientId: 'svc-client',
+      clientSecret: 'svc-secret',
+      fetchImpl,
+    });
+
+    await expect(client.deleteRole('custom_editor')).resolves.toBeUndefined();
+
+    const deleteCall = calls.find(
+      (entry) =>
+        String(entry.input).includes('/admin/realms/demo/roles/custom_editor') &&
+        entry.init?.method === 'DELETE'
+    );
+    expect(deleteCall).toBeDefined();
   });
 
   it('syncs realm roles by adding missing and removing stale roles', async () => {

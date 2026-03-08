@@ -104,7 +104,7 @@ main() {
   echo "[monitoring-ci] running OTEL metrics smoke"
   (
     cd "${ROOT_DIR}"
-    pnpm --filter @sva/monitoring-client exec tsx scripts/otel-metrics-smoke.ts
+    pnpm exec tsx packages/monitoring-client/scripts/otel-metrics-smoke.ts
   )
 
   local metric_response

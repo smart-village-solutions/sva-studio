@@ -1,4 +1,5 @@
 import { execSync } from 'node:child_process';
+import { pathToFileURL } from 'node:url';
 
 const allowedRootMarkdown = new Set([
   'README.md',
@@ -124,6 +125,6 @@ export const runFilePlacementCheck = (
   return 0;
 };
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   process.exit(runFilePlacementCheck(process.argv.slice(2)));
 }

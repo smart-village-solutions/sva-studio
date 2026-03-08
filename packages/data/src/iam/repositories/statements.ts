@@ -1,5 +1,8 @@
-import type { IamUuid, RoleManagedBy, RoleSyncState } from '../types';
+import type { IamUuid } from '../types';
 import type { SqlStatement } from './types';
+
+type RoleManagedBy = 'studio' | 'external';
+type RoleSyncState = 'synced' | 'pending' | 'failed';
 
 export const iamSeedStatements = {
   upsertInstance: (input: { id: IamUuid; instanceKey: string; displayName: string }): SqlStatement => ({

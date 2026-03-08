@@ -1,0 +1,221 @@
+openapi: 3.0.3
+info:
+  title: SVA IAM Authorization API
+  version: 1.0.0
+  description: |
+    OpenAPI-Spezifikation für IAM Authorization Child C.
+servers:
+  - url: https://api.example.com
+    description: Beispiel-URL
+paths:
+  /iam/me/permissions:
+    get:
+      summary: Effektive Permissions des aktuellen Benutzers lesen
+      operationId: getMePermissions
+      parameters:
+        - name: instanceId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: organizationId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Erfolgreiche Antwort
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MePermissionsResponse'
+        '400':
+          description: Ungültiger Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IamApiErrorResponse'
+        '403':
+          description: Instanz-Kontext verweigert
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IamApiErrorResponse'
+        '503':
+          description: Datenbank nicht verfügbar
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IamApiErrorResponse'
+  /iam/authorize:
+    post:
+      summary: Deterministische RBAC-Autorisierungsentscheidung ausführen
+      operationId: postAuthorize
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthorizeRequest'
+      responses:
+        '200':
+          description: Erfolgreiche Entscheidung (Allow oder Deny)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthorizeResponse'
+        '400':
+          description: Ungültiger Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IamApiErrorResponse'
+        '503':
+          description: Datenbank nicht verfügbar
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IamApiErrorResponse'
+components:
+  schemas:
+    IamApiErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          enum:
+            - unauthorized
+            - invalid_request
+            - invalid_instance_id
+            - invalid_organization_id
+            - instance_scope_mismatch
+            - database_unavailable
+    AuthorizeRequest:
+      type: object
+      required:
+        - instanceId
+        - action
+        - resource
+      properties:
+        instanceId:
+          type: string
+          format: uuid
+        action:
+          type: string
+        resource:
+          type: object
+          required:
+            - type
+          properties:
+            type:
+              type: string
+            id:
+              type: string
+            organizationId:
+              type: string
+              format: uuid
+            attributes:
+              type: object
+              additionalProperties: true
+        context:
+          type: object
+          properties:
+            organizationId:
+              type: string
+              format: uuid
+            requestId:
+              type: string
+            traceId:
+              type: string
+            actingAsUserId:
+              type: string
+            attributes:
+              type: object
+              additionalProperties: true
+    AuthorizeResponse:
+      type: object
+      required:
+        - allowed
+        - reason
+        - instanceId
+        - action
+        - resourceType
+        - evaluatedAt
+      properties:
+        allowed:
+          type: boolean
+        reason:
+          type: string
+          enum:
+            - allowed_by_rbac
+            - permission_missing
+            - instance_scope_mismatch
+        instanceId:
+          type: string
+          format: uuid
+        action:
+          type: string
+        resourceType:
+          type: string
+        resourceId:
+          type: string
+        evaluatedAt:
+          type: string
+          format: date-time
+        requestId:
+          type: string
+        traceId:
+          type: string
+        diagnostics:
+          type: object
+          additionalProperties: true
+    EffectivePermission:
+      type: object
+      required:
+        - action
+        - resourceType
+        - sourceRoleIds
+      properties:
+        action:
+          type: string
+        resourceType:
+          type: string
+        resourceId:
+          type: string
+        organizationId:
+          type: string
+          format: uuid
+        sourceRoleIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+    MePermissionsResponse:
+      type: object
+      required:
+        - instanceId
+        - permissions
+        - evaluatedAt
+      properties:
+        instanceId:
+          type: string
+          format: uuid
+        organizationId:
+          type: string
+          format: uuid
+        permissions:
+          type: array
+          items:
+            $ref: '#/components/schemas/EffectivePermission'
+        evaluatedAt:
+          type: string
+          format: date-time
+        requestId:
+          type: string
+        traceId:
+          type: string

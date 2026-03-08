@@ -1,0 +1,67 @@
+{
+  "name": "sva-studio",
+  "version": "0.0.1",
+  "description": "![Mockup 01 2026](docs/images/mockup-01-2026.png)",
+  "private": true,
+  "engines": {
+    "node": ">=25.0.0",
+    "pnpm": ">=9.12.2"
+  },
+  "packageManager": "pnpm@9.12.2",
+  "scripts": {
+    "nx": "env -u NO_COLOR nx",
+    "build": "env -u NO_COLOR nx run-many -t build",
+    "lint": "env -u NO_COLOR nx run-many -t lint",
+    "test:eslint": "env -u NO_COLOR nx run-many -t lint",
+    "test:types": "env -u NO_COLOR nx run-many -t build --projects=auth,core,data,monitoring-client,plugin-example,routing,sdk",
+    "test": "pnpm test:unit",
+    "test:unit": "env -u NO_COLOR nx run-many -t test:unit --parallel=1",
+    "test:coverage": "env -u NO_COLOR nx run-many -t test:coverage",
+    "test:coverage:affected": "env -u NO_COLOR nx affected --target=test:coverage --base=origin/main",
+    "test:integration": "env -u NO_COLOR nx run-many -t test:integration",
+    "test:e2e": "env -u NO_COLOR nx run sva-studio-react:test:e2e",
+    "test:ci": "pnpm check:file-placement && pnpm check:openapi:iam && pnpm test:unit && pnpm test:coverage",
+    "coverage-gate": "tsx scripts/ci/coverage-gate.ts",
+    "check:file-placement": "node scripts/ci/check-file-placement.mjs",
+    "check:file-placement:staged": "node scripts/ci/check-file-placement.mjs --staged",
+    "check:openapi:iam": "node scripts/ci/check-openapi-iam.mjs",
+    "iam:retention:run": "node scripts/ops/run-iam-retention.mjs",
+    "hooks:install": "git config core.hooksPath .githooks"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/smart-village-solutions/sva-studio.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/smart-village-solutions/sva-studio/issues"
+  },
+  "homepage": "https://github.com/smart-village-solutions/sva-studio#readme",
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@nx/eslint": "^22.5.3",
+    "@nx/eslint-plugin": "^22.5.3",
+    "@nx/js": "^22.5.3",
+    "@types/node": "^25.3.3",
+    "@vitest/coverage-v8": "^4.0.18",
+    "autoprefixer": "10.4.27",
+    "eslint": "^10.0.2",
+    "nx": "^22.5.3",
+    "postcss": "8.4.49",
+    "tailwindcss": "3.4.14",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "8.56.1"
+  },
+  "pnpm": {
+    "overrides": {
+      "minimatch": "10.2.2",
+      "axios": "1.13.5",
+      "undici": "6.23.0",
+      "solid-js": "1.9.11",
+      "seroval": "1.4.2"
+    }
+  }
+}

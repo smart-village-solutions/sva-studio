@@ -41,6 +41,8 @@ gleichzeitig beeinflussen.
 - Permission-Snapshot-Cache ist instanz- und kontextgebunden; Invalidation erfolgt event-first (Postgres `NOTIFY`) mit TTL-Fallback
 - Audit-Logging für IAM-Ereignisse folgt Dual-Write (`iam.activity_logs` + OTEL via SDK Logger)
 - Audit-Daten enthalten korrelierbare IDs (`request_id`, `trace_id`) und pseudonymisierte Actor-Referenzen
+- Studio-verwaltete Rollen werden über `managed_by = 'studio'` und `instance_id` gegen fremdverwaltete Keycloak-Rollen abgegrenzt
+- `role_key` ist die stabile technische Identität, `display_name` der editierbare UI-Name
 
 ### Logging und Observability
 
@@ -50,6 +52,9 @@ gleichzeitig beeinflussen.
 - Label-Whitelist und PII-Blockliste in OTEL/Promtail
 - IAM-Authorize/Cache-Logs nutzen strukturierte Operations (`cache_lookup`, `cache_invalidate`, `cache_stale_detected`, `cache_invalidate_failed`)
 - Korrelationsfelder `request_id` und `trace_id` sind im IAM-Pfad verpflichtend
+- Role-Sync- und Reconcile-Pfade verwenden ausschließlich den SDK-Logger; `console.*` ist serverseitig ausgeschlossen
+- Role-Sync-Audit nutzt ein einheitliches Schema mit `workspace_id`, `operation`, `result`, `error_code?`, `request_id`, `trace_id?`, `span_id?`
+- Zusätzliche Metriken für den Rollenpfad: `iam_role_sync_operations_total` und `iam_role_drift_backlog`
 - Governance-Logs nutzen `component: iam-governance` und strukturierte Events:
   `impersonate_start`, `impersonate_end`, `impersonate_timeout`, `impersonate_abort`
 - Governance-Audit folgt Dual-Write: DB (`iam.activity_logs`) + OTEL-Pipeline
@@ -75,6 +80,8 @@ gleichzeitig beeinflussen.
 
 - UI-Texte sind derzeit überwiegend direkt im Code und noch nicht durchgängig i18n-basiert
 - A11y wird pro Review/Template eingefordert, aber noch nicht zentral automatisiert
+- Rollen-Statusindikatoren in `/admin/roles` verwenden i18n-Labels für `synced`, `pending` und `failed`
+- Retry- und Reconcile-Aktionen bleiben über semantische Buttons und Testabdeckung tastatur- und screenreader-freundlich prüfbar
 
 ### Review-Governance
 

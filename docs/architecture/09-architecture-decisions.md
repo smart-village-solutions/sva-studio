@@ -66,3 +66,12 @@ Zuordnung:
 - Abschnitt 08 (Querschnitt): ADR-015, ADR-016
 - Abschnitt 06 (Laufzeit): ADR-016 (Keycloak-First + Compensation)
 - Abschnitt 07 (Deployment): ADR-016 (Service-Account/Secrets)
+
+### Fortschreibung 2026-03: Rollen-Katalog-Sync
+
+- `add-keycloak-role-catalog-sync` nutzt ADR-016 als tragende Entscheidung für die IdP-Abstraktion und konkretisiert sie für Realm-Rollen-CRUD.
+- Ergänzende Festlegungen im Change:
+  - Keycloak-First mit Compensation für synchrone Write-Operationen
+  - stabiler `role_key` mit getrenntem `display_name`
+  - `report-only` für orphaned, studio-markierte Keycloak-Rollen
+  - geplanter Reconcile-Lauf als Sicherheitsnetz für Drift und externe Eingriffe

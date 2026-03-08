@@ -27,6 +27,7 @@ Abhängigkeiten des aktuellen Systems.
    - exhaustives Auth-Handler-Mapping mit explizitem Fehler bei unbekanntem Auth-Pfad
 4. Auth (`packages/auth`)
    - OIDC-Flows, Session-Store, auth HTTP-Handler
+   - modulare Server-Fassaden und fachliche Unterordner für IAM- und Auth-Pfade
 5. SDK (`packages/sdk`)
    - Logger, Context-Propagation, OTEL-Bootstrap
 6. Monitoring Client (`packages/monitoring-client`)
@@ -40,17 +41,26 @@ Abhängigkeiten des aktuellen Systems.
 ### IAM-Bausteine und Package-Zuordnung
 
 - Identity und OIDC-Flow:
-  - `packages/auth` (`routes.server.ts`, `oidc.server.ts`, `session.server.ts`)
+  - `packages/auth` (`routes.server.ts`, `routes/*`, `auth.server.ts`, `auth-server/*`, `oidc.server.ts`)
 - Account- und Rollenmanagement inkl. IdP-Synchronisation:
-  - `packages/auth` (`iam-account-management.server.ts`, `identity-provider-port.ts`, `keycloak-admin-client.ts`)
+  - `packages/auth` (`iam-account-management.server.ts`, `iam-account-management/*`, `identity-provider-port.ts`, `keycloak-admin-client.ts`, `keycloak-admin-client/*`)
 - Autorisierung (RBAC/ABAC) und Laufzeitentscheidungen:
-  - `packages/auth` (`iam-authorization.server.ts`, `iam-policy-evaluator.server.ts`)
+  - `packages/auth` (`iam-authorization.server.ts`, `iam-authorization/*`)
 - Organisations- und Mandantenkontext (`instanceId`) inkl. RLS-nahe Datenmodelle:
-  - `packages/data` (IAM-Migrationen, Seeds, SQL-Policies)
+  - `packages/data` (IAM-Migrationen, Seeds, SQL-Policies, `iam/repositories/*`)
 - Auditierung und Nachvollziehbarkeit:
   - `packages/auth` (`audit-db-sink.server.ts`) + `packages/sdk` (`createSdkLogger`)
 - Governance und DSGVO-Betroffenenrechte:
-  - `packages/auth` (`iam-governance.server.ts`, `iam-data-subject-rights.server.ts`)
+  - `packages/auth` (`iam-governance.server.ts`, `iam-governance/*`, `iam-data-subject-rights.server.ts`, `iam-data-subject-rights/*`)
+
+### IAM-Server-Schnittmuster
+
+- Fassade:
+  - stabile Importpfade für Router, Tests und `@sva/auth/server`
+- Fachmodul:
+  - gruppiert Handler und fachnahe Hilfsbausteine pro Domäne
+- Core:
+  - enthält verbleibende, noch nicht vollständig zerlegte Kernlogik mit expliziter Ticket-Restschuld
 
 ### Verantwortungsgrenzen im IAM-Pfad
 
@@ -120,12 +130,12 @@ Neu hinzugekommene Bausteine im Change `add-account-user-management-ui`:
 
 Neu hinzugekommene Bausteine im Change `add-keycloak-role-catalog-sync`:
 
-1. `packages/auth/src/iam-account-management.server.ts`
-   - Orchestriert Keycloak-First-CRUD, Compensation, Reconcile-Endpunkt und geplanten Reconcile-Lauf.
+1. `packages/auth/src/iam-account-management.server.ts` + `packages/auth/src/iam-account-management/*`
+   - Fassade für Users, Rollen, Profile und Plattform-Entry-Points; Kernlogik liegt in `core.ts`.
 2. `packages/auth/src/identity-provider-port.ts`
    - Erweitert die IdP-Abstraktion um Role-Catalog-Operationen (`list`, `get`, `create`, `update`, `delete`).
-3. `packages/auth/src/keycloak-admin-client.ts`
-   - Konkreter Keycloak-Adapter für Realm-Rollen inklusive Managed-Attributes (`managed_by`, `instance_id`, `role_key`, `display_name`).
+3. `packages/auth/src/keycloak-admin-client.ts` + `packages/auth/src/keycloak-admin-client/*`
+   - Fassade und Teilmodule für Konfiguration, Fehlertypen, Modelle und Keycloak-Adapter-Core.
 4. `packages/data/migrations/up/0007_iam_role_catalog_sync.sql`
    - Erweitert `iam.roles` um Mapping- und Sync-Felder (`role_key`, `external_role_name`, `sync_state`, `last_synced_at`, `last_error_code`).
 5. `apps/sva-studio-react/src/routes/admin/roles/-roles-page.tsx`

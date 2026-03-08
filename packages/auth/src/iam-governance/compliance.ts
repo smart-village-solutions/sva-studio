@@ -1,0 +1,1 @@
+export { governanceComplianceExportHandler } from './core';

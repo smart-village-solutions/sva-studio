@@ -80,6 +80,11 @@ Schulden auf IST-Basis.
    - Wahrscheinlichkeit: hoch
    - Maßnahme: `complexity-gate`, ticketpflichtige tracked findings, Hotspot-Coverage für kritische Dateien
 
+14. Übergangsphase mit modularen Fassaden und verbleibenden `core.ts`-Hotspots
+   - Impact: mittel bis hoch (Reviewer müssen zwischen stabiler API und Restschuld-Kern unterscheiden)
+   - Wahrscheinlichkeit: hoch
+   - Maßnahme: Restschuld nur mit `QUAL-*`-Ticket, klare Doku der Modulgrenzen und inkrementelle Weiterzerlegung
+
 ### Technische Schulden (Auswahl)
 
 - Teilweise No-Op Testtargets in Libraries
@@ -90,6 +95,7 @@ Schulden auf IST-Basis.
 - Reifegrad von Governance-E2E-Tests muss im Produktiv-Rollout weiter erhöht werden
 - Risiko von Scope-Bleeding bei schnellen IAM-Iterationen ohne harte Gate-Disziplin
 - Mehrere historische IAM-Hotspots sind bewusst als tracked findings mit Refactoring-Backlog dokumentiert
+- Nach der Fassaden-Zerlegung verbleibt Restkomplexität gezielt in `iam-account-management/core.ts`, `iam-data-subject-rights/core.ts`, `iam-governance/core.ts` und `keycloak-admin-client/core.ts`
 
 ### Nachverfolgung
 

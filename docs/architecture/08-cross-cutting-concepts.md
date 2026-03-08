@@ -32,6 +32,7 @@ gleichzeitig beeinflussen.
 - Art.-19-Nachweisdaten für Empfängerbenachrichtigung werden revisionssicher persistiert
 - Trust-Boundary-Validierung mit Zod in IAM-Endpoints (`authorize`, `governance`, `data-subject-rights`)
 - DataClient unterstützt optionale Runtime-Schema-Validierung (`get(path, schema)`) für API-Responses
+- IAM-Server-Fassaden bleiben bewusst dünn; fachliche Erweiterungen gehören in Unterordner und nicht zurück in Monolith-Dateien
 
 ### IAM Multi-Tenancy, Caching und Audit-Logging
 
@@ -103,6 +104,7 @@ gleichzeitig beeinflussen.
 - Zentrale und kritische Module werden zusätzlich über ein eigenes Komplexitäts-Gate mit Ticketpflicht überwacht
 - Das Modulregister und die Schwellwerte liegen versioniert unter `tooling/quality/complexity-policy.json`
 - Bekannte Überschreitungen bleiben nur dann zulässig, wenn sie in `trackedFindings` mit Refactoring-Ticket hinterlegt sind
+- Bei modularem IAM-Refactoring wird Restschuld am tatsächlichen Kernmodul (`core.ts` oder feingranulare Teilbausteine) und nicht am historischen Fassadenpfad dokumentiert
 - Kritische Coverage-Hotspots werden in `tooling/testing/coverage-policy.json` als `hotspotFloors` geführt
 - Normative Accessibility und heuristische Nutzersicht sind bewusst getrennt:
   - `ux-accessibility.agent.md` für WCAG/BITV, Fokus, Tastatur und Screenreader
@@ -131,6 +133,7 @@ Referenzen:
 - `docs/architecture/iam-service-architektur.md`
 - `docs/architecture/iam-datenklassifizierung.md`
 - `docs/development/complexity-quality-governance.md`
+- `docs/development/iam-server-modularization.md`
 - `docs/development/review-agent-governance.md`
 - `docs/development/iam-schluesselmanagement-strategie.md`
 - `docs/guides/iam-governance-runbook.md`

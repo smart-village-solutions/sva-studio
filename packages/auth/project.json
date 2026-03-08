@@ -12,8 +12,9 @@
       }
     },
     "lint": {
-      "executor": "nx:run-commands",
+      "executor": "@nx/eslint:lint",
       "options": {
+        "lintFilePatterns": ["packages/auth/src/**/*.{ts,tsx,js,jsx}"],
         "command": "pnpm --filter @sva/auth exec tsc -p tsconfig.lib.json --noEmit"
       }
     },

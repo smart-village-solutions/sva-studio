@@ -1,4 +1,5 @@
 import type { FeatureFlags } from './types';
+import { createApiError } from './api-helpers';
 
 export const parseBooleanFlag = (value: string | undefined, defaultValue: boolean): boolean => {
   if (!value) {
@@ -16,4 +17,21 @@ export const getFeatureFlags = (): FeatureFlags => {
   const iamBulkEnabled = iamAdminEnabled && readFlag('IAM_BULK_ENABLED', true);
 
   return { iamUiEnabled, iamAdminEnabled, iamBulkEnabled };
+};
+
+export const ensureFeature = (
+  flags: FeatureFlags,
+  feature: 'iam_ui' | 'iam_admin' | 'iam_bulk',
+  requestId?: string
+): Response | null => {
+  if (feature === 'iam_ui' && !flags.iamUiEnabled) {
+    return createApiError(503, 'feature_disabled', 'Feature iam-ui-enabled ist deaktiviert.', requestId);
+  }
+  if (feature === 'iam_admin' && !flags.iamAdminEnabled) {
+    return createApiError(503, 'feature_disabled', 'Feature iam-admin-enabled ist deaktiviert.', requestId);
+  }
+  if (feature === 'iam_bulk' && !flags.iamBulkEnabled) {
+    return createApiError(503, 'feature_disabled', 'Feature iam-bulk-enabled ist deaktiviert.', requestId);
+  }
+  return null;
 };

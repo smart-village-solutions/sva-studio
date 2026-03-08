@@ -1,10 +1,3 @@
-import { createHash } from 'node:crypto';
-import {
-  decryptFieldValue,
-  encryptFieldValue,
-  parseFieldEncryptionConfigFromEnv,
-  type FieldEncryptionConfig,
-} from '@sva/core/security';
 import type {
   ApiErrorCode,
   ApiErrorResponse,
@@ -18,7 +11,6 @@ import type {
 } from '@sva/core';
 import { createSdkLogger, getWorkspaceContext, redactObject, withRequestContext } from '@sva/sdk/server';
 import { metrics } from '@opentelemetry/api';
-import { z } from 'zod';
 
 import type { IdentityProviderPort } from '../identity-provider-port';
 import { jitProvisionAccountWithClient } from '../jit-provisioning.server';
@@ -34,15 +26,22 @@ import { createPoolResolver, jsonResponse, type QueryClient, withInstanceDb } fr
 import { isUuid, readNumber, readString } from '../shared/input-readers';
 import { resolveInstanceId } from '../shared/instance-id-resolution';
 
+import { ADMIN_ROLES, SYSTEM_ADMIN_ROLES } from './constants';
 import {
-  ADMIN_ROLES,
-  BULK_RATE_LIMIT,
-  READ_RATE_LIMIT,
-  RATE_WINDOW_MS,
-  SYSTEM_ADMIN_ROLES,
-  WRITE_RATE_LIMIT,
-} from './constants';
-import { getFeatureFlags, parseBooleanFlag } from './feature-flags';
+  asApiItem,
+  asApiList,
+  createApiError,
+  parseRequestBody,
+  readInstanceIdFromRequest,
+  readPage,
+  readPathSegment,
+  requireIdempotencyKey,
+  toPayloadHash,
+} from './api-helpers';
+import { ensureFeature, getFeatureFlags } from './feature-flags';
+import { protectField, revealField } from './encryption';
+import { consumeRateLimit } from './rate-limit';
+import { validateCsrf } from './csrf';
 import {
   bulkDeactivateSchema,
   createRoleSchema,
@@ -59,7 +58,6 @@ import type {
   IdempotencyStatus,
   ManagedBy,
   ManagedRoleRow,
-  RateBucket,
   RateScope,
   ResolveActorOptions,
   RoleSyncErrorCode,
@@ -90,10 +88,6 @@ const roleDriftBacklogByInstance = new Map<string, number>();
 
 const resolvePool = createPoolResolver(() => process.env.IAM_DATABASE_URL);
 
-const rateLimiterStore = new Map<string, RateBucket>();
-
-let encryptionConfigCache: { signature: string; config: FieldEncryptionConfig | null } | null = null;
-
 let identityProviderCache:
   | {
       provider: IdentityProviderPort;
@@ -114,121 +108,6 @@ const maskEmail = (value: string | undefined): string | undefined => {
     return `***@${domain}`;
   }
   return `${localPart.slice(0, 2)}***@${domain}`;
-};
-
-const parseRequestBody = async <T>(request: Request, schema: z.ZodSchema<T>) => {
-  const raw = await request.text();
-  let parsedJson: unknown;
-  try {
-    parsedJson = JSON.parse(raw);
-  } catch {
-    return { ok: false as const, rawBody: raw };
-  }
-
-  const parsed = schema.safeParse(parsedJson);
-  if (!parsed.success) {
-    return { ok: false as const, rawBody: raw };
-  }
-  return { ok: true as const, data: parsed.data, rawBody: raw };
-};
-
-const toPayloadHash = (rawBody: string): string => createHash('sha256').update(rawBody).digest('hex');
-
-const getEncryptionConfig = (): FieldEncryptionConfig | null => {
-  const activeKeyId = process.env.IAM_PII_ACTIVE_KEY_ID ?? '';
-  const keyring = process.env.IAM_PII_KEYRING_JSON ?? '';
-  const signature = `${activeKeyId}::${keyring}`;
-  if (encryptionConfigCache?.signature === signature) {
-    return encryptionConfigCache.config;
-  }
-
-  const config = parseFieldEncryptionConfigFromEnv(process.env);
-  encryptionConfigCache = { signature, config };
-  return config;
-};
-
-const protectField = (value: string | undefined, aad: string): string | null => {
-  if (!value) {
-    return null;
-  }
-  const config = getEncryptionConfig();
-  if (!config) {
-    const allowPlaintextFallback =
-      process.env.IAM_PII_ALLOW_PLAINTEXT_FALLBACK !== undefined
-        ? parseBooleanFlag(process.env.IAM_PII_ALLOW_PLAINTEXT_FALLBACK, false)
-        : process.env.NODE_ENV !== 'production';
-    if (!allowPlaintextFallback) {
-      throw new Error('pii_encryption_required:PII-Verschlüsselung ist nicht konfiguriert.');
-    }
-    return value;
-  }
-  return encryptFieldValue(value, config, aad);
-};
-
-const revealField = (value: string | null | undefined, aad: string): string | undefined => {
-  if (!value) {
-    return undefined;
-  }
-  if (!value.startsWith('enc:v1:')) {
-    return value;
-  }
-  const config = getEncryptionConfig();
-  if (!config) {
-    return undefined;
-  }
-  try {
-    return decryptFieldValue(value, config.keyring, aad);
-  } catch {
-    return undefined;
-  }
-};
-
-const createApiError = (
-  status: number,
-  code: ApiErrorCode,
-  message: string,
-  requestId?: string,
-  details?: Readonly<Record<string, unknown>>
-): Response =>
-  jsonResponse(status, {
-    error: {
-      code,
-      message,
-      ...(details ? { details } : {}),
-    },
-    ...(requestId ? { requestId } : {}),
-  } satisfies ApiErrorResponse);
-
-const asApiItem = <T>(data: T, requestId?: string): ApiItemResponse<T> => ({
-  data,
-  ...(requestId ? { requestId } : {}),
-});
-
-const asApiList = <T>(
-  data: readonly T[],
-  pagination: { page: number; pageSize: number; total: number },
-  requestId?: string
-): ApiListResponse<T> => ({
-  data,
-  pagination,
-  ...(requestId ? { requestId } : {}),
-});
-
-const readPage = (request: Request): { page: number; pageSize: number } => {
-  const url = new URL(request.url);
-  const page = Math.max(1, readNumber(Number(url.searchParams.get('page'))) ?? 1);
-  const pageSize = Math.max(1, Math.min(100, readNumber(Number(url.searchParams.get('pageSize'))) ?? 25));
-  return { page, pageSize };
-};
-
-const readInstanceIdFromRequest = (request: Request, fallback?: string): string | undefined => {
-  const url = new URL(request.url);
-  return readString(url.searchParams.get('instanceId')) ?? fallback;
-};
-
-const readPathSegment = (request: Request, index: number): string | undefined => {
-  const segments = new URL(request.url).pathname.split('/').filter((segment) => segment.length > 0);
-  return segments[index];
 };
 
 const resolveIdentityProvider = () => {
@@ -437,106 +316,7 @@ const buildRoleSyncFailure = (
   return createApiError(500, 'internal_error', input.fallbackMessage, input.requestId, details);
 };
 
-const consumeRateLimit = (
-  input: { instanceId: string; actorKeycloakSubject: string; scope: RateScope; requestId?: string } & {
-    now?: number;
-  }
-): Response | null => {
-  const limit = input.scope === 'read' ? READ_RATE_LIMIT : input.scope === 'bulk' ? BULK_RATE_LIMIT : WRITE_RATE_LIMIT;
-  const now = input.now ?? Date.now();
-  const key = `${input.instanceId}:${input.actorKeycloakSubject}:${input.scope}`;
-  const existing = rateLimiterStore.get(key);
-  if (!existing || now - existing.windowStartedAt >= RATE_WINDOW_MS) {
-    rateLimiterStore.set(key, { windowStartedAt: now, count: 1 });
-    return null;
-  }
-
-  if (existing.count >= limit) {
-    return createApiError(
-      429,
-      'rate_limited',
-      'Rate limit überschritten.',
-      input.requestId,
-      { scope: input.scope, limit, windowSeconds: 60 }
-    );
-  }
-
-  existing.count += 1;
-  rateLimiterStore.set(key, existing);
-  return null;
-};
-
-const validateCsrf = (request: Request, requestId?: string): Response | null => {
-  const header = readString(request.headers.get('x-requested-with'));
-  if (!header || header.toLowerCase() !== 'xmlhttprequest') {
-    return createApiError(
-      403,
-      'csrf_validation_failed',
-      "Ungültiger CSRF-Header. 'X-Requested-With: XMLHttpRequest' ist erforderlich.",
-      requestId
-    );
-  }
-
-  if (!isTrustedRequestOrigin(request)) {
-    return createApiError(
-      403,
-      'csrf_validation_failed',
-      "Ungültige Request-Origin. 'Origin' oder 'Referer' muss vertrauenswürdig sein.",
-      requestId
-    );
-  }
-
-  return null;
-};
-
-const normalizeOrigin = (value: string): string | null => {
-  try {
-    return new URL(value).origin;
-  } catch {
-    return null;
-  }
-};
-
-const readAllowedOrigins = (raw: string | undefined): ReadonlySet<string> => {
-  if (!raw) {
-    return new Set();
-  }
-
-  const normalized = raw
-    .split(',')
-    .map((entry) => entry.trim())
-    .filter((entry) => entry.length > 0)
-    .map((entry) => normalizeOrigin(entry))
-    .filter((entry): entry is string => Boolean(entry));
-
-  return new Set(normalized);
-};
-
-export const isTrustedRequestOrigin = (
-  request: Request,
-  allowedOriginsRaw: string | undefined = process.env.IAM_CSRF_ALLOWED_ORIGINS
-): boolean => {
-  const requestOrigin = normalizeOrigin(request.url);
-  if (!requestOrigin) {
-    return false;
-  }
-
-  const allowedOrigins = new Set<string>([requestOrigin, ...readAllowedOrigins(allowedOriginsRaw)]);
-
-  const originHeader = readString(request.headers.get('origin'));
-  if (originHeader) {
-    const normalizedOrigin = normalizeOrigin(originHeader);
-    return Boolean(normalizedOrigin && allowedOrigins.has(normalizedOrigin));
-  }
-
-  const refererHeader = readString(request.headers.get('referer'));
-  if (refererHeader) {
-    const normalizedRefererOrigin = normalizeOrigin(refererHeader);
-    return Boolean(normalizedRefererOrigin && allowedOrigins.has(normalizedRefererOrigin));
-  }
-
-  return false;
-};
+export { isTrustedRequestOrigin } from './csrf';
 
 const withInstanceScopedDb = async <T>(instanceId: string, work: (client: QueryClient) => Promise<T>): Promise<T> =>
   withInstanceDb(resolvePool, instanceId, work);
@@ -915,23 +695,6 @@ WHERE actor_account_id = $1::uuid
       ]
     );
   });
-};
-
-const ensureFeature = (
-  flags: FeatureFlags,
-  feature: 'iam_ui' | 'iam_admin' | 'iam_bulk',
-  requestId?: string
-): Response | null => {
-  if (feature === 'iam_ui' && !flags.iamUiEnabled) {
-    return createApiError(503, 'feature_disabled', 'Feature iam-ui-enabled ist deaktiviert.', requestId);
-  }
-  if (feature === 'iam_admin' && !flags.iamAdminEnabled) {
-    return createApiError(503, 'feature_disabled', 'Feature iam-admin-enabled ist deaktiviert.', requestId);
-  }
-  if (feature === 'iam_bulk' && !flags.iamBulkEnabled) {
-    return createApiError(503, 'feature_disabled', 'Feature iam-bulk-enabled ist deaktiviert.', requestId);
-  }
-  return null;
 };
 
 const requireRoles = (ctx: AuthenticatedRequestContext, roles: ReadonlySet<string>, requestId?: string) => {
@@ -1350,21 +1113,6 @@ GROUP BY a.id;
     notes: row.notes ?? undefined,
     permissions: row.permission_rows?.map((entry) => entry.permission_key) ?? [],
   };
-};
-
-const requireIdempotencyKey = (request: Request, requestId?: string): { key: string } | { error: Response } => {
-  const idempotencyKey = readString(request.headers.get('idempotency-key'));
-  if (!idempotencyKey) {
-    return {
-      error: createApiError(
-        400,
-        'idempotency_key_required',
-        'Header Idempotency-Key ist erforderlich.',
-        requestId
-      ),
-    };
-  }
-  return { key: idempotencyKey };
 };
 
 const ensureRoleAssignmentWithinActorLevel = async (input: {

@@ -11,7 +11,7 @@
 // Logger
 // ============================================================================
 export type { LoggerOptions } from './logger/index.server';
-export { createSdkLogger } from './logger/index.server';
+export { createSdkLogger, redactObject } from './logger/index.server';
 
 // ============================================================================
 // Request Context Middleware

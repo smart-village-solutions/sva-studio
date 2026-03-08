@@ -2,6 +2,13 @@ type AccessRoles = {
   roles?: unknown;
 };
 
+const ROLE_ALIASES: Readonly<Record<string, readonly string[]>> = {
+  // The external SVA Mainserver realm exposes the elevated studio role as `Admin`.
+  Admin: ['system_admin'],
+};
+
+const ROLE_ALIAS_REALM_ROLES = new Set<string>(['Admin']);
+
 /**
  * Resolve a display name from standard OIDC claims with fallbacks.
  */
@@ -55,23 +62,32 @@ const readAccessRoles = (value: unknown) => {
  */
 export const extractRoles = (claims: Record<string, unknown>, clientId?: string) => {
   const roles = new Set<string>();
-  for (const role of readRoles(claims.roles)) {
+  const addRole = (role: string, allowAlias: boolean) => {
     roles.add(role);
+    if (allowAlias) {
+      for (const alias of ROLE_ALIASES[role] ?? []) {
+        roles.add(alias);
+      }
+    }
+  };
+
+  for (const role of readRoles(claims.roles)) {
+    addRole(role, false);
   }
   for (const role of readAccessRoles(claims.realm_access)) {
-    roles.add(role);
+    addRole(role, ROLE_ALIAS_REALM_ROLES.has(role));
   }
   const resourceAccess = claims.resource_access;
   if (resourceAccess && typeof resourceAccess === 'object') {
     const accessEntries = resourceAccess as Record<string, unknown>;
     if (clientId && accessEntries[clientId]) {
       for (const role of readAccessRoles(accessEntries[clientId])) {
-        roles.add(role);
+        addRole(role, false);
       }
-    } else {
+    } else if (!clientId) {
       for (const entry of Object.values(accessEntries)) {
         for (const role of readAccessRoles(entry)) {
-          roles.add(role);
+          addRole(role, false);
         }
       }
     }

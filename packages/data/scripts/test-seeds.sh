@@ -86,7 +86,9 @@ assert_count() {
 
 assert_count "SELECT COUNT(*) FROM iam.instances WHERE instance_key = 'seed-instance-default';" "1" "instance count"
 assert_count "SELECT COUNT(*) FROM iam.organizations WHERE organization_key = 'seed-org-default';" "1" "organization count"
-assert_count "SELECT COUNT(*) FROM iam.roles WHERE instance_id = '11111111-1111-1111-1111-111111111111';" "7" "role count"
+assert_count "SELECT COUNT(*) FROM iam.roles WHERE instance_id = '11111111-1111-1111-1111-111111111111';" "15" "role count"
+assert_count "SELECT COUNT(*) FROM iam.roles WHERE instance_id = '11111111-1111-1111-1111-111111111111' AND managed_by = 'studio';" "15" "studio role count"
+assert_count "SELECT COUNT(*) FROM iam.roles WHERE instance_id = '11111111-1111-1111-1111-111111111111' AND managed_by = 'external';" "0" "external role count"
 assert_count "SELECT COUNT(*) FROM iam.permissions WHERE instance_id = '11111111-1111-1111-1111-111111111111';" "13" "permission count"
 assert_count "SELECT COUNT(*) FROM iam.accounts WHERE keycloak_subject LIKE 'seed:%';" "7" "account count"
 assert_count "SELECT COUNT(*) FROM iam.instance_memberships WHERE instance_id = '11111111-1111-1111-1111-111111111111';" "7" "instance memberships"

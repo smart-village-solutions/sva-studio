@@ -104,3 +104,18 @@ Neu hinzugekommene Bausteine im Change `add-account-user-management-ui`:
    - Frontend-Datenzugriff auf IAM-v1-Endpunkte mit Fehler-/403-Behandlung.
 5. `packages/routing/src/account-ui.routes.ts`
    - Zentrale Guard-Konfiguration für `/account`, `/admin/users`, `/admin/users/$userId`, `/admin/roles`.
+
+### Erweiterung 2026-03: Keycloak-Rollen-Katalog-Sync
+
+Neu hinzugekommene Bausteine im Change `add-keycloak-role-catalog-sync`:
+
+1. `packages/auth/src/iam-account-management.server.ts`
+   - Orchestriert Keycloak-First-CRUD, Compensation, Reconcile-Endpunkt und geplanten Reconcile-Lauf.
+2. `packages/auth/src/identity-provider-port.ts`
+   - Erweitert die IdP-Abstraktion um Role-Catalog-Operationen (`list`, `get`, `create`, `update`, `delete`).
+3. `packages/auth/src/keycloak-admin-client.ts`
+   - Konkreter Keycloak-Adapter für Realm-Rollen inklusive Managed-Attributes (`managed_by`, `instance_id`, `role_key`, `display_name`).
+4. `packages/data/migrations/up/0007_iam_role_catalog_sync.sql`
+   - Erweitert `iam.roles` um Mapping- und Sync-Felder (`role_key`, `external_role_name`, `sync_state`, `last_synced_at`, `last_error_code`).
+5. `apps/sva-studio-react/src/routes/admin/roles/-roles-page.tsx`
+   - Zeigt Sync-Status, Retry-Aktion und manuelles Reconcile für `system_admin`.

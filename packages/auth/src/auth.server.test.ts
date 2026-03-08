@@ -125,7 +125,7 @@ describe('getSessionUser', () => {
       preferred_username: 'Neuer Nutzer',
       email: 'new@example.com',
       instanceId: 'dev-local-1',
-      roles: ['editor'],
+      roles: ['Admin'],
     };
     const refreshedAccessToken = createUnsignedJwt(refreshedClaims);
 
@@ -138,7 +138,7 @@ describe('getSessionUser', () => {
           name: 'Neuer Nutzer',
           email: 'new@example.com',
           instanceId: 'dev-local-1',
-          roles: ['editor'],
+          roles: ['Admin', 'system_admin'],
         },
       });
 
@@ -169,7 +169,7 @@ describe('getSessionUser', () => {
       name: 'Neuer Nutzer',
       email: 'new@example.com',
       instanceId: 'dev-local-1',
-      roles: ['editor'],
+      roles: ['Admin', 'system_admin'],
     });
     expect(deleteSessionMock).not.toHaveBeenCalled();
   });
@@ -245,6 +245,7 @@ describe('getSessionUser', () => {
       preferred_username: 'Callback User',
       email: 'callback@example.com',
       instanceId: '11111111-1111-1111-8111-111111111111',
+      realm_access: { roles: ['Admin'] },
     });
 
     authorizationCodeGrantMock.mockResolvedValue({
@@ -256,6 +257,7 @@ describe('getSessionUser', () => {
         preferred_username: 'Callback User',
         email: 'callback@example.com',
         instanceId: '11111111-1111-1111-8111-111111111111',
+        realm_access: { roles: ['Admin'] },
       }),
       expiresIn: () => 300,
     });
@@ -272,6 +274,7 @@ describe('getSessionUser', () => {
     });
 
     expect(result.user.id).toBe('user-cb-1');
+    expect(result.user.roles.sort()).toEqual(['Admin', 'system_admin'].sort());
     expect(createSessionMock).toHaveBeenCalledTimes(1);
     expect(jitProvisionAccountMock).toHaveBeenCalledWith({
       instanceId: '11111111-1111-1111-8111-111111111111',

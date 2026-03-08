@@ -62,12 +62,15 @@ Referenzen:
 
 Für den produktiven Betrieb der Account-/Admin-UI sind zusätzlich erforderlich:
 
-- Keycloak Service-Account `sva-studio-iam-service` mit Minimalrechten (`manage-users`, `view-users`, `view-realm`).
+- Keycloak Service-Account `sva-studio-iam-service` mit Minimalrechten (`manage-users`, `view-users`, `view-realm`, `manage-realm`).
 - Secret-Injektion für `KEYCLOAK_ADMIN_CLIENT_SECRET` über Secrets-Manager (nicht im Repository).
 - Feature-Flags auf Backend-Seite:
   - `IAM_UI_ENABLED`
   - `IAM_ADMIN_ENABLED`
   - `IAM_BULK_ENABLED`
+- Scheduler-Konfiguration für Rollen-Reconciliation:
+  - `IAM_ROLE_RECONCILE_INTERVAL_MS`
+  - `IAM_ROLE_RECONCILE_INSTANCE_IDS`
 - Optional korrespondierende Frontend-Flags:
   - `VITE_IAM_UI_ENABLED`
   - `VITE_IAM_ADMIN_ENABLED`
@@ -75,7 +78,9 @@ Für den produktiven Betrieb der Account-/Admin-UI sind zusätzlich erforderlich
 
 Rollout-Reihenfolge:
 
-1. Datenbankmigrationen (`0004` bis `0006`) ausrollen.
-2. Backend mit Keycloak-Admin-Credentials deployen.
-3. Feature-Flags initial auf `false` verifizieren (Kill-Switch).
-4. Stufenweise aktivieren: UI -> Admin -> Bulk.
+1. Datenbankmigrationen (`0004` bis `0007`) ausrollen.
+2. Keycloak-Service-Account inklusive `manage-realm` prüfen und Secret-Injektion verifizieren.
+3. Backend mit Keycloak-Admin-Credentials deployen.
+4. Feature-Flags initial auf `false` verifizieren (Kill-Switch).
+5. Stufenweise aktivieren: UI -> Admin -> Bulk.
+6. Geplanten Reconcile-Lauf aktivieren und Alerting gegen Drift-Backlog prüfen.

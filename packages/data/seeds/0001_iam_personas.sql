@@ -25,19 +25,44 @@ SET
   metadata = EXCLUDED.metadata,
   updated_at = NOW();
 
-INSERT INTO iam.roles (id, instance_id, role_name, description, is_system_role, role_level)
+INSERT INTO iam.roles (
+  id,
+  instance_id,
+  role_key,
+  role_name,
+  display_name,
+  external_role_name,
+  description,
+  is_system_role,
+  managed_by,
+  sync_state,
+  role_level
+)
 VALUES
-  ('30111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-111111111111', 'system_admin', 'System administration persona', true, 100),
-  ('30222222-2222-2222-2222-222222222222', '11111111-1111-1111-1111-111111111111', 'app_manager', 'Application management persona', true, 80),
-  ('30333333-3333-3333-3333-333333333333', '11111111-1111-1111-1111-111111111111', 'feature-manager', 'Feature management persona', true, 60),
-  ('30444444-4444-4444-4444-444444444444', '11111111-1111-1111-1111-111111111111', 'interface-manager', 'Interface management persona', true, 50),
-  ('30555555-5555-5555-5555-555555555555', '11111111-1111-1111-1111-111111111111', 'designer', 'Design persona', true, 40),
-  ('30666666-6666-6666-6666-666666666666', '11111111-1111-1111-1111-111111111111', 'editor', 'Editorial persona', true, 30),
-  ('30777777-7777-7777-7777-777777777777', '11111111-1111-1111-1111-111111111111', 'moderator', 'Moderation persona', true, 35)
-ON CONFLICT (instance_id, role_name) DO UPDATE
+  ('30111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-111111111111', 'system_admin', 'system_admin', 'system_admin', 'system_admin', 'System administration persona', true, 'studio', 'pending', 100),
+  ('30222222-2222-2222-2222-222222222222', '11111111-1111-1111-1111-111111111111', 'app_manager', 'app_manager', 'app_manager', 'app_manager', 'Application management persona', true, 'studio', 'pending', 80),
+  ('30333333-3333-3333-3333-333333333333', '11111111-1111-1111-1111-111111111111', 'feature-manager', 'feature-manager', 'feature-manager', 'feature-manager', 'Feature management persona', true, 'studio', 'pending', 60),
+  ('30444444-4444-4444-4444-444444444444', '11111111-1111-1111-1111-111111111111', 'interface-manager', 'interface-manager', 'interface-manager', 'interface-manager', 'Interface management persona', true, 'studio', 'pending', 50),
+  ('30555555-5555-5555-5555-555555555555', '11111111-1111-1111-1111-111111111111', 'designer', 'designer', 'designer', 'designer', 'Design persona', true, 'studio', 'pending', 40),
+  ('30666666-6666-6666-6666-666666666666', '11111111-1111-1111-1111-111111111111', 'editor', 'editor', 'editor', 'editor', 'Editorial persona', true, 'studio', 'pending', 30),
+  ('30777777-7777-7777-7777-777777777777', '11111111-1111-1111-1111-111111111111', 'moderator', 'moderator', 'moderator', 'moderator', 'Moderation persona', true, 'studio', 'pending', 35),
+  ('30888888-8888-8888-8888-888888888888', '11111111-1111-1111-1111-111111111111', 'mainserver_admin', 'mainserver_admin', 'Admin', 'Admin', 'Studio-verwaltete Bootstrap-Rolle für den Abgleich mit dem externen SVA-Mainserver.', false, 'studio', 'pending', 90),
+  ('30999999-9999-9999-9999-999999999999', '11111111-1111-1111-1111-111111111111', 'mainserver_app', 'mainserver_app', 'App', 'App', 'Studio-verwaltete Bootstrap-Rolle für den Abgleich mit dem externen SVA-Mainserver.', false, 'studio', 'pending', 80),
+  ('30aaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '11111111-1111-1111-1111-111111111111', 'mainserver_user', 'mainserver_user', 'User', 'User', 'Studio-verwaltete Bootstrap-Rolle für den Abgleich mit dem externen SVA-Mainserver.', false, 'studio', 'pending', 20),
+  ('30bbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', '11111111-1111-1111-1111-111111111111', 'mainserver_extended_user', 'mainserver_extended_user', 'Extended User', 'Extended User', 'Studio-verwaltete Bootstrap-Rolle für den Abgleich mit dem externen SVA-Mainserver.', false, 'studio', 'pending', 30),
+  ('30cccccc-cccc-cccc-cccc-cccccccccccc', '11111111-1111-1111-1111-111111111111', 'mainserver_restricted', 'mainserver_restricted', 'Restricted', 'Restricted', 'Studio-verwaltete Bootstrap-Rolle für den Abgleich mit dem externen SVA-Mainserver.', false, 'studio', 'pending', 10),
+  ('30dddddd-dddd-dddd-dddd-dddddddddddd', '11111111-1111-1111-1111-111111111111', 'mainserver_editor', 'mainserver_editor', 'Editor', 'Editor', 'Studio-verwaltete Bootstrap-Rolle für den Abgleich mit dem externen SVA-Mainserver.', false, 'studio', 'pending', 40),
+  ('30eeeeee-eeee-eeee-eeee-eeeeeeeeeeee', '11111111-1111-1111-1111-111111111111', 'mainserver_read_only', 'mainserver_read_only', 'Read only', 'Read only', 'Studio-verwaltete Bootstrap-Rolle für den Abgleich mit dem externen SVA-Mainserver.', false, 'studio', 'pending', 5),
+  ('30ffffff-ffff-ffff-ffff-ffffffffffff', '11111111-1111-1111-1111-111111111111', 'mainserver_account_manager', 'mainserver_account_manager', 'Account Manager', 'Account Manager', 'Studio-verwaltete Bootstrap-Rolle für den Abgleich mit dem externen SVA-Mainserver.', false, 'studio', 'pending', 70)
+ON CONFLICT (instance_id, role_key) DO UPDATE
 SET
+  role_name = EXCLUDED.role_name,
+  display_name = EXCLUDED.display_name,
+  external_role_name = EXCLUDED.external_role_name,
   description = EXCLUDED.description,
   is_system_role = EXCLUDED.is_system_role,
+  managed_by = EXCLUDED.managed_by,
+  sync_state = EXCLUDED.sync_state,
   role_level = EXCLUDED.role_level,
   updated_at = NOW();
 

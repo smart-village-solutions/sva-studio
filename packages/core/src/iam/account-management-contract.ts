@@ -45,8 +45,15 @@ export type ApiErrorResponse = {
   readonly requestId?: string;
 };
 
+export type IamRoleSyncState = 'synced' | 'pending' | 'failed';
+
+export type IamRoleSyncError = {
+  readonly code: string;
+};
+
 export type IamUserRoleAssignment = {
   readonly roleId: IamUuid;
+  readonly roleKey: string;
   readonly roleName: string;
   readonly roleLevel: number;
   readonly validFrom?: string;
@@ -78,11 +85,17 @@ export type IamUserDetail = IamUserListItem & {
 
 export type IamRoleListItem = {
   readonly id: IamUuid;
+  readonly roleKey: string;
   readonly roleName: string;
+  readonly externalRoleName: string;
+  readonly managedBy: 'studio' | 'external';
   readonly description?: string;
   readonly isSystemRole: boolean;
   readonly roleLevel: number;
   readonly memberCount: number;
+  readonly syncState: IamRoleSyncState;
+  readonly lastSyncedAt?: string;
+  readonly syncError?: IamRoleSyncError;
   readonly permissions: readonly {
     readonly id: IamUuid;
     readonly permissionKey: string;

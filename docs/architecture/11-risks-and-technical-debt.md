@@ -109,3 +109,18 @@ Referenzen:
    - Impact: mittel (Storage/Kosten/Query-Latenz)
    - Wahrscheinlichkeit: hoch
    - Maßnahme: Retention-Automation (Anonymisierung + Archivierung) mit mandantenspezifischen Policies
+
+15. Fehlkonfigurierte Keycloak-Service-Account-Rechte für Rollen-Sync
+   - Impact: hoch (Role-CRUD und Reconcile schlagen reproduzierbar fehl)
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: dokumentierte Least-Privilege-Matrix, Readiness-Checks und Alerts auf `IDP_FORBIDDEN`
+
+16. Drift-Backlog durch orphaned, studio-markierte Keycloak-Rollen
+   - Impact: mittel bis hoch (anhaltende Inkonsistenz, manueller Betriebsaufwand)
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: geplanter Reconcile-Lauf, Alerting auf `iam_role_drift_backlog`, explizites Runbook für manuelle Freigaben
+
+17. Fehlzuordnung privilegierter Rollen-Aliasse aus externen Claims
+   - Impact: hoch (potenzielle Rechteausweitung über falsche Claim-Quelle)
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: privilegierte Alias-Regeln nur aus `realm_access` ableiten, client-spezifische `resource_access`-Rollen strikt isolieren und per Tests absichern

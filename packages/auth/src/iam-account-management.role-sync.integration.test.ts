@@ -343,6 +343,10 @@ vi.mock('./keycloak-admin-client', () => ({
       return undefined;
     }
 
+    async listUserRoleNames() {
+      return [];
+    }
+
     async createRole(input: { externalName: string; description?: string; attributes: Record<string, string> }) {
       roleSyncIntegrationState.idpRoles.set(input.externalName, {
         id: `kc-${input.externalName}`,

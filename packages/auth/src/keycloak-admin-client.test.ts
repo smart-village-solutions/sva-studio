@@ -758,6 +758,33 @@ describe('KeycloakAdminClient', () => {
     expect(addCall).toBeDefined();
     expect(removeCall).toBeDefined();
   });
+
+  it('lists a users mapped realm role names', async () => {
+    const { fetchImpl, calls } = createFetchStub([
+      createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }),
+      createJsonResponse(200, [
+        { id: 'role-editor', name: 'editor' },
+        { id: 'role-admin', name: 'system_admin' },
+      ]),
+    ]);
+
+    const client = new KeycloakAdminClient({
+      baseUrl: 'https://keycloak.example.com',
+      realm: 'demo',
+      clientId: 'svc-client',
+      clientSecret: 'svc-secret',
+      fetchImpl,
+    });
+
+    await expect(client.listUserRoleNames('user-1')).resolves.toEqual(['editor', 'system_admin']);
+    expect(
+      calls.some(
+        (entry) =>
+          String(entry.input).includes('/admin/realms/demo/users/user-1/role-mappings/realm') &&
+          entry.init?.method === 'GET'
+      )
+    ).toBe(true);
+  });
 });
 
 describe('getKeycloakAdminClientConfigFromEnv', () => {

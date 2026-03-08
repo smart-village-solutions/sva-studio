@@ -2,6 +2,7 @@ import type { ApiErrorResponse, IamUserDetail, IamUserRoleAssignment } from '@sv
 import { getWorkspaceContext } from '@sva/sdk/server';
 import type { z } from 'zod';
 
+import { KeycloakAdminRequestError, KeycloakAdminUnavailableError } from '../keycloak-admin-client';
 import type { AuthenticatedRequestContext } from '../middleware.server';
 import type { QueryClient } from '../shared/db-helpers';
 import { jsonResponse } from '../shared/db-helpers';
@@ -40,7 +41,7 @@ import {
 } from './shared';
 import { validateCsrf } from './csrf';
 import { protectField } from './encryption';
-import { getRoleExternalName } from './role-audit';
+import { buildRoleSyncFailure, getRoleExternalName } from './role-audit';
 import { bulkDeactivateSchema, updateUserSchema } from './schemas';
 import { resolveUsersForBulkDeactivation } from './user-bulk-query';
 import { resolveUserDetail } from './user-detail-query';
@@ -452,6 +453,13 @@ WHERE id = $1::uuid
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     const [errorCode, errorDetail] = errorMessage.split(':', 2);
+    if (error instanceof KeycloakAdminRequestError || error instanceof KeycloakAdminUnavailableError) {
+      return buildRoleSyncFailure({
+        error,
+        requestId: actorResolution.actor.requestId,
+        fallbackMessage: 'Nutzerrollen konnten nicht mit Keycloak synchronisiert werden.',
+      });
+    }
     if (errorCode === 'not_found') {
       return createApiError(404, 'not_found', 'Nutzer nicht gefunden.', actorResolution.actor.requestId);
     }

@@ -20,6 +20,8 @@ const state = vi.hoisted(() => ({
   deleteRoleImpl: null as null | ((externalName: string) => Promise<unknown> | unknown),
   getRoleByNameImpl: null as null | ((externalName: string) => Promise<unknown> | unknown),
   listRolesImpl: null as null | (() => Promise<unknown> | unknown),
+  syncRolesImpl: null as null | ((keycloakSubject: string, roleNames: readonly string[]) => Promise<unknown> | unknown),
+  syncRolesCalls: [] as Array<{ keycloakSubject: string; roleNames: readonly string[] }>,
 }));
 
 vi.mock('./middleware.server', () => ({
@@ -111,7 +113,14 @@ vi.mock('./keycloak-admin-client', () => ({
       return undefined;
     }
 
-    async syncRoles() {
+    async syncRoles(keycloakSubject: string, roleNames: readonly string[]) {
+      state.syncRolesCalls.push({
+        keycloakSubject,
+        roleNames: [...roleNames],
+      });
+      if (state.syncRolesImpl) {
+        return state.syncRolesImpl(keycloakSubject, roleNames);
+      }
       return undefined;
     }
 
@@ -250,6 +259,8 @@ describe('iam-account-management handlers (guards)', () => {
     state.deleteRoleImpl = null;
     state.getRoleByNameImpl = null;
     state.listRolesImpl = null;
+    state.syncRolesImpl = null;
+    state.syncRolesCalls = [];
   });
 
   it('denies listUsers for non-admin role', async () => {
@@ -1459,6 +1470,79 @@ describe('iam-account-management handlers (guards)', () => {
     expect(payload.data.keycloakSubject).toBe('mock-user-id');
   });
 
+  it('syncs external role names when creating a user', async () => {
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+
+      if (text.includes('max_role_level') && text.includes('FROM iam.accounts a')) {
+        return { rowCount: 1, rows: [{ max_role_level: 90 }] };
+      }
+
+      if (text.includes('SELECT id, role_key, role_name, display_name, external_role_name')) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              id: targetRoleId,
+              role_key: 'mainserver_admin',
+              role_name: 'mainserver_admin',
+              display_name: 'Admin',
+              external_role_name: 'Admin',
+              role_level: 90,
+              is_system_role: false,
+            },
+          ],
+        };
+      }
+
+      if (text.includes('INSERT INTO iam.idempotency_keys') && text.includes('ON CONFLICT')) {
+        return { rowCount: 1, rows: [{ status: 'IN_PROGRESS' }] };
+      }
+
+      if (text.includes('INSERT INTO iam.accounts')) {
+        return { rowCount: 1, rows: [{ id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd' }] };
+      }
+
+      if (text.includes('INSERT INTO iam.instance_memberships')) {
+        return { rowCount: 1, rows: [] };
+      }
+
+      if (text.includes('SELECT pg_notify') || text.includes('UPDATE iam.idempotency_keys')) {
+        return { rowCount: 1, rows: [] };
+      }
+
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await createUserHandler(
+      new Request('http://localhost/api/v1/iam/users', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'http://localhost',
+          'idempotency-key': 'user-create-external-role',
+        },
+        body: JSON.stringify({
+          email: 'external.role@example.com',
+          firstName: 'External',
+          lastName: 'Role',
+          roleIds: [targetRoleId],
+        }),
+      })
+    );
+
+    expect(response.status).toBe(201);
+    expect(state.syncRolesCalls).toEqual([
+      {
+        keycloakSubject: 'mock-user-id',
+        roleNames: ['Admin'],
+      },
+    ]);
+  });
+
   it('returns idempotent replay response for createUser', async () => {
     let payloadHash = '';
 
@@ -1516,6 +1600,63 @@ describe('iam-account-management handlers (guards)', () => {
     expect(response.status).toBe(201);
     expect(payload.data.id).toBe('replayed-user');
     expect(payload.data.email).toBe('new.user@example.com');
+  });
+
+  it('syncs external role names when updating a user', async () => {
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+
+      if (text.includes('max_role_level') && text.includes('FROM iam.accounts a')) {
+        return { rowCount: 1, rows: [{ max_role_level: 90 }] };
+      }
+
+      if (text.includes('SELECT id, role_key, role_name, display_name, external_role_name')) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              id: targetRoleId,
+              role_key: 'mainserver_admin',
+              role_name: 'mainserver_admin',
+              display_name: 'Admin',
+              external_role_name: 'Admin',
+              role_level: 90,
+              is_system_role: false,
+            },
+          ],
+        };
+      }
+
+      if (text.includes('WHERE a.id = $2::uuid')) {
+        return { rowCount: 1, rows: [buildUserDetailRow('active')] };
+      }
+
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await updateUserHandler(
+      new Request(`http://localhost/api/v1/iam/users/${targetUserId}`, {
+        method: 'PATCH',
+        headers: {
+          'content-type': 'application/json',
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'http://localhost',
+        },
+        body: JSON.stringify({
+          roleIds: [targetRoleId],
+        }),
+      })
+    );
+
+    expect(response.status).toBe(200);
+    expect(state.syncRolesCalls).toEqual([
+      {
+        keycloakSubject: 'keycloak-target-2',
+        roleNames: ['Admin'],
+      },
+    ]);
   });
 });
 

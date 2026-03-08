@@ -1,4 +1,5 @@
 import type { IamUuid } from './types';
+import type { RoleManagedBy } from './types';
 import type { RoleSyncState } from './types';
 
 export type SqlPrimitive = string | number | boolean | null;
@@ -35,6 +36,7 @@ export type IamSeedRepository = {
     isSystemRole: boolean;
     roleLevel: number;
     externalRoleName?: string;
+    managedBy?: RoleManagedBy;
     syncState?: RoleSyncState;
   }): Promise<void>;
   upsertPermission(input: {
@@ -105,6 +107,7 @@ SET
     isSystemRole: boolean;
     roleLevel: number;
     externalRoleName?: string;
+    managedBy?: RoleManagedBy;
     syncState?: RoleSyncState;
   }): SqlStatement => ({
     text: `
@@ -118,11 +121,12 @@ INSERT INTO iam.roles (
   description,
   is_system_role,
   role_level,
+  managed_by,
   sync_state,
   last_synced_at,
   last_error_code
 )
-VALUES ($1, $2, $3, $4, $4, $5, $6, $7, $8, $9, NOW(), NULL)
+VALUES ($1, $2, $3, $4, $4, $5, $6, $7, $8, $9, $10, NOW(), NULL)
 ON CONFLICT (instance_id, role_key) DO UPDATE
 SET
   role_name = EXCLUDED.role_name,
@@ -131,6 +135,7 @@ SET
   description = EXCLUDED.description,
   is_system_role = EXCLUDED.is_system_role,
   role_level = EXCLUDED.role_level,
+  managed_by = EXCLUDED.managed_by,
   sync_state = EXCLUDED.sync_state,
   last_synced_at = EXCLUDED.last_synced_at,
   last_error_code = NULL,
@@ -145,6 +150,7 @@ SET
       input.description,
       input.isSystemRole,
       input.roleLevel,
+      input.managedBy ?? 'studio',
       input.syncState ?? 'synced',
     ],
   }),

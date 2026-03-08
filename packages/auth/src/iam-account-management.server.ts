@@ -1659,8 +1659,68 @@ const loadRoleListItemById = async (
   client: QueryClient,
   input: { instanceId: string; roleId: string }
 ): Promise<IamRoleListItem | undefined> => {
-  const roles = await loadRoleListItems(client, input.instanceId);
-  return roles.find((role) => role.id === input.roleId);
+  const result = await client.query<{
+    id: string;
+    role_key: string;
+    role_name: string;
+    display_name: string | null;
+    external_role_name: string | null;
+    managed_by: ManagedBy;
+    description: string | null;
+    is_system_role: boolean;
+    role_level: number;
+    member_count: number;
+    sync_state: IamRoleSyncState;
+    last_synced_at: string | null;
+    last_error_code: string | null;
+    permission_rows: Array<{ id: string; permission_key: string; description: string | null }> | null;
+  }>(
+    `
+SELECT
+  r.id,
+  r.role_key,
+  r.role_name,
+  r.display_name,
+  r.external_role_name,
+  r.managed_by,
+  r.description,
+  r.is_system_role,
+  r.role_level,
+  COUNT(DISTINCT ar.account_id)::int AS member_count,
+  r.sync_state,
+  r.last_synced_at::text,
+  r.last_error_code,
+  COALESCE(
+    json_agg(
+      DISTINCT jsonb_build_object(
+        'id', p.id,
+        'permission_key', p.permission_key,
+        'description', p.description
+      )
+    ) FILTER (WHERE p.id IS NOT NULL),
+    '[]'::json
+  ) AS permission_rows
+FROM iam.roles r
+LEFT JOIN iam.account_roles ar
+  ON ar.instance_id = r.instance_id
+ AND ar.role_id = r.id
+ AND ar.valid_from <= NOW()
+ AND (ar.valid_to IS NULL OR ar.valid_to > NOW())
+LEFT JOIN iam.role_permissions rp
+  ON rp.instance_id = r.instance_id
+ AND rp.role_id = r.id
+LEFT JOIN iam.permissions p
+  ON p.instance_id = rp.instance_id
+ AND p.id = rp.permission_id
+WHERE r.instance_id = $1::uuid
+  AND r.id = $2::uuid
+GROUP BY r.id
+LIMIT 1;
+`,
+    [input.instanceId, input.roleId]
+  );
+  const row = result.rows[0];
+  return row ? mapRoleListItem(row) : undefined;
 };
 
 type ReconcileRoleEntry = {
@@ -2285,7 +2345,7 @@ ON CONFLICT (instance_id, account_id) DO NOTHING;
 
       return {
         accountId,
-        roleNames: assignedRoleRows.map((entry) => entry.role_key),
+        roleNames: assignedRoleRows.map((entry) => getRoleExternalName(entry)),
         responseData,
       };
     });
@@ -2414,7 +2474,7 @@ const updateUserInternal = async (request: Request, ctx: AuthenticatedRequestCon
   }
 
   try {
-    const detail = await withInstanceScopedDb(actorResolution.actor.instanceId, async (client) => {
+    const result = await withInstanceScopedDb(actorResolution.actor.instanceId, async (client) => {
       const actorMaxRoleLevel = await resolveActorMaxRoleLevel(client, {
         instanceId: actorResolution.actor.instanceId,
         keycloakSubject: ctx.user.id,
@@ -2436,6 +2496,7 @@ const updateUserInternal = async (request: Request, ctx: AuthenticatedRequestCon
         throw new Error(`${targetAccessCheck.code}:${targetAccessCheck.message}`);
       }
 
+      let syncedRoleNames: readonly string[] | undefined;
       if (parsed.data.roleIds) {
         const roleValidation = await ensureRoleAssignmentWithinActorLevel({
           client,
@@ -2452,6 +2513,11 @@ const updateUserInternal = async (request: Request, ctx: AuthenticatedRequestCon
           roleIds: parsed.data.roleIds,
           assignedBy: actorResolution.actor.actorAccountId,
         });
+        const assignedRoles = await resolveRolesByIds(client, {
+          instanceId: actorResolution.actor.instanceId,
+          roleIds: parsed.data.roleIds,
+        });
+        syncedRoleNames = assignedRoles.map((role) => getRoleExternalName(role));
 
         await notifyPermissionInvalidation(client, {
           instanceId: actorResolution.actor.instanceId,
@@ -2539,15 +2605,20 @@ WHERE id = $1::uuid
         trigger: 'user_updated',
       });
 
-      return resolveUserDetail(client, {
-        instanceId: actorResolution.actor.instanceId,
-        userId,
-      });
+      return {
+        detail: await resolveUserDetail(client, {
+          instanceId: actorResolution.actor.instanceId,
+          userId,
+        }),
+        roleNames: syncedRoleNames,
+      };
     });
 
-    if (!detail) {
+    if (!result?.detail) {
       return createApiError(404, 'not_found', 'Nutzer nicht gefunden.', actorResolution.actor.requestId);
     }
+    const detail = result.detail;
+    const roleNames = result.roleNames;
 
     await trackKeycloakCall('update_user', () =>
       identityProvider.provider.updateUser(detail.keycloakSubject, {
@@ -2564,10 +2635,9 @@ WHERE id = $1::uuid
       );
     }
 
-    if (parsed.data.roleIds) {
-      const roleNames = detail.roles.map((role) => role.roleKey);
+    if (roleNames) {
       await trackKeycloakCall('sync_roles', () =>
-        identityProvider.provider.syncRoles(detail.keycloakSubject, roleNames)
+        identityProvider.provider.syncRoles(detail.keycloakSubject, [...roleNames])
       );
     }
 

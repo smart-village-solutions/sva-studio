@@ -15,3 +15,17 @@ ALTER TABLE iam.roles
   DROP COLUMN IF EXISTS external_role_name,
   DROP COLUMN IF EXISTS display_name,
   DROP COLUMN IF EXISTS role_key;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'roles_instance_name_uniq'
+      AND conrelid = 'iam.roles'::regclass
+  ) THEN
+    ALTER TABLE iam.roles
+      ADD CONSTRAINT roles_instance_name_uniq UNIQUE (instance_id, role_name);
+  END IF;
+END
+$$;

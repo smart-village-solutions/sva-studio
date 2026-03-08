@@ -12,6 +12,7 @@ export type PersonaKey =
 export type PersonaScope = 'instance' | 'org';
 export type MfaPolicy = 'required' | 'recommended' | 'optional';
 export type RoleSyncState = 'synced' | 'pending' | 'failed';
+export type RoleManagedBy = 'studio' | 'external';
 
 export type PermissionKey =
   | 'iam.user.read'

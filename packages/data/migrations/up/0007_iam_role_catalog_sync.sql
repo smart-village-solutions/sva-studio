@@ -58,6 +58,9 @@ BEGIN
 END
 $$;
 
+ALTER TABLE iam.roles
+  DROP CONSTRAINT IF EXISTS roles_instance_name_uniq;
+
 CREATE UNIQUE INDEX IF NOT EXISTS uq_roles_instance_role_key
   ON iam.roles(instance_id, role_key);
 

@@ -224,6 +224,24 @@ describe('iam data subject rights handlers', () => {
     expect(await response.json()).toEqual({ error: 'invalid_job_id' });
   });
 
+  it('rejects self export requests for invalid instance ids', async () => {
+    const response = await dataExportHandler(
+      new Request('http://localhost/iam/me/data-export?instanceId=invalid&format=json', { method: 'GET' })
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: 'invalid_instance_id' });
+  });
+
+  it('returns account_not_found for self exports without an account record', async () => {
+    const response = await dataExportHandler(
+      new Request('http://localhost/iam/me/data-export?format=json', { method: 'GET' })
+    );
+
+    expect(response.status).toBe(404);
+    expect(await response.json()).toEqual({ error: 'account_not_found' });
+  });
+
   it('exports csv format with flattened key-value rows', async () => {
     state.queryHandler = (text) => {
       if (text.includes('FROM iam.accounts a')) {
@@ -274,6 +292,44 @@ describe('iam data subject rights handlers', () => {
     expect(response.status).toBe(200);
     expect(body).toContain('field,value');
     expect(body).toContain('account.keycloakSubject,keycloak-sub-1');
+  });
+
+  it('returns xml downloads for completed self export jobs', async () => {
+    state.queryHandler = (text) => {
+      if (text.includes('FROM iam.accounts a')) {
+        return { rowCount: 1, rows: [{ id: 'acc-1' }] };
+      }
+      if (text.includes('FROM iam.data_subject_export_jobs')) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa',
+              format: 'xml',
+              status: 'completed',
+              error_message: null,
+              payload_json: null,
+              payload_csv: null,
+              payload_xml: '<dataExport><account><id>acc-1</id></account></dataExport>',
+              created_at: '2026-03-01T10:00:00.000Z',
+              completed_at: '2026-03-01T10:05:00.000Z',
+            },
+          ],
+        };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await dataExportStatusHandler(
+      new Request(
+        'http://localhost/iam/me/data-export/status?jobId=aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa&download=xml',
+        { method: 'GET' }
+      )
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-type')).toBe('application/xml; charset=utf-8');
+    expect(await response.text()).toContain('<id>acc-1</id>');
   });
 
   it('exports xml format with escaped payload values', async () => {
@@ -470,6 +526,96 @@ describe('iam data subject rights handlers', () => {
 
     expect(response.status).toBe(200);
     expect(executedStatements.some((entry) => entry.includes('INSERT INTO iam.data_subject_recipient_notifications'))).toBe(true);
+  });
+
+  it('creates accepted access requests through the generic self-service endpoint', async () => {
+    state.queryHandler = (text) => {
+      if (text.includes('FROM iam.accounts a')) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              id: 'acc-1',
+              keycloak_subject: 'keycloak-sub-1',
+              email_ciphertext: null,
+              display_name_ciphertext: null,
+              is_blocked: false,
+              soft_deleted_at: null,
+              delete_after: null,
+              permanently_deleted_at: null,
+              processing_restricted_at: null,
+              processing_restriction_reason: null,
+              non_essential_processing_opt_out_at: null,
+              created_at: '2026-02-28T10:00:00.000Z',
+              updated_at: '2026-02-28T10:00:00.000Z',
+            },
+          ],
+        };
+      }
+      if (text.includes('INSERT INTO iam.data_subject_requests')) {
+        return { rowCount: 1, rows: [{ id: 'req-access-generic-1' }] };
+      }
+      if (text.includes('INSERT INTO iam.activity_logs')) {
+        return { rowCount: 1, rows: [] };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await dataSubjectRequestHandler(
+      new Request('http://localhost/iam/me/data-subject-rights/requests', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          type: 'access',
+          instanceId: '11111111-1111-1111-8111-111111111111',
+          payload: { source: 'self_service' },
+        }),
+      })
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      requestId: 'req-access-generic-1',
+      status: 'accepted',
+    });
+  });
+
+  it('executes optional processing when neither restriction nor objection is active', async () => {
+    state.queryHandler = (text) => {
+      if (text.includes('FROM iam.accounts a')) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              id: 'acc-1',
+              keycloak_subject: 'keycloak-sub-1',
+              email_ciphertext: null,
+              display_name_ciphertext: null,
+              is_blocked: false,
+              soft_deleted_at: null,
+              delete_after: null,
+              permanently_deleted_at: null,
+              processing_restricted_at: null,
+              processing_restriction_reason: null,
+              non_essential_processing_opt_out_at: null,
+              created_at: '2026-02-28T10:00:00.000Z',
+              updated_at: '2026-02-28T10:00:00.000Z',
+            },
+          ],
+        };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await optionalProcessingExecuteHandler(
+      new Request('http://localhost/iam/me/optional-processing/execute', { method: 'POST' })
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      status: 'ok',
+      executed: true,
+    });
   });
 
   it('processes maintenance run and reports SLA escalations', async () => {

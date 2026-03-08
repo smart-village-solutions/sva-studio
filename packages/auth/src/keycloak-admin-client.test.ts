@@ -365,6 +365,96 @@ describe('KeycloakAdminClient', () => {
     expect(body.attributes).toEqual({ locale: ['de'], teams: ['alpha', 'beta'] });
   });
 
+  it('deactivates users by sending enabled=false', async () => {
+    const { fetchImpl, calls } = createFetchStub([
+      createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }),
+      createTextResponse(204, ''),
+    ]);
+
+    const client = new KeycloakAdminClient({
+      baseUrl: 'https://keycloak.example.com',
+      realm: 'demo',
+      clientId: 'svc-client',
+      clientSecret: 'svc-secret',
+      fetchImpl,
+    });
+
+    await expect(client.deactivateUser('user-7')).resolves.toBeUndefined();
+
+    const requestCall = calls.find((entry) => String(entry.input).includes('/users/user-7'));
+    expect(requestCall?.init?.method).toBe('PUT');
+    expect(JSON.parse(String(requestCall?.init?.body))).toEqual({ enabled: false });
+  });
+
+  it('fails syncRoles when expected roles are unknown in Keycloak', async () => {
+    const { fetchImpl } = createFetchStub([
+      createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }),
+      createJsonResponse(200, []),
+      createJsonResponse(200, [{ id: 'role-editor', name: 'editor' }]),
+    ]);
+
+    const client = new KeycloakAdminClient({
+      baseUrl: 'https://keycloak.example.com',
+      realm: 'demo',
+      clientId: 'svc-client',
+      clientSecret: 'svc-secret',
+      fetchImpl,
+    });
+
+    await expect(client.syncRoles('user-1', ['missing-role'])).rejects.toMatchObject({
+      code: 'unknown_role',
+      statusCode: 400,
+    });
+  });
+
+  it('throws when listUsers is called with an open circuit and no fallback', async () => {
+    let nowMs = 0;
+    const { fetchImpl } = createFetchStub([
+      createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }),
+      createJsonResponse(503, { error: 'service_unavailable' }),
+      createJsonResponse(503, { error: 'service_unavailable' }),
+      createJsonResponse(503, { error: 'service_unavailable' }),
+      createJsonResponse(503, { error: 'service_unavailable' }),
+      createJsonResponse(503, { error: 'service_unavailable' }),
+    ]);
+
+    const client = new KeycloakAdminClient({
+      baseUrl: 'https://keycloak.example.com',
+      realm: 'demo',
+      clientId: 'svc-client',
+      clientSecret: 'svc-secret',
+      fetchImpl,
+      now: () => nowMs,
+      maxRetries: 0,
+      circuitBreakerFailureThreshold: 5,
+    });
+
+    for (let i = 0; i < 5; i += 1) {
+      await expect(client.listRoles()).rejects.toBeInstanceOf(KeycloakAdminRequestError);
+    }
+
+    await expect(client.listUsers()).rejects.toBeInstanceOf(KeycloakAdminUnavailableError);
+    nowMs += 1;
+  });
+
+  it('surfaces token responses without access_token', async () => {
+    const { fetchImpl } = createFetchStub([createJsonResponse(200, { expires_in: 120 })]);
+
+    const client = new KeycloakAdminClient({
+      baseUrl: 'https://keycloak.example.com',
+      realm: 'demo',
+      clientId: 'svc-client',
+      clientSecret: 'svc-secret',
+      fetchImpl,
+      maxRetries: 0,
+    });
+
+    await expect(client.listRoles()).rejects.toMatchObject({
+      code: 'token_missing',
+      statusCode: 502,
+    });
+  });
+
   it('returns null from getRoleByName when Keycloak responds with 404', async () => {
     const { fetchImpl } = createFetchStub([
       createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }),
@@ -683,5 +773,14 @@ describe('getKeycloakAdminClientConfigFromEnv', () => {
       clientId: 'svc-client',
       clientSecret: 'svc-secret',
     });
+  });
+
+  it('throws for missing environment variables', () => {
+    delete process.env.KEYCLOAK_ADMIN_BASE_URL;
+    process.env.KEYCLOAK_ADMIN_REALM = 'demo';
+    process.env.KEYCLOAK_ADMIN_CLIENT_ID = 'svc-client';
+    process.env.KEYCLOAK_ADMIN_CLIENT_SECRET = 'svc-secret';
+
+    expect(() => getKeycloakAdminClientConfigFromEnv()).toThrow('Missing required env: KEYCLOAK_ADMIN_BASE_URL');
   });
 });

@@ -3,11 +3,11 @@ import type {
   IamUuid,
   OrganizationMembershipVisibility,
   OrganizationType,
-  RoleManagedBy,
-  RoleSyncState,
 } from '../types';
 
 export type SqlPrimitive = string | number | boolean | null | readonly string[];
+type RoleManagedBy = 'studio' | 'external';
+type RoleSyncState = 'synced' | 'pending' | 'failed';
 
 export type SqlStatement = {
   readonly text: string;

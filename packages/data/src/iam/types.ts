@@ -11,8 +11,6 @@ export type PersonaKey =
 
 export type PersonaScope = 'instance' | 'org';
 export type MfaPolicy = 'required' | 'recommended' | 'optional';
-export type RoleSyncState = 'synced' | 'pending' | 'failed';
-export type RoleManagedBy = 'studio' | 'external';
 export type OrganizationType = 'county' | 'municipality' | 'district' | 'company' | 'agency' | 'other';
 export type ContentAuthorPolicy = 'org_only' | 'org_or_personal';
 export type OrganizationMembershipVisibility = 'internal' | 'external';

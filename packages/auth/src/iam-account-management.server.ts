@@ -969,7 +969,7 @@ INSERT INTO iam.idempotency_keys (
   expires_at
 )
 VALUES ($1::uuid, $2::uuid, $3, $4, $5, 'IN_PROGRESS', NOW() + INTERVAL '24 hours')
-ON CONFLICT (actor_account_id, endpoint, idempotency_key) DO NOTHING
+ON CONFLICT (instance_id, actor_account_id, endpoint, idempotency_key) DO NOTHING
 RETURNING status;
 `,
       [input.instanceId, input.actorAccountId, input.endpoint, input.idempotencyKey, input.payloadHash]
@@ -988,12 +988,13 @@ RETURNING status;
       `
 SELECT status, payload_hash, response_status, response_body
 FROM iam.idempotency_keys
-WHERE actor_account_id = $1::uuid
-  AND endpoint = $2
-  AND idempotency_key = $3
+WHERE instance_id = $1::uuid
+  AND actor_account_id = $2::uuid
+  AND endpoint = $3
+  AND idempotency_key = $4
 LIMIT 1;
 `,
-      [input.actorAccountId, input.endpoint, input.idempotencyKey]
+      [input.instanceId, input.actorAccountId, input.endpoint, input.idempotencyKey]
     );
 
     const row = existing.rows[0];
@@ -1036,17 +1037,19 @@ const completeIdempotency = async (input: {
       `
 UPDATE iam.idempotency_keys
 SET
-  status = $4,
-  response_status = $5,
-  response_body = $6::jsonb,
+  status = $5,
+  response_status = $6,
+  response_body = $7::jsonb,
   updated_at = NOW(),
   expires_at = NOW() + INTERVAL '24 hours'
 WHERE actor_account_id = $1::uuid
-  AND endpoint = $2
-  AND idempotency_key = $3;
+  AND instance_id = $2::uuid
+  AND endpoint = $3
+  AND idempotency_key = $4;
 `,
       [
         input.actorAccountId,
+        input.instanceId,
         input.endpoint,
         input.idempotencyKey,
         input.status,
@@ -4312,6 +4315,21 @@ const reconcilePlaceholderInternal = async (request: Request, ctx: Authenticated
     return actorResolution.error;
   }
 
+  const csrfError = validateCsrf(request, actorResolution.actor.requestId);
+  if (csrfError) {
+    return csrfError;
+  }
+
+  const rateLimit = consumeRateLimit({
+    instanceId: actorResolution.actor.instanceId,
+    actorKeycloakSubject: ctx.user.id,
+    scope: 'write',
+    requestId: actorResolution.actor.requestId,
+  });
+  if (rateLimit) {
+    return rateLimit;
+  }
+
   try {
     const report = await runRoleCatalogReconciliation({
       instanceId: actorResolution.actor.instanceId,
@@ -4342,6 +4360,7 @@ const reconcilePlaceholderInternal = async (request: Request, ctx: Authenticated
 };
 
 let roleCatalogSchedulerStarted = false;
+const roleCatalogSchedulerInFlight = new Set<string>();
 
 const readScheduledReconcileInstanceIds = (): readonly string[] =>
   (process.env.IAM_ROLE_RECONCILE_INSTANCE_IDS ?? '')
@@ -4364,14 +4383,31 @@ const ensureRoleCatalogSchedulerStarted = (): void => {
   roleCatalogSchedulerStarted = true;
   const timer = setInterval(async () => {
     for (const instanceId of instanceIds) {
+      if (roleCatalogSchedulerInFlight.has(instanceId)) {
+        logger.warn('Role catalog reconciliation already running; skipping overlapping scheduler run', {
+          operation: 'reconcile_roles_scheduler',
+          workspace_id: instanceId,
+          instance_id: instanceId,
+          result: 'skipped',
+          error_code: 'SCHEDULER_ALREADY_RUNNING',
+          request_id: `scheduler:${Date.now()}:${instanceId}`,
+        });
+        continue;
+      }
+
+      roleCatalogSchedulerInFlight.add(instanceId);
+      const schedulerRequestId = `scheduler:${Date.now()}:${instanceId}`;
       try {
         const report = await runRoleCatalogReconciliation({
           instanceId,
-          requestId: 'scheduler',
+          requestId: schedulerRequestId,
         });
         logger.info('Role catalog reconciliation completed', {
           operation: 'reconcile_roles_scheduler',
+          workspace_id: instanceId,
           instance_id: instanceId,
+          result: 'success',
+          request_id: schedulerRequestId,
           checked_count: report.checkedCount,
           corrected_count: report.correctedCount,
           failed_count: report.failedCount,
@@ -4380,9 +4416,14 @@ const ensureRoleCatalogSchedulerStarted = (): void => {
       } catch (error) {
         logger.error('Role catalog reconciliation scheduler failed', {
           operation: 'reconcile_roles_scheduler',
+          workspace_id: instanceId,
           instance_id: instanceId,
+          result: 'failure',
+          request_id: schedulerRequestId,
           error: sanitizeRoleErrorMessage(error),
         });
+      } finally {
+        roleCatalogSchedulerInFlight.delete(instanceId);
       }
     }
   }, intervalMs);

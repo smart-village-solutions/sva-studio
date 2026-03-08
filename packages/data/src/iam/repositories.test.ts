@@ -26,7 +26,7 @@ describe('iam seed statements', () => {
       true,
       30,
       'studio',
-      'synced',
+      'pending',
     ]);
   });
 

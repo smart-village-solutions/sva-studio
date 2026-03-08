@@ -69,6 +69,30 @@ describe('claims helpers', () => {
       expect(roles.sort()).toEqual(['Admin', 'system_admin'].sort());
     });
 
+    it('does not add elevated alias when Admin appears only in resource_access', () => {
+      const roles = extractRoles({
+        resource_access: {
+          appA: { roles: ['Admin'] },
+        },
+      });
+
+      expect(roles).toEqual(['Admin']);
+    });
+
+    it('does not fall back to other clients when explicit clientId has no role entry', () => {
+      const roles = extractRoles(
+        {
+          resource_access: {
+            appA: { roles: ['editor'] },
+            appB: { roles: ['admin'] },
+          },
+        },
+        'missing-client'
+      );
+
+      expect(roles).toEqual([]);
+    });
+
     it('ignores invalid role structures safely', () => {
       const roles = extractRoles({
         roles: [1, 'ok', null],

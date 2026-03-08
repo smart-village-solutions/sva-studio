@@ -141,7 +141,11 @@ describe('RolesPage', () => {
       roles: [],
       isLoading: false,
       error: null,
-      mutationError: new Error('Rolle konnte nicht erstellt werden.'),
+      mutationError: {
+        status: 409,
+        code: 'conflict',
+        message: 'conflict',
+      },
       reconcileReport: null,
       refetch: vi.fn(),
       clearMutationError,
@@ -163,7 +167,7 @@ describe('RolesPage', () => {
 
     expect(createRole).toHaveBeenCalledTimes(1);
     expect(screen.getByRole('dialog', { name: 'Neue Rolle erstellen' })).toBeTruthy();
-    expect(within(dialog).getByRole('alert').textContent).toContain('Rolle konnte nicht erstellt werden.');
+    expect(within(dialog).getByRole('alert').textContent).toContain('Die Rollenänderung steht in Konflikt');
     expect(screen.queryByText('Rollen konnten nicht geladen werden.')).toBeNull();
     expect(clearMutationError).toHaveBeenCalledTimes(1);
   });
@@ -258,7 +262,7 @@ describe('RolesPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Erneut synchronisieren' }));
     expect(retryRoleSync).toHaveBeenCalledWith('role-failed');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Reconcile starten' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Abgleich starten' }));
     expect(reconcile).toHaveBeenCalledTimes(1);
 
     fireEvent.click(screen.getByRole('button', { name: 'Rolle bearbeiten' }));
@@ -277,11 +281,15 @@ describe('RolesPage', () => {
     });
   });
 
-  it('renders the server-provided load error message in the page alert', () => {
+  it('maps load errors to localized role messages', () => {
     useRolesMock.mockReturnValue({
       roles: [],
       isLoading: false,
-      error: new Error('Keycloak Admin API ist nicht konfiguriert.'),
+      error: {
+        status: 503,
+        code: 'keycloak_unavailable',
+        message: 'Keycloak Admin API ist nicht konfiguriert.',
+      },
       mutationError: null,
       reconcileReport: null,
       refetch: vi.fn(),
@@ -295,7 +303,7 @@ describe('RolesPage', () => {
 
     render(<RolesPage />);
 
-    expect(screen.getByRole('alert').textContent).toContain('Keycloak Admin API ist nicht konfiguriert.');
+    expect(screen.getByRole('alert').textContent).toContain('Die Verbindung zu Keycloak ist derzeit nicht verfügbar.');
   });
 
   it('renders external roles as read-only', () => {

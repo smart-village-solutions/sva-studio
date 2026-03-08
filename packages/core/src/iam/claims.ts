@@ -7,6 +7,8 @@ const ROLE_ALIASES: Readonly<Record<string, readonly string[]>> = {
   Admin: ['system_admin'],
 };
 
+const ROLE_ALIAS_REALM_ROLES = new Set<string>(['Admin']);
+
 /**
  * Resolve a display name from standard OIDC claims with fallbacks.
  */
@@ -60,30 +62,32 @@ const readAccessRoles = (value: unknown) => {
  */
 export const extractRoles = (claims: Record<string, unknown>, clientId?: string) => {
   const roles = new Set<string>();
-  const addRole = (role: string) => {
+  const addRole = (role: string, allowAlias: boolean) => {
     roles.add(role);
-    for (const alias of ROLE_ALIASES[role] ?? []) {
-      roles.add(alias);
+    if (allowAlias) {
+      for (const alias of ROLE_ALIASES[role] ?? []) {
+        roles.add(alias);
+      }
     }
   };
 
   for (const role of readRoles(claims.roles)) {
-    addRole(role);
+    addRole(role, false);
   }
   for (const role of readAccessRoles(claims.realm_access)) {
-    addRole(role);
+    addRole(role, ROLE_ALIAS_REALM_ROLES.has(role));
   }
   const resourceAccess = claims.resource_access;
   if (resourceAccess && typeof resourceAccess === 'object') {
     const accessEntries = resourceAccess as Record<string, unknown>;
     if (clientId && accessEntries[clientId]) {
       for (const role of readAccessRoles(accessEntries[clientId])) {
-        addRole(role);
+        addRole(role, false);
       }
-    } else {
+    } else if (!clientId) {
       for (const entry of Object.values(accessEntries)) {
         for (const role of readAccessRoles(entry)) {
-          addRole(role);
+          addRole(role, false);
         }
       }
     }

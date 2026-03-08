@@ -8,8 +8,10 @@ import { fileURLToPath, URL } from 'url';
 
 process.env.TSS_DEV_SERVER ??= 'false';
 
-const appRoot = fileURLToPath(new URL('./', import.meta.url));
-const workspaceRoot = fileURLToPath(new URL('../../', import.meta.url));
+const normalizeDirectory = (url: URL) => fileURLToPath(url).replace(/[\\/]$/, '');
+
+const appRoot = normalizeDirectory(new URL('./', import.meta.url));
+const workspaceRoot = normalizeDirectory(new URL('../../', import.meta.url));
 
 // Nx starts the Vite process from the workspace root, but TanStack Start
 // resolves framework dependencies from process.cwd() during dev-server setup.

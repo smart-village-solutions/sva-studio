@@ -20,6 +20,15 @@ const authServerMocks = vi.hoisted(() => {
     bulkDeactivateUsersHandler: vi.fn(async () => response('bulkDeactivateUsersHandler')),
     getMyProfileHandler: vi.fn(async () => response('getMyProfileHandler')),
     updateMyProfileHandler: vi.fn(async () => response('updateMyProfileHandler')),
+    listOrganizationsHandler: vi.fn(async () => response('listOrganizationsHandler')),
+    createOrganizationHandler: vi.fn(async () => response('createOrganizationHandler')),
+    getOrganizationHandler: vi.fn(async () => response('getOrganizationHandler')),
+    updateOrganizationHandler: vi.fn(async () => response('updateOrganizationHandler')),
+    deactivateOrganizationHandler: vi.fn(async () => response('deactivateOrganizationHandler')),
+    assignOrganizationMembershipHandler: vi.fn(async () => response('assignOrganizationMembershipHandler')),
+    removeOrganizationMembershipHandler: vi.fn(async () => response('removeOrganizationMembershipHandler')),
+    getMyOrganizationContextHandler: vi.fn(async () => response('getMyOrganizationContextHandler')),
+    updateMyOrganizationContextHandler: vi.fn(async () => response('updateMyOrganizationContextHandler')),
     listRolesHandler: vi.fn(async () => response('listRolesHandler')),
     createRoleHandler: vi.fn(async () => response('createRoleHandler')),
     updateRoleHandler: vi.fn(async () => response('updateRoleHandler')),
@@ -73,6 +82,11 @@ describe('auth.routes.server', () => {
         expect(response.status).toBe(200);
       }
 
+      if (handlers.PUT) {
+        const response = await handlers.PUT({ request });
+        expect(response.status).toBe(200);
+      }
+
       if (handlers.DELETE) {
         const response = await handlers.DELETE({ request });
         expect(response.status).toBe(200);
@@ -86,6 +100,8 @@ describe('auth.routes.server', () => {
     expect(authServerMocks.listUsersHandler).toHaveBeenCalled();
     expect(authServerMocks.getUserHandler).toHaveBeenCalled();
     expect(authServerMocks.updateUserHandler).toHaveBeenCalled();
+    expect(authServerMocks.listOrganizationsHandler).toHaveBeenCalled();
+    expect(authServerMocks.updateMyOrganizationContextHandler).toHaveBeenCalled();
     expect(authServerMocks.deleteRoleHandler).toHaveBeenCalled();
     expect(authServerMocks.dataSubjectMaintenanceHandler).toHaveBeenCalled();
   });

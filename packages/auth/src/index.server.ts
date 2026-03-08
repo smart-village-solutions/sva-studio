@@ -3,6 +3,7 @@ export * from './audit/index.server';
 export * from './config';
 export * from './iam-data-subject-rights.server';
 export * from './iam-account-management.server';
+export * from './iam-organizations.server';
 export * from './iam-governance.server';
 export * from './iam-authorization.server';
 export * from './jit-provisioning.server';

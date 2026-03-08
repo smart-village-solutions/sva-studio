@@ -1,0 +1,190 @@
+## ADDED Requirements
+### Requirement: Hierarchisches Organisationsmodell innerhalb einer Instanz
+
+Das System SHALL Organisationen als hierarchische Einheiten innerhalb der aktiven `instanceId` modellieren.
+
+#### Scenario: Root- und Child-Organisation in derselben Instanz
+
+- **WHEN** ein Administrator eine Organisation mit Parent-Referenz anlegt
+- **THEN** referenziert der Parent eine Organisation derselben `instanceId`
+- **AND** die Child-Organisation wird als untergeordnete Einheit der Parent-Organisation gespeichert
+
+#### Scenario: Parent aus fremder Instanz wird abgewiesen
+
+- **WHEN** eine Organisation mit einem Parent aus einer anderen `instanceId` verknüpft werden soll
+- **THEN** wird die Operation abgewiesen
+- **AND** die Daten bleiben unverändert
+
+### Requirement: Zyklusfreie Organisationshierarchie
+
+Das System MUST zyklische Beziehungen in der Organisationshierarchie verhindern.
+
+#### Scenario: Organisation wird auf eigenes Child umgehängt
+
+- **WHEN** ein Administrator versucht, eine Organisation auf einen ihrer Nachfahren als Parent umzuhängen
+- **THEN** wird die Änderung abgewiesen
+- **AND** ein Validierungsfehler beschreibt die Zyklusverletzung
+
+### Requirement: Organisations-CRUD für Administratoren
+
+Das System SHALL eine instanzgebundene Organisationsverwaltung über dedizierte Admin-Endpunkte bereitstellen.
+
+#### Scenario: Organisation anlegen
+
+- **WHEN** ein berechtigter Administrator `POST /api/v1/iam/organizations` mit gültigen Daten aufruft
+- **THEN** wird eine neue Organisation in der aktiven `instanceId` angelegt
+- **AND** die Antwort enthält die gespeicherte Organisationsrepräsentation
+
+#### Scenario: Organisation bearbeiten
+
+- **WHEN** ein berechtigter Administrator `PATCH /api/v1/iam/organizations/:organizationId` mit gültigen Änderungen aufruft
+- **THEN** werden Name, Parent oder freigegebene Metadaten aktualisiert
+- **AND** die Instanzgrenze bleibt unverändert
+
+#### Scenario: Organisation mit abhängigen Children kann nicht unkontrolliert gelöscht werden
+
+- **WHEN** ein Administrator eine Organisation mit untergeordneten Organisationen löschen oder deaktivieren will
+- **THEN** erzwingt das System eine definierte Konflikt- oder Schutzreaktion
+- **AND** die Hierarchie bleibt konsistent
+
+#### Scenario: Delete-Endpunkt deaktiviert Organisation kontrolliert
+
+- **WHEN** ein berechtigter Administrator `DELETE /api/v1/iam/organizations/:organizationId` für eine zulässige Organisation aufruft
+- **THEN** wird die Organisation im ersten Schnitt kontrolliert deaktiviert statt physisch gelöscht
+- **AND** bestehende Audit- und Referenzbezüge bleiben erhalten
+
+### Requirement: Mehrfach-Zugehörigkeit von Accounts zu Organisationen
+
+Das System SHALL Accounts mehreren Organisationen derselben Instanz zuordnen können.
+
+#### Scenario: Account wird mehreren Organisationen zugeordnet
+
+- **WHEN** ein Administrator einem Account mehrere Organisationen innerhalb derselben `instanceId` zuweist
+- **THEN** werden alle gültigen Zuordnungen gespeichert
+- **AND** der Account bleibt in jeder dieser Organisationen referenzierbar
+
+#### Scenario: Instanzfremde Account-Zuordnung wird abgewiesen
+
+- **WHEN** ein Account einer Organisation einer anderen `instanceId` zugeordnet werden soll
+- **THEN** wird die Operation abgewiesen
+- **AND** keine Zuordnung wird gespeichert
+
+### Requirement: Organisationsarten und Basispolicies
+
+Das System SHALL Organisationen mit einem kontrollierten Organisationstyp und organisationsbezogenen Basispolicies modellieren.
+
+#### Scenario: Kommunale Organisation mit Typ anlegen
+
+- **WHEN** ein Administrator eine Organisation vom Typ `municipality` oder einem äquivalenten unterstützten Typ anlegt
+- **THEN** wird der Typ zusammen mit der Organisation gespeichert
+- **AND** die Organisation bleibt für Hierarchie- und Filteroperationen nach Typ auswertbar
+
+#### Scenario: Ungültiger Organisationstyp wird abgewiesen
+
+- **WHEN** ein Administrator einen nicht unterstützten Organisationstyp speichert
+- **THEN** wird die Operation mit einem Validierungsfehler abgewiesen
+- **AND** die Daten bleiben unverändert
+
+#### Scenario: Organisationsbezogene Autorenpolicy wird gesetzt
+
+- **WHEN** ein Administrator für eine Organisation eine `content_author_policy` speichert
+- **THEN** wird die Policy in der Organisationsrepräsentation persistiert
+- **AND** nachgelagerte Module können diese Policy als organisationsbezogenen Kontext konsumieren
+
+### Requirement: Lesefähiges Hierarchie-Read-Model
+
+Das System SHALL Organisationsdaten in einem für Admin-Views geeigneten Read-Model bereitstellen.
+
+#### Scenario: Organisationsliste enthält Strukturinformationen
+
+- **WHEN** ein Administrator die Organisationsliste lädt
+- **THEN** enthält jeder Eintrag mindestens Parent-Referenz, Tiefe oder äquivalente Strukturinformationen
+- **AND** Child- und Membership-Zähler stehen für die Oberfläche zur Verfügung
+- **AND** Organisationstyp und Basispolicies sind für Filterung oder Detailansichten verfügbar
+
+### Requirement: Membership-Metadaten für Organisationskontext
+
+Das System SHALL Organisationszuordnungen mit Metadaten für Default-Kontext und interne/externe Sicht modellieren.
+
+#### Scenario: Default-Kontext für Multi-Org-Account festlegen
+
+- **WHEN** ein Administrator oder der IAM-Service eine Organisationszuordnung als Default-Kontext markiert
+- **THEN** ist innerhalb derselben `instanceId` höchstens eine Zuordnung pro Account als Default markiert
+- **AND** der Default-Kontext bleibt für spätere Session-Initialisierung lesbar
+
+#### Scenario: Mitgliedschaft als extern kennzeichnen
+
+- **WHEN** eine Organisationszuordnung als extern markiert wird
+- **THEN** bleibt diese Kennzeichnung an der Membership gespeichert
+- **AND** nachgelagerte UI- und Governance-Funktionen können interne und externe Zuordnungen unterscheiden
+
+### Requirement: Sichere mutierende Organisations-Endpunkte
+
+Das System MUST mutierende Organisations- und Kontext-Endpunkte mit den bestehenden IAM-Sicherheitsleitplanken betreiben.
+
+#### Scenario: Mutierender Organisations-Endpunkt ohne gültigen CSRF-Contract
+
+- **WHEN** ein mutierender Organisations- oder Org-Kontext-Endpunkt ohne den erforderlichen `X-Requested-With`-Header aufgerufen wird
+- **THEN** wird die Operation abgewiesen
+- **AND** keine Mutation an Organisationen, Memberships oder aktivem Organisationskontext wird gespeichert
+
+#### Scenario: Instanzfremde Mutation wird protokolliert und blockiert
+
+- **WHEN** ein Request versucht, eine Organisationsmutation außerhalb der aktiven `instanceId` auszuführen
+- **THEN** wird die Operation fail-closed abgewiesen
+- **AND** ein sicherheitsrelevanter Audit- oder Betriebsnachweis mit korrelierbarer Request-Identität wird erzeugt
+
+### Requirement: Auditierbare Organisationsereignisse ohne Klartext-PII
+
+Das System SHALL Organisationsmutationen und Org-Kontextwechsel auditierbar machen, ohne Klartext-PII in Logs oder Audit-Payloads zu persistieren.
+
+#### Scenario: Organisation wird geändert
+
+- **WHEN** eine Organisation erstellt, geändert, deaktiviert oder eine Membership angepasst wird
+- **THEN** erzeugt das System einen korrelierbaren Audit-Nachweis und einen strukturierten Betriebslog gemäß bestehendem IAM-Dual-Write-Muster
+- **AND** die Einträge enthalten keine Klartext-E-Mail-Adressen oder sonstige unzulässige PII
+
+#### Scenario: Org-Kontext wird gewechselt
+
+- **WHEN** ein Benutzer erfolgreich den aktiven Organisationskontext wechselt
+- **THEN** ist der Kontextwechsel nachvollziehbar protokolliert
+- **AND** Log- und Audit-Einträge referenzieren zulässige IDs statt Klartext-PII
+
+### Requirement: Performantes Organisations-Read-Model
+
+Das System SHALL Organisationslisten, Detailansichten und Kontextoptionen über ein für Admin- und Session-Flows effizientes Read-Model bereitstellen.
+
+#### Scenario: Organisationsliste wird ohne N+1-Hierarchieabfragen geladen
+
+- **WHEN** ein Administrator die Organisationsliste der aktiven Instanz lädt
+- **THEN** liefert das Backend Parent-, Zähler- und Typinformationen in einem lesefähigen Read-Model
+- **AND** die Oberfläche muss diese Informationen nicht über rekursive Folgeaufrufe zusammensetzen
+
+#### Scenario: Org-Kontextwechsel beeinflusst Authorize-Leitplanke nicht regressiv
+
+- **WHEN** der Organisationskontext gesetzt oder gelesen wird
+- **THEN** bleibt der Contract auf einen leichten Kontextpfad begrenzt
+- **AND** die bestehende Leistungsleitplanke für `POST /iam/authorize` wird durch den Change nicht regressiv verschlechtert
+
+## MODIFIED Requirements
+### Requirement: Multi-Org-Kontextwechsel im aktiven Instanzkontext
+
+Das System MUST Benutzern mit mehreren Organisationszuordnungen den Kontextwechsel innerhalb der aktiven `instanceId` ermöglichen und den gewählten Organisationskontext belastbar für nachgelagerte Zugriffe bereitstellen.
+
+#### Scenario: Benutzer wechselt Organisationskontext
+
+- **WHEN** ein authentifizierter Benutzer Mitglied in mehreren Organisationen derselben Instanz ist
+- **THEN** kann er den aktiven Organisationskontext wechseln
+- **AND** der gewählte Kontext wird in der Session für nachgelagerte Zugriffe bereitgestellt
+
+#### Scenario: Benutzer wählt unzulässigen Organisationskontext
+
+- **WHEN** ein authentifizierter Benutzer einen Organisationskontext setzt, für den in der aktiven `instanceId` keine gültige Mitgliedschaft besteht
+- **THEN** wird die Operation abgewiesen
+- **AND** der bisherige gültige Organisationskontext bleibt erhalten
+
+#### Scenario: Deaktivierte Organisation kann kein aktiver Kontext werden
+
+- **WHEN** ein authentifizierter Benutzer einen deaktivierten Organisationskontext setzen will
+- **THEN** wird die Operation abgewiesen
+- **AND** ein weiterhin gültiger bisheriger Session-Kontext bleibt aktiv

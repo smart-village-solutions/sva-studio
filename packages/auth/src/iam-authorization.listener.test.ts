@@ -36,8 +36,6 @@ vi.mock('@opentelemetry/api', () => ({
 
 vi.mock('pg', () => ({
   Pool: class MockPool {
-    public constructor(_config: unknown) {}
-
     public async connect() {
       return {
         query: async (text: string, values?: readonly unknown[]) => {

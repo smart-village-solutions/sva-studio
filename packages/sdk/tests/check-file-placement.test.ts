@@ -1,3 +1,4 @@
+/* eslint-disable @nx/enforce-module-boundaries */
 import { describe, expect, it } from 'vitest';
 
 import { findFilePlacementViolations, getTrackedFiles } from '../../../scripts/ci/check-file-placement.ts';

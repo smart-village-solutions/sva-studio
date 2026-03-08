@@ -25,16 +25,17 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
 ### Messbare Kriterien (IST)
 
 - Type Safety:
-  - `pnpm test:types` muss gruen sein
+  - `pnpm test:types` muss grün sein
 - Lint/Build Qualitaet:
-  - `pnpm test:eslint` muss gruen sein
+  - `pnpm test:eslint` muss grün sein
+  - `pnpm nx show project sva-studio-react` zeigt explizite Targets mit definierten `inputs` und `outputs`
 - Unit-Test-Basis:
-  - `pnpm test:unit` muss gruen sein
+  - `pnpm test:unit` muss grün sein
 - IAM Authorize Performance:
-  - P95 fuer `POST /iam/authorize` < 50 ms (mindestens 100 RPS / 500 gleichzeitige Nutzer als Zielprofil)
+  - P95 für `POST /iam/authorize` < 50 ms (mindestens 100 RPS / 500 gleichzeitige Nutzer als Zielprofil)
 - IAM Mandantenisolation (RLS):
   - Kein Datenzugriff über Organisations-/Instanzgrenzen (`instanceId`) hinweg
-  - Negativtests für RLS-Bypass und Direktzugriff müssen gruen sein
+  - Negativtests für RLS-Bypass und Direktzugriff müssen grün sein
 - IAM Cache-Invaliderung:
   - End-to-End-Latenz P95 <= 2 s, P99 <= 5 s
   - Snapshot-TTL = 300 s, maximal tolerierte Stale-Dauer = 300 s
@@ -49,7 +50,7 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
   - Skeleton-Zustand für Sidebar, Kopfzeile und Contentbereich vorhanden
   - Responsives Verhalten für mobile und desktop geprüft
 - File-Placement Governance:
-  - `pnpm check:file-placement` muss gruen sein
+  - `pnpm check:file-placement` muss grün sein
 - Coverage Governance:
   - Gate-Logik und Baselines in `scripts/ci/coverage-gate.ts` und `tooling/testing/*`
 - Review-Governance:
@@ -81,13 +82,14 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
 - Strukturierte Logs mit Pflichtfeldern (`component`, `environment`, `workspace_id`)
 - IAM-Authorize- und Cache-Logs enthalten zusätzlich `request_id` und `trace_id`
 - Label-Whitelist und PII-Redaction entlang der OTEL-Pipeline
-- Healthchecks fuer lokale Monitoring-Dienste in Compose
+- Healthchecks für lokale Monitoring-Dienste in Compose
 - DSR-Audit-Events enthalten mindestens `instance_id`, `request_id`, `trace_id`, `event_type`, `result`
 
 ### Aktuelle Lücken
 
 - Nicht alle Projekte haben vollwertige Unit/Coverage-Suites (teils exempt)
-- App-Tests laufen derzeit mit `--passWithNoTests`, daher eingeschraenkte Aussagekraft
+- App-Tests laufen derzeit mit `--passWithNoTests`, daher eingeschränkte Aussagekraft
+- Fehlende oder implizite Cache-Inputs für Frontend-Tooling können zu falschen Cache-Hits führen, wenn neue App-Targets nicht konsistent gepflegt werden
 
 Referenzen:
 

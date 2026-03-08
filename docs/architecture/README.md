@@ -26,6 +26,9 @@ Alle Architekturinformationen werden arc42-konform in den Abschnitten 1-12 gepfl
 - OpenSpec-Changes mit Architekturwirkung müssen betroffene arc42-Abschnitte in `proposal.md` und `tasks.md` referenzieren.
 - Architekturentscheidungen werden als ADR unter `../adr/` dokumentiert und in Abschnitt 9 verlinkt.
 - Referenzen sollen konsistent und klickbar sein (Dateipfade statt Freitext).
+- Änderungen in IAM, Rollen-Sync, ABAC/RBAC oder Data-Subject-Rights müssen die Abschnitte 04, 05, 06 und 08 explizit prüfen und die betroffenen Dateien aktualisieren.
+- Änderungen an sicherheitskritischer oder domänenkritischer Logik müssen mindestens Abschnitt 05 oder 08 fortschreiben; "keine Architekturwirkung" ist zu begründen.
+- Neue oder geänderte IAM-Patterns benötigen eine ADR unter `../adr/` und einen Nachtrag in `./09-architecture-decisions.md`.
 
 ## Bestehende Architekturdokumente
 

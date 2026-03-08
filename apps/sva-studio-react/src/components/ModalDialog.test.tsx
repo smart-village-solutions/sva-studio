@@ -167,4 +167,34 @@ describe('ModalDialog', () => {
     expect(screen.queryByRole('dialog', { name: 'Dialog' })).toBeNull();
     expect(document.activeElement).toBe(openButton);
   });
+
+  it('keeps focus on the active field while controlled inputs rerender inside the dialog', () => {
+    const DialogHost = () => {
+      const [description, setDescription] = React.useState('');
+
+      return (
+        <ModalDialog open title="Dialog" onClose={() => undefined}>
+          <label>
+            <span>First</span>
+            <input type="text" value="fixed" readOnly />
+          </label>
+          <label>
+            <span>Description</span>
+            <textarea value={description} onChange={(event) => setDescription(event.target.value)} />
+          </label>
+        </ModalDialog>
+      );
+    };
+
+    render(<DialogHost />);
+
+    const textarea = screen.getByRole('textbox', { name: 'Description' });
+    textarea.focus();
+    expect(document.activeElement).toBe(textarea);
+
+    fireEvent.change(textarea, { target: { value: 'D' } });
+
+    expect(document.activeElement).toBe(textarea);
+    expect(textarea.value).toBe('D');
+  });
 });

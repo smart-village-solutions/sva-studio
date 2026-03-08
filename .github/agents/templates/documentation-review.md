@@ -35,6 +35,9 @@ Nutze dieses Template fuer Doku-Reviews. Fokus: Aktualitaet, Konsistenz, Vollsta
 - [ ] Interne Links und Pfade sind gueltig und konsistent
 - [ ] OpenSpec-Change referenziert bei Architekturwirkung die betroffenen arc42-Abschnitte
 - [ ] Relevante arc42-Dateien unter `docs/architecture/` wurden aktualisiert/verlinkt (oder Abweichung begruendet)
+- [ ] Bei IAM-, Rollen-Sync-, ABAC/RBAC- oder Data-Subject-Rights-Aenderungen wurden Abschnitt 04, 05, 06 und 08 explizit geprueft
+- [ ] Bei sicherheitskritischer oder domaenenkritischer Logik wurde mindestens Abschnitt 05 oder 08 aktualisiert
+- [ ] Neue oder geaenderte IAM-Patterns sind per ADR dokumentiert und in Abschnitt 09 referenziert
 - [ ] Repo-File-Placement-Regeln fuer neue/verschobene Doku sind eingehalten
 - [ ] Inline-Doku in Code (Docstrings/Kommentare) ist korrekt und nicht veraltet
 

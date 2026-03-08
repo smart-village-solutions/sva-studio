@@ -405,6 +405,25 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
 - Document breaking changes
 - Add migration guides when needed
 
+#### D. Architektur-Dokumentationssynchronität (arc42 / ADR)
+
+### ✅ REQUIRED
+- Architekturrelevante Änderungen im Bereich IAM, Rollen-Sync, ABAC/RBAC oder Data-Subject-Rights MÜSSEN in den betroffenen arc42-Abschnitten dokumentiert werden, insbesondere in Abschnitt 04, 05, 06 und 08.
+- Jede Änderung an sicherheitskritischer oder domänenkritischer Logik MUSS mindestens eine Aktualisierung in `docs/architecture/05-building-block-view.md` oder `docs/architecture/08-cross-cutting-concepts.md` nach sich ziehen.
+- Neue oder geänderte IAM-Patterns MÜSSEN als ADR unter `docs/adr/` dokumentiert und in `docs/architecture/09-architecture-decisions.md` referenziert werden.
+- PRs mit Architektur- oder Systemwirkung MÜSSEN im PR-Text die betroffenen arc42-Abschnitte nennen oder eine begründete Abweichung dokumentieren.
+- OpenSpec-Changes mit Architekturwirkung MÜSSEN die betroffenen arc42-Abschnitte in `proposal.md` und `tasks.md` referenzieren.
+
+### ❌ FORBIDDEN
+- Änderungen an IAM-, Rollen-, Policy- oder Data-Subject-Rights-Logik ohne passende Aktualisierung der Architektur-Doku.
+- Sicherheitskritische Logikänderungen nur im Code nachzuziehen und die Querschnitts- oder Bausteinsicht unverändert zu lassen.
+- Neue IAM-Patterns implizit im Code einzuführen, ohne ADR und ohne Referenz in Abschnitt 09.
+
+### Enforcement
+- Reviews müssen PRs ablehnen, wenn architekturrelevante Änderungen nicht in arc42 und ADRs nachvollziehbar dokumentiert sind.
+- Die PR-Checkliste unter `docs/reports/PR_CHECKLIST.md` ist für diese Nachweise verbindlich.
+- Der `documentation.agent.md` und der `architecture.agent.md` prüfen diese Synchronität explizit.
+
 ---
 
 ## 7. Branching & PR Workflow

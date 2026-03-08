@@ -32,6 +32,8 @@ Nutze dieses Template für Architektur-Reviews. Triff eine klare Entscheidung un
 - [ ] Cloud-Portabilität (kein Hard-Lock-in)
 - [ ] Skalierbarkeit/Zukunftsfähigkeit
 - [ ] Relevante arc42-Abschnitte unter `docs/architecture/` aktualisiert/verlinkt (oder Abweichung begründet)
+- [ ] Bei IAM-, Rollen-Sync-, ABAC/RBAC- oder Data-Subject-Rights-Änderungen sind Abschnitt 04, 05, 06 und 08 geprüft und konsistent
+- [ ] Neue oder geänderte IAM-Patterns haben eine ADR und einen Verweis in Abschnitt 09
 
 ## Anhänge
 - Eingesetzte Inputs: (Diagramme, ADRs, Specs)

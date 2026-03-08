@@ -10,6 +10,7 @@ Dieses Dokument beschreibt die Review-Governance für Proposal- und PR-Reviews m
 |------|-------|------------------|
 | `proposal-review-orchestrator.agent.md` | konsolidiert Proposal-Reviews | OpenSpec-Changes |
 | `pr-review-orchestrator.agent.md` | konsolidiert PR-/Code-Reviews | normale PRs und Diffs |
+| `architecture.agent.md` | Zielarchitektur, ADR-Bedarf, arc42-Fit | Architektur- und Systemänderungen |
 | `code-quality-guardian.agent.md` | Korrektheit, Typen, Architekturgrenzen | Codeänderungen |
 | `documentation.agent.md` | Doku-Abdeckung, Konsistenz, arc42 | jede PR / jedes Proposal |
 | `test-quality.agent.md` | Tests, Coverage, Verifikationsstrategie | Verhaltensänderungen, Test-/Coverage-Themen |
@@ -28,6 +29,7 @@ Dieses Dokument beschreibt die Review-Governance für Proposal- und PR-Reviews m
 
 - Immer: `Documentation`
 - Neue Architektur / Packages / strukturelle Entscheidungen: `Architecture`
+- IAM, Rollen-Sync, ABAC/RBAC, Data-Subject-Rights oder andere sicherheitskritische Domänenlogik: `Architecture` + `Documentation` + `Security & Privacy`
 - Auth, Sessions, Tokens, PII: `Security & Privacy`
 - UI, Formulare, Navigation: `UX & Accessibility`
 - Texte, Übersetzungen, Labels: `i18n & Content`
@@ -43,6 +45,7 @@ Dieses Dokument beschreibt die Review-Governance für Proposal- und PR-Reviews m
 - Immer: `Documentation`
 - Jede Codeänderung: `Code Quality`
 - Verhaltensänderungen oder Coverage-/Test-Themen: `Test Quality`
+- IAM, Rollen-Sync, ABAC/RBAC, Data-Subject-Rights oder andere architekturrelevante Security-/Domain-Änderungen: zusätzlich `Architecture` und `Security & Privacy`
 - weitere Fachreviewer trigger-basiert analog zu Proposal-Reviews
 
 ## Abgrenzungen

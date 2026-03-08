@@ -15,7 +15,7 @@ pnpm install
 ### App starten (empfohlen, im Repo-Root)
 
 ```bash
-nx run sva-studio-react:serve
+pnpm nx run sva-studio-react:serve
 ```
 
 ### Alternativ: App-Ordner
@@ -30,16 +30,22 @@ pnpm run dev
 To build this application for production:
 
 ```bash
-nx run sva-studio-react:build
+pnpm nx run sva-studio-react:build
 ```
 
 ## Testing
 
-This project uses [Vitest](https://vitest.dev/) for testing. You can run the tests with:
+Die App nutzt Nx-native Targets für Build, Serve, Linting sowie Unit-, Coverage- und E2E-Tests.
+Die wichtigsten Commands im Repo-Root:
 
 ```bash
-nx run sva-studio-react:test
+pnpm nx run sva-studio-react:lint
+pnpm nx run sva-studio-react:test:unit
+pnpm nx run sva-studio-react:test:coverage
+pnpm nx run sva-studio-react:test:e2e
 ```
+
+`build` erzwingt zusätzlich die Checks `check:i18n` und `check:account-ui-foundation`.
 
 ## Styling
 
@@ -50,7 +56,7 @@ Dieses Projekt nutzt Tailwind CSS (siehe tailwind.config.cjs) und eine globale s
 Diese App nutzt TanStack Router in einer **code-basierten Route-Komposition** (Core + Plugins).
 Die Router-Erzeugung passiert in `apps/sva-studio-react/src/router.tsx`.
 
-Kurzuebersicht:
+Kurzübersicht:
 
 - Root/Shell: `src/routes/__root.tsx`
 - Core Route Factories: `src/routes/-core-routes.tsx`

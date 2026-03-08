@@ -11,6 +11,7 @@ import { hasIamAdminRole, hasSystemAdminRole, isIamAdminEnabled, isIamUiEnabled 
 import { hasIamViewerAdminRole, isIamViewerEnabled } from '../lib/iam-viewer-access';
 import { t } from '../i18n';
 import { useAuth } from '../providers/auth-provider';
+import { OrganizationContextSwitcher } from './OrganizationContextSwitcher';
 
 type HeaderProps = Readonly<{
   isLoading?: boolean;
@@ -26,6 +27,7 @@ export default function Header({ isLoading = false }: HeaderProps) {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const canAccessAccount = isAuthenticated && isIamUiEnabled();
   const canAccessAdminUsers = isAuthenticated && isIamAdminEnabled() && hasIamAdminRole(user);
+  const canAccessAdminOrganizations = canAccessAdminUsers;
   const canAccessAdminRoles = canAccessAdminUsers && hasSystemAdminRole(user);
 
   let authAction: React.ReactNode = null;
@@ -91,11 +93,17 @@ export default function Header({ isLoading = false }: HeaderProps) {
               {t('shell.header.adminUsers')}
             </Link>
           ) : null}
+          {canAccessAdminOrganizations ? (
+            <Link className="transition hover:text-white" to="/admin/organizations">
+              {t('shell.header.adminOrganizations')}
+            </Link>
+          ) : null}
           {canAccessAdminRoles ? (
             <Link className="transition hover:text-white" to="/admin/roles">
               {t('shell.header.adminRoles')}
             </Link>
           ) : null}
+          {canAccessAccount ? <OrganizationContextSwitcher /> : null}
           {isIamViewerEnabled() && hasIamViewerAdminRole(user) ? (
             <Link className="transition hover:text-white" to="/admin/iam">
               {t('shell.header.iamViewer')}

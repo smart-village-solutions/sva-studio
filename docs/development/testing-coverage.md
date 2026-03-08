@@ -84,6 +84,15 @@ Workflow: `.github/workflows/test-coverage.yml`
   - Coverage-Gate (blockierend)
   - Integrationstests separat und verpflichtend
 
+### Codecov-Schwellenwerte
+
+Codecov bewertet im Pull-Request zwei getrennte Sichten:
+
+- `project`: Gesamt-Coverage des gemessenen Codebestands mit Zielwert `75%`
+- `patch`: Coverage des neu geänderten Codes mit Zielwert `80%`
+
+Damit bleibt der Bestand realistisch bewertet, während neue Änderungen weiterhin überdurchschnittlich abgesichert sein müssen.
+
 ## Exemptions
 
 Aktuell als coverage-exempt markiert:

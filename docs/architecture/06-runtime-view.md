@@ -68,8 +68,8 @@ Fehlerpfad:
 1. Client ruft `POST /iam/authorize` mit `instanceId`, `action`, `resource` und optionalem ABAC-Kontext auf.
 2. Server erzwingt Instanzgrenze und wertet Hard-Deny-Regeln zuerst aus.
 3. Permission-Snapshot wird über User-/Instanz-/Org-Kontext im Cache gesucht.
-4. Bei Cache-Hit erfolgt die Entscheidung direkt über RBAC+ABAC-Evaluator.
-5. Bei Miss/Stale erfolgt Recompute aus DB und anschließende Snapshot-Aktualisierung.
+4. Bei Cache-Hit wertet die Engine die Entscheidung in fester Reihenfolge aus: RBAC-Basis, danach ABAC-Regeln und Hierarchie-Restriktionen.
+5. Bei Miss/Stale erfolgt Recompute aus Postgres als fachlicher Quelle und anschließende Snapshot-Aktualisierung.
 6. Bei Recompute-Fehler im Stale-Pfad greift Fail-Closed (`cache_stale_guard`).
 
 Fehlerpfad:
@@ -115,6 +115,7 @@ Referenzen:
 - `packages/auth/src/iam-authorization.cache.ts`
 - `packages/sdk/src/logger/index.server.ts`
 - `packages/monitoring-client/src/otel.server.ts`
+- `docs/architecture/iam-service-architektur.md`
 
 ### Szenario 8: Login -> JIT-Provisioning -> Profilpflege
 

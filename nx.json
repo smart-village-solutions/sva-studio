@@ -2,11 +2,14 @@
   "$schema": "./node_modules/nx/schemas/nx-schema.json",
   "defaultBase": "main",
   "installation": {
-    "version": "22.5.1",
+    "version": "22.5.3",
     "plugins": {
-      "@nx/eslint": "22.5.1",
-      "@nx/eslint-plugin": "22.5.1",
-      "@nx/js": "22.5.1"
+      "@nx/eslint": "22.5.3",
+      "@nx/eslint-plugin": "22.5.3",
+      "@nx/js": "22.5.3",
+      "@nx/playwright": "22.5.3",
+      "@nx/vite": "22.5.3",
+      "@nx/vitest": "22.5.3"
     }
   },
   "workspaceLayout": {
@@ -44,6 +47,30 @@
       "{projectRoot}/**/__tests__/**",
       "{workspaceRoot}/vitest.config.ts",
       "{workspaceRoot}/vitest.workspace.ts"
+    ],
+    "frontendTooling": [
+      "{projectRoot}/vite.config.ts",
+      "{projectRoot}/vitest.config.ts",
+      "{projectRoot}/playwright.config.ts",
+      "{projectRoot}/tailwind.config.cjs",
+      "{projectRoot}/postcss.config.cjs",
+      "{projectRoot}/tsconfig.json",
+      "{projectRoot}/package.json"
+    ],
+    "frontendEnvBuild": [
+      {
+        "env": "CODECOV_TOKEN"
+      }
+    ],
+    "frontendEnvServe": [
+      {
+        "env": "TSS_DEV_SERVER"
+      }
+    ],
+    "frontendEnvE2E": [
+      {
+        "env": "CI"
+      }
     ],
     "sharedGlobals": [
       "{workspaceRoot}/tsconfig.base.json",

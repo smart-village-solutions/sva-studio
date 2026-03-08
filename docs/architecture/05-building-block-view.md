@@ -19,6 +19,7 @@ Abhängigkeiten des aktuellen Systems.
    - TanStack Start App, UI, Root-Shell, Router-Erzeugung
    - Shell-Bausteine: `Header`, `Sidebar`, `AppShell` (Layout-Komposition)
    - Skeleton-Bausteine für Kopfzeile, Seitenleiste und Contentbereich
+   - Nx-Targets für `build`, `serve`, `lint`, `test:unit`, `test:coverage` und `test:e2e` über Vite-, Vitest- und Playwright-Executor
 2. Core (`packages/core`)
    - generische Route-Registry Utilities (`mergeRouteFactories`, `buildRouteTree`)
 3. Routing (`packages/routing`)

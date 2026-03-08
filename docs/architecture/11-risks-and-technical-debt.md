@@ -70,7 +70,12 @@ Schulden auf IST-Basis.
    - Wahrscheinlichkeit: mittel
    - Maßnahme: Child-spezifische Delta-Specs strikt einhalten, Scope im PR gegen Masterplan prüfen, Review-Gates vor Implementierungsstart erzwingen
 
-12. Hohe strukturelle Komplexität in zentralen IAM- und Routing-Modulen
+12. Frontend-Task-Drift zwischen Paket-Skripten und Nx-Targets
+   - Impact: mittel (uneinheitliche lokale Läufe, unvollständige Cache-Invalidierung, CI-Abweichungen)
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: `sva-studio-react`-Standard-Tasks ausschließlich über dokumentierte Nx-Targets betreiben und Änderungen an Vite/Vitest/Playwright-Konfiguration immer gegen `inputs`/`outputs` prüfen
+
+13. Hohe strukturelle Komplexität in zentralen IAM- und Routing-Modulen
    - Impact: hoch (Refactorings werden riskant, Sicherheits- und Routing-Fehler bleiben schwer lokalisierbar)
    - Wahrscheinlichkeit: hoch
    - Maßnahme: `complexity-gate`, ticketpflichtige tracked findings, Hotspot-Coverage für kritische Dateien
@@ -102,32 +107,32 @@ Referenzen:
 
 ### Ergänzung 2026-03: IAM-UI und Keycloak-Sync
 
-12. Keycloak-API-Latenz oder Ausfall bei Admin-Operationen
+14. Keycloak-API-Latenz oder Ausfall bei Admin-Operationen
    - Impact: hoch (Admin-Operationen blockieren)
    - Wahrscheinlichkeit: mittel
    - Maßnahme: Circuit-Breaker, Retry/Backoff, DB-Fallback für Reads, klare 503-Signale für Writes
 
-13. Vendor-Lock-in auf Keycloak-Admin-API
+15. Vendor-Lock-in auf Keycloak-Admin-API
    - Impact: mittel bis hoch
    - Wahrscheinlichkeit: mittel
    - Maßnahme: `IdentityProviderPort` als stabile Abstraktionsschicht, Adapterwechsel ohne UI-Bruch
 
-14. Wachstum von `iam.activity_logs`
+16. Wachstum von `iam.activity_logs`
    - Impact: mittel (Storage/Kosten/Query-Latenz)
    - Wahrscheinlichkeit: hoch
    - Maßnahme: Retention-Automation (Anonymisierung + Archivierung) mit mandantenspezifischen Policies
 
-15. Fehlkonfigurierte Keycloak-Service-Account-Rechte für Rollen-Sync
+17. Fehlkonfigurierte Keycloak-Service-Account-Rechte für Rollen-Sync
    - Impact: hoch (Role-CRUD und Reconcile schlagen reproduzierbar fehl)
    - Wahrscheinlichkeit: mittel
    - Maßnahme: dokumentierte Least-Privilege-Matrix, Readiness-Checks und Alerts auf `IDP_FORBIDDEN`
 
-16. Drift-Backlog durch orphaned, studio-markierte Keycloak-Rollen
+18. Drift-Backlog durch orphaned, studio-markierte Keycloak-Rollen
    - Impact: mittel bis hoch (anhaltende Inkonsistenz, manueller Betriebsaufwand)
    - Wahrscheinlichkeit: mittel
    - Maßnahme: geplanter Reconcile-Lauf, Alerting auf `iam_role_drift_backlog`, explizites Runbook für manuelle Freigaben
 
-17. Fehlzuordnung privilegierter Rollen-Aliasse aus externen Claims
+19. Fehlzuordnung privilegierter Rollen-Aliasse aus externen Claims
    - Impact: hoch (potenzielle Rechteausweitung über falsche Claim-Quelle)
    - Wahrscheinlichkeit: mittel
    - Maßnahme: privilegierte Alias-Regeln nur aus `realm_access` ableiten, client-spezifische `resource_access`-Rollen strikt isolieren und per Tests absichern

@@ -93,10 +93,10 @@ These rules are **NON-NEGOTIABLE** and must be followed in all development work.
   - `docs/pr45-*.md`
   - `docs/pr-45-*.md`
 - Root-level debug scripts like:
-  - `debug_test.py`
-  - `test_session_loading.py`
+  - `debug_test.ts`
+  - `test_session_loading.ts`
   - `test-otel-phase1.ts`
-  - `test-otel-provider-creation.mjs`
+  - `test-otel-provider-creation.ts`
   - `test-otlp-direct.ts`
 
 **Enforcement**

@@ -224,7 +224,7 @@ Unit Tests sollten auch die Observability testen:
 ### ✅ DO: Test PII-Redaction
 
 ```typescript
-// packages/monitoring-client/scripts/pii-redaction-test.mjs
+// packages/monitoring-client/scripts/pii-redaction-test.ts
 import { getSessionFromRedis, createSessionInRedis } from '@sva/sdk';
 
 describe('PII Redaction', () => {
@@ -284,7 +284,7 @@ Für Entwicklung:
 
 ### PII wird nicht redacted
 
-1. Test manuell: `pnpm exec node packages/monitoring-client/scripts/pii-redaction-test.mjs`
+1. Test manuell: `pnpm exec tsx packages/monitoring-client/scripts/pii-redaction-test.ts`
 2. Prüfe Promtail Config regex
 3. Prüfe OTEL SDK forbiddenLabels in `packages/monitoring-client/src/otel.ts`
 

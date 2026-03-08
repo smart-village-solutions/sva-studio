@@ -21,11 +21,10 @@
 - [ ] 1.3.2 `packages/monitoring-client/project.json`: `lint`-Target auf `@nx/eslint:lint` Executor umstellen
 - [ ] 1.3.3 Verifizieren: `pnpm nx run auth:lint && pnpm nx run monitoring-client:lint`
 
-### Task 1.4: Token-Datei Server-Markierung (C-4)
-- [ ] 1.4.1 `packages/core/src/iam/token.ts` → `packages/core/src/iam/token.server.ts` umbenennen
-- [ ] 1.4.2 Alle Imports in `packages/core/src/iam/index.ts` und anderen Dateien aktualisieren
-- [ ] 1.4.3 Prüfen, ob `parseJwtPayload` Client-seitig importiert wird – Falls ja: Browser-kompatible Variante mit `atob()` bereitstellen
-- [ ] 1.4.4 `pnpm nx affected --target=build` – keine neuen Fehler
+### Task 1.4: Veraltete C-4-Annahme bereinigen
+- [x] 1.4.1 Verifiziert: `packages/core/src/iam/token.ts` nutzt keine Node.js-spezifischen APIs mehr (`Buffer.from()` entfällt)
+- [x] 1.4.2 Scope angepasst: kein `.server.ts`-Rename erforderlich
+- [ ] 1.4.3 `pnpm nx affected --target=build` nach Abschluss von Task 1.1–1.3 ohne neue Fehler ausführen
 
 ---
 
@@ -45,8 +44,8 @@
 - [ ] 2.1.4 Sicherstellen, dass `maxAllowedDropPctPoints` bei 0.5 bleibt
 
 ### Task 2.2: Basis-Tests für Core-Package (TEST-2)
-- [ ] 2.2.1 `packages/core/vitest.config.ts` erstellen (oder bestehende Stubs-Konfiguration korrigieren)
-- [ ] 2.2.2 Test-Datei `packages/core/src/security/field-encryption.test.ts` erstellen:
+- [x] 2.2.1 `packages/core/vitest.config.ts` vorhanden
+- [x] 2.2.2 Test-Datei `packages/core/src/security/field-encryption.test.ts` vorhanden:
   - Encrypt/Decrypt Round-Trip
   - Key-Rotation (verschiedene KeyIds)
   - Ungültige Key-Länge
@@ -61,8 +60,8 @@
 - [ ] 2.2.6 Core-Package aus Coverage-Exemption-Liste entfernen
 
 ### Task 2.3: Basis-Tests für Routing-Package
-- [ ] 2.3.1 `packages/routing/vitest.config.ts` prüfen/erstellen
-- [ ] 2.3.2 Test-Datei `packages/routing/src/auth.routes.server.test.ts` erstellen:
+- [x] 2.3.1 `packages/routing/vitest.config.ts` vorhanden
+- [x] 2.3.2 Test-Datei `packages/routing/src/auth.routes.server.test.ts` vorhanden:
   - Handler-Mapping enthält alle bekannten Pfade
   - Unbekannter Pfad führt zu Fehler (nach Fix R-2 aus Proposal 1)
 - [ ] 2.3.3 `pnpm nx run routing:test:unit` – alle Tests grün

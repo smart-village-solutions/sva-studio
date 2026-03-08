@@ -11,17 +11,23 @@ import type {
   ApiItemResponse,
   ApiListResponse,
   IamRoleListItem,
+  IamRoleSyncState,
   IamUserDetail,
   IamUserListItem,
   IamUserRoleAssignment,
 } from '@sva/core';
-import { createSdkLogger, getWorkspaceContext, withRequestContext } from '@sva/sdk/server';
+import { createSdkLogger, getWorkspaceContext, redactObject, withRequestContext } from '@sva/sdk/server';
 import { metrics } from '@opentelemetry/api';
 import { z } from 'zod';
 
 import type { IdentityProviderPort } from './identity-provider-port';
 import { jitProvisionAccountWithClient } from './jit-provisioning.server';
-import { KeycloakAdminClient, getKeycloakAdminClientConfigFromEnv } from './keycloak-admin-client';
+import {
+  KeycloakAdminClient,
+  KeycloakAdminRequestError,
+  KeycloakAdminUnavailableError,
+  getKeycloakAdminClientConfigFromEnv,
+} from './keycloak-admin-client';
 import { withAuthenticatedUser, type AuthenticatedRequestContext } from './middleware.server';
 import { isRedisAvailable } from './redis.server';
 import { createPoolResolver, jsonResponse, type QueryClient, withInstanceDb } from './shared/db-helpers';
@@ -40,6 +46,14 @@ const iamKeycloakRequestLatency = meter.createHistogram('iam_keycloak_request_du
 const iamCircuitBreakerGauge = meter.createObservableGauge('iam_circuit_breaker_state', {
   description: 'Circuit breaker state for Keycloak admin integration (0=closed, 2=open).',
 });
+const iamRoleSyncCounter = meter.createCounter('iam_role_sync_operations_total', {
+  description: 'Role catalog sync operations grouped by operation, result and error code.',
+});
+const iamRoleDriftBacklogGauge = meter.createObservableGauge('iam_role_drift_backlog', {
+  description: 'Latest known drift backlog per instance from role catalog reconciliation.',
+});
+
+const roleDriftBacklogByInstance = new Map<string, number>();
 
 const resolvePool = createPoolResolver(() => process.env.IAM_DATABASE_URL);
 
@@ -80,9 +94,34 @@ type ResolveActorOptions = {
 
 type IamRoleRow = {
   id: string;
+  role_key: string;
   role_name: string;
+  display_name?: string | null;
+  external_role_name?: string | null;
   role_level: number;
   is_system_role: boolean;
+};
+
+type ManagedBy = 'studio' | 'external';
+
+type RoleSyncErrorCode =
+  | 'IDP_UNAVAILABLE'
+  | 'IDP_TIMEOUT'
+  | 'IDP_FORBIDDEN'
+  | 'IDP_CONFLICT'
+  | 'IDP_NOT_FOUND'
+  | 'IDP_UNKNOWN'
+  | 'DB_WRITE_FAILED'
+  | 'COMPENSATION_FAILED'
+  | 'REQUIRES_MANUAL_ACTION';
+
+type ManagedRoleRow = IamRoleRow & {
+  readonly description: string | null;
+  readonly external_role_name: string;
+  readonly managed_by: ManagedBy;
+  readonly sync_state: IamRoleSyncState;
+  readonly last_synced_at: string | null;
+  readonly last_error_code: string | null;
 };
 
 type IdempotencyReserveResult =
@@ -165,6 +204,7 @@ const createRoleSchema = z.object({
     .min(3)
     .max(64)
     .regex(/^[a-z0-9_]+$/),
+  displayName: z.string().trim().min(1).max(120).optional(),
   description: z.string().trim().max(500).optional(),
   permissionIds: z.array(z.string().uuid()).max(100).default([]),
   roleLevel: z.number().int().min(0).max(100).default(0),
@@ -172,11 +212,16 @@ const createRoleSchema = z.object({
 
 const updateRoleSchema = z
   .object({
+    displayName: z.string().trim().min(1).max(120).optional(),
     description: z.string().trim().max(500).optional(),
     permissionIds: z.array(z.string().uuid()).max(100).optional(),
     roleLevel: z.number().int().min(0).max(100).optional(),
+    retrySync: z.boolean().optional(),
   })
-  .refine((value) => Object.keys(value).length > 0, 'Mindestens ein Feld muss gesetzt werden.');
+  .refine(
+    (value) => Object.keys(value).length > 0 && (Object.keys(value).some((key) => key !== 'retrySync') || value.retrySync),
+    'Mindestens ein Feld muss gesetzt werden.'
+  );
 
 const rateLimiterStore = new Map<string, RateBucket>();
 
@@ -356,6 +401,12 @@ iamCircuitBreakerGauge.addCallback((result) => {
   result.observe(idp?.getCircuitBreakerState ? idp.getCircuitBreakerState() : 0);
 });
 
+iamRoleDriftBacklogGauge.addCallback((result) => {
+  for (const [instanceId, backlog] of roleDriftBacklogByInstance.entries()) {
+    result.observe(backlog, { instance_id: instanceId });
+  }
+});
+
 const trackKeycloakCall = async <T>(operation: string, execute: () => Promise<T>): Promise<T> => {
   const startedAt = Date.now();
   try {
@@ -366,6 +417,167 @@ const trackKeycloakCall = async <T>(operation: string, execute: () => Promise<T>
     iamKeycloakRequestLatency.record((Date.now() - startedAt) / 1000, { operation, result: 'failure' });
     throw error;
   }
+};
+
+const getRoleDisplayName = (role: Pick<IamRoleRow, 'display_name' | 'role_name'>): string =>
+  readString(role.display_name) ?? role.role_name;
+
+const getRoleExternalName = (role: Pick<IamRoleRow, 'external_role_name' | 'role_key'>): string =>
+  readString(role.external_role_name) ?? role.role_key;
+
+const ROLE_AUDIT_STRING_REDACTIONS: ReadonlyArray<readonly [RegExp, string]> = [
+  [/(bearer\s+)[A-Za-z0-9._-]+/gi, '$1[REDACTED]'],
+  [/((?:api[_-]?key|token|secret|password|session|cookie|csrf)[^=:\s]{0,20}[=:]\s*)([^,\s]+)/gi, '$1[REDACTED]'],
+  [/((?:client[_-]?secret)[^=:\s]{0,20}[=:]\s*)([^,\s]+)/gi, '$1[REDACTED]'],
+];
+const ROLE_AUDIT_SENSITIVE_KEY_PATTERN =
+  /(?:^|[_-])(token|secret|password|authorization|cookie|session|csrf)(?:$|[_-])|^(?:x-api-key|api[_-]?key)$/i;
+
+const isRoleAuditSensitiveKey = (key: string): boolean => ROLE_AUDIT_SENSITIVE_KEY_PATTERN.test(key);
+
+const sanitizeRoleAuditString = (value: string): string => {
+  const redacted = redactObject({ value }).value;
+  let next = typeof redacted === 'string' ? redacted : value;
+  for (const [pattern, replacement] of ROLE_AUDIT_STRING_REDACTIONS) {
+    next = next.replace(pattern, replacement);
+  }
+  return next;
+};
+
+const sanitizeRoleAuditValue = (value: unknown): unknown => {
+  if (typeof value === 'string') {
+    return sanitizeRoleAuditString(value);
+  }
+  if (Array.isArray(value)) {
+    return value.map((entry) => sanitizeRoleAuditValue(entry));
+  }
+  if (value && typeof value === 'object') {
+    const redactedObject = redactObject(value as Record<string, unknown>);
+    return Object.entries(redactedObject).reduce<Record<string, unknown>>((acc, [key, entry]) => {
+      acc[key] = sanitizeRoleAuditValue(isRoleAuditSensitiveKey(key) ? '[REDACTED]' : entry);
+      return acc;
+    }, {});
+  }
+  return value;
+};
+
+export const sanitizeRoleAuditDetails = (
+  details: Readonly<Record<string, unknown>> | undefined
+): Record<string, unknown> | undefined => {
+  if (!details) {
+    return undefined;
+  }
+  return Object.entries(details).reduce<Record<string, unknown>>((acc, [key, value]) => {
+    const redacted = isRoleAuditSensitiveKey(key) ? '[REDACTED]' : redactObject({ [key]: value })[key];
+    acc[key] = sanitizeRoleAuditValue(redacted);
+    return acc;
+  }, {});
+};
+
+export const sanitizeRoleErrorMessage = (error: unknown): string =>
+  sanitizeRoleAuditString(error instanceof Error ? error.message : String(error));
+
+const mapRoleSyncErrorCode = (error: unknown): RoleSyncErrorCode => {
+  if (error instanceof KeycloakAdminUnavailableError) {
+    return 'IDP_UNAVAILABLE';
+  }
+  if (error instanceof KeycloakAdminRequestError) {
+    if (error.code === 'connect_timeout' || error.code === 'read_timeout') {
+      return 'IDP_TIMEOUT';
+    }
+    if (error.statusCode === 403) {
+      return 'IDP_FORBIDDEN';
+    }
+    if (error.statusCode === 404) {
+      return 'IDP_NOT_FOUND';
+    }
+    if (error.statusCode === 409) {
+      return 'IDP_CONFLICT';
+    }
+    if (error.statusCode >= 500 || error.statusCode === 429) {
+      return 'IDP_UNAVAILABLE';
+    }
+  }
+  return 'IDP_UNKNOWN';
+};
+
+const mapRoleListItem = (row: {
+  id: string;
+  role_key: string;
+  role_name: string;
+  display_name: string | null;
+  external_role_name: string | null;
+  managed_by: ManagedBy;
+  description: string | null;
+  is_system_role: boolean;
+  role_level: number;
+  member_count: number;
+  sync_state: IamRoleSyncState;
+  last_synced_at: string | null;
+  last_error_code: string | null;
+  permission_rows: Array<{ id: string; permission_key: string; description: string | null }> | null;
+}): IamRoleListItem => ({
+  id: row.id,
+  roleKey: row.role_key,
+  roleName: row.display_name ?? row.role_name,
+  externalRoleName: row.external_role_name ?? row.role_key,
+  managedBy: row.managed_by,
+  description: row.description ?? undefined,
+  isSystemRole: row.is_system_role,
+  roleLevel: row.role_level,
+  memberCount: row.member_count,
+  syncState: row.sync_state,
+  lastSyncedAt: row.last_synced_at ?? undefined,
+  syncError: row.last_error_code ? { code: row.last_error_code } : undefined,
+  permissions:
+    row.permission_rows?.map((permission) => ({
+      id: permission.id,
+      permissionKey: permission.permission_key,
+      description: permission.description ?? undefined,
+    })) ?? [],
+});
+
+const buildRoleSyncFailure = (
+  input: {
+    error: unknown;
+    requestId?: string;
+    fallbackMessage: string;
+    details?: Readonly<Record<string, unknown>>;
+  } & (
+    | {
+        roleId?: undefined;
+      }
+    | {
+        roleId: string;
+      }
+  )
+): Response => {
+  const syncErrorCode = mapRoleSyncErrorCode(input.error);
+  const details = {
+    syncState: 'failed',
+    syncError: { code: syncErrorCode },
+    ...input.details,
+  } satisfies Readonly<Record<string, unknown>>;
+
+  if (syncErrorCode === 'IDP_CONFLICT') {
+    return createApiError(409, 'conflict', input.fallbackMessage, input.requestId, details);
+  }
+
+  if (syncErrorCode === 'IDP_FORBIDDEN') {
+    return createApiError(
+      503,
+      'keycloak_unavailable',
+      'Keycloak-Service-Account hat keine Berechtigung zum Verwalten von Realm-Rollen. Prüfe die realm-management-Rolle manage-realm.',
+      input.requestId,
+      details
+    );
+  }
+
+  if (syncErrorCode === 'IDP_UNAVAILABLE' || syncErrorCode === 'IDP_TIMEOUT') {
+    return createApiError(503, 'keycloak_unavailable', input.fallbackMessage, input.requestId, details);
+  }
+
+  return createApiError(500, 'internal_error', input.fallbackMessage, input.requestId, details);
 };
 
 const consumeRateLimit = (
@@ -527,7 +739,7 @@ const resolveRolesByIds = async (
 
   const result = await client.query<IamRoleRow>(
     `
-SELECT id, role_name, role_level, is_system_role
+SELECT id, role_key, role_name, display_name, external_role_name, role_level, is_system_role
 FROM iam.roles
 WHERE instance_id = $1::uuid
   AND id = ANY($2::uuid[]);
@@ -554,7 +766,7 @@ const ensureActorCanManageTarget = (input: {
     };
   }
 
-  const targetHasSystemAdmin = input.targetRoles.some((role) => role.roleName === 'system_admin');
+  const targetHasSystemAdmin = input.targetRoles.some((role) => role.roleKey === 'system_admin');
   const actorIsSystemAdmin = input.actorRoles.includes('system_admin');
   if (targetHasSystemAdmin && !actorIsSystemAdmin) {
     return {
@@ -584,7 +796,7 @@ JOIN iam.roles r
   ON r.instance_id = ar.instance_id
  AND r.id = ar.role_id
 WHERE a.status = 'active'
-  AND r.role_name = 'system_admin';
+    AND r.role_key = 'system_admin';
 `,
     [instanceId]
   );
@@ -607,7 +819,7 @@ SELECT EXISTS (
     AND ar.account_id = $2::uuid
     AND ar.valid_from <= NOW()
     AND (ar.valid_to IS NULL OR ar.valid_to > NOW())
-    AND r.role_name = 'system_admin'
+    AND r.role_key = 'system_admin'
 ) AS has_role;
 `,
     [input.instanceId, input.accountId]
@@ -655,6 +867,71 @@ VALUES ($1::uuid, $2::uuid, $3::uuid, $4, $5, $6::jsonb, $7, $8);
   );
 };
 
+const emitRoleAuditEvent = async (
+  client: QueryClient,
+  input: {
+    instanceId: string;
+    accountId?: string;
+    roleId?: string;
+    eventType: 'role.sync_started' | 'role.sync_succeeded' | 'role.sync_failed' | 'role.reconciled';
+    operation: string;
+    result: 'success' | 'failure';
+    roleKey?: string;
+    externalRoleName?: string;
+    errorCode?: string;
+    details?: Record<string, unknown>;
+    requestId?: string;
+    traceId?: string;
+  }
+) => {
+  const sanitizedDetails = sanitizeRoleAuditDetails(input.details);
+  await emitActivityLog(client, {
+    instanceId: input.instanceId,
+    accountId: input.accountId,
+    eventType: input.eventType,
+    result: input.result,
+    payload: {
+      workspace_id: input.instanceId,
+      operation: input.operation,
+      result: input.result,
+      ...(input.roleId ? { role_id: input.roleId } : {}),
+      ...(input.roleKey ? { role_key: input.roleKey } : {}),
+      ...(input.externalRoleName ? { external_role_name: input.externalRoleName } : {}),
+      ...(input.errorCode ? { error_code: input.errorCode } : {}),
+      ...(input.requestId ? { request_id: input.requestId } : {}),
+      ...(input.traceId ? { trace_id: input.traceId } : {}),
+      ...sanitizedDetails,
+    },
+    requestId: input.requestId,
+    traceId: input.traceId,
+  });
+};
+
+const setRoleSyncState = async (
+  client: QueryClient,
+  input: {
+    instanceId: string;
+    roleId: string;
+    syncState: IamRoleSyncState;
+    errorCode?: string | null;
+    syncedAt?: boolean;
+  }
+) => {
+  await client.query(
+    `
+UPDATE iam.roles
+SET
+  sync_state = $3,
+  last_error_code = $4,
+  last_synced_at = CASE WHEN $5::boolean THEN NOW() ELSE last_synced_at END,
+  updated_at = NOW()
+WHERE instance_id = $1::uuid
+  AND id = $2::uuid;
+`,
+    [input.instanceId, input.roleId, input.syncState, input.errorCode ?? null, input.syncedAt ?? false]
+  );
+};
+
 const notifyPermissionInvalidation = async (
   client: QueryClient,
   input: { instanceId: string; keycloakSubject?: string; trigger: string }
@@ -692,7 +969,7 @@ INSERT INTO iam.idempotency_keys (
   expires_at
 )
 VALUES ($1::uuid, $2::uuid, $3, $4, $5, 'IN_PROGRESS', NOW() + INTERVAL '24 hours')
-ON CONFLICT (actor_account_id, endpoint, idempotency_key) DO NOTHING
+ON CONFLICT (instance_id, actor_account_id, endpoint, idempotency_key) DO NOTHING
 RETURNING status;
 `,
       [input.instanceId, input.actorAccountId, input.endpoint, input.idempotencyKey, input.payloadHash]
@@ -711,12 +988,13 @@ RETURNING status;
       `
 SELECT status, payload_hash, response_status, response_body
 FROM iam.idempotency_keys
-WHERE actor_account_id = $1::uuid
-  AND endpoint = $2
-  AND idempotency_key = $3
+WHERE instance_id = $1::uuid
+  AND actor_account_id = $2::uuid
+  AND endpoint = $3
+  AND idempotency_key = $4
 LIMIT 1;
 `,
-      [input.actorAccountId, input.endpoint, input.idempotencyKey]
+      [input.instanceId, input.actorAccountId, input.endpoint, input.idempotencyKey]
     );
 
     const row = existing.rows[0];
@@ -759,17 +1037,19 @@ const completeIdempotency = async (input: {
       `
 UPDATE iam.idempotency_keys
 SET
-  status = $4,
-  response_status = $5,
-  response_body = $6::jsonb,
+  status = $5,
+  response_status = $6,
+  response_body = $7::jsonb,
   updated_at = NOW(),
   expires_at = NOW() + INTERVAL '24 hours'
 WHERE actor_account_id = $1::uuid
-  AND endpoint = $2
-  AND idempotency_key = $3;
+  AND instance_id = $2::uuid
+  AND endpoint = $3
+  AND idempotency_key = $4;
 `,
       [
         input.actorAccountId,
+        input.instanceId,
         input.endpoint,
         input.idempotencyKey,
         input.status,
@@ -876,7 +1156,8 @@ const resolveActorInfo = async (
 const mapRoles = (roles: readonly IamRoleRow[]): readonly IamUserRoleAssignment[] =>
   roles.map((role) => ({
     roleId: role.id,
-    roleName: role.role_name,
+    roleKey: role.role_key,
+    roleName: getRoleDisplayName(role),
     roleLevel: role.role_level,
   }));
 
@@ -965,7 +1246,7 @@ LEFT JOIN iam.roles r
   ON r.instance_id = ar.instance_id
  AND r.id = ar.role_id
 WHERE ($2::text IS NULL OR a.status = $2)
-  AND ($3::text IS NULL OR r.role_name = $3)
+  AND ($3::text IS NULL OR r.role_key = $3)
   AND (
     $4::text IS NULL OR
     a.keycloak_subject ILIKE '%' || $4 || '%' OR
@@ -989,7 +1270,9 @@ WHERE ($2::text IS NULL OR a.status = $2)
     last_login_at: string | null;
     role_rows: Array<{
       id: string;
+      role_key: string;
       role_name: string;
+      display_name: string | null;
       role_level: number;
       is_system_role: boolean;
     }> | null;
@@ -1011,7 +1294,9 @@ SELECT
     json_agg(
       DISTINCT jsonb_build_object(
         'id', r.id,
+        'role_key', r.role_key,
         'role_name', r.role_name,
+        'display_name', r.display_name,
         'role_level', r.role_level,
         'is_system_role', r.is_system_role
       )
@@ -1041,7 +1326,7 @@ LEFT JOIN iam.activity_logs al
  AND al.account_id = a.id
  AND al.event_type = 'login'
 WHERE ($2::text IS NULL OR a.status = $2)
-  AND ($3::text IS NULL OR r.role_name = $3)
+  AND ($3::text IS NULL OR r.role_key = $3)
   AND (
     $4::text IS NULL OR
     a.keycloak_subject ILIKE '%' || $4 || '%' OR
@@ -1061,7 +1346,9 @@ LIMIT $5 OFFSET $6;
       roles:
         row.role_rows?.map((entry) => ({
           id: entry.id,
+          role_key: entry.role_key,
           role_name: entry.role_name,
+          display_name: entry.display_name,
           role_level: Number(entry.role_level),
           is_system_role: Boolean(entry.is_system_role),
         })) ?? [],
@@ -1095,7 +1382,9 @@ const resolveUserDetail = async (
     last_login_at: string | null;
     role_rows: Array<{
       id: string;
+      role_key: string;
       role_name: string;
+      display_name: string | null;
       role_level: number;
       is_system_role: boolean;
     }> | null;
@@ -1122,7 +1411,9 @@ SELECT
     json_agg(
       DISTINCT jsonb_build_object(
         'id', r.id,
+        'role_key', r.role_key,
         'role_name', r.role_name,
+        'display_name', r.display_name,
         'role_level', r.role_level,
         'is_system_role', r.is_system_role
       )
@@ -1183,7 +1474,9 @@ GROUP BY a.id;
     roles:
       row.role_rows?.map((entry) => ({
         id: entry.id,
+        role_key: entry.role_key,
         role_name: entry.role_name,
+        display_name: entry.display_name,
         role_level: Number(entry.role_level),
         is_system_role: Boolean(entry.is_system_role),
       })) ?? [],
@@ -1270,6 +1563,441 @@ FROM unnest($4::uuid[]) AS role_id;
 `,
     [input.instanceId, input.accountId, input.assignedBy ?? null, input.roleIds]
   );
+};
+
+const loadRoleListItems = async (client: QueryClient, instanceId: string): Promise<readonly IamRoleListItem[]> => {
+  const result = await client.query<{
+    id: string;
+    role_key: string;
+    role_name: string;
+    display_name: string | null;
+    external_role_name: string | null;
+    managed_by: ManagedBy;
+    description: string | null;
+    is_system_role: boolean;
+    role_level: number;
+    member_count: number;
+    sync_state: IamRoleSyncState;
+    last_synced_at: string | null;
+    last_error_code: string | null;
+    permission_rows: Array<{ id: string; permission_key: string; description: string | null }> | null;
+  }>(
+    `
+SELECT
+  r.id,
+  r.role_key,
+  r.role_name,
+  r.display_name,
+  r.external_role_name,
+  r.managed_by,
+  r.description,
+  r.is_system_role,
+  r.role_level,
+  COUNT(DISTINCT ar.account_id)::int AS member_count,
+  r.sync_state,
+  r.last_synced_at::text,
+  r.last_error_code,
+  COALESCE(
+    json_agg(
+      DISTINCT jsonb_build_object(
+        'id', p.id,
+        'permission_key', p.permission_key,
+        'description', p.description
+      )
+    ) FILTER (WHERE p.id IS NOT NULL),
+    '[]'::json
+  ) AS permission_rows
+FROM iam.roles r
+LEFT JOIN iam.account_roles ar
+  ON ar.instance_id = r.instance_id
+ AND ar.role_id = r.id
+ AND ar.valid_from <= NOW()
+ AND (ar.valid_to IS NULL OR ar.valid_to > NOW())
+LEFT JOIN iam.role_permissions rp
+  ON rp.instance_id = r.instance_id
+ AND rp.role_id = r.id
+LEFT JOIN iam.permissions p
+  ON p.instance_id = rp.instance_id
+ AND p.id = rp.permission_id
+WHERE r.instance_id = $1::uuid
+GROUP BY r.id
+ORDER BY r.role_level DESC, COALESCE(r.display_name, r.role_name) ASC;
+`,
+    [instanceId]
+  );
+
+  return result.rows.map(mapRoleListItem);
+};
+
+const loadRoleById = async (
+  client: QueryClient,
+  input: { instanceId: string; roleId: string }
+): Promise<ManagedRoleRow | undefined> => {
+  const result = await client.query<ManagedRoleRow>(
+    `
+SELECT
+  id,
+  role_key,
+  role_name,
+  display_name,
+  external_role_name,
+  description,
+  is_system_role,
+  role_level,
+  managed_by,
+  sync_state,
+  last_synced_at::text,
+  last_error_code
+FROM iam.roles
+WHERE instance_id = $1::uuid
+  AND id = $2::uuid
+LIMIT 1;
+`,
+    [input.instanceId, input.roleId]
+  );
+  return result.rows[0];
+};
+
+const loadRoleListItemById = async (
+  client: QueryClient,
+  input: { instanceId: string; roleId: string }
+): Promise<IamRoleListItem | undefined> => {
+  const result = await client.query<{
+    id: string;
+    role_key: string;
+    role_name: string;
+    display_name: string | null;
+    external_role_name: string | null;
+    managed_by: ManagedBy;
+    description: string | null;
+    is_system_role: boolean;
+    role_level: number;
+    member_count: number;
+    sync_state: IamRoleSyncState;
+    last_synced_at: string | null;
+    last_error_code: string | null;
+    permission_rows: Array<{ id: string; permission_key: string; description: string | null }> | null;
+  }>(
+    `
+SELECT
+  r.id,
+  r.role_key,
+  r.role_name,
+  r.display_name,
+  r.external_role_name,
+  r.managed_by,
+  r.description,
+  r.is_system_role,
+  r.role_level,
+  COUNT(DISTINCT ar.account_id)::int AS member_count,
+  r.sync_state,
+  r.last_synced_at::text,
+  r.last_error_code,
+  COALESCE(
+    json_agg(
+      DISTINCT jsonb_build_object(
+        'id', p.id,
+        'permission_key', p.permission_key,
+        'description', p.description
+      )
+    ) FILTER (WHERE p.id IS NOT NULL),
+    '[]'::json
+  ) AS permission_rows
+FROM iam.roles r
+LEFT JOIN iam.account_roles ar
+  ON ar.instance_id = r.instance_id
+ AND ar.role_id = r.id
+ AND ar.valid_from <= NOW()
+ AND (ar.valid_to IS NULL OR ar.valid_to > NOW())
+LEFT JOIN iam.role_permissions rp
+  ON rp.instance_id = r.instance_id
+ AND rp.role_id = r.id
+LEFT JOIN iam.permissions p
+  ON p.instance_id = rp.instance_id
+ AND p.id = rp.permission_id
+WHERE r.instance_id = $1::uuid
+  AND r.id = $2::uuid
+GROUP BY r.id
+LIMIT 1;
+`,
+    [input.instanceId, input.roleId]
+  );
+  const row = result.rows[0];
+  return row ? mapRoleListItem(row) : undefined;
+};
+
+type ReconcileRoleEntry = {
+  readonly roleId?: string;
+  readonly roleKey?: string;
+  readonly externalRoleName: string;
+  readonly action: 'noop' | 'create' | 'update' | 'report';
+  readonly status: 'synced' | 'corrected' | 'failed' | 'requires_manual_action';
+  readonly errorCode?: string;
+};
+
+type ReconcileReport = {
+  readonly checkedCount: number;
+  readonly correctedCount: number;
+  readonly failedCount: number;
+  readonly requiresManualActionCount: number;
+  readonly roles: readonly ReconcileRoleEntry[];
+};
+
+const readRoleAttribute = (
+  attributes: Readonly<Record<string, readonly string[]>> | undefined,
+  key: string
+): string | undefined => {
+  const values = attributes?.[key];
+  return Array.isArray(values) ? readString(values[0]) : undefined;
+};
+
+const isStudioManagedIdentityRole = (
+  role: Awaited<ReturnType<IdentityProviderPort['getRoleByName']>> extends infer T
+    ? Exclude<T, null>
+    : never,
+  instanceId: string
+): boolean =>
+  readRoleAttribute(role.attributes, 'managed_by') === 'studio' &&
+  readRoleAttribute(role.attributes, 'instance_id') === instanceId;
+
+const runRoleCatalogReconciliation = async (input: {
+  instanceId: string;
+  actorAccountId?: string;
+  requestId?: string;
+  traceId?: string;
+}): Promise<ReconcileReport> => {
+  const identityProvider = resolveIdentityProvider();
+  if (!identityProvider) {
+    throw new Error('identity_provider_unavailable');
+  }
+
+  const dbRoles = await withInstanceScopedDb(input.instanceId, async (client) => {
+    const result = await client.query<ManagedRoleRow>(
+      `
+SELECT
+  id,
+  role_key,
+  role_name,
+  display_name,
+  external_role_name,
+  description,
+  is_system_role,
+  role_level,
+  managed_by,
+  sync_state,
+  last_synced_at::text,
+  last_error_code
+FROM iam.roles
+WHERE instance_id = $1::uuid
+  AND managed_by = 'studio'
+ORDER BY role_level DESC, COALESCE(display_name, role_name) ASC;
+`,
+      [input.instanceId]
+    );
+    return result.rows;
+  });
+
+  const idpRoles = await trackKeycloakCall('reconcile_list_roles', () => identityProvider.provider.listRoles());
+  const managedIdpRoles = idpRoles.filter((role) => isStudioManagedIdentityRole(role, input.instanceId));
+  const idpByExternalName = new Map(managedIdpRoles.map((role) => [role.externalName, role]));
+  const dbByExternalName = new Map(dbRoles.map((role) => [getRoleExternalName(role), role]));
+
+  const entries: ReconcileRoleEntry[] = [];
+
+  for (const role of dbRoles) {
+    const externalRoleName = getRoleExternalName(role);
+    const matchingIdentityRole = idpByExternalName.get(externalRoleName);
+    const expectedDisplayName = getRoleDisplayName(role);
+    const identityDisplayName = readRoleAttribute(matchingIdentityRole?.attributes, 'display_name');
+
+    if (!matchingIdentityRole) {
+      try {
+        await trackKeycloakCall('reconcile_create_role', () =>
+          identityProvider.provider.createRole({
+            externalName: externalRoleName,
+            description: role.description ?? undefined,
+            attributes: {
+              managedBy: 'studio',
+              instanceId: input.instanceId,
+              roleKey: role.role_key,
+              displayName: expectedDisplayName,
+            },
+          })
+        );
+        await withInstanceScopedDb(input.instanceId, async (client) => {
+          await setRoleSyncState(client, {
+            instanceId: input.instanceId,
+            roleId: role.id,
+            syncState: 'synced',
+            errorCode: null,
+            syncedAt: true,
+          });
+          await emitRoleAuditEvent(client, {
+            instanceId: input.instanceId,
+            accountId: input.actorAccountId,
+            roleId: role.id,
+            eventType: 'role.reconciled',
+            operation: 'reconcile_create',
+            result: 'success',
+            roleKey: role.role_key,
+            externalRoleName,
+            requestId: input.requestId,
+            traceId: input.traceId,
+          });
+        });
+        entries.push({
+          roleId: role.id,
+          roleKey: role.role_key,
+          externalRoleName,
+          action: 'create',
+          status: 'corrected',
+        });
+      } catch (error) {
+        const errorCode = mapRoleSyncErrorCode(error);
+        await withInstanceScopedDb(input.instanceId, async (client) => {
+          await setRoleSyncState(client, {
+            instanceId: input.instanceId,
+            roleId: role.id,
+            syncState: 'failed',
+            errorCode,
+          });
+          await emitRoleAuditEvent(client, {
+            instanceId: input.instanceId,
+            accountId: input.actorAccountId,
+            roleId: role.id,
+            eventType: 'role.reconciled',
+            operation: 'reconcile_create',
+            result: 'failure',
+            roleKey: role.role_key,
+            externalRoleName,
+            errorCode,
+            requestId: input.requestId,
+            traceId: input.traceId,
+          });
+        });
+        entries.push({
+          roleId: role.id,
+          roleKey: role.role_key,
+          externalRoleName,
+          action: 'create',
+          status: 'failed',
+          errorCode,
+        });
+      }
+      continue;
+    }
+
+    const descriptionChanged = (matchingIdentityRole.description ?? undefined) !== (role.description ?? undefined);
+    const displayNameChanged = identityDisplayName !== expectedDisplayName;
+    const roleKeyChanged = readRoleAttribute(matchingIdentityRole.attributes, 'role_key') !== role.role_key;
+
+    if (descriptionChanged || displayNameChanged || roleKeyChanged || role.sync_state !== 'synced') {
+      try {
+        await trackKeycloakCall('reconcile_update_role', () =>
+          identityProvider.provider.updateRole(externalRoleName, {
+            description: role.description ?? undefined,
+            attributes: {
+              managedBy: 'studio',
+              instanceId: input.instanceId,
+              roleKey: role.role_key,
+              displayName: expectedDisplayName,
+            },
+          })
+        );
+        await withInstanceScopedDb(input.instanceId, async (client) => {
+          await setRoleSyncState(client, {
+            instanceId: input.instanceId,
+            roleId: role.id,
+            syncState: 'synced',
+            errorCode: null,
+            syncedAt: true,
+          });
+          await emitRoleAuditEvent(client, {
+            instanceId: input.instanceId,
+            accountId: input.actorAccountId,
+            roleId: role.id,
+            eventType: 'role.reconciled',
+            operation: 'reconcile_update',
+            result: 'success',
+            roleKey: role.role_key,
+            externalRoleName,
+            requestId: input.requestId,
+            traceId: input.traceId,
+          });
+        });
+        entries.push({
+          roleId: role.id,
+          roleKey: role.role_key,
+          externalRoleName,
+          action: 'update',
+          status: 'corrected',
+        });
+      } catch (error) {
+        const errorCode = mapRoleSyncErrorCode(error);
+        await withInstanceScopedDb(input.instanceId, async (client) => {
+          await setRoleSyncState(client, {
+            instanceId: input.instanceId,
+            roleId: role.id,
+            syncState: 'failed',
+            errorCode,
+          });
+          await emitRoleAuditEvent(client, {
+            instanceId: input.instanceId,
+            accountId: input.actorAccountId,
+            roleId: role.id,
+            eventType: 'role.reconciled',
+            operation: 'reconcile_update',
+            result: 'failure',
+            roleKey: role.role_key,
+            externalRoleName,
+            errorCode,
+            requestId: input.requestId,
+            traceId: input.traceId,
+          });
+        });
+        entries.push({
+          roleId: role.id,
+          roleKey: role.role_key,
+          externalRoleName,
+          action: 'update',
+          status: 'failed',
+          errorCode,
+        });
+      }
+      continue;
+    }
+
+    entries.push({
+      roleId: role.id,
+      roleKey: role.role_key,
+      externalRoleName,
+      action: 'noop',
+      status: 'synced',
+    });
+  }
+
+  for (const identityRole of managedIdpRoles) {
+    if (!dbByExternalName.has(identityRole.externalName)) {
+      entries.push({
+        externalRoleName: identityRole.externalName,
+        roleKey: readRoleAttribute(identityRole.attributes, 'role_key'),
+        action: 'report',
+        status: 'requires_manual_action',
+        errorCode: 'REQUIRES_MANUAL_ACTION',
+      });
+    }
+  }
+
+  const report = {
+    checkedCount: dbRoles.length,
+    correctedCount: entries.filter((entry) => entry.status === 'corrected').length,
+    failedCount: entries.filter((entry) => entry.status === 'failed').length,
+    requiresManualActionCount: entries.filter((entry) => entry.status === 'requires_manual_action').length,
+    roles: entries,
+  } satisfies ReconcileReport;
+
+  roleDriftBacklogByInstance.set(input.instanceId, report.failedCount + report.requiresManualActionCount);
+  return report;
 };
 
 const listUsersInternal = async (request: Request, ctx: AuthenticatedRequestContext): Promise<Response> => {
@@ -1620,7 +2348,7 @@ ON CONFLICT (instance_id, account_id) DO NOTHING;
 
       return {
         accountId,
-        roleNames: assignedRoleRows.map((entry) => entry.role_name),
+        roleNames: assignedRoleRows.map((entry) => getRoleExternalName(entry)),
         responseData,
       };
     });
@@ -1749,7 +2477,7 @@ const updateUserInternal = async (request: Request, ctx: AuthenticatedRequestCon
   }
 
   try {
-    const detail = await withInstanceScopedDb(actorResolution.actor.instanceId, async (client) => {
+    const result = await withInstanceScopedDb(actorResolution.actor.instanceId, async (client) => {
       const actorMaxRoleLevel = await resolveActorMaxRoleLevel(client, {
         instanceId: actorResolution.actor.instanceId,
         keycloakSubject: ctx.user.id,
@@ -1771,6 +2499,7 @@ const updateUserInternal = async (request: Request, ctx: AuthenticatedRequestCon
         throw new Error(`${targetAccessCheck.code}:${targetAccessCheck.message}`);
       }
 
+      let syncedRoleNames: readonly string[] | undefined;
       if (parsed.data.roleIds) {
         const roleValidation = await ensureRoleAssignmentWithinActorLevel({
           client,
@@ -1787,6 +2516,11 @@ const updateUserInternal = async (request: Request, ctx: AuthenticatedRequestCon
           roleIds: parsed.data.roleIds,
           assignedBy: actorResolution.actor.actorAccountId,
         });
+        const assignedRoles = await resolveRolesByIds(client, {
+          instanceId: actorResolution.actor.instanceId,
+          roleIds: parsed.data.roleIds,
+        });
+        syncedRoleNames = assignedRoles.map((role) => getRoleExternalName(role));
 
         await notifyPermissionInvalidation(client, {
           instanceId: actorResolution.actor.instanceId,
@@ -1874,15 +2608,20 @@ WHERE id = $1::uuid
         trigger: 'user_updated',
       });
 
-      return resolveUserDetail(client, {
-        instanceId: actorResolution.actor.instanceId,
-        userId,
-      });
+      return {
+        detail: await resolveUserDetail(client, {
+          instanceId: actorResolution.actor.instanceId,
+          userId,
+        }),
+        roleNames: syncedRoleNames,
+      };
     });
 
-    if (!detail) {
+    if (!result?.detail) {
       return createApiError(404, 'not_found', 'Nutzer nicht gefunden.', actorResolution.actor.requestId);
     }
+    const detail = result.detail;
+    const roleNames = result.roleNames;
 
     await trackKeycloakCall('update_user', () =>
       identityProvider.provider.updateUser(detail.keycloakSubject, {
@@ -1899,10 +2638,9 @@ WHERE id = $1::uuid
       );
     }
 
-    if (parsed.data.roleIds) {
-      const roleNames = detail.roles.map((role) => role.roleName);
+    if (roleNames) {
       await trackKeycloakCall('sync_roles', () =>
-        identityProvider.provider.syncRoles(detail.keycloakSubject, roleNames)
+        identityProvider.provider.syncRoles(detail.keycloakSubject, [...roleNames])
       );
     }
 
@@ -2561,68 +3299,9 @@ const listRolesInternal = async (request: Request, ctx: AuthenticatedRequestCont
   }
 
   try {
-    const roles = await withInstanceScopedDb(actorResolution.actor.instanceId, async (client) => {
-      const result = await client.query<{
-        id: string;
-        role_name: string;
-        description: string | null;
-        is_system_role: boolean;
-        role_level: number;
-        member_count: number;
-        permission_rows: Array<{ id: string; permission_key: string; description: string | null }> | null;
-      }>(
-        `
-SELECT
-  r.id,
-  r.role_name,
-  r.description,
-  r.is_system_role,
-  r.role_level,
-  COUNT(DISTINCT ar.account_id)::int AS member_count,
-  COALESCE(
-    json_agg(
-      DISTINCT jsonb_build_object(
-        'id', p.id,
-        'permission_key', p.permission_key,
-        'description', p.description
-      )
-    ) FILTER (WHERE p.id IS NOT NULL),
-    '[]'::json
-  ) AS permission_rows
-FROM iam.roles r
-LEFT JOIN iam.account_roles ar
-  ON ar.instance_id = r.instance_id
- AND ar.role_id = r.id
- AND ar.valid_from <= NOW()
- AND (ar.valid_to IS NULL OR ar.valid_to > NOW())
-LEFT JOIN iam.role_permissions rp
-  ON rp.instance_id = r.instance_id
- AND rp.role_id = r.id
-LEFT JOIN iam.permissions p
-  ON p.instance_id = rp.instance_id
- AND p.id = rp.permission_id
-WHERE r.instance_id = $1::uuid
-GROUP BY r.id
-ORDER BY r.role_level DESC, r.role_name ASC;
-`,
-        [actorResolution.actor.instanceId]
-      );
-
-      return result.rows.map((row): IamRoleListItem => ({
-        id: row.id,
-        roleName: row.role_name,
-        description: row.description ?? undefined,
-        isSystemRole: row.is_system_role,
-        roleLevel: row.role_level,
-        memberCount: row.member_count,
-        permissions:
-          row.permission_rows?.map((permission) => ({
-            id: permission.id,
-            permissionKey: permission.permission_key,
-            description: permission.description ?? undefined,
-          })) ?? [],
-      }));
-    });
+    const roles = await withInstanceScopedDb(actorResolution.actor.instanceId, (client) =>
+      loadRoleListItems(client, actorResolution.actor.instanceId)
+    );
     return jsonResponse(200, asApiList(roles, { page: 1, pageSize: roles.length, total: roles.length }, actorResolution.actor.requestId));
   } catch {
     return createApiError(
@@ -2696,21 +3375,80 @@ const createRoleInternal = async (request: Request, ctx: AuthenticatedRequestCon
     );
   }
 
+  const identityProvider = resolveIdentityProvider();
+  if (!identityProvider) {
+    const responseBody = {
+      error: {
+        code: 'keycloak_unavailable',
+        message: 'Keycloak Admin API ist nicht konfiguriert.',
+        details: {
+          syncState: 'failed',
+          syncError: { code: 'IDP_UNAVAILABLE' },
+        },
+      },
+      ...(actorResolution.actor.requestId ? { requestId: actorResolution.actor.requestId } : {}),
+    } satisfies ApiErrorResponse;
+    await completeIdempotency({
+      instanceId: actorResolution.actor.instanceId,
+      actorAccountId: actorResolution.actor.actorAccountId,
+      endpoint: 'POST:/api/v1/iam/roles',
+      idempotencyKey: idempotencyKey.key,
+      status: 'FAILED',
+      responseStatus: 503,
+      responseBody,
+    });
+    return jsonResponse(503, responseBody);
+  }
+
+  const roleKey = parsed.data.roleName;
+  const displayName = parsed.data.displayName?.trim() || roleKey;
+  const externalRoleName = roleKey;
+  let createdInIdentityProvider = false;
+
   try {
+    await trackKeycloakCall('create_role', () =>
+      identityProvider.provider.createRole({
+        externalName: externalRoleName,
+        description: parsed.data.description ?? undefined,
+        attributes: {
+          managedBy: 'studio',
+          instanceId: actorResolution.actor.instanceId,
+          roleKey,
+          displayName,
+        },
+      })
+    );
+    createdInIdentityProvider = true;
+
     const role = await withInstanceScopedDb(actorResolution.actor.instanceId, async (client) => {
       const inserted = await client.query<{ id: string }>(
         `
 INSERT INTO iam.roles (
   instance_id,
+  role_key,
   role_name,
+  display_name,
+  external_role_name,
   description,
   is_system_role,
-  role_level
+  role_level,
+  managed_by,
+  sync_state,
+  last_synced_at,
+  last_error_code
 )
-VALUES ($1::uuid, $2, $3, false, $4)
+VALUES ($1::uuid, $2, $3, $4, $5, $6, false, $7, 'studio', 'synced', NOW(), NULL)
 RETURNING id;
 `,
-        [actorResolution.actor.instanceId, parsed.data.roleName, parsed.data.description ?? null, parsed.data.roleLevel]
+        [
+          actorResolution.actor.instanceId,
+          roleKey,
+          roleKey,
+          displayName,
+          externalRoleName,
+          parsed.data.description ?? null,
+          parsed.data.roleLevel,
+        ]
       );
       const roleId = inserted.rows[0]?.id;
       if (!roleId) {
@@ -2729,6 +3467,19 @@ ON CONFLICT (instance_id, role_id, permission_id) DO NOTHING;
         );
       }
 
+      await emitRoleAuditEvent(client, {
+        instanceId: actorResolution.actor.instanceId,
+        accountId: actorResolution.actor.actorAccountId,
+        roleId,
+        eventType: 'role.sync_started',
+        operation: 'create',
+        result: 'success',
+        roleKey,
+        externalRoleName,
+        requestId: actorResolution.actor.requestId,
+        traceId: actorResolution.actor.traceId,
+      });
+
       await emitActivityLog(client, {
         instanceId: actorResolution.actor.instanceId,
         accountId: actorResolution.actor.actorAccountId,
@@ -2736,8 +3487,22 @@ ON CONFLICT (instance_id, role_id, permission_id) DO NOTHING;
         result: 'success',
         payload: {
           role_id: roleId,
-          role_name: parsed.data.roleName,
+          role_key: roleKey,
+          display_name: displayName,
         },
+        requestId: actorResolution.actor.requestId,
+        traceId: actorResolution.actor.traceId,
+      });
+
+      await emitRoleAuditEvent(client, {
+        instanceId: actorResolution.actor.instanceId,
+        accountId: actorResolution.actor.actorAccountId,
+        roleId,
+        eventType: 'role.sync_succeeded',
+        operation: 'create',
+        result: 'success',
+        roleKey,
+        externalRoleName,
         requestId: actorResolution.actor.requestId,
         traceId: actorResolution.actor.traceId,
       });
@@ -2747,10 +3512,18 @@ ON CONFLICT (instance_id, role_id, permission_id) DO NOTHING;
         trigger: 'role_created',
       });
 
-      return roleId;
+      const roleItem = await loadRoleListItemById(client, {
+        instanceId: actorResolution.actor.instanceId,
+        roleId,
+      });
+      if (!roleItem) {
+        throw new Error('role_load_failed');
+      }
+      return roleItem;
     });
     iamUserOperationsCounter.add(1, { action: 'create_role', result: 'success' });
-    const responseBody = asApiItem({ id: role, roleName: parsed.data.roleName }, actorResolution.actor.requestId);
+    iamRoleSyncCounter.add(1, { operation: 'create', result: 'success', error_code: 'none' });
+    const responseBody = asApiItem(role, actorResolution.actor.requestId);
     await completeIdempotency({
       instanceId: actorResolution.actor.instanceId,
       actorAccountId: actorResolution.actor.actorAccountId,
@@ -2761,25 +3534,97 @@ ON CONFLICT (instance_id, role_id, permission_id) DO NOTHING;
       responseBody,
     });
     return jsonResponse(201, responseBody);
-  } catch {
+  } catch (error) {
+    if (createdInIdentityProvider) {
+      try {
+        await trackKeycloakCall('delete_role_compensation', () => identityProvider.provider.deleteRole(externalRoleName));
+      } catch (compensationError) {
+        iamRoleSyncCounter.add(1, {
+          operation: 'create',
+          result: 'failure',
+          error_code: 'COMPENSATION_FAILED',
+        });
+        logger.error('Role create compensation failed', {
+          operation: 'create_role_compensation',
+          instance_id: actorResolution.actor.instanceId,
+          request_id: actorResolution.actor.requestId,
+          trace_id: actorResolution.actor.traceId,
+          role_key: roleKey,
+          external_role_name: externalRoleName,
+          error_code: 'COMPENSATION_FAILED',
+          error: sanitizeRoleErrorMessage(compensationError),
+        });
+        const responseBody = createApiError(
+          500,
+          'internal_error',
+          'Rolle konnte nicht konsistent erstellt werden.',
+          actorResolution.actor.requestId,
+          {
+            syncState: 'failed',
+            syncError: { code: 'COMPENSATION_FAILED' },
+          }
+        );
+        await completeIdempotency({
+          instanceId: actorResolution.actor.instanceId,
+          actorAccountId: actorResolution.actor.actorAccountId,
+          endpoint: 'POST:/api/v1/iam/roles',
+          idempotencyKey: idempotencyKey.key,
+          status: 'FAILED',
+          responseStatus: 500,
+          responseBody: await responseBody.clone().json(),
+        });
+        return responseBody;
+      }
+
+      iamRoleSyncCounter.add(1, {
+        operation: 'create',
+        result: 'failure',
+        error_code: 'DB_WRITE_FAILED',
+      });
+      const responseBody = {
+        error: {
+          code: 'conflict',
+          message: 'Rolle konnte nicht erstellt werden.',
+          details: {
+            syncState: 'failed',
+            syncError: { code: 'DB_WRITE_FAILED' },
+          },
+        },
+        ...(actorResolution.actor.requestId ? { requestId: actorResolution.actor.requestId } : {}),
+      } satisfies ApiErrorResponse;
+      await completeIdempotency({
+        instanceId: actorResolution.actor.instanceId,
+        actorAccountId: actorResolution.actor.actorAccountId,
+        endpoint: 'POST:/api/v1/iam/roles',
+        idempotencyKey: idempotencyKey.key,
+        status: 'FAILED',
+        responseStatus: 409,
+        responseBody,
+      });
+      return jsonResponse(409, responseBody);
+    }
+
     iamUserOperationsCounter.add(1, { action: 'create_role', result: 'failure' });
-    const responseBody = {
-      error: {
-        code: 'conflict',
-        message: 'Rolle konnte nicht erstellt werden.',
-      },
-      ...(actorResolution.actor.requestId ? { requestId: actorResolution.actor.requestId } : {}),
-    } satisfies ApiErrorResponse;
+    const failureResponse = buildRoleSyncFailure({
+      error,
+      requestId: actorResolution.actor.requestId,
+      fallbackMessage: 'Rolle konnte nicht erstellt werden.',
+    });
+    iamRoleSyncCounter.add(1, {
+      operation: 'create',
+      result: 'failure',
+      error_code: mapRoleSyncErrorCode(error),
+    });
     await completeIdempotency({
       instanceId: actorResolution.actor.instanceId,
       actorAccountId: actorResolution.actor.actorAccountId,
       endpoint: 'POST:/api/v1/iam/roles',
       idempotencyKey: idempotencyKey.key,
       status: 'FAILED',
-      responseStatus: 409,
-      responseBody,
+      responseStatus: failureResponse.status,
+      responseBody: await failureResponse.clone().json(),
     });
-    return jsonResponse(409, responseBody);
+    return failureResponse;
   }
 };
 
@@ -2826,79 +3671,29 @@ const updateRoleInternal = async (request: Request, ctx: AuthenticatedRequestCon
     return createApiError(400, 'invalid_request', 'Ungültiger Payload.', actorResolution.actor.requestId);
   }
 
+  const identityProvider = resolveIdentityProvider();
+  if (!identityProvider) {
+    return createApiError(
+      503,
+      'keycloak_unavailable',
+      'Keycloak Admin API ist nicht konfiguriert.',
+      actorResolution.actor.requestId,
+      {
+        syncState: 'failed',
+        syncError: { code: 'IDP_UNAVAILABLE' },
+      }
+    );
+  }
+
   try {
-    const changed = await withInstanceScopedDb(actorResolution.actor.instanceId, async (client) => {
-      const role = await client.query<{ is_system_role: boolean }>(
-        `
-SELECT is_system_role
-FROM iam.roles
-WHERE instance_id = $1::uuid
-  AND id = $2::uuid
-LIMIT 1;
-`,
-        [actorResolution.actor.instanceId, roleId]
-      );
-      const row = role.rows[0];
-      if (!row) {
-        return 'not_found' as const;
-      }
-      if (row.is_system_role) {
-        return 'system_role' as const;
-      }
+    const existing = await withInstanceScopedDb(actorResolution.actor.instanceId, (client) =>
+      loadRoleById(client, { instanceId: actorResolution.actor.instanceId, roleId })
+    );
 
-      await client.query(
-        `
-UPDATE iam.roles
-SET
-  description = COALESCE($3, description),
-  role_level = COALESCE($4, role_level),
-  updated_at = NOW()
-WHERE instance_id = $1::uuid
-  AND id = $2::uuid;
-`,
-        [actorResolution.actor.instanceId, roleId, parsed.data.description ?? null, parsed.data.roleLevel ?? null]
-      );
-
-      if (parsed.data.permissionIds) {
-        await client.query('DELETE FROM iam.role_permissions WHERE instance_id = $1::uuid AND role_id = $2::uuid;', [
-          actorResolution.actor.instanceId,
-          roleId,
-        ]);
-        if (parsed.data.permissionIds.length > 0) {
-          await client.query(
-            `
-INSERT INTO iam.role_permissions (instance_id, role_id, permission_id)
-SELECT $1::uuid, $2::uuid, permission_id
-FROM unnest($3::uuid[]) AS permission_id
-ON CONFLICT (instance_id, role_id, permission_id) DO NOTHING;
-`,
-            [actorResolution.actor.instanceId, roleId, parsed.data.permissionIds]
-          );
-        }
-      }
-
-      await emitActivityLog(client, {
-        instanceId: actorResolution.actor.instanceId,
-        accountId: actorResolution.actor.actorAccountId,
-        eventType: 'role.updated',
-        result: 'success',
-        payload: {
-          role_id: roleId,
-        },
-        requestId: actorResolution.actor.requestId,
-        traceId: actorResolution.actor.traceId,
-      });
-      await notifyPermissionInvalidation(client, {
-        instanceId: actorResolution.actor.instanceId,
-        trigger: 'role_updated',
-      });
-      return 'ok' as const;
-    });
-
-    if (changed === 'not_found') {
+    if (!existing) {
       return createApiError(404, 'not_found', 'Rolle nicht gefunden.', actorResolution.actor.requestId);
     }
-    if (changed === 'system_role') {
+    if (existing.is_system_role) {
       return createApiError(
         409,
         'conflict',
@@ -2906,8 +3701,256 @@ ON CONFLICT (instance_id, role_id, permission_id) DO NOTHING;
         actorResolution.actor.requestId
       );
     }
+    if (existing.managed_by !== 'studio') {
+      return createApiError(
+        409,
+        'conflict',
+        'Extern verwaltete Rollen können im Studio nicht geändert werden.',
+        actorResolution.actor.requestId
+      );
+    }
 
-    return jsonResponse(200, asApiItem({ id: roleId }, actorResolution.actor.requestId));
+    const nextDisplayName = parsed.data.displayName?.trim() || getRoleDisplayName(existing);
+    const nextDescription = parsed.data.description ?? existing.description ?? undefined;
+    const nextRoleLevel = parsed.data.roleLevel ?? existing.role_level;
+    const externalRoleName = getRoleExternalName(existing);
+
+    await withInstanceScopedDb(actorResolution.actor.instanceId, async (client) => {
+      await setRoleSyncState(client, {
+        instanceId: actorResolution.actor.instanceId,
+        roleId,
+        syncState: 'pending',
+        errorCode: null,
+      });
+      await emitRoleAuditEvent(client, {
+        instanceId: actorResolution.actor.instanceId,
+        accountId: actorResolution.actor.actorAccountId,
+        roleId,
+        eventType: 'role.sync_started',
+        operation: parsed.data.retrySync ? 'retry' : 'update',
+        result: 'success',
+        roleKey: existing.role_key,
+        externalRoleName,
+        requestId: actorResolution.actor.requestId,
+        traceId: actorResolution.actor.traceId,
+      });
+    });
+
+    try {
+      await trackKeycloakCall('update_role', () =>
+        identityProvider.provider.updateRole(externalRoleName, {
+          description: nextDescription,
+          attributes: {
+            managedBy: 'studio',
+            instanceId: actorResolution.actor.instanceId,
+            roleKey: existing.role_key,
+            displayName: nextDisplayName,
+          },
+        })
+      );
+    } catch (error) {
+      const errorCode = mapRoleSyncErrorCode(error);
+      iamRoleSyncCounter.add(1, {
+        operation: parsed.data.retrySync ? 'retry' : 'update',
+        result: 'failure',
+        error_code: errorCode,
+      });
+      await withInstanceScopedDb(actorResolution.actor.instanceId, async (client) => {
+        await setRoleSyncState(client, {
+          instanceId: actorResolution.actor.instanceId,
+          roleId,
+          syncState: 'failed',
+          errorCode,
+        });
+        await emitRoleAuditEvent(client, {
+          instanceId: actorResolution.actor.instanceId,
+          accountId: actorResolution.actor.actorAccountId,
+          roleId,
+          eventType: 'role.sync_failed',
+          operation: parsed.data.retrySync ? 'retry' : 'update',
+          result: 'failure',
+          roleKey: existing.role_key,
+          externalRoleName,
+          errorCode,
+          requestId: actorResolution.actor.requestId,
+          traceId: actorResolution.actor.traceId,
+        });
+      });
+      return buildRoleSyncFailure({
+        error,
+        requestId: actorResolution.actor.requestId,
+        fallbackMessage: 'Rolle konnte nicht mit Keycloak synchronisiert werden.',
+        roleId,
+      });
+    }
+
+    try {
+      const roleItem = await withInstanceScopedDb(actorResolution.actor.instanceId, async (client) => {
+        await client.query(
+          `
+UPDATE iam.roles
+SET
+  display_name = $3,
+  description = $4,
+  role_level = $5,
+  sync_state = 'synced',
+  last_synced_at = NOW(),
+  last_error_code = NULL,
+  updated_at = NOW()
+WHERE instance_id = $1::uuid
+  AND id = $2::uuid;
+`,
+          [actorResolution.actor.instanceId, roleId, nextDisplayName, nextDescription ?? null, nextRoleLevel]
+        );
+
+        if (parsed.data.permissionIds) {
+          await client.query('DELETE FROM iam.role_permissions WHERE instance_id = $1::uuid AND role_id = $2::uuid;', [
+            actorResolution.actor.instanceId,
+            roleId,
+          ]);
+          if (parsed.data.permissionIds.length > 0) {
+            await client.query(
+              `
+INSERT INTO iam.role_permissions (instance_id, role_id, permission_id)
+SELECT $1::uuid, $2::uuid, permission_id
+FROM unnest($3::uuid[]) AS permission_id
+ON CONFLICT (instance_id, role_id, permission_id) DO NOTHING;
+`,
+              [actorResolution.actor.instanceId, roleId, parsed.data.permissionIds]
+            );
+          }
+        }
+
+        await emitActivityLog(client, {
+          instanceId: actorResolution.actor.instanceId,
+          accountId: actorResolution.actor.actorAccountId,
+          eventType: 'role.updated',
+          result: 'success',
+          payload: {
+            role_id: roleId,
+            role_key: existing.role_key,
+            display_name: nextDisplayName,
+          },
+          requestId: actorResolution.actor.requestId,
+          traceId: actorResolution.actor.traceId,
+        });
+        await emitRoleAuditEvent(client, {
+          instanceId: actorResolution.actor.instanceId,
+          accountId: actorResolution.actor.actorAccountId,
+          roleId,
+          eventType: 'role.sync_succeeded',
+          operation: parsed.data.retrySync ? 'retry' : 'update',
+          result: 'success',
+          roleKey: existing.role_key,
+          externalRoleName,
+          requestId: actorResolution.actor.requestId,
+          traceId: actorResolution.actor.traceId,
+        });
+        await notifyPermissionInvalidation(client, {
+          instanceId: actorResolution.actor.instanceId,
+          trigger: 'role_updated',
+        });
+
+        const updatedRole = await loadRoleListItemById(client, {
+          instanceId: actorResolution.actor.instanceId,
+          roleId,
+        });
+        if (!updatedRole) {
+          throw new Error('role_load_failed');
+        }
+        return updatedRole;
+      });
+
+      iamRoleSyncCounter.add(1, {
+        operation: parsed.data.retrySync ? 'retry' : 'update',
+        result: 'success',
+        error_code: 'none',
+      });
+      return jsonResponse(200, asApiItem(roleItem, actorResolution.actor.requestId));
+    } catch (error) {
+      try {
+        await trackKeycloakCall('update_role_compensation', () =>
+          identityProvider.provider.updateRole(externalRoleName, {
+            description: existing.description ?? undefined,
+            attributes: {
+              managedBy: 'studio',
+              instanceId: actorResolution.actor.instanceId,
+              roleKey: existing.role_key,
+              displayName: getRoleDisplayName(existing),
+            },
+          })
+        );
+      } catch {
+        await withInstanceScopedDb(actorResolution.actor.instanceId, async (client) => {
+          await setRoleSyncState(client, {
+            instanceId: actorResolution.actor.instanceId,
+            roleId,
+            syncState: 'failed',
+            errorCode: 'COMPENSATION_FAILED',
+          });
+          await emitRoleAuditEvent(client, {
+            instanceId: actorResolution.actor.instanceId,
+            accountId: actorResolution.actor.actorAccountId,
+            roleId,
+            eventType: 'role.sync_failed',
+            operation: 'update',
+            result: 'failure',
+            roleKey: existing.role_key,
+            externalRoleName,
+            errorCode: 'COMPENSATION_FAILED',
+            requestId: actorResolution.actor.requestId,
+            traceId: actorResolution.actor.traceId,
+          });
+        });
+        iamRoleSyncCounter.add(1, { operation: 'update', result: 'failure', error_code: 'COMPENSATION_FAILED' });
+        return createApiError(
+          500,
+          'internal_error',
+          'Rolle konnte nicht konsistent aktualisiert werden.',
+          actorResolution.actor.requestId,
+          {
+            syncState: 'failed',
+            syncError: { code: 'COMPENSATION_FAILED' },
+          }
+        );
+      }
+
+      await withInstanceScopedDb(actorResolution.actor.instanceId, async (client) => {
+        await setRoleSyncState(client, {
+          instanceId: actorResolution.actor.instanceId,
+          roleId,
+          syncState: 'failed',
+          errorCode: 'DB_WRITE_FAILED',
+        });
+        await emitRoleAuditEvent(client, {
+          instanceId: actorResolution.actor.instanceId,
+          accountId: actorResolution.actor.actorAccountId,
+          roleId,
+          eventType: 'role.sync_failed',
+          operation: 'update',
+          result: 'failure',
+          roleKey: existing.role_key,
+          externalRoleName,
+          errorCode: 'DB_WRITE_FAILED',
+          requestId: actorResolution.actor.requestId,
+          traceId: actorResolution.actor.traceId,
+        });
+      });
+      iamRoleSyncCounter.add(1, { operation: 'update', result: 'failure', error_code: 'DB_WRITE_FAILED' });
+      logger.error('Role update database write failed after successful Keycloak update', {
+        operation: 'update_role',
+        instance_id: actorResolution.actor.instanceId,
+        request_id: actorResolution.actor.requestId,
+        trace_id: actorResolution.actor.traceId,
+        role_id: roleId,
+        role_key: existing.role_key,
+        error: sanitizeRoleErrorMessage(error),
+      });
+      return createApiError(500, 'internal_error', 'Rolle konnte nicht aktualisiert werden.', actorResolution.actor.requestId, {
+        syncState: 'failed',
+        syncError: { code: 'DB_WRITE_FAILED' },
+      });
+    }
   } catch {
     return createApiError(500, 'internal_error', 'Rolle konnte nicht aktualisiert werden.', actorResolution.actor.requestId);
   }
@@ -2951,27 +3994,47 @@ const deleteRoleInternal = async (request: Request, ctx: AuthenticatedRequestCon
     return rateLimit;
   }
 
-  try {
-    const deleted = await withInstanceScopedDb(actorResolution.actor.instanceId, async (client) => {
-      const role = await client.query<{ is_system_role: boolean }>(
-        `
-SELECT is_system_role
-FROM iam.roles
-WHERE instance_id = $1::uuid
-  AND id = $2::uuid
-LIMIT 1;
-`,
-        [actorResolution.actor.instanceId, roleId]
-      );
-      const row = role.rows[0];
-      if (!row) {
-        return 'not_found' as const;
+  const identityProvider = resolveIdentityProvider();
+  if (!identityProvider) {
+    return createApiError(
+      503,
+      'keycloak_unavailable',
+      'Keycloak Admin API ist nicht konfiguriert.',
+      actorResolution.actor.requestId,
+      {
+        syncState: 'failed',
+        syncError: { code: 'IDP_UNAVAILABLE' },
       }
-      if (row.is_system_role) {
-        return 'system_role' as const;
-      }
+    );
+  }
 
-      const dependency = await client.query<{ used: number }>(
+  try {
+    const existing = await withInstanceScopedDb(actorResolution.actor.instanceId, (client) =>
+      loadRoleById(client, { instanceId: actorResolution.actor.instanceId, roleId })
+    );
+
+    if (!existing) {
+      return createApiError(404, 'not_found', 'Rolle nicht gefunden.', actorResolution.actor.requestId);
+    }
+    if (existing.is_system_role) {
+      return createApiError(
+        409,
+        'conflict',
+        'System-Rollen können nicht gelöscht werden.',
+        actorResolution.actor.requestId
+      );
+    }
+    if (existing.managed_by !== 'studio') {
+      return createApiError(
+        409,
+        'conflict',
+        'Extern verwaltete Rollen können im Studio nicht gelöscht werden.',
+        actorResolution.actor.requestId
+      );
+    }
+
+    const dependency = await withInstanceScopedDb(actorResolution.actor.instanceId, async (client) => {
+      const result = await client.query<{ used: number }>(
         `
 SELECT COUNT(*)::int AS used
 FROM iam.account_roles
@@ -2980,49 +4043,9 @@ WHERE instance_id = $1::uuid
 `,
         [actorResolution.actor.instanceId, roleId]
       );
-      if ((dependency.rows[0]?.used ?? 0) > 0) {
-        return 'dependency' as const;
-      }
-
-      await client.query(
-        'DELETE FROM iam.role_permissions WHERE instance_id = $1::uuid AND role_id = $2::uuid;',
-        [actorResolution.actor.instanceId, roleId]
-      );
-      await client.query('DELETE FROM iam.roles WHERE instance_id = $1::uuid AND id = $2::uuid;', [
-        actorResolution.actor.instanceId,
-        roleId,
-      ]);
-
-      await emitActivityLog(client, {
-        instanceId: actorResolution.actor.instanceId,
-        accountId: actorResolution.actor.actorAccountId,
-        eventType: 'role.deleted',
-        result: 'success',
-        payload: {
-          role_id: roleId,
-        },
-        requestId: actorResolution.actor.requestId,
-        traceId: actorResolution.actor.traceId,
-      });
-      await notifyPermissionInvalidation(client, {
-        instanceId: actorResolution.actor.instanceId,
-        trigger: 'role_deleted',
-      });
-      return 'ok' as const;
+      return result.rows[0]?.used ?? 0;
     });
-
-    if (deleted === 'not_found') {
-      return createApiError(404, 'not_found', 'Rolle nicht gefunden.', actorResolution.actor.requestId);
-    }
-    if (deleted === 'system_role') {
-      return createApiError(
-        409,
-        'conflict',
-        'System-Rollen können nicht gelöscht werden.',
-        actorResolution.actor.requestId
-      );
-    }
-    if (deleted === 'dependency') {
+    if (dependency > 0) {
       return createApiError(
         409,
         'conflict',
@@ -3031,7 +4054,184 @@ WHERE instance_id = $1::uuid
       );
     }
 
-    return jsonResponse(200, asApiItem({ id: roleId }, actorResolution.actor.requestId));
+    const externalRoleName = getRoleExternalName(existing);
+
+    await withInstanceScopedDb(actorResolution.actor.instanceId, async (client) => {
+      await setRoleSyncState(client, {
+        instanceId: actorResolution.actor.instanceId,
+        roleId,
+        syncState: 'pending',
+        errorCode: null,
+      });
+      await emitRoleAuditEvent(client, {
+        instanceId: actorResolution.actor.instanceId,
+        accountId: actorResolution.actor.actorAccountId,
+        roleId,
+        eventType: 'role.sync_started',
+        operation: 'delete',
+        result: 'success',
+        roleKey: existing.role_key,
+        externalRoleName,
+        requestId: actorResolution.actor.requestId,
+        traceId: actorResolution.actor.traceId,
+      });
+    });
+
+    try {
+      await trackKeycloakCall('delete_role', () => identityProvider.provider.deleteRole(externalRoleName));
+    } catch (error) {
+      if (!(error instanceof KeycloakAdminRequestError && error.statusCode === 404)) {
+        const errorCode = mapRoleSyncErrorCode(error);
+        await withInstanceScopedDb(actorResolution.actor.instanceId, async (client) => {
+          await setRoleSyncState(client, {
+            instanceId: actorResolution.actor.instanceId,
+            roleId,
+            syncState: 'failed',
+            errorCode,
+          });
+          await emitRoleAuditEvent(client, {
+            instanceId: actorResolution.actor.instanceId,
+            accountId: actorResolution.actor.actorAccountId,
+            roleId,
+            eventType: 'role.sync_failed',
+            operation: 'delete',
+            result: 'failure',
+            roleKey: existing.role_key,
+            externalRoleName,
+            errorCode,
+            requestId: actorResolution.actor.requestId,
+            traceId: actorResolution.actor.traceId,
+          });
+        });
+        iamRoleSyncCounter.add(1, { operation: 'delete', result: 'failure', error_code: errorCode });
+        return buildRoleSyncFailure({
+          error,
+          requestId: actorResolution.actor.requestId,
+          fallbackMessage: 'Rolle konnte nicht gelöscht werden.',
+          roleId,
+        });
+      }
+    }
+
+    try {
+      await withInstanceScopedDb(actorResolution.actor.instanceId, async (client) => {
+        await client.query('DELETE FROM iam.role_permissions WHERE instance_id = $1::uuid AND role_id = $2::uuid;', [
+          actorResolution.actor.instanceId,
+          roleId,
+        ]);
+        await client.query('DELETE FROM iam.roles WHERE instance_id = $1::uuid AND id = $2::uuid;', [
+          actorResolution.actor.instanceId,
+          roleId,
+        ]);
+
+        await emitActivityLog(client, {
+          instanceId: actorResolution.actor.instanceId,
+          accountId: actorResolution.actor.actorAccountId,
+          eventType: 'role.deleted',
+          result: 'success',
+          payload: {
+            role_id: roleId,
+            role_key: existing.role_key,
+          },
+          requestId: actorResolution.actor.requestId,
+          traceId: actorResolution.actor.traceId,
+        });
+        await emitRoleAuditEvent(client, {
+          instanceId: actorResolution.actor.instanceId,
+          accountId: actorResolution.actor.actorAccountId,
+          roleId,
+          eventType: 'role.sync_succeeded',
+          operation: 'delete',
+          result: 'success',
+          roleKey: existing.role_key,
+          externalRoleName,
+          requestId: actorResolution.actor.requestId,
+          traceId: actorResolution.actor.traceId,
+        });
+        await notifyPermissionInvalidation(client, {
+          instanceId: actorResolution.actor.instanceId,
+          trigger: 'role_deleted',
+        });
+      });
+    } catch {
+      try {
+        await trackKeycloakCall('create_role_compensation', () =>
+          identityProvider.provider.createRole({
+            externalName: externalRoleName,
+            description: existing.description ?? undefined,
+            attributes: {
+              managedBy: 'studio',
+              instanceId: actorResolution.actor.instanceId,
+              roleKey: existing.role_key,
+              displayName: getRoleDisplayName(existing),
+            },
+          })
+        );
+      } catch (compensationError) {
+        iamRoleSyncCounter.add(1, { operation: 'delete', result: 'failure', error_code: 'COMPENSATION_FAILED' });
+        logger.error('Role delete compensation failed', {
+          operation: 'delete_role_compensation',
+          instance_id: actorResolution.actor.instanceId,
+          request_id: actorResolution.actor.requestId,
+          trace_id: actorResolution.actor.traceId,
+          role_id: roleId,
+          role_key: existing.role_key,
+          error: sanitizeRoleErrorMessage(compensationError),
+        });
+        return createApiError(
+          500,
+          'internal_error',
+          'Rolle konnte nicht konsistent gelöscht werden.',
+          actorResolution.actor.requestId,
+          {
+            syncState: 'failed',
+            syncError: { code: 'COMPENSATION_FAILED' },
+          }
+        );
+      }
+
+      await withInstanceScopedDb(actorResolution.actor.instanceId, async (client) => {
+        await setRoleSyncState(client, {
+          instanceId: actorResolution.actor.instanceId,
+          roleId,
+          syncState: 'failed',
+          errorCode: 'DB_WRITE_FAILED',
+        });
+        await emitRoleAuditEvent(client, {
+          instanceId: actorResolution.actor.instanceId,
+          accountId: actorResolution.actor.actorAccountId,
+          roleId,
+          eventType: 'role.sync_failed',
+          operation: 'delete',
+          result: 'failure',
+          roleKey: existing.role_key,
+          externalRoleName,
+          errorCode: 'DB_WRITE_FAILED',
+          requestId: actorResolution.actor.requestId,
+          traceId: actorResolution.actor.traceId,
+        });
+      });
+      iamRoleSyncCounter.add(1, { operation: 'delete', result: 'failure', error_code: 'DB_WRITE_FAILED' });
+      return createApiError(500, 'internal_error', 'Rolle konnte nicht gelöscht werden.', actorResolution.actor.requestId, {
+        syncState: 'failed',
+        syncError: { code: 'DB_WRITE_FAILED' },
+      });
+    }
+
+    iamRoleSyncCounter.add(1, { operation: 'delete', result: 'success', error_code: 'none' });
+    return jsonResponse(
+      200,
+      asApiItem(
+        {
+          id: roleId,
+          roleKey: existing.role_key,
+          roleName: getRoleDisplayName(existing),
+          externalRoleName,
+          syncState: 'synced' as const,
+        },
+        actorResolution.actor.requestId
+      )
+    );
   } catch {
     return createApiError(500, 'internal_error', 'Rolle konnte nicht gelöscht werden.', actorResolution.actor.requestId);
   }
@@ -3114,13 +4314,124 @@ const reconcilePlaceholderInternal = async (request: Request, ctx: Authenticated
   if ('error' in actorResolution) {
     return actorResolution.error;
   }
-  return createApiError(
-    501,
-    'feature_disabled',
-    'Reconciliation-Endpunkt ist als Folge-Task vorgesehen.',
-    actorResolution.actor.requestId
-  );
+
+  const csrfError = validateCsrf(request, actorResolution.actor.requestId);
+  if (csrfError) {
+    return csrfError;
+  }
+
+  const rateLimit = consumeRateLimit({
+    instanceId: actorResolution.actor.instanceId,
+    actorKeycloakSubject: ctx.user.id,
+    scope: 'write',
+    requestId: actorResolution.actor.requestId,
+  });
+  if (rateLimit) {
+    return rateLimit;
+  }
+
+  try {
+    const report = await runRoleCatalogReconciliation({
+      instanceId: actorResolution.actor.instanceId,
+      actorAccountId: actorResolution.actor.actorAccountId,
+      requestId: actorResolution.actor.requestId,
+      traceId: actorResolution.actor.traceId,
+    });
+    return jsonResponse(200, asApiItem(report, actorResolution.actor.requestId));
+  } catch (error) {
+    logger.error('Role reconciliation failed', {
+      operation: 'reconcile_roles',
+      instance_id: actorResolution.actor.instanceId,
+      request_id: actorResolution.actor.requestId,
+      trace_id: actorResolution.actor.traceId,
+      error: sanitizeRoleErrorMessage(error),
+    });
+    return createApiError(
+      503,
+      'keycloak_unavailable',
+      'Rollen-Reconciliation konnte nicht ausgeführt werden.',
+      actorResolution.actor.requestId,
+      {
+        syncState: 'failed',
+        syncError: { code: mapRoleSyncErrorCode(error) },
+      }
+    );
+  }
 };
+
+let roleCatalogSchedulerStarted = false;
+const roleCatalogSchedulerInFlight = new Set<string>();
+
+const readScheduledReconcileInstanceIds = (): readonly string[] =>
+  (process.env.IAM_ROLE_RECONCILE_INSTANCE_IDS ?? '')
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0);
+
+const ensureRoleCatalogSchedulerStarted = (): void => {
+  if (roleCatalogSchedulerStarted) {
+    return;
+  }
+
+  const intervalRaw = process.env.IAM_ROLE_RECONCILE_INTERVAL_MS;
+  const intervalMs = intervalRaw ? Number(intervalRaw) : NaN;
+  const instanceIds = readScheduledReconcileInstanceIds();
+  if (!Number.isFinite(intervalMs) || intervalMs <= 0 || instanceIds.length === 0) {
+    return;
+  }
+
+  roleCatalogSchedulerStarted = true;
+  const timer = setInterval(async () => {
+    for (const instanceId of instanceIds) {
+      if (roleCatalogSchedulerInFlight.has(instanceId)) {
+        logger.warn('Role catalog reconciliation already running; skipping overlapping scheduler run', {
+          operation: 'reconcile_roles_scheduler',
+          workspace_id: instanceId,
+          instance_id: instanceId,
+          result: 'skipped',
+          error_code: 'SCHEDULER_ALREADY_RUNNING',
+          request_id: `scheduler:${Date.now()}:${instanceId}`,
+        });
+        continue;
+      }
+
+      roleCatalogSchedulerInFlight.add(instanceId);
+      const schedulerRequestId = `scheduler:${Date.now()}:${instanceId}`;
+      try {
+        const report = await runRoleCatalogReconciliation({
+          instanceId,
+          requestId: schedulerRequestId,
+        });
+        logger.info('Role catalog reconciliation completed', {
+          operation: 'reconcile_roles_scheduler',
+          workspace_id: instanceId,
+          instance_id: instanceId,
+          result: 'success',
+          request_id: schedulerRequestId,
+          checked_count: report.checkedCount,
+          corrected_count: report.correctedCount,
+          failed_count: report.failedCount,
+          requires_manual_action_count: report.requiresManualActionCount,
+        });
+      } catch (error) {
+        logger.error('Role catalog reconciliation scheduler failed', {
+          operation: 'reconcile_roles_scheduler',
+          workspace_id: instanceId,
+          instance_id: instanceId,
+          result: 'failure',
+          request_id: schedulerRequestId,
+          error: sanitizeRoleErrorMessage(error),
+        });
+      } finally {
+        roleCatalogSchedulerInFlight.delete(instanceId);
+      }
+    }
+  }, intervalMs);
+
+  timer.unref?.();
+};
+
+ensureRoleCatalogSchedulerStarted();
 
 export const listUsersHandler = async (request: Request): Promise<Response> =>
   withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () =>

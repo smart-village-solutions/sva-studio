@@ -7,6 +7,7 @@ const listRolesMock = vi.fn();
 const createRoleMock = vi.fn();
 const updateRoleMock = vi.fn();
 const deleteRoleMock = vi.fn();
+const reconcileRolesMock = vi.fn();
 const asIamErrorMock = vi.fn();
 const authMockValue = {
   user: {
@@ -37,6 +38,7 @@ vi.mock('../lib/iam-api', () => ({
   createRole: (...args: unknown[]) => createRoleMock(...args),
   updateRole: (...args: unknown[]) => updateRoleMock(...args),
   deleteRole: (...args: unknown[]) => deleteRoleMock(...args),
+  reconcileRoles: (...args: unknown[]) => reconcileRolesMock(...args),
   asIamError: (...args: unknown[]) => asIamErrorMock(...args),
 }));
 
@@ -50,6 +52,7 @@ describe('useRoles', () => {
     createRoleMock.mockReset();
     updateRoleMock.mockReset();
     deleteRoleMock.mockReset();
+    reconcileRolesMock.mockReset();
     asIamErrorMock.mockReset();
     authMockValue.invalidatePermissions.mockReset();
   });
@@ -60,10 +63,14 @@ describe('useRoles', () => {
       data: [
         {
           id: 'role-1',
+          roleKey: 'editor',
           roleName: 'editor',
+          externalRoleName: 'editor',
+          managedBy: 'studio',
           isSystemRole: false,
           roleLevel: 10,
           memberCount: 1,
+          syncState: 'synced',
           permissions: [],
         },
       ],
@@ -74,9 +81,44 @@ describe('useRoles', () => {
       },
     });
 
-    createRoleMock.mockResolvedValue({ data: { id: 'role-2', roleName: 'custom' } });
-    updateRoleMock.mockResolvedValue({ data: { id: 'role-1' } });
+    createRoleMock.mockResolvedValue({
+      data: {
+        id: 'role-2',
+        roleKey: 'custom',
+        roleName: 'Custom',
+        externalRoleName: 'custom',
+        managedBy: 'studio',
+        isSystemRole: false,
+        roleLevel: 20,
+        memberCount: 0,
+        syncState: 'synced',
+        permissions: [],
+      },
+    });
+    updateRoleMock.mockResolvedValue({
+      data: {
+        id: 'role-1',
+        roleKey: 'editor',
+        roleName: 'Editor',
+        externalRoleName: 'editor',
+        managedBy: 'studio',
+        isSystemRole: false,
+        roleLevel: 10,
+        memberCount: 1,
+        syncState: 'synced',
+        permissions: [],
+      },
+    });
     deleteRoleMock.mockResolvedValue({ data: { id: 'role-1' } });
+    reconcileRolesMock.mockResolvedValue({
+      data: {
+        checkedCount: 1,
+        correctedCount: 1,
+        failedCount: 0,
+        requiresManualActionCount: 0,
+        roles: [],
+      },
+    });
 
     const { result } = renderHook(() => useRoles());
 
@@ -89,11 +131,15 @@ describe('useRoles', () => {
       await result.current.createRole({ roleName: 'custom' });
       await result.current.updateRole('role-1', { description: 'updated' });
       await result.current.deleteRole('role-1');
+      await result.current.retryRoleSync('role-1');
+      await result.current.reconcile();
     });
 
     expect(createRoleMock).toHaveBeenCalledTimes(1);
-    expect(updateRoleMock).toHaveBeenCalledTimes(1);
+    expect(updateRoleMock).toHaveBeenCalledTimes(2);
     expect(deleteRoleMock).toHaveBeenCalledTimes(1);
+    expect(reconcileRolesMock).toHaveBeenCalledTimes(1);
+    expect(result.current.reconcileReport?.correctedCount).toBe(1);
   });
 
   it('invalidates permissions when initial fetch returns 403', async () => {
@@ -119,10 +165,14 @@ describe('useRoles', () => {
       data: [
         {
           id: 'role-a',
+          roleKey: 'editor',
           roleName: 'editor',
+          externalRoleName: 'editor',
+          managedBy: 'studio',
           isSystemRole: false,
           roleLevel: 10,
           memberCount: 1,
+          syncState: 'synced',
           permissions: [],
         },
       ],
@@ -146,7 +196,8 @@ describe('useRoles', () => {
       expect(created).toBe(false);
     });
 
-    expect(result.current.error).toBe(conflictError);
+    expect(result.current.error).toBeNull();
+    expect(result.current.mutationError).toBe(conflictError);
     expect(authMockValue.invalidatePermissions).not.toHaveBeenCalled();
   });
 
@@ -157,10 +208,14 @@ describe('useRoles', () => {
       data: [
         {
           id: 'role-b',
+          roleKey: 'reviewer',
           roleName: 'reviewer',
+          externalRoleName: 'reviewer',
+          managedBy: 'studio',
           isSystemRole: false,
           roleLevel: 20,
           memberCount: 0,
+          syncState: 'synced',
           permissions: [],
         },
       ],
@@ -184,6 +239,81 @@ describe('useRoles', () => {
     });
 
     expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
+    expect(result.current.error).toBeNull();
+    expect(result.current.mutationError).toBe(forbiddenError);
+  });
+
+  it('invalidates permissions and stores page error when reconcile fails with 403', async () => {
+    const forbiddenError = { status: 403, code: 'forbidden', message: 'Forbidden' };
+    asIamErrorMock.mockReturnValue(forbiddenError);
+    listRolesMock.mockResolvedValueOnce({
+      data: [
+        {
+          id: 'role-c',
+          roleKey: 'reviewer',
+          roleName: 'reviewer',
+          externalRoleName: 'reviewer',
+          managedBy: 'studio',
+          isSystemRole: false,
+          roleLevel: 20,
+          memberCount: 0,
+          syncState: 'synced',
+          permissions: [],
+        },
+      ],
+      pagination: {
+        page: 1,
+        pageSize: 1,
+        total: 1,
+      },
+    });
+    reconcileRolesMock.mockRejectedValueOnce(new Error('forbidden-reconcile'));
+
+    const { result } = renderHook(() => useRoles());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    await act(async () => {
+      const reconciled = await result.current.reconcile();
+      expect(reconciled).toBe(false);
+    });
+
+    expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
     expect(result.current.error).toBe(forbiddenError);
+    expect(result.current.mutationError).toBeNull();
+  });
+
+  it('can clear a stored mutation error explicitly', async () => {
+    const conflictError = { status: 409, code: 'conflict', message: 'Conflict' };
+    asIamErrorMock.mockReturnValue(conflictError);
+    listRolesMock.mockResolvedValueOnce({
+      data: [],
+      pagination: {
+        page: 1,
+        pageSize: 1,
+        total: 0,
+      },
+    });
+    createRoleMock.mockRejectedValueOnce(new Error('conflict-create'));
+
+    const { result } = renderHook(() => useRoles());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    await act(async () => {
+      await result.current.createRole({ roleName: 'editor' });
+    });
+
+    expect(result.current.mutationError).toBe(conflictError);
+
+    act(() => {
+      result.current.clearMutationError();
+    });
+
+    expect(result.current.mutationError).toBeNull();
   });
 });

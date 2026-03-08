@@ -9,6 +9,8 @@ export type {
   ApiListResponse,
   ApiPagination,
   IamRoleListItem,
+  IamRoleSyncError,
+  IamRoleSyncState,
   IamUserDetail,
   IamUserListItem,
   IamUserRoleAssignment,

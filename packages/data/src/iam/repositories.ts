@@ -1,4 +1,4 @@
-import type { IamUuid } from './types';
+import type { IamUuid, RoleManagedBy, RoleSyncState } from './types';
 
 export type SqlPrimitive = string | number | boolean | null;
 
@@ -28,10 +28,14 @@ export type IamSeedRepository = {
   upsertRole(input: {
     id: IamUuid;
     instanceId: IamUuid;
+    roleKey: string;
     roleName: string;
     description: string;
     isSystemRole: boolean;
     roleLevel: number;
+    externalRoleName?: string;
+    managedBy?: RoleManagedBy;
+    syncState?: RoleSyncState;
   }): Promise<void>;
   upsertPermission(input: {
     id: IamUuid;
@@ -95,22 +99,58 @@ SET
   upsertRole: (input: {
     id: IamUuid;
     instanceId: IamUuid;
+    roleKey: string;
     roleName: string;
     description: string;
     isSystemRole: boolean;
     roleLevel: number;
+    externalRoleName?: string;
+    managedBy?: RoleManagedBy;
+    syncState?: RoleSyncState;
   }): SqlStatement => ({
     text: `
-INSERT INTO iam.roles (id, instance_id, role_name, description, is_system_role, role_level)
-VALUES ($1, $2, $3, $4, $5, $6)
-ON CONFLICT (instance_id, role_name) DO UPDATE
+INSERT INTO iam.roles (
+  id,
+  instance_id,
+  role_key,
+  role_name,
+  display_name,
+  external_role_name,
+  description,
+  is_system_role,
+  role_level,
+  managed_by,
+  sync_state,
+  last_synced_at,
+  last_error_code
+)
+VALUES ($1, $2, $3, $4, $4, $5, $6, $7, $8, $9, $10, NOW(), NULL)
+ON CONFLICT (instance_id, role_key) DO UPDATE
 SET
+  role_name = EXCLUDED.role_name,
+  display_name = EXCLUDED.display_name,
+  external_role_name = EXCLUDED.external_role_name,
   description = EXCLUDED.description,
   is_system_role = EXCLUDED.is_system_role,
   role_level = EXCLUDED.role_level,
+  managed_by = EXCLUDED.managed_by,
+  sync_state = EXCLUDED.sync_state,
+  last_synced_at = EXCLUDED.last_synced_at,
+  last_error_code = NULL,
   updated_at = NOW();
 `,
-    values: [input.id, input.instanceId, input.roleName, input.description, input.isSystemRole, input.roleLevel],
+    values: [
+      input.id,
+      input.instanceId,
+      input.roleKey,
+      input.roleName,
+      input.externalRoleName ?? input.roleKey,
+      input.description,
+      input.isSystemRole,
+      input.roleLevel,
+      input.managedBy ?? 'studio',
+      input.syncState ?? 'pending',
+    ],
   }),
 
   upsertPermission: (input: {

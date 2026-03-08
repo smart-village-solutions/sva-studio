@@ -50,8 +50,12 @@ export { authRouteDefinitions, loginHandler, callbackHandler, meHandler, logoutH
 export type { AuthRouteDefinition } from './routes.server';
 export type { AuthConfig, SessionUser } from './types';
 export type {
+  CreateIdentityRoleInput,
   CreateIdentityUserInput,
+  IdentityManagedRoleAttributes,
+  IdentityRole,
   IdentityProviderPort,
   IdentityUser,
+  UpdateIdentityRoleInput,
   UpdateIdentityUserInput,
 } from './identity-provider-port';

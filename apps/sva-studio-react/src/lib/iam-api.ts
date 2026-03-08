@@ -77,15 +77,35 @@ export type UpdateMyProfilePayload = {
 
 export type CreateRolePayload = {
   readonly roleName: string;
+  readonly displayName?: string;
   readonly description?: string;
   readonly roleLevel?: number;
   readonly permissionIds?: readonly string[];
 };
 
 export type UpdateRolePayload = {
+  readonly displayName?: string;
   readonly description?: string;
   readonly roleLevel?: number;
   readonly permissionIds?: readonly string[];
+  readonly retrySync?: boolean;
+};
+
+export type RoleReconcileEntry = {
+  readonly roleId?: string;
+  readonly roleKey?: string;
+  readonly externalRoleName: string;
+  readonly action: 'noop' | 'create' | 'update' | 'report';
+  readonly status: 'synced' | 'corrected' | 'failed' | 'requires_manual_action';
+  readonly errorCode?: string;
+};
+
+export type RoleReconcileReport = {
+  readonly checkedCount: number;
+  readonly correctedCount: number;
+  readonly failedCount: number;
+  readonly requiresManualActionCount: number;
+  readonly roles: readonly RoleReconcileEntry[];
 };
 
 const createIdempotencyKey = () => {
@@ -195,14 +215,21 @@ export const listRoles = async (): Promise<ApiListResponse<IamRoleListItem>> =>
 
 export const createRole = async (
   payload: CreateRolePayload
-): Promise<ApiItemResponse<{ id: string; roleName: string }>> =>
-  postJson<ApiItemResponse<{ id: string; roleName: string }>, CreateRolePayload>('/api/v1/iam/roles', payload, true);
+): Promise<ApiItemResponse<IamRoleListItem>> =>
+  postJson<ApiItemResponse<IamRoleListItem>, CreateRolePayload>('/api/v1/iam/roles', payload, true);
 
-export const updateRole = async (roleId: string, payload: UpdateRolePayload): Promise<ApiItemResponse<{ id: string }>> =>
-  patchJson<ApiItemResponse<{ id: string }>, UpdateRolePayload>(`/api/v1/iam/roles/${roleId}`, payload);
+export const updateRole = async (roleId: string, payload: UpdateRolePayload): Promise<ApiItemResponse<IamRoleListItem>> =>
+  patchJson<ApiItemResponse<IamRoleListItem>, UpdateRolePayload>(`/api/v1/iam/roles/${roleId}`, payload);
 
 export const deleteRole = async (roleId: string): Promise<ApiItemResponse<{ id: string }>> =>
   requestJson<ApiItemResponse<{ id: string }>>(`/api/v1/iam/roles/${roleId}`, {
     method: 'DELETE',
     headers: IAM_HEADERS,
+  });
+
+export const reconcileRoles = async (): Promise<ApiItemResponse<RoleReconcileReport>> =>
+  requestJson<ApiItemResponse<RoleReconcileReport>>('/api/v1/iam/admin/reconcile', {
+    method: 'POST',
+    headers: IAM_HEADERS,
+    body: JSON.stringify({}),
   });

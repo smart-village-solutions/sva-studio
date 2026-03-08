@@ -22,27 +22,41 @@ export const ModalDialog = ({
 }: ModalDialogProps) => {
   const panelRef = React.useRef<HTMLDivElement>(null);
   const triggerRef = React.useRef<HTMLElement | null>(null);
+  const previousOpenRef = React.useRef(false);
+  const onCloseRef = React.useRef(onClose);
 
   React.useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  React.useEffect(() => {
+    const wasOpen = previousOpenRef.current;
+    previousOpenRef.current = open;
+
     if (!open) {
+      if (wasOpen && triggerRef.current?.isConnected) {
+        triggerRef.current.focus();
+      }
       return;
     }
-
-    triggerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
 
     const panel = panelRef.current;
     if (!panel) {
       return;
     }
 
-    const focusables = panel.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
-    const first = focusables[0];
-    first?.focus();
+    if (!wasOpen) {
+      triggerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+
+      const focusables = panel.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
+      const first = focusables[0];
+      first?.focus();
+    }
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault();
-        onClose();
+        onCloseRef.current();
         return;
       }
 
@@ -70,11 +84,8 @@ export const ModalDialog = ({
     panel.addEventListener('keydown', onKeyDown);
     return () => {
       panel.removeEventListener('keydown', onKeyDown);
-      if (triggerRef.current?.isConnected) {
-        triggerRef.current.focus();
-      }
     };
-  }, [onClose, open]);
+  }, [open]);
 
   if (!open) {
     return null;

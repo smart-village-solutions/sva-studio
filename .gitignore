@@ -36,6 +36,7 @@ log/
 # Caches
 .cache/
 artifacts/
+.playwright-cli/
 
 # NX
 .nx/

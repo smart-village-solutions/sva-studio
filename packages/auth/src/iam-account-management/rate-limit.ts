@@ -1,0 +1,39 @@
+import {
+  BULK_RATE_LIMIT,
+  READ_RATE_LIMIT,
+  RATE_WINDOW_MS,
+  WRITE_RATE_LIMIT,
+} from './constants';
+import type { RateBucket, RateScope } from './types';
+import { createApiError } from './api-helpers';
+
+const rateLimiterStore = new Map<string, RateBucket>();
+
+export const consumeRateLimit = (
+  input: { instanceId: string; actorKeycloakSubject: string; scope: RateScope; requestId?: string } & {
+    now?: number;
+  }
+): Response | null => {
+  const limit = input.scope === 'read' ? READ_RATE_LIMIT : input.scope === 'bulk' ? BULK_RATE_LIMIT : WRITE_RATE_LIMIT;
+  const now = input.now ?? Date.now();
+  const key = `${input.instanceId}:${input.actorKeycloakSubject}:${input.scope}`;
+  const existing = rateLimiterStore.get(key);
+  if (!existing || now - existing.windowStartedAt >= RATE_WINDOW_MS) {
+    rateLimiterStore.set(key, { windowStartedAt: now, count: 1 });
+    return null;
+  }
+
+  if (existing.count >= limit) {
+    return createApiError(
+      429,
+      'rate_limited',
+      'Rate limit überschritten.',
+      input.requestId,
+      { scope: input.scope, limit, windowSeconds: 60 }
+    );
+  }
+
+  existing.count += 1;
+  rateLimiterStore.set(key, existing);
+  return null;
+};

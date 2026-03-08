@@ -42,6 +42,11 @@ Das System SHALL Coverage-Floors stufenweise einführen und an einer dokumentier
 - **THEN** dürfen Floors für dieses Paket schrittweise angehoben werden
 - **AND** Floors werden niemals automatisch abgesenkt
 
+#### Scenario: Coverage-Gate-Code ist wartbar
+- **WHEN** die Coverage-Gate-Implementierung geprüft wird
+- **THEN** liegt die Cognitive Complexity jeder Funktion unter 15
+- **AND** die Hauptlogik ist in klar benannte Subfunktionen aufgeteilt
+
 ### Requirement: Trennung von Unit- und Integrationstests
 Das System SHALL infra-abhängige Integrationstests getrennt von Unit-Coverage-Gates ausführen.
 

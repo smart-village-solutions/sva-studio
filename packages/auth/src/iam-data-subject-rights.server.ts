@@ -512,7 +512,7 @@ LIMIT 50;
       completedAt: row.completed_at,
     })),
     consents: {
-      nonEssentialProcessingAllowed: !Boolean(input.account.non_essential_processing_opt_out_at),
+      nonEssentialProcessingAllowed: !input.account.non_essential_processing_opt_out_at,
     },
   };
 };

@@ -14,7 +14,7 @@ const MAX_CONNECTION_ERRORS = 10;
 /**
  * Build Redis client options with optional TLS and ACL support.
  */
-const buildRedisOptions = (tlsEnabled: boolean = false): RedisOptions => {
+const buildRedisOptions = (): RedisOptions => {
   const options: RedisOptions = {
     maxRetriesPerRequest: 3,
     retryStrategy: (times: number) => {
@@ -106,7 +106,7 @@ export const getRedisClient = (): Redis => {
   if (!redisClient) {
     const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
     const tlsEnabled = process.env.TLS_ENABLED === 'true' || redisUrl.startsWith('rediss://');
-    const options = buildRedisOptions(tlsEnabled);
+    const options = buildRedisOptions();
     const tlsOptions = buildTlsOptions(tlsEnabled);
     if (tlsOptions) {
       options.tls = tlsOptions;

@@ -14,9 +14,9 @@
       }
     },
     "lint": {
-      "executor": "nx:run-commands",
+      "executor": "@nx/eslint:lint",
       "options": {
-        "command": "pnpm --filter @sva/monitoring-client exec tsc -p tsconfig.lib.json --noEmit"
+        "lintFilePatterns": ["packages/monitoring-client/src/**/*.{ts,tsx,js,jsx}"]
       }
     },
     "test:unit": {

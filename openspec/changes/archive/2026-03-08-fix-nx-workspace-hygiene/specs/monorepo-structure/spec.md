@@ -1,4 +1,4 @@
-## MODIFIED Requirements
+## ADDED Requirements
 
 ### Requirement: Einheitliche Workspace-Konfiguration
 Das System SHALL eine konsistente Nx-Workspace-Konfiguration über alle Packages hinweg sicherstellen.

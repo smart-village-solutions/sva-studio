@@ -328,11 +328,7 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     await this.assertWriteAvailability();
     const expectedRoleNames = new Set(roles);
     const [currentRoleMappings, availableRoles] = await Promise.all([
-      this.executeWithResilience<KeycloakRoleMapping[]>({
-        method: 'GET',
-        path: `/admin/realms/${encodePathSegment(this.realm)}/users/${encodePathSegment(externalId)}/role-mappings/realm`,
-        operation: 'sync_roles_read_current',
-      }),
+      this.readUserRoleMappings(externalId, 'sync_roles_read_current'),
       this.listRoles(),
     ]);
 
@@ -386,6 +382,11 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     }
   }
 
+  async listUserRoleNames(externalId: string): Promise<readonly string[]> {
+    const currentRoleMappings = await this.readUserRoleMappings(externalId, 'list_user_roles');
+    return currentRoleMappings.map((role) => role.name);
+  }
+
   async listUsers(query?: KeycloakListUsersQuery): Promise<readonly KeycloakAdminUser[]> {
     if (this.isCircuitOpen()) {
       if (this.readFallback?.listUsers) {
@@ -433,6 +434,21 @@ export class KeycloakAdminClient implements IdentityProviderPort {
       }
       throw error;
     }
+  }
+
+  private async readUserRoleMappings(
+    externalId: string,
+    operation: string
+  ): Promise<readonly KeycloakRoleMapping[]> {
+    if (this.isCircuitOpen()) {
+      throw new KeycloakAdminUnavailableError('Keycloak unavailable and user role mapping reads are temporarily disabled.');
+    }
+
+    return this.executeWithResilience<KeycloakRoleMapping[]>({
+      method: 'GET',
+      path: `/admin/realms/${encodePathSegment(this.realm)}/users/${encodePathSegment(externalId)}/role-mappings/realm`,
+      operation,
+    });
   }
 
   async listRoles(): Promise<readonly IdentityRole[]> {

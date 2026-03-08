@@ -4,6 +4,7 @@ import { ConfirmDialog } from '../../../components/ConfirmDialog';
 import { useRoles } from '../../../hooks/use-roles';
 import { useUser } from '../../../hooks/use-user';
 import { t } from '../../../i18n';
+import type { IamHttpError } from '../../../lib/iam-api';
 
 type UserEditPageProps = {
   readonly userId: string;
@@ -73,6 +74,33 @@ const pickInitials = (displayName: string) => {
   }
 
   return parts.map((entry) => entry.charAt(0).toUpperCase()).join('');
+};
+
+export const userErrorMessage = (error: IamHttpError | null): string => {
+  if (!error) {
+    return t('admin.users.messages.error');
+  }
+
+  switch (error.code) {
+    case 'forbidden':
+      return t('admin.users.errors.forbidden');
+    case 'csrf_validation_failed':
+      return t('admin.users.errors.csrfValidationFailed');
+    case 'rate_limited':
+      return t('admin.users.errors.rateLimited');
+    case 'conflict':
+      return t('admin.users.errors.conflict');
+    case 'keycloak_unavailable':
+      return t('admin.users.errors.keycloakUnavailable');
+    case 'database_unavailable':
+      return t('admin.users.errors.databaseUnavailable');
+    case 'last_admin_protection':
+      return t('admin.users.errors.lastAdminProtection');
+    case 'self_protection':
+      return t('admin.users.errors.selfProtection');
+    default:
+      return t('admin.users.messages.error');
+  }
 };
 
 export const UserEditPage = ({ userId }: UserEditPageProps) => {
@@ -195,7 +223,7 @@ export const UserEditPage = ({ userId }: UserEditPageProps) => {
       <section className="space-y-3">
         <h1 className="text-3xl font-semibold text-slate-100">{t('admin.users.edit.title')}</h1>
         <div className="rounded-xl border border-red-600/40 bg-red-500/10 p-4 text-sm text-red-100" role="alert">
-          {t('admin.users.messages.error')}
+          {userErrorMessage(userApi.error)}
         </div>
       </section>
     );
@@ -419,7 +447,7 @@ export const UserEditPage = ({ userId }: UserEditPageProps) => {
 
         {userApi.error ? (
           <div className="rounded-xl border border-red-600/40 bg-red-500/10 p-4 text-sm text-red-100" role="alert">
-            {t('admin.users.messages.error')}
+            {userErrorMessage(userApi.error)}
           </div>
         ) : null}
         {saveSuccess ? (

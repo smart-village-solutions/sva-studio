@@ -154,6 +154,16 @@ export const i18nResources = {
           error: 'Nutzer konnten nicht geladen werden.',
           resultCount: '{{count}} Nutzer gefunden.',
         },
+        errors: {
+          forbidden: 'Unzureichende Berechtigungen für diese Nutzeraktion.',
+          csrfValidationFailed: 'Sicherheitsprüfung fehlgeschlagen. Bitte Seite neu laden und erneut versuchen.',
+          rateLimited: 'Zu viele Anfragen in kurzer Zeit. Bitte kurz warten und erneut versuchen.',
+          conflict: 'Die Nutzeränderung steht in Konflikt mit dem aktuellen Zustand. Bitte aktualisieren und erneut versuchen.',
+          keycloakUnavailable: 'Die Verbindung zu Keycloak ist derzeit nicht verfügbar. Bitte später erneut versuchen.',
+          databaseUnavailable: 'Die IAM-Datenbank ist derzeit nicht erreichbar. Bitte später erneut versuchen.',
+          lastAdminProtection: 'Der letzte aktive System-Administrator kann nicht entfernt oder deaktiviert werden.',
+          selfProtection: 'Das aktuell angemeldete Konto kann nicht auf diese Weise deaktiviert werden.',
+        },
       },
       roles: {
         page: {
@@ -390,6 +400,16 @@ export const i18nResources = {
           loading: 'Loading users ...',
           error: 'Users could not be loaded.',
           resultCount: '{{count}} users found.',
+        },
+        errors: {
+          forbidden: 'Insufficient permissions for this user action.',
+          csrfValidationFailed: 'Security validation failed. Reload the page and try again.',
+          rateLimited: 'Too many requests in a short time. Please wait a moment and try again.',
+          conflict: 'The user update conflicts with the current state. Refresh and try again.',
+          keycloakUnavailable: 'The connection to Keycloak is currently unavailable. Please try again later.',
+          databaseUnavailable: 'The IAM database is currently unavailable. Please try again later.',
+          lastAdminProtection: 'The last active system administrator cannot be removed or deactivated.',
+          selfProtection: 'The currently signed-in account cannot be deactivated this way.',
         },
       },
       roles: {

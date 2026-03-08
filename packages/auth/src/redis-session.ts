@@ -11,6 +11,12 @@ export interface SessionData {
 const SESSION_TTL = 7 * 24 * 60 * 60; // 7 days in seconds
 const SESSION_KEY_PREFIX = 'session:';
 
+function createErrorWithCause(message: string, cause: unknown): Error {
+  const error = new Error(message) as Error & { cause?: unknown };
+  error.cause = cause;
+  return error;
+}
+
 /**
  * Create and persist a session in Redis
  * @param redis Redis client instance
@@ -119,12 +125,6 @@ export const refreshSessionInRedis = async (
       error
     );
   }
-};
-
-const createErrorWithCause = (message: string, cause: unknown): Error => {
-  const error = new Error(message) as Error & { cause?: unknown };
-  error.cause = cause;
-  return error;
 };
 
 /**

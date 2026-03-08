@@ -29,10 +29,13 @@ const state = vi.hoisted(() => ({
       }
     | { error: Response },
   dbResults: [] as unknown[],
+  queryResults: [] as unknown[],
   session: undefined as { activeOrganizationId?: string } | undefined,
   updateSessionCalls: [] as Array<{ sessionId: string; updates: Record<string, unknown> }>,
   notifyCalls: [] as Array<Record<string, unknown>>,
   auditCalls: [] as Array<Record<string, unknown>>,
+  reserveResponse: { status: 'reserved' as const },
+  completeCalls: [] as Array<Record<string, unknown>>,
 }));
 
 vi.mock('./middleware.server', () => ({
@@ -139,7 +142,20 @@ vi.mock('./iam-account-management/shared', () => ({
       return next;
     }
 
-    return work({});
+    return work({
+      query: vi.fn(async () => {
+        if (state.queryResults.length === 0) {
+          return { rowCount: 0, rows: [] };
+        }
+
+        const next = state.queryResults.shift();
+        if (typeof next === 'object' && next !== null && '__throw' in next) {
+          throw (next as { __throw: unknown }).__throw;
+        }
+
+        return next;
+      }),
+    });
   }),
   emitActivityLog: vi.fn(async (_client: unknown, input: Record<string, unknown>) => {
     state.auditCalls.push(input);
@@ -147,14 +163,20 @@ vi.mock('./iam-account-management/shared', () => ({
   notifyPermissionInvalidation: vi.fn(async (_client: unknown, input: Record<string, unknown>) => {
     state.notifyCalls.push(input);
   }),
-  reserveIdempotency: vi.fn(),
-  completeIdempotency: vi.fn(),
+  reserveIdempotency: vi.fn(async () => state.reserveResponse),
+  completeIdempotency: vi.fn(async (input: Record<string, unknown>) => {
+    state.completeCalls.push(input);
+  }),
 }));
 
 import {
+  assignOrganizationMembershipHandler,
+  createOrganizationHandler,
   deactivateOrganizationHandler,
+  getOrganizationHandler,
   getMyOrganizationContextHandler,
   listOrganizationsHandler,
+  removeOrganizationMembershipHandler,
   updateOrganizationHandler,
   updateMyOrganizationContextHandler,
 } from './iam-organizations.server';
@@ -180,10 +202,13 @@ describe('iam organizations handlers', () => {
       },
     };
     state.dbResults = [];
+    state.queryResults = [];
     state.session = undefined;
     state.updateSessionCalls = [];
     state.notifyCalls = [];
     state.auditCalls = [];
+    state.reserveResponse = { status: 'reserved' };
+    state.completeCalls = [];
   });
 
   it('lists organizations with pagination metadata', async () => {
@@ -227,6 +252,48 @@ describe('iam organizations handlers', () => {
     expect(payload.requestId).toBe('req-org-test');
   });
 
+  it('lists inactive organizations via database-backed filters', async () => {
+    state.queryResults = [
+      { rowCount: 1, rows: [{ total: 1 }] },
+      {
+        rowCount: 1,
+        rows: [
+          {
+            id: '99999999-9999-4999-8999-999999999999',
+            organization_key: 'alt-gemeinde',
+            display_name: 'Alt Gemeinde',
+            parent_organization_id: null,
+            parent_display_name: null,
+            organization_type: 'municipality',
+            content_author_policy: 'org_only',
+            is_active: false,
+            depth: 0,
+            hierarchy_path: [],
+            child_count: 0,
+            membership_count: 0,
+          },
+        ],
+      },
+    ];
+
+    const response = await listOrganizationsHandler(
+      new Request('http://localhost/api/v1/iam/organizations?page=1&pageSize=5&status=inactive')
+    );
+    const payload = (await response.json()) as {
+      data: Array<{ id: string; isActive: boolean }>;
+      pagination: { total: number };
+    };
+
+    expect(response.status).toBe(200);
+    expect(payload.data).toEqual([
+      expect.objectContaining({
+        id: '99999999-9999-4999-8999-999999999999',
+        isActive: false,
+      }),
+    ]);
+    expect(payload.pagination.total).toBe(1);
+  });
+
   it('returns active organization context from session membership', async () => {
     state.dbResults = [
       [
@@ -264,6 +331,326 @@ describe('iam organizations handlers', () => {
     expect(payload.data.activeOrganizationId).toBe('org-1');
     expect(payload.data.organizations).toHaveLength(2);
     expect(state.updateSessionCalls).toHaveLength(0);
+  });
+
+  it('falls back to the default active organization context and persists the session update', async () => {
+    state.queryResults = [
+      {
+        rowCount: 2,
+        rows: [
+          {
+            organization_id: 'org-inactive',
+            organization_key: 'archiv',
+            display_name: 'Archiv',
+            organization_type: 'district',
+            is_active: false,
+            is_default_context: false,
+          },
+          {
+            organization_id: 'org-default',
+            organization_key: 'gemeinde-beta',
+            display_name: 'Gemeinde Beta',
+            organization_type: 'municipality',
+            is_active: true,
+            is_default_context: true,
+          },
+        ],
+      },
+    ];
+    state.session = { activeOrganizationId: 'org-inactive' };
+
+    const response = await getMyOrganizationContextHandler(
+      new Request('http://localhost/api/v1/iam/me/context')
+    );
+    const payload = (await response.json()) as {
+      data: {
+        activeOrganizationId?: string;
+      };
+    };
+
+    expect(response.status).toBe(200);
+    expect(payload.data.activeOrganizationId).toBe('org-default');
+    expect(state.updateSessionCalls).toEqual([
+      {
+        sessionId: 'session-org-test',
+        updates: { activeOrganizationId: 'org-default' },
+      },
+    ]);
+  });
+
+  it('returns organization detail with memberships and children', async () => {
+    state.queryResults = [
+      {
+        rowCount: 1,
+        rows: [
+          {
+            id: '22222222-2222-4222-8222-222222222222',
+            organization_key: 'gemeinde-beta',
+            display_name: 'Gemeinde Beta',
+            parent_organization_id: null,
+            parent_display_name: null,
+            organization_type: 'municipality',
+            content_author_policy: 'org_only',
+            is_active: true,
+            depth: 0,
+            hierarchy_path: [],
+            metadata: { category: 'kommune' },
+            child_count: 1,
+            membership_count: 1,
+          },
+        ],
+      },
+      {
+        rowCount: 1,
+        rows: [
+          {
+            account_id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+            keycloak_subject: 'subject-member-1',
+            display_name_ciphertext: 'Max Muster',
+            first_name_ciphertext: 'Max',
+            last_name_ciphertext: 'Muster',
+            email_ciphertext: 'max@example.com',
+            membership_visibility: 'internal',
+            is_default_context: true,
+            created_at: '2026-03-09T10:00:00.000Z',
+          },
+        ],
+      },
+      {
+        rowCount: 1,
+        rows: [
+          {
+            id: '33333333-3333-4333-8333-333333333333',
+            organization_key: 'ortsteil-gamma',
+            display_name: 'Ortsteil Gamma',
+            is_active: true,
+          },
+        ],
+      },
+    ];
+
+    const response = await getOrganizationHandler(
+      new Request('http://localhost/api/v1/iam/organizations/22222222-2222-4222-8222-222222222222')
+    );
+    const payload = (await response.json()) as {
+      data: {
+        id: string;
+        memberships: Array<{ accountId: string; displayName: string }>;
+        children: Array<{ id: string; displayName: string }>;
+      };
+    };
+
+    expect(response.status).toBe(200);
+    expect(payload.data.id).toBe('22222222-2222-4222-8222-222222222222');
+    expect(payload.data.memberships[0]).toMatchObject({
+      accountId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+      displayName: 'Max Muster',
+    });
+    expect(payload.data.children[0]).toMatchObject({
+      id: '33333333-3333-4333-8333-333333333333',
+      displayName: 'Ortsteil Gamma',
+    });
+  });
+
+  it('returns 404 when the requested organization detail does not exist', async () => {
+    state.queryResults = [{ rowCount: 0, rows: [] }];
+
+    const response = await getOrganizationHandler(
+      new Request('http://localhost/api/v1/iam/organizations/22222222-2222-4222-8222-222222222222')
+    );
+    const payload = (await response.json()) as { error: { code: string } };
+
+    expect(response.status).toBe(404);
+    expect(payload.error.code).toBe('not_found');
+  });
+
+  it('creates an organization and completes idempotency tracking', async () => {
+    state.queryResults = [
+      {
+        rowCount: 1,
+        rows: [{ id: '44444444-4444-4444-8444-444444444444' }],
+      },
+      {
+        rowCount: 1,
+        rows: [
+          {
+            id: '44444444-4444-4444-8444-444444444444',
+            organization_key: 'neue-gemeinde',
+            display_name: 'Neue Gemeinde',
+            parent_organization_id: null,
+            parent_display_name: null,
+            organization_type: 'municipality',
+            content_author_policy: 'org_only',
+            is_active: true,
+            depth: 0,
+            hierarchy_path: [],
+            metadata: {},
+            child_count: 0,
+            membership_count: 0,
+          },
+        ],
+      },
+      { rowCount: 0, rows: [] },
+      { rowCount: 0, rows: [] },
+    ];
+
+    const response = await createOrganizationHandler(
+      new Request('http://localhost/api/v1/iam/organizations', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-csrf-token': 'csrf-token',
+          'idempotency-key': 'org-create-1',
+        },
+        body: JSON.stringify({
+          organizationKey: 'neue-gemeinde',
+          displayName: 'Neue Gemeinde',
+          organizationType: 'municipality',
+          contentAuthorPolicy: 'org_only',
+        }),
+      })
+    );
+    const payload = (await response.json()) as { data: { organizationKey: string; displayName: string } };
+
+    expect(response.status).toBe(201);
+    expect(payload.data).toMatchObject({
+      organizationKey: 'neue-gemeinde',
+      displayName: 'Neue Gemeinde',
+    });
+    expect(state.completeCalls).toContainEqual(
+      expect.objectContaining({
+        endpoint: 'POST:/api/v1/iam/organizations',
+        status: 'COMPLETED',
+        responseStatus: 201,
+      })
+    );
+    expect(state.auditCalls).toContainEqual(
+      expect.objectContaining({
+        eventType: 'organization.created',
+      })
+    );
+  });
+
+  it('returns the stored idempotent response for organization creation replays', async () => {
+    state.reserveResponse = {
+      status: 'replay',
+      responseStatus: 201,
+      responseBody: {
+        data: {
+          id: 'replayed-org',
+          organizationKey: 'replay',
+        },
+        requestId: 'req-org-test',
+      },
+    };
+
+    const response = await createOrganizationHandler(
+      new Request('http://localhost/api/v1/iam/organizations', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-csrf-token': 'csrf-token',
+          'idempotency-key': 'org-create-replay',
+        },
+        body: JSON.stringify({
+          organizationKey: 'replay',
+          displayName: 'Replay',
+          organizationType: 'municipality',
+          contentAuthorPolicy: 'org_only',
+        }),
+      })
+    );
+    const payload = (await response.json()) as { data: { id: string } };
+
+    expect(response.status).toBe(201);
+    expect(payload.data.id).toBe('replayed-org');
+    expect(state.completeCalls).toHaveLength(0);
+  });
+
+  it('maps parent hierarchy validation failures during organization creation', async () => {
+    state.queryResults = [
+      {
+        rowCount: 1,
+        rows: [
+          {
+            id: '11111111-1111-4111-8111-111111111111',
+            organization_key: 'landkreis-alpha',
+            display_name: 'Landkreis Alpha',
+            parent_organization_id: null,
+            parent_display_name: null,
+            organization_type: 'county',
+            content_author_policy: 'org_only',
+            is_active: false,
+            depth: 0,
+            hierarchy_path: [],
+            metadata: {},
+            child_count: 0,
+            membership_count: 0,
+          },
+        ],
+      },
+    ];
+
+    const response = await createOrganizationHandler(
+      new Request('http://localhost/api/v1/iam/organizations', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-csrf-token': 'csrf-token',
+          'idempotency-key': 'org-create-parent',
+        },
+        body: JSON.stringify({
+          organizationKey: 'neue-gemeinde',
+          displayName: 'Neue Gemeinde',
+          organizationType: 'municipality',
+          contentAuthorPolicy: 'org_only',
+          parentOrganizationId: '11111111-1111-4111-8111-111111111111',
+        }),
+      })
+    );
+    const payload = (await response.json()) as { error: { code: string } };
+
+    expect(response.status).toBe(409);
+    expect(payload.error.code).toBe('organization_inactive');
+    expect(state.completeCalls).toContainEqual(
+      expect.objectContaining({
+        endpoint: 'POST:/api/v1/iam/organizations',
+        status: 'FAILED',
+        responseStatus: 409,
+      })
+    );
+  });
+
+  it('maps duplicate organization keys during creation to a conflict response', async () => {
+    state.dbResults = [{ __throw: new Error('organizations_instance_key_uniq') }];
+
+    const response = await createOrganizationHandler(
+      new Request('http://localhost/api/v1/iam/organizations', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-csrf-token': 'csrf-token',
+          'idempotency-key': 'org-create-conflict',
+        },
+        body: JSON.stringify({
+          organizationKey: 'duplikat',
+          displayName: 'Duplikat',
+          organizationType: 'municipality',
+          contentAuthorPolicy: 'org_only',
+        }),
+      })
+    );
+    const payload = (await response.json()) as { error: { code: string } };
+
+    expect(response.status).toBe(409);
+    expect(payload.error.code).toBe('conflict');
+    expect(state.completeCalls).toContainEqual(
+      expect.objectContaining({
+        endpoint: 'POST:/api/v1/iam/organizations',
+        status: 'FAILED',
+        responseStatus: 409,
+      })
+    );
   });
 
   it('rejects switching to an inactive organization context', async () => {
@@ -390,6 +777,27 @@ describe('iam organizations handlers', () => {
     expect(payload.error.code).toBe('conflict');
   });
 
+  it('returns 404 when updating an unknown organization', async () => {
+    state.queryResults = [{ rowCount: 0, rows: [] }];
+
+    const response = await updateOrganizationHandler(
+      new Request('http://localhost/api/v1/iam/organizations/22222222-2222-4222-8222-222222222222', {
+        method: 'PATCH',
+        headers: {
+          'content-type': 'application/json',
+          'x-csrf-token': 'csrf-token',
+        },
+        body: JSON.stringify({
+          displayName: 'Nicht da',
+        }),
+      })
+    );
+    const payload = (await response.json()) as { error: { code: string } };
+
+    expect(response.status).toBe(404);
+    expect(payload.error.code).toBe('not_found');
+  });
+
   it('rejects deactivation when organization still has children or memberships', async () => {
     state.dbResults = [{ status: 'conflict' }];
 
@@ -405,6 +813,298 @@ describe('iam organizations handlers', () => {
 
     expect(response.status).toBe(409);
     expect(payload.error.code).toBe('conflict');
+  });
+
+  it('deactivates an organization without dependents', async () => {
+    state.queryResults = [
+      {
+        rowCount: 1,
+        rows: [
+          {
+            id: '22222222-2222-4222-8222-222222222222',
+            organization_key: 'gemeinde-beta',
+            display_name: 'Gemeinde Beta',
+            parent_organization_id: null,
+            parent_display_name: null,
+            organization_type: 'municipality',
+            content_author_policy: 'org_only',
+            is_active: true,
+            depth: 0,
+            hierarchy_path: [],
+            metadata: {},
+            child_count: 0,
+            membership_count: 0,
+          },
+        ],
+      },
+      { rowCount: 1, rows: [] },
+    ];
+
+    const response = await deactivateOrganizationHandler(
+      new Request('http://localhost/api/v1/iam/organizations/22222222-2222-4222-8222-222222222222', {
+        method: 'DELETE',
+        headers: {
+          'x-csrf-token': 'csrf-token',
+        },
+      })
+    );
+    const payload = (await response.json()) as { data: { id: string } };
+
+    expect(response.status).toBe(200);
+    expect(payload.data.id).toBe('22222222-2222-4222-8222-222222222222');
+    expect(state.auditCalls).toContainEqual(
+      expect.objectContaining({
+        eventType: 'organization.deactivated',
+      })
+    );
+  });
+
+  it('assigns an organization membership and returns the refreshed detail', async () => {
+    state.queryResults = [
+      {
+        rowCount: 1,
+        rows: [
+          {
+            id: '22222222-2222-4222-8222-222222222222',
+            organization_key: 'gemeinde-beta',
+            display_name: 'Gemeinde Beta',
+            parent_organization_id: null,
+            parent_display_name: null,
+            organization_type: 'municipality',
+            content_author_policy: 'org_only',
+            is_active: true,
+            depth: 0,
+            hierarchy_path: [],
+            metadata: {},
+            child_count: 0,
+            membership_count: 0,
+          },
+        ],
+      },
+      { rowCount: 1, rows: [{ id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb' }] },
+      { rowCount: 0, rows: [] },
+      { rowCount: 1, rows: [] },
+      {
+        rowCount: 1,
+        rows: [
+          {
+            id: '22222222-2222-4222-8222-222222222222',
+            organization_key: 'gemeinde-beta',
+            display_name: 'Gemeinde Beta',
+            parent_organization_id: null,
+            parent_display_name: null,
+            organization_type: 'municipality',
+            content_author_policy: 'org_only',
+            is_active: true,
+            depth: 0,
+            hierarchy_path: [],
+            metadata: {},
+            child_count: 0,
+            membership_count: 1,
+          },
+        ],
+      },
+      {
+        rowCount: 1,
+        rows: [
+          {
+            account_id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+            keycloak_subject: 'subject-member-1',
+            display_name_ciphertext: 'Max Muster',
+            first_name_ciphertext: 'Max',
+            last_name_ciphertext: 'Muster',
+            email_ciphertext: 'max@example.com',
+            membership_visibility: 'internal',
+            is_default_context: true,
+            created_at: '2026-03-09T10:00:00.000Z',
+          },
+        ],
+      },
+      { rowCount: 0, rows: [] },
+    ];
+
+    const response = await assignOrganizationMembershipHandler(
+      new Request('http://localhost/api/v1/iam/organizations/22222222-2222-4222-8222-222222222222/memberships', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-csrf-token': 'csrf-token',
+          'idempotency-key': 'org-membership-1',
+        },
+        body: JSON.stringify({
+          accountId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+          visibility: 'internal',
+        }),
+      })
+    );
+    const payload = (await response.json()) as { data: { memberships: Array<{ accountId: string }> } };
+
+    expect(response.status).toBe(200);
+    expect(payload.data.memberships).toHaveLength(1);
+    expect(state.notifyCalls).toContainEqual(
+      expect.objectContaining({
+        trigger: 'organization_membership_assigned',
+      })
+    );
+    expect(state.completeCalls).toContainEqual(
+      expect.objectContaining({
+        endpoint: 'POST:/api/v1/iam/organizations/$organizationId/memberships',
+        status: 'COMPLETED',
+      })
+    );
+  });
+
+  it('rejects assigning memberships for accounts outside the instance', async () => {
+    state.queryResults = [
+      {
+        rowCount: 1,
+        rows: [
+          {
+            id: '22222222-2222-4222-8222-222222222222',
+            organization_key: 'gemeinde-beta',
+            display_name: 'Gemeinde Beta',
+            parent_organization_id: null,
+            parent_display_name: null,
+            organization_type: 'municipality',
+            content_author_policy: 'org_only',
+            is_active: true,
+            depth: 0,
+            hierarchy_path: [],
+            metadata: {},
+            child_count: 0,
+            membership_count: 0,
+          },
+        ],
+      },
+      { rowCount: 0, rows: [] },
+    ];
+
+    const response = await assignOrganizationMembershipHandler(
+      new Request('http://localhost/api/v1/iam/organizations/22222222-2222-4222-8222-222222222222/memberships', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-csrf-token': 'csrf-token',
+          'idempotency-key': 'org-membership-invalid-account',
+        },
+        body: JSON.stringify({
+          accountId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+          visibility: 'internal',
+        }),
+      })
+    );
+    const payload = (await response.json()) as { error: { code: string } };
+
+    expect(response.status).toBe(400);
+    expect(payload.error.code).toBe('invalid_request');
+  });
+
+  it('returns the replayed membership response for idempotent assignment requests', async () => {
+    state.reserveResponse = {
+      status: 'replay',
+      responseStatus: 200,
+      responseBody: {
+        data: {
+          id: '22222222-2222-4222-8222-222222222222',
+          memberships: [],
+        },
+        requestId: 'req-org-test',
+      },
+    };
+
+    const response = await assignOrganizationMembershipHandler(
+      new Request('http://localhost/api/v1/iam/organizations/22222222-2222-4222-8222-222222222222/memberships', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-csrf-token': 'csrf-token',
+          'idempotency-key': 'org-membership-replay',
+        },
+        body: JSON.stringify({
+          accountId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+          visibility: 'internal',
+        }),
+      })
+    );
+
+    expect(response.status).toBe(200);
+    expect(state.completeCalls).toHaveLength(0);
+  });
+
+  it('removes an organization membership and assigns a fallback default context', async () => {
+    state.queryResults = [
+      { rowCount: 1, rows: [{ is_default_context: true }] },
+      { rowCount: 1, rows: [] },
+      { rowCount: 1, rows: [] },
+      {
+        rowCount: 1,
+        rows: [
+          {
+            id: '22222222-2222-4222-8222-222222222222',
+            organization_key: 'gemeinde-beta',
+            display_name: 'Gemeinde Beta',
+            parent_organization_id: null,
+            parent_display_name: null,
+            organization_type: 'municipality',
+            content_author_policy: 'org_only',
+            is_active: true,
+            depth: 0,
+            hierarchy_path: [],
+            metadata: {},
+            child_count: 0,
+            membership_count: 0,
+          },
+        ],
+      },
+      { rowCount: 0, rows: [] },
+      { rowCount: 0, rows: [] },
+    ];
+
+    const response = await removeOrganizationMembershipHandler(
+      new Request(
+        'http://localhost/api/v1/iam/organizations/22222222-2222-4222-8222-222222222222/memberships/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+        {
+          method: 'DELETE',
+          headers: {
+            'x-csrf-token': 'csrf-token',
+          },
+        }
+      )
+    );
+    const payload = (await response.json()) as { data: { id: string } };
+
+    expect(response.status).toBe(200);
+    expect(payload.data.id).toBe('22222222-2222-4222-8222-222222222222');
+    expect(state.notifyCalls).toContainEqual(
+      expect.objectContaining({
+        trigger: 'organization_membership_removed',
+      })
+    );
+    expect(state.auditCalls).toContainEqual(
+      expect.objectContaining({
+        eventType: 'organization.membership_removed',
+      })
+    );
+  });
+
+  it('returns 404 when removing a missing organization membership', async () => {
+    state.queryResults = [{ rowCount: 0, rows: [] }];
+
+    const response = await removeOrganizationMembershipHandler(
+      new Request(
+        'http://localhost/api/v1/iam/organizations/22222222-2222-4222-8222-222222222222/memberships/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+        {
+          method: 'DELETE',
+          headers: {
+            'x-csrf-token': 'csrf-token',
+          },
+        }
+      )
+    );
+    const payload = (await response.json()) as { error: { code: string } };
+
+    expect(response.status).toBe(404);
+    expect(payload.error.code).toBe('not_found');
   });
 
   it('switches the organization context, updates the session and emits invalidation', async () => {

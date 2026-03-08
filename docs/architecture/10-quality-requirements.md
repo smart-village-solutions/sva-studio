@@ -114,3 +114,10 @@ Referenzen:
 - IAM-Admin-Calls gegen Keycloak sollen bei Circuit-Breaker-Open deterministisch in den Degraded-Mode wechseln.
 - Mutierende IAM-Endpunkte müssen CSRF-Header validieren.
 - UI-Regressionen werden über Unit-Tests für Hooks und Seiten sowie E2E-Szenarien für Account/Admin abgesichert.
+
+### Ergänzung 2026-03: Qualitätsziele Organisationsverwaltung
+
+- Organisations-Read-Models müssen Parent-, Typ- und Zählerdaten ohne UI-seitige Rekursion bereitstellen.
+- Org-Kontextwechsel darf den bestehenden `POST /iam/authorize`-Pfad nicht regressiv verschlechtern.
+- Negativtests für CSRF, instanzfremde Kontexte, Zyklusverletzungen und Deaktivierungskonflikte müssen grün sein.
+- Verifikationsnachweise für diesen Change werden in `docs/reports/iam-organization-management-verification-2026-03-09.md` festgehalten.

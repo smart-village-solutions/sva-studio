@@ -34,6 +34,39 @@ import { createPoolResolver, jsonResponse, type QueryClient, withInstanceDb } fr
 import { isUuid, readNumber, readString } from '../shared/input-readers';
 import { resolveInstanceId } from '../shared/instance-id-resolution';
 
+import {
+  ADMIN_ROLES,
+  BULK_RATE_LIMIT,
+  READ_RATE_LIMIT,
+  RATE_WINDOW_MS,
+  SYSTEM_ADMIN_ROLES,
+  WRITE_RATE_LIMIT,
+} from './constants';
+import { getFeatureFlags, parseBooleanFlag } from './feature-flags';
+import {
+  bulkDeactivateSchema,
+  createRoleSchema,
+  createUserSchema,
+  updateMyProfileSchema,
+  updateRoleSchema,
+  updateUserSchema,
+} from './schemas';
+import type {
+  ActorInfo,
+  FeatureFlags,
+  IamRoleRow,
+  IdempotencyReserveResult,
+  IdempotencyStatus,
+  ManagedBy,
+  ManagedRoleRow,
+  RateBucket,
+  RateScope,
+  ResolveActorOptions,
+  RoleSyncErrorCode,
+  UserStatus,
+} from './types';
+import { USER_STATUS } from './types';
+
 const logger = createSdkLogger({ component: 'iam-service', level: 'info' });
 const meter = metrics.getMeter('sva.iam.service');
 const iamUserOperationsCounter = meter.createCounter('iam_user_operations_total', {
@@ -57,172 +90,6 @@ const roleDriftBacklogByInstance = new Map<string, number>();
 
 const resolvePool = createPoolResolver(() => process.env.IAM_DATABASE_URL);
 
-const ADMIN_ROLES = new Set(['system_admin', 'app_manager']);
-const SYSTEM_ADMIN_ROLES = new Set(['system_admin']);
-const USER_STATUS = ['active', 'inactive', 'pending'] as const;
-const READ_RATE_LIMIT = 60;
-const WRITE_RATE_LIMIT = 10;
-const BULK_RATE_LIMIT = 3;
-const RATE_WINDOW_MS = 60_000;
-
-type UserStatus = (typeof USER_STATUS)[number];
-type RateScope = 'read' | 'write' | 'bulk';
-type IdempotencyStatus = 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
-
-type FeatureFlags = {
-  readonly iamUiEnabled: boolean;
-  readonly iamAdminEnabled: boolean;
-  readonly iamBulkEnabled: boolean;
-};
-
-type RateBucket = {
-  windowStartedAt: number;
-  count: number;
-};
-
-type ActorInfo = {
-  readonly instanceId: string;
-  readonly requestId?: string;
-  readonly traceId?: string;
-  readonly actorAccountId?: string;
-};
-
-type ResolveActorOptions = {
-  readonly createMissingInstanceFromKey?: boolean;
-  readonly requireActorMembership?: boolean;
-};
-
-type IamRoleRow = {
-  id: string;
-  role_key: string;
-  role_name: string;
-  display_name?: string | null;
-  external_role_name?: string | null;
-  role_level: number;
-  is_system_role: boolean;
-};
-
-type ManagedBy = 'studio' | 'external';
-
-type RoleSyncErrorCode =
-  | 'IDP_UNAVAILABLE'
-  | 'IDP_TIMEOUT'
-  | 'IDP_FORBIDDEN'
-  | 'IDP_CONFLICT'
-  | 'IDP_NOT_FOUND'
-  | 'IDP_UNKNOWN'
-  | 'DB_WRITE_FAILED'
-  | 'COMPENSATION_FAILED'
-  | 'REQUIRES_MANUAL_ACTION';
-
-type ManagedRoleRow = IamRoleRow & {
-  readonly description: string | null;
-  readonly external_role_name: string;
-  readonly managed_by: ManagedBy;
-  readonly sync_state: IamRoleSyncState;
-  readonly last_synced_at: string | null;
-  readonly last_error_code: string | null;
-};
-
-type IdempotencyReserveResult =
-  | {
-      status: 'reserved';
-    }
-  | {
-      status: 'replay';
-      responseStatus: number;
-      responseBody: unknown;
-    }
-  | {
-      status: 'conflict';
-      message: string;
-    };
-
-const createUserSchema = z.object({
-  email: z.string().email(),
-  firstName: z.string().trim().min(1).max(200).optional(),
-  lastName: z.string().trim().min(1).max(200).optional(),
-  displayName: z.string().trim().min(1).max(200).optional(),
-  phone: z.string().trim().min(1).max(64).optional(),
-  position: z.string().trim().max(255).optional(),
-  department: z.string().trim().max(255).optional(),
-  preferredLanguage: z.string().trim().max(16).optional(),
-  timezone: z.string().trim().max(64).optional(),
-  avatarUrl: z.string().url().max(1024).optional(),
-  notes: z.string().trim().max(2000).optional(),
-  status: z.enum(USER_STATUS).optional(),
-  roleIds: z.array(z.string().uuid()).max(20).default([]),
-});
-
-const parseBooleanFlag = (value: string | undefined, defaultValue: boolean): boolean => {
-  if (!value) {
-    return defaultValue;
-  }
-  const lowered = value.trim().toLowerCase();
-  return lowered === '1' || lowered === 'true' || lowered === 'yes' || lowered === 'on';
-};
-
-const updateUserSchema = z
-  .object({
-    email: z.string().email().optional(),
-    firstName: z.string().trim().min(1).max(200).optional(),
-    lastName: z.string().trim().min(1).max(200).optional(),
-    displayName: z.string().trim().min(1).max(200).optional(),
-    phone: z.string().trim().min(1).max(64).optional(),
-    position: z.string().trim().max(255).optional(),
-    department: z.string().trim().max(255).optional(),
-    preferredLanguage: z.string().trim().max(16).optional(),
-    timezone: z.string().trim().max(64).optional(),
-    avatarUrl: z.string().url().max(1024).optional(),
-    notes: z.string().trim().max(2000).optional(),
-    status: z.enum(USER_STATUS).optional(),
-    roleIds: z.array(z.string().uuid()).max(20).optional(),
-  })
-  .refine((value) => Object.keys(value).length > 0, 'Mindestens ein Feld muss gesetzt werden.');
-
-const updateMyProfileSchema = z
-  .object({
-    firstName: z.string().trim().min(1).max(200).optional(),
-    lastName: z.string().trim().min(1).max(200).optional(),
-    displayName: z.string().trim().min(1).max(200).optional(),
-    phone: z.string().trim().min(1).max(64).optional(),
-    position: z.string().trim().max(255).optional(),
-    department: z.string().trim().max(255).optional(),
-    preferredLanguage: z.string().trim().max(16).optional(),
-    timezone: z.string().trim().max(64).optional(),
-  })
-  .refine((value) => Object.keys(value).length > 0, 'Mindestens ein Feld muss gesetzt werden.');
-
-const bulkDeactivateSchema = z.object({
-  userIds: z.array(z.string().uuid()).min(1).max(50),
-});
-
-const createRoleSchema = z.object({
-  roleName: z
-    .string()
-    .trim()
-    .min(3)
-    .max(64)
-    .regex(/^[a-z0-9_]+$/),
-  displayName: z.string().trim().min(1).max(120).optional(),
-  description: z.string().trim().max(500).optional(),
-  permissionIds: z.array(z.string().uuid()).max(100).default([]),
-  roleLevel: z.number().int().min(0).max(100).default(0),
-});
-
-const updateRoleSchema = z
-  .object({
-    displayName: z.string().trim().min(1).max(120).optional(),
-    description: z.string().trim().max(500).optional(),
-    permissionIds: z.array(z.string().uuid()).max(100).optional(),
-    roleLevel: z.number().int().min(0).max(100).optional(),
-    retrySync: z.boolean().optional(),
-  })
-  .refine(
-    (value) => Object.keys(value).length > 0 && (Object.keys(value).some((key) => key !== 'retrySync') || value.retrySync),
-    'Mindestens ein Feld muss gesetzt werden.'
-  );
-
 const rateLimiterStore = new Map<string, RateBucket>();
 
 let encryptionConfigCache: { signature: string; config: FieldEncryptionConfig | null } | null = null;
@@ -234,16 +101,6 @@ let identityProviderCache:
     }
   | null
   | undefined;
-
-const getFeatureFlags = (): FeatureFlags => {
-  const readFlag = (key: string, defaultValue: boolean) => parseBooleanFlag(process.env[key], defaultValue);
-
-  const iamUiEnabled = readFlag('IAM_UI_ENABLED', true);
-  const iamAdminEnabled = iamUiEnabled && readFlag('IAM_ADMIN_ENABLED', true);
-  const iamBulkEnabled = iamAdminEnabled && readFlag('IAM_BULK_ENABLED', true);
-
-  return { iamUiEnabled, iamAdminEnabled, iamBulkEnabled };
-};
 
 const maskEmail = (value: string | undefined): string | undefined => {
   if (!value) {

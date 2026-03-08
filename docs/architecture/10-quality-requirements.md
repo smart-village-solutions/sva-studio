@@ -52,6 +52,10 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
   - `pnpm check:file-placement` muss gruen sein
 - Coverage Governance:
   - Gate-Logik und Baselines in `scripts/ci/coverage-gate.ts` und `tooling/testing/*`
+- Complexity Governance:
+  - `pnpm complexity-gate` muss für definierte zentrale/kritische Module grün sein
+  - neue Schwellwertüberschreitungen ohne Ticket-Referenz blockieren den Qualitätslauf
+  - kritische Module können strengere Coverage-Mindestwerte und Datei-Hotspots erhalten
 - Review-Governance:
   - Proposal- und PR-Reviews nutzen spezialisierte Agents mit standardisierten Templates
   - Trigger-Matrix und Abgrenzungen sind in `docs/development/review-agent-governance.md` dokumentiert
@@ -88,12 +92,16 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
 
 - Nicht alle Projekte haben vollwertige Unit/Coverage-Suites (teils exempt)
 - App-Tests laufen derzeit mit `--passWithNoTests`, daher eingeschraenkte Aussagekraft
+- Mehrere IAM-Hotspots liegen bewusst über den Komplexitäts-Schwellwerten und werden über Refactoring-Tickets nachverfolgt
 
 Referenzen:
 
 - `../development/testing-coverage.md`
+- `../development/complexity-quality-governance.md`
 - `../development/review-agent-governance.md`
 - `scripts/ci/coverage-gate.ts`
+- `scripts/ci/complexity-gate.ts`
+- `tooling/quality/complexity-policy.json`
 - `packages/monitoring-client/src/otel.server.ts`
 
 ### Ergänzung 2026-03: Qualitätsziele IAM-UI

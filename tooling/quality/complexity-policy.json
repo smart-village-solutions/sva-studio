@@ -72,29 +72,83 @@
     }
   ],
   "trackedFindings": {
-    "iam-server:packages/auth/src/iam-account-management/core.ts:cyclomaticComplexity": {
-      "ticketId": "QUAL-101",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "IAM Account Management Core weiter in kleinere Fach- und Shared-Module zerlegen"
-    },
-    "iam-server:packages/auth/src/iam-account-management/core.ts:fileLines": {
-      "ticketId": "QUAL-101",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "IAM Account Management Core weiter in kleinere Fach- und Shared-Module zerlegen"
-    },
-    "iam-server:packages/auth/src/iam-account-management/core.ts:functionLines": {
-      "ticketId": "QUAL-101",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "IAM Account Management Core weiter in kleinere Fach- und Shared-Module zerlegen"
-    },
     "iam-server:packages/auth/src/iam-account-management/core.ts:publicExports": {
       "ticketId": "QUAL-101",
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "IAM Account Management Core weiter in kleinere Fach- und Shared-Module zerlegen"
+    },
+    "iam-server:packages/auth/src/iam-account-management/reconcile-handler.ts:cyclomaticComplexity": {
+      "ticketId": "QUAL-112",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "IAM Account Management Reconcile-Scheduler und Reconcile-Operation in kleinere Laufzeit- und Drift-Bausteine zerlegen"
+    },
+    "iam-server:packages/auth/src/iam-account-management/reconcile-handler.ts:fileLines": {
+      "ticketId": "QUAL-112",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "IAM Account Management Reconcile-Scheduler und Reconcile-Operation in kleinere Laufzeit- und Drift-Bausteine zerlegen"
+    },
+    "iam-server:packages/auth/src/iam-account-management/reconcile-handler.ts:functionLines": {
+      "ticketId": "QUAL-112",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "IAM Account Management Reconcile-Scheduler und Reconcile-Operation in kleinere Laufzeit- und Drift-Bausteine zerlegen"
+    },
+    "iam-server:packages/auth/src/iam-account-management/roles-handlers.ts:cyclomaticComplexity": {
+      "ticketId": "QUAL-112",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "IAM Account Management Rollen-Handler weiter in CRUD-, Sync- und Query-Module zerlegen"
+    },
+    "iam-server:packages/auth/src/iam-account-management/roles-handlers.ts:fileLines": {
+      "ticketId": "QUAL-112",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "IAM Account Management Rollen-Handler weiter in CRUD-, Sync- und Query-Module zerlegen"
+    },
+    "iam-server:packages/auth/src/iam-account-management/roles-handlers.ts:functionLines": {
+      "ticketId": "QUAL-112",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "IAM Account Management Rollen-Handler weiter in CRUD-, Sync- und Query-Module zerlegen"
+    },
+    "iam-server:packages/auth/src/iam-account-management/shared.ts:fileLines": {
+      "ticketId": "QUAL-112",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "IAM Account Management Shared-Helfer weiter in Runtime-, Persistence- und Authorization-Bausteine zerlegen"
+    },
+    "iam-server:packages/auth/src/iam-account-management/shared.ts:publicExports": {
+      "ticketId": "QUAL-112",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "IAM Account Management Shared-Helfer weiter in Runtime-, Persistence- und Authorization-Bausteine zerlegen"
+    },
+    "iam-server:packages/auth/src/iam-account-management/types.ts:publicExports": {
+      "ticketId": "QUAL-101",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "IAM Account Management Typen; Reduktion der Exports bei weiterer Modulzerlegung"
+    },
+    "iam-server:packages/auth/src/iam-account-management/users-handlers.ts:cyclomaticComplexity": {
+      "ticketId": "QUAL-112",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "IAM Account Management User- und Profile-Handler weiter in Query-, Mutation- und Profile-Module zerlegen"
+    },
+    "iam-server:packages/auth/src/iam-account-management/users-handlers.ts:fileLines": {
+      "ticketId": "QUAL-112",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "IAM Account Management User- und Profile-Handler weiter in Query-, Mutation- und Profile-Module zerlegen"
+    },
+    "iam-server:packages/auth/src/iam-account-management/users-handlers.ts:functionLines": {
+      "ticketId": "QUAL-112",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "IAM Account Management User- und Profile-Handler weiter in Query-, Mutation- und Profile-Module zerlegen"
     },
     "iam-server:packages/auth/src/iam-authorization/authorize.ts:functionLines": {
       "ticketId": "QUAL-102",

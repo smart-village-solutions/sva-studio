@@ -6,5 +6,7 @@
  */
 
 export { authRouteFactories, authRoutePaths } from './auth.routes';
+export { accountUiRouteGuards, accountUiRoutePaths, type AccountUiRouteKey } from './account-ui.routes';
 export { coreRouteFactories } from './core.routes';
-
+export { createAdminRoute, createProtectedRoute } from './protected.routes';
+export type { ProtectedRouteOptions, RouteGuardContext, RouteGuardUser } from './protected.routes';

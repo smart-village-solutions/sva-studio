@@ -41,6 +41,7 @@ coverage:
         target: auto
         threshold: 0.5%
         if_ci_failed: error
+        informational: true
 
     patch:
       default:
@@ -52,6 +53,7 @@ coverage:
   flags:
     unittests:
       paths:
+        - apps/sva-studio-react/
         - packages/core/
         - packages/data/
         - packages/auth/

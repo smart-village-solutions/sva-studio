@@ -62,15 +62,19 @@ const resolveEncryptionConfig = (): FieldEncryptionConfig | null => {
   return cachedEncryptionConfig;
 };
 
-const resolveAccountId = async (client: AuditSqlClient, keycloakSubject: string) => {
+const resolveAccountId = async (
+  client: AuditSqlClient,
+  input: { keycloakSubject: string; instanceId: string }
+) => {
   const lookup = await client.query<{ id: string }>(
     `
 SELECT id
 FROM iam.accounts
 WHERE keycloak_subject = $1
+  AND instance_id = $2::uuid
 LIMIT 1;
 `,
-    [keycloakSubject]
+    [input.keycloakSubject, input.instanceId]
   );
 
   if (lookup.rowCount <= 0) {
@@ -111,6 +115,7 @@ WHERE rolname = current_user;
 const ensureAccount = async (
   client: AuditSqlClient,
   input: {
+    instanceId: string;
     keycloakSubject: string;
     encryptedEmailCiphertext: string | null;
     encryptedDisplayNameCiphertext: string | null;
@@ -118,12 +123,12 @@ const ensureAccount = async (
 ): Promise<{ accountId?: string; created: boolean }> => {
   const inserted = await client.query<{ id: string }>(
     `
-INSERT INTO iam.accounts (keycloak_subject, email_ciphertext, display_name_ciphertext)
-VALUES ($1, $2, $3)
-ON CONFLICT (keycloak_subject) DO NOTHING
+INSERT INTO iam.accounts (instance_id, keycloak_subject, email_ciphertext, display_name_ciphertext)
+VALUES ($1::uuid, $2, $3, $4)
+ON CONFLICT (keycloak_subject, instance_id) WHERE instance_id IS NOT NULL DO NOTHING
 RETURNING id;
 `,
-    [input.keycloakSubject, input.encryptedEmailCiphertext, input.encryptedDisplayNameCiphertext]
+    [input.instanceId, input.keycloakSubject, input.encryptedEmailCiphertext, input.encryptedDisplayNameCiphertext]
   );
 
   if (inserted.rowCount > 0) {
@@ -133,19 +138,23 @@ RETURNING id;
     };
   }
 
-  const accountId = await resolveAccountId(client, input.keycloakSubject);
+  const accountId = await resolveAccountId(client, {
+    keycloakSubject: input.keycloakSubject,
+    instanceId: input.instanceId,
+  });
 
   if (accountId && (input.encryptedEmailCiphertext || input.encryptedDisplayNameCiphertext)) {
     await client.query(
       `
 UPDATE iam.accounts
 SET
-  email_ciphertext = COALESCE($2, email_ciphertext),
-  display_name_ciphertext = COALESCE($3, display_name_ciphertext),
+  email_ciphertext = COALESCE($3, email_ciphertext),
+  display_name_ciphertext = COALESCE($4, display_name_ciphertext),
   updated_at = NOW()
-WHERE keycloak_subject = $1;
+WHERE keycloak_subject = $1
+  AND instance_id = $2::uuid;
 `,
-      [input.keycloakSubject, input.encryptedEmailCiphertext, input.encryptedDisplayNameCiphertext]
+      [input.keycloakSubject, input.instanceId, input.encryptedEmailCiphertext, input.encryptedDisplayNameCiphertext]
     );
   }
 
@@ -215,6 +224,7 @@ export const persistAuthAuditEventWithClient = async (
       );
 
       const ensured = await ensureAccount(client, {
+        instanceId: event.workspaceId,
         keycloakSubject: event.actorUserId,
         encryptedEmailCiphertext,
         encryptedDisplayNameCiphertext,
@@ -234,7 +244,10 @@ export const persistAuthAuditEventWithClient = async (
         writtenEventTypes.push('account_created');
       }
     } else {
-      accountId = await resolveAccountId(client, event.actorUserId);
+      accountId = await resolveAccountId(client, {
+        keycloakSubject: event.actorUserId,
+        instanceId: event.workspaceId,
+      });
     }
   }
 

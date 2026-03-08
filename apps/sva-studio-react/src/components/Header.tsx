@@ -7,105 +7,46 @@
 import { Link } from '@tanstack/react-router';
 import React from 'react';
 
+import { hasIamAdminRole, hasSystemAdminRole, isIamAdminEnabled, isIamUiEnabled } from '../lib/iam-admin-access';
 import { hasIamViewerAdminRole, isIamViewerEnabled } from '../lib/iam-viewer-access';
-
-type AuthUser = {
-  id?: string;
-  name: string;
-  email?: string;
-  roles: string[];
-};
+import { t } from '../i18n';
+import { useAuth } from '../providers/auth-provider';
 
 type HeaderProps = Readonly<{
   isLoading?: boolean;
 }>;
 
-const logHeaderInDev = (
-  level: 'info' | 'error',
-  message: string,
-  payload: Record<string, unknown>
-) => {
-  if (!import.meta.env.DEV) {
-    return;
-  }
-
-  if (level === 'error') {
-    console.error(message, payload);
-    return;
-  }
-
-  console.info(message, payload);
-};
-
 /**
  * Rendert die Kopfzeile inklusive Navigation und Auth-Aktion.
  *
  * @param props - Konfiguration des Header-Verhaltens.
- * @param props.isLoading - Aktiviert Skeleton-Darstellung und unterdrückt Auth-Request.
+ * @param props.isLoading - Aktiviert Skeleton-Darstellung während Router-Navigation.
  */
 export default function Header({ isLoading = false }: HeaderProps) {
-  const [user, setUser] = React.useState<AuthUser | null | undefined>(undefined);
-
-  React.useEffect(() => {
-    if (isLoading) {
-      return;
-    }
-
-    let active = true;
-    /**
-     * Lädt den aktuellen Benutzer über `/auth/me` und aktualisiert den lokalen Zustand.
-     */
-    const loadUser = async () => {
-      try {
-        const response = await fetch('/auth/me', { credentials: 'include' });
-        if (!response.ok) {
-          logHeaderInDev('info', '[Header] Auth check failed', {
-            component: 'Header',
-            endpoint: '/auth/me',
-            status: response.status,
-            auth_state: 'unauthenticated',
-          });
-          if (active) setUser(null);
-          return;
-        }
-        const payload = (await response.json()) as { user: AuthUser };
-        if (active) setUser(payload.user);
-      } catch (err) {
-        logHeaderInDev('error', '[Header] Auth check error', {
-          component: 'Header',
-          endpoint: '/auth/me',
-          error: err instanceof Error ? err.message : String(err),
-          error_type: err instanceof Error ? err.constructor.name : typeof err,
-        });
-        if (active) setUser(null);
-      }
-    };
-
-    loadUser();
-    return () => {
-      active = false;
-    };
-  }, [isLoading]);
+  const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
+  const canAccessAccount = isAuthenticated && isIamUiEnabled();
+  const canAccessAdminUsers = isAuthenticated && isIamAdminEnabled() && hasIamAdminRole(user);
+  const canAccessAdminRoles = canAccessAdminUsers && hasSystemAdminRole(user);
 
   let authAction: React.ReactNode = null;
 
-  if (isLoading || user === undefined) {
+  if (isLoading || isAuthLoading) {
     authAction = (
       <>
         <span role="status" aria-live="polite" className="sr-only">
-          Authentifizierungsstatus wird geladen.
+          {t('shell.header.authLoading')}
         </span>
         <span aria-hidden="true" className="ml-2 h-8 w-20 animate-pulse rounded-md bg-slate-800" />
       </>
     );
-  } else if (user === null) {
+  } else if (!isAuthenticated) {
     authAction = (
       <Link
         className="ml-2 rounded border border-emerald-800/50 bg-emerald-500/10 px-4 py-1 font-semibold text-emerald-400 transition hover:border-emerald-500 hover:bg-emerald-500/20"
         to="/auth/login"
         reloadDocument
       >
-        Login
+        {t('shell.header.login')}
       </Link>
     );
   } else if (user) {
@@ -115,7 +56,7 @@ export default function Header({ isLoading = false }: HeaderProps) {
           type="submit"
           className="rounded border border-red-800/50 bg-red-500/10 px-4 py-1 font-semibold text-red-400 transition hover:border-red-500 hover:bg-red-500/20"
         >
-          Logout
+          {t('shell.header.logout')}
         </button>
       </form>
     );
@@ -124,7 +65,7 @@ export default function Header({ isLoading = false }: HeaderProps) {
   return (
     <header className="border-b border-slate-800/70 bg-slate-950/80 backdrop-blur">
       <nav
-        aria-label="Hauptnavigation"
+        aria-label={t('shell.header.navAriaLabel')}
         className="flex w-full flex-wrap items-center justify-between gap-3 px-4 py-4 text-sm text-slate-200 sm:px-6"
       >
         <Link className="font-semibold tracking-wide text-slate-100" to="/">
@@ -132,17 +73,32 @@ export default function Header({ isLoading = false }: HeaderProps) {
         </Link>
         <div className="flex flex-wrap items-center gap-3 text-slate-300 sm:gap-4">
           <Link className="transition hover:text-white" to="/">
-            Startseite
+            {t('shell.header.home')}
           </Link>
           <Link className="transition hover:text-white" to="/demo">
-            Demos
+            {t('shell.header.demos')}
           </Link>
           <Link className="transition hover:text-white" to="/plugins/example">
-            Plugin-Beispiel
+            {t('shell.header.pluginExample')}
           </Link>
+          {canAccessAccount ? (
+            <Link className="transition hover:text-white" to="/account">
+              {t('shell.header.account')}
+            </Link>
+          ) : null}
+          {canAccessAdminUsers ? (
+            <Link className="transition hover:text-white" to="/admin/users">
+              {t('shell.header.adminUsers')}
+            </Link>
+          ) : null}
+          {canAccessAdminRoles ? (
+            <Link className="transition hover:text-white" to="/admin/roles">
+              {t('shell.header.adminRoles')}
+            </Link>
+          ) : null}
           {isIamViewerEnabled() && hasIamViewerAdminRole(user) ? (
             <Link className="transition hover:text-white" to="/admin/iam">
-              IAM-Viewer
+              {t('shell.header.iamViewer')}
             </Link>
           ) : null}
           {authAction}

@@ -100,12 +100,12 @@ describe('persistAuthAuditEventWithClient', () => {
 
     const accountInsert = queries.find((entry) => entry.text.includes('INSERT INTO iam.accounts'));
     expect(accountInsert).toBeDefined();
-    expect(typeof accountInsert?.values?.[1]).toBe('string');
     expect(typeof accountInsert?.values?.[2]).toBe('string');
-    expect(String(accountInsert?.values?.[1])).toMatch(/^enc:v1:k1:/);
+    expect(typeof accountInsert?.values?.[3]).toBe('string');
     expect(String(accountInsert?.values?.[2])).toMatch(/^enc:v1:k1:/);
-    expect(String(accountInsert?.values?.[1])).not.toContain('user@example.org');
-    expect(String(accountInsert?.values?.[2])).not.toContain('Max Mustermann');
+    expect(String(accountInsert?.values?.[3])).toMatch(/^enc:v1:k1:/);
+    expect(String(accountInsert?.values?.[2])).not.toContain('user@example.org');
+    expect(String(accountInsert?.values?.[3])).not.toContain('Max Mustermann');
   });
 });
 

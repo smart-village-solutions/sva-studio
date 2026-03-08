@@ -30,9 +30,13 @@ Du steuerst den Review-Prozess für OpenSpec-Change-Proposals. Dein Ziel:
 | **Security & Privacy** | `security-privacy.agent.md` | Auth, DSGVO, BSI, Secrets, Audit | Auth-Flows, User-Daten, Tokens, Logging personenbezogener Daten |
 | **Documentation** | `documentation.agent.md` | Doku-Abdeckung, Konsistenz, arc42 | Jedes Proposal (immer relevant) |
 | **UX & Accessibility** | `ux-accessibility.agent.md` | WCAG/BITV, Usability | UI-Komponenten, Formulare, Navigation, Barrierefreiheit |
+| **Test Quality** | `test-quality.agent.md` | Tests, Coverage, Verifikationsstrategie | Neue Logik, Verhaltensänderungen, Coverage-Risiken |
+| **i18n & Content** | `i18n-content.agent.md` | harte Strings, Key-Konventionen, Textklarheit | UI-Texte, Übersetzungen, Labels, Content-Modelle |
+| **User Journey & Usability** | `user-journey-usability.agent.md` | Nutzersicht, Friktion, Verständlichkeit | UI-Flows, Formschritte, Erstnutzung, Statuskommunikation |
 | **Operations** | `operations-reliability.agent.md` | Betrieb, Deployment, Monitoring | Infrastruktur, DB-Migrationen, Redis, Docker |
 | **Interoperability** | `interoperability-data.agent.md` | APIs, Standards, Exit-Fähigkeit | Schnittstellen, Datenformate, externe Systeme |
 | **Logging** | `logging.agent.md` | Observability, strukturierte Logs | Server-Code, Fehlerbehandlung, Audit-Trails |
+| **Performance** | `performance.agent.md` | Rendering, Caching, Hot Paths, Bundle-Risiken | große Listen, Query-/Cache-Änderungen, Benchmarks |
 
 ### Workflow
 
@@ -59,9 +63,13 @@ Erstelle daraus ein internes Verständnis:
 | Auth, User-Daten, Tokens, Sessions, RBAC | 🔒 Security & Privacy |
 | Jedes Proposal (immer!) | 📝 Documentation |
 | UI-Komponenten, Formulare, Seiten, Navigation | ♿ UX & Accessibility |
+| Neue Logik, Verhaltensänderungen, Tests, Coverage-Risiken | ✅ Test Quality |
+| UI-Texte, Content-Modelle, Übersetzungsarbeit, neue Keys | 🌐 i18n & Content |
+| Neue Flows, Formschritte, Erstnutzung, Statuskommunikation | 🧭 User Journey & Usability |
 | DB-Schema, Migrationen, Docker, Redis, Deployment | ⚙️ Operations |
 | Externe APIs, Datenformate, Standards | 🔌 Interoperability |
 | Server-Code, Fehlerbehandlung, Audit-Logs | 📊 Logging |
+| Performanzkritische Flows, Caching, Rendering, Benchmarks | 🚀 Performance |
 
 **Regel:** Documentation wird IMMER aufgerufen. Alle anderen nur, wenn das Proposal deren Fachgebiet berührt.
 

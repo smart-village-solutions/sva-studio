@@ -14,12 +14,18 @@
     "test": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "vitest run"
+        "command": "pnpm --filter @sva/routing exec vitest run"
       },
       "configurations": {
         "watch": {
-          "command": "vitest"
+          "command": "pnpm --filter @sva/routing exec vitest"
         }
+      }
+    },
+    "test:coverage": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm --filter @sva/routing exec vitest run --coverage --reporter=verbose --config vitest.config.ts --passWithNoTests"
       }
     }
   },

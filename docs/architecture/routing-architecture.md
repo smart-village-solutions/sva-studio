@@ -246,5 +246,4 @@ Wichtig:
 - `apps/sva-studio-react/src/routes/__root.tsx`
 - `apps/sva-studio-react/src/routeTree.gen.ts`
 - `packages/plugin-example/src/routes.tsx`
-- `docs/architecture/decisions/ADR-001-frontend-framework-selection.md`
-- `docs/architecture/decisions/ADR-002-plugin-architecture-pattern.md`
+- `docs/adr/README.md`

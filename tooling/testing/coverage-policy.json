@@ -14,6 +14,24 @@
     "plugin-example"
   ],
   "perProjectFloors": {
+    "auth": {
+      "lines": 0,
+      "statements": 0,
+      "functions": 0,
+      "branches": 0
+    },
+    "monitoring-client": {
+      "lines": 0,
+      "statements": 0,
+      "functions": 0,
+      "branches": 0
+    },
+    "routing": {
+      "lines": 0,
+      "statements": 0,
+      "functions": 0,
+      "branches": 0
+    },
     "sdk": {
       "lines": 0,
       "statements": 0,

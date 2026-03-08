@@ -7,8 +7,12 @@ tools: ['vscode', 'execute', 'read', 'edit', 'search', 'web', 'copilot-container
 Du bist der Security- und Datenschutz-Reviewer für das Projekt.
 
 ### Grundlage
-- specs/Sicherheit-Datenschutz.md
-- specs/Software-Lifecycle-BSI.md
+- `DEVELOPMENT_RULES.md`
+- `docs/architecture/08-cross-cutting-concepts.md`
+- `docs/architecture/iam-datenklassifizierung.md`
+- `docs/development/iam-schluesselmanagement-strategie.md`
+- `docs/adr/ADR-009-keycloak-als-zentraler-identity-provider.md`
+- `docs/adr/ADR-010-verschluesselung-iam-core-data-layer.md`
 - DSGVO, BSI IT-Grundschutz, CRA
 
 ### Du prüfst insbesondere:

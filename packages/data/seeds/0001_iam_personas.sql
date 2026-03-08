@@ -25,19 +25,20 @@ SET
   metadata = EXCLUDED.metadata,
   updated_at = NOW();
 
-INSERT INTO iam.roles (id, instance_id, role_name, description, is_system_role)
+INSERT INTO iam.roles (id, instance_id, role_name, description, is_system_role, role_level)
 VALUES
-  ('30111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-111111111111', 'system-admin', 'System administration persona', true),
-  ('30222222-2222-2222-2222-222222222222', '11111111-1111-1111-1111-111111111111', 'app-manager', 'Application management persona', true),
-  ('30333333-3333-3333-3333-333333333333', '11111111-1111-1111-1111-111111111111', 'feature-manager', 'Feature management persona', true),
-  ('30444444-4444-4444-4444-444444444444', '11111111-1111-1111-1111-111111111111', 'interface-manager', 'Interface management persona', true),
-  ('30555555-5555-5555-5555-555555555555', '11111111-1111-1111-1111-111111111111', 'designer', 'Design persona', true),
-  ('30666666-6666-6666-6666-666666666666', '11111111-1111-1111-1111-111111111111', 'editor', 'Editorial persona', true),
-  ('30777777-7777-7777-7777-777777777777', '11111111-1111-1111-1111-111111111111', 'moderator', 'Moderation persona', true)
+  ('30111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-111111111111', 'system_admin', 'System administration persona', true, 100),
+  ('30222222-2222-2222-2222-222222222222', '11111111-1111-1111-1111-111111111111', 'app_manager', 'Application management persona', true, 80),
+  ('30333333-3333-3333-3333-333333333333', '11111111-1111-1111-1111-111111111111', 'feature-manager', 'Feature management persona', true, 60),
+  ('30444444-4444-4444-4444-444444444444', '11111111-1111-1111-1111-111111111111', 'interface-manager', 'Interface management persona', true, 50),
+  ('30555555-5555-5555-5555-555555555555', '11111111-1111-1111-1111-111111111111', 'designer', 'Design persona', true, 40),
+  ('30666666-6666-6666-6666-666666666666', '11111111-1111-1111-1111-111111111111', 'editor', 'Editorial persona', true, 30),
+  ('30777777-7777-7777-7777-777777777777', '11111111-1111-1111-1111-111111111111', 'moderator', 'Moderation persona', true, 35)
 ON CONFLICT (instance_id, role_name) DO UPDATE
 SET
   description = EXCLUDED.description,
   is_system_role = EXCLUDED.is_system_role,
+  role_level = EXCLUDED.role_level,
   updated_at = NOW();
 
 INSERT INTO iam.permissions (id, instance_id, permission_key, description)
@@ -60,16 +61,16 @@ SET
   description = EXCLUDED.description,
   updated_at = NOW();
 
-INSERT INTO iam.accounts (id, keycloak_subject, email_ciphertext, display_name_ciphertext)
+INSERT INTO iam.accounts (id, instance_id, keycloak_subject, email_ciphertext, display_name_ciphertext)
 VALUES
-  ('50111111-1111-1111-1111-111111111111', 'seed:system_admin', 'enc:v1:seed:2Br4L9r7mA:89azg6De9W2xgh9ZWMDg7Q:6ZkQz-ljCq8', 'enc:v1:seed:r76A9cbcvQ:F6GQjC-KsZdU6kgb4fX6RQ:Wr8vP9mS7hY'),
-  ('50222222-2222-2222-2222-222222222222', 'seed:app_manager', 'enc:v1:seed:Y2W6W_Q6YA:4IbeUqS5iZgRyj8wud1dnQ:BK4U5GJp2xM', 'enc:v1:seed:8uoN0kRw1A:3FSkP2_Pfc7RK2Y9CB_q5Q:h-ZwYFhN0q8'),
-  ('50333333-3333-3333-3333-333333333333', 'seed:feature_manager', 'enc:v1:seed:4N10D5lGmA:8u6j2qXxmnLr8XHnQw5H7w:G4KfA9iWv0o', 'enc:v1:seed:aXh5YpP9mQ:1d8W5v4u0QvXfBY3M2e0nA:T2hPn6Kx4Rc'),
-  ('50444444-4444-4444-4444-444444444444', 'seed:interface_manager', 'enc:v1:seed:9bH6fVv8xQ:5vxw8QjC2LrYAfj9QJ8R6w:hD6mQs1v9Nk', 'enc:v1:seed:H2n7bLx4kA:6gq3j8G2p8QYk6M8rA1N6g:R7kL0jU2nQw'),
-  ('50555555-5555-5555-5555-555555555555', 'seed:designer', 'enc:v1:seed:V4k9rMz0pA:9D8m4W2nV7qQf1eR6yU2dA:K6hPa9sV3wQ', 'enc:v1:seed:uM0w7Xn2cA:2f8N6d3Qv9sK1aP4rT7yBg:B9mPq2hV6xW'),
-  ('50666666-6666-6666-6666-666666666666', 'seed:editor', 'enc:v1:seed:G1y8nVb6qA:3r6M9d2Pq8wV4cT1mK7xJQ:L5pQw8nZ2vR', 'enc:v1:seed:mQ9k7Bv2dA:7t1P4nW8rQ6yV3fM9xJ2cQ:N4sLh7kP1wR'),
-  ('50777777-7777-7777-7777-777777777777', 'seed:moderator', 'enc:v1:seed:T8m4cN1vQw:8a2K5qP9rW3nX6dM1jF7yA:Q7wP2nK6vXs', 'enc:v1:seed:zR3n8Vq5mA:5y9J2kF6pQ4tW1dN8xM3rQ:P2hVk9mQ4wX')
-ON CONFLICT (keycloak_subject) DO UPDATE
+  ('50111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-111111111111', 'seed:system_admin', 'enc:v1:seed:2Br4L9r7mA:89azg6De9W2xgh9ZWMDg7Q:6ZkQz-ljCq8', 'enc:v1:seed:r76A9cbcvQ:F6GQjC-KsZdU6kgb4fX6RQ:Wr8vP9mS7hY'),
+  ('50222222-2222-2222-2222-222222222222', '11111111-1111-1111-1111-111111111111', 'seed:app_manager', 'enc:v1:seed:Y2W6W_Q6YA:4IbeUqS5iZgRyj8wud1dnQ:BK4U5GJp2xM', 'enc:v1:seed:8uoN0kRw1A:3FSkP2_Pfc7RK2Y9CB_q5Q:h-ZwYFhN0q8'),
+  ('50333333-3333-3333-3333-333333333333', '11111111-1111-1111-1111-111111111111', 'seed:feature_manager', 'enc:v1:seed:4N10D5lGmA:8u6j2qXxmnLr8XHnQw5H7w:G4KfA9iWv0o', 'enc:v1:seed:aXh5YpP9mQ:1d8W5v4u0QvXfBY3M2e0nA:T2hPn6Kx4Rc'),
+  ('50444444-4444-4444-4444-444444444444', '11111111-1111-1111-1111-111111111111', 'seed:interface_manager', 'enc:v1:seed:9bH6fVv8xQ:5vxw8QjC2LrYAfj9QJ8R6w:hD6mQs1v9Nk', 'enc:v1:seed:H2n7bLx4kA:6gq3j8G2p8QYk6M8rA1N6g:R7kL0jU2nQw'),
+  ('50555555-5555-5555-5555-555555555555', '11111111-1111-1111-1111-111111111111', 'seed:designer', 'enc:v1:seed:V4k9rMz0pA:9D8m4W2nV7qQf1eR6yU2dA:K6hPa9sV3wQ', 'enc:v1:seed:uM0w7Xn2cA:2f8N6d3Qv9sK1aP4rT7yBg:B9mPq2hV6xW'),
+  ('50666666-6666-6666-6666-666666666666', '11111111-1111-1111-1111-111111111111', 'seed:editor', 'enc:v1:seed:G1y8nVb6qA:3r6M9d2Pq8wV4cT1mK7xJQ:L5pQw8nZ2vR', 'enc:v1:seed:mQ9k7Bv2dA:7t1P4nW8rQ6yV3fM9xJ2cQ:N4sLh7kP1wR'),
+  ('50777777-7777-7777-7777-777777777777', '11111111-1111-1111-1111-111111111111', 'seed:moderator', 'enc:v1:seed:T8m4cN1vQw:8a2K5qP9rW3nX6dM1jF7yA:Q7wP2nK6vXs', 'enc:v1:seed:zR3n8Vq5mA:5y9J2kF6pQ4tW1dN8xM3rQ:P2hVk9mQ4wX')
+ON CONFLICT (keycloak_subject, instance_id) WHERE instance_id IS NOT NULL DO UPDATE
 SET
   email_ciphertext = EXCLUDED.email_ciphertext,
   display_name_ciphertext = EXCLUDED.display_name_ciphertext,

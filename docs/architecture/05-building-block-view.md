@@ -89,3 +89,18 @@ Referenzen:
 - `apps/sva-studio-react/src/components/Header.tsx`
 - `apps/sva-studio-react/src/components/Sidebar.tsx`
 - `apps/sva-studio-react/src/components/AppShell.tsx`
+
+### Erweiterung 2026-03: Account- und User-Management-UI
+
+Neu hinzugekommene Bausteine im Change `add-account-user-management-ui`:
+
+1. `apps/sva-studio-react/src/routes/account/-account-profile-page.tsx`
+   - Self-Service-Profilseite (`/account`) mit Validierung, Error-Summary und Keycloak-Weiterleitung für Sicherheitsdaten.
+2. `apps/sva-studio-react/src/routes/admin/users/*`
+   - Admin-User-Liste (`/admin/users`) und User-Detailansicht (`/admin/users/$userId`) inklusive Rollen- und Statusverwaltung.
+3. `apps/sva-studio-react/src/routes/admin/roles/-roles-page.tsx`
+   - Rollenverwaltung (`/admin/roles`) mit System-/Custom-Rollen und erweiterbarer Berechtigungsmatrix.
+4. `apps/sva-studio-react/src/hooks/use-users.ts`, `use-user.ts`, `use-roles.ts`
+   - Frontend-Datenzugriff auf IAM-v1-Endpunkte mit Fehler-/403-Behandlung.
+5. `packages/routing/src/account-ui.routes.ts`
+   - Zentrale Guard-Konfiguration für `/account`, `/admin/users`, `/admin/users/$userId`, `/admin/roles`.

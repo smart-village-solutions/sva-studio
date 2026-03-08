@@ -1,6 +1,18 @@
 export { extractRoles, resolveInstanceId, resolveUserName } from './claims';
 export { parseJwtPayload } from './token';
 export { evaluateAuthorizeDecision } from './authorization-engine';
+export type { IamAccountProfile, IamAccountStatus, IamPermission, IamRole } from './account-management';
+export type {
+  ApiErrorCode,
+  ApiErrorResponse,
+  ApiItemResponse,
+  ApiListResponse,
+  ApiPagination,
+  IamRoleListItem,
+  IamUserDetail,
+  IamUserListItem,
+  IamUserRoleAssignment,
+} from './account-management-contract';
 export type {
   AllowReasonCode,
   AuthorizeRequest,

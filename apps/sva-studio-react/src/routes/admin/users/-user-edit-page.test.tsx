@@ -163,6 +163,60 @@ describe('UserEditPage', () => {
     });
   });
 
+  it('submits selected role ids when assigning an additional role', async () => {
+    const save = vi.fn().mockResolvedValue({
+      ...baseUser,
+      roles: [
+        { roleId: 'role-1', roleName: 'system_admin', roleLevel: 90 },
+        { roleId: 'role-2', roleName: 'editor', roleLevel: 10 },
+      ],
+    });
+
+    useUserMock.mockReturnValue({
+      user: baseUser,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      save,
+    });
+
+    useRolesMock.mockReturnValue({
+      roles: [
+        { id: 'role-1', roleName: 'system_admin' },
+        { id: 'role-2', roleName: 'editor' },
+      ],
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      createRole: vi.fn(),
+      updateRole: vi.fn(),
+      deleteRole: vi.fn(),
+    });
+
+    render(<UserEditPage userId="user-1" />);
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Verwaltung' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'editor' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Änderungen speichern' }));
+
+    await waitFor(() => {
+      expect(save).toHaveBeenCalledWith({
+        firstName: 'Alice',
+        lastName: 'Admin',
+        displayName: 'Alice Admin',
+        email: 'alice@example.com',
+        phone: undefined,
+        position: undefined,
+        department: undefined,
+        status: 'active',
+        preferredLanguage: 'de',
+        timezone: 'Europe/Berlin',
+        notes: undefined,
+        roleIds: ['role-1', 'role-2'],
+      });
+    });
+  });
+
   it('shows permissions empty state and handles unsaved-tab dialog', async () => {
     useUserMock.mockReturnValue({
       user: {
@@ -208,5 +262,36 @@ describe('UserEditPage', () => {
       expect(screen.getByRole('tab', { name: 'Historie' }).getAttribute('aria-selected')).toBe('true');
       expect(screen.getByText('Keine Historieneinträge vorhanden.')).toBeTruthy();
     });
+  });
+
+  it('shows localized save errors instead of the generic load error', () => {
+    useUserMock.mockReturnValue({
+      user: baseUser,
+      isLoading: false,
+      error: {
+        status: 503,
+        code: 'keycloak_unavailable',
+        message: 'sync failed',
+      },
+      refetch: vi.fn(),
+      save: vi.fn(),
+    });
+
+    useRolesMock.mockReturnValue({
+      roles: [{ id: 'role-1', roleName: 'system_admin' }],
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      createRole: vi.fn(),
+      updateRole: vi.fn(),
+      deleteRole: vi.fn(),
+    });
+
+    render(<UserEditPage userId="user-1" />);
+
+    expect(screen.getByRole('alert').textContent).toContain(
+      'Die Verbindung zu Keycloak ist derzeit nicht verfügbar. Bitte später erneut versuchen.'
+    );
+    expect(screen.getByRole('alert').textContent).not.toContain('Nutzer konnten nicht geladen werden.');
   });
 });

@@ -181,6 +181,26 @@ WHERE instance_id = $1::uuid
   return result.rows;
 };
 
+export const resolveRolesByExternalNames = async (
+  client: QueryClient,
+  input: { instanceId: string; externalRoleNames: readonly string[] }
+): Promise<readonly IamRoleRow[]> => {
+  if (input.externalRoleNames.length === 0) {
+    return [];
+  }
+
+  const result = await client.query<IamRoleRow>(
+    `
+SELECT id, role_key, role_name, display_name, external_role_name, role_level, is_system_role
+FROM iam.roles
+WHERE instance_id = $1::uuid
+  AND COALESCE(external_role_name, role_key) = ANY($2::text[]);
+`,
+    [input.instanceId, input.externalRoleNames]
+  );
+  return result.rows;
+};
+
 const canAssignRoles = (input: {
   actorMaxRoleLevel: number;
   targetRoles: readonly IamRoleRow[];

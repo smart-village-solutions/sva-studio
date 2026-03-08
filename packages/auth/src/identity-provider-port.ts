@@ -51,6 +51,7 @@ export interface IdentityProviderPort {
   updateUser(externalId: string, input: UpdateIdentityUserInput): Promise<void>;
   deactivateUser(externalId: string): Promise<void>;
   syncRoles(externalId: string, roles: readonly string[]): Promise<void>;
+  listUserRoleNames(externalId: string): Promise<readonly string[]>;
   listRoles(): Promise<readonly IdentityRole[]>;
   getRoleByName(externalName: string): Promise<IdentityRole | null>;
   createRole(input: CreateIdentityRoleInput): Promise<IdentityRole>;

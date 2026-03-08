@@ -45,6 +45,7 @@ Architecture Decision Records dokumentieren **wichtige technische Entscheidungen
 | 003 | Testing Framework | 📋 | TBD | Quality |
 | 004 | Build Tool & Bundler | 📋 | TBD | DevOps |
 | 005 | Node.js Version & LTS-Policy | 📋 | TBD | Infrastruktur |
+| 017 | Modulare IAM-Server-Bausteine | ✅ | 2026-03-08 | IAM / Qualität |
 
 ---
 

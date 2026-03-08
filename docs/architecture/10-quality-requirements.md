@@ -57,6 +57,7 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
   - `pnpm complexity-gate` muss für definierte zentrale/kritische Module grün sein
   - neue Schwellwertüberschreitungen ohne Ticket-Referenz blockieren den Qualitätslauf
   - kritische Module können strengere Coverage-Mindestwerte und Datei-Hotspots erhalten
+  - bei modularen Refactorings muss Restschuld auf den tatsächlich verbleibenden Kernmodulen getrackt werden
 - Review-Governance:
   - Proposal- und PR-Reviews nutzen spezialisierte Agents mit standardisierten Templates
   - Trigger-Matrix und Abgrenzungen sind in `docs/development/review-agent-governance.md` dokumentiert
@@ -95,6 +96,7 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
 - App-Tests laufen derzeit mit `--passWithNoTests`, daher eingeschränkte Aussagekraft
 - Fehlende oder implizite Cache-Inputs für Frontend-Tooling können zu falschen Cache-Hits führen, wenn neue App-Targets nicht konsistent gepflegt werden
 - Mehrere IAM-Hotspots liegen bewusst über den Komplexitäts-Schwellwerten und werden über Refactoring-Tickets nachverfolgt
+- Die neue modulare IAM-Fassade reduziert öffentliche Importflächen; vollständige Kernzerlegung bleibt für einzelne `core.ts`-Bausteine Folgearbeit
 
 Referenzen:
 

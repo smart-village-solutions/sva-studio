@@ -1,0 +1,1 @@
+export { KeycloakAdminClient } from './core';

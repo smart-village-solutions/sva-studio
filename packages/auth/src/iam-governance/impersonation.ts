@@ -1,0 +1,1 @@
+export { resolveImpersonationSubject } from './core';

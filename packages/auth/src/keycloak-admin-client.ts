@@ -1,9 +1,12 @@
 import { createSdkLogger } from '@sva/sdk/server';
 
 import type {
+  CreateIdentityRoleInput,
   CreateIdentityUserInput,
+  IdentityRole,
   IdentityProviderPort,
   IdentityUser,
+  UpdateIdentityRoleInput,
   UpdateIdentityUserInput,
 } from './identity-provider-port';
 
@@ -89,6 +92,7 @@ export type KeycloakRealmRole = {
   readonly composite?: boolean;
   readonly clientRole?: boolean;
   readonly containerId?: string;
+  readonly attributes?: Readonly<Record<string, readonly string[]>>;
 };
 
 type CachedToken = {
@@ -163,6 +167,20 @@ const normalizeAttributes = (
   }
   return normalized;
 };
+
+const normalizeManagedRoleAttributes = (
+  attributes: Readonly<Record<string, readonly string[]> | Record<string, string | readonly string[]>>
+): Record<string, readonly string[]> => normalizeAttributes(attributes as Readonly<Record<string, string | readonly string[]>>) ?? {};
+
+const mapKeycloakRole = (role: KeycloakRealmRole): IdentityRole => ({
+  id: role.id,
+  externalName: role.name,
+  description: role.description,
+  attributes: role.attributes,
+  composite: role.composite,
+  clientRole: role.clientRole,
+  containerId: role.containerId,
+});
 
 const isRetryableStatus = (statusCode: number): boolean => statusCode === 429 || statusCode >= 500;
 
@@ -302,7 +320,7 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     ]);
 
     const currentByName = new Map(currentRoleMappings.map((role) => [role.name, role]));
-    const availableByName = new Map(availableRoles.map((role) => [role.name, role]));
+    const availableByName = new Map(availableRoles.map((role) => [role.externalName, role]));
 
     const missingRoles = [...expectedRoleNames].filter((roleName) => !availableByName.has(roleName));
     if (missingRoles.length > 0) {
@@ -317,7 +335,18 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     const toAdd = [...expectedRoleNames]
       .filter((roleName) => !currentByName.has(roleName))
       .map((roleName) => availableByName.get(roleName))
-      .filter((role): role is KeycloakRealmRole => role !== undefined);
+      .filter((role): role is IdentityRole => role !== undefined)
+      .map(
+        (role): KeycloakRealmRole => ({
+          id: role.id ?? role.externalName,
+          name: role.externalName,
+          description: role.description,
+          attributes: role.attributes,
+          composite: role.composite,
+          clientRole: role.clientRole,
+          containerId: role.containerId,
+        })
+      );
 
     const toRemove = currentRoleMappings.filter((role) => !expectedRoleNames.has(role.name));
 
@@ -389,21 +418,22 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     }
   }
 
-  async listRoles(): Promise<readonly KeycloakRealmRole[]> {
+  async listRoles(): Promise<readonly IdentityRole[]> {
     if (this.isCircuitOpen()) {
       if (this.readFallback?.listRoles) {
         logger.warn('Circuit open; using listRoles fallback', { operation: 'list_roles', source: 'fallback' });
-        return this.readFallback.listRoles();
+        return (await this.readFallback.listRoles()).map(mapKeycloakRole);
       }
       throw new KeycloakAdminUnavailableError('Keycloak unavailable and no read fallback configured.');
     }
 
     try {
-      return await this.executeWithResilience<KeycloakRealmRole[]>({
+      const roles = await this.executeWithResilience<KeycloakRealmRole[]>({
         method: 'GET',
         path: `/admin/realms/${encodePathSegment(this.realm)}/roles`,
         operation: 'list_roles',
       });
+      return roles.map(mapKeycloakRole);
     } catch (error) {
       if (this.readFallback?.listRoles && this.isRetryableError(error)) {
         logger.warn('Keycloak read failed; using listRoles fallback', {
@@ -411,10 +441,107 @@ export class KeycloakAdminClient implements IdentityProviderPort {
           source: 'fallback',
           error: error instanceof Error ? error.message : String(error),
         });
-        return this.readFallback.listRoles();
+        return (await this.readFallback.listRoles()).map(mapKeycloakRole);
       }
       throw error;
     }
+  }
+
+  async getRoleByName(externalName: string): Promise<IdentityRole | null> {
+    if (this.isCircuitOpen()) {
+      throw new KeycloakAdminUnavailableError('Keycloak unavailable and role lookup is temporarily disabled.');
+    }
+
+    try {
+      const role = await this.executeWithResilience<KeycloakRealmRole>({
+        method: 'GET',
+        path: `/admin/realms/${encodePathSegment(this.realm)}/roles/${encodePathSegment(externalName)}`,
+        operation: 'get_role_by_name',
+      });
+      return {
+        id: role.id,
+        externalName: role.name,
+        description: role.description,
+        attributes: role.attributes,
+        composite: role.composite,
+        clientRole: role.clientRole,
+        containerId: role.containerId,
+      };
+    } catch (error) {
+      if (error instanceof KeycloakAdminRequestError && error.statusCode === 404) {
+        return null;
+      }
+      throw error;
+    }
+  }
+
+  async createRole(input: CreateIdentityRoleInput): Promise<IdentityRole> {
+    await this.assertWriteAvailability();
+    await this.executeWithResilience<void>({
+      method: 'POST',
+      path: `/admin/realms/${encodePathSegment(this.realm)}/roles`,
+      body: JSON.stringify({
+        name: input.externalName,
+        description: input.description,
+        attributes: normalizeManagedRoleAttributes({
+          managed_by: input.attributes.managedBy,
+          instance_id: input.attributes.instanceId,
+          role_key: input.attributes.roleKey,
+          display_name: input.attributes.displayName,
+        }),
+      }),
+      operation: 'create_role',
+    });
+
+    const created = await this.getRoleByName(input.externalName);
+    if (!created) {
+      throw new KeycloakAdminRequestError({
+        message: 'Keycloak role creation succeeded but role lookup failed afterwards',
+        statusCode: 502,
+        code: 'role_lookup_failed',
+        retryable: false,
+      });
+    }
+    return created;
+  }
+
+  async updateRole(externalName: string, input: UpdateIdentityRoleInput): Promise<IdentityRole> {
+    await this.assertWriteAvailability();
+    await this.executeWithResilience<void>({
+      method: 'PUT',
+      path: `/admin/realms/${encodePathSegment(this.realm)}/roles/${encodePathSegment(externalName)}`,
+      body: JSON.stringify({
+        name: externalName,
+        description: input.description,
+        attributes: normalizeManagedRoleAttributes({
+          managed_by: input.attributes.managedBy,
+          instance_id: input.attributes.instanceId,
+          role_key: input.attributes.roleKey,
+          display_name: input.attributes.displayName,
+        }),
+      }),
+      operation: 'update_role',
+    });
+
+    const updated = await this.getRoleByName(externalName);
+    if (!updated) {
+      throw new KeycloakAdminRequestError({
+        message: 'Keycloak role update succeeded but role lookup failed afterwards',
+        statusCode: 502,
+        code: 'role_lookup_failed',
+        retryable: false,
+      });
+    }
+    return updated;
+  }
+
+  async deleteRole(externalName: string): Promise<void> {
+    await this.assertWriteAvailability();
+    await this.executeWithResilience<void>({
+      method: 'DELETE',
+      path: `/admin/realms/${encodePathSegment(this.realm)}/roles/${encodePathSegment(externalName)}`,
+      operation: 'delete_role',
+    });
   }
 
   getCircuitBreakerState(): number {

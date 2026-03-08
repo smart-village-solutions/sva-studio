@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { isTrustedRequestOrigin, resolveUserDisplayName } from './iam-account-management.server';
+import {
+  isTrustedRequestOrigin,
+  resolveUserDisplayName,
+  sanitizeRoleAuditDetails,
+  sanitizeRoleErrorMessage,
+} from './iam-account-management.server';
 
 describe('resolveUserDisplayName', () => {
   it('prefers explicit display name when present', () => {
@@ -82,5 +87,41 @@ describe('isTrustedRequestOrigin', () => {
     const request = new Request('https://api.example.com/api/v1/iam/users');
 
     expect(isTrustedRequestOrigin(request, 'https://admin.example.com')).toBe(false);
+  });
+});
+
+describe('sanitizeRoleAuditDetails', () => {
+  it('redacts nested secrets and masks PII in role audit payloads', () => {
+    const sanitized = sanitizeRoleAuditDetails({
+      actor_email: 'admin@example.com',
+      access_token: 'secret-token',
+      nested: {
+        client_secret: 'top-secret',
+        authorization: 'Bearer abc123',
+        note: 'Kontakt: max.mustermann@example.com',
+      },
+      notes: ['token=abc123', 'safe-entry'],
+    });
+
+    expect(sanitized).toEqual({
+      actor_email: 'a***@example.com',
+      access_token: '[REDACTED]',
+      nested: {
+        client_secret: '[REDACTED]',
+        authorization: '[REDACTED]',
+        note: 'Kontakt: m***@example.com',
+      },
+      notes: ['token=[REDACTED]', 'safe-entry'],
+    });
+  });
+});
+
+describe('sanitizeRoleErrorMessage', () => {
+  it('masks emails and secret-like fragments in error messages', () => {
+    expect(
+      sanitizeRoleErrorMessage(
+        new Error('request failed for admin@example.com with token=abc123 and client_secret=super-secret')
+      )
+    ).toBe('request failed for a***@example.com with token=[REDACTED] and client_secret=[REDACTED]');
   });
 });

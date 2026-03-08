@@ -296,7 +296,7 @@ describe('KeycloakAdminClient', () => {
     });
 
     const roles = await client.listRoles();
-    expect(roles).toEqual([{ id: 'role-fallback', name: 'fallback_role' }]);
+    expect(roles).toEqual([expect.objectContaining({ id: 'role-fallback', externalName: 'fallback_role' })]);
     expect(fallbackListRoles).toHaveBeenCalledTimes(1);
   });
 

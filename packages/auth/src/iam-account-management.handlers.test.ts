@@ -8,6 +8,18 @@ const state = vi.hoisted(() => ({
     instanceId: '11111111-1111-1111-8111-111111111111',
   },
   queryHandler: null as null | ((text: string, values?: readonly unknown[]) => { rowCount: number; rows: unknown[] }),
+  createRoleImpl: null as null | ((input: {
+    externalName: string;
+    description?: string;
+    attributes: Record<string, string>;
+  }) => Promise<unknown> | unknown),
+  updateRoleImpl: null as null | ((externalName: string, input: {
+    description?: string;
+    attributes: Record<string, string>;
+  }) => Promise<unknown> | unknown),
+  deleteRoleImpl: null as null | ((externalName: string) => Promise<unknown> | unknown),
+  getRoleByNameImpl: null as null | ((externalName: string) => Promise<unknown> | unknown),
+  listRolesImpl: null as null | (() => Promise<unknown> | unknown),
 }));
 
 vi.mock('./middleware.server', () => ({
@@ -26,6 +38,7 @@ vi.mock('@sva/sdk/server', () => ({
     warn: vi.fn(),
     error: vi.fn(),
   }),
+  redactObject: (value: Record<string, unknown>) => value,
   getWorkspaceContext: () => ({
     workspaceId: state.user.instanceId,
     requestId: 'req-iam-handler',
@@ -66,6 +79,19 @@ vi.mock('pg', () => ({
 }));
 
 vi.mock('./keycloak-admin-client', () => ({
+  KeycloakAdminRequestError: class MockKeycloakAdminRequestError extends Error {
+    statusCode: number;
+    code: string;
+    retryable: boolean;
+
+    constructor(input: { message: string; statusCode: number; code: string; retryable: boolean }) {
+      super(input.message);
+      this.statusCode = input.statusCode;
+      this.code = input.code;
+      this.retryable = input.retryable;
+    }
+  },
+  KeycloakAdminUnavailableError: class MockKeycloakAdminUnavailableError extends Error {},
   getKeycloakAdminClientConfigFromEnv: () => ({
     baseUrl: 'http://keycloak.local',
     realm: 'test',
@@ -89,6 +115,51 @@ vi.mock('./keycloak-admin-client', () => ({
       return undefined;
     }
 
+    async createRole(input: { externalName: string; description?: string; attributes: Record<string, string> }) {
+      if (state.createRoleImpl) {
+        return state.createRoleImpl(input);
+      }
+      return {
+        id: `kc-${input.externalName}`,
+        externalName: input.externalName,
+        description: input.description,
+        attributes: input.attributes,
+      };
+    }
+
+    async updateRole(externalName: string, input: { description?: string; attributes: Record<string, string> }) {
+      if (state.updateRoleImpl) {
+        return state.updateRoleImpl(externalName, input);
+      }
+      return {
+        id: `kc-${externalName}`,
+        externalName,
+        description: input.description,
+        attributes: input.attributes,
+      };
+    }
+
+    async deleteRole(externalName: string) {
+      if (state.deleteRoleImpl) {
+        return state.deleteRoleImpl(externalName);
+      }
+      return undefined;
+    }
+
+    async getRoleByName(externalName: string) {
+      if (state.getRoleByNameImpl) {
+        return state.getRoleByNameImpl(externalName);
+      }
+      return { id: `kc-${externalName}`, externalName };
+    }
+
+    async listRoles() {
+      if (state.listRolesImpl) {
+        return state.listRolesImpl();
+      }
+      return [];
+    }
+
     async createUser() {
       return { externalId: 'mock-user-id' };
     }
@@ -104,9 +175,11 @@ import {
   getUserHandler,
   listRolesHandler,
   listUsersHandler,
+  reconcileHandler,
   updateRoleHandler,
   updateUserHandler,
 } from './iam-account-management.server';
+import { KeycloakAdminRequestError } from './keycloak-admin-client';
 
 const targetUserId = 'bbbbbbbb-bbbb-4111-8bbb-bbbbbbbbbbbb';
 const targetRoleId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
@@ -130,7 +203,9 @@ const buildUserDetailRow = (status: 'active' | 'inactive' = 'active') => ({
   role_rows: [
     {
       id: 'role-editor',
+      role_key: 'editor',
       role_name: 'editor',
+      display_name: 'editor',
       role_level: 10,
       is_system_role: false,
     },
@@ -170,6 +245,11 @@ describe('iam-account-management handlers (guards)', () => {
       }
       return { rowCount: 0, rows: [] };
     };
+    state.createRoleImpl = null;
+    state.updateRoleImpl = null;
+    state.deleteRoleImpl = null;
+    state.getRoleByNameImpl = null;
+    state.listRolesImpl = null;
   });
 
   it('denies listUsers for non-admin role', async () => {
@@ -353,7 +433,7 @@ describe('iam-account-management handlers (guards)', () => {
   });
 
   it('rejects deactivation when target user exceeds actor role level', async () => {
-    state.queryHandler = (text, values) => {
+    state.queryHandler = (text) => {
       if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
         return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
       }
@@ -420,7 +500,7 @@ describe('iam-account-management handlers (guards)', () => {
     delete process.env.IAM_PII_ACTIVE_KEY_ID;
     delete process.env.IAM_PII_KEYRING_JSON;
 
-    state.queryHandler = (text, values) => {
+    state.queryHandler = (text) => {
       if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
         return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
       }
@@ -554,7 +634,31 @@ describe('iam-account-management handlers (guards)', () => {
         return { rowCount: 1, rows: [{ id: targetRoleId }] };
       }
 
-      if (text.includes('INSERT INTO iam.activity_log')) {
+      if (text.includes('FROM iam.roles r') && text.includes('r.role_key')) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              id: targetRoleId,
+              role_key: 'custom_editor',
+              role_name: 'custom_editor',
+              display_name: 'custom_editor',
+              external_role_name: 'custom_editor',
+              description: 'Custom Editor',
+              is_system_role: false,
+              role_level: 25,
+              managed_by: 'studio',
+              member_count: 0,
+              sync_state: 'synced',
+              last_synced_at: null,
+              last_error_code: null,
+              permission_rows: [],
+            },
+          ],
+        };
+      }
+
+      if (text.includes('INSERT INTO iam.activity_logs')) {
         return { rowCount: 1, rows: [] };
       }
 
@@ -587,10 +691,110 @@ describe('iam-account-management handlers (guards)', () => {
       })
     );
 
-    const payload = (await response.json()) as { data: { id: string; roleName: string } };
+    const payload = (await response.json()) as {
+      data: { id: string; roleKey: string; roleName: string; syncState: string; managedBy: string };
+    };
     expect(response.status).toBe(201);
     expect(payload.data.id).toBe(targetRoleId);
+    expect(payload.data.roleKey).toBe('custom_editor');
     expect(payload.data.roleName).toBe('custom_editor');
+    expect(payload.data.managedBy).toBe('studio');
+    expect(payload.data.syncState).toBe('synced');
+  });
+
+  it('maps Keycloak timeout on createRole to failed sync state', async () => {
+    state.createRoleImpl = () => {
+      throw new KeycloakAdminRequestError({
+        message: 'timeout',
+        statusCode: 504,
+        code: 'read_timeout',
+        retryable: true,
+      });
+    };
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+      if (text.includes('INSERT INTO iam.idempotency_keys') && text.includes('ON CONFLICT')) {
+        return { rowCount: 1, rows: [{ status: 'IN_PROGRESS' }] };
+      }
+      if (text.includes('UPDATE iam.idempotency_keys')) {
+        return { rowCount: 1, rows: [] };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await createRoleHandler(
+      new Request('http://localhost/api/v1/iam/roles', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'http://localhost',
+          'idempotency-key': 'role-create-timeout',
+        },
+        body: JSON.stringify({
+          roleName: 'custom_editor',
+          description: 'Custom Editor',
+          roleLevel: 25,
+          permissionIds: [],
+        }),
+      })
+    );
+
+    const payload = (await response.json()) as { error: { code: string; details?: { syncError?: { code: string } } } };
+    expect(response.status).toBe(503);
+    expect(payload.error.code).toBe('keycloak_unavailable');
+    expect(payload.error.details?.syncError?.code).toBe('IDP_TIMEOUT');
+  });
+
+  it('returns a specific setup hint when Keycloak denies role writes', async () => {
+    state.createRoleImpl = () => {
+      throw new KeycloakAdminRequestError({
+        message: 'forbidden',
+        statusCode: 403,
+        code: 'forbidden',
+        retryable: false,
+      });
+    };
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+      if (text.includes('INSERT INTO iam.idempotency_keys') && text.includes('ON CONFLICT')) {
+        return { rowCount: 1, rows: [{ status: 'IN_PROGRESS' }] };
+      }
+      if (text.includes('UPDATE iam.idempotency_keys')) {
+        return { rowCount: 1, rows: [] };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await createRoleHandler(
+      new Request('http://localhost/api/v1/iam/roles', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'http://localhost',
+          'idempotency-key': 'role-create-forbidden',
+        },
+        body: JSON.stringify({
+          roleName: 'custom_editor',
+          description: 'Custom Editor',
+          roleLevel: 25,
+          permissionIds: [],
+        }),
+      })
+    );
+
+    const payload = (await response.json()) as {
+      error: { code: string; message: string; details?: { syncError?: { code: string } } };
+    };
+    expect(response.status).toBe(503);
+    expect(payload.error.code).toBe('keycloak_unavailable');
+    expect(payload.error.message).toContain('manage-realm');
+    expect(payload.error.details?.syncError?.code).toBe('IDP_FORBIDDEN');
   });
 
   it('updates a role successfully', async () => {
@@ -599,8 +803,54 @@ describe('iam-account-management handlers (guards)', () => {
         return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
       }
 
-      if (text.includes('SELECT is_system_role') && text.includes('FROM iam.roles')) {
-        return { rowCount: 1, rows: [{ is_system_role: false }] };
+      if (text.includes('FROM iam.roles') && text.includes('external_role_name')) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              id: targetRoleId,
+              role_key: 'custom_editor',
+              role_name: 'custom_editor',
+              display_name: 'Custom Editor',
+              external_role_name: 'custom_editor',
+              description: 'Custom Editor',
+              is_system_role: false,
+              role_level: 25,
+              managed_by: 'studio',
+              sync_state: 'synced',
+              last_synced_at: null,
+              last_error_code: null,
+            },
+          ],
+        };
+      }
+
+      if (text.includes('UPDATE iam.roles') || text.includes('DELETE FROM iam.role_permissions') || text.includes('INSERT INTO iam.role_permissions')) {
+        return { rowCount: 1, rows: [] };
+      }
+
+      if (text.includes('FROM iam.roles r') && text.includes('r.role_key')) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              id: targetRoleId,
+              role_key: 'custom_editor',
+              role_name: 'custom_editor',
+              display_name: 'Custom Editor',
+              external_role_name: 'custom_editor',
+              description: 'Updated',
+              is_system_role: false,
+              role_level: 30,
+              managed_by: 'studio',
+              member_count: 0,
+              sync_state: 'synced',
+              last_synced_at: null,
+              last_error_code: null,
+              permission_rows: [],
+            },
+          ],
+        };
       }
 
       return { rowCount: 0, rows: [] };
@@ -615,6 +865,7 @@ describe('iam-account-management handlers (guards)', () => {
           origin: 'http://localhost',
         },
         body: JSON.stringify({
+          displayName: 'Custom Editor',
           description: 'Updated',
           roleLevel: 30,
           permissionIds: [],
@@ -622,9 +873,124 @@ describe('iam-account-management handlers (guards)', () => {
       })
     );
 
-    const payload = (await response.json()) as { data: { id: string } };
+    const payload = (await response.json()) as { data: { id: string; roleKey: string; syncState: string } };
     expect(response.status).toBe(200);
     expect(payload.data.id).toBe(targetRoleId);
+    expect(payload.data.roleKey).toBe('custom_editor');
+    expect(payload.data.syncState).toBe('synced');
+  });
+
+  it('rejects updates for externally managed roles', async () => {
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+
+      if (text.includes('FROM iam.roles') && text.includes('external_role_name')) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              id: targetRoleId,
+              role_key: 'mainserver_editor',
+              role_name: 'mainserver_editor',
+              display_name: 'Editor',
+              external_role_name: 'Editor',
+              description: 'Mainserver-Rolle',
+              is_system_role: false,
+              role_level: 40,
+              managed_by: 'external',
+              sync_state: 'synced',
+              last_synced_at: null,
+              last_error_code: null,
+            },
+          ],
+        };
+      }
+
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await updateRoleHandler(
+      new Request(`http://localhost/api/v1/iam/roles/${targetRoleId}`, {
+        method: 'PATCH',
+        headers: {
+          'content-type': 'application/json',
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'http://localhost',
+        },
+        body: JSON.stringify({
+          displayName: 'Editors',
+        }),
+      })
+    );
+
+    const payload = (await response.json()) as { error: { code: string; message: string } };
+    expect(response.status).toBe(409);
+    expect(payload.error.code).toBe('conflict');
+    expect(payload.error.message).toContain('Extern verwaltete Rollen');
+  });
+
+  it('marks role update as DB write failure after successful Keycloak sync', async () => {
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+
+      if (text.includes('FROM iam.roles') && text.includes('external_role_name')) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              id: targetRoleId,
+              role_key: 'custom_editor',
+              role_name: 'custom_editor',
+              display_name: 'Custom Editor',
+              external_role_name: 'custom_editor',
+              description: 'Custom Editor',
+              is_system_role: false,
+              role_level: 25,
+              managed_by: 'studio',
+              sync_state: 'synced',
+              last_synced_at: null,
+              last_error_code: null,
+            },
+          ],
+        };
+      }
+
+      if (text.includes('UPDATE iam.roles') && text.includes('display_name = $3')) {
+        throw new Error('db_write_failed');
+      }
+
+      if (text.includes('UPDATE iam.roles') || text.includes('INSERT INTO iam.activity_logs')) {
+        return { rowCount: 1, rows: [] };
+      }
+
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await updateRoleHandler(
+      new Request(`http://localhost/api/v1/iam/roles/${targetRoleId}`, {
+        method: 'PATCH',
+        headers: {
+          'content-type': 'application/json',
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'http://localhost',
+        },
+        body: JSON.stringify({
+          displayName: 'Custom Editor',
+          description: 'Updated',
+          roleLevel: 30,
+          permissionIds: [],
+        }),
+      })
+    );
+
+    const payload = (await response.json()) as { error: { code: string; details?: { syncError?: { code: string } } } };
+    expect(response.status).toBe(500);
+    expect(payload.error.code).toBe('internal_error');
+    expect(payload.error.details?.syncError?.code).toBe('DB_WRITE_FAILED');
   });
 
   it('rejects deleteRole when role has dependencies', async () => {
@@ -633,8 +999,26 @@ describe('iam-account-management handlers (guards)', () => {
         return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
       }
 
-      if (text.includes('SELECT is_system_role') && text.includes('FROM iam.roles')) {
-        return { rowCount: 1, rows: [{ is_system_role: false }] };
+      if (text.includes('FROM iam.roles') && text.includes('external_role_name')) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              id: targetRoleId,
+              role_key: 'custom_editor',
+              role_name: 'custom_editor',
+              display_name: 'Custom Editor',
+              external_role_name: 'custom_editor',
+              description: 'Custom Editor',
+              is_system_role: false,
+              role_level: 25,
+              managed_by: 'studio',
+              sync_state: 'synced',
+              last_synced_at: null,
+              last_error_code: null,
+            },
+          ],
+        };
       }
 
       if (text.includes('FROM iam.account_roles')) {
@@ -666,12 +1050,34 @@ describe('iam-account-management handlers (guards)', () => {
         return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
       }
 
-      if (text.includes('SELECT is_system_role') && text.includes('FROM iam.roles')) {
-        return { rowCount: 1, rows: [{ is_system_role: false }] };
+      if (text.includes('FROM iam.roles') && text.includes('external_role_name')) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              id: targetRoleId,
+              role_key: 'custom_editor',
+              role_name: 'custom_editor',
+              display_name: 'Custom Editor',
+              external_role_name: 'custom_editor',
+              description: 'Custom Editor',
+              is_system_role: false,
+              role_level: 25,
+              managed_by: 'studio',
+              sync_state: 'synced',
+              last_synced_at: null,
+              last_error_code: null,
+            },
+          ],
+        };
       }
 
       if (text.includes('FROM iam.account_roles')) {
         return { rowCount: 1, rows: [{ used: 0 }] };
+      }
+
+      if (text.includes('DELETE FROM iam.role_permissions') || text.includes('DELETE FROM iam.roles')) {
+        return { rowCount: 1, rows: [] };
       }
 
       return { rowCount: 0, rows: [] };
@@ -690,6 +1096,302 @@ describe('iam-account-management handlers (guards)', () => {
     const payload = (await response.json()) as { data: { id: string } };
     expect(response.status).toBe(200);
     expect(payload.data.id).toBe(targetRoleId);
+  });
+
+  it('rejects deletes for externally managed roles', async () => {
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+
+      if (text.includes('FROM iam.roles') && text.includes('external_role_name')) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              id: targetRoleId,
+              role_key: 'mainserver_editor',
+              role_name: 'mainserver_editor',
+              display_name: 'Editor',
+              external_role_name: 'Editor',
+              description: 'Mainserver-Rolle',
+              is_system_role: false,
+              role_level: 40,
+              managed_by: 'external',
+              sync_state: 'synced',
+              last_synced_at: null,
+              last_error_code: null,
+            },
+          ],
+        };
+      }
+
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await deleteRoleHandler(
+      new Request(`http://localhost/api/v1/iam/roles/${targetRoleId}`, {
+        method: 'DELETE',
+        headers: {
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'http://localhost',
+        },
+      })
+    );
+
+    const payload = (await response.json()) as { error: { code: string; message: string } };
+    expect(response.status).toBe(409);
+    expect(payload.error.code).toBe('conflict');
+    expect(payload.error.message).toContain('Extern verwaltete Rollen');
+  });
+
+  it('surfaces compensation failure when deleteRole cannot restore Keycloak state', async () => {
+    state.createRoleImpl = () => {
+      throw new Error('compensation_failed');
+    };
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+
+      if (text.includes('FROM iam.roles') && text.includes('external_role_name')) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              id: targetRoleId,
+              role_key: 'custom_editor',
+              role_name: 'custom_editor',
+              display_name: 'Custom Editor',
+              external_role_name: 'custom_editor',
+              description: 'Custom Editor',
+              is_system_role: false,
+              role_level: 25,
+              managed_by: 'studio',
+              sync_state: 'synced',
+              last_synced_at: null,
+              last_error_code: null,
+            },
+          ],
+        };
+      }
+
+      if (text.includes('FROM iam.account_roles')) {
+        return { rowCount: 1, rows: [{ used: 0 }] };
+      }
+
+      if (text.includes('DELETE FROM iam.role_permissions')) {
+        throw new Error('db_delete_failed');
+      }
+
+      if (text.includes('UPDATE iam.roles') || text.includes('INSERT INTO iam.activity_logs')) {
+        return { rowCount: 1, rows: [] };
+      }
+
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await deleteRoleHandler(
+      new Request(`http://localhost/api/v1/iam/roles/${targetRoleId}`, {
+        method: 'DELETE',
+        headers: {
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'http://localhost',
+        },
+      })
+    );
+
+    const payload = (await response.json()) as { error: { code: string; details?: { syncError?: { code: string } } } };
+    expect(response.status).toBe(500);
+    expect(payload.error.code).toBe('internal_error');
+    expect(payload.error.details?.syncError?.code).toBe('COMPENSATION_FAILED');
+  });
+
+  it('reports orphaned studio-managed Keycloak roles during reconcile without deleting them', async () => {
+    state.listRolesImpl = () => [
+      {
+        id: 'kc-custom_editor',
+        externalName: 'custom_editor',
+        description: 'Custom Editor',
+        attributes: {
+          managed_by: ['studio'],
+          instance_id: ['11111111-1111-1111-8111-111111111111'],
+          role_key: ['custom_editor'],
+          display_name: ['Custom Editor'],
+        },
+      },
+    ];
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+      if (text.includes('FROM iam.roles') && text.includes("managed_by = 'studio'")) {
+        return { rowCount: 0, rows: [] };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await reconcileHandler(
+      new Request('http://localhost/api/v1/iam/admin/reconcile', {
+        method: 'POST',
+      })
+    );
+
+    const payload = (await response.json()) as {
+      data: {
+        checkedCount: number;
+        correctedCount: number;
+        failedCount: number;
+        requiresManualActionCount: number;
+        roles: Array<{ action: string; status: string; errorCode?: string; externalRoleName: string }>;
+      };
+    };
+    expect(response.status).toBe(200);
+    expect(payload.data.checkedCount).toBe(0);
+    expect(payload.data.correctedCount).toBe(0);
+    expect(payload.data.failedCount).toBe(0);
+    expect(payload.data.requiresManualActionCount).toBe(1);
+    expect(payload.data.roles).toEqual([
+      {
+        action: 'report',
+        status: 'requires_manual_action',
+        errorCode: 'REQUIRES_MANUAL_ACTION',
+        externalRoleName: 'custom_editor',
+        roleKey: 'custom_editor',
+      },
+    ]);
+  });
+
+  it('recreates missing Keycloak roles during reconcile', async () => {
+    state.listRolesImpl = () => [];
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+      if (text.includes('FROM iam.roles') && text.includes("managed_by = 'studio'")) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              id: targetRoleId,
+              role_key: 'custom_editor',
+              role_name: 'custom_editor',
+              display_name: 'Custom Editor',
+              external_role_name: 'custom_editor',
+              description: 'Custom Editor',
+              is_system_role: false,
+              role_level: 25,
+              managed_by: 'studio',
+              sync_state: 'failed',
+              last_synced_at: null,
+              last_error_code: 'IDP_NOT_FOUND',
+            },
+          ],
+        };
+      }
+      if (text.includes('UPDATE iam.roles') || text.includes('INSERT INTO iam.activity_logs')) {
+        return { rowCount: 1, rows: [] };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await reconcileHandler(
+      new Request('http://localhost/api/v1/iam/admin/reconcile', {
+        method: 'POST',
+      })
+    );
+
+    const payload = (await response.json()) as {
+      data: {
+        correctedCount: number;
+        failedCount: number;
+        requiresManualActionCount: number;
+        roles: Array<{ action: string; status: string; roleId?: string; roleKey?: string; externalRoleName: string }>;
+      };
+    };
+    expect(response.status).toBe(200);
+    expect(payload.data.correctedCount).toBe(1);
+    expect(payload.data.failedCount).toBe(0);
+    expect(payload.data.requiresManualActionCount).toBe(0);
+    expect(payload.data.roles).toEqual([
+      {
+        action: 'create',
+        status: 'corrected',
+        roleId: targetRoleId,
+        roleKey: 'custom_editor',
+        externalRoleName: 'custom_editor',
+      },
+    ]);
+  });
+
+  it('updates stale Keycloak role metadata during reconcile', async () => {
+    state.listRolesImpl = () => [
+      {
+        id: 'kc-custom_editor',
+        externalName: 'custom_editor',
+        description: 'Old description',
+        attributes: {
+          managed_by: ['studio'],
+          instance_id: ['11111111-1111-1111-8111-111111111111'],
+          role_key: ['custom_editor'],
+          display_name: ['Old Name'],
+        },
+      },
+    ];
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+      if (text.includes('FROM iam.roles') && text.includes("managed_by = 'studio'")) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              id: targetRoleId,
+              role_key: 'custom_editor',
+              role_name: 'custom_editor',
+              display_name: 'Custom Editor',
+              external_role_name: 'custom_editor',
+              description: 'Current description',
+              is_system_role: false,
+              role_level: 25,
+              managed_by: 'studio',
+              sync_state: 'failed',
+              last_synced_at: null,
+              last_error_code: 'IDP_TIMEOUT',
+            },
+          ],
+        };
+      }
+      if (text.includes('UPDATE iam.roles') || text.includes('INSERT INTO iam.activity_logs')) {
+        return { rowCount: 1, rows: [] };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await reconcileHandler(
+      new Request('http://localhost/api/v1/iam/admin/reconcile', {
+        method: 'POST',
+      })
+    );
+
+    const payload = (await response.json()) as {
+      data: {
+        correctedCount: number;
+        roles: Array<{ action: string; status: string; roleId?: string; roleKey?: string; externalRoleName: string }>;
+      };
+    };
+    expect(response.status).toBe(200);
+    expect(payload.data.correctedCount).toBe(1);
+    expect(payload.data.roles).toEqual([
+      {
+        action: 'update',
+        status: 'corrected',
+        roleId: targetRoleId,
+        roleKey: 'custom_editor',
+        externalRoleName: 'custom_editor',
+      },
+    ]);
   });
 
   it('creates a user successfully on happy path', async () => {

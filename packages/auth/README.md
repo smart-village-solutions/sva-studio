@@ -8,6 +8,7 @@ Authentifizierungs- und Autorisierungspaket für SVA Studio. Implementiert OIDC-
 
 - **Client-safe** (`@sva/auth`): Nur Route-Pfade und Typen – kein Server-Code im Browser-Bundle
 - **Server-only** (`@sva/auth/server`): Alle Handler, Session-Logik, Crypto, IAM-Entscheidungen
+- Server-Fassaden bleiben als stabile Importpfade erhalten; fachliche Zerlegung lebt in Unterordnern wie `auth-server/`, `routes/` und `iam-*/`
 
 ```
 @sva/core ← IAM-Typen, Claims, JWT
@@ -134,10 +135,12 @@ src/
 ├── config.ts                             # Env-basierte Konfiguration
 ├── routes.shared.ts                      # 18 Auth/IAM Route-Pfade (type-safe)
 │
-├── auth.server.ts                        # OIDC Login/Callback/Logout/Refresh
+├── auth.server.ts                        # stabile Fassade für OIDC Login/Callback/Logout/Refresh
+├── auth-server/                         # modulare OIDC- und Session-Bausteine
 ├── oidc.server.ts                        # OIDC-Client Setup
 ├── middleware.server.ts                  # withAuthenticatedUser
-├── routes.server.ts                      # Route-Handler (467 Zeilen)
+├── routes.server.ts                      # stabile Fassade für Auth-/IAM-Routen
+├── routes/                              # Cookie-, Handler- und Registry-Bausteine
 │
 ├── session.ts                            # In-Memory Session Store
 ├── redis-session.ts                      # Redis Session Store
@@ -145,11 +148,17 @@ src/
 ├── redis.server.ts                       # Redis-Client
 ├── crypto.server.ts                      # Token-Verschlüsselung (AES-256-GCM)
 │
-├── iam-authorization.server.ts           # authorize + mePermissions
+├── iam-authorization.server.ts           # stabile Fassade für authorize + mePermissions
+├── iam-authorization/                   # Evaluation, Cache-Zugriff, Handler, Shared-Bausteine
 ├── iam-authorization.cache.ts            # Authorization Cache
-├── keycloak-admin-client.ts              # Keycloak Admin API Adapter (IdentityProviderPort)
-├── iam-governance.server.ts              # Governance-Workflows
-├── iam-data-subject-rights.server.ts     # DSGVO-Betroffenenrechte
+├── keycloak-admin-client.ts              # stabile Fassade für den Keycloak-Adapter
+├── keycloak-admin-client/               # Konfiguration, Modelle, Fehler, Adapter-Core
+├── iam-account-management.server.ts      # stabile Fassade für User/Rollen/Profile
+├── iam-account-management/              # modulare Fachbausteine + Core
+├── iam-governance.server.ts              # stabile Fassade für Governance-Workflows
+├── iam-governance/                      # Workflow-, Compliance- und Impersonation-Bausteine
+├── iam-data-subject-rights.server.ts     # stabile Fassade für DSGVO-Betroffenenrechte
+├── iam-data-subject-rights/             # Export-, Request- und Compliance-Bausteine
 │
 ├── audit-events.server.ts                # Auth Audit Event Emitter
 ├── audit-events.types.ts                 # Audit Event Types
@@ -173,6 +182,7 @@ src/
 - [ADR-010: Verschlüsselung IAM Core Data Layer](../../docs/adr/ADR-010-verschluesselung-iam-core-data-layer.md)
 - [ADR-012: RBAC Permission-Komposition](../../docs/adr/ADR-012-permission-kompositionsmodell-rbac-v1.md)
 - [ADR-013: RBAC/ABAC-Hybridmodell](../../docs/adr/ADR-013-rbac-abac-hybridmodell.md)
+- [ADR-017: Modulare IAM-Server-Bausteine](../../docs/adr/ADR-017-modulare-iam-server-bausteine.md)
 - [IAM Authorization API Contract](../../docs/guides/iam-authorization-api-contract.md)
 - [IAM Governance-Runbook](../../docs/guides/iam-governance-runbook.md)
 - [IAM DSR-Runbook](../../docs/guides/iam-data-subject-rights-runbook.md)

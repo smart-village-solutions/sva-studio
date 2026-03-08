@@ -53,11 +53,23 @@ Das System SHALL eine zentrale Autorisierungsschnittstelle bereitstellen, die pr
 - **THEN** liefert das System eine Antwort mit `allowed` und `reason`
 - **AND** die Entscheidung ist bei identischem Kontext reproduzierbar
 
-#### Scenario: Keine internen Key-IDs in Exception-Messages
+#### Scenario: Request-Input wird schema-validiert
 
-- **WHEN** ein Verschlüsselungs- oder Entschlüsselungsfehler im Field-Encryption-Modul auftritt
-- **THEN** enthält die Exception-Message keine internen Key-IDs oder Keyring-Referenzen
-- **AND** die Key-ID wird ausschließlich im strukturierten Debug-Log ausgegeben
+- **WHEN** ein `POST /iam/authorize`-Request eingeht
+- **THEN** wird der Request-Body gegen ein Zod-Schema validiert
+- **AND** bei ungültigem Input wird ein strukturierter 400-Fehler zurückgegeben
+
+#### Scenario: Keine `any`-Casts in Auth-Infrastruktur
+
+- **WHEN** Auth-Server-Code kompiliert wird
+- **THEN** enthält kein Modul in `packages/auth/src/` einen `any`-Cast ohne dokumentierten TODO-Kommentar mit Begründung und Scope
+- **AND** Redis-Optionen werden über typisierte Interfaces konfiguriert
+
+#### Scenario: Duplizierte Validierungs-Helfer konsolidiert
+
+- **WHEN** Input-Validierung in IAM-Endpoints benötigt wird
+- **THEN** werden zentrale Utilities aus `packages/auth/src/shared/` verwendet
+- **AND** keine Dateien in `packages/auth/src/` definieren lokale Duplikate von `readString`, `isUuid`, `buildLogContext` oder `isTokenErrorLike`
 
 ### Requirement: Instanzzentriertes Scoping in RBAC v1
 
@@ -72,13 +84,32 @@ Das System SHALL `instanceId` als primären Scoping-Filter für RBAC-Entscheidun
 
 ### Requirement: Permissions-Übersicht pro aktivem Kontext
 
-Das System SHALL eine kontextbezogene Permissions-Übersicht für den aktuell angemeldeten Benutzer bereitstellen.
+Das System SHALL eine kontextbezogene Permissions-Übersicht für den aktuell angemeldeten Benutzer bereitstellen und optional einen impersonierten Zielkontext auswerten.
 
-#### Scenario: Laden der effektiven Berechtigungen
+#### Scenario: Laden der effektiven Berechtigungen (Self)
 
-- **WHEN** `GET /iam/me/permissions` im aktiven Instanzkontext aufgerufen wird
-- **THEN** werden die effektiven RBAC-Berechtigungen für diesen Kontext zurückgegeben
-- **AND** organisationsspezifische Einschränkungen werden berücksichtigt
+- **WHEN** `GET /iam/me/permissions` ohne `actingAsUserId` im aktiven Instanzkontext aufgerufen wird
+- **THEN** werden die effektiven RBAC-Berechtigungen für den aktuellen Benutzer zurückgegeben
+- **AND** die Antwort enthält ein `subject`-Objekt mit `actorUserId == effectiveUserId` und `isImpersonating=false`
+
+#### Scenario: Laden der effektiven Berechtigungen (Impersonation aktiv)
+
+- **WHEN** `GET /iam/me/permissions` mit `actingAsUserId` aufgerufen wird
+- **AND** eine aktive, gültige Impersonation-Session zwischen Actor und Target existiert
+- **THEN** werden die effektiven RBAC-Berechtigungen des Target-Subjekts zurückgegeben
+- **AND** die Antwort enthält `subject.actorUserId`, `subject.effectiveUserId` und `subject.isImpersonating=true`
+
+#### Scenario: Keine aktive Impersonation für Target
+
+- **WHEN** `GET /iam/me/permissions` mit `actingAsUserId` aufgerufen wird
+- **AND** keine aktive Impersonation-Session existiert
+- **THEN** wird die Anfrage mit Fehlercode `impersonation_not_active` abgewiesen
+
+#### Scenario: Impersonation ist abgelaufen
+
+- **WHEN** `GET /iam/me/permissions` mit `actingAsUserId` aufgerufen wird
+- **AND** die zugehörige Impersonation-Session abgelaufen ist
+- **THEN** wird die Anfrage mit Fehlercode `impersonation_expired` abgewiesen
 
 ### Requirement: RBAC-v1-Baseline-Performance
 
@@ -89,7 +120,6 @@ Das System SHALL die Baseline-Performance von `POST /iam/authorize` messen und d
 - **WHEN** die RBAC-v1-Implementierung getestet wird
 - **THEN** wird die P95-Latenz für `authorize` erhoben
 - **AND** die Ergebnisse werden als Referenz für nachfolgende Optimierungen dokumentiert
-
 
 ### Requirement: ABAC-Erweiterung für kontextbasierte Entscheidungen
 

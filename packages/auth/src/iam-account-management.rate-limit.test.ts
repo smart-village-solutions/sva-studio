@@ -1,0 +1,52 @@
+import { describe, expect, it } from 'vitest';
+
+import { RATE_WINDOW_MS, WRITE_RATE_LIMIT } from './iam-account-management/constants';
+import { consumeRateLimit } from './iam-account-management/rate-limit';
+
+describe('consumeRateLimit', () => {
+  it('reports the configured window in seconds', async () => {
+    const actorKeycloakSubject = `rate-limit-window-${Date.now()}`;
+    const input = {
+      instanceId: '11111111-1111-1111-8111-111111111111',
+      actorKeycloakSubject,
+      scope: 'write' as const,
+      requestId: 'req-rate-limit-window',
+      now: 10_000,
+    };
+
+    for (let index = 0; index < WRITE_RATE_LIMIT; index += 1) {
+      expect(consumeRateLimit(input)).toBeNull();
+    }
+
+    const response = consumeRateLimit(input);
+    expect(response?.status).toBe(429);
+    expect(response).not.toBeNull();
+
+    const payload = (await response!.json()) as {
+      error: { details?: { windowSeconds?: number } };
+    };
+    expect(payload.error.details?.windowSeconds).toBe(RATE_WINDOW_MS / 1000);
+  });
+
+  it('starts a new bucket after the configured time window', () => {
+    const actorKeycloakSubject = `rate-limit-reset-${Date.now()}`;
+    const blockedInput = {
+      instanceId: '11111111-1111-1111-8111-111111111111',
+      actorKeycloakSubject,
+      scope: 'write' as const,
+      now: 20_000,
+    };
+
+    for (let index = 0; index < WRITE_RATE_LIMIT; index += 1) {
+      expect(consumeRateLimit(blockedInput)).toBeNull();
+    }
+
+    expect(consumeRateLimit(blockedInput)?.status).toBe(429);
+    expect(
+      consumeRateLimit({
+        ...blockedInput,
+        now: blockedInput.now + RATE_WINDOW_MS + 1,
+      })
+    ).toBeNull();
+  });
+});

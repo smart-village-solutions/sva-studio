@@ -243,6 +243,33 @@ const buildUserDetailRow = (status: 'active' | 'inactive' = 'active') => ({
   permission_rows: [{ permission_key: 'content.read' }],
 });
 
+const buildBulkUserRow = (input?: {
+  id?: string;
+  keycloakSubject?: string;
+  status?: 'active' | 'inactive' | 'pending';
+  roleRows?: Array<{
+    id: string;
+    role_key: string;
+    role_name: string;
+    display_name: string | null;
+    role_level: number;
+  }>;
+}) => ({
+  id: input?.id ?? targetUserId,
+  keycloak_subject: input?.keycloakSubject ?? 'keycloak-target-2',
+  status: input?.status ?? 'active',
+  role_rows:
+    input?.roleRows ?? [
+      {
+        id: 'role-editor',
+        role_key: 'editor',
+        role_name: 'editor',
+        display_name: 'editor',
+        role_level: 10,
+      },
+    ],
+});
+
 describe('iam-account-management handlers (guards)', () => {
   beforeEach(() => {
     process.env.IAM_DATABASE_URL = 'postgres://iam-test';
@@ -705,6 +732,98 @@ describe('iam-account-management handlers (guards)', () => {
         },
         body: JSON.stringify({
           status: 'inactive',
+        }),
+      })
+    );
+    const payload = (await response.json()) as { error: { code: string } };
+
+    expect(response.status).toBe(409);
+    expect(payload.error.code).toBe('last_admin_protection');
+  });
+
+  it('rejects removing the system_admin role from the last active system admin', async () => {
+    state.queryHandler = (text, values) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+
+      if (text.includes('MAX(r.role_level)')) {
+        return { rowCount: 1, rows: [{ max_role_level: 90 }] };
+      }
+
+      if (text.includes('COUNT(DISTINCT a.id)::int AS admin_count')) {
+        return { rowCount: 1, rows: [{ admin_count: 1 }] };
+      }
+
+      if (text.includes('SELECT id, role_key, role_name, display_name, external_role_name')) {
+        const roleIds = values?.[1] as string[] | undefined;
+        if (roleIds?.includes(targetRoleId)) {
+          return {
+            rowCount: 1,
+            rows: [
+              {
+                id: targetRoleId,
+                role_key: 'editor',
+                role_name: 'editor',
+                display_name: 'Editor',
+                external_role_name: 'Editor',
+                role_level: 10,
+                is_system_role: false,
+              },
+            ],
+          };
+        }
+
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              id: 'role-system-admin',
+              role_key: 'system_admin',
+              role_name: 'system_admin',
+              display_name: 'System Admin',
+              external_role_name: 'System Admin',
+              role_level: 90,
+              is_system_role: true,
+            },
+          ],
+        };
+      }
+
+      if (text.includes('WHERE a.id = $2::uuid')) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              ...buildUserDetailRow('active'),
+              role_rows: [
+                {
+                  id: 'role-system-admin',
+                  role_key: 'system_admin',
+                  role_name: 'system_admin',
+                  display_name: 'System Admin',
+                  role_level: 90,
+                  is_system_role: true,
+                },
+              ],
+            },
+          ],
+        };
+      }
+
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await updateUserHandler(
+      new Request(`http://localhost/api/v1/iam/users/${targetUserId}`, {
+        method: 'PATCH',
+        headers: {
+          'content-type': 'application/json',
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'http://localhost',
+        },
+        body: JSON.stringify({
+          roleIds: [targetRoleId],
         }),
       })
     );
@@ -2497,11 +2616,8 @@ describe('iam-account-management additional handlers', () => {
       if (text.includes('max_role_level') && text.includes('FROM iam.accounts a')) {
         return { rowCount: 1, rows: [{ max_role_level: 90 }] };
       }
-      if (text.includes('WHERE a.id = $2::uuid')) {
-        return { rowCount: 1, rows: [buildUserDetailRow('active')] };
-      }
-      if (text.includes('SELECT EXISTS') && text.includes("r.role_key = 'system_admin'")) {
-        return { rowCount: 1, rows: [{ has_role: false }] };
+      if (text.includes('WHERE a.id = ANY($2::uuid[])')) {
+        return { rowCount: 1, rows: [buildBulkUserRow()] };
       }
       if (text.includes("UPDATE iam.accounts") && text.includes("status = 'inactive'")) {
         return { rowCount: 1, rows: [] };
@@ -2587,15 +2703,14 @@ describe('iam-account-management additional handlers', () => {
       if (text.includes('max_role_level') && text.includes('FROM iam.accounts a')) {
         return { rowCount: 1, rows: [{ max_role_level: 90 }] };
       }
-      if (text.includes('WHERE a.id = $2::uuid')) {
+      if (text.includes('WHERE a.id = ANY($2::uuid[])')) {
         return {
           rowCount: 1,
           rows: [
-            {
-              ...buildUserDetailRow('active'),
+            buildBulkUserRow({
               id: targetUserId,
-              keycloak_subject: 'keycloak-self-protect',
-            },
+              keycloakSubject: 'keycloak-self-protect',
+            }),
           ],
         };
       }

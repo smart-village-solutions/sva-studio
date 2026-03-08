@@ -95,7 +95,7 @@ Schulden auf IST-Basis.
 - Reifegrad von Governance-E2E-Tests muss im Produktiv-Rollout weiter erhöht werden
 - Risiko von Scope-Bleeding bei schnellen IAM-Iterationen ohne harte Gate-Disziplin
 - Mehrere historische IAM-Hotspots sind bewusst als tracked findings mit Refactoring-Backlog dokumentiert
-- Nach der Fassaden-Zerlegung verbleibt Restkomplexität gezielt in `iam-account-management/core.ts`, `iam-data-subject-rights/core.ts`, `iam-governance/core.ts` und `keycloak-admin-client/core.ts`
+- Nach der Fassaden-Zerlegung verbleibt Restkomplexität gezielt in `iam-account-management/users-handlers.ts`, `iam-account-management/roles-handlers.ts`, `iam-account-management/reconcile-handler.ts`, `iam-account-management/shared.ts`, `iam-data-subject-rights/core.ts`, `iam-governance/core.ts` und `keycloak-admin-client/core.ts`
 
 ### Nachverfolgung
 

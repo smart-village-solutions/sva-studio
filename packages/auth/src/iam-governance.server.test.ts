@@ -169,6 +169,156 @@ describe('governanceWorkflowHandler', () => {
     expect(payload.reasonCode).toBe('DENY_SELF_APPROVAL');
   });
 
+  it('creates a requested delegation for a future start date', async () => {
+    let insertedValues: readonly unknown[] | undefined;
+
+    state.queryHandler = (text, values) => {
+      if (text.includes('SELECT a.id') && values?.[1] === 'keycloak-sub-actor') {
+        return { rowCount: 1, rows: [{ id: 'acc-actor' }] };
+      }
+      if (text.includes('SELECT a.id') && values?.[1] === 'keycloak-sub-delegatee') {
+        return { rowCount: 1, rows: [{ id: 'acc-delegatee' }] };
+      }
+      if (text.includes('SELECT a.id') && values?.[1] === 'keycloak-sub-approver') {
+        return { rowCount: 1, rows: [{ id: 'acc-approver' }] };
+      }
+      if (text.includes('INSERT INTO iam.delegations')) {
+        insertedValues = values;
+        return { rowCount: 1, rows: [{ id: 'delegation-1' }] };
+      }
+      if (text.includes('INSERT INTO iam.activity_logs')) {
+        return { rowCount: 1, rows: [] };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await governanceWorkflowHandler(
+      new Request('http://localhost/iam/governance/workflows', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          operation: 'create_delegation',
+          instanceId: '11111111-1111-1111-8111-111111111111',
+          payload: {
+            delegateeKeycloakSubject: 'keycloak-sub-delegatee',
+            roleId: '22222222-2222-2222-8222-222222222222',
+            approverKeycloakSubject: 'keycloak-sub-approver',
+            ticketId: 'IAM-17',
+            ticketState: 'open',
+            startsAt: '2099-01-01T10:00:00.000Z',
+            endsAt: '2099-01-10T10:00:00.000Z',
+          },
+        }),
+      })
+    );
+    const payload = (await response.json()) as { status: string; workflowId?: string };
+
+    expect(response.status).toBe(200);
+    expect(payload).toEqual({
+      operation: 'create_delegation',
+      status: 'ok',
+      workflowId: 'delegation-1',
+    });
+    expect(insertedValues?.[4]).toBe('requested');
+  });
+
+  it('creates an active delegation when the start date is already effective', async () => {
+    let insertedValues: readonly unknown[] | undefined;
+
+    state.queryHandler = (text, values) => {
+      if (text.includes('SELECT a.id') && values?.[1] === 'keycloak-sub-actor') {
+        return { rowCount: 1, rows: [{ id: 'acc-actor' }] };
+      }
+      if (text.includes('SELECT a.id') && values?.[1] === 'keycloak-sub-delegatee') {
+        return { rowCount: 1, rows: [{ id: 'acc-delegatee' }] };
+      }
+      if (text.includes('SELECT a.id') && values?.[1] === 'keycloak-sub-approver') {
+        return { rowCount: 1, rows: [{ id: 'acc-approver' }] };
+      }
+      if (text.includes('INSERT INTO iam.delegations')) {
+        insertedValues = values;
+        return { rowCount: 1, rows: [{ id: 'delegation-2' }] };
+      }
+      if (text.includes('INSERT INTO iam.activity_logs')) {
+        return { rowCount: 1, rows: [] };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await governanceWorkflowHandler(
+      new Request('http://localhost/iam/governance/workflows', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          operation: 'create_delegation',
+          instanceId: '11111111-1111-1111-8111-111111111111',
+          payload: {
+            delegateeKeycloakSubject: 'keycloak-sub-delegatee',
+            roleId: '22222222-2222-2222-8222-222222222222',
+            approverKeycloakSubject: 'keycloak-sub-approver',
+            ticketId: 'IAM-18',
+            ticketState: 'open',
+            startsAt: '2025-01-01T10:00:00.000Z',
+            endsAt: '2025-01-10T10:00:00.000Z',
+          },
+        }),
+      })
+    );
+    const payload = (await response.json()) as { status: string; workflowId?: string };
+
+    expect(response.status).toBe(200);
+    expect(payload.workflowId).toBe('delegation-2');
+    expect(insertedValues?.[4]).toBe('active');
+  });
+
+  it('rejects delegation requests with invalid dates', async () => {
+    const response = await governanceWorkflowHandler(
+      new Request('http://localhost/iam/governance/workflows', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          operation: 'create_delegation',
+          instanceId: '11111111-1111-1111-8111-111111111111',
+          payload: {
+            delegateeKeycloakSubject: 'keycloak-sub-delegatee',
+            roleId: '22222222-2222-2222-8222-222222222222',
+            approverKeycloakSubject: 'keycloak-sub-approver',
+            ticketId: 'IAM-19',
+            ticketState: 'open',
+            startsAt: 'not-a-date',
+            endsAt: 'still-not-a-date',
+          },
+        }),
+      })
+    );
+    const payload = (await response.json()) as { status: string; reasonCode?: string };
+
+    expect(response.status).toBe(400);
+    expect(payload.status).toBe('error');
+    expect(payload.reasonCode).toBe('invalid_request');
+  });
+
+  it('rejects delegation revocation with an invalid delegation id', async () => {
+    const response = await governanceWorkflowHandler(
+      new Request('http://localhost/iam/governance/workflows', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          operation: 'revoke_delegation',
+          instanceId: '11111111-1111-1111-8111-111111111111',
+          payload: {
+            delegationId: 'not-a-uuid',
+          },
+        }),
+      })
+    );
+    const payload = (await response.json()) as { status: string; reasonCode?: string };
+
+    expect(response.status).toBe(400);
+    expect(payload.status).toBe('error');
+    expect(payload.reasonCode).toBe('invalid_request');
+  });
+
   it('rejects impersonation exceeding maximum duration', async () => {
     const request = new Request('http://localhost/iam/governance/workflows', {
       method: 'POST',
@@ -193,6 +343,65 @@ describe('governanceWorkflowHandler', () => {
     expect(response.status).toBe(400);
     expect(payload.status).toBe('error');
     expect(payload.reasonCode).toBe('DENY_IMPERSONATION_DURATION_EXCEEDED');
+  });
+
+  it('rejects support-admin impersonation without a dedicated security approver', async () => {
+    state.queryHandler = (text, values) => {
+      if (text.includes('SELECT a.id') && values?.[1] === 'keycloak-sub-actor') {
+        return { rowCount: 1, rows: [{ id: 'acc-actor' }] };
+      }
+      if (text.includes('SELECT a.id') && values?.[1] === 'keycloak-sub-target') {
+        return { rowCount: 1, rows: [{ id: 'acc-target' }] };
+      }
+      if (text.includes('SELECT a.id') && values?.[1] === 'keycloak-sub-approver') {
+        return { rowCount: 1, rows: [{ id: 'acc-approver' }] };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await governanceWorkflowHandler(
+      new Request('http://localhost/iam/governance/workflows', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          operation: 'start_impersonation',
+          instanceId: '11111111-1111-1111-8111-111111111111',
+          payload: {
+            targetKeycloakSubject: 'keycloak-sub-target',
+            approverKeycloakSubject: 'keycloak-sub-approver',
+            ticketId: 'IAM-20',
+            ticketState: 'open',
+            durationMinutes: 30,
+          },
+        }),
+      })
+    );
+    const payload = (await response.json()) as { status: string; reasonCode?: string };
+
+    expect(response.status).toBe(400);
+    expect(payload.status).toBe('error');
+    expect(payload.reasonCode).toBe('DENY_SELF_APPROVAL');
+  });
+
+  it('rejects ending impersonation with an invalid session id', async () => {
+    const response = await governanceWorkflowHandler(
+      new Request('http://localhost/iam/governance/workflows', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          operation: 'end_impersonation',
+          instanceId: '11111111-1111-1111-8111-111111111111',
+          payload: {
+            sessionId: 'invalid-session',
+          },
+        }),
+      })
+    );
+    const payload = (await response.json()) as { status: string; reasonCode?: string };
+
+    expect(response.status).toBe(400);
+    expect(payload.status).toBe('error');
+    expect(payload.reasonCode).toBe('invalid_request');
   });
 
   it('rejects privileged workflow operations for users without governance role', async () => {

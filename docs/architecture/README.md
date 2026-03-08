@@ -1,0 +1,40 @@
+# Architekturübersicht (arc42)
+
+Diese Übersicht ist der verpflichtende Einstiegspunkt für Architektur- und Systemdokumentation.
+Alle Architekturinformationen werden arc42-konform in den Abschnitten 1-12 gepflegt.
+
+## Arc42-Struktur
+
+| Abschnitt | Datei | Mindestinhalte | Pflege-Trigger |
+| --- | --- | --- | --- |
+| 1. Einführung und Ziele | `./01-introduction-and-goals.md` | Systemzweck, Stakeholder, Top-3 Architekturziele | Änderung von Produktzielen, Scope oder Zielgruppen |
+| 2. Randbedingungen | `./02-constraints.md` | Technische, organisatorische, regulatorische Constraints | Neue Vorgaben (Security, Compliance, Plattform, Budget) |
+| 3. Kontext und Scope | `./03-context-and-scope.md` | Systemkontext, externe Schnittstellen, fachliche Grenzen | Neue Integrationen, geänderte Verantwortungsgrenzen |
+| 4. Lösungsstrategie | `./04-solution-strategy.md` | Leitprinzipien, Architekturtreiber, strategische Entscheidungen | Neue Leitentscheidungen oder geänderte Zielarchitektur |
+| 5. Bausteinsicht | `./05-building-block-view.md` | Module/Packages, Verantwortlichkeiten, Abhängigkeiten | Neue Module, geänderte Modulgrenzen |
+| 6. Laufzeitsicht | `./06-runtime-view.md` | Wichtige Szenarien/Sequenzen, Request-Flows | Geänderte Flows, neue kritische Laufzeitszenarien |
+| 7. Verteilungssicht | `./07-deployment-view.md` | Deployment-Topologie, Umgebungen, Betriebsgrenzen | Neue Laufzeitumgebungen, Infra- oder Deployment-Änderungen |
+| 8. Querschnittliche Konzepte | `./08-cross-cutting-concepts.md` | Security, Logging, Observability, Fehlerbehandlung, i18n, A11y | Änderung cross-cutting Policies oder Patterns |
+| 9. Architekturentscheidungen | `./09-architecture-decisions.md` | Relevante ADR-Liste, Status und Verweise | Neue/aktualisierte ADRs |
+| 10. Qualitätsanforderungen | `./10-quality-requirements.md` | Qualitätsziele, Szenarien, Metriken | Neue Qualitätsziele oder geänderte Priorisierung |
+| 11. Risiken und technische Schulden | `./11-risks-and-technical-debt.md` | Architektur-Risiken, Schulden, Gegenmaßnahmen | Neue Risiken, geänderte Risikobewertung |
+| 12. Glossar | `./12-glossary.md` | Einheitliche Begriffe, Abkürzungen, Definitionen | Neue zentrale Begriffe oder uneinheitliche Terminologie |
+
+## Pflege-Regeln
+
+- Architektur- oder Systemänderungen in PRs müssen die betroffenen arc42-Abschnitte aktualisieren oder eine begründete Abweichung dokumentieren.
+- OpenSpec-Changes mit Architekturwirkung müssen betroffene arc42-Abschnitte in `proposal.md` und `tasks.md` referenzieren.
+- Architekturentscheidungen werden als ADR unter `../adr/` dokumentiert und in Abschnitt 9 verlinkt.
+- Referenzen sollen konsistent und klickbar sein (Dateipfade statt Freitext).
+- Änderungen in IAM, Rollen-Sync, ABAC/RBAC oder Data-Subject-Rights müssen die Abschnitte 04, 05, 06 und 08 explizit prüfen und die betroffenen Dateien aktualisieren.
+- Änderungen an sicherheitskritischer oder domänenkritischer Logik müssen mindestens Abschnitt 05 oder 08 fortschreiben; "keine Architekturwirkung" ist zu begründen.
+- Neue oder geänderte IAM-Patterns benötigen eine ADR unter `../adr/` und einen Nachtrag in `./09-architecture-decisions.md`.
+
+## Bestehende Architekturdokumente
+
+- Routing: `./routing-architecture.md`
+- Logging und Observability: `./logging-architecture.md`
+- Session-Analyse: `./session-management-analysis.md`
+- IAM-Service-Architektur: `./iam-service-architektur.md`
+- IAM-Datenklassifizierung: `./iam-datenklassifizierung.md`
+- ADRs: `../adr/README.md`

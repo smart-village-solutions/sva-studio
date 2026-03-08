@@ -1,0 +1,121 @@
+{
+  "version": 1,
+  "metrics": ["lines", "statements", "functions", "branches"],
+  "globalFloors": {
+    "lines": 10,
+    "statements": 10,
+    "functions": 20,
+    "branches": 20
+  },
+  "maxAllowedDropPctPoints": 0.5,
+  "exemptProjects": [
+    "data",
+    "plugin-example"
+  ],
+  "perProjectFloors": {
+    "core": {
+      "lines": 70,
+      "statements": 70,
+      "functions": 80,
+      "branches": 60
+    },
+    "auth": {
+      "lines": 40,
+      "statements": 40,
+      "functions": 50,
+      "branches": 30
+    },
+    "monitoring-client": {
+      "lines": 60,
+      "statements": 60,
+      "functions": 50,
+      "branches": 60
+    },
+    "routing": {
+      "lines": 30,
+      "statements": 30,
+      "functions": 20,
+      "branches": 50
+    },
+    "sdk": {
+      "lines": 30,
+      "statements": 30,
+      "functions": 50,
+      "branches": 30
+    },
+    "sva-studio-react": {
+      "lines": 40,
+      "statements": 40,
+      "functions": 30,
+      "branches": 30
+    }
+  },
+  "criticalProjects": {
+    "auth": {
+      "minimumFloors": {
+        "lines": 45,
+        "statements": 45,
+        "functions": 50,
+        "branches": 30
+      },
+      "hotspotFloors": [
+        {
+          "path": "packages/auth/src/iam-account-management.server.ts",
+          "reason": "Sehr große IAM-Server-Datei mit zentraler Rollen- und Keycloak-Logik",
+          "metrics": {
+            "lines": 60,
+            "functions": 70,
+            "branches": 50
+          }
+        },
+        {
+          "path": "packages/auth/src/iam-governance.server.ts",
+          "reason": "Governance- und Approval-Workflow mit hoher Sicherheitsrelevanz",
+          "metrics": {
+            "lines": 55,
+            "functions": 80,
+            "branches": 45
+          }
+        }
+      ]
+    },
+    "routing": {
+      "minimumFloors": {
+        "lines": 35,
+        "statements": 35,
+        "functions": 25,
+        "branches": 50
+      },
+      "hotspotFloors": [
+        {
+          "path": "packages/routing/src/auth.routes.server.ts",
+          "reason": "Serverseitige Routing-Grenze für Auth-Flows und Redirect-Validierung",
+          "metrics": {
+            "lines": 90,
+            "functions": 90,
+            "branches": 90
+          }
+        }
+      ]
+    },
+    "core": {
+      "minimumFloors": {
+        "lines": 70,
+        "statements": 70,
+        "functions": 80,
+        "branches": 60
+      },
+      "hotspotFloors": [
+        {
+          "path": "packages/core/src/security/field-encryption.ts",
+          "reason": "Kryptografie-naher Security-Hotspot für Feldverschlüsselung",
+          "metrics": {
+            "lines": 80,
+            "functions": 95,
+            "branches": 70
+          }
+        }
+      ]
+    }
+  }
+}

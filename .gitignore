@@ -1,0 +1,70 @@
+# macOS
+.DS_Store
+
+# Editors/IDE
+.vscode/
+.idea/
+
+# Node/JavaScript
+node_modules/
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+dist/
+build/
+coverage/
+.next/
+out/
+.turbo/
+*.tsbuildinfo
+
+# Environments
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Logs
+*.log
+log/
+
+# Caches
+.cache/
+artifacts/
+.playwright-cli/
+
+# NX
+.nx/
+.nx/installation
+.nx/cache
+.nx/workspace-data
+
+# Generated artifacts should never live in package source folders
+packages/*/src/**/*.js
+packages/*/src/**/*.d.ts
+packages/*/src/**/*.d.ts.map
+
+# TLS Certificates (local dev only)
+*.pem
+*.crt
+*.key
+*.cer
+*.p12
+*.pfx
+*.jks
+*.keystore
+dev/redis-tls/
+/backups/
+
+# Local monitoring artifacts
+artifacts/monitoring/
+
+# Generated outputs in @sva/core source tree
+packages/core/src/**/*.d.ts
+packages/core/src/**/*.d.ts.map
+packages/core/src/**/*.js

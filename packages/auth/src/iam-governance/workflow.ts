@@ -1,0 +1,1 @@
+export { governanceWorkflowHandler } from './core';

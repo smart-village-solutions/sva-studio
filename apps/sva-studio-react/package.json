@@ -1,0 +1,49 @@
+{
+  "name": "sva-studio-react",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "TSS_DEV_SERVER=false vite dev --port 3000",
+    "check:i18n": "node --import tsx ../../scripts/ci/check-i18n-keys.ts",
+    "check:account-ui-foundation": "node --import tsx ../../scripts/ci/check-account-ui-foundation.ts",
+    "build": "pnpm run check:i18n && pnpm run check:account-ui-foundation && vite build",
+    "preview": "vite preview",
+    "test": "vitest run --passWithNoTests",
+    "test:e2e": "playwright test --config playwright.config.ts"
+  },
+  "dependencies": {
+    "@sva/auth": "workspace:*",
+    "@sva/core": "workspace:*",
+    "@sva/plugin-example": "workspace:*",
+    "@sva/routing": "workspace:*",
+    "@tanstack/react-devtools": "^0.9.9",
+    "@tanstack/react-router": "^1.163.3",
+    "@tanstack/react-router-devtools": "^1.163.3",
+    "@tanstack/react-router-ssr-query": "^1.163.3",
+    "@tanstack/react-start": "^1.166.1",
+    "@tanstack/router-plugin": "^1.164.0",
+    "jiti": "^2.6.1",
+    "lucide-react": "^0.577.0",
+    "nitro": "^3.0.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "vite-tsconfig-paths": "^6.0.2"
+  },
+  "devDependencies": {
+    "@codecov/vite-plugin": "^1.9.1",
+    "@playwright/test": "^1.58.2",
+    "@tanstack/devtools-vite": "^0.5.3",
+    "@testing-library/dom": "^10.4.0",
+    "@testing-library/react": "^16.2.0",
+    "@types/node": "^25.3.3",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^5.0.4",
+    "@vitest/coverage-v8": "^4.0.18",
+    "jsdom": "^27.0.0",
+    "typescript": "^5.7.2",
+    "vite": "^7.1.7",
+    "vitest": "^4.0.18",
+    "web-vitals": "^5.1.0"
+  }
+}

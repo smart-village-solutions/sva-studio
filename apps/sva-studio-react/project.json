@@ -1,0 +1,165 @@
+{
+  "name": "sva-studio-react",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/sva-studio-react/src",
+  "projectType": "application",
+  "tags": [
+    "scope:app",
+    "type:app"
+  ],
+  "targets": {
+    "check:i18n": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": [
+        "default",
+        "{workspaceRoot}/scripts/ci/check-i18n-keys.ts"
+      ],
+      "outputs": [],
+      "options": {
+        "command": "pnpm --filter sva-studio-react run check:i18n"
+      }
+    },
+    "check:account-ui-foundation": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": [
+        "default",
+        "{workspaceRoot}/scripts/ci/check-account-ui-foundation.ts"
+      ],
+      "outputs": [],
+      "options": {
+        "command": "pnpm --filter sva-studio-react run check:account-ui-foundation"
+      }
+    },
+    "serve": {
+      "executor": "@nx/vite:dev-server",
+      "continuous": true,
+      "inputs": [
+        "default",
+        "^production",
+        "frontendTooling",
+        "frontendEnvServe"
+      ],
+      "outputs": [],
+      "options": {
+        "buildTarget": "sva-studio-react:build",
+        "port": 3000
+      }
+    },
+    "build": {
+      "executor": "@nx/vite:build",
+      "cache": true,
+      "dependsOn": [
+        "check:i18n",
+        "check:account-ui-foundation"
+      ],
+      "inputs": [
+        "production",
+        "^production",
+        "frontendTooling",
+        "frontendEnvBuild"
+      ],
+      "outputs": [
+        "{options.outputPath}"
+      ],
+      "options": {
+        "configFile": "apps/sva-studio-react/vite.config.ts",
+        "outputPath": "apps/sva-studio-react/dist",
+        "skipTypeCheck": true
+      }
+    },
+    "preview": {
+      "executor": "@nx/vite:preview-server",
+      "continuous": true,
+      "outputs": [],
+      "options": {
+        "buildTarget": "sva-studio-react:build",
+        "port": 4173
+      }
+    },
+    "test:unit": {
+      "executor": "@nx/vitest:test",
+      "cache": true,
+      "inputs": [
+        "default",
+        "^production",
+        "testing",
+        "frontendTooling"
+      ],
+      "outputs": [],
+      "options": {
+        "configFile": "apps/sva-studio-react/vitest.config.ts"
+      }
+    },
+    "test:coverage": {
+      "executor": "@nx/vitest:test",
+      "cache": true,
+      "inputs": [
+        "default",
+        "^production",
+        "testing",
+        "frontendTooling"
+      ],
+      "outputs": [
+        "{projectRoot}/coverage"
+      ],
+      "options": {
+        "configFile": "apps/sva-studio-react/vitest.config.ts",
+        "coverage": {
+          "enabled": true
+        }
+      }
+    },
+    "test:integration": {
+      "executor": "nx:run-commands",
+      "outputs": [],
+      "options": {
+        "command": "node -e \"console.log('no integration tests configured for sva-studio-react')\""
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "cache": true,
+      "inputs": [
+        "default",
+        "^production",
+        "frontendTooling"
+      ],
+      "outputs": [],
+      "options": {
+        "lintFilePatterns": [
+          "apps/sva-studio-react/src/**/*.{ts,tsx,js,jsx}",
+          "apps/sva-studio-react/e2e/**/*.{ts,tsx,js,jsx}"
+        ]
+      }
+    },
+    "test:e2e": {
+      "executor": "@nx/playwright:playwright",
+      "cache": true,
+      "dependsOn": [
+        {
+          "projects": [
+            "core"
+          ],
+          "target": "build"
+        }
+      ],
+      "inputs": [
+        "default",
+        "^production",
+        "frontendTooling",
+        "frontendEnvE2E",
+        "frontendEnvServe"
+      ],
+      "outputs": [
+        "{projectRoot}/playwright-report",
+        "{projectRoot}/test-results"
+      ],
+      "options": {
+        "config": "apps/sva-studio-react/playwright.config.ts",
+        "skipInstall": true
+      }
+    }
+  }
+}

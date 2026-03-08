@@ -89,7 +89,7 @@
       "hotspotFloors": [
         {
           "path": "packages/routing/src/auth.routes.server.ts",
-          "reason": "Serverseitige Routing-Grenze fuer Auth-Flows und Redirect-Validierung",
+          "reason": "Serverseitige Routing-Grenze für Auth-Flows und Redirect-Validierung",
           "metrics": {
             "lines": 90,
             "functions": 90,
@@ -108,7 +108,7 @@
       "hotspotFloors": [
         {
           "path": "packages/core/src/security/field-encryption.ts",
-          "reason": "Kryptografie-naher Security-Hotspot fuer Feldverschluesselung",
+          "reason": "Kryptografie-naher Security-Hotspot für Feldverschlüsselung",
           "metrics": {
             "lines": 80,
             "functions": 95,

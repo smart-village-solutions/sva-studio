@@ -141,10 +141,17 @@ function isHotspotCoverageFloors(input: unknown): input is HotspotCoverageFloors
   }
 
   const candidate = input as Record<string, unknown>;
-  return ['lines', 'functions', 'branches'].every((metric) => {
+  const metrics = ['lines', 'functions', 'branches'] as const;
+  const allTypesValid = metrics.every((metric) => {
     const value = candidate[metric];
     return value === undefined || typeof value === 'number';
   });
+
+  if (!allTypesValid) {
+    return false;
+  }
+
+  return metrics.some((metric) => typeof candidate[metric] === 'number');
 }
 
 export function assertCoveragePolicy(policy: unknown): asserts policy is CoveragePolicy {

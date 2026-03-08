@@ -116,11 +116,9 @@ Das System SHALL Organisationsdaten in einem für Admin-Views geeigneten Read-Mo
       "contentAuthorPolicy": "org_only",
       "isActive": true,
       "depth": 0,
-      "hierarchyPath": [
-        "9d44d4f2-8c78-4d44-9f1d-6f6fe44d1001"
-      ],
+      "hierarchyPath": [],
       "childCount": 2,
-      "memberCount": 4
+      "membershipCount": 4
     },
     {
       "organizationId": "9d44d4f2-8c78-4d44-9f1d-6f6fe44d1002",
@@ -136,7 +134,7 @@ Das System SHALL Organisationsdaten in einem für Admin-Views geeigneten Read-Mo
         "9d44d4f2-8c78-4d44-9f1d-6f6fe44d1002"
       ],
       "childCount": 1,
-      "memberCount": 3
+      "membershipCount": 3
     }
   ]
 }

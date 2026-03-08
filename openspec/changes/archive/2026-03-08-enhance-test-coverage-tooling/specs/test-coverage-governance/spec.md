@@ -1,4 +1,4 @@
-## MODIFIED Requirements
+## ADDED Requirements
 
 ### Requirement: Performante Coverage-Ausführung via Nx Cache
 Das System SHALL Nx Caching für Coverage-Targets nutzen, um redundante Test-Runs zu vermeiden und CI-Performance zu optimieren.

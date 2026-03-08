@@ -9,7 +9,7 @@ import type {
   IamUserListItem,
   IamUserRoleAssignment,
 } from '@sva/core';
-import { createSdkLogger, getWorkspaceContext, redactObject, withRequestContext } from '@sva/sdk/server';
+import { createSdkLogger, getWorkspaceContext, withRequestContext } from '@sva/sdk/server';
 import { metrics } from '@opentelemetry/api';
 
 import type { IdentityProviderPort } from '../identity-provider-port';
@@ -43,6 +43,16 @@ import { protectField, revealField } from './encryption';
 import { consumeRateLimit } from './rate-limit';
 import { validateCsrf } from './csrf';
 import {
+  buildRoleSyncFailure,
+  getRoleDisplayName,
+  getRoleExternalName,
+  mapRoleListItem,
+  mapRoleSyncErrorCode,
+  sanitizeRoleAuditDetails,
+  sanitizeRoleErrorMessage,
+} from './role-audit';
+import { maskEmail, mapRoles, mapUserRowToListItem, resolveUserDisplayName } from './user-mapping';
+import {
   bulkDeactivateSchema,
   createRoleSchema,
   createUserSchema,
@@ -60,7 +70,6 @@ import type {
   ManagedRoleRow,
   RateScope,
   ResolveActorOptions,
-  RoleSyncErrorCode,
   UserStatus,
 } from './types';
 import { USER_STATUS } from './types';
@@ -95,20 +104,6 @@ let identityProviderCache:
     }
   | null
   | undefined;
-
-const maskEmail = (value: string | undefined): string | undefined => {
-  if (!value) {
-    return undefined;
-  }
-  const [localPart, domain] = value.split('@');
-  if (!localPart || !domain) {
-    return '***';
-  }
-  if (localPart.length <= 2) {
-    return `***@${domain}`;
-  }
-  return `${localPart.slice(0, 2)}***@${domain}`;
-};
 
 const resolveIdentityProvider = () => {
   if (identityProviderCache !== undefined) {
@@ -155,167 +150,8 @@ const trackKeycloakCall = async <T>(operation: string, execute: () => Promise<T>
   }
 };
 
-const getRoleDisplayName = (role: Pick<IamRoleRow, 'display_name' | 'role_name'>): string =>
-  readString(role.display_name) ?? role.role_name;
-
-const getRoleExternalName = (role: Pick<IamRoleRow, 'external_role_name' | 'role_key'>): string =>
-  readString(role.external_role_name) ?? role.role_key;
-
-const ROLE_AUDIT_STRING_REDACTIONS: ReadonlyArray<readonly [RegExp, string]> = [
-  [/(bearer\s+)[A-Za-z0-9._-]+/gi, '$1[REDACTED]'],
-  [/((?:api[_-]?key|token|secret|password|session|cookie|csrf)[^=:\s]{0,20}[=:]\s*)([^,\s]+)/gi, '$1[REDACTED]'],
-  [/((?:client[_-]?secret)[^=:\s]{0,20}[=:]\s*)([^,\s]+)/gi, '$1[REDACTED]'],
-];
-const ROLE_AUDIT_SENSITIVE_KEY_PATTERN =
-  /(?:^|[_-])(token|secret|password|authorization|cookie|session|csrf)(?:$|[_-])|^(?:x-api-key|api[_-]?key)$/i;
-
-const isRoleAuditSensitiveKey = (key: string): boolean => ROLE_AUDIT_SENSITIVE_KEY_PATTERN.test(key);
-
-const sanitizeRoleAuditString = (value: string): string => {
-  const redacted = redactObject({ value }).value;
-  let next = typeof redacted === 'string' ? redacted : value;
-  for (const [pattern, replacement] of ROLE_AUDIT_STRING_REDACTIONS) {
-    next = next.replace(pattern, replacement);
-  }
-  return next;
-};
-
-const sanitizeRoleAuditValue = (value: unknown): unknown => {
-  if (typeof value === 'string') {
-    return sanitizeRoleAuditString(value);
-  }
-  if (Array.isArray(value)) {
-    return value.map((entry) => sanitizeRoleAuditValue(entry));
-  }
-  if (value && typeof value === 'object') {
-    const redactedObject = redactObject(value as Record<string, unknown>);
-    return Object.entries(redactedObject).reduce<Record<string, unknown>>((acc, [key, entry]) => {
-      acc[key] = sanitizeRoleAuditValue(isRoleAuditSensitiveKey(key) ? '[REDACTED]' : entry);
-      return acc;
-    }, {});
-  }
-  return value;
-};
-
-export const sanitizeRoleAuditDetails = (
-  details: Readonly<Record<string, unknown>> | undefined
-): Record<string, unknown> | undefined => {
-  if (!details) {
-    return undefined;
-  }
-  return Object.entries(details).reduce<Record<string, unknown>>((acc, [key, value]) => {
-    const redacted = isRoleAuditSensitiveKey(key) ? '[REDACTED]' : redactObject({ [key]: value })[key];
-    acc[key] = sanitizeRoleAuditValue(redacted);
-    return acc;
-  }, {});
-};
-
-export const sanitizeRoleErrorMessage = (error: unknown): string =>
-  sanitizeRoleAuditString(error instanceof Error ? error.message : String(error));
-
-const mapRoleSyncErrorCode = (error: unknown): RoleSyncErrorCode => {
-  if (error instanceof KeycloakAdminUnavailableError) {
-    return 'IDP_UNAVAILABLE';
-  }
-  if (error instanceof KeycloakAdminRequestError) {
-    if (error.code === 'connect_timeout' || error.code === 'read_timeout') {
-      return 'IDP_TIMEOUT';
-    }
-    if (error.statusCode === 403) {
-      return 'IDP_FORBIDDEN';
-    }
-    if (error.statusCode === 404) {
-      return 'IDP_NOT_FOUND';
-    }
-    if (error.statusCode === 409) {
-      return 'IDP_CONFLICT';
-    }
-    if (error.statusCode >= 500 || error.statusCode === 429) {
-      return 'IDP_UNAVAILABLE';
-    }
-  }
-  return 'IDP_UNKNOWN';
-};
-
-const mapRoleListItem = (row: {
-  id: string;
-  role_key: string;
-  role_name: string;
-  display_name: string | null;
-  external_role_name: string | null;
-  managed_by: ManagedBy;
-  description: string | null;
-  is_system_role: boolean;
-  role_level: number;
-  member_count: number;
-  sync_state: IamRoleSyncState;
-  last_synced_at: string | null;
-  last_error_code: string | null;
-  permission_rows: Array<{ id: string; permission_key: string; description: string | null }> | null;
-}): IamRoleListItem => ({
-  id: row.id,
-  roleKey: row.role_key,
-  roleName: row.display_name ?? row.role_name,
-  externalRoleName: row.external_role_name ?? row.role_key,
-  managedBy: row.managed_by,
-  description: row.description ?? undefined,
-  isSystemRole: row.is_system_role,
-  roleLevel: row.role_level,
-  memberCount: row.member_count,
-  syncState: row.sync_state,
-  lastSyncedAt: row.last_synced_at ?? undefined,
-  syncError: row.last_error_code ? { code: row.last_error_code } : undefined,
-  permissions:
-    row.permission_rows?.map((permission) => ({
-      id: permission.id,
-      permissionKey: permission.permission_key,
-      description: permission.description ?? undefined,
-    })) ?? [],
-});
-
-const buildRoleSyncFailure = (
-  input: {
-    error: unknown;
-    requestId?: string;
-    fallbackMessage: string;
-    details?: Readonly<Record<string, unknown>>;
-  } & (
-    | {
-        roleId?: undefined;
-      }
-    | {
-        roleId: string;
-      }
-  )
-): Response => {
-  const syncErrorCode = mapRoleSyncErrorCode(input.error);
-  const details = {
-    syncState: 'failed',
-    syncError: { code: syncErrorCode },
-    ...input.details,
-  } satisfies Readonly<Record<string, unknown>>;
-
-  if (syncErrorCode === 'IDP_CONFLICT') {
-    return createApiError(409, 'conflict', input.fallbackMessage, input.requestId, details);
-  }
-
-  if (syncErrorCode === 'IDP_FORBIDDEN') {
-    return createApiError(
-      503,
-      'keycloak_unavailable',
-      'Keycloak-Service-Account hat keine Berechtigung zum Verwalten von Realm-Rollen. Prüfe die realm-management-Rolle manage-realm.',
-      input.requestId,
-      details
-    );
-  }
-
-  if (syncErrorCode === 'IDP_UNAVAILABLE' || syncErrorCode === 'IDP_TIMEOUT') {
-    return createApiError(503, 'keycloak_unavailable', input.fallbackMessage, input.requestId, details);
-  }
-
-  return createApiError(500, 'internal_error', input.fallbackMessage, input.requestId, details);
-};
-
+export { sanitizeRoleAuditDetails, sanitizeRoleErrorMessage } from './role-audit';
+export { resolveUserDisplayName } from './user-mapping';
 export { isTrustedRequestOrigin } from './csrf';
 
 const withInstanceScopedDb = async <T>(instanceId: string, work: (client: QueryClient) => Promise<T>): Promise<T> =>
@@ -770,71 +606,6 @@ const resolveActorInfo = async (
       traceId: requestContext.traceId,
       actorAccountId,
     },
-  };
-};
-
-const mapRoles = (roles: readonly IamRoleRow[]): readonly IamUserRoleAssignment[] =>
-  roles.map((role) => ({
-    roleId: role.id,
-    roleKey: role.role_key,
-    roleName: getRoleDisplayName(role),
-    roleLevel: role.role_level,
-  }));
-
-export const resolveUserDisplayName = (input: {
-  decryptedDisplayName?: string | null;
-  firstName?: string | null;
-  lastName?: string | null;
-  keycloakSubject: string;
-}): string => {
-  const fullName = [input.firstName, input.lastName]
-    .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
-    .join(' ')
-    .trim();
-
-  if (input.decryptedDisplayName && input.decryptedDisplayName.trim().length > 0) {
-    return input.decryptedDisplayName;
-  }
-
-  return fullName || input.keycloakSubject;
-};
-
-const mapUserRowToListItem = (row: {
-  id: string;
-  keycloak_subject: string;
-  display_name_ciphertext: string | null;
-  first_name_ciphertext?: string | null;
-  last_name_ciphertext?: string | null;
-  email_ciphertext: string | null;
-  position: string | null;
-  department: string | null;
-  status: UserStatus;
-  last_login_at: string | null;
-  roles: readonly IamRoleRow[];
-}): IamUserListItem => {
-  const decryptedDisplayName = revealField(
-    row.display_name_ciphertext,
-    `iam.accounts.display_name:${row.keycloak_subject}`
-  );
-  const firstName = revealField(row.first_name_ciphertext, `iam.accounts.first_name:${row.keycloak_subject}`);
-  const lastName = revealField(row.last_name_ciphertext, `iam.accounts.last_name:${row.keycloak_subject}`);
-  const displayName = resolveUserDisplayName({
-    decryptedDisplayName,
-    firstName,
-    lastName,
-    keycloakSubject: row.keycloak_subject,
-  });
-  const email = revealField(row.email_ciphertext, `iam.accounts.email:${row.keycloak_subject}`);
-  return {
-    id: row.id,
-    keycloakSubject: row.keycloak_subject,
-    displayName,
-    email,
-    status: row.status,
-    position: row.position ?? undefined,
-    department: row.department ?? undefined,
-    lastLoginAt: row.last_login_at ?? undefined,
-    roles: mapRoles(row.roles),
   };
 };
 

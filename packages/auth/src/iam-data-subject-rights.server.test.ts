@@ -276,6 +276,63 @@ describe('iam data subject rights handlers', () => {
     expect(body).toContain('account.keycloakSubject,keycloak-sub-1');
   });
 
+  it('exports xml format with escaped payload values', async () => {
+    state.queryHandler = (text) => {
+      if (text.includes('FROM iam.accounts a')) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              id: 'acc-1',
+              keycloak_subject: 'keycloak-sub-1',
+              email_ciphertext: 'enc:v1:k1:iv:tag:cipher',
+              display_name_ciphertext: 'enc:v1:k1:iv:tag:cipher2',
+              is_blocked: false,
+              soft_deleted_at: null,
+              delete_after: null,
+              permanently_deleted_at: null,
+              processing_restricted_at: null,
+              processing_restriction_reason: null,
+              non_essential_processing_opt_out_at: null,
+              created_at: '2026-02-28T10:00:00.000Z',
+              updated_at: '2026-02-28T10:00:00.000Z',
+            },
+          ],
+        };
+      }
+      if (text.includes('FROM iam.account_organizations')) {
+        return {
+          rowCount: 1,
+          rows: [{ id: 'org-1', organization_key: 'org-main', display_name: 'Main & Org' }],
+        };
+      }
+      if (text.includes('FROM iam.account_roles')) {
+        return {
+          rowCount: 1,
+          rows: [{ id: 'role-1', role_name: 'editor', description: 'Editor <role>' }],
+        };
+      }
+      if (text.includes('FROM iam.legal_holds')) {
+        return { rowCount: 0, rows: [] };
+      }
+      if (text.includes('FROM iam.data_subject_requests')) {
+        return { rowCount: 0, rows: [] };
+      }
+      if (text.includes('INSERT INTO iam.data_subject_requests')) {
+        return { rowCount: 1, rows: [{ id: 'req-export-xml' }] };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await dataExportHandler(
+      new Request('http://localhost/iam/me/data-export?format=xml', { method: 'GET' })
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-type')).toBe('application/xml; charset=utf-8');
+    expect(await response.text()).toContain('<displayName>decrypted-value</displayName>');
+  });
+
   it('blocks deletion request when legal hold is active', async () => {
     state.queryHandler = (text) => {
       if (text.includes('FROM iam.accounts a')) {
@@ -455,6 +512,145 @@ describe('iam data subject rights handlers', () => {
     expect(payload.finalizedDeletions).toBe(0);
   });
 
+  it('processes queued export jobs during maintenance and persists csv/xml payloads', async () => {
+    state.user = {
+      ...state.user,
+      roles: ['iam_admin'],
+    };
+
+    let completedUpdateValues: readonly unknown[] | undefined;
+    state.queryHandler = (text, values) => {
+      if (text.includes('FROM iam.data_subject_export_jobs') && text.includes("status = 'queued'")) {
+        return {
+          rowCount: 1,
+          rows: [{ id: 'job-1', target_account_id: 'acc-1', format: 'json' }],
+        };
+      }
+      if (text.includes('FROM iam.accounts a') && text.includes('WHERE a.id = $2::uuid')) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              id: 'acc-1',
+              keycloak_subject: 'keycloak-sub-1',
+              email_ciphertext: 'enc:v1:k1:iv:tag:cipher',
+              display_name_ciphertext: 'enc:v1:k1:iv:tag:cipher2',
+              is_blocked: false,
+              soft_deleted_at: null,
+              delete_after: null,
+              permanently_deleted_at: null,
+              processing_restricted_at: null,
+              processing_restriction_reason: null,
+              non_essential_processing_opt_out_at: null,
+              created_at: '2026-02-28T10:00:00.000Z',
+              updated_at: '2026-02-28T10:00:00.000Z',
+            },
+          ],
+        };
+      }
+      if (text.includes('FROM iam.account_organizations')) {
+        return { rowCount: 0, rows: [] };
+      }
+      if (text.includes('FROM iam.account_roles')) {
+        return { rowCount: 0, rows: [] };
+      }
+      if (text.includes('FROM iam.legal_holds')) {
+        return { rowCount: 0, rows: [] };
+      }
+      if (text.includes('FROM iam.data_subject_requests') && text.includes('target_account_id = $2::uuid')) {
+        return { rowCount: 0, rows: [] };
+      }
+      if (text.includes("SET status = 'processing'")) {
+        return { rowCount: 1, rows: [] };
+      }
+      if (text.includes("SET\n  status = 'completed'")) {
+        completedUpdateValues = values;
+        return { rowCount: 1, rows: [] };
+      }
+      if (text.includes('FROM iam.data_subject_requests') && text.includes("request_type = 'deletion'")) {
+        return { rowCount: 0, rows: [] };
+      }
+      if (text.includes('FROM iam.accounts') && text.includes('delete_after <= NOW()')) {
+        return { rowCount: 0, rows: [] };
+      }
+      if (text.includes('FROM iam.data_subject_recipient_notifications')) {
+        return { rowCount: 0, rows: [] };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await dataSubjectMaintenanceHandler(
+      new Request('http://localhost/iam/admin/data-subject-rights/maintenance', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          instanceId: '11111111-1111-1111-8111-111111111111',
+          dryRun: false,
+        }),
+      })
+    );
+    const payload = (await response.json()) as { queuedExports: number };
+
+    expect(response.status).toBe(200);
+    expect(payload.queuedExports).toBe(1);
+    expect(typeof completedUpdateValues?.[2]).toBe('string');
+    expect(String(completedUpdateValues?.[2])).toContain('field,value');
+    expect(String(completedUpdateValues?.[3])).toContain('<?xml version="1.0" encoding="UTF-8"?>');
+  });
+
+  it('marks queued export jobs as failed when the target account cannot be resolved', async () => {
+    state.user = {
+      ...state.user,
+      roles: ['iam_admin'],
+    };
+
+    let failedUpdateValues: readonly unknown[] | undefined;
+    state.queryHandler = (text, values) => {
+      if (text.includes('FROM iam.data_subject_export_jobs') && text.includes("status = 'queued'")) {
+        return {
+          rowCount: 1,
+          rows: [{ id: 'job-2', target_account_id: 'acc-missing', format: 'json' }],
+        };
+      }
+      if (text.includes('FROM iam.accounts a') && text.includes('WHERE a.id = $2::uuid')) {
+        return { rowCount: 0, rows: [] };
+      }
+      if (text.includes("SET status = 'processing'")) {
+        return { rowCount: 1, rows: [] };
+      }
+      if (text.includes("SET\n  status = 'failed'")) {
+        failedUpdateValues = values;
+        return { rowCount: 1, rows: [] };
+      }
+      if (text.includes('FROM iam.data_subject_requests') && text.includes("request_type = 'deletion'")) {
+        return { rowCount: 0, rows: [] };
+      }
+      if (text.includes('FROM iam.accounts') && text.includes('delete_after <= NOW()')) {
+        return { rowCount: 0, rows: [] };
+      }
+      if (text.includes('FROM iam.data_subject_recipient_notifications')) {
+        return { rowCount: 0, rows: [] };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await dataSubjectMaintenanceHandler(
+      new Request('http://localhost/iam/admin/data-subject-rights/maintenance', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          instanceId: '11111111-1111-1111-8111-111111111111',
+          dryRun: false,
+        }),
+      })
+    );
+    const payload = (await response.json()) as { queuedExports: number };
+
+    expect(response.status).toBe(200);
+    expect(payload.queuedExports).toBe(1);
+    expect(failedUpdateValues?.[1]).toBe('target_account_not_found');
+  });
+
   it('finalizes eligible deletions and pseudonymizes audit log references', async () => {
     state.user = {
       ...state.user,
@@ -524,6 +720,23 @@ describe('iam data subject rights handlers', () => {
 
     expect(response.status).toBe(403);
     expect(await response.json()).toEqual({ error: 'forbidden' });
+  });
+
+  it('rejects admin export requests without a target subject', async () => {
+    state.user = {
+      ...state.user,
+      roles: ['iam_admin'],
+    };
+
+    const response = await adminDataExportHandler(
+      new Request(
+        'http://localhost/iam/admin/data-subject-rights/export?instanceId=11111111-1111-1111-8111-111111111111&format=json',
+        { method: 'GET' }
+      )
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: 'missing_target_keycloak_subject' });
   });
 
   it('rejects admin export status endpoint for non-admin role', async () => {
@@ -817,6 +1030,74 @@ describe('iam data subject rights handlers', () => {
     expect(await response.json()).toEqual({ error: 'encryption_failed' });
   });
 
+  it('applies profile corrections and records the completed rectification request', async () => {
+    state.queryHandler = (text, values) => {
+      if (text.includes('FROM iam.accounts a')) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              id: 'acc-1',
+              keycloak_subject: 'keycloak-sub-1',
+              email_ciphertext: 'enc:old-email',
+              display_name_ciphertext: 'enc:old-name',
+              is_blocked: false,
+              soft_deleted_at: null,
+              delete_after: null,
+              permanently_deleted_at: null,
+              processing_restricted_at: null,
+              processing_restriction_reason: null,
+              non_essential_processing_opt_out_at: null,
+              created_at: '2026-02-28T10:00:00.000Z',
+              updated_at: '2026-02-28T10:00:00.000Z',
+            },
+          ],
+        };
+      }
+      if (text.includes('UPDATE iam.accounts')) {
+        return { rowCount: 1, rows: [] };
+      }
+      if (text.includes('INSERT INTO iam.account_profile_corrections')) {
+        return { rowCount: 1, rows: [] };
+      }
+      if (text.includes('INSERT INTO iam.data_subject_requests')) {
+        return { rowCount: 1, rows: [{ id: 'req-rectification-1' }] };
+      }
+      if (text.includes('INSERT INTO iam.data_subject_recipient_notifications')) {
+        return { rowCount: 1, rows: [] };
+      }
+      if (text.includes('INSERT INTO iam.data_subject_request_events')) {
+        return { rowCount: 1, rows: [] };
+      }
+      if (text.includes('INSERT INTO iam.activity_logs')) {
+        return { rowCount: 1, rows: [] };
+      }
+      if (text.includes('SELECT 1 FROM iam.account_organizations')) {
+        return { rowCount: 0, rows: [] };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await profileCorrectionHandler(
+      new Request('http://localhost/iam/me/profile-correction', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          instanceId: '11111111-1111-1111-8111-111111111111',
+          email: 'updated@example.com',
+          displayName: 'Updated User',
+          reason: 'correction',
+        }),
+      })
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      status: 'ok',
+      requestId: 'req-rectification-1',
+    });
+  });
+
   it('returns target_account_not_found when applying a legal hold for an unknown subject', async () => {
     state.user = {
       ...state.user,
@@ -932,6 +1213,45 @@ describe('iam data subject rights handlers', () => {
     expect(response.status).toBe(200);
     expect(response.headers.get('content-type')).toBe('application/json');
     expect(await response.text()).toContain('"id": "acc-2"');
+  });
+
+  it('downloads completed admin export jobs as xml', async () => {
+    state.user = {
+      ...state.user,
+      roles: ['iam_admin'],
+    };
+    state.queryHandler = (text) => {
+      if (text.includes('FROM iam.data_subject_export_jobs')) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa',
+              format: 'xml',
+              status: 'completed',
+              error_message: null,
+              payload_json: null,
+              payload_csv: null,
+              payload_xml: '<dataExport><account><id>acc-2</id></account></dataExport>',
+              created_at: '2026-03-01T10:00:00.000Z',
+              completed_at: '2026-03-01T10:05:00.000Z',
+            },
+          ],
+        };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await adminDataExportStatusHandler(
+      new Request(
+        'http://localhost/iam/admin/data-subject-rights/export/status?jobId=aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa&download=xml',
+        { method: 'GET' }
+      )
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-type')).toBe('application/xml; charset=utf-8');
+    expect(await response.text()).toContain('<id>acc-2</id>');
   });
 
   it('returns export_job_not_found for unknown admin export jobs', async () => {

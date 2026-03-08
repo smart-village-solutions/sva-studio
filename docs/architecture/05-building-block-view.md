@@ -41,6 +41,8 @@ Abhängigkeiten des aktuellen Systems.
 
 - Identity und OIDC-Flow:
   - `packages/auth` (`routes.server.ts`, `oidc.server.ts`, `session.server.ts`)
+- Account- und Rollenmanagement inkl. IdP-Synchronisation:
+  - `packages/auth` (`iam-account-management.server.ts`, `identity-provider-port.ts`, `keycloak-admin-client.ts`)
 - Autorisierung (RBAC/ABAC) und Laufzeitentscheidungen:
   - `packages/auth` (`iam-authorization.server.ts`, `iam-policy-evaluator.server.ts`)
 - Organisations- und Mandantenkontext (`instanceId`) inkl. RLS-nahe Datenmodelle:
@@ -49,6 +51,13 @@ Abhängigkeiten des aktuellen Systems.
   - `packages/auth` (`audit-db-sink.server.ts`) + `packages/sdk` (`createSdkLogger`)
 - Governance und DSGVO-Betroffenenrechte:
   - `packages/auth` (`iam-governance.server.ts`, `iam-data-subject-rights.server.ts`)
+
+### Verantwortungsgrenzen im IAM-Pfad
+
+- Keycloak ist führend für Authentifizierung, Token-Claims und IdP-nahe Admin-Operationen.
+- Postgres ist führend für Studio-verwaltete IAM-Fachdaten wie Accounts, Rollen, Permissions und Auditdaten.
+- Redis hält lediglich Permission-Snapshots zur Beschleunigung des Authorize-Pfads.
+- Fachmodule konsumieren zentrale IAM-Entscheidungen und duplizieren keine eigene Berechtigungsauflösung gegen IAM-Tabellen.
 
 ### Abhängigkeiten (vereinfacht)
 
@@ -87,6 +96,7 @@ Referenzen:
 - `packages/auth/src/audit-db-sink.server.ts`
 - `packages/sdk/src/server.ts`
 - `packages/data/migrations/up/0001_iam_core.sql`
+- `docs/architecture/iam-service-architektur.md`
 - `apps/sva-studio-react/src/components/Header.tsx`
 - `apps/sva-studio-react/src/components/Sidebar.tsx`
 - `apps/sva-studio-react/src/components/AppShell.tsx`

@@ -36,9 +36,12 @@ gleichzeitig beeinflussen.
 ### IAM Multi-Tenancy, Caching und Audit-Logging
 
 - Mandantenisolation basiert auf kanonischem Scope `instanceId` (inkl. Mapping zu `workspace_id` in Logs)
+- Keycloak ist führend für Authentifizierung; Postgres ist führend für Studio-verwaltete IAM-Fachdaten
 - Autorisierungspfade erzwingen `instanceId`-Filterung vor Rollen-/Policy-Evaluation
+- Die zentrale Permission Engine arbeitet fail-closed bei fehlendem Kontext, unvollständigen Pflichtattributen oder inkonsistenten Laufzeitdaten
 - RLS-Policies und service-seitige Guards verhindern organisationsfremde Datenzugriffe
 - Permission-Snapshot-Cache ist instanz- und kontextgebunden; Invalidation erfolgt event-first (Postgres `NOTIFY`) mit TTL-Fallback
+- Permission-Snapshots sind reine Laufzeitoptimierung und keine fachliche Source of Truth
 - Audit-Logging für IAM-Ereignisse folgt Dual-Write (`iam.activity_logs` + OTEL via SDK Logger)
 - Audit-Daten enthalten korrelierbare IDs (`request_id`, `trace_id`) und pseudonymisierte Actor-Referenzen
 - Studio-verwaltete Rollen werden über `managed_by = 'studio'` und `instance_id` gegen fremdverwaltete Keycloak-Rollen abgegrenzt
@@ -97,6 +100,10 @@ gleichzeitig beeinflussen.
 - Proposal-Reviews werden über einen dedizierten Proposal-Orchestrator konsolidiert
 - PR- und Code-Reviews werden über einen separaten PR-Orchestrator konsolidiert
 - Spezialisierte Review-Agents decken ergänzend Testqualität, i18n/Content, User Journey & Usability und Performance ab
+- Zentrale und kritische Module werden zusätzlich über ein eigenes Komplexitäts-Gate mit Ticketpflicht überwacht
+- Das Modulregister und die Schwellwerte liegen versioniert unter `tooling/quality/complexity-policy.json`
+- Bekannte Überschreitungen bleiben nur dann zulässig, wenn sie in `trackedFindings` mit Refactoring-Ticket hinterlegt sind
+- Kritische Coverage-Hotspots werden in `tooling/testing/coverage-policy.json` als `hotspotFloors` geführt
 - Normative Accessibility und heuristische Nutzersicht sind bewusst getrennt:
   - `ux-accessibility.agent.md` für WCAG/BITV, Fokus, Tastatur und Screenreader
   - `user-journey-usability.agent.md` für Friktion, Verständlichkeit und Aufgabenbewältigung
@@ -121,7 +128,9 @@ Referenzen:
 - `packages/sdk/src/logger/index.server.ts`
 - `packages/monitoring-client/src/otel.server.ts`
 - `docs/adr/ADR-014-postgres-notify-cache-invalidierung.md`
+- `docs/architecture/iam-service-architektur.md`
 - `docs/architecture/iam-datenklassifizierung.md`
+- `docs/development/complexity-quality-governance.md`
 - `docs/development/review-agent-governance.md`
 - `docs/development/iam-schluesselmanagement-strategie.md`
 - `docs/guides/iam-governance-runbook.md`

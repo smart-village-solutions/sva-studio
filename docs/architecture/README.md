@@ -32,5 +32,6 @@ Alle Architekturinformationen werden arc42-konform in den Abschnitten 1-12 gepfl
 - Routing: `./routing-architecture.md`
 - Logging und Observability: `./logging-architecture.md`
 - Session-Analyse: `./session-management-analysis.md`
+- IAM-Service-Architektur: `./iam-service-architektur.md`
 - IAM-Datenklassifizierung: `./iam-datenklassifizierung.md`
 - ADRs: `../adr/README.md`

@@ -6,6 +6,7 @@ Dieses Dokument beschreibt den standardisierten Coverage-Workflow im Nx Monorepo
 
 - einheitliche Testtargets (`test:unit`, `test:coverage`, `test:integration`)
 - Coverage-Gates pro Paket und global
+- Mindest-Floors und Hotspot-Floors für kritische Module
 - PR-Transparenz via CI Summary + Artefakte
 - stufenweiser Rollout mit Baseline und Ratcheting
 
@@ -55,6 +56,20 @@ Regeln:
 - Initiale Floors sind konservativ, danach Ratcheting
 - Abfälle gegen Baseline über der erlaubten Schwelle schlagen fehl
 - Exempt-Projekte sind in der Policy explizit dokumentiert
+- Kritische Projekte können strengere `minimumFloors` erhalten als normale Projekt-Floors
+- Kritische Hotspots können über `hotspotFloors` auf Datei-Ebene aus `lcov.info` abgesichert werden
+
+## Kritische Module und Hotspots
+
+Kritische Coverage-Regeln liegen in `criticalProjects` der Policy.
+
+Beispiele:
+
+- `auth`: projektweite Mindest-Floors plus Hotspots für `iam-account-management.server.ts` und `iam-governance.server.ts`
+- `routing`: Hotspot-Floor für `auth.routes.server.ts`
+- `core`: Security-Hotspot-Floor für `field-encryption.ts`
+
+Wenn die Komplexität eines kritischen Hotspots steigt, darf der bestehende Floor nicht abgesenkt werden. Stattdessen muss die Absicherung gleich bleiben oder feiner/höher nachgezogen werden.
 
 ## CI-Verhalten
 
@@ -105,6 +120,7 @@ Diese Liste wird schrittweise reduziert, sobald echte Unit-Tests vorhanden sind.
 
 Die Merge-Checkliste für Coverage-Nachweise steht unter `../reports/PR_CHECKLIST.md`.
 Policy und Floors liegen in `../../tooling/testing/coverage-policy.json`.
+Die ergänzende Komplexitäts-Governance steht unter `./complexity-quality-governance.md`.
 
 ## Troubleshooting
 
@@ -167,6 +183,19 @@ Wenn der PR Änderungen enthält, aber kein Projekt als betroffen erkannt wird, 
   ```
 
 **Hinweis:** Baseline-Updates sind kein Ersatz für fehlende Tests.
+
+---
+
+### Hotspot-Floor verletzt
+
+**Symptom:** Das Gate meldet `hotspot <datei> <metrik> below floor`.
+
+**Ursache:** Eine in `criticalProjects.<projekt>.hotspotFloors` definierte kritische Datei liegt unter dem Mindestwert für `lines`, `functions` oder `branches`.
+
+**Vorgehen:**
+- Tests gezielt für den betroffenen Hotspot ergänzen
+- Falls der Hotspot durch neue Komplexität entstanden ist: Komplexitäts-Review und ggf. neue Refactoring-Aufgabe ergänzen
+- Floors nur anheben oder feiner zuschneiden, nie wegen steigender Komplexität absenken
 
 ---
 
@@ -241,4 +270,7 @@ pnpm coverage-gate
 
 - Coverage Policy: `../../tooling/testing/coverage-policy.json`
 - Coverage Baseline: `../../tooling/testing/coverage-baseline.json`
+- Komplexitäts-Policy: `../../tooling/quality/complexity-policy.json`
+- Komplexitäts-Baseline: `../../tooling/quality/complexity-baseline.json`
+- Komplexitäts-Governance: `./complexity-quality-governance.md`
 - PR-Checklist: `../reports/PR_CHECKLIST.md`

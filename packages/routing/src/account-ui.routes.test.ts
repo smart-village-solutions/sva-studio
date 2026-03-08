@@ -31,6 +31,10 @@ describe('accountUiRouteGuards', () => {
     await expect(invoke(accountUiRouteGuards.adminUsers, ['app_manager'], '/admin/users')).resolves.toBeUndefined();
   });
 
+  it('allows admin organizations route for app_manager role', async () => {
+    await expect(invoke(accountUiRouteGuards.adminOrganizations, ['app_manager'], '/admin/organizations')).resolves.toBeUndefined();
+  });
+
   it('redirects admin roles route when role is not system_admin', async () => {
     await expect(invoke(accountUiRouteGuards.adminRoles, ['app_manager'], '/admin/roles')).rejects.toMatchObject(
       redirect({ href: '/?error=auth.insufficientRole' })

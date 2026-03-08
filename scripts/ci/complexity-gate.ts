@@ -115,6 +115,13 @@ export interface RunComplexityGateResult {
   analyzedFiles: AnalyzedFile[];
 }
 
+const ALLOWED_TRACKED_FINDING_STATUSES = new Set<TrackedFinding['status']>([
+  'planned',
+  'open',
+  'in_progress',
+  'blocked',
+]);
+
 const isTTY = process.stdout.isTTY;
 const colorize = (code: string, text: string): string =>
   isTTY ? `\x1b[${code}m${text}\x1b[0m` : text;
@@ -152,10 +159,12 @@ function isTrackedFinding(input: unknown): input is TrackedFinding {
     return false;
   }
 
+  const status = input.status;
   return (
     typeof input.ticketId === 'string' &&
     typeof input.ticketSystem === 'string' &&
-    typeof input.status === 'string' &&
+    typeof status === 'string' &&
+    ALLOWED_TRACKED_FINDING_STATUSES.has(status as TrackedFinding['status']) &&
     typeof input.summary === 'string'
   );
 }
@@ -708,7 +717,7 @@ function generateReport(analyzedFiles: AnalyzedFile[], violations: MetricViolati
   const reportLines = [
     '## Complexity Summary',
     '',
-    '| Module | Klasse | Dateien | Owner | Review-Zyklus | Max Dateizeilen | Max Funktionslaenge | Max Cyclomatic | Max Public Exports |',
+    '| Module | Klasse | Dateien | Owner | Review-Zyklus | Max Dateizeilen | Max Funktionslänge | Max Cyclomatic | Max Public Exports |',
     '| --- | --- | ---: | --- | --- | ---: | ---: | ---: | ---: |',
     ...moduleRows,
   ];

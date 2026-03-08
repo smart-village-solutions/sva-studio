@@ -339,6 +339,28 @@ describe('coverage gate', () => {
     expect(() => runCoverageGate({ rootDir, requireSummaries: true })).toThrow(/Invalid coverage policy/);
   });
 
+  it('throws when hotspot floors define no metric', () => {
+    const rootDir = createTempWorkspace();
+    writePolicy(rootDir, {
+      criticalProjects: {
+        sdk: {
+          hotspotFloors: [
+            {
+              path: 'packages/sdk/src/index.ts',
+              reason: 'invalid hotspot',
+              metrics: {},
+            },
+          ],
+        },
+      },
+    });
+    writeBaseline(rootDir);
+    writeCoverageSummary(rootDir, 80, 80, 80, 80);
+    writeLcovSummary(rootDir);
+
+    expect(() => runCoverageGate({ rootDir, requireSummaries: true })).toThrow(/Invalid coverage policy/);
+  });
+
   it('passes and updates baseline with current summaries', () => {
     const rootDir = createTempWorkspace();
     writePolicy(rootDir);

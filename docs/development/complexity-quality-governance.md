@@ -85,7 +85,7 @@ Damit gilt:
 
 ## Baseline-Prozess
 
-Die Komplexitäts-Baseline wird nur nach bewusstem Team-Entscheid aktualisiert:
+Die Komplexitäts-Baseline wird nur nach bewusster Team-Entscheidung aktualisiert:
 
 ```bash
 pnpm complexity-gate --update-baseline

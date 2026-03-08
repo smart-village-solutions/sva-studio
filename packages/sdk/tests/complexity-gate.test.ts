@@ -104,6 +104,23 @@ describe('complexity gate', () => {
     expect(() => runComplexityGate({ rootDir })).toThrow(/Complexity policy not found/);
   });
 
+  it('throws for invalid tracked finding status', () => {
+    const rootDir = createTempWorkspace();
+    writePolicy(rootDir, {
+      trackedFindings: {
+        'iam-server:packages/auth/src/large.ts:fileLines': {
+          ticketId: 'QUAL-1',
+          ticketSystem: 'backlog',
+          status: 'todo',
+          summary: 'invalid status',
+        },
+      },
+    });
+    writeSourceFile(rootDir, 'large.ts', 'export const value = 1;\n');
+
+    expect(() => runComplexityGate({ rootDir, stepSummaryPath: null })).toThrow(/Invalid complexity policy/);
+  });
+
   it('fails for untracked findings above threshold', () => {
     const rootDir = createTempWorkspace();
     writePolicy(rootDir);

@@ -8,8 +8,8 @@
       "publicExports": 12
     },
     "kritisch": {
-      "fileLines": 350,
-      "functionLines": 90,
+      "fileLines": 260,
+      "functionLines": 80,
       "cyclomaticComplexity": 15,
       "publicExports": 12
     }
@@ -79,6 +79,12 @@
       "summary": "IAM-Repositories in read/write-orientierte Module aufteilen"
     },
     "iam-server:packages/auth/src/auth.server.ts:cyclomaticComplexity": {
+      "ticketId": "QUAL-106",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Auth-Flow in kleinere Guards und Redirect-Builder zerlegen"
+    },
+    "iam-server:packages/auth/src/auth.server.ts:functionLines": {
       "ticketId": "QUAL-106",
       "ticketSystem": "backlog",
       "status": "open",
@@ -166,13 +172,25 @@
       "ticketId": "QUAL-105",
       "ticketSystem": "backlog",
       "status": "open",
-      "summary": "Auth-Server-Barrel auf kleinere, klar getrennte Exportflaechen reduzieren"
+      "summary": "Auth-Server-Barrel auf kleinere, klar getrennte Exportflächen reduzieren"
+    },
+    "iam-server:packages/auth/src/audit-db-sink.server.ts:fileLines": {
+      "ticketId": "QUAL-110",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Audit-DB-Sink in kleinere Persistenz- und Mapping-Bausteine aufteilen"
     },
     "iam-server:packages/auth/src/keycloak-admin-client.ts:fileLines": {
       "ticketId": "QUAL-108",
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "Keycloak-Admin-Adapter in kleinere API-spezifische Module splitten"
+    },
+    "iam-server:packages/auth/src/redis-session.server.ts:fileLines": {
+      "ticketId": "QUAL-111",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Redis-Session-Server in kleinere Lese-, Schreib- und TTL-Helfer zerlegen"
     },
     "iam-server:packages/auth/src/routes.server.ts:fileLines": {
       "ticketId": "QUAL-109",

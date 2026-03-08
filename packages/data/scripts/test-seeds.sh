@@ -4,6 +4,7 @@ set -euo pipefail
 POSTGRES_DB="${POSTGRES_DB:-sva_studio}"
 POSTGRES_USER="${POSTGRES_USER:-sva}"
 POSTGRES_READY_DB="${POSTGRES_READY_DB:-postgres}"
+POSTGRES_WAIT_TIMEOUT_SECONDS="${POSTGRES_WAIT_TIMEOUT_SECONDS:-120}"
 
 if ! docker compose config --services >/tmp/data-compose-services.txt 2>/tmp/data-compose-services.err; then
   echo "Failed to read docker compose services:"
@@ -24,14 +25,23 @@ fi
 
 if [ -z "$(docker compose ps -q postgres)" ]; then
   echo "Postgres container is not running. Starting it via docker compose..."
+else
+  echo "Ensuring Postgres service is running and healthy..."
+fi
+
+if docker compose up --help | grep -q -- '--wait'; then
+  docker compose up -d --wait --wait-timeout "${POSTGRES_WAIT_TIMEOUT_SECONDS}" postgres
+else
+  echo "docker compose --wait is not available. Falling back to pg_isready polling..."
   docker compose up -d postgres
 fi
 
 echo "Wait for Postgres readiness..."
 attempt=0
+max_attempts="${POSTGRES_WAIT_TIMEOUT_SECONDS}"
 until docker compose exec -T postgres pg_isready -U "${POSTGRES_USER}" -d "${POSTGRES_READY_DB}" >/dev/null 2>&1; do
   attempt=$((attempt + 1))
-  if [ "${attempt}" -ge 300 ]; then
+  if [ "${attempt}" -ge "${max_attempts}" ]; then
     break
   fi
   sleep 1

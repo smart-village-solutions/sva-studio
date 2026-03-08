@@ -9,6 +9,7 @@ const state = vi.hoisted(() => ({
   },
   queryHandler: null as null | ((text: string, values?: readonly unknown[]) => { rowCount: number; rows: unknown[] }),
   redisAvailable: true,
+  keycloakConfigAvailable: true,
   createRoleImpl: null as null | ((input: {
     externalName: string;
     description?: string;
@@ -21,6 +22,7 @@ const state = vi.hoisted(() => ({
   deleteRoleImpl: null as null | ((externalName: string) => Promise<unknown> | unknown),
   getRoleByNameImpl: null as null | ((externalName: string) => Promise<unknown> | unknown),
   listRolesImpl: null as null | (() => Promise<unknown> | unknown),
+  listUserRoleNamesImpl: null as null | ((externalId: string) => Promise<unknown> | unknown),
   createUserImpl: null as null | ((input: {
     email: string;
     firstName?: string;
@@ -106,12 +108,17 @@ vi.mock('./keycloak-admin-client', () => ({
     }
   },
   KeycloakAdminUnavailableError: class MockKeycloakAdminUnavailableError extends Error {},
-  getKeycloakAdminClientConfigFromEnv: () => ({
-    baseUrl: 'http://keycloak.local',
-    realm: 'test',
-    clientId: 'client',
-    clientSecret: 'secret',
-  }),
+  getKeycloakAdminClientConfigFromEnv: () => {
+    if (!state.keycloakConfigAvailable) {
+      throw new Error('Missing Keycloak config');
+    }
+    return {
+      baseUrl: 'http://keycloak.local',
+      realm: 'test',
+      clientId: 'client',
+      clientSecret: 'secret',
+    };
+  },
   KeycloakAdminClient: class MockKeycloakAdminClient {
     getCircuitBreakerState() {
       return 0;
@@ -178,6 +185,13 @@ vi.mock('./keycloak-admin-client', () => ({
     async listRoles() {
       if (state.listRolesImpl) {
         return state.listRolesImpl();
+      }
+      return [];
+    }
+
+    async listUserRoleNames(externalId: string) {
+      if (state.listUserRoleNamesImpl) {
+        return state.listUserRoleNamesImpl(externalId);
       }
       return [];
     }
@@ -307,8 +321,10 @@ describe('iam-account-management handlers (guards)', () => {
     state.deleteRoleImpl = null;
     state.getRoleByNameImpl = null;
     state.listRolesImpl = null;
+    state.listUserRoleNamesImpl = null;
     state.createUserImpl = null;
     state.redisAvailable = true;
+    state.keycloakConfigAvailable = true;
     state.deactivateUserCalls = [];
     state.syncRolesImpl = null;
     state.syncRolesCalls = [];
@@ -402,6 +418,185 @@ describe('iam-account-management handlers (guards)', () => {
 
     expect(response.status).toBe(503);
     expect(payload.error.code).toBe('database_unavailable');
+  });
+
+  it('synchronizes user roles from Keycloak before returning user details', async () => {
+    const keycloakRoleRows = [
+      {
+        id: 'role-editor',
+        role_key: 'editor',
+        role_name: 'editor',
+        display_name: 'Editor',
+        external_role_name: 'editor',
+        role_level: 10,
+        is_system_role: false,
+      },
+      {
+        id: 'role-admin',
+        role_key: 'system_admin',
+        role_name: 'system_admin',
+        display_name: 'System Admin',
+        external_role_name: 'system_admin',
+        role_level: 90,
+        is_system_role: true,
+      },
+    ];
+    const userDetailRow = buildUserDetailRow('active');
+    userDetailRow.role_rows = [];
+    let roleWriteAttempted = false;
+    let invalidationAttempted = false;
+
+    state.listUserRoleNamesImpl = async () => ['editor', 'system_admin', 'default-roles-test'];
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+
+      if (text.includes('WHERE a.id = $2::uuid')) {
+        return { rowCount: 1, rows: [userDetailRow] };
+      }
+
+      if (text.includes('COALESCE(external_role_name, role_key) = ANY($2::text[])')) {
+        return { rowCount: keycloakRoleRows.length, rows: keycloakRoleRows };
+      }
+
+      if (text.includes('SELECT pg_notify')) {
+        invalidationAttempted = true;
+      }
+
+      if (text.includes('DELETE FROM iam.account_roles') || text.includes('INSERT INTO iam.account_roles')) {
+        roleWriteAttempted = true;
+      }
+
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await getUserHandler(
+      new Request(`http://localhost/api/v1/iam/users/${targetUserId}`, { method: 'GET' })
+    );
+    const payload = (await response.json()) as {
+      data: {
+        id: string;
+        roles: Array<{ roleId: string; roleKey: string; roleName: string }>;
+      };
+    };
+
+    expect(response.status).toBe(200);
+    expect(payload.data.id).toBe(targetUserId);
+    expect(payload.data.roles).toHaveLength(2);
+    expect(payload.data.roles).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ roleId: 'role-editor', roleKey: 'editor', roleName: 'Editor' }),
+        expect.objectContaining({ roleId: 'role-admin', roleKey: 'system_admin', roleName: 'System Admin' }),
+      ])
+    );
+    expect(roleWriteAttempted).toBe(false);
+    expect(invalidationAttempted).toBe(false);
+  });
+
+  it('maps Keycloak read failures during getUser to keycloak_unavailable', async () => {
+    state.listUserRoleNamesImpl = async () => {
+      throw new KeycloakAdminRequestError({
+        message: 'read timeout',
+        statusCode: 503,
+        code: 'read_timeout',
+        retryable: true,
+      });
+    };
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+
+      if (text.includes('WHERE a.id = $2::uuid')) {
+        return { rowCount: 1, rows: [buildUserDetailRow('active')] };
+      }
+
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await getUserHandler(
+      new Request(`http://localhost/api/v1/iam/users/${targetUserId}`, { method: 'GET' })
+    );
+    const payload = (await response.json()) as { error: { code: string; message: string } };
+
+    expect(response.status).toBe(503);
+    expect(payload.error.code).toBe('keycloak_unavailable');
+    expect(payload.error.message).toBe('Nutzerrollen konnten nicht aus Keycloak geladen werden.');
+  });
+
+  it('keeps existing user roles when no identity provider is configured', async () => {
+    const userDetailRow = buildUserDetailRow('active');
+    vi.resetModules();
+    state.keycloakConfigAvailable = false;
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+
+      if (text.includes('WHERE a.id = $2::uuid')) {
+        return { rowCount: 1, rows: [userDetailRow] };
+      }
+
+      return { rowCount: 0, rows: [] };
+    };
+
+    const { getUserHandler: freshGetUserHandler } = await import('./iam-account-management.server');
+    const response = await freshGetUserHandler(
+      new Request(`http://localhost/api/v1/iam/users/${targetUserId}`, { method: 'GET' })
+    );
+    const payload = (await response.json()) as {
+      data: {
+        id: string;
+        roles: Array<{ roleId: string; roleKey: string }>;
+      };
+    };
+
+    expect(response.status).toBe(200);
+    expect(payload.data.id).toBe(targetUserId);
+    expect(payload.data.roles).toEqual([
+      expect.objectContaining({ roleId: 'role-editor', roleKey: 'editor' }),
+    ]);
+  });
+
+  it('skips role writes when Keycloak returns no mapped roles', async () => {
+    const userDetailRow = buildUserDetailRow('active');
+    userDetailRow.role_rows = [];
+    let externalRoleLookupCalled = false;
+
+    state.listUserRoleNamesImpl = async () => [];
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+
+      if (text.includes('WHERE a.id = $2::uuid')) {
+        return { rowCount: 1, rows: [userDetailRow] };
+      }
+
+      if (text.includes('COALESCE(external_role_name, role_key) = ANY($2::text[])')) {
+        externalRoleLookupCalled = true;
+      }
+
+      if (text.includes('DELETE FROM iam.account_roles') || text.includes('INSERT INTO iam.account_roles')) {
+        throw new Error('role writes should not run');
+      }
+
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await getUserHandler(
+      new Request(`http://localhost/api/v1/iam/users/${targetUserId}`, { method: 'GET' })
+    );
+    const payload = (await response.json()) as {
+      data: {
+        roles: Array<{ roleId: string; roleKey: string }>;
+      };
+    };
+
+    expect(response.status).toBe(200);
+    expect(payload.data.roles).toEqual([]);
+    expect(externalRoleLookupCalled).toBe(false);
   });
 
   it('rejects createUser without CSRF header', async () => {
@@ -2382,6 +2577,77 @@ describe('iam-account-management handlers (guards)', () => {
         roleNames: ['Admin'],
       },
     ]);
+  });
+
+  it('maps role sync failures during user updates to keycloak_unavailable', async () => {
+    state.syncRolesImpl = async () => {
+      throw new KeycloakAdminRequestError({
+        message: 'realm-management missing',
+        statusCode: 503,
+        code: 'read_timeout',
+        retryable: true,
+      });
+    };
+
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+
+      if (text.includes('max_role_level') && text.includes('FROM iam.accounts a')) {
+        return { rowCount: 1, rows: [{ max_role_level: 90 }] };
+      }
+
+      if (text.includes('SELECT id, role_key, role_name, display_name, external_role_name')) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              id: targetRoleId,
+              role_key: 'mainserver_admin',
+              role_name: 'mainserver_admin',
+              display_name: 'Admin',
+              external_role_name: 'Admin',
+              role_level: 90,
+              is_system_role: false,
+            },
+          ],
+        };
+      }
+
+      if (text.includes('WHERE a.id = $2::uuid')) {
+        return { rowCount: 1, rows: [buildUserDetailRow('active')] };
+      }
+
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await updateUserHandler(
+      new Request(`http://localhost/api/v1/iam/users/${targetUserId}`, {
+        method: 'PATCH',
+        headers: {
+          'content-type': 'application/json',
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'http://localhost',
+        },
+        body: JSON.stringify({
+          roleIds: [targetRoleId],
+        }),
+      })
+    );
+
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({
+      error: {
+        code: 'keycloak_unavailable',
+        message: 'Nutzerrollen konnten nicht mit Keycloak synchronisiert werden.',
+        details: {
+          syncState: 'failed',
+          syncError: { code: 'IDP_TIMEOUT' },
+        },
+      },
+      requestId: 'req-iam-handler',
+    });
   });
 });
 

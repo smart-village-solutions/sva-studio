@@ -1,5 +1,10 @@
+import type { IamUserDetail, IamUserRoleAssignment } from '@sva/core';
 import { getWorkspaceContext } from '@sva/sdk/server';
 
+import {
+  KeycloakAdminRequestError,
+  KeycloakAdminUnavailableError,
+} from '../keycloak-admin-client';
 import type { AuthenticatedRequestContext } from '../middleware.server';
 import { jsonResponse } from '../shared/db-helpers';
 import { isUuid, readString } from '../shared/input-readers';
@@ -8,11 +13,76 @@ import { ADMIN_ROLES } from './constants';
 import { asApiItem, asApiList, createApiError, readPage, readPathSegment } from './api-helpers';
 import { ensureFeature, getFeatureFlags } from './feature-flags';
 import { consumeRateLimit } from './rate-limit';
-import { logger, requireRoles, resolveActorInfo, withInstanceScopedDb } from './shared';
+import { buildRoleSyncFailure } from './role-audit';
+import {
+  logger,
+  requireRoles,
+  resolveActorInfo,
+  resolveIdentityProvider,
+  resolveRolesByExternalNames,
+  trackKeycloakCall,
+  withInstanceScopedDb,
+} from './shared';
+import { getRoleDisplayName } from './role-audit';
 import type { UserStatus } from './types';
 import { USER_STATUS } from './types';
 import { resolveUserDetail } from './user-detail-query';
 import { resolveUsersWithPagination } from './user-list-query';
+
+const mapProjectedRoles = (
+  roles: Awaited<ReturnType<typeof resolveRolesByExternalNames>>
+): readonly IamUserRoleAssignment[] =>
+  roles.map((role) => ({
+    roleId: role.id,
+    roleKey: role.role_key,
+    roleName: getRoleDisplayName(role),
+    roleLevel: role.role_level,
+  }));
+
+const mergeProjectedRoles = (user: IamUserDetail, roles: readonly IamUserRoleAssignment[]): IamUserDetail => ({
+  ...user,
+  roles,
+});
+
+const resolveKeycloakRoleNames = async (keycloakSubject: string): Promise<readonly string[] | null> => {
+  const identityProvider = resolveIdentityProvider();
+  if (!identityProvider) {
+    return null;
+  }
+
+  return [
+    ...new Set(
+      await trackKeycloakCall('list_user_roles', () => identityProvider.provider.listUserRoleNames(keycloakSubject))
+    ),
+  ];
+};
+
+const resolveProjectedUserDetail = async (input: {
+  client: Parameters<typeof resolveRolesByExternalNames>[0];
+  instanceId: string;
+  user: IamUserDetail;
+  keycloakRoleNames: readonly string[] | null;
+}): Promise<IamUserDetail> => {
+  if (input.keycloakRoleNames === null) {
+    return input.user;
+  }
+
+  const mappedRoles = await resolveRolesByExternalNames(input.client, {
+    instanceId: input.instanceId,
+    externalRoleNames: input.keycloakRoleNames,
+  });
+  const projectedRoles = mapProjectedRoles(mappedRoles);
+  const currentRoleIds = new Set(input.user.roles.map((role) => role.roleId));
+  const changed =
+    currentRoleIds.size !== projectedRoles.length ||
+    projectedRoles.some((role) => !currentRoleIds.has(role.roleId));
+
+  if (!changed) {
+    return input.user;
+  }
+
+  return mergeProjectedRoles(input.user, projectedRoles);
+};
 
 export const listUsersInternal = async (
   request: Request,
@@ -124,13 +194,34 @@ export const getUserInternal = async (
 
   try {
     const user = await withInstanceScopedDb(actorResolution.actor.instanceId, (client) =>
-      resolveUserDetail(client, { instanceId: actorResolution.actor.instanceId, userId })
+      resolveUserDetail(client, {
+        instanceId: actorResolution.actor.instanceId,
+        userId,
+      })
     );
     if (!user) {
       return createApiError(404, 'not_found', 'Nutzer nicht gefunden.', actorResolution.actor.requestId);
     }
-    return jsonResponse(200, asApiItem(user, actorResolution.actor.requestId));
-  } catch {
+
+    const keycloakRoleNames = await resolveKeycloakRoleNames(user.keycloakSubject);
+    const projectedUser = await withInstanceScopedDb(actorResolution.actor.instanceId, (client) =>
+      resolveProjectedUserDetail({
+        client,
+        instanceId: actorResolution.actor.instanceId,
+        user,
+        keycloakRoleNames,
+      })
+    );
+
+    return jsonResponse(200, asApiItem(projectedUser, actorResolution.actor.requestId));
+  } catch (error) {
+    if (error instanceof KeycloakAdminRequestError || error instanceof KeycloakAdminUnavailableError) {
+      return buildRoleSyncFailure({
+        error,
+        requestId: actorResolution.actor.requestId,
+        fallbackMessage: 'Nutzerrollen konnten nicht aus Keycloak geladen werden.',
+      });
+    }
     return createApiError(
       503,
       'database_unavailable',

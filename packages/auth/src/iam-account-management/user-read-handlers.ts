@@ -29,6 +29,90 @@ import { USER_STATUS } from './types';
 import { resolveUserDetail } from './user-detail-query';
 import { resolveUsersWithPagination } from './user-list-query';
 
+const resolveMappedKeycloakRoleIds = async (input: {
+  client: Parameters<typeof resolveRolesByExternalNames>[0];
+  instanceId: string;
+  keycloakSubject: string;
+}): Promise<readonly string[]> => {
+  const identityProvider = resolveIdentityProvider();
+  if (!identityProvider) {
+    return [];
+  }
+
+  const keycloakRoleNames = [
+    ...new Set(
+      await trackKeycloakCall('list_user_roles', () => identityProvider.provider.listUserRoleNames(input.keycloakSubject))
+    ),
+  ];
+  const mappedRoles = await resolveRolesByExternalNames(input.client, {
+    instanceId: input.instanceId,
+    externalRoleNames: keycloakRoleNames,
+  });
+  return [...new Set(mappedRoles.map((role) => role.id))];
+};
+
+const synchronizeUserRolesFromKeycloak = async (input: {
+  client: Parameters<typeof resolveRolesByExternalNames>[0];
+  instanceId: string;
+  userId: string;
+  actorAccountId?: string;
+  existing: NonNullable<Awaited<ReturnType<typeof resolveUserDetail>>>;
+}): Promise<NonNullable<Awaited<ReturnType<typeof resolveUserDetail>>>> => {
+  const nextRoleIds = await resolveMappedKeycloakRoleIds({
+    client: input.client,
+    instanceId: input.instanceId,
+    keycloakSubject: input.existing.keycloakSubject,
+  });
+  const currentRoleIds = new Set(input.existing.roles.map((role) => role.roleId));
+  const changed =
+    currentRoleIds.size !== nextRoleIds.length || nextRoleIds.some((roleId) => !currentRoleIds.has(roleId));
+
+  if (!changed) {
+    return input.existing;
+  }
+
+  await assignRoles(input.client, {
+    instanceId: input.instanceId,
+    accountId: input.userId,
+    roleIds: nextRoleIds,
+    assignedBy: input.actorAccountId,
+  });
+  await notifyPermissionInvalidation(input.client, {
+    instanceId: input.instanceId,
+    keycloakSubject: input.existing.keycloakSubject,
+    trigger: 'user_role_synced_from_keycloak',
+  });
+
+  const synchronized = await resolveUserDetail(input.client, {
+    instanceId: input.instanceId,
+    userId: input.userId,
+  });
+  return synchronized ?? input.existing;
+};
+
+const resolveSynchronizedUserDetail = async (input: {
+  client: Parameters<typeof resolveRolesByExternalNames>[0];
+  instanceId: string;
+  userId: string;
+  actorAccountId?: string;
+}): Promise<Awaited<ReturnType<typeof resolveUserDetail>>> => {
+  const existing = await resolveUserDetail(input.client, {
+    instanceId: input.instanceId,
+    userId: input.userId,
+  });
+  if (!existing) {
+    return undefined;
+  }
+
+  return synchronizeUserRolesFromKeycloak({
+    client: input.client,
+    instanceId: input.instanceId,
+    userId: input.userId,
+    actorAccountId: input.actorAccountId,
+    existing,
+  });
+};
+
 export const listUsersInternal = async (
   request: Request,
   ctx: AuthenticatedRequestContext
@@ -138,57 +222,14 @@ export const getUserInternal = async (
   }
 
   try {
-    const user = await withInstanceScopedDb(actorResolution.actor.instanceId, async (client) => {
-      const existing = await resolveUserDetail(client, {
+    const user = await withInstanceScopedDb(actorResolution.actor.instanceId, (client) =>
+      resolveSynchronizedUserDetail({
+        client,
         instanceId: actorResolution.actor.instanceId,
         userId,
-      });
-      if (!existing) {
-        return undefined;
-      }
-
-      const identityProvider = resolveIdentityProvider();
-      if (!identityProvider) {
-        return existing;
-      }
-
-      const keycloakRoleNames = [
-        ...new Set(
-          await trackKeycloakCall('list_user_roles', () =>
-            identityProvider.provider.listUserRoleNames(existing.keycloakSubject)
-          )
-        ),
-      ];
-      const mappedRoles = await resolveRolesByExternalNames(client, {
-        instanceId: actorResolution.actor.instanceId,
-        externalRoleNames: keycloakRoleNames,
-      });
-      const currentRoleIds = new Set(existing.roles.map((role) => role.roleId));
-      const nextRoleIds = [...new Set(mappedRoles.map((role) => role.id))];
-      const changed =
-        currentRoleIds.size !== nextRoleIds.length || nextRoleIds.some((roleId) => !currentRoleIds.has(roleId));
-
-      if (!changed) {
-        return existing;
-      }
-
-      await assignRoles(client, {
-        instanceId: actorResolution.actor.instanceId,
-        accountId: userId,
-        roleIds: nextRoleIds,
-        assignedBy: actorResolution.actor.actorAccountId,
-      });
-      await notifyPermissionInvalidation(client, {
-        instanceId: actorResolution.actor.instanceId,
-        keycloakSubject: existing.keycloakSubject,
-        trigger: 'user_role_synced_from_keycloak',
-      });
-
-      return resolveUserDetail(client, {
-        instanceId: actorResolution.actor.instanceId,
-        userId,
-      });
-    });
+        actorAccountId: actorResolution.actor.actorAccountId,
+      })
+    );
     if (!user) {
       return createApiError(404, 'not_found', 'Nutzer nicht gefunden.', actorResolution.actor.requestId);
     }

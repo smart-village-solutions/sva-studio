@@ -61,6 +61,14 @@ describe('claims helpers', () => {
       expect(roles.sort()).toEqual(['a', 'b']);
     });
 
+    it('adds system_admin alias for Admin role', () => {
+      const roles = extractRoles({
+        realm_access: { roles: ['Admin'] },
+      });
+
+      expect(roles.sort()).toEqual(['Admin', 'system_admin'].sort());
+    });
+
     it('ignores invalid role structures safely', () => {
       const roles = extractRoles({
         roles: [1, 'ok', null],

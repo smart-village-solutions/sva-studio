@@ -8,14 +8,15 @@ describe('iam seed statements', () => {
     const statement = iamSeedStatements.upsertRole({
       id: 'role-id',
       instanceId: 'instance-id',
+      roleKey: 'editor',
       roleName: 'editor',
       description: 'Editor role',
       isSystemRole: true,
       roleLevel: 30,
     });
 
-    assert.match(statement.text, /ON CONFLICT \(instance_id, role_name\) DO UPDATE/);
-    assert.deepEqual(statement.values, ['role-id', 'instance-id', 'editor', 'Editor role', true, 30]);
+    assert.match(statement.text, /ON CONFLICT \(instance_id, role_key\) DO UPDATE/);
+    assert.deepEqual(statement.values, ['role-id', 'instance-id', 'editor', 'editor', 'editor', 'Editor role', true, 30, 'synced']);
   });
 
   it('builds account-role assignment as idempotent insert', () => {

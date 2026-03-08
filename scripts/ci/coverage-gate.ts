@@ -20,6 +20,7 @@ export interface CoveragePolicy {
   maxAllowedDropPctPoints: number;
   exemptProjects: string[];
   perProjectFloors: Record<string, MetricFloors>;
+  criticalProjects?: Record<string, CriticalCoveragePolicy>;
 }
 
 export interface CoverageBaseline {
@@ -62,11 +63,35 @@ interface CoveragePaths {
   workspaceRoots: string[];
 }
 
+export interface HotspotCoverageFloors {
+  lines?: number;
+  functions?: number;
+  branches?: number;
+}
+
+export interface CriticalCoverageHotspot {
+  path: string;
+  reason: string;
+  metrics: HotspotCoverageFloors;
+}
+
+export interface CriticalCoveragePolicy {
+  minimumFloors?: Partial<MetricFloors>;
+  hotspotFloors?: CriticalCoverageHotspot[];
+}
+
+interface FileCoverageMetrics {
+  lines: number;
+  functions: number;
+  branches: number;
+}
+
 interface LoadedCoverageData {
   paths: CoveragePaths;
   policy: CoveragePolicy;
   baseline: CoverageBaseline;
   projects: Record<string, MetricFloors>;
+  fileCoverageByProject: Record<string, Record<string, FileCoverageMetrics>>;
 }
 
 const isTTY = process.stdout.isTTY;
@@ -96,6 +121,30 @@ function isMetricFloors(input: unknown): input is MetricFloors {
     typeof candidate.functions === 'number' &&
     typeof candidate.branches === 'number'
   );
+}
+
+function isPartialMetricFloors(input: unknown): input is Partial<MetricFloors> {
+  if (!input || typeof input !== 'object') {
+    return false;
+  }
+
+  const candidate = input as Record<string, unknown>;
+  return ['lines', 'statements', 'functions', 'branches'].every((metric) => {
+    const value = candidate[metric];
+    return value === undefined || typeof value === 'number';
+  });
+}
+
+function isHotspotCoverageFloors(input: unknown): input is HotspotCoverageFloors {
+  if (!input || typeof input !== 'object') {
+    return false;
+  }
+
+  const candidate = input as Record<string, unknown>;
+  return ['lines', 'functions', 'branches'].every((metric) => {
+    const value = candidate[metric];
+    return value === undefined || typeof value === 'number';
+  });
 }
 
 export function assertCoveragePolicy(policy: unknown): asserts policy is CoveragePolicy {
@@ -133,6 +182,56 @@ export function assertCoveragePolicy(policy: unknown): asserts policy is Coverag
       throw new TypeError(`Invalid coverage policy: perProjectFloors.${projectName} is invalid`);
     }
   }
+
+  if (candidate.criticalProjects !== undefined) {
+    if (!candidate.criticalProjects || typeof candidate.criticalProjects !== 'object') {
+      throw new TypeError('Invalid coverage policy: criticalProjects must be an object');
+    }
+
+    const criticalProjects = candidate.criticalProjects as Record<string, unknown>;
+    for (const [projectName, config] of Object.entries(criticalProjects)) {
+      if (!config || typeof config !== 'object') {
+        throw new TypeError(`Invalid coverage policy: criticalProjects.${projectName} is invalid`);
+      }
+
+      const criticalConfig = config as Record<string, unknown>;
+      if (
+        criticalConfig.minimumFloors !== undefined &&
+        !isPartialMetricFloors(criticalConfig.minimumFloors)
+      ) {
+        throw new TypeError(
+          `Invalid coverage policy: criticalProjects.${projectName}.minimumFloors is invalid`
+        );
+      }
+
+      if (criticalConfig.hotspotFloors !== undefined) {
+        if (!Array.isArray(criticalConfig.hotspotFloors)) {
+          throw new TypeError(
+            `Invalid coverage policy: criticalProjects.${projectName}.hotspotFloors must be an array`
+          );
+        }
+
+        for (const hotspot of criticalConfig.hotspotFloors) {
+          if (!hotspot || typeof hotspot !== 'object') {
+            throw new TypeError(
+              `Invalid coverage policy: criticalProjects.${projectName}.hotspotFloors entry is invalid`
+            );
+          }
+
+          const hotspotConfig = hotspot as Record<string, unknown>;
+          if (
+            typeof hotspotConfig.path !== 'string' ||
+            typeof hotspotConfig.reason !== 'string' ||
+            !isHotspotCoverageFloors(hotspotConfig.metrics)
+          ) {
+            throw new TypeError(
+              `Invalid coverage policy: criticalProjects.${projectName}.hotspotFloors entry is invalid`
+            );
+          }
+        }
+      }
+    }
+  }
 }
 
 export function findCoverageSummaries(dir: string, results: string[] = []): string[] {
@@ -157,6 +256,33 @@ export function findCoverageSummaries(dir: string, results: string[] = []): stri
       entryPath.includes(`${path.sep}coverage${path.sep}`);
 
     if (isCoverageSummary) {
+      results.push(entryPath);
+    }
+  }
+
+  return results;
+}
+
+export function findCoverageArtifacts(dir: string, fileName: string, results: string[] = []): string[] {
+  if (!fs.existsSync(dir)) {
+    return results;
+  }
+
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    const entryPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      if (entry.name === 'node_modules' || entry.name === '.git' || entry.name === '.nx') {
+        continue;
+      }
+      findCoverageArtifacts(entryPath, fileName, results);
+      continue;
+    }
+
+    const isMatchingArtifact =
+      entry.isFile() && entry.name === fileName && entryPath.includes(`${path.sep}coverage${path.sep}`);
+
+    if (isMatchingArtifact) {
       results.push(entryPath);
     }
   }
@@ -251,12 +377,80 @@ function loadCoverageData(rootDir: string): LoadedCoverageData {
     return acc;
   }, {});
 
+  const lcovFiles = paths.workspaceRoots.flatMap((dir) => findCoverageArtifacts(dir, 'lcov.info'));
+  const fileCoverageByProject = lcovFiles.reduce<Record<string, Record<string, FileCoverageMetrics>>>(
+    (acc, lcovPath) => {
+      const projectName = projectFromCoveragePath(lcovPath.replace(/lcov\.info$/, 'coverage-summary.json'));
+      if (!projectName) {
+        return acc;
+      }
+
+      acc[projectName] = parseLcovInfo(rootDir, lcovPath);
+      return acc;
+    },
+    {}
+  );
+
   return {
     paths,
     policy: rawPolicy,
     baseline,
     projects,
+    fileCoverageByProject,
   };
+}
+
+function parseLcovInfo(rootDir: string, lcovPath: string): Record<string, FileCoverageMetrics> {
+  const projectRoot = path.dirname(path.dirname(lcovPath));
+  const contents = fs.readFileSync(lcovPath, 'utf8');
+  const records = contents.split('end_of_record');
+  const fileCoverage: Record<string, FileCoverageMetrics> = {};
+
+  for (const record of records) {
+    const trimmed = record.trim();
+    if (!trimmed) {
+      continue;
+    }
+
+    const sfMatch = trimmed.match(/^SF:(.+)$/m);
+    if (!sfMatch) {
+      continue;
+    }
+
+    const sourceFilePath = sfMatch[1].trim();
+    const absoluteFilePath = path.isAbsolute(sourceFilePath)
+      ? sourceFilePath
+      : path.join(projectRoot, sourceFilePath);
+    const normalizedFilePath = path.relative(rootDir, absoluteFilePath).split(path.sep).join('/');
+
+    const lf = readLcovCounter(trimmed, 'LF');
+    const lh = readLcovCounter(trimmed, 'LH');
+    const fnf = readLcovCounter(trimmed, 'FNF');
+    const fnh = readLcovCounter(trimmed, 'FNH');
+    const brf = readLcovCounter(trimmed, 'BRF');
+    const brh = readLcovCounter(trimmed, 'BRH');
+
+    fileCoverage[normalizedFilePath] = {
+      lines: toPct(lh, lf),
+      functions: toPct(fnh, fnf),
+      branches: toPct(brh, brf),
+    };
+  }
+
+  return fileCoverage;
+}
+
+function readLcovCounter(record: string, label: string): number {
+  const match = record.match(new RegExp(`^${label}:(\\d+)$`, 'm'));
+  return match ? Number(match[1]) : 0;
+}
+
+function toPct(hit: number, found: number): number {
+  if (found === 0) {
+    return 100;
+  }
+
+  return Number(((hit / found) * 100).toFixed(2));
 }
 
 function evaluateFloors(
@@ -284,8 +478,12 @@ function evaluateFloors(
   const activeProjects = Object.entries(projects).filter(([name]) => !exemptProjects.has(name));
   const projectFloorErrors = activeProjects.flatMap(([projectName, values]) => {
     const floorConfig = policy.perProjectFloors?.[projectName] ?? policy.globalFloors;
+    const criticalFloors = policy.criticalProjects?.[projectName]?.minimumFloors ?? {};
     return metrics.flatMap((metric) => {
-      const floor = Number(floorConfig[metric] ?? policy.globalFloors[metric] ?? 0);
+      const floor = Math.max(
+        Number(floorConfig[metric] ?? policy.globalFloors[metric] ?? 0),
+        Number(criticalFloors[metric] ?? 0)
+      );
       const current = Number(values[metric] ?? 0);
       if (current >= floor) {
         return [];
@@ -317,6 +515,69 @@ function evaluateFloors(
     ];
   });
   errors.push(...globalFloorErrors);
+
+  return errors;
+}
+
+function evaluateCriticalHotspots(
+  policy: CoveragePolicy,
+  projects: Record<string, MetricFloors>,
+  fileCoverageByProject: Record<string, Record<string, FileCoverageMetrics>>,
+  requireSummaries: boolean
+): GateError[] {
+  const criticalProjects = policy.criticalProjects ?? {};
+  const errors: GateError[] = [];
+
+  for (const [projectName, criticalPolicy] of Object.entries(criticalProjects)) {
+    const activeProject = Boolean(projects[projectName]);
+    if (!activeProject && !requireSummaries) {
+      continue;
+    }
+
+    const hotspotFloors = criticalPolicy.hotspotFloors ?? [];
+    if (hotspotFloors.length === 0) {
+      continue;
+    }
+
+    const fileCoverage = fileCoverageByProject[projectName];
+    if (!fileCoverage) {
+      if (activeProject || requireSummaries) {
+        errors.push({
+          scope: 'project',
+          message: `[${projectName}] missing lcov.info for critical hotspot coverage evaluation`,
+        });
+      }
+      continue;
+    }
+
+    for (const hotspot of hotspotFloors) {
+      const hotspotCoverage = fileCoverage[hotspot.path];
+      if (!hotspotCoverage) {
+        errors.push({
+          scope: 'project',
+          message: `[${projectName}] missing hotspot coverage for ${hotspot.path}`,
+        });
+        continue;
+      }
+
+      for (const metric of ['lines', 'functions', 'branches'] as const) {
+        const floor = hotspot.metrics[metric];
+        if (floor === undefined) {
+          continue;
+        }
+
+        const current = Number(hotspotCoverage[metric] ?? 0);
+        if (current >= floor) {
+          continue;
+        }
+
+        errors.push({
+          scope: 'project',
+          message: `[${projectName}] hotspot ${hotspot.path} ${metric} below floor: ${current.toFixed(2)} < ${floor.toFixed(2)}`,
+        });
+      }
+    }
+  }
 
   return errors;
 }
@@ -383,7 +644,7 @@ export function runCoverageGate(options: RunCoverageGateOptions = {}): RunCovera
   const stepSummaryPath = options.stepSummaryPath ?? process.env.GITHUB_STEP_SUMMARY ?? null;
 
   const loaded = loadCoverageData(rootDir);
-  const { paths, policy, baseline, projects } = loaded;
+  const { paths, policy, baseline, projects, fileCoverageByProject } = loaded;
 
   if (Object.keys(projects).length === 0) {
     if (requireSummaries) {
@@ -412,8 +673,9 @@ export function runCoverageGate(options: RunCoverageGateOptions = {}): RunCovera
   }
 
   const floorErrors = evaluateFloors(policy, projects, requireSummaries);
+  const hotspotErrors = evaluateCriticalHotspots(policy, projects, fileCoverageByProject, requireSummaries);
   const regressionErrors = evaluateRegressions(policy, baseline, projects);
-  const errors = [...floorErrors, ...regressionErrors];
+  const errors = [...floorErrors, ...hotspotErrors, ...regressionErrors];
 
   const summaryBody = generateReport(policy, projects);
   writeSummary(stepSummaryPath, summaryBody);

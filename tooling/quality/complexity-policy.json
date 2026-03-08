@@ -1,0 +1,190 @@
+{
+  "version": 1,
+  "classThresholds": {
+    "zentral": {
+      "fileLines": 260,
+      "functionLines": 80,
+      "cyclomaticComplexity": 15,
+      "publicExports": 12
+    },
+    "kritisch": {
+      "fileLines": 350,
+      "functionLines": 90,
+      "cyclomaticComplexity": 15,
+      "publicExports": 12
+    }
+  },
+  "modules": [
+    {
+      "id": "iam-server",
+      "label": "IAM Server",
+      "class": "kritisch",
+      "owner": "team-iam",
+      "reviewCadence": "pro-pr",
+      "include": [
+        "packages/auth/src/**/*.ts"
+      ],
+      "exclude": [
+        "**/*.test.ts",
+        "**/*.integration.test.ts",
+        "**/*.e2e.test.ts",
+        "**/*.TEST.ts"
+      ]
+    },
+    {
+      "id": "routing",
+      "label": "Routing",
+      "class": "kritisch",
+      "owner": "team-platform",
+      "reviewCadence": "pro-pr",
+      "include": [
+        "packages/routing/src/**/*.ts"
+      ],
+      "exclude": [
+        "**/*.test.ts"
+      ]
+    },
+    {
+      "id": "core-security",
+      "label": "Core Security",
+      "class": "kritisch",
+      "owner": "team-platform",
+      "reviewCadence": "pro-pr",
+      "include": [
+        "packages/core/src/security/**/*.ts"
+      ],
+      "exclude": [
+        "**/*.test.ts"
+      ]
+    },
+    {
+      "id": "iam-data",
+      "label": "IAM Data",
+      "class": "zentral",
+      "owner": "team-iam",
+      "reviewCadence": "sprintweise",
+      "include": [
+        "packages/data/src/iam/**/*.ts"
+      ],
+      "exclude": [
+        "**/*.test.ts"
+      ]
+    }
+  ],
+  "trackedFindings": {
+    "iam-data:packages/data/src/iam/repositories.ts:fileLines": {
+      "ticketId": "QUAL-107",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "IAM-Repositories in read/write-orientierte Module aufteilen"
+    },
+    "iam-server:packages/auth/src/auth.server.ts:cyclomaticComplexity": {
+      "ticketId": "QUAL-106",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Auth-Flow in kleinere Guards und Redirect-Builder zerlegen"
+    },
+    "iam-server:packages/auth/src/iam-account-management.server.ts:cyclomaticComplexity": {
+      "ticketId": "QUAL-101",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "IAM Account Management in kleinere Service-Module splitten"
+    },
+    "iam-server:packages/auth/src/iam-account-management.server.ts:fileLines": {
+      "ticketId": "QUAL-101",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "IAM Account Management in kleinere Service-Module splitten"
+    },
+    "iam-server:packages/auth/src/iam-account-management.server.ts:functionLines": {
+      "ticketId": "QUAL-101",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "IAM Account Management in kleinere Service-Module splitten"
+    },
+    "iam-server:packages/auth/src/iam-account-management.server.ts:publicExports": {
+      "ticketId": "QUAL-101",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "IAM Account Management in kleinere Service-Module splitten"
+    },
+    "iam-server:packages/auth/src/iam-authorization.server.ts:cyclomaticComplexity": {
+      "ticketId": "QUAL-102",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "IAM Authorization in Policy-Evaluation, Cache und Response-Building entkoppeln"
+    },
+    "iam-server:packages/auth/src/iam-authorization.server.ts:fileLines": {
+      "ticketId": "QUAL-102",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "IAM Authorization in Policy-Evaluation, Cache und Response-Building entkoppeln"
+    },
+    "iam-server:packages/auth/src/iam-authorization.server.ts:functionLines": {
+      "ticketId": "QUAL-102",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "IAM Authorization in Policy-Evaluation, Cache und Response-Building entkoppeln"
+    },
+    "iam-server:packages/auth/src/iam-data-subject-rights.server.ts:cyclomaticComplexity": {
+      "ticketId": "QUAL-103",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "DSR-Server in Export, SLA-Handling und Finalisierung aufteilen"
+    },
+    "iam-server:packages/auth/src/iam-data-subject-rights.server.ts:fileLines": {
+      "ticketId": "QUAL-103",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "DSR-Server in Export, SLA-Handling und Finalisierung aufteilen"
+    },
+    "iam-server:packages/auth/src/iam-data-subject-rights.server.ts:functionLines": {
+      "ticketId": "QUAL-103",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "DSR-Server in Export, SLA-Handling und Finalisierung aufteilen"
+    },
+    "iam-server:packages/auth/src/iam-governance.server.ts:cyclomaticComplexity": {
+      "ticketId": "QUAL-104",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Governance-Workflow in Approval-, Delegation- und Impersonation-Services zerlegen"
+    },
+    "iam-server:packages/auth/src/iam-governance.server.ts:fileLines": {
+      "ticketId": "QUAL-104",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Governance-Workflow in Approval-, Delegation- und Impersonation-Services zerlegen"
+    },
+    "iam-server:packages/auth/src/iam-governance.server.ts:functionLines": {
+      "ticketId": "QUAL-104",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Governance-Workflow in Approval-, Delegation- und Impersonation-Services zerlegen"
+    },
+    "iam-server:packages/auth/src/index.server.ts:publicExports": {
+      "ticketId": "QUAL-105",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Auth-Server-Barrel auf kleinere, klar getrennte Exportflaechen reduzieren"
+    },
+    "iam-server:packages/auth/src/keycloak-admin-client.ts:fileLines": {
+      "ticketId": "QUAL-108",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Keycloak-Admin-Adapter in kleinere API-spezifische Module splitten"
+    },
+    "iam-server:packages/auth/src/routes.server.ts:fileLines": {
+      "ticketId": "QUAL-109",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Server-Routing in kleinere Handler- und Cookie-Module zerlegen"
+    },
+    "iam-server:packages/auth/src/routes.server.ts:functionLines": {
+      "ticketId": "QUAL-109",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Server-Routing in kleinere Handler- und Cookie-Module zerlegen"
+    }
+  }
+}

@@ -6,12 +6,20 @@
 - [ ] `pnpm test:types` erfolgreich
 - [ ] `pnpm test:unit` erfolgreich
 - [ ] `pnpm check:file-placement` erfolgreich
+- [ ] `pnpm complexity-gate` erfolgreich
 
 ## Coverage-Nachweise im PR
 
 - [ ] Betroffene Projekte (`affected`) im PR-Text benannt
 - [ ] Relevante Coverage-Änderungen im PR-Text dokumentiert
 - [ ] Bei Baseline-/Policy-Änderungen: Begründung + Verweis auf Team-Entscheidung enthalten
+
+## Komplexitäts-Nachweise im PR
+
+- [ ] Änderungen an zentralen/kritischen Modulen im PR-Text benannt
+- [ ] Neue oder geänderte Komplexitäts-Findings sind mit Ticket-Referenzen nachvollziehbar
+- [ ] Änderungen an `complexity-policy.json` oder `complexity-baseline.json` sind begründet
+- [ ] Bei kritischen Hotspots ist geprüft, ob Coverage-Floors angepasst werden müssen
 
 ## Integrationstests
 

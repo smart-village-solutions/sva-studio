@@ -1,0 +1,356 @@
+{
+  "files": {
+    "packages/auth/src/audit-db-sink.server.ts": {
+      "moduleId": "iam-server",
+      "filePath": "packages/auth/src/audit-db-sink.server.ts",
+      "fileLines": 308,
+      "functionLines": 63,
+      "cyclomaticComplexity": 5,
+      "publicExports": 4
+    },
+    "packages/auth/src/audit-events.server.ts": {
+      "moduleId": "iam-server",
+      "filePath": "packages/auth/src/audit-events.server.ts",
+      "fileLines": 73,
+      "functionLines": 63,
+      "cyclomaticComplexity": 7,
+      "publicExports": 1
+    },
+    "packages/auth/src/audit-events.types.ts": {
+      "moduleId": "iam-server",
+      "filePath": "packages/auth/src/audit-events.types.ts",
+      "fileLines": 13,
+      "functionLines": 0,
+      "cyclomaticComplexity": 0,
+      "publicExports": 2
+    },
+    "packages/auth/src/auth.server.ts": {
+      "moduleId": "iam-server",
+      "filePath": "packages/auth/src/auth.server.ts",
+      "fileLines": 245,
+      "functionLines": 87,
+      "cyclomaticComplexity": 27,
+      "publicExports": 4
+    },
+    "packages/auth/src/config.ts": {
+      "moduleId": "iam-server",
+      "filePath": "packages/auth/src/config.ts",
+      "fileLines": 44,
+      "functionLines": 15,
+      "cyclomaticComplexity": 5,
+      "publicExports": 1
+    },
+    "packages/auth/src/crypto.server.ts": {
+      "moduleId": "iam-server",
+      "filePath": "packages/auth/src/crypto.server.ts",
+      "fileLines": 136,
+      "functionLines": 41,
+      "cyclomaticComplexity": 6,
+      "publicExports": 4
+    },
+    "packages/auth/src/iam-account-management.server.ts": {
+      "moduleId": "iam-server",
+      "filePath": "packages/auth/src/iam-account-management.server.ts",
+      "fileLines": 4508,
+      "functionLines": 327,
+      "cyclomaticComplexity": 42,
+      "publicExports": 20
+    },
+    "packages/auth/src/iam-authorization.cache.ts": {
+      "moduleId": "iam-server",
+      "filePath": "packages/auth/src/iam-authorization.cache.ts",
+      "fileLines": 181,
+      "functionLines": 31,
+      "cyclomaticComplexity": 10,
+      "publicExports": 6
+    },
+    "packages/auth/src/iam-authorization.server.ts": {
+      "moduleId": "iam-server",
+      "filePath": "packages/auth/src/iam-authorization.server.ts",
+      "fileLines": 564,
+      "functionLines": 113,
+      "cyclomaticComplexity": 20,
+      "publicExports": 3
+    },
+    "packages/auth/src/iam-data-subject-rights.server.ts": {
+      "moduleId": "iam-server",
+      "filePath": "packages/auth/src/iam-data-subject-rights.server.ts",
+      "fileLines": 1999,
+      "functionLines": 151,
+      "cyclomaticComplexity": 22,
+      "publicExports": 10
+    },
+    "packages/auth/src/iam-governance.server.ts": {
+      "moduleId": "iam-server",
+      "filePath": "packages/auth/src/iam-governance.server.ts",
+      "fileLines": 1248,
+      "functionLines": 126,
+      "cyclomaticComplexity": 23,
+      "publicExports": 3
+    },
+    "packages/auth/src/identity-provider-port.ts": {
+      "moduleId": "iam-server",
+      "filePath": "packages/auth/src/identity-provider-port.ts",
+      "fileLines": 60,
+      "functionLines": 0,
+      "cyclomaticComplexity": 0,
+      "publicExports": 8
+    },
+    "packages/auth/src/index.server.ts": {
+      "moduleId": "iam-server",
+      "filePath": "packages/auth/src/index.server.ts",
+      "fileLines": 62,
+      "functionLines": 0,
+      "cyclomaticComplexity": 0,
+      "publicExports": 65
+    },
+    "packages/auth/src/index.ts": {
+      "moduleId": "iam-server",
+      "filePath": "packages/auth/src/index.ts",
+      "fileLines": 10,
+      "functionLines": 0,
+      "cyclomaticComplexity": 0,
+      "publicExports": 8
+    },
+    "packages/auth/src/jit-provisioning.server.ts": {
+      "moduleId": "iam-server",
+      "filePath": "packages/auth/src/jit-provisioning.server.ts",
+      "fileLines": 137,
+      "functionLines": 56,
+      "cyclomaticComplexity": 6,
+      "publicExports": 4
+    },
+    "packages/auth/src/keycloak-admin-client.ts": {
+      "moduleId": "iam-server",
+      "filePath": "packages/auth/src/keycloak-admin-client.ts",
+      "fileLines": 804,
+      "functionLines": 61,
+      "cyclomaticComplexity": 13,
+      "publicExports": 8
+    },
+    "packages/auth/src/log-context.server.ts": {
+      "moduleId": "iam-server",
+      "filePath": "packages/auth/src/log-context.server.ts",
+      "fileLines": 26,
+      "functionLines": 15,
+      "cyclomaticComplexity": 9,
+      "publicExports": 2
+    },
+    "packages/auth/src/middleware.server.ts": {
+      "moduleId": "iam-server",
+      "filePath": "packages/auth/src/middleware.server.ts",
+      "fileLines": 61,
+      "functionLines": 30,
+      "cyclomaticComplexity": 3,
+      "publicExports": 2
+    },
+    "packages/auth/src/oidc.server.ts": {
+      "moduleId": "iam-server",
+      "filePath": "packages/auth/src/oidc.server.ts",
+      "fileLines": 37,
+      "functionLines": 20,
+      "cyclomaticComplexity": 5,
+      "publicExports": 2
+    },
+    "packages/auth/src/redis-session.server.ts": {
+      "moduleId": "iam-server",
+      "filePath": "packages/auth/src/redis-session.server.ts",
+      "fileLines": 268,
+      "functionLines": 37,
+      "cyclomaticComplexity": 7,
+      "publicExports": 9
+    },
+    "packages/auth/src/redis-session.ts": {
+      "moduleId": "iam-server",
+      "filePath": "packages/auth/src/redis-session.ts",
+      "fileLines": 160,
+      "functionLines": 23,
+      "cyclomaticComplexity": 6,
+      "publicExports": 6
+    },
+    "packages/auth/src/redis.server.ts": {
+      "moduleId": "iam-server",
+      "filePath": "packages/auth/src/redis.server.ts",
+      "fileLines": 199,
+      "functionLines": 62,
+      "cyclomaticComplexity": 11,
+      "publicExports": 3
+    },
+    "packages/auth/src/routes.server.ts": {
+      "moduleId": "iam-server",
+      "filePath": "packages/auth/src/routes.server.ts",
+      "fileLines": 524,
+      "functionLines": 120,
+      "cyclomaticComplexity": 13,
+      "publicExports": 6
+    },
+    "packages/auth/src/routes.shared.ts": {
+      "moduleId": "iam-server",
+      "filePath": "packages/auth/src/routes.shared.ts",
+      "fileLines": 60,
+      "functionLines": 0,
+      "cyclomaticComplexity": 0,
+      "publicExports": 2
+    },
+    "packages/auth/src/session.ts": {
+      "moduleId": "iam-server",
+      "filePath": "packages/auth/src/session.ts",
+      "fileLines": 79,
+      "functionLines": 9,
+      "cyclomaticComplexity": 3,
+      "publicExports": 8
+    },
+    "packages/auth/src/shared/db-helpers.ts": {
+      "moduleId": "iam-server",
+      "filePath": "packages/auth/src/shared/db-helpers.ts",
+      "fileLines": 78,
+      "functionLines": 26,
+      "cyclomaticComplexity": 5,
+      "publicExports": 6
+    },
+    "packages/auth/src/shared/error-guards.ts": {
+      "moduleId": "iam-server",
+      "filePath": "packages/auth/src/shared/error-guards.ts",
+      "fileLines": 16,
+      "functionLines": 15,
+      "cyclomaticComplexity": 9,
+      "publicExports": 1
+    },
+    "packages/auth/src/shared/input-readers.ts": {
+      "moduleId": "iam-server",
+      "filePath": "packages/auth/src/shared/input-readers.ts",
+      "fileLines": 33,
+      "functionLines": 7,
+      "cyclomaticComplexity": 4,
+      "publicExports": 5
+    },
+    "packages/auth/src/shared/instance-id-resolution.ts": {
+      "moduleId": "iam-server",
+      "filePath": "packages/auth/src/shared/instance-id-resolution.ts",
+      "fileLines": 83,
+      "functionLines": 58,
+      "cyclomaticComplexity": 9,
+      "publicExports": 3
+    },
+    "packages/auth/src/shared/log-context.ts": {
+      "moduleId": "iam-server",
+      "filePath": "packages/auth/src/shared/log-context.ts",
+      "fileLines": 22,
+      "functionLines": 19,
+      "cyclomaticComplexity": 4,
+      "publicExports": 1
+    },
+    "packages/auth/src/shared/schemas.ts": {
+      "moduleId": "iam-server",
+      "filePath": "packages/auth/src/shared/schemas.ts",
+      "fileLines": 58,
+      "functionLines": 0,
+      "cyclomaticComplexity": 0,
+      "publicExports": 4
+    },
+    "packages/auth/src/types.ts": {
+      "moduleId": "iam-server",
+      "filePath": "packages/auth/src/types.ts",
+      "fileLines": 38,
+      "functionLines": 0,
+      "cyclomaticComplexity": 0,
+      "publicExports": 4
+    },
+    "packages/core/src/security/field-encryption.ts": {
+      "moduleId": "core-security",
+      "filePath": "packages/core/src/security/field-encryption.ts",
+      "fileLines": 146,
+      "functionLines": 41,
+      "cyclomaticComplexity": 11,
+      "publicExports": 5
+    },
+    "packages/core/src/security/index.ts": {
+      "moduleId": "core-security",
+      "filePath": "packages/core/src/security/index.ts",
+      "fileLines": 2,
+      "functionLines": 0,
+      "cyclomaticComplexity": 0,
+      "publicExports": 1
+    },
+    "packages/data/src/iam/repositories.ts": {
+      "moduleId": "iam-data",
+      "filePath": "packages/data/src/iam/repositories.ts",
+      "fileLines": 270,
+      "functionLines": 56,
+      "cyclomaticComplexity": 4,
+      "publicExports": 7
+    },
+    "packages/data/src/iam/seed-plan.ts": {
+      "moduleId": "iam-data",
+      "filePath": "packages/data/src/iam/seed-plan.ts",
+      "fileLines": 133,
+      "functionLines": 9,
+      "cyclomaticComplexity": 2,
+      "publicExports": 2
+    },
+    "packages/data/src/iam/types.ts": {
+      "moduleId": "iam-data",
+      "filePath": "packages/data/src/iam/types.ts",
+      "fileLines": 62,
+      "functionLines": 0,
+      "cyclomaticComplexity": 0,
+      "publicExports": 10
+    },
+    "packages/routing/src/account-ui.routes.ts": {
+      "moduleId": "routing",
+      "filePath": "packages/routing/src/account-ui.routes.ts",
+      "fileLines": 18,
+      "functionLines": 0,
+      "cyclomaticComplexity": 0,
+      "publicExports": 3
+    },
+    "packages/routing/src/auth.routes.server.ts": {
+      "moduleId": "routing",
+      "filePath": "packages/routing/src/auth.routes.server.ts",
+      "fileLines": 247,
+      "functionLines": 14,
+      "cyclomaticComplexity": 2,
+      "publicExports": 3
+    },
+    "packages/routing/src/auth.routes.ts": {
+      "moduleId": "routing",
+      "filePath": "packages/routing/src/auth.routes.ts",
+      "fileLines": 65,
+      "functionLines": 11,
+      "cyclomaticComplexity": 1,
+      "publicExports": 2
+    },
+    "packages/routing/src/core.routes.ts": {
+      "moduleId": "routing",
+      "filePath": "packages/routing/src/core.routes.ts",
+      "fileLines": 19,
+      "functionLines": 0,
+      "cyclomaticComplexity": 0,
+      "publicExports": 1
+    },
+    "packages/routing/src/index.server.ts": {
+      "moduleId": "routing",
+      "filePath": "packages/routing/src/index.server.ts",
+      "fileLines": 10,
+      "functionLines": 0,
+      "cyclomaticComplexity": 0,
+      "publicExports": 3
+    },
+    "packages/routing/src/index.ts": {
+      "moduleId": "routing",
+      "filePath": "packages/routing/src/index.ts",
+      "fileLines": 13,
+      "functionLines": 0,
+      "cyclomaticComplexity": 0,
+      "publicExports": 11
+    },
+    "packages/routing/src/protected.routes.ts": {
+      "moduleId": "routing",
+      "filePath": "packages/routing/src/protected.routes.ts",
+      "fileLines": 77,
+      "functionLines": 22,
+      "cyclomaticComplexity": 4,
+      "publicExports": 5
+    }
+  }
+}

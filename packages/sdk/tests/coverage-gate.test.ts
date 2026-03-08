@@ -36,6 +36,7 @@ function writePolicy(rootDir: string, overrides: Record<string, unknown> = {}): 
         branches: 0,
       },
     },
+    criticalProjects: {},
   };
 
   const policy = {
@@ -88,6 +89,45 @@ function writeCoverageSummary(
   };
 
   fs.writeFileSync(path.join(summaryPath, 'coverage-summary.json'), JSON.stringify(summary, null, 2));
+}
+
+function writeLcovSummary(
+  rootDir: string,
+  projectPath = 'packages/sdk',
+  sourcePath = 'src/index.ts',
+  metrics: {
+    lf: number;
+    lh: number;
+    fnf: number;
+    fnh: number;
+    brf: number;
+    brh: number;
+  } = {
+    lf: 10,
+    lh: 10,
+    fnf: 4,
+    fnh: 4,
+    brf: 2,
+    brh: 2,
+  }
+): void {
+  const coverageDir = path.join(rootDir, projectPath, 'coverage');
+  fs.mkdirSync(coverageDir, { recursive: true });
+  const lines = [
+    'TN:',
+    `SF:${sourcePath}`,
+    'FN:1,example',
+    `FNF:${metrics.fnf}`,
+    `FNH:${metrics.fnh}`,
+    'FNDA:1,example',
+    `LF:${metrics.lf}`,
+    `LH:${metrics.lh}`,
+    `BRF:${metrics.brf}`,
+    `BRH:${metrics.brh}`,
+    'end_of_record',
+    '',
+  ];
+  fs.writeFileSync(path.join(coverageDir, 'lcov.info'), lines.join('\n'));
 }
 
 afterEach(() => {
@@ -214,6 +254,80 @@ describe('coverage gate', () => {
     expect(result.errors.some((error) => error.includes('dropped by'))).toBe(true);
   });
 
+  it('enforces stricter minimum floors for critical projects', () => {
+    const rootDir = createTempWorkspace();
+    writePolicy(rootDir, {
+      perProjectFloors: {
+        sdk: {
+          lines: 0,
+          statements: 0,
+          functions: 0,
+          branches: 0,
+        },
+      },
+      criticalProjects: {
+        sdk: {
+          minimumFloors: {
+            lines: 80,
+            functions: 80,
+            branches: 80,
+          },
+        },
+      },
+    });
+    writeBaseline(rootDir);
+    writeCoverageSummary(rootDir, 70, 70, 70, 70);
+
+    const result = runCoverageGate({ rootDir, requireSummaries: true });
+
+    expect(result.passed).toBe(false);
+    expect(result.errors.some((error) => error.includes('[sdk] lines below floor: 70.00 < 80.00'))).toBe(true);
+  });
+
+  it('enforces hotspot floors for critical files via lcov', () => {
+    const rootDir = createTempWorkspace();
+    writePolicy(rootDir, {
+      criticalProjects: {
+        sdk: {
+          hotspotFloors: [
+            {
+              path: 'packages/sdk/src/index.ts',
+              reason: 'Komplexer Einstiegspunkt',
+              metrics: {
+                lines: 80,
+                functions: 80,
+                branches: 80,
+              },
+            },
+          ],
+        },
+      },
+    });
+    writeBaseline(rootDir);
+    writeCoverageSummary(rootDir, 90, 90, 90, 90);
+    writeLcovSummary(rootDir, 'packages/sdk', 'src/index.ts', {
+      lf: 10,
+      lh: 7,
+      fnf: 5,
+      fnh: 3,
+      brf: 4,
+      brh: 2,
+    });
+
+    const result = runCoverageGate({ rootDir, requireSummaries: true });
+
+    expect(result.passed).toBe(false);
+    expect(
+      result.errors.some((error) => error.includes('hotspot packages/sdk/src/index.ts lines below floor'))
+    ).toBe(true);
+    expect(
+      result.errors.some((error) => error.includes('hotspot packages/sdk/src/index.ts functions below floor'))
+    ).toBe(true);
+    expect(
+      result.errors.some((error) => error.includes('hotspot packages/sdk/src/index.ts branches below floor'))
+    ).toBe(true);
+  });
+
   it('throws for invalid policy structure', () => {
     const rootDir = createTempWorkspace();
     writePolicy(rootDir, {
@@ -221,6 +335,28 @@ describe('coverage gate', () => {
     });
     writeBaseline(rootDir);
     writeCoverageSummary(rootDir, 80, 80, 80, 80);
+
+    expect(() => runCoverageGate({ rootDir, requireSummaries: true })).toThrow(/Invalid coverage policy/);
+  });
+
+  it('throws when hotspot floors define no metric', () => {
+    const rootDir = createTempWorkspace();
+    writePolicy(rootDir, {
+      criticalProjects: {
+        sdk: {
+          hotspotFloors: [
+            {
+              path: 'packages/sdk/src/index.ts',
+              reason: 'invalid hotspot',
+              metrics: {},
+            },
+          ],
+        },
+      },
+    });
+    writeBaseline(rootDir);
+    writeCoverageSummary(rootDir, 80, 80, 80, 80);
+    writeLcovSummary(rootDir);
 
     expect(() => runCoverageGate({ rootDir, requireSummaries: true })).toThrow(/Invalid coverage policy/);
   });

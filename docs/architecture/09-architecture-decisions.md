@@ -49,6 +49,11 @@ Bei Architekturentscheidungen in OpenSpec-Changes:
 2. ADR erstellen/aktualisieren
 3. Entscheidung in diesem Abschnitt nachziehen
 
+Zusätzlich gilt:
+
+- Neue oder geänderte IAM-Patterns (z. B. Rollen-Sync, RBAC/ABAC-Komposition, Data-Subject-Rights-Flows) sind nicht vollständig dokumentiert, bevor sie hier in Abschnitt 09 referenziert sind.
+- Wenn IAM-Logik ohne neue ADR angepasst wird, muss im PR begründet werden, warum eine bestehende ADR weiterhin ausreichend ist.
+
 Referenzen:
 
 - `../adr/README.md`

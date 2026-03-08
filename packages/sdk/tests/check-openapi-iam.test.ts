@@ -1,3 +1,4 @@
+/* eslint-disable @nx/enforce-module-boundaries */
 import { describe, expect, it } from 'vitest';
 
 import { requiredPaths, requiredSchemas, validateOpenApiDocument } from '../../../scripts/ci/check-openapi-iam.ts';

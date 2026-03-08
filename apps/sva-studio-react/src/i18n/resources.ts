@@ -14,6 +14,11 @@ export const i18nResources = {
         adminOrganizations: 'Organisationen',
         adminRoles: 'Rollen',
         organizationContext: 'Aktive Organisation',
+        organizationContextStatus: 'Aktiver Organisationskontext: {{name}}',
+        organizationContextUpdating: 'Organisationskontext wird aktualisiert.',
+        organizationContextError: 'Organisationskontext konnte nicht gewechselt werden.',
+        organizationContextErrorInvalid: 'Diese Organisation steht im aktuellen Kontext nicht zur Auswahl.',
+        organizationContextErrorInactive: 'Inaktive Organisationen können nicht als aktiver Kontext gesetzt werden.',
         iamViewer: 'IAM-Viewer',
       },
       sidebar: {
@@ -367,6 +372,11 @@ export const i18nResources = {
         adminOrganizations: 'Organizations',
         adminRoles: 'Roles',
         organizationContext: 'Active organization',
+        organizationContextStatus: 'Active organization context: {{name}}',
+        organizationContextUpdating: 'Organization context is being updated.',
+        organizationContextError: 'Organization context could not be changed.',
+        organizationContextErrorInvalid: 'This organization is not available in the current context.',
+        organizationContextErrorInactive: 'Inactive organizations cannot be set as the active context.',
         iamViewer: 'IAM Viewer',
       },
       sidebar: {

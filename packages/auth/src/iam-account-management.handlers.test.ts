@@ -300,6 +300,16 @@ describe('iam-account-management handlers (guards)', () => {
     expect(payload.error.code).toBe('forbidden');
   });
 
+  it('rejects listUsers when iam admin features are disabled', async () => {
+    process.env.IAM_ADMIN_ENABLED = 'false';
+
+    const response = await listUsersHandler(new Request('http://localhost/api/v1/iam/users', { method: 'GET' }));
+    const payload = (await response.json()) as { error: { code: string } };
+
+    expect(response.status).toBe(503);
+    expect(payload.error.code).toBe('feature_disabled');
+  });
+
   it('rejects invalid status filter on listUsers', async () => {
     const response = await listUsersHandler(
       new Request('http://localhost/api/v1/iam/users?status=unknown', { method: 'GET' })
@@ -423,6 +433,30 @@ describe('iam-account-management handlers (guards)', () => {
     expect(payload.error.code).toBe('forbidden');
   });
 
+  it('rejects createUser when iam admin features are disabled', async () => {
+    process.env.IAM_ADMIN_ENABLED = 'false';
+
+    const response = await createUserHandler(
+      new Request('http://localhost/api/v1/iam/users', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'http://localhost',
+          'idempotency-key': 'feature-disabled-create-user',
+        },
+        body: JSON.stringify({
+          email: 'new.user@example.com',
+          roleIds: [],
+        }),
+      })
+    );
+    const payload = (await response.json()) as { error: { code: string } };
+
+    expect(response.status).toBe(503);
+    expect(payload.error.code).toBe('feature_disabled');
+  });
+
   it('rejects updateUser for invalid user id', async () => {
     const response = await updateUserHandler(
       new Request('http://localhost/api/v1/iam/users/not-a-uuid', {
@@ -439,6 +473,26 @@ describe('iam-account-management handlers (guards)', () => {
     const payload = (await response.json()) as { error: { code: string } };
     expect(response.status).toBe(400);
     expect(payload.error.code).toBe('invalid_request');
+  });
+
+  it('rejects updateUser when iam admin features are disabled', async () => {
+    process.env.IAM_ADMIN_ENABLED = 'false';
+
+    const response = await updateUserHandler(
+      new Request(`http://localhost/api/v1/iam/users/${targetUserId}`, {
+        method: 'PATCH',
+        headers: {
+          'content-type': 'application/json',
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'http://localhost',
+        },
+        body: JSON.stringify({ firstName: 'Blocked' }),
+      })
+    );
+
+    const payload = (await response.json()) as { error: { code: string } };
+    expect(response.status).toBe(503);
+    expect(payload.error.code).toBe('feature_disabled');
   });
 
   it('returns not_found when updating an unknown user', async () => {
@@ -496,6 +550,24 @@ describe('iam-account-management handlers (guards)', () => {
     const payload = (await response.json()) as { error: { code: string } };
     expect(response.status).toBe(400);
     expect(payload.error.code).toBe('invalid_request');
+  });
+
+  it('rejects deactivateUser when iam admin features are disabled', async () => {
+    process.env.IAM_ADMIN_ENABLED = 'false';
+
+    const response = await deactivateUserHandler(
+      new Request(`http://localhost/api/v1/iam/users/${targetUserId}`, {
+        method: 'DELETE',
+        headers: {
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'http://localhost',
+        },
+      })
+    );
+
+    const payload = (await response.json()) as { error: { code: string } };
+    expect(response.status).toBe(503);
+    expect(payload.error.code).toBe('feature_disabled');
   });
 
   it('updates a user successfully on happy path', async () => {
@@ -922,6 +994,16 @@ describe('iam-account-management handlers (guards)', () => {
 
     expect(response.status).toBe(503);
     expect(payload.error.code).toBe('database_unavailable');
+  });
+
+  it('rejects listRoles when iam admin features are disabled', async () => {
+    process.env.IAM_ADMIN_ENABLED = 'false';
+
+    const response = await listRolesHandler(new Request('http://localhost/api/v1/iam/roles', { method: 'GET' }));
+    const payload = (await response.json()) as { error: { code: string } };
+
+    expect(response.status).toBe(503);
+    expect(payload.error.code).toBe('feature_disabled');
   });
 
   it('rejects createRole without CSRF header', async () => {
@@ -1416,6 +1498,31 @@ describe('iam-account-management handlers (guards)', () => {
     const payload = (await response.json()) as { data: { id: string } };
     expect(response.status).toBe(200);
     expect(payload.data.id).toBe(targetRoleId);
+  });
+
+  it('rejects createRole when iam admin features are disabled', async () => {
+    process.env.IAM_ADMIN_ENABLED = 'false';
+
+    const response = await createRoleHandler(
+      new Request('http://localhost/api/v1/iam/roles', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'http://localhost',
+          'idempotency-key': 'feature-disabled-create-role',
+        },
+        body: JSON.stringify({
+          roleName: 'editor',
+          displayName: 'Editor',
+          roleLevel: 10,
+        }),
+      })
+    );
+    const payload = (await response.json()) as { error: { code: string } };
+
+    expect(response.status).toBe(503);
+    expect(payload.error.code).toBe('feature_disabled');
   });
 
   it('rejects deletes for externally managed roles', async () => {
@@ -1985,6 +2092,122 @@ describe('iam-account-management handlers (guards)', () => {
     expect(payload.data.email).toBe('new.user@example.com');
   });
 
+  it('rejects createUser when the idempotency key is reused with a different payload', async () => {
+    let payloadHash = '';
+
+    state.queryHandler = (text, values) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+
+      if (text.includes('INSERT INTO iam.idempotency_keys') && text.includes('ON CONFLICT')) {
+        payloadHash = String(values?.[4] ?? '');
+        return { rowCount: 0, rows: [] };
+      }
+
+      if (text.includes('SELECT status, payload_hash, response_status, response_body')) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              status: 'COMPLETED',
+              payload_hash: `${payloadHash}-other`,
+              response_status: null,
+              response_body: null,
+            },
+          ],
+        };
+      }
+
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await createUserHandler(
+      new Request('http://localhost/api/v1/iam/users', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'http://localhost',
+          'idempotency-key': 'user-create-conflict',
+        },
+        body: JSON.stringify({
+          email: 'conflict@example.com',
+          firstName: 'Conflict',
+          lastName: 'Case',
+          roleIds: [],
+        }),
+      })
+    );
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({
+      error: {
+        code: 'idempotency_key_reuse',
+        message: 'Idempotency-Key wurde bereits mit anderem Payload verwendet.',
+      },
+      requestId: 'req-iam-handler',
+    });
+  });
+
+  it('rejects createUser while an idempotent request is still in progress', async () => {
+    let payloadHash = '';
+
+    state.queryHandler = (text, values) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+
+      if (text.includes('INSERT INTO iam.idempotency_keys') && text.includes('ON CONFLICT')) {
+        payloadHash = String(values?.[4] ?? '');
+        return { rowCount: 0, rows: [] };
+      }
+
+      if (text.includes('SELECT status, payload_hash, response_status, response_body')) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              status: 'IN_PROGRESS',
+              payload_hash: payloadHash,
+              response_status: null,
+              response_body: null,
+            },
+          ],
+        };
+      }
+
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await createUserHandler(
+      new Request('http://localhost/api/v1/iam/users', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'http://localhost',
+          'idempotency-key': 'user-create-in-progress',
+        },
+        body: JSON.stringify({
+          email: 'in-progress@example.com',
+          firstName: 'In',
+          lastName: 'Progress',
+          roleIds: [],
+        }),
+      })
+    );
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({
+      error: {
+        code: 'idempotency_key_reuse',
+        message: 'Idempotenter Request wird bereits verarbeitet.',
+      },
+      requestId: 'req-iam-handler',
+    });
+  });
+
   it('syncs external role names when updating a user', async () => {
     state.queryHandler = (text) => {
       if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
@@ -2109,6 +2332,18 @@ describe('iam-account-management additional handlers', () => {
     );
   });
 
+  it('rejects getMyProfile when iam ui features are disabled', async () => {
+    process.env.IAM_UI_ENABLED = 'false';
+
+    const response = await getMyProfileHandler(
+      new Request('http://localhost/api/v1/iam/users/me', { method: 'GET' })
+    );
+    const payload = (await response.json()) as { error: { code: string } };
+
+    expect(response.status).toBe(503);
+    expect(payload.error.code).toBe('feature_disabled');
+  });
+
   it('returns not_found when the current profile cannot be resolved', async () => {
     const selfAccountId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
     state.user = {
@@ -2223,6 +2458,28 @@ describe('iam-account-management additional handlers', () => {
     );
   });
 
+  it('rejects updateMyProfile when iam ui features are disabled', async () => {
+    process.env.IAM_UI_ENABLED = 'false';
+
+    const response = await updateMyProfileHandler(
+      new Request('http://localhost/api/v1/iam/users/me', {
+        method: 'PATCH',
+        headers: {
+          'content-type': 'application/json',
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'http://localhost',
+        },
+        body: JSON.stringify({
+          displayName: 'Blocked',
+        }),
+      })
+    );
+    const payload = (await response.json()) as { error: { code: string } };
+
+    expect(response.status).toBe(503);
+    expect(payload.error.code).toBe('feature_disabled');
+  });
+
   it('bulk-deactivates users and invalidates permission snapshots', async () => {
     process.env.IAM_BULK_ENABLED = 'true';
     const executedStatements: string[] = [];
@@ -2284,6 +2541,29 @@ describe('iam-account-management additional handlers', () => {
     });
     expect(state.deactivateUserCalls).toEqual(['keycloak-target-2']);
     expect(executedStatements.some((statement) => statement.includes('SELECT pg_notify'))).toBe(true);
+  });
+
+  it('rejects bulk deactivation when iam bulk features are disabled', async () => {
+    process.env.IAM_BULK_ENABLED = 'false';
+
+    const response = await bulkDeactivateUsersHandler(
+      new Request('http://localhost/api/v1/iam/users/bulk-deactivate', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'http://localhost',
+          'idempotency-key': 'feature-disabled-bulk',
+        },
+        body: JSON.stringify({
+          userIds: [targetUserId],
+        }),
+      })
+    );
+    const payload = (await response.json()) as { error: { code: string } };
+
+    expect(response.status).toBe(503);
+    expect(payload.error.code).toBe('feature_disabled');
   });
 
   it('protects against bulk self-deactivation', async () => {

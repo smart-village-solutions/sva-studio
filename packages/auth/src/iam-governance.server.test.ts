@@ -115,6 +115,19 @@ describe('governanceWorkflowHandler', () => {
     expect(await response.json()).toEqual({ error: 'invalid_request' });
   });
 
+  it('rejects workflow request with malformed json body', async () => {
+    const request = new Request('http://localhost/iam/governance/workflows', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: '{invalid-json',
+    });
+
+    const response = await governanceWorkflowHandler(request);
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: 'invalid_request' });
+  });
+
   it('rejects workflow request with invalid instance id', async () => {
     const request = new Request('http://localhost/iam/governance/workflows', {
       method: 'POST',
@@ -167,6 +180,97 @@ describe('governanceWorkflowHandler', () => {
     expect(response.status).toBe(400);
     expect(payload.status).toBe('error');
     expect(payload.reasonCode).toBe('DENY_SELF_APPROVAL');
+  });
+
+  it('submits a permission change request and records an audit event', async () => {
+    state.queryHandler = (text, values) => {
+      if (text.includes('SELECT a.id') && values?.[1] === 'keycloak-sub-actor') {
+        return { rowCount: 1, rows: [{ id: 'acc-actor' }] };
+      }
+      if (text.includes('SELECT a.id') && values?.[1] === 'keycloak-sub-target') {
+        return { rowCount: 1, rows: [{ id: 'acc-target' }] };
+      }
+      if (text.includes('SELECT p.permission_key')) {
+        return { rowCount: 1, rows: [{ permission_key: 'iam.users.manage' }] };
+      }
+      if (text.includes('INSERT INTO iam.permission_change_requests')) {
+        return { rowCount: 1, rows: [{ id: 'workflow-1' }] };
+      }
+      if (text.includes('INSERT INTO iam.activity_logs')) {
+        return { rowCount: 1, rows: [] };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await governanceWorkflowHandler(
+      new Request('http://localhost/iam/governance/workflows', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          operation: 'submit_permission_change',
+          instanceId: '11111111-1111-1111-8111-111111111111',
+          payload: {
+            targetKeycloakSubject: 'keycloak-sub-target',
+            roleId: '22222222-2222-2222-8222-222222222222',
+            ticketId: 'IAM-42',
+            ticketState: 'approved_for_execution',
+            ticketSystem: 'service-now',
+          },
+        }),
+      })
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      operation: 'submit_permission_change',
+      status: 'ok',
+      workflowId: 'workflow-1',
+    });
+  });
+
+  it('applies approved permission changes and returns the workflow id', async () => {
+    state.queryHandler = (text, values) => {
+      if (text.includes('FROM iam.permission_change_requests')) {
+        return {
+          rowCount: 1,
+          rows: [{ target_account_id: 'acc-target', role_id: 'role-1', status: 'approved' }],
+        };
+      }
+      if (text.includes('INSERT INTO iam.account_roles')) {
+        return { rowCount: 1, rows: [] };
+      }
+      if (text.includes("UPDATE iam.permission_change_requests\nSET status = 'applied'")) {
+        return { rowCount: 1, rows: [] };
+      }
+      if (text.includes('SELECT a.id') && values?.[1] === 'keycloak-sub-actor') {
+        return { rowCount: 1, rows: [{ id: 'acc-actor' }] };
+      }
+      if (text.includes('INSERT INTO iam.activity_logs')) {
+        return { rowCount: 1, rows: [] };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await governanceWorkflowHandler(
+      new Request('http://localhost/iam/governance/workflows', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          operation: 'apply_permission_change',
+          instanceId: '11111111-1111-1111-8111-111111111111',
+          payload: {
+            requestId: '33333333-3333-3333-8333-333333333333',
+          },
+        }),
+      })
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      operation: 'apply_permission_change',
+      status: 'ok',
+      workflowId: '33333333-3333-3333-8333-333333333333',
+    });
   });
 
   it('creates a requested delegation for a future start date', async () => {
@@ -383,6 +487,98 @@ describe('governanceWorkflowHandler', () => {
     expect(payload.reasonCode).toBe('DENY_SELF_APPROVAL');
   });
 
+  it('rejects starting impersonation when the security approver resolves to the actor', async () => {
+    state.queryHandler = (text, values) => {
+      if (text.includes('SELECT a.id') && values?.[1] === 'keycloak-sub-actor') {
+        return { rowCount: 1, rows: [{ id: 'acc-actor' }] };
+      }
+      if (text.includes('SELECT a.id') && values?.[1] === 'keycloak-sub-target') {
+        return { rowCount: 1, rows: [{ id: 'acc-target' }] };
+      }
+      if (text.includes('SELECT a.id') && values?.[1] === 'keycloak-sub-approver') {
+        return { rowCount: 1, rows: [{ id: 'acc-approver' }] };
+      }
+      if (text.includes('SELECT a.id') && values?.[1] === 'keycloak-sub-security') {
+        return { rowCount: 1, rows: [{ id: 'acc-actor' }] };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await governanceWorkflowHandler(
+      new Request('http://localhost/iam/governance/workflows', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          operation: 'start_impersonation',
+          instanceId: '11111111-1111-1111-8111-111111111111',
+          payload: {
+            targetKeycloakSubject: 'keycloak-sub-target',
+            approverKeycloakSubject: 'keycloak-sub-approver',
+            securityApproverKeycloakSubject: 'keycloak-sub-security',
+            ticketId: 'IAM-25',
+            ticketState: 'open',
+            durationMinutes: 15,
+          },
+        }),
+      })
+    );
+    const payload = (await response.json()) as { status: string; reasonCode?: string };
+
+    expect(response.status).toBe(400);
+    expect(payload.status).toBe('error');
+    expect(payload.reasonCode).toBe('DENY_SELF_APPROVAL');
+  });
+
+  it('starts impersonation with dual approval and records audit metadata', async () => {
+    state.queryHandler = (text, values) => {
+      if (text.includes('SELECT a.id') && values?.[1] === 'keycloak-sub-actor') {
+        return { rowCount: 1, rows: [{ id: 'acc-actor' }] };
+      }
+      if (text.includes('SELECT a.id') && values?.[1] === 'keycloak-sub-target') {
+        return { rowCount: 1, rows: [{ id: 'acc-target' }] };
+      }
+      if (text.includes('SELECT a.id') && values?.[1] === 'keycloak-sub-approver') {
+        return { rowCount: 1, rows: [{ id: 'acc-approver' }] };
+      }
+      if (text.includes('SELECT a.id') && values?.[1] === 'keycloak-sub-security') {
+        return { rowCount: 1, rows: [{ id: 'acc-security' }] };
+      }
+      if (text.includes('INSERT INTO iam.impersonation_sessions')) {
+        return { rowCount: 1, rows: [{ id: 'impersonation-1' }] };
+      }
+      if (text.includes('INSERT INTO iam.activity_logs')) {
+        return { rowCount: 1, rows: [] };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await governanceWorkflowHandler(
+      new Request('http://localhost/iam/governance/workflows', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          operation: 'start_impersonation',
+          instanceId: '11111111-1111-1111-8111-111111111111',
+          payload: {
+            targetKeycloakSubject: 'keycloak-sub-target',
+            approverKeycloakSubject: 'keycloak-sub-approver',
+            securityApproverKeycloakSubject: 'keycloak-sub-security',
+            ticketId: 'IAM-26',
+            ticketState: 'in_progress',
+            durationMinutes: 20,
+          },
+        }),
+      })
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      operation: 'start_impersonation',
+      status: 'ok',
+      workflowId: 'impersonation-1',
+    });
+  });
+
   it('rejects ending impersonation with an invalid session id', async () => {
     const response = await governanceWorkflowHandler(
       new Request('http://localhost/iam/governance/workflows', {
@@ -402,6 +598,46 @@ describe('governanceWorkflowHandler', () => {
     expect(response.status).toBe(400);
     expect(payload.status).toBe('error');
     expect(payload.reasonCode).toBe('invalid_request');
+  });
+
+  it('ends active impersonation sessions and returns the session id', async () => {
+    state.queryHandler = (text, values) => {
+      if (text.includes('SELECT a.id') && values?.[1] === 'keycloak-sub-actor') {
+        return { rowCount: 1, rows: [{ id: 'acc-actor' }] };
+      }
+      if (text.includes('UPDATE iam.impersonation_sessions')) {
+        return {
+          rowCount: 1,
+          rows: [{ started_at: '2026-03-08T09:00:00.000Z', ticket_id: 'IAM-27' }],
+        };
+      }
+      if (text.includes('INSERT INTO iam.activity_logs')) {
+        return { rowCount: 1, rows: [] };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await governanceWorkflowHandler(
+      new Request('http://localhost/iam/governance/workflows', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          operation: 'end_impersonation',
+          instanceId: '11111111-1111-1111-8111-111111111111',
+          payload: {
+            sessionId: '44444444-4444-4444-8444-444444444444',
+            reason: 'investigation_complete',
+          },
+        }),
+      })
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      operation: 'end_impersonation',
+      status: 'ok',
+      workflowId: '44444444-4444-4444-8444-444444444444',
+    });
   });
 
   it('rejects privileged workflow operations for users without governance role', async () => {
@@ -482,6 +718,34 @@ describe('governanceWorkflowHandler', () => {
         })
       );
     }
+  });
+
+  it('rejects legal text operations when required fields are missing', async () => {
+    state.user = {
+      ...state.user,
+      roles: [],
+    };
+
+    const response = await governanceWorkflowHandler(
+      new Request('http://localhost/iam/governance/workflows', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          operation: 'accept_legal_text',
+          instanceId: '11111111-1111-1111-8111-111111111111',
+          payload: {
+            legalTextId: 'privacy-notice',
+          },
+        }),
+      })
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      operation: 'accept_legal_text',
+      status: 'error',
+      reasonCode: 'invalid_request',
+    });
   });
 });
 

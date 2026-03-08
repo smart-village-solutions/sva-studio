@@ -1,8 +1,11 @@
 import type { IamUuid } from '../types';
 import type { SqlStatement } from './types';
+import type { RoleManagedBy, RoleSyncState } from './role-sync-types';
 
-type RoleManagedBy = 'studio' | 'external';
-type RoleSyncState = 'synced' | 'pending' | 'failed';
+const asUuidArrayParameter = (values: readonly IamUuid[]) => ({
+  sqlType: 'uuid[]' as const,
+  values,
+});
 
 export const iamSeedStatements = {
   upsertInstance: (input: { id: IamUuid; instanceKey: string; displayName: string }): SqlStatement => ({
@@ -66,7 +69,7 @@ SET
       input.organizationType,
       input.contentAuthorPolicy,
       input.parentOrganizationId ?? null,
-      input.hierarchyPath,
+      asUuidArrayParameter(input.hierarchyPath),
       input.depth,
       input.isActive ?? true,
     ],

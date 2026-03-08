@@ -1,0 +1,67 @@
+{
+  "name": "sva-studio-react",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/sva-studio-react/src",
+  "projectType": "application",
+  "tags": [
+    "scope:app",
+    "type:app"
+  ],
+  "targets": {
+    "serve": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm run dev",
+        "cwd": "apps/sva-studio-react"
+      }
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "outputs": [
+        "{projectRoot}/dist"
+      ],
+      "options": {
+        "command": "pnpm run build",
+        "cwd": "apps/sva-studio-react"
+      }
+    },
+    "preview": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm run preview",
+        "cwd": "apps/sva-studio-react"
+      }
+    },
+    "test:unit": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm --filter sva-studio-react run test"
+      }
+    },
+    "test:coverage": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm --filter sva-studio-react exec vitest run --coverage --config vitest.config.ts --passWithNoTests"
+      }
+    },
+    "test:integration": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node -e \"console.log('no integration tests configured for sva-studio-react')\""
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "options": {
+        "lintFilePatterns": ["apps/sva-studio-react/src/**/*.{ts,tsx,js,jsx}"],
+        "command": "pnpm --filter sva-studio-react run build"
+      }
+    },
+    "test:e2e": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm --filter sva-studio-react run test:e2e"
+      }
+    }
+  }
+}

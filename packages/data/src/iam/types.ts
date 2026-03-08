@@ -13,6 +13,9 @@ export type PersonaScope = 'instance' | 'org';
 export type MfaPolicy = 'required' | 'recommended' | 'optional';
 export type RoleSyncState = 'synced' | 'pending' | 'failed';
 export type RoleManagedBy = 'studio' | 'external';
+export type OrganizationType = 'county' | 'municipality' | 'district' | 'company' | 'agency' | 'other';
+export type ContentAuthorPolicy = 'org_only' | 'org_or_personal';
+export type OrganizationMembershipVisibility = 'internal' | 'external';
 
 export type PermissionKey =
   | 'iam.user.read'
@@ -52,6 +55,18 @@ export type IamSeedContext = {
 
 export type IamSeedPlan = {
   readonly context: IamSeedContext;
+  readonly organizations: readonly {
+    readonly id: IamUuid;
+    readonly organizationKey: string;
+    readonly displayName: string;
+    readonly organizationType: OrganizationType;
+    readonly parentOrganizationId?: IamUuid;
+    readonly hierarchyPath: readonly IamUuid[];
+    readonly depth: number;
+    readonly contentAuthorPolicy: ContentAuthorPolicy;
+    readonly isActive: boolean;
+    readonly metadata: Readonly<Record<string, unknown>>;
+  }[];
   readonly personas: readonly PersonaSeed[];
   readonly permissions: readonly {
     readonly id: IamUuid;

@@ -85,6 +85,52 @@ describe('iam seed statements', () => {
     );
     assert.deepEqual(statement.values, ['account-id', 'instance-id', 'subject-id', 'enc-email', 'enc-display']);
   });
+
+  it('builds organization upsert with hierarchy and policy fields', () => {
+    const statement = iamSeedStatements.upsertOrganization({
+      id: 'org-id',
+      instanceId: 'instance-id',
+      organizationKey: 'org-key',
+      displayName: 'Org Display',
+      metadata: '{"seed":true}',
+      organizationType: 'municipality',
+      contentAuthorPolicy: 'org_or_personal',
+      parentOrganizationId: 'parent-id',
+      hierarchyPath: ['root-id', 'parent-id'],
+      depth: 2,
+      isActive: true,
+    });
+
+    assert.match(statement.text, /parent_organization_id/);
+    assert.match(statement.text, /hierarchy_path/);
+    assert.deepEqual(statement.values, [
+      'org-id',
+      'instance-id',
+      'org-key',
+      'Org Display',
+      '{"seed":true}',
+      'municipality',
+      'org_or_personal',
+      'parent-id',
+      ['root-id', 'parent-id'],
+      2,
+      true,
+    ]);
+  });
+
+  it('builds account-organization assignment with default context and visibility fields', () => {
+    const statement = iamSeedStatements.assignAccountOrganization({
+      instanceId: 'instance-id',
+      accountId: 'account-id',
+      organizationId: 'org-id',
+      isDefaultContext: true,
+      membershipVisibility: 'external',
+    });
+
+    assert.match(statement.text, /is_default_context/);
+    assert.match(statement.text, /membership_visibility/);
+    assert.deepEqual(statement.values, ['instance-id', 'account-id', 'org-id', true, 'external']);
+  });
 });
 
 describe('iam seed repository', () => {

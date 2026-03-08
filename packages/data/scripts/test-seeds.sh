@@ -95,7 +95,7 @@ assert_count() {
 }
 
 assert_count "SELECT COUNT(*) FROM iam.instances WHERE instance_key = 'seed-instance-default';" "1" "instance count"
-assert_count "SELECT COUNT(*) FROM iam.organizations WHERE organization_key = 'seed-org-default';" "1" "organization count"
+assert_count "SELECT COUNT(*) FROM iam.organizations WHERE instance_id = '11111111-1111-1111-1111-111111111111';" "3" "organization count"
 assert_count "SELECT COUNT(*) FROM iam.roles WHERE instance_id = '11111111-1111-1111-1111-111111111111';" "15" "role count"
 assert_count "SELECT COUNT(*) FROM iam.roles WHERE instance_id = '11111111-1111-1111-1111-111111111111' AND managed_by = 'studio';" "15" "studio role count"
 assert_count "SELECT COUNT(*) FROM iam.roles WHERE instance_id = '11111111-1111-1111-1111-111111111111' AND managed_by = 'external';" "0" "external role count"
@@ -103,7 +103,8 @@ assert_count "SELECT COUNT(*) FROM iam.permissions WHERE instance_id = '11111111
 assert_count "SELECT COUNT(*) FROM iam.accounts WHERE keycloak_subject LIKE 'seed:%';" "7" "account count"
 assert_count "SELECT COUNT(*) FROM iam.instance_memberships WHERE instance_id = '11111111-1111-1111-1111-111111111111';" "7" "instance memberships"
 assert_count "SELECT COUNT(*) FROM iam.account_roles WHERE instance_id = '11111111-1111-1111-1111-111111111111';" "7" "account roles"
-assert_count "SELECT COUNT(*) FROM iam.account_organizations WHERE instance_id = '11111111-1111-1111-1111-111111111111';" "7" "account organizations"
+assert_count "SELECT COUNT(*) FROM iam.account_organizations WHERE instance_id = '11111111-1111-1111-1111-111111111111';" "10" "account organizations"
+assert_count "SELECT COUNT(*) FROM iam.account_organizations WHERE instance_id = '11111111-1111-1111-1111-111111111111' AND is_default_context = true;" "7" "default organization contexts"
 assert_count "SELECT COUNT(*) FROM iam.role_permissions WHERE instance_id = '11111111-1111-1111-1111-111111111111';" "33" "role permissions"
 
 echo "Seed idempotency integration test passed."

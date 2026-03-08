@@ -11,18 +11,72 @@ SET
   display_name = EXCLUDED.display_name,
   updated_at = NOW();
 
-INSERT INTO iam.organizations (id, instance_id, organization_key, display_name, metadata)
-VALUES (
+INSERT INTO iam.organizations (
+  id,
+  instance_id,
+  organization_key,
+  display_name,
+  metadata,
+  organization_type,
+  content_author_policy,
+  parent_organization_id,
+  hierarchy_path,
+  depth,
+  is_active
+)
+VALUES
+(
   '22222222-2222-2222-2222-222222222222',
   '11111111-1111-1111-1111-111111111111',
   'seed-org-default',
-  'Seed Organization Default',
-  '{"seed":true,"version":"v1"}'::jsonb
+  'Seed County Default',
+  '{"seed":true,"version":"v2","level":"county"}'::jsonb,
+  'county',
+  'org_only',
+  NULL,
+  ARRAY[]::uuid[],
+  0,
+  true
+),
+(
+  '22333333-3333-3333-3333-333333333333',
+  '11111111-1111-1111-1111-111111111111',
+  'seed-org-municipality',
+  'Seed Municipality',
+  '{"seed":true,"version":"v2","level":"municipality"}'::jsonb,
+  'municipality',
+  'org_or_personal',
+  '22222222-2222-2222-2222-222222222222',
+  ARRAY['22222222-2222-2222-2222-222222222222']::uuid[],
+  1,
+  true
+),
+(
+  '22444444-4444-4444-4444-444444444444',
+  '11111111-1111-1111-1111-111111111111',
+  'seed-org-district',
+  'Seed District',
+  '{"seed":true,"version":"v2","level":"district"}'::jsonb,
+  'district',
+  'org_only',
+  '22333333-3333-3333-3333-333333333333',
+  ARRAY[
+    '22222222-2222-2222-2222-222222222222',
+    '22333333-3333-3333-3333-333333333333'
+  ]::uuid[],
+  2,
+  true
 )
 ON CONFLICT (instance_id, organization_key) DO UPDATE
 SET
   display_name = EXCLUDED.display_name,
   metadata = EXCLUDED.metadata,
+  organization_type = EXCLUDED.organization_type,
+  content_author_policy = EXCLUDED.content_author_policy,
+  parent_organization_id = EXCLUDED.parent_organization_id,
+  hierarchy_path = EXCLUDED.hierarchy_path,
+  depth = EXCLUDED.depth,
+  is_active = EXCLUDED.is_active,
   updated_at = NOW();
 
 INSERT INTO iam.roles (
@@ -125,16 +179,28 @@ VALUES
   ('11111111-1111-1111-1111-111111111111', '50777777-7777-7777-7777-777777777777', '30777777-7777-7777-7777-777777777777')
 ON CONFLICT (instance_id, account_id, role_id) DO NOTHING;
 
-INSERT INTO iam.account_organizations (instance_id, account_id, organization_id)
+INSERT INTO iam.account_organizations (
+  instance_id,
+  account_id,
+  organization_id,
+  is_default_context,
+  membership_visibility
+)
 VALUES
-  ('11111111-1111-1111-1111-111111111111', '50111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222'),
-  ('11111111-1111-1111-1111-111111111111', '50222222-2222-2222-2222-222222222222', '22222222-2222-2222-2222-222222222222'),
-  ('11111111-1111-1111-1111-111111111111', '50333333-3333-3333-3333-333333333333', '22222222-2222-2222-2222-222222222222'),
-  ('11111111-1111-1111-1111-111111111111', '50444444-4444-4444-4444-444444444444', '22222222-2222-2222-2222-222222222222'),
-  ('11111111-1111-1111-1111-111111111111', '50555555-5555-5555-5555-555555555555', '22222222-2222-2222-2222-222222222222'),
-  ('11111111-1111-1111-1111-111111111111', '50666666-6666-6666-6666-666666666666', '22222222-2222-2222-2222-222222222222'),
-  ('11111111-1111-1111-1111-111111111111', '50777777-7777-7777-7777-777777777777', '22222222-2222-2222-2222-222222222222')
-ON CONFLICT (instance_id, account_id, organization_id) DO NOTHING;
+  ('11111111-1111-1111-1111-111111111111', '50111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222', true, 'internal'),
+  ('11111111-1111-1111-1111-111111111111', '50111111-1111-1111-1111-111111111111', '22333333-3333-3333-3333-333333333333', false, 'internal'),
+  ('11111111-1111-1111-1111-111111111111', '50222222-2222-2222-2222-222222222222', '22333333-3333-3333-3333-333333333333', true, 'internal'),
+  ('11111111-1111-1111-1111-111111111111', '50333333-3333-3333-3333-333333333333', '22333333-3333-3333-3333-333333333333', true, 'internal'),
+  ('11111111-1111-1111-1111-111111111111', '50333333-3333-3333-3333-333333333333', '22444444-4444-4444-4444-444444444444', false, 'external'),
+  ('11111111-1111-1111-1111-111111111111', '50444444-4444-4444-4444-444444444444', '22222222-2222-2222-2222-222222222222', true, 'internal'),
+  ('11111111-1111-1111-1111-111111111111', '50555555-5555-5555-5555-555555555555', '22444444-4444-4444-4444-444444444444', true, 'internal'),
+  ('11111111-1111-1111-1111-111111111111', '50666666-6666-6666-6666-666666666666', '22444444-4444-4444-4444-444444444444', true, 'internal'),
+  ('11111111-1111-1111-1111-111111111111', '50666666-6666-6666-6666-666666666666', '22333333-3333-3333-3333-333333333333', false, 'internal'),
+  ('11111111-1111-1111-1111-111111111111', '50777777-7777-7777-7777-777777777777', '22333333-3333-3333-3333-333333333333', true, 'internal')
+ON CONFLICT (instance_id, account_id, organization_id) DO UPDATE
+SET
+  is_default_context = EXCLUDED.is_default_context,
+  membership_visibility = EXCLUDED.membership_visibility;
 
 INSERT INTO iam.role_permissions (instance_id, role_id, permission_id)
 VALUES

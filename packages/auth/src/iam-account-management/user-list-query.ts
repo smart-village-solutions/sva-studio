@@ -52,7 +52,21 @@ LEFT JOIN iam.roles r
   ON r.instance_id = ar.instance_id
  AND r.id = ar.role_id
 WHERE ($2::text IS NULL OR a.status = $2)
-  AND ($3::text IS NULL OR r.role_key = $3)
+  AND (
+    $3::text IS NULL OR
+    EXISTS (
+      SELECT 1
+      FROM iam.account_roles ar_filter
+      JOIN iam.roles r_filter
+        ON r_filter.instance_id = ar_filter.instance_id
+       AND r_filter.id = ar_filter.role_id
+      WHERE ar_filter.instance_id = im.instance_id
+        AND ar_filter.account_id = im.account_id
+        AND ar_filter.valid_from <= NOW()
+        AND (ar_filter.valid_to IS NULL OR ar_filter.valid_to > NOW())
+        AND r_filter.role_key = $3
+    )
+  )
   AND (
     $4::text IS NULL OR
     a.keycloak_subject ILIKE '%' || $4 || '%' OR
@@ -98,18 +112,26 @@ LEFT JOIN iam.account_roles ar
 LEFT JOIN iam.roles r
   ON r.instance_id = ar.instance_id
  AND r.id = ar.role_id
-LEFT JOIN iam.role_permissions rp
-  ON rp.instance_id = r.instance_id
- AND rp.role_id = r.id
-LEFT JOIN iam.permissions p
-  ON p.instance_id = rp.instance_id
- AND p.id = rp.permission_id
 LEFT JOIN iam.activity_logs al
   ON al.instance_id = im.instance_id
  AND al.account_id = a.id
  AND al.event_type = 'login'
 WHERE ($2::text IS NULL OR a.status = $2)
-  AND ($3::text IS NULL OR r.role_key = $3)
+  AND (
+    $3::text IS NULL OR
+    EXISTS (
+      SELECT 1
+      FROM iam.account_roles ar_filter
+      JOIN iam.roles r_filter
+        ON r_filter.instance_id = ar_filter.instance_id
+       AND r_filter.id = ar_filter.role_id
+      WHERE ar_filter.instance_id = im.instance_id
+        AND ar_filter.account_id = im.account_id
+        AND ar_filter.valid_from <= NOW()
+        AND (ar_filter.valid_to IS NULL OR ar_filter.valid_to > NOW())
+        AND r_filter.role_key = $3
+    )
+  )
   AND (
     $4::text IS NULL OR
     a.keycloak_subject ILIKE '%' || $4 || '%' OR

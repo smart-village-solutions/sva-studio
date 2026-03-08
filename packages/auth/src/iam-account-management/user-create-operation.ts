@@ -54,13 +54,16 @@ export const executeCreateUser = async (input: {
     return result;
   } catch (error) {
     logger.error('IAM user creation failed', {
-      operation: 'create_user',
-      instance_id: actor.instanceId,
-      request_id: actor.requestId,
-      trace_id: actor.traceId,
-      actor_account_id: actor.actorAccountId,
-      email_masked: maskEmail(payload.email),
-      error: error instanceof Error ? error.message : String(error),
+      workspace_id: actor.instanceId,
+      context: {
+        operation: 'create_user',
+        instance_id: actor.instanceId,
+        request_id: actor.requestId,
+        trace_id: actor.traceId,
+        actor_account_id: actor.actorAccountId,
+        email_masked: maskEmail(payload.email),
+        error: error instanceof Error ? error.message : String(error),
+      },
     });
 
     if (createdExternalId) {
@@ -74,11 +77,14 @@ export const executeCreateUser = async (input: {
         }
       } catch (compensationError) {
         logger.error('IAM user create compensation failed', {
-          operation: 'create_user_compensation',
-          keycloak_subject: createdExternalId,
-          request_id: actor.requestId,
-          trace_id: actor.traceId,
-          error: compensationError instanceof Error ? compensationError.message : String(compensationError),
+          workspace_id: actor.instanceId,
+          context: {
+            operation: 'create_user_compensation',
+            keycloak_subject: createdExternalId,
+            request_id: actor.requestId,
+            trace_id: actor.traceId,
+            error: compensationError instanceof Error ? compensationError.message : String(compensationError),
+          },
         });
       }
     }

@@ -32,6 +32,9 @@
 - [ ] Bei Architektur-/Systemänderungen sind betroffene Abschnitte in `docs/architecture/README.md` identifiziert
 - [ ] Relevante arc42-Dateien unter `docs/architecture/` wurden aktualisiert oder Abweichung ist begründet dokumentiert
 - [ ] OpenSpec-Change (`proposal.md`/`tasks.md`) referenziert die betroffenen arc42-Abschnitte
+- [ ] Bei IAM-, Rollen-Sync-, ABAC/RBAC- oder Data-Subject-Rights-Änderungen wurden Abschnitt 04, 05, 06 und 08 explizit geprüft und betroffene Dateien aktualisiert
+- [ ] Bei sicherheitskritischer oder domänenkritischer Logik wurde mindestens `docs/architecture/05-building-block-view.md` oder `docs/architecture/08-cross-cutting-concepts.md` aktualisiert
+- [ ] Neue oder geänderte IAM-Patterns sind als ADR unter `docs/adr/` dokumentiert und in `docs/architecture/09-architecture-decisions.md` referenziert
 
 ## Reviewer Quick Check
 

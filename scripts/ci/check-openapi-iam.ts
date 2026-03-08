@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 export const requiredPaths = [
   '/health/live:',
@@ -63,6 +64,6 @@ export const runOpenApiCheck = (rootDir = process.cwd()): number => {
   return 0;
 };
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   process.exit(runOpenApiCheck());
 }

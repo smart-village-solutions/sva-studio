@@ -107,7 +107,7 @@ importers:
         version: 0.577.0(react@19.2.4)
       nitro:
         specifier: ^3.0.0
-        version: 3.0.0(ioredis@5.9.3)(lru-cache@11.2.6)(vite@7.3.1(@types/node@25.3.5)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2))
+        version: 3.0.0(ioredis@5.10.0)(lru-cache@11.2.6)(vite@7.3.1(@types/node@25.3.5)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2))
       react:
         specifier: ^19.2.0
         version: 19.2.4
@@ -179,8 +179,8 @@ importers:
         specifier: ^1.2.2
         version: 1.2.2
       ioredis:
-        specifier: ^5.4.2
-        version: 5.9.3
+        specifier: ^5.10.0
+        version: 5.10.0
       openid-client:
         specifier: ^6.4.0
         version: 6.8.2
@@ -1360,8 +1360,8 @@ packages:
     resolution: {integrity: sha512-bV0Tgo9K4hfPCek+aMAn81RppFKv2ySDQeMoSZuvTASywNTnVJCArCZE2FWqpvIatKu7VMRLWlR1EazvVhDyhQ==}
     engines: {node: '>=18.18'}
 
-  '@ioredis/commands@1.5.0':
-    resolution: {integrity: sha512-eUgLqrMf8nJkZxT24JvVRrQya1vZkQh8BBeYNwGDqa5I0VUi8ACx7uFvAaLxintokpTenkK6DASvo/bvNbBGow==}
+  '@ioredis/commands@1.5.1':
+    resolution: {integrity: sha512-JH8ZL/ywcJyR9MmJ5BNqZllXNZQqQbnVZOqpPQqE1vHiFgAw4NHbvE0FOduNU8IX9babitBT46571OnPTT0Zcw==}
 
   '@jest/diff-sequences@30.0.1':
     resolution: {integrity: sha512-n5H8QLDJ47QqbCNn5SuFjCRDrOLEZ0h8vAHCK5RL9Ls7Xa8AQLa/YxAc9UjFqoEDM48muwtBGjtMY5cr0PLDCw==}
@@ -3594,8 +3594,8 @@ packages:
   inherits@2.0.4:
     resolution: {integrity: sha512-k/vGaX4/Yla3WzyMCvTQOXYeIHvqOKtnqBduzTHpzpQZzAskKMhZ2K+EnBiSM9zGSoIFeMpXKxa4dYeZIQqewQ==}
 
-  ioredis@5.9.3:
-    resolution: {integrity: sha512-VI5tMCdeoxZWU5vjHWsiE/Su76JGhBvWF1MJnV9ZtGltHk9BmD48oDq8Tj8haZ85aceXZMxLNDQZRVo5QKNgXA==}
+  ioredis@5.10.0:
+    resolution: {integrity: sha512-HVBe9OFuqs+Z6n64q09PQvP1/R4Bm+30PAyyD4wIEqssh3v9L21QjCVk4kRLucMBcDokJTcLjsGeVRlq/nH6DA==}
     engines: {node: '>=12.22.0'}
 
   is-arrayish@0.2.1:
@@ -5958,7 +5958,7 @@ snapshots:
 
   '@humanwhocodes/retry@0.4.3': {}
 
-  '@ioredis/commands@1.5.0': {}
+  '@ioredis/commands@1.5.1': {}
 
   '@jest/diff-sequences@30.0.1': {}
 
@@ -8697,9 +8697,9 @@ snapshots:
 
   inherits@2.0.4: {}
 
-  ioredis@5.9.3:
+  ioredis@5.10.0:
     dependencies:
-      '@ioredis/commands': 1.5.0
+      '@ioredis/commands': 1.5.1
       cluster-key-slot: 1.1.2
       debug: 4.4.3
       denque: 2.1.0
@@ -8968,7 +8968,7 @@ snapshots:
 
   nf3@0.1.12: {}
 
-  nitro@3.0.0(ioredis@5.9.3)(lru-cache@11.2.6)(vite@7.3.1(@types/node@25.3.5)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2)):
+  nitro@3.0.0(ioredis@5.10.0)(lru-cache@11.2.6)(vite@7.3.1(@types/node@25.3.5)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2)):
     dependencies:
       consola: 3.4.2
       cookie-es: 2.0.0
@@ -8986,7 +8986,7 @@ snapshots:
       srvx: 0.8.16
       undici: 6.23.0
       unenv: 2.0.0-rc.21
-      unstorage: 2.0.0-alpha.3(db0@0.3.4)(ioredis@5.9.3)(lru-cache@11.2.6)(ofetch@1.5.1)
+      unstorage: 2.0.0-alpha.3(db0@0.3.4)(ioredis@5.10.0)(lru-cache@11.2.6)(ofetch@1.5.1)
     optionalDependencies:
       vite: 7.3.1(@types/node@25.3.5)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2)
     transitivePeerDependencies:
@@ -9748,10 +9748,10 @@ snapshots:
       picomatch: 4.0.3
       webpack-virtual-modules: 0.6.2
 
-  unstorage@2.0.0-alpha.3(db0@0.3.4)(ioredis@5.9.3)(lru-cache@11.2.6)(ofetch@1.5.1):
+  unstorage@2.0.0-alpha.3(db0@0.3.4)(ioredis@5.10.0)(lru-cache@11.2.6)(ofetch@1.5.1):
     optionalDependencies:
       db0: 0.3.4
-      ioredis: 5.9.3
+      ioredis: 5.10.0
       lru-cache: 11.2.6
       ofetch: 1.5.1
 

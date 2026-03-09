@@ -85,6 +85,16 @@ Schulden auf IST-Basis.
    - Wahrscheinlichkeit: hoch
    - Maßnahme: Restschuld nur mit `QUAL-*`-Ticket, klare Doku der Modulgrenzen und inkrementelle Weiterzerlegung
 
+15. Gemischte Token- und Direktfarben im Frontend
+   - Impact: mittel (visuelle Inkonsistenz, erschwerte Theme-Pflege)
+   - Wahrscheinlichkeit: hoch
+   - Maßnahme: Shell zuerst vollständig auf semantische Tokens umstellen und Route-Flächen schrittweise nachziehen
+
+16. Theme-Drift zwischen `instanceId`-Auflösung und realem Branding-Bedarf
+   - Impact: mittel bis hoch (falsches Branding pro Instanz)
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: Theme-Mapping zentral halten, Unknown-Fallback definieren und Varianten nur kontrolliert erweitern
+
 ### Technische Schulden (Auswahl)
 
 - Teilweise No-Op Testtargets in Libraries
@@ -96,6 +106,7 @@ Schulden auf IST-Basis.
 - Risiko von Scope-Bleeding bei schnellen IAM-Iterationen ohne harte Gate-Disziplin
 - Mehrere historische IAM-Hotspots sind bewusst als tracked findings mit Refactoring-Backlog dokumentiert
 - Nach der Fassaden-Zerlegung verbleibt Restkomplexität gezielt in `iam-account-management/users-handlers.ts`, `iam-account-management/roles-handlers.ts`, `iam-account-management/reconcile-handler.ts`, `iam-account-management/shared.ts`, `iam-data-subject-rights/core.ts`, `iam-governance/core.ts` und `keycloak-admin-client/core.ts`
+- Route-Komponenten außerhalb der Shell verwenden noch teilweise direkte `slate-*`-/`emerald-*`-Farben und sind nicht vollständig tokenisiert
 
 ### Nachverfolgung
 

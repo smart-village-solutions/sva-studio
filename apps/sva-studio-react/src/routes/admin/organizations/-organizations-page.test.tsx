@@ -274,9 +274,11 @@ describe('OrganizationsPage', () => {
     expect((within(dialog).getByLabelText('Parent-Organisation') as HTMLSelectElement).value).toBe('org-1');
     expect((within(dialog).getByLabelText('Autoren-Policy') as HTMLSelectElement).value).toBe('org_or_personal');
 
-    fireEvent.change(within(dialog).getByLabelText('Anzeigename'), {
+    const displayNameInput = within(dialog).getByLabelText('Anzeigename') as HTMLInputElement;
+    fireEvent.input(displayNameInput, {
       target: { value: ' Gemeinde Beta Neu ' },
     });
+    expect(displayNameInput.value).toBe(' Gemeinde Beta Neu ');
     fireEvent.change(within(dialog).getByLabelText('Parent-Organisation'), {
       target: { value: '' },
     });

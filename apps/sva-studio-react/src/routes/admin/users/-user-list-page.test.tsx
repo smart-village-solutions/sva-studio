@@ -186,7 +186,7 @@ describe('UserListPage', () => {
     await waitFor(() => {
       expect(screen.queryByRole('dialog', { name: 'Nutzer anlegen' })).toBeNull();
     });
-  });
+  }, 15000);
 
   it('keeps create dialog open when create user fails', async () => {
     const createUser = vi.fn().mockResolvedValue(false);

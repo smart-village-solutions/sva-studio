@@ -63,17 +63,9 @@ SET
   updated_at = NOW();
 `,
     values: [
-      input.id,
-      input.instanceId,
-      input.organizationKey,
-      input.displayName,
-      input.metadata,
-      input.organizationType,
-      input.contentAuthorPolicy,
-      input.parentOrganizationId ?? null,
-      asUuidArrayParameter(input.hierarchyPath),
-      input.depth,
-      input.isActive ?? true,
+      input.id, input.instanceId, input.organizationKey, input.displayName, input.metadata, input.organizationType,
+      input.contentAuthorPolicy, input.parentOrganizationId ?? null, asUuidArrayParameter(input.hierarchyPath),
+      input.depth, input.isActive ?? true,
     ],
   }),
 
@@ -169,15 +161,9 @@ SET
   updated_at = NOW();
 `,
     values: [
-      input.id,
-      input.instanceId,
-      input.permissionKey,
-      input.action ?? input.permissionKey,
-      input.resourceType ?? defaultResourceType(input.permissionKey),
-      input.resourceId ?? null,
-      input.effect ?? 'allow',
-      JSON.stringify(input.scope ?? {}),
-      input.description,
+      input.id, input.instanceId, input.permissionKey, input.action ?? input.permissionKey,
+      input.resourceType ?? defaultResourceType(input.permissionKey), input.resourceId ?? null,
+      input.effect ?? 'allow', JSON.stringify(input.scope ?? {}), input.description,
     ],
   }),
 

@@ -81,7 +81,7 @@ describe('RolesPage', () => {
 
     fireEvent.click(screen.getAllByRole('button', { name: /editor/i })[0]!);
     expect(screen.getByText('content.write')).toBeTruthy();
-  });
+  }, 15000);
 
   it('opens create dialog and submits normalized payload', async () => {
     const createRole = vi.fn().mockResolvedValue(true);

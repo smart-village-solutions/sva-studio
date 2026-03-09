@@ -2,11 +2,12 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
 const createdDirs: string[] = [];
+const testDir = path.dirname(fileURLToPath(import.meta.url));
 
 type RunPatchCoverageGate = (options: {
   rootDir?: string;
@@ -28,10 +29,14 @@ type RunPatchCoverageGate = (options: {
   }>;
 };
 
-async function loadRunPatchCoverageGate() {
-  const scriptUrl = pathToFileURL(path.resolve(__dirname, '../../../scripts/ci/patch-coverage-gate.ts')).href;
-  const module = await import(scriptUrl);
-  return module.runPatchCoverageGate as RunPatchCoverageGate;
+async function loadRunPatchCoverageGate(): Promise<RunPatchCoverageGate> {
+  const moduleUrl = pathToFileURL(
+    path.resolve(testDir, '../../../scripts/ci/patch-coverage-gate.ts')
+  ).href;
+  const module = (await import(moduleUrl)) as {
+    runPatchCoverageGate: RunPatchCoverageGate;
+  };
+  return module.runPatchCoverageGate;
 }
 
 function createTempWorkspace(): string {

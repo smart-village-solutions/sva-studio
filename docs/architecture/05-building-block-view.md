@@ -120,9 +120,9 @@ Referenzen:
 Neu hinzugekommene Bausteine im Change `add-account-user-management-ui`:
 
 1. `apps/sva-studio-react/src/routes/account/-account-profile-page.tsx`
-   - Self-Service-Profilseite (`/account`) mit Validierung, Error-Summary und Keycloak-Weiterleitung für Sicherheitsdaten.
+   - Self-Service-Profilseite (`/account`) mit Validierung, Error-Summary, editierbarer E-Mail, editierbarem Benutzernamen und synchronisiertem Profilabgleich nach IAM und Keycloak.
 2. `apps/sva-studio-react/src/routes/admin/users/*`
-   - Admin-User-Liste (`/admin/users`) und User-Detailansicht (`/admin/users/$userId`) inklusive Rollen- und Statusverwaltung.
+   - Admin-User-Liste (`/admin/users`) und User-Detailansicht (`/admin/users/$userId`) inklusive Rollen- und Statusverwaltung; Profiländerungen aus `/account` werden bei erneuter Datenladung bzw. In-App-Invalidierung sichtbar.
 3. `apps/sva-studio-react/src/routes/admin/roles/-roles-page.tsx`
    - Rollenverwaltung (`/admin/roles`) mit System-/Custom-Rollen und erweiterbarer Berechtigungsmatrix.
 4. `apps/sva-studio-react/src/hooks/use-users.ts`, `use-user.ts`, `use-roles.ts`
@@ -174,3 +174,16 @@ Neu hinzugekommene Bausteine im Change `add-iam-organization-management-hierarch
    - Lädt effektive Rollen-Permissions org-kontextbezogen aus Postgres und normalisiert Parent-Mitgliedschaften auf den angefragten Zielkontext.
 5. `packages/auth/src/iam-authorization/shared.ts`
    - Transformiert DB-Permission-Zeilen in deduplizierte effektive Permissions inklusive `effect` und `scope`.
+
+### Ergänzung 2026-03: Manueller Keycloak-User-Import
+
+1. `packages/auth/src/iam-account-management/user-import-sync-handler.ts`
+   - Führt einen expliziten Admin-Sync aus, liest Keycloak-Benutzer seitenweise, filtert sie über das `instanceId`-Attribut und spiegelt Basisdaten idempotent nach `iam.accounts`.
+2. `packages/auth/src/identity-provider-port.ts`
+   - Erweitert die IdP-Abstraktion um typisierte User-Listing-Operationen für administrative Import- und Reconcile-Flows.
+3. `packages/auth/src/routes/registry.ts` und `packages/auth/src/routes.shared.ts`
+   - Registrieren den mutierenden IAM-Endpunkt `POST /api/v1/iam/users/sync-keycloak` typsicher im bestehenden Auth-/IAM-Router.
+4. `packages/core/src/iam/account-management-contract.ts`
+   - Definiert den gemeinsamen Sync-Report (`importedCount`, `updatedCount`, `skippedCount`, `totalKeycloakUsers`) für Server und Frontend.
+5. `apps/sva-studio-react/src/hooks/use-users.ts` und `apps/sva-studio-react/src/routes/admin/users/-user-list-page.tsx`
+   - Binden die Aktion „Aus Keycloak synchronisieren“ in `/admin/users` an, zeigen Statusfeedback an und laden die User-Liste nach erfolgreichem Import neu.

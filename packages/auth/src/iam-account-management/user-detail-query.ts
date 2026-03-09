@@ -18,6 +18,7 @@ type UserDetailRoleRow = {
 type UserDetailRow = {
   id: string;
   keycloak_subject: string;
+  username_ciphertext: string | null;
   display_name_ciphertext: string | null;
   email_ciphertext: string | null;
   first_name_ciphertext: string | null;
@@ -39,6 +40,7 @@ const USER_DETAIL_QUERY = `
 SELECT
   a.id,
   a.keycloak_subject,
+  a.username_ciphertext,
   a.display_name_ciphertext,
   a.email_ciphertext,
   a.first_name_ciphertext,
@@ -129,6 +131,7 @@ const mapUserDetailRow = (row: UserDetailRow): IamUserDetail => {
 
   return {
     ...base,
+    username: revealField(row.username_ciphertext, `iam.accounts.username:${row.keycloak_subject}`),
     firstName: revealField(row.first_name_ciphertext, `iam.accounts.first_name:${row.keycloak_subject}`),
     lastName: revealField(row.last_name_ciphertext, `iam.accounts.last_name:${row.keycloak_subject}`),
     phone: revealField(row.phone_ciphertext, `iam.accounts.phone:${row.keycloak_subject}`),

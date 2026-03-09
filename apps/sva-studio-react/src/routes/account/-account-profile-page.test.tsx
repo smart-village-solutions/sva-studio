@@ -19,6 +19,7 @@ const authMockValue = {
   refetch: vi.fn(),
   logout: vi.fn(),
   invalidatePermissions: vi.fn(),
+  updateProfile: vi.fn(),
 };
 
 vi.mock('../../lib/iam-api', () => ({
@@ -58,6 +59,7 @@ describe('AccountProfilePage', () => {
       email: 'jane@example.com',
       roles: ['editor'],
     };
+    authMockValue.updateProfile.mockReset();
   });
 
   it('loads profile and submits updates', async () => {
@@ -65,6 +67,7 @@ describe('AccountProfilePage', () => {
       data: {
         id: 'account-1',
         keycloakSubject: 'subject-1',
+        username: 'jane.doe',
         displayName: 'Jane Doe',
         firstName: 'Jane',
         lastName: 'Doe',
@@ -78,10 +81,11 @@ describe('AccountProfilePage', () => {
       data: {
         id: 'account-1',
         keycloakSubject: 'subject-1',
+        username: 'jane.doe.updated',
         displayName: 'Jane D.',
         firstName: 'Jane',
         lastName: 'Doe',
-        email: 'jane@example.com',
+        email: 'jane.d@example.com',
         status: 'active',
         roles: [],
       },
@@ -96,6 +100,12 @@ describe('AccountProfilePage', () => {
     fireEvent.change(screen.getByLabelText('Anzeigename'), {
       target: { value: 'Jane D.' },
     });
+    fireEvent.change(screen.getByLabelText('Benutzername'), {
+      target: { value: 'jane.doe.updated' },
+    });
+    fireEvent.change(screen.getByLabelText('E-Mail'), {
+      target: { value: 'jane.d@example.com' },
+    });
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Speichern' })).toBeTruthy();
@@ -106,6 +116,17 @@ describe('AccountProfilePage', () => {
     await waitFor(() => {
       expect(updateMyProfileMock).toHaveBeenCalledTimes(1);
       expect(screen.getByText('Profil wurde erfolgreich gespeichert.')).toBeTruthy();
+    });
+    expect(updateMyProfileMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        username: 'jane.doe.updated',
+        email: 'jane.d@example.com',
+        displayName: 'Jane D.',
+      })
+    );
+    expect(authMockValue.updateProfile).toHaveBeenCalledWith({
+      name: 'Jane D.',
+      email: 'jane.d@example.com',
     });
   });
 
@@ -123,6 +144,57 @@ describe('AccountProfilePage', () => {
     });
   });
 
+  it('derives the display name from first and last name when no custom display name exists', async () => {
+    getMyProfileMock.mockResolvedValue({
+      data: {
+        id: 'account-1',
+        keycloakSubject: 'subject-1',
+        username: 'jane.doe',
+        displayName: 'Jane Doe',
+        firstName: 'Jane',
+        lastName: 'Doe',
+        email: 'jane@example.com',
+        status: 'active',
+        roles: [],
+      },
+    });
+    updateMyProfileMock.mockResolvedValue({
+      data: {
+        id: 'account-1',
+        keycloakSubject: 'subject-1',
+        username: 'jane.doe',
+        displayName: 'Janet Doe',
+        firstName: 'Janet',
+        lastName: 'Doe',
+        email: 'jane@example.com',
+        status: 'active',
+        roles: [],
+      },
+    });
+
+    render(<AccountProfilePage />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Mein Konto' })).toBeTruthy();
+    });
+
+    fireEvent.change(screen.getByLabelText('Vorname'), {
+      target: { value: 'Janet' },
+    });
+    fireEvent.submit(screen.getByRole('button', { name: 'Speichern' }));
+
+    await waitFor(() => {
+      expect(updateMyProfileMock).toHaveBeenCalledTimes(1);
+    });
+
+    expect(updateMyProfileMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        firstName: 'Janet',
+        displayName: 'Janet Doe',
+      })
+    );
+  });
+
   it('shows load error with retry and keeps display name fallback from auth user', async () => {
     const loadError = { status: 500, code: 'failed', message: 'failed' };
     asIamErrorMock.mockReturnValue(loadError);
@@ -131,6 +203,7 @@ describe('AccountProfilePage', () => {
       data: {
         id: 'account-1',
         keycloakSubject: 'subject-1',
+        username: 'jane.doe',
         displayName: 'Jane Doe',
         firstName: 'Jane',
         lastName: 'Doe',
@@ -161,6 +234,7 @@ describe('AccountProfilePage', () => {
       data: {
         id: 'account-1',
         keycloakSubject: 'subject-1',
+        username: 'jane.doe',
         displayName: 'Jane Doe',
         firstName: 'Jane',
         lastName: 'Doe',
@@ -178,8 +252,10 @@ describe('AccountProfilePage', () => {
       expect(screen.getByRole('heading', { name: 'Mein Konto' })).toBeTruthy();
     });
 
+    fireEvent.change(screen.getByLabelText('Benutzername'), { target: { value: 'bad user' } });
     fireEvent.change(screen.getByLabelText('Vorname'), { target: { value: '' } });
     fireEvent.change(screen.getByLabelText('Nachname'), { target: { value: '' } });
+    fireEvent.change(screen.getByLabelText('E-Mail'), { target: { value: 'bad-email' } });
     fireEvent.change(screen.getByLabelText('Telefon'), { target: { value: 'bad-phone' } });
     fireEvent.submit(screen.getByRole('button', { name: 'Speichern' }));
 
@@ -188,8 +264,10 @@ describe('AccountProfilePage', () => {
       expect(updateMyProfileMock).not.toHaveBeenCalled();
     });
 
+    fireEvent.change(screen.getByLabelText('Benutzername'), { target: { value: 'jane.doe' } });
     fireEvent.change(screen.getByLabelText('Vorname'), { target: { value: 'Jane' } });
     fireEvent.change(screen.getByLabelText('Nachname'), { target: { value: 'Doe' } });
+    fireEvent.change(screen.getByLabelText('E-Mail'), { target: { value: 'jane@example.com' } });
     fireEvent.change(screen.getByLabelText('Telefon'), { target: { value: '+49 1234567' } });
     fireEvent.submit(screen.getByRole('button', { name: 'Speichern' }));
 

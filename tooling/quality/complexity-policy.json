@@ -120,11 +120,23 @@
       "status": "open",
       "summary": "IAM Account Management Shared-Helfer weiter in Runtime-, Persistence- und Authorization-Bausteine zerlegen"
     },
+    "iam-server:packages/auth/src/iam-account-management/shared.ts:functionLines": {
+      "ticketId": "QUAL-112",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "IAM Account Management Shared-Helfer weiter in Runtime-, Persistence- und Authorization-Bausteine zerlegen"
+    },
     "iam-server:packages/auth/src/iam-account-management/shared.ts:publicExports": {
       "ticketId": "QUAL-112",
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "IAM Account Management Shared-Helfer weiter in Runtime-, Persistence- und Authorization-Bausteine zerlegen"
+    },
+    "iam-server:packages/auth/src/iam-account-management/profile-handlers.ts:fileLines": {
+      "ticketId": "QUAL-112",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "IAM Account Management User- und Profile-Handler weiter in Query-, Mutation- und Profile-Module zerlegen"
     },
     "iam-server:packages/auth/src/iam-account-management/types.ts:publicExports": {
       "ticketId": "QUAL-101",
@@ -145,6 +157,18 @@
       "summary": "IAM Account Management User- und Profile-Handler weiter in Query-, Mutation- und Profile-Module zerlegen"
     },
     "iam-server:packages/auth/src/iam-account-management/users-handlers.ts:functionLines": {
+      "ticketId": "QUAL-112",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "IAM Account Management User- und Profile-Handler weiter in Query-, Mutation- und Profile-Module zerlegen"
+    },
+    "iam-server:packages/auth/src/iam-account-management/user-import-sync-handler.ts:fileLines": {
+      "ticketId": "QUAL-112",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "IAM Account Management User- und Profile-Handler weiter in Query-, Mutation- und Profile-Module zerlegen"
+    },
+    "iam-server:packages/auth/src/iam-account-management/user-import-sync-handler.ts:functionLines": {
       "ticketId": "QUAL-112",
       "ticketSystem": "backlog",
       "status": "open",

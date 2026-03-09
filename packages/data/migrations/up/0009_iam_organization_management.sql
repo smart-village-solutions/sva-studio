@@ -92,10 +92,6 @@ BEGIN
 END
 $$;
 
-CREATE UNIQUE INDEX IF NOT EXISTS uq_account_organizations_default_context
-  ON iam.account_organizations(instance_id, account_id)
-  WHERE is_default_context;
-
 CREATE INDEX IF NOT EXISTS idx_account_organizations_org_account
   ON iam.account_organizations(instance_id, organization_id, account_id);
 
@@ -108,12 +104,28 @@ WITH ranked_memberships AS (
   FROM iam.account_organizations
 )
 UPDATE iam.account_organizations AS membership
-SET is_default_context = ranked_memberships.membership_rank = 1
+SET is_default_context = false
+WHERE membership.is_default_context;
+
+WITH ranked_memberships AS (
+  SELECT
+    instance_id,
+    account_id,
+    organization_id,
+    ROW_NUMBER() OVER (PARTITION BY instance_id, account_id ORDER BY created_at ASC, organization_id ASC) AS membership_rank
+  FROM iam.account_organizations
+)
+UPDATE iam.account_organizations AS membership
+SET is_default_context = true
 FROM ranked_memberships
 WHERE membership.instance_id = ranked_memberships.instance_id
   AND membership.account_id = ranked_memberships.account_id
   AND membership.organization_id = ranked_memberships.organization_id
-  AND membership.is_default_context IS DISTINCT FROM (ranked_memberships.membership_rank = 1);
+  AND ranked_memberships.membership_rank = 1;
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_account_organizations_default_context
+  ON iam.account_organizations(instance_id, account_id)
+  WHERE is_default_context;
 
 UPDATE iam.organizations
 SET

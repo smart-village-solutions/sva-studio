@@ -4,5 +4,6 @@ export {
   deactivateUserHandler,
   getUserHandler,
   listUsersHandler,
+  syncUsersFromKeycloakHandler,
   updateUserHandler,
 } from './core';

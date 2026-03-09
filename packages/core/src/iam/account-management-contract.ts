@@ -75,6 +75,7 @@ export type IamUserListItem = {
 };
 
 export type IamUserDetail = IamUserListItem & {
+  readonly username?: string;
   readonly firstName?: string;
   readonly lastName?: string;
   readonly phone?: string;
@@ -83,6 +84,13 @@ export type IamUserDetail = IamUserListItem & {
   readonly avatarUrl?: string;
   readonly notes?: string;
   readonly permissions?: readonly string[];
+};
+
+export type IamUserImportSyncReport = {
+  readonly importedCount: number;
+  readonly updatedCount: number;
+  readonly skippedCount: number;
+  readonly totalKeycloakUsers: number;
 };
 
 export type IamRoleListItem = {

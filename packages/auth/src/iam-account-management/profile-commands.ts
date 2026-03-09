@@ -18,14 +18,16 @@ export type ProfileUpdatePayload = z.infer<typeof updateMyProfileSchema>;
 const UPDATE_PROFILE_QUERY = `
 UPDATE iam.accounts
 SET
-  first_name_ciphertext = COALESCE($3, first_name_ciphertext),
-  last_name_ciphertext = COALESCE($4, last_name_ciphertext),
-  display_name_ciphertext = COALESCE($5, display_name_ciphertext),
-  phone_ciphertext = COALESCE($6, phone_ciphertext),
-  position = COALESCE($7, position),
-  department = COALESCE($8, department),
-  preferred_language = COALESCE($9, preferred_language),
-  timezone = COALESCE($10, timezone),
+  username_ciphertext = COALESCE($3, username_ciphertext),
+  email_ciphertext = COALESCE($4, email_ciphertext),
+  first_name_ciphertext = COALESCE($5, first_name_ciphertext),
+  last_name_ciphertext = COALESCE($6, last_name_ciphertext),
+  display_name_ciphertext = COALESCE($7, display_name_ciphertext),
+  phone_ciphertext = COALESCE($8, phone_ciphertext),
+  position = COALESCE($9, position),
+  department = COALESCE($10, department),
+  preferred_language = COALESCE($11, preferred_language),
+  timezone = COALESCE($12, timezone),
   updated_at = NOW()
 WHERE id = $1::uuid
   AND instance_id = $2::uuid;
@@ -61,6 +63,8 @@ const buildProfileUpdateParams = (
 ): readonly (string | null)[] => [
   accountId,
   instanceId,
+  payload.username ? protectField(payload.username, `iam.accounts.username:${keycloakSubject}`) : null,
+  payload.email ? protectField(payload.email, `iam.accounts.email:${keycloakSubject}`) : null,
   payload.firstName ? protectField(payload.firstName, `iam.accounts.first_name:${keycloakSubject}`) : null,
   payload.lastName ? protectField(payload.lastName, `iam.accounts.last_name:${keycloakSubject}`) : null,
   payload.displayName ? protectField(payload.displayName, `iam.accounts.display_name:${keycloakSubject}`) : null,

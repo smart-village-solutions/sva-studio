@@ -13,6 +13,41 @@ const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
 const shouldRefreshSession = (expiresAt: number | undefined): boolean =>
   typeof expiresAt === 'number' && expiresAt <= Date.now() + TOKEN_REFRESH_SKEW_MS;
 
+const needsSessionUserHydration = (user: SessionUser | null | undefined): boolean =>
+  !user || !user.instanceId || user.roles.length === 0;
+
+const hydrateSessionUserFromAccessToken = async (
+  sessionId: string,
+  session: { user?: SessionUser; accessToken?: string }
+): Promise<SessionUser | null> => {
+  if (!session.accessToken || !needsSessionUserHydration(session.user)) {
+    return session.user ?? null;
+  }
+
+  const authConfig = getAuthConfig();
+  const hydratedUser = buildSessionUser({
+    accessToken: session.accessToken,
+    claims: {},
+    clientId: authConfig.clientId,
+  });
+
+  if (!hydratedUser.id || needsSessionUserHydration(hydratedUser)) {
+    return session.user ?? null;
+  }
+
+  await updateSession(sessionId, { user: hydratedUser });
+
+  logger.info('Session user hydrated from access token', {
+    operation: 'session_user_hydrate',
+    hydration_source: 'access_token',
+    had_instance_id: Boolean(session.user?.instanceId),
+    had_roles: (session.user?.roles.length ?? 0) > 0,
+    ...buildLogContext(hydratedUser.instanceId),
+  });
+
+  return hydratedUser;
+};
+
 const refreshSession = async (sessionId: string, refreshToken: string, fallbackExpiresAt?: number) => {
   const authConfig = getAuthConfig();
   const config = await getOidcConfig();
@@ -76,7 +111,7 @@ export const getSessionUser = async (sessionId: string) => {
   }
 
   if (!shouldRefreshSession(session.expiresAt)) {
-    return session.user ?? null;
+    return hydrateSessionUserFromAccessToken(sessionId, session);
   }
 
   if (!session.refreshToken) {
@@ -84,7 +119,7 @@ export const getSessionUser = async (sessionId: string) => {
       await deleteSession(sessionId);
       return null;
     }
-    return session.user ?? null;
+    return hydrateSessionUserFromAccessToken(sessionId, session);
   }
 
   try {

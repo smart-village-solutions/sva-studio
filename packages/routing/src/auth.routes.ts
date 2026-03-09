@@ -20,6 +20,7 @@ const authRoutePaths = [
   '/api/v1/iam/users',
   '/api/v1/iam/users/$userId',
   '/api/v1/iam/users/bulk-deactivate',
+  '/api/v1/iam/users/sync-keycloak',
   '/api/v1/iam/users/me/profile',
   '/api/v1/iam/organizations',
   '/api/v1/iam/organizations/$organizationId',

@@ -7,6 +7,7 @@ import { useRoles } from '../../../hooks/use-roles';
 import { useUsers } from '../../../hooks/use-users';
 import { isIamBulkEnabled } from '../../../lib/iam-admin-access';
 import { t } from '../../../i18n';
+import { userErrorMessage } from './-user-error-message';
 
 type SortKey = 'displayName' | 'email' | 'status' | 'role' | 'lastLoginAt';
 type SortDirection = 'asc' | 'desc';
@@ -57,6 +58,12 @@ export const UserListPage = () => {
   const [deactivateDialog, setDeactivateDialog] = React.useState<{ mode: 'single' | 'bulk'; userId?: string } | null>(
     null
   );
+  const [syncResult, setSyncResult] = React.useState<{
+    importedCount: number;
+    updatedCount: number;
+    skippedCount: number;
+  } | null>(null);
+  const [isSyncing, setIsSyncing] = React.useState(false);
 
   const [createForm, setCreateForm] = React.useState({
     email: '',
@@ -173,6 +180,21 @@ export const UserListPage = () => {
     }
   };
 
+  const onSyncUsers = async () => {
+    setIsSyncing(true);
+    const result = await usersApi.syncUsersFromKeycloak();
+    setIsSyncing(false);
+    if (!result) {
+      return;
+    }
+
+    setSyncResult({
+      importedCount: result.importedCount,
+      updatedCount: result.updatedCount,
+      skippedCount: result.skippedCount,
+    });
+  };
+
   const pageCount = Math.max(1, Math.ceil(usersApi.total / usersApi.pageSize));
 
   return (
@@ -206,6 +228,14 @@ export const UserListPage = () => {
           </select>
         </label>
         <div className="flex items-end justify-end gap-2">
+          <button
+            type="button"
+            className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground transition hover:bg-muted disabled:opacity-60"
+            disabled={isSyncing}
+            onClick={() => void onSyncUsers()}
+          >
+            {isSyncing ? t('admin.users.actions.syncing') : t('admin.users.actions.syncKeycloak')}
+          </button>
           {isIamBulkEnabled() ? (
             <button
               type="button"
@@ -230,9 +260,19 @@ export const UserListPage = () => {
         {t('admin.users.messages.resultCount', { count: usersApi.total })}
       </p>
 
+      {syncResult ? (
+        <p role="status" aria-live="polite" className="text-xs text-muted-foreground">
+          {t('admin.users.messages.syncResult', {
+            importedCount: syncResult.importedCount,
+            updatedCount: syncResult.updatedCount,
+            skippedCount: syncResult.skippedCount,
+          })}
+        </p>
+      ) : null}
+
       {usersApi.error ? (
         <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive" role="alert">
-          <p>{t('admin.users.messages.error')}</p>
+          <p>{userErrorMessage(usersApi.error)}</p>
           <button
             type="button"
             className="mt-3 rounded-md border border-destructive/40 bg-background px-3 py-2 text-xs text-destructive transition hover:bg-muted"

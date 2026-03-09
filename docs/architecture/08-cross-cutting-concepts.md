@@ -96,6 +96,14 @@ gleichzeitig beeinflussen.
 - Rollen-Statusindikatoren in `/admin/roles` verwenden i18n-Labels für `synced`, `pending` und `failed`
 - Retry- und Reconcile-Aktionen bleiben über semantische Buttons und Testabdeckung tastatur- und screenreader-freundlich prüfbar
 
+### UI-Theming, Design-Tokens und Shell-Verhalten
+
+- Die Shell verwendet semantische CSS-Tokens (`background`, `foreground`, `card`, `sidebar`, `primary`, `border`, `ring`, `destructive`) statt direkter Tailwind-Farbwerte
+- Light- und Dark-Mode werden über denselben Token-Satz aufgelöst; der aktive Modus wird im Frontend per `ThemeProvider` auf das Dokument angewendet
+- Theme-Varianten sind instanzfähig vorbereitet: `instanceId` kann eine Theme-Auswahl beeinflussen, ohne die Shell-Komponenten selbst zu verzweigen
+- Mobile Navigation nutzt ein zugängliches Drawer-/`Sheet`-Muster statt projektspezifischer Spezialinteraktionen
+- Komplexe Alt-Muster wie kollabierte Flyout-Submenüs oder pixelgenaue Active-Indikatoren bleiben bewusst außerhalb des Initial-Scope
+
 ### Review-Governance
 
 - Proposal-Reviews werden über einen dedizierten Proposal-Orchestrator konsolidiert
@@ -141,6 +149,9 @@ Referenzen:
 - `docs/guides/iam-data-subject-rights-runbook.md`
 - `apps/sva-studio-react/src/routes/__root.tsx`
 - `apps/sva-studio-react/src/components/AppShell.tsx`
+- `apps/sva-studio-react/src/providers/theme-provider.tsx`
+- `apps/sva-studio-react/src/lib/theme.ts`
+- `docs/development/ui-shell-theming.md`
 
 ### Ergänzung 2026-03: AuthProvider-Pattern und Permission-Checking
 

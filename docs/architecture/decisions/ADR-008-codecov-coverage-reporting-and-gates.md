@@ -90,6 +90,8 @@ Die bindende Qualitätsentscheidung bleibt weiterhin bei der internen Governance
 - [x] CI erzeugt Coverage-Reports via `pnpm test:coverage`/`pnpm nx affected --target=test:coverage`.
 - [x] Upload zu Codecov erfolgt in `.github/workflows/test-coverage.yml`.
 - [x] Grundkonfiguration liegt in `codecov.yml`.
+- [x] Codecov-Flag-Scope ist auf Projekte mit echtem LCOV-Upload begrenzt; coverage-exempt Projekte bleiben ausgeschlossen.
+- [x] Lokaler Preview-Check für PR-Patch-Coverage vorhanden (`pnpm test:coverage:pr` / `pnpm patch-coverage-gate`).
 - [ ] Reviewer-Leitfaden um explizite Codecov-Interpretation ergänzen (Änderung je Pull Request vs. Gesamtwert).
 - [ ] Halbjährliche Evaluation: Nutzen, Fehlalarme, Lock-in-Risiken.
 

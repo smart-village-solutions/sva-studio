@@ -35,6 +35,14 @@ pnpm test:integration
 pnpm test:coverage:affected
 ```
 
+### Pull-Request-Patch lokal vorprüfen
+
+```bash
+pnpm test:coverage:pr
+```
+
+Das Kommando führt dieselben betroffenen Coverage-Targets wie der PR-Workflow aus und prüft danach die Patch-Coverage lokal gegen den Zielwert von `80%`.
+
 ### Baseline aktualisieren
 
 Nur nach bewusstem Team-Entscheid:
@@ -92,6 +100,12 @@ Codecov bewertet im Pull-Request zwei getrennte Sichten:
 - `patch`: Coverage des neu geänderten Codes mit Zielwert `80%`
 
 Damit bleibt der Bestand realistisch bewertet, während neue Änderungen weiterhin überdurchschnittlich abgesichert sein müssen.
+
+Wichtig:
+
+- Codecov berücksichtigt nur Projekte, für die im PR-Lauf auch tatsächlich `lcov.info` hochgeladen wird.
+- Projekte aus `exemptProjects` in `tooling/testing/coverage-policy.json` dürfen deshalb nicht im Codecov-Flag `unittests` auftauchen.
+- Der lokale Preview-Check `pnpm patch-coverage-gate --base=origin/main` nutzt denselben Workspace-Scope wie unsere interne Coverage-Governance, damit Abweichungen vor dem Push sichtbar werden.
 
 ## Exemptions
 

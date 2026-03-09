@@ -9,6 +9,7 @@ import {
   getMyOrganizationContext,
   IamHttpError,
   listOrganizations,
+  syncUsersFromKeycloak,
   removeOrganizationMembership,
   updateMyOrganizationContext,
   updateOrganization,
@@ -167,5 +168,39 @@ describe('iam-api organization helpers', () => {
       code: 'internal_error',
       message: 'boom',
     });
+  });
+});
+
+describe('iam-api user sync helper', () => {
+  it('posts to the keycloak sync endpoint with CSRF headers', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: {
+            importedCount: 1,
+            updatedCount: 2,
+            skippedCount: 3,
+            totalKeycloakUsers: 6,
+          },
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } }
+      )
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await syncUsersFromKeycloak();
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/iam/users/sync-keycloak',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        }),
+        body: '{}',
+        credentials: 'include',
+      })
+    );
   });
 });

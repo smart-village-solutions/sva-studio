@@ -21,6 +21,7 @@ export type {
   IamRoleSyncError,
   IamRoleSyncState,
   IamUserDetail,
+  IamUserImportSyncReport,
   IamUserListItem,
   IamUserRoleAssignment,
 } from './account-management-contract';

@@ -3,9 +3,12 @@ import React from 'react';
 
 import { asIamError, getMyProfile, IamHttpError, updateMyProfile } from '../../lib/iam-api';
 import { t } from '../../i18n';
+import { notifyIamUsersUpdated } from '../../lib/iam-user-events';
 import { useAuth } from '../../providers/auth-provider';
 
 type ProfileFormValues = {
+  username: string;
+  email: string;
   firstName: string;
   lastName: string;
   displayName: string;
@@ -19,6 +22,8 @@ type ProfileFormValues = {
 type ProfileErrors = Partial<Record<keyof ProfileFormValues, string>>;
 
 const EMPTY_FORM: ProfileFormValues = {
+  username: '',
+  email: '',
   firstName: '',
   lastName: '',
   displayName: '',
@@ -36,6 +41,8 @@ const statusTranslationKeyByValue = {
 } as const;
 
 const toFormValues = (profile: IamUserDetail): ProfileFormValues => ({
+  username: profile.username ?? profile.email ?? '',
+  email: profile.email ?? '',
   firstName: profile.firstName ?? '',
   lastName: profile.lastName ?? '',
   displayName: profile.displayName,
@@ -46,9 +53,20 @@ const toFormValues = (profile: IamUserDetail): ProfileFormValues => ({
   timezone: profile.timezone ?? 'Europe/Berlin',
 });
 
+const normalize = (value?: string | null): string => value?.trim() ?? '';
+
+const deriveDisplayName = (firstName: string, lastName: string): string =>
+  [firstName.trim(), lastName.trim()].filter(Boolean).join(' ');
+
 const validateForm = (values: ProfileFormValues): ProfileErrors => {
   const errors: ProfileErrors = {};
 
+  if (!values.username.trim() || /\s/.test(values.username.trim())) {
+    errors.username = t('account.validation.usernameInvalid');
+  }
+  if (!values.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email.trim())) {
+    errors.email = t('account.validation.emailInvalid');
+  }
   if (!values.firstName.trim()) {
     errors.firstName = t('account.validation.firstNameRequired');
   }
@@ -64,7 +82,7 @@ const validateForm = (values: ProfileFormValues): ProfileErrors => {
 };
 
 export const AccountProfilePage = () => {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, updateProfile } = useAuth();
 
   const [profile, setProfile] = React.useState<IamUserDetail | null>(null);
   const [formValues, setFormValues] = React.useState<ProfileFormValues>(EMPTY_FORM);
@@ -75,6 +93,7 @@ export const AccountProfilePage = () => {
   const [saveSuccess, setSaveSuccess] = React.useState(false);
   const [validationErrors, setValidationErrors] = React.useState<ProfileErrors>({});
   const errorSummaryRef = React.useRef<HTMLDivElement>(null);
+  const successMessageRef = React.useRef<HTMLDivElement>(null);
 
   const loadProfile = React.useCallback(async () => {
     setIsLoading(true);
@@ -109,6 +128,12 @@ export const AccountProfilePage = () => {
     }
   }, [validationErrors]);
 
+  React.useEffect(() => {
+    if (saveSuccess) {
+      successMessageRef.current?.focus();
+    }
+  }, [saveSuccess]);
+
   const onFieldChange = (field: keyof ProfileFormValues, value: string) => {
     setFormValues((current) => ({
       ...current,
@@ -132,10 +157,26 @@ export const AccountProfilePage = () => {
     setSaveSuccess(false);
 
     try {
+      const previousDisplayName = normalize(profile?.displayName);
+      const previousDerivedDisplayName = deriveDisplayName(profile?.firstName ?? '', profile?.lastName ?? '');
+      const nextDerivedDisplayName = deriveDisplayName(formValues.firstName, formValues.lastName);
+      const nextDisplayName = (() => {
+        const trimmedDisplayName = formValues.displayName.trim();
+        if (!trimmedDisplayName) {
+          return nextDerivedDisplayName;
+        }
+        if (trimmedDisplayName === previousDisplayName && previousDisplayName === previousDerivedDisplayName) {
+          return nextDerivedDisplayName;
+        }
+        return trimmedDisplayName;
+      })();
+
       const response = await updateMyProfile({
+        username: formValues.username.trim(),
+        email: formValues.email.trim(),
         firstName: formValues.firstName.trim(),
         lastName: formValues.lastName.trim(),
-        displayName: formValues.displayName.trim(),
+        displayName: nextDisplayName,
         phone: formValues.phone.trim() || undefined,
         position: formValues.position.trim() || undefined,
         department: formValues.department.trim() || undefined,
@@ -145,6 +186,11 @@ export const AccountProfilePage = () => {
 
       setProfile(response.data);
       setFormValues(toFormValues(response.data));
+      updateProfile({
+        name: response.data.displayName,
+        email: response.data.email,
+      });
+      notifyIamUsersUpdated();
       setSaveSuccess(true);
       setValidationErrors({});
     } catch (cause) {
@@ -202,6 +248,10 @@ export const AccountProfilePage = () => {
 
       <div className="grid gap-4 rounded-xl border border-border bg-card p-4 text-sm text-foreground shadow-shell sm:grid-cols-2">
         <p>
+          <span className="font-semibold">{t('account.fields.username')}: </span>
+          {profile?.username ?? profile?.email ?? '-'}
+        </p>
+        <p>
           <span className="font-semibold">{t('account.fields.email')}: </span>
           {profile?.email ?? user?.email ?? '-'}
         </p>
@@ -241,15 +291,42 @@ export const AccountProfilePage = () => {
         </div>
       ) : null}
       {saveSuccess ? (
-        <div className="rounded-xl border border-primary/40 bg-primary/10 p-4 text-sm text-primary" role="status">
+        <div
+          ref={successMessageRef}
+          tabIndex={-1}
+          className="rounded-xl border border-primary/40 bg-primary/10 p-4 text-sm text-primary"
+          role="status"
+        >
           {t('account.messages.saveSuccess')}
         </div>
       ) : null}
 
       <form className="grid gap-4 md:grid-cols-2" onSubmit={onSubmit} noValidate>
         <label className="flex flex-col gap-2 text-sm text-foreground">
+          <span>{t('account.fields.username')}</span>
+          <input
+            autoComplete="username"
+            value={formValues.username}
+            onChange={(event) => onFieldChange('username', event.target.value)}
+            className="rounded-md border border-border bg-background px-3 py-2"
+            aria-invalid={Boolean(validationErrors.username)}
+          />
+        </label>
+        <label className="flex flex-col gap-2 text-sm text-foreground">
+          <span>{t('account.fields.email')}</span>
+          <input
+            type="email"
+            autoComplete="email"
+            value={formValues.email}
+            onChange={(event) => onFieldChange('email', event.target.value)}
+            className="rounded-md border border-border bg-background px-3 py-2"
+            aria-invalid={Boolean(validationErrors.email)}
+          />
+        </label>
+        <label className="flex flex-col gap-2 text-sm text-foreground">
           <span>{t('account.fields.firstName')}</span>
           <input
+            autoComplete="given-name"
             value={formValues.firstName}
             onChange={(event) => onFieldChange('firstName', event.target.value)}
             className="rounded-md border border-border bg-background px-3 py-2"
@@ -259,6 +336,7 @@ export const AccountProfilePage = () => {
         <label className="flex flex-col gap-2 text-sm text-foreground">
           <span>{t('account.fields.lastName')}</span>
           <input
+            autoComplete="family-name"
             value={formValues.lastName}
             onChange={(event) => onFieldChange('lastName', event.target.value)}
             className="rounded-md border border-border bg-background px-3 py-2"
@@ -268,6 +346,7 @@ export const AccountProfilePage = () => {
         <label className="flex flex-col gap-2 text-sm text-foreground">
           <span>{t('account.fields.displayName')}</span>
           <input
+            autoComplete="name"
             value={formValues.displayName}
             onChange={(event) => onFieldChange('displayName', event.target.value)}
             className="rounded-md border border-border bg-background px-3 py-2"
@@ -276,6 +355,7 @@ export const AccountProfilePage = () => {
         <label className="flex flex-col gap-2 text-sm text-foreground">
           <span>{t('account.fields.phone')}</span>
           <input
+            autoComplete="tel"
             value={formValues.phone}
             onChange={(event) => onFieldChange('phone', event.target.value)}
             className="rounded-md border border-border bg-background px-3 py-2"

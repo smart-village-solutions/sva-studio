@@ -2,10 +2,12 @@ import { createSdkLogger } from '@sva/sdk/server';
 
 import type {
   CreateIdentityRoleInput,
+  IdentityListedUser,
   CreateIdentityUserInput,
   IdentityRole,
   IdentityProviderPort,
   IdentityUser,
+  IdentityUserListQuery,
   UpdateIdentityRoleInput,
   UpdateIdentityUserInput,
 } from '../identity-provider-port';
@@ -69,23 +71,10 @@ type KeycloakUserCreateResponse = {
   readonly location: string | null;
 };
 
-export type KeycloakListUsersQuery = {
-  readonly first?: number;
-  readonly max?: number;
-  readonly search?: string;
-  readonly email?: string;
-  readonly username?: string;
-  readonly enabled?: boolean;
-};
+export type KeycloakListUsersQuery = IdentityUserListQuery;
 
-export type KeycloakAdminUser = {
+export type KeycloakAdminUser = IdentityListedUser & {
   readonly id: string;
-  readonly username?: string;
-  readonly email?: string;
-  readonly firstName?: string;
-  readonly lastName?: string;
-  readonly enabled?: boolean;
-  readonly attributes?: Readonly<Record<string, readonly string[]>>;
 };
 
 export type KeycloakRealmRole = {
@@ -183,6 +172,16 @@ const mapKeycloakRole = (role: KeycloakRealmRole): IdentityRole => ({
   composite: role.composite,
   clientRole: role.clientRole,
   containerId: role.containerId,
+});
+
+const mapKeycloakUser = (user: KeycloakAdminUser): IdentityListedUser => ({
+  externalId: user.id,
+  username: user.username,
+  email: user.email,
+  firstName: user.firstName,
+  lastName: user.lastName,
+  enabled: user.enabled,
+  attributes: user.attributes,
 });
 
 const readAttribute = (
@@ -319,6 +318,7 @@ export class KeycloakAdminClient implements IdentityProviderPort {
   async updateUser(externalId: string, input: UpdateIdentityUserInput): Promise<void> {
     await this.assertWriteAvailability();
     const payload = {
+      username: input.username,
       email: input.email,
       firstName: input.firstName,
       lastName: input.lastName,
@@ -407,11 +407,11 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     return currentRoleMappings.map((role) => role.name);
   }
 
-  async listUsers(query?: KeycloakListUsersQuery): Promise<readonly KeycloakAdminUser[]> {
+  async listUsers(query?: KeycloakListUsersQuery): Promise<readonly IdentityListedUser[]> {
     if (this.isCircuitOpen()) {
       if (this.readFallback?.listUsers) {
         logger.warn('Circuit open; using listUsers fallback', { operation: 'list_users', source: 'fallback' });
-        return this.readFallback.listUsers(query);
+        return (await this.readFallback.listUsers(query)).map(mapKeycloakUser);
       }
       throw new KeycloakAdminUnavailableError('Keycloak unavailable and no read fallback configured.');
     }
@@ -438,11 +438,12 @@ export class KeycloakAdminClient implements IdentityProviderPort {
 
     const querySuffix = searchParams.size > 0 ? `?${searchParams.toString()}` : '';
     try {
-      return await this.executeWithResilience<KeycloakAdminUser[]>({
+      const users = await this.executeWithResilience<KeycloakAdminUser[]>({
         method: 'GET',
         path: `/admin/realms/${encodePathSegment(this.realm)}/users${querySuffix}`,
         operation: 'list_users',
       });
+      return users.map(mapKeycloakUser);
     } catch (error) {
       if (this.readFallback?.listUsers && this.isRetryableError(error)) {
         logger.warn('Keycloak read failed; using listUsers fallback', {
@@ -450,7 +451,7 @@ export class KeycloakAdminClient implements IdentityProviderPort {
           source: 'fallback',
           reason: toRetryLogReason(error),
         });
-        return this.readFallback.listUsers(query);
+        return (await this.readFallback.listUsers(query)).map(mapKeycloakUser);
       }
       throw error;
     }

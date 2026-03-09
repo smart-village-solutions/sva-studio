@@ -28,6 +28,7 @@ export type ActorInfo = {
 export type ResolveActorOptions = {
   readonly createMissingInstanceFromKey?: boolean;
   readonly requireActorMembership?: boolean;
+  readonly provisionMissingActorMembership?: boolean;
 };
 
 export type IamRoleRow = {

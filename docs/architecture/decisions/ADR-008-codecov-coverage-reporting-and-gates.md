@@ -1,7 +1,7 @@
 # ADR-008: Codecov für Coverage-Reporting und PR-Transparenz
 
 **Datum:** 18. Februar 2026
-**Status:** ⏳ Proposed
+**Status:** ✅ Accepted
 **Kontext:** Test-Coverage Governance (CI-Gates, Reporting, Pull-Request-Feedback)
 **Entscheider:** SVA Studio Team
 
@@ -17,6 +17,7 @@ Konkret:
 - **Test-Coverage** (Anteil des Codes, der durch automatisierte Tests ausgeführt wird) wird weiterhin in der **CI** (Continuous Integration, automatische Prüfung bei jedem Code-Update) erzeugt.
 - Das verbindliche **Quality Gate** (Regel, die vor Freigabe zwingend erfüllt sein muss) bleibt `pnpm coverage-gate` im **Repository** (zentraler Speicherort für den Quellcode).
 - Ergebnisse werden zusätzlich an Codecov gesendet, damit Änderungen in einem **Pull Request** (Vorschlag, Änderungen in den Hauptzweig zu übernehmen) schneller sichtbar sind.
+- Die Codecov-Statuschecks `project` und `patch` bleiben dabei **informational** und blockieren keinen Merge.
 - Wenn Codecov kurzfristig nicht verfügbar ist, bleibt die Freigabelogik stabil (`fail_ci_if_error: false`), weil die interne Bewertung weiterläuft.
 
 ---
@@ -48,7 +49,7 @@ Funktional bedeutet das:
 - Historische Trends und Vergleichbarkeit über mehrere Ausführungen hinweg.
 - Zentrale Darstellung aggregierter **LCOV**-Reports (Standard-Dateiformat für Coverage-Ergebnisse) aus App- und Package-Targets.
 
-Die bindende Qualitätsentscheidung bleibt weiterhin bei der internen Governance (`coverage-gate`), damit Freigaberegeln unabhängig von externer Verfügbarkeit bleiben.
+Die bindende Qualitätsentscheidung bleibt weiterhin bei der internen Governance (`coverage-gate` und für Pull Requests `test:coverage:pr`), damit Freigaberegeln unabhängig von externer Verfügbarkeit bleiben.
 
 ---
 
@@ -81,7 +82,7 @@ Die bindende Qualitätsentscheidung bleibt weiterhin bei der internen Governance
 - ❌ Potentielle Verwirrung, wenn Codecov-Darstellung und interne Gate-Werte unterschiedlich wirken.
 - ❌ Wartungsaufwand für Workflow-/Codecov-Konfiguration.
 
-**Mitigation:** In Doku und CI bleibt klar dokumentiert, dass `pnpm coverage-gate` das bindende Merge-Kriterium ist.
+**Mitigation:** In Doku und CI bleibt klar dokumentiert, dass `pnpm coverage-gate` sowie im Pull Request `pnpm test:coverage:pr` die bindenden Kriterien sind, während Codecov nur zusätzliche Transparenz liefert.
 
 ---
 
@@ -90,6 +91,7 @@ Die bindende Qualitätsentscheidung bleibt weiterhin bei der internen Governance
 - [x] CI erzeugt Coverage-Reports via `pnpm test:coverage`/`pnpm nx affected --target=test:coverage`.
 - [x] Upload zu Codecov erfolgt in `.github/workflows/test-coverage.yml`.
 - [x] Grundkonfiguration liegt in `codecov.yml`.
+- [x] Codecov-Statuschecks `project` und `patch` sind informational und dienen nur der Transparenz.
 - [x] Codecov-Flag-Scope ist auf Projekte mit echtem LCOV-Upload begrenzt; coverage-exempt Projekte bleiben ausgeschlossen.
 - [x] Lokaler Preview-Check für PR-Patch-Coverage vorhanden (`pnpm test:coverage:pr` / `pnpm patch-coverage-gate`).
 - [ ] Reviewer-Leitfaden um explizite Codecov-Interpretation ergänzen (Änderung je Pull Request vs. Gesamtwert).

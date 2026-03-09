@@ -52,4 +52,12 @@ describe('codecov config', () => {
       expect(configuredPaths).not.toContain(`apps/${exemptProject}/`);
     }
   });
+
+  it('keeps Codecov project and patch checks informational', () => {
+    const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
+    const codecovContents = fs.readFileSync(path.join(rootDir, 'codecov.yml'), 'utf8');
+
+    expect(codecovContents).toMatch(/project:\s*\n\s+default:\s*\n(?:\s+.+\n)*?\s+informational:\s+true/);
+    expect(codecovContents).toMatch(/patch:\s*\n\s+default:\s*\n(?:\s+.+\n)*?\s+informational:\s+true/);
+  });
 });

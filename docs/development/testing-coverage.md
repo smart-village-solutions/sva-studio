@@ -99,7 +99,11 @@ Codecov bewertet im Pull-Request zwei getrennte Sichten:
 - `project`: Gesamt-Coverage des gemessenen Codebestands mit Zielwert `75%`
 - `patch`: Coverage des neu geänderten Codes mit Zielwert `80%`
 
-Damit bleibt der Bestand realistisch bewertet, während neue Änderungen weiterhin überdurchschnittlich abgesichert sein müssen.
+Beide Codecov-Statuschecks sind im Projekt **informational**.
+Bindend bleibt die interne Governance:
+
+- für Pull Requests `pnpm test:coverage:pr`
+- für die allgemeine Coverage-Governance `pnpm coverage-gate`
 
 Wichtig:
 

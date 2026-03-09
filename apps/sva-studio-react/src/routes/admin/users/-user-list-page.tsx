@@ -12,9 +12,9 @@ type SortKey = 'displayName' | 'email' | 'status' | 'role' | 'lastLoginAt';
 type SortDirection = 'asc' | 'desc';
 
 const statusClassByValue: Record<'active' | 'inactive' | 'pending', string> = {
-  active: 'border-emerald-600/40 bg-emerald-500/20 text-emerald-100',
-  inactive: 'border-red-600/40 bg-red-500/20 text-red-100',
-  pending: 'border-amber-600/40 bg-amber-500/20 text-amber-100',
+  active: 'border-primary/40 bg-primary/15 text-primary',
+  inactive: 'border-destructive/40 bg-destructive/10 text-destructive',
+  pending: 'border-secondary/40 bg-secondary/10 text-secondary',
 };
 
 const statusTranslationKeyByValue = {
@@ -178,24 +178,24 @@ export const UserListPage = () => {
   return (
     <section className="space-y-5" aria-busy={usersApi.isLoading}>
       <header className="space-y-2">
-        <h1 className="text-3xl font-semibold text-slate-100">{t('admin.users.page.title')}</h1>
-        <p className="max-w-2xl text-sm text-slate-300">{t('admin.users.page.subtitle')}</p>
+        <h1 className="text-3xl font-semibold text-foreground">{t('admin.users.page.title')}</h1>
+        <p className="max-w-2xl text-sm text-muted-foreground">{t('admin.users.page.subtitle')}</p>
       </header>
 
-      <div className="grid gap-3 rounded-xl border border-slate-700 bg-slate-900/40 p-4 lg:grid-cols-[1fr_auto_auto]">
-        <label className="flex flex-col gap-1 text-xs uppercase tracking-wide text-slate-300">
+      <div className="grid gap-3 rounded-xl border border-border bg-card p-4 shadow-shell lg:grid-cols-[1fr_auto_auto]">
+        <label className="flex flex-col gap-1 text-xs uppercase tracking-wide text-muted-foreground">
           {t('admin.users.filters.searchLabel')}
           <input
-            className="rounded-md border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-slate-100"
+            className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
             placeholder={t('admin.users.filters.searchPlaceholder')}
             value={usersApi.filters.search}
             onChange={(event) => usersApi.setSearch(event.target.value)}
           />
         </label>
-        <label className="flex flex-col gap-1 text-xs uppercase tracking-wide text-slate-300">
+        <label className="flex flex-col gap-1 text-xs uppercase tracking-wide text-muted-foreground">
           {t('admin.users.filters.statusLabel')}
           <select
-            className="rounded-md border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-slate-100"
+            className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
             value={usersApi.filters.status}
             onChange={(event) => usersApi.setStatus(event.target.value as 'active' | 'inactive' | 'pending' | 'all')}
           >
@@ -209,7 +209,7 @@ export const UserListPage = () => {
           {isIamBulkEnabled() ? (
             <button
               type="button"
-              className="rounded-md border border-red-700 px-3 py-2 text-sm text-red-100 disabled:opacity-50"
+              className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive disabled:opacity-50"
               disabled={selectedIds.length === 0}
               onClick={() => setDeactivateDialog({ mode: 'bulk' })}
             >
@@ -218,7 +218,7 @@ export const UserListPage = () => {
           ) : null}
           <button
             type="button"
-            className="rounded-md border border-emerald-700 bg-emerald-500/20 px-3 py-2 text-sm font-semibold text-emerald-100"
+            className="rounded-md border border-primary/40 bg-primary/15 px-3 py-2 text-sm font-semibold text-primary transition hover:bg-primary/20"
             onClick={() => setCreateDialogOpen(true)}
           >
             {t('admin.users.actions.create')}
@@ -226,16 +226,16 @@ export const UserListPage = () => {
         </div>
       </div>
 
-      <p role="status" className="text-xs text-slate-400">
+      <p role="status" className="text-xs text-muted-foreground">
         {t('admin.users.messages.resultCount', { count: usersApi.total })}
       </p>
 
       {usersApi.error ? (
-        <div className="rounded-xl border border-red-600/40 bg-red-500/10 p-4 text-sm text-red-100" role="alert">
+        <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive" role="alert">
           <p>{t('admin.users.messages.error')}</p>
           <button
             type="button"
-            className="mt-3 rounded-md border border-red-500/60 px-3 py-2 text-xs"
+            className="mt-3 rounded-md border border-destructive/40 bg-background px-3 py-2 text-xs text-destructive transition hover:bg-muted"
             onClick={() => void usersApi.refetch()}
           >
             {t('admin.users.actions.retry')}
@@ -243,10 +243,10 @@ export const UserListPage = () => {
         </div>
       ) : null}
 
-      <div className="overflow-x-auto rounded-xl border border-slate-700">
+      <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-shell">
         <table className="hidden min-w-full border-collapse md:table" aria-label={t('admin.users.table.ariaLabel')}>
           <caption className="sr-only">{t('admin.users.table.caption')}</caption>
-          <thead className="bg-slate-900/80 text-left text-xs uppercase tracking-wide text-slate-300">
+          <thead className="bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground">
             <tr>
               <th scope="col" className="px-3 py-3">
                 <input
@@ -328,7 +328,7 @@ export const UserListPage = () => {
           </thead>
           <tbody>
             {sortedUsers.map((user) => (
-              <tr key={user.id} className="border-t border-slate-700 text-sm text-slate-100">
+              <tr key={user.id} className="border-t border-border text-sm text-foreground">
                 <td className="px-3 py-3 align-top">
                   <input
                     type="checkbox"
@@ -353,13 +353,13 @@ export const UserListPage = () => {
                     <Link
                       to="/admin/users/$userId"
                       params={{ userId: user.id }}
-                      className="rounded-md border border-slate-600 px-3 py-1 text-xs"
+                      className="rounded-md border border-border bg-background px-3 py-1 text-xs text-foreground transition hover:bg-muted"
                     >
                       {t('admin.users.actions.edit')}
                     </Link>
                     <button
                       type="button"
-                      className="rounded-md border border-red-700 px-3 py-1 text-xs text-red-100"
+                      className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-1 text-xs text-destructive"
                       onClick={() => setDeactivateDialog({ mode: 'single', userId: user.id })}
                     >
                       {t('admin.users.actions.deactivate')}
@@ -373,11 +373,11 @@ export const UserListPage = () => {
 
         <div className="space-y-3 p-3 md:hidden">
           {sortedUsers.map((user) => (
-            <article key={user.id} className="rounded-lg border border-slate-700 bg-slate-900/60 p-3 text-sm text-slate-100">
+            <article key={user.id} className="rounded-lg border border-border bg-card p-3 text-sm text-foreground shadow-shell">
               <div className="flex items-start justify-between gap-2">
                 <div>
                   <p className="font-semibold">{user.displayName}</p>
-                  <p className="text-xs text-slate-400">{user.email ?? '-'}</p>
+                  <p className="text-xs text-muted-foreground">{user.email ?? '-'}</p>
                 </div>
                 <input
                   type="checkbox"
@@ -387,7 +387,9 @@ export const UserListPage = () => {
                 />
               </div>
               <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                <span className="rounded border border-slate-600 px-2 py-1">{user.roles[0]?.roleName ?? '-'}</span>
+                <span className="rounded border border-border bg-background px-2 py-1 text-foreground">
+                  {user.roles[0]?.roleName ?? '-'}
+                </span>
                 <span className={`rounded border px-2 py-1 ${statusClassByValue[user.status]}`}>
                   {t(statusTranslationKeyByValue[user.status])}
                 </span>
@@ -396,13 +398,13 @@ export const UserListPage = () => {
                 <Link
                   to="/admin/users/$userId"
                   params={{ userId: user.id }}
-                  className="rounded-md border border-slate-600 px-3 py-1 text-xs"
+                  className="rounded-md border border-border bg-background px-3 py-1 text-xs text-foreground transition hover:bg-muted"
                 >
                   {t('admin.users.actions.edit')}
                 </Link>
                 <button
                   type="button"
-                  className="rounded-md border border-red-700 px-3 py-1 text-xs text-red-100"
+                  className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-1 text-xs text-destructive"
                   onClick={() => setDeactivateDialog({ mode: 'single', userId: user.id })}
                 >
                   {t('admin.users.actions.deactivate')}
@@ -414,19 +416,19 @@ export const UserListPage = () => {
       </div>
 
       {!usersApi.isLoading && sortedUsers.length === 0 ? (
-        <div className="rounded-xl border border-slate-700 bg-slate-900/40 p-5 text-sm text-slate-300" role="status">
+        <div className="rounded-xl border border-border bg-card p-5 text-sm text-muted-foreground shadow-shell" role="status">
           {t('admin.users.messages.emptyState')}
         </div>
       ) : null}
 
-      <footer className="flex flex-wrap items-center justify-between gap-3 text-sm text-slate-300">
+      <footer className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
         <p>
           {t('admin.users.pagination.pageLabel', { page: usersApi.page, totalPages: pageCount })}
         </p>
         <div className="flex items-center gap-2">
           <button
             type="button"
-            className="rounded-md border border-slate-600 px-3 py-1 disabled:opacity-40"
+            className="rounded-md border border-border bg-background px-3 py-1 text-foreground transition hover:bg-muted disabled:opacity-40"
             disabled={usersApi.page <= 1}
             onClick={() => usersApi.setPage(usersApi.page - 1)}
           >
@@ -434,7 +436,7 @@ export const UserListPage = () => {
           </button>
           <button
             type="button"
-            className="rounded-md border border-slate-600 px-3 py-1 disabled:opacity-40"
+            className="rounded-md border border-border bg-background px-3 py-1 text-foreground transition hover:bg-muted disabled:opacity-40"
             disabled={usersApi.page >= pageCount}
             onClick={() => usersApi.setPage(usersApi.page + 1)}
           >
@@ -450,40 +452,40 @@ export const UserListPage = () => {
         onClose={() => setCreateDialogOpen(false)}
       >
         <form className="grid gap-4" onSubmit={onCreateUser}>
-          <label className="flex flex-col gap-2 text-sm text-slate-200">
+          <label className="flex flex-col gap-2 text-sm text-foreground">
             <span>{t('account.fields.email')}</span>
             <input
               required
               type="email"
               value={createForm.email}
               onChange={(event) => setCreateForm((current) => ({ ...current, email: event.target.value }))}
-              className="rounded-md border border-slate-600 bg-slate-950 px-3 py-2"
+              className="rounded-md border border-border bg-background px-3 py-2 text-foreground"
             />
           </label>
-          <label className="flex flex-col gap-2 text-sm text-slate-200">
+          <label className="flex flex-col gap-2 text-sm text-foreground">
             <span>{t('account.fields.firstName')}</span>
             <input
               required
               value={createForm.firstName}
               onChange={(event) => setCreateForm((current) => ({ ...current, firstName: event.target.value }))}
-              className="rounded-md border border-slate-600 bg-slate-950 px-3 py-2"
+              className="rounded-md border border-border bg-background px-3 py-2 text-foreground"
             />
           </label>
-          <label className="flex flex-col gap-2 text-sm text-slate-200">
+          <label className="flex flex-col gap-2 text-sm text-foreground">
             <span>{t('account.fields.lastName')}</span>
             <input
               required
               value={createForm.lastName}
               onChange={(event) => setCreateForm((current) => ({ ...current, lastName: event.target.value }))}
-              className="rounded-md border border-slate-600 bg-slate-950 px-3 py-2"
+              className="rounded-md border border-border bg-background px-3 py-2 text-foreground"
             />
           </label>
-          <label className="flex flex-col gap-2 text-sm text-slate-200">
+          <label className="flex flex-col gap-2 text-sm text-foreground">
             <span>{t('admin.users.createDialog.roleLabel')}</span>
             <select
               value={createForm.roleId}
               onChange={(event) => setCreateForm((current) => ({ ...current, roleId: event.target.value }))}
-              className="rounded-md border border-slate-600 bg-slate-950 px-3 py-2"
+              className="rounded-md border border-border bg-background px-3 py-2 text-foreground"
             >
               <option value="">{t('admin.users.createDialog.rolePlaceholder')}</option>
               {rolesApi.roles.map((role) => (
@@ -497,14 +499,14 @@ export const UserListPage = () => {
           <div className="mt-2 flex justify-end gap-3">
             <button
               type="button"
-              className="rounded-md border border-slate-600 px-3 py-2 text-sm"
+              className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground transition hover:bg-muted"
               onClick={() => setCreateDialogOpen(false)}
             >
               {t('account.actions.cancel')}
             </button>
             <button
               type="submit"
-              className="rounded-md border border-emerald-700 bg-emerald-500/20 px-3 py-2 text-sm font-semibold text-emerald-100"
+              className="rounded-md border border-primary/40 bg-primary/15 px-3 py-2 text-sm font-semibold text-primary transition hover:bg-primary/20"
             >
               {t('admin.users.actions.create')}
             </button>

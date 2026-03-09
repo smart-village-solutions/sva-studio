@@ -12,6 +12,7 @@ import ErrorFallback from '../components/ErrorFallback';
 import Header from '../components/Header';
 import NotFound from '../components/NotFound';
 import { AuthProvider } from '../providers/auth-provider';
+import { ThemeProvider } from '../providers/theme-provider';
 
 import appCss from '../styles.css?url';
 
@@ -71,16 +72,31 @@ export const rootRoute = Route;
  * Die Shell zeigt Loading-Skeletons ausschließlich bei aktiver Router-Pending-Phase.
  */
 function RootDocument({ children }: Readonly<{ children: React.ReactNode }>) {
-  const isShellLoading = useRouterState({
+  const isRouterPending = useRouterState({
     select: (state) => state.status === 'pending' || state.isLoading,
   });
+  const currentPathname = useRouterState({
+    select: (state) => state.location.pathname,
+  });
+  const [isHydrated, setIsHydrated] = React.useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    setIsHydrated(true);
+  }, []);
+
+  React.useEffect(() => {
+    setIsMobileSidebarOpen(false);
+  }, [currentPathname]);
+
+  const isShellLoading = isHydrated && isRouterPending;
 
   return (
     <html lang="de">
       <head>
         <HeadContent />
       </head>
-      <body className="flex min-h-screen flex-col bg-slate-950 text-slate-100">
+      <body className="flex min-h-screen flex-col bg-background text-foreground">
         <a
           href="#main-content"
           onClick={() => {
@@ -89,13 +105,21 @@ function RootDocument({ children }: Readonly<{ children: React.ReactNode }>) {
               mainElement.focus();
             }
           }}
-          className="sr-only left-3 top-3 z-50 rounded-md bg-slate-100 px-3 py-2 text-sm font-medium text-slate-900 focus:not-sr-only focus:absolute"
+          className="sr-only left-3 top-3 z-50 rounded-md bg-card px-3 py-2 text-sm font-medium text-foreground shadow-shell focus:not-sr-only focus:absolute"
         >
           Zum Inhalt springen
         </a>
         <AuthProvider>
-          <Header isLoading={isShellLoading} />
-          <AppShell isLoading={isShellLoading}>{children}</AppShell>
+          <ThemeProvider>
+            <Header
+              isLoading={isShellLoading}
+              isMobileNavigationOpen={isMobileSidebarOpen}
+              onOpenMobileNavigation={() => setIsMobileSidebarOpen((open) => !open)}
+            />
+            <AppShell isLoading={isShellLoading} isMobileSidebarOpen={isMobileSidebarOpen} onMobileSidebarOpenChange={setIsMobileSidebarOpen}>
+              {children}
+            </AppShell>
+          </ThemeProvider>
         </AuthProvider>
         <TanStackDevtools
           config={{

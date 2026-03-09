@@ -165,24 +165,24 @@ export const OrganizationsPage = () => {
   return (
     <section className="space-y-5" aria-busy={organizationsApi.isLoading}>
       <header className="space-y-2">
-        <h1 className="text-3xl font-semibold text-slate-100">{t('admin.organizations.page.title')}</h1>
-        <p className="max-w-2xl text-sm text-slate-300">{t('admin.organizations.page.subtitle')}</p>
+        <h1 className="text-3xl font-semibold text-foreground">{t('admin.organizations.page.title')}</h1>
+        <p className="max-w-2xl text-sm text-muted-foreground">{t('admin.organizations.page.subtitle')}</p>
       </header>
 
-      <div className="grid gap-3 rounded-xl border border-slate-700 bg-slate-900/40 p-4 lg:grid-cols-[1fr_auto_auto_auto]">
-        <label className="flex flex-col gap-1 text-xs uppercase tracking-wide text-slate-300">
+      <div className="grid gap-3 rounded-xl border border-border bg-card p-4 shadow-shell lg:grid-cols-[1fr_auto_auto_auto]">
+        <label className="flex flex-col gap-1 text-xs uppercase tracking-wide text-muted-foreground">
           {t('admin.organizations.filters.searchLabel')}
           <input
-            className="rounded-md border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-slate-100"
+            className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
             placeholder={t('admin.organizations.filters.searchPlaceholder')}
             value={organizationsApi.filters.search}
             onChange={(event) => organizationsApi.setSearch(event.target.value)}
           />
         </label>
-        <label className="flex flex-col gap-1 text-xs uppercase tracking-wide text-slate-300">
+        <label className="flex flex-col gap-1 text-xs uppercase tracking-wide text-muted-foreground">
           {t('admin.organizations.filters.typeLabel')}
           <select
-            className="rounded-md border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-slate-100"
+            className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
             value={organizationsApi.filters.organizationType}
             onChange={(event) =>
               organizationsApi.setOrganizationType(event.target.value as typeof organizationsApi.filters.organizationType)
@@ -196,10 +196,10 @@ export const OrganizationsPage = () => {
             ))}
           </select>
         </label>
-        <label className="flex flex-col gap-1 text-xs uppercase tracking-wide text-slate-300">
+        <label className="flex flex-col gap-1 text-xs uppercase tracking-wide text-muted-foreground">
           {t('admin.organizations.filters.statusLabel')}
           <select
-            className="rounded-md border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-slate-100"
+            className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
             value={organizationsApi.filters.status}
             onChange={(event) => organizationsApi.setStatus(event.target.value as 'active' | 'inactive' | 'all')}
           >
@@ -211,7 +211,7 @@ export const OrganizationsPage = () => {
         <div className="flex items-end justify-end">
           <button
             type="button"
-            className="rounded-md border border-emerald-700 bg-emerald-500/20 px-3 py-2 text-sm font-semibold text-emerald-100"
+            className="rounded-md border border-primary/40 bg-primary/15 px-3 py-2 text-sm font-semibold text-primary transition hover:bg-primary/20"
             onClick={openCreateDialog}
           >
             {t('admin.organizations.actions.create')}
@@ -219,16 +219,16 @@ export const OrganizationsPage = () => {
         </div>
       </div>
 
-      <p role="status" aria-live="polite" className="text-xs text-slate-400">
+      <p role="status" aria-live="polite" className="text-xs text-muted-foreground">
         {t('admin.organizations.messages.resultCount', { count: organizationsApi.total })}
       </p>
 
       {organizationsApi.error ? (
-        <div className="rounded-xl border border-red-600/40 bg-red-500/10 p-4 text-sm text-red-100" role="alert">
+        <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive" role="alert">
           <p>{organizationErrorMessage(organizationsApi.error)}</p>
           <button
             type="button"
-            className="mt-3 rounded-md border border-red-500/60 px-3 py-2 text-xs"
+            className="mt-3 rounded-md border border-destructive/40 bg-background px-3 py-2 text-xs text-destructive transition hover:bg-muted"
             onClick={() => void organizationsApi.refetch()}
           >
             {t('admin.organizations.actions.retry')}
@@ -236,10 +236,10 @@ export const OrganizationsPage = () => {
         </div>
       ) : null}
 
-      <div className="overflow-x-auto rounded-xl border border-slate-700">
+      <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-shell">
         <table className="min-w-full border-collapse" aria-label={t('admin.organizations.table.ariaLabel')}>
           <caption className="sr-only">{t('admin.organizations.table.caption')}</caption>
-          <thead className="bg-slate-900/80 text-left text-xs uppercase tracking-wide text-slate-300">
+          <thead className="bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground">
             <tr>
               <th scope="col" className="px-3 py-3">{t('admin.organizations.table.headerName')}</th>
               <th scope="col" className="px-3 py-3">{t('admin.organizations.table.headerType')}</th>
@@ -252,11 +252,11 @@ export const OrganizationsPage = () => {
           </thead>
           <tbody>
             {organizationsApi.organizations.map((organization) => (
-              <tr key={organization.id} className="border-t border-slate-800/70 bg-slate-950/20 text-sm text-slate-100">
+              <tr key={organization.id} className="border-t border-border bg-card text-sm text-foreground">
                 <td className="px-3 py-3">
                   <div className="flex items-center gap-2" style={{ paddingLeft: `${organization.depth * 12}px` }}>
                     <span className="font-medium">{organization.displayName}</span>
-                    <span className="text-xs text-slate-400">{organization.organizationKey}</span>
+                    <span className="text-xs text-muted-foreground">{organization.organizationKey}</span>
                   </div>
                 </td>
                 <td className="px-3 py-3">{t(ORGANIZATION_TYPE_KEYS[organization.organizationType])}</td>
@@ -272,21 +272,21 @@ export const OrganizationsPage = () => {
                   <div className="flex justify-end gap-2">
                     <button
                       type="button"
-                      className="rounded-md border border-slate-600 px-3 py-2 text-xs text-slate-100"
+                      className="rounded-md border border-border bg-background px-3 py-2 text-xs text-foreground transition hover:bg-muted"
                       onClick={() => void openEditDialog(organization.id)}
                     >
                       {t('admin.organizations.actions.edit')}
                     </button>
                     <button
                       type="button"
-                      className="rounded-md border border-sky-700 bg-sky-500/10 px-3 py-2 text-xs text-sky-100"
+                      className="rounded-md border border-secondary/40 bg-secondary/10 px-3 py-2 text-xs text-secondary"
                       onClick={() => void openMembershipDialog(organization.id)}
                     >
                       {t('admin.organizations.actions.memberships')}
                     </button>
                     <button
                       type="button"
-                      className="rounded-md border border-red-700 bg-red-500/10 px-3 py-2 text-xs text-red-100"
+                      className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive"
                       onClick={() => setDeactivateOrganizationId(organization.id)}
                       disabled={!organization.isActive}
                     >
@@ -301,17 +301,17 @@ export const OrganizationsPage = () => {
       </div>
 
       {organizationsApi.organizations.length === 0 && !organizationsApi.isLoading ? (
-        <div className="rounded-xl border border-slate-700 bg-slate-900/30 p-6 text-sm text-slate-300">
+        <div className="rounded-xl border border-border bg-card p-6 text-sm text-muted-foreground shadow-shell">
           {t('admin.organizations.messages.emptyState')}
         </div>
       ) : null}
 
-      <nav aria-label={t('admin.organizations.pagination.ariaLabel')} className="flex items-center justify-between text-sm text-slate-300">
+      <nav aria-label={t('admin.organizations.pagination.ariaLabel')} className="flex items-center justify-between text-sm text-muted-foreground">
         <p aria-live="polite">{t('admin.organizations.pagination.pageLabel', { page: organizationsApi.page, totalPages: pageCount })}</p>
         <div className="flex gap-2">
           <button
             type="button"
-            className="rounded-md border border-slate-700 px-3 py-2 disabled:opacity-50"
+            className="rounded-md border border-border bg-background px-3 py-2 text-foreground transition hover:bg-muted disabled:opacity-50"
             disabled={organizationsApi.page <= 1}
             onClick={() => organizationsApi.setPage(organizationsApi.page - 1)}
           >
@@ -319,7 +319,7 @@ export const OrganizationsPage = () => {
           </button>
           <button
             type="button"
-            className="rounded-md border border-slate-700 px-3 py-2 disabled:opacity-50"
+            className="rounded-md border border-border bg-background px-3 py-2 text-foreground transition hover:bg-muted disabled:opacity-50"
             disabled={organizationsApi.page >= pageCount}
             onClick={() => organizationsApi.setPage(organizationsApi.page + 1)}
           >
@@ -340,34 +340,34 @@ export const OrganizationsPage = () => {
       >
         <form className="space-y-4" onSubmit={(event) => void onSubmitOrganization(event)}>
           {organizationsApi.mutationError ? (
-            <div className="rounded-md border border-red-600/40 bg-red-500/10 px-3 py-2 text-sm text-red-100" role="alert">
+            <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">
               {organizationErrorMessage(organizationsApi.mutationError)}
             </div>
           ) : null}
-          <label className="flex flex-col gap-1 text-sm text-slate-200">
+          <label className="flex flex-col gap-1 text-sm text-foreground">
             <span>{t('admin.organizations.form.keyLabel')}</span>
             <input
               value={formValues.organizationKey}
               onChange={(event) => setFormValues((current) => ({ ...current, organizationKey: event.target.value }))}
-              className="rounded-md border border-slate-600 bg-slate-950 px-3 py-2 text-slate-100"
+              className="rounded-md border border-border bg-background px-3 py-2 text-foreground"
             />
           </label>
-          <label className="flex flex-col gap-1 text-sm text-slate-200">
+          <label className="flex flex-col gap-1 text-sm text-foreground">
             <span>{t('admin.organizations.form.nameLabel')}</span>
             <input
               value={formValues.displayName}
               onChange={(event) => setFormValues((current) => ({ ...current, displayName: event.target.value }))}
-              className="rounded-md border border-slate-600 bg-slate-950 px-3 py-2 text-slate-100"
+              className="rounded-md border border-border bg-background px-3 py-2 text-foreground"
             />
           </label>
-          <label className="flex flex-col gap-1 text-sm text-slate-200">
+          <label className="flex flex-col gap-1 text-sm text-foreground">
             <span>{t('admin.organizations.form.typeLabel')}</span>
             <select
               value={formValues.organizationType}
               onChange={(event) =>
                 setFormValues((current) => ({ ...current, organizationType: event.target.value as IamOrganizationType }))
               }
-              className="rounded-md border border-slate-600 bg-slate-950 px-3 py-2 text-slate-100"
+              className="rounded-md border border-border bg-background px-3 py-2 text-foreground"
             >
               {typeOptions.map((type) => (
                 <option key={type} value={type}>
@@ -376,12 +376,12 @@ export const OrganizationsPage = () => {
               ))}
             </select>
           </label>
-          <label className="flex flex-col gap-1 text-sm text-slate-200">
+          <label className="flex flex-col gap-1 text-sm text-foreground">
             <span>{t('admin.organizations.form.parentLabel')}</span>
             <select
               value={formValues.parentOrganizationId}
               onChange={(event) => setFormValues((current) => ({ ...current, parentOrganizationId: event.target.value }))}
-              className="rounded-md border border-slate-600 bg-slate-950 px-3 py-2 text-slate-100"
+              className="rounded-md border border-border bg-background px-3 py-2 text-foreground"
             >
               <option value="">{t('admin.organizations.form.parentNone')}</option>
               {organizationsApi.organizations
@@ -393,7 +393,7 @@ export const OrganizationsPage = () => {
                 ))}
             </select>
           </label>
-          <label className="flex flex-col gap-1 text-sm text-slate-200">
+          <label className="flex flex-col gap-1 text-sm text-foreground">
             <span>{t('admin.organizations.form.policyLabel')}</span>
             <select
               value={formValues.contentAuthorPolicy}
@@ -403,7 +403,7 @@ export const OrganizationsPage = () => {
                   contentAuthorPolicy: event.target.value as 'org_only' | 'org_or_personal',
                 }))
               }
-              className="rounded-md border border-slate-600 bg-slate-950 px-3 py-2 text-slate-100"
+              className="rounded-md border border-border bg-background px-3 py-2 text-foreground"
             >
               <option value="org_only">{t('admin.organizations.policies.orgOnly')}</option>
               <option value="org_or_personal">{t('admin.organizations.policies.orgOrPersonal')}</option>
@@ -412,14 +412,14 @@ export const OrganizationsPage = () => {
           <div className="flex justify-end gap-2">
             <button
               type="button"
-              className="rounded-md border border-slate-700 px-3 py-2 text-sm text-slate-200"
+              className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground transition hover:bg-muted"
               onClick={() => setEditState(null)}
             >
               {t('account.actions.cancel')}
             </button>
             <button
               type="submit"
-              className="rounded-md border border-emerald-700 bg-emerald-500/20 px-3 py-2 text-sm font-semibold text-emerald-100"
+              className="rounded-md border border-primary/40 bg-primary/15 px-3 py-2 text-sm font-semibold text-primary transition hover:bg-primary/20"
             >
               {editState?.mode === 'edit' ? t('admin.organizations.actions.save') : t('admin.organizations.actions.create')}
             </button>
@@ -438,17 +438,17 @@ export const OrganizationsPage = () => {
       >
         <div className="space-y-4">
           {organizationsApi.mutationError ? (
-            <div className="rounded-md border border-red-600/40 bg-red-500/10 px-3 py-2 text-sm text-red-100" role="alert">
+            <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">
               {organizationErrorMessage(organizationsApi.mutationError)}
             </div>
           ) : null}
-          <form className="grid gap-3 rounded-lg border border-slate-700 bg-slate-950/50 p-4" onSubmit={(event) => void onAssignMembership(event)}>
-            <label className="flex flex-col gap-1 text-sm text-slate-200">
+          <form className="grid gap-3 rounded-lg border border-border bg-card p-4 shadow-shell" onSubmit={(event) => void onAssignMembership(event)}>
+            <label className="flex flex-col gap-1 text-sm text-foreground">
               <span>{t('admin.organizations.membershipsDialog.accountLabel')}</span>
               <select
                 value={membershipForm.accountId}
                 onChange={(event) => setMembershipForm((current) => ({ ...current, accountId: event.target.value }))}
-                className="rounded-md border border-slate-600 bg-slate-950 px-3 py-2 text-slate-100"
+                className="rounded-md border border-border bg-background px-3 py-2 text-foreground"
               >
                 <option value="">{t('admin.organizations.membershipsDialog.accountPlaceholder')}</option>
                 {usersApi.users.map((user) => (
@@ -458,7 +458,7 @@ export const OrganizationsPage = () => {
                 ))}
               </select>
             </label>
-            <label className="flex flex-col gap-1 text-sm text-slate-200">
+            <label className="flex flex-col gap-1 text-sm text-foreground">
               <span>{t('admin.organizations.membershipsDialog.visibilityLabel')}</span>
               <select
                 value={membershipForm.visibility}
@@ -468,13 +468,13 @@ export const OrganizationsPage = () => {
                     visibility: event.target.value as 'internal' | 'external',
                   }))
                 }
-                className="rounded-md border border-slate-600 bg-slate-950 px-3 py-2 text-slate-100"
+                className="rounded-md border border-border bg-background px-3 py-2 text-foreground"
               >
                 <option value="internal">{t('admin.organizations.membershipsDialog.visibilityInternal')}</option>
                 <option value="external">{t('admin.organizations.membershipsDialog.visibilityExternal')}</option>
               </select>
             </label>
-            <label className="flex items-center gap-2 text-sm text-slate-200">
+            <label className="flex items-center gap-2 text-sm text-foreground">
               <input
                 type="checkbox"
                 checked={membershipForm.isDefaultContext}
@@ -487,7 +487,7 @@ export const OrganizationsPage = () => {
             <div className="flex justify-end">
               <button
                 type="submit"
-                className="rounded-md border border-sky-700 bg-sky-500/20 px-3 py-2 text-sm font-semibold text-sky-100"
+                className="rounded-md border border-primary/40 bg-primary/15 px-3 py-2 text-sm font-semibold text-primary transition hover:bg-primary/20"
                 disabled={!membershipForm.accountId}
               >
                 {t('admin.organizations.actions.assignMembership')}
@@ -496,32 +496,32 @@ export const OrganizationsPage = () => {
           </form>
 
           <div className="space-y-3">
-            <h2 className="text-sm font-semibold text-slate-100">{t('admin.organizations.membershipsDialog.membersTitle')}</h2>
+            <h2 className="text-sm font-semibold text-foreground">{t('admin.organizations.membershipsDialog.membersTitle')}</h2>
             {selectedOrganization?.memberships.length ? (
               <ul className="space-y-2">
                 {selectedOrganization.memberships.map((membership) => (
                   <li
                     key={membership.accountId}
-                    className="flex flex-col gap-2 rounded-lg border border-slate-700 bg-slate-950/50 p-3 text-sm text-slate-100 md:flex-row md:items-center md:justify-between"
+                    className="flex flex-col gap-2 rounded-lg border border-border bg-card p-3 text-sm text-foreground shadow-shell md:flex-row md:items-center md:justify-between"
                   >
                     <div>
                       <p className="font-medium">{membership.displayName}</p>
-                      <p className="text-xs text-slate-400">{membership.email ?? membership.keycloakSubject}</p>
+                      <p className="text-xs text-muted-foreground">{membership.email ?? membership.keycloakSubject}</p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="rounded-full border border-slate-700 px-2 py-1 text-xs text-slate-300">
+                      <span className="rounded-full border border-border bg-background px-2 py-1 text-xs text-muted-foreground">
                         {membership.visibility === 'internal'
                           ? t('admin.organizations.membershipsDialog.visibilityInternal')
                           : t('admin.organizations.membershipsDialog.visibilityExternal')}
                       </span>
                       {membership.isDefaultContext ? (
-                        <span className="rounded-full border border-emerald-700 px-2 py-1 text-xs text-emerald-100">
+                        <span className="rounded-full border border-primary/40 bg-primary/10 px-2 py-1 text-xs text-primary">
                           {t('admin.organizations.membershipsDialog.defaultBadge')}
                         </span>
                       ) : null}
                       <button
                         type="button"
-                        className="rounded-md border border-red-700 px-3 py-2 text-xs text-red-100"
+                        className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive"
                         onClick={() => {
                           if (!membershipOrganizationId) {
                             return;
@@ -536,7 +536,7 @@ export const OrganizationsPage = () => {
                 ))}
               </ul>
             ) : (
-              <p className="text-sm text-slate-300">{t('admin.organizations.membershipsDialog.empty')}</p>
+              <p className="text-sm text-muted-foreground">{t('admin.organizations.membershipsDialog.empty')}</p>
             )}
           </div>
         </div>

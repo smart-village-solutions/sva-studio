@@ -12,11 +12,7 @@ DROP TABLE IF EXISTS iam.roles;
 DROP TABLE IF EXISTS iam.organizations;
 DROP TABLE IF EXISTS iam.instances;
 DROP FUNCTION IF EXISTS iam.current_instance_id();
+ALTER DEFAULT PRIVILEGES IN SCHEMA iam REVOKE SELECT, INSERT, UPDATE, DELETE ON TABLES FROM iam_app;
+ALTER DEFAULT PRIVILEGES IN SCHEMA iam REVOKE USAGE, SELECT ON SEQUENCES FROM iam_app;
 DROP SCHEMA IF EXISTS iam;
-DO $$
-BEGIN
-  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'iam_app') THEN
-    DROP ROLE iam_app;
-  END IF;
-END
-$$;
+-- iam_app ist eine clusterweite Rolle und bleibt bewusst bestehen.

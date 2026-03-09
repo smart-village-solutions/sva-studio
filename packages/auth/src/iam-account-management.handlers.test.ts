@@ -223,6 +223,7 @@ import {
   updateRoleHandler,
   updateUserHandler,
 } from './iam-account-management.server';
+import { toPayloadHash } from './iam-account-management/api-helpers';
 import { KeycloakAdminRequestError } from './keycloak-admin-client';
 
 const targetUserId = 'bbbbbbbb-bbbb-4111-8bbb-bbbbbbbbbbbb';
@@ -1342,7 +1343,7 @@ describe('iam-account-management handlers (guards)', () => {
         return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
       }
 
-      if (text.includes('INSERT INTO iam.idempotency_keys') && text.includes('ON CONFLICT')) {
+      if (text.includes('INSERT INTO iam.idempotency_keys')) {
         return { rowCount: 1, rows: [{ status: 'IN_PROGRESS' }] };
       }
 
@@ -1431,7 +1432,7 @@ describe('iam-account-management handlers (guards)', () => {
       if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
         return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
       }
-      if (text.includes('INSERT INTO iam.idempotency_keys') && text.includes('ON CONFLICT')) {
+      if (text.includes('INSERT INTO iam.idempotency_keys')) {
         return { rowCount: 1, rows: [{ status: 'IN_PROGRESS' }] };
       }
       if (text.includes('UPDATE iam.idempotency_keys')) {
@@ -1477,7 +1478,7 @@ describe('iam-account-management handlers (guards)', () => {
       if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
         return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
       }
-      if (text.includes('INSERT INTO iam.idempotency_keys') && text.includes('ON CONFLICT')) {
+      if (text.includes('INSERT INTO iam.idempotency_keys')) {
         return { rowCount: 1, rows: [{ status: 'IN_PROGRESS' }] };
       }
       if (text.includes('UPDATE iam.idempotency_keys')) {
@@ -2169,7 +2170,7 @@ describe('iam-account-management handlers (guards)', () => {
         return { rowCount: 1, rows: [{ max_role_level: 90 }] };
       }
 
-      if (text.includes('INSERT INTO iam.idempotency_keys') && text.includes('ON CONFLICT')) {
+      if (text.includes('INSERT INTO iam.idempotency_keys')) {
         return { rowCount: 1, rows: [{ status: 'IN_PROGRESS' }] };
       }
 
@@ -2235,7 +2236,7 @@ describe('iam-account-management handlers (guards)', () => {
         return { rowCount: 1, rows: [{ max_role_level: 90 }] };
       }
 
-      if (text.includes('INSERT INTO iam.idempotency_keys') && text.includes('ON CONFLICT')) {
+      if (text.includes('INSERT INTO iam.idempotency_keys')) {
         return { rowCount: 1, rows: [{ status: 'IN_PROGRESS' }] };
       }
 
@@ -2301,7 +2302,7 @@ describe('iam-account-management handlers (guards)', () => {
         };
       }
 
-      if (text.includes('INSERT INTO iam.idempotency_keys') && text.includes('ON CONFLICT')) {
+      if (text.includes('INSERT INTO iam.idempotency_keys')) {
         return { rowCount: 1, rows: [{ status: 'IN_PROGRESS' }] };
       }
 
@@ -2348,16 +2349,17 @@ describe('iam-account-management handlers (guards)', () => {
   });
 
   it('returns idempotent replay response for createUser', async () => {
-    let payloadHash = '';
+    const rawBody = JSON.stringify({
+      email: 'new.user@example.com',
+      firstName: 'Replay',
+      lastName: 'User',
+      roleIds: [],
+    });
+    const payloadHash = toPayloadHash(rawBody);
 
-    state.queryHandler = (text, values) => {
+    state.queryHandler = (text) => {
       if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
         return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
-      }
-
-      if (text.includes('INSERT INTO iam.idempotency_keys') && text.includes('ON CONFLICT')) {
-        payloadHash = String(values?.[4] ?? '');
-        return { rowCount: 0, rows: [] };
       }
 
       if (text.includes('SELECT status, payload_hash, response_status, response_body')) {
@@ -2391,12 +2393,7 @@ describe('iam-account-management handlers (guards)', () => {
           origin: 'http://localhost',
           'idempotency-key': 'user-create-replay',
         },
-        body: JSON.stringify({
-          email: 'new.user@example.com',
-          firstName: 'Replay',
-          lastName: 'User',
-          roleIds: [],
-        }),
+        body: rawBody,
       })
     );
 
@@ -2407,16 +2404,17 @@ describe('iam-account-management handlers (guards)', () => {
   });
 
   it('rejects createUser when the idempotency key is reused with a different payload', async () => {
-    let payloadHash = '';
+    const rawBody = JSON.stringify({
+      email: 'conflict@example.com',
+      firstName: 'Conflict',
+      lastName: 'Case',
+      roleIds: [],
+    });
+    const payloadHash = toPayloadHash(rawBody);
 
-    state.queryHandler = (text, values) => {
+    state.queryHandler = (text) => {
       if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
         return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
-      }
-
-      if (text.includes('INSERT INTO iam.idempotency_keys') && text.includes('ON CONFLICT')) {
-        payloadHash = String(values?.[4] ?? '');
-        return { rowCount: 0, rows: [] };
       }
 
       if (text.includes('SELECT status, payload_hash, response_status, response_body')) {
@@ -2445,12 +2443,7 @@ describe('iam-account-management handlers (guards)', () => {
           origin: 'http://localhost',
           'idempotency-key': 'user-create-conflict',
         },
-        body: JSON.stringify({
-          email: 'conflict@example.com',
-          firstName: 'Conflict',
-          lastName: 'Case',
-          roleIds: [],
-        }),
+        body: rawBody,
       })
     );
 
@@ -2465,16 +2458,17 @@ describe('iam-account-management handlers (guards)', () => {
   });
 
   it('rejects createUser while an idempotent request is still in progress', async () => {
-    let payloadHash = '';
+    const rawBody = JSON.stringify({
+      email: 'in-progress@example.com',
+      firstName: 'In',
+      lastName: 'Progress',
+      roleIds: [],
+    });
+    const payloadHash = toPayloadHash(rawBody);
 
-    state.queryHandler = (text, values) => {
+    state.queryHandler = (text) => {
       if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
         return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
-      }
-
-      if (text.includes('INSERT INTO iam.idempotency_keys') && text.includes('ON CONFLICT')) {
-        payloadHash = String(values?.[4] ?? '');
-        return { rowCount: 0, rows: [] };
       }
 
       if (text.includes('SELECT status, payload_hash, response_status, response_body')) {
@@ -2503,12 +2497,7 @@ describe('iam-account-management handlers (guards)', () => {
           origin: 'http://localhost',
           'idempotency-key': 'user-create-in-progress',
         },
-        body: JSON.stringify({
-          email: 'in-progress@example.com',
-          firstName: 'In',
-          lastName: 'Progress',
-          roleIds: [],
-        }),
+        body: rawBody,
       })
     );
 

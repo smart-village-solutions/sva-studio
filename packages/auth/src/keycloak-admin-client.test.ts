@@ -77,6 +77,15 @@ describe('KeycloakAdminClient', () => {
 
     expect(result).toEqual({ externalId: 'user-123' });
     expect(calls).toHaveLength(2);
+    expect(calls[1]?.init?.body).toBe(
+      JSON.stringify({
+        username: 'user@example.com',
+        email: 'user@example.com',
+        firstName: 'Max',
+        lastName: 'Mustermann',
+        enabled: true,
+      })
+    );
   });
 
   it('fails createUser when location header is missing', async () => {
@@ -104,7 +113,7 @@ describe('KeycloakAdminClient', () => {
   });
 
   it('uses raw location value without slash as external id', async () => {
-    const { fetchImpl } = createFetchStub([
+    const { fetchImpl, calls } = createFetchStub([
       createJsonResponse(200, { access_token: 'token-1', expires_in: 300 }),
       createTextResponse(201, '', {
         Location: 'user-plain-id',
@@ -127,6 +136,70 @@ describe('KeycloakAdminClient', () => {
     });
 
     expect(result.externalId).toBe('user-plain-id');
+    expect(calls[1]?.init?.body).toBe(
+      JSON.stringify({
+        username: 'user@example.com',
+        email: 'user@example.com',
+        enabled: true,
+        attributes: {
+          source: ['iam'],
+        },
+      })
+    );
+  });
+
+  it('surfaces Keycloak errorMessage values in request errors', async () => {
+    const { fetchImpl } = createFetchStub([
+      createJsonResponse(200, { access_token: 'token-1', expires_in: 300 }),
+      createJsonResponse(400, { errorMessage: 'User name is missing' }),
+    ]);
+
+    const client = new KeycloakAdminClient({
+      baseUrl: 'https://keycloak.example.com',
+      realm: 'demo',
+      clientId: 'svc-client',
+      clientSecret: 'svc-secret',
+      fetchImpl,
+      maxRetries: 0,
+    });
+
+    await expect(
+      client.createUser({
+        email: 'user@example.com',
+      })
+    ).rejects.toMatchObject({
+      statusCode: 400,
+      message: 'Keycloak create_user failed: User name is missing',
+    });
+  });
+
+  it('includes Keycloak field context in user profile validation errors', async () => {
+    const { fetchImpl } = createFetchStub([
+      createJsonResponse(200, { access_token: 'token-1', expires_in: 300 }),
+      createJsonResponse(400, {
+        field: 'instanceId',
+        errorMessage: 'error-user-attribute-required',
+        params: ['instanceId'],
+      }),
+    ]);
+
+    const client = new KeycloakAdminClient({
+      baseUrl: 'https://keycloak.example.com',
+      realm: 'demo',
+      clientId: 'svc-client',
+      clientSecret: 'svc-secret',
+      fetchImpl,
+      maxRetries: 0,
+    });
+
+    await expect(
+      client.createUser({
+        email: 'user@example.com',
+      })
+    ).rejects.toMatchObject({
+      statusCode: 400,
+      message: 'Keycloak create_user failed: error-user-attribute-required (instanceId)',
+    });
   });
 
   it('caches service-account token between requests', async () => {
@@ -572,6 +645,128 @@ describe('KeycloakAdminClient', () => {
         role_key: ['custom_editor'],
         display_name: ['Custom Editor'],
       },
+    });
+  });
+
+  it('adopts an already existing compatible realm role during createRole', async () => {
+    const { fetchImpl, calls } = createFetchStub([
+      createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }),
+      createJsonResponse(409, { errorMessage: 'Role exists' }),
+      createJsonResponse(200, {
+        id: 'role-existing',
+        name: 'custom_editor',
+        description: 'Legacy description',
+        attributes: {
+          managed_by: ['external'],
+        },
+      }),
+      createTextResponse(204, ''),
+      createJsonResponse(200, {
+        id: 'role-existing',
+        name: 'custom_editor',
+        description: 'Custom Editor',
+        attributes: {
+          managed_by: ['studio'],
+          instance_id: ['instance-1'],
+          role_key: ['custom_editor'],
+          display_name: ['Custom Editor'],
+        },
+      }),
+    ]);
+
+    const client = new KeycloakAdminClient({
+      baseUrl: 'https://keycloak.example.com',
+      realm: 'demo',
+      clientId: 'svc-client',
+      clientSecret: 'svc-secret',
+      fetchImpl,
+      maxRetries: 0,
+    });
+
+    const created = await client.createRole({
+      externalName: 'custom_editor',
+      description: 'Custom Editor',
+      attributes: {
+        managedBy: 'studio',
+        instanceId: 'instance-1',
+        roleKey: 'custom_editor',
+        displayName: 'Custom Editor',
+      },
+    });
+
+    expect(created).toEqual({
+      id: 'role-existing',
+      externalName: 'custom_editor',
+      description: 'Custom Editor',
+      attributes: {
+        managed_by: ['studio'],
+        instance_id: ['instance-1'],
+        role_key: ['custom_editor'],
+        display_name: ['Custom Editor'],
+      },
+      composite: undefined,
+      clientRole: undefined,
+      containerId: undefined,
+    });
+
+    const updateCall = calls.find(
+      (entry) =>
+        String(entry.input).includes('/admin/realms/demo/roles/custom_editor') &&
+        entry.init?.method === 'PUT'
+    );
+    expect(updateCall).toBeDefined();
+    expect(JSON.parse(String(updateCall?.init?.body))).toEqual({
+      name: 'custom_editor',
+      description: 'Custom Editor',
+      attributes: {
+        managed_by: ['studio'],
+        instance_id: ['instance-1'],
+        role_key: ['custom_editor'],
+        display_name: ['Custom Editor'],
+      },
+    });
+  });
+
+  it('preserves conflict semantics for studio-managed roles from another instance', async () => {
+    const { fetchImpl } = createFetchStub([
+      createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }),
+      createJsonResponse(409, { errorMessage: 'Role exists' }),
+      createJsonResponse(200, {
+        id: 'role-other-instance',
+        name: 'custom_editor',
+        description: 'Custom Editor',
+        attributes: {
+          managed_by: ['studio'],
+          instance_id: ['instance-2'],
+          role_key: ['custom_editor'],
+          display_name: ['Custom Editor'],
+        },
+      }),
+    ]);
+
+    const client = new KeycloakAdminClient({
+      baseUrl: 'https://keycloak.example.com',
+      realm: 'demo',
+      clientId: 'svc-client',
+      clientSecret: 'svc-secret',
+      fetchImpl,
+      maxRetries: 0,
+    });
+
+    await expect(
+      client.createRole({
+        externalName: 'custom_editor',
+        description: 'Custom Editor',
+        attributes: {
+          managedBy: 'studio',
+          instanceId: 'instance-1',
+          roleKey: 'custom_editor',
+          displayName: 'Custom Editor',
+        },
+      })
+    ).rejects.toMatchObject({
+      statusCode: 409,
+      message: 'Keycloak create_role failed: Role exists',
     });
   });
 

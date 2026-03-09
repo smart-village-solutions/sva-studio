@@ -162,7 +162,7 @@ vi.mock('pg', () => ({
             return { rowCount: 0, rows: [] };
           }
 
-          if (text.includes('INSERT INTO iam.idempotency_keys') && text.includes('ON CONFLICT')) {
+          if (text.includes('INSERT INTO iam.idempotency_keys')) {
             return { rowCount: 1, rows: [{ status: 'IN_PROGRESS' }] };
           }
 

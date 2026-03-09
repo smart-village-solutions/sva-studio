@@ -52,6 +52,9 @@ type TokenResponse = {
 type KeycloakErrorResponse = {
   readonly error?: string;
   readonly error_description?: string;
+  readonly errorMessage?: string;
+  readonly field?: string;
+  readonly params?: readonly string[];
 };
 
 type KeycloakRoleMapping = {
@@ -182,6 +185,22 @@ const mapKeycloakRole = (role: KeycloakRealmRole): IdentityRole => ({
   containerId: role.containerId,
 });
 
+const readAttribute = (
+  attributes: Readonly<Record<string, readonly string[]>> | undefined,
+  key: string
+): string | undefined => {
+  const values = attributes?.[key];
+  return Array.isArray(values) ? values[0] : undefined;
+};
+
+const isStudioManagedRoleConflict = (
+  role: IdentityRole,
+  input: CreateIdentityRoleInput
+): boolean =>
+  readAttribute(role.attributes, 'managed_by') === 'studio' &&
+  readAttribute(role.attributes, 'instance_id') !== undefined &&
+  readAttribute(role.attributes, 'instance_id') !== input.attributes.instanceId;
+
 const isRetryableStatus = (statusCode: number): boolean => statusCode === 429 || statusCode >= 500;
 
 const toRetryLogReason = (error: unknown): string => {
@@ -269,6 +288,7 @@ export class KeycloakAdminClient implements IdentityProviderPort {
   async createUser(input: CreateIdentityUserInput): Promise<IdentityUser> {
     await this.assertWriteAvailability();
     const payload = {
+      username: input.username ?? input.email,
       email: input.email,
       firstName: input.firstName,
       lastName: input.lastName,
@@ -510,21 +530,41 @@ export class KeycloakAdminClient implements IdentityProviderPort {
 
   async createRole(input: CreateIdentityRoleInput): Promise<IdentityRole> {
     await this.assertWriteAvailability();
-    await this.executeWithResilience<void>({
-      method: 'POST',
-      path: `/admin/realms/${encodePathSegment(this.realm)}/roles`,
-      body: JSON.stringify({
-        name: input.externalName,
-        description: input.description,
-        attributes: normalizeManagedRoleAttributes({
-          managed_by: input.attributes.managedBy,
-          instance_id: input.attributes.instanceId,
-          role_key: input.attributes.roleKey,
-          display_name: input.attributes.displayName,
+    try {
+      await this.executeWithResilience<void>({
+        method: 'POST',
+        path: `/admin/realms/${encodePathSegment(this.realm)}/roles`,
+        body: JSON.stringify({
+          name: input.externalName,
+          description: input.description,
+          attributes: normalizeManagedRoleAttributes({
+            managed_by: input.attributes.managedBy,
+            instance_id: input.attributes.instanceId,
+            role_key: input.attributes.roleKey,
+            display_name: input.attributes.displayName,
+          }),
         }),
-      }),
-      operation: 'create_role',
-    });
+        operation: 'create_role',
+      });
+    } catch (error) {
+      if (!(error instanceof KeycloakAdminRequestError) || error.statusCode !== 409) {
+        throw error;
+      }
+
+      const existing = await this.getRoleByName(input.externalName);
+      if (!existing) {
+        throw error;
+      }
+
+      if (isStudioManagedRoleConflict(existing, input)) {
+        throw error;
+      }
+
+      return this.updateRole(input.externalName, {
+        description: input.description,
+        attributes: input.attributes,
+      });
+    }
 
     const created = await this.getRoleByName(input.externalName);
     if (!created) {
@@ -729,6 +769,15 @@ export class KeycloakAdminClient implements IdentityProviderPort {
       const parsed = JSON.parse(text) as KeycloakErrorResponse;
       if (parsed.error_description) {
         return `Keycloak ${operation} failed: ${parsed.error_description}`;
+      }
+      if (parsed.errorMessage) {
+        if (parsed.field) {
+          return `Keycloak ${operation} failed: ${parsed.errorMessage} (${parsed.field})`;
+        }
+        if (parsed.params && parsed.params.length > 0) {
+          return `Keycloak ${operation} failed: ${parsed.errorMessage} (${parsed.params.join(', ')})`;
+        }
+        return `Keycloak ${operation} failed: ${parsed.errorMessage}`;
       }
       if (parsed.error) {
         return `Keycloak ${operation} failed: ${parsed.error}`;

@@ -27,10 +27,14 @@ export const executeCreateUser = async (input: {
   try {
     const createdIdentityUser = await trackKeycloakCall('create_user', () =>
       identityProvider.provider.createUser({
+        username: payload.email,
         email: payload.email,
         firstName: payload.firstName,
         lastName: payload.lastName,
         enabled: payload.status !== 'inactive',
+        attributes: {
+          instanceId: actor.instanceId,
+        },
       })
     );
     const externalId = createdIdentityUser.externalId;

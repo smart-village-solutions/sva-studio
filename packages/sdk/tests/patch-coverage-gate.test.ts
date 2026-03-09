@@ -2,12 +2,37 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { pathToFileURL } from 'node:url';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { runPatchCoverageGate } from '../../../scripts/ci/patch-coverage-gate.ts';
-
 const createdDirs: string[] = [];
+
+type RunPatchCoverageGate = (options: {
+  rootDir?: string;
+  baseRef?: string;
+  headRef?: string;
+  targetPct?: number;
+}) => {
+  passed: boolean;
+  targetPct: number;
+  coveragePct: number;
+  coveredLines: number;
+  missedLines: number;
+  consideredFiles: number;
+  ignoredFiles: number;
+  uncoveredFiles: Array<{
+    path: string;
+    covered: number;
+    missed: number;
+  }>;
+};
+
+async function loadRunPatchCoverageGate() {
+  const scriptUrl = pathToFileURL(path.resolve(__dirname, '../../../scripts/ci/patch-coverage-gate.ts')).href;
+  const module = await import(scriptUrl);
+  return module.runPatchCoverageGate as RunPatchCoverageGate;
+}
 
 function createTempWorkspace(): string {
   const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'patch-coverage-gate-'));
@@ -100,7 +125,8 @@ afterEach(() => {
 });
 
 describe('patch coverage gate', () => {
-  it('ignores coverage-exempt projects when computing patch coverage', () => {
+  it('ignores coverage-exempt projects when computing patch coverage', async () => {
+    const runPatchCoverageGate = await loadRunPatchCoverageGate();
     const rootDir = createTempWorkspace();
     initGitRepo(rootDir);
     writePolicy(rootDir, {
@@ -142,7 +168,8 @@ describe('patch coverage gate', () => {
     expect(result.consideredFiles).toBe(1);
   });
 
-  it('fails when changed executable lines in a covered project have no lcov record', () => {
+  it('fails when changed executable lines in a covered project have no lcov record', async () => {
+    const runPatchCoverageGate = await loadRunPatchCoverageGate();
     const rootDir = createTempWorkspace();
     initGitRepo(rootDir);
     writePolicy(rootDir);
@@ -166,7 +193,8 @@ describe('patch coverage gate', () => {
     expect(result.uncoveredFiles[0]?.path).toBe('packages/sdk/src/index.ts');
   });
 
-  it('ignores files that only contain type declarations or re-exports without lcov data', () => {
+  it('ignores files that only contain type declarations or re-exports without lcov data', async () => {
+    const runPatchCoverageGate = await loadRunPatchCoverageGate();
     const rootDir = createTempWorkspace();
     initGitRepo(rootDir);
     writePolicy(rootDir);
@@ -193,7 +221,8 @@ describe('patch coverage gate', () => {
     expect(result.ignoredFiles).toBe(1);
   });
 
-  it('ignores multiline type unions and export barrels without lcov data', () => {
+  it('ignores multiline type unions and export barrels without lcov data', async () => {
+    const runPatchCoverageGate = await loadRunPatchCoverageGate();
     const rootDir = createTempWorkspace();
     initGitRepo(rootDir);
     writePolicy(rootDir);

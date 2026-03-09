@@ -1,4 +1,5 @@
 export type CreateIdentityUserInput = {
+  readonly username?: string;
   readonly email: string;
   readonly firstName?: string;
   readonly lastName?: string;

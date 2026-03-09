@@ -414,27 +414,10 @@ export const reserveIdempotency = async (input: {
   withInstanceScopedDb(input.instanceId, async (client) => {
     await client.query('DELETE FROM iam.idempotency_keys WHERE expires_at < NOW();');
 
-    const insert = await client.query<{ status: IdempotencyStatus }>(
-      `
-INSERT INTO iam.idempotency_keys (
-  instance_id,
-  actor_account_id,
-  endpoint,
-  idempotency_key,
-  payload_hash,
-  status,
-  expires_at
-)
-VALUES ($1::uuid, $2::uuid, $3, $4, $5, 'IN_PROGRESS', NOW() + INTERVAL '24 hours')
-ON CONFLICT (instance_id, actor_account_id, endpoint, idempotency_key) DO NOTHING
-RETURNING status;
-`,
-      [input.instanceId, input.actorAccountId, input.endpoint, input.idempotencyKey, input.payloadHash]
-    );
-
-    if (insert.rowCount > 0) {
-      return { status: 'reserved' };
-    }
+    await client.query('SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2));', [
+      `${input.instanceId}:${input.actorAccountId}`,
+      `${input.endpoint}:${input.idempotencyKey}`,
+    ]);
 
     const existing = await client.query<{
       status: IdempotencyStatus;
@@ -456,6 +439,21 @@ LIMIT 1;
 
     const row = existing.rows[0];
     if (!row) {
+      await client.query(
+      `
+INSERT INTO iam.idempotency_keys (
+  instance_id,
+  actor_account_id,
+  endpoint,
+  idempotency_key,
+  payload_hash,
+  status,
+  expires_at
+)
+VALUES ($1::uuid, $2::uuid, $3, $4, $5, 'IN_PROGRESS', NOW() + INTERVAL '24 hours')
+`,
+        [input.instanceId, input.actorAccountId, input.endpoint, input.idempotencyKey, input.payloadHash]
+      );
       return { status: 'reserved' };
     }
 

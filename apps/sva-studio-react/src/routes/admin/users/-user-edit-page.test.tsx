@@ -1,7 +1,8 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { UserEditPage, userErrorMessage } from './-user-edit-page';
+import { UserEditPage } from './-user-edit-page';
+import { userErrorMessage } from './-user-error-message';
 
 const useUserMock = vi.fn();
 const useRolesMock = vi.fn();
@@ -340,6 +341,20 @@ describe('UserEditPage', () => {
 
   it('falls back to the generic message for null and unknown errors', () => {
     expect(userErrorMessage(null)).toBe('Nutzer konnten nicht geladen werden.');
+    expect(
+      userErrorMessage({
+        status: 404,
+        code: 'internal_error',
+        message: 'http_404',
+      } as never)
+    ).toBe('Unerwartete Serverantwort (HTTP 404).');
+    expect(
+      userErrorMessage({
+        status: 500,
+        code: 'internal_error',
+        message: 'Failed to fetch',
+      } as never)
+    ).toBe('Technischer Fehler beim Laden der Nutzer: Failed to fetch');
     expect(
       userErrorMessage({
         status: 500,

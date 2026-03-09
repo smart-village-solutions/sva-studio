@@ -321,7 +321,7 @@ describe('KeycloakAdminClient', () => {
     }
 
     const users = await client.listUsers({ max: 25 });
-    expect(users).toEqual([{ id: 'db-fallback-user' }]);
+    expect(users).toEqual([{ externalId: 'db-fallback-user' }]);
     nowMs += 1;
   });
 
@@ -381,7 +381,7 @@ describe('KeycloakAdminClient', () => {
     });
 
     const users = await client.listUsers({ first: 1, max: 5, search: 'alice', email: 'a@example.com', username: 'alice', enabled: true });
-    expect(users).toEqual([{ id: 'fallback-user-1' }]);
+    expect(users).toEqual([{ externalId: 'fallback-user-1' }]);
     expect(fallbackListUsers).toHaveBeenCalledTimes(1);
   });
 
@@ -424,6 +424,7 @@ describe('KeycloakAdminClient', () => {
     });
 
     await client.updateUser('user-1', {
+      username: 'max.mustermann',
       email: 'user@example.com',
       firstName: 'Max',
       attributes: {
@@ -434,7 +435,11 @@ describe('KeycloakAdminClient', () => {
 
     const requestCall = calls.find((entry) => String(entry.input).includes('/users/user-1'));
     expect(requestCall).toBeDefined();
-    const body = JSON.parse(String(requestCall?.init?.body)) as { attributes: Record<string, string[]> };
+    const body = JSON.parse(String(requestCall?.init?.body)) as {
+      username: string;
+      attributes: Record<string, string[]>;
+    };
+    expect(body.username).toBe('max.mustermann');
     expect(body.attributes).toEqual({ locale: ['de'], teams: ['alpha', 'beta'] });
   });
 

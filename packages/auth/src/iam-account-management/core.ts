@@ -1,4 +1,5 @@
 import { withRequestContext } from '@sva/sdk/server';
+import { createSdkLogger } from '@sva/sdk/server';
 
 import {
   withAuthenticatedUser,
@@ -20,6 +21,7 @@ import {
   getMyProfileInternal,
   getUserInternal,
   listUsersInternal,
+  syncUsersFromKeycloakInternal,
   updateMyProfileInternal,
   updateUserInternal,
   deactivateUserInternal,
@@ -30,6 +32,8 @@ export { sanitizeRoleAuditDetails, sanitizeRoleErrorMessage } from './role-audit
 export { isTrustedRequestOrigin } from './csrf';
 export { resolveUserDisplayName } from './user-mapping';
 
+const logger = createSdkLogger({ component: 'iam-service', level: 'info' });
+
 const withIamRequestContext = <T>(request: Request, work: () => Promise<T>): Promise<T> =>
   withRequestContext({ request, fallbackWorkspaceId: 'default' }, work);
 
@@ -37,7 +41,31 @@ const withAuthenticatedIamHandler = (
   request: Request,
   handler: (request: Request, ctx: AuthenticatedRequestContext) => Promise<Response>
 ): Promise<Response> =>
-  withIamRequestContext(request, () => withAuthenticatedUser(request, (ctx) => handler(request, ctx)));
+  withIamRequestContext(request, async () => {
+    try {
+      return await withAuthenticatedUser(request, (ctx) => handler(request, ctx));
+    } catch (error) {
+      logger.error('IAM request failed unexpectedly', {
+        operation: 'iam_request',
+        endpoint: request.url,
+        error: error instanceof Error ? error.message : String(error),
+        error_type: error instanceof Error ? error.constructor.name : typeof error,
+      });
+
+      return new Response(
+        JSON.stringify({
+          error: {
+            code: 'internal_error',
+            message: 'Unbehandelter IAM-Fehler.',
+          },
+        }),
+        {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
+    }
+  });
 
 export const listUsersHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedIamHandler(request, listUsersInternal);
@@ -56,6 +84,9 @@ export const deactivateUserHandler = async (request: Request): Promise<Response>
 
 export const bulkDeactivateUsersHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedIamHandler(request, bulkDeactivateInternal);
+
+export const syncUsersFromKeycloakHandler = async (request: Request): Promise<Response> =>
+  withAuthenticatedIamHandler(request, syncUsersFromKeycloakInternal);
 
 export const updateMyProfileHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedIamHandler(request, updateMyProfileInternal);

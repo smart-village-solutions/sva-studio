@@ -1,5 +1,6 @@
 import type { FeatureFlags } from './types';
 import { createApiError } from './api-helpers';
+import { logger } from './shared';
 
 export const parseBooleanFlag = (value: string | undefined, defaultValue: boolean): boolean => {
   if (!value) {
@@ -25,12 +26,27 @@ export const ensureFeature = (
   requestId?: string
 ): Response | null => {
   if (feature === 'iam_ui' && !flags.iamUiEnabled) {
+    logger.warn('IAM feature guard rejected request', {
+      operation: 'ensure_feature',
+      feature,
+      request_id: requestId,
+    });
     return createApiError(503, 'feature_disabled', 'Feature iam-ui-enabled ist deaktiviert.', requestId);
   }
   if (feature === 'iam_admin' && !flags.iamAdminEnabled) {
+    logger.warn('IAM feature guard rejected request', {
+      operation: 'ensure_feature',
+      feature,
+      request_id: requestId,
+    });
     return createApiError(503, 'feature_disabled', 'Feature iam-admin-enabled ist deaktiviert.', requestId);
   }
   if (feature === 'iam_bulk' && !flags.iamBulkEnabled) {
+    logger.warn('IAM feature guard rejected request', {
+      operation: 'ensure_feature',
+      feature,
+      request_id: requestId,
+    });
     return createApiError(503, 'feature_disabled', 'Feature iam-bulk-enabled ist deaktiviert.', requestId);
   }
   return null;

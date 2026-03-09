@@ -11,6 +11,7 @@ import {
   listRolesHandler,
   listUsersHandler,
   reconcileHandler,
+  syncUsersFromKeycloakHandler,
   updateMyProfileHandler,
   updateRoleHandler,
   updateUserHandler,
@@ -66,6 +67,12 @@ export const authRouteDefinitions: AuthRouteDefinition[] = [
     handlers: {
       GET: async ({ request }) => listUsersHandler(request),
       POST: async ({ request }) => createUserHandler(request),
+    },
+  },
+  {
+    path: '/api/v1/iam/users/sync-keycloak',
+    handlers: {
+      POST: async ({ request }) => syncUsersFromKeycloakHandler(request),
     },
   },
   {

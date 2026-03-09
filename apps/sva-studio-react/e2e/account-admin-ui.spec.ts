@@ -115,6 +115,21 @@ test('admin user list and edit page are reachable for system_admin', async ({ pa
     });
   });
 
+  await page.route('**/api/v1/iam/users/sync-keycloak', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: {
+          importedCount: 1,
+          updatedCount: 1,
+          skippedCount: 0,
+          totalKeycloakUsers: 2,
+        },
+      }),
+    });
+  });
+
   await page.route('**/api/v1/iam/users/account-2', async (route) => {
     if (route.request().method() === 'PATCH') {
       await route.fulfill({
@@ -184,6 +199,8 @@ test('admin user list and edit page are reachable for system_admin', async ({ pa
   await usersResponsePromise;
   await expect(page.getByRole('heading', { name: 'Benutzerverwaltung' })).toBeVisible();
   await expect(page.getByLabel('Benutzertabelle')).toContainText('User Two');
+  await page.getByRole('button', { name: 'Aus Keycloak synchronisieren' }).click();
+  await expect(page.getByText('1 importiert, 1 aktualisiert, 0 ohne passenden Instanzkontext übersprungen.')).toBeVisible();
 
   const userDetailResponsePromise = page.waitForResponse(
     (response) => response.url().includes('/api/v1/iam/users/account-2') && response.status() === 200

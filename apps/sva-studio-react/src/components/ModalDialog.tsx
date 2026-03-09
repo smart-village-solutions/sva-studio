@@ -92,18 +92,18 @@ export const ModalDialog = ({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4" onMouseDown={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onMouseDown={onClose}>
       <div
         ref={panelRef}
         role={role}
         aria-modal="true"
         aria-label={title}
-        className="w-full max-w-2xl rounded-xl border border-slate-700 bg-slate-900 p-6 shadow-2xl"
+        className="w-full max-w-2xl rounded-xl border border-border bg-card p-6 shadow-2xl"
         onMouseDown={(event) => event.stopPropagation()}
       >
         <header className="mb-4">
-          <h2 className="text-lg font-semibold text-slate-100">{title}</h2>
-          {description ? <p className="mt-1 text-sm text-slate-300">{description}</p> : null}
+          <h2 className="text-lg font-semibold text-foreground">{title}</h2>
+          {description ? <p className="mt-1 text-sm text-muted-foreground">{description}</p> : null}
         </header>
         {children}
       </div>

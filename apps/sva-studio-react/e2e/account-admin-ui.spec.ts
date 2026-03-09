@@ -69,7 +69,7 @@ test('profile page supports loading and saving own profile', async ({ page }) =>
 
   await page.goto('/');
   await expect(page.getByRole('link', { name: 'SVA Studio' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Konto' })).toBeVisible({ timeout: 10000 });
+  await expect(page.getByRole('link', { name: 'Mein Konto', exact: true })).toBeVisible({ timeout: 10000 });
   await navigateClientSide(page, '/account');
 
   await expect(page.getByRole('heading', { name: 'Mein Konto' })).toBeVisible({ timeout: 10000 });
@@ -175,9 +175,13 @@ test('admin user list and edit page are reachable for system_admin', async ({ pa
 
   await page.goto('/');
   await expect(page.getByRole('link', { name: 'SVA Studio' })).toBeVisible();
+  const usersResponsePromise = page.waitForResponse(
+    (response) => response.url().includes('/api/v1/iam/users?') && response.status() === 200
+  );
   await navigateClientSide(page, '/admin/users');
+  await usersResponsePromise;
   await expect(page.getByRole('heading', { name: 'Benutzerverwaltung' })).toBeVisible();
-  await expect(page.getByRole('cell', { name: 'User Two', exact: true })).toBeVisible();
+  await expect(page.getByLabel('Benutzertabelle')).toContainText('User Two');
 
   await page.getByLabel('Benutzertabelle').getByRole('link', { name: 'Bearbeiten' }).click();
   await expect(page.getByRole('heading', { name: 'User Two' })).toBeVisible();

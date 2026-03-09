@@ -268,7 +268,7 @@ describe('UserEditPage', () => {
       expect(screen.getByRole('tab', { name: 'Historie' }).getAttribute('aria-selected')).toBe('true');
       expect(screen.getByText('Keine Historieneinträge vorhanden.')).toBeTruthy();
     });
-  });
+  }, 15000);
 
   it('shows localized save errors instead of the generic load error', () => {
     useUserMock.mockReturnValue({

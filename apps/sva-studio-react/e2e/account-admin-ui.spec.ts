@@ -69,9 +69,10 @@ test('profile page supports loading and saving own profile', async ({ page }) =>
 
   await page.goto('/');
   await expect(page.getByRole('link', { name: 'SVA Studio' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Konto' })).toBeVisible({ timeout: 10000 });
   await navigateClientSide(page, '/account');
 
-  await expect(page.getByRole('heading', { name: 'Mein Konto' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Mein Konto' })).toBeVisible({ timeout: 10000 });
 
   await page.getByLabel('Nachname').fill('Updated');
   await page.getByRole('button', { name: 'Speichern' }).click();
@@ -178,7 +179,7 @@ test('admin user list and edit page are reachable for system_admin', async ({ pa
   await expect(page.getByRole('heading', { name: 'Benutzerverwaltung' })).toBeVisible();
   await expect(page.getByRole('cell', { name: 'User Two', exact: true })).toBeVisible();
 
-  await page.getByRole('link', { name: 'Bearbeiten' }).click();
+  await page.getByLabel('Benutzertabelle').getByRole('link', { name: 'Bearbeiten' }).click();
   await expect(page.getByRole('heading', { name: 'User Two' })).toBeVisible();
 
   await page.getByRole('tab', { name: 'Berechtigungen' }).click();

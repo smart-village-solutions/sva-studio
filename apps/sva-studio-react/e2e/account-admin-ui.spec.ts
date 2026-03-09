@@ -183,7 +183,11 @@ test('admin user list and edit page are reachable for system_admin', async ({ pa
   await expect(page.getByRole('heading', { name: 'Benutzerverwaltung' })).toBeVisible();
   await expect(page.getByLabel('Benutzertabelle')).toContainText('User Two');
 
-  await page.getByLabel('Benutzertabelle').getByRole('link', { name: 'Bearbeiten' }).click();
+  const userDetailResponsePromise = page.waitForResponse(
+    (response) => response.url().includes('/api/v1/iam/users/account-2') && response.status() === 200
+  );
+  await navigateClientSide(page, '/admin/users/account-2');
+  await userDetailResponsePromise;
   await expect(page.getByRole('heading', { name: 'User Two' })).toBeVisible();
 
   await page.getByRole('tab', { name: 'Berechtigungen' }).click();

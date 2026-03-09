@@ -6,6 +6,7 @@ import React from 'react';
 import { AccountProfilePage } from './account/-account-profile-page';
 import { Phase1TestPage } from './admin/api/-phase1-test-page';
 import { IamViewerPage } from './admin/-iam-page';
+import { OrganizationsPage } from './admin/organizations/-organizations-page';
 import { RolesPage } from './admin/roles/-roles-page';
 import { UserEditPage } from './admin/users/-user-edit-page';
 import { UserListPage } from './admin/users/-user-list-page';
@@ -335,7 +336,7 @@ const ApiNames = ({ names }: { names: string[] }) => {
   );
 };
 
-type AccountUiGuardKey = 'account' | 'adminUsers' | 'adminUserDetail' | 'adminRoles';
+type AccountUiGuardKey = 'account' | 'adminUsers' | 'adminUserDetail' | 'adminOrganizations' | 'adminRoles';
 
 let accountUiGuardsPromise: Promise<typeof import('@sva/routing')> | null = null;
 
@@ -379,6 +380,13 @@ export const coreRouteFactoriesBase = [
     });
     return userEditRoute;
   },
+  (rootRoute: RootRoute) =>
+    createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/admin/organizations',
+      beforeLoad: (options) => runAccountUiGuard('adminOrganizations', options),
+      component: OrganizationsPage,
+    }),
   (rootRoute: RootRoute) =>
     createRoute({
       getParentRoute: () => rootRoute,

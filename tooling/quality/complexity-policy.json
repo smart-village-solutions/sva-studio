@@ -222,6 +222,36 @@
       "status": "open",
       "summary": "Keycloak-Admin-Core weiter in API-spezifische Unteradapter zerlegen"
     },
+    "iam-server:packages/auth/src/iam-organizations/handlers.ts:cyclomaticComplexity": {
+      "ticketId": "QUAL-113",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "IAM-Organizations-Handler in Query-, Mutation-, Membership- und Kontextmodule zerlegen"
+    },
+    "iam-server:packages/auth/src/iam-organizations/handlers.ts:fileLines": {
+      "ticketId": "QUAL-113",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "IAM-Organizations-Handler in Query-, Mutation-, Membership- und Kontextmodule zerlegen"
+    },
+    "iam-server:packages/auth/src/iam-organizations/handlers.ts:functionLines": {
+      "ticketId": "QUAL-113",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "IAM-Organizations-Handler in Query-, Mutation-, Membership- und Kontextmodule zerlegen"
+    },
+    "iam-server:packages/auth/src/index.server.ts:publicExports": {
+      "ticketId": "QUAL-105",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Server-Entry-Point auf kleinere, explizite Exportflächen reduzieren"
+    },
+    "routing:packages/routing/src/auth.routes.server.ts:fileLines": {
+      "ticketId": "QUAL-109",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Serverseitige Auth-Route-Komposition weiter in kleinere Routing-Bausteine zerlegen"
+    },
     "iam-server:packages/auth/src/redis-session.server.ts:fileLines": {
       "ticketId": "QUAL-111",
       "ticketSystem": "backlog",

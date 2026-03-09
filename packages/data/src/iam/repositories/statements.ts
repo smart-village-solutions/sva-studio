@@ -1,5 +1,11 @@
-import type { IamUuid, RoleManagedBy, RoleSyncState } from '../types';
+import type { IamUuid } from '../types';
 import type { SqlStatement } from './types';
+import type { RoleManagedBy, RoleSyncState } from './role-sync-types';
+
+const asUuidArrayParameter = (values: readonly IamUuid[]) => ({
+  sqlType: 'uuid[]' as const,
+  values,
+});
 
 export const iamSeedStatements = {
   upsertInstance: (input: { id: IamUuid; instanceKey: string; displayName: string }): SqlStatement => ({
@@ -20,17 +26,53 @@ SET
     organizationKey: string;
     displayName: string;
     metadata: string;
+    organizationType: 'county' | 'municipality' | 'district' | 'company' | 'agency' | 'other';
+    contentAuthorPolicy: 'org_only' | 'org_or_personal';
+    parentOrganizationId?: IamUuid;
+    hierarchyPath: readonly IamUuid[];
+    depth: number;
+    isActive?: boolean;
   }): SqlStatement => ({
     text: `
-INSERT INTO iam.organizations (id, instance_id, organization_key, display_name, metadata)
-VALUES ($1, $2, $3, $4, $5::jsonb)
+INSERT INTO iam.organizations (
+  id,
+  instance_id,
+  organization_key,
+  display_name,
+  metadata,
+  organization_type,
+  content_author_policy,
+  parent_organization_id,
+  hierarchy_path,
+  depth,
+  is_active
+)
+VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7, $8, $9::uuid[], $10, $11)
 ON CONFLICT (instance_id, organization_key) DO UPDATE
 SET
   display_name = EXCLUDED.display_name,
   metadata = EXCLUDED.metadata,
+  organization_type = EXCLUDED.organization_type,
+  content_author_policy = EXCLUDED.content_author_policy,
+  parent_organization_id = EXCLUDED.parent_organization_id,
+  hierarchy_path = EXCLUDED.hierarchy_path,
+  depth = EXCLUDED.depth,
+  is_active = EXCLUDED.is_active,
   updated_at = NOW();
 `,
-    values: [input.id, input.instanceId, input.organizationKey, input.displayName, input.metadata],
+    values: [
+      input.id,
+      input.instanceId,
+      input.organizationKey,
+      input.displayName,
+      input.metadata,
+      input.organizationType,
+      input.contentAuthorPolicy,
+      input.parentOrganizationId ?? null,
+      asUuidArrayParameter(input.hierarchyPath),
+      input.depth,
+      input.isActive ?? true,
+    ],
   }),
 
   upsertRole: (input: {
@@ -154,13 +196,30 @@ ON CONFLICT (instance_id, account_id, role_id) DO NOTHING;
     instanceId: IamUuid;
     accountId: IamUuid;
     organizationId: IamUuid;
+    isDefaultContext?: boolean;
+    membershipVisibility?: 'internal' | 'external';
   }): SqlStatement => ({
     text: `
-INSERT INTO iam.account_organizations (instance_id, account_id, organization_id)
-VALUES ($1, $2, $3)
-ON CONFLICT (instance_id, account_id, organization_id) DO NOTHING;
+INSERT INTO iam.account_organizations (
+  instance_id,
+  account_id,
+  organization_id,
+  is_default_context,
+  membership_visibility
+)
+VALUES ($1, $2, $3, $4, $5)
+ON CONFLICT (instance_id, account_id, organization_id) DO UPDATE
+SET
+  is_default_context = EXCLUDED.is_default_context,
+  membership_visibility = EXCLUDED.membership_visibility;
 `,
-    values: [input.instanceId, input.accountId, input.organizationId],
+    values: [
+      input.instanceId,
+      input.accountId,
+      input.organizationId,
+      input.isDefaultContext ?? false,
+      input.membershipVisibility ?? 'internal',
+    ],
   }),
 
   assignRolePermission: (input: { instanceId: IamUuid; roleId: IamUuid; permissionId: IamUuid }): SqlStatement => ({

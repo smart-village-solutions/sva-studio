@@ -1,6 +1,17 @@
-import type { IamUuid, RoleManagedBy, RoleSyncState } from '../types';
+import type {
+  ContentAuthorPolicy,
+  IamUuid,
+  OrganizationMembershipVisibility,
+  OrganizationType,
+} from '../types';
+import type { RoleManagedBy, RoleSyncState } from './role-sync-types';
 
-export type SqlPrimitive = string | number | boolean | null;
+type SqlArrayPrimitive = Readonly<{
+  sqlType: 'uuid[]';
+  values: readonly string[];
+}>;
+
+export type SqlPrimitive = string | number | boolean | null | SqlArrayPrimitive;
 
 export type SqlStatement = {
   readonly text: string;
@@ -24,6 +35,12 @@ export type IamSeedRepository = {
     organizationKey: string;
     displayName: string;
     metadata: string;
+    organizationType: OrganizationType;
+    contentAuthorPolicy: ContentAuthorPolicy;
+    parentOrganizationId?: IamUuid;
+    hierarchyPath: readonly IamUuid[];
+    depth: number;
+    isActive?: boolean;
   }): Promise<void>;
   upsertRole(input: {
     id: IamUuid;
@@ -60,6 +77,8 @@ export type IamSeedRepository = {
     instanceId: IamUuid;
     accountId: IamUuid;
     organizationId: IamUuid;
+    isDefaultContext?: boolean;
+    membershipVisibility?: OrganizationMembershipVisibility;
   }): Promise<void>;
   assignRolePermission(input: { instanceId: IamUuid; roleId: IamUuid; permissionId: IamUuid }): Promise<void>;
 };

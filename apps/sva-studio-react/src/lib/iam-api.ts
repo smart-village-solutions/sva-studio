@@ -2,6 +2,11 @@ import type {
   ApiErrorResponse,
   ApiItemResponse,
   ApiListResponse,
+  IamOrganizationContext,
+  IamOrganizationDetail,
+  IamOrganizationListItem,
+  IamOrganizationMembershipVisibility,
+  IamOrganizationType,
   IamRoleListItem,
   IamUserDetail,
   IamUserListItem,
@@ -108,6 +113,33 @@ export type RoleReconcileReport = {
   readonly roles: readonly RoleReconcileEntry[];
 };
 
+export type OrganizationsQuery = {
+  readonly page: number;
+  readonly pageSize: number;
+  readonly search?: string;
+  readonly organizationType?: IamOrganizationType;
+  readonly status?: 'active' | 'inactive';
+};
+
+export type CreateOrganizationPayload = {
+  readonly organizationKey: string;
+  readonly displayName: string;
+  readonly parentOrganizationId?: string;
+  readonly organizationType: IamOrganizationType;
+  readonly contentAuthorPolicy: 'org_only' | 'org_or_personal';
+  readonly metadata?: Readonly<Record<string, unknown>>;
+};
+
+export type UpdateOrganizationPayload = Partial<CreateOrganizationPayload> & {
+  readonly parentOrganizationId?: string | null;
+};
+
+export type AssignOrganizationMembershipPayload = {
+  readonly accountId: string;
+  readonly isDefaultContext?: boolean;
+  readonly visibility?: IamOrganizationMembershipVisibility;
+};
+
 const createIdempotencyKey = () => {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID();
@@ -142,6 +174,13 @@ const requestJson = async <T>(input: string, init?: RequestInit): Promise<T> => 
 const patchJson = async <TResponse, TPayload>(path: string, payload: TPayload) =>
   requestJson<TResponse>(path, {
     method: 'PATCH',
+    headers: IAM_HEADERS,
+    body: JSON.stringify(payload),
+  });
+
+const putJson = async <TResponse, TPayload>(path: string, payload: TPayload) =>
+  requestJson<TResponse>(path, {
+    method: 'PUT',
     headers: IAM_HEADERS,
     body: JSON.stringify(payload),
   });
@@ -212,6 +251,82 @@ export const updateMyProfile = async (
 
 export const listRoles = async (): Promise<ApiListResponse<IamRoleListItem>> =>
   requestJson<ApiListResponse<IamRoleListItem>>('/api/v1/iam/roles');
+
+export const listOrganizations = async (
+  query: OrganizationsQuery
+): Promise<ApiListResponse<IamOrganizationListItem>> => {
+  const params = new URLSearchParams({
+    page: String(query.page),
+    pageSize: String(query.pageSize),
+  });
+
+  if (query.search) {
+    params.set('search', query.search);
+  }
+  if (query.organizationType) {
+    params.set('organizationType', query.organizationType);
+  }
+  if (query.status) {
+    params.set('status', query.status);
+  }
+
+  return requestJson<ApiListResponse<IamOrganizationListItem>>(`/api/v1/iam/organizations?${params.toString()}`);
+};
+
+export const getOrganization = async (organizationId: string): Promise<ApiItemResponse<IamOrganizationDetail>> =>
+  requestJson<ApiItemResponse<IamOrganizationDetail>>(`/api/v1/iam/organizations/${organizationId}`);
+
+export const createOrganization = async (
+  payload: CreateOrganizationPayload
+): Promise<ApiItemResponse<IamOrganizationDetail>> =>
+  postJson<ApiItemResponse<IamOrganizationDetail>, CreateOrganizationPayload>('/api/v1/iam/organizations', payload, true);
+
+export const updateOrganization = async (
+  organizationId: string,
+  payload: UpdateOrganizationPayload
+): Promise<ApiItemResponse<IamOrganizationDetail>> =>
+  patchJson<ApiItemResponse<IamOrganizationDetail>, UpdateOrganizationPayload>(
+    `/api/v1/iam/organizations/${organizationId}`,
+    payload
+  );
+
+export const deactivateOrganization = async (organizationId: string): Promise<ApiItemResponse<{ id: string }>> =>
+  requestJson<ApiItemResponse<{ id: string }>>(`/api/v1/iam/organizations/${organizationId}`, {
+    method: 'DELETE',
+    headers: IAM_HEADERS,
+  });
+
+export const assignOrganizationMembership = async (
+  organizationId: string,
+  payload: AssignOrganizationMembershipPayload
+): Promise<ApiItemResponse<IamOrganizationDetail>> =>
+  postJson<ApiItemResponse<IamOrganizationDetail>, AssignOrganizationMembershipPayload>(
+    `/api/v1/iam/organizations/${organizationId}/memberships`,
+    payload,
+    true
+  );
+
+export const removeOrganizationMembership = async (
+  organizationId: string,
+  accountId: string
+): Promise<ApiItemResponse<IamOrganizationDetail>> =>
+  requestJson<ApiItemResponse<IamOrganizationDetail>>(
+    `/api/v1/iam/organizations/${organizationId}/memberships/${accountId}`,
+    {
+      method: 'DELETE',
+      headers: IAM_HEADERS,
+    }
+  );
+
+export const getMyOrganizationContext = async (): Promise<ApiItemResponse<IamOrganizationContext>> =>
+  requestJson<ApiItemResponse<IamOrganizationContext>>('/api/v1/iam/me/context');
+
+export const updateMyOrganizationContext = async (
+  organizationId: string
+): Promise<ApiItemResponse<IamOrganizationContext>> =>
+  putJson<ApiItemResponse<IamOrganizationContext>, { organizationId: string }>('/api/v1/iam/me/context', {
+    organizationId,
+  });
 
 export const createRole = async (
   payload: CreateRolePayload

@@ -26,6 +26,7 @@ export default function Sidebar({ isLoading = false }: SidebarProps) {
   const { user, isAuthenticated } = useAuth();
   const canAccessAccount = isAuthenticated && isIamUiEnabled();
   const canAccessAdminUsers = isAuthenticated && isIamAdminEnabled() && hasIamAdminRole(user);
+  const canAccessAdminOrganizations = canAccessAdminUsers;
   const canAccessAdminRoles = canAccessAdminUsers && hasSystemAdminRole(user);
 
   const sidebarLinks: Array<{ to: string; label: string }> = [
@@ -34,6 +35,7 @@ export default function Sidebar({ isLoading = false }: SidebarProps) {
     { to: '/plugins/example', label: t('shell.sidebar.pluginExample') },
     ...(canAccessAccount ? [{ to: '/account', label: t('shell.sidebar.account') }] : []),
     ...(canAccessAdminUsers ? [{ to: '/admin/users', label: t('shell.sidebar.userManagement') }] : []),
+    ...(canAccessAdminOrganizations ? [{ to: '/admin/organizations', label: t('shell.sidebar.organizationManagement') }] : []),
     ...(canAccessAdminRoles ? [{ to: '/admin/roles', label: t('shell.sidebar.roleManagement') }] : []),
     { to: '/admin/api/phase1-test', label: t('shell.sidebar.adminApiTest') },
   ];

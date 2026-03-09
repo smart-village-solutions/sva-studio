@@ -5,6 +5,7 @@ import { authRoutePaths } from './auth.routes';
 type AuthHandlers = {
   GET?: (ctx: { request: Request }) => Promise<Response> | Response;
   POST?: (ctx: { request: Request }) => Promise<Response> | Response;
+  PUT?: (ctx: { request: Request }) => Promise<Response> | Response;
   PATCH?: (ctx: { request: Request }) => Promise<Response> | Response;
   DELETE?: (ctx: { request: Request }) => Promise<Response> | Response;
 };
@@ -103,6 +104,52 @@ const authHandlerMap = {
     PATCH: async ({ request }) => {
       const mod = await import('@sva/auth/server');
       return mod.updateMyProfileHandler(request);
+    },
+  },
+  '/api/v1/iam/organizations': {
+    GET: async ({ request }) => {
+      const mod = await import('@sva/auth/server');
+      return mod.listOrganizationsHandler(request);
+    },
+    POST: async ({ request }) => {
+      const mod = await import('@sva/auth/server');
+      return mod.createOrganizationHandler(request);
+    },
+  },
+  '/api/v1/iam/organizations/$organizationId': {
+    GET: async ({ request }) => {
+      const mod = await import('@sva/auth/server');
+      return mod.getOrganizationHandler(request);
+    },
+    PATCH: async ({ request }) => {
+      const mod = await import('@sva/auth/server');
+      return mod.updateOrganizationHandler(request);
+    },
+    DELETE: async ({ request }) => {
+      const mod = await import('@sva/auth/server');
+      return mod.deactivateOrganizationHandler(request);
+    },
+  },
+  '/api/v1/iam/organizations/$organizationId/memberships': {
+    POST: async ({ request }) => {
+      const mod = await import('@sva/auth/server');
+      return mod.assignOrganizationMembershipHandler(request);
+    },
+  },
+  '/api/v1/iam/organizations/$organizationId/memberships/$accountId': {
+    DELETE: async ({ request }) => {
+      const mod = await import('@sva/auth/server');
+      return mod.removeOrganizationMembershipHandler(request);
+    },
+  },
+  '/api/v1/iam/me/context': {
+    GET: async ({ request }) => {
+      const mod = await import('@sva/auth/server');
+      return mod.getMyOrganizationContextHandler(request);
+    },
+    PUT: async ({ request }) => {
+      const mod = await import('@sva/auth/server');
+      return mod.updateMyOrganizationContextHandler(request);
     },
   },
   '/api/v1/iam/roles': {

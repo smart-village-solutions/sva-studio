@@ -97,8 +97,8 @@ Nicht erlaubt: `@sva/plugin-*` -> `@sva/core`
 - Framework-agnostisch:
   - `packages/core`, Teile von `packages/data`, SDK Context APIs
 - Framework-/Runtime-gebunden:
-- `apps/sva-studio-react`, TanStack-Route-Definitionen, Auth-Handler fuer Start
-- `ThemeProvider` löst im App-Layer das aktive Shell-Theme aus `instanceId` auf und kombiniert es mit einem separaten Light-/Dark-Mode
+  - `apps/sva-studio-react`, TanStack-Route-Definitionen, Auth-Handler fuer Start
+  - `ThemeProvider` löst im App-Layer das aktive Shell-Theme aus `instanceId` auf und kombiniert es mit einem separaten Light-/Dark-Mode
 
 Referenzen:
 

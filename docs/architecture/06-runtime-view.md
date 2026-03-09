@@ -199,3 +199,18 @@ Fehlerpfad:
 
 - Ungültige oder deaktivierte Zielorganisationen liefern einen stabilen Fehlercode; der bisherige Kontext bleibt unverändert.
 - Technische Fehler werden im Org-Switcher verständlich, internationalisiert und ohne inkonsistenten Zwischenzustand angezeigt.
+
+### Ergänzung 2026-03: Strukturierte Permission-Vererbung im Recompute-Pfad
+
+1. `POST /iam/authorize` oder `GET /iam/me/permissions` löst bei Cache-Miss den Permission-Store aus.
+2. Der Store lädt strukturierte Permission-Felder (`action`, `resource_type`, `resource_id`, `effect`, `scope`) zusammen mit Rollen- und Membership-Kontext.
+3. Bei org-spezifischen Anfragen werden Parent-Mitgliedschaften über `hierarchy_path` des Zielkontexts aufgelöst.
+4. Die Engine prüft zuerst Matching von `action`, `resource_type` und optionaler `resource_id`.
+5. Danach werden `deny`-Permissions vor `allow`-Permissions ausgewertet; lokale Restriktionen können vererbte Parent-Freigaben blockieren.
+6. Anschließend werden ABAC-Attribute wie Geo-Scope, Acting-As und Restriktionslisten gegen den Requestkontext ausgewertet.
+7. Das Ergebnis wird als effektiver Permission-Snapshot mit Scope-Daten gecacht.
+
+Fehlerpfad:
+
+- Fehlen strukturierte Felder noch in Alt-Daten, greift der Kompatibilitätspfad über `permission_key`.
+- Widersprechen `allow` und `deny`, gewinnt deterministisch die restriktivere Regel.

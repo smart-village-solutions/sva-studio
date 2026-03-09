@@ -55,7 +55,6 @@ coverage:
       paths:
         - apps/sva-studio-react/
         - packages/core/
-        - packages/data/
         - packages/auth/
         - packages/sdk/
         - packages/routing/

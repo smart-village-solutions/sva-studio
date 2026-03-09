@@ -85,7 +85,7 @@ describe('AccountProfilePage', () => {
         displayName: 'Jane D.',
         firstName: 'Jane',
         lastName: 'Doe',
-        email: 'jane@example.com',
+        email: 'jane.d@example.com',
         status: 'active',
         roles: [],
       },
@@ -126,7 +126,7 @@ describe('AccountProfilePage', () => {
     );
     expect(authMockValue.updateProfile).toHaveBeenCalledWith({
       name: 'Jane D.',
-      email: 'jane@example.com',
+      email: 'jane.d@example.com',
     });
   });
 

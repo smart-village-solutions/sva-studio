@@ -14,17 +14,18 @@ import {
 } from './shared';
 import type { QueryClient } from '../shared/db-helpers';
 
-const listPermissionRows = async (
+type PermissionLookupInput = {
+  instanceId: string;
+  keycloakSubject: string;
+  organizationId?: string;
+};
+
+const listScopedPermissionRows = async (
   client: QueryClient,
-  input: {
-    instanceId: string;
-    keycloakSubject: string;
-    organizationId?: string;
-  }
+  input: PermissionLookupInput & { organizationId: string }
 ): Promise<readonly PermissionRow[]> => {
-  if (input.organizationId) {
-    const scopedQuery = await client.query<PermissionRow>(
-      `
+  const scopedQuery = await client.query<PermissionRow>(
+    `
 WITH target_organization AS (
   SELECT id, hierarchy_path
   FROM iam.organizations
@@ -70,12 +71,16 @@ WHERE a.keycloak_subject = $2
     OR ao.organization_id = ANY(target.hierarchy_path)
   );
 `,
-      [input.instanceId, input.keycloakSubject, input.organizationId]
-    );
+    [input.instanceId, input.keycloakSubject, input.organizationId]
+  );
 
-    return scopedQuery.rows;
-  }
+  return scopedQuery.rows;
+};
 
+const listUnscopedPermissionRows = async (
+  client: QueryClient,
+  input: PermissionLookupInput
+): Promise<readonly PermissionRow[]> => {
   const unscopedQuery = await client.query<PermissionRow>(
     `
 SELECT DISTINCT
@@ -116,20 +121,18 @@ WHERE a.keycloak_subject = $2;
   return unscopedQuery.rows;
 };
 
-const loadPermissionsFromDb = async (input: {
-  instanceId: string;
-  keycloakSubject: string;
-  organizationId?: string;
-}): Promise<readonly EffectivePermission[]> => {
+const listPermissionRows = async (
+  client: QueryClient,
+  input: PermissionLookupInput
+): Promise<readonly PermissionRow[]> =>
+  input.organizationId ? listScopedPermissionRows(client, { ...input, organizationId: input.organizationId }) : listUnscopedPermissionRows(client, input);
+
+const loadPermissionsFromDb = async (input: PermissionLookupInput): Promise<readonly EffectivePermission[]> => {
   const rows = await withInstanceScopedDb(input.instanceId, async (client) => listPermissionRows(client, input));
   return toEffectivePermissions(rows);
 };
 
-export const resolveEffectivePermissions = async (input: {
-  instanceId: string;
-  keycloakSubject: string;
-  organizationId?: string;
-}): Promise<EffectivePermissionsResolution> => {
+export const resolveEffectivePermissions = async (input: PermissionLookupInput): Promise<EffectivePermissionsResolution> => {
   await ensureInvalidationListener();
 
   cacheMetricsState.lookups += 1;

@@ -15,6 +15,21 @@ type CreateUserActorInfo = {
   traceId?: string;
 };
 
+const deactivateCreatedExternalUser = async (input: {
+  actor: CreateUserActorInfo;
+  createdExternalId: string;
+}) => {
+  const fallbackIdentityProvider = resolveIdentityProvider();
+  if (!fallbackIdentityProvider) {
+    return;
+  }
+
+  const { actor, createdExternalId } = input;
+  await trackKeycloakCall('deactivate_user_compensation', () =>
+    fallbackIdentityProvider.provider.deactivateUser(createdExternalId)
+  );
+};
+
 export const executeCreateUser = async (input: {
   actor: CreateUserActorInfo;
   actorSubject: string;
@@ -72,13 +87,10 @@ export const executeCreateUser = async (input: {
 
     if (createdExternalId) {
       try {
-        const fallbackIdentityProvider = resolveIdentityProvider();
-        if (fallbackIdentityProvider) {
-          const compensatedExternalId = createdExternalId;
-          await trackKeycloakCall('deactivate_user_compensation', () =>
-            fallbackIdentityProvider.provider.deactivateUser(compensatedExternalId)
-          );
-        }
+        await deactivateCreatedExternalUser({
+          actor,
+          createdExternalId,
+        });
       } catch (compensationError) {
         logger.error('IAM user create compensation failed', {
           workspace_id: actor.instanceId,

@@ -2,14 +2,14 @@
   "$schema": "./node_modules/nx/schemas/nx-schema.json",
   "defaultBase": "main",
   "installation": {
-    "version": "22.5.3",
+    "version": "22.5.4",
     "plugins": {
-      "@nx/eslint": "22.5.3",
-      "@nx/eslint-plugin": "22.5.3",
-      "@nx/js": "22.5.3",
-      "@nx/playwright": "22.5.3",
-      "@nx/vite": "22.5.3",
-      "@nx/vitest": "22.5.3"
+      "@nx/eslint": "22.5.4",
+      "@nx/eslint-plugin": "22.5.4",
+      "@nx/js": "22.5.4",
+      "@nx/playwright": "22.5.4",
+      "@nx/vite": "22.5.4",
+      "@nx/vitest": "22.5.4"
     }
   },
   "workspaceLayout": {

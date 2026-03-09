@@ -87,9 +87,11 @@ export const useOrganizations = (initial?: Partial<OrganizationFilters>): UseOrg
     };
   }, [filters.search]);
 
-  const loadOrganizations = React.useCallback(async () => {
+  const loadOrganizations = React.useCallback(async (options?: { preserveStateOnError?: boolean }) => {
     setIsLoading(true);
-    setError(null);
+    if (!options?.preserveStateOnError) {
+      setError(null);
+    }
     try {
       const response = await listOrganizations({
         page: filters.page,
@@ -100,14 +102,18 @@ export const useOrganizations = (initial?: Partial<OrganizationFilters>): UseOrg
       });
       setOrganizations(response.data);
       setTotal(response.pagination.total);
+      return true;
     } catch (cause) {
       const resolvedError = asIamError(cause);
       if (resolvedError.status === 403) {
         await invalidatePermissions();
       }
-      setOrganizations([]);
-      setTotal(0);
-      setError(resolvedError);
+      if (!options?.preserveStateOnError) {
+        setOrganizations([]);
+        setTotal(0);
+        setError(resolvedError);
+      }
+      return false;
     } finally {
       setIsLoading(false);
     }
@@ -144,7 +150,7 @@ export const useOrganizations = (initial?: Partial<OrganizationFilters>): UseOrg
       setMutationError(null);
       try {
         const result = await action();
-        await loadOrganizations();
+        await loadOrganizations({ preserveStateOnError: true });
         if (options?.organizationId) {
           await loadOrganization(options.organizationId);
         }

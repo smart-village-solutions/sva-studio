@@ -1,5 +1,5 @@
 /**
- * Header-Komponente der App-Shell mit Hauptnavigation und Auth-Aktion.
+ * Header-Komponente der App-Shell mit Branding und Auth-Aktion.
  *
  * Die Komponente zeigt abhängig vom Auth-Status eine Login- oder Logout-Aktion
  * und unterstützt einen optionalen Loading-Zustand für Skeleton-Rendering.
@@ -7,28 +7,21 @@
 import { Link } from '@tanstack/react-router';
 import React from 'react';
 
-import { hasIamAdminRole, hasSystemAdminRole, isIamAdminEnabled, isIamUiEnabled } from '../lib/iam-admin-access';
-import { hasIamViewerAdminRole, isIamViewerEnabled } from '../lib/iam-viewer-access';
 import { t } from '../i18n';
 import { useAuth } from '../providers/auth-provider';
-import { OrganizationContextSwitcher } from './OrganizationContextSwitcher';
 
 type HeaderProps = Readonly<{
   isLoading?: boolean;
 }>;
 
 /**
- * Rendert die Kopfzeile inklusive Navigation und Auth-Aktion.
+ * Rendert die Kopfzeile inklusive Branding und Auth-Aktion.
  *
  * @param props - Konfiguration des Header-Verhaltens.
  * @param props.isLoading - Aktiviert Skeleton-Darstellung während Router-Navigation.
  */
 export default function Header({ isLoading = false }: HeaderProps) {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
-  const canAccessAccount = isAuthenticated && isIamUiEnabled();
-  const canAccessAdminUsers = isAuthenticated && isIamAdminEnabled() && hasIamAdminRole(user);
-  const canAccessAdminOrganizations = canAccessAdminUsers;
-  const canAccessAdminRoles = canAccessAdminUsers && hasSystemAdminRole(user);
 
   let authAction: React.ReactNode = null;
 
@@ -66,52 +59,14 @@ export default function Header({ isLoading = false }: HeaderProps) {
 
   return (
     <header className="border-b border-slate-800/70 bg-slate-950/80 backdrop-blur">
-      <nav
-        aria-label={t('shell.header.navAriaLabel')}
-        className="flex w-full flex-wrap items-center justify-between gap-3 px-4 py-4 text-sm text-slate-200 sm:px-6"
-      >
+      <div className="flex w-full flex-wrap items-center justify-between gap-3 px-4 py-4 text-sm text-slate-200 sm:px-6">
         <Link className="font-semibold tracking-wide text-slate-100" to="/">
           SVA Studio
         </Link>
         <div className="flex flex-wrap items-center gap-3 text-slate-300 sm:gap-4">
-          <Link className="transition hover:text-white" to="/">
-            {t('shell.header.home')}
-          </Link>
-          <Link className="transition hover:text-white" to="/demo">
-            {t('shell.header.demos')}
-          </Link>
-          <Link className="transition hover:text-white" to="/plugins/example">
-            {t('shell.header.pluginExample')}
-          </Link>
-          {canAccessAccount ? (
-            <Link className="transition hover:text-white" to="/account">
-              {t('shell.header.account')}
-            </Link>
-          ) : null}
-          {canAccessAdminUsers ? (
-            <Link className="transition hover:text-white" to="/admin/users">
-              {t('shell.header.adminUsers')}
-            </Link>
-          ) : null}
-          {canAccessAdminOrganizations ? (
-            <Link className="transition hover:text-white" to="/admin/organizations">
-              {t('shell.header.adminOrganizations')}
-            </Link>
-          ) : null}
-          {canAccessAdminRoles ? (
-            <Link className="transition hover:text-white" to="/admin/roles">
-              {t('shell.header.adminRoles')}
-            </Link>
-          ) : null}
-          {canAccessAccount ? <OrganizationContextSwitcher /> : null}
-          {isIamViewerEnabled() && hasIamViewerAdminRole(user) ? (
-            <Link className="transition hover:text-white" to="/admin/iam">
-              {t('shell.header.iamViewer')}
-            </Link>
-          ) : null}
           {authAction}
         </div>
-      </nav>
+      </div>
     </header>
   );
 }

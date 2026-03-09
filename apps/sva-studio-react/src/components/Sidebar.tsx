@@ -31,13 +31,10 @@ export default function Sidebar({ isLoading = false }: SidebarProps) {
 
   const sidebarLinks: Array<{ to: string; label: string }> = [
     { to: '/', label: t('shell.sidebar.overview') },
-    { to: '/demo', label: t('shell.sidebar.demos') },
-    { to: '/plugins/example', label: t('shell.sidebar.pluginExample') },
     ...(canAccessAccount ? [{ to: '/account', label: t('shell.sidebar.account') }] : []),
     ...(canAccessAdminUsers ? [{ to: '/admin/users', label: t('shell.sidebar.userManagement') }] : []),
     ...(canAccessAdminOrganizations ? [{ to: '/admin/organizations', label: t('shell.sidebar.organizationManagement') }] : []),
     ...(canAccessAdminRoles ? [{ to: '/admin/roles', label: t('shell.sidebar.roleManagement') }] : []),
-    { to: '/admin/api/phase1-test', label: t('shell.sidebar.adminApiTest') },
   ];
 
   return (

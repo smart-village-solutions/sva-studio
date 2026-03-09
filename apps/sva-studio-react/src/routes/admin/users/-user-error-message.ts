@@ -32,6 +32,11 @@ export const userErrorMessage = (error: IamHttpError | null): string => {
       return t('admin.users.errors.featureDisabled');
     case 'unauthorized':
       return t('admin.users.errors.unauthorized');
+    case 'non_json_response':
+      if (error.status >= 400) {
+        return t('admin.users.errors.unexpectedHttp', { status: String(error.status) });
+      }
+      return t('admin.users.errors.unexpectedClient', { message: error.message });
     case 'internal_error': {
       const httpStatus = readHttpStatusFromMessage(error.message);
       if (httpStatus) {

@@ -73,8 +73,14 @@ type KeycloakUserCreateResponse = {
 
 export type KeycloakListUsersQuery = IdentityUserListQuery;
 
-export type KeycloakAdminUser = IdentityListedUser & {
+export type KeycloakAdminUser = {
   readonly id: string;
+  readonly username?: string;
+  readonly email?: string;
+  readonly firstName?: string;
+  readonly lastName?: string;
+  readonly enabled?: boolean;
+  readonly attributes?: Readonly<Record<string, readonly string[]>>;
 };
 
 export type KeycloakRealmRole = {

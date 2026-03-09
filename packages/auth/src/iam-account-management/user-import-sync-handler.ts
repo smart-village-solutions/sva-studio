@@ -265,8 +265,8 @@ export const syncUsersFromKeycloakInternal = async (
     });
     iamUserOperationsCounter.add(1, { action: 'sync_keycloak_users', result: 'failure' });
     return createApiError(
-      503,
-      'database_unavailable',
+      500,
+      'internal_error',
       'Keycloak-Benutzer konnten nicht in IAM synchronisiert werden.',
       actorResolution.actor.requestId
     );

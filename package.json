@@ -50,6 +50,7 @@
     "@nx/playwright": "^22.5.3",
     "@nx/vite": "^22.5.3",
     "@nx/vitest": "^22.5.3",
+    "@tailwindcss/postcss": "4.2.1",
     "@types/node": "^25.3.5",
     "@vitest/coverage-v8": "^4.0.18",
     "autoprefixer": "10.4.27",
@@ -59,13 +60,14 @@
     "tailwindcss": "4.2.1",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
-    "typescript-eslint": "8.56.1"
+    "typescript-eslint": "8.56.1",
+    "undici": "7.22.0"
   },
   "pnpm": {
     "overrides": {
       "minimatch": "10.2.2",
       "axios": "1.13.5",
-      "undici": "6.23.0",
+      "undici": "7.22.0",
       "solid-js": "1.9.11",
       "seroval": "1.4.2"
     }

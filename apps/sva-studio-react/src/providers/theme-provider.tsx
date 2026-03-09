@@ -62,16 +62,9 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
   }, []);
 
   const toggleMode = React.useCallback(() => {
-    setModeState((currentMode) => {
-      const nextMode = currentMode === 'dark' ? 'light' : 'dark';
-
-      if (typeof window !== 'undefined') {
-        window.localStorage.setItem(THEME_MODE_STORAGE_KEY, nextMode);
-      }
-
-      return nextMode;
-    });
-  }, []);
+    const nextMode: ThemeMode = mode === 'dark' ? 'light' : 'dark';
+    setMode(nextMode);
+  }, [mode, setMode]);
 
   const value = React.useMemo<ThemeContextValue>(
     () => ({

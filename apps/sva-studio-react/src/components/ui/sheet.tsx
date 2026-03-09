@@ -14,6 +14,7 @@ type SheetProps = Readonly<{
 type SheetContentProps = Readonly<{
   children: React.ReactNode;
   className?: string;
+  closeLabel?: string;
   side?: 'left' | 'right';
   'aria-label': string;
 }>;
@@ -35,10 +36,18 @@ export const Sheet = ({ open, onOpenChange, children }: SheetProps) => (
   <SheetContext.Provider value={{ open, onOpenChange }}>{children}</SheetContext.Provider>
 );
 
-export const SheetContent = ({ children, className = '', side = 'left', 'aria-label': ariaLabel }: SheetContentProps) => {
+export const SheetContent = ({
+  children,
+  className = '',
+  closeLabel = 'Close',
+  side = 'left',
+  'aria-label': ariaLabel,
+}: SheetContentProps) => {
   const context = React.useContext(SheetContext);
   const panelRef = React.useRef<HTMLDivElement>(null);
   const triggerRef = React.useRef<HTMLElement | null>(null);
+  const previousOpenRef = React.useRef(false);
+  const onOpenChangeRef = React.useRef<(open: boolean) => void>(() => undefined);
 
   if (!context) {
     throw new Error('SheetContent must be used inside Sheet');
@@ -47,37 +56,64 @@ export const SheetContent = ({ children, className = '', side = 'left', 'aria-la
   const { open, onOpenChange } = context;
 
   React.useEffect(() => {
+    onOpenChangeRef.current = onOpenChange;
+  }, [onOpenChange]);
+
+  React.useEffect(() => {
+    const wasOpen = previousOpenRef.current;
+    previousOpenRef.current = open;
+
     if (!open) {
-      if (triggerRef.current?.isConnected) {
+      if (wasOpen && triggerRef.current?.isConnected) {
         triggerRef.current.focus();
       }
       return;
     }
-
-    triggerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
 
     const panel = panelRef.current;
     if (!panel) {
       return;
     }
 
-    const focusables = panel.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
-    focusables[0]?.focus();
+    if (!wasOpen) {
+      triggerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      const focusables = panel.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
+      focusables[0]?.focus();
+    }
 
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onOpenChangeRef.current(false);
         return;
       }
 
-      event.preventDefault();
-      onOpenChange(false);
+      if (event.key !== 'Tab') {
+        return;
+      }
+
+      const currentFocusables = panel.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
+      if (currentFocusables.length === 0) {
+        return;
+      }
+
+      const firstFocusable = currentFocusables[0];
+      const lastFocusable = currentFocusables[currentFocusables.length - 1];
+
+      if (event.shiftKey && document.activeElement === firstFocusable) {
+        event.preventDefault();
+        lastFocusable.focus();
+      } else if (!event.shiftKey && document.activeElement === lastFocusable) {
+        event.preventDefault();
+        firstFocusable.focus();
+      }
     };
 
-    document.addEventListener('keydown', onKeyDown);
+    panel.addEventListener('keydown', onKeyDown);
     return () => {
-      document.removeEventListener('keydown', onKeyDown);
+      panel.removeEventListener('keydown', onKeyDown);
     };
-  }, [onOpenChange, open]);
+  }, [open]);
 
   if (!open) {
     return null;
@@ -88,7 +124,7 @@ export const SheetContent = ({ children, className = '', side = 'left', 'aria-la
       <button
         type="button"
         className="absolute inset-0 bg-foreground/40"
-        aria-label={ariaLabel}
+        aria-label={closeLabel}
         onClick={() => onOpenChange(false)}
       />
       <div

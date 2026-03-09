@@ -139,7 +139,12 @@ export default function Sidebar({ isLoading = false, isMobileOpen = false, onMob
         <SidebarPanel isLoading={isLoading} links={sidebarLinks} />
       </aside>
       <Sheet open={isMobileOpen} onOpenChange={onMobileOpenChange ?? (() => undefined)}>
-        <SheetContent aria-label={t('shell.sidebar.ariaLabel')} className="p-0" side="left">
+        <SheetContent
+          aria-label={t('shell.sidebar.ariaLabel')}
+          closeLabel={t('shell.header.closeNavigation')}
+          className="p-0"
+          side="left"
+        >
           <aside id="mobile-sidebar" aria-label={t('shell.sidebar.ariaLabel')} className="h-full bg-sidebar">
             <SidebarPanel
               isLoading={isLoading}

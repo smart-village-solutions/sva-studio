@@ -42,16 +42,26 @@ describe('iam authorization shared helpers', () => {
     const permissions = toEffectivePermissions([
       {
         permission_key: 'content.read',
+        action: 'content.read',
+        resource_type: 'content',
+        effect: 'allow',
+        scope: { allowedGeoScopes: ['de-bw'] },
         role_id: 'role-1',
         organization_id: '22222222-2222-2222-8222-222222222222',
       },
       {
         permission_key: 'content.read',
+        action: 'content.read',
+        resource_type: 'content',
+        effect: 'allow',
+        scope: { allowedGeoScopes: ['de-bw'] },
         role_id: 'role-2',
         organization_id: '22222222-2222-2222-8222-222222222222',
       },
       {
         permission_key: 'content.publish',
+        resource_id: 'article-1',
+        effect: 'deny',
         role_id: 'role-3',
         organization_id: null,
       },
@@ -62,12 +72,16 @@ describe('iam authorization shared helpers', () => {
         action: 'content.read',
         resourceType: 'content',
         organizationId: '22222222-2222-2222-8222-222222222222',
+        effect: 'allow',
+        scope: { allowedGeoScopes: ['de-bw'] },
         sourceRoleIds: ['role-1', 'role-2'],
       },
       {
         action: 'content.publish',
         resourceType: 'content',
+        resourceId: 'article-1',
         organizationId: undefined,
+        effect: 'deny',
         sourceRoleIds: ['role-3'],
       },
     ]);

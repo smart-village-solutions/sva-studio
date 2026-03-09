@@ -34,6 +34,7 @@ export type {
   IamApiErrorCode,
   IamApiErrorResponse,
   IamAction,
+  IamPermissionEffect,
   IamResourceRef,
   IamUuid,
   MePermissionsRequest,

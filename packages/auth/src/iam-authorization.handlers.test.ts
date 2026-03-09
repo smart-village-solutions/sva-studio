@@ -164,6 +164,10 @@ describe('authorizeHandler', () => {
           rows: [
             {
               permission_key: 'content.read',
+              action: 'content.read',
+              resource_type: 'content',
+              effect: 'allow',
+              scope: {},
               role_id: 'role-1',
               organization_id: '22222222-2222-2222-8222-222222222222',
             },
@@ -286,6 +290,8 @@ describe('authorizeHandler', () => {
           rows: [
             {
               permission_key: 'content.read',
+              action: 'content.read',
+              resource_type: 'content',
               role_id: 'role-delegated-1',
               organization_id: null,
             },
@@ -327,6 +333,8 @@ describe('authorizeHandler', () => {
           rows: [
             {
               permission_key: 'content.read',
+              action: 'content.read',
+              resource_type: 'content',
               role_id: 'role-1',
               organization_id: '22222222-2222-2222-8222-222222222222',
             },
@@ -358,6 +366,72 @@ describe('authorizeHandler', () => {
     expect(permissionQuery).toContain('ao.instance_id = source.instance_id');
     expect(permissionQuery).toContain('ao.account_id = source.account_id');
     expect(permissionQuery).not.toContain('ao.instance_id = ar.instance_id');
+  });
+
+  it('returns denied decision when a structured deny permission blocks the active organization', async () => {
+    testState.user = {
+      ...testState.user,
+      id: 'keycloak-sub-deny-1',
+    };
+
+    testState.queryHandler = (text: string) => {
+      if (text.includes('WITH target_organization AS')) {
+        return {
+          rowCount: 2,
+          rows: [
+            {
+              permission_key: 'content.read',
+              action: 'content.read',
+              resource_type: 'content',
+              effect: 'allow',
+              scope: {},
+              role_id: 'role-parent-1',
+              organization_id: '22222222-2222-2222-8222-222222222222',
+            },
+            {
+              permission_key: 'content.read',
+              action: 'content.read',
+              resource_type: 'content',
+              effect: 'deny',
+              scope: { restrictedOrganizationIds: ['22222222-2222-2222-8222-222222222222'] },
+              role_id: 'role-child-1',
+              organization_id: '22222222-2222-2222-8222-222222222222',
+            },
+          ],
+        };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const request = new Request('http://localhost/iam/authorize', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        instanceId: '11111111-1111-1111-8111-111111111111',
+        action: 'content.read',
+        resource: {
+          type: 'content',
+          id: 'article-1',
+          organizationId: '22222222-2222-2222-8222-222222222222',
+        },
+        context: {
+          organizationId: '22222222-2222-2222-8222-222222222222',
+          attributes: {
+            organizationHierarchy: [
+              '11111111-1111-1111-8111-111111111111',
+              '22222222-2222-2222-8222-222222222222',
+            ],
+          },
+        },
+      }),
+    });
+
+    const response = await authorizeHandler(request);
+    const payload = (await response.json()) as { allowed: boolean; reason: string };
+
+    expect(response.status).toBe(200);
+    expect(payload.allowed).toBe(false);
+    expect(payload.reason).toBe('hierarchy_restriction');
   });
 
   it('denies acting-as authorize when impersonation session is not active', async () => {

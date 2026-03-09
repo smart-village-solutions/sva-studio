@@ -3,6 +3,7 @@ import type {
   IamUuid,
   OrganizationMembershipVisibility,
   OrganizationType,
+  PermissionEffect,
 } from '../types';
 import type { RoleManagedBy, RoleSyncState } from './role-sync-types';
 
@@ -58,6 +59,11 @@ export type IamSeedRepository = {
     id: IamUuid;
     instanceId: IamUuid;
     permissionKey: string;
+    action?: string;
+    resourceType?: string;
+    resourceId?: string;
+    effect?: PermissionEffect;
+    scope?: Readonly<Record<string, unknown>>;
     description: string;
   }): Promise<void>;
   upsertAccount(input: {

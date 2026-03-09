@@ -25,8 +25,20 @@ const listPermissionRows = async (
   if (input.organizationId) {
     const scopedQuery = await client.query<PermissionRow>(
       `
+WITH target_organization AS (
+  SELECT id, hierarchy_path
+  FROM iam.organizations
+  WHERE instance_id = $1::uuid
+    AND id = $3::uuid
+    AND is_active = true
+)
 SELECT DISTINCT
   p.permission_key,
+  p.action,
+  p.resource_type,
+  p.resource_id,
+  p.effect,
+  p.scope,
   source.role_id,
   $3::uuid AS organization_id
 FROM iam.accounts a
@@ -41,19 +53,21 @@ JOIN (
 ) source
   ON source.account_id = a.id
  AND source.instance_id = $1
+JOIN iam.account_organizations ao
+  ON ao.instance_id = source.instance_id
+ AND ao.account_id = source.account_id
+JOIN target_organization target
+  ON TRUE
 JOIN iam.role_permissions rp
   ON rp.instance_id = source.instance_id
  AND rp.role_id = source.role_id
 JOIN iam.permissions p
-  ON p.instance_id = rp.instance_id
+ ON p.instance_id = rp.instance_id
  AND p.id = rp.permission_id
 WHERE a.keycloak_subject = $2
-  AND EXISTS (
-    SELECT 1
-    FROM iam.account_organizations ao
-    WHERE ao.instance_id = source.instance_id
-      AND ao.account_id = source.account_id
-      AND ao.organization_id = $3::uuid
+  AND (
+    ao.organization_id = target.id
+    OR ao.organization_id = ANY(target.hierarchy_path)
   );
 `,
       [input.instanceId, input.keycloakSubject, input.organizationId]
@@ -66,8 +80,13 @@ WHERE a.keycloak_subject = $2
     `
 SELECT DISTINCT
   p.permission_key,
+  p.action,
+  p.resource_type,
+  p.resource_id,
+  p.effect,
+  p.scope,
   source.role_id,
-  NULL::uuid AS organization_id
+  ao.organization_id
 FROM iam.accounts a
 JOIN (
   SELECT ar.account_id, ar.role_id, ar.instance_id
@@ -80,6 +99,9 @@ JOIN (
 ) source
   ON source.account_id = a.id
  AND source.instance_id = $1
+LEFT JOIN iam.account_organizations ao
+  ON ao.instance_id = source.instance_id
+ AND ao.account_id = source.account_id
 JOIN iam.role_permissions rp
   ON rp.instance_id = source.instance_id
  AND rp.role_id = source.role_id

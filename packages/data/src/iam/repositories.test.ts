@@ -4,6 +4,34 @@ import assert from 'node:assert/strict';
 import { createIamSeedRepository, iamSeedStatements, type SqlStatement } from './repositories';
 
 describe('iam seed statements', () => {
+  it('builds permission upsert with structured fields and scope json', () => {
+    const statement = iamSeedStatements.upsertPermission({
+      id: 'permission-id',
+      instanceId: 'instance-id',
+      permissionKey: 'content.publish',
+      action: 'content.publish',
+      resourceType: 'news',
+      resourceId: 'resource-id',
+      effect: 'deny',
+      scope: { restrictedOrganizationIds: ['org-id'] },
+      description: 'Publish content',
+    });
+
+    assert.match(statement.text, /resource_type/);
+    assert.match(statement.text, /scope = EXCLUDED\.scope/);
+    assert.deepEqual(statement.values, [
+      'permission-id',
+      'instance-id',
+      'content.publish',
+      'content.publish',
+      'news',
+      'resource-id',
+      'deny',
+      '{"restrictedOrganizationIds":["org-id"]}',
+      'Publish content',
+    ]);
+  });
+
   it('builds role upsert with ON CONFLICT update', () => {
     const statement = iamSeedStatements.upsertRole({
       id: 'role-id',
@@ -150,12 +178,23 @@ describe('iam seed repository', () => {
       id: 'permission-id',
       instanceId: 'instance-id',
       permissionKey: 'content.read',
+      scope: { allowedGeoScopes: ['county'] },
       description: 'Read content',
     });
 
     assert.equal(captured.length, 1);
     assert.match(captured[0].text, /INSERT INTO iam\.permissions/);
-    assert.deepEqual(captured[0].values, ['permission-id', 'instance-id', 'content.read', 'Read content']);
+    assert.deepEqual(captured[0].values, [
+      'permission-id',
+      'instance-id',
+      'content.read',
+      'content.read',
+      'content',
+      null,
+      'allow',
+      '{"allowedGeoScopes":["county"]}',
+      'Read content',
+    ]);
   });
 
   it('normalizes uuid array parameters before delegating organization statements to the executor', async () => {

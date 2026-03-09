@@ -8,7 +8,7 @@ describe('translate', () => {
     const t = createTranslator('de');
 
     expect(t('account.profile.title')).toBe('Mein Konto');
-    expect(t('account.messages.keycloakRedirectHint')).toContain('Keycloak');
+    expect(t('account.messages.saveSuccess')).toBe('Profil wurde erfolgreich gespeichert.');
   });
 
   it('resolves admin.users and admin.roles namespace keys for en locale', () => {

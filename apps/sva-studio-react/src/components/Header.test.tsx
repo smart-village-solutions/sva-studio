@@ -45,7 +45,7 @@ describe('Header auth actions', () => {
     vi.unstubAllEnvs();
   });
 
-  it('zeigt nur Login für unauthenticated user', async () => {
+  it('zeigt für unauthenticated user nur Branding und Login', async () => {
     useAuthMock.mockReturnValue({
       user: null,
       isAuthenticated: false,
@@ -63,10 +63,12 @@ describe('Header auth actions', () => {
     });
 
     expect(screen.queryByRole('button', { name: 'Logout' })).toBeNull();
+    expect(screen.getByRole('link', { name: 'SVA Studio' }).getAttribute('href')).toBe('/');
     expect(screen.queryByRole('link', { name: 'Konto' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Startseite' })).toBeNull();
   });
 
-  it('zeigt Logout für authenticated user und Konto-Link', async () => {
+  it('zeigt für authenticated user nur Branding und Logout', async () => {
     useAuthMock.mockReturnValue({
       user: {
         id: 'user-1',
@@ -88,11 +90,12 @@ describe('Header auth actions', () => {
     });
 
     expect(screen.queryByRole('link', { name: 'Login' })).toBeNull();
-    expect(screen.getByRole('link', { name: 'Konto' }).getAttribute('href')).toBe('/account');
+    expect(screen.getByRole('link', { name: 'SVA Studio' }).getAttribute('href')).toBe('/');
+    expect(screen.queryByRole('link', { name: 'Konto' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'Benutzer' })).toBeNull();
   });
 
-  it('zeigt Admin-Navigation für system_admin', () => {
+  it('zeigt auch für system_admin keine Navigationslinks im Header', () => {
     useAuthMock.mockReturnValue({
       user: {
         id: 'user-admin',
@@ -109,8 +112,10 @@ describe('Header auth actions', () => {
 
     render(<Header />);
 
-    expect(screen.getByRole('link', { name: 'Benutzer' }).getAttribute('href')).toBe('/admin/users');
-    expect(screen.getByRole('link', { name: 'Rollen' }).getAttribute('href')).toBe('/admin/roles');
+    expect(screen.getByRole('button', { name: 'Logout' })).toBeTruthy();
+    expect(screen.queryByRole('link', { name: 'Benutzer' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Rollen' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Organisationen' })).toBeNull();
   });
 
   it('zeigt Skeleton im Loading-Modus', () => {

@@ -70,8 +70,9 @@ describe('Sidebar', () => {
     render(<Sidebar />);
 
     expect(screen.getByRole('link', { name: 'Übersicht' }).getAttribute('href')).toBe('/');
-    expect(screen.getByRole('link', { name: 'Demos' }).getAttribute('href')).toBe('/demo');
-    expect(screen.getByRole('link', { name: 'Plugin-Beispiel' }).getAttribute('href')).toBe('/plugins/example');
+    expect(screen.queryByRole('link', { name: 'Demos' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Plugin-Beispiel' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Admin-API-Test' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'Mein Konto' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'Benutzerverwaltung' })).toBeNull();
   });

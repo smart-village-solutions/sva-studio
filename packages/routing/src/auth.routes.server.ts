@@ -281,7 +281,7 @@ export const resolveAuthHandlers = (path: string): AuthHandlers => {
  * This wrapper catches any such exception at the outermost boundary (before
  * TanStack Start's middleware) and always returns a well-formed JSON 500.
  */
-const wrapHandlersWithJsonErrorBoundary = (handlers: AuthHandlers): AuthHandlers => {
+export const wrapHandlersWithJsonErrorBoundary = (handlers: AuthHandlers): AuthHandlers => {
   const wrapped: AuthHandlers = {};
   for (const [method, handler] of Object.entries(handlers) as [string, NonNullable<AuthHandlers[keyof AuthHandlers]>][]) {
     (wrapped as Record<string, typeof handler>)[method] = async (ctx) => {

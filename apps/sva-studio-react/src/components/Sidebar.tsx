@@ -5,16 +5,109 @@
  * statt interaktiver Links gerendert werden.
  */
 import { Link } from '@tanstack/react-router';
+import { LayoutDashboard, Settings2, Shield, UserRound, Users, X } from 'lucide-react';
+import React from 'react';
 
 import { t } from '../i18n';
 import { hasIamAdminRole, hasSystemAdminRole, isIamAdminEnabled, isIamUiEnabled } from '../lib/iam-admin-access';
 import { useAuth } from '../providers/auth-provider';
+import { Sheet, SheetContent } from './ui/sheet';
 
 type SidebarProps = Readonly<{
   isLoading?: boolean;
+  isMobileOpen?: boolean;
+  onMobileOpenChange?: (open: boolean) => void;
 }>;
 
 const sidebarSkeletonKeys = ['sidebar-skeleton-a', 'sidebar-skeleton-b', 'sidebar-skeleton-c', 'sidebar-skeleton-d'];
+
+const getSidebarIcon = (path: string) => {
+  switch (path) {
+    case '/account':
+      return UserRound;
+    case '/admin/users':
+      return Users;
+    case '/admin/organizations':
+      return Settings2;
+    case '/admin/roles':
+      return Shield;
+    case '/':
+    default:
+      return LayoutDashboard;
+  }
+};
+
+type SidebarPanelProps = Readonly<{
+  isLoading: boolean;
+  links: ReadonlyArray<{ to: string; label: string }>;
+  onNavigate?: () => void;
+  showMobileHeader?: boolean;
+  onCloseMobileNavigation?: () => void;
+}>;
+
+const SidebarPanel = ({
+  isLoading,
+  links,
+  onNavigate,
+  showMobileHeader = false,
+  onCloseMobileNavigation,
+}: SidebarPanelProps) => (
+  <div className="flex h-full flex-col">
+    <div className="border-b border-sidebar-border px-4 py-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sidebar-foreground">
+            {t('shell.sidebar.sectionLabel')}
+          </p>
+          <p className="mt-2 text-lg font-semibold text-foreground">SVA Studio</p>
+        </div>
+        {showMobileHeader ? (
+          <button
+            type="button"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-sidebar-border bg-card text-foreground shadow-shell transition hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            aria-label={t('shell.header.closeNavigation')}
+            onClick={onCloseMobileNavigation}
+          >
+            <X className="h-5 w-5" />
+          </button>
+        ) : null}
+      </div>
+    </div>
+    <nav aria-label={t('shell.sidebar.navAriaLabel')} className="flex-1 overflow-y-auto px-4 py-4">
+      {isLoading ? (
+        <ul className="space-y-2">
+          {sidebarSkeletonKeys.map((key) => (
+            <li key={key}>
+              <span
+                aria-hidden="true"
+                className="block h-11 w-full animate-pulse rounded-md border border-sidebar-border bg-muted"
+              />
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <ul className="space-y-2">
+          {links.map((item) => {
+            const Icon = getSidebarIcon(item.to);
+
+            return (
+              <li key={item.to}>
+                <Link
+                  to={item.to}
+                  className="flex items-center gap-3 rounded-md border border-transparent bg-sidebar px-3 py-2.5 text-sm font-medium text-sidebar-foreground transition hover:border-sidebar-border hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                  onClick={onNavigate}
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                  <span>{item.label}</span>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </nav>
+  </div>
+);
 
 /**
  * Rendert die Seitenleiste inklusive Navigation oder Skeleton-Platzhaltern.
@@ -22,7 +115,7 @@ const sidebarSkeletonKeys = ['sidebar-skeleton-a', 'sidebar-skeleton-b', 'sideba
  * @param props - Konfiguration der Sidebar.
  * @param props.isLoading - Steuert, ob Navigations-Skeletons angezeigt werden.
  */
-export default function Sidebar({ isLoading = false }: SidebarProps) {
+export default function Sidebar({ isLoading = false, isMobileOpen = false, onMobileOpenChange }: SidebarProps) {
   const { user, isAuthenticated } = useAuth();
   const canAccessAccount = isAuthenticated && isIamUiEnabled();
   const canAccessAdminUsers = isAuthenticated && isIamAdminEnabled() && hasIamAdminRole(user);
@@ -38,40 +131,26 @@ export default function Sidebar({ isLoading = false }: SidebarProps) {
   ];
 
   return (
-    <aside
-      aria-label={t('shell.sidebar.ariaLabel')}
-      className="w-full border-b border-slate-800/70 bg-slate-950/80 lg:w-64 lg:border-b-0 lg:border-r"
-    >
-      <div className="px-4 py-4">
-        <p className="text-xs uppercase tracking-[0.2em] text-slate-400">{t('shell.sidebar.sectionLabel')}</p>
-        <nav aria-label={t('shell.sidebar.navAriaLabel')} className="mt-3">
-          {isLoading ? (
-            <ul className="flex gap-2 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible lg:pb-0">
-              {sidebarSkeletonKeys.map((key) => (
-                <li key={key} className="shrink-0 lg:shrink">
-                  <span
-                    aria-hidden="true"
-                    className="block h-9 w-28 animate-pulse rounded-md border border-slate-800 bg-slate-900 lg:w-full"
-                  />
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <ul className="flex gap-2 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible lg:pb-0">
-              {sidebarLinks.map((item) => (
-                <li key={item.to} className="shrink-0 lg:shrink">
-                  <Link
-                    to={item.to}
-                    className="block rounded-md border border-slate-800 bg-slate-900/60 px-3 py-2 text-sm text-slate-300 transition hover:border-slate-600 hover:text-white"
-                  >
-                    {item.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-        </nav>
-      </div>
-    </aside>
+    <>
+      <aside
+        aria-label={t('shell.sidebar.ariaLabel')}
+        className="hidden border-r border-sidebar-border bg-sidebar shadow-shell lg:sticky lg:top-16 lg:block lg:h-[calc(100vh-4rem)] lg:w-72"
+      >
+        <SidebarPanel isLoading={isLoading} links={sidebarLinks} />
+      </aside>
+      <Sheet open={isMobileOpen} onOpenChange={onMobileOpenChange ?? (() => undefined)}>
+        <SheetContent aria-label={t('shell.sidebar.ariaLabel')} className="p-0" side="left">
+          <aside id="mobile-sidebar" aria-label={t('shell.sidebar.ariaLabel')} className="h-full bg-sidebar">
+            <SidebarPanel
+              isLoading={isLoading}
+              links={sidebarLinks}
+              showMobileHeader
+              onCloseMobileNavigation={() => onMobileOpenChange?.(false)}
+              onNavigate={() => onMobileOpenChange?.(false)}
+            />
+          </aside>
+        </SheetContent>
+      </Sheet>
+    </>
   );
 }

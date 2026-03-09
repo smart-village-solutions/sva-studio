@@ -1,7 +1,7 @@
 /**
  * Unit-Tests für Sidebar-Rendering, Loading-Zustand und A11y-Baseline.
  */
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -115,5 +115,25 @@ describe('Sidebar', () => {
     expect(screen.getByLabelText('Seitenleiste')).toBeTruthy();
     expect(screen.getByRole('navigation', { name: 'Bereichsnavigation' })).toBeTruthy();
     expect(screen.getByText('Navigation')).toBeTruthy();
+  });
+
+  it('schliesst die mobile Navigation nach einem Klick auf einen Link', async () => {
+    const onMobileOpenChange = vi.fn();
+
+    useAuthMock.mockReturnValue({
+      user: null,
+      isAuthenticated: false,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      logout: vi.fn(),
+      invalidatePermissions: vi.fn(),
+    });
+
+    render(<Sidebar isMobileOpen onMobileOpenChange={onMobileOpenChange} />);
+
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Seitenleiste' })).getByRole('link', { name: 'Übersicht' }));
+
+    expect(onMobileOpenChange).toHaveBeenCalledWith(false);
   });
 });

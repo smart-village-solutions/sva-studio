@@ -19,6 +19,7 @@ Abhängigkeiten des aktuellen Systems.
    - TanStack Start App, UI, Root-Shell, Router-Erzeugung
    - Shell-Bausteine: `Header`, `Sidebar`, `AppShell` (Layout-Komposition)
    - Skeleton-Bausteine für Kopfzeile, Seitenleiste und Contentbereich
+   - Theme-Bausteine: `ThemeProvider`, semantische CSS-Token und `Sheet`-Primitive für mobile Shell-Navigation
    - Nx-Targets für `build`, `serve`, `lint`, `test:unit`, `test:coverage` und `test:e2e` über Vite-, Vitest- und Playwright-Executor
 2. Core (`packages/core`)
    - generische Route-Registry Utilities (`mergeRouteFactories`, `buildRouteTree`)
@@ -96,7 +97,8 @@ Nicht erlaubt: `@sva/plugin-*` -> `@sva/core`
 - Framework-agnostisch:
   - `packages/core`, Teile von `packages/data`, SDK Context APIs
 - Framework-/Runtime-gebunden:
-  - `apps/sva-studio-react`, TanStack-Route-Definitionen, Auth-Handler fuer Start
+- `apps/sva-studio-react`, TanStack-Route-Definitionen, Auth-Handler fuer Start
+- `ThemeProvider` löst im App-Layer das aktive Shell-Theme aus `instanceId` auf und kombiniert es mit einem separaten Light-/Dark-Mode
 
 Referenzen:
 
@@ -110,6 +112,8 @@ Referenzen:
 - `apps/sva-studio-react/src/components/Header.tsx`
 - `apps/sva-studio-react/src/components/Sidebar.tsx`
 - `apps/sva-studio-react/src/components/AppShell.tsx`
+- `apps/sva-studio-react/src/providers/theme-provider.tsx`
+- `apps/sva-studio-react/src/lib/theme.ts`
 
 ### Erweiterung 2026-03: Account- und User-Management-UI
 

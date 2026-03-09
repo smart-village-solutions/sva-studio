@@ -49,6 +49,9 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
   - Landmarks (`header`, `aside`, `main`) und Skip-Link vorhanden
   - Skeleton-Zustand für Sidebar, Kopfzeile und Contentbereich vorhanden
   - Responsives Verhalten für mobile und desktop geprüft
+  - Shell-Farben werden über semantische Tokens statt direkter Farbcodes bezogen
+  - Light- und Dark-Mode bleiben in Header, Sidebar und Content kontraststabil und fokussierbar
+  - Unbekannte `instanceId` fällt deterministisch auf ein Basis-Theme zurück
 - File-Placement Governance:
   - `pnpm check:file-placement` muss grün sein
 - Coverage Governance:

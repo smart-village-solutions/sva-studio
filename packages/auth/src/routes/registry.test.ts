@@ -11,6 +11,7 @@ const registryMocks = vi.hoisted(() => {
     healthReadyHandler: vi.fn(async (_request?: Request) => response('healthReadyHandler')),
     healthLiveHandler: vi.fn(async (_request?: Request) => response('healthLiveHandler')),
     listUsersHandler: vi.fn(async (_request?: Request) => response('listUsersHandler')),
+    syncUsersFromKeycloakHandler: vi.fn(async (_request?: Request) => response('syncUsersFromKeycloakHandler')),
     createUserHandler: vi.fn(async (_request?: Request) => response('createUserHandler')),
     getUserHandler: vi.fn(async (_request?: Request) => response('getUserHandler')),
     updateUserHandler: vi.fn(async (_request?: Request) => response('updateUserHandler')),
@@ -70,6 +71,7 @@ vi.mock('../iam-account-management.server', () => ({
   listRolesHandler: registryMocks.listRolesHandler,
   listUsersHandler: registryMocks.listUsersHandler,
   reconcileHandler: registryMocks.reconcileHandler,
+  syncUsersFromKeycloakHandler: registryMocks.syncUsersFromKeycloakHandler,
   updateMyProfileHandler: registryMocks.updateMyProfileHandler,
   updateRoleHandler: registryMocks.updateRoleHandler,
   updateUserHandler: registryMocks.updateUserHandler,
@@ -126,6 +128,7 @@ describe('auth route registry', () => {
     expect(uniquePaths.has('/api/v1/iam/organizations')).toBe(true);
     expect(uniquePaths.has('/api/v1/iam/organizations/$organizationId')).toBe(true);
     expect(uniquePaths.has('/api/v1/iam/me/context')).toBe(true);
+    expect(uniquePaths.has('/api/v1/iam/users/sync-keycloak')).toBe(true);
   });
 
   it('invokes each configured handler wrapper', async () => {

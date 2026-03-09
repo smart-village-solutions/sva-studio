@@ -8,6 +8,7 @@ const createUserMock = vi.fn();
 const updateUserMock = vi.fn();
 const deactivateUserMock = vi.fn();
 const bulkDeactivateUsersMock = vi.fn();
+const syncUsersFromKeycloakMock = vi.fn();
 const authMockValue = {
   user: {
     id: 'admin-1',
@@ -54,6 +55,7 @@ vi.mock('../lib/iam-api', () => ({
   updateUser: (...args: unknown[]) => updateUserMock(...args),
   deactivateUser: (...args: unknown[]) => deactivateUserMock(...args),
   bulkDeactivateUsers: (...args: unknown[]) => bulkDeactivateUsersMock(...args),
+  syncUsersFromKeycloak: (...args: unknown[]) => syncUsersFromKeycloakMock(...args),
 }));
 
 vi.mock('../providers/auth-provider', () => ({
@@ -87,6 +89,9 @@ describe('useUsers', () => {
     createUserMock.mockResolvedValue({ data: { id: 'user-2', displayName: 'Second User' } });
     deactivateUserMock.mockResolvedValue({ data: { id: 'user-1' } });
     bulkDeactivateUsersMock.mockResolvedValue({ data: { deactivatedUserIds: ['user-1'], count: 1 } });
+    syncUsersFromKeycloakMock.mockResolvedValue({
+      data: { importedCount: 1, updatedCount: 0, skippedCount: 0, totalKeycloakUsers: 1 },
+    });
 
     const { result } = renderHook(() => useUsers());
 
@@ -99,11 +104,13 @@ describe('useUsers', () => {
       await result.current.createUser({ email: 'second@example.com' });
       await result.current.deactivateUser('user-1');
       await result.current.bulkDeactivate(['user-1']);
+      await result.current.syncUsersFromKeycloak();
     });
 
     expect(createUserMock).toHaveBeenCalledTimes(1);
     expect(deactivateUserMock).toHaveBeenCalledTimes(1);
     expect(bulkDeactivateUsersMock).toHaveBeenCalledTimes(1);
+    expect(syncUsersFromKeycloakMock).toHaveBeenCalledTimes(1);
   });
 
   it('invalidates permissions on 403 during initial load', async () => {

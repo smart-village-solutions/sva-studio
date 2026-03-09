@@ -18,6 +18,7 @@ const authServerMocks = vi.hoisted(() => {
     updateUserHandler: vi.fn(async () => response('updateUserHandler')),
     deactivateUserHandler: vi.fn(async () => response('deactivateUserHandler')),
     bulkDeactivateUsersHandler: vi.fn(async () => response('bulkDeactivateUsersHandler')),
+    syncUsersFromKeycloakHandler: vi.fn(async () => response('syncUsersFromKeycloakHandler')),
     getMyProfileHandler: vi.fn(async () => response('getMyProfileHandler')),
     updateMyProfileHandler: vi.fn(async () => response('updateMyProfileHandler')),
     listOrganizationsHandler: vi.fn(async () => response('listOrganizationsHandler')),

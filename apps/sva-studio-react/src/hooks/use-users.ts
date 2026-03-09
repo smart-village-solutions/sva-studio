@@ -1,4 +1,4 @@
-import type { IamUserDetail, IamUserListItem } from '@sva/core';
+import type { IamUserDetail, IamUserImportSyncReport, IamUserListItem } from '@sva/core';
 import React from 'react';
 
 import {
@@ -8,11 +8,13 @@ import {
   deactivateUser,
   IamHttpError,
   listUsers,
+  syncUsersFromKeycloak as syncUsersFromKeycloakRequest,
   updateUser as updateUserRequest,
   type CreateUserPayload,
   type UpdateUserPayload,
   type UserStatusFilter,
 } from '../lib/iam-api';
+import { subscribeIamUsersUpdated } from '../lib/iam-user-events';
 import { useAuth } from '../providers/auth-provider';
 
 type UserFilters = {
@@ -40,6 +42,7 @@ type UseUsersResult = {
   readonly updateUser: (userId: string, payload: UpdateUserPayload) => Promise<IamUserDetail | null>;
   readonly deactivateUser: (userId: string) => Promise<boolean>;
   readonly bulkDeactivate: (userIds: readonly string[]) => Promise<boolean>;
+  readonly syncUsersFromKeycloak: () => Promise<IamUserImportSyncReport | null>;
 };
 
 const DEFAULT_FILTERS: UserFilters = {
@@ -105,6 +108,8 @@ export const useUsers = (initial?: Partial<UserFilters>): UseUsersResult => {
     void loadUsers();
   }, [loadUsers]);
 
+  React.useEffect(() => subscribeIamUsersUpdated(() => void loadUsers()), [loadUsers]);
+
   const mutate = React.useCallback(
     async <T,>(action: () => Promise<T>): Promise<T | null> => {
       setError(null);
@@ -152,6 +157,10 @@ export const useUsers = (initial?: Partial<UserFilters>): UseUsersResult => {
     bulkDeactivate: async (userIds) => {
       const response = await mutate(() => bulkDeactivateUsers(userIds));
       return Boolean(response);
+    },
+    syncUsersFromKeycloak: async () => {
+      const response = await mutate(() => syncUsersFromKeycloakRequest());
+      return response?.data ?? null;
     },
   };
 };

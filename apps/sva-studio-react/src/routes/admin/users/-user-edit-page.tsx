@@ -4,7 +4,7 @@ import { ConfirmDialog } from '../../../components/ConfirmDialog';
 import { useRoles } from '../../../hooks/use-roles';
 import { useUser } from '../../../hooks/use-user';
 import { t } from '../../../i18n';
-import type { IamHttpError } from '../../../lib/iam-api';
+import { userErrorMessage } from './-user-error-message';
 
 type UserEditPageProps = {
   readonly userId: string;
@@ -74,33 +74,6 @@ const pickInitials = (displayName: string) => {
   }
 
   return parts.map((entry) => entry.charAt(0).toUpperCase()).join('');
-};
-
-export const userErrorMessage = (error: IamHttpError | null): string => {
-  if (!error) {
-    return t('admin.users.messages.error');
-  }
-
-  switch (error.code) {
-    case 'forbidden':
-      return t('admin.users.errors.forbidden');
-    case 'csrf_validation_failed':
-      return t('admin.users.errors.csrfValidationFailed');
-    case 'rate_limited':
-      return t('admin.users.errors.rateLimited');
-    case 'conflict':
-      return t('admin.users.errors.conflict');
-    case 'keycloak_unavailable':
-      return t('admin.users.errors.keycloakUnavailable');
-    case 'database_unavailable':
-      return t('admin.users.errors.databaseUnavailable');
-    case 'last_admin_protection':
-      return t('admin.users.errors.lastAdminProtection');
-    case 'self_protection':
-      return t('admin.users.errors.selfProtection');
-    default:
-      return t('admin.users.messages.error');
-  }
 };
 
 export const UserEditPage = ({ userId }: UserEditPageProps) => {

@@ -22,6 +22,14 @@ const state = vi.hoisted(() => ({
   deleteRoleImpl: null as null | ((externalName: string) => Promise<unknown> | unknown),
   getRoleByNameImpl: null as null | ((externalName: string) => Promise<unknown> | unknown),
   listRolesImpl: null as null | (() => Promise<unknown> | unknown),
+  listUsersImpl: null as null | ((query?: {
+    first?: number;
+    max?: number;
+    search?: string;
+    email?: string;
+    username?: string;
+    enabled?: boolean;
+  }) => Promise<unknown> | unknown),
   listUserRoleNamesImpl: null as null | ((externalId: string) => Promise<unknown> | unknown),
   createUserImpl: null as null | ((input: {
     email: string;
@@ -29,6 +37,27 @@ const state = vi.hoisted(() => ({
     lastName?: string;
     enabled: boolean;
   }) => Promise<unknown> | unknown),
+  updateUserImpl: null as
+    | null
+    | ((externalId: string, input: {
+        username?: string;
+        email?: string;
+        firstName?: string;
+        lastName?: string;
+        enabled?: boolean;
+        attributes?: Readonly<Record<string, string | readonly string[]>>;
+      }) => Promise<unknown> | unknown),
+  updateUserCalls: [] as Array<{
+    externalId: string;
+    input: {
+      username?: string;
+      email?: string;
+      firstName?: string;
+      lastName?: string;
+      enabled?: boolean;
+      attributes?: Readonly<Record<string, string | readonly string[]>>;
+    };
+  }>,
   deactivateUserCalls: [] as string[],
   syncRolesImpl: null as null | ((keycloakSubject: string, roleNames: readonly string[]) => Promise<unknown> | unknown),
   syncRolesCalls: [] as Array<{ keycloakSubject: string; roleNames: readonly string[] }>,
@@ -124,7 +153,21 @@ vi.mock('./keycloak-admin-client', () => ({
       return 0;
     }
 
-    async updateUser() {
+    async updateUser(externalId: string, input: {
+      username?: string;
+      email?: string;
+      firstName?: string;
+      lastName?: string;
+      enabled?: boolean;
+      attributes?: Readonly<Record<string, string | readonly string[]>>;
+    }) {
+      state.updateUserCalls.push({
+        externalId,
+        input,
+      });
+      if (state.updateUserImpl) {
+        return state.updateUserImpl(externalId, input);
+      }
       return undefined;
     }
 
@@ -189,6 +232,20 @@ vi.mock('./keycloak-admin-client', () => ({
       return [];
     }
 
+    async listUsers(query?: {
+      first?: number;
+      max?: number;
+      search?: string;
+      email?: string;
+      username?: string;
+      enabled?: boolean;
+    }) {
+      if (state.listUsersImpl) {
+        return state.listUsersImpl(query);
+      }
+      return [];
+    }
+
     async listUserRoleNames(externalId: string) {
       if (state.listUserRoleNamesImpl) {
         return state.listUserRoleNamesImpl(externalId);
@@ -219,6 +276,7 @@ import {
   listRolesHandler,
   listUsersHandler,
   reconcileHandler,
+  syncUsersFromKeycloakHandler,
   updateMyProfileHandler,
   updateRoleHandler,
   updateUserHandler,
@@ -232,6 +290,7 @@ const targetRoleId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 const buildUserDetailRow = (status: 'active' | 'inactive' = 'active') => ({
   id: targetUserId,
   keycloak_subject: 'keycloak-target-2',
+  username_ciphertext: 'target.user',
   display_name_ciphertext: 'Target User',
   email_ciphertext: 'target@example.com',
   first_name_ciphertext: 'Target',
@@ -322,8 +381,11 @@ describe('iam-account-management handlers (guards)', () => {
     state.deleteRoleImpl = null;
     state.getRoleByNameImpl = null;
     state.listRolesImpl = null;
+    state.listUsersImpl = null;
     state.listUserRoleNamesImpl = null;
     state.createUserImpl = null;
+    state.updateUserImpl = null;
+    state.updateUserCalls = [];
     state.redisAvailable = true;
     state.keycloakConfigAvailable = true;
     state.deactivateUserCalls = [];
@@ -374,6 +436,153 @@ describe('iam-account-management handlers (guards)', () => {
 
     expect(response.status).toBe(503);
     expect(payload.error.code).toBe('database_unavailable');
+  });
+
+  it('jit-provisions the actor account for listUsers when only a keycloak identity exists', async () => {
+    let actorLookupCount = 0;
+    state.queryHandler = (text, values) => {
+      if (text.includes('FROM iam.accounts a') && text.includes('WHERE a.keycloak_subject = $2')) {
+        actorLookupCount += 1;
+        if (actorLookupCount === 1) {
+          return { rowCount: 0, rows: [] };
+        }
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+      if (text.includes('INSERT INTO iam.accounts') && text.includes("VALUES ($1::uuid, $2, 'pending')")) {
+        return {
+          rowCount: 1,
+          rows: [{ id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa', created: true }],
+        };
+      }
+      if (text.includes('INSERT INTO iam.instance_memberships')) {
+        return { rowCount: 1, rows: [] };
+      }
+      if (text.includes('event_type') && text.includes('user.jit_provisioned')) {
+        return { rowCount: 1, rows: [] };
+      }
+      if (text.includes('SELECT COUNT(DISTINCT a.id)::int AS total')) {
+        return { rowCount: 1, rows: [{ total: 0 }] };
+      }
+      if (text.includes('ORDER BY a.created_at DESC')) {
+        return { rowCount: 0, rows: [] };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await listUsersHandler(new Request('http://localhost/api/v1/iam/users', { method: 'GET' }));
+    const payload = (await response.json()) as { data: unknown[]; pagination: { total: number } };
+
+    expect(response.status).toBe(200);
+    expect(payload.data).toEqual([]);
+    expect(payload.pagination.total).toBe(0);
+  });
+
+  it('imports matching keycloak users and reports created, updated and skipped counts', async () => {
+    let upsertCount = 0;
+    state.listUsersImpl = () => [
+      {
+        externalId: 'kc-user-imported',
+        username: 'alice.import',
+        email: 'alice@example.com',
+        firstName: 'Alice',
+        lastName: 'Import',
+        enabled: true,
+        attributes: {
+          instanceId: ['11111111-1111-1111-8111-111111111111'],
+          displayName: ['Alice Import'],
+        },
+      },
+      {
+        externalId: 'kc-user-updated',
+        username: 'bob.update',
+        email: 'bob@example.com',
+        firstName: 'Bob',
+        lastName: 'Update',
+        enabled: false,
+        attributes: {
+          instanceId: ['11111111-1111-1111-8111-111111111111'],
+        },
+      },
+      {
+        externalId: 'kc-user-skipped',
+        username: 'skip.me',
+        attributes: {
+          instanceId: ['22222222-2222-2222-8222-222222222222'],
+        },
+      },
+    ];
+    state.queryHandler = (text, values) => {
+      if (text.includes('FROM iam.accounts a') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+      if (text.includes('INSERT INTO iam.accounts')) {
+        upsertCount += 1;
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              id: upsertCount === 1 ? '11111111-1111-4111-8111-111111111111' : '22222222-2222-4222-8222-222222222222',
+              created: upsertCount === 1,
+            },
+          ],
+        };
+      }
+      if (text.includes('INSERT INTO iam.instance_memberships')) {
+        return { rowCount: 1, rows: [] };
+      }
+      if (text.includes('INSERT INTO iam.activity_logs')) {
+        return { rowCount: 1, rows: [] };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await syncUsersFromKeycloakHandler(
+      new Request('http://localhost/api/v1/iam/users/sync-keycloak', {
+        method: 'POST',
+        headers: {
+          origin: 'http://localhost',
+          'x-requested-with': 'XMLHttpRequest',
+        },
+        body: JSON.stringify({}),
+      })
+    );
+    const payload = (await response.json()) as {
+      data: { importedCount: number; updatedCount: number; skippedCount: number; totalKeycloakUsers: number };
+    };
+
+    expect(response.status).toBe(200);
+    expect(payload.data).toEqual({
+      importedCount: 1,
+      updatedCount: 1,
+      skippedCount: 1,
+      totalKeycloakUsers: 3,
+    });
+  });
+
+  it('maps keycloak failures during import sync to keycloak_unavailable', async () => {
+    state.listUsersImpl = () => {
+      throw new KeycloakAdminRequestError({
+        message: 'down',
+        statusCode: 503,
+        code: 'service_unavailable',
+        retryable: true,
+      });
+    };
+
+    const response = await syncUsersFromKeycloakHandler(
+      new Request('http://localhost/api/v1/iam/users/sync-keycloak', {
+        method: 'POST',
+        headers: {
+          origin: 'http://localhost',
+          'x-requested-with': 'XMLHttpRequest',
+        },
+        body: JSON.stringify({}),
+      })
+    );
+    const payload = (await response.json()) as { error: { code: string } };
+
+    expect(response.status).toBe(503);
+    expect(payload.error.code).toBe('keycloak_unavailable');
   });
 
   it('rejects getUser for invalid user id path segment', async () => {
@@ -632,7 +841,7 @@ describe('iam-account-management handlers (guards)', () => {
     expect(payload.error.code).toBe('idempotency_key_required');
   });
 
-  it('rejects createUser when the actor account cannot be resolved', async () => {
+  it('returns database_unavailable when a missing actor account also cannot be provisioned', async () => {
     state.queryHandler = () => ({ rowCount: 0, rows: [] });
 
     const response = await createUserHandler(
@@ -652,8 +861,8 @@ describe('iam-account-management handlers (guards)', () => {
     );
     const payload = (await response.json()) as { error: { code: string } };
 
-    expect(response.status).toBe(403);
-    expect(payload.error.code).toBe('forbidden');
+    expect(response.status).toBe(503);
+    expect(payload.error.code).toBe('database_unavailable');
   });
 
   it('rejects createUser when iam admin features are disabled', async () => {
@@ -2795,8 +3004,11 @@ describe('iam-account-management additional handlers', () => {
               ...buildUserDetailRow('active'),
               id: selfAccountId,
               keycloak_subject: 'keycloak-self-2',
+              username_ciphertext: 'self.updated',
               display_name_ciphertext: 'Updated Self User',
-              email_ciphertext: 'self.user@example.com',
+              email_ciphertext: 'self.updated@example.com',
+              first_name_ciphertext: 'Updated',
+              last_name_ciphertext: 'Self',
               preferred_language: 'de',
               timezone: 'Europe/Berlin',
             },
@@ -2815,6 +3027,10 @@ describe('iam-account-management additional handlers', () => {
           origin: 'http://localhost',
         },
         body: JSON.stringify({
+          username: 'self.updated',
+          email: 'self.updated@example.com',
+          firstName: 'Updated',
+          lastName: 'Self',
           displayName: 'Updated Self User',
           preferredLanguage: 'de',
           timezone: 'Europe/Berlin',
@@ -2830,6 +3046,20 @@ describe('iam-account-management additional handlers', () => {
         keycloakSubject: 'keycloak-self-2',
       })
     );
+    expect(state.updateUserCalls).toEqual([
+      {
+        externalId: 'keycloak-self-2',
+        input: {
+          username: 'self.updated',
+          email: 'self.updated@example.com',
+          firstName: 'Updated',
+          lastName: 'Self',
+          attributes: {
+            displayName: 'Updated Self User',
+          },
+        },
+      },
+    ]);
   });
 
   it('rejects updateMyProfile when iam ui features are disabled', async () => {

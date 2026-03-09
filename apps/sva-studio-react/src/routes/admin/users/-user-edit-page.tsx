@@ -210,8 +210,8 @@ export const UserEditPage = ({ userId }: UserEditPageProps) => {
   if (userApi.isLoading) {
     return (
       <section className="space-y-3" aria-busy="true">
-        <h1 className="text-3xl font-semibold text-slate-100">{t('admin.users.edit.title')}</h1>
-        <p role="status" className="text-sm text-slate-300">
+        <h1 className="text-3xl font-semibold text-foreground">{t('admin.users.edit.title')}</h1>
+        <p role="status" className="text-sm text-muted-foreground">
           {t('admin.users.messages.loading')}
         </p>
       </section>
@@ -221,8 +221,8 @@ export const UserEditPage = ({ userId }: UserEditPageProps) => {
   if (!userApi.user) {
     return (
       <section className="space-y-3">
-        <h1 className="text-3xl font-semibold text-slate-100">{t('admin.users.edit.title')}</h1>
-        <div className="rounded-xl border border-red-600/40 bg-red-500/10 p-4 text-sm text-red-100" role="alert">
+        <h1 className="text-3xl font-semibold text-foreground">{t('admin.users.edit.title')}</h1>
+        <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive" role="alert">
           {userErrorMessage(userApi.error)}
         </div>
       </section>
@@ -231,20 +231,20 @@ export const UserEditPage = ({ userId }: UserEditPageProps) => {
 
   return (
     <section className="space-y-5" aria-busy={isSaving}>
-      <header className="flex flex-col gap-4 rounded-xl border border-slate-700 bg-slate-900/40 p-4 sm:flex-row sm:items-center sm:justify-between">
+      <header className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 shadow-shell sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-4">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full border border-slate-600 bg-slate-950 text-lg font-semibold text-slate-200">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full border border-border bg-background text-lg font-semibold text-foreground">
             {pickInitials(userApi.user.displayName)}
           </div>
           <div>
-            <h1 className="text-2xl font-semibold text-slate-100">{userApi.user.displayName}</h1>
-            <p className="text-sm text-slate-400">{userApi.user.email ?? '-'}</p>
+            <h1 className="text-2xl font-semibold text-foreground">{userApi.user.displayName}</h1>
+            <p className="text-sm text-muted-foreground">{userApi.user.email ?? '-'}</p>
             <div className="mt-2 flex flex-wrap gap-2 text-xs">
-              <span className="rounded border border-slate-600 px-2 py-1">
+              <span className="rounded border border-border bg-background px-2 py-1 text-foreground">
                 {t(statusTranslationKeyByValue[userApi.user.status])}
               </span>
               {userApi.user.roles.map((role) => (
-                <span key={role.roleId} className="rounded border border-slate-600 px-2 py-1">
+                <span key={role.roleId} className="rounded border border-border bg-background px-2 py-1 text-foreground">
                   {role.roleName}
                 </span>
               ))}
@@ -253,14 +253,14 @@ export const UserEditPage = ({ userId }: UserEditPageProps) => {
         </div>
         <button
           type="button"
-          className="rounded-md border border-slate-600 px-3 py-2 text-sm"
+          className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground transition hover:bg-muted"
           onClick={() => void userApi.refetch()}
         >
           {t('admin.users.actions.retry')}
         </button>
       </header>
 
-      <div role="tablist" aria-label={t('admin.users.edit.tabsAriaLabel')} className="flex overflow-x-auto rounded-lg border border-slate-700 bg-slate-900/30 p-1">
+      <div role="tablist" aria-label={t('admin.users.edit.tabsAriaLabel')} className="flex overflow-x-auto rounded-lg border border-border bg-card p-1 shadow-shell">
         {TABS.map((tab, index) => {
           const selected = tab.key === activeTab;
           return (
@@ -273,8 +273,8 @@ export const UserEditPage = ({ userId }: UserEditPageProps) => {
               aria-controls={`user-edit-panel-${tab.key}`}
               className={`rounded-md px-3 py-2 text-sm transition ${
                 selected
-                  ? 'bg-slate-100 text-slate-900 font-semibold'
-                  : 'text-slate-300 hover:bg-slate-800/60 hover:text-slate-100'
+                  ? 'bg-primary text-primary-foreground font-semibold'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
               }`}
               onClick={() => onTabIntent(tab.key)}
               onKeyDown={(event) => onTabKeyDown(event, index)}
@@ -291,47 +291,47 @@ export const UserEditPage = ({ userId }: UserEditPageProps) => {
           role="tabpanel"
           aria-labelledby="user-edit-tab-personal"
           hidden={activeTab !== 'personal'}
-          className="grid gap-4 rounded-xl border border-slate-700 bg-slate-900/40 p-4 md:grid-cols-2"
+          className="grid gap-4 rounded-xl border border-border bg-card p-4 shadow-shell md:grid-cols-2"
         >
-          <label className="flex flex-col gap-2 text-sm text-slate-200">
+          <label className="flex flex-col gap-2 text-sm text-foreground">
             <span>{t('account.fields.firstName')}</span>
             <input
               value={formValues.firstName}
               onChange={(event) => setFormValues((current) => ({ ...current, firstName: event.target.value }))}
-              className="rounded-md border border-slate-600 bg-slate-950 px-3 py-2"
+              className="rounded-md border border-border bg-background px-3 py-2 text-foreground"
             />
           </label>
-          <label className="flex flex-col gap-2 text-sm text-slate-200">
+          <label className="flex flex-col gap-2 text-sm text-foreground">
             <span>{t('account.fields.lastName')}</span>
             <input
               value={formValues.lastName}
               onChange={(event) => setFormValues((current) => ({ ...current, lastName: event.target.value }))}
-              className="rounded-md border border-slate-600 bg-slate-950 px-3 py-2"
+              className="rounded-md border border-border bg-background px-3 py-2 text-foreground"
             />
           </label>
-          <label className="flex flex-col gap-2 text-sm text-slate-200">
+          <label className="flex flex-col gap-2 text-sm text-foreground">
             <span>{t('account.fields.displayName')}</span>
             <input
               value={formValues.displayName}
               onChange={(event) => setFormValues((current) => ({ ...current, displayName: event.target.value }))}
-              className="rounded-md border border-slate-600 bg-slate-950 px-3 py-2"
+              className="rounded-md border border-border bg-background px-3 py-2 text-foreground"
             />
           </label>
-          <label className="flex flex-col gap-2 text-sm text-slate-200">
+          <label className="flex flex-col gap-2 text-sm text-foreground">
             <span>{t('account.fields.email')}</span>
             <input
               type="email"
               value={formValues.email}
               onChange={(event) => setFormValues((current) => ({ ...current, email: event.target.value }))}
-              className="rounded-md border border-slate-600 bg-slate-950 px-3 py-2"
+              className="rounded-md border border-border bg-background px-3 py-2 text-foreground"
             />
           </label>
-          <label className="flex flex-col gap-2 text-sm text-slate-200 md:col-span-2">
+          <label className="flex flex-col gap-2 text-sm text-foreground md:col-span-2">
             <span>{t('account.fields.phone')}</span>
             <input
               value={formValues.phone}
               onChange={(event) => setFormValues((current) => ({ ...current, phone: event.target.value }))}
-              className="rounded-md border border-slate-600 bg-slate-950 px-3 py-2"
+              className="rounded-md border border-border bg-background px-3 py-2 text-foreground"
             />
           </label>
         </section>
@@ -341,9 +341,9 @@ export const UserEditPage = ({ userId }: UserEditPageProps) => {
           role="tabpanel"
           aria-labelledby="user-edit-tab-management"
           hidden={activeTab !== 'management'}
-          className="grid gap-4 rounded-xl border border-slate-700 bg-slate-900/40 p-4 md:grid-cols-2"
+          className="grid gap-4 rounded-xl border border-border bg-card p-4 shadow-shell md:grid-cols-2"
         >
-          <label className="flex flex-col gap-2 text-sm text-slate-200">
+          <label className="flex flex-col gap-2 text-sm text-foreground">
             <span>{t('account.fields.status')}</span>
             <select
               value={formValues.status}
@@ -353,38 +353,38 @@ export const UserEditPage = ({ userId }: UserEditPageProps) => {
                   status: event.target.value as 'active' | 'inactive' | 'pending',
                 }))
               }
-              className="rounded-md border border-slate-600 bg-slate-950 px-3 py-2"
+              className="rounded-md border border-border bg-background px-3 py-2 text-foreground"
             >
               <option value="active">{t('account.status.active')}</option>
               <option value="inactive">{t('account.status.inactive')}</option>
               <option value="pending">{t('account.status.pending')}</option>
             </select>
           </label>
-          <label className="flex flex-col gap-2 text-sm text-slate-200">
+          <label className="flex flex-col gap-2 text-sm text-foreground">
             <span>{t('account.fields.language')}</span>
             <input
               value={formValues.preferredLanguage}
               onChange={(event) =>
                 setFormValues((current) => ({ ...current, preferredLanguage: event.target.value }))
               }
-              className="rounded-md border border-slate-600 bg-slate-950 px-3 py-2"
+              className="rounded-md border border-border bg-background px-3 py-2 text-foreground"
             />
           </label>
-          <label className="flex flex-col gap-2 text-sm text-slate-200">
+          <label className="flex flex-col gap-2 text-sm text-foreground">
             <span>{t('account.fields.timezone')}</span>
             <input
               value={formValues.timezone}
               onChange={(event) => setFormValues((current) => ({ ...current, timezone: event.target.value }))}
-              className="rounded-md border border-slate-600 bg-slate-950 px-3 py-2"
+              className="rounded-md border border-border bg-background px-3 py-2 text-foreground"
             />
           </label>
-          <label className="flex flex-col gap-2 text-sm text-slate-200 md:col-span-2">
+          <label className="flex flex-col gap-2 text-sm text-foreground md:col-span-2">
             <span>{t('admin.users.edit.rolesLabel')}</span>
             <div className="grid gap-2 sm:grid-cols-2">
               {rolesApi.roles.map((role) => {
                 const selected = formValues.roleIds.includes(role.id);
                 return (
-                  <label key={role.id} className="flex items-center gap-2 rounded border border-slate-700 px-3 py-2 text-sm">
+                  <label key={role.id} className="flex items-center gap-2 rounded border border-border bg-background px-3 py-2 text-sm text-foreground">
                     <input
                       type="checkbox"
                       checked={selected}
@@ -403,15 +403,15 @@ export const UserEditPage = ({ userId }: UserEditPageProps) => {
               })}
             </div>
           </label>
-          <label className="flex flex-col gap-2 text-sm text-slate-200 md:col-span-2">
+          <label className="flex flex-col gap-2 text-sm text-foreground md:col-span-2">
             <span>{t('admin.users.edit.notesLabel')}</span>
             <textarea
               value={formValues.notes}
               maxLength={2000}
               onChange={(event) => setFormValues((current) => ({ ...current, notes: event.target.value }))}
-              className="min-h-[120px] rounded-md border border-slate-600 bg-slate-950 px-3 py-2"
+              className="min-h-[120px] rounded-md border border-border bg-background px-3 py-2 text-foreground"
             />
-            <span className="text-xs text-slate-400">{t('admin.users.edit.notesCounter', { count: formValues.notes.length })}</span>
+            <span className="text-xs text-muted-foreground">{t('admin.users.edit.notesCounter', { count: formValues.notes.length })}</span>
           </label>
         </section>
 
@@ -420,18 +420,18 @@ export const UserEditPage = ({ userId }: UserEditPageProps) => {
           role="tabpanel"
           aria-labelledby="user-edit-tab-permissions"
           hidden={activeTab !== 'permissions'}
-          className="rounded-xl border border-slate-700 bg-slate-900/40 p-4"
+          className="rounded-xl border border-border bg-card p-4 shadow-shell"
         >
           {userApi.user.permissions && userApi.user.permissions.length > 0 ? (
-            <ul className="grid gap-2 text-sm text-slate-200 sm:grid-cols-2">
+            <ul className="grid gap-2 text-sm text-foreground sm:grid-cols-2">
               {userApi.user.permissions.map((permission) => (
-                <li key={permission} className="rounded border border-slate-700 bg-slate-950/60 px-3 py-2">
+                <li key={permission} className="rounded border border-border bg-background px-3 py-2">
                   {permission}
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="text-sm text-slate-300">{t('admin.users.edit.permissionsEmpty')}</p>
+            <p className="text-sm text-muted-foreground">{t('admin.users.edit.permissionsEmpty')}</p>
           )}
         </section>
 
@@ -440,18 +440,18 @@ export const UserEditPage = ({ userId }: UserEditPageProps) => {
           role="tabpanel"
           aria-labelledby="user-edit-tab-history"
           hidden={activeTab !== 'history'}
-          className="rounded-xl border border-slate-700 bg-slate-900/40 p-4"
+          className="rounded-xl border border-border bg-card p-4 shadow-shell"
         >
-          <p className="text-sm text-slate-300">{t('admin.users.edit.historyEmpty')}</p>
+          <p className="text-sm text-muted-foreground">{t('admin.users.edit.historyEmpty')}</p>
         </section>
 
         {userApi.error ? (
-          <div className="rounded-xl border border-red-600/40 bg-red-500/10 p-4 text-sm text-red-100" role="alert">
+          <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive" role="alert">
             {userErrorMessage(userApi.error)}
           </div>
         ) : null}
         {saveSuccess ? (
-          <div className="rounded-xl border border-emerald-600/40 bg-emerald-500/10 p-4 text-sm text-emerald-100" role="status">
+          <div className="rounded-xl border border-primary/40 bg-primary/10 p-4 text-sm text-primary" role="status">
             {t('admin.users.edit.saveSuccess')}
           </div>
         ) : null}
@@ -459,14 +459,14 @@ export const UserEditPage = ({ userId }: UserEditPageProps) => {
         <div className="flex flex-wrap justify-end gap-3">
           <button
             type="button"
-            className="rounded-md border border-slate-600 px-3 py-2 text-sm"
+            className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground transition hover:bg-muted"
             onClick={() => setFormValues(toFormValues(userApi.user))}
           >
             {t('account.actions.cancel')}
           </button>
           <button
             type="submit"
-            className="rounded-md border border-emerald-700 bg-emerald-500/20 px-3 py-2 text-sm font-semibold text-emerald-100"
+            className="rounded-md border border-primary/40 bg-primary/15 px-3 py-2 text-sm font-semibold text-primary transition hover:bg-primary/20"
             disabled={isSaving}
           >
             {isSaving ? t('account.actions.saving') : t('admin.users.edit.save')}

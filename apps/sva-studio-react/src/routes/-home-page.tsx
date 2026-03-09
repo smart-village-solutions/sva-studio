@@ -102,7 +102,11 @@ export const HomePage = () => {
     };
   }, [invalidatePermissions, user?.instanceId]);
 
-  const hasRole = (role: string) => user?.roles.includes(role) ?? false;
+  const normalizedRoles = React.useMemo(
+    () => new Set((user?.roles ?? []).map((role) => role.trim().toLowerCase())),
+    [user?.roles]
+  );
+  const hasRole = (...roles: string[]) => roles.some((role) => normalizedRoles.has(role.trim().toLowerCase()));
   const authError = authStateError ?? routeError ?? (error ? 'Fehler beim Laden der Session. Bitte erneut anmelden.' : null);
 
   return (
@@ -138,7 +142,7 @@ export const HomePage = () => {
             <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
               <p className="text-sm font-semibold text-slate-200">Admin-Bereich</p>
               <p className="mt-2 text-sm text-slate-400">
-                {hasRole('admin')
+                {hasRole('admin', 'system_admin')
                   ? 'Admin-Rolle erkannt: Administrationsfunktionen sichtbar.'
                   : 'Nur sichtbar mit Rolle: admin.'}
               </p>

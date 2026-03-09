@@ -368,4 +368,70 @@ describe('HomePage IAM integration', () => {
 
     expect(screen.getByText('Fehler beim Laden der Session. Bitte erneut anmelden.')).toBeTruthy();
   });
+
+  it('recognizes admin and editor roles case-insensitively on the home page', () => {
+    useAuthMock.mockReturnValue({
+      user: {
+        id: 'user-role-case',
+        name: 'Role Case User',
+        roles: ['Admin', 'Editor'],
+        instanceId: '11111111-1111-1111-8111-111111111111',
+      },
+      isAuthenticated: true,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      logout: vi.fn(),
+      invalidatePermissions: vi.fn(),
+    });
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          allowed: true,
+          reason: 'allowed_by_rbac',
+        }),
+      } satisfies Partial<Response>)
+    );
+
+    render(<HomePage />);
+
+    expect(screen.getByText('Admin-Rolle erkannt: Administrationsfunktionen sichtbar.')).toBeTruthy();
+    expect(screen.getByText('Editor-Rolle erkannt: Redaktionsfunktionen sichtbar.')).toBeTruthy();
+  });
+
+  it('recognizes system_admin as elevated admin role on the home page', () => {
+    useAuthMock.mockReturnValue({
+      user: {
+        id: 'user-system-admin',
+        name: 'System Admin User',
+        roles: ['system_admin'],
+        instanceId: '11111111-1111-1111-8111-111111111111',
+      },
+      isAuthenticated: true,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      logout: vi.fn(),
+      invalidatePermissions: vi.fn(),
+    });
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          allowed: true,
+          reason: 'allowed_by_rbac',
+        }),
+      } satisfies Partial<Response>)
+    );
+
+    render(<HomePage />);
+
+    expect(screen.getByText('Admin-Rolle erkannt: Administrationsfunktionen sichtbar.')).toBeTruthy();
+    expect(screen.getByText('Nur sichtbar mit Rolle: editor.')).toBeTruthy();
+  });
 });

@@ -39,7 +39,7 @@ export const ConfirmDialog = ({
         </button>
         <button
           type="button"
-          className="rounded-md border border-red-700 bg-red-500/20 px-3 py-2 text-sm font-semibold text-red-100 hover:bg-red-500/30"
+          className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm font-semibold text-destructive transition hover:bg-destructive/15"
           onClick={onConfirm}
         >
           {confirmLabel}

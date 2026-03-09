@@ -93,7 +93,7 @@ Ausführung:
 
 - `db:migrate` bzw. `db:migrate:up` führt alle Up-Migrationen lexikographisch aus
 - `db:migrate:down` führt Down-Migrationen in umgekehrter Reihenfolge aus
-- `db:migrate:validate` prüft `up -> down -> up`
+- `db:migrate:validate` prüft `up -> down -> up` auf einer separaten temporären Validierungs-Datenbank und greift die aktive lokale Dev-Datenbank nicht an
 - `db:test:rls` prüft Instanzisolation, Fail-Closed ohne `app.instance_id`, Runtime-Rollenhärtung sowie Privilege-Escalation-Guards
 
 ## RLS-Bypass-Dokumentation (Task 2.6)

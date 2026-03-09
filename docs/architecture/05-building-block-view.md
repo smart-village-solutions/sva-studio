@@ -157,3 +157,16 @@ Neu hinzugekommene Bausteine im Change `add-iam-organization-management-hierarch
    - Organisationsverwaltung mit Liste, Filtern, Detailbearbeitung und Membership-Verwaltung.
 6. `apps/sva-studio-react/src/components/OrganizationContextSwitcher.tsx`
    - Shell-Baustein für den Wechsel des aktiven Organisationskontexts bei Multi-Org-Accounts.
+
+### Ergänzung 2026-03: Strukturierte Permissions und Hierarchie-Vererbung
+
+1. `packages/data/migrations/up/0010_iam_structured_permissions.sql`
+   - Erweitert `iam.permissions` um `action`, `resource_type`, `resource_id`, `effect` und `scope` als strukturiertes Read-/Compute-Modell.
+2. `packages/data/seeds/0001_iam_personas.sql`
+   - Seedet Basis-Permissions rückwärtskompatibel sowohl mit `permission_key` als auch mit strukturierten Feldern.
+3. `packages/core/src/iam/authorization-engine.ts`
+   - Wertet `allow`/`deny`, Resource-Spezifität, Org-Hierarchie und Scope-Daten deterministisch in einer festen Prioritätsreihenfolge aus.
+4. `packages/auth/src/iam-authorization/permission-store.ts`
+   - Lädt effektive Rollen-Permissions org-kontextbezogen aus Postgres und normalisiert Parent-Mitgliedschaften auf den angefragten Zielkontext.
+5. `packages/auth/src/iam-authorization/shared.ts`
+   - Transformiert DB-Permission-Zeilen in deduplizierte effektive Permissions inklusive `effect` und `scope`.

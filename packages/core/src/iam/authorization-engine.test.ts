@@ -106,6 +106,49 @@ describe('evaluateAuthorizeDecision', () => {
     expect(result.reason).toBe('allowed_by_abac');
   });
 
+  it('denies when a matching deny permission overrides an inherited allow', () => {
+    const request = baseRequest();
+
+    const result = evaluateAuthorizeDecision(request, [
+      basePermission(),
+      {
+        action: 'read',
+        resourceType: 'document',
+        organizationId: 'org-child',
+        effect: 'deny',
+        scope: {
+          restrictedOrganizationIds: ['org-child'],
+        },
+        sourceRoleIds: ['role-restrictive'],
+      },
+    ]);
+
+    expect(result.allowed).toBe(false);
+    expect(result.reason).toBe('hierarchy_restriction');
+    expect(result.diagnostics?.stage).toBe('restrictive_rule');
+  });
+
+  it('matches resource-specific permissions only for the targeted resource id', () => {
+    const request = baseRequest();
+
+    const allowedResult = evaluateAuthorizeDecision(request, [
+      {
+        ...basePermission(),
+        resourceId: 'doc-1',
+      },
+    ]);
+    const deniedResult = evaluateAuthorizeDecision(request, [
+      {
+        ...basePermission(),
+        resourceId: 'doc-2',
+      },
+    ]);
+
+    expect(allowedResult.allowed).toBe(true);
+    expect(deniedResult.allowed).toBe(false);
+    expect(deniedResult.reason).toBe('permission_missing');
+  });
+
   it('denies with hierarchy restriction when organization is blocked', () => {
     const request: AuthorizeRequest = {
       ...baseRequest(),

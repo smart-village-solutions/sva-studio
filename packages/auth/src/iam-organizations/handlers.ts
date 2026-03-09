@@ -709,7 +709,6 @@ RETURNING id;
       await emitActivityLog(client, {
         instanceId: actorResolution.actor.instanceId,
         accountId: actorAccountId,
-        subjectId: createdOrganizationId,
         eventType: 'organization.created',
         result: 'success',
         payload: {
@@ -906,7 +905,6 @@ WHERE instance_id = $1::uuid
       await emitActivityLog(client, {
         instanceId: actorResolution.actor.instanceId,
         accountId: actorAccountId,
-        subjectId: organizationId,
         eventType: 'organization.updated',
         result: 'success',
         payload: {
@@ -1015,7 +1013,6 @@ WHERE instance_id = $1::uuid
       await emitActivityLog(client, {
         instanceId: actorResolution.actor.instanceId,
         accountId: actorResolution.actor.actorAccountId,
-        subjectId: organizationId,
         eventType: 'organization.deactivated',
         result: 'success',
         payload: { organizationId },

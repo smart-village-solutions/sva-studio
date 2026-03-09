@@ -121,7 +121,7 @@ src/
 | `pnpm nx run data:db:status` | Zeigt den Service-Status |
 | `pnpm nx run data:db:migrate` | Führt SQL-Up-Migrationen aus `migrations/up/*.sql` aus |
 | `pnpm nx run data:db:migrate:down` | Führt SQL-Down-Migrationen aus `migrations/down/*.sql` aus |
-| `pnpm nx run data:db:migrate:validate` | Prüft den Zyklus `up → down → up` |
+| `pnpm nx run data:db:migrate:validate` | Prüft den Zyklus `up → down → up` auf einer separaten temporären Datenbank |
 | `pnpm nx run data:db:seed` | Führt idempotente IAM-Seeds aus `seeds/*.sql` aus |
 | `pnpm nx run data:db:reset` | Entfernt lokalen Postgres-Container und Volume |
 

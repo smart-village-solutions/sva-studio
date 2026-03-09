@@ -97,10 +97,15 @@ describe('useOrganizations', () => {
   });
 
   it('loads detail and supports organization mutations', async () => {
-    listOrganizationsMock.mockResolvedValue({
-      data: [],
-      pagination: { page: 1, pageSize: 25, total: 0 },
-    });
+    listOrganizationsMock
+      .mockResolvedValueOnce({
+        data: [],
+        pagination: { page: 1, pageSize: 25, total: 0 },
+      })
+      .mockResolvedValue({
+        data: [],
+        pagination: { page: 1, pageSize: 25, total: 0 },
+      });
     getOrganizationMock.mockResolvedValue({
       data: {
         id: 'org-1',
@@ -157,6 +162,64 @@ describe('useOrganizations', () => {
       id: 'org-1',
       displayName: 'Alpha',
     });
+  });
+
+  it('preserves the current list when the post-create refetch fails', async () => {
+    const transientError = { status: 503, code: 'database_unavailable', message: 'db down' };
+    asIamErrorMock.mockReturnValue(transientError);
+    listOrganizationsMock
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 'org-1',
+            organizationKey: 'alpha',
+            displayName: 'Alpha',
+            parentOrganizationId: undefined,
+            parentDisplayName: undefined,
+            organizationType: 'county',
+            contentAuthorPolicy: 'org_only',
+            isActive: true,
+            depth: 0,
+            hierarchyPath: [],
+            childCount: 0,
+            membershipCount: 0,
+          },
+        ],
+        pagination: { page: 1, pageSize: 25, total: 1 },
+      })
+      .mockRejectedValueOnce(new Error('refetch-failed'));
+    createOrganizationMock.mockResolvedValue({
+      data: {
+        id: 'org-2',
+        organizationKey: 'beta',
+        displayName: 'Beta',
+      },
+    });
+
+    const { result } = renderHook(() => useOrganizations());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.organizations).toHaveLength(1);
+    });
+
+    await act(async () => {
+      const created = await result.current.createOrganization({
+        organizationKey: 'beta',
+        displayName: 'Beta',
+        organizationType: 'municipality',
+        contentAuthorPolicy: 'org_only',
+      });
+      expect(created).toMatchObject({ id: 'org-2' });
+    });
+
+    expect(result.current.error).toBeNull();
+    expect(result.current.organizations).toMatchObject([
+      {
+        id: 'org-1',
+        displayName: 'Alpha',
+      },
+    ]);
   });
 
   it('invalidates permissions on 403 for list and mutation errors', async () => {

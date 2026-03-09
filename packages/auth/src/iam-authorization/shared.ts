@@ -4,6 +4,7 @@ import type {
   EffectivePermission,
   IamApiErrorCode,
   IamApiErrorResponse,
+  IamPermissionEffect,
   MePermissionsResponse,
 } from '@sva/core';
 import { createSdkLogger, getWorkspaceContext } from '@sva/sdk/server';
@@ -18,6 +19,11 @@ import { authorizeRequestSchema } from '../shared/schemas';
 
 export type PermissionRow = {
   permission_key: string;
+  action?: string | null;
+  resource_type?: string | null;
+  resource_id?: string | null;
+  effect?: IamPermissionEffect | null;
+  scope?: Record<string, unknown> | null;
   role_id: string;
   organization_id: string | null;
 };
@@ -72,15 +78,29 @@ export const toEffectivePermissions = (rows: readonly PermissionRow[]): Effectiv
   const buckets = new Map<string, EffectivePermission>();
 
   for (const row of rows) {
-    const resourceType = readResourceType(row.permission_key);
-    const bucketKey = `${row.permission_key}|${resourceType}|${row.organization_id ?? ''}`;
+    const action = row.action?.trim() || row.permission_key;
+    const resourceType = row.resource_type?.trim() || readResourceType(row.permission_key);
+    const resourceId = row.resource_id?.trim() || undefined;
+    const effect = row.effect ?? 'allow';
+    const scope = row.scope ?? undefined;
+    const bucketKey = JSON.stringify({
+      action,
+      resourceType,
+      resourceId,
+      organizationId: row.organization_id ?? '',
+      effect,
+      scope,
+    });
     const existing = buckets.get(bucketKey);
 
     if (!existing) {
       buckets.set(bucketKey, {
-        action: row.permission_key,
+        action,
         resourceType,
+        resourceId,
         organizationId: row.organization_id ?? undefined,
+        effect,
+        scope,
         sourceRoleIds: [row.role_id],
       });
       continue;

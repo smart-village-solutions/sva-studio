@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import Header from './Header';
 
 const useAuthMock = vi.fn();
+const useThemeMock = vi.fn();
 
 /**
  * Mockt den TanStack-Link für DOM-basierte Komponententests.
@@ -15,21 +16,29 @@ vi.mock('@tanstack/react-router', () => ({
   Link: ({
     to,
     children,
-    reloadDocument: _reloadDocument,
+    reloadDocument,
     ...props
   }: React.AnchorHTMLAttributes<HTMLAnchorElement> & {
     to: string;
     children: React.ReactNode;
     reloadDocument?: boolean;
-  }) => (
-    <a href={to} {...props}>
-      {children}
-    </a>
-  ),
+  }) => {
+    void reloadDocument;
+
+    return (
+      <a href={to} {...props}>
+        {children}
+      </a>
+    );
+  },
 }));
 
 vi.mock('../providers/auth-provider', () => ({
   useAuth: () => useAuthMock(),
+}));
+
+vi.mock('../providers/theme-provider', () => ({
+  useTheme: () => useThemeMock(),
 }));
 
 /**
@@ -42,6 +51,7 @@ describe('Header auth actions', () => {
   afterEach(() => {
     cleanup();
     useAuthMock.mockReset();
+    useThemeMock.mockReset();
     vi.unstubAllEnvs();
   });
 
@@ -55,6 +65,13 @@ describe('Header auth actions', () => {
       logout: vi.fn(),
       invalidatePermissions: vi.fn(),
     });
+    useThemeMock.mockReturnValue({
+      mode: 'light',
+      themeName: 'sva-default',
+      themeLabel: 'SVA Studio',
+      setMode: vi.fn(),
+      toggleMode: vi.fn(),
+    });
 
     render(<Header />);
 
@@ -63,7 +80,7 @@ describe('Header auth actions', () => {
     });
 
     expect(screen.queryByRole('button', { name: 'Logout' })).toBeNull();
-    expect(screen.getByRole('link', { name: 'SVA Studio' }).getAttribute('href')).toBe('/');
+    expect(screen.getByRole('link', { name: /SVA Studio/ }).getAttribute('href')).toBe('/');
     expect(screen.queryByRole('link', { name: 'Konto' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'Startseite' })).toBeNull();
   });
@@ -82,6 +99,13 @@ describe('Header auth actions', () => {
       logout: vi.fn(),
       invalidatePermissions: vi.fn(),
     });
+    useThemeMock.mockReturnValue({
+      mode: 'dark',
+      themeName: 'sva-default',
+      themeLabel: 'SVA Studio',
+      setMode: vi.fn(),
+      toggleMode: vi.fn(),
+    });
 
     render(<Header />);
 
@@ -90,7 +114,7 @@ describe('Header auth actions', () => {
     });
 
     expect(screen.queryByRole('link', { name: 'Login' })).toBeNull();
-    expect(screen.getByRole('link', { name: 'SVA Studio' }).getAttribute('href')).toBe('/');
+    expect(screen.getByRole('link', { name: /SVA Studio/ }).getAttribute('href')).toBe('/');
     expect(screen.queryByRole('link', { name: 'Konto' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'Benutzer' })).toBeNull();
   });
@@ -108,6 +132,13 @@ describe('Header auth actions', () => {
       refetch: vi.fn(),
       logout: vi.fn(),
       invalidatePermissions: vi.fn(),
+    });
+    useThemeMock.mockReturnValue({
+      mode: 'light',
+      themeName: 'sva-default',
+      themeLabel: 'SVA Studio',
+      setMode: vi.fn(),
+      toggleMode: vi.fn(),
     });
 
     render(<Header />);
@@ -128,11 +159,49 @@ describe('Header auth actions', () => {
       logout: vi.fn(),
       invalidatePermissions: vi.fn(),
     });
+    useThemeMock.mockReturnValue({
+      mode: 'light',
+      themeName: 'sva-default',
+      themeLabel: 'SVA Studio',
+      setMode: vi.fn(),
+      toggleMode: vi.fn(),
+    });
 
     render(<Header isLoading />);
 
     expect(screen.getByText('Authentifizierungsstatus wird geladen.')).toBeTruthy();
     expect(screen.queryByRole('link', { name: 'Login' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Logout' })).toBeNull();
+  });
+
+  it('delegates theme toggle to the theme provider', async () => {
+    const toggleModeMock = vi.fn();
+
+    useAuthMock.mockReturnValue({
+      user: null,
+      isAuthenticated: false,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      logout: vi.fn(),
+      invalidatePermissions: vi.fn(),
+    });
+    useThemeMock.mockReturnValue({
+      mode: 'light',
+      themeName: 'sva-default',
+      themeLabel: 'SVA Studio',
+      setMode: vi.fn(),
+      toggleMode: toggleModeMock,
+    });
+
+    render(<Header />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Dunklen Modus aktivieren' })).toBeTruthy();
+    });
+
+    screen.getByRole('button', { name: 'Dunklen Modus aktivieren' }).click();
+
+    expect(toggleModeMock).toHaveBeenCalledTimes(1);
   });
 });

@@ -1,16 +1,128 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@config "../tailwind.config.cjs";
 
-body {
-  margin: 0;
-  font-family:
-    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell',
-    'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
+@layer base {
+  :root {
+    --background: 250 250 243;
+    --foreground: 16 16 11;
+    --card: 255 255 255;
+    --card-foreground: 16 16 11;
+    --popover: 255 255 255;
+    --popover-foreground: 16 16 11;
+    --primary: 78 188 65;
+    --primary-foreground: 255 255 255;
+    --secondary: 19 194 150;
+    --secondary-foreground: 255 255 255;
+    --muted: 244 244 237;
+    --muted-foreground: 99 115 129;
+    --accent: 247 251 246;
+    --accent-foreground: 16 16 11;
+    --destructive: 242 48 48;
+    --destructive-foreground: 255 255 255;
+    --border: 230 230 223;
+    --input: 230 230 223;
+    --ring: 78 188 65;
+    --sidebar: 255 255 255;
+    --sidebar-foreground: 99 115 129;
+    --sidebar-primary: 78 188 65;
+    --sidebar-primary-foreground: 255 255 255;
+    --sidebar-accent: 247 251 246;
+    --sidebar-accent-foreground: 16 16 11;
+    --sidebar-border: 230 230 223;
+    --sidebar-ring: 78 188 65;
+    --font-weight-normal: 400;
+    --font-weight-medium: 500;
+    --font-weight-semibold: 600;
+    --font-weight-bold: 700;
+    --text-h1: 60px;
+    --text-h2: 48px;
+    --text-h3: 40px;
+    --text-h4: 24px;
+    --text-base: 16px;
+    --text-sm: 14px;
+    --text-xs: 12px;
+    --radius: 6px;
+    --radius-card: 8px;
+    --radius-modal: 20px;
+    --elevation-sm: 0px 1px 3px 0px rgba(166, 175, 195, 0.4);
+  }
 
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
+  html[data-theme='sva-forest'] {
+    --primary: 19 194 150;
+    --ring: 19 194 150;
+    --accent: 235 249 246;
+    --sidebar-primary: 19 194 150;
+    --sidebar-ring: 19 194 150;
+    --sidebar-accent: 235 249 246;
+  }
+
+  html.dark,
+  html[data-theme-mode='dark'] {
+    --background: 16 16 11;
+    --foreground: 250 250 243;
+    --card: 26 26 21;
+    --card-foreground: 250 250 243;
+    --popover: 26 26 21;
+    --popover-foreground: 250 250 243;
+    --primary: 78 188 65;
+    --primary-foreground: 255 255 255;
+    --secondary: 19 194 150;
+    --secondary-foreground: 255 255 255;
+    --muted: 31 31 24;
+    --muted-foreground: 153 165 177;
+    --accent: 31 47 30;
+    --accent-foreground: 250 250 243;
+    --destructive: 242 48 48;
+    --destructive-foreground: 255 255 255;
+    --border: 47 47 37;
+    --input: 47 47 37;
+    --ring: 78 188 65;
+    --sidebar: 26 26 21;
+    --sidebar-foreground: 153 165 177;
+    --sidebar-primary: 78 188 65;
+    --sidebar-primary-foreground: 255 255 255;
+    --sidebar-accent: 31 47 30;
+    --sidebar-accent-foreground: 250 250 243;
+    --sidebar-border: 47 47 37;
+    --sidebar-ring: 78 188 65;
+  }
+
+  html[data-theme='sva-forest'].dark,
+  html[data-theme='sva-forest'][data-theme-mode='dark'] {
+    --primary: 30 215 166;
+    --ring: 30 215 166;
+    --accent: 18 57 48;
+    --sidebar-primary: 30 215 166;
+    --sidebar-ring: 30 215 166;
+    --sidebar-accent: 18 57 48;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background-color: rgb(var(--background));
+    color: rgb(var(--foreground));
+    font-family:
+      -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell',
+      'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  code {
+    font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
+  }
+
+  :focus-visible {
+    outline: 2px solid rgb(var(--ring));
+    outline-offset: 2px;
+  }
 }

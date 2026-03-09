@@ -11,6 +11,8 @@ import Sidebar from './Sidebar';
 type AppShellProps = Readonly<{
   children: React.ReactNode;
   isLoading?: boolean;
+  isMobileSidebarOpen?: boolean;
+  onMobileSidebarOpenChange?: (open: boolean) => void;
   sidebarSlot?: React.ReactNode;
 }>;
 
@@ -22,14 +24,26 @@ type AppShellProps = Readonly<{
  * @param props.isLoading - Aktiviert Skeleton-Anzeige im Contentbereich.
  * @param props.sidebarSlot - Optionaler Ersatz für die Standard-Sidebar.
  */
-export default function AppShell({ children, isLoading = false, sidebarSlot }: AppShellProps) {
+export default function AppShell({
+  children,
+  isLoading = false,
+  isMobileSidebarOpen = false,
+  onMobileSidebarOpenChange,
+  sidebarSlot,
+}: AppShellProps) {
   return (
-    <div className="flex w-full flex-1 flex-col lg:flex-row">
-      {sidebarSlot ?? <Sidebar isLoading={isLoading} />}
+    <div className="flex w-full flex-1 flex-col bg-background lg:min-h-[calc(100vh-4rem)] lg:flex-row">
+      {sidebarSlot ?? (
+        <Sidebar
+          isLoading={isLoading}
+          isMobileOpen={isMobileSidebarOpen}
+          onMobileOpenChange={onMobileSidebarOpenChange}
+        />
+      )}
       <main
         id="main-content"
         tabIndex={-1}
-        className="flex min-h-0 flex-1 flex-col px-4 py-6 sm:px-6 sm:py-8"
+        className="flex min-h-0 flex-1 flex-col bg-background px-4 py-6 sm:px-6 sm:py-8 lg:px-8"
         aria-busy={isLoading}
       >
         {isLoading ? (
@@ -37,11 +51,11 @@ export default function AppShell({ children, isLoading = false, sidebarSlot }: A
             <span role="status" aria-live="polite" className="sr-only">
               Inhalt wird geladen.
             </span>
-            <span aria-hidden="true" className="block h-8 w-48 animate-pulse rounded-md bg-slate-800" />
-            <span aria-hidden="true" className="block h-24 w-full animate-pulse rounded-xl bg-slate-900" />
+            <span aria-hidden="true" className="block h-8 w-48 animate-pulse rounded-md bg-muted" />
+            <span aria-hidden="true" className="block h-24 w-full animate-pulse rounded-lg bg-card shadow-shell" />
             <div className="grid gap-4 md:grid-cols-2">
-              <span aria-hidden="true" className="block h-24 w-full animate-pulse rounded-xl bg-slate-900" />
-              <span aria-hidden="true" className="block h-24 w-full animate-pulse rounded-xl bg-slate-900" />
+              <span aria-hidden="true" className="block h-24 w-full animate-pulse rounded-lg bg-card shadow-shell" />
+              <span aria-hidden="true" className="block h-24 w-full animate-pulse rounded-lg bg-card shadow-shell" />
             </div>
           </section>
         ) : (

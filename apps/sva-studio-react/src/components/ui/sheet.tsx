@@ -1,33 +1,63 @@
 import React from 'react';
 
-type ModalDialogProps = {
+type SheetContextValue = {
   readonly open: boolean;
-  readonly title: string;
-  readonly description?: string;
-  readonly role?: 'dialog' | 'alertdialog';
-  readonly onClose: () => void;
-  readonly children: React.ReactNode;
+  readonly onOpenChange: (open: boolean) => void;
 };
+
+type SheetProps = Readonly<{
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  children: React.ReactNode;
+}>;
+
+type SheetContentProps = Readonly<{
+  children: React.ReactNode;
+  className?: string;
+  closeLabel?: string;
+  side?: 'left' | 'right';
+  'aria-label': string;
+}>;
+
+const SheetContext = React.createContext<SheetContextValue | null>(null);
 
 const FOCUSABLE_SELECTOR =
   'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])';
 
-export const ModalDialog = ({
-  open,
-  title,
-  description,
-  role = 'dialog',
-  onClose,
+const getSheetPositionClasses = (side: 'left' | 'right'): string => {
+  if (side === 'right') {
+    return 'right-0 border-l';
+  }
+
+  return 'left-0 border-r';
+};
+
+export const Sheet = ({ open, onOpenChange, children }: SheetProps) => (
+  <SheetContext.Provider value={{ open, onOpenChange }}>{children}</SheetContext.Provider>
+);
+
+export const SheetContent = ({
   children,
-}: ModalDialogProps) => {
+  className = '',
+  closeLabel = 'Close',
+  side = 'left',
+  'aria-label': ariaLabel,
+}: SheetContentProps) => {
+  const context = React.useContext(SheetContext);
   const panelRef = React.useRef<HTMLDivElement>(null);
   const triggerRef = React.useRef<HTMLElement | null>(null);
   const previousOpenRef = React.useRef(false);
-  const onCloseRef = React.useRef(onClose);
+  const onOpenChangeRef = React.useRef<(open: boolean) => void>(() => undefined);
+
+  if (!context) {
+    throw new Error('SheetContent must be used inside Sheet');
+  }
+
+  const { open, onOpenChange } = context;
 
   React.useEffect(() => {
-    onCloseRef.current = onClose;
-  }, [onClose]);
+    onOpenChangeRef.current = onOpenChange;
+  }, [onOpenChange]);
 
   React.useEffect(() => {
     const wasOpen = previousOpenRef.current;
@@ -47,16 +77,14 @@ export const ModalDialog = ({
 
     if (!wasOpen) {
       triggerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-
       const focusables = panel.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
-      const first = focusables[0];
-      first?.focus();
+      focusables[0]?.focus();
     }
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault();
-        onCloseRef.current();
+        onOpenChangeRef.current(false);
         return;
       }
 
@@ -92,19 +120,20 @@ export const ModalDialog = ({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onMouseDown={onClose}>
+    <div className="fixed inset-0 z-50 lg:hidden" aria-hidden={false}>
+      <button
+        type="button"
+        className="absolute inset-0 bg-foreground/40"
+        aria-label={closeLabel}
+        onClick={() => onOpenChange(false)}
+      />
       <div
         ref={panelRef}
-        role={role}
+        role="dialog"
         aria-modal="true"
-        aria-label={title}
-        className="w-full max-w-2xl rounded-xl border border-border bg-card p-6 shadow-2xl"
-        onMouseDown={(event) => event.stopPropagation()}
+        aria-label={ariaLabel}
+        className={`absolute top-0 h-full w-[18rem] border-border bg-sidebar shadow-shell ${getSheetPositionClasses(side)} ${className}`.trim()}
       >
-        <header className="mb-4">
-          <h2 className="text-lg font-semibold text-foreground">{title}</h2>
-          {description ? <p className="mt-1 text-sm text-muted-foreground">{description}</p> : null}
-        </header>
         {children}
       </div>
     </div>

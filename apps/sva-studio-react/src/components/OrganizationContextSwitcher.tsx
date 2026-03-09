@@ -35,7 +35,7 @@ export const OrganizationContextSwitcher = () => {
   }
 
   return (
-    <div className="flex flex-col items-start gap-1 text-xs text-slate-300">
+    <div className="flex flex-col items-start gap-1 text-xs text-muted-foreground">
       <label className="flex items-center gap-2">
         <span>{t('shell.header.organizationContext')}</span>
         <select
@@ -48,7 +48,7 @@ export const OrganizationContextSwitcher = () => {
             }
             void organizationContext.switchOrganization(event.target.value);
           }}
-          className="rounded-md border border-slate-700 bg-slate-950 px-2 py-1 text-sm text-slate-100"
+          className="rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground"
           disabled={organizationContext.isUpdating}
         >
           {options.map((organization) => (
@@ -66,7 +66,7 @@ export const OrganizationContextSwitcher = () => {
             : ''}
       </span>
       {errorMessage ? (
-        <p id={errorId} className="text-xs text-red-200" role="alert">
+        <p id={errorId} className="text-xs text-destructive" role="alert">
           {errorMessage}
         </p>
       ) : null}

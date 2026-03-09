@@ -32,14 +32,14 @@ export const ConfirmDialog = ({
       <div className="mt-6 flex flex-wrap justify-end gap-3">
         <button
           type="button"
-          className="rounded-md border border-slate-600 px-3 py-2 text-sm text-slate-200 hover:border-slate-400"
+          className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground transition hover:bg-muted"
           onClick={onCancel}
         >
           {cancelLabel}
         </button>
         <button
           type="button"
-          className="rounded-md border border-red-700 bg-red-500/20 px-3 py-2 text-sm font-semibold text-red-100 hover:bg-red-500/30"
+          className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm font-semibold text-destructive transition hover:bg-destructive/15"
           onClick={onConfirm}
         >
           {confirmLabel}

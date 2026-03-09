@@ -157,8 +157,8 @@ export const AccountProfilePage = () => {
   if (isLoading) {
     return (
       <section aria-busy="true" className="space-y-3">
-        <h1 className="text-3xl font-semibold text-slate-100">{t('account.profile.title')}</h1>
-        <p role="status" className="text-sm text-slate-300">
+        <h1 className="text-3xl font-semibold text-foreground">{t('account.profile.title')}</h1>
+        <p role="status" className="text-sm text-muted-foreground">
           {t('account.messages.loading')}
         </p>
       </section>
@@ -167,7 +167,7 @@ export const AccountProfilePage = () => {
 
   if (!isAuthenticated && !profile) {
     return (
-      <div className="rounded-xl border border-amber-600/40 bg-amber-500/10 p-4 text-sm text-amber-100" role="status">
+      <div className="rounded-xl border border-secondary/40 bg-secondary/10 p-4 text-sm text-secondary" role="status">
         {t('account.messages.notAuthenticated')}
       </div>
     );
@@ -176,12 +176,12 @@ export const AccountProfilePage = () => {
   if (loadError && !profile) {
     return (
       <section className="space-y-4">
-        <h1 className="text-3xl font-semibold text-slate-100">{t('account.profile.title')}</h1>
-        <div className="rounded-xl border border-red-600/40 bg-red-500/10 p-4 text-sm text-red-100" role="alert">
+        <h1 className="text-3xl font-semibold text-foreground">{t('account.profile.title')}</h1>
+        <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive" role="alert">
           <p>{t('account.messages.loadError')}</p>
           <button
             type="button"
-            className="mt-3 rounded-md border border-red-500/60 px-3 py-2 text-xs font-semibold uppercase tracking-wide"
+            className="mt-3 rounded-md border border-destructive/40 bg-background px-3 py-2 text-xs font-semibold uppercase tracking-wide text-destructive transition hover:bg-muted"
             onClick={() => void loadProfile()}
           >
             {t('account.actions.retry')}
@@ -196,11 +196,11 @@ export const AccountProfilePage = () => {
   return (
     <section className="space-y-6" aria-busy={isSaving}>
       <header className="space-y-2">
-        <h1 className="text-3xl font-semibold text-slate-100">{t('account.profile.title')}</h1>
-        <p className="max-w-2xl text-sm text-slate-300">{t('account.profile.subtitle')}</p>
+        <h1 className="text-3xl font-semibold text-foreground">{t('account.profile.title')}</h1>
+        <p className="max-w-2xl text-sm text-muted-foreground">{t('account.profile.subtitle')}</p>
       </header>
 
-      <div className="grid gap-4 rounded-xl border border-slate-700 bg-slate-900/50 p-4 text-sm text-slate-200 sm:grid-cols-2">
+      <div className="grid gap-4 rounded-xl border border-border bg-card p-4 text-sm text-foreground shadow-shell sm:grid-cols-2">
         <p>
           <span className="font-semibold">{t('account.fields.email')}: </span>
           {profile?.email ?? user?.email ?? '-'}
@@ -224,7 +224,7 @@ export const AccountProfilePage = () => {
           ref={errorSummaryRef}
           tabIndex={-1}
           role="alert"
-          className="rounded-xl border border-red-600/40 bg-red-500/10 p-4 text-sm text-red-100"
+          className="rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive"
         >
           <p className="font-semibold">{t('account.messages.validationSummary')}</p>
           <ul className="mt-2 list-disc space-y-1 pl-5">
@@ -236,92 +236,92 @@ export const AccountProfilePage = () => {
       ) : null}
 
       {saveError ? (
-        <div className="rounded-xl border border-red-600/40 bg-red-500/10 p-4 text-sm text-red-100" role="alert">
+        <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive" role="alert">
           {t('account.messages.saveError')}
         </div>
       ) : null}
       {saveSuccess ? (
-        <div className="rounded-xl border border-emerald-600/40 bg-emerald-500/10 p-4 text-sm text-emerald-100" role="status">
+        <div className="rounded-xl border border-primary/40 bg-primary/10 p-4 text-sm text-primary" role="status">
           {t('account.messages.saveSuccess')}
         </div>
       ) : null}
 
       <form className="grid gap-4 md:grid-cols-2" onSubmit={onSubmit} noValidate>
-        <label className="flex flex-col gap-2 text-sm text-slate-200">
+        <label className="flex flex-col gap-2 text-sm text-foreground">
           <span>{t('account.fields.firstName')}</span>
           <input
             value={formValues.firstName}
             onChange={(event) => onFieldChange('firstName', event.target.value)}
-            className="rounded-md border border-slate-600 bg-slate-950 px-3 py-2"
+            className="rounded-md border border-border bg-background px-3 py-2"
             aria-invalid={Boolean(validationErrors.firstName)}
           />
         </label>
-        <label className="flex flex-col gap-2 text-sm text-slate-200">
+        <label className="flex flex-col gap-2 text-sm text-foreground">
           <span>{t('account.fields.lastName')}</span>
           <input
             value={formValues.lastName}
             onChange={(event) => onFieldChange('lastName', event.target.value)}
-            className="rounded-md border border-slate-600 bg-slate-950 px-3 py-2"
+            className="rounded-md border border-border bg-background px-3 py-2"
             aria-invalid={Boolean(validationErrors.lastName)}
           />
         </label>
-        <label className="flex flex-col gap-2 text-sm text-slate-200">
+        <label className="flex flex-col gap-2 text-sm text-foreground">
           <span>{t('account.fields.displayName')}</span>
           <input
             value={formValues.displayName}
             onChange={(event) => onFieldChange('displayName', event.target.value)}
-            className="rounded-md border border-slate-600 bg-slate-950 px-3 py-2"
+            className="rounded-md border border-border bg-background px-3 py-2"
           />
         </label>
-        <label className="flex flex-col gap-2 text-sm text-slate-200">
+        <label className="flex flex-col gap-2 text-sm text-foreground">
           <span>{t('account.fields.phone')}</span>
           <input
             value={formValues.phone}
             onChange={(event) => onFieldChange('phone', event.target.value)}
-            className="rounded-md border border-slate-600 bg-slate-950 px-3 py-2"
+            className="rounded-md border border-border bg-background px-3 py-2"
             aria-invalid={Boolean(validationErrors.phone)}
           />
         </label>
-        <label className="flex flex-col gap-2 text-sm text-slate-200">
+        <label className="flex flex-col gap-2 text-sm text-foreground">
           <span>{t('account.fields.position')}</span>
           <input
             value={formValues.position}
             onChange={(event) => onFieldChange('position', event.target.value)}
-            className="rounded-md border border-slate-600 bg-slate-950 px-3 py-2"
+            className="rounded-md border border-border bg-background px-3 py-2"
           />
         </label>
-        <label className="flex flex-col gap-2 text-sm text-slate-200">
+        <label className="flex flex-col gap-2 text-sm text-foreground">
           <span>{t('account.fields.department')}</span>
           <input
             value={formValues.department}
             onChange={(event) => onFieldChange('department', event.target.value)}
-            className="rounded-md border border-slate-600 bg-slate-950 px-3 py-2"
+            className="rounded-md border border-border bg-background px-3 py-2"
           />
         </label>
-        <label className="flex flex-col gap-2 text-sm text-slate-200">
+        <label className="flex flex-col gap-2 text-sm text-foreground">
           <span>{t('account.fields.language')}</span>
           <select
             value={formValues.preferredLanguage}
             onChange={(event) => onFieldChange('preferredLanguage', event.target.value)}
-            className="rounded-md border border-slate-600 bg-slate-950 px-3 py-2"
+            className="rounded-md border border-border bg-background px-3 py-2"
           >
             <option value="de">Deutsch</option>
             <option value="en">English</option>
           </select>
         </label>
-        <label className="flex flex-col gap-2 text-sm text-slate-200">
+        <label className="flex flex-col gap-2 text-sm text-foreground">
           <span>{t('account.fields.timezone')}</span>
           <input
             value={formValues.timezone}
             onChange={(event) => onFieldChange('timezone', event.target.value)}
-            className="rounded-md border border-slate-600 bg-slate-950 px-3 py-2"
+            className="rounded-md border border-border bg-background px-3 py-2"
           />
         </label>
 
         <div className="md:col-span-2 flex flex-wrap items-center gap-3">
           <button
             type="submit"
-            className="rounded-md border border-emerald-600 bg-emerald-500/20 px-4 py-2 text-sm font-semibold text-emerald-100"
+            className="rounded-md border border-primary/40 bg-primary/15 px-4 py-2 text-sm font-semibold text-primary"
             disabled={isSaving}
           >
             {isSaving ? t('account.actions.saving') : t('account.actions.save')}

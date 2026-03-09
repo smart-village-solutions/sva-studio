@@ -38,7 +38,7 @@ const getPunkSongs = () => {
 
 const DemoLayout = () => {
   return (
-    <div className="flex flex-col gap-6 text-slate-100">
+    <div className="flex flex-col gap-6 text-foreground">
       <Outlet />
     </div>
   );
@@ -48,18 +48,18 @@ const DemoHome = () => {
   return (
     <div className="flex flex-col gap-4">
       <h2 className="text-2xl font-semibold">TanStack Start Demos</h2>
-      <div className="flex flex-wrap gap-3 text-sm text-slate-400">
-        <span className="rounded-full border text-xs border-slate-800 px-4 py-2">Nx Monorepo</span>
-        <span className="rounded-full border text-xs border-slate-800 px-4 py-2">
+      <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
+        <span className="rounded-full border border-border bg-card px-4 py-2 text-xs shadow-shell">Nx Monorepo</span>
+        <span className="rounded-full border border-border bg-card px-4 py-2 text-xs shadow-shell">
           TanStack Start
         </span>
-        <span className="rounded-full border text-xs border-slate-800 px-4 py-2">
+        <span className="rounded-full border border-border bg-card px-4 py-2 text-xs shadow-shell">
           Core + Plugins
         </span>
       </div>
-      <div className="flex flex-wrap text-sm text-slate-300">
+      <div className="flex flex-wrap text-sm text-muted-foreground">
         <Link
-          className="text-sm font-semibold"
+          className="text-sm font-semibold text-primary hover:opacity-80"
           to="https://tanstack.com/start"
           target="_blank"
           rel="noopener noreferrer"
@@ -67,30 +67,30 @@ const DemoHome = () => {
           ☛ TanStack Start Docs
         </Link>
       </div>
-      <p className="text-slate-300">
+      <p className="text-muted-foreground">
         Diese Routen entsprechen den Standard-Demos aus dem Start-Template.
       </p>
-      <div className="flex flex-wrap gap-3 text-sm text-slate-300">
+      <div className="flex flex-wrap gap-3 text-sm text-foreground">
         <Link
-          className="rounded border border-slate-800 px-3 py-2 transition hover:text-white hover:border-slate-400"
+          className="rounded border border-border bg-card px-3 py-2 transition hover:bg-muted"
           to="/demo/start/server-funcs"
         >
           Server Functions
         </Link>
         <Link
-          className="rounded border border-slate-800 px-3 py-2 transition hover:text-white hover:border-slate-400"
+          className="rounded border border-border bg-card px-3 py-2 transition hover:bg-muted"
           to="/demo/start/api-request"
         >
           API Request
         </Link>
         <Link
-          className="rounded border border-slate-800 px-3 py-2 transition hover:text-white hover:border-slate-400"
+          className="rounded border border-border bg-card px-3 py-2 transition hover:bg-muted"
           to="/demo/start/ssr"
         >
           SSR Demos
         </Link>
         <Link
-          className="rounded border border-slate-800 px-3 py-2 transition hover:text-white hover:border-slate-400"
+          className="rounded border border-border bg-card px-3 py-2 transition hover:bg-muted"
           to="/demo/api/names"
         >
           API Names
@@ -102,7 +102,7 @@ const DemoHome = () => {
 
 const StartLayout = () => {
   return (
-    <div className="flex flex-col gap-4 text-slate-100">
+    <div className="flex flex-col gap-4 text-foreground">
       <Outlet />
     </div>
   );
@@ -112,7 +112,7 @@ const StartHome = () => {
   return (
     <div className="flex flex-col gap-2">
       <h2 className="text-2xl font-semibold">Start Demos</h2>
-      <p className="text-slate-300">Ursprüngliche TanStack Start Beispiele.</p>
+      <p className="text-muted-foreground">Ursprüngliche TanStack Start Beispiele.</p>
     </div>
   );
 };
@@ -139,38 +139,38 @@ const ServerFuncsDemo = () => {
   };
 
   return (
-    <div className="flex flex-col gap-6 text-slate-100">
+    <div className="flex flex-col gap-6 text-foreground">
       <div className="flex flex-col gap-2">
         <Link
-          className="flex items-center gap-2 text-sm text-slate-400 hover:text-slate-200"
+          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
           to="../.."
         >
           ← Zurück
         </Link>
         <h2 className="text-2xl font-semibold">Server Functions</h2>
-        <p className="text-slate-300">
+        <p className="text-muted-foreground">
           Dieses Beispiel ruft eine serverseitige Funktion auf und liefert eine Antwort zurück.
         </p>
       </div>
       <form className="flex flex-col gap-3" onSubmit={handleSubmit}>
         <input
-          className="rounded border border-slate-800 bg-slate-900 px-4 py-2 text-slate-100"
+          className="rounded border border-border bg-background px-4 py-2 text-foreground"
           placeholder="Dein Name"
           value={name}
           onChange={(event) => setName(event.target.value)}
         />
         <button
           type="submit"
-          className="w-fit rounded bg-emerald-400 px-4 py-2 text-sm font-semibold text-slate-900"
+          className="w-fit rounded border border-primary/40 bg-primary/15 px-4 py-2 text-sm font-semibold text-primary"
           disabled={loading}
         >
           {loading ? 'Sende...' : 'Server Function ausführen'}
         </button>
       </form>
       {result ? (
-        <div className="rounded border border-slate-800 bg-slate-900/60 p-4">
-          <p className="font-semibold text-emerald-300">{result.message}</p>
-          <p className="text-sm text-slate-400">Serverzeit: {result.serverTime}</p>
+        <div className="rounded border border-border bg-card p-4 shadow-shell">
+          <p className="font-semibold text-primary">{result.message}</p>
+          <p className="text-sm text-muted-foreground">Serverzeit: {result.serverTime}</p>
         </div>
       ) : null}
     </div>
@@ -193,26 +193,26 @@ const ApiRequestDemo = () => {
   };
 
   return (
-    <div className="flex flex-col gap-6 text-slate-100">
+    <div className="flex flex-col gap-6 text-foreground">
       <div className="flex flex-col gap-2">
         <Link
-          className="flex items-center gap-2 text-sm text-slate-400 hover:text-slate-200"
+          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
           to="../.."
         >
           ← Zurück
         </Link>
         <h2 className="text-2xl font-semibold">API Request</h2>
-        <p className="text-slate-300">
+        <p className="text-muted-foreground">
           Diese Demo laedt Daten ueber eine serverseitige API-Funktion.
         </p>
       </div>
       <button
-        className="w-fit rounded border border-slate-800 px-4 py-2 text-sm text-slate-200"
+        className="w-fit rounded border border-border bg-card px-4 py-2 text-sm text-foreground transition hover:bg-muted"
         onClick={handleLoad}
       >
         {loading ? 'Lade...' : 'Namen laden'}
       </button>
-      <ul className="list-disc space-y-2 pl-6 text-slate-300">
+      <ul className="list-disc space-y-2 pl-6 text-muted-foreground">
         {names.map((name) => (
           <li key={name}>{name}</li>
         ))}
@@ -223,7 +223,7 @@ const ApiRequestDemo = () => {
 
 const SsrLayout = () => {
   return (
-    <div className="flex flex-col gap-4 text-slate-100">
+    <div className="flex flex-col gap-4 text-foreground">
       <Outlet />
     </div>
   );
@@ -233,20 +233,20 @@ const SsrHome = () => {
   return (
     <div className="flex flex-col gap-4">
       <Link
-        className="flex items-center gap-2 text-sm text-slate-400 hover:text-slate-200"
+        className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
         to="../.."
       >
         ← Zurück
       </Link>
       <h2 className="text-2xl font-semibold">SSR Demos</h2>
-      <div className="flex flex-wrap gap-3 text-sm text-slate-300">
-        <Link className="rounded border border-slate-800 px-3 py-2" to="/demo/start/ssr/spa-mode">
+      <div className="flex flex-wrap gap-3 text-sm text-foreground">
+        <Link className="rounded border border-border bg-card px-3 py-2 transition hover:bg-muted" to="/demo/start/ssr/spa-mode">
           SPA Mode
         </Link>
-        <Link className="rounded border border-slate-800 px-3 py-2" to="/demo/start/ssr/full-ssr">
+        <Link className="rounded border border-border bg-card px-3 py-2 transition hover:bg-muted" to="/demo/start/ssr/full-ssr">
           Full SSR
         </Link>
-        <Link className="rounded border border-slate-800 px-3 py-2" to="/demo/start/ssr/data-only">
+        <Link className="rounded border border-border bg-card px-3 py-2 transition hover:bg-muted" to="/demo/start/ssr/data-only">
           Data Only
         </Link>
       </div>
@@ -256,25 +256,25 @@ const SsrHome = () => {
 
 const SsrSpaMode = () => {
   return (
-    <div className="flex flex-col gap-2 text-slate-100">
-      <Link className="flex items-center gap-2 text-sm text-slate-400 hover:text-slate-200" to="..">
+    <div className="flex flex-col gap-2 text-foreground">
+      <Link className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground" to="..">
         ← Zurück
       </Link>
       <h2 className="text-2xl font-semibold">SSR: SPA Mode</h2>
-      <p className="text-slate-300">Route ohne Loader (nur Client-Render).</p>
+      <p className="text-muted-foreground">Route ohne Loader (nur Client-Render).</p>
     </div>
   );
 };
 
 const SsrFull = ({ songs }: { songs: ReturnType<typeof getPunkSongs> }) => {
   return (
-    <div className="flex flex-col gap-2 text-slate-100">
-      <Link className="flex items-center gap-2 text-sm text-slate-400 hover:text-slate-200" to="..">
+    <div className="flex flex-col gap-2 text-foreground">
+      <Link className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground" to="..">
         ← Zurück
       </Link>
       <h2 className="text-2xl font-semibold">SSR: Full SSR</h2>
-      <p className="text-slate-300">Daten werden serverseitig geladen.</p>
-      <ul className="mt-4 list-disc space-y-2 pl-6 text-slate-300">
+      <p className="text-muted-foreground">Daten werden serverseitig geladen.</p>
+      <ul className="mt-4 list-disc space-y-2 pl-6 text-muted-foreground">
         {songs.map((song) => (
           <li key={song.title}>
             {song.title} – {song.artist}
@@ -287,13 +287,13 @@ const SsrFull = ({ songs }: { songs: ReturnType<typeof getPunkSongs> }) => {
 
 const SsrDataOnly = ({ songs }: { songs: ReturnType<typeof getPunkSongs> }) => {
   return (
-    <div className="flex flex-col gap-2 text-slate-100">
-      <Link className="flex items-center gap-2 text-sm text-slate-400 hover:text-slate-200" to="..">
+    <div className="flex flex-col gap-2 text-foreground">
+      <Link className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground" to="..">
         ← Zurück
       </Link>
       <h2 className="text-2xl font-semibold">SSR: Data Only</h2>
-      <p className="text-slate-300">Nur Daten-Loader, keine Side Effects.</p>
-      <pre className="mt-4 whitespace-pre-wrap rounded border border-slate-800 bg-slate-900/60 p-4 text-xs text-slate-300">
+      <p className="text-muted-foreground">Nur Daten-Loader, keine Side Effects.</p>
+      <pre className="mt-4 whitespace-pre-wrap rounded border border-border bg-card p-4 text-xs text-muted-foreground shadow-shell">
         {JSON.stringify(songs, null, 2)}
       </pre>
     </div>
@@ -302,7 +302,7 @@ const SsrDataOnly = ({ songs }: { songs: ReturnType<typeof getPunkSongs> }) => {
 
 const ApiLayout = () => {
   return (
-    <div className="flex flex-col gap-4 text-slate-100">
+    <div className="flex flex-col gap-4 text-foreground">
       <Outlet />
     </div>
   );
@@ -312,22 +312,22 @@ const ApiHome = () => {
   return (
     <div className="flex flex-col gap-2">
       <h2 className="text-2xl font-semibold">API Demo</h2>
-      <p className="text-slate-300">Beispiel-Route fuer API Endpoints.</p>
+      <p className="text-muted-foreground">Beispiel-Route fuer API Endpoints.</p>
     </div>
   );
 };
 
 const ApiNames = ({ names }: { names: string[] }) => {
   return (
-    <div className="flex flex-col gap-4 text-slate-100">
+    <div className="flex flex-col gap-4 text-foreground">
       <Link
-        className="flex items-center gap-2 text-sm text-slate-400 hover:text-slate-200"
+        className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
         to="../.."
       >
         ← Zurück
       </Link>
       <h2 className="text-2xl font-semibold">API Names</h2>
-      <ul className="mt-4 list-disc space-y-2 pl-6 text-slate-300">
+      <ul className="mt-4 list-disc space-y-2 pl-6 text-muted-foreground">
         {names.map((name) => (
           <li key={name}>{name}</li>
         ))}

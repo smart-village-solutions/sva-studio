@@ -10,12 +10,12 @@ type SortDirection = 'asc' | 'desc';
 
 const statusTone = (syncState: 'synced' | 'pending' | 'failed'): string => {
   if (syncState === 'synced') {
-    return 'border-emerald-600/40 bg-emerald-500/10 text-emerald-100';
+    return 'border-primary/40 bg-primary/10 text-primary';
   }
   if (syncState === 'failed') {
-    return 'border-red-600/40 bg-red-500/10 text-red-100';
+    return 'border-destructive/40 bg-destructive/10 text-destructive';
   }
-  return 'border-amber-600/40 bg-amber-500/10 text-amber-100';
+  return 'border-secondary/40 bg-secondary/10 text-secondary';
 };
 
 const STATUS_LABEL_KEYS = {
@@ -175,37 +175,37 @@ export const RolesPage = () => {
   return (
     <section className="space-y-5" aria-busy={rolesApi.isLoading}>
       <header className="space-y-2">
-        <h1 className="text-3xl font-semibold text-slate-100">{t('admin.roles.page.title')}</h1>
-        <p className="max-w-2xl text-sm text-slate-300">{t('admin.roles.page.subtitle')}</p>
+        <h1 className="text-3xl font-semibold text-foreground">{t('admin.roles.page.title')}</h1>
+        <p className="max-w-2xl text-sm text-muted-foreground">{t('admin.roles.page.subtitle')}</p>
       </header>
 
-      <div className="grid gap-3 rounded-xl border border-slate-700 bg-slate-900/40 p-4 lg:grid-cols-[1fr_auto_auto_auto]">
-        <label className="flex flex-col gap-1 text-xs uppercase tracking-wide text-slate-300">
+      <div className="grid gap-3 rounded-xl border border-border bg-card p-4 shadow-shell lg:grid-cols-[1fr_auto_auto_auto]">
+        <label className="flex flex-col gap-1 text-xs uppercase tracking-wide text-muted-foreground">
           {t('admin.roles.filters.searchLabel')}
           <input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder={t('admin.roles.filters.searchPlaceholder')}
-            className="rounded-md border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-slate-100"
+            className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
           />
         </label>
         <button
           type="button"
-          className="rounded-md border border-slate-600 px-3 py-2 text-sm text-slate-100"
+          className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
           onClick={() => setSortDirection((current) => (current === 'asc' ? 'desc' : 'asc'))}
         >
           {t('admin.roles.actions.sort')}
         </button>
         <button
           type="button"
-          className="rounded-md border border-sky-700 bg-sky-500/20 px-3 py-2 text-sm font-semibold text-sky-100"
+          className="rounded-md border border-secondary/40 bg-secondary/15 px-3 py-2 text-sm font-semibold text-secondary transition hover:bg-secondary/20"
           onClick={() => void rolesApi.reconcile()}
         >
           {t('admin.roles.actions.reconcile')}
         </button>
         <button
           type="button"
-          className="rounded-md border border-emerald-700 bg-emerald-500/20 px-3 py-2 text-sm font-semibold text-emerald-100"
+          className="rounded-md border border-primary/40 bg-primary/15 px-3 py-2 text-sm font-semibold text-primary transition hover:bg-primary/20"
           onClick={openCreateDialog}
         >
           {t('admin.roles.actions.create')}
@@ -213,7 +213,7 @@ export const RolesPage = () => {
       </div>
 
       {rolesApi.reconcileReport ? (
-        <div className="rounded-xl border border-sky-600/40 bg-sky-500/10 p-4 text-sm text-sky-100" role="status">
+        <div className="rounded-xl border border-secondary/40 bg-secondary/10 p-4 text-sm text-secondary" role="status">
           {t('admin.roles.messages.reconcileSummary', {
             checked: String(rolesApi.reconcileReport.checkedCount),
             corrected: String(rolesApi.reconcileReport.correctedCount),
@@ -224,11 +224,11 @@ export const RolesPage = () => {
       ) : null}
 
       {rolesApi.error ? (
-        <div className="rounded-xl border border-red-600/40 bg-red-500/10 p-4 text-sm text-red-100" role="alert">
+        <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive" role="alert">
           <p>{roleErrorMessage(rolesApi.error, 'admin.roles.messages.error')}</p>
           <button
             type="button"
-            className="mt-3 rounded-md border border-red-500/60 px-3 py-2 text-xs"
+            className="mt-3 rounded-md border border-destructive/40 bg-background px-3 py-2 text-xs text-destructive transition hover:bg-muted"
             onClick={() => void rolesApi.refetch()}
           >
             {t('admin.roles.actions.retry')}
@@ -236,10 +236,10 @@ export const RolesPage = () => {
         </div>
       ) : null}
 
-      <div className="overflow-x-auto rounded-xl border border-slate-700">
+      <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-shell">
         <table className="min-w-full border-collapse" aria-label={t('admin.roles.table.ariaLabel')}>
           <caption className="sr-only">{t('admin.roles.table.caption')}</caption>
-          <thead className="bg-slate-900/80 text-left text-xs uppercase tracking-wide text-slate-300">
+          <thead className="bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground">
             <tr>
               <th scope="col" className="px-3 py-3">
                 {t('admin.roles.table.headerName')}
@@ -268,7 +268,7 @@ export const RolesPage = () => {
 
               return (
                 <React.Fragment key={role.id}>
-                  <tr className="border-t border-slate-700 text-sm text-slate-100">
+                  <tr className="border-t border-border text-sm text-foreground">
                     <td className="px-3 py-3 align-top">
                       <button
                         type="button"
@@ -280,7 +280,7 @@ export const RolesPage = () => {
                         <span aria-hidden="true">{expanded ? '-' : '+'}</span>
                         <span>
                           <span className="block font-semibold">{role.roleName}</span>
-                          <span className="block text-xs text-slate-400">{role.roleKey}</span>
+                          <span className="block text-xs text-muted-foreground">{role.roleKey}</span>
                         </span>
                       </button>
                     </td>
@@ -295,7 +295,7 @@ export const RolesPage = () => {
                         {statusLabel(role.syncState)}
                       </span>
                       {role.syncError ? (
-                        <p className="mt-2 text-xs text-red-200" role="status">
+                        <p className="mt-2 text-xs text-destructive" role="status">
                           {t('admin.roles.messages.syncErrorCode', { code: role.syncError.code })}
                         </p>
                       ) : null}
@@ -303,7 +303,7 @@ export const RolesPage = () => {
                     <td className="px-3 py-3 align-top">
                       <p>{role.description ?? t('admin.roles.messages.noDescription')}</p>
                       {role.lastSyncedAt ? (
-                        <p className="mt-1 text-xs text-slate-400">
+                        <p className="mt-1 text-xs text-muted-foreground">
                           {t('admin.roles.messages.lastSyncedAt', { value: role.lastSyncedAt })}
                         </p>
                       ) : null}
@@ -313,7 +313,7 @@ export const RolesPage = () => {
                       <div className="flex justify-end gap-2">
                         <button
                           type="button"
-                          className="rounded-md border border-slate-600 px-3 py-1 text-xs text-slate-100 disabled:opacity-50"
+                          className="rounded-md border border-border bg-background px-3 py-1 text-xs text-foreground disabled:opacity-50"
                           disabled={isReadOnly}
                           onClick={() => onOpenEdit(role.id)}
                         >
@@ -322,7 +322,7 @@ export const RolesPage = () => {
                         {role.syncState === 'failed' ? (
                           <button
                             type="button"
-                            className="rounded-md border border-amber-600 px-3 py-1 text-xs text-amber-100 disabled:opacity-50"
+                            className="rounded-md border border-secondary/40 bg-secondary/10 px-3 py-1 text-xs text-secondary disabled:opacity-50"
                             disabled={role.managedBy !== 'studio'}
                             onClick={() => void rolesApi.retryRoleSync(role.id)}
                           >
@@ -331,7 +331,7 @@ export const RolesPage = () => {
                         ) : null}
                         <button
                           type="button"
-                          className="rounded-md border border-red-700 px-3 py-1 text-xs text-red-100 disabled:opacity-50"
+                          className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-1 text-xs text-destructive disabled:opacity-50"
                           disabled={isReadOnly}
                           onClick={() => setDeleteRoleId(role.id)}
                         >
@@ -340,21 +340,21 @@ export const RolesPage = () => {
                       </div>
                     </td>
                   </tr>
-                  <tr id={`role-permissions-${role.id}`} hidden={!expanded} className="border-t border-slate-800 bg-slate-900/20">
+                  <tr id={`role-permissions-${role.id}`} hidden={!expanded} className="border-t border-border bg-muted/50">
                     <td colSpan={6} className="space-y-3 px-4 py-3">
                       {role.permissions.length > 0 ? (
-                        <ul className="grid gap-2 text-xs text-slate-200 sm:grid-cols-2 lg:grid-cols-3">
+                        <ul className="grid gap-2 text-xs text-foreground sm:grid-cols-2 lg:grid-cols-3">
                           {role.permissions.map((permission) => (
-                            <li key={permission.id} className="rounded border border-slate-700 bg-slate-950/60 px-3 py-2">
+                            <li key={permission.id} className="rounded border border-border bg-background px-3 py-2">
                               <p className="font-semibold">{permission.permissionKey}</p>
                               {permission.description ? (
-                                <p className="mt-1 text-slate-400">{permission.description}</p>
+                                <p className="mt-1 text-muted-foreground">{permission.description}</p>
                               ) : null}
                             </li>
                           ))}
                         </ul>
                       ) : (
-                        <p className="text-xs text-slate-400">{t('admin.roles.messages.permissionsEmpty')}</p>
+                        <p className="text-xs text-muted-foreground">{t('admin.roles.messages.permissionsEmpty')}</p>
                       )}
                     </td>
                   </tr>
@@ -366,7 +366,7 @@ export const RolesPage = () => {
       </div>
 
       {!rolesApi.isLoading && filteredRoles.length === 0 ? (
-        <div className="rounded-xl border border-slate-700 bg-slate-900/40 p-5 text-sm text-slate-300" role="status">
+        <div className="rounded-xl border border-border bg-card p-5 text-sm text-muted-foreground shadow-shell" role="status">
           {t('admin.roles.messages.emptyState')}
         </div>
       ) : null}
@@ -382,36 +382,36 @@ export const RolesPage = () => {
       >
         <form className="grid gap-4" onSubmit={onCreate}>
           {rolesApi.mutationError ? (
-            <div className="rounded-md border border-red-600/40 bg-red-500/10 p-3 text-sm text-red-100" role="alert">
+            <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive" role="alert">
               {roleErrorMessage(rolesApi.mutationError, 'admin.roles.messages.error')}
             </div>
           ) : null}
-          <label className="flex flex-col gap-2 text-sm text-slate-200">
+          <label className="flex flex-col gap-2 text-sm text-foreground">
             <span>{t('admin.roles.createDialog.keyLabel')}</span>
             <input
               required
               value={createForm.roleKey}
               onChange={(event) => setCreateForm((current) => ({ ...current, roleKey: event.target.value }))}
-              className="rounded-md border border-slate-600 bg-slate-950 px-3 py-2"
+              className="rounded-md border border-border bg-background px-3 py-2 text-foreground"
             />
           </label>
-          <label className="flex flex-col gap-2 text-sm text-slate-200">
+          <label className="flex flex-col gap-2 text-sm text-foreground">
             <span>{t('admin.roles.createDialog.nameLabel')}</span>
             <input
               value={createForm.displayName}
               onChange={(event) => setCreateForm((current) => ({ ...current, displayName: event.target.value }))}
-              className="rounded-md border border-slate-600 bg-slate-950 px-3 py-2"
+              className="rounded-md border border-border bg-background px-3 py-2 text-foreground"
             />
           </label>
-          <label className="flex flex-col gap-2 text-sm text-slate-200">
+          <label className="flex flex-col gap-2 text-sm text-foreground">
             <span>{t('admin.roles.createDialog.descriptionLabel')}</span>
             <textarea
               value={createForm.description}
               onChange={(event) => setCreateForm((current) => ({ ...current, description: event.target.value }))}
-              className="min-h-[100px] rounded-md border border-slate-600 bg-slate-950 px-3 py-2"
+              className="min-h-[100px] rounded-md border border-border bg-background px-3 py-2 text-foreground"
             />
           </label>
-          <label className="flex flex-col gap-2 text-sm text-slate-200">
+          <label className="flex flex-col gap-2 text-sm text-foreground">
             <span>{t('admin.roles.createDialog.levelLabel')}</span>
             <input
               required
@@ -420,14 +420,14 @@ export const RolesPage = () => {
               max={100}
               value={createForm.roleLevel}
               onChange={(event) => setCreateForm((current) => ({ ...current, roleLevel: event.target.value }))}
-              className="rounded-md border border-slate-600 bg-slate-950 px-3 py-2"
+              className="rounded-md border border-border bg-background px-3 py-2 text-foreground"
             />
           </label>
 
           <div className="mt-2 flex justify-end gap-3">
             <button
               type="button"
-              className="rounded-md border border-slate-600 px-3 py-2 text-sm"
+              className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground transition hover:bg-muted"
               onClick={() => {
                 rolesApi.clearMutationError();
                 setCreateDialogOpen(false);
@@ -437,7 +437,7 @@ export const RolesPage = () => {
             </button>
             <button
               type="submit"
-              className="rounded-md border border-emerald-700 bg-emerald-500/20 px-3 py-2 text-sm font-semibold text-emerald-100"
+              className="rounded-md border border-primary/40 bg-primary/15 px-3 py-2 text-sm font-semibold text-primary transition hover:bg-primary/20"
             >
               {t('admin.roles.actions.create')}
             </button>
@@ -456,36 +456,36 @@ export const RolesPage = () => {
       >
         <form className="grid gap-4" onSubmit={onEdit}>
           {rolesApi.mutationError ? (
-            <div className="rounded-md border border-red-600/40 bg-red-500/10 p-3 text-sm text-red-100" role="alert">
+            <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive" role="alert">
               {roleErrorMessage(rolesApi.mutationError, 'admin.roles.messages.error')}
             </div>
           ) : null}
-          <label className="flex flex-col gap-2 text-sm text-slate-200">
+          <label className="flex flex-col gap-2 text-sm text-foreground">
             <span>{t('admin.roles.editDialog.keyLabel')}</span>
             <input
               value={editRole?.roleKey ?? ''}
               disabled
-              className="rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-slate-400"
+              className="rounded-md border border-border bg-muted px-3 py-2 text-muted-foreground"
             />
           </label>
-          <label className="flex flex-col gap-2 text-sm text-slate-200">
+          <label className="flex flex-col gap-2 text-sm text-foreground">
             <span>{t('admin.roles.editDialog.nameLabel')}</span>
             <input
               required
               value={editForm.displayName}
               onChange={(event) => setEditForm((current) => ({ ...current, displayName: event.target.value }))}
-              className="rounded-md border border-slate-600 bg-slate-950 px-3 py-2"
+              className="rounded-md border border-border bg-background px-3 py-2 text-foreground"
             />
           </label>
-          <label className="flex flex-col gap-2 text-sm text-slate-200">
+          <label className="flex flex-col gap-2 text-sm text-foreground">
             <span>{t('admin.roles.editDialog.descriptionLabel')}</span>
             <textarea
               value={editForm.description}
               onChange={(event) => setEditForm((current) => ({ ...current, description: event.target.value }))}
-              className="min-h-[100px] rounded-md border border-slate-600 bg-slate-950 px-3 py-2"
+              className="min-h-[100px] rounded-md border border-border bg-background px-3 py-2 text-foreground"
             />
           </label>
-          <label className="flex flex-col gap-2 text-sm text-slate-200">
+          <label className="flex flex-col gap-2 text-sm text-foreground">
             <span>{t('admin.roles.editDialog.levelLabel')}</span>
             <input
               required
@@ -494,14 +494,14 @@ export const RolesPage = () => {
               max={100}
               value={editForm.roleLevel}
               onChange={(event) => setEditForm((current) => ({ ...current, roleLevel: event.target.value }))}
-              className="rounded-md border border-slate-600 bg-slate-950 px-3 py-2"
+              className="rounded-md border border-border bg-background px-3 py-2 text-foreground"
             />
           </label>
 
           <div className="mt-2 flex justify-end gap-3">
             <button
               type="button"
-              className="rounded-md border border-slate-600 px-3 py-2 text-sm"
+              className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground transition hover:bg-muted"
               onClick={() => {
                 rolesApi.clearMutationError();
                 setEditRoleId(null);
@@ -511,7 +511,7 @@ export const RolesPage = () => {
             </button>
             <button
               type="submit"
-              className="rounded-md border border-sky-700 bg-sky-500/20 px-3 py-2 text-sm font-semibold text-sky-100"
+              className="rounded-md border border-secondary/40 bg-secondary/15 px-3 py-2 text-sm font-semibold text-secondary transition hover:bg-secondary/20"
             >
               {t('admin.roles.actions.edit')}
             </button>

@@ -26,24 +26,24 @@ export default function ErrorFallback({ error, reset }: Readonly<ErrorComponentP
       role="alert"
       className="flex min-h-[60vh] flex-col items-center justify-center text-center"
     >
-      <h1 className="mb-4 text-6xl font-bold text-red-400">Fehler</h1>
-      <h2 className="mb-6 text-2xl font-semibold text-slate-400">
+      <h1 className="mb-4 text-6xl font-bold text-destructive">Fehler</h1>
+      <h2 className="mb-6 text-2xl font-semibold text-muted-foreground">
         Ein unerwarteter Fehler ist aufgetreten
       </h2>
-      <p className="mb-8 text-slate-500">
+      <p className="mb-8 text-muted-foreground">
         Bitte versuchen Sie es erneut oder kehren Sie zur Startseite zurück.
       </p>
       <div className="flex gap-4">
         <button
           type="button"
           onClick={handleRetry}
-          className="rounded-lg bg-blue-600 px-6 py-3 font-medium text-white transition-colors hover:bg-blue-700"
+          className="rounded-lg border border-primary/40 bg-primary px-6 py-3 font-medium text-primary-foreground transition hover:opacity-90"
         >
           Erneut versuchen
         </button>
         <Link
           to="/"
-          className="rounded-lg border border-slate-600 px-6 py-3 font-medium text-slate-300 transition-colors hover:bg-slate-800"
+          className="rounded-lg border border-border bg-background px-6 py-3 font-medium text-foreground transition hover:bg-muted"
         >
           Zur Startseite
         </Link>

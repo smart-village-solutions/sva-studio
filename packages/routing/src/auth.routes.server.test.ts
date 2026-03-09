@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { authRoutePaths, resolveAuthHandlers } from './auth.routes.server';
+import { authRoutePaths, resolveAuthHandlers, wrapHandlersWithJsonErrorBoundary } from './auth.routes.server';
 
 const authServerMocks = vi.hoisted(() => {
   const response = (name: string) => new Response(JSON.stringify({ name }), { status: 200 });
@@ -18,6 +18,7 @@ const authServerMocks = vi.hoisted(() => {
     updateUserHandler: vi.fn(async () => response('updateUserHandler')),
     deactivateUserHandler: vi.fn(async () => response('deactivateUserHandler')),
     bulkDeactivateUsersHandler: vi.fn(async () => response('bulkDeactivateUsersHandler')),
+    syncUsersFromKeycloakHandler: vi.fn(async () => response('syncUsersFromKeycloakHandler')),
     getMyProfileHandler: vi.fn(async () => response('getMyProfileHandler')),
     updateMyProfileHandler: vi.fn(async () => response('updateMyProfileHandler')),
     listOrganizationsHandler: vi.fn(async () => response('listOrganizationsHandler')),
@@ -108,5 +109,32 @@ describe('auth.routes.server', () => {
 
   it('throws for unknown auth path', () => {
     expect(() => resolveAuthHandlers('/auth/unknown')).toThrow('Unknown auth route path');
+  });
+
+  it('returns a JSON 500 response when a wrapped handler throws', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const handlers = wrapHandlersWithJsonErrorBoundary({
+      GET: async () => {
+        throw new Error('boom');
+      },
+    });
+
+    const response = await handlers.GET?.({ request: new Request('http://localhost/auth/me') });
+
+    expect(response).toBeDefined();
+    expect(response?.status).toBe(500);
+    expect(response?.headers.get('Content-Type')).toContain('application/json');
+    await expect(response?.json()).resolves.toEqual({
+      error: {
+        code: 'internal_error',
+        message: 'Ein unerwarteter Server-Fehler ist aufgetreten.',
+      },
+    });
+    expect(consoleError).toHaveBeenCalledWith(
+      '[auth-route] Unhandled exception in GET handler (route will return JSON 500):',
+      expect.any(Error)
+    );
+
+    consoleError.mockRestore();
   });
 });

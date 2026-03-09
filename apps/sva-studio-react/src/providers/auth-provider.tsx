@@ -19,6 +19,7 @@ type AuthContextValue = AuthState & {
   refetch: () => Promise<void>;
   logout: () => Promise<void>;
   invalidatePermissions: () => Promise<void>;
+  updateProfile: (profile: { name: string; email?: string }) => void;
 };
 
 type AuthProviderProps = Readonly<{
@@ -108,6 +109,22 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     await loadUser(true);
   }, [loadUser]);
 
+  const updateProfile = React.useCallback((profile: { name: string; email?: string }) => {
+    if (!isMountedRef.current) {
+      return;
+    }
+
+    setUser((current) =>
+      current
+        ? {
+            ...current,
+            name: profile.name,
+            email: profile.email,
+          }
+        : current
+    );
+  }, []);
+
   const logout = React.useCallback(async () => {
     try {
       await fetch(AUTH_LOGOUT_ENDPOINT, {
@@ -132,8 +149,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       refetch,
       logout,
       invalidatePermissions,
+      updateProfile,
     }),
-    [error, invalidatePermissions, isLoading, logout, refetch, user]
+    [error, invalidatePermissions, isLoading, logout, refetch, updateProfile, user]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

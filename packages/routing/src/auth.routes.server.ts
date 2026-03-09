@@ -96,6 +96,12 @@ const authHandlerMap = {
       return mod.bulkDeactivateUsersHandler(request);
     },
   },
+  '/api/v1/iam/users/sync-keycloak': {
+    POST: async ({ request }) => {
+      const mod = await import('@sva/auth/server');
+      return mod.syncUsersFromKeycloakHandler(request);
+    },
+  },
   '/api/v1/iam/users/me/profile': {
     GET: async ({ request }) => {
       const mod = await import('@sva/auth/server');
@@ -264,6 +270,45 @@ export const resolveAuthHandlers = (path: string): AuthHandlers => {
 };
 
 /**
+ * Wraps every method handler in a try/catch that guarantees a JSON response.
+ *
+ * When an unhandled exception escapes the handler chain, TanStack Start's
+ * middleware re-throws it and the Vite dev-server error handler catches it.
+ * That handler decides between JSON and HTML based on the *request*
+ * Content-Type header — which is absent for GET requests. The result is an
+ * HTML error page delivered to the client that expects JSON.
+ *
+ * This wrapper catches any such exception at the outermost boundary (before
+ * TanStack Start's middleware) and always returns a well-formed JSON 500.
+ */
+export const wrapHandlersWithJsonErrorBoundary = (handlers: AuthHandlers): AuthHandlers => {
+  const wrapped: AuthHandlers = {};
+  for (const [method, handler] of Object.entries(handlers) as [string, NonNullable<AuthHandlers[keyof AuthHandlers]>][]) {
+    (wrapped as Record<string, typeof handler>)[method] = async (ctx) => {
+      try {
+        return await handler(ctx);
+      } catch (error) {
+        // Log here so the real cause is visible in the server terminal.
+        console.error(
+          `[auth-route] Unhandled exception in ${method} handler (route will return JSON 500):`,
+          error,
+        );
+        return new Response(
+          JSON.stringify({
+            error: {
+              code: 'internal_error',
+              message: 'Ein unerwarteter Server-Fehler ist aufgetreten.',
+            },
+          }),
+          { status: 500, headers: { 'Content-Type': 'application/json' } },
+        );
+      }
+    };
+  }
+  return wrapped;
+};
+
+/**
  * Server-side authentication route factory
  * Creates routes with actual handler implementations from @sva/auth/server
  */
@@ -274,7 +319,7 @@ const createAuthServerRouteFactory = (path: AuthRoutePath) => {
       path,
       component: () => null,
       server: {
-        handlers: resolveAuthHandlers(path),
+        handlers: wrapHandlersWithJsonErrorBoundary(resolveAuthHandlers(path)),
       },
       // TanStack router types do not currently model the `server` option in this context.
       // Keep the cast local until upstream types allow full inference here.

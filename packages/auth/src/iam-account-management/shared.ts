@@ -8,6 +8,7 @@ import {
   getKeycloakAdminClientConfigFromEnv,
 } from '../keycloak-admin-client';
 import type { AuthenticatedRequestContext } from '../middleware.server';
+import { jitProvisionAccountWithClient } from '../jit-provisioning.server';
 import { createPoolResolver, type QueryClient, withInstanceDb } from '../shared/db-helpers';
 import { resolveInstanceId } from '../shared/instance-id-resolution';
 
@@ -522,6 +523,13 @@ export const requireRoles = (
 ) => {
   const hasRole = ctx.user.roles.some((role) => roles.has(role));
   if (!hasRole) {
+    logger.warn('IAM role guard rejected request', {
+      operation: 'require_roles',
+      required_roles: [...roles],
+      user_roles: ctx.user.roles,
+      session_instance_id: ctx.user.instanceId,
+      request_id: requestId,
+    });
     return createApiError(403, 'forbidden', 'Unzureichende Berechtigungen.', requestId);
   }
   return null;
@@ -547,19 +555,50 @@ export const resolveActorInfo = async (
       resolvedInstance.reason === 'database_unavailable'
         ? 'IAM-Datenbank ist nicht erreichbar.'
         : 'Ungültige oder fehlende instanceId.';
+    logger.warn('IAM actor resolution failed during instance lookup', {
+      operation: 'resolve_actor',
+      requested_instance_id: requestedInstanceId,
+      session_instance_id: ctx.user.instanceId,
+      reason_code: code,
+      request_id: requestContext.requestId,
+      trace_id: requestContext.traceId,
+    });
     return {
       error: createApiError(status, code, message, requestContext.requestId),
     };
   }
 
   const instanceId = resolvedInstance.instanceId;
+  const mayProvisionMissingActorMembership =
+    options?.provisionMissingActorMembership === true &&
+    (!requestedInstanceId || requestedInstanceId === ctx.user.instanceId);
 
   let actorAccountId: string | undefined;
   try {
     actorAccountId = await withInstanceScopedDb(instanceId, (client) =>
       resolveActorAccountId(client, { instanceId, keycloakSubject: ctx.user.id })
     );
-  } catch {
+    if (!actorAccountId && mayProvisionMissingActorMembership) {
+      actorAccountId = (
+        await withInstanceScopedDb(instanceId, (client) =>
+          jitProvisionAccountWithClient(client, {
+            instanceId,
+            keycloakSubject: ctx.user.id,
+            requestId: requestContext.requestId,
+            traceId: requestContext.traceId,
+          })
+        )
+      ).accountId;
+    }
+  } catch (error) {
+    logger.error('IAM actor resolution failed during account lookup', {
+      operation: 'resolve_actor',
+      instance_id: instanceId,
+      session_instance_id: ctx.user.instanceId,
+      request_id: requestContext.requestId,
+      trace_id: requestContext.traceId,
+      error: error instanceof Error ? error.message : String(error),
+    });
     return {
       error: createApiError(
         503,
@@ -571,6 +610,14 @@ export const resolveActorInfo = async (
   }
 
   if (options?.requireActorMembership && !actorAccountId) {
+    logger.warn('IAM actor resolution rejected request without actor membership', {
+      operation: 'resolve_actor',
+      instance_id: instanceId,
+      session_instance_id: ctx.user.instanceId,
+      allow_jit_provision: mayProvisionMissingActorMembership,
+      request_id: requestContext.requestId,
+      trace_id: requestContext.traceId,
+    });
     return {
       error: createApiError(403, 'forbidden', 'Akteur-Account nicht gefunden.', requestContext.requestId),
     };

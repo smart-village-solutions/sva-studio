@@ -92,11 +92,11 @@ function RootDocument({ children }: Readonly<{ children: React.ReactNode }>) {
   const isShellLoading = isHydrated && isRouterPending;
 
   return (
-    <html lang="de">
+    <html lang="de" suppressHydrationWarning>
       <head>
         <HeadContent />
       </head>
-      <body className="flex min-h-screen flex-col bg-background text-foreground">
+      <body className="flex min-h-screen flex-col bg-background text-foreground" suppressHydrationWarning>
         <a
           href="#main-content"
           onClick={() => {

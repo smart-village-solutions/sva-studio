@@ -53,7 +53,10 @@ const resolveCreateUserActorContext = async (
     return roleCheck;
   }
 
-  const actorResolution = await resolveActorInfo(request, ctx, { requireActorMembership: true });
+  const actorResolution = await resolveActorInfo(request, ctx, {
+    requireActorMembership: true,
+    provisionMissingActorMembership: true,
+  });
   if ('error' in actorResolution) {
     return actorResolution.error;
   }

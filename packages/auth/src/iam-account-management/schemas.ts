@@ -38,6 +38,8 @@ export const updateUserSchema = z
 
 export const updateMyProfileSchema = z
   .object({
+    username: z.string().trim().min(1).max(255).regex(/^\S+$/).optional(),
+    email: z.string().email().optional(),
     firstName: z.string().trim().min(1).max(200).optional(),
     lastName: z.string().trim().min(1).max(200).optional(),
     displayName: z.string().trim().min(1).max(200).optional(),

@@ -70,6 +70,12 @@ const createUsersApiState = (overrides: Record<string, unknown> = {}) => ({
   updateUser: vi.fn(),
   deactivateUser: vi.fn().mockResolvedValue(true),
   bulkDeactivate: vi.fn().mockResolvedValue(true),
+  syncUsersFromKeycloak: vi.fn().mockResolvedValue({
+    importedCount: 1,
+    updatedCount: 2,
+    skippedCount: 3,
+    totalKeycloakUsers: 6,
+  }),
   ...overrides,
 });
 
@@ -229,6 +235,28 @@ describe('UserListPage', () => {
 
     await waitFor(() => {
       expect(bulkDeactivate).toHaveBeenCalledWith(['user-1', 'user-2']);
+    });
+  });
+
+  it('triggers keycloak sync and shows the sync result', async () => {
+    const syncUsersFromKeycloak = vi.fn().mockResolvedValue({
+      importedCount: 2,
+      updatedCount: 1,
+      skippedCount: 4,
+      totalKeycloakUsers: 7,
+    });
+    useUsersMock.mockReturnValue(createUsersApiState({ syncUsersFromKeycloak }));
+    useRolesMock.mockReturnValue(createRolesApiState());
+
+    render(<UserListPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Aus Keycloak synchronisieren' }));
+
+    await waitFor(() => {
+      expect(syncUsersFromKeycloak).toHaveBeenCalledTimes(1);
+      expect(
+        screen.getByText('2 importiert, 1 aktualisiert, 4 ohne passenden Instanzkontext übersprungen.')
+      ).toBeTruthy();
     });
   });
 });

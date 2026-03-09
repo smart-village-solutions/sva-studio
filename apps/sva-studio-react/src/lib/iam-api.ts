@@ -9,6 +9,7 @@ import type {
   IamOrganizationType,
   IamRoleListItem,
   IamUserDetail,
+  IamUserImportSyncReport,
   IamUserListItem,
 } from '@sva/core';
 
@@ -70,6 +71,8 @@ export type UpdateUserPayload = Partial<Omit<CreateUserPayload, 'roleIds'>> & {
 };
 
 export type UpdateMyProfilePayload = {
+  readonly username?: string;
+  readonly email?: string;
   readonly firstName?: string;
   readonly lastName?: string;
   readonly displayName?: string;
@@ -159,13 +162,33 @@ const readErrorPayload = async (response: Response): Promise<IamHttpError> => {
 };
 
 const requestJson = async <T>(input: string, init?: RequestInit): Promise<T> => {
+  const { headers: initHeaders, ...restInit } = init ?? {};
   const response = await fetch(input, {
     credentials: 'include',
-    ...init,
+    ...restInit,
+    headers: { Accept: 'application/json', ...initHeaders },
   });
 
+  // Guard: when the response is not JSON (e.g. HTML error page from the
+  // dev-server), surface a clear message instead of a cryptic parse error.
+  const contentType = response.headers.get('content-type') ?? '';
   if (!response.ok) {
+    if (!contentType.includes('application/json')) {
+      throw new IamHttpError({
+        status: response.status,
+        code: 'non_json_response',
+        message: `Server antwortete mit ${response.status} (${contentType || 'unbekannter Content-Type'}) statt JSON.`,
+      });
+    }
     throw await readErrorPayload(response);
+  }
+
+  if (!contentType.includes('application/json')) {
+    throw new IamHttpError({
+      status: response.status,
+      code: 'non_json_response',
+      message: `Erwartete JSON-Antwort, erhielt ${contentType || 'unbekannten Content-Type'}.`,
+    });
   }
 
   return (await response.json()) as T;
@@ -240,6 +263,13 @@ export const bulkDeactivateUsers = async (
     { userIds },
     true
   );
+
+export const syncUsersFromKeycloak = async (): Promise<ApiItemResponse<IamUserImportSyncReport>> =>
+  requestJson<ApiItemResponse<IamUserImportSyncReport>>('/api/v1/iam/users/sync-keycloak', {
+    method: 'POST',
+    headers: IAM_HEADERS,
+    body: JSON.stringify({}),
+  });
 
 export const getMyProfile = async (): Promise<ApiItemResponse<IamUserDetail>> =>
   requestJson<ApiItemResponse<IamUserDetail>>('/api/v1/iam/users/me/profile');

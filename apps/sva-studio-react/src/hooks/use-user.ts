@@ -2,6 +2,7 @@ import type { IamUserDetail } from '@sva/core';
 import React from 'react';
 
 import { asIamError, getUser, IamHttpError, updateUser, type UpdateUserPayload } from '../lib/iam-api';
+import { subscribeIamUsersUpdated } from '../lib/iam-user-events';
 import { useAuth } from '../providers/auth-provider';
 
 type UseUserResult = {
@@ -40,6 +41,8 @@ export const useUser = (userId: string): UseUserResult => {
   React.useEffect(() => {
     void refetch();
   }, [refetch]);
+
+  React.useEffect(() => subscribeIamUsersUpdated(() => void refetch()), [refetch]);
 
   const save = React.useCallback(
     async (payload: UpdateUserPayload) => {

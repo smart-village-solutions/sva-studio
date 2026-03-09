@@ -6,6 +6,8 @@ export type ApiErrorCode =
   | 'not_found'
   | 'invalid_request'
   | 'invalid_instance_id'
+  | 'invalid_organization_id'
+  | 'organization_inactive'
   | 'rate_limited'
   | 'csrf_validation_failed'
   | 'idempotency_key_required'
@@ -101,4 +103,68 @@ export type IamRoleListItem = {
     readonly permissionKey: string;
     readonly description?: string;
   }[];
+};
+
+export type IamOrganizationType =
+  | 'county'
+  | 'municipality'
+  | 'district'
+  | 'company'
+  | 'agency'
+  | 'other';
+
+export type IamContentAuthorPolicy = 'org_only' | 'org_or_personal';
+
+export type IamOrganizationMembershipVisibility = 'internal' | 'external';
+
+export type IamOrganizationListItem = {
+  readonly id: IamUuid;
+  readonly organizationKey: string;
+  readonly displayName: string;
+  readonly parentOrganizationId?: IamUuid;
+  readonly parentDisplayName?: string;
+  readonly organizationType: IamOrganizationType;
+  readonly contentAuthorPolicy: IamContentAuthorPolicy;
+  readonly isActive: boolean;
+  readonly depth: number;
+  readonly hierarchyPath: readonly IamUuid[];
+  readonly childCount: number;
+  readonly membershipCount: number;
+};
+
+export type IamOrganizationMembership = {
+  readonly accountId: IamUuid;
+  readonly keycloakSubject: string;
+  readonly displayName: string;
+  readonly email?: string;
+  readonly visibility: IamOrganizationMembershipVisibility;
+  readonly isDefaultContext: boolean;
+  readonly createdAt: string;
+};
+
+export type IamOrganizationChildItem = {
+  readonly id: IamUuid;
+  readonly organizationKey: string;
+  readonly displayName: string;
+  readonly isActive: boolean;
+};
+
+export type IamOrganizationDetail = IamOrganizationListItem & {
+  readonly metadata: Readonly<Record<string, unknown>>;
+  readonly memberships: readonly IamOrganizationMembership[];
+  readonly children: readonly IamOrganizationChildItem[];
+};
+
+export type IamOrganizationContextOption = {
+  readonly organizationId: IamUuid;
+  readonly organizationKey: string;
+  readonly displayName: string;
+  readonly organizationType: IamOrganizationType;
+  readonly isActive: boolean;
+  readonly isDefaultContext: boolean;
+};
+
+export type IamOrganizationContext = {
+  readonly activeOrganizationId?: IamUuid;
+  readonly organizations: readonly IamOrganizationContextOption[];
 };

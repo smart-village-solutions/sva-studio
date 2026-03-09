@@ -30,4 +30,11 @@ describe('iam seed plan', () => {
     assert.equal(editor.roleLevel, 30);
     assert.deepEqual(editor.permissionKeys, ['content.read', 'content.create', 'content.update']);
   });
+
+  it('contains hierarchical organizations for context-switch scenarios', () => {
+    assert.equal(iamSeedPlan.organizations.length, 3);
+    assert.deepEqual(iamSeedPlan.organizations[0].hierarchyPath, []);
+    assert.equal(iamSeedPlan.organizations[1].parentOrganizationId, iamSeedPlan.organizations[0].id);
+    assert.equal(iamSeedPlan.organizations[2].depth, 2);
+  });
 });

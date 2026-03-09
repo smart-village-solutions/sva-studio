@@ -16,6 +16,17 @@ import {
   updateUserHandler,
 } from '../iam-account-management.server';
 import {
+  assignOrganizationMembershipHandler,
+  createOrganizationHandler,
+  deactivateOrganizationHandler,
+  getMyOrganizationContextHandler,
+  getOrganizationHandler,
+  listOrganizationsHandler,
+  removeOrganizationMembershipHandler,
+  updateMyOrganizationContextHandler,
+  updateOrganizationHandler,
+} from '../iam-organizations.server';
+import {
   adminDataExportHandler,
   adminDataExportStatusHandler,
   dataExportHandler,
@@ -36,6 +47,7 @@ export type AuthRouteDefinition = {
   handlers: {
     GET?: (ctx: { request: Request }) => Promise<Response> | Response;
     POST?: (ctx: { request: Request }) => Promise<Response> | Response;
+    PUT?: (ctx: { request: Request }) => Promise<Response> | Response;
     PATCH?: (ctx: { request: Request }) => Promise<Response> | Response;
     DELETE?: (ctx: { request: Request }) => Promise<Response> | Response;
   };
@@ -70,6 +82,40 @@ export const authRouteDefinitions: AuthRouteDefinition[] = [
     handlers: {
       GET: async ({ request }) => getMyProfileHandler(request),
       PATCH: async ({ request }) => updateMyProfileHandler(request),
+    },
+  },
+  {
+    path: '/api/v1/iam/organizations',
+    handlers: {
+      GET: async ({ request }) => listOrganizationsHandler(request),
+      POST: async ({ request }) => createOrganizationHandler(request),
+    },
+  },
+  {
+    path: '/api/v1/iam/organizations/$organizationId',
+    handlers: {
+      GET: async ({ request }) => getOrganizationHandler(request),
+      PATCH: async ({ request }) => updateOrganizationHandler(request),
+      DELETE: async ({ request }) => deactivateOrganizationHandler(request),
+    },
+  },
+  {
+    path: '/api/v1/iam/organizations/$organizationId/memberships',
+    handlers: {
+      POST: async ({ request }) => assignOrganizationMembershipHandler(request),
+    },
+  },
+  {
+    path: '/api/v1/iam/organizations/$organizationId/memberships/$accountId',
+    handlers: {
+      DELETE: async ({ request }) => removeOrganizationMembershipHandler(request),
+    },
+  },
+  {
+    path: '/api/v1/iam/me/context',
+    handlers: {
+      GET: async ({ request }) => getMyOrganizationContextHandler(request),
+      PUT: async ({ request }) => updateMyOrganizationContextHandler(request),
     },
   },
   {

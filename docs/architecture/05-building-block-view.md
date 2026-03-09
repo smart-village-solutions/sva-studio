@@ -140,3 +140,20 @@ Neu hinzugekommene Bausteine im Change `add-keycloak-role-catalog-sync`:
    - Erweitert `iam.roles` um Mapping- und Sync-Felder (`role_key`, `external_role_name`, `sync_state`, `last_synced_at`, `last_error_code`).
 5. `apps/sva-studio-react/src/routes/admin/roles/-roles-page.tsx`
    - Zeigt Sync-Status, Retry-Aktion und manuelles Reconcile für `system_admin`.
+
+### Erweiterung 2026-03: Organisationsverwaltung und Org-Kontext
+
+Neu hinzugekommene Bausteine im Change `add-iam-organization-management-hierarchy`:
+
+1. `packages/data/migrations/up/0009_iam_organization_management.sql`
+   - Erweitert `iam.organizations` und `iam.account_organizations` um Hierarchie-, Typ-, Policy- und Kontextfelder.
+2. `packages/auth/src/iam-organizations.server.ts` + `packages/auth/src/iam-organizations/*`
+   - Fassade und Fachbausteine für Organisationsliste, Detailpflege, Memberships und sessionbasierten Org-Kontext.
+3. `packages/core/src/iam/account-management-contract.ts`
+   - Typisierte Contracts für Organisations-Read-Models, Membership-Metadaten und `GET/PUT /api/v1/iam/me/context`.
+4. `packages/routing/src/account-ui.routes.ts`
+   - Guarded Routing für `/admin/organizations` und den clientseitigen Zugriff auf den Org-Kontextpfad.
+5. `apps/sva-studio-react/src/routes/admin/organizations/*`
+   - Organisationsverwaltung mit Liste, Filtern, Detailbearbeitung und Membership-Verwaltung.
+6. `apps/sva-studio-react/src/components/OrganizationContextSwitcher.tsx`
+   - Shell-Baustein für den Wechsel des aktiven Organisationskontexts bei Multi-Org-Accounts.

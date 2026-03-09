@@ -66,7 +66,7 @@ export const OrganizationContextSwitcher = () => {
             : ''}
       </span>
       {errorMessage ? (
-        <p id={errorId} className="text-xs text-red-200" role="alert">
+        <p id={errorId} className="text-xs text-destructive" role="alert">
           {errorMessage}
         </p>
       ) : null}

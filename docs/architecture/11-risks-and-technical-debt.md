@@ -152,3 +152,13 @@ Referenzen:
    - Impact: mittel bis hoch (Konfliktfälle, fehlerhafte Parent-Beziehungen, spätere Vererbungsregressionen)
    - Wahrscheinlichkeit: mittel
    - Maßnahme: Negativtests für Zyklen/Konflikte, konservative Deaktivierung statt Delete und Folge-Change für Hierarchie-Vererbung getrennt halten
+
+22. Drift zwischen strukturierten Permission-Feldern und Legacy-`permission_key`
+   - Impact: mittel bis hoch (uneinheitliche Entscheidungsbasis, schwer reproduzierbare Berechtigungsfehler)
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: Kompatibilitätspfad explizit testen, Seeds idempotent halten und Alt-Daten schrittweise auf strukturierte Felder migrieren
+
+23. Unvollständige Invalidation bei Hierarchie- oder Permission-Mutationen
+   - Impact: hoch (temporär veraltete Authorize-Entscheidungen)
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: Invalidation-Trigger auf Hierarchie-/Permission-Änderungen erweitern, Cache-Hit/Miss-Metriken überwachen und Performance-/Stale-Nachweis nachziehen

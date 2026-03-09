@@ -63,10 +63,6 @@ const validateForm = (values: ProfileFormValues): ProfileErrors => {
   return errors;
 };
 
-const getSecuritySettingsHref = () => {
-  return import.meta.env.VITE_KEYCLOAK_ACCOUNT_URL ?? '/auth/login?redirect=%2Faccount';
-};
-
 export const AccountProfilePage = () => {
   const { user, isAuthenticated } = useAuth();
 
@@ -330,16 +326,6 @@ export const AccountProfilePage = () => {
           >
             {isSaving ? t('account.actions.saving') : t('account.actions.save')}
           </button>
-          <a
-            href={getSecuritySettingsHref()}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="rounded-md border border-slate-600 px-4 py-2 text-sm font-semibold text-slate-100"
-            aria-label={t('account.actions.openSecuritySettingsAria')}
-          >
-            {t('account.actions.openSecuritySettings')} [extern]
-          </a>
-          <p className="text-xs text-slate-400">{t('account.messages.keycloakRedirectHint')}</p>
         </div>
       </form>
     </section>

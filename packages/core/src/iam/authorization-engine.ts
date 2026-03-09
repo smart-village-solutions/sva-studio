@@ -1,4 +1,9 @@
-import type { AuthorizeRequest, AuthorizeResponse, EffectivePermission } from './authorization-contract';
+import type {
+  AuthorizeRequest,
+  AuthorizeResponse,
+  EffectivePermission,
+  IamPermissionEffect,
+} from './authorization-contract';
 
 const readString = (value: unknown): string | undefined => {
   if (typeof value !== 'string') {
@@ -46,6 +51,10 @@ const isPermissionMatch = (
     return false;
   }
 
+  if (permission.resourceId && permission.resourceId !== request.resource.id) {
+    return false;
+  }
+
   if (!permission.organizationId) {
     return true;
   }
@@ -70,6 +79,66 @@ const isPermissionMatch = (
 
   // Parent grants may be inherited by descendants unless restricted downstream.
   return permissionIndex <= targetIndex;
+};
+
+const mergePermissionAttributes = (
+  permission: EffectivePermission,
+  contextAttributes: Readonly<Record<string, unknown>> | undefined,
+  resourceAttributes: Readonly<Record<string, unknown>> | undefined
+): Readonly<Record<string, unknown>> | undefined => {
+  if (!permission.scope && !contextAttributes && !resourceAttributes) {
+    return undefined;
+  }
+
+  return {
+    ...(permission.scope ?? {}),
+    ...(contextAttributes ?? {}),
+    ...(resourceAttributes ?? {}),
+  };
+};
+
+const isPermissionActiveForScope = (
+  permission: EffectivePermission,
+  request: AuthorizeRequest,
+  targetOrganizationId: string | undefined,
+  contextAttributes: Readonly<Record<string, unknown>> | undefined,
+  resourceAttributes: Readonly<Record<string, unknown>> | undefined
+): { active: boolean; denyReason?: AuthorizeResponse['reason'] } => {
+  const attributes = mergePermissionAttributes(permission, contextAttributes, resourceAttributes);
+  const resourceGeoScope = readString(resourceAttributes?.geoScope) ?? undefined;
+  const allowedGeoScopes = readStringArray(permission.scope?.allowedGeoScopes);
+  const restrictedOrganizationIds = readStringArray(permission.scope?.restrictedOrganizationIds);
+  const requireActingAs = readBoolean(permission.scope?.requireActingAs) ?? false;
+  const forceDeny = readBoolean(permission.scope?.forceDeny) ?? false;
+  const requiredGeoScope = readBoolean(permission.scope?.requireGeoScope) ?? false;
+
+  if (requireActingAs && !request.context?.actingAsUserId) {
+    return { active: false };
+  }
+
+  if (requiredGeoScope && !resourceGeoScope) {
+    return { active: false };
+  }
+
+  if (allowedGeoScopes && (!resourceGeoScope || !allowedGeoScopes.includes(resourceGeoScope))) {
+    return { active: false };
+  }
+
+  if (permission.effect === 'deny') {
+    if (restrictedOrganizationIds && targetOrganizationId && restrictedOrganizationIds.includes(targetOrganizationId)) {
+      return { active: true, denyReason: 'hierarchy_restriction' };
+    }
+
+    if (forceDeny) {
+      return { active: true, denyReason: 'policy_conflict_restrictive_wins' };
+    }
+
+    if (!attributes || Object.keys(attributes).length === 0) {
+      return { active: true, denyReason: 'policy_conflict_restrictive_wins' };
+    }
+  }
+
+  return { active: true };
 };
 
 const parseClockMinutes = (value: string): number | null => {
@@ -201,7 +270,14 @@ export const evaluateAuthorizeDecision = (
   const matchedPermissions = permissions.filter((permission) =>
     isPermissionMatch(request, permission, targetOrganizationId, hierarchyPath)
   );
-  if (matchedPermissions.length === 0) {
+  const denyPermissions = matchedPermissions.filter(
+    (permission) => (permission.effect ?? ('allow' satisfies IamPermissionEffect)) === 'deny'
+  );
+  const allowPermissions = matchedPermissions.filter(
+    (permission) => (permission.effect ?? ('allow' satisfies IamPermissionEffect)) === 'allow'
+  );
+
+  if (matchedPermissions.length === 0 || allowPermissions.length === 0) {
     return {
       allowed: false,
       reason: 'permission_missing',
@@ -216,16 +292,46 @@ export const evaluateAuthorizeDecision = (
     };
   }
 
-  // Stage 4: ABAC rules.
-  const mergedAttributes = {
-    ...(resourceAttributes ?? {}),
-    ...(contextAttributes ?? {}),
-  };
-  const abacResult = evaluateAbacRules(request, mergedAttributes, targetOrganizationId);
-  if (!abacResult.allowed) {
+  // Stage 4: restrictive rules.
+  for (const permission of denyPermissions) {
+    const denyMatch = isPermissionActiveForScope(
+      permission,
+      request,
+      targetOrganizationId,
+      contextAttributes,
+      resourceAttributes
+    );
+    if (denyMatch.active) {
+      return {
+        allowed: false,
+        reason: denyMatch.denyReason ?? 'policy_conflict_restrictive_wins',
+        instanceId: request.instanceId,
+        action: request.action,
+        resourceType: request.resource.type,
+        resourceId: request.resource.id,
+        requestId: request.context?.requestId,
+        traceId: request.context?.traceId,
+        evaluatedAt: new Date().toISOString(),
+        diagnostics: { stage: 'restrictive_rule' },
+      };
+    }
+  }
+
+  // Stage 5: ABAC rules.
+  const abacResults = allowPermissions.map((permission) =>
+    evaluateAbacRules(
+      request,
+      mergePermissionAttributes(permission, contextAttributes, resourceAttributes),
+      targetOrganizationId
+    )
+  );
+  const firstAllowedResult = abacResults.find((result) => result.allowed);
+
+  if (!firstAllowedResult) {
+    const denyResult = abacResults.find((result) => !result.allowed);
     return {
       allowed: false,
-      reason: abacResult.reason,
+      reason: denyResult?.reason ?? 'abac_condition_unmet',
       instanceId: request.instanceId,
       action: request.action,
       resourceType: request.resource.type,
@@ -237,10 +343,10 @@ export const evaluateAuthorizeDecision = (
     };
   }
 
-  // Stage 5: final decision.
+  // Stage 6: final decision.
   return {
     allowed: true,
-    reason: abacResult.hasActiveRules ? 'allowed_by_abac' : 'allowed_by_rbac',
+    reason: firstAllowedResult.hasActiveRules ? 'allowed_by_abac' : 'allowed_by_rbac',
     instanceId: request.instanceId,
     action: request.action,
     resourceType: request.resource.type,

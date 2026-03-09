@@ -63,6 +63,9 @@ if [ "${db_exists}" != "1" ]; then
     -c "CREATE DATABASE \"${POSTGRES_DB}\";"
 fi
 
+echo "Reset database to a known migration state..."
+bash packages/data/scripts/run-migrations.sh down || true
+
 echo "Apply migrations..."
 bash packages/data/scripts/run-migrations.sh up
 
@@ -100,6 +103,9 @@ assert_count "SELECT COUNT(*) FROM iam.roles WHERE instance_id = '11111111-1111-
 assert_count "SELECT COUNT(*) FROM iam.roles WHERE instance_id = '11111111-1111-1111-1111-111111111111' AND managed_by = 'studio';" "15" "studio role count"
 assert_count "SELECT COUNT(*) FROM iam.roles WHERE instance_id = '11111111-1111-1111-1111-111111111111' AND managed_by = 'external';" "0" "external role count"
 assert_count "SELECT COUNT(*) FROM iam.permissions WHERE instance_id = '11111111-1111-1111-1111-111111111111';" "13" "permission count"
+assert_count "SELECT COUNT(*) FROM iam.permissions WHERE instance_id = '11111111-1111-1111-1111-111111111111' AND action = permission_key;" "13" "permission actions"
+assert_count "SELECT COUNT(*) FROM iam.permissions WHERE instance_id = '11111111-1111-1111-1111-111111111111' AND effect = 'allow';" "13" "permission effects"
+assert_count "SELECT COUNT(*) FROM iam.permissions WHERE instance_id = '11111111-1111-1111-1111-111111111111' AND scope = '{}'::jsonb;" "13" "permission scopes"
 assert_count "SELECT COUNT(*) FROM iam.accounts WHERE keycloak_subject LIKE 'seed:%';" "7" "account count"
 assert_count "SELECT COUNT(*) FROM iam.instance_memberships WHERE instance_id = '11111111-1111-1111-1111-111111111111';" "7" "instance memberships"
 assert_count "SELECT COUNT(*) FROM iam.account_roles WHERE instance_id = '11111111-1111-1111-1111-111111111111';" "7" "account roles"

@@ -7,6 +7,8 @@ const asUuidArrayParameter = (values: readonly IamUuid[]) => ({
   values,
 });
 
+const defaultResourceType = (permissionKey: string) => permissionKey.split('.')[0] ?? permissionKey;
+
 export const iamSeedStatements = {
   upsertInstance: (input: { id: IamUuid; instanceKey: string; displayName: string }): SqlStatement => ({
     text: `
@@ -61,17 +63,9 @@ SET
   updated_at = NOW();
 `,
     values: [
-      input.id,
-      input.instanceId,
-      input.organizationKey,
-      input.displayName,
-      input.metadata,
-      input.organizationType,
-      input.contentAuthorPolicy,
-      input.parentOrganizationId ?? null,
-      asUuidArrayParameter(input.hierarchyPath),
-      input.depth,
-      input.isActive ?? true,
+      input.id, input.instanceId, input.organizationKey, input.displayName, input.metadata, input.organizationType,
+      input.contentAuthorPolicy, input.parentOrganizationId ?? null, asUuidArrayParameter(input.hierarchyPath),
+      input.depth, input.isActive ?? true,
     ],
   }),
 
@@ -136,17 +130,41 @@ SET
     id: IamUuid;
     instanceId: IamUuid;
     permissionKey: string;
+    action?: string;
+    resourceType?: string;
+    resourceId?: string;
+    effect?: 'allow' | 'deny';
+    scope?: Readonly<Record<string, unknown>>;
     description: string;
   }): SqlStatement => ({
     text: `
-INSERT INTO iam.permissions (id, instance_id, permission_key, description)
-VALUES ($1, $2, $3, $4)
+INSERT INTO iam.permissions (
+  id,
+  instance_id,
+  permission_key,
+  action,
+  resource_type,
+  resource_id,
+  effect,
+  scope,
+  description
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9)
 ON CONFLICT (instance_id, permission_key) DO UPDATE
 SET
+  action = EXCLUDED.action,
+  resource_type = EXCLUDED.resource_type,
+  resource_id = EXCLUDED.resource_id,
+  effect = EXCLUDED.effect,
+  scope = EXCLUDED.scope,
   description = EXCLUDED.description,
   updated_at = NOW();
 `,
-    values: [input.id, input.instanceId, input.permissionKey, input.description],
+    values: [
+      input.id, input.instanceId, input.permissionKey, input.action ?? input.permissionKey,
+      input.resourceType ?? defaultResourceType(input.permissionKey), input.resourceId ?? null,
+      input.effect ?? 'allow', JSON.stringify(input.scope ?? {}), input.description,
+    ],
   }),
 
   upsertAccount: (input: {

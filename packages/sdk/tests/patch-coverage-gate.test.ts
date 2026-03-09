@@ -9,21 +9,25 @@ import { afterEach, describe, expect, it } from 'vitest';
 const createdDirs: string[] = [];
 const testDir = path.dirname(fileURLToPath(import.meta.url));
 
-type PatchCoverageGateResult = {
+type RunPatchCoverageGate = (options: {
+  rootDir?: string;
+  baseRef?: string;
+  headRef?: string;
+  targetPct?: number;
+}) => {
   passed: boolean;
+  targetPct: number;
   coveragePct: number;
+  coveredLines: number;
+  missedLines: number;
   consideredFiles: number;
   ignoredFiles: number;
-  missedLines: number;
-  uncoveredFiles: Array<{ path: string }>;
+  uncoveredFiles: Array<{
+    path: string;
+    covered: number;
+    missed: number;
+  }>;
 };
-
-type RunPatchCoverageGate = (options: {
-  rootDir: string;
-  baseRef: string;
-  headRef: string;
-  targetPct: number;
-}) => PatchCoverageGateResult;
 
 async function loadRunPatchCoverageGate(): Promise<RunPatchCoverageGate> {
   const moduleUrl = pathToFileURL(

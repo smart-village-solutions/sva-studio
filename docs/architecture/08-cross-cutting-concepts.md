@@ -163,3 +163,11 @@ Referenzen:
 - Der Org-Switcher nutzt i18n-Keys für Label, Status und Fehlerzustände und kündigt Wechsel über `aria-live="polite"` an.
 - Fehlercodes wie `invalid_organization_id`, `organization_inactive` und `csrf_validation_failed` bleiben stabil, damit UI, Audit und Betriebsanalyse konsistent korrelieren können.
 - Organisations-Read-Models liefern Parent-, Typ-, Policy- und Zählerdaten serverseitig aus einem lesefähigen Modell, um N+1-Abfragen in der UI zu vermeiden.
+
+### Ergänzung 2026-03: Strukturierte Permissions und restriktive Vererbung
+
+- `iam.permissions` bleibt rückwärtskompatibel über `permission_key`, nutzt im Read-/Compute-Pfad aber strukturierte Felder (`action`, `resource_type`, `resource_id`, `effect`, `scope`) als kanonisches Modell.
+- Org-bezogene Vererbung wird nur innerhalb derselben `instanceId` ausgewertet; Parent-Scopes werden über die `hierarchy_path` des aktiven Zielkontexts gelesen.
+- Restriktive Regeln (`effect = 'deny'`) werden vor Freigaben ausgewertet; lokale Restriktionen dürfen vererbte Parent-Freigaben einschränken.
+- Scope-Daten für Geo, Acting-As und Restriktionen werden in effektive Permissions übernommen und im Snapshot mitgeführt.
+- Der Kompatibilitätspfad liest fehlende strukturierte Felder deterministisch aus `permission_key`, bis alle relevanten Alt-Daten migriert sind.

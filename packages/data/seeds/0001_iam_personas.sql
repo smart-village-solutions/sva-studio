@@ -120,23 +120,38 @@ SET
   role_level = EXCLUDED.role_level,
   updated_at = NOW();
 
-INSERT INTO iam.permissions (id, instance_id, permission_key, description)
+INSERT INTO iam.permissions (
+  id,
+  instance_id,
+  permission_key,
+  action,
+  resource_type,
+  resource_id,
+  effect,
+  scope,
+  description
+)
 VALUES
-  ('40111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-111111111111', 'iam.user.read', 'Read account data'),
-  ('40111111-1111-1111-1111-111111111112', '11111111-1111-1111-1111-111111111111', 'iam.user.write', 'Modify account data'),
-  ('40111111-1111-1111-1111-111111111113', '11111111-1111-1111-1111-111111111111', 'iam.role.read', 'Read role assignments'),
-  ('40111111-1111-1111-1111-111111111114', '11111111-1111-1111-1111-111111111111', 'iam.role.write', 'Modify role assignments'),
-  ('40111111-1111-1111-1111-111111111115', '11111111-1111-1111-1111-111111111111', 'iam.org.read', 'Read organization data'),
-  ('40111111-1111-1111-1111-111111111116', '11111111-1111-1111-1111-111111111111', 'iam.org.write', 'Modify organization data'),
-  ('40111111-1111-1111-1111-111111111117', '11111111-1111-1111-1111-111111111111', 'content.read', 'Read content'),
-  ('40111111-1111-1111-1111-111111111118', '11111111-1111-1111-1111-111111111111', 'content.create', 'Create content'),
-  ('40111111-1111-1111-1111-111111111119', '11111111-1111-1111-1111-111111111111', 'content.update', 'Update content'),
-  ('40111111-1111-1111-1111-111111111120', '11111111-1111-1111-1111-111111111111', 'content.publish', 'Publish content'),
-  ('40111111-1111-1111-1111-111111111121', '11111111-1111-1111-1111-111111111111', 'content.moderate', 'Moderate content'),
-  ('40111111-1111-1111-1111-111111111122', '11111111-1111-1111-1111-111111111111', 'integration.manage', 'Manage integrations'),
-  ('40111111-1111-1111-1111-111111111123', '11111111-1111-1111-1111-111111111111', 'feature.toggle', 'Toggle feature flags')
+  ('40111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-111111111111', 'iam.user.read', 'iam.user.read', 'iam', NULL, 'allow', '{}'::jsonb, 'Read account data'),
+  ('40111111-1111-1111-1111-111111111112', '11111111-1111-1111-1111-111111111111', 'iam.user.write', 'iam.user.write', 'iam', NULL, 'allow', '{}'::jsonb, 'Modify account data'),
+  ('40111111-1111-1111-1111-111111111113', '11111111-1111-1111-1111-111111111111', 'iam.role.read', 'iam.role.read', 'iam', NULL, 'allow', '{}'::jsonb, 'Read role assignments'),
+  ('40111111-1111-1111-1111-111111111114', '11111111-1111-1111-1111-111111111111', 'iam.role.write', 'iam.role.write', 'iam', NULL, 'allow', '{}'::jsonb, 'Modify role assignments'),
+  ('40111111-1111-1111-1111-111111111115', '11111111-1111-1111-1111-111111111111', 'iam.org.read', 'iam.org.read', 'iam', NULL, 'allow', '{}'::jsonb, 'Read organization data'),
+  ('40111111-1111-1111-1111-111111111116', '11111111-1111-1111-1111-111111111111', 'iam.org.write', 'iam.org.write', 'iam', NULL, 'allow', '{}'::jsonb, 'Modify organization data'),
+  ('40111111-1111-1111-1111-111111111117', '11111111-1111-1111-1111-111111111111', 'content.read', 'content.read', 'content', NULL, 'allow', '{}'::jsonb, 'Read content'),
+  ('40111111-1111-1111-1111-111111111118', '11111111-1111-1111-1111-111111111111', 'content.create', 'content.create', 'content', NULL, 'allow', '{}'::jsonb, 'Create content'),
+  ('40111111-1111-1111-1111-111111111119', '11111111-1111-1111-1111-111111111111', 'content.update', 'content.update', 'content', NULL, 'allow', '{}'::jsonb, 'Update content'),
+  ('40111111-1111-1111-1111-111111111120', '11111111-1111-1111-1111-111111111111', 'content.publish', 'content.publish', 'content', NULL, 'allow', '{}'::jsonb, 'Publish content'),
+  ('40111111-1111-1111-1111-111111111121', '11111111-1111-1111-1111-111111111111', 'content.moderate', 'content.moderate', 'content', NULL, 'allow', '{}'::jsonb, 'Moderate content'),
+  ('40111111-1111-1111-1111-111111111122', '11111111-1111-1111-1111-111111111111', 'integration.manage', 'integration.manage', 'integration', NULL, 'allow', '{}'::jsonb, 'Manage integrations'),
+  ('40111111-1111-1111-1111-111111111123', '11111111-1111-1111-1111-111111111111', 'feature.toggle', 'feature.toggle', 'feature', NULL, 'allow', '{}'::jsonb, 'Toggle feature flags')
 ON CONFLICT (instance_id, permission_key) DO UPDATE
 SET
+  action = EXCLUDED.action,
+  resource_type = EXCLUDED.resource_type,
+  resource_id = EXCLUDED.resource_id,
+  effect = EXCLUDED.effect,
+  scope = EXCLUDED.scope,
   description = EXCLUDED.description,
   updated_at = NOW();
 

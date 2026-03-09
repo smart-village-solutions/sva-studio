@@ -581,11 +581,14 @@ describe('iam organizations handlers', () => {
         responseStatus: 201,
       })
     );
-    expect(state.auditCalls).toContainEqual(
-      expect.objectContaining({
-        eventType: 'organization.created',
-      })
-    );
+    const createAuditCall = state.auditCalls.find((entry) => entry.eventType === 'organization.created');
+    expect(createAuditCall).toMatchObject({
+      eventType: 'organization.created',
+      payload: expect.objectContaining({
+        organizationId: '44444444-4444-4444-8444-444444444444',
+      }),
+    });
+    expect(createAuditCall).not.toHaveProperty('subjectId');
   });
 
   it('returns the stored idempotent response for organization creation replays', async () => {
@@ -942,11 +945,14 @@ describe('iam organizations handlers', () => {
 
     expect(response.status).toBe(200);
     expect(payload.data.id).toBe('22222222-2222-4222-8222-222222222222');
-    expect(state.auditCalls).toContainEqual(
-      expect.objectContaining({
-        eventType: 'organization.deactivated',
-      })
-    );
+    const deactivateAuditCall = state.auditCalls.find((entry) => entry.eventType === 'organization.deactivated');
+    expect(deactivateAuditCall).toMatchObject({
+      eventType: 'organization.deactivated',
+      payload: expect.objectContaining({
+        organizationId: '22222222-2222-4222-8222-222222222222',
+      }),
+    });
+    expect(deactivateAuditCall).not.toHaveProperty('subjectId');
   });
 
   it('applies write rate limiting on organization deactivation', async () => {

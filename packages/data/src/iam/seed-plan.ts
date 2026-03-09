@@ -158,7 +158,15 @@ export const iamSeedPlan: IamSeedPlan = {
     },
   ],
   personas,
-  permissions: permissions.map(([id, key, description]) => ({ id, key, description })),
+  permissions: permissions.map(([id, key, description]) => ({
+    id,
+    key,
+    action: key,
+    resourceType: key.split('.')[0] ?? key,
+    effect: 'allow',
+    scope: {},
+    description,
+  })),
 };
 
 export const getPersonaSeed = (personaKey: PersonaSeed['personaKey']): PersonaSeed => {

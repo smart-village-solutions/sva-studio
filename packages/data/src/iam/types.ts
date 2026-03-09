@@ -30,6 +30,8 @@ export type PermissionKey =
   | 'integration.manage'
   | 'feature.toggle';
 
+export type PermissionEffect = 'allow' | 'deny';
+
 export type PersonaSeed = {
   readonly personaKey: PersonaKey;
   readonly roleSlug: string;
@@ -69,6 +71,11 @@ export type IamSeedPlan = {
   readonly permissions: readonly {
     readonly id: IamUuid;
     readonly key: PermissionKey;
+    readonly action: string;
+    readonly resourceType: string;
+    readonly resourceId?: string;
+    readonly effect: PermissionEffect;
+    readonly scope: Readonly<Record<string, unknown>>;
     readonly description: string;
   }[];
 };

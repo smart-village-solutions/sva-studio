@@ -67,11 +67,15 @@ export type AuthorizeResponse = {
   readonly diagnostics?: Readonly<Record<string, unknown>>;
 };
 
+export type IamPermissionEffect = 'allow' | 'deny';
+
 export type EffectivePermission = {
   readonly action: IamAction;
   readonly resourceType: string;
   readonly resourceId?: string;
   readonly organizationId?: IamUuid;
+  readonly effect?: IamPermissionEffect;
+  readonly scope?: Readonly<Record<string, unknown>>;
   readonly sourceRoleIds: readonly IamUuid[];
 };
 

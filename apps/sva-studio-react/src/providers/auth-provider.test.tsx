@@ -19,6 +19,9 @@ const AuthProbe = () => {
       <button type="button" onClick={() => void auth.invalidatePermissions()}>
         invalidate
       </button>
+      <button type="button" onClick={() => auth.updateProfile({ name: 'Ada Profile', email: 'ada@example.com' })}>
+        update-profile
+      </button>
       <button type="button" onClick={() => void auth.logout()}>
         logout
       </button>
@@ -181,6 +184,41 @@ describe('AuthProvider', () => {
 
     expect(screen.getByTestId('status').textContent).toBe('ready');
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('updates the local user profile without refetch', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        user: {
+          id: 'user-1',
+          name: 'Ada',
+          email: 'old@example.com',
+          roles: ['editor'],
+          instanceId: 'instance-1',
+        },
+      }),
+    } satisfies Partial<Response>);
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <AuthProvider>
+        <AuthProbe />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('user-name').textContent).toBe('Ada');
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'update-profile' }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('user-name').textContent).toBe('Ada Profile');
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it('resets local auth state on logout', async () => {

@@ -47,6 +47,7 @@ export const i18nResources = {
         subtitle: 'Persönliche Daten und Einstellungen verwalten',
       },
       fields: {
+        username: 'Benutzername',
         firstName: 'Vorname',
         lastName: 'Nachname',
         displayName: 'Anzeigename',
@@ -83,6 +84,8 @@ export const i18nResources = {
         keycloakRedirectHint: 'Sie werden zur Keycloak-Kontoverwaltung weitergeleitet.',
       },
       validation: {
+        usernameInvalid: 'Bitte einen Benutzernamen ohne Leerzeichen eingeben.',
+        emailInvalid: 'Bitte eine gültige E-Mail-Adresse eingeben.',
         firstNameRequired: 'Vorname ist ein Pflichtfeld.',
         lastNameRequired: 'Nachname ist ein Pflichtfeld.',
         phoneInvalid: 'Telefonnummer hat ein ungültiges Format.',
@@ -111,6 +114,8 @@ export const i18nResources = {
           edit: 'Bearbeiten',
           deactivate: 'Deaktivieren',
           bulkDeactivate: 'Auswahl deaktivieren',
+          syncKeycloak: 'Aus Keycloak synchronisieren',
+          syncing: 'Synchronisiert ...',
           retry: 'Erneut versuchen',
         },
         filters: {
@@ -167,6 +172,8 @@ export const i18nResources = {
           loading: 'Nutzer werden geladen ...',
           error: 'Nutzer konnten nicht geladen werden.',
           resultCount: '{{count}} Nutzer gefunden.',
+          syncResult:
+            '{{importedCount}} importiert, {{updatedCount}} aktualisiert, {{skippedCount}} ohne passenden Instanzkontext übersprungen.',
         },
         errors: {
           forbidden: 'Unzureichende Berechtigungen für diese Nutzeraktion.',
@@ -177,6 +184,10 @@ export const i18nResources = {
           databaseUnavailable: 'Die IAM-Datenbank ist derzeit nicht erreichbar. Bitte später erneut versuchen.',
           lastAdminProtection: 'Der letzte aktive System-Administrator kann nicht entfernt oder deaktiviert werden.',
           selfProtection: 'Das aktuell angemeldete Konto kann nicht auf diese Weise deaktiviert werden.',
+          featureDisabled: 'Die Nutzerverwaltung ist derzeit deaktiviert.',
+          unauthorized: 'Die Sitzung ist nicht mehr gültig. Bitte erneut anmelden.',
+          unexpectedHttp: 'Unerwartete Serverantwort (HTTP {{status}}).',
+          unexpectedClient: 'Technischer Fehler beim Laden der Nutzer: {{message}}',
         },
       },
       organizations: {
@@ -411,6 +422,7 @@ export const i18nResources = {
         subtitle: 'Manage personal data and preferences',
       },
       fields: {
+        username: 'Username',
         firstName: 'First name',
         lastName: 'Last name',
         displayName: 'Display name',
@@ -447,6 +459,8 @@ export const i18nResources = {
         keycloakRedirectHint: 'You will be redirected to the Keycloak account console.',
       },
       validation: {
+        usernameInvalid: 'Please enter a username without spaces.',
+        emailInvalid: 'Please enter a valid email address.',
         firstNameRequired: 'First name is required.',
         lastNameRequired: 'Last name is required.',
         phoneInvalid: 'Phone number format is invalid.',
@@ -475,6 +489,8 @@ export const i18nResources = {
           edit: 'Edit',
           deactivate: 'Deactivate',
           bulkDeactivate: 'Deactivate selection',
+          syncKeycloak: 'Sync from Keycloak',
+          syncing: 'Syncing ...',
           retry: 'Retry',
         },
         filters: {
@@ -531,6 +547,8 @@ export const i18nResources = {
           loading: 'Loading users ...',
           error: 'Users could not be loaded.',
           resultCount: '{{count}} users found.',
+          syncResult:
+            '{{importedCount}} imported, {{updatedCount}} updated, {{skippedCount}} skipped without matching instance context.',
         },
         errors: {
           forbidden: 'Insufficient permissions for this user action.',
@@ -541,6 +559,10 @@ export const i18nResources = {
           databaseUnavailable: 'The IAM database is currently unavailable. Please try again later.',
           lastAdminProtection: 'The last active system administrator cannot be removed or deactivated.',
           selfProtection: 'The currently signed-in account cannot be deactivated this way.',
+          featureDisabled: 'User management is currently disabled.',
+          unauthorized: 'Your session is no longer valid. Please sign in again.',
+          unexpectedHttp: 'Unexpected server response (HTTP {{status}}).',
+          unexpectedClient: 'Technical error while loading users: {{message}}',
         },
       },
       organizations: {

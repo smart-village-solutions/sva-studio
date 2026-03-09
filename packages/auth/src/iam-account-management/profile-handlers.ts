@@ -1,7 +1,8 @@
 import { getWorkspaceContext } from '@sva/sdk/server';
 
+import { KeycloakAdminRequestError, KeycloakAdminUnavailableError } from '../keycloak-admin-client';
 import type { AuthenticatedRequestContext } from '../middleware.server';
-import { jsonResponse, type QueryClient } from '../shared/db-helpers';
+import { jsonResponse } from '../shared/db-helpers';
 
 import { asApiItem, createApiError, parseRequestBody } from './api-helpers';
 import { ensureFeature, getFeatureFlags } from './feature-flags';
@@ -15,6 +16,8 @@ import {
   iamUserOperationsCounter,
   logger,
   resolveActorInfo,
+  resolveIdentityProvider,
+  trackKeycloakCall,
 } from './shared';
 import { validateCsrf } from './csrf';
 import { updateMyProfileSchema } from './schemas';
@@ -84,6 +87,15 @@ const createProfileNotFoundResponse = (requestId?: string): Response =>
   createApiError(404, 'not_found', 'Nutzerprofil nicht gefunden.', requestId);
 
 const handleProfileUpdateError = (actor: ActorInfo, error: unknown): Response => {
+  if (error instanceof KeycloakAdminRequestError || error instanceof KeycloakAdminUnavailableError) {
+    return createApiError(
+      503,
+      'keycloak_unavailable',
+      'Profil konnte nicht mit Keycloak synchronisiert werden.',
+      actor.requestId
+    );
+  }
+
   const errorMessage = error instanceof Error ? error.message : String(error);
   const [errorCode] = errorMessage.split(':', 2);
   if (errorCode === 'pii_encryption_required') {
@@ -133,17 +145,89 @@ export const updateMyProfileInternal = async (
   }
 
   try {
-    const detail = await updateMyProfileDetail(
-      actorContext.actor,
-      actorContext.dbKeycloakSubject,
-      payload.data
-    );
-    if (!detail) {
+    const existingDetail = await loadMyProfileDetail(actorContext.actor, actorContext.dbKeycloakSubject);
+    if (!existingDetail) {
       return createProfileNotFoundResponse(actorContext.actor.requestId);
     }
 
-    iamUserOperationsCounter.add(1, { action: 'update_my_profile', result: 'success' });
-    return jsonResponse(200, asApiItem(detail, actorContext.actor.requestId));
+    const identityProvider = resolveIdentityProvider();
+    if (!identityProvider) {
+      return createApiError(
+        503,
+        'keycloak_unavailable',
+        'Keycloak Admin API ist nicht konfiguriert.',
+        actorContext.actor.requestId
+      );
+    }
+
+    const shouldUpdateIdentity =
+      payload.data.username !== undefined ||
+      payload.data.email !== undefined ||
+      payload.data.firstName !== undefined ||
+      payload.data.lastName !== undefined ||
+      payload.data.displayName !== undefined;
+
+    let shouldRestoreIdentity = false;
+
+    try {
+      if (shouldUpdateIdentity) {
+        await trackKeycloakCall('update_my_profile', () =>
+          identityProvider.provider.updateUser(existingDetail.keycloakSubject, {
+            username: payload.data.username,
+            email: payload.data.email,
+            firstName: payload.data.firstName,
+            lastName: payload.data.lastName,
+            attributes:
+              payload.data.displayName !== undefined
+                ? {
+                    displayName: payload.data.displayName,
+                  }
+                : undefined,
+          })
+        );
+        shouldRestoreIdentity = true;
+      }
+
+      const detail = await updateMyProfileDetail(
+        actorContext.actor,
+        actorContext.dbKeycloakSubject,
+        payload.data
+      );
+      if (!detail) {
+        return createProfileNotFoundResponse(actorContext.actor.requestId);
+      }
+
+      iamUserOperationsCounter.add(1, { action: 'update_my_profile', result: 'success' });
+      return jsonResponse(200, asApiItem(detail, actorContext.actor.requestId));
+    } catch (error) {
+      if (shouldRestoreIdentity) {
+        try {
+          await trackKeycloakCall('update_my_profile_compensation', () =>
+            identityProvider.provider.updateUser(existingDetail.keycloakSubject, {
+              username: existingDetail.username,
+              email: existingDetail.email,
+              firstName: existingDetail.firstName,
+              lastName: existingDetail.lastName,
+              attributes: {
+                displayName: existingDetail.displayName,
+              },
+            })
+          );
+        } catch (compensationError) {
+          logger.error('IAM profile update compensation failed', {
+            operation: 'update_my_profile_compensation',
+            instance_id: actorContext.actor.instanceId,
+            request_id: actorContext.actor.requestId,
+            trace_id: actorContext.actor.traceId,
+            keycloak_subject: existingDetail.keycloakSubject,
+            error:
+              compensationError instanceof Error ? compensationError.message : String(compensationError),
+          });
+        }
+      }
+
+      throw error;
+    }
   } catch (error) {
     return handleProfileUpdateError(actorContext.actor, error);
   }

@@ -57,6 +57,16 @@ vi.mock('./jit-provisioning.server', () => ({
   jitProvisionAccount: jitProvisionAccountMock,
 }));
 
+const resolveInstanceIdMock = vi.fn();
+
+vi.mock('./shared/instance-id-resolution', () => ({
+  resolveInstanceId: resolveInstanceIdMock,
+}));
+
+vi.mock('./shared/db-helpers', () => ({
+  createPoolResolver: () => () => null,
+}));
+
 describe('getSessionUser', () => {
   beforeEach(() => {
     vi.resetAllMocks();
@@ -103,6 +113,53 @@ describe('getSessionUser', () => {
     expect(getOidcConfigMock).not.toHaveBeenCalled();
     expect(updateSessionMock).not.toHaveBeenCalled();
     expect(deleteSessionMock).not.toHaveBeenCalled();
+  });
+
+  it('hydrates a stale session user from the stored access token when instanceId is missing', async () => {
+    const now = Date.now();
+    const accessToken = createUnsignedJwt({
+      sub: 'user-legacy-1',
+      preferred_username: 'Legacy User',
+      email: 'legacy@example.com',
+      instanceId: '11111111-1111-1111-8111-111111111111',
+      realm_access: { roles: ['Admin'] },
+    });
+
+    getSessionMock.mockResolvedValue({
+      id: 'session-legacy-1',
+      userId: 'user-legacy-1',
+      user: {
+        id: 'user-legacy-1',
+        name: 'Legacy User',
+        email: 'legacy@example.com',
+        roles: [],
+      },
+      accessToken,
+      refreshToken: 'refresh-token-legacy',
+      expiresAt: now + 5 * 60_000,
+      createdAt: now,
+    } satisfies Session);
+
+    const { getSessionUser } = await import('./auth.server');
+    const user = await getSessionUser('session-legacy-1');
+
+    expect(user).toEqual({
+      id: 'user-legacy-1',
+      name: 'Legacy User',
+      email: 'legacy@example.com',
+      instanceId: '11111111-1111-1111-8111-111111111111',
+      roles: ['Admin', 'system_admin'],
+    });
+    expect(updateSessionMock).toHaveBeenCalledWith(
+      'session-legacy-1',
+      expect.objectContaining({
+        user: expect.objectContaining({
+          id: 'user-legacy-1',
+          instanceId: '11111111-1111-1111-8111-111111111111',
+        }),
+      })
+    );
+    expect(refreshTokenGrantMock).not.toHaveBeenCalled();
   });
 
   it('refreshes token and returns updated session user when token is expiring', async () => {
@@ -280,6 +337,60 @@ describe('getSessionUser', () => {
       instanceId: '11111111-1111-1111-8111-111111111111',
       keycloakSubject: 'user-cb-1',
     });
+  });
+
+  it('handleCallback resolves non-UUID instanceId to UUID before persisting session', async () => {
+    const resolvedUuid = '22222222-2222-2222-8222-222222222222';
+    resolveInstanceIdMock.mockResolvedValue({
+      ok: true,
+      instanceId: resolvedUuid,
+      fromInstanceKey: true,
+      created: false,
+    });
+
+    const accessToken = createUnsignedJwt({
+      sub: 'user-cb-2',
+      preferred_username: 'Tenant User',
+      email: 'tenant@example.com',
+      instanceId: 'tenant-1',
+      realm_access: { roles: ['Editor'] },
+    });
+
+    authorizationCodeGrantMock.mockResolvedValue({
+      access_token: accessToken,
+      refresh_token: 'refresh-cb-2',
+      id_token: 'id-cb-2',
+      claims: () => ({
+        sub: 'user-cb-2',
+        preferred_username: 'Tenant User',
+        email: 'tenant@example.com',
+        instanceId: 'tenant-1',
+        realm_access: { roles: ['Editor'] },
+      }),
+      expiresIn: () => 300,
+    });
+
+    const { handleCallback } = await import('./auth.server');
+    const result = await handleCallback({
+      code: 'code-3',
+      state: 'state-3',
+      loginState: {
+        codeVerifier: 'verifier-3',
+        nonce: 'nonce-3',
+        createdAt: Date.now(),
+      },
+    });
+
+    expect(result.user.instanceId).toBe(resolvedUuid);
+    expect(resolveInstanceIdMock).toHaveBeenCalledWith(
+      expect.objectContaining({ candidate: 'tenant-1' }),
+    );
+    expect(createSessionMock).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        user: expect.objectContaining({ instanceId: resolvedUuid }),
+      }),
+    );
   });
 
   it('handleCallback throws for invalid login state', async () => {

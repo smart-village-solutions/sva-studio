@@ -32,29 +32,52 @@ export const withAuthenticatedUser = async (
   request: Request,
   handler: (ctx: AuthenticatedRequestContext) => Promise<Response> | Response
 ): Promise<Response> => {
-  const sessionId = readSessionId(request);
-  if (!sessionId) {
-    logger.debug('Auth middleware rejected request without session cookie', {
+  try {
+    const sessionId = readSessionId(request);
+    if (!sessionId) {
+      logger.debug('Auth middleware rejected request without session cookie', {
+        endpoint: request.url,
+        auth_state: 'unauthenticated',
+        operation: 'auth_middleware',
+        ...buildLogContext(),
+      });
+      return unauthorized();
+    }
+
+    const user = await getSessionUser(sessionId);
+    if (!user) {
+      logger.warn('Auth middleware rejected request with invalid session', {
+        endpoint: request.url,
+        auth_state: 'invalid_session',
+        session_exists: true,
+        user_exists: false,
+        operation: 'auth_middleware',
+        ...buildLogContext(),
+      });
+      return unauthorized();
+    }
+
+    return await handler({ sessionId, user });
+  } catch (error) {
+    logger.error('Auth middleware failed unexpectedly', {
       endpoint: request.url,
-      auth_state: 'unauthenticated',
       operation: 'auth_middleware',
+      error: error instanceof Error ? error.message : String(error),
+      error_type: error instanceof Error ? error.constructor.name : typeof error,
       ...buildLogContext(),
     });
-    return unauthorized();
-  }
 
-  const user = await getSessionUser(sessionId);
-  if (!user) {
-    logger.warn('Auth middleware rejected request with invalid session', {
-      endpoint: request.url,
-      auth_state: 'invalid_session',
-      session_exists: true,
-      user_exists: false,
-      operation: 'auth_middleware',
-      ...buildLogContext(),
-    });
-    return unauthorized();
+    return new Response(
+      JSON.stringify({
+        error: {
+          code: 'internal_error',
+          message: 'Authentifizierungsfehler.',
+        },
+      }),
+      {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
   }
-
-  return handler({ sessionId, user });
 };

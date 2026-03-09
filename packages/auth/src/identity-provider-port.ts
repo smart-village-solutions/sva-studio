@@ -8,6 +8,7 @@ export type CreateIdentityUserInput = {
 };
 
 export type UpdateIdentityUserInput = {
+  readonly username?: string;
   readonly email?: string;
   readonly firstName?: string;
   readonly lastName?: string;
@@ -17,6 +18,25 @@ export type UpdateIdentityUserInput = {
 
 export type IdentityUser = {
   readonly externalId: string;
+};
+
+export type IdentityUserListQuery = {
+  readonly first?: number;
+  readonly max?: number;
+  readonly search?: string;
+  readonly email?: string;
+  readonly username?: string;
+  readonly enabled?: boolean;
+};
+
+export type IdentityListedUser = {
+  readonly externalId: string;
+  readonly username?: string;
+  readonly email?: string;
+  readonly firstName?: string;
+  readonly lastName?: string;
+  readonly enabled?: boolean;
+  readonly attributes?: Readonly<Record<string, readonly string[]>>;
 };
 
 export type IdentityManagedRoleAttributes = {
@@ -51,6 +71,7 @@ export interface IdentityProviderPort {
   createUser(input: CreateIdentityUserInput): Promise<IdentityUser>;
   updateUser(externalId: string, input: UpdateIdentityUserInput): Promise<void>;
   deactivateUser(externalId: string): Promise<void>;
+  listUsers(query?: IdentityUserListQuery): Promise<readonly IdentityListedUser[]>;
   syncRoles(externalId: string, roles: readonly string[]): Promise<void>;
   listUserRoleNames(externalId: string): Promise<readonly string[]>;
   listRoles(): Promise<readonly IdentityRole[]>;

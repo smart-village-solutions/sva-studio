@@ -24,6 +24,8 @@ Architekturprinzipien auf IST-Basis.
 - `instanceId` ist der kanonische Mandanten-Scope für IAM-Datenzugriff und Autorisierung
 - IAM-Server-Module folgen einer Fassade-plus-Kernmodul-Strategie: dünne öffentliche Entry-Points, fachliche Unterordner und explizit dokumentierte Restschuld in `core.ts`
 - Doku-getriebene Architekturpflege (arc42 + OpenSpec + ADR)
+- UI-Shell folgt semantischen Design-Tokens statt direkter Farbcodes und bleibt kompatibel zu Tailwind-/shadcn-Primitives
+- Theming wird instanzfähig gedacht: `instanceId` kann Theme-Varianten bestimmen, Light/Dark-Mode bleibt dabei ein orthogonaler Modus
 
 ### Architekturtreiber
 
@@ -34,6 +36,7 @@ Architekturprinzipien auf IST-Basis.
 - Betriebsfaehigkeit mit strukturierter Telemetrie
 - Security/Privacy-Anforderungen an Auth und Logging
 - Konsistente, zentrale Autorisierungsentscheidungen statt verteilter Fachmodul-Logik
+- Konsistente UI-Branding-Schicht mit zentraler Theme-Auflösung statt komponentenlokaler Farbdefinitionen
 
 ### Zielkonflikte (aktuell sichtbar)
 

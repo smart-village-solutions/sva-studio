@@ -23,6 +23,7 @@ Architekturprinzipien auf IST-Basis.
 - IAM folgt einer klaren Verantwortungsgrenze: Keycloak für Identity, Postgres für IAM-Fachdaten, Redis nur als Laufzeit-Cache
 - `instanceId` ist der kanonische Mandanten-Scope für IAM-Datenzugriff und Autorisierung
 - IAM-Server-Module folgen einer Fassade-plus-Kernmodul-Strategie: dünne öffentliche Entry-Points, fachliche Unterordner und explizit dokumentierte Restschuld in `core.ts`
+- HTTP-spezifische Fehlerantworten werden nicht im Core modelliert, sondern serverseitig über gemeinsame Utilities in `@sva/sdk/server`
 - Doku-getriebene Architekturpflege (arc42 + OpenSpec + ADR)
 - UI-Shell folgt semantischen Design-Tokens statt direkter Farbcodes und bleibt kompatibel zu Tailwind-/shadcn-Primitives
 - Theming wird instanzfähig gedacht: `instanceId` kann Theme-Varianten bestimmen, Light/Dark-Mode bleibt dabei ein orthogonaler Modus
@@ -35,6 +36,7 @@ Architekturprinzipien auf IST-Basis.
 - Frontend-App-Workflows werden als explizite Nx-Targets mit dedizierten Executor-Semantiken modelliert
 - Betriebsfaehigkeit mit strukturierter Telemetrie
 - Security/Privacy-Anforderungen an Auth und Logging
+- Konsistenter Fehlervertrag und korrelierbare Logs über Infrastruktur- und Fachschicht hinweg
 - Konsistente, zentrale Autorisierungsentscheidungen statt verteilter Fachmodul-Logik
 - Konsistente UI-Branding-Schicht mit zentraler Theme-Auflösung statt komponentenlokaler Farbdefinitionen
 

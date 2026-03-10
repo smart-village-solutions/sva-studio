@@ -292,6 +292,9 @@ importers:
       '@sva/core':
         specifier: workspace:*
         version: link:../core
+      '@sva/sdk':
+        specifier: workspace:*
+        version: link:../sdk
       '@tanstack/react-router':
         specifier: ^1.166.3
         version: 1.166.3(react-dom@19.2.4(react@19.2.4))(react@19.2.4)

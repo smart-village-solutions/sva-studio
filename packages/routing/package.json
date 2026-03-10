@@ -22,6 +22,7 @@
   "dependencies": {
     "@sva/auth": "workspace:*",
     "@sva/core": "workspace:*",
+    "@sva/sdk": "workspace:*",
     "@tanstack/react-router": "^1.166.3"
   },
   "devDependencies": {

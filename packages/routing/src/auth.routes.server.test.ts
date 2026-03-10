@@ -1,5 +1,53 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { authRoutePaths, resolveAuthHandlers, wrapHandlersWithJsonErrorBoundary } from './auth.routes.server';
+
+const routingLogger = vi.hoisted(() => ({
+  debug: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+}));
+
+vi.mock('@sva/sdk/server', () => ({
+  createSdkLogger: () => routingLogger,
+  getHeadersFromRequest: (request: Request) => {
+    const headers: Record<string, string> = {};
+    request.headers.forEach((value, key) => {
+      headers[key.toLowerCase()] = value;
+    });
+    return headers;
+  },
+  extractRequestIdFromHeaders: (headers: Record<string, string>) => {
+    const value = headers['x-request-id'];
+    return typeof value === 'string' && value.length <= 128 ? value : undefined;
+  },
+  extractTraceIdFromHeaders: (headers: Record<string, string>) => {
+    const traceparent = headers.traceparent;
+    const match = /^00-([0-9a-f]{32})-[0-9a-f]{16}-[0-9a-f]{2}$/i.exec(traceparent ?? '');
+    return match?.[1];
+  },
+  toJsonErrorResponse: (status: number, code: string, publicMessage?: string, options?: { requestId?: string }) =>
+    new Response(
+      JSON.stringify({
+        error: code,
+        ...(publicMessage ? { message: publicMessage } : {}),
+        ...(options?.requestId ? { requestId: options.requestId } : {}),
+      }),
+      {
+        status,
+        headers: {
+          'Content-Type': 'application/json',
+          ...(options?.requestId ? { 'X-Request-Id': options.requestId } : {}),
+        },
+      }
+    ),
+}));
+
+import {
+  authRoutePaths,
+  resolveAuthHandlers,
+  verifyAuthRouteHandlerCoverage,
+  wrapHandlersWithJsonErrorBoundary,
+} from './auth.routes.server';
 
 const authServerMocks = vi.hoisted(() => {
   const response = (name: string) => new Response(JSON.stringify({ name }), { status: 200 });
@@ -112,29 +160,80 @@ describe('auth.routes.server', () => {
   });
 
   it('returns a JSON 500 response when a wrapped handler throws', async () => {
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     const handlers = wrapHandlersWithJsonErrorBoundary({
       GET: async () => {
         throw new Error('boom');
       },
     });
 
-    const response = await handlers.GET?.({ request: new Request('http://localhost/auth/me') });
+    const response = await handlers.GET?.({
+      request: new Request('http://localhost/auth/me', {
+        headers: {
+          'X-Request-Id': 'req-123',
+          traceparent: '00-0123456789abcdef0123456789abcdef-0123456789abcdef-01',
+        },
+      }),
+    });
 
     expect(response).toBeDefined();
     expect(response?.status).toBe(500);
     expect(response?.headers.get('Content-Type')).toContain('application/json');
+    expect(response?.headers.get('X-Request-Id')).toBe('req-123');
     await expect(response?.json()).resolves.toEqual({
-      error: {
-        code: 'internal_error',
-        message: 'Ein unerwarteter Server-Fehler ist aufgetreten.',
+      error: 'internal_error',
+      message: 'Ein unerwarteter Server-Fehler ist aufgetreten.',
+      requestId: 'req-123',
+    });
+    expect(routingLogger.error).toHaveBeenCalledWith(
+      'Unhandled exception in auth route handler',
+      expect.objectContaining({
+        method: 'GET',
+        route: '/auth/me',
+        request_id: 'req-123',
+        trace_id: '0123456789abcdef0123456789abcdef',
+        error_type: 'Error',
+        error_message: 'boom',
+      })
+    );
+  });
+
+  it('logs undefined correlation ids for missing or invalid headers', async () => {
+    const handlers = wrapHandlersWithJsonErrorBoundary({
+      GET: async () => {
+        throw 'boom';
       },
     });
-    expect(consoleError).toHaveBeenCalledWith(
-      '[auth-route] Unhandled exception in GET handler (route will return JSON 500):',
-      expect.any(Error)
-    );
 
-    consoleError.mockRestore();
+    const response = await handlers.GET?.({
+      request: new Request('http://localhost/auth/me', {
+        headers: {
+          'X-Request-Id': 'x'.repeat(256),
+          traceparent: '00-invalid-0123456789abcdef-01',
+        },
+      }),
+    });
+
+    expect(response?.status).toBe(500);
+    expect(routingLogger.error).toHaveBeenCalledWith(
+      'Unhandled exception in auth route handler',
+      expect.objectContaining({
+        request_id: undefined,
+        trace_id: undefined,
+        error_type: 'string',
+        error_message: 'boom',
+      })
+    );
+  });
+
+  it('warns when auth route mappings diverge from declared paths', () => {
+    verifyAuthRouteHandlerCoverage(['/auth/login', '/auth/me'], { '/auth/login': {} }, routingLogger as never);
+
+    expect(routingLogger.warn).toHaveBeenCalledWith(
+      'Auth route mapping differs from declared auth route paths',
+      expect.objectContaining({
+        missing_paths: '/auth/me',
+        extra_paths: '',
+      })
+    );
   });
 });

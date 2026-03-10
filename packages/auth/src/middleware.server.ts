@@ -1,9 +1,9 @@
 import { parse as parseCookie } from 'cookie-es';
-import { createSdkLogger } from '@sva/sdk/server';
+import { createSdkLogger, toJsonErrorResponse } from '@sva/sdk/server';
 
 import { getSessionUser } from './auth.server';
 import { getAuthConfig } from './config';
-import { buildLogContext } from './log-context.server';
+import { buildLogContext } from './shared/log-context';
 import type { SessionUser } from './types';
 
 const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
@@ -39,7 +39,7 @@ export const withAuthenticatedUser = async (
         endpoint: request.url,
         auth_state: 'unauthenticated',
         operation: 'auth_middleware',
-        ...buildLogContext(),
+        ...buildLogContext(undefined, { includeTraceId: true }),
       });
       return unauthorized();
     }
@@ -52,7 +52,7 @@ export const withAuthenticatedUser = async (
         session_exists: true,
         user_exists: false,
         operation: 'auth_middleware',
-        ...buildLogContext(),
+        ...buildLogContext(undefined, { includeTraceId: true }),
       });
       return unauthorized();
     }
@@ -62,22 +62,13 @@ export const withAuthenticatedUser = async (
     logger.error('Auth middleware failed unexpectedly', {
       endpoint: request.url,
       operation: 'auth_middleware',
-      error: error instanceof Error ? error.message : String(error),
       error_type: error instanceof Error ? error.constructor.name : typeof error,
-      ...buildLogContext(),
+      error_message: error instanceof Error ? error.message : String(error),
+      ...buildLogContext(undefined, { includeTraceId: true }),
     });
 
-    return new Response(
-      JSON.stringify({
-        error: {
-          code: 'internal_error',
-          message: 'Authentifizierungsfehler.',
-        },
-      }),
-      {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      }
-    );
+    return toJsonErrorResponse(500, 'internal_error', 'Authentifizierungsfehler.', {
+      requestId: buildLogContext(undefined, { includeTraceId: true }).request_id,
+    });
   }
 };

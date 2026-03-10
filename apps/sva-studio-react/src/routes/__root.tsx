@@ -111,12 +111,18 @@ function RootDocument({ children }: Readonly<{ children: React.ReactNode }>) {
         </a>
         <AuthProvider>
           <ThemeProvider>
-            <Header
+            <AppShell
               isLoading={isShellLoading}
-              isMobileNavigationOpen={isMobileSidebarOpen}
-              onOpenMobileNavigation={() => setIsMobileSidebarOpen((open) => !open)}
-            />
-            <AppShell isLoading={isShellLoading} isMobileSidebarOpen={isMobileSidebarOpen} onMobileSidebarOpenChange={setIsMobileSidebarOpen}>
+              isMobileSidebarOpen={isMobileSidebarOpen}
+              onMobileSidebarOpenChange={setIsMobileSidebarOpen}
+              headerSlot={
+                <Header
+                  isLoading={isShellLoading}
+                  isMobileNavigationOpen={isMobileSidebarOpen}
+                  onOpenMobileNavigation={() => setIsMobileSidebarOpen((open) => !open)}
+                />
+              }
+            >
               {children}
             </AppShell>
           </ThemeProvider>

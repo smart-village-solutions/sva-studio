@@ -33,6 +33,16 @@ type AuthMeResponse = {
 const AUTH_ME_ENDPOINT = '/auth/me';
 const AUTH_LOGOUT_ENDPOINT = '/auth/logout';
 
+const MOCK_AUTH_ENABLED = import.meta.env.VITE_MOCK_AUTH === 'true';
+
+const MOCK_USER: SessionUser = {
+  id: 'mock-admin-001',
+  name: 'Mock Admin',
+  email: 'admin@sva-studio.local',
+  instanceId: 'mock-instance',
+  roles: ['system_admin', 'app_manager'],
+};
+
 const AuthContext = React.createContext<AuthContextValue | null>(null);
 
 const parseAuthUser = (payload: unknown): SessionUser | null => {
@@ -48,7 +58,29 @@ const parseAuthUser = (payload: unknown): SessionUser | null => {
   return candidate.user;
 };
 
+const noopAsync = async () => {};
+const noopUpdateProfile = () => {};
+
+const mockAuthValue: AuthContextValue = {
+  user: MOCK_USER,
+  isAuthenticated: true,
+  isLoading: false,
+  error: null,
+  refetch: noopAsync,
+  logout: noopAsync,
+  invalidatePermissions: noopAsync,
+  updateProfile: noopUpdateProfile,
+};
+
 export const AuthProvider = ({ children }: AuthProviderProps) => {
+  if (MOCK_AUTH_ENABLED) {
+    return <AuthContext.Provider value={mockAuthValue}>{children}</AuthContext.Provider>;
+  }
+
+  return <RealAuthProvider>{children}</RealAuthProvider>;
+};
+
+const RealAuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = React.useState<SessionUser | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<Error | null>(null);

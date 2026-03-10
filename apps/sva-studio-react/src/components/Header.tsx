@@ -5,7 +5,7 @@
  * und unterstützt einen optionalen Loading-Zustand für Skeleton-Rendering.
  */
 import { Link } from '@tanstack/react-router';
-import { Menu, Moon, Sun } from 'lucide-react';
+import { Bell, Globe, LayoutGrid, Menu, Moon, Sun } from 'lucide-react';
 import React from 'react';
 
 import { t } from '../i18n';
@@ -88,25 +88,36 @@ export default function Header({
           >
             <Menu className="h-5 w-5" />
           </button>
-          <Link className="flex min-w-0 items-center gap-3 font-semibold tracking-wide text-foreground" to="/">
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-sm font-bold text-primary-foreground">
-              SVA
-            </span>
-            <span className="min-w-0">
-              <span className="block truncate text-base font-semibold">SVA Studio</span>
-              <span className="block truncate text-xs font-normal text-muted-foreground">{themeLabel}</span>
-            </span>
-          </Link>
         </div>
-        <div className="flex flex-wrap items-center gap-3 text-muted-foreground sm:gap-4">
+        <div className="flex items-center gap-1 text-muted-foreground sm:gap-2">
           <button
             type="button"
-            className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-card px-3 text-foreground shadow-shell transition hover:bg-accent hover:text-accent-foreground"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-border bg-card text-foreground shadow-shell transition hover:bg-accent hover:text-accent-foreground"
+            aria-label={t('shell.header.switchLanguage')}
+          >
+            <Globe className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-border bg-card text-foreground shadow-shell transition hover:bg-accent hover:text-accent-foreground"
+            aria-label={t('shell.header.notifications')}
+          >
+            <Bell className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-border bg-card text-foreground shadow-shell transition hover:bg-accent hover:text-accent-foreground"
+            aria-label={t('shell.header.contextSwitch')}
+          >
+            <LayoutGrid className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-border bg-card text-foreground shadow-shell transition hover:bg-accent hover:text-accent-foreground"
             aria-label={mode === 'dark' ? t('shell.header.switchToLightMode') : t('shell.header.switchToDarkMode')}
             onClick={toggleMode}
           >
             {mode === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            <span className="hidden sm:inline">{mode === 'dark' ? t('shell.header.themeModeDark') : t('shell.header.themeModeLight')}</span>
           </button>
           {authAction}
         </div>

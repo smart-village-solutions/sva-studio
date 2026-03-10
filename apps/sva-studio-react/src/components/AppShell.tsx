@@ -14,6 +14,7 @@ type AppShellProps = Readonly<{
   isMobileSidebarOpen?: boolean;
   onMobileSidebarOpenChange?: (open: boolean) => void;
   sidebarSlot?: React.ReactNode;
+  headerSlot?: React.ReactNode;
 }>;
 
 /**
@@ -30,9 +31,10 @@ export default function AppShell({
   isMobileSidebarOpen = false,
   onMobileSidebarOpenChange,
   sidebarSlot,
+  headerSlot,
 }: AppShellProps) {
   return (
-    <div className="flex w-full flex-1 flex-col bg-background lg:min-h-[calc(100vh-4rem)] lg:flex-row">
+    <div className="flex w-full flex-1 bg-background">
       {sidebarSlot ?? (
         <Sidebar
           isLoading={isLoading}
@@ -40,12 +42,14 @@ export default function AppShell({
           onMobileOpenChange={onMobileSidebarOpenChange}
         />
       )}
-      <main
-        id="main-content"
-        tabIndex={-1}
-        className="flex min-h-0 flex-1 flex-col bg-background px-4 py-6 sm:px-6 sm:py-8 lg:px-8"
-        aria-busy={isLoading}
-      >
+      <div className="flex min-w-0 flex-1 flex-col">
+        {headerSlot}
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="flex min-h-0 flex-1 flex-col bg-background px-4 py-6 sm:px-6 sm:py-8 lg:px-8"
+          aria-busy={isLoading}
+        >
         {isLoading ? (
           <section aria-label="Inhalt lädt" className="space-y-4">
             <span role="status" aria-live="polite" className="sr-only">
@@ -61,7 +65,8 @@ export default function AppShell({
         ) : (
           children
         )}
-      </main>
+        </main>
+      </div>
     </div>
   );
 }

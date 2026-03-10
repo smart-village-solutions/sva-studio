@@ -26,6 +26,9 @@ export const i18nResources = {
         organizationContextErrorInvalid: 'Diese Organisation steht im aktuellen Kontext nicht zur Auswahl.',
         organizationContextErrorInactive: 'Inaktive Organisationen können nicht als aktiver Kontext gesetzt werden.',
         iamViewer: 'IAM-Viewer',
+        switchLanguage: 'Sprache wechseln',
+        notifications: 'Benachrichtigungen',
+        contextSwitch: 'Kontext wechseln',
       },
       sidebar: {
         ariaLabel: 'Seitenleiste',
@@ -39,6 +42,8 @@ export const i18nResources = {
         organizationManagement: 'Organisationsverwaltung',
         roleManagement: 'Rollenverwaltung',
         adminApiTest: 'Admin-API-Test',
+        collapse: 'Seitenleiste minimieren',
+        expand: 'Seitenleiste erweitern',
       },
     },
     account: {
@@ -401,6 +406,9 @@ export const i18nResources = {
         organizationContextErrorInvalid: 'This organization is not available in the current context.',
         organizationContextErrorInactive: 'Inactive organizations cannot be set as the active context.',
         iamViewer: 'IAM Viewer',
+        switchLanguage: 'Switch language',
+        notifications: 'Notifications',
+        contextSwitch: 'Switch context',
       },
       sidebar: {
         ariaLabel: 'Sidebar',
@@ -414,6 +422,8 @@ export const i18nResources = {
         organizationManagement: 'Organization Management',
         roleManagement: 'Role Management',
         adminApiTest: 'Admin API Test',
+        collapse: 'Collapse sidebar',
+        expand: 'Expand sidebar',
       },
     },
     account: {

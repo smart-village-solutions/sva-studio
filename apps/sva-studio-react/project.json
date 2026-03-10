@@ -17,7 +17,8 @@
       ],
       "outputs": [],
       "options": {
-        "command": "pnpm --filter sva-studio-react run check:i18n"
+        "cwd": "apps/sva-studio-react",
+        "command": "pnpm exec node --import tsx ../../scripts/ci/check-i18n-keys.ts"
       }
     },
     "check:account-ui-foundation": {
@@ -29,7 +30,8 @@
       ],
       "outputs": [],
       "options": {
-        "command": "pnpm --filter sva-studio-react run check:account-ui-foundation"
+        "cwd": "apps/sva-studio-react",
+        "command": "pnpm exec node --import tsx ../../scripts/ci/check-account-ui-foundation.ts"
       }
     },
     "serve": {

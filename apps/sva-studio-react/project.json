@@ -118,6 +118,20 @@
         "command": "node -e \"console.log('no integration tests configured for sva-studio-react')\""
       }
     },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": [
+        "default",
+        "^production",
+        "frontendTooling"
+      ],
+      "outputs": [],
+      "options": {
+        "cwd": "apps/sva-studio-react",
+        "command": "pnpm exec tsc --noEmit -p tsconfig.json"
+      }
+    },
     "lint": {
       "executor": "@nx/eslint:lint",
       "cache": true,

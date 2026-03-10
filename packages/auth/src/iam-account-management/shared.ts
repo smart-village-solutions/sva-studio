@@ -21,6 +21,7 @@ import type {
   IamRoleRow,
   ResolveActorOptions,
 } from './types';
+export type { ActorInfo } from './types';
 
 export const logger: ReturnType<typeof createSdkLogger> = createSdkLogger({
   component: 'iam-service',

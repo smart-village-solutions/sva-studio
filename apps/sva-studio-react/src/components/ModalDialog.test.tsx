@@ -188,7 +188,7 @@ describe('ModalDialog', () => {
 
     render(<DialogHost />);
 
-    const textarea = screen.getByRole('textbox', { name: 'Description' });
+    const textarea = screen.getByRole<HTMLTextAreaElement>('textbox', { name: 'Description' });
     textarea.focus();
     expect(document.activeElement).toBe(textarea);
 

@@ -1,5 +1,4 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { THEME_MODE_STORAGE_KEY } from '../lib/theme';

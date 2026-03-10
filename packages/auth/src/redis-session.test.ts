@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
 import {
   createSession,
   getSession,
@@ -13,16 +13,22 @@ import {
 import type { Session } from './types';
 import { getRedisClient, closeRedis } from './redis.server';
 
-const testKeyPrefix =
+const envBackup = { ...process.env };
+const currentTestKeyPrefix = (): string =>
   process.env.SVA_AUTH_REDIS_KEY_PREFIX ??
   (process.env.NODE_ENV === 'test'
     ? `vitest:${process.env.VITEST_WORKER_ID ?? process.env.VITEST_POOL_ID ?? 'default'}:`
     : '');
 
 describe('Redis Session Management', () => {
+  beforeAll(() => {
+    process.env.SVA_AUTH_REDIS_KEY_PREFIX = 'vitest:redis-session-suite:';
+  });
+
   beforeEach(async () => {
     // Clear all test sessions before each test
     const redis = getRedisClient();
+    const testKeyPrefix = currentTestKeyPrefix();
     const keys = await redis.keys(`${testKeyPrefix}session:*`);
     const loginKeys = await redis.keys(`${testKeyPrefix}login_state:*`);
     if (keys.length > 0) {
@@ -36,6 +42,7 @@ describe('Redis Session Management', () => {
   afterAll(async () => {
     // Clean up Redis connection after all tests
     await closeRedis();
+    process.env = envBackup;
   });
 
   describe('createSession & getSession', () => {
@@ -276,7 +283,7 @@ describe('Redis Session Management', () => {
       );
 
       // Get initial TTL
-      const initialTtl = await redis.ttl(`${testKeyPrefix}session:ttl-update-test`);
+      const initialTtl = await redis.ttl(`${currentTestKeyPrefix()}session:ttl-update-test`);
       expect(initialTtl).toBeGreaterThan(8);
       expect(initialTtl).toBeLessThanOrEqual(10);
 
@@ -284,7 +291,7 @@ describe('Redis Session Management', () => {
       await updateSession('ttl-update-test', { userId: 'updated-user' });
 
       // TTL should be preserved (approximately)
-      const updatedTtl = await redis.ttl(`${testKeyPrefix}session:ttl-update-test`);
+      const updatedTtl = await redis.ttl(`${currentTestKeyPrefix()}session:ttl-update-test`);
       expect(updatedTtl).toBeGreaterThan(8);
       expect(updatedTtl).toBeLessThanOrEqual(10);
     });

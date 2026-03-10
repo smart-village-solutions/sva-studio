@@ -1,17 +1,23 @@
-import { describe, it, expect, beforeEach, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
 import { createSession, getSession } from './redis-session.server';
 import { closeRedis, getRedisClient } from './redis.server';
 import type { Session } from './types';
 
-const testKeyPrefix =
+const envBackup = { ...process.env };
+const currentTestKeyPrefix = (): string =>
   process.env.SVA_AUTH_REDIS_KEY_PREFIX ??
   (process.env.NODE_ENV === 'test'
     ? `vitest:${process.env.VITEST_WORKER_ID ?? process.env.VITEST_POOL_ID ?? 'default'}:`
     : '');
 
 describe('Redis Session Persistenz (Restart/HMR)', () => {
+  beforeAll(() => {
+    process.env.SVA_AUTH_REDIS_KEY_PREFIX = 'vitest:redis-persistence-suite:';
+  });
+
   beforeEach(async () => {
     const redis = getRedisClient();
+    const testKeyPrefix = currentTestKeyPrefix();
     const keys = await redis.keys(`${testKeyPrefix}session:*`);
     if (keys.length > 0) {
       await redis.del(...keys);
@@ -20,6 +26,7 @@ describe('Redis Session Persistenz (Restart/HMR)', () => {
 
   afterAll(async () => {
     await closeRedis();
+    process.env = envBackup;
   });
 
   it('should persist sessions across Redis client restart', async () => {
@@ -63,16 +70,19 @@ describe('Redis Session Persistenz (Restart/HMR)', () => {
 
     // Directly set data using Redis client with session prefix (required for ACL)
     const testData = { test: 'value', timestamp: Date.now() };
-    await redis.set(`${testKeyPrefix}session:verify-${sessionId}`, JSON.stringify(testData));
+    await redis.set(
+      `${currentTestKeyPrefix()}session:verify-${sessionId}`,
+      JSON.stringify(testData)
+    );
 
     // Verify it's there
-    const raw = await redis.get(`${testKeyPrefix}session:verify-${sessionId}`);
+    const raw = await redis.get(`${currentTestKeyPrefix()}session:verify-${sessionId}`);
     expect(raw).toBeDefined();
     const parsed = raw ? JSON.parse(raw) : null;
     expect(parsed?.test).toBe('value');
     console.log('[PERSIST] ✓ Redis persists direct data');
 
     // Clean up
-    await redis.del(`${testKeyPrefix}session:verify-${sessionId}`);
+    await redis.del(`${currentTestKeyPrefix()}session:verify-${sessionId}`);
   });
 });

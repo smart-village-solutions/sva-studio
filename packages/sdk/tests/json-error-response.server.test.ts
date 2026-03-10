@@ -41,4 +41,36 @@ describe('toJsonErrorResponse', () => {
     expect(payload.message).toBeUndefined();
     expect(JSON.stringify(payload)).not.toContain(internalMessage);
   });
+
+  it('reuses a custom request id header when no explicit request id is passed', async () => {
+    const response = toJsonErrorResponse(429, 'rate_limited', 'Zu viele Anfragen.', {
+      headers: {
+        'x-correlation-id': 'corr-123',
+      },
+      requestIdHeaderName: 'x-correlation-id',
+    });
+
+    expect(response.headers.get('x-correlation-id')).toBe('corr-123');
+    await expect(response.json()).resolves.toEqual({
+      error: 'rate_limited',
+      message: 'Zu viele Anfragen.',
+      requestId: 'corr-123',
+    });
+  });
+
+  it('prefers an explicit request id over an existing header value', async () => {
+    const response = toJsonErrorResponse(403, 'forbidden', 'Verboten.', {
+      headers: {
+        'X-Request-Id': 'stale-id',
+      },
+      requestId: 'req-override',
+    });
+
+    expect(response.headers.get('X-Request-Id')).toBe('req-override');
+    await expect(response.json()).resolves.toEqual({
+      error: 'forbidden',
+      message: 'Verboten.',
+      requestId: 'req-override',
+    });
+  });
 });

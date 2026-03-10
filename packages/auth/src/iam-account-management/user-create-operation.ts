@@ -11,6 +11,7 @@ import { maskEmail } from './user-mapping';
 type CreateUserActorInfo = {
   instanceId: string;
   actorAccountId: string;
+  actorRoles?: readonly string[];
   requestId?: string;
   traceId?: string;
 };

@@ -1,6 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
+  logger: {
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    isLevelEnabled: vi.fn((level: string) => level === 'debug'),
+  },
   user: {
     id: 'keycloak-admin-1',
     name: 'Admin User',
@@ -73,18 +80,22 @@ vi.mock('./middleware.server', () => ({
 }));
 
 vi.mock('@sva/sdk/server', () => ({
-  createSdkLogger: () => ({
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-  }),
+  createSdkLogger: () => state.logger,
   redactObject: (value: Record<string, unknown>) => value,
   getWorkspaceContext: () => ({
     workspaceId: state.user.instanceId,
     requestId: 'req-iam-handler',
     traceId: 'trace-iam-handler',
   }),
+  toJsonErrorResponse: (status: number, code: string, publicMessage?: string, options?: { requestId?: string }) =>
+    new Response(
+      JSON.stringify({
+        error: code,
+        ...(publicMessage ? { message: publicMessage } : {}),
+        ...(options?.requestId ? { requestId: options.requestId } : {}),
+      }),
+      { status, headers: { 'Content-Type': 'application/json' } }
+    ),
   withRequestContext: async (_opts: unknown, handler: () => Promise<Response> | Response) => handler(),
 }));
 
@@ -1031,6 +1042,73 @@ describe('iam-account-management handlers (guards)', () => {
           firstName: 'Updated',
           lastName: 'Name',
           status: 'active',
+        }),
+      })
+    );
+
+    const payload = (await response.json()) as { data: { id: string; status: string } };
+    expect(response.status).toBe(200);
+    expect(payload.data.id).toBe(targetUserId);
+    expect(payload.data.status).toBe('active');
+  });
+
+  it('allows session system_admin to assign elevated roles even when actor account roles are not synced yet', async () => {
+    const systemAdminRoleId = '11111111-1111-4111-8111-111111111111';
+
+    state.user = {
+      id: 'cb01549c-0bf8-4cc0-b60b-a917cd820e30',
+      name: 'Tim Test',
+      roles: ['App', 'Account Manager', 'Extended User', 'User', 'Restricted', 'Editor', 'Admin', 'system_admin'],
+      instanceId: '35d9657e-1347-4d14-bb0d-6dafd8bdea5a',
+    };
+
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+
+      if (text.includes('MAX(r.role_level)')) {
+        return { rowCount: 1, rows: [{ max_role_level: 0 }] };
+      }
+
+      if (text.includes('FROM iam.roles') && text.includes('id = ANY($2::uuid[])')) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              id: systemAdminRoleId,
+              role_key: 'system_admin',
+              role_name: 'system_admin',
+              display_name: 'system_admin',
+              external_role_name: 'system_admin',
+              role_level: 100,
+              is_system_role: true,
+            },
+          ],
+        };
+      }
+
+      if (text.includes('WHERE a.id = $2::uuid')) {
+        return {
+          rowCount: 1,
+          rows: [buildUserDetailRow('active')],
+        };
+      }
+
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await updateUserHandler(
+      new Request(`http://localhost/api/v1/iam/users/${targetUserId}`, {
+        method: 'PATCH',
+        headers: {
+          'content-type': 'application/json',
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'http://localhost',
+        },
+        body: JSON.stringify({
+          firstName: 'Updated',
+          roleIds: [systemAdminRoleId],
         }),
       })
     );

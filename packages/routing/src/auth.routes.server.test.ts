@@ -160,6 +160,7 @@ describe('auth.routes.server', () => {
   });
 
   it('returns a JSON 500 response when a wrapped handler throws', async () => {
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     const handlers = wrapHandlersWithJsonErrorBoundary({
       GET: async () => {
         throw new Error('boom');
@@ -195,6 +196,7 @@ describe('auth.routes.server', () => {
         error_message: 'boom',
       })
     );
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
   });
 
   it('logs undefined correlation ids for missing or invalid headers', async () => {
@@ -225,6 +227,33 @@ describe('auth.routes.server', () => {
     );
   });
 
+  it.each([
+    '',
+    '01-0123456789abcdef0123456789abcdef-0123456789abcdef-01',
+    '00-0123456789abcdef0123456789abcde-0123456789abcdef-01',
+    '00-zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz-0123456789abcdef-01',
+  ])('drops invalid traceparent edge case %j without crashing', async (traceparent) => {
+    const handlers = wrapHandlersWithJsonErrorBoundary({
+      GET: async () => {
+        throw new Error('boom');
+      },
+    });
+
+    const response = await handlers.GET?.({
+      request: new Request('http://localhost/auth/me', {
+        headers: traceparent ? { traceparent } : undefined,
+      }),
+    });
+
+    expect(response?.status).toBe(500);
+    expect(routingLogger.error).toHaveBeenCalledWith(
+      'Unhandled exception in auth route handler',
+      expect.objectContaining({
+        trace_id: undefined,
+      })
+    );
+  });
+
   it('warns when auth route mappings diverge from declared paths', () => {
     verifyAuthRouteHandlerCoverage(['/auth/login', '/auth/me'], { '/auth/login': {} }, routingLogger as never);
 
@@ -235,5 +264,11 @@ describe('auth.routes.server', () => {
         extra_paths: '',
       })
     );
+  });
+
+  it('stays silent when auth route mappings match declared paths', () => {
+    verifyAuthRouteHandlerCoverage(['/auth/login', '/auth/me'], { '/auth/login': {}, '/auth/me': {} }, routingLogger as never);
+
+    expect(routingLogger.warn).not.toHaveBeenCalled();
   });
 });

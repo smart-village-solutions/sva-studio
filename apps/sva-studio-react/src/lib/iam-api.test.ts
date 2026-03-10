@@ -242,6 +242,62 @@ describe('iam-api organization helpers', () => {
       message: 'boom',
     });
   });
+
+  it('surfaces non-json success payloads as typed errors', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response('ok', {
+          status: 200,
+          headers: { 'content-type': 'text/plain' },
+        })
+      )
+    );
+
+    await expect(getOrganization('org-1')).rejects.toMatchObject({
+      status: 200,
+      code: 'non_json_response',
+    });
+  });
+
+  it('wraps network failures in asIamError', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network down')));
+
+    const error = asIamError(await updateOrganization('org-1', { displayName: 'Alpha 2' }).catch((value) => value));
+
+    expect(error).toMatchObject({
+      status: 500,
+      code: 'internal_error',
+      message: 'network down',
+    });
+  });
+
+  it('falls back to a generated idempotency key when crypto.randomUUID is unavailable', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ data: { id: 'org-1' } }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      })
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    vi.stubGlobal('crypto', {});
+
+    await createOrganization({
+      organizationKey: 'alpha',
+      displayName: 'Alpha',
+      organizationType: 'county',
+      contentAuthorPolicy: 'org_only',
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/iam/organizations',
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          'Idempotency-Key': expect.stringMatching(/^idempotency-/),
+        }),
+      })
+    );
+  });
 });
 
 describe('iam-api user sync helper', () => {

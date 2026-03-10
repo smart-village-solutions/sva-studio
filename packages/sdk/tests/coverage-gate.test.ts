@@ -328,6 +328,45 @@ describe('coverage gate', () => {
     ).toBe(true);
   });
 
+  it('maps lcov js source entries back to TypeScript hotspots when a source twin exists', () => {
+    const rootDir = createTempWorkspace();
+    fs.mkdirSync(path.join(rootDir, 'packages/sdk/src'), { recursive: true });
+    fs.writeFileSync(path.join(rootDir, 'packages/sdk/src/index.ts'), 'export const value = 1;\n');
+    writePolicy(rootDir, {
+      criticalProjects: {
+        sdk: {
+          hotspotFloors: [
+            {
+              path: 'packages/sdk/src/index.ts',
+              reason: 'TypeScript hotspot',
+              metrics: {
+                lines: 90,
+              },
+            },
+          ],
+        },
+      },
+    });
+    writeBaseline(rootDir);
+    writeCoverageSummary(rootDir, 95, 95, 95, 95);
+    writeLcovSummary(rootDir, 'packages/sdk', 'src/index.js', {
+      lf: 10,
+      lh: 8,
+      fnf: 1,
+      fnh: 1,
+      brf: 0,
+      brh: 0,
+    });
+
+    const result = runCoverageGate({ rootDir, requireSummaries: true });
+
+    expect(result.passed).toBe(false);
+    expect(
+      result.errors.some((error) => error.includes('hotspot packages/sdk/src/index.ts lines below floor'))
+    ).toBe(true);
+    expect(result.errors.some((error) => error.includes('missing hotspot coverage'))).toBe(false);
+  });
+
   it('throws for invalid policy structure', () => {
     const rootDir = createTempWorkspace();
     writePolicy(rootDir, {

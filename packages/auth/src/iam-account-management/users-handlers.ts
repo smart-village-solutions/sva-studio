@@ -59,7 +59,7 @@ type UserUpdatePlan = {
   nextRoleNames?: readonly string[];
 };
 
-const hasSystemAdminRole = (
+export const hasSystemAdminRole = (
   roles: readonly Pick<IamUserRoleAssignment, 'roleKey'>[]
 ): boolean => roles.some((role) => role.roleKey === 'system_admin');
 
@@ -71,7 +71,7 @@ const resolveExternalRoleNames = async (
   return roles.map((role) => getRoleExternalName(role));
 };
 
-const buildUpdatedUserParams = (
+export const buildUpdatedUserParams = (
   userId: string,
   instanceId: string,
   keycloakSubject: string,

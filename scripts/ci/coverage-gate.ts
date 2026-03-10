@@ -428,7 +428,7 @@ function parseLcovInfo(rootDir: string, lcovPath: string): Record<string, FileCo
     const absoluteFilePath = path.isAbsolute(sourceFilePath)
       ? sourceFilePath
       : path.join(projectRoot, sourceFilePath);
-    const normalizedFilePath = path.relative(rootDir, absoluteFilePath).split(path.sep).join('/');
+    const normalizedFilePath = normalizeLcovSourcePath(rootDir, absoluteFilePath);
 
     const lf = readLcovCounter(trimmed, 'LF');
     const lh = readLcovCounter(trimmed, 'LH');
@@ -445,6 +445,47 @@ function parseLcovInfo(rootDir: string, lcovPath: string): Record<string, FileCo
   }
 
   return fileCoverage;
+}
+
+const tsTwinCache = new Map<string, string | null>();
+
+function normalizeLcovSourcePath(rootDir: string, absoluteFilePath: string): string {
+  const relativeFilePath = path.relative(rootDir, absoluteFilePath).split(path.sep).join('/');
+  const tsTwinPath = resolveTypeScriptTwin(rootDir, absoluteFilePath);
+
+  if (tsTwinPath) {
+    return path.relative(rootDir, tsTwinPath).split(path.sep).join('/');
+  }
+
+  return relativeFilePath;
+}
+
+function resolveTypeScriptTwin(rootDir: string, absoluteFilePath: string): string | null {
+  const cached = tsTwinCache.get(absoluteFilePath);
+  if (cached !== undefined) {
+    return cached;
+  }
+
+  const extension = path.extname(absoluteFilePath);
+  if (extension !== '.js' && extension !== '.jsx') {
+    tsTwinCache.set(absoluteFilePath, null);
+    return null;
+  }
+
+  const twinPath = absoluteFilePath.replace(/\.jsx?$/, extension === '.jsx' ? '.tsx' : '.ts');
+  if (!fs.existsSync(twinPath)) {
+    tsTwinCache.set(absoluteFilePath, null);
+    return null;
+  }
+
+  const relativeTwinPath = path.relative(rootDir, twinPath).split(path.sep).join('/');
+  if (!/^(apps|packages)\//.test(relativeTwinPath)) {
+    tsTwinCache.set(absoluteFilePath, null);
+    return null;
+  }
+
+  tsTwinCache.set(absoluteFilePath, twinPath);
+  return twinPath;
 }
 
 function readLcovCounter(record: string, label: string): number {

@@ -53,4 +53,42 @@ describe('iam.models', () => {
     expect(filtered).toHaveLength(2);
     expect(filtered.map((entry) => entry.action)).toEqual(['content.read', 'iam.user.read']);
   });
+
+  it('keeps permissions without organization when no org filter is selected', () => {
+    const permissions: EffectivePermission[] = [
+      {
+        action: 'feature.toggle',
+        resourceType: 'feature',
+        sourceRoleIds: ['role-3'],
+      },
+    ];
+
+    expect(filterPermissions(permissions, { query: 'feature' })).toHaveLength(1);
+  });
+
+  it('ignores empty diagnostics and trimmed organization filters', () => {
+    const decision = mapAuthorizeDecision({
+      allowed: true,
+      reason: 'allowed_by_rbac',
+      instanceId: '11111111-1111-1111-8111-111111111111',
+      action: 'content.read',
+      resourceType: 'content',
+      diagnostics: {},
+    } as AuthorizeResponse);
+
+    const filtered = filterPermissions(
+      [
+        {
+          action: 'content.read',
+          resourceType: 'content',
+          organizationId: 'org-a',
+          sourceRoleIds: ['role-1'],
+        },
+      ],
+      { organizationIds: [' org-a ', ''] }
+    );
+
+    expect(decision.reasonCode).toBeUndefined();
+    expect(filtered).toHaveLength(1);
+  });
 });

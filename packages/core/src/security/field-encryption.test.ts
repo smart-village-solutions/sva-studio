@@ -71,4 +71,33 @@ describe('field-encryption', () => {
       expect(err.context?.activeKeyId).toBe('missing');
     }
   });
+
+  it('returns null config when env variables are incomplete', () => {
+    expect(parseFieldEncryptionConfigFromEnv({ IAM_PII_ACTIVE_KEY_ID: 'key-a' })).toBeNull();
+    expect(parseFieldEncryptionConfigFromEnv({ IAM_PII_KEYRING_JSON: '{}' })).toBeNull();
+  });
+
+  it('throws for invalid keyring json and malformed entries', () => {
+    expect(() =>
+      parseFieldEncryptionConfigFromEnv({
+        IAM_PII_ACTIVE_KEY_ID: 'key-a',
+        IAM_PII_KEYRING_JSON: '{',
+      })
+    ).toThrow('not valid JSON');
+
+    expect(() =>
+      parseFieldEncryptionConfigFromEnv({
+        IAM_PII_ACTIVE_KEY_ID: 'key-a',
+        IAM_PII_KEYRING_JSON: JSON.stringify({ 'key-a': '' }),
+      })
+    ).toThrow('Invalid key material');
+  });
+
+  it('throws for invalid payload format and aad mismatches on decrypt', () => {
+    const { config, keyring } = createKeyring();
+    const encrypted = encryptFieldValue('secret', config, 'aad-1');
+
+    expect(() => decryptFieldValue('invalid-payload', keyring)).toThrow('Invalid encrypted payload format.');
+    expect(() => decryptFieldValue(encrypted, keyring, 'aad-2')).toThrow();
+  });
 });

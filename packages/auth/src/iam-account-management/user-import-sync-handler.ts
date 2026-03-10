@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import type { IamUserImportSyncReport } from '@sva/core';
 import { getWorkspaceContext } from '@sva/sdk/server';
 
@@ -9,6 +10,7 @@ import {
 import type { AuthenticatedRequestContext } from '../middleware.server';
 import type { QueryClient } from '../shared/db-helpers';
 import { jsonResponse } from '../shared/db-helpers';
+import { buildLogContext } from '../shared/log-context';
 
 import { ADMIN_ROLES } from './constants';
 import { asApiItem, createApiError } from './api-helpers';
@@ -28,6 +30,8 @@ import {
 } from './shared';
 
 const KEYCLOAK_PAGE_SIZE = 100;
+const SKIPPED_USER_DEBUG_LOG_CAP = 20;
+const SKIPPED_USER_INSTANCE_SAMPLE_CAP = 5;
 
 const readSingleAttribute = (
   attributes: Readonly<Record<string, readonly string[]>> | undefined,
@@ -56,6 +60,9 @@ const resolveDisplayName = (user: IdentityListedUser): string => {
 
 const protectOptionalField = (value: string | undefined, context: string): string | null =>
   value ? protectField(value, context) : null;
+
+const toSubjectRef = (value: string): string =>
+  createHash('sha256').update(value).digest('hex').slice(0, 12);
 
 const UPSERT_ACCOUNT_QUERY = `
 INSERT INTO iam.accounts (
@@ -189,7 +196,34 @@ export const syncUsersFromKeycloakInternal = async (
 
   try {
     const listedUsers = await listAllKeycloakUsers();
-    const matchingUsers = listedUsers.filter((user) => matchesInstanceId(user, actorResolution.actor.instanceId));
+    const matchingUsers: IdentityListedUser[] = [];
+    const debugLoggingEnabled = logger.isLevelEnabled('debug');
+    let skippedCount = 0;
+    let debugLoggedCount = 0;
+    const skippedInstanceIds = new Set<string>();
+
+    for (const user of listedUsers) {
+      if (matchesInstanceId(user, actorResolution.actor.instanceId)) {
+        matchingUsers.push(user);
+        continue;
+      }
+
+      skippedCount += 1;
+      const userInstanceId = readSingleAttribute(user.attributes, 'instanceId');
+      if (userInstanceId && skippedInstanceIds.size < SKIPPED_USER_INSTANCE_SAMPLE_CAP) {
+        skippedInstanceIds.add(userInstanceId);
+      }
+
+      if (debugLoggingEnabled && debugLoggedCount < SKIPPED_USER_DEBUG_LOG_CAP) {
+        debugLoggedCount += 1;
+        logger.debug('Skipped Keycloak user during IAM sync due to instance mismatch', {
+          operation: 'sync_keycloak_users',
+          subject_ref: toSubjectRef(user.externalId),
+          user_instance_id: userInstanceId,
+          expected_instance_id: actorResolution.actor.instanceId,
+        });
+      }
+    }
 
     const report = await withInstanceScopedDb(actorResolution.actor.instanceId, async (client) => {
       let importedCount = 0;
@@ -210,7 +244,7 @@ export const syncUsersFromKeycloakInternal = async (
       const summary: IamUserImportSyncReport = {
         importedCount,
         updatedCount,
-        skippedCount: listedUsers.length - matchingUsers.length,
+        skippedCount,
         totalKeycloakUsers: listedUsers.length,
       };
 
@@ -232,6 +266,15 @@ export const syncUsersFromKeycloakInternal = async (
 
       return summary;
     });
+
+    if (skippedCount > 0) {
+      logger.info('Keycloak user sync skipped users because instance ids did not match', {
+        operation: 'sync_keycloak_users',
+        skipped_count: skippedCount,
+        sample_instance_ids: Array.from(skippedInstanceIds).join(','),
+        ...buildLogContext(actorResolution.actor.instanceId, { includeTraceId: true }),
+      });
+    }
 
     iamUserOperationsCounter.add(1, { action: 'sync_keycloak_users', result: 'success' });
     return jsonResponse(200, asApiItem(report, actorResolution.actor.requestId));

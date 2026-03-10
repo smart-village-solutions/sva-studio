@@ -26,6 +26,12 @@ export {
 } from './middleware/request-context.server';
 
 // ============================================================================
+// HTTP Response Utilities
+// ============================================================================
+export type { JsonErrorResponseOptions } from './server/json-error-response.server';
+export { toJsonErrorResponse } from './server/json-error-response.server';
+
+// ============================================================================
 // Observability Context (AsyncLocalStorage)
 // ============================================================================
 export type {

@@ -24,6 +24,7 @@ mit Bezug auf die arc42-Abschnitte.
 - `ADR-015-csrf-schutz-strategie.md`
 - `ADR-016-idp-abstraktionsschicht.md`
 - `ADR-017-modulare-iam-server-bausteine.md`
+- `ADR-018-auth-routing-error-contract-und-korrelation.md`
 
 ### Zuordnung zu arc42-Abschnitten
 
@@ -33,6 +34,7 @@ mit Bezug auf die arc42-Abschnitte.
 - Abschnitt 08/10 (Querschnitt/Qualität): ADR-015
 - Abschnitt 05/06/07/08 (Bausteine/Laufzeit/Deployment/Querschnitt): ADR-016
 - Abschnitt 04/05/06/08/10/11 (Strategie/Bausteine/Laufzeit/Querschnitt/Qualität/Risiken): ADR-017
+- Abschnitt 04/05/06/08/10/11 (Strategie/Bausteine/Laufzeit/Querschnitt/Qualität/Risiken): ADR-018
 
 ### IAM-spezifische ADR-Verweise (Masterplan)
 
@@ -43,6 +45,7 @@ mit Bezug auf die arc42-Abschnitte.
 - ADR-013: RBAC+ABAC-Hybridmodell (Abschnitt 05, 06, 08, 10)
 - ADR-014: Postgres `NOTIFY` für Cache-Invalidierung (Abschnitt 06, 08, 10)
 - ADR-017: Modulare IAM-Server-Bausteine und Restschuldführung an realen Kernmodulen (Abschnitt 04, 05, 06, 08, 10, 11)
+- ADR-018: Header-basierte Korrelation und gemeinsamer Error-Response-Contract für Auth-/IAM-Routen (Abschnitt 04, 05, 06, 08, 10, 11)
 
 ### Pflege-Regel
 

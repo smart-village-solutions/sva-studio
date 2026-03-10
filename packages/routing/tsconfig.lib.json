@@ -5,9 +5,10 @@
     "declaration": true,
     "declarationMap": true,
     "paths": {
-      "@sva/core": ["../core/src/index.ts"],
-      "@sva/auth": ["../auth/src/index.ts"],
-      "@sva/auth/server": ["../auth/src/index.server.ts"]
+      "@sva/core": ["../core/dist/index.d.ts"],
+      "@sva/auth": ["../auth/dist/index.d.ts"],
+      "@sva/auth/server": ["../auth/dist/index.server.d.ts"],
+      "@sva/sdk/server": ["../sdk/dist/server.d.ts"]
     }
   },
   "include": ["src/**/*.ts"]

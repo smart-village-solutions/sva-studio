@@ -28,24 +28,41 @@ paths:
       responses:
         '200':
           description: Erfolgreiche Antwort
+          headers:
+            X-Request-Id:
+              description: Stabile Korrelations-ID für Support und Fehleranalyse.
+              schema:
+                type: string
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/MePermissionsResponse'
         '400':
           description: Ungültiger Request
+          headers:
+            X-Request-Id:
+              schema:
+                type: string
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/IamApiErrorResponse'
         '403':
           description: Instanz-Kontext verweigert
+          headers:
+            X-Request-Id:
+              schema:
+                type: string
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/IamApiErrorResponse'
         '503':
           description: Datenbank nicht verfügbar
+          headers:
+            X-Request-Id:
+              schema:
+                type: string
           content:
             application/json:
               schema:
@@ -63,18 +80,30 @@ paths:
       responses:
         '200':
           description: Erfolgreiche Entscheidung (Allow oder Deny)
+          headers:
+            X-Request-Id:
+              schema:
+                type: string
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuthorizeResponse'
         '400':
           description: Ungültiger Request
+          headers:
+            X-Request-Id:
+              schema:
+                type: string
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/IamApiErrorResponse'
         '503':
           description: Datenbank nicht verfügbar
+          headers:
+            X-Request-Id:
+              schema:
+                type: string
           content:
             application/json:
               schema:
@@ -95,6 +124,12 @@ components:
             - invalid_organization_id
             - instance_scope_mismatch
             - database_unavailable
+        message:
+          type: string
+          description: Optionale öffentliche Diagnoseinformation, nicht für Client-Logik bestimmt.
+        requestId:
+          type: string
+          description: Echo der Korrelations-ID zusätzlich zum Header `X-Request-Id`.
     AuthorizeRequest:
       type: object
       required:

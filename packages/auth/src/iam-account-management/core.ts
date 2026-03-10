@@ -1,10 +1,10 @@
-import { withRequestContext } from '@sva/sdk/server';
-import { createSdkLogger } from '@sva/sdk/server';
+import { createSdkLogger, toJsonErrorResponse, withRequestContext } from '@sva/sdk/server';
 
 import {
   withAuthenticatedUser,
   type AuthenticatedRequestContext,
 } from '../middleware.server';
+import { buildLogContext } from '../shared/log-context';
 
 import { getFeatureFlags } from './feature-flags';
 import { liveInternal, readyInternal } from './platform-handlers';
@@ -45,25 +45,18 @@ const withAuthenticatedIamHandler = (
     try {
       return await withAuthenticatedUser(request, (ctx) => handler(request, ctx));
     } catch (error) {
+      const logContext = buildLogContext(undefined, { includeTraceId: true });
       logger.error('IAM request failed unexpectedly', {
         operation: 'iam_request',
         endpoint: request.url,
-        error: error instanceof Error ? error.message : String(error),
         error_type: error instanceof Error ? error.constructor.name : typeof error,
+        error_message: error instanceof Error ? error.message : String(error),
+        ...logContext,
       });
 
-      return new Response(
-        JSON.stringify({
-          error: {
-            code: 'internal_error',
-            message: 'Unbehandelter IAM-Fehler.',
-          },
-        }),
-        {
-          status: 500,
-          headers: { 'Content-Type': 'application/json' },
-        }
-      );
+      return toJsonErrorResponse(500, 'internal_error', 'Unbehandelter IAM-Fehler.', {
+        requestId: logContext.request_id,
+      });
     }
   });
 

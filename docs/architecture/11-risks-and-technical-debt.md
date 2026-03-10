@@ -28,7 +28,7 @@ Schulden auf IST-Basis.
 3. Routing-Komplexität durch dualen Ansatz (file-based + code-based)
    - Impact: mittel (Fehlkonfiguration/Bundling-Fehler)
    - Wahrscheinlichkeit: mittel
-   - Maßnahme: klare Source-of-Truth Regeln und mehr Routing-Tests
+   - Maßnahme: klare Source-of-Truth Regeln und mehr Routing-Tests; die produktive Auth-Registry ist inzwischen auf `packages/routing` konsolidiert, Rest-Risiko bleibt für generelle Route-Komposition
 
 4. Observability-Abhängigkeit von korrekter Initialisierung
    - Impact: mittel (blinde Flecken im Betrieb)

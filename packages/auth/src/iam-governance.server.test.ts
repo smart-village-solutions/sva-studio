@@ -32,6 +32,15 @@ vi.mock('@sva/sdk/server', () => ({
     requestId: 'req-governance',
     traceId: 'trace-governance',
   }),
+  toJsonErrorResponse: (status: number, code: string, publicMessage?: string, options?: { requestId?: string }) =>
+    new Response(
+      JSON.stringify({
+        error: code,
+        ...(publicMessage ? { message: publicMessage } : {}),
+        ...(options?.requestId ? { requestId: options.requestId } : {}),
+      }),
+      { status, headers: { 'Content-Type': 'application/json' } }
+    ),
   withRequestContext: async (_opts: unknown, handler: () => Promise<Response> | Response) => handler(),
 }));
 

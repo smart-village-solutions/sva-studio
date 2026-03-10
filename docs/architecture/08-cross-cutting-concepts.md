@@ -58,6 +58,9 @@ gleichzeitig beeinflussen.
 - Label-Whitelist und PII-Blockliste in OTEL/Promtail
 - IAM-Authorize/Cache-Logs nutzen strukturierte Operations (`cache_lookup`, `cache_invalidate`, `cache_stale_detected`, `cache_invalidate_failed`)
 - Korrelationsfelder `request_id` und `trace_id` sind im IAM-Pfad verpflichtend
+- Außerhalb des `AsyncLocalStorage`-Kontexts werden `request_id` und `trace_id` best effort aus validierten Headern (`X-Request-Id`, `traceparent`) extrahiert
+- Serverseitige JSON-Fehlerantworten für Auth-/IAM-Hotspots nutzen den flachen Vertrag `{ error: string, message?: string }` und setzen best effort `X-Request-Id`
+- Keycloak-User-Sync loggt übersprungene Benutzer nur begrenzt, auf Debug-Level und ohne Klartext-PII; Summary-Logs enthalten `skipped_count` und `sample_instance_ids`
 - Role-Sync- und Reconcile-Pfade verwenden ausschließlich den SDK-Logger; `console.*` ist serverseitig ausgeschlossen
 - Role-Sync-Audit nutzt ein einheitliches Schema mit `workspace_id`, `operation`, `result`, `error_code?`, `request_id`, `trace_id?`, `span_id?`
 - Zusätzliche Metriken für den Rollenpfad: `iam_role_sync_operations_total` und `iam_role_drift_backlog`
@@ -74,6 +77,7 @@ gleichzeitig beeinflussen.
 ### Fehlerbehandlung und Resilienz
 
 - OTEL-Init ist fehlertolerant (App läuft weiter ohne Telemetrie)
+- Die Routing-Error-Boundary liefert auch bei unerwarteten Fehlern immer JSON statt HTML-Fallbackseiten
 - Redis-Reconnect mit Backoff und Max-Retry Logik
 - Auth-Flow mit klaren Redirect-Fehlerpfaden (`auth=error`, `auth=state-expired`)
 - Root-Route nutzt ein zentrales `errorComponent` für unbehandelte Laufzeitfehler mit Retry-Option

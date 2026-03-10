@@ -59,16 +59,17 @@ export const withAuthenticatedUser = async (
 
     return await handler({ sessionId, user });
   } catch (error) {
+    const logContext = buildLogContext(undefined, { includeTraceId: true });
     logger.error('Auth middleware failed unexpectedly', {
       endpoint: request.url,
       operation: 'auth_middleware',
       error_type: error instanceof Error ? error.constructor.name : typeof error,
       error_message: error instanceof Error ? error.message : String(error),
-      ...buildLogContext(undefined, { includeTraceId: true }),
+      ...logContext,
     });
 
     return toJsonErrorResponse(500, 'internal_error', 'Authentifizierungsfehler.', {
-      requestId: buildLogContext(undefined, { includeTraceId: true }).request_id,
+      requestId: logContext.request_id,
     });
   }
 };

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { createTranslator } from './translate';
+import { createTranslator, createTranslatorFromResources } from './translate';
 import { i18nResources } from './resources';
 
 describe('translate', () => {
@@ -44,22 +44,7 @@ describe('translate', () => {
         },
       },
     };
-    const read = (locale: 'de' | 'en', key: string) => {
-      const segments = key.split('.');
-      let pointer: unknown = resources[locale];
-
-      for (const segment of segments) {
-        if (!pointer || typeof pointer !== 'object' || !(segment in pointer)) {
-          return undefined;
-        }
-
-        pointer = (pointer as Record<string, unknown>)[segment];
-      }
-
-      return typeof pointer === 'string' ? pointer : undefined;
-    };
-
-    const t = (key: string) => read('en', key) ?? read('de', key) ?? key;
+    const t = createTranslatorFromResources(resources, 'en');
     expect(t('account.profile.title')).toBe('Mein Konto');
   });
 

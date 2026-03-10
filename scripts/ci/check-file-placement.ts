@@ -1,4 +1,6 @@
 import { execSync } from 'node:child_process';
+import fs from 'node:fs';
+import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const allowedRootMarkdown = new Set([
@@ -39,6 +41,11 @@ const legacyDocs = [
 export interface FilePlacementOptions {
   stagedOnly?: boolean;
 }
+
+const ignoredDirectories = new Set(['.git', '.nx', 'node_modules', 'dist', 'build', 'coverage']);
+
+export const isGeneratedSourceArtifact = (filePath: string): boolean =>
+  /^packages\/[^/]+\/src\/.+\.(?:js|d\.ts|d\.ts\.map)$/.test(filePath);
 
 export const getTrackedFiles = (
   options: FilePlacementOptions = {},
@@ -102,6 +109,39 @@ export const findFilePlacementViolations = (files: readonly string[]): string[] 
   return violations;
 };
 
+export const findGeneratedSourceArtifacts = (rootDir: string): string[] => {
+  const packagesDir = path.join(rootDir, 'packages');
+  const artifacts: string[] = [];
+
+  const walk = (dir: string): void => {
+    if (!fs.existsSync(dir)) {
+      return;
+    }
+
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (ignoredDirectories.has(entry.name)) {
+        continue;
+      }
+
+      const entryPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        walk(entryPath);
+        continue;
+      }
+
+      const relativePath = path.relative(rootDir, entryPath).split(path.sep).join('/');
+      if (isGeneratedSourceArtifact(relativePath)) {
+        artifacts.push(relativePath);
+      }
+    }
+  };
+
+  walk(packagesDir);
+  artifacts.sort();
+  return artifacts;
+};
+
 export const runFilePlacementCheck = (
   args: readonly string[],
   runCommand?: (command: string) => string
@@ -109,6 +149,11 @@ export const runFilePlacementCheck = (
   const stagedOnly = args.includes('--staged');
   const files = getTrackedFiles({ stagedOnly }, runCommand);
   const violations = findFilePlacementViolations(files);
+  const generatedArtifacts = findGeneratedSourceArtifacts(process.cwd());
+
+  for (const artifact of generatedArtifacts) {
+    violations.push(`${artifact}: generated JS/type artifact must be removed from package source tree`);
+  }
 
   if (violations.length > 0) {
     console.error('\nFile placement policy violations:\n');

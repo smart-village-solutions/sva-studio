@@ -76,6 +76,24 @@
             "functions": 80,
             "branches": 45
           }
+        },
+        {
+          "path": "packages/auth/src/auth-server/session.ts",
+          "reason": "Session-Hydration und Token-Refresh als kritische Auth-Lebenszykluslogik",
+          "metrics": {
+            "lines": 85,
+            "functions": 95,
+            "branches": 65
+          }
+        },
+        {
+          "path": "packages/auth/src/auth-server/shared.ts",
+          "reason": "Shared Auth-Session-Helfer mit Claim- und Ablaufzeit-Entscheidungen",
+          "metrics": {
+            "lines": 95,
+            "functions": 95,
+            "branches": 75
+          }
         }
       ]
     },
@@ -113,6 +131,71 @@
             "lines": 80,
             "functions": 95,
             "branches": 70
+          }
+        },
+        {
+          "path": "packages/core/src/iam/authorization-engine.ts",
+          "reason": "Zentrale IAM-Entscheidungslogik für Restrictions, Scope und Deny-Priorität",
+          "metrics": {
+            "lines": 85,
+            "functions": 95,
+            "branches": 75
+          }
+        }
+      ]
+    },
+    "sdk": {
+      "minimumFloors": {
+        "lines": 40,
+        "statements": 40,
+        "functions": 50,
+        "branches": 35
+      },
+      "hotspotFloors": [
+        {
+          "path": "packages/sdk/src/middleware/request-context.server.ts",
+          "reason": "Request-Context-Aufbau steuert Trace-, Request- und Workspace-Metadaten",
+          "metrics": {
+            "lines": 85,
+            "functions": 90,
+            "branches": 80
+          }
+        },
+        {
+          "path": "packages/sdk/src/observability/monitoring-client.bridge.server.ts",
+          "reason": "Bridge zwischen optionalem Monitoring-Provider und SDK-Observability",
+          "metrics": {
+            "lines": 90,
+            "functions": 95,
+            "branches": 85
+          }
+        }
+      ]
+    },
+    "sva-studio-react": {
+      "minimumFloors": {
+        "lines": 45,
+        "statements": 45,
+        "functions": 35,
+        "branches": 35
+      },
+      "hotspotFloors": [
+        {
+          "path": "apps/sva-studio-react/src/lib/iam-user-events.ts",
+          "reason": "Browser-/SSR-Grenze für IAM-Event-Benachrichtigungen",
+          "metrics": {
+            "lines": 95,
+            "functions": 95,
+            "branches": 95
+          }
+        },
+        {
+          "path": "apps/sva-studio-react/src/routes/admin/-iam.models.ts",
+          "reason": "Admin-IAM-Modellfilter und Diagnostic-Normalisierung für UI-Entscheidungen",
+          "metrics": {
+            "lines": 90,
+            "functions": 95,
+            "branches": 80
           }
         }
       ]

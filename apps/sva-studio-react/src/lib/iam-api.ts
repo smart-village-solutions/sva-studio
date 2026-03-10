@@ -32,6 +32,70 @@ export class IamHttpError extends Error {
   }
 }
 
+type IamErrorPayload =
+  | ApiErrorResponse
+  | {
+      readonly error?: string;
+      readonly message?: string;
+      readonly requestId?: string;
+    };
+
+const isDevelopmentEnvironment = () => {
+  if (process.env.NODE_ENV === 'production') {
+    return false;
+  }
+  const meta = import.meta as ImportMeta & { env?: { DEV?: boolean; PROD?: boolean } };
+  if (typeof meta.env?.DEV === 'boolean') {
+    return meta.env.DEV;
+  }
+  return true;
+};
+
+const readRequestIdFromResponse = (response: Response, payload?: { requestId?: string }) =>
+  payload?.requestId ?? response.headers.get('X-Request-Id') ?? undefined;
+
+const readErrorCodeFromPayload = (payload: IamErrorPayload | null): string | undefined => {
+  if (!payload) {
+    return undefined;
+  }
+  if (typeof payload.error === 'string') {
+    return payload.error;
+  }
+  if (typeof payload.error === 'object' && payload.error && 'code' in payload.error) {
+    const code = (payload.error as { code?: unknown }).code;
+    return typeof code === 'string' ? code : undefined;
+  }
+  return undefined;
+};
+
+const readErrorMessageFromPayload = (payload: IamErrorPayload | null, status: number): string => {
+  if (!payload) {
+    return `http_${status}`;
+  }
+  if (typeof payload.error === 'object' && payload.error && 'message' in payload.error) {
+    const message = (payload.error as { message?: unknown }).message;
+    if (typeof message === 'string') {
+      return message;
+    }
+  }
+  if (typeof payload.message === 'string') {
+    return payload.message;
+  }
+  return `http_${status}`;
+};
+
+const logDevelopmentApiError = (input: { requestId?: string; status: number; code: string }) => {
+  if (!isDevelopmentEnvironment()) {
+    return;
+  }
+
+  console.error('IAM API request failed', {
+    request_id: input.requestId,
+    status: input.status,
+    code: input.code,
+  });
+};
+
 export const asIamError = (error: unknown): IamHttpError =>
   error instanceof IamHttpError
     ? error
@@ -151,13 +215,17 @@ const createIdempotencyKey = () => {
 };
 
 const readErrorPayload = async (response: Response): Promise<IamHttpError> => {
-  const payload = (await response.json().catch(() => null)) as ApiErrorResponse | null;
+  const payload = (await response.json().catch(() => null)) as IamErrorPayload | null;
+  const code = readErrorCodeFromPayload(payload) ?? 'internal_error';
+  const requestId = readRequestIdFromResponse(response, payload);
+
+  logDevelopmentApiError({ requestId, status: response.status, code });
 
   return new IamHttpError({
     status: response.status,
-    code: payload?.error.code ?? 'internal_error',
-    message: payload?.error.message ?? `http_${response.status}`,
-    requestId: payload?.requestId,
+    code,
+    message: readErrorMessageFromPayload(payload, response.status),
+    requestId,
   });
 };
 
@@ -174,10 +242,17 @@ const requestJson = async <T>(input: string, init?: RequestInit): Promise<T> => 
   const contentType = response.headers.get('content-type') ?? '';
   if (!response.ok) {
     if (!contentType.includes('application/json')) {
+      const requestId = response.headers.get('X-Request-Id') ?? undefined;
+      logDevelopmentApiError({
+        requestId,
+        status: response.status,
+        code: 'non_json_response',
+      });
       throw new IamHttpError({
         status: response.status,
         code: 'non_json_response',
         message: `Server antwortete mit ${response.status} (${contentType || 'unbekannter Content-Type'}) statt JSON.`,
+        requestId,
       });
     }
     throw await readErrorPayload(response);

@@ -48,9 +48,13 @@ Liefert die effektiven Berechtigungen für den aktuell authentifizierten Benutze
 
 ```json
 {
-  "error": "invalid_instance_id"
+  "error": "invalid_instance_id",
+  "message": "Öffentliche Diagnoseinformation",
+  "requestId": "req-123"
 }
 ```
+
+Zusätzlich setzt der Server best effort den Header `X-Request-Id`, damit Browser-, Proxy- und Server-Sicht korreliert werden können.
 
 ## Endpunkt: POST `/iam/authorize`
 
@@ -110,9 +114,13 @@ Führt eine deterministische Autorisierungsentscheidung für `action` + `resourc
 
 ```json
 {
-  "error": "invalid_request"
+  "error": "invalid_request",
+  "message": "Öffentliche Diagnoseinformation",
+  "requestId": "req-123"
 }
 ```
+
+Der Fehlervertrag bleibt additiv: `error` ist und bleibt der maschinenlesbare String-Code; `message` ist optional und nicht für Client-Logik gedacht.
 
 ## Reason-Codes (Authorize)
 

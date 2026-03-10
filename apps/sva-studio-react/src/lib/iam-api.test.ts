@@ -18,6 +18,7 @@ import {
 describe('iam-api organization helpers', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    vi.stubEnv('NODE_ENV', 'test');
   });
 
   it('builds organization list queries and sends credentials', async () => {
@@ -159,6 +160,43 @@ describe('iam-api organization helpers', () => {
     });
   });
 
+  it('supports the flat error response shape and request id header', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    consoleError.mockClear();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            error: 'organization_inactive',
+            message: 'inactive',
+          }),
+          {
+            status: 409,
+            headers: {
+              'content-type': 'application/json',
+              'X-Request-Id': 'req-header-1',
+            },
+          }
+        )
+      )
+    );
+
+    await expect(updateOrganization('org-1', { displayName: 'Alpha 2' })).rejects.toMatchObject({
+      status: 409,
+      code: 'organization_inactive',
+      requestId: 'req-header-1',
+    });
+    expect(consoleError).toHaveBeenCalledWith(
+      'IAM API request failed',
+      expect.objectContaining({
+        request_id: 'req-header-1',
+        status: 409,
+        code: 'organization_inactive',
+      })
+    );
+  });
+
   it('wraps unknown values in asIamError', () => {
     const resolved = asIamError('boom');
 
@@ -202,5 +240,58 @@ describe('iam-api user sync helper', () => {
         credentials: 'include',
       })
     );
+  });
+
+  it('logs non-json API failures in development with request id fallback', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    consoleError.mockClear();
+    vi.stubEnv('NODE_ENV', 'development');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response('<html>boom</html>', {
+          status: 500,
+          headers: {
+            'content-type': 'text/html',
+            'X-Request-Id': 'req-non-json',
+          },
+        })
+      )
+    );
+
+    await expect(syncUsersFromKeycloak()).rejects.toMatchObject({
+      status: 500,
+      code: 'non_json_response',
+      requestId: 'req-non-json',
+    });
+    expect(consoleError).toHaveBeenCalledWith(
+      'IAM API request failed',
+      expect.objectContaining({
+        request_id: 'req-non-json',
+        status: 500,
+        code: 'non_json_response',
+      })
+    );
+  });
+
+  it('does not log API failures in production', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    consoleError.mockClear();
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ error: 'internal_error', message: 'boom' }), {
+          status: 500,
+          headers: { 'content-type': 'application/json' },
+        })
+      )
+    );
+
+    await expect(syncUsersFromKeycloak()).rejects.toMatchObject({
+      status: 500,
+      code: 'internal_error',
+    });
+    expect(consoleError).not.toHaveBeenCalled();
   });
 });

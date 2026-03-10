@@ -60,6 +60,15 @@ vi.mock('@sva/sdk/server', () => ({
     requestId: 'req-org-test',
     traceId: 'trace-org-test',
   }),
+  toJsonErrorResponse: (status: number, code: string, publicMessage?: string, options?: { requestId?: string }) =>
+    new Response(
+      JSON.stringify({
+        error: code,
+        ...(publicMessage ? { message: publicMessage } : {}),
+        ...(options?.requestId ? { requestId: options.requestId } : {}),
+      }),
+      { status, headers: { 'Content-Type': 'application/json' } }
+    ),
   withRequestContext: async (_options: unknown, handler: () => Promise<Response> | Response) => handler(),
 }));
 

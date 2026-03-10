@@ -75,7 +75,16 @@ Beispiele:
 
 - `auth`: projektweite Mindest-Floors plus Hotspots für `iam-account-management.server.ts` und `iam-governance.server.ts`
 - `routing`: Hotspot-Floor für `auth.routes.server.ts`
-- `core`: Security-Hotspot-Floor für `field-encryption.ts`
+- `core`: Security- und IAM-Hotspots für `field-encryption.ts` und `authorization-engine.js`
+- `sdk`: Hotspots für `request-context.server.js` und `monitoring-client.bridge.server.js`
+- `sva-studio-react`: Hotspots für `iam-user-events.ts` und `-iam.models.ts`
+
+Empfohlener Testzuschnitt für große Handlerdateien:
+
+- Request-Parsing, Filterlogik, Mapper und Konfliktentscheidungen als reine Helfer absichern
+- Handler-Orchestrierung mit wenigen gezielten Server-Tests auf Rollen, CSRF, Idempotency und Seiteneffekte prüfen
+- Große Mock-Setups nur für die eigentliche Integrationskante einsetzen, nicht für jede einzelne Branch
+- Kleine verhaltensneutrale Extraktionen oder package-interne Helper-Exports sind zulässig, wenn sie die Absicherung vereinfachen
 
 Wenn die Komplexität eines kritischen Hotspots steigt, darf der bestehende Floor nicht abgesenkt werden. Stattdessen muss die Absicherung gleich bleiben oder feiner/höher nachgezogen werden.
 
@@ -110,6 +119,7 @@ Wichtig:
 - Codecov berücksichtigt nur Projekte, für die im PR-Lauf auch tatsächlich `lcov.info` hochgeladen wird.
 - Projekte aus `exemptProjects` in `tooling/testing/coverage-policy.json` dürfen deshalb nicht im Codecov-Flag `unittests` auftauchen.
 - Der lokale Preview-Check `pnpm patch-coverage-gate --base=origin/main` nutzt denselben Workspace-Scope wie unsere interne Coverage-Governance, damit Abweichungen vor dem Push sichtbar werden.
+- Lokale `src/*.js`, `src/*.d.ts` oder `src/*.d.ts.map` in Paketen verfälschen Import-Auflösung und `lcov`-Pfadzuordnung. Vor Coverage-Debugging deshalb `pnpm clean:source-artifacts` und `pnpm check:file-placement` ausführen.
 
 ## Exemptions
 

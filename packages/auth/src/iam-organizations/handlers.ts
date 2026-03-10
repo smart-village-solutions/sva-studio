@@ -122,7 +122,7 @@ WHERE organization.instance_id = $1::uuid
   AND ($4::boolean IS NULL OR organization.is_active = $4)
 `;
 
-const mapOrganizationListItem = (row: OrganizationRow): IamOrganizationListItem => ({
+export const mapOrganizationListItem = (row: OrganizationRow): IamOrganizationListItem => ({
   id: row.id,
   organizationKey: row.organization_key,
   displayName: row.display_name,
@@ -137,7 +137,7 @@ const mapOrganizationListItem = (row: OrganizationRow): IamOrganizationListItem 
   membershipCount: row.membership_count,
 });
 
-const mapMembershipRow = (row: MembershipRow): IamOrganizationMembership => {
+export const mapMembershipRow = (row: MembershipRow): IamOrganizationMembership => {
   const firstName = revealField(row.first_name_ciphertext, `iam.accounts.first_name:${row.keycloak_subject}`);
   const lastName = revealField(row.last_name_ciphertext, `iam.accounts.last_name:${row.keycloak_subject}`);
   const decryptedDisplayName = revealField(
@@ -161,7 +161,7 @@ const mapMembershipRow = (row: MembershipRow): IamOrganizationMembership => {
   };
 };
 
-const mapContextOption = (row: ContextOptionRow): IamOrganizationContextOption => ({
+export const mapContextOption = (row: ContextOptionRow): IamOrganizationContextOption => ({
   organizationId: row.organization_id,
   organizationKey: row.organization_key,
   displayName: row.display_name,
@@ -170,10 +170,10 @@ const mapContextOption = (row: ContextOptionRow): IamOrganizationContextOption =
   isDefaultContext: row.is_default_context,
 });
 
-const isHierarchyError = (value: unknown): value is Extract<HierarchyResolution, { ok: false }> =>
+export const isHierarchyError = (value: unknown): value is Extract<HierarchyResolution, { ok: false }> =>
   typeof value === 'object' && value !== null && 'ok' in value && value.ok === false;
 
-const readStatusFilter = (request: Request): boolean | undefined => {
+export const readStatusFilter = (request: Request): boolean | undefined => {
   const status = readString(new URL(request.url).searchParams.get('status'));
   if (!status || status === 'all') {
     return undefined;
@@ -187,7 +187,7 @@ const readStatusFilter = (request: Request): boolean | undefined => {
   return undefined;
 };
 
-const readOrganizationTypeFilter = (request: Request): IamOrganizationType | undefined | 'invalid' => {
+export const readOrganizationTypeFilter = (request: Request): IamOrganizationType | undefined | 'invalid' => {
   const organizationType = readString(new URL(request.url).searchParams.get('organizationType'));
   if (!organizationType) {
     return undefined;
@@ -197,7 +197,7 @@ const readOrganizationTypeFilter = (request: Request): IamOrganizationType | und
     : 'invalid';
 };
 
-const escapeIlikePattern = (value: string): string =>
+export const escapeIlikePattern = (value: string): string =>
   value.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
 
 const loadOrganizationById = async (
@@ -475,7 +475,7 @@ WHERE organization.instance_id = organization_tree.instance_id
   );
 };
 
-const chooseActiveOrganizationId = (input: {
+export const chooseActiveOrganizationId = (input: {
   storedActiveOrganizationId?: string;
   organizations: readonly IamOrganizationContextOption[];
 }): string | undefined => {

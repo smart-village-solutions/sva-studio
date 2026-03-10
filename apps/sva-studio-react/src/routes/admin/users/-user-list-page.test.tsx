@@ -259,4 +259,40 @@ describe('UserListPage', () => {
       ).toBeTruthy();
     });
   });
+
+  it('renders an empty table state and disables bulk actions when there are no users', () => {
+    useUsersMock.mockReturnValue(createUsersApiState({ users: [], total: 0 }));
+    useRolesMock.mockReturnValue(createRolesApiState());
+
+    render(<UserListPage />);
+
+    expect(screen.getByText('0 Nutzer gefunden.')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Auswahl deaktivieren' })).toHaveProperty('disabled', true);
+  });
+
+  it('keeps bulk actions hidden when the feature is disabled', () => {
+    isIamBulkEnabledMock.mockReturnValue(false);
+    useUsersMock.mockReturnValue(createUsersApiState());
+    useRolesMock.mockReturnValue(createRolesApiState());
+
+    render(<UserListPage />);
+
+    expect(screen.queryByRole('button', { name: 'Auswahl deaktivieren' })).toBeNull();
+  });
+
+  it('keeps the sync result unchanged when the sync call returns no report', async () => {
+    const syncUsersFromKeycloak = vi.fn().mockResolvedValue(null);
+    useUsersMock.mockReturnValue(createUsersApiState({ syncUsersFromKeycloak }));
+    useRolesMock.mockReturnValue(createRolesApiState());
+
+    render(<UserListPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Aus Keycloak synchronisieren' }));
+
+    await waitFor(() => {
+      expect(syncUsersFromKeycloak).toHaveBeenCalledTimes(1);
+    });
+
+    expect(screen.queryByText(/importiert, .* aktualisiert, .* übersprungen/)).toBeNull();
+  });
 });

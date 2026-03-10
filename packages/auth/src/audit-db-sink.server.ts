@@ -121,6 +121,33 @@ const ensureAccount = async (
     encryptedDisplayNameCiphertext: string | null;
   }
 ): Promise<{ accountId?: string; created: boolean }> => {
+  const existingAccountId = await resolveAccountId(client, {
+    keycloakSubject: input.keycloakSubject,
+    instanceId: input.instanceId,
+  });
+
+  if (existingAccountId) {
+    if (input.encryptedEmailCiphertext || input.encryptedDisplayNameCiphertext) {
+      await client.query(
+        `
+UPDATE iam.accounts
+SET
+  email_ciphertext = COALESCE($3, email_ciphertext),
+  display_name_ciphertext = COALESCE($4, display_name_ciphertext),
+  updated_at = NOW()
+WHERE keycloak_subject = $1
+  AND instance_id = $2::uuid;
+`,
+        [input.keycloakSubject, input.instanceId, input.encryptedEmailCiphertext, input.encryptedDisplayNameCiphertext]
+      );
+    }
+
+    return {
+      accountId: existingAccountId,
+      created: false,
+    };
+  }
+
   const inserted = await client.query<{ id: string }>(
     `
 INSERT INTO iam.accounts (instance_id, keycloak_subject, email_ciphertext, display_name_ciphertext)

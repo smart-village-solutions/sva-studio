@@ -162,7 +162,10 @@ export const createUserInternal = async (
 
   try {
     const result = await executeCreateUser({
-      actor: actorContext.actor,
+      actor: {
+        ...actorContext.actor,
+        actorRoles: ctx.user.roles,
+      },
       actorSubject: actorContext.actorSubject,
       identityProvider,
       payload: parsed.data,

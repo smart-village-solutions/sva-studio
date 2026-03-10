@@ -20,6 +20,7 @@ export type CreateUserPayload = z.infer<typeof createUserSchema>;
 type CreateUserActorInfo = {
   instanceId: string;
   actorAccountId: string;
+  actorRoles?: readonly string[];
   requestId?: string;
   traceId?: string;
 };
@@ -127,6 +128,7 @@ export const persistCreatedUser = async (
     client,
     instanceId: actor.instanceId,
     actorSubject,
+    actorRoles: actor.actorRoles,
     roleIds: payload.roleIds,
   });
   if (!roleValidation.ok) {

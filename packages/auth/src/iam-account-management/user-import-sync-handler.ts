@@ -240,7 +240,7 @@ export const collectSyncCandidates = (
   return { matchingUsers, skippedCount, skippedInstanceIds };
 };
 
-const mapSyncErrorResponse = (error: unknown, requestId: string): Response | undefined => {
+const mapSyncErrorResponse = (error: unknown, requestId?: string): Response | undefined => {
   const errorMessage = error instanceof Error ? error.message : String(error);
   if (error instanceof KeycloakAdminRequestError || error instanceof KeycloakAdminUnavailableError) {
     return createApiError(

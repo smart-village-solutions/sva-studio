@@ -25,6 +25,7 @@
     "coverage-gate": "tsx scripts/ci/coverage-gate.ts",
     "patch-coverage-gate": "tsx scripts/ci/patch-coverage-gate.ts",
     "complexity-gate": "tsx scripts/ci/complexity-gate.ts",
+    "clean:source-artifacts": "tsx scripts/ci/clean-source-artifacts.ts",
     "check:file-placement": "tsx scripts/ci/check-file-placement.ts",
     "check:file-placement:staged": "tsx scripts/ci/check-file-placement.ts --staged",
     "check:openapi:iam": "tsx scripts/ci/check-openapi-iam.ts",

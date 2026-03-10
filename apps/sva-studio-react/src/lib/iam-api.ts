@@ -42,7 +42,7 @@ type IamErrorPayload =
 
 const hasTopLevelMessage = (
   payload: IamErrorPayload
-): payload is Extract<IamErrorPayload, { readonly message?: string }> => 'message' in payload;
+): payload is IamErrorPayload & { readonly message?: unknown } => 'message' in payload;
 
 const isDevelopmentEnvironment = () => {
   if (typeof process !== 'undefined' && typeof process.env?.NODE_ENV === 'string') {

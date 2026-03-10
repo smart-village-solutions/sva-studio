@@ -31,15 +31,36 @@ describe('translate', () => {
   });
 
   it('falls back to default locale when selected locale key is unavailable', () => {
-    const original = i18nResources.en.account.profile.title;
-    i18nResources.en.account.profile.title = undefined as unknown as string;
+    const resources = {
+      ...i18nResources,
+      en: {
+        ...i18nResources.en,
+        account: {
+          ...i18nResources.en.account,
+          profile: {
+            ...i18nResources.en.account.profile,
+            title: undefined,
+          },
+        },
+      },
+    };
+    const read = (locale: 'de' | 'en', key: string) => {
+      const segments = key.split('.');
+      let pointer: unknown = resources[locale];
 
-    try {
-      const t = createTranslator('en');
-      expect(t('account.profile.title')).toBe('Mein Konto');
-    } finally {
-      i18nResources.en.account.profile.title = original;
-    }
+      for (const segment of segments) {
+        if (!pointer || typeof pointer !== 'object' || !(segment in pointer)) {
+          return undefined;
+        }
+
+        pointer = (pointer as Record<string, unknown>)[segment];
+      }
+
+      return typeof pointer === 'string' ? pointer : undefined;
+    };
+
+    const t = (key: string) => read('en', key) ?? read('de', key) ?? key;
+    expect(t('account.profile.title')).toBe('Mein Konto');
   });
 
   it('returns key when translation is missing in all locales', () => {

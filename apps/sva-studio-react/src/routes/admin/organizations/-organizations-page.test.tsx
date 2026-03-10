@@ -144,7 +144,7 @@ describe('OrganizationsPage', () => {
 
     const createForm = within(dialog).getByRole('button', { name: 'Organisation anlegen' }).closest('form');
     expect(createForm).not.toBeNull();
-    fireEvent.submit(createForm);
+    fireEvent.submit(createForm as HTMLFormElement);
 
     expect(createOrganization).toHaveBeenCalledWith({
       organizationKey: 'gemeinde_nord',

@@ -1,6 +1,6 @@
-import { createRouter } from '@tanstack/react-router';
+import { createRouter, type AnyRoute, type RootRoute } from '@tanstack/react-router';
 import { createIsomorphicFn } from '@tanstack/react-start';
-import { buildRouteTree, mergeRouteFactories } from '@sva/core';
+import { buildRouteTree, mergeRouteFactories, type RouteFactory } from '@sva/core';
 import { pluginExampleRoutes } from '@sva/plugin-example';
 import type { RouteGuardUser } from '@sva/routing';
 
@@ -83,10 +83,11 @@ const getRouteGuardUser = createIsomorphicFn()
 // Create a new router instance
 export const getRouter = async () => {
   const runtimeAuthRouteFactories = await getAuthRouteFactories();
-  const routeTree = buildRouteTree(
-    rootRoute,
-    mergeRouteFactories([...coreRouteFactoriesBase, ...runtimeAuthRouteFactories], pluginExampleRoutes)
+  const mergedFactories = mergeRouteFactories<RootRoute, AnyRoute>(
+    coreRouteFactoriesBase as RouteFactory<RootRoute, AnyRoute>[],
+    [...runtimeAuthRouteFactories, ...pluginExampleRoutes] as RouteFactory<RootRoute, AnyRoute>[]
   );
+  const routeTree = buildRouteTree(rootRoute as unknown as RootRoute, mergedFactories) as AnyRoute;
 
   const router = createRouter({
     routeTree,

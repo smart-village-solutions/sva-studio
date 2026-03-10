@@ -5,9 +5,9 @@ export type AppThemeName = 'sva-default' | 'sva-forest';
 export const THEME_MODE_STORAGE_KEY = 'sva-studio.theme-mode';
 export const DEFAULT_THEME_NAME: AppThemeName = 'sva-default';
 
-const INSTANCE_THEME_MAP = {
+const INSTANCE_THEME_MAP: Readonly<Record<string, AppThemeName>> = {
   '11111111-1111-1111-8111-111111111111': 'sva-forest',
-} as const satisfies Record<string, AppThemeName>;
+};
 
 export const isThemeMode = (value: string | null | undefined): value is ThemeMode => value === 'light' || value === 'dark';
 

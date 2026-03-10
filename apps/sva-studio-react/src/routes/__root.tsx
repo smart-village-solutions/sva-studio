@@ -16,7 +16,7 @@ import { ThemeProvider } from '../providers/theme-provider';
 
 import appCss from '../styles.css?url';
 
-const ensureRootSdkInitialized = createServerOnlyFn().handler(async () => {
+const ensureRootSdkInitialized = createServerOnlyFn(async () => {
   const { ensureSdkInitialized } = await import('../lib/init-sdk.server');
   await ensureSdkInitialized();
 });

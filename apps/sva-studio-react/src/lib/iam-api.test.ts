@@ -197,6 +197,41 @@ describe('iam-api organization helpers', () => {
     );
   });
 
+  it('logs only request id, status and code for json api failures in development', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    consoleError.mockClear();
+    vi.stubEnv('NODE_ENV', 'development');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            error: 'internal_error',
+            message: 'boom',
+            requestId: 'req-json-500',
+            details: { email: 'alice@example.com' },
+          }),
+          { status: 500, headers: { 'content-type': 'application/json' } }
+        )
+      )
+    );
+
+    await expect(updateOrganization('org-1', { displayName: 'Alpha 2' })).rejects.toMatchObject({
+      status: 500,
+      code: 'internal_error',
+      requestId: 'req-json-500',
+    });
+
+    expect(consoleError).toHaveBeenCalledWith('IAM API request failed', {
+      request_id: 'req-json-500',
+      status: 500,
+      code: 'internal_error',
+    });
+    expect(consoleError.mock.calls[0]?.[1]).not.toHaveProperty('details');
+    expect(consoleError.mock.calls[0]?.[1]).not.toHaveProperty('body');
+    expect(consoleError.mock.calls[0]?.[1]).not.toHaveProperty('payload');
+  });
+
   it('wraps unknown values in asIamError', () => {
     const resolved = asIamError('boom');
 
@@ -272,6 +307,8 @@ describe('iam-api user sync helper', () => {
         code: 'non_json_response',
       })
     );
+    expect(consoleError.mock.calls[0]?.[1]).not.toHaveProperty('body');
+    expect(consoleError.mock.calls[0]?.[1]).not.toHaveProperty('payload');
   });
 
   it('does not log API failures in production', async () => {

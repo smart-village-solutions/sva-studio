@@ -20,7 +20,8 @@
     "test:unit": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "pnpm --filter @sva/auth exec vitest run --reporter=verbose --no-file-parallelism"
+        "cwd": "packages/auth",
+        "command": "pnpm exec vitest run --reporter=verbose --no-file-parallelism"
       }
     },
     "test:types": {
@@ -32,7 +33,8 @@
     "test:coverage": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "pnpm --filter @sva/auth exec vitest run --coverage --reporter=verbose --config vitest.config.ts --passWithNoTests --no-file-parallelism"
+        "cwd": "packages/auth",
+        "command": "pnpm exec vitest run --coverage --reporter=verbose --config vitest.config.ts --passWithNoTests --no-file-parallelism"
       }
     }
   },

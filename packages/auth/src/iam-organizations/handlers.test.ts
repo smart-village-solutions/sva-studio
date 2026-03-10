@@ -25,7 +25,7 @@ import {
   mapOrganizationListItem,
   readOrganizationTypeFilter,
   readStatusFilter,
-} from './handlers.ts';
+} from './handlers.helpers.ts';
 
 describe('iam-organizations helpers', () => {
   it('maps organization rows into api list items', () => {

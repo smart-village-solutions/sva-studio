@@ -25,7 +25,8 @@ Abhängigkeiten des aktuellen Systems.
    - generische Route-Registry Utilities (`mergeRouteFactories`, `buildRouteTree`)
 3. Routing (`packages/routing`)
    - zentrale Route-Factories (client + server)
-   - exhaustives Auth-Handler-Mapping mit explizitem Fehler bei unbekanntem Auth-Pfad
+   - einzige Source of Truth für Auth-Handler-Mapping, Runtime-Guard und JSON-Error-Boundary
+   - der Startup-Guard in `auth.routes.server.ts` prüft ausschließlich das Auth-Route-Mapping gegen `authRoutePaths`; er ist keine allgemeine Plugin- oder Router-Vollständigkeitsprüfung
 4. Auth (`packages/auth`)
    - OIDC-Flows, Session-Store, auth HTTP-Handler
    - modulare Server-Fassaden und fachliche Unterordner für IAM- und Auth-Pfade
@@ -73,7 +74,7 @@ Abhängigkeiten des aktuellen Systems.
 ### Abhängigkeiten (vereinfacht)
 
 - App -> `@sva/core`, `@sva/routing`, `@sva/auth`, `@sva/plugin-example`
-- `@sva/routing` -> `@sva/auth`, `@sva/core`
+- `@sva/routing` -> `@sva/auth`, `@sva/core`, `@sva/sdk`
 - `@sva/auth` -> `@sva/sdk`
 - `@sva/sdk` -> `@sva/core`, `@sva/monitoring-client`
 - `@sva/plugin-*` -> `@sva/sdk` (kein Direktimport aus `@sva/core`)
@@ -181,8 +182,8 @@ Neu hinzugekommene Bausteine im Change `add-iam-organization-management-hierarch
    - Führt einen expliziten Admin-Sync aus, liest Keycloak-Benutzer seitenweise, filtert sie über das `instanceId`-Attribut und spiegelt Basisdaten idempotent nach `iam.accounts`.
 2. `packages/auth/src/identity-provider-port.ts`
    - Erweitert die IdP-Abstraktion um typisierte User-Listing-Operationen für administrative Import- und Reconcile-Flows.
-3. `packages/auth/src/routes/registry.ts` und `packages/auth/src/routes.shared.ts`
-   - Registrieren den mutierenden IAM-Endpunkt `POST /api/v1/iam/users/sync-keycloak` typsicher im bestehenden Auth-/IAM-Router.
+3. `packages/routing/src/auth.routes.server.ts` und `packages/auth/src/routes.shared.ts`
+   - Registrieren den mutierenden IAM-Endpunkt `POST /api/v1/iam/users/sync-keycloak` typsicher im zentralen Auth-/IAM-Router und prüfen das Mapping beim Modulstart auf Drift.
 4. `packages/core/src/iam/account-management-contract.ts`
    - Definiert den gemeinsamen Sync-Report (`importedCount`, `updatedCount`, `skippedCount`, `totalKeycloakUsers`) für Server und Frontend.
 5. `apps/sva-studio-react/src/hooks/use-users.ts` und `apps/sva-studio-react/src/routes/admin/users/-user-list-page.tsx`

@@ -198,6 +198,58 @@ describe('patch coverage gate', () => {
     expect(result.uncoveredFiles[0]?.path).toBe('packages/sdk/src/index.ts');
   });
 
+  it('maps lcov js source entries back to changed TypeScript files', async () => {
+    const runPatchCoverageGate = await loadRunPatchCoverageGate();
+    const rootDir = createTempWorkspace();
+    initGitRepo(rootDir);
+    writePolicy(rootDir);
+    writeSourceFile(rootDir, 'packages/sdk/src/index.ts', 'export function value(): number {\n  return 1;\n}\n');
+    commitAll(rootDir, 'base');
+    runGit(rootDir, ['checkout', '-b', 'feature/test']);
+
+    writeSourceFile(rootDir, 'packages/sdk/src/index.ts', 'export function value(): number {\n  return 2;\n}\n');
+    writeLcov(rootDir, 'packages/sdk', 'src/index.js', [[2, 1]]);
+    commitAll(rootDir, 'change');
+
+    const result = runPatchCoverageGate({
+      rootDir,
+      baseRef: 'main',
+      headRef: 'HEAD',
+      targetPct: 80,
+    });
+
+    expect(result.passed).toBe(true);
+    expect(result.coveragePct).toBe(100);
+    expect(result.coveredLines).toBe(1);
+    expect(result.missedLines).toBe(0);
+  });
+
+  it('prefers TypeScript sources over colocated js artifacts in lcov records', async () => {
+    const runPatchCoverageGate = await loadRunPatchCoverageGate();
+    const rootDir = createTempWorkspace();
+    initGitRepo(rootDir);
+    writePolicy(rootDir);
+    writeSourceFile(rootDir, 'packages/sdk/src/index.ts', 'export function value(): number {\n  return 1;\n}\n');
+    writeSourceFile(rootDir, 'packages/sdk/src/index.js', 'export function value() {\n  return 1;\n}\n');
+    commitAll(rootDir, 'base');
+    runGit(rootDir, ['checkout', '-b', 'feature/test']);
+
+    writeSourceFile(rootDir, 'packages/sdk/src/index.ts', 'export function value(): number {\n  return 2;\n}\n');
+    writeLcov(rootDir, 'packages/sdk', 'src/index.js', [[2, 1]]);
+    commitAll(rootDir, 'change');
+
+    const result = runPatchCoverageGate({
+      rootDir,
+      baseRef: 'main',
+      headRef: 'HEAD',
+      targetPct: 80,
+    });
+
+    expect(result.passed).toBe(true);
+    expect(result.coveragePct).toBe(100);
+    expect(result.uncoveredFiles).toEqual([]);
+  });
+
   it('ignores files that only contain type declarations or re-exports without lcov data', async () => {
     const runPatchCoverageGate = await loadRunPatchCoverageGate();
     const rootDir = createTempWorkspace();

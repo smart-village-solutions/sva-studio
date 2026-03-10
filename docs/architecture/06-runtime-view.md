@@ -51,6 +51,18 @@ Fehlerpfad:
 - OTEL nicht initialisiert: Console-Fallback bleibt aktiv
 - fehlender LoggerProvider: OTEL-Emission no-op, App bleibt lauffähig
 
+### Szenario 3a: Auth-Route wirft Fehler außerhalb des Request-Kontexts
+
+1. Eine Auth- oder IAM-Route wirft in `packages/routing/src/auth.routes.server.ts` einen unerwarteten Fehler.
+2. Die äußere JSON-Error-Boundary liest `X-Request-Id` und `traceparent` best effort aus den Request-Headern.
+3. Der SDK-Logger schreibt einen strukturierten Fehler mit `request_id`, `trace_id`, `route`, `method`, `error_type` und `error_message`.
+4. Die Response wird über `toJsonErrorResponse()` als JSON mit flachem Fehlervertrag und Header `X-Request-Id` zurückgegeben.
+
+Fehlerpfad:
+
+- Sind Header ungültig oder fehlen sie, bleiben `request_id` und `trace_id` leer; die Response bleibt trotzdem JSON.
+- Schlägt der Logger selbst fehl, schreibt die Routing-Schicht einen sanitisierten Minimal-Eintrag auf `stderr`.
+
 ### Szenario 4: Initialer Shell-Ladezustand mit Skeleton UI
 
 1. Root-Shell rendert initial in einem kurzen Loading-Zustand
@@ -147,6 +159,17 @@ Fehlerpfad:
 - Nicht autorisierte Rollen werden via Route-Guard umgeleitet.
 - Last-Admin-/Self-Protection wird serverseitig mit Konfliktantwort geschützt.
 - Schlägt der DB-Schritt nach erfolgreichem Keycloak-Write fehl, läuft eine Compensation; misslingt auch diese, bleibt der Vorgang als `COMPENSATION_FAILED` sichtbar.
+
+### Szenario 9a: Manueller Keycloak-User-Sync mit begrenzter Diagnostik
+
+1. Ein Admin ruft `POST /api/v1/iam/users/sync-keycloak` auf.
+2. Der Service lädt Keycloak-Benutzer seitenweise und filtert sie über `instanceId`.
+3. Nicht passende Benutzer werden nur bei aktivem Debug-Level begrenzt geloggt; das Log enthält `subject_ref`, `user_instance_id` und `expected_instance_id`.
+4. Nach Abschluss wird bei Überspringungen ein Summary-Log mit `skipped_count` und `sample_instance_ids` geschrieben.
+
+Fehlerpfad:
+
+- Bei großen Batches bleiben Detail-Logs gecappt; die Diagnose erfolgt dann primär über das Summary-Log.
 
 ### Szenario 10: Geplanter oder manueller Rollen-Reconcile-Lauf
 

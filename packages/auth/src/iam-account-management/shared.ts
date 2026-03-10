@@ -138,7 +138,7 @@ LIMIT 1;
 
 export const resolveActorMaxRoleLevel = async (
   client: QueryClient,
-  input: { instanceId: string; keycloakSubject: string }
+  input: { instanceId: string; keycloakSubject: string; sessionRoleNames?: readonly string[] }
 ): Promise<number> => {
   const row = await client.query<{ max_role_level: number }>(
     `
@@ -159,7 +159,30 @@ WHERE a.keycloak_subject = $2;
 `,
     [input.instanceId, input.keycloakSubject]
   );
-  return row.rows[0]?.max_role_level ?? 0;
+  const persistedMaxRoleLevel = row.rows[0]?.max_role_level ?? 0;
+  const normalizedSessionRoleNames =
+    input.sessionRoleNames
+      ?.map((roleName) => roleName.trim())
+      .filter((roleName) => roleName.length > 0) ?? [];
+
+  if (normalizedSessionRoleNames.includes('system_admin')) {
+    return Math.max(persistedMaxRoleLevel, 100);
+  }
+
+  if (normalizedSessionRoleNames.length === 0) {
+    return persistedMaxRoleLevel;
+  }
+
+  const sessionRoles = await resolveRolesByExternalNames(client, {
+    instanceId: input.instanceId,
+    externalRoleNames: normalizedSessionRoleNames,
+  });
+  const sessionMaxRoleLevel = sessionRoles.reduce(
+    (maxRoleLevel, role) => Math.max(maxRoleLevel, role.role_level),
+    0
+  );
+
+  return Math.max(persistedMaxRoleLevel, sessionMaxRoleLevel);
 };
 
 export const resolveRolesByIds = async (
@@ -215,6 +238,10 @@ export const ensureActorCanManageTarget = (input: {
     roleLevel: number;
   }[];
 }): { ok: true } | { ok: false; code: ApiErrorCode; message: string } => {
+  if (input.actorRoles.includes('system_admin')) {
+    return { ok: true };
+  }
+
   const targetMaxRoleLevel = input.targetRoles.reduce((maxLevel, role) => Math.max(maxLevel, role.roleLevel), 0);
   if (targetMaxRoleLevel > input.actorMaxRoleLevel) {
     return {
@@ -637,6 +664,7 @@ export const ensureRoleAssignmentWithinActorLevel = async (input: {
   client: QueryClient;
   instanceId: string;
   actorSubject: string;
+  actorRoles?: readonly string[];
   roleIds: readonly string[];
 }): Promise<{ ok: true; roles: readonly IamRoleRow[] } | { ok: false; code: ApiErrorCode; message: string }> => {
   const roles = await resolveRolesByIds(input.client, {
@@ -647,9 +675,14 @@ export const ensureRoleAssignmentWithinActorLevel = async (input: {
     return { ok: false, code: 'invalid_request', message: 'Mindestens eine Rolle existiert nicht.' };
   }
 
+  if (input.actorRoles?.includes('system_admin')) {
+    return { ok: true, roles };
+  }
+
   const actorMaxRoleLevel = await resolveActorMaxRoleLevel(input.client, {
     instanceId: input.instanceId,
     keycloakSubject: input.actorSubject,
+    sessionRoleNames: input.actorRoles,
   });
   if (!canAssignRoles({ actorMaxRoleLevel, targetRoles: roles })) {
     return {

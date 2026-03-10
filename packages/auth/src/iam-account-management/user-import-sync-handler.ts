@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import type { IamUserImportSyncReport } from '@sva/core';
 import { getWorkspaceContext } from '@sva/sdk/server';
 
@@ -9,6 +10,7 @@ import {
 import type { AuthenticatedRequestContext } from '../middleware.server';
 import type { QueryClient } from '../shared/db-helpers';
 import { jsonResponse } from '../shared/db-helpers';
+import { buildLogContext } from '../shared/log-context';
 
 import { ADMIN_ROLES } from './constants';
 import { asApiItem, createApiError } from './api-helpers';
@@ -17,6 +19,7 @@ import { protectField } from './encryption';
 import { ensureFeature, getFeatureFlags } from './feature-flags';
 import { consumeRateLimit } from './rate-limit';
 import {
+  type ActorInfo,
   emitActivityLog,
   iamUserOperationsCounter,
   logger,
@@ -28,6 +31,8 @@ import {
 } from './shared';
 
 const KEYCLOAK_PAGE_SIZE = 100;
+const SKIPPED_USER_DEBUG_LOG_CAP = 20;
+const SKIPPED_USER_INSTANCE_SAMPLE_CAP = 5;
 
 const readSingleAttribute = (
   attributes: Readonly<Record<string, readonly string[]>> | undefined,
@@ -56,6 +61,9 @@ const resolveDisplayName = (user: IdentityListedUser): string => {
 
 const protectOptionalField = (value: string | undefined, context: string): string | null =>
   value ? protectField(value, context) : null;
+
+const toSubjectRef = (value: string): string =>
+  createHash('sha256').update(value).digest('hex').slice(0, 12);
 
 const UPSERT_ACCOUNT_QUERY = `
 INSERT INTO iam.accounts (
@@ -146,19 +154,19 @@ const listAllKeycloakUsers = async (): Promise<readonly IdentityListedUser[]> =>
   }
 };
 
-export const syncUsersFromKeycloakInternal = async (
+const resolveSyncActor = async (
   request: Request,
   ctx: AuthenticatedRequestContext
-): Promise<Response> => {
+): Promise<{ actor: ActorInfo } | { error: Response }> => {
   const requestContext = getWorkspaceContext();
   const featureCheck = ensureFeature(getFeatureFlags(), 'iam_admin', requestContext.requestId);
   if (featureCheck) {
-    return featureCheck;
+    return { error: featureCheck };
   }
 
   const roleCheck = requireRoles(ctx, ADMIN_ROLES, requestContext.requestId);
   if (roleCheck) {
-    return roleCheck;
+    return { error: roleCheck };
   }
 
   const actorResolution = await resolveActorInfo(request, ctx, {
@@ -166,15 +174,17 @@ export const syncUsersFromKeycloakInternal = async (
     provisionMissingActorMembership: true,
   });
   if ('error' in actorResolution) {
-    return actorResolution.error;
+    return actorResolution;
   }
   if (!actorResolution.actor.actorAccountId) {
-    return createApiError(403, 'forbidden', 'Akteur-Account nicht gefunden.', actorResolution.actor.requestId);
+    return {
+      error: createApiError(403, 'forbidden', 'Akteur-Account nicht gefunden.', actorResolution.actor.requestId),
+    };
   }
 
   const csrfError = validateCsrf(request, actorResolution.actor.requestId);
   if (csrfError) {
-    return csrfError;
+    return { error: csrfError };
   }
 
   const rateLimit = consumeRateLimit({
@@ -184,20 +194,97 @@ export const syncUsersFromKeycloakInternal = async (
     requestId: actorResolution.actor.requestId,
   });
   if (rateLimit) {
-    return rateLimit;
+    return { error: rateLimit };
   }
+
+  return { actor: actorResolution.actor };
+};
+
+export const collectSyncCandidates = (
+  listedUsers: readonly IdentityListedUser[],
+  expectedInstanceId: string
+): {
+  matchingUsers: IdentityListedUser[];
+  skippedCount: number;
+  skippedInstanceIds: ReadonlySet<string>;
+} => {
+  const matchingUsers: IdentityListedUser[] = [];
+  const debugLoggingEnabled = logger.isLevelEnabled('debug');
+  let skippedCount = 0;
+  let debugLoggedCount = 0;
+  const skippedInstanceIds = new Set<string>();
+
+  for (const user of listedUsers) {
+    if (matchesInstanceId(user, expectedInstanceId)) {
+      matchingUsers.push(user);
+      continue;
+    }
+
+    skippedCount += 1;
+    const userInstanceId = readSingleAttribute(user.attributes, 'instanceId');
+    if (userInstanceId && skippedInstanceIds.size < SKIPPED_USER_INSTANCE_SAMPLE_CAP) {
+      skippedInstanceIds.add(userInstanceId);
+    }
+
+    if (debugLoggingEnabled && debugLoggedCount < SKIPPED_USER_DEBUG_LOG_CAP) {
+      debugLoggedCount += 1;
+      logger.debug('Skipped Keycloak user during IAM sync due to instance mismatch', {
+        operation: 'sync_keycloak_users',
+        subject_ref: toSubjectRef(user.externalId),
+        user_instance_id: userInstanceId,
+        expected_instance_id: expectedInstanceId,
+      });
+    }
+  }
+
+  return { matchingUsers, skippedCount, skippedInstanceIds };
+};
+
+const mapSyncErrorResponse = (error: unknown, requestId: string): Response | undefined => {
+  const errorMessage = error instanceof Error ? error.message : String(error);
+  if (error instanceof KeycloakAdminRequestError || error instanceof KeycloakAdminUnavailableError) {
+    return createApiError(
+      503,
+      'keycloak_unavailable',
+      'Keycloak-Benutzer konnten nicht geladen werden.',
+      requestId
+    );
+  }
+  if (errorMessage.startsWith('pii_encryption_required:')) {
+    return createApiError(
+      503,
+      'internal_error',
+      'PII-Verschlüsselung ist nicht konfiguriert.',
+      requestId
+    );
+  }
+  return undefined;
+};
+
+export const syncUsersFromKeycloakInternal = async (
+  request: Request,
+  ctx: AuthenticatedRequestContext
+): Promise<Response> => {
+  const actorResolution = await resolveSyncActor(request, ctx);
+  if ('error' in actorResolution) {
+    return actorResolution.error;
+  }
+  const { actor } = actorResolution;
 
   try {
     const listedUsers = await listAllKeycloakUsers();
-    const matchingUsers = listedUsers.filter((user) => matchesInstanceId(user, actorResolution.actor.instanceId));
+    const { matchingUsers, skippedCount, skippedInstanceIds } = collectSyncCandidates(
+      listedUsers,
+      actor.instanceId
+    );
 
-    const report = await withInstanceScopedDb(actorResolution.actor.instanceId, async (client) => {
+    const report = await withInstanceScopedDb(actor.instanceId, async (client) => {
       let importedCount = 0;
       let updatedCount = 0;
 
       for (const user of matchingUsers) {
         const result = await upsertIdentityUser(client, {
-          instanceId: actorResolution.actor.instanceId,
+          instanceId: actor.instanceId,
           user,
         });
         if (result.created) {
@@ -210,14 +297,14 @@ export const syncUsersFromKeycloakInternal = async (
       const summary: IamUserImportSyncReport = {
         importedCount,
         updatedCount,
-        skippedCount: listedUsers.length - matchingUsers.length,
+        skippedCount,
         totalKeycloakUsers: listedUsers.length,
       };
 
       await emitActivityLog(client, {
-        instanceId: actorResolution.actor.instanceId,
-        accountId: actorResolution.actor.actorAccountId,
-        subjectId: actorResolution.actor.actorAccountId,
+        instanceId: actor.instanceId,
+        accountId: actor.actorAccountId,
+        subjectId: actor.actorAccountId,
         eventType: 'user.keycloak_import_synced',
         result: 'success',
         payload: {
@@ -226,49 +313,44 @@ export const syncUsersFromKeycloakInternal = async (
           skipped_count: summary.skippedCount,
           total_keycloak_users: summary.totalKeycloakUsers,
         },
-        requestId: actorResolution.actor.requestId,
-        traceId: actorResolution.actor.traceId,
+        requestId: actor.requestId,
+        traceId: actor.traceId,
       });
 
       return summary;
     });
 
-    iamUserOperationsCounter.add(1, { action: 'sync_keycloak_users', result: 'success' });
-    return jsonResponse(200, asApiItem(report, actorResolution.actor.requestId));
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    if (error instanceof KeycloakAdminRequestError || error instanceof KeycloakAdminUnavailableError) {
-      iamUserOperationsCounter.add(1, { action: 'sync_keycloak_users', result: 'failure' });
-      return createApiError(
-        503,
-        'keycloak_unavailable',
-        'Keycloak-Benutzer konnten nicht geladen werden.',
-        actorResolution.actor.requestId
-      );
+    if (skippedCount > 0) {
+      logger.info('Keycloak user sync skipped users because instance ids did not match', {
+        operation: 'sync_keycloak_users',
+        skipped_count: skippedCount,
+        sample_instance_ids: Array.from(skippedInstanceIds).join(','),
+        ...buildLogContext(actor.instanceId, { includeTraceId: true }),
+      });
     }
-    if (errorMessage.startsWith('pii_encryption_required:')) {
+
+    iamUserOperationsCounter.add(1, { action: 'sync_keycloak_users', result: 'success' });
+    return jsonResponse(200, asApiItem(report, actor.requestId));
+  } catch (error) {
+    const mappedError = mapSyncErrorResponse(error, actor.requestId);
+    if (mappedError) {
       iamUserOperationsCounter.add(1, { action: 'sync_keycloak_users', result: 'failure' });
-      return createApiError(
-        503,
-        'internal_error',
-        'PII-Verschlüsselung ist nicht konfiguriert.',
-        actorResolution.actor.requestId
-      );
+      return mappedError;
     }
 
     logger.error('IAM keycloak user import failed', {
       operation: 'sync_keycloak_users',
-      instance_id: actorResolution.actor.instanceId,
-      request_id: actorResolution.actor.requestId,
-      trace_id: actorResolution.actor.traceId,
-      error: errorMessage,
+      instance_id: actor.instanceId,
+      request_id: actor.requestId,
+      trace_id: actor.traceId,
+      error: error instanceof Error ? error.message : String(error),
     });
     iamUserOperationsCounter.add(1, { action: 'sync_keycloak_users', result: 'failure' });
     return createApiError(
       500,
       'internal_error',
       'Keycloak-Benutzer konnten nicht in IAM synchronisiert werden.',
-      actorResolution.actor.requestId
+      actor.requestId
     );
   }
 };

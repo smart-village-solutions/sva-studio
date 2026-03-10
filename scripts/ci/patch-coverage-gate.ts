@@ -74,6 +74,35 @@ function normalizeRelativePath(rootDir: string, filePath: string): string {
   return path.relative(rootDir, filePath).split(path.sep).join('/');
 }
 
+function resolveLcovSourcePath(rootDir: string, projectRoot: string, sourceFilePath: string): string {
+  const absoluteFilePath = path.isAbsolute(sourceFilePath)
+    ? sourceFilePath
+    : path.join(projectRoot, sourceFilePath);
+
+  const extension = path.extname(absoluteFilePath);
+  const extensionFallbacks =
+    extension === '.js'
+      ? ['.ts', '.tsx']
+      : extension === '.jsx'
+        ? ['.tsx', '.ts']
+        : extension === '.mjs'
+          ? ['.mts', '.ts']
+          : [];
+
+  for (const fallbackExtension of extensionFallbacks) {
+    const fallbackPath = absoluteFilePath.slice(0, -extension.length) + fallbackExtension;
+    if (fs.existsSync(fallbackPath)) {
+      return normalizeRelativePath(rootDir, fallbackPath);
+    }
+  }
+
+  if (fs.existsSync(absoluteFilePath)) {
+    return normalizeRelativePath(rootDir, absoluteFilePath);
+  }
+
+  return normalizeRelativePath(rootDir, absoluteFilePath);
+}
+
 function isCoverableSourceFile(filePath: string): boolean {
   if (!/\.(ts|tsx|js|jsx)$/.test(filePath)) {
     return false;
@@ -184,10 +213,7 @@ function parseLcovLineCoverage(rootDir: string): Map<string, FileLineCoverage> {
       }
 
       const sourceFilePath = sfMatch[1].trim();
-      const absoluteFilePath = path.isAbsolute(sourceFilePath)
-        ? sourceFilePath
-        : path.join(projectRoot, sourceFilePath);
-      const normalizedFilePath = normalizeRelativePath(rootDir, absoluteFilePath);
+      const normalizedFilePath = resolveLcovSourcePath(rootDir, projectRoot, sourceFilePath);
       const coveredLines = new Set<number>();
       const instrumentedLines = new Set<number>();
 

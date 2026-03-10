@@ -119,6 +119,7 @@ const resolveUserUpdatePlan = async (
   const actorMaxRoleLevel = await resolveActorMaxRoleLevel(client, {
     instanceId: input.instanceId,
     keycloakSubject: input.actorSubject,
+    sessionRoleNames: input.actorRoles,
   });
   const existing = await resolveUserDetail(client, {
     instanceId: input.instanceId,
@@ -128,13 +129,17 @@ const resolveUserUpdatePlan = async (
     return undefined;
   }
 
-  const targetAccessCheck = ensureActorCanManageTarget({
-    actorMaxRoleLevel,
-    actorRoles: input.actorRoles,
-    targetRoles: existing.roles,
-  });
-  if (!targetAccessCheck.ok) {
-    throw new Error(`${targetAccessCheck.code}:${targetAccessCheck.message}`);
+  const actorIsSystemAdmin = input.actorRoles.includes('system_admin');
+
+  if (!actorIsSystemAdmin) {
+    const targetAccessCheck = ensureActorCanManageTarget({
+      actorMaxRoleLevel,
+      actorRoles: input.actorRoles,
+      targetRoles: existing.roles,
+    });
+    if (!targetAccessCheck.ok) {
+      throw new Error(`${targetAccessCheck.code}:${targetAccessCheck.message}`);
+    }
   }
 
   const previousRoleNames = await resolveExternalRoleNames(client, {
@@ -144,14 +149,17 @@ const resolveUserUpdatePlan = async (
 
   let nextRoleNames: readonly string[] | undefined;
   if (input.payload.roleIds) {
-    const roleValidation = await ensureRoleAssignmentWithinActorLevel({
-      client,
-      instanceId: input.instanceId,
-      actorSubject: input.actorSubject,
-      roleIds: input.payload.roleIds,
-    });
-    if (!roleValidation.ok) {
-      throw new Error(`${roleValidation.code}:${roleValidation.message}`);
+    if (!actorIsSystemAdmin) {
+      const roleValidation = await ensureRoleAssignmentWithinActorLevel({
+        client,
+        instanceId: input.instanceId,
+        actorSubject: input.actorSubject,
+        actorRoles: input.actorRoles,
+        roleIds: input.payload.roleIds,
+      });
+      if (!roleValidation.ok) {
+        throw new Error(`${roleValidation.code}:${roleValidation.message}`);
+      }
     }
 
     const assignedRoles = await resolveRolesByIds(client, {
@@ -577,6 +585,7 @@ export const deactivateUserInternal = async (
       const actorMaxRoleLevel = await resolveActorMaxRoleLevel(client, {
         instanceId: actorResolution.actor.instanceId,
         keycloakSubject: ctx.user.id,
+        sessionRoleNames: ctx.user.roles,
       });
       const existing = await resolveUserDetail(client, {
         instanceId: actorResolution.actor.instanceId,
@@ -785,6 +794,7 @@ export const bulkDeactivateInternal = async (
       const actorMaxRoleLevel = await resolveActorMaxRoleLevel(client, {
         instanceId: actorResolution.actor.instanceId,
         keycloakSubject: ctx.user.id,
+        sessionRoleNames: ctx.user.roles,
       });
       const users = await resolveUsersForBulkDeactivation(client, {
         instanceId: actorResolution.actor.instanceId,

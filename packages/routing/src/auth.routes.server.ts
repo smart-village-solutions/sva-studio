@@ -1,5 +1,12 @@
 import type { RootRoute } from '@tanstack/react-router';
 import { createRoute } from '@tanstack/react-router';
+import {
+  createSdkLogger,
+  extractRequestIdFromHeaders,
+  extractTraceIdFromHeaders,
+  getHeadersFromRequest,
+  toJsonErrorResponse,
+} from '@sva/sdk/server';
 import { authRoutePaths } from './auth.routes';
 
 type AuthHandlers = {
@@ -11,6 +18,11 @@ type AuthHandlers = {
 };
 
 type AuthRoutePath = (typeof authRoutePaths)[number];
+type RouteGuardLogger = {
+  warn: (message: string, meta: Record<string, unknown>) => void;
+};
+
+const logger = createSdkLogger({ component: 'auth-routing', level: 'info' });
 
 /**
  * Exhaustive handler mapping for all auth route paths.
@@ -261,6 +273,55 @@ const authHandlerMap = {
 const isAuthRoutePath = (value: string): value is AuthRoutePath =>
   (authRoutePaths as readonly string[]).includes(value);
 
+const getErrorType = (error: unknown): string =>
+  error instanceof Error ? error.constructor.name : typeof error;
+
+const getErrorMessage = (error: unknown): string =>
+  error instanceof Error ? error.message : String(error);
+
+const writeLoggerFallback = (input: {
+  method: string;
+  route: string;
+  requestId?: string;
+  traceId?: string;
+  errorType: string;
+  errorMessage: string;
+}): void => {
+  const payload = JSON.stringify({
+    level: 'error',
+    component: 'auth-routing',
+    message: 'Auth route error logging failed',
+    method: input.method,
+    route: input.route,
+    request_id: input.requestId,
+    trace_id: input.traceId,
+    error_type: input.errorType,
+    error_message: input.errorMessage,
+  });
+  process.stderr.write(`${payload}\n`);
+};
+
+export const verifyAuthRouteHandlerCoverage = (
+  paths: readonly string[],
+  handlers: Record<string, AuthHandlers>,
+  log: RouteGuardLogger = logger
+): void => {
+  const handlerKeys = Object.keys(handlers);
+  const missingPaths = paths.filter((path) => !handlerKeys.includes(path));
+  const extraPaths = handlerKeys.filter((path) => !paths.includes(path));
+
+  if (missingPaths.length === 0 && extraPaths.length === 0) {
+    return;
+  }
+
+  log.warn('Auth route mapping differs from declared auth route paths', {
+    missing_paths: missingPaths.join(','),
+    extra_paths: extraPaths.join(','),
+    path_count: paths.length,
+    handler_count: handlerKeys.length,
+  });
+};
+
 export const resolveAuthHandlers = (path: string): AuthHandlers => {
   if (!isAuthRoutePath(path)) {
     throw new Error(`Unknown auth route path: ${path}`);
@@ -268,6 +329,8 @@ export const resolveAuthHandlers = (path: string): AuthHandlers => {
 
   return authHandlerMap[path];
 };
+
+verifyAuthRouteHandlerCoverage(authRoutePaths, authHandlerMap);
 
 /**
  * Wraps every method handler in a try/catch that guarantees a JSON response.
@@ -288,20 +351,36 @@ export const wrapHandlersWithJsonErrorBoundary = (handlers: AuthHandlers): AuthH
       try {
         return await handler(ctx);
       } catch (error) {
-        // Log here so the real cause is visible in the server terminal.
-        console.error(
-          `[auth-route] Unhandled exception in ${method} handler (route will return JSON 500):`,
-          error,
-        );
-        return new Response(
-          JSON.stringify({
-            error: {
-              code: 'internal_error',
-              message: 'Ein unerwarteter Server-Fehler ist aufgetreten.',
-            },
-          }),
-          { status: 500, headers: { 'Content-Type': 'application/json' } },
-        );
+        const requestHeaders = getHeadersFromRequest(ctx.request);
+        const requestId = extractRequestIdFromHeaders(requestHeaders);
+        const traceId = extractTraceIdFromHeaders(requestHeaders);
+        const route = new URL(ctx.request.url).pathname;
+        const errorType = getErrorType(error);
+        const errorMessage = getErrorMessage(error);
+
+        try {
+          logger.error('Unhandled exception in auth route handler', {
+            method,
+            route,
+            request_id: requestId,
+            trace_id: traceId,
+            error_type: errorType,
+            error_message: errorMessage,
+          });
+        } catch {
+          writeLoggerFallback({
+            method,
+            route,
+            requestId,
+            traceId,
+            errorType,
+            errorMessage,
+          });
+        }
+
+        return toJsonErrorResponse(500, 'internal_error', 'Ein unerwarteter Server-Fehler ist aufgetreten.', {
+          requestId,
+        });
       }
     };
   }

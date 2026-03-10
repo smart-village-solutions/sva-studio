@@ -10,6 +10,7 @@ describe('SSO Session Consistency (Multi-Tab)', () => {
   const envBackup = { ...process.env };
 
   beforeAll(() => {
+    process.env.SVA_AUTH_REDIS_KEY_PREFIX = 'vitest:sso-session-consistency-suite:';
     process.env.SVA_AUTH_ISSUER ??= 'https://issuer.example';
     process.env.SVA_AUTH_CLIENT_ID ??= 'sva-client';
     process.env.SVA_AUTH_CLIENT_SECRET ??= 'test-secret';

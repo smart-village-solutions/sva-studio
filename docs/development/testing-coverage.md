@@ -75,9 +75,11 @@ Beispiele:
 
 - `auth`: projektweite Mindest-Floors plus Hotspots für `iam-account-management.server.ts` und `iam-governance.server.ts`
 - `routing`: Hotspot-Floor für `auth.routes.server.ts`
-- `core`: Security- und IAM-Hotspots für `field-encryption.ts` und `authorization-engine.js`
-- `sdk`: Hotspots für `request-context.server.js` und `monitoring-client.bridge.server.js`
+- `core`: Security- und IAM-Hotspots für `field-encryption.ts` und `authorization-engine.ts`
+- `sdk`: Hotspots für `request-context.server.ts` und `monitoring-client.bridge.server.ts`
 - `sva-studio-react`: Hotspots für `iam-user-events.ts` und `-iam.models.ts`
+
+Hinweis: In `tooling/testing/coverage-policy.json` werden Hotspots immer auf TypeScript-Quelldateien definiert. Das Coverage-Gate mappt `lcov`-`SF:`-Einträge bei Bedarf auf diese Quellpfade zurück.
 
 Empfohlener Testzuschnitt für große Handlerdateien:
 

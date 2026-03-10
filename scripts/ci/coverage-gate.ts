@@ -447,6 +447,8 @@ function parseLcovInfo(rootDir: string, lcovPath: string): Record<string, FileCo
   return fileCoverage;
 }
 
+const tsTwinCache = new Map<string, string | null>();
+
 function normalizeLcovSourcePath(rootDir: string, absoluteFilePath: string): string {
   const relativeFilePath = path.relative(rootDir, absoluteFilePath).split(path.sep).join('/');
   const tsTwinPath = resolveTypeScriptTwin(rootDir, absoluteFilePath);
@@ -459,21 +461,30 @@ function normalizeLcovSourcePath(rootDir: string, absoluteFilePath: string): str
 }
 
 function resolveTypeScriptTwin(rootDir: string, absoluteFilePath: string): string | null {
+  const cached = tsTwinCache.get(absoluteFilePath);
+  if (cached !== undefined) {
+    return cached;
+  }
+
   const extension = path.extname(absoluteFilePath);
   if (extension !== '.js' && extension !== '.jsx') {
+    tsTwinCache.set(absoluteFilePath, null);
     return null;
   }
 
   const twinPath = absoluteFilePath.replace(/\.jsx?$/, extension === '.jsx' ? '.tsx' : '.ts');
   if (!fs.existsSync(twinPath)) {
+    tsTwinCache.set(absoluteFilePath, null);
     return null;
   }
 
   const relativeTwinPath = path.relative(rootDir, twinPath).split(path.sep).join('/');
   if (!/^(apps|packages)\//.test(relativeTwinPath)) {
+    tsTwinCache.set(absoluteFilePath, null);
     return null;
   }
 
+  tsTwinCache.set(absoluteFilePath, twinPath);
   return twinPath;
 }
 

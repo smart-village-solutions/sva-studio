@@ -25,6 +25,17 @@ cd apps/sva-studio-react
 pnpm run dev
 ```
 
+### Builder.io Local Editing
+
+Für Builder.io im Monorepo gibt es einen vorbereiteten Startbefehl im App-Ordner:
+
+```bash
+cd apps/sva-studio-react
+pnpm run builder:launch
+```
+
+Hintergrund und Workaround sind in [docs/development/builder-io-local-editing.md](../../docs/development/builder-io-local-editing.md) dokumentiert.
+
 ## Building For Production
 
 To build this application for production:

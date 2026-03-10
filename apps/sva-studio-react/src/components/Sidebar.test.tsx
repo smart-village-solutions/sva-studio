@@ -53,7 +53,8 @@ describe('Sidebar', () => {
 
     expect(screen.getByLabelText('Seitenleiste')).toBeTruthy();
     expect(screen.getByRole('navigation', { name: 'Bereichsnavigation' })).toBeTruthy();
-    expect(screen.queryAllByRole('link')).toHaveLength(0);
+    expect(screen.getAllByRole('link')).toHaveLength(1);
+    expect(screen.getByRole('link', { name: /SVA Studio/ }).getAttribute('href')).toBe('/');
   });
 
   it('rendert Basislinks für unauthenticated Nutzer', () => {

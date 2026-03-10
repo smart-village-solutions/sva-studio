@@ -80,9 +80,9 @@ describe('Header auth actions', () => {
     });
 
     expect(screen.queryByRole('button', { name: 'Logout' })).toBeNull();
-    expect(screen.getByRole('link', { name: /SVA Studio/ }).getAttribute('href')).toBe('/');
-    expect(screen.queryByRole('link', { name: 'Konto' })).toBeNull();
-    expect(screen.queryByRole('link', { name: 'Startseite' })).toBeNull();
+    expect(screen.queryByRole('link', { name: /SVA Studio/ })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Mein Konto' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Übersicht' })).toBeNull();
   });
 
   it('zeigt für authenticated user nur Branding und Logout', async () => {
@@ -114,8 +114,8 @@ describe('Header auth actions', () => {
     });
 
     expect(screen.queryByRole('link', { name: 'Login' })).toBeNull();
-    expect(screen.getByRole('link', { name: /SVA Studio/ }).getAttribute('href')).toBe('/');
-    expect(screen.queryByRole('link', { name: 'Konto' })).toBeNull();
+    expect(screen.queryByRole('link', { name: /SVA Studio/ })).toBeNull();
+    expect(screen.getByRole('link', { name: 'Mein Konto' }).getAttribute('href')).toBe('/account');
     expect(screen.queryByRole('link', { name: 'Benutzer' })).toBeNull();
   });
 

@@ -33,8 +33,6 @@ type AuthMeResponse = {
 const AUTH_ME_ENDPOINT = '/auth/me';
 const AUTH_LOGOUT_ENDPOINT = '/auth/logout';
 
-const MOCK_AUTH_ENABLED = import.meta.env.VITE_MOCK_AUTH === 'true';
-
 const MOCK_USER: SessionUser = {
   id: 'mock-admin-001',
   name: 'Mock Admin',
@@ -73,7 +71,7 @@ const mockAuthValue: AuthContextValue = {
 };
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {
-  if (MOCK_AUTH_ENABLED) {
+  if (import.meta.env.VITE_MOCK_AUTH === 'true') {
     return <AuthContext.Provider value={mockAuthValue}>{children}</AuthContext.Provider>;
   }
 

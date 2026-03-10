@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AuthProvider, useAuth } from './auth-provider';
 
@@ -30,9 +30,14 @@ const AuthProbe = () => {
 };
 
 describe('AuthProvider', () => {
+  beforeEach(() => {
+    vi.stubEnv('VITE_MOCK_AUTH', 'false');
+  });
+
   afterEach(() => {
     cleanup();
     vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
   });
 
   it('loads authenticated user via /auth/me', async () => {

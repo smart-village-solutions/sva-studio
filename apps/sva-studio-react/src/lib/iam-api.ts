@@ -40,6 +40,10 @@ type IamErrorPayload =
       readonly requestId?: string;
     };
 
+const hasTopLevelMessage = (
+  payload: IamErrorPayload
+): payload is IamErrorPayload & { readonly message?: unknown } => 'message' in payload;
+
 const isDevelopmentEnvironment = () => {
   if (typeof process !== 'undefined' && typeof process.env?.NODE_ENV === 'string') {
     return process.env.NODE_ENV !== 'production';
@@ -81,7 +85,7 @@ const readErrorMessageFromPayload = (payload: IamErrorPayload | null, status: nu
       return message;
     }
   }
-  if (typeof payload.message === 'string') {
+  if (hasTopLevelMessage(payload) && typeof payload.message === 'string') {
     return payload.message;
   }
   return `http_${status}`;
@@ -220,7 +224,7 @@ const createIdempotencyKey = () => {
 const readErrorPayload = async (response: Response): Promise<IamHttpError> => {
   const payload = (await response.json().catch(() => null)) as IamErrorPayload | null;
   const code = readErrorCodeFromPayload(payload) ?? 'internal_error';
-  const requestId = readRequestIdFromResponse(response, payload);
+  const requestId = readRequestIdFromResponse(response, payload ?? undefined);
 
   logDevelopmentApiError({ requestId, status: response.status, code });
 

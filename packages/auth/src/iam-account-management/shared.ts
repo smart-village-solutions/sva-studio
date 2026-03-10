@@ -21,6 +21,7 @@ import type {
   IamRoleRow,
   ResolveActorOptions,
 } from './types';
+export type { ActorInfo } from './types';
 
 export type { ActorInfo } from './types';
 

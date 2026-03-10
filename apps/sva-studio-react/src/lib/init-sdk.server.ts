@@ -6,6 +6,8 @@
  * initialisiert sind, bevor irgendwelche Server-Code ausgeführt wird.
  */
 
+import { initializeOtelSdk } from '@sva/sdk/server';
+
 let sdkInitialized = false;
 
 export async function ensureSdkInitialized() {
@@ -14,7 +16,6 @@ export async function ensureSdkInitialized() {
   }
 
   try {
-    const { initializeOtelSdk } = await import('@sva/sdk/server');
     await initializeOtelSdk();
     sdkInitialized = true;
     console.info('[SDK] OpenTelemetry initialization completed');

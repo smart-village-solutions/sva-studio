@@ -15,6 +15,7 @@ Dieses Dokument beschreibt den standardisierten Coverage-Workflow im Nx Monorepo
 Jedes Projekt soll folgende Targets bereitstellen:
 
 - `lint`: ausführbarer Qualitäts-Check (kein Platzhalter)
+- `typecheck`: TypeScript-Strict-Check für den produktiven Projekt-Scope
 - `test:unit`: schnelle, stabile Unit-Tests
 - `test:coverage`: Unit-Tests mit Coverage-Reporting
 - `test:integration`: infra-abhängige Tests (z. B. Redis, echte Services)
@@ -24,10 +25,13 @@ Jedes Projekt soll folgende Targets bereitstellen:
 ### Gesamtes Workspace
 
 ```bash
+pnpm test:types
 pnpm test:unit
 pnpm test:coverage
 pnpm test:integration
 ```
+
+`pnpm test:types` ist bindend und umfasst neben den Core-/Library-Builds auch den dedizierten Nx-Typecheck der React-App (`sva-studio-react:typecheck`). Debug-Routen unter `src/routes/__debug/` sind dabei bewusst ausgeschlossen, damit optionale Diagnose-Abhängigkeiten den regulären App-Typecheck nicht verfälschen.
 
 ### Nur betroffene Projekte
 

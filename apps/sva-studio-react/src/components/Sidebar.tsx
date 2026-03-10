@@ -6,7 +6,6 @@
  */
 import { Link } from '@tanstack/react-router';
 import { LayoutDashboard, Settings2, Shield, UserRound, Users, X } from 'lucide-react';
-import React from 'react';
 
 import { t } from '../i18n';
 import { hasIamAdminRole, hasSystemAdminRole, isIamAdminEnabled, isIamUiEnabled } from '../lib/iam-admin-access';

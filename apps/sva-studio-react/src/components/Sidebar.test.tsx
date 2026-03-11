@@ -74,7 +74,7 @@ describe('Sidebar', () => {
     expect(screen.queryByRole('link', { name: 'Demos' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'Plugin-Beispiel' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'Admin-API-Test' })).toBeNull();
-    expect(screen.queryByRole('link', { name: 'Mein Konto' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Profil' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'Benutzerverwaltung' })).toBeNull();
   });
 
@@ -95,7 +95,7 @@ describe('Sidebar', () => {
 
     render(<Sidebar />);
 
-    expect(screen.getByRole('link', { name: 'Mein Konto' }).getAttribute('href')).toBe('/account');
+    expect(screen.getByRole('link', { name: 'Profil' }).getAttribute('href')).toBe('/account');
     expect(screen.getByRole('link', { name: 'Benutzerverwaltung' }).getAttribute('href')).toBe('/admin/users');
     expect(screen.getByRole('link', { name: 'Rollenverwaltung' }).getAttribute('href')).toBe('/admin/roles');
   });

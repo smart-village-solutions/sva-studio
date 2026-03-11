@@ -94,7 +94,7 @@ describe('AccountProfilePage', () => {
     render(<AccountProfilePage />);
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Mein Konto' })).toBeTruthy();
+      expect(screen.getByRole('heading', { name: 'Profil' })).toBeTruthy();
     });
 
     fireEvent.change(screen.getByLabelText('Anzeigename'), {
@@ -175,7 +175,7 @@ describe('AccountProfilePage', () => {
     render(<AccountProfilePage />);
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Mein Konto' })).toBeTruthy();
+      expect(screen.getByRole('heading', { name: 'Profil' })).toBeTruthy();
     });
 
     fireEvent.change(screen.getByLabelText('Vorname'), {
@@ -223,7 +223,7 @@ describe('AccountProfilePage', () => {
 
     await waitFor(() => {
       expect(getMyProfileMock).toHaveBeenCalledTimes(2);
-      expect(screen.getByRole('heading', { name: 'Mein Konto' })).toBeTruthy();
+      expect(screen.getByRole('heading', { name: 'Profil' })).toBeTruthy();
     });
   });
 
@@ -249,7 +249,7 @@ describe('AccountProfilePage', () => {
     render(<AccountProfilePage />);
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Mein Konto' })).toBeTruthy();
+      expect(screen.getByRole('heading', { name: 'Profil' })).toBeTruthy();
     });
 
     fireEvent.change(screen.getByLabelText('Benutzername'), { target: { value: 'bad user' } });

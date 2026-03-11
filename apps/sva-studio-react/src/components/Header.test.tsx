@@ -81,7 +81,7 @@ describe('Header auth actions', () => {
 
     expect(screen.queryByRole('button', { name: 'Logout' })).toBeNull();
     expect(screen.queryByRole('link', { name: /SVA Studio/ })).toBeNull();
-    expect(screen.queryByRole('link', { name: 'Mein Konto' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Profil' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'Übersicht' })).toBeNull();
   });
 
@@ -115,7 +115,7 @@ describe('Header auth actions', () => {
 
     expect(screen.queryByRole('link', { name: 'Login' })).toBeNull();
     expect(screen.queryByRole('link', { name: /SVA Studio/ })).toBeNull();
-    expect(screen.getByRole('link', { name: 'Mein Konto' }).getAttribute('href')).toBe('/account');
+    expect(screen.getByRole('link', { name: 'Profil' }).getAttribute('href')).toBe('/account');
     expect(screen.queryByRole('link', { name: 'Benutzer' })).toBeNull();
   });
 

@@ -7,7 +7,7 @@ describe('translate', () => {
   it('resolves account namespace keys for de locale', () => {
     const t = createTranslator('de');
 
-    expect(t('account.profile.title')).toBe('Mein Konto');
+    expect(t('account.profile.title')).toBe('Profil');
     expect(t('account.messages.saveSuccess')).toBe('Profil wurde erfolgreich gespeichert.');
   });
 
@@ -36,7 +36,7 @@ describe('translate', () => {
 
     try {
       const t = createTranslator('en');
-      expect(t('account.profile.title')).toBe('Mein Konto');
+      expect(t('account.profile.title')).toBe('Profil');
     } finally {
       i18nResources.en.account.profile.title = original;
     }

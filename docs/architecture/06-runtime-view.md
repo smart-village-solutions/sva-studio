@@ -237,3 +237,19 @@ Fehlerpfad:
 
 - Fehlen strukturierte Felder noch in Alt-Daten, greift der Kompatibilitätspfad über `permission_key`.
 - Widersprechen `allow` und `deny`, gewinnt deterministisch die restriktivere Regel.
+
+### Ergänzung 2026-03: Instanz-Host-Validierung im Multi-Host-Betrieb
+
+1. Eingehende Anfrage trifft Traefik, wird über `HostRegexp` an den App-Service geroutet.
+2. App extrahiert den Host-Header und normalisiert ihn (Lowercase, Port-Stripping, Trailing-Dot).
+3. Host wird gegen die Parent-Domain und Instanz-Allowlist geprüft:
+   - Root-Domain → Kanonischer Auth-Host, `instanceId = null`
+   - Gültige Instanz-Subdomain → `instanceId` aus Subdomain abgeleitet
+   - Ungültiger oder unbekannter Host → `403` mit identischem Body (`{ error, message }` + `X-Request-Id`)
+4. Bei Auth-Endpunkten auf Instanz-Hosts: fail-closed, Redirect zum kanonischen Auth-Host.
+5. Gültige `instanceId` wird im Request-Kontext propagiert (analog zu `workspace_id` in AsyncLocalStorage).
+
+Fehlerpfad:
+
+- Bei fehlender `SVA_PARENT_DOMAIN` (Entwicklungsmodus) wird die Host-Validierung übersprungen.
+- Bei ungültigen Einträgen in `SVA_ALLOWED_INSTANCE_IDS` bricht die App beim Startup ab (fail-fast).

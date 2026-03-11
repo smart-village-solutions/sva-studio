@@ -173,3 +173,8 @@ Referenzen:
    - Impact: hoch (temporär veraltete Authorize-Entscheidungen)
    - Wahrscheinlichkeit: mittel
    - Maßnahme: Invalidation-Trigger auf Hierarchie-/Permission-Änderungen erweitern, Cache-Hit/Miss-Metriken überwachen und Performance-/Stale-Nachweis nachziehen
+
+24. Skalierungsschwellwert der Env-basierten `instanceId`-Allowlist
+   - Impact: mittel (Verwaltungsaufwand, Neustarts bei jeder Änderung)
+   - Wahrscheinlichkeit: mittel (bei Wachstum über 50 Instanzen)
+   - Maßnahme: DB-gestützte `instanceId`-Registry als Folgearbeit geplant; Schwellwert dokumentiert in ADR-011 und Swarm-Deployment-Runbook

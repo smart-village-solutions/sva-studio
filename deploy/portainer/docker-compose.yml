@@ -1,0 +1,211 @@
+# ---------------------------------------------------------------------------
+# SVA Studio – Swarm-/Traefik-Referenz-Betriebsprofil
+#
+# Voraussetzungen:
+#   - Docker Swarm initialisiert
+#   - Externes Overlay-Netzwerk "public" existiert (docker network create -d overlay public)
+#   - Traefik-Ingress läuft im selben Swarm und lauscht auf dem "public"-Netzwerk
+#   - Secrets sind vor dem Stack-Deploy provisioniert (siehe Runbook)
+#   - Image ist vorgebaut und in einer Registry verfügbar
+#
+# Deploy:
+#   docker stack deploy -c docker-compose.yml sva-studio
+# ---------------------------------------------------------------------------
+
+services:
+  # -------------------------------------------------------------------------
+  # App – TanStack-Start-/Nitro-Server
+  # -------------------------------------------------------------------------
+  app:
+    image: ${SVA_REGISTRY:-ghcr.io/smart-village-solutions}/sva-studio:${SVA_IMAGE_TAG:-latest}
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 3000
+      REDIS_URL: redis://redis:6379
+      ENABLE_OTEL: ${ENABLE_OTEL:-false}
+      # DB-Verbindung wird im Entrypoint aus Secret + Einzelwerten gebaut.
+      POSTGRES_DB: ${POSTGRES_DB:-sva_studio}
+      APP_DB_USER: ${APP_DB_USER:-sva_app}
+      # Auth (nicht-sensibel)
+      SVA_PUBLIC_BASE_URL: ${SVA_PUBLIC_BASE_URL:?SVA_PUBLIC_BASE_URL must be set}
+      SVA_AUTH_ISSUER: ${SVA_AUTH_ISSUER:?SVA_AUTH_ISSUER must be set}
+      SVA_AUTH_CLIENT_ID: ${SVA_AUTH_CLIENT_ID:?SVA_AUTH_CLIENT_ID must be set}
+      SVA_AUTH_REDIRECT_URI: ${SVA_AUTH_REDIRECT_URI:?SVA_AUTH_REDIRECT_URI must be set}
+      SVA_AUTH_POST_LOGOUT_REDIRECT_URI: ${SVA_AUTH_POST_LOGOUT_REDIRECT_URI:?SVA_AUTH_POST_LOGOUT_REDIRECT_URI must be set}
+      # IAM
+      IAM_PII_ACTIVE_KEY_ID: ${IAM_PII_ACTIVE_KEY_ID:-k1}
+      IAM_CSRF_ALLOWED_ORIGINS: ${IAM_CSRF_ALLOWED_ORIGINS:-${SVA_PUBLIC_BASE_URL}}
+      # Instance-Routing
+      SVA_PARENT_DOMAIN: ${SVA_PARENT_DOMAIN:?SVA_PARENT_DOMAIN must be set}
+      SVA_ALLOWED_INSTANCE_IDS: ${SVA_ALLOWED_INSTANCE_IDS:-}
+      # Feature-Flags
+      VITE_IAM_UI_ENABLED: ${VITE_IAM_UI_ENABLED:-false}
+      VITE_IAM_ADMIN_ENABLED: ${VITE_IAM_ADMIN_ENABLED:-false}
+      VITE_IAM_BULK_ENABLED: ${VITE_IAM_BULK_ENABLED:-false}
+      IAM_UI_ENABLED: ${IAM_UI_ENABLED:-false}
+      IAM_ADMIN_ENABLED: ${IAM_ADMIN_ENABLED:-false}
+      IAM_BULK_ENABLED: ${IAM_BULK_ENABLED:-false}
+      # Keycloak-Admin (optional)
+      KEYCLOAK_ADMIN_BASE_URL: ${KEYCLOAK_ADMIN_BASE_URL:-}
+      KEYCLOAK_ADMIN_REALM: ${KEYCLOAK_ADMIN_REALM:-}
+      KEYCLOAK_ADMIN_CLIENT_ID: ${KEYCLOAK_ADMIN_CLIENT_ID:-}
+      IAM_ROLE_RECONCILE_INTERVAL_MS: ${IAM_ROLE_RECONCILE_INTERVAL_MS:-300000}
+      IAM_ROLE_RECONCILE_INSTANCE_IDS: ${IAM_ROLE_RECONCILE_INSTANCE_IDS:-}
+    secrets:
+      - sva_studio_app_auth_client_secret
+      - sva_studio_app_auth_state_secret
+      - sva_studio_app_encryption_key
+      - sva_studio_app_pii_keyring_json
+      - sva_studio_app_db_password
+      - sva_studio_keycloak_admin_client_secret
+    networks:
+      - public
+      - internal
+    deploy:
+      replicas: 1
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+      rollback_config:
+        parallelism: 1
+        order: stop-first
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+      labels:
+        - traefik.enable=true
+        - traefik.docker.network=public
+        # Kanonischer Auth-Host (Root-Domain)
+        - traefik.http.routers.sva-studio.rule=Host(`${SVA_PARENT_DOMAIN}`)
+        - traefik.http.routers.sva-studio.entrypoints=websecure
+        - traefik.http.routers.sva-studio.tls.certresolver=letsencrypt
+        - traefik.http.routers.sva-studio.service=sva-studio
+        # Instanz-Subdomains (HostRegexp)
+        - traefik.http.routers.sva-studio-instance.rule=HostRegexp(`{subdomain:[a-z0-9]([a-z0-9-]*[a-z0-9])?}.${SVA_PARENT_DOMAIN}`)
+        - traefik.http.routers.sva-studio-instance.entrypoints=websecure
+        - traefik.http.routers.sva-studio-instance.tls.certresolver=letsencrypt
+        - traefik.http.routers.sva-studio-instance.service=sva-studio
+        # Service-Port
+        - traefik.http.services.sva-studio.loadbalancer.server.port=3000
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - node -e "fetch('http://127.0.0.1:3000/health/live').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+
+  # -------------------------------------------------------------------------
+  # Redis – Session-/Cache-Store
+  # -------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --maxmemory
+      - 256mb
+      - --maxmemory-policy
+      - allkeys-lru
+    volumes:
+      - redis-data:/data
+    networks:
+      - internal
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 60s
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # -------------------------------------------------------------------------
+  # Postgres – IAM Core Data Layer
+  #
+  # Hinweis: Beim ersten Deploy auf ein leeres Volume muss die Datenbank
+  # manuell initialisiert werden (Migrationen + Runtime-User).
+  # Siehe Runbook: docs/guides/swarm-deployment-runbook.md
+  # -------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-sva_studio}
+      POSTGRES_USER: ${POSTGRES_USER:-sva}
+      POSTGRES_PASSWORD_FILE: /run/secrets/sva_studio_postgres_password
+    secrets:
+      - sva_studio_postgres_password
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - internal
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 60s
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+# ---------------------------------------------------------------------------
+# Netzwerke
+# ---------------------------------------------------------------------------
+networks:
+  public:
+    external: true
+  internal:
+    driver: overlay
+
+# ---------------------------------------------------------------------------
+# Volumes – stateful Services behalten ihre Daten über Redeployments hinweg.
+# Placement-Constraints stellen sicher, dass Volumes auf demselben Node bleiben.
+# ---------------------------------------------------------------------------
+volumes:
+  postgres-data:
+    driver: local
+  redis-data:
+    driver: local
+
+# ---------------------------------------------------------------------------
+# Secrets – müssen vor dem Stack-Deploy als externe Swarm-Secrets existieren.
+#
+#   docker secret create sva_studio_app_auth_client_secret <file>
+#
+# Namenskonvention: sva_studio_<service>_<secret_name>
+# ---------------------------------------------------------------------------
+secrets:
+  sva_studio_app_auth_client_secret:
+    external: true
+  sva_studio_app_auth_state_secret:
+    external: true
+  sva_studio_app_encryption_key:
+    external: true
+  sva_studio_app_pii_keyring_json:
+    external: true
+  sva_studio_app_db_password:
+    external: true
+  sva_studio_postgres_password:
+    external: true
+  sva_studio_keycloak_admin_client_secret:
+    external: true

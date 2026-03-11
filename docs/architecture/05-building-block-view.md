@@ -32,6 +32,7 @@ Abhängigkeiten des aktuellen Systems.
    - modulare Server-Fassaden und fachliche Unterordner für IAM- und Auth-Pfade
 5. SDK (`packages/sdk`)
    - Logger, Context-Propagation, OTEL-Bootstrap
+   - Instance-Config-Modul (`instance/config.server.ts`): Validierung der `instanceId`-Allowlist beim Startup, Host-Parsing und Mapping auf `instanceId`
 6. Monitoring Client (`packages/monitoring-client`)
    - OTEL SDK Setup, Exporter, Log-Redaction-Processor
 7. Data (`packages/data`)

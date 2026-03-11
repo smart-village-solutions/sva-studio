@@ -114,7 +114,7 @@ LEFT JOIN iam.organizations parent
  AND parent.id = organization.parent_organization_id
 `;
 const ORGANIZATION_LIST_FILTER_SQL = `
-WHERE organization.instance_id = $1::uuid
+WHERE organization.instance_id = $1
   AND ($2::text IS NULL
     OR organization.display_name ILIKE $2 ESCAPE '\\'
     OR organization.organization_key ILIKE $2 ESCAPE '\\')
@@ -234,7 +234,7 @@ FROM iam.organizations organization
 LEFT JOIN iam.organizations parent
   ON parent.instance_id = organization.instance_id
  AND parent.id = organization.parent_organization_id
-WHERE organization.instance_id = $1::uuid
+WHERE organization.instance_id = $1
   AND organization.id = $2::uuid
 LIMIT 1;
 `,
@@ -272,14 +272,14 @@ ${ORGANIZATION_LIST_FILTER_SQL};
 WITH child_counts AS (
   SELECT parent_organization_id AS organization_id, COUNT(*)::int AS child_count
   FROM iam.organizations
-  WHERE instance_id = $1::uuid
+  WHERE instance_id = $1
     AND parent_organization_id IS NOT NULL
   GROUP BY parent_organization_id
 ),
 membership_counts AS (
   SELECT organization_id, COUNT(*)::int AS membership_count
   FROM iam.account_organizations
-  WHERE instance_id = $1::uuid
+  WHERE instance_id = $1
   GROUP BY organization_id
 )
 SELECT
@@ -337,7 +337,7 @@ SELECT
 FROM iam.account_organizations membership
 JOIN iam.accounts account
   ON account.id = membership.account_id
-WHERE membership.instance_id = $1::uuid
+WHERE membership.instance_id = $1
   AND membership.organization_id = $2::uuid
 ORDER BY membership.is_default_context DESC, membership.created_at ASC;
 `,
@@ -348,7 +348,7 @@ ORDER BY membership.is_default_context DESC, membership.created_at ASC;
     `
 SELECT id, organization_key, display_name, is_active
 FROM iam.organizations
-WHERE instance_id = $1::uuid
+WHERE instance_id = $1
   AND parent_organization_id = $2::uuid
 ORDER BY display_name ASC;
 `,
@@ -385,7 +385,7 @@ FROM iam.account_organizations membership
 JOIN iam.organizations organization
   ON organization.instance_id = membership.instance_id
  AND organization.id = membership.organization_id
-WHERE membership.instance_id = $1::uuid
+WHERE membership.instance_id = $1
   AND membership.account_id = $2::uuid
 ORDER BY membership.is_default_context DESC, organization.depth ASC, organization.display_name ASC;
 `,
@@ -445,7 +445,7 @@ WITH RECURSIVE organization_tree AS (
     organization.depth,
     ARRAY[organization.id]::uuid[] AS traversed_ids
   FROM iam.organizations organization
-  WHERE organization.instance_id = $1::uuid
+  WHERE organization.instance_id = $1
     AND organization.id = $2::uuid
 
   UNION ALL
@@ -880,7 +880,7 @@ SET
   hierarchy_path = $9::uuid[],
   depth = $10::int,
   updated_at = NOW()
-WHERE instance_id = $1::uuid
+WHERE instance_id = $1
   AND id = $2::uuid;
 `,
         [
@@ -1004,7 +1004,7 @@ const deactivateOrganizationInternal = async (
 UPDATE iam.organizations
 SET is_active = false,
     updated_at = NOW()
-WHERE instance_id = $1::uuid
+WHERE instance_id = $1
   AND id = $2::uuid;
 `,
         [actorResolution.actor.instanceId, organizationId]
@@ -1115,7 +1115,7 @@ const assignOrganizationMembershipInternal = async (
 SELECT id
 FROM iam.accounts
 WHERE id = $1::uuid
-  AND instance_id = $2::uuid
+  AND instance_id = $2
 LIMIT 1;
 `,
         [parsed.data.accountId, actorResolution.actor.instanceId]
@@ -1129,7 +1129,7 @@ LIMIT 1;
           `
 UPDATE iam.account_organizations
 SET is_default_context = false
-WHERE instance_id = $1::uuid
+WHERE instance_id = $1
   AND account_id = $2::uuid;
 `,
           [actorResolution.actor.instanceId, parsed.data.accountId]
@@ -1140,7 +1140,7 @@ WHERE instance_id = $1::uuid
         `
 SELECT organization_id
 FROM iam.account_organizations
-WHERE instance_id = $1::uuid
+WHERE instance_id = $1
   AND account_id = $2::uuid
   AND is_default_context = true
 LIMIT 1;
@@ -1292,7 +1292,7 @@ const removeOrganizationMembershipInternal = async (
         `
 SELECT is_default_context
 FROM iam.account_organizations
-WHERE instance_id = $1::uuid
+WHERE instance_id = $1
   AND account_id = $2::uuid
   AND organization_id = $3::uuid
 LIMIT 1;
@@ -1306,7 +1306,7 @@ LIMIT 1;
       await client.query(
         `
 DELETE FROM iam.account_organizations
-WHERE instance_id = $1::uuid
+WHERE instance_id = $1
   AND account_id = $2::uuid
   AND organization_id = $3::uuid;
 `,
@@ -1319,7 +1319,7 @@ WHERE instance_id = $1::uuid
 WITH fallback_membership AS (
   SELECT organization_id
   FROM iam.account_organizations
-  WHERE instance_id = $1::uuid
+  WHERE instance_id = $1
     AND account_id = $2::uuid
   ORDER BY created_at ASC, organization_id ASC
   LIMIT 1
@@ -1327,7 +1327,7 @@ WITH fallback_membership AS (
 UPDATE iam.account_organizations membership
 SET is_default_context = true
 FROM fallback_membership
-WHERE membership.instance_id = $1::uuid
+WHERE membership.instance_id = $1
   AND membership.account_id = $2::uuid
   AND membership.organization_id = fallback_membership.organization_id;
 `,

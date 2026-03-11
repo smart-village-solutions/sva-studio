@@ -1,4 +1,5 @@
 export type IamUuid = string;
+export type IamInstanceId = string;
 
 export type PersonaKey =
   | 'system_admin'
@@ -47,8 +48,7 @@ export type PersonaSeed = {
 };
 
 export type IamSeedContext = {
-  readonly instanceId: IamUuid;
-  readonly instanceKey: string;
+  readonly instanceId: IamInstanceId;
   readonly organizationId: IamUuid;
   readonly organizationKey: string;
 };

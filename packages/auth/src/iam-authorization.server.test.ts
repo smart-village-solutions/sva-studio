@@ -5,7 +5,7 @@ import { evaluateAuthorizeDecision } from './iam-authorization.server';
 
 describe('evaluateAuthorizeDecision', () => {
   const baseRequest: AuthorizeRequest = {
-    instanceId: '11111111-1111-1111-8111-111111111111',
+    instanceId: 'de-musterhausen',
     action: 'content.read',
     resource: {
       type: 'content',
@@ -68,7 +68,7 @@ describe('evaluateAuthorizeDecision', () => {
       {
         action: 'content.read',
         resourceType: 'content',
-        organizationId: '11111111-1111-1111-8111-111111111111',
+        organizationId: 'de-musterhausen',
         sourceRoleIds: ['role-parent'],
       },
     ];
@@ -80,7 +80,7 @@ describe('evaluateAuthorizeDecision', () => {
           ...baseRequest.context,
           attributes: {
             organizationHierarchy: [
-              '11111111-1111-1111-8111-111111111111',
+              'de-musterhausen',
               '22222222-2222-2222-8222-222222222222',
             ],
           },

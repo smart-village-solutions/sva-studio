@@ -26,7 +26,7 @@ const makePermissions = (count: number): EffectivePermission[] =>
 
 const run = () => {
   const request: AuthorizeRequest = {
-    instanceId: '11111111-1111-1111-8111-111111111111',
+    instanceId: 'de-musterhausen',
     action: 'content.read',
     resource: {
       type: 'content',

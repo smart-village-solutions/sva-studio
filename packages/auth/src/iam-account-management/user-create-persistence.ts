@@ -43,7 +43,7 @@ INSERT INTO iam.accounts (
   notes
 )
 VALUES (
-  $1::uuid,
+  $1,
   $2,
   $3,
   $4,
@@ -63,7 +63,7 @@ RETURNING id;
 
 const INSERT_MEMBERSHIP_QUERY = `
 INSERT INTO iam.instance_memberships (instance_id, account_id, membership_type)
-VALUES ($1::uuid, $2::uuid, 'member')
+VALUES ($1, $2::uuid, 'member')
 ON CONFLICT (instance_id, account_id) DO NOTHING;
 `;
 

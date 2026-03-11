@@ -61,7 +61,7 @@ describe('persistAuthAuditEventWithClient', () => {
     const result = await persistAuthAuditEventWithClient(client, {
       eventType: 'login',
       actorUserId: 'keycloak-sub-1',
-      workspaceId: '11111111-1111-1111-8111-111111111111',
+      workspaceId: 'de-musterhausen',
       outcome: 'success',
       requestId: 'req-1',
       traceId: 'trace-1',
@@ -80,7 +80,7 @@ describe('persistAuthAuditEventWithClient', () => {
     const result = await persistAuthAuditEventWithClient(client, {
       eventType: 'logout',
       actorUserId: 'keycloak-sub-2',
-      workspaceId: '11111111-1111-1111-8111-111111111111',
+      workspaceId: 'de-musterhausen',
       outcome: 'success',
     });
 
@@ -117,7 +117,7 @@ describe('persistAuthAuditEventWithClient', () => {
       actorUserId: 'keycloak-existing-1',
       actorEmail: 'existing@example.org',
       actorDisplayName: 'Existing User',
-      workspaceId: '11111111-1111-1111-8111-111111111111',
+      workspaceId: 'de-musterhausen',
       outcome: 'success',
     });
 
@@ -144,7 +144,7 @@ describe('persistAuthAuditEventWithClient', () => {
       actorUserId: 'keycloak-sub-3',
       actorEmail: 'user@example.org',
       actorDisplayName: 'Max Mustermann',
-      workspaceId: '11111111-1111-1111-8111-111111111111',
+      workspaceId: 'de-musterhausen',
       outcome: 'success',
     });
 
@@ -186,7 +186,7 @@ describe('persistAuthAuditEventWithClient', () => {
       actorUserId: 'keycloak-existing-2',
       actorEmail: 'existing@example.org',
       actorDisplayName: 'Existing User',
-      workspaceId: '11111111-1111-1111-8111-111111111111',
+      workspaceId: 'de-musterhausen',
       outcome: 'success',
     });
 
@@ -201,7 +201,7 @@ describe('persistAuthAuditEventWithClient', () => {
 });
 
 describe('persistAuthAuditEventToDb', () => {
-  it('skips persist when instance id is not UUID', async () => {
+  it('skips persist when no IAM database url is configured', async () => {
     const result = await persistAuthAuditEventToDb({
       eventType: 'login',
       actorUserId: 'keycloak-sub-1',
@@ -210,7 +210,7 @@ describe('persistAuthAuditEventToDb', () => {
     });
 
     expect(result.persisted).toBe(false);
-    expect(result.reason).toBe('invalid_instance_id');
+    expect(result.reason).toBe('missing_database_url');
     expect(result.writtenEventTypes).toEqual([]);
   });
 
@@ -221,7 +221,7 @@ describe('persistAuthAuditEventToDb', () => {
     const result = await persistAuthAuditEventToDb({
       eventType: 'login',
       actorUserId: 'keycloak-sub-2',
-      workspaceId: '11111111-1111-1111-8111-111111111111',
+      workspaceId: 'de-musterhausen',
       outcome: 'success',
     });
 

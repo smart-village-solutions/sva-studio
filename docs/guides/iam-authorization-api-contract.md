@@ -15,7 +15,7 @@ Liefert die effektiven Berechtigungen für den aktuell authentifizierten Benutze
 
 ### Query-Parameter
 
-- `instanceId` (optional, UUID): Überschreibt den Session-Kontext nur, wenn identisch zur User-Instanz
+- `instanceId` (optional, String): Überschreibt den Session-Kontext nur, wenn identisch zur User-Instanz
 - `organizationId` (optional, UUID): Filtert Berechtigungen auf Organisationskontext
 - `actingAsUserId` (optional, String): Effektives Ziel-Subjekt für Admin-Analyse, nur mit aktiver Impersonation-Session
 
@@ -23,7 +23,7 @@ Liefert die effektiven Berechtigungen für den aktuell authentifizierten Benutze
 
 ```json
 {
-  "instanceId": "11111111-1111-1111-8111-111111111111",
+  "instanceId": "de-musterhausen",
   "organizationId": "22222222-2222-2222-8222-222222222222",
   "permissions": [
     {
@@ -64,7 +64,7 @@ Führt eine deterministische Autorisierungsentscheidung für `action` + `resourc
 
 ```json
 {
-  "instanceId": "11111111-1111-1111-8111-111111111111",
+  "instanceId": "de-musterhausen",
   "action": "content.read",
   "resource": {
     "type": "content",
@@ -79,9 +79,9 @@ Führt eine deterministische Autorisierungsentscheidung für `action` + `resourc
     "requestId": "req-123",
     "traceId": "trace-abc",
     "attributes": {
-      "instanceId": "11111111-1111-1111-8111-111111111111",
+      "instanceId": "de-musterhausen",
       "organizationHierarchy": [
-        "11111111-1111-1111-8111-111111111111",
+        "de-musterhausen",
         "22222222-2222-2222-8222-222222222222"
       ],
       "allowedGeoScopes": ["de-bw"],
@@ -100,7 +100,7 @@ Führt eine deterministische Autorisierungsentscheidung für `action` + `resourc
 {
   "allowed": true,
   "reason": "allowed_by_abac",
-  "instanceId": "11111111-1111-1111-8111-111111111111",
+  "instanceId": "de-musterhausen",
   "action": "content.read",
   "resourceType": "content",
   "resourceId": "article-1",
@@ -149,7 +149,7 @@ Der Fehlervertrag bleibt additiv: `error` ist und bleibt der maschinenlesbare St
 
 - Contract-Änderungen an Feldern, Semantik oder Codes sind breaking und benötigen OpenSpec-Delta + Review.
 - Reason-Codes werden nur additiv erweitert; bestehende Codes werden nicht semantisch umdefiniert.
-- `instanceId` bleibt Primär-Scope gemäß ADR-011.
+- `instanceId` bleibt Primär-Scope gemäß ADR-011 und wird als fachlicher String-Schlüssel geführt.
 
 ## Architekturreferenzen
 

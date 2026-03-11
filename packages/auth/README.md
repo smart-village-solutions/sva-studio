@@ -187,5 +187,3 @@ src/
 - [IAM Governance-Runbook](../../docs/guides/iam-governance-runbook.md)
 - [IAM DSR-Runbook](../../docs/guides/iam-data-subject-rights-runbook.md)
 - [Querschnittliche Konzepte (arc42 §8)](../../docs/architecture/08-cross-cutting-concepts.md)
-
-PW

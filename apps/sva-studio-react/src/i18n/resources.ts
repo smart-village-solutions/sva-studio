@@ -37,7 +37,7 @@ export const i18nResources = {
         overview: 'Übersicht',
         demos: 'Demos',
         pluginExample: 'Plugin-Beispiel',
-        account: 'Mein Konto',
+        account: 'Profil',
         userManagement: 'Benutzerverwaltung',
         organizationManagement: 'Organisationsverwaltung',
         roleManagement: 'Rollenverwaltung',
@@ -48,7 +48,7 @@ export const i18nResources = {
     },
     account: {
       profile: {
-        title: 'Mein Konto',
+        title: 'Profil',
         subtitle: 'Persönliche Daten und Einstellungen verwalten',
       },
       fields: {
@@ -417,7 +417,7 @@ export const i18nResources = {
         overview: 'Overview',
         demos: 'Demos',
         pluginExample: 'Plugin Example',
-        account: 'My Account',
+        account: 'Profile',
         userManagement: 'User Management',
         organizationManagement: 'Organization Management',
         roleManagement: 'Role Management',
@@ -428,7 +428,7 @@ export const i18nResources = {
     },
     account: {
       profile: {
-        title: 'My Account',
+        title: 'Profile',
         subtitle: 'Manage personal data and preferences',
       },
       fields: {

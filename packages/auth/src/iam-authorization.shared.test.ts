@@ -91,16 +91,16 @@ describe('iam authorization shared helpers', () => {
     expect(
       resolveInstanceIdFromRequest(
         new Request('http://localhost/iam/me/permissions?instanceId=22222222-2222-2222-8222-222222222222'),
-        '11111111-1111-1111-8111-111111111111'
+        'de-musterhausen'
       )
     ).toBe('22222222-2222-2222-8222-222222222222');
 
     expect(
       resolveInstanceIdFromRequest(
         new Request('http://localhost/iam/me/permissions'),
-        '11111111-1111-1111-8111-111111111111'
+        'de-musterhausen'
       )
-    ).toBe('11111111-1111-1111-8111-111111111111');
+    ).toBe('de-musterhausen');
   });
 
   it('parses optional organization and acting-as parameters', () => {
@@ -122,7 +122,7 @@ describe('iam authorization shared helpers', () => {
 
   it('builds me/permissions responses with request metadata and subject details', () => {
     const response = buildMePermissionsResponse({
-      instanceId: '11111111-1111-1111-8111-111111111111',
+      instanceId: 'de-musterhausen',
       organizationId: '22222222-2222-2222-8222-222222222222',
       permissions: [
         {
@@ -138,7 +138,7 @@ describe('iam authorization shared helpers', () => {
 
     expect(response).toEqual(
       expect.objectContaining({
-        instanceId: '11111111-1111-1111-8111-111111111111',
+        instanceId: 'de-musterhausen',
         organizationId: '22222222-2222-2222-8222-222222222222',
         requestId: 'req-shared',
         traceId: 'trace-shared',

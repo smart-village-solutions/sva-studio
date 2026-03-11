@@ -35,6 +35,7 @@ export type {
   IamApiErrorCode,
   IamApiErrorResponse,
   IamAction,
+  IamInstanceId,
   IamPermissionEffect,
   IamResourceRef,
   IamUuid,

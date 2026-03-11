@@ -4,7 +4,7 @@ const nonEmptyString = z.string().trim().min(1);
 const optionalRecord = z.record(z.string(), z.unknown()).optional();
 
 export const authorizeRequestSchema = z.object({
-  instanceId: z.string().uuid(),
+  instanceId: nonEmptyString,
   action: nonEmptyString,
   resource: z.object({
     type: nonEmptyString,
@@ -35,13 +35,13 @@ export const governanceRequestSchema = z.object({
     'accept_legal_text',
     'revoke_legal_acceptance',
   ]),
-  instanceId: z.string().uuid(),
+  instanceId: nonEmptyString,
   payload: z.record(z.string(), z.unknown()),
 });
 
 export const dataSubjectRightsRequestSchema = z
   .object({
-    instanceId: z.string().uuid().optional(),
+    instanceId: nonEmptyString.optional(),
     requestType: nonEmptyString.optional(),
     payload: z.record(z.string(), z.unknown()).optional(),
     email: nonEmptyString.optional(),

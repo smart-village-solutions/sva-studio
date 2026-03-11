@@ -4,7 +4,6 @@ import { getWorkspaceContext, withRequestContext } from '@sva/sdk/server';
 import { resolveImpersonationSubject } from '../iam-governance.server';
 import { withAuthenticatedUser } from '../middleware.server';
 import { jsonResponse } from '../shared/db-helpers';
-import { isUuid } from '../shared/input-readers';
 import {
   buildMePermissionsResponse,
   buildRequestContext,
@@ -20,7 +19,7 @@ export const mePermissionsHandler = async (request: Request): Promise<Response> 
   return withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
     return withAuthenticatedUser(request, async ({ user }) => {
       const instanceId = resolveInstanceIdFromRequest(request, user.instanceId);
-      if (!instanceId || !isUuid(instanceId)) {
+      if (!instanceId) {
         return errorResponse(400, 'invalid_instance_id');
       }
 

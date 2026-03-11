@@ -1,5 +1,6 @@
 import type {
   ContentAuthorPolicy,
+  IamInstanceId,
   IamUuid,
   OrganizationMembershipVisibility,
   OrganizationType,
@@ -29,10 +30,10 @@ export type SqlExecutor = {
 };
 
 export type IamSeedRepository = {
-  upsertInstance(input: { id: IamUuid; instanceKey: string; displayName: string }): Promise<void>;
+  upsertInstance(input: { id: IamInstanceId; displayName: string }): Promise<void>;
   upsertOrganization(input: {
     id: IamUuid;
-    instanceId: IamUuid;
+    instanceId: IamInstanceId;
     organizationKey: string;
     displayName: string;
     metadata: string;
@@ -45,7 +46,7 @@ export type IamSeedRepository = {
   }): Promise<void>;
   upsertRole(input: {
     id: IamUuid;
-    instanceId: IamUuid;
+    instanceId: IamInstanceId;
     roleKey: string;
     roleName: string;
     description: string;
@@ -57,7 +58,7 @@ export type IamSeedRepository = {
   }): Promise<void>;
   upsertPermission(input: {
     id: IamUuid;
-    instanceId: IamUuid;
+    instanceId: IamInstanceId;
     permissionKey: string;
     action?: string;
     resourceType?: string;
@@ -68,23 +69,23 @@ export type IamSeedRepository = {
   }): Promise<void>;
   upsertAccount(input: {
     id: IamUuid;
-    instanceId: IamUuid;
+    instanceId: IamInstanceId;
     keycloakSubject: string;
     emailCiphertext: string;
     displayNameCiphertext: string;
   }): Promise<void>;
   upsertInstanceMembership(input: {
-    instanceId: IamUuid;
+    instanceId: IamInstanceId;
     accountId: IamUuid;
     membershipType: string;
   }): Promise<void>;
-  assignAccountRole(input: { instanceId: IamUuid; accountId: IamUuid; roleId: IamUuid }): Promise<void>;
+  assignAccountRole(input: { instanceId: IamInstanceId; accountId: IamUuid; roleId: IamUuid }): Promise<void>;
   assignAccountOrganization(input: {
-    instanceId: IamUuid;
+    instanceId: IamInstanceId;
     accountId: IamUuid;
     organizationId: IamUuid;
     isDefaultContext?: boolean;
     membershipVisibility?: OrganizationMembershipVisibility;
   }): Promise<void>;
-  assignRolePermission(input: { instanceId: IamUuid; roleId: IamUuid; permissionId: IamUuid }): Promise<void>;
+  assignRolePermission(input: { instanceId: IamInstanceId; roleId: IamUuid; permissionId: IamUuid }): Promise<void>;
 };

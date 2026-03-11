@@ -36,7 +36,7 @@ describe('SSO Session Consistency (Multi-Tab)', () => {
         id: 'user-sso-1',
         name: 'SSO User',
         roles: ['editor'],
-        instanceId: 'dev-local-1',
+        instanceId: 'de-musterhausen',
       },
       accessToken: 'access-token',
       refreshToken: 'refresh-token',

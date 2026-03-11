@@ -33,7 +33,7 @@ INSERT INTO iam.accounts (
   keycloak_subject,
   status
 )
-VALUES ($1::uuid, $2, 'pending')
+VALUES ($1, $2, 'pending')
 ON CONFLICT (keycloak_subject, instance_id) WHERE instance_id IS NOT NULL DO UPDATE
 SET updated_at = NOW()
 RETURNING id, (xmax = 0) AS created;
@@ -50,7 +50,7 @@ RETURNING id, (xmax = 0) AS created;
   await client.query(
     `
 INSERT INTO iam.instance_memberships (instance_id, account_id, membership_type)
-VALUES ($1::uuid, $2::uuid, 'member')
+VALUES ($1, $2::uuid, 'member')
 ON CONFLICT (instance_id, account_id) DO NOTHING;
 `,
     [input.instanceId, accountId]
@@ -69,7 +69,7 @@ INSERT INTO iam.activity_logs (
   request_id,
   trace_id
 )
-VALUES ($1::uuid, $2::uuid, $2::uuid, 'user.jit_provisioned', 'success', '{}'::jsonb, $3, $4);
+VALUES ($1, $2::uuid, $2::uuid, 'user.jit_provisioned', 'success', '{}'::jsonb, $3, $4);
 `,
       [input.instanceId, accountId, input.requestId ?? null, input.traceId ?? null]
     );
@@ -92,7 +92,7 @@ export const jitProvisionAccount = async (input: JitProvisionInput): Promise<Jit
   const resolvedInstance = await resolveInstanceId({
     resolvePool,
     candidate: rawInstanceId,
-    // In lokalen/test Umgebungen erlauben wir Bootstrap über instance_key.
+    // In lokalen/test Umgebungen erlauben wir Bootstrap über den fachlichen String-Schlüssel.
     createIfMissingFromKey: process.env.NODE_ENV !== 'production',
     displayNameForCreate: rawInstanceId,
   });

@@ -11,7 +11,7 @@ const state = vi.hoisted(() => ({
     id: 'keycloak-sub-actor',
     name: 'Actor',
     roles: ['support_admin'],
-    instanceId: '11111111-1111-1111-8111-111111111111',
+    instanceId: 'de-musterhausen',
   },
   queryHandler: null as null | ((text: string, values?: readonly unknown[]) => unknown),
 }));
@@ -28,7 +28,7 @@ vi.mock('./middleware.server', () => ({
 vi.mock('@sva/sdk/server', () => ({
   createSdkLogger: () => state.logger,
   getWorkspaceContext: () => ({
-    workspaceId: '11111111-1111-1111-8111-111111111111',
+    workspaceId: 'de-musterhausen',
     requestId: 'req-governance',
     traceId: 'trace-governance',
   }),
@@ -83,7 +83,7 @@ describe('governanceWorkflowHandler', () => {
       id: 'keycloak-sub-actor',
       name: 'Actor',
       roles: ['support_admin'],
-      instanceId: '11111111-1111-1111-8111-111111111111',
+      instanceId: 'de-musterhausen',
     };
   });
 
@@ -93,7 +93,7 @@ describe('governanceWorkflowHandler', () => {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         operation: 'submit_permission_change',
-        instanceId: '11111111-1111-1111-8111-111111111111',
+        instanceId: 'de-musterhausen',
         payload: {
           targetKeycloakSubject: 'keycloak-sub-target',
           roleId: '22222222-2222-2222-8222-222222222222',
@@ -137,7 +137,7 @@ describe('governanceWorkflowHandler', () => {
     expect(await response.json()).toEqual({ error: 'invalid_request' });
   });
 
-  it('rejects workflow request with invalid instance id', async () => {
+  it('rejects workflow request with cross-instance string scope', async () => {
     const request = new Request('http://localhost/iam/governance/workflows', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -155,8 +155,8 @@ describe('governanceWorkflowHandler', () => {
 
     const response = await governanceWorkflowHandler(request);
 
-    expect(response.status).toBe(400);
-    expect(await response.json()).toEqual({ error: 'invalid_request' });
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({ error: 'instance_scope_mismatch' });
   });
 
   it('rejects self-approval of permission change', async () => {
@@ -175,7 +175,7 @@ describe('governanceWorkflowHandler', () => {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         operation: 'approve_permission_change',
-        instanceId: '11111111-1111-1111-8111-111111111111',
+        instanceId: 'de-musterhausen',
         payload: {
           requestId: '33333333-3333-3333-8333-333333333333',
           approval: 'approved',
@@ -217,7 +217,7 @@ describe('governanceWorkflowHandler', () => {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           operation: 'submit_permission_change',
-          instanceId: '11111111-1111-1111-8111-111111111111',
+          instanceId: 'de-musterhausen',
           payload: {
             targetKeycloakSubject: 'keycloak-sub-target',
             roleId: '22222222-2222-2222-8222-222222222222',
@@ -266,7 +266,7 @@ describe('governanceWorkflowHandler', () => {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           operation: 'apply_permission_change',
-          instanceId: '11111111-1111-1111-8111-111111111111',
+          instanceId: 'de-musterhausen',
           payload: {
             requestId: '33333333-3333-3333-8333-333333333333',
           },
@@ -311,7 +311,7 @@ describe('governanceWorkflowHandler', () => {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           operation: 'create_delegation',
-          instanceId: '11111111-1111-1111-8111-111111111111',
+          instanceId: 'de-musterhausen',
           payload: {
             delegateeKeycloakSubject: 'keycloak-sub-delegatee',
             roleId: '22222222-2222-2222-8222-222222222222',
@@ -364,7 +364,7 @@ describe('governanceWorkflowHandler', () => {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           operation: 'create_delegation',
-          instanceId: '11111111-1111-1111-8111-111111111111',
+          instanceId: 'de-musterhausen',
           payload: {
             delegateeKeycloakSubject: 'keycloak-sub-delegatee',
             roleId: '22222222-2222-2222-8222-222222222222',
@@ -391,7 +391,7 @@ describe('governanceWorkflowHandler', () => {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           operation: 'create_delegation',
-          instanceId: '11111111-1111-1111-8111-111111111111',
+          instanceId: 'de-musterhausen',
           payload: {
             delegateeKeycloakSubject: 'keycloak-sub-delegatee',
             roleId: '22222222-2222-2222-8222-222222222222',
@@ -418,7 +418,7 @@ describe('governanceWorkflowHandler', () => {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           operation: 'revoke_delegation',
-          instanceId: '11111111-1111-1111-8111-111111111111',
+          instanceId: 'de-musterhausen',
           payload: {
             delegationId: 'not-a-uuid',
           },
@@ -438,7 +438,7 @@ describe('governanceWorkflowHandler', () => {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         operation: 'start_impersonation',
-        instanceId: '11111111-1111-1111-8111-111111111111',
+        instanceId: 'de-musterhausen',
         payload: {
           targetKeycloakSubject: 'keycloak-sub-target',
           approverKeycloakSubject: 'keycloak-sub-approver',
@@ -478,7 +478,7 @@ describe('governanceWorkflowHandler', () => {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           operation: 'start_impersonation',
-          instanceId: '11111111-1111-1111-8111-111111111111',
+          instanceId: 'de-musterhausen',
           payload: {
             targetKeycloakSubject: 'keycloak-sub-target',
             approverKeycloakSubject: 'keycloak-sub-approver',
@@ -519,7 +519,7 @@ describe('governanceWorkflowHandler', () => {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           operation: 'start_impersonation',
-          instanceId: '11111111-1111-1111-8111-111111111111',
+          instanceId: 'de-musterhausen',
           payload: {
             targetKeycloakSubject: 'keycloak-sub-target',
             approverKeycloakSubject: 'keycloak-sub-approver',
@@ -567,7 +567,7 @@ describe('governanceWorkflowHandler', () => {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           operation: 'start_impersonation',
-          instanceId: '11111111-1111-1111-8111-111111111111',
+          instanceId: 'de-musterhausen',
           payload: {
             targetKeycloakSubject: 'keycloak-sub-target',
             approverKeycloakSubject: 'keycloak-sub-approver',
@@ -595,7 +595,7 @@ describe('governanceWorkflowHandler', () => {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           operation: 'end_impersonation',
-          instanceId: '11111111-1111-1111-8111-111111111111',
+          instanceId: 'de-musterhausen',
           payload: {
             sessionId: 'invalid-session',
           },
@@ -632,7 +632,7 @@ describe('governanceWorkflowHandler', () => {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           operation: 'end_impersonation',
-          instanceId: '11111111-1111-1111-8111-111111111111',
+          instanceId: 'de-musterhausen',
           payload: {
             sessionId: '44444444-4444-4444-8444-444444444444',
             reason: 'investigation_complete',
@@ -660,7 +660,7 @@ describe('governanceWorkflowHandler', () => {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         operation: 'submit_permission_change',
-        instanceId: '11111111-1111-1111-8111-111111111111',
+        instanceId: 'de-musterhausen',
         payload: {
           targetKeycloakSubject: 'keycloak-sub-target',
           roleId: '22222222-2222-2222-8222-222222222222',
@@ -679,7 +679,7 @@ describe('governanceWorkflowHandler', () => {
       expect.objectContaining({
         operation: 'submit_permission_change',
         reason_code: 'forbidden',
-        workspace_id: '11111111-1111-1111-8111-111111111111',
+        workspace_id: 'de-musterhausen',
         request_id: 'req-governance',
         trace_id: 'trace-governance',
       })
@@ -708,7 +708,7 @@ describe('governanceWorkflowHandler', () => {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           operation,
-          instanceId: '11111111-1111-1111-8111-111111111111',
+          instanceId: 'de-musterhausen',
           payload: {
             legalTextId: 'privacy-notice',
             legalTextVersion: 'v1',
@@ -741,7 +741,7 @@ describe('governanceWorkflowHandler', () => {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           operation: 'accept_legal_text',
-          instanceId: '11111111-1111-1111-8111-111111111111',
+          instanceId: 'de-musterhausen',
           payload: {
             legalTextId: 'privacy-notice',
           },
@@ -780,7 +780,7 @@ describe('governanceComplianceExportHandler', () => {
               payload: {
                 event_id: 'evt-1',
                 timestamp: '2026-02-28T12:00:00.000Z',
-                instance_id: '11111111-1111-1111-8111-111111111111',
+                instance_id: 'de-musterhausen',
                 action: 'permission_change_submit',
                 result: 'success',
                 actor_pseudonym: 'abc',
@@ -803,7 +803,7 @@ describe('governanceComplianceExportHandler', () => {
   it('exports csv with required governance fields', async () => {
     const response = await governanceComplianceExportHandler(
       new Request(
-        'http://localhost/iam/governance/compliance/export?instanceId=11111111-1111-1111-8111-111111111111&format=csv'
+        'http://localhost/iam/governance/compliance/export?instanceId=de-musterhausen&format=csv'
       )
     );
     const body = await response.text();
@@ -821,7 +821,7 @@ describe('governanceComplianceExportHandler', () => {
 
     const response = await governanceComplianceExportHandler(
       new Request(
-        'http://localhost/iam/governance/compliance/export?instanceId=11111111-1111-1111-8111-111111111111&format=json'
+        'http://localhost/iam/governance/compliance/export?instanceId=de-musterhausen&format=json'
       )
     );
 
@@ -832,25 +832,25 @@ describe('governanceComplianceExportHandler', () => {
       expect.objectContaining({
         operation: 'compliance_export',
         reason_code: 'forbidden',
-        workspace_id: '11111111-1111-1111-8111-111111111111',
+        workspace_id: 'de-musterhausen',
         request_id: 'req-governance',
         trace_id: 'trace-governance',
       })
     );
   });
 
-  it('rejects compliance export for invalid instance id', async () => {
+  it('rejects compliance export for cross-instance string scope', async () => {
     const response = await governanceComplianceExportHandler(
       new Request('http://localhost/iam/governance/compliance/export?instanceId=invalid&format=json')
     );
 
-    expect(response.status).toBe(400);
-    expect(await response.json()).toEqual({ error: 'invalid_instance_id' });
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({ error: 'instance_scope_mismatch' });
   });
 
   it('exports default json format when no format is provided', async () => {
     const response = await governanceComplianceExportHandler(
-      new Request('http://localhost/iam/governance/compliance/export?instanceId=11111111-1111-1111-8111-111111111111')
+      new Request('http://localhost/iam/governance/compliance/export?instanceId=de-musterhausen')
     );
     const payload = (await response.json()) as {
       format: string;
@@ -870,7 +870,7 @@ describe('governanceComplianceExportHandler', () => {
   it('exports siem format with @timestamp field', async () => {
     const response = await governanceComplianceExportHandler(
       new Request(
-        'http://localhost/iam/governance/compliance/export?instanceId=11111111-1111-1111-8111-111111111111&format=siem'
+        'http://localhost/iam/governance/compliance/export?instanceId=de-musterhausen&format=siem'
       )
     );
     const payload = (await response.json()) as {
@@ -915,7 +915,7 @@ describe('resolveImpersonationSubject', () => {
     state.queryHandler = () => ({ rowCount: 0, rows: [] });
 
     const result = await resolveImpersonationSubject({
-      instanceId: '11111111-1111-1111-8111-111111111111',
+      instanceId: 'de-musterhausen',
       actorKeycloakSubject: 'missing-actor',
       targetKeycloakSubject: 'target-sub',
     });
@@ -944,7 +944,7 @@ describe('resolveImpersonationSubject', () => {
     };
 
     const result = await resolveImpersonationSubject({
-      instanceId: '11111111-1111-1111-8111-111111111111',
+      instanceId: 'de-musterhausen',
       actorKeycloakSubject: 'actor-sub',
       targetKeycloakSubject: 'target-sub',
     });
@@ -990,7 +990,7 @@ describe('resolveImpersonationSubject', () => {
     };
 
     const result = await resolveImpersonationSubject({
-      instanceId: '11111111-1111-1111-8111-111111111111',
+      instanceId: 'de-musterhausen',
       actorKeycloakSubject: 'actor-sub',
       targetKeycloakSubject: 'target-sub',
     });
@@ -1037,7 +1037,7 @@ describe('resolveImpersonationSubject', () => {
     };
 
     const result = await resolveImpersonationSubject({
-      instanceId: '11111111-1111-1111-8111-111111111111',
+      instanceId: 'de-musterhausen',
       actorKeycloakSubject: 'actor-sub',
       targetKeycloakSubject: 'target-sub',
     });
@@ -1051,7 +1051,7 @@ describe('resolveImpersonationSubject', () => {
     };
 
     const result = await resolveImpersonationSubject({
-      instanceId: '11111111-1111-1111-8111-111111111111',
+      instanceId: 'de-musterhausen',
       actorKeycloakSubject: 'actor-sub',
       targetKeycloakSubject: 'target-sub',
     });

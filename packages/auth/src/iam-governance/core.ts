@@ -1003,7 +1003,7 @@ export const governanceWorkflowHandler = async (request: Request): Promise<Respo
       if (!parsed) {
         return jsonResponse(400, { error: 'invalid_request' });
       }
-      if (!isUuid(parsed.instanceId)) {
+      if (!readString(parsed.instanceId)) {
         return jsonResponse(400, { error: 'invalid_instance_id' });
       }
       if (user.instanceId && user.instanceId !== parsed.instanceId) {
@@ -1077,7 +1077,7 @@ export const governanceComplianceExportHandler = async (request: Request): Promi
       const from = readString(url.searchParams.get('from'));
       const to = readString(url.searchParams.get('to'));
 
-      if (!instanceId || !isUuid(instanceId)) {
+      if (!instanceId) {
         return jsonResponse(400, { error: 'invalid_instance_id' });
       }
       if (user.instanceId && user.instanceId !== instanceId) {

@@ -1,4 +1,5 @@
 export type IamUuid = string;
+export type IamInstanceId = string;
 
 export type PersonaKey =
   | 'system_admin'
@@ -9,7 +10,7 @@ export type PersonaKey =
   | 'editor'
   | 'moderator';
 
-export type PersonaScope = 'instance' | 'org';
+type PersonaScope = 'instance' | 'org';
 export type MfaPolicy = 'required' | 'recommended' | 'optional';
 export type OrganizationType = 'county' | 'municipality' | 'district' | 'company' | 'agency' | 'other';
 export type ContentAuthorPolicy = 'org_only' | 'org_or_personal';
@@ -47,8 +48,7 @@ export type PersonaSeed = {
 };
 
 export type IamSeedContext = {
-  readonly instanceId: IamUuid;
-  readonly instanceKey: string;
+  readonly instanceId: IamInstanceId;
   readonly organizationId: IamUuid;
   readonly organizationKey: string;
 };

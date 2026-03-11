@@ -68,7 +68,7 @@ describe('evaluateAuthorizeDecision', () => {
       {
         action: 'content.read',
         resourceType: 'content',
-        organizationId: 'de-musterhausen',
+        organizationId: '11111111-1111-1111-8111-111111111111',
         sourceRoleIds: ['role-parent'],
       },
     ];
@@ -80,7 +80,7 @@ describe('evaluateAuthorizeDecision', () => {
           ...baseRequest.context,
           attributes: {
             organizationHierarchy: [
-              'de-musterhausen',
+              '11111111-1111-1111-8111-111111111111',
               '22222222-2222-2222-8222-222222222222',
             ],
           },

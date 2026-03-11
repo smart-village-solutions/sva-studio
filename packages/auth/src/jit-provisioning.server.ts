@@ -92,7 +92,7 @@ export const jitProvisionAccount = async (input: JitProvisionInput): Promise<Jit
   const resolvedInstance = await resolveInstanceId({
     resolvePool,
     candidate: rawInstanceId,
-    // In lokalen/test Umgebungen erlauben wir Bootstrap über den fachlichen String-Schluessel.
+    // In lokalen/test Umgebungen erlauben wir Bootstrap über den fachlichen String-Schlüssel.
     createIfMissingFromKey: process.env.NODE_ENV !== 'production',
     displayNameForCreate: rawInstanceId,
   });

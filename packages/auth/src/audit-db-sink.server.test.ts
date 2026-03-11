@@ -45,11 +45,13 @@ const createMockClient = () => {
 };
 
 const originalEnv = {
+  IAM_DATABASE_URL: process.env.IAM_DATABASE_URL,
   IAM_PII_ACTIVE_KEY_ID: process.env.IAM_PII_ACTIVE_KEY_ID,
   IAM_PII_KEYRING_JSON: process.env.IAM_PII_KEYRING_JSON,
 };
 
 afterEach(() => {
+  process.env.IAM_DATABASE_URL = originalEnv.IAM_DATABASE_URL;
   process.env.IAM_PII_ACTIVE_KEY_ID = originalEnv.IAM_PII_ACTIVE_KEY_ID;
   process.env.IAM_PII_KEYRING_JSON = originalEnv.IAM_PII_KEYRING_JSON;
 });
@@ -201,21 +203,22 @@ describe('persistAuthAuditEventWithClient', () => {
 });
 
 describe('persistAuthAuditEventToDb', () => {
-  it('skips persist when no IAM database url is configured', async () => {
+  it('skips persist when workspaceId is empty or whitespace', async () => {
+    process.env.IAM_DATABASE_URL = 'postgres://example.invalid/sva';
+
     const result = await persistAuthAuditEventToDb({
       eventType: 'login',
       actorUserId: 'keycloak-sub-1',
-      workspaceId: 'default',
+      workspaceId: '   ',
       outcome: 'success',
     });
 
     expect(result.persisted).toBe(false);
-    expect(result.reason).toBe('missing_database_url');
+    expect(result.reason).toBe('invalid_instance_id');
     expect(result.writtenEventTypes).toEqual([]);
   });
 
   it('skips persist when no IAM database url is configured', async () => {
-    const originalDatabaseUrl = process.env.IAM_DATABASE_URL;
     delete process.env.IAM_DATABASE_URL;
 
     const result = await persistAuthAuditEventToDb({
@@ -228,7 +231,5 @@ describe('persistAuthAuditEventToDb', () => {
     expect(result.persisted).toBe(false);
     expect(result.reason).toBe('missing_database_url');
     expect(result.writtenEventTypes).toEqual([]);
-
-    process.env.IAM_DATABASE_URL = originalDatabaseUrl;
   });
 });

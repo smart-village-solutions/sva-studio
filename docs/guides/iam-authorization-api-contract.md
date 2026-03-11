@@ -81,7 +81,7 @@ Führt eine deterministische Autorisierungsentscheidung für `action` + `resourc
     "attributes": {
       "instanceId": "de-musterhausen",
       "organizationHierarchy": [
-        "de-musterhausen",
+        "11111111-1111-1111-8111-111111111111",
         "22222222-2222-2222-8222-222222222222"
       ],
       "allowedGeoScopes": ["de-bw"],

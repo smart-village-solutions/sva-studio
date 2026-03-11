@@ -97,7 +97,7 @@ describe('iam authorization invalidation listener', () => {
 
     permissionSnapshotCache.set(
       {
-        instanceId: '11111111-1111-1111-8111-111111111111',
+        instanceId: 'de-musterhausen',
         keycloakSubject: 'keycloak-subject-1',
       },
       { permissions: [], staleAt: Date.now() + 60_000 }
@@ -108,7 +108,7 @@ describe('iam authorization invalidation listener', () => {
     state.notificationHandler?.({ payload: '{"broken":true}' });
     state.notificationHandler?.({
       payload: JSON.stringify({
-        instanceId: '11111111-1111-1111-8111-111111111111',
+        instanceId: 'de-musterhausen',
         keycloakSubject: 'keycloak-subject-1',
         trigger: 'pg_notify',
       }),
@@ -129,7 +129,7 @@ describe('iam authorization invalidation listener', () => {
     );
     expect(
       permissionSnapshotCache.get({
-        instanceId: '11111111-1111-1111-8111-111111111111',
+        instanceId: 'de-musterhausen',
         keycloakSubject: 'keycloak-subject-1',
       })
     ).toEqual({ status: 'miss' });

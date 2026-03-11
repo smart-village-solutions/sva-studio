@@ -35,7 +35,7 @@ describe('resolveUsersWithPagination', () => {
     };
 
     await resolveUsersWithPagination(client as Parameters<typeof resolveUsersWithPagination>[0], {
-      instanceId: '11111111-1111-1111-8111-111111111111',
+      instanceId: 'de-musterhausen',
       page: 1,
       pageSize: 25,
       role: 'editor',

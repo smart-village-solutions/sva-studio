@@ -5,7 +5,7 @@ import { evaluateAuthorizeDecision } from './iam-authorization.server';
 
 describe('evaluateAuthorizeDecision', () => {
   const baseRequest: AuthorizeRequest = {
-    instanceId: '11111111-1111-1111-8111-111111111111',
+    instanceId: 'de-musterhausen',
     action: 'content.read',
     resource: {
       type: 'content',

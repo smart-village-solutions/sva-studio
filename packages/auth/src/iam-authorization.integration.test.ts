@@ -5,7 +5,7 @@ const integrationState = vi.hoisted(() => ({
     id: 'keycloak-sub-integration',
     name: 'Integration User',
     roles: [],
-    instanceId: '11111111-1111-1111-8111-111111111111',
+    instanceId: 'de-musterhausen',
   },
   queryHandler: null as null | ((text: string, values?: readonly unknown[]) => unknown),
   impersonationResult: { ok: true } as { ok: true } | { ok: false; reasonCode: string },
@@ -94,7 +94,7 @@ describe('IAM authorization integration denials', () => {
       id: 'keycloak-sub-integration',
       name: 'Integration User',
       roles: [],
-      instanceId: '11111111-1111-1111-8111-111111111111',
+      instanceId: 'de-musterhausen',
     };
     integrationState.queryHandler = null;
     integrationState.impersonationResult = { ok: true };
@@ -115,15 +115,15 @@ describe('IAM authorization integration denials', () => {
     expect(payload.error).toBe('instance_scope_mismatch');
   });
 
-  it('rejects me/permissions for invalid instance id', async () => {
+  it('denies me/permissions for non-matching string instance ids', async () => {
     const request = new Request('http://localhost/iam/me/permissions?instanceId=invalid', {
       method: 'GET',
     });
 
     const response = await mePermissionsHandler(request);
 
-    expect(response.status).toBe(400);
-    expect(await response.json()).toEqual({ error: 'invalid_instance_id' });
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({ error: 'instance_scope_mismatch' });
   });
 
   it('rejects me/permissions for invalid organization id', async () => {
@@ -147,7 +147,7 @@ describe('IAM authorization integration denials', () => {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
-        instanceId: '11111111-1111-1111-8111-111111111111',
+        instanceId: 'de-musterhausen',
         action: 'content.read',
         resource: { type: 'content', id: 'article-1' },
       }),
@@ -176,7 +176,7 @@ describe('IAM authorization integration denials', () => {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
-        instanceId: '11111111-1111-1111-8111-111111111111',
+        instanceId: 'de-musterhausen',
         action: 'content.read',
         resource: {
           type: 'content',

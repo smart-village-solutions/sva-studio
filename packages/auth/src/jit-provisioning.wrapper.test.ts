@@ -73,7 +73,7 @@ describe('jitProvisionAccount wrapper', () => {
   it('executes provisioning in resolved instance scope and logs result', async () => {
     state.resolveInstanceId.mockResolvedValue({
       ok: true,
-      instanceId: '11111111-1111-1111-8111-111111111111',
+      instanceId: 'de-musterhausen',
       created: true,
     });
 

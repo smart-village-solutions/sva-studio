@@ -1,4 +1,5 @@
 export type IamUuid = string;
+export type IamInstanceId = string;
 
 export type IamAction = string;
 
@@ -10,7 +11,7 @@ export type IamResourceRef = {
 };
 
 export type AuthorizeRequest = {
-  readonly instanceId: IamUuid;
+  readonly instanceId: IamInstanceId;
   readonly action: IamAction;
   readonly resource: IamResourceRef;
   readonly context?: {
@@ -57,7 +58,7 @@ export type IamApiErrorResponse = {
 export type AuthorizeResponse = {
   readonly allowed: boolean;
   readonly reason: AuthorizeReasonCode;
-  readonly instanceId: IamUuid;
+  readonly instanceId: IamInstanceId;
   readonly action: IamAction;
   readonly resourceType: string;
   readonly resourceId?: string;
@@ -80,7 +81,7 @@ export type EffectivePermission = {
 };
 
 export type MePermissionsRequest = {
-  readonly instanceId: IamUuid;
+  readonly instanceId: IamInstanceId;
   readonly organizationId?: IamUuid;
   readonly actingAsUserId?: string;
 };
@@ -92,7 +93,7 @@ export type MePermissionsSubject = {
 };
 
 export type MePermissionsResponse = {
-  readonly instanceId: IamUuid;
+  readonly instanceId: IamInstanceId;
   readonly organizationId?: IamUuid;
   readonly permissions: readonly EffectivePermission[];
   readonly subject: MePermissionsSubject;

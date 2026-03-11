@@ -14,7 +14,7 @@ describe('PermissionSnapshotCache', () => {
     const cache = new PermissionSnapshotCache(1_000, 5_000);
     cache.set(
       {
-        instanceId: '11111111-1111-1111-8111-111111111111',
+        instanceId: 'de-musterhausen',
         keycloakSubject: 'sub-1',
       },
       [basePermission],
@@ -23,7 +23,7 @@ describe('PermissionSnapshotCache', () => {
 
     const hit = cache.get(
       {
-        instanceId: '11111111-1111-1111-8111-111111111111',
+        instanceId: 'de-musterhausen',
         keycloakSubject: 'sub-1',
       },
       10_500
@@ -32,7 +32,7 @@ describe('PermissionSnapshotCache', () => {
 
     const stale = cache.get(
       {
-        instanceId: '11111111-1111-1111-8111-111111111111',
+        instanceId: 'de-musterhausen',
         keycloakSubject: 'sub-1',
       },
       11_500
@@ -44,7 +44,7 @@ describe('PermissionSnapshotCache', () => {
     const cache = new PermissionSnapshotCache(1_000, 5_000);
     cache.set(
       {
-        instanceId: '11111111-1111-1111-8111-111111111111',
+        instanceId: 'de-musterhausen',
         keycloakSubject: 'sub-1',
       },
       [basePermission],
@@ -52,13 +52,13 @@ describe('PermissionSnapshotCache', () => {
     );
 
     cache.invalidate({
-      instanceId: '11111111-1111-1111-8111-111111111111',
+      instanceId: 'de-musterhausen',
       keycloakSubject: 'sub-1',
     });
 
     const lookup = cache.get(
       {
-        instanceId: '11111111-1111-1111-8111-111111111111',
+        instanceId: 'de-musterhausen',
         keycloakSubject: 'sub-1',
       },
       10_500
@@ -71,13 +71,13 @@ describe('parseInvalidationEvent', () => {
   it('parses valid events', () => {
     const parsed = parseInvalidationEvent(
       JSON.stringify({
-        instanceId: '11111111-1111-1111-8111-111111111111',
+        instanceId: 'de-musterhausen',
         keycloakSubject: 'sub-1',
         trigger: 'pg_notify',
       })
     );
     expect(parsed).toEqual({
-      instanceId: '11111111-1111-1111-8111-111111111111',
+      instanceId: 'de-musterhausen',
       keycloakSubject: 'sub-1',
       trigger: 'pg_notify',
     });
@@ -89,7 +89,7 @@ describe('parseInvalidationEvent', () => {
     expect(
       parseInvalidationEvent(
         JSON.stringify({
-          instanceId: '11111111-1111-1111-8111-111111111111',
+          instanceId: 'de-musterhausen',
           trigger: 'invalid',
         })
       )

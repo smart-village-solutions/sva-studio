@@ -91,7 +91,7 @@ describe('getSessionUser', () => {
         id: 'user-1',
         name: 'Max Mustermann',
         email: 'max@example.com',
-        instanceId: 'dev-local-1',
+        instanceId: 'de-musterhausen',
         roles: ['admin'],
       },
       refreshToken: 'refresh-token',
@@ -106,7 +106,7 @@ describe('getSessionUser', () => {
       id: 'user-1',
       name: 'Max Mustermann',
       email: 'max@example.com',
-      instanceId: 'dev-local-1',
+      instanceId: 'de-musterhausen',
       roles: ['admin'],
     });
     expect(refreshTokenGrantMock).not.toHaveBeenCalled();
@@ -121,7 +121,7 @@ describe('getSessionUser', () => {
       sub: 'user-legacy-1',
       preferred_username: 'Legacy User',
       email: 'legacy@example.com',
-      instanceId: '11111111-1111-1111-8111-111111111111',
+      instanceId: 'de-musterhausen',
       realm_access: { roles: ['Admin'] },
     });
 
@@ -147,7 +147,7 @@ describe('getSessionUser', () => {
       id: 'user-legacy-1',
       name: 'Legacy User',
       email: 'legacy@example.com',
-      instanceId: '11111111-1111-1111-8111-111111111111',
+      instanceId: 'de-musterhausen',
       roles: ['Admin', 'system_admin'],
     });
     expect(updateSessionMock).toHaveBeenCalledWith(
@@ -155,7 +155,7 @@ describe('getSessionUser', () => {
       expect.objectContaining({
         user: expect.objectContaining({
           id: 'user-legacy-1',
-          instanceId: '11111111-1111-1111-8111-111111111111',
+          instanceId: 'de-musterhausen',
         }),
       })
     );
@@ -181,7 +181,7 @@ describe('getSessionUser', () => {
       sub: 'user-2',
       preferred_username: 'Neuer Nutzer',
       email: 'new@example.com',
-      instanceId: 'dev-local-1',
+      instanceId: 'de-musterhausen',
       roles: ['Admin'],
     };
     const refreshedAccessToken = createUnsignedJwt(refreshedClaims);
@@ -194,7 +194,7 @@ describe('getSessionUser', () => {
           id: 'user-2',
           name: 'Neuer Nutzer',
           email: 'new@example.com',
-          instanceId: 'dev-local-1',
+          instanceId: 'de-musterhausen',
           roles: ['Admin', 'system_admin'],
         },
       });
@@ -225,7 +225,7 @@ describe('getSessionUser', () => {
       id: 'user-2',
       name: 'Neuer Nutzer',
       email: 'new@example.com',
-      instanceId: 'dev-local-1',
+      instanceId: 'de-musterhausen',
       roles: ['Admin', 'system_admin'],
     });
     expect(deleteSessionMock).not.toHaveBeenCalled();
@@ -301,7 +301,7 @@ describe('getSessionUser', () => {
       sub: 'user-cb-1',
       preferred_username: 'Callback User',
       email: 'callback@example.com',
-      instanceId: '11111111-1111-1111-8111-111111111111',
+      instanceId: 'de-musterhausen',
       realm_access: { roles: ['Admin'] },
     });
 
@@ -313,7 +313,7 @@ describe('getSessionUser', () => {
         sub: 'user-cb-1',
         preferred_username: 'Callback User',
         email: 'callback@example.com',
-        instanceId: '11111111-1111-1111-8111-111111111111',
+        instanceId: 'de-musterhausen',
         realm_access: { roles: ['Admin'] },
       }),
       expiresIn: () => 300,
@@ -334,20 +334,12 @@ describe('getSessionUser', () => {
     expect(result.user.roles.sort()).toEqual(['Admin', 'system_admin'].sort());
     expect(createSessionMock).toHaveBeenCalledTimes(1);
     expect(jitProvisionAccountMock).toHaveBeenCalledWith({
-      instanceId: '11111111-1111-1111-8111-111111111111',
+      instanceId: 'de-musterhausen',
       keycloakSubject: 'user-cb-1',
     });
   });
 
-  it('handleCallback resolves non-UUID instanceId to UUID before persisting session', async () => {
-    const resolvedUuid = '22222222-2222-2222-8222-222222222222';
-    resolveInstanceIdMock.mockResolvedValue({
-      ok: true,
-      instanceId: resolvedUuid,
-      fromInstanceKey: true,
-      created: false,
-    });
-
+  it('handleCallback persists string instanceId claims unchanged', async () => {
     const accessToken = createUnsignedJwt({
       sub: 'user-cb-2',
       preferred_username: 'Tenant User',
@@ -381,14 +373,12 @@ describe('getSessionUser', () => {
       },
     });
 
-    expect(result.user.instanceId).toBe(resolvedUuid);
-    expect(resolveInstanceIdMock).toHaveBeenCalledWith(
-      expect.objectContaining({ candidate: 'tenant-1' }),
-    );
+    expect(result.user.instanceId).toBe('tenant-1');
+    expect(resolveInstanceIdMock).not.toHaveBeenCalled();
     expect(createSessionMock).toHaveBeenCalledWith(
       expect.any(String),
       expect.objectContaining({
-        user: expect.objectContaining({ instanceId: resolvedUuid }),
+        user: expect.objectContaining({ instanceId: 'tenant-1' }),
       }),
     );
   });

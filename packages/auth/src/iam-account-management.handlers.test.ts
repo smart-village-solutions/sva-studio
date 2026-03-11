@@ -9,7 +9,7 @@ const state = vi.hoisted(() => ({
     isLevelEnabled: vi.fn((level: string) => level === 'debug'),
   },
   workspaceContext: {
-    workspaceId: '11111111-1111-1111-8111-111111111111',
+    workspaceId: 'de-musterhausen',
     requestId: 'req-iam-handler',
     traceId: 'trace-iam-handler',
   } as { workspaceId?: string; requestId?: string; traceId?: string },
@@ -18,7 +18,7 @@ const state = vi.hoisted(() => ({
     id: 'keycloak-admin-1',
     name: 'Admin User',
     roles: ['system_admin'],
-    instanceId: '11111111-1111-1111-8111-111111111111',
+    instanceId: 'de-musterhausen',
   },
   queryHandler: null as null | ((text: string, values?: readonly unknown[]) => { rowCount: number; rows: unknown[] }),
   redisAvailable: true,
@@ -381,7 +381,7 @@ describe('iam-account-management handlers (guards)', () => {
       id: `keycloak-admin-${Date.now()}`,
       name: 'Admin User',
       roles: ['system_admin'],
-      instanceId: '11111111-1111-1111-8111-111111111111',
+      instanceId: 'de-musterhausen',
     };
     state.workspaceContext = {
       workspaceId: state.user.instanceId,
@@ -395,7 +395,7 @@ describe('iam-account-management handlers (guards)', () => {
         const instanceId = values?.[0];
         const keycloakSubject = values?.[1];
         if (
-          instanceId === '11111111-1111-1111-8111-111111111111' &&
+          instanceId === 'de-musterhausen' &&
           typeof keycloakSubject === 'string' &&
           keycloakSubject.startsWith('keycloak-admin-')
         ) {
@@ -523,7 +523,7 @@ describe('iam-account-management handlers (guards)', () => {
         }
         return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
       }
-      if (text.includes('INSERT INTO iam.accounts') && text.includes("VALUES ($1::uuid, $2, 'pending')")) {
+      if (text.includes('INSERT INTO iam.accounts') && text.includes("VALUES ($1, $2, 'pending')")) {
         return {
           rowCount: 1,
           rows: [{ id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa', created: true }],
@@ -563,7 +563,7 @@ describe('iam-account-management handlers (guards)', () => {
         lastName: 'Import',
         enabled: true,
         attributes: {
-          instanceId: ['11111111-1111-1111-8111-111111111111'],
+          instanceId: ['de-musterhausen'],
           displayName: ['Alice Import'],
         },
       },
@@ -575,7 +575,7 @@ describe('iam-account-management handlers (guards)', () => {
         lastName: 'Update',
         enabled: false,
         attributes: {
-          instanceId: ['11111111-1111-1111-8111-111111111111'],
+          instanceId: ['de-musterhausen'],
         },
       },
       {
@@ -642,7 +642,7 @@ describe('iam-account-management handlers (guards)', () => {
         email: 'alice@example.com',
         enabled: true,
         attributes: {
-          instanceId: ['11111111-1111-1111-8111-111111111111'],
+          instanceId: ['de-musterhausen'],
         },
       },
       {
@@ -651,7 +651,7 @@ describe('iam-account-management handlers (guards)', () => {
         email: 'bob@example.com',
         enabled: true,
         attributes: {
-          instanceId: ['11111111-1111-1111-8111-111111111111'],
+          instanceId: ['de-musterhausen'],
         },
       },
     ];
@@ -2461,7 +2461,7 @@ describe('iam-account-management handlers (guards)', () => {
         description: 'Custom Editor',
         attributes: {
           managed_by: ['studio'],
-          instance_id: ['11111111-1111-1111-8111-111111111111'],
+          instance_id: ['de-musterhausen'],
           role_key: ['custom_editor'],
           display_name: ['Custom Editor'],
         },
@@ -2586,7 +2586,7 @@ describe('iam-account-management handlers (guards)', () => {
         description: 'Old description',
         attributes: {
           managed_by: ['studio'],
-          instance_id: ['11111111-1111-1111-8111-111111111111'],
+          instance_id: ['de-musterhausen'],
           role_key: ['custom_editor'],
           display_name: ['Old Name'],
         },
@@ -3158,7 +3158,7 @@ describe('iam-account-management additional handlers', () => {
       id: `keycloak-admin-${Date.now()}`,
       name: 'Admin User',
       roles: ['system_admin'],
-      instanceId: '11111111-1111-1111-8111-111111111111',
+      instanceId: 'de-musterhausen',
     };
     state.queryHandler = null;
     state.redisAvailable = true;
@@ -3173,7 +3173,7 @@ describe('iam-account-management additional handlers', () => {
       id: 'keycloak-self-1',
       name: 'Self User',
       roles: ['member'],
-      instanceId: '11111111-1111-1111-8111-111111111111',
+      instanceId: 'de-musterhausen',
     };
     state.queryHandler = (text) => {
       if (text.includes('SELECT a.id AS account_id')) {
@@ -3228,7 +3228,7 @@ describe('iam-account-management additional handlers', () => {
       id: 'keycloak-self-missing',
       name: 'Self User',
       roles: ['member'],
-      instanceId: '11111111-1111-1111-8111-111111111111',
+      instanceId: 'de-musterhausen',
     };
     state.queryHandler = (text) => {
       if (text.includes('SELECT a.id AS account_id')) {
@@ -3254,7 +3254,7 @@ describe('iam-account-management additional handlers', () => {
       id: 'keycloak-self-failure',
       name: 'Self User',
       roles: ['member'],
-      instanceId: '11111111-1111-1111-8111-111111111111',
+      instanceId: 'de-musterhausen',
     };
     state.queryHandler = (text) => {
       if (text.includes('SELECT a.id AS account_id')) {
@@ -3278,7 +3278,7 @@ describe('iam-account-management additional handlers', () => {
       id: 'keycloak-self-2',
       name: 'Self User',
       roles: ['member'],
-      instanceId: '11111111-1111-1111-8111-111111111111',
+      instanceId: 'de-musterhausen',
     };
 
     state.queryHandler = (text) => {
@@ -3468,7 +3468,7 @@ describe('iam-account-management additional handlers', () => {
       id: 'keycloak-self-protect',
       name: 'Self Protect',
       roles: ['system_admin'],
-      instanceId: '11111111-1111-1111-8111-111111111111',
+      instanceId: 'de-musterhausen',
     };
     state.queryHandler = (text) => {
       if (text.includes('SELECT a.id AS account_id')) {

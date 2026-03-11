@@ -562,6 +562,32 @@ export const requireRoles = (
   return null;
 };
 
+const resolveActorInstanceId = async (
+  request: Request,
+  ctx: AuthenticatedRequestContext,
+  options?: ResolveActorOptions
+)=> {
+  const explicitInstanceId = new URL(request.url).searchParams.get('instanceId') ?? undefined;
+  const requestedInstanceId = readInstanceIdFromRequest(request, ctx.user.instanceId);
+  if (requestedInstanceId !== undefined) {
+    if (options?.createMissingInstanceFromKey !== true || explicitInstanceId === undefined) {
+      return {
+        ok: true as const,
+        instanceId: requestedInstanceId,
+        fromInstanceKey: false,
+        created: false,
+      };
+    }
+  }
+
+  return resolveInstanceId({
+    resolvePool,
+    candidate: requestedInstanceId,
+    createIfMissingFromKey: options?.createMissingInstanceFromKey,
+    displayNameForCreate: requestedInstanceId,
+  });
+};
+
 export const resolveActorInfo = async (
   request: Request,
   ctx: AuthenticatedRequestContext,
@@ -569,20 +595,7 @@ export const resolveActorInfo = async (
 ): Promise<{ actor: ActorInfo } | { error: Response }> => {
   const requestedInstanceId = readInstanceIdFromRequest(request, ctx.user.instanceId);
   const requestContext = getWorkspaceContext();
-  const resolvedInstance =
-    requestedInstanceId !== undefined
-      ? {
-          ok: true as const,
-          instanceId: requestedInstanceId,
-          fromInstanceKey: false,
-          created: false,
-        }
-      : await resolveInstanceId({
-          resolvePool,
-          candidate: requestedInstanceId,
-          createIfMissingFromKey: options?.createMissingInstanceFromKey,
-          displayNameForCreate: requestedInstanceId,
-        });
+  const resolvedInstance = await resolveActorInstanceId(request, ctx, options);
   if (!resolvedInstance.ok) {
     const status = resolvedInstance.reason === 'database_unavailable' ? 503 : 400;
     const code = resolvedInstance.reason === 'database_unavailable' ? 'database_unavailable' : 'invalid_instance_id';

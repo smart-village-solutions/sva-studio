@@ -112,8 +112,7 @@ const personas: readonly PersonaSeed[] = [
 
 export const iamSeedPlan: IamSeedPlan = {
   context: {
-    instanceId: '11111111-1111-1111-1111-111111111111',
-    instanceKey: 'seed-instance-default',
+    instanceId: 'de-musterhausen',
     organizationId: '22222222-2222-2222-2222-222222222222',
     organizationKey: 'seed-org-default',
   },

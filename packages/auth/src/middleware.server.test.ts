@@ -99,7 +99,7 @@ describe('withAuthenticatedUser', () => {
       id: 'user-1',
       name: 'Max',
       roles: ['admin'],
-      instanceId: 'dev-local-1',
+      instanceId: 'de-musterhausen',
     });
     const { withAuthenticatedUser } = await import('./middleware.server');
     const request = new Request('http://localhost/auth/me', {

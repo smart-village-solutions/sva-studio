@@ -103,7 +103,7 @@ LEFT JOIN iam.role_permissions rp
 LEFT JOIN iam.permissions p
   ON p.instance_id = rp.instance_id
  AND p.id = rp.permission_id
-WHERE r.instance_id = $1::uuid
+WHERE r.instance_id = $1
 GROUP BY r.id
 ORDER BY r.role_level DESC, COALESCE(r.display_name, r.role_name) ASC;
 `,
@@ -133,7 +133,7 @@ SELECT
   last_synced_at::text,
   last_error_code
 FROM iam.roles
-WHERE instance_id = $1::uuid
+WHERE instance_id = $1
   AND id = $2::uuid
 LIMIT 1;
 `,
@@ -199,7 +199,7 @@ LEFT JOIN iam.role_permissions rp
 LEFT JOIN iam.permissions p
   ON p.instance_id = rp.instance_id
  AND p.id = rp.permission_id
-WHERE r.instance_id = $1::uuid
+WHERE r.instance_id = $1
   AND r.id = $2::uuid
 GROUP BY r.id
 LIMIT 1;
@@ -743,7 +743,7 @@ SET
   last_synced_at = NOW(),
   last_error_code = NULL,
   updated_at = NOW()
-WHERE instance_id = $1::uuid
+WHERE instance_id = $1
   AND id = $2::uuid;
 `,
           [actorResolution.actor.instanceId, roleId, nextDisplayName, nextDescription ?? null, nextRoleLevel]
@@ -751,7 +751,7 @@ WHERE instance_id = $1::uuid
 
         if (parsed.data.permissionIds) {
           await client.query(
-            'DELETE FROM iam.role_permissions WHERE instance_id = $1::uuid AND role_id = $2::uuid;',
+            'DELETE FROM iam.role_permissions WHERE instance_id = $1 AND role_id = $2::uuid;',
             [actorResolution.actor.instanceId, roleId]
           );
           if (parsed.data.permissionIds.length > 0) {
@@ -993,7 +993,7 @@ export const deleteRoleInternal = async (
         `
 SELECT COUNT(*)::int AS used
 FROM iam.account_roles
-WHERE instance_id = $1::uuid
+WHERE instance_id = $1
   AND role_id = $2::uuid;
 `,
         [actorResolution.actor.instanceId, roleId]
@@ -1070,11 +1070,11 @@ WHERE instance_id = $1::uuid
 
     try {
       await withInstanceScopedDb(actorResolution.actor.instanceId, async (client) => {
-        await client.query('DELETE FROM iam.role_permissions WHERE instance_id = $1::uuid AND role_id = $2::uuid;', [
+        await client.query('DELETE FROM iam.role_permissions WHERE instance_id = $1 AND role_id = $2::uuid;', [
           actorResolution.actor.instanceId,
           roleId,
         ]);
-        await client.query('DELETE FROM iam.roles WHERE instance_id = $1::uuid AND id = $2::uuid;', [
+        await client.query('DELETE FROM iam.roles WHERE instance_id = $1 AND id = $2::uuid;', [
           actorResolution.actor.instanceId,
           roleId,
         ]);

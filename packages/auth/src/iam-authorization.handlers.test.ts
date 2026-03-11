@@ -5,7 +5,7 @@ const testState = vi.hoisted(() => ({
     id: 'keycloak-sub-1',
     name: 'Test User',
     roles: [],
-    instanceId: '11111111-1111-1111-8111-111111111111',
+    instanceId: 'de-musterhausen',
   },
   connectError: null as Error | null,
   queryHandler: null as null | ((text: string, values?: readonly unknown[]) => unknown),
@@ -34,7 +34,7 @@ vi.mock('@sva/sdk/server', () => ({
     error: vi.fn(),
   }),
   getWorkspaceContext: () => ({
-    workspaceId: '11111111-1111-1111-8111-111111111111',
+    workspaceId: 'de-musterhausen',
     requestId: 'req-test',
     traceId: 'trace-test',
   }),
@@ -110,7 +110,7 @@ describe('authorizeHandler', () => {
       id: 'keycloak-sub-1',
       name: 'Test User',
       roles: [],
-      instanceId: '11111111-1111-1111-8111-111111111111',
+      instanceId: 'de-musterhausen',
     };
   });
 
@@ -138,7 +138,7 @@ describe('authorizeHandler', () => {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
-        instanceId: '11111111-1111-1111-8111-111111111111',
+        instanceId: 'de-musterhausen',
         action: 'content.read',
         resource: { type: 'content', id: 'article-1' },
       }),
@@ -190,7 +190,7 @@ describe('authorizeHandler', () => {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
-        instanceId: '11111111-1111-1111-8111-111111111111',
+        instanceId: 'de-musterhausen',
         action: 'content.read',
         resource: {
           type: 'content',
@@ -218,7 +218,7 @@ describe('authorizeHandler', () => {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
-        instanceId: '11111111-1111-1111-8111-111111111111',
+        instanceId: 'de-musterhausen',
         action: 'content.read',
         resource: { type: 'content', id: 'article-1' },
       }),
@@ -265,7 +265,7 @@ describe('authorizeHandler', () => {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
-          instanceId: '11111111-1111-1111-8111-111111111111',
+          instanceId: 'de-musterhausen',
           action: 'content.read',
           resource: {
             type: 'content',
@@ -314,7 +314,7 @@ describe('authorizeHandler', () => {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
-        instanceId: '11111111-1111-1111-8111-111111111111',
+        instanceId: 'de-musterhausen',
         action: 'content.read',
         resource: { type: 'content', id: 'article-1' },
       }),
@@ -357,7 +357,7 @@ describe('authorizeHandler', () => {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
-        instanceId: '11111111-1111-1111-8111-111111111111',
+        instanceId: 'de-musterhausen',
         action: 'content.read',
         resource: {
           type: 'content',
@@ -416,7 +416,7 @@ describe('authorizeHandler', () => {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
-        instanceId: '11111111-1111-1111-8111-111111111111',
+        instanceId: 'de-musterhausen',
         action: 'content.read',
         resource: {
           type: 'content',
@@ -427,7 +427,7 @@ describe('authorizeHandler', () => {
           organizationId: '22222222-2222-2222-8222-222222222222',
           attributes: {
             organizationHierarchy: [
-              '11111111-1111-1111-8111-111111111111',
+              'de-musterhausen',
               '22222222-2222-2222-8222-222222222222',
             ],
           },
@@ -450,7 +450,7 @@ describe('authorizeHandler', () => {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
-        instanceId: '11111111-1111-1111-8111-111111111111',
+        instanceId: 'de-musterhausen',
         action: 'content.read',
         resource: { type: 'content', id: 'article-1' },
         context: {

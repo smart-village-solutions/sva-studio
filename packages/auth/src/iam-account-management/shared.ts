@@ -127,7 +127,7 @@ SELECT a.id AS account_id
 FROM iam.accounts a
 JOIN iam.instance_memberships im
   ON im.account_id = a.id
- AND im.instance_id = $1::uuid
+ AND im.instance_id = $1
 WHERE a.keycloak_subject = $2
 LIMIT 1;
 `,
@@ -146,7 +146,7 @@ SELECT COALESCE(MAX(r.role_level), 0)::int AS max_role_level
 FROM iam.accounts a
 JOIN iam.instance_memberships im
   ON im.account_id = a.id
- AND im.instance_id = $1::uuid
+ AND im.instance_id = $1
 JOIN iam.account_roles ar
   ON ar.instance_id = im.instance_id
  AND ar.account_id = im.account_id
@@ -197,7 +197,7 @@ export const resolveRolesByIds = async (
     `
 SELECT id, role_key, role_name, display_name, external_role_name, role_level, is_system_role
 FROM iam.roles
-WHERE instance_id = $1::uuid
+WHERE instance_id = $1
   AND id = ANY($2::uuid[]);
 `,
     [input.instanceId, input.roleIds]
@@ -217,7 +217,7 @@ export const resolveRolesByExternalNames = async (
     `
 SELECT id, role_key, role_name, display_name, external_role_name, role_level, is_system_role
 FROM iam.roles
-WHERE instance_id = $1::uuid
+WHERE instance_id = $1
   AND COALESCE(external_role_name, role_key) = ANY($2::text[]);
 `,
     [input.instanceId, input.externalRoleNames]
@@ -271,7 +271,7 @@ SELECT COUNT(DISTINCT a.id)::int AS admin_count
 FROM iam.accounts a
 JOIN iam.instance_memberships im
   ON im.account_id = a.id
- AND im.instance_id = $1::uuid
+ AND im.instance_id = $1
 JOIN iam.account_roles ar
   ON ar.instance_id = im.instance_id
  AND ar.account_id = im.account_id
@@ -300,7 +300,7 @@ SELECT EXISTS (
   JOIN iam.roles r
     ON r.instance_id = ar.instance_id
    AND r.id = ar.role_id
-  WHERE ar.instance_id = $1::uuid
+  WHERE ar.instance_id = $1
     AND ar.account_id = $2::uuid
     AND ar.valid_from <= NOW()
     AND (ar.valid_to IS NULL OR ar.valid_to > NOW())
@@ -337,7 +337,7 @@ INSERT INTO iam.activity_logs (
   request_id,
   trace_id
 )
-VALUES ($1::uuid, $2::uuid, $3::uuid, $4, $5, $6::jsonb, $7, $8);
+VALUES ($1, $2::uuid, $3::uuid, $4, $5, $6::jsonb, $7, $8);
 `,
     [
       input.instanceId,
@@ -410,7 +410,7 @@ SET
   last_error_code = $4,
   last_synced_at = CASE WHEN $5::boolean THEN NOW() ELSE last_synced_at END,
   updated_at = NOW()
-WHERE instance_id = $1::uuid
+WHERE instance_id = $1
   AND id = $2::uuid;
 `,
     [input.instanceId, input.roleId, input.syncState, input.errorCode ?? null, input.syncedAt ?? false]
@@ -456,7 +456,7 @@ export const reserveIdempotency = async (input: {
       `
 SELECT status, payload_hash, response_status, response_body
 FROM iam.idempotency_keys
-WHERE instance_id = $1::uuid
+WHERE instance_id = $1
   AND actor_account_id = $2::uuid
   AND endpoint = $3
   AND idempotency_key = $4
@@ -478,7 +478,7 @@ INSERT INTO iam.idempotency_keys (
   status,
   expires_at
 )
-VALUES ($1::uuid, $2::uuid, $3, $4, $5, 'IN_PROGRESS', NOW() + INTERVAL '24 hours')
+VALUES ($1, $2::uuid, $3, $4, $5, 'IN_PROGRESS', NOW() + INTERVAL '24 hours')
 `,
         [input.instanceId, input.actorAccountId, input.endpoint, input.idempotencyKey, input.payloadHash]
       );
@@ -526,7 +526,7 @@ SET
   updated_at = NOW(),
   expires_at = NOW() + INTERVAL '24 hours'
 WHERE actor_account_id = $1::uuid
-  AND instance_id = $2::uuid
+  AND instance_id = $2
   AND endpoint = $3
   AND idempotency_key = $4;
 `,
@@ -569,12 +569,20 @@ export const resolveActorInfo = async (
 ): Promise<{ actor: ActorInfo } | { error: Response }> => {
   const requestedInstanceId = readInstanceIdFromRequest(request, ctx.user.instanceId);
   const requestContext = getWorkspaceContext();
-  const resolvedInstance = await resolveInstanceId({
-    resolvePool,
-    candidate: requestedInstanceId,
-    createIfMissingFromKey: options?.createMissingInstanceFromKey,
-    displayNameForCreate: requestedInstanceId,
-  });
+  const resolvedInstance =
+    requestedInstanceId !== undefined
+      ? {
+          ok: true as const,
+          instanceId: requestedInstanceId,
+          fromInstanceKey: false,
+          created: false,
+        }
+      : await resolveInstanceId({
+          resolvePool,
+          candidate: requestedInstanceId,
+          createIfMissingFromKey: options?.createMissingInstanceFromKey,
+          displayNameForCreate: requestedInstanceId,
+        });
   if (!resolvedInstance.ok) {
     const status = resolvedInstance.reason === 'database_unavailable' ? 503 : 400;
     const code = resolvedInstance.reason === 'database_unavailable' ? 'database_unavailable' : 'invalid_instance_id';
@@ -699,7 +707,7 @@ export const assignRoles = async (
   client: QueryClient,
   input: { instanceId: string; accountId: string; roleIds: readonly string[]; assignedBy?: string }
 ) => {
-  await client.query('DELETE FROM iam.account_roles WHERE instance_id = $1::uuid AND account_id = $2::uuid;', [
+  await client.query('DELETE FROM iam.account_roles WHERE instance_id = $1 AND account_id = $2::uuid;', [
     input.instanceId,
     input.accountId,
   ]);
@@ -716,7 +724,7 @@ INSERT INTO iam.account_roles (
   assigned_by,
   valid_from
 )
-SELECT $1::uuid, $2::uuid, role_id, $3::uuid, NOW()
+SELECT $1, $2::uuid, role_id, $3::uuid, NOW()
 FROM unnest($4::uuid[]) AS role_id;
 `,
     [input.instanceId, input.accountId, input.assignedBy ?? null, input.roleIds]

@@ -16,65 +16,69 @@ const createPoolMock = (queryImpl: (text: string, values?: readonly unknown[]) =
 };
 
 describe('resolveInstanceId', () => {
-  it('returns UUID candidates unchanged without database lookup', async () => {
-    const connect = vi.fn();
-    const result = await resolveInstanceId({
-      resolvePool: () => ({ connect } as unknown as Pool),
-      candidate: '11111111-1111-1111-8111-111111111111',
-    });
-
-    expect(result).toEqual({
-      ok: true,
-      instanceId: '11111111-1111-1111-8111-111111111111',
-      fromInstanceKey: false,
-      created: false,
-    });
-    expect(connect).not.toHaveBeenCalled();
-  });
-
-  it('resolves an existing instance_key to UUID', async () => {
+  it('resolves an existing string instance id from the database', async () => {
     const mock = createPoolMock(async () => ({
       rowCount: 1,
-      rows: [{ id: '22222222-2222-2222-8222-222222222222' }],
+      rows: [{ id: 'de-musterhausen' }],
     }));
-
     const result = await resolveInstanceId({
       resolvePool: () => mock.pool,
-      candidate: 'dev-local-1',
+      candidate: 'de-musterhausen',
     });
 
     expect(result).toEqual({
       ok: true,
-      instanceId: '22222222-2222-2222-8222-222222222222',
-      fromInstanceKey: true,
+      instanceId: 'de-musterhausen',
+      fromInstanceKey: false,
       created: false,
     });
     expect(mock.query).toHaveBeenCalledTimes(1);
     expect(mock.release).toHaveBeenCalledTimes(1);
   });
 
-  it('creates a new instance for missing instance_key when creation is enabled', async () => {
+  it('returns the persisted instance id for an existing string scope', async () => {
+    const mock = createPoolMock(async () => ({
+      rowCount: 1,
+      rows: [{ id: 'tenant-alpha' }],
+    }));
+
+    const result = await resolveInstanceId({
+      resolvePool: () => mock.pool,
+      candidate: 'tenant-alpha',
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      instanceId: 'tenant-alpha',
+      fromInstanceKey: false,
+      created: false,
+    });
+    expect(mock.query).toHaveBeenCalledTimes(1);
+    expect(mock.release).toHaveBeenCalledTimes(1);
+  });
+
+  it('creates a new instance for missing string scope when creation is enabled', async () => {
     const mock = createPoolMock(async (text) => {
       if (text.includes('SELECT id')) {
         return { rowCount: 0, rows: [] };
       }
       return {
         rowCount: 1,
-        rows: [{ id: '33333333-3333-3333-8333-333333333333' }],
+        rows: [{ id: 'de-musterhausen' }],
       };
     });
 
     const result = await resolveInstanceId({
       resolvePool: () => mock.pool,
-      candidate: 'dev-local-1',
+      candidate: 'de-musterhausen',
       createIfMissingFromKey: true,
       displayNameForCreate: 'Lokale Instanz',
     });
 
     expect(result).toEqual({
       ok: true,
-      instanceId: '33333333-3333-3333-8333-333333333333',
-      fromInstanceKey: true,
+      instanceId: 'de-musterhausen',
+      fromInstanceKey: false,
       created: true,
     });
     expect(mock.query).toHaveBeenCalledTimes(2);
@@ -82,12 +86,12 @@ describe('resolveInstanceId', () => {
     expect(mock.release).toHaveBeenCalledTimes(1);
   });
 
-  it('returns invalid_instance for unknown instance_key when creation is disabled', async () => {
+  it('returns invalid_instance for an unknown string scope when creation is disabled', async () => {
     const mock = createPoolMock(async () => ({ rowCount: 0, rows: [] }));
 
     const result = await resolveInstanceId({
       resolvePool: () => mock.pool,
-      candidate: 'dev-local-1',
+      candidate: 'de-musterhausen',
       createIfMissingFromKey: false,
     });
 
@@ -96,13 +100,18 @@ describe('resolveInstanceId', () => {
     expect(mock.release).toHaveBeenCalledTimes(1);
   });
 
-  it('returns database_unavailable when no pool is configured', async () => {
+  it('falls back to the raw string instance id when no pool is configured', async () => {
     const result = await resolveInstanceId({
       resolvePool: () => null,
-      candidate: 'dev-local-1',
+      candidate: 'de-musterhausen',
     });
 
-    expect(result).toEqual({ ok: false, reason: 'database_unavailable' });
+    expect(result).toEqual({
+      ok: true,
+      instanceId: 'de-musterhausen',
+      fromInstanceKey: false,
+      created: false,
+    });
   });
 
   it('maps query errors to database_unavailable and still releases the client', async () => {
@@ -112,7 +121,7 @@ describe('resolveInstanceId', () => {
 
     const result = await resolveInstanceId({
       resolvePool: () => mock.pool,
-      candidate: 'dev-local-1',
+      candidate: 'de-musterhausen',
     });
 
     expect(result).toEqual({ ok: false, reason: 'database_unavailable' });

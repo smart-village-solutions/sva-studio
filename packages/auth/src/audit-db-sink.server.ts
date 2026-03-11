@@ -7,8 +7,6 @@ import {
 
 import type { AuthAuditEvent, AuthAuditEventType } from './audit-events.types';
 
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
 export type PersistAuthAuditResult = {
   persisted: boolean;
   reason?: 'missing_database_url' | 'invalid_instance_id';
@@ -71,7 +69,7 @@ const resolveAccountId = async (
 SELECT id
 FROM iam.accounts
 WHERE keycloak_subject = $1
-  AND instance_id = $2::uuid
+  AND instance_id = $2
 LIMIT 1;
 `,
     [input.keycloakSubject, input.instanceId]
@@ -136,7 +134,7 @@ SET
   display_name_ciphertext = COALESCE($4, display_name_ciphertext),
   updated_at = NOW()
 WHERE keycloak_subject = $1
-  AND instance_id = $2::uuid;
+  AND instance_id = $2;
 `,
         [input.keycloakSubject, input.instanceId, input.encryptedEmailCiphertext, input.encryptedDisplayNameCiphertext]
       );
@@ -151,7 +149,7 @@ WHERE keycloak_subject = $1
   const inserted = await client.query<{ id: string }>(
     `
 INSERT INTO iam.accounts (instance_id, keycloak_subject, email_ciphertext, display_name_ciphertext)
-VALUES ($1::uuid, $2, $3, $4)
+VALUES ($1, $2, $3, $4)
 ON CONFLICT (keycloak_subject, instance_id) WHERE instance_id IS NOT NULL DO NOTHING
 RETURNING id;
 `,
@@ -179,7 +177,7 @@ SET
   display_name_ciphertext = COALESCE($4, display_name_ciphertext),
   updated_at = NOW()
 WHERE keycloak_subject = $1
-  AND instance_id = $2::uuid;
+  AND instance_id = $2;
 `,
       [input.keycloakSubject, input.instanceId, input.encryptedEmailCiphertext, input.encryptedDisplayNameCiphertext]
     );
@@ -298,7 +296,7 @@ export const persistAuthAuditEventWithClient = async (
 export const persistAuthAuditEventToDb = async (
   event: Required<Pick<AuthAuditEvent, 'workspaceId'>> & AuthAuditEvent
 ): Promise<PersistAuthAuditResult> => {
-  if (!UUID_PATTERN.test(event.workspaceId)) {
+  if (!event.workspaceId || event.workspaceId.trim().length === 0) {
     return {
       persisted: false,
       reason: 'invalid_instance_id',

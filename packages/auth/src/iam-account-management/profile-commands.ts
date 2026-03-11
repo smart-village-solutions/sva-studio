@@ -30,7 +30,7 @@ SET
   timezone = COALESCE($12, timezone),
   updated_at = NOW()
 WHERE id = $1::uuid
-  AND instance_id = $2::uuid;
+  AND instance_id = $2;
 `;
 
 const resolveOrProvisionAccountId = async (

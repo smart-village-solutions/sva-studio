@@ -29,7 +29,7 @@ const listScopedPermissionRows = async (
 WITH target_organization AS (
   SELECT id, hierarchy_path
   FROM iam.organizations
-  WHERE instance_id = $1::uuid
+  WHERE instance_id = $1
     AND id = $3::uuid
     AND is_active = true
 )

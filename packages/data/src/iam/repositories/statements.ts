@@ -1,4 +1,4 @@
-import type { IamUuid } from '../types';
+import type { IamInstanceId, IamUuid } from '../types';
 import type { SqlStatement } from './types';
 import type { RoleManagedBy, RoleSyncState } from './role-sync-types';
 
@@ -10,21 +10,21 @@ const asUuidArrayParameter = (values: readonly IamUuid[]) => ({
 const defaultResourceType = (permissionKey: string) => permissionKey.split('.')[0] ?? permissionKey;
 
 export const iamSeedStatements = {
-  upsertInstance: (input: { id: IamUuid; instanceKey: string; displayName: string }): SqlStatement => ({
+  upsertInstance: (input: { id: IamInstanceId; displayName: string }): SqlStatement => ({
     text: `
-INSERT INTO iam.instances (id, instance_key, display_name)
-VALUES ($1, $2, $3)
-ON CONFLICT (instance_key) DO UPDATE
+INSERT INTO iam.instances (id, display_name)
+VALUES ($1, $2)
+ON CONFLICT (id) DO UPDATE
 SET
   display_name = EXCLUDED.display_name,
   updated_at = NOW();
 `,
-    values: [input.id, input.instanceKey, input.displayName],
+    values: [input.id, input.displayName],
   }),
 
   upsertOrganization: (input: {
     id: IamUuid;
-    instanceId: IamUuid;
+    instanceId: IamInstanceId;
     organizationKey: string;
     displayName: string;
     metadata: string;
@@ -71,7 +71,7 @@ SET
 
   upsertRole: (input: {
     id: IamUuid;
-    instanceId: IamUuid;
+    instanceId: IamInstanceId;
     roleKey: string;
     roleName: string;
     description: string;
@@ -128,7 +128,7 @@ SET
 
   upsertPermission: (input: {
     id: IamUuid;
-    instanceId: IamUuid;
+    instanceId: IamInstanceId;
     permissionKey: string;
     action?: string;
     resourceType?: string;
@@ -169,7 +169,7 @@ SET
 
   upsertAccount: (input: {
     id: IamUuid;
-    instanceId: IamUuid;
+    instanceId: IamInstanceId;
     keycloakSubject: string;
     emailCiphertext: string;
     displayNameCiphertext: string;
@@ -187,7 +187,7 @@ SET
   }),
 
   upsertInstanceMembership: (input: {
-    instanceId: IamUuid;
+    instanceId: IamInstanceId;
     accountId: IamUuid;
     membershipType: string;
   }): SqlStatement => ({
@@ -201,7 +201,7 @@ SET
     values: [input.instanceId, input.accountId, input.membershipType],
   }),
 
-  assignAccountRole: (input: { instanceId: IamUuid; accountId: IamUuid; roleId: IamUuid }): SqlStatement => ({
+  assignAccountRole: (input: { instanceId: IamInstanceId; accountId: IamUuid; roleId: IamUuid }): SqlStatement => ({
     text: `
 INSERT INTO iam.account_roles (instance_id, account_id, role_id)
 VALUES ($1, $2, $3)
@@ -211,7 +211,7 @@ ON CONFLICT (instance_id, account_id, role_id) DO NOTHING;
   }),
 
   assignAccountOrganization: (input: {
-    instanceId: IamUuid;
+    instanceId: IamInstanceId;
     accountId: IamUuid;
     organizationId: IamUuid;
     isDefaultContext?: boolean;
@@ -240,7 +240,7 @@ SET
     ],
   }),
 
-  assignRolePermission: (input: { instanceId: IamUuid; roleId: IamUuid; permissionId: IamUuid }): SqlStatement => ({
+  assignRolePermission: (input: { instanceId: IamInstanceId; roleId: IamUuid; permissionId: IamUuid }): SqlStatement => ({
     text: `
 INSERT INTO iam.role_permissions (instance_id, role_id, permission_id)
 VALUES ($1, $2, $3)

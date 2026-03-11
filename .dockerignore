@@ -1,0 +1,16 @@
+node_modules
+.git
+.nx
+.pnpm-store
+
+coverage
+dist
+
+apps/*/dist
+apps/*/.output
+packages/*/dist
+
+docs
+dev/monitoring
+
+.DS_Store

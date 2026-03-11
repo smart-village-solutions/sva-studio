@@ -52,3 +52,14 @@ export {
 // Server Bootstrap (OTEL SDK Init & Graceful Shutdown)
 // ============================================================================
 export { initializeOtelSdk } from './server/bootstrap.server';
+
+// ============================================================================
+// Instance-Konfiguration (Multi-Host / Allowlist)
+// ============================================================================
+export type { InstanceConfig } from './instance/config.server';
+export {
+  getInstanceConfig,
+  resetInstanceConfigCache,
+  parseInstanceIdFromHost,
+  isCanonicalAuthHost,
+} from './instance/config.server';

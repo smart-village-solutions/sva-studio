@@ -65,27 +65,8 @@ DROP POLICY IF EXISTS idempotency_keys_isolation_policy ON iam.idempotency_keys;
 DROP POLICY IF EXISTS activity_logs_archive_isolation_policy ON iam.activity_logs_archive;
 
 ALTER TABLE iam.organizations
-  DROP CONSTRAINT IF EXISTS organizations_instance_key_uniq;
-DROP INDEX IF EXISTS iam.uq_organizations_instance_id_id;
-DROP INDEX IF EXISTS iam.idx_organizations_instance_id;
-
-ALTER TABLE iam.roles
-  DROP CONSTRAINT IF EXISTS roles_instance_name_uniq;
-DROP INDEX IF EXISTS iam.uq_roles_instance_id_id;
-DROP INDEX IF EXISTS iam.uq_roles_instance_role_key;
-DROP INDEX IF EXISTS iam.uq_roles_instance_external_role_name;
-DROP INDEX IF EXISTS iam.idx_roles_instance_id;
-DROP INDEX IF EXISTS iam.idx_roles_instance_sync_state;
-DROP INDEX IF EXISTS iam.idx_roles_managed_scope;
-
-ALTER TABLE iam.permissions
-  DROP CONSTRAINT IF EXISTS permissions_instance_key_uniq;
-DROP INDEX IF EXISTS iam.uq_permissions_instance_id_id;
-DROP INDEX IF EXISTS iam.idx_permissions_instance_id;
-
-ALTER TABLE iam.instance_memberships
-  DROP CONSTRAINT IF EXISTS instance_memberships_pkey,
-  DROP CONSTRAINT IF EXISTS instance_memberships_instance_id_fkey;
+  DROP CONSTRAINT IF EXISTS organizations_instance_key_uniq,
+  DROP CONSTRAINT IF EXISTS organizations_instance_id_fkey;
 
 ALTER TABLE iam.account_organizations
   DROP CONSTRAINT IF EXISTS account_organizations_pkey,
@@ -181,6 +162,31 @@ DROP INDEX IF EXISTS iam.idx_data_subject_recipient_notifications_request;
 ALTER TABLE iam.idempotency_keys
   DROP CONSTRAINT IF EXISTS idempotency_keys_instance_id_fkey,
   DROP CONSTRAINT IF EXISTS idempotency_keys_actor_membership_fk;
+
+ALTER TABLE iam.instance_memberships
+  DROP CONSTRAINT IF EXISTS instance_memberships_pkey,
+  DROP CONSTRAINT IF EXISTS instance_memberships_instance_id_fkey;
+
+ALTER TABLE iam.organizations
+  DROP CONSTRAINT IF EXISTS organizations_parent_fk;
+DROP INDEX IF EXISTS iam.uq_organizations_instance_id_id;
+DROP INDEX IF EXISTS iam.idx_organizations_instance_id;
+
+ALTER TABLE iam.roles
+  DROP CONSTRAINT IF EXISTS roles_instance_name_uniq,
+  DROP CONSTRAINT IF EXISTS roles_instance_id_fkey;
+DROP INDEX IF EXISTS iam.uq_roles_instance_id_id;
+DROP INDEX IF EXISTS iam.uq_roles_instance_role_key;
+DROP INDEX IF EXISTS iam.uq_roles_instance_external_role_name;
+DROP INDEX IF EXISTS iam.idx_roles_instance_id;
+DROP INDEX IF EXISTS iam.idx_roles_instance_sync_state;
+DROP INDEX IF EXISTS iam.idx_roles_managed_scope;
+
+ALTER TABLE iam.permissions
+  DROP CONSTRAINT IF EXISTS permissions_instance_key_uniq,
+  DROP CONSTRAINT IF EXISTS permissions_instance_id_fkey;
+DROP INDEX IF EXISTS iam.uq_permissions_instance_id_id;
+DROP INDEX IF EXISTS iam.idx_permissions_instance_id;
 
 ALTER TABLE iam.activity_logs_archive
   DROP CONSTRAINT IF EXISTS activity_logs_archive_instance_id_fkey;
@@ -485,7 +491,9 @@ ALTER TABLE iam.activity_logs_archive
 CREATE INDEX IF NOT EXISTS idx_activity_logs_archive_instance_created
   ON iam.activity_logs_archive(instance_id, original_created_at DESC);
 
-CREATE OR REPLACE FUNCTION iam.current_instance_id()
+DROP FUNCTION IF EXISTS iam.current_instance_id();
+
+CREATE FUNCTION iam.current_instance_id()
 RETURNS TEXT
 LANGUAGE SQL
 STABLE

@@ -6,11 +6,11 @@
  * in dem nur Icons angezeigt werden.
  */
 import { Link } from '@tanstack/react-router';
-import { ChevronsLeft, ChevronsRight, LayoutDashboard, Settings2, Shield, UserRound, Users, X } from 'lucide-react';
+import { ChevronsLeft, ChevronsRight, LayoutDashboard, Newspaper, Settings2, Shield, Users, X } from 'lucide-react';
 import React from 'react';
 
 import { t } from '../i18n';
-import { hasIamAdminRole, hasSystemAdminRole, isIamAdminEnabled, isIamUiEnabled } from '../lib/iam-admin-access';
+import { hasIamAdminRole, hasSystemAdminRole, isIamAdminEnabled } from '../lib/iam-admin-access';
 import { useAuth } from '../providers/auth-provider';
 import { Sheet, SheetContent } from './ui/sheet';
 
@@ -24,8 +24,8 @@ const sidebarSkeletonKeys = ['sidebar-skeleton-a', 'sidebar-skeleton-b', 'sideba
 
 const getSidebarIcon = (path: string) => {
   switch (path) {
-    case '/account':
-      return UserRound;
+    case '/plugins/news':
+      return Newspaper;
     case '/admin/users':
       return Users;
     case '/admin/organizations':
@@ -142,14 +142,13 @@ const SidebarPanel = ({
 export default function Sidebar({ isLoading = false, isMobileOpen = false, onMobileOpenChange }: SidebarProps) {
   const { user, isAuthenticated } = useAuth();
   const [collapsed, setCollapsed] = React.useState(false);
-  const canAccessAccount = isAuthenticated && isIamUiEnabled();
   const canAccessAdminUsers = isAuthenticated && isIamAdminEnabled() && hasIamAdminRole(user);
   const canAccessAdminOrganizations = canAccessAdminUsers;
   const canAccessAdminRoles = canAccessAdminUsers && hasSystemAdminRole(user);
 
   const sidebarLinks: Array<{ to: string; label: string }> = [
     { to: '/', label: t('shell.sidebar.overview') },
-    ...(canAccessAccount ? [{ to: '/account', label: t('shell.sidebar.account') }] : []),
+    { to: '/plugins/news', label: 'News' },
     ...(canAccessAdminUsers ? [{ to: '/admin/users', label: t('shell.sidebar.userManagement') }] : []),
     ...(canAccessAdminOrganizations ? [{ to: '/admin/organizations', label: t('shell.sidebar.organizationManagement') }] : []),
     ...(canAccessAdminRoles ? [{ to: '/admin/roles', label: t('shell.sidebar.roleManagement') }] : []),

@@ -2,6 +2,7 @@ import { createRouter } from '@tanstack/react-router';
 import { createIsomorphicFn } from '@tanstack/react-start';
 import { buildRouteTree, mergeRouteFactories } from '@sva/core';
 import { pluginExampleRoutes } from '@sva/plugin-example';
+import { pluginNewsRoutes } from '@sva/plugin-news';
 import type { RouteGuardUser } from '@sva/routing';
 
 import { rootRoute } from './routes/__root';
@@ -85,7 +86,7 @@ export const getRouter = async () => {
   const runtimeAuthRouteFactories = await getAuthRouteFactories();
   const routeTree = buildRouteTree(
     rootRoute,
-    mergeRouteFactories([...coreRouteFactoriesBase, ...runtimeAuthRouteFactories], pluginExampleRoutes)
+    mergeRouteFactories([...coreRouteFactoriesBase, ...runtimeAuthRouteFactories], [...pluginExampleRoutes, ...pluginNewsRoutes])
   );
 
   const router = createRouter({

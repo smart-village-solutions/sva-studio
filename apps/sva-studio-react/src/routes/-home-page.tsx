@@ -1,17 +1,10 @@
 import React from 'react';
 import { useAuth } from '../providers/auth-provider';
 
-type AuthorizeDecision = {
-  allowed: boolean;
-  reason: string;
-};
-
 export const HomePage = () => {
-  const { user, isLoading, error, invalidatePermissions } = useAuth();
+  const { user, isLoading, error } = useAuth();
   const [authStateError, setAuthStateError] = React.useState<string | null>(null);
   const [routeError, setRouteError] = React.useState<string | null>(null);
-  const [authorizeLoading, setAuthorizeLoading] = React.useState(false);
-  const [authorizeDecision, setAuthorizeDecision] = React.useState<AuthorizeDecision | null>(null);
 
   React.useEffect(() => {
     const search = new URLSearchParams(window.location.search);
@@ -32,75 +25,6 @@ export const HomePage = () => {
     }
   }, []);
 
-  React.useEffect(() => {
-    if (!user?.instanceId) {
-      setAuthorizeDecision(null);
-      setAuthorizeLoading(false);
-      return;
-    }
-
-    let active = true;
-    const loadAuthorizeDecision = async () => {
-      setAuthorizeLoading(true);
-      try {
-        const authorizeResponse = await fetch('/iam/authorize', {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            instanceId: user.instanceId,
-            action: 'content.read',
-            resource: {
-              type: 'content',
-              id: 'home-dashboard',
-            },
-            context: {
-              requestId: `home-${Date.now()}`,
-            },
-          }),
-        });
-
-        if (!active) {
-          return;
-        }
-
-        if (authorizeResponse.ok) {
-          const decision = (await authorizeResponse.json()) as AuthorizeDecision;
-          setAuthorizeDecision(decision);
-          return;
-        }
-
-        if (authorizeResponse.status === 403) {
-          await invalidatePermissions();
-          if (!active) {
-            return;
-          }
-        }
-
-        setAuthorizeDecision({
-          allowed: false,
-          reason: `authorize_http_${authorizeResponse.status}`,
-        });
-      } catch (cause) {
-        if (!active) {
-          return;
-        }
-        setAuthorizeDecision({
-          allowed: false,
-          reason: cause instanceof Error ? cause.message : String(cause),
-        });
-      } finally {
-        if (active) {
-          setAuthorizeLoading(false);
-        }
-      }
-    };
-
-    void loadAuthorizeDecision();
-    return () => {
-      active = false;
-    };
-  }, [invalidatePermissions, user?.instanceId]);
 
   const normalizedRoles = React.useMemo(
     () => new Set((user?.roles ?? []).map((role) => role.trim().toLowerCase())),
@@ -153,18 +77,6 @@ export const HomePage = () => {
                 {hasRole('editor')
                   ? 'Editor-Rolle erkannt: Redaktionsfunktionen sichtbar.'
                   : 'Nur sichtbar mit Rolle: editor.'}
-              </p>
-            </div>
-            <div className="rounded-xl border border-border bg-background p-4 md:col-span-2">
-              <p className="text-sm font-semibold text-foreground">IAM-Authorize (Modulpfad)</p>
-              <p className="mt-2 text-sm text-muted-foreground">
-                {authorizeLoading
-                  ? 'Berechtigung wird geprüft ...'
-                  : authorizeDecision
-                    ? authorizeDecision.allowed
-                      ? `Erlaubt (${authorizeDecision.reason})`
-                      : `Verweigert (${authorizeDecision.reason})`
-                    : 'Keine Authorize-Entscheidung verfügbar.'}
               </p>
             </div>
           </div>

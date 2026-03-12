@@ -186,3 +186,10 @@ Referenzen:
 - Restriktive Regeln (`effect = 'deny'`) werden vor Freigaben ausgewertet; lokale Restriktionen dürfen vererbte Parent-Freigaben einschränken.
 - Scope-Daten für Geo, Acting-As und Restriktionen werden in effektive Permissions übernommen und im Snapshot mitgeführt.
 - Der Kompatibilitätspfad liest fehlende strukturierte Felder deterministisch aus `permission_key`, bis alle relevanten Alt-Daten migriert sind.
+
+### Ergänzung 2026-03: Multi-Host-Betrieb und Secrets-Handling
+
+- **Instanz-Routing:** Eingehende Hosts werden über ein Subdomain-Modell (`<instanceId>.<SVA_PARENT_DOMAIN>`) auf `instanceId`s abgebildet. Die Env-Allowlist (`SVA_ALLOWED_INSTANCE_IDS`) ist die autoritative Freigabequelle. Ablehnungen liefern identische `403`-Antworten (kein Host-Enumeration-Vektor).
+- **Kanonischer Auth-Host:** OIDC-Flows laufen ausschließlich über die Root-Domain. Zielbild: Auth-Cookies werden auf die Parent-Domain gesetzt (`Domain=.<SVA_PARENT_DOMAIN>`) für SSO über Instanz-Subdomains. Aktuell ist das Cookie-Scoping host-only (siehe [ADR-020](../adr/ADR-020-kanonischer-auth-host-multi-host-grenze.md)).
+- **Secrets-Klassifizierung:** Vertrauliche Werte (Auth-Secrets, DB-Passwörter, Encryption-Keys) werden im Swarm-Betrieb als externe Docker Secrets bereitgestellt. Das Entrypoint-Skript (`entrypoint.sh`) liest Secret-Dateien aus `/run/secrets/` und exportiert sie als Env-Variablen. Nicht-vertrauliche Konfiguration bleibt als Stack-Umgebungsvariable.
+- **Startup-Validierung:** Die `instanceId`-Allowlist wird beim Startup gegen ein Regex validiert (fail-fast). Ungültige Einträge oder IDN/Punycode-Labels führen zum sofortigen Abbruch.

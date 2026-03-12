@@ -25,6 +25,8 @@ mit Bezug auf die arc42-Abschnitte.
 - `ADR-016-idp-abstraktionsschicht.md`
 - `ADR-017-modulare-iam-server-bausteine.md`
 - `ADR-018-auth-routing-error-contract-und-korrelation.md`
+- `ADR-019-swarm-traefik-referenz-betriebsprofil.md`
+- `ADR-020-kanonischer-auth-host-multi-host-grenze.md`
 
 ### Zuordnung zu arc42-Abschnitten
 
@@ -35,6 +37,12 @@ mit Bezug auf die arc42-Abschnitte.
 - Abschnitt 05/06/07/08 (Bausteine/Laufzeit/Deployment/Querschnitt): ADR-016
 - Abschnitt 04/05/06/08/10/11 (Strategie/Bausteine/Laufzeit/Querschnitt/Qualität/Risiken): ADR-017
 - Abschnitt 04/05/06/08/10/11 (Strategie/Bausteine/Laufzeit/Querschnitt/Qualität/Risiken): ADR-018
+
+### Zuordnung Swarm-Deployment-ADRs
+
+- Abschnitt 07 (Deployment): ADR-019
+- Abschnitt 05/07/08 (Bausteine/Deployment/Querschnitt): ADR-011 (Fortschreibung: Subdomain-Ableitung)
+- Abschnitt 07/08/10 (Deployment/Querschnitt/Qualität): ADR-020
 
 ### IAM-spezifische ADR-Verweise (Masterplan)
 
@@ -92,3 +100,18 @@ Zuordnung:
 - `ADR-017-modulare-iam-server-bausteine.md`
   - begründet die Fassade-plus-Kernmodul-Struktur für `packages/auth` und `packages/data`
   - verschiebt Complexity-Restschuld an die tatsächlichen Kernmodule statt an historische Fassadenpfade
+
+### Fortschreibung 2026-03: Swarm-Deployment und Multi-Host-Betrieb
+
+- `ADR-019-swarm-traefik-referenz-betriebsprofil.md`
+  - Definiert den Swarm-Stack mit Traefik-Ingress, Registry-Images, Swarm-Secrets und Rolling Updates als Referenz-Betriebsprofil.
+- `ADR-011` (Fortschreibung)
+  - Ergänzt den bestehenden `instanceId`-Scope um die Subdomain-Ableitung (`<instanceId>.<SVA_PARENT_DOMAIN>`), die Env-Allowlist als autoritative Freigabequelle und den IDN/Punycode-Ausschluss.
+- `ADR-020-kanonischer-auth-host-multi-host-grenze.md`
+  - Definiert die Root-Domain als kanonischen Auth-Host für OIDC-Flows mit fail-closed-Grenze für Instanz-Hosts.
+
+Zuordnung:
+
+- Abschnitt 07 (Deployment): ADR-019, ADR-020
+- Abschnitt 05/08 (Bausteine/Querschnitt): ADR-011 Fortschreibung
+- Abschnitt 10/11 (Qualität/Risiken): ADR-020 (fail-closed, Host-Enumeration)

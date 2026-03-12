@@ -49,13 +49,19 @@ export const initializeOtelSdk = async (): Promise<SdkNodeInstance | null> => {
   // - Mit ENABLE_OTEL env var: An (Winston + OTEL zu Loki)
   // - In Production: Immer An
   const isProduction = process.env.NODE_ENV === 'production';
-  const isDevWithOtel = process.env.ENABLE_OTEL === 'true' || process.env.ENABLE_OTEL === '1';
-  const shouldInitialize = isProduction || isDevWithOtel;
+  const enableOtelFlag = process.env.ENABLE_OTEL;
+  const isExplicitlyDisabled = enableOtelFlag === 'false' || enableOtelFlag === '0';
+  const isExplicitlyEnabled = enableOtelFlag === 'true' || enableOtelFlag === '1';
+  const shouldInitialize = isExplicitlyDisabled ? false : isProduction || isExplicitlyEnabled;
 
   if (!shouldInitialize) {
-    logger.debug('OTEL SDK nicht initialisiert (Development-Modus ohne ENABLE_OTEL flag)', {
+    const reason = isExplicitlyDisabled
+      ? 'ENABLE_OTEL explizit deaktiviert'
+      : 'Development-Modus ohne ENABLE_OTEL-Opt-in';
+    logger.debug('OTEL SDK nicht initialisiert', {
       environment: process.env.NODE_ENV,
-      enableOtelFlag: process.env.ENABLE_OTEL ?? 'not set'
+      enableOtelFlag: enableOtelFlag ?? 'not set',
+      reason
     });
     otelSdkInitialized = true;
     return null;
@@ -118,8 +124,7 @@ export const initializeOtelSdk = async (): Promise<SdkNodeInstance | null> => {
     return sdk;
   } catch (error) {
     logger.error('Fehler beim Initialisieren des OTEL SDK', {
-      error: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined
+      error: error instanceof Error ? error.message : String(error)
     });
     otelSdkInitialized = true;
     return null;

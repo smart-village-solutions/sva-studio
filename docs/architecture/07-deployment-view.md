@@ -37,6 +37,68 @@ Laufzeitknoten auf Basis des aktuellen Repos.
 - OTEL Collector als Telemetrie-Hub
 - Loki/Prometheus als Storage, Grafana für Auswertung
 
+### Ergänzung 2026-03: Minimaler Server-Rollout mit Portainer
+
+> **Hinweis:** Der ursprüngliche, nicht-Swarm-basierte Portainer-Stack ist durch das Swarm-Referenz-Betriebsprofil ersetzt. Die folgenden Abschnitte beschreiben den aktuellen Stand.
+
+### Swarm-/Traefik-Referenz-Betriebsprofil (ab 2026-03)
+
+Für den serverbasierten Betrieb ist ein Docker-Swarm-Stack mit Traefik als Ingress-Proxy definiert:
+
+- Compose-Datei: `deploy/portainer/docker-compose.yml`
+- Services: `app`, `postgres`, `redis`
+- Kein Loki, Prometheus, Grafana oder OTEL-Collector im ersten Schritt
+
+#### Topologie
+
+```
+Internet
+  │
+  ▼
+Traefik (Ingress, TLS, HostRegexp-Routing)
+  │  Overlay-Netzwerk „public"
+  ▼
+┌─────────────────────────────────────────┐
+│  Swarm-Stack „sva-studio"               │
+│                                         │
+│  app ←──── internes Overlay ────→ redis │
+│   │                                     │
+│   └──── internes Overlay ────→ postgres │
+└─────────────────────────────────────────┘
+```
+
+#### Deployment-Muster
+
+- **Image-basiert:** Vorgebaute Images aus Container-Registry (`${SVA_REGISTRY}/sva-studio:${SVA_IMAGE_TAG}`). Kein `build:`-Block im Stack.
+- **Traefik-Labels:** Host-basiertes Routing über `HostRegexp` für Instanz-Subdomains unter `SVA_PARENT_DOMAIN`. TLS über Traefiks `certresolver`.
+- **Swarm Secrets:** Vertrauliche Werte als externe Docker-Swarm-Secrets mit Namenskonvention `sva_studio_<service>_<secret_name>`. Ein Shell-Entrypoint (`entrypoint.sh`) liest Secret-Dateien und exportiert sie als Env-Variablen.
+- **Rolling Updates:** `start-first` für Updates, `stop-first` für Rollbacks.
+- **Persistenz:** Named Volumes für Postgres und Redis. Placement-Constraints (`node.role == manager`) für Volume-Affinität in Single-Node-Setups.
+
+#### Instanz-Routing
+
+- `<instanceId>.<SVA_PARENT_DOMAIN>` → Instanz-Kontext
+- Root-Domain (`SVA_PARENT_DOMAIN`) → Kanonischer Auth-Host
+- Env-basierte Allowlist (`SVA_ALLOWED_INSTANCE_IDS`) als autoritative Freigabequelle
+- Startup-Validierung gegen `instanceId`-Regex, fail-fast bei ungültigen Einträgen
+
+#### DB-Initialisierung
+
+Im Swarm-Stack sind keine automatischen Initialisierungsskripte enthalten. Die DB-Einrichtung (Migrationen, Runtime-User) ist ein bewusster, manueller Betriebsschritt. Details im [Swarm-Deployment-Runbook](../guides/swarm-deployment-runbook.md).
+
+Betriebliche Einordnung:
+
+- App läuft als Node-/Nitro-Server aus dem TanStack-Start-Build.
+- Für spätere Updates bestehender Datenbanken bleiben Migrationen ein bewusster separater Betriebsschritt.
+
+Referenzen:
+
+- `deploy/portainer/docker-compose.yml`
+- `deploy/portainer/entrypoint.sh`
+- `docs/guides/swarm-deployment-runbook.md`
+- `docs/adr/ADR-019-swarm-traefik-referenz-betriebsprofil.md`
+- `docs/adr/ADR-020-kanonischer-auth-host-multi-host-grenze.md`
+
 ### Sicherheits-/Betriebsaspekte
 
 - Monitoring-Ports in Compose explizit auf `127.0.0.1` gebunden
@@ -45,17 +107,24 @@ Laufzeitknoten auf Basis des aktuellen Repos.
 - Healthchecks für zentrale Monitoring-Services konfiguriert
 - Graceful OTEL Shutdown im SDK vorgesehen
 - Keycloak wird aktuell als externer Dienst angebunden (nicht über Repo-Compose provisioniert)
+- Swarm-Stack: Secrets als externe Swarm-Secrets, nicht als Klartext-Env-Variablen
+- Swarm-Stack: Entrypoint-basierte Secret-Injektion, abwärtskompatibel mit Nicht-Swarm-Betrieb
+- Swarm-Stack: Host-Validierung gegen Env-Allowlist mit fail-closed-Policy (identische 403-Antwort)
+- Swarm-Stack: Startup-Validierung der Allowlist gegen `instanceId`-Regex (fail-fast)
 
 ### Noch offen (Stand heute)
 
-- Produktions-Topologie (z. B. K8s vs. VM) ist noch nicht repo-verbindlich definiert
 - HA-/Skalierungsdetails für produktiven Betrieb sind nur teilweise als ADR/Doku beschrieben
+- Monitoring-Integration im Swarm-Stack ist als Folgearbeit geplant (`ENABLE_OTEL=false` als Default)
+- DB-gestützte `instanceId`-Registry bei Wachstum über 50 Instanzen
 
 Referenzen:
 
-- `docker-compose.yml`
+- `docker-compose.yml` (lokale Entwicklung)
 - `docker-compose.monitoring.yml`
+- `deploy/portainer/docker-compose.yml` (Swarm-Referenzprofil)
 - `docs/development/postgres-setup.md`
+- `docs/guides/swarm-deployment-runbook.md`
 - `packages/sdk/src/server/bootstrap.server.ts`
 
 ### Ergänzung 2026-03: IAM-Admin-Integration

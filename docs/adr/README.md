@@ -45,7 +45,10 @@ Architecture Decision Records dokumentieren **wichtige technische Entscheidungen
 | 003 | Testing Framework | 📋 | TBD | Quality |
 | 004 | Build Tool & Bundler | 📋 | TBD | DevOps |
 | 005 | Node.js Version & LTS-Policy | 📋 | TBD | Infrastruktur |
+| 011 | `instanceId` als kanonischer Mandanten-Scope | ✅ | 2026-02-27 | IAM / Architektur |
 | 017 | Modulare IAM-Server-Bausteine | ✅ | 2026-03-08 | IAM / Qualität |
+| 019 | Swarm-/Traefik-Referenz-Betriebsprofil | ✅ | 2026-03-12 | Deployment / Betrieb |
+| 020 | Kanonischer Auth-Host und Multi-Host-Grenze | ✅ | 2026-03-12 | Auth / Deployment |
 
 ---
 

@@ -36,20 +36,25 @@ Alle vertraulichen Werte werden als externe Docker-Swarm-Secrets bereitgestellt.
 
 ```bash
 # Auth-Secrets
-echo -n 'oidc-client-secret-hier' | docker secret create sva_studio_app_auth_client_secret -
-echo -n 'state-secret-hier' | docker secret create sva_studio_app_auth_state_secret -
+docker secret create sva_studio_app_auth_client_secret ./secrets/oidc-client-secret.txt
+docker secret create sva_studio_app_auth_state_secret ./secrets/state-secret.txt
 
 # Verschlüsselung
-echo -n '32-byte-key-hier' | docker secret create sva_studio_app_encryption_key -
-echo -n '{"k1":"base64-key-hier"}' | docker secret create sva_studio_app_pii_keyring_json -
+docker secret create sva_studio_app_encryption_key ./secrets/encryption-key.txt
+docker secret create sva_studio_app_pii_keyring_json ./secrets/pii-keyring.json
 
 # Datenbank
-echo -n 'postgres-admin-pw' | docker secret create sva_studio_postgres_password -
-echo -n 'app-db-pw' | docker secret create sva_studio_app_db_password -
+docker secret create sva_studio_postgres_password ./secrets/postgres-password.txt
+docker secret create sva_studio_app_db_password ./secrets/app-db-password.txt
+
+# Redis
+docker secret create sva_studio_redis_password ./secrets/redis-password.txt
 
 # Keycloak-Admin (optional)
-echo -n 'keycloak-service-secret' | docker secret create sva_studio_keycloak_admin_client_secret -
+docker secret create sva_studio_keycloak_admin_client_secret ./secrets/keycloak-admin-client-secret.txt
 ```
+
+Nach dem Provisionieren sollten die lokalen Secret-Dateien sicher gelöscht oder außerhalb der Shell-History verwaltet werden.
 
 ### Namenskonvention
 
@@ -78,6 +83,7 @@ Die nicht-sensitiven Konfigurationswerte werden als Stack-Umgebungsvariablen in 
 | `SVA_AUTH_REDIRECT_URI` | `https://studio.smart-village.app/auth/callback` |
 | `SVA_AUTH_POST_LOGOUT_REDIRECT_URI` | `https://studio.smart-village.app/` |
 | `SVA_PARENT_DOMAIN` | `studio.smart-village.app` |
+| `IAM_CSRF_ALLOWED_ORIGINS` | `https://studio.smart-village.app` |
 
 ### Optionale Variablen
 
@@ -90,6 +96,8 @@ Die nicht-sensitiven Konfigurationswerte werden als Stack-Umgebungsvariablen in 
 | `IAM_UI_ENABLED` | `false` | IAM-Account-UI |
 | `IAM_ADMIN_ENABLED` | `false` | IAM-Admin-UI |
 | `IAM_BULK_ENABLED` | `false` | IAM-Bulk-Operationen |
+
+Die vollständige Variablenliste inklusive Keycloak-Admin- und Rollenabgleich-Optionen steht in `deploy/portainer/.env.example`.
 
 ## Schritt 3: Datenbank initialisieren
 
@@ -126,6 +134,8 @@ END
 GRANT iam_app TO sva_app;
 "
 ```
+
+`<APP_DB_PASSWORD>` muss dem Wert des Swarm-Secrets `sva_studio_app_db_password` entsprechen.
 
 ## Schritt 4: Stack deployen
 

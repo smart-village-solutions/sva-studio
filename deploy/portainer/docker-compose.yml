@@ -22,7 +22,6 @@ services:
       NODE_ENV: production
       HOST: 0.0.0.0
       PORT: 3000
-      REDIS_URL: redis://redis:6379
       ENABLE_OTEL: ${ENABLE_OTEL:-false}
       # DB-Verbindung wird im Entrypoint aus Secret + Einzelwerten gebaut.
       POSTGRES_DB: ${POSTGRES_DB:-sva_studio}
@@ -58,6 +57,7 @@ services:
       - sva_studio_app_encryption_key
       - sva_studio_app_pii_keyring_json
       - sva_studio_app_db_password
+      - sva_studio_redis_password
       - sva_studio_keycloak_admin_client_secret
     networks:
       - public
@@ -76,6 +76,11 @@ services:
         delay: 5s
         max_attempts: 3
         window: 120s
+      resources:
+        reservations:
+          memory: 256M
+        limits:
+          memory: 512M
       labels:
         - traefik.enable=true
         - traefik.docker.network=public
@@ -105,14 +110,18 @@ services:
   # -------------------------------------------------------------------------
   redis:
     image: redis:7-alpine
+    secrets:
+      - sva_studio_redis_password
     command:
-      - redis-server
-      - --appendonly
-      - "yes"
-      - --maxmemory
-      - 256mb
-      - --maxmemory-policy
-      - allkeys-lru
+      - sh
+      - -ec
+      - |
+        redis_password="$$(cat /run/secrets/sva_studio_redis_password)"
+        exec redis-server \
+          --appendonly yes \
+          --maxmemory 256mb \
+          --maxmemory-policy allkeys-lru \
+          --requirepass "$${redis_password}"
     volumes:
       - redis-data:/data
     networks:
@@ -127,8 +136,13 @@ services:
         delay: 5s
         max_attempts: 3
         window: 60s
+      resources:
+        reservations:
+          memory: 128M
+        limits:
+          memory: 320M
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "redis-cli -a \"$$(cat /run/secrets/sva_studio_redis_password)\" ping"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -162,6 +176,11 @@ services:
         delay: 5s
         max_attempts: 3
         window: 60s
+      resources:
+        reservations:
+          memory: 256M
+        limits:
+          memory: 1G
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
@@ -204,6 +223,8 @@ secrets:
   sva_studio_app_pii_keyring_json:
     external: true
   sva_studio_app_db_password:
+    external: true
+  sva_studio_redis_password:
     external: true
   sva_studio_postgres_password:
     external: true

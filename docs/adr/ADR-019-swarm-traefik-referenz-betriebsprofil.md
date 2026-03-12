@@ -1,10 +1,10 @@
 # ADR-019: Swarm-/Traefik-Referenz-Betriebsprofil
 
-**Status:** Accepted  
-**Entscheidungsdatum:** 2026-03  
-**Entschieden durch:** Plattform/DevOps Team  
-**GitHub Issue:** TBD  
-**GitHub PR:** TBD
+**Status:** Accepted
+**Entscheidungsdatum:** 2026-03-12
+**Entschieden durch:** Plattform/DevOps Team
+**GitHub Issue:** TBD
+**GitHub PR:** #157
 
 ---
 
@@ -116,8 +116,8 @@ Erfüllt die Anforderungen an Secret-Handling und Zero-Downtime-Updates nicht.
 
 ## Verwandte ADRs
 
-- ADR-011: `instanceId` als kanonischer Mandanten-Scope (Subdomain-Ableitung)
-- ADR-020: Kanonischer Auth-Host und Multi-Host-Grenze
+- [ADR-011](ADR-011-instanceid-kanonischer-mandanten-scope.md): `instanceId` als kanonischer Mandanten-Scope (Subdomain-Ableitung)
+- [ADR-020](ADR-020-kanonischer-auth-host-multi-host-grenze.md): Kanonischer Auth-Host und Multi-Host-Grenze
 
 ## Gültigkeitsdauer
 

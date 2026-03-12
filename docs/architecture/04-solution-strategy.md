@@ -55,6 +55,7 @@ Architekturprinzipien auf IST-Basis.
 - Logging-Pipeline und Label-Policy: `ADR-006`, `ADR-007`
 - Coverage-Reporting mit externem Transparenz-Layer: `ADR-008`
 - IAM-Identity-Basis und Scoping: `ADR-009`, `ADR-011`
+- Swarm-/Traefik-Referenzprofil und Multi-Host-Auth-Grenze: `ADR-019`, `ADR-020`
 - IAM-Permission-Modell und Laufzeitpfad: `ADR-012`, `ADR-013`, `ADR-014`
 - IAM-IdP-Abstraktion für Keycloak-Admin-Pfade: `ADR-016`
 - IAM-Server-Modularisierung und Restschuld-Führung: `ADR-017`
@@ -69,4 +70,6 @@ Referenzen:
 - `./decisions/ADR-007-label-schema-and-pii-policy.md`
 - `./decisions/ADR-008-codecov-coverage-reporting-and-gates.md`
 - `./iam-service-architektur.md`
+- `../adr/ADR-019-swarm-traefik-referenz-betriebsprofil.md`
+- `../adr/ADR-020-kanonischer-auth-host-multi-host-grenze.md`
 - `../adr/ADR-017-modulare-iam-server-bausteine.md`

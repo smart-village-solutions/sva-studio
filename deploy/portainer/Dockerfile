@@ -20,9 +20,11 @@ ENV NODE_ENV=production
 ENV HOST=0.0.0.0
 ENV PORT=3000
 
-COPY --from=build /workspace/apps/sva-studio-react/.output ./
-COPY --from=build /workspace/deploy/portainer/entrypoint.sh ./entrypoint.sh
+COPY --from=build --chown=node:node /workspace/apps/sva-studio-react/.output ./
+COPY --from=build --chown=node:node /workspace/deploy/portainer/entrypoint.sh ./entrypoint.sh
 RUN chmod +x entrypoint.sh
+
+USER node
 
 EXPOSE 3000
 

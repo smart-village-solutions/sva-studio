@@ -16,7 +16,7 @@ if [ -z "${APP_DB_PASSWORD}" ]; then
   exit 1
 fi
 
-APP_DB_PASSWORD_ESCAPED="$(printf "%s" "${APP_DB_PASSWORD}" | sed "s/'/''/g")"
+APP_DB_PASSWORD_ESCAPED="$(printf "%s" "${APP_DB_PASSWORD}" | sed -e "s/'/''/g" -e 's/\\/\\\\/g')"
 
 psql -v ON_ERROR_STOP=1 -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" <<SQL
 DO \$\$

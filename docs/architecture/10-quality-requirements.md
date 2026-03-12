@@ -133,3 +133,12 @@ Referenzen:
 - `authorize`- und `me/permissions`-Pfad müssen Resource-Spezifität, `allow`/`deny` und Org-Vererbung deterministisch auflösen.
 - Negativtests für restriktive Parent-/Child-Konflikte, Geo-Scope-Mismatches und fehlende Resource-IDs müssen grün sein.
 - Der Kompatibilitätspfad von `permission_key` auf strukturierte Felder darf bestehende Permission-Reads nicht regressiv brechen.
+
+### Ergänzung 2026-03: Qualitätsziele Swarm-Deployment und Multi-Host-Betrieb
+
+- `docker compose -f deploy/portainer/docker-compose.yml config` muss ohne Fehler durchlaufen (statische Stack-Validierung).
+- Startup-Validierung der `instanceId`-Allowlist ist ein harter Gate: ungültige Einträge führen zum sofortigen Abbruch.
+- Host-Validierung liefert identische `403`-Antworten unabhängig vom Ablehnungsgrund (keine Informationspreisgabe).
+- Zielbild: Auth-Session-Cookies werden auf die Parent-Domain gesetzt, um SSO über Instanz-Subdomains zu ermöglichen; aktuell sind gemäß ADR-020 host-only-Cookies umgesetzt (Folgearbeit: Parent-Domain-Cookie-Scoping implementieren und verifizieren).
+- Entrypoint-basierte Secret-Injektion muss abwärtskompatibel sein (No-Op ohne `/run/secrets/`).
+- Rolling Updates (`start-first`) dürfen keine Downtime verursachen; Healthchecks müssen vor dem Routing-Start grün sein.

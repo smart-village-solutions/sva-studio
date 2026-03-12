@@ -897,7 +897,7 @@ export const dataExportHandler = async (request: Request): Promise<Response> => 
   return withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
     return withAuthenticatedUser(request, async ({ user }) => {
       const instanceId = resolveInstanceId(request, user.instanceId);
-      if (!instanceId || !isUuid(instanceId)) {
+      if (!instanceId) {
         return jsonResponse(400, { error: 'invalid_instance_id' });
       }
       if (user.instanceId && user.instanceId !== instanceId) {
@@ -1028,7 +1028,7 @@ export const dataExportStatusHandler = async (request: Request): Promise<Respons
       const instanceId = resolveInstanceId(request, user.instanceId);
       const jobId = readString(url.searchParams.get('jobId'));
       const downloadFormat = readString(url.searchParams.get('download'))?.toLowerCase() as ExportFormat | undefined;
-      if (!instanceId || !isUuid(instanceId)) {
+      if (!instanceId) {
         return jsonResponse(400, { error: 'invalid_instance_id' });
       }
       if (!jobId || !isUuid(jobId)) {
@@ -1119,7 +1119,7 @@ export const adminDataExportHandler = async (request: Request): Promise<Response
       const format = parseExportFormat(request);
       const useAsync = parseAsyncMode(request);
 
-      if (!instanceId || !isUuid(instanceId)) {
+      if (!instanceId) {
         return jsonResponse(400, { error: 'invalid_instance_id' });
       }
       if (!targetSubject) {
@@ -1222,7 +1222,7 @@ export const profileCorrectionHandler = async (request: Request): Promise<Respon
       const nextEmail = readString(body.email);
       const nextDisplayName = readString(body.displayName);
       const correctionReason = readString(body.reason);
-      if (!instanceId || !isUuid(instanceId)) {
+      if (!instanceId) {
         return jsonResponse(400, { error: 'invalid_instance_id' });
       }
       if (!nextEmail && !nextDisplayName) {
@@ -1545,7 +1545,7 @@ export const dataSubjectRequestHandler = async (request: Request): Promise<Respo
       const requestType = parseDsrRequestType(body.type);
       const payload = readObject(body.payload) ?? {};
 
-      if (!instanceId || !isUuid(instanceId)) {
+      if (!instanceId) {
         return jsonResponse(400, { error: 'invalid_instance_id' });
       }
       if (!requestType) {
@@ -1635,7 +1635,7 @@ export const optionalProcessingExecuteHandler = async (request: Request): Promis
   return withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
     return withAuthenticatedUser(request, async ({ user }) => {
       const instanceId = resolveInstanceId(request, user.instanceId);
-      if (!instanceId || !isUuid(instanceId)) {
+      if (!instanceId) {
         return jsonResponse(400, { error: 'invalid_instance_id' });
       }
       if (user.instanceId && user.instanceId !== instanceId) {
@@ -1696,7 +1696,7 @@ export const legalHoldApplyHandler = async (request: Request): Promise<Response>
       const holdReason = readString(body.holdReason) ?? 'legal_hold';
       const holdUntil = readString(body.holdUntil);
 
-      if (!instanceId || !isUuid(instanceId)) {
+      if (!instanceId) {
         return jsonResponse(400, { error: 'invalid_instance_id' });
       }
       if (!targetSubject) {
@@ -1785,7 +1785,7 @@ export const legalHoldReleaseHandler = async (request: Request): Promise<Respons
       const targetSubject = readString(body.targetKeycloakSubject);
       const releaseReason = readString(body.releaseReason) ?? 'hold_released';
 
-      if (!instanceId || !isUuid(instanceId)) {
+      if (!instanceId) {
         return jsonResponse(400, { error: 'invalid_instance_id' });
       }
       if (!targetSubject) {
@@ -1870,7 +1870,7 @@ export const dataSubjectMaintenanceHandler = async (request: Request): Promise<R
       const limit = readNumber(body.limit);
       void limit;
 
-      if (!instanceId || !isUuid(instanceId)) {
+      if (!instanceId) {
         return jsonResponse(400, { error: 'invalid_instance_id' });
       }
       if (user.instanceId && user.instanceId !== instanceId) {
@@ -1928,7 +1928,7 @@ export const adminDataExportStatusHandler = async (request: Request): Promise<Re
       const instanceId = resolveInstanceId(request, user.instanceId);
       const jobId = readString(url.searchParams.get('jobId'));
       const downloadFormat = readString(url.searchParams.get('download'))?.toLowerCase() as ExportFormat | undefined;
-      if (!instanceId || !isUuid(instanceId)) {
+      if (!instanceId) {
         return jsonResponse(400, { error: 'invalid_instance_id' });
       }
       if (!jobId || !isUuid(jobId)) {

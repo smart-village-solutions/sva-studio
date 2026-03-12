@@ -31,7 +31,7 @@ Diese Referenz dokumentiert die stabilen `reason`-Codes für `POST /iam/authoriz
 {
   "allowed": true,
   "reason": "allowed_by_abac",
-  "instanceId": "11111111-1111-1111-8111-111111111111",
+  "instanceId": "de-musterhausen",
   "action": "content.read",
   "resourceType": "content",
   "resourceId": "article-1",
@@ -45,7 +45,7 @@ Diese Referenz dokumentiert die stabilen `reason`-Codes für `POST /iam/authoriz
 {
   "allowed": false,
   "reason": "hierarchy_restriction",
-  "instanceId": "11111111-1111-1111-8111-111111111111",
+  "instanceId": "de-musterhausen",
   "action": "content.read",
   "resourceType": "content",
   "resourceId": "article-1",
@@ -59,7 +59,7 @@ Diese Referenz dokumentiert die stabilen `reason`-Codes für `POST /iam/authoriz
 {
   "allowed": false,
   "reason": "cache_stale_guard",
-  "instanceId": "11111111-1111-1111-8111-111111111111",
+  "instanceId": "de-musterhausen",
   "action": "content.read",
   "resourceType": "content",
   "resourceId": "article-1",

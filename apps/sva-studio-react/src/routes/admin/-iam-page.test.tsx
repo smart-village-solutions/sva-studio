@@ -211,4 +211,109 @@ describe('IamViewerPage', () => {
       expect.objectContaining({ method: 'POST' })
     );
   });
+
+  it('shows an empty state when no permissions are returned', async () => {
+    vi.useRealTimers();
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          permissions: [],
+          subject: {
+            actorUserId: 'user-1',
+            effectiveUserId: 'user-1',
+            isImpersonating: false,
+          },
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      )
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    useAuthMock.mockReturnValue({
+      user: { id: 'user-1', instanceId: '11111111-1111-1111-8111-111111111111' },
+      isLoading: false,
+      error: null,
+      invalidatePermissions: vi.fn(),
+    });
+    isIamViewerEnabledMock.mockReturnValue(true);
+    hasIamViewerAdminRoleMock.mockReturnValue(true);
+
+    render(<IamViewerPage />);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalled();
+    });
+
+    expect(screen.getByText('Keine Berechtigungen gefunden.')).toBeTruthy();
+  });
+
+  it('shows a client-side validation error when instance id is missing on authorize', async () => {
+    vi.useRealTimers();
+    useAuthMock.mockReturnValue({
+      user: { id: 'user-1', instanceId: '' },
+      isLoading: false,
+      error: null,
+      invalidatePermissions: vi.fn(),
+    });
+    isIamViewerEnabledMock.mockReturnValue(true);
+    hasIamViewerAdminRoleMock.mockReturnValue(true);
+    vi.stubGlobal('fetch', vi.fn());
+
+    render(<IamViewerPage />);
+
+    fireEvent.change(screen.getByLabelText('Instance ID'), { target: { value: '' } });
+    fireEvent.click(screen.getAllByRole('button', { name: 'Authorize prüfen' })[0]!);
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert').textContent).toContain('instanceId fehlt');
+    });
+  });
+
+  it('shows authorize errors from failed requests', async () => {
+    vi.useRealTimers();
+    const invalidatePermissions = vi.fn().mockResolvedValue(undefined);
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            permissions: [],
+            subject: {
+              actorUserId: 'user-1',
+              effectiveUserId: 'user-1',
+              isImpersonating: false,
+            },
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: 'forbidden_scope' }), {
+          status: 403,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      );
+    vi.stubGlobal('fetch', fetchMock);
+
+    useAuthMock.mockReturnValue({
+      user: { id: 'user-1', instanceId: '11111111-1111-1111-8111-111111111111' },
+      isLoading: false,
+      error: null,
+      invalidatePermissions,
+    });
+    isIamViewerEnabledMock.mockReturnValue(true);
+    hasIamViewerAdminRoleMock.mockReturnValue(true);
+
+    render(<IamViewerPage />);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Authorize prüfen' })[0]!);
+
+    await waitFor(() => {
+      expect(invalidatePermissions).toHaveBeenCalledTimes(1);
+      expect(screen.getByRole('alert').textContent).toContain('forbidden_scope');
+    });
+  });
 });

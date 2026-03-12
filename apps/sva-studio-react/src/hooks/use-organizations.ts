@@ -182,7 +182,9 @@ export const useOrganizations = (initial?: Partial<OrganizationFilters>): UseOrg
     setOrganizationType: (value) => setFilters((current) => ({ ...current, page: 1, organizationType: value })),
     setStatus: (value) => setFilters((current) => ({ ...current, page: 1, status: value })),
     setPage: (value) => setFilters((current) => ({ ...current, page: Math.max(1, value) })),
-    refetch: loadOrganizations,
+    refetch: async () => {
+      await loadOrganizations();
+    },
     loadOrganization,
     clearSelectedOrganization: () => setSelectedOrganization(null),
     clearMutationError: () => setMutationError(null),

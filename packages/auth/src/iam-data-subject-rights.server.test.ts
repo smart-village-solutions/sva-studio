@@ -5,7 +5,7 @@ const state = vi.hoisted(() => ({
     id: 'keycloak-sub-1',
     name: 'User',
     roles: ['member'],
-    instanceId: '11111111-1111-1111-8111-111111111111',
+    instanceId: 'de-musterhausen',
   },
   queryHandler: null as null | ((text: string, values?: readonly unknown[]) => { rowCount: number; rows: unknown[] }),
   encryptionConfig: {
@@ -103,7 +103,7 @@ describe('iam data subject rights handlers', () => {
       id: 'keycloak-sub-1',
       name: 'User',
       roles: ['member'],
-      instanceId: '11111111-1111-1111-8111-111111111111',
+      instanceId: 'de-musterhausen',
     };
     state.queryHandler = null;
     state.encryptionConfig = {
@@ -233,13 +233,13 @@ describe('iam data subject rights handlers', () => {
     expect(await response.json()).toEqual({ error: 'invalid_job_id' });
   });
 
-  it('rejects self export requests for invalid instance ids', async () => {
+  it('rejects self export requests for cross-instance string scopes', async () => {
     const response = await dataExportHandler(
       new Request('http://localhost/iam/me/data-export?instanceId=invalid&format=json', { method: 'GET' })
     );
 
-    expect(response.status).toBe(400);
-    expect(await response.json()).toEqual({ error: 'invalid_instance_id' });
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({ error: 'instance_scope_mismatch' });
   });
 
   it('returns account_not_found for self exports without an account record', async () => {
@@ -437,7 +437,7 @@ describe('iam data subject rights handlers', () => {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           type: 'deletion',
-          instanceId: '11111111-1111-1111-8111-111111111111',
+          instanceId: 'de-musterhausen',
           payload: { reason: 'user_request' },
         }),
       })
@@ -527,7 +527,7 @@ describe('iam data subject rights handlers', () => {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           type: 'restriction',
-          instanceId: '11111111-1111-1111-8111-111111111111',
+          instanceId: 'de-musterhausen',
           payload: { reason: 'verification_pending' },
         }),
       })
@@ -576,7 +576,7 @@ describe('iam data subject rights handlers', () => {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           type: 'access',
-          instanceId: '11111111-1111-1111-8111-111111111111',
+          instanceId: 'de-musterhausen',
           payload: { source: 'self_service' },
         }),
       })
@@ -654,7 +654,7 @@ describe('iam data subject rights handlers', () => {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
-          instanceId: '11111111-1111-1111-8111-111111111111',
+          instanceId: 'de-musterhausen',
           dryRun: false,
         }),
       })
@@ -739,7 +739,7 @@ describe('iam data subject rights handlers', () => {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
-          instanceId: '11111111-1111-1111-8111-111111111111',
+          instanceId: 'de-musterhausen',
           dryRun: false,
         }),
       })
@@ -794,7 +794,7 @@ describe('iam data subject rights handlers', () => {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
-          instanceId: '11111111-1111-1111-8111-111111111111',
+          instanceId: 'de-musterhausen',
           dryRun: false,
         }),
       })
@@ -838,7 +838,7 @@ describe('iam data subject rights handlers', () => {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
-          instanceId: '11111111-1111-1111-8111-111111111111',
+          instanceId: 'de-musterhausen',
           dryRun: false,
         }),
       })
@@ -868,7 +868,7 @@ describe('iam data subject rights handlers', () => {
   it('rejects admin export endpoint for non-admin role', async () => {
     const response = await adminDataExportHandler(
       new Request(
-        'http://localhost/iam/admin/data-subject-rights/export?instanceId=11111111-1111-1111-8111-111111111111&targetKeycloakSubject=user-2&format=json',
+        'http://localhost/iam/admin/data-subject-rights/export?instanceId=de-musterhausen&targetKeycloakSubject=user-2&format=json',
         { method: 'GET' }
       )
     );
@@ -885,7 +885,7 @@ describe('iam data subject rights handlers', () => {
 
     const response = await adminDataExportHandler(
       new Request(
-        'http://localhost/iam/admin/data-subject-rights/export?instanceId=11111111-1111-1111-8111-111111111111&format=json',
+        'http://localhost/iam/admin/data-subject-rights/export?instanceId=de-musterhausen&format=json',
         { method: 'GET' }
       )
     );
@@ -916,7 +916,7 @@ describe('iam data subject rights handlers', () => {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
-          instanceId: '11111111-1111-1111-8111-111111111111',
+          instanceId: 'de-musterhausen',
           targetKeycloakSubject: 'keycloak-sub-2',
           holdUntil: 'not-a-date',
         }),
@@ -938,7 +938,7 @@ describe('iam data subject rights handlers', () => {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
-          instanceId: '11111111-1111-1111-8111-111111111111',
+          instanceId: 'de-musterhausen',
         }),
       })
     );
@@ -1023,7 +1023,7 @@ describe('iam data subject rights handlers', () => {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           type: 'rectification',
-          instanceId: '11111111-1111-1111-8111-111111111111',
+          instanceId: 'de-musterhausen',
           payload: { displayName: 'Updated User' },
         }),
       })
@@ -1093,7 +1093,7 @@ describe('iam data subject rights handlers', () => {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           type: 'objection',
-          instanceId: '11111111-1111-1111-8111-111111111111',
+          instanceId: 'de-musterhausen',
           payload: { reason: 'marketing_opt_out' },
         }),
       })
@@ -1130,7 +1130,7 @@ describe('iam data subject rights handlers', () => {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
-          instanceId: '11111111-1111-1111-8111-111111111111',
+          instanceId: 'de-musterhausen',
           email: 'user@example.com',
         }),
       })
@@ -1175,7 +1175,7 @@ describe('iam data subject rights handlers', () => {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
-          instanceId: '11111111-1111-1111-8111-111111111111',
+          instanceId: 'de-musterhausen',
           email: 'user@example.com',
         }),
       })
@@ -1238,7 +1238,7 @@ describe('iam data subject rights handlers', () => {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
-          instanceId: '11111111-1111-1111-8111-111111111111',
+          instanceId: 'de-musterhausen',
           email: 'updated@example.com',
           displayName: 'Updated User',
           reason: 'correction',
@@ -1264,7 +1264,7 @@ describe('iam data subject rights handlers', () => {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
-          instanceId: '11111111-1111-1111-8111-111111111111',
+          instanceId: 'de-musterhausen',
           targetKeycloakSubject: 'missing-subject',
         }),
       })
@@ -1320,7 +1320,7 @@ describe('iam data subject rights handlers', () => {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
-          instanceId: '11111111-1111-1111-8111-111111111111',
+          instanceId: 'de-musterhausen',
           targetKeycloakSubject: 'keycloak-sub-2',
           releaseReason: 'case_closed',
         }),

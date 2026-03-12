@@ -13,7 +13,7 @@ const integrationState = vi.hoisted(() => ({
     id: 'actor-sub',
     name: 'Actor',
     roles: ['iam_admin'],
-    instanceId: '11111111-1111-1111-8111-111111111111',
+    instanceId: 'de-musterhausen',
   },
   accounts: new Map<string, string>([
     ['actor-sub', 'acc-actor'],
@@ -76,7 +76,7 @@ vi.mock('pg', () => ({
           }
 
           if (text.includes('INSERT INTO iam.permission_change_requests')) {
-            const id = '11111111-1111-1111-8111-111111111111';
+            const id = '71111111-1111-4111-8111-111111111111';
             integrationState.permissionRequests.set(id, {
               id,
               requesterAccountId: String(values?.[1]),
@@ -175,7 +175,7 @@ describe('governance workflow integration', () => {
       id: 'actor-sub',
       name: 'Actor',
       roles: ['iam_admin'],
-      instanceId: '11111111-1111-1111-8111-111111111111',
+      instanceId: 'de-musterhausen',
     };
   });
 
@@ -210,7 +210,7 @@ describe('governance workflow integration', () => {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           operation: 'approve_permission_change',
-          instanceId: '11111111-1111-1111-8111-111111111111',
+          instanceId: 'de-musterhausen',
           payload: {
             requestId: submitted.workflowId,
             approval: 'approved',
@@ -228,7 +228,7 @@ describe('governance workflow integration', () => {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           operation: 'apply_permission_change',
-          instanceId: '11111111-1111-1111-8111-111111111111',
+          instanceId: 'de-musterhausen',
           payload: {
             requestId: submitted.workflowId,
           },

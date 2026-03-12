@@ -36,7 +36,7 @@ gleichzeitig beeinflussen.
 
 ### IAM Multi-Tenancy, Caching und Audit-Logging
 
-- Mandantenisolation basiert auf kanonischem Scope `instanceId` (inkl. Mapping zu `workspace_id` in Logs)
+- Mandantenisolation basiert auf kanonischem Scope `instanceId` als fachlichem String-Schlüssel (inkl. Mapping zu `workspace_id` in Logs)
 - Keycloak ist führend für Authentifizierung; Postgres ist führend für Studio-verwaltete IAM-Fachdaten
 - Autorisierungspfade erzwingen `instanceId`-Filterung vor Rollen-/Policy-Evaluation
 - Die zentrale Permission Engine arbeitet fail-closed bei fehlendem Kontext, unvollständigen Pflichtattributen oder inkonsistenten Laufzeitdaten

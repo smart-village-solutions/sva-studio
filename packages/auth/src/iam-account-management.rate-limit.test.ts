@@ -7,7 +7,7 @@ describe('consumeRateLimit', () => {
   it('reports the configured window in seconds', async () => {
     const actorKeycloakSubject = `rate-limit-window-${Date.now()}`;
     const input = {
-      instanceId: '11111111-1111-1111-8111-111111111111',
+      instanceId: 'de-musterhausen',
       actorKeycloakSubject,
       scope: 'write' as const,
       requestId: 'req-rate-limit-window',
@@ -31,7 +31,7 @@ describe('consumeRateLimit', () => {
   it('starts a new bucket after the configured time window', () => {
     const actorKeycloakSubject = `rate-limit-reset-${Date.now()}`;
     const blockedInput = {
-      instanceId: '11111111-1111-1111-8111-111111111111',
+      instanceId: 'de-musterhausen',
       actorKeycloakSubject,
       scope: 'write' as const,
       now: 20_000,

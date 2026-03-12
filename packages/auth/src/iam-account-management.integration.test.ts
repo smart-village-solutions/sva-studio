@@ -5,7 +5,7 @@ const integrationState = vi.hoisted(() => ({
     id: 'keycloak-sub-admin',
     name: 'Integration Admin',
     roles: ['system_admin'],
-    instanceId: '11111111-1111-1111-8111-111111111111',
+    instanceId: 'de-musterhausen',
   },
 }));
 
@@ -61,7 +61,7 @@ vi.mock('pg', () => ({
             const instanceId = values?.[0];
             const keycloakSubject = values?.[1];
             if (
-              instanceId === '11111111-1111-1111-8111-111111111111' &&
+              instanceId === 'de-musterhausen' &&
               keycloakSubject === 'keycloak-sub-admin'
             ) {
               return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
@@ -89,7 +89,7 @@ describe('iam-account-management tenant isolation integration', () => {
       id: 'keycloak-sub-admin',
       name: 'Integration Admin',
       roles: ['system_admin'],
-      instanceId: '11111111-1111-1111-8111-111111111111',
+      instanceId: 'de-musterhausen',
     };
   });
 
@@ -108,7 +108,7 @@ describe('iam-account-management tenant isolation integration', () => {
 
   it('returns 200 for list users when instanceId matches own tenant', async () => {
     const response = await listUsersHandler(
-      new Request('http://localhost/api/v1/iam/users?instanceId=11111111-1111-1111-8111-111111111111', {
+      new Request('http://localhost/api/v1/iam/users?instanceId=de-musterhausen', {
         method: 'GET',
       })
     );

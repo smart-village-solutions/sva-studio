@@ -24,11 +24,11 @@ bash packages/data/scripts/run-migrations.sh up
 bash packages/data/scripts/run-seeds.sh
 
 echo "Emit auth event with PII to trigger encrypted account update..."
-pnpm exec tsx -e "import { emitAuthAuditEvent } from './packages/auth/src/audit-events.server.ts'; (async () => { await emitAuthAuditEvent({ eventType:'login', actorUserId:'keycloak:test-encryption', actorEmail:'privacy@example.org', actorDisplayName:'Erika Musterfrau', workspaceId:'11111111-1111-1111-1111-111111111111', outcome:'success', requestId:'req-encryption-1', traceId:'trace-encryption-1' }); })().catch((err) => { console.error(err); process.exit(1); });"
+pnpm exec tsx -e "import { emitAuthAuditEvent } from './packages/auth/src/audit-events.server.ts'; (async () => { await emitAuthAuditEvent({ eventType:'login', actorUserId:'keycloak:test-encryption', actorEmail:'privacy@example.org', actorDisplayName:'Erika Musterfrau', workspaceId:'de-musterhausen', outcome:'success', requestId:'req-encryption-1', traceId:'trace-encryption-1' }); })().catch((err) => { console.error(err); process.exit(1); });"
 
 echo "Validate ciphertext storage (no plaintext in direct SQL)..."
 result=$(docker compose exec -T postgres psql -tA -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" <<'SQL'
-SET app.instance_id = '11111111-1111-1111-1111-111111111111';
+SET app.instance_id = 'de-musterhausen';
 SELECT
   CASE
     WHEN email_ciphertext IS NULL OR display_name_ciphertext IS NULL THEN 'missing'

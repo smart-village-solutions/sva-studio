@@ -15,6 +15,7 @@ Dieses Dokument beschreibt den standardisierten Coverage-Workflow im Nx Monorepo
 Jedes Projekt soll folgende Targets bereitstellen:
 
 - `lint`: ausführbarer Qualitäts-Check (kein Platzhalter)
+- `typecheck`: TypeScript-Strict-Check für den produktiven Projekt-Scope
 - `test:unit`: schnelle, stabile Unit-Tests
 - `test:coverage`: Unit-Tests mit Coverage-Reporting
 - `test:integration`: infra-abhängige Tests (z. B. Redis, echte Services)
@@ -24,10 +25,13 @@ Jedes Projekt soll folgende Targets bereitstellen:
 ### Gesamtes Workspace
 
 ```bash
+pnpm test:types
 pnpm test:unit
 pnpm test:coverage
 pnpm test:integration
 ```
+
+`pnpm test:types` ist bindend und umfasst neben den Core-/Library-Builds auch den dedizierten Nx-Typecheck der React-App (`sva-studio-react:typecheck`). Debug-Routen unter `src/routes/__debug/` sind dabei bewusst ausgeschlossen, damit optionale Diagnose-Abhängigkeiten den regulären App-Typecheck nicht verfälschen.
 
 ### Nur betroffene Projekte
 
@@ -75,7 +79,18 @@ Beispiele:
 
 - `auth`: projektweite Mindest-Floors plus Hotspots für `iam-account-management.server.ts` und `iam-governance.server.ts`
 - `routing`: Hotspot-Floor für `auth.routes.server.ts`
-- `core`: Security-Hotspot-Floor für `field-encryption.ts`
+- `core`: Security- und IAM-Hotspots für `field-encryption.ts` und `authorization-engine.ts`
+- `sdk`: Hotspots für `request-context.server.ts` und `monitoring-client.bridge.server.ts`
+- `sva-studio-react`: Hotspots für `iam-user-events.ts` und `-iam.models.ts`
+
+Hinweis: In `tooling/testing/coverage-policy.json` werden Hotspots immer auf TypeScript-Quelldateien definiert. Das Coverage-Gate mappt `lcov`-`SF:`-Einträge bei Bedarf auf diese Quellpfade zurück.
+
+Empfohlener Testzuschnitt für große Handlerdateien:
+
+- Request-Parsing, Filterlogik, Mapper und Konfliktentscheidungen als reine Helfer absichern
+- Handler-Orchestrierung mit wenigen gezielten Server-Tests auf Rollen, CSRF, Idempotency und Seiteneffekte prüfen
+- Große Mock-Setups nur für die eigentliche Integrationskante einsetzen, nicht für jede einzelne Branch
+- Kleine verhaltensneutrale Extraktionen oder package-interne Helper-Exports sind zulässig, wenn sie die Absicherung vereinfachen
 
 Wenn die Komplexität eines kritischen Hotspots steigt, darf der bestehende Floor nicht abgesenkt werden. Stattdessen muss die Absicherung gleich bleiben oder feiner/höher nachgezogen werden.
 
@@ -110,6 +125,7 @@ Wichtig:
 - Codecov berücksichtigt nur Projekte, für die im PR-Lauf auch tatsächlich `lcov.info` hochgeladen wird.
 - Projekte aus `exemptProjects` in `tooling/testing/coverage-policy.json` dürfen deshalb nicht im Codecov-Flag `unittests` auftauchen.
 - Der lokale Preview-Check `pnpm patch-coverage-gate --base=origin/main` nutzt denselben Workspace-Scope wie unsere interne Coverage-Governance, damit Abweichungen vor dem Push sichtbar werden.
+- Lokale `src/*.js`, `src/*.d.ts` oder `src/*.d.ts.map` in Paketen verfälschen Import-Auflösung und `lcov`-Pfadzuordnung. Vor Coverage-Debugging deshalb `pnpm clean:source-artifacts` und `pnpm check:file-placement` ausführen.
 
 ## Exemptions
 

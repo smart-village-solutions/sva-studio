@@ -5,7 +5,7 @@ import { getWorkspaceContext, withRequestContext } from '@sva/sdk/server';
 import { resolveImpersonationSubject } from '../iam-governance.server';
 import { withAuthenticatedUser } from '../middleware.server';
 import { jsonResponse } from '../shared/db-helpers';
-import { isUuid } from '../shared/input-readers';
+import { readString } from '../shared/input-readers';
 import { resolveEffectivePermissions } from './permission-store';
 import {
   buildRequestContext,
@@ -47,7 +47,7 @@ export const authorizeHandler = async (request: Request): Promise<Response> => {
         return errorResponse(400, 'invalid_request');
       }
 
-      if (!isUuid(payload.instanceId)) {
+      if (!readString(payload.instanceId)) {
         recordLatency(false, 'invalid_instance_id');
         return errorResponse(400, 'invalid_instance_id');
       }

@@ -1,16 +1,14 @@
-import { defineConfig, mergeConfig } from 'vitest/config';
-import sharedConfig from '../../vitest.config';
+import { defineConfig } from 'vitest/config';
 
-export default mergeConfig(
-  sharedConfig,
-  defineConfig({
-    test: {
-      name: 'sva-studio-react',
-      environment: 'jsdom',
-      include: ['src/**/*.{test,spec}.{ts,tsx}'],
-      coverage: {
-        reportsDirectory: './coverage',
-      },
+export default defineConfig({
+  test: {
+    name: 'sva-studio-react',
+    environment: 'jsdom',
+    include: ['src/**/*.{test,spec}.{ts,tsx}'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text-summary', 'json-summary', 'lcov'],
+      reportsDirectory: './coverage',
     },
-  })
-);
+  },
+});

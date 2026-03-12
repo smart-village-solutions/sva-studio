@@ -52,6 +52,17 @@ Das bestehende Redaktionssystem ist umständlich, schwer erweiterbar und limitie
 
 Wir nutzen `pnpm` (Version in `package.json` / `.tool-versions`).
 
+## Entwicklung: Node.js Version
+
+Das Repository erwartet Node.js `25.0.0` gemäß `.nvmrc`.
+
+Mit `nvm`:
+
+```bash
+nvm use
+node --version
+```
+
 Option A: Corepack (Node.js)
 ```bash
 corepack enable

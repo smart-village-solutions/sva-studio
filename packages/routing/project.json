@@ -20,18 +20,21 @@
     "test:unit": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "pnpm --filter @sva/routing exec vitest run"
+        "cwd": "packages/routing",
+        "command": "pnpm exec vitest run"
       },
       "configurations": {
         "watch": {
-          "command": "pnpm --filter @sva/routing exec vitest"
+          "cwd": "packages/routing",
+          "command": "pnpm exec vitest"
         }
       }
     },
     "test:coverage": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "pnpm --filter @sva/routing exec vitest run --coverage --reporter=verbose --config vitest.config.ts --passWithNoTests"
+        "cwd": "packages/routing",
+        "command": "pnpm exec vitest run --coverage --reporter=verbose --config vitest.config.ts --passWithNoTests"
       }
     }
   },

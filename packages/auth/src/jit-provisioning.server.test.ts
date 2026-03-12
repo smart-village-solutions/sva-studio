@@ -66,7 +66,7 @@ describe('jitProvisionAccountWithClient', () => {
     const mock = createMockClient();
 
     const result = await jitProvisionAccountWithClient(mock.queryClient, {
-      instanceId: '11111111-1111-1111-8111-111111111111',
+      instanceId: 'de-musterhausen',
       keycloakSubject: 'kc-user-1',
       requestId: 'req-1',
       traceId: 'trace-1',
@@ -80,7 +80,7 @@ describe('jitProvisionAccountWithClient', () => {
   it('updates timestamp on repeated login without emitting duplicate jit event', async () => {
     const mock = createMockClient();
     const input = {
-      instanceId: '11111111-1111-1111-8111-111111111111',
+      instanceId: 'de-musterhausen',
       keycloakSubject: 'kc-user-2',
       requestId: 'req-2',
       traceId: 'trace-2',
@@ -97,7 +97,7 @@ describe('jitProvisionAccountWithClient', () => {
   it('handles concurrent first logins deterministically (one created, one updated)', async () => {
     const mock = createMockClient();
     const input = {
-      instanceId: '11111111-1111-1111-8111-111111111111',
+      instanceId: 'de-musterhausen',
       keycloakSubject: 'kc-user-3',
       requestId: 'req-3',
       traceId: 'trace-3',

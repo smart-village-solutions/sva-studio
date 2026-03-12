@@ -42,7 +42,7 @@ SELECT COUNT(DISTINCT a.id)::int AS total
 FROM iam.accounts a
 JOIN iam.instance_memberships im
   ON im.account_id = a.id
- AND im.instance_id = $1::uuid
+ AND im.instance_id = $1
 LEFT JOIN iam.account_roles ar
   ON ar.instance_id = im.instance_id
  AND ar.account_id = im.account_id
@@ -103,7 +103,7 @@ SELECT
 FROM iam.accounts a
 JOIN iam.instance_memberships im
   ON im.account_id = a.id
- AND im.instance_id = $1::uuid
+ AND im.instance_id = $1
 LEFT JOIN iam.account_roles ar
   ON ar.instance_id = im.instance_id
  AND ar.account_id = im.account_id

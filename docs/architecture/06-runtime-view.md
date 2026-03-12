@@ -240,6 +240,10 @@ Fehlerpfad:
 
 ### Ergänzung 2026-03: Instanz-Host-Validierung im Multi-Host-Betrieb
 
+> Hinweis: Dieser Abschnitt beschreibt den Soll-Zustand. Die vollständige
+> Verdrahtung als zentraler Request-Guard (403 + Kontext-Propagation) ist als
+> Folgearbeit geplant.
+
 1. Eingehende Anfrage trifft Traefik, wird über `HostRegexp` an den App-Service geroutet.
 2. App extrahiert den Host-Header und normalisiert ihn (Lowercase, Port-Stripping, Trailing-Dot).
 3. Host wird gegen die Parent-Domain und Instanz-Allowlist geprüft:
@@ -247,7 +251,7 @@ Fehlerpfad:
    - Gültige Instanz-Subdomain → `instanceId` aus Subdomain abgeleitet
    - Ungültiger oder unbekannter Host → `403` mit identischem Body (`{ error, message }` + `X-Request-Id`)
 4. Bei Auth-Endpunkten auf Instanz-Hosts: fail-closed, Redirect zum kanonischen Auth-Host.
-5. Gültige `instanceId` wird im Request-Kontext propagiert (analog zu `workspace_id` in AsyncLocalStorage).
+5. Gültige `instanceId` wird im Request-Kontext propagiert (analog zu `workspace_id` in AsyncLocalStorage), sobald der zentrale Request-Guard verdrahtet ist.
 
 Fehlerpfad:
 

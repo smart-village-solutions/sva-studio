@@ -1,6 +1,10 @@
 #!/bin/sh
 set -eu
 
+# Historisches Hilfsskript. Im Swarm-Referenzprofil wird dieses Skript
+# nicht automatisch verwendet; Migrationen erfolgen bewusst manuell
+# gemäß docs/guides/swarm-deployment-runbook.md.
+
 if [ ! -d /opt/sva/migrations ]; then
   echo "Migration directory /opt/sva/migrations is missing."
   exit 1

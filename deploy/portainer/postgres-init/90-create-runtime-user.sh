@@ -1,6 +1,10 @@
 #!/bin/sh
 set -eu
 
+# Historisches Hilfsskript. Im Swarm-Referenzprofil wird dieses Skript
+# nicht automatisch verwendet; Runtime-User-Setup erfolgt bewusst manuell
+# gemäß docs/guides/swarm-deployment-runbook.md.
+
 APP_DB_USER="${APP_DB_USER:-sva_app}"
 APP_DB_PASSWORD="${APP_DB_PASSWORD:-}"
 

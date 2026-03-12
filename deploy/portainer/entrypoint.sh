@@ -45,8 +45,8 @@ val=$(load_secret sva_studio_app_auth_state_secret)
 val=$(load_secret sva_studio_app_encryption_key)
 [ -n "$val" ] && export ENCRYPTION_KEY="$val"
 
-val=$(load_secret sva_studio_app_pii_keyring_json)
-[ -n "$val" ] && export IAM_PII_KEYRING_JSON="$val"
+val=$(load_secret sva_studio_app_pii_keyring_json-k1)
+[ -n "$val" ] && export IAM_PII_KEYRING_JSON=$(printf '{"k1":"%s"}' "$val")
 
 val=$(load_secret sva_studio_app_db_password)
 [ -n "$val" ] && export APP_DB_PASSWORD="$val"
@@ -62,7 +62,7 @@ has_expected_swarm_secret_file() {
     sva_studio_app_auth_client_secret \
     sva_studio_app_auth_state_secret \
     sva_studio_app_encryption_key \
-    sva_studio_app_pii_keyring_json \
+    sva_studio_app_pii_keyring_json-k1 \
     sva_studio_app_db_password \
     sva_studio_redis_password
   do

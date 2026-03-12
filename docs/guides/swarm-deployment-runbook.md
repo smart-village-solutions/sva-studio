@@ -34,6 +34,8 @@ Der Stack besteht aus:
 
 Alle vertraulichen Werte werden als externe Docker-Swarm-Secrets bereitgestellt. Jedes Secret wird aus einer Datei erstellt. Die Dateien dürfen anschließend gelöscht werden.
 
+Für den PII-Keyring wird im Swarm-Profil nur das Rohmaterial für `k1` als Secret gepflegt; der Entrypoint baut daraus zur Laufzeit `IAM_PII_KEYRING_JSON` im Format `{"k1":"..."}`.
+
 ```bash
 # Auth-Secrets
 docker secret create sva_studio_app_auth_client_secret ./secrets/oidc-client-secret.txt
@@ -41,7 +43,7 @@ docker secret create sva_studio_app_auth_state_secret ./secrets/state-secret.txt
 
 # Verschlüsselung
 docker secret create sva_studio_app_encryption_key ./secrets/encryption-key.txt
-docker secret create sva_studio_app_pii_keyring_json ./secrets/pii-keyring.json
+docker secret create sva_studio_app_pii_keyring_json-k1 ./secrets/pii-keyring-k1.txt
 
 # Datenbank
 docker secret create sva_studio_postgres_password ./secrets/postgres-password.txt

@@ -55,7 +55,7 @@ services:
       - sva_studio_app_auth_client_secret
       - sva_studio_app_auth_state_secret
       - sva_studio_app_encryption_key
-      - sva_studio_app_pii_keyring_json
+      - sva_studio_app_pii_keyring_json-k1
       - sva_studio_app_db_password
       - sva_studio_redis_password
       - sva_studio_keycloak_admin_client_secret
@@ -220,7 +220,7 @@ secrets:
     external: true
   sva_studio_app_encryption_key:
     external: true
-  sva_studio_app_pii_keyring_json:
+  sva_studio_app_pii_keyring_json-k1:
     external: true
   sva_studio_app_db_password:
     external: true

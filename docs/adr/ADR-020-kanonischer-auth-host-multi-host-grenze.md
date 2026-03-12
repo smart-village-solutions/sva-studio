@@ -1,10 +1,10 @@
 # ADR-020: Kanonischer Auth-Host und Multi-Host-Grenze
 
 **Status:** Accepted
-**Entscheidungsdatum:** 2026-03
+**Entscheidungsdatum:** 2026-03-12
 **Entschieden durch:** IAM/Plattform Team
 **GitHub Issue:** TBD
-**GitHub PR:** TBD
+**GitHub PR:** #157
 
 ---
 
@@ -104,8 +104,8 @@ Für das aktuelle Nutzungsmodell (Wechsel zwischen Instanzen durch Betriebsperso
 
 ## Verwandte ADRs
 
-- ADR-011: `instanceId` als kanonischer Mandanten-Scope
-- ADR-019: Swarm-/Traefik-Referenz-Betriebsprofil
+- [ADR-011](ADR-011-instanceid-kanonischer-mandanten-scope.md): `instanceId` als kanonischer Mandanten-Scope
+- [ADR-019](ADR-019-swarm-traefik-referenz-betriebsprofil.md): Swarm-/Traefik-Referenz-Betriebsprofil
 
 ## Gültigkeitsdauer
 

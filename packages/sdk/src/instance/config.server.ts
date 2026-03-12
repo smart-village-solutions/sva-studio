@@ -8,8 +8,16 @@
  * führen zu einem sofortigen Fehler beim App-Start.
  */
 
+import { createSdkLogger } from '../logger/index.server';
+
 const INSTANCE_ID_REGEX = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
 const PUNYCODE_PREFIX = 'xn--';
+const logger = createSdkLogger({
+  component: 'instance-config',
+  level: 'info',
+  enableConsole: true,
+  enableOtel: false,
+});
 
 export interface InstanceConfig {
   readonly parentDomain: string;
@@ -53,16 +61,13 @@ function loadAndValidateInstanceConfig(): InstanceConfig | null {
 
   for (const id of ids) {
     if (id.startsWith(PUNYCODE_PREFIX)) {
-      throw new Error(
-        `[InstanceConfig] Ungültige instanceId "${id}": ` +
+      throwInvalidInstanceId(
+        id,
         'IDN/Punycode-Labels (xn--) sind nicht erlaubt.'
       );
     }
     if (!INSTANCE_ID_REGEX.test(id)) {
-      throw new Error(
-        `[InstanceConfig] Ungültige instanceId "${id}": ` +
-        `Erlaubtes Muster: ${INSTANCE_ID_REGEX.source}`
-      );
+      throwInvalidInstanceId(id, `Erlaubtes Muster: ${INSTANCE_ID_REGEX.source}`);
     }
   }
 
@@ -84,7 +89,7 @@ export function parseInstanceIdFromHost(host: string): string | null {
   const config = getInstanceConfig();
   if (!config) return null;
 
-  const normalized = host.toLowerCase().replace(/\.$/, '').split(':')[0] ?? '';
+  const normalized = normalizeHost(host);
 
   if (normalized === config.parentDomain) {
     return null;
@@ -122,6 +127,19 @@ export function parseInstanceIdFromHost(host: string): string | null {
 export function isCanonicalAuthHost(host: string): boolean {
   const config = getInstanceConfig();
   if (!config) return true;
-  const normalized = host.toLowerCase().replace(/\.$/, '').split(':')[0] ?? '';
+  const normalized = normalizeHost(host);
   return normalized === config.canonicalAuthHost;
+}
+
+function throwInvalidInstanceId(id: string, reason: string): never {
+  logger.error('Ungueltige instanceId in Allowlist', {
+    invalid_instance_id: id,
+    reason,
+  });
+  throw new Error(`[InstanceConfig] Ungültige instanceId "${id}": ${reason}`);
+}
+
+function normalizeHost(host: string): string {
+  const hostWithoutPort = host.toLowerCase().split(':')[0] ?? '';
+  return hostWithoutPort.replace(/\.+$/, '');
 }

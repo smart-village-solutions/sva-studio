@@ -19,16 +19,25 @@ export async function ensureSdkInitialized() {
   // Fail-fast: Instance-Config validieren, bevor die App Requests annimmt.
   // Wirft bei ungültigen Allowlist-Einträgen oder fehlendem SVA_PARENT_DOMAIN
   // einen Fehler, der den Start abbricht.
-  const { getInstanceConfig } = await import('@sva/sdk/server');
-  getInstanceConfig();
+  const sdk = await import('@sva/sdk/server');
+  const logger = sdk.createSdkLogger({
+    component: 'sdk-init',
+    level: 'info',
+    enableConsole: true,
+    enableOtel: false,
+  });
+
+  sdk.getInstanceConfig();
 
   try {
-    const { initializeOtelSdk } = await import('@sva/sdk/server');
-    await initializeOtelSdk();
+    await sdk.initializeOtelSdk();
     sdkInitialized = true;
-    console.info('[SDK] OpenTelemetry initialization completed');
+    logger.info('SDK initialisiert');
   } catch (error) {
-    console.error('Failed to initialize SDK:', error);
+    logger.error('SDK-Initialisierung fehlgeschlagen', {
+      error: error instanceof Error ? error.message : String(error),
+      error_type: error instanceof Error ? error.constructor.name : 'unknown',
+    });
     // Nicht werfen - App soll auch ohne SDK laufen
   }
 }

@@ -120,8 +120,7 @@ export const initializeOtelSdk = async (): Promise<SdkNodeInstance | null> => {
     return sdk;
   } catch (error) {
     logger.error('Fehler beim Initialisieren des OTEL SDK', {
-      error: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined
+      error: error instanceof Error ? error.message : String(error)
     });
     otelSdkInitialized = true;
     return null;

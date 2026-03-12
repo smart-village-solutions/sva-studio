@@ -17,6 +17,19 @@ load_secret() {
   fi
 }
 
+require_env() {
+  _name="$1"
+  eval "_value=\${$_name:-}"
+  if [ -z "$_value" ]; then
+    echo "Required secret $_name is not set." >&2
+    exit 1
+  fi
+}
+
+urlencode() {
+  node -e 'process.stdout.write(encodeURIComponent(process.argv[1] ?? ""))' "$1"
+}
+
 val=$(load_secret sva_studio_app_auth_client_secret)
 [ -n "$val" ] && export SVA_AUTH_CLIENT_SECRET="$val"
 
@@ -32,13 +45,35 @@ val=$(load_secret sva_studio_app_pii_keyring_json)
 val=$(load_secret sva_studio_app_db_password)
 [ -n "$val" ] && export APP_DB_PASSWORD="$val"
 
+val=$(load_secret sva_studio_redis_password)
+[ -n "$val" ] && export REDIS_PASSWORD="$val"
+
 val=$(load_secret sva_studio_keycloak_admin_client_secret)
 [ -n "$val" ] && export KEYCLOAK_ADMIN_CLIENT_SECRET="$val"
+
+if [ -d /run/secrets ]; then
+  require_env SVA_AUTH_CLIENT_SECRET
+  require_env SVA_AUTH_STATE_SECRET
+  require_env ENCRYPTION_KEY
+  require_env IAM_PII_KEYRING_JSON
+  require_env APP_DB_PASSWORD
+  require_env REDIS_PASSWORD
+fi
 
 # IAM_DATABASE_URL aus Einzelkomponenten zusammenbauen,
 # falls noch nicht explizit gesetzt.
 if [ -z "${IAM_DATABASE_URL:-}" ] && [ -n "${APP_DB_PASSWORD:-}" ]; then
-  export IAM_DATABASE_URL="postgres://${APP_DB_USER:-sva_app}:${APP_DB_PASSWORD}@postgres:5432/${POSTGRES_DB:-sva_studio}"
+  db_password_encoded=$(urlencode "${APP_DB_PASSWORD}")
+  export IAM_DATABASE_URL="postgres://${APP_DB_USER:-sva_app}:${db_password_encoded}@postgres:5432/${POSTGRES_DB:-sva_studio}"
+fi
+
+if [ -z "${REDIS_URL:-}" ]; then
+  if [ -n "${REDIS_PASSWORD:-}" ]; then
+    redis_password_encoded=$(urlencode "${REDIS_PASSWORD}")
+    export REDIS_URL="redis://:${redis_password_encoded}@redis:6379"
+  else
+    export REDIS_URL="redis://redis:6379"
+  fi
 fi
 
 exec "$@"

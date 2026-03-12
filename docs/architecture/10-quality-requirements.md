@@ -139,6 +139,6 @@ Referenzen:
 - `docker compose -f deploy/portainer/docker-compose.yml config` muss ohne Fehler durchlaufen (statische Stack-Validierung).
 - Startup-Validierung der `instanceId`-Allowlist ist ein harter Gate: ungültige Einträge führen zum sofortigen Abbruch.
 - Host-Validierung liefert identische `403`-Antworten unabhängig vom Ablehnungsgrund (keine Informationspreisgabe).
-- Auth-Session-Cookies müssen auf die Parent-Domain gesetzt sein, um SSO über Instanz-Subdomains zu ermöglichen.
+- Zielbild: Auth-Session-Cookies werden auf die Parent-Domain gesetzt, um SSO über Instanz-Subdomains zu ermöglichen; aktuell sind gemäß ADR-020 host-only-Cookies umgesetzt (Folgearbeit: Parent-Domain-Cookie-Scoping implementieren und verifizieren).
 - Entrypoint-basierte Secret-Injektion muss abwärtskompatibel sein (No-Op ohne `/run/secrets/`).
 - Rolling Updates (`start-first`) dürfen keine Downtime verursachen; Healthchecks müssen vor dem Routing-Start grün sein.

@@ -106,12 +106,14 @@ Im Swarm-Stack sind keine automatischen DB-Initialisierungsskripte enthalten. Be
 
 ### Migrationen ausführen
 
+Die SQL-Dateien müssen als Artefakt bereitgestellt werden (z. B. CI-Artefakt, Release-Asset oder separates Migrationsbundle). Ein Repository-Checkout auf dem Swarm-Node ist nicht erforderlich.
+
 ```bash
 # Postgres-Container identifizieren
 docker ps --filter name=sva-studio_postgres
 
-# Migrationen kopieren und ausführen
-docker cp packages/data/migrations/up/. <CONTAINER_ID>:/tmp/migrations/
+# Migrationen vom Artefaktpfad kopieren und ausführen
+docker cp <MIGRATIONS_SOURCE_DIR>/. <CONTAINER_ID>:/tmp/migrations/
 docker exec <CONTAINER_ID> sh -c '
   for f in /tmp/migrations/*.sql; do
     echo "Applying $f"

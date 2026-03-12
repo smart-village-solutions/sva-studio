@@ -27,16 +27,16 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-sva_studio}
       APP_DB_USER: ${APP_DB_USER:-sva_app}
       # Auth (nicht-sensibel)
-      SVA_PUBLIC_BASE_URL: ${SVA_PUBLIC_BASE_URL:?SVA_PUBLIC_BASE_URL must be set}
-      SVA_AUTH_ISSUER: ${SVA_AUTH_ISSUER:?SVA_AUTH_ISSUER must be set}
-      SVA_AUTH_CLIENT_ID: ${SVA_AUTH_CLIENT_ID:?SVA_AUTH_CLIENT_ID must be set}
-      SVA_AUTH_REDIRECT_URI: ${SVA_AUTH_REDIRECT_URI:?SVA_AUTH_REDIRECT_URI must be set}
-      SVA_AUTH_POST_LOGOUT_REDIRECT_URI: ${SVA_AUTH_POST_LOGOUT_REDIRECT_URI:?SVA_AUTH_POST_LOGOUT_REDIRECT_URI must be set}
+      SVA_PUBLIC_BASE_URL: ${SVA_PUBLIC_BASE_URL:-}
+      SVA_AUTH_ISSUER: ${SVA_AUTH_ISSUER:-}
+      SVA_AUTH_CLIENT_ID: ${SVA_AUTH_CLIENT_ID:-}
+      SVA_AUTH_REDIRECT_URI: ${SVA_AUTH_REDIRECT_URI:-}
+      SVA_AUTH_POST_LOGOUT_REDIRECT_URI: ${SVA_AUTH_POST_LOGOUT_REDIRECT_URI:-}
       # IAM
       IAM_PII_ACTIVE_KEY_ID: ${IAM_PII_ACTIVE_KEY_ID:-k1}
       IAM_CSRF_ALLOWED_ORIGINS: ${IAM_CSRF_ALLOWED_ORIGINS:-${SVA_PUBLIC_BASE_URL}}
       # Instance-Routing
-      SVA_PARENT_DOMAIN: ${SVA_PARENT_DOMAIN:?SVA_PARENT_DOMAIN must be set}
+      SVA_PARENT_DOMAIN: ${SVA_PARENT_DOMAIN:-}
       SVA_ALLOWED_INSTANCE_IDS: ${SVA_ALLOWED_INSTANCE_IDS:-}
       # Feature-Flags
       VITE_IAM_UI_ENABLED: ${VITE_IAM_UI_ENABLED:-false}
@@ -64,6 +64,9 @@ services:
       - internal
     deploy:
       replicas: 1
+      placement:
+        constraints:
+          - node.hostname == node-005.sva
       update_config:
         parallelism: 1
         delay: 10s
@@ -130,7 +133,7 @@ services:
       replicas: 1
       placement:
         constraints:
-          - node.role == manager
+          - node.hostname == node-005.sva
       restart_policy:
         condition: on-failure
         delay: 5s
@@ -170,7 +173,7 @@ services:
       replicas: 1
       placement:
         constraints:
-          - node.role == manager
+          - node.hostname == node-005.sva
       restart_policy:
         condition: on-failure
         delay: 5s

@@ -59,7 +59,7 @@ type UserUpdatePlan = {
   nextRoleNames?: readonly string[];
 };
 
-const hasSystemAdminRole = (
+export const hasSystemAdminRole = (
   roles: readonly Pick<IamUserRoleAssignment, 'roleKey'>[]
 ): boolean => roles.some((role) => role.roleKey === 'system_admin');
 
@@ -71,7 +71,7 @@ const resolveExternalRoleNames = async (
   return roles.map((role) => getRoleExternalName(role));
 };
 
-const buildUpdatedUserParams = (
+export const buildUpdatedUserParams = (
   userId: string,
   instanceId: string,
   keycloakSubject: string,
@@ -399,7 +399,7 @@ SET
   notes = COALESCE($14, notes),
   updated_at = NOW()
 WHERE id = $1::uuid
-  AND instance_id = $2::uuid;
+  AND instance_id = $2;
 `,
           buildUpdatedUserParams(
             userId,
@@ -626,7 +626,7 @@ SET
   status = 'inactive',
   updated_at = NOW()
 WHERE id = $1::uuid
-  AND instance_id = $2::uuid;
+  AND instance_id = $2;
 `,
         [userId, actorResolution.actor.instanceId]
       );
@@ -832,7 +832,7 @@ UPDATE iam.accounts
 SET
   status = 'inactive',
   updated_at = NOW()
-WHERE instance_id = $1::uuid
+WHERE instance_id = $1
   AND id = ANY($2::uuid[]);
 `,
         [actorResolution.actor.instanceId, uniqueUserIds]

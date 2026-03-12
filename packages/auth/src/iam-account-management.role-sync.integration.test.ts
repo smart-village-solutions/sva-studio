@@ -36,7 +36,7 @@ const roleSyncIntegrationState = vi.hoisted(() => ({
     id: 'keycloak-role-admin',
     name: 'Integration Admin',
     roles: ['system_admin'],
-    instanceId: '11111111-1111-1111-8111-111111111111',
+    instanceId: 'de-musterhausen',
   },
   actorAccountId: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa',
   roles: new Map<string, RoleRowState>(),
@@ -273,7 +273,7 @@ vi.mock('pg', () => ({
             return { rowCount: 1, rows: [{ used: 0 }] };
           }
 
-          if (text.includes('DELETE FROM iam.roles WHERE instance_id = $1::uuid AND id = $2::uuid')) {
+          if (text.includes('DELETE FROM iam.roles WHERE instance_id = $1 AND id = $2::uuid')) {
             roleSyncIntegrationState.roles.delete(String(values?.[1]));
             return { rowCount: 1, rows: [] };
           }
@@ -450,7 +450,7 @@ describe('iam-account-management role sync integration', () => {
       id: `keycloak-role-admin-${Date.now()}`,
       name: 'Integration Admin',
       roles: ['system_admin'],
-      instanceId: '11111111-1111-1111-8111-111111111111',
+      instanceId: 'de-musterhausen',
     };
   });
 

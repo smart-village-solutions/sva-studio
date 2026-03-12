@@ -16,15 +16,15 @@ TRUNCATE iam.activity_logs, iam.role_permissions, iam.account_roles, iam.account
   iam.instance_memberships, iam.permissions, iam.roles, iam.organizations, iam.accounts, iam.instances
   RESTART IDENTITY CASCADE;
 
-INSERT INTO iam.instances(id, instance_key, display_name)
+INSERT INTO iam.instances(id, display_name)
 VALUES
-  ('11111111-1111-4111-8111-111111111111', 'instance-a', 'Instance A'),
-  ('22222222-2222-4222-8222-222222222222', 'instance-b', 'Instance B');
+  ('instance-a', 'Instance A'),
+  ('instance-b', 'Instance B');
 
 INSERT INTO iam.organizations(id, instance_id, organization_key, display_name)
 VALUES
-  ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1', '11111111-1111-4111-8111-111111111111', 'orga', 'Org A'),
-  ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb2', '22222222-2222-4222-8222-222222222222', 'orgb', 'Org B');
+  ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1', 'instance-a', 'orga', 'Org A'),
+  ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb2', 'instance-b', 'orgb', 'Org B');
 
 DO $$
 BEGIN
@@ -39,7 +39,7 @@ SQL
 
 visible_for_a=$(docker compose exec -T postgres psql -tA -v ON_ERROR_STOP=1 -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" <<'SQL'
 SET ROLE iam_app;
-SET app.instance_id = '11111111-1111-4111-8111-111111111111';
+SET app.instance_id = 'instance-a';
 SELECT count(*) FROM iam.organizations;
 SQL
 )

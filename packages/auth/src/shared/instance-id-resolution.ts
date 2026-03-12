@@ -1,7 +1,7 @@
 import type { Pool, PoolClient } from 'pg';
 
 import { type QueryClient } from './db-helpers';
-import { isUuid, readString } from './input-readers';
+import { readString } from './input-readers';
 
 export type InstanceIdResolutionResult =
   | {
@@ -28,13 +28,9 @@ export const resolveInstanceId = async (input: ResolveInstanceIdInput): Promise<
     return { ok: false, reason: 'missing_instance' };
   }
 
-  if (isUuid(rawValue)) {
-    return { ok: true, instanceId: rawValue, fromInstanceKey: false, created: false };
-  }
-
   const pool = input.resolvePool();
   if (!pool) {
-    return { ok: false, reason: 'database_unavailable' };
+    return { ok: true, instanceId: rawValue, fromInstanceKey: false, created: false };
   }
 
   const client = (await pool.connect()) as PoolClient & QueryClient;
@@ -43,14 +39,14 @@ export const resolveInstanceId = async (input: ResolveInstanceIdInput): Promise<
       `
 SELECT id
 FROM iam.instances
-WHERE instance_key = $1
+WHERE id = $1
 LIMIT 1;
 `,
       [rawValue]
     );
     const existingId = existing.rows[0]?.id;
     if (existingId) {
-      return { ok: true, instanceId: existingId, fromInstanceKey: true, created: false };
+      return { ok: true, instanceId: existingId, fromInstanceKey: false, created: false };
     }
 
     if (!input.createIfMissingFromKey) {
@@ -59,11 +55,11 @@ LIMIT 1;
 
     const insert = await client.query<{ id: string }>(
       `
-INSERT INTO iam.instances (instance_key, display_name)
+INSERT INTO iam.instances (id, display_name)
 VALUES ($1, $2)
-ON CONFLICT (instance_key) DO UPDATE
+ON CONFLICT (id) DO UPDATE
 SET
-  display_name = COALESCE(iam.instances.display_name, EXCLUDED.display_name),
+  display_name = COALESCE(NULLIF(iam.instances.display_name, ''), EXCLUDED.display_name),
   updated_at = NOW()
 RETURNING id;
 `,
@@ -73,7 +69,7 @@ RETURNING id;
     if (!createdId) {
       return { ok: false, reason: 'invalid_instance' };
     }
-    return { ok: true, instanceId: createdId, fromInstanceKey: true, created: true };
+    return { ok: true, instanceId: createdId, fromInstanceKey: false, created: true };
   } catch {
     return { ok: false, reason: 'database_unavailable' };
   } finally {

@@ -48,7 +48,7 @@ mit Bezug auf die arc42-Abschnitte.
 
 - ADR-009: Keycloak als zentraler Identity Provider (Abschnitt 03, 06, 07)
 - ADR-010: Verschlüsselungsstrategie IAM Core Data Layer (Abschnitt 08, 10)
-- ADR-011: `instanceId` als kanonischer Mandanten-Scope (Abschnitt 05, 08, 10)
+- ADR-011: `instanceId` als kanonischer Mandanten-Scope und fachlicher String-Schlüssel (Abschnitt 05, 08, 10)
 - ADR-012: Permission-Kompositionsmodell RBAC v1 (Abschnitt 06, 10)
 - ADR-013: RBAC+ABAC-Hybridmodell (Abschnitt 05, 06, 08, 10)
 - ADR-014: Postgres `NOTIFY` für Cache-Invalidierung (Abschnitt 06, 08, 10)

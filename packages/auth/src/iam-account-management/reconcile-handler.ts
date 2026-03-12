@@ -89,7 +89,7 @@ SELECT
   last_synced_at::text,
   last_error_code
 FROM iam.roles
-WHERE instance_id = $1::uuid
+WHERE instance_id = $1
   AND managed_by = 'studio'
 ORDER BY role_level DESC, COALESCE(display_name, role_name) ASC;
 `,

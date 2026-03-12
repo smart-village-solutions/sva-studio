@@ -5,7 +5,7 @@ const state = vi.hoisted(() => ({
     id: 'keycloak-admin-1',
     name: 'Admin User',
     roles: ['system_admin'],
-    instanceId: '11111111-1111-1111-8111-111111111111',
+    instanceId: 'de-musterhausen',
   },
   featureEnabled: true,
   rateLimitResponse: null as Response | null,
@@ -13,7 +13,7 @@ const state = vi.hoisted(() => ({
   csrfResponse: null as Response | null,
   actorResolution: {
     actor: {
-      instanceId: '11111111-1111-1111-8111-111111111111',
+      instanceId: 'de-musterhausen',
       actorAccountId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
       requestId: 'req-org-test',
       traceId: 'trace-org-test',
@@ -198,7 +198,7 @@ describe('iam organizations handlers', () => {
       id: 'keycloak-admin-1',
       name: 'Admin User',
       roles: ['system_admin'],
-      instanceId: '11111111-1111-1111-8111-111111111111',
+      instanceId: 'de-musterhausen',
     };
     state.featureEnabled = true;
     state.rateLimitResponse = null;
@@ -206,7 +206,7 @@ describe('iam organizations handlers', () => {
     state.csrfResponse = null;
     state.actorResolution = {
       actor: {
-        instanceId: '11111111-1111-1111-8111-111111111111',
+        instanceId: 'de-musterhausen',
         actorAccountId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
         requestId: 'req-org-test',
         traceId: 'trace-org-test',
@@ -1313,7 +1313,7 @@ describe('iam organizations handlers', () => {
     ]);
     expect(state.notifyCalls).toHaveLength(1);
     expect(state.notifyCalls[0]).toMatchObject({
-      instanceId: '11111111-1111-1111-8111-111111111111',
+      instanceId: 'de-musterhausen',
       keycloakSubject: 'keycloak-admin-1',
       trigger: 'organization_context_switched',
     });

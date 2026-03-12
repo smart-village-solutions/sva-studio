@@ -2,6 +2,7 @@ import { DEFAULT_LOCALE, i18nResources, type SupportedLocale } from './resources
 
 type TranslationTree = (typeof i18nResources)[typeof DEFAULT_LOCALE];
 type Primitive = string;
+type TranslationResourceNode = string | undefined | { readonly [key: string]: TranslationResourceNode };
 
 type DotPath<T> = T extends Primitive
   ? never
@@ -13,9 +14,15 @@ export type TranslationKey = DotPath<TranslationTree>;
 
 export type TranslationVariables = Readonly<Record<string, string | number>>;
 
-const readTranslationValue = (locale: SupportedLocale, key: TranslationKey): string | undefined => {
+type TranslationResources = Readonly<Record<SupportedLocale, TranslationResourceNode>>;
+
+const readTranslationValue = (
+  resources: TranslationResources,
+  locale: SupportedLocale,
+  key: TranslationKey
+): string | undefined => {
   const segments = key.split('.');
-  let pointer: unknown = i18nResources[locale];
+  let pointer: unknown = resources[locale];
 
   for (const segment of segments) {
     if (!pointer || typeof pointer !== 'object' || !(segment in pointer)) {
@@ -40,13 +47,20 @@ const interpolate = (message: string, variables?: TranslationVariables): string 
 };
 
 export const createTranslator = (locale: SupportedLocale = DEFAULT_LOCALE) => {
+  return createTranslatorFromResources(i18nResources, locale);
+};
+
+export const createTranslatorFromResources = (
+  resources: TranslationResources,
+  locale: SupportedLocale = DEFAULT_LOCALE
+) => {
   return (key: TranslationKey, variables?: TranslationVariables): string => {
-    const localizedMessage = readTranslationValue(locale, key);
+    const localizedMessage = readTranslationValue(resources, locale, key);
     if (localizedMessage) {
       return interpolate(localizedMessage, variables);
     }
 
-    const fallbackMessage = readTranslationValue(DEFAULT_LOCALE, key);
+    const fallbackMessage = readTranslationValue(resources, DEFAULT_LOCALE, key);
     if (fallbackMessage) {
       return interpolate(fallbackMessage, variables);
     }

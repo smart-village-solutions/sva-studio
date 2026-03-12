@@ -18,8 +18,8 @@ import { validateCsrf } from './csrf';
 import { protectField } from './encryption';
 import { ensureFeature, getFeatureFlags } from './feature-flags';
 import { consumeRateLimit } from './rate-limit';
+import type { ActorInfo } from './types';
 import {
-  type ActorInfo,
   emitActivityLog,
   iamUserOperationsCounter,
   logger,
@@ -77,7 +77,7 @@ INSERT INTO iam.accounts (
   status
 )
 VALUES (
-  $1::uuid,
+  $1,
   $2,
   $3,
   $4,
@@ -100,7 +100,7 @@ RETURNING id, (xmax = 0) AS created;
 
 const INSERT_MEMBERSHIP_QUERY = `
 INSERT INTO iam.instance_memberships (instance_id, account_id, membership_type)
-VALUES ($1::uuid, $2::uuid, 'member')
+VALUES ($1, $2::uuid, 'member')
 ON CONFLICT (instance_id, account_id) DO NOTHING;
 `;
 
@@ -240,7 +240,7 @@ export const collectSyncCandidates = (
   return { matchingUsers, skippedCount, skippedInstanceIds };
 };
 
-const mapSyncErrorResponse = (error: unknown, requestId: string): Response | undefined => {
+const mapSyncErrorResponse = (error: unknown, requestId?: string): Response | undefined => {
   const errorMessage = error instanceof Error ? error.message : String(error);
   if (error instanceof KeycloakAdminRequestError || error instanceof KeycloakAdminUnavailableError) {
     return createApiError(

@@ -39,7 +39,7 @@ type RoleRecord = {
   description: string | null;
 };
 
-const INSTANCE_ID = '11111111-1111-1111-8111-111111111111';
+const INSTANCE_ID = 'de-musterhausen';
 const FOREIGN_INSTANCE_ID = '22222222-2222-2222-8222-222222222222';
 const ACTOR_SUBJECT = 'keycloak-sub-admin';
 const ACTOR_ACCOUNT_ID = 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa';
@@ -109,7 +109,7 @@ const buildTargetUser = (): UserRecord => ({
 });
 
 const contractState = vi.hoisted(() => {
-  const instanceId = '11111111-1111-1111-8111-111111111111';
+  const instanceId = 'de-musterhausen';
   const actorSubject = 'keycloak-sub-admin';
   const actorAccountId = 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa';
   const targetUserId = 'bbbbbbbb-bbbb-bbbb-8bbb-bbbbbbbbbbbb';

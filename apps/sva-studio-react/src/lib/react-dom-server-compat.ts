@@ -1,18 +1,5 @@
-import {
-  renderToReadableStream,
-  renderToStaticMarkup,
-  renderToString,
-  resume,
-  version,
-} from 'react-dom/server.browser';
+import * as ReactDOMServerBrowser from 'react-dom/server.browser';
 
-const ReactDOMServerCompat = {
-  renderToReadableStream,
-  renderToStaticMarkup,
-  renderToString,
-  resume,
-  version,
-};
+export const { renderToReadableStream, renderToStaticMarkup, renderToString } = ReactDOMServerBrowser;
 
-export { renderToReadableStream, renderToStaticMarkup, renderToString, resume, version };
-export default ReactDOMServerCompat;
+export default ReactDOMServerBrowser;

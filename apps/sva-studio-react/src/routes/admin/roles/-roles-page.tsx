@@ -4,6 +4,7 @@ import { ConfirmDialog } from '../../../components/ConfirmDialog';
 import { ModalDialog } from '../../../components/ModalDialog';
 import { useRoles } from '../../../hooks/use-roles';
 import { t } from '../../../i18n';
+import type { TranslationKey } from '../../../i18n/translate';
 import type { IamHttpError } from '../../../lib/iam-api';
 
 type SortDirection = 'asc' | 'desc';
@@ -36,7 +37,7 @@ const roleTypeLabel = (role: { isSystemRole: boolean; managedBy: 'studio' | 'ext
   return t('admin.roles.labels.customRole');
 };
 
-const roleErrorMessage = (error: IamHttpError | null, fallbackKey: string): string => {
+const roleErrorMessage = (error: IamHttpError | null, fallbackKey: TranslationKey): string => {
   if (!error) {
     return t(fallbackKey);
   }

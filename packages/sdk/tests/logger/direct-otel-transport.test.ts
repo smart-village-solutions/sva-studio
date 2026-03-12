@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { setGlobalLoggerProviderForMonitoring } from '../../src/observability/monitoring-client.bridge.server';
 import { createSdkLogger } from '../../src/logger/index.server';
+import { runWithWorkspaceContext } from '../../src/observability/context.server';
 
 /**
  * Test suite for DirectOtelTransport
@@ -132,5 +133,58 @@ describe('DirectOtelTransport', () => {
     expect(emittedData?.body).toContain('Test message');
     expect(emittedData?.severityText).toBe('INFO');
     expect((emittedData?.attributes as Record<string, unknown>).component).toBe('test-component');
+  });
+
+  it('merges request context without overwriting explicit ids', async () => {
+    let emittedData: Record<string, unknown> | null = null;
+    const mockProvider = {
+      getLogger: vi.fn(() => ({
+        emit: vi.fn((data: Record<string, unknown>) => {
+          emittedData = data;
+        }),
+      })),
+    };
+
+    await setGlobalLoggerProviderForMonitoring(mockProvider);
+
+    const logger = createSdkLogger({
+      component: 'ctx-test',
+      enableOtel: true,
+      enableConsole: false,
+    });
+
+    await runWithWorkspaceContext(
+      {
+        workspaceId: 'ws-123',
+        requestId: 'req-context',
+        traceId: 'trace-context',
+        userId: 'user-123',
+      },
+      async () => {
+        logger.info('Context message', {
+          context: {
+            request_id: 'req-explicit',
+          },
+        });
+        await flushAsyncLogs();
+      }
+    );
+
+    expect((emittedData?.attributes as Record<string, unknown>).workspace_id).toBe('ws-123');
+    expect((emittedData?.attributes as Record<string, unknown>).context).toMatchObject({
+      request_id: 'req-explicit',
+      trace_id: 'trace-context',
+      user_id: 'user-123',
+    });
+  });
+
+  it('creates no transports when console and otel are disabled', () => {
+    const logger = createSdkLogger({
+      component: 'silent-test',
+      enableOtel: false,
+      enableConsole: false,
+    });
+
+    expect(logger.transports).toHaveLength(0);
   });
 });

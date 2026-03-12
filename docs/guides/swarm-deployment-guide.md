@@ -33,19 +33,48 @@ Alle Secrets sind in `/Users/wilimzig/sva-secrets/` vorhanden:
 
 ### Secrets hochladen & registrieren
 
-**1a. SSH zu node-005.sva verbinden:**
+#### **Option 1: Portainer REST API (empfohlen – kein SSH erforderlich)** ⭐
+
+Scenario: Kein SSH-Zugang zu node-005.sva, aber Zugang zur Portainer Web-UI unter https://console.planetary-quantum.com/#!/64/docker/swarm
+
+**Anforderungen:**
+- Portainer API Token (erzeugen unter https://console.planetary-quantum.com/#!/settings/tokens)
+- `jq` installiert: `brew install jq`
+- bash-Skript verfügbar
+
+**Ausführung:**
 ```bash
-ssh node-005.sva
+# Secrets-Verzeichnis vorbereiten (falls nicht vorhanden)
+mkdir -p ~/sva-secrets
+
+# Portainer API Token als Umgebungsvariable
+export PORTAINER_TOKEN="dpt_..."  # Von https://console.planetary-quantum.com/#!/settings/tokens
+
+# Skript ausführen – erstellt alle 8 Secrets via API
+chmod +x scripts/ops/create-secrets-portainer-api.sh
+./scripts/ops/create-secrets-portainer-api.sh
 ```
 
-**1b. Secrets hochladen (von deinem Lokal-Rechner in neuem Terminal):**
+Das Skript:
+- Validiert Portainer-Zugang
+- Erstellt alle 8 Secrets via REST API (keine SSH nötig!)
+- Verifizt am Ende, dass alle Secrets vorhanden sind
+
+**Vorteil:** Vollautomatisiert, kein direkter Node-Zugang erforderlich.
+
+---
+
+#### **Option 2: SSH + Docker CLI (klassisch)**
+
 ```bash
+# 1. SSH zu node-005.sva verbinden:
+ssh node-005.sva
+
+# 2. Von lokalem Rechner in neuem Terminal: Secrets hochladen
 cd /Users/wilimzig/sva-secrets
 scp *.txt pii-keyring.json node-005.sva:/tmp/
-```
 
-**1c. Auf node-005.sva: Docker Secrets registrieren:**
-```bash
+# 3. Auf node-005.sva: Docker Secrets registrieren:
 # PostgreSQL
 docker secret create sva_studio_postgres_password < /tmp/postgres-password.txt
 
@@ -61,12 +90,19 @@ docker secret create sva_studio_app_pii_keyring_json-k1 < /tmp/pii-keyring.json
 
 # Keycloak
 docker secret create sva_studio_keycloak_admin_client_secret < /tmp/keycloak-admin-client-secret.txt
-```
 
-**Verifizierung:**
-```bash
+# Verifizierung:
 docker secret ls | grep sva_studio
 ```
+
+---
+
+#### **Option 3: Portainer Web-UI (manuell)**
+
+1. Login: https://console.planetary-quantum.com/#!/64/docker/swarm
+2. Navigiere zu **Secrets**
+3. Klick **Create a new secret**
+4. Wiederhole für alle 8 Secrets oben
 
 ---
 
@@ -88,6 +124,15 @@ QUANTUM_API_KEY=ptr_your-api-key-here
 QUANTUM_HOST=https://console.planetary-quantum.com
 EOF
 ```
+
+### ⚠️ Hinweis: Secret-Management
+
+**quantum-cli unterstützt KEIN Secret-Management.** (Siehe [Dokumentation](https://docs.planetary-quantum.com/reference/quantum-cli-reference/))
+
+Secrets müssen über eines der folgenden Verfahren registriert werden:
+- **Portainer REST API** (empfohlen – `scripts/ops/create-secrets-portainer-api.sh`)
+- **Docker CLI** (SSH zu node-005.sva erforderlich)
+- **Portainer Web-UI** (manuell, unter https://console.planetary-quantum.com/#!/64/docker/swarm)
 
 ---
 
@@ -145,19 +190,19 @@ quantum-cli ps --endpoint sva --stack sva-studio --all  # Mit möglichen Failure
 ## 5. Häufige Probleme
 
 ### `postgres: non-zero exit (1)`
-**Ursache:** Secret `sva_studio_postgres_password` existiert nicht.  
+**Ursache:** Secret `sva_studio_postgres_password` existiert nicht.
 **Lösung:** Siehe Schritt 1c.
 
 ### `app: No such image: ghcr.io/smart-village-solutions/sva-studio:...`
-**Ursache:** Image nicht gepusht oder nicht pullbar auf dem Node.  
-**Lösung:** 
+**Ursache:** Image nicht gepusht oder nicht pullbar auf dem Node.
+**Lösung:**
 ```bash
 # Lokal neu bauen & pushen
 docker buildx build -f deploy/portainer/Dockerfile -t ghcr.io/smart-village-solutions/sva-studio:latest --push .
 ```
 
 ### `--user / QUANTUM_USER not set`
-**Ursache:** quantum-cli Auth nicht aktiv.  
+**Ursache:** quantum-cli Auth nicht aktiv.
 **Lösung:**
 ```bash
 export QUANTUM_API_KEY=ptr_...

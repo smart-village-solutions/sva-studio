@@ -2,7 +2,9 @@ import { randomUUID } from 'node:crypto';
 
 import type {
   IamOrganizationContext,
+  IamOrganizationContextOption,
   IamOrganizationDetail,
+  IamOrganizationListItem,
   IamOrganizationType,
 } from '@sva/core';
 import { createSdkLogger, getWorkspaceContext } from '@sva/sdk/server';

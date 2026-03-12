@@ -1,0 +1,3 @@
+---
+version: "1.0"
+compose: deploy/portainer/docker-compose.yml

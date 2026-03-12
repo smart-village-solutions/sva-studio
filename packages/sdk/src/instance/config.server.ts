@@ -4,8 +4,8 @@
  * Validiert beim ersten Zugriff die Allowlist und Parent-Domain
  * und stellt Hilfsfunktionen für Host-Parsing bereit.
  *
- * Fail-fast: Ungültige Allowlist-Einträge oder fehlende Parent-Domain
- * führen zu einem sofortigen Fehler beim App-Start.
+ * Fail-fast: Ungültige Allowlist-Einträge führen zu einem sofortigen
+ * Fehler beim App-Start.
  */
 
 import { createSdkLogger } from '../logger/index.server';

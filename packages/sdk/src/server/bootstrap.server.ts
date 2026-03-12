@@ -55,9 +55,13 @@ export const initializeOtelSdk = async (): Promise<SdkNodeInstance | null> => {
   const shouldInitialize = isExplicitlyDisabled ? false : isProduction || isExplicitlyEnabled;
 
   if (!shouldInitialize) {
-    logger.debug('OTEL SDK nicht initialisiert (Development-Modus ohne ENABLE_OTEL flag)', {
+    const reason = isExplicitlyDisabled
+      ? 'ENABLE_OTEL explizit deaktiviert'
+      : 'Development-Modus ohne ENABLE_OTEL-Opt-in';
+    logger.debug('OTEL SDK nicht initialisiert', {
       environment: process.env.NODE_ENV,
-      enableOtelFlag: enableOtelFlag ?? 'not set'
+      enableOtelFlag: enableOtelFlag ?? 'not set',
+      reason
     });
     otelSdkInitialized = true;
     return null;

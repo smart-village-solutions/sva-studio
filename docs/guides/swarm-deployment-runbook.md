@@ -55,6 +55,7 @@ docker secret create sva_studio_keycloak_admin_client_secret ./secrets/keycloak-
 ```
 
 Nach dem Provisionieren sollten die lokalen Secret-Dateien sicher gelöscht oder außerhalb der Shell-History verwaltet werden.
+Hinweis: Das Secret `sva_studio_keycloak_admin_client_secret` muss im aktuellen Stack vorhanden sein, auch wenn Admin-/Sync-Features deaktiviert sind.
 
 ### Namenskonvention
 

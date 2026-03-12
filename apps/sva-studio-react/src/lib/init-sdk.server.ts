@@ -17,8 +17,9 @@ export async function ensureSdkInitialized() {
   }
 
   // Fail-fast: Instance-Config validieren, bevor die App Requests annimmt.
-  // Wirft bei ungültigen Allowlist-Einträgen oder fehlendem SVA_PARENT_DOMAIN
-  // einen Fehler, der den Start abbricht.
+  // Wirft bei ungültigen Allowlist-Einträgen einen Fehler, der den Start
+  // abbricht. Bei fehlendem SVA_PARENT_DOMAIN wird in lokaler Entwicklung
+  // kein Multi-Host-Modus aktiviert.
   const sdk = await import('@sva/sdk/server');
   const logger = sdk.createSdkLogger({
     component: 'sdk-init',

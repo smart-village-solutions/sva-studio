@@ -45,7 +45,7 @@ services:
       IAM_UI_ENABLED: ${IAM_UI_ENABLED:-false}
       IAM_ADMIN_ENABLED: ${IAM_ADMIN_ENABLED:-false}
       IAM_BULK_ENABLED: ${IAM_BULK_ENABLED:-false}
-      # Keycloak-Admin (optional)
+      # Keycloak-Admin (optionale Features; Secret muss im Stack vorhanden sein)
       KEYCLOAK_ADMIN_BASE_URL: ${KEYCLOAK_ADMIN_BASE_URL:-}
       KEYCLOAK_ADMIN_REALM: ${KEYCLOAK_ADMIN_REALM:-}
       KEYCLOAK_ADMIN_CLIENT_ID: ${KEYCLOAK_ADMIN_CLIENT_ID:-}

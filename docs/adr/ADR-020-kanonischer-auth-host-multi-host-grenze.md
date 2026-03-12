@@ -36,7 +36,9 @@ Instanz-Hosts werden nicht als OIDC-Redirect-Ziele registriert.
 
 ### 2. Cookie-Domain-Scoping
 
-Auth-Cookies (Session, CSRF) werden auf die Parent-Domain gesetzt (`Domain=.<SVA_PARENT_DOMAIN>`), sodass sie für den kanonischen Host und alle Instanz-Subdomains gültig sind.
+Auth-Cookies (Session, CSRF) sollen auf die Parent-Domain gesetzt werden (`Domain=.<SVA_PARENT_DOMAIN>`), sodass sie für den kanonischen Host und alle Instanz-Subdomains gültig sind.
+
+**Umsetzungsstand (Folgearbeit offen):** In der aktuellen Implementierung werden Cookies ohne explizites `domain`-Attribut (host-only) serialisiert. Die Umstellung auf Parent-Domain-Cookie-Scoping inklusive zentral konfigurierbarer Cookie-Domain und Tests ist als Folgearbeit geplant.
 
 ### 3. Fail-closed für nicht unterstützte Auth-Flows
 

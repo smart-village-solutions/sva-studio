@@ -132,7 +132,7 @@ export function isCanonicalAuthHost(host: string): boolean {
 }
 
 function throwInvalidInstanceId(id: string, reason: string): never {
-  logger.error('Ungueltige instanceId in Allowlist', {
+  logger.error('Ungültige instanceId in Allowlist', {
     invalid_instance_id: id,
     reason,
   });
@@ -141,5 +141,10 @@ function throwInvalidInstanceId(id: string, reason: string): never {
 
 function normalizeHost(host: string): string {
   const hostWithoutPort = host.toLowerCase().split(':')[0] ?? '';
-  return hostWithoutPort.replace(/\.+$/, '');
+  // Trailing dots ohne Regex entfernen, um ReDoS-Warnungen auf unkontrollierten Inputs zu vermeiden.
+  let end = hostWithoutPort.length;
+  while (end > 0 && hostWithoutPort[end - 1] === '.') {
+    end -= 1;
+  }
+  return hostWithoutPort.slice(0, end);
 }

@@ -13,7 +13,13 @@ set -eu
 load_secret() {
   _file="/run/secrets/$1"
   if [ -f "$_file" ]; then
-    cat "$_file"
+    # Command substitution entfernt finale Newlines; optionales CR aus CRLF wird danach entfernt.
+    _value=$(cat "$_file")
+    _cr=$(printf '\r')
+    case "$_value" in
+      *"$_cr") _value=${_value%"$_cr"} ;;
+    esac
+    printf '%s' "$_value"
   fi
 }
 
@@ -51,7 +57,23 @@ val=$(load_secret sva_studio_redis_password)
 val=$(load_secret sva_studio_keycloak_admin_client_secret)
 [ -n "$val" ] && export KEYCLOAK_ADMIN_CLIENT_SECRET="$val"
 
-if [ -d /run/secrets ]; then
+has_expected_swarm_secret_file() {
+  for _secret_name in \
+    sva_studio_app_auth_client_secret \
+    sva_studio_app_auth_state_secret \
+    sva_studio_app_encryption_key \
+    sva_studio_app_pii_keyring_json \
+    sva_studio_app_db_password \
+    sva_studio_redis_password
+  do
+    if [ -f "/run/secrets/${_secret_name}" ]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+if has_expected_swarm_secret_file; then
   require_env SVA_AUTH_CLIENT_SECRET
   require_env SVA_AUTH_STATE_SECRET
   require_env ENCRYPTION_KEY

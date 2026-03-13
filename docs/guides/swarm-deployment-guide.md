@@ -1,20 +1,64 @@
 
 # SVA Studio – Docker Swarm / Planetary Quantum Deployment
 
-Status: **Docker-Image gebaut & gepusht** ✅ | **Secrets noch zu registrieren** ⏳
+Status: **Docker-Image gebaut & gepusht** ✅ | **Demo-Profil ohne Docker-Secrets aktiv** ✅
 
 ## Übersicht
 
 Dieses Dokument beschreibt das Setup für den Deployment von sva-studio auf Planetary Quantum's Docker Swarm Cluster.
 
 **Setup-Schritte:**
-1. Secrets auf node-005.sva registrieren
+1. Demo-Umgebungsvariablen setzen
 2. .quantum Konfiguration validieren
-3. Stack deployen mit quantum-cli
+3. Stack deployen mit quantum-cli oder Portainer
+
+---
+
+## 0. Empfohlener Demo-Pfad
+
+Für die aktuelle Demo wird bewusst **kein Docker-Secret-Handling** verwendet.
+Stattdessen nutzt das Standardprofil direkte Umgebungsvariablen über [deploy/portainer/docker-compose.demo.yml](deploy/portainer/docker-compose.demo.yml).
+
+### Verwendete Dateien
+
+- Demo-Compose: [deploy/portainer/docker-compose.demo.yml](deploy/portainer/docker-compose.demo.yml)
+- Demo-Env-Vorlage: [deploy/portainer/.env.demo.example](deploy/portainer/.env.demo.example)
+- Quantum-Defaultprofil: [.quantum](.quantum)
+
+### Demo-Deploy mit quantum-cli
+
+```bash
+cd /Users/wilimzig/Documents/Projects/SVA/sva-studio
+set -a
+source deploy/portainer/.env.demo.example
+set +a
+
+export QUANTUM_API_KEY=ptr_...
+quantum-cli stacks update --environment demo --endpoint sva --stack sva-studio --project . --wait --no-pre-pull
+```
+
+### Demo-Deploy mit Portainer
+
+1. Stack-Datei aus [deploy/portainer/docker-compose.demo.yml](deploy/portainer/docker-compose.demo.yml) verwenden
+2. Werte aus [deploy/portainer/.env.demo.example](deploy/portainer/.env.demo.example) in der Stack-UI als Environment Variables setzen
+3. Stack aktualisieren
+
+### Warum dieses Profil?
+
+- Keine Swarm-Secrets für die Demo erforderlich
+- Kein Secret-Provisioning auf dem Node nötig
+- Ein Stack bleibt erhalten
+- `node-005.sva` bleibt als Placement gesetzt
+- Traefik-v1-kompatible Labels statt Traefik-v2-Router-Konfiguration
+- Keine Healthchecks im Demo-Profil
+- Keine `update_config`-/`rollback_config`-Blöcke im Demo-Profil
+- Nur kanonischer Host `studio.smart-village.app` im Demo-Profil
 
 ---
 
 ## 1. Secrets vorbereiten
+
+Dieser Abschnitt bleibt für das alternative Referenzprofil mit Swarm-Secrets erhalten.
 
 ### Verfügbare Secrets
 
@@ -113,7 +157,10 @@ Die `.quantum` Datei ist bereits vorhanden unter `{repo_root}/.quantum`:
 ```yaml
 ---
 version: "1.0"
-compose: deploy/portainer/docker-compose.yml
+compose: deploy/portainer/docker-compose.demo.yml
+environments:
+  - name: swarm-secrets
+    compose: deploy/portainer/docker-compose.yml
 ```
 
 ### API-Key persistent speichern (optional):
@@ -129,7 +176,9 @@ EOF
 
 **quantum-cli unterstützt KEIN Secret-Management.** (Siehe [Dokumentation](https://docs.planetary-quantum.com/reference/quantum-cli-reference/))
 
-Secrets müssen über eines der folgenden Verfahren registriert werden:
+Für das aktuelle Demo-Profil sind Docker-Secrets nicht erforderlich.
+
+Das alternative Referenzprofil `swarm-secrets` benötigt Secrets über eines der folgenden Verfahren:
 - **Portainer REST API** (empfohlen – `scripts/ops/create-secrets-portainer-api.sh`)
 - **Docker CLI** (SSH zu node-005.sva erforderlich)
 - **Portainer Web-UI** (manuell, unter https://console.planetary-quantum.com/#!/64/docker/swarm)
@@ -163,7 +212,7 @@ docker push ghcr.io/smart-village-solutions/sva-studio:$(git rev-parse --short H
 ### Voraussetzungen:
 - ✅ quantum-cli installiert (v2.9.1)
 - ✅ API-Key gesetzt (QUANTUM_API_KEY)
-- ✅ Secrets auf node-005.sva registriert
+- ✅ Demo-Umgebungsvariablen gesetzt
 - ✅ External Network "public" existiert
 - ✅ Traefik läuft im Swarm
 
@@ -173,7 +222,13 @@ cd /Users/wilimzig/Documents/Projects/SVA/sva-studio
 export QUANTUM_API_KEY=ptr_... # Falls nicht persistent konfiguriert
 
 # Stack Update mit Warten auf Completion
-quantum-cli stack update --endpoint sva --wait sva-studio
+set -a
+source deploy/portainer/.env.demo.example
+set +a
+quantum-cli stacks update --environment demo --endpoint sva --stack sva-studio --project . --wait --no-pre-pull
+
+# Alternatives Referenzprofil mit Swarm-Secrets:
+quantum-cli stacks update --environment swarm-secrets --endpoint sva --stack sva-studio --project . --wait --no-pre-pull
 
 # Oder nur validieren (ohne Deploy):
 quantum-cli validate --project .
@@ -190,8 +245,8 @@ quantum-cli ps --endpoint sva --stack sva-studio --all  # Mit möglichen Failure
 ## 5. Häufige Probleme
 
 ### `postgres: non-zero exit (1)`
-**Ursache:** Secret `sva_studio_postgres_password` existiert nicht.
-**Lösung:** Siehe Schritt 1c.
+**Demo-Profil:** Prüfe `POSTGRES_PASSWORD` in [deploy/portainer/.env.demo.example](deploy/portainer/.env.demo.example) bzw. in der Portainer-Stack-UI.
+**Referenzprofil:** Secret `sva_studio_postgres_password` prüfen.
 
 ### `app: No such image: ghcr.io/smart-village-solutions/sva-studio:...`
 **Ursache:** Image nicht gepusht oder nicht pullbar auf dem Node.

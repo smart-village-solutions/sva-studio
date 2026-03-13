@@ -8,7 +8,8 @@
     "rootDir": "src",
     "types": ["react", "react-dom"],
     "paths": {
-      "@sva/sdk": ["packages/sdk/dist/index.d.ts"]
+      "@sva/sdk": ["packages/sdk/dist/index.d.ts"],
+      "@sva/sdk/server": ["packages/sdk/dist/server.d.ts"]
     }
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"]

@@ -3,6 +3,7 @@ import { devtools } from '@tanstack/devtools-vite';
 import { tanstackStart } from '@tanstack/react-start/plugin/vite';
 import viteReact from '@vitejs/plugin-react';
 import { codecovVitePlugin } from '@codecov/vite-plugin';
+import { nitro } from 'nitro/vite';
 import viteTsConfigPaths from 'vite-tsconfig-paths';
 import { fileURLToPath, URL } from 'url';
 
@@ -103,7 +104,7 @@ const config = defineConfig({
       },
     },
     tanstackStart(),
-    // nitro(), // ENTFERNT: Konkurriert mit TanStack Start's vinxi Server-Runtime
+    nitro(),
     viteReact(),
     codecovVitePlugin({
       enableBundleAnalysis: process.env.CODECOV_TOKEN !== undefined,

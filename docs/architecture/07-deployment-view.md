@@ -116,6 +116,7 @@ Referenzen:
 - `deploy/portainer/docker-compose.yml`
 - `deploy/portainer/entrypoint.sh`
 - `docs/guides/swarm-deployment-runbook.md`
+- `docs/guides/swarm-deployment-guide.md`
 - `docs/adr/ADR-019-swarm-traefik-referenz-betriebsprofil.md`
 - `docs/adr/ADR-020-kanonischer-auth-host-multi-host-grenze.md`
 

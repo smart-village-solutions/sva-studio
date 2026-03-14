@@ -32,9 +32,10 @@ const getSheetPositionClasses = (side: 'left' | 'right'): string => {
   return 'left-0 border-r';
 };
 
-export const Sheet = ({ open, onOpenChange, children }: SheetProps) => (
-  <SheetContext.Provider value={{ open, onOpenChange }}>{children}</SheetContext.Provider>
-);
+export const Sheet = ({ open, onOpenChange, children }: SheetProps) => {
+  const value = React.useMemo(() => ({ open, onOpenChange }), [open, onOpenChange]);
+  return <SheetContext.Provider value={value}>{children}</SheetContext.Provider>;
+};
 
 export const SheetContent = ({
   children,

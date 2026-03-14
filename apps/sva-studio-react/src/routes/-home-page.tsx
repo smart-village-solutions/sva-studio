@@ -6,6 +6,19 @@ type AuthorizeDecision = {
   reason: string;
 };
 
+// TODO: i18n — Labels in dieser Datei lokalisieren (betrifft gesamte HomePage, nicht nur getAuthorizeLabel)
+const getAuthorizeLabel = (loading: boolean, decision: AuthorizeDecision | null): string => {
+  if (loading) {
+    return 'Berechtigung wird geprüft ...';
+  }
+  if (!decision) {
+    return 'Keine Authorize-Entscheidung verfügbar.';
+  }
+  return decision.allowed
+    ? `Erlaubt (${decision.reason})`
+    : `Verweigert (${decision.reason})`;
+};
+
 export const HomePage = () => {
   const { user, isLoading, error, invalidatePermissions } = useAuth();
   const [authStateError, setAuthStateError] = React.useState<string | null>(null);
@@ -158,13 +171,7 @@ export const HomePage = () => {
             <div className="rounded-xl border border-border bg-background p-4 md:col-span-2">
               <p className="text-sm font-semibold text-foreground">IAM-Authorize (Modulpfad)</p>
               <p className="mt-2 text-sm text-muted-foreground">
-                {authorizeLoading
-                  ? 'Berechtigung wird geprüft ...'
-                  : authorizeDecision
-                    ? authorizeDecision.allowed
-                      ? `Erlaubt (${authorizeDecision.reason})`
-                      : `Verweigert (${authorizeDecision.reason})`
-                    : 'Keine Authorize-Entscheidung verfügbar.'}
+                {getAuthorizeLabel(authorizeLoading, authorizeDecision)}
               </p>
             </div>
           </div>

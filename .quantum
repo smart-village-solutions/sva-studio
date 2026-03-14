@@ -1,0 +1,8 @@
+---
+version: "1.0"
+compose: deploy/portainer/docker-compose.demo.yml
+environments:
+  - name: demo
+    compose: deploy/portainer/docker-compose.demo.yml
+  - name: swarm-secrets
+    compose: deploy/portainer/docker-compose.yml

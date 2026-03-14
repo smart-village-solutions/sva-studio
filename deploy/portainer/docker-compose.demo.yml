@@ -1,0 +1,453 @@
+# ---------------------------------------------------------------------------
+# SVA Studio – Demo-Betriebsprofil für Docker Swarm / Portainer
+#
+# ⚠️  WARNUNG: Dieses Profil übergibt Secrets als Klartext-Umgebungsvariablen.
+#    Es ist NICHT für Produktivbetrieb geeignet und darf NICHT gegen eine
+#    Produktions-Keycloak-Instanz konfiguriert werden.
+#    Credentials sind via `docker inspect` und Portainer-UI im Klartext lesbar.
+#
+# Ziel:
+#   - Keine Docker-Secrets
+#   - Sensible Werte direkt als Umgebungsvariablen
+#   - Ein Stack, fester Demo-Node, feste externe Keycloak-Instanz
+#   - Traefik v1 kompatible Labels
+#   - Interner Monitoring-Stack auf demselben Node
+#
+# Erwartete Umgebungsvariablen werden vor dem Deploy via Shell oder Portainer
+# Stack-Environment gesetzt. Siehe .env.demo.example.
+# ---------------------------------------------------------------------------
+
+services:
+  app:
+    image: ghcr.io/smart-village-solutions/sva-studio:${SVA_IMAGE_TAG}
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 3000
+      ENABLE_OTEL: "${ENABLE_OTEL:-true}"
+      OTEL_SERVICE_NAME: "${OTEL_SERVICE_NAME:-sva-studio-demo}"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "${OTEL_EXPORTER_OTLP_ENDPOINT:-http://otel-collector:4318}"
+      POSTGRES_DB: sva_studio
+      APP_DB_USER: sva
+      APP_DB_PASSWORD: ${POSTGRES_PASSWORD}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      SVA_PUBLIC_BASE_URL: https://hb-meinquartier.studio.smart-village.app
+      SVA_AUTH_ISSUER: https://keycloak.smart-village.app/realms/svs-intern-studio-staging
+      SVA_AUTH_CLIENT_ID: studio-bff-staging
+      SVA_AUTH_CLIENT_SECRET: ${SVA_AUTH_CLIENT_SECRET}
+      SVA_AUTH_STATE_SECRET: ${SVA_AUTH_STATE_SECRET}
+      SVA_AUTH_REDIRECT_URI: https://hb-meinquartier.studio.smart-village.app/auth/callback
+      SVA_AUTH_POST_LOGOUT_REDIRECT_URI: https://hb-meinquartier.studio.smart-village.app/
+      IAM_PII_ACTIVE_KEY_ID: k1
+      IAM_PII_KEYRING_JSON: ${IAM_PII_KEYRING_JSON}
+      IAM_CSRF_ALLOWED_ORIGINS: https://hb-meinquartier.studio.smart-village.app
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      SVA_PARENT_DOMAIN: studio.smart-village.app
+      SVA_ALLOWED_INSTANCE_IDS: hb-meinquartier
+      VITE_IAM_UI_ENABLED: "false"
+      VITE_IAM_ADMIN_ENABLED: "false"
+      VITE_IAM_BULK_ENABLED: "false"
+      IAM_UI_ENABLED: "false"
+      IAM_ADMIN_ENABLED: "false"
+      IAM_BULK_ENABLED: "false"
+      KEYCLOAK_ADMIN_BASE_URL: https://keycloak.smart-village.app
+      KEYCLOAK_ADMIN_REALM: svs-intern-studio-staging
+      KEYCLOAK_ADMIN_CLIENT_ID: sva-studio-iam-service
+      KEYCLOAK_ADMIN_CLIENT_SECRET: ${KEYCLOAK_ADMIN_CLIENT_SECRET}
+      IAM_ROLE_RECONCILE_INTERVAL_MS: "300000"
+      IAM_ROLE_RECONCILE_INSTANCE_IDS: ""
+    labels:
+      com.sva-studio.monitoring: "enabled"
+      com.sva-studio.component: "app"
+      com.sva-studio.environment: "demo"
+    networks:
+      - public
+      - internal
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.hostname == node-005.sva
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+      resources:
+        reservations:
+          memory: 256M
+        limits:
+          memory: 512M
+      labels:
+        - traefik.enable=true
+        - traefik.docker.network=public
+        - traefik.frontend.rule=Host:hb-meinquartier.studio.smart-village.app
+        - traefik.port=3000
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - node -e "fetch('http://127.0.0.1:3000/health/live').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+
+  redis:
+    image: redis:7-alpine
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    command:
+      - sh
+      - -ec
+      - |
+        exec redis-server \
+          --appendonly yes \
+          --maxmemory 256mb \
+          --maxmemory-policy allkeys-lru \
+          --requirepass "$${REDIS_PASSWORD}"
+    labels:
+      com.sva-studio.monitoring: "enabled"
+      com.sva-studio.component: "redis"
+      com.sva-studio.environment: "demo"
+    volumes:
+      - demo-redis-data:/data
+    networks:
+      - internal
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.hostname == node-005.sva
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 60s
+      resources:
+        reservations:
+          memory: 128M
+        limits:
+          memory: 320M
+    healthcheck:
+      test: ["CMD-SHELL", "REDISCLI_AUTH=$${REDIS_PASSWORD} redis-cli ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: sva_studio
+      POSTGRES_USER: sva
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    labels:
+      com.sva-studio.monitoring: "enabled"
+      com.sva-studio.component: "postgres"
+      com.sva-studio.environment: "demo"
+    volumes:
+      - demo-postgres-data:/var/lib/postgresql/data
+    networks:
+      - internal
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.hostname == node-005.sva
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 60s
+      resources:
+        reservations:
+          memory: 256M
+        limits:
+          memory: 1G
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  monitoring-config-init:
+    image: ghcr.io/smart-village-solutions/sva-studio-monitoring-config-init:${SVA_MONITORING_CONFIG_INIT_IMAGE_TAG}
+    labels:
+      com.sva-studio.monitoring: "enabled"
+      com.sva-studio.component: "monitoring-config-init"
+      com.sva-studio.monitoring-config-version: "${SVA_MONITORING_CONFIG_INIT_IMAGE_TAG}"
+      com.sva-studio.environment: "demo"
+    volumes:
+      - otel-config:/config/otel
+      - loki-config:/config/loki
+      - prometheus-config:/config/prometheus
+      - grafana-provisioning:/config/grafana/provisioning
+      - grafana-dashboards:/config/grafana/dashboards
+      - promtail-config-data:/config/promtail
+      - alertmanager-config-data:/config/alertmanager
+      - demo-loki-data:/data/loki
+      - demo-prometheus-data:/data/prometheus
+      - demo-grafana-data:/data/grafana
+      - demo-alertmanager-data:/data/alertmanager
+    networks:
+      - internal
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.hostname == node-005.sva
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 60s
+      resources:
+        reservations:
+          memory: 16M
+        limits:
+          memory: 64M
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.95.0
+    command: ["--config=/etc/otel/otel-collector.yml"]
+    labels:
+      com.sva-studio.monitoring: "enabled"
+      com.sva-studio.component: "otel-collector"
+      com.sva-studio.monitoring-config-version: "${SVA_MONITORING_CONFIG_INIT_IMAGE_TAG}"
+      com.sva-studio.environment: "demo"
+    volumes:
+      - otel-config:/etc/otel:ro
+    networks:
+      - internal
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.hostname == node-005.sva
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 60s
+      resources:
+        reservations:
+          memory: 128M
+        limits:
+          memory: 256M
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:13133/healthz >/dev/null 2>&1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  loki:
+    image: grafana/loki:2.9.6
+    user: "10001"
+    command: ["-config.file=/etc/loki/config.yml"]
+    labels:
+      com.sva-studio.monitoring: "enabled"
+      com.sva-studio.component: "loki"
+      com.sva-studio.monitoring-config-version: "${SVA_MONITORING_CONFIG_INIT_IMAGE_TAG}"
+      com.sva-studio.environment: "demo"
+    volumes:
+      - loki-config:/etc/loki:ro
+      - demo-loki-data:/loki
+    networks:
+      - internal
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.hostname == node-005.sva
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 60s
+      resources:
+        reservations:
+          memory: 256M
+        limits:
+          memory: 512M
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3100/ready >/dev/null 2>&1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  prometheus:
+    image: prom/prometheus:v2.52.0
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=7d"
+      - "--storage.tsdb.retention.size=5GB"
+      - "--web.enable-admin-api"
+    labels:
+      com.sva-studio.monitoring: "enabled"
+      com.sva-studio.component: "prometheus"
+      com.sva-studio.monitoring-config-version: "${SVA_MONITORING_CONFIG_INIT_IMAGE_TAG}"
+      com.sva-studio.environment: "demo"
+    volumes:
+      - prometheus-config:/etc/prometheus:ro
+      - demo-prometheus-data:/prometheus
+    networks:
+      - internal
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.hostname == node-005.sva
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 60s
+      resources:
+        reservations:
+          memory: 512M
+        limits:
+          memory: 1G
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:9090/-/healthy >/dev/null 2>&1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  grafana:
+    image: grafana/grafana:10.4.3
+    environment:
+      GF_SECURITY_ADMIN_USER: "admin"
+      GF_SECURITY_ADMIN_PASSWORD: ${GF_SECURITY_ADMIN_PASSWORD}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SERVER_HTTP_PORT: "3000"
+      GF_METRICS_ENABLED: "true"
+    labels:
+      com.sva-studio.monitoring: "enabled"
+      com.sva-studio.component: "grafana"
+      com.sva-studio.monitoring-config-version: "${SVA_MONITORING_CONFIG_INIT_IMAGE_TAG}"
+      com.sva-studio.environment: "demo"
+    volumes:
+      - grafana-provisioning:/etc/grafana/provisioning:ro
+      - grafana-dashboards:/etc/grafana/dashboards:ro
+      - demo-grafana-data:/var/lib/grafana
+    networks:
+      - internal
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.hostname == node-005.sva
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 60s
+      resources:
+        reservations:
+          memory: 256M
+        limits:
+          memory: 512M
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/api/health >/dev/null 2>&1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  promtail:
+    image: grafana/promtail:2.9.8
+    command: ["-config.file=/etc/promtail/config.yml"]
+    labels:
+      com.sva-studio.monitoring: "enabled"
+      com.sva-studio.component: "promtail"
+      com.sva-studio.monitoring-config-version: "${SVA_MONITORING_CONFIG_INIT_IMAGE_TAG}"
+      com.sva-studio.environment: "demo"
+    volumes:
+      - promtail-config-data:/etc/promtail:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    networks:
+      - internal
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.hostname == node-005.sva
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 60s
+      resources:
+        reservations:
+          memory: 64M
+        limits:
+          memory: 128M
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    command:
+      - "--config.file=/etc/alertmanager/alertmanager.yml"
+      - "--storage.path=/alertmanager"
+    labels:
+      com.sva-studio.monitoring: "enabled"
+      com.sva-studio.component: "alertmanager"
+      com.sva-studio.monitoring-config-version: "${SVA_MONITORING_CONFIG_INIT_IMAGE_TAG}"
+      com.sva-studio.environment: "demo"
+    volumes:
+      - alertmanager-config-data:/etc/alertmanager:ro
+      - demo-alertmanager-data:/alertmanager
+    networks:
+      - internal
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.hostname == node-005.sva
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 60s
+      resources:
+        reservations:
+          memory: 64M
+        limits:
+          memory: 128M
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:9093/-/healthy >/dev/null 2>&1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+networks:
+  public:
+    external: true
+  internal:
+    driver: overlay
+
+volumes:
+  demo-postgres-data:
+    driver: local
+  demo-redis-data:
+    driver: local
+  otel-config:
+    driver: local
+  loki-config:
+    driver: local
+  prometheus-config:
+    driver: local
+  grafana-provisioning:
+    driver: local
+  grafana-dashboards:
+    driver: local
+  promtail-config-data:
+    driver: local
+  alertmanager-config-data:
+    driver: local
+  demo-prometheus-data:
+    driver: local
+  demo-loki-data:
+    driver: local
+  demo-grafana-data:
+    driver: local
+  demo-alertmanager-data:
+    driver: local

@@ -45,13 +45,12 @@ export default function Header({
     );
   } else if (!isAuthenticated) {
     authAction = (
-      <Link
+      <a
         className="ml-2 rounded-md border border-primary/30 bg-primary/10 px-4 py-2 font-semibold text-primary transition hover:border-primary hover:bg-primary/20"
-        to="/auth/login"
-        reloadDocument
+        href="/auth/login"
       >
         {t('shell.header.login')}
-      </Link>
+      </a>
     );
   } else if (user) {
     authAction = (

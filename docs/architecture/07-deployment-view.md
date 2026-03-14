@@ -46,8 +46,8 @@ Laufzeitknoten auf Basis des aktuellen Repos.
 Für den serverbasierten Betrieb ist ein Docker-Swarm-Stack mit Traefik als Ingress-Proxy definiert:
 
 - Compose-Datei: `deploy/portainer/docker-compose.yml`
-- Services: `app`, `postgres`, `redis`
-- Kein Loki, Prometheus, Grafana oder OTEL-Collector im ersten Schritt
+- Services: `app`, `postgres`, `redis`, `otel-collector`, `loki`, `prometheus`, `grafana`, `promtail`, `alertmanager`
+- Monitoring bleibt intern auf dem Overlay-Netzwerk; nur die App hängt zusätzlich am `public`-Netzwerk
 
 #### Topologie
 
@@ -58,22 +58,42 @@ Internet
 Traefik (Ingress, TLS, HostRegexp-Routing)
   │  Overlay-Netzwerk „public"
   ▼
-┌─────────────────────────────────────────┐
-│  Swarm-Stack „sva-studio"               │
-│                                         │
-│  app ←──── internes Overlay ────→ redis │
-│   │                                     │
-│   └──── internes Overlay ────→ postgres │
-└─────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│  Swarm-Stack „sva-studio"                                    │
+│                                                              │
+│  app ←──── internes Overlay ────→ redis                      │
+│   │                                     │                    │
+│   ├──── internes Overlay ────→ postgres │                    │
+│   │                                     │                    │
+│   └──── internes Overlay ────→ otel-collector ──→ Loki       │
+│                                         │         │           │
+│                                         └──────→ Prometheus   │
+│                                                   │           │
+│                                           Grafana + Alerting  │
+│                                           Promtail (Node-Logs)│
+└──────────────────────────────────────────────────────────────┘
 ```
+
+#### Demo-Profil
+
+Neben dem Referenzprofil mit Docker Swarm Secrets existiert ein vereinfachtes
+Demo-Profil (`deploy/portainer/docker-compose.demo.yml`) für Evaluierungs-
+und Vorführungszwecke. Unterschiede zum Referenzprofil:
+
+- Secrets werden als Umgebungsvariablen statt Docker Swarm Secrets übergeben
+- Konfiguration über `deploy/portainer/.env.demo.example`
+- Quantum-CLI-Unterstützung über `.quantum`-Datei im Repository-Root
+- Nicht für Produktionseinsatz vorgesehen
 
 #### Deployment-Muster
 
 - **Image-basiert:** Vorgebaute Images aus Container-Registry (`${SVA_REGISTRY}/sva-studio:${SVA_IMAGE_TAG}`). Kein `build:`-Block im Stack.
 - **Traefik-Labels:** Host-basiertes Routing über `HostRegexp` für Instanz-Subdomains unter `SVA_PARENT_DOMAIN`. TLS über Traefiks `certresolver`.
 - **Swarm Secrets:** Vertrauliche Werte als externe Docker-Swarm-Secrets mit Namenskonvention `sva_studio_<service>_<secret_name>`. Ein Shell-Entrypoint (`entrypoint.sh`) liest Secret-Dateien und exportiert sie als Env-Variablen.
+- **Versionierte Monitoring-Konfigurationen:** Prometheus-, Loki-, Grafana-, Promtail- und Alertmanager-Konfigurationen liegen versioniert im Repository und werden über ein dediziertes `monitoring-config-init`-Image in die Swarm-Volumes geschrieben.
 - **Rolling Updates:** `start-first` für Updates, `stop-first` für Rollbacks.
-- **Persistenz:** Named Volumes für Postgres und Redis. Placement-Constraints (`node.role == manager`) für Volume-Affinität in Single-Node-Setups.
+- **Persistenz:** Named Volumes für Postgres, Redis, Prometheus, Loki, Grafana und Alertmanager.
+- **Monitoring-Bootstrap:** Der Node-Prozess lädt OpenTelemetry vor dem Nitro-Entry per `--import`, statt erst beim ersten Root-Request.
 
 #### Instanz-Routing
 
@@ -96,6 +116,7 @@ Referenzen:
 - `deploy/portainer/docker-compose.yml`
 - `deploy/portainer/entrypoint.sh`
 - `docs/guides/swarm-deployment-runbook.md`
+- `docs/guides/swarm-deployment-guide.md`
 - `docs/adr/ADR-019-swarm-traefik-referenz-betriebsprofil.md`
 - `docs/adr/ADR-020-kanonischer-auth-host-multi-host-grenze.md`
 
@@ -111,11 +132,12 @@ Referenzen:
 - Swarm-Stack: Entrypoint-basierte Secret-Injektion, abwärtskompatibel mit Nicht-Swarm-Betrieb
 - Swarm-Stack: Host-Validierung gegen Env-Allowlist mit fail-closed-Policy (identische 403-Antwort)
 - Swarm-Stack: Startup-Validierung der Allowlist gegen `instanceId`-Regex (fail-fast)
+- Swarm-Stack: Monitoring-UI und Storage bleiben intern; keine öffentliche Exponierung ohne zusätzliche Zugangskontrolle
 
 ### Noch offen (Stand heute)
 
 - HA-/Skalierungsdetails für produktiven Betrieb sind nur teilweise als ADR/Doku beschrieben
-- Monitoring-Integration im Swarm-Stack ist als Folgearbeit geplant (`ENABLE_OTEL=false` als Default)
+- Sichere externe Erreichbarkeit für Grafana oder alternative interne Zugriffswege sind noch kein Teil des Referenzprofils
 - DB-gestützte `instanceId`-Registry bei Wachstum über 50 Instanzen
 
 Referenzen:

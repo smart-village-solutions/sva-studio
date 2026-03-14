@@ -9,8 +9,12 @@ dist
 apps/*/dist
 apps/*/.output
 packages/*/dist
+**/*.tsbuildinfo
 
 docs
 dev/monitoring
 
 .DS_Store
+
+.env*
+**/.env*

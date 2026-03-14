@@ -24,24 +24,24 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: "${OTEL_EXPORTER_OTLP_ENDPOINT:-http://otel-collector:4318}"
       POSTGRES_DB: sva_studio
       APP_DB_USER: sva_app
-      SVA_PUBLIC_BASE_URL: https://studio.smart-village.app
-      SVA_AUTH_ISSUER: https://keycloak.smart-village.app/realms/svs-intern-studio-staging
-      SVA_AUTH_CLIENT_ID: studio-bff-staging
-      SVA_AUTH_REDIRECT_URI: https://studio.smart-village.app/auth/callback
-      SVA_AUTH_POST_LOGOUT_REDIRECT_URI: https://studio.smart-village.app/
+      SVA_PUBLIC_BASE_URL: "${SVA_PUBLIC_BASE_URL:-https://studio.smart-village.app}"
+      SVA_AUTH_ISSUER: "${SVA_AUTH_ISSUER:-https://keycloak.smart-village.app/realms/svs-intern-studio-staging}"
+      SVA_AUTH_CLIENT_ID: "${SVA_AUTH_CLIENT_ID:-studio-bff-staging}"
+      SVA_AUTH_REDIRECT_URI: "${SVA_AUTH_REDIRECT_URI:-https://studio.smart-village.app/auth/callback}"
+      SVA_AUTH_POST_LOGOUT_REDIRECT_URI: "${SVA_AUTH_POST_LOGOUT_REDIRECT_URI:-https://studio.smart-village.app/}"
       IAM_PII_ACTIVE_KEY_ID: k1
-      IAM_CSRF_ALLOWED_ORIGINS: https://studio.smart-village.app
-      SVA_PARENT_DOMAIN: studio.smart-village.app
-      SVA_ALLOWED_INSTANCE_IDS: hb-meinquartier
+      IAM_CSRF_ALLOWED_ORIGINS: "${IAM_CSRF_ALLOWED_ORIGINS:-https://studio.smart-village.app}"
+      SVA_PARENT_DOMAIN: "${SVA_PARENT_DOMAIN:-studio.smart-village.app}"
+      SVA_ALLOWED_INSTANCE_IDS: "${SVA_ALLOWED_INSTANCE_IDS:-hb-meinquartier}"
       VITE_IAM_UI_ENABLED: "false"
       VITE_IAM_ADMIN_ENABLED: "false"
       VITE_IAM_BULK_ENABLED: "false"
       IAM_UI_ENABLED: "false"
       IAM_ADMIN_ENABLED: "false"
       IAM_BULK_ENABLED: "false"
-      KEYCLOAK_ADMIN_BASE_URL: https://keycloak.smart-village.app
-      KEYCLOAK_ADMIN_REALM: svs-intern-studio-staging
-      KEYCLOAK_ADMIN_CLIENT_ID: sva-studio-iam-service
+      KEYCLOAK_ADMIN_BASE_URL: "${KEYCLOAK_ADMIN_BASE_URL:-https://keycloak.smart-village.app}"
+      KEYCLOAK_ADMIN_REALM: "${KEYCLOAK_ADMIN_REALM:-svs-intern-studio-staging}"
+      KEYCLOAK_ADMIN_CLIENT_ID: "${KEYCLOAK_ADMIN_CLIENT_ID:-sva-studio-iam-service}"
       IAM_ROLE_RECONCILE_INTERVAL_MS: "300000"
       IAM_ROLE_RECONCILE_INSTANCE_IDS: ""
     labels:
@@ -85,11 +85,11 @@ services:
       labels:
         - traefik.enable=true
         - traefik.docker.network=public
-        - traefik.http.routers.sva-studio.rule=Host(`${SVA_PARENT_DOMAIN}`)
+        - traefik.http.routers.sva-studio.rule=Host(`${SVA_PARENT_DOMAIN:-studio.smart-village.app}`)
         - traefik.http.routers.sva-studio.entrypoints=websecure
         - traefik.http.routers.sva-studio.tls.certresolver=letsencrypt
         - traefik.http.routers.sva-studio.service=sva-studio
-        - traefik.http.routers.sva-studio-instance.rule=HostRegexp(`{subdomain:[a-z0-9]([a-z0-9-]*[a-z0-9])?}.${SVA_PARENT_DOMAIN}`)
+        - traefik.http.routers.sva-studio-instance.rule=HostRegexp(`{subdomain:[a-z0-9]([a-z0-9-]*[a-z0-9])?}.${SVA_PARENT_DOMAIN:-studio.smart-village.app}`)
         - traefik.http.routers.sva-studio-instance.entrypoints=websecure
         - traefik.http.routers.sva-studio-instance.tls.certresolver=letsencrypt
         - traefik.http.routers.sva-studio-instance.service=sva-studio

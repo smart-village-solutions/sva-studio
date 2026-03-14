@@ -36,7 +36,7 @@ copy_dashboard /opt/monitoring-config-init/source/grafana-dashboard-multi-tenanc
 
 mkdir -p /data/loki /data/prometheus /data/grafana /data/alertmanager
 
-log "Setze Volume-Rechte fuer Loki, Prometheus, Alertmanager und Grafana"
+log "Setze Volume-Rechte für Loki, Prometheus, Alertmanager und Grafana"
 chown -R 10001:0 /data/loki
 chown -R 65534:65534 /data/prometheus /data/alertmanager
 chown -R 472:472 /data/grafana

@@ -72,7 +72,7 @@ Alle Secrets sind in `~/sva-secrets/` vorhanden:
 | `encryption-key.txt` | `sva_studio_app_encryption_key` | Session Encryption Key |
 | `state-secret.txt` | `sva_studio_app_auth_state_secret` | OIDC State Secret |
 | `oidc-client-secret.txt` | `sva_studio_app_auth_client_secret` | OIDC Client Secret |
-| `pii-keyring.json` | `sva_studio_app_pii_keyring_json-k1` | PII Keyring (k1) |
+| `pii-keyring-k1.txt` | `sva_studio_app_pii_keyring_json-k1` | PII Keyring (k1) |
 | `keycloak-admin-client-secret.txt` | `sva_studio_keycloak_admin_client_secret` | Keycloak Admin Secret |
 
 ### Secrets hochladen & registrieren
@@ -116,7 +116,7 @@ ssh node-005.sva
 
 # 2. Von lokalem Rechner in neuem Terminal: Secrets hochladen
 cd ~/sva-secrets
-scp *.txt pii-keyring.json node-005.sva:/tmp/
+scp *.txt pii-keyring-k1.txt node-005.sva:/tmp/
 
 # 3. Auf node-005.sva: Docker Secrets registrieren:
 # PostgreSQL
@@ -130,7 +130,7 @@ docker secret create sva_studio_app_db_password < /tmp/app-db-password.txt
 docker secret create sva_studio_app_encryption_key < /tmp/encryption-key.txt
 docker secret create sva_studio_app_auth_state_secret < /tmp/state-secret.txt
 docker secret create sva_studio_app_auth_client_secret < /tmp/oidc-client-secret.txt
-docker secret create sva_studio_app_pii_keyring_json-k1 < /tmp/pii-keyring.json
+docker secret create sva_studio_app_pii_keyring_json-k1 < /tmp/pii-keyring-k1.txt
 
 # Keycloak
 docker secret create sva_studio_keycloak_admin_client_secret < /tmp/keycloak-admin-client-secret.txt

@@ -222,6 +222,8 @@ if [ -z "${REDIS_URL:-}" ]; then
   fi
 fi
 
-write_start_diagnostics
+if [ "${SVA_START_DIAGNOSTICS:-0}" = "1" ]; then
+  write_start_diagnostics
+fi
 
 exec "$@"

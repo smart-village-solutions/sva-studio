@@ -4,6 +4,7 @@
 # Editors/IDE
 .vscode/
 .idea/
+.claude/settings.local.json
 
 # Node/JavaScript
 node_modules/

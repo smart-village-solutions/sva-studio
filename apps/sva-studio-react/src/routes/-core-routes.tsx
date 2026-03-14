@@ -12,6 +12,12 @@ import { UserEditPage } from './admin/users/-user-edit-page';
 import { UserListPage } from './admin/users/-user-list-page';
 import { HomePage } from './-home-page';
 
+const DemoSectionLayout = () => (
+  <div className="flex flex-col gap-4 text-foreground">
+    <Outlet />
+  </div>
+);
+
 const demoNames = ['Aria', 'Jona', 'Mika', 'Lea', 'Noah'];
 
 const getNames = createServerFn().handler(async () => {
@@ -100,13 +106,7 @@ const DemoHome = () => {
   );
 };
 
-const StartLayout = () => {
-  return (
-    <div className="flex flex-col gap-4 text-foreground">
-      <Outlet />
-    </div>
-  );
-};
+const StartLayout = DemoSectionLayout;
 
 const StartHome = () => {
   return (
@@ -221,13 +221,7 @@ const ApiRequestDemo = () => {
   );
 };
 
-const SsrLayout = () => {
-  return (
-    <div className="flex flex-col gap-4 text-foreground">
-      <Outlet />
-    </div>
-  );
-};
+const SsrLayout = DemoSectionLayout;
 
 const SsrHome = () => {
   return (
@@ -300,13 +294,7 @@ const SsrDataOnly = ({ songs }: { songs: ReturnType<typeof getPunkSongs> }) => {
   );
 };
 
-const ApiLayout = () => {
-  return (
-    <div className="flex flex-col gap-4 text-foreground">
-      <Outlet />
-    </div>
-  );
-};
+const ApiLayout = DemoSectionLayout;
 
 const ApiHome = () => {
   return (

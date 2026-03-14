@@ -272,7 +272,7 @@ describe('iam-api organization helpers', () => {
     });
   });
 
-  it('falls back to a generated idempotency key when crypto.randomUUID is unavailable', async () => {
+  it('uses crypto.randomUUID for idempotency keys', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ data: { id: 'org-1' } }), {
         status: 200,
@@ -280,7 +280,6 @@ describe('iam-api organization helpers', () => {
       })
     );
     vi.stubGlobal('fetch', fetchMock);
-    vi.stubGlobal('crypto', {});
 
     await createOrganization({
       organizationKey: 'alpha',
@@ -293,7 +292,7 @@ describe('iam-api organization helpers', () => {
       '/api/v1/iam/organizations',
       expect.objectContaining({
         headers: expect.objectContaining({
-          'Idempotency-Key': expect.stringMatching(/^idempotency-/),
+          'Idempotency-Key': 'uuid-test-1',
         }),
       })
     );

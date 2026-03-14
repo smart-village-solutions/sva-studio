@@ -6,7 +6,7 @@ type AuthorizeDecision = {
   reason: string;
 };
 
-// TODO: i18n — Labels in dieser Datei über t('key') lokalisieren (betrifft gesamte HomePage, nicht nur getAuthorizeLabel)
+// TODO: i18n — Labels in dieser Datei lokalisieren (betrifft gesamte HomePage, nicht nur getAuthorizeLabel)
 const getAuthorizeLabel = (loading: boolean, decision: AuthorizeDecision | null): string => {
   if (loading) {
     return 'Berechtigung wird geprüft ...';

@@ -24,7 +24,7 @@ SECRETS=(
   "encryption-key.txt:sva_studio_app_encryption_key"
   "keycloak-admin-client-secret.txt:sva_studio_keycloak_admin_client_secret"
   "oidc-client-secret.txt:sva_studio_app_auth_client_secret"
-  "pii-keyring.json:sva_studio_app_pii_keyring_json-k1"
+  "pii-keyring-k1.txt:sva_studio_app_pii_keyring_json-k1"
   "postgres-password.txt:sva_studio_postgres_password"
   "redis-password.txt:sva_studio_redis_password"
   "state-secret.txt:sva_studio_app_auth_state_secret"
@@ -53,27 +53,31 @@ echo -e "\n${YELLOW}Step 3: Preparing secrets for Swarm registration...${NC}"
 echo "Run these commands ON node-005.sva (via SSH):"
 echo ""
 
-REMOTE_TMP="\$(mktemp -d /tmp/sva-secrets-XXXXXX)"
+echo "# 1) Remote Temp-Directory einmalig erstellen und lokal merken"
+echo "REMOTE_TMP=\$(ssh node-005.sva 'mktemp -d /tmp/sva-secrets-XXXXXX')"
+echo "echo \"Remote temp dir: \$REMOTE_TMP\""
+echo ""
+echo "# 2) Dateien hochladen"
 
 for secret in "${SECRETS[@]}"; do
   IFS=':' read -r file secretname <<< "$secret"
-  echo "docker secret create $secretname < $REMOTE_TMP/$file"
+  echo "docker secret create $secretname < \$REMOTE_TMP/$file"
 done
 
 echo ""
 echo "To upload secrets to node-005.sva, run:"
-echo "ssh node-005.sva 'mkdir -p $REMOTE_TMP && chmod 700 $REMOTE_TMP'"
 cd "$SECRETS_DIR"
 for secret in "${SECRETS[@]}"; do
   IFS=':' read -r file secretname <<< "$secret"
-  echo "scp $file node-005.sva:$REMOTE_TMP/"
+  echo "scp $file node-005.sva:\$REMOTE_TMP/"
 done
-echo "ssh node-005.sva 'rm -rf $REMOTE_TMP'  # Clean up after secret registration"
+echo "ssh node-005.sva 'chmod 700 \"\$REMOTE_TMP\"'"
+echo "ssh node-005.sva 'rm -rf \"\$REMOTE_TMP\"'  # Clean up after secret registration"
 
 echo ""
 echo -e "${YELLOW}Step 4: After secrets are registered, deploy stack:${NC}"
 echo "cd $REPO_ROOT"
-echo "quantum-cli stack update --endpoint $ENDPOINT --wait $STACK_NAME"
+echo "quantum-cli stacks update --endpoint $ENDPOINT --stack $STACK_NAME --wait --project ."
 
 echo ""
 echo -e "${YELLOW}Or run this entire setup automatically (if you have SSH/SCP configured):${NC}"

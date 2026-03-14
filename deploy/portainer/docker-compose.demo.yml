@@ -1,6 +1,11 @@
 # ---------------------------------------------------------------------------
 # SVA Studio – Demo-Betriebsprofil für Docker Swarm / Portainer
 #
+# ⚠️  WARNUNG: Dieses Profil übergibt Secrets als Klartext-Umgebungsvariablen.
+#    Es ist NICHT für Produktivbetrieb geeignet und darf NICHT gegen eine
+#    Produktions-Keycloak-Instanz konfiguriert werden.
+#    Credentials sind via `docker inspect` und Portainer-UI im Klartext lesbar.
+#
 # Ziel:
 #   - Keine Docker-Secrets
 #   - Sensible Werte direkt als Umgebungsvariablen
@@ -30,6 +35,7 @@ services:
       SVA_AUTH_ISSUER: https://keycloak.smart-village.app/realms/svs-intern-studio-staging
       SVA_AUTH_CLIENT_ID: studio-bff-staging
       SVA_AUTH_CLIENT_SECRET: ${SVA_AUTH_CLIENT_SECRET}
+      SVA_AUTH_STATE_SECRET: ${SVA_AUTH_STATE_SECRET}
       SVA_AUTH_REDIRECT_URI: https://hb-meinquartier.studio.smart-village.app/auth/callback
       SVA_AUTH_POST_LOGOUT_REDIRECT_URI: https://hb-meinquartier.studio.smart-village.app/
       IAM_PII_ACTIVE_KEY_ID: k1
@@ -202,7 +208,6 @@ services:
 
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.95.0
-    user: "0"
     command: ["--config=/etc/otel/otel-collector.yml"]
     labels:
       com.sva-studio.monitoring: "enabled"
@@ -228,10 +233,15 @@ services:
           memory: 128M
         limits:
           memory: 256M
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:13133/healthz >/dev/null 2>&1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
   loki:
     image: grafana/loki:2.9.6
-    user: "0"
+    user: "10001"
     command: ["-config.file=/etc/loki/config.yml"]
     labels:
       com.sva-studio.monitoring: "enabled"

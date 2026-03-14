@@ -45,4 +45,4 @@ ruler:
     local:
       directory: /loki/rules
   rule_path: /loki/rules
-  alertmanager_url: ""
+  alertmanager_url: "http://alertmanager:9093"

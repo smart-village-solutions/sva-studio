@@ -72,8 +72,14 @@ export const countRouteNodes = (route: RouteSnapshot): number => {
   return 1 + route.children.reduce((total, child) => total + countRouteNodes(child), 0);
 };
 
+const compareStrings = (a: string, b: string): number => {
+  if (a < b) return -1;
+  if (a > b) return 1;
+  return 0;
+};
+
 const collectUniqueStrings = (routes: RouteLike[], key: 'id' | 'fullPath'): string[] => {
-  return [...new Set(routes.map((route) => asStringOrNull(route[key])).filter((value): value is string => value !== null))].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  return [...new Set(routes.map((route) => asStringOrNull(route[key])).filter((value): value is string => value !== null))].sort(compareStrings);
 };
 
 export const createRouterDiagnosticsSnapshot = ({

@@ -347,6 +347,9 @@ const getAccountUiGuards = async () => {
 
 const runAccountUiGuard = async (guardKey: AccountUiGuardKey, options: unknown) => {
   const routing = await getAccountUiGuards();
+  // Guard-Signatur variiert je nach guardKey — TypeScript kann die Beziehung
+  // zwischen Key und Options-Typ nicht statisch auflösen. Runtime-sicher,
+  // da guardKey und options immer paarweise aus derselben Factory kommen.
   return routing.accountUiRouteGuards[guardKey](options as never);
 };
 

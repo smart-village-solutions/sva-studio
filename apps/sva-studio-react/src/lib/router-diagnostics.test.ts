@@ -73,4 +73,59 @@ describe('router diagnostics helpers', () => {
     expect(snapshot.routeFlags.hasRootRoute).toBe(true);
     expect(snapshot.routeFlags.hasDemoRoute).toBe(true);
   });
+
+  it('handles null input gracefully', () => {
+    const snapshot = collectRouteSnapshot(null);
+    expect(snapshot.id).toBeNull();
+    expect(snapshot.childCount).toBe(0);
+    expect(snapshot.children).toEqual([]);
+  });
+
+  it('handles undefined input gracefully', () => {
+    const snapshot = collectRouteSnapshot(undefined);
+    expect(snapshot.id).toBeNull();
+    expect(snapshot.childCount).toBe(0);
+    expect(snapshot.children).toEqual([]);
+  });
+
+  it('handles empty children array', () => {
+    const snapshot = collectRouteSnapshot({
+      id: 'root',
+      fullPath: '/',
+      children: [],
+    });
+    expect(snapshot.childCount).toBe(0);
+    expect(snapshot.children).toEqual([]);
+  });
+
+  it('handles children as empty object', () => {
+    const snapshot = collectRouteSnapshot({
+      id: 'root',
+      fullPath: '/',
+      children: {},
+    });
+    expect(snapshot.childCount).toBe(0);
+    expect(snapshot.children).toEqual([]);
+  });
+
+  it('excludes null fullPath from knownPaths (no empty string)', () => {
+    const snapshot = createRouterDiagnosticsSnapshot({
+      routeTree: {
+        id: '__root__',
+        fullPath: null,
+        children: [
+          { id: '/demo', fullPath: '/demo' },
+          { id: '/missing', fullPath: null },
+        ],
+      },
+      router: {
+        routesById: {},
+        routesByPath: {},
+        flatRoutes: [],
+      },
+    });
+
+    expect(snapshot.routeFlags.hasRootRoute).toBe(false);
+    expect(snapshot.routeFlags.hasDemoRoute).toBe(true);
+  });
 });

@@ -1,3 +1,6 @@
+// Diagnose-Artefakte für SSR-Routing-Debug auf Swarm-Deployments.
+// Kontext: docs/staging/2026-03/router-diagnostik-2026-03-13.md
+
 import { writeFile } from 'node:fs/promises';
 
 import type { AnyRouter } from '@tanstack/react-router';
@@ -25,7 +28,7 @@ const getLogger = async (): Promise<RouterDiagnosticsLogger> => {
       component: 'router-diagnostics',
       level: 'info',
       enableConsole: true,
-      enableOtel: false,
+      enableOtel: false, // OTEL deaktiviert: Diagnostik läuft vor/während OTEL-Init
     }),
   );
 

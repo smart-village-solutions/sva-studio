@@ -5,9 +5,9 @@
 
 set -e
 
-SECRETS_DIR="/Users/wilimzig/sva-secrets"
-PORTAINER_URL="https://console.planetary-quantum.com"
-ENDPOINT_ID="64"  # sva Endpoint
+SECRETS_DIR="${SECRETS_DIR:-${HOME}/sva-secrets}"
+PORTAINER_URL="${PORTAINER_URL:-https://console.planetary-quantum.com}"
+ENDPOINT_ID="${ENDPOINT_ID:-64}"  # sva Endpoint
 
 # Farbige Ausgabe
 RED='\033[0;31m'
@@ -127,6 +127,6 @@ echo -e "${GREEN}✓ Found $secrets_list sva_studio secrets in Portainer${NC}"
 
 echo -e "\n${GREEN}=== SUCCESS ===${NC}"
 echo -e "All secrets created! You can now deploy the stack:\n"
-echo -e "  cd /Users/wilimzig/Documents/Projects/SVA/sva-studio"
+echo -e "  cd $(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 echo -e "  export QUANTUM_API_KEY=ptr_..."
 echo -e "  quantum-cli stack update --endpoint sva --wait sva-studio\n"

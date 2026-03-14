@@ -58,14 +58,14 @@ const DemoHome = () => {
         </span>
       </div>
       <div className="flex flex-wrap text-sm text-muted-foreground">
-        <Link
+        <a
           className="text-sm font-semibold text-primary hover:opacity-80"
-          to="https://tanstack.com/start"
+          href="https://tanstack.com/start"
           target="_blank"
           rel="noopener noreferrer"
         >
           ☛ TanStack Start Docs
-        </Link>
+        </a>
       </div>
       <p className="text-muted-foreground">
         Diese Routen entsprechen den Standard-Demos aus dem Start-Template.
@@ -143,7 +143,7 @@ const ServerFuncsDemo = () => {
       <div className="flex flex-col gap-2">
         <Link
           className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-          to="../.."
+          to="/demo/start"
         >
           ← Zurück
         </Link>
@@ -197,7 +197,7 @@ const ApiRequestDemo = () => {
       <div className="flex flex-col gap-2">
         <Link
           className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-          to="../.."
+          to="/demo/start"
         >
           ← Zurück
         </Link>
@@ -234,7 +234,7 @@ const SsrHome = () => {
     <div className="flex flex-col gap-4">
       <Link
         className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-        to="../.."
+        to="/demo/start"
       >
         ← Zurück
       </Link>
@@ -322,7 +322,7 @@ const ApiNames = ({ names }: { names: string[] }) => {
     <div className="flex flex-col gap-4 text-foreground">
       <Link
         className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-        to="../.."
+        to="/demo/api"
       >
         ← Zurück
       </Link>
@@ -350,13 +350,14 @@ const runAccountUiGuard = async (guardKey: AccountUiGuardKey, options: unknown) 
   return routing.accountUiRouteGuards[guardKey](options as never);
 };
 
-export const coreRouteFactoriesBase = [
-  (rootRoute: RootRoute) =>
-    createRoute({
-      getParentRoute: () => rootRoute,
-      path: '/',
-      component: HomePage,
-    }),
+export const homeRouteFactory = (rootRoute: RootRoute) =>
+  createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    component: HomePage,
+  });
+
+export const runtimeCoreRouteFactories = [
   (rootRoute: RootRoute) =>
     createRoute({
       getParentRoute: () => rootRoute,
@@ -505,6 +506,7 @@ export const coreRouteFactoriesBase = [
 
     return demoRoute.addChildren([demoHomeRoute, startRouteTree, apiRouteTree]);
   },
-];
+] as const;
 
+export const coreRouteFactoriesBase = [homeRouteFactory, ...runtimeCoreRouteFactories] as const;
 export const coreRouteFactories = coreRouteFactoriesBase;

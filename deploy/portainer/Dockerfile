@@ -22,9 +22,10 @@ RUN pnpm nx run sdk:build --skip-nx-cache
 RUN pnpm nx run auth:build --skip-nx-cache
 RUN pnpm nx run routing:build --skip-nx-cache
 RUN pnpm nx run plugin-example:build --skip-nx-cache
+# The app build must invoke Vite directly. The Nx Vite executor currently only
+# emits the client bundle for this TanStack Start app, while `vite build`
+# produces client, SSR service bundle and Nitro server output in one pass.
 RUN pnpm nx run sva-studio-react:build --skip-nx-cache
-# Nitro-Build ist in den `vite build`-Lauf via nitro() Vite-Plugin integriert –
-# ein separater `nitro build` würde das korrekte .output/server/ überschreiben.
 RUN pnpm --filter sva-studio-react deploy --prod /workspace/.deploy/sva-studio-react
 
 # Copy built dist/ artifacts of workspace packages into deployed pnpm package locations.
@@ -52,6 +53,7 @@ ENV PORT=3000
 COPY --from=build --chown=node:node /workspace/.deploy/sva-studio-react/node_modules ./node_modules
 COPY --from=build --chown=node:node /workspace/apps/sva-studio-react/.output ./.output
 COPY --from=build --chown=node:node /workspace/deploy/portainer/entrypoint.sh ./entrypoint.sh
+COPY --from=build --chown=node:node /workspace/deploy/portainer/otel-bootstrap.mjs ./otel-bootstrap.mjs
 RUN chmod +x entrypoint.sh
 
 USER node
@@ -59,4 +61,4 @@ USER node
 EXPOSE 3000
 
 ENTRYPOINT ["./entrypoint.sh"]
-CMD ["node", ".output/server/index.mjs"]
+CMD ["node", "--import", "./otel-bootstrap.mjs", ".output/server/index.mjs"]

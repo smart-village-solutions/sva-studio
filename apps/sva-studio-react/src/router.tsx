@@ -1,11 +1,10 @@
 import { createRouter, type AnyRoute, type RootRoute } from '@tanstack/react-router';
 import { createIsomorphicFn } from '@tanstack/react-start';
-import { buildRouteTree, mergeRouteFactories, type RouteFactory } from '@sva/core';
 import { pluginExampleRoutes } from '@sva/plugin-example';
 import type { RouteGuardUser } from '@sva/routing';
 
-import { rootRoute } from './routes/__root';
 import { coreRouteFactoriesBase } from './routes/-core-routes';
+import { rootRoute } from './routes/__root';
 
 const getAuthRouteFactories = createIsomorphicFn()
   .server(async () => {
@@ -80,14 +79,29 @@ const getRouteGuardUser = createIsomorphicFn()
     }
   });
 
+type AppRouteFactory<TRoute extends AnyRoute = AnyRoute> = (rootRoute: RootRoute) => TRoute;
+type MaterializedRoutes<TFactories extends readonly AppRouteFactory[]> = {
+  readonly [K in keyof TFactories]: ReturnType<TFactories[K]>;
+};
+
+const materializeRoutes = <TFactories extends readonly AppRouteFactory[]>(factories: TFactories) =>
+  factories.map((factory) => factory(rootRoute as unknown as RootRoute)) as MaterializedRoutes<TFactories>;
+
+export const createRuntimeRouteTree = <
+  TAuthRouteFactories extends Awaited<ReturnType<typeof getAuthRouteFactories>> & readonly AppRouteFactory[],
+>(
+  runtimeAuthRouteFactories: TAuthRouteFactories,
+) => {
+  const extensionRouteFactories = [...runtimeAuthRouteFactories, ...pluginExampleRoutes] as const;
+  const runtimeRoutes = [...materializeRoutes(coreRouteFactoriesBase), ...materializeRoutes(extensionRouteFactories)] as const;
+
+  return rootRoute.addChildren(runtimeRoutes);
+};
+
 // Create a new router instance
 export const getRouter = async () => {
   const runtimeAuthRouteFactories = await getAuthRouteFactories();
-  const mergedFactories = mergeRouteFactories<RootRoute, AnyRoute>(
-    coreRouteFactoriesBase as RouteFactory<RootRoute, AnyRoute>[],
-    [...runtimeAuthRouteFactories, ...pluginExampleRoutes] as RouteFactory<RootRoute, AnyRoute>[]
-  );
-  const routeTree = buildRouteTree(rootRoute as unknown as RootRoute, mergedFactories) as AnyRoute;
+  const routeTree = createRuntimeRouteTree(runtimeAuthRouteFactories);
 
   const router = createRouter({
     routeTree,

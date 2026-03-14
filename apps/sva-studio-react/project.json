@@ -50,7 +50,7 @@
       }
     },
     "build": {
-      "executor": "@nx/vite:build",
+      "executor": "nx:run-commands",
       "cache": true,
       "dependsOn": [
         "check:i18n",
@@ -63,12 +63,11 @@
         "frontendEnvBuild"
       ],
       "outputs": [
-        "{options.outputPath}"
+        "{projectRoot}/.output"
       ],
       "options": {
-        "configFile": "apps/sva-studio-react/vite.config.ts",
-        "outputPath": "apps/sva-studio-react/dist",
-        "skipTypeCheck": true
+        "cwd": "apps/sva-studio-react",
+        "command": "pnpm exec vite build"
       }
     },
     "preview": {

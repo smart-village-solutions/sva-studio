@@ -1,0 +1,174 @@
+# Prometheus Alert Rules
+# Monitoring Stack Health + Resource Alerts
+
+groups:
+  - name: monitoring_stack_health
+    interval: 30s
+    rules:
+      - alert: PrometheusCrash
+        expr: up{job="prometheus"} == 0
+        for: 5m
+        labels:
+          severity: critical
+          component: prometheus
+        annotations:
+          summary: "Prometheus ist down"
+          description: "Prometheus auf {{ $labels.instance }} ist seit {{ $value }} Minuten nicht erreichbar"
+
+      - alert: LokiDown
+        expr: up{job="loki"} == 0
+        for: 5m
+        labels:
+          severity: critical
+          component: loki
+        annotations:
+          summary: "Loki ist down"
+          description: "Loki ist seit 5 Minuten nicht erreichbar. Logs werden nicht gesammelt."
+
+      - alert: GrafanaDown
+        expr: up{job="grafana"} == 0
+        for: 5m
+        labels:
+          severity: warning
+          component: grafana
+        annotations:
+          summary: "Grafana ist down"
+          description: "Grafana ist nicht erreichbar. Dashboards sind offline."
+
+      - alert: OTelCollectorDown
+        expr: up{job="otel-collector"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: otel-collector
+        annotations:
+          summary: "OTEL Collector ist down"
+          description: "OTEL Collector ist offline. Metriken und Logs von der App werden nicht empfangen."
+
+  - name: resource_usage_alerts
+    interval: 1m
+    rules:
+      - alert: ContainerMemoryHigh
+        expr: |
+          (container_memory_usage_bytes / container_spec_memory_limit_bytes) > 0.80
+        for: 2m
+        labels:
+          severity: warning
+          component: "{{ $labels.name }}"
+        annotations:
+          summary: "Container Memory über 80%"
+          description: "Container {{ $labels.name }} nutzt {{ $value | humanizePercentage }} seines Memory-Limits"
+
+      - alert: ContainerMemoryCritical
+        expr: |
+          (container_memory_usage_bytes / container_spec_memory_limit_bytes) > 0.90
+        for: 1m
+        labels:
+          severity: critical
+          component: "{{ $labels.name }}"
+        annotations:
+          summary: "Container Memory über 90% - OOMKiller Risk!"
+          description: "Container {{ $labels.name }} nutzt {{ $value | humanizePercentage }} seines Memory-Limits. OOMKiller droht!"
+
+      - alert: PrometheusTSDBFull
+        expr: |
+          prometheus_tsdb_storage_blocks_bytes / (5 * 1024 * 1024 * 1024) > 0.85
+        for: 10m
+        labels:
+          severity: warning
+          component: prometheus
+        annotations:
+          summary: "Prometheus TSDB bei 85% Retention"
+          description: "Prometheus TSDB nutzt {{ $value | humanizePercentage }} der 5GB Retention. Alte Daten werden bald gelöscht."
+
+      - alert: LokiStorageLow
+        expr: |
+          (loki_ingester_chunks_stored_total / loki_ingester_chunks_flushed_total) > 10
+        for: 15m
+        labels:
+          severity: warning
+          component: loki
+        annotations:
+          summary: "Loki speichert viele Chunks"
+          description: "Loki hat ein Chunk-Backlog. Möglicherweise zu viele Logs oder Disk I/O Problem."
+
+  - name: scrape_health_alerts
+    interval: 1m
+    rules:
+      - alert: PrometheusScrapeFailures
+        expr: |
+          up == 0
+        for: 3m
+        labels:
+          severity: warning
+          component: "{{ $labels.job }}"
+        annotations:
+          summary: "Prometheus kann {{ $labels.job }} nicht scrapen"
+          description: "Job {{ $labels.job }} auf {{ $labels.instance }} ist seit 3 Minuten unreachable."
+
+      - alert: PrometheusScrapeSlow
+        expr: |
+          scrape_duration_seconds > 10
+        for: 5m
+        labels:
+          severity: warning
+          component: "{{ $labels.job }}"
+        annotations:
+          summary: "Prometheus Scrape dauert zu lange"
+          description: "Scrape von {{ $labels.job }} dauert {{ $value }}s (sollte < 10s sein)"
+
+  - name: application_health_alerts
+    interval: 1m
+    rules:
+      # TODO: Aktivieren sobald Application Metriken verfügbar sind
+
+  - name: iam_role_sync_alerts
+    interval: 1m
+    rules:
+      - alert: IamRoleSyncFailureRateHigh
+        expr: |
+          sum(rate(iam_role_sync_operations_total{result="failure"}[15m]))
+          /
+          clamp_min(sum(rate(iam_role_sync_operations_total[15m])), 0.001) > 0.05
+        for: 15m
+        labels:
+          severity: warning
+          component: iam-role-sync
+        annotations:
+          summary: "IAM Rollen-Sync-Fehlerquote erhöht"
+          description: "Mehr als 5% der Rollen-Sync-Operationen schlagen seit 15 Minuten fehl."
+
+      - alert: IamRoleSyncFailureRateCritical
+        expr: |
+          sum(rate(iam_role_sync_operations_total{result="failure"}[10m]))
+          /
+          clamp_min(sum(rate(iam_role_sync_operations_total[10m])), 0.001) > 0.20
+        for: 10m
+        labels:
+          severity: critical
+          component: iam-role-sync
+        annotations:
+          summary: "IAM Rollen-Sync-Fehlerquote kritisch"
+          description: "Mehr als 20% der Rollen-Sync-Operationen schlagen seit 10 Minuten fehl."
+
+      - alert: IamRoleDriftBacklogDetected
+        expr: |
+          max by (instance_id) (iam_role_drift_backlog) > 0
+        for: 15m
+        labels:
+          severity: warning
+          component: iam-role-sync
+        annotations:
+          summary: "IAM Rollen-Drift erkannt"
+          description: "Für Instance {{ $labels.instance_id }} besteht seit mindestens 15 Minuten ein Drift-Backlog."
+
+      - alert: IamRoleDriftBacklogCritical
+        expr: |
+          max by (instance_id) (iam_role_drift_backlog) > 0
+        for: 60m
+        labels:
+          severity: critical
+          component: iam-role-sync
+        annotations:
+          summary: "IAM Rollen-Drift über SLO-Grenze"
+          description: "Für Instance {{ $labels.instance_id }} besteht seit mindestens 60 Minuten ein Drift-Backlog."

@@ -13,6 +13,29 @@ const normalizeDirectory = (url: URL) => fileURLToPath(url).replace(/[\\/]$/, ''
 
 const appRoot = normalizeDirectory(new URL('./', import.meta.url));
 const workspaceRoot = normalizeDirectory(new URL('../../', import.meta.url));
+const tanstackRouterBasepath = '/';
+const tanstackServerFnBase = '/_server/';
+
+const tanstackStartClientEnvPlugin = () => ({
+  name: 'tanstack-start-client-env',
+  enforce: 'pre' as const,
+  transform(code: string, id: string) {
+    if (!id.includes('@tanstack/start-client-core')) {
+      return null;
+    }
+
+    if (!code.includes('process.env.TSS_SERVER_FN_BASE') && !code.includes('process.env.TSS_ROUTER_BASEPATH')) {
+      return null;
+    }
+
+    return {
+      code: code
+        .replaceAll('process.env.TSS_SERVER_FN_BASE', JSON.stringify(tanstackServerFnBase))
+        .replaceAll('process.env.TSS_ROUTER_BASEPATH', JSON.stringify(tanstackRouterBasepath)),
+      map: null,
+    };
+  },
+});
 
 // Nx starts the Vite process from the workspace root, but TanStack Start
 // resolves framework dependencies from process.cwd() during dev-server setup.
@@ -58,6 +81,15 @@ const config = defineConfig({
       '@sva/core': fileURLToPath(new URL('../../packages/core/src/index.ts', import.meta.url)),
     },
   },
+  optimizeDeps: {
+    include: ['@tanstack/start-client-core'],
+    esbuildOptions: {
+      define: {
+        'process.env.TSS_ROUTER_BASEPATH': JSON.stringify(tanstackRouterBasepath),
+        'process.env.TSS_SERVER_FN_BASE': JSON.stringify(tanstackServerFnBase),
+      },
+    },
+  },
   ssr: {
     // Workspace packages müssen in Dev-SSR transpiliert werden, weil Vite package.json exports nicht korrekt auflöst
     noExternal: [
@@ -82,6 +114,7 @@ const config = defineConfig({
     },
   },
   plugins: [
+    tanstackStartClientEnvPlugin(),
     devtools(),
     // this is the plugin that enables path aliases
     viteTsConfigPaths({

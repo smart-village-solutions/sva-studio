@@ -36,6 +36,130 @@ urlencode() {
   node -e 'process.stdout.write(encodeURIComponent(process.argv[1] ?? ""))' "$1"
 }
 
+write_start_diagnostics() {
+  export SVA_START_DIAGNOSTICS_FILE="${SVA_START_DIAGNOSTICS_FILE:-/tmp/sva-entrypoint-diagnostics.json}"
+
+  node <<'NODE'
+const fs = require('node:fs');
+const path = require('node:path');
+
+const diagnosticsPath = process.env.SVA_START_DIAGNOSTICS_FILE || '/tmp/sva-entrypoint-diagnostics.json';
+const appRoot = process.cwd();
+const publicAssetsDir = path.join(appRoot, '.output', 'public', 'assets');
+const serverEntryPath = path.join(appRoot, '.output', 'server', 'index.mjs');
+const serverBuildAssetsDir = path.join(appRoot, '.output', 'server', 'chunks', 'build');
+const legacyNitroAssetsDir = path.join(appRoot, 'node_modules', '.nitro', 'vite', 'services', 'ssr', 'assets');
+
+const safeStat = (filePath) => {
+  if (!fs.existsSync(filePath)) {
+    return {
+      exists: false,
+      path: filePath,
+    };
+  }
+
+  const stat = fs.statSync(filePath);
+  return {
+    exists: true,
+    path: filePath,
+    size_bytes: stat.size,
+  };
+};
+
+const listFiles = (dirPath) => {
+  if (!fs.existsSync(dirPath)) {
+    return [];
+  }
+
+  return fs.readdirSync(dirPath).sort();
+};
+
+const findFirstFile = (dirPath, prefix, excludePrefix = null) => {
+  return listFiles(dirPath).find((fileName) => {
+    if (!fileName.startsWith(prefix)) {
+      return false;
+    }
+
+    if (excludePrefix && fileName.startsWith(excludePrefix)) {
+      return false;
+    }
+
+    return fileName.endsWith('.js') || fileName.endsWith('.mjs');
+  }) ?? null;
+};
+
+const resolveBuildArtifact = (prefix, excludePrefix = null) => {
+  const serverBuildFile = findFirstFile(serverBuildAssetsDir, prefix, excludePrefix);
+  if (serverBuildFile) {
+    return {
+      fileName: serverBuildFile,
+      path: path.join(serverBuildAssetsDir, serverBuildFile),
+      source: 'output_server_chunks_build',
+    };
+  }
+
+  const legacyNitroFile = findFirstFile(legacyNitroAssetsDir, prefix, excludePrefix);
+  if (legacyNitroFile) {
+    return {
+      fileName: legacyNitroFile,
+      path: path.join(legacyNitroAssetsDir, legacyNitroFile),
+      source: 'legacy_node_modules_nitro',
+    };
+  }
+
+  return null;
+};
+
+const startManifestArtifact = resolveBuildArtifact('_tanstack-start-manifest_v-');
+const routerBundleArtifact = resolveBuildArtifact('router-', 'router-diagnostics.server-');
+const startManifestPath = startManifestArtifact ? startManifestArtifact.path : null;
+const routerBundlePath = routerBundleArtifact ? routerBundleArtifact.path : null;
+const startManifestContent = startManifestPath ? fs.readFileSync(startManifestPath, 'utf8') : '';
+const clientEntryMatch = startManifestContent.match(/"clientEntry":\s*"([^"]+)"/);
+const publicAssets = listFiles(publicAssetsDir);
+
+const report = {
+  timestamp: new Date().toISOString(),
+  pid: process.pid,
+  app_root: appRoot,
+  env: {
+    node_env: process.env.NODE_ENV ?? null,
+    host: process.env.HOST ?? null,
+    port: process.env.PORT ?? null,
+    public_base_url: process.env.SVA_PUBLIC_BASE_URL ?? null,
+    iam_database_url_set: Boolean(process.env.IAM_DATABASE_URL),
+    redis_url_set: Boolean(process.env.REDIS_URL),
+    auth_client_secret_set: Boolean(process.env.SVA_AUTH_CLIENT_SECRET),
+    encryption_key_set: Boolean(process.env.ENCRYPTION_KEY),
+  },
+  artifacts: {
+    server_entry: safeStat(serverEntryPath),
+    public_asset_count: publicAssets.length,
+    public_assets: publicAssets.slice(0, 20),
+    start_manifest: {
+      exists: Boolean(startManifestPath),
+      path: startManifestPath,
+      source: startManifestArtifact ? startManifestArtifact.source : null,
+      has_root_child_route: startManifestContent.includes('"children": ["/"]') || startManifestContent.includes('"children":["/"]'),
+      has_slash_route: startManifestContent.includes('"/": {') || startManifestContent.includes('"/":{"'),
+      client_entry: clientEntryMatch ? clientEntryMatch[1] : null,
+    },
+    router_bundle: {
+      ...safeStat(routerBundlePath ?? path.join(serverBuildAssetsDir, 'router-*.mjs')),
+      source: routerBundleArtifact ? routerBundleArtifact.source : null,
+    },
+  },
+};
+
+fs.writeFileSync(diagnosticsPath, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
+
+process.stderr.write(`[entrypoint] wrote startup diagnostics to ${diagnosticsPath}\n`);
+process.stderr.write(
+  `[entrypoint] server_entry=${report.artifacts.server_entry.exists} manifest=${report.artifacts.start_manifest.exists} root_child_route=${report.artifacts.start_manifest.has_root_child_route} slash_route=${report.artifacts.start_manifest.has_slash_route} public_assets=${report.artifacts.public_asset_count}\n`
+);
+NODE
+}
+
 val=$(load_secret sva_studio_app_auth_client_secret)
 [ -n "$val" ] && export SVA_AUTH_CLIENT_SECRET="$val"
 
@@ -97,5 +221,7 @@ if [ -z "${REDIS_URL:-}" ]; then
     export REDIS_URL="redis://redis:6379"
   fi
 fi
+
+write_start_diagnostics
 
 exec "$@"

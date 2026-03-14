@@ -37,6 +37,7 @@ describe('check-file-placement', () => {
   it('accepts valid docs placement and allowed root markdown', () => {
     const violations = findFilePlacementViolations([
       'README.md',
+      'CLAUDE.md',
       'docs/staging/2026-03/report.md',
       'docs/pr/45/review.md',
     ]);

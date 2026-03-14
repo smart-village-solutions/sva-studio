@@ -73,7 +73,7 @@ export const countRouteNodes = (route: RouteSnapshot): number => {
 };
 
 const collectUniqueStrings = (routes: RouteLike[], key: 'id' | 'fullPath'): string[] => {
-  return [...new Set(routes.map((route) => asStringOrNull(route[key])).filter((value): value is string => value !== null))].sort();
+  return [...new Set(routes.map((route) => asStringOrNull(route[key])).filter((value): value is string => value !== null))].sort((a, b) => a.localeCompare(b));
 };
 
 export const createRouterDiagnosticsSnapshot = ({

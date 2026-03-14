@@ -42,7 +42,7 @@ const forbiddenLabelKeys = new Set([
   'ip'
 ]);
 
-const emailRegex = /([\w.%+-])([\w.%+-]*)(@[\w.-]+\.[A-Za-z]{2,})/g;
+const emailRegex = /([\w.%+-])([\w.%+-]*)(@[\w-]+(?:\.[\w-]+)*\.[A-Za-z]{2,})/g;
 
 const maskEmail = (value: string): string => {
   return value.replace(emailRegex, (_, firstChar, _middle, domain) => `${firstChar}***${domain}`);

@@ -64,7 +64,7 @@ const validateForm = (values: ProfileFormValues): ProfileErrors => {
   if (!values.username.trim() || /\s/.test(values.username.trim())) {
     errors.username = t('account.validation.usernameInvalid');
   }
-  if (!values.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email.trim())) {
+  if (!values.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(values.email.trim())) {
     errors.email = t('account.validation.emailInvalid');
   }
   if (!values.firstName.trim()) {

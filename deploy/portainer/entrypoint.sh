@@ -170,7 +170,7 @@ val=$(load_secret sva_studio_app_encryption_key)
 [ -n "$val" ] && export ENCRYPTION_KEY="$val"
 
 val=$(load_secret sva_studio_app_pii_keyring_json-k1)
-[ -n "$val" ] && export IAM_PII_KEYRING_JSON=$(printf '{"k1":"%s"}' "$val")
+[ -n "$val" ] && export IAM_PII_KEYRING_JSON=$(node -e "process.stdout.write(JSON.stringify({k1: process.argv[1]}))" "$val")
 
 val=$(load_secret sva_studio_app_db_password)
 [ -n "$val" ] && export APP_DB_PASSWORD="$val"

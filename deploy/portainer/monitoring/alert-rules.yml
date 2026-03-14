@@ -83,14 +83,14 @@ groups:
 
       - alert: LokiStorageLow
         expr: |
-          (loki_ingester_chunks_stored_total / loki_ingester_chunks_flushed_total) > 10
+          loki_ingester_memory_chunks > 500
         for: 15m
         labels:
           severity: warning
           component: loki
         annotations:
-          summary: "Loki speichert viele Chunks"
-          description: "Loki hat ein Chunk-Backlog. Möglicherweise zu viele Logs oder Disk I/O Problem."
+          summary: "Loki hält viele Chunks im Speicher"
+          description: "Loki hält {{ $value }} Chunks im Speicher. Möglicherweise zu viele Logs oder Disk I/O Problem."
 
   - name: scrape_health_alerts
     interval: 1m

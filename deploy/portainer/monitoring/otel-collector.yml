@@ -7,7 +7,11 @@ receivers:
 processors:
   batch:
     timeout: 1s
-    send_batch_size: 10
+    send_batch_size: 200
+  memory_limiter:
+    limit_mib: 256
+    spike_limit_mib: 64
+    check_interval: 1s
 
 exporters:
   prometheus:
@@ -15,6 +19,9 @@ exporters:
 
   loki:
     endpoint: "http://loki:3100/loki/api/v1/push"
+
+  debug:
+    verbosity: basic
 
 extensions:
   health_check:
@@ -26,9 +33,13 @@ service:
   pipelines:
     metrics:
       receivers: [otlp]
-      processors: [batch]
+      processors: [memory_limiter, batch]
       exporters: [prometheus]
     logs:
       receivers: [otlp]
-      processors: [batch]
+      processors: [memory_limiter, batch]
       exporters: [loki]
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [debug]

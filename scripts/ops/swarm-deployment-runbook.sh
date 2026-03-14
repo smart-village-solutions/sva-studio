@@ -4,8 +4,8 @@
 
 set -e
 
-REPO_ROOT="/Users/wilimzig/Documents/Projects/SVA/sva-studio"
-SECRETS_DIR="/Users/wilimzig/sva-secrets"
+REPO_ROOT="${REPO_ROOT:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
+SECRETS_DIR="${SECRETS_DIR:-${HOME}/sva-secrets}"
 ENDPOINT="sva"
 STACK_NAME="sva-studio"
 
@@ -53,18 +53,22 @@ echo -e "\n${YELLOW}Step 3: Preparing secrets for Swarm registration...${NC}"
 echo "Run these commands ON node-005.sva (via SSH):"
 echo ""
 
+REMOTE_TMP="\$(mktemp -d /tmp/sva-secrets-XXXXXX)"
+
 for secret in "${SECRETS[@]}"; do
   IFS=':' read -r file secretname <<< "$secret"
-  echo "docker secret create $secretname < /tmp/$file"
+  echo "docker secret create $secretname < $REMOTE_TMP/$file"
 done
 
 echo ""
 echo "To upload secrets to node-005.sva, run:"
+echo "ssh node-005.sva 'mkdir -p $REMOTE_TMP && chmod 700 $REMOTE_TMP'"
 cd "$SECRETS_DIR"
 for secret in "${SECRETS[@]}"; do
   IFS=':' read -r file secretname <<< "$secret"
-  echo "scp $file node-005.sva:/tmp/"
+  echo "scp $file node-005.sva:$REMOTE_TMP/"
 done
+echo "ssh node-005.sva 'rm -rf $REMOTE_TMP'  # Clean up after secret registration"
 
 echo ""
 echo -e "${YELLOW}Step 4: After secrets are registered, deploy stack:${NC}"

@@ -214,12 +214,7 @@ export type AssignOrganizationMembershipPayload = {
   readonly visibility?: IamOrganizationMembershipVisibility;
 };
 
-const createIdempotencyKey = () => {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID();
-  }
-  return `idempotency-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-};
+const createIdempotencyKey = () => crypto.randomUUID();
 
 const readErrorPayload = async (response: Response): Promise<IamHttpError> => {
   const payload = (await response.json().catch(() => null)) as IamErrorPayload | null;

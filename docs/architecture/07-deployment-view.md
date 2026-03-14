@@ -74,6 +74,17 @@ Traefik (Ingress, TLS, HostRegexp-Routing)
 └──────────────────────────────────────────────────────────────┘
 ```
 
+#### Demo-Profil
+
+Neben dem Referenzprofil mit Docker Swarm Secrets existiert ein vereinfachtes
+Demo-Profil (`deploy/portainer/docker-compose.demo.yml`) für Evaluierungs-
+und Vorführungszwecke. Unterschiede zum Referenzprofil:
+
+- Secrets werden als Umgebungsvariablen statt Docker Swarm Secrets übergeben
+- Konfiguration über `deploy/portainer/.env.demo.example`
+- Quantum-CLI-Unterstützung über `.quantum`-Datei im Repository-Root
+- Nicht für Produktionseinsatz vorgesehen
+
 #### Deployment-Muster
 
 - **Image-basiert:** Vorgebaute Images aus Container-Registry (`${SVA_REGISTRY}/sva-studio:${SVA_IMAGE_TAG}`). Kein `build:`-Block im Stack.

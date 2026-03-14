@@ -28,7 +28,7 @@ Stattdessen nutzt das Standardprofil direkte Umgebungsvariablen über [deploy/po
 ### Demo-Deploy mit quantum-cli
 
 ```bash
-cd /Users/wilimzig/Documents/Projects/SVA/sva-studio
+cd "$(git rev-parse --show-toplevel)"
 set -a
 source deploy/portainer/.env.demo.example
 set +a
@@ -62,7 +62,7 @@ Dieser Abschnitt bleibt für das alternative Referenzprofil mit Swarm-Secrets er
 
 ### Verfügbare Secrets
 
-Alle Secrets sind in `/Users/wilimzig/sva-secrets/` vorhanden:
+Alle Secrets sind in `~/sva-secrets/` vorhanden:
 
 | Secret File | Docker Secret Name | Zweck |
 |---|---|---|
@@ -102,7 +102,7 @@ chmod +x scripts/ops/create-secrets-portainer-api.sh
 Das Skript:
 - Validiert Portainer-Zugang
 - Erstellt alle 8 Secrets via REST API (keine SSH nötig!)
-- Verifizt am Ende, dass alle Secrets vorhanden sind
+- Verifiziert am Ende, dass alle Secrets vorhanden sind
 
 **Vorteil:** Vollautomatisiert, kein direkter Node-Zugang erforderlich.
 
@@ -115,7 +115,7 @@ Das Skript:
 ssh node-005.sva
 
 # 2. Von lokalem Rechner in neuem Terminal: Secrets hochladen
-cd /Users/wilimzig/sva-secrets
+cd ~/sva-secrets
 scp *.txt pii-keyring.json node-005.sva:/tmp/
 
 # 3. Auf node-005.sva: Docker Secrets registrieren:
@@ -196,7 +196,7 @@ ghcr.io/smart-village-solutions/sva-studio:9722bd6
 
 **Build-Prozess (falls neu):**
 ```bash
-cd /Users/wilimzig/Documents/Projects/SVA/sva-studio
+cd "$(git rev-parse --show-toplevel)"
 docker buildx build -f deploy/portainer/Dockerfile \
   -t ghcr.io/smart-village-solutions/sva-studio:latest \
   -t ghcr.io/smart-village-solutions/sva-studio:$(git rev-parse --short HEAD) \
@@ -218,7 +218,7 @@ docker push ghcr.io/smart-village-solutions/sva-studio:$(git rev-parse --short H
 
 ### Deploy-Kommando:
 ```bash
-cd /Users/wilimzig/Documents/Projects/SVA/sva-studio
+cd "$(git rev-parse --show-toplevel)"
 export QUANTUM_API_KEY=ptr_... # Falls nicht persistent konfiguriert
 
 # Stack Update mit Warten auf Completion
@@ -314,4 +314,4 @@ Nach erfolgreichem Deploy:
 **Kontakt für Fragen:**
 - quantum-cli Docs: https://docs.planetary-quantum.com/
 - Repo: smart-village-solutions/sva-studio
-- Branch: feat/add-swarm-portainer-deployment
+- Branch: feat/swarm-portainer-follow-up

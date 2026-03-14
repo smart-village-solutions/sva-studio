@@ -280,6 +280,7 @@ describe('iam-api organization helpers', () => {
       })
     );
     vi.stubGlobal('fetch', fetchMock);
+    vi.stubGlobal('crypto', { randomUUID: () => 'uuid-test-1' });
 
     await createOrganization({
       organizationKey: 'alpha',

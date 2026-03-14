@@ -68,7 +68,7 @@ describe('router diagnostics helpers', () => {
     });
 
     expect(snapshot.routeTreeNodeCount).toBe(3);
-    expect(snapshot.routerRegistry.routeIds).toEqual(['__root__', '/', '/demo']);
+    expect(snapshot.routerRegistry.routeIds).toEqual(['/', '/demo', '__root__']);
     expect(snapshot.routerRegistry.routePaths).toEqual(['/', '/demo']);
     expect(snapshot.routeFlags.hasRootRoute).toBe(true);
     expect(snapshot.routeFlags.hasDemoRoute).toBe(true);

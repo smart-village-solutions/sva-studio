@@ -104,7 +104,7 @@ services:
       com.sva-studio.component: "redis"
       com.sva-studio.environment: "demo"
     volumes:
-      - redis-data:/data
+      - demo-redis-data:/data
     networks:
       - internal
     deploy:
@@ -123,7 +123,7 @@ services:
         limits:
           memory: 320M
     healthcheck:
-      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" ping"]
+      test: ["CMD-SHELL", "REDISCLI_AUTH=$${REDIS_PASSWORD} redis-cli ping"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -139,7 +139,7 @@ services:
       com.sva-studio.component: "postgres"
       com.sva-studio.environment: "demo"
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - demo-postgres-data:/var/lib/postgresql/data
     networks:
       - internal
     deploy:
@@ -178,10 +178,10 @@ services:
       - grafana-dashboards:/config/grafana/dashboards
       - promtail-config-data:/config/promtail
       - alertmanager-config-data:/config/alertmanager
-      - loki-data:/data/loki
-      - prometheus-data:/data/prometheus
-      - grafana-data:/data/grafana
-      - alertmanager-data:/data/alertmanager
+      - demo-loki-data:/data/loki
+      - demo-prometheus-data:/data/prometheus
+      - demo-grafana-data:/data/grafana
+      - demo-alertmanager-data:/data/alertmanager
     networks:
       - internal
     deploy:
@@ -240,7 +240,7 @@ services:
       com.sva-studio.environment: "demo"
     volumes:
       - loki-config:/etc/loki:ro
-      - loki-data:/loki
+      - demo-loki-data:/loki
     networks:
       - internal
     deploy:
@@ -279,7 +279,7 @@ services:
       com.sva-studio.environment: "demo"
     volumes:
       - prometheus-config:/etc/prometheus:ro
-      - prometheus-data:/prometheus
+      - demo-prometheus-data:/prometheus
     networks:
       - internal
     deploy:
@@ -319,7 +319,7 @@ services:
     volumes:
       - grafana-provisioning:/etc/grafana/provisioning:ro
       - grafana-dashboards:/etc/grafana/dashboards:ro
-      - grafana-data:/var/lib/grafana
+      - demo-grafana-data:/var/lib/grafana
     networks:
       - internal
     deploy:
@@ -384,7 +384,7 @@ services:
       com.sva-studio.environment: "demo"
     volumes:
       - alertmanager-config-data:/etc/alertmanager:ro
-      - alertmanager-data:/alertmanager
+      - demo-alertmanager-data:/alertmanager
     networks:
       - internal
     deploy:
@@ -415,9 +415,9 @@ networks:
     driver: overlay
 
 volumes:
-  postgres-data:
+  demo-postgres-data:
     driver: local
-  redis-data:
+  demo-redis-data:
     driver: local
   otel-config:
     driver: local
@@ -433,11 +433,11 @@ volumes:
     driver: local
   alertmanager-config-data:
     driver: local
-  prometheus-data:
+  demo-prometheus-data:
     driver: local
-  loki-data:
+  demo-loki-data:
     driver: local
-  grafana-data:
+  demo-grafana-data:
     driver: local
-  alertmanager-data:
+  demo-alertmanager-data:
     driver: local

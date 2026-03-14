@@ -6,7 +6,14 @@ route:
   group_wait: 30s
   group_interval: 5m
   repeat_interval: 12h
-  receiver: 'null-receiver'
+  receiver: 'default'
 
 receivers:
-  - name: 'null-receiver'
+  - name: 'default'
+    # TODO: Realen Receiver konfigurieren (Slack/Webhook/E-Mail) —
+    # ohne konfigurierten Receiver sind alle Alerts wirkungslos.
+    #
+    # Beispiel Webhook-Receiver:
+    # webhook_configs:
+    #   - url: 'https://hooks.example.com/alertmanager'
+    #     send_resolved: true

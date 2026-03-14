@@ -29,12 +29,16 @@ getInstanceConfig();
 try {
   await initializeOtelSdk();
   logger.info('Process bootstrap abgeschlossen', {
+    workspace_id: 'platform',
+    environment: process.env.NODE_ENV ?? 'production',
     enable_otel: process.env.ENABLE_OTEL ?? 'auto',
     otlp_endpoint: process.env.OTEL_EXPORTER_OTLP_ENDPOINT ?? null,
     service_name: process.env.OTEL_SERVICE_NAME ?? 'sva-studio',
   });
 } catch (error) {
   logger.error('Process bootstrap fehlgeschlagen', {
+    workspace_id: 'platform',
+    environment: process.env.NODE_ENV ?? 'production',
     error: error instanceof Error ? error.message : String(error),
     error_type: error instanceof Error ? error.constructor.name : 'unknown',
   });

@@ -1,3 +1,6 @@
+// console.* ist hier bewusst eingesetzt — der SDK-Logger (@sva/sdk) steht
+// zum Zeitpunkt des HTTP-Server-Bootstraps nicht zur Verfügung, da er
+// erst mit dem App-Bundle geladen wird.
 import { createServer } from 'node:http';
 import { Readable } from 'node:stream';
 import { appendFileSync } from 'node:fs';

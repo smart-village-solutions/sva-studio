@@ -81,6 +81,7 @@ services:
           memory: 256M
         limits:
           memory: 512M
+          cpus: '1.0'
       labels:
         - traefik.enable=true
         - traefik.docker.network=public
@@ -143,7 +144,7 @@ services:
         limits:
           memory: 320M
     healthcheck:
-      test: ["CMD-SHELL", "redis-cli -a \"$$(cat /run/secrets/sva_studio_redis_password)\" ping"]
+      test: ["CMD-SHELL", "REDISCLI_AUTH=$$(cat /run/secrets/sva_studio_redis_password) redis-cli ping"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -256,6 +257,11 @@ services:
           memory: 128M
         limits:
           memory: 256M
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:13133/healthz >/dev/null 2>&1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
   loki:
     image: grafana/loki:2.9.6
@@ -299,7 +305,7 @@ services:
       - "--storage.tsdb.path=/prometheus"
       - "--storage.tsdb.retention.time=7d"
       - "--storage.tsdb.retention.size=5GB"
-      - "--web.enable-admin-api"
+      - "--web.enable-admin-api"  # Benötigt für TSDB-Cleanup (DELETE /api/v1/admin/tsdb/clean_tombstones)
     labels:
       com.sva-studio.monitoring: "enabled"
       com.sva-studio.component: "prometheus"

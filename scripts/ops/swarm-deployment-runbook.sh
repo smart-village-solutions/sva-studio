@@ -2,7 +2,7 @@
 # SVA Studio – Docker Swarm Deployment Runbook
 # Dieses Skript registriert Secrets und deployed den sva-studio Stack auf Planetary Quantum
 
-set -e
+set -euo pipefail
 
 REPO_ROOT="${REPO_ROOT:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
 SECRETS_DIR="${SECRETS_DIR:-${HOME}/sva-secrets}"

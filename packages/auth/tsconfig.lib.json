@@ -9,8 +9,8 @@
     "types": ["node"],
     "skipLibCheck": true,
     "paths": {
-      "@sva/core": ["../core/dist/index.d.ts"],
-      "@sva/core/security": ["../core/dist/security/index.d.ts"]
+      "@sva/core": ["packages/core/dist/index.d.ts"],
+      "@sva/core/security": ["packages/core/dist/security/index.d.ts"]
     }
   },
   "include": ["src/**/*.ts"],

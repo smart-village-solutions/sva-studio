@@ -69,3 +69,6 @@ artifacts/monitoring/
 packages/core/src/**/*.d.ts
 packages/core/src/**/*.d.ts.map
 packages/core/src/**/*.js
+
+# SonarQube
+.scannerwork/

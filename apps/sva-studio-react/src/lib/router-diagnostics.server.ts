@@ -34,6 +34,8 @@ const getLogger = async (): Promise<RouterDiagnosticsLogger> => {
 
 const logDiagnosticsError = async (message: string, error: unknown): Promise<void> => {
   (await getLogger()).error(message, {
+    workspace_id: 'platform',
+    environment: process.env.NODE_ENV ?? 'production',
     diagnostics_file: ROUTER_DIAGNOSTICS_FILE,
     error: error instanceof Error ? error.message : String(error),
     error_type: error instanceof Error ? error.constructor.name : 'unknown',
@@ -45,6 +47,7 @@ export const emitRouterModuleLoadDiagnosticsOnce = (routeTree: unknown): Promise
     const snapshot = createRouterDiagnosticsSnapshot({
       routeTree,
       router: {},
+      publicBaseUrl: process.env.SVA_PUBLIC_BASE_URL,
     });
 
     await writeFile(
@@ -61,6 +64,8 @@ export const emitRouterModuleLoadDiagnosticsOnce = (routeTree: unknown): Promise
     );
 
     (await getLogger()).info('Router-Modul geladen, Vorab-Diagnose geschrieben', {
+      workspace_id: 'platform',
+      environment: process.env.NODE_ENV ?? 'production',
       diagnostics_file: ROUTER_DIAGNOSTICS_FILE,
       route_tree_node_count: snapshot.routeTreeNodeCount,
       has_root_route: snapshot.routeFlags.hasRootRoute,
@@ -77,11 +82,14 @@ const writeRouterDiagnostics = async (router: AnyRouter, routeTree: unknown): Pr
   const snapshot = createRouterDiagnosticsSnapshot({
     routeTree,
     router,
+    publicBaseUrl: process.env.SVA_PUBLIC_BASE_URL,
   });
 
   await writeFile(ROUTER_DIAGNOSTICS_FILE, `${JSON.stringify(snapshot, null, 2)}\n`, 'utf8');
 
   (await getLogger()).info('Router-Diagnose geschrieben', {
+    workspace_id: 'platform',
+    environment: process.env.NODE_ENV ?? 'production',
     diagnostics_file: ROUTER_DIAGNOSTICS_FILE,
     route_tree_node_count: snapshot.routeTreeNodeCount,
     route_ids: summarizeRoutes(snapshot.routerRegistry.routeIds),
@@ -94,6 +102,8 @@ const writeRouterDiagnostics = async (router: AnyRouter, routeTree: unknown): Pr
 
   if (!snapshot.routeFlags.hasRootRoute || snapshot.routerRegistry.routePaths.length === 0) {
     (await getLogger()).warn('Router-Diagnose zeigt fehlende Routenregistrierung', {
+      workspace_id: 'platform',
+      environment: process.env.NODE_ENV ?? 'production',
       diagnostics_file: ROUTER_DIAGNOSTICS_FILE,
       route_tree_node_count: snapshot.routeTreeNodeCount,
       route_ids: summarizeRoutes(snapshot.routerRegistry.routeIds),

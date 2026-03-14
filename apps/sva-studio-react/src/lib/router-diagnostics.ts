@@ -79,9 +79,11 @@ const collectUniqueStrings = (routes: RouteLike[], key: 'id' | 'fullPath'): stri
 export const createRouterDiagnosticsSnapshot = ({
   routeTree,
   router,
+  publicBaseUrl,
 }: {
   routeTree: unknown;
   router: unknown;
+  publicBaseUrl?: string | null;
 }): RouterDiagnosticsSnapshot => {
   const routeTreeSnapshot = collectRouteSnapshot(routeTree);
   const routerLike = (router ?? {}) as RouterLike;
@@ -94,17 +96,19 @@ export const createRouterDiagnosticsSnapshot = ({
   const flatRouteIds = collectUniqueStrings(flatRoutes, 'id');
   const flatRoutePaths = collectUniqueStrings(flatRoutes, 'fullPath');
 
-  const knownPaths = new Set([
-    ...routePaths,
-    ...flatRoutePaths,
-    routeTreeSnapshot.fullPath ?? '',
-    ...routeTreeSnapshot.children.map((child) => child.fullPath ?? ''),
-  ]);
+  const knownPaths = new Set(
+    [
+      ...routePaths,
+      ...flatRoutePaths,
+      routeTreeSnapshot.fullPath,
+      ...routeTreeSnapshot.children.map((child) => child.fullPath),
+    ].filter(Boolean),
+  );
 
   return {
     timestamp: new Date().toISOString(),
     nodeEnv: process.env.NODE_ENV ?? null,
-    publicBaseUrl: process.env.SVA_PUBLIC_BASE_URL ?? null,
+    publicBaseUrl: publicBaseUrl ?? null,
     routeTree: routeTreeSnapshot,
     routeTreeNodeCount: countRouteNodes(routeTreeSnapshot),
     routerRegistry: {

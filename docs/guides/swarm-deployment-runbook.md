@@ -252,6 +252,12 @@ Der Monitoring-Block bleibt intern:
 - Nur `app` ist über Traefik öffentlich exponiert.
 - Für externen Grafana-Zugriff ist eine separate Zugangsschicht erforderlich (z. B. VPN, Forward-Proxy oder dedizierter interner Ingress).
 
+### Bekannte Lücken
+
+- **Alertmanager-Receiver nicht konfiguriert:** Der `default`-Receiver in `alertmanager.yml` hat kein reales Ziel (Webhook, E-Mail, Slack). Alle Alert-Rules werden evaluiert, aber nicht zugestellt. Für den Produktivbetrieb muss ein Receiver konfiguriert werden.
+- **Kein automatisiertes Postgres-Backup:** Aktuell ist nur manuelles `pg_dump` dokumentiert. Für den dauerhaften Betrieb wird ein automatisierter Backup-Cronjob mit Retention-Policy und Off-Site-Sicherung benötigt.
+- **Single-Node-Pinning:** Alle Services sind auf `node-005.sva` gepinnt. Bei Ausfall dieses Nodes ist der gesamte Stack nicht verfügbar. Für HA-Betrieb ist eine Multi-Node-Strategie erforderlich.
+
 ## Instanz-Routing
 
 ### Modell

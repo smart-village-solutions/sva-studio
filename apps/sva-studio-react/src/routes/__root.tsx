@@ -2,7 +2,7 @@
  * Root-Route-Konfiguration der Anwendung inklusive Dokument-Shell.
  */
 import { TanStackDevtools } from '@tanstack/react-devtools';
-import { HeadContent, Scripts, createRootRoute, useRouterState } from '@tanstack/react-router';
+import { HeadContent, Outlet, Scripts, createRootRoute, useRouterState } from '@tanstack/react-router';
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools';
 import { createServerOnlyFn } from '@tanstack/react-start';
 import React from 'react';
@@ -60,8 +60,7 @@ export const Route = createRootRoute({
   notFoundComponent: NotFound,
   loader: loadRootData,
   head: getRootHead,
-
-  shellComponent: RootDocument,
+  component: RootComponent,
 });
 
 export const rootRoute = Route;
@@ -71,6 +70,14 @@ export const rootRoute = Route;
  *
  * Die Shell zeigt Loading-Skeletons ausschließlich bei aktiver Router-Pending-Phase.
  */
+function RootComponent() {
+  return (
+    <RootDocument>
+      <Outlet />
+    </RootDocument>
+  );
+}
+
 function RootDocument({ children }: Readonly<{ children: React.ReactNode }>) {
   const isRouterPending = useRouterState({
     select: (state) => state.status === 'pending' || state.isLoading,

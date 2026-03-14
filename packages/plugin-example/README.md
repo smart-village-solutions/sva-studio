@@ -68,7 +68,7 @@ Nimm dieses Paket als Vorlage:
   "name": "@sva/plugin-mein-feature",
   "dependencies": { "@sva/core": "workspace:*" },
   "peerDependencies": {
-    "@tanstack/react-router": "^1.160.0",
+    "@tanstack/react-router": "^1.166.3",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   }

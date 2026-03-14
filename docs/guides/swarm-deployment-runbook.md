@@ -9,6 +9,12 @@ Der Stack besteht aus:
 - `app` (TanStack Start / Nitro Node-Server, über Traefik exponiert)
 - `postgres` (IAM Core Data Layer)
 - `redis` (Session-/Cache-Store)
+- `otel-collector` (OTLP Hub für Logs und Metriken)
+- `loki` (Log-Storage)
+- `prometheus` (Metrik-Storage und Alert Rules)
+- `grafana` (interne Auswertung)
+- `promtail` (Node-/Container-Log-Shipping)
+- `alertmanager` (Alert-Routing)
 
 ## Voraussetzungen
 
@@ -28,6 +34,9 @@ Der Stack besteht aus:
 | `deploy/portainer/docker-compose.yml` | Swarm-Stack-Definition |
 | `deploy/portainer/Dockerfile` | Build-Definition für das App-Image |
 | `deploy/portainer/entrypoint.sh` | Lädt Swarm-Secrets als Env-Variablen |
+| `deploy/portainer/otel-bootstrap.mjs` | Initialisiert OTEL vor dem Nitro-Entry im Node-Prozess |
+| `deploy/portainer/monitoring/` | Swarm-spezifische Monitoring-Konfigurationen |
+| `deploy/portainer/monitoring-config-init/` | Build-Kontext für das Init-Image, das Monitoring-Konfigurationen in Volumes schreibt |
 | `deploy/portainer/.env.example` | Referenz aller Konfigurationsvariablen |
 
 ## Schritt 1: Secrets provisionieren
@@ -94,8 +103,12 @@ Die nicht-sensitiven Konfigurationswerte werden als Stack-Umgebungsvariablen in 
 |---|---|---|
 | `SVA_REGISTRY` | `ghcr.io/smart-village-solutions` | Container-Registry |
 | `SVA_IMAGE_TAG` | `latest` | Image-Tag oder Digest |
+| `SVA_MONITORING_CONFIG_INIT_IMAGE_TAG` | `latest` | Image-Tag des Monitoring-Init-Images |
 | `SVA_ALLOWED_INSTANCE_IDS` | leer | Kommagetrennte erlaubte instanceIds |
-| `ENABLE_OTEL` | `false` | OpenTelemetry aktivieren |
+| `ENABLE_OTEL` | `true` | OpenTelemetry für die App aktivieren |
+| `OTEL_SERVICE_NAME` | `sva-studio` | Service-Name für OTEL Resource Attributes |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | `http://otel-collector:4318` | Interner OTLP-HTTP-Endpoint |
+| `GF_SECURITY_ADMIN_PASSWORD` | kein Default | Pflichtwert für den internen Grafana-Login |
 | `IAM_UI_ENABLED` | `false` | IAM-Account-UI |
 | `IAM_ADMIN_ENABLED` | `false` | IAM-Admin-UI |
 | `IAM_BULK_ENABLED` | `false` | IAM-Bulk-Operationen |
@@ -169,6 +182,7 @@ docker stack deploy -c docker-compose.yml sva-studio
 | `GET https://foo.<SVA_PARENT_DOMAIN>/` | HTTP 200 (wenn `foo` in Allowlist) |
 | `GET https://unknown.<SVA_PARENT_DOMAIN>/` | HTTP 403 (wenn nicht in Allowlist) |
 | App in Portainer | Status: `healthy` |
+| Monitoring-Services in Portainer | `otel-collector`, `loki`, `prometheus`, `grafana`, `promtail`, `alertmanager` laufen |
 
 ## Update eines bestehenden Stacks
 
@@ -226,9 +240,17 @@ docker exec <CONTAINER_ID> pg_dump -U sva -d sva_studio > backup.sql
 docker exec -i <CONTAINER_ID> psql -U sva -d sva_studio < backup.sql
 ```
 
-## Betrieb ohne Monitoring
+## Betrieb mit integriertem Monitoring
 
-`ENABLE_OTEL=false` ist der Standardwert. Logs laufen über Docker/Portainer. Ein separater Monitoring-Stack (OTEL, Loki, Prometheus, Grafana) ist als Folgearbeit geplant.
+Das Referenzprofil aktiviert OTEL standardmäßig. Die App initialisiert das SDK direkt beim Prozessstart über `node --import ./otel-bootstrap.mjs .output/server/index.mjs`, damit Logs und Metriken nicht vom ersten Root-Request abhängen.
+
+Die Monitoring-Konfigurationen werden nicht mehr als langes Inline-Compose-Kommando ausgerollt. Stattdessen schreibt ein eigenes `monitoring-config-init`-Image die versionierten Dateien aus `deploy/portainer/monitoring/` in die dafür vorgesehenen Named Volumes.
+
+Der Monitoring-Block bleibt intern:
+
+- `grafana`, `prometheus`, `loki`, `otel-collector`, `promtail` und `alertmanager` hängen nur am `internal`-Overlay.
+- Nur `app` ist über Traefik öffentlich exponiert.
+- Für externen Grafana-Zugriff ist eine separate Zugangsschicht erforderlich (z. B. VPN, Forward-Proxy oder dedizierter interner Ingress).
 
 ## Instanz-Routing
 

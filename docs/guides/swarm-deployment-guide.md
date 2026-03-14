@@ -1,7 +1,7 @@
 
 # SVA Studio – Docker Swarm / Planetary Quantum Deployment
 
-Status: **Docker-Image gebaut & gepusht** ✅ | **Demo-Profil ohne Docker-Secrets aktiv** ✅
+Status: **Docker-Image gebaut & gepusht** ✅ | **Demo-Profil mit integriertem Monitoring aktiv** ✅
 
 ## Übersicht
 
@@ -50,9 +50,9 @@ quantum-cli stacks update --environment demo --endpoint sva --stack sva-studio -
 - Ein Stack bleibt erhalten
 - `node-005.sva` bleibt als Placement gesetzt
 - Traefik-v1-kompatible Labels statt Traefik-v2-Router-Konfiguration
-- Keine Healthchecks im Demo-Profil
-- Keine `update_config`-/`rollback_config`-Blöcke im Demo-Profil
-- Nur kanonischer Host `studio.smart-village.app` im Demo-Profil
+- App plus interner Monitoring-Block (`otel-collector`, `loki`, `prometheus`, `grafana`, `promtail`, `alertmanager`)
+- Healthchecks auch im Demo-Profil für App und Monitoring-Services
+- Nur die App ist öffentlich erreichbar; Monitoring bleibt intern
 
 ---
 

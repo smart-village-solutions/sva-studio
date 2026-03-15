@@ -45,8 +45,12 @@ Proxy für App- oder UI-Code freigegeben.
 API-Key und Secret werden serverseitig aus Keycloak-User-Attributen des
 aktuellen Benutzers gelesen:
 
-- `sva_mainserver_api_key`
-- `sva_mainserver_api_secret`
+- `mainserverUserApplicationId`
+- `mainserverUserApplicationSecret`
+
+Bestehende Legacy-Attribute `sva_mainserver_api_key` und
+`sva_mainserver_api_secret` bleiben vorübergehend als read-only-Fallback
+unterstützt, bis alle Benutzer migriert sind.
 
 Die Credentials werden nicht in Session, Redis oder Postgres gespiegelt.
 

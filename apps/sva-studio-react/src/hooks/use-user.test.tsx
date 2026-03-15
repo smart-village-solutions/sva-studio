@@ -74,6 +74,7 @@ describe('useUser', () => {
         displayName: 'User Two',
         status: 'active',
         roles: [],
+        mainserverUserApplicationSecretSet: false,
       },
     });
     updateUserMock.mockRejectedValueOnce(new Error('validation-error'));
@@ -103,6 +104,7 @@ describe('useUser', () => {
         displayName: 'User One',
         status: 'active',
         roles: [],
+        mainserverUserApplicationSecretSet: false,
       },
     });
 
@@ -113,6 +115,7 @@ describe('useUser', () => {
         displayName: 'User One Updated',
         status: 'active',
         roles: [],
+        mainserverUserApplicationSecretSet: false,
       },
     });
 
@@ -141,6 +144,7 @@ describe('useUser', () => {
         displayName: 'User Three',
         status: 'active',
         roles: [],
+        mainserverUserApplicationSecretSet: false,
       },
     });
     updateUserMock.mockRejectedValueOnce(new Error('forbidden-save'));

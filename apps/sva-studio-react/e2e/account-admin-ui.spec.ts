@@ -43,6 +43,7 @@ test('profile page supports loading and saving own profile', async ({ page }) =>
             email: 'admin@example.com',
             status: 'active',
             roles: [{ roleId: 'role-1', roleName: 'system_admin', roleLevel: 90 }],
+            mainserverUserApplicationSecretSet: false,
           },
         }),
       });
@@ -62,6 +63,7 @@ test('profile page supports loading and saving own profile', async ({ page }) =>
           email: 'admin@example.com',
           status: 'active',
           roles: [{ roleId: 'role-1', roleName: 'system_admin', roleLevel: 90 }],
+          mainserverUserApplicationSecretSet: false,
         },
       }),
     });
@@ -83,6 +85,8 @@ test('profile page supports loading and saving own profile', async ({ page }) =>
 });
 
 test('admin user list and edit page are reachable for system_admin', async ({ page }) => {
+  let updateRequestBody: Record<string, unknown> | null = null;
+
   await page.route('**/auth/me', async (route) => {
     await route.fulfill({
       status: 200,
@@ -104,6 +108,7 @@ test('admin user list and edit page are reachable for system_admin', async ({ pa
             email: 'user2@example.com',
             status: 'active',
             roles: [{ roleId: 'role-2', roleName: 'editor', roleLevel: 10 }],
+            mainserverUserApplicationSecretSet: false,
           },
         ],
         pagination: {
@@ -132,6 +137,7 @@ test('admin user list and edit page are reachable for system_admin', async ({ pa
 
   await page.route('**/api/v1/iam/users/account-2', async (route) => {
     if (route.request().method() === 'PATCH') {
+      updateRequestBody = route.request().postDataJSON() as Record<string, unknown>;
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -143,6 +149,9 @@ test('admin user list and edit page are reachable for system_admin', async ({ pa
             email: 'user2@example.com',
             status: 'active',
             roles: [{ roleId: 'role-2', roleName: 'editor', roleLevel: 10 }],
+            permissions: ['content.read'],
+            mainserverUserApplicationId: 'updated-app-id',
+            mainserverUserApplicationSecretSet: true,
           },
         }),
       });
@@ -161,6 +170,8 @@ test('admin user list and edit page are reachable for system_admin', async ({ pa
           status: 'active',
           roles: [{ roleId: 'role-2', roleName: 'editor', roleLevel: 10 }],
           permissions: ['content.read'],
+          mainserverUserApplicationId: 'existing-app-id',
+          mainserverUserApplicationSecretSet: true,
         },
       }),
     });
@@ -208,6 +219,22 @@ test('admin user list and edit page are reachable for system_admin', async ({ pa
   await navigateClientSide(page, '/admin/users/account-2');
   await userDetailResponsePromise;
   await expect(page.getByRole('heading', { name: 'User Two' })).toBeVisible();
+
+  await page.getByRole('tab', { name: 'Verwaltung' }).click();
+  await page.getByLabel('Mainserver Application-ID').fill('updated-app-id');
+  await page.getByLabel('Mainserver Application-Secret').fill('new-secret');
+  await page.getByRole('button', { name: 'Änderungen speichern' }).click();
+
+  await expect
+    .poll(() => updateRequestBody)
+    .toEqual(
+      expect.objectContaining({
+        mainserverUserApplicationId: 'updated-app-id',
+        mainserverUserApplicationSecret: 'new-secret',
+      })
+    );
+  await expect(page.getByText('Nutzerdaten wurden gespeichert.')).toBeVisible();
+  await expect(page.getByText('Ein Secret ist bereits hinterlegt.')).toBeVisible();
 
   await page.getByRole('tab', { name: 'Berechtigungen' }).click();
   await expect(page.getByText('content.read')).toBeVisible();
@@ -323,6 +350,7 @@ test('csrf header is required for mutating iam endpoints', async ({ page }) => {
             displayName: 'Admin One',
             status: 'active',
             roles: [],
+            mainserverUserApplicationSecretSet: false,
           },
         }),
       });

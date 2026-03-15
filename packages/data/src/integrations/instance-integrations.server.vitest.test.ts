@@ -198,15 +198,17 @@ describe('loadInstanceIntegrationRecord (server)', () => {
 
   it('reuses custom loader cache across calls with the same loadRecord override', async () => {
     const mod = await import('./instance-integrations.server');
-    const loadRecord = vi.fn(async () => ({
-      instanceId: 'de-musterhausen',
-      providerKey: 'sva_mainserver',
-      graphqlBaseUrl: 'https://mainserver.example.invalid/graphql',
-      oauthTokenUrl: 'https://mainserver.example.invalid/oauth/token',
-      enabled: true,
-      lastVerifiedAt: undefined,
-      lastVerifiedStatus: undefined,
-    }));
+    const loadRecord = vi.fn(
+      async (_instanceId: string, _providerKey: 'sva_mainserver') => ({
+        instanceId: 'de-musterhausen',
+        providerKey: 'sva_mainserver' as const,
+        graphqlBaseUrl: 'https://mainserver.example.invalid/graphql',
+        oauthTokenUrl: 'https://mainserver.example.invalid/oauth/token',
+        enabled: true,
+        lastVerifiedAt: undefined,
+        lastVerifiedStatus: undefined,
+      })
+    );
 
     await mod.loadInstanceIntegrationRecord('de-musterhausen', 'sva_mainserver', {
       cacheTtlMs: 60_000,

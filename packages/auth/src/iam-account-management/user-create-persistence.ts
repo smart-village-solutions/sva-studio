@@ -112,6 +112,7 @@ const buildCreatedUserResponse = (
   notes: payload.notes,
   status: payload.status ?? 'pending',
   roles: roleNames,
+  mainserverUserApplicationSecretSet: false,
 });
 
 export const persistCreatedUser = async (

@@ -7,6 +7,7 @@ export * from './iam-organizations.server';
 export * from './iam-governance.server';
 export * from './iam-authorization.server';
 export * from './jit-provisioning.server';
+export * from './mainserver-credentials.server';
 export * from './middleware.server';
 export * from './keycloak-admin-client';
 export * from './routes.server';

@@ -49,6 +49,7 @@ Architecture Decision Records dokumentieren **wichtige technische Entscheidungen
 | 017 | Modulare IAM-Server-Bausteine | ✅ | 2026-03-08 | IAM / Qualität |
 | 019 | Swarm-/Traefik-Referenz-Betriebsprofil | ✅ | 2026-03-12 | Deployment / Betrieb |
 | 020 | Kanonischer Auth-Host und Multi-Host-Grenze | ✅ | 2026-03-12 | Auth / Deployment |
+| 021 | Per-User-SVA-Mainserver-Delegation | ✅ | 2026-03-14 | Integration / IAM |
 
 ---
 

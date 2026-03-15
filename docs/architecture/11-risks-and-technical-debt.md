@@ -95,6 +95,16 @@ Schulden auf IST-Basis.
    - Wahrscheinlichkeit: mittel
    - Maßnahme: Theme-Mapping zentral halten, Unknown-Fallback definieren und Varianten nur kontrolliert erweitern
 
+17. Prozesslokale Cache-Skalierung in der Mainserver-Integration
+   - Impact: mittel bis hoch (uneinheitliche Warm-Path-Latenz, erhöhter Speicherverbrauch bei vielen Nutzern)
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: LRU-begrenzte In-Memory-Caches, Debug-Logs für Hit/Miss, Benchmark vor Produktivbetrieb und ggf. Redis-basierter Shared Cache als Folgearbeit
+
+18. Schema-Drift zwischen Staging/Mainserver und checked-in Snapshot
+   - Impact: hoch (unerwartete GraphQL-Fehler trotz erfolgreichem Build)
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: Snapshot aktuell halten, `graphql-inspector`-Vergleich gegen Staging vorbereiten und Diagnostik-Adapter nur inkrementell erweitern
+
 ### Technische Schulden (Auswahl)
 
 - Teilweise No-Op Testtargets in Libraries

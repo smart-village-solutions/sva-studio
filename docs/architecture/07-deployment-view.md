@@ -87,6 +87,8 @@ und Vorführungszwecke. Unterschiede zum Referenzprofil:
 
 #### Deployment-Muster
 
+- Der Build-Graph des Portainer-Images baut `sva-mainserver` explizit nach `auth` und vor `plugin-example`, damit die serverseitige Integrationsschicht im Deploy-Artefakt verlässlich vorhanden ist.
+
 - **Image-basiert:** Vorgebaute Images aus Container-Registry (`${SVA_REGISTRY}/sva-studio:${SVA_IMAGE_TAG}`). Kein `build:`-Block im Stack.
 - **Traefik-Labels:** Host-basiertes Routing über `HostRegexp` für Instanz-Subdomains unter `SVA_PARENT_DOMAIN`. TLS über Traefiks `certresolver`.
 - **Swarm Secrets:** Vertrauliche Werte als externe Docker-Swarm-Secrets mit Namenskonvention `sva_studio_<service>_<secret_name>`. Ein Shell-Entrypoint (`entrypoint.sh`) liest Secret-Dateien und exportiert sie als Env-Variablen.

@@ -22,6 +22,9 @@
 - **Testarten:** `pnpm test:unit`, `pnpm test:types`, `pnpm test:eslint`, `pnpm test:e2e`
 - **Komplette CI-Suite:** `pnpm test:ci`
 - **ESLint ausführen:** `pnpm lint`
+- **Shift-left (verbindlich):** Nach jedem abgeschlossenen Änderungsblock sofort die betroffenen Tests ausführen (nicht erst am Ende der Umsetzung)
+- **Push-Gate (verbindlich):** Vor jedem Push mindestens `pnpm nx affected --target=test:unit --base=origin/main` ausführen; bei Typänderungen zusätzlich `pnpm nx affected --target=test:types --base=origin/main`
+- **Arbeitsregel:** Keine weitere Implementierung auf bekannt rotem Teststand
 - **Effizienter, zielgerichteter Test-Workflow:**
   1. **Nur affected:** `pnpm nx affected --target=test:unit` (vergleicht mit `main`-Branch)
   2. **Spezifische Packages:** `pnpm nx run sva-studio-react:test:unit`

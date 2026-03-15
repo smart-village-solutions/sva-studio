@@ -223,6 +223,22 @@ Fehlerpfad:
 - Ungültige oder deaktivierte Zielorganisationen liefern einen stabilen Fehlercode; der bisherige Kontext bleibt unverändert.
 - Technische Fehler werden im Org-Switcher verständlich, internationalisiert und ohne inkonsistenten Zwischenzustand angezeigt.
 
+### Szenario 14: Serverseitige Mainserver-Diagnostik mit Per-User-Delegation
+
+1. Ein berechtigter Studio-Benutzer löst eine serverseitige Mainserver-Funktion aus.
+2. Die App prüft lokal Rollen und aktiven `instanceId`-Kontext, bevor ein Upstream-Call gestartet wird.
+3. `@sva/sva-mainserver/server` lädt die aktive Endpunktkonfiguration für die Instanz aus `iam.instance_integrations`.
+4. `@sva/auth/server` liest `sva_mainserver_api_key` und `sva_mainserver_api_secret` aus Keycloak-User-Attributen des aktuellen Benutzers.
+5. Die Integrationsschicht fordert per OAuth2-Client-Credentials ein Access-Token an und cached es kurzlebig pro `(instanceId, keycloakSubject, apiKey)`.
+6. Danach wird der GraphQL-Request serverseitig an den SVA-Mainserver gesendet; `request_id` und `trace_id` werden als Korrelation weitergereicht.
+7. Die Server-Funktion gibt ein kuratiertes Diagnose-Read-Model an die App zurück; Credentials oder rohe Upstream-Fehlerdetails verlassen den Server nicht.
+
+Fehlerpfad:
+
+- Fehlende lokale Studio-Berechtigung blockiert den Aufruf vor dem Upstream-Zugriff.
+- Fehlende Keycloak-Attribute liefern einen stabilen Fehlerzustand `missing_credentials`.
+- `401`/`403` vom Mainserver werden in deterministische Integrationsfehler übersetzt; Netzwerk- oder Tokenfehler bleiben fail-closed.
+
 ### Ergänzung 2026-03: Strukturierte Permission-Vererbung im Recompute-Pfad
 
 1. `POST /iam/authorize` oder `GET /iam/me/permissions` löst bei Cache-Miss den Permission-Store aus.

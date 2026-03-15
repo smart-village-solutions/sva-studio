@@ -4,6 +4,7 @@ import { z } from 'zod';
 export * from './iam/repositories';
 export * from './iam/seed-plan';
 export * from './iam/types';
+export * from './integrations/instance-integrations';
 
 type CacheEntry<T> = {
   value: T;

@@ -24,6 +24,8 @@ Im aktuellen Repo-Ist-Stand sind davon primär die technischen Grundlagen umgese
 - Zentrales Routing (`@sva/core`, `@sva/routing`, `@sva/plugin-...`-Routen)
 - Auth-BFF-Endpunkte (`/auth/login`, `/auth/callback`, `/auth/me`, `/auth/logout`)
 - Session-Verwaltung mit Redis (inkl. optionaler Token-Verschlüsselung)
+- Per-User-Integration zum externen SVA-Mainserver über `@sva/sva-mainserver`
+- Instanzgebundene Mainserver-Endpunktkonfiguration in der Studio-Datenbank
 - SDK Logger + OTEL Monitoring Client + lokale Monitoring-Stacks
 
 ### Out of Scope (in diesem Repo)
@@ -36,6 +38,7 @@ Im aktuellen Repo-Ist-Stand sind davon primär die technischen Grundlagen umgese
 ### Externe Nachbarsysteme
 
 - OIDC Provider (per `openid-client`)
+- SVA-Mainserver mit OAuth2-Token-Endpunkt und GraphQL-API
 - Redis (lokal/extern)
 - OTEL Collector, Loki, Prometheus, Grafana, Alertmanager
 
@@ -44,11 +47,16 @@ Konzept-Referenz (Kontext): `concepts/konzeption-cms-v2/01_Einleitung/Einleitung
 ### Verantwortungsgrenzen
 
 - Repo verantwortet App-, Routing-, Auth-, SDK- und Doku-Logik
+- Repo verantwortet die serverseitige Delegation an den externen SVA-Mainserver, aber nicht dessen Betrieb, Schema oder Berechtigungsmodell
+- Browser, React-Hooks und UI-Komponenten sprechen nie direkt mit dem externen Mainserver; alle Aufrufe laufen über serverseitige Studio-Bausteine
+- Keycloak bleibt autoritative Quelle für per-User hinterlegte Mainserver-Credentials; die Studio-DB hält nur instanzbezogene Endpunktkonfiguration
 - Externe Dienste werden angebunden, aber nicht hier implementiert
 
 Referenzen:
 
 - `packages/auth/src/oidc.server.ts`
 - `packages/auth/src/redis.server.ts`
+- `packages/sva-mainserver/src/server/service.ts`
+- `packages/data/src/integrations/instance-integrations.ts`
 - `docker-compose.yml`
 - `docker-compose.monitoring.yml`

@@ -1,3 +1,4 @@
+import { lookup as dnsLookup } from 'node:dns/promises';
 import { isIP } from 'node:net';
 
 import { loadInstanceIntegrationRecord } from '@sva/data/server';
@@ -81,6 +82,28 @@ const isPrivateOrLocalHost = (hostname: string): boolean => {
   return false;
 };
 
+const resolvesToPrivateOrLocalHost = async (hostname: string): Promise<boolean> => {
+  const normalized = hostname.trim().toLowerCase();
+  if (isIP(normalized) !== 0) {
+    return false;
+  }
+
+  try {
+    const resolved = await dnsLookup(normalized, {
+      all: true,
+      verbatim: true,
+    });
+    if (resolved.length === 0) {
+      return true;
+    }
+
+    return resolved.some((entry) => isPrivateOrLocalHost(entry.address));
+  } catch {
+    // Fail-closed: wenn DNS-Auflösung fehlschlägt, wird die URL verworfen.
+    return true;
+  }
+};
+
 const upstreamUrlSchema = z.string().url().transform((value) => new URL(value)).superRefine((value, context) => {
   if (value.username || value.password) {
     context.addIssue({
@@ -123,9 +146,28 @@ const buildLogContext = (instanceId: string, extra: Record<string, unknown> = {}
   };
 };
 
-const validateUpstreamUrl = (instanceId: string, fieldName: 'graphql_base_url' | 'oauth_token_url', value: string): string => {
+const validateUpstreamUrl = async (
+  instanceId: string,
+  fieldName: 'graphql_base_url' | 'oauth_token_url',
+  value: string
+): Promise<string> => {
   const parsed = upstreamUrlSchema.safeParse(value);
   if (!parsed.success) {
+    logger.warn('Invalid SVA Mainserver upstream URL configuration detected', {
+      ...buildLogContext(instanceId, {
+        operation: 'load_instance_config',
+        field_name: fieldName,
+        error_code: 'invalid_config',
+      }),
+    });
+    throw new SvaMainserverError({
+      code: 'invalid_config',
+      message: `Die konfigurierte Upstream-URL ${fieldName} ist ungültig.`,
+      statusCode: 500,
+    });
+  }
+
+  if (await resolvesToPrivateOrLocalHost(parsed.data.hostname)) {
     logger.warn('Invalid SVA Mainserver upstream URL configuration detected', {
       ...buildLogContext(instanceId, {
         operation: 'load_instance_config',
@@ -173,8 +215,8 @@ export const loadSvaMainserverInstanceConfig = async (
     const config = {
       instanceId: record.instanceId,
       providerKey: record.providerKey,
-      graphqlBaseUrl: validateUpstreamUrl(instanceId, 'graphql_base_url', record.graphqlBaseUrl),
-      oauthTokenUrl: validateUpstreamUrl(instanceId, 'oauth_token_url', record.oauthTokenUrl),
+      graphqlBaseUrl: await validateUpstreamUrl(instanceId, 'graphql_base_url', record.graphqlBaseUrl),
+      oauthTokenUrl: await validateUpstreamUrl(instanceId, 'oauth_token_url', record.oauthTokenUrl),
       enabled: record.enabled,
       lastVerifiedAt: record.lastVerifiedAt,
       lastVerifiedStatus: record.lastVerifiedStatus,

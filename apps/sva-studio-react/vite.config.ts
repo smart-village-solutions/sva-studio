@@ -5,9 +5,7 @@ import viteReact from '@vitejs/plugin-react';
 import { codecovVitePlugin } from '@codecov/vite-plugin';
 import { nitro } from 'nitro/vite';
 import viteTsConfigPaths from 'vite-tsconfig-paths';
-import { fileURLToPath, URL } from 'url';
-
-process.env.TSS_DEV_SERVER ??= 'false';
+import { fileURLToPath, URL } from 'node:url';
 
 const normalizeDirectory = (url: URL) => fileURLToPath(url).replace(/[\\/]$/, '');
 
@@ -16,8 +14,8 @@ const workspaceRoot = normalizeDirectory(new URL('../../', import.meta.url));
 const tanstackRouterBasepath = '/';
 const tanstackServerFnBase = '/_server/';
 
-const tanstackStartClientEnvPlugin = () => ({
-  name: 'tanstack-start-client-env',
+const tanstackStartClientEnvCompatPlugin = () => ({
+  name: 'tanstack-start-client-env-compat',
   enforce: 'pre' as const,
   transform(code: string, id: string) {
     if (!id.includes('@tanstack/start-client-core')) {
@@ -68,6 +66,10 @@ const config = defineConfig({
       '@sva/routing': fileURLToPath(new URL('../../packages/routing/src/index.ts', import.meta.url)),
       '@sva/auth/server': fileURLToPath(new URL('../../packages/auth/src/index.server.ts', import.meta.url)),
       '@sva/auth': fileURLToPath(new URL('../../packages/auth/src/index.ts', import.meta.url)),
+      '@sva/data/server': fileURLToPath(new URL('../../packages/data/src/server.ts', import.meta.url)),
+      '@sva/data': fileURLToPath(new URL('../../packages/data/src/index.ts', import.meta.url)),
+      '@sva/sva-mainserver/server': fileURLToPath(new URL('../../packages/sva-mainserver/src/index.server.ts', import.meta.url)),
+      '@sva/sva-mainserver': fileURLToPath(new URL('../../packages/sva-mainserver/src/index.ts', import.meta.url)),
       '@sva/sdk/server': fileURLToPath(new URL('../../packages/sdk/src/server.ts', import.meta.url)),
       '@sva/sdk/logger/index.server': fileURLToPath(new URL('../../packages/sdk/src/logger/index.server.ts', import.meta.url)),
       '@sva/sdk/middleware/request-context.server': fileURLToPath(new URL('../../packages/sdk/src/middleware/request-context.server.ts', import.meta.url)),
@@ -81,20 +83,13 @@ const config = defineConfig({
       '@sva/core': fileURLToPath(new URL('../../packages/core/src/index.ts', import.meta.url)),
     },
   },
-  optimizeDeps: {
-    include: ['@tanstack/start-client-core'],
-    esbuildOptions: {
-      define: {
-        'process.env.TSS_ROUTER_BASEPATH': JSON.stringify(tanstackRouterBasepath),
-        'process.env.TSS_SERVER_FN_BASE': JSON.stringify(tanstackServerFnBase),
-      },
-    },
-  },
   ssr: {
     // Workspace packages müssen in Dev-SSR transpiliert werden, weil Vite package.json exports nicht korrekt auflöst
     noExternal: [
       '@sva/auth',
+      '@sva/data',
       '@sva/routing',
+      '@sva/sva-mainserver',
       '@sva/core',
       '@sva/sdk',
       '@sva/monitoring-client',
@@ -114,29 +109,17 @@ const config = defineConfig({
     },
   },
   plugins: [
-    tanstackStartClientEnvPlugin(),
+    tanstackStartClientEnvCompatPlugin(),
     devtools(),
     // this is the plugin that enables path aliases
     viteTsConfigPaths({
       projects: ['./tsconfig.json'],
     }),
-    {
-      name: 'virtual-tanstack-modules',
-      enforce: 'pre',
-      resolveId(id) {
-        // Handle virtual modules for TanStack Start
-        if (id === 'tanstack-start-injected-head-scripts:v') {
-          return id;
-        }
+    tanstackStart({
+      serverFns: {
+        base: '/_server',
       },
-      load(id) {
-        // Provide empty injected scripts when TSS_DEV_SERVER is false
-        if (id === 'tanstack-start-injected-head-scripts:v') {
-          return 'export const injectedHeadScripts = undefined';
-        }
-      },
-    },
-    tanstackStart(),
+    }),
     nitro(),
     viteReact(),
     codecovVitePlugin({

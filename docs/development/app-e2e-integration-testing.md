@@ -38,6 +38,10 @@ docker compose -f docker-compose.yml -f docker-compose.monitoring.yml down
   - `/`
   - `/demo`
   - `/plugins/example`
+- Echter TanStack-Start-ServerFn-Transport:
+  - `/demo/start/server-funcs` sendet einen realen `POST` auf `/_server/...`
+  - `/interfaces` lädt und speichert über den echten `/_server`-Pfad
+  - Die E2E-Suite darf `**/_server/**` nicht global mocken; erlaubt sind nur gezielte Downstream-Mocks hinter dem Transport
 - Auth-Entry-Point:
   - `/auth/login` liefert Redirect-Response (302/303/307/308)
 - Service-Readiness vor Teststart:

@@ -11,6 +11,7 @@ import { RolesPage } from './admin/roles/-roles-page';
 import { UserEditPage } from './admin/users/-user-edit-page';
 import { UserListPage } from './admin/users/-user-list-page';
 import { HomePage } from './-home-page';
+import { InterfacesPage } from './interfaces/-interfaces-page';
 
 const DemoSectionLayout = () => (
   <div className="flex flex-col gap-4 text-foreground">
@@ -355,6 +356,12 @@ export const runtimeCoreRouteFactories = [
       path: '/account',
       beforeLoad: (options) => runAccountUiGuard('account', options),
       component: AccountProfilePage,
+    }),
+  (rootRoute: RootRoute) =>
+    createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/interfaces',
+      component: InterfacesPage,
     }),
   (rootRoute: RootRoute) =>
     createRoute({

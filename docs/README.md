@@ -43,4 +43,4 @@ Für die technische Einordnung dieser Projekte sind folgende Dokumente die prim�
 
 - Architektur- oder Systemänderungen müssen die betroffenen arc42-Abschnitte unter `./architecture/` aktualisieren.
 - Neue oder geänderte Architekturentscheidungen werden unter `./adr/` dokumentiert und in `./architecture/09-architecture-decisions.md` referenziert.
-- Historische ADR-Entwürfe unter `./architecture/decisions/` gelten nur als Altbestand und sind nicht der kanonische Ablageort.
+- Historische ADR-Dateien unter `./architecture/decisions/` gehören zu einer älteren Serie mit überschneidenden Nummern; neue oder aktualisierte Referenzen müssen auf `./adr/` zeigen.

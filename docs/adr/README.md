@@ -58,7 +58,8 @@ Architecture Decision Records dokumentieren **wichtige technische Entscheidungen
 
 - Aktive ADRs liegen unter `docs/adr/`.
 - Verweise aus Architektur- und Guide-Dokumenten sollen auf `docs/adr/` zeigen.
-- Dateien unter `docs/architecture/decisions/` sind historischer Altbestand und kein Ziel für neue ADRs.
+- `ADR-018-auth-routing-error-contract-und-korrelation.md` wurde aus dem Legacy-Ordner nach `docs/adr/` migriert und ist dort maßgeblich.
+- Dateien unter `docs/architecture/decisions/` sind historischer Altbestand einer älteren ADR-Serie mit überschneidenden Nummern und kein Ziel für neue ADRs.
 
 ---
 

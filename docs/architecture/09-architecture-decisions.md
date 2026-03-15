@@ -80,7 +80,8 @@ Referenzen:
 Hinweis:
 
 - Der kanonische Ablageort für neue ADRs ist `docs/adr/`.
-- Historische Dateien unter `docs/architecture/decisions/` bleiben nur als Altbestand erhalten und sollen nicht neu referenziert werden.
+- ADR-018 ist nach `docs/adr/ADR-018-auth-routing-error-contract-und-korrelation.md` migriert; diese Fassung ist maßgeblich.
+- Historische Dateien unter `docs/architecture/decisions/` bleiben als Altbestand einer älteren ADR-Serie mit überschneidenden Nummern erhalten und sollen nicht neu referenziert werden.
 
 ### Neue ADRs im Kontext Account-UI
 

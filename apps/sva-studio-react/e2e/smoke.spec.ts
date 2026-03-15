@@ -70,6 +70,7 @@ test('demo server function uses the real /_server transport', async ({ page }) =
   });
 
   await page.goto('/demo/start/server-funcs');
+  await expect(page.locator('html')).toHaveAttribute('data-theme', /.+/);
   await expect(page.getByPlaceholder('Dein Name')).toBeVisible();
 
   await page.getByPlaceholder('Dein Name').fill('Debug');

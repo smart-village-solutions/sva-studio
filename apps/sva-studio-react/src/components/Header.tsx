@@ -87,7 +87,11 @@ export default function Header({
           >
             <Menu className="h-5 w-5" />
           </button>
-          <Link className="flex min-w-0 items-center gap-3 font-semibold tracking-wide text-foreground" to="/">
+          <Link
+            activeOptions={{ exact: true }}
+            className="flex min-w-0 items-center gap-3 font-semibold tracking-wide text-foreground"
+            to="/"
+          >
             <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-sm font-bold text-primary-foreground">
               SVA
             </span>

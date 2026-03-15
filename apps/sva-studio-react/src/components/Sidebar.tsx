@@ -94,6 +94,7 @@ const SidebarPanel = ({
             return (
               <li key={item.to}>
                 <Link
+                  activeOptions={item.to === '/' ? { exact: true } : undefined}
                   to={item.to}
                   className="flex items-center gap-3 rounded-md border border-transparent bg-sidebar px-3 py-2.5 text-sm font-medium text-sidebar-foreground transition hover:border-sidebar-border hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                   onClick={onNavigate}

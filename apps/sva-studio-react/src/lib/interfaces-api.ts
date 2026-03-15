@@ -217,13 +217,12 @@ export const loadInterfacesOverview = createServerFn().handler(async (): Promise
           error_code: status.errorCode,
         });
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Verbindungsstatus konnte nicht abgerufen werden.';
         logger.warn('Failed to evaluate interfaces connection status', {
           operation: 'load_interfaces_overview',
           workspace_id: instanceId,
-          error_message: errorMessage,
+          ...extractErrorDiagnostics(error),
         });
-        status = createErrorStatus('network_error', errorMessage);
+        status = createErrorStatus('network_error', 'Verbindungsstatus konnte nicht abgerufen werden.');
       }
 
       return jsonResponse(200, {
@@ -314,13 +313,12 @@ export const saveSvaMainserverInterfaceSettings = createServerFn({ method: 'POST
             enabled: Boolean(payloadData.enabled),
           });
         } catch (error) {
-          const message = readThrownErrorMessage(error, 'Einstellungen konnten nicht gespeichert werden.');
           logger.error('Failed to persist interfaces settings', {
             operation: 'save_interfaces_settings',
             workspace_id: instanceId,
-            error_message: message,
+            ...extractErrorDiagnostics(error),
           });
-          return jsonResponse(400, { message } satisfies ErrorPayload);
+          return jsonResponse(400, { message: 'Einstellungen konnten nicht gespeichert werden.' } satisfies ErrorPayload);
         }
 
         logger.info('Interfaces settings saved successfully', {

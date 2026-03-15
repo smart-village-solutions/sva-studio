@@ -128,11 +128,14 @@ const ServerFuncsDemo = () => {
 
   const runServerFn = useServerFn(submitGreeting);
 
-  const handleSubmit = async (event: React.FormEvent) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const submittedNameValue = new FormData(event.currentTarget as HTMLFormElement).get('name');
+    const submittedName = typeof submittedNameValue === 'string' ? submittedNameValue : '';
+    setName(submittedName);
     setLoading(true);
     try {
-      const response = await runServerFn({ data: { name } });
+      const response = await runServerFn({ data: { name: submittedName } });
       setResult(response);
     } finally {
       setLoading(false);
@@ -156,9 +159,10 @@ const ServerFuncsDemo = () => {
       <form className="flex flex-col gap-3" onSubmit={handleSubmit}>
         <input
           className="rounded border border-border bg-background px-4 py-2 text-foreground"
+          name="name"
           placeholder="Dein Name"
           value={name}
-          onChange={(event) => setName(event.target.value)}
+          onChange={(event) => setName(event.currentTarget.value)}
         />
         <button
           type="submit"

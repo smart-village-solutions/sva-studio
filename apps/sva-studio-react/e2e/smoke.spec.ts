@@ -1,4 +1,33 @@
 import { expect, test } from '@playwright/test';
+import type { Page } from '@playwright/test';
+
+type RecordedServerFnResponse = {
+  readonly body: string;
+  readonly method: string;
+  readonly status: number;
+  readonly url: string;
+};
+
+const captureServerFnResponses = (page: Page) => {
+  const responses: RecordedServerFnResponse[] = [];
+
+  page.on('response', (response) => {
+    if (!response.url().includes('/_server/')) {
+      return;
+    }
+
+    void response.text().then((body) => {
+      responses.push({
+        body,
+        method: response.request().method(),
+        status: response.status(),
+        url: response.url(),
+      });
+    });
+  });
+
+  return responses;
+};
 
 test('GET / returns 200 and renders app shell', async ({ page }) => {
   const response = await page.goto('/');
@@ -30,4 +59,28 @@ test('GET /auth/login returns redirect response', async ({ request }) => {
 
   const location = response.headers().location;
   expect(location).toBeTruthy();
+});
+
+test('demo server function uses the real /_server transport', async ({ page }) => {
+  const pageErrors: string[] = [];
+  const serverFnResponses = captureServerFnResponses(page);
+
+  page.on('pageerror', (error) => {
+    pageErrors.push(error.message);
+  });
+
+  await page.goto('/demo/start/server-funcs');
+  await expect(page.getByPlaceholder('Dein Name')).toBeVisible();
+
+  await page.getByPlaceholder('Dein Name').fill('Debug');
+  await page.getByRole('button', { name: 'Server Function ausführen' }).click();
+  await expect(page.getByText('Hallo Debug!')).toBeVisible();
+  await expect
+    .poll(() => serverFnResponses.find((response) => response.method === 'POST')?.status)
+    .toBe(200);
+
+  const response = serverFnResponses.find((entry) => entry.method === 'POST');
+  expect(response?.url).toContain('/_server/');
+  expect(response?.body).not.toContain('Only HTML requests are supported here');
+  expect(pageErrors).toEqual([]);
 });

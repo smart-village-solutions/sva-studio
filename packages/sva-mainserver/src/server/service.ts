@@ -395,7 +395,9 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
     const executeRequest = async (): Promise<Response> =>
       fetchImpl(url, {
         ...init,
-        signal: AbortSignal.timeout(upstreamTimeoutMs),
+        signal: init.signal
+          ? AbortSignal.any([init.signal, AbortSignal.timeout(upstreamTimeoutMs)])
+          : AbortSignal.timeout(upstreamTimeoutMs),
       });
 
     try {

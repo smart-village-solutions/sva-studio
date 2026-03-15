@@ -122,6 +122,9 @@ export const loadInstanceIntegrationRecord = async (
   }
 
   const getDatabaseUrl = options.getDatabaseUrl ?? (() => process.env.IAM_DATABASE_URL);
+  // Hinweis: Der Loader wird absichtlich pro Aufruf neu erzeugt, wenn Optionen übergeben werden.
+  // Dies stellt sicher, dass Caller (z.B. Tests) volle Kontrolle über TTL und Datenquelle haben,
+  // ohne den globalen Cache zu verändern. Cache-Wiederverwendung gilt nur für den options-losen Pfad.
   const customLoader = createCachedInstanceIntegrationLoader(
     options.loadRecord ??
       ((currentInstanceId, currentProviderKey) =>

@@ -17,6 +17,15 @@ const isPrivateOrLocalHost = (hostname: string): boolean => {
     return true;
   }
 
+  // IPv6-Bracket-Notation aus URL.hostname entfernen (z.B. [::1] → ::1, [::ffff:127.0.0.1] → ::ffff:127.0.0.1)
+  const unbracketed = normalized.startsWith('[') && normalized.endsWith(']')
+    ? normalized.slice(1, -1)
+    : normalized;
+
+  if (unbracketed !== normalized) {
+    return isPrivateOrLocalHost(unbracketed);
+  }
+
   const ipVersion = isIP(normalized);
   if (ipVersion === 4) {
     const octets = normalized.split('.').map((segment) => Number.parseInt(segment, 10));
@@ -36,6 +45,30 @@ const isPrivateOrLocalHost = (hostname: string): boolean => {
   }
 
   if (ipVersion === 6) {
+    // IPv4-mapped IPv6: sowohl ::ffff:127.0.0.1 (Dezimal) als auch
+    // ::ffff:7f00:1 (Hex-Paare, wie URL.hostname sie normalisiert) behandeln.
+    if (normalized.startsWith('::ffff:')) {
+      const mappedPart = normalized.slice('::ffff:'.length);
+      if (isIP(mappedPart) === 4) {
+        return isPrivateOrLocalHost(mappedPart);
+      }
+      const hexParts = mappedPart.split(':');
+      if (hexParts.length === 2) {
+        const high = Number.parseInt(hexParts[0], 16);
+        const low = Number.parseInt(hexParts[1], 16);
+        if (!Number.isNaN(high) && !Number.isNaN(low)) {
+          const dotted = [
+            (high >> 8) & 0xff,
+            high & 0xff,
+            (low >> 8) & 0xff,
+            low & 0xff,
+          ].join('.');
+          return isPrivateOrLocalHost(dotted);
+        }
+      }
+      // Unbekanntes Format – konservativ blockieren
+      return true;
+    }
     return (
       normalized === '::1' ||
       normalized === '::' ||

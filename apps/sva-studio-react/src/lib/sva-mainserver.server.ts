@@ -26,10 +26,10 @@ const jsonResponse = (status: number, payload: unknown): Response =>
 const hasMainserverAccess = (roles: readonly string[]): boolean =>
   roles.some((role) => MAIN_SERVER_ALLOWED_ROLES.has(role.trim().toLowerCase()));
 
-const createErrorStatus = (message: string): SvaMainserverConnectionStatus => ({
+const createErrorStatus = (message: string, errorCode: SvaMainserverConnectionStatus['errorCode'] = 'forbidden'): SvaMainserverConnectionStatus => ({
   status: 'error',
   checkedAt: new Date().toISOString(),
-  errorCode: 'forbidden',
+  errorCode,
   errorMessage: message,
 });
 
@@ -55,7 +55,7 @@ export const loadSvaMainserverConnectionStatus = createServerFn().handler(async 
         reason: 'missing_instance_context',
       });
       return jsonResponse(400, {
-        ...createErrorStatus('Kein Instanzkontext in der aktuellen Session vorhanden.'),
+        ...createErrorStatus('Kein Instanzkontext in der aktuellen Session vorhanden.', 'invalid_config'),
       } satisfies SvaMainserverConnectionStatus);
     }
 
@@ -91,5 +91,5 @@ export const loadSvaMainserverConnectionStatus = createServerFn().handler(async 
     return createErrorStatus('Zugriff auf die Mainserver-Diagnostik ist nicht erlaubt.');
   }
 
-  return createErrorStatus(`Unerwartete Antwort beim Laden des Mainserver-Status (${response.status}).`);
+  return createErrorStatus(`Unerwartete Antwort beim Laden des Mainserver-Status (${response.status}).`, 'network_error');
 });

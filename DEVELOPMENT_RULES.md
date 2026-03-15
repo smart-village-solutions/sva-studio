@@ -258,6 +258,54 @@ export function calculateDiscount(price: number): number {
 Weitere Details und Troubleshooting: `docs/development/testing-coverage.md`.
 Komplexitäts-Regeln und Ticket-Workflow: `docs/development/complexity-quality-governance.md`.
 
+## 5.1 Externe Quality Gates (Codecov & Sonar)
+
+### ✅ REQUIRED
+- SonarQube/SonarCloud-Analyse muss für PRs und vor Merge berücksichtigt werden; das Quality Gate darf nicht unbeachtet bleiben.
+- Codecov-Checks (`project`, `patch`) müssen in jedem PR aktiv geprüft und im Zweifel im PR-Text eingeordnet werden.
+- Interne Gates bleiben verbindlich: `pnpm coverage-gate` und `pnpm complexity-gate` sind die Freigabebasis im Repository.
+- Bei roten externen Checks (Codecov/Sonar) ist vor Merge eine dokumentierte Entscheidung im PR erforderlich (Ursache, Risiko, Folgemaßnahme).
+
+### ❌ FORBIDDEN
+- Merge ohne Sichtung der Sonar- oder Codecov-Ergebnisse.
+- Ignorieren roter Quality-Gate-Checks ohne dokumentierte Begründung.
+
+### Process
+1. Lokal die internen Gates ausführen (`pnpm test:coverage`, `pnpm coverage-gate`, `pnpm complexity-gate`).
+2. PR-Pipeline abwarten und Sonar- sowie Codecov-Status prüfen.
+3. Bei Befunden: Fix priorisieren oder begründete Ausnahme inkl. Ticket im PR dokumentieren.
+4. Merge erst nach nachvollziehbarer Bewertung aller Quality-Gates.
+
+### Enforcement
+- PRs ohne dokumentierte Bewertung von Sonar/Codecov werden im Review zurückgestellt.
+- Wiederholte Verstöße gelten als Prozessabweichung und müssen in der Retro adressiert werden.
+
+## 5.2 Shift-Left Test-Gates (verbindlich)
+
+### ✅ REQUIRED
+- Tests müssen während der Implementierung in kleinen Schritten ausgeführt werden, nicht erst kurz vor PR-Erstellung.
+- Nach jedem abgeschlossenen Änderungsblock (Feature, Refactoring, Bugfix) sind mindestens die betroffenen Unit-Tests sofort auszuführen.
+- Vor jedem Push muss ein schneller lokaler Gate-Lauf für betroffene Projekte erfolgen.
+- Vor dem Commit ist sicherzustellen, dass neue oder geänderte Logik durch Tests abgedeckt ist.
+
+### ❌ FORBIDDEN
+- „Big-bang“-Validierung erst am Ende der Umsetzung.
+- Mehrere inhaltliche Änderungen ohne Zwischenlauf der betroffenen Tests zu stapeln.
+- Pushes, bei denen bekannte lokale Testfehler ignoriert werden.
+
+### Process
+1. Implementiere eine kleine, in sich geschlossene Änderung.
+2. Führe sofort zielgerichtete Tests aus (affected, Projekt oder Datei).
+3. Erst bei grünem Zwischenstand mit dem nächsten Änderungsblock weitermachen.
+4. Vor Push mindestens den schnellen Gate-Lauf ausführen:
+  - `pnpm nx affected --target=test:unit --base=origin/main`
+  - zusätzlich bei Bedarf `pnpm nx affected --target=test:types --base=origin/main`
+5. Vor PR weiterhin vollständige Qualitätsprüfung gemäß Abschnitt 5 und 5.1.
+
+### Enforcement
+- Reviews können zurückgestellt werden, wenn eine Änderung ohne erkennbaren Shift-left-Testnachweis eingereicht wird.
+- Wiederholte späte Test-Fails gelten als Prozessabweichung und müssen mit konkreter Gegenmaßnahme im PR dokumentiert werden.
+
 ---
 
 ## 6. Security & Input Validation

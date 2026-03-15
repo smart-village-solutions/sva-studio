@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "@sva/auth": ["packages/auth/dist/index.d.ts"],
+      "@sva/auth/server": ["packages/auth/dist/index.server.d.ts"],
+      "@sva/data": ["packages/data/dist/index.d.ts"],
+      "@sva/data/server": ["packages/data/dist/server.d.ts"],
+      "@sva/sdk/server": ["packages/sdk/dist/server.d.ts"]
+    }
+  }
+}

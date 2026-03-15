@@ -73,6 +73,7 @@ gleichzeitig beeinflussen.
 - SDK-Logger nutzt typisierte OTEL-Bridge (keine `any`-Casts in Transport/Bootstrap)
 - Sensitive-Keys-Redaction umfasst zusätzlich Cookie-, Session-, CSRF- und API-Key-Header/Felder
 - Workspace-Context-Warnungen erfolgen über lazy `process.emitWarning` statt `console.warn`
+- Mainserver-Logs enthalten nur `instanceId`/`workspace_id`, `operation_name`, `request_id`, `trace_id`, Status und abstrahierte Fehlercodes; API-Key, Secret, Token und unredactete Variablen werden nie geloggt
 
 ### Fehlerbehandlung und Resilienz
 
@@ -85,6 +86,7 @@ gleichzeitig beeinflussen.
 - Bei stale + Recompute-Fehler gilt fail-closed (`cache_stale_guard`)
 - DSR-Resilienz über asynchrones Export-Statusmodell (`queued|processing|completed|failed`)
 - Restore-Sanitization nach Backup-Restore stellt DSGVO-konforme Nachbereinigung sicher
+- Mainserver-Delegation arbeitet fail-closed: ohne lokalen Rollencheck, Instanzkontext, Konfiguration oder gültige Credentials wird kein Upstream-Call ausgeführt
 
 ### Build-, Test- und Cache-Konzept der Frontend-App
 
@@ -92,6 +94,7 @@ gleichzeitig beeinflussen.
 - Cache-relevante Frontend-Konfigurationen werden über `frontendTooling` in `nx.json` explizit modelliert
 - Environment-Einflüsse mit Build-/Serve-/E2E-Relevanz (`CODECOV_TOKEN`, `TSS_DEV_SERVER`, `CI`) werden explizit in die Nx-Hash-Bildung aufgenommen
 - Pre-Build-Checks für i18n und Account-UI-Foundation bleiben als separate Nx-Targets vor dem App-Build erzwungen
+- Die App-Unit-Tests erzwingen wegen Node-25-/`jsdom`-Instabilitäten einen einzelnen Vitest-Worker im Thread-Pool
 
 ### i18n und Accessibility
 
@@ -193,3 +196,12 @@ Referenzen:
 - **Kanonischer Auth-Host:** OIDC-Flows laufen ausschließlich über die Root-Domain. Zielbild: Auth-Cookies werden auf die Parent-Domain gesetzt (`Domain=.<SVA_PARENT_DOMAIN>`) für SSO über Instanz-Subdomains. Aktuell ist das Cookie-Scoping host-only (siehe [ADR-020](../adr/ADR-020-kanonischer-auth-host-multi-host-grenze.md)).
 - **Secrets-Klassifizierung:** Vertrauliche Werte (Auth-Secrets, DB-Passwörter, Encryption-Keys) werden im Swarm-Betrieb als externe Docker Secrets bereitgestellt. Das Entrypoint-Skript (`entrypoint.sh`) liest Secret-Dateien aus `/run/secrets/` und exportiert sie als Env-Variablen. Nicht-vertrauliche Konfiguration bleibt als Stack-Umgebungsvariable.
 - **Startup-Validierung:** Die `instanceId`-Allowlist wird beim Startup gegen ein Regex validiert (fail-fast). Ungültige Einträge oder IDN/Punycode-Labels führen zum sofortigen Abbruch.
+
+### Ergänzung 2026-03: Per-User-SVA-Mainserver-Integration
+
+- Die Mainserver-Integration ist eine reine Server-Side-Integration; es gibt keinen generischen Browser-Proxy auf den externen GraphQL-Endpunkt.
+- Per-User-Credentials liegen ausschließlich in Keycloak-User-Attributen (`sva_mainserver_api_key`, `sva_mainserver_api_secret`) und werden serverseitig on demand gelesen.
+- Die Studio-Datenbank hält nur instanzbezogene Endpunktkonfiguration (`graphql_base_url`, `oauth_token_url`, Prüfstatus) in `iam.instance_integrations`.
+- Credential-Caching bleibt kurzlebig im Prozessspeicher; Access-Tokens werden ebenfalls nur in-memory und vor Ablauf mit Skew erneuert.
+- OAuth-Token werden pro `(instanceId, keycloakSubject, apiKey)` gecacht; eine Persistenz in Session, Redis oder Postgres ist ausgeschlossen.
+- Downstream-Headers propagieren `X-Request-Id` und Tracing-Kontext, damit Studio- und Mainserver-Logs korrelierbar bleiben.

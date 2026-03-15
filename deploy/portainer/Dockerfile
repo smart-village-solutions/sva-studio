@@ -20,6 +20,7 @@ RUN pnpm nx run core:build --skip-nx-cache
 RUN pnpm nx run monitoring-client:build --skip-nx-cache
 RUN pnpm nx run sdk:build --skip-nx-cache
 RUN pnpm nx run auth:build --skip-nx-cache
+RUN pnpm nx run sva-mainserver:build --skip-nx-cache
 RUN pnpm nx run routing:build --skip-nx-cache
 RUN pnpm nx run plugin-example:build --skip-nx-cache
 # The app build must invoke Vite directly. The Nx Vite executor currently only

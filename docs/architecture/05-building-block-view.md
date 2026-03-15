@@ -38,7 +38,11 @@ Abhängigkeiten des aktuellen Systems.
 7. Data (`packages/data`)
    - HTTP DataClient, IAM-Migrationen/Seeds und DB-Validierungstasks
    - IAM-Persistenzmodell (`iam`-Schema) mit Multi-Tenant-Struktur
-8. Plugin Example (`packages/plugin-example`)
+   - Integrations-Repository für instanzgebundene externe Schnittstellen (`iam.instance_integrations`)
+8. SVA Mainserver (`packages/sva-mainserver`)
+   - dedizierte Integrationsschicht für OAuth2, GraphQL-Transport, Fehlerabbildung und Fachadapter
+   - trennt client-sichere Typen von serverseitigen Delegations- und Diagnostikfunktionen
+9. Plugin Example (`packages/plugin-example`)
    - Beispielroute fuer Plugin-Erweiterbarkeit
 
 ### IAM-Bausteine und Package-Zuordnung
@@ -47,14 +51,20 @@ Abhängigkeiten des aktuellen Systems.
   - `packages/auth` (`routes.server.ts`, `routes/*`, `auth.server.ts`, `auth-server/*`, `oidc.server.ts`)
 - Account- und Rollenmanagement inkl. IdP-Synchronisation:
   - `packages/auth` (`iam-account-management.server.ts`, `iam-account-management/*`, `identity-provider-port.ts`, `keycloak-admin-client.ts`, `keycloak-admin-client/*`)
+- Per-User-Credential-Lesen für Downstream-Integrationen:
+  - `packages/auth` (`mainserver-credentials.server.ts`, `identity-provider-port.ts`, `keycloak-admin-client/*`)
 - Autorisierung (RBAC/ABAC) und Laufzeitentscheidungen:
   - `packages/auth` (`iam-authorization.server.ts`, `iam-authorization/*`)
 - Organisations- und Mandantenkontext (`instanceId`) inkl. RLS-nahe Datenmodelle:
   - `packages/data` (IAM-Migrationen, Seeds, SQL-Policies, `iam/repositories/*`)
+- Instanzgebundene Mainserver-Endpunkte:
+  - `packages/data` (`integrations/instance-integrations.ts`, Migration `0013_iam_instance_integrations.sql`)
 - Auditierung und Nachvollziehbarkeit:
   - `packages/auth` (`audit-db-sink.server.ts`) + `packages/sdk` (`createSdkLogger`)
 - Governance und DSGVO-Betroffenenrechte:
   - `packages/auth` (`iam-governance.server.ts`, `iam-governance/*`, `iam-data-subject-rights.server.ts`, `iam-data-subject-rights/*`)
+- Externe Mainserver-Anbindung:
+  - `packages/sva-mainserver` (`server/config-store.ts`, `server/service.ts`, `generated/*`)
 
 ### IAM-Server-Schnittmuster
 
@@ -70,13 +80,15 @@ Abhängigkeiten des aktuellen Systems.
 - Keycloak ist führend für Authentifizierung, Token-Claims und IdP-nahe Admin-Operationen.
 - Postgres ist führend für Studio-verwaltete IAM-Fachdaten wie Accounts, Rollen, Permissions und Auditdaten.
 - Redis hält lediglich Permission-Snapshots zur Beschleunigung des Authorize-Pfads.
+- Der SVA-Mainserver bleibt fachliche Source of Truth für seine GraphQL-Daten; Studio hält nur Endpunktkonfiguration und kurzlebige Laufzeit-Caches für Credentials und Access-Tokens.
 - Fachmodule konsumieren zentrale IAM-Entscheidungen und duplizieren keine eigene Berechtigungsauflösung gegen IAM-Tabellen.
 
 ### Abhängigkeiten (vereinfacht)
 
-- App -> `@sva/core`, `@sva/routing`, `@sva/auth`, `@sva/plugin-example`
+- App -> `@sva/core`, `@sva/routing`, `@sva/auth`, `@sva/sva-mainserver`, `@sva/plugin-example`
 - `@sva/routing` -> `@sva/auth`, `@sva/core`, `@sva/sdk`
 - `@sva/auth` -> `@sva/sdk`
+- `@sva/sva-mainserver` -> `@sva/auth`, `@sva/data`, `@sva/sdk`
 - `@sva/sdk` -> `@sva/core`, `@sva/monitoring-client`
 - `@sva/plugin-*` -> `@sva/sdk` (kein Direktimport aus `@sva/core`)
 - `@sva/monitoring-client` -> OTEL Libraries, `@sva/sdk` Context API
@@ -94,6 +106,14 @@ flowchart LR
 
 Nicht erlaubt: `@sva/plugin-*` -> `@sva/core`
 
+### Schichtdefinition `scope:integration`
+
+- Zweck: `scope:integration` kapselt serverseitige Downstream-Integrationen, die weder reine Identity-Logik (`scope:auth`) noch reine Persistenzlogik (`scope:data`) sind.
+- Erlaubte Abhängigkeiten: `scope:integration` darf auf `scope:auth`, `scope:data`, `scope:sdk` und `scope:core` zugreifen.
+- Nicht erlaubt: Fach- oder UI-Code darf nicht direkt OAuth2-/GraphQL-Clients, Secret-Lookups oder Datenbankzugriffe in Integrationspaketen umgehen.
+- Referenzpaket: `packages/sva-mainserver` nutzt `@sva/auth/server` für per-User-Credentials, `@sva/data/server` für instanzgebundene Endpunktkonfiguration und `@sva/sdk/server` für Logging/OTEL.
+- Zielgrenze: Integrationspakete exportieren client-sichere Typen getrennt von serverseitigen Runtime-Adaptern.
+
 ### Boundary Core vs. Framework Binding
 
 - Framework-agnostisch:
@@ -101,6 +121,7 @@ Nicht erlaubt: `@sva/plugin-*` -> `@sva/core`
 - Framework-/Runtime-gebunden:
   - `apps/sva-studio-react`, TanStack-Route-Definitionen, Auth-Handler fuer Start
   - `ThemeProvider` löst im App-Layer das aktive Shell-Theme aus `instanceId` auf und kombiniert es mit einem separaten Light-/Dark-Mode
+  - Mainserver-Aufrufe werden in TanStack-Start-Server-Funktionen gekapselt; rohe OAuth- oder GraphQL-Aufrufe bleiben außerhalb des Browser-Bundles
 
 Referenzen:
 
@@ -108,14 +129,18 @@ Referenzen:
 - `packages/routing/src/index.ts`
 - `packages/auth/src/index.server.ts`
 - `packages/auth/src/audit-db-sink.server.ts`
+- `packages/auth/src/mainserver-credentials.server.ts`
 - `packages/sdk/src/server.ts`
 - `packages/data/migrations/up/0001_iam_core.sql`
+- `packages/data/migrations/up/0013_iam_instance_integrations.sql`
+- `packages/sva-mainserver/src/server/service.ts`
 - `docs/architecture/iam-service-architektur.md`
 - `apps/sva-studio-react/src/components/Header.tsx`
 - `apps/sva-studio-react/src/components/Sidebar.tsx`
 - `apps/sva-studio-react/src/components/AppShell.tsx`
 - `apps/sva-studio-react/src/providers/theme-provider.tsx`
 - `apps/sva-studio-react/src/lib/theme.ts`
+- `apps/sva-studio-react/src/lib/sva-mainserver.server.ts`
 
 ### Erweiterung 2026-03: Account- und User-Management-UI
 

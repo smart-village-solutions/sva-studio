@@ -1,0 +1,74 @@
+name: SVA Mainserver Schema Diff
+
+on:
+  pull_request:
+    paths:
+      - 'packages/sva-mainserver/src/generated/schema.snapshot.json'
+      - 'scripts/ci/sva-mainserver-schema-diff.mjs'
+      - '.github/workflows/sva-mainserver-schema-diff.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  schema-diff:
+    runs-on: ubuntu-latest
+    env:
+      SVA_MAINSERVER_SCHEMA_GRAPHQL_URL: ${{ secrets.SVA_MAINSERVER_SCHEMA_GRAPHQL_URL }}
+      SVA_MAINSERVER_SCHEMA_OAUTH_TOKEN_URL: ${{ secrets.SVA_MAINSERVER_SCHEMA_OAUTH_TOKEN_URL }}
+      SVA_MAINSERVER_SCHEMA_CLIENT_ID: ${{ secrets.SVA_MAINSERVER_SCHEMA_CLIENT_ID }}
+      SVA_MAINSERVER_SCHEMA_CLIENT_SECRET: ${{ secrets.SVA_MAINSERVER_SCHEMA_CLIENT_SECRET }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: '.nvmrc'
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Skip when schema diff secrets are missing
+        if: env.SVA_MAINSERVER_SCHEMA_GRAPHQL_URL == '' || env.SVA_MAINSERVER_SCHEMA_OAUTH_TOKEN_URL == '' || env.SVA_MAINSERVER_SCHEMA_CLIENT_ID == '' || env.SVA_MAINSERVER_SCHEMA_CLIENT_SECRET == ''
+        run: |
+          echo 'Schema-Diff übersprungen: erforderliche Secrets fehlen.'
+          echo 'Konfiguriere SVA_MAINSERVER_SCHEMA_GRAPHQL_URL, SVA_MAINSERVER_SCHEMA_OAUTH_TOKEN_URL, SVA_MAINSERVER_SCHEMA_CLIENT_ID und SVA_MAINSERVER_SCHEMA_CLIENT_SECRET.'
+
+      - name: Run schema diff against staging
+        if: env.SVA_MAINSERVER_SCHEMA_GRAPHQL_URL != '' && env.SVA_MAINSERVER_SCHEMA_OAUTH_TOKEN_URL != '' && env.SVA_MAINSERVER_SCHEMA_CLIENT_ID != '' && env.SVA_MAINSERVER_SCHEMA_CLIENT_SECRET != ''
+        id: diff
+        continue-on-error: true
+        env:
+          SVA_MAINSERVER_SCHEMA_DIFF_OUTPUT: artifacts/schema-diff/sva-mainserver-schema-diff.md
+        run: node scripts/ci/sva-mainserver-schema-diff.mjs
+
+      - name: Upload schema diff report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: sva-mainserver-schema-diff-${{ github.run_id }}
+          path: artifacts/schema-diff/sva-mainserver-schema-diff.md
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Publish schema diff summary
+        if: steps.diff.outcome == 'failure'
+        run: |
+          echo 'GraphQL Schema-Diff hat Breaking Changes oder einen Fehler erkannt.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Details siehe Artifact sva-mainserver-schema-diff-*.' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publish schema diff summary (success)
+        if: steps.diff.outcome == 'success'
+        run: |
+          echo 'GraphQL Schema-Diff ausgeführt, keine Breaking Changes erkannt.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Details siehe Artifact sva-mainserver-schema-diff-*.' >> "$GITHUB_STEP_SUMMARY"

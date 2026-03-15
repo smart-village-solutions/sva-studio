@@ -16,6 +16,7 @@
     "@sva/core": "workspace:*",
     "@sva/plugin-example": "workspace:*",
     "@sva/routing": "workspace:*",
+    "@sva/sva-mainserver": "workspace:*",
     "@sva/sdk": "workspace:*",
     "@tanstack/react-devtools": "^0.9.10",
     "@tanstack/react-router": "^1.166.3",

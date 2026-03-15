@@ -45,6 +45,7 @@ Dieses Dokument beschreibt die Review-Governance für Proposal- und PR-Reviews m
 - Immer: `Documentation`
 - Jede Codeänderung: `Code Quality`
 - Verhaltensänderungen oder Coverage-/Test-Themen: `Test Quality`
+- Wiederholte rote Test-/Coverage-Checks im PR-Verlauf: `Test Quality` mit expliziter Shift-left-Prozessbewertung
 - IAM, Rollen-Sync, ABAC/RBAC, Data-Subject-Rights oder andere architekturrelevante Security-/Domain-Änderungen: zusätzlich `Architecture` und `Security & Privacy`
 - weitere Fachreviewer trigger-basiert analog zu Proposal-Reviews
 

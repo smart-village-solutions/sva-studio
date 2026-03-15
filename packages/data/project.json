@@ -21,13 +21,13 @@
     "test:unit": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "node --import tsx --test packages/data/src/**/*.test.ts"
+        "command": "node packages/data/scripts/run-node-tests.mjs"
       }
     },
     "test:coverage": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "node -e \"console.log('coverage tests not configured for @sva/data (coverage-exempt)')\""
+        "command": "pnpm --filter @sva/data exec vitest run --coverage --reporter=verbose --config vitest.config.ts"
       }
     },
     "test:integration": {

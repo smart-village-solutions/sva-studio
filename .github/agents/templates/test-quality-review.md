@@ -14,6 +14,11 @@ Nutze dieses Template für Reviews zu Tests, Coverage und Verifikationsstrategie
 - Punkt 2
 - Punkt 3
 
+## Shift-Left Bewertung
+
+- Reifegrad: [Früh validiert | Teilweise spät validiert | Überwiegend spät validiert]
+- Evidenz (kurz):
+
 ## Befundübersicht
 
 | ID | Thema | Schwere | Bereich | Evidenz |
@@ -36,6 +41,7 @@ Nutze dieses Template für Reviews zu Tests, Coverage und Verifikationsstrategie
 - [ ] Coverage-Risiko gegen Baseline / Floors bewertet
 - [ ] Kritische Pfade haben Repro- oder Negativtests
 - [ ] Empfohlene Nx-Targets sind konkret benannt
+- [ ] Shift-left-Nachweise vorhanden (Zwischenläufe pro Änderungsblock, nicht nur Endlauf)
 - [ ] Exemptions / `passWithNoTests` sind bewusst bewertet
 
 ## Empfohlene Commands

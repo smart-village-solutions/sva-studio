@@ -9,10 +9,20 @@
     ".": {
       "types": "./src/index.ts",
       "default": "./src/index.ts"
+    },
+    "./server": {
+      "types": "./src/server.ts",
+      "default": "./src/server.ts"
     }
   },
   "dependencies": {
     "@sva/core": "workspace:*",
+    "pg": "^8.20.0",
     "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.18.0",
+    "@vitest/coverage-v8": "^4.0.18",
+    "vitest": "^4.0.18"
   }
 }

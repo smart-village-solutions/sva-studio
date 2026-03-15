@@ -3,6 +3,7 @@ export type { AuthRoutePath } from './routes.shared';
 export type { AuthConfig, SessionUser } from './types';
 export type {
   CreateIdentityUserInput,
+  IdentityUserAttributes,
   IdentityProviderPort,
   IdentityUser,
   UpdateIdentityUserInput,

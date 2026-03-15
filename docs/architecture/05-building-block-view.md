@@ -106,6 +106,14 @@ flowchart LR
 
 Nicht erlaubt: `@sva/plugin-*` -> `@sva/core`
 
+### Schichtdefinition `scope:integration`
+
+- Zweck: `scope:integration` kapselt serverseitige Downstream-Integrationen, die weder reine Identity-Logik (`scope:auth`) noch reine Persistenzlogik (`scope:data`) sind.
+- Erlaubte Abhängigkeiten: `scope:integration` darf auf `scope:auth`, `scope:data`, `scope:sdk` und `scope:core` zugreifen.
+- Nicht erlaubt: Fach- oder UI-Code darf nicht direkt OAuth2-/GraphQL-Clients, Secret-Lookups oder Datenbankzugriffe in Integrationspaketen umgehen.
+- Referenzpaket: `packages/sva-mainserver` nutzt `@sva/auth/server` für per-User-Credentials, `@sva/data/server` für instanzgebundene Endpunktkonfiguration und `@sva/sdk/server` für Logging/OTEL.
+- Zielgrenze: Integrationspakete exportieren client-sichere Typen getrennt von serverseitigen Runtime-Adaptern.
+
 ### Boundary Core vs. Framework Binding
 
 - Framework-agnostisch:

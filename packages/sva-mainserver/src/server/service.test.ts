@@ -1,6 +1,31 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { createSvaMainserverService } from './service';
+vi.mock('@opentelemetry/api', () => ({
+  SpanStatusCode: {
+    OK: 1,
+    ERROR: 2,
+  },
+  metrics: {
+    getMeter: () => ({
+      createHistogram: () => ({ record: vi.fn() }),
+      createCounter: () => ({ add: vi.fn() }),
+      createObservableGauge: () => ({ addCallback: vi.fn() }),
+    }),
+  },
+  trace: {
+    getTracer: () => ({
+      startActiveSpan: async (_name: string, callback: (span: { setAttributes: (attrs: Record<string, unknown>) => void; setStatus: (status: Record<string, unknown>) => void; recordException: (error: unknown) => void; end: () => void; }) => Promise<unknown>) =>
+        callback({
+          setAttributes: () => undefined,
+          setStatus: () => undefined,
+          recordException: () => undefined,
+          end: () => undefined,
+        }),
+    }),
+  },
+}));
+
+import { createSvaMainserverService, resetSvaMainserverServiceState } from './service';
 
 const baseConfig = {
   instanceId: 'de-musterhausen',
@@ -17,6 +42,10 @@ const createJsonResponse = (status: number, body: unknown) =>
   });
 
 describe('createSvaMainserverService', () => {
+  afterEach(() => {
+    resetSvaMainserverServiceState();
+  });
+
   it('caches credentials for sixty seconds by default', async () => {
     let nowMs = 0;
     const readIdentityUserAttributes = vi
@@ -192,6 +221,53 @@ describe('createSvaMainserverService', () => {
     ).resolves.toMatchObject({
       status: 'error',
       errorCode: 'forbidden',
+    });
+  });
+
+  it('retries once for transient 503 responses before succeeding', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(new Response('temporarily unavailable', { status: 503 }))
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { __typename: 'Query' } }));
+
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readIdentityUserAttributes: async () => ({
+        sva_mainserver_api_key: ['key-1'],
+        sva_mainserver_api_secret: ['secret-1'],
+      }),
+      fetchImpl,
+      retryBaseDelayMs: 0,
+      randomIntImpl: () => 0,
+    });
+
+    await expect(
+      service.getQueryRootTypename({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' })
+    ).resolves.toMatchObject({ __typename: 'Query' });
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
+  });
+
+  it('maps timeout failures to a stable network error', async () => {
+    const timeoutError = new Error('timeout');
+    timeoutError.name = 'TimeoutError';
+
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readIdentityUserAttributes: async () => ({
+        sva_mainserver_api_key: ['key-1'],
+        sva_mainserver_api_secret: ['secret-1'],
+      }),
+      fetchImpl: vi.fn().mockRejectedValue(timeoutError),
+      retryBaseDelayMs: 0,
+      randomIntImpl: () => 0,
+    });
+
+    await expect(
+      service.getConnectionStatus({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' })
+    ).resolves.toMatchObject({
+      status: 'error',
+      errorCode: 'network_error',
     });
   });
 });

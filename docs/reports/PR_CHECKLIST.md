@@ -7,6 +7,8 @@
 - [ ] `pnpm test:unit` erfolgreich
 - [ ] `pnpm check:file-placement` erfolgreich
 - [ ] `pnpm complexity-gate` erfolgreich
+- [ ] SonarQube/SonarCloud Quality Gate geprüft und Ergebnis im PR berücksichtigt
+- [ ] Codecov-Checks (`project`, `patch`) geprüft und bei Abweichungen im PR eingeordnet
 
 ## Coverage-Nachweise im PR
 

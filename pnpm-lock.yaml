@@ -227,9 +227,19 @@ importers:
       '@sva/core':
         specifier: workspace:*
         version: link:../core
+      '@sva/sdk':
+        specifier: workspace:*
+        version: link:../sdk
+      pg:
+        specifier: ^8.20.0
+        version: 8.20.0
       zod:
         specifier: ^4.3.6
         version: 4.3.6
+    devDependencies:
+      '@types/pg':
+        specifier: ^8.18.0
+        version: 8.18.0
 
   packages/monitoring-client:
     dependencies:
@@ -348,6 +358,9 @@ importers:
 
   packages/sva-mainserver:
     dependencies:
+      '@opentelemetry/api':
+        specifier: ^1.9.0
+        version: 1.9.0
       '@sva/auth':
         specifier: workspace:*
         version: link:../auth
@@ -357,13 +370,10 @@ importers:
       '@sva/sdk':
         specifier: workspace:*
         version: link:../sdk
-      pg:
-        specifier: ^8.20.0
-        version: 8.20.0
+      zod:
+        specifier: ^4.3.6
+        version: 4.3.6
     devDependencies:
-      '@types/pg':
-        specifier: ^8.18.0
-        version: 8.18.0
       '@vitest/coverage-v8':
         specifier: ^4.0.18
         version: 4.0.18(vitest@4.0.18(@opentelemetry/api@1.9.0)(@types/node@25.3.5)(happy-dom@20.8.4)(jiti@2.6.1)(jsdom@28.1.0)(lightningcss@1.31.1)(tsx@4.21.0)(yaml@2.8.2))

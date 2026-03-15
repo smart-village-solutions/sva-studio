@@ -29,6 +29,8 @@
     "check:file-placement": "tsx scripts/ci/check-file-placement.ts",
     "check:file-placement:staged": "tsx scripts/ci/check-file-placement.ts --staged",
     "check:openapi:iam": "tsx scripts/ci/check-openapi-iam.ts",
+    "schema-diff:sva-mainserver": "node scripts/ci/sva-mainserver-schema-diff.mjs",
+    "benchmark:sva-mainserver": "node scripts/ops/benchmark-sva-mainserver.mjs",
     "iam:retention:run": "node scripts/ops/run-iam-retention.mjs",
     "hooks:install": "git config core.hooksPath .githooks"
   },

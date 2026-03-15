@@ -3,6 +3,7 @@ export type SvaMainserverProviderKey = 'sva_mainserver';
 export type SvaMainserverErrorCode =
   | 'config_not_found'
   | 'integration_disabled'
+  | 'invalid_config'
   | 'database_unavailable'
   | 'identity_provider_unavailable'
   | 'missing_credentials'

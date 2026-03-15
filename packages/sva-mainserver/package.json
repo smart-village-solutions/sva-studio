@@ -16,13 +16,13 @@
     }
   },
   "dependencies": {
+    "@opentelemetry/api": "^1.9.0",
     "@sva/auth": "workspace:*",
     "@sva/data": "workspace:*",
     "@sva/sdk": "workspace:*",
-    "pg": "^8.20.0"
+    "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@types/pg": "^8.18.0",
     "@vitest/coverage-v8": "^4.0.18",
     "vitest": "^4.0.18"
   }

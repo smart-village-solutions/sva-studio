@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import {
+  createCachedInstanceIntegrationLoader,
   createInstanceIntegrationRepository,
   instanceIntegrationStatements,
   type InstanceIntegrationRecord,
@@ -95,5 +96,69 @@ describe('instance integration repository', () => {
 
     assert.equal(captured.length, 1);
     assert.match(captured[0].text, /INSERT INTO iam\.instance_integrations/);
+  });
+});
+
+describe('createCachedInstanceIntegrationLoader', () => {
+  it('reuses cached records within the TTL window', async () => {
+    let nowMs = 0;
+    let calls = 0;
+    const loader = createCachedInstanceIntegrationLoader(
+      async () => {
+        calls += 1;
+        return {
+          instanceId: 'de-musterhausen',
+          providerKey: 'sva_mainserver',
+          graphqlBaseUrl: 'https://mainserver.example.invalid/graphql',
+          oauthTokenUrl: 'https://mainserver.example.invalid/oauth/token',
+          enabled: true,
+        };
+      },
+      {
+        cacheTtlMs: 300_000,
+        now: () => nowMs,
+      }
+    );
+
+    await loader.load('de-musterhausen', 'sva_mainserver');
+    nowMs += 1_000;
+    await loader.load('de-musterhausen', 'sva_mainserver');
+
+    assert.equal(calls, 1);
+  });
+
+  it('does not cache null records', async () => {
+    let calls = 0;
+    const loader = createCachedInstanceIntegrationLoader(async () => {
+      calls += 1;
+      return null;
+    });
+
+    await loader.load('de-musterhausen', 'sva_mainserver');
+    await loader.load('de-musterhausen', 'sva_mainserver');
+
+    assert.equal(calls, 2);
+  });
+
+  it('deduplicates in-flight loads for the same cache key', async () => {
+    let calls = 0;
+    const loader = createCachedInstanceIntegrationLoader(async () => {
+      calls += 1;
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      return {
+        instanceId: 'de-musterhausen',
+        providerKey: 'sva_mainserver',
+        graphqlBaseUrl: 'https://mainserver.example.invalid/graphql',
+        oauthTokenUrl: 'https://mainserver.example.invalid/oauth/token',
+        enabled: true,
+      };
+    });
+
+    await Promise.all([
+      loader.load('de-musterhausen', 'sva_mainserver'),
+      loader.load('de-musterhausen', 'sva_mainserver'),
+    ]);
+
+    assert.equal(calls, 1);
   });
 });

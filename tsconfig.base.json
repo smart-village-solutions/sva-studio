@@ -11,6 +11,7 @@
       "@sva/core": ["packages/core/src/index.ts"],
       "@sva/core/security": ["packages/core/src/security/index.ts"],
       "@sva/data": ["packages/data/src/index.ts"],
+      "@sva/data/server": ["packages/data/src/server.ts"],
       "@sva/auth": ["packages/auth/src/index.ts"],
       "@sva/auth/server": ["packages/auth/src/index.server.ts"],
       "@sva/sdk": ["packages/sdk/src/index.ts"],

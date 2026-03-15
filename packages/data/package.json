@@ -9,10 +9,19 @@
     ".": {
       "types": "./src/index.ts",
       "default": "./src/index.ts"
+    },
+    "./server": {
+      "types": "./src/server.ts",
+      "default": "./src/server.ts"
     }
   },
   "dependencies": {
     "@sva/core": "workspace:*",
+    "@sva/sdk": "workspace:*",
+    "pg": "^8.20.0",
     "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.18.0"
   }
 }

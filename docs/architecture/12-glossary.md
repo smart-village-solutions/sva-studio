@@ -37,3 +37,4 @@ Architektur und Betrieb.
 | fail-closed-Policy | Standardverhalten, bei dem fehlende oder ungültige Kontextinformationen (z. B. Host, `instanceId`) zum Abweisen der Anfrage führen (kein Zugriff ohne positive Freigabe) | `packages/sdk/src/instance/config.server.ts` |
 | Parent-Domain | Die konfigurierbare Basis-Domain (`SVA_PARENT_DOMAIN`), unter der Instanz-Subdomains und der kanonische Auth-Host laufen | `deploy/portainer/.env.example` |
 | Swarm Secret | Vertraulicher Wert, der über Docker Swarm Secrets bereitgestellt und über `/run/secrets/` in Container gemountet wird; Namenskonvention `sva_studio_<service>_<secret_name>` | `deploy/portainer/entrypoint.sh` |
+| Per-User-Delegation | Downstream-Aufrufe, bei denen Studio pro angemeldetem Benutzer dessen in Keycloak hinterlegte Mainserver-Credentials serverseitig nutzt, statt zentrale Instanz-Secrets zu halten | `docs/adr/ADR-021-per-user-sva-mainserver-delegation.md` |

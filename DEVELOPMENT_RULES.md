@@ -258,6 +258,28 @@ export function calculateDiscount(price: number): number {
 Weitere Details und Troubleshooting: `docs/development/testing-coverage.md`.
 Komplexitäts-Regeln und Ticket-Workflow: `docs/development/complexity-quality-governance.md`.
 
+## 5.1 Externe Quality Gates (Codecov & Sonar)
+
+### ✅ REQUIRED
+- SonarQube/SonarCloud-Analyse muss für PRs und vor Merge berücksichtigt werden; das Quality Gate darf nicht unbeachtet bleiben.
+- Codecov-Checks (`project`, `patch`) müssen in jedem PR aktiv geprüft und im Zweifel im PR-Text eingeordnet werden.
+- Interne Gates bleiben verbindlich: `pnpm coverage-gate` und `pnpm complexity-gate` sind die Freigabebasis im Repository.
+- Bei roten externen Checks (Codecov/Sonar) ist vor Merge eine dokumentierte Entscheidung im PR erforderlich (Ursache, Risiko, Folgemaßnahme).
+
+### ❌ FORBIDDEN
+- Merge ohne Sichtung der Sonar- oder Codecov-Ergebnisse.
+- Ignorieren roter Quality-Gate-Checks ohne dokumentierte Begründung.
+
+### Process
+1. Lokal die internen Gates ausführen (`pnpm test:coverage`, `pnpm coverage-gate`, `pnpm complexity-gate`).
+2. PR-Pipeline abwarten und Sonar- sowie Codecov-Status prüfen.
+3. Bei Befunden: Fix priorisieren oder begründete Ausnahme inkl. Ticket im PR dokumentieren.
+4. Merge erst nach nachvollziehbarer Bewertung aller Quality-Gates.
+
+### Enforcement
+- PRs ohne dokumentierte Bewertung von Sonar/Codecov werden im Review zurückgestellt.
+- Wiederholte Verstöße gelten als Prozessabweichung und müssen in der Retro adressiert werden.
+
 ---
 
 ## 6. Security & Input Validation

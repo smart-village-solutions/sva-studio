@@ -13,6 +13,7 @@ export default defineConfig({
     alias: {
       '@sva/auth/server': resolve(__dirname, '../auth/src/index.server.ts'),
       '@sva/auth': resolve(__dirname, '../auth/src/index.ts'),
+      '@sva/data/server': resolve(__dirname, '../data/src/server.ts'),
       '@sva/data': resolve(__dirname, '../data/src/index.ts'),
       '@sva/sdk/server': resolve(__dirname, '../sdk/src/server.ts'),
     },

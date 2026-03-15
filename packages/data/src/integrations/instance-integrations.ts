@@ -1,5 +1,5 @@
 import type { IamInstanceId } from '../iam/types';
-import type { SqlExecutionResult, SqlExecutor, SqlStatement } from '../iam/repositories/types';
+import type { SqlExecutor, SqlStatement } from '../iam/repositories/types';
 
 export type IntegrationProviderKey = 'sva_mainserver';
 
@@ -21,6 +21,14 @@ export type InstanceIntegrationRepository = {
   upsert(input: InstanceIntegrationRecord): Promise<void>;
 };
 
+export type CachedInstanceIntegrationLoader = {
+  load(
+    instanceId: IamInstanceId,
+    providerKey: IntegrationProviderKey
+  ): Promise<InstanceIntegrationRecord | null>;
+  clear(): void;
+};
+
 type InstanceIntegrationRow = {
   readonly instance_id: string;
   readonly provider_key: IntegrationProviderKey;
@@ -30,6 +38,13 @@ type InstanceIntegrationRow = {
   readonly last_verified_at: string | null;
   readonly last_verified_status: string | null;
 };
+
+type CacheEntry = {
+  readonly value: InstanceIntegrationRecord;
+  readonly expiresAtMs: number;
+};
+
+export const DEFAULT_INSTANCE_INTEGRATION_CACHE_TTL_MS = 300_000;
 
 const mapRow = (row: InstanceIntegrationRow): InstanceIntegrationRecord => ({
   instanceId: row.instance_id,
@@ -105,9 +120,76 @@ export const createInstanceIntegrationRepository = (
   },
 });
 
+export const createCachedInstanceIntegrationLoader = (
+  loadRecord: (
+    instanceId: IamInstanceId,
+    providerKey: IntegrationProviderKey
+  ) => Promise<InstanceIntegrationRecord | null>,
+  options: {
+    cacheTtlMs?: number;
+    now?: () => number;
+  } = {}
+): CachedInstanceIntegrationLoader => {
+  const now = options.now ?? (() => Date.now());
+  const cacheTtlMs = options.cacheTtlMs ?? DEFAULT_INSTANCE_INTEGRATION_CACHE_TTL_MS;
+  const cache = new Map<string, CacheEntry>();
+  const inflightLoads = new Map<string, Promise<InstanceIntegrationRecord | null>>();
+
+  const sweepExpiredEntries = (nowMs: number): void => {
+    for (const [key, entry] of cache.entries()) {
+      if (entry.expiresAtMs <= nowMs) {
+        cache.delete(key);
+      }
+    }
+  };
+
+  const buildCacheKey = (instanceId: IamInstanceId, providerKey: IntegrationProviderKey): string =>
+    `${instanceId}:${providerKey}`;
+
+  return {
+    async load(instanceId, providerKey) {
+      const nowMs = now();
+      const cacheKey = buildCacheKey(instanceId, providerKey);
+
+      sweepExpiredEntries(nowMs);
+
+      const cached = cache.get(cacheKey);
+      if (cached && cached.expiresAtMs > nowMs) {
+        return cached.value;
+      }
+
+      const inflight = inflightLoads.get(cacheKey);
+      if (inflight) {
+        return inflight;
+      }
+
+      const loadPromise = loadRecord(instanceId, providerKey).then((record) => {
+        if (record) {
+          cache.set(cacheKey, {
+            value: record,
+            expiresAtMs: now() + cacheTtlMs,
+          });
+        }
+        return record;
+      });
+
+      inflightLoads.set(cacheKey, loadPromise);
+      try {
+        return await loadPromise;
+      } finally {
+        inflightLoads.delete(cacheKey);
+      }
+    },
+    clear() {
+      cache.clear();
+      inflightLoads.clear();
+    },
+  };
+};
+
 export const instanceIntegrationStatements = {
   select: selectStatement,
   upsert: upsertStatement,
 } as const;
 
-export type { SqlExecutionResult };
+export type { SqlExecutionResult } from '../iam/repositories/types';

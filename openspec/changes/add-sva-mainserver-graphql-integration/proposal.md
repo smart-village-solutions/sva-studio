@@ -29,8 +29,8 @@ Autorisierungsprüfungen erhöhen.
 - Erste Anbindung an `apps/sva-studio-react` über eine TanStack-Start-
   Server-Funktion statt direkten Browser-Zugriffs (inkl. Audit-Trail bei
   Zugriffsverweigerung)
-- Fortschreibung von OpenSpec, ADR-021 (Per-User-SVA-Mainserver-Delegation)
-  und arc42-Dokumentation
+- Fortschreibung von OpenSpec, ADR-021 Per-User-SVA-Mainserver-Delegation
+  (`docs/adr/ADR-021-per-user-sva-mainserver-delegation.md`) und arc42-Dokumentation
 - Dockerfile um Build-Step für `sva-mainserver` erweitern
 - Coverage-Baseline für `@sva/sva-mainserver` in `coverage-policy.json`
   definieren

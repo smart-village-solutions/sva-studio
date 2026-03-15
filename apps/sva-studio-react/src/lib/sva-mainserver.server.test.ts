@@ -4,6 +4,12 @@ const state = vi.hoisted(() => ({
   request: new Request('http://localhost'),
   withAuthenticatedUser: vi.fn(),
   getSvaMainserverConnectionStatus: vi.fn(),
+  logger: {
+    warn: vi.fn(),
+    info: vi.fn(),
+    debug: vi.fn(),
+    error: vi.fn(),
+  },
 }));
 
 vi.mock('@tanstack/react-start', () => ({
@@ -24,10 +30,18 @@ vi.mock('@sva/sva-mainserver/server', () => ({
   getSvaMainserverConnectionStatus: state.getSvaMainserverConnectionStatus,
 }));
 
+vi.mock('@sva/sdk/server', () => ({
+  createSdkLogger: () => state.logger,
+}));
+
 describe('loadSvaMainserverConnectionStatus', () => {
   beforeEach(() => {
     state.withAuthenticatedUser.mockReset();
     state.getSvaMainserverConnectionStatus.mockReset();
+    state.logger.warn.mockReset();
+    state.logger.info.mockReset();
+    state.logger.debug.mockReset();
+    state.logger.error.mockReset();
   });
 
   it('delegates to the mainserver package for allowed roles', async () => {
@@ -58,9 +72,10 @@ describe('loadSvaMainserverConnectionStatus', () => {
       instanceId: 'de-musterhausen',
       keycloakSubject: 'subject-1',
     });
+    expect(state.logger.warn).not.toHaveBeenCalled();
   });
 
-  it('returns a stable forbidden payload when local studio roles are missing', async () => {
+  it('returns a stable forbidden payload when local studio roles are missing and emits an audit log', async () => {
     state.withAuthenticatedUser.mockImplementation(
       async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<Response>) =>
         handler({
@@ -79,5 +94,44 @@ describe('loadSvaMainserverConnectionStatus', () => {
       errorCode: 'forbidden',
     });
     expect(state.getSvaMainserverConnectionStatus).not.toHaveBeenCalled();
+    expect(state.logger.warn).toHaveBeenCalledWith(
+      'SVA Mainserver access denied by local studio role check',
+      expect.objectContaining({
+        workspace_id: 'de-musterhausen',
+        actor_user_id: 'subject-1',
+        decision: 'deny',
+        reason: 'missing_local_role',
+      })
+    );
+  });
+
+  it('returns a stable error payload when the session has no instance context', async () => {
+    state.withAuthenticatedUser.mockImplementation(
+      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<Response>) =>
+        handler({
+          user: {
+            id: 'subject-1',
+            roles: ['interface_manager'],
+          },
+        })
+    );
+
+    const { loadSvaMainserverConnectionStatus } = await import('./sva-mainserver.server');
+
+    await expect(loadSvaMainserverConnectionStatus()).resolves.toMatchObject({
+      status: 'error',
+      errorCode: 'forbidden',
+      errorMessage: 'Kein Instanzkontext in der aktuellen Session vorhanden.',
+    });
+    expect(state.getSvaMainserverConnectionStatus).not.toHaveBeenCalled();
+    expect(state.logger.warn).toHaveBeenCalledWith(
+      'SVA Mainserver access denied because the session has no instance context',
+      expect.objectContaining({
+        workspace_id: 'unknown',
+        actor_user_id: 'subject-1',
+        decision: 'deny',
+        reason: 'missing_instance_context',
+      })
+    );
   });
 });

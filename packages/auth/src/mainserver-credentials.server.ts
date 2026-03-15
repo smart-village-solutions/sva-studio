@@ -107,15 +107,13 @@ export const buildMainserverIdentityAttributes = (input: {
     delete attributes[MAINSERVER_APPLICATION_ID_ATTRIBUTE];
   }
 
-  if (input.mainserverUserApplicationSecret !== undefined) {
-    const nextSecret = input.mainserverUserApplicationSecret.trim();
-    if (nextSecret) {
-      attributes[MAINSERVER_APPLICATION_SECRET_ATTRIBUTE] = [nextSecret];
-    }
-  } else if (currentState.mainserverUserApplicationSecretSet) {
-    if (preservedSecret) {
-      attributes[MAINSERVER_APPLICATION_SECRET_ATTRIBUTE] = [preservedSecret];
-    }
+  const nextSecret = input.mainserverUserApplicationSecret?.trim();
+  if (nextSecret) {
+    attributes[MAINSERVER_APPLICATION_SECRET_ATTRIBUTE] = [nextSecret];
+  } else if (preservedSecret) {
+    attributes[MAINSERVER_APPLICATION_SECRET_ATTRIBUTE] = [preservedSecret];
+  } else {
+    delete attributes[MAINSERVER_APPLICATION_SECRET_ATTRIBUTE];
   }
 
   return attributes;

@@ -33,6 +33,13 @@ const createErrorStatus = (message: string): SvaMainserverConnectionStatus => ({
   errorMessage: message,
 });
 
+const createUnauthorizedStatus = (message: string): SvaMainserverConnectionStatus => ({
+  status: 'error',
+  checkedAt: new Date().toISOString(),
+  errorCode: 'unauthorized',
+  errorMessage: message,
+});
+
 export const loadSvaMainserverConnectionStatus = createServerFn().handler(async (): Promise<SvaMainserverConnectionStatus> => {
   const { getRequest } = await import('@tanstack/react-start/server');
   const { withAuthenticatedUser } = await import('@sva/auth/server');
@@ -43,7 +50,6 @@ export const loadSvaMainserverConnectionStatus = createServerFn().handler(async 
     if (!ctx.user.instanceId) {
       (await getLogger()).warn('SVA Mainserver access denied because the session has no instance context', {
         workspace_id: 'unknown',
-        actor_user_id: ctx.user.id,
         operation: 'load_sva_mainserver_connection_status',
         decision: 'deny',
         reason: 'missing_instance_context',
@@ -56,14 +62,12 @@ export const loadSvaMainserverConnectionStatus = createServerFn().handler(async 
     if (!hasMainserverAccess(ctx.user.roles)) {
       (await getLogger()).warn('SVA Mainserver access denied by local studio role check', {
         workspace_id: ctx.user.instanceId,
-        actor_user_id: ctx.user.id,
         operation: 'load_sva_mainserver_connection_status',
         decision: 'deny',
         reason: 'missing_local_role',
-        roles: ctx.user.roles,
       });
       return jsonResponse(403, {
-        ...createErrorStatus('Lokale Studio-Berechtigung fuer die Mainserver-Diagnostik fehlt.'),
+        ...createErrorStatus('Lokale Studio-Berechtigung für die Mainserver-Diagnostik fehlt.'),
       } satisfies SvaMainserverConnectionStatus);
     }
 
@@ -74,5 +78,18 @@ export const loadSvaMainserverConnectionStatus = createServerFn().handler(async 
     return jsonResponse(200, status);
   });
 
-  return (await response.json()) as SvaMainserverConnectionStatus;
+  const payload = (await response.json().catch(() => null)) as SvaMainserverConnectionStatus | null;
+  if (payload && (payload.status === 'connected' || payload.status === 'error')) {
+    return payload;
+  }
+
+  if (response.status === 401) {
+    return createUnauthorizedStatus('Nicht authentifiziert. Bitte erneut anmelden.');
+  }
+
+  if (response.status === 403) {
+    return createErrorStatus('Zugriff auf die Mainserver-Diagnostik ist nicht erlaubt.');
+  }
+
+  return createErrorStatus(`Unerwartete Antwort beim Laden des Mainserver-Status (${response.status}).`);
 });

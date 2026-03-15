@@ -98,7 +98,6 @@ describe('loadSvaMainserverConnectionStatus', () => {
       'SVA Mainserver access denied by local studio role check',
       expect.objectContaining({
         workspace_id: 'de-musterhausen',
-        actor_user_id: 'subject-1',
         decision: 'deny',
         reason: 'missing_local_role',
       })
@@ -128,10 +127,26 @@ describe('loadSvaMainserverConnectionStatus', () => {
       'SVA Mainserver access denied because the session has no instance context',
       expect.objectContaining({
         workspace_id: 'unknown',
-        actor_user_id: 'subject-1',
         decision: 'deny',
         reason: 'missing_instance_context',
       })
     );
+  });
+
+  it('returns a stable unauthorized payload when auth middleware answers with 401', async () => {
+    state.withAuthenticatedUser.mockResolvedValue(
+      new Response(JSON.stringify({ error: 'unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
+
+    const { loadSvaMainserverConnectionStatus } = await import('./sva-mainserver.server');
+
+    await expect(loadSvaMainserverConnectionStatus()).resolves.toMatchObject({
+      status: 'error',
+      errorCode: 'unauthorized',
+      errorMessage: 'Nicht authentifiziert. Bitte erneut anmelden.',
+    });
   });
 });

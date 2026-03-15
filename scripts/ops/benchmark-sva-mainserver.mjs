@@ -18,6 +18,7 @@ if (missingVars.length > 0) {
 
 const coldRuns = Number.parseInt(process.env.SVA_MS_BENCH_COLD_RUNS ?? '3', 10);
 const warmRuns = Number.parseInt(process.env.SVA_MS_BENCH_WARM_RUNS ?? '20', 10);
+const requestTimeoutMs = Number.parseInt(process.env.SVA_MS_BENCH_TIMEOUT_MS ?? '10000', 10);
 const outputPath = resolve(
   process.cwd(),
   process.env.SVA_MS_BENCH_OUTPUT ?? 'artifacts/benchmark/sva-mainserver-benchmark.json',
@@ -29,6 +30,9 @@ const clientId = process.env.SVA_MS_BENCH_CLIENT_ID;
 const clientSecret = process.env.SVA_MS_BENCH_CLIENT_SECRET;
 
 const query = process.env.SVA_MS_BENCH_QUERY ?? '{ __typename }';
+
+const isTimeoutError = (error) =>
+  error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError');
 
 const median = (values) => {
   if (values.length === 0) return 0;
@@ -72,6 +76,7 @@ const fetchAccessToken = async () => {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body,
+    signal: AbortSignal.timeout(requestTimeoutMs),
   });
 
   const elapsedMs = performance.now() - start;
@@ -91,14 +96,23 @@ const fetchAccessToken = async () => {
 
 const executeGraphql = async (accessToken) => {
   const start = performance.now();
-  const response = await fetch(graphqlUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${accessToken}`,
-    },
-    body: JSON.stringify({ query }),
-  });
+  let response;
+  try {
+    response = await fetch(graphqlUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({ query }),
+      signal: AbortSignal.timeout(requestTimeoutMs),
+    });
+  } catch (error) {
+    if (isTimeoutError(error)) {
+      throw new Error(`GraphQL request timed out after ${requestTimeoutMs}ms`);
+    }
+    throw error;
+  }
 
   const elapsedMs = performance.now() - start;
 
@@ -180,6 +194,10 @@ const run = async () => {
 try {
   await run();
 } catch (error) {
-  console.error('[benchmark] Failed:', error instanceof Error ? error.message : String(error));
+  if (isTimeoutError(error)) {
+    console.error(`[benchmark] Failed: request timed out after ${requestTimeoutMs}ms`);
+  } else {
+    console.error('[benchmark] Failed:', error instanceof Error ? error.message : String(error));
+  }
   process.exit(1);
 }

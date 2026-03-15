@@ -80,6 +80,22 @@ describe('loadSvaMainserverInstanceConfig', () => {
     );
   });
 
+  it('rejects private and local upstream hosts even with https', async () => {
+    state.loadInstanceIntegrationRecord.mockResolvedValue({
+      instanceId: 'de-musterhausen',
+      providerKey: 'sva_mainserver',
+      graphqlBaseUrl: 'https://127.0.0.1/graphql',
+      oauthTokenUrl: 'https://mainserver.example.invalid/oauth/token',
+      enabled: true,
+    });
+
+    const { loadSvaMainserverInstanceConfig } = await import('./config-store');
+
+    await expect(loadSvaMainserverInstanceConfig('de-musterhausen')).rejects.toMatchObject({
+      code: 'invalid_config',
+    });
+  });
+
   it('maps unexpected data-layer failures to database_unavailable', async () => {
     state.loadInstanceIntegrationRecord.mockRejectedValue(new Error('db offline'));
 

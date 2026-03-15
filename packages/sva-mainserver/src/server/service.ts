@@ -132,7 +132,7 @@ const normalizeUnexpectedError = (error: unknown): SvaMainserverError => {
 };
 
 const buildLogContext = (
-  input: Pick<SvaMainserverConnectionInput, 'instanceId' | 'keycloakSubject'>,
+  input: Pick<SvaMainserverConnectionInput, 'instanceId'>,
   extra: Record<string, unknown> = {}
 ): Record<string, unknown> => {
   const context = getWorkspaceContext();
@@ -140,7 +140,6 @@ const buildLogContext = (
   return {
     workspace_id: input.instanceId,
     instance_id: input.instanceId,
-    keycloak_subject: input.keycloakSubject,
     request_id: context.requestId,
     trace_id: context.traceId,
     ...extra,
@@ -316,7 +315,6 @@ const withObservedHop = async <TValue>(
       'sva_mainserver.operation': input.operationName,
       workspace_id: input.connection.instanceId,
       instance_id: input.connection.instanceId,
-      keycloak_subject: input.connection.keycloakSubject,
     });
 
     try {
@@ -394,52 +392,47 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
     );
 
   const fetchWithRetry = async ({ url, init, input, operationName, hop }: UpstreamRequestInput): Promise<Response> => {
-    for (let attempt = 0; attempt < 2; attempt += 1) {
-      try {
-        const response = await fetchImpl(url, {
-          ...init,
-          signal: AbortSignal.timeout(upstreamTimeoutMs),
-        });
+    const executeRequest = async (): Promise<Response> =>
+      fetchImpl(url, {
+        ...init,
+        signal: AbortSignal.timeout(upstreamTimeoutMs),
+      });
 
-        if (attempt === 0 && RETRYABLE_STATUS_CODES.has(response.status)) {
-          const delayMs = retryBaseDelayMs + randomIntImpl(0, 100);
-          logger.warn('SVA Mainserver upstream returned transient status, retrying once', {
-            ...buildLogContext(input, {
-              operation: operationName,
-              hop,
-              http_status: response.status,
-              retry_delay_ms: delayMs,
-            }),
-          });
-          await sleep(delayMs);
-          continue;
-        }
+    try {
+      const firstResponse = await executeRequest();
+      if (!RETRYABLE_STATUS_CODES.has(firstResponse.status)) {
+        return firstResponse;
+      }
 
-        return response;
-      } catch (error) {
-        if (attempt === 0 && shouldRetryError(error)) {
-          const delayMs = retryBaseDelayMs + randomIntImpl(0, 100);
-          logger.warn('SVA Mainserver upstream request failed transiently, retrying once', {
-            ...buildLogContext(input, {
-              operation: operationName,
-              hop,
-              retry_delay_ms: delayMs,
-              error_message: error instanceof Error ? error.message : String(error),
-            }),
-          });
-          await sleep(delayMs);
-          continue;
-        }
-
+      await firstResponse.body?.cancel();
+      const delayMs = retryBaseDelayMs + randomIntImpl(0, 100);
+      logger.warn('SVA Mainserver upstream returned transient status, retrying once', {
+        ...buildLogContext(input, {
+          operation: operationName,
+          hop,
+          http_status: firstResponse.status,
+          retry_delay_ms: delayMs,
+        }),
+      });
+      await sleep(delayMs);
+      return executeRequest();
+    } catch (error) {
+      if (!shouldRetryError(error)) {
         throw error;
       }
-    }
 
-    throw toSvaMainserverError({
-      code: 'network_error',
-      message: 'Der SVA-Mainserver konnte nach einem Wiederholungsversuch nicht erreicht werden.',
-      statusCode: 503,
-    });
+      const delayMs = retryBaseDelayMs + randomIntImpl(0, 100);
+      logger.warn('SVA Mainserver upstream request failed transiently, retrying once', {
+        ...buildLogContext(input, {
+          operation: operationName,
+          hop,
+          retry_delay_ms: delayMs,
+          error_message: error instanceof Error ? error.message : String(error),
+        }),
+      });
+      await sleep(delayMs);
+      return executeRequest();
+    }
   };
 
   const loadCredentials = async (input: SvaMainserverConnectionInput): Promise<CredentialValue> => {

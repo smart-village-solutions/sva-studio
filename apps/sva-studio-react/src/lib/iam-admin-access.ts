@@ -3,6 +3,7 @@ type UserWithRoles = {
 };
 
 const ADMIN_ROLES = new Set(['system_admin', 'app_manager']);
+const INTERFACES_ROLES = new Set(['system_admin', 'app_manager', 'interface_manager', 'interface-manager']);
 const SYSTEM_ADMIN_ROLES = new Set(['system_admin']);
 
 const readFlag = (value: string | undefined, fallback: boolean) => {
@@ -21,6 +22,9 @@ export const isIamBulkEnabled = () => isIamAdminEnabled() && readFlag(import.met
 
 export const hasIamAdminRole = (user: UserWithRoles | null | undefined) =>
   Boolean(user?.roles?.some((role) => ADMIN_ROLES.has(role)));
+
+export const hasInterfacesAccessRole = (user: UserWithRoles | null | undefined) =>
+  Boolean(user?.roles?.some((role) => INTERFACES_ROLES.has(role.trim().toLowerCase())));
 
 export const hasSystemAdminRole = (user: UserWithRoles | null | undefined) =>
   Boolean(user?.roles?.some((role) => SYSTEM_ADMIN_ROLES.has(role)));

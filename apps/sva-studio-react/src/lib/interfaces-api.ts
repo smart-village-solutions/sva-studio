@@ -2,6 +2,8 @@ import { createServerFn } from '@tanstack/react-start';
 
 import type { SvaMainserverConnectionStatus, SvaMainserverInstanceConfig } from '@sva/sva-mainserver';
 
+import { extractErrorDiagnostics, isRecord, readErrorMessage } from './error-message-utils';
+
 const COMPONENT = 'interfaces-api';
 
 const ADMIN_ROLES = new Set(['system_admin', 'app_manager', 'interface_manager', 'interface-manager']);
@@ -10,6 +12,12 @@ type InterfacesOverviewModel = {
   readonly instanceId: string;
   readonly config: SvaMainserverInstanceConfig | null;
   readonly status: SvaMainserverConnectionStatus;
+};
+
+type SaveInterfacesPayload = {
+  readonly graphqlBaseUrl?: string;
+  readonly oauthTokenUrl?: string;
+  readonly enabled?: boolean;
 };
 
 const isInterfacesOverviewModel = (payload: unknown): payload is InterfacesOverviewModel => {
@@ -44,55 +52,20 @@ const isSvaMainserverInstanceConfig = (value: unknown): value is SvaMainserverIn
   );
 };
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null;
-
-const extractMessageFromUnknown = (value: unknown): string | null => {
-  if (typeof value === 'string' && value.trim()) {
-    return value;
-  }
-
-  if (!isRecord(value)) {
-    return null;
-  }
-
-  const directKeys = ['message', 'error', 'detail', 'title', 'statusText'] as const;
-  for (const key of directKeys) {
-    const candidate = value[key];
-    if (typeof candidate === 'string' && candidate.trim()) {
-      return candidate;
-    }
-  }
-
-  const nestedKeys = ['data', 'cause', 'response', 'body'] as const;
-  for (const key of nestedKeys) {
-    const nested = extractMessageFromUnknown(value[key]);
-    if (nested) {
-      return nested;
-    }
-  }
-
-  return null;
-};
-
-const extractErrorDiagnostics = (error: unknown): Record<string, unknown> => {
-  if (error instanceof Error) {
-    const causeMessage = extractMessageFromUnknown((error as Error & { cause?: unknown }).cause);
-
-    return {
-      error_type: error.constructor.name,
-      error_message: error.message,
-      ...(causeMessage ? { error_cause_message: causeMessage } : {}),
-    };
-  }
-
-  const extracted = extractMessageFromUnknown(error);
-
-  return {
-    error_type: typeof error,
-    error_message: extracted ?? String(error),
-  };
-};
+const ERROR_CODES = new Set<SvaMainserverConnectionStatus['errorCode']>([
+  'config_not_found',
+  'integration_disabled',
+  'invalid_config',
+  'database_unavailable',
+  'identity_provider_unavailable',
+  'missing_credentials',
+  'token_request_failed',
+  'unauthorized',
+  'forbidden',
+  'network_error',
+  'graphql_error',
+  'invalid_response',
+]);
 
 const getErrorMessage = (payload: ErrorPayload | null, fallback: string): string => {
   if (payload?.message?.trim()) {
@@ -109,21 +82,12 @@ const getErrorMessage = (payload: ErrorPayload | null, fallback: string): string
   return fallback;
 };
 
-const readThrownErrorMessage = (error: unknown, fallback: string): string => {
-  if (error instanceof Error && error.message.trim()) {
-    return error.message;
-  }
-
-  const extracted = extractMessageFromUnknown(error);
-  if (extracted) {
-    return extracted;
-  }
-
-  return fallback;
-};
-
 const hasInterfacesAccess = (roles: readonly string[]): boolean =>
   roles.some((role) => ADMIN_ROLES.has(role.trim().toLowerCase()));
+
+const isSvaMainserverErrorCode = (
+  value: string | undefined
+): value is NonNullable<SvaMainserverConnectionStatus['errorCode']> => ERROR_CODES.has(value as SvaMainserverConnectionStatus['errorCode']);
 
 const createErrorStatus = (
   errorCode: SvaMainserverConnectionStatus['errorCode'],
@@ -147,6 +111,26 @@ const parseJson = async <T>(response: Response): Promise<T | null> => {
   } catch {
     return null;
   }
+};
+
+const getOverviewFallbackStatus = (
+  response: Response,
+  payload: ErrorPayload | null,
+  fallbackMessage: string
+): SvaMainserverConnectionStatus => {
+  if (response.status === 401 || payload?.error === 'unauthorized') {
+    return createErrorStatus('unauthorized', 'Die Sitzung ist nicht mehr gültig. Bitte erneut anmelden.');
+  }
+
+  if (response.status === 403 || payload?.error === 'forbidden') {
+    return createErrorStatus('forbidden', getErrorMessage(payload, 'Keine Berechtigung zur Schnittstellenverwaltung.'));
+  }
+
+  if (isSvaMainserverErrorCode(payload?.error)) {
+    return createErrorStatus(payload.error, getErrorMessage(payload, fallbackMessage));
+  }
+
+  return createErrorStatus('network_error', getErrorMessage(payload, fallbackMessage));
 };
 
 export const loadInterfacesOverview = createServerFn().handler(async (): Promise<InterfacesOverviewModel> => {
@@ -248,7 +232,7 @@ export const loadInterfacesOverview = createServerFn().handler(async (): Promise
     return {
       instanceId: '',
       config: null,
-      status: createErrorStatus('network_error', getErrorMessage(payload, 'Schnittstellen konnten nicht geladen werden.')),
+      status: getOverviewFallbackStatus(response, payload, 'Schnittstellen konnten nicht geladen werden.'),
     };
   } catch (error) {
     const { createSdkLogger } = await import('@sva/sdk/server');
@@ -266,7 +250,7 @@ export const loadInterfacesOverview = createServerFn().handler(async (): Promise
 });
 
 export const saveSvaMainserverInterfaceSettings = createServerFn({ method: 'POST' })
-  .inputValidator((data: { graphqlBaseUrl?: string; oauthTokenUrl?: string; enabled?: boolean }) => data)
+  .inputValidator((data: SaveInterfacesPayload) => data)
   .handler(async ({ data }): Promise<SvaMainserverInstanceConfig> => {
     try {
       const { getRequest } = await import('@tanstack/react-start/server');
@@ -275,7 +259,7 @@ export const saveSvaMainserverInterfaceSettings = createServerFn({ method: 'POST
       const { createSdkLogger } = await import('@sva/sdk/server');
       const logger = createSdkLogger({ component: COMPONENT });
       const request = getRequest();
-      const payloadData = data ?? {};
+      const payloadData = (data ?? {}) as SaveInterfacesPayload;
 
       const response = await withAuthenticatedUser(request, async ({ user }) => {
         const instanceId = user.instanceId;
@@ -298,10 +282,19 @@ export const saveSvaMainserverInterfaceSettings = createServerFn({ method: 'POST
           return jsonResponse(403, { message: 'Keine Berechtigung zur Schnittstellenverwaltung.' } satisfies ErrorPayload);
         }
 
+        if (typeof payloadData.enabled !== 'boolean') {
+          logger.warn('Save interfaces settings rejected: missing enabled flag', {
+            operation: 'save_interfaces_settings',
+            workspace_id: instanceId,
+            user_id: user.id,
+          });
+          return jsonResponse(400, { message: 'Der Aktivierungsstatus fehlt.' } satisfies ErrorPayload);
+        }
+
         logger.info('Saving interfaces settings', {
           operation: 'save_interfaces_settings',
           workspace_id: instanceId,
-          enabled: Boolean(payloadData.enabled),
+          enabled: payloadData.enabled,
         });
 
         let config: SvaMainserverInstanceConfig;
@@ -310,7 +303,7 @@ export const saveSvaMainserverInterfaceSettings = createServerFn({ method: 'POST
             instanceId,
             graphqlBaseUrl: payloadData.graphqlBaseUrl?.trim() ?? '',
             oauthTokenUrl: payloadData.oauthTokenUrl?.trim() ?? '',
-            enabled: Boolean(payloadData.enabled),
+            enabled: payloadData.enabled,
           });
         } catch (error) {
           logger.error('Failed to persist interfaces settings', {
@@ -344,7 +337,7 @@ export const saveSvaMainserverInterfaceSettings = createServerFn({ method: 'POST
     } catch (error) {
       const { createSdkLogger } = await import('@sva/sdk/server');
       const logger = createSdkLogger({ component: COMPONENT });
-      const message = readThrownErrorMessage(error, 'Schnittstellen-Einstellungen konnten nicht gespeichert werden.');
+      const message = readErrorMessage(error, 'Schnittstellen-Einstellungen konnten nicht gespeichert werden.');
       logger.error('Unexpected error saving interfaces settings', {
         operation: 'save_interfaces_settings',
         error_message: message,

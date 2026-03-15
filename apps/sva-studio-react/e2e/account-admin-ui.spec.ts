@@ -246,9 +246,7 @@ test('direct access to admin users redirects unauthenticated clients to login', 
 
   await expect
     .poll(() => page.url())
-    .toMatch(
-      /(\/protocol\/openid-connect\/auth\?|accounts\.google\.com\/(signin\/oauth\/error|o\/oauth2\/v2\/auth))/
-    );
+    .toMatch(/(\/auth\/login\?redirect=%2Fadmin%2Fusers|\/protocol\/openid-connect\/auth\?|accounts\.google\.com\/(signin\/oauth\/error|o\/oauth2\/v2\/auth))/);
 });
 
 test('responsive IAM views render on mobile, tablet, desktop', async ({ page }) => {

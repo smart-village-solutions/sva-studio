@@ -53,7 +53,7 @@ test('interfaces page uses the real /_server transport for load and save', async
   await expect(page.getByLabel('OAuth Token-URL')).toHaveValue('https://saved.example.org/oauth/token');
 
   await page.getByRole('button', { name: 'Einstellungen speichern' }).click();
-  await expect(page.getByText('Die Sitzung ist nicht mehr gültig. Bitte erneut anmelden.').first()).toBeVisible();
+  await expect(page.getByText(/(Die Sitzung ist nicht mehr gültig\. Bitte erneut anmelden\.|Authentifizierungsfehler\.)/).first()).toBeVisible();
   await expect
     .poll(() => serverFnResponses.filter((response) => response.method === 'POST').length)
     .toBeGreaterThan(0);

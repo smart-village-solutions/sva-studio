@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const state = vi.hoisted(() => ({
   loadInstanceIntegrationRecord: vi.fn(),
   saveInstanceIntegrationRecord: vi.fn(),
+  dnsLookup: vi.fn(async () => [{ address: '203.0.113.10', family: 4 }]),
 }));
 
 vi.mock('@sva/data/server', () => ({
@@ -10,10 +11,16 @@ vi.mock('@sva/data/server', () => ({
   saveInstanceIntegrationRecord: state.saveInstanceIntegrationRecord,
 }));
 
+vi.mock('node:dns/promises', () => ({
+  lookup: state.dnsLookup,
+}));
+
 describe('settings', () => {
   beforeEach(() => {
     state.loadInstanceIntegrationRecord.mockReset();
     state.saveInstanceIntegrationRecord.mockReset();
+    state.dnsLookup.mockReset();
+    state.dnsLookup.mockResolvedValue([{ address: '203.0.113.10', family: 4 }]);
   });
 
   it('loads settings when integration record exists', async () => {
@@ -49,8 +56,8 @@ describe('settings', () => {
     state.loadInstanceIntegrationRecord.mockResolvedValue({
       instanceId: 'de-musterhausen',
       providerKey: 'sva_mainserver',
-      graphqlBaseUrl: 'https://old.example/graphql',
-      oauthTokenUrl: 'https://old.example/oauth/token',
+      graphqlBaseUrl: 'https://old.example.invalid/graphql',
+      oauthTokenUrl: 'https://old.example.invalid/oauth/token',
       enabled: true,
       lastVerifiedAt: '2026-03-14T09:00:00.000Z',
       lastVerifiedStatus: 'ok',
@@ -60,8 +67,8 @@ describe('settings', () => {
 
     await saveSvaMainserverSettings({
       instanceId: 'de-musterhausen',
-      graphqlBaseUrl: 'https://new.example/graphql',
-      oauthTokenUrl: 'https://new.example/oauth/token',
+      graphqlBaseUrl: 'https://new.example.invalid/graphql',
+      oauthTokenUrl: 'https://new.example.invalid/oauth/token',
       enabled: false,
     });
 
@@ -69,8 +76,8 @@ describe('settings', () => {
       expect.objectContaining({
         instanceId: 'de-musterhausen',
         providerKey: 'sva_mainserver',
-        graphqlBaseUrl: 'https://new.example/graphql',
-        oauthTokenUrl: 'https://new.example/oauth/token',
+        graphqlBaseUrl: 'https://new.example.invalid/graphql',
+        oauthTokenUrl: 'https://new.example.invalid/oauth/token',
         enabled: false,
         lastVerifiedAt: '2026-03-14T09:00:00.000Z',
         lastVerifiedStatus: 'ok',
@@ -87,29 +94,24 @@ describe('settings', () => {
       saveSvaMainserverSettings({
         instanceId: 'de-musterhausen',
         graphqlBaseUrl: 'http://example.com/graphql',
-        oauthTokenUrl: 'https://new.example/oauth/token',
+        oauthTokenUrl: 'https://new.example.invalid/oauth/token',
         enabled: true,
       })
     ).rejects.toThrow('Die konfigurierte Upstream-URL graphql_base_url ist ungültig.');
   });
 
-  it('allows loopback http URLs in development', async () => {
+  it('rejects private and loopback upstream URLs during save', async () => {
     state.loadInstanceIntegrationRecord.mockResolvedValue(null);
 
     const { saveSvaMainserverSettings } = await import('./settings');
 
-    await saveSvaMainserverSettings({
-      instanceId: 'de-musterhausen',
-      graphqlBaseUrl: 'http://localhost:4000/graphql',
-      oauthTokenUrl: 'http://127.0.0.1:8080/oauth/token',
-      enabled: true,
-    });
-
-    expect(state.saveInstanceIntegrationRecord).toHaveBeenCalledWith(
-      expect.objectContaining({
-        graphqlBaseUrl: 'http://localhost:4000/graphql',
-        oauthTokenUrl: 'http://127.0.0.1:8080/oauth/token',
+    await expect(
+      saveSvaMainserverSettings({
+        instanceId: 'de-musterhausen',
+        graphqlBaseUrl: 'https://localhost:4000/graphql',
+        oauthTokenUrl: 'https://[::1]:8080/oauth/token',
+        enabled: true,
       })
-    );
+    ).rejects.toThrow('Die konfigurierte Upstream-URL graphql_base_url ist ungültig.');
   });
 });

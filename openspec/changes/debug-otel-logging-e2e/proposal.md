@@ -205,7 +205,7 @@ pkill -f vite || true
 sleep 1
 
 # Start App
-cd /Users/wilimzig/Documents/Projects/SVA/sva-studio
+cd "$(git rev-parse --show-toplevel)"
 ENABLE_OTEL=true npx nx run sva-studio-react:serve &
 APP_PID=$!
 sleep 5

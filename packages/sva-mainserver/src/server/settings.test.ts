@@ -100,6 +100,36 @@ describe('settings', () => {
     ).rejects.toThrow('Die konfigurierte Upstream-URL graphql_base_url ist ungültig.');
   });
 
+  it('rejects upstream URLs with embedded credentials', async () => {
+    state.loadInstanceIntegrationRecord.mockResolvedValue(null);
+
+    const { saveSvaMainserverSettings } = await import('./settings');
+
+    await expect(
+      saveSvaMainserverSettings({
+        instanceId: 'de-musterhausen',
+        graphqlBaseUrl: 'https://demo:secret@example.com/graphql',
+        oauthTokenUrl: 'https://new.example.invalid/oauth/token',
+        enabled: true,
+      })
+    ).rejects.toThrow('Die konfigurierte Upstream-URL graphql_base_url ist ungültig.');
+  });
+
+  it('rejects upstream URLs with URL fragments', async () => {
+    state.loadInstanceIntegrationRecord.mockResolvedValue(null);
+
+    const { saveSvaMainserverSettings } = await import('./settings');
+
+    await expect(
+      saveSvaMainserverSettings({
+        instanceId: 'de-musterhausen',
+        graphqlBaseUrl: 'https://new.example.invalid/graphql#fragment',
+        oauthTokenUrl: 'https://new.example.invalid/oauth/token',
+        enabled: true,
+      })
+    ).rejects.toThrow('Die konfigurierte Upstream-URL graphql_base_url ist ungültig.');
+  });
+
   it('rejects private and loopback upstream URLs during save', async () => {
     state.loadInstanceIntegrationRecord.mockResolvedValue(null);
 

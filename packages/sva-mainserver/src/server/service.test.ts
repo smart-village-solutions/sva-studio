@@ -48,11 +48,11 @@ describe('createSvaMainserverService', () => {
 
   it('caches credentials for sixty seconds by default', async () => {
     let nowMs = 0;
-    const readIdentityUserAttributes = vi
+    const readCredentials = vi
       .fn()
       .mockResolvedValue({
-        sva_mainserver_api_key: ['key-1'],
-        sva_mainserver_api_secret: ['secret-1'],
+        apiKey: 'key-1',
+        apiSecret: 'secret-1',
       });
 
     const fetchImpl = vi
@@ -62,7 +62,7 @@ describe('createSvaMainserverService', () => {
 
     const service = createSvaMainserverService({
       loadInstanceConfig: async () => baseConfig,
-      readIdentityUserAttributes,
+      readCredentials,
       fetchImpl,
       now: () => nowMs,
     });
@@ -71,7 +71,7 @@ describe('createSvaMainserverService', () => {
     nowMs += 30_000;
     await service.getQueryRootTypename({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' });
 
-    expect(readIdentityUserAttributes).toHaveBeenCalledTimes(1);
+    expect(readCredentials).toHaveBeenCalledTimes(1);
   });
 
   it('caches access tokens until the skew window is reached', async () => {
@@ -83,10 +83,7 @@ describe('createSvaMainserverService', () => {
 
     const service = createSvaMainserverService({
       loadInstanceConfig: async () => baseConfig,
-      readIdentityUserAttributes: async () => ({
-        sva_mainserver_api_key: ['key-1'],
-        sva_mainserver_api_secret: ['secret-1'],
-      }),
+      readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
       fetchImpl,
       now: () => nowMs,
     });
@@ -109,10 +106,7 @@ describe('createSvaMainserverService', () => {
 
     const service = createSvaMainserverService({
       loadInstanceConfig: async () => baseConfig,
-      readIdentityUserAttributes: async () => ({
-        sva_mainserver_api_key: ['key-1'],
-        sva_mainserver_api_secret: ['secret-1'],
-      }),
+      readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
       fetchImpl,
       now: () => nowMs,
     });
@@ -133,10 +127,7 @@ describe('createSvaMainserverService', () => {
 
     const service = createSvaMainserverService({
       loadInstanceConfig: async () => baseConfig,
-      readIdentityUserAttributes: async () => ({
-        sva_mainserver_api_key: ['key-1'],
-        sva_mainserver_api_secret: ['secret-1'],
-      }),
+      readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
       fetchImpl,
     });
 
@@ -152,9 +143,7 @@ describe('createSvaMainserverService', () => {
   it('maps missing credentials to a stable error response', async () => {
     const service = createSvaMainserverService({
       loadInstanceConfig: async () => baseConfig,
-      readIdentityUserAttributes: async () => ({
-        sva_mainserver_api_key: ['key-1'],
-      }),
+      readCredentials: async () => null,
     });
 
     await expect(
@@ -174,10 +163,7 @@ describe('createSvaMainserverService', () => {
 
     const service = createSvaMainserverService({
       loadInstanceConfig: async () => baseConfig,
-      readIdentityUserAttributes: async () => ({
-        sva_mainserver_api_key: ['key-1'],
-        sva_mainserver_api_secret: ['secret-1'],
-      }),
+      readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
       fetchImpl,
     });
 
@@ -193,10 +179,7 @@ describe('createSvaMainserverService', () => {
     const createServiceForStatus = (status: number) =>
       createSvaMainserverService({
         loadInstanceConfig: async () => baseConfig,
-        readIdentityUserAttributes: async () => ({
-          sva_mainserver_api_key: ['key-1'],
-          sva_mainserver_api_secret: ['secret-1'],
-        }),
+        readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
         fetchImpl: vi
           .fn()
           .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
@@ -227,10 +210,7 @@ describe('createSvaMainserverService', () => {
   it('maps non-auth token endpoint status codes to token_request_failed', async () => {
     const service = createSvaMainserverService({
       loadInstanceConfig: async () => baseConfig,
-      readIdentityUserAttributes: async () => ({
-        sva_mainserver_api_key: ['key-1'],
-        sva_mainserver_api_secret: ['secret-1'],
-      }),
+      readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
       fetchImpl: vi.fn().mockResolvedValueOnce(new Response('upstream down', { status: 500 })),
       retryBaseDelayMs: 0,
       randomIntImpl: () => 0,
@@ -252,10 +232,7 @@ describe('createSvaMainserverService', () => {
 
     const service = createSvaMainserverService({
       loadInstanceConfig: async () => baseConfig,
-      readIdentityUserAttributes: async () => ({
-        sva_mainserver_api_key: ['key-1'],
-        sva_mainserver_api_secret: ['secret-1'],
-      }),
+      readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
       fetchImpl,
       retryBaseDelayMs: 0,
       randomIntImpl: () => 0,
@@ -278,10 +255,7 @@ describe('createSvaMainserverService', () => {
 
     const service = createSvaMainserverService({
       loadInstanceConfig: async () => baseConfig,
-      readIdentityUserAttributes: async () => ({
-        sva_mainserver_api_key: ['key-1'],
-        sva_mainserver_api_secret: ['secret-1'],
-      }),
+      readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
       fetchImpl,
       retryBaseDelayMs: 0,
       randomIntImpl: () => 0,
@@ -310,10 +284,7 @@ describe('createSvaMainserverService', () => {
 
     const service = createSvaMainserverService({
       loadInstanceConfig: async () => baseConfig,
-      readIdentityUserAttributes: async () => ({
-        sva_mainserver_api_key: ['key-1'],
-        sva_mainserver_api_secret: ['secret-1'],
-      }),
+      readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
       fetchImpl,
       retryBaseDelayMs: 0,
       randomIntImpl: () => 0,
@@ -332,10 +303,7 @@ describe('createSvaMainserverService', () => {
 
     const service = createSvaMainserverService({
       loadInstanceConfig: async () => baseConfig,
-      readIdentityUserAttributes: async () => ({
-        sva_mainserver_api_key: ['key-1'],
-        sva_mainserver_api_secret: ['secret-1'],
-      }),
+      readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
       fetchImpl: vi.fn().mockRejectedValue(timeoutError),
       retryBaseDelayMs: 0,
       randomIntImpl: () => 0,
@@ -355,10 +323,7 @@ describe('createSvaMainserverService', () => {
 
     const service = createSvaMainserverService({
       loadInstanceConfig: async () => baseConfig,
-      readIdentityUserAttributes: async () => ({
-        sva_mainserver_api_key: ['key-1'],
-        sva_mainserver_api_secret: ['secret-1'],
-      }),
+      readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
       fetchImpl: vi.fn().mockRejectedValueOnce(retryable).mockRejectedValueOnce(nonRetryable),
       retryBaseDelayMs: 0,
       randomIntImpl: () => 0,
@@ -376,10 +341,7 @@ describe('createSvaMainserverService', () => {
   it('maps non-json GraphQL responses to invalid_response', async () => {
     const service = createSvaMainserverService({
       loadInstanceConfig: async () => baseConfig,
-      readIdentityUserAttributes: async () => ({
-        sva_mainserver_api_key: ['key-1'],
-        sva_mainserver_api_secret: ['secret-1'],
-      }),
+      readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
       fetchImpl: vi
         .fn()
         .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))

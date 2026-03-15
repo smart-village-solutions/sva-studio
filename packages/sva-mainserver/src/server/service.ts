@@ -1,8 +1,7 @@
 import { randomInt } from 'node:crypto';
 
 import { metrics, SpanStatusCode, trace } from '@opentelemetry/api';
-import type { IdentityUserAttributes } from '@sva/auth';
-import { readIdentityUserAttributes } from '@sva/auth/server';
+import { readSvaMainserverCredentials } from '@sva/auth/server';
 import { createSdkLogger, getWorkspaceContext } from '@sva/sdk/server';
 import { z } from 'zod';
 
@@ -51,10 +50,7 @@ type UpstreamRequestInput = {
 
 export type SvaMainserverServiceOptions = {
   readonly loadInstanceConfig?: (instanceId: string) => Promise<SvaMainserverInstanceConfig>;
-  readonly readIdentityUserAttributes?: (
-    keycloakSubject: string,
-    attributeNames?: readonly string[]
-  ) => Promise<IdentityUserAttributes | null>;
+  readonly readCredentials?: (keycloakSubject: string) => Promise<CredentialValue | null>;
   readonly fetchImpl?: typeof fetch;
   readonly now?: () => number;
   readonly credentialCacheTtlMs?: number;
@@ -83,8 +79,6 @@ const DEFAULT_UPSTREAM_TIMEOUT_MS = 10_000;
 const DEFAULT_CACHE_MAX_SIZE = 256;
 const DEFAULT_RETRY_BASE_DELAY_MS = 150;
 const RETRYABLE_STATUS_CODES = new Set([503]);
-const MAIN_SERVER_API_KEY_ATTRIBUTE = 'sva_mainserver_api_key';
-const MAIN_SERVER_API_SECRET_ATTRIBUTE = 'sva_mainserver_api_secret';
 
 const tokenResponseSchema = z.object({
   access_token: z.string().min(1),
@@ -95,15 +89,6 @@ const graphqlResponseSchema = z.object({
   data: z.unknown().optional(),
   errors: z.array(z.object({ message: z.string().optional() })).optional(),
 });
-
-const normalizeAttributeValue = (value: readonly string[] | undefined): string | null => {
-  if (!Array.isArray(value)) {
-    return null;
-  }
-
-  const candidate = value.find((entry) => typeof entry === 'string' && entry.trim().length > 0);
-  return candidate?.trim() ?? null;
-};
 
 const toSvaMainserverError = (input: {
   code: SvaMainserverErrorCode;
@@ -356,13 +341,7 @@ const withObservedHop = async <TValue>(
 
 export const createSvaMainserverService = (options: SvaMainserverServiceOptions = {}) => {
   const loadInstanceConfig = options.loadInstanceConfig ?? loadSvaMainserverInstanceConfig;
-  const readAttributes =
-    options.readIdentityUserAttributes ??
-    ((keycloakSubject: string, attributeNames?: readonly string[]) =>
-      readIdentityUserAttributes({
-        keycloakSubject,
-        attributeNames,
-      }));
+  const readCredentials = options.readCredentials ?? readSvaMainserverCredentials;
   const fetchImpl = options.fetchImpl ?? fetch;
   const now = options.now ?? (() => Date.now());
   const credentialCacheTtlMs = options.credentialCacheTtlMs ?? DEFAULT_CREDENTIAL_CACHE_TTL_MS;
@@ -470,27 +449,8 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
         connection: input,
       },
       async () => {
-        const attributes = await readAttributes(input.keycloakSubject, [
-          MAIN_SERVER_API_KEY_ATTRIBUTE,
-          MAIN_SERVER_API_SECRET_ATTRIBUTE,
-        ]);
-        if (attributes === null) {
-          logger.warn('Keycloak attributes for SVA Mainserver are unavailable', {
-            ...buildLogContext(input, {
-              operation: 'load_credentials',
-              error_code: 'identity_provider_unavailable',
-            }),
-          });
-          throw toSvaMainserverError({
-            code: 'identity_provider_unavailable',
-            message: 'Keycloak-Attribute für die Mainserver-Anbindung konnten nicht geladen werden.',
-            statusCode: 503,
-          });
-        }
-
-        const apiKey = normalizeAttributeValue(attributes[MAIN_SERVER_API_KEY_ATTRIBUTE]);
-        const apiSecret = normalizeAttributeValue(attributes[MAIN_SERVER_API_SECRET_ATTRIBUTE]);
-        if (!apiKey || !apiSecret) {
+        const credentials = await readCredentials(input.keycloakSubject);
+        if (!credentials) {
           logger.warn('SVA Mainserver credentials are missing in Keycloak attributes', {
             ...buildLogContext(input, {
               operation: 'load_credentials',
@@ -504,7 +464,7 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
           });
         }
 
-        const value = { apiKey, apiSecret };
+        const value = credentials;
         const cacheWriteNowMs = now();
         writeCacheValue(
           credentialCache,
@@ -537,7 +497,9 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
     config: SvaMainserverInstanceConfig
   ): Promise<string> => {
     const credentials = await loadCredentials(input);
-    const tokenCacheKey = `${input.instanceId}:${input.keycloakSubject}:${credentials.apiKey}`;
+    const tokenCacheKey =
+      `${input.instanceId}:${input.keycloakSubject}:${credentials.apiKey}:` +
+      `${config.oauthTokenUrl}:${config.graphqlBaseUrl}`;
     const nowMs = now();
     const cached = readCacheValue(tokenCache, tokenCacheKey, nowMs, tokenCacheMaxSize);
     const cacheEntry = tokenCache.get(tokenCacheKey);

@@ -173,6 +173,36 @@ describe('loadInstanceIntegrationRecord (server)', () => {
     expect(loadRecord).toHaveBeenCalledTimes(1);
   });
 
+  it('reuses custom loader cache across calls when only cacheTtlMs is provided', async () => {
+    const mod = await import('./instance-integrations.server');
+
+    await mod.loadInstanceIntegrationRecord('de-musterhausen', 'sva_mainserver', {
+      cacheTtlMs: 60_000,
+    });
+    await mod.loadInstanceIntegrationRecord('de-musterhausen', 'sva_mainserver', {
+      cacheTtlMs: 60_000,
+    });
+
+    const selectCalls = state.queries.filter((entry) => entry.text.includes('FROM iam.instance_integrations'));
+    expect(selectCalls).toHaveLength(1);
+  });
+
+  it('reuses custom loader cache across calls with the same loadRecord override', async () => {
+    const mod = await import('./instance-integrations.server');
+    const loadRecord = vi.fn(async () => null);
+
+    await mod.loadInstanceIntegrationRecord('de-musterhausen', 'sva_mainserver', {
+      cacheTtlMs: 60_000,
+      loadRecord,
+    });
+    await mod.loadInstanceIntegrationRecord('de-musterhausen', 'sva_mainserver', {
+      cacheTtlMs: 60_000,
+      loadRecord,
+    });
+
+    expect(loadRecord).toHaveBeenCalledTimes(1);
+  });
+
   it('cleans up shared pool state on reset', async () => {
     const mod = await import('./instance-integrations.server');
 

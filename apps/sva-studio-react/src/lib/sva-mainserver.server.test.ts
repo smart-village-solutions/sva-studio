@@ -149,4 +149,38 @@ describe('loadSvaMainserverConnectionStatus', () => {
       errorMessage: 'Nicht authentifiziert. Bitte erneut anmelden.',
     });
   });
+
+  it('maps non-contract 403 payloads to a stable forbidden status', async () => {
+    state.withAuthenticatedUser.mockResolvedValue(
+      new Response(JSON.stringify({ error: 'forbidden' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
+
+    const { loadSvaMainserverConnectionStatus } = await import('./sva-mainserver.server');
+
+    await expect(loadSvaMainserverConnectionStatus()).resolves.toMatchObject({
+      status: 'error',
+      errorCode: 'forbidden',
+      errorMessage: 'Zugriff auf die Mainserver-Diagnostik ist nicht erlaubt.',
+    });
+  });
+
+  it('maps unexpected non-200 responses to a stable fallback error', async () => {
+    state.withAuthenticatedUser.mockResolvedValue(
+      new Response('upstream unavailable', {
+        status: 502,
+        headers: { 'Content-Type': 'text/plain' },
+      })
+    );
+
+    const { loadSvaMainserverConnectionStatus } = await import('./sva-mainserver.server');
+
+    await expect(loadSvaMainserverConnectionStatus()).resolves.toMatchObject({
+      status: 'error',
+      errorCode: 'forbidden',
+      errorMessage: 'Unerwartete Antwort beim Laden des Mainserver-Status (502).',
+    });
+  });
 });

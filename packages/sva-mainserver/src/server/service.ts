@@ -279,7 +279,7 @@ const parseGraphqlPayload = <TResult>(payload: unknown): TResult => {
   if (result.errors && result.errors.length > 0) {
     throw toSvaMainserverError({
       code: 'graphql_error',
-      message: result.errors.map((entry) => entry.message ?? 'Unbekannter GraphQL-Fehler').join('; '),
+      message: `GraphQL-Antwort des SVA-Mainservers enthielt ${result.errors.length} Fehler.`,
       statusCode: 502,
     });
   }
@@ -505,12 +505,13 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
         }
 
         const value = { apiKey, apiSecret };
+        const cacheWriteNowMs = now();
         writeCacheValue(
           credentialCache,
           cacheKey,
           value,
-          now() + credentialCacheTtlMs,
-          now(),
+          cacheWriteNowMs + credentialCacheTtlMs,
+          cacheWriteNowMs,
           credentialCacheMaxSize
         );
         logger.info('SVA Mainserver credentials loaded', {
@@ -642,8 +643,16 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
           });
         }
 
-        const expiresAtMs = now() + payloadResult.data.expires_in * 1000;
-        writeCacheValue(tokenCache, tokenCacheKey, payloadResult.data.access_token, expiresAtMs, now(), tokenCacheMaxSize);
+        const cacheWriteNowMs = now();
+        const expiresAtMs = cacheWriteNowMs + payloadResult.data.expires_in * 1000;
+        writeCacheValue(
+          tokenCache,
+          tokenCacheKey,
+          payloadResult.data.access_token,
+          expiresAtMs,
+          cacheWriteNowMs,
+          tokenCacheMaxSize
+        );
         logger.info('SVA Mainserver access token loaded', {
           ...buildLogContext(input, {
             operation: 'load_access_token',

@@ -68,7 +68,11 @@ const withInstanceDb = async <T>(
     await client.query('COMMIT');
     return result;
   } catch (error) {
-    await client.query('ROLLBACK');
+    try {
+      await client.query('ROLLBACK');
+    } catch {
+      // Der ursprüngliche Fehler bleibt führend; Rollback-Fehler sollen ihn nicht überdecken.
+    }
     throw error;
   } finally {
     client.release();
@@ -116,7 +120,13 @@ export const loadInstanceIntegrationRecord = async (
   providerKey: IntegrationProviderKey,
   options: InstanceIntegrationServerLoaderOptions = {}
 ): Promise<InstanceIntegrationRecord | null> => {
-  if (!options.now && !options.cacheTtlMs && !options.getDatabaseUrl && !options.loadRecord) {
+  const usesDefaultLoader =
+    options.now === undefined &&
+    options.cacheTtlMs === undefined &&
+    options.getDatabaseUrl === undefined &&
+    options.loadRecord === undefined;
+
+  if (usesDefaultLoader) {
     const record = await defaultCachedLoader.load(instanceId, providerKey);
     return record;
   }

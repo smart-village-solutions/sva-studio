@@ -4,11 +4,13 @@ const state = vi.hoisted(() => {
   const queries: Array<{ text: string; values?: readonly unknown[] }> = [];
   const clients: Array<{ query: ReturnType<typeof vi.fn>; release: ReturnType<typeof vi.fn> }> = [];
   let failSelect = false;
+  let failRollback = false;
 
   const reset = () => {
     queries.length = 0;
     clients.length = 0;
     failSelect = false;
+    failRollback = false;
   };
 
   const setFailSelect = (value: boolean) => {
@@ -17,12 +19,20 @@ const state = vi.hoisted(() => {
 
   const shouldFailSelect = () => failSelect;
 
+  const setFailRollback = (value: boolean) => {
+    failRollback = value;
+  };
+
+  const shouldFailRollback = () => failRollback;
+
   return {
     queries,
     clients,
     reset,
     setFailSelect,
+    setFailRollback,
     shouldFailSelect,
+    shouldFailRollback,
   };
 });
 
@@ -33,6 +43,10 @@ vi.mock('pg', () => {
     readonly connect = vi.fn(async () => {
       const query = vi.fn(async (text: string, values?: readonly unknown[]) => {
         state.queries.push({ text, values });
+
+        if (text === 'ROLLBACK' && state.shouldFailRollback()) {
+          throw new Error('rollback failed');
+        }
 
         if (text.includes('FROM iam.instance_integrations')) {
           if (state.shouldFailSelect()) {
@@ -130,6 +144,33 @@ describe('loadInstanceIntegrationRecord (server)', () => {
     ).rejects.toThrow('boom');
 
     expect(state.queries.some((entry) => entry.text === 'ROLLBACK')).toBe(true);
+  });
+
+  it('preserves original error when rollback itself fails', async () => {
+    const mod = await import('./instance-integrations.server');
+    state.setFailSelect(true);
+    state.setFailRollback(true);
+
+    await expect(
+      mod.loadInstanceIntegrationRecord('de-musterhausen', 'sva_mainserver', {
+        cacheTtlMs: 0,
+        getDatabaseUrl: () => 'postgres://local/test',
+      })
+    ).rejects.toThrow('boom');
+
+    expect(state.queries.some((entry) => entry.text === 'ROLLBACK')).toBe(true);
+  });
+
+  it('uses a custom loader when cacheTtlMs is explicitly set to 0', async () => {
+    const mod = await import('./instance-integrations.server');
+    const loadRecord = vi.fn(async () => null);
+
+    await mod.loadInstanceIntegrationRecord('de-musterhausen', 'sva_mainserver', {
+      cacheTtlMs: 0,
+      loadRecord,
+    });
+
+    expect(loadRecord).toHaveBeenCalledTimes(1);
   });
 
   it('cleans up shared pool state on reset', async () => {

@@ -11,6 +11,7 @@ import { RolesPage } from './admin/roles/-roles-page';
 import { UserEditPage } from './admin/users/-user-edit-page';
 import { UserListPage } from './admin/users/-user-list-page';
 import { HomePage } from './-home-page';
+import { InterfacesPage } from './interfaces/-interfaces-page';
 
 const DemoSectionLayout = () => (
   <div className="flex flex-col gap-4 text-foreground">
@@ -118,20 +119,25 @@ const StartHome = () => {
 };
 
 const ServerFuncsDemo = () => {
-  const [name, setName] = React.useState('');
+  const [isHydrated, setIsHydrated] = React.useState(false);
   const [result, setResult] = React.useState<null | {
     message: string;
     serverTime: string;
   }>(null);
   const [loading, setLoading] = React.useState(false);
+  const inputRef = React.useRef<HTMLInputElement>(null);
 
   const runServerFn = useServerFn(submitGreeting);
 
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
+  React.useEffect(() => {
+    setIsHydrated(true);
+  }, []);
+
+  const handleRunServerFn = async () => {
+    const submittedName = inputRef.current?.value ?? '';
     setLoading(true);
     try {
-      const response = await runServerFn({ data: { name } });
+      const response = await runServerFn({ data: { name: submittedName } });
       setResult(response);
     } finally {
       setLoading(false);
@@ -152,21 +158,32 @@ const ServerFuncsDemo = () => {
           Dieses Beispiel ruft eine serverseitige Funktion auf und liefert eine Antwort zurück.
         </p>
       </div>
-      <form className="flex flex-col gap-3" onSubmit={handleSubmit}>
-        <input
-          className="rounded border border-border bg-background px-4 py-2 text-foreground"
-          placeholder="Dein Name"
-          value={name}
-          onChange={(event) => setName(event.target.value)}
+      {isHydrated ? (
+        <div className="flex flex-col gap-3">
+          <input
+            className="rounded border border-border bg-background px-4 py-2 text-foreground"
+            defaultValue=""
+            name="name"
+            placeholder="Dein Name"
+            ref={inputRef}
+          />
+          <button
+            type="button"
+            className="w-fit rounded border border-primary/40 bg-primary/15 px-4 py-2 text-sm font-semibold text-primary"
+            disabled={loading}
+            onClick={() => {
+              void handleRunServerFn();
+            }}
+          >
+            {loading ? 'Sende...' : 'Server Function ausführen'}
+          </button>
+        </div>
+      ) : (
+        <div
+          aria-hidden="true"
+          className="h-20 animate-pulse rounded border border-border bg-card/70"
         />
-        <button
-          type="submit"
-          className="w-fit rounded border border-primary/40 bg-primary/15 px-4 py-2 text-sm font-semibold text-primary"
-          disabled={loading}
-        >
-          {loading ? 'Sende...' : 'Server Function ausführen'}
-        </button>
-      </form>
+      )}
       {result ? (
         <div className="rounded border border-border bg-card p-4 shadow-shell">
           <p className="font-semibold text-primary">{result.message}</p>
@@ -355,6 +372,12 @@ export const runtimeCoreRouteFactories = [
       path: '/account',
       beforeLoad: (options) => runAccountUiGuard('account', options),
       component: AccountProfilePage,
+    }),
+  (rootRoute: RootRoute) =>
+    createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/interfaces',
+      component: InterfacesPage,
     }),
   (rootRoute: RootRoute) =>
     createRoute({

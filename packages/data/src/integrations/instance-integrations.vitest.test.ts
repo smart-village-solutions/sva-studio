@@ -89,7 +89,10 @@ describe('createInstanceIntegrationRepository (vitest)', () => {
     await repository.upsert(input);
 
     expect(execute).toHaveBeenCalledTimes(1);
-    const statement = execute.mock.calls[0]?.[0] as SqlStatement;
+    const calls = execute.mock.calls as unknown[][];
+    const statementCandidate = calls.length > 0 ? calls[0][0] : undefined;
+    expect(statementCandidate).toBeDefined();
+    const statement = statementCandidate as SqlStatement;
     expect(statement.text).toContain('INSERT INTO iam.instance_integrations');
     expect(statement.values).toEqual([
       'de-musterhausen',

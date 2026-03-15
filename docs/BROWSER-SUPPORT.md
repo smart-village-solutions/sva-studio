@@ -35,7 +35,7 @@ Ziel dieses Dokuments ist es, klare und überprüfbare Erwartungen an die techni
 - Support: Als Grundlage für Kommunikation, Workarounds und Eskalationen
 
 ### Verweise
-- TESTING.md: Detaillierte Testabläufe und Verantwortlichkeiten
+- `docs/development/testing-coverage.md`: Testtargets, Quality Gates und CI-Verhalten
 - DEVELOPMENT_RULES.md: Nicht verhandelbare Regeln (u.a. Accessibility/WCAG 2.1 AA)
 - Release Notes/Changelog: Kommunikation von Änderungen an Mindestversionen
 
@@ -130,7 +130,7 @@ Ziel dieses Dokuments ist es, klare und überprüfbare Erwartungen an die techni
 
 **Tools**: BrowserStack, Sauce Labs, lokale VMs (Windows/macOS/Linux).
 
-Siehe auch TESTING.md für detaillierte Testabläufe und Verantwortlichkeiten.
+Siehe auch `docs/development/testing-coverage.md` für den allgemeinen Test-Workflow im Repository.
 
 ## Bekannte Issues & Workarounds
 Dokumentiere reproduzierbare Browser-/AT-Issues mit Mitigation und Ticket.
@@ -146,7 +146,7 @@ Ticket: #1234
 
 ## Pflege
 - Mindestversionen quartalsweise oder bei Breaking Changes der Hersteller prüfen
-- Mit TESTING.md und Accessibility-Guidelines abgleichen; Matrizen synchron halten
+- Mit `docs/development/testing-coverage.md` und den Accessibility-Guidelines abgleichen; Matrizen synchron halten
 - Aktualisieren, wenn neue Plattformen hinzukommen, Mindestversionen steigen oder Testfrequenzen sich ändern
 
 ## Prozess: Mindestversionen anheben
@@ -183,4 +183,4 @@ Ticket: #1234
 
 ## Änderungsprozess & Ticketing
 - Bei neuen Browser-/AT-Issues ein Ticket mit den Angaben aus „Feedback & Reporting“ erstellen
-- Verweise: TESTING.md (Abläufe), Issue Creation Guide (falls vorhanden) für Struktur und Checklisten
+- Verweise: `docs/development/testing-coverage.md` (Abläufe), Issue Creation Guide (falls vorhanden) für Struktur und Checklisten

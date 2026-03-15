@@ -103,8 +103,12 @@ Siehe [docs/development/postgres-setup.md](docs/development/postgres-setup.md) f
 
 ## Dokumentation
 
+- Dokumentationsindex: [docs/README.md](docs/README.md)
 - Architektur-Einstiegspunkt (arc42): [docs/architecture/README.md](docs/architecture/README.md)
+- Architekturentscheidungen (ADR): [docs/adr/README.md](docs/adr/README.md)
+- Monorepo- und Paketstruktur: [docs/monorepo.md](docs/monorepo.md)
 - Testing/Coverage: [docs/development/testing-coverage.md](docs/development/testing-coverage.md)
+- Entwicklungs-Playbook: [docs/development/playbook.md](docs/development/playbook.md)
 
 ## Aktueller Implementierungsstand (Repo)
 

@@ -40,11 +40,11 @@ export default defineConfig({
     name: 'sva-studio-react',
     environment: 'happy-dom',
     include: ['src/**/*.{test,spec}.{ts,tsx}'],
-    // Ein Worker hält die App-Tests deterministisch und reduziert Flakes in der
-    // UI-Testumgebung.
+    // Serielle Ausfuehrung in CI: reduziert Flakes in der UI-Testumgebung.
+    // Lokal laufen Tests parallel fuer schnellere Iteration.
     pool: 'threads',
-    fileParallelism: false,
-    maxWorkers: 1,
+    fileParallelism: process.env.CI === 'true' ? false : undefined,
+    maxWorkers: process.env.CI === 'true' ? 1 : undefined,
     coverage: {
       provider: 'v8',
       reporter: ['text-summary', 'json-summary', 'lcov'],

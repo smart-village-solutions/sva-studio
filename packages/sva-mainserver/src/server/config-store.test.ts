@@ -128,6 +128,22 @@ describe('loadSvaMainserverInstanceConfig', () => {
     });
   });
 
+  it('rejects IPv4-mapped IPv6 addresses as SSRF targets', async () => {
+    state.loadInstanceIntegrationRecord.mockResolvedValue({
+      instanceId: 'de-musterhausen',
+      providerKey: 'sva_mainserver',
+      graphqlBaseUrl: 'https://[::ffff:127.0.0.1]/graphql',
+      oauthTokenUrl: 'https://mainserver.example.invalid/oauth/token',
+      enabled: true,
+    });
+
+    const { loadSvaMainserverInstanceConfig } = await import('./config-store');
+
+    await expect(loadSvaMainserverInstanceConfig('de-musterhausen')).rejects.toMatchObject({
+      code: 'invalid_config',
+    });
+  });
+
   it('maps unexpected data-layer failures to database_unavailable', async () => {
     state.loadInstanceIntegrationRecord.mockRejectedValue(new Error('db offline'));
 

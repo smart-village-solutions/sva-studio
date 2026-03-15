@@ -4,7 +4,7 @@ import React from 'react';
 import type { SvaMainserverConnectionStatus } from '@sva/sva-mainserver';
 
 import { t } from '../../i18n';
-import { readErrorMessage } from '../../lib/error-message-utils';
+import { isRecord, readErrorMessage } from '../../lib/error-message-utils';
 import { loadInterfacesOverview, saveSvaMainserverInterfaceSettings } from '../../lib/interfaces-api';
 
 type FormValues = {
@@ -43,6 +43,97 @@ const getStatusLabel = (status: SvaMainserverConnectionStatus): string => {
   return t('interfaces.status.error');
 };
 
+const getTranslatedErrorMessage = (
+  errorCode: SvaMainserverConnectionStatus['errorCode'],
+  field?: string
+): string | null => {
+  switch (errorCode) {
+    case 'config_not_found':
+      return t('interfaces.errors.configNotFound');
+    case 'integration_disabled':
+      return t('interfaces.errors.integrationDisabled');
+    case 'invalid_config':
+      if (field === 'graphql_base_url') {
+        return t('interfaces.errors.invalidGraphqlBaseUrl');
+      }
+      if (field === 'oauth_token_url') {
+        return t('interfaces.errors.invalidOauthTokenUrl');
+      }
+      return t('interfaces.errors.invalidConfig');
+    case 'database_unavailable':
+      return t('interfaces.errors.databaseUnavailable');
+    case 'identity_provider_unavailable':
+      return t('interfaces.errors.identityProviderUnavailable');
+    case 'missing_credentials':
+      return t('interfaces.errors.missingCredentials');
+    case 'token_request_failed':
+      return t('interfaces.errors.tokenRequestFailed');
+    case 'unauthorized':
+      return t('interfaces.errors.unauthorized');
+    case 'forbidden':
+      return t('interfaces.errors.forbidden');
+    case 'network_error':
+      return t('interfaces.errors.networkError');
+    case 'graphql_error':
+      return t('interfaces.errors.graphqlError');
+    case 'invalid_response':
+      return t('interfaces.errors.invalidResponse');
+    default:
+      return null;
+  }
+};
+
+const readInterfacesErrorField = (error: unknown): string | undefined => {
+  if (!isRecord(error)) {
+    return undefined;
+  }
+
+  if (typeof error.field === 'string') {
+    return error.field;
+  }
+
+  return readInterfacesErrorField(error.cause) ?? readInterfacesErrorField(error.response) ?? readInterfacesErrorField(error.data);
+};
+
+const readInterfacesErrorCode = (error: unknown): SvaMainserverConnectionStatus['errorCode'] | undefined => {
+  if (error instanceof Error) {
+    const translated = getTranslatedErrorMessage(error.message as SvaMainserverConnectionStatus['errorCode']);
+    if (translated) {
+      return error.message as SvaMainserverConnectionStatus['errorCode'];
+    }
+  }
+
+  if (!isRecord(error)) {
+    return undefined;
+  }
+
+  if (typeof error.error === 'string') {
+    const translated = getTranslatedErrorMessage(error.error as SvaMainserverConnectionStatus['errorCode']);
+    if (translated) {
+      return error.error as SvaMainserverConnectionStatus['errorCode'];
+    }
+  }
+
+  return readInterfacesErrorCode(error.cause) ?? readInterfacesErrorCode(error.response) ?? readInterfacesErrorCode(error.data);
+};
+
+const getInterfacesErrorMessage = (error: unknown, fallback: string): string => {
+  const errorCode = readInterfacesErrorCode(error);
+  if (errorCode) {
+    return getTranslatedErrorMessage(errorCode, readInterfacesErrorField(error)) ?? fallback;
+  }
+
+  return readErrorMessage(error, fallback);
+};
+
+const getStatusErrorMessage = (status: SvaMainserverConnectionStatus | null): string | null => {
+  if (!status || status.status !== 'error') {
+    return null;
+  }
+
+  return getTranslatedErrorMessage(status.errorCode) ?? status.errorMessage ?? null;
+};
+
 export const InterfacesPage = () => {
   const loadOverview = useServerFn(loadInterfacesOverview);
   const saveSettings = useServerFn(saveSvaMainserverInterfaceSettings);
@@ -72,7 +163,7 @@ export const InterfacesPage = () => {
       setLastStatus(overview.status);
       setFormValues(toFormValues(overview.config));
     } catch (error) {
-      setErrorMessage(readErrorMessage(error, t('interfaces.messages.loadError')));
+      setErrorMessage(getInterfacesErrorMessage(error, t('interfaces.messages.loadError')));
     } finally {
       setIsLoading(false);
     }
@@ -99,11 +190,13 @@ export const InterfacesPage = () => {
       setStatusMessage(t('interfaces.messages.saveSuccess'));
       await refresh();
     } catch (error) {
-      setErrorMessage(readErrorMessage(error, t('interfaces.messages.saveError')));
+      setErrorMessage(getInterfacesErrorMessage(error, t('interfaces.messages.saveError')));
     } finally {
       setIsSaving(false);
     }
   };
+
+  const statusErrorMessage = getStatusErrorMessage(lastStatus);
 
   if (isLoading) {
     return <p className="text-sm text-muted-foreground">{t('interfaces.messages.loading')}</p>;
@@ -131,7 +224,7 @@ export const InterfacesPage = () => {
             {t('interfaces.status.lastCheckedLabel')}: {new Date(lastStatus.checkedAt).toLocaleString()}
           </p>
         ) : null}
-        {lastStatus?.errorMessage ? <p className="text-sm text-secondary">{lastStatus.errorMessage}</p> : null}
+        {statusErrorMessage ? <p className="text-sm text-secondary">{statusErrorMessage}</p> : null}
       </section>
 
       <section className="rounded-lg border border-border bg-card p-4 shadow-shell">
@@ -195,11 +288,8 @@ export const InterfacesPage = () => {
 
           <div className="flex flex-wrap gap-3">
             <button
-              type="button"
+              type="submit"
               className="rounded-md border border-primary/40 bg-primary/15 px-4 py-2 text-sm font-semibold text-primary"
-              onClick={() => {
-                handleSave().catch(() => undefined);
-              }}
               disabled={isSaving}
             >
               {isSaving ? t('interfaces.actions.saving') : t('interfaces.actions.save')}

@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 
 type RecordedServerFnResponse = {
-  readonly body: string;
+  body: string;
   readonly method: string;
   readonly status: number;
   readonly url: string;
@@ -16,13 +16,16 @@ const captureServerFnResponses = (page: Page) => {
       return;
     }
 
+    const entry: RecordedServerFnResponse = {
+      body: '',
+      method: response.request().method(),
+      status: response.status(),
+      url: response.url(),
+    };
+    responses.push(entry);
+
     void response.text().then((body) => {
-      responses.push({
-        body,
-        method: response.request().method(),
-        status: response.status(),
-        url: response.url(),
-      });
+      entry.body = body;
     });
   });
 

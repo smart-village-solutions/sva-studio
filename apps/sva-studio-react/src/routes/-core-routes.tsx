@@ -128,7 +128,7 @@ const ServerFuncsDemo = () => {
 
   const runServerFn = useServerFn(submitGreeting);
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit: React.FormEventHandler<HTMLFormElement> = async (event) => {
     event.preventDefault();
     const submittedNameValue = new FormData(event.currentTarget as HTMLFormElement).get('name');
     const submittedName = typeof submittedNameValue === 'string' ? submittedNameValue : '';

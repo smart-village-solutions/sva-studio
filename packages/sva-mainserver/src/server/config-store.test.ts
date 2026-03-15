@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
   loadInstanceIntegrationRecord: vi.fn(),
+  dnsLookup: vi.fn(async () => [{ address: '203.0.113.10', family: 4 }]),
   logger: {
     debug: vi.fn(),
     info: vi.fn(),
@@ -12,6 +13,10 @@ const state = vi.hoisted(() => ({
 
 vi.mock('@sva/data/server', () => ({
   loadInstanceIntegrationRecord: state.loadInstanceIntegrationRecord,
+}));
+
+vi.mock('node:dns/promises', () => ({
+  lookup: state.dnsLookup,
 }));
 
 vi.mock('@sva/sdk/server', () => ({
@@ -25,6 +30,8 @@ vi.mock('@sva/sdk/server', () => ({
 describe('loadSvaMainserverInstanceConfig', () => {
   beforeEach(() => {
     state.loadInstanceIntegrationRecord.mockReset();
+    state.dnsLookup.mockReset();
+    state.dnsLookup.mockResolvedValue([{ address: '203.0.113.10', family: 4 }]);
     state.logger.debug.mockReset();
     state.logger.info.mockReset();
     state.logger.warn.mockReset();
@@ -194,5 +201,22 @@ describe('loadSvaMainserverInstanceConfig', () => {
         error_code: 'database_unavailable',
       })
     );
+  });
+
+  it('rejects upstream hosts that resolve to private addresses via DNS', async () => {
+    state.loadInstanceIntegrationRecord.mockResolvedValue({
+      instanceId: 'de-musterhausen',
+      providerKey: 'sva_mainserver',
+      graphqlBaseUrl: 'https://public.example.invalid/graphql',
+      oauthTokenUrl: 'https://mainserver.example.invalid/oauth/token',
+      enabled: true,
+    });
+    state.dnsLookup.mockResolvedValueOnce([{ address: '127.0.0.1', family: 4 }]);
+
+    const { loadSvaMainserverInstanceConfig } = await import('./config-store');
+
+    await expect(loadSvaMainserverInstanceConfig('de-musterhausen')).rejects.toMatchObject({
+      code: 'invalid_config',
+    });
   });
 });

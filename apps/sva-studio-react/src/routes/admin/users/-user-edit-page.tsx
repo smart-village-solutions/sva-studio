@@ -81,7 +81,7 @@ export const UserEditPage = ({ userId }: UserEditPageProps) => {
   const rolesApi = useRoles();
 
   const [activeTab, setActiveTab] = React.useState<UserEditTabKey>('personal');
-  const [formValues, setFormValues] = React.useState<UserFormValues>(toFormValues(null));
+  const [formValues, setFormValues] = React.useState<UserFormValues>(() => toFormValues(userApi.user));
   const [isSaving, setIsSaving] = React.useState(false);
   const [saveSuccess, setSaveSuccess] = React.useState(false);
 
@@ -351,8 +351,8 @@ export const UserEditPage = ({ userId }: UserEditPageProps) => {
               className="rounded-md border border-border bg-background px-3 py-2 text-foreground"
             />
           </label>
-          <label className="flex flex-col gap-2 text-sm text-foreground md:col-span-2">
-            <span>{t('admin.users.edit.rolesLabel')}</span>
+          <fieldset className="flex flex-col gap-2 text-sm text-foreground md:col-span-2">
+            <legend>{t('admin.users.edit.rolesLabel')}</legend>
             <div className="grid gap-2 sm:grid-cols-2">
               {rolesApi.roles.map((role) => {
                 const selected = formValues.roleIds.includes(role.id);
@@ -375,7 +375,7 @@ export const UserEditPage = ({ userId }: UserEditPageProps) => {
                 );
               })}
             </div>
-          </label>
+          </fieldset>
           <label className="flex flex-col gap-2 text-sm text-foreground md:col-span-2">
             <span>{t('admin.users.edit.notesLabel')}</span>
             <textarea

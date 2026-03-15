@@ -1,0 +1,29 @@
+{
+  "name": "@sva/sva-mainserver",
+  "version": "0.0.1",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "module": "dist/index.js",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./server": {
+      "types": "./dist/index.server.d.ts",
+      "default": "./dist/index.server.js"
+    }
+  },
+  "dependencies": {
+    "@sva/auth": "workspace:*",
+    "@sva/data": "workspace:*",
+    "@sva/sdk": "workspace:*",
+    "pg": "^8.20.0"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.18.0",
+    "@vitest/coverage-v8": "^4.0.18",
+    "vitest": "^4.0.18"
+  }
+}

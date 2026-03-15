@@ -27,6 +27,7 @@ mit Bezug auf die arc42-Abschnitte.
 - `ADR-018-auth-routing-error-contract-und-korrelation.md`
 - `ADR-019-swarm-traefik-referenz-betriebsprofil.md`
 - `ADR-020-kanonischer-auth-host-multi-host-grenze.md`
+- `ADR-021-per-user-sva-mainserver-delegation.md`
 
 ### Zuordnung zu arc42-Abschnitten
 
@@ -37,6 +38,7 @@ mit Bezug auf die arc42-Abschnitte.
 - Abschnitt 05/06/07/08 (Bausteine/Laufzeit/Deployment/Querschnitt): ADR-016
 - Abschnitt 04/05/06/08/10/11 (Strategie/Bausteine/Laufzeit/Querschnitt/Qualität/Risiken): ADR-017
 - Abschnitt 04/05/06/08/10/11 (Strategie/Bausteine/Laufzeit/Querschnitt/Qualität/Risiken): ADR-018
+- Abschnitt 03/04/05/06/08 (Kontext/Strategie/Bausteine/Laufzeit/Querschnitt): ADR-021
 
 ### Zuordnung Swarm-Deployment-ADRs
 
@@ -54,6 +56,7 @@ mit Bezug auf die arc42-Abschnitte.
 - ADR-014: Postgres `NOTIFY` für Cache-Invalidierung (Abschnitt 06, 08, 10)
 - ADR-017: Modulare IAM-Server-Bausteine und Restschuldführung an realen Kernmodulen (Abschnitt 04, 05, 06, 08, 10, 11)
 - ADR-018: Header-basierte Korrelation und gemeinsamer Error-Response-Contract für Auth-/IAM-Routen (Abschnitt 04, 05, 06, 08, 10, 11)
+- ADR-021: Serverseitige, per User delegierte SVA-Mainserver-Integration mit Keycloak-Attributen und instanzgebundener Endpunktkonfiguration (Abschnitt 03, 04, 05, 06, 08)
 
 ### Pflege-Regel
 
@@ -115,3 +118,16 @@ Zuordnung:
 - Abschnitt 07 (Deployment): ADR-019, ADR-020
 - Abschnitt 05/08 (Bausteine/Querschnitt): ADR-011 Fortschreibung
 - Abschnitt 10/11 (Qualität/Risiken): ADR-020 (fail-closed, Host-Enumeration)
+
+### Fortschreibung 2026-03: Per-User-SVA-Mainserver-Delegation
+
+- `ADR-021-per-user-sva-mainserver-delegation.md`
+  - begründet die dedizierte Integrationsschicht `@sva/sva-mainserver`
+  - trennt instanzgebundene Endpunktkonfiguration von per-User-Credentials aus Keycloak
+  - legt fest, dass Browser-Code nie direkt mit dem externen SVA-Mainserver spricht
+
+Zuordnung:
+
+- Abschnitt 03/04 (Kontext/Strategie): ADR-021
+- Abschnitt 05/06 (Bausteine/Laufzeit): ADR-021
+- Abschnitt 08 (Querschnitt): ADR-021

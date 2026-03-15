@@ -67,11 +67,14 @@ export type IdentityRole = {
   readonly containerId?: string;
 };
 
+export type IdentityUserAttributes = Readonly<Record<string, readonly string[]>>;
+
 export interface IdentityProviderPort {
   createUser(input: CreateIdentityUserInput): Promise<IdentityUser>;
   updateUser(externalId: string, input: UpdateIdentityUserInput): Promise<void>;
   deactivateUser(externalId: string): Promise<void>;
   listUsers(query?: IdentityUserListQuery): Promise<readonly IdentityListedUser[]>;
+  getUserAttributes(externalId: string, attributeNames?: readonly string[]): Promise<IdentityUserAttributes>;
   syncRoles(externalId: string, roles: readonly string[]): Promise<void>;
   listUserRoleNames(externalId: string): Promise<readonly string[]>;
   listRoles(): Promise<readonly IdentityRole[]>;

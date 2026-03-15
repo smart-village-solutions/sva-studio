@@ -88,9 +88,9 @@ describe('SVA Mainserver logging', () => {
         oauthTokenUrl: 'https://mainserver.example.invalid/oauth/token',
         enabled: true,
       }),
-      readIdentityUserAttributes: async () => ({
-        sva_mainserver_api_key: ['key-1'],
-        sva_mainserver_api_secret: ['secret-1'],
+      readCredentials: async () => ({
+        apiKey: 'key-1',
+        apiSecret: 'secret-1',
       }),
       fetchImpl,
     });

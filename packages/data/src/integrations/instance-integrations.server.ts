@@ -115,6 +115,63 @@ const defaultCachedLoader = createCachedInstanceIntegrationLoader(
     })
 );
 
+const customCachedLoaders = new Map<string, ReturnType<typeof createCachedInstanceIntegrationLoader>>();
+const functionIds = new WeakMap<(...args: never[]) => unknown, number>();
+let nextFunctionId = 1;
+
+const getFunctionIdentity = (fn: unknown): string => {
+  if (typeof fn !== 'function') {
+    return 'none';
+  }
+
+  const functionRef = fn as (...args: never[]) => unknown;
+  const existing = functionIds.get(functionRef);
+  if (existing) {
+    return String(existing);
+  }
+
+  const id = nextFunctionId;
+  nextFunctionId += 1;
+  functionIds.set(functionRef, id);
+  return String(id);
+};
+
+const getCustomLoaderKey = (options: InstanceIntegrationServerLoaderOptions): string =>
+  [
+    String(options.cacheTtlMs ?? 0),
+    getFunctionIdentity(options.now),
+    getFunctionIdentity(options.getDatabaseUrl),
+    getFunctionIdentity(options.loadRecord),
+  ].join('|');
+
+const getOrCreateCustomLoader = (
+  options: InstanceIntegrationServerLoaderOptions
+): ReturnType<typeof createCachedInstanceIntegrationLoader> => {
+  const key = getCustomLoaderKey(options);
+  const existing = customCachedLoaders.get(key);
+  if (existing) {
+    return existing;
+  }
+
+  const getDatabaseUrl = options.getDatabaseUrl ?? (() => process.env.IAM_DATABASE_URL);
+
+  const created = createCachedInstanceIntegrationLoader(
+    options.loadRecord ??
+      ((instanceId, providerKey) =>
+        queryInstanceIntegrationRecord({
+          instanceId,
+          providerKey,
+          getDatabaseUrl,
+        })),
+    {
+      cacheTtlMs: options.cacheTtlMs,
+      now: options.now,
+    }
+  );
+  customCachedLoaders.set(key, created);
+  return created;
+};
+
 export const loadInstanceIntegrationRecord = async (
   instanceId: string,
   providerKey: IntegrationProviderKey,
@@ -131,30 +188,17 @@ export const loadInstanceIntegrationRecord = async (
     return record;
   }
 
-  const getDatabaseUrl = options.getDatabaseUrl ?? (() => process.env.IAM_DATABASE_URL);
-  // Hinweis: Der Loader wird absichtlich pro Aufruf neu erzeugt, wenn Optionen übergeben werden.
-  // Dies stellt sicher, dass Caller (z.B. Tests) volle Kontrolle über TTL und Datenquelle haben,
-  // ohne den globalen Cache zu verändern. Cache-Wiederverwendung gilt nur für den options-losen Pfad.
-  const customLoader = createCachedInstanceIntegrationLoader(
-    options.loadRecord ??
-      ((currentInstanceId, currentProviderKey) =>
-        queryInstanceIntegrationRecord({
-          instanceId: currentInstanceId,
-          providerKey: currentProviderKey,
-          getDatabaseUrl,
-        })),
-    {
-      cacheTtlMs: options.cacheTtlMs,
-      now: options.now,
-    }
-  );
-
+  const customLoader = getOrCreateCustomLoader(options);
   const record = await customLoader.load(instanceId, providerKey);
   return record;
 };
 
 export const resetInstanceIntegrationServerState = async (): Promise<void> => {
   defaultCachedLoader.clear();
+  for (const loader of customCachedLoaders.values()) {
+    loader.clear();
+  }
+  customCachedLoaders.clear();
 
   if (pool) {
     const currentPool = pool;

@@ -26,6 +26,10 @@ const outputPath = resolve(
   process.cwd(),
   process.env.SVA_MAINSERVER_SCHEMA_DIFF_OUTPUT ?? 'artifacts/schema-diff/sva-mainserver-schema-diff.md',
 );
+const requestTimeoutMs = Number.parseInt(process.env.SVA_MAINSERVER_SCHEMA_REQUEST_TIMEOUT_MS ?? '10000', 10);
+
+const isTimeoutError = (error) =>
+  error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError');
 
 const fetchAccessToken = async () => {
   const tokenUrl = process.env.SVA_MAINSERVER_SCHEMA_OAUTH_TOKEN_URL;
@@ -35,11 +39,20 @@ const fetchAccessToken = async () => {
     client_secret: process.env.SVA_MAINSERVER_SCHEMA_CLIENT_SECRET,
   });
 
-  const response = await fetch(tokenUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body,
-  });
+  let response;
+  try {
+    response = await fetch(tokenUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body,
+      signal: AbortSignal.timeout(requestTimeoutMs),
+    });
+  } catch (error) {
+    if (isTimeoutError(error)) {
+      throw new Error(`Token request timed out after ${requestTimeoutMs}ms`);
+    }
+    throw error;
+  }
 
   if (!response.ok) {
     const text = await response.text();

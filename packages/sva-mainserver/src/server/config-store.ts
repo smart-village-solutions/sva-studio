@@ -1,3 +1,5 @@
+import { isIP } from 'node:net';
+
 import { loadInstanceIntegrationRecord } from '@sva/data/server';
 import { createSdkLogger, getWorkspaceContext } from '@sva/sdk/server';
 import { z } from 'zod';
@@ -8,6 +10,44 @@ import { SvaMainserverError } from './errors';
 const logger = createSdkLogger({ component: 'sva-mainserver-config', level: 'debug' });
 
 const localhostHosts = new Set(['localhost', '127.0.0.1', '::1', '[::1]']);
+
+const isPrivateOrLocalHost = (hostname: string): boolean => {
+  const normalized = hostname.trim().toLowerCase();
+  if (localhostHosts.has(normalized) || normalized.endsWith('.local')) {
+    return true;
+  }
+
+  const ipVersion = isIP(normalized);
+  if (ipVersion === 4) {
+    const octets = normalized.split('.').map((segment) => Number.parseInt(segment, 10));
+    if (octets.length !== 4 || octets.some((part) => Number.isNaN(part))) {
+      return true;
+    }
+
+    const [a, b] = octets;
+    return (
+      a === 0 ||
+      a === 10 ||
+      a === 127 ||
+      (a === 169 && b === 254) ||
+      (a === 172 && b >= 16 && b <= 31) ||
+      (a === 192 && b === 168)
+    );
+  }
+
+  if (ipVersion === 6) {
+    return (
+      normalized === '::1' ||
+      normalized === '::' ||
+      normalized.startsWith('fc') ||
+      normalized.startsWith('fd') ||
+      normalized.startsWith('fe80:')
+    );
+  }
+
+  return false;
+};
+
 const upstreamUrlSchema = z.string().url().transform((value) => new URL(value)).superRefine((value, context) => {
   if (value.username || value.password) {
     context.addIssue({
@@ -23,10 +63,17 @@ const upstreamUrlSchema = z.string().url().transform((value) => new URL(value)).
     });
   }
 
-  if (value.protocol !== 'https:' && !(value.protocol === 'http:' && localhostHosts.has(value.hostname))) {
+  if (value.protocol !== 'https:') {
     context.addIssue({
       code: z.ZodIssueCode.custom,
-      message: 'Erlaubt sind nur https-URLs oder http://localhost-Varianten für lokale Entwicklung.',
+      message: 'Erlaubt sind ausschließlich https-URLs für Upstream-Endpunkte.',
+    });
+  }
+
+  if (isPrivateOrLocalHost(value.hostname)) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Lokale oder private Upstream-Hosts sind nicht erlaubt.',
     });
   }
 });

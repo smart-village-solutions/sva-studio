@@ -248,6 +248,39 @@ describe('createSvaMainserverService', () => {
     expect(fetchImpl).toHaveBeenCalledTimes(3);
   });
 
+  it('cancels the first response body before retrying after transient 503', async () => {
+    const cancel = vi.fn().mockResolvedValue(undefined);
+    const transientResponse = {
+      status: 503,
+      body: {
+        cancel,
+      },
+    } as unknown as Response;
+
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(transientResponse)
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { __typename: 'Query' } }));
+
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readIdentityUserAttributes: async () => ({
+        sva_mainserver_api_key: ['key-1'],
+        sva_mainserver_api_secret: ['secret-1'],
+      }),
+      fetchImpl,
+      retryBaseDelayMs: 0,
+      randomIntImpl: () => 0,
+    });
+
+    await expect(
+      service.getQueryRootTypename({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' })
+    ).resolves.toMatchObject({ __typename: 'Query' });
+
+    expect(cancel).toHaveBeenCalledTimes(1);
+  });
+
   it('maps timeout failures to a stable network error', async () => {
     const timeoutError = new Error('timeout');
     timeoutError.name = 'TimeoutError';

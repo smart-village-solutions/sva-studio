@@ -26,6 +26,7 @@ vi.mock('@opentelemetry/api', () => ({
 }));
 
 import { createSvaMainserverService, resetSvaMainserverServiceState } from './service';
+import { SvaMainserverError } from './errors';
 
 const baseConfig = {
   instanceId: 'de-musterhausen',
@@ -167,6 +168,27 @@ describe('createSvaMainserverService', () => {
     ).resolves.toMatchObject({
       status: 'error',
       errorCode: 'identity_provider_unavailable',
+    });
+  });
+
+  it('preserves typed identity provider errors from credential loading', async () => {
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readCredentials: async () => {
+        throw new SvaMainserverError({
+          code: 'identity_provider_unavailable',
+          message: 'idp down',
+          statusCode: 503,
+        });
+      },
+    });
+
+    await expect(
+      service.getConnectionStatus({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' })
+    ).resolves.toMatchObject({
+      status: 'error',
+      errorCode: 'identity_provider_unavailable',
+      errorMessage: 'idp down',
     });
   });
 

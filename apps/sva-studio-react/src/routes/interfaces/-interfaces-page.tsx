@@ -253,7 +253,7 @@ export const InterfacesPage = () => {
               onClick={() => {
                 refresh().catch(() => undefined);
               }}
-              disabled={isLoading || isSaving}
+              disabled={isSaving}
             >
               {t('interfaces.actions.reload')}
             </button>

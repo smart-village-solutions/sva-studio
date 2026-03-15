@@ -150,4 +150,23 @@ describe('readSvaMainserverCredentials', () => {
       mainserverUserApplicationSecret: ['legacy-secret'],
     });
   });
+
+  it('treats blank secret updates as not set and preserves the existing secret', async () => {
+    const { buildMainserverIdentityAttributes } = await import('./mainserver-credentials.server');
+
+    expect(
+      buildMainserverIdentityAttributes({
+        existingAttributes: {
+          displayName: ['Alice Admin'],
+          mainserverUserApplicationId: ['current-id'],
+          mainserverUserApplicationSecret: ['current-secret'],
+        },
+        mainserverUserApplicationSecret: '   ',
+      })
+    ).toEqual({
+      displayName: ['Alice Admin'],
+      mainserverUserApplicationId: ['current-id'],
+      mainserverUserApplicationSecret: ['current-secret'],
+    });
+  });
 });

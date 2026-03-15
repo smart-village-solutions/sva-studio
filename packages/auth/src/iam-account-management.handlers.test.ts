@@ -1411,6 +1411,7 @@ describe('iam-account-management handlers (guards)', () => {
         body: JSON.stringify({
           displayName: 'Updated User',
           mainserverUserApplicationId: 'updated-app-id',
+          mainserverUserApplicationSecret: '   ',
         }),
       })
     );

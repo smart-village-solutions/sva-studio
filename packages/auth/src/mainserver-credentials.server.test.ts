@@ -50,4 +50,22 @@ describe('readSvaMainserverCredentials', () => {
 
     await expect(readSvaMainserverCredentials('subject-1')).resolves.toBeNull();
   });
+
+  it('trims credential values and ignores blank entries', async () => {
+    state.resolveIdentityProvider.mockReturnValue({
+      provider: {
+        getUserAttributes: vi.fn().mockResolvedValue({
+          sva_mainserver_api_key: ['  ', ' key-trimmed  '],
+          sva_mainserver_api_secret: ['   secret-trimmed   '],
+        }),
+      },
+    });
+
+    const { readSvaMainserverCredentials } = await import('./mainserver-credentials.server');
+
+    await expect(readSvaMainserverCredentials('subject-1')).resolves.toEqual({
+      apiKey: 'key-trimmed',
+      apiSecret: 'secret-trimmed',
+    });
+  });
 });

@@ -303,4 +303,51 @@ describe('createSvaMainserverService', () => {
       errorCode: 'network_error',
     });
   });
+
+  it('does not retry non-retryable errors after a transient first failure', async () => {
+    const retryable = new TypeError('socket closed');
+    const nonRetryable = new Error('fatal downstream error');
+
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readIdentityUserAttributes: async () => ({
+        sva_mainserver_api_key: ['key-1'],
+        sva_mainserver_api_secret: ['secret-1'],
+      }),
+      fetchImpl: vi.fn().mockRejectedValueOnce(retryable).mockRejectedValueOnce(nonRetryable),
+      retryBaseDelayMs: 0,
+      randomIntImpl: () => 0,
+    });
+
+    await expect(
+      service.getConnectionStatus({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' })
+    ).resolves.toMatchObject({
+      status: 'error',
+      errorCode: 'network_error',
+      errorMessage: 'fatal downstream error',
+    });
+  });
+
+  it('maps non-json GraphQL responses to invalid_response', async () => {
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readIdentityUserAttributes: async () => ({
+        sva_mainserver_api_key: ['key-1'],
+        sva_mainserver_api_secret: ['secret-1'],
+      }),
+      fetchImpl: vi
+        .fn()
+        .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+        .mockResolvedValueOnce(new Response('not-json', { status: 200, headers: { 'Content-Type': 'text/plain' } })),
+      retryBaseDelayMs: 0,
+      randomIntImpl: () => 0,
+    });
+
+    await expect(
+      service.getConnectionStatus({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' })
+    ).resolves.toMatchObject({
+      status: 'error',
+      errorCode: 'invalid_response',
+    });
+  });
 });

@@ -96,6 +96,38 @@ describe('loadSvaMainserverInstanceConfig', () => {
     });
   });
 
+  it('rejects https localhost upstream URLs', async () => {
+    state.loadInstanceIntegrationRecord.mockResolvedValue({
+      instanceId: 'de-musterhausen',
+      providerKey: 'sva_mainserver',
+      graphqlBaseUrl: 'https://localhost/graphql',
+      oauthTokenUrl: 'https://mainserver.example.invalid/oauth/token',
+      enabled: true,
+    });
+
+    const { loadSvaMainserverInstanceConfig } = await import('./config-store');
+
+    await expect(loadSvaMainserverInstanceConfig('de-musterhausen')).rejects.toMatchObject({
+      code: 'invalid_config',
+    });
+  });
+
+  it('rejects RFC1918 and link-local hosts in upstream URLs', async () => {
+    state.loadInstanceIntegrationRecord.mockResolvedValue({
+      instanceId: 'de-musterhausen',
+      providerKey: 'sva_mainserver',
+      graphqlBaseUrl: 'https://10.1.2.3/graphql',
+      oauthTokenUrl: 'https://fe80::1/oauth/token',
+      enabled: true,
+    });
+
+    const { loadSvaMainserverInstanceConfig } = await import('./config-store');
+
+    await expect(loadSvaMainserverInstanceConfig('de-musterhausen')).rejects.toMatchObject({
+      code: 'invalid_config',
+    });
+  });
+
   it('maps unexpected data-layer failures to database_unavailable', async () => {
     state.loadInstanceIntegrationRecord.mockRejectedValue(new Error('db offline'));
 

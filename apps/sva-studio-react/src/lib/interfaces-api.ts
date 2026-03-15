@@ -77,17 +77,11 @@ const extractMessageFromUnknown = (value: unknown): string | null => {
 
 const extractErrorDiagnostics = (error: unknown): Record<string, unknown> => {
   if (error instanceof Error) {
-    const stackPreview = error.stack
-      ?.split('\n')
-      .slice(0, 6)
-      .join('\n');
-
     const causeMessage = extractMessageFromUnknown((error as Error & { cause?: unknown }).cause);
 
     return {
       error_type: error.constructor.name,
       error_message: error.message,
-      ...(stackPreview ? { error_stack_preview: stackPreview } : {}),
       ...(causeMessage ? { error_cause_message: causeMessage } : {}),
     };
   }

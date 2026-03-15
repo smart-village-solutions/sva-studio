@@ -224,6 +224,51 @@ describe('createSvaMainserverService', () => {
     });
   });
 
+  it('maps non-auth token endpoint status codes to token_request_failed', async () => {
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readIdentityUserAttributes: async () => ({
+        sva_mainserver_api_key: ['key-1'],
+        sva_mainserver_api_secret: ['secret-1'],
+      }),
+      fetchImpl: vi.fn().mockResolvedValueOnce(new Response('upstream down', { status: 500 })),
+      retryBaseDelayMs: 0,
+      randomIntImpl: () => 0,
+    });
+
+    await expect(
+      service.getConnectionStatus({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' })
+    ).resolves.toMatchObject({
+      status: 'error',
+      errorCode: 'token_request_failed',
+    });
+  });
+
+  it('maps non-auth graphql status codes to network_error', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(new Response('bad gateway', { status: 502 }));
+
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readIdentityUserAttributes: async () => ({
+        sva_mainserver_api_key: ['key-1'],
+        sva_mainserver_api_secret: ['secret-1'],
+      }),
+      fetchImpl,
+      retryBaseDelayMs: 0,
+      randomIntImpl: () => 0,
+    });
+
+    await expect(
+      service.getConnectionStatus({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' })
+    ).resolves.toMatchObject({
+      status: 'error',
+      errorCode: 'network_error',
+    });
+  });
+
   it('retries once for transient 503 responses before succeeding', async () => {
     const fetchImpl = vi
       .fn()

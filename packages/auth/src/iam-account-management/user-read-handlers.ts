@@ -80,7 +80,6 @@ const resolveProjectedUserDetail = async (input: {
   if (input.keycloakRoleNames === null) {
     return input.user;
   }
-
   const mappedRoles = await resolveRolesByExternalNames(input.client, {
     instanceId: input.instanceId,
     externalRoleNames: input.keycloakRoleNames,
@@ -98,14 +97,13 @@ const resolveProjectedUserDetail = async (input: {
   return mergeProjectedRoles(input.user, projectedRoles);
 };
 
-const resolveProjectedMainserverCredentialState = async (keycloakSubject: string) => {
-  const attributes = await readIdentityUserAttributes({
+const resolveProjectedMainserverCredentialState = async (keycloakSubject: string) =>
+  resolveMainserverCredentialState(
+    await readIdentityUserAttributes({
     keycloakSubject,
     attributeNames: getSvaMainserverCredentialAttributeNames(),
-  });
-
-  return resolveMainserverCredentialState(attributes);
-};
+    })
+  );
 
 export const listUsersInternal = async (
   request: Request,
@@ -116,12 +114,10 @@ export const listUsersInternal = async (
   if (featureCheck) {
     return featureCheck;
   }
-
   const roleCheck = requireRoles(ctx, ADMIN_ROLES, requestContext.requestId);
   if (roleCheck) {
     return roleCheck;
   }
-
   const actorResolution = await resolveActorInfo(request, ctx, {
     requireActorMembership: true,
     provisionMissingActorMembership: true,
@@ -129,7 +125,6 @@ export const listUsersInternal = async (
   if ('error' in actorResolution) {
     return actorResolution.error;
   }
-
   const rateLimit = consumeRateLimit({
     instanceId: actorResolution.actor.instanceId,
     actorKeycloakSubject: ctx.user.id,
@@ -139,7 +134,6 @@ export const listUsersInternal = async (
   if (rateLimit) {
     return rateLimit;
   }
-
   const { page, pageSize } = readPage(request);
   const url = new URL(request.url);
   const status = readString(url.searchParams.get('status')) as UserStatus | undefined;
@@ -192,12 +186,10 @@ export const getUserInternal = async (
   if (featureCheck) {
     return featureCheck;
   }
-
   const roleCheck = requireRoles(ctx, ADMIN_ROLES, requestContext.requestId);
   if (roleCheck) {
     return roleCheck;
   }
-
   const actorResolution = await resolveActorInfo(request, ctx, {
     requireActorMembership: true,
     provisionMissingActorMembership: true,
@@ -205,7 +197,6 @@ export const getUserInternal = async (
   if ('error' in actorResolution) {
     return actorResolution.error;
   }
-
   const userId = readPathSegment(request, 4);
   if (!userId || !isUuid(userId)) {
     return createApiError(400, 'invalid_request', 'Ungültige userId.', actorResolution.actor.requestId);

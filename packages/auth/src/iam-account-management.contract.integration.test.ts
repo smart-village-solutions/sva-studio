@@ -189,6 +189,7 @@ const contractState = vi.hoisted(() => {
       firstName?: string;
       lastName?: string;
       enabled?: boolean;
+      attributes?: Readonly<Record<string, string | readonly string[]>>;
     },
   };
 });
@@ -305,9 +306,19 @@ vi.mock('./keycloak-admin-client', () => {
 
     async updateUser(
       _keycloakSubject: string,
-      payload: { email?: string; firstName?: string; lastName?: string; enabled?: boolean }
+      payload: {
+        email?: string;
+        firstName?: string;
+        lastName?: string;
+        enabled?: boolean;
+        attributes?: Readonly<Record<string, string | readonly string[]>>;
+      }
     ): Promise<void> {
       contractState.lastUpdatedUserPayload = payload;
+    }
+
+    async getUserAttributes(): Promise<Readonly<Record<string, readonly string[]>>> {
+      return {};
     }
 
     async syncRoles(keycloakSubject: string, roleNames: string[]): Promise<void> {

@@ -25,6 +25,9 @@ type UserFormValues = {
   timezone: string;
   notes: string;
   roleIds: string[];
+  mainserverUserApplicationId: string;
+  mainserverUserApplicationSecret: string;
+  mainserverUserApplicationSecretSet: boolean;
 };
 
 const TABS: ReadonlyArray<{ key: UserEditTabKey; labelKey: 'personal' | 'management' | 'permissions' | 'history' }> = [
@@ -60,6 +63,9 @@ const toFormValues = (input: ReturnType<typeof useUser>['user']): UserFormValues
   timezone: input?.timezone ?? 'Europe/Berlin',
   notes: input?.notes ?? '',
   roleIds: input?.roles.map((entry) => entry.roleId) ?? [],
+  mainserverUserApplicationId: input?.mainserverUserApplicationId ?? '',
+  mainserverUserApplicationSecret: '',
+  mainserverUserApplicationSecretSet: input?.mainserverUserApplicationSecretSet ?? false,
 });
 
 const pickInitials = (displayName: string) => {
@@ -170,6 +176,8 @@ export const UserEditPage = ({ userId }: UserEditPageProps) => {
       timezone: formValues.timezone || undefined,
       notes: formValues.notes.slice(0, 2000) || undefined,
       roleIds: formValues.roleIds,
+      mainserverUserApplicationId: formValues.mainserverUserApplicationId.trim(),
+      mainserverUserApplicationSecret: formValues.mainserverUserApplicationSecret.trim() || undefined,
     });
 
     if (result) {
@@ -376,6 +384,43 @@ export const UserEditPage = ({ userId }: UserEditPageProps) => {
               })}
             </div>
           </fieldset>
+          <label className="flex flex-col gap-2 text-sm text-foreground md:col-span-2">
+            <span>{t('admin.users.edit.mainserverApplicationIdLabel')}</span>
+            <input
+              value={formValues.mainserverUserApplicationId}
+              onChange={(event) =>
+                setFormValues((current) => ({
+                  ...current,
+                  mainserverUserApplicationId: event.target.value,
+                }))
+              }
+              className="rounded-md border border-border bg-background px-3 py-2 text-foreground"
+            />
+          </label>
+          <label className="flex flex-col gap-2 text-sm text-foreground md:col-span-2">
+            <span>{t('admin.users.edit.mainserverApplicationSecretLabel')}</span>
+            <input
+              type="password"
+              autoComplete="new-password"
+              value={formValues.mainserverUserApplicationSecret}
+              placeholder={t('admin.users.edit.mainserverApplicationSecretPlaceholder')}
+              onChange={(event) =>
+                setFormValues((current) => ({
+                  ...current,
+                  mainserverUserApplicationSecret: event.target.value,
+                }))
+              }
+              className="rounded-md border border-border bg-background px-3 py-2 text-foreground"
+            />
+            <span className="text-xs text-muted-foreground">
+              {formValues.mainserverUserApplicationSecretSet
+                ? t('admin.users.edit.mainserverApplicationSecretConfigured')
+                : t('admin.users.edit.mainserverApplicationSecretMissing')}
+            </span>
+            <span className="text-xs text-muted-foreground">
+              {t('admin.users.edit.mainserverApplicationSecretHint')}
+            </span>
+          </label>
           <label className="flex flex-col gap-2 text-sm text-foreground md:col-span-2">
             <span>{t('admin.users.edit.notesLabel')}</span>
             <textarea

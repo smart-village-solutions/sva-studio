@@ -5,6 +5,11 @@ import {
   KeycloakAdminRequestError,
   KeycloakAdminUnavailableError,
 } from '../keycloak-admin-client';
+import {
+  getSvaMainserverCredentialAttributeNames,
+  readIdentityUserAttributes,
+  resolveMainserverCredentialState,
+} from '../mainserver-credentials.server';
 import type { AuthenticatedRequestContext } from '../middleware.server';
 import { jsonResponse } from '../shared/db-helpers';
 import { isUuid, readString } from '../shared/input-readers';
@@ -42,6 +47,15 @@ const mapProjectedRoles = (
 const mergeProjectedRoles = (user: IamUserDetail, roles: readonly IamUserRoleAssignment[]): IamUserDetail => ({
   ...user,
   roles,
+});
+
+const mergeMainserverCredentialState = (
+  user: IamUserDetail,
+  state: ReturnType<typeof resolveMainserverCredentialState>
+): IamUserDetail => ({
+  ...user,
+  mainserverUserApplicationId: state.mainserverUserApplicationId,
+  mainserverUserApplicationSecretSet: state.mainserverUserApplicationSecretSet,
 });
 
 const resolveKeycloakRoleNames = async (keycloakSubject: string): Promise<readonly string[] | null> => {
@@ -82,6 +96,15 @@ const resolveProjectedUserDetail = async (input: {
   }
 
   return mergeProjectedRoles(input.user, projectedRoles);
+};
+
+const resolveProjectedMainserverCredentialState = async (keycloakSubject: string) => {
+  const attributes = await readIdentityUserAttributes({
+    keycloakSubject,
+    attributeNames: getSvaMainserverCredentialAttributeNames(),
+  });
+
+  return resolveMainserverCredentialState(attributes);
 };
 
 export const listUsersInternal = async (
@@ -209,8 +232,11 @@ export const getUserInternal = async (
       return createApiError(404, 'not_found', 'Nutzer nicht gefunden.', actorResolution.actor.requestId);
     }
 
-    const keycloakRoleNames = await resolveKeycloakRoleNames(user.keycloakSubject);
-    const projectedUser = await withInstanceScopedDb(actorResolution.actor.instanceId, (client) =>
+    const [keycloakRoleNames, mainserverCredentialState] = await Promise.all([
+      resolveKeycloakRoleNames(user.keycloakSubject),
+      resolveProjectedMainserverCredentialState(user.keycloakSubject),
+    ]);
+    const projectedUserWithRoles = await withInstanceScopedDb(actorResolution.actor.instanceId, (client) =>
       resolveProjectedUserDetail({
         client,
         instanceId: actorResolution.actor.instanceId,
@@ -218,6 +244,7 @@ export const getUserInternal = async (
         keycloakRoleNames,
       })
     );
+    const projectedUser = mergeMainserverCredentialState(projectedUserWithRoles, mainserverCredentialState);
 
     return jsonResponse(200, asApiItem(projectedUser, actorResolution.actor.requestId));
   } catch (error) {

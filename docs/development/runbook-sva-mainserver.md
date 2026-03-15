@@ -31,10 +31,11 @@ Dieses Runbook beschreibt Betrieb, Fehlerdiagnose und Notfallmaßnahmen für die
 ## Credential-Rotation
 
 1. Betroffenen Benutzer in Keycloak identifizieren.
-2. Attribute `sva_mainserver_api_key` und `sva_mainserver_api_secret` neu setzen.
-3. Anschließend die Mainserver-Diagnostik aus Studio erneut ausführen.
-4. Falls weiterhin `unauthorized` oder `forbidden` auftritt, lokale Studio-Rollen und Mainserver-Rechte gegentesten.
-5. Alte Credentials nach erfolgreicher Validierung endgültig invalidieren.
+2. Attribute `mainserverUserApplicationId` und `mainserverUserApplicationSecret` neu setzen.
+3. Falls der Benutzer noch nicht migriert wurde, werden `sva_mainserver_api_key` und `sva_mainserver_api_secret` zur Laufzeit weiterhin als Fallback gelesen; neue Schreibvorgänge sollen aber nur noch die kanonischen Attribute verwenden.
+4. Anschließend die Mainserver-Diagnostik aus Studio erneut ausführen.
+5. Falls weiterhin `unauthorized` oder `forbidden` auftritt, lokale Studio-Rollen und Mainserver-Rechte gegentesten.
+6. Alte Credentials nach erfolgreicher Validierung endgültig invalidieren.
 
 ## Notfallabschaltung
 

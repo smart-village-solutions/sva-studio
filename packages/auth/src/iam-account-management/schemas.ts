@@ -33,6 +33,8 @@ export const updateUserSchema = z
     notes: z.string().trim().max(2000).optional(),
     status: z.enum(USER_STATUS).optional(),
     roleIds: z.array(z.string().uuid()).max(20).optional(),
+    mainserverUserApplicationId: z.string().trim().max(255).optional(),
+    mainserverUserApplicationSecret: z.string().trim().max(255).optional(),
   })
   .refine((value) => Object.keys(value).length > 0, 'Mindestens ein Feld muss gesetzt werden.');
 

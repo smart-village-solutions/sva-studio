@@ -11,12 +11,12 @@ vi.mock('./iam-account-management/shared', () => ({
 }));
 
 describe('readSvaMainserverCredentials', () => {
-  it('returns credentials from keycloak attributes', async () => {
+  it('returns credentials from the current keycloak attributes', async () => {
     state.resolveIdentityProvider.mockReturnValue({
       provider: {
         getUserAttributes: vi.fn().mockResolvedValue({
-          sva_mainserver_api_key: ['key-1'],
-          sva_mainserver_api_secret: ['secret-1'],
+          mainserverUserApplicationId: ['key-1'],
+          mainserverUserApplicationSecret: ['secret-1'],
         }),
       },
     });
@@ -26,6 +26,24 @@ describe('readSvaMainserverCredentials', () => {
     await expect(readSvaMainserverCredentials('subject-1')).resolves.toEqual({
       apiKey: 'key-1',
       apiSecret: 'secret-1',
+    });
+  });
+
+  it('falls back to the legacy keycloak attributes for existing users', async () => {
+    state.resolveIdentityProvider.mockReturnValue({
+      provider: {
+        getUserAttributes: vi.fn().mockResolvedValue({
+          sva_mainserver_api_key: ['legacy-key'],
+          sva_mainserver_api_secret: ['legacy-secret'],
+        }),
+      },
+    });
+
+    const { readSvaMainserverCredentials } = await import('./mainserver-credentials.server');
+
+    await expect(readSvaMainserverCredentials('subject-1')).resolves.toEqual({
+      apiKey: 'legacy-key',
+      apiSecret: 'legacy-secret',
     });
   });
 
@@ -41,7 +59,7 @@ describe('readSvaMainserverCredentials', () => {
     state.resolveIdentityProvider.mockReturnValue({
       provider: {
         getUserAttributes: vi.fn().mockResolvedValue({
-          sva_mainserver_api_key: ['key-only'],
+          mainserverUserApplicationId: ['key-only'],
         }),
       },
     });
@@ -55,8 +73,8 @@ describe('readSvaMainserverCredentials', () => {
     state.resolveIdentityProvider.mockReturnValue({
       provider: {
         getUserAttributes: vi.fn().mockResolvedValue({
-          sva_mainserver_api_key: ['  ', ' key-trimmed  '],
-          sva_mainserver_api_secret: ['   secret-trimmed   '],
+          mainserverUserApplicationId: ['  ', ' key-trimmed  '],
+          mainserverUserApplicationSecret: ['   secret-trimmed   '],
         }),
       },
     });
@@ -83,7 +101,7 @@ describe('readSvaMainserverCredentials', () => {
     state.resolveIdentityProvider.mockReturnValue({
       provider: {
         getUserAttributes: vi.fn().mockResolvedValue({
-          sva_mainserver_api_key: ['key-only'],
+          mainserverUserApplicationId: ['key-only'],
         }),
       },
     });
@@ -92,6 +110,44 @@ describe('readSvaMainserverCredentials', () => {
 
     await expect(readSvaMainserverCredentialsWithStatus('subject-1')).resolves.toEqual({
       status: 'missing_credentials',
+    });
+  });
+
+  it('derives admin-facing credential state without returning the secret', async () => {
+    state.resolveIdentityProvider.mockReturnValue({
+      provider: {
+        getUserAttributes: vi.fn().mockResolvedValue({
+          mainserverUserApplicationId: ['current-id'],
+          mainserverUserApplicationSecret: ['current-secret'],
+        }),
+      },
+    });
+
+    const { readIdentityUserAttributes, resolveMainserverCredentialState } = await import('./mainserver-credentials.server');
+
+    const attributes = await readIdentityUserAttributes({ keycloakSubject: 'subject-1' });
+    expect(resolveMainserverCredentialState(attributes)).toEqual({
+      mainserverUserApplicationId: 'current-id',
+      mainserverUserApplicationSecretSet: true,
+    });
+  });
+
+  it('builds canonical keycloak attributes and preserves legacy secrets on write', async () => {
+    const { buildMainserverIdentityAttributes } = await import('./mainserver-credentials.server');
+
+    expect(
+      buildMainserverIdentityAttributes({
+        existingAttributes: {
+          displayName: ['Alice Admin'],
+          sva_mainserver_api_key: ['legacy-key'],
+          sva_mainserver_api_secret: ['legacy-secret'],
+        },
+        mainserverUserApplicationId: 'updated-id',
+      })
+    ).toEqual({
+      displayName: ['Alice Admin'],
+      mainserverUserApplicationId: ['updated-id'],
+      mainserverUserApplicationSecret: ['legacy-secret'],
     });
   });
 });

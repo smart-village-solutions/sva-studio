@@ -1,138 +1,11 @@
-import { lookup as dnsLookup } from 'node:dns/promises';
-import { isIP } from 'node:net';
-
 import { loadInstanceIntegrationRecord } from '@sva/data/server';
 import { createSdkLogger, getWorkspaceContext } from '@sva/sdk/server';
-import { z } from 'zod';
 
 import type { SvaMainserverInstanceConfig } from '../types';
 import { SvaMainserverError } from './errors';
+import { normalizeSvaMainserverUpstreamUrl } from './upstream-url-validation';
 
 const logger = createSdkLogger({ component: 'sva-mainserver-config', level: 'debug' });
-
-const localhostHosts = new Set(['localhost', '127.0.0.1', '::1', '[::1]']);
-
-const isPrivateOrLocalHost = (hostname: string): boolean => {
-  const normalized = hostname.trim().toLowerCase();
-  if (localhostHosts.has(normalized) || normalized.endsWith('.local')) {
-    return true;
-  }
-
-  // IPv6-Bracket-Notation aus URL.hostname entfernen (z.B. [::1] → ::1, [::ffff:127.0.0.1] → ::ffff:127.0.0.1)
-  const unbracketed = normalized.startsWith('[') && normalized.endsWith(']')
-    ? normalized.slice(1, -1)
-    : normalized;
-
-  if (unbracketed !== normalized) {
-    return isPrivateOrLocalHost(unbracketed);
-  }
-
-  const ipVersion = isIP(normalized);
-  if (ipVersion === 4) {
-    const octets = normalized.split('.').map((segment) => Number.parseInt(segment, 10));
-    if (octets.length !== 4 || octets.some((part) => Number.isNaN(part))) {
-      return true;
-    }
-
-    const [a, b] = octets;
-    return (
-      a === 0 ||
-      a === 10 ||
-      a === 127 ||
-      (a === 169 && b === 254) ||
-      (a === 172 && b >= 16 && b <= 31) ||
-      (a === 192 && b === 168)
-    );
-  }
-
-  if (ipVersion === 6) {
-    // IPv4-mapped IPv6: sowohl ::ffff:127.0.0.1 (Dezimal) als auch
-    // ::ffff:7f00:1 (Hex-Paare, wie URL.hostname sie normalisiert) behandeln.
-    if (normalized.startsWith('::ffff:')) {
-      const mappedPart = normalized.slice('::ffff:'.length);
-      if (isIP(mappedPart) === 4) {
-        return isPrivateOrLocalHost(mappedPart);
-      }
-      const hexParts = mappedPart.split(':');
-      if (hexParts.length === 2) {
-        const high = Number.parseInt(hexParts[0], 16);
-        const low = Number.parseInt(hexParts[1], 16);
-        if (!Number.isNaN(high) && !Number.isNaN(low)) {
-          const dotted = [
-            (high >> 8) & 0xff,
-            high & 0xff,
-            (low >> 8) & 0xff,
-            low & 0xff,
-          ].join('.');
-          return isPrivateOrLocalHost(dotted);
-        }
-      }
-      // Unbekanntes Format – konservativ blockieren
-      return true;
-    }
-    return (
-      normalized === '::1' ||
-      normalized === '::' ||
-      normalized.startsWith('fc') ||
-      normalized.startsWith('fd') ||
-      normalized.startsWith('fe80:')
-    );
-  }
-
-  return false;
-};
-
-const resolvesToPrivateOrLocalHost = async (hostname: string): Promise<boolean> => {
-  const normalized = hostname.trim().toLowerCase();
-  if (isIP(normalized) !== 0) {
-    return false;
-  }
-
-  try {
-    const resolved = await dnsLookup(normalized, {
-      all: true,
-      verbatim: true,
-    });
-    if (resolved.length === 0) {
-      return true;
-    }
-
-    return resolved.some((entry) => isPrivateOrLocalHost(entry.address));
-  } catch {
-    // Fail-closed: wenn DNS-Auflösung fehlschlägt, wird die URL verworfen.
-    return true;
-  }
-};
-
-const upstreamUrlSchema = z.string().url().transform((value) => new URL(value)).superRefine((value, context) => {
-  if (value.username || value.password) {
-    context.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: 'Credentials in Upstream-URLs sind nicht erlaubt.',
-    });
-  }
-
-  if (value.hash) {
-    context.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: 'URL-Fragmente sind für Upstream-Endpunkte nicht erlaubt.',
-    });
-  }
-
-  if (value.protocol !== 'https:') {
-    context.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: 'Erlaubt sind ausschließlich https-URLs für Upstream-Endpunkte.',
-    });
-  }
-
-  if (isPrivateOrLocalHost(value.hostname)) {
-    context.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: 'Lokale oder private Upstream-Hosts sind nicht erlaubt.',
-    });
-  }
-});
 
 const buildLogContext = (instanceId: string, extra: Record<string, unknown> = {}) => {
   const context = getWorkspaceContext();
@@ -151,8 +24,9 @@ const validateUpstreamUrl = async (
   fieldName: 'graphql_base_url' | 'oauth_token_url',
   value: string
 ): Promise<string> => {
-  const parsed = upstreamUrlSchema.safeParse(value);
-  if (!parsed.success) {
+  try {
+    return await normalizeSvaMainserverUpstreamUrl(value, fieldName, 500);
+  } catch (error) {
     logger.warn('Invalid SVA Mainserver upstream URL configuration detected', {
       ...buildLogContext(instanceId, {
         operation: 'load_instance_config',
@@ -160,29 +34,8 @@ const validateUpstreamUrl = async (
         error_code: 'invalid_config',
       }),
     });
-    throw new SvaMainserverError({
-      code: 'invalid_config',
-      message: `Die konfigurierte Upstream-URL ${fieldName} ist ungültig.`,
-      statusCode: 500,
-    });
+    throw error;
   }
-
-  if (await resolvesToPrivateOrLocalHost(parsed.data.hostname)) {
-    logger.warn('Invalid SVA Mainserver upstream URL configuration detected', {
-      ...buildLogContext(instanceId, {
-        operation: 'load_instance_config',
-        field_name: fieldName,
-        error_code: 'invalid_config',
-      }),
-    });
-    throw new SvaMainserverError({
-      code: 'invalid_config',
-      message: `Die konfigurierte Upstream-URL ${fieldName} ist ungültig.`,
-      statusCode: 500,
-    });
-  }
-
-  return parsed.data.toString();
 };
 
 export const loadSvaMainserverInstanceConfig = async (

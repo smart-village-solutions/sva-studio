@@ -5,10 +5,16 @@
  * statt interaktiver Links gerendert werden.
  */
 import { Link } from '@tanstack/react-router';
-import { LayoutDashboard, Settings2, Shield, UserRound, Users, X } from 'lucide-react';
+import { Cable, LayoutDashboard, Settings2, Shield, UserRound, Users, X } from 'lucide-react';
 
 import { t } from '../i18n';
-import { hasIamAdminRole, hasSystemAdminRole, isIamAdminEnabled, isIamUiEnabled } from '../lib/iam-admin-access';
+import {
+  hasIamAdminRole,
+  hasInterfacesAccessRole,
+  hasSystemAdminRole,
+  isIamAdminEnabled,
+  isIamUiEnabled,
+} from '../lib/iam-admin-access';
 import { useAuth } from '../providers/auth-provider';
 import { Sheet, SheetContent } from './ui/sheet';
 
@@ -24,6 +30,8 @@ const getSidebarIcon = (path: string) => {
   switch (path) {
     case '/account':
       return UserRound;
+    case '/interfaces':
+      return Cable;
     case '/admin/users':
       return Users;
     case '/admin/organizations':
@@ -92,6 +100,7 @@ const SidebarPanel = ({
             return (
               <li key={item.to}>
                 <Link
+                  activeOptions={item.to === '/' ? { exact: true } : undefined}
                   to={item.to}
                   className="flex items-center gap-3 rounded-md border border-transparent bg-sidebar px-3 py-2.5 text-sm font-medium text-sidebar-foreground transition hover:border-sidebar-border hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                   onClick={onNavigate}
@@ -120,10 +129,12 @@ export default function Sidebar({ isLoading = false, isMobileOpen = false, onMob
   const canAccessAdminUsers = isAuthenticated && isIamAdminEnabled() && hasIamAdminRole(user);
   const canAccessAdminOrganizations = canAccessAdminUsers;
   const canAccessAdminRoles = canAccessAdminUsers && hasSystemAdminRole(user);
+  const canAccessInterfaces = isAuthenticated && isIamUiEnabled() && hasInterfacesAccessRole(user);
 
   const sidebarLinks: Array<{ to: string; label: string }> = [
     { to: '/', label: t('shell.sidebar.overview') },
     ...(canAccessAccount ? [{ to: '/account', label: t('shell.sidebar.account') }] : []),
+    ...(canAccessInterfaces ? [{ to: '/interfaces', label: t('shell.sidebar.interfaces') }] : []),
     ...(canAccessAdminUsers ? [{ to: '/admin/users', label: t('shell.sidebar.userManagement') }] : []),
     ...(canAccessAdminOrganizations ? [{ to: '/admin/organizations', label: t('shell.sidebar.organizationManagement') }] : []),
     ...(canAccessAdminRoles ? [{ to: '/admin/roles', label: t('shell.sidebar.roleManagement') }] : []),

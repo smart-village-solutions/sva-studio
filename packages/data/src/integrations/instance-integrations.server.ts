@@ -201,6 +201,31 @@ export const loadInstanceIntegrationRecord = async (
   return record;
 };
 
+export const saveInstanceIntegrationRecord = async (
+  record: InstanceIntegrationRecord,
+  options: {
+    readonly getDatabaseUrl?: () => string | undefined;
+  } = {}
+): Promise<void> => {
+  const getDatabaseUrl = options.getDatabaseUrl ?? (() => process.env.IAM_DATABASE_URL);
+
+  await withInstanceDb(
+    {
+      instanceId: record.instanceId,
+      getDatabaseUrl,
+    },
+    async (client) => {
+      const repository = createInstanceIntegrationRepository(createExecutor(client));
+      await repository.upsert(record);
+    }
+  );
+
+  defaultCachedLoader.clear();
+  for (const loader of customCachedLoaders.values()) {
+    loader.clear();
+  }
+};
+
 export const resetInstanceIntegrationServerState = async (): Promise<void> => {
   defaultCachedLoader.clear();
   for (const loader of customCachedLoaders.values()) {

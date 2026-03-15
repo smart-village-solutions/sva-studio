@@ -1,4 +1,7 @@
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from '@playwright/test';
+
+const appRoot = fileURLToPath(new URL('./', import.meta.url));
 
 export default defineConfig({
   testDir: './e2e',
@@ -12,7 +15,10 @@ export default defineConfig({
     trace: 'retain-on-failure',
   },
   webServer: {
-    command: 'pnpm nx run sva-studio-react:serve',
+    // Nested Nx inside Playwright's webServer was unstable in local dev and could
+    // terminate the app mid-suite. Start the app-local dev script directly instead.
+    command: 'pnpm dev',
+    cwd: appRoot,
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
     timeout: 300_000,

@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "TSS_DEV_SERVER=false vite dev --port 3000",
+    "dev": "vite dev --port 3000",
     "check:i18n": "node --import tsx ../../scripts/ci/check-i18n-keys.ts",
     "check:account-ui-foundation": "node --import tsx ../../scripts/ci/check-account-ui-foundation.ts",
     "build": "pnpm run check:i18n && pnpm run check:account-ui-foundation && vite build",

@@ -12,7 +12,8 @@ const normalizeDirectory = (url: URL) => fileURLToPath(url).replace(/[\\/]$/, ''
 const appRoot = normalizeDirectory(new URL('./', import.meta.url));
 const workspaceRoot = normalizeDirectory(new URL('../../', import.meta.url));
 const tanstackRouterBasepath = '/';
-const tanstackServerFnBase = '/_server/';
+const tanstackServerFnBase = '/_server';
+const tanstackServerFnTransportBase = `${tanstackServerFnBase}/`;
 
 const tanstackStartClientEnvCompatPlugin = () => ({
   name: 'tanstack-start-client-env-compat',
@@ -28,7 +29,7 @@ const tanstackStartClientEnvCompatPlugin = () => ({
 
     return {
       code: code
-        .replaceAll('process.env.TSS_SERVER_FN_BASE', JSON.stringify(tanstackServerFnBase))
+        .replaceAll('process.env.TSS_SERVER_FN_BASE', JSON.stringify(tanstackServerFnTransportBase))
         .replaceAll('process.env.TSS_ROUTER_BASEPATH', JSON.stringify(tanstackRouterBasepath)),
       map: null,
     };
@@ -117,7 +118,7 @@ const config = defineConfig({
     }),
     tanstackStart({
       serverFns: {
-        base: '/_server',
+        base: tanstackServerFnBase,
       },
     }),
     nitro(),

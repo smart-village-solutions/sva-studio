@@ -222,6 +222,60 @@ describe('loadInstanceIntegrationRecord (server)', () => {
     expect(loadRecord).toHaveBeenCalledTimes(1);
   });
 
+  it('persists records and invalidates default as well as custom loader caches', async () => {
+    const mod = await import('./instance-integrations.server');
+    const loadRecord = vi.fn(
+      async (_instanceId: string, _providerKey: 'sva_mainserver') => ({
+        instanceId: 'de-musterhausen',
+        providerKey: 'sva_mainserver' as const,
+        graphqlBaseUrl: 'https://cached.example.invalid/graphql',
+        oauthTokenUrl: 'https://cached.example.invalid/oauth/token',
+        enabled: true,
+        lastVerifiedAt: undefined,
+        lastVerifiedStatus: undefined,
+      })
+    );
+
+    await mod.loadInstanceIntegrationRecord('de-musterhausen', 'sva_mainserver');
+    await mod.loadInstanceIntegrationRecord('de-musterhausen', 'sva_mainserver');
+    await mod.loadInstanceIntegrationRecord('de-musterhausen', 'sva_mainserver', {
+      cacheTtlMs: 60_000,
+      loadRecord,
+    });
+    await mod.loadInstanceIntegrationRecord('de-musterhausen', 'sva_mainserver', {
+      cacheTtlMs: 60_000,
+      loadRecord,
+    });
+
+    expect(state.queries.filter((entry) => entry.text.includes('FROM iam.instance_integrations'))).toHaveLength(1);
+    expect(loadRecord).toHaveBeenCalledTimes(1);
+
+    await mod.saveInstanceIntegrationRecord(
+      {
+        instanceId: 'de-musterhausen',
+        providerKey: 'sva_mainserver',
+        graphqlBaseUrl: 'https://saved.example.invalid/graphql',
+        oauthTokenUrl: 'https://saved.example.invalid/oauth/token',
+        enabled: false,
+        lastVerifiedAt: undefined,
+        lastVerifiedStatus: undefined,
+      },
+      {
+        getDatabaseUrl: () => 'postgres://local/test',
+      }
+    );
+
+    await mod.loadInstanceIntegrationRecord('de-musterhausen', 'sva_mainserver');
+    await mod.loadInstanceIntegrationRecord('de-musterhausen', 'sva_mainserver', {
+      cacheTtlMs: 60_000,
+      loadRecord,
+    });
+
+    expect(state.queries.some((entry) => entry.text.includes('INSERT INTO iam.instance_integrations'))).toBe(true);
+    expect(state.queries.filter((entry) => entry.text.includes('FROM iam.instance_integrations'))).toHaveLength(2);
+    expect(loadRecord).toHaveBeenCalledTimes(2);
+  });
+
   it('cleans up shared pool state on reset', async () => {
     const mod = await import('./instance-integrations.server');
 

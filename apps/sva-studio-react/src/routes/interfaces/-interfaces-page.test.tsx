@@ -81,7 +81,6 @@ describe('InterfacesPage', () => {
           status: 'error',
           checkedAt: '2026-03-15T20:05:00.000Z',
           errorCode: 'network_error',
-          errorMessage: 'Verbindungsstatus konnte nicht abgerufen werden.',
         },
       });
     state.saveSettings.mockResolvedValue({
@@ -121,7 +120,7 @@ describe('InterfacesPage', () => {
       expect(state.loadOverview).toHaveBeenCalledTimes(2);
       expect(screen.getByDisplayValue('https://next.example/graphql')).toBeTruthy();
       expect(screen.getByDisplayValue('https://next.example/oauth/token')).toBeTruthy();
-      expect(screen.getByText('Verbindungsstatus konnte nicht abgerufen werden.')).toBeTruthy();
+      expect(screen.getByText('Der Verbindungsstatus konnte nicht abgerufen werden.')).toBeTruthy();
     });
   });
 
@@ -144,7 +143,6 @@ describe('InterfacesPage', () => {
           status: 'error',
           checkedAt: '2026-03-15T20:00:00.000Z',
           errorCode: 'forbidden',
-          errorMessage: 'Keine Berechtigung zur Schnittstellenverwaltung.',
         },
       })
       .mockResolvedValueOnce({
@@ -185,7 +183,14 @@ describe('InterfacesPage', () => {
         checkedAt: '2026-03-15T20:00:00.000Z',
       },
     });
-    state.saveSettings.mockRejectedValue({ response: { data: { message: 'Speichern fehlgeschlagen' } } });
+    state.saveSettings.mockRejectedValue(
+      new Error('invalid_config', {
+        cause: {
+          error: 'invalid_config',
+          field: 'graphql_base_url',
+        },
+      })
+    );
 
     render(<InterfacesPage />);
 
@@ -196,7 +201,7 @@ describe('InterfacesPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Einstellungen speichern' }));
 
     await waitFor(() => {
-      expect(screen.getByText('Speichern fehlgeschlagen')).toBeTruthy();
+      expect(screen.getByText('Die GraphQL Basis-URL ist ungültig.')).toBeTruthy();
     });
   });
 });

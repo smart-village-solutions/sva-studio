@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 
 type RecordedServerFnResponse = {
-  readonly body: string;
+  body: string;
   readonly method: string;
   readonly status: number;
   readonly url: string;
@@ -16,13 +16,16 @@ const captureServerFnResponses = (page: Page) => {
       return;
     }
 
+    const entry: RecordedServerFnResponse = {
+      body: '',
+      method: response.request().method(),
+      status: response.status(),
+      url: response.url(),
+    };
+    responses.push(entry);
+
     void response.text().then((body) => {
-      responses.push({
-        body,
-        method: response.request().method(),
-        status: response.status(),
-        url: response.url(),
-      });
+      entry.body = body;
     });
   });
 
@@ -53,10 +56,16 @@ test('interfaces page uses the real /_server transport for load and save', async
   await expect(page.getByLabel('OAuth Token-URL')).toHaveValue('https://saved.example.org/oauth/token');
 
   await page.getByRole('button', { name: 'Einstellungen speichern' }).click();
-  await expect(page.getByText(/(Die Sitzung ist nicht mehr gültig\. Bitte erneut anmelden\.|Authentifizierungsfehler\.)/).first()).toBeVisible();
   await expect
     .poll(() => serverFnResponses.filter((response) => response.method === 'POST').length)
     .toBeGreaterThan(0);
+  await expect(
+    page
+      .getByText(
+        /(Schnittstellen-Einstellungen konnten nicht gespeichert werden(?: \(HTTP 500\))?\.|Die Sitzung ist nicht mehr gültig\. Bitte erneut anmelden\.|Keine Berechtigung zur Schnittstellenverwaltung\.|Die Mainserver-Konfiguration ist ungültig\.)/
+      )
+      .first()
+  ).toBeVisible();
 
   const saveResponse = serverFnResponses.find((response) => response.method === 'POST');
   expect(saveResponse?.url).toContain('/_server/');

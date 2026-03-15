@@ -111,8 +111,7 @@ describe('interfaces.server', () => {
       instanceId: '',
       status: expect.objectContaining({
         status: 'error',
-        errorCode: 'network_error',
-        errorMessage: 'Kein Instanzkontext in der aktuellen Session vorhanden.',
+        errorCode: 'invalid_config',
       }),
     });
   });
@@ -132,7 +131,6 @@ describe('interfaces.server', () => {
       status: expect.objectContaining({
         status: 'error',
         errorCode: 'unauthorized',
-        errorMessage: 'Die Sitzung ist nicht mehr gültig. Bitte erneut anmelden.',
       }),
     });
   });
@@ -152,7 +150,6 @@ describe('interfaces.server', () => {
       status: expect.objectContaining({
         status: 'error',
         errorCode: 'forbidden',
-        errorMessage: 'forbidden',
       }),
     });
   });
@@ -177,7 +174,6 @@ describe('interfaces.server', () => {
       status: expect.objectContaining({
         status: 'error',
         errorCode: 'invalid_config',
-        errorMessage: 'Konfiguration konnte nicht geladen werden.',
       }),
     });
   });
@@ -209,7 +205,25 @@ describe('interfaces.server', () => {
       status: expect.objectContaining({
         status: 'error',
         errorCode: 'network_error',
-        errorMessage: 'Verbindungsstatus konnte nicht abgerufen werden.',
+      }),
+    });
+  });
+
+  it('falls back to a network error when the overview response shape is invalid', async () => {
+    state.withAuthenticatedUser.mockResolvedValue(
+      new Response(JSON.stringify({ instanceId: 'de-musterhausen', status: { foo: 'bar' } }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
+
+    const { loadInterfacesOverview } = await import('./interfaces-api');
+
+    await expect(loadInterfacesOverview()).resolves.toMatchObject({
+      instanceId: '',
+      status: expect.objectContaining({
+        status: 'error',
+        errorCode: 'network_error',
       }),
     });
   });
@@ -316,7 +330,7 @@ describe('interfaces.server', () => {
           enabled: true,
         },
       })
-    ).rejects.toThrow('Einstellungen konnten nicht gespeichert werden.');
+    ).rejects.toThrow('network_error');
   });
 
   it('rejects save requests from users without interfaces permissions', async () => {
@@ -341,7 +355,7 @@ describe('interfaces.server', () => {
           enabled: true,
         },
       })
-    ).rejects.toThrow('Keine Berechtigung zur Schnittstellenverwaltung.');
+    ).rejects.toThrow('forbidden');
   });
 
   it('rejects save requests when the enabled flag is missing', async () => {
@@ -365,8 +379,38 @@ describe('interfaces.server', () => {
           oauthTokenUrl: 'https://mainserver.example/oauth/token',
         },
       })
-    ).rejects.toThrow('Der Aktivierungsstatus fehlt.');
+    ).rejects.toThrow('invalid_config');
 
     expect(state.saveSvaMainserverSettings).not.toHaveBeenCalled();
+  });
+
+  it('preserves invalid_config errors from settings validation with their affected field', async () => {
+    state.withAuthenticatedUser.mockImplementation(
+      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<Response>) =>
+        handler({
+          user: {
+            id: 'subject-1',
+            instanceId: 'de-musterhausen',
+            roles: ['system_admin'],
+          },
+        })
+    );
+    state.saveSvaMainserverSettings.mockRejectedValue({
+      code: 'invalid_config',
+      message: 'Die konfigurierte Upstream-URL graphql_base_url ist ungültig.',
+      statusCode: 400,
+    });
+
+    const { saveSvaMainserverInterfaceSettings } = await import('./interfaces-api');
+
+    await expect(
+      saveSvaMainserverInterfaceSettings({
+        data: {
+          graphqlBaseUrl: 'https://mainserver.example/graphql',
+          oauthTokenUrl: 'https://mainserver.example/oauth/token',
+          enabled: true,
+        },
+      })
+    ).rejects.toThrow('invalid_config');
   });
 });

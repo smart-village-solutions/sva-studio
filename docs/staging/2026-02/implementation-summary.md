@@ -105,7 +105,7 @@ curl -X POST http://localhost:9093/api/v2/alerts -H "Content-Type: application/j
 
 ### 1. Monitoring Stack starten
 ```bash
-cd /Users/wilimzig/Documents/Projects/SVA/sva-studio
+cd "$(git rev-parse --show-toplevel)"
 
 # Stack mit neuen Services starten
 docker compose -f docker-compose.monitoring.yml up -d

@@ -33,6 +33,17 @@ export default [
               onlyDependOnLibsWithTags: ['scope:core', 'scope:data', 'scope:sdk', 'scope:monitoring', 'scope:auth'],
             },
             {
+              sourceTag: 'scope:integration',
+              onlyDependOnLibsWithTags: [
+                'scope:core',
+                'scope:data',
+                'scope:sdk',
+                'scope:monitoring',
+                'scope:auth',
+                'scope:integration',
+              ],
+            },
+            {
               sourceTag: 'scope:monitoring',
               onlyDependOnLibsWithTags: ['scope:monitoring', 'scope:sdk', 'scope:core'],
             },
@@ -52,6 +63,8 @@ export default [
                 'scope:sdk',
                 'scope:plugin',
                 'scope:routing',
+                'scope:auth',
+                'scope:integration',
               ],
             },
           ],

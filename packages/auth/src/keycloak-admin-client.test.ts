@@ -229,6 +229,40 @@ describe('KeycloakAdminClient', () => {
     expect(tokenRequests).toHaveLength(1);
   });
 
+  it('reads and filters user attributes by external id', async () => {
+    const { fetchImpl, calls } = createFetchStub([
+      createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }),
+      createJsonResponse(200, {
+        id: 'user-123',
+        username: 'user@example.com',
+        attributes: {
+          sva_mainserver_api_key: ['key-1'],
+          sva_mainserver_api_secret: ['secret-1'],
+          ignored: ['value'],
+        },
+      }),
+    ]);
+
+    const client = new KeycloakAdminClient({
+      baseUrl: 'https://keycloak.example.com',
+      realm: 'demo',
+      clientId: 'svc-client',
+      clientSecret: 'svc-secret',
+      fetchImpl,
+    });
+
+    const attributes = await client.getUserAttributes('user-123', [
+      'sva_mainserver_api_key',
+      'sva_mainserver_api_secret',
+    ]);
+
+    expect(attributes).toEqual({
+      sva_mainserver_api_key: ['key-1'],
+      sva_mainserver_api_secret: ['secret-1'],
+    });
+    expect(String(calls[1]?.input)).toContain('/admin/realms/demo/users/user-123');
+  });
+
   it('retries transient errors with exponential backoff delays', async () => {
     const sleepCalls: number[] = [];
     const { fetchImpl } = createFetchStub([

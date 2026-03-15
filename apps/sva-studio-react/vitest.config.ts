@@ -17,6 +17,8 @@ export default defineConfig({
       '@sva/routing': fileURLToPath(new URL('../../packages/routing/src/index.ts', import.meta.url)),
       '@sva/auth/server': fileURLToPath(new URL('../../packages/auth/src/index.server.ts', import.meta.url)),
       '@sva/auth': fileURLToPath(new URL('../../packages/auth/src/index.ts', import.meta.url)),
+      '@sva/sva-mainserver/server': fileURLToPath(new URL('../../packages/sva-mainserver/src/index.server.ts', import.meta.url)),
+      '@sva/sva-mainserver': fileURLToPath(new URL('../../packages/sva-mainserver/src/index.ts', import.meta.url)),
       '@sva/sdk/server': fileURLToPath(new URL('../../packages/sdk/src/server.ts', import.meta.url)),
       '@sva/sdk/logger/index.server': fileURLToPath(new URL('../../packages/sdk/src/logger/index.server.ts', import.meta.url)),
       '@sva/sdk/middleware/request-context.server': fileURLToPath(
@@ -36,11 +38,13 @@ export default defineConfig({
   },
   test: {
     name: 'sva-studio-react',
-    environment: 'jsdom',
+    environment: 'happy-dom',
     include: ['src/**/*.{test,spec}.{ts,tsx}'],
-    // Mit Node 25/Vitest 4 tritt in CI sporadisch ein Race beim Schreiben
-    // von coverage/.tmp/coverage-*.json auf; ein Worker verhindert den Flake.
-    maxWorkers: process.env.CI ? 1 : undefined,
+    // Ein Worker hält die App-Tests deterministisch und reduziert Flakes in der
+    // UI-Testumgebung.
+    pool: 'threads',
+    fileParallelism: false,
+    maxWorkers: 1,
     coverage: {
       provider: 'v8',
       reporter: ['text-summary', 'json-summary', 'lcov'],

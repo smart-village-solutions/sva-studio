@@ -3,6 +3,7 @@ import { createSdkLogger } from '@sva/sdk/server';
 import type {
   CreateIdentityRoleInput,
   IdentityListedUser,
+  IdentityUserAttributes,
   CreateIdentityUserInput,
   IdentityRole,
   IdentityProviderPort,
@@ -189,6 +190,23 @@ const mapKeycloakUser = (user: KeycloakAdminUser): IdentityListedUser => ({
   enabled: user.enabled,
   attributes: user.attributes,
 });
+
+const filterUserAttributes = (
+  attributes: Readonly<Record<string, readonly string[]>> | undefined,
+  attributeNames?: readonly string[]
+): IdentityUserAttributes => {
+  if (!attributes) {
+    return {};
+  }
+  if (!attributeNames || attributeNames.length === 0) {
+    return { ...attributes };
+  }
+
+  const allowedAttributes = new Set(attributeNames);
+  return Object.fromEntries(
+    Object.entries(attributes).filter(([key]) => allowedAttributes.has(key))
+  );
+};
 
 const readAttribute = (
   attributes: Readonly<Record<string, readonly string[]>> | undefined,
@@ -411,6 +429,23 @@ export class KeycloakAdminClient implements IdentityProviderPort {
   async listUserRoleNames(externalId: string): Promise<readonly string[]> {
     const currentRoleMappings = await this.readUserRoleMappings(externalId, 'list_user_roles');
     return currentRoleMappings.map((role) => role.name);
+  }
+
+  async getUserAttributes(
+    externalId: string,
+    attributeNames?: readonly string[]
+  ): Promise<IdentityUserAttributes> {
+    if (this.isCircuitOpen()) {
+      throw new KeycloakAdminUnavailableError('Keycloak unavailable and no read fallback configured.');
+    }
+
+    const user = await this.executeWithResilience<KeycloakAdminUser>({
+      method: 'GET',
+      path: `/admin/realms/${encodePathSegment(this.realm)}/users/${encodePathSegment(externalId)}`,
+      operation: 'get_user_attributes',
+    });
+
+    return filterUserAttributes(user.attributes, attributeNames);
   }
 
   async listUsers(query?: KeycloakListUsersQuery): Promise<readonly IdentityListedUser[]> {

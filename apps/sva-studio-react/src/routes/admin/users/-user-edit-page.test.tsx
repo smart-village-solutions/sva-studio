@@ -203,7 +203,13 @@ describe('UserEditPage', () => {
     render(<UserEditPage userId="user-1" />);
 
     fireEvent.click(screen.getByRole('tab', { name: 'Verwaltung' }));
-    fireEvent.click(screen.getByRole('checkbox', { name: 'editor' }));
+    const editorCheckbox = screen.getByRole('checkbox', { name: 'editor' }) as HTMLInputElement;
+    fireEvent.click(editorCheckbox);
+
+    await waitFor(() => {
+      expect(editorCheckbox.checked).toBe(true);
+    });
+
     fireEvent.click(screen.getByRole('button', { name: 'Änderungen speichern' }));
 
     await waitFor(() => {

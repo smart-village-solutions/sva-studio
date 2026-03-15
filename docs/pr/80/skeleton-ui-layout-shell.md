@@ -20,7 +20,7 @@ Einführung einer erweiterbaren UI-Shell mit konsistenten Skeleton-Zuständen f�
 ## Methodische Artefakte
 
 - OpenSpec Change: `openspec/changes/add-skeleton-layout-shell/`
-- ADR: `docs/architecture/decisions/ADR-009-layout-shell-skeleton-architecture.md`
+- Historische ADR-Ablage zum Shell-Thema (Altbestand): `docs/architecture/decisions/ADR-009-layout-shell-skeleton-architecture.md`
 - Arc42-Updates: Abschnitt 05, 06, 08, 09, 10
 
 ## Technische Änderungen (Kern)

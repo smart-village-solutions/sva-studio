@@ -35,21 +35,30 @@ Architecture Decision Records dokumentieren **wichtige technische Entscheidungen
 
 ---
 
-### ADR-Liste
+### ADR-Liste (kanonischer Bestand unter `docs/adr/`)
 
 | # | Titel | Status | Entscheidungsdatum | Thema |
 |---|---|---|---|---|
 | 000 | ADR Template | 📋 | - | Dokumentation |
-| 001 | Frontend Framework auswählen | 📋 | TBD | Architektur |
-| 002 | State Management | 📋 | TBD | Architektur |
-| 003 | Testing Framework | 📋 | TBD | Quality |
-| 004 | Build Tool & Bundler | 📋 | TBD | DevOps |
-| 005 | Node.js Version & LTS-Policy | 📋 | TBD | Infrastruktur |
+| 009 | Keycloak als zentraler Identity Provider | ✅ | 2026-02-27 | IAM / Auth |
+| 010 | Verschlüsselung IAM Core Data Layer | ✅ | 2026-02-27 | Security / Data |
 | 011 | `instanceId` als kanonischer Mandanten-Scope | ✅ | 2026-02-27 | IAM / Architektur |
+| 012 | Permission-Kompositionsmodell RBAC v1 | ✅ | 2026-02-27 | IAM / Authorization |
+| 013 | RBAC-ABAC-Hybridmodell | ✅ | 2026-02-28 | IAM / Authorization |
+| 014 | Postgres `NOTIFY` für Cache-Invalidierung | ✅ | 2026-02-28 | Data / Runtime |
+| 015 | CSRF-Schutz-Strategie | ✅ | 2026-03-08 | Security |
+| 016 | IdP-Abstraktionsschicht | ✅ | 2026-03-08 | IAM / Integration |
 | 017 | Modulare IAM-Server-Bausteine | ✅ | 2026-03-08 | IAM / Qualität |
+| 018 | Auth-Routing-Error-Contract und Korrelation | ✅ | 2026-03-09 | Auth / Observability |
 | 019 | Swarm-/Traefik-Referenz-Betriebsprofil | ✅ | 2026-03-12 | Deployment / Betrieb |
 | 020 | Kanonischer Auth-Host und Multi-Host-Grenze | ✅ | 2026-03-12 | Auth / Deployment |
 | 021 | Per-User-SVA-Mainserver-Delegation | ✅ | 2026-03-14 | Integration / IAM |
+
+### Kanonischer Ablageort
+
+- Aktive ADRs liegen unter `docs/adr/`.
+- Verweise aus Architektur- und Guide-Dokumenten sollen auf `docs/adr/` zeigen.
+- Dateien unter `docs/architecture/decisions/` sind historischer Altbestand und kein Ziel für neue ADRs.
 
 ---
 

@@ -183,7 +183,7 @@ pnpm test:coverage:affected
 
 **Debugging:**
 ```bash
-npx nx affected --target=test:coverage --base=origin/main --head=HEAD --verbose
+pnpm nx affected --target=test:coverage --base=origin/main --head=HEAD --verbose
 ```
 
 Wenn der PR Änderungen enthält, aber kein Projekt als betroffen erkannt wird, prüfe:
@@ -208,7 +208,7 @@ Wenn der PR Änderungen enthält, aber kein Projekt als betroffen erkannt wird, 
    ```
 2. `test:coverage` lokal laufen lassen:
    ```bash
-   npx nx run <project>:test:coverage
+   pnpm nx run <project>:test:coverage
    ```
 3. Prüfen, ob im Projektverzeichnis `coverage/coverage-summary.json` und `coverage/lcov.info` erzeugt werden.
 
@@ -292,7 +292,7 @@ Wenn der PR Änderungen enthält, aber kein Projekt als betroffen erkannt wird, 
    ```
 6. Validierung lokal ausführen:
    ```bash
-   npx nx run <project>:test:coverage
+   pnpm nx run <project>:test:coverage
    COVERAGE_GATE_REQUIRE_SUMMARIES=1 pnpm coverage-gate
    ```
 

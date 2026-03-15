@@ -1,5 +1,23 @@
 # Monorepo Struktur
 
+Dieses Dokument beschreibt die aktuelle Organisation des Nx-/pnpm-Workspaces, die Paketrollen und die verbindlichen Konventionen für neue Projekte.
+
+## Aktueller Workspace
+
+### Nx-Projekte
+
+| Projekt | Typ | Pfad | Zweck |
+| --- | --- | --- | --- |
+| `sva-studio-react` | App | `apps/sva-studio-react/` | TanStack-Start-Frontend |
+| `auth` | Library | `packages/auth/` | Authentifizierung, Session- und IAM-Serverlogik |
+| `core` | Library | `packages/core/` | Framework-agnostische Kernlogik |
+| `data` | Library | `packages/data/` | Datenzugriff, Migrationen, Seeds |
+| `monitoring-client` | Library | `packages/monitoring-client/` | Logging, Metriken, OTel-Anbindung |
+| `plugin-example` | Library | `packages/plugin-example/` | Referenz-Plugin für Erweiterungspunkte |
+| `routing` | Library | `packages/routing/` | Typsichere Routing-Factories und Route-Definitionen |
+| `sdk` | Library | `packages/sdk/` | Server-/Observability-Bausteine für interne Konsument:innen |
+| `sva-mainserver` | Library | `packages/sva-mainserver/` | Serverseitige Integration des externen SVA-Mainservers |
+
 ## Ordner
 - apps/: laufende Anwendungen (z. B. sva-studio-react)
 - packages/: publishable Libraries und Plugins
@@ -68,7 +86,7 @@ Entscheidung:
 
 ### Pflichtstandard für jedes neue Package
 - per Nx Generator anlegen
-- `project.json` mit `build`, `lint`, `test:*` Targets
+- `project.json` mit mindestens `build`, `lint` und `test:unit`
 - `tags` korrekt setzen (`scope:*`, `type:*`)
 - `src/index.ts` als klare Public API
 - `README.md` mit Purpose, erlaubten Abhängigkeiten, Owner
@@ -91,9 +109,15 @@ Entscheidung:
 - ✅ Sofortige Sichtbarkeit im Nx-Projektgraphen
 - ✅ Caching und affected-Commands funktionieren sofort
 
-#### Schnell-Command (mit npm-Script)
+#### Schnell-Command
 ```bash
-pnpm new:lib my-package
+pnpm nx g @nx/js:lib my-package \
+  --directory=packages/my-package \
+  --bundler=tsc \
+  --linter=eslint \
+  --unitTestRunner=vitest \
+  --strict \
+  --useProjectJson
 ```
 
 #### Vollständiger Command mit allen Options
@@ -126,7 +150,14 @@ nx g @nx/js:lib my-package \
 
 **Plugin mit React-Dependencies:**
 ```bash
-pnpm new:lib plugin-foo --tags=scope:plugin,type:lib
+pnpm nx g @nx/js:lib plugin-foo \
+  --directory=packages/plugin-foo \
+  --tags=scope:plugin,type:lib \
+  --bundler=tsc \
+  --linter=eslint \
+  --unitTestRunner=vitest \
+  --strict \
+  --useProjectJson
 # Dann in package.json peerDependencies hinzufügen:
 # "@tanstack/react-router": "^1.x", "react": "^19.x", etc.
 ```
@@ -163,10 +194,9 @@ nx g @nx/js:lib my-lib \
 2. Erstelle package.json, project.json, tsconfig.json, tsconfig.lib.json
 3. Exportiere die Public API über src/index.ts
 4. Füge einen Pfad in tsconfig.base.json hinzu
-5. Registriere das Package in Nx:
+5. Prüfe die Erkennung im Workspace:
    ```bash
-   nx detect
-   # oder manuell in nx.json konfigurieren
+   pnpm nx show projects
    ```
 
 **Dann:** Wende den Generator-Workflow retrospektiv an, um Targets zu ergänzen.
@@ -181,21 +211,17 @@ Wir nutzen Nx, weil es als integrierte Monorepo-Plattform mehr liefert als „nu
 
 Details und Trade-offs: siehe openspec/specs/monorepo-structure/design.md
 
-## Warum Nx (statt Turborepo)?
-Wir nutzen Nx, weil es als integrierte Monorepo-Plattform mehr liefert als „nur“ Task-Running:
-
-- **Projektgraph & affected commands:** Nx modelliert Abhängigkeiten zwischen Apps und Packages und kann dadurch in CI/CD gezielt nur die betroffenen Projekte bauen/testen.
-- **Generatoren & Konsistenz:** Neue Apps/Packages/Plugins lassen sich mit wiederholbaren Konventionen scaffolden (geringerer Setup-Aufwand, weniger Drift).
-- **Architektur-Governance:** Mechanismen wie Tags/Boundaries helfen, Schichten (Core vs. Plugins) langfristig sauber zu halten.
-- **Caching & Skalierung:** Lokales/Remote-Caching ist integriert; optional kann Nx Cloud für Team-Setups genutzt werden.
-
-Details und Trade-offs: siehe openspec/specs/monorepo-structure/design.md
-
 ## Nx Targets
 Standardisierte Targets:
-- build: tsc -p packages/<name>/tsconfig.lib.json
-- lint: ESLint via Nx (`@nx/eslint:lint`)
-- test: `test:unit`, `test:coverage`, `test:integration` je nach Projekt
+- `build`: produktiver Build oder TypeScript-Kompilierung
+- `lint`: ESLint-basierter Qualitätscheck
+- `test:unit`: schneller Standard-Testlauf
+- optional `test:coverage`: Coverage-Run für Projekte mit Messung
+- optional `test:integration`: infra- oder serviceabhängige Tests
+- optional `test:types` oder `typecheck`: dedizierte Typprüfung, wenn Projekt-spezifisch nötig
+- App-spezifisch zusätzlich z. B. `serve`, `preview`, `test:e2e`, domänenspezifische `check:*` Targets
+
+Die Root-Skripte im Workspace aggregieren diese Targets bewusst nicht 1:1 pro Projekt. `pnpm test:types` bündelt beispielsweise Library-Builds plus `sva-studio-react:typecheck`, obwohl nicht jedes Projekt ein eigenes `test:types` Target besitzt.
 
 ## Module Boundaries (verbindlich)
 Zur langfristigen Architektur-Governance erzwingen wir Import-Grenzen mit
@@ -214,7 +240,7 @@ Zur langfristigen Architektur-Governance erzwingen wir Import-Grenzen mit
 
 ### Validierung
 - Gesamter Workspace: `pnpm test:eslint`
-- Einzelprojekt: `npx nx run <project>:lint`
+- Einzelprojekt: `pnpm nx run <project>:lint`
 
 ### Wenn du ein neues Package anlegst
 1. Passende `tags` im `project.json` setzen (z. B. `scope:plugin,type:lib`)

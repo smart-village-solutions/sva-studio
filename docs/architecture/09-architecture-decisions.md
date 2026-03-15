@@ -74,7 +74,13 @@ Zusätzlich gilt:
 Referenzen:
 
 - `../adr/README.md`
+- `../adr/ADR-000-template.md`
 - `openspec/AGENTS.md`
+
+Hinweis:
+
+- Der kanonische Ablageort für neue ADRs ist `docs/adr/`.
+- Historische Dateien unter `docs/architecture/decisions/` bleiben nur als Altbestand erhalten und sollen nicht neu referenziert werden.
 
 ### Neue ADRs im Kontext Account-UI
 

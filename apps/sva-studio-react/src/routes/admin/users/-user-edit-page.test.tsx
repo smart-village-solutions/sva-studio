@@ -31,6 +31,8 @@ describe('UserEditPage', () => {
     notes: '',
     roles: [{ roleId: 'role-1', roleName: 'system_admin', roleLevel: 90 }],
     permissions: ['content.read'],
+    mainserverUserApplicationId: 'app-id-1',
+    mainserverUserApplicationSecretSet: true,
   };
 
   beforeEach(() => {
@@ -132,6 +134,8 @@ describe('UserEditPage', () => {
       firstName: 'Alice',
       lastName: 'Updated',
       notes: 'saved note',
+      mainserverUserApplicationId: 'app-id-1',
+      mainserverUserApplicationSecretSet: true,
     });
 
     useUserMock.mockReturnValue({
@@ -177,6 +181,8 @@ describe('UserEditPage', () => {
         { roleId: 'role-1', roleName: 'system_admin', roleLevel: 90 },
         { roleId: 'role-2', roleName: 'editor', roleLevel: 10 },
       ],
+      mainserverUserApplicationId: 'app-id-1',
+      mainserverUserApplicationSecretSet: true,
     });
 
     useUserMock.mockReturnValue({
@@ -226,6 +232,63 @@ describe('UserEditPage', () => {
         timezone: 'Europe/Berlin',
         notes: undefined,
         roleIds: ['role-1', 'role-2'],
+        mainserverUserApplicationId: 'app-id-1',
+        mainserverUserApplicationSecret: undefined,
+      });
+    });
+  });
+
+  it('renders the mainserver credential fields and keeps the secret write-only', async () => {
+    const save = vi.fn().mockResolvedValue({
+      ...baseUser,
+      mainserverUserApplicationId: 'updated-app-id',
+      mainserverUserApplicationSecretSet: true,
+    });
+
+    useUserMock.mockReturnValue({
+      user: baseUser,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      save,
+    });
+
+    useRolesMock.mockReturnValue({
+      roles: [{ id: 'role-1', roleName: 'system_admin' }],
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      createRole: vi.fn(),
+      updateRole: vi.fn(),
+      deleteRole: vi.fn(),
+    });
+
+    render(<UserEditPage userId="user-1" />);
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Verwaltung' }));
+    expect((screen.getByLabelText('Mainserver Application-ID') as HTMLInputElement).value).toBe('app-id-1');
+    expect(screen.getByText('Ein Secret ist bereits hinterlegt.')).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText('Mainserver Application-ID'), { target: { value: 'updated-app-id' } });
+    fireEvent.change(screen.getByPlaceholderText('Neues Secret eingeben'), { target: { value: 'new-secret' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Änderungen speichern' }));
+
+    await waitFor(() => {
+      expect(save).toHaveBeenCalledWith({
+        firstName: 'Alice',
+        lastName: 'Admin',
+        displayName: 'Alice Admin',
+        email: 'alice@example.com',
+        phone: undefined,
+        position: undefined,
+        department: undefined,
+        status: 'active',
+        preferredLanguage: 'de',
+        timezone: 'Europe/Berlin',
+        notes: undefined,
+        roleIds: ['role-1'],
+        mainserverUserApplicationId: 'updated-app-id',
+        mainserverUserApplicationSecret: 'new-secret',
       });
     });
   });

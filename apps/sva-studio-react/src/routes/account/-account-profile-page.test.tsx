@@ -74,6 +74,7 @@ describe('AccountProfilePage', () => {
         email: 'jane@example.com',
         status: 'active',
         roles: [],
+        mainserverUserApplicationSecretSet: false,
       },
     });
 
@@ -88,6 +89,7 @@ describe('AccountProfilePage', () => {
         email: 'jane.d@example.com',
         status: 'active',
         roles: [],
+        mainserverUserApplicationSecretSet: false,
       },
     });
 
@@ -156,6 +158,7 @@ describe('AccountProfilePage', () => {
         email: 'jane@example.com',
         status: 'active',
         roles: [],
+        mainserverUserApplicationSecretSet: false,
       },
     });
     updateMyProfileMock.mockResolvedValue({
@@ -169,6 +172,7 @@ describe('AccountProfilePage', () => {
         email: 'jane@example.com',
         status: 'active',
         roles: [],
+        mainserverUserApplicationSecretSet: false,
       },
     });
 
@@ -210,6 +214,7 @@ describe('AccountProfilePage', () => {
         email: 'jane@example.com',
         status: 'active',
         roles: [],
+        mainserverUserApplicationSecretSet: false,
       },
     });
 
@@ -242,6 +247,7 @@ describe('AccountProfilePage', () => {
         phone: '',
         status: 'active',
         roles: [],
+        mainserverUserApplicationSecretSet: false,
       },
     });
     updateMyProfileMock.mockRejectedValueOnce(new Error('save_failed'));

@@ -200,7 +200,7 @@ Referenzen:
 ### Ergänzung 2026-03: Per-User-SVA-Mainserver-Integration
 
 - Die Mainserver-Integration ist eine reine Server-Side-Integration; es gibt keinen generischen Browser-Proxy auf den externen GraphQL-Endpunkt.
-- Per-User-Credentials liegen ausschließlich in Keycloak-User-Attributen (`sva_mainserver_api_key`, `sva_mainserver_api_secret`) und werden serverseitig on demand gelesen.
+- Per-User-Credentials liegen ausschließlich in Keycloak-User-Attributen (`mainserverUserApplicationId`, `mainserverUserApplicationSecret`) und werden serverseitig on demand gelesen; die bisherigen Namen `sva_mainserver_api_key` und `sva_mainserver_api_secret` bleiben nur als Legacy-Fallback lesbar.
 - Die Studio-Datenbank hält nur instanzbezogene Endpunktkonfiguration (`graphql_base_url`, `oauth_token_url`, Prüfstatus) in `iam.instance_integrations`.
 - Credential-Caching bleibt kurzlebig im Prozessspeicher; Access-Tokens werden ebenfalls nur in-memory und vor Ablauf mit Skew erneuert.
 - OAuth-Token werden pro `(instanceId, keycloakSubject, apiKey)` gecacht; eine Persistenz in Session, Redis oder Postgres ist ausgeschlossen.

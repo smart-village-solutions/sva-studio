@@ -86,7 +86,16 @@ describe('useUsers', () => {
       },
     });
 
-    createUserMock.mockResolvedValue({ data: { id: 'user-2', displayName: 'Second User' } });
+    createUserMock.mockResolvedValue({
+      data: {
+        id: 'user-2',
+        keycloakSubject: 'subject-2',
+        displayName: 'Second User',
+        status: 'pending',
+        roles: [],
+        mainserverUserApplicationSecretSet: false,
+      },
+    });
     deactivateUserMock.mockResolvedValue({ data: { id: 'user-1' } });
     bulkDeactivateUsersMock.mockResolvedValue({ data: { deactivatedUserIds: ['user-1'], count: 1 } });
     syncUsersFromKeycloakMock.mockResolvedValue({

@@ -44,6 +44,9 @@ const state = vi.hoisted(() => ({
     enabled?: boolean;
   }) => Promise<unknown> | unknown),
   listUserRoleNamesImpl: null as null | ((externalId: string) => Promise<unknown> | unknown),
+  getUserAttributesImpl: null as
+    | null
+    | ((externalId: string, attributeNames?: readonly string[]) => Promise<unknown> | unknown),
   createUserImpl: null as null | ((input: {
     email: string;
     firstName?: string;
@@ -270,6 +273,13 @@ vi.mock('./keycloak-admin-client', () => ({
       return [];
     }
 
+    async getUserAttributes(externalId: string, attributeNames?: readonly string[]) {
+      if (state.getUserAttributesImpl) {
+        return state.getUserAttributesImpl(externalId, attributeNames);
+      }
+      return {};
+    }
+
     async createUser(input: { email: string; firstName?: string; lastName?: string; enabled: boolean }) {
       if (state.createUserImpl) {
         return state.createUserImpl(input);
@@ -412,6 +422,7 @@ describe('iam-account-management handlers (guards)', () => {
     state.listRolesImpl = null;
     state.listUsersImpl = null;
     state.listUserRoleNamesImpl = null;
+    state.getUserAttributesImpl = null;
     state.createUserImpl = null;
     state.updateUserImpl = null;
     state.updateUserCalls = [];
@@ -958,6 +969,106 @@ describe('iam-account-management handlers (guards)', () => {
     expect(payload.error.message).toBe('Nutzerrollen konnten nicht aus Keycloak geladen werden.');
   });
 
+  it('returns mainserver credential state from canonical attributes on getUser', async () => {
+    state.listUserRoleNamesImpl = async () => ['editor'];
+    state.getUserAttributesImpl = async () => ({
+      mainserverUserApplicationId: ['studio-app-id'],
+      mainserverUserApplicationSecret: ['top-secret'],
+    });
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+
+      if (text.includes('WHERE a.id = $2::uuid')) {
+        return { rowCount: 1, rows: [buildUserDetailRow('active')] };
+      }
+
+      if (text.includes('COALESCE(external_role_name, role_key) = ANY($2::text[])')) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              id: 'role-editor',
+              role_key: 'editor',
+              role_name: 'editor',
+              display_name: 'Editor',
+              external_role_name: 'editor',
+              role_level: 10,
+              is_system_role: false,
+            },
+          ],
+        };
+      }
+
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await getUserHandler(
+      new Request(`http://localhost/api/v1/iam/users/${targetUserId}`, { method: 'GET' })
+    );
+    const payload = (await response.json()) as {
+      data: {
+        mainserverUserApplicationId?: string;
+        mainserverUserApplicationSecretSet: boolean;
+      };
+    };
+
+    expect(response.status).toBe(200);
+    expect(payload.data.mainserverUserApplicationId).toBe('studio-app-id');
+    expect(payload.data.mainserverUserApplicationSecretSet).toBe(true);
+  });
+
+  it('falls back to legacy mainserver attributes on getUser', async () => {
+    state.listUserRoleNamesImpl = async () => ['editor'];
+    state.getUserAttributesImpl = async () => ({
+      sva_mainserver_api_key: ['legacy-app-id'],
+      sva_mainserver_api_secret: ['legacy-secret'],
+    });
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+
+      if (text.includes('WHERE a.id = $2::uuid')) {
+        return { rowCount: 1, rows: [buildUserDetailRow('active')] };
+      }
+
+      if (text.includes('COALESCE(external_role_name, role_key) = ANY($2::text[])')) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              id: 'role-editor',
+              role_key: 'editor',
+              role_name: 'editor',
+              display_name: 'Editor',
+              external_role_name: 'editor',
+              role_level: 10,
+              is_system_role: false,
+            },
+          ],
+        };
+      }
+
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await getUserHandler(
+      new Request(`http://localhost/api/v1/iam/users/${targetUserId}`, { method: 'GET' })
+    );
+    const payload = (await response.json()) as {
+      data: {
+        mainserverUserApplicationId?: string;
+        mainserverUserApplicationSecretSet: boolean;
+      };
+    };
+
+    expect(response.status).toBe(200);
+    expect(payload.data.mainserverUserApplicationId).toBe('legacy-app-id');
+    expect(payload.data.mainserverUserApplicationSecretSet).toBe(true);
+  });
+
   it('keeps existing user roles when no identity provider is configured', async () => {
     const userDetailRow = buildUserDetailRow('active');
     vi.resetModules();
@@ -1262,6 +1373,68 @@ describe('iam-account-management handlers (guards)', () => {
     expect(response.status).toBe(200);
     expect(payload.data.id).toBe(targetUserId);
     expect(payload.data.status).toBe('active');
+  });
+
+  it('writes canonical mainserver attributes during user updates and preserves existing secrets', async () => {
+    state.getUserAttributesImpl = async () => ({
+      displayName: ['Target User'],
+      mainserverUserApplicationId: ['existing-app-id'],
+      mainserverUserApplicationSecret: ['existing-secret'],
+      customAttribute: ['keep-me'],
+      sva_mainserver_api_key: ['legacy-app-id'],
+      sva_mainserver_api_secret: ['legacy-secret'],
+    });
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+
+      if (text.includes('MAX(r.role_level)')) {
+        return { rowCount: 1, rows: [{ max_role_level: 90 }] };
+      }
+
+      if (text.includes('WHERE a.id = $2::uuid')) {
+        return { rowCount: 1, rows: [buildUserDetailRow('active')] };
+      }
+
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await updateUserHandler(
+      new Request(`http://localhost/api/v1/iam/users/${targetUserId}`, {
+        method: 'PATCH',
+        headers: {
+          'content-type': 'application/json',
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'http://localhost',
+        },
+        body: JSON.stringify({
+          displayName: 'Updated User',
+          mainserverUserApplicationId: 'updated-app-id',
+        }),
+      })
+    );
+    const payload = (await response.json()) as {
+      data: {
+        mainserverUserApplicationId?: string;
+        mainserverUserApplicationSecretSet: boolean;
+      };
+    };
+
+    expect(response.status).toBe(200);
+    expect(state.updateUserCalls).toContainEqual({
+      externalId: 'keycloak-target-2',
+      input: expect.objectContaining({
+        attributes: {
+          customAttribute: ['keep-me'],
+          displayName: ['Updated User'],
+          mainserverUserApplicationId: ['updated-app-id'],
+          mainserverUserApplicationSecret: ['existing-secret'],
+        },
+      }),
+    });
+    expect(payload.data.mainserverUserApplicationId).toBe('updated-app-id');
+    expect(payload.data.mainserverUserApplicationSecretSet).toBe(true);
   });
 
   it('allows session system_admin to assign elevated roles even when actor account roles are not synced yet', async () => {

@@ -140,6 +140,7 @@ const mapUserDetailRow = (row: UserDetailRow): IamUserDetail => {
     avatarUrl: row.avatar_url ?? undefined,
     notes: row.notes ?? undefined,
     permissions: mapPermissionRows(row.permission_rows),
+    mainserverUserApplicationSecretSet: false,
   };
 };
 

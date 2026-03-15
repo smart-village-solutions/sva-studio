@@ -21,7 +21,7 @@
     "test:unit": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "node --import tsx --test packages/data/src/**/*.test.ts"
+        "command": "find packages/data/src -name '*.test.ts' ! -name '*.vitest.test.ts' -print0 | xargs -0 node --import tsx --test"
       }
     },
     "test:coverage": {

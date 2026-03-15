@@ -119,7 +119,7 @@ describe('loadSvaMainserverConnectionStatus', () => {
 
     await expect(loadSvaMainserverConnectionStatus()).resolves.toMatchObject({
       status: 'error',
-      errorCode: 'forbidden',
+      errorCode: 'invalid_config',
       errorMessage: 'Kein Instanzkontext in der aktuellen Session vorhanden.',
     });
     expect(state.getSvaMainserverConnectionStatus).not.toHaveBeenCalled();
@@ -179,7 +179,7 @@ describe('loadSvaMainserverConnectionStatus', () => {
 
     await expect(loadSvaMainserverConnectionStatus()).resolves.toMatchObject({
       status: 'error',
-      errorCode: 'forbidden',
+      errorCode: 'network_error',
       errorMessage: 'Unerwartete Antwort beim Laden des Mainserver-Status (502).',
     });
   });

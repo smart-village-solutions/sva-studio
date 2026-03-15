@@ -68,4 +68,30 @@ describe('readSvaMainserverCredentials', () => {
       apiSecret: 'secret-trimmed',
     });
   });
+
+  it('returns detailed status when identity provider is unavailable', async () => {
+    state.resolveIdentityProvider.mockReturnValue(null);
+
+    const { readSvaMainserverCredentialsWithStatus } = await import('./mainserver-credentials.server');
+
+    await expect(readSvaMainserverCredentialsWithStatus('subject-1')).resolves.toEqual({
+      status: 'identity_provider_unavailable',
+    });
+  });
+
+  it('returns detailed status when required attributes are missing', async () => {
+    state.resolveIdentityProvider.mockReturnValue({
+      provider: {
+        getUserAttributes: vi.fn().mockResolvedValue({
+          sva_mainserver_api_key: ['key-only'],
+        }),
+      },
+    });
+
+    const { readSvaMainserverCredentialsWithStatus } = await import('./mainserver-credentials.server');
+
+    await expect(readSvaMainserverCredentialsWithStatus('subject-1')).resolves.toEqual({
+      status: 'missing_credentials',
+    });
+  });
 });

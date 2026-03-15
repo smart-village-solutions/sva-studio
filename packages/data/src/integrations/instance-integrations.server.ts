@@ -32,6 +32,7 @@ export type InstanceIntegrationServerLoaderOptions = {
 };
 
 let pool: Pool | null = null;
+const poolsByDatabaseUrl = new Map<string, Pool>();
 
 const getPool = (getDatabaseUrl: () => string | undefined): Pool | null => {
   const databaseUrl = getDatabaseUrl();
@@ -39,13 +40,20 @@ const getPool = (getDatabaseUrl: () => string | undefined): Pool | null => {
     return null;
   }
 
-  pool ??= new Pool({
+  const existingPool = poolsByDatabaseUrl.get(databaseUrl);
+  if (existingPool) {
+    pool = existingPool;
+    return existingPool;
+  }
+
+  const createdPool = new Pool({
     connectionString: databaseUrl,
     max: 5,
     idleTimeoutMillis: 10_000,
   });
-
-  return pool;
+  poolsByDatabaseUrl.set(databaseUrl, createdPool);
+  pool = createdPool;
+  return createdPool;
 };
 
 const withInstanceDb = async <T>(
@@ -200,9 +208,10 @@ export const resetInstanceIntegrationServerState = async (): Promise<void> => {
   }
   customCachedLoaders.clear();
 
-  if (pool) {
-    const currentPool = pool;
-    pool = null;
+  const poolsToClose = [...poolsByDatabaseUrl.values()];
+  poolsByDatabaseUrl.clear();
+  pool = null;
+  for (const currentPool of poolsToClose) {
     await currentPool.end();
   }
 };

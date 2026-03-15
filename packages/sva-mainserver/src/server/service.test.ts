@@ -154,6 +154,22 @@ describe('createSvaMainserverService', () => {
     });
   });
 
+  it('maps identity provider failures to identity_provider_unavailable', async () => {
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readCredentials: async () => {
+        throw new Error('keycloak unavailable');
+      },
+    });
+
+    await expect(
+      service.getConnectionStatus({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' })
+    ).resolves.toMatchObject({
+      status: 'error',
+      errorCode: 'identity_provider_unavailable',
+    });
+  });
+
   it('maps graphql errors from the upstream endpoint', async () => {
     const fetchImpl = vi
       .fn()
@@ -244,6 +260,13 @@ describe('createSvaMainserverService', () => {
       status: 'error',
       errorCode: 'network_error',
     });
+
+    expect(fetchImpl).toHaveBeenCalledWith(
+      baseConfig.graphqlBaseUrl,
+      expect.objectContaining({
+        redirect: 'manual',
+      })
+    );
   });
 
   it('retries once for transient 503 responses before succeeding', async () => {

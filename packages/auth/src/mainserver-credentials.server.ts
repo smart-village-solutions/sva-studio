@@ -11,7 +11,7 @@ export type MainserverCredentialState = {
   readonly mainserverUserApplicationSecretSet: boolean;
 };
 
-export type ReadSvaMainserverCredentialsResult =
+type ReadSvaMainserverCredentialsResult =
   | {
       readonly status: 'ok';
       readonly credentials: SvaMainserverCredentials;
@@ -23,7 +23,7 @@ export type ReadSvaMainserverCredentialsResult =
       readonly status: 'identity_provider_unavailable';
     };
 
-export type ReadIdentityUserAttributesInput = {
+type ReadIdentityUserAttributesInput = {
   readonly keycloakSubject: string;
   readonly attributeNames?: readonly string[];
 };

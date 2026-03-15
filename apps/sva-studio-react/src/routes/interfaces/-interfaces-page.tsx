@@ -4,6 +4,7 @@ import React from 'react';
 import type { SvaMainserverConnectionStatus } from '@sva/sva-mainserver';
 
 import { t } from '../../i18n';
+import { readErrorMessage } from '../../lib/error-message-utils';
 import { loadInterfacesOverview, saveSvaMainserverInterfaceSettings } from '../../lib/interfaces-api';
 
 type FormValues = {
@@ -40,50 +41,6 @@ const getStatusLabel = (status: SvaMainserverConnectionStatus): string => {
   }
 
   return t('interfaces.status.error');
-};
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null;
-
-const extractMessageFromUnknown = (value: unknown): string | null => {
-  if (typeof value === 'string' && value.trim()) {
-    return value;
-  }
-
-  if (!isRecord(value)) {
-    return null;
-  }
-
-  const directKeys = ['message', 'error', 'detail', 'title', 'statusText'] as const;
-  for (const key of directKeys) {
-    const candidate = value[key];
-    if (typeof candidate === 'string' && candidate.trim()) {
-      return candidate;
-    }
-  }
-
-  const nestedKeys = ['data', 'cause', 'response', 'body'] as const;
-  for (const key of nestedKeys) {
-    const nested = extractMessageFromUnknown(value[key]);
-    if (nested) {
-      return nested;
-    }
-  }
-
-  return null;
-};
-
-const readErrorMessage = (error: unknown, fallback: string): string => {
-  if (error instanceof Error && error.message.trim()) {
-    return error.message;
-  }
-
-  const extracted = extractMessageFromUnknown(error);
-  if (extracted) {
-    return extracted;
-  }
-
-  return fallback;
 };
 
 export const InterfacesPage = () => {

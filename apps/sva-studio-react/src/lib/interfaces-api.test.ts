@@ -94,6 +94,126 @@ describe('interfaces.server', () => {
     });
   });
 
+  it('returns a validation error when the session misses an instance context', async () => {
+    state.withAuthenticatedUser.mockImplementation(
+      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<Response>) =>
+        handler({
+          user: {
+            id: 'subject-1',
+            roles: ['system_admin'],
+          },
+        })
+    );
+
+    const { loadInterfacesOverview } = await import('./interfaces-api');
+
+    await expect(loadInterfacesOverview()).resolves.toMatchObject({
+      instanceId: '',
+      status: expect.objectContaining({
+        status: 'error',
+        errorCode: 'network_error',
+        errorMessage: 'Kein Instanzkontext in der aktuellen Session vorhanden.',
+      }),
+    });
+  });
+
+  it('maps unauthorized auth responses to an unauthorized status', async () => {
+    state.withAuthenticatedUser.mockResolvedValue(
+      new Response(JSON.stringify({ error: 'unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
+
+    const { loadInterfacesOverview } = await import('./interfaces-api');
+
+    await expect(loadInterfacesOverview()).resolves.toMatchObject({
+      instanceId: '',
+      status: expect.objectContaining({
+        status: 'error',
+        errorCode: 'unauthorized',
+        errorMessage: 'Die Sitzung ist nicht mehr gültig. Bitte erneut anmelden.',
+      }),
+    });
+  });
+
+  it('maps non-contract forbidden responses to a forbidden status', async () => {
+    state.withAuthenticatedUser.mockResolvedValue(
+      new Response(JSON.stringify({ error: 'forbidden' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
+
+    const { loadInterfacesOverview } = await import('./interfaces-api');
+
+    await expect(loadInterfacesOverview()).resolves.toMatchObject({
+      instanceId: '',
+      status: expect.objectContaining({
+        status: 'error',
+        errorCode: 'forbidden',
+        errorMessage: 'forbidden',
+      }),
+    });
+  });
+
+  it('maps load failures from the data layer to invalid_config', async () => {
+    state.withAuthenticatedUser.mockImplementation(
+      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<Response>) =>
+        handler({
+          user: {
+            id: 'subject-1',
+            instanceId: 'de-musterhausen',
+            roles: ['system_admin'],
+          },
+        })
+    );
+    state.loadSvaMainserverSettings.mockRejectedValue(new Error('db down'));
+
+    const { loadInterfacesOverview } = await import('./interfaces-api');
+
+    await expect(loadInterfacesOverview()).resolves.toMatchObject({
+      instanceId: 'de-musterhausen',
+      status: expect.objectContaining({
+        status: 'error',
+        errorCode: 'invalid_config',
+        errorMessage: 'Konfiguration konnte nicht geladen werden.',
+      }),
+    });
+  });
+
+  it('returns a sanitized network error when the connection check fails unexpectedly', async () => {
+    state.withAuthenticatedUser.mockImplementation(
+      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<Response>) =>
+        handler({
+          user: {
+            id: 'subject-1',
+            instanceId: 'de-musterhausen',
+            roles: ['system_admin'],
+          },
+        })
+    );
+    state.loadSvaMainserverSettings.mockResolvedValue(null);
+    state.getSvaMainserverConnectionStatus.mockRejectedValue({
+      response: {
+        data: {
+          message: 'secret backend detail',
+        },
+      },
+    });
+
+    const { loadInterfacesOverview } = await import('./interfaces-api');
+
+    await expect(loadInterfacesOverview()).resolves.toMatchObject({
+      instanceId: 'de-musterhausen',
+      status: expect.objectContaining({
+        status: 'error',
+        errorCode: 'network_error',
+        errorMessage: 'Verbindungsstatus konnte nicht abgerufen werden.',
+      }),
+    });
+  });
+
   it('saves mainserver settings for authorized users', async () => {
     state.withAuthenticatedUser.mockImplementation(
       async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<Response>) =>
@@ -197,5 +317,56 @@ describe('interfaces.server', () => {
         },
       })
     ).rejects.toThrow('Einstellungen konnten nicht gespeichert werden.');
+  });
+
+  it('rejects save requests from users without interfaces permissions', async () => {
+    state.withAuthenticatedUser.mockImplementation(
+      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<Response>) =>
+        handler({
+          user: {
+            id: 'subject-1',
+            instanceId: 'de-musterhausen',
+            roles: ['editor'],
+          },
+        })
+    );
+
+    const { saveSvaMainserverInterfaceSettings } = await import('./interfaces-api');
+
+    await expect(
+      saveSvaMainserverInterfaceSettings({
+        data: {
+          graphqlBaseUrl: 'https://mainserver.example/graphql',
+          oauthTokenUrl: 'https://mainserver.example/oauth/token',
+          enabled: true,
+        },
+      })
+    ).rejects.toThrow('Keine Berechtigung zur Schnittstellenverwaltung.');
+  });
+
+  it('rejects save requests when the enabled flag is missing', async () => {
+    state.withAuthenticatedUser.mockImplementation(
+      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<Response>) =>
+        handler({
+          user: {
+            id: 'subject-1',
+            instanceId: 'de-musterhausen',
+            roles: ['system_admin'],
+          },
+        })
+    );
+
+    const { saveSvaMainserverInterfaceSettings } = await import('./interfaces-api');
+
+    await expect(
+      saveSvaMainserverInterfaceSettings({
+        data: {
+          graphqlBaseUrl: 'https://mainserver.example/graphql',
+          oauthTokenUrl: 'https://mainserver.example/oauth/token',
+        },
+      })
+    ).rejects.toThrow('Der Aktivierungsstatus fehlt.');
+
+    expect(state.saveSvaMainserverSettings).not.toHaveBeenCalled();
   });
 });

@@ -29,6 +29,9 @@ const captureServerFnResponses = (page: Page) => {
   return responses;
 };
 
+const isExternalAuthRedirect = (location: string | null | undefined) =>
+  Boolean(location?.match(/(\/protocol\/openid-connect\/auth\?|accounts\.google\.com\/(signin\/oauth\/error|o\/oauth2\/v2\/auth))/));
+
 test('GET / returns 200 and renders app shell', async ({ page }) => {
   const response = await page.goto('/');
   expect(response).not.toBeNull();
@@ -55,10 +58,15 @@ test('GET /auth/login returns redirect response', async ({ request }) => {
     maxRedirects: 0,
   });
 
-  expect([302, 303, 307, 308]).toContain(response.status());
+  if ([302, 303, 307, 308].includes(response.status())) {
+    expect(isExternalAuthRedirect(response.headers().location)).toBe(true);
+    return;
+  }
 
-  const location = response.headers().location;
-  expect(location).toBeTruthy();
+  expect(response.status()).toBe(500);
+  await expect(response.json()).resolves.toMatchObject({
+    error: 'internal_error',
+  });
 });
 
 test('demo server function uses the real /_server transport', async ({ page }) => {

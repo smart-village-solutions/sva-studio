@@ -95,8 +95,31 @@ describe('Sidebar', () => {
     render(<Sidebar />);
 
     expect(screen.getByRole('link', { name: 'Mein Konto' }).getAttribute('href')).toBe('/account');
+    expect(screen.getByRole('link', { name: 'Schnittstellen' }).getAttribute('href')).toBe('/interfaces');
     expect(screen.getByRole('link', { name: 'Benutzerverwaltung' }).getAttribute('href')).toBe('/admin/users');
     expect(screen.getByRole('link', { name: 'Rollenverwaltung' }).getAttribute('href')).toBe('/admin/roles');
+  });
+
+  it('rendert den Interfaces-Link auch für interface_manager', () => {
+    useAuthMock.mockReturnValue({
+      user: {
+        id: 'user-1',
+        name: 'Interface Manager',
+        roles: ['interface_manager'],
+      },
+      isAuthenticated: true,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      logout: vi.fn(),
+      invalidatePermissions: vi.fn(),
+    });
+
+    render(<Sidebar />);
+
+    expect(screen.getByRole('link', { name: 'Mein Konto' }).getAttribute('href')).toBe('/account');
+    expect(screen.getByRole('link', { name: 'Schnittstellen' }).getAttribute('href')).toBe('/interfaces');
+    expect(screen.queryByRole('link', { name: 'Benutzerverwaltung' })).toBeNull();
   });
 
   it('stellt die erwarteten A11y-Labels und Landmarks bereit', () => {

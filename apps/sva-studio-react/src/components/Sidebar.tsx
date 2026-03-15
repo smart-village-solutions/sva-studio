@@ -8,7 +8,13 @@ import { Link } from '@tanstack/react-router';
 import { Cable, LayoutDashboard, Settings2, Shield, UserRound, Users, X } from 'lucide-react';
 
 import { t } from '../i18n';
-import { hasIamAdminRole, hasSystemAdminRole, isIamAdminEnabled, isIamUiEnabled } from '../lib/iam-admin-access';
+import {
+  hasIamAdminRole,
+  hasInterfacesAccessRole,
+  hasSystemAdminRole,
+  isIamAdminEnabled,
+  isIamUiEnabled,
+} from '../lib/iam-admin-access';
 import { useAuth } from '../providers/auth-provider';
 import { Sheet, SheetContent } from './ui/sheet';
 
@@ -123,7 +129,7 @@ export default function Sidebar({ isLoading = false, isMobileOpen = false, onMob
   const canAccessAdminUsers = isAuthenticated && isIamAdminEnabled() && hasIamAdminRole(user);
   const canAccessAdminOrganizations = canAccessAdminUsers;
   const canAccessAdminRoles = canAccessAdminUsers && hasSystemAdminRole(user);
-  const canAccessInterfaces = canAccessAdminUsers;
+  const canAccessInterfaces = isAuthenticated && isIamUiEnabled() && hasInterfacesAccessRole(user);
 
   const sidebarLinks: Array<{ to: string; label: string }> = [
     { to: '/', label: t('shell.sidebar.overview') },

@@ -3,12 +3,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const state = vi.hoisted(() => {
   const queries: Array<{ text: string; values?: readonly unknown[] }> = [];
   const clients: Array<{ query: ReturnType<typeof vi.fn>; release: ReturnType<typeof vi.fn> }> = [];
+  const poolConnectionStrings: string[] = [];
   let failSelect = false;
   let failRollback = false;
 
   const reset = () => {
     queries.length = 0;
     clients.length = 0;
+    poolConnectionStrings.length = 0;
     failSelect = false;
     failRollback = false;
   };
@@ -28,6 +30,7 @@ const state = vi.hoisted(() => {
   return {
     queries,
     clients,
+    poolConnectionStrings,
     reset,
     setFailSelect,
     setFailRollback,
@@ -40,6 +43,12 @@ const endMock = vi.hoisted(() => vi.fn(async () => undefined));
 
 vi.mock('pg', () => {
   class Pool {
+    constructor(options?: { connectionString?: string }) {
+      if (options?.connectionString) {
+        state.poolConnectionStrings.push(options.connectionString);
+      }
+    }
+
     readonly connect = vi.fn(async () => {
       const query = vi.fn(async (text: string, values?: readonly unknown[]) => {
         state.queries.push({ text, values });
@@ -222,5 +231,23 @@ describe('loadInstanceIntegrationRecord (server)', () => {
     await mod.resetInstanceIntegrationServerState();
 
     expect(endMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('maintains separate pools for different database URLs', async () => {
+    const mod = await import('./instance-integrations.server');
+
+    await mod.loadInstanceIntegrationRecord('de-musterhausen', 'sva_mainserver', {
+      cacheTtlMs: 0,
+      getDatabaseUrl: () => 'postgres://local/test-a',
+    });
+    await mod.loadInstanceIntegrationRecord('de-musterhausen', 'sva_mainserver', {
+      cacheTtlMs: 0,
+      getDatabaseUrl: () => 'postgres://local/test-b',
+    });
+
+    expect(state.poolConnectionStrings).toEqual(['postgres://local/test-a', 'postgres://local/test-b']);
+
+    await mod.resetInstanceIntegrationServerState();
+    expect(endMock).toHaveBeenCalledTimes(2);
   });
 });

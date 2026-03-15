@@ -1,7 +1,7 @@
 import { randomInt } from 'node:crypto';
 
 import { metrics, SpanStatusCode, trace } from '@opentelemetry/api';
-import { readSvaMainserverCredentials } from '@sva/auth/server';
+import { readSvaMainserverCredentialsWithStatus } from '@sva/auth/server';
 import { createSdkLogger, getWorkspaceContext } from '@sva/sdk/server';
 import { z } from 'zod';
 
@@ -341,7 +341,24 @@ const withObservedHop = async <TValue>(
 
 export const createSvaMainserverService = (options: SvaMainserverServiceOptions = {}) => {
   const loadInstanceConfig = options.loadInstanceConfig ?? loadSvaMainserverInstanceConfig;
-  const readCredentials = options.readCredentials ?? readSvaMainserverCredentials;
+  const readCredentials =
+    options.readCredentials ??
+    (async (keycloakSubject: string) => {
+      const result = await readSvaMainserverCredentialsWithStatus(keycloakSubject);
+      if (result.status === 'ok') {
+        return result.credentials;
+      }
+
+      if (result.status === 'identity_provider_unavailable') {
+        throw toSvaMainserverError({
+          code: 'identity_provider_unavailable',
+          message: 'Identity-Provider für Mainserver-Credentials ist nicht verfügbar.',
+          statusCode: 503,
+        });
+      }
+
+      return null;
+    });
   const fetchImpl = options.fetchImpl ?? fetch;
   const now = options.now ?? (() => Date.now());
   const credentialCacheTtlMs = options.credentialCacheTtlMs ?? DEFAULT_CREDENTIAL_CACHE_TTL_MS;
@@ -374,6 +391,7 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
     const executeRequest = async (): Promise<Response> =>
       fetchImpl(url, {
         ...init,
+        redirect: 'manual',
         signal: init.signal
           ? AbortSignal.any([init.signal, AbortSignal.timeout(upstreamTimeoutMs)])
           : AbortSignal.timeout(upstreamTimeoutMs),
@@ -449,7 +467,28 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
         connection: input,
       },
       async () => {
-        const credentials = await readCredentials(input.keycloakSubject);
+        let credentials: CredentialValue | null;
+        try {
+          credentials = await readCredentials(input.keycloakSubject);
+        } catch (error) {
+          const normalizedError =
+            error instanceof SvaMainserverError
+              ? error
+              : toSvaMainserverError({
+                  code: 'identity_provider_unavailable',
+                  message: 'Identity-Provider für Mainserver-Credentials ist nicht verfügbar.',
+                  statusCode: 503,
+                });
+
+          logger.warn('SVA Mainserver identity provider is unavailable', {
+            ...buildLogContext(input, {
+              operation: 'load_credentials',
+              error_code: normalizedError.code,
+            }),
+          });
+          throw normalizedError;
+        }
+
         if (!credentials) {
           logger.warn('SVA Mainserver credentials are missing in Keycloak attributes', {
             ...buildLogContext(input, {

@@ -6,6 +6,18 @@ export type SvaMainserverCredentials = {
   readonly apiSecret: string;
 };
 
+export type ReadSvaMainserverCredentialsResult =
+  | {
+      readonly status: 'ok';
+      readonly credentials: SvaMainserverCredentials;
+    }
+  | {
+      readonly status: 'missing_credentials';
+    }
+  | {
+      readonly status: 'identity_provider_unavailable';
+    };
+
 export type ReadIdentityUserAttributesInput = {
   readonly keycloakSubject: string;
   readonly attributeNames?: readonly string[];
@@ -38,19 +50,37 @@ export const readIdentityUserAttributes = async (
 export const readSvaMainserverCredentials = async (
   keycloakSubject: string
 ): Promise<SvaMainserverCredentials | null> => {
+  const result = await readSvaMainserverCredentialsWithStatus(keycloakSubject);
+  if (result.status !== 'ok') {
+    return null;
+  }
+
+  return result.credentials;
+};
+
+export const readSvaMainserverCredentialsWithStatus = async (
+  keycloakSubject: string
+): Promise<ReadSvaMainserverCredentialsResult> => {
   const attributes = await readIdentityUserAttributes({
     keycloakSubject,
     attributeNames: [MAINSERVER_API_KEY_ATTRIBUTE, MAINSERVER_API_SECRET_ATTRIBUTE],
   });
   if (!attributes) {
-    return null;
+    return {
+      status: 'identity_provider_unavailable',
+    };
   }
 
   const apiKey = normalizeAttributeValue(attributes[MAINSERVER_API_KEY_ATTRIBUTE]);
   const apiSecret = normalizeAttributeValue(attributes[MAINSERVER_API_SECRET_ATTRIBUTE]);
   if (!apiKey || !apiSecret) {
-    return null;
+    return {
+      status: 'missing_credentials',
+    };
   }
 
-  return { apiKey, apiSecret };
+  return {
+    status: 'ok',
+    credentials: { apiKey, apiSecret },
+  };
 };

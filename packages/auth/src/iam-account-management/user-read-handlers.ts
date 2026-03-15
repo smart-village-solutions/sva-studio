@@ -5,6 +5,11 @@ import {
   KeycloakAdminRequestError,
   KeycloakAdminUnavailableError,
 } from '../keycloak-admin-client';
+import {
+  getSvaMainserverCredentialAttributeNames,
+  readIdentityUserAttributes,
+  resolveMainserverCredentialState,
+} from '../mainserver-credentials.server';
 import type { AuthenticatedRequestContext } from '../middleware.server';
 import { jsonResponse } from '../shared/db-helpers';
 import { isUuid, readString } from '../shared/input-readers';
@@ -44,6 +49,15 @@ const mergeProjectedRoles = (user: IamUserDetail, roles: readonly IamUserRoleAss
   roles,
 });
 
+const mergeMainserverCredentialState = (
+  user: IamUserDetail,
+  state: ReturnType<typeof resolveMainserverCredentialState>
+): IamUserDetail => ({
+  ...user,
+  mainserverUserApplicationId: state.mainserverUserApplicationId,
+  mainserverUserApplicationSecretSet: state.mainserverUserApplicationSecretSet,
+});
+
 const resolveKeycloakRoleNames = async (keycloakSubject: string): Promise<readonly string[] | null> => {
   const identityProvider = resolveIdentityProvider();
   if (!identityProvider) {
@@ -66,7 +80,6 @@ const resolveProjectedUserDetail = async (input: {
   if (input.keycloakRoleNames === null) {
     return input.user;
   }
-
   const mappedRoles = await resolveRolesByExternalNames(input.client, {
     instanceId: input.instanceId,
     externalRoleNames: input.keycloakRoleNames,
@@ -84,6 +97,14 @@ const resolveProjectedUserDetail = async (input: {
   return mergeProjectedRoles(input.user, projectedRoles);
 };
 
+const resolveProjectedMainserverCredentialState = async (keycloakSubject: string) =>
+  resolveMainserverCredentialState(
+    await readIdentityUserAttributes({
+    keycloakSubject,
+    attributeNames: getSvaMainserverCredentialAttributeNames(),
+    })
+  );
+
 export const listUsersInternal = async (
   request: Request,
   ctx: AuthenticatedRequestContext
@@ -93,12 +114,10 @@ export const listUsersInternal = async (
   if (featureCheck) {
     return featureCheck;
   }
-
   const roleCheck = requireRoles(ctx, ADMIN_ROLES, requestContext.requestId);
   if (roleCheck) {
     return roleCheck;
   }
-
   const actorResolution = await resolveActorInfo(request, ctx, {
     requireActorMembership: true,
     provisionMissingActorMembership: true,
@@ -106,7 +125,6 @@ export const listUsersInternal = async (
   if ('error' in actorResolution) {
     return actorResolution.error;
   }
-
   const rateLimit = consumeRateLimit({
     instanceId: actorResolution.actor.instanceId,
     actorKeycloakSubject: ctx.user.id,
@@ -116,7 +134,6 @@ export const listUsersInternal = async (
   if (rateLimit) {
     return rateLimit;
   }
-
   const { page, pageSize } = readPage(request);
   const url = new URL(request.url);
   const status = readString(url.searchParams.get('status')) as UserStatus | undefined;
@@ -169,12 +186,10 @@ export const getUserInternal = async (
   if (featureCheck) {
     return featureCheck;
   }
-
   const roleCheck = requireRoles(ctx, ADMIN_ROLES, requestContext.requestId);
   if (roleCheck) {
     return roleCheck;
   }
-
   const actorResolution = await resolveActorInfo(request, ctx, {
     requireActorMembership: true,
     provisionMissingActorMembership: true,
@@ -182,7 +197,6 @@ export const getUserInternal = async (
   if ('error' in actorResolution) {
     return actorResolution.error;
   }
-
   const userId = readPathSegment(request, 4);
   if (!userId || !isUuid(userId)) {
     return createApiError(400, 'invalid_request', 'Ungültige userId.', actorResolution.actor.requestId);
@@ -209,8 +223,11 @@ export const getUserInternal = async (
       return createApiError(404, 'not_found', 'Nutzer nicht gefunden.', actorResolution.actor.requestId);
     }
 
-    const keycloakRoleNames = await resolveKeycloakRoleNames(user.keycloakSubject);
-    const projectedUser = await withInstanceScopedDb(actorResolution.actor.instanceId, (client) =>
+    const [keycloakRoleNames, mainserverCredentialState] = await Promise.all([
+      resolveKeycloakRoleNames(user.keycloakSubject),
+      resolveProjectedMainserverCredentialState(user.keycloakSubject),
+    ]);
+    const projectedUserWithRoles = await withInstanceScopedDb(actorResolution.actor.instanceId, (client) =>
       resolveProjectedUserDetail({
         client,
         instanceId: actorResolution.actor.instanceId,
@@ -218,6 +235,7 @@ export const getUserInternal = async (
         keycloakRoleNames,
       })
     );
+    const projectedUser = mergeMainserverCredentialState(projectedUserWithRoles, mainserverCredentialState);
 
     return jsonResponse(200, asApiItem(projectedUser, actorResolution.actor.requestId));
   } catch (error) {

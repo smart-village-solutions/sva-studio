@@ -139,6 +139,8 @@ export type UpdateUserPayload = Partial<Omit<CreateUserPayload, 'roleIds'>> & {
   readonly roleIds?: readonly string[];
   readonly status?: 'active' | 'inactive' | 'pending';
   readonly notes?: string;
+  readonly mainserverUserApplicationId?: string;
+  readonly mainserverUserApplicationSecret?: string;
 };
 
 export type UpdateMyProfilePayload = {

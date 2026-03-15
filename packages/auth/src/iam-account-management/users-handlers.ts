@@ -41,6 +41,12 @@ import {
 } from './shared';
 import { validateCsrf } from './csrf';
 import { protectField } from './encryption';
+import type { IdentityUserAttributes } from '../identity-provider-port';
+import {
+  buildMainserverIdentityAttributes,
+  getSvaMainserverCredentialAttributeNames,
+  resolveMainserverCredentialState,
+} from '../mainserver-credentials.server';
 import { buildRoleSyncFailure, getRoleExternalName } from './role-audit';
 import { bulkDeactivateSchema, updateUserSchema } from './schemas';
 import { resolveUsersForBulkDeactivation } from './user-bulk-query';
@@ -207,9 +213,20 @@ const compensateUserIdentityUpdate = async (input: {
   plan: UserUpdatePlan;
   restoreIdentity: boolean;
   restoreRoles: boolean;
+  restoreIdentityAttributes?: IdentityUserAttributes;
   identityProvider: NonNullable<ReturnType<typeof resolveIdentityProvider>>;
 }): Promise<void> => {
-  const { identityProvider, instanceId, plan, requestId, restoreIdentity, restoreRoles, traceId, userId } = input;
+  const {
+    identityProvider,
+    instanceId,
+    plan,
+    requestId,
+    restoreIdentity,
+    restoreRoles,
+    restoreIdentityAttributes,
+    traceId,
+    userId,
+  } = input;
 
   if (restoreIdentity) {
     try {
@@ -219,6 +236,7 @@ const compensateUserIdentityUpdate = async (input: {
           firstName: plan.existing.firstName,
           lastName: plan.existing.lastName,
           enabled: plan.existing.status !== 'inactive',
+          attributes: restoreIdentityAttributes,
         })
       );
     } catch (compensationError) {
@@ -257,6 +275,23 @@ const compensateUserIdentityUpdate = async (input: {
       });
     }
   }
+};
+
+const buildIdentityAttributesForUserUpdate = (input: {
+  readonly existingAttributes: IdentityUserAttributes | undefined;
+  readonly payload: UpdateUserPayload;
+}): IdentityUserAttributes => {
+  const attributes = buildMainserverIdentityAttributes({
+    existingAttributes: input.existingAttributes,
+    mainserverUserApplicationId: input.payload.mainserverUserApplicationId,
+    mainserverUserApplicationSecret: input.payload.mainserverUserApplicationSecret,
+  });
+
+  if (input.payload.displayName !== undefined) {
+    attributes.displayName = [input.payload.displayName];
+  }
+
+  return attributes;
 };
 
 export const updateUserInternal = async (
@@ -335,25 +370,59 @@ export const updateUserInternal = async (
       return createApiError(404, 'not_found', 'Nutzer nicht gefunden.', actorResolution.actor.requestId);
     }
 
+    const shouldUpdateIdentityAttributes =
+      parsed.data.displayName !== undefined ||
+      parsed.data.mainserverUserApplicationId !== undefined ||
+      parsed.data.mainserverUserApplicationSecret !== undefined;
     const shouldUpdateIdentity =
       parsed.data.email !== undefined ||
       parsed.data.firstName !== undefined ||
       parsed.data.lastName !== undefined ||
-      parsed.data.status !== undefined;
+      parsed.data.status !== undefined ||
+      shouldUpdateIdentityAttributes;
     let shouldRestoreIdentity = false;
     let shouldRestoreRoles = false;
+    let existingIdentityAttributes: IdentityUserAttributes | undefined;
+    let nextIdentityAttributes: IdentityUserAttributes | undefined;
+    let nextMainserverCredentialState = resolveMainserverCredentialState(undefined);
 
     try {
       if (shouldUpdateIdentity) {
+        if (shouldUpdateIdentityAttributes) {
+          existingIdentityAttributes = await trackKeycloakCall('get_user_attributes_for_update', () =>
+            identityProvider.provider.getUserAttributes(plan.existing.keycloakSubject)
+          );
+          nextIdentityAttributes = buildIdentityAttributesForUserUpdate({
+            existingAttributes: existingIdentityAttributes,
+            payload: parsed.data,
+          });
+          nextMainserverCredentialState = resolveMainserverCredentialState(nextIdentityAttributes);
+        } else {
+          nextMainserverCredentialState = await trackKeycloakCall('get_user_attributes_for_response', () =>
+            identityProvider.provider
+              .getUserAttributes(plan.existing.keycloakSubject, getSvaMainserverCredentialAttributeNames())
+              .then((attributes) => resolveMainserverCredentialState(attributes))
+          );
+        }
+
         await trackKeycloakCall('update_user', () =>
           identityProvider.provider.updateUser(plan.existing.keycloakSubject, {
             email: parsed.data.email,
             firstName: parsed.data.firstName,
             lastName: parsed.data.lastName,
             enabled: parsed.data.status ? parsed.data.status !== 'inactive' : undefined,
+            attributes: nextIdentityAttributes,
           })
         );
         shouldRestoreIdentity = true;
+      }
+
+      if (!shouldUpdateIdentity) {
+        nextMainserverCredentialState = await trackKeycloakCall('get_user_attributes_for_response', () =>
+          identityProvider.provider
+            .getUserAttributes(plan.existing.keycloakSubject, getSvaMainserverCredentialAttributeNames())
+            .then((attributes) => resolveMainserverCredentialState(attributes))
+        );
       }
 
       if (parsed.data.status === 'inactive') {
@@ -437,10 +506,19 @@ WHERE id = $1::uuid
           trigger: 'user_updated',
         });
 
-        return resolveUserDetail(client, {
+        const detail = await resolveUserDetail(client, {
           instanceId: actorResolution.actor.instanceId,
           userId,
         });
+        if (!detail) {
+          return undefined;
+        }
+
+        return {
+          ...detail,
+          mainserverUserApplicationId: nextMainserverCredentialState.mainserverUserApplicationId,
+          mainserverUserApplicationSecretSet: nextMainserverCredentialState.mainserverUserApplicationSecretSet,
+        };
       });
 
       if (!detail) {
@@ -458,6 +536,7 @@ WHERE id = $1::uuid
         plan,
         restoreIdentity: shouldRestoreIdentity,
         restoreRoles: shouldRestoreRoles,
+        restoreIdentityAttributes: existingIdentityAttributes,
         identityProvider,
       });
       throw error;

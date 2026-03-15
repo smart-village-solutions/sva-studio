@@ -1,0 +1,13 @@
+## 1. Umsetzung
+- [x] 1.1 Contracts und Payloads für Admin-User-Detail und User-Update um `mainserverUserApplicationId` sowie den Secret-Status erweitern
+- [x] 1.2 Serverseitige User-Read-/Update-Handler um Lesen und Schreiben der Mainserver-Keycloak-Attribute ergänzen
+- [x] 1.3 `mainserverUserApplicationSecret` als write-only Überschreibfeld mit sicherem Logging und ohne Klartext-Roundtrip umsetzen
+- [x] 1.4 Mainserver-Credential-Reader auf die neuen Attributnamen umstellen und Legacy-Attribute als Fallback unterstützen
+- [x] 1.5 Benutzer-Bearbeitungsseite, Formularzustand, Validierung und i18n-Texte für die neuen Felder ergänzen
+- [x] 1.6 Unit-Tests für Contracts, Handler, Keycloak-Reader und UI ergänzen bzw. anpassen
+- [x] 1.7 E2E-Test für Admin-Bearbeitung der neuen Felder ergänzen bzw. anpassen
+- [x] 1.8 Relevante Doku und ADR/arc42-Stellen zu den Attributnamen und zum Secret-Handling aktualisieren
+- [x] 1.9 `pnpm nx run sva-studio-react:test:unit`
+- [x] 1.10 `pnpm nx run sva-studio-react:typecheck`
+- [x] 1.11 `pnpm nx run sva-studio-react:test:e2e`
+- [x] 1.12 `openspec validate update-mainserver-user-credentials-management --strict`

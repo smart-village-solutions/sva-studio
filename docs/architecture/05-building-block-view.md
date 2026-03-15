@@ -130,6 +130,7 @@ Referenzen:
 - `packages/auth/src/index.server.ts`
 - `packages/auth/src/audit-db-sink.server.ts`
 - `packages/auth/src/mainserver-credentials.server.ts`
+  - liest und kanonisiert die Keycloak-Attribute `mainserverUserApplicationId` und `mainserverUserApplicationSecret`; Legacy-Namen bleiben als Fallback lesbar
 - `packages/sdk/src/server.ts`
 - `packages/data/migrations/up/0001_iam_core.sql`
 - `packages/data/migrations/up/0013_iam_instance_integrations.sql`

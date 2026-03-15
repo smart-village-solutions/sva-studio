@@ -84,6 +84,8 @@ export type IamUserDetail = IamUserListItem & {
   readonly avatarUrl?: string;
   readonly notes?: string;
   readonly permissions?: readonly string[];
+  readonly mainserverUserApplicationId?: string;
+  readonly mainserverUserApplicationSecretSet: boolean;
 };
 
 export type IamUserImportSyncReport = {

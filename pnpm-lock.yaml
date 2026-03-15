@@ -227,9 +227,6 @@ importers:
       '@sva/core':
         specifier: workspace:*
         version: link:../core
-      '@sva/sdk':
-        specifier: workspace:*
-        version: link:../sdk
       pg:
         specifier: ^8.20.0
         version: 8.20.0

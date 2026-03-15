@@ -35,6 +35,9 @@ jobs:
           node-version-file: '.nvmrc'
           cache: pnpm
 
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
       - name: Skip when schema diff secrets are missing
         if: env.SVA_MAINSERVER_SCHEMA_GRAPHQL_URL == '' || env.SVA_MAINSERVER_SCHEMA_OAUTH_TOKEN_URL == '' || env.SVA_MAINSERVER_SCHEMA_CLIENT_ID == '' || env.SVA_MAINSERVER_SCHEMA_CLIENT_SECRET == ''
         run: |

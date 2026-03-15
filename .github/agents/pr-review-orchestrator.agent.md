@@ -53,6 +53,7 @@ Lies die PR oder den Diff-Kontext und ermittle:
 - `Documentation` wird immer aufgerufen.
 - `Code Quality` wird bei jeder Codeänderung aufgerufen.
 - `Test Quality` wird bei jeder Verhaltensänderung, bei neuen Tests oder bei Coverage-relevanten Änderungen aufgerufen.
+- `Test Quality` wird zusätzlich verpflichtend aufgerufen, wenn die PR-Historie wiederholte rote Test-/Coverage-Checks zeigt.
 - Zusätzliche Reviewer nur bei erkennbarer Fachrelevanz.
 
 **Trigger-Matrix:**
@@ -62,6 +63,7 @@ Lies die PR oder den Diff-Kontext und ermittle:
 | jede PR | 📝 Documentation |
 | Produktivcode / Konfig-Logik | 🧪 Code Quality |
 | Verhaltensänderungen, neue Tests, Coverage-Artefakte | ✅ Test Quality |
+| wiederholt fehlgeschlagene Test-/Coverage-Checks im PR-Verlauf | ✅ Test Quality (mit Prozess-Befund „Shift-left“) |
 | Auth, Sessions, Tokens, Rollen, PII, Secrets | 🔒 Security & Privacy |
 | UI, Formulare, Navigation, Screenreader-relevante Änderungen | ♿ UX & Accessibility |
 | user-facing Texte, Labels, i18n-Keys | 🌐 i18n & Content |

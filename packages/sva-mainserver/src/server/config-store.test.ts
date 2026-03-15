@@ -144,6 +144,41 @@ describe('loadSvaMainserverInstanceConfig', () => {
     });
   });
 
+  it('allows public IPv4-mapped IPv6 hosts', async () => {
+    state.loadInstanceIntegrationRecord.mockResolvedValue({
+      instanceId: 'de-musterhausen',
+      providerKey: 'sva_mainserver',
+      graphqlBaseUrl: 'https://[::ffff:8.8.8.8]/graphql',
+      oauthTokenUrl: 'https://mainserver.example.invalid/oauth/token',
+      enabled: true,
+      lastVerifiedAt: '2026-03-15T10:00:00.000Z',
+      lastVerifiedStatus: 'ok',
+    });
+
+    const { loadSvaMainserverInstanceConfig } = await import('./config-store');
+
+    await expect(loadSvaMainserverInstanceConfig('de-musterhausen')).resolves.toMatchObject({
+      instanceId: 'de-musterhausen',
+      enabled: true,
+    });
+  });
+
+  it('rejects malformed IPv4-mapped IPv6 hosts conservatively', async () => {
+    state.loadInstanceIntegrationRecord.mockResolvedValue({
+      instanceId: 'de-musterhausen',
+      providerKey: 'sva_mainserver',
+      graphqlBaseUrl: 'https://[::ffff:7f00:1:2]/graphql',
+      oauthTokenUrl: 'https://mainserver.example.invalid/oauth/token',
+      enabled: true,
+    });
+
+    const { loadSvaMainserverInstanceConfig } = await import('./config-store');
+
+    await expect(loadSvaMainserverInstanceConfig('de-musterhausen')).rejects.toMatchObject({
+      code: 'invalid_config',
+    });
+  });
+
   it('maps unexpected data-layer failures to database_unavailable', async () => {
     state.loadInstanceIntegrationRecord.mockRejectedValue(new Error('db offline'));
 

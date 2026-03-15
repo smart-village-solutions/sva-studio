@@ -280,6 +280,32 @@ Komplexitäts-Regeln und Ticket-Workflow: `docs/development/complexity-quality-g
 - PRs ohne dokumentierte Bewertung von Sonar/Codecov werden im Review zurückgestellt.
 - Wiederholte Verstöße gelten als Prozessabweichung und müssen in der Retro adressiert werden.
 
+## 5.2 Shift-Left Test-Gates (verbindlich)
+
+### ✅ REQUIRED
+- Tests müssen während der Implementierung in kleinen Schritten ausgeführt werden, nicht erst kurz vor PR-Erstellung.
+- Nach jedem abgeschlossenen Änderungsblock (Feature, Refactoring, Bugfix) sind mindestens die betroffenen Unit-Tests sofort auszuführen.
+- Vor jedem Push muss ein schneller lokaler Gate-Lauf für betroffene Projekte erfolgen.
+- Vor dem Commit ist sicherzustellen, dass neue oder geänderte Logik durch Tests abgedeckt ist.
+
+### ❌ FORBIDDEN
+- „Big-bang“-Validierung erst am Ende der Umsetzung.
+- Mehrere inhaltliche Änderungen ohne Zwischenlauf der betroffenen Tests zu stapeln.
+- Pushes, bei denen bekannte lokale Testfehler ignoriert werden.
+
+### Process
+1. Implementiere eine kleine, in sich geschlossene Änderung.
+2. Führe sofort zielgerichtete Tests aus (affected, Projekt oder Datei).
+3. Erst bei grünem Zwischenstand mit dem nächsten Änderungsblock weitermachen.
+4. Vor Push mindestens den schnellen Gate-Lauf ausführen:
+  - `pnpm nx affected --target=test:unit --base=origin/main`
+  - zusätzlich bei Bedarf `pnpm nx affected --target=test:types --base=origin/main`
+5. Vor PR weiterhin vollständige Qualitätsprüfung gemäß Abschnitt 5 und 5.1.
+
+### Enforcement
+- Reviews können zurückgestellt werden, wenn eine Änderung ohne erkennbaren Shift-left-Testnachweis eingereicht wird.
+- Wiederholte späte Test-Fails gelten als Prozessabweichung und müssen mit konkreter Gegenmaßnahme im PR dokumentiert werden.
+
 ---
 
 ## 6. Security & Input Validation

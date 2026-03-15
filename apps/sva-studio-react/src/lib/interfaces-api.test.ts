@@ -172,4 +172,30 @@ describe('interfaces.server', () => {
       })
     );
   });
+
+  it('sanitizes internal save errors before surfacing them to clients', async () => {
+    state.withAuthenticatedUser.mockImplementation(
+      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<Response>) =>
+        handler({
+          user: {
+            id: 'subject-1',
+            instanceId: 'de-musterhausen',
+            roles: ['system_admin'],
+          },
+        })
+    );
+    state.saveSvaMainserverSettings.mockRejectedValue(new Error('Error: boom\n    at save (/srv/app.ts:1:1)'));
+
+    const { saveSvaMainserverInterfaceSettings } = await import('./interfaces-api');
+
+    await expect(
+      saveSvaMainserverInterfaceSettings({
+        data: {
+          graphqlBaseUrl: 'https://mainserver.example/graphql',
+          oauthTokenUrl: 'https://mainserver.example/oauth/token',
+          enabled: true,
+        },
+      })
+    ).rejects.toThrow('Einstellungen konnten nicht gespeichert werden.');
+  });
 });

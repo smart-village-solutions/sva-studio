@@ -85,13 +85,6 @@ const createExecutor = (client: QueryClient) => ({
   },
 });
 
-const buildLogContext = (instanceId: string, providerKey: IntegrationProviderKey, extra: Record<string, unknown> = {}) => ({
-  workspace_id: instanceId,
-  instance_id: instanceId,
-  provider_key: providerKey,
-  ...extra,
-});
-
 const queryInstanceIntegrationRecord = async (input: {
   readonly instanceId: string;
   readonly providerKey: IntegrationProviderKey;

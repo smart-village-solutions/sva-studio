@@ -1,16 +1,11 @@
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
-import viteTsConfigPaths from 'vite-tsconfig-paths';
 
 const isCi = Boolean(process.env.CI);
 
 export default defineConfig({
-  plugins: [
-    viteTsConfigPaths({
-      projects: ['./tsconfig.json'],
-    }),
-  ],
   resolve: {
+    tsconfigPaths: true,
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
       'react-dom/server': fileURLToPath(new URL('./src/lib/react-dom-server-compat.ts', import.meta.url)),

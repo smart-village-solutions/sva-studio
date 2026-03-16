@@ -263,6 +263,31 @@ describe('KeycloakAdminClient', () => {
     expect(String(calls[1]?.input)).toContain('/admin/realms/demo/users/user-123');
   });
 
+  it('omits the body field for GET requests without payload', async () => {
+    const { fetchImpl, calls } = createFetchStub([
+      createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }),
+      createJsonResponse(200, {
+        id: 'user-123',
+        attributes: {
+          locale: ['de'],
+        },
+      }),
+    ]);
+
+    const client = new KeycloakAdminClient({
+      baseUrl: 'https://keycloak.example.com',
+      realm: 'demo',
+      clientId: 'svc-client',
+      clientSecret: 'svc-secret',
+      fetchImpl,
+    });
+
+    await client.getUserAttributes('user-123');
+
+    expect(calls[1]?.init?.method).toBe('GET');
+    expect(calls[1]?.init).not.toHaveProperty('body');
+  });
+
   it('returns all attributes when no filter list is provided', async () => {
     const { fetchImpl } = createFetchStub([
       createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }),

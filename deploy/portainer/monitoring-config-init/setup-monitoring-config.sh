@@ -42,4 +42,4 @@ chown -R 65534:65534 /data/prometheus /data/alertmanager
 chown -R 472:472 /data/grafana
 
 log "Monitoring-Konfiguration bereit"
-exec tail -f /dev/null
+exit 0

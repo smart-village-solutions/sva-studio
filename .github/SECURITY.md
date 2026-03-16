@@ -1,52 +1,31 @@
 # Security Policy
 
-Vielen Dank, dass du Sicherheitslücken verantwortungsvoll meldest.
+Dies ist der GitHub-Einstieg für verantwortungsvolle Meldungen von Sicherheitslücken in SVA Studio.
 
-## Supported Versions
+Die kanonische Richtlinie liegt unter [`docs/guides/security-policy.md`](../docs/guides/security-policy.md).
 
-Aktuell unterstützen wir Security-Fixes für:
+## Meldung von Schwachstellen
 
-| Version/Branch | Supported |
-| --- | --- |
-| `main` | :white_check_mark: |
-| ältere Branches/Releases | :x: |
+Bitte keine öffentlichen GitHub Issues für Sicherheitslücken anlegen.
 
-Wenn es spaeter stabile Release-Linien gibt, wird diese Tabelle erweitert.
+Bevorzugte Meldewege:
 
-## Schwachstellen melden
+1. GitHub Private Vulnerability Reporting bzw. Security Advisory dieses Repositories
+2. Fallback per E-Mail an `security@smart-village.app`
 
-Bitte **keine oeffentlichen GitHub Issues** fuer Sicherheitsluecken erstellen.
+## Zielwerte für Reaktion
 
-Nutze stattdessen:
+- Eingangsbestätigung innerhalb von 3 Werktagen
+- erste Triage innerhalb von 7 Kalendertagen
+- Status-Updates mindestens alle 14 Kalendertage bei längerer Bearbeitung
 
-1. **Bevorzugt:** GitHub "Private vulnerability reporting" / Security Advisory dieses Repos
-2. **Fallback:** E-Mail an `info@smart-village.app` mit Betreff `Security: <kurze Beschreibung>`
+## Disclosure
 
-Bitte liefere so viele Details wie möglich:
+- keine öffentliche Offenlegung vor abgestimmter Freigabe
+- Advisory-basierte Offenlegung ist der Standard
+- CVE-Vergabe erfolgt bei Bedarf
 
-- betroffene Komponente(n) und Version/Commit
-- reproduzierbare Schritte oder Proof of Concept
-- erwartetes vs. tatsächliches Verhalten
-- potentielle Auswirkung (z. B. Vertraulichkeit, Integrität, Verfügbarkeit)
-- falls vorhanden: Vorschlag zur Behebung
+## Weitere Informationen
 
-## Responsible Disclosure
-
-Wir bitten um verantwortungsvolle Offenlegung:
-
-- Keine öffentliche Offenlegung, bevor ein Fix verfügbar ist oder ein gemeinsamer Zeitplan vereinbart wurde.
-- Keine Ausnutzung von Sicherheitslücken außerhalb kontrollierter Tests.
-- Keine Zugriffe auf Daten anderer Personen/Organisationen.
-
-## Reaktionszeiten (Zielwerte)
-
-- Eingangsbestätigung: innerhalb von **72 Stunden**
-- Erste Einschätzung/Triage: innerhalb von **7 Tagen**
-- Laufende Status-Updates: mindestens alle **14 Tage**, bis ein Fix oder Mitigation bereitsteht
-
-## Koordination und Veröffentlichung
-
-- Sicherheitsrelevante Fixes werden bevorzugt über private Branches/Advisories vorbereitet.
-- Nach Release veröffentlichen wir technische Details in angemessenem Umfang (inkl. Credits, falls gewünscht).
-
-Danke für deine Hilfe, SVA Studio sicherer zu machen.
+- vollständige Richtlinie: [`docs/guides/security-policy.md`](../docs/guides/security-policy.md)
+- Incident-Kommunikation: [`docs/guides/incident-response.md`](../docs/guides/incident-response.md)

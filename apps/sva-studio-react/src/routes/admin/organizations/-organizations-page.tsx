@@ -3,6 +3,14 @@ import React from 'react';
 
 import { ConfirmDialog } from '../../../components/ConfirmDialog';
 import { ModalDialog } from '../../../components/ModalDialog';
+import { Alert, AlertDescription } from '../../../components/ui/alert';
+import { Badge } from '../../../components/ui/badge';
+import { Button } from '../../../components/ui/button';
+import { Card } from '../../../components/ui/card';
+import { Checkbox } from '../../../components/ui/checkbox';
+import { Input } from '../../../components/ui/input';
+import { Label } from '../../../components/ui/label';
+import { Select } from '../../../components/ui/select';
 import { useOrganizations } from '../../../hooks/use-organizations';
 import { useUsers } from '../../../hooks/use-users';
 import { t, type TranslationKey } from '../../../i18n';
@@ -169,20 +177,20 @@ export const OrganizationsPage = () => {
         <p className="max-w-2xl text-sm text-muted-foreground">{t('admin.organizations.page.subtitle')}</p>
       </header>
 
-      <div className="grid gap-3 rounded-xl border border-border bg-card p-4 shadow-shell lg:grid-cols-[1fr_auto_auto_auto]">
-        <label className="flex flex-col gap-1 text-xs uppercase tracking-wide text-muted-foreground">
-          {t('admin.organizations.filters.searchLabel')}
-          <input
-            className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+      <Card className="grid gap-3 p-4 lg:grid-cols-[1fr_auto_auto_auto]">
+        <div className="flex flex-col gap-1 text-xs uppercase tracking-wide text-muted-foreground">
+          <Label htmlFor="organizations-search">{t('admin.organizations.filters.searchLabel')}</Label>
+          <Input
+            id="organizations-search"
             placeholder={t('admin.organizations.filters.searchPlaceholder')}
             value={organizationsApi.filters.search}
             onChange={(event) => organizationsApi.setSearch(event.target.value)}
           />
-        </label>
-        <label className="flex flex-col gap-1 text-xs uppercase tracking-wide text-muted-foreground">
-          {t('admin.organizations.filters.typeLabel')}
-          <select
-            className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+        </div>
+        <div className="flex flex-col gap-1 text-xs uppercase tracking-wide text-muted-foreground">
+          <Label htmlFor="organizations-type">{t('admin.organizations.filters.typeLabel')}</Label>
+          <Select
+            id="organizations-type"
             value={organizationsApi.filters.organizationType}
             onChange={(event) =>
               organizationsApi.setOrganizationType(event.target.value as typeof organizationsApi.filters.organizationType)
@@ -194,46 +202,42 @@ export const OrganizationsPage = () => {
                 {t(ORGANIZATION_TYPE_KEYS[type])}
               </option>
             ))}
-          </select>
-        </label>
-        <label className="flex flex-col gap-1 text-xs uppercase tracking-wide text-muted-foreground">
-          {t('admin.organizations.filters.statusLabel')}
-          <select
-            className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+          </Select>
+        </div>
+        <div className="flex flex-col gap-1 text-xs uppercase tracking-wide text-muted-foreground">
+          <Label htmlFor="organizations-status">{t('admin.organizations.filters.statusLabel')}</Label>
+          <Select
+            id="organizations-status"
             value={organizationsApi.filters.status}
             onChange={(event) => organizationsApi.setStatus(event.target.value as 'active' | 'inactive' | 'all')}
           >
             <option value="all">{t('admin.organizations.filters.statusAll')}</option>
             <option value="active">{t('admin.organizations.filters.statusActive')}</option>
             <option value="inactive">{t('admin.organizations.filters.statusInactive')}</option>
-          </select>
-        </label>
-        <div className="flex items-end justify-end">
-          <button
-            type="button"
-            className="rounded-md border border-primary/40 bg-primary/15 px-3 py-2 text-sm font-semibold text-primary transition hover:bg-primary/20"
-            onClick={openCreateDialog}
-          >
-            {t('admin.organizations.actions.create')}
-          </button>
+          </Select>
         </div>
-      </div>
+        <div className="flex items-end justify-end">
+          <Button type="button" onClick={openCreateDialog}>
+            {t('admin.organizations.actions.create')}
+          </Button>
+        </div>
+      </Card>
 
       <p role="status" aria-live="polite" className="text-xs text-muted-foreground">
         {t('admin.organizations.messages.resultCount', { count: organizationsApi.total })}
       </p>
 
       {organizationsApi.error ? (
-        <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive" role="alert">
-          <p>{organizationErrorMessage(organizationsApi.error)}</p>
-          <button
-            type="button"
-            className="mt-3 rounded-md border border-destructive/40 bg-background px-3 py-2 text-xs text-destructive transition hover:bg-muted"
-            onClick={() => void organizationsApi.refetch()}
-          >
-            {t('admin.organizations.actions.retry')}
-          </button>
-        </div>
+        <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
+          <AlertDescription className="flex flex-col gap-3">
+            <span>{organizationErrorMessage(organizationsApi.error)}</span>
+            <div>
+              <Button type="button" size="sm" variant="outline" onClick={() => void organizationsApi.refetch()}>
+                {t('admin.organizations.actions.retry')}
+              </Button>
+            </div>
+          </AlertDescription>
+        </Alert>
       ) : null}
 
       <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-shell">
@@ -255,8 +259,14 @@ export const OrganizationsPage = () => {
               <tr key={organization.id} className="border-t border-border bg-card text-sm text-foreground">
                 <td className="px-3 py-3">
                   <div className="flex items-center gap-2" style={{ paddingLeft: `${organization.depth * 12}px` }}>
-                    <span className="font-medium">{organization.displayName}</span>
-                    <span className="text-xs text-muted-foreground">{organization.organizationKey}</span>
+                    <div>
+                      <span className="font-medium">{organization.displayName}</span>
+                      <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                        <span>{organization.organizationKey}</span>
+                        <span>{t('admin.organizations.messages.depth', { value: organization.depth })}</span>
+                        <span>{t('admin.organizations.messages.hierarchySize', { value: organization.hierarchyPath?.length ?? 0 })}</span>
+                      </div>
+                    </div>
                   </div>
                 </td>
                 <td className="px-3 py-3">{t(ORGANIZATION_TYPE_KEYS[organization.organizationType])}</td>
@@ -270,28 +280,31 @@ export const OrganizationsPage = () => {
                 </td>
                 <td className="px-3 py-3">
                   <div className="flex justify-end gap-2">
-                    <button
+                    <Button
                       type="button"
-                      className="rounded-md border border-border bg-background px-3 py-2 text-xs text-foreground transition hover:bg-muted"
+                      size="sm"
+                      variant="outline"
                       onClick={() => void openEditDialog(organization.id)}
                     >
                       {t('admin.organizations.actions.edit')}
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
-                      className="rounded-md border border-secondary/40 bg-secondary/10 px-3 py-2 text-xs text-secondary"
+                      size="sm"
+                      variant="secondary"
                       onClick={() => void openMembershipDialog(organization.id)}
                     >
                       {t('admin.organizations.actions.memberships')}
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
-                      className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive"
+                      size="sm"
+                      variant="destructive"
                       onClick={() => setDeactivateOrganizationId(organization.id)}
                       disabled={!organization.isActive}
                     >
                       {t('admin.organizations.actions.deactivate')}
-                    </button>
+                    </Button>
                   </div>
                 </td>
               </tr>
@@ -301,30 +314,30 @@ export const OrganizationsPage = () => {
       </div>
 
       {organizationsApi.organizations.length === 0 && !organizationsApi.isLoading ? (
-        <div className="rounded-xl border border-border bg-card p-6 text-sm text-muted-foreground shadow-shell">
+        <Card className="p-6 text-sm text-muted-foreground">
           {t('admin.organizations.messages.emptyState')}
-        </div>
+        </Card>
       ) : null}
 
       <nav aria-label={t('admin.organizations.pagination.ariaLabel')} className="flex items-center justify-between text-sm text-muted-foreground">
         <p aria-live="polite">{t('admin.organizations.pagination.pageLabel', { page: organizationsApi.page, totalPages: pageCount })}</p>
         <div className="flex gap-2">
-          <button
+          <Button
             type="button"
-            className="rounded-md border border-border bg-background px-3 py-2 text-foreground transition hover:bg-muted disabled:opacity-50"
+            variant="outline"
             disabled={organizationsApi.page <= 1}
             onClick={() => organizationsApi.setPage(organizationsApi.page - 1)}
           >
             {t('admin.organizations.pagination.previous')}
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
-            className="rounded-md border border-border bg-background px-3 py-2 text-foreground transition hover:bg-muted disabled:opacity-50"
+            variant="outline"
             disabled={organizationsApi.page >= pageCount}
             onClick={() => organizationsApi.setPage(organizationsApi.page + 1)}
           >
             {t('admin.organizations.pagination.next')}
-          </button>
+          </Button>
         </div>
       </nav>
 
@@ -340,29 +353,30 @@ export const OrganizationsPage = () => {
       >
         <form className="space-y-4" onSubmit={(event) => void onSubmitOrganization(event)}>
           {organizationsApi.mutationError ? (
-            <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">
-              {organizationErrorMessage(organizationsApi.mutationError)}
-            </div>
+            <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
+              <AlertDescription>{organizationErrorMessage(organizationsApi.mutationError)}</AlertDescription>
+            </Alert>
           ) : null}
-          <label className="flex flex-col gap-1 text-sm text-foreground">
-            <span>{t('admin.organizations.form.keyLabel')}</span>
-            <input
+          <div className="grid gap-1 text-sm text-foreground">
+            <Label htmlFor="organization-key">{t('admin.organizations.form.keyLabel')}</Label>
+            <Input
+              id="organization-key"
               value={formValues.organizationKey}
               onChange={(event) => setFormValues((current) => ({ ...current, organizationKey: event.target.value }))}
-              className="rounded-md border border-border bg-background px-3 py-2 text-foreground"
             />
-          </label>
-          <label className="flex flex-col gap-1 text-sm text-foreground">
-            <span>{t('admin.organizations.form.nameLabel')}</span>
-            <input
+          </div>
+          <div className="grid gap-1 text-sm text-foreground">
+            <Label htmlFor="organization-name">{t('admin.organizations.form.nameLabel')}</Label>
+            <Input
+              id="organization-name"
               value={formValues.displayName}
               onChange={(event) => setFormValues((current) => ({ ...current, displayName: event.target.value }))}
-              className="rounded-md border border-border bg-background px-3 py-2 text-foreground"
             />
-          </label>
-          <label className="flex flex-col gap-1 text-sm text-foreground">
-            <span>{t('admin.organizations.form.typeLabel')}</span>
-            <select
+          </div>
+          <div className="grid gap-1 text-sm text-foreground">
+            <Label htmlFor="organization-type">{t('admin.organizations.form.typeLabel')}</Label>
+            <Select
+              id="organization-type"
               value={formValues.organizationType}
               onChange={(event) =>
                 setFormValues((current) => ({ ...current, organizationType: event.target.value as IamOrganizationType }))
@@ -374,14 +388,14 @@ export const OrganizationsPage = () => {
                   {t(ORGANIZATION_TYPE_KEYS[type])}
                 </option>
               ))}
-            </select>
-          </label>
-          <label className="flex flex-col gap-1 text-sm text-foreground">
-            <span>{t('admin.organizations.form.parentLabel')}</span>
-            <select
+            </Select>
+          </div>
+          <div className="grid gap-1 text-sm text-foreground">
+            <Label htmlFor="organization-parent">{t('admin.organizations.form.parentLabel')}</Label>
+            <Select
+              id="organization-parent"
               value={formValues.parentOrganizationId}
               onChange={(event) => setFormValues((current) => ({ ...current, parentOrganizationId: event.target.value }))}
-              className="rounded-md border border-border bg-background px-3 py-2 text-foreground"
             >
               <option value="">{t('admin.organizations.form.parentNone')}</option>
               {organizationsApi.organizations
@@ -391,11 +405,12 @@ export const OrganizationsPage = () => {
                     {organization.displayName}
                   </option>
                 ))}
-            </select>
-          </label>
-          <label className="flex flex-col gap-1 text-sm text-foreground">
-            <span>{t('admin.organizations.form.policyLabel')}</span>
-            <select
+            </Select>
+          </div>
+          <div className="grid gap-1 text-sm text-foreground">
+            <Label htmlFor="organization-policy">{t('admin.organizations.form.policyLabel')}</Label>
+            <Select
+              id="organization-policy"
               value={formValues.contentAuthorPolicy}
               onChange={(event) =>
                 setFormValues((current) => ({
@@ -407,22 +422,15 @@ export const OrganizationsPage = () => {
             >
               <option value="org_only">{t('admin.organizations.policies.orgOnly')}</option>
               <option value="org_or_personal">{t('admin.organizations.policies.orgOrPersonal')}</option>
-            </select>
-          </label>
+            </Select>
+          </div>
           <div className="flex justify-end gap-2">
-            <button
-              type="button"
-              className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground transition hover:bg-muted"
-              onClick={() => setEditState(null)}
-            >
+            <Button type="button" variant="outline" onClick={() => setEditState(null)}>
               {t('account.actions.cancel')}
-            </button>
-            <button
-              type="submit"
-              className="rounded-md border border-primary/40 bg-primary/15 px-3 py-2 text-sm font-semibold text-primary transition hover:bg-primary/20"
-            >
+            </Button>
+            <Button type="submit">
               {editState?.mode === 'edit' ? t('admin.organizations.actions.save') : t('admin.organizations.actions.create')}
-            </button>
+            </Button>
           </div>
         </form>
       </ModalDialog>
@@ -437,18 +445,34 @@ export const OrganizationsPage = () => {
         description={selectedOrganization ? t('admin.organizations.membershipsDialog.description', { name: selectedOrganization.displayName }) : ''}
       >
         <div className="space-y-4">
-          {organizationsApi.mutationError ? (
-            <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">
-              {organizationErrorMessage(organizationsApi.mutationError)}
-            </div>
+          {selectedOrganization ? (
+            <Card className="bg-background p-3 text-sm text-foreground shadow-none">
+              <p className="font-semibold">{selectedOrganization.displayName}</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {t('admin.organizations.messages.hierarchyPath', {
+                  value: (selectedOrganization.hierarchyPath ?? []).join(' > '),
+                })}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {t('admin.organizations.messages.metadataCount', {
+                  value: Object.keys(selectedOrganization.metadata ?? {}).length,
+                })}
+              </p>
+            </Card>
           ) : null}
-          <form className="grid gap-3 rounded-lg border border-border bg-card p-4 shadow-shell" onSubmit={(event) => void onAssignMembership(event)}>
-            <label className="flex flex-col gap-1 text-sm text-foreground">
-              <span>{t('admin.organizations.membershipsDialog.accountLabel')}</span>
-              <select
+          {organizationsApi.mutationError ? (
+            <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
+              <AlertDescription>{organizationErrorMessage(organizationsApi.mutationError)}</AlertDescription>
+            </Alert>
+          ) : null}
+          <Card className="grid gap-3 p-4">
+            <form className="grid gap-3" onSubmit={(event) => void onAssignMembership(event)}>
+            <div className="grid gap-1 text-sm text-foreground">
+              <Label htmlFor="membership-account">{t('admin.organizations.membershipsDialog.accountLabel')}</Label>
+              <Select
+                id="membership-account"
                 value={membershipForm.accountId}
                 onChange={(event) => setMembershipForm((current) => ({ ...current, accountId: event.target.value }))}
-                className="rounded-md border border-border bg-background px-3 py-2 text-foreground"
               >
                 <option value="">{t('admin.organizations.membershipsDialog.accountPlaceholder')}</option>
                 {usersApi.users.map((user) => (
@@ -456,11 +480,12 @@ export const OrganizationsPage = () => {
                     {user.displayName}
                   </option>
                 ))}
-              </select>
-            </label>
-            <label className="flex flex-col gap-1 text-sm text-foreground">
-              <span>{t('admin.organizations.membershipsDialog.visibilityLabel')}</span>
-              <select
+              </Select>
+            </div>
+            <div className="grid gap-1 text-sm text-foreground">
+              <Label htmlFor="membership-visibility">{t('admin.organizations.membershipsDialog.visibilityLabel')}</Label>
+              <Select
+                id="membership-visibility"
                 value={membershipForm.visibility}
                 onChange={(event) =>
                   setMembershipForm((current) => ({
@@ -472,28 +497,25 @@ export const OrganizationsPage = () => {
               >
                 <option value="internal">{t('admin.organizations.membershipsDialog.visibilityInternal')}</option>
                 <option value="external">{t('admin.organizations.membershipsDialog.visibilityExternal')}</option>
-              </select>
-            </label>
-            <label className="flex items-center gap-2 text-sm text-foreground">
-              <input
-                type="checkbox"
+              </Select>
+            </div>
+            <Label htmlFor="membership-default" className="flex items-center gap-2 text-sm text-foreground">
+              <Checkbox
+                id="membership-default"
                 checked={membershipForm.isDefaultContext}
                 onChange={(event) =>
                   setMembershipForm((current) => ({ ...current, isDefaultContext: event.target.checked }))
                 }
               />
               <span>{t('admin.organizations.membershipsDialog.defaultLabel')}</span>
-            </label>
+            </Label>
             <div className="flex justify-end">
-              <button
-                type="submit"
-                className="rounded-md border border-primary/40 bg-primary/15 px-3 py-2 text-sm font-semibold text-primary transition hover:bg-primary/20"
-                disabled={!membershipForm.accountId}
-              >
+              <Button type="submit" disabled={!membershipForm.accountId}>
                 {t('admin.organizations.actions.assignMembership')}
-              </button>
+              </Button>
             </div>
-          </form>
+            </form>
+          </Card>
 
           <div className="space-y-3">
             <h2 className="text-sm font-semibold text-foreground">{t('admin.organizations.membershipsDialog.membersTitle')}</h2>
@@ -507,21 +529,25 @@ export const OrganizationsPage = () => {
                     <div>
                       <p className="font-medium">{membership.displayName}</p>
                       <p className="text-xs text-muted-foreground">{membership.email ?? membership.keycloakSubject}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {t('admin.organizations.membershipsDialog.createdAt', { value: membership.createdAt })}
+                      </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="rounded-full border border-border bg-background px-2 py-1 text-xs text-muted-foreground">
+                      <Badge className="rounded-full" variant="outline">
                         {membership.visibility === 'internal'
                           ? t('admin.organizations.membershipsDialog.visibilityInternal')
                           : t('admin.organizations.membershipsDialog.visibilityExternal')}
-                      </span>
+                      </Badge>
                       {membership.isDefaultContext ? (
-                        <span className="rounded-full border border-primary/40 bg-primary/10 px-2 py-1 text-xs text-primary">
+                        <Badge className="rounded-full border-primary/40 bg-primary/10 text-primary" variant="outline">
                           {t('admin.organizations.membershipsDialog.defaultBadge')}
-                        </span>
+                        </Badge>
                       ) : null}
-                      <button
+                      <Button
                         type="button"
-                        className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive"
+                        size="sm"
+                        variant="destructive"
                         onClick={() => {
                           if (!membershipOrganizationId) {
                             return;
@@ -530,7 +556,7 @@ export const OrganizationsPage = () => {
                         }}
                       >
                         {t('admin.organizations.actions.removeMembership')}
-                      </button>
+                      </Button>
                     </div>
                   </li>
                 ))}

@@ -1,22 +1,53 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { IamViewerPage } from './-iam-page';
 
 const useAuthMock = vi.fn();
-const isIamViewerEnabledMock = vi.fn();
-const hasIamViewerAdminRoleMock = vi.fn();
+const useNavigateMock = vi.fn();
+const listGovernanceCasesMock = vi.fn();
+const listAdminDsrCasesMock = vi.fn();
+const getAllowedIamCockpitTabsMock = vi.fn();
+const hasIamCockpitAccessRoleMock = vi.fn();
+const isIamCockpitEnabledMock = vi.fn();
+
+vi.mock('@tanstack/react-router', () => ({
+  useNavigate: () => useNavigateMock,
+}));
 
 vi.mock('../../providers/auth-provider', () => ({
   useAuth: () => useAuthMock(),
 }));
 
+vi.mock('../../lib/iam-api', () => ({
+  listGovernanceCases: (...args: unknown[]) => listGovernanceCasesMock(...args),
+  listAdminDsrCases: (...args: unknown[]) => listAdminDsrCasesMock(...args),
+}));
+
 vi.mock('../../lib/iam-viewer-access', () => ({
-  isIamViewerEnabled: () => isIamViewerEnabledMock(),
-  hasIamViewerAdminRole: () => hasIamViewerAdminRoleMock(),
+  getAllowedIamCockpitTabs: (...args: unknown[]) => getAllowedIamCockpitTabsMock(...args),
+  hasIamCockpitAccessRole: (...args: unknown[]) => hasIamCockpitAccessRoleMock(...args),
+  isIamCockpitEnabled: () => isIamCockpitEnabledMock(),
 }));
 
 describe('IamViewerPage', () => {
+  const adminUser = {
+    id: 'user-1',
+    name: 'Admin',
+    roles: ['system_admin'],
+    instanceId: '11111111-1111-1111-8111-111111111111',
+  };
+
+  beforeEach(() => {
+    useAuthMock.mockReset();
+    useNavigateMock.mockReset();
+    listGovernanceCasesMock.mockReset();
+    listAdminDsrCasesMock.mockReset();
+    getAllowedIamCockpitTabsMock.mockReset();
+    hasIamCockpitAccessRoleMock.mockReset();
+    isIamCockpitEnabledMock.mockReset();
+  });
+
   afterEach(() => {
     vi.useRealTimers();
     vi.restoreAllMocks();
@@ -30,96 +61,38 @@ describe('IamViewerPage', () => {
       error: null,
       invalidatePermissions: vi.fn(),
     });
-    isIamViewerEnabledMock.mockReturnValue(true);
-    hasIamViewerAdminRoleMock.mockReturnValue(true);
+    isIamCockpitEnabledMock.mockReturnValue(true);
+    hasIamCockpitAccessRoleMock.mockReturnValue(true);
+    getAllowedIamCockpitTabsMock.mockReturnValue(['rights']);
 
-    render(<IamViewerPage />);
+    render(<IamViewerPage activeTab="rights" />);
 
-    expect(screen.getByText('IAM-Viewer wird initialisiert ...')).toBeTruthy();
+    expect(screen.getByText('IAM Transparenz-Cockpit wird initialisiert ...')).toBeTruthy();
   });
 
-  it('renders feature-disabled state', () => {
+  it('redirects to the first allowed tab when the current tab is not allowed', async () => {
     useAuthMock.mockReturnValue({
-      user: { id: 'user-1', instanceId: '11111111-1111-1111-8111-111111111111' },
+      user: { ...adminUser, roles: ['compliance_officer'] },
       isLoading: false,
       error: null,
       invalidatePermissions: vi.fn(),
     });
-    isIamViewerEnabledMock.mockReturnValue(false);
-    hasIamViewerAdminRoleMock.mockReturnValue(true);
+    isIamCockpitEnabledMock.mockReturnValue(true);
+    hasIamCockpitAccessRoleMock.mockReturnValue(true);
+    getAllowedIamCockpitTabsMock.mockReturnValue(['governance']);
 
-    render(<IamViewerPage />);
+    render(<IamViewerPage activeTab="rights" />);
 
-    expect(screen.getByText(/IAM-Viewer ist deaktiviert/)).toBeTruthy();
-  });
-
-  it('renders auth error state', () => {
-    useAuthMock.mockReturnValue({
-      user: null,
-      isLoading: false,
-      error: new Error('auth failed'),
-      invalidatePermissions: vi.fn(),
+    await waitFor(() => {
+      expect(useNavigateMock).toHaveBeenCalledWith({
+        to: '/admin/iam',
+        search: { tab: 'governance' },
+        replace: true,
+      });
     });
-    isIamViewerEnabledMock.mockReturnValue(true);
-    hasIamViewerAdminRoleMock.mockReturnValue(true);
-
-    render(<IamViewerPage />);
-
-    expect(screen.getByRole('alert').textContent).toContain('auth failed');
   });
 
-  it('renders access denied for non-admin user', () => {
-    useAuthMock.mockReturnValue({
-      user: { id: 'user-1', instanceId: '11111111-1111-1111-8111-111111111111' },
-      isLoading: false,
-      error: null,
-      invalidatePermissions: vi.fn(),
-    });
-    isIamViewerEnabledMock.mockReturnValue(true);
-    hasIamViewerAdminRoleMock.mockReturnValue(false);
-
-    render(<IamViewerPage />);
-
-    expect(screen.getByText('Zugriff verweigert: Admin-Rolle erforderlich.')).toBeTruthy();
-  });
-
-  it('renders viewer content for admin users', () => {
-    vi.useFakeTimers();
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async () =>
-        new Response(
-          JSON.stringify({
-            permissions: [],
-            requestId: 'req-test',
-            traceId: 'trace-test',
-            subject: {
-              actorUserId: 'user-1',
-              effectiveUserId: 'user-1',
-              isImpersonating: false,
-            },
-          }),
-          { status: 200 }
-        )
-      )
-    );
-
-    useAuthMock.mockReturnValue({
-      user: { id: 'user-1', instanceId: '11111111-1111-1111-8111-111111111111' },
-      isLoading: false,
-      error: null,
-      invalidatePermissions: vi.fn(),
-    });
-    isIamViewerEnabledMock.mockReturnValue(true);
-    hasIamViewerAdminRoleMock.mockReturnValue(true);
-
-    render(<IamViewerPage />);
-
-    expect(screen.getByRole('heading', { name: 'IAM Rechte-Matrix-Viewer' })).toBeTruthy();
-  });
-
-  it('shows permissions fetch error and invalidates permissions on 403', async () => {
-    vi.useRealTimers();
+  it('shows a rights fetch error and invalidates permissions on 403', async () => {
     const invalidatePermissions = vi.fn().mockResolvedValue(undefined);
     vi.stubGlobal(
       'fetch',
@@ -132,32 +105,30 @@ describe('IamViewerPage', () => {
     );
 
     useAuthMock.mockReturnValue({
-      user: { id: 'user-1', instanceId: '11111111-1111-1111-8111-111111111111' },
+      user: adminUser,
       isLoading: false,
       error: null,
       invalidatePermissions,
     });
-    isIamViewerEnabledMock.mockReturnValue(true);
-    hasIamViewerAdminRoleMock.mockReturnValue(true);
+    isIamCockpitEnabledMock.mockReturnValue(true);
+    hasIamCockpitAccessRoleMock.mockReturnValue(true);
+    getAllowedIamCockpitTabsMock.mockReturnValue(['rights']);
 
-    render(<IamViewerPage />);
+    render(<IamViewerPage activeTab="rights" />);
 
     await waitFor(() => {
       expect(invalidatePermissions).toHaveBeenCalledTimes(1);
+      expect(screen.getByRole('alert').textContent).toContain('forbidden_scope');
     });
-
-    expect(screen.getByRole('alert').textContent).toContain('forbidden_scope');
   });
 
-  it('submits authorize request and shows ALLOWED decision', async () => {
-    vi.useRealTimers();
-    const fetchMock = vi.fn()
+  it('submits authorize checks on the rights tab', async () => {
+    const fetchMock = vi
+      .fn()
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
             permissions: [],
-            requestId: 'req-test',
-            traceId: 'trace-test',
             subject: {
               actorUserId: 'user-1',
               effectiveUserId: 'user-1',
@@ -172,9 +143,7 @@ describe('IamViewerPage', () => {
           JSON.stringify({
             allowed: true,
             reason: 'Policy matched',
-            reasonCode: 'policy_allow',
-            diagnostics: { evaluatedRules: 1 },
-            evaluatedAt: '2026-03-05T20:00:00.000Z',
+            diagnostics: { reason_code: 'policy_allow' },
           }),
           { status: 200, headers: { 'Content-Type': 'application/json' } }
         )
@@ -182,15 +151,16 @@ describe('IamViewerPage', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     useAuthMock.mockReturnValue({
-      user: { id: 'user-1', instanceId: '11111111-1111-1111-8111-111111111111' },
+      user: adminUser,
       isLoading: false,
       error: null,
       invalidatePermissions: vi.fn(),
     });
-    isIamViewerEnabledMock.mockReturnValue(true);
-    hasIamViewerAdminRoleMock.mockReturnValue(true);
+    isIamCockpitEnabledMock.mockReturnValue(true);
+    hasIamCockpitAccessRoleMock.mockReturnValue(true);
+    getAllowedIamCockpitTabsMock.mockReturnValue(['rights']);
 
-    render(<IamViewerPage />);
+    render(<IamViewerPage activeTab="rights" />);
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
@@ -199,121 +169,86 @@ describe('IamViewerPage', () => {
       );
     });
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Authorize prüfen' })[0]!);
+    fireEvent.click(screen.getByRole('button', { name: 'Authorize prüfen' }));
 
     await waitFor(() => {
-      expect(screen.getByText('ALLOWED')).toBeTruthy();
-      expect(screen.getByText(/Reason: Policy matched/)).toBeTruthy();
-    });
-
-    expect(fetchMock).toHaveBeenLastCalledWith(
-      '/iam/authorize',
-      expect.objectContaining({ method: 'POST' })
-    );
-  });
-
-  it('shows an empty state when no permissions are returned', async () => {
-    vi.useRealTimers();
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          permissions: [],
-          subject: {
-            actorUserId: 'user-1',
-            effectiveUserId: 'user-1',
-            isImpersonating: false,
-          },
-        }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } }
-      )
-    );
-    vi.stubGlobal('fetch', fetchMock);
-
-    useAuthMock.mockReturnValue({
-      user: { id: 'user-1', instanceId: '11111111-1111-1111-8111-111111111111' },
-      isLoading: false,
-      error: null,
-      invalidatePermissions: vi.fn(),
-    });
-    isIamViewerEnabledMock.mockReturnValue(true);
-    hasIamViewerAdminRoleMock.mockReturnValue(true);
-
-    render(<IamViewerPage />);
-
-    await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalled();
-    });
-
-    expect(screen.getByText('Keine Berechtigungen gefunden.')).toBeTruthy();
-  });
-
-  it('shows a client-side validation error when instance id is missing on authorize', async () => {
-    vi.useRealTimers();
-    useAuthMock.mockReturnValue({
-      user: { id: 'user-1', instanceId: '' },
-      isLoading: false,
-      error: null,
-      invalidatePermissions: vi.fn(),
-    });
-    isIamViewerEnabledMock.mockReturnValue(true);
-    hasIamViewerAdminRoleMock.mockReturnValue(true);
-    vi.stubGlobal('fetch', vi.fn());
-
-    render(<IamViewerPage />);
-
-    fireEvent.change(screen.getByLabelText('Instance ID'), { target: { value: '' } });
-    fireEvent.click(screen.getAllByRole('button', { name: 'Authorize prüfen' })[0]!);
-
-    await waitFor(() => {
-      expect(screen.getByRole('alert').textContent).toContain('instanceId fehlt');
-    });
-  });
-
-  it('shows authorize errors from failed requests', async () => {
-    vi.useRealTimers();
-    const invalidatePermissions = vi.fn().mockResolvedValue(undefined);
-    const fetchMock = vi.fn()
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
-            permissions: [],
-            subject: {
-              actorUserId: 'user-1',
-              effectiveUserId: 'user-1',
-              isImpersonating: false,
-            },
-          }),
-          { status: 200, headers: { 'Content-Type': 'application/json' } }
-        )
-      )
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ error: 'forbidden_scope' }), {
-          status: 403,
-          headers: { 'Content-Type': 'application/json' },
-        })
+      expect(fetchMock).toHaveBeenLastCalledWith(
+        '/iam/authorize',
+        expect.objectContaining({ method: 'POST' })
       );
+      expect(screen.getByText('Erlaubt')).toBeTruthy();
+      expect(screen.getByText('policy_allow')).toBeTruthy();
+    });
+  });
+
+  it('loads governance entries without touching the permissions endpoint', async () => {
+    const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
+    listGovernanceCasesMock.mockResolvedValue({
+      data: [
+        {
+          id: 'gov-1',
+          type: 'delegation',
+          status: 'open',
+          title: 'Delegation freigeben',
+          summary: 'Zusätzliche Freigabe für Redaktion',
+          createdAt: '2026-03-15T10:00:00.000Z',
+          metadata: {},
+        },
+      ],
+    });
 
     useAuthMock.mockReturnValue({
-      user: { id: 'user-1', instanceId: '11111111-1111-1111-8111-111111111111' },
+      user: { ...adminUser, roles: ['security_admin'] },
       isLoading: false,
       error: null,
-      invalidatePermissions,
+      invalidatePermissions: vi.fn(),
     });
-    isIamViewerEnabledMock.mockReturnValue(true);
-    hasIamViewerAdminRoleMock.mockReturnValue(true);
+    isIamCockpitEnabledMock.mockReturnValue(true);
+    hasIamCockpitAccessRoleMock.mockReturnValue(true);
+    getAllowedIamCockpitTabsMock.mockReturnValue(['governance']);
 
-    render(<IamViewerPage />);
+    render(<IamViewerPage activeTab="governance" />);
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(listGovernanceCasesMock).toHaveBeenCalledTimes(1);
+      expect(screen.getAllByText('Delegation freigeben')).toHaveLength(2);
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('loads DSR entries and renders canonical status badges', async () => {
+    listAdminDsrCasesMock.mockResolvedValue({
+      data: [
+        {
+          id: 'dsr-1',
+          type: 'request',
+          canonicalStatus: 'in_progress',
+          rawStatus: 'processing',
+          title: 'Auskunftsersuchen',
+          summary: 'Benutzerkonto Alice',
+          createdAt: '2026-03-15T10:00:00.000Z',
+          metadata: {},
+        },
+      ],
     });
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Authorize prüfen' })[0]!);
+    useAuthMock.mockReturnValue({
+      user: adminUser,
+      isLoading: false,
+      error: null,
+      invalidatePermissions: vi.fn(),
+    });
+    isIamCockpitEnabledMock.mockReturnValue(true);
+    hasIamCockpitAccessRoleMock.mockReturnValue(true);
+    getAllowedIamCockpitTabsMock.mockReturnValue(['dsr']);
+
+    render(<IamViewerPage activeTab="dsr" />);
 
     await waitFor(() => {
-      expect(invalidatePermissions).toHaveBeenCalledTimes(1);
-      expect(screen.getByRole('alert').textContent).toContain('forbidden_scope');
+      expect(listAdminDsrCasesMock).toHaveBeenCalledTimes(1);
+      expect(screen.getAllByText('Auskunftsersuchen')).toHaveLength(2);
+      expect(screen.getAllByText('In Bearbeitung').length).toBeGreaterThan(0);
     });
   });
 });

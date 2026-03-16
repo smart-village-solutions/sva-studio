@@ -54,7 +54,7 @@ import { resolveUserDetail } from './user-detail-query';
 
 export { createUserInternal } from './user-create-handler';
 export { getMyProfileInternal, updateMyProfileInternal } from './profile-handlers';
-export { getUserInternal, listUsersInternal } from './user-read-handlers';
+export { getUserInternal, getUserTimelineInternal, listUsersInternal } from './user-read-handlers';
 export { syncUsersFromKeycloakInternal } from './user-import-sync-handler';
 
 type UpdateUserPayload = z.infer<typeof updateUserSchema>;

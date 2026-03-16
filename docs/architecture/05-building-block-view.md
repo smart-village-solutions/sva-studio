@@ -203,6 +203,17 @@ Neu hinzugekommene Bausteine im Change `add-iam-organization-management-hierarch
 5. `packages/auth/src/iam-authorization/shared.ts`
    - Transformiert DB-Permission-Zeilen in deduplizierte effektive Permissions inklusive `effect` und `scope`.
 
+### Ergänzung 2026-03: IAM-Transparenz-UI
+
+1. `apps/sva-studio-react/src/routes/admin/-iam-page.tsx`
+   - URL-gesteuertes Transparenz-Cockpit für `rights`, `governance` und `dsr`.
+2. `apps/sva-studio-react/src/routes/account/-account-privacy-page.tsx`
+   - Self-Service-Datenschutzansicht unter `/account/privacy` ohne eigenen Sidebar-Eintrag.
+3. `packages/core/src/iam/transparency-contract.ts`
+   - Getypte Read-Modelle für Governance-Feed, DSR-Feed, Self-Service-Übersicht und User-Timeline.
+4. `packages/auth/src/iam-governance/read-models.ts`, `packages/auth/src/iam-data-subject-rights/read-models.ts`, `packages/auth/src/iam-account-management/user-timeline-query.ts`
+   - Serverseitige Normalisierung der Transparenzdaten statt Roh-JSON aus Einzeltabellen.
+
 ### Ergänzung 2026-03: Manueller Keycloak-User-Import
 
 1. `packages/auth/src/iam-account-management/user-import-sync-handler.ts`

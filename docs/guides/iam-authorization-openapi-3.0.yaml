@@ -3,7 +3,8 @@ info:
   title: SVA IAM Authorization API
   version: 1.0.0
   description: |
-    OpenAPI-Spezifikation für IAM Authorization Child C.
+    OpenAPI-Spezifikation für IAM Authorization und die zugehörigen
+    Transparenz-Read-Modelle.
 servers:
   - url: https://api.example.com
     description: Beispiel-URL
@@ -18,13 +19,17 @@ paths:
           required: false
           schema:
             type: string
-            format: uuid
         - name: organizationId
           in: query
           required: false
           schema:
             type: string
             format: uuid
+        - name: actingAsUserId
+          in: query
+          required: false
+          schema:
+            type: string
       responses:
         '200':
           description: Erfolgreiche Antwort
@@ -108,7 +113,191 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/IamApiErrorResponse'
+  /iam/governance/workflows:
+    get:
+      summary: Normalisierten Governance-Feed lesen
+      operationId: listGovernanceCases
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - permission_change
+              - delegation
+              - impersonation
+              - legal_acceptance
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Erfolgreicher Governance-Feed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GovernanceCaseListResponse'
+  /iam/me/data-subject-rights/requests:
+    get:
+      summary: Self-Service-Datenschutzübersicht lesen
+      operationId: getMyDataSubjectRightsOverview
+      responses:
+        '200':
+          description: Erfolgreiche Self-Service-Übersicht
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DsrSelfServiceResponse'
+  /iam/admin/data-subject-rights/cases:
+    get:
+      summary: Normalisierten DSR-Admin-Feed lesen
+      operationId: listAdminDsrCases
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - request
+              - export_job
+              - legal_hold
+              - profile_correction
+              - recipient_notification
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/DsrCanonicalStatus'
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Erfolgreicher DSR-Admin-Feed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DsrCaseListResponse'
+  /api/v1/iam/legal-texts:
+    get:
+      summary: Verwaltete Rechtstext-Versionen lesen
+      operationId: listLegalTexts
+      responses:
+        '200':
+          description: Erfolgreiche Rechtstext-Liste
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LegalTextListResponse'
+    post:
+      summary: Neue Rechtstext-Version anlegen
+      operationId: createLegalText
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: X-Requested-With
+          in: header
+          required: true
+          schema:
+            type: string
+            enum: [XMLHttpRequest]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateLegalTextRequest'
+      responses:
+        '201':
+          description: Rechtstext-Version angelegt
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LegalTextItemResponse'
+  /api/v1/iam/legal-texts/{legalTextVersionId}:
+    patch:
+      summary: Rechtstext-Version aktualisieren
+      operationId: updateLegalText
+      parameters:
+        - name: legalTextVersionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: X-Requested-With
+          in: header
+          required: true
+          schema:
+            type: string
+            enum: [XMLHttpRequest]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateLegalTextRequest'
+      responses:
+        '200':
+          description: Rechtstext-Version aktualisiert
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LegalTextItemResponse'
+  /api/v1/iam/users/{userId}/timeline:
+    get:
+      summary: Vereinigte User-Timeline lesen
+      operationId: getUserTimeline
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Erfolgreiche Timeline-Antwort
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserTimelineResponse'
 components:
+  parameters:
+    Page:
+      name: page
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PageSize:
+      name: pageSize
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
   schemas:
     IamApiErrorResponse:
       type: object
@@ -139,7 +328,6 @@ components:
       properties:
         instanceId:
           type: string
-          format: uuid
         action:
           type: string
         resource:
@@ -225,11 +413,32 @@ components:
         organizationId:
           type: string
           format: uuid
+        effect:
+          type: string
+          enum:
+            - allow
+            - deny
+        scope:
+          type: object
+          additionalProperties: true
         sourceRoleIds:
           type: array
           items:
             type: string
             format: uuid
+    PermissionSubject:
+      type: object
+      required:
+        - actorUserId
+        - effectiveUserId
+        - isImpersonating
+      properties:
+        actorUserId:
+          type: string
+        effectiveUserId:
+          type: string
+        isImpersonating:
+          type: boolean
     MePermissionsResponse:
       type: object
       required:
@@ -239,7 +448,6 @@ components:
       properties:
         instanceId:
           type: string
-          format: uuid
         organizationId:
           type: string
           format: uuid
@@ -247,6 +455,8 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/EffectivePermission'
+        subject:
+          $ref: '#/components/schemas/PermissionSubject'
         evaluatedAt:
           type: string
           format: date-time
@@ -254,3 +464,324 @@ components:
           type: string
         traceId:
           type: string
+    GovernanceCase:
+      type: object
+      required:
+        - id
+        - type
+        - status
+        - title
+        - summary
+        - createdAt
+        - metadata
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum:
+            - permission_change
+            - delegation
+            - impersonation
+            - legal_acceptance
+        status:
+          type: string
+        title:
+          type: string
+        summary:
+          type: string
+        actorAccountId:
+          type: string
+        actorDisplayName:
+          type: string
+        targetAccountId:
+          type: string
+        targetDisplayName:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        metadata:
+          type: object
+          additionalProperties: true
+    GovernanceCaseListResponse:
+      type: object
+      required:
+        - data
+        - pagination
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/GovernanceCase'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+    DsrCanonicalStatus:
+      type: string
+      enum:
+        - queued
+        - in_progress
+        - completed
+        - blocked
+        - failed
+    DsrCase:
+      type: object
+      required:
+        - id
+        - type
+        - canonicalStatus
+        - rawStatus
+        - title
+        - summary
+        - createdAt
+        - metadata
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum:
+            - request
+            - export_job
+            - legal_hold
+            - profile_correction
+            - recipient_notification
+        canonicalStatus:
+          $ref: '#/components/schemas/DsrCanonicalStatus'
+        rawStatus:
+          type: string
+        title:
+          type: string
+        summary:
+          type: string
+        targetAccountId:
+          type: string
+        targetDisplayName:
+          type: string
+        requesterAccountId:
+          type: string
+        requesterDisplayName:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+        metadata:
+          type: object
+          additionalProperties: true
+    DsrSelfServiceOverview:
+      type: object
+      required:
+        - instanceId
+        - accountId
+        - nonEssentialProcessingAllowed
+        - legalHolds
+        - requests
+        - exportJobs
+      properties:
+        instanceId:
+          type: string
+        accountId:
+          type: string
+        processingRestrictedAt:
+          type: string
+          format: date-time
+        processingRestrictionReason:
+          type: string
+        nonEssentialProcessingOptOutAt:
+          type: string
+          format: date-time
+        nonEssentialProcessingAllowed:
+          type: boolean
+        legalHolds:
+          type: array
+          items:
+            $ref: '#/components/schemas/DsrCase'
+        requests:
+          type: array
+          items:
+            $ref: '#/components/schemas/DsrCase'
+        exportJobs:
+          type: array
+          items:
+            $ref: '#/components/schemas/DsrCase'
+    DsrSelfServiceResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/DsrSelfServiceOverview'
+    DsrCaseListResponse:
+      type: object
+      required:
+        - data
+        - pagination
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/DsrCase'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+    LegalTextListItem:
+      type: object
+      required:
+        - id
+        - legalTextId
+        - legalTextVersion
+        - locale
+        - contentHash
+        - isActive
+        - publishedAt
+        - createdAt
+        - acceptanceCount
+        - activeAcceptanceCount
+      properties:
+        id:
+          type: string
+          format: uuid
+        legalTextId:
+          type: string
+        legalTextVersion:
+          type: string
+        locale:
+          type: string
+        contentHash:
+          type: string
+        isActive:
+          type: boolean
+        publishedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        acceptanceCount:
+          type: integer
+        activeAcceptanceCount:
+          type: integer
+        lastAcceptedAt:
+          type: string
+          format: date-time
+    LegalTextListResponse:
+      type: object
+      required:
+        - data
+        - pagination
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/LegalTextListItem'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+        requestId:
+          type: string
+    LegalTextItemResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/LegalTextListItem'
+        requestId:
+          type: string
+    CreateLegalTextRequest:
+      type: object
+      required:
+        - legalTextId
+        - legalTextVersion
+        - locale
+        - contentHash
+      properties:
+        legalTextId:
+          type: string
+        legalTextVersion:
+          type: string
+        locale:
+          type: string
+        contentHash:
+          type: string
+        isActive:
+          type: boolean
+        publishedAt:
+          type: string
+          format: date-time
+    UpdateLegalTextRequest:
+      type: object
+      properties:
+        contentHash:
+          type: string
+        isActive:
+          type: boolean
+        publishedAt:
+          type: string
+          format: date-time
+    UserTimelineEvent:
+      type: object
+      required:
+        - id
+        - category
+        - eventType
+        - title
+        - description
+        - occurredAt
+        - perspective
+        - metadata
+      properties:
+        id:
+          type: string
+        category:
+          type: string
+          enum:
+            - iam
+            - governance
+            - dsr
+        eventType:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        occurredAt:
+          type: string
+          format: date-time
+        perspective:
+          type: string
+          enum:
+            - actor
+            - target
+            - actor_and_target
+        relatedEntityId:
+          type: string
+        metadata:
+          type: object
+          additionalProperties: true
+    UserTimelineResponse:
+      type: object
+      required:
+        - data
+        - pagination
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserTimelineEvent'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+    Pagination:
+      type: object
+      required:
+        - page
+        - pageSize
+        - total
+      properties:
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        total:
+          type: integer

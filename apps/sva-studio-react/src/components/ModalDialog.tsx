@@ -1,4 +1,7 @@
-import React from 'react';
+import * as DialogPrimitive from '@radix-ui/react-dialog';
+import * as React from 'react';
+
+import { cn } from '@/lib/utils';
 
 type ModalDialogProps = {
   readonly open: boolean;
@@ -9,9 +12,6 @@ type ModalDialogProps = {
   readonly children: React.ReactNode;
 };
 
-const FOCUSABLE_SELECTOR =
-  'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])';
-
 export const ModalDialog = ({
   open,
   title,
@@ -20,93 +20,54 @@ export const ModalDialog = ({
   onClose,
   children,
 }: ModalDialogProps) => {
-  const panelRef = React.useRef<HTMLDivElement>(null);
   const triggerRef = React.useRef<HTMLElement | null>(null);
   const previousOpenRef = React.useRef(false);
-  const onCloseRef = React.useRef(onClose);
-
-  React.useEffect(() => {
-    onCloseRef.current = onClose;
-  }, [onClose]);
 
   React.useEffect(() => {
     const wasOpen = previousOpenRef.current;
     previousOpenRef.current = open;
 
-    if (!open) {
-      if (wasOpen && triggerRef.current?.isConnected) {
-        triggerRef.current.focus();
-      }
-      return;
-    }
-
-    const panel = panelRef.current;
-    if (!panel) {
-      return;
-    }
-
-    if (!wasOpen) {
+    if (open && !wasOpen) {
       triggerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-
-      const focusables = panel.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
-      const first = focusables[0];
-      first?.focus();
+      return;
     }
 
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        onCloseRef.current();
-        return;
-      }
-
-      if (event.key !== 'Tab') {
-        return;
-      }
-
-      const currentFocusables = panel.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
-      if (currentFocusables.length === 0) {
-        return;
-      }
-
-      const firstFocusable = currentFocusables[0];
-      const lastFocusable = currentFocusables[currentFocusables.length - 1];
-
-      if (event.shiftKey && document.activeElement === firstFocusable) {
-        event.preventDefault();
-        lastFocusable.focus();
-      } else if (!event.shiftKey && document.activeElement === lastFocusable) {
-        event.preventDefault();
-        firstFocusable.focus();
-      }
-    };
-
-    panel.addEventListener('keydown', onKeyDown);
-    return () => {
-      panel.removeEventListener('keydown', onKeyDown);
-    };
+    if (!open && wasOpen && triggerRef.current?.isConnected) {
+      triggerRef.current.focus();
+    }
   }, [open]);
 
-  if (!open) {
-    return null;
-  }
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onMouseDown={onClose}>
-      <div
-        ref={panelRef}
-        role={role}
-        aria-modal="true"
-        aria-label={title}
-        className="w-full max-w-2xl rounded-xl border border-border bg-card p-6 shadow-2xl"
-        onMouseDown={(event) => event.stopPropagation()}
-      >
-        <header className="mb-4">
-          <h2 className="text-lg font-semibold text-foreground">{title}</h2>
-          {description ? <p className="mt-1 text-sm text-muted-foreground">{description}</p> : null}
-        </header>
-        {children}
-      </div>
-    </div>
+    <DialogPrimitive.Root open={open} onOpenChange={(nextOpen) => (!nextOpen ? onClose() : undefined)}>
+      <DialogPrimitive.Portal>
+        <div className="fixed inset-0 z-50" onMouseDown={onClose}>
+          <button
+            type="button"
+            aria-label={title}
+            data-slot="dialog-overlay"
+            className="fixed inset-0 bg-black/50 p-0"
+          />
+          <DialogPrimitive.Content
+            aria-describedby={description ? undefined : undefined}
+            aria-label={title}
+            role={role}
+            className={cn(
+              'fixed left-1/2 top-1/2 z-50 w-full max-w-2xl -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-card p-6 shadow-2xl focus-visible:outline-none'
+            )}
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <header className="mb-4">
+              <DialogPrimitive.Title className="text-lg font-semibold text-foreground">{title}</DialogPrimitive.Title>
+              {description ? (
+                <DialogPrimitive.Description className="mt-1 text-sm text-muted-foreground">
+                  {description}
+                </DialogPrimitive.Description>
+              ) : null}
+            </header>
+            {children}
+          </DialogPrimitive.Content>
+        </div>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
   );
 };

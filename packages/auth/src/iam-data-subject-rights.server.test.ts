@@ -89,6 +89,7 @@ import {
   dataExportStatusHandler,
   dataSubjectMaintenanceHandler,
   dataSubjectRequestHandler,
+  getMyDataSubjectRightsHandler,
   legalHoldApplyHandler,
   legalHoldReleaseHandler,
   optionalProcessingExecuteHandler,
@@ -249,6 +250,72 @@ describe('iam data subject rights handlers', () => {
 
     expect(response.status).toBe(404);
     expect(await response.json()).toEqual({ error: 'account_not_found' });
+  });
+
+  it('returns self-service dsr overview with instance-scoped account lookup', async () => {
+    state.queryHandler = (text) => {
+      if (text.includes('FROM iam.accounts a') && text.includes('JOIN iam.instance_memberships im')) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              id: '550e8400-e29b-41d4-a716-446655440000',
+              keycloak_subject: 'keycloak-sub-1',
+              email_ciphertext: null,
+              display_name_ciphertext: null,
+              is_blocked: false,
+              soft_deleted_at: null,
+              delete_after: null,
+              permanently_deleted_at: null,
+              processing_restricted_at: null,
+              processing_restriction_reason: null,
+              non_essential_processing_opt_out_at: null,
+              created_at: '2026-02-28T10:00:00.000Z',
+              updated_at: '2026-02-28T10:00:00.000Z',
+            },
+          ],
+        };
+      }
+      if (text.includes('SELECT id, processing_restricted_at::text')) {
+        expect(text).toContain('WHERE instance_id = $1');
+        expect(text).toContain('AND id = $2::uuid');
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              id: '550e8400-e29b-41d4-a716-446655440000',
+              processing_restricted_at: null,
+              processing_restriction_reason: null,
+              non_essential_processing_opt_out_at: null,
+            },
+          ],
+        };
+      }
+      if (text.includes('FROM iam.data_subject_requests')) {
+        return { rowCount: 0, rows: [] };
+      }
+      if (text.includes('FROM iam.data_subject_export_jobs')) {
+        return { rowCount: 0, rows: [] };
+      }
+      if (text.includes('FROM iam.legal_holds')) {
+        return { rowCount: 0, rows: [] };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await getMyDataSubjectRightsHandler(
+      new Request('http://localhost/iam/me/data-subject-rights/requests', { method: 'GET' })
+    );
+
+    expect(response.status).toBe(200);
+    const payload = (await response.json()) as {
+      data: { instanceId: string; accountId: string; requests: unknown[]; exportJobs: unknown[]; legalHolds: unknown[] };
+    };
+    expect(payload.data.instanceId).toBe('de-musterhausen');
+    expect(payload.data.accountId).toBe('550e8400-e29b-41d4-a716-446655440000');
+    expect(payload.data.requests).toEqual([]);
+    expect(payload.data.exportJobs).toEqual([]);
+    expect(payload.data.legalHolds).toEqual([]);
   });
 
   it('exports csv format with flattened key-value rows', async () => {

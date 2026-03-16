@@ -131,11 +131,15 @@ These rules are **NON-NEGOTIABLE** and must be followed in all development work.
 
 ### ✅ REQUIRED
 - All styles must use the centralized design system
+- Neue UI-Komponenten und neue UI-Flächen müssen auf `shadcn/ui` basieren
+- Bevorzugt bestehende `shadcn/ui`-Primitives und -Patterns wiederverwenden, statt parallele UI-Grundbausteine einzuführen
 - Use semantic tokens from `index.css` and `tailwind.config.ts`
 - Use Tailwind CSS classes with design system colors (HSL format)
 - Use component variants defined in shadcn components
 
 ### ❌ FORBIDDEN
+- Neue Basis-Komponentenbibliotheken oder konkurrierende UI-Primitives ohne dokumentierte Architekturentscheidung einführen
+- Eigenständige UI-Grundbausteine für Buttons, Dialoge, Inputs, Selects, Tabs oder ähnliche Standardmuster bauen, wenn `shadcn/ui` dafür geeignet ist
 - Inline styles (e.g., `style={{ color: '#fff' }}`)
 - Direct color values (e.g., `text-white`, `bg-black`)
 - Custom CSS without design system tokens
@@ -187,6 +191,10 @@ Inline styles are permitted ONLY when styling depends on dynamic data from the d
 - `tailwind.config.ts` - Tailwind configuration with semantic tokens
 - Component variants in shadcn UI components
 - `src/components/ui/issue-label.tsx` - Encapsulated dynamic label component
+
+**UI-Standard ab sofort:**
+- `shadcn/ui` ist der verbindliche Standard für neue UI-Entwicklung.
+- Abweichungen sind nur mit dokumentierter Architekturentscheidung (ADR/gleichwertig) zulässig.
 
 ---
 

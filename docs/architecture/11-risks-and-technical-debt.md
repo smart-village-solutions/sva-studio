@@ -188,3 +188,13 @@ Referenzen:
    - Impact: mittel (Verwaltungsaufwand, Neustarts bei jeder Änderung)
    - Wahrscheinlichkeit: mittel (bei Wachstum über 50 Instanzen)
    - Maßnahme: DB-gestützte `instanceId`-Registry als Folgearbeit geplant; Schwellwert dokumentiert in ADR-011 und Swarm-Deployment-Runbook
+
+25. Drift zwischen Transparenz-Read-Models und zugrunde liegenden IAM-Quellen
+   - Impact: hoch (Admin- und Compliance-Sichten zeigen unvollständige oder missverständlich normalisierte Daten)
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: Contract-Tests für Governance-/DSR-Mapper, synchrone Pflege von OpenSpec, API-Guide und OpenAPI sowie gezielte Review-Gates bei Feldänderungen
+
+26. Rollenmatrix-Drift zwischen Route-Guard, Tab-Gating und Backend-Reads
+   - Impact: hoch (Overexposure oder unnötige Deny-Zustände in sensiblen Transparenz-Views)
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: Access-Matrix in `packages/routing`, Frontend-Helpern und Server-Handlern gemeinsam testen; Änderungen nur mit Doku- und Testanpassung mergen

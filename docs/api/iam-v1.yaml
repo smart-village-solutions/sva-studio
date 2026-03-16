@@ -459,6 +459,84 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
+  /api/v1/iam/legal-texts:
+    get:
+      summary: Rechtstext-Versionen auflisten
+      responses:
+        '200':
+          description: Rechtstext-Liste.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LegalTextListResponse'
+    post:
+      summary: Rechtstext-Version anlegen
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema:
+            type: string
+        - in: header
+          name: X-Requested-With
+          required: true
+          schema:
+            type: string
+            enum: [XMLHttpRequest]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateLegalTextRequest'
+      responses:
+        '201':
+          description: Rechtstext-Version angelegt.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LegalTextItemResponse'
+        '409':
+          description: Idempotency-Key-Konflikt oder doppelte Version.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+  /api/v1/iam/legal-texts/{legalTextVersionId}:
+    patch:
+      summary: Rechtstext-Version aktualisieren
+      parameters:
+        - in: path
+          name: legalTextVersionId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: header
+          name: X-Requested-With
+          required: true
+          schema:
+            type: string
+            enum: [XMLHttpRequest]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateLegalTextRequest'
+      responses:
+        '200':
+          description: Rechtstext-Version aktualisiert.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LegalTextItemResponse'
+        '404':
+          description: Rechtstext-Version nicht gefunden.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
   /api/v1/iam/admin/reconcile:
     post:
       summary: Reconciliation (Placeholder)
@@ -635,6 +713,65 @@ components:
               format: uuid
             roleName:
               type: string
+    LegalText:
+      type: object
+      required:
+        [id, legalTextId, legalTextVersion, locale, contentHash, isActive, publishedAt, createdAt, acceptanceCount, activeAcceptanceCount]
+      properties:
+        id:
+          type: string
+          format: uuid
+        legalTextId:
+          type: string
+        legalTextVersion:
+          type: string
+        locale:
+          type: string
+        contentHash:
+          type: string
+        isActive:
+          type: boolean
+        publishedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        acceptanceCount:
+          type: integer
+        activeAcceptanceCount:
+          type: integer
+        lastAcceptedAt:
+          type: string
+          format: date-time
+    LegalTextListResponse:
+      type: object
+      required: [data, pagination]
+      properties:
+        requestId:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/LegalText'
+        pagination:
+          type: object
+          required: [page, pageSize, total]
+          properties:
+            page:
+              type: integer
+            pageSize:
+              type: integer
+            total:
+              type: integer
+    LegalTextItemResponse:
+      type: object
+      required: [data]
+      properties:
+        requestId:
+          type: string
+        data:
+          $ref: '#/components/schemas/LegalText'
     BulkDeactivateResponse:
       type: object
       required: [data]
@@ -772,3 +909,31 @@ components:
           items:
             type: string
             format: uuid
+    CreateLegalTextRequest:
+      type: object
+      required: [legalTextId, legalTextVersion, locale, contentHash]
+      properties:
+        legalTextId:
+          type: string
+        legalTextVersion:
+          type: string
+        locale:
+          type: string
+        contentHash:
+          type: string
+        isActive:
+          type: boolean
+        publishedAt:
+          type: string
+          format: date-time
+    UpdateLegalTextRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        contentHash:
+          type: string
+        isActive:
+          type: boolean
+        publishedAt:
+          type: string
+          format: date-time

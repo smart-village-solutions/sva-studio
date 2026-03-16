@@ -43,9 +43,10 @@ Das IAM speichert heute bereits Governance-Workflows, Betroffenenrechtsfälle, s
 - Entscheidung: Zugriff wird über eine verbindliche Access-Matrix auf Route-, Tab- und Feld-/Detail-Ebene abgesichert.
   - Begründung: Least-Privilege und Privacy-by-Default für Governance-/DSR-Daten.
   - Matrix-Minimum:
-    - `/admin/iam` Tab `Rechte`: `iam_admin` oder gleichwertig
-    - `/admin/iam` Tab `Governance`: `iam_admin` oder `governance_case_worker`
-    - `/admin/iam` Tab `Betroffenenrechte`: `iam_admin` oder `dsr_case_worker`
+    - Route `/admin/iam`: `iam_admin`, `support_admin`, `system_admin`
+    - Tab `Rechte`: `iam_admin`, `support_admin`, `system_admin`
+    - Tab `Governance` lesen: `iam_admin`, `support_admin`, `system_admin`, `security_admin`, `compliance_officer`
+    - Tab `Betroffenenrechte`: `iam_admin`, `support_admin`, `system_admin`
     - `/account/privacy`: nur eigenes Subjekt, keine Fremddaten
 
 - Entscheidung: Diagnose- und Transparenzfelder folgen einem stabilen Exposition-Contract (Allowlist, keine Roh-Interna).
@@ -93,4 +94,4 @@ Das IAM speichert heute bereits Governance-Workflows, Betroffenenrechtsfälle, s
 
 ## Open Questions
 
-- Soll die Nutzerhistorie nur `iam.activity_logs` zeigen oder zusätzlich Governance-/DSR-Ereignisse logisch zusammenführen?
+- Nutzerhistorie: Die UI zeigt eine vereinte Actor+Target-Timeline aus `iam.activity_logs` plus normalisierten Governance-/DSR-Quellen, damit Support- und Compliance-Kontext nicht über mehrere Screens rekonstruiert werden muss.

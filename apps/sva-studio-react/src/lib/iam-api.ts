@@ -2,12 +2,18 @@ import type {
   ApiErrorResponse,
   ApiItemResponse,
   ApiListResponse,
+  IamDsrCanonicalStatus,
+  IamDsrCaseListItem,
+  IamDsrSelfServiceOverview,
+  IamGovernanceCaseListItem,
+  IamLegalTextListItem,
   IamOrganizationContext,
   IamOrganizationDetail,
   IamOrganizationListItem,
   IamOrganizationMembershipVisibility,
   IamOrganizationType,
   IamRoleListItem,
+  IamUserTimelineEvent,
   IamUserDetail,
   IamUserImportSyncReport,
   IamUserListItem,
@@ -172,6 +178,21 @@ export type UpdateRolePayload = {
   readonly retrySync?: boolean;
 };
 
+export type CreateLegalTextPayload = {
+  readonly legalTextId: string;
+  readonly legalTextVersion: string;
+  readonly locale: string;
+  readonly contentHash: string;
+  readonly isActive?: boolean;
+  readonly publishedAt?: string;
+};
+
+export type UpdateLegalTextPayload = {
+  readonly contentHash?: string;
+  readonly isActive?: boolean;
+  readonly publishedAt?: string;
+};
+
 export type RoleReconcileEntry = {
   readonly roleId?: string;
   readonly roleKey?: string;
@@ -214,6 +235,22 @@ export type AssignOrganizationMembershipPayload = {
   readonly accountId: string;
   readonly isDefaultContext?: boolean;
   readonly visibility?: IamOrganizationMembershipVisibility;
+};
+
+export type GovernanceCasesQuery = {
+  readonly page: number;
+  readonly pageSize: number;
+  readonly type?: IamGovernanceCaseListItem['type'];
+  readonly status?: string;
+  readonly search?: string;
+};
+
+export type DsrAdminCasesQuery = {
+  readonly page: number;
+  readonly pageSize: number;
+  readonly type?: IamDsrCaseListItem['type'];
+  readonly status?: IamDsrCanonicalStatus;
+  readonly search?: string;
 };
 
 const createIdempotencyKey = () => crypto.randomUUID();
@@ -319,6 +356,9 @@ export const listUsers = async (query: UsersQuery): Promise<ApiListResponse<IamU
 export const getUser = async (userId: string): Promise<ApiItemResponse<IamUserDetail>> =>
   requestJson<ApiItemResponse<IamUserDetail>>(`/api/v1/iam/users/${userId}`);
 
+export const getUserTimeline = async (userId: string): Promise<ApiListResponse<IamUserTimelineEvent>> =>
+  requestJson<ApiListResponse<IamUserTimelineEvent>>(`/api/v1/iam/users/${userId}/timeline`);
+
 export const createUser = async (payload: CreateUserPayload): Promise<ApiItemResponse<IamUserDetail>> =>
   postJson<ApiItemResponse<IamUserDetail>, CreateUserPayload>('/api/v1/iam/users', payload, true);
 
@@ -360,6 +400,9 @@ export const updateMyProfile = async (
 
 export const listRoles = async (): Promise<ApiListResponse<IamRoleListItem>> =>
   requestJson<ApiListResponse<IamRoleListItem>>('/api/v1/iam/roles');
+
+export const listLegalTexts = async (): Promise<ApiListResponse<IamLegalTextListItem>> =>
+  requestJson<ApiListResponse<IamLegalTextListItem>>('/api/v1/iam/legal-texts');
 
 export const listOrganizations = async (
   query: OrganizationsQuery
@@ -442,8 +485,22 @@ export const createRole = async (
 ): Promise<ApiItemResponse<IamRoleListItem>> =>
   postJson<ApiItemResponse<IamRoleListItem>, CreateRolePayload>('/api/v1/iam/roles', payload, true);
 
+export const createLegalText = async (
+  payload: CreateLegalTextPayload
+): Promise<ApiItemResponse<IamLegalTextListItem>> =>
+  postJson<ApiItemResponse<IamLegalTextListItem>, CreateLegalTextPayload>('/api/v1/iam/legal-texts', payload, true);
+
 export const updateRole = async (roleId: string, payload: UpdateRolePayload): Promise<ApiItemResponse<IamRoleListItem>> =>
   patchJson<ApiItemResponse<IamRoleListItem>, UpdateRolePayload>(`/api/v1/iam/roles/${roleId}`, payload);
+
+export const updateLegalText = async (
+  legalTextVersionId: string,
+  payload: UpdateLegalTextPayload
+): Promise<ApiItemResponse<IamLegalTextListItem>> =>
+  patchJson<ApiItemResponse<IamLegalTextListItem>, UpdateLegalTextPayload>(
+    `/api/v1/iam/legal-texts/${legalTextVersionId}`,
+    payload
+  );
 
 export const deleteRole = async (roleId: string): Promise<ApiItemResponse<{ id: string }>> =>
   requestJson<ApiItemResponse<{ id: string }>>(`/api/v1/iam/roles/${roleId}`, {
@@ -457,3 +514,89 @@ export const reconcileRoles = async (): Promise<ApiItemResponse<RoleReconcileRep
     headers: IAM_HEADERS,
     body: JSON.stringify({}),
   });
+
+export const listGovernanceCases = async (
+  query: GovernanceCasesQuery
+): Promise<ApiListResponse<IamGovernanceCaseListItem>> => {
+  const params = new URLSearchParams({
+    page: String(query.page),
+    pageSize: String(query.pageSize),
+  });
+
+  if (query.type) {
+    params.set('type', query.type);
+  }
+  if (query.status) {
+    params.set('status', query.status);
+  }
+  if (query.search) {
+    params.set('search', query.search);
+  }
+
+  return requestJson<ApiListResponse<IamGovernanceCaseListItem>>(`/iam/governance/workflows?${params.toString()}`);
+};
+
+export const getMyDataSubjectRights = async (): Promise<ApiItemResponse<IamDsrSelfServiceOverview>> =>
+  requestJson<ApiItemResponse<IamDsrSelfServiceOverview>>('/iam/me/data-subject-rights/requests');
+
+export const createDataSubjectRequest = async (payload: {
+  readonly instanceId?: string;
+  readonly type: 'access' | 'deletion' | 'restriction' | 'objection';
+  readonly payload?: Readonly<Record<string, unknown>>;
+}): Promise<ApiItemResponse<{ requestId: string; status: string }>> =>
+  postJson<ApiItemResponse<{ requestId: string; status: string }>, typeof payload>(
+    '/iam/me/data-subject-rights/requests',
+    payload
+  );
+
+export const requestDataExport = async (input: {
+  readonly format: 'json' | 'csv' | 'xml';
+  readonly async: boolean;
+}): Promise<
+  | ApiItemResponse<{ exportJobId: string; status: string; format: string }>
+  | { exportJobId?: undefined; status?: undefined; format?: undefined; data?: unknown }
+> => {
+  const params = new URLSearchParams({
+    format: input.format,
+  });
+  if (input.async) {
+    params.set('async', 'true');
+  }
+
+  return requestJson(`/iam/me/data-export?${params.toString()}`);
+};
+
+export const getDataExportStatus = async (
+  jobId: string
+): Promise<ApiItemResponse<{ id: string; format: string; status: string; createdAt: string; completedAt?: string; errorMessage?: string }>> =>
+  requestJson(`/iam/me/data-export/status?jobId=${encodeURIComponent(jobId)}`);
+
+export const checkOptionalProcessing = async (): Promise<
+  ApiItemResponse<{ status: 'ok'; executed: true }> | { error: string; blockedByRestriction?: boolean; blockedByObjection?: boolean }
+> =>
+  requestJson('/iam/me/optional-processing/execute', {
+    method: 'POST',
+    headers: IAM_HEADERS,
+    body: JSON.stringify({}),
+  });
+
+export const listAdminDsrCases = async (
+  query: DsrAdminCasesQuery
+): Promise<ApiListResponse<IamDsrCaseListItem>> => {
+  const params = new URLSearchParams({
+    page: String(query.page),
+    pageSize: String(query.pageSize),
+  });
+
+  if (query.type) {
+    params.set('type', query.type);
+  }
+  if (query.status) {
+    params.set('status', query.status);
+  }
+  if (query.search) {
+    params.set('search', query.search);
+  }
+
+  return requestJson<ApiListResponse<IamDsrCaseListItem>>(`/iam/admin/data-subject-rights/cases?${params.toString()}`);
+};

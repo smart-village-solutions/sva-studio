@@ -6,6 +6,7 @@ export type {
   ApiErrorCode,
   ApiErrorResponse,
   IamContentAuthorPolicy,
+  IamLegalTextListItem,
   IamOrganizationChildItem,
   IamOrganizationContext,
   IamOrganizationContextOption,
@@ -25,6 +26,17 @@ export type {
   IamUserListItem,
   IamUserRoleAssignment,
 } from './account-management-contract';
+export type {
+  IamDsrCanonicalStatus,
+  IamDsrCaseListItem,
+  IamDsrCaseType,
+  IamDsrSelfServiceOverview,
+  IamGovernanceCaseListItem,
+  IamGovernanceCaseType,
+  IamUserTimelineEvent,
+  IamUserTimelineEventCategory,
+  IamUserTimelinePerspective,
+} from './transparency-contract';
 export type {
   AllowReasonCode,
   AuthorizeRequest,

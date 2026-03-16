@@ -1,7 +1,14 @@
 import type { IamUserDetail } from '@sva/core';
+import { Link } from '@tanstack/react-router';
 import React from 'react';
 
 import { asIamError, getMyProfile, IamHttpError, updateMyProfile } from '../../lib/iam-api';
+import { Alert, AlertDescription, AlertTitle } from '../../components/ui/alert';
+import { Button } from '../../components/ui/button';
+import { Card, CardContent } from '../../components/ui/card';
+import { Input } from '../../components/ui/input';
+import { Label } from '../../components/ui/label';
+import { Select } from '../../components/ui/select';
 import { t } from '../../i18n';
 import { notifyIamUsersUpdated } from '../../lib/iam-user-events';
 import { useAuth } from '../../providers/auth-provider';
@@ -213,9 +220,9 @@ export const AccountProfilePage = () => {
 
   if (!isAuthenticated && !profile) {
     return (
-      <div className="rounded-xl border border-secondary/40 bg-secondary/10 p-4 text-sm text-secondary" role="status">
-        {t('account.messages.notAuthenticated')}
-      </div>
+      <Alert className="border-secondary/40 bg-secondary/10 text-sm text-secondary" role="status">
+        <AlertDescription>{t('account.messages.notAuthenticated')}</AlertDescription>
+      </Alert>
     );
   }
 
@@ -223,16 +230,14 @@ export const AccountProfilePage = () => {
     return (
       <section className="space-y-4">
         <h1 className="text-3xl font-semibold text-foreground">{t('account.profile.title')}</h1>
-        <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive" role="alert">
-          <p>{t('account.messages.loadError')}</p>
-          <button
-            type="button"
-            className="mt-3 rounded-md border border-destructive/40 bg-background px-3 py-2 text-xs font-semibold uppercase tracking-wide text-destructive transition hover:bg-muted"
-            onClick={() => void loadProfile()}
-          >
-            {t('account.actions.retry')}
-          </button>
-        </div>
+        <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
+          <AlertTitle>{t('account.messages.loadError')}</AlertTitle>
+          <AlertDescription className="mt-3">
+            <Button type="button" variant="outline" onClick={() => void loadProfile()}>
+              {t('account.actions.retry')}
+            </Button>
+          </AlertDescription>
+        </Alert>
       </section>
     );
   }
@@ -246,166 +251,175 @@ export const AccountProfilePage = () => {
         <p className="max-w-2xl text-sm text-muted-foreground">{t('account.profile.subtitle')}</p>
       </header>
 
-      <div className="grid gap-4 rounded-xl border border-border bg-card p-4 text-sm text-foreground shadow-shell sm:grid-cols-2">
-        <p>
+      <Card>
+        <CardContent className="grid gap-4 p-4 text-sm text-foreground sm:grid-cols-2">
+          <p>
           <span className="font-semibold">{t('account.fields.username')}: </span>
           {profile?.username ?? profile?.email ?? '-'}
-        </p>
-        <p>
+          </p>
+          <p>
           <span className="font-semibold">{t('account.fields.email')}: </span>
           {profile?.email ?? user?.email ?? '-'}
-        </p>
-        <p>
+          </p>
+          <p>
           <span className="font-semibold">{t('account.fields.role')}: </span>
           {profile?.roles.map((role) => role.roleName).join(', ') || '-'}
-        </p>
-        <p>
+          </p>
+          <p>
           <span className="font-semibold">{t('account.fields.status')}: </span>
           {t(statusKey)}
-        </p>
-        <p>
+          </p>
+          <p>
           <span className="font-semibold">{t('account.fields.lastLogin')}: </span>
           {profile?.lastLoginAt ?? '-'}
-        </p>
-      </div>
+          </p>
+        </CardContent>
+      </Card>
 
       {Object.keys(validationErrors).length > 0 ? (
-        <div
+        <Alert
           ref={errorSummaryRef}
           tabIndex={-1}
-          role="alert"
-          className="rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive"
+          className="border-destructive/40 bg-destructive/10 text-destructive"
         >
-          <p className="font-semibold">{t('account.messages.validationSummary')}</p>
+          <AlertTitle>{t('account.messages.validationSummary')}</AlertTitle>
           <ul className="mt-2 list-disc space-y-1 pl-5">
             {Object.values(validationErrors).map((message) => (
               <li key={message}>{message}</li>
             ))}
           </ul>
-        </div>
+        </Alert>
       ) : null}
 
       {saveError ? (
-        <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive" role="alert">
-          {t('account.messages.saveError')}
-        </div>
+        <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
+          <AlertDescription>{t('account.messages.saveError')}</AlertDescription>
+        </Alert>
       ) : null}
       {saveSuccess ? (
-        <div
+        <Alert
           ref={successMessageRef}
           tabIndex={-1}
-          className="rounded-xl border border-primary/40 bg-primary/10 p-4 text-sm text-primary"
+          className="border-primary/40 bg-primary/10 text-primary"
           role="status"
         >
-          {t('account.messages.saveSuccess')}
-        </div>
+          <AlertDescription>{t('account.messages.saveSuccess')}</AlertDescription>
+        </Alert>
       ) : null}
 
+      <Card className="border-secondary/40 bg-secondary/10">
+        <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-foreground">{t('account.privacy.cta.title')}</h2>
+            <p className="text-sm text-muted-foreground">{t('account.privacy.cta.body')}</p>
+          </div>
+          <Button asChild variant="outline">
+            <Link to="/account/privacy">{t('account.privacy.cta.action')}</Link>
+          </Button>
+        </CardContent>
+      </Card>
+
       <form className="grid gap-4 md:grid-cols-2" onSubmit={onSubmit} noValidate>
-        <label className="flex flex-col gap-2 text-sm text-foreground">
-          <span>{t('account.fields.username')}</span>
-          <input
+        <div className="grid gap-2 text-sm text-foreground">
+          <Label htmlFor="account-username">{t('account.fields.username')}</Label>
+          <Input
+            id="account-username"
             autoComplete="username"
             value={formValues.username}
             onChange={(event) => onFieldChange('username', event.target.value)}
-            className="rounded-md border border-border bg-background px-3 py-2"
             aria-invalid={Boolean(validationErrors.username)}
           />
-        </label>
-        <label className="flex flex-col gap-2 text-sm text-foreground">
-          <span>{t('account.fields.email')}</span>
-          <input
+        </div>
+        <div className="grid gap-2 text-sm text-foreground">
+          <Label htmlFor="account-email">{t('account.fields.email')}</Label>
+          <Input
+            id="account-email"
             type="email"
             autoComplete="email"
             value={formValues.email}
             onChange={(event) => onFieldChange('email', event.target.value)}
-            className="rounded-md border border-border bg-background px-3 py-2"
             aria-invalid={Boolean(validationErrors.email)}
           />
-        </label>
-        <label className="flex flex-col gap-2 text-sm text-foreground">
-          <span>{t('account.fields.firstName')}</span>
-          <input
+        </div>
+        <div className="grid gap-2 text-sm text-foreground">
+          <Label htmlFor="account-first-name">{t('account.fields.firstName')}</Label>
+          <Input
+            id="account-first-name"
             autoComplete="given-name"
             value={formValues.firstName}
             onChange={(event) => onFieldChange('firstName', event.target.value)}
-            className="rounded-md border border-border bg-background px-3 py-2"
             aria-invalid={Boolean(validationErrors.firstName)}
           />
-        </label>
-        <label className="flex flex-col gap-2 text-sm text-foreground">
-          <span>{t('account.fields.lastName')}</span>
-          <input
+        </div>
+        <div className="grid gap-2 text-sm text-foreground">
+          <Label htmlFor="account-last-name">{t('account.fields.lastName')}</Label>
+          <Input
+            id="account-last-name"
             autoComplete="family-name"
             value={formValues.lastName}
             onChange={(event) => onFieldChange('lastName', event.target.value)}
-            className="rounded-md border border-border bg-background px-3 py-2"
             aria-invalid={Boolean(validationErrors.lastName)}
           />
-        </label>
-        <label className="flex flex-col gap-2 text-sm text-foreground">
-          <span>{t('account.fields.displayName')}</span>
-          <input
+        </div>
+        <div className="grid gap-2 text-sm text-foreground">
+          <Label htmlFor="account-display-name">{t('account.fields.displayName')}</Label>
+          <Input
+            id="account-display-name"
             autoComplete="name"
             value={formValues.displayName}
             onChange={(event) => onFieldChange('displayName', event.target.value)}
-            className="rounded-md border border-border bg-background px-3 py-2"
           />
-        </label>
-        <label className="flex flex-col gap-2 text-sm text-foreground">
-          <span>{t('account.fields.phone')}</span>
-          <input
+        </div>
+        <div className="grid gap-2 text-sm text-foreground">
+          <Label htmlFor="account-phone">{t('account.fields.phone')}</Label>
+          <Input
+            id="account-phone"
             autoComplete="tel"
             value={formValues.phone}
             onChange={(event) => onFieldChange('phone', event.target.value)}
-            className="rounded-md border border-border bg-background px-3 py-2"
             aria-invalid={Boolean(validationErrors.phone)}
           />
-        </label>
-        <label className="flex flex-col gap-2 text-sm text-foreground">
-          <span>{t('account.fields.position')}</span>
-          <input
+        </div>
+        <div className="grid gap-2 text-sm text-foreground">
+          <Label htmlFor="account-position">{t('account.fields.position')}</Label>
+          <Input
+            id="account-position"
             value={formValues.position}
             onChange={(event) => onFieldChange('position', event.target.value)}
-            className="rounded-md border border-border bg-background px-3 py-2"
           />
-        </label>
-        <label className="flex flex-col gap-2 text-sm text-foreground">
-          <span>{t('account.fields.department')}</span>
-          <input
+        </div>
+        <div className="grid gap-2 text-sm text-foreground">
+          <Label htmlFor="account-department">{t('account.fields.department')}</Label>
+          <Input
+            id="account-department"
             value={formValues.department}
             onChange={(event) => onFieldChange('department', event.target.value)}
-            className="rounded-md border border-border bg-background px-3 py-2"
           />
-        </label>
-        <label className="flex flex-col gap-2 text-sm text-foreground">
-          <span>{t('account.fields.language')}</span>
-          <select
+        </div>
+        <div className="grid gap-2 text-sm text-foreground">
+          <Label htmlFor="account-language">{t('account.fields.language')}</Label>
+          <Select
+            id="account-language"
             value={formValues.preferredLanguage}
             onChange={(event) => onFieldChange('preferredLanguage', event.target.value)}
-            className="rounded-md border border-border bg-background px-3 py-2"
           >
             <option value="de">Deutsch</option>
             <option value="en">English</option>
-          </select>
-        </label>
-        <label className="flex flex-col gap-2 text-sm text-foreground">
-          <span>{t('account.fields.timezone')}</span>
-          <input
+          </Select>
+        </div>
+        <div className="grid gap-2 text-sm text-foreground">
+          <Label htmlFor="account-timezone">{t('account.fields.timezone')}</Label>
+          <Input
+            id="account-timezone"
             value={formValues.timezone}
             onChange={(event) => onFieldChange('timezone', event.target.value)}
-            className="rounded-md border border-border bg-background px-3 py-2"
           />
-        </label>
+        </div>
 
         <div className="md:col-span-2 flex flex-wrap items-center gap-3">
-          <button
-            type="submit"
-            className="rounded-md border border-primary/40 bg-primary/15 px-4 py-2 text-sm font-semibold text-primary"
-            disabled={isSaving}
-          >
+          <Button type="submit" disabled={isSaving}>
             {isSaving ? t('account.actions.saving') : t('account.actions.save')}
-          </button>
+          </Button>
         </div>
       </form>
     </section>

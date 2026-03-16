@@ -138,3 +138,18 @@ Zuordnung:
 - Abschnitt 03/04 (Kontext/Strategie): ADR-021
 - Abschnitt 05/06 (Bausteine/Laufzeit): ADR-021
 - Abschnitt 08 (Querschnitt): ADR-021
+
+### Fortschreibung 2026-03: IAM-Transparenz-UI ohne neue ADR
+
+- Für `add-iam-transparency-ui` war keine neue ADR erforderlich.
+  - Routing über `/admin/iam?tab=...` und `/account/privacy` ist eine UI-spezifische Konkretisierung bestehender Account-UI- und Routing-Patterns.
+  - Getypte Transparenz-Read-Modelle und serverseitige Normalisierung folgen bereits den Leitplanken aus ADR-012, ADR-013, ADR-017 und ADR-018.
+- Die maßgeblichen Architekturentscheidungen bleiben daher:
+  - ADR-012 und ADR-013 für Permission- und Governance-Semantik
+  - ADR-017 für die modulare Zerlegung der Auth-/IAM-Serverbausteine
+  - ADR-018 für Fehlervertrag und korrelierbare Transparenz-Reads
+
+Zuordnung:
+
+- Abschnitt 04/05/06/08: ADR-012, ADR-013, ADR-017, ADR-018
+- Abschnitt 09: dokumentiert explizit, dass die Transparenz-UI eine Fortschreibung vorhandener Entscheidungen ist und kein neues Architekturpattern einführt

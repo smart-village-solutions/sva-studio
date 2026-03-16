@@ -33,6 +33,7 @@ import type { UserStatus } from './types';
 import { USER_STATUS } from './types';
 import { resolveUserDetail } from './user-detail-query';
 import { resolveUsersWithPagination } from './user-list-query';
+import { resolveUserTimeline } from './user-timeline-query';
 
 const mapProjectedRoles = (
   roles: Awaited<ReturnType<typeof resolveRolesByExternalNames>>
@@ -250,6 +251,56 @@ export const getUserInternal = async (
       503,
       'database_unavailable',
       'IAM-Datenbank ist nicht erreichbar.',
+      actorResolution.actor.requestId
+    );
+  }
+};
+
+export const getUserTimelineInternal = async (
+  request: Request,
+  ctx: AuthenticatedRequestContext
+): Promise<Response> => {
+  const requestContext = getWorkspaceContext();
+  const featureCheck = ensureFeature(getFeatureFlags(), 'iam_admin', requestContext.requestId);
+  if (featureCheck) {
+    return featureCheck;
+  }
+  const roleCheck = requireRoles(ctx, ADMIN_ROLES, requestContext.requestId);
+  if (roleCheck) {
+    return roleCheck;
+  }
+  const actorResolution = await resolveActorInfo(request, ctx, {
+    requireActorMembership: true,
+    provisionMissingActorMembership: true,
+  });
+  if ('error' in actorResolution) {
+    return actorResolution.error;
+  }
+  const userId = readPathSegment(request, 4);
+  if (!userId || !isUuid(userId)) {
+    return createApiError(400, 'invalid_request', 'Ungültige userId.', actorResolution.actor.requestId);
+  }
+
+  try {
+    const events = await withInstanceScopedDb(actorResolution.actor.instanceId, (client) =>
+      resolveUserTimeline(client, {
+        instanceId: actorResolution.actor.instanceId,
+        userId,
+      })
+    );
+    return jsonResponse(200, asApiList(events, { page: 1, pageSize: events.length || 1, total: events.length }, actorResolution.actor.requestId));
+  } catch (error) {
+    logger.error('IAM user timeline failed', {
+      operation: 'get_user_timeline',
+      instance_id: actorResolution.actor.instanceId,
+      request_id: actorResolution.actor.requestId,
+      trace_id: actorResolution.actor.traceId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return createApiError(
+      503,
+      'database_unavailable',
+      'IAM-Historie ist nicht erreichbar.',
       actorResolution.actor.requestId
     );
   }

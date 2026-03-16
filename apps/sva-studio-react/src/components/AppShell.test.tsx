@@ -3,30 +3,43 @@
  */
 import { cleanup, render, screen } from '@testing-library/react';
 import React from 'react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import AppShell from './AppShell';
+
+const useAuthMock = vi.fn();
 
 /**
  * Mockt den TanStack-Link für DOM-basierte Komponententests.
  */
 vi.mock('@tanstack/react-router', () => ({
-  Link: ({ to, children, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { to: string }) => (
+  useRouterState: (options?: { select?: (state: { location: { pathname: string } }) => unknown }) => {
+    const state = { location: { pathname: '/' } };
+    return options?.select ? options.select(state) : state;
+  },
+  Link: ({ to, children, activeOptions, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { to: string; activeOptions?: unknown }) => (
+    (() => {
+      void activeOptions;
+      return (
     <a href={to} {...props}>
       {children}
     </a>
+      );
+    })()
   ),
 }));
 
 vi.mock('../providers/auth-provider', () => ({
-  useAuth: () => ({
-    user: null,
-    isAuthenticated: false,
-    isLoading: false,
-    error: null,
-    refetch: vi.fn(),
-    logout: vi.fn(),
-    invalidatePermissions: vi.fn(),
+  useAuth: () => useAuthMock(),
+}));
+
+vi.mock('../providers/theme-provider', () => ({
+  useTheme: () => ({
+    mode: 'light',
+    themeName: 'sva-default',
+    themeLabel: 'SVA Studio',
+    setMode: vi.fn(),
+    toggleMode: vi.fn(),
   }),
 }));
 
@@ -35,6 +48,31 @@ vi.mock('../providers/auth-provider', () => ({
  */
 afterEach(() => {
   cleanup();
+  useAuthMock.mockReset();
+});
+
+beforeEach(() => {
+  useAuthMock.mockReturnValue({
+    user: {
+      id: 'user-1',
+      name: 'Admin',
+      roles: ['system_admin'],
+    },
+    isAuthenticated: true,
+    isLoading: false,
+    error: null,
+    refetch: vi.fn(),
+    logout: vi.fn(),
+    invalidatePermissions: vi.fn(),
+  });
+  Object.defineProperty(window, 'localStorage', {
+    configurable: true,
+    value: {
+      getItem: () => null,
+      setItem: vi.fn(),
+      removeItem: vi.fn(),
+    },
+  });
 });
 
 /**
@@ -62,5 +100,27 @@ describe('AppShell', () => {
 
     expect(screen.getByLabelText('Inhalt lädt')).toBeTruthy();
     expect(screen.queryByText('Inhalt')).toBeNull();
+  });
+
+  it('versteckt die Sidebar fuer nicht eingeloggte Nutzer', () => {
+    useAuthMock.mockReturnValue({
+      user: null,
+      isAuthenticated: false,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      logout: vi.fn(),
+      invalidatePermissions: vi.fn(),
+    });
+
+    render(
+      <AppShell>
+        <div>Inhalt</div>
+      </AppShell>
+    );
+
+    expect(screen.queryByLabelText('Seitenleiste')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Navigation öffnen' })).toBeNull();
+    expect(screen.getByRole('main')).toBeTruthy();
   });
 });

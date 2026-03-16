@@ -39,7 +39,7 @@ test('GET / returns 200 and renders app shell', async ({ page }) => {
   const response = await page.goto('/');
   expect(response).not.toBeNull();
   expect(response!.status()).toBeLessThan(400);
-  await expect(page.getByRole('link', { name: 'SVA Studio' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'SVA Studio' })).toBeVisible();
 });
 
 test('GET /demo returns 200', async ({ page }) => {

@@ -254,6 +254,19 @@ Fehlerpfad:
 - Fehlen strukturierte Felder noch in Alt-Daten, greift der Kompatibilitätspfad über `permission_key`.
 - Widersprechen `allow` und `deny`, gewinnt deterministisch die restriktivere Regel.
 
+### Ergänzung 2026-03: IAM-Transparenz-Cockpit und Privacy-Self-Service
+
+1. Admin öffnet `/admin/iam?tab=rights|governance|dsr` oder Benutzer `/account/privacy`.
+2. Die Route validiert und kanonisiert den Tab über Search-Parameter; unzulässige Tabs werden per `replace` auf den ersten erlaubten Tab umgelenkt.
+3. Nur der aktive Tab lädt Daten: Rights über `GET /iam/me/permissions`, Governance über `GET /iam/governance/workflows`, DSR über `GET /iam/admin/data-subject-rights/cases`, Self-Service über `GET /iam/me/data-subject-rights/requests`.
+4. User-Historie unter `/admin/users/:userId` lädt die vereinte Actor+Target-Timeline über `GET /api/v1/iam/users/:userId/timeline`.
+5. Die UI rendert nur normalisierte Read-Modelle; Rohstatus oder Diagnosefelder bleiben sekundär und allowlist-basiert.
+
+Fehlerpfad:
+
+- Fehlende Rollen blockieren die Route oder den Tab fail-closed.
+- Bei 403 auf Transparenz-Reads invalidiert die UI den Session-/Permission-Kontext.
+
 ### Ergänzung 2026-03: Instanz-Host-Validierung im Multi-Host-Betrieb
 
 > Hinweis: Dieser Abschnitt beschreibt den Soll-Zustand. Die vollständige

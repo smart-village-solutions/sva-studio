@@ -1,1 +1,6 @@
-export { dataSubjectMaintenanceHandler, legalHoldApplyHandler, legalHoldReleaseHandler } from './core';
+export {
+  dataSubjectMaintenanceHandler,
+  legalHoldApplyHandler,
+  legalHoldReleaseHandler,
+  listAdminDataSubjectRightsCasesHandler,
+} from './core';

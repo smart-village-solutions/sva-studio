@@ -4,7 +4,6 @@ import { tanstackStart } from '@tanstack/react-start/plugin/vite';
 import viteReact from '@vitejs/plugin-react';
 import { codecovVitePlugin } from '@codecov/vite-plugin';
 import { nitro } from 'nitro/vite';
-import viteTsConfigPaths from 'vite-tsconfig-paths';
 import { fileURLToPath, URL } from 'node:url';
 
 const normalizeDirectory = (url: URL) => fileURLToPath(url).replace(/[\\/]$/, '');
@@ -56,6 +55,7 @@ const config = defineConfig({
     },
   },
   resolve: {
+    tsconfigPaths: true,
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
       // React 19 + Vite resolves react-dom/server -> server.browser (no default export).
@@ -105,10 +105,6 @@ const config = defineConfig({
   plugins: [
     tanstackStartClientEnvCompatPlugin(),
     devtools(),
-    // this is the plugin that enables path aliases
-    viteTsConfigPaths({
-      projects: ['./tsconfig.json'],
-    }),
     tanstackStart({
       serverFns: {
         base: tanstackServerFnBase,

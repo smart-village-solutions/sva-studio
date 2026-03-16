@@ -16,6 +16,30 @@ Der Stack besteht aus:
 - `promtail` (Node-/Container-Log-Shipping)
 - `alertmanager` (Alert-Routing)
 
+## Betriebsziele und Eskalation
+
+### Zielwerte
+
+| Bereich | Zielwert |
+|---|---|
+| App + Monitoring | `RTO <= 2h` |
+| IAM-Daten in Postgres | `RPO <= 24h` |
+
+Die Zielwerte sind bewusst als operative Mindestziele formuliert. Sie ersetzen kein vollständiges Backup- oder HA-Konzept, sondern definieren den erwarteten Wiederanlauf- und Datenverlustrahmen für das aktuelle Referenzprofil.
+
+### Eskalationspfad
+
+| Fall | Primärer Kanal | Zusätzlicher Kanal |
+|---|---|---|
+| Betriebsstörung ohne Sensitive Data | `operations@smart-village.app` | GitHub Issue für Nachverfolgung |
+| Sicherheitsvorfall oder DSGVO-Bezug | `security@smart-village.app` | `operations@smart-village.app` |
+| Reine Produkt-/Doku-Nacharbeit ohne Sensitivität | GitHub Issue | - |
+
+Regel:
+
+- Keine sensiblen Details in öffentliche GitHub Issues schreiben.
+- Für Sicherheits- oder Datenschutzvorfälle zuerst per E-Mail eskalieren und GitHub nur für später bereinigte Folgetasks nutzen.
+
 ## Voraussetzungen
 
 - Docker Swarm ist initialisiert (`docker swarm init`)
@@ -102,8 +126,8 @@ Die nicht-sensitiven Konfigurationswerte werden als Stack-Umgebungsvariablen in 
 | Variable | Default | Beschreibung |
 |---|---|---|
 | `SVA_REGISTRY` | `ghcr.io/smart-village-solutions` | Container-Registry |
-| `SVA_IMAGE_TAG` | `latest` | Image-Tag oder Digest |
-| `SVA_MONITORING_CONFIG_INIT_IMAGE_TAG` | `latest` | Image-Tag des Monitoring-Init-Images |
+| `SVA_IMAGE_TAG` | `0.0.0-dev` | Image-Tag oder Digest; für Produktion Digest oder unveränderlichen Tag verwenden |
+| `SVA_MONITORING_CONFIG_INIT_IMAGE_TAG` | `0.0.0-dev` | Image-Tag des Monitoring-Init-Images; für Produktion Digest oder unveränderlichen Tag verwenden |
 | `SVA_ALLOWED_INSTANCE_IDS` | leer | Kommagetrennte erlaubte instanceIds |
 | `ENABLE_OTEL` | `true` | OpenTelemetry für die App aktivieren |
 | `OTEL_SERVICE_NAME` | `sva-studio` | Service-Name für OTEL Resource Attributes |
@@ -114,6 +138,22 @@ Die nicht-sensitiven Konfigurationswerte werden als Stack-Umgebungsvariablen in 
 | `IAM_BULK_ENABLED` | `false` | IAM-Bulk-Operationen |
 
 Die vollständige Variablenliste inklusive Keycloak-Admin- und Rollenabgleich-Optionen steht in `deploy/portainer/.env.example`.
+Für produktive Deployments sollten `SVA_IMAGE_TAG` und `SVA_MONITORING_CONFIG_INIT_IMAGE_TAG` auf einen unveränderlichen Tag oder direkt auf einen Digest gesetzt werden.
+
+### Ressourcenlimits des Referenzprofils
+
+| Service | CPU-Limit |
+|---|---|
+| `app` | `1.0` |
+| `postgres` | `0.5` |
+| `redis` | `0.25` |
+| `monitoring-config-init` | `0.10` |
+| `otel-collector` | `0.25` |
+| `loki` | `0.75` |
+| `prometheus` | `1.0` |
+| `grafana` | `0.5` |
+| `promtail` | `0.25` |
+| `alertmanager` | `0.25` |
 
 ## Schritt 3: Datenbank initialisieren
 
@@ -183,6 +223,10 @@ docker stack deploy -c docker-compose.yml sva-studio
 | `GET https://unknown.<SVA_PARENT_DOMAIN>/` | HTTP 403 (wenn nicht in Allowlist) |
 | App in Portainer | Status: `healthy` |
 | Monitoring-Services in Portainer | `otel-collector`, `loki`, `prometheus`, `grafana`, `promtail`, `alertmanager` laufen |
+
+### Hinweis zum Monitoring-Bootstrap
+
+`monitoring-config-init` ist als One-shot-Service ausgelegt. Er schreibt die versionierten Konfigurationsdateien in die benannten Volumes, setzt die benötigten Rechte und beendet sich danach erfolgreich. Das ist beabsichtigt und kein Fehlerzustand.
 
 ## Update eines bestehenden Stacks
 

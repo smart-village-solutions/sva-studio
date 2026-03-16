@@ -83,6 +83,7 @@ und Vorführungszwecke. Unterschiede zum Referenzprofil:
 - Secrets werden als Umgebungsvariablen statt Docker Swarm Secrets übergeben
 - Konfiguration über `deploy/portainer/.env.demo.example`
 - Quantum-CLI-Unterstützung über `.quantum`-Datei im Repository-Root
+- Traefik-v1-kompatible Labels statt der v2+-Router-Labels des Referenzprofils
 - Nicht für Produktionseinsatz vorgesehen
 
 #### Deployment-Muster
@@ -91,11 +92,13 @@ und Vorführungszwecke. Unterschiede zum Referenzprofil:
 
 - **Image-basiert:** Vorgebaute Images aus Container-Registry (`${SVA_REGISTRY}/sva-studio:${SVA_IMAGE_TAG}`). Kein `build:`-Block im Stack.
 - **Traefik-Labels:** Host-basiertes Routing über `HostRegexp` für Instanz-Subdomains unter `SVA_PARENT_DOMAIN`. TLS über Traefiks `certresolver`.
+- **Profilgrenze Traefik:** Das Referenzprofil verwendet Traefik v2+-Labels; das Demo-Profil bleibt bewusst bei Traefik-v1-kompatiblen Labels und ist deshalb kein 1:1-Abbild des Referenzbetriebs.
 - **Swarm Secrets:** Vertrauliche Werte als externe Docker-Swarm-Secrets mit Namenskonvention `sva_studio_<service>_<secret_name>`. Ein Shell-Entrypoint (`entrypoint.sh`) liest Secret-Dateien und exportiert sie als Env-Variablen.
-- **Versionierte Monitoring-Konfigurationen:** Prometheus-, Loki-, Grafana-, Promtail- und Alertmanager-Konfigurationen liegen versioniert im Repository und werden über ein dediziertes `monitoring-config-init`-Image in die Swarm-Volumes geschrieben.
+- **Versionierte Monitoring-Konfigurationen:** Prometheus-, Loki-, Grafana-, Promtail- und Alertmanager-Konfigurationen liegen versioniert im Repository und werden über ein dediziertes `monitoring-config-init`-Image einmalig in die Swarm-Volumes geschrieben.
 - **Rolling Updates:** `start-first` für Updates, `stop-first` für Rollbacks.
 - **Persistenz:** Named Volumes für Postgres, Redis, Prometheus, Loki, Grafana und Alertmanager.
 - **Monitoring-Bootstrap:** Der Node-Prozess lädt OpenTelemetry vor dem Nitro-Entry per `--import`, statt erst beim ersten Root-Request.
+- **Ressourcenprofile:** Das Referenzprofil setzt CPU-Limits für App, Datenbank und Monitoring-Services, damit der Stack auf kleinen Swarm-Nodes kontrolliert bleibt.
 
 #### Instanz-Routing
 
@@ -135,6 +138,9 @@ Referenzen:
 - Swarm-Stack: Host-Validierung gegen Env-Allowlist mit fail-closed-Policy (identische 403-Antwort)
 - Swarm-Stack: Startup-Validierung der Allowlist gegen `instanceId`-Regex (fail-fast)
 - Swarm-Stack: Monitoring-UI und Storage bleiben intern; keine öffentliche Exponierung ohne zusätzliche Zugangskontrolle
+- Swarm-Stack: `monitoring-config-init` ist ein One-shot-Initialisierer und soll nach erfolgreicher Volume-Befüllung beendet sein
+- Operative Zielwerte für das Referenzprofil: `RTO <= 2h` für App/Monitoring, `RPO <= 24h` für IAM-Daten in Postgres
+- Primäre betriebliche Eskalation via `operations@smart-village.app`, Sicherheits-/DSGVO-Eskalation via `security@smart-village.app`
 
 ### Noch offen (Stand heute)
 

@@ -78,9 +78,11 @@ services:
           memory: 256M
         limits:
           memory: 512M
+          cpus: '1.0'
       labels:
         - traefik.enable=true
         - traefik.docker.network=public
+        # Demo-Profil bleibt bewusst bei Traefik-v1-kompatiblen Labels.
         - traefik.frontend.rule=Host:hb-meinquartier.studio.smart-village.app
         - traefik.port=3000
     healthcheck:
@@ -128,6 +130,7 @@ services:
           memory: 128M
         limits:
           memory: 320M
+          cpus: '0.25'
     healthcheck:
       test: ["CMD-SHELL", "REDISCLI_AUTH=$${REDIS_PASSWORD} redis-cli ping"]
       interval: 5s
@@ -163,6 +166,7 @@ services:
           memory: 256M
         limits:
           memory: 1G
+          cpus: '0.5'
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
@@ -196,15 +200,13 @@ services:
         constraints:
           - node.hostname == node-005.sva
       restart_policy:
-        condition: on-failure
-        delay: 5s
-        max_attempts: 3
-        window: 60s
+        condition: none
       resources:
         reservations:
           memory: 16M
         limits:
           memory: 64M
+          cpus: '0.10'
 
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.95.0
@@ -233,6 +235,7 @@ services:
           memory: 128M
         limits:
           memory: 256M
+          cpus: '0.25'
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:13133/healthz >/dev/null 2>&1"]
       interval: 30s
@@ -268,6 +271,7 @@ services:
           memory: 256M
         limits:
           memory: 512M
+          cpus: '0.75'
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3100/ready >/dev/null 2>&1"]
       interval: 30s
@@ -307,6 +311,7 @@ services:
           memory: 512M
         limits:
           memory: 1G
+          cpus: '1.0'
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:9090/-/healthy >/dev/null 2>&1"]
       interval: 30s
@@ -347,6 +352,7 @@ services:
           memory: 256M
         limits:
           memory: 512M
+          cpus: '0.5'
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/api/health >/dev/null 2>&1"]
       interval: 30s
@@ -381,6 +387,7 @@ services:
           memory: 64M
         limits:
           memory: 128M
+          cpus: '0.25'
 
   alertmanager:
     image: prom/alertmanager:v0.27.0
@@ -412,6 +419,7 @@ services:
           memory: 64M
         limits:
           memory: 128M
+          cpus: '0.25'
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:9093/-/healthy >/dev/null 2>&1"]
       interval: 30s

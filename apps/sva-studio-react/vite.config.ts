@@ -99,14 +99,7 @@ const config = defineConfig({
   build: {
     rollupOptions: {
       // Node.js modules für Client-Build blocken
-      external: (id) => {
-        // Block Node.js built-ins
-        if (id.startsWith('node:')) return true;
-        if (['async_hooks', 'crypto', 'fs', 'path', 'net', 'tls', 'events', 'stream', 'util', 'os', 'http', 'https', 'dns', 'url'].includes(id)) return true;
-        // Block server-only @sva packages nur
-        if (id.startsWith('@sva/') && id.includes('/server')) return true;
-        return false;
-      },
+      external: [/^node:/, /^(async_hooks|crypto|fs|path|net|tls|events|stream|util|os|http|https|dns|url)$/, /^@sva\/.+\/server$/],
     },
   },
   plugins: [

@@ -2,9 +2,8 @@ import { defineConfig } from 'vite';
 import { devtools } from '@tanstack/devtools-vite';
 import { tanstackStart } from '@tanstack/react-start/plugin/vite';
 import viteReact from '@vitejs/plugin-react';
-import { codecovVitePlugin } from '@codecov/vite-plugin';
+import { codecovRollupPlugin } from '@codecov/rollup-plugin';
 import { nitro } from 'nitro/vite';
-import viteTsConfigPaths from 'vite-tsconfig-paths';
 import { fileURLToPath, URL } from 'node:url';
 
 const normalizeDirectory = (url: URL) => fileURLToPath(url).replace(/[\\/]$/, '');
@@ -14,6 +13,7 @@ const workspaceRoot = normalizeDirectory(new URL('../../', import.meta.url));
 const tanstackRouterBasepath = '/';
 const tanstackServerFnBase = '/_server';
 const tanstackServerFnTransportBase = `${tanstackServerFnBase}/`;
+const codecovEnabled = process.env.CODECOV_TOKEN !== undefined;
 
 const tanstackStartClientEnvCompatPlugin = () => ({
   name: 'tanstack-start-client-env-compat',
@@ -56,6 +56,7 @@ const config = defineConfig({
     },
   },
   resolve: {
+    tsconfigPaths: true,
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
       // React 19 + Vite resolves react-dom/server -> server.browser (no default export).
@@ -100,15 +101,20 @@ const config = defineConfig({
     rollupOptions: {
       // Node.js modules für Client-Build blocken
       external: [/^node:/, /^(async_hooks|crypto|fs|path|net|tls|events|stream|util|os|http|https|dns|url)$/, /^@sva\/.+\/server$/],
+      plugins: codecovEnabled
+        ? [
+            codecovRollupPlugin({
+              enableBundleAnalysis: true,
+              bundleName: 'sva-studio-react',
+              uploadToken: process.env.CODECOV_TOKEN,
+            }),
+          ]
+        : [],
     },
   },
   plugins: [
     tanstackStartClientEnvCompatPlugin(),
     devtools(),
-    // this is the plugin that enables path aliases
-    viteTsConfigPaths({
-      projects: ['./tsconfig.json'],
-    }),
     tanstackStart({
       serverFns: {
         base: tanstackServerFnBase,
@@ -116,11 +122,6 @@ const config = defineConfig({
     }),
     nitro(),
     viteReact(),
-    codecovVitePlugin({
-      enableBundleAnalysis: process.env.CODECOV_TOKEN !== undefined,
-      bundleName: 'sva-studio-react',
-      uploadToken: process.env.CODECOV_TOKEN,
-    }),
   ],
 });
 

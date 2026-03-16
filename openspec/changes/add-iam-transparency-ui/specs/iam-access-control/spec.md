@@ -17,6 +17,13 @@ Das System SHALL eine kontextbezogene Permissions-Übersicht für den aktuell an
 - **THEN** werden die effektiven RBAC-Berechtigungen des Target-Subjekts zurückgegeben
 - **AND** die Antwort enthält `subject.actorUserId`, `subject.effectiveUserId` und `subject.isImpersonating=true`
 
+#### Scenario: Impersonation nur im zulässigen Policy-Kontext
+
+- **WHEN** `GET /iam/me/permissions` mit `actingAsUserId` aufgerufen wird
+- **AND** Actor und Target nicht im zulässigen Instanz-/Organisationskontext liegen
+- **THEN** wird die Anfrage mit einem strukturierten Deny-Fehler abgewiesen
+- **AND** es werden keine Detaildaten des Target-Subjekts offengelegt
+
 #### Scenario: Strukturierte Permission-Felder sind UI-verfügbar
 
 - **WHEN** die Permissions-Übersicht zurückgegeben wird
@@ -54,7 +61,8 @@ Das System SHALL eine zentrale Autorisierungsschnittstelle bereitstellen, die pr
 #### Scenario: Diagnosefelder sind für Admin-UI auswertbar
 
 - **WHEN** eine Autorisierungsentscheidung zusätzliche technische Einordnung benötigt
-- **THEN** KANN die Antwort ein Diagnoseobjekt mit konflikt-, Hierarchie-, Scope- oder Impersonation-Hinweisen enthalten
+- **THEN** enthält die Antwort ausschließlich allowlist-basierte Diagnosefelder mit konflikt-, Hierarchie-, Scope- oder Impersonation-Hinweisen
+- **AND** interne Rohdaten, Stacktraces oder nicht spezifizierte Diagnosefelder werden nicht ausgegeben
 - **AND** diese Diagnoseinformationen sind stabil genug, um in einer Admin-Oberfläche verständlich dargestellt zu werden
 
 #### Scenario: Keine `any`-Casts in Auth-Infrastruktur

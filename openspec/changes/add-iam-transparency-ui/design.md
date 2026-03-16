@@ -35,6 +35,23 @@ Das IAM speichert heute bereits Governance-Workflows, Betroffenenrechtsfälle, s
 - Entscheidung: Sensible, aber nicht anzeigbare Daten werden weiter nur als Zustandsindikator gezeigt.
   - Beispiel: Secret-Werte bleiben write-only; die UI zeigt nur Konfigurationsstatus.
 
+- Entscheidung: Tabs in `/admin/iam` werden deep-linkbar über Search-Params modelliert (`?tab=rights|governance|dsr`).
+  - Begründung: Support-Links, Browser-Back/Forward, Reload-Stabilität und reproduzierbare Debugging-Sessions.
+  - Alternative: Rein lokaler UI-State ohne URL-Bindung.
+  - Verworfen, weil Navigation und Fehleranalyse dadurch inkonsistent werden.
+
+- Entscheidung: Zugriff wird über eine verbindliche Access-Matrix auf Route-, Tab- und Feld-/Detail-Ebene abgesichert.
+  - Begründung: Least-Privilege und Privacy-by-Default für Governance-/DSR-Daten.
+  - Matrix-Minimum:
+    - `/admin/iam` Tab `Rechte`: `iam_admin` oder gleichwertig
+    - `/admin/iam` Tab `Governance`: `iam_admin` oder `governance_case_worker`
+    - `/admin/iam` Tab `Betroffenenrechte`: `iam_admin` oder `dsr_case_worker`
+    - `/account/privacy`: nur eigenes Subjekt, keine Fremddaten
+
+- Entscheidung: Diagnose- und Transparenzfelder folgen einem stabilen Exposition-Contract (Allowlist, keine Roh-Interna).
+  - Begründung: Verhindert Informationsabfluss aus interner Policy- und Fehlerlogik.
+  - Vorgabe: Kein ungefiltertes Roh-JSON, nur definierte Diagnosefelder mit stabiler Semantik.
+
 ## Informationsarchitektur
 
 - `/admin/iam`
@@ -61,6 +78,12 @@ Das IAM speichert heute bereits Governance-Workflows, Betroffenenrechtsfälle, s
 - Risiko: DSR-Daten enthalten sensible Informationen.
   - Mitigation: Rollenbasierte Zugriffsgrenzen, PII-Minimierung in Listen, Detailansichten nur bei expliziter Drill-down-Aktion
 
+- Risiko: Performance-Einbruch bei großen Listen und Drill-downs.
+  - Mitigation: Serverseitige Pagination/Filter/Sortierung, tab-spezifisches Lazy-Loading, On-Demand-Detailabrufe, Query-Cache-Strategie
+
+- Risiko: Vertragsdrift zwischen OpenSpec, API-Contract und OpenAPI.
+  - Mitigation: Synchrone Aktualisierung von `docs/guides/iam-authorization-api-contract.md` und `docs/guides/iam-authorization-openapi-3.0.yaml` als Abnahmekriterium
+
 ## Migration Plan
 
 1. API- und ViewModel-Lücken für strukturierte Transparenz schließen
@@ -70,5 +93,4 @@ Das IAM speichert heute bereits Governance-Workflows, Betroffenenrechtsfälle, s
 
 ## Open Questions
 
-- Soll `/admin/iam` als eine Route mit Tabs oder zusätzlich mit deep-linkbaren Search-Params pro Tab umgesetzt werden?
 - Soll die Nutzerhistorie nur `iam.activity_logs` zeigen oder zusätzlich Governance-/DSR-Ereignisse logisch zusammenführen?

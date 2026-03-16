@@ -7,7 +7,7 @@ settings:
 overrides:
   minimatch: 10.2.2
   axios: 1.13.5
-  undici: 7.22.0
+  undici: 7.24.3
   solid-js: 1.9.11
   seroval: 1.4.2
 
@@ -73,8 +73,8 @@ importers:
         specifier: 8.56.1
         version: 8.56.1(eslint@10.0.3(jiti@2.6.1))(typescript@5.9.3)
       undici:
-        specifier: 7.22.0
-        version: 7.22.0
+        specifier: 7.24.3
+        version: 7.24.3
 
   apps/sva-studio-react:
     dependencies:
@@ -4370,6 +4370,12 @@ packages:
     peerDependencies:
       seroval: 1.4.2
 
+  seroval-plugins@1.5.1:
+    resolution: {integrity: sha512-4FbuZ/TMl02sqv0RTFexu0SP6V+ywaIe5bAWCCEik0fk17BhALgwvUDVF7e3Uvf9pxmwCEJsRPmlkUE6HdzLAw==}
+    engines: {node: '>=10'}
+    peerDependencies:
+      seroval: 1.4.2
+
   seroval@1.4.2:
     resolution: {integrity: sha512-N3HEHRCZYn3cQbsC4B5ldj9j+tHdf4JZoYPlcI4rRYu0Xy4qN8MQf1Z08EibzB0WpgRG5BGK08FTrmM66eSzKQ==}
     engines: {node: '>=10'}
@@ -4417,13 +4423,13 @@ packages:
   sprintf-js@1.0.3:
     resolution: {integrity: sha512-D9cPgkvLlV3t3IzL0D0YLvGA9Ahk4PcvVwUbN0dSGr1aP0Nrt4AEnTUbuGvquEC0mA64Gqt1fzirlRs5ibXx8g==}
 
-  srvx@0.11.8:
-    resolution: {integrity: sha512-2n9t0YnAXPJjinytvxccNgs7rOA5gmE7Wowt/8Dy2dx2fDC6sBhfBpbrCvjYKALlVukPS/Uq3QwkolKNa7P/2Q==}
+  srvx@0.11.12:
+    resolution: {integrity: sha512-AQfrGqntqVPXgP03pvBDN1KyevHC+KmYVqb8vVf4N+aomQqdhaZxjvoVp+AOm4u6x+GgNQY3MVzAUIn+TqwkOA==}
     engines: {node: '>=20.16.0'}
     hasBin: true
 
-  srvx@0.11.9:
-    resolution: {integrity: sha512-97wWJS6F0KTKAhDlHVmBzMvlBOp5FiNp3XrLoodIgYJpXxgG5tE9rX4Pg7s46n2shI4wtEsMATTS1+rI3/ubzA==}
+  srvx@0.11.8:
+    resolution: {integrity: sha512-2n9t0YnAXPJjinytvxccNgs7rOA5gmE7Wowt/8Dy2dx2fDC6sBhfBpbrCvjYKALlVukPS/Uq3QwkolKNa7P/2Q==}
     engines: {node: '>=20.16.0'}
     hasBin: true
 
@@ -4590,8 +4596,8 @@ packages:
   undici-types@7.18.2:
     resolution: {integrity: sha512-AsuCzffGHJybSaRrmr5eHr81mwJU3kjw6M+uprWvCXiNeN9SOGwQ3Jn8jb8m3Z6izVgknn1R0FTCEAP2QrLY/w==}
 
-  undici@7.22.0:
-    resolution: {integrity: sha512-RqslV2Us5BrllB+JeiZnK4peryVTndy9Dnqq62S3yYRRTj0tFQCwEniUy2167skdGOy3vqRzEvl1Dm4sV2ReDg==}
+  undici@7.24.3:
+    resolution: {integrity: sha512-eJdUmK/Wrx2d+mnWWmwwLRyA7OQCkLap60sk3dOK4ViZR7DKwwptwuIvFBg2HaiP9ESaEdhtpSymQPvytpmkCA==}
     engines: {node: '>=20.18.1'}
 
   unenv@2.0.0-rc.21:
@@ -4955,12 +4961,12 @@ snapshots:
       '@octokit/plugin-rest-endpoint-methods': 10.4.1(@octokit/core@5.2.2)
       '@octokit/request': 8.4.1
       '@octokit/request-error': 5.1.1
-      undici: 7.22.0
+      undici: 7.24.3
 
   '@actions/http-client@2.2.3':
     dependencies:
       tunnel: 0.0.6
-      undici: 7.22.0
+      undici: 7.24.3
 
   '@actions/io@1.1.3': {}
 
@@ -8043,7 +8049,7 @@ snapshots:
       parse5: 7.3.0
       parse5-htmlparser2-tree-adapter: 7.1.0
       parse5-parser-stream: 7.1.2
-      undici: 7.22.0
+      undici: 7.24.3
       whatwg-mimetype: 4.0.0
 
   chokidar@3.6.0:
@@ -8599,7 +8605,7 @@ snapshots:
   h3@2.0.1-rc.14(crossws@0.4.4(srvx@0.8.16)):
     dependencies:
       rou3: 0.7.12
-      srvx: 0.11.9
+      srvx: 0.11.12
     optionalDependencies:
       crossws: 0.4.4(srvx@0.8.16)
 
@@ -8803,7 +8809,7 @@ snapshots:
       saxes: 6.0.0
       symbol-tree: 3.2.4
       tough-cookie: 6.0.0
-      undici: 7.22.0
+      undici: 7.24.3
       w3c-xmlserializer: 5.0.0
       webidl-conversions: 8.0.1
       whatwg-mimetype: 5.0.0
@@ -9007,7 +9013,7 @@ snapshots:
       rendu: 0.0.6
       rollup: 4.57.1
       srvx: 0.8.16
-      undici: 7.22.0
+      undici: 7.24.3
       unenv: 2.0.0-rc.21
       unstorage: 2.0.0-alpha.3(db0@0.3.4)(ioredis@5.10.0)(lru-cache@11.2.6)(ofetch@1.5.1)
     optionalDependencies:
@@ -9474,6 +9480,10 @@ snapshots:
     dependencies:
       seroval: 1.4.2
 
+  seroval-plugins@1.5.1(seroval@1.4.2):
+    dependencies:
+      seroval: 1.4.2
+
   seroval@1.4.2: {}
 
   shebang-command@2.0.0:
@@ -9492,7 +9502,7 @@ snapshots:
     dependencies:
       csstype: 3.2.3
       seroval: 1.4.2
-      seroval-plugins: 1.5.0(seroval@1.4.2)
+      seroval-plugins: 1.5.1(seroval@1.4.2)
 
   source-map-js@1.2.1: {}
 
@@ -9509,9 +9519,9 @@ snapshots:
 
   sprintf-js@1.0.3: {}
 
-  srvx@0.11.8: {}
+  srvx@0.11.12: {}
 
-  srvx@0.11.9: {}
+  srvx@0.11.8: {}
 
   srvx@0.8.16: {}
 
@@ -9646,7 +9656,7 @@ snapshots:
 
   undici-types@7.18.2: {}
 
-  undici@7.22.0: {}
+  undici@7.24.3: {}
 
   unenv@2.0.0-rc.21:
     dependencies:

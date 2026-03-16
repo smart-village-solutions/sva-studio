@@ -768,14 +768,17 @@ export class KeycloakAdminClient implements IdentityProviderPort {
   private async executeRequest<T>(request: RequestExecutionOptions): Promise<T> {
     const token = await this.getAccessToken();
     const url = `${this.baseUrl}${request.path}`;
-    const response = await this.executeFetchWithTimeout(url, {
-        method: request.method,
-        headers: {
-          Authorization: `Bearer ${token}`,
-          ...(request.body ? { 'Content-Type': 'application/json' } : {}),
-        },
-        body: request.body,
-      });
+    const init: RequestInit = {
+      method: request.method,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        ...(request.body ? { 'Content-Type': 'application/json' } : {}),
+      },
+    };
+    if (request.body !== undefined) {
+      init.body = request.body;
+    }
+    const response = await this.executeFetchWithTimeout(url, init);
 
     if (!response.ok) {
       const message = await this.buildErrorMessage(response, request.operation);

@@ -115,6 +115,20 @@ export type IamRoleListItem = {
   }[];
 };
 
+export type IamLegalTextListItem = {
+  readonly id: IamUuid;
+  readonly legalTextId: string;
+  readonly legalTextVersion: string;
+  readonly locale: string;
+  readonly contentHash: string;
+  readonly isActive: boolean;
+  readonly publishedAt: string;
+  readonly createdAt: string;
+  readonly acceptanceCount: number;
+  readonly activeAcceptanceCount: number;
+  readonly lastAcceptedAt?: string;
+};
+
 export type IamOrganizationType =
   | 'county'
   | 'municipality'

@@ -27,6 +27,10 @@ describe('accountUiRouteGuards', () => {
     await expect(invoke(accountUiRouteGuards.account, ['editor'], '/account')).resolves.toBeUndefined();
   });
 
+  it('allows account privacy route for authenticated users', async () => {
+    await expect(invoke(accountUiRouteGuards.accountPrivacy, ['editor'], '/account/privacy')).resolves.toBeUndefined();
+  });
+
   it('allows admin users route for app_manager role', async () => {
     await expect(invoke(accountUiRouteGuards.adminUsers, ['app_manager'], '/admin/users')).resolves.toBeUndefined();
   });
@@ -43,5 +47,9 @@ describe('accountUiRouteGuards', () => {
 
   it('allows admin roles route for system_admin', async () => {
     await expect(invoke(accountUiRouteGuards.adminRoles, ['system_admin'], '/admin/roles')).resolves.toBeUndefined();
+  });
+
+  it('allows admin iam route for compliance officer', async () => {
+    await expect(invoke(accountUiRouteGuards.adminIam, ['compliance_officer'], '/admin/iam')).resolves.toBeUndefined();
   });
 });

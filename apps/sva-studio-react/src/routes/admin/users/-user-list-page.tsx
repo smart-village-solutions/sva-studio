@@ -3,6 +3,14 @@ import React from 'react';
 
 import { ConfirmDialog } from '../../../components/ConfirmDialog';
 import { ModalDialog } from '../../../components/ModalDialog';
+import { Alert, AlertDescription } from '../../../components/ui/alert';
+import { Badge } from '../../../components/ui/badge';
+import { Button } from '../../../components/ui/button';
+import { Card } from '../../../components/ui/card';
+import { Checkbox } from '../../../components/ui/checkbox';
+import { Input } from '../../../components/ui/input';
+import { Label } from '../../../components/ui/label';
+import { Select } from '../../../components/ui/select';
 import { useRoles } from '../../../hooks/use-roles';
 import { useUsers } from '../../../hooks/use-users';
 import { isIamBulkEnabled } from '../../../lib/iam-admin-access';
@@ -204,20 +212,20 @@ export const UserListPage = () => {
         <p className="max-w-2xl text-sm text-muted-foreground">{t('admin.users.page.subtitle')}</p>
       </header>
 
-      <div className="grid gap-3 rounded-xl border border-border bg-card p-4 shadow-shell lg:grid-cols-[1fr_auto_auto]">
-        <label className="flex flex-col gap-1 text-xs uppercase tracking-wide text-muted-foreground">
-          {t('admin.users.filters.searchLabel')}
-          <input
-            className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+      <Card className="grid gap-3 p-4 lg:grid-cols-[1fr_auto_auto]">
+        <div className="flex flex-col gap-1 text-xs uppercase tracking-wide text-muted-foreground">
+          <Label htmlFor="users-search">{t('admin.users.filters.searchLabel')}</Label>
+          <Input
+            id="users-search"
             placeholder={t('admin.users.filters.searchPlaceholder')}
             value={usersApi.filters.search}
             onChange={(event) => usersApi.setSearch(event.target.value)}
           />
-        </label>
-        <label className="flex flex-col gap-1 text-xs uppercase tracking-wide text-muted-foreground">
-          {t('admin.users.filters.statusLabel')}
-          <select
-            className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+        </div>
+        <div className="flex flex-col gap-1 text-xs uppercase tracking-wide text-muted-foreground">
+          <Label htmlFor="users-status">{t('admin.users.filters.statusLabel')}</Label>
+          <Select
+            id="users-status"
             value={usersApi.filters.status}
             onChange={(event) => usersApi.setStatus(event.target.value as 'active' | 'inactive' | 'pending' | 'all')}
           >
@@ -225,36 +233,32 @@ export const UserListPage = () => {
             <option value="active">{t('admin.users.filters.statusActive')}</option>
             <option value="inactive">{t('admin.users.filters.statusInactive')}</option>
             <option value="pending">{t('admin.users.filters.statusPending')}</option>
-          </select>
-        </label>
+          </Select>
+        </div>
         <div className="flex items-end justify-end gap-2">
-          <button
+          <Button
             type="button"
-            className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground transition hover:bg-muted disabled:opacity-60"
+            variant="outline"
             disabled={isSyncing}
             onClick={() => void onSyncUsers()}
           >
             {isSyncing ? t('admin.users.actions.syncing') : t('admin.users.actions.syncKeycloak')}
-          </button>
+          </Button>
           {isIamBulkEnabled() ? (
-            <button
+            <Button
               type="button"
-              className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive disabled:opacity-50"
+              variant="destructive"
               disabled={selectedIds.length === 0}
               onClick={() => setDeactivateDialog({ mode: 'bulk' })}
             >
               {t('admin.users.actions.bulkDeactivate')}
-            </button>
+            </Button>
           ) : null}
-          <button
-            type="button"
-            className="rounded-md border border-primary/40 bg-primary/15 px-3 py-2 text-sm font-semibold text-primary transition hover:bg-primary/20"
-            onClick={() => setCreateDialogOpen(true)}
-          >
+          <Button type="button" onClick={() => setCreateDialogOpen(true)}>
             {t('admin.users.actions.create')}
-          </button>
+          </Button>
         </div>
-      </div>
+      </Card>
 
       <p role="status" className="text-xs text-muted-foreground">
         {t('admin.users.messages.resultCount', { count: usersApi.total })}
@@ -271,16 +275,16 @@ export const UserListPage = () => {
       ) : null}
 
       {usersApi.error ? (
-        <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive" role="alert">
-          <p>{userErrorMessage(usersApi.error)}</p>
-          <button
-            type="button"
-            className="mt-3 rounded-md border border-destructive/40 bg-background px-3 py-2 text-xs text-destructive transition hover:bg-muted"
-            onClick={() => void usersApi.refetch()}
-          >
-            {t('admin.users.actions.retry')}
-          </button>
-        </div>
+        <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
+          <AlertDescription className="flex flex-col gap-3">
+            <span>{userErrorMessage(usersApi.error)}</span>
+            <div>
+              <Button type="button" size="sm" variant="outline" onClick={() => void usersApi.refetch()}>
+                {t('admin.users.actions.retry')}
+              </Button>
+            </div>
+          </AlertDescription>
+        </Alert>
       ) : null}
 
       <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-shell">
@@ -289,7 +293,7 @@ export const UserListPage = () => {
           <thead className="bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground">
             <tr>
               <th scope="col" className="px-3 py-3">
-                <input
+                <Checkbox
                   type="checkbox"
                   aria-label={t('admin.users.table.selectAll')}
                   checked={selectedIds.length > 0 && selectedIds.length === sortedUsers.slice(0, 50).length}
@@ -301,65 +305,70 @@ export const UserListPage = () => {
                 className="px-3 py-3"
                 aria-sort={sortKey === 'displayName' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
               >
-                <button
+                <Button
                   type="button"
-                  className="font-semibold"
+                  className="h-auto px-0 py-0 font-semibold hover:bg-transparent"
                   onClick={() => onSort('displayName')}
+                  variant="ghost"
                 >
                   {t('admin.users.table.headerName')}
-                </button>
+                </Button>
               </th>
               <th
                 scope="col"
                 className="px-3 py-3"
                 aria-sort={sortKey === 'email' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
               >
-                <button
+                <Button
                   type="button"
-                  className="font-semibold"
+                  className="h-auto px-0 py-0 font-semibold hover:bg-transparent"
                   onClick={() => onSort('email')}
+                  variant="ghost"
                 >
                   {t('admin.users.table.headerEmail')}
-                </button>
+                </Button>
               </th>
               <th
                 scope="col"
                 className="px-3 py-3"
                 aria-sort={sortKey === 'role' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
               >
-                <button
+                <Button
                   type="button"
-                  className="font-semibold"
+                  className="h-auto px-0 py-0 font-semibold hover:bg-transparent"
                   onClick={() => onSort('role')}
+                  variant="ghost"
                 >
                   {t('admin.users.table.headerRole')}
-                </button>
+                </Button>
               </th>
               <th
                 scope="col"
                 className="px-3 py-3"
                 aria-sort={sortKey === 'status' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
               >
-                <button
+                <Button
                   type="button"
-                  className="font-semibold"
+                  className="h-auto px-0 py-0 font-semibold hover:bg-transparent"
                   onClick={() => onSort('status')}
+                  variant="ghost"
                 >
                   {t('admin.users.table.headerStatus')}
-                </button>
+                </Button>
               </th>
               <th
                 scope="col"
                 className="px-3 py-3"
                 aria-sort={sortKey === 'lastLoginAt' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
               >
-                <button
+                <Button
                   type="button"
-                  className="font-semibold"
+                  className="h-auto px-0 py-0 font-semibold hover:bg-transparent"
                   onClick={() => onSort('lastLoginAt')}
+                  variant="ghost"
                 >
                   {t('admin.users.table.headerLastLogin')}
-                </button>
+                </Button>
               </th>
               <th scope="col" className="px-3 py-3 text-right">
                 {t('admin.users.table.headerActions')}
@@ -370,7 +379,7 @@ export const UserListPage = () => {
             {sortedUsers.map((user) => (
               <tr key={user.id} className="border-t border-border text-sm text-foreground">
                 <td className="px-3 py-3 align-top">
-                  <input
+                  <Checkbox
                     type="checkbox"
                     aria-label={t('admin.users.table.selectOne', { name: user.displayName })}
                     checked={selectedIds.includes(user.id)}
@@ -381,29 +390,21 @@ export const UserListPage = () => {
                 <td className="px-3 py-3 align-top">{user.email ?? '-'}</td>
                 <td className="px-3 py-3 align-top">{user.roles[0]?.roleName ?? '-'}</td>
                 <td className="px-3 py-3 align-top">
-                  <span
-                    className={`inline-flex items-center rounded-full border px-2 py-1 text-xs font-semibold ${statusClassByValue[user.status]}`}
-                  >
+                  <Badge className={`rounded-full ${statusClassByValue[user.status]}`} variant="outline">
                     {t(statusTranslationKeyByValue[user.status])}
-                  </span>
+                  </Badge>
                 </td>
                 <td className="px-3 py-3 align-top">{user.lastLoginAt ?? '-'}</td>
                 <td className="px-3 py-3 align-top">
                   <div className="flex justify-end gap-2">
-                    <Link
-                      to="/admin/users/$userId"
-                      params={{ userId: user.id }}
-                      className="rounded-md border border-border bg-background px-3 py-1 text-xs text-foreground transition hover:bg-muted"
-                    >
-                      {t('admin.users.actions.edit')}
-                    </Link>
-                    <button
-                      type="button"
-                      className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-1 text-xs text-destructive"
-                      onClick={() => setDeactivateDialog({ mode: 'single', userId: user.id })}
-                    >
+                    <Button asChild size="sm" variant="outline">
+                      <Link to="/admin/users/$userId" params={{ userId: user.id }}>
+                        {t('admin.users.actions.edit')}
+                      </Link>
+                    </Button>
+                    <Button type="button" size="sm" variant="destructive" onClick={() => setDeactivateDialog({ mode: 'single', userId: user.id })}>
                       {t('admin.users.actions.deactivate')}
-                    </button>
+                    </Button>
                   </div>
                 </td>
               </tr>
@@ -419,7 +420,7 @@ export const UserListPage = () => {
                   <p className="font-semibold">{user.displayName}</p>
                   <p className="text-xs text-muted-foreground">{user.email ?? '-'}</p>
                 </div>
-                <input
+                <Checkbox
                   type="checkbox"
                   aria-label={t('admin.users.table.selectOne', { name: user.displayName })}
                   checked={selectedIds.includes(user.id)}
@@ -427,28 +428,22 @@ export const UserListPage = () => {
                 />
               </div>
               <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                <span className="rounded border border-border bg-background px-2 py-1 text-foreground">
+                <Badge variant="outline">
                   {user.roles[0]?.roleName ?? '-'}
-                </span>
-                <span className={`rounded border px-2 py-1 ${statusClassByValue[user.status]}`}>
+                </Badge>
+                <Badge className={statusClassByValue[user.status]} variant="outline">
                   {t(statusTranslationKeyByValue[user.status])}
-                </span>
+                </Badge>
               </div>
               <div className="mt-3 flex gap-2">
-                <Link
-                  to="/admin/users/$userId"
-                  params={{ userId: user.id }}
-                  className="rounded-md border border-border bg-background px-3 py-1 text-xs text-foreground transition hover:bg-muted"
-                >
-                  {t('admin.users.actions.edit')}
-                </Link>
-                <button
-                  type="button"
-                  className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-1 text-xs text-destructive"
-                  onClick={() => setDeactivateDialog({ mode: 'single', userId: user.id })}
-                >
+                <Button asChild size="sm" variant="outline">
+                  <Link to="/admin/users/$userId" params={{ userId: user.id }}>
+                    {t('admin.users.actions.edit')}
+                  </Link>
+                </Button>
+                <Button type="button" size="sm" variant="destructive" onClick={() => setDeactivateDialog({ mode: 'single', userId: user.id })}>
                   {t('admin.users.actions.deactivate')}
-                </button>
+                </Button>
               </div>
             </article>
           ))}
@@ -456,9 +451,9 @@ export const UserListPage = () => {
       </div>
 
       {!usersApi.isLoading && sortedUsers.length === 0 ? (
-        <div className="rounded-xl border border-border bg-card p-5 text-sm text-muted-foreground shadow-shell" role="status">
+        <Card className="p-5 text-sm text-muted-foreground" role="status">
           {t('admin.users.messages.emptyState')}
-        </div>
+        </Card>
       ) : null}
 
       <footer className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
@@ -466,22 +461,24 @@ export const UserListPage = () => {
           {t('admin.users.pagination.pageLabel', { page: usersApi.page, totalPages: pageCount })}
         </p>
         <div className="flex items-center gap-2">
-          <button
+          <Button
             type="button"
-            className="rounded-md border border-border bg-background px-3 py-1 text-foreground transition hover:bg-muted disabled:opacity-40"
+            size="sm"
+            variant="outline"
             disabled={usersApi.page <= 1}
             onClick={() => usersApi.setPage(usersApi.page - 1)}
           >
             {t('admin.users.pagination.previous')}
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
-            className="rounded-md border border-border bg-background px-3 py-1 text-foreground transition hover:bg-muted disabled:opacity-40"
+            size="sm"
+            variant="outline"
             disabled={usersApi.page >= pageCount}
             onClick={() => usersApi.setPage(usersApi.page + 1)}
           >
             {t('admin.users.pagination.next')}
-          </button>
+          </Button>
         </div>
       </footer>
 
@@ -492,40 +489,40 @@ export const UserListPage = () => {
         onClose={() => setCreateDialogOpen(false)}
       >
         <form className="grid gap-4" onSubmit={onCreateUser}>
-          <label className="flex flex-col gap-2 text-sm text-foreground">
-            <span>{t('account.fields.email')}</span>
-            <input
+          <div className="grid gap-2 text-sm text-foreground">
+            <Label htmlFor="create-user-email">{t('account.fields.email')}</Label>
+            <Input
+              id="create-user-email"
               required
               type="email"
               value={createForm.email}
               onChange={(event) => setCreateForm((current) => ({ ...current, email: event.target.value }))}
-              className="rounded-md border border-border bg-background px-3 py-2 text-foreground"
             />
-          </label>
-          <label className="flex flex-col gap-2 text-sm text-foreground">
-            <span>{t('account.fields.firstName')}</span>
-            <input
+          </div>
+          <div className="grid gap-2 text-sm text-foreground">
+            <Label htmlFor="create-user-first-name">{t('account.fields.firstName')}</Label>
+            <Input
+              id="create-user-first-name"
               required
               value={createForm.firstName}
               onChange={(event) => setCreateForm((current) => ({ ...current, firstName: event.target.value }))}
-              className="rounded-md border border-border bg-background px-3 py-2 text-foreground"
             />
-          </label>
-          <label className="flex flex-col gap-2 text-sm text-foreground">
-            <span>{t('account.fields.lastName')}</span>
-            <input
+          </div>
+          <div className="grid gap-2 text-sm text-foreground">
+            <Label htmlFor="create-user-last-name">{t('account.fields.lastName')}</Label>
+            <Input
+              id="create-user-last-name"
               required
               value={createForm.lastName}
               onChange={(event) => setCreateForm((current) => ({ ...current, lastName: event.target.value }))}
-              className="rounded-md border border-border bg-background px-3 py-2 text-foreground"
             />
-          </label>
-          <label className="flex flex-col gap-2 text-sm text-foreground">
-            <span>{t('admin.users.createDialog.roleLabel')}</span>
-            <select
+          </div>
+          <div className="grid gap-2 text-sm text-foreground">
+            <Label htmlFor="create-user-role">{t('admin.users.createDialog.roleLabel')}</Label>
+            <Select
+              id="create-user-role"
               value={createForm.roleId}
               onChange={(event) => setCreateForm((current) => ({ ...current, roleId: event.target.value }))}
-              className="rounded-md border border-border bg-background px-3 py-2 text-foreground"
             >
               <option value="">{t('admin.users.createDialog.rolePlaceholder')}</option>
               {rolesApi.roles.map((role) => (
@@ -533,23 +530,16 @@ export const UserListPage = () => {
                   {role.roleName}
                 </option>
               ))}
-            </select>
-          </label>
+            </Select>
+          </div>
 
           <div className="mt-2 flex justify-end gap-3">
-            <button
-              type="button"
-              className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground transition hover:bg-muted"
-              onClick={() => setCreateDialogOpen(false)}
-            >
+            <Button type="button" variant="outline" onClick={() => setCreateDialogOpen(false)}>
               {t('account.actions.cancel')}
-            </button>
-            <button
-              type="submit"
-              className="rounded-md border border-primary/40 bg-primary/15 px-3 py-2 text-sm font-semibold text-primary transition hover:bg-primary/20"
-            >
+            </Button>
+            <Button type="submit">
               {t('admin.users.actions.create')}
-            </button>
+            </Button>
           </div>
         </form>
       </ModalDialog>

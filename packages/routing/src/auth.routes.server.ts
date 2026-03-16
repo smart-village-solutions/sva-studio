@@ -102,6 +102,12 @@ const authHandlerMap = {
       return mod.deactivateUserHandler(request);
     },
   },
+  '/api/v1/iam/users/$userId/timeline': {
+    GET: async ({ request }) => {
+      const mod = await import('@sva/auth/server');
+      return mod.getUserTimelineHandler(request);
+    },
+  },
   '/api/v1/iam/users/bulk-deactivate': {
     POST: async ({ request }) => {
       const mod = await import('@sva/auth/server');
@@ -190,6 +196,22 @@ const authHandlerMap = {
       return mod.deleteRoleHandler(request);
     },
   },
+  '/api/v1/iam/legal-texts': {
+    GET: async ({ request }) => {
+      const mod = await import('@sva/auth/server');
+      return mod.listLegalTextsHandler(request);
+    },
+    POST: async ({ request }) => {
+      const mod = await import('@sva/auth/server');
+      return mod.createLegalTextHandler(request);
+    },
+  },
+  '/api/v1/iam/legal-texts/$legalTextVersionId': {
+    PATCH: async ({ request }) => {
+      const mod = await import('@sva/auth/server');
+      return mod.updateLegalTextHandler(request);
+    },
+  },
   '/api/v1/iam/admin/reconcile': {
     POST: async ({ request }) => {
       const mod = await import('@sva/auth/server');
@@ -197,6 +219,10 @@ const authHandlerMap = {
     },
   },
   '/iam/governance/workflows': {
+    GET: async ({ request }) => {
+      const mod = await import('@sva/auth/server');
+      return mod.listGovernanceCasesHandler(request);
+    },
     POST: async ({ request }) => {
       const mod = await import('@sva/auth/server');
       return mod.governanceWorkflowHandler(request);
@@ -221,6 +247,10 @@ const authHandlerMap = {
     },
   },
   '/iam/me/data-subject-rights/requests': {
+    GET: async ({ request }) => {
+      const mod = await import('@sva/auth/server');
+      return mod.getMyDataSubjectRightsHandler(request);
+    },
     POST: async ({ request }) => {
       const mod = await import('@sva/auth/server');
       return mod.dataSubjectRequestHandler(request);
@@ -248,6 +278,12 @@ const authHandlerMap = {
     GET: async ({ request }) => {
       const mod = await import('@sva/auth/server');
       return mod.adminDataExportStatusHandler(request);
+    },
+  },
+  '/iam/admin/data-subject-rights/cases': {
+    GET: async ({ request }) => {
+      const mod = await import('@sva/auth/server');
+      return mod.listAdminDataSubjectRightsCasesHandler(request);
     },
   },
   '/iam/admin/data-subject-rights/legal-holds/apply': {

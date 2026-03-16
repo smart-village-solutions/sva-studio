@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import type { AuthorizeResponse, EffectivePermission } from '@sva/core';
 
-import { filterPermissions, mapAuthorizeDecision } from './-iam.models';
+import {
+  filterPermissions,
+  getFirstAllowedTab,
+  mapAuthorizeDecision,
+  mapDsrStatusToTranslationKey,
+  normalizeIamTab,
+} from './-iam.models';
 
 describe('iam.models', () => {
   it('maps authorize diagnostics reason_code into view model', () => {
@@ -90,5 +96,24 @@ describe('iam.models', () => {
 
     expect(decision.reasonCode).toBeUndefined();
     expect(filtered).toHaveLength(1);
+  });
+
+  it('normalizes invalid IAM tabs to rights', () => {
+    expect(normalizeIamTab('governance')).toBe('governance');
+    expect(normalizeIamTab('unknown')).toBe('rights');
+    expect(normalizeIamTab(undefined)).toBe('rights');
+  });
+
+  it('returns the first allowed tab or falls back to rights', () => {
+    expect(getFirstAllowedTab(['governance', 'dsr'])).toBe('governance');
+    expect(getFirstAllowedTab([])).toBe('rights');
+  });
+
+  it('maps DSR canonical statuses to translation keys', () => {
+    expect(mapDsrStatusToTranslationKey({ canonicalStatus: 'queued' })).toBe('admin.iam.dsr.status.queued');
+    expect(mapDsrStatusToTranslationKey({ canonicalStatus: 'in_progress' })).toBe('admin.iam.dsr.status.inProgress');
+    expect(mapDsrStatusToTranslationKey({ canonicalStatus: 'completed' })).toBe('admin.iam.dsr.status.completed');
+    expect(mapDsrStatusToTranslationKey({ canonicalStatus: 'blocked' })).toBe('admin.iam.dsr.status.blocked');
+    expect(mapDsrStatusToTranslationKey({ canonicalStatus: 'failed' })).toBe('admin.iam.dsr.status.failed');
   });
 });

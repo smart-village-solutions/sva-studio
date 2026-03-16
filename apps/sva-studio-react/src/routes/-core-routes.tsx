@@ -3,14 +3,22 @@ import { Link, Outlet, createRoute } from '@tanstack/react-router';
 import { createServerFn, useServerFn } from '@tanstack/react-start';
 import React from 'react';
 
+import { Button } from '../components/ui/button';
+import { Card } from '../components/ui/card';
+import { Input } from '../components/ui/input';
+import { t } from '../i18n';
 import { AccountProfilePage } from './account/-account-profile-page';
+import { AccountPrivacyPage } from './account/-account-privacy-page';
 import { Phase1TestPage } from './admin/api/-phase1-test-page';
 import { IamViewerPage } from './admin/-iam-page';
+import { normalizeIamTab } from './admin/-iam.models';
+import { LegalTextsPage } from './admin/legal-texts/-legal-texts-page';
 import { OrganizationsPage } from './admin/organizations/-organizations-page';
 import { RolesPage } from './admin/roles/-roles-page';
 import { UserEditPage } from './admin/users/-user-edit-page';
 import { UserListPage } from './admin/users/-user-list-page';
 import { HomePage } from './-home-page';
+import { PlaceholderPage } from './-placeholder-page';
 import { InterfacesPage } from './interfaces/-interfaces-page';
 
 const DemoSectionLayout = () => (
@@ -160,23 +168,22 @@ const ServerFuncsDemo = () => {
       </div>
       {isHydrated ? (
         <div className="flex flex-col gap-3">
-          <input
-            className="rounded border border-border bg-background px-4 py-2 text-foreground"
+          <Input
             defaultValue=""
             name="name"
             placeholder="Dein Name"
             ref={inputRef}
           />
-          <button
+          <Button
             type="button"
-            className="w-fit rounded border border-primary/40 bg-primary/15 px-4 py-2 text-sm font-semibold text-primary"
+            className="w-fit"
             disabled={loading}
             onClick={() => {
               void handleRunServerFn();
             }}
           >
             {loading ? 'Sende...' : 'Server Function ausführen'}
-          </button>
+          </Button>
         </div>
       ) : (
         <div
@@ -185,10 +192,10 @@ const ServerFuncsDemo = () => {
         />
       )}
       {result ? (
-        <div className="rounded border border-border bg-card p-4 shadow-shell">
+        <Card className="p-4">
           <p className="font-semibold text-primary">{result.message}</p>
           <p className="text-sm text-muted-foreground">Serverzeit: {result.serverTime}</p>
-        </div>
+        </Card>
       ) : null}
     </div>
   );
@@ -223,12 +230,9 @@ const ApiRequestDemo = () => {
           Diese Demo laedt Daten ueber eine serverseitige API-Funktion.
         </p>
       </div>
-      <button
-        className="w-fit rounded border border-border bg-card px-4 py-2 text-sm text-foreground transition hover:bg-muted"
-        onClick={handleLoad}
-      >
+      <Button className="w-fit" onClick={handleLoad} variant="outline">
         {loading ? 'Lade...' : 'Namen laden'}
-      </button>
+      </Button>
       <ul className="list-disc space-y-2 pl-6 text-muted-foreground">
         {names.map((name) => (
           <li key={name}>{name}</li>
@@ -341,7 +345,14 @@ const ApiNames = ({ names }: { names: string[] }) => {
   );
 };
 
-type AccountUiGuardKey = 'account' | 'adminUsers' | 'adminUserDetail' | 'adminOrganizations' | 'adminRoles';
+type AccountUiGuardKey =
+  | 'account'
+  | 'accountPrivacy'
+  | 'adminUsers'
+  | 'adminUserDetail'
+  | 'adminOrganizations'
+  | 'adminRoles'
+  | 'adminIam';
 
 let accountUiGuardsPromise: Promise<typeof import('@sva/routing')> | null = null;
 
@@ -352,11 +363,75 @@ const getAccountUiGuards = async () => {
 
 const runAccountUiGuard = async (guardKey: AccountUiGuardKey, options: unknown) => {
   const routing = await getAccountUiGuards();
+  const guards = routing.accountUiRouteGuards as Record<AccountUiGuardKey, (options: unknown) => Promise<void>>;
   // Guard-Signatur variiert je nach guardKey — TypeScript kann die Beziehung
   // zwischen Key und Options-Typ nicht statisch auflösen. Runtime-sicher,
   // da guardKey und options immer paarweise aus derselben Factory kommen.
-  return routing.accountUiRouteGuards[guardKey](options as never);
+  return guards[guardKey](options);
 };
+
+const ContentPlaceholderRoutePage = () => (
+  <PlaceholderPage
+    section={t('shell.sidebar.sections.dataManagement')}
+    title={t('shell.sidebar.content')}
+  />
+);
+
+const MediaPlaceholderRoutePage = () => (
+  <PlaceholderPage
+    section={t('shell.sidebar.sections.dataManagement')}
+    title={t('shell.sidebar.media')}
+  />
+);
+
+const CategoriesPlaceholderRoutePage = () => (
+  <PlaceholderPage
+    section={t('shell.sidebar.sections.dataManagement')}
+    title={t('shell.sidebar.categories')}
+  />
+);
+
+const AppPlaceholderRoutePage = () => (
+  <PlaceholderPage
+    section={t('shell.sidebar.sections.applications')}
+    title={t('shell.sidebar.app')}
+  />
+);
+
+const ModulesPlaceholderRoutePage = () => (
+  <PlaceholderPage
+    section={t('shell.sidebar.sections.system')}
+    title={t('shell.sidebar.modules')}
+  />
+);
+
+const MonitoringPlaceholderRoutePage = () => (
+  <PlaceholderPage
+    section={t('shell.sidebar.sections.system')}
+    title={t('shell.sidebar.monitoring')}
+  />
+);
+
+const HelpPlaceholderRoutePage = () => (
+  <PlaceholderPage
+    section={t('shell.sidebar.help')}
+    title={t('shell.sidebar.help')}
+  />
+);
+
+const SupportPlaceholderRoutePage = () => (
+  <PlaceholderPage
+    section={t('shell.sidebar.support')}
+    title={t('shell.sidebar.support')}
+  />
+);
+
+const LicensePlaceholderRoutePage = () => (
+  <PlaceholderPage
+    section={t('shell.sidebar.license')}
+    title={t('shell.sidebar.license')}
+  />
+);
 
 export const homeRouteFactory = (rootRoute: RootRoute) =>
   createRoute({
@@ -376,8 +451,61 @@ export const runtimeCoreRouteFactories = [
   (rootRoute: RootRoute) =>
     createRoute({
       getParentRoute: () => rootRoute,
+      path: '/account/privacy',
+      beforeLoad: (options) => runAccountUiGuard('accountPrivacy', options),
+      component: AccountPrivacyPage,
+    }),
+  (rootRoute: RootRoute) =>
+    createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/content',
+      beforeLoad: (options) => runAccountUiGuard('account', options),
+      component: ContentPlaceholderRoutePage,
+    }),
+  (rootRoute: RootRoute) =>
+    createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/media',
+      beforeLoad: (options) => runAccountUiGuard('account', options),
+      component: MediaPlaceholderRoutePage,
+    }),
+  (rootRoute: RootRoute) =>
+    createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/categories',
+      beforeLoad: (options) => runAccountUiGuard('account', options),
+      component: CategoriesPlaceholderRoutePage,
+    }),
+  (rootRoute: RootRoute) =>
+    createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/app',
+      beforeLoad: (options) => runAccountUiGuard('account', options),
+      component: AppPlaceholderRoutePage,
+    }),
+  (rootRoute: RootRoute) =>
+    createRoute({
+      getParentRoute: () => rootRoute,
       path: '/interfaces',
       component: InterfacesPage,
+    }),
+  (rootRoute: RootRoute) =>
+    createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/help',
+      component: HelpPlaceholderRoutePage,
+    }),
+  (rootRoute: RootRoute) =>
+    createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/support',
+      component: SupportPlaceholderRoutePage,
+    }),
+  (rootRoute: RootRoute) =>
+    createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/license',
+      component: LicensePlaceholderRoutePage,
     }),
   (rootRoute: RootRoute) =>
     createRoute({
@@ -412,8 +540,35 @@ export const runtimeCoreRouteFactories = [
   (rootRoute: RootRoute) =>
     createRoute({
       getParentRoute: () => rootRoute,
+      path: '/admin/legal-texts',
+      beforeLoad: (options) => runAccountUiGuard('adminRoles', options),
+      component: LegalTextsPage,
+    }),
+  (rootRoute: RootRoute) => {
+    const iamRoute = createRoute({
+      getParentRoute: () => rootRoute,
       path: '/admin/iam',
-      component: IamViewerPage,
+      beforeLoad: (options) => runAccountUiGuard('adminIam', options),
+      validateSearch: (search: Record<string, unknown>) => ({
+        tab: normalizeIamTab(search.tab),
+      }),
+      component: () => <IamViewerPage activeTab={iamRoute.useSearch().tab} />,
+    });
+    return iamRoute;
+  },
+  (rootRoute: RootRoute) =>
+    createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/modules',
+      beforeLoad: (options) => runAccountUiGuard('adminRoles', options),
+      component: ModulesPlaceholderRoutePage,
+    }),
+  (rootRoute: RootRoute) =>
+    createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/monitoring',
+      beforeLoad: (options) => runAccountUiGuard('adminRoles', options),
+      component: MonitoringPlaceholderRoutePage,
     }),
   (rootRoute: RootRoute) =>
     createRoute({

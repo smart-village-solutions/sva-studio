@@ -63,6 +63,7 @@ const authServerMocks = vi.hoisted(() => {
     listUsersHandler: vi.fn(async () => response('listUsersHandler')),
     createUserHandler: vi.fn(async () => response('createUserHandler')),
     getUserHandler: vi.fn(async () => response('getUserHandler')),
+    getUserTimelineHandler: vi.fn(async () => response('getUserTimelineHandler')),
     updateUserHandler: vi.fn(async () => response('updateUserHandler')),
     deactivateUserHandler: vi.fn(async () => response('deactivateUserHandler')),
     bulkDeactivateUsersHandler: vi.fn(async () => response('bulkDeactivateUsersHandler')),
@@ -82,16 +83,22 @@ const authServerMocks = vi.hoisted(() => {
     createRoleHandler: vi.fn(async () => response('createRoleHandler')),
     updateRoleHandler: vi.fn(async () => response('updateRoleHandler')),
     deleteRoleHandler: vi.fn(async () => response('deleteRoleHandler')),
+    listLegalTextsHandler: vi.fn(async () => response('listLegalTextsHandler')),
+    createLegalTextHandler: vi.fn(async () => response('createLegalTextHandler')),
+    updateLegalTextHandler: vi.fn(async () => response('updateLegalTextHandler')),
     reconcileHandler: vi.fn(async () => response('reconcileHandler')),
+    listGovernanceCasesHandler: vi.fn(async () => response('listGovernanceCasesHandler')),
     governanceWorkflowHandler: vi.fn(async () => response('governanceWorkflowHandler')),
     governanceComplianceExportHandler: vi.fn(async () => response('governanceComplianceExportHandler')),
     dataExportHandler: vi.fn(async () => response('dataExportHandler')),
     dataExportStatusHandler: vi.fn(async () => response('dataExportStatusHandler')),
+    getMyDataSubjectRightsHandler: vi.fn(async () => response('getMyDataSubjectRightsHandler')),
     dataSubjectRequestHandler: vi.fn(async () => response('dataSubjectRequestHandler')),
     profileCorrectionHandler: vi.fn(async () => response('profileCorrectionHandler')),
     optionalProcessingExecuteHandler: vi.fn(async () => response('optionalProcessingExecuteHandler')),
     adminDataExportHandler: vi.fn(async () => response('adminDataExportHandler')),
     adminDataExportStatusHandler: vi.fn(async () => response('adminDataExportStatusHandler')),
+    listAdminDataSubjectRightsCasesHandler: vi.fn(async () => response('listAdminDataSubjectRightsCasesHandler')),
     legalHoldApplyHandler: vi.fn(async () => response('legalHoldApplyHandler')),
     legalHoldReleaseHandler: vi.fn(async () => response('legalHoldReleaseHandler')),
     dataSubjectMaintenanceHandler: vi.fn(async () => response('dataSubjectMaintenanceHandler')),
@@ -152,6 +159,8 @@ describe('auth.routes.server', () => {
     expect(authServerMocks.listOrganizationsHandler).toHaveBeenCalled();
     expect(authServerMocks.updateMyOrganizationContextHandler).toHaveBeenCalled();
     expect(authServerMocks.deleteRoleHandler).toHaveBeenCalled();
+    expect(authServerMocks.listLegalTextsHandler).toHaveBeenCalled();
+    expect(authServerMocks.updateLegalTextHandler).toHaveBeenCalled();
     expect(authServerMocks.dataSubjectMaintenanceHandler).toHaveBeenCalled();
   });
 

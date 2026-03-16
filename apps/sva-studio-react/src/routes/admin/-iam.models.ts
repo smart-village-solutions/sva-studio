@@ -1,4 +1,6 @@
-import type { AuthorizeResponse, EffectivePermission, MePermissionsResponse } from '@sva/core';
+import type { AuthorizeResponse, EffectivePermission, IamDsrCaseListItem, MePermissionsResponse } from '@sva/core';
+
+import type { IamCockpitTabKey } from '../../lib/iam-viewer-access';
 
 export type IamPermissionsQuery = {
   readonly instanceId: string;
@@ -15,6 +17,8 @@ export type AuthorizeDecisionViewModel = {
   readonly diagnostics?: Readonly<Record<string, unknown>>;
   readonly evaluatedAt?: string;
 };
+
+const VALID_TABS: readonly IamCockpitTabKey[] = ['rights', 'governance', 'dsr'];
 
 const readReasonCodeFromDiagnostics = (diagnostics: unknown): string | undefined => {
   if (!diagnostics || typeof diagnostics !== 'object') {
@@ -36,6 +40,25 @@ export const mapAuthorizeDecision = (response: AuthorizeResponse): AuthorizeDeci
 
 const includesIgnoreCase = (haystack: string | undefined, needle: string) =>
   Boolean(haystack?.toLowerCase().includes(needle.toLowerCase()));
+
+const stringifyScope = (scope: Readonly<Record<string, unknown>> | undefined) => {
+  if (!scope) {
+    return '';
+  }
+  return Object.entries(scope)
+    .map(([key, value]) => `${key}:${String(value)}`)
+    .join(' ');
+};
+
+export const normalizeIamTab = (value: unknown): IamCockpitTabKey => {
+  if (typeof value !== 'string') {
+    return 'rights';
+  }
+  return (VALID_TABS.find((entry) => entry === value) ?? 'rights') as IamCockpitTabKey;
+};
+
+export const getFirstAllowedTab = (allowedTabs: readonly IamCockpitTabKey[]): IamCockpitTabKey =>
+  allowedTabs[0] ?? 'rights';
 
 export const filterPermissions = (
   permissions: readonly EffectivePermission[],
@@ -64,8 +87,38 @@ export const filterPermissions = (
     return (
       includesIgnoreCase(permission.action, query) ||
       includesIgnoreCase(permission.resourceType, query) ||
-      includesIgnoreCase(permission.organizationId, query)
+      includesIgnoreCase(permission.resourceId, query) ||
+      includesIgnoreCase(permission.organizationId, query) ||
+      includesIgnoreCase(permission.effect, query) ||
+      includesIgnoreCase(permission.sourceRoleIds.join(' '), query) ||
+      includesIgnoreCase(stringifyScope(permission.scope), query)
     );
   });
 };
 
+export const mapDsrStatusToTranslationKey = (item: Pick<IamDsrCaseListItem, 'canonicalStatus'>) => {
+  switch (item.canonicalStatus) {
+    case 'queued':
+      return 'admin.iam.dsr.status.queued';
+    case 'in_progress':
+      return 'admin.iam.dsr.status.inProgress';
+    case 'completed':
+      return 'admin.iam.dsr.status.completed';
+    case 'blocked':
+      return 'admin.iam.dsr.status.blocked';
+    default:
+      return 'admin.iam.dsr.status.failed';
+  }
+};
+
+export const mapDsrStatusTone = (item: Pick<IamDsrCaseListItem, 'canonicalStatus'>) => {
+  switch (item.canonicalStatus) {
+    case 'completed':
+      return 'border-primary/40 bg-primary/10 text-primary';
+    case 'blocked':
+    case 'failed':
+      return 'border-destructive/40 bg-destructive/10 text-destructive';
+    default:
+      return 'border-secondary/40 bg-secondary/10 text-secondary';
+  }
+};

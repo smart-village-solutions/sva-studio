@@ -32,7 +32,7 @@ describe('Sheet', () => {
       </Sheet>
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Schließen' }));
+    fireEvent.click(document.querySelector('[data-slot="sheet-close-overlay"]') as HTMLElement);
 
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
@@ -121,7 +121,7 @@ describe('Sheet', () => {
     fireEvent.click(openButton);
     expect(screen.getByRole('dialog', { name: 'Navigation' })).toBeTruthy();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Schließen' }));
+    fireEvent.click(document.querySelector('[data-slot="sheet-close-overlay"]') as HTMLElement);
 
     expect(screen.queryByRole('dialog', { name: 'Navigation' })).toBeNull();
     expect(document.activeElement).toBe(openButton);

@@ -20,6 +20,7 @@ import {
   createUserInternal,
   getMyProfileInternal,
   getUserInternal,
+  getUserTimelineInternal,
   listUsersInternal,
   syncUsersFromKeycloakInternal,
   updateMyProfileInternal,
@@ -65,6 +66,9 @@ export const listUsersHandler = async (request: Request): Promise<Response> =>
 
 export const getUserHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedIamHandler(request, getUserInternal);
+
+export const getUserTimelineHandler = async (request: Request): Promise<Response> =>
+  withAuthenticatedIamHandler(request, getUserTimelineInternal);
 
 export const createUserHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedIamHandler(request, createUserInternal);

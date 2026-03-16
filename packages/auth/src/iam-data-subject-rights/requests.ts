@@ -1,1 +1,6 @@
-export { dataSubjectRequestHandler, optionalProcessingExecuteHandler, profileCorrectionHandler } from './core';
+export {
+  dataSubjectRequestHandler,
+  getMyDataSubjectRightsHandler,
+  optionalProcessingExecuteHandler,
+  profileCorrectionHandler,
+} from './core';

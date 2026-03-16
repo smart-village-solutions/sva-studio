@@ -35,6 +35,8 @@ Das System MUST unter `/admin/iam` ein tab-basiertes Transparenz-Cockpit bereits
 - **WENN** ein Benutzer ohne ausreichende Berechtigung `/admin/iam` oder einen sensiblen Tab aufruft
 - **DANN** erhält er einen verweigerten Zustand ohne Leckage sensitiver Felder
 - **UND** die UI zeigt eine verständliche Meldung mit nächstem sicheren Schritt
+- **UND** die Route selbst bleibt auf `iam_admin`, `support_admin` und `system_admin` begrenzt
+- **UND** der Tab `Governance` ist zusätzlich für `security_admin` und `compliance_officer` lesbar, ohne DSR- oder Rechte-Details freizuschalten
 
 #### Scenario: Große Datenmengen werden performanzstabil angezeigt
 
@@ -51,6 +53,7 @@ Das System MUST unter `/account/privacy` eine eigenständige Self-Service-Oberfl
 - **WENN** ein authentifizierter Benutzer `/account/privacy` aufruft
 - **DANN** sieht er seine Betroffenenanfragen, Export-Jobs und deren Statushistorie
 - **UND** blockierende Zustände wie Legal Holds oder Verarbeitungseinschränkungen werden verständlich erklärt
+- **UND** die Seite akzeptiert keine fremden Subjekt-IDs oder Admin-Drill-downs im Client
 
 #### Scenario: Benutzer steuert optionale Verarbeitung
 

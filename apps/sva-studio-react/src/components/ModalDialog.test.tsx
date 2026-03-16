@@ -28,7 +28,7 @@ describe('ModalDialog', () => {
       </ModalDialog>
     );
 
-    fireEvent.mouseDown(screen.getByRole('dialog', { name: 'Dialog' }).parentElement as HTMLElement);
+    fireEvent.mouseDown(document.querySelector('[data-slot="dialog-overlay"]') as HTMLElement);
 
     expect(onClose).toHaveBeenCalledTimes(1);
   });
@@ -162,7 +162,7 @@ describe('ModalDialog', () => {
     fireEvent.click(openButton);
     expect(screen.getByRole('dialog', { name: 'Dialog' })).toBeTruthy();
 
-    fireEvent.mouseDown(screen.getByRole('dialog', { name: 'Dialog' }).parentElement as HTMLElement);
+    fireEvent.mouseDown(document.querySelector('[data-slot="dialog-overlay"]') as HTMLElement);
 
     expect(screen.queryByRole('dialog', { name: 'Dialog' })).toBeNull();
     expect(document.activeElement).toBe(openButton);

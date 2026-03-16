@@ -8,6 +8,10 @@ Doku und Konzepte auf deutsch, Code auf englisch. Umlaute in der Doku korrekt ve
 ## Paket-Abhängigkeiten
 Abhängigkeiten von externen Paketen und Libraries erhöhen die Komplexität sowie das Risiko für Sicherheitslücken und Instabilitäten. Daher prüfen wir externe Pakete sorgfältig hinsichtlich ihres Mehrwerts, ihrer Qualität und der Lizenzkompatibilität. Eine Einbindung erfolgt nur nach einer gründlichen und dokumentierten Abwägung.
 
+## UI-Standard
+Neue UI-Komponenten und neue UI-Flächen werden mit `shadcn/ui` gebaut.
+Bestehende `shadcn/ui`-Primitives und Varianten sind zu bevorzugen; parallele Basis-Komponenten oder konkurrierende UI-Bibliotheken werden ohne dokumentierte Architekturentscheidung nicht eingeführt.
+
 ## Code-Quali
 Wir setzen auf statistische Code-Analyse und wählen ein passendes Tool (z.B. CodeClimate, SonarQube, ...)
 

@@ -1,13 +1,13 @@
 /**
- * Header-Komponente der App-Shell mit Branding und Auth-Aktion.
+ * Header-Komponente der App-Shell mit globalen Aktionen.
  *
- * Die Komponente zeigt abhängig vom Auth-Status eine Login- oder Logout-Aktion
+ * Die Komponente zeigt abhängig vom Auth-Status Login-/Logout-Aktionen
  * und unterstützt einen optionalen Loading-Zustand für Skeleton-Rendering.
  */
-import { Link } from '@tanstack/react-router';
 import { Menu, Moon, Sun } from 'lucide-react';
 import React from 'react';
 
+import { Button } from './ui/button';
 import { t } from '../i18n';
 import { useAuth } from '../providers/auth-provider';
 import { useTheme } from '../providers/theme-provider';
@@ -19,7 +19,7 @@ type HeaderProps = Readonly<{
 }>;
 
 /**
- * Rendert die Kopfzeile inklusive Branding und Auth-Aktion.
+ * Rendert die Kopfzeile mit globalen Aktionen.
  *
  * @param props - Konfiguration des Header-Verhaltens.
  * @param props.isLoading - Aktiviert Skeleton-Darstellung während Router-Navigation.
@@ -30,7 +30,7 @@ export default function Header({
   onOpenMobileNavigation,
 }: HeaderProps) {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
-  const { mode, themeLabel, toggleMode } = useTheme();
+  const { mode, toggleMode } = useTheme();
 
   let authAction: React.ReactNode = null;
 
@@ -45,29 +45,20 @@ export default function Header({
     );
   } else if (!isAuthenticated) {
     authAction = (
-      <a
-        className="ml-2 rounded-md border border-primary/30 bg-primary/10 px-4 py-2 font-semibold text-primary transition hover:border-primary hover:bg-primary/20"
-        href="/auth/login"
-      >
-        {t('shell.header.login')}
-      </a>
+      <Button asChild className="ml-2" variant="secondary">
+        <a href="/auth/login">{t('shell.header.login')}</a>
+      </Button>
     );
   } else if (user) {
     authAction = (
       <>
-        <Link
-          className="ml-2 rounded-md border border-border bg-card px-4 py-2 font-semibold text-foreground shadow-shell transition hover:bg-accent hover:text-accent-foreground"
-          to="/account"
-        >
-          {t('shell.sidebar.account')}
-        </Link>
+        <Button asChild className="ml-2" variant="outline">
+          <a href="/account">{t('shell.sidebar.account')}</a>
+        </Button>
         <form action="/auth/logout" method="post" className="ml-2">
-          <button
-            type="submit"
-            className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-2 font-semibold text-destructive transition hover:border-destructive hover:bg-destructive/20"
-          >
+          <Button type="submit" variant="destructive">
             {t('shell.header.logout')}
-          </button>
+          </Button>
         </form>
       </>
     );
@@ -76,41 +67,34 @@ export default function Header({
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur">
       <div className="flex min-h-16 w-full items-center justify-between gap-3 px-4 py-3 text-sm text-foreground sm:px-6">
-        <div className="flex min-w-0 items-center gap-3">
-          <button
-            type="button"
-            className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-border bg-card text-foreground shadow-shell transition hover:bg-accent hover:text-accent-foreground lg:hidden"
-            aria-label={isMobileNavigationOpen ? t('shell.header.closeNavigation') : t('shell.header.openNavigation')}
-            aria-expanded={isMobileNavigationOpen}
-            aria-controls="mobile-sidebar"
-            onClick={onOpenMobileNavigation}
-          >
-            <Menu className="h-5 w-5" />
-          </button>
-          <Link
-            activeOptions={{ exact: true }}
-            className="flex min-w-0 items-center gap-3 font-semibold tracking-wide text-foreground"
-            to="/"
-          >
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-sm font-bold text-primary-foreground">
-              SVA
-            </span>
-            <span className="min-w-0">
-              <span className="block truncate text-base font-semibold">SVA Studio</span>
-              <span className="block truncate text-xs font-normal text-muted-foreground">{themeLabel}</span>
-            </span>
-          </Link>
+        <div className="flex min-w-0 items-center">
+          {onOpenMobileNavigation ? (
+            <Button
+              type="button"
+              className="lg:hidden"
+              aria-label={isMobileNavigationOpen ? t('shell.header.closeNavigation') : t('shell.header.openNavigation')}
+              aria-expanded={isMobileNavigationOpen}
+              aria-controls="mobile-sidebar"
+              onClick={onOpenMobileNavigation}
+              size="icon"
+              variant="outline"
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+          ) : null}
         </div>
         <div className="flex flex-wrap items-center gap-3 text-muted-foreground sm:gap-4">
-          <button
+          <Button
             type="button"
-            className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-card px-3 text-foreground shadow-shell transition hover:bg-accent hover:text-accent-foreground"
             aria-label={mode === 'dark' ? t('shell.header.switchToLightMode') : t('shell.header.switchToDarkMode')}
             onClick={toggleMode}
+            variant="outline"
           >
             {mode === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            <span className="hidden sm:inline">{mode === 'dark' ? t('shell.header.themeModeDark') : t('shell.header.themeModeLight')}</span>
-          </button>
+            <span className="hidden sm:inline">
+              {mode === 'dark' ? t('shell.header.themeModeDark') : t('shell.header.themeModeLight')}
+            </span>
+          </Button>
           {authAction}
         </div>
       </div>

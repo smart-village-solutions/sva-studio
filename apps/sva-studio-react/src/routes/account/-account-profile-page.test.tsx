@@ -1,4 +1,5 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import type { AnchorHTMLAttributes } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AccountProfilePage } from './-account-profile-page';
@@ -40,6 +41,10 @@ vi.mock('../../lib/iam-api', () => ({
 
 vi.mock('../../providers/auth-provider', () => ({
   useAuth: () => authMockValue,
+}));
+
+vi.mock('@tanstack/react-router', () => ({
+  Link: ({ children, ...props }: AnchorHTMLAttributes<HTMLAnchorElement>) => <a {...props}>{children}</a>,
 }));
 
 describe('AccountProfilePage', () => {

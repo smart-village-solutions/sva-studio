@@ -1,11 +1,34 @@
-import type { AuthorizeResponse, EffectivePermission } from '@sva/core';
+import type { AuthorizeResponse, EffectivePermission, IamDsrCaseListItem, IamGovernanceCaseListItem } from '@sva/core';
+import { useNavigate } from '@tanstack/react-router';
 import React from 'react';
 
-import { hasIamViewerAdminRole, isIamViewerEnabled } from '../../lib/iam-viewer-access';
+import { Alert, AlertDescription } from '../../components/ui/alert';
+import { Badge } from '../../components/ui/badge';
+import { Button } from '../../components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { Input } from '../../components/ui/input';
+import { Label } from '../../components/ui/label';
+import { Select } from '../../components/ui/select';
+import {
+  listAdminDsrCases,
+  listGovernanceCases,
+  type DsrAdminCasesQuery,
+  type GovernanceCasesQuery,
+} from '../../lib/iam-api';
+import {
+  getAllowedIamCockpitTabs,
+  hasIamCockpitAccessRole,
+  isIamCockpitEnabled,
+  type IamCockpitTabKey,
+} from '../../lib/iam-viewer-access';
+import { t } from '../../i18n';
 import { useAuth } from '../../providers/auth-provider';
 import {
   filterPermissions,
+  getFirstAllowedTab,
   mapAuthorizeDecision,
+  mapDsrStatusToTranslationKey,
+  mapDsrStatusTone,
   type AuthorizeDecisionViewModel,
   type IamPermissionsQuery,
   type IamPermissionsResponse,
@@ -13,6 +36,10 @@ import {
 
 type IamApiErrorPayload = {
   error: string;
+};
+
+type IamViewerPageProps = {
+  readonly activeTab: IamCockpitTabKey;
 };
 
 const buildPermissionsPath = (query: IamPermissionsQuery) => {
@@ -27,12 +54,45 @@ const buildPermissionsPath = (query: IamPermissionsQuery) => {
   return `/iam/me/permissions?${searchParams.toString()}`;
 };
 
-const formatOrganizationLabel = (organizationId: string) => {
-  if (!organizationId) {
-    return 'Keine Organisation';
+const formatDateTime = (value?: string) => {
+  if (!value) {
+    return '—';
   }
-  return organizationId;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
 };
+
+const formatObjectEntries = (value: Readonly<Record<string, unknown>> | undefined) => {
+  if (!value || Object.keys(value).length === 0) {
+    return '—';
+  }
+  return Object.entries(value)
+    .map(([key, entry]) => `${key}: ${String(entry)}`)
+    .join(', ');
+};
+
+const governanceTypeOptions = [
+  'permission_change',
+  'delegation',
+  'impersonation',
+  'legal_acceptance',
+ ] as const;
+
+const dsrTypeOptions = [
+  'request',
+  'export_job',
+  'legal_hold',
+  'profile_correction',
+  'recipient_notification',
+ ] as const;
+
+const dsrStatusOptions = [
+  'queued',
+  'in_progress',
+  'completed',
+  'blocked',
+  'failed',
+ ] as const;
 
 const PermissionTable = ({
   permissions,
@@ -40,32 +100,36 @@ const PermissionTable = ({
   permissions: readonly EffectivePermission[];
 }>) => {
   if (permissions.length === 0) {
-    return <p className="text-sm text-muted-foreground">Keine Berechtigungen gefunden.</p>;
+    return <p className="text-sm text-muted-foreground">{t('admin.iam.rights.empty')}</p>;
   }
 
   return (
     <div className="overflow-x-auto">
-      <table className="min-w-full border-collapse text-left text-xs sm:text-sm">
+      <table className="min-w-full border-collapse text-left text-xs sm:text-sm" aria-label={t('admin.iam.rights.tableAriaLabel')}>
         <thead>
           <tr className="border-b border-border text-muted-foreground">
-            <th className="py-2 pr-4 font-semibold">Action</th>
-            <th className="py-2 pr-4 font-semibold">Resource Type</th>
-            <th className="py-2 pr-4 font-semibold">Organization</th>
-            <th className="py-2 font-semibold">Source Roles</th>
+            <th className="py-2 pr-4 font-semibold">{t('admin.iam.rights.columns.action')}</th>
+            <th className="py-2 pr-4 font-semibold">{t('admin.iam.rights.columns.resourceType')}</th>
+            <th className="py-2 pr-4 font-semibold">{t('admin.iam.rights.columns.resourceId')}</th>
+            <th className="py-2 pr-4 font-semibold">{t('admin.iam.rights.columns.organization')}</th>
+            <th className="py-2 pr-4 font-semibold">{t('admin.iam.rights.columns.effect')}</th>
+            <th className="py-2 pr-4 font-semibold">{t('admin.iam.rights.columns.scope')}</th>
+            <th className="py-2 font-semibold">{t('admin.iam.rights.columns.sourceRoles')}</th>
           </tr>
         </thead>
         <tbody>
           {permissions.map((permission, index) => (
             <tr
-              key={`${permission.action}-${permission.resourceType}-${permission.organizationId ?? 'none'}-${index}`}
+              key={`${permission.action}-${permission.resourceType}-${permission.resourceId ?? 'none'}-${index}`}
               className="border-b border-border align-top text-foreground"
             >
               <td className="py-2 pr-4">{permission.action}</td>
               <td className="py-2 pr-4">{permission.resourceType}</td>
-              <td className="py-2 pr-4">{formatOrganizationLabel(permission.organizationId ?? '')}</td>
-              <td className="py-2">
-                {permission.sourceRoleIds.length > 0 ? permission.sourceRoleIds.join(', ') : '-'}
-              </td>
+              <td className="py-2 pr-4">{permission.resourceId ?? '—'}</td>
+              <td className="py-2 pr-4">{permission.organizationId ?? t('admin.iam.rights.noOrganization')}</td>
+              <td className="py-2 pr-4">{permission.effect ?? '—'}</td>
+              <td className="py-2 pr-4">{formatObjectEntries(permission.scope)}</td>
+              <td className="py-2">{permission.sourceRoleIds.length > 0 ? permission.sourceRoleIds.join(', ') : '—'}</td>
             </tr>
           ))}
         </tbody>
@@ -74,7 +138,126 @@ const PermissionTable = ({
   );
 };
 
-export function IamViewerPage() {
+const StatusBadge = ({ label, tone }: Readonly<{ label: string; tone: string }>) => (
+  <Badge className={tone} variant="outline">
+    {label}
+  </Badge>
+);
+
+const CaseList = ({
+  items,
+  selectedId,
+  onSelect,
+  renderStatus,
+}: Readonly<{
+  items: readonly (IamGovernanceCaseListItem | IamDsrCaseListItem)[];
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+  renderStatus: (item: IamGovernanceCaseListItem | IamDsrCaseListItem) => React.ReactNode;
+}>) => {
+  return (
+    <div className="grid gap-3">
+      {items.map((item) => (
+        <Button
+          key={item.id}
+          type="button"
+          className={`rounded-xl border p-4 text-left transition ${
+            item.id === selectedId ? 'border-primary bg-primary/5' : 'border-border bg-card hover:bg-muted/50'
+          }`}
+          onClick={() => onSelect(item.id)}
+          variant="ghost"
+        >
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="space-y-1">
+              <p className="text-sm font-semibold text-foreground">{item.title}</p>
+              <p className="text-xs text-muted-foreground">{item.summary}</p>
+            </div>
+            {renderStatus(item)}
+          </div>
+          <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground">
+            <span>{t('admin.iam.shared.createdAt', { value: formatDateTime(item.createdAt) })}</span>
+            {'type' in item ? <span>{t('admin.iam.shared.type', { value: item.type })}</span> : null}
+            {'ticketId' in item && item.ticketId ? <span>{t('admin.iam.shared.ticket', { value: item.ticketId })}</span> : null}
+            {'targetDisplayName' in item && item.targetDisplayName ? (
+              <span>{t('admin.iam.shared.target', { value: item.targetDisplayName })}</span>
+            ) : null}
+          </div>
+        </Button>
+      ))}
+    </div>
+  );
+};
+
+const GovernanceDetail = ({ item }: Readonly<{ item: IamGovernanceCaseListItem | null }>) => {
+  if (!item) {
+    return <p className="text-sm text-muted-foreground">{t('admin.iam.shared.selectPrompt')}</p>;
+  }
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle>{item.title}</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3 pt-0">
+      <dl className="grid gap-2 text-sm">
+        <div>
+          <dt className="text-xs uppercase tracking-wide text-muted-foreground">{t('admin.iam.shared.status')}</dt>
+          <dd className="text-foreground">{item.status}</dd>
+        </div>
+        <div>
+          <dt className="text-xs uppercase tracking-wide text-muted-foreground">{t('admin.iam.shared.actor')}</dt>
+          <dd className="text-foreground">{item.actorDisplayName ?? '—'}</dd>
+        </div>
+        <div>
+          <dt className="text-xs uppercase tracking-wide text-muted-foreground">{t('admin.iam.shared.targetLabel')}</dt>
+          <dd className="text-foreground">{item.targetDisplayName ?? '—'}</dd>
+        </div>
+        <div>
+          <dt className="text-xs uppercase tracking-wide text-muted-foreground">{t('admin.iam.shared.meta')}</dt>
+          <dd className="text-foreground">{formatObjectEntries(item.metadata)}</dd>
+        </div>
+      </dl>
+      </CardContent>
+    </Card>
+  );
+};
+
+const DsrDetail = ({ item }: Readonly<{ item: IamDsrCaseListItem | null }>) => {
+  if (!item) {
+    return <p className="text-sm text-muted-foreground">{t('admin.iam.shared.selectPrompt')}</p>;
+  }
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle>{item.title}</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3 pt-0">
+      <dl className="grid gap-2 text-sm">
+        <div>
+          <dt className="text-xs uppercase tracking-wide text-muted-foreground">{t('admin.iam.shared.status')}</dt>
+          <dd className="text-foreground">{item.rawStatus}</dd>
+        </div>
+        <div>
+          <dt className="text-xs uppercase tracking-wide text-muted-foreground">{t('admin.iam.shared.targetLabel')}</dt>
+          <dd className="text-foreground">{item.targetDisplayName ?? '—'}</dd>
+        </div>
+        <div>
+          <dt className="text-xs uppercase tracking-wide text-muted-foreground">{t('admin.iam.shared.requester')}</dt>
+          <dd className="text-foreground">{item.requesterDisplayName ?? item.actorDisplayName ?? '—'}</dd>
+        </div>
+        <div>
+          <dt className="text-xs uppercase tracking-wide text-muted-foreground">{t('admin.iam.shared.meta')}</dt>
+          <dd className="text-foreground">{formatObjectEntries(item.metadata)}</dd>
+        </div>
+      </dl>
+      </CardContent>
+    </Card>
+  );
+};
+
+export function IamViewerPage({ activeTab }: IamViewerPageProps) {
+  const navigate = useNavigate();
   const { user, isLoading: isLoadingUser, error: authError, invalidatePermissions } = useAuth();
 
   const [instanceId, setInstanceId] = React.useState('');
@@ -84,6 +267,7 @@ export function IamViewerPage() {
   const [selectedOrganizationIds, setSelectedOrganizationIds] = React.useState<string[]>([]);
 
   const [permissions, setPermissions] = React.useState<readonly EffectivePermission[]>([]);
+  const [permissionSubject, setPermissionSubject] = React.useState<IamPermissionsResponse['subject'] | null>(null);
   const [isLoadingPermissions, setIsLoadingPermissions] = React.useState(false);
   const [permissionsError, setPermissionsError] = React.useState<string | null>(null);
 
@@ -95,16 +279,49 @@ export function IamViewerPage() {
   const [authorizeError, setAuthorizeError] = React.useState<string | null>(null);
   const [isAuthorizing, setIsAuthorizing] = React.useState(false);
 
-  const iamViewerFeatureFlag = isIamViewerEnabled();
-  const isAuthorizedAdmin = hasIamViewerAdminRole(user);
-  const canAccessViewer = iamViewerFeatureFlag && isAuthorizedAdmin;
+  const [governanceItems, setGovernanceItems] = React.useState<readonly IamGovernanceCaseListItem[]>([]);
+  const [governanceError, setGovernanceError] = React.useState<string | null>(null);
+  const [governanceQuery, setGovernanceQuery] = React.useState<GovernanceCasesQuery>({
+    page: 1,
+    pageSize: 12,
+    search: '',
+  });
+  const [isLoadingGovernance, setIsLoadingGovernance] = React.useState(false);
+  const [selectedGovernanceId, setSelectedGovernanceId] = React.useState<string | null>(null);
+
+  const [dsrItems, setDsrItems] = React.useState<readonly IamDsrCaseListItem[]>([]);
+  const [dsrError, setDsrError] = React.useState<string | null>(null);
+  const [dsrQuery, setDsrQuery] = React.useState<DsrAdminCasesQuery>({
+    page: 1,
+    pageSize: 12,
+    search: '',
+  });
+  const [isLoadingDsr, setIsLoadingDsr] = React.useState(false);
+  const [selectedDsrId, setSelectedDsrId] = React.useState<string | null>(null);
+
+  const cockpitEnabled = isIamCockpitEnabled();
+  const canAccessCockpit = hasIamCockpitAccessRole(user);
+  const allowedTabs = React.useMemo(() => getAllowedIamCockpitTabs(user), [user]);
 
   React.useEffect(() => {
     setInstanceId(user?.instanceId ?? '');
   }, [user?.instanceId]);
 
   React.useEffect(() => {
-    if (!canAccessViewer || !instanceId) {
+    if (allowedTabs.length === 0) {
+      return;
+    }
+    if (!allowedTabs.includes(activeTab)) {
+      void navigate({
+        to: '/admin/iam',
+        search: { tab: getFirstAllowedTab(allowedTabs) },
+        replace: true,
+      });
+    }
+  }, [activeTab, allowedTabs, navigate]);
+
+  React.useEffect(() => {
+    if (!cockpitEnabled || !canAccessCockpit || !instanceId || activeTab !== 'rights') {
       return;
     }
 
@@ -130,23 +347,23 @@ export function IamViewerPage() {
         if (!response.ok) {
           if (response.status === 403) {
             await invalidatePermissions();
-            if (!active) {
-              return;
-            }
           }
           const payload = (await response.json().catch(() => null)) as IamApiErrorPayload | null;
           setPermissions([]);
+          setPermissionSubject(null);
           setPermissionsError(payload?.error ?? `http_${response.status}`);
           return;
         }
 
         const payload = (await response.json()) as IamPermissionsResponse;
         setPermissions(payload.permissions);
+        setPermissionSubject(payload.subject);
       } catch (error) {
         if (!active) {
           return;
         }
         setPermissions([]);
+        setPermissionSubject(null);
         setPermissionsError(error instanceof Error ? error.message : String(error));
       } finally {
         if (active) {
@@ -159,7 +376,77 @@ export function IamViewerPage() {
       active = false;
       window.clearTimeout(timer);
     };
-  }, [actingAsUserId, canAccessViewer, instanceId, invalidatePermissions, organizationId]);
+  }, [actingAsUserId, activeTab, canAccessCockpit, cockpitEnabled, instanceId, invalidatePermissions, organizationId]);
+
+  React.useEffect(() => {
+    if (!cockpitEnabled || !canAccessCockpit || activeTab !== 'governance') {
+      return;
+    }
+
+    let active = true;
+    setIsLoadingGovernance(true);
+    setGovernanceError(null);
+
+    void listGovernanceCases(governanceQuery)
+      .then((response) => {
+        if (!active) {
+          return;
+        }
+        setGovernanceItems(response.data);
+        setSelectedGovernanceId((current) => current ?? response.data[0]?.id ?? null);
+      })
+      .catch((error) => {
+        if (!active) {
+          return;
+        }
+        setGovernanceItems([]);
+        setGovernanceError(error instanceof Error ? error.message : String(error));
+      })
+      .finally(() => {
+        if (active) {
+          setIsLoadingGovernance(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [activeTab, canAccessCockpit, cockpitEnabled, governanceQuery]);
+
+  React.useEffect(() => {
+    if (!cockpitEnabled || !canAccessCockpit || activeTab !== 'dsr') {
+      return;
+    }
+
+    let active = true;
+    setIsLoadingDsr(true);
+    setDsrError(null);
+
+    void listAdminDsrCases(dsrQuery)
+      .then((response) => {
+        if (!active) {
+          return;
+        }
+        setDsrItems(response.data);
+        setSelectedDsrId((current) => current ?? response.data[0]?.id ?? null);
+      })
+      .catch((error) => {
+        if (!active) {
+          return;
+        }
+        setDsrItems([]);
+        setDsrError(error instanceof Error ? error.message : String(error));
+      })
+      .finally(() => {
+        if (active) {
+          setIsLoadingDsr(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [activeTab, canAccessCockpit, cockpitEnabled, dsrQuery]);
 
   const filteredPermissions = React.useMemo(
     () =>
@@ -189,7 +476,7 @@ export function IamViewerPage() {
   const handleAuthorizeSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!instanceId) {
-      setAuthorizeError('instanceId fehlt.');
+      setAuthorizeError(t('admin.iam.rights.authorize.instanceRequired'));
       return;
     }
 
@@ -237,217 +524,347 @@ export function IamViewerPage() {
     }
   };
 
+  const activeGovernanceItem = governanceItems.find((item) => item.id === selectedGovernanceId) ?? null;
+  const activeDsrItem = dsrItems.find((item) => item.id === selectedDsrId) ?? null;
+
   if (isLoadingUser) {
-    return <p className="text-sm text-muted-foreground">IAM-Viewer wird initialisiert ...</p>;
+    return <p className="text-sm text-muted-foreground">{t('admin.iam.messages.initializing')}</p>;
   }
 
   if (authError) {
     return (
-      <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive" role="alert">
-        {authError.message}
-      </div>
+      <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
+        <AlertDescription>{authError.message}</AlertDescription>
+      </Alert>
     );
   }
 
-  if (!iamViewerFeatureFlag) {
+  if (!cockpitEnabled) {
     return (
-      <div className="rounded-xl border border-secondary/40 bg-secondary/10 p-4 text-sm text-secondary">
-        IAM-Viewer ist deaktiviert. Setze <code>VITE_ENABLE_IAM_ADMIN_VIEWER=true</code>.
-      </div>
+      <Alert className="border-secondary/40 bg-secondary/10 text-secondary">
+        <AlertDescription>{t('admin.iam.messages.disabled')}</AlertDescription>
+      </Alert>
     );
   }
 
-  if (!isAuthorizedAdmin) {
+  if (!canAccessCockpit || allowedTabs.length === 0) {
     return (
-      <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive" role="alert">
-        Zugriff verweigert: Admin-Rolle erforderlich.
-      </div>
+      <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
+        <AlertDescription>{t('admin.iam.messages.forbidden')}</AlertDescription>
+      </Alert>
     );
   }
 
   return (
-    <section className="space-y-4">
+    <section className="space-y-5">
       <header className="space-y-2">
-        <h1 className="text-2xl font-semibold text-foreground">IAM Rechte-Matrix-Viewer</h1>
-        <p className="text-sm text-muted-foreground">Read-only Analyse von effektiven Berechtigungen und Authorize-Entscheidungen.</p>
+        <h1 className="text-3xl font-semibold text-foreground">{t('admin.iam.page.title')}</h1>
+        <p className="max-w-3xl text-sm text-muted-foreground">{t('admin.iam.page.subtitle')}</p>
       </header>
 
-      <div className="sticky top-2 z-20 rounded-xl border border-border bg-card/95 p-4 shadow-shell backdrop-blur">
-        <div className="grid gap-3 md:grid-cols-3">
-          <label className="flex flex-col gap-1 text-xs text-muted-foreground">
-            Instance ID
-            <input
-              className="rounded border border-border bg-background px-3 py-2 text-sm text-foreground"
-              value={instanceId}
-              onChange={(event) => setInstanceId(event.target.value)}
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-xs text-muted-foreground">
-            Organization ID (optional)
-            <input
-              className="rounded border border-border bg-background px-3 py-2 text-sm text-foreground"
-              value={organizationId}
-              onChange={(event) => setOrganizationId(event.target.value)}
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-xs text-muted-foreground">
-            actingAsUserId (optional)
-            <input
-              className="rounded border border-border bg-background px-3 py-2 text-sm text-foreground"
-              value={actingAsUserId}
-              onChange={(event) => setActingAsUserId(event.target.value)}
-            />
-          </label>
-        </div>
-      </div>
+      <Card className="flex flex-wrap gap-2 p-2" role="tablist" aria-label={t('admin.iam.tabs.ariaLabel')}>
+        {allowedTabs.map((tab) => {
+          const selected = tab === activeTab;
+          return (
+            <Button
+              key={tab}
+              type="button"
+              role="tab"
+              aria-selected={selected}
+              className={selected ? 'font-semibold' : 'text-muted-foreground'}
+              onClick={() => void navigate({ to: '/admin/iam', search: { tab } })}
+              variant={selected ? 'default' : 'ghost'}
+            >
+              {t(`admin.iam.tabs.${tab}` as const)}
+            </Button>
+          );
+        })}
+      </Card>
 
-      <div className="grid gap-4 xl:grid-cols-[1fr_1.3fr_1fr]">
-        <article className="space-y-3 rounded-xl border border-border bg-card p-4 shadow-shell">
-          <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-muted-foreground">Scope</h2>
-          <dl className="space-y-1 text-sm text-foreground">
-            <div className="flex items-center justify-between gap-4">
-              <dt className="text-muted-foreground">Actor</dt>
-              <dd className="text-right">{user?.id ?? '-'}</dd>
+      {activeTab === 'rights' ? (
+        <div className="space-y-4">
+          <Card className="grid gap-3 p-4 lg:grid-cols-4">
+            <div className="grid gap-1 text-xs uppercase tracking-wide text-muted-foreground">
+              <Label htmlFor="iam-organization-filter">{t('admin.iam.rights.filters.organization')}</Label>
+              <Input
+                id="iam-organization-filter"
+                value={organizationId}
+                onChange={(event) => setOrganizationId(event.target.value)}
+              />
             </div>
-            <div className="flex items-center justify-between gap-4">
-              <dt className="text-muted-foreground">Effective Subject</dt>
-              <dd className="text-right">{actingAsUserId.trim() || user?.id || '-'}</dd>
+            <div className="grid gap-1 text-xs uppercase tracking-wide text-muted-foreground">
+              <Label htmlFor="iam-acting-as-filter">{t('admin.iam.rights.filters.actingAs')}</Label>
+              <Input
+                id="iam-acting-as-filter"
+                value={actingAsUserId}
+                onChange={(event) => setActingAsUserId(event.target.value)}
+              />
             </div>
-            <div className="flex items-center justify-between gap-4">
-              <dt className="text-muted-foreground">Mode</dt>
-              <dd className="text-right">{actingAsUserId.trim() ? 'Impersonation' : 'Self'}</dd>
+            <div className="grid gap-1 text-xs uppercase tracking-wide text-muted-foreground">
+              <Label htmlFor="iam-query-filter">{t('admin.iam.rights.filters.search')}</Label>
+              <Input
+                id="iam-query-filter"
+                value={queryText}
+                onChange={(event) => setQueryText(event.target.value)}
+              />
             </div>
-          </dl>
-          {permissionsError ? (
-            <p className="rounded border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive" role="alert">
-              Fehler beim Laden der Berechtigungen: {permissionsError}
-            </p>
-          ) : null}
-        </article>
+            <Card className="bg-background px-3 py-2 shadow-none">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">{t('admin.iam.rights.subject.title')}</p>
+              <p>{permissionSubject ? permissionSubject.effectiveUserId : '—'}</p>
+              <p className="text-xs text-muted-foreground">
+                {permissionSubject?.isImpersonating
+                  ? t('admin.iam.rights.subject.impersonating', { actor: permissionSubject.actorUserId })
+                  : t('admin.iam.rights.subject.self')}
+              </p>
+            </Card>
+          </Card>
 
-        <article className="space-y-3 rounded-xl border border-border bg-card p-4 shadow-shell">
-          <div className="flex items-center justify-between gap-2">
-            <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-muted-foreground">Effektive Berechtigungen</h2>
-            {isLoadingPermissions ? <span className="text-xs text-muted-foreground">Lade ...</span> : null}
-          </div>
-          <label className="flex flex-col gap-1 text-xs text-muted-foreground">
-            Filter (Action / Resource / Organization)
-            <input
-              className="rounded border border-border bg-background px-3 py-2 text-sm text-foreground"
-              value={queryText}
-              onChange={(event) => setQueryText(event.target.value)}
-            />
-          </label>
           {organizationOptions.length > 0 ? (
-            <fieldset className="space-y-2">
-              <legend className="text-xs text-muted-foreground">Organization-Filter</legend>
-              <div className="flex flex-wrap gap-2">
-                {organizationOptions.map((organizationValue) => {
-                  const checked = selectedOrganizationIds.includes(organizationValue);
-                  return (
-                    <label
-                      key={`org-filter-${organizationValue || 'none'}`}
-                      className="inline-flex items-center gap-2 rounded border border-border bg-background px-2 py-1 text-xs text-foreground"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={() => handleOrganizationFilterToggle(organizationValue)}
-                      />
-                      {formatOrganizationLabel(organizationValue)}
-                    </label>
-                  );
-                })}
-              </div>
-            </fieldset>
+            <div className="flex flex-wrap gap-2">
+              {organizationOptions.map((organizationValue) => (
+                <Button
+                  key={organizationValue || 'no-organization'}
+                  type="button"
+                  className={`rounded-full text-xs ${
+                    selectedOrganizationIds.includes(organizationValue)
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-border text-muted-foreground'
+                  }`}
+                  onClick={() => handleOrganizationFilterToggle(organizationValue)}
+                  size="sm"
+                  variant="outline"
+                >
+                  {organizationValue || t('admin.iam.rights.noOrganization')}
+                </Button>
+              ))}
+            </div>
           ) : null}
-          <PermissionTable permissions={filteredPermissions} />
-        </article>
 
-        <article className="space-y-3 rounded-xl border border-border bg-card p-4 shadow-shell">
-          <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-muted-foreground">Authorize-Simulator</h2>
-          <form className="space-y-2" onSubmit={handleAuthorizeSubmit}>
-            <label className="flex flex-col gap-1 text-xs text-muted-foreground">
-              Action
-              <input
-                required
-                className="rounded border border-border bg-background px-3 py-2 text-sm text-foreground"
+          {permissionsError ? (
+            <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
+              <AlertDescription>{t('admin.iam.rights.messages.error', { value: permissionsError })}</AlertDescription>
+            </Alert>
+          ) : null}
+
+          <Card aria-busy={isLoadingPermissions} className="p-4">
+            <PermissionTable permissions={filteredPermissions} />
+          </Card>
+
+          <Card>
+            <form onSubmit={handleAuthorizeSubmit} className="grid gap-3 p-4 lg:grid-cols-4">
+            <div className="grid gap-1 text-xs uppercase tracking-wide text-muted-foreground">
+              <Label htmlFor="iam-authorize-action">{t('admin.iam.rights.authorize.action')}</Label>
+              <Input
+                id="iam-authorize-action"
                 value={authorizeAction}
                 onChange={(event) => setAuthorizeAction(event.target.value)}
               />
-            </label>
-            <label className="flex flex-col gap-1 text-xs text-muted-foreground">
-              Resource Type
-              <input
-                required
-                className="rounded border border-border bg-background px-3 py-2 text-sm text-foreground"
+            </div>
+            <div className="grid gap-1 text-xs uppercase tracking-wide text-muted-foreground">
+              <Label htmlFor="iam-authorize-resource-type">{t('admin.iam.rights.authorize.resourceType')}</Label>
+              <Input
+                id="iam-authorize-resource-type"
                 value={authorizeResourceType}
                 onChange={(event) => setAuthorizeResourceType(event.target.value)}
               />
-            </label>
-            <label className="flex flex-col gap-1 text-xs text-muted-foreground">
-              Resource ID (optional)
-              <input
-                className="rounded border border-border bg-background px-3 py-2 text-sm text-foreground"
+            </div>
+            <div className="grid gap-1 text-xs uppercase tracking-wide text-muted-foreground">
+              <Label htmlFor="iam-authorize-resource-id">{t('admin.iam.rights.authorize.resourceId')}</Label>
+              <Input
+                id="iam-authorize-resource-id"
                 value={authorizeResourceId}
                 onChange={(event) => setAuthorizeResourceId(event.target.value)}
               />
-            </label>
-            <label className="flex flex-col gap-1 text-xs text-muted-foreground">
-              Organization ID (optional)
-              <input
-                className="rounded border border-border bg-background px-3 py-2 text-sm text-foreground"
+            </div>
+            <div className="grid gap-1 text-xs uppercase tracking-wide text-muted-foreground">
+              <Label htmlFor="iam-authorize-organization-id">{t('admin.iam.rights.authorize.organizationId')}</Label>
+              <Input
+                id="iam-authorize-organization-id"
                 value={authorizeOrganizationId}
                 onChange={(event) => setAuthorizeOrganizationId(event.target.value)}
               />
-            </label>
-            <button
-              type="submit"
-              disabled={isAuthorizing}
-              className="rounded border border-primary/40 bg-primary/15 px-3 py-2 text-xs font-semibold text-primary transition hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {isAuthorizing ? 'Prüfe ...' : 'Authorize prüfen'}
-            </button>
-          </form>
-
-          <div aria-live="polite" className="space-y-2">
-            {authorizeError ? (
-              <p className="rounded border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive" role="alert">
-                Authorize-Fehler: {authorizeError}
-              </p>
-            ) : null}
-
+            </div>
+            <div className="lg:col-span-4 flex items-center gap-3">
+              <Button type="submit" disabled={isAuthorizing}>
+                {isAuthorizing ? t('admin.iam.rights.authorize.running') : t('admin.iam.rights.authorize.run')}
+              </Button>
+              {authorizeError ? <p className="text-sm text-destructive">{authorizeError}</p> : null}
+            </div>
             {authorizeDecision ? (
-              <div className="rounded border border-border bg-background p-3">
-                <p
-                  className={`inline-flex rounded px-2 py-1 text-xs font-semibold ${
-                    authorizeDecision.allowed ? 'bg-primary/15 text-primary' : 'bg-destructive/10 text-destructive'
-                  }`}
-                >
-                  {authorizeDecision.allowed ? 'ALLOWED' : 'DENIED'}
+              <Card className="lg:col-span-4 bg-background p-3 shadow-none">
+                <p className="font-semibold text-foreground">
+                  {authorizeDecision.allowed ? t('admin.iam.rights.authorize.allowed') : t('admin.iam.rights.authorize.denied')}
                 </p>
-                <p className="mt-2 text-xs text-foreground">Reason: {authorizeDecision.reason}</p>
-                {authorizeDecision.reasonCode ? (
-                  <p className="text-xs text-muted-foreground">Reason Code: {authorizeDecision.reasonCode}</p>
-                ) : null}
-                {authorizeDecision.evaluatedAt ? (
-                  <p className="text-xs text-muted-foreground">Evaluated: {authorizeDecision.evaluatedAt}</p>
-                ) : null}
+                <p className="text-muted-foreground">{authorizeDecision.reasonCode ?? authorizeDecision.reason}</p>
                 {authorizeDecision.diagnostics ? (
-                  <details className="mt-2 text-xs text-foreground">
-                    <summary className="cursor-pointer">Diagnostics</summary>
-                    <pre className="mt-2 overflow-x-auto rounded bg-muted p-2 text-[11px] text-foreground">
-                      {JSON.stringify(authorizeDecision.diagnostics, null, 2)}
-                    </pre>
-                  </details>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {formatObjectEntries(authorizeDecision.diagnostics)}
+                  </p>
                 ) : null}
+              </Card>
+            ) : null}
+            </form>
+          </Card>
+        </div>
+      ) : null}
+
+      {activeTab === 'governance' ? (
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(20rem,1fr)]">
+          <div className="space-y-4">
+            <Card className="grid gap-3 p-4 md:grid-cols-3">
+              <div className="grid gap-1 text-xs uppercase tracking-wide text-muted-foreground">
+                <Label htmlFor="iam-governance-search">{t('admin.iam.governance.filters.search')}</Label>
+                <Input
+                  id="iam-governance-search"
+                  value={governanceQuery.search ?? ''}
+                  onChange={(event) => setGovernanceQuery((current) => ({ ...current, page: 1, search: event.target.value }))}
+                />
               </div>
+              <div className="grid gap-1 text-xs uppercase tracking-wide text-muted-foreground">
+                <Label htmlFor="iam-governance-type">{t('admin.iam.governance.filters.type')}</Label>
+                <Select
+                  id="iam-governance-type"
+                  value={governanceQuery.type ?? ''}
+                  onChange={(event) =>
+                    setGovernanceQuery((current) => ({
+                      ...current,
+                      page: 1,
+                      type: (event.target.value || undefined) as GovernanceCasesQuery['type'],
+                    }))
+                  }
+                  className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+                >
+                  <option value="">{t('admin.iam.shared.all')}</option>
+                  {governanceTypeOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {t(`admin.iam.governance.types.${option}` as const)}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <div className="grid gap-1 text-xs uppercase tracking-wide text-muted-foreground">
+                <Label htmlFor="iam-governance-status">{t('admin.iam.governance.filters.status')}</Label>
+                <Input
+                  id="iam-governance-status"
+                  value={governanceQuery.status ?? ''}
+                  onChange={(event) => setGovernanceQuery((current) => ({ ...current, page: 1, status: event.target.value || undefined }))}
+                />
+              </div>
+            </Card>
+            {governanceError ? (
+              <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
+                <AlertDescription>{governanceError}</AlertDescription>
+              </Alert>
+            ) : null}
+            {isLoadingGovernance ? (
+              <p className="text-sm text-muted-foreground">{t('admin.iam.governance.messages.loading')}</p>
+            ) : governanceItems.length === 0 ? (
+              <Card className="border-dashed p-6 text-sm text-muted-foreground shadow-none">
+                {t('admin.iam.governance.messages.empty')}
+              </Card>
             ) : (
-              <p className="text-xs text-muted-foreground">Noch keine Authorize-Entscheidung ausgeführt.</p>
+              <CaseList
+                items={governanceItems}
+                selectedId={selectedGovernanceId}
+                onSelect={setSelectedGovernanceId}
+                renderStatus={(item) => (
+                  <StatusBadge
+                    label={(item as IamGovernanceCaseListItem).status}
+                    tone="border-secondary/40 bg-secondary/10 text-secondary"
+                  />
+                )}
+              />
             )}
           </div>
-        </article>
-      </div>
+          <GovernanceDetail item={activeGovernanceItem} />
+        </div>
+      ) : null}
+
+      {activeTab === 'dsr' ? (
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(20rem,1fr)]">
+          <div className="space-y-4">
+            <Card className="grid gap-3 p-4 md:grid-cols-3">
+              <div className="grid gap-1 text-xs uppercase tracking-wide text-muted-foreground">
+                <Label htmlFor="iam-dsr-search">{t('admin.iam.dsr.filters.search')}</Label>
+                <Input
+                  id="iam-dsr-search"
+                  value={dsrQuery.search ?? ''}
+                  onChange={(event) => setDsrQuery((current) => ({ ...current, page: 1, search: event.target.value }))}
+                />
+              </div>
+              <div className="grid gap-1 text-xs uppercase tracking-wide text-muted-foreground">
+                <Label htmlFor="iam-dsr-type">{t('admin.iam.dsr.filters.type')}</Label>
+                <Select
+                  id="iam-dsr-type"
+                  value={dsrQuery.type ?? ''}
+                  onChange={(event) =>
+                    setDsrQuery((current) => ({
+                      ...current,
+                      page: 1,
+                      type: (event.target.value || undefined) as DsrAdminCasesQuery['type'],
+                    }))
+                  }
+                  className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+                >
+                  <option value="">{t('admin.iam.shared.all')}</option>
+                  {dsrTypeOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {t(`admin.iam.dsr.types.${option}` as const)}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <div className="grid gap-1 text-xs uppercase tracking-wide text-muted-foreground">
+                <Label htmlFor="iam-dsr-status">{t('admin.iam.dsr.filters.status')}</Label>
+                <Select
+                  id="iam-dsr-status"
+                  value={dsrQuery.status ?? ''}
+                  onChange={(event) =>
+                    setDsrQuery((current) => ({
+                      ...current,
+                      page: 1,
+                      status: (event.target.value || undefined) as DsrAdminCasesQuery['status'],
+                    }))
+                  }
+                  className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+                >
+                  <option value="">{t('admin.iam.shared.all')}</option>
+                  {dsrStatusOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {t(`admin.iam.dsr.status.${option === 'in_progress' ? 'inProgress' : option}` as const)}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            </Card>
+            {dsrError ? (
+              <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
+                <AlertDescription>{dsrError}</AlertDescription>
+              </Alert>
+            ) : null}
+            {isLoadingDsr ? (
+              <p className="text-sm text-muted-foreground">{t('admin.iam.dsr.messages.loading')}</p>
+            ) : dsrItems.length === 0 ? (
+              <Card className="border-dashed p-6 text-sm text-muted-foreground shadow-none">
+                {t('admin.iam.dsr.messages.empty')}
+              </Card>
+            ) : (
+              <CaseList
+                items={dsrItems}
+                selectedId={selectedDsrId}
+                onSelect={setSelectedDsrId}
+                renderStatus={(item) => (
+                  <StatusBadge
+                    label={t(mapDsrStatusToTranslationKey(item as IamDsrCaseListItem))}
+                    tone={mapDsrStatusTone(item as IamDsrCaseListItem)}
+                  />
+                )}
+              />
+            )}
+          </div>
+          <DsrDetail item={activeDsrItem} />
+        </div>
+      ) : null}
     </section>
   );
 }

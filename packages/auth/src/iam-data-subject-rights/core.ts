@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { createSdkLogger, getWorkspaceContext, withRequestContext } from '@sva/sdk/server';
+import type { IamDsrCanonicalStatus, IamDsrCaseListItem } from '@sva/core';
 import { decryptFieldValue, encryptFieldValue, parseFieldEncryptionConfigFromEnv } from '@sva/core/security';
 
 import { withAuthenticatedUser } from '../middleware.server';
@@ -13,6 +14,8 @@ import {
 import { isUuid, readBoolean, readNumber, readObject, readString } from '../shared/input-readers';
 import { buildLogContext } from '../shared/log-context';
 import { dataSubjectRightsRequestSchema } from '../shared/schemas';
+import { asApiItem, asApiList, createApiError, readPage } from '../iam-account-management/api-helpers';
+import { listAdminDsrCases, loadDsrSelfServiceOverview } from './read-models';
 
 const logger = createSdkLogger({ component: 'iam-dsr', level: 'info' });
 
@@ -1631,6 +1634,45 @@ export const dataSubjectRequestHandler = async (request: Request): Promise<Respo
   });
 };
 
+export const getMyDataSubjectRightsHandler = async (request: Request): Promise<Response> => {
+  return withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
+    return withAuthenticatedUser(request, async ({ user }) => {
+      const instanceId = resolveInstanceId(request, user.instanceId);
+      if (!instanceId) {
+        return createApiError(400, 'invalid_instance_id', 'Instanzkontext fehlt.', getWorkspaceContext().requestId);
+      }
+      if (user.instanceId && user.instanceId !== instanceId) {
+        return createApiError(403, 'forbidden', 'Instanzkontext unzulässig.', getWorkspaceContext().requestId);
+      }
+
+      try {
+        return await withInstanceScopedDb(instanceId, async (client) => {
+          const requesterAccountId = await resolveRequesterAccountId(client, {
+            instanceId,
+            keycloakSubject: user.id,
+          });
+          if (!requesterAccountId) {
+            return createApiError(404, 'not_found', 'Konto nicht gefunden.', getWorkspaceContext().requestId);
+          }
+
+          const overview = await loadDsrSelfServiceOverview(client, {
+            instanceId,
+            accountId: requesterAccountId,
+          });
+          return jsonResponse(200, asApiItem(overview, getWorkspaceContext().requestId));
+        });
+      } catch (error) {
+        logger.error('DSR self overview failed', {
+          operation: 'self_overview',
+          error: error instanceof Error ? error.message : String(error),
+          ...buildDsrLogContext(instanceId),
+        });
+        return createApiError(503, 'database_unavailable', 'DSR-Daten konnten nicht geladen werden.', getWorkspaceContext().requestId);
+      }
+    });
+  });
+};
+
 export const optionalProcessingExecuteHandler = async (request: Request): Promise<Response> => {
   return withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
     return withAuthenticatedUser(request, async ({ user }) => {
@@ -1992,6 +2034,51 @@ LIMIT 1;
           ...buildDsrLogContext(instanceId),
         });
         return jsonResponse(503, { error: 'database_unavailable' });
+      }
+    });
+  });
+};
+
+export const listAdminDataSubjectRightsCasesHandler = async (request: Request): Promise<Response> => {
+  return withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
+    return withAuthenticatedUser(request, async ({ user }) => {
+      if (!isAdminRole(user.roles)) {
+        return createApiError(403, 'forbidden', 'Keine Berechtigung für DSR-Transparenz.', getWorkspaceContext().requestId);
+      }
+
+      const url = new URL(request.url);
+      const instanceId = resolveInstanceId(request, user.instanceId);
+      const type = readString(url.searchParams.get('type')) as IamDsrCaseListItem['type'] | undefined;
+      const status = readString(url.searchParams.get('status')) as IamDsrCanonicalStatus | undefined;
+      const search = readString(url.searchParams.get('search'));
+      const { page, pageSize } = readPage(request);
+
+      if (!instanceId) {
+        return createApiError(400, 'invalid_instance_id', 'Instanzkontext fehlt.', getWorkspaceContext().requestId);
+      }
+      if (user.instanceId && user.instanceId !== instanceId) {
+        return createApiError(403, 'forbidden', 'Instanzkontext unzulässig.', getWorkspaceContext().requestId);
+      }
+
+      try {
+        const result = await withInstanceScopedDb(instanceId, (client) =>
+          listAdminDsrCases(client, {
+            instanceId,
+            page,
+            pageSize,
+            search: search ?? undefined,
+            type,
+            status,
+          })
+        );
+        return jsonResponse(200, asApiList(result.items, { page, pageSize, total: result.total }, getWorkspaceContext().requestId));
+      } catch (error) {
+        logger.error('DSR admin case list failed', {
+          operation: 'admin_case_list',
+          error: error instanceof Error ? error.message : String(error),
+          ...buildDsrLogContext(instanceId),
+        });
+        return createApiError(503, 'database_unavailable', 'DSR-Fälle konnten nicht geladen werden.', getWorkspaceContext().requestId);
       }
     });
   });

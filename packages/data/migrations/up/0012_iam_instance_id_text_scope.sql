@@ -1,8 +1,24 @@
+DROP TRIGGER IF EXISTS trg_immutable_activity_logs ON iam.activity_logs;
+
 DO $$
 DECLARE
-  table_name TEXT;
+  current_table_name TEXT;
+  instance_id_source_expression TEXT;
+  requires_instance_migration BOOLEAN;
 BEGIN
-  FOREACH table_name IN ARRAY ARRAY[
+  SELECT CASE
+    WHEN EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = 'iam'
+        AND table_name = 'instances'
+        AND column_name = 'instance_key'
+    ) THEN 'instance.instance_key'
+    ELSE 'instance.id'
+  END
+  INTO instance_id_source_expression;
+
+  FOREACH current_table_name IN ARRAY ARRAY[
     'accounts',
     'organizations',
     'roles',
@@ -26,19 +42,37 @@ BEGIN
     'idempotency_keys',
     'activity_logs_archive'
   ] LOOP
-    EXECUTE format('ALTER TABLE iam.%I ADD COLUMN IF NOT EXISTS instance_id_v2 TEXT;', table_name);
-    EXECUTE format(
-      'UPDATE iam.%I AS target
-       SET instance_id_v2 = instance.instance_key
-       FROM iam.instances AS instance
-       WHERE target.instance_id IS NOT NULL
-         AND instance.id = target.instance_id
-         AND target.instance_id_v2 IS NULL;',
-      table_name
-    );
+    SELECT EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = 'iam'
+        AND table_name = current_table_name
+        AND column_name = 'instance_id'
+        AND udt_name <> 'text'
+    )
+    INTO requires_instance_migration;
+
+    IF requires_instance_migration THEN
+      EXECUTE format('ALTER TABLE iam.%I ADD COLUMN IF NOT EXISTS instance_id_v2 TEXT;', current_table_name);
+      EXECUTE format(
+        'UPDATE iam.%I AS target
+         SET instance_id_v2 = %s
+         FROM iam.instances AS instance
+         WHERE target.instance_id IS NOT NULL
+           AND instance.id = target.instance_id
+           AND target.instance_id_v2 IS NULL;',
+        current_table_name,
+        instance_id_source_expression
+      );
+    END IF;
   END LOOP;
 END
 $$;
+
+CREATE TRIGGER trg_immutable_activity_logs
+BEFORE UPDATE OR DELETE ON iam.activity_logs
+FOR EACH ROW
+EXECUTE FUNCTION iam.prevent_activity_logs_mutation();
 
 DROP POLICY IF EXISTS instances_isolation_policy ON iam.instances;
 DROP POLICY IF EXISTS accounts_isolation_policy ON iam.accounts;
@@ -63,6 +97,7 @@ DROP POLICY IF EXISTS account_profile_corrections_isolation_policy ON iam.accoun
 DROP POLICY IF EXISTS data_subject_recipient_notifications_isolation_policy ON iam.data_subject_recipient_notifications;
 DROP POLICY IF EXISTS idempotency_keys_isolation_policy ON iam.idempotency_keys;
 DROP POLICY IF EXISTS activity_logs_archive_isolation_policy ON iam.activity_logs_archive;
+DROP POLICY IF EXISTS instance_integrations_isolation_policy ON iam.instance_integrations;
 
 ALTER TABLE iam.organizations
   DROP CONSTRAINT IF EXISTS organizations_instance_key_uniq,
@@ -192,105 +227,105 @@ ALTER TABLE iam.activity_logs_archive
   DROP CONSTRAINT IF EXISTS activity_logs_archive_instance_id_fkey;
 DROP INDEX IF EXISTS iam.idx_activity_logs_archive_instance_created;
 
+ALTER TABLE IF EXISTS iam.instance_integrations
+  DROP CONSTRAINT IF EXISTS instance_integrations_instance_id_fkey;
+DROP INDEX IF EXISTS iam.idx_instance_integrations_instance_provider;
+
 ALTER TABLE iam.instances
   DROP CONSTRAINT IF EXISTS instances_pkey;
 
-ALTER TABLE iam.instances
-  ALTER COLUMN id DROP DEFAULT,
-  ALTER COLUMN id TYPE TEXT USING instance_key;
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'iam'
+      AND table_name = 'instances'
+      AND column_name = 'instance_key'
+  ) THEN
+    ALTER TABLE iam.instances
+      ALTER COLUMN id DROP DEFAULT,
+      ALTER COLUMN id TYPE TEXT USING instance_key;
+
+    ALTER TABLE iam.instances
+      DROP COLUMN IF EXISTS instance_key;
+  ELSE
+    ALTER TABLE iam.instances
+      ALTER COLUMN id DROP DEFAULT;
+  END IF;
+END
+$$;
 
 ALTER TABLE iam.instances
   ADD CONSTRAINT instances_pkey PRIMARY KEY (id);
 
-ALTER TABLE iam.instances
-  DROP COLUMN IF EXISTS instance_key;
+DO $$
+DECLARE
+  current_table_name TEXT;
+BEGIN
+  FOREACH current_table_name IN ARRAY ARRAY[
+    'accounts',
+    'organizations',
+    'roles',
+    'permissions',
+    'instance_memberships',
+    'account_organizations',
+    'account_roles',
+    'role_permissions',
+    'activity_logs',
+    'permission_change_requests',
+    'delegations',
+    'impersonation_sessions',
+    'legal_text_versions',
+    'legal_text_acceptances',
+    'data_subject_requests',
+    'data_subject_request_events',
+    'data_subject_export_jobs',
+    'legal_holds',
+    'account_profile_corrections',
+    'data_subject_recipient_notifications',
+    'idempotency_keys',
+    'activity_logs_archive'
+  ] LOOP
+    IF EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = 'iam'
+        AND table_name = current_table_name
+        AND column_name = 'instance_id_v2'
+    ) THEN
+      EXECUTE format('ALTER TABLE iam.%I DROP COLUMN IF EXISTS instance_id;', current_table_name);
+      EXECUTE format('ALTER TABLE iam.%I RENAME COLUMN instance_id_v2 TO instance_id;', current_table_name);
+    END IF;
+  END LOOP;
 
-ALTER TABLE iam.accounts DROP COLUMN IF EXISTS instance_id;
-ALTER TABLE iam.accounts RENAME COLUMN instance_id_v2 TO instance_id;
-
-ALTER TABLE iam.organizations DROP COLUMN IF EXISTS instance_id;
-ALTER TABLE iam.organizations RENAME COLUMN instance_id_v2 TO instance_id;
-ALTER TABLE iam.organizations ALTER COLUMN instance_id SET NOT NULL;
-
-ALTER TABLE iam.roles DROP COLUMN IF EXISTS instance_id;
-ALTER TABLE iam.roles RENAME COLUMN instance_id_v2 TO instance_id;
-ALTER TABLE iam.roles ALTER COLUMN instance_id SET NOT NULL;
-
-ALTER TABLE iam.permissions DROP COLUMN IF EXISTS instance_id;
-ALTER TABLE iam.permissions RENAME COLUMN instance_id_v2 TO instance_id;
-ALTER TABLE iam.permissions ALTER COLUMN instance_id SET NOT NULL;
-
-ALTER TABLE iam.instance_memberships DROP COLUMN IF EXISTS instance_id;
-ALTER TABLE iam.instance_memberships RENAME COLUMN instance_id_v2 TO instance_id;
-ALTER TABLE iam.instance_memberships ALTER COLUMN instance_id SET NOT NULL;
-
-ALTER TABLE iam.account_organizations DROP COLUMN IF EXISTS instance_id;
-ALTER TABLE iam.account_organizations RENAME COLUMN instance_id_v2 TO instance_id;
-ALTER TABLE iam.account_organizations ALTER COLUMN instance_id SET NOT NULL;
-
-ALTER TABLE iam.account_roles DROP COLUMN IF EXISTS instance_id;
-ALTER TABLE iam.account_roles RENAME COLUMN instance_id_v2 TO instance_id;
-ALTER TABLE iam.account_roles ALTER COLUMN instance_id SET NOT NULL;
-
-ALTER TABLE iam.role_permissions DROP COLUMN IF EXISTS instance_id;
-ALTER TABLE iam.role_permissions RENAME COLUMN instance_id_v2 TO instance_id;
-ALTER TABLE iam.role_permissions ALTER COLUMN instance_id SET NOT NULL;
-
-ALTER TABLE iam.activity_logs DROP COLUMN IF EXISTS instance_id;
-ALTER TABLE iam.activity_logs RENAME COLUMN instance_id_v2 TO instance_id;
-ALTER TABLE iam.activity_logs ALTER COLUMN instance_id SET NOT NULL;
-
-ALTER TABLE iam.permission_change_requests DROP COLUMN IF EXISTS instance_id;
-ALTER TABLE iam.permission_change_requests RENAME COLUMN instance_id_v2 TO instance_id;
-ALTER TABLE iam.permission_change_requests ALTER COLUMN instance_id SET NOT NULL;
-
-ALTER TABLE iam.delegations DROP COLUMN IF EXISTS instance_id;
-ALTER TABLE iam.delegations RENAME COLUMN instance_id_v2 TO instance_id;
-ALTER TABLE iam.delegations ALTER COLUMN instance_id SET NOT NULL;
-
-ALTER TABLE iam.impersonation_sessions DROP COLUMN IF EXISTS instance_id;
-ALTER TABLE iam.impersonation_sessions RENAME COLUMN instance_id_v2 TO instance_id;
-ALTER TABLE iam.impersonation_sessions ALTER COLUMN instance_id SET NOT NULL;
-
-ALTER TABLE iam.legal_text_versions DROP COLUMN IF EXISTS instance_id;
-ALTER TABLE iam.legal_text_versions RENAME COLUMN instance_id_v2 TO instance_id;
-ALTER TABLE iam.legal_text_versions ALTER COLUMN instance_id SET NOT NULL;
-
-ALTER TABLE iam.legal_text_acceptances DROP COLUMN IF EXISTS instance_id;
-ALTER TABLE iam.legal_text_acceptances RENAME COLUMN instance_id_v2 TO instance_id;
-ALTER TABLE iam.legal_text_acceptances ALTER COLUMN instance_id SET NOT NULL;
-
-ALTER TABLE iam.data_subject_requests DROP COLUMN IF EXISTS instance_id;
-ALTER TABLE iam.data_subject_requests RENAME COLUMN instance_id_v2 TO instance_id;
-ALTER TABLE iam.data_subject_requests ALTER COLUMN instance_id SET NOT NULL;
-
-ALTER TABLE iam.data_subject_request_events DROP COLUMN IF EXISTS instance_id;
-ALTER TABLE iam.data_subject_request_events RENAME COLUMN instance_id_v2 TO instance_id;
-ALTER TABLE iam.data_subject_request_events ALTER COLUMN instance_id SET NOT NULL;
-
-ALTER TABLE iam.data_subject_export_jobs DROP COLUMN IF EXISTS instance_id;
-ALTER TABLE iam.data_subject_export_jobs RENAME COLUMN instance_id_v2 TO instance_id;
-ALTER TABLE iam.data_subject_export_jobs ALTER COLUMN instance_id SET NOT NULL;
-
-ALTER TABLE iam.legal_holds DROP COLUMN IF EXISTS instance_id;
-ALTER TABLE iam.legal_holds RENAME COLUMN instance_id_v2 TO instance_id;
-ALTER TABLE iam.legal_holds ALTER COLUMN instance_id SET NOT NULL;
-
-ALTER TABLE iam.account_profile_corrections DROP COLUMN IF EXISTS instance_id;
-ALTER TABLE iam.account_profile_corrections RENAME COLUMN instance_id_v2 TO instance_id;
-ALTER TABLE iam.account_profile_corrections ALTER COLUMN instance_id SET NOT NULL;
-
-ALTER TABLE iam.data_subject_recipient_notifications DROP COLUMN IF EXISTS instance_id;
-ALTER TABLE iam.data_subject_recipient_notifications RENAME COLUMN instance_id_v2 TO instance_id;
-ALTER TABLE iam.data_subject_recipient_notifications ALTER COLUMN instance_id SET NOT NULL;
-
-ALTER TABLE iam.idempotency_keys DROP COLUMN IF EXISTS instance_id;
-ALTER TABLE iam.idempotency_keys RENAME COLUMN instance_id_v2 TO instance_id;
-ALTER TABLE iam.idempotency_keys ALTER COLUMN instance_id SET NOT NULL;
-
-ALTER TABLE iam.activity_logs_archive DROP COLUMN IF EXISTS instance_id;
-ALTER TABLE iam.activity_logs_archive RENAME COLUMN instance_id_v2 TO instance_id;
-ALTER TABLE iam.activity_logs_archive ALTER COLUMN instance_id SET NOT NULL;
+  FOREACH current_table_name IN ARRAY ARRAY[
+    'organizations',
+    'roles',
+    'permissions',
+    'instance_memberships',
+    'account_organizations',
+    'account_roles',
+    'role_permissions',
+    'activity_logs',
+    'permission_change_requests',
+    'delegations',
+    'impersonation_sessions',
+    'legal_text_versions',
+    'legal_text_acceptances',
+    'data_subject_requests',
+    'data_subject_request_events',
+    'data_subject_export_jobs',
+    'legal_holds',
+    'account_profile_corrections',
+    'data_subject_recipient_notifications',
+    'idempotency_keys',
+    'activity_logs_archive'
+  ] LOOP
+    EXECUTE format('ALTER TABLE iam.%I ALTER COLUMN instance_id SET NOT NULL;', current_table_name);
+  END LOOP;
+END
+$$;
 
 ALTER TABLE iam.accounts
   ADD CONSTRAINT accounts_instance_id_fkey FOREIGN KEY (instance_id)

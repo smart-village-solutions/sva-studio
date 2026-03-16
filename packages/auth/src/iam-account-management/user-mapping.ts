@@ -41,6 +41,8 @@ export const mapRoles = (roles: readonly IamRoleRow[]): readonly IamUserRoleAssi
     roleKey: role.role_key,
     roleName: getRoleDisplayName(role),
     roleLevel: role.role_level,
+    validFrom: role.valid_from ?? undefined,
+    validTo: role.valid_to ?? undefined,
   }));
 
 export const mapUserRowToListItem = (row: {

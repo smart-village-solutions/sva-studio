@@ -6,6 +6,8 @@ import { createPoolResolver, jsonResponse, type QueryClient, withInstanceDb } fr
 import { isUuid, readNumber, readString } from '../shared/input-readers';
 import { buildLogContext } from '../shared/log-context';
 import { governanceRequestSchema, type GovernanceRequestInput } from '../shared/schemas';
+import { asApiList, createApiError, readPage } from '../iam-account-management/api-helpers';
+import { listGovernanceCases } from './read-models';
 
 const logger = createSdkLogger({ component: 'iam-governance', level: 'info' });
 
@@ -1054,6 +1056,61 @@ export const governanceWorkflowHandler = async (request: Request): Promise<Respo
           ...buildGovernanceLogContext(parsed.instanceId),
         });
         return jsonResponse(503, { error: 'database_unavailable' });
+      }
+    });
+  });
+};
+
+export const listGovernanceCasesHandler = async (request: Request): Promise<Response> => {
+  return withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
+    return withAuthenticatedUser(request, async ({ user }) => {
+      if (!hasRequiredRole(user.roles, GOVERNANCE_COMPLIANCE_EXPORT_ROLES)) {
+        logger.warn('Governance read denied due to missing role', {
+          operation: 'list_governance_cases',
+          reason_code: 'forbidden',
+          ...buildGovernanceLogContext(user.instanceId),
+        });
+        return createApiError(403, 'forbidden', 'Keine Berechtigung für Governance-Transparenz.', getWorkspaceContext().requestId);
+      }
+
+      const url = new URL(request.url);
+      const instanceId = readString(url.searchParams.get('instanceId')) ?? user.instanceId;
+      const type = readString(url.searchParams.get('type')) as
+        | 'permission_change'
+        | 'delegation'
+        | 'impersonation'
+        | 'legal_acceptance'
+        | undefined;
+      const status = readString(url.searchParams.get('status'));
+      const search = readString(url.searchParams.get('search'));
+      const { page, pageSize } = readPage(request);
+
+      if (!instanceId) {
+        return createApiError(400, 'invalid_instance_id', 'Instanzkontext fehlt.', getWorkspaceContext().requestId);
+      }
+      if (user.instanceId && user.instanceId !== instanceId) {
+        return createApiError(403, 'forbidden', 'Instanzkontext unzulässig.', getWorkspaceContext().requestId);
+      }
+
+      try {
+        const result = await withInstanceScopedDb(instanceId, (client) =>
+          listGovernanceCases(client, {
+            instanceId,
+            type,
+            status: status ?? undefined,
+            search: search ?? undefined,
+            page,
+            pageSize,
+          })
+        );
+        return jsonResponse(200, asApiList(result.items, { page, pageSize, total: result.total }, getWorkspaceContext().requestId));
+      } catch (error) {
+        logger.error('Governance read failed', {
+          operation: 'list_governance_cases',
+          error: error instanceof Error ? error.message : String(error),
+          ...buildGovernanceLogContext(instanceId),
+        });
+        return createApiError(503, 'database_unavailable', 'Governance-Datenbankabfrage fehlgeschlagen.', getWorkspaceContext().requestId);
       }
     });
   });

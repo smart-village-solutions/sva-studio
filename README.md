@@ -1,5 +1,6 @@
 # SVA Studio
 
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=smart-village-app_sva-studio&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=smart-village-app_sva-studio)
 [![Test Coverage](https://github.com/smart-village-solutions/sva-studio/actions/workflows/test-coverage.yml/badge.svg?branch=main)](https://github.com/smart-village-solutions/sva-studio/actions/workflows/test-coverage.yml)
 [![Codecov](https://codecov.io/gh/smart-village-solutions/sva-studio/branch/main/graph/badge.svg)](https://codecov.io/gh/smart-village-solutions/sva-studio)
 [![Node.js](https://img.shields.io/badge/node-LTS-339933?logo=node.js&logoColor=white)](./.nvmrc)

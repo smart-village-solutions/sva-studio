@@ -1,15 +1,10 @@
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
-import viteTsConfigPaths from 'vite-tsconfig-paths';
+import tsconfigPaths from 'vite-tsconfig-paths';
 
 const isCi = Boolean(process.env.CI);
 
 export default defineConfig({
-  plugins: [
-    viteTsConfigPaths({
-      projects: ['./tsconfig.json'],
-    }),
-  ],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
@@ -38,6 +33,7 @@ export default defineConfig({
       '@sva/core': fileURLToPath(new URL('../../packages/core/src/index.ts', import.meta.url)),
     },
   },
+  plugins: [tsconfigPaths()],
   test: {
     name: 'sva-studio-react',
     environment: 'happy-dom',

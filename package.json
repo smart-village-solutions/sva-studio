@@ -69,8 +69,9 @@
   },
   "pnpm": {
     "overrides": {
-      "minimatch": "10.2.2",
+      "minimatch": "10.2.3",
       "axios": "1.13.5",
+      "rollup": "4.59.0",
       "undici": "7.24.3",
       "solid-js": "1.9.11",
       "seroval": "1.4.2"

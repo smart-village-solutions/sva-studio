@@ -1761,6 +1761,98 @@ describe('iam-account-management handlers (guards)', () => {
     expect(payload.error.message).toContain('Mindestens eine aktive Gruppe existiert nicht');
   });
 
+  it('rejects group assignments that would exceed the actor role level', async () => {
+    let membershipWriteAttempted = false;
+
+    state.user = {
+      ...state.user,
+      roles: ['app_manager'],
+    };
+
+    state.queryHandler = (text, values) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+
+      if (text.includes('MAX(r.role_level)')) {
+        return { rowCount: 1, rows: [{ max_role_level: 20 }] };
+      }
+
+      if (text.includes('WHERE a.id = $2::uuid')) {
+        return { rowCount: 1, rows: [buildUserDetailRow('active')] };
+      }
+
+      if (text.includes('FROM iam.groups') && text.includes('id = ANY($2::uuid[])')) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              id: targetGroupId,
+              group_key: 'admins',
+              display_name: 'Admins',
+              description: 'Administrative Gruppe',
+              group_type: 'role_bundle',
+              is_active: true,
+            },
+          ],
+        };
+      }
+
+      if (text.includes('SELECT DISTINCT gr.role_id') && text.includes('FROM iam.group_roles gr')) {
+        return {
+          rowCount: 1,
+          rows: [{ role_id: targetRoleId }],
+        };
+      }
+
+      if (text.includes('SELECT id, role_key, role_name, display_name, external_role_name')) {
+        const roleIds = values?.[1] as readonly string[] | undefined;
+        if (roleIds?.includes(targetRoleId)) {
+          return {
+            rowCount: 1,
+            rows: [
+              {
+                id: targetRoleId,
+                role_key: 'system_admin',
+                role_name: 'system_admin',
+                display_name: 'System Admin',
+                external_role_name: 'system_admin',
+                role_level: 90,
+                is_system_role: true,
+              },
+            ],
+          };
+        }
+      }
+
+      if (text.includes('DELETE FROM iam.account_groups') || text.includes('INSERT INTO iam.account_groups')) {
+        membershipWriteAttempted = true;
+      }
+
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await updateUserHandler(
+      new Request(`http://localhost/api/v1/iam/users/${targetUserId}`, {
+        method: 'PATCH',
+        headers: {
+          'content-type': 'application/json',
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'http://localhost',
+        },
+        body: JSON.stringify({
+          groupIds: [targetGroupId],
+        }),
+      })
+    );
+    const payload = (await response.json()) as { error: { code: string; message: string } };
+
+    expect(response.status).toBe(403);
+    expect(payload.error.code).toBe('forbidden');
+    expect(payload.error.message).toContain('Rollenzuweisung überschreitet die eigene Berechtigungsstufe');
+    expect(membershipWriteAttempted).toBe(false);
+  });
+
   it('rejects deactivation of the current user', async () => {
     state.user = {
       ...state.user,
@@ -2104,6 +2196,34 @@ describe('iam-account-management handlers (guards)', () => {
     expect(payload.error.code).toBe('database_unavailable');
   });
 
+  it('returns zero-sized pagination when no groups exist', async () => {
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+
+      if (text.includes('FROM iam.groups g') && text.includes('ORDER BY g.is_active DESC')) {
+        return { rowCount: 0, rows: [] };
+      }
+
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await listGroupsHandler(new Request('http://localhost/api/v1/iam/groups', { method: 'GET' }));
+    const payload = (await response.json()) as {
+      data: unknown[];
+      pagination: { page: number; pageSize: number; total: number };
+    };
+
+    expect(response.status).toBe(200);
+    expect(payload.data).toEqual([]);
+    expect(payload.pagination).toEqual({
+      page: 1,
+      pageSize: 0,
+      total: 0,
+    });
+  });
+
   it('returns group details including current member assignments', async () => {
     state.queryHandler = (text) => {
       if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
@@ -2327,7 +2447,15 @@ describe('iam-account-management handlers (guards)', () => {
   });
 
   it('returns conflict when creating a group with an existing group key', async () => {
-    state.queryHandler = (text) => {
+    let idempotencyCompletion:
+      | {
+          status: string;
+          responseStatus: number;
+          responseBody: { error?: { code?: string } };
+        }
+      | undefined;
+
+    state.queryHandler = (text, values) => {
       if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
         return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
       }
@@ -2357,6 +2485,15 @@ describe('iam-account-management handlers (guards)', () => {
         throw new Error('groups_instance_key_uniq');
       }
 
+      if (text.includes('UPDATE iam.idempotency_keys')) {
+        idempotencyCompletion = {
+          status: String(values?.[4]),
+          responseStatus: Number(values?.[5]),
+          responseBody: JSON.parse(String(values?.[6])),
+        };
+        return { rowCount: 1, rows: [] };
+      }
+
       return { rowCount: 0, rows: [] };
     };
 
@@ -2380,6 +2517,17 @@ describe('iam-account-management handlers (guards)', () => {
 
     expect(response.status).toBe(409);
     expect(payload.error.code).toBe('conflict');
+    expect(idempotencyCompletion).toEqual({
+      status: 'FAILED',
+      responseStatus: 409,
+      responseBody: {
+        error: {
+          code: 'conflict',
+          message: 'Gruppe mit diesem Schlüssel existiert bereits.',
+        },
+        requestId: 'req-iam-handler',
+      },
+    });
   });
 
   it('rejects createGroup when iam admin features are disabled', async () => {

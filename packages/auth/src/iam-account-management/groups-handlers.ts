@@ -315,7 +315,7 @@ export const listGroupsInternal = async (
     );
     return jsonResponse(
       200,
-      asApiList(groups, { page: 1, pageSize: groups.length || 1, total: groups.length }, actorResolution.actor.requestId)
+      asApiList(groups, { page: 1, pageSize: groups.length, total: groups.length }, actorResolution.actor.requestId)
     );
   } catch {
     return createDatabaseUnavailableError(actorResolution.actor.requestId);
@@ -478,14 +478,32 @@ RETURNING id;
     return jsonResponse(201, responseBody);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
+    let failureResponse: Response;
     if (message.includes('groups_instance_key_uniq')) {
-      return createApiError(409, 'conflict', 'Gruppe mit diesem Schlüssel existiert bereits.', actorResolution.actor.requestId);
+      failureResponse = createApiError(
+        409,
+        'conflict',
+        'Gruppe mit diesem Schlüssel existiert bereits.',
+        actorResolution.actor.requestId
+      );
+    } else {
+      const [code, detail] = message.split(':', 2);
+      failureResponse =
+        code === 'invalid_request'
+          ? createApiError(400, 'invalid_request', detail, actorResolution.actor.requestId)
+          : createDatabaseUnavailableError(actorResolution.actor.requestId);
     }
-    const [code, detail] = message.split(':', 2);
-    if (code === 'invalid_request') {
-      return createApiError(400, 'invalid_request', detail, actorResolution.actor.requestId);
-    }
-    return createDatabaseUnavailableError(actorResolution.actor.requestId);
+
+    await completeIdempotency({
+      instanceId: actorResolution.actor.instanceId,
+      actorAccountId,
+      endpoint: 'POST:/api/v1/iam/groups',
+      idempotencyKey: idempotencyKey.key,
+      status: 'FAILED',
+      responseStatus: failureResponse.status,
+      responseBody: await failureResponse.clone().json(),
+    });
+    return failureResponse;
   }
 };
 

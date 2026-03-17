@@ -1080,6 +1080,36 @@ describe('listGovernanceCasesHandler', () => {
       })
     );
   });
+
+  it('allows support_admin to read governance transparency cases', async () => {
+    state.user = {
+      ...state.user,
+      roles: ['support_admin'],
+    };
+    state.queryHandler = (text) => {
+      if (
+        text.includes('FROM iam.permission_change_requests request') ||
+        text.includes('FROM iam.delegations delegation') ||
+        text.includes('FROM iam.impersonation_sessions session') ||
+        text.includes('FROM iam.legal_text_acceptances acceptance')
+      ) {
+        return { rowCount: 0, rows: [] };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await listGovernanceCasesHandler(
+      new Request('http://localhost/iam/governance/workflows?instanceId=de-musterhausen')
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      data: [],
+      pagination: {
+        total: 0,
+      },
+    });
+  });
 });
 
 describe('resolveImpersonationSubject', () => {

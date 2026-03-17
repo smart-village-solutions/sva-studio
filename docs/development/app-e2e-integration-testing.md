@@ -2,6 +2,8 @@
 
 Dieses Dokument beschreibt den reproduzierbaren Smoke-Test für die laufende App inklusive Docker-Service-Stack.
 
+> Für den separaten IAM-Abnahmenachweis mit realem Keycloak-Login, JIT-Provisioning und Organisations-Smokes siehe `../guides/iam-acceptance-runbook.md`.
+
 ## Voraussetzungen
 
 1. Docker Engine läuft lokal.
@@ -51,6 +53,12 @@ docker compose -f docker-compose.yml -f docker-compose.monitoring.yml down
   - Promtail (`/ready`)
 
 Wenn ein Service fehlt, bricht der Test früh mit klarer Fehlermeldung ab.
+
+## Abgrenzung zum IAM-Acceptance-Gate
+
+- Dieser Smoke prüft generische App-Routen und den echten `/_server`-Transport.
+- Er ist bewusst von `pnpm nx run sva-studio-react:test:acceptance` getrennt.
+- Der IAM-Acceptance-Lauf benötigt eine vereinbarte Testumgebung mit Keycloak-Testrealm, Testbenutzern und direktem Datenbankzugang.
 
 ## CI-Workflow
 

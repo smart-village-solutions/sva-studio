@@ -158,7 +158,7 @@ const parseOpenApiDocument = (content: string): ParsedOpenApiDocument => {
       }
 
       const methodMatch = currentPath ? /^    (get|post|put|patch|delete):\s*$/.exec(line) : null;
-      if (methodMatch) {
+      if (methodMatch && currentPath) {
         paths.get(currentPath)?.add(methodMatch[1]);
       }
       continue;

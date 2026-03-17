@@ -50,6 +50,19 @@ import {
   wrapHandlersWithJsonErrorBoundary,
 } from './auth.routes.server';
 
+type ServerRouteOptionsUnderTest = {
+  path: string;
+  server: {
+    handlers: {
+      GET: (ctx: { request: Request }) => Promise<Response>;
+    };
+  };
+};
+
+const readServerRouteOptions = (route: unknown): ServerRouteOptionsUnderTest => {
+  return (route as { options: unknown }).options as ServerRouteOptionsUnderTest;
+};
+
 const authServerMocks = vi.hoisted(() => {
   const response = (name: string) => new Response(JSON.stringify({ name }), { status: 200 });
   return {
@@ -385,13 +398,11 @@ describe('auth.routes.server', () => {
   it('builds server route factories with wrapped handlers for declared auth paths', async () => {
     const rootRoute = { id: 'root' } as never;
     const dataExportIndex = authRoutePaths.indexOf('/iam/me/data-export');
-    const route = authServerRouteFactories[dataExportIndex]?.(rootRoute) as {
-      options: { path: string; server: { handlers: { GET: (ctx: { request: Request }) => Promise<Response> } } };
-    };
+    const route = readServerRouteOptions(authServerRouteFactories[dataExportIndex]?.(rootRoute));
 
-    expect(route.options.path).toBe('/iam/me/data-export');
+    expect(route.path).toBe('/iam/me/data-export');
 
-    const response = await route.options.server.handlers.GET({
+    const response = await route.server.handlers.GET({
       request: new Request('http://localhost/iam/me/data-export', {
         headers: {
           'X-Request-Id': 'req-route-factory',

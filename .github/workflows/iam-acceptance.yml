@@ -1,0 +1,68 @@
+name: IAM Acceptance
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: 'Optionales Zielsystem fuer den Acceptance-Lauf'
+        required: false
+        type: string
+  workflow_call:
+    inputs:
+      base_url:
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  acceptance:
+    runs-on: ubuntu-latest
+    environment: iam-acceptance
+    env:
+      IAM_ACCEPTANCE_BASE_URL: ${{ inputs.base_url || github.event.inputs.base_url || vars.IAM_ACCEPTANCE_BASE_URL }}
+      IAM_ACCEPTANCE_INSTANCE_ID: ${{ vars.IAM_ACCEPTANCE_INSTANCE_ID || 'de-musterhausen' }}
+      IAM_ACCEPTANCE_REPORT_SLUG: iam-foundation-acceptance
+      IAM_DATABASE_URL: ${{ secrets.IAM_DATABASE_URL }}
+      IAM_ACCEPTANCE_ADMIN_USERNAME: ${{ secrets.IAM_ACCEPTANCE_ADMIN_USERNAME }}
+      IAM_ACCEPTANCE_ADMIN_PASSWORD: ${{ secrets.IAM_ACCEPTANCE_ADMIN_PASSWORD }}
+      IAM_ACCEPTANCE_MEMBER_USERNAME: ${{ secrets.IAM_ACCEPTANCE_MEMBER_USERNAME }}
+      IAM_ACCEPTANCE_MEMBER_PASSWORD: ${{ secrets.IAM_ACCEPTANCE_MEMBER_PASSWORD }}
+      KEYCLOAK_ADMIN_BASE_URL: ${{ secrets.KEYCLOAK_ADMIN_BASE_URL }}
+      KEYCLOAK_ADMIN_REALM: ${{ secrets.KEYCLOAK_ADMIN_REALM }}
+      KEYCLOAK_ADMIN_CLIENT_ID: ${{ secrets.KEYCLOAK_ADMIN_CLIENT_ID }}
+      KEYCLOAK_ADMIN_CLIENT_SECRET: ${{ secrets.KEYCLOAK_ADMIN_CLIENT_SECRET }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browser
+        run: pnpm --filter sva-studio-react exec playwright install --with-deps chromium
+
+      - name: Run IAM acceptance gate
+        run: pnpm test:acceptance:iam
+
+      - name: Upload IAM acceptance reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: iam-acceptance-report-${{ github.run_id }}
+          path: docs/reports/iam-foundation-acceptance-*
+          if-no-files-found: warn
+          retention-days: 14

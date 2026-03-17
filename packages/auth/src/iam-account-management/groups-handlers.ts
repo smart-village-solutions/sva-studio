@@ -20,6 +20,7 @@ import { ensureFeature, getFeatureFlags } from './feature-flags';
 import { consumeRateLimit } from './rate-limit';
 import { createGroupSchema, updateGroupSchema } from './schemas';
 import {
+  type ActorInfo,
   completeIdempotency,
   emitActivityLog,
   iamUserOperationsCounter,
@@ -227,33 +228,77 @@ const validateRoleIds = async (
   return roles.length === input.roleIds.length;
 };
 
-export const listGroupsInternal = async (
+const createDatabaseUnavailableError = (requestId?: string): Response =>
+  createApiError(503, 'database_unavailable', 'IAM-Datenbank ist nicht erreichbar.', requestId);
+
+const readGroupIdOrError = (
   request: Request,
-  ctx: AuthenticatedRequestContext
-): Promise<Response> => {
+  requestId?: string
+): { groupId: string } | { error: Response } => {
+  const groupId = readPathSegment(request, 4);
+  if (!groupId || !isUuid(groupId)) {
+    return {
+      error: createApiError(400, 'invalid_request', 'Ungültige groupId.', requestId),
+    };
+  }
+
+  return { groupId };
+};
+
+const prepareGroupRequest = async (
+  request: Request,
+  ctx: AuthenticatedRequestContext,
+  input: {
+    requiredRoles: ReadonlySet<string>;
+    rateScope: 'read' | 'write';
+    requireActorAccountId?: boolean;
+  }
+): Promise<{ actor: ActorInfo } | { error: Response }> => {
   const requestContext = getWorkspaceContext();
   const featureCheck = ensureFeature(getFeatureFlags(), 'iam_admin', requestContext.requestId);
   if (featureCheck) {
-    return featureCheck;
+    return { error: featureCheck };
   }
-  const roleCheck = requireRoles(ctx, ADMIN_ROLES, requestContext.requestId);
+
+  const roleCheck = requireRoles(ctx, input.requiredRoles, requestContext.requestId);
   if (roleCheck) {
-    return roleCheck;
+    return { error: roleCheck };
   }
 
   const actorResolution = await resolveActorInfo(request, ctx, { requireActorMembership: true });
   if ('error' in actorResolution) {
-    return actorResolution.error;
+    return actorResolution;
   }
 
   const rateLimit = consumeRateLimit({
     instanceId: actorResolution.actor.instanceId,
     actorKeycloakSubject: ctx.user.id,
-    scope: 'read',
+    scope: input.rateScope,
     requestId: actorResolution.actor.requestId,
   });
   if (rateLimit) {
-    return rateLimit;
+    return { error: rateLimit };
+  }
+
+  if (input.requireActorAccountId && !actorResolution.actor.actorAccountId) {
+    return {
+      error: createApiError(403, 'forbidden', 'Akteur-Account nicht gefunden.', actorResolution.actor.requestId),
+    };
+  }
+
+  return actorResolution;
+};
+
+export const listGroupsInternal = async (
+  request: Request,
+  ctx: AuthenticatedRequestContext
+): Promise<Response> => {
+  const actorResolution = await prepareGroupRequest(request, ctx, {
+    requiredRoles: ADMIN_ROLES,
+    rateScope: 'read',
+  });
+  if ('error' in actorResolution) {
+    return actorResolution.error;
   }
 
   try {
@@ -265,7 +310,7 @@ export const listGroupsInternal = async (
       asApiList(groups, { page: 1, pageSize: groups.length || 1, total: groups.length }, actorResolution.actor.requestId)
     );
   } catch {
-    return createApiError(503, 'database_unavailable', 'IAM-Datenbank ist nicht erreichbar.', actorResolution.actor.requestId);
+    return createDatabaseUnavailableError(actorResolution.actor.requestId);
   }
 };
 
@@ -273,36 +318,29 @@ export const getGroupInternal = async (
   request: Request,
   ctx: AuthenticatedRequestContext
 ): Promise<Response> => {
-  const requestContext = getWorkspaceContext();
-  const featureCheck = ensureFeature(getFeatureFlags(), 'iam_admin', requestContext.requestId);
-  if (featureCheck) {
-    return featureCheck;
-  }
-  const roleCheck = requireRoles(ctx, ADMIN_ROLES, requestContext.requestId);
-  if (roleCheck) {
-    return roleCheck;
-  }
-
-  const actorResolution = await resolveActorInfo(request, ctx, { requireActorMembership: true });
+  const actorResolution = await prepareGroupRequest(request, ctx, {
+    requiredRoles: ADMIN_ROLES,
+    rateScope: 'read',
+  });
   if ('error' in actorResolution) {
     return actorResolution.error;
   }
 
-  const groupId = readPathSegment(request, 4);
-  if (!groupId || !isUuid(groupId)) {
-    return createApiError(400, 'invalid_request', 'Ungültige groupId.', actorResolution.actor.requestId);
+  const groupId = readGroupIdOrError(request, actorResolution.actor.requestId);
+  if ('error' in groupId) {
+    return groupId.error;
   }
 
   try {
     const group = await withInstanceScopedDb(actorResolution.actor.instanceId, (client) =>
-      loadGroupById(client, { instanceId: actorResolution.actor.instanceId, groupId })
+      loadGroupById(client, { instanceId: actorResolution.actor.instanceId, groupId: groupId.groupId })
     );
     if (!group) {
       return createApiError(404, 'not_found', 'Gruppe nicht gefunden.', actorResolution.actor.requestId);
     }
     return jsonResponse(200, asApiItem(group, actorResolution.actor.requestId));
   } catch {
-    return createApiError(503, 'database_unavailable', 'IAM-Datenbank ist nicht erreichbar.', actorResolution.actor.requestId);
+    return createDatabaseUnavailableError(actorResolution.actor.requestId);
   }
 };
 
@@ -310,21 +348,16 @@ export const createGroupInternal = async (
   request: Request,
   ctx: AuthenticatedRequestContext
 ): Promise<Response> => {
-  const requestContext = getWorkspaceContext();
-  const featureCheck = ensureFeature(getFeatureFlags(), 'iam_admin', requestContext.requestId);
-  if (featureCheck) {
-    return featureCheck;
-  }
-  const roleCheck = requireRoles(ctx, SYSTEM_ADMIN_ROLES, requestContext.requestId);
-  if (roleCheck) {
-    return roleCheck;
-  }
-
-  const actorResolution = await resolveActorInfo(request, ctx, { requireActorMembership: true });
+  const actorResolution = await prepareGroupRequest(request, ctx, {
+    requiredRoles: SYSTEM_ADMIN_ROLES,
+    rateScope: 'write',
+    requireActorAccountId: true,
+  });
   if ('error' in actorResolution) {
     return actorResolution.error;
   }
-  if (!actorResolution.actor.actorAccountId) {
+  const actorAccountId = actorResolution.actor.actorAccountId;
+  if (!actorAccountId) {
     return createApiError(403, 'forbidden', 'Akteur-Account nicht gefunden.', actorResolution.actor.requestId);
   }
 
@@ -345,7 +378,7 @@ export const createGroupInternal = async (
 
   const reserve = await reserveIdempotency({
     instanceId: actorResolution.actor.instanceId,
-    actorAccountId: actorResolution.actor.actorAccountId,
+    actorAccountId,
     endpoint: 'POST:/api/v1/iam/groups',
     idempotencyKey: idempotencyKey.key,
     payloadHash: toPayloadHash(parsed.rawBody),
@@ -400,7 +433,7 @@ RETURNING id;
 
       await emitActivityLog(client, {
         instanceId: actorResolution.actor.instanceId,
-        accountId: actorResolution.actor.actorAccountId,
+        accountId: actorAccountId,
         subjectId: groupId,
         eventType: 'group.created',
         result: 'success',
@@ -426,7 +459,7 @@ RETURNING id;
 
     await completeIdempotency({
       instanceId: actorResolution.actor.instanceId,
-      actorAccountId: actorResolution.actor.actorAccountId,
+      actorAccountId,
       endpoint: 'POST:/api/v1/iam/groups',
       idempotencyKey: idempotencyKey.key,
       status: 'COMPLETED',
@@ -444,7 +477,7 @@ RETURNING id;
     if (code === 'invalid_request') {
       return createApiError(400, 'invalid_request', detail, actorResolution.actor.requestId);
     }
-    return createApiError(503, 'database_unavailable', 'IAM-Datenbank ist nicht erreichbar.', actorResolution.actor.requestId);
+    return createDatabaseUnavailableError(actorResolution.actor.requestId);
   }
 };
 
@@ -452,27 +485,18 @@ export const updateGroupInternal = async (
   request: Request,
   ctx: AuthenticatedRequestContext
 ): Promise<Response> => {
-  const requestContext = getWorkspaceContext();
-  const featureCheck = ensureFeature(getFeatureFlags(), 'iam_admin', requestContext.requestId);
-  if (featureCheck) {
-    return featureCheck;
-  }
-  const roleCheck = requireRoles(ctx, SYSTEM_ADMIN_ROLES, requestContext.requestId);
-  if (roleCheck) {
-    return roleCheck;
-  }
-
-  const actorResolution = await resolveActorInfo(request, ctx, { requireActorMembership: true });
+  const actorResolution = await prepareGroupRequest(request, ctx, {
+    requiredRoles: SYSTEM_ADMIN_ROLES,
+    rateScope: 'write',
+    requireActorAccountId: true,
+  });
   if ('error' in actorResolution) {
     return actorResolution.error;
   }
-  if (!actorResolution.actor.actorAccountId) {
-    return createApiError(403, 'forbidden', 'Akteur-Account nicht gefunden.', actorResolution.actor.requestId);
-  }
 
-  const groupId = readPathSegment(request, 4);
-  if (!groupId || !isUuid(groupId)) {
-    return createApiError(400, 'invalid_request', 'Ungültige groupId.', actorResolution.actor.requestId);
+  const groupId = readGroupIdOrError(request, actorResolution.actor.requestId);
+  if ('error' in groupId) {
+    return groupId.error;
   }
 
   const csrfError = validateCsrf(request, actorResolution.actor.requestId);
@@ -511,7 +535,7 @@ RETURNING id;
 `,
         [
           actorResolution.actor.instanceId,
-          groupId,
+          groupId.groupId,
           parsed.data.displayName ?? null,
           parsed.data.description ?? null,
           parsed.data.isActive ?? null,
@@ -524,7 +548,7 @@ RETURNING id;
       if (parsed.data.roleIds) {
         await replaceGroupRoles(client, {
           instanceId: actorResolution.actor.instanceId,
-          groupId,
+          groupId: groupId.groupId,
           roleIds: parsed.data.roleIds,
         });
       }
@@ -532,7 +556,7 @@ RETURNING id;
       await emitActivityLog(client, {
         instanceId: actorResolution.actor.instanceId,
         accountId: actorResolution.actor.actorAccountId,
-        subjectId: groupId,
+        subjectId: groupId.groupId,
         eventType: 'group.updated',
         result: 'success',
         payload: {
@@ -548,7 +572,7 @@ RETURNING id;
         trigger: 'user_updated',
       });
 
-      return loadGroupById(client, { instanceId: actorResolution.actor.instanceId, groupId });
+      return loadGroupById(client, { instanceId: actorResolution.actor.instanceId, groupId: groupId.groupId });
     });
 
     if (!group) {
@@ -565,12 +589,12 @@ RETURNING id;
     logger.error('IAM group update failed', {
       operation: 'update_group',
       instance_id: actorResolution.actor.instanceId,
-      group_id: groupId,
+      group_id: groupId.groupId,
       request_id: actorResolution.actor.requestId,
       trace_id: actorResolution.actor.traceId,
       error: message,
     });
-    return createApiError(503, 'database_unavailable', 'IAM-Datenbank ist nicht erreichbar.', actorResolution.actor.requestId);
+    return createDatabaseUnavailableError(actorResolution.actor.requestId);
   }
 };
 
@@ -578,27 +602,18 @@ export const deleteGroupInternal = async (
   request: Request,
   ctx: AuthenticatedRequestContext
 ): Promise<Response> => {
-  const requestContext = getWorkspaceContext();
-  const featureCheck = ensureFeature(getFeatureFlags(), 'iam_admin', requestContext.requestId);
-  if (featureCheck) {
-    return featureCheck;
-  }
-  const roleCheck = requireRoles(ctx, SYSTEM_ADMIN_ROLES, requestContext.requestId);
-  if (roleCheck) {
-    return roleCheck;
-  }
-
-  const actorResolution = await resolveActorInfo(request, ctx, { requireActorMembership: true });
+  const actorResolution = await prepareGroupRequest(request, ctx, {
+    requiredRoles: SYSTEM_ADMIN_ROLES,
+    rateScope: 'write',
+    requireActorAccountId: true,
+  });
   if ('error' in actorResolution) {
     return actorResolution.error;
   }
-  if (!actorResolution.actor.actorAccountId) {
-    return createApiError(403, 'forbidden', 'Akteur-Account nicht gefunden.', actorResolution.actor.requestId);
-  }
 
-  const groupId = readPathSegment(request, 4);
-  if (!groupId || !isUuid(groupId)) {
-    return createApiError(400, 'invalid_request', 'Ungültige groupId.', actorResolution.actor.requestId);
+  const groupId = readGroupIdOrError(request, actorResolution.actor.requestId);
+  if ('error' in groupId) {
+    return groupId.error;
   }
 
   const csrfError = validateCsrf(request, actorResolution.actor.requestId);
@@ -616,7 +631,7 @@ WHERE instance_id = $1
   AND id = $2::uuid
 RETURNING id;
 `,
-        [actorResolution.actor.instanceId, groupId]
+        [actorResolution.actor.instanceId, groupId.groupId]
       );
       if (!result.rows[0]?.id) {
         return false;
@@ -625,7 +640,7 @@ RETURNING id;
       await emitActivityLog(client, {
         instanceId: actorResolution.actor.instanceId,
         accountId: actorResolution.actor.actorAccountId,
-        subjectId: groupId,
+        subjectId: groupId.groupId,
         eventType: 'group.deleted',
         result: 'success',
         requestId: actorResolution.actor.requestId,
@@ -646,6 +661,6 @@ RETURNING id;
     iamUserOperationsCounter.add(1, { action: 'delete_group', result: 'success' });
     return new Response(null, { status: 204 });
   } catch {
-    return createApiError(503, 'database_unavailable', 'IAM-Datenbank ist nicht erreichbar.', actorResolution.actor.requestId);
+    return createDatabaseUnavailableError(actorResolution.actor.requestId);
   }
 };

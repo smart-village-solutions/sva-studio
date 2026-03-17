@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       base_url:
-        description: 'Optionales Zielsystem fuer den Acceptance-Lauf'
+        description: 'Optionales Zielsystem für den Acceptance-Lauf'
         required: false
         type: string
   workflow_call:

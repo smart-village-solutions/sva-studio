@@ -40,6 +40,7 @@ export type AcceptanceFailureCode =
   | 'acceptance_membership_missing'
   | 'acceptance_organization_assertion_failed'
   | 'acceptance_report_write_failed'
+  | 'acceptance_runner_unexpected_error'
   | 'acceptance_test_data_reset_failed'
   | 'acceptance_ui_assertion_failed';
 

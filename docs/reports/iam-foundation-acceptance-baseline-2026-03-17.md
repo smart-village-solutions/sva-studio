@@ -15,14 +15,14 @@ Dieser Bericht dokumentiert den initialen Implementierungsstand des Changes `upd
   - Ergebnis: grün
   - Fokus: Acceptance-Runner, Report-Helper und bestehende Script-Checks
 
-### Beobachtete Repository-Blocker außerhalb dieses Changes
+### Zusätzliche Verifikation im Branch-Kontext
 
 - `pnpm test:types`
-  - Ergebnis: rot
-  - Ursache: bestehender Fehler in `packages/routing/src/auth.routes.server.test.ts`
+  - Ergebnis: grün
+  - Fokus: Type-Sicherheit im gesamten Workspace inklusive nachgezogener Test-Typisierungen
 - `pnpm nx run sva-studio-react:typecheck`
-  - Ergebnis: rot
-  - Ursache: bestehende Fehler in `apps/sva-studio-react/src/routes/-core-routes.test.tsx`
+  - Ergebnis: grün
+  - Fokus: Frontend-Typecheck inklusive Router- und E2E-Konfiguration
 
 ## Gelieferte Artefakte
 
@@ -39,4 +39,4 @@ Dieser Bericht dokumentiert den initialen Implementierungsstand des Changes `upd
 ## Einschränkungen
 
 - Der echte Acceptance-Lauf gegen Keycloak, Redis und Datenbank wurde in dieser Sitzung nicht ausgeführt.
-- Die roten Type-Checks stammen aus bereits vorhandenen Testdateien außerhalb des neuen Acceptance-Pfads und blockieren aktuell den globalen Type-Status.
+- Der Bericht belegt die Implementierung und lokale Vertragsprüfung; der fachliche End-to-End-Nachweis bleibt bis zur Bereitstellung der Zielumgebung bewusst ausstehend.

@@ -108,6 +108,7 @@ Der Bericht enthält mindestens:
 | `acceptance_database_query_failed` | DB-Assertion konnte nicht deterministisch ausgewertet werden |
 | `acceptance_ui_assertion_failed` | Benutzerliste, Organisationsstruktur oder Membership ist in der UI nicht sichtbar |
 | `acceptance_test_data_reset_failed` | Vorbereitender Reset der Acceptance-Testdaten ist fehlgeschlagen |
+| `acceptance_runner_unexpected_error` | Unerwarteter Laufzeitfehler im Runner außerhalb gezielt klassifizierter Acceptance-Pfade |
 | `acceptance_report_write_failed` | Bericht konnte nicht unter `docs/reports/` geschrieben werden |
 
 ## Abgrenzung zu generischen App-Smokes

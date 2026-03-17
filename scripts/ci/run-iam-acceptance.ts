@@ -1,5 +1,6 @@
 import { createRequire } from 'node:module';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import type { IdentityListedUser } from '../../packages/auth/src/identity-provider-port.ts';
 import {
@@ -137,7 +138,8 @@ type MembershipRow = {
   organization_id: string;
 };
 
-const rootDir = resolve(import.meta.dirname, '../..');
+const scriptDir = dirname(fileURLToPath(import.meta.url));
+const rootDir = resolve(scriptDir, '../..');
 const appRequire = createRequire(resolve(rootDir, 'apps/sva-studio-react/package.json'));
 const authRequire = createRequire(resolve(rootDir, 'packages/auth/package.json'));
 
@@ -148,6 +150,7 @@ const JSON_HEADERS = {
   'Content-Type': 'application/json',
   'X-Requested-With': 'XMLHttpRequest',
 } as const;
+const READINESS_TIMEOUT_MS = 45_000;
 
 const buildMutationHeaders = (baseUrl: string, idempotencyKey?: string): Record<string, string> => {
   const origin = new URL(baseUrl).origin;
@@ -186,6 +189,42 @@ const failStep = (input: {
 };
 
 const fetchJson = async <T>(response: ApiResponse): Promise<T> => response.json() as Promise<T>;
+
+const fetchJsonWithTimeout = async <T>(input: {
+  failureCode: AcceptanceFailureCode;
+  name: string;
+  timeoutMs: number;
+  url: string;
+}): Promise<{ payload: T; response: Response }> => {
+  const controller = new AbortController();
+  const timeoutHandle = setTimeout(() => controller.abort(), input.timeoutMs);
+
+  try {
+    const response = await fetch(input.url, { signal: controller.signal });
+    const payload = (await response.json()) as T;
+    return { payload, response };
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      failStep({
+        name: input.name,
+        failureCode: input.failureCode,
+        details: `HTTP-Anfrage auf ${input.url} hat das Timeout von ${input.timeoutMs} ms überschritten.`,
+        metadata: { timeoutMs: input.timeoutMs, url: input.url },
+      });
+    }
+
+    failStep({
+      name: input.name,
+      failureCode: input.failureCode,
+      details: error instanceof Error ? error.message : String(error),
+      metadata: { url: input.url },
+    });
+  } finally {
+    clearTimeout(timeoutHandle);
+  }
+
+  throw new Error('unreachable');
+};
 
 const resolveKeycloakUser = async (
   client: KeycloakAdminClient,
@@ -617,8 +656,13 @@ const main = async (): Promise<void> => {
         details: 'Acceptance-Accounts und Acceptance-Organisationen wurden zurückgesetzt.',
       });
 
-      const readyResponse = await fetch(new URL('/health/ready', config.baseUrl).toString());
-      const readyPayload = (await readyResponse.json()) as HealthReadyPayload;
+      const readinessUrl = new URL('/health/ready', config.baseUrl).toString();
+      const { payload: readyPayload, response: readyResponse } = await fetchJsonWithTimeout<HealthReadyPayload>({
+        failureCode: 'acceptance_http_request_failed',
+        name: 'Readiness',
+        timeoutMs: READINESS_TIMEOUT_MS,
+        url: readinessUrl,
+      });
       if (
         readyResponse.status !== 200 ||
         readyPayload.status !== 'ready' ||
@@ -1039,12 +1083,25 @@ WHERE instance_id = $1
       instanceId: config.instanceId,
       steps: stepRecords,
     });
-    const reportPaths = await writeAcceptanceReports({
-      generatedAt: startedAt,
-      report,
-      reportDirectory: config.reportDirectory,
-      reportFileBase: reportFileBase,
-    });
+    const reportPaths = await (async () => {
+      try {
+        return await writeAcceptanceReports({
+          generatedAt: startedAt,
+          report,
+          reportDirectory: config.reportDirectory,
+          reportFileBase: reportFileBase,
+        });
+      } catch (error) {
+        failStep({
+          name: 'Acceptance-Bericht',
+          failureCode: 'acceptance_report_write_failed',
+          details: error instanceof Error ? error.message : String(error),
+          metadata: { reportDirectory: config.reportDirectory, reportFileBase: reportFileBase },
+        });
+      }
+
+      throw new Error('unreachable');
+    })();
     console.log(`[iam-acceptance] report written: ${reportPaths.markdownPath}`);
 
     if (report.summary.status === 'failed') {
@@ -1063,7 +1120,7 @@ WHERE instance_id = $1
       recordStep({
         name: 'Acceptance Runner',
         status: 'failed',
-        failureCode: 'acceptance_report_write_failed',
+        failureCode: 'acceptance_runner_unexpected_error',
         details: error instanceof Error ? error.message : String(error),
       });
     }

@@ -218,6 +218,11 @@ Fehlerpfad:
 5. Bei Erfolg wird der aktive Kontext serverseitig in der Session aktualisiert und ein Audit-/Betriebsereignis für `organization_context_switched` erzeugt.
 6. Nachgelagerte UI- und Backend-Pfade lesen den aktiven Organisationskontext aus dem kanonischen Sessionzustand.
 
+Fehlerpfad:
+
+- Ungültige oder deaktivierte Zielorganisationen liefern einen stabilen Fehlercode; der bisherige Kontext bleibt unverändert.
+- Technische Fehler werden im Org-Switcher verständlich, internationalisiert und ohne inkonsistenten Zwischenzustand angezeigt.
+
 ### Szenario 14: Separates IAM-Acceptance-Gate
 
 1. Ein dedizierter Runner validiert Pflicht-Env, Testrealm und Testbenutzer gegen Keycloak.
@@ -232,12 +237,7 @@ Fehlerpfad:
 - Fehlende Pflicht-Env oder fehlende Testbenutzer beenden den Lauf vor dem Browserstart.
 - Nicht bereite Dependencies oder fehlerhafte Laufzeitnachweise erzeugen deterministische Failure-Codes im Bericht.
 
-Fehlerpfad:
-
-- Ungültige oder deaktivierte Zielorganisationen liefern einen stabilen Fehlercode; der bisherige Kontext bleibt unverändert.
-- Technische Fehler werden im Org-Switcher verständlich, internationalisiert und ohne inkonsistenten Zwischenzustand angezeigt.
-
-### Szenario 14: Serverseitige Mainserver-Diagnostik mit Per-User-Delegation
+### Szenario 15: Serverseitige Mainserver-Diagnostik mit Per-User-Delegation
 
 1. Ein berechtigter Studio-Benutzer löst eine serverseitige Mainserver-Funktion aus.
 2. Die App prüft lokal Rollen und aktiven `instanceId`-Kontext, bevor ein Upstream-Call gestartet wird.

@@ -174,6 +174,14 @@
         "config": "apps/sva-studio-react/playwright.config.ts",
         "skipInstall": true
       }
+    },
+    "test:acceptance": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "outputs": [],
+      "options": {
+        "command": "pnpm exec node --import tsx ../../scripts/ci/run-iam-acceptance.ts"
+      }
     }
   }
 }

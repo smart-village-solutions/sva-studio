@@ -2,11 +2,15 @@
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "noEmit": true,
+    "allowImportingTsExtensions": true,
     "types": ["node"],
     "lib": ["ES2022", "DOM"]
   },
   "include": [
     "scripts/ci/check-file-placement.ts",
-    "scripts/ci/check-openapi-iam.ts"
+    "scripts/ci/check-openapi-iam.ts",
+    "scripts/ci/iam-acceptance.ts",
+    "scripts/ci/iam-acceptance.test.ts",
+    "scripts/ci/run-iam-acceptance.ts"
   ]
 }

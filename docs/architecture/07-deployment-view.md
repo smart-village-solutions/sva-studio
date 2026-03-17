@@ -30,6 +30,7 @@ Laufzeitknoten auf Basis des aktuellen Repos.
 
 - Web-App Runtime (TanStack Start / Node)
 - Nx-/pnpm-basierte Build- und Test-Pipeline
+- Separates IAM-Acceptance-Gate für Paket-1-/2-Abnahmen
 - Externe Plattform (GitHub Actions) für CI-Ausführung
 - Keycloak als zentraler OIDC Identity Provider
 - Redis Session Store
@@ -133,6 +134,7 @@ Referenzen:
 - Healthchecks für zentrale Monitoring-Services konfiguriert
 - Graceful OTEL Shutdown im SDK vorgesehen
 - Keycloak wird aktuell als externer Dienst angebunden (nicht über Repo-Compose provisioniert)
+- Das IAM-Acceptance-Gate läuft gegen eine bereits vorhandene Testumgebung und startet keine eigene Keycloak-Topologie im Workflow.
 - Swarm-Stack: Secrets als externe Swarm-Secrets, nicht als Klartext-Env-Variablen
 - Swarm-Stack: Entrypoint-basierte Secret-Injektion, abwärtskompatibel mit Nicht-Swarm-Betrieb
 - Swarm-Stack: Host-Validierung gegen Env-Allowlist mit fail-closed-Policy (identische 403-Antwort)
@@ -183,3 +185,4 @@ Rollout-Reihenfolge:
 4. Feature-Flags initial auf `false` verifizieren (Kill-Switch).
 5. Stufenweise aktivieren: UI -> Admin -> Bulk.
 6. Geplanten Reconcile-Lauf aktivieren und Alerting gegen Drift-Backlog prüfen.
+7. Separates IAM-Acceptance-Gate gegen die Zielumgebung ausführen und Bericht unter `docs/reports/` archivieren.

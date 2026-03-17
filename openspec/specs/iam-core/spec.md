@@ -473,7 +473,7 @@ Das System MUST für den Basis-IAM-Umfang einen reproduzierbaren Abnahmenachweis
 
 #### Scenario: Readiness-Gate bestätigt alle Basisabhängigkeiten
 
-- **WHEN** der Abnahme-Flow für Paket 1 ausgeführt wird
+- **WHEN** der Abnahmeflow für Paket 1 ausgeführt wird
 - **THEN** bestätigt das Readiness-Gate die Betriebsbereitschaft von Keycloak, Datenbank und Redis
 - **AND** ein fehlender Bestandteil blockiert die Abnahme deterministisch mit einem dokumentierten Fehlerbild
 

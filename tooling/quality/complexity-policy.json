@@ -281,6 +281,48 @@
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "Redis-Session-Server in kleinere Lese-, Schreib- und TTL-Helfer zerlegen"
+    },
+    "iam-server:packages/auth/src/iam-account-management/groups-handlers.ts:cyclomaticComplexity": {
+      "ticketId": "QUAL-114",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "IAM-Gruppen-Handler in Query-, Mutation-, Rollenbindung- und Mitgliedschaftsbausteine zerlegen"
+    },
+    "iam-server:packages/auth/src/iam-account-management/groups-handlers.ts:fileLines": {
+      "ticketId": "QUAL-114",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "IAM-Gruppen-Handler in Query-, Mutation-, Rollenbindung- und Mitgliedschaftsbausteine zerlegen"
+    },
+    "iam-server:packages/auth/src/iam-account-management/groups-handlers.ts:functionLines": {
+      "ticketId": "QUAL-114",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "IAM-Gruppen-Handler in Query-, Mutation-, Rollenbindung- und Mitgliedschaftsbausteine zerlegen"
+    },
+    "iam-server:packages/auth/src/iam-authorization/shared.ts:cyclomaticComplexity": {
+      "ticketId": "QUAL-115",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Authorization-Shared-Logik fuer Gruppen- und Geo-Vererbung in kleinere Auswertungsbausteine zerlegen"
+    },
+    "iam-server:packages/auth/src/iam-authorization/shared.ts:fileLines": {
+      "ticketId": "QUAL-115",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Authorization-Shared-Logik fuer Gruppen- und Geo-Vererbung in kleinere Auswertungsbausteine zerlegen"
+    },
+    "iam-data:packages/data/src/iam/repositories/statements.ts:fileLines": {
+      "ticketId": "QUAL-116",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "IAM-Repository-Statements in kleinere Statement-Builder fuer Accounts, Gruppen, Geo und Memberships zerlegen"
+    },
+    "iam-data:packages/data/src/iam/types.ts:publicExports": {
+      "ticketId": "QUAL-116",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "IAM-Datentypen in fachlich kleinere Export-Surfaces fuer Gruppen-, Geo- und Membership-Modelle aufteilen"
     }
   }
 }

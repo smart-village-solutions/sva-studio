@@ -1,5 +1,8 @@
 import type {
   ContentAuthorPolicy,
+  GeoUnitType,
+  GroupMembershipOrigin,
+  GroupType,
   IamInstanceId,
   IamUuid,
   OrganizationMembershipVisibility,
@@ -56,6 +59,27 @@ export type IamSeedRepository = {
     managedBy?: RoleManagedBy;
     syncState?: RoleSyncState;
   }): Promise<void>;
+  upsertGroup(input: {
+    id: IamUuid;
+    instanceId: IamInstanceId;
+    groupKey: string;
+    displayName: string;
+    description?: string;
+    groupType?: GroupType;
+    isActive?: boolean;
+  }): Promise<void>;
+  upsertGeoUnit(input: {
+    id: IamUuid;
+    instanceId: IamInstanceId;
+    geoKey: string;
+    displayName: string;
+    geoType: GeoUnitType;
+    metadata: string;
+    parentGeoUnitId?: IamUuid;
+    hierarchyPath: readonly IamUuid[];
+    depth: number;
+    isActive?: boolean;
+  }): Promise<void>;
   upsertPermission(input: {
     id: IamUuid;
     instanceId: IamInstanceId;
@@ -80,6 +104,15 @@ export type IamSeedRepository = {
     membershipType: string;
   }): Promise<void>;
   assignAccountRole(input: { instanceId: IamInstanceId; accountId: IamUuid; roleId: IamUuid }): Promise<void>;
+  assignGroupRole(input: { instanceId: IamInstanceId; groupId: IamUuid; roleId: IamUuid }): Promise<void>;
+  assignAccountGroup(input: {
+    instanceId: IamInstanceId;
+    accountId: IamUuid;
+    groupId: IamUuid;
+    origin?: GroupMembershipOrigin;
+    validFrom?: string;
+    validTo?: string;
+  }): Promise<void>;
   assignAccountOrganization(input: {
     instanceId: IamInstanceId;
     accountId: IamUuid;

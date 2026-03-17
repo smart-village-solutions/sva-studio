@@ -127,6 +127,7 @@ const PermissionTable = ({
             <th className="py-2 pr-4 font-semibold">{t('admin.iam.rights.columns.effect')}</th>
             <th className="py-2 pr-4 font-semibold">{t('admin.iam.rights.columns.scope')}</th>
             <th className="py-2 font-semibold">{t('admin.iam.rights.columns.sourceRoles')}</th>
+            <th className="py-2 font-semibold">{t('admin.iam.rights.columns.sourceGroups')}</th>
           </tr>
         </thead>
         <tbody>
@@ -142,6 +143,7 @@ const PermissionTable = ({
               <td className="py-2 pr-4">{permission.effect ?? '—'}</td>
               <td className="py-2 pr-4">{formatObjectEntries(permission.scope)}</td>
               <td className="py-2">{permission.sourceRoleIds.length > 0 ? permission.sourceRoleIds.join(', ') : '—'}</td>
+              <td className="py-2">{permission.sourceGroupIds.length > 0 ? permission.sourceGroupIds.join(', ') : '—'}</td>
             </tr>
           ))}
         </tbody>

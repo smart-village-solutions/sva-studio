@@ -29,6 +29,12 @@ export const createIamSeedRepository = (executor: SqlExecutor): IamSeedRepositor
   async upsertRole(input) {
     await executor.execute(normalizeStatement(iamSeedStatements.upsertRole(input)));
   },
+  async upsertGroup(input) {
+    await executor.execute(normalizeStatement(iamSeedStatements.upsertGroup(input)));
+  },
+  async upsertGeoUnit(input) {
+    await executor.execute(normalizeStatement(iamSeedStatements.upsertGeoUnit(input)));
+  },
   async upsertPermission(input) {
     await executor.execute(normalizeStatement(iamSeedStatements.upsertPermission(input)));
   },
@@ -40,6 +46,12 @@ export const createIamSeedRepository = (executor: SqlExecutor): IamSeedRepositor
   },
   async assignAccountRole(input) {
     await executor.execute(normalizeStatement(iamSeedStatements.assignAccountRole(input)));
+  },
+  async assignGroupRole(input) {
+    await executor.execute(normalizeStatement(iamSeedStatements.assignGroupRole(input)));
+  },
+  async assignAccountGroup(input) {
+    await executor.execute(normalizeStatement(iamSeedStatements.assignAccountGroup(input)));
   },
   async assignAccountOrganization(input) {
     await executor.execute(normalizeStatement(iamSeedStatements.assignAccountOrganization(input)));

@@ -232,6 +232,30 @@ const authHandlerMap = {
       return mod.deleteRoleHandler(request);
     },
   },
+  '/api/v1/iam/groups': {
+    GET: async ({ request }) => {
+      const mod = await import('@sva/auth/server');
+      return mod.listGroupsHandler(request);
+    },
+    POST: async ({ request }) => {
+      const mod = await import('@sva/auth/server');
+      return mod.createGroupHandler(request);
+    },
+  },
+  '/api/v1/iam/groups/$groupId': {
+    GET: async ({ request }) => {
+      const mod = await import('@sva/auth/server');
+      return mod.getGroupHandler(request);
+    },
+    PATCH: async ({ request }) => {
+      const mod = await import('@sva/auth/server');
+      return mod.updateGroupHandler(request);
+    },
+    DELETE: async ({ request }) => {
+      const mod = await import('@sva/auth/server');
+      return mod.deleteGroupHandler(request);
+    },
+  },
   '/api/v1/iam/legal-texts': {
     GET: async ({ request }) => {
       const mod = await import('@sva/auth/server');

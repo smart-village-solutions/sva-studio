@@ -25,6 +25,8 @@ export type PermissionRow = {
   effect?: IamPermissionEffect | null;
   scope?: Record<string, unknown> | null;
   role_id: string;
+  group_id?: string | null;
+  source_kind?: 'direct_role' | 'group_role' | null;
   organization_id: string | null;
 };
 
@@ -102,16 +104,31 @@ export const toEffectivePermissions = (rows: readonly PermissionRow[]): Effectiv
         effect,
         scope,
         sourceRoleIds: [row.role_id],
+        sourceGroupIds: row.group_id ? [row.group_id] : [],
+        provenance: row.source_kind ? { sourceKinds: [row.source_kind] } : undefined,
       });
       continue;
     }
 
-    if (!existing.sourceRoleIds.includes(row.role_id)) {
-      buckets.set(bucketKey, {
-        ...existing,
-        sourceRoleIds: [...existing.sourceRoleIds, row.role_id],
-      });
-    }
+    const nextRoleIds = existing.sourceRoleIds.includes(row.role_id)
+      ? existing.sourceRoleIds
+      : [...existing.sourceRoleIds, row.role_id];
+    const nextGroupIds =
+      row.group_id && !existing.sourceGroupIds.includes(row.group_id)
+        ? [...existing.sourceGroupIds, row.group_id]
+        : existing.sourceGroupIds;
+    const nextSourceKinds = row.source_kind
+      ? Array.from(
+          new Set([...(existing.provenance?.sourceKinds ?? []), row.source_kind])
+        )
+      : existing.provenance?.sourceKinds;
+
+    buckets.set(bucketKey, {
+      ...existing,
+      sourceRoleIds: nextRoleIds,
+      sourceGroupIds: nextGroupIds,
+      provenance: nextSourceKinds ? { ...(existing.provenance ?? {}), sourceKinds: nextSourceKinds } : existing.provenance,
+    });
   }
 
   return [...buckets.values()];
@@ -223,6 +240,16 @@ export const buildMePermissionsResponse = (input: {
   evaluatedAt: new Date().toISOString(),
   requestId: getWorkspaceContext().requestId,
   traceId: getWorkspaceContext().traceId,
+  provenance: {
+    hasGroupDerivedPermissions: input.permissions.some((permission) => permission.sourceGroupIds.length > 0),
+    hasGeoInheritance: input.permissions.some((permission) => {
+      const scope = permission.scope;
+      if (!scope) {
+        return false;
+      }
+      return Array.isArray(scope.allowedGeoUnitIds) || Array.isArray(scope.restrictedGeoUnitIds);
+    }),
+  },
 });
 
 export type DeniedAuthorizeResponseInput = {

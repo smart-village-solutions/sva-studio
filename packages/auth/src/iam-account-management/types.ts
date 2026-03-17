@@ -1,4 +1,4 @@
-import type { IamRoleSyncState } from '@sva/core';
+import type { IamGroupMembershipOrigin, IamGroupType, IamRoleSyncState } from '@sva/core';
 
 export const USER_STATUS = ['active', 'inactive', 'pending'] as const;
 export type UserStatus = (typeof USER_STATUS)[number];
@@ -63,6 +63,21 @@ export type ManagedRoleRow = IamRoleRow & {
   readonly sync_state: IamRoleSyncState;
   readonly last_synced_at: string | null;
   readonly last_error_code: string | null;
+};
+
+export type IamGroupRow = {
+  id: string;
+  group_key: string;
+  display_name: string;
+  description: string | null;
+  group_type: IamGroupType;
+  is_active: boolean;
+};
+
+export type IamGroupMembershipRow = IamGroupRow & {
+  origin: IamGroupMembershipOrigin;
+  valid_from?: string | null;
+  valid_to?: string | null;
 };
 
 export type IdempotencyReserveResult =

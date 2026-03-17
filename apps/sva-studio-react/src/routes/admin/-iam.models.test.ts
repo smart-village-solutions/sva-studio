@@ -44,6 +44,7 @@ describe('iam.models', () => {
         effect: 'allow',
         resourceId: 'resource-a',
         sourceRoleIds: ['role-1'],
+        sourceGroupIds: [],
         scope: {
           region: 'eu',
         },
@@ -53,11 +54,13 @@ describe('iam.models', () => {
         resourceType: 'iam',
         organizationId: 'org-b',
         sourceRoleIds: ['role-2'],
+        sourceGroupIds: ['group-1'],
       },
       {
         action: 'feature.toggle',
         resourceType: 'feature',
         sourceRoleIds: ['role-3'],
+        sourceGroupIds: [],
       },
     ];
 
@@ -76,6 +79,7 @@ describe('iam.models', () => {
         action: 'feature.toggle',
         resourceType: 'feature',
         sourceRoleIds: ['role-3'],
+        sourceGroupIds: [],
       },
     ];
 
@@ -90,6 +94,7 @@ describe('iam.models', () => {
         resourceId: 'article-1',
         effect: 'deny',
         sourceRoleIds: ['role-1'],
+        sourceGroupIds: ['group-1'],
         scope: {
           region: 'eu',
           tenant: 'north',
@@ -119,6 +124,7 @@ describe('iam.models', () => {
           resourceType: 'content',
           organizationId: 'org-a',
           sourceRoleIds: ['role-1'],
+          sourceGroupIds: [],
         },
       ],
       { organizationIds: [' org-a ', ''] }

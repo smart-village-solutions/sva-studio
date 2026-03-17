@@ -16,6 +16,7 @@ import { createApiError, readInstanceIdFromRequest } from './api-helpers';
 import { sanitizeRoleAuditDetails } from './role-audit';
 import type {
   ActorInfo,
+  IamGroupRow,
   IdempotencyReserveResult,
   IdempotencyStatus,
   IamRoleRow,
@@ -223,6 +224,27 @@ WHERE instance_id = $1
 `,
     [input.instanceId, input.externalRoleNames]
   );
+  return result.rows;
+};
+
+export const resolveGroupsByIds = async (
+  client: QueryClient,
+  input: { instanceId: string; groupIds: readonly string[] }
+): Promise<readonly IamGroupRow[]> => {
+  if (input.groupIds.length === 0) {
+    return [];
+  }
+
+  const result = await client.query<IamGroupRow>(
+    `
+SELECT id, group_key, display_name, description, group_type, is_active
+FROM iam.groups
+WHERE instance_id = $1
+  AND id = ANY($2::uuid[]);
+`,
+    [input.instanceId, input.groupIds]
+  );
+
   return result.rows;
 };
 
@@ -742,5 +764,38 @@ SELECT $1, $2::uuid, role_id, $3::uuid, NOW()
 FROM unnest($4::uuid[]) AS role_id;
 `,
     [input.instanceId, input.accountId, input.assignedBy ?? null, input.roleIds]
+  );
+};
+
+export const assignGroups = async (
+  client: QueryClient,
+  input: {
+    instanceId: string;
+    accountId: string;
+    groupIds: readonly string[];
+    origin?: 'manual' | 'seed' | 'sync';
+  }
+) => {
+  await client.query('DELETE FROM iam.account_groups WHERE instance_id = $1 AND account_id = $2::uuid;', [
+    input.instanceId,
+    input.accountId,
+  ]);
+  if (input.groupIds.length === 0) {
+    return;
+  }
+
+  await client.query(
+    `
+INSERT INTO iam.account_groups (
+  instance_id,
+  account_id,
+  group_id,
+  origin,
+  valid_from
+)
+SELECT $1, $2::uuid, group_id, $3, NOW()
+FROM unnest($4::uuid[]) AS group_id;
+`,
+    [input.instanceId, input.accountId, input.origin ?? 'manual', input.groupIds]
   );
 };

@@ -42,6 +42,7 @@ export const updateUserSchema = z
     notes: z.string().trim().max(2000).optional(),
     status: z.enum(USER_STATUS).optional(),
     roleIds: z.array(z.string().uuid()).max(20).optional(),
+    groupIds: z.array(z.string().uuid()).max(50).optional(),
     mainserverUserApplicationId: z.string().trim().max(255).optional(),
     mainserverUserApplicationSecret: optionalTrimmedSecretString(255),
   })
@@ -91,3 +92,24 @@ export const updateRoleSchema = z
     (value) => Object.keys(value).length > 0 && (Object.keys(value).some((key) => key !== 'retrySync') || value.retrySync),
     'Mindestens ein Feld muss gesetzt werden.'
   );
+
+export const createGroupSchema = z.object({
+  groupKey: z
+    .string()
+    .trim()
+    .min(3)
+    .max(64)
+    .regex(/^[a-z0-9_]+$/),
+  displayName: z.string().trim().min(1).max(120),
+  description: z.string().trim().max(500).optional(),
+  roleIds: z.array(z.string().uuid()).max(50).default([]),
+});
+
+export const updateGroupSchema = z
+  .object({
+    displayName: z.string().trim().min(1).max(120).optional(),
+    description: z.string().trim().max(500).optional(),
+    roleIds: z.array(z.string().uuid()).max(50).optional(),
+    isActive: z.boolean().optional(),
+  })
+  .refine(hasDefinedEntries, 'Mindestens ein Feld muss gesetzt werden.');

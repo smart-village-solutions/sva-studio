@@ -3,6 +3,8 @@ import type {
   AuthorizeResponse,
   EffectivePermission,
   IamPermissionEffect,
+  IamPermissionProvenance,
+  IamPermissionSourceKind,
 } from './authorization-contract';
 
 const readString = (value: unknown): string | undefined => {
@@ -39,6 +41,85 @@ const readRecord = (value: unknown): Readonly<Record<string, unknown>> | undefin
 
 const readOrganizationScope = (request: AuthorizeRequest): string | undefined => {
   return request.context?.organizationId ?? request.resource.organizationId;
+};
+
+const readGeoUnitId = (
+  contextAttributes: Readonly<Record<string, unknown>> | undefined,
+  resourceAttributes: Readonly<Record<string, unknown>> | undefined
+): string | undefined => {
+  return readString(resourceAttributes?.geoUnitId) ?? readString(contextAttributes?.geoUnitId);
+};
+
+const readGeoHierarchy = (
+  contextAttributes: Readonly<Record<string, unknown>> | undefined,
+  resourceAttributes: Readonly<Record<string, unknown>> | undefined
+): readonly string[] | undefined => {
+  return readStringArray(resourceAttributes?.geoHierarchy) ?? readStringArray(contextAttributes?.geoHierarchy);
+};
+
+const resolveSourceKinds = (permission: EffectivePermission): readonly IamPermissionSourceKind[] | undefined => {
+  const sourceKinds = permission.provenance?.sourceKinds;
+  if (sourceKinds && sourceKinds.length > 0) {
+    return sourceKinds;
+  }
+
+  const derivedKinds = new Set<IamPermissionSourceKind>();
+  if (permission.sourceRoleIds.length > 0) {
+    derivedKinds.add('direct_role');
+  }
+  if (permission.sourceGroupIds.length > 0) {
+    derivedKinds.add('group_role');
+  }
+  return derivedKinds.size > 0 ? [...derivedKinds] : undefined;
+};
+
+const buildProvenance = (
+  permission: EffectivePermission,
+  overrides?: Partial<IamPermissionProvenance>
+): IamPermissionProvenance | undefined => {
+  const sourceKinds = resolveSourceKinds(permission);
+  const provenance = {
+    ...(permission.provenance ?? {}),
+    ...(sourceKinds ? { sourceKinds } : {}),
+    ...(overrides ?? {}),
+  };
+
+  return Object.keys(provenance).length > 0 ? provenance : undefined;
+};
+
+const resolveGeoUnitMatch = (
+  allowedGeoUnitIds: readonly string[] | undefined,
+  restrictedGeoUnitIds: readonly string[] | undefined,
+  resourceGeoUnitId: string | undefined,
+  geoHierarchy: readonly string[] | undefined
+): {
+  readonly matchedAllowedGeoUnitId?: string;
+  readonly matchedRestrictedGeoUnitId?: string;
+} => {
+  const hierarchy = [...(geoHierarchy ?? []), ...(resourceGeoUnitId ? [resourceGeoUnitId] : [])];
+  if (hierarchy.length === 0) {
+    return {};
+  }
+
+  const readMostSpecificMatch = (candidates: readonly string[] | undefined): string | undefined => {
+    if (!candidates || candidates.length === 0) {
+      return undefined;
+    }
+
+    for (let index = hierarchy.length - 1; index >= 0; index -= 1) {
+      const hierarchyEntry = hierarchy[index];
+      if (hierarchyEntry && candidates.includes(hierarchyEntry)) {
+        return hierarchyEntry;
+      }
+    }
+
+    return undefined;
+  };
+
+  return {
+    matchedAllowedGeoUnitId: readMostSpecificMatch(allowedGeoUnitIds),
+    matchedRestrictedGeoUnitId: readMostSpecificMatch(restrictedGeoUnitIds),
+  };
 };
 
 const isPermissionMatch = (
@@ -106,17 +187,27 @@ const isPermissionActiveForScope = (
 ): { active: boolean; denyReason?: AuthorizeResponse['reason'] } => {
   const attributes = mergePermissionAttributes(permission, contextAttributes, resourceAttributes);
   const resourceGeoScope = readString(resourceAttributes?.geoScope) ?? undefined;
+  const resourceGeoUnitId = readGeoUnitId(contextAttributes, resourceAttributes);
+  const geoHierarchy = readGeoHierarchy(contextAttributes, resourceAttributes);
   const allowedGeoScopes = readStringArray(permission.scope?.allowedGeoScopes);
+  const allowedGeoUnitIds = readStringArray(permission.scope?.allowedGeoUnitIds);
+  const restrictedGeoUnitIds = readStringArray(permission.scope?.restrictedGeoUnitIds);
   const restrictedOrganizationIds = readStringArray(permission.scope?.restrictedOrganizationIds);
   const requireActingAs = readBoolean(permission.scope?.requireActingAs) ?? false;
   const forceDeny = readBoolean(permission.scope?.forceDeny) ?? false;
   const requiredGeoScope = readBoolean(permission.scope?.requireGeoScope) ?? false;
+  const geoUnitMatch = resolveGeoUnitMatch(
+    allowedGeoUnitIds,
+    restrictedGeoUnitIds,
+    resourceGeoUnitId,
+    geoHierarchy
+  );
 
   if (requireActingAs && !request.context?.actingAsUserId) {
     return { active: false };
   }
 
-  if (requiredGeoScope && !resourceGeoScope) {
+  if (requiredGeoScope && !resourceGeoScope && !resourceGeoUnitId) {
     return { active: false };
   }
 
@@ -124,8 +215,16 @@ const isPermissionActiveForScope = (
     return { active: false };
   }
 
+  if (allowedGeoUnitIds && !geoUnitMatch.matchedAllowedGeoUnitId) {
+    return { active: false };
+  }
+
   if (permission.effect === 'deny') {
     if (restrictedOrganizationIds && targetOrganizationId && restrictedOrganizationIds.includes(targetOrganizationId)) {
+      return { active: true, denyReason: 'hierarchy_restriction' };
+    }
+
+    if (geoUnitMatch.matchedRestrictedGeoUnitId) {
       return { active: true, denyReason: 'hierarchy_restriction' };
     }
 
@@ -159,21 +258,43 @@ const isWithinWindow = (currentMinutes: number, startMinutes: number, endMinutes
 const evaluateAbacRules = (
   request: AuthorizeRequest,
   attributes: Readonly<Record<string, unknown>> | undefined,
-  targetOrganizationId: string | undefined
-): { allowed: boolean; reason: AuthorizeResponse['reason']; hasActiveRules: boolean } => {
+  targetOrganizationId: string | undefined,
+  permission?: EffectivePermission
+): {
+  allowed: boolean;
+  reason: AuthorizeResponse['reason'];
+  hasActiveRules: boolean;
+  provenance?: IamPermissionProvenance;
+} => {
   if (!attributes) {
-    return { allowed: true, reason: 'allowed_by_rbac', hasActiveRules: false };
+    return {
+      allowed: true,
+      reason: 'allowed_by_rbac',
+      hasActiveRules: false,
+      provenance: permission ? buildProvenance(permission) : undefined,
+    };
   }
 
   const requiredGeoScope = readBoolean(attributes.requireGeoScope) ?? false;
   const resourceAttributes = readRecord(request.resource.attributes);
   const resourceGeoScope =
     readString(resourceAttributes?.geoScope) ?? readString(attributes.geoScope) ?? undefined;
+  const resourceGeoUnitId =
+    readString(resourceAttributes?.geoUnitId) ?? readString(attributes.geoUnitId) ?? undefined;
+  const geoHierarchy = readStringArray(resourceAttributes?.geoHierarchy) ?? readStringArray(attributes.geoHierarchy);
   const allowedGeoScopes = readStringArray(attributes.allowedGeoScopes);
+  const allowedGeoUnitIds = readStringArray(attributes.allowedGeoUnitIds);
+  const restrictedGeoUnitIds = readStringArray(attributes.restrictedGeoUnitIds);
   const restrictedOrganizationIds = readStringArray(attributes.restrictedOrganizationIds);
   const shouldForceDeny = readBoolean(attributes.forceDeny) ?? false;
+  const geoUnitMatch = resolveGeoUnitMatch(
+    allowedGeoUnitIds,
+    restrictedGeoUnitIds,
+    resourceGeoUnitId,
+    geoHierarchy
+  );
 
-  if (requiredGeoScope && !resourceGeoScope) {
+  if (requiredGeoScope && !resourceGeoScope && !resourceGeoUnitId) {
     return { allowed: false, reason: 'context_attribute_missing', hasActiveRules: true };
   }
 
@@ -181,7 +302,22 @@ const evaluateAbacRules = (
     return { allowed: false, reason: 'hierarchy_restriction', hasActiveRules: true };
   }
 
+  if (geoUnitMatch.matchedRestrictedGeoUnitId) {
+    return {
+      allowed: false,
+      reason: 'hierarchy_restriction',
+      hasActiveRules: true,
+      provenance: permission
+        ? buildProvenance(permission, { restrictedByGeoUnitId: geoUnitMatch.matchedRestrictedGeoUnitId })
+        : undefined,
+    };
+  }
+
   if (allowedGeoScopes && resourceGeoScope && !allowedGeoScopes.includes(resourceGeoScope)) {
+    return { allowed: false, reason: 'abac_condition_unmet', hasActiveRules: true };
+  }
+
+  if (allowedGeoUnitIds && !geoUnitMatch.matchedAllowedGeoUnitId) {
     return { allowed: false, reason: 'abac_condition_unmet', hasActiveRules: true };
   }
 
@@ -214,12 +350,28 @@ const evaluateAbacRules = (
   const hasRules = Boolean(
     requiredGeoScope ||
       allowedGeoScopes ||
+      allowedGeoUnitIds ||
+      restrictedGeoUnitIds ||
       restrictedOrganizationIds ||
       timeWindow ||
       shouldForceDeny ||
       (readBoolean(attributes.requireActingAs) ?? false)
   );
-  return { allowed: true, reason: hasRules ? 'allowed_by_abac' : 'allowed_by_rbac', hasActiveRules: hasRules };
+  return {
+    allowed: true,
+    reason: hasRules ? 'allowed_by_abac' : 'allowed_by_rbac',
+    hasActiveRules: hasRules,
+    provenance: permission
+      ? buildProvenance(permission, {
+          inheritedFromGeoUnitId:
+            geoUnitMatch.matchedAllowedGeoUnitId &&
+            resourceGeoUnitId &&
+            geoUnitMatch.matchedAllowedGeoUnitId !== resourceGeoUnitId
+              ? geoUnitMatch.matchedAllowedGeoUnitId
+              : undefined,
+        })
+      : undefined,
+  };
 };
 
 export const evaluateAuthorizeDecision = (
@@ -294,6 +446,13 @@ export const evaluateAuthorizeDecision = (
 
   // Stage 4: restrictive rules.
   for (const permission of denyPermissions) {
+    const denyAttributes = mergePermissionAttributes(permission, contextAttributes, resourceAttributes);
+    const denyGeoMatch = resolveGeoUnitMatch(
+      readStringArray(denyAttributes?.allowedGeoUnitIds),
+      readStringArray(denyAttributes?.restrictedGeoUnitIds),
+      readGeoUnitId(contextAttributes, resourceAttributes),
+      readGeoHierarchy(contextAttributes, resourceAttributes)
+    );
     const denyMatch = isPermissionActiveForScope(
       permission,
       request,
@@ -312,26 +471,34 @@ export const evaluateAuthorizeDecision = (
         requestId: request.context?.requestId,
         traceId: request.context?.traceId,
         evaluatedAt: new Date().toISOString(),
-        diagnostics: { stage: 'restrictive_rule' },
+        diagnostics: {
+          stage: 'restrictive_rule',
+          restricted_by_geo_unit_id: denyGeoMatch.matchedRestrictedGeoUnitId,
+        },
+        provenance: buildProvenance(permission, {
+          restrictedByGeoUnitId: denyGeoMatch.matchedRestrictedGeoUnitId,
+        }),
       };
     }
   }
 
   // Stage 5: ABAC rules.
-  const abacResults = allowPermissions.map((permission) =>
-    evaluateAbacRules(
+  const abacResults = allowPermissions.map((permission) => ({
+    permission,
+    result: evaluateAbacRules(
       request,
       mergePermissionAttributes(permission, contextAttributes, resourceAttributes),
-      targetOrganizationId
-    )
-  );
-  const firstAllowedResult = abacResults.find((result) => result.allowed);
+      targetOrganizationId,
+      permission
+    ),
+  }));
+  const firstAllowedResult = abacResults.find((entry) => entry.result.allowed);
 
   if (!firstAllowedResult) {
-    const denyResult = abacResults.find((result) => !result.allowed);
+    const denyResult = abacResults.find((entry) => !entry.result.allowed);
     return {
       allowed: false,
-      reason: denyResult?.reason ?? 'abac_condition_unmet',
+      reason: denyResult?.result.reason ?? 'abac_condition_unmet',
       instanceId: request.instanceId,
       action: request.action,
       resourceType: request.resource.type,
@@ -340,13 +507,14 @@ export const evaluateAuthorizeDecision = (
       traceId: request.context?.traceId,
       evaluatedAt: new Date().toISOString(),
       diagnostics: { stage: 'abac' },
+      provenance: denyResult?.result.provenance,
     };
   }
 
   // Stage 6: final decision.
   return {
     allowed: true,
-    reason: firstAllowedResult.hasActiveRules ? 'allowed_by_abac' : 'allowed_by_rbac',
+    reason: firstAllowedResult.result.hasActiveRules ? 'allowed_by_abac' : 'allowed_by_rbac',
     instanceId: request.instanceId,
     action: request.action,
     resourceType: request.resource.type,
@@ -355,5 +523,6 @@ export const evaluateAuthorizeDecision = (
     traceId: request.context?.traceId,
     evaluatedAt: new Date().toISOString(),
     diagnostics: { stage: 'final', matched_role_count: matchedPermissions.length },
+    provenance: firstAllowedResult.result.provenance,
   };
 };

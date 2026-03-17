@@ -105,6 +105,16 @@ Schulden auf IST-Basis.
    - Wahrscheinlichkeit: mittel
    - Maßnahme: Snapshot aktuell halten, `graphql-inspector`-Vergleich gegen Staging vorbereiten und Diagnostik-Adapter nur inkrementell erweitern
 
+19. Drift zwischen Gruppenbündeln, Rollenmatrix und effektiver Berechtigungswahrnehmung
+   - Impact: hoch (Admins sehen oder vergeben Rechte, die durch Gruppenmitgliedschaften missverstanden werden)
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: strukturierte Provenance (`sourceRoleIds`, `sourceGroupIds`, `sourceKinds`) durchgängig in API, UI und Tests halten
+
+20. Geo-Read-Modell ohne externe Live-Quelle
+   - Impact: mittel bis hoch (veraltete Geo-Hierarchien können falsche Vererbungsentscheidungen begünstigen)
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: `iam.geo_units` als explizites Read-Modell dokumentieren, Seeds/Testdaten versionieren und spätere Synchronisationsstrategie getrennt entscheiden
+
 ### Technische Schulden (Auswahl)
 
 - Teilweise No-Op Testtargets in Libraries
@@ -117,6 +127,8 @@ Schulden auf IST-Basis.
 - Mehrere historische IAM-Hotspots sind bewusst als tracked findings mit Refactoring-Backlog dokumentiert
 - Nach der Fassaden-Zerlegung verbleibt Restkomplexität gezielt in `iam-account-management/users-handlers.ts`, `iam-account-management/roles-handlers.ts`, `iam-account-management/reconcile-handler.ts`, `iam-account-management/shared.ts`, `iam-data-subject-rights/core.ts`, `iam-governance/core.ts` und `keycloak-admin-client/core.ts`
 - Route-Komponenten außerhalb der Shell verwenden noch teilweise direkte `slate-*`-/`emerald-*`-Farben und sind nicht vollständig tokenisiert
+- Gruppen sind im ersten Schnitt reine Rollenbündel; direkte Gruppen-Permissions und ein separates Gruppen-Gültigkeitsmanagement pro UI-Flow bleiben Folgearbeit
+- Die Geo-Hierarchie ist intern bereits auswertbar, besitzt aber noch keine dedizierte Admin-Oberfläche oder externe Pflegepipeline
 
 ### Nachverfolgung
 
@@ -198,3 +210,13 @@ Referenzen:
    - Impact: hoch (Overexposure oder unnötige Deny-Zustände in sensiblen Transparenz-Views)
    - Wahrscheinlichkeit: mittel
    - Maßnahme: Access-Matrix in `packages/routing`, Frontend-Helpern und Server-Handlern gemeinsam testen; Änderungen nur mit Doku- und Testanpassung mergen
+
+27. Invalidation-Lücken bei Gruppenmitgliedschafts- oder Gruppenrollenänderungen
+   - Impact: hoch (temporär veraltete Snapshots trotz korrekter Persistenz)
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: `user_group_changed` und gruppenbezogene Invalidierungen über Tests, Metriken und Review-Gates absichern
+
+28. Fehlende Geo-Admin-Oberfläche im ersten Schnitt
+   - Impact: mittel (Betrieb braucht weiterhin Seeds oder direkte Datenpflege)
+   - Wahrscheinlichkeit: hoch
+   - Maßnahme: klarer Scope-Schnitt in Doku und OpenSpec, spätere Pflegepfade als separaten Change planen

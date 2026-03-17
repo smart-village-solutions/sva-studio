@@ -42,6 +42,20 @@ const createJsonResponse = (status: number, body: unknown) =>
     headers: { 'Content-Type': 'application/json' },
   });
 
+const createDeferred = <TValue>() => {
+  let resolve: ((value: TValue) => void) | undefined;
+  let reject: ((reason?: unknown) => void) | undefined;
+  const promise = new Promise<TValue>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return {
+    promise,
+    resolve: (value: TValue) => resolve?.(value),
+    reject: (reason?: unknown) => reject?.(reason),
+  };
+};
+
 describe('createSvaMainserverService', () => {
   afterEach(() => {
     resetSvaMainserverServiceState();
@@ -400,6 +414,42 @@ describe('createSvaMainserverService', () => {
     ).resolves.toMatchObject({
       status: 'error',
       errorCode: 'invalid_response',
+    });
+  });
+
+  it('waits for the parallel diagnostic request to settle before returning an error status', async () => {
+    const delayedGraphql = createDeferred<Response>();
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(200, { errors: [{ message: 'boom' }] }))
+      .mockImplementationOnce(async () => delayedGraphql.promise);
+
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
+      fetchImpl,
+      retryBaseDelayMs: 0,
+      randomIntImpl: () => 0,
+    });
+
+    let settled = false;
+    const statusPromise = service
+      .getConnectionStatus({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' })
+      .then((status) => {
+        settled = true;
+        return status;
+      });
+
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(settled).toBe(false);
+
+    delayedGraphql.resolve(createJsonResponse(200, { data: { __typename: 'Mutation' } }));
+
+    await expect(statusPromise).resolves.toMatchObject({
+      status: 'error',
+      errorCode: 'graphql_error',
     });
   });
 });

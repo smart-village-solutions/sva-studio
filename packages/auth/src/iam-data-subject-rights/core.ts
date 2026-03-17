@@ -18,6 +18,7 @@ import { asApiItem, asApiList, createApiError, readPage, requireIdempotencyKey, 
 import { completeIdempotency, reserveIdempotency } from '../iam-account-management/shared.js';
 import { validateCsrf } from '../iam-account-management/csrf.js';
 import { listAdminDsrCases, loadDsrSelfServiceOverview } from './read-models.js';
+import { DsrAccountSnapshotNotFoundError } from './read-models.self-service-queries.js';
 
 const logger = createSdkLogger({ component: 'iam-dsr', level: 'info' });
 
@@ -1900,6 +1901,9 @@ export const getMyDataSubjectRightsHandler = async (request: Request): Promise<R
           return jsonResponse(200, asApiItem(overview, getWorkspaceContext().requestId));
         });
       } catch (error) {
+        if (error instanceof DsrAccountSnapshotNotFoundError) {
+          return createApiError(404, 'not_found', 'Konto nicht gefunden.', getWorkspaceContext().requestId);
+        }
         logger.error('DSR self overview failed', {
           operation: 'self_overview',
           error: error instanceof Error ? error.message : String(error),

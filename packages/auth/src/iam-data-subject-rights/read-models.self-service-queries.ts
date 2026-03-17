@@ -8,6 +8,13 @@ import type {
   RequestRow,
 } from './read-models.types.js';
 
+export class DsrAccountSnapshotNotFoundError extends Error {
+  constructor(accountId: string) {
+    super(`account_snapshot_not_found:${accountId}`);
+    this.name = 'DsrAccountSnapshotNotFoundError';
+  }
+}
+
 const queryAccountSnapshot = (client: QueryClient, input: { instanceId: string; accountId: string }) =>
   client.query<AccountSnapshotRow>(
     `
@@ -130,8 +137,13 @@ export const loadDsrSelfServiceRows = async (
   const exportResult = await querySelfServiceExportJobs(client, input);
   const holdResult = await querySelfServiceLegalHolds(client, input);
 
+  const account = accountResult.rows[0];
+  if (!account) {
+    throw new DsrAccountSnapshotNotFoundError(input.accountId);
+  }
+
   return {
-    account: accountResult.rows[0]!,
+    account,
     requests: requestResult.rows,
     exportJobs: exportResult.rows,
     legalHolds: holdResult.rows,

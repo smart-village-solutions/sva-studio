@@ -37,6 +37,22 @@ describe('Sheet', () => {
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 
+  it('renders a visible close button inside the sheet content', () => {
+    const onOpenChange = vi.fn();
+
+    render(
+      <Sheet open onOpenChange={onOpenChange}>
+        <SheetContent aria-label="Navigation" closeLabel="Schließen">
+          <button type="button">First</button>
+        </SheetContent>
+      </Sheet>
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Schließen' }));
+
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
   it('closes on Escape key', () => {
     const onOpenChange = vi.fn();
 
@@ -64,15 +80,16 @@ describe('Sheet', () => {
     );
 
     const dialog = screen.getByRole('dialog', { name: 'Navigation' });
+    const closeButton = screen.getByRole('button', { name: 'Schließen' });
     const first = screen.getByRole('button', { name: 'First' });
     const second = screen.getByRole('button', { name: 'Second' });
 
-    expect(document.activeElement).toBe(first);
+    expect(document.activeElement).toBe(closeButton);
     second.focus();
 
     fireEvent.keyDown(dialog, { key: 'Tab' });
 
-    expect(document.activeElement).toBe(first);
+    expect(document.activeElement).toBe(closeButton);
   });
 
   it('cycles focus with Shift+Tab from first to last element', () => {
@@ -86,10 +103,10 @@ describe('Sheet', () => {
     );
 
     const dialog = screen.getByRole('dialog', { name: 'Navigation' });
-    const first = screen.getByRole('button', { name: 'First' });
+    const closeButton = screen.getByRole('button', { name: 'Schließen' });
     const last = screen.getByRole('button', { name: 'Last' });
 
-    expect(document.activeElement).toBe(first);
+    expect(document.activeElement).toBe(closeButton);
     fireEvent.keyDown(dialog, { key: 'Tab', shiftKey: true });
 
     expect(document.activeElement).toBe(last);

@@ -19,8 +19,9 @@ export const listLegalTextsInternal = async (
 
   try {
     const items = await loadLegalTextListItems(actorResolution.actor.instanceId);
+    const pageSize = Math.max(1, items.length);
     return new Response(
-      JSON.stringify(asApiList(items, { page: 1, pageSize: items.length, total: items.length }, actorResolution.actor.requestId)),
+      JSON.stringify(asApiList(items, { page: 1, pageSize, total: items.length }, actorResolution.actor.requestId)),
       { status: 200, headers: { 'Content-Type': 'application/json' } }
     );
   } catch (error) {

@@ -4,7 +4,6 @@ import {
   buildDsrSelfServiceOverview,
   filterAdminDsrItems,
   paginateDsrItems,
-  toCanonicalDsrStatus,
 } from './read-models.mappers';
 import { loadAdminDsrRows } from './read-models.admin-queries';
 import { loadDsrSelfServiceRows } from './read-models.self-service-queries';

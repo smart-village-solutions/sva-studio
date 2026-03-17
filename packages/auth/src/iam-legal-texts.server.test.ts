@@ -159,6 +159,42 @@ describe('iam-legal-texts handlers', () => {
       activeAcceptanceCount: 3,
       lastAcceptedAt: '2026-03-16T10:00:00.000Z',
     });
+    expect(
+      state.queryLog.some(
+        (entry) =>
+          entry.text.includes('COUNT(acceptance.id) FILTER') &&
+          entry.text.includes('acceptance.id IS NOT NULL') &&
+          !entry.text.includes('COUNT(*) FILTER')
+      )
+    ).toBe(true);
+  });
+
+  it('returns a stable page size for empty legal text lists', async () => {
+    state.queryHandler = (text) => {
+      if (resolveActorAccountQuery(text)) {
+        return { rowCount: 1, rows: [{ account_id: 'account-1' }] };
+      }
+      if (text.includes('FROM iam.legal_text_versions version')) {
+        return { rowCount: 0, rows: [] };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await listLegalTextsHandler(
+      new Request('http://localhost:3000/api/v1/iam/legal-texts', { method: 'GET' })
+    );
+
+    expect(response.status).toBe(200);
+    const payload = (await response.json()) as {
+      data: unknown[];
+      pagination: { page: number; pageSize: number; total: number };
+    };
+    expect(payload.data).toEqual([]);
+    expect(payload.pagination).toEqual({
+      page: 1,
+      pageSize: 1,
+      total: 0,
+    });
   });
 
   it('creates a legal text version with idempotency protection', async () => {

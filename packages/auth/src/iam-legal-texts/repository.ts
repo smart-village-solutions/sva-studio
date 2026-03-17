@@ -65,7 +65,10 @@ SELECT
   version.published_at::text,
   version.created_at::text,
   COUNT(acceptance.id)::int AS acceptance_count,
-  COUNT(*) FILTER (WHERE acceptance.revoked_at IS NULL)::int AS active_acceptance_count,
+  COUNT(acceptance.id) FILTER (
+    WHERE acceptance.id IS NOT NULL
+      AND acceptance.revoked_at IS NULL
+  )::int AS active_acceptance_count,
   MAX(acceptance.accepted_at)::text AS last_accepted_at
 FROM iam.legal_text_versions version
 LEFT JOIN iam.legal_text_acceptances acceptance

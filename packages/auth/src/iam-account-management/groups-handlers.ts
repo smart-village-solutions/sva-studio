@@ -455,7 +455,7 @@ RETURNING id;
 
       await notifyPermissionInvalidation(client, {
         instanceId: actorResolution.actor.instanceId,
-        trigger: 'user_updated',
+        trigger: 'group_created',
       });
 
       const group = await loadGroupById(client, { instanceId: actorResolution.actor.instanceId, groupId });
@@ -577,7 +577,7 @@ RETURNING id;
 
       await notifyPermissionInvalidation(client, {
         instanceId: actorResolution.actor.instanceId,
-        trigger: 'user_updated',
+        trigger: 'group_updated',
       });
 
       return loadGroupById(client, { instanceId: actorResolution.actor.instanceId, groupId: groupId.groupId });
@@ -657,7 +657,7 @@ RETURNING id;
 
       await notifyPermissionInvalidation(client, {
         instanceId: actorResolution.actor.instanceId,
-        trigger: 'user_updated',
+        trigger: 'group_deleted',
       });
 
       return true;

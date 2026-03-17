@@ -8,6 +8,7 @@ describe('PermissionSnapshotCache', () => {
     action: 'content.read',
     resourceType: 'content',
     sourceRoleIds: ['role-1'],
+    sourceGroupIds: [],
   };
 
   it('returns hit for valid snapshot and stale for expired snapshot', () => {

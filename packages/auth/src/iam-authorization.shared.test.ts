@@ -46,7 +46,9 @@ describe('iam authorization shared helpers', () => {
         resource_type: 'content',
         effect: 'allow',
         scope: { allowedGeoScopes: ['de-bw'] },
-        role_id: 'role-1',
+        role_id: 'role-2',
+        group_id: 'group-1',
+        source_kind: 'group_role',
         organization_id: '22222222-2222-2222-8222-222222222222',
       },
       {
@@ -55,7 +57,9 @@ describe('iam authorization shared helpers', () => {
         resource_type: 'content',
         effect: 'allow',
         scope: { allowedGeoScopes: ['de-bw'] },
-        role_id: 'role-2',
+        role_id: 'role-1',
+        group_id: null,
+        source_kind: 'direct_role',
         organization_id: '22222222-2222-2222-8222-222222222222',
       },
       {
@@ -63,6 +67,8 @@ describe('iam authorization shared helpers', () => {
         resource_id: 'article-1',
         effect: 'deny',
         role_id: 'role-3',
+        group_id: null,
+        source_kind: 'direct_role',
         organization_id: null,
       },
     ]);
@@ -75,6 +81,8 @@ describe('iam authorization shared helpers', () => {
         effect: 'allow',
         scope: { allowedGeoScopes: ['de-bw'] },
         sourceRoleIds: ['role-1', 'role-2'],
+        sourceGroupIds: ['group-1'],
+        provenance: { sourceKinds: ['direct_role', 'group_role'] },
       },
       {
         action: 'content.publish',
@@ -83,6 +91,8 @@ describe('iam authorization shared helpers', () => {
         organizationId: undefined,
         effect: 'deny',
         sourceRoleIds: ['role-3'],
+        sourceGroupIds: [],
+        provenance: { sourceKinds: ['direct_role'] },
       },
     ]);
   });
@@ -129,6 +139,8 @@ describe('iam authorization shared helpers', () => {
           action: 'content.read',
           resourceType: 'content',
           sourceRoleIds: ['role-1'],
+          sourceGroupIds: ['group-1'],
+          scope: { allowedGeoUnitIds: ['geo-root'] },
         },
       ],
       actorUserId: 'actor-sub',
@@ -146,6 +158,10 @@ describe('iam authorization shared helpers', () => {
           actorUserId: 'actor-sub',
           effectiveUserId: 'target-sub',
           isImpersonating: true,
+        },
+        provenance: {
+          hasGroupDerivedPermissions: true,
+          hasGeoInheritance: true,
         },
       })
     );

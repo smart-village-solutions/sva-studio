@@ -53,11 +53,25 @@ export type IamRoleSyncError = {
   readonly code: string;
 };
 
+export type IamGroupType = 'role_bundle';
+export type IamGroupMembershipOrigin = 'manual' | 'seed' | 'sync';
+
 export type IamUserRoleAssignment = {
   readonly roleId: IamUuid;
   readonly roleKey: string;
   readonly roleName: string;
   readonly roleLevel: number;
+  readonly validFrom?: string;
+  readonly validTo?: string;
+};
+
+export type IamUserGroupAssignment = {
+  readonly accountId?: IamUuid;
+  readonly groupId: IamUuid;
+  readonly groupKey: string;
+  readonly displayName: string;
+  readonly groupType: IamGroupType;
+  readonly origin: IamGroupMembershipOrigin;
   readonly validFrom?: string;
   readonly validTo?: string;
 };
@@ -84,6 +98,7 @@ export type IamUserDetail = IamUserListItem & {
   readonly avatarUrl?: string;
   readonly notes?: string;
   readonly permissions?: readonly string[];
+  readonly groups?: readonly IamUserGroupAssignment[];
   readonly mainserverUserApplicationId?: string;
   readonly mainserverUserApplicationSecretSet: boolean;
 };
@@ -113,6 +128,25 @@ export type IamRoleListItem = {
     readonly permissionKey: string;
     readonly description?: string;
   }[];
+};
+
+export type IamGroupListItem = {
+  readonly id: IamUuid;
+  readonly groupKey: string;
+  readonly displayName: string;
+  readonly description?: string;
+  readonly groupType: IamGroupType;
+  readonly isActive: boolean;
+  readonly memberCount: number;
+  readonly roles: readonly {
+    readonly roleId: IamUuid;
+    readonly roleKey: string;
+    readonly roleName: string;
+  }[];
+};
+
+export type IamGroupDetail = IamGroupListItem & {
+  readonly members: readonly IamUserGroupAssignment[];
 };
 
 export type IamLegalTextListItem = {

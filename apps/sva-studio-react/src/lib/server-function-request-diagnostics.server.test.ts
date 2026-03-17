@@ -84,4 +84,17 @@ describe('server-function-request-diagnostics.server', () => {
     );
     await expect(response.text()).resolves.toContain(SERVER_FN_HTML_ROUTER_FALLBACK_MESSAGE);
   });
+
+  it('skips response body diagnostics once the body was already consumed', async () => {
+    const response = new Response(JSON.stringify({ error: 'already-read' }), {
+      status: 500,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    await response.text();
+
+    await expect(readServerFunctionResponseBodyForDiagnostics(response)).resolves.toBeNull();
+  });
 });

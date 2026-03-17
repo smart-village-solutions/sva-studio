@@ -42,9 +42,14 @@ Liefert die effektiven Berechtigungen für den aktuell authentifizierten Benutze
       "organizationId": "22222222-2222-2222-8222-222222222222",
       "effect": "allow",
       "scope": {
-        "geoScope": "de-bw"
+        "allowedGeoUnitIds": ["geo-bw"],
+        "restrictedGeoUnitIds": ["geo-bw-stuttgart"]
       },
-      "sourceRoleIds": ["aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa"]
+      "sourceRoleIds": ["aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa"],
+      "sourceGroupIds": ["cccccccc-cccc-cccc-8ccc-cccccccccccc"],
+      "provenance": {
+        "sourceKinds": ["direct_role", "group_role"]
+      }
     }
   ],
   "subject": {
@@ -54,13 +59,17 @@ Liefert die effektiven Berechtigungen für den aktuell authentifizierten Benutze
   },
   "evaluatedAt": "2026-02-28T11:00:00.000Z",
   "requestId": "req-123",
-  "traceId": "trace-abc"
+  "traceId": "trace-abc",
+  "provenance": {
+    "hasGroupDerivedPermissions": true,
+    "hasGeoInheritance": true
+  }
 }
 ```
 
 ### Zusätzliche Zusagen für Transparenz-UI
 
-- `resourceId`, `effect`, `scope`, `sourceRoleIds` und `subject` sind Teil des stabilen Read-Modells für das Rights-Tab in `/admin/iam`.
+- `resourceId`, `effect`, `scope`, `sourceRoleIds`, `sourceGroupIds`, `provenance` und `subject` sind Teil des stabilen Read-Modells für das Rights-Tab in `/admin/iam`.
 - Diagnosefelder bleiben allowlist-basiert. Die UI zeigt keine Roh-Policy-Dumps, Secrets oder Ciphertexte an.
 - `instanceId` bleibt der fachliche String-Scope. Ein technisches UUID-Format ist für Clients nicht vorausgesetzt.
 
@@ -104,6 +113,8 @@ Führt eine deterministische Autorisierungsentscheidung für `action` + `resourc
         "11111111-1111-1111-8111-111111111111",
         "22222222-2222-2222-8222-222222222222"
       ],
+      "geoUnitId": "geo-bw-stuttgart",
+      "geoHierarchy": ["geo-de", "geo-bw", "geo-bw-stuttgart"],
       "allowedGeoScopes": ["de-bw"],
       "timeWindow": {
         "start": "07:00",
@@ -126,7 +137,15 @@ Führt eine deterministische Autorisierungsentscheidung für `action` + `resourc
   "resourceId": "article-1",
   "evaluatedAt": "2026-02-28T11:00:00.000Z",
   "requestId": "req-123",
-  "traceId": "trace-abc"
+  "traceId": "trace-abc",
+  "diagnostics": {
+    "stage": "final",
+    "matched_role_count": 2
+  },
+  "provenance": {
+    "sourceKinds": ["group_role"],
+    "inheritedFromGeoUnitId": "geo-bw"
+  }
 }
 ```
 
@@ -141,6 +160,13 @@ Führt eine deterministische Autorisierungsentscheidung für `action` + `resourc
 ```
 
 Der Fehlervertrag bleibt additiv: `error` ist und bleibt der maschinenlesbare String-Code; `message` ist optional und nicht für Client-Logik gedacht.
+
+### Zusätzliche Zusagen für Geo- und Gruppenvererbung
+
+- `context.attributes.geoUnitId` und `context.attributes.geoHierarchy` bilden den kanonischen Geo-Eingang für hierarchische Auswertung.
+- `resource.attributes.geoUnitId` und `resource.attributes.geoHierarchy` dürfen dieselben Informationen ressourcenspezifisch überschreiben.
+- `allowedGeoUnitIds` und `restrictedGeoUnitIds` werden gegenüber `allowedGeoScopes` priorisiert; String-Scopes bleiben nur als Kompatibilitäts-Fallback erhalten.
+- `AuthorizeResponse.provenance` benennt vererbende oder restriktive Geo-Units strukturiert und ersetzt keine fachlichen Fehlercodes.
 
 ## Endpunkt: GET `/iam/governance/workflows`
 

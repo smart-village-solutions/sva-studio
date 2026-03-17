@@ -487,6 +487,13 @@ export default function Sidebar({ isLoading = false, isMobileOpen = false, onMob
             },
             {
               kind: 'link' as const,
+              id: 'groups',
+              to: '/admin/groups',
+              label: t('shell.sidebar.groups'),
+              icon: IconUsersGroup,
+            },
+            {
+              kind: 'link' as const,
               id: 'legal-texts',
               to: '/admin/legal-texts',
               label: t('shell.sidebar.legalTexts'),

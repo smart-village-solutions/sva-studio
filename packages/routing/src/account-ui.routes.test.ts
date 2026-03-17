@@ -49,6 +49,10 @@ describe('accountUiRouteGuards', () => {
     await expect(invoke(accountUiRouteGuards.adminRoles, ['system_admin'], '/admin/roles')).resolves.toBeUndefined();
   });
 
+  it('allows admin groups route for system_admin', async () => {
+    await expect(invoke(accountUiRouteGuards.adminGroups, ['system_admin'], '/admin/groups')).resolves.toBeUndefined();
+  });
+
   it('allows admin iam route for compliance officer', async () => {
     await expect(invoke(accountUiRouteGuards.adminIam, ['compliance_officer'], '/admin/iam')).resolves.toBeUndefined();
   });

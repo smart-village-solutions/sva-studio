@@ -10,6 +10,8 @@ describe('authRoutePaths', () => {
     expect(authRoutePaths).toContain('/api/v1/iam/organizations/$organizationId/memberships/$accountId');
     expect(authRoutePaths).toContain('/api/v1/iam/me/context');
     expect(authRoutePaths).toContain('/api/v1/iam/users/sync-keycloak');
+    expect(authRoutePaths).toContain('/api/v1/iam/groups');
+    expect(authRoutePaths).toContain('/api/v1/iam/groups/$groupId');
 
     expect(new Set(authRoutePaths).size).toBe(authRoutePaths.length);
   });

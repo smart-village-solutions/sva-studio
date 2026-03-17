@@ -55,6 +55,15 @@ export type IamApiErrorResponse = {
   readonly error: IamApiErrorCode;
 };
 
+export type IamPermissionSourceKind = 'direct_role' | 'group_role';
+
+export type IamPermissionProvenance = {
+  readonly sourceKinds?: readonly IamPermissionSourceKind[];
+  readonly inheritedFromOrganizationId?: IamUuid;
+  readonly inheritedFromGeoUnitId?: IamUuid;
+  readonly restrictedByGeoUnitId?: IamUuid;
+};
+
 export type AuthorizeResponse = {
   readonly allowed: boolean;
   readonly reason: AuthorizeReasonCode;
@@ -66,6 +75,7 @@ export type AuthorizeResponse = {
   readonly requestId?: string;
   readonly traceId?: string;
   readonly diagnostics?: Readonly<Record<string, unknown>>;
+  readonly provenance?: IamPermissionProvenance;
 };
 
 export type IamPermissionEffect = 'allow' | 'deny';
@@ -78,6 +88,8 @@ export type EffectivePermission = {
   readonly effect?: IamPermissionEffect;
   readonly scope?: Readonly<Record<string, unknown>>;
   readonly sourceRoleIds: readonly IamUuid[];
+  readonly sourceGroupIds: readonly IamUuid[];
+  readonly provenance?: IamPermissionProvenance;
 };
 
 export type MePermissionsRequest = {
@@ -100,4 +112,8 @@ export type MePermissionsResponse = {
   readonly evaluatedAt: string;
   readonly requestId?: string;
   readonly traceId?: string;
+  readonly provenance?: Readonly<{
+    readonly hasGroupDerivedPermissions: boolean;
+    readonly hasGeoInheritance: boolean;
+  }>;
 };

@@ -15,6 +15,9 @@ export type MfaPolicy = 'required' | 'recommended' | 'optional';
 export type OrganizationType = 'county' | 'municipality' | 'district' | 'company' | 'agency' | 'other';
 export type ContentAuthorPolicy = 'org_only' | 'org_or_personal';
 export type OrganizationMembershipVisibility = 'internal' | 'external';
+export type GroupType = 'role_bundle';
+export type GroupMembershipOrigin = 'manual' | 'seed' | 'sync';
+export type GeoUnitType = 'country' | 'state' | 'county' | 'municipality' | 'district' | 'custom';
 
 export type PermissionKey =
   | 'iam.user.read'
@@ -64,6 +67,32 @@ export type IamSeedPlan = {
     readonly hierarchyPath: readonly IamUuid[];
     readonly depth: number;
     readonly contentAuthorPolicy: ContentAuthorPolicy;
+    readonly isActive: boolean;
+    readonly metadata: Readonly<Record<string, unknown>>;
+  }[];
+  readonly groups?: readonly {
+    readonly id: IamUuid;
+    readonly groupKey: string;
+    readonly displayName: string;
+    readonly description?: string;
+    readonly groupType: GroupType;
+    readonly isActive: boolean;
+    readonly roleIds: readonly IamUuid[];
+    readonly memberAssignments?: readonly {
+      readonly accountId: IamUuid;
+      readonly origin: GroupMembershipOrigin;
+      readonly validFrom?: string;
+      readonly validTo?: string;
+    }[];
+  }[];
+  readonly geoUnits?: readonly {
+    readonly id: IamUuid;
+    readonly geoKey: string;
+    readonly displayName: string;
+    readonly geoType: GeoUnitType;
+    readonly parentGeoUnitId?: IamUuid;
+    readonly hierarchyPath: readonly IamUuid[];
+    readonly depth: number;
     readonly isActive: boolean;
     readonly metadata: Readonly<Record<string, unknown>>;
   }[];

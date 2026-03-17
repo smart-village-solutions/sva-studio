@@ -140,7 +140,7 @@ Führt eine deterministische Autorisierungsentscheidung für `action` + `resourc
   "traceId": "trace-abc",
   "diagnostics": {
     "stage": "final",
-    "matched_role_count": "2"
+    "matched_role_count": 2
   },
   "provenance": {
     "sourceKinds": ["group_role"],

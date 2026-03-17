@@ -76,6 +76,16 @@ export const buildRequestContext = (workspaceId?: string) => buildLogContext(wor
 
 export const readResourceType = (permissionKey: string) => permissionKey.split('.')[0] ?? permissionKey;
 
+const SOURCE_KIND_ORDER: Record<NonNullable<PermissionRow['source_kind']>, number> = {
+  direct_role: 0,
+  group_role: 1,
+};
+
+const sortStrings = (values: readonly string[]): readonly string[] => [...values].sort((left, right) => left.localeCompare(right));
+
+const sortSourceKinds = (values: readonly NonNullable<PermissionRow['source_kind']>[]): readonly NonNullable<PermissionRow['source_kind']>[] =>
+  [...values].sort((left, right) => SOURCE_KIND_ORDER[left] - SOURCE_KIND_ORDER[right] || left.localeCompare(right));
+
 export const toEffectivePermissions = (rows: readonly PermissionRow[]): EffectivePermission[] => {
   const buckets = new Map<string, EffectivePermission>();
 
@@ -118,20 +128,25 @@ export const toEffectivePermissions = (rows: readonly PermissionRow[]): Effectiv
         ? [...existing.sourceGroupIds, row.group_id]
         : existing.sourceGroupIds;
     const nextSourceKinds = row.source_kind
-      ? Array.from(
-          new Set([...(existing.provenance?.sourceKinds ?? []), row.source_kind])
-        )
+      ? sortSourceKinds(Array.from(new Set([...(existing.provenance?.sourceKinds ?? []), row.source_kind])))
       : existing.provenance?.sourceKinds;
 
     buckets.set(bucketKey, {
       ...existing,
-      sourceRoleIds: nextRoleIds,
-      sourceGroupIds: nextGroupIds,
+      sourceRoleIds: sortStrings(nextRoleIds),
+      sourceGroupIds: sortStrings(nextGroupIds),
       provenance: nextSourceKinds ? { ...(existing.provenance ?? {}), sourceKinds: nextSourceKinds } : existing.provenance,
     });
   }
 
-  return [...buckets.values()];
+  return [...buckets.values()].map((permission) => ({
+    ...permission,
+    sourceRoleIds: sortStrings(permission.sourceRoleIds),
+    sourceGroupIds: sortStrings(permission.sourceGroupIds),
+    provenance: permission.provenance?.sourceKinds
+      ? { ...permission.provenance, sourceKinds: sortSourceKinds(permission.provenance.sourceKinds) }
+      : permission.provenance,
+  }));
 };
 
 export const withInstanceScopedDb = async <T>(

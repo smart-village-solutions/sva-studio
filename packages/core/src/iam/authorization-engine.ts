@@ -211,7 +211,8 @@ const isPermissionActiveForScope = (
     return { active: false };
   }
 
-  if (allowedGeoScopes && (!resourceGeoScope || !allowedGeoScopes.includes(resourceGeoScope))) {
+  const shouldApplyGeoScopeFallback = !allowedGeoUnitIds || allowedGeoUnitIds.length === 0;
+  if (shouldApplyGeoScopeFallback && allowedGeoScopes && (!resourceGeoScope || !allowedGeoScopes.includes(resourceGeoScope))) {
     return { active: false };
   }
 
@@ -313,7 +314,8 @@ const evaluateAbacRules = (
     };
   }
 
-  if (allowedGeoScopes && resourceGeoScope && !allowedGeoScopes.includes(resourceGeoScope)) {
+  const shouldApplyGeoScopeFallback = !allowedGeoUnitIds || allowedGeoUnitIds.length === 0;
+  if (shouldApplyGeoScopeFallback && allowedGeoScopes && (!resourceGeoScope || !allowedGeoScopes.includes(resourceGeoScope))) {
     return { allowed: false, reason: 'abac_condition_unmet', hasActiveRules: true };
   }
 

@@ -66,6 +66,7 @@ export type IamUserRoleAssignment = {
 };
 
 export type IamUserGroupAssignment = {
+  readonly accountId?: IamUuid;
   readonly groupId: IamUuid;
   readonly groupKey: string;
   readonly displayName: string;

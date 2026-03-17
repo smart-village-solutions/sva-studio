@@ -1758,7 +1758,7 @@ describe('iam-account-management handlers (guards)', () => {
 
     expect(response.status).toBe(400);
     expect(payload.error.code).toBe('invalid_request');
-    expect(payload.error.message).toContain('Mindestens eine Gruppe existiert nicht');
+    expect(payload.error.message).toContain('Mindestens eine aktive Gruppe existiert nicht');
   });
 
   it('rejects deactivation of the current user', async () => {
@@ -2125,6 +2125,7 @@ describe('iam-account-management handlers (guards)', () => {
               role_rows: [{ role_id: targetRoleId, role_key: 'system_admin', role_name: 'System Admin' }],
               member_rows: [
                 {
+                  account_id: 'bbbbbbbb-bbbb-bbbb-8bbb-bbbbbbbbbbbb',
                   group_id: targetGroupId,
                   group_key: 'admins',
                   display_name: 'Admins',
@@ -2151,7 +2152,7 @@ describe('iam-account-management handlers (guards)', () => {
       data: {
         id: string;
         roles: Array<{ roleKey: string }>;
-        members: Array<{ groupId: string; origin: string; validFrom?: string }>;
+        members: Array<{ accountId?: string; groupId: string; origin: string; validFrom?: string }>;
       };
     };
 
@@ -2160,6 +2161,7 @@ describe('iam-account-management handlers (guards)', () => {
     expect(payload.data.roles[0]?.roleKey).toBe('system_admin');
     expect(payload.data.members).toEqual([
       {
+        accountId: 'bbbbbbbb-bbbb-bbbb-8bbb-bbbbbbbbbbbb',
         groupId: targetGroupId,
         groupKey: 'admins',
         displayName: 'Admins',
@@ -2633,8 +2635,11 @@ describe('iam-account-management handlers (guards)', () => {
       })
     );
 
-    expect(response.status).toBe(204);
-    await expect(response.text()).resolves.toBe('');
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      data: { id: targetGroupId },
+      requestId: 'req-iam-handler',
+    });
   });
 
   it('returns not_found when reading an unknown group', async () => {

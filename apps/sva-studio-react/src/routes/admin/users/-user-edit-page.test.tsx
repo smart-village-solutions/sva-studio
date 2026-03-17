@@ -383,6 +383,48 @@ describe('UserEditPage', () => {
     });
   });
 
+  it('filters inactive groups from the management selection', async () => {
+    useUserMock.mockReturnValue({
+      user: baseUser,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      save: vi.fn(),
+    });
+
+    useRolesMock.mockReturnValue({
+      roles: [{ id: 'role-1', roleName: 'system_admin' }],
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      createRole: vi.fn(),
+      updateRole: vi.fn(),
+      deleteRole: vi.fn(),
+    });
+
+    useGroupsMock.mockReturnValue({
+      groups: [
+        { id: 'group-1', groupKey: 'admins', displayName: 'Admins', isActive: true },
+        { id: 'group-2', groupKey: 'legacy', displayName: 'Legacy', isActive: false },
+      ],
+      isLoading: false,
+      error: null,
+      mutationError: null,
+      refetch: vi.fn(),
+      clearMutationError: vi.fn(),
+      createGroup: vi.fn(),
+      updateGroup: vi.fn(),
+      deleteGroup: vi.fn(),
+    });
+
+    render(<UserEditPage userId="user-1" />);
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Verwaltung' }));
+
+    expect(screen.getByRole('checkbox', { name: /Admins/i })).toBeTruthy();
+    expect(screen.queryByText('Legacy')).toBeNull();
+  });
+
   it('renders the mainserver credential fields and keeps the secret write-only', async () => {
     const save = vi.fn().mockResolvedValue({
       ...baseUser,

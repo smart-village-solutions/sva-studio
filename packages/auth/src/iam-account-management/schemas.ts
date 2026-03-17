@@ -11,6 +11,12 @@ const optionalTrimmedSecretString = (maxLength: number) =>
     z.string().trim().max(maxLength).optional()
   );
 
+const uniqueUuidArray = (maxLength: number) =>
+  z
+    .array(z.string().uuid())
+    .max(maxLength)
+    .refine((value) => new Set(value).size === value.length, 'IDs müssen eindeutig sein.');
+
 export const createUserSchema = z.object({
   email: z.string().email(),
   firstName: z.string().trim().min(1).max(200).optional(),
@@ -41,8 +47,8 @@ export const updateUserSchema = z
     avatarUrl: z.string().url().max(1024).optional(),
     notes: z.string().trim().max(2000).optional(),
     status: z.enum(USER_STATUS).optional(),
-    roleIds: z.array(z.string().uuid()).max(20).optional(),
-    groupIds: z.array(z.string().uuid()).max(50).optional(),
+    roleIds: uniqueUuidArray(20).optional(),
+    groupIds: uniqueUuidArray(50).optional(),
     mainserverUserApplicationId: z.string().trim().max(255).optional(),
     mainserverUserApplicationSecret: optionalTrimmedSecretString(255),
   })
@@ -102,14 +108,14 @@ export const createGroupSchema = z.object({
     .regex(/^[a-z0-9_]+$/),
   displayName: z.string().trim().min(1).max(120),
   description: z.string().trim().max(500).optional(),
-  roleIds: z.array(z.string().uuid()).max(50).default([]),
+  roleIds: uniqueUuidArray(50).default([]),
 });
 
 export const updateGroupSchema = z
   .object({
     displayName: z.string().trim().min(1).max(120).optional(),
     description: z.string().trim().max(500).optional(),
-    roleIds: z.array(z.string().uuid()).max(50).optional(),
+    roleIds: uniqueUuidArray(50).optional(),
     isActive: z.boolean().optional(),
   })
   .refine(hasDefinedEntries, 'Mindestens ein Feld muss gesetzt werden.');

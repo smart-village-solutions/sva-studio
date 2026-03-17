@@ -46,7 +46,7 @@ describe('iam-account-management/shared group helpers', () => {
       },
     ]);
 
-    expect(query).toHaveBeenCalledWith(expect.stringContaining('FROM iam.groups'), [
+    expect(query).toHaveBeenCalledWith(expect.stringContaining('AND is_active = true'), [
       'de-musterhausen',
       ['group-1'],
     ]);
@@ -80,6 +80,22 @@ describe('iam-account-management/shared group helpers', () => {
     expect(query).toHaveBeenNthCalledWith(
       2,
       expect.stringContaining('INSERT INTO iam.account_groups'),
+      ['de-musterhausen', 'account-1', 'manual', ['group-1', 'group-2']]
+    );
+  });
+
+  it('deduplicates group ids before writing memberships', async () => {
+    const query = vi.fn().mockResolvedValue({ rows: [] });
+
+    await assignGroups({ query } as never, {
+      instanceId: 'de-musterhausen',
+      accountId: 'account-1',
+      groupIds: ['group-1', 'group-1', 'group-2'],
+    });
+
+    expect(query).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining('SELECT DISTINCT group_id'),
       ['de-musterhausen', 'account-1', 'manual', ['group-1', 'group-2']]
     );
   });

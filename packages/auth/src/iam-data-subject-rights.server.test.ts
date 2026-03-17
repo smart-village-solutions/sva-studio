@@ -89,11 +89,29 @@ import {
   dataExportStatusHandler,
   dataSubjectMaintenanceHandler,
   dataSubjectRequestHandler,
+  getMyDataSubjectRightsHandler,
   legalHoldApplyHandler,
   legalHoldReleaseHandler,
   optionalProcessingExecuteHandler,
   profileCorrectionHandler,
 } from './iam-data-subject-rights.server';
+
+const createExportMutationRequest = (
+  url: string,
+  body: Record<string, unknown>,
+  headers?: HeadersInit
+) =>
+  new Request(url, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-requested-with': 'XMLHttpRequest',
+      origin: 'http://localhost',
+      'idempotency-key': 'idem-export-1',
+      ...headers,
+    },
+    body: JSON.stringify(body),
+  });
 
 describe('iam data subject rights handlers', () => {
   beforeEach(() => {
@@ -161,9 +179,7 @@ describe('iam data subject rights handlers', () => {
       return { rowCount: 0, rows: [] };
     };
 
-    const response = await dataExportHandler(
-      new Request('http://localhost/iam/me/data-export?format=json', { method: 'GET' })
-    );
+    const response = await dataExportHandler(createExportMutationRequest('http://localhost/iam/me/data-export', { format: 'json' }));
 
     expect(response.status).toBe(200);
     const payload = JSON.parse(await response.text()) as { account: { keycloakSubject: string }; organizations: unknown[]; roles: unknown[] };
@@ -206,7 +222,7 @@ describe('iam data subject rights handlers', () => {
     };
 
     const response = await dataExportHandler(
-      new Request('http://localhost/iam/me/data-export?format=csv&async=true', { method: 'GET' })
+      createExportMutationRequest('http://localhost/iam/me/data-export', { format: 'csv', async: true })
     );
     const payload = (await response.json()) as { status: string; exportJobId: string };
 
@@ -217,11 +233,56 @@ describe('iam data subject rights handlers', () => {
 
   it('rejects export for invalid format', async () => {
     const response = await dataExportHandler(
-      new Request('http://localhost/iam/me/data-export?format=invalid', { method: 'GET' })
+      createExportMutationRequest('http://localhost/iam/me/data-export', { format: 'invalid' })
     );
 
     expect(response.status).toBe(400);
     expect(await response.json()).toEqual({ error: 'invalid_export_format' });
+  });
+
+  it('rejects self export without CSRF headers', async () => {
+    const response = await dataExportHandler(
+      new Request('http://localhost/iam/me/data-export', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'idempotency-key': 'idem-export-1',
+        },
+        body: JSON.stringify({ format: 'json' }),
+      })
+    );
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({
+      error: {
+        code: 'csrf_validation_failed',
+        message: "Ungültiger CSRF-Header. 'X-Requested-With: XMLHttpRequest' ist erforderlich.",
+      },
+      requestId: 'req-dsr-test',
+    });
+  });
+
+  it('rejects self export without idempotency key', async () => {
+    const response = await dataExportHandler(
+      new Request('http://localhost/iam/me/data-export', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'http://localhost',
+        },
+        body: JSON.stringify({ format: 'json' }),
+      })
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: {
+        code: 'idempotency_key_required',
+        message: 'Header Idempotency-Key ist erforderlich.',
+      },
+      requestId: 'req-dsr-test',
+    });
   });
 
   it('rejects export status when job id is invalid', async () => {
@@ -235,7 +296,10 @@ describe('iam data subject rights handlers', () => {
 
   it('rejects self export requests for cross-instance string scopes', async () => {
     const response = await dataExportHandler(
-      new Request('http://localhost/iam/me/data-export?instanceId=invalid&format=json', { method: 'GET' })
+      createExportMutationRequest('http://localhost/iam/me/data-export', {
+        instanceId: 'invalid',
+        format: 'json',
+      })
     );
 
     expect(response.status).toBe(403);
@@ -243,12 +307,76 @@ describe('iam data subject rights handlers', () => {
   });
 
   it('returns account_not_found for self exports without an account record', async () => {
-    const response = await dataExportHandler(
-      new Request('http://localhost/iam/me/data-export?format=json', { method: 'GET' })
-    );
+    const response = await dataExportHandler(createExportMutationRequest('http://localhost/iam/me/data-export', { format: 'json' }));
 
     expect(response.status).toBe(404);
     expect(await response.json()).toEqual({ error: 'account_not_found' });
+  });
+
+  it('returns self-service dsr overview with instance-scoped account lookup', async () => {
+    state.queryHandler = (text) => {
+      if (text.includes('FROM iam.accounts a') && text.includes('JOIN iam.instance_memberships im')) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              id: '550e8400-e29b-41d4-a716-446655440000',
+              keycloak_subject: 'keycloak-sub-1',
+              email_ciphertext: null,
+              display_name_ciphertext: null,
+              is_blocked: false,
+              soft_deleted_at: null,
+              delete_after: null,
+              permanently_deleted_at: null,
+              processing_restricted_at: null,
+              processing_restriction_reason: null,
+              non_essential_processing_opt_out_at: null,
+              created_at: '2026-02-28T10:00:00.000Z',
+              updated_at: '2026-02-28T10:00:00.000Z',
+            },
+          ],
+        };
+      }
+      if (text.includes('SELECT id, processing_restricted_at::text')) {
+        expect(text).toContain('WHERE instance_id = $1');
+        expect(text).toContain('AND id = $2::uuid');
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              id: '550e8400-e29b-41d4-a716-446655440000',
+              processing_restricted_at: null,
+              processing_restriction_reason: null,
+              non_essential_processing_opt_out_at: null,
+            },
+          ],
+        };
+      }
+      if (text.includes('FROM iam.data_subject_requests')) {
+        return { rowCount: 0, rows: [] };
+      }
+      if (text.includes('FROM iam.data_subject_export_jobs')) {
+        return { rowCount: 0, rows: [] };
+      }
+      if (text.includes('FROM iam.legal_holds')) {
+        return { rowCount: 0, rows: [] };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await getMyDataSubjectRightsHandler(
+      new Request('http://localhost/iam/me/data-subject-rights/requests', { method: 'GET' })
+    );
+
+    expect(response.status).toBe(200);
+    const payload = (await response.json()) as {
+      data: { instanceId: string; accountId: string; requests: unknown[]; exportJobs: unknown[]; legalHolds: unknown[] };
+    };
+    expect(payload.data.instanceId).toBe('de-musterhausen');
+    expect(payload.data.accountId).toBe('550e8400-e29b-41d4-a716-446655440000');
+    expect(payload.data.requests).toEqual([]);
+    expect(payload.data.exportJobs).toEqual([]);
+    expect(payload.data.legalHolds).toEqual([]);
   });
 
   it('exports csv format with flattened key-value rows', async () => {
@@ -293,9 +421,7 @@ describe('iam data subject rights handlers', () => {
       return { rowCount: 0, rows: [] };
     };
 
-    const response = await dataExportHandler(
-      new Request('http://localhost/iam/me/data-export?format=csv', { method: 'GET' })
-    );
+    const response = await dataExportHandler(createExportMutationRequest('http://localhost/iam/me/data-export', { format: 'csv' }));
     const body = await response.text();
 
     expect(response.status).toBe(200);
@@ -389,9 +515,7 @@ describe('iam data subject rights handlers', () => {
       return { rowCount: 0, rows: [] };
     };
 
-    const response = await dataExportHandler(
-      new Request('http://localhost/iam/me/data-export?format=xml', { method: 'GET' })
-    );
+    const response = await dataExportHandler(createExportMutationRequest('http://localhost/iam/me/data-export', { format: 'xml' }));
 
     expect(response.status).toBe(200);
     expect(response.headers.get('content-type')).toBe('application/xml; charset=utf-8');
@@ -867,10 +991,11 @@ describe('iam data subject rights handlers', () => {
 
   it('rejects admin export endpoint for non-admin role', async () => {
     const response = await adminDataExportHandler(
-      new Request(
-        'http://localhost/iam/admin/data-subject-rights/export?instanceId=de-musterhausen&targetKeycloakSubject=user-2&format=json',
-        { method: 'GET' }
-      )
+      createExportMutationRequest('http://localhost/iam/admin/data-subject-rights/export', {
+        instanceId: 'de-musterhausen',
+        targetKeycloakSubject: 'user-2',
+        format: 'json',
+      })
     );
 
     expect(response.status).toBe(403);
@@ -884,14 +1009,46 @@ describe('iam data subject rights handlers', () => {
     };
 
     const response = await adminDataExportHandler(
-      new Request(
-        'http://localhost/iam/admin/data-subject-rights/export?instanceId=de-musterhausen&format=json',
-        { method: 'GET' }
-      )
+      createExportMutationRequest('http://localhost/iam/admin/data-subject-rights/export', {
+        instanceId: 'de-musterhausen',
+        format: 'json',
+      })
     );
 
     expect(response.status).toBe(400);
     expect(await response.json()).toEqual({ error: 'missing_target_keycloak_subject' });
+  });
+
+  it('rejects admin export without idempotency key', async () => {
+    state.user = {
+      ...state.user,
+      roles: ['iam_admin'],
+    };
+
+    const response = await adminDataExportHandler(
+      new Request('http://localhost/iam/admin/data-subject-rights/export', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'http://localhost',
+        },
+        body: JSON.stringify({
+          instanceId: 'de-musterhausen',
+          targetKeycloakSubject: 'keycloak-sub-2',
+          format: 'json',
+        }),
+      })
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: {
+        code: 'idempotency_key_required',
+        message: 'Header Idempotency-Key ist erforderlich.',
+      },
+      requestId: 'req-dsr-test',
+    });
   });
 
   it('rejects admin export status endpoint for non-admin role', async () => {

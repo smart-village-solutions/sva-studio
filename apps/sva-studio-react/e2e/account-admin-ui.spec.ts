@@ -11,6 +11,44 @@ const adminAuthPayload = {
   },
 };
 
+const privacyOverviewPayload = {
+  data: {
+    requests: [
+      {
+        id: 'request-1',
+        type: 'request',
+        canonicalStatus: 'queued',
+        rawStatus: 'accepted',
+        title: 'Auskunftsanfrage',
+        summary: 'Ihre Anfrage wird vorbereitet.',
+        createdAt: '2026-03-10T09:00:00.000Z',
+        completedAt: undefined,
+        blockedReason: undefined,
+        format: undefined,
+      },
+    ],
+    exportJobs: [
+      {
+        id: 'export-1',
+        type: 'export_job',
+        canonicalStatus: 'completed',
+        rawStatus: 'completed',
+        title: 'JSON-Export',
+        summary: 'Der Export wurde erfolgreich erstellt.',
+        createdAt: '2026-03-09T08:00:00.000Z',
+        completedAt: '2026-03-09T08:05:00.000Z',
+        blockedReason: undefined,
+        format: 'json',
+      },
+    ],
+    legalHolds: [],
+    nonEssentialProcessingAllowed: false,
+    processingRestrictedAt: '2026-03-08T07:00:00.000Z',
+    processingRestrictionReason: 'pending_verification',
+    nonEssentialProcessingOptOutAt: '2026-03-07T06:00:00.000Z',
+  },
+};
+
 const navigateClientSide = async (page: Page, targetPath: string) => {
   await page.evaluate((path) => {
     window.history.pushState({}, '', path);
@@ -70,7 +108,7 @@ test('profile page supports loading and saving own profile', async ({ page }) =>
   });
 
   await page.goto('/');
-  await expect(page.getByRole('link', { name: 'SVA Studio' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'SVA Studio' })).toBeVisible();
   await expect(page.getByRole('banner').getByRole('link', { name: 'Mein Konto', exact: true })).toBeVisible({
     timeout: 10000,
   });
@@ -82,6 +120,57 @@ test('profile page supports loading and saving own profile', async ({ page }) =>
   await page.getByRole('button', { name: 'Speichern' }).click();
 
   await expect(page.getByText('Profil wurde erfolgreich gespeichert.')).toBeVisible();
+});
+
+test('account page links into privacy cockpit and renders self-service data', async ({ page }) => {
+  await page.route('**/auth/me', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(adminAuthPayload),
+    });
+  });
+
+  await page.route('**/api/v1/iam/users/me/profile', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: {
+          id: 'account-1',
+          keycloakSubject: 'kc-admin-1',
+          displayName: 'Admin One',
+          firstName: 'Admin',
+          lastName: 'One',
+          email: 'admin@example.com',
+          status: 'active',
+          roles: [{ roleId: 'role-1', roleName: 'system_admin', roleLevel: 90 }],
+          mainserverUserApplicationSecretSet: false,
+        },
+      }),
+    });
+  });
+
+  await page.route('**/iam/me/data-subject-rights/requests', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(privacyOverviewPayload),
+    });
+  });
+
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: 'SVA Studio' })).toBeVisible();
+  await navigateClientSide(page, '/account');
+  await expect(page.getByRole('heading', { name: 'Mein Konto' })).toBeVisible({ timeout: 10000 });
+
+  await page.getByRole('link', { name: 'Zum Datenschutz-Cockpit' }).click();
+
+  await expect(page).toHaveURL(/\/account\/privacy$/);
+  await expect(page.getByRole('heading', { name: 'Datenschutz & Transparenz' })).toBeVisible({ timeout: 10000 });
+  await expect(page.getByText('Auskunftsanfrage')).toBeVisible();
+  await expect(page.getByText('JSON-Export')).toBeVisible();
+  await expect(page.getByText('Widerspruch seit')).toBeVisible();
 });
 
 test('admin user list and edit page are reachable for system_admin', async ({ page }) => {
@@ -202,7 +291,7 @@ test('admin user list and edit page are reachable for system_admin', async ({ pa
   });
 
   await page.goto('/');
-  await expect(page.getByRole('link', { name: 'SVA Studio' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'SVA Studio' })).toBeVisible();
   const usersResponsePromise = page.waitForResponse(
     (response) => response.url().includes('/api/v1/iam/users?') && response.status() === 200
   );
@@ -268,6 +357,63 @@ test('admin links are hidden for non-admin user and route guard redirects', asyn
   await expect(page).toHaveURL(/\?error=auth\.insufficientRole/);
 });
 
+test('iam cockpit redirects unknown or disallowed tabs to the first allowed governance tab', async ({ page }) => {
+  await page.route('**/auth/me', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        user: {
+          id: 'kc-security-1',
+          name: 'Security Reviewer',
+          email: 'security@example.com',
+          instanceId: '11111111-1111-1111-8111-111111111111',
+          roles: ['security_admin'],
+        },
+      }),
+    });
+  });
+
+  await page.route('**/iam/governance/workflows?**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: [
+          {
+            id: 'governance-1',
+            type: 'impersonation',
+            status: 'approved',
+            title: 'Impersonation für Support-Fall',
+            summary: 'Temporäre Einsicht für Incident-Analyse.',
+            actorDisplayName: 'Security Reviewer',
+            targetDisplayName: 'User Two',
+            ticketId: 'INC-42',
+            createdAt: '2026-03-12T10:00:00.000Z',
+            metadata: {
+              reason: 'incident_review',
+            },
+          },
+        ],
+        pagination: {
+          page: 1,
+          pageSize: 12,
+          total: 1,
+        },
+      }),
+    });
+  });
+
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: 'SVA Studio' })).toBeVisible();
+  await navigateClientSide(page, '/admin/iam?tab=dsr');
+
+  await expect(page).toHaveURL(/\/admin\/iam\?tab=governance$/);
+  await expect(page.getByRole('heading', { name: 'IAM Transparenz-Cockpit' })).toBeVisible({ timeout: 10000 });
+  await expect(page.getByRole('tab', { name: 'Governance', selected: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Impersonation für Support-Fall' })).toBeVisible();
+});
+
 test('direct access to admin users redirects unauthenticated clients to login', async ({ page }) => {
   await page.goto('/admin/users');
 
@@ -303,7 +449,7 @@ test('responsive IAM views render on mobile, tablet, desktop', async ({ page }) 
   ]) {
     await page.setViewportSize(viewport);
     await page.goto('/');
-    await expect(page.getByRole('link', { name: 'SVA Studio' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'SVA Studio' })).toBeVisible();
     await navigateClientSide(page, '/admin/users');
     await expect(page.getByRole('heading', { name: 'Benutzerverwaltung' })).toBeVisible();
   }

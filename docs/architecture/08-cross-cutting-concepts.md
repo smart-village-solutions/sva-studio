@@ -205,3 +205,15 @@ Referenzen:
 - Credential-Caching bleibt kurzlebig im Prozessspeicher; Access-Tokens werden ebenfalls nur in-memory und vor Ablauf mit Skew erneuert.
 - OAuth-Token werden pro `(instanceId, keycloakSubject, apiKey)` gecacht; eine Persistenz in Session, Redis oder Postgres ist ausgeschlossen.
 - Downstream-Headers propagieren `X-Request-Id` und Tracing-Kontext, damit Studio- und Mainserver-Logs korrelierbar bleiben.
+
+### Ergänzung 2026-03: IAM-Transparenz-UI und Privacy-Self-Service
+
+- Transparenz-Views verwenden ausschließlich getypte Read-Modelle aus `@sva/core`; Roh-JSON aus Einzelquellen bleibt außerhalb des Standard-UI-Pfads.
+- Diagnoseinformationen aus `POST /iam/authorize` folgen einer festen Allowlist; nicht spezifizierte interne Gründe, Stacktraces oder verschachtelte Rohdaten werden nicht exponiert.
+- Der Zugriff auf `/admin/iam` und seine Tabs folgt einer abgestuften Rollenmatrix:
+  - Route und Tabs `rights`/`dsr`: `iam_admin`, `support_admin`, `system_admin`
+  - Tab `governance` lesend zusätzlich: `security_admin`, `compliance_officer`
+- `/account/privacy` verarbeitet ausschließlich das eigene Subjekt; der Client akzeptiert dort keine fremden User- oder Account-IDs.
+- Das DSR-UI verwendet ein kanonisches Statusmodell (`queued`, `in_progress`, `completed`, `blocked`, `failed`) und zeigt Rohstatus nur sekundär zur Betriebsdiagnose.
+- Transparenzlisten laden tab-spezifisch, serverseitig paginiert und filterbar; Detaildaten und User-Timeline-Ereignisse werden on demand geladen.
+- Neue IAM-/Privacy-Texte laufen vollständig über Translation-Keys in `de` und `en`; harte Strings in den neuen Views sind nicht zulässig.

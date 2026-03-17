@@ -13,6 +13,8 @@ type UserDetailRoleRow = {
   display_name: string | null;
   role_level: number;
   is_system_role: boolean;
+  valid_from: string | null;
+  valid_to: string | null;
 };
 
 type UserDetailRow = {
@@ -62,7 +64,9 @@ SELECT
         'role_name', r.role_name,
         'display_name', r.display_name,
         'role_level', r.role_level,
-        'is_system_role', r.is_system_role
+        'is_system_role', r.is_system_role,
+        'valid_from', ar.valid_from::text,
+        'valid_to', ar.valid_to::text
       )
     ) FILTER (WHERE r.id IS NOT NULL),
     '[]'::json
@@ -109,6 +113,8 @@ const mapRoleRows = (roleRows: UserDetailRoleRow[] | null) =>
     display_name: entry.display_name,
     role_level: Number(entry.role_level),
     is_system_role: Boolean(entry.is_system_role),
+    valid_from: entry.valid_from,
+    valid_to: entry.valid_to,
   })) ?? [];
 
 const mapPermissionRows = (permissionRows: UserDetailRow['permission_rows']) =>

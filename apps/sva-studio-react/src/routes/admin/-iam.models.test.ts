@@ -1,7 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import type { AuthorizeResponse, EffectivePermission } from '@sva/core';
 
-import { filterPermissions, mapAuthorizeDecision } from './-iam.models';
+import {
+  filterPermissions,
+  getFirstAllowedTab,
+  mapAuthorizeDecision,
+  mapDsrCanonicalStatusToTranslationKey,
+  mapDsrStatusTone,
+  mapDsrStatusToTranslationKey,
+  mapDsrTypeToTranslationKey,
+  mapGovernanceTypeToTranslationKey,
+  mapIamTabToTranslationKey,
+  normalizeIamTab,
+} from './-iam.models';
 
 describe('iam.models', () => {
   it('maps authorize diagnostics reason_code into view model', () => {
@@ -30,7 +41,12 @@ describe('iam.models', () => {
         action: 'content.read',
         resourceType: 'content',
         organizationId: 'org-a',
+        effect: 'allow',
+        resourceId: 'resource-a',
         sourceRoleIds: ['role-1'],
+        scope: {
+          region: 'eu',
+        },
       },
       {
         action: 'iam.user.read',
@@ -66,6 +82,26 @@ describe('iam.models', () => {
     expect(filterPermissions(permissions, { query: 'feature' })).toHaveLength(1);
   });
 
+  it('matches permission queries against resource ids, effects and serialized scope values', () => {
+    const permissions: EffectivePermission[] = [
+      {
+        action: 'content.read',
+        resourceType: 'content',
+        resourceId: 'article-1',
+        effect: 'deny',
+        sourceRoleIds: ['role-1'],
+        scope: {
+          region: 'eu',
+          tenant: 'north',
+        },
+      },
+    ];
+
+    expect(filterPermissions(permissions, { query: 'article-1' })).toHaveLength(1);
+    expect(filterPermissions(permissions, { query: 'deny' })).toHaveLength(1);
+    expect(filterPermissions(permissions, { query: 'tenant:north' })).toHaveLength(1);
+  });
+
   it('ignores empty diagnostics and trimmed organization filters', () => {
     const decision = mapAuthorizeDecision({
       allowed: true,
@@ -90,5 +126,38 @@ describe('iam.models', () => {
 
     expect(decision.reasonCode).toBeUndefined();
     expect(filtered).toHaveLength(1);
+  });
+
+  it('normalizes invalid IAM tabs to rights', () => {
+    expect(normalizeIamTab('governance')).toBe('governance');
+    expect(normalizeIamTab('unknown')).toBe('rights');
+    expect(normalizeIamTab(undefined)).toBe('rights');
+  });
+
+  it('returns the first allowed tab or falls back to rights', () => {
+    expect(getFirstAllowedTab(['governance', 'dsr'])).toBe('governance');
+    expect(getFirstAllowedTab([])).toBe('rights');
+  });
+
+  it('maps DSR canonical statuses to translation keys', () => {
+    expect(mapDsrStatusToTranslationKey({ canonicalStatus: 'queued' })).toBe('admin.iam.dsr.status.queued');
+    expect(mapDsrStatusToTranslationKey({ canonicalStatus: 'in_progress' })).toBe('admin.iam.dsr.status.inProgress');
+    expect(mapDsrStatusToTranslationKey({ canonicalStatus: 'completed' })).toBe('admin.iam.dsr.status.completed');
+    expect(mapDsrStatusToTranslationKey({ canonicalStatus: 'blocked' })).toBe('admin.iam.dsr.status.blocked');
+    expect(mapDsrStatusToTranslationKey({ canonicalStatus: 'failed' })).toBe('admin.iam.dsr.status.failed');
+  });
+
+  it('maps IAM tab, governance type and DSR filter values to static translation keys', () => {
+    expect(mapIamTabToTranslationKey('rights')).toBe('admin.iam.tabs.rights');
+    expect(mapGovernanceTypeToTranslationKey('legal_acceptance')).toBe('admin.iam.governance.types.legal_acceptance');
+    expect(mapDsrTypeToTranslationKey('recipient_notification')).toBe('admin.iam.dsr.types.recipient_notification');
+    expect(mapDsrCanonicalStatusToTranslationKey('in_progress')).toBe('admin.iam.dsr.status.inProgress');
+  });
+
+  it('maps DSR status tones for success, error and pending variants', () => {
+    expect(mapDsrStatusTone({ canonicalStatus: 'completed' })).toContain('text-primary');
+    expect(mapDsrStatusTone({ canonicalStatus: 'blocked' })).toContain('text-destructive');
+    expect(mapDsrStatusTone({ canonicalStatus: 'failed' })).toContain('text-destructive');
+    expect(mapDsrStatusTone({ canonicalStatus: 'queued' })).toContain('text-secondary');
   });
 });

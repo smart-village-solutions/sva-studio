@@ -1,1 +1,1 @@
-export { governanceWorkflowHandler } from './core';
+export { governanceWorkflowHandler, listGovernanceCasesHandler } from './core';

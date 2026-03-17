@@ -3,6 +3,9 @@ import React from 'react';
 import type { IamHttpError } from '../lib/iam-api';
 import { t } from '../i18n';
 import { useOrganizationContext } from '../hooks/use-organization-context';
+import { Alert, AlertDescription } from './ui/alert';
+import { Label } from './ui/label';
+import { Select } from './ui/select';
 
 const organizationContextErrorMessage = (error: IamHttpError | null) => {
   if (!error) {
@@ -35,10 +38,11 @@ export const OrganizationContextSwitcher = () => {
   }
 
   return (
-    <div className="flex flex-col items-start gap-1 text-xs text-muted-foreground">
-      <label className="flex items-center gap-2">
-        <span>{t('shell.header.organizationContext')}</span>
-        <select
+    <div className="flex max-w-full flex-col items-start gap-1 text-xs text-muted-foreground">
+      <div className="flex items-center gap-2">
+        <Label htmlFor="organization-context-switcher">{t('shell.header.organizationContext')}</Label>
+        <Select
+          id="organization-context-switcher"
           aria-label={t('shell.header.organizationContext')}
           aria-describedby={describedBy}
           value={organizationContext.context?.activeOrganizationId ?? ''}
@@ -48,7 +52,7 @@ export const OrganizationContextSwitcher = () => {
             }
             void organizationContext.switchOrganization(event.target.value);
           }}
-          className="rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground"
+          className="h-8 w-auto min-w-40 max-w-full px-2 py-1 text-sm"
           disabled={organizationContext.isUpdating}
         >
           {options.map((organization) => (
@@ -56,8 +60,19 @@ export const OrganizationContextSwitcher = () => {
               {organization.displayName}
             </option>
           ))}
-        </select>
-      </label>
+        </Select>
+      </div>
+      {activeOrganization ? (
+        <p className="max-w-sm text-[11px] leading-4 text-muted-foreground">
+          {[
+            activeOrganization.organizationKey,
+            activeOrganization.organizationType,
+            activeOrganization.isDefaultContext ? t('shell.header.organizationContextDefault') : null,
+          ]
+            .filter(Boolean)
+            .join(' · ')}
+        </p>
+      ) : null}
       <span id={statusId} role="status" aria-live="polite" className="sr-only">
         {organizationContext.isUpdating
           ? t('shell.header.organizationContextUpdating')
@@ -66,9 +81,9 @@ export const OrganizationContextSwitcher = () => {
             : ''}
       </span>
       {errorMessage ? (
-        <p id={errorId} className="text-xs text-destructive" role="alert">
-          {errorMessage}
-        </p>
+        <Alert id={errorId} className="border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+          <AlertDescription>{errorMessage}</AlertDescription>
+        </Alert>
       ) : null}
     </div>
   );

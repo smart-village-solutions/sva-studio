@@ -9,7 +9,6 @@ import React from 'react';
 
 import AppShell from '../components/AppShell';
 import ErrorFallback from '../components/ErrorFallback';
-import Header from '../components/Header';
 import NotFound from '../components/NotFound';
 import { AuthProvider } from '../providers/auth-provider';
 import { ThemeProvider } from '../providers/theme-provider';
@@ -118,11 +117,6 @@ function RootDocument({ children }: Readonly<{ children: React.ReactNode }>) {
         </a>
         <AuthProvider>
           <ThemeProvider>
-            <Header
-              isLoading={isShellLoading}
-              isMobileNavigationOpen={isMobileSidebarOpen}
-              onOpenMobileNavigation={() => setIsMobileSidebarOpen((open) => !open)}
-            />
             <AppShell isLoading={isShellLoading} isMobileSidebarOpen={isMobileSidebarOpen} onMobileSidebarOpenChange={setIsMobileSidebarOpen}>
               {children}
             </AppShell>

@@ -4,11 +4,16 @@ import {
   asIamError,
   assignOrganizationMembership,
   createOrganization,
+  getDataExportStatus,
+  getMyDataSubjectRights,
   deactivateOrganization,
   getOrganization,
   getMyOrganizationContext,
   IamHttpError,
+  listAdminDsrCases,
+  listGovernanceCases,
   listOrganizations,
+  requestDataExport,
   syncUsersFromKeycloak,
   removeOrganizationMembership,
   updateMyOrganizationContext,
@@ -386,5 +391,97 @@ describe('iam-api user sync helper', () => {
       code: 'internal_error',
     });
     expect(consoleError).not.toHaveBeenCalled();
+  });
+});
+
+describe('iam-api transparency helpers', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.stubEnv('NODE_ENV', 'test');
+  });
+
+  it('starts self-service exports via POST with an idempotency key and JSON body', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: {
+            exportJobId: 'export-1',
+            status: 'queued',
+            format: 'json',
+          },
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } }
+      )
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    vi.stubGlobal('crypto', { randomUUID: () => 'idem-export-1' });
+
+    await requestDataExport({ format: 'json', async: true });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/iam/me/data-export',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          'Idempotency-Key': 'idem-export-1',
+          'Content-Type': 'application/json',
+        }),
+        body: JSON.stringify({ format: 'json', async: true }),
+        credentials: 'include',
+      })
+    );
+  });
+
+  it('returns plain text export payloads without forcing JSON parsing', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response('csv-export', {
+          status: 200,
+          headers: { 'content-type': 'text/csv' },
+        })
+      )
+    );
+    vi.stubGlobal('crypto', { randomUUID: () => 'idem-export-2' });
+
+    await expect(requestDataExport({ format: 'csv', async: false })).resolves.toEqual({
+      data: 'csv-export',
+    });
+  });
+
+  it('forwards abort signals for governance and DSR list requests', async () => {
+    const fetchMock = vi.fn().mockImplementation(async () =>
+      new Response(
+        JSON.stringify({
+          data: [],
+          pagination: { page: 1, pageSize: 12, total: 0 },
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } }
+      )
+    );
+    const controller = new AbortController();
+    vi.stubGlobal('fetch', fetchMock);
+
+    await listGovernanceCases({ page: 1, pageSize: 12, type: 'delegation', status: 'open', search: 'alice' }, {
+      signal: controller.signal,
+    });
+    await listAdminDsrCases({ page: 2, pageSize: 20, type: 'request', status: 'queued', search: 'bob' }, {
+      signal: controller.signal,
+    });
+    await getMyDataSubjectRights();
+    await getDataExportStatus('job-1');
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      '/iam/governance/workflows?page=1&pageSize=12&type=delegation&status=open&search=alice',
+      expect.objectContaining({ signal: controller.signal, credentials: 'include' })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      '/iam/admin/data-subject-rights/cases?page=2&pageSize=20&type=request&status=queued&search=bob',
+      expect.objectContaining({ signal: controller.signal, credentials: 'include' })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(3, '/iam/me/data-subject-rights/requests', expect.any(Object));
+    expect(fetchMock).toHaveBeenNthCalledWith(4, '/iam/me/data-export/status?jobId=job-1', expect.any(Object));
   });
 });

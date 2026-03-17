@@ -6,6 +6,12 @@ import type { SvaMainserverConnectionStatus } from '@sva/sva-mainserver';
 import { t } from '../../i18n';
 import { isRecord, readErrorMessage } from '../../lib/error-message-utils';
 import { loadInterfacesOverview, saveSvaMainserverInterfaceSettings } from '../../lib/interfaces-api';
+import { Alert, AlertDescription } from '../../components/ui/alert';
+import { Button } from '../../components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
+import { Checkbox } from '../../components/ui/checkbox';
+import { Input } from '../../components/ui/input';
+import { Label } from '../../components/ui/label';
 
 type FormValues = {
   graphqlBaseUrl: string;
@@ -209,28 +215,41 @@ export const InterfacesPage = () => {
         <p className="text-sm text-muted-foreground">{t('interfaces.page.subtitle')}</p>
       </header>
 
-      <section className="grid gap-3 rounded-lg border border-border bg-card p-4 shadow-shell">
-        <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-          {t('interfaces.status.cardTitle')}
-        </h2>
-        <p className="text-sm">
-          {t('interfaces.status.instanceLabel')}: <span className="font-medium">{instanceId}</span>
-        </p>
-        <p className="text-sm">
-          {t('interfaces.status.currentLabel')}: <span className="font-medium">{lastStatus ? getStatusLabel(lastStatus) : t('interfaces.status.unknown')}</span>
-        </p>
-        {lastStatus?.checkedAt ? (
-          <p className="text-xs text-muted-foreground">
-            {t('interfaces.status.lastCheckedLabel')}: {new Date(lastStatus.checkedAt).toLocaleString()}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm uppercase tracking-[0.16em] text-muted-foreground">
+            {t('interfaces.status.cardTitle')}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-3">
+          <p className="text-sm">
+            {t('interfaces.status.instanceLabel')}: <span className="font-medium">{instanceId}</span>
           </p>
-        ) : null}
-        {statusErrorMessage ? <p className="text-sm text-secondary">{statusErrorMessage}</p> : null}
-      </section>
+          <p className="text-sm">
+            {t('interfaces.status.currentLabel')}:{' '}
+            <span className="font-medium">{lastStatus ? getStatusLabel(lastStatus) : t('interfaces.status.unknown')}</span>
+          </p>
+          {lastStatus?.checkedAt ? (
+            <p className="text-xs text-muted-foreground">
+              {t('interfaces.status.lastCheckedLabel')}: {new Date(lastStatus.checkedAt).toLocaleString()}
+            </p>
+          ) : null}
+          {statusErrorMessage ? (
+            <Alert className="border-secondary/40 bg-secondary/10 text-secondary">
+              <AlertDescription>{statusErrorMessage}</AlertDescription>
+            </Alert>
+          ) : null}
+        </CardContent>
+      </Card>
 
-      <section className="rounded-lg border border-border bg-card p-4 shadow-shell">
-        <h2 className="mb-4 text-sm font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-          {t('interfaces.form.sectionTitle')}
-        </h2>
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm uppercase tracking-[0.16em] text-muted-foreground">
+            {t('interfaces.form.sectionTitle')}
+          </CardTitle>
+          <CardDescription>{t('interfaces.page.subtitle')}</CardDescription>
+        </CardHeader>
+        <CardContent>
         <form
           className="grid gap-4"
           onSubmit={(event) => {
@@ -238,10 +257,10 @@ export const InterfacesPage = () => {
             handleSave().catch(() => undefined);
           }}
         >
-          <label className="flex flex-col gap-2 text-sm text-foreground">
-            <span>{t('interfaces.form.graphqlBaseUrl')}</span>
-            <input
-              className="rounded-md border border-border bg-background px-3 py-2 text-foreground"
+          <div className="grid gap-2">
+            <Label htmlFor="interfaces-graphql-base-url">{t('interfaces.form.graphqlBaseUrl')}</Label>
+            <Input
+              id="interfaces-graphql-base-url"
               type="url"
               value={formValues.graphqlBaseUrl}
               onChange={(event) => {
@@ -252,12 +271,12 @@ export const InterfacesPage = () => {
                 }));
               }}
             />
-          </label>
+          </div>
 
-          <label className="flex flex-col gap-2 text-sm text-foreground">
-            <span>{t('interfaces.form.oauthTokenUrl')}</span>
-            <input
-              className="rounded-md border border-border bg-background px-3 py-2 text-foreground"
+          <div className="grid gap-2">
+            <Label htmlFor="interfaces-oauth-token-url">{t('interfaces.form.oauthTokenUrl')}</Label>
+            <Input
+              id="interfaces-oauth-token-url"
               type="url"
               value={formValues.oauthTokenUrl}
               onChange={(event) => {
@@ -268,12 +287,11 @@ export const InterfacesPage = () => {
                 }));
               }}
             />
-          </label>
+          </div>
 
-          <label className="flex items-center gap-3 text-sm text-foreground">
-            <input
-              className="h-4 w-4"
-              type="checkbox"
+          <Label htmlFor="interfaces-enabled" className="flex items-center gap-3">
+            <Checkbox
+              id="interfaces-enabled"
               checked={formValues.enabled}
               onChange={(event) => {
                 const checked = event.currentTarget.checked;
@@ -284,32 +302,37 @@ export const InterfacesPage = () => {
               }}
             />
             <span>{t('interfaces.form.enabled')}</span>
-          </label>
+          </Label>
 
           <div className="flex flex-wrap gap-3">
-            <button
-              type="submit"
-              className="rounded-md border border-primary/40 bg-primary/15 px-4 py-2 text-sm font-semibold text-primary"
-              disabled={isSaving}
-            >
+            <Button type="submit" disabled={isSaving}>
               {isSaving ? t('interfaces.actions.saving') : t('interfaces.actions.save')}
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
-              className="rounded-md border border-border bg-background px-4 py-2 text-sm text-foreground"
+              variant="outline"
               onClick={() => {
                 refresh().catch(() => undefined);
               }}
               disabled={isSaving}
             >
               {t('interfaces.actions.reload')}
-            </button>
+            </Button>
           </div>
         </form>
-      </section>
+        </CardContent>
+      </Card>
 
-      {statusMessage ? <p className="text-sm text-primary">{statusMessage}</p> : null}
-      {errorMessage ? <p className="text-sm text-secondary">{errorMessage}</p> : null}
+      {statusMessage ? (
+        <Alert className="border-primary/40 bg-primary/10 text-primary">
+          <AlertDescription>{statusMessage}</AlertDescription>
+        </Alert>
+      ) : null}
+      {errorMessage ? (
+        <Alert className="border-secondary/40 bg-secondary/10 text-secondary">
+          <AlertDescription>{errorMessage}</AlertDescription>
+        </Alert>
+      ) : null}
     </div>
   );
 };

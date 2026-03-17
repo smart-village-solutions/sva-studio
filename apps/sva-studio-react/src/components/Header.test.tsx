@@ -2,36 +2,11 @@
  * Unit-Tests für Header-Auth-Aktionen und Loading-Zustand.
  */
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
-import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import Header from './Header';
 
 const useAuthMock = vi.fn();
 const useThemeMock = vi.fn();
-
-/**
- * Mockt den TanStack-Link für DOM-basierte Komponententests.
- */
-vi.mock('@tanstack/react-router', () => ({
-  Link: ({
-    to,
-    children,
-    reloadDocument,
-    ...props
-  }: React.AnchorHTMLAttributes<HTMLAnchorElement> & {
-    to: string;
-    children: React.ReactNode;
-    reloadDocument?: boolean;
-  }) => {
-    void reloadDocument;
-
-    return (
-      <a href={to} {...props}>
-        {children}
-      </a>
-    );
-  },
-}));
 
 vi.mock('../providers/auth-provider', () => ({
   useAuth: () => useAuthMock(),
@@ -39,6 +14,14 @@ vi.mock('../providers/auth-provider', () => ({
 
 vi.mock('../providers/theme-provider', () => ({
   useTheme: () => useThemeMock(),
+}));
+
+vi.mock('@tanstack/react-router', () => ({
+  Link: ({ to, children }: { to: string; children: React.ReactNode }) => <a href={to}>{children}</a>,
+}));
+
+vi.mock('./OrganizationContextSwitcher', () => ({
+  OrganizationContextSwitcher: () => <div data-testid="organization-context-switcher">Organization Context</div>,
 }));
 
 /**
@@ -55,7 +38,7 @@ describe('Header auth actions', () => {
     vi.unstubAllEnvs();
   });
 
-  it('zeigt für unauthenticated user nur Branding und Login', async () => {
+  it('zeigt für unauthenticated user Theme-Toggle und Login', async () => {
     useAuthMock.mockReturnValue({
       user: null,
       isAuthenticated: false,
@@ -80,12 +63,12 @@ describe('Header auth actions', () => {
     });
 
     expect(screen.queryByRole('button', { name: 'Logout' })).toBeNull();
-    expect(screen.getByRole('link', { name: /SVA Studio/ }).getAttribute('href')).toBe('/');
     expect(screen.queryByRole('link', { name: 'Konto' })).toBeNull();
-    expect(screen.queryByRole('link', { name: 'Startseite' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Dunklen Modus aktivieren' })).toBeTruthy();
+    expect(screen.queryByTestId('organization-context-switcher')).toBeNull();
   });
 
-  it('zeigt für authenticated user nur Branding und Logout', async () => {
+  it('zeigt für authenticated user Konto-Link und Logout', async () => {
     useAuthMock.mockReturnValue({
       user: {
         id: 'user-1',
@@ -114,12 +97,12 @@ describe('Header auth actions', () => {
     });
 
     expect(screen.queryByRole('link', { name: 'Login' })).toBeNull();
-    expect(screen.getByRole('link', { name: /SVA Studio/ }).getAttribute('href')).toBe('/');
-    expect(screen.queryByRole('link', { name: 'Konto' })).toBeNull();
+    expect(screen.getByRole('link', { name: 'Mein Konto' }).getAttribute('href')).toBe('/account');
     expect(screen.queryByRole('link', { name: 'Benutzer' })).toBeNull();
+    expect(screen.getByTestId('organization-context-switcher')).toBeTruthy();
   });
 
-  it('zeigt auch für system_admin keine Navigationslinks im Header', () => {
+  it('zeigt auch für system_admin keine Navigationslinks im Header', async () => {
     useAuthMock.mockReturnValue({
       user: {
         id: 'user-admin',
@@ -143,7 +126,9 @@ describe('Header auth actions', () => {
 
     render(<Header />);
 
-    expect(screen.getByRole('button', { name: 'Logout' })).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Logout' })).toBeTruthy();
+    });
     expect(screen.queryByRole('link', { name: 'Benutzer' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'Rollen' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'Organisationen' })).toBeNull();
@@ -172,6 +157,7 @@ describe('Header auth actions', () => {
     expect(screen.getByText('Authentifizierungsstatus wird geladen.')).toBeTruthy();
     expect(screen.queryByRole('link', { name: 'Login' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Logout' })).toBeNull();
+    expect(screen.queryByTestId('organization-context-switcher')).toBeNull();
   });
 
   it('delegates theme toggle to the theme provider', async () => {
@@ -203,5 +189,36 @@ describe('Header auth actions', () => {
     screen.getByRole('button', { name: 'Dunklen Modus aktivieren' }).click();
 
     expect(toggleModeMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('zeigt den Navigation-Button nur bei verfuegbarem Handler', () => {
+    useAuthMock.mockReturnValue({
+      user: {
+        id: 'user-1',
+        name: 'Test User',
+        roles: ['editor'],
+      },
+      isAuthenticated: true,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      logout: vi.fn(),
+      invalidatePermissions: vi.fn(),
+    });
+    useThemeMock.mockReturnValue({
+      mode: 'light',
+      themeName: 'sva-default',
+      themeLabel: 'SVA Studio',
+      setMode: vi.fn(),
+      toggleMode: vi.fn(),
+    });
+
+    const { rerender } = render(<Header />);
+
+    expect(screen.queryByRole('button', { name: 'Navigation öffnen' })).toBeNull();
+
+    rerender(<Header onOpenMobileNavigation={vi.fn()} />);
+
+    expect(screen.getByRole('button', { name: 'Navigation öffnen' })).toBeTruthy();
   });
 });

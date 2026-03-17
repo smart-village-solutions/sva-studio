@@ -95,7 +95,10 @@ export const createRuntimeRouteTree = <
 >(
   runtimeAuthRouteFactories: TAuthRouteFactories,
 ) => {
-  const extensionRouteFactories = [...runtimeAuthRouteFactories, ...pluginExampleRoutes] as const;
+  const extensionRouteFactories = [
+    ...runtimeAuthRouteFactories,
+    ...(pluginExampleRoutes as unknown as readonly AppRouteFactory[]),
+  ] as const;
   const runtimeRoutes = [...materializeRoutes(coreRouteFactoriesBase), ...materializeRoutes(extensionRouteFactories)] as const;
 
   return rootRoute.addChildren(runtimeRoutes);

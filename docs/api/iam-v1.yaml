@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: SVA IAM API
   version: 1.0.0
-  description: IAM-API für Nutzer- und Rollenverwaltung im SVA Studio.
+  description: Zentrale IAM-API-Dokumentation fuer Admin-, Governance- und DSR-Surface im SVA Studio.
 servers:
   - url: /
 paths:
@@ -20,32 +20,606 @@ paths:
           description: Service ist bereit.
         '503':
           description: Mindestens ein Dependency-Check ist fehlgeschlagen.
+  /iam/me/permissions:
+    get:
+      summary: Effektive Permissions des aktuellen Benutzers lesen
+      parameters:
+        - name: instanceId
+          in: query
+          schema:
+            type: string
+        - name: organizationId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: actingAsUserId
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Permissions geladen.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MePermissionsResponse'
+        '400':
+          description: Ungueltiger Request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '403':
+          description: Instanz- oder Impersonation-Kontext verweigert.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '503':
+          description: IAM-Datenbank nicht verfuegbar.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+  /iam/authorize:
+    post:
+      summary: Deterministische RBAC-Autorisierungsentscheidung ausfuehren
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthorizeRequest'
+      responses:
+        '200':
+          description: Autorisierungsentscheidung berechnet.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthorizeResponse'
+        '400':
+          description: Request ungueltig.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '503':
+          description: IAM-Datenbank nicht verfuegbar.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+  /iam/governance/workflows:
+    get:
+      summary: Normalisierten Governance-Feed lesen
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - name: instanceId
+          in: query
+          schema:
+            type: string
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum:
+              - permission_change
+              - delegation
+              - impersonation
+              - legal_acceptance
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Governance-Feed geladen.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GovernanceCaseListResponse'
+        '403':
+          description: Keine Berechtigung fuer Governance-Transparenz.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+    post:
+      summary: Governance-Workflow ausfuehren
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GovernanceWorkflowRequest'
+      responses:
+        '200':
+          description: Workflow abgeschlossen.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GovernanceWorkflowMutationResponse'
+        '400':
+          description: Request oder Fachregel ungueltig.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '403':
+          description: Instanzkontext oder Rolle verweigert.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '503':
+          description: Governance-Datenbank nicht verfuegbar.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+  /iam/governance/compliance/export:
+    get:
+      summary: Governance-Compliance-Export herunterladen
+      parameters:
+        - name: instanceId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: format
+          in: query
+          schema:
+            type: string
+            enum: [json, csv, siem]
+            default: json
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Export erfolgreich erzeugt.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GovernanceComplianceExportResponse'
+            text/csv:
+              schema:
+                type: string
+        '400':
+          description: Instanzkontext oder Format ungueltig.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+  /iam/me/data-export:
+    get:
+      summary: Legacy-GET fuer Self-Service-Exportstart
+      responses:
+        '405':
+          description: Export-Starts sind nur noch per POST erlaubt.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+    post:
+      summary: Self-Service-Datenexport starten
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema:
+            type: string
+        - in: header
+          name: X-Requested-With
+          required: true
+          schema:
+            type: string
+            enum: [XMLHttpRequest]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DataExportRequest'
+      responses:
+        '200':
+          description: Export synchron erzeugt.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataExportAcceptedResponse'
+            text/csv:
+              schema:
+                type: string
+            application/xml:
+              schema:
+                type: string
+        '202':
+          description: Export asynchron eingeplant.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataExportAcceptedResponse'
+        '400':
+          description: Request ungueltig.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '403':
+          description: CSRF oder Instanzkontext verweigert.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '409':
+          description: Idempotency-Key-Konflikt.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+  /iam/me/data-export/status:
+    get:
+      summary: Status oder Ergebnis eines Self-Service-Exports lesen
+      parameters:
+        - name: instanceId
+          in: query
+          schema:
+            type: string
+        - name: jobId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: download
+          in: query
+          schema:
+            type: string
+            enum: [json, csv, xml]
+      responses:
+        '200':
+          description: Status oder Payload geladen.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataExportStatusResponse'
+            text/csv:
+              schema:
+                type: string
+            application/xml:
+              schema:
+                type: string
+        '404':
+          description: Job nicht gefunden.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+  /iam/me/data-subject-rights/requests:
+    get:
+      summary: Self-Service-Datenschutzuebersicht lesen
+      responses:
+        '200':
+          description: Self-Service-DSR geladen.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DsrSelfServiceResponse'
+        '404':
+          description: Konto nicht gefunden.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+    post:
+      summary: Betroffenenrechtsantrag anlegen
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DataSubjectRequest'
+      responses:
+        '200':
+          description: Antrag angenommen oder verarbeitet.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataSubjectRequestResponse'
+        '400':
+          description: Request oder Typ ungueltig.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+  /iam/me/profile:
+    post:
+      summary: Profilkorrektur als DSR-Vorgang starten
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProfileCorrectionRequest'
+      responses:
+        '200':
+          description: Korrekturanfrage erstellt.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileCorrectionResponse'
+        '400':
+          description: Request ungueltig.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+  /iam/me/optional-processing/execute:
+    post:
+      summary: Optionale Verarbeitung ausfuehren oder blockierten Zustand melden
+      parameters:
+        - in: header
+          name: X-Requested-With
+          required: true
+          schema:
+            type: string
+            enum: [XMLHttpRequest]
+      responses:
+        '200':
+          description: Verarbeitung ausgefuehrt.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OptionalProcessingResponse'
+        '423':
+          description: Verarbeitung durch Restriktion oder Widerspruch blockiert.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OptionalProcessingResponse'
+  /iam/admin/data-subject-rights/export:
+    get:
+      summary: Legacy-GET fuer Admin-Exportstart
+      responses:
+        '405':
+          description: Export-Starts sind nur noch per POST erlaubt.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+    post:
+      summary: DSR-Admin-Export starten
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema:
+            type: string
+        - in: header
+          name: X-Requested-With
+          required: true
+          schema:
+            type: string
+            enum: [XMLHttpRequest]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminDataExportRequest'
+      responses:
+        '200':
+          description: Export synchron erzeugt.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataExportAcceptedResponse'
+            text/csv:
+              schema:
+                type: string
+            application/xml:
+              schema:
+                type: string
+        '202':
+          description: Export asynchron eingeplant.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataExportAcceptedResponse'
+        '400':
+          description: Request ungueltig.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '403':
+          description: Rolle, CSRF oder Instanzkontext verweigert.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '409':
+          description: Idempotency-Key-Konflikt.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+  /iam/admin/data-subject-rights/export/status:
+    get:
+      summary: Status oder Ergebnis eines Admin-Exports lesen
+      parameters:
+        - name: instanceId
+          in: query
+          schema:
+            type: string
+        - name: jobId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: download
+          in: query
+          schema:
+            type: string
+            enum: [json, csv, xml]
+      responses:
+        '200':
+          description: Status oder Payload geladen.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataExportStatusResponse'
+            text/csv:
+              schema:
+                type: string
+            application/xml:
+              schema:
+                type: string
+        '404':
+          description: Job nicht gefunden.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+  /iam/admin/data-subject-rights/cases:
+    get:
+      summary: Normalisierten DSR-Admin-Feed lesen
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - name: instanceId
+          in: query
+          schema:
+            type: string
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum:
+              - request
+              - export_job
+              - legal_hold
+              - profile_correction
+              - recipient_notification
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/DsrCanonicalStatus'
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: DSR-Faelle geladen.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DsrCaseListResponse'
+        '403':
+          description: Keine Berechtigung fuer DSR-Transparenz.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+  /iam/admin/data-subject-rights/legal-holds/apply:
+    post:
+      summary: Legal Hold setzen
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LegalHoldApplyRequest'
+      responses:
+        '200':
+          description: Hold aktiviert.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LegalHoldApplyResponse'
+        '400':
+          description: Request ungueltig.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+  /iam/admin/data-subject-rights/legal-holds/release:
+    post:
+      summary: Legal Hold aufheben
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LegalHoldReleaseRequest'
+      responses:
+        '200':
+          description: Holds freigegeben.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LegalHoldReleaseResponse'
+        '400':
+          description: Request ungueltig.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+  /iam/admin/data-subject-rights/maintenance:
+    post:
+      summary: DSR-Wartungslauf ausfuehren
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DsrMaintenanceRequest'
+      responses:
+        '200':
+          description: Wartungslauf abgeschlossen.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DsrMaintenanceResponse'
+        '400':
+          description: Request ungueltig.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
   /api/v1/iam/users:
     get:
       summary: Nutzerliste (paginiert)
       parameters:
-        - in: query
-          name: page
-          schema:
-            type: integer
-            minimum: 1
-        - in: query
-          name: pageSize
-          schema:
-            type: integer
-            minimum: 1
-            maximum: 100
-        - in: query
-          name: status
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - name: status
+          in: query
           schema:
             type: string
             enum: [active, inactive, pending]
-        - in: query
-          name: role
+        - name: role
+          in: query
           schema:
             type: string
-        - in: query
-          name: search
+        - name: search
+          in: query
           schema:
             type: string
       responses:
@@ -88,8 +662,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
+  /api/v1/iam/users/sync-keycloak:
+    post:
+      summary: Nutzer aus Keycloak synchronisieren
+      responses:
+        '202':
+          description: Synchronisierung angestossen.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncUsersResponse'
         '503':
-          description: Keycloak nicht verfügbar.
+          description: Keycloak nicht verfuegbar.
           content:
             application/json:
               schema:
@@ -98,8 +682,8 @@ paths:
     get:
       summary: Einzelnen Nutzer abrufen
       parameters:
-        - in: path
-          name: userId
+        - name: userId
+          in: path
           required: true
           schema:
             type: string
@@ -113,11 +697,15 @@ paths:
                 $ref: '#/components/schemas/UserItemResponse'
         '404':
           description: Nutzer nicht gefunden.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
     patch:
       summary: Nutzer aktualisieren
       parameters:
-        - in: path
-          name: userId
+        - name: userId
+          in: path
           required: true
           schema:
             type: string
@@ -142,31 +730,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/UserItemResponse'
         '400':
-          description: Ungültiger Payload oder Rollenreferenz.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
-        '403':
-          description: Zielnutzer oder Rollenzuweisung nicht erlaubt.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
-        '404':
-          description: Nutzer nicht gefunden.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
-        '409':
-          description: Last-Admin-Schutz oder Konflikt.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
-        '503':
-          description: Externe Abhängigkeit nicht verfügbar.
+          description: Payload oder Rollenreferenz ungueltig.
           content:
             application/json:
               schema:
@@ -174,8 +738,8 @@ paths:
     delete:
       summary: Nutzer deaktivieren
       parameters:
-        - in: path
-          name: userId
+        - name: userId
+          in: path
           required: true
           schema:
             type: string
@@ -193,33 +757,31 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UserItemResponse'
-        '403':
-          description: Zielnutzer darf nicht deaktiviert werden.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
-        '404':
-          description: Nutzer nicht gefunden.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
         '409':
-          description: Self-/Last-Admin-Schutz.
+          description: Self- oder Last-Admin-Schutz.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
-        '503':
-          description: Externe Abhängigkeit nicht verfügbar.
+  /api/v1/iam/users/{userId}/timeline:
+    get:
+      summary: Vereinigte User-Timeline lesen
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Timeline geladen.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
+                $ref: '#/components/schemas/UserTimelineResponse'
   /api/v1/iam/users/bulk-deactivate:
     post:
-      summary: Mehrere Nutzer deaktivieren (max 50)
+      summary: Mehrere Nutzer deaktivieren
       parameters:
         - in: header
           name: Idempotency-Key
@@ -253,30 +815,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/BulkDeactivateResponse'
-        '400':
-          description: Ungültiger Payload.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
-        '403':
-          description: Mindestens ein Zielnutzer darf nicht deaktiviert werden.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
-        '409':
-          description: Self-/Last-Admin-/Idempotency-Konflikt.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
-        '503':
-          description: Externe Abhängigkeit nicht verfügbar.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
   /api/v1/iam/users/me/profile:
     get:
       summary: Eigenes Profil abrufen
@@ -287,8 +825,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UserItemResponse'
-        '404':
-          description: Profil nicht gefunden.
     patch:
       summary: Eigenes Profil aktualisieren
       parameters:
@@ -311,24 +847,175 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UserItemResponse'
-        '400':
-          description: Ungültiger Payload.
+  /api/v1/iam/organizations:
+    get:
+      summary: Organisationen auflisten
+      responses:
+        '200':
+          description: Organisationsliste geladen.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
-        '404':
-          description: Nutzerprofil nicht gefunden.
+                $ref: '#/components/schemas/OrganizationListResponse'
+    post:
+      summary: Organisation anlegen
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema:
+            type: string
+        - in: header
+          name: X-Requested-With
+          required: true
+          schema:
+            type: string
+            enum: [XMLHttpRequest]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOrganizationRequest'
+      responses:
+        '201':
+          description: Organisation angelegt.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
-        '503':
-          description: PII-Verschlüsselung oder Datenbank nicht verfügbar.
+                $ref: '#/components/schemas/OrganizationItemResponse'
+  /api/v1/iam/organizations/{organizationId}:
+    get:
+      summary: Organisation laden
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Organisation geladen.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
+                $ref: '#/components/schemas/OrganizationItemResponse'
+    patch:
+      summary: Organisation aktualisieren
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: header
+          name: X-Requested-With
+          required: true
+          schema:
+            type: string
+            enum: [XMLHttpRequest]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateOrganizationRequest'
+      responses:
+        '200':
+          description: Organisation aktualisiert.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationItemResponse'
+    delete:
+      summary: Organisation deaktivieren
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Organisation deaktiviert.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationItemResponse'
+  /api/v1/iam/organizations/{organizationId}/memberships:
+    post:
+      summary: Membership zu Organisation zuweisen
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrganizationMembershipRequest'
+      responses:
+        '200':
+          description: Membership gespeichert.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationMembershipResponse'
+  /api/v1/iam/organizations/{organizationId}/memberships/{accountId}:
+    delete:
+      summary: Membership aus Organisation entfernen
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Membership entfernt.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationMembershipResponse'
+  /api/v1/iam/me/context:
+    get:
+      summary: Aktiven Organisationskontext lesen
+      responses:
+        '200':
+          description: Kontext geladen.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationContextResponse'
+    put:
+      summary: Aktiven Organisationskontext wechseln
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateOrganizationContextRequest'
+      responses:
+        '200':
+          description: Kontext aktualisiert.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationContextResponse'
   /api/v1/iam/roles:
     get:
       summary: Rollenliste
@@ -366,34 +1053,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/RoleMutationResponse'
-        '400':
-          description: Ungültiger Payload.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
-        '409':
-          description: Idempotency-Key-Konflikt.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
   /api/v1/iam/roles/{roleId}:
     patch:
       summary: Custom-Rolle aktualisieren
       parameters:
-        - in: path
-          name: roleId
+        - name: roleId
+          in: path
           required: true
           schema:
             type: string
             format: uuid
-        - in: header
-          name: X-Requested-With
-          required: true
-          schema:
-            type: string
-            enum: [XMLHttpRequest]
       requestBody:
         required: true
         content:
@@ -407,54 +1076,84 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/RoleMutationResponse'
-        '400':
-          description: Ungültiger Payload oder unbekannte Berechtigung.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
-        '404':
-          description: Rolle nicht gefunden.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
-        '409':
-          description: Systemrolle darf nicht bearbeitet werden.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
     delete:
-      summary: Custom-Rolle löschen
+      summary: Custom-Rolle loeschen
       parameters:
-        - in: path
-          name: roleId
+        - name: roleId
+          in: path
           required: true
           schema:
             type: string
             format: uuid
+      responses:
+        '200':
+          description: Rolle geloescht.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoleMutationResponse'
+  /api/v1/iam/legal-texts:
+    get:
+      summary: Rechtstext-Versionen auflisten
+      responses:
+        '200':
+          description: Rechtstext-Liste.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LegalTextListResponse'
+    post:
+      summary: Rechtstext-Version anlegen
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema:
+            type: string
         - in: header
           name: X-Requested-With
           required: true
           schema:
             type: string
             enum: [XMLHttpRequest]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateLegalTextRequest'
+      responses:
+        '201':
+          description: Rechtstext-Version angelegt.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LegalTextItemResponse'
+  /api/v1/iam/legal-texts/{legalTextVersionId}:
+    patch:
+      summary: Rechtstext-Version aktualisieren
+      parameters:
+        - name: legalTextVersionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateLegalTextRequest'
       responses:
         '200':
-          description: Rolle gelöscht.
+          description: Rechtstext-Version aktualisiert.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/RoleMutationResponse'
+                $ref: '#/components/schemas/LegalTextItemResponse'
         '404':
-          description: Rolle nicht gefunden.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
-        '409':
-          description: Abhängigkeit/System-Rolle.
+          description: Rechtstext-Version nicht gefunden.
           content:
             application/json:
               schema:
@@ -466,6 +1165,22 @@ paths:
         '501':
           description: Noch nicht implementiert.
 components:
+  parameters:
+    Page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PageSize:
+      name: pageSize
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
   schemas:
     ApiErrorResponse:
       type: object
@@ -484,6 +1199,16 @@ components:
             details:
               type: object
               additionalProperties: true
+    Pagination:
+      type: object
+      required: [page, pageSize, total]
+      properties:
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        total:
+          type: integer
     UserRole:
       type: object
       required: [roleId, roleName, roleLevel]
@@ -513,35 +1238,16 @@ components:
           type: string
         lastName:
           type: string
-        phone:
-          type: string
-        position:
-          type: string
-        department:
-          type: string
-        preferredLanguage:
-          type: string
-        timezone:
-          type: string
-        avatarUrl:
-          type: string
-          format: uri
-        notes:
-          type: string
         status:
           type: string
           enum: [active, inactive, pending]
-        lastLoginAt:
+        avatarUrl:
           type: string
-          format: date-time
+          format: uri
         roles:
           type: array
           items:
             $ref: '#/components/schemas/UserRole'
-        permissions:
-          type: array
-          items:
-            type: string
     UserItemResponse:
       type: object
       required: [data]
@@ -561,15 +1267,246 @@ components:
           items:
             $ref: '#/components/schemas/User'
         pagination:
+          $ref: '#/components/schemas/Pagination'
+    BulkDeactivateResponse:
+      type: object
+      required: [data]
+      properties:
+        requestId:
+          type: string
+        data:
           type: object
-          required: [page, pageSize, total]
+          required: [deactivatedUserIds, count]
           properties:
-            page:
+            deactivatedUserIds:
+              type: array
+              items:
+                type: string
+                format: uuid
+            count:
               type: integer
-            pageSize:
+    SyncUsersResponse:
+      type: object
+      required: [data]
+      properties:
+        requestId:
+          type: string
+        data:
+          type: object
+          required: [scheduled]
+          properties:
+            scheduled:
+              type: boolean
+            importedUsers:
               type: integer
-            total:
+            updatedUsers:
               type: integer
+    CreateUserRequest:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+          format: email
+        firstName:
+          type: string
+        lastName:
+          type: string
+        displayName:
+          type: string
+        roleIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+    UpdateUserRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        email:
+          type: string
+          format: email
+        firstName:
+          type: string
+        lastName:
+          type: string
+        displayName:
+          type: string
+        status:
+          type: string
+          enum: [active, inactive, pending]
+        roleIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+    UpdateMyProfileRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        displayName:
+          type: string
+        preferredLanguage:
+          type: string
+        timezone:
+          type: string
+    OrganizationMembership:
+      type: object
+      required: [accountId, role, validFrom]
+      properties:
+        accountId:
+          type: string
+          format: uuid
+        role:
+          type: string
+        validFrom:
+          type: string
+          format: date-time
+        validTo:
+          type: string
+          format: date-time
+        isDefault:
+          type: boolean
+    Organization:
+      type: object
+      required: [id, name, slug, type, isActive]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        slug:
+          type: string
+        type:
+          type: string
+        isActive:
+          type: boolean
+        parentOrganizationId:
+          type: string
+          format: uuid
+        metadata:
+          type: object
+          additionalProperties: true
+        memberships:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrganizationMembership'
+    OrganizationItemResponse:
+      type: object
+      required: [data]
+      properties:
+        requestId:
+          type: string
+        data:
+          $ref: '#/components/schemas/Organization'
+    OrganizationListResponse:
+      type: object
+      required: [data, pagination]
+      properties:
+        requestId:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Organization'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+    CreateOrganizationRequest:
+      type: object
+      required: [name, slug, type]
+      properties:
+        name:
+          type: string
+        slug:
+          type: string
+        type:
+          type: string
+        parentOrganizationId:
+          type: string
+          format: uuid
+        metadata:
+          type: object
+          additionalProperties: true
+    UpdateOrganizationRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        isActive:
+          type: boolean
+        metadata:
+          type: object
+          additionalProperties: true
+    OrganizationMembershipRequest:
+      type: object
+      required: [accountId, role]
+      properties:
+        accountId:
+          type: string
+          format: uuid
+        role:
+          type: string
+        validFrom:
+          type: string
+          format: date-time
+        validTo:
+          type: string
+          format: date-time
+        isDefault:
+          type: boolean
+    OrganizationMembershipResponse:
+      type: object
+      required: [data]
+      properties:
+        requestId:
+          type: string
+        data:
+          type: object
+          required: [organizationId, accountId, status]
+          properties:
+            organizationId:
+              type: string
+              format: uuid
+            accountId:
+              type: string
+              format: uuid
+            status:
+              type: string
+              enum: [assigned, removed]
+    OrganizationContext:
+      type: object
+      required: [activeOrganizationId, memberships]
+      properties:
+        activeOrganizationId:
+          type: string
+          format: uuid
+        memberships:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrganizationMembership'
+    OrganizationContextResponse:
+      type: object
+      required: [data]
+      properties:
+        requestId:
+          type: string
+        data:
+          $ref: '#/components/schemas/OrganizationContext'
+    UpdateOrganizationContextRequest:
+      type: object
+      required: [organizationId]
+      properties:
+        organizationId:
+          type: string
+          format: uuid
     Role:
       type: object
       required: [id, roleName, isSystemRole, roleLevel, memberCount, permissions]
@@ -598,8 +1535,6 @@ components:
                 format: uuid
               permissionKey:
                 type: string
-              description:
-                type: string
     RoleListResponse:
       type: object
       required: [data, pagination]
@@ -611,15 +1546,7 @@ components:
           items:
             $ref: '#/components/schemas/Role'
         pagination:
-          type: object
-          required: [page, pageSize, total]
-          properties:
-            page:
-              type: integer
-            pageSize:
-              type: integer
-            total:
-              type: integer
+          $ref: '#/components/schemas/Pagination'
     RoleMutationResponse:
       type: object
       required: [data]
@@ -635,115 +1562,6 @@ components:
               format: uuid
             roleName:
               type: string
-    BulkDeactivateResponse:
-      type: object
-      required: [data]
-      properties:
-        requestId:
-          type: string
-        data:
-          type: object
-          required: [deactivatedUserIds, count]
-          properties:
-            deactivatedUserIds:
-              type: array
-              items:
-                type: string
-                format: uuid
-            count:
-              type: integer
-    CreateUserRequest:
-      type: object
-      required: [email]
-      properties:
-        email:
-          type: string
-          format: email
-        firstName:
-          type: string
-        lastName:
-          type: string
-        displayName:
-          type: string
-        phone:
-          type: string
-        position:
-          type: string
-        department:
-          type: string
-        preferredLanguage:
-          type: string
-        timezone:
-          type: string
-        avatarUrl:
-          type: string
-          format: uri
-        notes:
-          type: string
-        status:
-          type: string
-          enum: [active, inactive, pending]
-        roleIds:
-          type: array
-          items:
-            type: string
-            format: uuid
-    UpdateUserRequest:
-      type: object
-      additionalProperties: false
-      properties:
-        email:
-          type: string
-          format: email
-        firstName:
-          type: string
-        lastName:
-          type: string
-        displayName:
-          type: string
-        phone:
-          type: string
-        position:
-          type: string
-        department:
-          type: string
-        preferredLanguage:
-          type: string
-        timezone:
-          type: string
-        avatarUrl:
-          type: string
-          format: uri
-        notes:
-          type: string
-        status:
-          type: string
-          enum: [active, inactive, pending]
-        roleIds:
-          type: array
-          items:
-            type: string
-            format: uuid
-    UpdateMyProfileRequest:
-      type: object
-      additionalProperties: false
-      properties:
-        firstName:
-          type: string
-        lastName:
-          type: string
-        displayName:
-          type: string
-        phone:
-          type: string
-        position:
-          type: string
-        department:
-          type: string
-        preferredLanguage:
-          type: string
-        timezone:
-          type: string
     CreateRoleRequest:
       type: object
       required: [roleName]
@@ -772,3 +1590,616 @@ components:
           items:
             type: string
             format: uuid
+    LegalText:
+      type: object
+      required: [id, legalTextId, legalTextVersion, locale, contentHash, isActive, publishedAt, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        legalTextId:
+          type: string
+        legalTextVersion:
+          type: string
+        locale:
+          type: string
+        contentHash:
+          type: string
+        isActive:
+          type: boolean
+        publishedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        acceptanceCount:
+          type: integer
+        activeAcceptanceCount:
+          type: integer
+        lastAcceptedAt:
+          type: string
+          format: date-time
+    LegalTextListResponse:
+      type: object
+      required: [data, pagination]
+      properties:
+        requestId:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/LegalText'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+    LegalTextItemResponse:
+      type: object
+      required: [data]
+      properties:
+        requestId:
+          type: string
+        data:
+          $ref: '#/components/schemas/LegalText'
+    CreateLegalTextRequest:
+      type: object
+      required: [legalTextId, legalTextVersion, locale, contentHash]
+      properties:
+        legalTextId:
+          type: string
+        legalTextVersion:
+          type: string
+        locale:
+          type: string
+        contentHash:
+          type: string
+        isActive:
+          type: boolean
+        publishedAt:
+          type: string
+          format: date-time
+    UpdateLegalTextRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        contentHash:
+          type: string
+        isActive:
+          type: boolean
+        publishedAt:
+          type: string
+          format: date-time
+    AuthorizeRequest:
+      type: object
+      required: [instanceId, action, resource]
+      properties:
+        instanceId:
+          type: string
+        action:
+          type: string
+        resource:
+          type: object
+          required: [type]
+          properties:
+            type:
+              type: string
+            id:
+              type: string
+            organizationId:
+              type: string
+              format: uuid
+            attributes:
+              type: object
+              additionalProperties: true
+        context:
+          type: object
+          additionalProperties: true
+    AuthorizeResponse:
+      type: object
+      required: [allowed, reason, instanceId, action, resourceType, evaluatedAt]
+      properties:
+        allowed:
+          type: boolean
+        reason:
+          type: string
+        instanceId:
+          type: string
+        action:
+          type: string
+        resourceType:
+          type: string
+        resourceId:
+          type: string
+        evaluatedAt:
+          type: string
+          format: date-time
+        diagnostics:
+          type: object
+          additionalProperties: true
+    EffectivePermission:
+      type: object
+      required: [action, resourceType, sourceRoleIds]
+      properties:
+        action:
+          type: string
+        resourceType:
+          type: string
+        resourceId:
+          type: string
+        organizationId:
+          type: string
+          format: uuid
+        effect:
+          type: string
+          enum: [allow, deny]
+        scope:
+          type: object
+          additionalProperties: true
+        sourceRoleIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+    PermissionSubject:
+      type: object
+      required: [actorUserId, effectiveUserId, isImpersonating]
+      properties:
+        actorUserId:
+          type: string
+        effectiveUserId:
+          type: string
+        isImpersonating:
+          type: boolean
+    MePermissionsResponse:
+      type: object
+      required: [instanceId, permissions, evaluatedAt]
+      properties:
+        instanceId:
+          type: string
+        organizationId:
+          type: string
+          format: uuid
+        permissions:
+          type: array
+          items:
+            $ref: '#/components/schemas/EffectivePermission'
+        subject:
+          $ref: '#/components/schemas/PermissionSubject'
+        evaluatedAt:
+          type: string
+          format: date-time
+        requestId:
+          type: string
+    GovernanceCase:
+      type: object
+      required: [id, type, status, title, summary, createdAt, metadata]
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [permission_change, delegation, impersonation, legal_acceptance]
+        status:
+          type: string
+        title:
+          type: string
+        summary:
+          type: string
+        actorAccountId:
+          type: string
+        targetAccountId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        metadata:
+          type: object
+          additionalProperties: true
+    GovernanceCaseListResponse:
+      type: object
+      required: [data, pagination]
+      properties:
+        requestId:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/GovernanceCase'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+    GovernanceWorkflowRequest:
+      type: object
+      required: [operation, instanceId, payload]
+      properties:
+        operation:
+          type: string
+          enum:
+            - submit_permission_change
+            - approve_permission_change
+            - apply_permission_change
+            - create_delegation
+            - revoke_delegation
+            - start_impersonation
+            - end_impersonation
+            - accept_legal_text
+            - revoke_legal_acceptance
+        instanceId:
+          type: string
+        payload:
+          type: object
+          additionalProperties: true
+    GovernanceWorkflowMutationResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [operation, status]
+          properties:
+            operation:
+              type: string
+            status:
+              type: string
+            workflowId:
+              type: string
+            reasonCode:
+              type: string
+    GovernanceComplianceRow:
+      type: object
+      additionalProperties: true
+      properties:
+        eventType:
+          type: string
+        actorKeycloakSubject:
+          type: string
+        targetKeycloakSubject:
+          type: string
+        occurredAt:
+          type: string
+          format: date-time
+    GovernanceComplianceExportResponse:
+      type: object
+      required: [format, rows]
+      properties:
+        format:
+          type: string
+          enum: [json, siem]
+        rows:
+          type: array
+          items:
+            $ref: '#/components/schemas/GovernanceComplianceRow'
+    DsrCanonicalStatus:
+      type: string
+      enum: [queued, in_progress, completed, blocked, failed]
+    DsrCase:
+      type: object
+      required: [id, type, canonicalStatus, rawStatus, title, summary, createdAt, metadata]
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [request, export_job, legal_hold, profile_correction, recipient_notification]
+        canonicalStatus:
+          $ref: '#/components/schemas/DsrCanonicalStatus'
+        rawStatus:
+          type: string
+        title:
+          type: string
+        summary:
+          type: string
+        targetAccountId:
+          type: string
+        requesterAccountId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+        metadata:
+          type: object
+          additionalProperties: true
+    DsrSelfServiceOverview:
+      type: object
+      required: [instanceId, accountId, nonEssentialProcessingAllowed, legalHolds, requests, exportJobs]
+      properties:
+        instanceId:
+          type: string
+        accountId:
+          type: string
+        processingRestrictedAt:
+          type: string
+          format: date-time
+        processingRestrictionReason:
+          type: string
+        nonEssentialProcessingOptOutAt:
+          type: string
+          format: date-time
+        nonEssentialProcessingAllowed:
+          type: boolean
+        legalHolds:
+          type: array
+          items:
+            $ref: '#/components/schemas/DsrCase'
+        requests:
+          type: array
+          items:
+            $ref: '#/components/schemas/DsrCase'
+        exportJobs:
+          type: array
+          items:
+            $ref: '#/components/schemas/DsrCase'
+    DsrSelfServiceResponse:
+      type: object
+      required: [data]
+      properties:
+        requestId:
+          type: string
+        data:
+          $ref: '#/components/schemas/DsrSelfServiceOverview'
+    DsrCaseListResponse:
+      type: object
+      required: [data, pagination]
+      properties:
+        requestId:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/DsrCase'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+    DataExportRequest:
+      type: object
+      required: [format]
+      properties:
+        instanceId:
+          type: string
+        format:
+          type: string
+          enum: [json, csv, xml]
+        async:
+          type: boolean
+    AdminDataExportRequest:
+      type: object
+      required: [targetKeycloakSubject, format]
+      properties:
+        instanceId:
+          type: string
+        targetKeycloakSubject:
+          type: string
+        format:
+          type: string
+          enum: [json, csv, xml]
+        async:
+          type: boolean
+    DataExportAcceptedResponse:
+      type: object
+      required: [data]
+      properties:
+        requestId:
+          type: string
+        data:
+          type: object
+          required: [status, format]
+          properties:
+            status:
+              type: string
+            format:
+              type: string
+              enum: [json, csv, xml]
+            jobId:
+              type: string
+              format: uuid
+            requestId:
+              type: string
+              format: uuid
+    DataExportStatusResponse:
+      type: object
+      required: [data]
+      properties:
+        requestId:
+          type: string
+        data:
+          type: object
+          required: [jobId, status, format]
+          properties:
+            jobId:
+              type: string
+              format: uuid
+            status:
+              type: string
+            format:
+              type: string
+              enum: [json, csv, xml]
+            downloadReady:
+              type: boolean
+            completedAt:
+              type: string
+              format: date-time
+    DataSubjectRequest:
+      type: object
+      required: [type]
+      properties:
+        instanceId:
+          type: string
+        type:
+          type: string
+          enum: [access, rectification, deletion, restriction, objection]
+        payload:
+          type: object
+          additionalProperties: true
+    DataSubjectRequestResponse:
+      type: object
+      required: [data]
+      properties:
+        requestId:
+          type: string
+        data:
+          type: object
+          required: [requestId, status]
+          properties:
+            requestId:
+              type: string
+              format: uuid
+            status:
+              type: string
+    ProfileCorrectionRequest:
+      type: object
+      properties:
+        instanceId:
+          type: string
+        email:
+          type: string
+          format: email
+        displayName:
+          type: string
+        reason:
+          type: string
+    ProfileCorrectionResponse:
+      type: object
+      required: [data]
+      properties:
+        requestId:
+          type: string
+        data:
+          type: object
+          required: [status, requestId]
+          properties:
+            status:
+              type: string
+            requestId:
+              type: string
+              format: uuid
+    OptionalProcessingResponse:
+      type: object
+      properties:
+        requestId:
+          type: string
+        status:
+          type: string
+        executed:
+          type: boolean
+        error:
+          type: string
+        blockedByRestriction:
+          type: boolean
+        blockedByObjection:
+          type: boolean
+    LegalHoldApplyRequest:
+      type: object
+      required: [targetKeycloakSubject]
+      properties:
+        instanceId:
+          type: string
+        targetKeycloakSubject:
+          type: string
+        holdReason:
+          type: string
+        holdUntil:
+          type: string
+          format: date-time
+    LegalHoldApplyResponse:
+      type: object
+      required: [data]
+      properties:
+        requestId:
+          type: string
+        data:
+          type: object
+          required: [legalHoldId, status]
+          properties:
+            legalHoldId:
+              type: string
+              format: uuid
+            status:
+              type: string
+              enum: [active]
+    LegalHoldReleaseRequest:
+      type: object
+      required: [targetKeycloakSubject]
+      properties:
+        instanceId:
+          type: string
+        targetKeycloakSubject:
+          type: string
+        releaseReason:
+          type: string
+    LegalHoldReleaseResponse:
+      type: object
+      required: [data]
+      properties:
+        requestId:
+          type: string
+        data:
+          type: object
+          required: [releasedCount]
+          properties:
+            releasedCount:
+              type: integer
+    DsrMaintenanceRequest:
+      type: object
+      properties:
+        instanceId:
+          type: string
+        dryRun:
+          type: boolean
+        limit:
+          type: integer
+    DsrMaintenanceResponse:
+      type: object
+      required: [data]
+      properties:
+        requestId:
+          type: string
+        data:
+          type: object
+          required: [dryRun, queuedExports, escalated, finalizedDeletions, recipientNotifications]
+          properties:
+            dryRun:
+              type: boolean
+            queuedExports:
+              type: integer
+            escalated:
+              type: integer
+            finalizedDeletions:
+              type: integer
+            recipientNotifications:
+              type: integer
+    UserTimelineEvent:
+      type: object
+      required: [id, category, eventType, title, description, occurredAt, perspective, metadata]
+      properties:
+        id:
+          type: string
+        category:
+          type: string
+          enum: [iam, governance, dsr]
+        eventType:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        occurredAt:
+          type: string
+          format: date-time
+        perspective:
+          type: string
+          enum: [actor, target, actor_and_target]
+        metadata:
+          type: object
+          additionalProperties: true
+    UserTimelineResponse:
+      type: object
+      required: [data, pagination]
+      properties:
+        requestId:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserTimelineEvent'
+        pagination:
+          $ref: '#/components/schemas/Pagination'

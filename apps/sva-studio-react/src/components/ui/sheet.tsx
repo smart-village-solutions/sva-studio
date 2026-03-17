@@ -1,9 +1,7 @@
-import React from 'react';
+import * as DialogPrimitive from '@radix-ui/react-dialog';
+import * as React from 'react';
 
-type SheetContextValue = {
-  readonly open: boolean;
-  readonly onOpenChange: (open: boolean) => void;
-};
+import { cn } from '@/lib/utils';
 
 type SheetProps = Readonly<{
   open: boolean;
@@ -19,12 +17,7 @@ type SheetContentProps = Readonly<{
   'aria-label': string;
 }>;
 
-const SheetContext = React.createContext<SheetContextValue | null>(null);
-
-const FOCUSABLE_SELECTOR =
-  'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])';
-
-const getSheetPositionClasses = (side: 'left' | 'right'): string => {
+const getSheetPositionClasses = (side: 'left' | 'right') => {
   if (side === 'right') {
     return 'right-0 border-l';
   }
@@ -32,9 +25,35 @@ const getSheetPositionClasses = (side: 'left' | 'right'): string => {
   return 'left-0 border-r';
 };
 
-export const Sheet = ({ open, onOpenChange, children }: SheetProps) => {
-  const value = React.useMemo(() => ({ open, onOpenChange }), [open, onOpenChange]);
-  return <SheetContext.Provider value={value}>{children}</SheetContext.Provider>;
+export const Sheet = ({ open, onOpenChange, children }: SheetProps) => (
+  <SheetRoot open={open} onOpenChange={onOpenChange}>
+    {children}
+  </SheetRoot>
+);
+
+const SheetRoot = ({ open, onOpenChange, children }: SheetProps) => {
+  const triggerRef = React.useRef<HTMLElement | null>(null);
+  const previousOpenRef = React.useRef(false);
+
+  React.useEffect(() => {
+    const wasOpen = previousOpenRef.current;
+    previousOpenRef.current = open;
+
+    if (open && !wasOpen) {
+      triggerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      return;
+    }
+
+    if (!open && wasOpen && triggerRef.current?.isConnected) {
+      triggerRef.current.focus();
+    }
+  }, [open]);
+
+  return (
+    <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
+      {children}
+    </DialogPrimitive.Root>
+  );
 };
 
 export const SheetContent = ({
@@ -43,100 +62,27 @@ export const SheetContent = ({
   closeLabel = 'Close',
   side = 'left',
   'aria-label': ariaLabel,
-}: SheetContentProps) => {
-  const context = React.useContext(SheetContext);
-  const panelRef = React.useRef<HTMLDivElement>(null);
-  const triggerRef = React.useRef<HTMLElement | null>(null);
-  const previousOpenRef = React.useRef(false);
-  const onOpenChangeRef = React.useRef<(open: boolean) => void>(() => undefined);
-
-  if (!context) {
-    throw new Error('SheetContent must be used inside Sheet');
-  }
-
-  const { open, onOpenChange } = context;
-
-  React.useEffect(() => {
-    onOpenChangeRef.current = onOpenChange;
-  }, [onOpenChange]);
-
-  React.useEffect(() => {
-    const wasOpen = previousOpenRef.current;
-    previousOpenRef.current = open;
-
-    if (!open) {
-      if (wasOpen && triggerRef.current?.isConnected) {
-        triggerRef.current.focus();
-      }
-      return;
-    }
-
-    const panel = panelRef.current;
-    if (!panel) {
-      return;
-    }
-
-    if (!wasOpen) {
-      triggerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-      const focusables = panel.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
-      focusables[0]?.focus();
-    }
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        onOpenChangeRef.current(false);
-        return;
-      }
-
-      if (event.key !== 'Tab') {
-        return;
-      }
-
-      const currentFocusables = panel.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
-      if (currentFocusables.length === 0) {
-        return;
-      }
-
-      const firstFocusable = currentFocusables[0];
-      const lastFocusable = currentFocusables[currentFocusables.length - 1];
-
-      if (event.shiftKey && document.activeElement === firstFocusable) {
-        event.preventDefault();
-        lastFocusable.focus();
-      } else if (!event.shiftKey && document.activeElement === lastFocusable) {
-        event.preventDefault();
-        firstFocusable.focus();
-      }
-    };
-
-    panel.addEventListener('keydown', onKeyDown);
-    return () => {
-      panel.removeEventListener('keydown', onKeyDown);
-    };
-  }, [open]);
-
-  if (!open) {
-    return null;
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 lg:hidden" aria-hidden={false}>
-      <button
-        type="button"
-        className="absolute inset-0 bg-foreground/40"
-        aria-label={closeLabel}
-        onClick={() => onOpenChange(false)}
-      />
-      <div
-        ref={panelRef}
-        role="dialog"
-        aria-modal="true"
-        aria-label={ariaLabel}
-        className={`absolute top-0 h-full w-[18rem] border-border bg-sidebar shadow-shell ${getSheetPositionClasses(side)} ${className}`.trim()}
-      >
-        {children}
-      </div>
-    </div>
-  );
-};
+}: SheetContentProps) => (
+  <DialogPrimitive.Portal>
+    <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-foreground/40 lg:hidden" />
+    <DialogPrimitive.Close
+      aria-label={closeLabel}
+      className="fixed inset-0 z-50 cursor-default lg:hidden"
+      data-slot="sheet-close-overlay"
+      tabIndex={-1}
+      type="button"
+    />
+    <DialogPrimitive.Content
+      aria-label={ariaLabel}
+      aria-describedby={undefined}
+      className={cn(
+        'fixed top-0 z-50 h-full w-[18rem] border-border bg-sidebar shadow-shell focus-visible:outline-none lg:hidden',
+        getSheetPositionClasses(side),
+        className
+      )}
+    >
+      <DialogPrimitive.Title className="sr-only">{ariaLabel}</DialogPrimitive.Title>
+      <div className="h-full">{children}</div>
+    </DialogPrimitive.Content>
+  </DialogPrimitive.Portal>
+);

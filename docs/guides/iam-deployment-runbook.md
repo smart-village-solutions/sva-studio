@@ -36,6 +36,9 @@ Sicherer Rollout des Changes `add-account-user-management-ui` inklusive Datenban
    - Profilseite laden und speichern
    - Admin-Userliste öffnen
    - Rollenliste öffnen
+8. **Separates IAM-Acceptance-Gate ausführen**
+   - `pnpm nx run sva-studio-react:test:acceptance`
+   - Details zum Environment- und Testdatenkontrakt: `./iam-acceptance-runbook.md`
 
 ## Rollback
 
@@ -57,6 +60,7 @@ Sicherer Rollout des Changes `add-account-user-management-ui` inklusive Datenban
 ## Referenzen
 
 - `docs/guides/keycloak-service-account-setup-iam.md`
+- `docs/guides/iam-acceptance-runbook.md`
 - `docs/guides/iam-alerting-konzept.md`
 - `docs/guides/iam-retention-automation.md`
 - `docs/api/iam-v1.yaml`

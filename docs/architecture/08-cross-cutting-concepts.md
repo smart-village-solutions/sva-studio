@@ -87,6 +87,7 @@ gleichzeitig beeinflussen.
 - DSR-Resilienz über asynchrones Export-Statusmodell (`queued|processing|completed|failed`)
 - Restore-Sanitization nach Backup-Restore stellt DSGVO-konforme Nachbereinigung sicher
 - Mainserver-Delegation arbeitet fail-closed: ohne lokalen Rollencheck, Instanzkontext, Konfiguration oder gültige Credentials wird kein Upstream-Call ausgeführt
+- Der IAM-Acceptance-Runner arbeitet ebenfalls fail-closed: fehlende Env, fehlende Testbenutzer, nicht bereite Dependencies oder unvollständige Laufzeitnachweise beenden den Lauf mit dokumentierten Fehlercodes
 
 ### Build-, Test- und Cache-Konzept der Frontend-App
 
@@ -95,6 +96,7 @@ gleichzeitig beeinflussen.
 - Environment-Einflüsse mit Build-/Serve-/E2E-Relevanz (`CODECOV_TOKEN`, `TSS_DEV_SERVER`, `CI`) werden explizit in die Nx-Hash-Bildung aufgenommen
 - Pre-Build-Checks für i18n und Account-UI-Foundation bleiben als separate Nx-Targets vor dem App-Build erzwungen
 - Die App-Unit-Tests erzwingen wegen Node-25-/`jsdom`-Instabilitäten einen einzelnen Vitest-Worker im Thread-Pool
+- Das IAM-Acceptance-Gate ist bewusst ein separates Nx-Target ohne PR-CI-Zwang, weil es reale Laufzeitabhängigkeiten gegen eine dedizierte Testumgebung prüft
 
 ### i18n und Accessibility
 

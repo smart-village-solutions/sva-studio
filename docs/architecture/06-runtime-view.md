@@ -223,7 +223,21 @@ Fehlerpfad:
 - Ungültige oder deaktivierte Zielorganisationen liefern einen stabilen Fehlercode; der bisherige Kontext bleibt unverändert.
 - Technische Fehler werden im Org-Switcher verständlich, internationalisiert und ohne inkonsistenten Zwischenzustand angezeigt.
 
-### Szenario 14: Serverseitige Mainserver-Diagnostik mit Per-User-Delegation
+### Szenario 14: Separates IAM-Acceptance-Gate
+
+1. Ein dedizierter Runner validiert Pflicht-Env, Testrealm und Testbenutzer gegen Keycloak.
+2. Vor dem Lauf werden Acceptance-spezifische IAM-Datensätze und Organisationsartefakte in der Testumgebung kontrolliert zurückgesetzt.
+3. Der Runner prüft `GET /health/ready` fail-closed auf Datenbank, Redis und Keycloak.
+4. Browsergestützte OIDC-Logins validieren `/auth/me`, Claims und JIT-Provisioning.
+5. API- und UI-Smokes prüfen Organisations-CRUD, Membership-Zuweisung und Sichtbarkeit in den Admin-Oberflächen.
+6. Der Lauf schreibt einen versionierten JSON-/Markdown-Bericht nach `docs/reports/`.
+
+Fehlerpfad:
+
+- Fehlende Pflicht-Env oder fehlende Testbenutzer beenden den Lauf vor dem Browserstart.
+- Nicht bereite Dependencies oder fehlerhafte Laufzeitnachweise erzeugen deterministische Failure-Codes im Bericht.
+
+### Szenario 15: Serverseitige Mainserver-Diagnostik mit Per-User-Delegation
 
 1. Ein berechtigter Studio-Benutzer löst eine serverseitige Mainserver-Funktion aus.
 2. Die App prüft lokal Rollen und aktiven `instanceId`-Kontext, bevor ein Upstream-Call gestartet wird.

@@ -12,6 +12,7 @@ import { AccountPrivacyPage } from './account/-account-privacy-page';
 import { Phase1TestPage } from './admin/api/-phase1-test-page';
 import { IamViewerPage } from './admin/-iam-page';
 import { normalizeIamTab } from './admin/-iam.models';
+import { GroupsPage } from './admin/groups/-groups-page';
 import { LegalTextsPage } from './admin/legal-texts/-legal-texts-page';
 import { OrganizationsPage } from './admin/organizations/-organizations-page';
 import { RolesPage } from './admin/roles/-roles-page';
@@ -352,6 +353,7 @@ type AccountUiGuardKey =
   | 'adminUserDetail'
   | 'adminOrganizations'
   | 'adminRoles'
+  | 'adminGroups'
   | 'adminIam';
 
 let accountUiGuardsPromise: Promise<typeof import('@sva/routing')> | null = null;
@@ -536,6 +538,13 @@ export const runtimeCoreRouteFactories = [
       path: '/admin/roles',
       beforeLoad: (options) => runAccountUiGuard('adminRoles', options),
       component: RolesPage,
+    }),
+  (rootRoute: RootRoute) =>
+    createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/admin/groups',
+      beforeLoad: (options) => runAccountUiGuard('adminGroups', options),
+      component: GroupsPage,
     }),
   (rootRoute: RootRoute) =>
     createRoute({

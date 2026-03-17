@@ -6,6 +6,7 @@ import { userErrorMessage } from './-user-error-message';
 
 const useUserMock = vi.fn();
 const useRolesMock = vi.fn();
+const useGroupsMock = vi.fn();
 const getUserTimelineMock = vi.fn();
 
 vi.mock('../../../hooks/use-user', () => ({
@@ -14,6 +15,10 @@ vi.mock('../../../hooks/use-user', () => ({
 
 vi.mock('../../../hooks/use-roles', () => ({
   useRoles: () => useRolesMock(),
+}));
+
+vi.mock('../../../hooks/use-groups', () => ({
+  useGroups: () => useGroupsMock(),
 }));
 
 vi.mock('../../../lib/iam-api', () => ({
@@ -36,6 +41,7 @@ describe('UserEditPage', () => {
     notes: '',
     avatarUrl: 'https://example.com/avatar.png',
     roles: [{ roleId: 'role-1', roleName: 'system_admin', roleLevel: 90 }],
+    groups: [{ groupId: 'group-1', groupKey: 'admins', displayName: 'Admins', groupType: 'role_bundle', origin: 'manual' as const }],
     permissions: ['content.read'],
     mainserverUserApplicationId: 'app-id-1',
     mainserverUserApplicationSecretSet: true,
@@ -44,8 +50,20 @@ describe('UserEditPage', () => {
   beforeEach(() => {
     useUserMock.mockReset();
     useRolesMock.mockReset();
+    useGroupsMock.mockReset();
     getUserTimelineMock.mockReset();
     getUserTimelineMock.mockResolvedValue({ data: [] });
+    useGroupsMock.mockReturnValue({
+      groups: [],
+      isLoading: false,
+      error: null,
+      mutationError: null,
+      refetch: vi.fn(),
+      clearMutationError: vi.fn(),
+      createGroup: vi.fn(),
+      updateGroup: vi.fn(),
+      deleteGroup: vi.fn(),
+    });
   });
 
   it('renders loading state', () => {
@@ -358,10 +376,53 @@ describe('UserEditPage', () => {
         timezone: 'Europe/Berlin',
         notes: undefined,
         roleIds: ['role-1', 'role-2'],
+        groupIds: ['group-1'],
         mainserverUserApplicationId: 'app-id-1',
         mainserverUserApplicationSecret: undefined,
       });
     });
+  });
+
+  it('filters inactive groups from the management selection', async () => {
+    useUserMock.mockReturnValue({
+      user: baseUser,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      save: vi.fn(),
+    });
+
+    useRolesMock.mockReturnValue({
+      roles: [{ id: 'role-1', roleName: 'system_admin' }],
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      createRole: vi.fn(),
+      updateRole: vi.fn(),
+      deleteRole: vi.fn(),
+    });
+
+    useGroupsMock.mockReturnValue({
+      groups: [
+        { id: 'group-1', groupKey: 'admins', displayName: 'Admins', isActive: true },
+        { id: 'group-2', groupKey: 'legacy', displayName: 'Legacy', isActive: false },
+      ],
+      isLoading: false,
+      error: null,
+      mutationError: null,
+      refetch: vi.fn(),
+      clearMutationError: vi.fn(),
+      createGroup: vi.fn(),
+      updateGroup: vi.fn(),
+      deleteGroup: vi.fn(),
+    });
+
+    render(<UserEditPage userId="user-1" />);
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Verwaltung' }));
+
+    expect(screen.getByRole('checkbox', { name: /Admins/i })).toBeTruthy();
+    expect(screen.queryByText('Legacy')).toBeNull();
   });
 
   it('renders the mainserver credential fields and keeps the secret write-only', async () => {
@@ -413,6 +474,7 @@ describe('UserEditPage', () => {
         timezone: 'Europe/Berlin',
         notes: undefined,
         roleIds: ['role-1'],
+        groupIds: ['group-1'],
         mainserverUserApplicationId: 'updated-app-id',
         mainserverUserApplicationSecret: 'new-secret',
       });

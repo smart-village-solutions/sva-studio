@@ -58,6 +58,59 @@ describe('iam seed statements', () => {
     ]);
   });
 
+  it('builds group upsert with role_bundle defaults', () => {
+    const statement = iamSeedStatements.upsertGroup({
+      id: 'group-id',
+      instanceId: 'instance-id',
+      groupKey: 'editors',
+      displayName: 'Editors',
+      description: 'Bundled editor roles',
+    });
+
+    assert.match(statement.text, /INSERT INTO iam\.groups/);
+    assert.deepEqual(statement.values, [
+      'group-id',
+      'instance-id',
+      'editors',
+      'Editors',
+      'Bundled editor roles',
+      'role_bundle',
+      true,
+    ]);
+  });
+
+  it('builds geo unit upsert with hierarchy path fields', () => {
+    const statement = iamSeedStatements.upsertGeoUnit({
+      id: 'geo-id',
+      instanceId: 'instance-id',
+      geoKey: 'de-bw',
+      displayName: 'Baden-Wuerttemberg',
+      geoType: 'state',
+      metadata: '{"level":"state"}',
+      parentGeoUnitId: 'country-id',
+      hierarchyPath: ['country-id'],
+      depth: 1,
+      isActive: true,
+    });
+
+    assert.match(statement.text, /INSERT INTO iam\.geo_units/);
+    assert.deepEqual(statement.values, [
+      'geo-id',
+      'instance-id',
+      'de-bw',
+      'Baden-Wuerttemberg',
+      'state',
+      '{"level":"state"}',
+      'country-id',
+      {
+        sqlType: 'uuid[]',
+        values: ['country-id'],
+      },
+      1,
+      true,
+    ]);
+  });
+
   it('allows explicit managedBy and external role mapping in role upserts', () => {
     const statement = iamSeedStatements.upsertRole({
       id: 'role-id',
@@ -96,6 +149,38 @@ describe('iam seed statements', () => {
 
     assert.match(statement.text, /ON CONFLICT \(instance_id, account_id, role_id\) DO NOTHING/);
     assert.deepEqual(statement.values, ['instance-id', 'account-id', 'role-id']);
+  });
+
+  it('builds group-role assignment as idempotent insert', () => {
+    const statement = iamSeedStatements.assignGroupRole({
+      instanceId: 'instance-id',
+      groupId: 'group-id',
+      roleId: 'role-id',
+    });
+
+    assert.match(statement.text, /ON CONFLICT \(instance_id, group_id, role_id\) DO NOTHING/);
+    assert.deepEqual(statement.values, ['instance-id', 'group-id', 'role-id']);
+  });
+
+  it('builds account-group assignment with origin and validity fields', () => {
+    const statement = iamSeedStatements.assignAccountGroup({
+      instanceId: 'instance-id',
+      accountId: 'account-id',
+      groupId: 'group-id',
+      origin: 'seed',
+      validFrom: '2026-03-17T10:00:00Z',
+      validTo: '2026-12-31T23:59:59Z',
+    });
+
+    assert.match(statement.text, /INSERT INTO iam\.account_groups/);
+    assert.deepEqual(statement.values, [
+      'instance-id',
+      'account-id',
+      'group-id',
+      'seed',
+      '2026-03-17T10:00:00Z',
+      '2026-12-31T23:59:59Z',
+    ]);
   });
 
   it('builds account upsert with keycloak subject and instance conflict target', () => {

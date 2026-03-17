@@ -17,6 +17,16 @@ type UserDetailRoleRow = {
   valid_to: string | null;
 };
 
+type UserDetailGroupRow = {
+  id: string;
+  group_key: string;
+  display_name: string;
+  group_type: 'role_bundle';
+  origin: 'manual' | 'seed' | 'sync';
+  valid_from: string | null;
+  valid_to: string | null;
+};
+
 type UserDetailRow = {
   id: string;
   keycloak_subject: string;
@@ -35,6 +45,7 @@ type UserDetailRow = {
   status: UserStatus;
   last_login_at: string | null;
   role_rows: UserDetailRoleRow[] | null;
+  group_rows: UserDetailGroupRow[] | null;
   permission_rows: Array<{ permission_key: string }> | null;
 };
 
@@ -74,6 +85,20 @@ SELECT
   COALESCE(
     json_agg(
       DISTINCT jsonb_build_object(
+        'id', g.id,
+        'group_key', g.group_key,
+        'display_name', g.display_name,
+        'group_type', g.group_type,
+        'origin', ag.origin,
+        'valid_from', ag.valid_from::text,
+        'valid_to', ag.valid_to::text
+      )
+    ) FILTER (WHERE g.id IS NOT NULL),
+    '[]'::json
+  ) AS group_rows,
+  COALESCE(
+    json_agg(
+      DISTINCT jsonb_build_object(
         'permission_key', p.permission_key
       )
     ) FILTER (WHERE p.permission_key IS NOT NULL),
@@ -94,6 +119,15 @@ LEFT JOIN iam.roles r
 LEFT JOIN iam.role_permissions rp
   ON rp.instance_id = r.instance_id
  AND rp.role_id = r.id
+LEFT JOIN iam.account_groups ag
+  ON ag.instance_id = im.instance_id
+ AND ag.account_id = im.account_id
+ AND (ag.valid_from IS NULL OR ag.valid_from <= NOW())
+ AND (ag.valid_to IS NULL OR ag.valid_to > NOW())
+LEFT JOIN iam.groups g
+  ON g.instance_id = ag.instance_id
+ AND g.id = ag.group_id
+ AND g.is_active = true
 LEFT JOIN iam.permissions p
   ON p.instance_id = rp.instance_id
  AND p.id = rp.permission_id
@@ -119,6 +153,17 @@ const mapRoleRows = (roleRows: UserDetailRoleRow[] | null) =>
 
 const mapPermissionRows = (permissionRows: UserDetailRow['permission_rows']) =>
   permissionRows?.map((entry) => entry.permission_key) ?? [];
+
+const mapGroupRows = (groupRows: UserDetailGroupRow[] | null) =>
+  groupRows?.map((entry) => ({
+    groupId: entry.id,
+    groupKey: entry.group_key,
+    displayName: entry.display_name,
+    groupType: entry.group_type,
+    origin: entry.origin,
+    validFrom: entry.valid_from ?? undefined,
+    validTo: entry.valid_to ?? undefined,
+  })) ?? [];
 
 const mapUserDetailRow = (row: UserDetailRow): IamUserDetail => {
   const base = mapUserRowToListItem({
@@ -146,6 +191,7 @@ const mapUserDetailRow = (row: UserDetailRow): IamUserDetail => {
     avatarUrl: row.avatar_url ?? undefined,
     notes: row.notes ?? undefined,
     permissions: mapPermissionRows(row.permission_rows),
+    groups: mapGroupRows(row.group_rows),
     mainserverUserApplicationSecretSet: false,
   };
 };

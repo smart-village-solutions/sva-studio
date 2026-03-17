@@ -26,6 +26,7 @@ describe('evaluateAuthorizeDecision', () => {
         resourceType: 'content',
         organizationId: '22222222-2222-2222-8222-222222222222',
         sourceRoleIds: ['role-1'],
+        sourceGroupIds: [],
       },
     ];
 
@@ -40,6 +41,7 @@ describe('evaluateAuthorizeDecision', () => {
         action: 'content.write',
         resourceType: 'content',
         sourceRoleIds: ['role-1'],
+        sourceGroupIds: [],
       },
     ];
 
@@ -55,6 +57,7 @@ describe('evaluateAuthorizeDecision', () => {
         resourceType: 'content',
         organizationId: '33333333-3333-3333-8333-333333333333',
         sourceRoleIds: ['role-1'],
+        sourceGroupIds: [],
       },
     ];
 
@@ -70,6 +73,7 @@ describe('evaluateAuthorizeDecision', () => {
         resourceType: 'content',
         organizationId: '11111111-1111-1111-8111-111111111111',
         sourceRoleIds: ['role-parent'],
+        sourceGroupIds: [],
       },
     ];
 
@@ -99,6 +103,7 @@ describe('evaluateAuthorizeDecision', () => {
         action: 'content.read',
         resourceType: 'content',
         sourceRoleIds: ['role-1'],
+        sourceGroupIds: [],
       },
     ];
 
@@ -131,6 +136,7 @@ describe('evaluateAuthorizeDecision', () => {
         action: 'content.read',
         resourceType: 'content',
         sourceRoleIds: ['role-1'],
+        sourceGroupIds: [],
       },
     ];
 

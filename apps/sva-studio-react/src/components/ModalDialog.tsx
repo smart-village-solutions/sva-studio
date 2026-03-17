@@ -22,6 +22,7 @@ export const ModalDialog = ({
 }: ModalDialogProps) => {
   const triggerRef = React.useRef<HTMLElement | null>(null);
   const previousOpenRef = React.useRef(false);
+  const overlayCloseRef = React.useRef(false);
   const descriptionId = React.useId();
 
   React.useEffect(() => {
@@ -46,17 +47,37 @@ export const ModalDialog = ({
     triggerRef.current.focus();
   }, []);
 
+  const requestClose = React.useCallback(() => {
+    overlayCloseRef.current = true;
+    onClose();
+  }, [onClose]);
+
+  const handleOpenChange = React.useCallback(
+    (nextOpen: boolean) => {
+      if (nextOpen) {
+        overlayCloseRef.current = false;
+        return;
+      }
+      if (overlayCloseRef.current) {
+        overlayCloseRef.current = false;
+        return;
+      }
+      onClose();
+    },
+    [onClose]
+  );
+
   return (
-    <DialogPrimitive.Root open={open} onOpenChange={(nextOpen) => (!nextOpen ? onClose() : undefined)}>
+    <DialogPrimitive.Root open={open} onOpenChange={handleOpenChange}>
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay
           data-slot="dialog-overlay"
           className="fixed inset-0 z-50 bg-black/50 backdrop-blur-[1px]"
-          onClick={onClose}
+          onClick={requestClose}
         />
         <DialogPrimitive.Content
           role={role}
-          aria-describedby={descriptionId}
+          aria-describedby={description ? descriptionId : undefined}
           className={cn(
             'fixed left-1/2 top-1/2 z-50 w-full max-w-2xl -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-card p-6 shadow-2xl focus-visible:outline-none'
           )}
@@ -64,12 +85,11 @@ export const ModalDialog = ({
         >
           <header className="mb-4">
             <DialogPrimitive.Title className="text-lg font-semibold text-foreground">{title}</DialogPrimitive.Title>
-            <DialogPrimitive.Description
-              id={descriptionId}
-              className={description ? 'mt-1 text-sm text-muted-foreground' : 'sr-only'}
-            >
-              {description ?? title}
-            </DialogPrimitive.Description>
+            {description ? (
+              <DialogPrimitive.Description id={descriptionId} className="mt-1 text-sm text-muted-foreground">
+                {description}
+              </DialogPrimitive.Description>
+            ) : null}
           </header>
           {children}
         </DialogPrimitive.Content>

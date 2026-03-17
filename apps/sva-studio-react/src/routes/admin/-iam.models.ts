@@ -19,6 +19,34 @@ export type AuthorizeDecisionViewModel = {
 };
 
 const VALID_TABS: readonly IamCockpitTabKey[] = ['rights', 'governance', 'dsr'];
+const TAB_TRANSLATION_KEY_BY_VALUE = {
+  rights: 'admin.iam.tabs.rights',
+  governance: 'admin.iam.tabs.governance',
+  dsr: 'admin.iam.tabs.dsr',
+} as const satisfies Record<IamCockpitTabKey, string>;
+
+const GOVERNANCE_TYPE_TRANSLATION_KEY_BY_VALUE = {
+  permission_change: 'admin.iam.governance.types.permission_change',
+  delegation: 'admin.iam.governance.types.delegation',
+  impersonation: 'admin.iam.governance.types.impersonation',
+  legal_acceptance: 'admin.iam.governance.types.legal_acceptance',
+} as const;
+
+const DSR_TYPE_TRANSLATION_KEY_BY_VALUE = {
+  request: 'admin.iam.dsr.types.request',
+  export_job: 'admin.iam.dsr.types.export_job',
+  legal_hold: 'admin.iam.dsr.types.legal_hold',
+  profile_correction: 'admin.iam.dsr.types.profile_correction',
+  recipient_notification: 'admin.iam.dsr.types.recipient_notification',
+} as const;
+
+const DSR_STATUS_TRANSLATION_KEY_BY_VALUE = {
+  queued: 'admin.iam.dsr.status.queued',
+  in_progress: 'admin.iam.dsr.status.inProgress',
+  completed: 'admin.iam.dsr.status.completed',
+  blocked: 'admin.iam.dsr.status.blocked',
+  failed: 'admin.iam.dsr.status.failed',
+} as const;
 
 const readReasonCodeFromDiagnostics = (diagnostics: unknown): string | undefined => {
   if (!diagnostics || typeof diagnostics !== 'object') {
@@ -60,6 +88,19 @@ export const normalizeIamTab = (value: unknown): IamCockpitTabKey => {
 export const getFirstAllowedTab = (allowedTabs: readonly IamCockpitTabKey[]): IamCockpitTabKey =>
   allowedTabs[0] ?? 'rights';
 
+export const mapIamTabToTranslationKey = (tab: IamCockpitTabKey) => TAB_TRANSLATION_KEY_BY_VALUE[tab];
+
+export const mapGovernanceTypeToTranslationKey = (
+  value: keyof typeof GOVERNANCE_TYPE_TRANSLATION_KEY_BY_VALUE
+) => GOVERNANCE_TYPE_TRANSLATION_KEY_BY_VALUE[value];
+
+export const mapDsrTypeToTranslationKey = (value: keyof typeof DSR_TYPE_TRANSLATION_KEY_BY_VALUE) =>
+  DSR_TYPE_TRANSLATION_KEY_BY_VALUE[value];
+
+export const mapDsrCanonicalStatusToTranslationKey = (
+  value: keyof typeof DSR_STATUS_TRANSLATION_KEY_BY_VALUE
+) => DSR_STATUS_TRANSLATION_KEY_BY_VALUE[value];
+
 export const filterPermissions = (
   permissions: readonly EffectivePermission[],
   input: {
@@ -97,18 +138,7 @@ export const filterPermissions = (
 };
 
 export const mapDsrStatusToTranslationKey = (item: Pick<IamDsrCaseListItem, 'canonicalStatus'>) => {
-  switch (item.canonicalStatus) {
-    case 'queued':
-      return 'admin.iam.dsr.status.queued';
-    case 'in_progress':
-      return 'admin.iam.dsr.status.inProgress';
-    case 'completed':
-      return 'admin.iam.dsr.status.completed';
-    case 'blocked':
-      return 'admin.iam.dsr.status.blocked';
-    default:
-      return 'admin.iam.dsr.status.failed';
-  }
+  return mapDsrCanonicalStatusToTranslationKey(item.canonicalStatus);
 };
 
 export const mapDsrStatusTone = (item: Pick<IamDsrCaseListItem, 'canonicalStatus'>) => {

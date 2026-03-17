@@ -14,7 +14,9 @@ import {
 import { isUuid, readBoolean, readNumber, readObject, readString } from '../shared/input-readers';
 import { buildLogContext } from '../shared/log-context';
 import { dataSubjectRightsRequestSchema } from '../shared/schemas';
-import { asApiItem, asApiList, createApiError, readPage } from '../iam-account-management/api-helpers';
+import { asApiItem, asApiList, createApiError, readPage, requireIdempotencyKey, toPayloadHash } from '../iam-account-management/api-helpers';
+import { completeIdempotency, reserveIdempotency } from '../iam-account-management/shared';
+import { validateCsrf } from '../iam-account-management/csrf';
 import { listAdminDsrCases, loadDsrSelfServiceOverview } from './read-models';
 
 const logger = createSdkLogger({ component: 'iam-dsr', level: 'info' });
@@ -84,6 +86,27 @@ const withInstanceScopedDb = async <T>(
 ): Promise<T> => withScopedDbTransaction(resolvePool, instanceId, work);
 const buildDsrLogContext = (instanceId?: string) =>
   buildLogContext(instanceId, { includeTraceId: true });
+
+type ExportRequestInput = {
+  instanceId?: string;
+  format: ExportFormat;
+  async: boolean;
+};
+
+type AdminExportRequestInput = ExportRequestInput & {
+  targetKeycloakSubject: string;
+};
+
+type IdempotentTextResponse =
+  | {
+      kind: 'json';
+      payload: Record<string, unknown>;
+    }
+  | {
+      kind: 'text';
+      body: string;
+      contentType: string;
+    };
 
 const isAdminRole = (roles: readonly string[]): boolean => roles.some((role) => ADMIN_ROLES.has(role));
 
@@ -232,22 +255,104 @@ const toXmlNode = (name: string, value: unknown): string => {
 
 const toXml = (payload: ExportPayload): string => `<?xml version="1.0" encoding="UTF-8"?>${toXmlNode('dataExport', payload)}`;
 
-const parseExportFormat = (request: Request): ExportFormat | null => {
-  const url = new URL(request.url);
-  const format = (readString(url.searchParams.get('format')) ?? 'json').toLowerCase();
+const parseExportFormat = (value: unknown): ExportFormat | null => {
+  const format = (readString(value) ?? 'json').toLowerCase();
   if (!EXPORT_FORMATS.has(format)) {
     return null;
   }
   return format as ExportFormat;
 };
 
-const parseAsyncMode = (request: Request): boolean => {
-  const value = readString(new URL(request.url).searchParams.get('async'))?.toLowerCase();
-  return value === '1' || value === 'true';
+const parseAsyncMode = (value: unknown): boolean => {
+  const booleanValue = readBoolean(value);
+  if (typeof booleanValue === 'boolean') {
+    return booleanValue;
+  }
+  const normalizedValue = readString(value)?.toLowerCase();
+  if (!normalizedValue) {
+    return false;
+  }
+  return normalizedValue === '1' || normalizedValue === 'true';
 };
 
-const resolveInstanceId = (request: Request, fallback?: string): string | undefined => {
-  return readString(new URL(request.url).searchParams.get('instanceId')) ?? fallback;
+const parseExportRequestBody = async (
+  request: Request
+): Promise<{ ok: true; data: ExportRequestInput } | { ok: false; error: string }> => {
+  const body = await parseJsonBody(request);
+  if (!body) {
+    return { ok: false, error: 'invalid_request' };
+  }
+
+  const format = parseExportFormat(body.format);
+  if (!format) {
+    return { ok: false, error: 'invalid_export_format' };
+  }
+
+  return {
+    ok: true,
+    data: {
+      instanceId: readString(body.instanceId) ?? undefined,
+      format,
+      async: parseAsyncMode(body.async),
+    },
+  };
+};
+
+const parseAdminExportRequestBody = async (
+  request: Request
+): Promise<{ ok: true; data: AdminExportRequestInput } | { ok: false; error: string }> => {
+  const body = await parseJsonBody(request);
+  if (!body) {
+    return { ok: false, error: 'invalid_request' };
+  }
+
+  const format = parseExportFormat(body.format);
+  const targetKeycloakSubject = readString(body.targetKeycloakSubject);
+  if (!targetKeycloakSubject) {
+    return { ok: false, error: 'missing_target_keycloak_subject' };
+  }
+  if (!format) {
+    return { ok: false, error: 'invalid_export_format' };
+  }
+
+  return {
+    ok: true,
+    data: {
+      instanceId: readString(body.instanceId) ?? undefined,
+      targetKeycloakSubject,
+      format,
+      async: parseAsyncMode(body.async),
+    },
+  };
+};
+
+const resolveInstanceId = (input: { bodyInstanceId?: string; request: Request; fallback?: string }): string | undefined => {
+  const fromQuery = readString(new URL(input.request.url).searchParams.get('instanceId'));
+  return input.bodyInstanceId ?? fromQuery ?? input.fallback;
+};
+
+const asIdempotentTextResponse = (body: string, contentType: string): IdempotentTextResponse => ({
+  kind: 'text',
+  body,
+  contentType,
+});
+
+const toResponseFromIdempotencyPayload = (status: number, payload: unknown): Response => {
+  if (
+    payload &&
+    typeof payload === 'object' &&
+    'kind' in payload &&
+    (payload as { kind?: unknown }).kind === 'text'
+  ) {
+    const typedPayload = payload as { body?: unknown; contentType?: unknown };
+    return textResponse(
+      status,
+      typeof typedPayload.body === 'string' ? typedPayload.body : '',
+      typeof typedPayload.contentType === 'string' ? typedPayload.contentType : 'text/plain; charset=utf-8'
+    );
+  }
+
+  return jsonResponse(status, payload);
 };
 
 const resolveRetentionHours = () => {
@@ -899,7 +1004,22 @@ const parseDsrRequestType = (raw: unknown): DsrRequestType | null => {
 export const dataExportHandler = async (request: Request): Promise<Response> => {
   return withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
     return withAuthenticatedUser(request, async ({ user }) => {
-      const instanceId = resolveInstanceId(request, user.instanceId);
+      const csrfError = validateCsrf(request, getWorkspaceContext().requestId);
+      if (csrfError) {
+        return csrfError;
+      }
+
+      const exportRequestResult = await parseExportRequestBody(request);
+      if (!exportRequestResult.ok) {
+        return jsonResponse(400, { error: exportRequestResult.error });
+      }
+      const exportRequest = exportRequestResult.data;
+
+      const instanceId = resolveInstanceId({
+        bodyInstanceId: exportRequest.instanceId,
+        request,
+        fallback: user.instanceId,
+      });
       if (!instanceId) {
         return jsonResponse(400, { error: 'invalid_instance_id' });
       }
@@ -907,12 +1027,10 @@ export const dataExportHandler = async (request: Request): Promise<Response> => 
         return jsonResponse(403, { error: 'instance_scope_mismatch' });
       }
 
-      const format = parseExportFormat(request);
-      if (!format) {
-        return jsonResponse(400, { error: 'invalid_export_format' });
+      const idempotencyKey = requireIdempotencyKey(request, getWorkspaceContext().requestId);
+      if ('error' in idempotencyKey) {
+        return idempotencyKey.error;
       }
-
-      const useAsync = parseAsyncMode(request);
 
       try {
         return await withInstanceScopedDb(instanceId, async (client) => {
@@ -924,12 +1042,26 @@ export const dataExportHandler = async (request: Request): Promise<Response> => 
             return jsonResponse(404, { error: 'account_not_found' });
           }
 
-          if (useAsync) {
+          const reserve = await reserveIdempotency({
+            instanceId,
+            actorAccountId: account.id,
+            endpoint: 'POST:/iam/me/data-export',
+            idempotencyKey: idempotencyKey.key,
+            payloadHash: toPayloadHash(JSON.stringify(exportRequest)),
+          });
+          if (reserve.status === 'replay') {
+            return toResponseFromIdempotencyPayload(reserve.responseStatus, reserve.responseBody);
+          }
+          if (reserve.status === 'conflict') {
+            return jsonResponse(409, { error: 'idempotency_key_reuse', message: reserve.message });
+          }
+
+          if (exportRequest.async) {
             const job = await createAsyncExportJob(client, {
               instanceId,
               targetAccountId: account.id,
               requestedByAccountId: account.id,
-              format,
+              format: exportRequest.format,
             });
 
             const requestId = await createDsrRequest(client, {
@@ -938,7 +1070,7 @@ export const dataExportHandler = async (request: Request): Promise<Response> => 
               status: 'accepted',
               requesterAccountId: account.id,
               targetAccountId: account.id,
-              payload: { format, mode: 'async', exportJobId: job.id },
+              payload: { format: exportRequest.format, mode: 'async', exportJobId: job.id },
             });
 
             await appendDsrRequestEvent(client, {
@@ -946,7 +1078,7 @@ export const dataExportHandler = async (request: Request): Promise<Response> => 
               requestId,
               actorAccountId: account.id,
               eventType: 'export_job_queued',
-              payload: { exportJobId: job.id, format },
+              payload: { exportJobId: job.id, format: exportRequest.format },
             });
 
             await emitDsrAuditEvent(client, {
@@ -956,22 +1088,32 @@ export const dataExportHandler = async (request: Request): Promise<Response> => 
               payload: {
                 request_id: requestId,
                 export_job_id: job.id,
-                format,
+                format: exportRequest.format,
                 mode: 'async',
               },
             });
 
-            return jsonResponse(202, {
+            const responseBody = {
               exportJobId: job.id,
               status: job.status,
-              format,
+              format: exportRequest.format,
+            };
+            await completeIdempotency({
+              instanceId,
+              actorAccountId: account.id,
+              endpoint: 'POST:/iam/me/data-export',
+              idempotencyKey: idempotencyKey.key,
+              status: 'COMPLETED',
+              responseStatus: 202,
+              responseBody,
             });
+            return jsonResponse(202, responseBody);
           }
 
           const payload = await collectExportPayload(client, {
             instanceId,
             account,
-            format,
+            format: exportRequest.format,
           });
 
           const requestId = await createDsrRequest(client, {
@@ -980,7 +1122,7 @@ export const dataExportHandler = async (request: Request): Promise<Response> => 
             status: 'completed',
             requesterAccountId: account.id,
             targetAccountId: account.id,
-            payload: { format, mode: 'sync' },
+            payload: { format: exportRequest.format, mode: 'sync' },
             completedAt: new Date().toISOString(),
           });
 
@@ -989,7 +1131,7 @@ export const dataExportHandler = async (request: Request): Promise<Response> => 
             requestId,
             actorAccountId: account.id,
             eventType: 'export_delivered',
-            payload: { format, mode: 'sync' },
+            payload: { format: exportRequest.format, mode: 'sync' },
           });
 
           await emitDsrAuditEvent(client, {
@@ -998,19 +1140,50 @@ export const dataExportHandler = async (request: Request): Promise<Response> => 
             eventType: 'dsr_export_delivered',
             payload: {
               request_id: requestId,
-              format,
+              format: exportRequest.format,
               mode: 'sync',
               result: 'success',
             },
           });
 
-          if (format === 'json') {
-            return textResponse(200, JSON.stringify(payload, null, 2), 'application/json');
+          if (exportRequest.format === 'json') {
+            const body = JSON.stringify(payload, null, 2);
+            await completeIdempotency({
+              instanceId,
+              actorAccountId: account.id,
+              endpoint: 'POST:/iam/me/data-export',
+              idempotencyKey: idempotencyKey.key,
+              status: 'COMPLETED',
+              responseStatus: 200,
+              responseBody: asIdempotentTextResponse(body, 'application/json'),
+            });
+            return textResponse(200, body, 'application/json');
           }
-          if (format === 'csv') {
-            return textResponse(200, serializeExportPayload(format, payload), 'text/csv; charset=utf-8');
+          if (exportRequest.format === 'csv') {
+            const body = serializeExportPayload(exportRequest.format, payload);
+            await completeIdempotency({
+              instanceId,
+              actorAccountId: account.id,
+              endpoint: 'POST:/iam/me/data-export',
+              idempotencyKey: idempotencyKey.key,
+              status: 'COMPLETED',
+              responseStatus: 200,
+              responseBody: asIdempotentTextResponse(body, 'text/csv; charset=utf-8'),
+            });
+            return textResponse(200, body, 'text/csv; charset=utf-8');
           }
-          return textResponse(200, serializeExportPayload(format, payload), 'application/xml; charset=utf-8');
+
+          const body = serializeExportPayload(exportRequest.format, payload);
+          await completeIdempotency({
+            instanceId,
+            actorAccountId: account.id,
+            endpoint: 'POST:/iam/me/data-export',
+            idempotencyKey: idempotencyKey.key,
+            status: 'COMPLETED',
+            responseStatus: 200,
+            responseBody: asIdempotentTextResponse(body, 'application/xml; charset=utf-8'),
+          });
+          return textResponse(200, body, 'application/xml; charset=utf-8');
         });
       } catch (error) {
         logger.error('DSR self export failed', {
@@ -1028,7 +1201,7 @@ export const dataExportStatusHandler = async (request: Request): Promise<Respons
   return withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
     return withAuthenticatedUser(request, async ({ user }) => {
       const url = new URL(request.url);
-      const instanceId = resolveInstanceId(request, user.instanceId);
+      const instanceId = resolveInstanceId({ request, fallback: user.instanceId });
       const jobId = readString(url.searchParams.get('jobId'));
       const downloadFormat = readString(url.searchParams.get('download'))?.toLowerCase() as ExportFormat | undefined;
       if (!instanceId) {
@@ -1116,23 +1289,33 @@ export const adminDataExportHandler = async (request: Request): Promise<Response
         return jsonResponse(403, { error: 'forbidden' });
       }
 
-      const url = new URL(request.url);
-      const instanceId = resolveInstanceId(request, user.instanceId);
-      const targetSubject = readString(url.searchParams.get('targetKeycloakSubject'));
-      const format = parseExportFormat(request);
-      const useAsync = parseAsyncMode(request);
+      const csrfError = validateCsrf(request, getWorkspaceContext().requestId);
+      if (csrfError) {
+        return csrfError;
+      }
+
+      const exportRequestResult = await parseAdminExportRequestBody(request);
+      if (!exportRequestResult.ok) {
+        return jsonResponse(400, { error: exportRequestResult.error });
+      }
+      const exportRequest = exportRequestResult.data;
+
+      const instanceId = resolveInstanceId({
+        bodyInstanceId: exportRequest.instanceId,
+        request,
+        fallback: user.instanceId,
+      });
 
       if (!instanceId) {
         return jsonResponse(400, { error: 'invalid_instance_id' });
       }
-      if (!targetSubject) {
-        return jsonResponse(400, { error: 'missing_target_keycloak_subject' });
-      }
-      if (!format) {
-        return jsonResponse(400, { error: 'invalid_export_format' });
-      }
       if (user.instanceId && user.instanceId !== instanceId) {
         return jsonResponse(403, { error: 'instance_scope_mismatch' });
+      }
+
+      const idempotencyKey = requireIdempotencyKey(request, getWorkspaceContext().requestId);
+      if ('error' in idempotencyKey) {
+        return idempotencyKey.error;
       }
 
       try {
@@ -1143,42 +1326,66 @@ export const adminDataExportHandler = async (request: Request): Promise<Response
           });
           const target = await resolveAccountBySubject(client, {
             instanceId,
-            keycloakSubject: targetSubject,
+            keycloakSubject: exportRequest.targetKeycloakSubject,
           });
           if (!target) {
             return jsonResponse(404, { error: 'target_account_not_found' });
           }
 
-          if (useAsync) {
+          const reserve = await reserveIdempotency({
+            instanceId,
+            actorAccountId: actor ?? target.id,
+            endpoint: 'POST:/iam/admin/data-subject-rights/export',
+            idempotencyKey: idempotencyKey.key,
+            payloadHash: toPayloadHash(JSON.stringify(exportRequest)),
+          });
+          if (reserve.status === 'replay') {
+            return toResponseFromIdempotencyPayload(reserve.responseStatus, reserve.responseBody);
+          }
+          if (reserve.status === 'conflict') {
+            return jsonResponse(409, { error: 'idempotency_key_reuse', message: reserve.message });
+          }
+
+          if (exportRequest.async) {
             const job = await createAsyncExportJob(client, {
               instanceId,
               targetAccountId: target.id,
               requestedByAccountId: actor ?? target.id,
-              format,
+              format: exportRequest.format,
             });
             await emitDsrAuditEvent(client, {
               instanceId,
               accountId: actor,
               eventType: 'dsr_admin_export_requested',
               payload: {
-                target_subject: targetSubject,
+                target_subject: exportRequest.targetKeycloakSubject,
                 export_job_id: job.id,
-                format,
+                format: exportRequest.format,
                 mode: 'async',
               },
             });
-            return jsonResponse(202, {
+            const responseBody = {
               exportJobId: job.id,
               status: job.status,
-              format,
-              target: targetSubject,
+              format: exportRequest.format,
+              target: exportRequest.targetKeycloakSubject,
+            };
+            await completeIdempotency({
+              instanceId,
+              actorAccountId: actor ?? target.id,
+              endpoint: 'POST:/iam/admin/data-subject-rights/export',
+              idempotencyKey: idempotencyKey.key,
+              status: 'COMPLETED',
+              responseStatus: 202,
+              responseBody,
             });
+            return jsonResponse(202, responseBody);
           }
 
           const payload = await collectExportPayload(client, {
             instanceId,
             account: target,
-            format,
+            format: exportRequest.format,
           });
 
           await emitDsrAuditEvent(client, {
@@ -1186,20 +1393,51 @@ export const adminDataExportHandler = async (request: Request): Promise<Response
             accountId: actor,
             eventType: 'dsr_admin_export_delivered',
             payload: {
-              target_subject: targetSubject,
-              format,
+              target_subject: exportRequest.targetKeycloakSubject,
+              format: exportRequest.format,
               mode: 'sync',
               result: 'success',
             },
           });
 
-          if (format === 'json') {
-            return textResponse(200, JSON.stringify(payload, null, 2), 'application/json');
+          if (exportRequest.format === 'json') {
+            const body = JSON.stringify(payload, null, 2);
+            await completeIdempotency({
+              instanceId,
+              actorAccountId: actor ?? target.id,
+              endpoint: 'POST:/iam/admin/data-subject-rights/export',
+              idempotencyKey: idempotencyKey.key,
+              status: 'COMPLETED',
+              responseStatus: 200,
+              responseBody: asIdempotentTextResponse(body, 'application/json'),
+            });
+            return textResponse(200, body, 'application/json');
           }
-          if (format === 'csv') {
-            return textResponse(200, serializeExportPayload(format, payload), 'text/csv; charset=utf-8');
+          if (exportRequest.format === 'csv') {
+            const body = serializeExportPayload(exportRequest.format, payload);
+            await completeIdempotency({
+              instanceId,
+              actorAccountId: actor ?? target.id,
+              endpoint: 'POST:/iam/admin/data-subject-rights/export',
+              idempotencyKey: idempotencyKey.key,
+              status: 'COMPLETED',
+              responseStatus: 200,
+              responseBody: asIdempotentTextResponse(body, 'text/csv; charset=utf-8'),
+            });
+            return textResponse(200, body, 'text/csv; charset=utf-8');
           }
-          return textResponse(200, serializeExportPayload(format, payload), 'application/xml; charset=utf-8');
+
+          const body = serializeExportPayload(exportRequest.format, payload);
+          await completeIdempotency({
+            instanceId,
+            actorAccountId: actor ?? target.id,
+            endpoint: 'POST:/iam/admin/data-subject-rights/export',
+            idempotencyKey: idempotencyKey.key,
+            status: 'COMPLETED',
+            responseStatus: 200,
+            responseBody: asIdempotentTextResponse(body, 'application/xml; charset=utf-8'),
+          });
+          return textResponse(200, body, 'application/xml; charset=utf-8');
         });
       } catch (error) {
         logger.error('DSR admin export failed', {
@@ -1637,7 +1875,7 @@ export const dataSubjectRequestHandler = async (request: Request): Promise<Respo
 export const getMyDataSubjectRightsHandler = async (request: Request): Promise<Response> => {
   return withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
     return withAuthenticatedUser(request, async ({ user }) => {
-      const instanceId = resolveInstanceId(request, user.instanceId);
+      const instanceId = resolveInstanceId({ request, fallback: user.instanceId });
       if (!instanceId) {
         return createApiError(400, 'invalid_instance_id', 'Instanzkontext fehlt.', getWorkspaceContext().requestId);
       }
@@ -1676,7 +1914,7 @@ export const getMyDataSubjectRightsHandler = async (request: Request): Promise<R
 export const optionalProcessingExecuteHandler = async (request: Request): Promise<Response> => {
   return withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
     return withAuthenticatedUser(request, async ({ user }) => {
-      const instanceId = resolveInstanceId(request, user.instanceId);
+      const instanceId = resolveInstanceId({ request, fallback: user.instanceId });
       if (!instanceId) {
         return jsonResponse(400, { error: 'invalid_instance_id' });
       }
@@ -1967,7 +2205,7 @@ export const adminDataExportStatusHandler = async (request: Request): Promise<Re
       }
 
       const url = new URL(request.url);
-      const instanceId = resolveInstanceId(request, user.instanceId);
+      const instanceId = resolveInstanceId({ request, fallback: user.instanceId });
       const jobId = readString(url.searchParams.get('jobId'));
       const downloadFormat = readString(url.searchParams.get('download'))?.toLowerCase() as ExportFormat | undefined;
       if (!instanceId) {
@@ -2047,7 +2285,7 @@ export const listAdminDataSubjectRightsCasesHandler = async (request: Request): 
       }
 
       const url = new URL(request.url);
-      const instanceId = resolveInstanceId(request, user.instanceId);
+      const instanceId = resolveInstanceId({ request, fallback: user.instanceId });
       const type = readString(url.searchParams.get('type')) as IamDsrCaseListItem['type'] | undefined;
       const status = readString(url.searchParams.get('status')) as IamDsrCanonicalStatus | undefined;
       const search = readString(url.searchParams.get('search'));

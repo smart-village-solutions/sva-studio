@@ -44,6 +44,7 @@ vi.mock('@sva/sdk/server', () => ({
 
 import {
   authRoutePaths,
+  authServerRouteFactories,
   resolveAuthHandlers,
   verifyAuthRouteHandlerCoverage,
   wrapHandlersWithJsonErrorBoundary,
@@ -125,7 +126,11 @@ describe('auth.routes.server', () => {
 
       if (handlers.GET) {
         const response = await handlers.GET({ request });
-        expect(response.status).toBe(200);
+        if (path === '/iam/me/data-export' || path === '/iam/admin/data-subject-rights/export') {
+          expect(response.status).toBe(405);
+        } else {
+          expect(response.status).toBe(200);
+        }
       }
 
       if (handlers.POST) {
@@ -199,6 +204,7 @@ describe('auth.routes.server', () => {
       expect.objectContaining({
         method: 'GET',
         route: '/auth/me',
+        workspace_id: 'default',
         request_id: 'req-123',
         trace_id: '0123456789abcdef0123456789abcdef',
         error_type: 'Error',
@@ -228,6 +234,7 @@ describe('auth.routes.server', () => {
     expect(routingLogger.error).toHaveBeenCalledWith(
       'Unhandled exception in auth route handler',
       expect.objectContaining({
+        workspace_id: 'default',
         request_id: undefined,
         trace_id: undefined,
         error_type: 'string',
@@ -258,9 +265,142 @@ describe('auth.routes.server', () => {
     expect(routingLogger.error).toHaveBeenCalledWith(
       'Unhandled exception in auth route handler',
       expect.objectContaining({
+        workspace_id: 'default',
         trace_id: undefined,
       })
     );
+  });
+
+  it('logs workspace_id from headers when available', async () => {
+    const handlers = wrapHandlersWithJsonErrorBoundary({
+      GET: async () => {
+        throw new Error('boom');
+      },
+    });
+
+    await handlers.GET?.({
+      request: new Request('http://localhost/auth/me', {
+        headers: {
+          'x-workspace-id': 'de-musterhausen',
+        },
+      }),
+    });
+
+    expect(routingLogger.error).toHaveBeenCalledWith(
+      'Unhandled exception in auth route handler',
+      expect.objectContaining({
+        workspace_id: 'de-musterhausen',
+      })
+    );
+  });
+
+  it('prefers x-sva-workspace-id and x-instance-id header fallbacks for workspace logging', async () => {
+    const handlers = wrapHandlersWithJsonErrorBoundary({
+      GET: async () => {
+        throw new Error('boom');
+      },
+    });
+
+    await handlers.GET?.({
+      request: new Request('http://localhost/auth/me', {
+        headers: {
+          'x-sva-workspace-id': 'de-alt-workspace',
+        },
+      }),
+    });
+
+    expect(routingLogger.error).toHaveBeenCalledWith(
+      'Unhandled exception in auth route handler',
+      expect.objectContaining({
+        workspace_id: 'de-alt-workspace',
+      })
+    );
+
+    routingLogger.error.mockClear();
+
+    await handlers.GET?.({
+      request: new Request('http://localhost/auth/me', {
+        headers: {
+          'x-instance-id': 'de-instance-header',
+        },
+      }),
+    });
+
+    expect(routingLogger.error).toHaveBeenCalledWith(
+      'Unhandled exception in auth route handler',
+      expect.objectContaining({
+        workspace_id: 'de-instance-header',
+      })
+    );
+  });
+
+  it('falls back to instanceId query parameter for workspace logging', async () => {
+    const handlers = wrapHandlersWithJsonErrorBoundary({
+      GET: async () => {
+        throw new Error('boom');
+      },
+    });
+
+    await handlers.GET?.({
+      request: new Request('http://localhost/iam/me/permissions?instanceId=de-musterhausen'),
+    });
+
+    expect(routingLogger.error).toHaveBeenCalledWith(
+      'Unhandled exception in auth route handler',
+      expect.objectContaining({
+        workspace_id: 'de-musterhausen',
+      })
+    );
+  });
+
+  it('writes a stderr fallback when structured route logging itself throws', async () => {
+    const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+    routingLogger.error.mockImplementationOnce(() => {
+      throw new Error('logger down');
+    });
+    const handlers = wrapHandlersWithJsonErrorBoundary({
+      GET: async () => {
+        throw new Error('boom');
+      },
+    });
+
+    const response = await handlers.GET?.({
+      request: new Request('http://localhost/auth/me?instanceId=de-fallback', {
+        headers: {
+          'X-Request-Id': 'req-fallback',
+        },
+      }),
+    });
+
+    expect(response?.status).toBe(500);
+    expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining('"workspace_id":"de-fallback"'));
+    stderrSpy.mockRestore();
+  });
+
+  it('builds server route factories with wrapped handlers for declared auth paths', async () => {
+    const rootRoute = { id: 'root' } as never;
+    const dataExportIndex = authRoutePaths.indexOf('/iam/me/data-export');
+    const route = authServerRouteFactories[dataExportIndex]?.(rootRoute) as {
+      options: { path: string; server: { handlers: { GET: (ctx: { request: Request }) => Promise<Response> } } };
+    };
+
+    expect(route.options.path).toBe('/iam/me/data-export');
+
+    const response = await route.options.server.handlers.GET({
+      request: new Request('http://localhost/iam/me/data-export', {
+        headers: {
+          'X-Request-Id': 'req-route-factory',
+        },
+      }),
+    });
+
+    expect(response.status).toBe(405);
+    expect(response.headers.get('Allow')).toBe('POST');
+    await expect(response.json()).resolves.toEqual({
+      error: 'method_not_allowed',
+      message: 'HTTP-Methode nicht erlaubt.',
+      requestId: 'req-route-factory',
+    });
   });
 
   it('warns when auth route mappings diverge from declared paths', () => {

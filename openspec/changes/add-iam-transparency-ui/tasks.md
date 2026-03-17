@@ -19,9 +19,9 @@
 - [x] 3.1 Unit-Tests für neue ViewModels, Mapper und Filterlogik ergänzen
 - [x] 3.2 UI-Tests für Cockpit-Tabs, Privacy-Self-Service und angereicherte Admin-Ansichten ergänzen (inkl. Empty-State-CTA, Deny-Zustände und Fehler-Recovery)
 - [x] 3.3 API-/Integrationstests für neue oder geschärfte Transparenzfelder ergänzen (inkl. `impersonation_not_active`, `impersonation_expired`, 403-Deny und Diagnose-Allowlist)
-- [ ] 3.4 Barrierefreiheitsprüfungen für Tab-Navigation, Tabellen, Detailpanels und Statusmeldungen ergänzen (Fokus-Management, Live-Regionen, Tastaturbedienung)
+- [x] 3.4 Barrierefreiheitsprüfungen für Tab-Navigation, Tabellen, Detailpanels und Statusmeldungen ergänzen (Fokus-Management, Live-Regionen, Tastaturbedienung; roving tabindex, Home/End/Pfeiltasten, Dialog-Fokus-Restore, Live-Regionen in Privacy-/IAM-Statuspfaden)
 - [x] 3.5 E2E-Tests für End-to-End-Flows ergänzen (`/admin/iam` Tab-Wechsel + Drill-down, `/account/privacy` Erstaufruf + Statuspfade, Berechtigungsgrenzen)
-- [ ] 3.6 Performance-Nachweise für große Datenmengen ergänzen (Pagination, Filterlatenz, tab-spezifisches Lazy-Loading, keine Vollmengenabfrage)
+- [x] 3.6 Performance-Nachweise für große Datenmengen ergänzen (Pagination, Filterlatenz, tab-spezifisches Lazy-Loading, keine Vollmengenabfrage; Debounce + AbortController für Governance/DSR, nur aktiver Tab lädt initial)
 - [x] 3.7 i18n-Abdeckung für neue UI-Texte sicherstellen (Translation-Keys für `de` und `en`, keine hardcoded Strings)
 
 ## 4. Dokumentation

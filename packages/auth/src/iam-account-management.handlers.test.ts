@@ -77,6 +77,8 @@ const state = vi.hoisted(() => ({
   deactivateUserCalls: [] as string[],
   syncRolesImpl: null as null | ((keycloakSubject: string, roleNames: readonly string[]) => Promise<unknown> | unknown),
   syncRolesCalls: [] as Array<{ keycloakSubject: string; roleNames: readonly string[] }>,
+  timelineEvents: [] as Array<Record<string, unknown>>,
+  timelineError: null as Error | null,
 }));
 
 vi.mock('./middleware.server', () => ({
@@ -120,6 +122,15 @@ vi.mock('@opentelemetry/api', () => ({
 
 vi.mock('./redis.server', () => ({
   isRedisAvailable: vi.fn(async () => state.redisAvailable),
+}));
+
+vi.mock('./iam-account-management/user-timeline-query', () => ({
+  resolveUserTimeline: vi.fn(async () => {
+    if (state.timelineError) {
+      throw state.timelineError;
+    }
+    return state.timelineEvents;
+  }),
 }));
 
 vi.mock('pg', () => ({
@@ -298,6 +309,7 @@ import {
   getIamFeatureFlags,
   getMyProfileHandler,
   getUserHandler,
+  getUserTimelineHandler,
   healthLiveHandler,
   healthReadyHandler,
   listRolesHandler,
@@ -3335,6 +3347,8 @@ describe('iam-account-management additional handlers', () => {
       instanceId: 'de-musterhausen',
     };
     state.queryHandler = null;
+    state.timelineEvents = [];
+    state.timelineError = null;
     state.redisAvailable = true;
     state.listRolesImpl = null;
     state.createUserImpl = null;
@@ -3777,6 +3791,65 @@ describe('iam-account-management additional handlers', () => {
         path: '/api/v1/iam/health/live',
       })
     );
+  });
+
+  it('returns the unified user timeline', async () => {
+    state.timelineEvents = [
+      {
+        id: 'event-1',
+        category: 'governance',
+        eventType: 'delegation',
+        title: 'Support Delegate',
+        description: 'Requester -> Target',
+        occurredAt: '2026-03-18T10:00:00.000Z',
+        perspective: 'actor',
+        metadata: {},
+      },
+    ];
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id')) {
+        return { rowCount: 1, rows: [{ account_id: 'account-1' }] };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await getUserTimelineHandler(
+      new Request(`http://localhost/api/v1/iam/users/${targetUserId}/timeline`, { method: 'GET' })
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      data: state.timelineEvents,
+      pagination: {
+        page: 1,
+        pageSize: 1,
+        total: 1,
+      },
+      requestId: 'req-iam-handler',
+    });
+  });
+
+  it('returns database_unavailable when loading the user timeline fails', async () => {
+    state.timelineError = new Error('timeline unavailable');
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id')) {
+        return { rowCount: 1, rows: [{ account_id: 'account-1' }] };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await getUserTimelineHandler(
+      new Request(`http://localhost/api/v1/iam/users/${targetUserId}/timeline`, { method: 'GET' })
+    );
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toEqual({
+      error: {
+        code: 'database_unavailable',
+        message: 'IAM-Historie ist nicht erreichbar.',
+      },
+      requestId: 'req-iam-handler',
+    });
   });
 });
 

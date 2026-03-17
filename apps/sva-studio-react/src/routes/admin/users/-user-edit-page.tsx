@@ -60,6 +60,18 @@ const statusTranslationKeyByValue = {
   pending: 'account.status.pending',
 } as const;
 
+const historyCategoryTranslationKeyByValue = {
+  iam: 'admin.users.edit.historyCategory.iam',
+  governance: 'admin.users.edit.historyCategory.governance',
+  dsr: 'admin.users.edit.historyCategory.dsr',
+} as const;
+
+const historyPerspectiveTranslationKeyByValue = {
+  actor: 'admin.users.edit.historyPerspective.actor',
+  target: 'admin.users.edit.historyPerspective.target',
+  actor_and_target: 'admin.users.edit.historyPerspective.actor_and_target',
+} as const;
+
 const toFormValues = (input: ReturnType<typeof useUser>['user']): UserFormValues => ({
   firstName: input?.firstName ?? '',
   lastName: input?.lastName ?? '',
@@ -599,10 +611,10 @@ export const UserEditPage = ({ userId }: UserEditPageProps) => {
                       </div>
                       <div className="flex flex-wrap gap-2 text-xs">
                         <Badge className="rounded-full" variant="outline">
-                          {t(`admin.users.edit.historyCategory.${entry.category}` as const)}
+                          {t(historyCategoryTranslationKeyByValue[entry.category])}
                         </Badge>
                         <Badge className="rounded-full" variant="outline">
-                          {t(`admin.users.edit.historyPerspective.${entry.perspective}` as const)}
+                          {t(historyPerspectiveTranslationKeyByValue[entry.perspective])}
                         </Badge>
                       </div>
                     </div>

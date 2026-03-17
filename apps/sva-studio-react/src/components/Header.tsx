@@ -7,6 +7,7 @@
 import { Menu, Moon, Sun } from 'lucide-react';
 import React from 'react';
 
+import { OrganizationContextSwitcher } from './OrganizationContextSwitcher';
 import { Button } from './ui/button';
 import { t } from '../i18n';
 import { useAuth } from '../providers/auth-provider';
@@ -31,10 +32,17 @@ export default function Header({
 }: HeaderProps) {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const { mode, toggleMode } = useTheme();
+  const [isHydrated, setIsHydrated] = React.useState(false);
+  const resolvedMode = isHydrated ? mode : 'light';
+  const showOrganizationContext = isHydrated && isAuthenticated && !isLoading && !isAuthLoading && Boolean(user);
+
+  React.useEffect(() => {
+    setIsHydrated(true);
+  }, []);
 
   let authAction: React.ReactNode = null;
 
-  if (isLoading || isAuthLoading) {
+  if (!isHydrated || isLoading || isAuthLoading) {
     authAction = (
       <>
         <span role="status" aria-live="polite" className="sr-only">
@@ -66,7 +74,7 @@ export default function Header({
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur">
-      <div className="flex min-h-16 w-full items-center justify-between gap-3 px-4 py-3 text-sm text-foreground sm:px-6">
+      <div className="flex min-h-16 w-full items-center gap-3 px-4 py-3 text-sm text-foreground sm:px-6">
         <div className="flex min-w-0 items-center">
           {onOpenMobileNavigation ? (
             <Button
@@ -83,16 +91,21 @@ export default function Header({
             </Button>
           ) : null}
         </div>
-        <div className="flex flex-wrap items-center gap-3 text-muted-foreground sm:gap-4">
+        <div className="min-w-0 flex-1">
+          {showOrganizationContext ? <OrganizationContextSwitcher /> : null}
+        </div>
+        <div className="flex flex-wrap items-center justify-end gap-3 text-muted-foreground sm:gap-4">
           <Button
             type="button"
-            aria-label={mode === 'dark' ? t('shell.header.switchToLightMode') : t('shell.header.switchToDarkMode')}
+            aria-label={
+              resolvedMode === 'dark' ? t('shell.header.switchToLightMode') : t('shell.header.switchToDarkMode')
+            }
             onClick={toggleMode}
             variant="outline"
           >
-            {mode === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            {resolvedMode === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             <span className="hidden sm:inline">
-              {mode === 'dark' ? t('shell.header.themeModeDark') : t('shell.header.themeModeLight')}
+              {resolvedMode === 'dark' ? t('shell.header.themeModeDark') : t('shell.header.themeModeLight')}
             </span>
           </Button>
           {authAction}

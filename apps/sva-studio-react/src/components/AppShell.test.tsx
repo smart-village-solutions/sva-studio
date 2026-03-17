@@ -43,6 +43,10 @@ vi.mock('../providers/theme-provider', () => ({
   }),
 }));
 
+vi.mock('./OrganizationContextSwitcher', () => ({
+  OrganizationContextSwitcher: () => <div data-testid="organization-context-switcher">Organization Context</div>,
+}));
+
 /**
  * Führt nach jedem Test ein DOM-Cleanup aus.
  */

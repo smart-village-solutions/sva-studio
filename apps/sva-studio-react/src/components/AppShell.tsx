@@ -8,6 +8,7 @@ import React from 'react';
 
 import Header from './Header';
 import Sidebar from './Sidebar';
+import { t } from '../i18n';
 import { useAuth } from '../providers/auth-provider';
 
 type AppShellProps = Readonly<{
@@ -62,9 +63,9 @@ export default function AppShell({
           aria-busy={isLoading}
         >
           {isLoading ? (
-            <section aria-label="Inhalt lädt" className="space-y-4">
+            <section aria-label={t('shell.content.loadingLabel')} className="space-y-4">
               <span role="status" aria-live="polite" className="sr-only">
-                Inhalt wird geladen.
+                {t('shell.content.loadingStatus')}
               </span>
               <span aria-hidden="true" className="block h-8 w-48 animate-pulse rounded-md bg-muted" />
               <span aria-hidden="true" className="block h-24 w-full animate-pulse rounded-lg bg-card shadow-shell" />

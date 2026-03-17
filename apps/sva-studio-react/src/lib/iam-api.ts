@@ -253,6 +253,10 @@ export type DsrAdminCasesQuery = {
   readonly search?: string;
 };
 
+type IamRequestOptions = Readonly<{
+  signal?: AbortSignal;
+}>;
+
 const createIdempotencyKey = () => crypto.randomUUID();
 
 const readErrorPayload = async (response: Response): Promise<IamHttpError> => {
@@ -308,6 +312,43 @@ const requestJson = async <T>(input: string, init?: RequestInit): Promise<T> => 
   }
 
   return (await response.json()) as T;
+};
+
+const requestJsonOrText = async <T>(
+  input: string,
+  init?: RequestInit
+): Promise<T | { data: string }> => {
+  const { headers: initHeaders, ...restInit } = init ?? {};
+  const response = await fetch(input, {
+    credentials: 'include',
+    ...restInit,
+    headers: { Accept: 'application/json, text/plain, text/csv, application/xml', ...initHeaders },
+  });
+
+  const contentType = response.headers.get('content-type') ?? '';
+  if (!response.ok) {
+    if (!contentType.includes('application/json')) {
+      const requestId = response.headers.get('X-Request-Id') ?? undefined;
+      logDevelopmentApiError({
+        requestId,
+        status: response.status,
+        code: 'non_json_response',
+      });
+      throw new IamHttpError({
+        status: response.status,
+        code: 'non_json_response',
+        message: `Server antwortete mit ${response.status} (${contentType || 'unbekannter Content-Type'}) statt JSON.`,
+        requestId,
+      });
+    }
+    throw await readErrorPayload(response);
+  }
+
+  if (contentType.includes('application/json')) {
+    return (await response.json()) as T;
+  }
+
+  return { data: await response.text() };
 };
 
 const patchJson = async <TResponse, TPayload>(path: string, payload: TPayload) =>
@@ -516,7 +557,8 @@ export const reconcileRoles = async (): Promise<ApiItemResponse<RoleReconcileRep
   });
 
 export const listGovernanceCases = async (
-  query: GovernanceCasesQuery
+  query: GovernanceCasesQuery,
+  options?: IamRequestOptions
 ): Promise<ApiListResponse<IamGovernanceCaseListItem>> => {
   const params = new URLSearchParams({
     page: String(query.page),
@@ -533,7 +575,9 @@ export const listGovernanceCases = async (
     params.set('search', query.search);
   }
 
-  return requestJson<ApiListResponse<IamGovernanceCaseListItem>>(`/iam/governance/workflows?${params.toString()}`);
+  return requestJson<ApiListResponse<IamGovernanceCaseListItem>>(`/iam/governance/workflows?${params.toString()}`, {
+    signal: options?.signal,
+  });
 };
 
 export const getMyDataSubjectRights = async (): Promise<ApiItemResponse<IamDsrSelfServiceOverview>> =>
@@ -556,14 +600,17 @@ export const requestDataExport = async (input: {
   | ApiItemResponse<{ exportJobId: string; status: string; format: string }>
   | { exportJobId?: undefined; status?: undefined; format?: undefined; data?: unknown }
 > => {
-  const params = new URLSearchParams({
-    format: input.format,
+  return requestJsonOrText('/iam/me/data-export', {
+    method: 'POST',
+    headers: {
+      ...IAM_HEADERS,
+      'Idempotency-Key': createIdempotencyKey(),
+    },
+    body: JSON.stringify({
+      format: input.format,
+      async: input.async,
+    }),
   });
-  if (input.async) {
-    params.set('async', 'true');
-  }
-
-  return requestJson(`/iam/me/data-export?${params.toString()}`);
 };
 
 export const getDataExportStatus = async (
@@ -581,7 +628,8 @@ export const checkOptionalProcessing = async (): Promise<
   });
 
 export const listAdminDsrCases = async (
-  query: DsrAdminCasesQuery
+  query: DsrAdminCasesQuery,
+  options?: IamRequestOptions
 ): Promise<ApiListResponse<IamDsrCaseListItem>> => {
   const params = new URLSearchParams({
     page: String(query.page),
@@ -598,5 +646,7 @@ export const listAdminDsrCases = async (
     params.set('search', query.search);
   }
 
-  return requestJson<ApiListResponse<IamDsrCaseListItem>>(`/iam/admin/data-subject-rights/cases?${params.toString()}`);
+  return requestJson<ApiListResponse<IamDsrCaseListItem>>(`/iam/admin/data-subject-rights/cases?${params.toString()}`, {
+    signal: options?.signal,
+  });
 };

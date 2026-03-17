@@ -160,6 +160,45 @@ describe('Sidebar', () => {
     expect(screen.getByRole('link', { name: 'Datenschutz' }).getAttribute('href')).toBe('/admin/iam');
   });
 
+  it('schaltet die Sidebar um und verwaltet Flyout-Fokus und Hover im eingeklappten Zustand', () => {
+    useAuthMock.mockReturnValue({
+      ...unauthenticatedAuthState,
+      user: {
+        id: 'user-1',
+        name: 'Admin',
+        roles: ['system_admin'],
+      },
+      isAuthenticated: true,
+    });
+
+    render(<Sidebar />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Seitenleiste einklappen' }));
+    expect(screen.getByRole('button', { name: 'Seitenleiste ausklappen' })).toBeTruthy();
+
+    const usersToggle = screen.getByRole('button', { name: 'Benutzer' });
+    const usersItem = usersToggle.closest('li');
+    expect(usersItem).toBeTruthy();
+
+    fireEvent.focus(usersToggle);
+    expect(screen.getByRole('link', { name: 'Accounts' })).toBeTruthy();
+
+    fireEvent.blur(usersToggle, { relatedTarget: document.body });
+    expect(screen.queryByRole('link', { name: 'Accounts' })).toBeNull();
+
+    fireEvent.mouseEnter(usersItem!);
+    expect(screen.getByRole('link', { name: 'Accounts' })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('link', { name: 'Accounts' }));
+    expect(screen.queryByRole('link', { name: 'Accounts' })).toBeNull();
+
+    fireEvent.mouseEnter(usersItem!);
+    expect(screen.getByRole('link', { name: 'Accounts' })).toBeTruthy();
+
+    fireEvent.mouseLeave(usersItem!);
+    expect(screen.queryByRole('link', { name: 'Accounts' })).toBeNull();
+  });
+
   it('schliesst die mobile Navigation nach einem Klick auf einen Link', () => {
     const onMobileOpenChange = vi.fn();
     useAuthMock.mockReturnValue(unauthenticatedAuthState);

@@ -43,11 +43,19 @@ Das IAM speichert heute bereits Governance-Workflows, Betroffenenrechtsfälle, s
 - Entscheidung: Zugriff wird über eine verbindliche Access-Matrix auf Route-, Tab- und Feld-/Detail-Ebene abgesichert.
   - Begründung: Least-Privilege und Privacy-by-Default für Governance-/DSR-Daten.
   - Matrix-Minimum:
-    - Route `/admin/iam`: `iam_admin`, `support_admin`, `system_admin`
+    - Route `/admin/iam`: `iam_admin`, `support_admin`, `system_admin`, `security_admin`, `compliance_officer`
     - Tab `Rechte`: `iam_admin`, `support_admin`, `system_admin`
     - Tab `Governance` lesen: `iam_admin`, `support_admin`, `system_admin`, `security_admin`, `compliance_officer`
     - Tab `Betroffenenrechte`: `iam_admin`, `support_admin`, `system_admin`
     - `/account/privacy`: nur eigenes Subjekt, keine Fremddaten
+
+- Entscheidung: Mutierende Export-Starts und DSR-Export-Operationen verwenden ausschließlich `POST` mit CSRF-Schutz und `Idempotency-Key`.
+  - Begründung: Browser-Prefetch, Crawler und GET-Nebenwirkungen würden Datenschutz-Exporte unkontrollierbar machen.
+  - Folge: Legacy-`GET` auf den Start-Endpunkten bleibt dokumentiert, liefert aber deterministisch `405`.
+
+- Entscheidung: Legal-Text-Akzeptanz aus User- und Governance-Flows darf keine Stammdaten mehr implizit erzeugen oder aktivieren.
+  - Begründung: Rechtstext-Stammdaten sind privilegierte Verwaltungsdaten und dürfen nicht indirekt über Endnutzerflüsse mutiert werden.
+  - Folge: Accept-/Revoke-Flows validieren ausschließlich bestehende aktive Versionen.
 
 - Entscheidung: Diagnose- und Transparenzfelder folgen einem stabilen Exposition-Contract (Allowlist, keine Roh-Interna).
   - Begründung: Verhindert Informationsabfluss aus interner Policy- und Fehlerlogik.
@@ -81,6 +89,9 @@ Das IAM speichert heute bereits Governance-Workflows, Betroffenenrechtsfälle, s
 
 - Risiko: Performance-Einbruch bei großen Listen und Drill-downs.
   - Mitigation: Serverseitige Pagination/Filter/Sortierung, tab-spezifisches Lazy-Loading, On-Demand-Detailabrufe, Query-Cache-Strategie
+
+- Risiko: Neue Sicherheits- und UX-Härtung erhöht die Branch-Komplexität in Handlern und Routen.
+  - Mitigation: Zusätzliche Helper-Extraktion, Negativpfad-Tests und ein Patch-Coverage-Ziel von mindestens 90 Prozent für neuen/geänderten produktiven Code
 
 - Risiko: Vertragsdrift zwischen OpenSpec, API-Contract und OpenAPI.
   - Mitigation: Synchrone Aktualisierung von `docs/guides/iam-authorization-api-contract.md` und `docs/guides/iam-authorization-openapi-3.0.yaml` als Abnahmekriterium

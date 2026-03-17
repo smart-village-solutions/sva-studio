@@ -146,7 +146,7 @@ const SidebarPanel = ({
     <div className="flex h-full flex-col">
       <div className="px-4 py-4">
         <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
-          {!isCollapsed ? <p className="text-3xl font-semibold text-foreground">SVA Studio</p> : null}
+          {!isCollapsed ? <p className="text-3xl font-semibold text-foreground">{t('shell.appName')}</p> : null}
           <div className="flex items-center gap-2">
             {allowCollapse ? (
               <Button

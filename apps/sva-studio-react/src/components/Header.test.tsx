@@ -16,6 +16,10 @@ vi.mock('../providers/theme-provider', () => ({
   useTheme: () => useThemeMock(),
 }));
 
+vi.mock('./OrganizationContextSwitcher', () => ({
+  OrganizationContextSwitcher: () => <div data-testid="organization-context-switcher">Organization Context</div>,
+}));
+
 /**
  * Testet die Auth-bezogene Darstellung des Headers.
  */
@@ -57,6 +61,7 @@ describe('Header auth actions', () => {
     expect(screen.queryByRole('button', { name: 'Logout' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'Konto' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Dunklen Modus aktivieren' })).toBeTruthy();
+    expect(screen.queryByTestId('organization-context-switcher')).toBeNull();
   });
 
   it('zeigt für authenticated user Konto-Link und Logout', async () => {
@@ -90,9 +95,10 @@ describe('Header auth actions', () => {
     expect(screen.queryByRole('link', { name: 'Login' })).toBeNull();
     expect(screen.getByRole('link', { name: 'Mein Konto' }).getAttribute('href')).toBe('/account');
     expect(screen.queryByRole('link', { name: 'Benutzer' })).toBeNull();
+    expect(screen.getByTestId('organization-context-switcher')).toBeTruthy();
   });
 
-  it('zeigt auch für system_admin keine Navigationslinks im Header', () => {
+  it('zeigt auch für system_admin keine Navigationslinks im Header', async () => {
     useAuthMock.mockReturnValue({
       user: {
         id: 'user-admin',
@@ -116,7 +122,9 @@ describe('Header auth actions', () => {
 
     render(<Header />);
 
-    expect(screen.getByRole('button', { name: 'Logout' })).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Logout' })).toBeTruthy();
+    });
     expect(screen.queryByRole('link', { name: 'Benutzer' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'Rollen' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'Organisationen' })).toBeNull();
@@ -145,6 +153,7 @@ describe('Header auth actions', () => {
     expect(screen.getByText('Authentifizierungsstatus wird geladen.')).toBeTruthy();
     expect(screen.queryByRole('link', { name: 'Login' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Logout' })).toBeNull();
+    expect(screen.queryByTestId('organization-context-switcher')).toBeNull();
   });
 
   it('delegates theme toggle to the theme provider', async () => {

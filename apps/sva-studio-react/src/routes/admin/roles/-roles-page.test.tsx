@@ -438,8 +438,7 @@ describe('RolesPage', () => {
     render(<RolesPage />);
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Rolle anlegen' })[0]!);
-    const dialog = screen.getByRole('dialog', { name: 'Neue Rolle erstellen' });
-    fireEvent.mouseDown(dialog.parentElement!);
+    fireEvent.click(document.querySelector('[data-slot="dialog-overlay"]') as HTMLElement);
 
     await waitFor(() => {
       expect(screen.queryByRole('dialog', { name: 'Neue Rolle erstellen' })).toBeNull();
@@ -550,8 +549,7 @@ describe('RolesPage', () => {
     render(<RolesPage />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Rolle bearbeiten' }));
-    const dialog = screen.getByRole('dialog', { name: 'Rolle bearbeiten' });
-    fireEvent.mouseDown(dialog.parentElement!);
+    fireEvent.click(document.querySelector('[data-slot="dialog-overlay"]') as HTMLElement);
 
     await waitFor(() => {
       expect(screen.queryByRole('dialog', { name: 'Rolle bearbeiten' })).toBeNull();

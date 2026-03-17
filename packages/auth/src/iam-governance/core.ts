@@ -810,7 +810,6 @@ const acceptLegalText = async (
   const legalTextId = readString(payload.legalTextId);
   const legalTextVersion = readString(payload.legalTextVersion);
   const locale = readString(payload.locale) ?? 'de-DE';
-  const contentHash = readString(payload.contentHash) ?? 'unknown';
   if (!legalTextId || !legalTextVersion) {
     return {
       operation: revoked ? 'revoke_legal_acceptance' : 'accept_legal_text',
@@ -833,20 +832,16 @@ const acceptLegalText = async (
 
   const versionLookup = await client.query<{ id: string }>(
     `
-INSERT INTO iam.legal_text_versions (
-  instance_id,
-  legal_text_id,
-  legal_text_version,
-  locale,
-  content_hash,
-  is_active
-)
-VALUES ($1, $2, $3, $4, $5, true)
-ON CONFLICT (instance_id, legal_text_id, legal_text_version, locale) DO UPDATE
-SET is_active = true
-RETURNING id;
+SELECT id
+FROM iam.legal_text_versions
+WHERE instance_id = $1
+  AND legal_text_id = $2
+  AND legal_text_version = $3
+  AND locale = $4
+  AND is_active = true
+LIMIT 1;
 `,
-    [actor.instanceId, legalTextId, legalTextVersion, locale, contentHash]
+    [actor.instanceId, legalTextId, legalTextVersion, locale]
   );
 
   const legalVersionId = versionLookup.rows[0]?.id;
@@ -854,7 +849,7 @@ RETURNING id;
     return {
       operation: revoked ? 'revoke_legal_acceptance' : 'accept_legal_text',
       status: 'error',
-      reasonCode: 'database_unavailable',
+      reasonCode: 'legal_text_version_not_active',
     };
   }
 

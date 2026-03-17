@@ -9,6 +9,13 @@ import { buildLogContext } from '../shared/log-context';
 import { getFeatureFlags } from './feature-flags';
 import { liveInternal, readyInternal } from './platform-handlers';
 import {
+  createGroupInternal,
+  deleteGroupInternal,
+  getGroupInternal,
+  listGroupsInternal,
+  updateGroupInternal,
+} from './groups-handlers';
+import {
   createRoleInternal,
   deleteRoleInternal,
   listRolesInternal,
@@ -102,6 +109,21 @@ export const updateRoleHandler = async (request: Request): Promise<Response> =>
 
 export const deleteRoleHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedIamHandler(request, deleteRoleInternal);
+
+export const listGroupsHandler = async (request: Request): Promise<Response> =>
+  withAuthenticatedIamHandler(request, listGroupsInternal);
+
+export const createGroupHandler = async (request: Request): Promise<Response> =>
+  withAuthenticatedIamHandler(request, createGroupInternal);
+
+export const getGroupHandler = async (request: Request): Promise<Response> =>
+  withAuthenticatedIamHandler(request, getGroupInternal);
+
+export const updateGroupHandler = async (request: Request): Promise<Response> =>
+  withAuthenticatedIamHandler(request, updateGroupInternal);
+
+export const deleteGroupHandler = async (request: Request): Promise<Response> =>
+  withAuthenticatedIamHandler(request, deleteGroupInternal);
 
 export const healthReadyHandler = async (request: Request): Promise<Response> =>
   withIamRequestContext(request, () => readyInternal(request));

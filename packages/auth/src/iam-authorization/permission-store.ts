@@ -41,16 +41,32 @@ SELECT DISTINCT
   p.effect,
   p.scope,
   source.role_id,
+  source.group_id,
+  source.source_kind,
   $3::uuid AS organization_id
 FROM iam.accounts a
 JOIN (
-  SELECT ar.account_id, ar.role_id, ar.instance_id
+  SELECT ar.account_id, ar.role_id, ar.instance_id, NULL::uuid AS group_id, 'direct_role'::text AS source_kind
   FROM iam.account_roles ar
+  WHERE ar.valid_from <= NOW()
+    AND (ar.valid_to IS NULL OR ar.valid_to > NOW())
   UNION
-  SELECT d.delegatee_account_id AS account_id, d.role_id, d.instance_id
+  SELECT d.delegatee_account_id AS account_id, d.role_id, d.instance_id, NULL::uuid AS group_id, 'direct_role'::text AS source_kind
   FROM iam.delegations d
   WHERE d.status = 'active'
     AND now() BETWEEN d.starts_at AND d.ends_at
+  UNION
+  SELECT ag.account_id, gr.role_id, ag.instance_id, ag.group_id, 'group_role'::text AS source_kind
+  FROM iam.account_groups ag
+  JOIN iam.groups g
+    ON g.instance_id = ag.instance_id
+   AND g.id = ag.group_id
+   AND g.is_active = true
+  JOIN iam.group_roles gr
+    ON gr.instance_id = ag.instance_id
+   AND gr.group_id = ag.group_id
+  WHERE (ag.valid_from IS NULL OR ag.valid_from <= NOW())
+    AND (ag.valid_to IS NULL OR ag.valid_to > NOW())
 ) source
   ON source.account_id = a.id
  AND source.instance_id = $1
@@ -91,16 +107,32 @@ SELECT DISTINCT
   p.effect,
   p.scope,
   source.role_id,
+  source.group_id,
+  source.source_kind,
   ao.organization_id
 FROM iam.accounts a
 JOIN (
-  SELECT ar.account_id, ar.role_id, ar.instance_id
+  SELECT ar.account_id, ar.role_id, ar.instance_id, NULL::uuid AS group_id, 'direct_role'::text AS source_kind
   FROM iam.account_roles ar
+  WHERE ar.valid_from <= NOW()
+    AND (ar.valid_to IS NULL OR ar.valid_to > NOW())
   UNION
-  SELECT d.delegatee_account_id AS account_id, d.role_id, d.instance_id
+  SELECT d.delegatee_account_id AS account_id, d.role_id, d.instance_id, NULL::uuid AS group_id, 'direct_role'::text AS source_kind
   FROM iam.delegations d
   WHERE d.status = 'active'
     AND now() BETWEEN d.starts_at AND d.ends_at
+  UNION
+  SELECT ag.account_id, gr.role_id, ag.instance_id, ag.group_id, 'group_role'::text AS source_kind
+  FROM iam.account_groups ag
+  JOIN iam.groups g
+    ON g.instance_id = ag.instance_id
+   AND g.id = ag.group_id
+   AND g.is_active = true
+  JOIN iam.group_roles gr
+    ON gr.instance_id = ag.instance_id
+   AND gr.group_id = ag.group_id
+  WHERE (ag.valid_from IS NULL OR ag.valid_from <= NOW())
+    AND (ag.valid_to IS NULL OR ag.valid_to > NOW())
 ) source
   ON source.account_id = a.id
  AND source.instance_id = $1

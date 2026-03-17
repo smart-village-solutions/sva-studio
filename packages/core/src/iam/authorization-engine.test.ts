@@ -25,6 +25,7 @@ const basePermission = (): EffectivePermission => ({
   resourceType: 'document',
   organizationId: 'org-root',
   sourceRoleIds: ['role-1'],
+  sourceGroupIds: [],
 });
 
 describe('evaluateAuthorizeDecision', () => {
@@ -120,6 +121,7 @@ describe('evaluateAuthorizeDecision', () => {
           restrictedOrganizationIds: ['org-child'],
         },
         sourceRoleIds: ['role-restrictive'],
+        sourceGroupIds: [],
       },
     ]);
 
@@ -208,6 +210,74 @@ describe('evaluateAuthorizeDecision', () => {
     expect(result.allowed).toBe(false);
     expect(result.reason).toBe('abac_condition_unmet');
     expect(result.diagnostics?.stage).toBe('abac');
+  });
+
+  it('allows inherited geo-unit permissions for descendant geo units and reports provenance', () => {
+    const request: AuthorizeRequest = {
+      ...baseRequest(),
+      resource: {
+        ...baseRequest().resource,
+        attributes: {
+          geoUnitId: 'geo-child',
+          geoHierarchy: ['geo-root', 'geo-child'],
+        },
+      },
+    };
+
+    const result = evaluateAuthorizeDecision(request, [
+      {
+        ...basePermission(),
+        sourceGroupIds: ['group-1'],
+        provenance: { sourceKinds: ['group_role'] },
+        scope: {
+          allowedGeoUnitIds: ['geo-root'],
+        },
+      },
+    ]);
+
+    expect(result.allowed).toBe(true);
+    expect(result.reason).toBe('allowed_by_abac');
+    expect(result.provenance).toEqual({
+      sourceKinds: ['group_role'],
+      inheritedFromGeoUnitId: 'geo-root',
+    });
+  });
+
+  it('denies when a child geo-unit restriction overrides a parent allow', () => {
+    const request: AuthorizeRequest = {
+      ...baseRequest(),
+      resource: {
+        ...baseRequest().resource,
+        attributes: {
+          geoUnitId: 'geo-child',
+          geoHierarchy: ['geo-root', 'geo-child'],
+        },
+      },
+    };
+
+    const result = evaluateAuthorizeDecision(request, [
+      {
+        ...basePermission(),
+        scope: {
+          allowedGeoUnitIds: ['geo-root'],
+        },
+      },
+      {
+        ...basePermission(),
+        effect: 'deny',
+        provenance: { sourceKinds: ['direct_role'] },
+        scope: {
+          restrictedGeoUnitIds: ['geo-child'],
+        },
+      },
+    ]);
+
+    expect(result.allowed).toBe(false);
+    expect(result.reason).toBe('hierarchy_restriction');
+    expect(result.provenance).toEqual({
+      sourceKinds: ['direct_role'],
+      restrictedByGeoUnitId: 'geo-child',
+    });
   });
 
   it('denies when requireGeoScope is active but the resource scope is missing', () => {

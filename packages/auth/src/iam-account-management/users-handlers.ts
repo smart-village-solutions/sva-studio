@@ -20,6 +20,7 @@ import {
 import { ensureFeature, getFeatureFlags } from './feature-flags';
 import { consumeRateLimit } from './rate-limit';
 import {
+  assignGroups,
   assignRoles,
   completeIdempotency,
   emitActivityLog,
@@ -34,6 +35,7 @@ import {
   resolveActorInfo,
   resolveActorMaxRoleLevel,
   resolveIdentityProvider,
+  resolveGroupsByIds,
   resolveRolesByIds,
   resolveSystemAdminCount,
   trackKeycloakCall,
@@ -184,6 +186,16 @@ const resolveUserUpdatePlan = async (
       if (adminCount <= 1) {
         throw new Error('last_admin_protection:Letzter aktiver system_admin kann nicht deaktiviert werden.');
       }
+    }
+  }
+
+  if (input.payload.groupIds) {
+    const groups = await resolveGroupsByIds(client, {
+      instanceId: input.instanceId,
+      groupIds: input.payload.groupIds,
+    });
+    if (groups.length !== input.payload.groupIds.length) {
+      throw new Error('invalid_request:Mindestens eine Gruppe existiert nicht.');
     }
   }
 
@@ -450,6 +462,15 @@ export const updateUserInternal = async (
           });
         }
 
+        if (parsed.data.groupIds) {
+          await assignGroups(client, {
+            instanceId: actorResolution.actor.instanceId,
+            accountId: userId,
+            groupIds: parsed.data.groupIds,
+            origin: 'manual',
+          });
+        }
+
         await client.query(
           `
 UPDATE iam.accounts
@@ -487,6 +508,7 @@ WHERE id = $1::uuid
           payload: {
             status: parsed.data.status ?? plan.existing.status,
             role_update: Boolean(parsed.data.roleIds),
+            group_update: Boolean(parsed.data.groupIds),
           },
           requestId: actorResolution.actor.requestId,
           traceId: actorResolution.actor.traceId,
@@ -497,6 +519,14 @@ WHERE id = $1::uuid
             instanceId: actorResolution.actor.instanceId,
             keycloakSubject: plan.existing.keycloakSubject,
             trigger: 'user_role_changed',
+          });
+        }
+
+        if (parsed.data.groupIds) {
+          await notifyPermissionInvalidation(client, {
+            instanceId: actorResolution.actor.instanceId,
+            keycloakSubject: plan.existing.keycloakSubject,
+            trigger: 'user_group_changed',
           });
         }
 
@@ -553,6 +583,9 @@ WHERE id = $1::uuid
     }
     if (errorCode === 'not_found') {
       return createApiError(404, 'not_found', 'Nutzer nicht gefunden.', actorResolution.actor.requestId);
+    }
+    if (errorCode === 'invalid_request') {
+      return createApiError(400, 'invalid_request', errorDetail || 'Ungültiger Payload.', actorResolution.actor.requestId);
     }
     if (errorCode === 'last_admin_protection') {
       return createApiError(

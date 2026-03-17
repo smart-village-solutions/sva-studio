@@ -1,4 +1,5 @@
 const DEFAULT_SERVER_FN_BASE = '/_server/';
+const SERVER_FN_RESPONSE_BODY_DIAGNOSTICS_DISABLED = process.env.CI === 'true';
 
 export const SERVER_FN_HTML_ROUTER_FALLBACK_MESSAGE = 'Only HTML requests are supported here';
 
@@ -60,6 +61,10 @@ export const resolveServerFunctionBranchDecision = (input: {
 };
 
 export const readServerFunctionResponseBodyForDiagnostics = async (response: Response): Promise<string | null> => {
+  if (SERVER_FN_RESPONSE_BODY_DIAGNOSTICS_DISABLED || response.bodyUsed) {
+    return null;
+  }
+
   const contentType = response.headers.get('content-type')?.toLowerCase() ?? '';
   const shouldReadBody = contentType.includes('application/json') || contentType.includes('text/plain');
 

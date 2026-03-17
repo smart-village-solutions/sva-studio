@@ -302,20 +302,25 @@ vi.mock('./keycloak-admin-client', () => ({
 
 import {
   bulkDeactivateUsersHandler,
+  createGroupHandler,
   createRoleHandler,
   createUserHandler,
   deactivateUserHandler,
+  deleteGroupHandler,
   deleteRoleHandler,
   getIamFeatureFlags,
+  getGroupHandler,
   getMyProfileHandler,
   getUserHandler,
   getUserTimelineHandler,
   healthLiveHandler,
   healthReadyHandler,
+  listGroupsHandler,
   listRolesHandler,
   listUsersHandler,
   reconcileHandler,
   syncUsersFromKeycloakHandler,
+  updateGroupHandler,
   updateMyProfileHandler,
   updateRoleHandler,
   updateUserHandler,
@@ -325,6 +330,7 @@ import { KeycloakAdminRequestError } from './keycloak-admin-client';
 
 const targetUserId = 'bbbbbbbb-bbbb-4111-8bbb-bbbbbbbbbbbb';
 const targetRoleId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+const targetGroupId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
 
 const buildUserDetailRow = (status: 'active' | 'inactive' = 'active') => ({
   id: targetUserId,
@@ -1714,6 +1720,47 @@ describe('iam-account-management handlers (guards)', () => {
     expect(payload.error.code).toBe('last_admin_protection');
   });
 
+  it('rejects user updates when referenced groups do not exist', async () => {
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+
+      if (text.includes('MAX(r.role_level)')) {
+        return { rowCount: 1, rows: [{ max_role_level: 90 }] };
+      }
+
+      if (text.includes('WHERE a.id = $2::uuid')) {
+        return { rowCount: 1, rows: [buildUserDetailRow('active')] };
+      }
+
+      if (text.includes('FROM iam.groups') && text.includes('id = ANY($2::uuid[])')) {
+        return { rowCount: 0, rows: [] };
+      }
+
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await updateUserHandler(
+      new Request(`http://localhost/api/v1/iam/users/${targetUserId}`, {
+        method: 'PATCH',
+        headers: {
+          'content-type': 'application/json',
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'http://localhost',
+        },
+        body: JSON.stringify({
+          groupIds: [targetGroupId],
+        }),
+      })
+    );
+    const payload = (await response.json()) as { error: { code: string; message: string } };
+
+    expect(response.status).toBe(400);
+    expect(payload.error.code).toBe('invalid_request');
+    expect(payload.error.message).toContain('Mindestens eine Gruppe existiert nicht');
+  });
+
   it('rejects deactivation of the current user', async () => {
     state.user = {
       ...state.user,
@@ -1999,6 +2046,619 @@ describe('iam-account-management handlers (guards)', () => {
 
     expect(response.status).toBe(503);
     expect(payload.error.code).toBe('database_unavailable');
+  });
+
+  it('lists groups on happy path', async () => {
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+
+      if (text.includes('FROM iam.groups g') && text.includes('ORDER BY g.is_active DESC')) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              id: targetGroupId,
+              group_key: 'admins',
+              display_name: 'Admins',
+              description: 'Administrative Gruppe',
+              group_type: 'role_bundle',
+              is_active: true,
+              member_count: 2,
+              role_rows: [{ role_id: targetRoleId, role_key: 'system_admin', role_name: 'System Admin' }],
+            },
+          ],
+        };
+      }
+
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await listGroupsHandler(new Request('http://localhost/api/v1/iam/groups', { method: 'GET' }));
+    const payload = (await response.json()) as {
+      data: Array<{ id: string; groupKey: string; memberCount: number; roles: Array<{ roleKey: string }> }>;
+    };
+
+    expect(response.status).toBe(200);
+    expect(payload.data).toHaveLength(1);
+    expect(payload.data[0]?.id).toBe(targetGroupId);
+    expect(payload.data[0]?.groupKey).toBe('admins');
+    expect(payload.data[0]?.memberCount).toBe(2);
+    expect(payload.data[0]?.roles[0]?.roleKey).toBe('system_admin');
+  });
+
+  it('returns database_unavailable when listing groups fails', async () => {
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+
+      throw new Error('db unavailable');
+    };
+
+    const response = await listGroupsHandler(new Request('http://localhost/api/v1/iam/groups', { method: 'GET' }));
+    const payload = (await response.json()) as { error: { code: string } };
+
+    expect(response.status).toBe(503);
+    expect(payload.error.code).toBe('database_unavailable');
+  });
+
+  it('returns group details including current member assignments', async () => {
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+
+      if (text.includes('FROM iam.groups g') && text.includes('AND g.id = $2::uuid')) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              id: targetGroupId,
+              group_key: 'admins',
+              display_name: 'Admins',
+              description: 'Administrative Gruppe',
+              group_type: 'role_bundle',
+              is_active: true,
+              member_count: 1,
+              role_rows: [{ role_id: targetRoleId, role_key: 'system_admin', role_name: 'System Admin' }],
+              member_rows: [
+                {
+                  group_id: targetGroupId,
+                  group_key: 'admins',
+                  display_name: 'Admins',
+                  group_type: 'role_bundle',
+                  origin: 'manual',
+                  valid_from: '2026-03-17T10:00:00.000Z',
+                  valid_to: null,
+                },
+              ],
+            },
+          ],
+        };
+      }
+
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await getGroupHandler(
+      new Request(`http://localhost/api/v1/iam/groups/${targetGroupId}`, {
+        method: 'GET',
+      })
+    );
+    const payload = (await response.json()) as {
+      data: {
+        id: string;
+        roles: Array<{ roleKey: string }>;
+        members: Array<{ groupId: string; origin: string; validFrom?: string }>;
+      };
+    };
+
+    expect(response.status).toBe(200);
+    expect(payload.data.id).toBe(targetGroupId);
+    expect(payload.data.roles[0]?.roleKey).toBe('system_admin');
+    expect(payload.data.members).toEqual([
+      {
+        groupId: targetGroupId,
+        groupKey: 'admins',
+        displayName: 'Admins',
+        groupType: 'role_bundle',
+        origin: 'manual',
+        validFrom: '2026-03-17T10:00:00.000Z',
+      },
+    ]);
+  });
+
+  it('rejects getGroup for invalid group id path segment', async () => {
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await getGroupHandler(
+      new Request('http://localhost/api/v1/iam/groups/not-a-uuid', {
+        method: 'GET',
+      })
+    );
+    const payload = (await response.json()) as { error: { code: string } };
+
+    expect(response.status).toBe(400);
+    expect(payload.error.code).toBe('invalid_request');
+  });
+
+  it('creates a group successfully with an idempotency key', async () => {
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+
+      if (text.includes('INSERT INTO iam.idempotency_keys')) {
+        return { rowCount: 1, rows: [{ status: 'IN_PROGRESS' }] };
+      }
+
+      if (text.includes('FROM iam.roles') && text.includes('id = ANY($2::uuid[])')) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              id: targetRoleId,
+              role_key: 'system_admin',
+              role_name: 'system_admin',
+              display_name: 'System Admin',
+              external_role_name: 'system_admin',
+              role_level: 90,
+              is_system_role: true,
+            },
+          ],
+        };
+      }
+
+      if (text.includes('INSERT INTO iam.groups') && text.includes('RETURNING id')) {
+        return { rowCount: 1, rows: [{ id: targetGroupId }] };
+      }
+
+      if (text.includes('DELETE FROM iam.group_roles')) {
+        return { rowCount: 1, rows: [] };
+      }
+
+      if (text.includes('INSERT INTO iam.group_roles')) {
+        return { rowCount: 1, rows: [] };
+      }
+
+      if (text.includes('INSERT INTO iam.activity_logs') || text.includes('SELECT pg_notify')) {
+        return { rowCount: 1, rows: [] };
+      }
+
+      if (text.includes('FROM iam.groups g') && text.includes('AND g.id = $2::uuid')) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              id: targetGroupId,
+              group_key: 'admins',
+              display_name: 'Admins',
+              description: 'Administrative Gruppe',
+              group_type: 'role_bundle',
+              is_active: true,
+              member_count: 0,
+              role_rows: [{ role_id: targetRoleId, role_key: 'system_admin', role_name: 'System Admin' }],
+              member_rows: [],
+            },
+          ],
+        };
+      }
+
+      if (text.includes('UPDATE iam.idempotency_keys')) {
+        return { rowCount: 1, rows: [] };
+      }
+
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await createGroupHandler(
+      new Request('http://localhost/api/v1/iam/groups', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'http://localhost',
+          'idempotency-key': 'group-create-1',
+        },
+        body: JSON.stringify({
+          groupKey: 'admins',
+          displayName: 'Admins',
+          description: 'Administrative Gruppe',
+          roleIds: [targetRoleId],
+        }),
+      })
+    );
+
+    const payload = (await response.json()) as {
+      data: { id: string; groupKey: string; displayName: string; roles: Array<{ roleId: string }> };
+    };
+
+    expect(response.status).toBe(201);
+    expect(payload.data.id).toBe(targetGroupId);
+    expect(payload.data.groupKey).toBe('admins');
+    expect(payload.data.displayName).toBe('Admins');
+    expect(payload.data.roles).toEqual([
+      {
+        roleId: targetRoleId,
+        roleKey: 'system_admin',
+        roleName: 'System Admin',
+      },
+    ]);
+  });
+
+  it('rejects createGroup without idempotency key', async () => {
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await createGroupHandler(
+      new Request('http://localhost/api/v1/iam/groups', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'http://localhost',
+        },
+        body: JSON.stringify({
+          groupKey: 'admins',
+          displayName: 'Admins',
+          roleIds: [targetRoleId],
+        }),
+      })
+    );
+    const payload = (await response.json()) as { error: { code: string } };
+
+    expect(response.status).toBe(400);
+    expect(payload.error.code).toBe('idempotency_key_required');
+  });
+
+  it('returns conflict when creating a group with an existing group key', async () => {
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+
+      if (text.includes('INSERT INTO iam.idempotency_keys')) {
+        return { rowCount: 1, rows: [{ status: 'IN_PROGRESS' }] };
+      }
+
+      if (text.includes('FROM iam.roles') && text.includes('id = ANY($2::uuid[])')) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              id: targetRoleId,
+              role_key: 'system_admin',
+              role_name: 'system_admin',
+              display_name: 'System Admin',
+              external_role_name: 'system_admin',
+              role_level: 90,
+              is_system_role: true,
+            },
+          ],
+        };
+      }
+
+      if (text.includes('INSERT INTO iam.groups') && text.includes('RETURNING id')) {
+        throw new Error('groups_instance_key_uniq');
+      }
+
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await createGroupHandler(
+      new Request('http://localhost/api/v1/iam/groups', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'http://localhost',
+          'idempotency-key': 'group-create-conflict',
+        },
+        body: JSON.stringify({
+          groupKey: 'admins',
+          displayName: 'Admins',
+          roleIds: [targetRoleId],
+        }),
+      })
+    );
+    const payload = (await response.json()) as { error: { code: string } };
+
+    expect(response.status).toBe(409);
+    expect(payload.error.code).toBe('conflict');
+  });
+
+  it('rejects createGroup when iam admin features are disabled', async () => {
+    process.env.IAM_ADMIN_ENABLED = 'false';
+
+    const response = await createGroupHandler(
+      new Request('http://localhost/api/v1/iam/groups', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'http://localhost',
+          'idempotency-key': 'feature-disabled-create-group',
+        },
+        body: JSON.stringify({
+          groupKey: 'admins',
+          displayName: 'Admins',
+          roleIds: [targetRoleId],
+        }),
+      })
+    );
+    const payload = (await response.json()) as { error: { code: string } };
+
+    expect(response.status).toBe(503);
+    expect(payload.error.code).toBe('feature_disabled');
+  });
+
+  it('returns invalid_request when updating a group with unknown role ids', async () => {
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+
+      if (text.includes('FROM iam.roles') && text.includes('id = ANY($2::uuid[])')) {
+        return { rowCount: 0, rows: [] };
+      }
+
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await updateGroupHandler(
+      new Request(`http://localhost/api/v1/iam/groups/${targetGroupId}`, {
+        method: 'PATCH',
+        headers: {
+          'content-type': 'application/json',
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'http://localhost',
+        },
+        body: JSON.stringify({
+          displayName: 'Admins Updated',
+          roleIds: [targetRoleId],
+        }),
+      })
+    );
+
+    const payload = (await response.json()) as { error: { code: string; message: string } };
+
+    expect(response.status).toBe(400);
+    expect(payload.error.code).toBe('invalid_request');
+    expect(payload.error.message).toContain('Mindestens eine Rolle existiert nicht');
+  });
+
+  it('rejects updateGroup for invalid group id path segment', async () => {
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await updateGroupHandler(
+      new Request('http://localhost/api/v1/iam/groups/not-a-uuid', {
+        method: 'PATCH',
+        headers: {
+          'content-type': 'application/json',
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'http://localhost',
+        },
+        body: JSON.stringify({
+          displayName: 'Admins Updated',
+        }),
+      })
+    );
+    const payload = (await response.json()) as { error: { code: string } };
+
+    expect(response.status).toBe(400);
+    expect(payload.error.code).toBe('invalid_request');
+  });
+
+  it('updates a group successfully and reloads its detail payload', async () => {
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+
+      if (text.includes('FROM iam.roles') && text.includes('id = ANY($2::uuid[])')) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              id: targetRoleId,
+              role_key: 'system_admin',
+              role_name: 'system_admin',
+              display_name: 'System Admin',
+              external_role_name: 'system_admin',
+              role_level: 90,
+              is_system_role: true,
+            },
+          ],
+        };
+      }
+
+      if (text.includes('UPDATE iam.groups') && text.includes('RETURNING id;')) {
+        return { rowCount: 1, rows: [{ id: targetGroupId }] };
+      }
+
+      if (text.includes('DELETE FROM iam.group_roles') || text.includes('INSERT INTO iam.group_roles')) {
+        return { rowCount: 1, rows: [] };
+      }
+
+      if (text.includes('INSERT INTO iam.activity_logs') || text.includes('SELECT pg_notify')) {
+        return { rowCount: 1, rows: [] };
+      }
+
+      if (text.includes('FROM iam.groups g') && text.includes('AND g.id = $2::uuid')) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              id: targetGroupId,
+              group_key: 'admins',
+              display_name: 'Admins Updated',
+              description: 'Neue Beschreibung',
+              group_type: 'role_bundle',
+              is_active: false,
+              member_count: 0,
+              role_rows: [{ role_id: targetRoleId, role_key: 'system_admin', role_name: 'System Admin' }],
+              member_rows: [],
+            },
+          ],
+        };
+      }
+
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await updateGroupHandler(
+      new Request(`http://localhost/api/v1/iam/groups/${targetGroupId}`, {
+        method: 'PATCH',
+        headers: {
+          'content-type': 'application/json',
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'http://localhost',
+        },
+        body: JSON.stringify({
+          displayName: 'Admins Updated',
+          description: 'Neue Beschreibung',
+          isActive: false,
+          roleIds: [targetRoleId],
+        }),
+      })
+    );
+    const payload = (await response.json()) as {
+      data: { id: string; displayName: string; isActive: boolean; roles: Array<{ roleKey: string }> };
+    };
+
+    expect(response.status).toBe(200);
+    expect(payload.data).toMatchObject({
+      id: targetGroupId,
+      displayName: 'Admins Updated',
+      isActive: false,
+    });
+    expect(payload.data.roles[0]?.roleKey).toBe('system_admin');
+  });
+
+  it('returns not_found when deleting an unknown group', async () => {
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+
+      if (text.includes('UPDATE iam.groups') && text.includes('SET is_active = false')) {
+        return { rowCount: 0, rows: [] };
+      }
+
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await deleteGroupHandler(
+      new Request(`http://localhost/api/v1/iam/groups/${targetGroupId}`, {
+        method: 'DELETE',
+        headers: {
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'http://localhost',
+        },
+      })
+    );
+    const payload = (await response.json()) as { error: { code: string } };
+
+    expect(response.status).toBe(404);
+    expect(payload.error.code).toBe('not_found');
+  });
+
+  it('rejects deleteGroup for invalid group id path segment', async () => {
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await deleteGroupHandler(
+      new Request('http://localhost/api/v1/iam/groups/not-a-uuid', {
+        method: 'DELETE',
+        headers: {
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'http://localhost',
+        },
+      })
+    );
+    const payload = (await response.json()) as { error: { code: string } };
+
+    expect(response.status).toBe(400);
+    expect(payload.error.code).toBe('invalid_request');
+  });
+
+  it('deactivates a group successfully', async () => {
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+
+      if (text.includes('UPDATE iam.groups') && text.includes('SET is_active = false')) {
+        return { rowCount: 1, rows: [{ id: targetGroupId }] };
+      }
+
+      if (text.includes('INSERT INTO iam.activity_logs') || text.includes('SELECT pg_notify')) {
+        return { rowCount: 1, rows: [] };
+      }
+
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await deleteGroupHandler(
+      new Request(`http://localhost/api/v1/iam/groups/${targetGroupId}`, {
+        method: 'DELETE',
+        headers: {
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'http://localhost',
+        },
+      })
+    );
+
+    expect(response.status).toBe(204);
+    await expect(response.text()).resolves.toBe('');
+  });
+
+  it('returns not_found when reading an unknown group', async () => {
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+
+      if (text.includes('FROM iam.groups g') && text.includes('AND g.id = $2::uuid')) {
+        return { rowCount: 0, rows: [] };
+      }
+
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await getGroupHandler(
+      new Request(`http://localhost/api/v1/iam/groups/${targetGroupId}`, {
+        method: 'GET',
+      })
+    );
+    const payload = (await response.json()) as { error: { code: string } };
+
+    expect(response.status).toBe(404);
+    expect(payload.error.code).toBe('not_found');
   });
 
   it('rejects listRoles when iam admin features are disabled', async () => {

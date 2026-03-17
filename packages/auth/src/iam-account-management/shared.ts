@@ -250,6 +250,32 @@ WHERE instance_id = $1
   return result.rows;
 };
 
+export const resolveRoleIdsForGroups = async (
+  client: QueryClient,
+  input: { instanceId: string; groupIds: readonly string[] }
+): Promise<readonly string[]> => {
+  const uniqueGroupIds = [...new Set(input.groupIds)];
+  if (uniqueGroupIds.length === 0) {
+    return [];
+  }
+
+  const result = await client.query<{ role_id: string }>(
+    `
+SELECT DISTINCT gr.role_id
+FROM iam.group_roles gr
+JOIN iam.groups g
+  ON g.instance_id = gr.instance_id
+ AND g.id = gr.group_id
+ AND g.is_active = true
+WHERE gr.instance_id = $1
+  AND gr.group_id = ANY($2::uuid[]);
+`,
+    [input.instanceId, uniqueGroupIds]
+  );
+
+  return result.rows.map((row) => row.role_id);
+};
+
 const canAssignRoles = (input: {
   actorMaxRoleLevel: number;
   targetRoles: readonly IamRoleRow[];

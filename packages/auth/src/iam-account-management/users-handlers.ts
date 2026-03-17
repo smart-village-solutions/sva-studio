@@ -36,6 +36,7 @@ import {
   resolveActorMaxRoleLevel,
   resolveIdentityProvider,
   resolveGroupsByIds,
+  resolveRoleIdsForGroups,
   resolveRolesByIds,
   resolveSystemAdminCount,
   trackKeycloakCall,
@@ -197,6 +198,23 @@ const resolveUserUpdatePlan = async (
     });
     if (groups.length !== uniqueGroupIds.length) {
       throw new Error('invalid_request:Mindestens eine aktive Gruppe existiert nicht.');
+    }
+
+    if (!actorIsSystemAdmin) {
+      const bundledRoleIds = await resolveRoleIdsForGroups(client, {
+        instanceId: input.instanceId,
+        groupIds: uniqueGroupIds,
+      });
+      const roleValidation = await ensureRoleAssignmentWithinActorLevel({
+        client,
+        instanceId: input.instanceId,
+        actorSubject: input.actorSubject,
+        actorRoles: input.actorRoles,
+        roleIds: bundledRoleIds,
+      });
+      if (!roleValidation.ok) {
+        throw new Error(`${roleValidation.code}:${roleValidation.message}`);
+      }
     }
   }
 

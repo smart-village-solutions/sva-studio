@@ -490,7 +490,7 @@ Das System MUST im Abnahmepfad nachweisen, dass ein erfolgreicher Login determin
 
 #### Scenario: Erst-Login erzeugt oder verknüpft IAM-Account
 
-- **WHEN** ein Test-Benutzer sich in der Paket-1-/2-Testumgebung erstmals anmeldet
+- **WHEN** ein Test-Benutzer sich in der gemeinsamen Paket-1/2-Testumgebung erstmals anmeldet
 - **THEN** wird ein passender `iam.accounts`-Datensatz erzeugt oder wiederverwendet
 - **AND** die Verknüpfung zur Keycloak-Identity ist nachweisbar korrekt
 

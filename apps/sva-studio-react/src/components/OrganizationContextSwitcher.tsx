@@ -38,7 +38,7 @@ export const OrganizationContextSwitcher = () => {
   }
 
   return (
-    <div className="flex flex-col items-start gap-1 text-xs text-muted-foreground">
+    <div className="flex max-w-full flex-col items-start gap-1 text-xs text-muted-foreground">
       <div className="flex items-center gap-2">
         <Label htmlFor="organization-context-switcher">{t('shell.header.organizationContext')}</Label>
         <Select
@@ -52,7 +52,7 @@ export const OrganizationContextSwitcher = () => {
             }
             void organizationContext.switchOrganization(event.target.value);
           }}
-          className="h-8 w-auto min-w-40 px-2 py-1 text-sm"
+          className="h-8 w-auto min-w-40 max-w-full px-2 py-1 text-sm"
           disabled={organizationContext.isUpdating}
         >
           {options.map((organization) => (
@@ -63,7 +63,7 @@ export const OrganizationContextSwitcher = () => {
         </Select>
       </div>
       {activeOrganization ? (
-        <p className="max-w-xs text-[11px] leading-4 text-muted-foreground">
+        <p className="max-w-sm text-[11px] leading-4 text-muted-foreground">
           {[
             activeOrganization.organizationKey,
             activeOrganization.organizationType,

@@ -1,6 +1,11 @@
 export const i18nResources = {
   de: {
     shell: {
+      appName: 'SVA Studio',
+      content: {
+        loadingLabel: 'Inhalt lädt',
+        loadingStatus: 'Inhalt wird geladen.',
+      },
       header: {
         navAriaLabel: 'Hauptnavigation',
         authLoading: 'Authentifizierungsstatus wird geladen.',
@@ -755,6 +760,11 @@ export const i18nResources = {
   },
   en: {
     shell: {
+      appName: 'SVA Studio',
+      content: {
+        loadingLabel: 'Loading content',
+        loadingStatus: 'Content is loading.',
+      },
       header: {
         navAriaLabel: 'Main navigation',
         authLoading: 'Loading authentication status.',

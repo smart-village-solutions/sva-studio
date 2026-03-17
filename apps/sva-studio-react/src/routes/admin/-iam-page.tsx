@@ -27,8 +27,12 @@ import {
   filterPermissions,
   getFirstAllowedTab,
   mapAuthorizeDecision,
+  mapDsrCanonicalStatusToTranslationKey,
   mapDsrStatusToTranslationKey,
   mapDsrStatusTone,
+  mapDsrTypeToTranslationKey,
+  mapGovernanceTypeToTranslationKey,
+  mapIamTabToTranslationKey,
   type AuthorizeDecisionViewModel,
   type IamPermissionsQuery,
   type IamPermissionsResponse,
@@ -41,6 +45,8 @@ type IamApiErrorPayload = {
 type IamViewerPageProps = {
   readonly activeTab: IamCockpitTabKey;
 };
+
+const FILTER_REQUEST_DEBOUNCE_MS = 300;
 
 const buildPermissionsPath = (query: IamPermissionsQuery) => {
   const searchParams = new URLSearchParams();
@@ -93,6 +99,12 @@ const dsrStatusOptions = [
   'blocked',
   'failed',
  ] as const;
+
+const getTabId = (tab: IamCockpitTabKey) => `iam-tab-${tab}`;
+const getTabPanelId = (tab: IamCockpitTabKey) => `iam-panel-${tab}`;
+
+const isAbortError = (error: unknown) =>
+  (error instanceof DOMException || error instanceof Error) && error.name === 'AbortError';
 
 const PermissionTable = ({
   permissions,
@@ -259,6 +271,8 @@ const DsrDetail = ({ item }: Readonly<{ item: IamDsrCaseListItem | null }>) => {
 export function IamViewerPage({ activeTab }: IamViewerPageProps) {
   const navigate = useNavigate();
   const { user, isLoading: isLoadingUser, error: authError, invalidatePermissions } = useAuth();
+  const tabButtonRefs = React.useRef<Partial<Record<IamCockpitTabKey, HTMLButtonElement | null>>>({});
+  const shouldFocusActiveTabRef = React.useRef(false);
 
   const [instanceId, setInstanceId] = React.useState('');
   const [organizationId, setOrganizationId] = React.useState('');
@@ -302,6 +316,19 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
   const cockpitEnabled = isIamCockpitEnabled();
   const canAccessCockpit = hasIamCockpitAccessRole(user);
   const allowedTabs = React.useMemo(() => getAllowedIamCockpitTabs(user), [user]);
+  const governanceRequestQuery = React.useMemo(
+    () => ({ ...governanceQuery, search: governanceQuery.search?.trim() ?? '' }),
+    [governanceQuery]
+  );
+  const dsrRequestQuery = React.useMemo(() => ({ ...dsrQuery, search: dsrQuery.search?.trim() ?? '' }), [dsrQuery]);
+
+  const navigateToTab = React.useCallback(
+    (tab: IamCockpitTabKey, focusActiveTab = false) => {
+      shouldFocusActiveTabRef.current = focusActiveTab;
+      void navigate({ to: '/admin/iam', search: { tab } });
+    },
+    [navigate]
+  );
 
   React.useEffect(() => {
     setInstanceId(user?.instanceId ?? '');
@@ -312,13 +339,22 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
       return;
     }
     if (!allowedTabs.includes(activeTab)) {
-      void navigate({
-        to: '/admin/iam',
-        search: { tab: getFirstAllowedTab(allowedTabs) },
-        replace: true,
-      });
+      shouldFocusActiveTabRef.current = false;
+      void navigate({ to: '/admin/iam', search: { tab: getFirstAllowedTab(allowedTabs) }, replace: true });
     }
   }, [activeTab, allowedTabs, navigate]);
+
+  React.useEffect(() => {
+    if (!shouldFocusActiveTabRef.current) {
+      return;
+    }
+    const activeButton = tabButtonRefs.current[activeTab];
+    if (!activeButton) {
+      return;
+    }
+    shouldFocusActiveTabRef.current = false;
+    activeButton.focus();
+  }, [activeTab, allowedTabs]);
 
   React.useEffect(() => {
     if (!cockpitEnabled || !canAccessCockpit || !instanceId || activeTab !== 'rights') {
@@ -383,70 +419,80 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
       return;
     }
 
-    let active = true;
-    setIsLoadingGovernance(true);
-    setGovernanceError(null);
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      setIsLoadingGovernance(true);
+      setGovernanceError(null);
 
-    void listGovernanceCases(governanceQuery)
-      .then((response) => {
-        if (!active) {
-          return;
-        }
-        setGovernanceItems(response.data);
-        setSelectedGovernanceId((current) => current ?? response.data[0]?.id ?? null);
-      })
-      .catch((error) => {
-        if (!active) {
-          return;
-        }
-        setGovernanceItems([]);
-        setGovernanceError(error instanceof Error ? error.message : String(error));
-      })
-      .finally(() => {
-        if (active) {
-          setIsLoadingGovernance(false);
-        }
-      });
+      void listGovernanceCases(governanceRequestQuery, { signal: controller.signal })
+        .then((response) => {
+          if (controller.signal.aborted) {
+            return;
+          }
+          setGovernanceItems(response.data);
+          setSelectedGovernanceId((current) =>
+            response.data.some((item) => item.id === current) ? current : (response.data[0]?.id ?? null)
+          );
+        })
+        .catch((error) => {
+          if (isAbortError(error) || controller.signal.aborted) {
+            return;
+          }
+          setGovernanceItems([]);
+          setGovernanceError(error instanceof Error ? error.message : String(error));
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) {
+            setIsLoadingGovernance(false);
+          }
+        });
+    }, FILTER_REQUEST_DEBOUNCE_MS);
 
     return () => {
-      active = false;
+      window.clearTimeout(timer);
+      controller.abort();
     };
-  }, [activeTab, canAccessCockpit, cockpitEnabled, governanceQuery]);
+  }, [activeTab, canAccessCockpit, cockpitEnabled, governanceRequestQuery]);
 
   React.useEffect(() => {
     if (!cockpitEnabled || !canAccessCockpit || activeTab !== 'dsr') {
       return;
     }
 
-    let active = true;
-    setIsLoadingDsr(true);
-    setDsrError(null);
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      setIsLoadingDsr(true);
+      setDsrError(null);
 
-    void listAdminDsrCases(dsrQuery)
-      .then((response) => {
-        if (!active) {
-          return;
-        }
-        setDsrItems(response.data);
-        setSelectedDsrId((current) => current ?? response.data[0]?.id ?? null);
-      })
-      .catch((error) => {
-        if (!active) {
-          return;
-        }
-        setDsrItems([]);
-        setDsrError(error instanceof Error ? error.message : String(error));
-      })
-      .finally(() => {
-        if (active) {
-          setIsLoadingDsr(false);
-        }
-      });
+      void listAdminDsrCases(dsrRequestQuery, { signal: controller.signal })
+        .then((response) => {
+          if (controller.signal.aborted) {
+            return;
+          }
+          setDsrItems(response.data);
+          setSelectedDsrId((current) =>
+            response.data.some((item) => item.id === current) ? current : (response.data[0]?.id ?? null)
+          );
+        })
+        .catch((error) => {
+          if (isAbortError(error) || controller.signal.aborted) {
+            return;
+          }
+          setDsrItems([]);
+          setDsrError(error instanceof Error ? error.message : String(error));
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) {
+            setIsLoadingDsr(false);
+          }
+        });
+    }, FILTER_REQUEST_DEBOUNCE_MS);
 
     return () => {
-      active = false;
+      window.clearTimeout(timer);
+      controller.abort();
     };
-  }, [activeTab, canAccessCockpit, cockpitEnabled, dsrQuery]);
+  }, [activeTab, canAccessCockpit, cockpitEnabled, dsrRequestQuery]);
 
   const filteredPermissions = React.useMemo(
     () =>
@@ -524,6 +570,26 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
     }
   };
 
+  const handleTabKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, tabIndex: number) => {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
+      return;
+    }
+
+    event.preventDefault();
+    if (event.key === 'Home') {
+      navigateToTab(allowedTabs[0] ?? 'rights', true);
+      return;
+    }
+    if (event.key === 'End') {
+      navigateToTab(allowedTabs[allowedTabs.length - 1] ?? 'rights', true);
+      return;
+    }
+
+    const direction = event.key === 'ArrowRight' ? 1 : -1;
+    const nextIndex = (tabIndex + direction + allowedTabs.length) % allowedTabs.length;
+    navigateToTab(allowedTabs[nextIndex] ?? 'rights', true);
+  };
+
   const activeGovernanceItem = governanceItems.find((item) => item.id === selectedGovernanceId) ?? null;
   const activeDsrItem = dsrItems.find((item) => item.id === selectedDsrId) ?? null;
 
@@ -563,26 +629,38 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
       </header>
 
       <Card className="flex flex-wrap gap-2 p-2" role="tablist" aria-label={t('admin.iam.tabs.ariaLabel')}>
-        {allowedTabs.map((tab) => {
+        {allowedTabs.map((tab, tabIndex) => {
           const selected = tab === activeTab;
           return (
             <Button
               key={tab}
+              ref={(element) => {
+                tabButtonRefs.current[tab] = element;
+              }}
               type="button"
+              id={getTabId(tab)}
               role="tab"
+              tabIndex={selected ? 0 : -1}
+              aria-controls={getTabPanelId(tab)}
               aria-selected={selected}
               className={selected ? 'font-semibold' : 'text-muted-foreground'}
-              onClick={() => void navigate({ to: '/admin/iam', search: { tab } })}
+              onClick={() => navigateToTab(tab)}
+              onKeyDown={(event) => handleTabKeyDown(event, tabIndex)}
               variant={selected ? 'default' : 'ghost'}
             >
-              {t(`admin.iam.tabs.${tab}` as const)}
+              {t(mapIamTabToTranslationKey(tab))}
             </Button>
           );
         })}
       </Card>
 
       {activeTab === 'rights' ? (
-        <div className="space-y-4">
+        <div
+          id={getTabPanelId('rights')}
+          role="tabpanel"
+          aria-labelledby={getTabId('rights')}
+          className="space-y-4"
+        >
           <Card className="grid gap-3 p-4 lg:grid-cols-4">
             <div className="grid gap-1 text-xs uppercase tracking-wide text-muted-foreground">
               <Label htmlFor="iam-organization-filter">{t('admin.iam.rights.filters.organization')}</Label>
@@ -709,7 +787,12 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
       ) : null}
 
       {activeTab === 'governance' ? (
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(20rem,1fr)]">
+        <div
+          id={getTabPanelId('governance')}
+          role="tabpanel"
+          aria-labelledby={getTabId('governance')}
+          className="grid gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(20rem,1fr)]"
+        >
           <div className="space-y-4">
             <Card className="grid gap-3 p-4 md:grid-cols-3">
               <div className="grid gap-1 text-xs uppercase tracking-wide text-muted-foreground">
@@ -737,7 +820,7 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
                   <option value="">{t('admin.iam.shared.all')}</option>
                   {governanceTypeOptions.map((option) => (
                     <option key={option} value={option}>
-                      {t(`admin.iam.governance.types.${option}` as const)}
+                      {t(mapGovernanceTypeToTranslationKey(option))}
                     </option>
                   ))}
                 </Select>
@@ -781,7 +864,12 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
       ) : null}
 
       {activeTab === 'dsr' ? (
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(20rem,1fr)]">
+        <div
+          id={getTabPanelId('dsr')}
+          role="tabpanel"
+          aria-labelledby={getTabId('dsr')}
+          className="grid gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(20rem,1fr)]"
+        >
           <div className="space-y-4">
             <Card className="grid gap-3 p-4 md:grid-cols-3">
               <div className="grid gap-1 text-xs uppercase tracking-wide text-muted-foreground">
@@ -809,7 +897,7 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
                   <option value="">{t('admin.iam.shared.all')}</option>
                   {dsrTypeOptions.map((option) => (
                     <option key={option} value={option}>
-                      {t(`admin.iam.dsr.types.${option}` as const)}
+                      {t(mapDsrTypeToTranslationKey(option))}
                     </option>
                   ))}
                 </Select>
@@ -831,7 +919,7 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
                   <option value="">{t('admin.iam.shared.all')}</option>
                   {dsrStatusOptions.map((option) => (
                     <option key={option} value={option}>
-                      {t(`admin.iam.dsr.status.${option === 'in_progress' ? 'inProgress' : option}` as const)}
+                      {t(mapDsrCanonicalStatusToTranslationKey(option))}
                     </option>
                   ))}
                 </Select>

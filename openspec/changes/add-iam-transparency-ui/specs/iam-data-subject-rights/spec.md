@@ -10,6 +10,13 @@ Das System SHALL Betroffenenrechtsprozesse nicht nur per API, sondern auch über
 - **THEN** sieht er seine Betroffenenanfragen und Export-Jobs mit Status, Zeitstempeln und Ergebnis
 - **AND** blockierende Umstände wie Legal Holds oder Verarbeitungseinschränkungen sind verständlich kenntlich gemacht
 
+#### Scenario: Export-Starts sind gegen CSRF und unbeabsichtigte GET-Aufrufe gehärtet
+
+- **WHEN** ein Self-Service- oder Admin-Export gestartet wird
+- **THEN** erfolgt der Start ausschließlich über `POST`
+- **AND** der Request verlangt CSRF-konformen Browser-Kontext und einen `Idempotency-Key`
+- **AND** Legacy-`GET` auf den Export-Start-Endpunkten liefert `405 Method Not Allowed`
+
 #### Scenario: Admin-UI zeigt bearbeitbare DSR-Fälle
 
 - **WHEN** ein berechtigter Administrator die DSR-Sicht im IAM-Cockpit öffnet

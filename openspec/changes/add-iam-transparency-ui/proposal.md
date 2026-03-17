@@ -11,6 +11,8 @@ Im aktuellen IAM-Stand werden wesentliche Daten zwar gespeichert und teilweise �
 - Anreicherung bestehender Admin-Ansichten f체r Benutzer, Rollen, Organisationen und Organisationskontext um heute unsichtbare IAM-Metadaten
 - Pr채zisierung der Access-Control-Sicht, damit strukturierte Permission-Felder und Diagnoseinformationen konsistent in der UI nutzbar sind
 - Pr채zisierung der DSR-Capability, damit Status- und Admin-Bearbeitung nicht nur API-, sondern auch UI-seitig spezifiziert sind
+- Sicherheits- und Contract-H채rtung f체r mutierende Export-Operationen (`POST`, CSRF, `Idempotency-Key`) sowie striktere Legal-Text-Akzeptanz ohne Stammdaten-Mutation
+- Verbindlicher Qualit채tsnachweis: mindestens 90 Prozent Patch-Coverage f체r neuen und ge채nderten produktiven Code
 
 ## Impact
 

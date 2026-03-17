@@ -192,6 +192,67 @@ describe('UserEditPage', () => {
     });
   });
 
+  it('renders avatar initials and one-sided role validity labels without an avatar image', () => {
+    useUserMock.mockReturnValue({
+      user: {
+        ...baseUser,
+        avatarUrl: undefined,
+        displayName: 'Alice Admin',
+        roles: [
+          {
+            roleId: 'role-1',
+            roleName: 'system_admin',
+            roleLevel: 90,
+            validFrom: '2026-03-01T10:00:00.000Z',
+          },
+        ],
+      },
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      save: vi.fn(),
+    });
+    useRolesMock.mockReturnValue({
+      roles: [{ id: 'role-1', roleName: 'system_admin' }],
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      createRole: vi.fn(),
+      updateRole: vi.fn(),
+      deleteRole: vi.fn(),
+    });
+
+    const { rerender } = render(<UserEditPage userId="user-1" />);
+
+    expect(screen.getByText('AA')).toBeTruthy();
+    expect(screen.getByText(/Gültig ab /)).toBeTruthy();
+
+    useUserMock.mockReturnValue({
+      user: {
+        ...baseUser,
+        avatarUrl: undefined,
+        displayName: '   ',
+        roles: [
+          {
+            roleId: 'role-1',
+            roleName: 'system_admin',
+            roleLevel: 90,
+            validTo: '2026-03-31T10:00:00.000Z',
+          },
+        ],
+      },
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      save: vi.fn(),
+    });
+
+    rerender(<UserEditPage userId="user-1" />);
+
+    expect(screen.getByText('NA')).toBeTruthy();
+    expect(screen.getByText(/Gültig bis /)).toBeTruthy();
+  });
+
   it('submits updates and shows success state', async () => {
     const save = vi.fn().mockResolvedValue({
       ...baseUser,

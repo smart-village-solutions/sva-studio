@@ -68,6 +68,7 @@ vi.mock('pg', () => ({
 import {
   governanceComplianceExportHandler,
   governanceWorkflowHandler,
+  listGovernanceCasesHandler,
   resolveImpersonationSubject,
 } from './iam-governance.server';
 
@@ -695,7 +696,7 @@ describe('governanceWorkflowHandler', () => {
       if (text.includes('SELECT a.id')) {
         return { rowCount: 1, rows: [{ id: 'acc-actor' }] };
       }
-      if (text.includes('INSERT INTO iam.legal_text_versions')) {
+      if (text.includes('FROM iam.legal_text_versions')) {
         return { rowCount: 1, rows: [{ id: 'legal-version-1' }] };
       }
       return { rowCount: 0, rows: [] };
@@ -727,6 +728,45 @@ describe('governanceWorkflowHandler', () => {
         })
       );
     }
+  });
+
+  it('rejects legal text operations when no active version exists', async () => {
+    state.user = {
+      ...state.user,
+      roles: [],
+    };
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id')) {
+        return { rowCount: 1, rows: [{ id: 'acc-actor' }] };
+      }
+      if (text.includes('FROM iam.legal_text_versions')) {
+        return { rowCount: 0, rows: [] };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await governanceWorkflowHandler(
+      new Request('http://localhost/iam/governance/workflows', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          operation: 'accept_legal_text',
+          instanceId: 'de-musterhausen',
+          payload: {
+            legalTextId: 'privacy-notice',
+            legalTextVersion: 'v2',
+            locale: 'de-DE',
+          },
+        }),
+      })
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      operation: 'accept_legal_text',
+      status: 'error',
+      reasonCode: 'legal_text_version_not_active',
+    });
   });
 
   it('rejects legal text operations when required fields are missing', async () => {
@@ -898,6 +938,147 @@ describe('governanceComplianceExportHandler', () => {
 
     expect(response.status).toBe(403);
     expect(await response.json()).toEqual({ error: 'instance_scope_mismatch' });
+  });
+});
+
+describe('listGovernanceCasesHandler', () => {
+  beforeEach(() => {
+    process.env.IAM_DATABASE_URL = 'postgres://iam-test';
+    state.logger.debug.mockReset();
+    state.logger.info.mockReset();
+    state.logger.warn.mockReset();
+    state.logger.error.mockReset();
+    state.user = {
+      ...state.user,
+      roles: ['security_admin'],
+      instanceId: 'de-musterhausen',
+    };
+    state.queryHandler = null;
+  });
+
+  it('rejects governance transparency reads for users without the required role', async () => {
+    state.user = {
+      ...state.user,
+      roles: ['editor'],
+    };
+
+    const response = await listGovernanceCasesHandler(
+      new Request('http://localhost/iam/governance/workflows?instanceId=de-musterhausen')
+    );
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        code: 'forbidden',
+      },
+    });
+    expect(state.logger.warn).toHaveBeenCalledWith(
+      'Governance read denied due to missing role',
+      expect.objectContaining({
+        operation: 'list_governance_cases',
+        reason_code: 'forbidden',
+      })
+    );
+  });
+
+  it('rejects missing or cross-instance governance reads before querying', async () => {
+    state.user = {
+      ...state.user,
+      instanceId: '',
+    };
+
+    const missingInstanceResponse = await listGovernanceCasesHandler(
+      new Request('http://localhost/iam/governance/workflows')
+    );
+    expect(missingInstanceResponse.status).toBe(400);
+
+    state.user = {
+      ...state.user,
+      instanceId: 'de-musterhausen',
+    };
+
+    const crossInstanceResponse = await listGovernanceCasesHandler(
+      new Request('http://localhost/iam/governance/workflows?instanceId=fr-anderswo')
+    );
+
+    expect(crossInstanceResponse.status).toBe(403);
+  });
+
+  it('lists governance cases with filters and reports database failures', async () => {
+    state.queryHandler = (text, values) => {
+      if (text.includes('FROM iam.permission_change_requests request')) {
+        return { rowCount: 0, rows: [] };
+      }
+      if (text.includes('FROM iam.delegations delegation')) {
+        expect(values).toEqual(['de-musterhausen', null]);
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              id: 'delegation-1',
+              status: 'active',
+              ticket_id: 'IAM-123',
+              ticket_system: 'jira',
+              ticket_state: 'approved',
+              starts_at: '2026-03-10T10:00:00.000Z',
+              ends_at: '2026-03-12T10:00:00.000Z',
+              created_at: '2026-03-10T09:00:00.000Z',
+              updated_at: '2026-03-10T09:30:00.000Z',
+              revoked_at: null,
+              role_id: 'role-1',
+              role_name: 'editor',
+              role_display_name: 'Editor',
+              delegator_account_id: 'acc-actor',
+              delegatee_account_id: 'acc-target',
+              delegator_display_name_ciphertext: 'Alice',
+              delegator_first_name_ciphertext: 'Alice',
+              delegator_last_name_ciphertext: 'Admin',
+              delegator_keycloak_subject: 'actor-sub',
+              delegatee_display_name_ciphertext: 'Bob',
+              delegatee_first_name_ciphertext: 'Bob',
+              delegatee_last_name_ciphertext: 'Builder',
+              delegatee_keycloak_subject: 'target-sub',
+            },
+          ],
+        };
+      }
+      if (text.includes('FROM iam.impersonation_sessions session')) {
+        return { rowCount: 0, rows: [] };
+      }
+      if (text.includes('FROM iam.legal_text_acceptances acceptance')) {
+        return { rowCount: 0, rows: [] };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await listGovernanceCasesHandler(
+      new Request('http://localhost/iam/governance/workflows?instanceId=de-musterhausen&page=2&pageSize=10')
+    );
+    const payload = (await response.json()) as {
+      data: Array<{ id: string; type: string; ticketId?: string }>;
+      pagination: { page: number; pageSize: number; total: number };
+    };
+
+    expect(response.status).toBe(200);
+    expect(payload.pagination).toEqual({ page: 2, pageSize: 10, total: 1 });
+    expect(Array.isArray(payload.data)).toBe(true);
+
+    state.queryHandler = () => {
+      throw new Error('governance db down');
+    };
+
+    const errorResponse = await listGovernanceCasesHandler(
+      new Request('http://localhost/iam/governance/workflows?instanceId=de-musterhausen')
+    );
+
+    expect(errorResponse.status).toBe(503);
+    expect(state.logger.error).toHaveBeenCalledWith(
+      'Governance read failed',
+      expect.objectContaining({
+        operation: 'list_governance_cases',
+        error: 'governance db down',
+      })
+    );
   });
 });
 

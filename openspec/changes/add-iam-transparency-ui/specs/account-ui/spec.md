@@ -35,7 +35,7 @@ Das System MUST unter `/admin/iam` ein tab-basiertes Transparenz-Cockpit bereits
 - **WENN** ein Benutzer ohne ausreichende Berechtigung `/admin/iam` oder einen sensiblen Tab aufruft
 - **DANN** erhält er einen verweigerten Zustand ohne Leckage sensitiver Felder
 - **UND** die UI zeigt eine verständliche Meldung mit nächstem sicheren Schritt
-- **UND** die Route selbst bleibt auf `iam_admin`, `support_admin` und `system_admin` begrenzt
+- **UND** die Route selbst bleibt auf `iam_admin`, `support_admin`, `system_admin`, `security_admin` und `compliance_officer` begrenzt
 - **UND** der Tab `Governance` ist zusätzlich für `security_admin` und `compliance_officer` lesbar, ohne DSR- oder Rechte-Details freizuschalten
 
 #### Scenario: Große Datenmengen werden performanzstabil angezeigt

@@ -22,6 +22,7 @@ export const ModalDialog = ({
 }: ModalDialogProps) => {
   const triggerRef = React.useRef<HTMLElement | null>(null);
   const previousOpenRef = React.useRef(false);
+  const descriptionId = React.useId();
 
   React.useEffect(() => {
     const wasOpen = previousOpenRef.current;
@@ -37,36 +38,41 @@ export const ModalDialog = ({
     }
   }, [open]);
 
+  const handleCloseAutoFocus = React.useCallback((event: Event) => {
+    if (!triggerRef.current?.isConnected) {
+      return;
+    }
+    event.preventDefault();
+    triggerRef.current.focus();
+  }, []);
+
   return (
     <DialogPrimitive.Root open={open} onOpenChange={(nextOpen) => (!nextOpen ? onClose() : undefined)}>
       <DialogPrimitive.Portal>
-        <div className="fixed inset-0 z-50" onMouseDown={onClose}>
-          <button
-            type="button"
-            aria-label={title}
-            data-slot="dialog-overlay"
-            className="fixed inset-0 bg-black/50 p-0"
-          />
-          <DialogPrimitive.Content
-            aria-describedby={description ? undefined : undefined}
-            aria-label={title}
-            role={role}
-            className={cn(
-              'fixed left-1/2 top-1/2 z-50 w-full max-w-2xl -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-card p-6 shadow-2xl focus-visible:outline-none'
-            )}
-            onMouseDown={(event) => event.stopPropagation()}
-          >
-            <header className="mb-4">
-              <DialogPrimitive.Title className="text-lg font-semibold text-foreground">{title}</DialogPrimitive.Title>
-              {description ? (
-                <DialogPrimitive.Description className="mt-1 text-sm text-muted-foreground">
-                  {description}
-                </DialogPrimitive.Description>
-              ) : null}
-            </header>
-            {children}
-          </DialogPrimitive.Content>
-        </div>
+        <DialogPrimitive.Overlay
+          data-slot="dialog-overlay"
+          className="fixed inset-0 z-50 bg-black/50 backdrop-blur-[1px]"
+          onClick={onClose}
+        />
+        <DialogPrimitive.Content
+          role={role}
+          aria-describedby={descriptionId}
+          className={cn(
+            'fixed left-1/2 top-1/2 z-50 w-full max-w-2xl -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-card p-6 shadow-2xl focus-visible:outline-none'
+          )}
+          onCloseAutoFocus={handleCloseAutoFocus}
+        >
+          <header className="mb-4">
+            <DialogPrimitive.Title className="text-lg font-semibold text-foreground">{title}</DialogPrimitive.Title>
+            <DialogPrimitive.Description
+              id={descriptionId}
+              className={description ? 'mt-1 text-sm text-muted-foreground' : 'sr-only'}
+            >
+              {description ?? title}
+            </DialogPrimitive.Description>
+          </header>
+          {children}
+        </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>
   );

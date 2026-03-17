@@ -90,7 +90,7 @@ vi.mock('./admin/-iam-page', () => ({
 }));
 
 vi.mock('./admin/-iam.models', () => ({
-  normalizeIamTab: (...args: unknown[]) => normalizeIamTabMock(...args),
+  normalizeIamTab: (tab: unknown) => normalizeIamTabMock(tab),
 }));
 
 vi.mock('./admin/legal-texts/-legal-texts-page', () => ({
@@ -115,6 +115,17 @@ vi.mock('./admin/users/-user-list-page', () => ({
 
 import { coreRouteFactoriesBase, runtimeCoreRouteFactories } from './-core-routes';
 
+type RouteOptionsUnderTest = {
+  path?: string;
+  beforeLoad?: (options: unknown) => Promise<void> | void;
+  validateSearch?: (search: Record<string, unknown>) => unknown;
+  component?: () => React.ReactNode;
+};
+
+const readRouteOptions = (route: unknown): RouteOptionsUnderTest => {
+  return (route as { options: unknown }).options as RouteOptionsUnderTest;
+};
+
 describe('core routes', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -128,22 +139,22 @@ describe('core routes', () => {
   const buildRouteMap = () => {
     const rootRoute = { id: 'root' } as never;
     const routes = runtimeCoreRouteFactories.map((factory) => factory(rootRoute));
-    return new Map(routes.map((route) => [String((route as { options: { path?: string } }).options.path), route]));
+    return new Map(routes.map((route) => [String(readRouteOptions(route).path), route as unknown]));
   };
 
   it('configures guarded account and admin routes, including IAM tab normalization', async () => {
     const routes = buildRouteMap();
-    const privacyRoute = routes.get('/account/privacy') as { options: Record<string, unknown> };
-    const legalTextsRoute = routes.get('/admin/legal-texts') as { options: Record<string, unknown> };
-    const iamRoute = routes.get('/admin/iam') as { options: Record<string, unknown> };
-    const modulesRoute = routes.get('/modules') as { options: Record<string, unknown> };
-    const monitoringRoute = routes.get('/monitoring') as { options: Record<string, unknown> };
+    const privacyRoute = readRouteOptions(routes.get('/account/privacy'));
+    const legalTextsRoute = readRouteOptions(routes.get('/admin/legal-texts'));
+    const iamRoute = readRouteOptions(routes.get('/admin/iam'));
+    const modulesRoute = readRouteOptions(routes.get('/modules'));
+    const monitoringRoute = readRouteOptions(routes.get('/monitoring'));
 
-    await (privacyRoute.options.beforeLoad as (options: unknown) => Promise<void>)({ href: '/account/privacy' });
-    await (legalTextsRoute.options.beforeLoad as (options: unknown) => Promise<void>)({ href: '/admin/legal-texts' });
-    await (iamRoute.options.beforeLoad as (options: unknown) => Promise<void>)({ href: '/admin/iam' });
-    await (modulesRoute.options.beforeLoad as (options: unknown) => Promise<void>)({ href: '/modules' });
-    await (monitoringRoute.options.beforeLoad as (options: unknown) => Promise<void>)({ href: '/monitoring' });
+    await privacyRoute.beforeLoad?.({ href: '/account/privacy' });
+    await legalTextsRoute.beforeLoad?.({ href: '/admin/legal-texts' });
+    await iamRoute.beforeLoad?.({ href: '/admin/iam' });
+    await modulesRoute.beforeLoad?.({ href: '/modules' });
+    await monitoringRoute.beforeLoad?.({ href: '/monitoring' });
 
     expect(guardSpies.accountPrivacy).toHaveBeenCalledWith({ href: '/account/privacy' });
     expect(guardSpies.adminRoles).toHaveBeenCalledWith({ href: '/admin/legal-texts' });
@@ -151,21 +162,21 @@ describe('core routes', () => {
     expect(guardSpies.adminRoles).toHaveBeenCalledWith({ href: '/modules' });
     expect(guardSpies.adminRoles).toHaveBeenCalledWith({ href: '/monitoring' });
 
-    expect((iamRoute.options.validateSearch as (search: Record<string, unknown>) => unknown)({ tab: 'bogus' })).toEqual({
+    expect(iamRoute.validateSearch?.({ tab: 'bogus' })).toEqual({
       tab: 'governance',
     });
     expect(normalizeIamTabMock).toHaveBeenCalledWith('bogus');
 
-    render((iamRoute.options.component as () => React.ReactNode)());
+    render(iamRoute.component?.());
     expect(screen.getByText('IamViewerPage:governance')).toBeTruthy();
   });
 
   it('renders the new placeholder routes and explicit page components', () => {
     const routes = buildRouteMap();
     const renderPath = (path: string) => {
-      const route = routes.get(path) as { options: Record<string, unknown> };
+      const route = readRouteOptions(routes.get(path));
       cleanup();
-      render((route.options.component as () => React.ReactNode)());
+      render(route.component?.());
     };
 
     renderPath('/content');
@@ -198,9 +209,9 @@ describe('core routes', () => {
 
   it('keeps the user detail route param wiring and exports the composed factory list', () => {
     const routes = buildRouteMap();
-    const userDetailRoute = routes.get('/admin/users/$userId') as { options: Record<string, unknown> };
+    const userDetailRoute = readRouteOptions(routes.get('/admin/users/$userId'));
 
-    render((userDetailRoute.options.component as () => React.ReactNode)());
+    render(userDetailRoute.component?.());
 
     expect(screen.getByText('UserEditPage:user-1')).toBeTruthy();
     expect(coreRouteFactoriesBase).toHaveLength(runtimeCoreRouteFactories.length + 1);

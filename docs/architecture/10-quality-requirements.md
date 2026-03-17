@@ -31,6 +31,10 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
   - `pnpm nx show project sva-studio-react` zeigt explizite Targets mit definierten `inputs` und `outputs`
 - Unit-Test-Basis:
   - `pnpm test:unit` muss grün sein
+- IAM-Acceptance-Gate:
+  - `pnpm nx run sva-studio-react:test:acceptance` läuft als separates Delivery-Gate gegen die Testumgebung
+  - Bericht mit JSON- und Markdown-Artefakt wird unter `docs/reports/` geschrieben
+  - `/health/ready` sowie Login-, JIT-, Organisations- und Membership-Nachweise müssen im Bericht als `passed` erscheinen
 - IAM Authorize Performance:
   - P95 für `POST /iam/authorize` < 50 ms (mindestens 100 RPS / 500 gleichzeitige Nutzer als Zielprofil)
 - IAM Mandantenisolation (RLS):
@@ -126,6 +130,7 @@ Referenzen:
 - Org-Kontextwechsel darf den bestehenden `POST /iam/authorize`-Pfad nicht regressiv verschlechtern.
 - Negativtests für CSRF, instanzfremde Kontexte, Zyklusverletzungen und Deaktivierungskonflikte müssen grün sein.
 - Verifikationsnachweise für diesen Change werden in `docs/reports/iam-organization-management-verification-2026-03-09.md` festgehalten.
+- Verifikationsnachweise für die gehärtete IAM-Abnahme werden unter `docs/reports/iam-foundation-acceptance-*.md` und `docs/reports/iam-foundation-acceptance-*.json` versioniert.
 
 ### Ergänzung 2026-03: Qualitätsziele strukturierte Permission-Vererbung
 

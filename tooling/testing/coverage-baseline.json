@@ -12,6 +12,12 @@
       "functions": 51.03,
       "branches": 32.36
     },
+    "data": {
+      "lines": 87.87,
+      "statements": 85.64,
+      "functions": 57.14,
+      "branches": 66.1
+    },
     "monitoring-client": {
       "lines": 85.71,
       "statements": 85.71,
@@ -29,6 +35,12 @@
       "statements": 77.92,
       "functions": 78.72,
       "branches": 62.7
+    },
+    "sva-mainserver": {
+      "lines": 89.11,
+      "statements": 89,
+      "functions": 89.06,
+      "branches": 76.16
     }
   }
 }

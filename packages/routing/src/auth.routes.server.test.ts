@@ -165,7 +165,12 @@ describe('auth.routes.server', () => {
     expect(authServerMocks.updateMyOrganizationContextHandler).toHaveBeenCalled();
     expect(authServerMocks.deleteRoleHandler).toHaveBeenCalled();
     expect(authServerMocks.listLegalTextsHandler).toHaveBeenCalled();
+    expect(authServerMocks.createLegalTextHandler).toHaveBeenCalled();
     expect(authServerMocks.updateLegalTextHandler).toHaveBeenCalled();
+    expect(authServerMocks.listGovernanceCasesHandler).toHaveBeenCalled();
+    expect(authServerMocks.getUserTimelineHandler).toHaveBeenCalled();
+    expect(authServerMocks.getMyDataSubjectRightsHandler).toHaveBeenCalled();
+    expect(authServerMocks.listAdminDataSubjectRightsCasesHandler).toHaveBeenCalled();
     expect(authServerMocks.dataSubjectMaintenanceHandler).toHaveBeenCalled();
   });
 

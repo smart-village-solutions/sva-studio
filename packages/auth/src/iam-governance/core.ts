@@ -15,6 +15,13 @@ const MAX_IMPERSONATION_MINUTES = 120;
 const MAX_DELEGATION_DAYS = 30;
 const ALLOWED_TICKET_STATES = new Set(['open', 'in_progress', 'approved_for_execution']);
 const GOVERNANCE_WORKFLOW_ROLES = new Set(['iam_admin', 'support_admin', 'system_admin']);
+const GOVERNANCE_READ_ROLES = new Set([
+  'iam_admin',
+  'support_admin',
+  'system_admin',
+  'security_admin',
+  'compliance_officer',
+]);
 const GOVERNANCE_COMPLIANCE_EXPORT_ROLES = new Set([
   'iam_admin',
   'system_admin',
@@ -1059,7 +1066,7 @@ export const governanceWorkflowHandler = async (request: Request): Promise<Respo
 export const listGovernanceCasesHandler = async (request: Request): Promise<Response> => {
   return withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
     return withAuthenticatedUser(request, async ({ user }) => {
-      if (!hasRequiredRole(user.roles, GOVERNANCE_COMPLIANCE_EXPORT_ROLES)) {
+      if (!hasRequiredRole(user.roles, GOVERNANCE_READ_ROLES)) {
         logger.warn('Governance read denied due to missing role', {
           operation: 'list_governance_cases',
           reason_code: 'forbidden',

@@ -16,6 +16,10 @@ vi.mock('../providers/theme-provider', () => ({
   useTheme: () => useThemeMock(),
 }));
 
+vi.mock('@tanstack/react-router', () => ({
+  Link: ({ to, children }: { to: string; children: React.ReactNode }) => <a href={to}>{children}</a>,
+}));
+
 vi.mock('./OrganizationContextSwitcher', () => ({
   OrganizationContextSwitcher: () => <div data-testid="organization-context-switcher">Organization Context</div>,
 }));

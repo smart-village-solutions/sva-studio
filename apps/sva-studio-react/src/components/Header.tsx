@@ -6,6 +6,7 @@
  */
 import { Menu, Moon, Sun } from 'lucide-react';
 import React from 'react';
+import { Link } from '@tanstack/react-router';
 
 import { OrganizationContextSwitcher } from './OrganizationContextSwitcher';
 import { Button } from './ui/button';
@@ -61,7 +62,7 @@ export default function Header({
     authAction = (
       <>
         <Button asChild className="ml-2" variant="outline">
-          <a href="/account">{t('shell.sidebar.account')}</a>
+          <Link to="/account">{t('shell.sidebar.account')}</Link>
         </Button>
         <form action="/auth/logout" method="post" className="ml-2">
           <Button type="submit" variant="destructive">

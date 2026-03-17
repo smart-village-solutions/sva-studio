@@ -57,9 +57,11 @@ coverage:
         - apps/sva-studio-react/
         - packages/core/
         - packages/auth/
+        - packages/data/
         - packages/sdk/
         - packages/routing/
         - packages/monitoring-client/
+        - packages/sva-mainserver/
 
 # Comment format optimized for PR reviews
 comment:

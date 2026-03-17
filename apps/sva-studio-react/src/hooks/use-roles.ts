@@ -14,6 +14,7 @@ import {
   type UpdateRolePayload,
 } from '../lib/iam-api';
 import { useAuth } from '../providers/auth-provider';
+import { useIamAdminList } from './use-iam-admin-list';
 
 type UseRolesResult = {
   readonly roles: readonly IamRoleListItem[];
@@ -32,80 +33,35 @@ type UseRolesResult = {
 
 export const useRoles = (): UseRolesResult => {
   const { invalidatePermissions } = useAuth();
-
-  const [roles, setRoles] = React.useState<readonly IamRoleListItem[]>([]);
-  const [isLoading, setIsLoading] = React.useState(true);
-  const [error, setError] = React.useState<IamHttpError | null>(null);
-  const [mutationError, setMutationError] = React.useState<IamHttpError | null>(null);
   const [reconcileReport, setReconcileReport] = React.useState<RoleReconcileReport | null>(null);
-
-  const refetch = React.useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const response = await listRoles();
-      setRoles(response.data);
-    } catch (cause) {
-      const resolvedError = asIamError(cause);
-      if (resolvedError.status === 403) {
-        await invalidatePermissions();
-      }
-      setRoles([]);
-      setError(resolvedError);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [invalidatePermissions]);
-
-  React.useEffect(() => {
-    void refetch();
-  }, [refetch]);
-
-  const mutate = React.useCallback(
-    async (action: () => Promise<unknown>) => {
-      setMutationError(null);
-      try {
-        await action();
-        await refetch();
-        return true;
-      } catch (cause) {
-        const resolvedError = asIamError(cause);
-        if (resolvedError.status === 403) {
-          await invalidatePermissions();
-        }
-        setMutationError(resolvedError);
-        return false;
-      }
-    },
-    [invalidatePermissions, refetch]
-  );
+  const adminList = useIamAdminList(listRoles, invalidatePermissions);
 
   return {
-    roles,
-    isLoading,
-    error,
-    mutationError,
+    roles: adminList.items,
+    isLoading: adminList.isLoading,
+    error: adminList.error,
+    mutationError: adminList.mutationError,
     reconcileReport,
-    refetch,
-    clearMutationError: () => setMutationError(null),
-    createRole: (payload) => mutate(() => createRole(payload)),
-    updateRole: (roleId, payload) => mutate(() => updateRole(roleId, payload)),
-    deleteRole: (roleId) => mutate(() => deleteRole(roleId)),
-    retryRoleSync: (roleId) => mutate(() => updateRole(roleId, { retrySync: true })),
+    refetch: adminList.refetch,
+    clearMutationError: adminList.clearMutationError,
+    createRole: (payload) => adminList.runMutation(() => createRole(payload)),
+    updateRole: (roleId, payload) => adminList.runMutation(() => updateRole(roleId, payload)),
+    deleteRole: (roleId) => adminList.runMutation(() => deleteRole(roleId)),
+    retryRoleSync: (roleId) => adminList.runMutation(() => updateRole(roleId, { retrySync: true })),
     reconcile: async () => {
-      setError(null);
+      adminList.setError(null);
+      setReconcileReport(null);
       try {
         const response = await reconcileRoles();
         setReconcileReport(response.data);
-        await refetch();
+        await adminList.refetch();
         return true;
       } catch (cause) {
         const resolvedError = asIamError(cause);
         if (resolvedError.status === 403) {
           await invalidatePermissions();
         }
-        setError(resolvedError);
+        adminList.setError(resolvedError);
         return false;
       }
     },

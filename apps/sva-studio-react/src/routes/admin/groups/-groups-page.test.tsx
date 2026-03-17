@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { GroupsPage } from './-groups-page';
@@ -100,5 +100,132 @@ describe('GroupsPage', () => {
         roleIds: ['role-1'],
       });
     });
+  });
+
+  it('filters groups, opens edit dialog and updates group assignments', async () => {
+    const clearMutationError = vi.fn();
+    const updateGroup = vi.fn().mockResolvedValue(true);
+    useGroupsMock.mockReturnValue({
+      groups: [
+        {
+          id: 'group-1',
+          groupKey: 'admins',
+          displayName: 'Admins',
+          description: 'Administrative Gruppe',
+          groupType: 'role_bundle',
+          isActive: true,
+          memberCount: 2,
+          roles: [{ roleId: 'role-2', roleKey: 'system_admin', roleName: 'System Admin' }],
+        },
+        {
+          id: 'group-2',
+          groupKey: 'editors',
+          displayName: 'Editors',
+          description: 'Redaktion',
+          groupType: 'role_bundle',
+          isActive: false,
+          memberCount: 5,
+          roles: [{ roleId: 'role-1', roleKey: 'editor', roleName: 'Editor' }],
+        },
+      ],
+      isLoading: false,
+      error: null,
+      createGroup: vi.fn().mockResolvedValue(true),
+      mutationError: null,
+      updateGroup,
+      deleteGroup: vi.fn().mockResolvedValue(true),
+      clearMutationError,
+      refetch: vi.fn(),
+    });
+
+    render(<GroupsPage />);
+
+    fireEvent.change(screen.getByLabelText('Suche'), { target: { value: 'Editors' } });
+
+    expect(screen.getByText('Editors')).toBeTruthy();
+    expect(screen.queryByText('Admins')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Gruppe bearbeiten' }));
+
+    expect(clearMutationError).toHaveBeenCalledTimes(1);
+    fireEvent.change(screen.getByLabelText('Anzeigename'), { target: { value: 'Editors Updated' } });
+    fireEvent.click(screen.getByRole('checkbox', { name: 'System Admin' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Aktiv' }));
+    fireEvent.submit(screen.getByLabelText('Anzeigename').closest('form') as HTMLFormElement);
+
+    await waitFor(() => {
+      expect(updateGroup).toHaveBeenCalledWith('group-2', {
+        displayName: 'Editors Updated',
+        description: 'Redaktion',
+        roleIds: ['role-1', 'role-2'],
+        isActive: true,
+      });
+    });
+  });
+
+  it('shows list errors, retries reloads and deletes groups via confirmation', async () => {
+    const refetch = vi.fn();
+    const deleteGroup = vi.fn().mockResolvedValue(true);
+    useGroupsMock.mockReturnValue({
+      groups: [
+        {
+          id: 'group-1',
+          groupKey: 'admins',
+          displayName: 'Admins',
+          description: 'Administrative Gruppe',
+          groupType: 'role_bundle',
+          isActive: true,
+          memberCount: 2,
+          roles: [],
+        },
+      ],
+      isLoading: false,
+      error: {
+        status: 503,
+        code: 'database_unavailable',
+        message: 'db down',
+      },
+      createGroup: vi.fn().mockResolvedValue(true),
+      mutationError: null,
+      updateGroup: vi.fn().mockResolvedValue(true),
+      deleteGroup,
+      clearMutationError: vi.fn(),
+      refetch,
+    });
+
+    render(<GroupsPage />);
+
+    expect(screen.getByRole('alert').textContent).toContain('Die IAM-Datenbank ist derzeit nicht erreichbar.');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Erneut versuchen' }));
+    expect(refetch).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Gruppe deaktivieren' }));
+    const dialog = await screen.findByRole('alertdialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Gruppe deaktivieren' }));
+
+    await waitFor(() => {
+      expect(deleteGroup).toHaveBeenCalledWith('group-1');
+    });
+  });
+
+  it('renders empty state after sorting when no groups match', () => {
+    useGroupsMock.mockReturnValue({
+      groups: [],
+      isLoading: false,
+      error: null,
+      createGroup: vi.fn().mockResolvedValue(true),
+      mutationError: null,
+      updateGroup: vi.fn().mockResolvedValue(true),
+      deleteGroup: vi.fn().mockResolvedValue(true),
+      clearMutationError: vi.fn(),
+      refetch: vi.fn(),
+    });
+
+    render(<GroupsPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Sortierung wechseln' }));
+
+    expect(screen.getByRole('status').textContent).toContain('Keine Gruppen gefunden.');
   });
 });

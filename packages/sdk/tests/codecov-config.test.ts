@@ -136,6 +136,24 @@ describe('codecov config', () => {
     }
   });
 
+  it('includes all non-exempt coverage-tracked projects in the unittests flag scope', () => {
+    const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
+    const policy = readJson<CoveragePolicy>(path.join(rootDir, 'tooling/testing/coverage-policy.json'));
+    const codecovContents = fs.readFileSync(path.join(rootDir, 'codecov.yml'), 'utf8');
+    const configuredPaths = parseCodecovUnittestPaths(codecovContents);
+    const exemptProjects = new Set(policy.exemptProjects);
+
+    for (const projectName of Object.keys(policy.perProjectFloors)) {
+      if (exemptProjects.has(projectName)) {
+        continue;
+      }
+
+      const packagePath = `packages/${projectName}/`;
+      const appPath = `apps/${projectName}/`;
+      expect(configuredPaths.includes(packagePath) || configuredPaths.includes(appPath)).toBe(true);
+    }
+  });
+
   it('keeps Codecov project and patch checks informational', () => {
     const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
     const codecovContents = fs.readFileSync(path.join(rootDir, 'codecov.yml'), 'utf8');

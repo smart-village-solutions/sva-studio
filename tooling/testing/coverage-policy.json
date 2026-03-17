@@ -9,7 +9,6 @@
   },
   "maxAllowedDropPctPoints": 0.5,
   "exemptProjects": [
-    "data",
     "plugin-example"
   ],
   "perProjectFloors": {
@@ -24,6 +23,12 @@
       "statements": 40,
       "functions": 50,
       "branches": 30
+    },
+    "data": {
+      "lines": 80,
+      "statements": 80,
+      "functions": 50,
+      "branches": 60
     },
     "monitoring-client": {
       "lines": 60,

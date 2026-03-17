@@ -304,25 +304,25 @@
       "ticketId": "QUAL-115",
       "ticketSystem": "backlog",
       "status": "open",
-      "summary": "Authorization-Shared-Logik fuer Gruppen- und Geo-Vererbung in kleinere Auswertungsbausteine zerlegen"
+      "summary": "Authorization-Shared-Logik für Gruppen- und Geo-Vererbung in kleinere Auswertungsbausteine zerlegen"
     },
     "iam-server:packages/auth/src/iam-authorization/shared.ts:fileLines": {
       "ticketId": "QUAL-115",
       "ticketSystem": "backlog",
       "status": "open",
-      "summary": "Authorization-Shared-Logik fuer Gruppen- und Geo-Vererbung in kleinere Auswertungsbausteine zerlegen"
+      "summary": "Authorization-Shared-Logik für Gruppen- und Geo-Vererbung in kleinere Auswertungsbausteine zerlegen"
     },
     "iam-data:packages/data/src/iam/repositories/statements.ts:fileLines": {
       "ticketId": "QUAL-116",
       "ticketSystem": "backlog",
       "status": "open",
-      "summary": "IAM-Repository-Statements in kleinere Statement-Builder fuer Accounts, Gruppen, Geo und Memberships zerlegen"
+      "summary": "IAM-Repository-Statements in kleinere Statement-Builder für Accounts, Gruppen, Geo und Memberships zerlegen"
     },
     "iam-data:packages/data/src/iam/types.ts:publicExports": {
       "ticketId": "QUAL-116",
       "ticketSystem": "backlog",
       "status": "open",
-      "summary": "IAM-Datentypen in fachlich kleinere Export-Surfaces fuer Gruppen-, Geo- und Membership-Modelle aufteilen"
+      "summary": "IAM-Datentypen in fachlich kleinere Export-Surfaces für Gruppen-, Geo- und Membership-Modelle aufteilen"
     }
   }
 }

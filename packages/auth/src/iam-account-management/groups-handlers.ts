@@ -51,6 +51,7 @@ type GroupListRow = {
 };
 
 type GroupMemberRow = {
+  account_id: string;
   group_id: string;
   group_key: string;
   display_name: string;
@@ -82,6 +83,7 @@ const mapGroupListItem = (row: GroupListRow): IamGroupListItem => ({
 
 const mapGroupMemberRows = (rows: GroupMemberRow[] | null): readonly IamUserGroupAssignment[] =>
   rows?.map((row) => ({
+    accountId: row.account_id,
     groupId: row.group_id,
     groupKey: row.group_key,
     displayName: row.display_name,
@@ -155,6 +157,7 @@ SELECT
     json_agg(
       DISTINCT jsonb_build_object(
         'group_id', g.id,
+        'account_id', ag.account_id,
         'group_key', g.group_key,
         'display_name', g.display_name,
         'group_type', g.group_type,
@@ -201,12 +204,13 @@ const replaceGroupRoles = async (
   client: QueryClient,
   input: { instanceId: string; groupId: string; roleIds: readonly string[] }
 ) => {
+  const uniqueRoleIds = [...new Set(input.roleIds)];
   await client.query('DELETE FROM iam.group_roles WHERE instance_id = $1 AND group_id = $2::uuid;', [
     input.instanceId,
     input.groupId,
   ]);
 
-  if (input.roleIds.length === 0) {
+  if (uniqueRoleIds.length === 0) {
     return;
   }
 
@@ -214,9 +218,12 @@ const replaceGroupRoles = async (
     `
 INSERT INTO iam.group_roles (instance_id, group_id, role_id)
 SELECT $1, $2::uuid, role_id
-FROM unnest($3::uuid[]) AS role_id;
+FROM (
+  SELECT DISTINCT role_id
+  FROM unnest($3::uuid[]) AS input_roles(role_id)
+) AS unique_role_ids;
 `,
-    [input.instanceId, input.groupId, input.roleIds]
+    [input.instanceId, input.groupId, uniqueRoleIds]
   );
 };
 
@@ -224,8 +231,9 @@ const validateRoleIds = async (
   client: QueryClient,
   input: { instanceId: string; roleIds: readonly string[] }
 ): Promise<boolean> => {
-  const roles = await resolveRolesByIds(client, input);
-  return roles.length === input.roleIds.length;
+  const uniqueRoleIds = [...new Set(input.roleIds)];
+  const roles = await resolveRolesByIds(client, { ...input, roleIds: uniqueRoleIds });
+  return roles.length === uniqueRoleIds.length;
 };
 
 const createDatabaseUnavailableError = (requestId?: string): Response =>
@@ -659,7 +667,7 @@ RETURNING id;
       return createApiError(404, 'not_found', 'Gruppe nicht gefunden.', actorResolution.actor.requestId);
     }
     iamUserOperationsCounter.add(1, { action: 'delete_group', result: 'success' });
-    return new Response(null, { status: 204 });
+    return jsonResponse(200, asApiItem({ id: groupId.groupId }, actorResolution.actor.requestId));
   } catch {
     return createDatabaseUnavailableError(actorResolution.actor.requestId);
   }

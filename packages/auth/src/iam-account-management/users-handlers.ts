@@ -190,12 +190,13 @@ const resolveUserUpdatePlan = async (
   }
 
   if (input.payload.groupIds) {
+    const uniqueGroupIds = [...new Set(input.payload.groupIds)];
     const groups = await resolveGroupsByIds(client, {
       instanceId: input.instanceId,
-      groupIds: input.payload.groupIds,
+      groupIds: uniqueGroupIds,
     });
-    if (groups.length !== input.payload.groupIds.length) {
-      throw new Error('invalid_request:Mindestens eine Gruppe existiert nicht.');
+    if (groups.length !== uniqueGroupIds.length) {
+      throw new Error('invalid_request:Mindestens eine aktive Gruppe existiert nicht.');
     }
   }
 

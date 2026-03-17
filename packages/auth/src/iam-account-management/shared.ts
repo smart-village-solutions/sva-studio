@@ -231,7 +231,8 @@ export const resolveGroupsByIds = async (
   client: QueryClient,
   input: { instanceId: string; groupIds: readonly string[] }
 ): Promise<readonly IamGroupRow[]> => {
-  if (input.groupIds.length === 0) {
+  const uniqueGroupIds = [...new Set(input.groupIds)];
+  if (uniqueGroupIds.length === 0) {
     return [];
   }
 
@@ -240,9 +241,10 @@ export const resolveGroupsByIds = async (
 SELECT id, group_key, display_name, description, group_type, is_active
 FROM iam.groups
 WHERE instance_id = $1
+  AND is_active = true
   AND id = ANY($2::uuid[]);
 `,
-    [input.instanceId, input.groupIds]
+    [input.instanceId, uniqueGroupIds]
   );
 
   return result.rows;
@@ -776,11 +778,12 @@ export const assignGroups = async (
     origin?: 'manual' | 'seed' | 'sync';
   }
 ) => {
+  const uniqueGroupIds = [...new Set(input.groupIds)];
   await client.query('DELETE FROM iam.account_groups WHERE instance_id = $1 AND account_id = $2::uuid;', [
     input.instanceId,
     input.accountId,
   ]);
-  if (input.groupIds.length === 0) {
+  if (uniqueGroupIds.length === 0) {
     return;
   }
 
@@ -794,8 +797,11 @@ INSERT INTO iam.account_groups (
   valid_from
 )
 SELECT $1, $2::uuid, group_id, $3, NOW()
-FROM unnest($4::uuid[]) AS group_id;
+FROM (
+  SELECT DISTINCT group_id
+  FROM unnest($4::uuid[]) AS input_groups(group_id)
+) AS unique_group_ids;
 `,
-    [input.instanceId, input.accountId, input.origin ?? 'manual', input.groupIds]
+    [input.instanceId, input.accountId, input.origin ?? 'manual', uniqueGroupIds]
   );
 };

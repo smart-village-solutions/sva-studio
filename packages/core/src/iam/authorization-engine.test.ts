@@ -243,6 +243,33 @@ describe('evaluateAuthorizeDecision', () => {
     });
   });
 
+  it('prioritizes geo unit ids over legacy geo scopes when both are present', () => {
+    const request: AuthorizeRequest = {
+      ...baseRequest(),
+      resource: {
+        ...baseRequest().resource,
+        attributes: {
+          geoUnitId: 'geo-child',
+          geoHierarchy: ['geo-root', 'geo-child'],
+          geoScope: 'DE-BY',
+        },
+      },
+    };
+
+    const result = evaluateAuthorizeDecision(request, [
+      {
+        ...basePermission(),
+        scope: {
+          allowedGeoUnitIds: ['geo-root'],
+          allowedGeoScopes: ['DE-BW'],
+        },
+      },
+    ]);
+
+    expect(result.allowed).toBe(true);
+    expect(result.reason).toBe('allowed_by_abac');
+  });
+
   it('denies when a child geo-unit restriction overrides a parent allow', () => {
     const request: AuthorizeRequest = {
       ...baseRequest(),

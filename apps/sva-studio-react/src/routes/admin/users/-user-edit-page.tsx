@@ -144,6 +144,10 @@ export const UserEditPage = ({ userId }: UserEditPageProps) => {
   const userApi = useUser(userId);
   const rolesApi = useRoles();
   const groupsApi = useGroups();
+  const selectableGroups = React.useMemo(
+    () => groupsApi.groups.filter((group) => group.isActive !== false),
+    [groupsApi.groups]
+  );
 
   const [activeTab, setActiveTab] = React.useState<UserEditTabKey>('personal');
   const [formValues, setFormValues] = React.useState<UserFormValues>(() => toFormValues(userApi.user));
@@ -525,7 +529,7 @@ export const UserEditPage = ({ userId }: UserEditPageProps) => {
           <fieldset className="flex flex-col gap-2 text-sm text-foreground md:col-span-2">
             <legend>{t('admin.users.edit.groupsLabel')}</legend>
             <div className="grid gap-2 sm:grid-cols-2">
-              {groupsApi.groups.map((group) => {
+              {selectableGroups.map((group) => {
                 const selected = formValues.groupIds.includes(group.id);
                 const currentMembership = userApi.user?.groups?.find((entry) => entry.groupId === group.id);
                 return (

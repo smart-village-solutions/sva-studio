@@ -3,6 +3,7 @@ export {
   createUserHandler,
   deactivateUserHandler,
   getUserHandler,
+  getUserTimelineHandler,
   listUsersHandler,
   syncUsersFromKeycloakHandler,
   updateUserHandler,

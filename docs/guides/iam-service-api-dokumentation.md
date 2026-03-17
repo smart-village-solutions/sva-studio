@@ -72,6 +72,12 @@ Diese Anleitung beschreibt die im Change `add-account-user-management-ui` genutz
 - `PATCH /api/v1/iam/roles/{roleId}`
 - `DELETE /api/v1/iam/roles/{roleId}`
 
+### Legal texts
+
+- `GET /api/v1/iam/legal-texts`
+- `POST /api/v1/iam/legal-texts`
+- `PATCH /api/v1/iam/legal-texts/{legalTextVersionId}`
+
 ### Admin
 
 - `POST /api/v1/iam/admin/reconcile` (Platzhalter, `501`)

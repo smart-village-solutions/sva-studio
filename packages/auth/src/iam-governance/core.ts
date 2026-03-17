@@ -6,6 +6,8 @@ import { createPoolResolver, jsonResponse, type QueryClient, withInstanceDb } fr
 import { isUuid, readNumber, readString } from '../shared/input-readers';
 import { buildLogContext } from '../shared/log-context';
 import { governanceRequestSchema, type GovernanceRequestInput } from '../shared/schemas';
+import { asApiList, createApiError, readPage } from '../iam-account-management/api-helpers';
+import { listGovernanceCases } from './read-models';
 
 const logger = createSdkLogger({ component: 'iam-governance', level: 'info' });
 
@@ -13,6 +15,13 @@ const MAX_IMPERSONATION_MINUTES = 120;
 const MAX_DELEGATION_DAYS = 30;
 const ALLOWED_TICKET_STATES = new Set(['open', 'in_progress', 'approved_for_execution']);
 const GOVERNANCE_WORKFLOW_ROLES = new Set(['iam_admin', 'support_admin', 'system_admin']);
+const GOVERNANCE_READ_ROLES = new Set([
+  'iam_admin',
+  'support_admin',
+  'system_admin',
+  'security_admin',
+  'compliance_officer',
+]);
 const GOVERNANCE_COMPLIANCE_EXPORT_ROLES = new Set([
   'iam_admin',
   'system_admin',
@@ -808,7 +817,6 @@ const acceptLegalText = async (
   const legalTextId = readString(payload.legalTextId);
   const legalTextVersion = readString(payload.legalTextVersion);
   const locale = readString(payload.locale) ?? 'de-DE';
-  const contentHash = readString(payload.contentHash) ?? 'unknown';
   if (!legalTextId || !legalTextVersion) {
     return {
       operation: revoked ? 'revoke_legal_acceptance' : 'accept_legal_text',
@@ -831,20 +839,16 @@ const acceptLegalText = async (
 
   const versionLookup = await client.query<{ id: string }>(
     `
-INSERT INTO iam.legal_text_versions (
-  instance_id,
-  legal_text_id,
-  legal_text_version,
-  locale,
-  content_hash,
-  is_active
-)
-VALUES ($1, $2, $3, $4, $5, true)
-ON CONFLICT (instance_id, legal_text_id, legal_text_version, locale) DO UPDATE
-SET is_active = true
-RETURNING id;
+SELECT id
+FROM iam.legal_text_versions
+WHERE instance_id = $1
+  AND legal_text_id = $2
+  AND legal_text_version = $3
+  AND locale = $4
+  AND is_active = true
+LIMIT 1;
 `,
-    [actor.instanceId, legalTextId, legalTextVersion, locale, contentHash]
+    [actor.instanceId, legalTextId, legalTextVersion, locale]
   );
 
   const legalVersionId = versionLookup.rows[0]?.id;
@@ -852,7 +856,7 @@ RETURNING id;
     return {
       operation: revoked ? 'revoke_legal_acceptance' : 'accept_legal_text',
       status: 'error',
-      reasonCode: 'database_unavailable',
+      reasonCode: 'legal_text_version_not_active',
     };
   }
 
@@ -1054,6 +1058,61 @@ export const governanceWorkflowHandler = async (request: Request): Promise<Respo
           ...buildGovernanceLogContext(parsed.instanceId),
         });
         return jsonResponse(503, { error: 'database_unavailable' });
+      }
+    });
+  });
+};
+
+export const listGovernanceCasesHandler = async (request: Request): Promise<Response> => {
+  return withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
+    return withAuthenticatedUser(request, async ({ user }) => {
+      if (!hasRequiredRole(user.roles, GOVERNANCE_READ_ROLES)) {
+        logger.warn('Governance read denied due to missing role', {
+          operation: 'list_governance_cases',
+          reason_code: 'forbidden',
+          ...buildGovernanceLogContext(user.instanceId),
+        });
+        return createApiError(403, 'forbidden', 'Keine Berechtigung für Governance-Transparenz.', getWorkspaceContext().requestId);
+      }
+
+      const url = new URL(request.url);
+      const instanceId = readString(url.searchParams.get('instanceId')) ?? user.instanceId;
+      const type = readString(url.searchParams.get('type')) as
+        | 'permission_change'
+        | 'delegation'
+        | 'impersonation'
+        | 'legal_acceptance'
+        | undefined;
+      const status = readString(url.searchParams.get('status'));
+      const search = readString(url.searchParams.get('search'));
+      const { page, pageSize } = readPage(request);
+
+      if (!instanceId) {
+        return createApiError(400, 'invalid_instance_id', 'Instanzkontext fehlt.', getWorkspaceContext().requestId);
+      }
+      if (user.instanceId && user.instanceId !== instanceId) {
+        return createApiError(403, 'forbidden', 'Instanzkontext unzulässig.', getWorkspaceContext().requestId);
+      }
+
+      try {
+        const result = await withInstanceScopedDb(instanceId, (client) =>
+          listGovernanceCases(client, {
+            instanceId,
+            type,
+            status: status ?? undefined,
+            search: search ?? undefined,
+            page,
+            pageSize,
+          })
+        );
+        return jsonResponse(200, asApiList(result.items, { page, pageSize, total: result.total }, getWorkspaceContext().requestId));
+      } catch (error) {
+        logger.error('Governance read failed', {
+          operation: 'list_governance_cases',
+          error: error instanceof Error ? error.message : String(error),
+          ...buildGovernanceLogContext(instanceId),
+        });
+        return createApiError(503, 'database_unavailable', 'Governance-Datenbankabfrage fehlgeschlagen.', getWorkspaceContext().requestId);
       }
     });
   });

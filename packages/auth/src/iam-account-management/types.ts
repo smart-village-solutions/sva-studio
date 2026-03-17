@@ -39,6 +39,8 @@ export type IamRoleRow = {
   external_role_name?: string | null;
   role_level: number;
   is_system_role: boolean;
+  valid_from?: string | null;
+  valid_to?: string | null;
 };
 
 export type ManagedBy = 'studio' | 'external';

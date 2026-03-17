@@ -124,12 +124,44 @@ CREATE INDEX IF NOT EXISTS idx_permissions_instance_id
 CREATE INDEX IF NOT EXISTS idx_activity_logs_instance_id_created_at
   ON iam.activity_logs(instance_id, created_at DESC);
 
-CREATE OR REPLACE FUNCTION iam.current_instance_id()
-RETURNS UUID
-LANGUAGE SQL
-STABLE
-AS $$
-  SELECT NULLIF(current_setting('app.instance_id', true), '')::uuid
+DO $$
+DECLARE
+  instance_id_is_uuid BOOLEAN;
+BEGIN
+  SELECT EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'iam'
+      AND table_name = 'instances'
+      AND column_name = 'id'
+      AND udt_name = 'uuid'
+  )
+  INTO instance_id_is_uuid;
+
+  EXECUTE 'DROP FUNCTION IF EXISTS iam.current_instance_id() CASCADE';
+
+  IF instance_id_is_uuid THEN
+    EXECUTE $sql$
+      CREATE FUNCTION iam.current_instance_id()
+      RETURNS UUID
+      LANGUAGE SQL
+      STABLE
+      AS $fn$
+        SELECT NULLIF(current_setting('app.instance_id', true), '')::uuid
+      $fn$
+    $sql$;
+  ELSE
+    EXECUTE $sql$
+      CREATE FUNCTION iam.current_instance_id()
+      RETURNS TEXT
+      LANGUAGE SQL
+      STABLE
+      AS $fn$
+        SELECT NULLIF(current_setting('app.instance_id', true), '')
+      $fn$
+    $sql$;
+  END IF;
+END
 $$;
 
 DO $$

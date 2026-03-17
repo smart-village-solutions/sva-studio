@@ -284,6 +284,13 @@ const sleep = async (ms: number): Promise<void> =>
     setTimeout(resolve, ms);
   });
 
+const unwrapSettledResult = <TValue>(
+  result: PromiseSettledResult<TValue>
+): { ok: true; value: TValue } | { ok: false; error: SvaMainserverError } =>
+  result.status === 'fulfilled'
+    ? { ok: true, value: result.value }
+    : { ok: false, error: normalizeUnexpectedError(result.reason) };
+
 const withObservedHop = async <TValue>(
   input: {
     readonly hop: ServiceHop;
@@ -814,10 +821,19 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
   ): Promise<SvaMainserverConnectionStatus> => {
     try {
       const config = await loadValidatedInstanceConfig(input, 'connection_check');
-      const [queryRoot, mutationRoot] = await Promise.all([
+      const [queryRootResult, mutationRootResult] = await Promise.allSettled([
         getQueryRootTypenameWithConfig(input, config),
         getMutationRootTypenameWithConfig(input, config),
       ]);
+      const queryRoot = unwrapSettledResult(queryRootResult);
+      const mutationRoot = unwrapSettledResult(mutationRootResult);
+
+      if (!queryRoot.ok) {
+        throw queryRoot.error;
+      }
+      if (!mutationRoot.ok) {
+        throw mutationRoot.error;
+      }
 
       logger.info('SVA Mainserver connection check succeeded', {
         ...buildLogContext(input, {
@@ -829,8 +845,8 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
         status: 'connected',
         checkedAt: new Date(now()).toISOString(),
         config,
-        queryRootTypename: queryRoot.__typename,
-        mutationRootTypename: mutationRoot.__typename,
+        queryRootTypename: queryRoot.value.__typename,
+        mutationRootTypename: mutationRoot.value.__typename,
       };
     } catch (error) {
       const normalizedError = normalizeUnexpectedError(error);

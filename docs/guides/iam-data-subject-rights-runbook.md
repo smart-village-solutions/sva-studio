@@ -6,16 +6,60 @@ Dieses Runbook beschreibt den operativen Betrieb der DSGVO-Betroffenenrechte (Ar
 
 ## Relevante Endpunkte
 
-- Self-Service Export: `GET /iam/me/data-export?format={json|csv|xml}`
+- Self-Service Export starten: `POST /iam/me/data-export`
 - Self-Service Export-Status (async): `GET /iam/me/data-export/status?jobId=<uuid>`
+- Self-Service Übersicht: `GET /iam/me/data-subject-rights/requests`
 - Self-Service Anfrage: `POST /iam/me/data-subject-rights/requests`
 - Self-Service Berichtigung: `POST /iam/me/profile`
 - Optional-Processing-Gate: `POST /iam/me/optional-processing/execute`
-- Admin Export: `GET /iam/admin/data-subject-rights/export`
+- Admin Feed: `GET /iam/admin/data-subject-rights/cases`
+- Admin Export starten: `POST /iam/admin/data-subject-rights/export`
 - Admin Export-Status: `GET /iam/admin/data-subject-rights/export/status?jobId=<uuid>`
 - Legal Hold setzen: `POST /iam/admin/data-subject-rights/legal-holds/apply`
 - Legal Hold aufheben: `POST /iam/admin/data-subject-rights/legal-holds/release`
 - Wartungslauf (SLA/Eskalation/Finalisierung): `POST /iam/admin/data-subject-rights/maintenance`
+
+### Export-Härtung
+
+- Mutierende Export-Starts laufen ausschließlich per `POST`; Legacy-`GET` auf `/iam/me/data-export` und `/iam/admin/data-subject-rights/export` liefert `405 Method Not Allowed`.
+- Für beide Export-Starts sind `X-Requested-With: XMLHttpRequest` und ein `Idempotency-Key` verpflichtend.
+- Die CSRF-Prüfung erwartet einen vertrauenswürdigen Browser-Request-Kontext über `Origin` oder `Referer`.
+- Beispiel Self-Service Payload:
+
+```json
+{
+  "instanceId": "de-musterhausen",
+  "format": "json",
+  "async": true
+}
+```
+
+- Beispiel Admin-Payload:
+
+```json
+{
+  "instanceId": "de-musterhausen",
+  "targetKeycloakSubject": "kc-user-123",
+  "format": "csv",
+  "async": true
+}
+```
+
+## Operative UIs
+
+- Self-Service: `/account/privacy`
+- Admin-Cockpit: `/admin/iam?tab=dsr`
+
+Die UI zeigt kanonische Statuswerte `queued|in_progress|completed|blocked|failed`. Rohstatus bleibt nur sekundär sichtbar.
+
+### Status-Mapping
+
+- `accepted -> queued`
+- `processing -> in_progress`
+- `blocked_legal_hold -> blocked`
+- `completed -> completed`
+- `failed -> failed`
+- `escalated -> in_progress`
 
 ## Standardablauf Löschung (Art. 17)
 
@@ -62,6 +106,7 @@ Dieses Runbook beschreibt den operativen Betrieb der DSGVO-Betroffenenrechte (Ar
 - Anzahl SLA-Eskalationen pro Zeitraum
 - Anzahl blockierter Löschungen durch Legal Hold
 - Anzahl fehlgeschlagener Exportjobs (`status=failed`)
+- Anzahl DSR-Cases im Admin-Feed ohne Detailauflösung oder mit unerwartetem Rohstatus
 
 ## Eskalation
 

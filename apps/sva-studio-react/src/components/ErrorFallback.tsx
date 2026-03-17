@@ -1,6 +1,11 @@
 import { Link, useRouter } from '@tanstack/react-router';
 import type { ErrorComponentProps } from '@tanstack/react-router';
 
+import { t } from '../i18n';
+import { Alert, AlertDescription, AlertTitle } from './ui/alert';
+import { Button } from './ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+
 /**
  * Globaler Error-Fallback für nicht abgefangene Fehler in der Route-Hierarchie.
  *
@@ -22,32 +27,26 @@ export default function ErrorFallback({ error, reset }: Readonly<ErrorComponentP
   }
 
   return (
-    <div
-      role="alert"
-      className="flex min-h-[60vh] flex-col items-center justify-center text-center"
-    >
-      <h1 className="mb-4 text-6xl font-bold text-destructive">Fehler</h1>
-      <h2 className="mb-6 text-2xl font-semibold text-muted-foreground">
-        Ein unerwarteter Fehler ist aufgetreten
-      </h2>
-      <p className="mb-8 text-muted-foreground">
-        Bitte versuchen Sie es erneut oder kehren Sie zur Startseite zurück.
-      </p>
-      <div className="flex gap-4">
-        <button
-          type="button"
-          onClick={handleRetry}
-          className="rounded-lg border border-primary/40 bg-primary px-6 py-3 font-medium text-primary-foreground transition hover:opacity-90"
-        >
-          Erneut versuchen
-        </button>
-        <Link
-          to="/"
-          className="rounded-lg border border-border bg-background px-6 py-3 font-medium text-foreground transition hover:bg-muted"
-        >
-          Zur Startseite
-        </Link>
-      </div>
+    <div role="alert" className="flex min-h-[60vh] items-center justify-center">
+      <Card className="w-full max-w-xl">
+        <CardHeader className="items-center text-center">
+          <CardTitle className="text-5xl text-destructive">{t('shared.errorFallback.title')}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6 text-center">
+          <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
+            <AlertTitle>{t('shared.errorFallback.heading')}</AlertTitle>
+            <AlertDescription>{t('shared.errorFallback.body')}</AlertDescription>
+          </Alert>
+          <div className="flex justify-center gap-4">
+            <Button type="button" onClick={handleRetry}>
+              {t('shared.errorFallback.retry')}
+            </Button>
+            <Button asChild variant="outline">
+              <Link to="/">{t('shared.errorFallback.home')}</Link>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

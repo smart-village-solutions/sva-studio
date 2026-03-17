@@ -1,0 +1,141 @@
+import { act, renderHook, waitFor } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { useLegalTexts } from './use-legal-texts';
+
+const listLegalTextsMock = vi.fn();
+const createLegalTextMock = vi.fn();
+const updateLegalTextMock = vi.fn();
+const asIamErrorMock = vi.fn();
+const authMockValue = {
+  user: {
+    id: 'admin-1',
+    name: 'Admin',
+    roles: ['system_admin'],
+  },
+  isAuthenticated: true,
+  isLoading: false,
+  error: null,
+  refetch: vi.fn(),
+  logout: vi.fn(),
+  invalidatePermissions: vi.fn(),
+};
+
+vi.mock('../lib/iam-api', () => ({
+  IamHttpError: class IamHttpError extends Error {
+    status: number;
+    code: string;
+
+    constructor(input: { status: number; code: string; message: string }) {
+      super(input.message);
+      this.status = input.status;
+      this.code = input.code;
+    }
+  },
+  listLegalTexts: (...args: unknown[]) => listLegalTextsMock(...args),
+  createLegalText: (...args: unknown[]) => createLegalTextMock(...args),
+  updateLegalText: (...args: unknown[]) => updateLegalTextMock(...args),
+  asIamError: (...args: unknown[]) => asIamErrorMock(...args),
+}));
+
+vi.mock('../providers/auth-provider', () => ({
+  useAuth: () => authMockValue,
+}));
+
+describe('useLegalTexts', () => {
+  beforeEach(() => {
+    listLegalTextsMock.mockReset();
+    createLegalTextMock.mockReset();
+    updateLegalTextMock.mockReset();
+    asIamErrorMock.mockReset();
+    authMockValue.invalidatePermissions.mockReset();
+  });
+
+  it('loads and mutates legal texts', async () => {
+    asIamErrorMock.mockImplementation((cause: unknown) => cause);
+    listLegalTextsMock.mockResolvedValue({
+      data: [
+        {
+          id: 'lt-1',
+          legalTextId: 'privacy_policy',
+          legalTextVersion: '2026-03',
+          locale: 'de-DE',
+          contentHash: 'sha256:a',
+          isActive: true,
+          publishedAt: '2026-03-16T09:00:00.000Z',
+          createdAt: '2026-03-16T08:00:00.000Z',
+          acceptanceCount: 4,
+          activeAcceptanceCount: 3,
+        },
+      ],
+      pagination: { page: 1, pageSize: 1, total: 1 },
+    });
+    createLegalTextMock.mockResolvedValue({ data: { id: 'lt-2' } });
+    updateLegalTextMock.mockResolvedValue({ data: { id: 'lt-1' } });
+
+    const { result } = renderHook(() => useLegalTexts());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.legalTexts).toHaveLength(1);
+    });
+
+    await act(async () => {
+      await result.current.createLegalText({
+        legalTextId: 'terms_of_use',
+        legalTextVersion: '2026-04',
+        locale: 'en-GB',
+        contentHash: 'sha256:b',
+      });
+      await result.current.updateLegalText('lt-1', { contentHash: 'sha256:updated' });
+    });
+
+    expect(createLegalTextMock).toHaveBeenCalledTimes(1);
+    expect(updateLegalTextMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('invalidates permissions when initial fetch returns 403', async () => {
+    const forbiddenError = { status: 403, code: 'forbidden', message: 'Forbidden' };
+    asIamErrorMock.mockReturnValue(forbiddenError);
+    listLegalTextsMock.mockRejectedValueOnce(new Error('forbidden-list'));
+
+    const { result } = renderHook(() => useLegalTexts());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.error).toBe(forbiddenError);
+      expect(result.current.legalTexts).toHaveLength(0);
+    });
+
+    expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
+  });
+
+  it('stores mutation errors when create fails', async () => {
+    const conflictError = { status: 409, code: 'conflict', message: 'Conflict' };
+    asIamErrorMock.mockReturnValue(conflictError);
+    listLegalTextsMock.mockResolvedValueOnce({
+      data: [],
+      pagination: { page: 1, pageSize: 0, total: 0 },
+    });
+    createLegalTextMock.mockRejectedValueOnce(new Error('conflict-create'));
+
+    const { result } = renderHook(() => useLegalTexts());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    await act(async () => {
+      const created = await result.current.createLegalText({
+        legalTextId: 'privacy_policy',
+        legalTextVersion: '2026-03',
+        locale: 'de-DE',
+        contentHash: 'sha256:a',
+      });
+      expect(created).toBe(false);
+    });
+
+    expect(result.current.mutationError).toBe(conflictError);
+    expect(authMockValue.invalidatePermissions).not.toHaveBeenCalled();
+  });
+});

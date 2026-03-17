@@ -6,8 +6,17 @@ Diese Spezifikation definiert den stabilen API-Vertrag für:
 
 - `GET /iam/me/permissions`
 - `POST /iam/authorize`
+- `GET /iam/governance/workflows`
+- `GET /iam/me/data-subject-rights/requests`
+- `GET /iam/admin/data-subject-rights/cases`
+- `GET /api/v1/iam/users/:userId/timeline`
+- `GET /api/v1/iam/legal-texts`
+- `POST /api/v1/iam/legal-texts`
+- `PATCH /api/v1/iam/legal-texts/:legalTextVersionId`
 
-Die Contract-Typen liegen in `@sva/core` unter `packages/core/src/iam/authorization-contract.ts`.
+Die Contract-Typen liegen in `@sva/core` unter `packages/core/src/iam/authorization-contract.ts`
+sowie für die Rechtstext-Verwaltung unter
+`packages/core/src/iam/account-management-contract.ts`.
 
 ## Endpunkt: GET `/iam/me/permissions`
 
@@ -29,7 +38,12 @@ Liefert die effektiven Berechtigungen für den aktuell authentifizierten Benutze
     {
       "action": "content.read",
       "resourceType": "content",
+      "resourceId": "article-1",
       "organizationId": "22222222-2222-2222-8222-222222222222",
+      "effect": "allow",
+      "scope": {
+        "geoScope": "de-bw"
+      },
       "sourceRoleIds": ["aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa"]
     }
   ],
@@ -43,6 +57,12 @@ Liefert die effektiven Berechtigungen für den aktuell authentifizierten Benutze
   "traceId": "trace-abc"
 }
 ```
+
+### Zusätzliche Zusagen für Transparenz-UI
+
+- `resourceId`, `effect`, `scope`, `sourceRoleIds` und `subject` sind Teil des stabilen Read-Modells für das Rights-Tab in `/admin/iam`.
+- Diagnosefelder bleiben allowlist-basiert. Die UI zeigt keine Roh-Policy-Dumps, Secrets oder Ciphertexte an.
+- `instanceId` bleibt der fachliche String-Scope. Ein technisches UUID-Format ist für Clients nicht vorausgesetzt.
 
 ### Fehlerantwort (`4xx/5xx`)
 
@@ -121,6 +141,185 @@ Führt eine deterministische Autorisierungsentscheidung für `action` + `resourc
 ```
 
 Der Fehlervertrag bleibt additiv: `error` ist und bleibt der maschinenlesbare String-Code; `message` ist optional und nicht für Client-Logik gedacht.
+
+## Endpunkt: GET `/iam/governance/workflows`
+
+Liefert den normalisierten Governance-Feed für das Governance-Tab in `/admin/iam`.
+
+### Query-Parameter
+
+- `page` (optional, Number, Default `1`)
+- `pageSize` (optional, Number, Default `20`)
+- `type` (optional, Enum): `permission_change|delegation|impersonation|legal_acceptance`
+- `status` (optional, String)
+- `search` (optional, String)
+
+### Erfolgsantwort (`200`)
+
+```json
+{
+  "data": [
+    {
+      "id": "workflow-1",
+      "type": "delegation",
+      "status": "approved",
+      "title": "Delegation für Redaktion",
+      "summary": "Temporäre Delegation für Alice Admin",
+      "actorAccountId": "aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa",
+      "actorDisplayName": "Alice Admin",
+      "targetAccountId": "bbbbbbbb-bbbb-bbbb-8bbb-bbbbbbbbbbbb",
+      "targetDisplayName": "Bob Editor",
+      "createdAt": "2026-03-16T10:00:00.000Z",
+      "metadata": {}
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "pageSize": 20,
+    "total": 1
+  }
+}
+```
+
+## Endpunkt: GET `/iam/me/data-subject-rights/requests`
+
+Liefert das Self-Service-Read-Modell für `/account/privacy`.
+
+### Erfolgsantwort (`200`)
+
+```json
+{
+  "data": {
+    "instanceId": "de-musterhausen",
+    "accountId": "aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa",
+    "processingRestrictedAt": "2026-03-16T10:00:00.000Z",
+    "processingRestrictionReason": "legal_hold",
+    "nonEssentialProcessingOptOutAt": "2026-03-15T09:00:00.000Z",
+    "nonEssentialProcessingAllowed": false,
+    "legalHolds": [],
+    "requests": [],
+    "exportJobs": []
+  }
+}
+```
+
+### Kanonische DSR-Statuswerte
+
+- `accepted -> queued`
+- `processing -> in_progress`
+- `blocked_legal_hold -> blocked`
+- `completed -> completed`
+- `failed -> failed`
+- `escalated -> in_progress`
+
+## Endpunkt: GET `/iam/admin/data-subject-rights/cases`
+
+Liefert den normalisierten Admin-Feed für das DSR-Tab in `/admin/iam`.
+
+### Query-Parameter
+
+- `page` (optional, Number, Default `1`)
+- `pageSize` (optional, Number, Default `20`)
+- `type` (optional, Enum): `request|export_job|legal_hold|profile_correction|recipient_notification`
+- `status` (optional, Enum): `queued|in_progress|completed|blocked|failed`
+- `search` (optional, String)
+
+## Endpunkte: Rechtstext-Verwaltung
+
+Die Admin-Oberfläche `/admin/legal-texts` nutzt eigene Read-/Write-Endpunkte
+für technische Rechtstext-Versionen. Persistiert werden aktuell:
+`legalTextId`, `legalTextVersion`, `locale`, `contentHash`, `isActive`,
+`publishedAt` sowie aggregierte Akzeptanzzähler.
+
+### GET `/api/v1/iam/legal-texts`
+
+Liefert alle verwalteten Rechtstext-Versionen der aktuellen Instanz.
+
+#### Erfolgsantwort (`200`)
+
+```json
+{
+  "data": [
+    {
+      "id": "11111111-1111-1111-8111-111111111111",
+      "legalTextId": "privacy_policy",
+      "legalTextVersion": "2026-03",
+      "locale": "de-DE",
+      "contentHash": "sha256:abc123",
+      "isActive": true,
+      "publishedAt": "2026-03-16T09:00:00.000Z",
+      "createdAt": "2026-03-16T08:55:00.000Z",
+      "acceptanceCount": 4,
+      "activeAcceptanceCount": 3,
+      "lastAcceptedAt": "2026-03-16T10:00:00.000Z"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "pageSize": 1,
+    "total": 1
+  }
+}
+```
+
+### POST `/api/v1/iam/legal-texts`
+
+Legt eine neue Rechtstext-Version für die aktuelle Instanz an.
+
+#### Request-Body
+
+```json
+{
+  "legalTextId": "terms_of_use",
+  "legalTextVersion": "2026-04",
+  "locale": "en-GB",
+  "contentHash": "sha256:def456",
+  "isActive": false,
+  "publishedAt": "2026-04-01T12:00:00.000Z"
+}
+```
+
+#### Zusagen
+
+- `Idempotency-Key` ist für `POST` verpflichtend.
+- Doppelte Kombinationen aus `legalTextId + legalTextVersion + locale` führen zu `409 conflict`.
+- Der eigentliche Textkörper ist bewusst nicht Teil dieses Vertrags.
+
+### PATCH `/api/v1/iam/legal-texts/:legalTextVersionId`
+
+Aktualisiert `contentHash`, `isActive` und/oder `publishedAt` einer bestehenden
+Rechtstext-Version.
+
+## Endpunkt: GET `/api/v1/iam/users/:userId/timeline`
+
+Liefert die vereinte Actor+Target-Historie für `/admin/users/:userId`.
+
+### Erfolgsantwort (`200`)
+
+```json
+{
+  "data": [
+    {
+      "id": "governance:workflow-1",
+      "category": "governance",
+      "eventType": "delegation",
+      "title": "Delegation für Redaktion",
+      "description": "Temporäre Delegation für Alice Admin",
+      "occurredAt": "2026-03-16T10:00:00.000Z",
+      "perspective": "actor_and_target",
+      "relatedEntityId": "workflow-1",
+      "metadata": {
+        "status": "approved"
+      }
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "pageSize": 100,
+    "total": 1
+  }
+}
+```
 
 ## Reason-Codes (Authorize)
 

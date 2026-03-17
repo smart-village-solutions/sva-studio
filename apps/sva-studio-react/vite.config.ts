@@ -5,6 +5,7 @@ import viteReact from '@vitejs/plugin-react';
 import { codecovRollupPlugin } from '@codecov/rollup-plugin';
 import { nitro } from 'nitro/vite';
 import { fileURLToPath, URL } from 'node:url';
+import tsconfigPaths from 'vite-tsconfig-paths';
 
 const normalizeDirectory = (url: URL) => fileURLToPath(url).replace(/[\\/]$/, '');
 
@@ -56,7 +57,6 @@ const config = defineConfig({
     },
   },
   resolve: {
-    tsconfigPaths: true,
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
       // React 19 + Vite resolves react-dom/server -> server.browser (no default export).
@@ -113,6 +113,7 @@ const config = defineConfig({
     },
   },
   plugins: [
+    tsconfigPaths(),
     tanstackStartClientEnvCompatPlugin(),
     devtools(),
     tanstackStart({

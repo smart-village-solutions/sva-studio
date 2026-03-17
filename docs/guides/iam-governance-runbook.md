@@ -16,10 +16,22 @@ Missbrauchs- und Incident-Fällen.
 ## Standardablauf (Triage)
 
 1. Betroffene `instance_id` und Zeitfenster eingrenzen.
-2. Governance-Events exportieren (`/iam/governance/compliance/export`).
+2. Governance-Feed in `/admin/iam?tab=governance` prüfen oder Governance-Events exportieren (`/iam/governance/compliance/export`).
 3. Korrelationskette prüfen: `request_id`, `trace_id`, `event_id`.
 4. Ticketbezug prüfen (`ticket_id`, `ticket_state`).
 5. Bei Missbrauchsverdacht aktive Impersonation/Delegation sofort terminieren.
+
+## Relevante Read-Endpunkte
+
+- Governance-Feed: `GET /iam/governance/workflows`
+- User-Historie: `GET /api/v1/iam/users/:userId/timeline`
+- Rechtstext-Verwaltung: `GET/POST/PATCH /api/v1/iam/legal-texts`
+
+Der Governance-Feed normalisiert Rechteänderungen, Delegationen, Impersonationen und Legal-Akzeptanzen in ein gemeinsames Read-Modell für das Transparenz-Cockpit.
+
+Die Rechtstext-Verwaltung unter `/admin/legal-texts` pflegt die technischen
+Versionseinträge für Legal-Akzeptanzen. Aktuell werden Metadaten und
+Inhalts-Hashes verwaltet, nicht der Textkörper selbst.
 
 ## Sofortmaßnahmen
 
@@ -41,3 +53,4 @@ Missbrauchs- und Incident-Fällen.
 - Security: bei bestätigtem Missbrauch oder Ticket-Manipulation.
 - DSB/Legal: bei Compliance-relevanten Abweichungen.
 - Plattform: bei DB-/RLS-/Observability-Ausfällen.
+- Produkt/Support: bei Rollenmatrix-Drift zwischen Route-Zugriff und Governance-Leserechten im Cockpit.

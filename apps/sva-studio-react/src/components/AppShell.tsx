@@ -6,7 +6,10 @@
  */
 import React from 'react';
 
+import Header from './Header';
 import Sidebar from './Sidebar';
+import { t } from '../i18n';
+import { useAuth } from '../providers/auth-provider';
 
 type AppShellProps = Readonly<{
   children: React.ReactNode;
@@ -31,37 +34,51 @@ export default function AppShell({
   onMobileSidebarOpenChange,
   sidebarSlot,
 }: AppShellProps) {
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
+  const showSidebar = isAuthenticated && !isAuthLoading;
+
   return (
-    <div className="flex w-full flex-1 flex-col bg-background lg:min-h-[calc(100vh-4rem)] lg:flex-row">
-      {sidebarSlot ?? (
+    <div className="flex min-h-screen w-full flex-1 flex-col bg-background lg:flex-row">
+      {showSidebar
+        ? (sidebarSlot ?? (
         <Sidebar
           isLoading={isLoading}
           isMobileOpen={isMobileSidebarOpen}
           onMobileOpenChange={onMobileSidebarOpenChange}
         />
-      )}
-      <main
-        id="main-content"
-        tabIndex={-1}
-        className="flex min-h-0 flex-1 flex-col bg-background px-4 py-6 sm:px-6 sm:py-8 lg:px-8"
-        aria-busy={isLoading}
-      >
-        {isLoading ? (
-          <section aria-label="Inhalt lädt" className="space-y-4">
-            <span role="status" aria-live="polite" className="sr-only">
-              Inhalt wird geladen.
-            </span>
-            <span aria-hidden="true" className="block h-8 w-48 animate-pulse rounded-md bg-muted" />
-            <span aria-hidden="true" className="block h-24 w-full animate-pulse rounded-lg bg-card shadow-shell" />
-            <div className="grid gap-4 md:grid-cols-2">
+          ))
+        : null}
+      <div className="flex min-h-screen min-w-0 flex-1 flex-col">
+        <Header
+          isLoading={isLoading}
+          isMobileNavigationOpen={isMobileSidebarOpen}
+          onOpenMobileNavigation={
+            showSidebar ? () => onMobileSidebarOpenChange?.(!isMobileSidebarOpen) : undefined
+          }
+        />
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="flex min-h-0 flex-1 flex-col bg-background px-4 py-6 sm:px-6 sm:py-8 lg:px-8"
+          aria-busy={isLoading}
+        >
+          {isLoading ? (
+            <section aria-label={t('shell.content.loadingLabel')} className="space-y-4">
+              <span role="status" aria-live="polite" className="sr-only">
+                {t('shell.content.loadingStatus')}
+              </span>
+              <span aria-hidden="true" className="block h-8 w-48 animate-pulse rounded-md bg-muted" />
               <span aria-hidden="true" className="block h-24 w-full animate-pulse rounded-lg bg-card shadow-shell" />
-              <span aria-hidden="true" className="block h-24 w-full animate-pulse rounded-lg bg-card shadow-shell" />
-            </div>
-          </section>
-        ) : (
-          children
-        )}
-      </main>
+              <div className="grid gap-4 md:grid-cols-2">
+                <span aria-hidden="true" className="block h-24 w-full animate-pulse rounded-lg bg-card shadow-shell" />
+                <span aria-hidden="true" className="block h-24 w-full animate-pulse rounded-lg bg-card shadow-shell" />
+              </div>
+            </section>
+          ) : (
+            children
+          )}
+        </main>
+      </div>
     </div>
   );
 }

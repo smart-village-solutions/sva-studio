@@ -10,6 +10,8 @@ Die Layout-Shell von `apps/sva-studio-react` verwendet semantische Design-Tokens
 
 ## Leitlinien
 
+- Neue UI-Komponenten und neue UI-Flächen basieren auf `shadcn/ui`.
+- Bestehende `shadcn/ui`-Primitives und Varianten werden bevorzugt wiederverwendet, statt parallele Basisbausteine einzuführen.
 - Shell-nahe Komponenten verwenden bevorzugt semantische Klassen wie `bg-background`, `text-foreground`, `bg-card`, `bg-sidebar`, `border-border` und `text-muted-foreground`.
 - Direkte Farbcodes oder projektspezifische Tailwind-Farben wie `slate-*` oder `emerald-*` sollen in neuen Shell-Komponenten nicht mehr verwendet werden.
 - Theme-Auswahl erfolgt zentral über `ThemeProvider` und `src/lib/theme.ts`.
@@ -27,6 +29,7 @@ Die Layout-Shell von `apps/sva-studio-react` verwendet semantische Design-Tokens
 
 ## Erweiterungsregeln
 
+- Abweichungen von `shadcn/ui` für Standardmuster wie Button, Dialog, Input, Select oder Tabs sind nur mit dokumentierter Architekturentscheidung zulässig.
 - Neue Theme-Varianten nur zentral in `src/lib/theme.ts` und den zugehörigen CSS-Token-Overrides ergänzen.
 - Neue Shell-Interaktionen bevorzugt über standardisierte Primitives modellieren, aktuell insbesondere Drawer-/`Sheet`-Muster.
 - Größere Route-Flächen sollen bei Anpassungen opportunistisch auf semantische Tokens migriert werden, ohne die Shell erneut zu fragmentieren.

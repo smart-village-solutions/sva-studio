@@ -104,8 +104,9 @@ Die verbindlichen Entwicklungsrichtlinien liegen unter [DEVELOPMENT_RULES.md](DE
 2. **Logging**: Server-Code nutzt SDK Logger (`@sva/sdk`), nie `console.*`
 3. **Security**: Input-Validation client+server, PII-Schutz in Logs
 4. **CSS**: Design-System verwenden, keine inline-styles (außer dynamische Daten)
-5. **Accessibility**: WCAG 2.1 AA compliant
-6. **Docs**: Alle Änderungen müssen relevante Dokumentation aktualisieren (Code, Architektur, Guides)
+5. **UI-Standard**: Neue UI mit `shadcn/ui` bauen; keine parallelen Basis-Komponenten ohne dokumentierte Architekturentscheidung
+6. **Accessibility**: WCAG 2.1 AA compliant
+7. **Docs**: Alle Änderungen müssen relevante Dokumentation aktualisieren (Code, Architektur, Guides)
 
 **Details:** Siehe [DEVELOPMENT_RULES.md](DEVELOPMENT_RULES.md)
 

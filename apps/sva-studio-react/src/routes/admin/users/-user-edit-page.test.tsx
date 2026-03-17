@@ -6,6 +6,7 @@ import { userErrorMessage } from './-user-error-message';
 
 const useUserMock = vi.fn();
 const useRolesMock = vi.fn();
+const getUserTimelineMock = vi.fn();
 
 vi.mock('../../../hooks/use-user', () => ({
   useUser: (...args: unknown[]) => useUserMock(...args),
@@ -13,6 +14,10 @@ vi.mock('../../../hooks/use-user', () => ({
 
 vi.mock('../../../hooks/use-roles', () => ({
   useRoles: () => useRolesMock(),
+}));
+
+vi.mock('../../../lib/iam-api', () => ({
+  getUserTimeline: (...args: unknown[]) => getUserTimelineMock(...args),
 }));
 
 describe('UserEditPage', () => {
@@ -29,6 +34,7 @@ describe('UserEditPage', () => {
     email: 'alice@example.com',
     status: 'active' as const,
     notes: '',
+    avatarUrl: 'https://example.com/avatar.png',
     roles: [{ roleId: 'role-1', roleName: 'system_admin', roleLevel: 90 }],
     permissions: ['content.read'],
     mainserverUserApplicationId: 'app-id-1',
@@ -38,6 +44,8 @@ describe('UserEditPage', () => {
   beforeEach(() => {
     useUserMock.mockReset();
     useRolesMock.mockReset();
+    getUserTimelineMock.mockReset();
+    getUserTimelineMock.mockResolvedValue({ data: [] });
   });
 
   it('renders loading state', () => {
@@ -116,6 +124,7 @@ describe('UserEditPage', () => {
     render(<UserEditPage userId="user-1" />);
 
     expect(screen.getByRole('heading', { name: 'Alice Admin' })).toBeTruthy();
+    expect(screen.getByRole('img', { name: 'Profilbild von Alice Admin' })).toBeTruthy();
 
     fireEvent.click(screen.getByRole('tab', { name: 'Berechtigungen' }));
     expect(screen.getByText('content.read')).toBeTruthy();
@@ -125,6 +134,123 @@ describe('UserEditPage', () => {
 
     fireEvent.keyDown(screen.getByRole('tab', { name: 'Historie' }), { key: 'Home' });
     expect(screen.getByRole('tab', { name: 'Persönliche Daten' }).getAttribute('aria-selected')).toBe('true');
+  });
+
+  it('loads unified history entries and renders role validity windows', async () => {
+    useUserMock.mockReturnValue({
+      user: {
+        ...baseUser,
+        roles: [
+          {
+            roleId: 'role-1',
+            roleName: 'system_admin',
+            roleLevel: 90,
+            validFrom: '2026-03-01T10:00:00.000Z',
+            validTo: '2026-03-31T10:00:00.000Z',
+          },
+        ],
+      },
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      save: vi.fn(),
+    });
+    useRolesMock.mockReturnValue({
+      roles: [{ id: 'role-1', roleName: 'system_admin' }],
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      createRole: vi.fn(),
+      updateRole: vi.fn(),
+      deleteRole: vi.fn(),
+    });
+    getUserTimelineMock.mockResolvedValue({
+      data: [
+        {
+          id: 'event-1',
+          category: 'governance',
+          eventType: 'delegation',
+          title: 'Delegation erstellt',
+          description: 'Rolle editor wurde temporär delegiert',
+          occurredAt: '2026-03-16T09:00:00.000Z',
+          perspective: 'actor_and_target',
+          metadata: { status: 'approved' },
+        },
+      ],
+    });
+
+    render(<UserEditPage userId="user-1" />);
+
+    expect(screen.getByText(/Gültig:/)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Historie' }));
+
+    await waitFor(() => {
+      expect(getUserTimelineMock).toHaveBeenCalledWith('user-1');
+      expect(screen.getByText('Delegation erstellt')).toBeTruthy();
+      expect(screen.getByText('Auslöser und Ziel')).toBeTruthy();
+    });
+  });
+
+  it('renders avatar initials and one-sided role validity labels without an avatar image', () => {
+    useUserMock.mockReturnValue({
+      user: {
+        ...baseUser,
+        avatarUrl: undefined,
+        displayName: 'Alice Admin',
+        roles: [
+          {
+            roleId: 'role-1',
+            roleName: 'system_admin',
+            roleLevel: 90,
+            validFrom: '2026-03-01T10:00:00.000Z',
+          },
+        ],
+      },
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      save: vi.fn(),
+    });
+    useRolesMock.mockReturnValue({
+      roles: [{ id: 'role-1', roleName: 'system_admin' }],
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      createRole: vi.fn(),
+      updateRole: vi.fn(),
+      deleteRole: vi.fn(),
+    });
+
+    const { rerender } = render(<UserEditPage userId="user-1" />);
+
+    expect(screen.getByText('AA')).toBeTruthy();
+    expect(screen.getByText(/Gültig ab /)).toBeTruthy();
+
+    useUserMock.mockReturnValue({
+      user: {
+        ...baseUser,
+        avatarUrl: undefined,
+        displayName: '   ',
+        roles: [
+          {
+            roleId: 'role-1',
+            roleName: 'system_admin',
+            roleLevel: 90,
+            validTo: '2026-03-31T10:00:00.000Z',
+          },
+        ],
+      },
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      save: vi.fn(),
+    });
+
+    rerender(<UserEditPage userId="user-1" />);
+
+    expect(screen.getByText('NA')).toBeTruthy();
+    expect(screen.getByText(/Gültig bis /)).toBeTruthy();
   });
 
   it('submits updates and shows success state', async () => {

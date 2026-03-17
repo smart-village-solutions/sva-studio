@@ -24,6 +24,42 @@ type RouteGuardLogger = {
 
 const logger = createSdkLogger({ component: 'auth-routing', level: 'info' });
 
+const methodNotAllowedJson = (allow: string, requestId?: string) =>
+  new Response(
+    JSON.stringify({
+      error: 'method_not_allowed',
+      message: 'HTTP-Methode nicht erlaubt.',
+      ...(requestId ? { requestId } : {}),
+    }),
+    {
+      status: 405,
+      headers: {
+        'Content-Type': 'application/json',
+        Allow: allow,
+        ...(requestId ? { 'X-Request-Id': requestId } : {}),
+      },
+    }
+  );
+
+const readWorkspaceIdFromRequest = (request: Request): string => {
+  const headers = getHeadersFromRequest(request);
+  const fromHeaders =
+    headers['x-workspace-id'] ??
+    headers['x-sva-workspace-id'] ??
+    headers['x-instance-id'];
+  if (typeof fromHeaders === 'string' && fromHeaders.trim().length > 0) {
+    return fromHeaders.trim();
+  }
+
+  const url = new URL(request.url);
+  const fromQuery = url.searchParams.get('instanceId');
+  if (typeof fromQuery === 'string' && fromQuery.trim().length > 0) {
+    return fromQuery.trim();
+  }
+
+  return 'default';
+};
+
 /**
  * Exhaustive handler mapping for all auth route paths.
  * Adding a path to `authRoutePaths` without a corresponding handler entry
@@ -100,6 +136,12 @@ const authHandlerMap = {
     DELETE: async ({ request }) => {
       const mod = await import('@sva/auth/server');
       return mod.deactivateUserHandler(request);
+    },
+  },
+  '/api/v1/iam/users/$userId/timeline': {
+    GET: async ({ request }) => {
+      const mod = await import('@sva/auth/server');
+      return mod.getUserTimelineHandler(request);
     },
   },
   '/api/v1/iam/users/bulk-deactivate': {
@@ -190,6 +232,22 @@ const authHandlerMap = {
       return mod.deleteRoleHandler(request);
     },
   },
+  '/api/v1/iam/legal-texts': {
+    GET: async ({ request }) => {
+      const mod = await import('@sva/auth/server');
+      return mod.listLegalTextsHandler(request);
+    },
+    POST: async ({ request }) => {
+      const mod = await import('@sva/auth/server');
+      return mod.createLegalTextHandler(request);
+    },
+  },
+  '/api/v1/iam/legal-texts/$legalTextVersionId': {
+    PATCH: async ({ request }) => {
+      const mod = await import('@sva/auth/server');
+      return mod.updateLegalTextHandler(request);
+    },
+  },
   '/api/v1/iam/admin/reconcile': {
     POST: async ({ request }) => {
       const mod = await import('@sva/auth/server');
@@ -197,6 +255,10 @@ const authHandlerMap = {
     },
   },
   '/iam/governance/workflows': {
+    GET: async ({ request }) => {
+      const mod = await import('@sva/auth/server');
+      return mod.listGovernanceCasesHandler(request);
+    },
     POST: async ({ request }) => {
       const mod = await import('@sva/auth/server');
       return mod.governanceWorkflowHandler(request);
@@ -210,6 +272,9 @@ const authHandlerMap = {
   },
   '/iam/me/data-export': {
     GET: async ({ request }) => {
+      return methodNotAllowedJson('POST', extractRequestIdFromHeaders(getHeadersFromRequest(request)));
+    },
+    POST: async ({ request }) => {
       const mod = await import('@sva/auth/server');
       return mod.dataExportHandler(request);
     },
@@ -221,6 +286,10 @@ const authHandlerMap = {
     },
   },
   '/iam/me/data-subject-rights/requests': {
+    GET: async ({ request }) => {
+      const mod = await import('@sva/auth/server');
+      return mod.getMyDataSubjectRightsHandler(request);
+    },
     POST: async ({ request }) => {
       const mod = await import('@sva/auth/server');
       return mod.dataSubjectRequestHandler(request);
@@ -240,6 +309,9 @@ const authHandlerMap = {
   },
   '/iam/admin/data-subject-rights/export': {
     GET: async ({ request }) => {
+      return methodNotAllowedJson('POST', extractRequestIdFromHeaders(getHeadersFromRequest(request)));
+    },
+    POST: async ({ request }) => {
       const mod = await import('@sva/auth/server');
       return mod.adminDataExportHandler(request);
     },
@@ -248,6 +320,12 @@ const authHandlerMap = {
     GET: async ({ request }) => {
       const mod = await import('@sva/auth/server');
       return mod.adminDataExportStatusHandler(request);
+    },
+  },
+  '/iam/admin/data-subject-rights/cases': {
+    GET: async ({ request }) => {
+      const mod = await import('@sva/auth/server');
+      return mod.listAdminDataSubjectRightsCasesHandler(request);
     },
   },
   '/iam/admin/data-subject-rights/legal-holds/apply': {
@@ -282,6 +360,7 @@ const getErrorMessage = (error: unknown): string =>
 const writeLoggerFallback = (input: {
   method: string;
   route: string;
+  workspaceId: string;
   requestId?: string;
   traceId?: string;
   errorType: string;
@@ -293,6 +372,7 @@ const writeLoggerFallback = (input: {
     message: 'Auth route error logging failed',
     method: input.method,
     route: input.route,
+    workspace_id: input.workspaceId,
     request_id: input.requestId,
     trace_id: input.traceId,
     error_type: input.errorType,
@@ -355,6 +435,7 @@ export const wrapHandlersWithJsonErrorBoundary = (handlers: AuthHandlers): AuthH
         const requestId = extractRequestIdFromHeaders(requestHeaders);
         const traceId = extractTraceIdFromHeaders(requestHeaders);
         const route = new URL(ctx.request.url).pathname;
+        const workspaceId = readWorkspaceIdFromRequest(ctx.request);
         const errorType = getErrorType(error);
         const errorMessage = getErrorMessage(error);
 
@@ -362,6 +443,7 @@ export const wrapHandlersWithJsonErrorBoundary = (handlers: AuthHandlers): AuthH
           logger.error('Unhandled exception in auth route handler', {
             method,
             route,
+            workspace_id: workspaceId,
             request_id: requestId,
             trace_id: traceId,
             error_type: errorType,
@@ -371,6 +453,7 @@ export const wrapHandlersWithJsonErrorBoundary = (handlers: AuthHandlers): AuthH
           writeLoggerFallback({
             method,
             route,
+            workspaceId,
             requestId,
             traceId,
             errorType,

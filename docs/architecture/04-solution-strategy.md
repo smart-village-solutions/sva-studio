@@ -43,6 +43,7 @@ Architekturprinzipien auf IST-Basis.
 - Konsistenter Fehlervertrag und korrelierbare Logs über Infrastruktur- und Fachschicht hinweg
 - Konsistente, zentrale Autorisierungsentscheidungen statt verteilter Fachmodul-Logik
 - Konsistente UI-Branding-Schicht mit zentraler Theme-Auflösung statt komponentenlokaler Farbdefinitionen
+- Transparenz im IAM über getypte Read-Modelle statt Roh-JSON-Ausgaben in Admin- und Self-Service-Views
 
 ### Zielkonflikte (aktuell sichtbar)
 

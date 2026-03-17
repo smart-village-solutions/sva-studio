@@ -180,6 +180,7 @@
       "cache": false,
       "outputs": [],
       "options": {
+        "cwd": "apps/sva-studio-react",
         "command": "pnpm exec node --import tsx ../../scripts/ci/run-iam-acceptance.ts"
       }
     }

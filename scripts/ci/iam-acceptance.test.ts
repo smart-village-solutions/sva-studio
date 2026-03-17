@@ -11,14 +11,14 @@ import {
 test('parseAcceptanceConfig applies defaults and reads required env', () => {
   const config = parseAcceptanceConfig(
     {
-      IAM_ACCEPTANCE_ADMIN_PASSWORD: 'secret-admin',
-      IAM_ACCEPTANCE_ADMIN_USERNAME: 'acceptance-admin',
-      IAM_ACCEPTANCE_MEMBER_PASSWORD: 'secret-member',
-      IAM_ACCEPTANCE_MEMBER_USERNAME: 'acceptance-member',
+      IAM_ACCEPTANCE_ADMIN_PASSWORD: 'fixture-admin-value',
+      IAM_ACCEPTANCE_ADMIN_USERNAME: 'fixture-admin-user',
+      IAM_ACCEPTANCE_MEMBER_PASSWORD: 'fixture-member-value',
+      IAM_ACCEPTANCE_MEMBER_USERNAME: 'fixture-member-user',
       IAM_DATABASE_URL: 'postgres://localhost/sva',
       KEYCLOAK_ADMIN_BASE_URL: 'https://keycloak.example.com',
-      KEYCLOAK_ADMIN_CLIENT_ID: 'svc-client',
-      KEYCLOAK_ADMIN_CLIENT_SECRET: 'svc-secret',
+      KEYCLOAK_ADMIN_CLIENT_ID: 'fixture-client-id',
+      KEYCLOAK_ADMIN_CLIENT_SECRET: 'fixture-client-value',
       KEYCLOAK_ADMIN_REALM: 'acceptance',
     },
     '/workspace'
@@ -34,7 +34,7 @@ test('parseAcceptanceConfig rejects incomplete configuration', () => {
   assert.throws(
     () =>
       parseAcceptanceConfig({
-        IAM_ACCEPTANCE_ADMIN_USERNAME: 'acceptance-admin',
+        IAM_ACCEPTANCE_ADMIN_USERNAME: 'fixture-admin-user',
       }),
     /Missing required acceptance env/
   );

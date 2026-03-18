@@ -63,7 +63,7 @@ Das System MUST eine Account-Profilseite unter `/account` bereitstellen, auf der
 #### Scenario: Profil anzeigen
 
 - **WENN** ein authentifizierter Nutzer `/account` aufruft
-- **DANN** werden Name, E-Mail, Telefon, Position, Abteilung, Sprache und Zeitzone angezeigt
+- **DANN** werden Benutzername, Name, E-Mail, Telefon, Position, Abteilung, Sprache und Zeitzone angezeigt
 - **UND** die aktuelle Rolle und der Account-Status sind sichtbar (read-only)
 - **UND** ein Avatar oder Platzhalter-Bild wird angezeigt
 - **UND** die Seite zeigt einen Loading-State (`aria-busy="true"`) während die Daten geladen werden
@@ -71,24 +71,18 @@ Das System MUST eine Account-Profilseite unter `/account` bereitstellen, auf der
 
 #### Scenario: Basis-Daten bearbeiten
 
-- **WENN** ein Nutzer seine Basis-Daten (Name, Telefon, Position, Abteilung, Sprache, Zeitzone) ändert
+- **WENN** ein Nutzer seine Basis-Daten (Benutzername, Name, E-Mail, Telefon, Position, Abteilung, Sprache, Zeitzone) ändert
 - **UND** das Formular absendet
 - **DANN** werden die Änderungen in der IAM-Datenbank und in Keycloak gespeichert
+- **UND** die Benutzerverwaltung zeigt bei der nächsten Datenladung den aktualisierten Anzeigenamen und die aktualisierte E-Mail
+- **UND** Änderungen an Vor- und Nachname aktualisieren den `displayName`, sofern kein abweichender benutzerdefinierter Anzeigename gepflegt wurde
 - **UND** eine Erfolgsbestätigung wird angezeigt (`role="status"`, `aria-live="polite"`)
 - **UND** der `AuthProvider`-State wird aktualisiert
 - **UND** der Fokus wird nach dem Speichern auf die Erfolgsbestätigung gesetzt
 
-#### Scenario: Sicherheits-Einstellungen ändern (Keycloak-Redirect)
-
-- **WENN** ein Nutzer auf „Passwort ändern", „E-Mail ändern" oder „Zwei-Faktor-Authentifizierung" klickt
-- **DANN** wird ein Hinweis angezeigt: „Sie werden zur Keycloak-Kontoverwaltung weitergeleitet" (`t('account.keycloakRedirectHint')`)
-- **UND** der Link zeigt ein externes-Link-Icon mit `aria-label` (z. B. „Passwort ändern – öffnet Keycloak-Kontoverwaltung")
-- **UND** nach Abschluss kehrt der Nutzer über `redirect_uri` → `/account?returnedFromKeycloak=true` zurück
-- **UND** die Weiterleitung öffnet im selben Tab (konsistente Navigation)
-
 #### Scenario: Validierungsfehler bei Profilbearbeitung
 
-- **WENN** ein Nutzer ungültige Daten eingibt (z. B. leerer Name, ungültiges Telefonnummerformat)
+- **WENN** ein Nutzer ungültige Daten eingibt (z. B. leerer Benutzername, leerer Name, ungültiges Telefonnummerformat oder ungültige E-Mail-Adresse)
 - **DANN** werden feldspezifische Fehlermeldungen angezeigt (`aria-invalid="true"`, `aria-describedby`)
 - **UND** eine Error-Summary wird am Formularanfang angezeigt
 - **UND** der Fokus wird auf das erste fehlerhafte Feld gesetzt
@@ -108,6 +102,14 @@ Das System MUST eine User-Administrationsliste unter `/admin/users` bereitstelle
 - **UND** die Tabelle paginiert bei mehr als 25 Einträgen
 - **UND** ein Loading-State (`aria-busy="true"`) wird angezeigt, bis die Daten geladen sind
 - **UND** bei leerem Ergebnis wird ein Empty-State angezeigt (`t('admin.users.emptyState')`)
+
+#### Scenario: Keycloak-Benutzer synchronisieren
+
+- **WENN** ein Administrator in `/admin/users` die Aktion „Aus Keycloak synchronisieren" ausführt
+- **DANN** lädt das System Keycloak-Benutzer für den aktuellen `instanceId`-Kontext
+- **UND** importiert oder aktualisiert fehlende Benutzer in IAM idempotent
+- **UND** zeigt nach Abschluss eine Ergebnisrückmeldung mit Anzahl importierter und aktualisierter Benutzer
+- **UND** lädt die User-Liste anschließend neu
 
 #### Scenario: User-Suche
 
@@ -160,55 +162,16 @@ Das System MUST eine User-Administrationsliste unter `/admin/users` bereitstelle
 
 Das System MUST eine User-Bearbeitungsseite unter `/admin/users/:userId` bereitstellen, die eine detaillierte Bearbeitung eines Benutzer-Accounts in einer Tab-Ansicht ermöglicht.
 
-#### Scenario: Tab-Navigation (WAI-ARIA Tabs Pattern)
-
-- **WENN** ein Administrator die User-Bearbeitungsseite aufruft
-- **DANN** werden 4 Tabs angezeigt: „Persönliche Daten", „Verwaltung", „Berechtigungen", „Historie"
-- **UND** die Tabs implementieren das WAI-ARIA Tabs Pattern:
-  - `role="tablist"` auf dem Container, `role="tab"` auf jedem Tab, `role="tabpanel"` auf dem Inhaltsbereich
-  - `aria-selected="true"` für den aktiven Tab
-  - `aria-controls` verknüpft jeden Tab mit seinem Panel
-  - Arrow-Keys (Links/Rechts) wechseln den Fokus zwischen Tabs
-  - `Home`/`End` springen zum ersten/letzten Tab
-- **UND** der erste Tab ist standardmäßig ausgewählt
-- **UND** der Tab-Wechsel erfolgt ohne Seitenneuladung
-
-#### Scenario: Persönliche Daten bearbeiten
-
-- **WENN** ein Administrator den Tab „Persönliche Daten" öffnet
-- **DANN** kann er Name, E-Mail, Telefon, Position, Abteilung und Adresse des Nutzers bearbeiten
-- **UND** alle Pflichtfelder sind mit `aria-required="true"` markiert
-- **UND** Änderungen werden in IAM-DB und Keycloak synchronisiert
-
-#### Scenario: Verwaltung – Status und Rollen
+#### Scenario: Verwaltung – Status, Rollen und Mainserver-Credentials
 
 - **WENN** ein Administrator den Tab „Verwaltung" öffnet
 - **DANN** kann er den Account-Status ändern (aktiv/inaktiv/ausstehend)
 - **UND** Rollen zuweisen oder entfernen (unter Beachtung des Privilege-Escalation-Schutzes)
 - **UND** Sprach- und Zeitzone-Präferenzen setzen
 - **UND** administrative Notizen hinterlegen (max. 2000 Zeichen)
-
-#### Scenario: Berechtigungen einsehen
-
-- **WENN** ein Administrator den Tab „Berechtigungen" öffnet
-- **DANN** werden die effektiven Berechtigungen des Nutzers angezeigt (aggregiert aus allen zugewiesenen Rollen)
-- **UND** die Anzeige ist gruppiert nach Ressourcentyp (Inhalte, Medien, Benutzer, Module, Design, Einstellungen)
-
-#### Scenario: Historie einsehen
-
-- **WENN** ein Administrator den Tab „Historie" öffnet
-- **DANN** werden die letzten Activity-Log-Einträge des Nutzers chronologisch angezeigt
-- **UND** jeder Eintrag zeigt: Datum, Aktion, Beschreibung, Ausführender
-- **UND** die Liste ist scrollbar und paginiert
-- **UND** bei leerem Verlauf wird ein Empty-State angezeigt (`t('admin.users.history.empty')`)
-
-#### Scenario: Warnung bei ungespeicherten Änderungen
-
-- **WENN** ein Administrator ungespeicherte Änderungen hat
-- **UND** versucht, die Seite zu verlassen oder den Tab zu wechseln
-- **DANN** wird eine Warnmeldung in einem `role="alertdialog"` angezeigt
-- **UND** der Nutzer kann wählen, ob er speichern, verwerfen oder abbrechen möchte
-- **UND** der Dialog ist per Tastatur bedienbar (Focus-Trap, Escape zum Abbrechen)
+- **UND** die Mainserver-Felder `mainserverUserApplicationId` und `mainserverUserApplicationSecret` bearbeiten
+- **UND** das Secret-Feld wird nicht mit seinem aktuellen Klartextwert vorbefüllt
+- **UND** die UI zeigt stattdessen an, ob bereits ein Secret hinterlegt ist
 
 ### Requirement: Rollen-Verwaltungsseite
 
@@ -386,35 +349,288 @@ Alle Account- und Admin-Views MUST auf allen Gerätegrößen nutzbar sein.
 
 Das System MUST serverseitige API-Endpunkte unter `/api/v1/iam/` für User-CRUD, Rollen-Management und Profil-Updates bereitstellen, die IAM-DB und Keycloak synchron halten.
 
-#### Scenario: User auflisten
+#### Scenario: Admin aktualisiert Mainserver-Credentials eines Benutzers
 
-- **WENN** ein authentifizierter Administrator `GET /api/v1/iam/users` aufruft
-- **DANN** werden alle User-Accounts aus der IAM-DB zurückgegeben
-- **UND** die Antwort enthält Pagination-Metadaten (`total`, `page`, `pageSize`)
-- **UND** Query-Parameter für Filter (`status`, `role`, `search`) werden unterstützt
-- **UND** die Ergebnisse sind auf den aktuellen `instance_id`-Scope beschränkt (RLS)
+- **WENN** ein authentifizierter Administrator `PATCH /api/v1/iam/users/:userId` mit `mainserverUserApplicationId` und/oder `mainserverUserApplicationSecret` aufruft
+- **DANN** werden die Mainserver-Credentials in die Keycloak-User-Attribute des Zielbenutzers geschrieben
+- **UND** `mainserverUserApplicationSecret` wird nicht im Response-Körper zurückgegeben
+- **UND** leere Secret-Werte überschreiben ein bestehendes Secret nicht implizit
+- **UND** die restlichen Benutzerdaten bleiben unverändert, sofern sie nicht ebenfalls im Payload enthalten sind
 
-#### Scenario: User erstellen mit Keycloak-Sync
+#### Scenario: Admin lädt Benutzerdetail mit Mainserver-Credential-Status
 
-- **WENN** ein Administrator `POST /api/v1/iam/users` aufruft
-- **DANN** wird der Nutzer zunächst in Keycloak erstellt (über `IdentityProviderPort`)
-- **UND** anschließend in der IAM-DB mit `keycloak_subject` als Referenz gespeichert
-- **UND** bei einem Keycloak-Fehler wird kein DB-Eintrag erstellt
-- **UND** bei einem DB-Fehler nach erfolgreichem Keycloak-Call wird der Keycloak-User entfernt (Compensation)
+- **WENN** ein authentifizierter Administrator `GET /api/v1/iam/users/:userId` aufruft
+- **DANN** enthält die Antwort `mainserverUserApplicationId`, falls in Keycloak gesetzt
+- **UND** die Antwort enthält einen booleschen Status, ob `mainserverUserApplicationSecret` vorhanden ist
+- **UND** der Klartext des Secrets wird nie an den Browser übertragen
 
-#### Scenario: Profil-Self-Service-Update
+### Requirement: Gruppenverwaltung im Admin-Bereich
 
-- **WENN** ein Nutzer `PATCH /api/v1/iam/users/me/profile` aufruft
-- **DANN** werden nur die erlaubten Felder aktualisiert (Name, Telefon, Position, Abteilung, Sprache, Zeitzone)
-- **UND** PII-Felder werden als `*_ciphertext` verschlüsselt gespeichert
-- **UND** die Änderungen werden in IAM-DB und Keycloak User Attributes synchronisiert
-- **UND** Felder wie E-Mail, Status oder Rollen können über diesen Endpunkt NICHT geändert werden
+Das System MUST im Admin-Bereich eine Oberfläche zur Verwaltung instanzgebundener Gruppen bereitstellen.
 
-#### Scenario: JIT-Account-Erstellung beim Erst-Login
+#### Scenario: Administrator verwaltet Gruppen
 
-- **WENN** ein Nutzer sich erstmals über Keycloak authentifiziert
-- **UND** kein Eintrag in `iam.accounts` für den `keycloak_subject` existiert
-- **DANN** wird automatisch ein Account erstellt via `INSERT ... ON CONFLICT (keycloak_subject, instance_id) DO UPDATE` (Race-Condition-sicher)
-- **UND** der Account erhält den Status `pending` bis ein Administrator ihn aktiviert
-- **UND** ein `user.jit_provisioned`-Activity-Log-Eintrag wird geschrieben
+- **WENN** ein berechtigter Administrator die Gruppenverwaltung öffnet
+- **DANN** kann er Gruppen anlegen, bearbeiten, deaktivieren und löschen
+- **UND** sieht pro Gruppe mindestens Name, Beschreibung, Typ, Mitgliederzahl und zugewiesene Rechtebündel
 
+#### Scenario: Gruppenzuweisung zu Benutzerkonten
+
+- **WENN** ein Administrator ein Benutzerkonto bearbeitet
+- **DANN** kann er Gruppenmitgliedschaften zuweisen oder entziehen
+- **UND** die UI zeigt bestehende Gruppenmitgliedschaften samt Gültigkeit und Herkunft korrekt an
+
+### Requirement: Sichtbare Gruppenherkunft in IAM-Transparenzdaten
+
+Das System MUST gruppenbasierte Herkunft von Berechtigungen in den relevanten IAM-Ansichten sichtbar machen.
+
+#### Scenario: Effektive Berechtigung stammt aus einer Gruppe
+
+- **WENN** eine effektive Berechtigung eines Benutzers aus einer Gruppenmitgliedschaft stammt
+- **DANN** zeigt die UI diese Herkunft explizit an
+- **UND** Administratoren müssen die Berechtigung nicht durch manuelle Rohdatenanalyse rekonstruieren
+
+### Requirement: Organisations-Verwaltungsseite
+
+Das System MUST eine Organisations-Verwaltungsseite unter `/admin/organizations` bereitstellen, auf der berechtigte Administratoren Organisationen instanzgebunden pflegen können.
+
+#### Scenario: Organisationsliste laden
+
+- **WENN** ein Administrator `/admin/organizations` aufruft
+- **DANN** wird eine Liste oder Tabelle der Organisationen der aktiven Instanz angezeigt
+- **UND** die Oberfläche zeigt Name, Parent, Anzahl untergeordneter Organisationen und Anzahl zugeordneter Accounts
+- **UND** ein Loading-State wird angezeigt, bis die Daten geladen sind
+
+#### Scenario: Organisation suchen und filtern
+
+- **WENN** ein Administrator einen Suchbegriff oder Filter setzt
+- **DANN** werden die sichtbaren Organisationen nach Name, Key oder Status gefiltert
+- **UND** die Trefferzahl wird über eine `aria-live="polite"`-Region aktualisiert
+
+#### Scenario: Organisationen nach Typ filtern
+
+- **WENN** ein Administrator einen Typfilter wie `municipality`, `district` oder einen äquivalenten unterstützten Organisationstyp setzt
+- **DANN** werden nur Organisationen des gewählten Typs angezeigt
+- **UND** die aktive Filterung bleibt in der Oberfläche eindeutig erkennbar
+
+### Requirement: Organisation anlegen und bearbeiten
+
+Das System MUST Administratoren eine einfache UI zum Anlegen und Bearbeiten von Organisationen bereitstellen.
+
+#### Scenario: Organisation anlegen
+
+- **WENN** ein Administrator auf „Organisation anlegen" klickt
+- **DANN** öffnet sich ein Formular-Dialog oder eine Detailansicht mit mindestens Name, Key, Typ und Parent-Auswahl
+- **UND** bei erfolgreichem Speichern erscheint die neue Organisation direkt in der Liste
+
+#### Scenario: Parent-Validierungsfehler anzeigen
+
+- **WENN** ein Administrator eine ungültige Parent-Zuordnung speichert
+- **DANN** zeigt die Oberfläche eine verständliche Fehlermeldung an
+- **UND** das Formular bleibt geöffnet, damit die Eingabe korrigiert werden kann
+
+#### Scenario: Organisationspolicy bearbeiten
+
+- **WENN** ein Administrator in der Organisationsbearbeitung eine Basispolicy wie `content_author_policy` ändert
+- **DANN** zeigt die Oberfläche ein dafür vorgesehenes Eingabeelement mit verständlicher Beschreibung
+- **UND** die Änderung wird nach erfolgreichem Speichern im Detailbereich sichtbar
+
+### Requirement: Organisationszuordnungen für Accounts verwalten
+
+Das System MUST in der Organisationsverwaltung die Zuordnung von Accounts zu Organisationen unterstützen.
+
+#### Scenario: Account einer Organisation zuordnen
+
+- **WENN** ein Administrator in der Organisationsdetailansicht einen Account auswählt und zuordnet
+- **DANN** wird die Zuordnung gespeichert
+- **UND** die Mitgliederliste der Organisation aktualisiert sich ohne vollständigen Seitenwechsel
+
+#### Scenario: Account-Zuordnung entfernen
+
+- **WENN** ein Administrator eine bestehende Organisationszuordnung entfernt
+- **DANN** wird die Zuordnung nach Bestätigung gelöscht
+- **UND** die UI zeigt den aktualisierten Stand der Organisation an
+
+#### Scenario: Default-Kontext einer Mitgliedschaft setzen
+
+- **WENN** ein Administrator für einen Account innerhalb der Organisationszuordnungen einen Default-Kontext setzt
+- **DANN** visualisiert die Oberfläche eindeutig, welche Zuordnung aktuell als Default gilt
+- **UND** konkurrierende Default-Markierungen werden verhindert oder vor dem Speichern aufgelöst
+
+#### Scenario: Mitgliedschaft als intern oder extern kennzeichnen
+
+- **WENN** ein Administrator eine Organisationszuordnung erstellt oder bearbeitet
+- **DANN** kann er die Zuordnung als intern oder extern kennzeichnen
+- **UND** die Kennzeichnung ist in der Mitgliederliste sichtbar
+
+### Requirement: Org-Kontextwechsel für Multi-Org-Accounts
+
+Das System MUST Benutzern mit mehreren Organisationszuordnungen eine kleine, zugängliche UI zum Wechsel des aktiven Organisationskontexts bereitstellen.
+
+#### Scenario: Org-Kontextwechsel anzeigen
+
+- **WENN** ein authentifizierter Benutzer mehreren Organisationen derselben Instanz zugeordnet ist
+- **DANN** zeigt die Oberfläche einen Org-Switcher mit den verfügbaren Organisationen an
+- **UND** der aktuell aktive Organisationskontext ist eindeutig markiert
+
+#### Scenario: Org-Kontext erfolgreich wechseln
+
+- **WENN** ein Benutzer im Org-Switcher eine andere zulässige Organisation auswählt
+- **DANN** wird der aktive Organisationskontext über den vorgesehenen IAM-Contract aktualisiert
+- **UND** die Oberfläche aktualisiert kontextabhängige Daten ohne inkonsistenten Zwischenzustand
+
+#### Scenario: Deaktivierte Organisation wird im Org-Switcher nicht als aktive Zieloption angeboten
+
+- **WENN** eine einem Benutzer zugeordnete Organisation deaktiviert ist
+- **DANN** wird sie nicht als regulär auswählbare aktive Zieloption angeboten
+- **UND** die Oberfläche verhindert einen inkonsistenten Wechsel in einen deaktivierten Kontext
+
+#### Scenario: Org-Kontextwechsel per Tastatur
+
+- **WENN** ein Benutzer den Org-Switcher ausschließlich per Tastatur bedient
+- **DANN** ist der Wechsel vollständig ohne Maus möglich
+- **UND** Statusänderungen werden für assistive Technologien verständlich angekündigt
+
+#### Scenario: Org-Kontextwechsel schlägt fehl
+
+- **WENN** der Wechsel des Organisationskontexts serverseitig abgewiesen oder technisch unterbrochen wird
+- **DANN** zeigt die Oberfläche eine verständliche, internationalisierte Fehlermeldung an
+- **UND** der zuvor aktive Organisationskontext bleibt in der UI konsistent sichtbar
+
+### Requirement: Accessibility und i18n für Organisations-UI
+
+Das System MUST die Organisationsverwaltung vollständig internationalisiert und tastaturbedienbar bereitstellen.
+
+#### Scenario: Organisationsverwaltung wird per Tastatur bedient
+
+- **WENN** ein Administrator die Organisationsverwaltung ohne Maus nutzt
+- **DANN** sind Liste, Filter, Dialoge und Zuordnungsaktionen vollständig per Tastatur erreichbar
+- **UND** Fokusführung, Dialog-Beschriftung und Statusmeldungen entsprechen den bestehenden Accessibility-Mustern
+
+#### Scenario: Keine hardcodierten UI-Texte in Organisations-Views
+
+- **WENN** die Organisationsverwaltung gerendert wird
+- **DANN** stammen alle sichtbaren Texte aus i18n-Keys
+- **UND** die Komponenten enthalten keine hardcodierten Nutzertexte
+
+### Requirement: Responsives Organisations-UI
+
+Das System MUST die Organisationsverwaltung und den Org-Switcher auf den definierten Projekt-Breakpoints funktionsfähig halten.
+
+#### Scenario: Organisationsverwaltung auf 320 px
+
+- **WENN** die Organisationsverwaltung auf einem 320-px-Viewport genutzt wird
+- **DANN** bleiben Liste, Filter, Detaildialoge und Mitgliedschaftsaktionen ohne horizontalen Pflicht-Scroll für Kernaktionen bedienbar
+- **UND** der Org-Switcher bleibt erreichbar und verständlich beschriftet
+
+#### Scenario: Organisationsverwaltung auf 768 px und 1024 px
+
+- **WENN** die Organisationsverwaltung auf 768 px oder 1024 px dargestellt wird
+- **DANN** bleiben Hierarchieinformationen, Typfilter und Zuordnungsaktionen vollständig nutzbar
+- **UND** Layoutwechsel führen nicht zu Fokusverlust oder unzugänglichen Aktionen
+
+### Requirement: IAM-Transparenz-Cockpit für Administratoren
+
+Das System MUST unter `/admin/iam` ein tab-basiertes Transparenz-Cockpit bereitstellen, das strukturierte Rechteinformationen, Governance-Vorgänge und Betroffenenrechtsfälle aufgabengerecht sichtbar macht.
+
+#### Scenario: Rechte-Tab zeigt strukturierte Effective Permissions
+
+- **WENN** ein Administrator den Tab `Rechte` in `/admin/iam` öffnet
+- **DANN** werden effektive Berechtigungen mit `action`, `resourceType`, optionaler `resourceId`, `effect`, `organizationId`, `scope` und `sourceRoleIds` angezeigt
+- **UND** ein Authorize-Check zeigt `reason` und vorhandene Diagnoseinformationen ohne Roh-JSON-Zwang im Standardzustand
+
+#### Scenario: Governance-Tab zeigt operative Freigabe- und Delegationsdaten
+
+- **WENN** ein Administrator den Tab `Governance` öffnet
+- **DANN** sieht er Listen und Detailansichten für Permission-Change-Requests, Delegationen, Impersonation-Sitzungen und Legal-Text-Akzeptanzen
+- **UND** pro Eintrag sind mindestens Status, beteiligte Identitäten, Ticketbezug und relevante Zeitstempel sichtbar
+
+#### Scenario: Betroffenenrechte-Tab zeigt Compliance-relevante Fälle
+
+- **WENN** ein Administrator den Tab `Betroffenenrechte` öffnet
+- **DANN** sieht er Requests, Export-Jobs, Legal Holds, Profilkorrekturen und Empfängerbenachrichtigungen
+- **UND** pro Fall sind Status, Frist-/Zeitinformationen und Blockierungsgründe nachvollziehbar
+
+#### Scenario: Transparenz-Cockpit bleibt barrierefrei und fokussiert
+
+- **WENN** Datenmengen groß oder Teilbereiche leer sind
+- **DANN** bietet das Cockpit Filter, klare Empty-States, Loading-States und Fehlerzustände
+- **UND** Tabs, Tabellen und Detailpanels sind vollständig tastaturbedienbar und screenreader-tauglich
+- **UND** Fokuswechsel sind deterministisch (Tab/Panel/Dialog setzt Fokus zielgerichtet; beim Schließen erfolgt Fokus-Restore)
+- **UND** asynchrone Statusmeldungen sind als Live-Regionen für assistive Technologien wahrnehmbar
+
+#### Scenario: Zugriff auf Admin-Cockpit wird rollenbasiert begrenzt
+
+- **WENN** ein Benutzer ohne ausreichende Berechtigung `/admin/iam` oder einen sensiblen Tab aufruft
+- **DANN** erhält er einen verweigerten Zustand ohne Leckage sensitiver Felder
+- **UND** die UI zeigt eine verständliche Meldung mit nächstem sicheren Schritt
+- **UND** die Route selbst bleibt auf `iam_admin`, `support_admin`, `system_admin`, `security_admin` und `compliance_officer` begrenzt
+- **UND** der Tab `Governance` ist zusätzlich für `security_admin` und `compliance_officer` lesbar, ohne DSR- oder Rechte-Details freizuschalten
+
+#### Scenario: Große Datenmengen werden performanzstabil angezeigt
+
+- **WENN** Governance- oder DSR-Listen hohe Datenmengen enthalten
+- **DANN** werden serverseitige Pagination, Filter und Sortierung verwendet
+- **UND** initial lädt nur der aktive Tab; Detaildaten werden on-demand nachgeladen
+
+### Requirement: Datenschutz-Self-Service im Account-Bereich
+
+Das System MUST unter `/account/privacy` eine eigenständige Self-Service-Oberfläche für Datenschutz- und Betroffenenrechtsvorgänge bereitstellen.
+
+#### Scenario: Benutzer sieht eigene Datenschutzvorgänge
+
+- **WENN** ein authentifizierter Benutzer `/account/privacy` aufruft
+- **DANN** sieht er seine Betroffenenanfragen, Export-Jobs und deren Statushistorie
+- **UND** blockierende Zustände wie Legal Holds oder Verarbeitungseinschränkungen werden verständlich erklärt
+- **UND** die Seite akzeptiert keine fremden Subjekt-IDs oder Admin-Drill-downs im Client
+
+#### Scenario: Benutzer steuert optionale Verarbeitung
+
+- **WENN** ein Benutzer gegen optionale Verarbeitung widersprechen oder deren Status prüfen möchte
+- **DANN** zeigt die UI den aktuellen Opt-out-/Restriktionsstatus
+- **UND** die Aktion ist mit einer nachvollziehbaren Statusrückmeldung verbunden
+
+#### Scenario: Erstaufruf ohne bestehende Datenschutzvorgänge ist geführt
+
+- **WENN** ein authentifizierter Benutzer `/account/privacy` ohne bestehende Anträge oder Export-Jobs öffnet
+- **DANN** zeigt die UI einen klaren Empty-State mit primärem CTA für den nächsten sinnvollen Schritt
+- **UND** nach Ausführung wird der neue Status ohne manuelle Rohdateninterpretation sichtbar
+
+### Requirement: Lokalisierung und klare Inhaltsführung in IAM-UI
+
+Das System MUST alle neu eingeführten sichtbaren UI-Texte in IAM- und Privacy-Ansichten über Translation-Keys bereitstellen und konsistent in `de` und `en` ausliefern.
+
+#### Scenario: Keine hardcoded Strings in neuen IAM-Ansichten
+
+- **WENN** neue Labels, Statusmeldungen, Tabellenköpfe oder Fehlermeldungen in den betroffenen Views angezeigt werden
+- **DANN** werden diese ausschließlich über Translation-Keys gerendert
+- **UND** es existieren korrespondierende Übersetzungen in `de` und `en`
+
+### Requirement: Vertiefte IAM-Metadaten in bestehenden Admin-Ansichten
+
+Das System MUST heute verdeckte IAM-Metadaten in den bestehenden Benutzer-, Rollen-, Organisations- und Kontextansichten sichtbar machen, soweit dies fachlich sinnvoll und sicher ist.
+
+#### Scenario: Benutzerdetail zeigt Profil- und Rollenmetadaten
+
+- **WENN** ein Administrator `/admin/users/:userId` öffnet
+- **DANN** wird ein vorhandener Avatar verwendet, andernfalls ein Platzhalter
+- **UND** Rollen-Gültigkeitsfenster und andere zuweisungsbezogene Metadaten sind sichtbar
+- **UND** die Historie zeigt echte IAM-Aktivitäten statt eines statischen Empty-States, sofern Daten vorhanden sind
+
+#### Scenario: Rollenansicht zeigt externe Abbildung und Sync-Interna
+
+- **WENN** ein Administrator `/admin/roles` öffnet
+- **DANN** sind pro Rolle neben Name und Beschreibung auch `externalRoleName`, `managedBy`, `roleLevel` sowie relevante Sync-Informationen sichtbar
+- **UND** Fehlerzustände des Rollen-Syncs sind in der UI nachvollziehbar
+
+#### Scenario: Organisationsansicht zeigt Hierarchie- und Membership-Details
+
+- **WENN** ein Administrator `/admin/organizations` oder den Membership-Dialog öffnet
+- **DANN** sind Hierarchiepfad, Kindorganisationen, Metadata sowie Membership-Zeitpunkte sichtbar
+- **UND** Default-Kontext und Sichtbarkeit einer Membership bleiben klar erkennbar
+
+#### Scenario: Organisationskontext-Switcher zeigt mehr als nur den Anzeigenamen
+
+- **WENN** ein Benutzer mehrere Organisationskontexte zur Auswahl hat
+- **DANN** zeigt der globale Kontext-Switcher zusätzliche Kontextinformationen wie Organisationstyp, Schlüssel oder Standardkontext-Markierung
+- **UND** die Shell bleibt dabei kompakt und responsiv

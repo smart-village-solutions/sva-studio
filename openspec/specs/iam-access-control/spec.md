@@ -45,7 +45,7 @@ Das System SHALL Basisrollen und Permission-Zuordnungen idempotent initialisiere
 
 ### Requirement: Zentrale Authorize-Schnittstelle (RBAC v1)
 
-Das System SHALL eine zentrale Autorisierungsschnittstelle bereitstellen, die pro Anfrage eine deterministische Entscheidung mit Begründung liefert.
+Das System SHALL eine zentrale Autorisierungsschnittstelle bereitstellen, die pro Anfrage eine deterministische Entscheidung mit Begründung liefert und Diagnoseinformationen für Admin-Transparenz bereitstellen kann.
 
 #### Scenario: Autorisierungsentscheidung mit Begründung
 
@@ -58,6 +58,13 @@ Das System SHALL eine zentrale Autorisierungsschnittstelle bereitstellen, die pr
 - **WHEN** ein `POST /iam/authorize`-Request eingeht
 - **THEN** wird der Request-Body gegen ein Zod-Schema validiert
 - **AND** bei ungültigem Input wird ein strukturierter 400-Fehler zurückgegeben
+
+#### Scenario: Diagnosefelder sind für Admin-UI auswertbar
+
+- **WHEN** eine Autorisierungsentscheidung zusätzliche technische Einordnung benötigt
+- **THEN** enthält die Antwort ausschließlich allowlist-basierte Diagnosefelder mit konflikt-, Hierarchie-, Scope- oder Impersonation-Hinweisen
+- **AND** interne Rohdaten, Stacktraces oder nicht spezifizierte Diagnosefelder werden nicht ausgegeben
+- **AND** diese Diagnoseinformationen sind stabil genug, um in einer Admin-Oberfläche verständlich dargestellt zu werden
 
 #### Scenario: Keine `any`-Casts in Auth-Infrastruktur
 
@@ -84,7 +91,7 @@ Das System SHALL `instanceId` als primären Scoping-Filter für RBAC-Entscheidun
 
 ### Requirement: Permissions-Übersicht pro aktivem Kontext
 
-Das System SHALL eine kontextbezogene Permissions-Übersicht für den aktuell angemeldeten Benutzer bereitstellen und optional einen impersonierten Zielkontext auswerten.
+Das System SHALL eine kontextbezogene Permissions-Übersicht für den aktuell angemeldeten Benutzer bereitstellen, optional einen impersonierten Zielkontext auswerten und dabei alle für Transparenz- und Diagnose-UI erforderlichen strukturierten Felder liefern.
 
 #### Scenario: Laden der effektiven Berechtigungen (Self)
 
@@ -98,6 +105,19 @@ Das System SHALL eine kontextbezogene Permissions-Übersicht für den aktuell an
 - **AND** eine aktive, gültige Impersonation-Session zwischen Actor und Target existiert
 - **THEN** werden die effektiven RBAC-Berechtigungen des Target-Subjekts zurückgegeben
 - **AND** die Antwort enthält `subject.actorUserId`, `subject.effectiveUserId` und `subject.isImpersonating=true`
+
+#### Scenario: Impersonation nur im zulässigen Policy-Kontext
+
+- **WHEN** `GET /iam/me/permissions` mit `actingAsUserId` aufgerufen wird
+- **AND** Actor und Target nicht im zulässigen Instanz-/Organisationskontext liegen
+- **THEN** wird die Anfrage mit einem strukturierten Deny-Fehler abgewiesen
+- **AND** es werden keine Detaildaten des Target-Subjekts offengelegt
+
+#### Scenario: Strukturierte Permission-Felder sind UI-verfügbar
+
+- **WHEN** die Permissions-Übersicht zurückgegeben wird
+- **THEN** enthält jeder Permission-Eintrag mindestens `action`, `resourceType`, optionale `resourceId`, optionale `organizationId`, optionale `effect`, optionale `scope` und `sourceRoleIds`
+- **AND** diese Felder können ohne zusätzliche Server-Interpretation in einer Admin-UI gerendert werden
 
 #### Scenario: Keine aktive Impersonation für Target
 
@@ -306,4 +326,38 @@ Das System MUST bei Synchronisierung und Reconciliation strikt zwischen studiove
 - **WHEN** ein Admin eine Änderung des technischen `role_key` anfordert
 - **THEN** lehnt das System die Änderung mit verständlicher Begründung ab
 - **AND** verweist auf den erlaubten Weg über Änderung von `display_name`
+
+### Requirement: Gruppen als zusätzliche Quelle effektiver Berechtigungen
+
+Das System SHALL Gruppen als instanzgebundene IAM-Entität auswerten und deren Zuweisungen in die effektive Berechtigungsberechnung einbeziehen.
+
+#### Scenario: Gruppenmitgliedschaft erweitert effektive Rechte
+
+- **WHEN** ein Benutzer einer Gruppe mit fachlich relevanten Berechtigungen zugewiesen ist
+- **THEN** werden diese Gruppenrechte in `GET /iam/me/permissions` und `POST /iam/authorize` berücksichtigt
+- **AND** die Herkunft der Berechtigung bleibt nachvollziehbar
+
+#### Scenario: Konflikte zwischen Rollen und Gruppen bleiben deterministisch
+
+- **WHEN** eine Rollenfreigabe und eine gruppenbasierte Restriktion denselben Zugriff betreffen
+- **THEN** wird die finale Entscheidung nach einer dokumentierten Prioritätsregel berechnet
+- **AND** identischer Kontext führt zu identischem Ergebnis und identischem Reasoning
+
+### Requirement: Hierarchische Geo-Vererbung für ABAC-Scopes
+
+Das System SHALL geografische Berechtigungen entlang definierter Geo-Hierarchien vererben und untergeordnete Restriktionen berücksichtigen.
+
+#### Scenario: Übergeordneter Geo-Scope wirkt auf untergeordnete Einheiten
+
+- **WHEN** eine Berechtigung für eine übergeordnete geografische Einheit vergeben ist
+- **AND** die angefragte Ressource zu einer untergeordneten geografischen Einheit gehört
+- **THEN** wird die Berechtigung auf Basis der Geo-Hierarchie vererbt
+- **AND** die Entscheidung bleibt auf die aktive `instanceId` begrenzt
+
+#### Scenario: Untergeordnete Geo-Restriktion überschreibt Parent-Freigabe
+
+- **WHEN** eine übergeordnete Geo-Freigabe vorliegt
+- **AND** für eine untergeordnete geografische Einheit eine restriktive Regel existiert
+- **THEN** wird der Zugriff für diese untergeordnete Einheit verweigert
+- **AND** die Antwort enthält einen nachvollziehbaren Denial-Reason
 

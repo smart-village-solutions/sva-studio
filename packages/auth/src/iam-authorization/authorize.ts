@@ -1,5 +1,6 @@
 import type { AuthorizeResponse } from '@sva/core';
 import { evaluateAuthorizeDecision } from '@sva/core';
+import { createHash } from 'node:crypto';
 import { getWorkspaceContext, withRequestContext } from '@sva/sdk/server';
 
 import { resolveImpersonationSubject } from '../iam-governance.server';
@@ -136,10 +137,17 @@ export const authorizeHandler = async (request: Request): Promise<Response> => {
       });
 
       recordLatency(decision.allowed, decision.reason);
+      const snapshotVersion = createHash('sha256')
+        .update(JSON.stringify(resolved.permissions))
+        .digest('hex')
+        .slice(0, 16);
+
       return jsonResponse(200, {
         ...decision,
         requestId: decision.requestId ?? getWorkspaceContext().requestId,
         traceId: decision.traceId ?? getWorkspaceContext().traceId,
+        snapshotVersion,
+        cacheStatus: resolved.cacheStatus,
       });
     });
   });

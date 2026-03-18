@@ -147,6 +147,116 @@ Das System SHALL die Redis-gestützte Authorize-Strecke endpoint-nah unter Last 
 
 #### Scenario: Lastprofil wird mit Bericht nachgewiesen
 
-- **WHEN** die Redis-gestützte Authorize-Strecke gegen das vereinbarte Lastprofil getestet wird
+- **WHEN** die Redis-gestützte Authorize-Strecke gegen das vereinbarte Lastprofil getestet wird (100 gleichzeitige Requests, lokales Netz)
 - **THEN** werden mindestens Cache-Hit-, Cache-Miss- und Recompute-Szenarien gemessen
-- **AND** die Ergebnisse werden versioniert als Bericht dokumentiert
+- **AND** die Abnahmegrenzen werden eingehalten: Cache-Hit p95 < 5 ms, Cache-Miss p95 < 80 ms, Recompute p95 < 300 ms
+- **AND** die Ergebnisse werden versioniert als Bericht unter `docs/reports/` mit Pflichtfeldern (Testprofil, Messumgebung, Stichprobenzahl, p50/p95/p99) dokumentiert
+
+### Requirement: API-Erweiterungskontrakt für Autorisierungsendpunkte
+
+Das System SHALL die neuen Felder in `POST /iam/authorize` und `GET /iam/me/permissions` additiv und nicht-brechend ergänzen.
+
+**Normatives JSON-Beispiel `POST /iam/authorize` Response:**
+```json
+{
+  "decision": "allow",
+  "reasoning": {
+    "matched_permissions": [
+      {
+        "action": "content:read",
+        "resource_type": "article",
+        "effect": "allow",
+        "source": "role",
+        "role_id": "uuid-role",
+        "inherited_from_org": "uuid-parent-org",
+        "geo_scope": "district:09162"
+      }
+    ],
+    "denial_reason": null,
+    "denial_code": null,
+    "cache_status": "hit"
+  }
+}
+```
+
+Bei Verweigerung enthält `denial_reason` einen maschinenlesbaren Code (z. B. `geo_scope_mismatch`, `deny_rule_override`, `instance_boundary_violation`) und eine lesbare Beschreibung.
+
+**Normatives JSON-Beispiel `GET /iam/me/permissions` Response (Auszug):**
+```json
+{
+  "permissions": [
+    {
+      "action": "content:write",
+      "resource_type": "article",
+      "effect": "allow",
+      "source": "group",
+      "group_id": "uuid-group",
+      "group_name": "Presseteam",
+      "org_scope": "uuid-org",
+      "geo_scope": "municipality:09162000"
+    }
+  ],
+  "snapshot_version": 7,
+  "computed_at": "2026-03-17T10:00:00Z"
+}
+```
+
+#### Scenario: Consumer mit strict-parse erhält unbekannte Felder
+
+- **WHEN** ein Consumer `POST /iam/authorize` aufruft und neue optionale Felder im Response erscheinen
+- **THEN** bleiben alle bisherigen Felder unverändert und rückwärtskompatibel
+- **AND** neue optionale Felder sind additive Erweiterungen (kein breaking change)
+
+### Requirement: Integrität von Redis-Permission-Snapshots
+
+Das System MUST Redis-Snapshots gegen unbefugte Manipulation schützen.
+
+#### Scenario: Snapshot wird vor dem Schreiben signiert
+
+- **WHEN** ein Permission-Snapshot in Redis geschrieben wird
+- **THEN** wird der Payload mit HMAC-SHA-256 signiert; der Schlüssel liegt außerhalb von Redis (z. B. Anwendungs-Secret)
+- **AND** der Snapshot enthält ein `schema_version`-Feld und einen `signed_at`-Zeitstempel
+
+#### Scenario: Signaturprüfung schlägt fehl
+
+- **WHEN** ein aus Redis gelesener Snapshot eine ungültige oder fehlende Signatur aufweist
+- **THEN** wird der Snapshot verworfen und wie ein Cache-Miss behandelt (Recompute)
+- **AND** der Vorfall wird als strukturiertes Log-Event mit `integrity_check_failed: true` protokolliert
+
+### Requirement: Strukturierte Logs für Autorisierungsentscheidungen
+
+Das System SHALL alle Autorisierungsentscheidungen mit folgenden Pflichtfeldern protokollieren.
+
+#### Scenario: Autorisierungsentscheidung wird geloggt
+
+- **WHEN** `POST /iam/authorize` eine Entscheidung trifft
+- **THEN** enthält der Log-Eintrag: `workspace_id`, `component`, `trace_id`, `request_id`, `cache_status` (`hit`|`miss`|`recompute`), `decision_source` (`role`|`group`|`org_inherit`|`geo_inherit`)
+- **AND** PII-Felder wie `user_email`, `session_id` oder Klartextnamen sind verboten
+
+### Requirement: Conflict-Testmatrix für Gruppen, Rollen, Org und Geo
+
+Das System SHALL deterministische Entscheidungen für alle bekannten Konfliktfälle treffen. Die folgende Testmatrix ist normativ:
+
+| Quelle A | Quelle B | Erwartetes Ergebnis | Begründung |
+|----------|----------|---------------------|------------|
+| Rolle: allow | Gruppe: deny (gleiche Ressource) | deny | deny vor allow |
+| Gruppe: allow | Geo-Restriktion | deny | lokal vor vererbt |
+| Org-Parent: allow | Org-Child: deny | deny | lokal vor Parent |
+| Org-Parent: allow | Org-Child: kein Eintrag | allow | Vererbung greift |
+| Geo-Parent: allow | Geo-Child: deny | deny | lokal vor Parent |
+| Geo-Parent: allow | Geo-Child (3. Ebene): deny | deny | 3+-Ebenen denselben Regeln |
+| Rolle: allow | Org-Child: deny + Gruppe: allow | deny | deny schlägt alle allow |
+| permission_key-legacy: allow | Strukturiert: deny | deny | strukturiert vor legacy |
+
+#### Scenario: Dreistufige Geo-Hierarchie mit Konflikten
+
+- **WHEN** auf Ebene 1 (Bundesland) eine `allow`-Berechtigung vorliegt, Ebene 2 (Landkreis) keinen Eintrag hat und Ebene 3 (Gemeinde) eine `deny`-Regel trägt
+- **THEN** wird die Berechtigung für Ebene 3 verweigert
+- **AND** identischer Kontext führt immer zu identischem Ergebnis
+
+#### Scenario: Mixed-State-Migration — partial permission_key und strukturiert
+
+- **WHEN** 50 % der Rollen-Permissions noch als `permission_key`-String vorliegen und 50 % bereits strukturiert sind
+- **THEN** werden beide Formate für dieselbe Autorisierungsentscheidung korrekt ausgewertet
+- **AND** strukturierte Permissions haben bei Widerspruch Vorrang vor legacy-Strings
+- **AND** die Entscheidung erzeugt kein inkonsistentes Reasoning

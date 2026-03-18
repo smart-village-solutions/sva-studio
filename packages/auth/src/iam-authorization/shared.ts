@@ -7,6 +7,7 @@ import type {
   IamPermissionEffect,
   MePermissionsResponse,
 } from '@sva/core';
+import type { SnapshotCacheStatus } from '@sva/core';
 import { createSdkLogger, getWorkspaceContext } from '@sva/sdk/server';
 import { metrics } from '@opentelemetry/api';
 import type { PoolClient } from 'pg';
@@ -26,10 +27,12 @@ export type PermissionRow = {
   scope?: Record<string, unknown> | null;
   role_id: string;
   organization_id: string | null;
+  group_id?: string | null;
+  group_key?: string | null;
 };
 
 export type EffectivePermissionsResolution =
-  | { ok: true; permissions: readonly EffectivePermission[] }
+  | { ok: true; permissions: readonly EffectivePermission[]; cacheStatus: SnapshotCacheStatus }
   | { ok: false; error: 'database_unavailable' | 'cache_stale_guard' };
 
 export const logger: ReturnType<typeof createSdkLogger> = createSdkLogger({ component: 'iam-authorize', level: 'info' });
@@ -83,6 +86,8 @@ export const toEffectivePermissions = (rows: readonly PermissionRow[]): Effectiv
     const resourceId = row.resource_id?.trim() || undefined;
     const effect = row.effect ?? 'allow';
     const scope = row.scope ?? undefined;
+    const groupId = row.group_id ?? undefined;
+    const groupKey = row.group_key ?? undefined;
     const bucketKey = JSON.stringify({
       action,
       resourceType,
@@ -102,19 +107,31 @@ export const toEffectivePermissions = (rows: readonly PermissionRow[]): Effectiv
         effect,
         scope,
         sourceRoleIds: [row.role_id],
+        ...(groupId ? { sourceGroupIds: [groupId] } : {}),
+        ...(groupKey ? { groupName: groupKey } : {}),
       });
       continue;
     }
 
-    if (!existing.sourceRoleIds.includes(row.role_id)) {
-      buckets.set(bucketKey, {
-        ...existing,
-        sourceRoleIds: [...existing.sourceRoleIds, row.role_id],
-      });
-    }
+    const sourceRoleIds = existing.sourceRoleIds.includes(row.role_id)
+      ? existing.sourceRoleIds
+      : ([...existing.sourceRoleIds, row.role_id] as readonly string[]);
+    const existingGroups = existing.sourceGroupIds ?? [];
+    const sourceGroupIds: readonly string[] | undefined =
+      groupId && !existingGroups.includes(groupId)
+        ? [...existingGroups, groupId]
+        : existing.sourceGroupIds;
+    const groupName = groupKey ?? existing.groupName;
+    buckets.set(bucketKey, {
+      ...existing,
+      sourceRoleIds,
+      ...(sourceGroupIds !== undefined ? { sourceGroupIds } : {}),
+      ...(groupName ? { groupName } : {}),
+    });
   }
 
   return [...buckets.values()];
+
 };
 
 export const withInstanceScopedDb = async <T>(

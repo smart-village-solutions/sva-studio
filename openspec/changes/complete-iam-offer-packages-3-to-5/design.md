@@ -39,7 +39,7 @@ Die bisherige Aufteilung in vier Changes war fachlich sauber getrennt, erschwert
 - **Instanzisolation:** Alle Rollen-, Gruppen-, Org-, Geo- und Rechtstext-Auswertungen bleiben auf die aktive `instanceId` begrenzt.
 - **Determinismus:** Identischer Eingabekontext führt zu identischer Entscheidung und identischem Reasoning.
 - **Performance:** `authorize` bleibt im Zielkorridor; Cache-Hit, Cache-Miss und Recompute werden separat gemessen und dokumentiert.
-- **Observability:** Logs enthalten nur zulässige technische Felder wie `workspace_id`, `request_id`, `trace_id`, `component`, `cache_status`, `decision_source`; keine Klartext-PII.
+- **Observability:** Logs enthalten nur zulässige technische Felder wie `workspace_id`, `request_id`, `trace_id`, `component`, `cache_status`, `decision_source`; keine Klartext-PII. Diese Anforderung ist normativ (SHALL) und gilt für alle Komponenten dieses Changes.
 - **Auditierbarkeit:** Rechtstext-Akzeptanzen, Permission-Mutationen und sicherheitsrelevante Invalidationen bleiben nachvollziehbar und exportierbar.
 - **Migration Safety:** Migrations- und Kompatibilitätspfade für strukturierte Permissions bleiben verifiziert; Seeds bleiben idempotent.
 - **Accessibility:** Gruppen- und Rechtstext-UI bleiben tastatur- und screenreader-bedienbar.
@@ -88,15 +88,45 @@ Die bisherige Aufteilung in vier Changes war fachlich sauber getrennt, erschwert
 
 ### 7. Rechtstext-Akzeptanz blockiert fachlichen Zugriff vor geschützten Anwendungspfaden
 
-- Die Prüfung erfolgt vor fachlichem Zugriff auf geschützte `/auth/me`-basierte Anwendungspfade.
-- Nutzer mit offener Pflichtakzeptanz erhalten einen dedizierten, blockierenden Interstitial.
-- Nach erfolgreicher Akzeptanz wird die Sperre aufgehoben und der angeforderte Pfad fortgesetzt.
+- Die Prüfung erfolgt **server-seitig in einer TanStack Start Middleware** (analog zum bestehenden Auth-Middleware-Muster in `packages/auth`) — nicht nur als Frontend-Route-Guard.
+- Nutzer ohne abgeschlossene Pflichtakzeptanz erhalten `403 Forbidden` auf alle geschützten API-Routen, unabhängig davon, ob die Anfrage aus dem Frontend oder direkt durch einen API-Client gestellt wird.
+- Im Frontend erhalten Nutzer mit offener Pflichtakzeptanz zusätzlich einen dedizierenden, blockierenden Interstitial.
+- Nach erfolgreicher Akzeptanz wird die Sperre aufgehoben und der angeforderte Pfad fortgesetzt (Deep-Link-Preservation via Session-State).
+- Nutzer, die den Rechtstext ablehnen, werden ausgeloggt und landen auf der Login-Seite mit erklärendem Hinweis.
 
 ### 8. Nachweis und Export für Rechtstexte werden als explizite Admin-Funktion modelliert
 
 - Export ist kein implizites Nebenprodukt, sondern ein UI- und Audit-Vertrag.
 - Einzel- und Sammelnachweise müssen mit Auditspur und UI-Sicht konsistent bleiben.
 - Unberechtigte Nutzer sehen keine sensitiven Nachweisdaten.
+- Der Export-Endpoint erfordert die Permission `legal-consents:export`; dieser Check erfolgt server-seitig unabhängig vom aufrufenden Client.
+- Export-Feedback enthält eine Trefferanzahl-Vorschau vor Download; Format ist JSON oder CSV.
+
+### 9. Gruppen bündeln Rollen im ersten Schnitt (keine direkten Permissions)
+
+- Gruppen sind im ersten Schnitt Rollen-Container — sie befähigen Accounts über Rollenzuweisungen innerhalb der Gruppe, nicht über eigene Permissions.
+- Direkte Gruppen-Permissions bleiben Out-of-Scope und werden explizit als technische Schuld dokumentiert.
+- Diese Entscheidung vereinfacht das Berechnungsmodell und ermöglicht die Wiederverwendung der bestehenden Rollen-Permission-Hierarchie.
+
+### 10. Geo-Hierarchiequelle ist der kanonische Verwaltungsschlüssel des SvaMainservers
+
+- Die autoritative Geo-Hierarchie stammt aus dem bestehenden Verwaltungsschlüssel des SvaMainservers (Landkreis → Gemeinde → Ortsteil).
+- Das Geo-ID-Format folgt dem Schema `{ebene}:{schluessel}` (z. B. `district:09162`, `municipality:09162000`).
+- Die Geo-Hierarchie wird als Closure-Table in PostgreSQL persistiert, um effiziente Vorfahren-/Nachfahren-Abfragen in O(1) zu ermöglichen.
+- Maximale Hierarchietiefe: 5 Ebenen. Tiefere Strukturen sind nicht vorgesehen und werden abgewiesen.
+
+### 11. Kein lokaler Fallback-Cache neben Redis; Fail-Closed ist einziger Fallback
+
+- Es gibt keinen lokalen In-Memory-Cache parallel zu Redis.
+- Bei Redis-Ausfall oder Recompute-Fehler im sicherheitskritischen Pfad wird kein Zugriff gewährt (Fail-Closed).
+- Sicherheitskritischer Pfad umfasst alle Anfragen, die Berechtigungsentscheidungen fällen — d. h. alle geschützten Routen und API-Endpunkte.
+- Redis-Timeout-Szenarien gelten als Ausfall: ein abgelaufener Snapshot darf nach TTL **nicht** als Fallback bei Recompute-Fehler genutzt werden.
+
+### 12. Admin-Zugang für Rechtstext-Nachweise liegt unter `/admin/iam/legal-texts`
+
+- Die Nachweis- und Export-Oberfläche ist unter `/admin/iam/legal-texts` zugänglich.
+- Keine separate Rechtstext-Sicht außerhalb der IAM-Admin-Navigation.
+- Die bestehende IAM-Admin-Sidebar wird um den Eintrag `legalTexts` erweitert.
 
 ## Datenmodell
 
@@ -185,7 +215,21 @@ Die bisherige Aufteilung in vier Changes war fachlich sauber getrennt, erschwert
 
 ## Open Questions
 
-- Bündeln Gruppen im ersten Schnitt direkt Permissions, Rollen oder beides?
-- Welche Geo-Hierarchiequelle ist im ersten Schnitt autoritativ?
-- Bleibt neben Redis ein lokaler Fallback-Cache zulässig oder wird ausschließlich Redis genutzt?
-- Liegt der Admin-Zugang für Rechtstext-Nachweise primär in `/admin/iam`, in einer dedizierten Rechtstext-Sicht oder in beiden?
+*Alle offenen Fragen wurden im Approval Gate geschlossen (Entscheidungen 9–12). Keine offenen Punkte verbleiben.*
+
+## Modul-Eventkontrakt für Snapshot-Invalidation
+
+Die folgenden Events werden von ihren jeweiligen Owner-Modulen publiziert und von `iam-access-control` zur Snapshot-Invalidation konsumiert. Der Kanal ist ein transaktionaler Outbox-Mechanismus (Postgres-NOTIFY oder outbox table); at-least-once-Delivery mit Idempotenz-Schutz per Event-ID.
+
+| Event | Publisher | Payload-Pflichtfelder | Consumer-Aktion |
+|-------|-----------|----------------------|----------------|
+| `GroupMembershipChanged` | `packages/auth` | `instanceId`, `groupId`, `accountId`, `changeType: added\|removed`, `eventId` | Snapshot für `{instanceId}:{accountId}` invalidieren |
+| `GroupDeleted` | `packages/auth` | `instanceId`, `groupId`, `affectedAccountIds[]`, `eventId` | Snapshots für alle betroffenen Accounts invalidieren |
+| `OrgHierarchyChanged` | `iam-organizations` | `instanceId`, `affectedOrgIds[]`, `changeType: moved\|deleted`, `eventId` | Snapshots aller Nutzer in betroffenen Orgs invalidieren (Batch, max. 200/s) |
+| `GeoAssignmentChanged` | `iam-organizations` | `instanceId`, `affectedGeoIds[]`, `eventId` | Snapshots aller Nutzer mit betroffenem Geo-Kontext invalidieren |
+| `RolePermissionChanged` | `packages/auth` | `instanceId`, `roleId`, `eventId` | Snapshots aller Nutzer mit dieser Rolle invalidieren |
+| `MembershipChanged` | `packages/auth` | `instanceId`, `accountId`, `orgId`, `changeType: joined\|left`, `eventId` | Snapshot für `{instanceId}:{accountId}` invalidieren |
+
+Fanout-Budget: Bei hierarchischen Triggers (OrgHierarchyChanged, GeoAssignmentChanged) erfolgt Invalidation asynchron über eine Job-Queue mit max. 200 Keys pro Batch und 500 ms Delay-Window, um Cache-Stampede zu verhindern.
+
+Bei Eventverlust begrenzen TTL und Recompute die Staleness-Dauer. Stale Snapshots nach TTL-Ablauf sind bei Recompute-Fehler **nicht** als Fallback zulässig (Fail-Closed).

@@ -60,6 +60,15 @@ export type IamApiErrorResponse = {
   readonly error: IamApiErrorCode;
 };
 
+export type IamPermissionSourceKind = 'direct_role' | 'group_role';
+
+export type IamPermissionProvenance = {
+  readonly sourceKinds?: readonly IamPermissionSourceKind[];
+  readonly inheritedFromOrganizationId?: IamUuid;
+  readonly inheritedFromGeoUnitId?: IamUuid;
+  readonly restrictedByGeoUnitId?: IamUuid;
+};
+
 export type SnapshotCacheStatus = 'hit' | 'miss' | 'recompute' | 'degraded' | 'warming' | 'empty';
 
 export type AuthorizeResponse = {
@@ -78,6 +87,7 @@ export type AuthorizeResponse = {
   readonly cacheStatus?: SnapshotCacheStatus;
   readonly matchedPermissions?: readonly MatchedPermissionSummary[];
   readonly denialCode?: DenyReasonCode;
+  readonly provenance?: IamPermissionProvenance;
 };
 
 export type MatchedPermissionSummary = {
@@ -101,10 +111,10 @@ export type EffectivePermission = {
   readonly effect?: IamPermissionEffect;
   readonly scope?: Readonly<Record<string, unknown>>;
   readonly sourceRoleIds: readonly IamUuid[];
-  // Paket 3: Gruppen- und Geo-Herkunft
-  readonly sourceGroupIds?: readonly IamUuid[];
+  readonly sourceGroupIds: readonly IamUuid[];
   readonly groupName?: string;
   readonly geoScope?: string;
+  readonly provenance?: IamPermissionProvenance;
 };
 
 export type MePermissionsRequest = {
@@ -130,6 +140,10 @@ export type MePermissionsResponse = {
   // Paket 4: Snapshot-Metadaten
   readonly snapshotVersion?: string;
   readonly cacheStatus?: SnapshotCacheStatus;
+  readonly provenance?: Readonly<{
+    readonly hasGroupDerivedPermissions: boolean;
+    readonly hasGeoInheritance: boolean;
+  }>;
 };
 
 // Paket 3: Gruppen-Kontrakt-Typen

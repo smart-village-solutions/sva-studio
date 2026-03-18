@@ -60,6 +60,10 @@ export const resolveServerFunctionBranchDecision = (input: {
 };
 
 export const readServerFunctionResponseBodyForDiagnostics = async (response: Response): Promise<string | null> => {
+  if (response.bodyUsed || response.body?.locked) {
+    return null;
+  }
+
   const contentType = response.headers.get('content-type')?.toLowerCase() ?? '';
   const shouldReadBody = contentType.includes('application/json') || contentType.includes('text/plain');
 

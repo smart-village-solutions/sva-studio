@@ -12,6 +12,7 @@ import { AccountPrivacyPage } from './account/-account-privacy-page';
 import { Phase1TestPage } from './admin/api/-phase1-test-page';
 import { IamViewerPage } from './admin/-iam-page';
 import { normalizeIamTab } from './admin/-iam.models';
+import { GroupsPage } from './admin/groups/-groups-page';
 import { LegalTextsPage } from './admin/legal-texts/-legal-texts-page';
 import { GroupsPage } from './admin/groups/-groups-page';
 import { OrganizationsPage } from './admin/organizations/-organizations-page';

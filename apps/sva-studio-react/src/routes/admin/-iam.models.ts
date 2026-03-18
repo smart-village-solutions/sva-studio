@@ -16,6 +16,7 @@ export type AuthorizeDecisionViewModel = {
   readonly reasonCode?: string;
   readonly diagnostics?: Readonly<Record<string, unknown>>;
   readonly evaluatedAt?: string;
+  readonly provenance?: AuthorizeResponse['provenance'];
 };
 
 const VALID_TABS: readonly IamCockpitTabKey[] = ['rights', 'governance', 'dsr'];
@@ -63,6 +64,7 @@ export const mapAuthorizeDecision = (response: AuthorizeResponse): AuthorizeDeci
     reasonCode: readReasonCodeFromDiagnostics(response.diagnostics),
     diagnostics: response.diagnostics,
     evaluatedAt: response.evaluatedAt,
+    provenance: response.provenance,
   };
 };
 
@@ -132,6 +134,15 @@ export const filterPermissions = (
       includesIgnoreCase(permission.organizationId, query) ||
       includesIgnoreCase(permission.effect, query) ||
       includesIgnoreCase(permission.sourceRoleIds.join(' '), query) ||
+      includesIgnoreCase(permission.sourceGroupIds.join(' '), query) ||
+      includesIgnoreCase(
+        permission.provenance
+          ? Object.values(permission.provenance)
+              .map((value) => String(value))
+              .join(' ')
+          : undefined,
+        query
+      ) ||
       includesIgnoreCase(stringifyScope(permission.scope), query)
     );
   });

@@ -2,7 +2,7 @@
 
 ## Ziel
 
-Diese Anleitung beschreibt die im Change `add-account-user-management-ui` genutzten IAM-v1-Endpunkte, Response-Envelopes und Fehlercodes.
+Diese Anleitung beschreibt die aktuell stabilen IAM-v1-Endpunkte, Response-Envelopes und Fehlercodes für Benutzer-, Rollen-, Gruppen- und Organisationsverwaltung.
 
 ## Basis
 
@@ -58,8 +58,10 @@ Diese Anleitung beschreibt die im Change `add-account-user-management-ui` genutz
 - `GET /api/v1/iam/users`
   - Query: `page`, `pageSize`, `status`, `role`, `search`
 - `GET /api/v1/iam/users/{userId}`
+  - enthält additiv `groups[]` mit `groupId`, `groupKey`, `displayName`, `groupType`, `origin`, `validFrom`, `validTo`
 - `POST /api/v1/iam/users`
 - `PATCH /api/v1/iam/users/{userId}`
+  - akzeptiert additiv `groupIds: string[]`
 - `DELETE /api/v1/iam/users/{userId}`
 - `POST /api/v1/iam/users/bulk-deactivate`
 - `GET /api/v1/iam/users/me/profile`
@@ -71,6 +73,15 @@ Diese Anleitung beschreibt die im Change `add-account-user-management-ui` genutz
 - `POST /api/v1/iam/roles`
 - `PATCH /api/v1/iam/roles/{roleId}`
 - `DELETE /api/v1/iam/roles/{roleId}`
+
+### Groups
+
+- `GET /api/v1/iam/groups`
+- `POST /api/v1/iam/groups`
+  - benötigt `Idempotency-Key`
+- `GET /api/v1/iam/groups/{groupId}`
+- `PATCH /api/v1/iam/groups/{groupId}`
+- `DELETE /api/v1/iam/groups/{groupId}`
 
 ### Legal texts
 
@@ -107,8 +118,17 @@ Diese Anleitung beschreibt die im Change `add-account-user-management-ui` genutz
 - `conflict`
 - `internal_error`
 
+## Wichtige Vertragszusagen für Gruppen
+
+- Gruppen sind instanzgebundene Rollenbündel mit `groupType = role_bundle`.
+- `GET /api/v1/iam/groups` liefert je Eintrag `memberCount` und gebündelte Rollen (`roles[]` mit `roleId`, `roleKey`, `roleName`).
+- `GET /api/v1/iam/groups/{groupId}` liefert additiv `members[]` mit Herkunft und Gültigkeitsfenstern.
+- `DELETE /api/v1/iam/groups/{groupId}` deaktiviert die Gruppe (`isActive = false`) statt einen Hard-Delete zu garantieren.
+- `PATCH /api/v1/iam/users/{userId}` ersetzt die aktiven Gruppenmitgliedschaften deterministisch anhand von `groupIds`; unbekannte oder instanzfremde Gruppen führen zu `invalid_request`.
+
 ## Referenzen
 
 - `docs/api/iam-v1.yaml`
 - `packages/core/src/iam/account-management-contract.ts`
 - `packages/auth/src/iam-account-management.server.ts`
+- `packages/auth/src/iam-account-management/groups-handlers.ts`

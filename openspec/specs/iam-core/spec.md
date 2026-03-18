@@ -147,7 +147,30 @@ Das System MUST den SDK Logger (`createSdkLogger` aus `@sva/sdk`) für alle oper
 - **THEN** emittiert der SDK Logger einen `warn`-Eintrag mit `operation`, `error_type`, `has_refresh_token`, `request_id`
 - **AND** es werden keine Tokenwerte oder Session-IDs im Log-Eintrag enthalten
 
----
+#### Scenario: Correlation IDs in Handler-Catch-Blöcken
+
+- **WHEN** ein `withAuthenticatedIamHandler`-Catch-Block einen unerwarteten Fehler abfängt
+- **THEN** enthält der `error`-Log-Eintrag `request_id` und `trace_id` via `buildLogContext({ includeTraceId: true })` aus `packages/auth/src/shared/log-context.ts` (kanonische Implementierung)
+- **AND** der Eintrag enthält `error_type` (Constructor-Name oder `typeof`-Fallback) und `error_message`
+- **AND** der Eintrag enthält **kein** `error.stack`-Feld (Observability Best Practices: keine Stack-Traces in strukturierten Log-Feldern)
+
+#### Scenario: Correlation IDs bei fehlendem AsyncLocalStorage-Context
+
+- **WHEN** ein `withAuthenticatedIamHandler`-Catch-Block ausgelöst wird und der AsyncLocalStorage-Context leer ist (z. B. bei Worker-Threads oder außerhalb des Request-Lifecycle)
+- **THEN** enthält der Log-Eintrag `request_id: undefined` und `trace_id: undefined`
+- **AND** der Logger wirft keinen eigenen Fehler
+
+#### Scenario: Middleware-Logs mit Trace-Kontext
+
+- **WHEN** Auth-Middleware einen Log-Eintrag erzeugt (z. B. bei Session-Auflösung oder Redirect)
+- **THEN** enthält der Eintrag `trace_id` via `buildLogContext({ includeTraceId: true })` aus `packages/auth/src/shared/log-context.ts`
+
+#### Scenario: Error-Response über einheitlichen Utility
+
+- **WHEN** `withAuthenticatedIamHandler` einen unerwarteten Fehler abfängt
+- **THEN** wird die Error-Response über `toJsonErrorResponse()` aus `@sva/sdk/server` erzeugt
+- **AND** der Response-Shape ist für stabile IAM-v1-Endpunkte `{ error: "internal_error", message?: "..." }` mit HTTP 500
+- **AND** rohe Exception-Texte, Provider-Fehler und Stack-Fragmente gelangen nie in das Feld `message`
 
 ### Requirement: Governance-Funktionen nur für berechtigte Identitäten
 
@@ -237,12 +260,22 @@ Das System MUST über einen dedizierten Service-Account mit der Keycloak Admin R
 - **WENN** ein Administrator einen User über den IAM-Service erstellt
 - **DANN** wird der User zuerst in Keycloak via `POST /admin/realms/{realm}/users` erstellt
 - **UND** anschließend in `iam.accounts` mit dem von Keycloak vergebenen `keycloak_subject` gespeichert
+- **UND** fehlende `iam.instance_memberships` werden für den aktiven Instanzkontext angelegt
+- **UND** Rollen werden erst nach erfolgreicher Persistenz mit Keycloak synchronisiert
 - **UND** der `instance_id`-Scope wird korrekt gesetzt
 - **WENN** der Keycloak-Call fehlschlägt
 - **DANN** wird kein Eintrag in `iam.accounts` erstellt
 - **WENN** der DB-Write fehlschlägt (nach erfolgreichem Keycloak-Call)
 - **DANN** wird der Keycloak-User via `DELETE` entfernt (Compensation)
 - **UND** ein `keycloak.sync_failed`-Audit-Event wird geloggt
+
+#### Scenario: Benutzer aus Keycloak nach IAM importieren
+
+- **WENN** ein Administrator einen Keycloak-Sync für eine Instanz ausführt
+- **DANN** werden nur Keycloak-Benutzer mit passendem `instanceId`-Attribut importiert oder aktualisiert
+- **UND** Basisdaten wie Benutzername, E-Mail, Vorname, Nachname, Anzeigename und Aktivstatus werden in `iam.accounts` gespiegelt
+- **UND** fehlende `iam.instance_memberships` werden angelegt
+- **UND** bestehende IAM-Benutzer werden nicht dupliziert
 
 #### Scenario: Profil-Update-Sync (mit Compensation)
 
@@ -467,6 +500,174 @@ Das System MUST für Role-Sync und Reconciliation strukturierte Logs und Audit-E
 - **THEN** werden keine Tokens, Secrets oder personenbezogenen Rohdaten in Logs/Auditdaten gespeichert
 - **AND** Fehler werden über maschinenlesbare Codes statt sensibler Rohdaten abgebildet
 
+### Requirement: Per-User-Delegation an den SVA-Mainserver
+
+Das System SHALL Zugriffe auf den externen SVA-Mainserver serverseitig und per Benutzer delegieren. API-Key und Secret werden aus Keycloak-User-Attributen des aktuellen Benutzers gelesen und nicht im Browser, in Sessions oder in der Studio-Datenbank gespiegelt.
+
+#### Scenario: Serverseitiger Mainserver-Aufruf mit aktuellen Keycloak-Attributen
+
+- **WHEN** eine serverseitige Studio-Funktion einen Mainserver-Aufruf für einen authentifizierten Benutzer ausführt
+- **THEN** liest das System bevorzugt `mainserverUserApplicationId` und `mainserverUserApplicationSecret` aus den Keycloak-User-Attributen dieses Benutzers
+- **AND** fordert serverseitig ein OAuth2-Access-Token an
+- **AND** sendet den GraphQL-Aufruf mit `Authorization: Bearer <token>` an den SVA-Mainserver
+- **AND** exponiert weder Credentials noch Access-Token an Browser-Code
+
+#### Scenario: Legacy-Attribute bleiben übergangsweise lauffähig
+
+- **WHEN** die aktuellen Attribute `mainserverUserApplicationId` und `mainserverUserApplicationSecret` für einen Benutzer nicht gesetzt sind
+- **AND** die Legacy-Attribute `sva_mainserver_api_key` und `sva_mainserver_api_secret` vorhanden sind
+- **THEN** verwendet das System die Legacy-Attribute als Fallback
+- **AND** der Mainserver-Aufruf bleibt für Bestandsbenutzer funktionsfähig
+
+#### Scenario: Fehlende Mainserver-Credentials im Benutzerprofil
+
+- **WHEN** für den aktuellen Benutzer weder die aktuellen noch die Legacy-Attribute vollständig in Keycloak vorhanden sind
+- **THEN** wird kein Upstream-Aufruf gestartet
+- **AND** das System liefert einen stabilen Fehlerzustand `missing_credentials`
+
+### Requirement: Instanzgebundene Mainserver-Endpunktkonfiguration
+
+Das System SHALL pro `instanceId` eine aktive Mainserver-Integration mit
+GraphQL- und OAuth2-Endpunktkonfiguration führen.
+
+#### Scenario: Aktive Konfiguration für eine Instanz vorhanden
+
+- **WHEN** das System einen Mainserver-Aufruf für eine `instanceId` vorbereitet
+- **THEN** lädt es die aktive Konfiguration für `provider_key = 'sva_mainserver'`
+- **AND** verwendet `graphql_base_url` und `oauth_token_url` aus dieser Konfiguration
+
+#### Scenario: Keine aktive Konfiguration für eine Instanz vorhanden
+
+- **WHEN** für die angefragte `instanceId` keine aktive `sva_mainserver`-Konfiguration existiert
+- **THEN** wird kein Downstream-Aufruf gestartet
+- **AND** das System liefert einen deterministischen Integrationsfehler
+
+### Requirement: Audit-Trail bei Mainserver-Zugriffsversuchen
+
+Das System SHALL sicherheitsrelevante Zugriffsversuche und Fehler bei der
+Mainserver-Delegation strukturiert loggen, damit Produktionsprobleme anhand
+der Logs nachvollzogen werden können.
+
+#### Scenario: Audit-Trail bei gescheitertem Mainserver-Zugriff
+
+- **WHEN** ein Mainserver-Aufruf fehlschlägt (Credentials fehlen, Token-Abruf scheitert, Upstream nicht erreichbar)
+- **THEN** wird ein strukturierter Log-Eintrag geschrieben
+- **AND** der Log-Eintrag enthält `workspace_id`, `instance_id`, `error_code`, `request_id` und `trace_id`
+- **AND** der Log-Eintrag enthält keine Credentials, Tokens oder personenbezogenen Daten
+
+#### Scenario: Audit-Trail bei Zugriffsverweigerung durch fehlende Rollen
+
+- **WHEN** ein Benutzer ohne ausreichende lokale Studio-Rolle einen Mainserver-Aufruf auslöst
+- **THEN** wird der Zugriff verweigert
+- **AND** ein Warn-Level-Log mit `operation`, `instance_id` und `request_id` wird geschrieben (ohne PII)
+
+### Requirement: Resilienz bei nicht reagierendem Mainserver
+
+Das System SHALL HTTP-Timeouts für alle Upstream-Aufrufe erzwingen, damit ein
+nicht reagierender Mainserver die Studio-Instanz nicht blockiert.
+
+#### Scenario: Timeout bei Mainserver-Aufruf
+
+- **WHEN** ein OAuth2-Token-Abruf oder GraphQL-Aufruf nicht innerhalb des konfigurierten Timeouts antwortet
+- **THEN** wird der Aufruf abgebrochen
+- **AND** das System liefert einen deterministischen Fehler `network_error`
+- **AND** ein strukturierter Log-Eintrag mit Timeout-Details wird geschrieben
+
+### Requirement: SSRF-Schutz für Upstream-URLs
+
+Das System SHALL Upstream-URLs aus der Instanzkonfiguration vor Verwendung
+validieren, damit keine Server-Side-Request-Forgery möglich ist.
+
+#### Scenario: Validierung der Upstream-URLs
+
+- **WHEN** die Instanzkonfiguration `graphql_base_url` oder `oauth_token_url` enthält
+- **THEN** werden nur URLs mit `https://`-Schema und nicht-interner Adresse akzeptiert
+- **AND** URLs mit internen/lokalen Adressen oder nicht-HTTPS-Schema werden abgelehnt
+
+### Requirement: Keycloak-Sync Debug-Logging
+
+Das System SHALL beim Keycloak-User-Sync detaillierte Debug-Informationen für übersprungene Benutzer bereitstellen, um Multi-Tenant-Konfigurationsprobleme schnell diagnostizierbar zu machen.
+
+#### Scenario: Einzeln übersprungene User geloggt
+
+- **WHEN** ein Keycloak-User beim Sync übersprungen wird (kein passender Instanzkontext)
+- **AND** der Debug-Log-Level aktiv ist (`logger.isLevelEnabled('debug')` als Guard)
+- **THEN** erzeugt das System begrenzte oder gesampelte `debug`-Log-Einträge mit `subject_ref` (pseudonymisiert), `user_instance_id` und `expected_instance_id`
+
+#### Scenario: Detail-Logs sind begrenzt
+
+- **WHEN** in einem Sync-Lauf sehr viele User übersprungen werden
+- **THEN** werden Detail-Logs pro Request begrenzt oder gesampelt
+- **AND** die Gesamtsituation bleibt über ein Summary-Log nachvollziehbar
+
+#### Scenario: Keine Debug-Logs bei inaktivem Level
+
+- **WHEN** ein Keycloak-User beim Sync übersprungen wird
+- **AND** der Debug-Log-Level nicht aktiv ist
+- **THEN** werden keine `debug`-Log-Einträge erzeugt und keine Log-Objekte konstruiert (Performance-Schutz)
+
+#### Scenario: Zusammenfassung der übersprungenen User
+
+- **WHEN** der Keycloak-Sync abgeschlossen ist und User übersprungen wurden
+- **THEN** erzeugt das System einen `info`-Log-Eintrag mit `skipped_count` und `sample_instance_ids` (kommaseparierter String der gefundenen instanceId-Werte, max. 5 verschiedene)
+- **AND** der Eintrag enthält `request_id` und `trace_id` via `buildLogContext({ includeTraceId: true })`
+
+#### Scenario: Keine Zusammenfassung bei null Übersprungenen
+
+- **WHEN** der Keycloak-Sync abgeschlossen ist und keine User übersprungen wurden
+- **THEN** wird kein `debug`-Log und kein `info`-Summary-Log für übersprungene User erzeugt
+
+### Requirement: Client-seitige Fehlerberichtung
+
+Das System SHALL client-seitige API-Fehler nur im Development-Modus strukturiert in der Browser-Konsole protokollieren, um Korrelation zwischen Client- und Server-Fehlern zu ermöglichen, ohne Produktions-Logs im Browser zu erzeugen.
+
+#### Scenario: Fehler-Log bei API-Fehler
+
+- **WHEN** `requestJson` im Development-Modus eine nicht-erfolgreiche API-Response erhält (HTTP 4xx/5xx mit JSON-Body)
+- **THEN** erzeugt das System einen `console.error`-Eintrag mit `request_id`, `status` und `code`
+- **AND** der Eintrag enthält **keinen** Response-Body, Request-Payload oder PII
+
+#### Scenario: Kein Browser-Logging in Produktion
+
+- **WHEN** `requestJson` in einem Produktions-Build einen API-Fehler verarbeitet
+- **THEN** erzeugt das System keinen `console.error`-Eintrag
+- **AND** die Korrelation erfolgt über Server-Logs und den `X-Request-Id`-Response-Header
+
+#### Scenario: Korrelation bei Non-JSON-Response
+
+- **WHEN** `requestJson` eine nicht-JSON-Response erhält (z. B. HTML-Fehlerseite)
+- **THEN** wird `request_id` aus dem `X-Request-Id`-Response-Header extrahiert (Fallback)
+- **AND** der `console.error`-Eintrag enthält `request_id` (oder `undefined` wenn Header fehlt), `status` und `code: 'non_json_response'`
+
+#### Scenario: Kein Body-Logging
+
+- **WHEN** `requestJson` einen Fehler loggt
+- **THEN** werden weder Request-Body noch Response-Body im Log-Eintrag enthalten
+- **AND** es werden keine Klartext-Tokens, Session-IDs oder E-Mail-Adressen geloggt
+
+### Requirement: Rückwärtskompatibler IAM-v1-Fehlervertrag
+
+Das System MUST für bereits dokumentierte stabile IAM-v1-Endpunkte den öffentlichen Fehlervertrag rückwärtskompatibel halten.
+
+#### Scenario: Maschinenlesbarer Fehlercode bleibt stabil
+
+- **WHEN** ein stabiler IAM-v1-Endpunkt eine Fehlerantwort liefert
+- **THEN** bleibt das Feld `error` ein String-Code
+- **AND** bestehende Konsumenten müssen ihre Parser nicht auf ein Objekt unter `error` umstellen
+
+#### Scenario: Öffentliche Diagnoseinformation bleibt additiv
+
+- **WHEN** zusätzlich ein Feld `message` in einer IAM-v1-Fehlerantwort vorhanden ist
+- **THEN** ist dieses Feld additiv und optional
+- **AND** es ist nicht für Client-Logik bestimmt
+- **AND** es enthält keine rohen Exception-Texte, Stack-Fragmente oder Provider-Interna
+
+#### Scenario: Request-ID-Header ist für Support-Korrelation verfügbar
+
+- **WHEN** ein stabiler IAM-v1-Endpunkt eine Response erzeugt, auch bei Fehlern oder Non-JSON-Fallbacks
+- **THEN** enthält die Response best-effort den Header `X-Request-Id`
+- **AND** Clients und Support-Tools können damit Browser-, Netzwerk- und Server-Sicht korrelieren
+
 ### Requirement: Automatisierter Basis-IAM-Abnahmenachweis
 
 Das System MUST für den Basis-IAM-Umfang einen reproduzierbaren Abnahmenachweis in der vereinbarten Testumgebung bereitstellen.
@@ -499,4 +700,3 @@ Das System MUST im Abnahmepfad nachweisen, dass ein erfolgreicher Login determin
 - **WHEN** derselbe Test-Benutzer den Login erneut durchläuft
 - **THEN** entstehen keine doppelten Account-Datensätze
 - **AND** der bestehende Account-Kontext bleibt stabil
-

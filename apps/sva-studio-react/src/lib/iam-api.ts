@@ -185,11 +185,13 @@ export type CreateGroupPayload = {
   readonly groupKey: string;
   readonly displayName: string;
   readonly description?: string;
+  readonly roleIds?: readonly string[];
 };
 
 export type UpdateGroupPayload = {
   readonly displayName?: string;
   readonly description?: string;
+  readonly roleIds?: readonly string[];
   readonly isActive?: boolean;
 };
 

@@ -220,6 +220,49 @@ Fehlerpfad:
 5. Bei Erfolg wird der aktive Kontext serverseitig in der Session aktualisiert und ein Audit-/Betriebsereignis für `organization_context_switched` erzeugt.
 6. Nachgelagerte UI- und Backend-Pfade lesen den aktiven Organisationskontext aus dem kanonischen Sessionzustand.
 
+### Szenario 14: Admin verwaltet Gruppen und weist Rollenbündel zu
+
+1. `system_admin` öffnet `/admin/groups`.
+2. Die UI lädt `GET /api/v1/iam/groups` und erhält instanzgebundene Gruppen inklusive Rollenbündeln und Mitgliederzahl.
+3. Beim Anlegen oder Bearbeiten sendet die UI `POST` oder `PATCH /api/v1/iam/groups/:groupId` mit `groupKey`, `displayName`, optionaler Beschreibung und `roleIds`.
+4. Der Server validiert Instanzscope, CSRF, Idempotency und dass alle referenzierten Rollen in derselben Instanz existieren.
+5. Bei Erfolg persistiert der Service `iam.groups` und `iam.group_roles`, schreibt Audit-/Betriebslogs und invalidiert Permission-Snapshots über `pg_notify`.
+6. `DELETE /api/v1/iam/groups/:groupId` deaktiviert die Gruppe fail-closed statt sie physisch zu löschen.
+
+Fehlerpfad:
+
+- Unbekannte oder instanzfremde Rollen führen zu `invalid_request`.
+- Fehlende Admin-Rolle oder deaktiviertes IAM-Admin-Feature führt zu `forbidden` oder `feature_disabled`.
+- Datenbankfehler werden als `database_unavailable` bzw. `internal_error` nach außen stabilisiert.
+
+### Szenario 15: Gruppenzuweisung erweitert effektive Rechte eines Benutzers
+
+1. Ein Admin öffnet `/admin/users/:userId` und lädt `GET /api/v1/iam/users/:userId`.
+2. Die Detailansicht zeigt direkte Rollen, Gruppenmitgliedschaften, deren Herkunft (`manual|seed|sync`) und Gültigkeitsfenster.
+3. Beim Speichern sendet die UI `PATCH /api/v1/iam/users/:userId` additiv mit `groupIds`.
+4. Der Backend-Service validiert alle Gruppen im aktiven `instanceId`-Scope und ersetzt die aktiven Einträge in `iam.account_groups`.
+5. Anschließend wird ein `user_group_changed`-Invalidation-Event emittiert; der nächste `GET /iam/me/permissions`- oder `POST /iam/authorize`-Aufruf recomputet den Snapshot.
+6. Transparenzansichten zeigen die daraus abgeleiteten Rechte mit `sourceRoleIds`, `sourceGroupIds` und Provenance der Quelle an.
+
+Fehlerpfad:
+
+- Nicht existente Gruppen oder instanzfremde IDs werden mit `invalid_request` abgewiesen.
+- Läuft die Invalidation nicht sofort durch, begrenzen TTL und Recompute den Stale-Zeitraum fail-closed.
+
+### Szenario 16: Authorize wertet Geo-Hierarchie mit restriktiver Priorität aus
+
+1. Client oder interne Serverlogik ruft `POST /iam/authorize` mit `instanceId`, `action`, `resource` und optional `context.attributes.geoHierarchy` bzw. `resource.attributes.geoUnitId` auf.
+2. Der Server lädt effektive Permissions aus direkten Rollen und gruppenvermittelten Rollen und normalisiert `sourceKinds`.
+3. Die Engine prüft zuerst Instanzscope und Hard-Deny-Regeln, danach passende RBAC-Kandidaten für `action`, `resourceType`, `resourceId` und Organisationshierarchie.
+4. Für Geo-Scopes wertet sie `allowedGeoUnitIds` gegen `geoHierarchy` bzw. `geoUnitId` aus; Parent-Allows dürfen auf Children vererben.
+5. `restrictedGeoUnitIds` werden mit derselben Hierarchie aufgelöst; ein spezifischerer Child-Deny schlägt den Parent-Allow deterministisch.
+6. Die Antwort enthält neben `allowed` und `reason` auch `diagnostics.stage` sowie Provenance-Felder wie `inheritedFromGeoUnitId` oder `restrictedByGeoUnitId`.
+
+Fehlerpfad:
+
+- Fehlen erforderliche Geo-Attribute trotz `requireGeoScope`, wird der Kandidat verworfen und die Entscheidung endet fail-closed.
+- `instanceId`-Mismatch führt immer zu `instance_scope_mismatch`, bevor weitere Scope- oder Rollenregeln ausgewertet werden.
+
 Fehlerpfad:
 
 - Ungültige oder deaktivierte Zielorganisationen liefern einen stabilen Fehlercode; der bisherige Kontext bleibt unverändert.

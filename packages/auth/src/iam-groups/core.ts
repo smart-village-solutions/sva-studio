@@ -7,6 +7,7 @@ import {
   assignGroupMembershipInternal,
   assignGroupRoleInternal,
   createGroupInternal,
+  deleteGroupInternal,
   getGroupInternal,
   listGroupsInternal,
   removeGroupMembershipInternal,
@@ -31,6 +32,9 @@ export const getGroupHandler = async (request: Request): Promise<Response> =>
 
 export const createGroupHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedGroupsHandler(request, createGroupInternal);
+
+export const deleteGroupHandler = async (request: Request): Promise<Response> =>
+  withAuthenticatedGroupsHandler(request, deleteGroupInternal);
 
 export const updateGroupHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedGroupsHandler(request, updateGroupInternal);

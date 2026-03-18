@@ -1,4 +1,3 @@
-import type { EffectivePermission } from '@sva/core';
 import { getWorkspaceContext, withRequestContext } from '@sva/sdk/server';
 
 import { resolveImpersonationSubject } from '../iam-governance.server';
@@ -69,20 +68,6 @@ export const mePermissionsHandler = async (request: Request): Promise<Response> 
           error: resolved.error,
           ...buildRequestContext(instanceId),
         });
-
-        if (resolved.error === 'cache_stale_guard') {
-          return jsonResponse(
-            200,
-            buildMePermissionsResponse({
-              instanceId,
-              organizationId: organizationId ?? undefined,
-              permissions: [] as EffectivePermission[],
-              actorUserId: user.id,
-              effectiveUserId,
-              isImpersonating,
-            })
-          );
-        }
 
         return errorResponse(503, 'database_unavailable');
       }

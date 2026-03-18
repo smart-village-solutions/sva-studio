@@ -16,6 +16,11 @@ describe('auth.routes', () => {
     expect(authRoutePaths).toContain('/auth/login');
     expect(authRoutePaths).toContain('/auth/logout');
     expect(authRoutePaths).toContain('/iam/authorize');
+    expect(authRoutePaths).toContain('/api/v1/iam/groups');
+    expect(authRoutePaths).toContain('/api/v1/iam/groups/$groupId');
+    expect(authRoutePaths).toContain('/api/v1/iam/groups/$groupId/roles');
+    expect(authRoutePaths).toContain('/api/v1/iam/groups/$groupId/roles/$roleId');
+    expect(authRoutePaths).toContain('/api/v1/iam/groups/$groupId/memberships');
     expect(authRoutePaths).toContain('/api/v1/iam/legal-texts');
     expect(authRoutePaths).toContain('/api/v1/iam/legal-texts/$legalTextVersionId');
     expect(authRoutePaths).toContain('/iam/admin/data-subject-rights/maintenance');

@@ -1,5 +1,6 @@
 import { getWorkspaceContext } from '@sva/sdk/server';
 
+import { getPermissionCacheHealth } from '../iam-authorization/shared';
 import { isRedisAvailable } from '../redis.server';
 import { jsonResponse } from '../shared/db-helpers';
 
@@ -48,13 +49,17 @@ export const readyInternal = async (request: Request): Promise<Response> => {
     return true;
   })();
 
+  const authorizationCache = getPermissionCacheHealth();
   const allReady = dbReady && redisReady && keycloakReady;
-  return jsonResponse(allReady ? 200 : 503, {
-    status: allReady ? 'ready' : 'not_ready',
+  const failed = !allReady || authorizationCache.status === 'failed';
+
+  return jsonResponse(failed ? 503 : 200, {
+    status: failed ? 'not_ready' : authorizationCache.status === 'degraded' ? 'degraded' : 'ready',
     checks: {
       db: dbReady,
       redis: redisReady,
       keycloak: keycloakReady,
+      authorizationCache,
     },
     ...(requestContext.requestId ? { requestId: requestContext.requestId } : {}),
     timestamp: new Date().toISOString(),

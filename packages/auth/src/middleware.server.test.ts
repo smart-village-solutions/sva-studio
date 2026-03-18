@@ -9,6 +9,7 @@ const middlewareLogger = vi.hoisted(() => ({
   warn: vi.fn(),
   error: vi.fn(),
 }));
+const withLegalTextComplianceMock = vi.hoisted(() => vi.fn());
 const workspaceContext = vi.hoisted(() => ({
   workspaceId: 'default',
   requestId: 'req-middleware',
@@ -45,12 +46,19 @@ vi.mock('./auth.server', () => ({
   getSessionUser: getSessionUserMock,
 }));
 
+vi.mock('./legal-text-enforcement.server', () => ({
+  withLegalTextCompliance: withLegalTextComplianceMock,
+}));
+
 describe('withAuthenticatedUser', () => {
   beforeEach(() => {
     vi.resetAllMocks();
     workspaceContext.workspaceId = 'default';
     workspaceContext.requestId = 'req-middleware';
     workspaceContext.traceId = 'trace-middleware';
+    withLegalTextComplianceMock.mockImplementation(
+      async (_instanceId: string, _keycloakSubject: string, handler: () => Promise<Response>) => handler()
+    );
   });
 
   it('returns 401 when session cookie is missing', async () => {
@@ -115,6 +123,55 @@ describe('withAuthenticatedUser', () => {
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ sessionId: 'session-2', userId: 'user-1' });
+  });
+
+  it('enforces legal text compliance on protected IAM routes', async () => {
+    getSessionUserMock.mockResolvedValue({
+      id: 'user-2',
+      name: 'Erika',
+      roles: ['admin'],
+      instanceId: 'de-musterhausen',
+    });
+    const { withAuthenticatedUser } = await import('./middleware.server');
+    const request = new Request('http://localhost/api/v1/iam/users', {
+      headers: { cookie: 'sva_auth_session=session-legal-1' },
+    });
+
+    const response = await withAuthenticatedUser(request, () => new Response('ok'));
+
+    expect(response.status).toBe(200);
+    expect(withLegalTextComplianceMock).toHaveBeenCalledWith(
+      'de-musterhausen',
+      'user-2',
+      expect.any(Function)
+    );
+  });
+
+  it('skips legal text compliance for acceptance workflow operations', async () => {
+    getSessionUserMock.mockResolvedValue({
+      id: 'user-3',
+      name: 'Jule',
+      roles: ['admin'],
+      instanceId: 'de-musterhausen',
+    });
+    const { withAuthenticatedUser } = await import('./middleware.server');
+    const request = new Request('http://localhost/api/v1/iam/governance/workflows', {
+      method: 'POST',
+      headers: {
+        cookie: 'sva_auth_session=session-legal-2',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        operation: 'accept_legal_text',
+        instanceId: 'de-musterhausen',
+        payload: { legalTextVersionId: 'version-1' },
+      }),
+    });
+
+    const response = await withAuthenticatedUser(request, () => new Response('ok'));
+
+    expect(response.status).toBe(200);
+    expect(withLegalTextComplianceMock).not.toHaveBeenCalled();
   });
 
   it('returns a flat json 500 and logs correlation ids when session resolution throws', async () => {

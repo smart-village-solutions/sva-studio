@@ -1,4 +1,5 @@
 import type { EffectivePermission } from '@sva/core';
+import type { SnapshotInvalidationEvent } from './iam-authorization/snapshot-invalidation.server';
 
 export interface PermissionSnapshotKey {
   readonly instanceId: string;
@@ -147,6 +148,8 @@ export interface CacheInvalidationEvent {
   readonly instanceId: string;
   readonly keycloakSubject?: string;
   readonly trigger: 'pg_notify' | 'ttl' | 'recompute';
+  readonly eventId?: string;
+  readonly event: SnapshotInvalidationEvent;
 }
 
 export const parseInvalidationEvent = (payloadRaw: string): CacheInvalidationEvent | null => {
@@ -166,15 +169,92 @@ export const parseInvalidationEvent = (payloadRaw: string): CacheInvalidationEve
     return null;
   }
 
-  const trigger = typed.trigger;
-  if (trigger !== 'pg_notify' && trigger !== 'ttl' && trigger !== 'recompute') {
-    return null;
+  const rawTrigger = typed.trigger;
+  const trigger =
+    rawTrigger === 'ttl' || rawTrigger === 'recompute' ? rawTrigger : 'pg_notify';
+  const eventId = typeof typed.eventId === 'string' ? typed.eventId : undefined;
+  const keycloakSubject = typeof typed.keycloakSubject === 'string' ? typed.keycloakSubject : undefined;
+  const eventName = typeof typed.event === 'string' ? typed.event : undefined;
+
+  if (eventName === 'RolePermissionChanged' && typeof typed.roleId === 'string') {
+    return {
+      instanceId: typed.instanceId,
+      trigger,
+      eventId,
+      event: {
+        type: 'role_permission_changed',
+        instanceId: typed.instanceId,
+        roleId: typed.roleId,
+        eventId,
+      },
+    };
   }
 
-  const keycloakSubject = typeof typed.keycloakSubject === 'string' ? typed.keycloakSubject : undefined;
+  if (
+    eventName === 'GroupMembershipChanged' &&
+    typeof typed.groupId === 'string' &&
+    typeof typed.accountId === 'string'
+  ) {
+    return {
+      instanceId: typed.instanceId,
+      keycloakSubject,
+      trigger,
+      eventId,
+      event: {
+        type: 'group_membership_changed',
+        instanceId: typed.instanceId,
+        groupId: typed.groupId,
+        accountId: typed.accountId,
+        ...(keycloakSubject ? { keycloakSubject } : {}),
+        eventId,
+      },
+    };
+  }
+
+  if (
+    eventName === 'GroupDeleted' &&
+    typeof typed.groupId === 'string' &&
+    Array.isArray(typed.affectedAccountIds)
+  ) {
+    const affectedKeycloakSubjects = Array.isArray(typed.affectedKeycloakSubjects)
+      ? typed.affectedKeycloakSubjects.filter((value): value is string => typeof value === 'string')
+      : undefined;
+    return {
+      instanceId: typed.instanceId,
+      keycloakSubject,
+      trigger,
+      eventId,
+      event: {
+        type: 'group_deleted',
+        instanceId: typed.instanceId,
+        groupId: typed.groupId,
+        affectedAccountIds: typed.affectedAccountIds.filter(
+          (value): value is string => typeof value === 'string'
+        ),
+        ...(affectedKeycloakSubjects ? { affectedKeycloakSubjects } : {}),
+        eventId,
+      },
+    };
+  }
+
   return {
     instanceId: typed.instanceId,
     keycloakSubject,
     trigger,
+    eventId,
+    event: keycloakSubject
+      ? {
+          type: 'user_scope_changed',
+          instanceId: typed.instanceId,
+          keycloakSubject,
+          eventId,
+          ...(typeof typed.reason === 'string' ? { reason: typed.reason } : {}),
+        }
+      : {
+          type: 'instance_scope_changed',
+          instanceId: typed.instanceId,
+          eventId,
+          ...(typeof typed.reason === 'string' ? { reason: typed.reason } : {}),
+        },
   };
 };

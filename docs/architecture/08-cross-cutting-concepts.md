@@ -41,7 +41,8 @@ gleichzeitig beeinflussen.
 - Autorisierungspfade erzwingen `instanceId`-Filterung vor Rollen-/Policy-Evaluation
 - Die zentrale Permission Engine arbeitet fail-closed bei fehlendem Kontext, unvollständigen Pflichtattributen oder inkonsistenten Laufzeitdaten
 - RLS-Policies und service-seitige Guards verhindern organisationsfremde Datenzugriffe
-- Permission-Snapshot-Cache ist instanz- und kontextgebunden; Invalidation erfolgt event-first (Postgres `NOTIFY`) mit TTL-Fallback
+- Permission-Snapshot-Cache ist instanz- und kontextgebunden; der Leseweg läuft deterministisch über lokalen L1-Cache, Redis-Shared-Read-Path und erst dann Recompute aus Postgres
+- Invalidation erfolgt event-first über Postgres `NOTIFY` mit `eventId`; TTL begrenzt Eventverlust, ersetzt aber keinen technischen Failover-Pfad
 - Permission-Snapshots sind reine Laufzeitoptimierung und keine fachliche Source of Truth
 - Audit-Logging für IAM-Ereignisse folgt Dual-Write (`iam.activity_logs` + OTEL via SDK Logger)
 - Audit-Daten enthalten korrelierbare IDs (`request_id`, `trace_id`) und pseudonymisierte Actor-Referenzen
@@ -57,6 +58,7 @@ gleichzeitig beeinflussen.
 - OTEL Pipeline für Logs + Metrics
 - Label-Whitelist und PII-Blockliste in OTEL/Promtail
 - IAM-Authorize/Cache-Logs nutzen strukturierte Operations (`cache_lookup`, `cache_invalidate`, `cache_stale_detected`, `cache_invalidate_failed`)
+- Cold-Start-, Recompute- und Store-Fehler im Snapshot-Pfad werden als strukturierte Cache-Events (`cache_cold_start`, `cache_store_failed`) geloggt
 - Korrelationsfelder `request_id` und `trace_id` sind im IAM-Pfad verpflichtend
 - Außerhalb des `AsyncLocalStorage`-Kontexts werden `request_id` und `trace_id` best effort aus validierten Headern (`X-Request-Id`, `traceparent`) extrahiert
 - Serverseitige JSON-Fehlerantworten für Auth-/IAM-Hotspots nutzen den flachen Vertrag `{ error: string, message?: string }` und setzen best effort `X-Request-Id`
@@ -64,6 +66,8 @@ gleichzeitig beeinflussen.
 - Role-Sync- und Reconcile-Pfade verwenden ausschließlich den SDK-Logger; `console.*` ist serverseitig ausgeschlossen
 - Role-Sync-Audit nutzt ein einheitliches Schema mit `workspace_id`, `operation`, `result`, `error_code?`, `request_id`, `trace_id?`, `span_id?`
 - Zusätzliche Metriken für den Rollenpfad: `iam_role_sync_operations_total` und `iam_role_drift_backlog`
+- Zusätzliche Cache-Metriken für IAM: `sva_iam_cache_lookup_total`, `sva_iam_cache_invalidation_duration_ms`, `sva_iam_cache_stale_entry_rate`
+- Redis-Infrastrukturmetriken werden über `redis-exporter` in denselben Monitoring-Stack eingespeist und mit den IAM-Cache-Metriken korreliert
 - Governance-Logs nutzen `component: iam-governance` und strukturierte Events:
   `impersonate_start`, `impersonate_end`, `impersonate_timeout`, `impersonate_abort`
 - Governance-Audit folgt Dual-Write: DB (`iam.activity_logs`) + OTEL-Pipeline
@@ -83,7 +87,8 @@ gleichzeitig beeinflussen.
 - Auth-Flow mit klaren Redirect-Fehlerpfaden (`auth=error`, `auth=state-expired`)
 - Root-Route nutzt ein zentrales `errorComponent` für unbehandelte Laufzeitfehler mit Retry-Option
 - IAM-Cache-Invalidierung folgt Event-first (Postgres NOTIFY) mit TTL/Recompute-Fallback
-- Bei stale + Recompute-Fehler gilt fail-closed (`cache_stale_guard`)
+- Redis-Lookup-, Snapshot-Write- und Recompute-Fehler im Autorisierungspfad enden fail-closed mit HTTP `503` und Fehlercode `database_unavailable`
+- Der Authorization-Cache gilt als `degraded`, wenn Redis-Latenz > `50 ms` oder die Recompute-Rate > `20/min` steigt; nach drei Redis-Fehlern wechselt der Zustand auf `failed`
 - DSR-Resilienz über asynchrones Export-Statusmodell (`queued|processing|completed|failed`)
 - Restore-Sanitization nach Backup-Restore stellt DSGVO-konforme Nachbereinigung sicher
 - Mainserver-Delegation arbeitet fail-closed: ohne lokalen Rollencheck, Instanzkontext, Konfiguration oder gültige Credentials wird kein Upstream-Call ausgeführt

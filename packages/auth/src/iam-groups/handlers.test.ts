@@ -97,10 +97,12 @@ vi.mock('../shared/input-readers', () => ({
 // ---------------------------------------------------------------------------
 // Imports (nach Mocks)
 // ---------------------------------------------------------------------------
+import { publishGroupEvent } from './events';
 import {
   assignGroupMembershipInternal,
   assignGroupRoleInternal,
   createGroupInternal,
+  deleteGroupInternal,
   getGroupInternal,
   listGroupsInternal,
   removeGroupMembershipInternal,
@@ -120,6 +122,8 @@ const makeRequest = (url = 'https://api.example.com/api/v1/iam/inst-g/groups', o
 
 const makeGroupRequest = (groupId = VALID_UUID, subPath = '') =>
   new Request(`https://api.example.com/api/v1/iam/inst-g/groups/${groupId}${subPath}`);
+
+const publishGroupEventMock = publishGroupEvent as ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -229,11 +233,41 @@ describe('getGroupInternal', () => {
           ],
         };
       }
-      return { rowCount: 1, rows: [{ role_id: 'role-1' }] };
+      if (callCount === 2) {
+        return { rowCount: 1, rows: [{ role_id: 'role-1' }] };
+      }
+      return {
+        rowCount: 1,
+        rows: [
+          {
+            instance_id: 'inst-g',
+            account_id: 'acc-member-1',
+            group_id: VALID_UUID,
+            keycloak_subject: 'user-123',
+            display_name: 'Editor User',
+            valid_from: null,
+            valid_until: null,
+            assigned_at: '2025-01-01T00:00:00Z',
+            assigned_by: 'acc-actor',
+          },
+        ],
+      };
     };
 
     const response = await getGroupInternal(makeGroupRequest(), makeCtx());
     expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      id: VALID_UUID,
+      assignedRoleIds: ['role-1'],
+      memberships: [
+        {
+          accountId: 'acc-member-1',
+          keycloakSubject: 'user-123',
+          displayName: 'Editor User',
+          assignedByAccountId: 'acc-actor',
+        },
+      ],
+    });
   });
 
   it('gibt 404 zurück wenn Gruppe nicht gefunden', async () => {
@@ -253,6 +287,63 @@ describe('getGroupInternal', () => {
     (isUuid as ReturnType<typeof vi.fn>).mockReturnValueOnce(false);
     const response = await getGroupInternal(makeGroupRequest('not-a-uuid'), makeCtx());
     expect(response.status).toBe(400);
+  });
+});
+
+// ============================================================================
+// deleteGroupInternal
+// ============================================================================
+describe('deleteGroupInternal', () => {
+  it('gibt 200 bei erfolgreichem Delete zurück', async () => {
+    let callCount = 0;
+    state.dbQueryHandler = () => {
+      callCount++;
+      if (callCount === 1) {
+        return {
+          rowCount: 1,
+          rows: [{ account_id: 'acc-member-1', keycloak_subject: 'kc-member-1' }],
+        };
+      }
+      return { rowCount: 1, rows: [{ id: VALID_UUID }] };
+    };
+
+    const response = await deleteGroupInternal(makeGroupRequest(), makeCtx());
+    expect(response.status).toBe(200);
+    expect(publishGroupEventMock).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        event: 'GroupDeleted',
+        groupId: VALID_UUID,
+        affectedAccountIds: ['acc-member-1'],
+        affectedKeycloakSubjects: ['kc-member-1'],
+      })
+    );
+  });
+
+  it('gibt 404 zurück wenn Gruppe nicht gefunden', async () => {
+    let callCount = 0;
+    state.dbQueryHandler = () => {
+      callCount++;
+      if (callCount === 1) {
+        return { rowCount: 0, rows: [] };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await deleteGroupInternal(makeGroupRequest(), makeCtx());
+    expect(response.status).toBe(404);
+  });
+
+  it('gibt 400 zurück wenn groupId fehlt', async () => {
+    state.pathSegments[4] = null;
+    const response = await deleteGroupInternal(makeGroupRequest(), makeCtx());
+    expect(response.status).toBe(400);
+  });
+
+  it('gibt 503 zurück bei DB-Fehler', async () => {
+    state.dbError = new Error('DB timeout');
+    const response = await deleteGroupInternal(makeGroupRequest(), makeCtx());
+    expect(response.status).toBe(503);
   });
 });
 
@@ -489,6 +580,11 @@ describe('Mutation-Handler — Gemeinsame Rejection-Paths', () => {
     expect((await assignGroupRoleInternal(makeGroupRequest(), makeCtx())).status).toBe(403);
   });
 
+  it('deleteGroupInternal: 403 bei CSRF-Fehler', async () => {
+    state.csrfError = new Response('CSRF', { status: 403 });
+    expect((await deleteGroupInternal(makeGroupRequest(), makeCtx())).status).toBe(403);
+  });
+
   it('removeGroupRoleInternal: 403 bei CSRF-Fehler', async () => {
     state.csrfError = new Response('CSRF', { status: 403 });
     expect((await removeGroupRoleInternal(makeRequest(`https://api.example.com/api/v1/iam/inst-g/groups/${VALID_UUID}/roles/${VALID_UUID}`), makeCtx())).status).toBe(403);
@@ -512,6 +608,11 @@ describe('Mutation-Handler — Gemeinsame Rejection-Paths', () => {
   it('updateGroupInternal: 401 bei actorResolution.error', async () => {
     state.actorResolution = { error: new Response('Unauth', { status: 401 }) };
     expect((await updateGroupInternal(makeGroupRequest(), makeCtx())).status).toBe(401);
+  });
+
+  it('deleteGroupInternal: 401 bei actorResolution.error', async () => {
+    state.actorResolution = { error: new Response('Unauth', { status: 401 }) };
+    expect((await deleteGroupInternal(makeGroupRequest(), makeCtx())).status).toBe(401);
   });
 
   it('assignGroupRoleInternal: 401 bei actorResolution.error', async () => {

@@ -62,15 +62,15 @@ describe('withLegalTextCompliance', () => {
     expect(response.headers.get('Content-Type')).toBe('application/json');
   });
 
-  it('fail-open bei DB-Fehler — ruft handler trotzdem auf', async () => {
+  it('gibt 503 zurück bei DB-Fehler und ruft handler nicht auf', async () => {
     mockWithDb.mockRejectedValueOnce(new Error('DB down'));
 
     const handler = makeHandler();
     const response = await withLegalTextCompliance('inst-4', 'user-sub', handler);
 
-    // fail-open: handler wird trotzdem aufgerufen
-    expect(handler).toHaveBeenCalledOnce();
-    expect(response.status).toBe(200);
+    expect(handler).not.toHaveBeenCalled();
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({ error: { code: 'database_unavailable' } });
   });
 
   it('gibt handler-Response weiter wenn kein Fehler', async () => {
@@ -102,14 +102,16 @@ describe('withLegalTextCompliance', () => {
 // withLegalTextCompliance — Non-Error-Throw (String(error) Branch)
 // ============================================================================
 describe('withLegalTextCompliance — Non-Error-Throw', () => {
-  it('fail-open wenn DB einen Non-Error-Wert (String) wirft', async () => {
+  it('gibt 503 zurück wenn DB einen Non-Error-Wert (String) wirft', async () => {
     const nonErrorReason: unknown = 'plain-string-db-error';
     // NOSONAR: absichtlich kein Error-Objekt, um den String(error)-Pfad zu testen.
     mockWithDb.mockImplementation(() => Promise.reject(nonErrorReason));
 
     const handler = makeHandler();
-    await withLegalTextCompliance('inst-99', 'user-non-error', handler);
-    // Fail-open: Handler wird trotzdem aufgerufen
-    expect(handler).toHaveBeenCalledOnce();
+    const response = await withLegalTextCompliance('inst-99', 'user-non-error', handler);
+
+    expect(handler).not.toHaveBeenCalled();
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({ error: { code: 'database_unavailable' } });
   });
 });

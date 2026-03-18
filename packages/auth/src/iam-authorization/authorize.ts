@@ -106,21 +106,6 @@ export const authorizeHandler = async (request: Request): Promise<Response> => {
           ...buildRequestContext(payload.instanceId),
         });
 
-        if (resolved.error === 'cache_stale_guard') {
-          const denied = buildDeniedResponse({
-            reason: 'cache_stale_guard',
-            instanceId: payload.instanceId,
-            action: payload.action,
-            resourceType: payload.resource.type,
-            resourceId: payload.resource.id,
-            requestId: payload.context?.requestId,
-            traceId: payload.context?.traceId,
-          });
-
-          recordLatency(false, denied.reason);
-          return jsonResponse(200, denied);
-        }
-
         recordLatency(false, 'database_unavailable');
         return errorResponse(503, 'database_unavailable');
       }

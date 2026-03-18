@@ -31,7 +31,7 @@ import {
   removeGroupMembershipSchema,
   updateGroupSchema,
 } from './schemas';
-import { mapGroupListItem, type GroupRow } from './types';
+import { mapGroupListItem, mapGroupMembership, type AccountGroupRow, type GroupRow } from './types';
 
 const logger = createSdkLogger({ component: 'iam-groups', level: 'info' });
 
@@ -90,6 +90,25 @@ WHERE g.instance_id = $1
   AND g.id = $2::uuid
 GROUP BY g.id
 LIMIT 1
+`;
+
+const GROUP_MEMBERSHIPS_SQL = `
+SELECT
+  ag.instance_id,
+  ag.account_id,
+  ag.group_id,
+  a.keycloak_subject,
+  COALESCE(a.display_name, NULLIF(CONCAT_WS(' ', a.first_name, a.last_name), ''), a.email) AS display_name,
+  ag.valid_from::text,
+  ag.valid_until::text,
+  ag.assigned_at::text,
+  ag.assigned_by
+FROM iam.account_groups ag
+JOIN iam.accounts a
+  ON a.id = ag.account_id
+WHERE ag.instance_id = $1
+  AND ag.group_id = $2::uuid
+ORDER BY COALESCE(a.display_name, NULLIF(CONCAT_WS(' ', a.first_name, a.last_name), ''), a.email, a.keycloak_subject) ASC;
 `;
 
 const resolveAccountId = async (
@@ -179,9 +198,11 @@ export const getGroupInternal = async (
         `SELECT role_id FROM iam.group_roles WHERE instance_id = $1 AND group_id = $2::uuid`,
         [actor.instanceId, groupId]
       );
+      const membershipRows = await client.query<AccountGroupRow>(GROUP_MEMBERSHIPS_SQL, [actor.instanceId, groupId]);
       const detail: IamGroupDetail = {
         ...mapGroupListItem(row),
         assignedRoleIds: roleRows.rows.map((r) => r.role_id),
+        memberships: membershipRows.rows.map(mapGroupMembership),
       };
       return detail;
     });
@@ -367,6 +388,98 @@ export const updateGroupInternal = async (
       trace_id: actor.traceId,
     });
     return createApiError(503, 'database_unavailable', 'Gruppe konnte nicht aktualisiert werden.', actor.requestId);
+  }
+};
+
+export const deleteGroupInternal = async (
+  request: Request,
+  ctx: AuthenticatedRequestContext
+): Promise<Response> => {
+  const requestContext = getWorkspaceContext();
+
+  const roleCheck = requireRoles(ctx, ADMIN_ROLES, requestContext.requestId);
+  if (roleCheck) return roleCheck;
+
+  const csrfError = validateCsrf(request, requestContext.requestId);
+  if (csrfError) return csrfError;
+
+  const actorResolution = await resolveActorInfo(request, ctx, { requireActorMembership: true });
+  if ('error' in actorResolution) return actorResolution.error;
+  const { actor } = actorResolution;
+
+  const groupId = readPathSegment(request, 4);
+  if (!groupId || !isUuid(groupId)) {
+    return createApiError(400, 'invalid_request', 'Ungültige Gruppen-ID', actor.requestId);
+  }
+
+  try {
+    const deleted = await withInstanceScopedDb(actor.instanceId, async (client) => {
+      const membershipRows = await client.query<AccountGroupRow>(GROUP_MEMBERSHIPS_SQL, [
+        actor.instanceId,
+        groupId,
+      ]);
+
+      const deleteResult = await client.query(
+        `
+DELETE FROM iam.groups
+WHERE instance_id = $1
+  AND id = $2::uuid
+RETURNING id;
+`,
+        [actor.instanceId, groupId]
+      );
+
+      if (deleteResult.rowCount === 0) {
+        return false;
+      }
+
+      await publishGroupEvent(client, {
+        event: 'GroupDeleted',
+        instanceId: actor.instanceId,
+        groupId,
+        affectedAccountIds: membershipRows.rows.map((row) => row.account_id),
+        affectedKeycloakSubjects: membershipRows.rows
+          .map((row) => row.keycloak_subject)
+          .filter((value): value is string => typeof value === 'string' && value.length > 0),
+        requestId: actor.requestId,
+        traceId: actor.traceId,
+      });
+
+      await emitActivityLog(client, {
+        instanceId: actor.instanceId,
+        accountId: actor.actorAccountId,
+        eventType: 'iam_group_deleted',
+        result: 'success',
+        payload: { group_id: groupId, affected_account_ids: membershipRows.rows.map((row) => row.account_id) },
+        requestId: actor.requestId,
+        traceId: actor.traceId,
+      });
+
+      return true;
+    });
+
+    if (!deleted) {
+      return createApiError(404, 'invalid_request', 'Gruppe nicht gefunden', actor.requestId);
+    }
+
+    logger.info('Group deleted', {
+      operation: 'group_delete',
+      workspace_id: actor.instanceId,
+      group_id: groupId,
+      request_id: actor.requestId,
+      trace_id: actor.traceId,
+    });
+    return jsonResponse(200, asApiItem({ id: groupId }, actor.requestId));
+  } catch (error) {
+    logger.error('Group deletion failed', {
+      operation: 'group_delete',
+      workspace_id: actor.instanceId,
+      group_id: groupId,
+      error: error instanceof Error ? error.message : String(error),
+      request_id: actor.requestId,
+      trace_id: actor.traceId,
+    });
+    return createApiError(503, 'database_unavailable', 'Gruppe konnte nicht gelöscht werden.', actor.requestId);
   }
 };
 
@@ -586,6 +699,7 @@ ON CONFLICT (instance_id, account_id, group_id) DO UPDATE
         instanceId: actor.instanceId,
         groupId,
         accountId,
+        keycloakSubject: body.data.keycloakSubject,
         changeType: 'added',
         requestId: actor.requestId,
         traceId: actor.traceId,
@@ -674,6 +788,7 @@ WHERE instance_id = $1
         instanceId: actor.instanceId,
         groupId,
         accountId,
+        keycloakSubject: body.data.keycloakSubject,
         changeType: 'removed',
         requestId: actor.requestId,
         traceId: actor.traceId,

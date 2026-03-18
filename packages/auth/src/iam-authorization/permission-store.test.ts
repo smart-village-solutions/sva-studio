@@ -53,6 +53,15 @@ const dbResult = vi.hoisted(() => ({
   error: null as unknown,
 }));
 
+const redisState = vi.hoisted(() => ({
+  lookup: { hit: false as false, reason: 'miss' as 'miss' | 'integrity_error' | 'redis_unavailable' } as
+    | { hit: true; permissions: unknown[]; version: string }
+    | { hit: false; reason: 'miss' | 'integrity_error' | 'redis_unavailable' },
+  write: { ok: true, version: 'version-1' } as
+    | { ok: true; version: string }
+    | { ok: false; reason: 'redis_unavailable' },
+}));
+
 vi.mock('./shared', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./shared')>();
   return {
@@ -61,6 +70,7 @@ vi.mock('./shared', async (importOriginal) => {
       get: vi.fn(() => cacheGetResult.value),
       set: vi.fn(),
       invalidate: vi.fn(),
+      size: vi.fn(() => 0),
     },
     ensureInvalidationListener: vi.fn().mockResolvedValue(undefined),
     withInstanceScopedDb: vi.fn(async (_id: string, fn: (c: unknown) => Promise<unknown>) => {
@@ -76,6 +86,11 @@ vi.mock('./shared', async (importOriginal) => {
   };
 });
 
+vi.mock('./redis-permission-snapshot.server', () => ({
+  getRedisPermissionSnapshot: vi.fn(() => Promise.resolve(redisState.lookup)),
+  setRedisPermissionSnapshot: vi.fn(() => Promise.resolve(redisState.write)),
+}));
+
 // ---------------------------------------------------------------------------
 // Imports (nach Mocks)
 // ---------------------------------------------------------------------------
@@ -89,6 +104,8 @@ beforeEach(() => {
   cacheGetResult.value = { status: 'miss', snapshot: null, ttlRemainingSeconds: 0, ageSeconds: 0 };
   dbResult.rows = [];
   dbResult.error = null;
+  redisState.lookup = { hit: false, reason: 'miss' };
+  redisState.write = { ok: true, version: 'version-1' };
 });
 
 const baseInput = {
@@ -100,6 +117,19 @@ const baseInput = {
 // Cache-Miss — erfolgreicher DB-Load (cacheStatus: 'miss')
 // ============================================================================
 describe('resolveEffectivePermissions — Cache-Miss', () => {
+  it("liefert 'hit' wenn Redis einen vorhandenen Snapshot findet", async () => {
+    redisState.lookup = {
+      hit: true,
+      permissions: [{ action: 'content.read', resourceType: 'content', sourceRoleIds: ['role-1'] }],
+      version: 'redis-version',
+    };
+    const result = await resolveEffectivePermissions(baseInput);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.cacheStatus).toBe('hit');
+    }
+  });
+
   it("gibt cacheStatus 'miss' zurück wenn cache-Status 'miss' und DB erfolgreich", async () => {
     cacheGetResult.value = { status: 'miss', snapshot: null, ttlRemainingSeconds: 0, ageSeconds: 0 };
     dbResult.rows = [];
@@ -123,6 +153,24 @@ describe('resolveEffectivePermissions — Cache-Miss', () => {
   it('gibt database_unavailable zurück wenn cache miss und DB wirft Non-Error (String)', async () => {
     cacheGetResult.value = { status: 'miss', snapshot: null, ttlRemainingSeconds: 0, ageSeconds: 0 };
     dbResult.error = 'plain-string-error'; // Deckt String(error) Branch ab
+    const result = await resolveEffectivePermissions(baseInput);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).toBe('database_unavailable');
+    }
+  });
+
+  it('gibt database_unavailable zurück wenn Redis-Lookup fehlschlägt', async () => {
+    redisState.lookup = { hit: false, reason: 'redis_unavailable' };
+    const result = await resolveEffectivePermissions(baseInput);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).toBe('database_unavailable');
+    }
+  });
+
+  it('gibt database_unavailable zurück wenn Redis-Write nach Recompute fehlschlägt', async () => {
+    redisState.write = { ok: false, reason: 'redis_unavailable' };
     const result = await resolveEffectivePermissions(baseInput);
     expect(result.ok).toBe(false);
     if (!result.ok) {

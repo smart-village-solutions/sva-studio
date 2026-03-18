@@ -21,6 +21,11 @@ export type AuthRoutePath =
   | '/api/v1/iam/me/context'
   | '/api/v1/iam/roles'
   | '/api/v1/iam/roles/$roleId'
+  | '/api/v1/iam/groups'
+  | '/api/v1/iam/groups/$groupId'
+  | '/api/v1/iam/groups/$groupId/roles'
+  | '/api/v1/iam/groups/$groupId/roles/$roleId'
+  | '/api/v1/iam/groups/$groupId/memberships'
   | '/api/v1/iam/legal-texts'
   | '/api/v1/iam/legal-texts/$legalTextVersionId'
   | '/api/v1/iam/admin/reconcile'
@@ -60,6 +65,11 @@ export const authRoutePaths = [
   '/api/v1/iam/me/context',
   '/api/v1/iam/roles',
   '/api/v1/iam/roles/$roleId',
+  '/api/v1/iam/groups',
+  '/api/v1/iam/groups/$groupId',
+  '/api/v1/iam/groups/$groupId/roles',
+  '/api/v1/iam/groups/$groupId/roles/$roleId',
+  '/api/v1/iam/groups/$groupId/memberships',
   '/api/v1/iam/legal-texts',
   '/api/v1/iam/legal-texts/$legalTextVersionId',
   '/api/v1/iam/admin/reconcile',

@@ -1,5 +1,10 @@
 import type { EffectivePermission } from '@sva/core';
 
+import type { PermSnapshotKey } from './redis-permission-snapshot.server';
+import {
+  getRedisPermissionSnapshot,
+  setRedisPermissionSnapshot,
+} from './redis-permission-snapshot.server';
 import type { EffectivePermissionsResolution, PermissionRow } from './shared';
 import {
   buildRequestContext,
@@ -9,6 +14,9 @@ import {
   iamCacheLookupCounter,
   logger,
   permissionSnapshotCache,
+  recordPermissionCacheColdStart,
+  recordPermissionCacheRecompute,
+  recordPermissionCacheRedisLatency,
   toEffectivePermissions,
   withInstanceScopedDb,
 } from './shared';
@@ -19,6 +27,12 @@ type PermissionLookupInput = {
   keycloakSubject: string;
   organizationId?: string;
 };
+
+const toRedisSnapshotKey = (input: PermissionLookupInput): PermSnapshotKey => ({
+  instanceId: input.instanceId,
+  userId: input.keycloakSubject,
+  organizationId: input.organizationId,
+});
 
 const listScopedPermissionRows = async (
   client: QueryClient,
@@ -153,26 +167,20 @@ const loadPermissionsFromDb = async (input: PermissionLookupInput): Promise<read
 export const resolveEffectivePermissions = async (input: PermissionLookupInput): Promise<EffectivePermissionsResolution> => {
   await ensureInvalidationListener();
 
-  cacheMetricsState.lookups += 1;
   const lookup = permissionSnapshotCache.get(input);
 
   if (lookup.status === 'hit' && lookup.snapshot) {
+    cacheMetricsState.lookups += 1;
     iamCacheLookupCounter.add(1, { hit: true });
     cacheLogger.debug('Permission snapshot cache lookup', {
       operation: 'cache_lookup',
       hit: true,
+      cache_layer: 'memory',
       ttl_remaining_s: lookup.ttlRemainingSeconds,
       ...buildRequestContext(input.instanceId),
     });
     return { ok: true, permissions: lookup.snapshot!.permissions, cacheStatus: 'hit' };
   }
-
-  iamCacheLookupCounter.add(1, { hit: false });
-  cacheLogger.debug('Permission snapshot cache lookup', {
-    operation: 'cache_lookup',
-    hit: false,
-    ...buildRequestContext(input.instanceId),
-  });
 
   if (lookup.status === 'stale') {
     cacheMetricsState.staleLookups += 1;
@@ -184,8 +192,64 @@ export const resolveEffectivePermissions = async (input: PermissionLookupInput):
     });
   }
 
+  if (permissionSnapshotCache.size() === 0) {
+    recordPermissionCacheColdStart(input.instanceId);
+  }
+
+  const redisKey = toRedisSnapshotKey(input);
+  const redisLookupStartedAt = performance.now();
+  const redisLookup = await getRedisPermissionSnapshot(redisKey);
+  recordPermissionCacheRedisLatency(
+    performance.now() - redisLookupStartedAt,
+    redisLookup.hit || redisLookup.reason !== 'redis_unavailable'
+  );
+
+  if (redisLookup.hit) {
+    cacheMetricsState.lookups += 1;
+    permissionSnapshotCache.set(input, redisLookup.permissions);
+    iamCacheLookupCounter.add(1, { hit: true });
+    cacheLogger.debug('Permission snapshot cache lookup', {
+      operation: 'cache_lookup',
+      hit: true,
+      cache_layer: 'redis',
+      ...buildRequestContext(input.instanceId),
+    });
+    return { ok: true, permissions: redisLookup.permissions, cacheStatus: 'hit' };
+  }
+
+  if (redisLookup.reason === 'redis_unavailable') {
+    cacheMetricsState.lookups += 1;
+    iamCacheLookupCounter.add(1, { hit: false });
+    logger.error('Redis permission snapshot lookup failed', {
+      operation: 'cache_lookup_failed',
+      error: redisLookup.reason,
+      ...buildRequestContext(input.instanceId),
+    });
+    return { ok: false, error: 'database_unavailable' };
+  }
+
+  cacheMetricsState.lookups += 1;
+  iamCacheLookupCounter.add(1, { hit: false });
+  cacheLogger.debug('Permission snapshot cache lookup', {
+    operation: 'cache_lookup',
+    hit: false,
+    cache_layer: 'redis',
+    miss_reason: redisLookup.reason,
+    ...buildRequestContext(input.instanceId),
+  });
+
   try {
     const permissions = await loadPermissionsFromDb(input);
+    const redisWrite = await setRedisPermissionSnapshot(redisKey, permissions);
+    if (!redisWrite.ok) {
+      logger.error('Redis permission snapshot write failed after recompute', {
+        operation: 'cache_store_failed',
+        error: redisWrite.reason,
+        ...buildRequestContext(input.instanceId),
+      });
+      return { ok: false, error: 'database_unavailable' };
+    }
+    recordPermissionCacheRecompute();
     permissionSnapshotCache.set(input, permissions);
 
     if (lookup.status === 'stale') {
@@ -204,10 +268,6 @@ export const resolveEffectivePermissions = async (input: PermissionLookupInput):
       error: error instanceof Error ? error.message : String(error),
       ...buildRequestContext(input.instanceId),
     });
-
-    if (lookup.status === 'stale') {
-      return { ok: false, error: 'cache_stale_guard' };
-    }
 
     return { ok: false, error: 'database_unavailable' };
   }

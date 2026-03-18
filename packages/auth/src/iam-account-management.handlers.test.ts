@@ -22,6 +22,19 @@ const state = vi.hoisted(() => ({
   },
   queryHandler: null as null | ((text: string, values?: readonly unknown[]) => { rowCount: number; rows: unknown[] }),
   redisAvailable: true,
+  permissionCacheHealth: {
+    status: 'ready',
+    coldStart: false,
+    lastRedisLatencyMs: 12,
+    recomputePerMinute: 0,
+    consecutiveRedisFailures: 0,
+  } as {
+    status: 'ready' | 'degraded' | 'failed';
+    coldStart: boolean;
+    lastRedisLatencyMs: number;
+    recomputePerMinute: number;
+    consecutiveRedisFailures: number;
+  },
   keycloakConfigAvailable: true,
   createRoleImpl: null as null | ((input: {
     externalName: string;
@@ -122,6 +135,10 @@ vi.mock('@opentelemetry/api', () => ({
 
 vi.mock('./redis.server', () => ({
   isRedisAvailable: vi.fn(async () => state.redisAvailable),
+}));
+
+vi.mock('./iam-authorization/shared', () => ({
+  getPermissionCacheHealth: vi.fn(() => state.permissionCacheHealth),
 }));
 
 vi.mock('./iam-account-management/user-timeline-query', () => ({
@@ -439,6 +456,13 @@ describe('iam-account-management handlers (guards)', () => {
     state.updateUserImpl = null;
     state.updateUserCalls = [];
     state.redisAvailable = true;
+    state.permissionCacheHealth = {
+      status: 'ready',
+      coldStart: false,
+      lastRedisLatencyMs: 12,
+      recomputePerMinute: 0,
+      consecutiveRedisFailures: 0,
+    };
     state.keycloakConfigAvailable = true;
     state.deactivateUserCalls = [];
     state.syncRolesImpl = null;
@@ -3740,7 +3764,46 @@ describe('iam-account-management additional handlers', () => {
           db: true,
           redis: true,
           keycloak: true,
+          authorizationCache: expect.objectContaining({
+            status: 'ready',
+          }),
         },
+      })
+    );
+  });
+
+  it('returns degraded when authorization cache exceeds latency threshold', async () => {
+    state.redisAvailable = true;
+    state.permissionCacheHealth = {
+      status: 'degraded',
+      coldStart: true,
+      lastRedisLatencyMs: 77,
+      recomputePerMinute: 3,
+      consecutiveRedisFailures: 0,
+    };
+    state.listRolesImpl = async () => [];
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT 1;')) {
+        return { rowCount: 1, rows: [{ '?column?': 1 }] };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await healthReadyHandler(
+      new Request('http://localhost/api/v1/iam/health/ready', { method: 'GET' })
+    );
+    const payload = (await response.json()) as {
+      status: string;
+      checks: { authorizationCache: { status: string; coldStart: boolean; lastRedisLatencyMs: number } };
+    };
+
+    expect(response.status).toBe(200);
+    expect(payload.status).toBe('degraded');
+    expect(payload.checks.authorizationCache).toEqual(
+      expect.objectContaining({
+        status: 'degraded',
+        coldStart: true,
+        lastRedisLatencyMs: 77,
       })
     );
   });
@@ -3769,11 +3832,11 @@ describe('iam-account-management additional handlers', () => {
     expect(payload).toEqual(
       expect.objectContaining({
         status: 'not_ready',
-        checks: {
+        checks: expect.objectContaining({
           db: false,
           redis: false,
           keycloak: false,
-        },
+        }),
       })
     );
   });

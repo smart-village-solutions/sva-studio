@@ -43,6 +43,16 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
 - IAM Cache-Invaliderung:
   - End-to-End-Latenz P95 <= 2 s, P99 <= 5 s
   - Snapshot-TTL = 300 s, maximal tolerierte Stale-Dauer = 300 s
+  - Cache-Hit P95 < 5 ms, Cache-Miss P95 < 80 ms, Recompute P95 < 300 ms bei `N = 100` gleichzeitigen Requests, endpoint-nah gemessen
+  - Zusätzliches Beobachtungsprofil `Slow-4G` wird dokumentiert, auch wenn dort keine harte Abnahmegrenze gilt
+- IAM Authorization-Cache-Readiness:
+  - `/health/ready` liefert `checks.authorizationCache`
+  - `degraded` ab Redis-Latenz > `50 ms` oder Recompute-Rate > `20/min`
+  - `failed` nach drei aufeinanderfolgenden Redis-Fehlern
+- IAM Redis-Betrieb:
+  - Session-Store folgt dem Plattform-RTO `<= 2h`
+  - Permission-Snapshots sind rekonstruierbar und müssen operativ innerhalb von `15 min` wieder in `ready|degraded` überführt werden
+  - Für Permission-Snapshots besteht kein eigener fachlicher RPO, da Postgres die führende Quelle bleibt
 - DSGVO-Betroffenenrechte (IAM):
   - Soft-Delete nach gültigem Löschantrag innerhalb von 48 Stunden
   - Datenexport in JSON/CSV/XML verfügbar (sync/async je nach Datenumfang)
@@ -93,9 +103,11 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
 
 - Strukturierte Logs mit Pflichtfeldern (`component`, `environment`, `workspace_id`)
 - IAM-Authorize- und Cache-Logs enthalten zusätzlich `request_id` und `trace_id`
+- IAM-Cache-Metriken `sva_iam_cache_lookup_total`, `sva_iam_cache_invalidation_duration_ms` und `sva_iam_cache_stale_entry_rate` sind in Dashboards und Alerting sichtbar
 - Auth-/IAM-Error-Boundaries setzen best effort `X-Request-Id` und liefern einen stabilen JSON-Fehlervertrag
 - Label-Whitelist und PII-Redaction entlang der OTEL-Pipeline
 - Healthchecks für lokale Monitoring-Dienste in Compose
+- Redis-Infrastrukturmetriken werden über `redis-exporter` mit Prometheus eingesammelt
 - DSR-Audit-Events enthalten mindestens `instance_id`, `request_id`, `trace_id`, `event_type`, `result`
 
 ### Aktuelle Lücken

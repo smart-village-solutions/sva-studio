@@ -1,7 +1,7 @@
 # complexity-quality-governance Specification
 
 ## Purpose
-TBD - created by archiving change add-complexity-quality-governance. Update Purpose after archive.
+Die Capability definiert Qualitäts- und Governance-Regeln für Komplexität, Wartbarkeit und Reviewbarkeit zentraler Module, damit technische Risiken früh sichtbar und verbindlich bearbeitet werden.
 ## Requirements
 ### Requirement: Automatisierte Komplexitätsmessung für zentrale Module
 Das System SHALL für definierte zentrale Module automatisiert Komplexitätsmetriken erfassen und auswerten.
@@ -52,4 +52,3 @@ Das System SHALL für überwachte Module Baselines oder Trendinformationen berei
 - **WHEN** eine Änderung die Komplexität weiter erhöht
 - **THEN** zeigt der Report die Verschlechterung gegenüber dem Referenzwert
 - **AND** der Befund kann für Priorisierung von Refactoring-Aufgaben verwendet werden
-

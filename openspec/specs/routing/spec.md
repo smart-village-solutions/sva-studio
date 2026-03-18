@@ -4,7 +4,7 @@
 Die Routing-Capability definiert, wie Routen aus Core und Plugins typsicher zusammengeführt und zur Laufzeit registriert werden.
 ## Requirements
 ### Requirement: Code-Route-Registry
-Das System SHALL eine einzige, programmatische Route-Registry bereitstellen, die als Single Source of Truth für alle Auth-Route-Pfade und Handler-Zuordnungen dient. Parallele oder redundante Route-Registrierungen DÜRFEN NICHT existieren.
+Das System SHALL eine einzige, programmatische Route-Registry bereitstellen, die Core- und Plugin-Routen zusammenführt und für pfadspezifische Handler-Mappings in Teilbereichen wie Auth-Routing als Single Source of Truth dient. Parallele oder redundante Route-Registrierungen DÜRFEN NICHT existieren.
 
 #### Scenario: Core und Plugin Routen kombiniert
 - **WHEN** die App startet
@@ -121,4 +121,3 @@ Auth-Error-Boundaries SHALL einen einheitlichen JSON-Error-Response-Shape verwen
 - **WHEN** ein IAM-Endpunkt eine Response zurückgibt, auch im Fehlerfall
 - **THEN** enthält die Response best-effort den Header `X-Request-Id`
 - **AND** der Header kann von Clients und Support-Tools zur Korrelation mit Server-Logs verwendet werden
-

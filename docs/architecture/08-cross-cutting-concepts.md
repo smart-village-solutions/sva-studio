@@ -39,6 +39,11 @@ gleichzeitig beeinflussen.
 - Mandantenisolation basiert auf kanonischem Scope `instanceId` als fachlichem String-Schlüssel (inkl. Mapping zu `workspace_id` in Logs)
 - Keycloak ist führend für Authentifizierung; Postgres ist führend für Studio-verwaltete IAM-Fachdaten
 - Autorisierungspfade erzwingen `instanceId`-Filterung vor Rollen-/Policy-Evaluation
+- Effektive Berechtigungen aggregieren direkte Rollen und gruppenvermittelte Rollen gleichwertig; die Provenance hält `direct_role` und `group_role` als strukturierte Quelle fest
+- Gruppen sind instanzgebundene Rollenbündel (`group_type = role_bundle`); direkte Gruppen-Permissions sind bewusst nicht Teil des ersten Schnitts
+- Gruppenmitgliedschaften werden mit Herkunft (`manual|seed|sync`) und optionalen Gültigkeitsfenstern in `iam.account_groups` geführt
+- Geo-Scopes werden kanonisch über `allowedGeoUnitIds` und `restrictedGeoUnitIds` gegen das Read-Modell `iam.geo_units` ausgewertet; `allowedGeoScopes` bleibt nur als Kompatibilitäts-Fallback bestehen
+- Geo-Vererbung ist strikt restriktiv: Parent-Allow darf auf Children vererben, ein spezifischer Child-Deny schlägt diesen Allow deterministisch
 - Die zentrale Permission Engine arbeitet fail-closed bei fehlendem Kontext, unvollständigen Pflichtattributen oder inkonsistenten Laufzeitdaten
 - RLS-Policies und service-seitige Guards verhindern organisationsfremde Datenzugriffe
 - Permission-Snapshot-Cache ist instanz- und kontextgebunden; der Leseweg läuft deterministisch über lokalen L1-Cache, Redis-Shared-Read-Path und erst dann Recompute aus Postgres
@@ -93,6 +98,8 @@ gleichzeitig beeinflussen.
 - Restore-Sanitization nach Backup-Restore stellt DSGVO-konforme Nachbereinigung sicher
 - Mainserver-Delegation arbeitet fail-closed: ohne lokalen Rollencheck, Instanzkontext, Konfiguration oder gültige Credentials wird kein Upstream-Call ausgeführt
 - Der IAM-Acceptance-Runner arbeitet ebenfalls fail-closed: fehlende Env, fehlende Testbenutzer, nicht bereite Dependencies oder unvollständige Laufzeitnachweise beenden den Lauf mit dokumentierten Fehlercodes
+- Der Gruppen-CRUD arbeitet fail-closed: unbekannte `roleIds`, instanzfremde Gruppen oder fehlerhafte CSRF-/Idempotency-Header erzeugen stabile `invalid_request`-, `forbidden`- oder `csrf_validation_failed`-Antworten
+- Geo-Hierarchie-Konflikte werden deterministisch diagnostiziert: `hierarchy_restriction` für wirksame Restriktionen, `instance_scope_mismatch` für Instanzverletzungen und `permission_missing` für fehlende Kandidaten
 
 ### Build-, Test- und Cache-Konzept der Frontend-App
 
@@ -145,10 +152,14 @@ Referenzen:
 
 - `packages/auth/src/routes.server.ts`
 - `packages/auth/src/iam-authorization.server.ts`
+- `packages/auth/src/iam-account-management/groups-handlers.ts`
 - `packages/auth/src/iam-governance.server.ts`
 - `packages/auth/src/iam-data-subject-rights.server.ts`
 - `packages/auth/src/redis-session.server.ts`
 - `packages/auth/src/audit-db-sink.server.ts`
+- `packages/auth/src/iam-authorization/permission-store.ts`
+- `packages/auth/src/iam-authorization/shared.ts`
+- `packages/core/src/iam/authorization-engine.ts`
 - `packages/sdk/src/logger/index.server.ts`
 - `packages/monitoring-client/src/otel.server.ts`
 - `docs/adr/ADR-014-postgres-notify-cache-invalidierung.md`
@@ -161,6 +172,8 @@ Referenzen:
 - `docs/guides/iam-governance-runbook.md`
 - `docs/guides/iam-governance-freigabematrix.md`
 - `docs/guides/iam-data-subject-rights-runbook.md`
+- `docs/guides/iam-authorization-api-contract.md`
+- `docs/guides/iam-service-api-dokumentation.md`
 - `apps/sva-studio-react/src/routes/__root.tsx`
 - `apps/sva-studio-react/src/components/AppShell.tsx`
 - `apps/sva-studio-react/src/providers/theme-provider.tsx`
@@ -196,6 +209,14 @@ Referenzen:
 - Restriktive Regeln (`effect = 'deny'`) werden vor Freigaben ausgewertet; lokale Restriktionen dürfen vererbte Parent-Freigaben einschränken.
 - Scope-Daten für Geo, Acting-As und Restriktionen werden in effektive Permissions übernommen und im Snapshot mitgeführt.
 - Der Kompatibilitätspfad liest fehlende strukturierte Felder deterministisch aus `permission_key`, bis alle relevanten Alt-Daten migriert sind.
+
+### Ergänzung 2026-03: Gruppen und Geo-Provenance im IAM
+
+- `EffectivePermission` erweitert die bisherige Rollentransparenz um `sourceGroupIds`; Clients erhalten damit direkte und gruppenvermittelte Herkunft ohne Zusatz-Queries.
+- `MePermissionsResponse.provenance` fasst verdichtet zusammen, ob gruppenvermittelte Rechte oder Geo-Vererbung im aktuellen Snapshot enthalten sind.
+- `AuthorizeResponse.provenance` benennt bei Hierarchieentscheidungen die wirksame Quelle (`inheritedFromOrganizationId`, `inheritedFromGeoUnitId`) sowie restriktive Gegenquellen (`restrictedByGeoUnitId`).
+- `AuthorizeResponse.diagnostics.stage` bleibt eine allowlist-basierte Diagnosehilfe und exponiert keine internen SQL-, Cache- oder Policy-Dumps.
+- UI- und API-Filter dürfen gruppenbasierte Herkunft nur auf Basis der strukturierten Felder (`sourceGroupIds`, `sourceKinds`) auswerten; implizite String-Heuristiken sind nicht zulässig.
 
 ### Ergänzung 2026-03: Multi-Host-Betrieb und Secrets-Handling
 

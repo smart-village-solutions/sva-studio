@@ -1,4 +1,5 @@
 export * from './users';
 export * from './profile';
 export * from './roles';
+export * from './groups';
 export * from './platform';

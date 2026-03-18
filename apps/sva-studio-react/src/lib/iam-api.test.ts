@@ -3,20 +3,25 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   asIamError,
   assignOrganizationMembership,
+  createGroup,
   createOrganization,
+  deleteGroup,
   getDataExportStatus,
   getMyDataSubjectRights,
   deactivateOrganization,
+  getGroup,
   getOrganization,
   getMyOrganizationContext,
   IamHttpError,
   listAdminDsrCases,
   listGovernanceCases,
+  listGroups,
   listOrganizations,
   requestDataExport,
   syncUsersFromKeycloak,
   removeOrganizationMembership,
   updateMyOrganizationContext,
+  updateGroup,
   updateOrganization,
 } from './iam-api';
 
@@ -391,6 +396,68 @@ describe('iam-api user sync helper', () => {
       code: 'internal_error',
     });
     expect(consoleError).not.toHaveBeenCalled();
+  });
+});
+
+describe('iam-api group helpers', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.stubEnv('NODE_ENV', 'test');
+  });
+
+  it('uses the canonical groups endpoints and mutation headers', async () => {
+    const fetchMock = vi.fn().mockImplementation(async () =>
+      new Response(
+        JSON.stringify({
+          data: {
+            id: 'group-1',
+          },
+          pagination: { page: 1, pageSize: 1, total: 1 },
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } }
+      )
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    vi.stubGlobal('crypto', { randomUUID: () => 'uuid-group-1' });
+
+    await listGroups();
+    await getGroup('group-1');
+    await createGroup({ groupKey: 'admins', displayName: 'Admins', roleIds: ['role-1'] });
+    await updateGroup('group-1', { displayName: 'Admins Updated', isActive: false });
+    await deleteGroup('group-1');
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      '/api/v1/iam/groups',
+      expect.objectContaining({ credentials: 'include' })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      '/api/v1/iam/groups/group-1',
+      expect.objectContaining({ credentials: 'include' })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
+      '/api/v1/iam/groups',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+          'Idempotency-Key': 'uuid-group-1',
+        }),
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      4,
+      '/api/v1/iam/groups/group-1',
+      expect.objectContaining({ method: 'PATCH' })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      5,
+      '/api/v1/iam/groups/group-1',
+      expect.objectContaining({ method: 'DELETE' })
+    );
   });
 });
 

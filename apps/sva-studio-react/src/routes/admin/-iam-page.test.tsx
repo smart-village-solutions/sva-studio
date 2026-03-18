@@ -303,6 +303,7 @@ describe('IamViewerPage', () => {
                 effect: 'allow',
                 scope: { locale: 'de' },
                 sourceRoleIds: ['editor'],
+                sourceGroupIds: ['group-editor'],
               },
               {
                 action: 'content.write',
@@ -312,6 +313,7 @@ describe('IamViewerPage', () => {
                 effect: null,
                 scope: {},
                 sourceRoleIds: [],
+                sourceGroupIds: [],
               },
             ],
             subject: {

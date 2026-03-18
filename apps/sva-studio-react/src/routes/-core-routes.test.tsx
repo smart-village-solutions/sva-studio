@@ -110,6 +110,10 @@ vi.mock('./admin/roles/-roles-page', () => ({
   RolesPage: () => <div>RolesPage</div>,
 }));
 
+vi.mock('./admin/groups/-groups-page', () => ({
+  GroupsPage: () => <div>GroupsPage</div>,
+}));
+
 vi.mock('./admin/users/-user-edit-page', () => ({
   UserEditPage: ({ userId }: { userId: string }) => <div>{`UserEditPage:${userId}`}</div>,
 }));
@@ -152,6 +156,7 @@ describe('core routes', () => {
     const privacyRoute = readRouteOptions(routes.get('/account/privacy'));
     const groupsRoute = readRouteOptions(routes.get('/admin/groups'));
     const legalTextsRoute = readRouteOptions(routes.get('/admin/legal-texts'));
+    const groupsRoute = readRouteOptions(routes.get('/admin/groups'));
     const iamRoute = readRouteOptions(routes.get('/admin/iam'));
     const modulesRoute = readRouteOptions(routes.get('/modules'));
     const monitoringRoute = readRouteOptions(routes.get('/monitoring'));
@@ -159,6 +164,7 @@ describe('core routes', () => {
     await privacyRoute.beforeLoad?.({ href: '/account/privacy' });
     await groupsRoute.beforeLoad?.({ href: '/admin/groups' });
     await legalTextsRoute.beforeLoad?.({ href: '/admin/legal-texts' });
+    await groupsRoute.beforeLoad?.({ href: '/admin/groups' });
     await iamRoute.beforeLoad?.({ href: '/admin/iam' });
     await modulesRoute.beforeLoad?.({ href: '/modules' });
     await monitoringRoute.beforeLoad?.({ href: '/monitoring' });
@@ -166,6 +172,7 @@ describe('core routes', () => {
     expect(guardSpies.accountPrivacy).toHaveBeenCalledWith({ href: '/account/privacy' });
     expect(guardSpies.adminGroups).toHaveBeenCalledWith({ href: '/admin/groups' });
     expect(guardSpies.adminRoles).toHaveBeenCalledWith({ href: '/admin/legal-texts' });
+    expect(guardSpies.adminGroups).toHaveBeenCalledWith({ href: '/admin/groups' });
     expect(guardSpies.adminIam).toHaveBeenCalledWith({ href: '/admin/iam' });
     expect(guardSpies.adminRoles).toHaveBeenCalledWith({ href: '/modules' });
     expect(guardSpies.adminRoles).toHaveBeenCalledWith({ href: '/monitoring' });
@@ -216,6 +223,9 @@ describe('core routes', () => {
 
     renderPath('/admin/legal-texts');
     expect(screen.getByText('LegalTextsPage')).toBeTruthy();
+
+    renderPath('/admin/groups');
+    expect(screen.getByText('GroupsPage')).toBeTruthy();
   });
 
   it('keeps the user detail route param wiring and exports the composed factory list', () => {

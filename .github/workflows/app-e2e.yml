@@ -42,8 +42,6 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          # The app E2E stack is currently verified on Node 22.
-          # Newer LTS runners can crash the dev server during Playwright runs.
           node-version: '22'
           cache: pnpm
 

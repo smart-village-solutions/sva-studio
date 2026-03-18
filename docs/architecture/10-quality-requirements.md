@@ -37,9 +37,16 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
   - `/health/ready` sowie Login-, JIT-, Organisations- und Membership-Nachweise müssen im Bericht als `passed` erscheinen
 - IAM Authorize Performance:
   - P95 für `POST /iam/authorize` < 50 ms (mindestens 100 RPS / 500 gleichzeitige Nutzer als Zielprofil)
+- IAM Gruppenverwaltung:
+  - `GET|POST|PATCH|DELETE /api/v1/iam/groups` müssen direkte Rollenbündel, Mitgliederzählung und Deaktivierungssemantik deterministisch liefern
+  - `PATCH /api/v1/iam/users/{userId}` mit `groupIds` muss Permission-Invalidierung auslösen, ohne direkte Rollen regressiv zu verlieren
 - IAM Mandantenisolation (RLS):
   - Kein Datenzugriff über Organisations-/Instanzgrenzen (`instanceId`) hinweg
   - Negativtests für RLS-Bypass und Direktzugriff müssen grün sein
+- IAM Geo-Vererbung:
+  - Parent-Allow auf `allowedGeoUnitIds` muss Child-Geo-Units deterministisch einschließen
+  - spezifischere `restrictedGeoUnitIds` müssen Parent-Allows deterministisch übersteuern
+  - `GET /iam/me/permissions` und `POST /iam/authorize` müssen Gruppenherkunft und Geo-Provenance stabil serialisieren
 - IAM Cache-Invaliderung:
   - End-to-End-Latenz P95 <= 2 s, P99 <= 5 s
   - Snapshot-TTL = 300 s, maximal tolerierte Stale-Dauer = 300 s
@@ -150,6 +157,13 @@ Referenzen:
 - `authorize`- und `me/permissions`-Pfad müssen Resource-Spezifität, `allow`/`deny` und Org-Vererbung deterministisch auflösen.
 - Negativtests für restriktive Parent-/Child-Konflikte, Geo-Scope-Mismatches und fehlende Resource-IDs müssen grün sein.
 - Der Kompatibilitätspfad von `permission_key` auf strukturierte Felder darf bestehende Permission-Reads nicht regressiv brechen.
+
+### Ergänzung 2026-03: Qualitätsziele Gruppen und Geo-Hierarchie
+
+- Migrationen für `iam.groups`, `iam.group_roles`, `iam.account_groups` und `iam.geo_units` müssen Unique-, FK- und Self-Parent-Constraints reproduzierbar durchsetzen.
+- Unit- und Integrationstests müssen gruppenvermittelte Rechte, aggregierte Provenance und Konfliktfälle `Parent-Allow + Child-Deny` explizit abdecken.
+- Die Admin-UI `/admin/groups`, die Benutzerdetailseite und das Rechte-Cockpit müssen gruppenbasierte Herkunft ohne harte Strings und ohne zusätzliche N+1-Requests rendern.
+- `pnpm nx run auth:test:unit`, `pnpm nx run core:test:unit`, `pnpm nx run routing:test:unit` und `pnpm nx run sva-studio-react:test:unit` bleiben für diesen Change grün.
 
 ### Ergänzung 2026-03: Qualitätsziele Swarm-Deployment und Multi-Host-Betrieb
 

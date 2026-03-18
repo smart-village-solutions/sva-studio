@@ -106,6 +106,11 @@ const authServerMocks = vi.hoisted(() => {
     createRoleHandler: vi.fn(async () => response('createRoleHandler')),
     updateRoleHandler: vi.fn(async () => response('updateRoleHandler')),
     deleteRoleHandler: vi.fn(async () => response('deleteRoleHandler')),
+    listGroupsHandler: vi.fn(async () => response('listGroupsHandler')),
+    createGroupHandler: vi.fn(async () => response('createGroupHandler')),
+    getGroupHandler: vi.fn(async () => response('getGroupHandler')),
+    updateGroupHandler: vi.fn(async () => response('updateGroupHandler')),
+    deleteGroupHandler: vi.fn(async () => response('deleteGroupHandler')),
     listLegalTextsHandler: vi.fn(async () => response('listLegalTextsHandler')),
     createLegalTextHandler: vi.fn(async () => response('createLegalTextHandler')),
     updateLegalTextHandler: vi.fn(async () => response('updateLegalTextHandler')),
@@ -188,6 +193,8 @@ describe('auth.routes.server', () => {
     expect(authServerMocks.listOrganizationsHandler).toHaveBeenCalled();
     expect(authServerMocks.updateMyOrganizationContextHandler).toHaveBeenCalled();
     expect(authServerMocks.deleteRoleHandler).toHaveBeenCalled();
+    expect(authServerMocks.listGroupsHandler).toHaveBeenCalled();
+    expect(authServerMocks.deleteGroupHandler).toHaveBeenCalled();
     expect(authServerMocks.listLegalTextsHandler).toHaveBeenCalled();
     expect(authServerMocks.createLegalTextHandler).toHaveBeenCalled();
     expect(authServerMocks.updateLegalTextHandler).toHaveBeenCalled();

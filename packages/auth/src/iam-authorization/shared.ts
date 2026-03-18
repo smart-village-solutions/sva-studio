@@ -30,6 +30,7 @@ export type PermissionRow = {
   organization_id: string | null;
   group_id?: string | null;
   group_key?: string | null;
+  source_kind?: 'direct_role' | 'group_role' | null;
 };
 
 export type EffectivePermissionsResolution =
@@ -141,6 +142,18 @@ export const getPermissionCacheHealth = (nowMs = Date.now()) => {
 
 export const readResourceType = (permissionKey: string) => permissionKey.split('.')[0] ?? permissionKey;
 
+const SOURCE_KIND_ORDER: Record<NonNullable<PermissionRow['source_kind']>, number> = {
+  direct_role: 0,
+  group_role: 1,
+};
+
+const sortStrings = (values: readonly string[]): readonly string[] => [...values].sort((left, right) => left.localeCompare(right));
+
+const sortSourceKinds = (
+  values: readonly NonNullable<PermissionRow['source_kind']>[]
+): readonly NonNullable<PermissionRow['source_kind']>[] =>
+  [...values].sort((left, right) => SOURCE_KIND_ORDER[left] - SOURCE_KIND_ORDER[right] || left.localeCompare(right));
+
 export const toEffectivePermissions = (rows: readonly PermissionRow[]): EffectivePermission[] => {
   const buckets = new Map<string, EffectivePermission>();
 
@@ -171,31 +184,38 @@ export const toEffectivePermissions = (rows: readonly PermissionRow[]): Effectiv
         effect,
         scope,
         sourceRoleIds: [row.role_id],
-        ...(groupId ? { sourceGroupIds: [groupId] } : {}),
+        sourceGroupIds: groupId ? [groupId] : [],
         ...(groupKey ? { groupName: groupKey } : {}),
+        provenance: row.source_kind ? { sourceKinds: [row.source_kind] } : undefined,
       });
       continue;
     }
 
-    const sourceRoleIds = existing.sourceRoleIds.includes(row.role_id)
-      ? existing.sourceRoleIds
-      : ([...existing.sourceRoleIds, row.role_id] as readonly string[]);
-    const existingGroups = existing.sourceGroupIds ?? [];
-    const sourceGroupIds: readonly string[] | undefined =
-      groupId && !existingGroups.includes(groupId)
-        ? [...existingGroups, groupId]
-        : existing.sourceGroupIds;
+    const sourceRoleIds = existing.sourceRoleIds.includes(row.role_id) ? existing.sourceRoleIds : [...existing.sourceRoleIds, row.role_id];
+    const sourceGroupIds =
+      groupId && !existing.sourceGroupIds.includes(groupId) ? [...existing.sourceGroupIds, groupId] : existing.sourceGroupIds;
     const groupName = groupKey ?? existing.groupName;
+    const sourceKinds = row.source_kind
+      ? sortSourceKinds(Array.from(new Set([...(existing.provenance?.sourceKinds ?? []), row.source_kind])))
+      : existing.provenance?.sourceKinds;
+
     buckets.set(bucketKey, {
       ...existing,
-      sourceRoleIds,
-      ...(sourceGroupIds !== undefined ? { sourceGroupIds } : {}),
+      sourceRoleIds: sortStrings(sourceRoleIds),
+      sourceGroupIds: sortStrings(sourceGroupIds),
       ...(groupName ? { groupName } : {}),
+      provenance: sourceKinds ? { ...(existing.provenance ?? {}), sourceKinds } : existing.provenance,
     });
   }
 
-  return [...buckets.values()];
-
+  return [...buckets.values()].map((permission) => ({
+    ...permission,
+    sourceRoleIds: sortStrings(permission.sourceRoleIds),
+    sourceGroupIds: sortStrings(permission.sourceGroupIds),
+    provenance: permission.provenance?.sourceKinds
+      ? { ...permission.provenance, sourceKinds: sortSourceKinds(permission.provenance.sourceKinds) }
+      : permission.provenance,
+  }));
 };
 
 export const withInstanceScopedDb = async <T>(
@@ -312,6 +332,16 @@ export const buildMePermissionsResponse = (input: {
   evaluatedAt: new Date().toISOString(),
   requestId: getWorkspaceContext().requestId,
   traceId: getWorkspaceContext().traceId,
+  provenance: {
+    hasGroupDerivedPermissions: input.permissions.some((permission) => permission.sourceGroupIds.length > 0),
+    hasGeoInheritance: input.permissions.some((permission) => {
+      const scope = permission.scope;
+      if (!scope) {
+        return false;
+      }
+      return Array.isArray(scope.allowedGeoUnitIds) || Array.isArray(scope.restrictedGeoUnitIds);
+    }),
+  },
 });
 
 export type DeniedAuthorizeResponseInput = {

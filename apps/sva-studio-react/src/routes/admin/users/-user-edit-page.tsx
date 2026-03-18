@@ -10,6 +10,7 @@ import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
 import { Select } from '../../../components/ui/select';
 import { Textarea } from '../../../components/ui/textarea';
+import { useGroups } from '../../../hooks/use-groups';
 import { useRoles } from '../../../hooks/use-roles';
 import { useUser } from '../../../hooks/use-user';
 import { t } from '../../../i18n';
@@ -35,6 +36,7 @@ type UserFormValues = {
   timezone: string;
   notes: string;
   roleIds: string[];
+  groupIds: string[];
   mainserverUserApplicationId: string;
   mainserverUserApplicationSecret: string;
   mainserverUserApplicationSecretSet: boolean;
@@ -85,6 +87,7 @@ const toFormValues = (input: ReturnType<typeof useUser>['user']): UserFormValues
   timezone: input?.timezone ?? 'Europe/Berlin',
   notes: input?.notes ?? '',
   roleIds: input?.roles.map((entry) => entry.roleId) ?? [],
+  groupIds: input?.groups?.map((entry) => entry.groupId) ?? [],
   mainserverUserApplicationId: input?.mainserverUserApplicationId ?? '',
   mainserverUserApplicationSecret: '',
   mainserverUserApplicationSecretSet: input?.mainserverUserApplicationSecretSet ?? false,
@@ -140,6 +143,11 @@ const formatMetadata = (metadata: Readonly<Record<string, unknown>>) => {
 export const UserEditPage = ({ userId }: UserEditPageProps) => {
   const userApi = useUser(userId);
   const rolesApi = useRoles();
+  const groupsApi = useGroups();
+  const selectableGroups = React.useMemo(
+    () => groupsApi.groups.filter((group) => group.isActive !== false),
+    [groupsApi.groups]
+  );
 
   const [activeTab, setActiveTab] = React.useState<UserEditTabKey>('personal');
   const [formValues, setFormValues] = React.useState<UserFormValues>(() => toFormValues(userApi.user));
@@ -292,6 +300,7 @@ export const UserEditPage = ({ userId }: UserEditPageProps) => {
       timezone: formValues.timezone || undefined,
       notes: formValues.notes.slice(0, 2000) || undefined,
       roleIds: formValues.roleIds,
+      groupIds: formValues.groupIds,
       mainserverUserApplicationId: formValues.mainserverUserApplicationId.trim(),
       mainserverUserApplicationSecret: formValues.mainserverUserApplicationSecret.trim() || undefined,
     });
@@ -354,6 +363,14 @@ export const UserEditPage = ({ userId }: UserEditPageProps) => {
                   {formatRoleValidity(role) ? (
                     <span className="block text-[11px] text-muted-foreground">{formatRoleValidity(role)}</span>
                   ) : null}
+                </Badge>
+              ))}
+              {userApi.user.groups?.map((group) => (
+                <Badge key={group.groupId} variant="outline" className="h-auto items-start py-1">
+                  <span className="block">{group.displayName}</span>
+                  <span className="block text-[11px] text-muted-foreground">
+                    {t('admin.users.edit.groupOrigin', { value: group.origin })}
+                  </span>
                 </Badge>
               ))}
             </div>
@@ -504,6 +521,40 @@ export const UserEditPage = ({ userId }: UserEditPageProps) => {
                       }}
                     />
                     <span>{role.roleName}</span>
+                  </Label>
+                );
+              })}
+            </div>
+          </fieldset>
+          <fieldset className="flex flex-col gap-2 text-sm text-foreground md:col-span-2">
+            <legend>{t('admin.users.edit.groupsLabel')}</legend>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {selectableGroups.map((group) => {
+                const selected = formValues.groupIds.includes(group.id);
+                const currentMembership = userApi.user?.groups?.find((entry) => entry.groupId === group.id);
+                return (
+                  <Label key={group.id} className="flex items-start gap-2 rounded border border-border bg-background px-3 py-2 text-sm text-foreground">
+                    <Checkbox
+                      type="checkbox"
+                      checked={selected}
+                      onChange={(event) => {
+                        setFormValues((current) => ({
+                          ...current,
+                          groupIds: event.target.checked
+                            ? [...current.groupIds, group.id]
+                            : current.groupIds.filter((entry) => entry !== group.id),
+                        }));
+                      }}
+                    />
+                    <span className="flex flex-col gap-1">
+                      <span>{group.displayName}</span>
+                      <span className="text-xs text-muted-foreground">{group.groupKey}</span>
+                      {currentMembership ? (
+                        <span className="text-xs text-muted-foreground">
+                          {t('admin.users.edit.groupOrigin', { value: currentMembership.origin })}
+                        </span>
+                      ) : null}
+                    </span>
                   </Label>
                 );
               })}

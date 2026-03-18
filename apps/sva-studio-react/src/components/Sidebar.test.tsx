@@ -158,6 +158,7 @@ describe('Sidebar', () => {
     fireEvent.click(usersToggle);
 
     expect(screen.getByRole('link', { name: 'Accounts' }).getAttribute('href')).toBe('/admin/users');
+    expect(screen.getByRole('link', { name: 'Gruppen' }).getAttribute('href')).toBe('/admin/groups');
     expect(screen.getByRole('link', { name: 'Datenschutz' }).getAttribute('href')).toBe('/admin/iam');
   });
 

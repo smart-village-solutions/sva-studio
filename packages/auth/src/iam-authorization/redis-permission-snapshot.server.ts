@@ -8,6 +8,7 @@ const logger = createSdkLogger({ component: 'iam-permission-cache', level: 'info
 
 const SNAPSHOT_TTL_SECONDS = 900;
 const SNAPSHOT_KEY_PREFIX = 'perm:v1';
+const SNAPSHOT_SCHEMA_VERSION = 1;
 
 export type PermSnapshotKey = {
   instanceId: string;
@@ -17,15 +18,21 @@ export type PermSnapshotKey = {
 };
 
 type StoredSnapshot = {
-  permissions: readonly EffectivePermission[];
-  version: string;
-  createdAt: string;
-  hmac: string;
+  readonly permissions: readonly EffectivePermission[];
+  readonly version: string;
+  readonly schema_version: number;
+  readonly signed_at: string;
+  readonly hmac: string;
+  readonly createdAt?: string;
 };
 
 export type RedisSnapshotResult =
   | { hit: true; permissions: readonly EffectivePermission[]; version: string }
   | { hit: false; reason: 'miss' | 'integrity_error' | 'redis_unavailable' };
+
+export type RedisSnapshotWriteResult =
+  | { ok: true; version: string }
+  | { ok: false; reason: 'redis_unavailable' };
 
 const computeCtxHash = (value: string | undefined): string => {
   if (!value) return 'none';
@@ -43,6 +50,9 @@ const computeHmac = (data: string): string => {
   return createHmac('sha256', secret).update(data).digest('hex');
 };
 
+const serializeSignedPayload = (stored: Pick<StoredSnapshot, 'permissions' | 'version' | 'schema_version' | 'signed_at'>) =>
+  JSON.stringify(stored);
+
 export const getRedisPermissionSnapshot = async (key: PermSnapshotKey): Promise<RedisSnapshotResult> => {
   try {
     const redis = getRedisClient();
@@ -54,14 +64,33 @@ export const getRedisPermissionSnapshot = async (key: PermSnapshotKey): Promise<
     }
 
     const stored: StoredSnapshot = JSON.parse(raw);
-    const payload = JSON.stringify({ permissions: stored.permissions, version: stored.version, createdAt: stored.createdAt });
-    const expectedHmac = computeHmac(payload);
+    const signedAt = stored.signed_at ?? stored.createdAt;
+    if (!signedAt || typeof stored.schema_version !== 'number') {
+      logger.warn('Redis permission snapshot metadata missing — evicting key', {
+        operation: 'snapshot_get',
+        key: redisKey,
+        integrity_check: 'failed',
+        integrity_check_failed: true,
+      });
+      await redis.del(redisKey);
+      return { hit: false, reason: 'integrity_error' };
+    }
+
+    const expectedHmac = computeHmac(
+      serializeSignedPayload({
+        permissions: stored.permissions,
+        version: stored.version,
+        schema_version: stored.schema_version,
+        signed_at: signedAt,
+      })
+    );
 
     if (stored.hmac !== expectedHmac) {
       logger.warn('Redis permission snapshot HMAC mismatch — evicting key', {
         operation: 'snapshot_get',
         key: redisKey,
         integrity_check: 'failed',
+        integrity_check_failed: true,
       });
       await redis.del(redisKey);
       return { hit: false, reason: 'integrity_error' };
@@ -80,17 +109,29 @@ export const getRedisPermissionSnapshot = async (key: PermSnapshotKey): Promise<
 export const setRedisPermissionSnapshot = async (
   key: PermSnapshotKey,
   permissions: readonly EffectivePermission[]
-): Promise<void> => {
+): Promise<RedisSnapshotWriteResult> => {
   try {
     const redis = getRedisClient();
     const redisKey = buildRedisKey(key);
     const version = createHash('sha256').update(JSON.stringify(permissions)).digest('hex').slice(0, 16);
-    const createdAt = new Date().toISOString();
+    const signedAt = new Date().toISOString();
 
-    const payload = JSON.stringify({ permissions, version, createdAt });
-    const hmac = computeHmac(payload);
+    const hmac = computeHmac(
+      serializeSignedPayload({
+        permissions,
+        version,
+        schema_version: SNAPSHOT_SCHEMA_VERSION,
+        signed_at: signedAt,
+      })
+    );
 
-    const stored: StoredSnapshot = { permissions, version, createdAt, hmac };
+    const stored: StoredSnapshot = {
+      permissions,
+      version,
+      schema_version: SNAPSHOT_SCHEMA_VERSION,
+      signed_at: signedAt,
+      hmac,
+    };
     await redis.setex(redisKey, SNAPSHOT_TTL_SECONDS, JSON.stringify(stored));
 
     logger.debug('Redis permission snapshot stored', {
@@ -98,12 +139,15 @@ export const setRedisPermissionSnapshot = async (
       key: redisKey,
       ttl_s: SNAPSHOT_TTL_SECONDS,
       version,
+      schema_version: SNAPSHOT_SCHEMA_VERSION,
     });
+    return { ok: true, version };
   } catch (error) {
     logger.error('Redis permission snapshot set failed', {
       operation: 'snapshot_set',
       error: error instanceof Error ? error.message : String(error),
     });
+    return { ok: false, reason: 'redis_unavailable' };
   }
 };
 

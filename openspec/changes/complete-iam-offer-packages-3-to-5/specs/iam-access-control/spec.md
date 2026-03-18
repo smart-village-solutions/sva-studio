@@ -113,6 +113,16 @@ Das System SHALL Permission-Snapshots auch bei Änderungen an Hierarchie- und Sc
 
 Das System SHALL effektive Berechtigungen als serialisierte Snapshots in Redis pro Benutzer-, Instanz- und Kontextscope verwalten.
 
+#### Scenario: Snapshot-Key ist normiert und kontextstabil
+
+- **WHEN** ein Permission-Snapshot geschrieben oder gelesen wird
+- **THEN** verwendet das System das Key-Schema `perm:v1:{instanceId}:{userId}:{orgCtxHash}:{geoCtxHash}`
+- **AND** `instanceId` trennt Mandanten strikt
+- **AND** `userId` adressiert den effektiven Benutzerkontext
+- **AND** `orgCtxHash` repräsentiert den aktiven Organisationskontext deterministisch, ohne rohe Org-ID im Redis-Key zu duplizieren
+- **AND** `geoCtxHash` repräsentiert den aktiven Geo-Kontext deterministisch
+- **AND** das Präfix `perm:v1` erlaubt eine explizite Schema- und Rollout-Versionierung des Key-Raums
+
 #### Scenario: Cache-Miss schreibt Snapshot nach Redis
 
 - **WHEN** für einen Benutzer-/Kontextscope noch kein gültiger Snapshot in Redis existiert
@@ -124,6 +134,45 @@ Das System SHALL effektive Berechtigungen als serialisierte Snapshots in Redis p
 - **WHEN** für einen Benutzer-/Kontextscope ein gültiger Snapshot in Redis vorliegt
 - **THEN** wird die Autorisierungsentscheidung auf Basis des Redis-Snapshots getroffen
 - **AND** der Endpunkt benötigt für den Hit-Pfad keine erneute Permission-Berechnung
+
+#### Scenario: TTL, Serialisierung und Eviction sind normiert
+
+- **WHEN** ein Snapshot in Redis persistiert wird
+- **THEN** beträgt die Basis-TTL 15 Minuten
+- **AND** ein Recompute-Fenster von 30 Sekunden wird für Rebuild- und Degraded-State-Bewertung berücksichtigt
+- **AND** der Snapshot wird als JSON serialisiert
+- **AND** das Payload enthält mindestens `schema_version`, `signed_at`, `permissions`, `version` und `hmac`
+- **AND** Redis ist mit der Eviction-Policy `allkeys-lru` zu betreiben
+
+### Requirement: Normierter Lese- und Schreibpfad für Snapshot-Auflösung
+
+Das System SHALL den Snapshot-Pfad für `POST /iam/authorize` und `GET /iam/me/permissions` in definierter Reihenfolge ausführen.
+
+#### Scenario: Lese- und Schreibpfad läuft deterministisch ab
+
+- **WHEN** eine Autorisierungsentscheidung effektive Rechte benötigt
+- **THEN** prüft das System zuerst den lokalen In-Memory-Snapshot als L1
+- **AND** bei L1-Miss oder stale wird Redis als primärer geteilter Snapshot-Store gelesen
+- **AND** erst bei Redis-Miss oder Integritätsfehler wird ein Recompute gegen die führenden IAM-Daten ausgeführt
+- **AND** ein erfolgreicher Recompute schreibt zuerst den Redis-Snapshot und danach den L1-Snapshot
+- **AND** ein Recompute überschreitet maximal 6 Datenbank-Roundtrips
+
+### Requirement: Fail-Closed für Redis- und Recompute-Fehler
+
+Das System MUST bei Redis- oder Recompute-Fehlern fail-closed bleiben.
+
+#### Scenario: Redis-Lookup oder Snapshot-Write schlägt fehl
+
+- **WHEN** Redis im Autorisierungspfad nicht erreichbar ist oder ein Snapshot-Write nach Recompute fehlschlägt
+- **THEN** antworten `POST /iam/authorize` und `GET /iam/me/permissions` mit HTTP 503
+- **AND** es wird kein fachlicher Zugriff aus einem teilweisen oder nur lokal vorhandenen Zustand abgeleitet
+
+#### Scenario: Stale Snapshot darf nicht als Fallback dienen
+
+- **WHEN** ein vorhandener Snapshot stale ist und der Recompute scheitert
+- **THEN** wird kein leeres oder veraltetes Permission-Set als Notfallantwort ausgeliefert
+- **AND** die Anfrage endet mit HTTP 503
+- **AND** der Fehler wird als technischer Incident geloggt und metriert
 
 ### Requirement: Ereignisbasierte Invalidierung für Snapshot-Kontexte
 
@@ -140,6 +189,62 @@ Das System SHALL Redis-Snapshots bei relevanten Mutationen gezielt invalidieren.
 - **WHEN** ein Invalidation-Event nicht verarbeitet wird
 - **THEN** begrenzen TTL- und Recompute-Regeln die Dauer potenziell veralteter Entscheidungen
 - **AND** ein dokumentierter Fallback-Pfad bleibt aktiv
+
+#### Scenario: Mutationsmatrix normiert Fanout und Scope der Invalidierung
+
+- **WHEN** relevante IAM-Mutationen auftreten
+- **THEN** gilt folgende Matrix verbindlich:
+
+| Mutation | Event | Invalidation-Scope | Fanout-Regel |
+|----------|-------|--------------------|--------------|
+| Rollen-Permission geändert | `RolePermissionChanged` | gesamte Instanz | sofort, keine Benutzerselektion im Request-Pfad |
+| Direkte Rollenzuweisung geändert | `account_role_assignment_changed` | betroffener Benutzer | gezielt per `keycloakSubject` |
+| Gruppenmitgliedschaft geändert | `GroupMembershipChanged` | betroffener Benutzer | gezielt per `keycloakSubject` |
+| Gruppe gelöscht | `GroupDeleted` | alle betroffenen Benutzer | Batch, betroffene Subjects im Event |
+| Org-Membership oder Org-Kontext geändert | `organization_membership_changed` / Kontextwechsel | betroffener Benutzer | gezielt per `keycloakSubject` |
+| Organisationshierarchie geändert | `OrgHierarchyChanged` | potenziell betroffene Instanz-Snapshots | asynchron, max. 200 Keys pro Batch, 500 ms Delay-Window |
+| Geo-Zuordnung geändert | `GeoAssignmentChanged` | potenziell betroffene Instanz-Snapshots | asynchron, max. 200 Keys pro Batch, 500 ms Delay-Window |
+
+### Requirement: Eventformat und Consumer-Verhalten für Redis-Invalidierung
+
+Das System SHALL den Modul-Eventkontrakt für Snapshot-Invalidierung at-least-once und idempotent konsumieren.
+
+#### Scenario: Event-Payload ist normiert
+
+- **WHEN** ein Invalidation-Event publiziert wird
+- **THEN** enthält es mindestens `eventId`, `event`, `instanceId` und den scopespezifischen Payload
+- **AND** user-scoped Events enthalten `keycloakSubject`, sofern eine gezielte Benutzerinvalidierung möglich ist
+- **AND** `GroupDeleted` enthält `affectedAccountIds[]` und, wenn verfügbar, `affectedKeycloakSubjects[]`
+
+#### Scenario: Consumer verarbeitet Events idempotent
+
+- **WHEN** ein Event mehrfach zugestellt wird
+- **THEN** verarbeitet der Consumer es höchstens einmal pro `eventId`
+- **AND** die Delivery-Semantik bleibt at-least-once
+- **AND** unbekannte oder unvollständige Payloads führen nicht zu stiller Snapshot-Freigabe
+
+### Requirement: Observability- und Alerting-Vertrag für Snapshot-Betrieb
+
+Das System SHALL den Snapshot-Betrieb mit normierten Metriken, Logs und Infrastruktur-Targets absichern.
+
+#### Scenario: Cache-Metriken und Logs sind vollständig
+
+- **WHEN** der Snapshot-Pfad genutzt oder invalidiert wird
+- **THEN** emittiert das System mindestens OTEL-Metriken für Cache-Lookups (`hit`/`miss`), Invalidation-Latenz und Recompute-Aktivität
+- **AND** strukturierte Logs verwenden die Operationen `cache_lookup`, `cache_invalidate`, `cache_invalidate_failed`, `cache_stale_detected`, `cache_store_failed`
+- **AND** Degraded- und Failed-State sind aus Logs und Metriken ableitbar
+
+#### Scenario: Redis-Exporter ist Bestandteil des Betriebsmodells
+
+- **WHEN** der Monitoring-Stack für die IAM-Autorisierung betrieben wird
+- **THEN** ist `redis-exporter` als Prometheus-Scrape-Target vorgesehen
+- **AND** Alerting korreliert Applikationsmetriken (`sva_iam_cache_*`) mit Redis-Infrastrukturmetriken
+
+#### Scenario: Lastprofile und Berichtsformat sind verbindlich
+
+- **WHEN** Performance-Nachweise für die Snapshot-Strecke erstellt werden
+- **THEN** enthalten sie mindestens die Lastprofile `N = 100` gleichzeitige Requests für `lokal` und `Slow-4G`
+- **AND** der Bericht dokumentiert Testprofil, Messumgebung, Stichprobenzahl, p50/p95/p99, Abnahmegrenzen, verwendete Endpunkte und Abweichungen
 
 ### Requirement: Endpoint-nahe Performance-Verifikation für Authorize
 

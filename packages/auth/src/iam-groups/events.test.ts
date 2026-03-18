@@ -24,9 +24,10 @@ describe('publishGroupEvent', () => {
     expect(params[0]).toBe('iam_permission_snapshot_invalidation');
 
     const payload = JSON.parse(params[1]);
+    expect(payload.eventId).toBeTruthy();
+    expect(payload.event).toBe('RolePermissionChanged');
     expect(payload.instanceId).toBe('inst-1');
-    expect(payload.trigger).toBe('group_event');
-    expect(payload.reason).toBe('RolePermissionChanged');
+    expect(payload.trigger).toBe('pg_notify');
     expect(payload.roleId).toBe('role-abc');
     expect(payload.requestId).toBe('req-1');
     expect(payload.traceId).toBe('trace-1');
@@ -39,6 +40,7 @@ describe('publishGroupEvent', () => {
       instanceId: 'inst-2',
       groupId: 'group-xyz',
       accountId: 'user-123',
+      keycloakSubject: 'kc-user-123',
       changeType: 'added',
     };
 
@@ -46,10 +48,11 @@ describe('publishGroupEvent', () => {
 
     expect(client.query).toHaveBeenCalledOnce();
     const payload = JSON.parse(client.query.mock.calls[0]![1][1]);
+    expect(payload.event).toBe('GroupMembershipChanged');
     expect(payload.instanceId).toBe('inst-2');
-    expect(payload.reason).toBe('GroupMembershipChanged');
     expect(payload.groupId).toBe('group-xyz');
     expect(payload.accountId).toBe('user-123');
+    expect(payload.keycloakSubject).toBe('kc-user-123');
     expect(payload.changeType).toBe('added');
     // roleId darf nicht vorhanden sein
     expect(payload.roleId).toBeUndefined();
@@ -77,6 +80,7 @@ describe('publishGroupEvent', () => {
       instanceId: 'inst-4',
       groupId: 'group-abc',
       accountId: 'user-456',
+      keycloakSubject: 'kc-user-456',
       changeType: 'removed',
     };
 
@@ -84,5 +88,23 @@ describe('publishGroupEvent', () => {
 
     const payload = JSON.parse(client.query.mock.calls[0]![1][1]);
     expect(payload.changeType).toBe('removed');
+  });
+
+  it('ruft pg_notify für GroupDeleted auf', async () => {
+    const client = makeClient();
+
+    await publishGroupEvent(client, {
+      event: 'GroupDeleted',
+      instanceId: 'inst-5',
+      groupId: 'group-deleted',
+      affectedAccountIds: ['acc-1', 'acc-2'],
+      affectedKeycloakSubjects: ['kc-1', 'kc-2'],
+    });
+
+    const payload = JSON.parse(client.query.mock.calls[0]![1][1]);
+    expect(payload.event).toBe('GroupDeleted');
+    expect(payload.groupId).toBe('group-deleted');
+    expect(payload.affectedAccountIds).toEqual(['acc-1', 'acc-2']);
+    expect(payload.affectedKeycloakSubjects).toEqual(['kc-1', 'kc-2']);
   });
 });

@@ -26,9 +26,12 @@ export type AccountGroupRow = {
   instance_id: string;
   account_id: string;
   group_id: string;
+  keycloak_subject: string;
+  display_name: string | null;
   valid_from: string | null;
   valid_until: string | null;
   assigned_at: string;
+  assigned_by: string | null;
 };
 
 export const mapGroupListItem = (row: GroupRow): IamGroupListItem => ({
@@ -49,7 +52,10 @@ export const mapGroupMembership = (row: AccountGroupRow): IamGroupMembership => 
   instanceId: row.instance_id,
   accountId: row.account_id,
   groupId: row.group_id,
+  keycloakSubject: row.keycloak_subject,
+  ...(row.display_name ? { displayName: row.display_name } : {}),
   ...(row.valid_from ? { validFrom: row.valid_from } : {}),
   ...(row.valid_until ? { validUntil: row.valid_until } : {}),
   assignedAt: row.assigned_at,
+  ...(row.assigned_by ? { assignedByAccountId: row.assigned_by } : {}),
 });

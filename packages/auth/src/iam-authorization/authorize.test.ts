@@ -125,9 +125,9 @@ describe('authorizeHandler — invalid_instance_id Branch (L51)', () => {
   });
 });
 
-describe('authorizeHandler — cache_stale_guard Branch (L109)', () => {
-  it('gibt 200 denied mit reason cache_stale_guard zurück', async () => {
-    resolvePermsMock.mockResolvedValueOnce({ ok: false, error: 'cache_stale_guard' });
+describe('authorizeHandler — technische Cache-Fehler', () => {
+  it('gibt 503 database_unavailable zurück', async () => {
+    resolvePermsMock.mockResolvedValueOnce({ ok: false, error: 'database_unavailable' });
 
     const request = new Request('http://localhost/iam/authorize', {
       method: 'POST',
@@ -136,11 +136,10 @@ describe('authorizeHandler — cache_stale_guard Branch (L109)', () => {
     });
 
     const response = await authorizeHandler(request);
-    const payload = (await response.json()) as { allowed: boolean; reason: string };
+    const payload = (await response.json()) as { error: string };
 
-    expect(response.status).toBe(200);
-    expect(payload.allowed).toBe(false);
-    expect(payload.reason).toBe('cache_stale_guard');
+    expect(response.status).toBe(503);
+    expect(payload.error).toBe('database_unavailable');
   });
 });
 

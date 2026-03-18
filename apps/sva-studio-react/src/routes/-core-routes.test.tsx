@@ -9,6 +9,7 @@ const guardSpies = vi.hoisted(() => ({
   adminUserDetail: vi.fn(async () => undefined),
   adminOrganizations: vi.fn(async () => undefined),
   adminRoles: vi.fn(async () => undefined),
+  adminGroups: vi.fn(async () => undefined),
   adminIam: vi.fn(async () => undefined),
 }));
 
@@ -97,6 +98,10 @@ vi.mock('./admin/legal-texts/-legal-texts-page', () => ({
   LegalTextsPage: () => <div>LegalTextsPage</div>,
 }));
 
+vi.mock('./admin/groups/-groups-page', () => ({
+  GroupsPage: () => <div>GroupsPage</div>,
+}));
+
 vi.mock('./admin/organizations/-organizations-page', () => ({
   OrganizationsPage: () => <div>OrganizationsPage</div>,
 }));
@@ -145,18 +150,21 @@ describe('core routes', () => {
   it('configures guarded account and admin routes, including IAM tab normalization', async () => {
     const routes = buildRouteMap();
     const privacyRoute = readRouteOptions(routes.get('/account/privacy'));
+    const groupsRoute = readRouteOptions(routes.get('/admin/groups'));
     const legalTextsRoute = readRouteOptions(routes.get('/admin/legal-texts'));
     const iamRoute = readRouteOptions(routes.get('/admin/iam'));
     const modulesRoute = readRouteOptions(routes.get('/modules'));
     const monitoringRoute = readRouteOptions(routes.get('/monitoring'));
 
     await privacyRoute.beforeLoad?.({ href: '/account/privacy' });
+    await groupsRoute.beforeLoad?.({ href: '/admin/groups' });
     await legalTextsRoute.beforeLoad?.({ href: '/admin/legal-texts' });
     await iamRoute.beforeLoad?.({ href: '/admin/iam' });
     await modulesRoute.beforeLoad?.({ href: '/modules' });
     await monitoringRoute.beforeLoad?.({ href: '/monitoring' });
 
     expect(guardSpies.accountPrivacy).toHaveBeenCalledWith({ href: '/account/privacy' });
+    expect(guardSpies.adminGroups).toHaveBeenCalledWith({ href: '/admin/groups' });
     expect(guardSpies.adminRoles).toHaveBeenCalledWith({ href: '/admin/legal-texts' });
     expect(guardSpies.adminIam).toHaveBeenCalledWith({ href: '/admin/iam' });
     expect(guardSpies.adminRoles).toHaveBeenCalledWith({ href: '/modules' });
@@ -202,6 +210,9 @@ describe('core routes', () => {
 
     renderPath('/account/privacy');
     expect(screen.getByText('AccountPrivacyPage')).toBeTruthy();
+
+    renderPath('/admin/groups');
+    expect(screen.getByText('GroupsPage')).toBeTruthy();
 
     renderPath('/admin/legal-texts');
     expect(screen.getByText('LegalTextsPage')).toBeTruthy();

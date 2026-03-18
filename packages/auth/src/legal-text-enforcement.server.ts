@@ -69,7 +69,9 @@ export const withLegalTextCompliance = async (
       instance_id: instanceId,
       error: error instanceof Error ? error.message : String(error),
     });
-    // On DB error, fail open to avoid blocking all requests
-    return handler();
+    return new Response(JSON.stringify({ error: { code: 'database_unavailable' } }), {
+      status: 503,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 };

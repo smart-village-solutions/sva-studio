@@ -115,10 +115,11 @@ Die bisherige Aufteilung in vier Changes war fachlich sauber getrennt, erschwert
 - Die Geo-Hierarchie wird als Closure-Table in PostgreSQL persistiert, um effiziente Vorfahren-/Nachfahren-Abfragen in O(1) zu ermöglichen.
 - Maximale Hierarchietiefe: 5 Ebenen. Tiefere Strukturen sind nicht vorgesehen und werden abgewiesen.
 
-### 11. Kein lokaler Fallback-Cache neben Redis; Fail-Closed ist einziger Fallback
+### 11. Lokaler L1-Cache bleibt erlaubt; Redis ist der primäre Shared-Read-Path
 
-- Es gibt keinen lokalen In-Memory-Cache parallel zu Redis.
-- Bei Redis-Ausfall oder Recompute-Fehler im sicherheitskritischen Pfad wird kein Zugriff gewährt (Fail-Closed).
+- Ein lokaler In-Memory-Cache bleibt als prozesslokaler L1 erlaubt.
+- Redis ist der führende, geteilte Snapshot-Store für Autorisierungspfad und `me/permissions`.
+- Bei Redis-Ausfall, Snapshot-Write-Fehler oder Recompute-Fehler im sicherheitskritischen Pfad wird kein Zugriff gewährt (Fail-Closed mit HTTP `503`).
 - Sicherheitskritischer Pfad umfasst alle Anfragen, die Berechtigungsentscheidungen fällen — d. h. alle geschützten Routen und API-Endpunkte.
 - Redis-Timeout-Szenarien gelten als Ausfall: ein abgelaufener Snapshot darf nach TTL **nicht** als Fallback bei Recompute-Fehler genutzt werden.
 

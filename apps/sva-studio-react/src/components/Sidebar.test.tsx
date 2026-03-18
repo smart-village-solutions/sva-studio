@@ -106,6 +106,7 @@ describe('Sidebar', () => {
     expect(screen.getByRole('link', { name: 'Accounts' }).getAttribute('href')).toBe('/admin/users');
     expect(screen.getByRole('link', { name: 'Organisationen' }).getAttribute('href')).toBe('/admin/organizations');
     expect(screen.getByRole('link', { name: 'Rollen' }).getAttribute('href')).toBe('/admin/roles');
+    expect(screen.getByRole('link', { name: 'Gruppen' }).getAttribute('href')).toBe('/admin/groups');
     expect(screen.getByRole('link', { name: 'Rechtstexte' }).getAttribute('href')).toBe('/admin/legal-texts');
     expect(screen.getByRole('link', { name: 'Datenschutz' }).getAttribute('href')).toBe('/admin/iam');
     expect(screen.getByRole('link', { name: 'Schnittstellen' }).getAttribute('href')).toBe('/interfaces');

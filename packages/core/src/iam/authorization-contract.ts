@@ -33,7 +33,6 @@ export const denyReasonCodes = [
   'abac_condition_unmet',
   'hierarchy_restriction',
   'policy_conflict_restrictive_wins',
-  'cache_stale_guard',
   'geo_scope_mismatch',
   'group_restriction',
   'legal_acceptance_required',
@@ -152,15 +151,19 @@ export type IamGroupListItem = {
 
 export type IamGroupDetail = IamGroupListItem & {
   readonly assignedRoleIds: readonly IamUuid[];
+  readonly memberships: readonly IamGroupMembership[];
 };
 
 export type IamGroupMembership = {
   readonly instanceId: IamInstanceId;
   readonly accountId: IamUuid;
   readonly groupId: IamUuid;
+  readonly keycloakSubject: string;
+  readonly displayName?: string;
   readonly validFrom?: string;
   readonly validUntil?: string;
   readonly assignedAt: string;
+  readonly assignedByAccountId?: IamUuid;
 };
 
 // Paket 3: Geo-Kontrakt-Typen

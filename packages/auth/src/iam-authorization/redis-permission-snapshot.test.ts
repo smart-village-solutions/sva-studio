@@ -91,7 +91,8 @@ describe('getRedisPermissionSnapshot — Integrity Error', () => {
     const tampered = JSON.stringify({
       permissions: [],
       version: 'abc123',
-      createdAt: new Date().toISOString(),
+      schema_version: 1,
+      signed_at: new Date().toISOString(),
       hmac: 'wrong-hmac-value',
     });
 
@@ -133,8 +134,9 @@ describe('setRedisPermissionSnapshot', () => {
     mockRedis.setex.mockResolvedValueOnce('OK');
     const permissions = [{ resource: 'r', action: 'a', effect: 'allow' as const }];
 
-    await setRedisPermissionSnapshot(baseKey, permissions);
+    const result = await setRedisPermissionSnapshot(baseKey, permissions);
 
+    expect(result).toMatchObject({ ok: true });
     expect(mockRedis.setex).toHaveBeenCalledOnce();
     const [, ttl, raw] = mockRedis.setex.mock.calls[0]!;
     expect(ttl).toBe(900);
@@ -143,26 +145,31 @@ describe('setRedisPermissionSnapshot', () => {
     expect(stored.hmac).toBeTruthy();
     expect(stored.permissions).toEqual(permissions);
     expect(stored.version).toHaveLength(16);
-    expect(stored.createdAt).toBeTruthy();
+    expect(stored.schema_version).toBe(1);
+    expect(stored.signed_at).toBeTruthy();
   });
 
   it('speichert mit Key-Format perm:v1:{inst}:{user}:{orgHash}:{geoHash}', async () => {
     mockRedis.setex.mockResolvedValueOnce('OK');
-    await setRedisPermissionSnapshot(baseKey, []);
+    const result = await setRedisPermissionSnapshot(baseKey, []);
 
+    expect(result).toMatchObject({ ok: true });
     const redisKey = mockRedis.setex.mock.calls[0]![0] as string;
     expect(redisKey).toMatch(/^perm:v1:inst-test:user-test:/);
   });
 
-  it('swallows Redis-Fehler (kein throw)', async () => {
+  it('liefert redis_unavailable bei Redis-Fehler', async () => {
     mockRedis.setex.mockRejectedValueOnce(new Error('Timeout'));
-    // Darf nicht werfen
-    await expect(setRedisPermissionSnapshot(baseKey, [])).resolves.toBeUndefined();
+    await expect(setRedisPermissionSnapshot(baseKey, [])).resolves.toEqual({
+      ok: false,
+      reason: 'redis_unavailable',
+    });
   });
 
   it('enthält orgHash wenn organizationId gesetzt', async () => {
     mockRedis.setex.mockResolvedValueOnce('OK');
-    await setRedisPermissionSnapshot({ ...baseKey, organizationId: 'org-xyz' }, []);
+    const result = await setRedisPermissionSnapshot({ ...baseKey, organizationId: 'org-xyz' }, []);
+    expect(result).toMatchObject({ ok: true });
     const redisKey = mockRedis.setex.mock.calls[0]![0] as string;
     const parts = redisKey.split(':');
     // perm:v1:inst:user:orgHash:geoHash → 6 Teile
@@ -239,7 +246,10 @@ describe('Redis Snapshot — Non-Error-Throws (String(error) Branch)', () => {
 
   it('setRedisPermissionSnapshot: kein Fehler nach aussen bei Non-Error-throw', async () => {
     mockRedis.setex.mockRejectedValueOnce('plain-string-setex-error');
-    await expect(setRedisPermissionSnapshot(baseKey, [])).resolves.not.toThrow();
+    await expect(setRedisPermissionSnapshot(baseKey, [])).resolves.toEqual({
+      ok: false,
+      reason: 'redis_unavailable',
+    });
   });
 
   it('invalidateRedisPermissionSnapshots: gibt 0 zurueck bei Non-Error-throw von scan', async () => {

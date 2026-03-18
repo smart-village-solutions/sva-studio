@@ -146,11 +146,25 @@ describe('legalConsentExportHandler', () => {
 // Role Check Rejection
 // ---------------------------------------------------------------------------
 describe('legalConsentExportHandler — Zugriffsverweigerung', () => {
-  it('gibt 403 zurück wenn Role Check fehlschlägt', async () => {
-    state.requireRolesResult = new Response(JSON.stringify({ error: 'forbidden' }), { status: 403 });
+  it('gibt 403 zurück wenn Export-Permission fehlt', async () => {
+    state.user = { id: 'kc-app-1', name: 'App Manager', roles: ['app_manager'], instanceId: 'inst-export' };
 
     const response = await legalConsentExportHandler(makeRequest());
     expect(response.status).toBe(403);
+  });
+});
+
+describe('legalConsentExportHandler — Permission Alias', () => {
+  it('erlaubt Export mit expliziter legal-consents:export-Berechtigung', async () => {
+    state.user = {
+      id: 'kc-export-1',
+      name: 'Export Admin',
+      roles: ['legal-consents:export'],
+      instanceId: 'inst-export',
+    };
+
+    const response = await legalConsentExportHandler(makeRequest());
+    expect(response.status).toBe(200);
   });
 });
 
@@ -181,5 +195,21 @@ describe('legalConsentExportHandler — Fehler', () => {
 
     const body = await response.json();
     expect(body.error.code).toBe('export_failed');
+  });
+});
+
+describe('legalConsentExportHandler — Rate Limiting', () => {
+  it('gibt 429 mit Retry-After zurück ab dem elften Export pro Stunde', async () => {
+    let response: Response | null = null;
+    state.user = { id: 'kc-rate-1', name: 'Rate Limit', roles: ['system_admin'], instanceId: 'inst-export' };
+
+    for (let index = 0; index < 11; index += 1) {
+      response = await legalConsentExportHandler(makeRequest());
+    }
+
+    expect(response).not.toBeNull();
+    expect(response?.status).toBe(429);
+    expect(response?.headers.get('Retry-After')).toBeTruthy();
+    expect(await response?.json()).toEqual({ error: { code: 'rate_limited' } });
   });
 });

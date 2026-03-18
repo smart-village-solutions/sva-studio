@@ -12,19 +12,19 @@ Rein TTL-basierte Invalidierung erzeugt zu lange Stale-Fenster. Eine synchrone D
 
 ## Entscheidung
 
-Wir verwenden **Postgres NOTIFY** als primären Trigger für Cache-Invalidierung und kombinieren ihn mit **TTL/Recompute-Fallback**:
+Wir verwenden **Postgres NOTIFY** als primären Trigger für Cache-Invalidierung und kombinieren ihn mit **TTL/Recompute-Begrenzung**:
 
-1. Änderungen an IAM-Rechten emittieren ein Event auf Kanal `iam_permission_snapshot_invalidation`.
-2. Authorize-Instanzen hören auf den Kanal (`LISTEN`).
+1. Änderungen an IAM-Rechten emittieren ein Event auf Kanal `iam_permission_snapshot_invalidation` mit `eventId`.
+2. Authorize-Instanzen hören auf den Kanal (`LISTEN`) und deduplizieren Ereignisse pro `eventId`.
 3. Betroffene Snapshot-Scopes werden invalidiert (User- oder Instanzscope).
-4. Falls Events verloren gehen, begrenzt TTL die Stale-Dauer; bei Stale-Miss erfolgt Recompute.
-5. Recompute scheitert im Stale-Zustand fail-closed mit `cache_stale_guard`.
+4. Falls Events verloren gehen, begrenzt TTL die Stale-Dauer; ein technischer Fehler führt jedoch nicht zu einem fachlichen Fallback.
+5. Redis-Lookup-, Snapshot-Write- und Recompute-Fehler enden fail-closed mit HTTP `503` und Fehlercode `database_unavailable`.
 
 ## Begründung
 
 - Event-getriebene Invalidierung reduziert Stale-Risiko deutlich gegenüber reinem TTL-Ansatz.
 - Postgres NOTIFY ist ohne zusätzliche Broker-Infrastruktur verfügbar.
-- TTL/Recompute liefert eine robuste Fallback-Ebene für Eventverlust und Listener-Ausfälle.
+- TTL/Recompute begrenzt Eventverlust, ohne einen unsicheren Stale-Fallback einzuführen.
 
 ## Verbindliche Leitplanken
 
@@ -58,7 +58,7 @@ Wir verwenden **Postgres NOTIFY** als primären Trigger für Cache-Invalidierung
 ### Negativ
 
 - Zusätzliche Komplexität für Listener- und Recompute-Pfade
-- Temporäre Fail-Closed-Denials möglich, wenn Recompute in Stale-Situationen fehlschlägt
+- Temporäre Fail-Closed-`503` möglich, wenn Redis oder Recompute im Autorisierungspfad ausfallen
 
 ### Mitigationen
 

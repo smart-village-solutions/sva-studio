@@ -48,23 +48,27 @@ Statt einer rekursiven CTE-Lösung verwenden wir eine materialisierende Closure-
 - Lesezugriffe deutlich effizienter als rekursive CTEs bei tiefen Hierarchien
 - Gut kompatibel mit PostgreSQL RLS-Policies
 
-### 3. Redis Snapshot Cache mit HMAC-Integritätsprüfung
+### 3. Redis Snapshot Cache mit HMAC-Integritätsprüfung und lokalem L1
 
 - **Schlüsselformat**: `perm:v1:{instanceId}:{userId}:{orgCtxHash}:{geoCtxHash}`
 - **TTL**: 900 Sekunden
-- **Integrität**: HMAC-SHA-256 auf `JSON.stringify({permissions, version, createdAt})` mit Secret aus `REDIS_SNAPSHOT_HMAC_SECRET`
+- **Shared-Read-Path**: lokaler In-Memory-L1 zuerst, danach Redis als geteilter Snapshot-Store
+- **Integrität**: HMAC-SHA-256 auf dem JSON-Payload mit `schema_version`, `signed_at`, `permissions`, `version` und `hmac` aus `REDIS_SNAPSHOT_HMAC_SECRET`
 - **Fehlerbehandlung**: Bei `integrity_error` wird der Schlüssel sofort evicted und als Cache-Miss behandelt
-- **Degradation**: Bei Redis-Ausfall (`redis_unavailable`) fällt das System auf die in-memory LRU-Cache-Schicht zurück
+- **Fail-Closed**: Bei Redis-Ausfall, Snapshot-Write-Fehler oder fehlgeschlagenem Recompute wird kein fachlicher Zugriff aus einem stale oder nur lokal vorhandenen Zustand abgeleitet; der Pfad endet mit HTTP `503`
 
-### 4. Strukturierte Cache-Invalidierung (6 Event-Typen)
+### 4. Strukturierte Cache-Invalidierung (Event-ID + zielgerichtete Scopes)
 
 | Event-Typ | Scope der Invalidierung |
 |---|---|
 | `role_permission_changed` | Alle Snapshots der Instance |
 | `group_membership_changed` | Snapshots des betroffenen Accounts |
+| `group_deleted` | Snapshots aller im Event referenzierten Accounts |
 | `delegation_changed` | Snapshots des Delegationsempfängers |
 | `organization_membership_changed` | Snapshots des betroffenen Accounts |
 | `account_role_assignment_changed` | Snapshots des betroffenen Accounts |
+| `org_hierarchy_changed` | Potenziell betroffene Instanz-Snapshots im Batch |
+| `geo_assignment_changed` | Potenziell betroffene Instanz-Snapshots im Batch |
 | `instance_settings_changed` | Alle Snapshots der Instance |
 
 ### 5. Legal-Text-Enforcement als Fail-Open-Middleware

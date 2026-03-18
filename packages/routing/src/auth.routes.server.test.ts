@@ -84,6 +84,15 @@ const authServerMocks = vi.hoisted(() => {
     syncUsersFromKeycloakHandler: vi.fn(async () => response('syncUsersFromKeycloakHandler')),
     getMyProfileHandler: vi.fn(async () => response('getMyProfileHandler')),
     updateMyProfileHandler: vi.fn(async () => response('updateMyProfileHandler')),
+    listGroupsHandler: vi.fn(async () => response('listGroupsHandler')),
+    createGroupHandler: vi.fn(async () => response('createGroupHandler')),
+    getGroupHandler: vi.fn(async () => response('getGroupHandler')),
+    updateGroupHandler: vi.fn(async () => response('updateGroupHandler')),
+    deleteGroupHandler: vi.fn(async () => response('deleteGroupHandler')),
+    assignGroupRoleHandler: vi.fn(async () => response('assignGroupRoleHandler')),
+    removeGroupRoleHandler: vi.fn(async () => response('removeGroupRoleHandler')),
+    assignGroupMembershipHandler: vi.fn(async () => response('assignGroupMembershipHandler')),
+    removeGroupMembershipHandler: vi.fn(async () => response('removeGroupMembershipHandler')),
     listOrganizationsHandler: vi.fn(async () => response('listOrganizationsHandler')),
     createOrganizationHandler: vi.fn(async () => response('createOrganizationHandler')),
     getOrganizationHandler: vi.fn(async () => response('getOrganizationHandler')),
@@ -174,6 +183,8 @@ describe('auth.routes.server', () => {
     expect(authServerMocks.listUsersHandler).toHaveBeenCalled();
     expect(authServerMocks.getUserHandler).toHaveBeenCalled();
     expect(authServerMocks.updateUserHandler).toHaveBeenCalled();
+    expect(authServerMocks.listGroupsHandler).toHaveBeenCalled();
+    expect(authServerMocks.deleteGroupHandler).toHaveBeenCalled();
     expect(authServerMocks.listOrganizationsHandler).toHaveBeenCalled();
     expect(authServerMocks.updateMyOrganizationContextHandler).toHaveBeenCalled();
     expect(authServerMocks.deleteRoleHandler).toHaveBeenCalled();

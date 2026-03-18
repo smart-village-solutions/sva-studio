@@ -25,6 +25,7 @@ Laufzeitknoten auf Basis des aktuellen Repos.
   - Grafana: `3001`
   - Promtail: `3101`
   - Alertmanager: `9093`
+  - Redis Exporter: `9121` (für Redis-/Permission-Cache-Metriken im Zielbild)
 
 ### Deployment-Bausteine (logisch)
 
@@ -34,9 +35,11 @@ Laufzeitknoten auf Basis des aktuellen Repos.
 - Externe Plattform (GitHub Actions) für CI-Ausführung
 - Keycloak als zentraler OIDC Identity Provider
 - Redis Session Store
+- Redis Permission Snapshot Cache als primärer Shared-Read-Path für effektive IAM-Berechtigungen
 - Postgres IAM Core Data Layer
 - OTEL Collector als Telemetrie-Hub
 - Loki/Prometheus als Storage, Grafana für Auswertung
+- `redis-exporter` als Prometheus-Scrape-Target für Redis-Infrastrukturmetriken
 
 ### Ergänzung 2026-03: Minimaler Server-Rollout mit Portainer
 
@@ -100,6 +103,8 @@ und Vorführungszwecke. Unterschiede zum Referenzprofil:
 - **Persistenz:** Named Volumes für Postgres, Redis, Prometheus, Loki, Grafana und Alertmanager.
 - **Monitoring-Bootstrap:** Der Node-Prozess lädt OpenTelemetry vor dem Nitro-Entry per `--import`, statt erst beim ersten Root-Request.
 - **Ressourcenprofile:** Das Referenzprofil setzt CPU-Limits für App, Datenbank und Monitoring-Services, damit der Stack auf kleinen Swarm-Nodes kontrolliert bleibt.
+- **Redis-Keyspaces:** Session-/Login-State und Permission-Snapshots teilen sich höchstens die Infrastruktur, werden aber fachlich getrennt behandelt (`session:*` vs. `perm:v1:*`).
+- **Eviction-Policy:** Für den Permission-Snapshot-Keyspace ist `allkeys-lru` verbindlich; wenn Session- und Snapshot-Keys dieselbe Redis-Instanz nutzen, muss das Betriebsprofil Evictions getrennt überwachen oder die Keyspaces logisch/physisch separieren.
 
 #### Instanz-Routing
 
@@ -133,6 +138,9 @@ Referenzen:
 - Postgres mit Healthcheck (`pg_isready`) und separatem Volume
 - Healthchecks für zentrale Monitoring-Services konfiguriert
 - Graceful OTEL Shutdown im SDK vorgesehen
+- `/health/ready` bewertet den Authorization-Cache separat über `checks.authorizationCache` mit den Zuständen `ready`, `degraded` und `failed`
+- `degraded` gilt für den Permission-Cache bei Redis-Latenz > `50 ms` oder Recompute-Rate > `20/min`; `failed` bei drei aufeinanderfolgenden Redis-Fehlern
+- Session-Ausfälle und Permission-Cache-Ausfälle werden operativ getrennt behandelt: Session-Wiederherstellung folgt dem Plattform-RTO, Snapshots sind flüchtig und werden aus Postgres rekonstruiert
 - Keycloak wird aktuell als externer Dienst angebunden (nicht über Repo-Compose provisioniert)
 - Das IAM-Acceptance-Gate läuft gegen eine bereits vorhandene Testumgebung und startet keine eigene Keycloak-Topologie im Workflow.
 - Swarm-Stack: Secrets als externe Swarm-Secrets, nicht als Klartext-Env-Variablen
@@ -141,7 +149,7 @@ Referenzen:
 - Swarm-Stack: Startup-Validierung der Allowlist gegen `instanceId`-Regex (fail-fast)
 - Swarm-Stack: Monitoring-UI und Storage bleiben intern; keine öffentliche Exponierung ohne zusätzliche Zugangskontrolle
 - Swarm-Stack: `monitoring-config-init` ist ein One-shot-Initialisierer und soll nach erfolgreicher Volume-Befüllung beendet sein
-- Operative Zielwerte für das Referenzprofil: `RTO <= 2h` für App/Monitoring, `RPO <= 24h` für IAM-Daten in Postgres
+- Operative Zielwerte für das Referenzprofil: `RTO <= 2h` für App/Monitoring und Session-Store, `RTO <= 15 min` für den rekonstruierbaren Permission-Cache, `RPO <= 24h` für IAM-Daten in Postgres
 - Primäre betriebliche Eskalation via `operations@smart-village.app`, Sicherheits-/DSGVO-Eskalation via `security@smart-village.app`
 
 ### Noch offen (Stand heute)

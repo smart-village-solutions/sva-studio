@@ -2,6 +2,7 @@ export {
   assignGroupMembershipHandler,
   assignGroupRoleHandler,
   createGroupHandler,
+  deleteGroupHandler,
   getGroupHandler,
   listGroupsHandler,
   removeGroupMembershipHandler,

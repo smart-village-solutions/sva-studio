@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import type { ApiErrorCode, IamRoleSyncState } from '@sva/core';
 import { createSdkLogger, getWorkspaceContext } from '@sva/sdk/server';
 import { metrics } from '@opentelemetry/api';
@@ -425,6 +427,7 @@ export const notifyPermissionInvalidation = async (
   await client.query('SELECT pg_notify($1, $2);', [
     'iam_permission_snapshot_invalidation',
     JSON.stringify({
+      eventId: randomUUID(),
       instanceId: input.instanceId,
       ...(input.keycloakSubject ? { keycloakSubject: input.keycloakSubject } : {}),
       trigger: 'pg_notify',

@@ -23,15 +23,15 @@
 - [x] 2.6 Organisationshierarchie als Input der effektiven Berechtigungsauflösung definieren
 - [x] 2.7 Geo-Scopes und ihre Kombination mit Org-Scopes definieren (Closure-Table, max. 5 Ebenen, ID-Format `{ebene}:{schluessel}`)
 - [x] 2.8 Antwortformat für `authorize`-Reasoning und `me/permissions`-Scope-Daten schärfen (inkl. JSON-Beispiele für alle neuen Felder)
-- [ ] 2.9 **[PRIO — blockiert 3.1]** Snapshot-Key-Format normieren: `perm:v1:{instanceId}:{userId}:{orgCtxHash}:{geoCtxHash}` — inkl. Design-Rationale für jedes Segment
+- [x] 2.9 **[PRIO — blockiert 3.1]** Snapshot-Key-Format normieren: `perm:v1:{instanceId}:{userId}:{orgCtxHash}:{geoCtxHash}` — inkl. Design-Rationale für jedes Segment
 - [x] 2.10 Snapshot-Inhalt für effektive Rechte und Scope-Daten definieren
-- [ ] 2.11 **[PRIO — blockiert 3.2–3.5]** Invalidation-Regeln anhand Modul-Eventkontrakt aus `design.md` spezifizieren; Mutationsmatrix als Tabelle normieren
+- [x] 2.11 **[PRIO — blockiert 3.2–3.5]** Invalidation-Regeln anhand Modul-Eventkontrakt aus `design.md` spezifizieren; Mutationsmatrix als Tabelle normieren
 - [x] 2.12 Anforderungen für Cache-Hit-/Cache-Miss-Echtzeit-Metriken (OTEL Counter/Histogram) dokumentieren
 - [x] 2.13 Instanzisolation für Hierarchie- und Scope-Auswertung explizit spezifizieren
 - [x] 2.14 Konflikt- und Denial-Fälle für ungültige oder instanzfremde Scope-Daten ergänzen
 - [x] 2.15 Operative Logging- und Audit-Anforderungen für Authorize-/Cache-Pfade ergänzen
 - [ ] 2.16 Testmatrix für Vererbung, Restriktionen, Cache, Invalidierung und Migrationspfad als tabellarische Matrix strukturieren (inkl. 3+-Ebenen-Geo, Mixed-State-Migration, Race-Conditions)
-- [ ] 2.17 Performance-Abnahmegrenzen normieren: Cache-Hit p95 < 5 ms, Cache-Miss p95 < 80 ms, Recompute p95 < 300 ms (bei definierten N gleichzeitigen Requests, gemessen endpoint-nah)
+- [x] 2.17 Performance-Abnahmegrenzen normieren: Cache-Hit p95 < 5 ms, Cache-Miss p95 < 80 ms, Recompute p95 < 300 ms (bei definierten N gleichzeitigen Requests, gemessen endpoint-nah)
 - [x] 2.18 Betroffene arc42-Abschnitte referenzieren und Aktualisierungsbedarf dokumentieren
 - [x] 2.19 Gruppen-Modell explizit als eigenständige IAM-Entität in `packages/auth` (Owner) normieren
 - [x] 2.20 Redis-Snapshots: Schema-Versionierung (`schema_version`-Feld im Payload), Serialisierungsformat JSON
@@ -39,17 +39,17 @@
 
 ## 3. Paket 4B: Redis-basierte Permission-Snapshots und Delivery
 
-- [ ] 3.1 **[PRIO — nach 2.9]** Redis-Key-Schema (`perm:v1:{instanceId}:{userId}:{orgCtxHash}:{geoCtxHash}`), TTL (Basis: 15 min, Recompute-Fenster: 30 s), Serialisierung (JSON + `schema_version`-Feld) und `allkeys-lru`-Eviction-Verhalten als normierte Anforderungen spezifizieren
-- [ ] 3.2 **[PRIO — nach 2.11]** Lese- und Schreibpfad für Cache-Hit, Cache-Miss und Recompute spezifizieren; max. DB-Query-Budget pro Recompute festlegen (max. 6 roundtrips)
-- [ ] 3.3 Fail-Closed-Verhalten bei Redis- und Recompute-Fehlern präzisieren (HTTP 503, kein stiller Zugriff, kein Stale-Fallback; gilt für alle Autorisierungspfade)
-- [ ] 3.4 Mutationsmatrix für Rollen-, Permission-, Gruppen-, Membership- und Hierarchieänderungen gemäß Modul-Eventkontrakt aus `design.md` festlegen; Fanout-Budget (max. 200 Keys/Batch, 500 ms Delay-Window)
-- [ ] 3.5 Eventformat und Consumer-Verhalten für Redis-Invalidierung gemäß Modul-Eventkontrakt spezifizieren (at-least-once, Idempotenz-Schutz per Event-ID)
-- [ ] 3.6 Metriken (OTEL Counter/Histogram für Hit/Miss/Recompute/Eviction), Logs und Alerting-Anforderungen für Invalidation ergänzen; `redis-exporter` als Prometheus-scrape-target spezifizieren
-- [ ] 3.7 Endpoint-nahe Lastprofile definieren: N = 100 gleichzeitige Requests, Netzwerkprofil lokal und Slow-4G
-- [ ] 3.8 Lieferartefakte für Performance-Berichte unter `docs/reports/` festlegen: Format mit Pflichtfeldern (Testprofil, Messumgebung, Stichprobenzahl, p50/p95/p99, Abnahmegrenzen aus Task 2.17)
-- [ ] 3.9 Abnahmegrenzen dokumentieren: Cache-Hit p95 < 5 ms, Cache-Miss p95 < 80 ms, Recompute p95 < 300 ms
-- [ ] 3.10 Readiness- und Betriebsdokumentation für Redis-Snapshots ergänzen: Warm-up-Verhalten (cache_cold_start-Log), Degraded-State-Kriterien (Latenz > 50 ms ODER Recompute-Rate > 20/min = DEGRADED; Connection refused nach 3 Retries = FAILED); RTO für Sessions vs. Permission-Cache trennen
-- [ ] 3.11 Betroffene arc42-Abschnitte referenzieren (07-deployment-view: redis-exporter; 08-cross-cutting-concepts: Eviction-Policy; 10-quality-requirements: RTO/RPO)
+- [x] 3.1 **[PRIO — nach 2.9]** Redis-Key-Schema (`perm:v1:{instanceId}:{userId}:{orgCtxHash}:{geoCtxHash}`), TTL (Basis: 15 min, Recompute-Fenster: 30 s), Serialisierung (JSON + `schema_version`-Feld) und `allkeys-lru`-Eviction-Verhalten als normierte Anforderungen spezifizieren
+- [x] 3.2 **[PRIO — nach 2.11]** Lese- und Schreibpfad für Cache-Hit, Cache-Miss und Recompute spezifizieren; max. DB-Query-Budget pro Recompute festlegen (max. 6 roundtrips)
+- [x] 3.3 Fail-Closed-Verhalten bei Redis- und Recompute-Fehlern präzisieren (HTTP 503, kein stiller Zugriff, kein Stale-Fallback; gilt für alle Autorisierungspfade)
+- [x] 3.4 Mutationsmatrix für Rollen-, Permission-, Gruppen-, Membership- und Hierarchieänderungen gemäß Modul-Eventkontrakt aus `design.md` festlegen; Fanout-Budget (max. 200 Keys/Batch, 500 ms Delay-Window)
+- [x] 3.5 Eventformat und Consumer-Verhalten für Redis-Invalidierung gemäß Modul-Eventkontrakt spezifizieren (at-least-once, Idempotenz-Schutz per Event-ID)
+- [x] 3.6 Metriken (OTEL Counter/Histogram für Hit/Miss/Recompute/Eviction), Logs und Alerting-Anforderungen für Invalidation ergänzen; `redis-exporter` als Prometheus-scrape-target spezifizieren
+- [x] 3.7 Endpoint-nahe Lastprofile definieren: N = 100 gleichzeitige Requests, Netzwerkprofil lokal und Slow-4G
+- [x] 3.8 Lieferartefakte für Performance-Berichte unter `docs/reports/` festlegen: Format mit Pflichtfeldern (Testprofil, Messumgebung, Stichprobenzahl, p50/p95/p99, Abnahmegrenzen aus Task 2.17)
+- [x] 3.9 Abnahmegrenzen dokumentieren: Cache-Hit p95 < 5 ms, Cache-Miss p95 < 80 ms, Recompute p95 < 300 ms
+- [x] 3.10 Readiness- und Betriebsdokumentation für Redis-Snapshots ergänzen: Warm-up-Verhalten (cache_cold_start-Log), Degraded-State-Kriterien (Latenz > 50 ms ODER Recompute-Rate > 20/min = DEGRADED; Connection refused nach 3 Retries = FAILED); RTO für Sessions vs. Permission-Cache trennen
+- [x] 3.11 Betroffene arc42-Abschnitte referenzieren (07-deployment-view: redis-exporter; 08-cross-cutting-concepts: Eviction-Policy; 10-quality-requirements: RTO/RPO)
 
 ## 4. Paket 5: Rechtstexte & Akzeptanzsystem
 
@@ -73,4 +73,4 @@
 - [ ] 5.4 `openspec validate complete-iam-offer-packages-3-to-5 --strict` erfolgreich ausführen
 - [ ] 5.5 ADRs erstellen für: Gruppen als eigenständige IAM-Entität, Prioritätsregel Multi-Scope, Redis als Primary Permission Cache, Rechtstext-Fail-Closed; in `docs/architecture/09-architecture-decisions.md` verlinken
 - [ ] 5.6 Einzel-Changes `add-iam-organization-management-hierarchy` und weitere konsolidierte Changes mit `openspec archive` schließen und Abschluss in `docs/adr/` als technische Schuld für IAM-Konfigurations-Export dokumentieren
-- [ ] 5.7 arc42-04 (Solution Strategy) aktualisieren: Gruppen als IAM-Entität, Redis als Primary Read Path
+- [x] 5.7 arc42-04 (Solution Strategy) aktualisieren: Gruppen als IAM-Entität, Redis als Primary Read Path

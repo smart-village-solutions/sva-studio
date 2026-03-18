@@ -24,6 +24,7 @@ Sicherer Rollout des Changes `add-account-user-management-ui` inklusive Datenban
    - `IAM_BULK_ENABLED=false`
 4. **Readiness prüfen**
    - `GET /health/ready` muss Keycloak/DB/Redis als `true` melden.
+   - `checks.authorizationCache.status` muss mindestens `degraded`, idealerweise `ready` sein.
 5. **Stufenweise aktivieren**
    - Stufe A: `IAM_UI_ENABLED=true`
    - Stufe B: `IAM_ADMIN_ENABLED=true`
@@ -54,6 +55,17 @@ Sicherer Rollout des Changes `add-account-user-management-ui` inklusive Datenban
 
 - Anstieg von `iam_user_operations_total{result="failure"}` überwachen.
 - Circuit-Breaker-State (`iam_circuit_breaker_state`) überwachen.
+- Authorization-Cache überwachen:
+  - `GET /health/ready` mit `checks.authorizationCache`
+  - `sva_iam_cache_lookup_total`
+  - `sva_iam_cache_invalidation_duration_ms`
+  - `sva_iam_cache_stale_entry_rate`
+  - Redis-Infrastrukturmetriken via `redis-exporter`
+- `cache_cold_start: true` nur beim initialen Warm-up akzeptieren; wiederholtes Auftreten nach Go-Live als Incident behandeln.
+- `authorizationCache.status=degraded` bedeutet: Redis-Latenz > `50 ms` oder Recompute-Rate > `20/min`; `failed` bedeutet drei aufeinanderfolgende Redis-Fehler und blockiert geschützte Autorisierungspfade mit `503`.
+- Session-Store und Permission-Snapshot-Cache getrennt behandeln:
+  - Session-Incident: Wiederherstellung im Plattformfenster `RTO <= 2h`
+  - Permission-Cache-Incident: Redis-/Invalidate-Pfad innerhalb von `15 min` zurück in `ready|degraded`; Snapshots werden notfalls aus Postgres neu aufgebaut
 - Retention-Job regelmäßig ausführen:
   - `pnpm iam:retention:run`
 

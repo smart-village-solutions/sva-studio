@@ -1,16 +1,69 @@
 import type { LegalAcceptanceActionType, LegalConsentExportRecord } from '@sva/core';
 import { createSdkLogger } from '@sva/sdk/server';
 
-import { ADMIN_ROLES } from '../iam-account-management/constants';
 import { readPathSegment } from '../iam-account-management/api-helpers';
 import {
-  requireRoles,
   withInstanceScopedDb,
 } from '../iam-account-management/shared';
 import { withAuthenticatedUser } from '../middleware.server';
 import type { QueryClient } from '../shared/db-helpers';
 
 const logger = createSdkLogger({ component: 'iam-legal-consent-export', level: 'info' });
+const LEGAL_CONSENT_EXPORT_PERMISSION = 'legal-consents:export';
+const LEGAL_CONSENT_EXPORT_LIMIT = 10;
+const LEGAL_CONSENT_EXPORT_WINDOW_MS = 60 * 60 * 1000;
+
+type ExportRateBucket = {
+  windowStartedAt: number;
+  count: number;
+};
+
+const exportRateLimiterStore = new Map<string, ExportRateBucket>();
+
+const hasLegalConsentExportPermission = (roles: readonly string[]): boolean =>
+  roles.includes('system_admin') || roles.includes(LEGAL_CONSENT_EXPORT_PERMISSION);
+
+const pruneExportRateBuckets = (now: number): void => {
+  for (const [key, bucket] of exportRateLimiterStore.entries()) {
+    if (now - bucket.windowStartedAt >= LEGAL_CONSENT_EXPORT_WINDOW_MS) {
+      exportRateLimiterStore.delete(key);
+    }
+  }
+};
+
+const consumeLegalConsentExportRateLimit = (input: {
+  instanceId: string;
+  actorKeycloakSubject: string;
+  now?: number;
+}): Response | null => {
+  const now = input.now ?? Date.now();
+  pruneExportRateBuckets(now);
+
+  const key = `${input.instanceId}:${input.actorKeycloakSubject}:legal-consent-export`;
+  const existing = exportRateLimiterStore.get(key);
+  if (!existing || now - existing.windowStartedAt >= LEGAL_CONSENT_EXPORT_WINDOW_MS) {
+    exportRateLimiterStore.set(key, { windowStartedAt: now, count: 1 });
+    return null;
+  }
+
+  if (existing.count >= LEGAL_CONSENT_EXPORT_LIMIT) {
+    const retryAfterSeconds = Math.max(
+      1,
+      Math.ceil((existing.windowStartedAt + LEGAL_CONSENT_EXPORT_WINDOW_MS - now) / 1000)
+    );
+    return new Response(JSON.stringify({ error: { code: 'rate_limited' } }), {
+      status: 429,
+      headers: {
+        'Content-Type': 'application/json',
+        'Retry-After': String(retryAfterSeconds),
+      },
+    });
+  }
+
+  existing.count += 1;
+  exportRateLimiterStore.set(key, existing);
+  return null;
+};
 
 type ConsentExportRow = {
   id: string;
@@ -72,15 +125,27 @@ const loadConsentExportRecords = async (
 
 export const legalConsentExportHandler = async (request: Request): Promise<Response> => {
   return withAuthenticatedUser(request, async (ctx) => {
-    const roleCheck = requireRoles(ctx, ADMIN_ROLES);
-    if (roleCheck) return roleCheck;
-
     const instanceId = readPathSegment(request, 3);
     if (!instanceId) {
       return new Response(JSON.stringify({ error: { code: 'invalid_instance_id' } }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
       });
+    }
+
+    if (!hasLegalConsentExportPermission(ctx.user.roles)) {
+      return new Response(JSON.stringify({ error: { code: 'forbidden' } }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    const rateLimit = consumeLegalConsentExportRateLimit({
+      instanceId,
+      actorKeycloakSubject: ctx.user.id,
+    });
+    if (rateLimit) {
+      return rateLimit;
     }
 
     const url = new URL(request.url);

@@ -49,6 +49,7 @@ Für die Angebotsabnahme ist ein zusammenhängender Scope nachvollziehbarer: ein
 - Individuelle Account-Overrides als eigener Berechtigungsmodus
 - Änderungen am Keycloak-Client-/Realm-Setup
 - Vollständige juristische Pflege oder Freigabe der Rechtstexte
+- Maschinenlesbarer Export der IAM-Konfigurationsdaten (Gruppen, Rollen, strukturierte Permissions, Org-/Geo-Hierarchie) für externe System-Migration — wird als technische Schuld in `docs/adr/` dokumentiert und als eigener Change nachgezogen
 
 ## Impact
 
@@ -66,12 +67,15 @@ Für die Angebotsabnahme ist ein zusammenhängender Scope nachvollziehbarer: ein
   - `docs/guides`
   - `docs/reports`
 - Affected arc42 sections:
+  - `04-solution-strategy`
   - `05-building-block-view`
   - `06-runtime-view`
   - `07-deployment-view`
   - `08-cross-cutting-concepts`
+  - `09-architecture-decisions`
   - `10-quality-requirements`
   - `11-risks-and-technical-debt`
+- API-Versioning: `POST /iam/authorize` und `GET /iam/me/permissions` erhalten additive, nicht-brechende Erweiterungen (neue optionale Felder); der Kontrakt bleibt rückwärtskompatibel. Consumer, die strict-parse nutzen, müssen auf unbekannte Felder vorbereitet sein. `docs/guides/iam-authorization-openapi-3.0.yaml` wird als Lieferartefakt dieses Changes aktualisiert.
 
 ## Dependencies
 
@@ -93,11 +97,14 @@ Für die Angebotsabnahme ist ein zusammenhängender Scope nachvollziehbarer: ein
 
 Vor Start der Umsetzung müssen folgende Punkte bestätigt sein:
 
-1. Gruppen werden als fachlich wirksame, instanzgebundene Berechtigungsquelle eingeführt.
-2. Geo-Vererbung wird als echte Hierarchieauflösung und nicht als bloßer String-Match umgesetzt.
-3. Strukturierte Rollen-Permissions bleiben das Primärmodell; Gruppen, Redis-Snapshots und UI werden darauf aufgebaut.
+1. Gruppen werden als fachlich wirksame, instanzgebundene Berechtigungsquelle eingeführt; `packages/auth` ist Owner der Gruppen-Persistenz.
+2. Geo-Vererbung wird als echte Hierarchieauflösung mit Closure-Table-Strategie in PostgreSQL umgesetzt — kein bloßer String-Match.
+3. Strukturierte Rollen-Permissions bleiben das Primärmodell; Gruppen bündeln Roles (keine direkten Permissions im ersten Schnitt).
 4. Redis wird für Permission-Snapshots verbindlich; bei Cache- oder Recompute-Fehlern bleibt der Autorisierungspfad fail-closed.
-5. Die Abnahme für Paket 4 basiert auf endpoint-nahen Lastprofilen, nicht nur auf Mikrobenchmarks.
+5. Die Abnahme für Paket 4 basiert auf endpoint-nahen Lastprofilen (p95-Schwellenwerte), nicht nur auf Mikrobenchmarks.
+6. Rechtstext-Enforcement wird server-seitig in TanStack Start Middleware umgesetzt — nicht nur als Frontend-Route-Guard.
+7. Kein lokaler In-Memory-Fallback-Cache neben Redis; Fail-Closed ist der einzige Fallback bei Redis-Ausfall.
+8. Der Admin-Zugang für Rechtstext-Nachweise liegt unter `/admin/iam/legal-texts`; der Export erfordert die Permission `legal-consents:export`.
 6. Offene Pflicht-Rechtstexte blockieren fachlichen Zugriff bis zur Akzeptanz.
 7. Nachweise für Rechtstext-Akzeptanzen bleiben revisionssicher, exportierbar und konsistent zur Auditspur.
 

@@ -41,16 +41,24 @@ SELECT DISTINCT
   p.effect,
   p.scope,
   source.role_id,
+  source.group_id,
+  source.group_key,
   $3::uuid AS organization_id
 FROM iam.accounts a
 JOIN (
-  SELECT ar.account_id, ar.role_id, ar.instance_id
+  SELECT ar.account_id, ar.role_id, ar.instance_id, NULL::uuid AS group_id, NULL::text AS group_key
   FROM iam.account_roles ar
   UNION
-  SELECT d.delegatee_account_id AS account_id, d.role_id, d.instance_id
+  SELECT d.delegatee_account_id AS account_id, d.role_id, d.instance_id, NULL::uuid AS group_id, NULL::text AS group_key
   FROM iam.delegations d
   WHERE d.status = 'active'
     AND now() BETWEEN d.starts_at AND d.ends_at
+  UNION
+  SELECT ag.account_id, gr.role_id, ag.instance_id, ag.group_id, g.group_key
+  FROM iam.account_groups ag
+  JOIN iam.group_roles gr ON gr.instance_id = ag.instance_id AND gr.group_id = ag.group_id
+  JOIN iam.groups g ON g.instance_id = ag.instance_id AND g.id = ag.group_id AND g.is_active = true
+  WHERE (ag.valid_until IS NULL OR ag.valid_until > now())
 ) source
   ON source.account_id = a.id
  AND source.instance_id = $1
@@ -69,7 +77,7 @@ WHERE a.keycloak_subject = $2
   AND (
     ao.organization_id = target.id
     OR ao.organization_id = ANY(target.hierarchy_path)
-  );
+  )
 `,
     [input.instanceId, input.keycloakSubject, input.organizationId]
   );
@@ -91,16 +99,24 @@ SELECT DISTINCT
   p.effect,
   p.scope,
   source.role_id,
+  source.group_id,
+  source.group_key,
   ao.organization_id
 FROM iam.accounts a
 JOIN (
-  SELECT ar.account_id, ar.role_id, ar.instance_id
+  SELECT ar.account_id, ar.role_id, ar.instance_id, NULL::uuid AS group_id, NULL::text AS group_key
   FROM iam.account_roles ar
   UNION
-  SELECT d.delegatee_account_id AS account_id, d.role_id, d.instance_id
+  SELECT d.delegatee_account_id AS account_id, d.role_id, d.instance_id, NULL::uuid AS group_id, NULL::text AS group_key
   FROM iam.delegations d
   WHERE d.status = 'active'
     AND now() BETWEEN d.starts_at AND d.ends_at
+  UNION
+  SELECT ag.account_id, gr.role_id, ag.instance_id, ag.group_id, g.group_key
+  FROM iam.account_groups ag
+  JOIN iam.group_roles gr ON gr.instance_id = ag.instance_id AND gr.group_id = ag.group_id
+  JOIN iam.groups g ON g.instance_id = ag.instance_id AND g.id = ag.group_id AND g.is_active = true
+  WHERE (ag.valid_until IS NULL OR ag.valid_until > now())
 ) source
   ON source.account_id = a.id
  AND source.instance_id = $1
@@ -113,7 +129,7 @@ JOIN iam.role_permissions rp
 JOIN iam.permissions p
   ON p.instance_id = rp.instance_id
  AND p.id = rp.permission_id
-WHERE a.keycloak_subject = $2;
+WHERE a.keycloak_subject = $2
 `,
     [input.instanceId, input.keycloakSubject]
   );
@@ -125,7 +141,9 @@ const listPermissionRows = async (
   client: QueryClient,
   input: PermissionLookupInput
 ): Promise<readonly PermissionRow[]> =>
-  input.organizationId ? listScopedPermissionRows(client, { ...input, organizationId: input.organizationId }) : listUnscopedPermissionRows(client, input);
+  input.organizationId
+    ? listScopedPermissionRows(client, { ...input, organizationId: input.organizationId })
+    : listUnscopedPermissionRows(client, input);
 
 const loadPermissionsFromDb = async (input: PermissionLookupInput): Promise<readonly EffectivePermission[]> => {
   const rows = await withInstanceScopedDb(input.instanceId, async (client) => listPermissionRows(client, input));
@@ -146,7 +164,7 @@ export const resolveEffectivePermissions = async (input: PermissionLookupInput):
       ttl_remaining_s: lookup.ttlRemainingSeconds,
       ...buildRequestContext(input.instanceId),
     });
-    return { ok: true, permissions: lookup.snapshot.permissions };
+    return { ok: true, permissions: lookup.snapshot!.permissions, cacheStatus: 'hit' };
   }
 
   iamCacheLookupCounter.add(1, { hit: false });
@@ -179,7 +197,7 @@ export const resolveEffectivePermissions = async (input: PermissionLookupInput):
       });
     }
 
-    return { ok: true, permissions };
+    return { ok: true, permissions, cacheStatus: lookup.status === 'stale' ? 'recompute' : 'miss' };
   } catch (error) {
     logger.error('Failed to recompute permission snapshot', {
       operation: 'cache_invalidate_failed',

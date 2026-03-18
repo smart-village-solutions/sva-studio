@@ -217,19 +217,20 @@ Das System SHALL eine konsistente Nx-Workspace-Konfiguration über alle Packages
 - **THEN** nutzt es den `@nx/eslint:lint`-Executor
 - **AND** die Lint-Konfiguration ist workspace-weit einheitlich
 
-### Requirement: Dedizierte Nx-Executor für die Frontend-App
-Die Web-App `apps/sva-studio-react` SHALL ihre zentralen Entwicklungs- und Qualitäts-Tasks über dedizierte Nx-Executor statt über generische `nx:run-commands` abbilden.
+### Requirement: Nx-native Frontend-Targets
+Die Web-App `apps/sva-studio-react` SHALL ihre zentralen Entwicklungs- und Qualitäts-Tasks Nx-nativ abbilden. Dafür SOLLEN fachlich passende Nx-Executor bevorzugt werden; falls für einen Task kein passender Executor genutzt wird, MUSS `nx:run-commands` den zugrunde liegenden Tool-Aufruf, Inputs und Outputs explizit und wartbar definieren.
 
-#### Scenario: Zentrale App-Targets nutzen dedizierte Executor
+#### Scenario: Zentrale App-Targets nutzen passende Nx-Integration
 - **WHEN** `apps/sva-studio-react/project.json` geprüft wird
-- **THEN** verwenden `build`, `serve`, `lint`, `test:unit`, `test:coverage` und `test:e2e` jeweils einen fachlich passenden Nx-Executor
-- **AND** keiner dieser Targets verwendet `nx:run-commands`
+- **THEN** verwenden `serve`, `lint`, `test:unit` und `test:e2e` jeweils einen fachlich passenden Nx-Executor
+- **AND** weitere zentrale Targets wie `build` oder `test:coverage` sind entweder ebenfalls über dedizierte Executor angebunden oder als dokumentierte `nx:run-commands` mit klaren Tool-Aufrufen modelliert
 
 #### Scenario: Frontend-Tooling ist Nx-nativ eingebunden
 - **WHEN** die Frontend-App über Nx lokal oder in CI ausgeführt wird
-- **THEN** sind Build und Dev-Server an Vite-basierte Nx-Executor gebunden
-- **AND** Unit-Tests und Coverage an einen Vitest-basierten Nx-Test-Executor
+- **THEN** sind Dev-Server und Vorschau an Vite-basierte Nx-Executor gebunden
+- **AND** Unit-Tests an einen Vitest-basierten Nx-Test-Executor
 - **AND** E2E-Tests an einen Playwright-basierten Nx-Executor
+- **AND** Build- und Coverage-Läufe bleiben über Nx reproduzierbar, auch wenn sie intern direkte Vite- oder Vitest-Kommandos verwenden
 
 ### Requirement: Vollständige Frontend-Targets mit expliziten Inputs und Outputs
 Die Web-App `apps/sva-studio-react` SHALL alle wesentlichen Frontend-Aufgaben als explizite Nx-Targets mit nachvollziehbaren `inputs` und `outputs` in `project.json` definieren.
@@ -324,4 +325,3 @@ berücksichtigen, damit der Container korrekt deployed werden kann.
 - **WHEN** das Produktions-Dockerfile ausgeführt wird
 - **THEN** wird `pnpm nx run sva-mainserver:build` als Build-Step ausgeführt
 - **AND** der Step steht in der korrekten Abhängigkeitsreihenfolge (nach `auth:build`, vor `plugin-example:build`)
-

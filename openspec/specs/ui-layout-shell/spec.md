@@ -1,7 +1,7 @@
 # ui-layout-shell Specification
 
 ## Purpose
-TBD - created by archiving change add-skeleton-layout-shell. Update Purpose after archive.
+Die UI-Layout-Shell beschreibt die gemeinsame Grundstruktur des Studios mit Sidebar, Kopfzeile, Contentbereich und den dazugehörigen Lade-, Theme- und Responsivitätsregeln.
 ## Requirements
 ### Requirement: Erweiterbare Layout-Shell
 Das System SHALL eine erweiterbare Layout-Shell bereitstellen, die die Bereiche Sidebar, Kopfzeile und Contentbereich klar trennt und dabei eine Tailwind-/shadcn-kompatible Grundstruktur für spätere UI-Erweiterungen bietet.
@@ -73,11 +73,12 @@ Das System SHALL die Shell-Farben so modellieren, dass mehrere Themes sowie Ligh
 - **THEN** werden Farben, Borders, Fokuszustände und Flächen über denselben semantischen Token-Satz aufgelöst
 - **AND** die Shell verwendet keine fest verdrahteten Einzelfarben, die einen Modus ausschließen
 
-#### Scenario: Theme wird über `instance_id` bestimmt
-- **WHEN** für eine App-Instanz eine `instance_id` bekannt ist
+#### Scenario: Theme wird über `instanceId` bestimmt
+- **WHEN** für eine App-Instanz eine `instanceId` bekannt ist
 - **THEN** kann die Shell daraus eine Theme-Variante ableiten oder auswählen
 - **AND** die Theme-Auflösung bleibt kompatibel mit Light- und Dark-Mode
-- **AND** eine fehlende oder unbekannte `instance_id` fällt auf ein definiertes Basis-Theme zurück
+- **AND** eine fehlende oder unbekannte `instanceId` fällt auf ein definiertes Basis-Theme zurück
+- **AND** falls der Wert aus Backend- oder Datenbankschichten als `instance_id` geliefert wird, ist das Mapping ins Frontend eindeutig dokumentiert
 
 ### Requirement: Niedrigrisiko-Interaktionen für die Shell
 Das System SHALL neue Shell-Interaktionen auf wartbare, zugängliche Standardmuster begrenzen und komplexe Spezialmuster nur als Folgeschritt zulassen.
@@ -91,4 +92,3 @@ Das System SHALL neue Shell-Interaktionen auf wartbare, zugängliche Standardmus
 - **WHEN** die Shell an das Vorgängerprojekt angeglichen wird
 - **THEN** sind kollabierte Flyout-Submenüs, pixelgenaue Active-Indikatoren und umfangreiche Header-Sonderlogik nicht verpflichtender Bestandteil der ersten Umsetzung
 - **AND** diese Muster werden nur bei klarem Mehrwert in einem späteren Follow-up betrachtet
-

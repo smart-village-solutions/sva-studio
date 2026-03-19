@@ -104,11 +104,10 @@ const logDevelopmentApiError = (input: { requestId?: string; status: number; cod
     return;
   }
 
-  console.error('IAM API request failed', {
-    request_id: input.requestId,
-    status: input.status,
-    code: input.code,
-  });
+  console.error(
+    `IAM API request failed – status=${input.status} code=${input.code}` +
+      (input.requestId ? ` request_id=${input.requestId}` : '')
+  );
 };
 
 export const asIamError = (error: unknown): IamHttpError =>

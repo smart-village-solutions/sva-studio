@@ -4,6 +4,7 @@ import { createSdkLogger, toJsonErrorResponse } from '@sva/sdk/server';
 import { getSessionUser } from './auth.server';
 import { getAuthConfig } from './config';
 import { withLegalTextCompliance } from './legal-text-enforcement.server';
+import { createMockSessionUser, isMockAuthEnabled } from './mock-auth.server';
 import { buildLogContext } from './shared/log-context';
 import type { SessionUser } from './types';
 
@@ -70,6 +71,10 @@ export const withAuthenticatedUser = async (
   handler: (ctx: AuthenticatedRequestContext) => Promise<Response> | Response
 ): Promise<Response> => {
   try {
+    if (isMockAuthEnabled()) {
+      return await handler({ sessionId: 'mock-auth-session', user: createMockSessionUser() });
+    }
+
     const sessionId = readSessionId(request);
     if (!sessionId) {
       logger.debug('Auth middleware rejected request without session cookie', {

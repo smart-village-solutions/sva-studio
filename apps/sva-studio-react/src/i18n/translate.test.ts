@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { createTranslator, createTranslatorFromResources } from './translate';
+import { createTranslator, createTranslatorFromResources, getActiveLocale, setActiveLocale, t } from './translate';
 import { i18nResources } from './resources';
 
 describe('translate', () => {
@@ -53,5 +53,15 @@ describe('translate', () => {
     const missingKey = ['admin', 'users', 'page', 'unknown'].join('.') as never;
 
     expect(t(missingKey)).toBe('admin.users.page.unknown');
+  });
+
+  it('uses the active locale for global translations', () => {
+    setActiveLocale('en');
+
+    expect(getActiveLocale()).toBe('en');
+    expect(t('shell.sidebar.account')).toBe('My Account');
+
+    setActiveLocale('de');
+    expect(t('shell.sidebar.account')).toBe('Mein Konto');
   });
 });

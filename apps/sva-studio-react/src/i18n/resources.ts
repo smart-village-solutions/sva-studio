@@ -2,6 +2,7 @@ export const i18nResources = {
   de: {
     shell: {
       appName: 'SVA Studio',
+      skipToContent: 'Zum Inhalt springen',
       content: {
         loadingLabel: 'Inhalt lädt',
         loadingStatus: 'Inhalt wird geladen.',
@@ -9,6 +10,11 @@ export const i18nResources = {
       header: {
         navAriaLabel: 'Hauptnavigation',
         authLoading: 'Authentifizierungsstatus wird geladen.',
+        languageSwitcher: 'Sprache wechseln',
+        languageOptionDe: 'DE',
+        languageOptionEn: 'EN',
+        switchToGerman: 'Auf Deutsch wechseln',
+        switchToEnglish: 'Auf Englisch wechseln',
         login: 'Login',
         logout: 'Logout',
         openNavigation: 'Navigation öffnen',
@@ -316,6 +322,7 @@ export const i18nResources = {
           mainserverApplicationSecretMissing: 'Es ist noch kein Secret hinterlegt.',
           mainserverApplicationSecretHint: 'Leer lassen, um das bestehende Secret unverändert zu lassen.',
           rolesLabel: 'Rollen-Zuweisung',
+          groupsLabel: 'Gruppen-Zuweisung',
           notesLabel: 'Notizen',
           notesCounter: '{{count}} / 2000 Zeichen',
           permissionsEmpty: 'Keine effektiven Berechtigungen vorhanden.',
@@ -328,6 +335,7 @@ export const i18nResources = {
           roleValidityRange: 'Gültig: {{from}} bis {{to}}',
           roleValidityFrom: 'Gültig ab {{from}}',
           roleValidityTo: 'Gültig bis {{to}}',
+          groupOrigin: 'Herkunft: {{value}}',
           historyCategory: {
             iam: 'IAM',
             governance: 'Governance',
@@ -773,6 +781,7 @@ export const i18nResources = {
             effect: 'Effekt',
             scope: 'Scope',
             sourceRoles: 'Quellrollen',
+            sourceGroups: 'Quellgruppen',
           },
           filters: {
             organization: 'Organisation',
@@ -847,6 +856,7 @@ export const i18nResources = {
   en: {
     shell: {
       appName: 'SVA Studio',
+      skipToContent: 'Skip to content',
       content: {
         loadingLabel: 'Loading content',
         loadingStatus: 'Content is loading.',
@@ -854,6 +864,11 @@ export const i18nResources = {
       header: {
         navAriaLabel: 'Main navigation',
         authLoading: 'Loading authentication status.',
+        languageSwitcher: 'Switch language',
+        languageOptionDe: 'DE',
+        languageOptionEn: 'EN',
+        switchToGerman: 'Switch to German',
+        switchToEnglish: 'Switch to English',
         login: 'Login',
         logout: 'Logout',
         openNavigation: 'Open navigation',
@@ -1161,6 +1176,7 @@ export const i18nResources = {
           mainserverApplicationSecretMissing: 'No secret is configured yet.',
           mainserverApplicationSecretHint: 'Leave empty to keep the existing secret unchanged.',
           rolesLabel: 'Role assignment',
+          groupsLabel: 'Group assignment',
           notesLabel: 'Notes',
           notesCounter: '{{count}} / 2000 characters',
           permissionsEmpty: 'No effective permissions available.',
@@ -1173,6 +1189,7 @@ export const i18nResources = {
           roleValidityRange: 'Valid: {{from}} to {{to}}',
           roleValidityFrom: 'Valid from {{from}}',
           roleValidityTo: 'Valid until {{to}}',
+          groupOrigin: 'Origin: {{value}}',
           historyCategory: {
             iam: 'IAM',
             governance: 'Governance',
@@ -1618,6 +1635,7 @@ export const i18nResources = {
             effect: 'Effect',
             scope: 'Scope',
             sourceRoles: 'Source roles',
+            sourceGroups: 'Source groups',
           },
           filters: {
             organization: 'Organization',

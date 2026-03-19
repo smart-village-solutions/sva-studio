@@ -52,6 +52,7 @@ vi.mock('./legal-text-enforcement.server', () => ({
 
 describe('withAuthenticatedUser', () => {
   beforeEach(() => {
+    vi.unstubAllEnvs();
     vi.resetAllMocks();
     workspaceContext.workspaceId = 'default';
     workspaceContext.requestId = 'req-middleware';
@@ -172,6 +173,32 @@ describe('withAuthenticatedUser', () => {
 
     expect(response.status).toBe(200);
     expect(withLegalTextComplianceMock).not.toHaveBeenCalled();
+  });
+
+  it('returns the configured mock user when mock auth is enabled', async () => {
+    vi.stubEnv('VITE_MOCK_AUTH', 'true');
+    const { withAuthenticatedUser } = await import('./middleware.server');
+    const request = new Request('http://localhost/auth/me');
+
+    const response = await withAuthenticatedUser(request, ({ sessionId, user }) =>
+      new Response(JSON.stringify({ sessionId, user }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      sessionId: 'mock-auth-session',
+      user: {
+        id: 'seed:system_admin',
+        name: 'Mock User',
+        email: 'mock.user@sva.local',
+        instanceId: 'de-musterhausen',
+        roles: ['system_admin', 'iam_admin', 'support_admin', 'security_admin', 'interface_manager', 'app_manager', 'editor'],
+      },
+    });
+    expect(getSessionUserMock).not.toHaveBeenCalled();
   });
 
   it('returns a flat json 500 and logs correlation ids when session resolution throws', async () => {

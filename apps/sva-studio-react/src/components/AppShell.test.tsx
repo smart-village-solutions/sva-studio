@@ -43,6 +43,13 @@ vi.mock('../providers/theme-provider', () => ({
   }),
 }));
 
+vi.mock('../providers/locale-provider', () => ({
+  useLocale: () => ({
+    locale: 'de',
+    setLocale: vi.fn(),
+  }),
+}));
+
 vi.mock('./OrganizationContextSwitcher', () => ({
   OrganizationContextSwitcher: () => <div data-testid="organization-context-switcher">Organization Context</div>,
 }));

@@ -23,6 +23,12 @@ const resolveBaseUrl = () => {
   return process.env.SVA_PUBLIC_BASE_URL ?? 'http://localhost:3000';
 };
 
+const isMockAuthEnabled = () => import.meta.env.VITE_MOCK_AUTH === true || import.meta.env.VITE_MOCK_AUTH === 'true';
+
+const createMockRouteGuardUser = (): RouteGuardUser => ({
+  roles: ['system_admin', 'iam_admin', 'support_admin', 'security_admin', 'interface_manager', 'app_manager', 'editor'],
+});
+
 const readRouteGuardUser = (payload: unknown): RouteGuardUser => {
   const parsedPayload = payload as {
     user?: {
@@ -40,6 +46,10 @@ const readRouteGuardUser = (payload: unknown): RouteGuardUser => {
 const getRouteGuardUser = createIsomorphicFn()
   .server(async (): Promise<RouteGuardUser | null> => {
     try {
+      if (isMockAuthEnabled()) {
+        return createMockRouteGuardUser();
+      }
+
       const { getRequest, getRequestHeader } = await import('@tanstack/react-start/server');
 
       const request = getRequest();
@@ -65,6 +75,10 @@ const getRouteGuardUser = createIsomorphicFn()
   })
   .client(async (): Promise<RouteGuardUser | null> => {
     try {
+      if (isMockAuthEnabled()) {
+        return createMockRouteGuardUser();
+      }
+
       const response = await fetch(new URL('/auth/me', resolveBaseUrl()).toString(), {
         credentials: 'include',
       });

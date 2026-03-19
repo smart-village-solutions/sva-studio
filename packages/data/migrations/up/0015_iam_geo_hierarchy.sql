@@ -5,7 +5,7 @@
 
 CREATE TABLE IF NOT EXISTS iam.geo_nodes (
   id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-  instance_id UUID        NOT NULL REFERENCES iam.instances(id) ON DELETE CASCADE,
+  instance_id TEXT        NOT NULL REFERENCES iam.instances(id) ON DELETE CASCADE,
   key         TEXT        NOT NULL,
   display_name TEXT       NOT NULL,
   node_type   TEXT        NOT NULL DEFAULT 'district',

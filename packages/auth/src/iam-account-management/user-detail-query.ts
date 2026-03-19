@@ -91,7 +91,7 @@ SELECT
         'group_type', g.group_type,
         'origin', ag.origin,
         'valid_from', ag.valid_from::text,
-        'valid_to', ag.valid_to::text
+        'valid_to', ag.valid_until::text
       )
     ) FILTER (WHERE g.id IS NOT NULL),
     '[]'::json
@@ -123,7 +123,7 @@ LEFT JOIN iam.account_groups ag
   ON ag.instance_id = im.instance_id
  AND ag.account_id = im.account_id
  AND (ag.valid_from IS NULL OR ag.valid_from <= NOW())
- AND (ag.valid_to IS NULL OR ag.valid_to > NOW())
+ AND (ag.valid_until IS NULL OR ag.valid_until > NOW())
 LEFT JOIN iam.groups g
   ON g.instance_id = ag.instance_id
  AND g.id = ag.group_id

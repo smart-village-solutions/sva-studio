@@ -4,7 +4,7 @@
 
 CREATE TABLE IF NOT EXISTS iam.groups (
   id           UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-  instance_id  UUID        NOT NULL REFERENCES iam.instances(id) ON DELETE CASCADE,
+  instance_id  TEXT        NOT NULL REFERENCES iam.instances(id) ON DELETE CASCADE,
   group_key    TEXT        NOT NULL,
   display_name TEXT        NOT NULL,
   description  TEXT,
@@ -20,7 +20,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_groups_instance_id_id
 
 -- Gruppen bündeln Rollen: group → role (n:m)
 CREATE TABLE IF NOT EXISTS iam.group_roles (
-  instance_id UUID NOT NULL,
+  instance_id TEXT NOT NULL,
   group_id    UUID NOT NULL,
   role_id     UUID NOT NULL,
   assigned_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS iam.group_roles (
 
 -- Account-zu-Gruppen-Zuordnung mit optionalem Gültigkeitszeitraum
 CREATE TABLE IF NOT EXISTS iam.account_groups (
-  instance_id UUID        NOT NULL,
+  instance_id TEXT        NOT NULL,
   account_id  UUID        NOT NULL,
   group_id    UUID        NOT NULL,
   valid_from  TIMESTAMPTZ,
@@ -49,8 +49,7 @@ CREATE TABLE IF NOT EXISTS iam.account_groups (
 
 -- Index: aktive Gruppenmitgliedschaften per Account schnell abrufbar
 CREATE INDEX IF NOT EXISTS idx_account_groups_account
-  ON iam.account_groups(instance_id, account_id)
-  WHERE valid_until IS NULL OR valid_until > now();
+  ON iam.account_groups(instance_id, account_id);
 
 CREATE INDEX IF NOT EXISTS idx_account_groups_group
   ON iam.account_groups(instance_id, group_id);

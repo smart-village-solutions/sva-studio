@@ -4,6 +4,8 @@
 
 Diese Anleitung ergänzt das bestehende Redis-Docker-Setup um eine lokale Postgres-Instanz für den IAM Core Data Layer.
 
+Die kanonischen Startpfade laufen jetzt über die Runtime-Profile aus `./runtime-profile-betrieb.md`. Die unten stehenden `data:db:*`-Targets bleiben die technische Grundlage, werden lokal aber bevorzugt über `pnpm env:*:local-keycloak` oder `pnpm env:*:local-builder` orchestriert.
+
 ## Voraussetzungen
 
 - Docker Desktop läuft lokal

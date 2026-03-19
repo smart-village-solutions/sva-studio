@@ -4,6 +4,8 @@
 
 Diese Anleitung beschreibt den Rollout von SVA Studio auf einem Server mit Docker Swarm und Traefik, verwaltet über Portainer. Sie ersetzt den früheren Nicht-Swarm-Stack und folgt dem Referenz-Betriebsprofil aus [ADR-019](../adr/ADR-019-swarm-traefik-referenz-betriebsprofil.md).
 
+Im vereinheitlichten Betriebsmodell entspricht dieses Runbook dem Profil `acceptance-hb`. Die übergeordnete Bedienlogik für `up`, `down`, `update`, `status`, `smoke` und `migrate` ist unter `../development/runtime-profile-betrieb.md` dokumentiert.
+
 Der Stack besteht aus:
 
 - `app` (TanStack Start / Nitro Node-Server, über Traefik exponiert)

@@ -6,6 +6,10 @@ export type {
   ApiErrorCode,
   ApiErrorResponse,
   IamContentAuthorPolicy,
+  IamGroupDetail,
+  IamGroupListItem,
+  IamGroupMembershipOrigin,
+  IamGroupType,
   IamLegalTextListItem,
   IamOrganizationChildItem,
   IamOrganizationContext,
@@ -52,10 +56,6 @@ export type {
   IamGeoHierarchyEntry,
   IamGeoNode,
   IamGeoNodeType,
-  IamGroupDetail,
-  IamGroupListItem,
-  IamGroupMembership,
-  IamGroupType,
   IamInstanceId,
   IamPermissionEffect,
   IamPermissionProvenance,
@@ -70,5 +70,11 @@ export type {
   MePermissionsResponse,
   ReadinessStatus,
   SnapshotCacheStatus,
+} from './authorization-contract';
+export type {
+  IamGroupDetail as IamAdminGroupDetail,
+  IamGroupListItem as IamAdminGroupListItem,
+  IamGroupMembership as IamAdminGroupMembership,
+  IamGroupType as IamAdminGroupType,
 } from './authorization-contract';
 export { allowReasonCodes, denyReasonCodes, iamApiErrorCodes } from './authorization-contract';

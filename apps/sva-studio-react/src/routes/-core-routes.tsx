@@ -14,7 +14,6 @@ import { IamViewerPage } from './admin/-iam-page';
 import { normalizeIamTab } from './admin/-iam.models';
 import { GroupsPage } from './admin/groups/-groups-page';
 import { LegalTextsPage } from './admin/legal-texts/-legal-texts-page';
-import { GroupsPage } from './admin/groups/-groups-page';
 import { OrganizationsPage } from './admin/organizations/-organizations-page';
 import { RolesPage } from './admin/roles/-roles-page';
 import { UserEditPage } from './admin/users/-user-edit-page';

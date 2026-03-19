@@ -78,6 +78,12 @@ BEGIN
     FROM pg_constraint
     WHERE conname = 'account_groups_origin_chk'
       AND conrelid = 'iam.account_groups'::regclass
+  ) AND EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'iam'
+      AND table_name = 'account_groups'
+      AND column_name = 'origin'
   ) THEN
     ALTER TABLE iam.account_groups
       ADD CONSTRAINT account_groups_origin_chk
@@ -89,6 +95,18 @@ BEGIN
     FROM pg_constraint
     WHERE conname = 'account_groups_validity_chk'
       AND conrelid = 'iam.account_groups'::regclass
+  ) AND EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'iam'
+      AND table_name = 'account_groups'
+      AND column_name = 'valid_to'
+  ) AND EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'iam'
+      AND table_name = 'account_groups'
+      AND column_name = 'valid_from'
   ) THEN
     ALTER TABLE iam.account_groups
       ADD CONSTRAINT account_groups_validity_chk

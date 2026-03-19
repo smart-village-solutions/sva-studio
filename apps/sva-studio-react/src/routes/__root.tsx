@@ -11,7 +11,9 @@ import AppShell from '../components/AppShell';
 import ErrorFallback from '../components/ErrorFallback';
 import NotFound from '../components/NotFound';
 import { AuthProvider } from '../providers/auth-provider';
+import { LocaleProvider } from '../providers/locale-provider';
 import { ThemeProvider } from '../providers/theme-provider';
+import { t } from '../i18n';
 
 import appCss from '../styles.css?url';
 
@@ -103,24 +105,30 @@ function RootDocument({ children }: Readonly<{ children: React.ReactNode }>) {
         <HeadContent />
       </head>
       <body className="flex min-h-screen flex-col bg-background text-foreground" suppressHydrationWarning>
-        <a
-          href="#main-content"
-          onClick={() => {
-            const mainElement = globalThis.document.getElementById('main-content');
-            if (mainElement) {
-              mainElement.focus();
-            }
-          }}
-          className="sr-only left-3 top-3 z-50 rounded-md bg-card px-3 py-2 text-sm font-medium text-foreground shadow-shell focus:not-sr-only focus:absolute"
-        >
-          Zum Inhalt springen
-        </a>
         <AuthProvider>
-          <ThemeProvider>
-            <AppShell isLoading={isShellLoading} isMobileSidebarOpen={isMobileSidebarOpen} onMobileSidebarOpenChange={setIsMobileSidebarOpen}>
-              {children}
-            </AppShell>
-          </ThemeProvider>
+          <LocaleProvider>
+            <a
+              href="#main-content"
+              onClick={() => {
+                const mainElement = globalThis.document.getElementById('main-content');
+                if (mainElement) {
+                  mainElement.focus();
+                }
+              }}
+              className="sr-only left-3 top-3 z-50 rounded-md bg-card px-3 py-2 text-sm font-medium text-foreground shadow-shell focus:not-sr-only focus:absolute"
+            >
+              {t('shell.skipToContent')}
+            </a>
+            <ThemeProvider>
+              <AppShell
+                isLoading={isShellLoading}
+                isMobileSidebarOpen={isMobileSidebarOpen}
+                onMobileSidebarOpenChange={setIsMobileSidebarOpen}
+              >
+                {children}
+              </AppShell>
+            </ThemeProvider>
+          </LocaleProvider>
         </AuthProvider>
         <TanStackDevtools
           config={{

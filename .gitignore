@@ -64,6 +64,8 @@ dev/redis-tls/
 
 # Local monitoring artifacts
 artifacts/monitoring/
+artifacts/runtime/
+config/runtime/*.local.vars
 
 # Generated outputs in @sva/core source tree
 packages/core/src/**/*.d.ts

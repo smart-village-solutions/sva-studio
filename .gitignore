@@ -80,8 +80,4 @@ config/runtime/base.vars
 config/runtime/local-builder.vars
 config/runtime/local-keycloak.vars
 deploy/portainer/.env.example
-deploy/portainer/.env.example
-deploy/portainer/.env.example
-deploy/portainer/.env.example
-deploy/portainer/docker-compose.yml
 deploy/portainer/docker-compose.yml

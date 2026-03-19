@@ -1,4 +1,4 @@
-import type { IamGroupDetail, IamGroupListItem } from '@sva/core';
+import type { IamAdminGroupDetail, IamAdminGroupListItem } from '@sva/core';
 
 import React from 'react';
 
@@ -22,7 +22,7 @@ import { useAuth } from '../providers/auth-provider';
 import { useIamAdminList } from './use-iam-admin-list';
 
 type UseGroupsResult = {
-  readonly groups: readonly IamGroupListItem[];
+  readonly groups: readonly IamAdminGroupListItem[];
   readonly isLoading: boolean;
   readonly error: IamHttpError | null;
   readonly mutationError: IamHttpError | null;
@@ -31,7 +31,7 @@ type UseGroupsResult = {
   readonly createGroup: (payload: CreateGroupPayload) => Promise<boolean>;
   readonly updateGroup: (groupId: string, payload: UpdateGroupPayload) => Promise<boolean>;
   readonly deleteGroup: (groupId: string) => Promise<boolean>;
-  readonly loadGroupDetail: (groupId: string) => Promise<IamGroupDetail | null>;
+  readonly loadGroupDetail: (groupId: string) => Promise<IamAdminGroupDetail | null>;
   readonly assignRole: (groupId: string, roleId: string) => Promise<boolean>;
   readonly removeRole: (groupId: string, roleId: string) => Promise<boolean>;
   readonly assignMembership: (groupId: string, payload: AssignGroupMembershipPayload) => Promise<boolean>;

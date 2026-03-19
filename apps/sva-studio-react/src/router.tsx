@@ -2,6 +2,7 @@ import { createRouter, type AnyRoute, type RootRoute } from '@tanstack/react-rou
 import { createIsomorphicFn } from '@tanstack/react-start';
 import { pluginExampleRoutes } from '@sva/plugin-example';
 import type { RouteGuardUser } from '@sva/routing';
+import { isMockAuthRuntimeProfile, parseRuntimeProfile } from '@sva/sdk';
 
 import { coreRouteFactoriesBase } from './routes/-core-routes';
 import { rootRoute } from './routes/__root';
@@ -23,7 +24,15 @@ const resolveBaseUrl = () => {
   return process.env.SVA_PUBLIC_BASE_URL ?? 'http://localhost:3000';
 };
 
-const isMockAuthEnabled = () => import.meta.env.VITE_MOCK_AUTH === true || import.meta.env.VITE_MOCK_AUTH === 'true';
+const isMockAuthEnabled = () => {
+  const runtimeProfile = parseRuntimeProfile(import.meta.env.VITE_SVA_RUNTIME_PROFILE);
+
+  return (
+    import.meta.env.VITE_MOCK_AUTH === true ||
+    import.meta.env.VITE_MOCK_AUTH === 'true' ||
+    (runtimeProfile !== null && isMockAuthRuntimeProfile(runtimeProfile))
+  );
+};
 
 const createMockRouteGuardUser = (): RouteGuardUser => ({
   roles: ['system_admin', 'iam_admin', 'support_admin', 'security_admin', 'interface_manager', 'app_manager', 'editor'],

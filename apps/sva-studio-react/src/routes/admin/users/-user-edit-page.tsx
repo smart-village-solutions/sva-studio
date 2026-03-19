@@ -140,6 +140,9 @@ const formatMetadata = (metadata: Readonly<Record<string, unknown>>) => {
     .join(', ');
 };
 
+const appendUnique = (values: readonly string[], nextValue: string): string[] =>
+  values.includes(nextValue) ? [...values] : [...values, nextValue];
+
 export const UserEditPage = ({ userId }: UserEditPageProps) => {
   const userApi = useUser(userId);
   const rolesApi = useRoles();
@@ -515,7 +518,7 @@ export const UserEditPage = ({ userId }: UserEditPageProps) => {
                         setFormValues((current) => ({
                           ...current,
                           roleIds: event.target.checked
-                            ? [...current.roleIds, role.id]
+                            ? appendUnique(current.roleIds, role.id)
                             : current.roleIds.filter((entry) => entry !== role.id),
                         }));
                       }}
@@ -541,7 +544,7 @@ export const UserEditPage = ({ userId }: UserEditPageProps) => {
                         setFormValues((current) => ({
                           ...current,
                           groupIds: event.target.checked
-                            ? [...current.groupIds, group.id]
+                            ? appendUnique(current.groupIds, group.id)
                             : current.groupIds.filter((entry) => entry !== group.id),
                         }));
                       }}

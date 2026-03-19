@@ -2,11 +2,11 @@ import type {
   ApiErrorResponse,
   ApiItemResponse,
   ApiListResponse,
+  IamAdminGroupDetail,
+  IamAdminGroupListItem,
   IamDsrCanonicalStatus,
   IamDsrCaseListItem,
   IamDsrSelfServiceOverview,
-  IamGroupDetail,
-  IamGroupListItem,
   IamGovernanceCaseListItem,
   IamLegalTextListItem,
   IamOrganizationContext,
@@ -468,11 +468,11 @@ export const updateMyProfile = async (
 export const listRoles = async (): Promise<ApiListResponse<IamRoleListItem>> =>
   requestJson<ApiListResponse<IamRoleListItem>>('/api/v1/iam/roles');
 
-export const listGroups = async (): Promise<ApiListResponse<IamGroupListItem>> =>
-  requestJson<ApiListResponse<IamGroupListItem>>('/api/v1/iam/groups');
+export const listGroups = async (): Promise<ApiListResponse<IamAdminGroupListItem>> =>
+  requestJson<ApiListResponse<IamAdminGroupListItem>>('/api/v1/iam/groups');
 
-export const getGroup = async (groupId: string): Promise<ApiItemResponse<IamGroupDetail>> =>
-  requestJson<ApiItemResponse<IamGroupDetail>>(`/api/v1/iam/groups/${groupId}`);
+export const getGroup = async (groupId: string): Promise<ApiItemResponse<IamAdminGroupDetail>> =>
+  requestJson<ApiItemResponse<IamAdminGroupDetail>>(`/api/v1/iam/groups/${groupId}`);
 
 export const listLegalTexts = async (): Promise<ApiListResponse<IamLegalTextListItem>> =>
   requestJson<ApiListResponse<IamLegalTextListItem>>('/api/v1/iam/legal-texts');

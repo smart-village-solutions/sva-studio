@@ -1,4 +1,4 @@
-import type { IamGroupDetail } from '@sva/core';
+import type { IamAdminGroupDetail } from '@sva/core';
 
 import React from 'react';
 
@@ -114,7 +114,7 @@ export const GroupsPage = () => {
     isActive: true,
   });
   const [membershipForm, setMembershipForm] = React.useState<MembershipFormState>(emptyMembershipForm);
-  const [detailByGroupId, setDetailByGroupId] = React.useState<Record<string, IamGroupDetail>>({});
+  const [detailByGroupId, setDetailByGroupId] = React.useState<Record<string, IamAdminGroupDetail>>({});
   const [loadingDetailId, setLoadingDetailId] = React.useState<string | null>(null);
 
   const roleNameById = React.useMemo(
@@ -175,7 +175,7 @@ export const GroupsPage = () => {
         return;
       }
 
-      const nextEntries = entries.filter((entry): entry is [string, IamGroupDetail] => entry !== null);
+      const nextEntries = entries.filter((entry): entry is [string, IamAdminGroupDetail] => entry !== null);
       if (nextEntries.length === 0) {
         return;
       }

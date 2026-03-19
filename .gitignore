@@ -75,3 +75,9 @@ packages/core/src/**/*.js
 # SonarQube
 .scannerwork/
 .cache_ggshield
+config/runtime/acceptance-hb.vars
+config/runtime/base.vars
+config/runtime/local-builder.vars
+config/runtime/local-keycloak.vars
+deploy/portainer/.env.example
+deploy/portainer/.env.example

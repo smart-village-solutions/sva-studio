@@ -7,7 +7,12 @@ export * from './iam-legal-texts.server';
 export * from './iam-organizations.server';
 export * from './iam-governance.server';
 export * from './iam-authorization.server';
-export * from './iam-groups.server';
+export {
+  assignGroupMembershipHandler,
+  assignGroupRoleHandler,
+  removeGroupMembershipHandler,
+  removeGroupRoleHandler,
+} from './iam-groups.server';
 export * from './jit-provisioning.server';
 export * from './mainserver-credentials.server';
 export * from './middleware.server';

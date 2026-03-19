@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import type { IamGroupDetail } from '@sva/core';
+import type { IamAdminGroupDetail } from '@sva/core';
 import { createSdkLogger, getWorkspaceContext } from '@sva/sdk/server';
 
 import type { AuthenticatedRequestContext } from '../middleware.server';
@@ -199,7 +199,7 @@ export const getGroupInternal = async (
         [actor.instanceId, groupId]
       );
       const membershipRows = await client.query<AccountGroupRow>(GROUP_MEMBERSHIPS_SQL, [actor.instanceId, groupId]);
-      const detail: IamGroupDetail = {
+      const detail: IamAdminGroupDetail = {
         ...mapGroupListItem(row),
         assignedRoleIds: roleRows.rows.map((r) => r.role_id),
         memberships: membershipRows.rows.map(mapGroupMembership),

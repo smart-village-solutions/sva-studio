@@ -120,6 +120,11 @@ describe('assignGroupRoleSchema', () => {
     expect(result.success).toBe(true);
   });
 
+  it('akzeptiert uuid-aehnliche Rollen-IDs aus den lokalen Seeds', () => {
+    const result = assignGroupRoleSchema.safeParse({ roleId: '30666666-6666-6666-6666-666666666666' });
+    expect(result.success).toBe(true);
+  });
+
   it('lehnt eine ungültige UUID ab', () => {
     expect(assignGroupRoleSchema.safeParse({ roleId: 'not-a-uuid' }).success).toBe(false);
   });

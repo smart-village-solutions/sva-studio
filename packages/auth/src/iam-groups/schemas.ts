@@ -1,5 +1,9 @@
 import { z } from 'zod';
 
+const UUID_LIKE_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const uuidLikeString = () => z.string().regex(UUID_LIKE_PATTERN, 'roleId muss eine gültige ID sein');
+
 export const groupKeySchema = z
   .string()
   .min(2)
@@ -21,7 +25,7 @@ export const updateGroupSchema = z.object({
 });
 
 export const assignGroupRoleSchema = z.object({
-  roleId: z.string().uuid('roleId muss eine gültige UUID sein'),
+  roleId: uuidLikeString(),
 });
 
 export const assignGroupMembershipSchema = z.object({

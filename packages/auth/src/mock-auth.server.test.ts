@@ -13,6 +13,12 @@ describe('mock-auth.server', () => {
     expect(isMockAuthEnabled()).toBe(true);
   });
 
+  it('enables mock auth via the builder runtime profile', () => {
+    vi.stubEnv('SVA_RUNTIME_PROFILE', 'local-builder');
+
+    expect(isMockAuthEnabled()).toBe(true);
+  });
+
   it('creates a privileged default mock user', () => {
     vi.stubEnv('VITE_MOCK_AUTH', 'true');
 

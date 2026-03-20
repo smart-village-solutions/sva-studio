@@ -1,12 +1,12 @@
 import type { LegalAcceptanceActionType, LegalConsentExportRecord } from '@sva/core';
 import { createSdkLogger } from '@sva/sdk/server';
 
-import { readPathSegment } from '../iam-account-management/api-helpers';
+import { readPathSegment } from '../iam-account-management/api-helpers.js';
 import {
   withInstanceScopedDb,
-} from '../iam-account-management/shared';
-import { withAuthenticatedUser } from '../middleware.server';
-import type { QueryClient } from '../shared/db-helpers';
+} from '../iam-account-management/shared.js';
+import { withAuthenticatedUser } from '../middleware.server.js';
+import type { QueryClient } from '../shared/db-helpers.js';
 
 const logger = createSdkLogger({ component: 'iam-legal-consent-export', level: 'info' });
 const LEGAL_CONSENT_EXPORT_PERMISSION = 'legal-consents:export';

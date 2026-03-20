@@ -3,11 +3,11 @@ import { evaluateAuthorizeDecision } from '@sva/core';
 import { createHash } from 'node:crypto';
 import { getWorkspaceContext, withRequestContext } from '@sva/sdk/server';
 
-import { resolveImpersonationSubject } from '../iam-governance.server';
-import { withAuthenticatedUser } from '../middleware.server';
-import { jsonResponse } from '../shared/db-helpers';
-import { readString } from '../shared/input-readers';
-import { resolveEffectivePermissions } from './permission-store';
+import { resolveImpersonationSubject } from '../iam-governance.server.js';
+import { withAuthenticatedUser } from '../middleware.server.js';
+import { jsonResponse } from '../shared/db-helpers.js';
+import { readString } from '../shared/input-readers.js';
+import { resolveEffectivePermissions } from './permission-store.js';
 import {
   buildRequestContext,
   type DeniedAuthorizeResponseInput,
@@ -15,7 +15,7 @@ import {
   iamAuthorizeLatencyHistogram,
   loadAuthorizeRequest,
   logger,
-} from './shared';
+} from './shared.js';
 
 const buildDeniedResponse = (input: DeniedAuthorizeResponseInput): AuthorizeResponse => ({
   allowed: false,

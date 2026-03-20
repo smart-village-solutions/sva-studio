@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import type { QueryClient } from '../shared/db-helpers';
+import type { QueryClient } from '../shared/db-helpers.js';
 
 // ---------------------------------------------------------------------------
 // Gruppen-Events über pg_notify

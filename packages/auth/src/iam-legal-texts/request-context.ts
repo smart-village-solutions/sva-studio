@@ -1,11 +1,11 @@
 import { getWorkspaceContext, toJsonErrorResponse, withRequestContext } from '@sva/sdk/server';
 
-import { createApiError } from '../iam-account-management/api-helpers';
-import { ADMIN_ROLES } from '../iam-account-management/constants';
-import { ensureFeature, getFeatureFlags } from '../iam-account-management/feature-flags';
-import { logger as accountLogger, requireRoles, resolveActorInfo } from '../iam-account-management/shared';
-import type { AuthenticatedRequestContext } from '../middleware.server';
-import { withAuthenticatedUser } from '../middleware.server';
+import { createApiError } from '../iam-account-management/api-helpers.js';
+import { ADMIN_ROLES } from '../iam-account-management/constants.js';
+import { ensureFeature, getFeatureFlags } from '../iam-account-management/feature-flags.js';
+import { logger as accountLogger, requireRoles, resolveActorInfo } from '../iam-account-management/shared.js';
+import type { AuthenticatedRequestContext } from '../middleware.server.js';
+import { withAuthenticatedUser } from '../middleware.server.js';
 
 export type ResolvedLegalTextsActor = {
   actor: {

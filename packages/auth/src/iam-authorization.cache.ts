@@ -1,5 +1,5 @@
 import type { EffectivePermission } from '@sva/core';
-import type { SnapshotInvalidationEvent } from './iam-authorization/snapshot-invalidation.server';
+import type { SnapshotInvalidationEvent } from './iam-authorization/snapshot-invalidation.server.js';
 
 export interface PermissionSnapshotKey {
   readonly instanceId: string;

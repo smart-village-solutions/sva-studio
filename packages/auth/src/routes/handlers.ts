@@ -1,16 +1,16 @@
 import { serialize as serializeCookie } from 'cookie-es';
 import { createSdkLogger, initializeOtelSdk, withRequestContext } from '@sva/sdk/server';
 
-import { createLoginUrl, handleCallback, logoutSession } from '../auth.server';
-import { emitAuthAuditEvent } from '../audit-events.server';
-import { getAuthConfig } from '../config';
-import { createMockSessionUser, isMockAuthEnabled } from '../mock-auth.server';
-import { getSession } from '../redis-session.server';
-import { isTokenErrorLike } from '../shared/error-guards';
-import { buildLogContext } from '../shared/log-context';
-import { withAuthenticatedUser } from '../middleware.server';
-import { appendSetCookie, deleteCookieHeader, readCookieFromRequest } from './cookies';
-import { decodeLoginStateCookie, encodeLoginStateCookie, type LoginStateCookiePayload } from './login-state-cookie';
+import { createLoginUrl, handleCallback, logoutSession } from '../auth.server.js';
+import { emitAuthAuditEvent } from '../audit-events.server.js';
+import { getAuthConfig } from '../config.js';
+import { createMockSessionUser, isMockAuthEnabled } from '../mock-auth.server.js';
+import { getSession } from '../redis-session.server.js';
+import { isTokenErrorLike } from '../shared/error-guards.js';
+import { buildLogContext } from '../shared/log-context.js';
+import { withAuthenticatedUser } from '../middleware.server.js';
+import { appendSetCookie, deleteCookieHeader, readCookieFromRequest } from './cookies.js';
+import { decodeLoginStateCookie, encodeLoginStateCookie, type LoginStateCookiePayload } from './login-state-cookie.js';
 
 const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
 

@@ -1,7 +1,7 @@
 import { withRequestContext } from '@sva/sdk/server';
 
-import type { AuthenticatedRequestContext } from '../middleware.server';
-import { withAuthenticatedUser } from '../middleware.server';
+import type { AuthenticatedRequestContext } from '../middleware.server.js';
+import { withAuthenticatedUser } from '../middleware.server.js';
 
 import {
   assignGroupMembershipInternal,
@@ -13,7 +13,7 @@ import {
   removeGroupMembershipInternal,
   removeGroupRoleInternal,
   updateGroupInternal,
-} from './handlers';
+} from './handlers.js';
 
 const withGroupsRequestContext = <T>(request: Request, work: () => Promise<T>): Promise<T> =>
   withRequestContext({ request, fallbackWorkspaceId: 'default' }, work);

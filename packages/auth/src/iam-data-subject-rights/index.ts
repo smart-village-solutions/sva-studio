@@ -1,3 +1,3 @@
-export * from './exports';
-export * from './requests';
-export * from './compliance';
+export * from './exports.js';
+export * from './requests.js';
+export * from './compliance.js';

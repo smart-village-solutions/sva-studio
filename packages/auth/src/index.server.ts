@@ -1,21 +1,21 @@
-export * from './auth.server';
-export * from './audit/index.server';
-export * from './config';
-export * from './iam-data-subject-rights.server';
-export * from './iam-account-management.server';
-export * from './iam-legal-texts.server';
-export * from './iam-organizations.server';
-export * from './iam-governance.server';
-export * from './iam-authorization.server';
+export * from './auth.server.js';
+export * from './audit/index.server.js';
+export * from './config.js';
+export * from './iam-data-subject-rights.server.js';
+export * from './iam-account-management.server.js';
+export * from './iam-legal-texts.server.js';
+export * from './iam-organizations.server.js';
+export * from './iam-governance.server.js';
+export * from './iam-authorization.server.js';
 export {
   assignGroupMembershipHandler,
   assignGroupRoleHandler,
   removeGroupMembershipHandler,
   removeGroupRoleHandler,
-} from './iam-groups.server';
-export * from './jit-provisioning.server';
-export * from './mainserver-credentials.server';
-export * from './middleware.server';
-export * from './keycloak-admin-client';
-export * from './routes.server';
-export type * from './contracts.server';
+} from './iam-groups.server.js';
+export * from './jit-provisioning.server.js';
+export * from './mainserver-credentials.server.js';
+export * from './middleware.server.js';
+export * from './keycloak-admin-client.js';
+export * from './routes.server.js';
+export type * from './contracts.server.js';

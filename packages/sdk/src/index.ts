@@ -7,7 +7,7 @@ export type {
   RuntimeProfileAuthMode,
   RuntimeProfileDefinition,
   RuntimeProfileEnvValidationResult,
-} from './runtime-profile';
+} from './runtime-profile.js';
 export {
   RUNTIME_PROFILES,
   getRuntimeProfileDefinition,
@@ -16,4 +16,4 @@ export {
   isMockAuthRuntimeProfile,
   parseRuntimeProfile,
   validateRuntimeProfileEnv,
-} from './runtime-profile';
+} from './runtime-profile.js';

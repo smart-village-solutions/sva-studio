@@ -1,6 +1,6 @@
 import { createSdkLogger } from '@sva/sdk/server';
 
-import { invalidateRedisPermissionSnapshots } from './redis-permission-snapshot.server';
+import { invalidateRedisPermissionSnapshots } from './redis-permission-snapshot.server.js';
 
 const logger = createSdkLogger({ component: 'iam-snapshot-invalidation', level: 'info' });
 

@@ -1,12 +1,12 @@
 import type { ApiErrorResponse, IamRoleListItem, IamRoleSyncState } from '@sva/core';
 import { getWorkspaceContext } from '@sva/sdk/server';
 
-import { KeycloakAdminRequestError } from '../keycloak-admin-client';
-import type { AuthenticatedRequestContext } from '../middleware.server';
-import { jsonResponse, type QueryClient } from '../shared/db-helpers';
-import { isUuid } from '../shared/input-readers';
+import { KeycloakAdminRequestError } from '../keycloak-admin-client.js';
+import type { AuthenticatedRequestContext } from '../middleware.server.js';
+import { jsonResponse, type QueryClient } from '../shared/db-helpers.js';
+import { isUuid } from '../shared/input-readers.js';
 
-import { ADMIN_ROLES, SYSTEM_ADMIN_ROLES } from './constants';
+import { ADMIN_ROLES, SYSTEM_ADMIN_ROLES } from './constants.js';
 import {
   asApiItem,
   asApiList,
@@ -15,9 +15,10 @@ import {
   readPathSegment,
   requireIdempotencyKey,
   toPayloadHash,
-} from './api-helpers';
-import { ensureFeature, getFeatureFlags } from './feature-flags';
-import { consumeRateLimit } from './rate-limit';
+} from './api-helpers.js';
+import { classifyIamDiagnosticError, createActorResolutionDetails } from './diagnostics.js';
+import { ensureFeature, getFeatureFlags } from './feature-flags.js';
+import { consumeRateLimit } from './rate-limit.js';
 import {
   buildRoleSyncFailure,
   getRoleDisplayName,
@@ -25,7 +26,7 @@ import {
   mapRoleListItem,
   mapRoleSyncErrorCode,
   sanitizeRoleErrorMessage,
-} from './role-audit';
+} from './role-audit.js';
 import {
   completeIdempotency,
   emitActivityLog,
@@ -41,10 +42,10 @@ import {
   setRoleSyncState,
   trackKeycloakCall,
   withInstanceScopedDb,
-} from './shared';
-import { validateCsrf } from './csrf';
-import { createRoleSchema, updateRoleSchema } from './schemas';
-import type { ManagedBy, ManagedRoleRow } from './types';
+} from './shared.js';
+import { validateCsrf } from './csrf.js';
+import { createRoleSchema, updateRoleSchema } from './schemas.js';
+import type { ManagedBy, ManagedRoleRow } from './types.js';
 
 const loadRoleListItems = async (
   client: QueryClient,
@@ -246,13 +247,13 @@ export const listRolesInternal = async (
       200,
       asApiList(roles, { page: 1, pageSize: roles.length, total: roles.length }, actorResolution.actor.requestId)
     );
-  } catch {
-    return createApiError(
-      503,
-      'database_unavailable',
+  } catch (error) {
+    const classified = classifyIamDiagnosticError(
+      error,
       'IAM-Datenbank ist nicht erreichbar.',
       actorResolution.actor.requestId
     );
+    return createApiError(classified.status, classified.code, classified.message, actorResolution.actor.requestId, classified.details);
   }
 };
 
@@ -274,7 +275,16 @@ export const createRoleInternal = async (
     return actorResolution.error;
   }
   if (!actorResolution.actor.actorAccountId) {
-    return createApiError(403, 'forbidden', 'Akteur-Account nicht gefunden.', actorResolution.actor.requestId);
+    return createApiError(
+      403,
+      'forbidden',
+      'Akteur-Account nicht gefunden.',
+      actorResolution.actor.requestId,
+      createActorResolutionDetails({
+        actorResolution: 'missing_actor_account',
+        instanceId: actorResolution.actor.instanceId,
+      })
+    );
   }
 
   const csrfError = validateCsrf(request, actorResolution.actor.requestId);

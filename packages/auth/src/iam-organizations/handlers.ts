@@ -9,13 +9,13 @@ import type {
 } from '@sva/core';
 import { createSdkLogger, getWorkspaceContext } from '@sva/sdk/server';
 
-import type { AuthenticatedRequestContext } from '../middleware.server';
-import { getSession, updateSession } from '../redis-session.server';
-import type { QueryClient } from '../shared/db-helpers';
-import { jsonResponse } from '../shared/db-helpers';
-import { isUuid, readString } from '../shared/input-readers';
+import type { AuthenticatedRequestContext } from '../middleware.server.js';
+import { getSession, updateSession } from '../redis-session.server.js';
+import type { QueryClient } from '../shared/db-helpers.js';
+import { jsonResponse } from '../shared/db-helpers.js';
+import { isUuid, readString } from '../shared/input-readers.js';
 
-import { ADMIN_ROLES } from '../iam-account-management/constants';
+import { ADMIN_ROLES } from '../iam-account-management/constants.js';
 import {
   asApiItem,
   asApiList,
@@ -25,8 +25,9 @@ import {
   readPathSegment,
   requireIdempotencyKey,
   toPayloadHash,
-} from '../iam-account-management/api-helpers';
-import { consumeRateLimit } from '../iam-account-management/rate-limit';
+} from '../iam-account-management/api-helpers.js';
+import { createActorResolutionDetails } from '../iam-account-management/diagnostics.js';
+import { consumeRateLimit } from '../iam-account-management/rate-limit.js';
 import {
   completeIdempotency,
   emitActivityLog,
@@ -36,9 +37,9 @@ import {
   reserveIdempotency,
   resolveActorInfo,
   withInstanceScopedDb,
-} from '../iam-account-management/shared';
-import { ensureFeature, getFeatureFlags } from '../iam-account-management/feature-flags';
-import { validateCsrf } from '../iam-account-management/csrf';
+} from '../iam-account-management/shared.js';
+import { ensureFeature, getFeatureFlags } from '../iam-account-management/feature-flags.js';
+import { validateCsrf } from '../iam-account-management/csrf.js';
 
 import {
   chooseActiveOrganizationId,
@@ -53,13 +54,13 @@ import {
   type HierarchyResolution,
   type MembershipRow,
   type OrganizationRow,
-} from './handlers.helpers';
+} from './handlers.helpers.js';
 import {
   assignOrganizationMembershipSchema,
   createOrganizationSchema,
   updateOrganizationContextSchema,
   updateOrganizationSchema,
-} from './schemas';
+} from './schemas.js';
 
 const logger = createSdkLogger({ component: 'iam-organizations', level: 'info' });
 
@@ -486,7 +487,16 @@ const createOrganizationInternal = async (
     return actorResolution.error;
   }
   if (!actorResolution.actor.actorAccountId) {
-    return createApiError(403, 'forbidden', 'Akteur-Account nicht gefunden.', actorResolution.actor.requestId);
+    return createApiError(
+      403,
+      'forbidden',
+      'Akteur-Account nicht gefunden.',
+      actorResolution.actor.requestId,
+      createActorResolutionDetails({
+        actorResolution: 'missing_actor_account',
+        instanceId: actorResolution.actor.instanceId,
+      })
+    );
   }
   const actorAccountId = actorResolution.actor.actorAccountId;
 
@@ -684,7 +694,16 @@ const updateOrganizationInternal = async (
     return actorResolution.error;
   }
   if (!actorResolution.actor.actorAccountId) {
-    return createApiError(403, 'forbidden', 'Akteur-Account nicht gefunden.', actorResolution.actor.requestId);
+    return createApiError(
+      403,
+      'forbidden',
+      'Akteur-Account nicht gefunden.',
+      actorResolution.actor.requestId,
+      createActorResolutionDetails({
+        actorResolution: 'missing_actor_account',
+        instanceId: actorResolution.actor.instanceId,
+      })
+    );
   }
   const actorAccountId = actorResolution.actor.actorAccountId;
 

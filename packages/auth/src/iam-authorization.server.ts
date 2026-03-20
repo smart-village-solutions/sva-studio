@@ -1,1 +1,1 @@
-export * from './iam-authorization/index';
+export * from './iam-authorization/index.js';

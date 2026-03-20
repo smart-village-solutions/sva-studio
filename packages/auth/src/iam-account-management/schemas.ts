@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { USER_STATUS } from './types';
+import { USER_STATUS } from './types.js';
 
 const hasDefinedEntries = (value: Record<string, unknown>): boolean =>
   Object.values(value).some((entry) => entry !== undefined);

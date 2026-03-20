@@ -8,4 +8,4 @@ export {
   removeOrganizationMembershipHandler,
   updateMyOrganizationContextHandler,
   updateOrganizationHandler,
-} from './core';
+} from './core.js';

@@ -3,4 +3,4 @@ export {
   adminDataExportStatusHandler,
   dataExportHandler,
   dataExportStatusHandler,
-} from './core';
+} from './core.js';

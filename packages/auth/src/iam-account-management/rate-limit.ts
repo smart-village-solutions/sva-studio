@@ -3,9 +3,9 @@ import {
   READ_RATE_LIMIT,
   RATE_WINDOW_MS,
   WRITE_RATE_LIMIT,
-} from './constants';
-import type { RateBucket, RateScope } from './types';
-import { createApiError } from './api-helpers';
+} from './constants.js';
+import type { RateBucket, RateScope } from './types.js';
+import { createApiError } from './api-helpers.js';
 
 const rateLimiterStore = new Map<string, RateBucket>();
 const RATE_WINDOW_SECONDS = RATE_WINDOW_MS / 1000;

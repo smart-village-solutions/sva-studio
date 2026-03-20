@@ -1,8 +1,8 @@
-import type { QueryClient } from '../shared/db-helpers';
+import type { QueryClient } from '../shared/db-helpers.js';
 
-import { buildGovernanceItems, filterGovernanceItems, paginateGovernanceItems } from './read-models.mappers';
-import { loadGovernanceSourceRows } from './read-models.queries';
-import type { GovernanceFilters } from './read-models.types';
+import { buildGovernanceItems, filterGovernanceItems, paginateGovernanceItems } from './read-models.mappers.js';
+import { loadGovernanceSourceRows } from './read-models.queries.js';
+import type { GovernanceFilters } from './read-models.types.js';
 
 export const listGovernanceCases = async (
   client: QueryClient,

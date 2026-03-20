@@ -207,7 +207,7 @@ describe('iam-api organization helpers', () => {
     );
   });
 
-  it('logs only request id, status and code for json api failures in development', async () => {
+  it('logs only safe diagnostic details for json api failures in development', async () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     consoleError.mockClear();
     vi.stubEnv('NODE_ENV', 'development');
@@ -216,10 +216,17 @@ describe('iam-api organization helpers', () => {
       vi.fn().mockResolvedValue(
         new Response(
           JSON.stringify({
-            error: 'internal_error',
-            message: 'boom',
+            error: {
+              code: 'internal_error',
+              message: 'boom',
+              details: {
+                reason_code: 'missing_column',
+                schema_object: 'iam.account_groups.origin',
+                expected_migration: '0018_iam_account_groups_origin_compat.sql',
+                email: 'alice@example.com',
+              },
+            },
             requestId: 'req-json-500',
-            details: { email: 'alice@example.com' },
           }),
           { status: 500, headers: { 'content-type': 'application/json' } }
         )
@@ -236,8 +243,13 @@ describe('iam-api organization helpers', () => {
       request_id: 'req-json-500',
       status: 500,
       code: 'internal_error',
+      details: {
+        reason_code: 'missing_column',
+        schema_object: 'iam.account_groups.origin',
+        expected_migration: '0018_iam_account_groups_origin_compat.sql',
+      },
     });
-    expect(consoleError.mock.calls[0]?.[1]).not.toHaveProperty('details');
+    expect(consoleError.mock.calls[0]?.[1]).not.toHaveProperty('email');
     expect(consoleError.mock.calls[0]?.[1]).not.toHaveProperty('body');
     expect(consoleError.mock.calls[0]?.[1]).not.toHaveProperty('payload');
   });

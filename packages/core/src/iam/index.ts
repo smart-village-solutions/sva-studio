@@ -1,7 +1,7 @@
-export { extractRoles, resolveInstanceId, resolveUserName } from './claims';
-export { parseJwtPayload } from './token';
-export { evaluateAuthorizeDecision } from './authorization-engine';
-export type { IamAccountProfile, IamAccountStatus, IamPermission, IamRole } from './account-management';
+export { extractRoles, resolveInstanceId, resolveUserName } from './claims.js';
+export { parseJwtPayload } from './token.js';
+export { evaluateAuthorizeDecision } from './authorization-engine.js';
+export type { IamAccountProfile, IamAccountStatus, IamPermission, IamRole } from './account-management.js';
 export type {
   ApiErrorCode,
   ApiErrorResponse,
@@ -30,7 +30,7 @@ export type {
   IamUserImportSyncReport,
   IamUserListItem,
   IamUserRoleAssignment,
-} from './account-management-contract';
+} from './account-management-contract.js';
 export type {
   IamDsrCanonicalStatus,
   IamDsrCaseListItem,
@@ -41,7 +41,7 @@ export type {
   IamUserTimelineEvent,
   IamUserTimelineEventCategory,
   IamUserTimelinePerspective,
-} from './transparency-contract';
+} from './transparency-contract.js';
 export type {
   AllowReasonCode,
   AuthorizeRequest,
@@ -70,11 +70,11 @@ export type {
   MePermissionsResponse,
   ReadinessStatus,
   SnapshotCacheStatus,
-} from './authorization-contract';
+} from './authorization-contract.js';
 export type {
   IamGroupDetail as IamAdminGroupDetail,
   IamGroupListItem as IamAdminGroupListItem,
   IamGroupMembership as IamAdminGroupMembership,
   IamGroupType as IamAdminGroupType,
-} from './authorization-contract';
-export { allowReasonCodes, denyReasonCodes, iamApiErrorCodes } from './authorization-contract';
+} from './authorization-contract.js';
+export { allowReasonCodes, denyReasonCodes, iamApiErrorCodes } from './authorization-contract.js';

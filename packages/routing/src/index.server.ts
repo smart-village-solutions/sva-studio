@@ -5,5 +5,5 @@
  * Import this ONLY in .server.tsx files.
  */
 
-export { authServerRouteFactories, authRoutePaths } from './auth.routes.server';
-export { coreRouteFactories } from './core.routes';
+export { authServerRouteFactories, authRoutePaths } from './auth.routes.server.js';
+export { coreRouteFactories } from './core.routes.js';

@@ -1,6 +1,6 @@
 import { createSdkLogger } from '@sva/sdk/server';
 
-import { withInstanceScopedDb } from './iam-account-management/shared';
+import { withInstanceScopedDb } from './iam-account-management/shared.js';
 
 const logger = createSdkLogger({ component: 'iam-legal-compliance', level: 'info' });
 

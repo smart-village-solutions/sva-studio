@@ -1,10 +1,10 @@
 import type { IamUserDetail } from '@sva/core';
 
-import type { QueryClient } from '../shared/db-helpers';
+import type { QueryClient } from '../shared/db-helpers.js';
 
-import { revealField } from './encryption';
-import type { UserStatus } from './types';
-import { mapUserRowToListItem } from './user-mapping';
+import { revealField } from './encryption.js';
+import type { UserStatus } from './types.js';
+import { mapUserRowToListItem } from './user-mapping.js';
 
 type UserDetailRoleRow = {
   id: string;

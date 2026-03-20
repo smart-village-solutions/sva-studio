@@ -7,7 +7,7 @@ import {
   getHeadersFromRequest,
   toJsonErrorResponse,
 } from '@sva/sdk/server';
-import { authRoutePaths } from './auth.routes';
+import { authRoutePaths } from './auth.routes.js';
 
 type AuthHandlers = {
   GET?: (ctx: { request: Request }) => Promise<Response> | Response;
@@ -543,4 +543,4 @@ export const authServerRouteFactories = authRoutePaths.map((path) =>
   createAuthServerRouteFactory(path)
 );
 
-export { authRoutePaths } from './auth.routes';
+export { authRoutePaths } from './auth.routes.js';

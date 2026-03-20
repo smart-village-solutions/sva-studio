@@ -7,4 +7,4 @@ export {
   listUsersHandler,
   syncUsersFromKeycloakHandler,
   updateUserHandler,
-} from './core';
+} from './core.js';

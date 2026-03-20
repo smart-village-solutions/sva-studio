@@ -12,12 +12,12 @@ import { createSdkLogger, getWorkspaceContext } from '@sva/sdk/server';
 import { metrics } from '@opentelemetry/api';
 import type { PoolClient } from 'pg';
 
-import { parseInvalidationEvent, PermissionSnapshotCache } from '../iam-authorization.cache';
-import { processSnapshotInvalidationEvent } from './snapshot-invalidation.server';
-import { createPoolResolver, jsonResponse, type QueryClient, withInstanceDb } from '../shared/db-helpers';
-import { isUuid, readString } from '../shared/input-readers';
-import { buildLogContext } from '../shared/log-context';
-import { authorizeRequestSchema } from '../shared/schemas';
+import { parseInvalidationEvent, PermissionSnapshotCache } from '../iam-authorization.cache.js';
+import { processSnapshotInvalidationEvent } from './snapshot-invalidation.server.js';
+import { createPoolResolver, jsonResponse, type QueryClient, withInstanceDb } from '../shared/db-helpers.js';
+import { isUuid, readString } from '../shared/input-readers.js';
+import { buildLogContext } from '../shared/log-context.js';
+import { authorizeRequestSchema } from '../shared/schemas.js';
 
 export type PermissionRow = {
   permission_key: string;

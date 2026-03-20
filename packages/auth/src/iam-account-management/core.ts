@@ -3,25 +3,25 @@ import { createSdkLogger, toJsonErrorResponse, withRequestContext } from '@sva/s
 import {
   withAuthenticatedUser,
   type AuthenticatedRequestContext,
-} from '../middleware.server';
-import { buildLogContext } from '../shared/log-context';
+} from '../middleware.server.js';
+import { buildLogContext } from '../shared/log-context.js';
 
-import { getFeatureFlags } from './feature-flags';
-import { liveInternal, readyInternal } from './platform-handlers';
+import { getFeatureFlags } from './feature-flags.js';
+import { liveInternal, readyInternal } from './platform-handlers.js';
 import {
   createGroupInternal,
   deleteGroupInternal,
   getGroupInternal,
   listGroupsInternal,
   updateGroupInternal,
-} from './groups-handlers';
+} from './groups-handlers.js';
 import {
   createRoleInternal,
   deleteRoleInternal,
   listRolesInternal,
   updateRoleInternal,
-} from './roles-handlers';
-import { reconcilePlaceholderInternal } from './reconcile-handler';
+} from './roles-handlers.js';
+import { reconcilePlaceholderInternal } from './reconcile-handler.js';
 import {
   bulkDeactivateInternal,
   createUserInternal,
@@ -33,12 +33,12 @@ import {
   updateMyProfileInternal,
   updateUserInternal,
   deactivateUserInternal,
-} from './users-handlers';
-import type { FeatureFlags } from './types';
+} from './users-handlers.js';
+import type { FeatureFlags } from './types.js';
 
-export { sanitizeRoleAuditDetails, sanitizeRoleErrorMessage } from './role-audit';
-export { isTrustedRequestOrigin } from './csrf';
-export { resolveUserDisplayName } from './user-mapping';
+export { sanitizeRoleAuditDetails, sanitizeRoleErrorMessage } from './role-audit.js';
+export { isTrustedRequestOrigin } from './csrf.js';
+export { resolveUserDisplayName } from './user-mapping.js';
 
 const logger = createSdkLogger({ component: 'iam-service', level: 'info' });
 

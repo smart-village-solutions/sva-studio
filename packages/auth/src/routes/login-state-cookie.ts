@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 
-import type { LoginState } from '../types';
+import type { LoginState } from '../types.js';
 
 export type LoginStateCookiePayload = LoginState & {
   state: string;

@@ -1,20 +1,20 @@
 import type { ApiErrorResponse } from '@sva/core';
 import { getWorkspaceContext } from '@sva/sdk/server';
 
-import type { AuthenticatedRequestContext } from '../middleware.server';
-import { jsonResponse } from '../shared/db-helpers';
+import type { AuthenticatedRequestContext } from '../middleware.server.js';
+import { jsonResponse } from '../shared/db-helpers.js';
 
-import { ADMIN_ROLES } from './constants';
+import { ADMIN_ROLES } from './constants.js';
 import {
   asApiItem,
   createApiError,
   parseRequestBody,
   requireIdempotencyKey,
   toPayloadHash,
-} from './api-helpers';
-import { ensureFeature, getFeatureFlags } from './feature-flags';
-import { consumeRateLimit } from './rate-limit';
-import { createUserSchema } from './schemas';
+} from './api-helpers.js';
+import { ensureFeature, getFeatureFlags } from './feature-flags.js';
+import { consumeRateLimit } from './rate-limit.js';
+import { createUserSchema } from './schemas.js';
 import {
   completeIdempotency,
   iamUserOperationsCounter,
@@ -22,9 +22,9 @@ import {
   reserveIdempotency,
   resolveActorInfo,
   resolveIdentityProvider,
-} from './shared';
-import { validateCsrf } from './csrf';
-import { executeCreateUser } from './user-create-operation';
+} from './shared.js';
+import { validateCsrf } from './csrf.js';
+import { executeCreateUser } from './user-create-operation.js';
 
 type CreateUserActorContext = {
   actor: {

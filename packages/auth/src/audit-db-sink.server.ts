@@ -5,7 +5,7 @@ import {
   type FieldEncryptionConfig,
 } from '@sva/core/security';
 
-import type { AuthAuditEvent, AuthAuditEventType } from './audit-events.types';
+import type { AuthAuditEvent, AuthAuditEventType } from './audit-events.types.js';
 
 export type PersistAuthAuditResult = {
   persisted: boolean;

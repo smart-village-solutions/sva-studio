@@ -8,4 +8,4 @@ export {
   removeGroupMembershipHandler,
   removeGroupRoleHandler,
   updateGroupHandler,
-} from './core';
+} from './core.js';

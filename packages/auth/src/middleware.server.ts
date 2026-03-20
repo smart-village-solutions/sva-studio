@@ -1,12 +1,12 @@
 import { parse as parseCookie } from 'cookie-es';
 import { createSdkLogger, toJsonErrorResponse } from '@sva/sdk/server';
 
-import { getSessionUser } from './auth.server';
-import { getAuthConfig } from './config';
-import { withLegalTextCompliance } from './legal-text-enforcement.server';
-import { createMockSessionUser, isMockAuthEnabled } from './mock-auth.server';
-import { buildLogContext } from './shared/log-context';
-import type { SessionUser } from './types';
+import { getSessionUser } from './auth.server.js';
+import { getAuthConfig } from './config.js';
+import { withLegalTextCompliance } from './legal-text-enforcement.server.js';
+import { createMockSessionUser, isMockAuthEnabled } from './mock-auth.server.js';
+import { buildLogContext } from './shared/log-context.js';
+import type { SessionUser } from './types.js';
 
 const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
 

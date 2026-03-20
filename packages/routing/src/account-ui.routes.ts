@@ -1,4 +1,4 @@
-import { createAdminRoute, createProtectedRoute } from './protected.routes';
+import { createAdminRoute, createProtectedRoute } from './protected.routes.js';
 
 export const accountUiRoutePaths = {
   account: '/account',

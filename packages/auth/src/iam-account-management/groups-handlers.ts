@@ -1,11 +1,11 @@
 import type { IamGroupDetail, IamGroupListItem, IamUserGroupAssignment } from '@sva/core';
 import { getWorkspaceContext } from '@sva/sdk/server';
 
-import type { AuthenticatedRequestContext } from '../middleware.server';
-import { jsonResponse, type QueryClient } from '../shared/db-helpers';
-import { isUuid } from '../shared/input-readers';
+import type { AuthenticatedRequestContext } from '../middleware.server.js';
+import { jsonResponse, type QueryClient } from '../shared/db-helpers.js';
+import { isUuid } from '../shared/input-readers.js';
 
-import { ADMIN_ROLES, SYSTEM_ADMIN_ROLES } from './constants';
+import { ADMIN_ROLES, SYSTEM_ADMIN_ROLES } from './constants.js';
 import {
   asApiItem,
   asApiList,
@@ -14,11 +14,11 @@ import {
   readPathSegment,
   requireIdempotencyKey,
   toPayloadHash,
-} from './api-helpers';
-import { validateCsrf } from './csrf';
-import { ensureFeature, getFeatureFlags } from './feature-flags';
-import { consumeRateLimit } from './rate-limit';
-import { createGroupSchema, updateGroupSchema } from './schemas';
+} from './api-helpers.js';
+import { validateCsrf } from './csrf.js';
+import { ensureFeature, getFeatureFlags } from './feature-flags.js';
+import { consumeRateLimit } from './rate-limit.js';
+import { createGroupSchema, updateGroupSchema } from './schemas.js';
 import {
   type ActorInfo,
   completeIdempotency,
@@ -31,7 +31,7 @@ import {
   resolveActorInfo,
   resolveRolesByIds,
   withInstanceScopedDb,
-} from './shared';
+} from './shared.js';
 
 type GroupRoleRow = {
   role_id: string;

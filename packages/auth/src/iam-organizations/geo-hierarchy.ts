@@ -1,7 +1,7 @@
 import type { IamGeoHierarchyEntry, IamGeoNode, IamGeoNodeType } from '@sva/core';
 
-import type { QueryClient } from '../shared/db-helpers';
-import { withInstanceScopedDb } from '../iam-account-management/shared';
+import type { QueryClient } from '../shared/db-helpers.js';
+import { withInstanceScopedDb } from '../iam-account-management/shared.js';
 
 type GeoNodeRow = {
   id: string;

@@ -1,1 +1,1 @@
-export * from './iam-groups/index';
+export * from './iam-groups/index.js';

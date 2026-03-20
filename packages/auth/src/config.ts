@@ -1,4 +1,5 @@
-import type { AuthConfig } from './types';
+import type { AuthConfig } from './types.js';
+import { getAuthClientSecret, getAuthStateSecret } from './runtime-secrets.server.js';
 
 /**
  * Reads a required environment variable or throws.
@@ -27,12 +28,15 @@ const readNumber = (key: string, fallback: number) => {
  * Builds the auth configuration from environment variables.
  */
 export const getAuthConfig = (): AuthConfig => {
-  const clientSecret = requireEnv('SVA_AUTH_CLIENT_SECRET');
+  const clientSecret = getAuthClientSecret();
+  if (!clientSecret) {
+    throw new Error('Missing required env: SVA_AUTH_CLIENT_SECRET');
+  }
   return {
     issuer: requireEnv('SVA_AUTH_ISSUER'),
     clientId: requireEnv('SVA_AUTH_CLIENT_ID'),
     clientSecret,
-    loginStateSecret: process.env.SVA_AUTH_STATE_SECRET ?? clientSecret,
+    loginStateSecret: getAuthStateSecret() ?? clientSecret,
     redirectUri: requireEnv('SVA_AUTH_REDIRECT_URI'),
     postLogoutRedirectUri: requireEnv('SVA_AUTH_POST_LOGOUT_REDIRECT_URI'),
     scopes: process.env.SVA_AUTH_SCOPES ?? 'openid profile email',

@@ -6,12 +6,12 @@
  */
 
 import type { NodeSDK } from '@opentelemetry/sdk-node';
-import { createSdkLogger } from '../logger/index.server';
-import { getWorkspaceContext } from '../observability/context.server';
+import { createSdkLogger } from '../logger/index.server.js';
+import { getWorkspaceContext } from '../observability/context.server.js';
 import {
   setWorkspaceContextGetterForMonitoring,
   startOtelSdkFromMonitoring,
-} from '../observability/monitoring-client.bridge.server';
+} from '../observability/monitoring-client.bridge.server.js';
 
 const logger = createSdkLogger({ component: 'bootstrap', level: 'info', enableOtel: true });
 

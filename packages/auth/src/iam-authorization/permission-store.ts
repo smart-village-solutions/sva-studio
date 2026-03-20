@@ -1,11 +1,11 @@
 import type { EffectivePermission } from '@sva/core';
 
-import type { PermSnapshotKey } from './redis-permission-snapshot.server';
+import type { PermSnapshotKey } from './redis-permission-snapshot.server.js';
 import {
   getRedisPermissionSnapshot,
   setRedisPermissionSnapshot,
-} from './redis-permission-snapshot.server';
-import type { EffectivePermissionsResolution, PermissionRow } from './shared';
+} from './redis-permission-snapshot.server.js';
+import type { EffectivePermissionsResolution, PermissionRow } from './shared.js';
 import {
   buildRequestContext,
   cacheLogger,
@@ -19,8 +19,8 @@ import {
   recordPermissionCacheRedisLatency,
   toEffectivePermissions,
   withInstanceScopedDb,
-} from './shared';
-import type { QueryClient } from '../shared/db-helpers';
+} from './shared.js';
+import type { QueryClient } from '../shared/db-helpers.js';
 
 type PermissionLookupInput = {
   instanceId: string;

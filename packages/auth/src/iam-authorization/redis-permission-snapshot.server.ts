@@ -2,7 +2,7 @@ import type { EffectivePermission } from '@sva/core';
 import { createHash, createHmac } from 'node:crypto';
 import { createSdkLogger } from '@sva/sdk/server';
 
-import { getRedisClient } from '../redis.server';
+import { getRedisClient } from '../redis.server.js';
 
 const logger = createSdkLogger({ component: 'iam-permission-cache', level: 'info' });
 

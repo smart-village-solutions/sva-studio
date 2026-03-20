@@ -48,6 +48,15 @@ type IamErrorPayload =
       readonly requestId?: string;
     };
 
+type SafeDiagnosticDetails = Readonly<{
+  reason_code?: string;
+  dependency?: string;
+  schema_object?: string;
+  expected_migration?: string;
+  actor_resolution?: string;
+  instance_id?: string;
+}>;
+
 const hasTopLevelMessage = (
   payload: IamErrorPayload
 ): payload is IamErrorPayload & { readonly message?: unknown } => 'message' in payload;
@@ -99,15 +108,47 @@ const readErrorMessageFromPayload = (payload: IamErrorPayload | null, status: nu
   return `http_${status}`;
 };
 
-const logDevelopmentApiError = (input: { requestId?: string; status: number; code: string }) => {
+const readSafeDiagnosticDetails = (payload: IamErrorPayload | null): SafeDiagnosticDetails | undefined => {
+  if (!payload || typeof payload.error !== 'object' || !payload.error || !('details' in payload.error)) {
+    return undefined;
+  }
+
+  const details = (payload.error as { details?: unknown }).details;
+  if (!details || typeof details !== 'object') {
+    return undefined;
+  }
+
+  const source = details as Record<string, unknown>;
+  const safeDetails: SafeDiagnosticDetails = {
+    reason_code: typeof source.reason_code === 'string' ? source.reason_code : undefined,
+    dependency: typeof source.dependency === 'string' ? source.dependency : undefined,
+    schema_object: typeof source.schema_object === 'string' ? source.schema_object : undefined,
+    expected_migration:
+      typeof source.expected_migration === 'string' ? source.expected_migration : undefined,
+    actor_resolution:
+      typeof source.actor_resolution === 'string' ? source.actor_resolution : undefined,
+    instance_id: typeof source.instance_id === 'string' ? source.instance_id : undefined,
+  };
+
+  return Object.values(safeDetails).some((value) => typeof value === 'string') ? safeDetails : undefined;
+};
+
+const logDevelopmentApiError = (input: {
+  requestId?: string;
+  status: number;
+  code: string;
+  details?: SafeDiagnosticDetails;
+}) => {
   if (!isDevelopmentEnvironment()) {
     return;
   }
 
-  console.error(
-    `IAM API request failed – status=${input.status} code=${input.code}` +
-      (input.requestId ? ` request_id=${input.requestId}` : '')
-  );
+  console.error('IAM API request failed', {
+    request_id: input.requestId,
+    status: input.status,
+    code: input.code,
+    ...(input.details ? { details: input.details } : {}),
+  });
 };
 
 export const asIamError = (error: unknown): IamHttpError =>
@@ -289,8 +330,9 @@ const readErrorPayload = async (response: Response): Promise<IamHttpError> => {
   const payload = (await response.json().catch(() => null)) as IamErrorPayload | null;
   const code = readErrorCodeFromPayload(payload) ?? 'internal_error';
   const requestId = readRequestIdFromResponse(response, payload ?? undefined);
+  const details = readSafeDiagnosticDetails(payload);
 
-  logDevelopmentApiError({ requestId, status: response.status, code });
+  logDevelopmentApiError({ requestId, status: response.status, code, details });
 
   return new IamHttpError({
     status: response.status,

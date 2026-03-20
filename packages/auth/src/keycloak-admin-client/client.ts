@@ -1,1 +1,1 @@
-export { KeycloakAdminClient } from './core';
+export { KeycloakAdminClient } from './core.js';

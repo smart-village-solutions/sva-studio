@@ -3,15 +3,15 @@ import type { IamUserDetail, IamUserRoleAssignment } from '@sva/core';
 import {
   KeycloakAdminRequestError,
   KeycloakAdminUnavailableError,
-} from '../keycloak-admin-client';
+} from '../keycloak-admin-client.js';
 import {
   getSvaMainserverCredentialAttributeNames,
   readIdentityUserAttributes,
   resolveMainserverCredentialState,
-} from '../mainserver-credentials.server';
+} from '../mainserver-credentials.server.js';
 
-import { getRoleDisplayName } from './role-audit';
-import { resolveIdentityProvider, resolveRolesByExternalNames, trackKeycloakCall } from './shared';
+import { getRoleDisplayName } from './role-audit.js';
+import { resolveIdentityProvider, resolveRolesByExternalNames, trackKeycloakCall } from './shared.js';
 
 const mapProjectedRoles = (
   roles: Awaited<ReturnType<typeof resolveRolesByExternalNames>>

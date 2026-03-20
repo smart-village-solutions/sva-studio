@@ -5,9 +5,11 @@ import type {
   ApiItemResponse,
   ApiListResponse,
 } from '@sva/core';
-import { jsonResponse } from '../shared/db-helpers';
-import { readNumber, readString } from '../shared/input-readers';
+import { jsonResponse } from '../shared/db-helpers.js';
+import { readNumber, readString } from '../shared/input-readers.js';
 import { z } from 'zod';
+
+import { annotateApiErrorSpan } from './diagnostics.js';
 
 export const createApiError = (
   status: number,
@@ -15,8 +17,10 @@ export const createApiError = (
   message: string,
   requestId?: string,
   details?: Readonly<Record<string, unknown>>
-): Response =>
-  jsonResponse(status, {
+): Response => {
+  annotateApiErrorSpan({ status, code, details });
+
+  return jsonResponse(status, {
     error: {
       code,
       message,
@@ -24,6 +28,7 @@ export const createApiError = (
     },
     ...(requestId ? { requestId } : {}),
   } satisfies ApiErrorResponse);
+};
 
 export const asApiItem = <T>(data: T, requestId?: string): ApiItemResponse<T> => ({
   data,

@@ -1,8 +1,8 @@
 import { getWorkspaceContext, withRequestContext } from '@sva/sdk/server';
 
-import { resolveImpersonationSubject } from '../iam-governance.server';
-import { withAuthenticatedUser } from '../middleware.server';
-import { jsonResponse } from '../shared/db-helpers';
+import { resolveImpersonationSubject } from '../iam-governance.server.js';
+import { withAuthenticatedUser } from '../middleware.server.js';
+import { jsonResponse } from '../shared/db-helpers.js';
 import {
   buildMePermissionsResponse,
   buildRequestContext,
@@ -11,8 +11,8 @@ import {
   resolveActingAsUserIdFromRequest,
   resolveInstanceIdFromRequest,
   resolveOrganizationIdFromRequest,
-} from './shared';
-import { resolveEffectivePermissions } from './permission-store';
+} from './shared.js';
+import { resolveEffectivePermissions } from './permission-store.js';
 
 export const mePermissionsHandler = async (request: Request): Promise<Response> => {
   return withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {

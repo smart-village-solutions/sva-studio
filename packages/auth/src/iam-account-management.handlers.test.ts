@@ -4297,6 +4297,75 @@ describe('iam-account-management additional handlers', () => {
     expect(payload.error.code).toBe('database_unavailable');
   });
 
+  it('returns schema_drift details when profile loading fails with unexpected internal error and critical schema drift is present', async () => {
+    state.user = {
+      id: 'keycloak-self-schema-drift',
+      name: 'Self User',
+      roles: ['member'],
+      instanceId: 'de-musterhausen',
+    };
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+      if (text.includes('WHERE a.id = $2::uuid')) {
+        throw new Error('unexpected profile query failure');
+      }
+      if (text.includes("to_regclass('iam.groups')")) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              groups_exists: true,
+              group_roles_exists: true,
+              account_groups_exists: true,
+              account_groups_origin_column_exists: false,
+              activity_logs_exists: true,
+              accounts_avatar_url_column_exists: true,
+              accounts_instance_id_column_exists: true,
+              accounts_username_ciphertext_column_exists: true,
+              accounts_notes_column_exists: true,
+              accounts_preferred_language_column_exists: true,
+              accounts_timezone_column_exists: true,
+              idx_accounts_kc_subject_instance_exists: true,
+              accounts_isolation_policy_matches: true,
+              instance_memberships_isolation_policy_matches: true,
+            },
+          ],
+        };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await getMyProfileHandler(
+      new Request('http://localhost/api/v1/iam/users/me', { method: 'GET' })
+    );
+    const payload = (await response.json()) as {
+      error: {
+        code: string;
+        details?: {
+          dependency?: string;
+          expected_migration?: string;
+          instance_id?: string;
+          reason_code?: string;
+          schema_object?: string;
+        };
+      };
+    };
+
+    expect(response.status).toBe(503);
+    expect(payload.error.code).toBe('database_unavailable');
+    expect(payload.error.details).toEqual(
+      expect.objectContaining({
+        dependency: 'database',
+        expected_migration: '0018_iam_account_groups_origin_compat.sql',
+        instance_id: 'de-musterhausen',
+        reason_code: 'schema_drift',
+        schema_object: 'iam.account_groups.origin',
+      })
+    );
+  });
+
   it('updates the current user profile', async () => {
     const selfAccountId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
     state.user = {
@@ -4558,6 +4627,29 @@ describe('iam-account-management additional handlers', () => {
       if (text.includes('SELECT 1;')) {
         return { rowCount: 1, rows: [{ '?column?': 1 }] };
       }
+      if (text.includes("to_regclass('iam.groups')")) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              groups_exists: true,
+              group_roles_exists: true,
+              account_groups_exists: true,
+              account_groups_origin_column_exists: true,
+              activity_logs_exists: true,
+              accounts_avatar_url_column_exists: true,
+              accounts_instance_id_column_exists: true,
+              accounts_username_ciphertext_column_exists: true,
+              accounts_notes_column_exists: true,
+              accounts_preferred_language_column_exists: true,
+              accounts_timezone_column_exists: true,
+              idx_accounts_kc_subject_instance_exists: true,
+              accounts_isolation_policy_matches: true,
+              instance_memberships_isolation_policy_matches: true,
+            },
+          ],
+        };
+      }
       return { rowCount: 0, rows: [] };
     };
 
@@ -4566,21 +4658,22 @@ describe('iam-account-management additional handlers', () => {
     );
     const payload = (await response.json()) as {
       status: string;
-      checks: { db: boolean; redis: boolean; keycloak: boolean };
+      checks: { db: boolean; redis: boolean; keycloak: boolean; errors: Record<string, string> };
     };
 
     expect(response.status).toBe(200);
     expect(payload).toEqual(
       expect.objectContaining({
         status: 'ready',
-        checks: {
+        checks: expect.objectContaining({
           db: true,
           redis: true,
           keycloak: true,
+          errors: {},
           authorizationCache: expect.objectContaining({
             status: 'ready',
           }),
-        },
+        }),
       })
     );
   });
@@ -4598,6 +4691,29 @@ describe('iam-account-management additional handlers', () => {
     state.queryHandler = (text) => {
       if (text.includes('SELECT 1;')) {
         return { rowCount: 1, rows: [{ '?column?': 1 }] };
+      }
+      if (text.includes("to_regclass('iam.groups')")) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              groups_exists: true,
+              group_roles_exists: true,
+              account_groups_exists: true,
+              account_groups_origin_column_exists: true,
+              activity_logs_exists: true,
+              accounts_avatar_url_column_exists: true,
+              accounts_instance_id_column_exists: true,
+              accounts_username_ciphertext_column_exists: true,
+              accounts_notes_column_exists: true,
+              accounts_preferred_language_column_exists: true,
+              accounts_timezone_column_exists: true,
+              idx_accounts_kc_subject_instance_exists: true,
+              accounts_isolation_policy_matches: true,
+              instance_memberships_isolation_policy_matches: true,
+            },
+          ],
+        };
       }
       return { rowCount: 0, rows: [] };
     };
@@ -4630,6 +4746,9 @@ describe('iam-account-management additional handlers', () => {
       if (text.includes('SELECT 1;')) {
         throw new Error('db down');
       }
+      if (text.includes("to_regclass('iam.groups')")) {
+        return { rowCount: 0, rows: [] };
+      }
       return { rowCount: 0, rows: [] };
     };
 
@@ -4651,6 +4770,73 @@ describe('iam-account-management additional handlers', () => {
           keycloak: false,
         }),
       })
+    );
+  });
+
+  it('returns not_ready when the critical IAM schema drifts', async () => {
+    state.redisAvailable = true;
+    state.listRolesImpl = async () => [];
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT 1;')) {
+        return { rowCount: 1, rows: [{ '?column?': 1 }] };
+      }
+      if (text.includes("to_regclass('iam.groups')")) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              groups_exists: true,
+              group_roles_exists: true,
+              account_groups_exists: false,
+              account_groups_origin_column_exists: false,
+              activity_logs_exists: true,
+              accounts_avatar_url_column_exists: true,
+              accounts_instance_id_column_exists: true,
+              accounts_username_ciphertext_column_exists: true,
+              accounts_notes_column_exists: true,
+              accounts_preferred_language_column_exists: true,
+              accounts_timezone_column_exists: true,
+              idx_accounts_kc_subject_instance_exists: true,
+              accounts_isolation_policy_matches: true,
+              instance_memberships_isolation_policy_matches: true,
+            },
+          ],
+        };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await healthReadyHandler(
+      new Request('http://localhost/api/v1/iam/health/ready', { method: 'GET' })
+    );
+    const payload = (await response.json()) as {
+      checks: {
+        db: boolean;
+        diagnostics?: {
+          db?: {
+            reason_code?: string;
+            schema_guard?: {
+              checks: Array<{ reasonCode: string; schemaObject: string }>;
+            };
+          };
+        };
+        errors: Record<string, string>;
+      };
+      status: string;
+    };
+
+    expect(response.status).toBe(503);
+    expect(payload.status).toBe('not_ready');
+    expect(payload.checks.db).toBe(false);
+    expect(payload.checks.errors.db).toContain('missing_table:iam.account_groups');
+    expect(payload.checks.diagnostics?.db?.reason_code).toBe('schema_drift');
+    expect(payload.checks.diagnostics?.db?.schema_guard?.checks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          reasonCode: 'missing_table',
+          schemaObject: 'iam.account_groups',
+        }),
+      ])
     );
   });
 

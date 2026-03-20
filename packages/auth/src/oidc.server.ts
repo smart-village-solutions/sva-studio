@@ -1,7 +1,7 @@
 import * as client from 'openid-client';
 import { createSdkLogger, getWorkspaceContext } from '@sva/sdk/server';
 
-import { getAuthConfig } from './config';
+import { getAuthConfig } from './config.js';
 
 let configPromise: Promise<client.Configuration> | undefined;
 const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });

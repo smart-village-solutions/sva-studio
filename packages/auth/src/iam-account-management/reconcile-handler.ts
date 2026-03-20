@@ -1,14 +1,14 @@
 import { getWorkspaceContext } from '@sva/sdk/server';
 
-import type { IdentityProviderPort } from '../identity-provider-port';
-import type { AuthenticatedRequestContext } from '../middleware.server';
-import { jsonResponse } from '../shared/db-helpers';
-import { readString } from '../shared/input-readers';
+import type { IdentityProviderPort } from '../identity-provider-port.js';
+import type { AuthenticatedRequestContext } from '../middleware.server.js';
+import { jsonResponse } from '../shared/db-helpers.js';
+import { readString } from '../shared/input-readers.js';
 
-import { SYSTEM_ADMIN_ROLES } from './constants';
-import { asApiItem, createApiError } from './api-helpers';
-import { ensureFeature, getFeatureFlags } from './feature-flags';
-import { consumeRateLimit } from './rate-limit';
+import { SYSTEM_ADMIN_ROLES } from './constants.js';
+import { asApiItem, createApiError } from './api-helpers.js';
+import { ensureFeature, getFeatureFlags } from './feature-flags.js';
+import { consumeRateLimit } from './rate-limit.js';
 import {
   emitRoleAuditEvent,
   logger,
@@ -19,15 +19,15 @@ import {
   setRoleSyncState,
   trackKeycloakCall,
   withInstanceScopedDb,
-} from './shared';
-import { validateCsrf } from './csrf';
+} from './shared.js';
+import { validateCsrf } from './csrf.js';
 import {
   getRoleDisplayName,
   getRoleExternalName,
   mapRoleSyncErrorCode,
   sanitizeRoleErrorMessage,
-} from './role-audit';
-import type { ManagedRoleRow } from './types';
+} from './role-audit.js';
+import type { ManagedRoleRow } from './types.js';
 
 type ReconcileRoleEntry = {
   readonly roleId?: string;

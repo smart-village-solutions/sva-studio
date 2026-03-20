@@ -1,1 +1,1 @@
-export * from './iam-organizations/index';
+export * from './iam-organizations/index.js';

@@ -3,10 +3,10 @@ import { randomUUID } from 'node:crypto';
 import type { IamAdminGroupDetail } from '@sva/core';
 import { createSdkLogger, getWorkspaceContext } from '@sva/sdk/server';
 
-import type { AuthenticatedRequestContext } from '../middleware.server';
-import type { QueryClient } from '../shared/db-helpers';
-import { jsonResponse } from '../shared/db-helpers';
-import { isUuid } from '../shared/input-readers';
+import type { AuthenticatedRequestContext } from '../middleware.server.js';
+import type { QueryClient } from '../shared/db-helpers.js';
+import { jsonResponse } from '../shared/db-helpers.js';
+import { isUuid } from '../shared/input-readers.js';
 import {
   asApiItem,
   asApiList,
@@ -14,24 +14,24 @@ import {
   parseRequestBody,
   readPage,
   readPathSegment,
-} from '../iam-account-management/api-helpers';
-import { ADMIN_ROLES } from '../iam-account-management/constants';
-import { validateCsrf } from '../iam-account-management/csrf';
+} from '../iam-account-management/api-helpers.js';
+import { ADMIN_ROLES } from '../iam-account-management/constants.js';
+import { validateCsrf } from '../iam-account-management/csrf.js';
 import {
   emitActivityLog,
   requireRoles,
   resolveActorInfo,
   withInstanceScopedDb,
-} from '../iam-account-management/shared';
-import { publishGroupEvent } from './events';
+} from '../iam-account-management/shared.js';
+import { publishGroupEvent } from './events.js';
 import {
   assignGroupMembershipSchema,
   assignGroupRoleSchema,
   createGroupSchema,
   removeGroupMembershipSchema,
   updateGroupSchema,
-} from './schemas';
-import { mapGroupListItem, mapGroupMembership, type AccountGroupRow, type GroupRow } from './types';
+} from './schemas.js';
+import { mapGroupListItem, mapGroupMembership, type AccountGroupRow, type GroupRow } from './types.js';
 
 const logger = createSdkLogger({ component: 'iam-groups', level: 'info' });
 

@@ -1,6 +1,6 @@
 import { getRuntimeProfileFromEnv, isMockAuthRuntimeProfile } from '@sva/sdk';
 
-import type { SessionUser } from './types';
+import type { SessionUser } from './types.js';
 
 const DEFAULT_MOCK_AUTH_ROLES = [
   'system_admin',

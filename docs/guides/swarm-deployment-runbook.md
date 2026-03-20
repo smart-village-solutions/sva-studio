@@ -4,11 +4,12 @@
 
 Diese Anleitung beschreibt den Rollout von SVA Studio auf einem Server mit Docker Swarm und Traefik, verwaltet über Portainer. Sie ersetzt den früheren Nicht-Swarm-Stack und folgt dem Referenz-Betriebsprofil aus [ADR-019](../adr/ADR-019-swarm-traefik-referenz-betriebsprofil.md).
 
-Im vereinheitlichten Betriebsmodell entspricht dieses Runbook dem Profil `acceptance-hb`. Die übergeordnete Bedienlogik für `up`, `down`, `update`, `status`, `smoke` und `migrate` ist unter `../development/runtime-profile-betrieb.md` dokumentiert.
+Im vereinheitlichten Betriebsmodell entspricht dieses Runbook dem Profil `acceptance-hb`. Die übergeordnete Bedienlogik für `precheck`, `deploy`, `down`, `status`, `smoke` und `migrate` ist unter `../development/runtime-profile-betrieb.md` dokumentiert.
 
 Der Stack besteht aus:
 
 - `app` (TanStack Start / Nitro Node-Server, über Traefik exponiert)
+- `adminer` (geschützte DB-Admin-Oberfläche für Acceptance-Troubleshooting)
 - `postgres` (IAM Core Data Layer)
 - `redis` (Session-/Cache-Store)
 - `otel-collector` (OTLP Hub für Logs und Metriken)
@@ -59,63 +60,31 @@ Regel:
 |---|---|
 | `deploy/portainer/docker-compose.yml` | Swarm-Stack-Definition |
 | `deploy/portainer/Dockerfile` | Build-Definition für das App-Image |
-| `deploy/portainer/entrypoint.sh` | Lädt Swarm-Secrets als Env-Variablen |
+| `deploy/portainer/entrypoint.sh` | Validiert und normalisiert Runtime-Variablen vor dem App-Start |
 | `deploy/portainer/otel-bootstrap.mjs` | Initialisiert OTEL vor dem Nitro-Entry im Node-Prozess |
 | `deploy/portainer/monitoring/` | Swarm-spezifische Monitoring-Konfigurationen |
 | `deploy/portainer/monitoring-config-init/` | Build-Kontext für das Init-Image, das Monitoring-Konfigurationen in Volumes schreibt |
 | `deploy/portainer/.env.example` | Referenz aller Konfigurationsvariablen |
 
-## Schritt 1: Secrets provisionieren
+## Schritt 1: Stack-Variablen konfigurieren
 
-Alle vertraulichen Werte werden als externe Docker-Swarm-Secrets bereitgestellt. Jedes Secret wird aus einer Datei erstellt. Die Dateien dürfen anschließend gelöscht werden.
-
-Für den PII-Keyring wird im Swarm-Profil nur das Rohmaterial für `k1` als Secret gepflegt; der Entrypoint baut daraus zur Laufzeit `IAM_PII_KEYRING_JSON` im Format `{"k1":"..."}`.
-
-```bash
-# Auth-Secrets
-docker secret create sva_studio_app_auth_client_secret ./secrets/oidc-client-secret.txt
-docker secret create sva_studio_app_auth_state_secret ./secrets/state-secret.txt
-
-# Verschlüsselung
-docker secret create sva_studio_app_encryption_key ./secrets/encryption-key.txt
-docker secret create sva_studio_app_pii_keyring_json-k1 ./secrets/pii-keyring-k1.txt
-
-# Datenbank
-docker secret create sva_studio_postgres_password ./secrets/postgres-password.txt
-docker secret create sva_studio_app_db_password ./secrets/app-db-password.txt
-
-# Redis
-docker secret create sva_studio_redis_password ./secrets/redis-password.txt
-
-# Keycloak-Admin (optional)
-docker secret create sva_studio_keycloak_admin_client_secret ./secrets/keycloak-admin-client-secret.txt
-```
-
-Nach dem Provisionieren sollten die lokalen Secret-Dateien sicher gelöscht oder außerhalb der Shell-History verwaltet werden.
-Hinweis: Das Secret `sva_studio_keycloak_admin_client_secret` muss im aktuellen Stack vorhanden sein, auch wenn Admin-/Sync-Features deaktiviert sind.
-
-### Namenskonvention
-
-`sva_studio_<service>_<secret_name>` – siehe Klassifizierungstabelle in `design.md`.
-
-### Secret-Rotation
-
-Bei Kompromittierung oder planmäßiger Rotation:
-
-1. Neues Secret mit temporärem Namen erstellen
-2. Stack-Datei auf neuen Secret-Namen anpassen
-3. Stack neu deployen
-4. Altes Secret löschen: `docker secret rm <alter_name>`
-
-## Schritt 2: Stack-Variablen konfigurieren
-
-Die nicht-sensitiven Konfigurationswerte werden als Stack-Umgebungsvariablen in Portainer gepflegt. Referenzwerte: `.env.example`.
+Das Referenzprofil `acceptance-hb` wird env-only betrieben. Sowohl nicht-sensitive als auch vertrauliche Werte werden als Stack-Umgebungsvariablen in Portainer gepflegt. Referenzwerte: `.env.example`.
 
 ### Pflicht-Variablen
 
 | Variable | Beispiel |
 |---|---|
+| `POSTGRES_PASSWORD` | `***` |
+| `APP_DB_PASSWORD` | `***` |
+| `REDIS_PASSWORD` | `***` |
+| `SVA_AUTH_CLIENT_SECRET` | `***` |
+| `SVA_AUTH_STATE_SECRET` | `***` |
+| `KEYCLOAK_ADMIN_CLIENT_SECRET` | `***` |
+| `ENCRYPTION_KEY` | `***` |
+| `IAM_PII_KEYRING_JSON` | `{"k1":"***"}` |
 | `SVA_PUBLIC_BASE_URL` | `https://studio.smart-village.app` |
+| `SVA_PUBLIC_HOST` | `studio.smart-village.app` |
+| `SVA_DB_ADMIN_HOST` | `studio-db.smart-village.app` |
 | `SVA_AUTH_ISSUER` | `https://keycloak.example.org/realms/sva` |
 | `SVA_AUTH_CLIENT_ID` | `sva-studio` |
 | `SVA_AUTH_REDIRECT_URI` | `https://studio.smart-village.app/auth/callback` |
@@ -127,7 +96,8 @@ Die nicht-sensitiven Konfigurationswerte werden als Stack-Umgebungsvariablen in 
 
 | Variable | Default | Beschreibung |
 |---|---|---|
-| `SVA_REGISTRY` | `ghcr.io/smart-village-solutions` | Container-Registry |
+| `SVA_REGISTRY` | `ghcr.io/smart-village-solutions` | Container-Registry für das App-Image |
+| `SVA_MONITORING_REGISTRY` | `ghcr.io/smart-village-solutions` | Container-Registry für das Monitoring-Init-Image |
 | `SVA_IMAGE_TAG` | `0.0.0-dev` | Image-Tag oder Digest; für Produktion Digest oder unveränderlichen Tag verwenden |
 | `SVA_MONITORING_CONFIG_INIT_IMAGE_TAG` | `0.0.0-dev` | Image-Tag des Monitoring-Init-Images; für Produktion Digest oder unveränderlichen Tag verwenden |
 | `SVA_ALLOWED_INSTANCE_IDS` | leer | Kommagetrennte erlaubte instanceIds |
@@ -138,9 +108,29 @@ Die nicht-sensitiven Konfigurationswerte werden als Stack-Umgebungsvariablen in 
 | `IAM_UI_ENABLED` | `false` | IAM-Account-UI |
 | `IAM_ADMIN_ENABLED` | `false` | IAM-Admin-UI |
 | `IAM_BULK_ENABLED` | `false` | IAM-Bulk-Operationen |
+| `SVA_DOCTOR_KEYCLOAK_SUBJECT` | leer | optionaler Actor-Override für `env:doctor:acceptance-hb` |
+| `SVA_DOCTOR_INSTANCE_ID` | erster Wert aus `SVA_ALLOWED_INSTANCE_IDS` | überschreibt die Zielinstanz für den Doctor-Lauf |
+| `SVA_DOCTOR_SESSION_ROLES` | leer | kommagetrennte Session-Rollen für Rollen-Diagnose |
+| `SVA_DB_ADMIN_BASIC_AUTH` | kein Default | htpasswd-String für vorgeschalteten Adminer-Basic-Auth |
 
 Die vollständige Variablenliste inklusive Keycloak-Admin- und Rollenabgleich-Optionen steht in `deploy/portainer/.env.example`.
-Für produktive Deployments sollten `SVA_IMAGE_TAG` und `SVA_MONITORING_CONFIG_INIT_IMAGE_TAG` auf einen unveränderlichen Tag oder direkt auf einen Digest gesetzt werden.
+Für produktive Deployments sollten `SVA_IMAGE_TAG` und `SVA_MONITORING_CONFIG_INIT_IMAGE_TAG` auf einen unveränderlichen Tag oder direkt auf einen Digest gesetzt werden. Wenn App- und Monitoring-Image aus unterschiedlichen Registries bezogen werden, müssen `SVA_REGISTRY` und `SVA_MONITORING_REGISTRY` konsistent gesetzt sein.
+
+### Adminer für Acceptance
+
+Für DB-Diagnose auf `acceptance-hb` wird Adminer intern über Traefik veröffentlicht:
+
+- eigener Host über `SVA_DB_ADMIN_HOST`
+- zusätzliche Basic-Auth über `SVA_DB_ADMIN_BASIC_AUTH`
+- Adminer selbst nutzt danach weiterhin die normalen Postgres-Zugangsdaten
+
+Beispiel zum Erzeugen des Basic-Auth-Hashes:
+
+```bash
+htpasswd -nbB admin '<starkes-passwort>'
+```
+
+Der komplette Output muss unverändert als `SVA_DB_ADMIN_BASIC_AUTH` gesetzt werden.
 
 ### Ressourcenlimits des Referenzprofils
 
@@ -157,13 +147,29 @@ Für produktive Deployments sollten `SVA_IMAGE_TAG` und `SVA_MONITORING_CONFIG_I
 | `promtail` | `0.25` |
 | `alertmanager` | `0.25` |
 
-## Schritt 3: Datenbank initialisieren
+## Schritt 2: Datenbank initialisieren
 
 Im Swarm-Stack sind keine automatischen DB-Initialisierungsskripte enthalten. Beim ersten Deploy auf ein leeres Postgres-Volume muss die Datenbank manuell initialisiert werden.
 
 ### Migrationen ausführen
 
 Die SQL-Dateien müssen als Artefakt bereitgestellt werden (z. B. CI-Artefakt, Release-Asset oder separates Migrationsbundle). Ein Repository-Checkout auf dem Swarm-Node ist nicht erforderlich.
+
+Bevorzugter Betriebsweg aus dem Repository heraus:
+
+```bash
+cd "$(git rev-parse --show-toplevel)"
+pnpm env:migrate:acceptance-hb
+```
+
+Der Befehl wendet die SQL-Dateien aus `packages/data/migrations/up/*.sql` in Reihenfolge gegen den laufenden Acceptance-Postgres an:
+
+- bevorzugt remote via `quantum-cli exec --endpoint sva --stack sva-studio --service postgres`
+- nur als Fallback lokal via `docker exec`, wenn der Swarm-Postgres auf demselben Docker-Daemon sichtbar ist
+- nach erfolgreichem SQL-Lauf validiert ein kritischer IAM-Schema-Guard automatisch Tabellen, Spalten, Indizes und RLS-Policies
+- bei Drift endet der Befehl mit einem maschinenlesbaren Fehlerbild statt mit einem stillschweigend unvollständigen Zustand
+
+Damit ist kein manuelles Paste-in-`psql` mehr erforderlich.
 
 ```bash
 # Postgres-Container identifizieren
@@ -195,26 +201,99 @@ GRANT iam_app TO sva_app;
 "
 ```
 
-`<APP_DB_PASSWORD>` muss dem Wert des Swarm-Secrets `sva_studio_app_db_password` entsprechen.
+`<APP_DB_PASSWORD>` muss dem Wert der Stack-Variable `APP_DB_PASSWORD` entsprechen.
 
-## Schritt 4: Stack deployen
+## Schritt 3: Kanonischen Acceptance-Deploy ausführen
 
-### Über Portainer
+Der reguläre Serverdeploy für `acceptance-hb` läuft nur noch über den orchestrierten Einstiegspunkt `pnpm env:deploy:acceptance-hb`. Direkte Acceptance-Redeploys über `up`/`update`, Portainer-Klickpfade oder Ad-hoc-`docker stack deploy` sind nicht mehr der verbindliche Standard.
+
+### Release-Klassen
+
+- `app-only`: reiner Image-/Konfigurationsrollout ohne Schemaänderung
+- `schema-and-app`: Migrationen plus nachgelagerter Stack-Rollout; erfordert ein dokumentiertes Wartungsfenster
+
+### Empfohlene Reihenfolge
+
+```bash
+cd "$(git rev-parse --show-toplevel)"
+
+pnpm env:precheck:acceptance-hb
+pnpm env:deploy:acceptance-hb -- --release-mode=app-only --image-tag=<unveraenderlicher-tag>
+```
+
+Für Schemaänderungen:
+
+```bash
+cd "$(git rev-parse --show-toplevel)"
+
+pnpm env:deploy:acceptance-hb -- \
+  --release-mode=schema-and-app \
+  --maintenance-window="2026-03-20 19:00-19:15 CET" \
+  --image-tag=<unveraenderlicher-tag> \
+  --rollback-hint="Vorherigen Digest erneut deployen"
+```
+
+Der Deploypfad führt verbindlich aus:
+
+1. `precheck`
+2. optionales Wartungsfenster als Release-Metadatum
+3. `migrate` bei `schema-and-app`
+4. Stack-Rollout via `quantum-cli stacks update` oder `docker stack deploy`
+5. `doctor`
+6. `smoke`
+7. Schreiben eines Deploy-Reports unter `artifacts/runtime/deployments/`
+
+### Fallback über Portainer oder CLI
+
+Dieser Pfad bleibt nur Fallback für Ausnahmefälle oder die initiale Stack-Anlage. Danach muss die Verifikation immer wieder über `pnpm env:doctor:acceptance-hb` und `pnpm env:smoke:acceptance-hb` abgesichert werden.
+
+#### Über Portainer
 
 1. Neuen Stack anlegen (Typ: Swarm)
 2. Compose-Pfad: `deploy/portainer/docker-compose.yml`
 3. Umgebungsvariablen aus Schritt 2 eintragen
 4. Deploy auslösen
 
-### Über CLI
+#### Über CLI
 
 ```bash
-cd deploy/portainer
-# .env mit den Werten aus .env.example befüllen
-docker stack deploy -c docker-compose.yml sva-studio
+cd "$(git rev-parse --show-toplevel)"
+quantum-cli stacks update --environment swarm-secrets --endpoint sva --stack sva-studio --project . --wait
 ```
 
-## Schritt 5: Smoke-Check
+## Schritt 4: Diagnose, Smoke und Evidenz
+
+Verbindliche Reihenfolge nach jedem Acceptance-Deploy:
+
+```bash
+pnpm env:doctor:acceptance-hb
+pnpm env:smoke:acceptance-hb
+```
+
+Der kanonische Deploypfad erzeugt zusätzlich pro Lauf Artefakte unter `artifacts/runtime/deployments/`:
+
+- JSON-Report für CI-Weiterverarbeitung
+- Markdown-Report für Menschen
+- Image-/Actor-/Workflow-Metadaten
+- Ergebnis von `precheck`, `migrate`, `deploy`, `doctor` und `smoke`
+- referenzierbaren Stack-Status und optionale Grafana-/Loki-Links
+
+`doctor` ergänzt die Betriebsprüfung um:
+
+- Schema-Drift-Erkennung für kritische IAM-Artefakte
+- Actor-/Membership-Diagnose über `SVA_DOCTOR_*`
+- nicht-sensitive `reason_code`s für DB-, Redis-, Keycloak- und IAM-Pfade
+- Remote-Service-Status via `quantum-cli`
+
+Stabile Diagnosecodes umfassen unter anderem:
+
+- `missing_table`
+- `missing_column`
+- `missing_actor_account`
+- `missing_instance_membership`
+- `schema_drift`
+- `database_connection_failed`
+- `keycloak_dependency_failed`
 
 | Prüfung | Erwartung |
 |---|---|
@@ -226,6 +305,12 @@ docker stack deploy -c docker-compose.yml sva-studio
 | App in Portainer | Status: `healthy` |
 | Monitoring-Services in Portainer | `otel-collector`, `loki`, `prometheus`, `grafana`, `promtail`, `alertmanager` laufen |
 
+Für IAM-Abnahmen zusätzlich:
+
+- `/api/v1/iam/me/context` liefert keinen generischen `403` ohne diagnostischen `reason_code`
+- `/api/v1/iam/users/me/profile` liefert keinen generischen `500` ohne diagnostischen Kontext
+- OTEL-Spans für IAM-Requests enthalten korrelierbare Diagnoseattribute zu Dependency-Status, Actor-Auflösung und Schema-Guard
+
 ### Hinweis zum Monitoring-Bootstrap
 
 `monitoring-config-init` ist als One-shot-Service ausgelegt. Er schreibt die versionierten Konfigurationsdateien in die benannten Volumes, setzt die benötigten Rechte und beendet sich danach erfolgreich. Das ist beabsichtigt und kein Fehlerzustand.
@@ -234,32 +319,27 @@ docker stack deploy -c docker-compose.yml sva-studio
 
 Für ein reines App-Update ohne Schemaänderungen:
 
-1. Neues Image bauen und in die Registry pushen
-2. `SVA_IMAGE_TAG` auf den neuen Tag setzen
-3. Stack in Portainer aktualisieren (Redeploy)
+1. Neues Image mit unveränderlichem Tag oder Digest bereitstellen
+2. `pnpm env:deploy:acceptance-hb -- --release-mode=app-only --image-tag=<tag>` ausführen
+3. Deploy-Report prüfen und archivieren
 
-Swarm führt ein Rolling-Update durch (`start-first`): der neue Container startet, bevor der alte gestoppt wird.
+Für Schemaänderungen:
 
-### Schemaänderungen
-
-Neue SQL-Migrationen erfordern einen bewussten, separaten Schritt:
-
-1. Postgres-Container identifizieren
-2. Neue Migrationen manuell ausführen (siehe Schritt 3)
-3. Danach den App-Stack mit dem neuen Image redeployen
+1. Wartungsfenster definieren
+2. `pnpm env:deploy:acceptance-hb -- --release-mode=schema-and-app --maintenance-window=...` ausführen
+3. Deploy-Report auf `migrate`, `doctor` und `smoke` prüfen
 
 ## Rollback
 
 ### App-Rollback (ohne Schemaänderung)
 
 ```bash
-# Vorherigen Tag setzen und redeployen
-docker service update --image <registry>/sva-studio:<vorheriger-tag> sva-studio_app
+pnpm env:deploy:acceptance-hb -- --release-mode=app-only --image-tag=<vorheriger-unveraenderlicher-tag>
 ```
 
 ### Bei Schemaänderungen
 
-Ein Rollback über eine destruktive Migration hinweg erfordert einen DB-Restore. Für die aktuelle Development-Phase mit frischen Instanzen ist der einfachste Weg:
+Ein Rollback über eine destruktive Migration hinweg erfordert einen DB-Restore oder einen bewusst dokumentierten Rückweg. Für die aktuelle Development-Phase mit frischen Instanzen ist der einfachste Weg:
 
 1. Postgres-Volume löschen
 2. Stack frisch deployen

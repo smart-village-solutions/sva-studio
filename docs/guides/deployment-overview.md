@@ -43,10 +43,11 @@ Die Profilgrenzen sind bewusst dokumentiert. Das Demo-Profil ist kein versteckte
 1. Image mit konkretem Tag bereitstellen.
 2. Zielprofil auswählen.
 3. Zielumgebungsvariablen oder Secrets prüfen.
-4. Stack validieren oder deployen.
-5. Smoke-Checks durchführen.
-6. Monitoring und Logs auf Fehler prüfen.
-7. Nicht-sensitive Folgearbeiten als GitHub Issues nachziehen.
+4. Für `acceptance-hb` zuerst `pnpm env:precheck:acceptance-hb` ausführen.
+5. Den kanonischen Serverdeploy über `pnpm env:deploy:acceptance-hb` starten.
+6. Den erzeugten Deploy-Report unter `artifacts/runtime/deployments/` prüfen.
+7. Monitoring und Logs auf Fehler prüfen.
+8. Nicht-sensitive Folgearbeiten als GitHub Issues nachziehen.
 
 Die operativen Details und Beispielkommandos stehen unter `./swarm-deployment-runbook.md`.
 
@@ -64,6 +65,13 @@ Für den reproduzierbaren Browser-Smoke-Test gilt `../development/app-e2e-integr
 ## Migrationen
 
 Migrationen sind ein bewusster Betriebsschritt und nicht implizit Teil jedes Redeployments.
+
+Für `acceptance-hb` gilt zusätzlich:
+
+- `app-only` und `schema-and-app` sind zwei explizite Release-Klassen
+- `schema-and-app` erfordert ein dokumentiertes Wartungsfenster
+- der kanonische Deploypfad führt Migrationen nur bei `schema-and-app` automatisch aus
+- Deploy-Evidenz wird immer als Report-Artefakt geschrieben
 
 - Lokales Setup und SQL-Workflow: `../development/postgres-setup.md`
 - Swarm-Ausführung und Reihenfolge: `./swarm-deployment-runbook.md`

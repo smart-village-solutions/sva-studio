@@ -94,12 +94,15 @@ und Vorführungszwecke. Unterschiede zum Referenzprofil:
 
 - Der Build-Graph des Portainer-Images baut `sva-mainserver` explizit nach `auth` und vor `plugin-example`, damit die serverseitige Integrationsschicht im Deploy-Artefakt verlässlich vorhanden ist.
 
-- **Image-basiert:** Vorgebaute Images aus Container-Registry (`${SVA_REGISTRY}/sva-studio:${SVA_IMAGE_TAG}`). Kein `build:`-Block im Stack.
+- **Image-basiert:** Vorgebaute Images aus Container-Registry (`${SVA_REGISTRY}/sva-studio:${SVA_IMAGE_TAG}` für die App, `${SVA_MONITORING_REGISTRY}/sva-studio-monitoring-config-init:${SVA_MONITORING_CONFIG_INIT_IMAGE_TAG}` für das Monitoring-Init-Image). Kein `build:`-Block im Stack.
 - **Traefik-Labels:** Host-basiertes Routing über `HostRegexp` für Instanz-Subdomains unter `SVA_PARENT_DOMAIN`. TLS über Traefiks `certresolver`.
 - **Profilgrenze Traefik:** Das Referenzprofil verwendet Traefik v2+-Labels; das Demo-Profil bleibt bewusst bei Traefik-v1-kompatiblen Labels und ist deshalb kein 1:1-Abbild des Referenzbetriebs.
 - **Swarm Secrets:** Vertrauliche Werte als externe Docker-Swarm-Secrets mit Namenskonvention `sva_studio_<service>_<secret_name>`. Ein Shell-Entrypoint (`entrypoint.sh`) liest Secret-Dateien und exportiert sie als Env-Variablen.
 - **Versionierte Monitoring-Konfigurationen:** Prometheus-, Loki-, Grafana-, Promtail- und Alertmanager-Konfigurationen liegen versioniert im Repository und werden über ein dediziertes `monitoring-config-init`-Image einmalig in die Swarm-Volumes geschrieben.
 - **Rolling Updates:** `start-first` für Updates, `stop-first` für Rollbacks.
+- **Kanonischer Acceptance-Releasepfad:** `acceptance-hb` nutzt den orchestrierten Pfad `precheck -> optionales Wartungsfenster -> migrate -> deploy -> doctor -> smoke -> Deploy-Report`.
+- **Release-Klassen:** Acceptance-Deploys unterscheiden `app-only` und `schema-and-app`; nur `schema-and-app` darf Migrationen auslösen.
+- **Deploy-Evidenz:** Jeder Acceptance-Deploy schreibt JSON- und Markdown-Artefakte unter `artifacts/runtime/deployments/` mit Image-, Actor-, Workflow-, Stack- und Verifikationsdaten.
 - **Persistenz:** Named Volumes für Postgres, Redis, Prometheus, Loki, Grafana und Alertmanager.
 - **Monitoring-Bootstrap:** Der Node-Prozess lädt OpenTelemetry vor dem Nitro-Entry per `--import`, statt erst beim ersten Root-Request.
 - **Ressourcenprofile:** Das Referenzprofil setzt CPU-Limits für App, Datenbank und Monitoring-Services, damit der Stack auf kleinen Swarm-Nodes kontrolliert bleibt.
@@ -115,7 +118,7 @@ und Vorführungszwecke. Unterschiede zum Referenzprofil:
 
 #### DB-Initialisierung
 
-Im Swarm-Stack sind keine automatischen Initialisierungsskripte enthalten. Die DB-Einrichtung (Migrationen, Runtime-User) ist ein bewusster, manueller Betriebsschritt. Details im [Swarm-Deployment-Runbook](../guides/swarm-deployment-runbook.md).
+Im Swarm-Stack sind keine automatischen Initialisierungsskripte enthalten. Die DB-Einrichtung bleibt ein bewusster Betriebsschritt, wird für `acceptance-hb` aber über den offiziellen `env:migrate`-/`env:deploy`-Pfad statt über ad-hoc SQL oder implizite Redeploys gesteuert. Details im [Swarm-Deployment-Runbook](../guides/swarm-deployment-runbook.md).
 
 Betriebliche Einordnung:
 
@@ -149,6 +152,7 @@ Referenzen:
 - Swarm-Stack: Startup-Validierung der Allowlist gegen `instanceId`-Regex (fail-fast)
 - Swarm-Stack: Monitoring-UI und Storage bleiben intern; keine öffentliche Exponierung ohne zusätzliche Zugangskontrolle
 - Swarm-Stack: `monitoring-config-init` ist ein One-shot-Initialisierer und soll nach erfolgreicher Volume-Befüllung beendet sein
+- Swarm-Stack: `postgres-schema-bootstrap` ist nur noch ein Legacy-Übergangspfad; der reguläre Schemarollout erfolgt über `pnpm env:migrate:acceptance-hb` bzw. `pnpm env:deploy:acceptance-hb -- --release-mode=schema-and-app`
 - Operative Zielwerte für das Referenzprofil: `RTO <= 2h` für App/Monitoring und Session-Store, `RTO <= 15 min` für den rekonstruierbaren Permission-Cache, `RPO <= 24h` für IAM-Daten in Postgres
 - Primäre betriebliche Eskalation via `operations@smart-village.app`, Sicherheits-/DSGVO-Eskalation via `security@smart-village.app`
 

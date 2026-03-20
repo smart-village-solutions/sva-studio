@@ -5,7 +5,7 @@
 #   - Docker Swarm initialisiert
 #   - Externes Overlay-Netzwerk "public" existiert
 #   - Traefik-Ingress läuft im selben Swarm und lauscht auf dem "public"-Netzwerk
-#   - Secrets sind vor dem Stack-Deploy provisioniert (siehe Runbook)
+#   - Alle sensiblen Werte werden als normale Stack-Variablen gesetzt
 #   - Image ist vorgebaut und in einer Registry verfügbar
 # ---------------------------------------------------------------------------
 
@@ -14,48 +14,49 @@ services:
   # App – TanStack-Start-/Nitro-Server
   # -------------------------------------------------------------------------
   app:
-    image: ghcr.io/smart-village-solutions/sva-studio:${SVA_IMAGE_TAG}
+    image: ${SVA_REGISTRY}/sva-studio:${SVA_IMAGE_TAG}
     environment:
       NODE_ENV: production
       HOST: 0.0.0.0
       PORT: 3000
-      ENABLE_OTEL: "${ENABLE_OTEL:-true}"
-      OTEL_SERVICE_NAME: "${OTEL_SERVICE_NAME:-sva-studio}"
-      OTEL_EXPORTER_OTLP_ENDPOINT: "${OTEL_EXPORTER_OTLP_ENDPOINT:-http://otel-collector:4318}"
+      SVA_RUNTIME_PROFILE: "${SVA_RUNTIME_PROFILE}"
+      SVA_AUTH_CLIENT_SECRET: "${SVA_AUTH_CLIENT_SECRET}"
+      SVA_AUTH_STATE_SECRET: "${SVA_AUTH_STATE_SECRET}"
+      KEYCLOAK_ADMIN_CLIENT_SECRET: "${KEYCLOAK_ADMIN_CLIENT_SECRET}"
+      ENCRYPTION_KEY: "${ENCRYPTION_KEY}"
+      IAM_PII_KEYRING_JSON: "${IAM_PII_KEYRING_JSON}"
+      APP_DB_PASSWORD: "${APP_DB_PASSWORD}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
+      REDIS_PASSWORD: "${REDIS_PASSWORD}"
+      ENABLE_OTEL: "${ENABLE_OTEL}"
+      OTEL_SERVICE_NAME: "${OTEL_SERVICE_NAME}"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "${OTEL_EXPORTER_OTLP_ENDPOINT}"
       POSTGRES_DB: sva_studio
       APP_DB_USER: sva_app
-      SVA_PUBLIC_BASE_URL: "${SVA_PUBLIC_BASE_URL:-https://studio.smart-village.app}"
-      SVA_AUTH_ISSUER: "${SVA_AUTH_ISSUER:-https://keycloak.smart-village.app/realms/svs-intern-studio-staging}"
-      SVA_AUTH_CLIENT_ID: "${SVA_AUTH_CLIENT_ID:-studio-bff-staging}"
-      SVA_AUTH_REDIRECT_URI: "${SVA_AUTH_REDIRECT_URI:-https://studio.smart-village.app/auth/callback}"
-      SVA_AUTH_POST_LOGOUT_REDIRECT_URI: "${SVA_AUTH_POST_LOGOUT_REDIRECT_URI:-https://studio.smart-village.app/}"
+      SVA_PUBLIC_BASE_URL: "${SVA_PUBLIC_BASE_URL}"
+      SVA_AUTH_ISSUER: "${SVA_AUTH_ISSUER}"
+      SVA_AUTH_CLIENT_ID: "${SVA_AUTH_CLIENT_ID}"
+      SVA_AUTH_REDIRECT_URI: "${SVA_AUTH_REDIRECT_URI}"
+      SVA_AUTH_POST_LOGOUT_REDIRECT_URI: "${SVA_AUTH_POST_LOGOUT_REDIRECT_URI}"
       IAM_PII_ACTIVE_KEY_ID: k1
-      IAM_CSRF_ALLOWED_ORIGINS: "${IAM_CSRF_ALLOWED_ORIGINS:-https://studio.smart-village.app}"
-      SVA_PARENT_DOMAIN: "${SVA_PARENT_DOMAIN:-studio.smart-village.app}"
-      SVA_ALLOWED_INSTANCE_IDS: "${SVA_ALLOWED_INSTANCE_IDS:-hb-meinquartier}"
-      VITE_IAM_UI_ENABLED: "false"
-      VITE_IAM_ADMIN_ENABLED: "false"
-      VITE_IAM_BULK_ENABLED: "false"
-      IAM_UI_ENABLED: "false"
-      IAM_ADMIN_ENABLED: "false"
-      IAM_BULK_ENABLED: "false"
-      KEYCLOAK_ADMIN_BASE_URL: "${KEYCLOAK_ADMIN_BASE_URL:-https://keycloak.smart-village.app}"
-      KEYCLOAK_ADMIN_REALM: "${KEYCLOAK_ADMIN_REALM:-svs-intern-studio-staging}"
-      KEYCLOAK_ADMIN_CLIENT_ID: "${KEYCLOAK_ADMIN_CLIENT_ID:-sva-studio-iam-service}"
+      IAM_CSRF_ALLOWED_ORIGINS: "${IAM_CSRF_ALLOWED_ORIGINS}"
+      SVA_PARENT_DOMAIN: "${SVA_PARENT_DOMAIN}"
+      SVA_ALLOWED_INSTANCE_IDS: "${SVA_ALLOWED_INSTANCE_IDS}"
+      VITE_IAM_UI_ENABLED: "${VITE_IAM_UI_ENABLED}"
+      VITE_IAM_ADMIN_ENABLED: "${VITE_IAM_ADMIN_ENABLED}"
+      VITE_IAM_BULK_ENABLED: "${VITE_IAM_BULK_ENABLED}"
+      IAM_UI_ENABLED: "${IAM_UI_ENABLED}"
+      IAM_ADMIN_ENABLED: "${IAM_ADMIN_ENABLED}"
+      IAM_BULK_ENABLED: "${IAM_BULK_ENABLED}"
+      KEYCLOAK_ADMIN_BASE_URL: "${KEYCLOAK_ADMIN_BASE_URL}"
+      KEYCLOAK_ADMIN_REALM: "${KEYCLOAK_ADMIN_REALM}"
+      KEYCLOAK_ADMIN_CLIENT_ID: "${KEYCLOAK_ADMIN_CLIENT_ID}"
       IAM_ROLE_RECONCILE_INTERVAL_MS: "300000"
       IAM_ROLE_RECONCILE_INSTANCE_IDS: ""
     labels:
       com.sva-studio.monitoring: "enabled"
       com.sva-studio.component: "app"
       com.sva-studio.environment: "production"
-    secrets:
-      - sva_studio_app_auth_client_secret
-      - sva_studio_app_auth_state_secret
-      - sva_studio_app_encryption_key
-      - sva_studio_app_pii_keyring_json-k1
-      - sva_studio_app_db_password
-      - sva_studio_redis_password
-      - sva_studio_keycloak_admin_client_secret
     networks:
       - public
       - internal
@@ -85,12 +86,18 @@ services:
       labels:
         - traefik.enable=true
         - traefik.docker.network=public
-        - traefik.http.routers.sva-studio.rule=Host(`${SVA_PARENT_DOMAIN:-studio.smart-village.app}`)
-        - traefik.http.routers.sva-studio.entrypoints=websecure
+        - traefik.frontend.rule=Host:${SVA_PARENT_DOMAIN},${SVA_PUBLIC_HOST}
+        - traefik.port=3000
+        - traefik.http.routers.sva-studio.rule=Host(`${SVA_PARENT_DOMAIN}`)
+        - traefik.http.routers.sva-studio.entrypoints=web,websecure
         - traefik.http.routers.sva-studio.tls.certresolver=letsencrypt
         - traefik.http.routers.sva-studio.service=sva-studio
-        - traefik.http.routers.sva-studio-instance.rule=HostRegexp(`{subdomain:[a-z0-9]([a-z0-9-]*[a-z0-9])?}.${SVA_PARENT_DOMAIN:-studio.smart-village.app}`)
-        - traefik.http.routers.sva-studio-instance.entrypoints=websecure
+        - traefik.http.routers.sva-studio-public.rule=Host(`${SVA_PUBLIC_HOST}`)
+        - traefik.http.routers.sva-studio-public.entrypoints=web,websecure
+        - traefik.http.routers.sva-studio-public.tls.certresolver=letsencrypt
+        - traefik.http.routers.sva-studio-public.service=sva-studio
+        - traefik.http.routers.sva-studio-instance.rule=HostRegexp(`{subdomain:[a-z0-9]([a-z0-9-]*[a-z0-9])?}.${SVA_PARENT_DOMAIN}`)
+        - traefik.http.routers.sva-studio-instance.entrypoints=web,websecure
         - traefik.http.routers.sva-studio-instance.tls.certresolver=letsencrypt
         - traefik.http.routers.sva-studio-instance.service=sva-studio
         - traefik.http.services.sva-studio.loadbalancer.server.port=3000
@@ -108,17 +115,18 @@ services:
   # -------------------------------------------------------------------------
   redis:
     image: redis:7-alpine
+    environment:
+      SVA_DEPLOY_REVISION: "${SVA_IMAGE_TAG}"
+      REDIS_PASSWORD: "${REDIS_PASSWORD}"
     labels:
       com.sva-studio.monitoring: "enabled"
       com.sva-studio.component: "redis"
       com.sva-studio.environment: "production"
-    secrets:
-      - sva_studio_redis_password
     command:
       - sh
       - -ec
       - |
-        redis_password="$$(cat /run/secrets/sva_studio_redis_password)"
+        redis_password="$${REDIS_PASSWORD:-}"
         exec redis-server \
           --appendonly yes \
           --maxmemory 256mb \
@@ -145,7 +153,11 @@ services:
           memory: 320M
           cpus: '0.25'
     healthcheck:
-      test: ["CMD-SHELL", "REDISCLI_AUTH=$$(cat /run/secrets/sva_studio_redis_password) redis-cli ping"]
+      test:
+        [
+          "CMD-SHELL",
+          "REDISCLI_AUTH=\"$${REDIS_PASSWORD}\" redis-cli ping",
+        ]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -158,13 +170,11 @@ services:
     environment:
       POSTGRES_DB: sva_studio
       POSTGRES_USER: sva
-      POSTGRES_PASSWORD_FILE: /run/secrets/sva_studio_postgres_password
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
     labels:
       com.sva-studio.monitoring: "enabled"
       com.sva-studio.component: "postgres"
       com.sva-studio.environment: "production"
-    secrets:
-      - sva_studio_postgres_password
     volumes:
       - postgres-data:/var/lib/postgresql/data
     networks:
@@ -191,11 +201,107 @@ services:
       timeout: 3s
       retries: 10
 
+  adminer:
+    image: adminer:4.8.1
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+      ADMINER_DEFAULT_DB_DRIVER: pgsql
+      ADMINER_DESIGN: pepa-linha
+    labels:
+      com.sva-studio.monitoring: "disabled"
+      com.sva-studio.component: "adminer"
+      com.sva-studio.environment: "production"
+    networks:
+      - public
+      - internal
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.hostname == node-005.sva
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 60s
+      resources:
+        reservations:
+          memory: 32M
+        limits:
+          memory: 128M
+          cpus: '0.10'
+      labels:
+        - traefik.enable=true
+        - traefik.docker.network=public
+        - traefik.frontend.rule=Host:${SVA_DB_ADMIN_HOST}
+        - traefik.frontend.auth.basic.users=${SVA_DB_ADMIN_BASIC_AUTH}
+        - traefik.port=8080
+        - traefik.http.routers.sva-studio-adminer.rule=Host(`${SVA_DB_ADMIN_HOST}`)
+        - traefik.http.routers.sva-studio-adminer.entrypoints=web,websecure
+        - traefik.http.routers.sva-studio-adminer.tls.certresolver=letsencrypt
+        - traefik.http.routers.sva-studio-adminer.service=sva-studio-adminer
+        - traefik.http.routers.sva-studio-adminer.middlewares=sva-studio-adminer-auth
+        - traefik.http.middlewares.sva-studio-adminer-auth.basicauth.users=${SVA_DB_ADMIN_BASIC_AUTH}
+        - traefik.http.services.sva-studio-adminer.loadbalancer.server.port=8080
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "php -r \"exit(@file_get_contents('http://127.0.0.1:8080') === false ? 1 : 0);\"",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  postgres-schema-bootstrap:
+    image: postgres:16-alpine
+    environment:
+      SVA_DEPLOY_REVISION: "${SVA_IMAGE_TAG}"
+      POSTGRES_DB: sva_studio
+      POSTGRES_USER: sva
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
+    labels:
+      com.sva-studio.component: "postgres-schema-bootstrap"
+      com.sva-studio.environment: "production"
+      com.sva-studio.lifecycle: "legacy-transition"
+    command:
+      - sh
+      - -ec
+      - |
+        echo "legacy bootstrap: use pnpm env:migrate:acceptance-hb for canonical schema rollouts"
+        export PGPASSWORD="$${POSTGRES_PASSWORD}"
+        until pg_isready -h postgres -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"; do
+          echo "waiting for postgres"
+          sleep 2
+        done
+        psql -v ON_ERROR_STOP=1 \
+          -h postgres \
+          -U "$${POSTGRES_USER}" \
+          -d "$${POSTGRES_DB}" \
+          -c "ALTER TABLE iam.account_groups ADD COLUMN IF NOT EXISTS origin TEXT NOT NULL DEFAULT 'manual'" \
+          -c "ALTER TABLE iam.account_groups DROP CONSTRAINT IF EXISTS account_groups_origin_chk" \
+          -c "ALTER TABLE iam.account_groups ADD CONSTRAINT account_groups_origin_chk CHECK (origin IN ('manual', 'seed', 'sync'))"
+    networks:
+      - internal
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.hostname == node-005.sva
+      restart_policy:
+        condition: none
+      resources:
+        reservations:
+          memory: 32M
+        limits:
+          memory: 128M
+          cpus: '0.10'
+
   # -------------------------------------------------------------------------
   # Monitoring – OTEL Collector + Storage + UI
   # -------------------------------------------------------------------------
   monitoring-config-init:
-    image: ghcr.io/smart-village-solutions/sva-studio-monitoring-config-init:${SVA_MONITORING_CONFIG_INIT_IMAGE_TAG}
+    image: ${SVA_MONITORING_REGISTRY}/sva-studio-monitoring-config-init:${SVA_MONITORING_CONFIG_INIT_IMAGE_TAG}
     labels:
       com.sva-studio.monitoring: "enabled"
       com.sva-studio.component: "monitoring-config-init"
@@ -486,24 +592,3 @@ volumes:
     driver: local
   alertmanager-data:
     driver: local
-
-# ---------------------------------------------------------------------------
-# Secrets – müssen vor dem Stack-Deploy als externe Swarm-Secrets existieren.
-# ---------------------------------------------------------------------------
-secrets:
-  sva_studio_app_auth_client_secret:
-    external: true
-  sva_studio_app_auth_state_secret:
-    external: true
-  sva_studio_app_encryption_key:
-    external: true
-  sva_studio_app_pii_keyring_json-k1:
-    external: true
-  sva_studio_app_db_password:
-    external: true
-  sva_studio_redis_password:
-    external: true
-  sva_studio_postgres_password:
-    external: true
-  sva_studio_keycloak_admin_client_secret:
-    external: true

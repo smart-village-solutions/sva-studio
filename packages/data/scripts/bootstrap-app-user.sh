@@ -4,15 +4,25 @@ set -euo pipefail
 POSTGRES_DB="${POSTGRES_DB:-sva_studio}"
 POSTGRES_USER="${POSTGRES_USER:-sva}"
 IAM_DATABASE_URL="${IAM_DATABASE_URL:-}"
+SVA_LOCAL_POSTGRES_CONTAINER_NAME="${SVA_LOCAL_POSTGRES_CONTAINER_NAME:-}"
 
 if [ -z "${IAM_DATABASE_URL}" ]; then
   echo "IAM_DATABASE_URL is required."
   exit 1
 fi
 
-if [ -z "$(docker compose ps -q postgres)" ]; then
-  echo "Postgres container is not running. Start it with: pnpm nx run data:db:up"
-  exit 1
+if [ -n "${SVA_LOCAL_POSTGRES_CONTAINER_NAME}" ]; then
+  if [ -z "$(docker ps -q -f "name=^/${SVA_LOCAL_POSTGRES_CONTAINER_NAME}$")" ]; then
+    echo "Postgres container '${SVA_LOCAL_POSTGRES_CONTAINER_NAME}' is not running."
+    exit 1
+  fi
+  postgres_exec=(docker exec -i "${SVA_LOCAL_POSTGRES_CONTAINER_NAME}" psql)
+else
+  if [ -z "$(docker compose ps -q postgres)" ]; then
+    echo "Postgres container is not running. Start it with: pnpm nx run data:db:up"
+    exit 1
+  fi
+  postgres_exec=(docker compose exec -T postgres psql)
 fi
 
 app_user="$(node -e "const url = new URL(process.argv[1]); process.stdout.write(decodeURIComponent(url.username));" "${IAM_DATABASE_URL}")"
@@ -23,7 +33,7 @@ if [ -z "${app_user}" ] || [ -z "${app_password}" ]; then
   exit 1
 fi
 
-docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" <<SQL
+"${postgres_exec[@]}" -v ON_ERROR_STOP=1 -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" <<SQL
 DO \$\$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '${app_user}') THEN

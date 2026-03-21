@@ -3476,7 +3476,7 @@ describe('iam-account-management handlers (guards)', () => {
     expect(payload.error.details?.syncError?.code).toBe('COMPENSATION_FAILED');
   });
 
-  it('reports orphaned studio-managed Keycloak roles during reconcile without deleting them', async () => {
+  it('imports studio-managed Keycloak roles during reconcile when metadata is complete', async () => {
     state.listRolesImpl = () => [
       {
         id: 'kc-custom_editor',
@@ -3487,6 +3487,70 @@ describe('iam-account-management handlers (guards)', () => {
           instance_id: ['de-musterhausen'],
           role_key: ['custom_editor'],
           display_name: ['Custom Editor'],
+        },
+      },
+    ];
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+      if (text.includes('FROM iam.roles') && text.includes("managed_by = 'studio'")) {
+        return { rowCount: 0, rows: [] };
+      }
+      if (text.includes('INSERT INTO iam.roles') && text.includes('RETURNING id')) {
+        return { rowCount: 1, rows: [{ id: targetRoleId }] };
+      }
+      if (text.includes('INSERT INTO iam.activity_logs')) {
+        return { rowCount: 1, rows: [] };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await reconcileHandler(
+      new Request('http://localhost/api/v1/iam/admin/reconcile', {
+        method: 'POST',
+        headers: {
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'http://localhost',
+        },
+      })
+    );
+
+    const payload = (await response.json()) as {
+      data: {
+        checkedCount: number;
+        correctedCount: number;
+        failedCount: number;
+        requiresManualActionCount: number;
+        roles: Array<{ action: string; status: string; errorCode?: string; externalRoleName: string }>;
+      };
+    };
+    expect(response.status).toBe(200);
+    expect(payload.data.checkedCount).toBe(0);
+    expect(payload.data.correctedCount).toBe(1);
+    expect(payload.data.failedCount).toBe(0);
+    expect(payload.data.requiresManualActionCount).toBe(0);
+    expect(payload.data.roles).toEqual([
+      {
+        action: 'create',
+        status: 'corrected',
+        externalRoleName: 'custom_editor',
+        roleId: targetRoleId,
+        roleKey: 'custom_editor',
+      },
+    ]);
+  });
+
+  it('reports studio-managed Keycloak roles with incomplete metadata during reconcile', async () => {
+    state.listRolesImpl = () => [
+      {
+        id: 'kc-custom_editor',
+        externalName: 'custom_editor',
+        description: 'Custom Editor',
+        attributes: {
+          managed_by: ['studio'],
+          instance_id: ['de-musterhausen'],
+          role_key: ['custom_editor'],
         },
       },
     ];

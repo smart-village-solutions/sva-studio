@@ -72,6 +72,12 @@ export function createServerEntry(entry: ServerEntry): ServerEntry {
 const instrumentedFetch: RequestHandler<Register> = async (...args) => {
   const [request, requestOptions] = args;
 
+  const { dispatchAuthRouteRequest } = await import('@sva/routing/server');
+  const runtimeRouteResponse = await dispatchAuthRouteRequest(request);
+  if (runtimeRouteResponse) {
+    return runtimeRouteResponse;
+  }
+
   if (!diagnosticsEnabled) {
     return startFetch(request, requestOptions);
   }

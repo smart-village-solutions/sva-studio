@@ -14,7 +14,7 @@ services:
   # App – TanStack-Start-/Nitro-Server
   # -------------------------------------------------------------------------
   app:
-    image: ${SVA_REGISTRY}/sva-studio:${SVA_IMAGE_TAG}
+    image: ${SVA_IMAGE_REF}
     environment:
       NODE_ENV: production
       HOST: 0.0.0.0
@@ -32,7 +32,7 @@ services:
       OTEL_SERVICE_NAME: "${OTEL_SERVICE_NAME}"
       OTEL_EXPORTER_OTLP_ENDPOINT: "${OTEL_EXPORTER_OTLP_ENDPOINT}"
       POSTGRES_DB: sva_studio
-      APP_DB_USER: sva_app
+      APP_DB_USER: sva
       SVA_PUBLIC_BASE_URL: "${SVA_PUBLIC_BASE_URL}"
       SVA_AUTH_ISSUER: "${SVA_AUTH_ISSUER}"
       SVA_AUTH_CLIENT_ID: "${SVA_AUTH_CLIENT_ID}"
@@ -68,7 +68,7 @@ services:
       update_config:
         parallelism: 1
         delay: 10s
-        order: start-first
+        order: stop-first
       rollback_config:
         parallelism: 1
         order: stop-first
@@ -101,15 +101,6 @@ services:
         - traefik.http.routers.sva-studio-instance.tls.certresolver=letsencrypt
         - traefik.http.routers.sva-studio-instance.service=sva-studio
         - traefik.http.services.sva-studio.loadbalancer.server.port=3000
-    healthcheck:
-      test:
-        - CMD-SHELL
-        - node -e "fetch('http://127.0.0.1:3000/health/live').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 20s
-
   # -------------------------------------------------------------------------
   # Redis – Session-/Cache-Store
   # -------------------------------------------------------------------------
@@ -252,50 +243,6 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
-
-  postgres-schema-bootstrap:
-    image: postgres:16-alpine
-    environment:
-      SVA_DEPLOY_REVISION: "${SVA_IMAGE_TAG}"
-      POSTGRES_DB: sva_studio
-      POSTGRES_USER: sva
-      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
-    labels:
-      com.sva-studio.component: "postgres-schema-bootstrap"
-      com.sva-studio.environment: "production"
-      com.sva-studio.lifecycle: "legacy-transition"
-    command:
-      - sh
-      - -ec
-      - |
-        echo "legacy bootstrap: use pnpm env:migrate:acceptance-hb for canonical schema rollouts"
-        export PGPASSWORD="$${POSTGRES_PASSWORD}"
-        until pg_isready -h postgres -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"; do
-          echo "waiting for postgres"
-          sleep 2
-        done
-        psql -v ON_ERROR_STOP=1 \
-          -h postgres \
-          -U "$${POSTGRES_USER}" \
-          -d "$${POSTGRES_DB}" \
-          -c "ALTER TABLE iam.account_groups ADD COLUMN IF NOT EXISTS origin TEXT NOT NULL DEFAULT 'manual'" \
-          -c "ALTER TABLE iam.account_groups DROP CONSTRAINT IF EXISTS account_groups_origin_chk" \
-          -c "ALTER TABLE iam.account_groups ADD CONSTRAINT account_groups_origin_chk CHECK (origin IN ('manual', 'seed', 'sync'))"
-    networks:
-      - internal
-    deploy:
-      replicas: 1
-      placement:
-        constraints:
-          - node.hostname == node-005.sva
-      restart_policy:
-        condition: none
-      resources:
-        reservations:
-          memory: 32M
-        limits:
-          memory: 128M
-          cpus: '0.10'
 
   # -------------------------------------------------------------------------
   # Monitoring – OTEL Collector + Storage + UI

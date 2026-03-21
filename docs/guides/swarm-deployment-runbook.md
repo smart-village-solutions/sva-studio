@@ -97,8 +97,11 @@ Das Referenzprofil `acceptance-hb` wird env-only betrieben. Sowohl nicht-sensiti
 | Variable | Default | Beschreibung |
 |---|---|---|
 | `SVA_REGISTRY` | `ghcr.io/smart-village-solutions` | Container-Registry für das App-Image |
+| `SVA_IMAGE_REPOSITORY` | `sva-studio` | Repository-Name des App-Images |
 | `SVA_MONITORING_REGISTRY` | `ghcr.io/smart-village-solutions` | Container-Registry für das Monitoring-Init-Image |
 | `SVA_IMAGE_TAG` | `0.0.0-dev` | Image-Tag oder Digest; für Produktion Digest oder unveränderlichen Tag verwenden |
+| `SVA_IMAGE_DIGEST` | kein Default | Verbindlicher SHA256-Digest für produktionsnahe Releases |
+| `SVA_IMAGE_REF` | kein Default | Vollständige Image-Referenz `${SVA_REGISTRY}/${SVA_IMAGE_REPOSITORY}@${SVA_IMAGE_DIGEST}` |
 | `SVA_MONITORING_CONFIG_INIT_IMAGE_TAG` | `0.0.0-dev` | Image-Tag des Monitoring-Init-Images; für Produktion Digest oder unveränderlichen Tag verwenden |
 | `SVA_ALLOWED_INSTANCE_IDS` | leer | Kommagetrennte erlaubte instanceIds |
 | `ENABLE_OTEL` | `true` | OpenTelemetry für die App aktivieren |
@@ -114,7 +117,7 @@ Das Referenzprofil `acceptance-hb` wird env-only betrieben. Sowohl nicht-sensiti
 | `SVA_DB_ADMIN_BASIC_AUTH` | kein Default | htpasswd-String für vorgeschalteten Adminer-Basic-Auth |
 
 Die vollständige Variablenliste inklusive Keycloak-Admin- und Rollenabgleich-Optionen steht in `deploy/portainer/.env.example`.
-Für produktive Deployments sollten `SVA_IMAGE_TAG` und `SVA_MONITORING_CONFIG_INIT_IMAGE_TAG` auf einen unveränderlichen Tag oder direkt auf einen Digest gesetzt werden. Wenn App- und Monitoring-Image aus unterschiedlichen Registries bezogen werden, müssen `SVA_REGISTRY` und `SVA_MONITORING_REGISTRY` konsistent gesetzt sein.
+Für produktionsnahe Acceptance-Deployments ist `SVA_IMAGE_DIGEST` verpflichtend; `SVA_IMAGE_REF` muss auf genau dieses Artefakt zeigen. `SVA_IMAGE_TAG` bleibt nur ergänzende Metadaten für Lesbarkeit und Rückverfolgung. Wenn App- und Monitoring-Image aus unterschiedlichen Registries bezogen werden, müssen `SVA_REGISTRY` und `SVA_MONITORING_REGISTRY` konsistent gesetzt sein.
 
 ### Adminer für Acceptance
 
@@ -235,13 +238,14 @@ pnpm env:deploy:acceptance-hb -- \
 
 Der Deploypfad führt verbindlich aus:
 
-1. `precheck`
-2. optionales Wartungsfenster als Release-Metadatum
+1. `environment-precheck` inklusive Pflichtvariablen, Schema-Guard und Live-Spec-Drift
+2. `image-smoke` gegen das Digest-Artefakt
 3. `migrate` bei `schema-and-app`
 4. Stack-Rollout via `quantum-cli stacks update` oder `docker stack deploy`
-5. `doctor`
-6. `smoke`
-7. Schreiben eines Deploy-Reports unter `artifacts/runtime/deployments/`
+5. `internal-verify` mit internen Probes und `doctor`
+6. `external-smoke`
+7. `release-decision`
+8. Schreiben eines Deploy-Reports unter `artifacts/runtime/deployments/`
 
 ### Fallback über Portainer oder CLI
 
@@ -274,9 +278,23 @@ Der kanonische Deploypfad erzeugt zusätzlich pro Lauf Artefakte unter `artifact
 
 - JSON-Report für CI-Weiterverarbeitung
 - Markdown-Report für Menschen
-- Image-/Actor-/Workflow-Metadaten
-- Ergebnis von `precheck`, `migrate`, `deploy`, `doctor` und `smoke`
+- Release-Manifest mit Commit, Digest, Image-Ref, Actor und Workflow
+- Ergebnis von `environment-precheck`, `image-smoke`, `migrate`, `deploy`, `internal-verify`, `external-smoke` und `release-decision`
+- separate JSON-Artefakte für Phasenstatus, Migration, interne Probes und externe Probes
 - referenzierbaren Stack-Status und optionale Grafana-/Loki-Links
+
+Unmittelbar danach:
+
+```bash
+pnpm env:feedback:acceptance-hb
+```
+
+Der Befehl erzeugt:
+
+- `release-feedback-summary.json` und `release-feedback-summary.md` als Verlaufssicht
+- `<reportId>.review.md` als Review-Entwurf fuer den juengsten Deploy
+
+Wenn der Deploy fehlgeschlagen ist oder nur mit manueller Nacharbeit stabil wurde, wird der Review-Entwurf nach `docs/reports/` uebernommen und dort verbindlich vervollstaendigt.
 
 `doctor` ergänzt die Betriebsprüfung um:
 
@@ -321,13 +339,15 @@ Für ein reines App-Update ohne Schemaänderungen:
 
 1. Neues Image mit unveränderlichem Tag oder Digest bereitstellen
 2. `pnpm env:deploy:acceptance-hb -- --release-mode=app-only --image-tag=<tag>` ausführen
+   - zusätzlich ist `--image-digest=<sha256:...>` verpflichtend
 3. Deploy-Report prüfen und archivieren
 
 Für Schemaänderungen:
 
 1. Wartungsfenster definieren
 2. `pnpm env:deploy:acceptance-hb -- --release-mode=schema-and-app --maintenance-window=...` ausführen
-3. Deploy-Report auf `migrate`, `doctor` und `smoke` prüfen
+   - zusätzlich ist `--image-digest=<sha256:...>` verpflichtend
+3. Deploy-Report auf `migrate`, `internal-verify`, `external-smoke` und `release-decision` prüfen
 
 ## Rollback
 

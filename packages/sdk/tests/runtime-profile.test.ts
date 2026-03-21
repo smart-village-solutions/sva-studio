@@ -31,6 +31,7 @@ describe('runtime-profile', () => {
   it('exposes required env keys per profile', () => {
     expect(getRuntimeProfileRequiredEnvKeys('local-builder')).toContain('VITE_PUBLIC_BUILDER_KEY');
     expect(getRuntimeProfileRequiredEnvKeys('acceptance-hb')).toContain('SVA_PARENT_DOMAIN');
+    expect(getRuntimeProfileRequiredEnvKeys('acceptance-hb')).toContain('SVA_AUTH_STATE_SECRET');
   });
 
   it('returns runtime profile definitions', () => {
@@ -63,6 +64,7 @@ describe('runtime-profile', () => {
       VITE_PUBLIC_BUILDER_KEY: '__SET_IN_LOCAL_OVERRIDE__',
     });
 
+    expect(result.invalid).toEqual([]);
     expect(result.missing).toContain('KEYCLOAK_ADMIN_CLIENT_SECRET');
     expect(result.placeholders).toEqual(
       expect.arrayContaining([
@@ -71,5 +73,34 @@ describe('runtime-profile', () => {
         'VITE_PUBLIC_BUILDER_KEY',
       ]),
     );
+  });
+
+  it('reports invalid runtime env values', () => {
+    const result = validateRuntimeProfileEnv('acceptance-hb', {
+      SVA_RUNTIME_PROFILE: 'acceptance-hb',
+      SVA_PUBLIC_BASE_URL: 'https://hb.example.app',
+      REDIS_URL: 'redis://localhost:6379',
+      IAM_DATABASE_URL: 'postgres://localhost/sva',
+      OTEL_EXPORTER_OTLP_ENDPOINT: 'http://localhost:4318',
+      SVA_MAINSERVER_GRAPHQL_URL: 'https://mainserver.example/graphql',
+      SVA_MAINSERVER_OAUTH_TOKEN_URL: 'https://mainserver.example/oauth/token',
+      SVA_MAINSERVER_CLIENT_ID: 'client-id',
+      SVA_MAINSERVER_CLIENT_SECRET: 'client-secret',
+      SVA_AUTH_ISSUER: 'https://keycloak.example/realms/demo',
+      SVA_AUTH_CLIENT_ID: 'studio',
+      SVA_AUTH_STATE_SECRET: 'state-secret',
+      SVA_AUTH_REDIRECT_URI: 'https://hb.example.app/auth/callback',
+      SVA_AUTH_POST_LOGOUT_REDIRECT_URI: 'https://hb.example.app',
+      KEYCLOAK_ADMIN_BASE_URL: 'https://keycloak.example',
+      KEYCLOAK_ADMIN_REALM: 'demo',
+      KEYCLOAK_ADMIN_CLIENT_ID: 'svc-client',
+      SVA_ALLOWED_INSTANCE_IDS: 'de-musterhausen',
+      SVA_PARENT_DOMAIN: 'hb.example.app',
+      IAM_PII_KEYRING_JSON: '{k1:broken}',
+    });
+
+    expect(result.invalid).toContain('IAM_PII_KEYRING_JSON');
+    expect(result.missing).not.toContain('IAM_PII_KEYRING_JSON');
+    expect(result.placeholders).toEqual([]);
   });
 });

@@ -24,7 +24,8 @@ import {
   type AcceptanceDeployReport,
   type AcceptanceDeployStep,
   type AcceptanceFailureCategory,
-  type AcceptanceReleaseMode,
+  type AcceptanceProbeResult,
+  type AcceptanceReleaseManifest,
 } from './runtime-env.shared.ts';
 
 type RuntimeCommand = 'deploy' | 'doctor' | 'down' | 'migrate' | 'precheck' | 'reset' | 'smoke' | 'status' | 'up' | 'update';
@@ -71,7 +72,7 @@ const localProfiles: readonly RuntimeProfile[] = ['local-keycloak', 'local-build
 
 const usage = () => {
   console.error(
-    'Usage: tsx scripts/ops/runtime-env.ts <up|down|update|status|smoke|migrate|doctor|reset|precheck|deploy> <profile> [--json] [--release-mode=<app-only|schema-and-app>] [--maintenance-window=<text>] [--rollback-hint=<text>]'
+    'Usage: tsx scripts/ops/runtime-env.ts <up|down|update|status|smoke|migrate|doctor|reset|precheck|deploy> <profile> [--json] [--local-override-file=<path>] [--release-mode=<app-only|schema-and-app>] [--image-digest=<sha256:...>] [--maintenance-window=<text>] [--rollback-hint=<text>]'
   );
   process.exit(2);
 };
@@ -103,6 +104,14 @@ const shellEscape = (value: string) => {
   }
 
   return `'${value.replaceAll("'", "'\"'\"'")}'`;
+};
+
+const getGitCommitSha = () => {
+  try {
+    return runCapture('git', ['rev-parse', 'HEAD']);
+  } catch {
+    return undefined;
+  }
 };
 
 const sqlLiteral = (value: string) => `'${value.replaceAll("'", "''")}'`;
@@ -140,7 +149,9 @@ const parseVarsFile = (filePath: string): Record<string, string> => {
 const buildProfileEnv = (runtimeProfile: RuntimeProfile): NodeJS.ProcessEnv => {
   const baseEnvPath = resolve(rootDir, 'config/runtime/base.vars');
   const profileEnvPath = resolve(rootDir, `config/runtime/${runtimeProfile}.vars`);
-  const localOverridePath = resolve(rootDir, `config/runtime/${runtimeProfile}.local.vars`);
+  const localOverridePath = cliOptions.localOverrideFile
+    ? resolve(rootDir, cliOptions.localOverrideFile)
+    : resolve(rootDir, `config/runtime/${runtimeProfile}.local.vars`);
   const env = {
     ...process.env,
     ...parseVarsFile(baseEnvPath),
@@ -167,12 +178,13 @@ const buildProfileEnv = (runtimeProfile: RuntimeProfile): NodeJS.ProcessEnv => {
 
 const assertRuntimeEnv = (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => {
   const validation = validateRuntimeProfileEnv(runtimeProfile, env);
-  if (validation.missing.length === 0 && validation.placeholders.length === 0) {
+  if (validation.missing.length === 0 && validation.placeholders.length === 0 && validation.invalid.length === 0) {
     return;
   }
 
   const lines = [
     `Runtime-Profil ${runtimeProfile} ist nicht vollstaendig konfiguriert.`,
+    validation.invalid.length > 0 ? `Ungueltig: ${validation.invalid.join(', ')}` : null,
     validation.missing.length > 0 ? `Fehlend: ${validation.missing.join(', ')}` : null,
     validation.placeholders.length > 0 ? `Platzhalter: ${validation.placeholders.join(', ')}` : null,
     `Erwartete Variablen: ${getRuntimeProfileRequiredEnvKeys(runtimeProfile).join(', ')}`,
@@ -225,15 +237,28 @@ const wait = (ms: number) => new Promise((resolvePromise) => setTimeout(resolveP
 
 const stripControlArtifacts = (value: string) => value.replaceAll('\u0000', '');
 
-const stripAnsiArtifacts = (value: string) => value.replace(/\u001B\[[0-9;?]*[ -/]*[@-~]/gu, '');
+const stripAnsiArtifacts = (value: string) => {
+  const escapeChar = String.fromCharCode(27);
+  return value.replace(new RegExp(`${escapeChar}\\[[0-9;?]*[ -/]*[@-~]`, 'gu'), '');
+};
 
-const sanitizeProcessOutput = (value: string) => stripAnsiArtifacts(stripControlArtifacts(value));
+const stripCaretControlArtifacts = (value: string) => value.replaceAll('^@', '');
+
+const sanitizeProcessOutput = (value: string) =>
+  stripCaretControlArtifacts(stripAnsiArtifacts(stripControlArtifacts(value)));
+
+const filterRemoteOutputLines = (value: string) =>
+  sanitizeProcessOutput(value)
+    .replace(/\ntime=.*level=/gu, '\ntime=')
+    .split(/\r?\n/u)
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0)
+    .filter((entry) => !/^time=.*level=/u.test(entry))
+    .filter((entry) => entry !== 'standard input')
+    .filter((entry) => !/^~+$/u.test(entry));
 
 const summarizeProcessOutput = (value: string, maxLines = 40) => {
-  const lines = sanitizeProcessOutput(value)
-    .split(/\r?\n/u)
-    .map((entry) => entry.trimEnd())
-    .filter((entry) => entry.trim().length > 0);
+  const lines = filterRemoteOutputLines(value);
 
   return lines.slice(-maxLines).join('\n');
 };
@@ -249,15 +274,31 @@ const parseMarkedOutput = (output: string, marker: string) => {
   const startMarker = `${marker}_START`;
   const endMarker = `${marker}_END`;
   const startIndex = cleaned.lastIndexOf(startMarker);
-  const endIndex = cleaned.lastIndexOf(endMarker);
+  const endIndex = startIndex === -1 ? -1 : cleaned.indexOf(endMarker, startIndex + startMarker.length);
 
-  if (startIndex === -1 || endIndex === -1 || endIndex <= startIndex) {
+  if (startIndex === -1) {
     throw new Error(`Markierte Ausgabe ${marker} nicht gefunden.`);
   }
 
-  return cleaned
-    .slice(startIndex + startMarker.length, endIndex)
-    .trim();
+  const segment = cleaned.slice(startIndex + startMarker.length, endIndex === -1 ? undefined : endIndex);
+  const lines = filterRemoteOutputLines(segment.replace(/^n+/u, '').trimStart()).filter(
+    (entry) => entry !== startMarker && entry !== endMarker,
+  );
+  if (lines.length > 0) {
+    return lines.join('\n');
+  }
+
+  const boolMatrixMatches = Array.from(segment.matchAll(/(?:t|f)(?:\|(?:t|f)){3,}/gu)).map((match) => match[0]);
+  if (boolMatrixMatches.length > 0) {
+    return boolMatrixMatches.at(-1) ?? boolMatrixMatches[0];
+  }
+
+  const statusMatches = Array.from(segment.matchAll(/\b(?:ok|applied:[^\s]+)\b/gu)).map((match) => match[0]);
+  if (statusMatches.length > 0) {
+    return statusMatches.join('\n');
+  }
+
+  throw new Error(`Markierte Ausgabe ${marker} enthaelt keine auswertbaren Daten.`);
 };
 
 const runQuantumExec = (
@@ -335,6 +376,9 @@ const applyCliOptionEnvOverrides = (env: NodeJS.ProcessEnv): NodeJS.ProcessEnv =
 
   if (cliOptions.imageDigest) {
     nextEnv.SVA_IMAGE_DIGEST = cliOptions.imageDigest;
+    const registry = nextEnv.SVA_REGISTRY?.trim() || 'ghcr.io/smart-village-solutions';
+    const repository = nextEnv.SVA_IMAGE_REPOSITORY?.trim() || 'sva-studio';
+    nextEnv.SVA_IMAGE_REF = `${registry}/${repository}@${cliOptions.imageDigest}`;
   }
 
   if (cliOptions.releaseMode) {
@@ -558,12 +602,12 @@ const pullLocalInfra = (env: NodeJS.ProcessEnv) => {
 const checkHttpHealth = async (url: string) => {
   const response = await fetch(url);
   const text = await response.text();
-  let payload: unknown = null;
+  let payload: unknown = text;
 
   try {
     payload = text.length > 0 ? JSON.parse(text) : null;
   } catch {
-    payload = text;
+    // keep the raw payload text for diagnostics
   }
 
   return { response, payload };
@@ -572,16 +616,17 @@ const checkHttpHealth = async (url: string) => {
 const createDbSqlRunner = (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => {
   const postgresUser = env.POSTGRES_USER ?? 'sva';
   const postgresDb = env.POSTGRES_DB ?? 'sva_studio';
+  const localPostgresContainerName = env.SVA_LOCAL_POSTGRES_CONTAINER_NAME?.trim() || 'sva-studio-postgres';
 
   const runLocalSql = (sql: string) => {
     const localContainerId = runCaptureDetailed(
       'docker',
-      ['ps', '--filter', 'name=sva-studio-postgres', '--format', '{{.ID}}'],
+      ['ps', '--filter', `name=${localPostgresContainerName}`, '--format', '{{.ID}}'],
       env
     ).stdout.trim();
 
     if (localContainerId.length === 0) {
-      throw new Error('Lokaler Postgres-Container nicht gefunden.');
+      throw new Error(`Lokaler Postgres-Container ${localPostgresContainerName} nicht gefunden.`);
     }
 
     const result = spawnSync(
@@ -617,14 +662,14 @@ const createDbSqlRunner = (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEn
       "cat <<'SQL' >/tmp/sva-runtime-query.sql",
       sql,
       'SQL',
-      `printf '${marker}_START\\n'`,
-      `psql -v ON_ERROR_STOP=1 -U ${shellEscape(postgresUser)} -d ${shellEscape(postgresDb)} -At -f /tmp/sva-runtime-query.sql`,
-      `printf '\\n${marker}_END\\n'`,
+      `printf '%s\\n' '${marker}_START'`,
+      `psql -X -P pager=off -v ON_ERROR_STOP=1 -U ${shellEscape(postgresUser)} -d ${shellEscape(postgresDb)} -At -f /tmp/sva-runtime-query.sql`,
+      `printf '%s\\n' '${marker}_END'`,
       'rm -f /tmp/sva-runtime-query.sql',
       'sleep 1',
     ].join('\n');
 
-    return runQuantumExec(
+    const output = runQuantumExec(
       [
         'exec',
         '--endpoint',
@@ -644,6 +689,24 @@ const createDbSqlRunner = (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEn
         failureMessage: 'Remote-SQL-Abfrage fehlgeschlagen.',
       }
     );
+
+    const jsonMatches = Array.from(output.matchAll(/\{.*\}/gu)).map((match) => match[0]);
+    if (jsonMatches.length > 0) {
+      return jsonMatches.at(-1) ?? jsonMatches[0];
+    }
+
+    const boolMatrixMatches = Array.from(output.matchAll(/(?:t|f)(?:\|(?:t|f)){3,}/gu)).map((match) => match[0]);
+    if (boolMatrixMatches.length > 0) {
+      return boolMatrixMatches.at(-1) ?? boolMatrixMatches[0];
+    }
+
+    const lines = output
+      .split(/\r?\n/u)
+      .map((entry) => entry.trim())
+      .filter((entry) => entry.length > 0)
+      .filter((entry) => entry !== `${marker}_START` && entry !== `${marker}_END`);
+
+    return lines.at(-1) ?? output;
   };
 
   return (sql: string) => (runtimeProfile === 'acceptance-hb' ? runAcceptanceSql(sql) : runLocalSql(sql));
@@ -652,15 +715,25 @@ const createDbSqlRunner = (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEn
 const runSchemaGuard = (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv): SchemaGuardReport => {
   const runSql = createDbSqlRunner(runtimeProfile, env);
   const output = runSql(`${CRITICAL_IAM_SCHEMA_GUARD_SQL}`);
-  const [line] = output.split(/\r?\n/u).filter((entry) => entry.trim().length > 0).slice(-1);
+  const matches = Array.from(output.matchAll(/(?:t|f)(?:\|(?:t|f)){13}/gu)).map((match) => match[0]);
+  const line = matches.at(-1);
+  if (!line) {
+    throw new Error(`Schema-Guard-Ausgabe konnte nicht als Bool-Matrix gelesen werden: ${output}`);
+  }
   const row = Object.fromEntries(
     line.split('|').map((value, index) => {
       const keys = [
         'groups_exists',
         'group_roles_exists',
         'account_groups_exists',
+        'activity_logs_exists',
         'accounts_instance_id_column_exists',
         'accounts_username_ciphertext_column_exists',
+        'accounts_avatar_url_column_exists',
+        'accounts_preferred_language_column_exists',
+        'accounts_timezone_column_exists',
+        'accounts_notes_column_exists',
+        'account_groups_origin_column_exists',
         'idx_accounts_kc_subject_instance_exists',
         'accounts_isolation_policy_matches',
         'instance_memberships_isolation_policy_matches',
@@ -668,6 +741,33 @@ const runSchemaGuard = (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv):
       return [keys[index], value];
     })
   );
+  return evaluateCriticalIamSchemaGuard(row);
+};
+
+const recoverSchemaGuardReportFromOutput = (value: string): SchemaGuardReport | null => {
+  const matches = Array.from(value.matchAll(/(?:t|f)(?:\|(?:t|f)){13}/gu)).map((match) => match[0]);
+  const line = matches.at(-1);
+  if (!line) {
+    return null;
+  }
+
+  const keys = [
+    'groups_exists',
+    'group_roles_exists',
+    'account_groups_exists',
+    'activity_logs_exists',
+    'accounts_instance_id_column_exists',
+    'accounts_username_ciphertext_column_exists',
+    'accounts_avatar_url_column_exists',
+    'accounts_preferred_language_column_exists',
+    'accounts_timezone_column_exists',
+    'accounts_notes_column_exists',
+    'account_groups_origin_column_exists',
+    'idx_accounts_kc_subject_instance_exists',
+    'accounts_isolation_policy_matches',
+    'instance_memberships_isolation_policy_matches',
+  ] as const;
+  const row = Object.fromEntries(line.split('|').map((entry, index) => [keys[index], entry]));
   return evaluateCriticalIamSchemaGuard(row);
 };
 
@@ -693,6 +793,27 @@ const buildSchemaGuardCheck = (
       }
     );
   } catch (error) {
+    const recovered = recoverSchemaGuardReportFromOutput(error instanceof Error ? error.message : String(error));
+    if (recovered) {
+      if (recovered.ok) {
+        return toDoctorCheck('schema-guard', 'ok', 'schema_ok', 'Kritische IAM-Schema-Artefakte sind vorhanden.', {
+          checks: recovered.checks,
+          recoveredFromTransportNoise: true,
+        });
+      }
+
+      return toDoctorCheck(
+        'schema-guard',
+        'error',
+        'schema_drift',
+        summarizeSchemaGuardFailures(recovered) ?? 'Kritische IAM-Schema-Artefakte fehlen oder weichen ab.',
+        {
+          checks: recovered.checks,
+          recoveredFromTransportNoise: true,
+        }
+      );
+    }
+
     return toDoctorCheck(
       'schema-guard',
       'error',
@@ -909,11 +1030,14 @@ const buildAcceptancePostgresCheck = (env: NodeJS.ProcessEnv) => {
   }
 };
 
-const precheckAcceptance = async (env: NodeJS.ProcessEnv): Promise<DoctorReport> => {
+const precheckAcceptance = async (
+  env: NodeJS.ProcessEnv,
+  options?: AcceptanceDeployOptions
+): Promise<DoctorReport> => {
   const checks: DoctorCheck[] = [];
   const validation = validateRuntimeProfileEnv('acceptance-hb', env);
 
-  if (validation.missing.length > 0 || validation.placeholders.length > 0) {
+  if (validation.missing.length > 0 || validation.placeholders.length > 0 || validation.invalid.length > 0) {
     checks.push(
       toDoctorCheck(
         'runtime-env',
@@ -921,6 +1045,7 @@ const precheckAcceptance = async (env: NodeJS.ProcessEnv): Promise<DoctorReport>
         'runtime_env_invalid',
         'Acceptance-Profil ist nicht vollstaendig konfiguriert.',
         {
+          invalid: validation.invalid,
           missing: validation.missing,
           placeholders: validation.placeholders,
           requiredKeys: getRuntimeProfileRequiredEnvKeys('acceptance-hb'),
@@ -938,6 +1063,9 @@ const precheckAcceptance = async (env: NodeJS.ProcessEnv): Promise<DoctorReport>
   checks.push(buildAcceptanceServiceCheck(env));
   checks.push(buildAcceptancePostgresCheck(env));
   checks.push(buildSchemaGuardCheck('acceptance-hb', env));
+  if (options) {
+    checks.push(buildAcceptanceLiveSpecCheck(env, options));
+  }
 
   return finalizeDoctorReport('acceptance-hb', checks);
 };
@@ -946,7 +1074,7 @@ const doctorRuntime = async (runtimeProfile: RuntimeProfile, env: NodeJS.Process
   const checks: DoctorCheck[] = [];
   const validation = validateRuntimeProfileEnv(runtimeProfile, env);
 
-  if (validation.missing.length > 0 || validation.placeholders.length > 0) {
+  if (validation.missing.length > 0 || validation.placeholders.length > 0 || validation.invalid.length > 0) {
     checks.push(
       toDoctorCheck(
         'runtime-env',
@@ -954,6 +1082,7 @@ const doctorRuntime = async (runtimeProfile: RuntimeProfile, env: NodeJS.Process
         'runtime_env_invalid',
         'Runtime-Profil ist nicht vollstaendig konfiguriert.',
         {
+          invalid: validation.invalid,
           missing: validation.missing,
           placeholders: validation.placeholders,
           requiredKeys: getRuntimeProfileRequiredEnvKeys(runtimeProfile),
@@ -1094,6 +1223,21 @@ const assertMeEndpoint = async (runtimeProfile: RuntimeProfile, env: NodeJS.Proc
   }
 };
 
+const assertIamContextEndpoint = async (env: NodeJS.ProcessEnv) => {
+  const contextUrl = new URL('/api/v1/iam/me/context', env.SVA_PUBLIC_BASE_URL ?? 'http://localhost:3000').toString();
+  const response = await fetch(contextUrl, { redirect: 'manual', signal: AbortSignal.timeout(10_000) });
+  const body = await response.text();
+
+  if ([200, 401, 403].includes(response.status)) {
+    if (body.toLowerCase().includes('<html')) {
+      throw new Error('/api/v1/iam/me/context lieferte HTML statt einer API-Antwort.');
+    }
+    return;
+  }
+
+  throw new Error(`/api/v1/iam/me/context antwortet unerwartet mit ${response.status}`);
+};
+
 const assertMainserverSmoke = async (env: NodeJS.ProcessEnv) => {
   const body = new URLSearchParams({
     grant_type: 'client_credentials',
@@ -1152,6 +1296,17 @@ const assertAcceptanceContainerHealth = (env: NodeJS.ProcessEnv) => {
   const stackName = env.SVA_STACK_NAME ?? 'sva-studio';
   const services = ['app', 'redis', 'postgres', 'otel-collector'];
 
+  if (commandExists('quantum-cli')) {
+    const quantumEndpoint = env.QUANTUM_ENDPOINT ?? env.PORTAINER_ENDPOINT ?? 'sva';
+    const summary = runCapture('quantum-cli', ['ps', '--endpoint', quantumEndpoint, '--stack', stackName, '--all'], withoutDebugEnv(env));
+    for (const service of services) {
+      if (!summary.includes(service)) {
+        throw new Error(`Remote-Service fuer ${service} nicht gefunden.`);
+      }
+    }
+    return;
+  }
+
   for (const service of services) {
     const output = runCapture('docker', ['ps', '--filter', `name=${stackName}_${service}`, '--format', '{{.Status}}']);
     if (output.length === 0) {
@@ -1175,6 +1330,7 @@ const smokeRuntime = async (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessE
 
   await assertLoginFlow(runtimeProfile, env);
   await assertMeEndpoint(runtimeProfile, env);
+  await assertIamContextEndpoint(env);
   await assertMainserverSmoke(env);
 
   if (localProfiles.includes(runtimeProfile)) {
@@ -1290,16 +1446,16 @@ const migrateAcceptance = (env: NodeJS.ProcessEnv) => {
       `cat <<'SQL' >/tmp/sva-runtime-migration.sql`,
       sql,
       'SQL',
-      `psql -q -v ON_ERROR_STOP=1 -U ${shellEscape(postgresUser)} -d ${shellEscape(postgresDb)} -f /tmp/sva-runtime-migration.sql >/tmp/sva-runtime-migration.log 2>&1`,
+      `psql -X -P pager=off -q -v ON_ERROR_STOP=1 -U ${shellEscape(postgresUser)} -d ${shellEscape(postgresDb)} -f /tmp/sva-runtime-migration.sql >/tmp/sva-runtime-migration.log 2>&1`,
       'rm -f /tmp/sva-runtime-migration.sql',
     ].join('\n');
 
     const marker = '__SVA_MIGRATION_STATUS__';
     const markedRemoteScript = [
       remoteScript,
-      `printf '${marker}_START\\n'`,
-      `printf 'applied:${migrationFile}\\n'`,
-      `printf '${marker}_END\\n'`,
+      `printf '%s\\n' '${marker}_START'`,
+      `printf '%s\\n' 'applied:${migrationFile}'`,
+      `printf '%s\\n' '${marker}_END'`,
       'sleep 1',
     ].join('\n');
 
@@ -1386,11 +1542,11 @@ const runAcceptanceSqlAgainstDatabase = (
     "cat <<'SQL' >/tmp/sva-runtime-reset.sql",
     sql,
     'SQL',
-    `psql -q -v ON_ERROR_STOP=1 -U ${shellEscape(postgresUser)} -d ${shellEscape(database)} -f /tmp/sva-runtime-reset.sql >/tmp/sva-runtime-reset.log 2>&1`,
+    `psql -X -P pager=off -q -v ON_ERROR_STOP=1 -U ${shellEscape(postgresUser)} -d ${shellEscape(database)} -f /tmp/sva-runtime-reset.sql >/tmp/sva-runtime-reset.log 2>&1`,
     'rm -f /tmp/sva-runtime-reset.sql /tmp/sva-runtime-reset.log',
-    `printf '${marker}_START\\n'`,
-    "printf 'ok\\n'",
-    `printf '${marker}_END\\n'`,
+    `printf '%s\\n' '${marker}_START'`,
+    "printf '%s\\n' 'ok'",
+    `printf '%s\\n' '${marker}_END'`,
     'sleep 1',
   ].join('\n');
 
@@ -1476,9 +1632,9 @@ const resetAcceptance = (env: NodeJS.ProcessEnv) => {
   const redisScript = [
     'set -euo pipefail',
     `redis-cli --no-auth-warning -a ${shellEscape(redisPassword)} FLUSHALL >/dev/null`,
-    `printf '${redisMarker}_START\\n'`,
-    "printf 'ok\\n'",
-    `printf '${redisMarker}_END\\n'`,
+    `printf '%s\\n' '${redisMarker}_START'`,
+    "printf '%s\\n' 'ok'",
+    `printf '%s\\n' '${redisMarker}_END'`,
     'sleep 1',
   ].join('\n');
 
@@ -1531,6 +1687,38 @@ const captureAcceptanceStackStatus = (env: NodeJS.ProcessEnv) => {
   }
 };
 
+const createProbeResult = (input: {
+  details?: Readonly<Record<string, unknown>>;
+  durationMs: number;
+  httpStatus?: number;
+  message: string;
+  name: string;
+  scope: AcceptanceProbeResult['scope'];
+  status: AcceptanceProbeResult['status'];
+  target: string;
+}): AcceptanceProbeResult => ({
+  ...input,
+});
+
+const buildAcceptanceReleaseManifest = (
+  options: AcceptanceDeployOptions
+): AcceptanceReleaseManifest => ({
+  actor: options.actor,
+  commitSha: getGitCommitSha(),
+  imageDigest: options.imageDigest,
+  imageRef: options.imageRef,
+  imageRepository: options.imageRepository,
+  imageTag: options.imageTag,
+  monitoringConfigImageTag: options.monitoringConfigImageTag,
+  profile: 'acceptance-hb',
+  releaseMode: options.releaseMode,
+  workflow: options.workflow,
+});
+
+const writeJsonArtifact = (filePath: string, payload: unknown) => {
+  writeFileSync(filePath, `${JSON.stringify(payload, null, 2)}\n`, 'utf8');
+};
+
 const deployAcceptanceStack = (env: NodeJS.ProcessEnv) => {
   const stackName = env.SVA_STACK_NAME ?? 'sva-studio';
 
@@ -1555,8 +1743,26 @@ const deployAcceptanceStack = (env: NodeJS.ProcessEnv) => {
 };
 
 const writeAcceptanceDeployReport = (report: AcceptanceDeployReport) => {
-  writeFileSync(report.artifacts.jsonPath, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
+  writeJsonArtifact(report.artifacts.jsonPath, report);
   writeFileSync(report.artifacts.markdownPath, `${formatAcceptanceDeployReportMarkdown(report)}\n`, 'utf8');
+  writeJsonArtifact(report.artifacts.releaseManifestPath, report.releaseManifest);
+  writeJsonArtifact(report.artifacts.phaseReportPath, {
+    failureCategory: report.failureCategory ?? null,
+    generatedAt: report.generatedAt,
+    releaseDecision: report.releaseDecision,
+    steps: report.steps,
+  });
+  writeJsonArtifact(report.artifacts.migrationReportPath, {
+    migrationFiles: report.migrationFiles,
+    migrationReport: report.migrationReport ?? { status: 'skipped' },
+  });
+  writeJsonArtifact(report.artifacts.internalVerifyPath, {
+    probes: report.internalProbes,
+    stackStatus: report.stackStatus,
+  });
+  writeJsonArtifact(report.artifacts.externalSmokePath, {
+    probes: report.externalProbes,
+  });
 };
 
 const createBaseAcceptanceDeployReport = (
@@ -1566,6 +1772,7 @@ const createBaseAcceptanceDeployReport = (
 ): AcceptanceDeployReport => {
   const generatedAt = new Date().toISOString();
   const reportPaths = buildAcceptanceReportPaths(deployReportDir, options.reportSlug, generatedAt);
+  const releaseManifest = buildAcceptanceReleaseManifest(options);
 
   return {
     profile: 'acceptance-hb',
@@ -1575,11 +1782,20 @@ const createBaseAcceptanceDeployReport = (
     releaseMode: options.releaseMode,
     actor: options.actor,
     workflow: options.workflow,
+    imageRef: options.imageRef,
+    imageRepository: options.imageRepository,
     imageTag: options.imageTag,
     imageDigest: options.imageDigest,
     maintenanceWindow: options.maintenanceWindow,
     rollbackHint: options.rollbackHint,
     migrationFiles,
+    internalProbes: [],
+    externalProbes: [],
+    releaseDecision: {
+      technicalGatePassed: false,
+      summary: 'Technische Freigabe noch nicht entschieden.',
+    },
+    releaseManifest,
     stackName: env.SVA_STACK_NAME ?? 'sva-studio',
     observability: {
       grafanaUrl: options.grafanaUrl,
@@ -1592,8 +1808,304 @@ const createBaseAcceptanceDeployReport = (
     artifacts: {
       jsonPath: reportPaths.jsonPath,
       markdownPath: reportPaths.markdownPath,
+      releaseManifestPath: reportPaths.releaseManifestPath,
+      phaseReportPath: reportPaths.phaseReportPath,
+      migrationReportPath: reportPaths.migrationReportPath,
+      internalVerifyPath: reportPaths.internalVerifyPath,
+      externalSmokePath: reportPaths.externalSmokePath,
     },
   };
+};
+
+const buildAcceptanceLiveSpecCheck = (env: NodeJS.ProcessEnv, options: AcceptanceDeployOptions): DoctorCheck => {
+  const expected = {
+    imageRef: options.imageRef,
+    requiredKeys: getRuntimeProfileRequiredEnvKeys('acceptance-hb'),
+  };
+
+  try {
+    const stackName = env.SVA_STACK_NAME ?? 'sva-studio';
+    const dockerResult = runCaptureDetailed('docker', ['service', 'inspect', `${stackName}_app`, '--format', '{{.Spec.TaskTemplate.ContainerSpec.Image}}'], env);
+    const liveImage = dockerResult.status === 0 ? dockerResult.stdout.trim() : '';
+
+    if (!liveImage) {
+      return toDoctorCheck(
+        'live-spec-drift',
+        'warn',
+        'live_spec_unavailable',
+        'Live-Service-Spec konnte nicht gelesen werden; Drift-Pruefung bleibt auf Soll-Konfiguration beschraenkt.',
+        expected
+      );
+    }
+
+    return toDoctorCheck(
+      'live-spec-drift',
+      liveImage === options.imageRef ? 'ok' : 'warn',
+      liveImage === options.imageRef ? 'live_spec_matches' : 'live_spec_differs',
+      liveImage === options.imageRef
+        ? 'Live-Service-Spec entspricht dem Zielartefakt.'
+        : 'Live-Service-Spec weicht vom Zielartefakt ab; Rollout aktualisiert diese Abweichung.',
+      {
+        ...expected,
+        liveImage,
+      }
+    );
+  } catch {
+    return toDoctorCheck(
+      'live-spec-drift',
+      'warn',
+      'live_spec_unavailable',
+      'Live-Service-Spec konnte nicht gelesen werden; Drift-Pruefung bleibt auf Soll-Konfiguration beschraenkt.',
+      expected
+    );
+  }
+};
+
+const runHttpProbe = async (input: {
+  expect: (response: Response, payload: unknown) => string | null;
+  name: string;
+  scope: AcceptanceProbeResult['scope'];
+  target: string;
+}) => {
+  const startedAt = Date.now();
+
+  try {
+    const response = await fetch(input.target, { redirect: 'manual', signal: AbortSignal.timeout(10_000) });
+    const rawText = await response.text();
+    let payload: unknown = rawText;
+
+    try {
+      payload = rawText.length > 0 ? JSON.parse(rawText) : null;
+    } catch {
+      payload = rawText;
+    }
+
+    const expectationError = input.expect(response, payload);
+    return createProbeResult({
+      durationMs: Date.now() - startedAt,
+      httpStatus: response.status,
+      message: expectationError ?? `Probe erfolgreich mit HTTP ${response.status}.`,
+      name: input.name,
+      scope: input.scope,
+      status: expectationError ? 'error' : 'ok',
+      target: input.target,
+      ...(expectationError ? { details: { payload } } : {}),
+    });
+  } catch (error) {
+    return createProbeResult({
+      durationMs: Date.now() - startedAt,
+      message: error instanceof Error ? error.message : String(error),
+      name: input.name,
+      scope: input.scope,
+      status: 'error',
+      target: input.target,
+    });
+  }
+};
+
+const runImageSmoke = async (
+  env: NodeJS.ProcessEnv,
+  options: AcceptanceDeployOptions,
+  reportId: string
+): Promise<readonly AcceptanceProbeResult[]> => {
+  if (!commandExists('docker')) {
+    throw new Error('docker ist fuer image-smoke nicht verfuegbar.');
+  }
+
+  ensureDirs();
+  const smokePort = Number(env.SVA_IMAGE_SMOKE_PORT ?? '39080');
+  const containerName = `${reportId}-image-smoke`.replace(/[^a-z0-9-]/giu, '-').toLowerCase();
+  const envFilePath = resolve(runtimeArtifactsDir, `${containerName}.env`);
+  const runtimeEnvEntries = Object.entries(env)
+    .filter(([, value]) => typeof value === 'string' && value.trim().length > 0)
+    .map(([key, value]) => `${key}=${value as string}`);
+  writeFileSync(envFilePath, `${runtimeEnvEntries.join('\n')}\n`, 'utf8');
+
+  try {
+    runCaptureDetailed('docker', ['rm', '-f', containerName], env);
+  } catch {
+    // ignore stale container
+  }
+
+  try {
+    const runResult = runCaptureDetailed(
+      'docker',
+      [
+        'run',
+        '-d',
+        '--name',
+        containerName,
+        '--env-file',
+        envFilePath,
+        '-e',
+        `SVA_PUBLIC_BASE_URL=http://127.0.0.1:${smokePort}`,
+        '-p',
+        `127.0.0.1:${smokePort}:3000`,
+        options.imageRef,
+      ],
+      env
+    );
+
+    if (runResult.status !== 0) {
+      throw new Error(runResult.stderr?.trim() || runResult.stdout.trim() || 'Image-Smoke-Container konnte nicht gestartet werden.');
+    }
+
+    await waitForHttpOk(`http://127.0.0.1:${smokePort}/health/live`, 60_000);
+
+    const probes = await Promise.all([
+      runHttpProbe({
+        name: 'image-live',
+        scope: 'image-smoke',
+        target: `http://127.0.0.1:${smokePort}/health/live`,
+        expect: (response) => (response.status === 200 ? null : `Erwartet HTTP 200, erhalten ${response.status}.`),
+      }),
+      runHttpProbe({
+        name: 'image-ready',
+        scope: 'image-smoke',
+        target: `http://127.0.0.1:${smokePort}/health/ready`,
+        expect: (response) => (response.status === 200 || response.status === 503 ? null : `Unerwarteter Ready-Status ${response.status}.`),
+      }),
+    ]);
+
+    const failingProbe = probes.find((probe) => probe.status === 'error');
+    if (failingProbe) {
+      const logResult = runCaptureDetailed('docker', ['logs', containerName], env);
+      const inspectResult = runCaptureDetailed('docker', ['inspect', containerName, '--format', '{{json .State}}'], env);
+      throw new Error(
+        `${failingProbe.name} fehlgeschlagen. ${failingProbe.message}\n` +
+          `State: ${inspectResult.stdout.trim() || inspectResult.stderr?.trim() || 'unbekannt'}\n` +
+          summarizeProcessOutput(`${logResult.stdout ?? ''}\n${logResult.stderr ?? ''}`)
+      );
+    }
+
+    return probes;
+  } catch (error) {
+    const logResult = runCaptureDetailed('docker', ['logs', containerName], env);
+    const inspectResult = runCaptureDetailed('docker', ['inspect', containerName, '--format', '{{json .State}}'], env);
+    const details = summarizeProcessOutput(`${logResult.stdout ?? ''}\n${logResult.stderr ?? ''}`);
+    const state = inspectResult.stdout.trim() || inspectResult.stderr?.trim() || 'unbekannt';
+    throw new Error(`${error instanceof Error ? error.message : String(error)}\nState: ${state}${details ? `\n${details}` : ''}`, {
+      cause: error,
+    });
+  } finally {
+    runCaptureDetailed('docker', ['rm', '-f', containerName], env);
+    if (existsSync(envFilePath)) {
+      unlinkSync(envFilePath);
+    }
+  }
+};
+
+const runInternalVerify = async (env: NodeJS.ProcessEnv): Promise<{
+  doctorReport: DoctorReport;
+  probes: readonly AcceptanceProbeResult[];
+}> => {
+  const appService = env.SVA_ACCEPTANCE_APP_SERVICE ?? 'app';
+  const marker = '__SVA_INTERNAL_HTTP__';
+  const buildServiceProbe = (name: string, path: string) => {
+    const startedAt = Date.now();
+
+    try {
+      const summary = runAcceptanceServiceScript(
+        env,
+        appService,
+        `node -e "fetch('http://127.0.0.1:3000${path}', { redirect: 'manual' }).then(async (response) => { const body = await response.text(); console.log('${marker}_START'); console.log(JSON.stringify({ status: response.status, body })); console.log('${marker}_END'); }).catch((error) => { console.error(error instanceof Error ? error.message : String(error)); process.exit(1); })"`,
+        {
+          failureMessage: `Interne Probe ${path} fehlgeschlagen.`,
+          marker,
+          slot: env.SVA_ACCEPTANCE_APP_SLOT ?? '1',
+        }
+      );
+      const payload = JSON.parse(summary) as { body?: string; status?: number };
+      return createProbeResult({
+        durationMs: Date.now() - startedAt,
+        httpStatus: payload.status,
+        message:
+          payload.status === 200 || (name === 'internal-ready' && payload.status === 503)
+            ? `Interne Probe ${path} antwortet deterministisch.`
+            : `Interne Probe ${path} antwortet mit ${payload.status}.`,
+        name,
+        scope: 'internal',
+        status: payload.status === 200 || (name === 'internal-ready' && payload.status === 503) ? 'ok' : 'error',
+        target: `http://127.0.0.1:3000${path}`,
+      });
+    } catch (error) {
+      return createProbeResult({
+        durationMs: Date.now() - startedAt,
+        message: error instanceof Error ? error.message : String(error),
+        name,
+        scope: 'internal',
+        status: 'error',
+        target: `http://127.0.0.1:3000${path}`,
+      });
+    }
+  };
+
+  const doctorReport = await doctorRuntime('acceptance-hb', env);
+  const probes = [
+    buildServiceProbe('internal-live', '/health/live'),
+    buildServiceProbe('internal-ready', '/health/ready'),
+  ];
+
+  return {
+    doctorReport,
+    probes,
+  };
+};
+
+const runExternalSmoke = async (env: NodeJS.ProcessEnv): Promise<readonly AcceptanceProbeResult[]> => {
+  const baseUrl = env.SVA_PUBLIC_BASE_URL ?? 'http://localhost:3000';
+  const authIssuer = env.SVA_AUTH_ISSUER ?? '';
+
+  return await Promise.all([
+    runHttpProbe({
+      name: 'public-home',
+      scope: 'external',
+      target: baseUrl,
+      expect: (response) => (response.status === 200 ? null : `Erwartet HTTP 200, erhalten ${response.status}.`),
+    }),
+    runHttpProbe({
+      name: 'public-live',
+      scope: 'external',
+      target: new URL('/health/live', baseUrl).toString(),
+      expect: (response) => (response.status === 200 ? null : `Erwartet HTTP 200, erhalten ${response.status}.`),
+    }),
+    runHttpProbe({
+      name: 'public-ready',
+      scope: 'external',
+      target: new URL('/health/ready', baseUrl).toString(),
+      expect: (response) =>
+        response.status === 200 || response.status === 503 ? null : `Unerwarteter Ready-Status ${response.status}.`,
+    }),
+    runHttpProbe({
+      name: 'public-auth-login',
+      scope: 'external',
+      target: new URL('/auth/login', baseUrl).toString(),
+      expect: (response) => {
+        const location = response.headers.get('location') ?? '';
+        if (response.status !== 302) {
+          return `Erwartet Redirect, erhalten ${response.status}.`;
+        }
+        if (authIssuer && !location.startsWith(authIssuer)) {
+          return `OIDC-Redirect stimmt nicht: ${location}`;
+        }
+        return null;
+      },
+    }),
+    runHttpProbe({
+      name: 'public-iam-context',
+      scope: 'external',
+      target: new URL('/api/v1/iam/me/context', baseUrl).toString(),
+      expect: (response, payload) => {
+        if ([200, 401, 403].includes(response.status)) {
+          return null;
+        }
+        if (typeof payload === 'string' && payload.toLowerCase().includes('<html')) {
+          return 'IAM-Kontext lieferte HTML statt eines API-Vertrags.';
+        }
+        return `Unerwarteter IAM-Kontext-Status ${response.status}.`;
+      },
+    }),
+  ]);
 };
 
 const runAcceptanceDeploy = async (env: NodeJS.ProcessEnv) => {
@@ -1611,10 +2123,10 @@ const runAcceptanceDeploy = async (env: NodeJS.ProcessEnv) => {
 
   try {
     const precheckStartedAt = Date.now();
-    const precheckReport = await precheckAcceptance(env);
+    const precheckReport = await precheckAcceptance(env, options);
     if (precheckReport.status === 'error') {
       steps.push(
-        createStepResult('precheck', precheckStartedAt, 'error', 'Acceptance-Precheck ist fehlgeschlagen.', {
+        createStepResult('environment-precheck', precheckStartedAt, 'error', 'Acceptance-Precheck ist fehlgeschlagen.', {
           report: precheckReport,
         })
       );
@@ -1626,40 +2138,62 @@ const runAcceptanceDeploy = async (env: NodeJS.ProcessEnv) => {
     }
 
     steps.push(
-      createStepResult('precheck', precheckStartedAt, 'ok', 'Acceptance-Precheck erfolgreich abgeschlossen.', {
+      createStepResult('environment-precheck', precheckStartedAt, 'ok', 'Acceptance-Precheck erfolgreich abgeschlossen.', {
         report: precheckReport,
       })
     );
 
-    const maintenanceStartedAt = Date.now();
-    if (options.releaseMode === 'schema-and-app') {
+    const imageSmokeStartedAt = Date.now();
+    try {
+      const imageSmokeProbes = await runImageSmoke(env, options, report.reportId);
+      report = {
+        ...report,
+        internalProbes: [...report.internalProbes, ...imageSmokeProbes],
+      };
       steps.push(
-        createStepResult(
-          'maintenance-window',
-          maintenanceStartedAt,
-          'ok',
-          `Wartungsfenster dokumentiert: ${options.maintenanceWindow}.`,
-          {
-            maintenanceWindow: options.maintenanceWindow,
-          }
-        )
+        createStepResult('image-smoke', imageSmokeStartedAt, 'ok', 'Artefakt-Smoke erfolgreich abgeschlossen.', {
+          probes: imageSmokeProbes,
+        })
       );
-    } else {
+    } catch (error) {
       steps.push(
-        createStepResult('maintenance-window', maintenanceStartedAt, 'skipped', 'Kein Wartungsfenster fuer app-only erforderlich.')
+        createStepResult('image-smoke', imageSmokeStartedAt, 'error', error instanceof Error ? error.message : String(error))
       );
+      report = {
+        ...report,
+        steps,
+      };
+      throw { category: 'image' as const, report };
     }
 
     if (options.releaseMode === 'schema-and-app') {
       const migrateStartedAt = Date.now();
       try {
         migrateAcceptance(env);
+        report = {
+          ...report,
+          migrationReport: {
+            status: 'ok',
+            startedAt: new Date(migrateStartedAt).toISOString(),
+            completedAt: new Date().toISOString(),
+          },
+        };
         steps.push(
           createStepResult('migrate', migrateStartedAt, 'ok', 'Acceptance-Migration erfolgreich abgeschlossen.', {
             migrationFiles,
+            maintenanceWindow: options.maintenanceWindow,
           })
         );
       } catch (error) {
+        report = {
+          ...report,
+          migrationReport: {
+            status: 'error',
+            startedAt: new Date(migrateStartedAt).toISOString(),
+            completedAt: new Date().toISOString(),
+            errorMessage: error instanceof Error ? error.message : String(error),
+          },
+        };
         steps.push(
           createStepResult('migrate', migrateStartedAt, 'error', error instanceof Error ? error.message : String(error), {
             migrationFiles,
@@ -1673,6 +2207,12 @@ const runAcceptanceDeploy = async (env: NodeJS.ProcessEnv) => {
       }
     } else {
       const migrateStartedAt = Date.now();
+      report = {
+        ...report,
+        migrationReport: {
+          status: 'skipped',
+        },
+      };
       steps.push(createStepResult('migrate', migrateStartedAt, 'skipped', 'Migrationen fuer app-only ausgelassen.'));
     }
 
@@ -1696,15 +2236,22 @@ const runAcceptanceDeploy = async (env: NodeJS.ProcessEnv) => {
         ...report,
         steps,
       };
-      throw { category: 'stack_rollout' as const, report };
+      throw { category: 'startup' as const, report };
     }
 
-    const doctorStartedAt = Date.now();
-    const doctorReport = await doctorRuntime('acceptance-hb', env);
-    if (doctorReport.status === 'error') {
+    const internalVerifyStartedAt = Date.now();
+    const internalVerify = await runInternalVerify(env);
+    report = {
+      ...report,
+      internalProbes: [...report.internalProbes, ...internalVerify.probes],
+    };
+    const internalVerifyFailed =
+      internalVerify.doctorReport.status === 'error' || internalVerify.probes.some((probe) => probe.status === 'error');
+    if (internalVerifyFailed) {
       steps.push(
-        createStepResult('doctor', doctorStartedAt, 'error', 'Acceptance-Doctor meldet Fehler.', {
-          report: doctorReport,
+        createStepResult('internal-verify', internalVerifyStartedAt, 'error', 'Interne Verifikation meldet Fehler.', {
+          report: internalVerify.doctorReport,
+          probes: internalVerify.probes,
         })
       );
       report = {
@@ -1715,25 +2262,52 @@ const runAcceptanceDeploy = async (env: NodeJS.ProcessEnv) => {
     }
 
     steps.push(
-      createStepResult('doctor', doctorStartedAt, 'ok', 'Acceptance-Doctor erfolgreich abgeschlossen.', {
-        report: doctorReport,
+      createStepResult('internal-verify', internalVerifyStartedAt, 'ok', 'Interne Verifikation erfolgreich abgeschlossen.', {
+        report: internalVerify.doctorReport,
+        probes: internalVerify.probes,
       })
     );
 
-    const smokeStartedAt = Date.now();
+    const externalSmokeStartedAt = Date.now();
     try {
-      await smokeRuntime('acceptance-hb', env);
-      steps.push(createStepResult('smoke', smokeStartedAt, 'ok', 'Acceptance-Smoke-Checks erfolgreich abgeschlossen.'));
+      const externalProbes = await runExternalSmoke(env);
+      report = {
+        ...report,
+        externalProbes,
+      };
+      const failingProbe = externalProbes.find((probe) => probe.status === 'error');
+      if (failingProbe) {
+        throw new Error(`${failingProbe.name}: ${failingProbe.message}`);
+      }
+      steps.push(
+        createStepResult('external-smoke', externalSmokeStartedAt, 'ok', 'Externe Smoke-Probes erfolgreich abgeschlossen.', {
+          probes: externalProbes,
+        })
+      );
     } catch (error) {
       steps.push(
-        createStepResult('smoke', smokeStartedAt, 'error', error instanceof Error ? error.message : String(error))
+        createStepResult('external-smoke', externalSmokeStartedAt, 'error', error instanceof Error ? error.message : String(error))
       );
       report = {
         ...report,
         steps,
       };
-      throw { category: 'smoke' as const, report };
+      throw { category: 'ingress' as const, report };
     }
+
+    const releaseDecisionStartedAt = Date.now();
+    report = {
+      ...report,
+      releaseDecision: {
+        technicalGatePassed: true,
+        summary: 'Alle technischen Gates erfolgreich.',
+      },
+    };
+    steps.push(
+      createStepResult('release-decision', releaseDecisionStartedAt, 'ok', 'Technische Freigabe erteilt.', {
+        technicalGatePassed: true,
+      })
+    );
 
     report = {
       ...report,
@@ -1750,7 +2324,7 @@ const runAcceptanceDeploy = async (env: NodeJS.ProcessEnv) => {
     const category =
       typeof error === 'object' && error !== null && 'category' in error
         ? (error.category as AcceptanceFailureCategory)
-        : 'external_dependency';
+        : 'dependency';
     const partialReport =
       typeof error === 'object' && error !== null && 'report' in error
         ? (error.report as AcceptanceDeployReport)
@@ -1762,11 +2336,17 @@ const runAcceptanceDeploy = async (env: NodeJS.ProcessEnv) => {
       ...partialReport,
       status: 'error' as const,
       failureCategory: category,
+      releaseDecision: {
+        technicalGatePassed: false,
+        summary: `Technische Freigabe verweigert (${category}).`,
+      },
       stackStatus: captureAcceptanceStackStatus(env),
     };
     writeAcceptanceDeployReport(failedReport);
     printJsonIfRequested(failedReport);
-    throw new Error(`Acceptance-Deploy fehlgeschlagen (${category}). Bericht: ${failedReport.artifacts.markdownPath}`);
+    throw new Error(`Acceptance-Deploy fehlgeschlagen (${category}). Bericht: ${failedReport.artifacts.markdownPath}`, {
+      cause: error,
+    });
   }
 };
 

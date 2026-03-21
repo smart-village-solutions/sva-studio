@@ -45,7 +45,9 @@ vi.mock('@sva/sdk/server', () => ({
 import {
   authRoutePaths,
   authServerRouteFactories,
+  dispatchAuthRouteRequest,
   resolveAuthHandlers,
+  resolveAuthRoutePathForRequestPath,
   verifyAuthRouteHandlerCoverage,
   wrapHandlersWithJsonErrorBoundary,
 } from './auth.routes.server';
@@ -129,6 +131,11 @@ const authServerMocks = vi.hoisted(() => {
 });
 
 vi.mock('@sva/auth/server', () => authServerMocks);
+vi.mock('@sva/auth/runtime-routes', () => authServerMocks);
+vi.mock('@sva/auth/runtime-health', () => ({
+  healthLiveHandler: authServerMocks.healthLiveHandler,
+  healthReadyHandler: authServerMocks.healthReadyHandler,
+}));
 
 describe('auth.routes.server', () => {
   beforeEach(() => {
@@ -202,6 +209,41 @@ describe('auth.routes.server', () => {
 
   it('throws for unknown auth path', () => {
     expect(() => resolveAuthHandlers('/auth/unknown')).toThrow('Unknown auth route path');
+  });
+
+  it('matches static and parameterized runtime auth paths', () => {
+    expect(resolveAuthRoutePathForRequestPath('/health/live')).toBe('/health/live');
+    expect(resolveAuthRoutePathForRequestPath('/api/v1/iam/users/abc-123')).toBe('/api/v1/iam/users/$userId');
+    expect(resolveAuthRoutePathForRequestPath('/api/v1/iam/groups/group-1/roles/role-1')).toBe(
+      '/api/v1/iam/groups/$groupId/roles/$roleId'
+    );
+    expect(resolveAuthRoutePathForRequestPath('/not-covered')).toBeNull();
+  });
+
+  it('dispatches runtime auth requests without going through the route tree', async () => {
+    const response = await dispatchAuthRouteRequest(new Request('http://localhost/health/live'));
+
+    expect(response?.status).toBe(200);
+    expect(authServerMocks.healthLiveHandler).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns method_not_allowed for unsupported runtime auth methods', async () => {
+    const response = await dispatchAuthRouteRequest(
+      new Request('http://localhost/auth/logout', {
+        method: 'GET',
+        headers: {
+          'X-Request-Id': 'req-method',
+        },
+      })
+    );
+
+    expect(response?.status).toBe(405);
+    expect(response?.headers.get('Allow')).toBe('POST');
+    await expect(response?.json()).resolves.toEqual({
+      error: 'method_not_allowed',
+      message: 'HTTP-Methode nicht erlaubt.',
+      requestId: 'req-method',
+    });
   });
 
   it('returns a JSON 500 response when a wrapped handler throws', async () => {

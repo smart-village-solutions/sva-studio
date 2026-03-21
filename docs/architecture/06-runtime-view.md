@@ -218,6 +218,21 @@ Fehlerpfad:
 3. Beim Wechsel sendet die UI `PUT /api/v1/iam/me/context` mit der gewählten `organizationId`.
 4. Der Server validiert CSRF-Contract, Session, Instanzscope, Membership und Aktivstatus der Zielorganisation.
 5. Bei Erfolg wird der aktive Kontext serverseitig in der Session aktualisiert und ein Audit-/Betriebsereignis für `organization_context_switched` erzeugt.
+
+### Ergänzung 2026-03: Produktionsnahe Release-Validierung
+
+1. Der Operator startet `pnpm env:deploy:acceptance-hb` mit `--image-digest`.
+2. `environment-precheck` validiert Pflichtkonfiguration, Schema-Guard und Soll-/Live-Spec-Drift.
+3. `image-smoke` startet exakt das freizugebende Image isoliert und prüft `/health/live` und `/health/ready`.
+4. Nach optionaler Migration wird der Stack aktualisiert.
+5. `internal-verify` kombiniert interne HTTP-Probes gegen den App-Service mit `doctor`-Diagnostik.
+6. `external-smoke` prüft öffentliche URL, Health-Pfade, Auth-Entry und IAM-Kontext.
+7. Erst danach wird eine technische `release-decision` erzeugt und als Artefakt persistiert.
+
+Fehlerpfad:
+
+- Fehlschlag vor dem Rollout bleibt auf `config`, `image` oder `migration` klassifiziert.
+- Fehlschlag nach erfolgreichem Stack-Update, aber vor öffentlicher Verifikation, bleibt als `health` oder `ingress` sichtbar und wird nicht als erfolgreicher Release bewertet.
 6. Nachgelagerte UI- und Backend-Pfade lesen den aktiven Organisationskontext aus dem kanonischen Sessionzustand.
 
 ### Szenario 14: Admin verwaltet Gruppen und weist Rollenbündel zu

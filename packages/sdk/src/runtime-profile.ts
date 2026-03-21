@@ -12,6 +12,7 @@ export type RuntimeProfileDefinition = {
 };
 
 export type RuntimeProfileEnvValidationResult = {
+  readonly invalid: string[];
   readonly missing: string[];
   readonly placeholders: string[];
 };
@@ -21,6 +22,9 @@ const COMMON_REQUIRED_ENV_KEYS = [
   'SVA_PUBLIC_BASE_URL',
   'REDIS_URL',
   'IAM_DATABASE_URL',
+  'IAM_PII_ACTIVE_KEY_ID',
+  'IAM_PII_KEYRING_JSON',
+  'ENCRYPTION_KEY',
   'OTEL_EXPORTER_OTLP_ENDPOINT',
   'SVA_MAINSERVER_GRAPHQL_URL',
   'SVA_MAINSERVER_OAUTH_TOKEN_URL',
@@ -32,6 +36,7 @@ const KEYCLOAK_AUTH_REQUIRED_ENV_KEYS = [
   'SVA_AUTH_ISSUER',
   'SVA_AUTH_CLIENT_ID',
   'SVA_AUTH_CLIENT_SECRET',
+  'SVA_AUTH_STATE_SECRET',
   'SVA_AUTH_REDIRECT_URI',
   'SVA_AUTH_POST_LOGOUT_REDIRECT_URI',
 ] as const;
@@ -76,6 +81,7 @@ const PROFILE_DEFINITIONS = {
       ...COMMON_REQUIRED_ENV_KEYS,
       'SVA_AUTH_ISSUER',
       'SVA_AUTH_CLIENT_ID',
+      'SVA_AUTH_STATE_SECRET',
       'SVA_AUTH_REDIRECT_URI',
       'SVA_AUTH_POST_LOGOUT_REDIRECT_URI',
       'KEYCLOAK_ADMIN_BASE_URL',
@@ -97,6 +103,24 @@ const isPlaceholderValue = (value: string | undefined) =>
 const readEnvValue = (env: NodeJS.ProcessEnv, key: string) => {
   const value = env[key];
   return typeof value === 'string' ? value.trim() : '';
+};
+
+const isJsonObjectValue = (value: string) => {
+  try {
+    const parsed: unknown = JSON.parse(value);
+    return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed);
+  } catch {
+    return false;
+  }
+};
+
+const isRuntimeEnvValueInvalid = (key: string, value: string) => {
+  switch (key) {
+    case 'IAM_PII_KEYRING_JSON':
+      return !isJsonObjectValue(value);
+    default:
+      return false;
+  }
 };
 
 export const parseRuntimeProfile = (value: string | undefined): RuntimeProfile | null => {
@@ -126,6 +150,7 @@ export const validateRuntimeProfileEnv = (
   profile: RuntimeProfile,
   env: NodeJS.ProcessEnv,
 ): RuntimeProfileEnvValidationResult => {
+  const invalid: string[] = [];
   const missing: string[] = [];
   const placeholders: string[] = [];
 
@@ -139,8 +164,13 @@ export const validateRuntimeProfileEnv = (
 
     if (isPlaceholderValue(value)) {
       placeholders.push(key);
+      continue;
+    }
+
+    if (isRuntimeEnvValueInvalid(key, value)) {
+      invalid.push(key);
     }
   }
 
-  return { missing, placeholders };
+  return { invalid, missing, placeholders };
 };

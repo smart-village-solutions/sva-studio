@@ -7,7 +7,8 @@ import { createRouterDiagnosticsSnapshot } from './lib/router-diagnostics';
 describe('createRuntimeRouteTree', () => {
   it('merges file routes with core, auth and plugin runtime routes', async () => {
     const { authRouteFactories } = await import('@sva/routing');
-    const routeTree = createRuntimeRouteTree(authRouteFactories);
+    const { demoRouteFactory } = await import('./routes/-demo-routes');
+    const routeTree = createRuntimeRouteTree(authRouteFactories, [...(await import('./routes/-core-routes')).coreRouteFactoriesBase, demoRouteFactory]);
     const router = createRouter({
       routeTree,
       context: {

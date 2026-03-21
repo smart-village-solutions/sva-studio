@@ -27,7 +27,7 @@ const ensureRootSdkInitialized = createServerOnlyFn(async () => {
  */
 const loadRootData = async () => {
   if (import.meta.env.SSR) {
-    await ensureRootSdkInitialized();
+    void ensureRootSdkInitialized().catch(() => undefined);
   }
   return {};
 };

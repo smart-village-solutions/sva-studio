@@ -231,6 +231,9 @@ const buildSchemaDriftFallbackResponse = async (
 
 const handleProfileFetchError = async (actor: ActorInfo, error: unknown): Promise<Response> => {
   const classified = classifyIamDiagnosticError(error, 'Profil konnte nicht geladen werden.', actor.requestId);
+  const errorCause = error && typeof error === 'object' && 'cause' in error
+    ? (error as { cause?: unknown }).cause
+    : undefined;
   if (classified.details.reason_code === 'unexpected_internal_error') {
     const schemaDriftResponse = await buildSchemaDriftFallbackResponse(
       actor,
@@ -246,15 +249,40 @@ const handleProfileFetchError = async (actor: ActorInfo, error: unknown): Promis
     instance_id: actor.instanceId,
     request_id: actor.requestId,
     trace_id: actor.traceId,
+    error_type: error instanceof Error ? error.constructor.name : typeof error,
     error: error instanceof Error ? error.message : String(error),
+    error_stack: error instanceof Error ? error.stack : undefined,
+    error_cause:
+      errorCause instanceof Error
+        ? errorCause.message
+        : errorCause !== undefined
+          ? String(errorCause)
+          : undefined,
+    classified_status: classified.status,
+    classified_code: classified.code,
+    classified_reason_code: classified.details.reason_code,
   });
   iamUserOperationsCounter.add(1, { action: 'get_my_profile', result: 'failure' });
+  const debugDetails =
+    process.env.IAM_DEBUG_PROFILE_ERRORS === 'true'
+      ? {
+          debug_error_type: error instanceof Error ? error.constructor.name : typeof error,
+          debug_error_message: error instanceof Error ? error.message : String(error),
+          debug_error_stack: error instanceof Error ? error.stack : undefined,
+          debug_error_cause:
+            errorCause instanceof Error
+              ? errorCause.message
+              : errorCause !== undefined
+                ? String(errorCause)
+                : undefined,
+        }
+      : undefined;
   return createApiError(
     classified.status,
     classified.code,
     classified.message,
     actor.requestId,
-    classified.details
+    debugDetails ? { ...classified.details, ...debugDetails } : classified.details
   );
 };
 
@@ -327,6 +355,15 @@ export const getMyProfileInternal = async (
   }
 
   try {
+    logger.info('IAM profile fetch starting', {
+      operation: 'get_my_profile',
+      instance_id: actorContext.actor.instanceId,
+      request_id: actorContext.actor.requestId,
+      trace_id: actorContext.actor.traceId,
+      actor_account_id: actorContext.actor.actorAccountId ?? null,
+      db_keycloak_subject: actorContext.dbKeycloakSubject,
+    });
+
     const detail = await loadMyProfileDetail(actorContext.actor, actorContext.dbKeycloakSubject);
     if (!detail) {
       return createProfileNotFoundResponse(actorContext.actor.requestId);

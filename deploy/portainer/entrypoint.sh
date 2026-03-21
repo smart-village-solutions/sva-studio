@@ -146,6 +146,98 @@ process.stderr.write(
 NODE
 }
 
+patch_nitro_request_dispatch() {
+  server_entry_path="${SVA_SERVER_ENTRY_PATH:-/app/.output/server/index.mjs}"
+
+  if [ ! -f "${server_entry_path}" ]; then
+    return 0
+  fi
+
+  node <<'NODE'
+const fs = require('node:fs');
+
+const serverEntryPath = process.env.SVA_SERVER_ENTRY_PATH || '/app/.output/server/index.mjs';
+const expectedCall = 'const response = await h3App.request(req, void 0, req.context);';
+const compatibilityCall =
+  'const response = await (typeof h3App.request === "function" ? h3App.request(req, void 0, req.context) : h3App["~request"](req, req.context));';
+const legacyDelegatedServerCall = [
+  'const { default: tanstackServerEntry } = await import("./chunks/build/server.mjs");',
+  'const requestPathname = new URL(req.url).pathname;',
+  'const shouldDelegateToTanstackServer = !requestPathname.startsWith("/assets/") && !requestPathname.startsWith("/_server/") && !requestPathname.startsWith("/_build/") && !requestPathname.startsWith("/__vite");',
+  'const response = await (shouldDelegateToTanstackServer && typeof tanstackServerEntry?.fetch === "function"',
+  '  ? tanstackServerEntry.fetch(req)',
+  '  : (typeof h3App.request === "function" ? h3App.request(req, void 0, req.context) : h3App["~request"](req, req.context)));',
+].join('\n    ');
+const delegatedServerCall = [
+  'const { default: tanstackServerEntry } = await import("./chunks/build/server.mjs");',
+  'const requestPathname = new URL(req.url).pathname;',
+  'const tryServeStaticAsset = async () => {',
+  '  if (!requestPathname.startsWith("/assets/")) {',
+  '    return null;',
+  '  }',
+  '  const [{ readFile }, pathModule] = await Promise.all([import("node:fs/promises"), import("node:path")]);',
+  '  const publicRoot = pathModule.join(process.cwd(), ".output", "public");',
+  '  const candidatePath = pathModule.normalize(pathModule.join(publicRoot, requestPathname));',
+  '  if (!candidatePath.startsWith(publicRoot)) {',
+  '    return new Response("Not found", { status: 404 });',
+  '  }',
+  '  try {',
+  '    const body = await readFile(candidatePath);',
+  '    const extension = pathModule.extname(candidatePath);',
+  '    const contentType = extension === ".js"',
+  '      ? "text/javascript; charset=utf-8"',
+  '      : extension === ".css"',
+  '        ? "text/css; charset=utf-8"',
+  '        : "application/octet-stream";',
+  '    return new Response(body, {',
+  '      status: 200,',
+  '      headers: {',
+  '        "content-type": contentType,',
+  '        "cache-control": "public, max-age=31536000, immutable",',
+  '      },',
+  '    });',
+  '  } catch {',
+  '    return null;',
+  '  }',
+  '};',
+  'const staticAssetResponse = await tryServeStaticAsset();',
+  'const shouldDelegateToTanstackServer = !requestPathname.startsWith("/assets/") && !requestPathname.startsWith("/_server/") && !requestPathname.startsWith("/_build/") && !requestPathname.startsWith("/__vite");',
+  'const response = await (staticAssetResponse ?? (shouldDelegateToTanstackServer && typeof tanstackServerEntry?.fetch === "function"',
+  '  ? tanstackServerEntry.fetch(req)',
+  '  : (typeof h3App.request === "function" ? h3App.request(req, void 0, req.context) : h3App["~request"](req, req.context))));',
+].join('\n    ');
+
+if (!fs.existsSync(serverEntryPath)) {
+  process.exit(0);
+}
+
+const source = fs.readFileSync(serverEntryPath, 'utf8');
+const hasExpectedCall = source.includes(expectedCall);
+const hasCompatibilityCall = source.includes(compatibilityCall);
+const hasDelegatedServerCall = source.includes('tanstackServerEntry.fetch(req)');
+const hasStaticAssetDelegation = source.includes('const staticAssetResponse = await tryServeStaticAsset();');
+const hasRequestBinding = source.includes('this.request = this.request.bind(this);');
+const hasTildeRequest = source.includes('this["~request"](request, context)') || source.includes('"~request"(request, context)');
+
+if ((hasStaticAssetDelegation && hasDelegatedServerCall) || hasRequestBinding || !hasTildeRequest) {
+  process.stderr.write('[entrypoint] nitro server-entry patch not needed\n');
+  process.exit(0);
+}
+
+const patched = source
+  .replace(expectedCall, delegatedServerCall)
+  .replace(compatibilityCall, delegatedServerCall)
+  .replace(legacyDelegatedServerCall, delegatedServerCall);
+if (patched === source) {
+  process.stderr.write('[entrypoint] nitro server-entry patch could not be applied\n');
+  process.exit(1);
+}
+
+fs.writeFileSync(serverEntryPath, patched, 'utf8');
+process.stderr.write('[entrypoint] applied nitro server-entry delegation patch\n');
+NODE
+}
+
 if [ -z "${APP_DB_PASSWORD:-}" ]; then
   if [ -n "${POSTGRES_PASSWORD:-}" ]; then
     export APP_DB_PASSWORD="${POSTGRES_PASSWORD}"
@@ -170,6 +262,8 @@ fi
 if [ -z "${REDIS_URL:-}" ]; then
   export REDIS_URL="redis://redis:6379"
 fi
+
+patch_nitro_request_dispatch
 
 if [ "${SVA_START_DIAGNOSTICS:-0}" = "1" ]; then
   write_start_diagnostics

@@ -2,7 +2,6 @@ import { createRouter, type AnyRoute, type RootRoute } from '@tanstack/react-rou
 import { createIsomorphicFn } from '@tanstack/react-start';
 import { pluginExampleRoutes } from '@sva/plugin-example';
 import type { RouteGuardUser } from '@sva/routing';
-import { isMockAuthRuntimeProfile, parseRuntimeProfile } from '@sva/sdk';
 
 import { coreRouteFactoriesBase } from './routes/-core-routes';
 import { rootRoute } from './routes/__root';
@@ -24,13 +23,25 @@ const resolveBaseUrl = () => {
   return process.env.SVA_PUBLIC_BASE_URL ?? 'http://localhost:3000';
 };
 
-const isMockAuthEnabled = () => {
-  const runtimeProfile = parseRuntimeProfile(import.meta.env.VITE_SVA_RUNTIME_PROFILE);
+let sdkRuntimeProfilePromise: Promise<Pick<typeof import('@sva/sdk'), 'isMockAuthRuntimeProfile' | 'parseRuntimeProfile'>> | null = null;
+
+const getSdkRuntimeProfileHelpers = async () => {
+  sdkRuntimeProfilePromise ??= import('@sva/sdk').then((mod) => ({
+    isMockAuthRuntimeProfile: mod.isMockAuthRuntimeProfile,
+    parseRuntimeProfile: mod.parseRuntimeProfile,
+  }));
+
+  return sdkRuntimeProfilePromise;
+};
+
+const isMockAuthEnabled = async () => {
+  const sdk = await getSdkRuntimeProfileHelpers();
+  const runtimeProfile = sdk.parseRuntimeProfile(import.meta.env.VITE_SVA_RUNTIME_PROFILE);
 
   return (
     import.meta.env.VITE_MOCK_AUTH === true ||
     import.meta.env.VITE_MOCK_AUTH === 'true' ||
-    (runtimeProfile !== null && isMockAuthRuntimeProfile(runtimeProfile))
+    (runtimeProfile !== null && sdk.isMockAuthRuntimeProfile(runtimeProfile))
   );
 };
 
@@ -55,36 +66,30 @@ const readRouteGuardUser = (payload: unknown): RouteGuardUser => {
 const getRouteGuardUser = createIsomorphicFn()
   .server(async (): Promise<RouteGuardUser | null> => {
     try {
-      if (isMockAuthEnabled()) {
+      if (await isMockAuthEnabled()) {
         return createMockRouteGuardUser();
       }
 
-      const { getRequest, getRequestHeader } = await import('@tanstack/react-start/server');
+      const [{ withAuthenticatedUser }, { getRequest }] = await Promise.all([
+        import('@sva/auth/server'),
+        import('@tanstack/react-start/server'),
+      ]);
 
       const request = getRequest();
-      const cookieHeader = getRequestHeader('cookie');
-      if (!cookieHeader) {
-        return null;
-      }
-
-      const response = await fetch(new URL('/auth/me', request.url).toString(), {
-        headers: {
-          cookie: cookieHeader,
-        },
+      let routeGuardUser: RouteGuardUser | null = null;
+      const response = await withAuthenticatedUser(request, ({ user }) => {
+        routeGuardUser = { roles: user.roles };
+        return new Response(null, { status: 204 });
       });
 
-      if (!response.ok) {
-        return null;
-      }
-
-      return readRouteGuardUser(await response.json());
+      return response.ok ? routeGuardUser : null;
     } catch {
       return null;
     }
   })
   .client(async (): Promise<RouteGuardUser | null> => {
     try {
-      if (isMockAuthEnabled()) {
+      if (await isMockAuthEnabled()) {
         return createMockRouteGuardUser();
       }
 
@@ -107,6 +112,27 @@ type MaterializedRoutes<TFactories extends readonly AppRouteFactory[]> = {
   readonly [K in keyof TFactories]: ReturnType<TFactories[K]>;
 };
 
+const areDemoRoutesEnabled = () => {
+  const configuredValue = import.meta.env.VITE_ENABLE_DEMO_ROUTES;
+  if (configuredValue === true || configuredValue === 'true') {
+    return true;
+  }
+  if (configuredValue === false || configuredValue === 'false') {
+    return false;
+  }
+
+  return (process.env.NODE_ENV ?? 'development') !== 'production';
+};
+
+const getRuntimeCoreRouteFactories = async (): Promise<readonly AppRouteFactory[]> => {
+  if (!areDemoRoutesEnabled()) {
+    return coreRouteFactoriesBase;
+  }
+
+  const mod = await import('./routes/-demo-routes');
+  return [...coreRouteFactoriesBase, mod.demoRouteFactory];
+};
+
 const materializeRoutes = <TFactories extends readonly AppRouteFactory[]>(factories: TFactories) =>
   // TanStack Router: createRootRoute() liefert einen konkreten Typ, der nicht
   // direkt mit dem generischen RootRoute-Parameter der Factories kompatibel ist.
@@ -114,23 +140,26 @@ const materializeRoutes = <TFactories extends readonly AppRouteFactory[]>(factor
   factories.map((factory) => factory(rootRoute as unknown as RootRoute)) as MaterializedRoutes<TFactories>;
 
 export const createRuntimeRouteTree = <
+  TCoreRouteFactories extends readonly AppRouteFactory[],
   TAuthRouteFactories extends Awaited<ReturnType<typeof getAuthRouteFactories>> & readonly AppRouteFactory[],
 >(
   runtimeAuthRouteFactories: TAuthRouteFactories,
+  runtimeCoreRouteFactories: TCoreRouteFactories = coreRouteFactoriesBase as unknown as TCoreRouteFactories,
 ) => {
   const extensionRouteFactories = [
     ...runtimeAuthRouteFactories,
     ...(pluginExampleRoutes as unknown as readonly AppRouteFactory[]),
   ] as const;
-  const runtimeRoutes = [...materializeRoutes(coreRouteFactoriesBase), ...materializeRoutes(extensionRouteFactories)] as const;
+  const runtimeRoutes = [...materializeRoutes(runtimeCoreRouteFactories), ...materializeRoutes(extensionRouteFactories)] as const;
 
   return rootRoute.addChildren(runtimeRoutes);
 };
 
 // Create a new router instance
 export const getRouter = async () => {
+  const runtimeCoreRouteFactories = await getRuntimeCoreRouteFactories();
   const runtimeAuthRouteFactories = await getAuthRouteFactories();
-  const routeTree = createRuntimeRouteTree(runtimeAuthRouteFactories);
+  const routeTree = createRuntimeRouteTree(runtimeAuthRouteFactories, runtimeCoreRouteFactories);
 
   const router = createRouter({
     routeTree,

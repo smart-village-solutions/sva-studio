@@ -35,6 +35,12 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
   - `pnpm nx run sva-studio-react:test:acceptance` läuft als separates Delivery-Gate gegen die Testumgebung
   - Bericht mit JSON- und Markdown-Artefakt wird unter `docs/reports/` geschrieben
   - `/health/ready` sowie Login-, JIT-, Organisations- und Membership-Nachweise müssen im Bericht als `passed` erscheinen
+- Produktionsnahe Release-Validierung:
+  - `pnpm env:deploy:acceptance-hb` ist nur mit `--image-digest=sha256:...` gültig
+  - `environment-precheck`, `image-smoke`, `internal-verify`, `external-smoke` und `release-decision` müssen im Deploy-Report als `ok` erscheinen
+  - öffentliche Smoke-Probes gegen `/`, `/health/live`, `/health/ready`, `/auth/login` und `/api/v1/iam/me/context` dürfen keinen Timeout und keinen generischen HTML-Fehlerpfad liefern
+  - Release-Evidenz unter `artifacts/runtime/deployments/` muss Report, Release-Manifest und Probe-Artefakte enthalten
+  - `pnpm env:feedback:acceptance-hb` muss nach jedem Lauf eine Trend-Zusammenfassung und einen Review-Entwurf erzeugen
 - IAM Authorize Performance:
   - P95 für `POST /iam/authorize` < 50 ms (mindestens 100 RPS / 500 gleichzeitige Nutzer als Zielprofil)
 - IAM Gruppenverwaltung:
@@ -116,6 +122,7 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
 - Healthchecks für lokale Monitoring-Dienste in Compose
 - Redis-Infrastrukturmetriken werden über `redis-exporter` mit Prometheus eingesammelt
 - DSR-Audit-Events enthalten mindestens `instance_id`, `request_id`, `trace_id`, `event_type`, `result`
+- Produktnahe Deploy-Artefakte enthalten pro Phase eine maschinenlesbare Fehlerkategorie und trennen Rollout-Erfolg von technischer Freigabeentscheidung
 
 ### Aktuelle Lücken
 
@@ -125,6 +132,7 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
 - Mehrere IAM-Hotspots liegen bewusst über den Komplexitäts-Schwellwerten und werden über Refactoring-Tickets nachverfolgt
 - Die neue modulare IAM-Fassade reduziert öffentliche Importflächen; vollständige Kernzerlegung bleibt für einzelne `core.ts`-Bausteine Folgearbeit
 - Performance-Nachweis für Routing-Startup-Guard und begrenztes Sync-Debug-Logging bleibt als Folgearbeit beobachtbar
+- Alertmanager-Receiver, automatisierte Backup-Automation und produktive Digest-Promotion bleiben trotz gehärtetem Releasevertrag externe Folgearbeit
 
 Referenzen:
 

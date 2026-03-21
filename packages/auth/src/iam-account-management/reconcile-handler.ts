@@ -61,6 +61,29 @@ const isStudioManagedIdentityRole = (
   readRoleAttribute(role.attributes, 'managed_by') === 'studio' &&
   readRoleAttribute(role.attributes, 'instance_id') === instanceId;
 
+const readImportableRoleMetadata = (
+  role: Awaited<ReturnType<IdentityProviderPort['getRoleByName']>> extends infer T ? Exclude<T, null> : never
+): { roleKey: string; displayName: string; roleLevel: number } | null => {
+  const roleKey = readRoleAttribute(role.attributes, 'role_key');
+  const displayName = readRoleAttribute(role.attributes, 'display_name');
+  const roleLevelRaw = readRoleAttribute(role.attributes, 'role_level');
+  const parsedRoleLevel = roleLevelRaw ? Number(roleLevelRaw) : 0;
+
+  if (!roleKey || !displayName) {
+    return null;
+  }
+
+  if (!Number.isFinite(parsedRoleLevel) || parsedRoleLevel < 0 || parsedRoleLevel > 100) {
+    return null;
+  }
+
+  return {
+    roleKey,
+    displayName,
+    roleLevel: parsedRoleLevel,
+  };
+};
+
 export const runRoleCatalogReconciliation = async (input: {
   instanceId: string;
   actorAccountId?: string;
@@ -279,6 +302,79 @@ ORDER BY role_level DESC, COALESCE(display_name, role_name) ASC;
 
   for (const identityRole of managedIdpRoles) {
     if (!dbByExternalName.has(identityRole.externalName)) {
+      const importableMetadata = readImportableRoleMetadata(identityRole);
+      if (importableMetadata) {
+        try {
+          const importedRole = await withInstanceScopedDb(input.instanceId, async (client) => {
+            const inserted = await client.query<{ id: string }>(
+              `
+INSERT INTO iam.roles (
+  instance_id,
+  role_key,
+  role_name,
+  display_name,
+  external_role_name,
+  description,
+  is_system_role,
+  role_level,
+  managed_by,
+  sync_state,
+  last_synced_at,
+  last_error_code
+)
+VALUES ($1::uuid, $2, $3, $4, $5, $6, false, $7, 'studio', 'synced', NOW(), NULL)
+RETURNING id;
+`,
+              [
+                input.instanceId,
+                importableMetadata.roleKey,
+                importableMetadata.roleKey,
+                importableMetadata.displayName,
+                identityRole.externalName,
+                identityRole.description ?? null,
+                importableMetadata.roleLevel,
+              ]
+            );
+            const roleId = inserted.rows[0]?.id;
+            if (!roleId) {
+              throw new Error('role_import_failed');
+            }
+
+            await emitRoleAuditEvent(client, {
+              instanceId: input.instanceId,
+              accountId: input.actorAccountId,
+              roleId,
+              eventType: 'role.reconciled',
+              operation: 'reconcile_import',
+              result: 'success',
+              roleKey: importableMetadata.roleKey,
+              externalRoleName: identityRole.externalName,
+              requestId: input.requestId,
+              traceId: input.traceId,
+            });
+
+            return { roleId };
+          });
+          entries.push({
+            roleId: importedRole.roleId,
+            roleKey: importableMetadata.roleKey,
+            externalRoleName: identityRole.externalName,
+            action: 'create',
+            status: 'corrected',
+          });
+          continue;
+        } catch (error) {
+          entries.push({
+            roleKey: importableMetadata.roleKey,
+            externalRoleName: identityRole.externalName,
+            action: 'create',
+            status: 'failed',
+            errorCode: mapRoleSyncErrorCode(error),
+          });
+          continue;
+        }
+      }
+
       entries.push({
         externalRoleName: identityRole.externalName,
         roleKey: readRoleAttribute(identityRole.attributes, 'role_key'),

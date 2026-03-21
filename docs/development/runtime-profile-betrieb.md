@@ -76,6 +76,8 @@ pnpm env:update:local-keycloak
 pnpm env:down:local-keycloak
 ```
 
+Für zusätzliche lokale Instanzen oder zweite lokale Datenbanken ist `../guides/lokale-instanz-db-initialisierung.md` der kanonische Bootstrap-Pfad.
+
 ### Lokal mit Builder.io
 
 ```bash
@@ -100,6 +102,16 @@ pnpm env:smoke:acceptance-hb
 pnpm env:migrate:acceptance-hb
 pnpm env:down:acceptance-hb
 ```
+
+### Lokale HB-Produktivsimulation in Docker
+
+```bash
+pnpm env:up:local-keycloak:hb:docker
+pnpm env:status:local-keycloak:hb:docker
+pnpm env:down:local-keycloak:hb:docker
+```
+
+Dieser Pfad startet die App als Produktionscontainer lokal gegen `postgres-hb`, `redis` und `otel-collector`. Die dafür verwendete Runtime-Datei ist `config/runtime/local-keycloak.hb.docker.local.vars`.
 
 ## Verhalten der Kommandos
 
@@ -140,13 +152,14 @@ pnpm env:down:acceptance-hb
 - nur für `acceptance-hb`
 - ist der kanonische Release-Einstiegspunkt für Serverdeploys
 - Orchestrierung in fixer Reihenfolge:
-  1. `precheck`
-  2. optional Wartungsfenster dokumentieren
+  1. `environment-precheck` inklusive Soll-/Live-Spec-Drift und Pflichtvariablen
+  2. `image-smoke` gegen das auszurollende Digest-Artefakt
   3. optional `migrate` bei `--release-mode=schema-and-app`
   4. Stack-Rollout via `quantum-cli stacks update` oder `docker stack deploy`
-  5. `doctor`
-  6. `smoke`
-  7. Deploy-Report unter `artifacts/runtime/deployments/`
+  5. `internal-verify` mit internen HTTP-Probes und `doctor`-Diagnostik
+  6. `external-smoke` gegen die öffentliche URL
+  7. `release-decision` auf Basis der technischen Gates
+  8. Deploy-Report unter `artifacts/runtime/deployments/`
 - unterstützte Release-Modi:
   - `app-only`
   - `schema-and-app`
@@ -157,6 +170,7 @@ pnpm env:down:acceptance-hb
   - `--rollback-hint=...`
   - `--actor=...`
   - `--workflow=...`
+- Acceptance-Releases sind nur mit `--image-digest=sha256:...` gültig; der Tag bleibt rein ergänzende Lesbarkeit
 - `--json` schreibt zusätzlich zur Artefakterzeugung den vollständigen Deploy-Report auf stdout
 
 ### `smoke`
@@ -167,12 +181,14 @@ Alle Profile prüfen mindestens:
 - `GET /health/ready`
 - Auth-Verhalten von `/auth/login`
 - Mock-/OIDC-Verhalten von `/auth/me`
+- IAM-Kontext über `/api/v1/iam/me/context`
 - Mainserver-Basisfunktion über OAuth-Token + GraphQL `{ __typename }`
 
 Zusatzprüfungen:
 
 - lokal: OTEL Collector `http://127.0.0.1:13133/healthz`
 - Acceptance: Container-Status für `app`, `redis`, `postgres`, `otel-collector`
+- Acceptance: öffentliche Smoke-Probes gegen `/`, `/health/live`, `/health/ready`, `/auth/login`, `/api/v1/iam/me/context`
 
 `smoke` validiert zusätzlich den kritischen IAM-Schema-Stand. Fehlende Tabellen, Indizes oder RLS-Policies gelten als deterministischer Fehler und werden als maschinenlesbarer Drift gemeldet.
 
@@ -229,6 +245,9 @@ Beispiele für `details`:
 - vor einem Acceptance-Release mit `--release-mode=schema-and-app` ist ein dokumentiertes Wartungsfenster Pflicht
 - `schema-and-app` führt Migrationen nur innerhalb des orchestrierten Deploypfads oder bewusst separat über `pnpm env:migrate:acceptance-hb` aus
 - jeder Acceptance-Deploy erzeugt einen maschinenlesbaren und menschenlesbaren Bericht unter `artifacts/runtime/deployments/`
+- jeder Acceptance-Deploy erzeugt zusätzlich Release-Manifest, Phasenreport, Migrationsreport, interne Probe-Ergebnisse und externe Probe-Ergebnisse als eigene JSON-Artefakte
+- nach jedem Acceptance-Deploy folgt `pnpm env:feedback:acceptance-hb`; der Befehl erzeugt eine Trend-Zusammenfassung und einen Review-Entwurf fuer den juengsten Lauf
+- fehlgeschlagene oder manuell stabilisierte Deploys muessen zusaetzlich als Review unter `docs/reports/` festgehalten werden
 - vor einer tieferen Fehlersuche immer zuerst `pnpm env:doctor:<profil>` ausführen; manuelles `psql` und Browser-Netzwerk sind nur Fallback
 - bei lokalen Profilwechseln nie zwei Profile parallel auf Port `3000` betreiben
 - für serverseitige Details, Secrets und Portainer-Bedienung bleibt `../guides/swarm-deployment-runbook.md` die Referenz
@@ -242,7 +261,9 @@ Beispiele für `details`:
 - `smoke` scheitert im Builder-Profil an `/auth/me`: `SVA_MOCK_AUTH` und `VITE_MOCK_AUTH` prüfen
 - `smoke` scheitert bei Mainserver: `SVA_MAINSERVER_*` prüfen
 - `doctor` meldet `missing_actor_account` oder `missing_instance_membership`: Actor-/Membership-Kontext per `SVA_DOCTOR_KEYCLOAK_SUBJECT` gegen die Zielinstanz prüfen
+- bei neuer lokaler Instanz-DB zuerst `pnpm env:bootstrap:local-instance-db -- ...` verwenden statt manuell Tabellen oder User aus einer anderen Instanz zu kopieren
 - `doctor` oder `/health/ready` melden `schema_drift`: zuerst `pnpm env:migrate:<profil>`, dann `pnpm env:doctor:<profil>`
 - Acceptance-Deploy scheitert: unvollständige Portainer-Variablen in `deploy/portainer/.env.example`
 - Acceptance-Migration findet keinen lokalen `postgres`-Container: erwartbar bei Remote-Swarm; der Befehl nutzt dann automatisch `quantum-cli exec`
 - `env:deploy:acceptance-hb --release-mode=schema-and-app` scheitert sofort: Wartungsfenster fehlt oder `quantum-cli`/Stack-Zugriff ist nicht verfügbar
+- `env:deploy:acceptance-hb` scheitert vor dem Rollout: `SVA_IMAGE_DIGEST` fehlt oder das Digest-Artefakt besteht den `image-smoke` nicht

@@ -1,15 +1,23 @@
 import { resolve } from 'node:path';
 
 export type AcceptanceReleaseMode = 'app-only' | 'schema-and-app';
-export type AcceptanceDeployStepName = 'precheck' | 'maintenance-window' | 'migrate' | 'deploy' | 'doctor' | 'smoke';
+export type AcceptanceDeployStepName =
+  | 'environment-precheck'
+  | 'image-smoke'
+  | 'migrate'
+  | 'deploy'
+  | 'internal-verify'
+  | 'external-smoke'
+  | 'release-decision';
 export type AcceptanceDeployStepStatus = 'ok' | 'skipped' | 'error';
 export type AcceptanceFailureCategory =
   | 'config'
+  | 'image'
   | 'migration'
-  | 'stack_rollout'
+  | 'startup'
   | 'health'
-  | 'smoke'
-  | 'external_dependency';
+  | 'ingress'
+  | 'dependency';
 
 export type RuntimeCliOptions = {
   actor?: string;
@@ -18,6 +26,7 @@ export type RuntimeCliOptions = {
   imageTag?: string;
   jsonOutput: boolean;
   lokiUrl?: string;
+  localOverrideFile?: string;
   maintenanceWindow?: string;
   releaseMode?: AcceptanceReleaseMode;
   reportSlug?: string;
@@ -28,13 +37,42 @@ export type RuntimeCliOptions = {
 export type AcceptanceDeployOptions = {
   actor: string;
   grafanaUrl?: string;
-  imageDigest?: string;
+  imageDigest: string;
+  imageRef: string;
+  imageRepository: string;
   imageTag?: string;
   lokiUrl?: string;
   maintenanceWindow?: string;
+  monitoringConfigImageTag?: string;
   releaseMode: AcceptanceReleaseMode;
   reportSlug: string;
   rollbackHint: string;
+  workflow: string;
+};
+
+export type AcceptanceProbeScope = 'external' | 'image-smoke' | 'internal';
+
+export type AcceptanceProbeResult = {
+  details?: Readonly<Record<string, unknown>>;
+  durationMs: number;
+  httpStatus?: number;
+  message: string;
+  name: string;
+  scope: AcceptanceProbeScope;
+  status: 'error' | 'ok';
+  target: string;
+};
+
+export type AcceptanceReleaseManifest = {
+  actor: string;
+  commitSha?: string;
+  imageDigest: string;
+  imageRef: string;
+  imageRepository: string;
+  imageTag?: string;
+  monitoringConfigImageTag?: string;
+  profile: 'acceptance-hb';
+  releaseMode: AcceptanceReleaseMode;
   workflow: string;
 };
 
@@ -51,21 +89,41 @@ export type AcceptanceDeployStep = {
 export type AcceptanceDeployReport = {
   actor: string;
   artifacts: {
+    externalSmokePath: string;
+    internalVerifyPath: string;
     jsonPath: string;
     markdownPath: string;
+    migrationReportPath: string;
+    phaseReportPath: string;
+    releaseManifestPath: string;
   };
   failureCategory?: AcceptanceFailureCategory;
   generatedAt: string;
-  imageDigest?: string;
+  imageDigest: string;
+  imageRef: string;
+  imageRepository: string;
   imageTag?: string;
+  internalProbes: readonly AcceptanceProbeResult[];
   maintenanceWindow?: string;
   migrationFiles: readonly string[];
+  migrationReport?: {
+    completedAt?: string;
+    errorMessage?: string;
+    startedAt?: string;
+    status: 'error' | 'ok' | 'skipped';
+  };
   observability: {
     grafanaUrl?: string;
     lokiUrl?: string;
     notes: readonly string[];
   };
+  externalProbes: readonly AcceptanceProbeResult[];
   profile: 'acceptance-hb';
+  releaseDecision: {
+    summary: string;
+    technicalGatePassed: boolean;
+  };
+  releaseManifest: AcceptanceReleaseManifest;
   releaseMode: AcceptanceReleaseMode;
   reportId: string;
   rollbackHint: string;
@@ -148,6 +206,9 @@ export const parseRuntimeCliOptions = (rawOptions: readonly string[]): RuntimeCl
       case '--loki-url':
         parsed.lokiUrl = value;
         break;
+      case '--local-override-file':
+        parsed.localOverrideFile = value;
+        break;
       default:
         throw new Error(`Unbekannte Option: ${optionName}`);
     }
@@ -184,14 +245,26 @@ export const resolveAcceptanceDeployOptions = (
     throw new Error('Release-Modus schema-and-app erfordert ein Wartungsfenster (--maintenance-window oder SVA_ACCEPTANCE_MAINTENANCE_WINDOW).');
   }
 
+  const imageDigest = cliOptions.imageDigest?.trim() || env.SVA_IMAGE_DIGEST?.trim() || undefined;
+  if (!imageDigest) {
+    throw new Error('Produktionsnahe Acceptance-Releases erfordern einen Image-Digest (--image-digest oder SVA_IMAGE_DIGEST).');
+  }
+
+  const imageRepository = env.SVA_IMAGE_REPOSITORY?.trim() || 'sva-studio';
+  const imageRegistry = env.SVA_REGISTRY?.trim() || 'ghcr.io/smart-village-solutions';
+  const imageRef = env.SVA_IMAGE_REF?.trim() || `${imageRegistry}/${imageRepository}@${imageDigest}`;
+
   return {
     actor: cliOptions.actor?.trim() || env.SVA_ACCEPTANCE_DEPLOY_ACTOR?.trim() || env.GITHUB_ACTOR?.trim() || 'local-operator',
     workflow: cliOptions.workflow?.trim() || env.SVA_ACCEPTANCE_DEPLOY_WORKFLOW?.trim() || env.GITHUB_WORKFLOW?.trim() || 'manual',
     imageTag: cliOptions.imageTag?.trim() || env.SVA_IMAGE_TAG?.trim() || undefined,
-    imageDigest: cliOptions.imageDigest?.trim() || env.SVA_IMAGE_DIGEST?.trim() || undefined,
+    imageDigest,
+    imageRef,
+    imageRepository,
     grafanaUrl: cliOptions.grafanaUrl?.trim() || env.SVA_GRAFANA_URL?.trim() || undefined,
     lokiUrl: cliOptions.lokiUrl?.trim() || env.SVA_LOKI_URL?.trim() || undefined,
     maintenanceWindow,
+    monitoringConfigImageTag: env.SVA_MONITORING_CONFIG_INIT_IMAGE_TAG?.trim() || undefined,
     releaseMode,
     reportSlug: sanitizeSlug(cliOptions.reportSlug || env.SVA_ACCEPTANCE_REPORT_SLUG || 'acceptance-deploy'),
     rollbackHint,
@@ -210,6 +283,11 @@ export const buildAcceptanceReportPaths = (
     reportId,
     jsonPath: resolve(artifactsDir, `${reportId}.json`),
     markdownPath: resolve(artifactsDir, `${reportId}.md`),
+    releaseManifestPath: resolve(artifactsDir, `${reportId}.manifest.json`),
+    phaseReportPath: resolve(artifactsDir, `${reportId}.phases.json`),
+    migrationReportPath: resolve(artifactsDir, `${reportId}.migration.json`),
+    internalVerifyPath: resolve(artifactsDir, `${reportId}.internal-probes.json`),
+    externalSmokePath: resolve(artifactsDir, `${reportId}.external-probes.json`),
   };
 };
 
@@ -224,15 +302,25 @@ export const formatAcceptanceDeployReportMarkdown = (report: AcceptanceDeployRep
     `- Actor: \`${report.actor}\``,
     `- Workflow: \`${report.workflow}\``,
     `- Stack: \`${report.stackName}\``,
+    `- Image-Ref: \`${report.imageRef}\``,
     `- Image-Tag: \`${report.imageTag ?? 'n/a'}\``,
-    `- Image-Digest: \`${report.imageDigest ?? 'n/a'}\``,
+    `- Image-Digest: \`${report.imageDigest}\``,
     `- Wartungsfenster: \`${report.maintenanceWindow ?? 'nicht erforderlich'}\``,
     `- Rollback-Hinweis: ${report.rollbackHint}`,
     report.failureCategory ? `- Fehlerkategorie: \`${report.failureCategory}\`` : null,
+    `- Technical Gate: \`${report.releaseDecision.technicalGatePassed ? 'passed' : 'failed'}\``,
+    `- Freigabeentscheidung: ${report.releaseDecision.summary}`,
+    '',
+    '## Release-Manifest',
+    '',
+    `- Commit: \`${report.releaseManifest.commitSha ?? 'n/a'}\``,
+    `- Image-Repository: \`${report.releaseManifest.imageRepository}\``,
+    `- Monitoring-Config-Image-Tag: \`${report.releaseManifest.monitoringConfigImageTag ?? 'n/a'}\``,
     '',
     '## Migrationen',
     '',
     ...(report.migrationFiles.length > 0 ? report.migrationFiles.map((file) => `- \`${file}\``) : ['- keine']),
+    `- Migrationsstatus: \`${report.migrationReport?.status ?? 'skipped'}\``,
     '',
     '## Schritte',
     '',
@@ -240,6 +328,24 @@ export const formatAcceptanceDeployReportMarkdown = (report: AcceptanceDeployRep
       (step) =>
         `- \`${step.name}\` -> \`${step.status}\` (${step.durationMs} ms): ${step.summary}`
     ),
+    '',
+    '## Interne Probes',
+    '',
+    ...(report.internalProbes.length > 0
+      ? report.internalProbes.map(
+          (probe) =>
+            `- \`${probe.name}\` -> \`${probe.status}\` (${probe.durationMs} ms, target=${probe.target}, http=${probe.httpStatus ?? 'n/a'}): ${probe.message}`
+        )
+      : ['- keine']),
+    '',
+    '## Externe Probes',
+    '',
+    ...(report.externalProbes.length > 0
+      ? report.externalProbes.map(
+          (probe) =>
+            `- \`${probe.name}\` -> \`${probe.status}\` (${probe.durationMs} ms, target=${probe.target}, http=${probe.httpStatus ?? 'n/a'}): ${probe.message}`
+        )
+      : ['- keine']),
     '',
     '## Observability',
     '',

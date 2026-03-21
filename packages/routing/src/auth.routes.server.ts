@@ -490,7 +490,9 @@ export const dispatchAuthRouteRequest = async (request: Request): Promise<Respon
   const handler = handlers[method];
 
   if (!handler) {
-    const allowedMethods = Object.keys(handlers).sort().join(', ');
+    const allowedMethods = Object.keys(handlers)
+      .sort((left, right) => left.localeCompare(right))
+      .join(', ');
     return methodNotAllowedJson(allowedMethods, extractRequestIdFromHeaders(getHeadersFromRequest(request)));
   }
 

@@ -13,6 +13,7 @@ export interface PermissionSnapshot {
   readonly createdAtMs: number;
   readonly expiresAtMs: number;
   readonly version: number;
+  readonly snapshotVersion?: string;
 }
 
 export interface CacheLookupResult {
@@ -60,7 +61,8 @@ export class PermissionSnapshotCache {
   public set(
     key: Omit<PermissionSnapshotKey, 'version'>,
     permissions: readonly EffectivePermission[],
-    nowMs = Date.now()
+    nowMs = Date.now(),
+    snapshotVersion?: string
   ): PermissionSnapshot {
     const version = this.getVersion(key.instanceId, key.keycloakSubject);
     const snapshot: PermissionSnapshot = {
@@ -68,6 +70,7 @@ export class PermissionSnapshotCache {
       createdAtMs: nowMs,
       expiresAtMs: nowMs + this.ttlMs,
       version,
+      snapshotVersion,
     };
     this.snapshots.set(
       formatSnapshotKey({

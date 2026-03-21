@@ -30,7 +30,9 @@ const readNumber = (key: string, fallback: number) => {
 export const getAuthConfig = (): AuthConfig => {
   const clientSecret = getAuthClientSecret();
   if (!clientSecret) {
-    throw new Error('Missing required env: SVA_AUTH_CLIENT_SECRET');
+    throw new Error(
+      'Missing auth client secret (SVA_AUTH_CLIENT_SECRET or /run/secrets/sva_studio_app_auth_client_secret)'
+    );
   }
   return {
     issuer: requireEnv('SVA_AUTH_ISSUER'),

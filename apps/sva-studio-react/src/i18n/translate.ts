@@ -17,6 +17,7 @@ export type TranslationVariables = Readonly<Record<string, string | number>>;
 type TranslationResources = Readonly<Record<SupportedLocale, TranslationResourceNode>>;
 
 let activeLocale: SupportedLocale = DEFAULT_LOCALE;
+const translatorCache = new Map<SupportedLocale, ReturnType<typeof createTranslatorFromResources>>();
 
 const readTranslationValue = (
   resources: TranslationResources,
@@ -88,5 +89,11 @@ export const createTranslatorFromResources = (
 };
 
 export const t = (key: TranslationKey, variables?: TranslationVariables): string => {
-  return createTranslatorFromResources(i18nResources, activeLocale)(key, variables);
+  let translator = translatorCache.get(activeLocale);
+  if (!translator) {
+    translator = createTranslatorFromResources(i18nResources, activeLocale);
+    translatorCache.set(activeLocale, translator);
+  }
+
+  return translator(key, variables);
 };

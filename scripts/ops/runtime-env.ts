@@ -1904,7 +1904,7 @@ const runHttpProbe = async (input: {
   try {
     const response = await fetch(input.target, { redirect: 'manual', signal: AbortSignal.timeout(10_000) });
     const rawText = await response.text();
-    let payload: unknown = rawText;
+    let payload: unknown;
 
     try {
       payload = rawText.length > 0 ? JSON.parse(rawText) : null;

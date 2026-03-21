@@ -791,7 +791,7 @@ SELECT
       instance_id: instanceId,
       session_instance_id: ctx.user.instanceId,
       allow_jit_provision: mayProvisionMissingActorMembership,
-      actor_account_id: actorAccountId ?? null,
+      actor_account_id: null,
       diagnostic_reason: diagnosticReason,
       request_id: requestContext.requestId,
       trace_id: requestContext.traceId,

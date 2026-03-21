@@ -49,11 +49,11 @@ describe('routes/handlers mock auth', () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
-    vi.stubEnv('VITE_MOCK_AUTH', 'true');
+    vi.stubEnv('SVA_MOCK_AUTH', 'true');
   });
 
   it('returns the mock user on /auth/me', async () => {
-    const { meHandler } = await import('./handlers');
+    const { meHandler } = await import('./handlers.js');
 
     const response = await meHandler(new Request('http://localhost/auth/me'));
 
@@ -70,7 +70,7 @@ describe('routes/handlers mock auth', () => {
   });
 
   it('short-circuits /auth/login and /auth/logout in mock auth mode', async () => {
-    const { loginHandler, logoutHandler } = await import('./handlers');
+    const { loginHandler, logoutHandler } = await import('./handlers.js');
 
     const loginResponse = await loginHandler(new Request('http://localhost/auth/login'));
     const logoutResponse = await logoutHandler(new Request('http://localhost/auth/logout', { method: 'POST' }));

@@ -1,14 +1,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { createMockSessionUser, isMockAuthEnabled } from './mock-auth.server';
+import { createMockSessionUser, isMockAuthEnabled } from './mock-auth.server.js';
 
 describe('mock-auth.server', () => {
   afterEach(() => {
     vi.unstubAllEnvs();
   });
 
-  it('enables mock auth via vite flag', () => {
-    vi.stubEnv('VITE_MOCK_AUTH', 'true');
+  it('enables mock auth via SVA_MOCK_AUTH', () => {
+    vi.stubEnv('SVA_MOCK_AUTH', 'true');
 
     expect(isMockAuthEnabled()).toBe(true);
   });
@@ -20,7 +20,7 @@ describe('mock-auth.server', () => {
   });
 
   it('creates a privileged default mock user', () => {
-    vi.stubEnv('VITE_MOCK_AUTH', 'true');
+    vi.stubEnv('SVA_MOCK_AUTH', 'true');
 
     expect(createMockSessionUser()).toEqual({
       id: 'seed:system_admin',
@@ -46,5 +46,12 @@ describe('mock-auth.server', () => {
       instanceId: 'de-builder',
       roles: ['system_admin', 'editor'],
     });
+  });
+
+  it('ignores SVA_MOCK_AUTH in production without a mock runtime profile', () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('SVA_MOCK_AUTH', 'true');
+
+    expect(isMockAuthEnabled()).toBe(false);
   });
 });

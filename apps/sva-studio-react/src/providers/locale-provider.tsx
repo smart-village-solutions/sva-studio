@@ -25,7 +25,11 @@ const resolveInitialLocale = (): SupportedLocale => {
 };
 
 export const LocaleProvider = ({ children }: LocaleProviderProps) => {
-  const [locale, setLocaleState] = React.useState<SupportedLocale>(resolveInitialLocale);
+  const [locale, setLocaleState] = React.useState<SupportedLocale>(() => {
+    const initialLocale = resolveInitialLocale();
+    setActiveLocale(initialLocale);
+    return initialLocale;
+  });
 
   React.useEffect(() => {
     setActiveLocale(locale);

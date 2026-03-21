@@ -34,7 +34,12 @@ export type PermissionRow = {
 };
 
 export type EffectivePermissionsResolution =
-  | { ok: true; permissions: readonly EffectivePermission[]; cacheStatus: SnapshotCacheStatus }
+  | {
+      ok: true;
+      permissions: readonly EffectivePermission[];
+      cacheStatus: SnapshotCacheStatus;
+      snapshotVersion?: string;
+    }
   | { ok: false; error: 'database_unavailable' };
 
 export const logger: ReturnType<typeof createSdkLogger> = createSdkLogger({ component: 'iam-authorize', level: 'info' });

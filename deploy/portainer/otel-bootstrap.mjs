@@ -28,16 +28,20 @@ if (!serverBootstrapModuleUrl) {
     enableConsole: true,
     enableOtel: false,
   });
+  let timeoutHandle;
 
   try {
     getInstanceConfig();
+    const timeoutPromise = new Promise((_, reject) => {
+      timeoutHandle = setTimeout(() => {
+        reject(new Error(`OTEL bootstrap timed out after ${bootstrapTimeoutMs}ms`));
+      }, bootstrapTimeoutMs);
+      timeoutHandle.unref?.();
+    });
+
     await Promise.race([
       initializeOtelSdk(),
-      new Promise((_, reject) => {
-        setTimeout(() => {
-          reject(new Error(`OTEL bootstrap timed out after ${bootstrapTimeoutMs}ms`));
-        }, bootstrapTimeoutMs);
-      }),
+      timeoutPromise,
     ]);
     logger.info('Process bootstrap abgeschlossen', {
       workspace_id: 'platform',
@@ -54,5 +58,9 @@ if (!serverBootstrapModuleUrl) {
       error_type: error instanceof Error ? error.constructor.name : 'unknown',
     });
     process.stderr.write('[otel-bootstrap] continuing without OTEL preload.\n');
+  } finally {
+    if (timeoutHandle) {
+      clearTimeout(timeoutHandle);
+    }
   }
 }

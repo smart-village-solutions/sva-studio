@@ -187,7 +187,12 @@ export const resolveEffectivePermissions = async (input: PermissionLookupInput):
       ttl_remaining_s: lookup.ttlRemainingSeconds,
       ...buildRequestContext(input.instanceId),
     });
-    return { ok: true, permissions: lookup.snapshot!.permissions, cacheStatus: 'hit' };
+    return {
+      ok: true,
+      permissions: lookup.snapshot!.permissions,
+      cacheStatus: 'hit',
+      snapshotVersion: lookup.snapshot?.snapshotVersion,
+    };
   }
 
   if (lookup.status === 'stale') {
@@ -214,7 +219,7 @@ export const resolveEffectivePermissions = async (input: PermissionLookupInput):
 
   if (redisLookup.hit) {
     cacheMetricsState.lookups += 1;
-    permissionSnapshotCache.set(input, redisLookup.permissions);
+    const snapshot = permissionSnapshotCache.set(input, redisLookup.permissions, Date.now(), redisLookup.version);
     iamCacheLookupCounter.add(1, { hit: true });
     cacheLogger.debug('Permission snapshot cache lookup', {
       operation: 'cache_lookup',
@@ -222,7 +227,12 @@ export const resolveEffectivePermissions = async (input: PermissionLookupInput):
       cache_layer: 'redis',
       ...buildRequestContext(input.instanceId),
     });
-    return { ok: true, permissions: redisLookup.permissions, cacheStatus: 'hit' };
+    return {
+      ok: true,
+      permissions: redisLookup.permissions,
+      cacheStatus: 'hit',
+      snapshotVersion: snapshot.snapshotVersion,
+    };
   }
 
   if (redisLookup.reason === 'redis_unavailable') {
@@ -258,7 +268,7 @@ export const resolveEffectivePermissions = async (input: PermissionLookupInput):
       return { ok: false, error: 'database_unavailable' };
     }
     recordPermissionCacheRecompute();
-    permissionSnapshotCache.set(input, permissions);
+    const snapshot = permissionSnapshotCache.set(input, permissions, Date.now(), redisWrite.version);
 
     if (lookup.status === 'stale') {
       cacheLogger.info('Permission snapshot recomputed after stale detection', {
@@ -269,7 +279,12 @@ export const resolveEffectivePermissions = async (input: PermissionLookupInput):
       });
     }
 
-    return { ok: true, permissions, cacheStatus: lookup.status === 'stale' ? 'recompute' : 'miss' };
+    return {
+      ok: true,
+      permissions,
+      cacheStatus: lookup.status === 'stale' ? 'recompute' : 'miss',
+      snapshotVersion: snapshot.snapshotVersion,
+    };
   } catch (error) {
     logger.error('Failed to recompute permission snapshot', {
       operation: 'cache_invalidate_failed',

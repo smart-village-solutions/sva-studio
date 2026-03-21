@@ -7,7 +7,7 @@ const hasDefinedEntries = (value: Record<string, unknown>): boolean =>
 
 const UUID_LIKE_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-const uuidLikeString = () => z.string().regex(UUID_LIKE_PATTERN, 'Ungueltige ID.');
+const uuidLikeString = () => z.string().regex(UUID_LIKE_PATTERN, 'Ungültige ID.');
 
 const optionalTrimmedSecretString = (maxLength: number) =>
   z.preprocess(

@@ -40,7 +40,7 @@ CREATE INDEX IF NOT EXISTS idx_geo_hierarchy_ancestor
 CREATE OR REPLACE FUNCTION iam.check_geo_hierarchy_depth()
 RETURNS TRIGGER LANGUAGE plpgsql AS $$
 DECLARE
-  max_existing_depth INTEGER;
+  max_result_depth INTEGER;
 BEGIN
   IF NEW.depth > 5 THEN
     RAISE EXCEPTION 'geo_hierarchy_depth_exceeded'
@@ -48,13 +48,38 @@ BEGIN
             ERRCODE = 'check_violation';
   END IF;
 
-  SELECT COALESCE(MAX(h.depth), 0)
-    INTO max_existing_depth
-    FROM iam.geo_hierarchy h
-   WHERE h.ancestor_id = NEW.ancestor_id
-      OR h.descendant_id = NEW.descendant_id;
+  SELECT GREATEST(
+           NEW.depth,
+           COALESCE(
+             (
+               SELECT MAX(parent.depth + NEW.depth)
+               FROM iam.geo_hierarchy parent
+               WHERE parent.descendant_id = NEW.ancestor_id
+             ),
+             NEW.depth
+           ),
+           COALESCE(
+             (
+               SELECT MAX(NEW.depth + child.depth)
+               FROM iam.geo_hierarchy child
+               WHERE child.ancestor_id = NEW.descendant_id
+             ),
+             NEW.depth
+           ),
+           COALESCE(
+             (
+               SELECT MAX(parent.depth + NEW.depth + child.depth)
+               FROM iam.geo_hierarchy parent
+               CROSS JOIN iam.geo_hierarchy child
+               WHERE parent.descendant_id = NEW.ancestor_id
+                 AND child.ancestor_id = NEW.descendant_id
+             ),
+             NEW.depth
+           )
+         )
+    INTO max_result_depth;
 
-  IF max_existing_depth >= 5 THEN
+  IF max_result_depth > 5 THEN
     RAISE EXCEPTION 'geo_hierarchy_depth_exceeded'
       USING DETAIL = 'Maximum geo hierarchy depth is 5',
             ERRCODE = 'check_violation';

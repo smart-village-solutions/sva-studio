@@ -61,6 +61,10 @@ export const getActiveLocale = (): SupportedLocale => {
 };
 
 export const setActiveLocale = (locale: SupportedLocale): void => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
   activeLocale = locale;
 };
 

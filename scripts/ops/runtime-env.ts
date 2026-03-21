@@ -2392,7 +2392,6 @@ const runAcceptanceCommand = async (runtimeProfile: RuntimeProfile, runtimeComma
       throw new Error(
         `Direkte Acceptance-Deploys ueber ${runtimeCommand} sind gesperrt. Nutze den kanonischen Pfad pnpm env:deploy:${runtimeProfile}.`
       );
-      return;
     case 'down':
       run('docker', ['stack', 'rm', stackName], env);
       console.log(`Stack ${stackName} entfernt.`);

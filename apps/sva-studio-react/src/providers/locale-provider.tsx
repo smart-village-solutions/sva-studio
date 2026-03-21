@@ -1,6 +1,6 @@
 import React from 'react';
 
-import { DEFAULT_LOCALE, getActiveLocale, isSupportedLocale, setActiveLocale, type SupportedLocale } from '../i18n';
+import { DEFAULT_LOCALE, isSupportedLocale, setActiveLocale, type SupportedLocale } from '../i18n';
 
 type LocaleContextValue = Readonly<{
   locale: SupportedLocale;
@@ -17,7 +17,7 @@ const LocaleContext = React.createContext<LocaleContextValue | null>(null);
 
 const resolveInitialLocale = (): SupportedLocale => {
   if (typeof window === 'undefined') {
-    return getActiveLocale();
+    return DEFAULT_LOCALE;
   }
 
   const persistedLocale = window.localStorage.getItem(LOCALE_STORAGE_KEY);
@@ -27,9 +27,9 @@ const resolveInitialLocale = (): SupportedLocale => {
 export const LocaleProvider = ({ children }: LocaleProviderProps) => {
   const [locale, setLocaleState] = React.useState<SupportedLocale>(resolveInitialLocale);
 
-  setActiveLocale(locale);
-
   React.useEffect(() => {
+    setActiveLocale(locale);
+
     if (typeof document !== 'undefined') {
       document.documentElement.lang = locale;
     }

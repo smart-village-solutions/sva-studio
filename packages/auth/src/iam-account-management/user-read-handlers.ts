@@ -15,9 +15,6 @@ import {
   logger,
   requireRoles,
   resolveActorInfo,
-  resolveIdentityProvider,
-  resolveRolesByExternalNames,
-  trackKeycloakCall,
   withInstanceScopedDb,
 } from './shared.js';
 import type { UserStatus } from './types.js';

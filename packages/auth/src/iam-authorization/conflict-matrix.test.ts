@@ -4,7 +4,6 @@ import type { AuthorizeRequest, EffectivePermission } from '@sva/core';
 
 const INSTANCE = 'inst-test';
 const ORG_A = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
-const ORG_B = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
 const ROLE_1 = 'role-1111-1111-1111-1111-111111111111';
 const GROUP_1 = 'grp-1111-1111-1111-1111-111111111111';
 

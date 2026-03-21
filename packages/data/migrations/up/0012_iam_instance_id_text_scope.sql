@@ -198,6 +198,17 @@ ALTER TABLE iam.idempotency_keys
   DROP CONSTRAINT IF EXISTS idempotency_keys_instance_id_fkey,
   DROP CONSTRAINT IF EXISTS idempotency_keys_actor_membership_fk;
 
+ALTER TABLE IF EXISTS iam.group_roles
+  DROP CONSTRAINT IF EXISTS group_roles_group_fk,
+  DROP CONSTRAINT IF EXISTS group_roles_role_fk;
+
+ALTER TABLE IF EXISTS iam.account_groups
+  DROP CONSTRAINT IF EXISTS account_groups_group_fk,
+  DROP CONSTRAINT IF EXISTS account_groups_membership_fk;
+
+ALTER TABLE IF EXISTS iam.groups
+  DROP CONSTRAINT IF EXISTS groups_instance_id_fkey;
+
 ALTER TABLE iam.instance_memberships
   DROP CONSTRAINT IF EXISTS instance_memberships_pkey,
   DROP CONSTRAINT IF EXISTS instance_memberships_instance_id_fkey;
@@ -258,6 +269,10 @@ $$;
 
 ALTER TABLE iam.instances
   ADD CONSTRAINT instances_pkey PRIMARY KEY (id);
+
+ALTER TABLE IF EXISTS iam.groups
+  ADD CONSTRAINT groups_instance_id_fkey FOREIGN KEY (instance_id)
+    REFERENCES iam.instances(id) ON DELETE CASCADE;
 
 DO $$
 DECLARE
@@ -374,6 +389,22 @@ ALTER TABLE iam.instance_memberships
   ADD CONSTRAINT instance_memberships_pkey PRIMARY KEY (instance_id, account_id),
   ADD CONSTRAINT instance_memberships_instance_id_fkey FOREIGN KEY (instance_id)
     REFERENCES iam.instances(id) ON DELETE CASCADE;
+
+ALTER TABLE IF EXISTS iam.group_roles
+  ADD CONSTRAINT group_roles_role_fk FOREIGN KEY (instance_id, role_id)
+    REFERENCES iam.roles(instance_id, id) ON DELETE CASCADE;
+
+ALTER TABLE IF EXISTS iam.account_groups
+  ADD CONSTRAINT account_groups_membership_fk FOREIGN KEY (instance_id, account_id)
+    REFERENCES iam.instance_memberships(instance_id, account_id) ON DELETE CASCADE;
+
+ALTER TABLE IF EXISTS iam.account_groups
+  ADD CONSTRAINT account_groups_group_fk FOREIGN KEY (instance_id, group_id)
+    REFERENCES iam.groups(instance_id, id) ON DELETE CASCADE;
+
+ALTER TABLE IF EXISTS iam.group_roles
+  ADD CONSTRAINT group_roles_group_fk FOREIGN KEY (instance_id, group_id)
+    REFERENCES iam.groups(instance_id, id) ON DELETE CASCADE;
 
 ALTER TABLE iam.account_organizations
   ADD CONSTRAINT account_organizations_pkey PRIMARY KEY (instance_id, account_id, organization_id),

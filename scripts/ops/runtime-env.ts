@@ -621,7 +621,7 @@ const createDbSqlRunner = (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEn
   const runLocalSql = (sql: string) => {
     const localContainerId = runCaptureDetailed(
       'docker',
-      ['ps', '--filter', `name=${localPostgresContainerName}`, '--format', '{{.ID}}'],
+      ['ps', '--filter', `name=^/${localPostgresContainerName}$`, '--format', '{{.ID}}'],
       env
     ).stdout.trim();
 
@@ -1286,10 +1286,42 @@ const assertOtelLocal = async (env: NodeJS.ProcessEnv) => {
     return;
   }
 
-  const collectorHealth = await fetch('http://127.0.0.1:13133/healthz', { signal: AbortSignal.timeout(5_000) });
-  if (!collectorHealth.ok) {
-    throw new Error(`OTEL Collector Healthcheck fehlgeschlagen: ${collectorHealth.status}`);
+  const healthCandidates = [
+    {
+      name: 'collector-health',
+      url: 'http://127.0.0.1:13133/healthz',
+      validate: (response: Response) => {
+        if (!response.ok) {
+          throw new Error(`OTEL Collector Healthcheck fehlgeschlagen: ${response.status}`);
+        }
+      },
+    },
+    {
+      name: 'otlp-endpoint',
+      url: env.OTEL_EXPORTER_OTLP_ENDPOINT ?? 'http://127.0.0.1:4318',
+      validate: (response: Response) => {
+        if (response.status >= 500) {
+          throw new Error(`OTEL Endpoint antwortet mit ${response.status}`);
+        }
+      },
+    },
+  ] as const;
+
+  let lastError: unknown = new Error('OTEL Collector nicht erreichbar.');
+  for (const candidate of healthCandidates) {
+    try {
+      const response = await fetch(candidate.url, { signal: AbortSignal.timeout(5_000) });
+      candidate.validate(response);
+      return;
+    } catch (error) {
+      lastError = new Error(
+        `${candidate.name} fehlgeschlagen: ${error instanceof Error ? error.message : String(error)}`,
+        { cause: error }
+      );
+    }
   }
+
+  throw lastError;
 };
 
 const assertAcceptanceContainerHealth = (env: NodeJS.ProcessEnv) => {

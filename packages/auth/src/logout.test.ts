@@ -2,7 +2,7 @@ import { describe, it, expect, afterAll } from 'vitest';
 import type { Session } from './types';
 import { createSession, getSession, deleteSession, getSessionCount } from './redis-session.server';
 import { closeRedis } from './redis.server';
-import { ensureRedisAvailabilityChecked } from './redis-test-guard.js';
+import { ensureRedisAvailabilityChecked } from './redis-test-guard.test-utils.js';
 
 /**
  * Tests für Logout/Revocation-Flow mit Redis:

@@ -2,7 +2,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { getSessionUser } from './auth.server';
 import { closeRedis } from './redis.server';
-import { ensureRedisAvailabilityChecked } from './redis-test-guard.js';
+import { ensureRedisAvailabilityChecked } from './redis-test-guard.test-utils.js';
 import { createSession, deleteSession } from './redis-session.server';
 import type { Session } from './types';
 

@@ -560,7 +560,7 @@ describe('UserEditPage', () => {
   });
 
   it.each([
-    ['invalid_request', 'save failed'],
+    ['invalid_request', 'Nutzer konnten nicht geladen werden.'],
     ['forbidden', 'Unzureichende Berechtigungen für diese Nutzeraktion.'],
     ['csrf_validation_failed', 'Sicherheitsprüfung fehlgeschlagen. Bitte Seite neu laden und erneut versuchen.'],
     ['rate_limited', 'Zu viele Anfragen in kurzer Zeit. Bitte kurz warten und erneut versuchen.'],

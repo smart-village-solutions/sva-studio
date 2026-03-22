@@ -31,9 +31,12 @@ export const LocaleProvider = ({ children }: LocaleProviderProps) => {
     return initialLocale;
   });
 
-  React.useEffect(() => {
-    setActiveLocale(locale);
+  const setLocale = React.useCallback((nextLocale: SupportedLocale) => {
+    setActiveLocale(nextLocale);
+    setLocaleState(nextLocale);
+  }, []);
 
+  React.useEffect(() => {
     if (typeof document !== 'undefined') {
       document.documentElement.lang = locale;
     }
@@ -47,7 +50,7 @@ export const LocaleProvider = ({ children }: LocaleProviderProps) => {
     <LocaleContext.Provider
       value={{
         locale,
-        setLocale: setLocaleState,
+        setLocale,
       }}
     >
       {children}

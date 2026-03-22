@@ -1,6 +1,6 @@
 ---
 name: quantum-cli
-description: Work with Planetary Quantum stacks and endpoints via quantum-cli. Use this skill when inspecting endpoints, listing stacks or tasks, validating .quantum configuration, deploying stack updates, opening remote shells with exec, or diagnosing runtime issues in Planetary Quantum environments.
+description: Work with Planetary Quantum stacks and endpoints via `quantum-cli`. Use this skill when inspecting endpoints, listing stacks or tasks, validating `.quantum` configuration, deploying or removing stacks, opening remote shells with `exec`, or migrating stacks between endpoints.
 ---
 
 # Quantum CLI
@@ -9,60 +9,65 @@ description: Work with Planetary Quantum stacks and endpoints via quantum-cli. U
 
 Use this skill for Planetary Quantum operational work, especially when the task involves:
 
-- Checking authentication or endpoint availability
-- Listing endpoints, stacks, services, or tasks
-- Inspecting running workloads before or after a deployment
-- Validating `.quantum` and compose configuration
-- Updating or creating stacks with `quantum-cli stacks update`
-- Opening a remote shell or running one-off commands with `quantum-cli exec`
+- checking authentication, console connectivity, or endpoint availability
+- listing endpoints, stacks, services, or tasks
+- validating `.quantum` configuration before deployment
+- creating, updating, or removing stacks
+- opening a remote shell or running one-off commands with `exec`
+- migrating a stack including volumes and configs between endpoints
+- checking environment-variable based deploy setup in CI or local shells
 
-If MCP tools for Quantum are available in the session, prefer them for read-only inventory work. Use `quantum-cli` when you need CLI-native flows such as auth checks, validation, deploys, or remote command execution.
+If MCP tools for Quantum are available in the session, prefer them for read-only inventory work. Use `quantum-cli` when you need CLI-native flows such as deploys, validation, migrations, auth checks, or remote command execution.
 
 ## Guardrails
 
 - Start with read-only inspection before any mutating command.
-- Never guess flags. Run `--help` for the relevant subcommand first if a flag is uncertain.
-- Prefer `--output json` for commands whose output you will filter or summarize programmatically.
+- Never guess flags. Run `quantum-cli help` or `quantum-cli <subcommand> --help` if a command shape is uncertain.
+- Use shell-safe placeholders like `"$QUANTUM_ENDPOINT"` and `"$QUANTUM_STACK"` in examples. Avoid angle-bracket placeholders in shell snippets.
 - Do not expose API keys, passwords, tokens, or full environment dumps in the response.
-- Treat `--no-validate` and `--no-pre-pull` as exceptions. They are explicitly not recommended.
+- Treat `--no-validate` and `--no-pre-pull` as exceptions. The docs explicitly say they are not recommended.
 - For deploys, prefer `--wait` so completion state is observable.
-- If a command fails because the sandbox blocks network access, rerun it with an escalation request instead of changing the workflow.
+- For stack deletion or migration, verify the source and target identifiers explicitly before running the command.
+- For migrations involving databases, assume the data can be corrupted if the database is still writing. Prefer application/database replication or stop writes first.
+- The CLI still accepts `PORTAINER_*` environment variables, but `QUANTUM_*` names are the current interface and should be preferred.
 
 ## Default Workflow
 
-### 1. Confirm auth and target
+### 1. Confirm CLI and target
 
-Start by checking authentication and discovering available targets:
+Start by checking CLI availability, effective auth inputs, and available targets:
 
 ```bash
-quantum-cli auth status --output json
-quantum-cli endpoints list --output json
-quantum-cli stacks list --endpoint <endpoint> --output json
+command -v quantum-cli
+test -n "$QUANTUM_API_KEY" || { test -n "$QUANTUM_USER" && test -n "$QUANTUM_PASSWORD"; }
+quantum-cli endpoints ls
+quantum-cli stacks ls --endpoint "$QUANTUM_ENDPOINT"
 ```
 
-Use endpoint, stack, and service names consistently. The CLI also supports `QUANTUM_ENDPOINT`, `QUANTUM_STACK`, and `QUANTUM_SERVICE` env vars, but explicit flags are usually clearer in agent work.
+If the task depends on environment-driven configuration, check the effective variable source before mutating anything.
 
 ### 2. Inspect runtime state
 
-Before changing anything, inspect tasks:
+Before changing anything, inspect current tasks:
 
 ```bash
-quantum-cli ps --endpoint <endpoint> --stack <stack> --output json
-quantum-cli ps --endpoint <endpoint> --stack <stack> --service <service> --all --output json
+quantum-cli ps --endpoint "$QUANTUM_ENDPOINT" --stack "$QUANTUM_STACK"
+quantum-cli ps --endpoint "$QUANTUM_ENDPOINT" --stack "$QUANTUM_STACK" --service "$QUANTUM_SERVICE" --all
 ```
 
 Use `--all` when diagnosing restarts, failed rollouts, or non-running tasks.
 
 ### 3. Validate config before deploy
 
-If the task touches a deployable project with a `.quantum` file, validate before updating:
+If the task touches a deployable project with a `.quantum` file, validate first:
 
 ```bash
 quantum-cli validate --help
+quantum-cli validate --project "$PROJECT_DIR"
 quantum-cli stacks update --help
 ```
 
-Then run the validated update from the project directory or pass `--project <path>`.
+The docs also support environment-variable driven deployments. `quantum-cli` injects environment variables during deployment without modifying the stack file in-place.
 
 ### 4. Deploy safely
 
@@ -70,21 +75,21 @@ Preferred deploy pattern:
 
 ```bash
 quantum-cli stacks update \
-  --endpoint <endpoint> \
-  --stack <stack> \
-  --project <path> \
-  --environment <env> \
+  --endpoint "$QUANTUM_ENDPOINT" \
+  --stack "$QUANTUM_STACK" \
+  --project "$PROJECT_DIR" \
+  --environment "$QUANTUM_ENVIRONMENT" \
   --wait
 ```
 
-Use `--create` only when the intent is to create the stack if missing.
+Use `--create` only when the intent is to create the stack if missing. Use `stacks create` when the operation should be explicitly create-only.
 
 ### 5. Verify after deploy
 
 After deployment, re-check tasks:
 
 ```bash
-quantum-cli ps --endpoint <endpoint> --stack <stack> --all --output json
+quantum-cli ps --endpoint "$QUANTUM_ENDPOINT" --stack "$QUANTUM_STACK" --all
 ```
 
 If needed, inspect a specific workload with `exec`.
@@ -96,16 +101,16 @@ Use `exec` only after identifying the correct target container via `ps`.
 Interactive shell:
 
 ```bash
-quantum-cli exec --endpoint <endpoint> --stack <stack> --service <service>
+quantum-cli exec --endpoint "$QUANTUM_ENDPOINT" --stack "$QUANTUM_STACK" --service "$QUANTUM_SERVICE"
 ```
 
 One-off command:
 
 ```bash
 quantum-cli exec \
-  --endpoint <endpoint> \
-  --stack <stack> \
-  --service <service> \
+  --endpoint "$QUANTUM_ENDPOINT" \
+  --stack "$QUANTUM_STACK" \
+  --service "$QUANTUM_SERVICE" \
   --command "sh -lc 'pwd && ls -la'"
 ```
 
@@ -115,37 +120,54 @@ Useful options:
 - `--container <id>` when a direct container selection is safer than service selection
 - `--command-user <user>` when command context matters
 
-Avoid broad exploratory commands that dump secrets or large sensitive configuration.
+`shell` and `ssh` are documented aliases for `exec`.
+
+## Stack Lifecycle Coverage
+
+According to the current Quantum CLI reference, the tool covers at least these operational areas:
+
+- `endpoints ls` for endpoint inventory
+- `stacks create`, `stacks ls`, `stacks update`, and `stacks rm`
+- `validate` for `.quantum` projects
+- `ps` for task inspection
+- `exec`, `shell`, and `ssh` for remote shell and command execution
+- `migration` / `migrate` for stack duplication across endpoints
+- `selfupdate` / `self-update` for updating the CLI itself
+
+This capability list is taken from the official CLI reference, not inferred from repo usage.
+
+## Environment Variables
+
+The docs describe two environment-variable layers:
+
+- global auth and host config such as `QUANTUM_HOST`; the currently documented standard path is `QUANTUM_USER` plus `QUANTUM_PASSWORD`, while this repo is in the process of moving toward `QUANTUM_API_KEY`
+- command-scoped selectors such as `QUANTUM_ENDPOINT`, `QUANTUM_STACK`, `QUANTUM_SERVICE`, and migration-specific variables
+
+The docs also note compatibility aliases such as `PORTAINER_HOST`, `PORTAINER_USER`, `PORTAINER_PASSWORD`, and `PORTAINER_ENDPOINT`. Treat those as compatibility inputs, not the preferred naming scheme.
+
+When the task involves CI or a scripted deploy, prefer explicit environment variables over interactive flags and avoid echoing them back to the user. For generic Quantum CLI usage, assume `QUANTUM_USER` plus `QUANTUM_PASSWORD` unless the repo or environment already documents `QUANTUM_API_KEY` for that deployment path.
+
+## Migration Notes
+
+`quantum-cli migration` can copy a whole stack including volumes and configs from one endpoint to another.
+
+Use it carefully:
+
+- verify source endpoint, target endpoint, source stack, and target stack names explicitly
+- prefer a maintenance window or at least stop traffic first
+- treat running databases as unsafe to copy at the volume level unless you know the storage is quiesced
+- use database-native replication instead of raw volume copying when the task is a database migration
 
 ## Common Patterns
 
-### Inspect what exists
-
-```bash
-quantum-cli endpoints list --output json
-quantum-cli stacks list --endpoint <endpoint> --output json
-quantum-cli ps --endpoint <endpoint> --stack <stack> --output json
-```
-
-### Investigate a failing service
-
-```bash
-quantum-cli ps --endpoint <endpoint> --stack <stack> --service <service> --all --output json
-quantum-cli exec --endpoint <endpoint> --stack <stack> --service <service> --command "sh"
-```
-
-### Roll out a stack update
-
-```bash
-quantum-cli stacks update --endpoint <endpoint> --stack <stack> --project <path> --environment <env> --wait
-```
+See [common-patterns.md](./references/common-patterns.md) for compact examples covering endpoint discovery, stack inspection, validated deploys, removals, `exec`, migrations, and CI-style environment-variable usage.
 
 ## Response Expectations
 
 When reporting results back to the user:
 
-- Name the endpoint, stack, and service you inspected or changed
-- State whether the action was read-only or mutating
-- Summarize the relevant task or deployment state
-- Call out any assumptions, especially environment selection and target stack names
-- If a deploy was not executed, say whether validation, auth, target discovery, or approval was the blocker
+- name the endpoint, stack, and service you inspected or changed
+- state whether the action was read-only or mutating
+- summarize the relevant task, deployment, or migration state
+- call out any assumptions, especially environment selection and target stack names
+- if a deploy or migration was not executed, say whether validation, auth, target discovery, or safety concerns were the blocker

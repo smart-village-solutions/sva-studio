@@ -7,10 +7,12 @@ import {
   collectUpdatedFields,
   type CreateLegalTextInput,
   deriveLegalTextId,
+  loadLegalTextByIdWithClient,
   type LegalTextRow,
   loadExistingLegalTextId,
   mapLegalTextListItem,
   mapPendingLegalTextItem,
+  type PendingLegalTextRow,
   resolveLegalTextUpdateState,
   type UpdateLegalTextInput,
 } from './repository-shared.js';
@@ -33,27 +35,14 @@ export const loadLegalTextById = async (
   instanceId: string,
   legalTextVersionId: string
 ): Promise<IamLegalTextListItem | undefined> =>
-  withInstanceScopedDb(instanceId, async (client) => {
-    const result = await client.query<LegalTextRow>(
-      `${LEGAL_TEXT_SELECT}
-WHERE version.instance_id = $1
-  AND version.id = $2::uuid
-GROUP BY version.id
-LIMIT 1;
-`,
-      [instanceId, legalTextVersionId]
-    );
-
-    const row = result.rows[0];
-    return row ? mapLegalTextListItem(row) : undefined;
-  });
+  withInstanceScopedDb(instanceId, (client) => loadLegalTextByIdWithClient(client, instanceId, legalTextVersionId));
 
 export const loadPendingLegalTexts = async (
   instanceId: string,
   keycloakSubject: string
 ): Promise<readonly IamPendingLegalTextItem[]> =>
   withInstanceScopedDb(instanceId, async (client) => {
-    const result = await client.query<LegalTextRow>(
+    const result = await client.query<PendingLegalTextRow>(
       `
 SELECT
   version.id,
@@ -65,7 +54,7 @@ SELECT
   version.published_at::text
 FROM iam.legal_text_versions version
 WHERE version.instance_id = $1
-  AND version.is_active = true
+  AND version.status = 'valid'
   AND NOT EXISTS (
     SELECT 1
     FROM iam.legal_text_acceptances acceptance
@@ -164,7 +153,7 @@ RETURNING id;
 
 export const updateLegalTextVersion = async (input: UpdateLegalTextInput): Promise<string | undefined> =>
   withInstanceScopedDb(input.instanceId, async (client) => {
-    const current = await loadLegalTextById(input.instanceId, input.legalTextVersionId);
+    const current = await loadLegalTextByIdWithClient(client, input.instanceId, input.legalTextVersionId);
     if (!current) {
       return undefined;
     }

@@ -21,6 +21,11 @@ export type LegalTextRow = {
   last_accepted_at: string | null;
 };
 
+export type PendingLegalTextRow = Pick<
+  LegalTextRow,
+  'id' | 'legal_text_id' | 'name' | 'legal_text_version' | 'locale' | 'content_html' | 'published_at'
+>;
+
 export type CreateLegalTextInput = {
   instanceId: string;
   actorAccountId: string;
@@ -48,7 +53,7 @@ export type UpdateLegalTextInput = {
   publishedAt?: string;
 };
 
-type InstanceScopedClient = Parameters<Parameters<typeof withInstanceScopedDb>[1]>[0];
+export type InstanceScopedClient = Parameters<Parameters<typeof withInstanceScopedDb>[1]>[0];
 
 const LEGAL_TEXT_ID_FALLBACK = 'legal_text';
 const LEGAL_TEXT_ID_HASH_LENGTH = 12;
@@ -132,7 +137,7 @@ export const resolveLegalTextUpdateState = (
   const nextStatus = input.status ?? current.status;
   const nextPublishedAt = input.publishedAt ?? current.publishedAt ?? null;
 
-  if (nextStatus === 'valid' && !nextPublishedAt) {
+  if (nextStatus === 'valid' && nextPublishedAt === null) {
     throw new Error('legal_text_published_at_required');
   }
 
@@ -184,7 +189,7 @@ export const mapLegalTextListItem = (row: LegalTextRow): IamLegalTextListItem =>
   ...(row.last_accepted_at ? { lastAcceptedAt: row.last_accepted_at } : {}),
 });
 
-export const mapPendingLegalTextItem = (row: LegalTextRow): IamPendingLegalTextItem => ({
+export const mapPendingLegalTextItem = (row: PendingLegalTextRow): IamPendingLegalTextItem => ({
   id: row.id,
   legalTextId: row.legal_text_id ?? row.id,
   name: row.name,
@@ -193,6 +198,25 @@ export const mapPendingLegalTextItem = (row: LegalTextRow): IamPendingLegalTextI
   contentHtml: row.content_html,
   ...(row.published_at ? { publishedAt: row.published_at } : {}),
 });
+
+export const loadLegalTextByIdWithClient = async (
+  client: InstanceScopedClient,
+  instanceId: string,
+  legalTextVersionId: string
+): Promise<IamLegalTextListItem | undefined> => {
+  const result = await client.query<LegalTextRow>(
+    `${LEGAL_TEXT_SELECT}
+WHERE version.instance_id = $1
+  AND version.id = $2::uuid
+GROUP BY version.id
+LIMIT 1;
+`,
+    [instanceId, legalTextVersionId]
+  );
+
+  const row = result.rows[0];
+  return row ? mapLegalTextListItem(row) : undefined;
+};
 
 export const LEGAL_TEXT_SELECT = `
 SELECT

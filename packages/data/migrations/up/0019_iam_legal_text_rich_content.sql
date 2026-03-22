@@ -2,7 +2,7 @@ ALTER TABLE iam.legal_text_versions
   ADD COLUMN IF NOT EXISTS name TEXT,
   ADD COLUMN IF NOT EXISTS content_html TEXT,
   ADD COLUMN IF NOT EXISTS status TEXT,
-  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ;
 
 UPDATE iam.legal_text_versions
 SET
@@ -12,13 +12,16 @@ SET
   updated_at = COALESCE(updated_at, created_at, NOW())
 WHERE name IS NULL
    OR content_html IS NULL
-   OR status IS NULL;
+   OR status IS NULL
+   OR updated_at IS NULL;
 
 ALTER TABLE iam.legal_text_versions
   ALTER COLUMN name SET NOT NULL,
   ALTER COLUMN published_at DROP NOT NULL,
   ALTER COLUMN content_html SET NOT NULL,
-  ALTER COLUMN status SET NOT NULL;
+  ALTER COLUMN status SET NOT NULL,
+  ALTER COLUMN updated_at SET NOT NULL,
+  ALTER COLUMN updated_at SET DEFAULT NOW();
 
 DO $$
 BEGIN

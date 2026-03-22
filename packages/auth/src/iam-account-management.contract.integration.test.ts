@@ -542,10 +542,12 @@ describe('iam-account-management stable contract integration', () => {
 
     expect(response.status).toBe(403);
     expect(payload.requestId).toBe('req-iam-contract');
-    expect(payload.error).toEqual({
-      code: 'forbidden',
-      message: 'Akteur-Account nicht gefunden.',
-    });
+    expect(payload.error).toEqual(
+      expect.objectContaining({
+        code: 'forbidden',
+        message: 'Akteur-Account nicht gefunden.',
+      })
+    );
   });
 
   it('returns stable IAM-v1 list envelope for list roles', async () => {

@@ -68,7 +68,13 @@ vi.mock('./shared', async (importOriginal) => {
     ...actual,
     permissionSnapshotCache: {
       get: vi.fn(() => cacheGetResult.value),
-      set: vi.fn(),
+      set: vi.fn(
+        (_input, permissions: unknown[], _storedAt: number, snapshotVersion?: string) => ({
+          permissions,
+          storedAt: new Date(),
+          snapshotVersion: snapshotVersion ?? null,
+        })
+      ),
       invalidate: vi.fn(),
       size: vi.fn(() => 0),
     },

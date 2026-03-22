@@ -176,7 +176,7 @@ describe('withAuthenticatedUser', () => {
   });
 
   it('returns the configured mock user when mock auth is enabled', async () => {
-    vi.stubEnv('VITE_MOCK_AUTH', 'true');
+    vi.stubEnv('SVA_MOCK_AUTH', 'true');
     const { withAuthenticatedUser } = await import('./middleware.server');
     const request = new Request('http://localhost/auth/me');
 

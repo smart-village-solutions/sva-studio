@@ -77,6 +77,10 @@ describe('AccountProfilePage', () => {
         firstName: 'Jane',
         lastName: 'Doe',
         email: 'jane@example.com',
+        phone: '+49 111111',
+        position: 'Editor',
+        department: 'News',
+        preferredLanguage: 'de',
         status: 'active',
         roles: [],
         mainserverUserApplicationSecretSet: false,
@@ -87,11 +91,15 @@ describe('AccountProfilePage', () => {
       data: {
         id: 'account-1',
         keycloakSubject: 'subject-1',
-        username: 'jane.doe.updated',
-        displayName: 'Jane D.',
-        firstName: 'Jane',
+        username: 'jane.doe',
+        displayName: 'Janet Doe',
+        firstName: 'Janet',
         lastName: 'Doe',
-        email: 'jane.d@example.com',
+        email: 'jane@example.com',
+        phone: '+49 222222',
+        position: 'Lead Editor',
+        department: 'Product',
+        preferredLanguage: 'en',
         status: 'active',
         roles: [],
         mainserverUserApplicationSecretSet: false,
@@ -104,14 +112,20 @@ describe('AccountProfilePage', () => {
       expect(screen.getByRole('heading', { name: 'Mein Konto' })).toBeTruthy();
     });
 
-    fireEvent.change(screen.getByLabelText('Anzeigename'), {
-      target: { value: 'Jane D.' },
+    fireEvent.change(screen.getByLabelText('Vorname'), {
+      target: { value: 'Janet' },
     });
-    fireEvent.change(screen.getByLabelText('Benutzername'), {
-      target: { value: 'jane.doe.updated' },
+    fireEvent.change(screen.getByLabelText('Telefon'), {
+      target: { value: '+49 222222' },
     });
-    fireEvent.change(screen.getByLabelText('E-Mail'), {
-      target: { value: 'jane.d@example.com' },
+    fireEvent.change(screen.getByLabelText('Position'), {
+      target: { value: 'Lead Editor' },
+    });
+    fireEvent.change(screen.getByLabelText('Abteilung'), {
+      target: { value: 'Product' },
+    });
+    fireEvent.change(screen.getByLabelText('Sprache'), {
+      target: { value: 'en' },
     });
 
     await waitFor(() => {
@@ -126,14 +140,18 @@ describe('AccountProfilePage', () => {
     });
     expect(updateMyProfileMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        username: 'jane.doe.updated',
-        email: 'jane.d@example.com',
-        displayName: 'Jane D.',
+        firstName: 'Janet',
+        lastName: 'Doe',
+        displayName: 'Janet Doe',
+        phone: '+49 222222',
+        position: 'Lead Editor',
+        department: 'Product',
+        preferredLanguage: 'en',
       })
     );
     expect(authMockValue.updateProfile).toHaveBeenCalledWith({
-      name: 'Jane D.',
-      email: 'jane.d@example.com',
+      name: 'Janet Doe',
+      email: 'jane@example.com',
     });
   });
 
@@ -204,6 +222,70 @@ describe('AccountProfilePage', () => {
     );
   });
 
+  it('hides timezone and non-editable account identity fields', async () => {
+    getMyProfileMock.mockResolvedValue({
+      data: {
+        id: 'account-1',
+        keycloakSubject: 'subject-1',
+        username: 'jane.doe',
+        displayName: 'Jane Doe',
+        firstName: 'Jane',
+        lastName: 'Doe',
+        email: 'jane@example.com',
+        preferredLanguage: 'de',
+        timezone: 'Europe/Berlin',
+        status: 'active',
+        roles: [],
+        mainserverUserApplicationSecretSet: false,
+      },
+    });
+
+    render(<AccountProfilePage />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Mein Konto' })).toBeTruthy();
+    });
+
+    expect(screen.queryByLabelText('Zeitzone')).toBeNull();
+    expect(screen.queryByLabelText('Benutzername')).toBeNull();
+    expect(screen.queryByLabelText('E-Mail')).toBeNull();
+    expect(screen.queryByLabelText('Anzeigename')).toBeNull();
+  });
+
+  it('shows roles and status as readonly fields', async () => {
+    getMyProfileMock.mockResolvedValue({
+      data: {
+        id: 'account-1',
+        keycloakSubject: 'subject-1',
+        username: 'jane.doe',
+        displayName: 'Jane Doe',
+        firstName: 'Jane',
+        lastName: 'Doe',
+        email: 'jane@example.com',
+        status: 'active',
+        roles: [
+          { roleId: 'role-1', roleName: 'Editor' },
+          { roleId: 'role-2', roleName: 'Reviewer' },
+        ],
+        mainserverUserApplicationSecretSet: false,
+      },
+    });
+
+    render(<AccountProfilePage />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Mein Konto' })).toBeTruthy();
+    });
+
+    const statusField = screen.getByLabelText('Status') as HTMLInputElement;
+    const roleField = screen.getByLabelText('Rolle') as HTMLInputElement;
+
+    expect(statusField.readOnly).toBe(true);
+    expect(statusField.value).toBe('Aktiv');
+    expect(roleField.readOnly).toBe(true);
+    expect(roleField.value).toBe('Editor, Reviewer');
+  });
+
   it('shows load error with retry and keeps display name fallback from auth user', async () => {
     const loadError = { status: 500, code: 'failed', message: 'failed' };
     asIamErrorMock.mockReturnValue(loadError);
@@ -263,10 +345,8 @@ describe('AccountProfilePage', () => {
       expect(screen.getByRole('heading', { name: 'Mein Konto' })).toBeTruthy();
     });
 
-    fireEvent.change(screen.getByLabelText('Benutzername'), { target: { value: 'bad user' } });
     fireEvent.change(screen.getByLabelText('Vorname'), { target: { value: '' } });
     fireEvent.change(screen.getByLabelText('Nachname'), { target: { value: '' } });
-    fireEvent.change(screen.getByLabelText('E-Mail'), { target: { value: 'bad-email' } });
     fireEvent.change(screen.getByLabelText('Telefon'), { target: { value: 'bad-phone' } });
     fireEvent.submit(screen.getByRole('button', { name: 'Speichern' }));
 
@@ -275,10 +355,8 @@ describe('AccountProfilePage', () => {
       expect(updateMyProfileMock).not.toHaveBeenCalled();
     });
 
-    fireEvent.change(screen.getByLabelText('Benutzername'), { target: { value: 'jane.doe' } });
     fireEvent.change(screen.getByLabelText('Vorname'), { target: { value: 'Jane' } });
     fireEvent.change(screen.getByLabelText('Nachname'), { target: { value: 'Doe' } });
-    fireEvent.change(screen.getByLabelText('E-Mail'), { target: { value: 'jane@example.com' } });
     fireEvent.change(screen.getByLabelText('Telefon'), { target: { value: '+49 1234567' } });
     fireEvent.submit(screen.getByRole('button', { name: 'Speichern' }));
 

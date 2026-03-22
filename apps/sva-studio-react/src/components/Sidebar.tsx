@@ -8,14 +8,13 @@ import {
   IconBuildingCommunity,
   IconCategory,
   IconCertificate,
+  IconChevronLeft,
   IconChevronDown,
   IconChevronRight,
   IconFileText,
   IconHeadset,
   IconHelpCircle,
   IconLayoutDashboard,
-  IconLayoutSidebarLeftCollapse,
-  IconLayoutSidebarLeftExpand,
   IconPackages,
   IconPhoto,
   IconPlugConnected,
@@ -50,7 +49,8 @@ type SidebarProps = Readonly<{
 type SidebarLeafItem = {
   readonly kind: 'link';
   readonly id: string;
-  readonly to: string;
+  readonly to?: string;
+  readonly href?: string;
   readonly label: string;
   readonly icon: Icon;
   readonly exact?: boolean;
@@ -92,9 +92,21 @@ const sidebarSkeletonKeys = [
 ] as const;
 
 const SIDEBAR_COLLAPSED_STORAGE_KEY = 'sva-studio-sidebar-collapsed';
+const HELP_DISCUSSIONS_URL = 'https://github.com/smart-village-solutions/sva-studio/discussions';
+const SUPPORT_ISSUES_URL = 'https://github.com/smart-village-solutions/sva-studio/issues';
+const LICENSE_ISSUE_URL = 'https://github.com/smart-village-solutions/sva-studio/issues/2';
 
-const isLeafActive = (pathname: string, item: SidebarLeafItem) =>
-  item.exact ? pathname === item.to : pathname === item.to || pathname.startsWith(`${item.to}/`);
+const isLeafActive = (pathname: string, item: SidebarLeafItem) => {
+  if (!item.to) {
+    return false;
+  }
+
+  if (item.exact) {
+    return pathname === item.to;
+  }
+
+  return pathname === item.to || pathname.startsWith(`${item.to}/`);
+};
 
 const isGroupActive = (pathname: string, item: SidebarGroupItem) =>
   item.children.some((child) => isLeafActive(pathname, child));
@@ -109,6 +121,207 @@ const getLinkClasses = (isActive: boolean, isCollapsed: boolean, isChild = false
       ? 'border-sidebar-border bg-sidebar-accent text-sidebar-accent-foreground shadow-shell'
       : 'border-transparent bg-sidebar hover:border-sidebar-primary hover:bg-sidebar-primary hover:text-sidebar-primary-foreground',
   ].join(' ');
+
+type SidebarLeafLinkProps = Readonly<{
+  item: SidebarLeafItem;
+  isActive: boolean;
+  isCollapsed: boolean;
+  isChild?: boolean;
+  onClick?: () => void;
+}>;
+
+const SidebarLeafLink = ({ item, isActive, isCollapsed, isChild = false, onClick }: SidebarLeafLinkProps) => {
+  const IconComponent = item.icon;
+  const showLabel = isCollapsed === false;
+  const content = (
+    <>
+      <IconComponent className={isChild ? 'h-4 w-4 shrink-0' : 'h-5 w-5 shrink-0'} />
+      {showLabel ? <span className="truncate">{item.label}</span> : null}
+    </>
+  );
+
+  if (item.to) {
+    return (
+      <Link
+        activeOptions={item.exact ? { exact: true } : undefined}
+        to={item.to}
+        className={getLinkClasses(isActive, isCollapsed, isChild)}
+        aria-label={isCollapsed ? item.label : undefined}
+        title={isCollapsed ? item.label : undefined}
+        onClick={onClick}
+      >
+        {content}
+      </Link>
+    );
+  }
+
+  return (
+    <a
+      href={item.href}
+      className={getLinkClasses(false, isCollapsed, isChild)}
+      aria-label={isCollapsed ? item.label : undefined}
+      title={isCollapsed ? item.label : undefined}
+      onClick={onClick}
+      rel="noreferrer"
+      target="_blank"
+    >
+      {content}
+    </a>
+  );
+};
+
+type SidebarGroupFlyoutProps = Readonly<{
+  item: SidebarGroupItem;
+  pathname: string;
+  onNavigate?: () => void;
+  closeFlyout: () => void;
+}>;
+
+const SidebarGroupFlyout = ({ item, pathname, onNavigate, closeFlyout }: SidebarGroupFlyoutProps) => {
+  const handleItemClick = () => {
+    closeFlyout();
+    onNavigate?.();
+  };
+
+  return (
+    <div
+      id={`sidebar-group-${item.id}`}
+      className="absolute left-full top-0 z-[100] w-64 rounded-2xl border border-sidebar-border bg-card p-3 shadow-[0_20px_50px_rgba(15,23,42,0.18)]"
+    >
+      <p className="px-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">{item.label}</p>
+      <div className="mt-3 space-y-1">
+        {item.children.map((child) => (
+          <SidebarLeafLink
+            key={child.id}
+            item={child}
+            isActive={isLeafActive(pathname, child)}
+            isCollapsed={false}
+            isChild
+            onClick={handleItemClick}
+          />
+        ))}
+      </div>
+    </div>
+  );
+};
+
+type SidebarGroupContentProps = Readonly<{
+  item: SidebarGroupItem;
+  pathname: string;
+  onNavigate?: () => void;
+}>;
+
+const SidebarGroupContent = ({ item, pathname, onNavigate }: SidebarGroupContentProps) => (
+  <CollapsibleContent
+    id={`sidebar-group-${item.id}`}
+    className="mt-1 ml-5 space-y-1 border-l border-sidebar-border/70 pb-1 pl-4"
+  >
+    {item.children.map((child) => (
+      <SidebarLeafLink
+        key={child.id}
+        item={child}
+        isActive={isLeafActive(pathname, child)}
+        isCollapsed={false}
+        isChild
+        onClick={onNavigate}
+      />
+    ))}
+  </CollapsibleContent>
+);
+
+type SidebarNavItemProps = Readonly<{
+  item: SidebarItem;
+  pathname: string;
+  isCollapsed: boolean;
+  groupOpenState: Readonly<Record<string, boolean>>;
+  flyoutGroupId: string | null;
+  onNavigate?: () => void;
+  onToggleCollapsedGroup: (groupId: string) => void;
+  onToggleExpandedGroup: (groupId: string, open: boolean) => void;
+  onOpenFlyout: (groupId: string) => void;
+  onCloseFlyout: () => void;
+}>;
+
+const SidebarNavItem = ({
+  item,
+  pathname,
+  isCollapsed,
+  groupOpenState,
+  flyoutGroupId,
+  onNavigate,
+  onToggleCollapsedGroup,
+  onToggleExpandedGroup,
+  onOpenFlyout,
+  onCloseFlyout,
+}: SidebarNavItemProps) => {
+  if (item.kind === 'link') {
+    return (
+      <li key={item.id}>
+        <SidebarLeafLink
+          item={item}
+          isActive={isLeafActive(pathname, item)}
+          isCollapsed={isCollapsed}
+          onClick={onNavigate}
+        />
+      </li>
+    );
+  }
+
+  const isActive = isGroupActive(pathname, item);
+  const persistedOpen = groupOpenState[item.id];
+  const isExpanded = isCollapsed ? flyoutGroupId === item.id : persistedOpen ?? isActive;
+  const IconComponent = item.icon;
+  const handleBlurCapture = (event: React.FocusEvent<HTMLLIElement>) => {
+    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+      onCloseFlyout();
+    }
+  };
+
+  return (
+    <li
+      key={item.id}
+      className="relative"
+      onMouseEnter={isCollapsed ? () => onOpenFlyout(item.id) : undefined}
+      onMouseLeave={isCollapsed ? onCloseFlyout : undefined}
+      onBlurCapture={isCollapsed ? handleBlurCapture : undefined}
+    >
+      {isCollapsed ? (
+        <>
+          <button
+            type="button"
+            className={`${getLinkClasses(isActive || isExpanded, true)} w-full`}
+            aria-controls={`sidebar-group-${item.id}`}
+            aria-expanded={isExpanded}
+            aria-label={item.label}
+            title={item.label}
+            onClick={() => onToggleCollapsedGroup(item.id)}
+            onFocus={() => onOpenFlyout(item.id)}
+          >
+            <IconComponent className="h-5 w-5 shrink-0" />
+          </button>
+
+          {isExpanded ? (
+            <SidebarGroupFlyout item={item} pathname={pathname} onNavigate={onNavigate} closeFlyout={onCloseFlyout} />
+          ) : null}
+        </>
+      ) : (
+        <Collapsible open={isExpanded} onOpenChange={(open) => onToggleExpandedGroup(item.id, open)}>
+          <CollapsibleTrigger
+            className={`w-full ${getLinkClasses(isActive || isExpanded, false)}`}
+            aria-controls={`sidebar-group-${item.id}`}
+          >
+            <IconComponent className="h-5 w-5 shrink-0" />
+            <span className="truncate">{item.label}</span>
+            <span className="ml-auto inline-flex h-5 w-5 items-center justify-center text-muted-foreground">
+              {isExpanded ? <IconChevronDown className="h-4 w-4" /> : <IconChevronRight className="h-4 w-4" />}
+            </span>
+          </CollapsibleTrigger>
+          <SidebarGroupContent item={item} pathname={pathname} onNavigate={onNavigate} />
+        </Collapsible>
+      )}
+    </li>
+  );
+};
 
 const SidebarPanel = ({
   isLoading,
@@ -127,245 +340,121 @@ const SidebarPanel = ({
   const [groupOpenState, setGroupOpenState] = React.useState<Record<string, boolean>>({});
   const [flyoutGroupId, setFlyoutGroupId] = React.useState<string | null>(null);
 
-  const toggleGroup = (groupId: string, isCollapsedGroup: boolean) => {
-    if (isCollapsedGroup) {
-      setFlyoutGroupId((current) => (current === groupId ? null : groupId));
-      return;
-    }
+  const toggleCollapsedGroup = (groupId: string) => {
+    setFlyoutGroupId((current) => (current === groupId ? null : groupId));
+  };
+
+  const toggleExpandedGroup = (groupId: string, open: boolean) => {
     setGroupOpenState((current) => ({
       ...current,
-      [groupId]: !(current[groupId] ?? false),
+      [groupId]: open,
     }));
   };
 
   const closeFlyout = () => {
     setFlyoutGroupId(null);
   };
+  const showAppTitle = isCollapsed === false;
+  const showFooter = isLoading === false;
 
   return (
     <div className="flex h-full flex-col">
       <div className="px-4 py-4">
-        <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
-          {!isCollapsed ? <p className="text-3xl font-semibold text-foreground">{t('shell.appName')}</p> : null}
-          <div className="flex items-center gap-2">
-            {allowCollapse ? (
-              <Button
-                type="button"
-                size="icon"
-                variant="outline"
-                className="hidden border-sidebar-border bg-card shadow-shell lg:inline-flex"
-                aria-label={isCollapsed ? t('shell.sidebar.expand') : t('shell.sidebar.collapse')}
-                onClick={onToggleCollapsed}
-              >
-                {isCollapsed ? (
-                  <IconLayoutSidebarLeftExpand className="h-5 w-5" />
-                ) : (
-                  <IconLayoutSidebarLeftCollapse className="h-5 w-5" />
-                )}
-              </Button>
-            ) : null}
-            {showMobileHeader ? (
-              <Button
-                type="button"
-                size="icon"
-                variant="outline"
-                className="border-sidebar-border bg-card shadow-shell"
-                aria-label={t('shell.header.closeNavigation')}
-                onClick={onCloseMobileNavigation}
-              >
-                <IconChevronRight className="h-5 w-5 rotate-180" />
-              </Button>
-            ) : null}
-          </div>
+        <div className={`relative flex min-h-12 items-center ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
+          {showAppTitle ? <p className="text-3xl font-semibold text-foreground">{t('shell.appName')}</p> : null}
+          {allowCollapse ? (
+            <Button
+              type="button"
+              size="icon"
+              variant="outline"
+              className="absolute right-0 top-1/2 z-[100] hidden h-10 w-10 -translate-y-1/2 translate-x-[calc(60%+12px)] rounded-full border-sidebar-border bg-card shadow-shell lg:inline-flex"
+              aria-label={isCollapsed ? t('shell.sidebar.expand') : t('shell.sidebar.collapse')}
+              onClick={onToggleCollapsed}
+            >
+              {isCollapsed ? <IconChevronRight className="h-5 w-5" /> : <IconChevronLeft className="h-5 w-5" />}
+            </Button>
+          ) : null}
+          {showMobileHeader ? (
+            <Button
+              type="button"
+              size="icon"
+              variant="outline"
+              className="border-sidebar-border bg-card shadow-shell"
+              aria-label={t('shell.header.closeNavigation')}
+              onClick={onCloseMobileNavigation}
+            >
+              <IconChevronRight className="h-5 w-5 rotate-180" />
+            </Button>
+          ) : null}
         </div>
       </div>
 
-      <nav aria-label={t('shell.sidebar.navAriaLabel')} className="overflow-y-auto px-3 py-4">
-        {isLoading ? (
-          <ul className="space-y-2">
-            {sidebarSkeletonKeys.map((key) => (
-              <li key={key}>
-                <span
-                  aria-hidden="true"
-                  className={`block animate-pulse rounded-xl border border-sidebar-border bg-muted ${
-                    isCollapsed ? 'mx-auto h-11 w-11' : 'h-11 w-full'
-                  }`}
+      <nav
+        aria-label={t('shell.sidebar.navAriaLabel')}
+        className={`flex-1 min-h-0 px-3 py-4 ${isCollapsed ? 'overflow-visible' : 'overflow-y-auto'}`}
+      >
+          {isLoading ? (
+            <ul className="space-y-2">
+              {sidebarSkeletonKeys.map((key) => (
+                <li key={key}>
+                  <span
+                    aria-hidden="true"
+                    className={`block animate-pulse rounded-xl border border-sidebar-border bg-muted ${
+                      isCollapsed ? 'mx-auto h-11 w-11' : 'h-11 w-full'
+                    }`}
+                  />
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="space-y-5">
+              {sections.map((section) => (
+                <section key={section.id} className="space-y-2">
+                  {isCollapsed ? (
+                    <div className="px-2" aria-hidden="true">
+                      <span className="mx-auto block h-px w-8 bg-sidebar-border" />
+                    </div>
+                  ) : (
+                    <p className="px-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+                      {section.label}
+                    </p>
+                  )}
+                  <ul className="space-y-1">
+                    {section.items.map((item) => (
+                      <SidebarNavItem
+                        key={item.id}
+                        item={item}
+                        pathname={pathname}
+                        isCollapsed={isCollapsed}
+                        groupOpenState={groupOpenState}
+                        flyoutGroupId={flyoutGroupId}
+                        onNavigate={onNavigate}
+                        onToggleCollapsedGroup={toggleCollapsedGroup}
+                        onToggleExpandedGroup={toggleExpandedGroup}
+                        onOpenFlyout={setFlyoutGroupId}
+                        onCloseFlyout={closeFlyout}
+                      />
+                    ))}
+                  </ul>
+                </section>
+              ))}
+            </div>
+          )}
+      </nav>
+
+      {showFooter ? (
+        <div className="px-3 py-4">
+          <ul className="space-y-1">
+            {footerItems.map((item) => (
+              <li key={item.id}>
+                <SidebarLeafLink
+                  item={item}
+                  isActive={isLeafActive(pathname, item)}
+                  isCollapsed={isCollapsed}
+                  onClick={onNavigate}
                 />
               </li>
             ))}
-          </ul>
-        ) : (
-          <div className="space-y-5">
-            {sections.map((section) => (
-              <section key={section.id} className="space-y-2">
-                {isCollapsed ? (
-                  <div className="px-2" aria-hidden="true">
-                    <span className="mx-auto block h-px w-8 bg-sidebar-border" />
-                  </div>
-                ) : (
-                  <p className="px-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-                    {section.label}
-                  </p>
-                )}
-                <ul className="space-y-1">
-                  {section.items.map((item) => {
-                    if (item.kind === 'link') {
-                      const isActive = isLeafActive(pathname, item);
-                      const IconComponent = item.icon;
-
-                      return (
-                        <li key={item.id}>
-                          <Link
-                            activeOptions={item.exact ? { exact: true } : undefined}
-                            to={item.to}
-                            className={getLinkClasses(isActive, isCollapsed)}
-                            aria-label={isCollapsed ? item.label : undefined}
-                            title={isCollapsed ? item.label : undefined}
-                            onClick={onNavigate}
-                          >
-                            <IconComponent className="h-5 w-5 shrink-0" />
-                            {!isCollapsed ? <span className="truncate">{item.label}</span> : null}
-                          </Link>
-                        </li>
-                      );
-                    }
-
-                    const isActive = isGroupActive(pathname, item);
-                    const isExpanded = isCollapsed ? flyoutGroupId === item.id : (groupOpenState[item.id] ?? isActive);
-                    const IconComponent = item.icon;
-
-                    return (
-                      <li
-                        key={item.id}
-                        className="relative"
-                        onMouseEnter={isCollapsed ? () => setFlyoutGroupId(item.id) : undefined}
-                        onMouseLeave={isCollapsed ? closeFlyout : undefined}
-                        onBlurCapture={
-                          isCollapsed
-                            ? (event) => {
-                                if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
-                                  closeFlyout();
-                                }
-                              }
-                            : undefined
-                        }
-                      >
-                        {isCollapsed ? (
-                          <>
-                            <Button
-                              type="button"
-                              className={getLinkClasses(isActive || isExpanded, true)}
-                              aria-controls={`sidebar-group-${item.id}`}
-                              aria-expanded={isExpanded}
-                              aria-label={item.label}
-                              title={item.label}
-                              onClick={() => toggleGroup(item.id, true)}
-                              onFocus={() => setFlyoutGroupId(item.id)}
-                              variant="ghost"
-                            >
-                              <IconComponent className="h-5 w-5 shrink-0" />
-                            </Button>
-
-                            {isExpanded ? (
-                              <div
-                                id={`sidebar-group-${item.id}`}
-                                className="absolute left-[calc(100%+0.75rem)] top-0 z-50 w-64 rounded-2xl border border-sidebar-border bg-card p-3 shadow-[0_20px_50px_rgba(15,23,42,0.18)]"
-                              >
-                                <p className="px-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-                                  {item.label}
-                                </p>
-                                <div className="mt-3 space-y-1">
-                                  {item.children.map((child) => {
-                                    const childIsActive = isLeafActive(pathname, child);
-                                    const ChildIcon = child.icon;
-
-                                    return (
-                                      <Link
-                                        key={child.id}
-                                        to={child.to}
-                                        className={getLinkClasses(childIsActive, false, true)}
-                                        onClick={() => {
-                                          closeFlyout();
-                                          onNavigate?.();
-                                        }}
-                                      >
-                                        <ChildIcon className="h-4 w-4 shrink-0" />
-                                        <span className="truncate">{child.label}</span>
-                                      </Link>
-                                    );
-                                  })}
-                                </div>
-                              </div>
-                            ) : null}
-                          </>
-                        ) : (
-                          <Collapsible open={isExpanded} onOpenChange={(open) => setGroupOpenState((current) => ({ ...current, [item.id]: open }))}>
-                            <CollapsibleTrigger
-                              className={`w-full ${getLinkClasses(isActive || isExpanded, false)}`}
-                              aria-controls={`sidebar-group-${item.id}`}
-                            >
-                              <IconComponent className="h-5 w-5 shrink-0" />
-                              <span className="truncate">{item.label}</span>
-                              <span className="ml-auto inline-flex h-5 w-5 items-center justify-center text-muted-foreground">
-                                {isExpanded ? <IconChevronDown className="h-4 w-4" /> : <IconChevronRight className="h-4 w-4" />}
-                              </span>
-                            </CollapsibleTrigger>
-                            <CollapsibleContent
-                              id={`sidebar-group-${item.id}`}
-                              className="mt-1 space-y-1 border-l border-sidebar-border/70 pb-1 pl-4 ml-5"
-                            >
-                              {item.children.map((child) => {
-                                const childIsActive = isLeafActive(pathname, child);
-                                const ChildIcon = child.icon;
-
-                                return (
-                                  <Link
-                                    key={child.id}
-                                    to={child.to}
-                                    className={getLinkClasses(childIsActive, false, true)}
-                                    onClick={onNavigate}
-                                  >
-                                    <ChildIcon className="h-4 w-4 shrink-0" />
-                                    <span className="truncate">{child.label}</span>
-                                  </Link>
-                                );
-                              })}
-                            </CollapsibleContent>
-                          </Collapsible>
-                        )}
-                      </li>
-                    );
-                  })}
-                </ul>
-              </section>
-            ))}
-          </div>
-        )}
-      </nav>
-
-      {!isLoading ? (
-        <div className="px-3 py-4">
-          <ul className="space-y-1">
-            {footerItems.map((item) => {
-              const isActive = isLeafActive(pathname, item);
-              const IconComponent = item.icon;
-
-              return (
-                <li key={item.id}>
-                  <Link
-                    activeOptions={item.exact ? { exact: true } : undefined}
-                    to={item.to}
-                    className={getLinkClasses(isActive, isCollapsed)}
-                    aria-label={isCollapsed ? item.label : undefined}
-                    title={isCollapsed ? item.label : undefined}
-                    onClick={onNavigate}
-                  >
-                    <IconComponent className="h-5 w-5 shrink-0" />
-                    {!isCollapsed ? <span className="truncate">{item.label}</span> : null}
-                  </Link>
-                </li>
-              );
-            })}
           </ul>
         </div>
       ) : null}
@@ -390,18 +479,18 @@ export default function Sidebar({ isLoading = false, isMobileOpen = false, onMob
   const [hasLoadedCollapsePreference, setHasLoadedCollapsePreference] = React.useState(false);
 
   React.useEffect(() => {
-    if (typeof window === 'undefined') {
+    if (globalThis.window === undefined) {
       return;
     }
-    setIsCollapsed(window.localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY) === '1');
+    setIsCollapsed(globalThis.window.localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY) === '1');
     setHasLoadedCollapsePreference(true);
   }, []);
 
   React.useEffect(() => {
-    if (typeof window === 'undefined' || !hasLoadedCollapsePreference) {
+    if (globalThis.window === undefined || hasLoadedCollapsePreference === false) {
       return;
     }
-    window.localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, isCollapsed ? '1' : '0');
+    globalThis.window.localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, isCollapsed ? '1' : '0');
   }, [hasLoadedCollapsePreference, isCollapsed]);
 
   const sections = React.useMemo<readonly SidebarSection[]>(() => {
@@ -597,21 +686,21 @@ export default function Sidebar({ isLoading = false, isMobileOpen = false, onMob
       {
         kind: 'link',
         id: 'help',
-        to: '/help',
+        href: HELP_DISCUSSIONS_URL,
         label: t('shell.sidebar.help'),
         icon: IconHelpCircle,
       },
       {
         kind: 'link',
         id: 'support',
-        to: '/support',
+        href: SUPPORT_ISSUES_URL,
         label: t('shell.sidebar.support'),
         icon: IconHeadset,
       },
       {
         kind: 'link',
         id: 'license',
-        to: '/license',
+        href: LICENSE_ISSUE_URL,
         label: t('shell.sidebar.license'),
         icon: IconCertificate,
       },
@@ -623,7 +712,7 @@ export default function Sidebar({ isLoading = false, isMobileOpen = false, onMob
     <>
       <aside
         aria-label={t('shell.sidebar.ariaLabel')}
-        className={`hidden border-r border-sidebar-border bg-sidebar shadow-shell transition-[width] duration-200 lg:sticky lg:top-0 lg:block lg:h-screen ${
+        className={`relative z-[90] hidden overflow-visible border-r border-sidebar-border bg-sidebar shadow-shell transition-[width] duration-200 lg:sticky lg:top-0 lg:block lg:h-screen ${
           isCollapsed ? 'lg:w-20' : 'lg:w-80'
         }`}
       >

@@ -253,9 +253,9 @@ Liefert den normalisierten Admin-Feed für das DSR-Tab in `/admin/iam`.
 ## Endpunkte: Rechtstext-Verwaltung
 
 Die Admin-Oberfläche `/admin/legal-texts` nutzt eigene Read-/Write-Endpunkte
-für technische Rechtstext-Versionen. Persistiert werden aktuell:
-`legalTextId`, `legalTextVersion`, `locale`, `contentHash`, `isActive`,
-`publishedAt` sowie aggregierte Akzeptanzzähler.
+für fachliche Rechtstext-Versionen. Persistiert werden UUID, Name,
+Versionsnummer, Sprachzuordnung, HTML-Inhalt, Status, Veröffentlichungsdatum
+sowie Erstellungs-, Änderungs- und Akzeptanzmetadaten.
 
 ### GET `/api/v1/iam/legal-texts`
 
@@ -268,13 +268,14 @@ Liefert alle verwalteten Rechtstext-Versionen der aktuellen Instanz.
   "data": [
     {
       "id": "11111111-1111-1111-8111-111111111111",
-      "legalTextId": "privacy_policy",
+      "name": "Datenschutzhinweise",
       "legalTextVersion": "2026-03",
       "locale": "de-DE",
-      "contentHash": "sha256:abc123",
-      "isActive": true,
+      "contentHtml": "<p>Datenschutz für das Portal</p>",
+      "status": "valid",
       "publishedAt": "2026-03-16T09:00:00.000Z",
       "createdAt": "2026-03-16T08:55:00.000Z",
+      "updatedAt": "2026-03-17T10:00:00.000Z",
       "acceptanceCount": 4,
       "activeAcceptanceCount": 3,
       "lastAcceptedAt": "2026-03-16T10:00:00.000Z"
@@ -296,11 +297,11 @@ Legt eine neue Rechtstext-Version für die aktuelle Instanz an.
 
 ```json
 {
-  "legalTextId": "terms_of_use",
+  "name": "Nutzungsbedingungen",
   "legalTextVersion": "2026-04",
   "locale": "en-GB",
-  "contentHash": "sha256:def456",
-  "isActive": false,
+  "contentHtml": "<p>Terms of use</p>",
+  "status": "draft",
   "publishedAt": "2026-04-01T12:00:00.000Z"
 }
 ```
@@ -308,13 +309,16 @@ Legt eine neue Rechtstext-Version für die aktuelle Instanz an.
 #### Zusagen
 
 - `Idempotency-Key` ist für `POST` verpflichtend.
-- Doppelte Kombinationen aus `legalTextId + legalTextVersion + locale` führen zu `409 conflict`.
-- Der eigentliche Textkörper ist bewusst nicht Teil dieses Vertrags.
+- `name` muss nicht eindeutig sein.
+- Doppelte Kombinationen aus `name + legalTextVersion + locale` werden weiterhin mit `409 conflict` beantwortet.
+- `status` erlaubt nur `draft`, `valid` und `archived`.
+- Für `status = valid` ist ein `publishedAt` erforderlich.
+- `contentHtml` wird serverseitig sanitisiert und persistiert.
 
 ### PATCH `/api/v1/iam/legal-texts/:legalTextVersionId`
 
-Aktualisiert `contentHash`, `isActive` und/oder `publishedAt` einer bestehenden
-Rechtstext-Version.
+Aktualisiert Name, Versionsnummer, Locale, HTML-Inhalt, Status und/oder
+Veröffentlichungsdatum einer bestehenden Rechtstext-Version.
 
 ## Endpunkt: GET `/api/v1/iam/users/:userId/timeline`
 

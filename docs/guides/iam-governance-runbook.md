@@ -29,9 +29,10 @@ Missbrauchs- und Incident-Fällen.
 
 Der Governance-Feed normalisiert Rechteänderungen, Delegationen, Impersonationen und Legal-Akzeptanzen in ein gemeinsames Read-Modell für das Transparenz-Cockpit.
 
-Die Rechtstext-Verwaltung unter `/admin/legal-texts` pflegt die technischen
-Versionseinträge für Legal-Akzeptanzen. Aktuell werden Metadaten und
-Inhalts-Hashes verwaltet, nicht der Textkörper selbst.
+Die Rechtstext-Verwaltung unter `/admin/legal-texts` pflegt die fachlichen
+Versionseinträge für Legal-Akzeptanzen. Verwaltet werden UUID, Name, Version,
+Locale, Status, Veröffentlichungsdatum sowie der serverseitig gespeicherte und
+sanitisierte HTML-Inhalt.
 
 ## Sofortmaßnahmen
 

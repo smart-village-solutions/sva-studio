@@ -31,6 +31,18 @@ describe('accountUiRouteGuards', () => {
     await expect(invoke(accountUiRouteGuards.accountPrivacy, ['editor'], '/account/privacy')).resolves.toBeUndefined();
   });
 
+  it('allows content routes for editor role', async () => {
+    await expect(invoke(accountUiRouteGuards.content, ['editor'], '/content')).resolves.toBeUndefined();
+    await expect(invoke(accountUiRouteGuards.contentCreate, ['editor'], '/content/new')).resolves.toBeUndefined();
+    await expect(invoke(accountUiRouteGuards.contentDetail, ['editor'], '/content/content-1')).resolves.toBeUndefined();
+  });
+
+  it('redirects content route when role is not allowed', async () => {
+    await expect(invoke(accountUiRouteGuards.content, ['viewer'], '/content')).rejects.toMatchObject(
+      redirect({ href: '/?error=auth.insufficientRole' })
+    );
+  });
+
   it('allows admin users route for app_manager role', async () => {
     await expect(invoke(accountUiRouteGuards.adminUsers, ['app_manager'], '/admin/users')).resolves.toBeUndefined();
   });

@@ -26,6 +26,9 @@ export type AuthRoutePath =
   | '/api/v1/iam/groups/$groupId/roles'
   | '/api/v1/iam/groups/$groupId/roles/$roleId'
   | '/api/v1/iam/groups/$groupId/memberships'
+  | '/api/v1/iam/contents'
+  | '/api/v1/iam/contents/$contentId'
+  | '/api/v1/iam/contents/$contentId/history'
   | '/api/v1/iam/legal-texts'
   | '/api/v1/iam/legal-texts/$legalTextVersionId'
   | '/api/v1/iam/admin/reconcile'
@@ -34,6 +37,7 @@ export type AuthRoutePath =
   | '/iam/me/data-export'
   | '/iam/me/data-export/status'
   | '/iam/me/data-subject-rights/requests'
+  | '/iam/me/legal-texts/pending'
   | '/iam/me/profile'
   | '/iam/me/optional-processing/execute'
   | '/iam/admin/data-subject-rights/export'
@@ -70,6 +74,9 @@ export const authRoutePaths = [
   '/api/v1/iam/groups/$groupId/roles',
   '/api/v1/iam/groups/$groupId/roles/$roleId',
   '/api/v1/iam/groups/$groupId/memberships',
+  '/api/v1/iam/contents',
+  '/api/v1/iam/contents/$contentId',
+  '/api/v1/iam/contents/$contentId/history',
   '/api/v1/iam/legal-texts',
   '/api/v1/iam/legal-texts/$legalTextVersionId',
   '/api/v1/iam/admin/reconcile',
@@ -78,6 +85,7 @@ export const authRoutePaths = [
   '/iam/me/data-export',
   '/iam/me/data-export/status',
   '/iam/me/data-subject-rights/requests',
+  '/iam/me/legal-texts/pending',
   '/iam/me/profile',
   '/iam/me/optional-processing/execute',
   '/iam/admin/data-subject-rights/export',

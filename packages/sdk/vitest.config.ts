@@ -10,6 +10,7 @@ export default mergeConfig(
   defineConfig({
     resolve: {
       alias: {
+        '@sva/core': resolve(currentDir, '../core/src/index.ts'),
         '@sva/monitoring-client/server': resolve(currentDir, '../monitoring-client/src/server.ts'),
         '@sva/monitoring-client/logger-provider.server': resolve(
           currentDir,

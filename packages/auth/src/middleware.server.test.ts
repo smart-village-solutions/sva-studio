@@ -219,6 +219,88 @@ describe('withAuthenticatedUser', () => {
     expect(withLegalTextComplianceMock).not.toHaveBeenCalled();
   });
 
+  it('skips legal text compliance for pending legal text self-service endpoint', async () => {
+    getSessionUserMock.mockResolvedValue({
+      id: 'user-legal-pending',
+      name: 'Legal Pending',
+      roles: ['editor'],
+      instanceId: 'de-musterhausen',
+    });
+    const { withAuthenticatedUser } = await import('./middleware.server');
+    const request = new Request('http://localhost/iam/me/legal-texts/pending', {
+      headers: { cookie: 'sva_auth_session=session-legal-pending' },
+    });
+
+    const response = await withAuthenticatedUser(request, () => new Response('ok'));
+
+    expect(response.status).toBe(200);
+    expect(withLegalTextComplianceMock).not.toHaveBeenCalled();
+  });
+
+  it('skips legal text compliance for legal text self-service subpaths', async () => {
+    getSessionUserMock.mockResolvedValue({
+      id: 'user-legal-pending-subpath',
+      name: 'Legal Pending Subpath',
+      roles: ['editor'],
+      instanceId: 'de-musterhausen',
+    });
+    const { withAuthenticatedUser } = await import('./middleware.server');
+    const request = new Request('http://localhost/iam/me/legal-texts/pending/', {
+      headers: { cookie: 'sva_auth_session=session-legal-pending-subpath' },
+    });
+
+    const response = await withAuthenticatedUser(request, () => new Response('ok'));
+
+    expect(response.status).toBe(200);
+    expect(withLegalTextComplianceMock).not.toHaveBeenCalled();
+  });
+
+  it('skips legal text compliance for legal text admin endpoints', async () => {
+    getSessionUserMock.mockResolvedValue({
+      id: 'user-legal-admin',
+      name: 'Legal Admin',
+      roles: ['admin'],
+      instanceId: 'de-musterhausen',
+    });
+    const { withAuthenticatedUser } = await import('./middleware.server');
+    const request = new Request('http://localhost/api/v1/iam/legal-texts', {
+      method: 'POST',
+      headers: {
+        cookie: 'sva_auth_session=session-legal-admin',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ name: 'Nutzungsbestimmungen', legalTextVersion: '2' }),
+    });
+
+    const response = await withAuthenticatedUser(request, () => new Response('ok'));
+
+    expect(response.status).toBe(200);
+    expect(withLegalTextComplianceMock).not.toHaveBeenCalled();
+  });
+
+  it('skips legal text compliance for legal text admin detail endpoints', async () => {
+    getSessionUserMock.mockResolvedValue({
+      id: 'user-legal-admin-detail',
+      name: 'Legal Admin Detail',
+      roles: ['admin'],
+      instanceId: 'de-musterhausen',
+    });
+    const { withAuthenticatedUser } = await import('./middleware.server');
+    const request = new Request('http://localhost/api/v1/iam/legal-texts/version-123', {
+      method: 'PATCH',
+      headers: {
+        cookie: 'sva_auth_session=session-legal-admin-detail',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ name: 'Nutzungsbestimmungen 2' }),
+    });
+
+    const response = await withAuthenticatedUser(request, () => new Response('ok'));
+
+    expect(response.status).toBe(200);
+    expect(withLegalTextComplianceMock).not.toHaveBeenCalled();
+  });
+
   it('enforces legal text compliance for non-exempt governance workflow operations', async () => {
     getSessionUserMock.mockResolvedValue({
       id: 'user-governance-enforced',

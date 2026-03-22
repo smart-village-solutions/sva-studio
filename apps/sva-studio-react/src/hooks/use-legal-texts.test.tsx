@@ -57,13 +57,14 @@ describe('useLegalTexts', () => {
       data: [
         {
           id: 'lt-1',
-          legalTextId: 'privacy_policy',
+          name: 'Datenschutzhinweise',
           legalTextVersion: '2026-03',
           locale: 'de-DE',
-          contentHash: 'sha256:a',
-          isActive: true,
+          contentHtml: '<p>Datenschutz</p>',
+          status: 'valid',
           publishedAt: '2026-03-16T09:00:00.000Z',
           createdAt: '2026-03-16T08:00:00.000Z',
+          updatedAt: '2026-03-16T08:30:00.000Z',
           acceptanceCount: 4,
           activeAcceptanceCount: 3,
         },
@@ -82,12 +83,13 @@ describe('useLegalTexts', () => {
 
     await act(async () => {
       await result.current.createLegalText({
-        legalTextId: 'terms_of_use',
+        name: 'Nutzungsbedingungen',
         legalTextVersion: '2026-04',
         locale: 'en-GB',
-        contentHash: 'sha256:b',
+        contentHtml: '<p>Terms</p>',
+        status: 'draft',
       });
-      await result.current.updateLegalText('lt-1', { contentHash: 'sha256:updated' });
+      await result.current.updateLegalText('lt-1', { contentHtml: '<p>Updated</p>' });
     });
 
     expect(createLegalTextMock).toHaveBeenCalledTimes(1);
@@ -127,10 +129,11 @@ describe('useLegalTexts', () => {
 
     await act(async () => {
       const created = await result.current.createLegalText({
-        legalTextId: 'privacy_policy',
+        name: 'Datenschutz',
         legalTextVersion: '2026-03',
         locale: 'de-DE',
-        contentHash: 'sha256:a',
+        contentHtml: '<p>Text</p>',
+        status: 'draft',
       });
       expect(created).toBe(false);
     });

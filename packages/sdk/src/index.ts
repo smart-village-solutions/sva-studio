@@ -3,6 +3,18 @@ import { coreVersion } from '@sva/core';
 export const sdkVersion = coreVersion;
 export type { RouteFactory } from '@sva/core';
 export type {
+  ContentTypeActionDefinition,
+  ContentTypeDefinition,
+  ContentTypeEditorFieldDefinition,
+  ContentTypeEditorFieldKind,
+  ContentTypeListColumnDefinition,
+} from './content-types.js';
+export {
+  createContentTypeRegistry,
+  genericContentTypeDefinition,
+  getContentTypeDefinition,
+} from './content-types.js';
+export type {
   RuntimeProfile,
   RuntimeProfileAuthMode,
   RuntimeProfileDefinition,

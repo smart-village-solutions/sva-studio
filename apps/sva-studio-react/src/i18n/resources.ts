@@ -753,6 +753,20 @@ export const i18nResources = {
           invalidRequest: 'Der Rechtstext enthält ungültige oder unvollständige Daten.',
         },
       },
+      legalAcceptance: {
+        title: 'Bitte Rechtstexte akzeptieren',
+        description:
+          'Bevor Sie fortfahren, müssen die aktuell gültigen Rechtstexte für Ihren Mandanten bestätigt werden.',
+        summary: '{{count}} offene Rechtstexte',
+        publishedAt: 'Veröffentlicht: {{value}}',
+        missingPublishedAt: 'Noch nicht veröffentlicht',
+        acceptAll: 'Alle akzeptieren',
+        accepting: 'Akzeptiere ...',
+        logout: 'Abmelden',
+        retry: 'Erneut laden',
+        errorLoading: 'Die offenen Rechtstexte konnten nicht geladen werden.',
+        errorAccepting: 'Die Rechtstexte konnten nicht bestätigt werden.',
+      },
       iam: {
         page: {
           title: 'IAM Transparenz-Cockpit',
@@ -1619,6 +1633,20 @@ export const i18nResources = {
           databaseUnavailable: 'The IAM database is currently unavailable. Please try again later.',
           invalidRequest: 'The legal text contains invalid or incomplete data.',
         },
+      },
+      legalAcceptance: {
+        title: 'Please accept the legal texts',
+        description:
+          'Before you continue, you must confirm the currently valid legal texts for your workspace.',
+        summary: '{{count}} pending legal texts',
+        publishedAt: 'Published: {{value}}',
+        missingPublishedAt: 'Not published yet',
+        acceptAll: 'Accept all',
+        accepting: 'Accepting ...',
+        logout: 'Log out',
+        retry: 'Retry',
+        errorLoading: 'The pending legal texts could not be loaded.',
+        errorAccepting: 'The legal texts could not be accepted.',
       },
       iam: {
         page: {

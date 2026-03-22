@@ -77,6 +77,17 @@ test.beforeEach(async ({ page }) => {
       body: JSON.stringify({ allowed: true, reason: 'mocked_authorize' }),
     });
   });
+
+  await page.route('**/iam/me/legal-texts/pending', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: [],
+        pagination: { page: 1, pageSize: 0, total: 0 },
+      }),
+    });
+  });
 });
 
 test('profile page supports loading and saving own profile', async ({ page }) => {

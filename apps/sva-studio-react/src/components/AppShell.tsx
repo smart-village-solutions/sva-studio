@@ -41,7 +41,7 @@ export default function AppShell({
   const showSidebar = isAuthenticated && !isAuthLoading;
 
   return (
-    <div className="flex min-h-screen w-full flex-1 flex-col bg-background lg:flex-row">
+    <div className="isolate flex min-h-screen w-full flex-1 flex-col bg-background lg:flex-row">
       {showSidebar
         ? (sidebarSlot ?? (
         <Sidebar
@@ -51,7 +51,7 @@ export default function AppShell({
         />
           ))
         : null}
-      <div className="flex min-h-screen min-w-0 flex-1 flex-col">
+      <div className="relative z-0 flex min-h-screen min-w-0 flex-1 flex-col">
         <Header
           isLoading={isLoading}
           isMobileNavigationOpen={isMobileSidebarOpen}

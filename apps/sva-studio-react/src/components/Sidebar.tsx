@@ -177,8 +177,10 @@ const SidebarPanel = ({
         </div>
       </div>
 
-      <nav aria-label={t('shell.sidebar.navAriaLabel')} className="flex-1 min-h-0 overflow-visible px-3 py-4">
-        <div className="h-full overflow-y-auto overflow-x-visible">
+      <nav
+        aria-label={t('shell.sidebar.navAriaLabel')}
+        className={`flex-1 min-h-0 px-3 py-4 ${isCollapsed ? 'overflow-visible' : 'overflow-y-auto'}`}
+      >
           {isLoading ? (
             <ul className="space-y-2">
               {sidebarSkeletonKeys.map((key) => (
@@ -281,7 +283,7 @@ const SidebarPanel = ({
                             {isExpanded ? (
                               <div
                                 id={`sidebar-group-${item.id}`}
-                                className="absolute left-[calc(100%+0.75rem)] top-0 z-[100] w-64 rounded-2xl border border-sidebar-border bg-card p-3 shadow-[0_20px_50px_rgba(15,23,42,0.18)]"
+                                className="absolute left-full top-0 z-[100] w-64 rounded-2xl border border-sidebar-border bg-card p-3 shadow-[0_20px_50px_rgba(15,23,42,0.18)]"
                               >
                                 <p className="px-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
                                   {item.label}
@@ -384,7 +386,6 @@ const SidebarPanel = ({
               ))}
             </div>
           )}
-        </div>
       </nav>
 
       {!isLoading ? (

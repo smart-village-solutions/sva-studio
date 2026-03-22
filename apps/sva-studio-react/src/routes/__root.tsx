@@ -121,6 +121,7 @@ function RootDocument({ children }: Readonly<{ children: React.ReactNode }>) {
             </a>
             <ThemeProvider>
               <AppShell
+                currentPathname={currentPathname}
                 isLoading={isShellLoading}
                 isMobileSidebarOpen={isMobileSidebarOpen}
                 onMobileSidebarOpenChange={setIsMobileSidebarOpen}

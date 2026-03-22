@@ -2,8 +2,12 @@ import type {
   ApiErrorResponse,
   ApiItemResponse,
   ApiListResponse,
+  CreateIamContentInput,
   IamAdminGroupDetail,
   IamAdminGroupListItem,
+  IamContentDetail,
+  IamContentHistoryEntry,
+  IamContentListItem,
   IamDsrCanonicalStatus,
   IamDsrCaseListItem,
   IamDsrSelfServiceOverview,
@@ -20,6 +24,7 @@ import type {
   IamUserDetail,
   IamUserImportSyncReport,
   IamUserListItem,
+  UpdateIamContentInput,
 } from '@sva/core';
 
 const IAM_HEADERS = {
@@ -265,6 +270,10 @@ export type UpdateLegalTextPayload = {
   readonly status?: 'draft' | 'valid' | 'archived';
   readonly publishedAt?: string;
 };
+
+export type CreateContentPayload = CreateIamContentInput;
+
+export type UpdateContentPayload = UpdateIamContentInput;
 
 export type RoleReconcileEntry = {
   readonly roleId?: string;
@@ -529,6 +538,24 @@ export const getGroup = async (groupId: string): Promise<ApiItemResponse<IamAdmi
 export const listLegalTexts = async (): Promise<ApiListResponse<IamLegalTextListItem>> =>
   requestJson<ApiListResponse<IamLegalTextListItem>>('/api/v1/iam/legal-texts');
 
+export const listContents = async (): Promise<ApiListResponse<IamContentListItem>> =>
+  requestJson<ApiListResponse<IamContentListItem>>('/api/v1/iam/contents');
+
+export const getContent = async (contentId: string): Promise<ApiItemResponse<IamContentDetail>> =>
+  requestJson<ApiItemResponse<IamContentDetail>>(`/api/v1/iam/contents/${contentId}`);
+
+export const getContentHistory = async (contentId: string): Promise<ApiListResponse<IamContentHistoryEntry>> =>
+  requestJson<ApiListResponse<IamContentHistoryEntry>>(`/api/v1/iam/contents/${contentId}/history`);
+
+export const createContent = async (payload: CreateContentPayload): Promise<ApiItemResponse<IamContentDetail>> =>
+  postJson<ApiItemResponse<IamContentDetail>, CreateContentPayload>('/api/v1/iam/contents', payload, true);
+
+export const updateContent = async (
+  contentId: string,
+  payload: UpdateContentPayload
+): Promise<ApiItemResponse<IamContentDetail>> =>
+  patchJson<ApiItemResponse<IamContentDetail>, UpdateContentPayload>(`/api/v1/iam/contents/${contentId}`, payload);
+
 export const listOrganizations = async (
   query: OrganizationsQuery
 ): Promise<ApiListResponse<IamOrganizationListItem>> => {
@@ -727,6 +754,7 @@ export const getMyPendingLegalTexts = async (): Promise<ApiListResponse<IamPendi
   requestJson<ApiListResponse<IamPendingLegalTextItem>>('/iam/me/legal-texts/pending');
 
 export const acceptLegalText = async (payload: {
+  readonly instanceId: string;
   readonly legalTextId: string;
   readonly legalTextVersion: string;
   readonly locale: string;
@@ -735,6 +763,7 @@ export const acceptLegalText = async (payload: {
     ApiItemResponse<{ workflowId: string; operation: 'accept_legal_text'; status: 'ok' }>,
     {
       readonly operation: 'accept_legal_text';
+      readonly instanceId: string;
       readonly payload: {
         readonly legalTextId: string;
         readonly legalTextVersion: string;
@@ -743,6 +772,7 @@ export const acceptLegalText = async (payload: {
     }
   >('/iam/governance/workflows', {
     operation: 'accept_legal_text',
+    instanceId: payload.instanceId,
     payload: {
       legalTextId: payload.legalTextId,
       legalTextVersion: payload.legalTextVersion,

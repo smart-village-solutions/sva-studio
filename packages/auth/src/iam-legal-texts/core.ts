@@ -4,7 +4,7 @@ import { asApiList, createApiError } from '../iam-account-management/api-helpers
 import type { AuthenticatedRequestContext } from '../middleware.server.js';
 import { withAuthenticatedUser } from '../middleware.server.js';
 import { createLegalTextResponse, updateLegalTextResponse } from './mutations.js';
-import { loadLegalTextById, loadLegalTextListItems, loadPendingLegalTexts } from './repository.js';
+import { loadLegalTextListItems, loadPendingLegalTexts } from './repository.js';
 import {
   resolveLegalTextsAdminActor,
   withAuthenticatedLegalTextsHandler,

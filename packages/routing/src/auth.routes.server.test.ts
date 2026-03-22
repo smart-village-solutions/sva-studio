@@ -95,6 +95,11 @@ const authServerMocks = vi.hoisted(() => {
     removeGroupRoleHandler: vi.fn(async () => response('removeGroupRoleHandler')),
     assignGroupMembershipHandler: vi.fn(async () => response('assignGroupMembershipHandler')),
     removeGroupMembershipHandler: vi.fn(async () => response('removeGroupMembershipHandler')),
+    listContentsHandler: vi.fn(async () => response('listContentsHandler')),
+    createContentHandler: vi.fn(async () => response('createContentHandler')),
+    getContentHandler: vi.fn(async () => response('getContentHandler')),
+    updateContentHandler: vi.fn(async () => response('updateContentHandler')),
+    getContentHistoryHandler: vi.fn(async () => response('getContentHistoryHandler')),
     listOrganizationsHandler: vi.fn(async () => response('listOrganizationsHandler')),
     createOrganizationHandler: vi.fn(async () => response('createOrganizationHandler')),
     getOrganizationHandler: vi.fn(async () => response('getOrganizationHandler')),
@@ -118,6 +123,7 @@ const authServerMocks = vi.hoisted(() => {
     dataExportHandler: vi.fn(async () => response('dataExportHandler')),
     dataExportStatusHandler: vi.fn(async () => response('dataExportStatusHandler')),
     getMyDataSubjectRightsHandler: vi.fn(async () => response('getMyDataSubjectRightsHandler')),
+    listPendingLegalTextsHandler: vi.fn(async () => response('listPendingLegalTextsHandler')),
     dataSubjectRequestHandler: vi.fn(async () => response('dataSubjectRequestHandler')),
     profileCorrectionHandler: vi.fn(async () => response('profileCorrectionHandler')),
     optionalProcessingExecuteHandler: vi.fn(async () => response('optionalProcessingExecuteHandler')),
@@ -197,12 +203,18 @@ describe('auth.routes.server', () => {
     expect(authServerMocks.deleteRoleHandler).toHaveBeenCalled();
     expect(authServerMocks.listGroupsHandler).toHaveBeenCalled();
     expect(authServerMocks.deleteGroupHandler).toHaveBeenCalled();
+    expect(authServerMocks.listContentsHandler).toHaveBeenCalled();
+    expect(authServerMocks.createContentHandler).toHaveBeenCalled();
+    expect(authServerMocks.getContentHandler).toHaveBeenCalled();
+    expect(authServerMocks.updateContentHandler).toHaveBeenCalled();
+    expect(authServerMocks.getContentHistoryHandler).toHaveBeenCalled();
     expect(authServerMocks.listLegalTextsHandler).toHaveBeenCalled();
     expect(authServerMocks.createLegalTextHandler).toHaveBeenCalled();
     expect(authServerMocks.updateLegalTextHandler).toHaveBeenCalled();
     expect(authServerMocks.listGovernanceCasesHandler).toHaveBeenCalled();
     expect(authServerMocks.getUserTimelineHandler).toHaveBeenCalled();
     expect(authServerMocks.getMyDataSubjectRightsHandler).toHaveBeenCalled();
+    expect(authServerMocks.listPendingLegalTextsHandler).toHaveBeenCalled();
     expect(authServerMocks.listAdminDataSubjectRightsCasesHandler).toHaveBeenCalled();
     expect(authServerMocks.dataSubjectMaintenanceHandler).toHaveBeenCalled();
   });

@@ -98,6 +98,30 @@ Ausführung:
 - `db:migrate:validate` prüft `up -> down -> up` auf einer separaten temporären Validierungs-Datenbank und greift die aktive lokale Dev-Datenbank nicht an
 - `db:test:rls` prüft Instanzisolation, Fail-Closed ohne `app.instance_id`, Runtime-Rollenhärtung sowie Privilege-Escalation-Guards
 
+## Verbindlicher Prüfpfad für neue Inhaltsmigrationen
+
+Für Änderungen am Inhaltsmodell ist die lokale Migrationsprüfung kein optionaler Nachlauf, sondern Teil der Definition of Done.
+
+Verbindlicher Ablauf:
+
+```bash
+# 1. lokale Postgres-Instanz bereitstellen
+pnpm nx run data:db:up
+
+# 2. alle Migrationen gegen die lokale Dev-Datenbank anwenden
+pnpm nx run data:db:migrate
+
+# 3. vollständigen Rückweg validieren
+pnpm nx run data:db:migrate:validate
+```
+
+Erwartung für Inhaltsänderungen:
+
+- neue Tabellen und Constraints in `packages/data/migrations/up/` und `down/` werden immer als Paar geliefert
+- der Pfad `up -> down -> up` muss ohne manuelle Nacharbeit funktionieren
+- lokale Prüfungen müssen vor Push oder Review auf demselben Workspace-Stand nachvollzogen werden
+- Fehlerbilder wie fehlende Down-Migrationen, nicht mehr löschbare FK-Abhängigkeiten oder unvollständige Seeds werden nicht in spätere Umgebungen verschoben
+
 ## RLS-Bypass-Dokumentation (Task 2.6)
 
 - Migrationen laufen lokal über den Compose-`postgres`-User und haben damit administrativen Zugriff.

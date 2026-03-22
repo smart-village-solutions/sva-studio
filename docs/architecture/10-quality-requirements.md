@@ -173,6 +173,14 @@ Referenzen:
 - Die Admin-UI `/admin/groups`, die Benutzerdetailseite und das Rechte-Cockpit müssen gruppenbasierte Herkunft ohne harte Strings und ohne zusätzliche N+1-Requests rendern.
 - `pnpm nx run auth:test:unit`, `pnpm nx run core:test:unit`, `pnpm nx run routing:test:unit` und `pnpm nx run sva-studio-react:test:unit` bleiben für diesen Change grün.
 
+### Ergänzung 2026-03: Qualitätsziele Inhaltsverwaltung
+
+- Das Core-Modell für Inhalte bleibt framework-agnostisch; `packages/core` und `packages/sdk` definieren nur den stabilen Kern und deklarative Erweiterungspunkte.
+- Die UI unter `/content` muss bestehende `shadcn/ui`-Patterns und Admin-Tabellen wiederverwenden und darf keine parallele Tabellen-Basis einführen.
+- Inhalts-Create und -Update müssen JSON-Payloads, Statuswechsel und Historie über Unit-Tests für Hooks und Seiten explizit abdecken.
+- Rollen-Gates für `system_admin`, `app_manager` und `editor` müssen auf Route-, UI- und Server-Ebene konsistent wirken.
+- Neue Inhaltsmigrationen gelten nur als verifiziert, wenn `pnpm nx run data:db:migrate:validate` lokal erfolgreich `up -> down -> up` bestätigt.
+
 ### Ergänzung 2026-03: Qualitätsziele Swarm-Deployment und Multi-Host-Betrieb
 
 - `docker compose -f deploy/portainer/docker-compose.yml config` muss ohne Fehler durchlaufen (statische Stack-Validierung).

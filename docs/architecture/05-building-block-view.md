@@ -23,6 +23,7 @@ Abhängigkeiten des aktuellen Systems.
    - Nx-Targets für `build`, `serve`, `lint`, `test:unit`, `test:coverage` und `test:e2e` über Vite-, Vitest- und Playwright-Executor
 2. Core (`packages/core`)
    - generische Route-Registry Utilities (`mergeRouteFactories`, `buildRouteTree`)
+   - kanonisches Inhaltsmodell für `Content`, Statusmodell und JSON-Payload-Validierung
 3. Routing (`packages/routing`)
    - zentrale Route-Factories (client + server)
    - einzige Source of Truth für Auth-Handler-Mapping, Runtime-Guard und JSON-Error-Boundary
@@ -33,6 +34,7 @@ Abhängigkeiten des aktuellen Systems.
 5. SDK (`packages/sdk`)
    - Logger, Context-Propagation, OTEL-Bootstrap
    - Instance-Config-Modul (`instance/config.server.ts`): Validierung der `instanceId`-Allowlist beim Startup, Host-Parsing und Mapping auf `instanceId`
+   - deklarative Registries für erweiterbare Inhalts-Typen und typgebundene UI-/Validierungs-Metadaten
 6. Monitoring Client (`packages/monitoring-client`)
    - OTEL SDK Setup, Exporter, Log-Redaction-Processor
 7. Data (`packages/data`)
@@ -63,6 +65,11 @@ Abhängigkeiten des aktuellen Systems.
   - `packages/auth` (`audit-db-sink.server.ts`) + `packages/sdk` (`createSdkLogger`)
 - Governance und DSGVO-Betroffenenrechte:
   - `packages/auth` (`iam-governance.server.ts`, `iam-governance/*`, `iam-data-subject-rights.server.ts`, `iam-data-subject-rights/*`)
+- Inhaltsverwaltung als Core-Element:
+  - `packages/core` (`content-management.ts`) für Kernvertrag
+  - `packages/sdk` (`content-types.ts`) für Erweiterungspunkte
+  - `packages/auth` (`iam-contents.server.ts`, `iam-contents/*`) für serverseitige Read-/Write-Pfade, Historie und Audit
+  - `apps/sva-studio-react/src/routes/content/*` für Listen- und Editor-UI unter `/content`
 - Externe Mainserver-Anbindung:
   - `packages/sva-mainserver` (`server/config-store.ts`, `server/service.ts`, `generated/*`)
 
@@ -93,6 +100,7 @@ Abhängigkeiten des aktuellen Systems.
 - `@sva/plugin-*` -> `@sva/sdk` (kein Direktimport aus `@sva/core`)
 - `@sva/monitoring-client` -> OTEL Libraries, `@sva/sdk` Context API
 - `@sva/auth` -> `@sva/core` (IAM-Claims + Feldverschlüsselung), `pg`
+- `apps/sva-studio-react` -> `@sva/core` + `@sva/auth` für Inhaltsliste, Detail, Historie und Statuswechsel
 
 ### Schichtregel für Plugins
 

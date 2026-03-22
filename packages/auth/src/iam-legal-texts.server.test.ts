@@ -92,6 +92,7 @@ vi.mock('pg', () => ({
 import {
   createLegalTextHandler,
   listLegalTextsHandler,
+  listPendingLegalTextsHandler,
   updateLegalTextHandler,
 } from './iam-legal-texts.server';
 
@@ -197,6 +198,58 @@ describe('iam-legal-texts handlers', () => {
       pageSize: 1,
       total: 0,
     });
+  });
+
+  it('lists pending legal texts for the current user without admin role lookup', async () => {
+    state.user = {
+      id: 'kc-user-1',
+      name: 'Regular User',
+      roles: ['editor'],
+      instanceId: 'de-musterhausen',
+    };
+    state.queryHandler = (text, values) => {
+      if (text.includes('FROM iam.legal_text_versions version') && text.includes('version.legal_text_id')) {
+        expect(values).toEqual(['de-musterhausen', 'kc-user-1']);
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              id: 'pending-version-1',
+              legal_text_id: 'legal-text-1',
+              name: 'Nutzungsbedingungen',
+              legal_text_version: '2',
+              locale: 'de-DE',
+              content_html: '<p>Bitte akzeptieren</p>',
+              published_at: '2026-03-22T19:00:00.000Z',
+            },
+          ],
+        };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await listPendingLegalTextsHandler(
+      new Request('http://localhost:3000/iam/me/legal-texts/pending', { method: 'GET' })
+    );
+
+    expect(response.status).toBe(200);
+    const payload = (await response.json()) as {
+      data: Array<{ legalTextId: string; name: string; legalTextVersion: string }>;
+      pagination: { page: number; pageSize: number; total: number };
+    };
+    expect(payload.data).toEqual([
+      {
+        id: 'pending-version-1',
+        legalTextId: 'legal-text-1',
+        name: 'Nutzungsbedingungen',
+        legalTextVersion: '2',
+        locale: 'de-DE',
+        contentHtml: '<p>Bitte akzeptieren</p>',
+        publishedAt: '2026-03-22T19:00:00.000Z',
+      },
+    ]);
+    expect(payload.pagination).toEqual({ page: 1, pageSize: 1, total: 1 });
+    expect(state.queryLog.some((entry) => resolveActorAccountQuery(entry.text))).toBe(false);
   });
 
   it('creates a legal text version with idempotency protection', async () => {

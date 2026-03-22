@@ -31,7 +31,7 @@ const LEGAL_TEXT_PROTECTED_PATHS = new Set(['/iam/authorize', '/iam/me/permissio
 const LEGAL_TEXT_PROTECTED_PREFIXES = ['/api/v1/iam/'];
 const LEGAL_TEXT_EXEMPT_AUTH_PATHS = new Set(['/auth/login', '/auth/callback', '/auth/logout', '/auth/me']);
 const LEGAL_TEXT_EXEMPT_IAM_PREFIXES = ['/api/v1/iam/legal-texts'];
-const LEGAL_TEXT_EXEMPT_SELF_SERVICE_PATHS = new Set(['/iam/me/legal-texts/pending']);
+const LEGAL_TEXT_EXEMPT_SELF_SERVICE_PREFIXES = ['/iam/me/legal-texts'];
 const LEGAL_TEXT_EXEMPT_GOVERNANCE_OPERATIONS = new Set(['accept_legal_text', 'revoke_legal_acceptance']);
 
 const readWorkflowOperation = async (request: Request): Promise<string | undefined> => {
@@ -53,7 +53,7 @@ const shouldEnforceLegalTextCompliance = async (request: Request): Promise<boole
     return false;
   }
 
-  if (LEGAL_TEXT_EXEMPT_SELF_SERVICE_PATHS.has(pathname)) {
+  if (LEGAL_TEXT_EXEMPT_SELF_SERVICE_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
     return false;
   }
 

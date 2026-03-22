@@ -3,6 +3,7 @@ export * from './audit/index.server.js';
 export * from './config.js';
 export * from './iam-data-subject-rights.server.js';
 export * from './iam-account-management.server.js';
+export * from './iam-contents.server.js';
 export * from './iam-legal-texts.server.js';
 export * from './iam-organizations.server.js';
 export * from './iam-governance.server.js';

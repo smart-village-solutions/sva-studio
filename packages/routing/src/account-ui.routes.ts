@@ -3,6 +3,9 @@ import { createAdminRoute, createProtectedRoute } from './protected.routes.js';
 export const accountUiRoutePaths = {
   account: '/account',
   accountPrivacy: '/account/privacy',
+  content: '/content',
+  contentCreate: '/content/new',
+  contentDetail: '/content/$contentId',
   adminUsers: '/admin/users',
   adminUserDetail: '/admin/users/$userId',
   adminOrganizations: '/admin/organizations',
@@ -14,6 +17,9 @@ export const accountUiRoutePaths = {
 export const accountUiRouteGuards = {
   account: createProtectedRoute(),
   accountPrivacy: createProtectedRoute(),
+  content: createProtectedRoute({ requiredRoles: ['system_admin', 'app_manager', 'editor'] }),
+  contentCreate: createProtectedRoute({ requiredRoles: ['system_admin', 'app_manager', 'editor'] }),
+  contentDetail: createProtectedRoute({ requiredRoles: ['system_admin', 'app_manager', 'editor'] }),
   adminUsers: createAdminRoute(),
   adminUserDetail: createAdminRoute(),
   adminOrganizations: createAdminRoute(),

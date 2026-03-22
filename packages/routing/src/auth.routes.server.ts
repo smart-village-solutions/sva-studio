@@ -278,6 +278,32 @@ const authHandlerMap = {
       return mod.removeGroupMembershipHandler(request);
     },
   },
+  '/api/v1/iam/contents': {
+    GET: async ({ request }) => {
+      const mod = await import('@sva/auth/runtime-routes');
+      return mod.listContentsHandler(request);
+    },
+    POST: async ({ request }) => {
+      const mod = await import('@sva/auth/runtime-routes');
+      return mod.createContentHandler(request);
+    },
+  },
+  '/api/v1/iam/contents/$contentId': {
+    GET: async ({ request }) => {
+      const mod = await import('@sva/auth/runtime-routes');
+      return mod.getContentHandler(request);
+    },
+    PATCH: async ({ request }) => {
+      const mod = await import('@sva/auth/runtime-routes');
+      return mod.updateContentHandler(request);
+    },
+  },
+  '/api/v1/iam/contents/$contentId/history': {
+    GET: async ({ request }) => {
+      const mod = await import('@sva/auth/runtime-routes');
+      return mod.getContentHistoryHandler(request);
+    },
+  },
   '/api/v1/iam/legal-texts': {
     GET: async ({ request }) => {
       const mod = await import('@sva/auth/runtime-routes');
@@ -339,6 +365,12 @@ const authHandlerMap = {
     POST: async ({ request }) => {
       const mod = await import('@sva/auth/runtime-routes');
       return mod.dataSubjectRequestHandler(request);
+    },
+  },
+  '/iam/me/legal-texts/pending': {
+    GET: async ({ request }) => {
+      const mod = await import('@sva/auth/runtime-routes');
+      return mod.listPendingLegalTextsHandler(request);
     },
   },
   '/iam/me/profile': {

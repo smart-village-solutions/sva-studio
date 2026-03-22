@@ -5,6 +5,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const guardSpies = vi.hoisted(() => ({
   account: vi.fn(async () => undefined),
   accountPrivacy: vi.fn(async () => undefined),
+  content: vi.fn(async () => undefined),
+  contentCreate: vi.fn(async () => undefined),
+  contentDetail: vi.fn(async () => undefined),
   adminUsers: vi.fn(async () => undefined),
   adminUserDetail: vi.fn(async () => undefined),
   adminOrganizations: vi.fn(async () => undefined),
@@ -23,7 +26,7 @@ const createRouteMock = vi.hoisted(() =>
         return { ...route, children };
       },
       useLoaderData: () => ['Rise Above'],
-      useParams: () => ({ userId: 'user-1' }),
+      useParams: () => ({ userId: 'user-1', contentId: 'content-1' }),
       useSearch: () => ({ tab: 'governance' }),
     };
     return route;
@@ -118,6 +121,16 @@ vi.mock('./admin/users/-user-list-page', () => ({
   UserListPage: () => <div>UserListPage</div>,
 }));
 
+vi.mock('./content/-content-list-page', () => ({
+  ContentListPage: () => <div>ContentListPage</div>,
+}));
+
+vi.mock('./content/-content-editor-page', () => ({
+  ContentEditorPage: ({ mode, contentId }: { mode: string; contentId?: string }) => (
+    <div>{`ContentEditorPage:${mode}:${contentId ?? 'new'}`}</div>
+  ),
+}));
+
 import { coreRouteFactoriesBase, runtimeCoreRouteFactories } from './-core-routes';
 
 type RouteOptionsUnderTest = {
@@ -150,6 +163,9 @@ describe('core routes', () => {
   it('configures guarded account and admin routes, including IAM tab normalization', async () => {
     const routes = buildRouteMap();
     const privacyRoute = readRouteOptions(routes.get('/account/privacy'));
+    const contentRoute = readRouteOptions(routes.get('/content'));
+    const contentCreateRoute = readRouteOptions(routes.get('/content/new'));
+    const contentDetailRoute = readRouteOptions(routes.get('/content/$contentId'));
     const groupsRoute = readRouteOptions(routes.get('/admin/groups'));
     const legalTextsRoute = readRouteOptions(routes.get('/admin/legal-texts'));
     const iamRoute = readRouteOptions(routes.get('/admin/iam'));
@@ -157,6 +173,9 @@ describe('core routes', () => {
     const monitoringRoute = readRouteOptions(routes.get('/monitoring'));
 
     await privacyRoute.beforeLoad?.({ href: '/account/privacy' });
+    await contentRoute.beforeLoad?.({ href: '/content' });
+    await contentCreateRoute.beforeLoad?.({ href: '/content/new' });
+    await contentDetailRoute.beforeLoad?.({ href: '/content/content-1' });
     await groupsRoute.beforeLoad?.({ href: '/admin/groups' });
     await legalTextsRoute.beforeLoad?.({ href: '/admin/legal-texts' });
     await iamRoute.beforeLoad?.({ href: '/admin/iam' });
@@ -164,6 +183,9 @@ describe('core routes', () => {
     await monitoringRoute.beforeLoad?.({ href: '/monitoring' });
 
     expect(guardSpies.accountPrivacy).toHaveBeenCalledWith({ href: '/account/privacy' });
+    expect(guardSpies.content).toHaveBeenCalledWith({ href: '/content' });
+    expect(guardSpies.contentCreate).toHaveBeenCalledWith({ href: '/content/new' });
+    expect(guardSpies.contentDetail).toHaveBeenCalledWith({ href: '/content/content-1' });
     expect(guardSpies.adminGroups).toHaveBeenCalledWith({ href: '/admin/groups' });
     expect(guardSpies.adminRoles).toHaveBeenCalledWith({ href: '/admin/legal-texts' });
     expect(guardSpies.adminIam).toHaveBeenCalledWith({ href: '/admin/iam' });
@@ -188,7 +210,13 @@ describe('core routes', () => {
     };
 
     renderPath('/content');
-    expect(screen.getByText('placeholder:shell.sidebar.sections.dataManagement:shell.sidebar.content')).toBeTruthy();
+    expect(screen.getByText('ContentListPage')).toBeTruthy();
+
+    renderPath('/content/new');
+    expect(screen.getByText('ContentEditorPage:create:new')).toBeTruthy();
+
+    renderPath('/content/$contentId');
+    expect(screen.getByText('ContentEditorPage:edit:content-1')).toBeTruthy();
 
     renderPath('/media');
     expect(screen.getByText('placeholder:shell.sidebar.sections.dataManagement:shell.sidebar.media')).toBeTruthy();

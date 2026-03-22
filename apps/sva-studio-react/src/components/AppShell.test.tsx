@@ -54,6 +54,10 @@ vi.mock('./OrganizationContextSwitcher', () => ({
   OrganizationContextSwitcher: () => <div data-testid="organization-context-switcher">Organization Context</div>,
 }));
 
+vi.mock('./LegalTextAcceptanceDialog', () => ({
+  LegalTextAcceptanceDialog: () => <div data-testid="legal-text-acceptance-dialog" />,
+}));
+
 /**
  * Führt nach jedem Test ein DOM-Cleanup aus.
  */

@@ -8,14 +8,13 @@ import {
   IconBuildingCommunity,
   IconCategory,
   IconCertificate,
+  IconChevronLeft,
   IconChevronDown,
   IconChevronRight,
   IconFileText,
   IconHeadset,
   IconHelpCircle,
   IconLayoutDashboard,
-  IconLayoutSidebarLeftCollapse,
-  IconLayoutSidebarLeftExpand,
   IconPackages,
   IconPhoto,
   IconPlugConnected,
@@ -50,7 +49,8 @@ type SidebarProps = Readonly<{
 type SidebarLeafItem = {
   readonly kind: 'link';
   readonly id: string;
-  readonly to: string;
+  readonly to?: string;
+  readonly href?: string;
   readonly label: string;
   readonly icon: Icon;
   readonly exact?: boolean;
@@ -92,9 +92,12 @@ const sidebarSkeletonKeys = [
 ] as const;
 
 const SIDEBAR_COLLAPSED_STORAGE_KEY = 'sva-studio-sidebar-collapsed';
+const HELP_DISCUSSIONS_URL = 'https://github.com/smart-village-solutions/sva-studio/discussions';
+const SUPPORT_ISSUES_URL = 'https://github.com/smart-village-solutions/sva-studio/issues';
+const LICENSE_ISSUE_URL = 'https://github.com/smart-village-solutions/sva-studio/issues/2';
 
 const isLeafActive = (pathname: string, item: SidebarLeafItem) =>
-  item.exact ? pathname === item.to : pathname === item.to || pathname.startsWith(`${item.to}/`);
+  item.to ? (item.exact ? pathname === item.to : pathname === item.to || pathname.startsWith(`${item.to}/`)) : false;
 
 const isGroupActive = (pathname: string, item: SidebarGroupItem) =>
   item.children.some((child) => isLeafActive(pathname, child));
@@ -145,38 +148,32 @@ const SidebarPanel = ({
   return (
     <div className="flex h-full flex-col">
       <div className="px-4 py-4">
-        <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
+        <div className={`relative flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
           {!isCollapsed ? <p className="text-3xl font-semibold text-foreground">{t('shell.appName')}</p> : null}
-          <div className="flex items-center gap-2">
-            {allowCollapse ? (
-              <Button
-                type="button"
-                size="icon"
-                variant="outline"
-                className="hidden border-sidebar-border bg-card shadow-shell lg:inline-flex"
-                aria-label={isCollapsed ? t('shell.sidebar.expand') : t('shell.sidebar.collapse')}
-                onClick={onToggleCollapsed}
-              >
-                {isCollapsed ? (
-                  <IconLayoutSidebarLeftExpand className="h-5 w-5" />
-                ) : (
-                  <IconLayoutSidebarLeftCollapse className="h-5 w-5" />
-                )}
-              </Button>
-            ) : null}
-            {showMobileHeader ? (
-              <Button
-                type="button"
-                size="icon"
-                variant="outline"
-                className="border-sidebar-border bg-card shadow-shell"
-                aria-label={t('shell.header.closeNavigation')}
-                onClick={onCloseMobileNavigation}
-              >
-                <IconChevronRight className="h-5 w-5 rotate-180" />
-              </Button>
-            ) : null}
-          </div>
+          {allowCollapse ? (
+            <Button
+              type="button"
+              size="icon"
+              variant="outline"
+              className="absolute right-0 top-1/2 z-[80] hidden h-10 w-10 -translate-y-1/2 translate-x-[calc(60%+12px)] rounded-full border-sidebar-border bg-card shadow-shell lg:inline-flex"
+              aria-label={isCollapsed ? t('shell.sidebar.expand') : t('shell.sidebar.collapse')}
+              onClick={onToggleCollapsed}
+            >
+              {isCollapsed ? <IconChevronRight className="h-5 w-5" /> : <IconChevronLeft className="h-5 w-5" />}
+            </Button>
+          ) : null}
+          {showMobileHeader ? (
+            <Button
+              type="button"
+              size="icon"
+              variant="outline"
+              className="border-sidebar-border bg-card shadow-shell"
+              aria-label={t('shell.header.closeNavigation')}
+              onClick={onCloseMobileNavigation}
+            >
+              <IconChevronRight className="h-5 w-5 rotate-180" />
+            </Button>
+          ) : null}
         </div>
       </div>
 
@@ -215,17 +212,32 @@ const SidebarPanel = ({
 
                       return (
                         <li key={item.id}>
-                          <Link
-                            activeOptions={item.exact ? { exact: true } : undefined}
-                            to={item.to}
-                            className={getLinkClasses(isActive, isCollapsed)}
-                            aria-label={isCollapsed ? item.label : undefined}
-                            title={isCollapsed ? item.label : undefined}
-                            onClick={onNavigate}
-                          >
-                            <IconComponent className="h-5 w-5 shrink-0" />
-                            {!isCollapsed ? <span className="truncate">{item.label}</span> : null}
-                          </Link>
+                          {item.to ? (
+                            <Link
+                              activeOptions={item.exact ? { exact: true } : undefined}
+                              to={item.to}
+                              className={getLinkClasses(isActive, isCollapsed)}
+                              aria-label={isCollapsed ? item.label : undefined}
+                              title={isCollapsed ? item.label : undefined}
+                              onClick={onNavigate}
+                            >
+                              <IconComponent className="h-5 w-5 shrink-0" />
+                              {!isCollapsed ? <span className="truncate">{item.label}</span> : null}
+                            </Link>
+                          ) : (
+                            <a
+                              href={item.href}
+                              className={getLinkClasses(false, isCollapsed)}
+                              aria-label={isCollapsed ? item.label : undefined}
+                              title={isCollapsed ? item.label : undefined}
+                              onClick={onNavigate}
+                              rel="noreferrer"
+                              target="_blank"
+                            >
+                              <IconComponent className="h-5 w-5 shrink-0" />
+                              {!isCollapsed ? <span className="truncate">{item.label}</span> : null}
+                            </a>
+                          )}
                         </li>
                       );
                     }
@@ -280,18 +292,35 @@ const SidebarPanel = ({
                                     const ChildIcon = child.icon;
 
                                     return (
-                                      <Link
-                                        key={child.id}
-                                        to={child.to}
-                                        className={getLinkClasses(childIsActive, false, true)}
-                                        onClick={() => {
-                                          closeFlyout();
-                                          onNavigate?.();
-                                        }}
-                                      >
-                                        <ChildIcon className="h-4 w-4 shrink-0" />
-                                        <span className="truncate">{child.label}</span>
-                                      </Link>
+                                      child.to ? (
+                                        <Link
+                                          key={child.id}
+                                          to={child.to}
+                                          className={getLinkClasses(childIsActive, false, true)}
+                                          onClick={() => {
+                                            closeFlyout();
+                                            onNavigate?.();
+                                          }}
+                                        >
+                                          <ChildIcon className="h-4 w-4 shrink-0" />
+                                          <span className="truncate">{child.label}</span>
+                                        </Link>
+                                      ) : (
+                                        <a
+                                          key={child.id}
+                                          href={child.href}
+                                          className={getLinkClasses(false, false, true)}
+                                          onClick={() => {
+                                            closeFlyout();
+                                            onNavigate?.();
+                                          }}
+                                          rel="noreferrer"
+                                          target="_blank"
+                                        >
+                                          <ChildIcon className="h-4 w-4 shrink-0" />
+                                          <span className="truncate">{child.label}</span>
+                                        </a>
+                                      )
                                     );
                                   })}
                                 </div>
@@ -319,15 +348,29 @@ const SidebarPanel = ({
                                 const ChildIcon = child.icon;
 
                                 return (
-                                  <Link
-                                    key={child.id}
-                                    to={child.to}
-                                    className={getLinkClasses(childIsActive, false, true)}
-                                    onClick={onNavigate}
-                                  >
-                                    <ChildIcon className="h-4 w-4 shrink-0" />
-                                    <span className="truncate">{child.label}</span>
-                                  </Link>
+                                  child.to ? (
+                                    <Link
+                                      key={child.id}
+                                      to={child.to}
+                                      className={getLinkClasses(childIsActive, false, true)}
+                                      onClick={onNavigate}
+                                    >
+                                      <ChildIcon className="h-4 w-4 shrink-0" />
+                                      <span className="truncate">{child.label}</span>
+                                    </Link>
+                                  ) : (
+                                    <a
+                                      key={child.id}
+                                      href={child.href}
+                                      className={getLinkClasses(false, false, true)}
+                                      onClick={onNavigate}
+                                      rel="noreferrer"
+                                      target="_blank"
+                                    >
+                                      <ChildIcon className="h-4 w-4 shrink-0" />
+                                      <span className="truncate">{child.label}</span>
+                                    </a>
+                                  )
                                 );
                               })}
                             </CollapsibleContent>
@@ -352,17 +395,32 @@ const SidebarPanel = ({
 
               return (
                 <li key={item.id}>
-                  <Link
-                    activeOptions={item.exact ? { exact: true } : undefined}
-                    to={item.to}
-                    className={getLinkClasses(isActive, isCollapsed)}
-                    aria-label={isCollapsed ? item.label : undefined}
-                    title={isCollapsed ? item.label : undefined}
-                    onClick={onNavigate}
-                  >
-                    <IconComponent className="h-5 w-5 shrink-0" />
-                    {!isCollapsed ? <span className="truncate">{item.label}</span> : null}
-                  </Link>
+                  {item.to ? (
+                    <Link
+                      activeOptions={item.exact ? { exact: true } : undefined}
+                      to={item.to}
+                      className={getLinkClasses(isActive, isCollapsed)}
+                      aria-label={isCollapsed ? item.label : undefined}
+                      title={isCollapsed ? item.label : undefined}
+                      onClick={onNavigate}
+                    >
+                      <IconComponent className="h-5 w-5 shrink-0" />
+                      {!isCollapsed ? <span className="truncate">{item.label}</span> : null}
+                    </Link>
+                  ) : (
+                    <a
+                      href={item.href}
+                      className={getLinkClasses(false, isCollapsed)}
+                      aria-label={isCollapsed ? item.label : undefined}
+                      title={isCollapsed ? item.label : undefined}
+                      onClick={onNavigate}
+                      rel="noreferrer"
+                      target="_blank"
+                    >
+                      <IconComponent className="h-5 w-5 shrink-0" />
+                      {!isCollapsed ? <span className="truncate">{item.label}</span> : null}
+                    </a>
+                  )}
                 </li>
               );
             })}
@@ -597,21 +655,21 @@ export default function Sidebar({ isLoading = false, isMobileOpen = false, onMob
       {
         kind: 'link',
         id: 'help',
-        to: '/help',
+        href: HELP_DISCUSSIONS_URL,
         label: t('shell.sidebar.help'),
         icon: IconHelpCircle,
       },
       {
         kind: 'link',
         id: 'support',
-        to: '/support',
+        href: SUPPORT_ISSUES_URL,
         label: t('shell.sidebar.support'),
         icon: IconHeadset,
       },
       {
         kind: 'link',
         id: 'license',
-        to: '/license',
+        href: LICENSE_ISSUE_URL,
         label: t('shell.sidebar.license'),
         icon: IconCertificate,
       },
@@ -623,7 +681,7 @@ export default function Sidebar({ isLoading = false, isMobileOpen = false, onMob
     <>
       <aside
         aria-label={t('shell.sidebar.ariaLabel')}
-        className={`hidden border-r border-sidebar-border bg-sidebar shadow-shell transition-[width] duration-200 lg:sticky lg:top-0 lg:block lg:h-screen ${
+        className={`relative z-[70] hidden overflow-visible border-r border-sidebar-border bg-sidebar shadow-shell transition-[width] duration-200 lg:sticky lg:top-0 lg:block lg:h-screen ${
           isCollapsed ? 'lg:w-20' : 'lg:w-80'
         }`}
       >

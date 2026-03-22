@@ -630,33 +630,37 @@ components:
       type: object
       required:
         - id
-        - legalTextId
+        - name
         - legalTextVersion
         - locale
-        - contentHash
-        - isActive
-        - publishedAt
+        - contentHtml
+        - status
         - createdAt
+        - updatedAt
         - acceptanceCount
         - activeAcceptanceCount
       properties:
         id:
           type: string
           format: uuid
-        legalTextId:
+        name:
           type: string
         legalTextVersion:
           type: string
         locale:
           type: string
-        contentHash:
+        contentHtml:
           type: string
-        isActive:
-          type: boolean
+        status:
+          type: string
+          enum: [draft, valid, archived]
         publishedAt:
           type: string
           format: date-time
         createdAt:
+          type: string
+          format: date-time
+        updatedAt:
           type: string
           format: date-time
         acceptanceCount:
@@ -691,32 +695,43 @@ components:
           type: string
     CreateLegalTextRequest:
       type: object
+      additionalProperties: false
       required:
-        - legalTextId
+        - name
         - legalTextVersion
         - locale
-        - contentHash
+        - contentHtml
+        - status
       properties:
-        legalTextId:
+        name:
           type: string
         legalTextVersion:
           type: string
         locale:
           type: string
-        contentHash:
+        contentHtml:
           type: string
-        isActive:
-          type: boolean
+        status:
+          type: string
+          enum: [draft, valid, archived]
         publishedAt:
           type: string
           format: date-time
     UpdateLegalTextRequest:
       type: object
+      additionalProperties: false
       properties:
-        contentHash:
+        name:
           type: string
-        isActive:
-          type: boolean
+        legalTextVersion:
+          type: string
+        locale:
+          type: string
+        contentHtml:
+          type: string
+        status:
+          type: string
+          enum: [draft, valid, archived]
         publishedAt:
           type: string
           format: date-time

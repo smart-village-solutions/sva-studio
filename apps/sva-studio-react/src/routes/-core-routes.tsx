@@ -14,12 +14,17 @@ import { OrganizationsPage } from './admin/organizations/-organizations-page';
 import { RolesPage } from './admin/roles/-roles-page';
 import { UserEditPage } from './admin/users/-user-edit-page';
 import { UserListPage } from './admin/users/-user-list-page';
+import { ContentEditorPage } from './content/-content-editor-page';
+import { ContentListPage } from './content/-content-list-page';
 import { HomePage } from './-home-page';
 import { PlaceholderPage } from './-placeholder-page';
 
 type AccountUiGuardKey =
   | 'account'
   | 'accountPrivacy'
+  | 'content'
+  | 'contentCreate'
+  | 'contentDetail'
   | 'adminUsers'
   | 'adminUserDetail'
   | 'adminOrganizations'
@@ -42,13 +47,6 @@ const runAccountUiGuard = async (guardKey: AccountUiGuardKey, options: unknown) 
   // da guardKey und options immer paarweise aus derselben Factory kommen.
   return guards[guardKey](options);
 };
-
-const ContentPlaceholderRoutePage = () => (
-  <PlaceholderPage
-    section={t('shell.sidebar.sections.dataManagement')}
-    title={t('shell.sidebar.content')}
-  />
-);
 
 const MediaPlaceholderRoutePage = () => (
   <PlaceholderPage
@@ -143,9 +141,25 @@ export const runtimeCoreRouteFactories = [
     createRoute({
       getParentRoute: () => rootRoute,
       path: '/content',
-      beforeLoad: (options) => runAccountUiGuard('account', options),
-      component: ContentPlaceholderRoutePage,
+      beforeLoad: (options) => runAccountUiGuard('content', options),
+      component: ContentListPage,
     }),
+  (rootRoute: RootRoute) =>
+    createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/content/new',
+      beforeLoad: (options) => runAccountUiGuard('contentCreate', options),
+      component: () => <ContentEditorPage mode="create" />,
+    }),
+  (rootRoute: RootRoute) => {
+    const contentDetailRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/content/$contentId',
+      beforeLoad: (options) => runAccountUiGuard('contentDetail', options),
+      component: () => <ContentEditorPage mode="edit" contentId={contentDetailRoute.useParams().contentId} />,
+    });
+    return contentDetailRoute;
+  },
   (rootRoute: RootRoute) =>
     createRoute({
       getParentRoute: () => rootRoute,

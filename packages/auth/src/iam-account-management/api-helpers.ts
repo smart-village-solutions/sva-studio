@@ -51,12 +51,19 @@ export const parseRequestBody = async <T>(request: Request, schema: z.ZodSchema<
   try {
     parsedJson = JSON.parse(raw);
   } catch {
-    return { ok: false as const, rawBody: raw };
+    return { ok: false as const, rawBody: raw, message: 'JSON-Body ist ungültig.' };
   }
 
   const parsed = schema.safeParse(parsedJson);
   if (!parsed.success) {
-    return { ok: false as const, rawBody: raw };
+    const firstIssue = parsed.error.issues[0];
+    const message =
+      firstIssue === undefined
+        ? 'Ungültiger Payload.'
+        : firstIssue.path.length > 0
+          ? `${String(firstIssue.path[0])}: ${firstIssue.message}`
+          : firstIssue.message;
+    return { ok: false as const, rawBody: raw, message };
   }
   return { ok: true as const, data: parsed.data, rawBody: raw };
 };

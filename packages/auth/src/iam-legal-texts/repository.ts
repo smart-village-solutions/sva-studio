@@ -1,16 +1,19 @@
-import type { IamLegalTextListItem } from '@sva/core';
+import type { IamLegalTextListItem, IamPendingLegalTextItem } from '@sva/core';
 
 import { emitActivityLog, withInstanceScopedDb } from '../iam-account-management/shared.js';
+import { hashLegalTextHtml, sanitizeLegalTextHtml } from './html.js';
 
 type LegalTextRow = {
   id: string;
-  legal_text_id: string;
+  legal_text_id?: string;
+  name: string;
   legal_text_version: string;
   locale: string;
-  content_hash: string;
-  is_active: boolean;
-  published_at: string;
+  content_html: string;
+  status: 'draft' | 'valid' | 'archived';
+  published_at: string | null;
   created_at: string;
+  updated_at: string;
   acceptance_count: number;
   active_acceptance_count: number;
   last_accepted_at: string | null;
@@ -21,11 +24,11 @@ type CreateLegalTextInput = {
   actorAccountId: string;
   requestId?: string;
   traceId?: string;
-  legalTextId: string;
+  name: string;
   legalTextVersion: string;
   locale: string;
-  contentHash: string;
-  isActive: boolean;
+  contentHtml: string;
+  status: 'draft' | 'valid' | 'archived';
   publishedAt?: string;
 };
 
@@ -35,35 +38,50 @@ type UpdateLegalTextInput = {
   requestId?: string;
   traceId?: string;
   legalTextVersionId: string;
-  contentHash?: string;
-  isActive?: boolean;
+  name?: string;
+  legalTextVersion?: string;
+  locale?: string;
+  contentHtml?: string;
+  status?: 'draft' | 'valid' | 'archived';
   publishedAt?: string;
 };
 
 const mapLegalTextListItem = (row: LegalTextRow): IamLegalTextListItem => ({
   id: row.id,
-  legalTextId: row.legal_text_id,
+  name: row.name,
   legalTextVersion: row.legal_text_version,
   locale: row.locale,
-  contentHash: row.content_hash,
-  isActive: row.is_active,
-  publishedAt: row.published_at,
+  contentHtml: row.content_html,
+  status: row.status,
+  ...(row.published_at ? { publishedAt: row.published_at } : {}),
   createdAt: row.created_at,
+  updatedAt: row.updated_at,
   acceptanceCount: row.acceptance_count,
   activeAcceptanceCount: row.active_acceptance_count,
   ...(row.last_accepted_at ? { lastAcceptedAt: row.last_accepted_at } : {}),
 });
 
+const mapPendingLegalTextItem = (row: LegalTextRow): IamPendingLegalTextItem => ({
+  id: row.id,
+  legalTextId: row.legal_text_id ?? row.id,
+  name: row.name,
+  legalTextVersion: row.legal_text_version,
+  locale: row.locale,
+  contentHtml: row.content_html,
+  ...(row.published_at ? { publishedAt: row.published_at } : {}),
+});
+
 const LEGAL_TEXT_SELECT = `
 SELECT
   version.id,
-  version.legal_text_id,
+  version.name,
   version.legal_text_version,
   version.locale,
-  version.content_hash,
-  version.is_active,
+  version.content_html,
+  version.status,
   version.published_at::text,
   version.created_at::text,
+  version.updated_at::text,
   COUNT(acceptance.id)::int AS acceptance_count,
   COUNT(acceptance.id) FILTER (
     WHERE acceptance.id IS NOT NULL
@@ -82,7 +100,7 @@ export const loadLegalTextListItems = async (instanceId: string): Promise<readon
       `${LEGAL_TEXT_SELECT}
 WHERE version.instance_id = $1
 GROUP BY version.id
-ORDER BY version.legal_text_id ASC, version.locale ASC, version.published_at DESC, version.created_at DESC;
+ORDER BY version.name ASC, version.locale ASC, version.published_at DESC NULLS LAST, version.created_at DESC;
 `,
       [instanceId]
     );
@@ -109,30 +127,90 @@ LIMIT 1;
     return row ? mapLegalTextListItem(row) : undefined;
   });
 
+export const loadPendingLegalTexts = async (
+  instanceId: string,
+  keycloakSubject: string
+): Promise<readonly IamPendingLegalTextItem[]> =>
+  withInstanceScopedDb(instanceId, async (client) => {
+    const result = await client.query<LegalTextRow>(
+      `
+SELECT
+  version.id,
+  version.legal_text_id,
+  version.name,
+  version.legal_text_version,
+  version.locale,
+  version.content_html,
+  version.published_at::text
+FROM iam.legal_text_versions version
+WHERE version.instance_id = $1
+  AND version.is_active = true
+  AND NOT EXISTS (
+    SELECT 1
+    FROM iam.legal_text_acceptances acceptance
+    JOIN iam.accounts account
+      ON account.id = acceptance.account_id
+    WHERE acceptance.instance_id = version.instance_id
+      AND acceptance.legal_text_version_id = version.id
+      AND acceptance.revoked_at IS NULL
+      AND account.keycloak_subject = $2
+  )
+ORDER BY version.published_at DESC NULLS LAST, version.created_at DESC;
+`,
+      [instanceId, keycloakSubject]
+    );
+
+    return result.rows.map(mapPendingLegalTextItem);
+  });
+
 export const createLegalTextVersion = async (input: CreateLegalTextInput): Promise<string | undefined> =>
   withInstanceScopedDb(input.instanceId, async (client) => {
+    const sanitizedContentHtml = sanitizeLegalTextHtml(input.contentHtml);
+    const derivedContentHash = hashLegalTextHtml(sanitizedContentHtml);
+    const isActive = input.status === 'valid';
     const insert = await client.query<{ id: string }>(
       `
+WITH generated AS (
+  SELECT gen_random_uuid() AS id
+)
 INSERT INTO iam.legal_text_versions (
+  id,
   instance_id,
   legal_text_id,
+  name,
   legal_text_version,
   locale,
+  content_html,
+  status,
   content_hash,
   is_active,
   published_at
 )
-VALUES ($1, $2, $3, $4, $5, $6, COALESCE($7::timestamptz, NOW()))
+SELECT
+  generated.id,
+  $1,
+  generated.id::text,
+  $2,
+  $3,
+  $4,
+  $5,
+  $6,
+  $7,
+  $8,
+  COALESCE($9::timestamptz, CASE WHEN $6 = 'valid' THEN NOW() ELSE NULL END)
+FROM generated
 ON CONFLICT (instance_id, legal_text_id, legal_text_version, locale) DO NOTHING
 RETURNING id;
 `,
       [
         input.instanceId,
-        input.legalTextId,
+        input.name,
         input.legalTextVersion,
         input.locale,
-        input.contentHash,
-        input.isActive,
+        sanitizedContentHtml,
+        input.status,
+        derivedContentHash,
+        isActive,
         input.publishedAt ?? null,
       ]
     );
@@ -149,10 +227,10 @@ RETURNING id;
       result: 'success',
       payload: {
         legal_text_version_id: legalTextVersionId,
-        legal_text_id: input.legalTextId,
+        name: input.name,
         legal_text_version: input.legalTextVersion,
         locale: input.locale,
-        is_active: input.isActive,
+        status: input.status,
       },
       requestId: input.requestId,
       traceId: input.traceId,
@@ -163,13 +241,32 @@ RETURNING id;
 
 export const updateLegalTextVersion = async (input: UpdateLegalTextInput): Promise<string | undefined> =>
   withInstanceScopedDb(input.instanceId, async (client) => {
+    const current = await loadLegalTextById(input.instanceId, input.legalTextVersionId);
+    if (!current) {
+      return undefined;
+    }
+
+    const nextContentHtml =
+      input.contentHtml !== undefined ? sanitizeLegalTextHtml(input.contentHtml) : current.contentHtml;
+    const nextStatus = input.status ?? current.status;
+    const nextPublishedAt = input.publishedAt ?? current.publishedAt ?? null;
+    if (nextStatus === 'valid' && !nextPublishedAt) {
+      throw new Error('legal_text_published_at_required');
+    }
+    const nextContentHash = hashLegalTextHtml(nextContentHtml);
     const updateResult = await client.query<{ id: string }>(
       `
 UPDATE iam.legal_text_versions
 SET
-  content_hash = COALESCE($3, content_hash),
-  is_active = COALESCE($4, is_active),
-  published_at = COALESCE($5::timestamptz, published_at)
+  name = COALESCE($3, name),
+  legal_text_version = COALESCE($4, legal_text_version),
+  locale = COALESCE($5, locale),
+  content_html = $6,
+  status = $7,
+  content_hash = $8,
+  is_active = $9,
+  published_at = $10::timestamptz,
+  updated_at = NOW()
 WHERE instance_id = $1
   AND id = $2::uuid
 RETURNING id;
@@ -177,9 +274,14 @@ RETURNING id;
       [
         input.instanceId,
         input.legalTextVersionId,
-        input.contentHash ?? null,
-        input.isActive ?? null,
-        input.publishedAt ?? null,
+        input.name ?? null,
+        input.legalTextVersion ?? null,
+        input.locale ?? null,
+        nextContentHtml,
+        nextStatus,
+        nextContentHash,
+        nextStatus === 'valid',
+        nextPublishedAt,
       ]
     );
 
@@ -196,8 +298,11 @@ RETURNING id;
       payload: {
         legal_text_version_id: updatedLegalTextVersionId,
         updated_fields: Object.keys({
-          ...(input.contentHash !== undefined ? { contentHash: true } : {}),
-          ...(input.isActive !== undefined ? { isActive: true } : {}),
+          ...(input.name !== undefined ? { name: true } : {}),
+          ...(input.legalTextVersion !== undefined ? { legalTextVersion: true } : {}),
+          ...(input.locale !== undefined ? { locale: true } : {}),
+          ...(input.contentHtml !== undefined ? { contentHtml: true } : {}),
+          ...(input.status !== undefined ? { status: true } : {}),
           ...(input.publishedAt !== undefined ? { publishedAt: true } : {}),
         }),
       },

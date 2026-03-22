@@ -11,6 +11,7 @@ export type {
   IamGroupMembershipOrigin,
   IamGroupType,
   IamLegalTextListItem,
+  IamPendingLegalTextItem,
   IamOrganizationChildItem,
   IamOrganizationContext,
   IamOrganizationContextOption,

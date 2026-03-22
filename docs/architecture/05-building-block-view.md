@@ -23,6 +23,7 @@ Abhängigkeiten des aktuellen Systems.
    - Nx-Targets für `build`, `serve`, `lint`, `test:unit`, `test:coverage` und `test:e2e` über Vite-, Vitest- und Playwright-Executor
 2. Core (`packages/core`)
    - generische Route-Registry Utilities (`mergeRouteFactories`, `buildRouteTree`)
+   - kanonisches Inhaltsmodell für `Content`, Statusmodell und JSON-Payload-Validierung
 3. Routing (`packages/routing`)
    - zentrale Route-Factories (client + server)
    - einzige Source of Truth für Auth-Handler-Mapping, Runtime-Guard und JSON-Error-Boundary
@@ -33,6 +34,7 @@ Abhängigkeiten des aktuellen Systems.
 5. SDK (`packages/sdk`)
    - Logger, Context-Propagation, OTEL-Bootstrap
    - Instance-Config-Modul (`instance/config.server.ts`): Validierung der `instanceId`-Allowlist beim Startup, Host-Parsing und Mapping auf `instanceId`
+   - deklarative Registries für erweiterbare Inhalts-Typen und typgebundene UI-/Validierungs-Metadaten
 6. Monitoring Client (`packages/monitoring-client`)
    - OTEL SDK Setup, Exporter, Log-Redaction-Processor
 7. Data (`packages/data`)
@@ -63,6 +65,11 @@ Abhängigkeiten des aktuellen Systems.
   - `packages/auth` (`audit-db-sink.server.ts`) + `packages/sdk` (`createSdkLogger`)
 - Governance und DSGVO-Betroffenenrechte:
   - `packages/auth` (`iam-governance.server.ts`, `iam-governance/*`, `iam-data-subject-rights.server.ts`, `iam-data-subject-rights/*`)
+- Inhaltsverwaltung als Core-Element:
+  - `packages/core` (`content-management.ts`) für Kernvertrag
+  - `packages/sdk` (`content-types.ts`) für Erweiterungspunkte
+  - `packages/auth` (`iam-contents.server.ts`, `iam-contents/*`) für serverseitige Read-/Write-Pfade, Historie und Audit
+  - `apps/sva-studio-react/src/routes/content/*` für Listen- und Editor-UI unter `/content`
 - Externe Mainserver-Anbindung:
   - `packages/sva-mainserver` (`server/config-store.ts`, `server/service.ts`, `generated/*`)
 
@@ -93,6 +100,7 @@ Abhängigkeiten des aktuellen Systems.
 - `@sva/plugin-*` -> `@sva/sdk` (kein Direktimport aus `@sva/core`)
 - `@sva/monitoring-client` -> OTEL Libraries, `@sva/sdk` Context API
 - `@sva/auth` -> `@sva/core` (IAM-Claims + Feldverschlüsselung), `pg`
+- `apps/sva-studio-react` -> `@sva/core` + `@sva/auth` für Inhaltsliste, Detail, Historie und Statuswechsel
 
 ### Schichtregel für Plugins
 
@@ -213,6 +221,19 @@ Neu hinzugekommene Bausteine im Change `add-iam-organization-management-hierarch
    - Getypte Read-Modelle für Governance-Feed, DSR-Feed, Self-Service-Übersicht und User-Timeline.
 4. `packages/auth/src/iam-governance/read-models.ts`, `packages/auth/src/iam-data-subject-rights/read-models.ts`, `packages/auth/src/iam-account-management/user-timeline-query.ts`
    - Serverseitige Normalisierung der Transparenzdaten statt Roh-JSON aus Einzeltabellen.
+
+### Ergänzung 2026-03: Fachliche Rechtstext-Verwaltung
+
+1. `packages/core/src/iam/account-management-contract.ts`
+   - Definiert das gemeinsame Rechtstext-Modell mit UUID, Name, Version, Locale, HTML-Inhalt, Status sowie Erstellungs-, Änderungs- und Veröffentlichungszeitpunkten.
+2. `packages/auth/src/iam-legal-texts/*`
+   - Kapselt Request-Validierung, Repository, Statusregeln, serverseitiges HTML-Sanitizing und API-Mapping für `GET/POST/PATCH /api/v1/iam/legal-texts`.
+3. `packages/data/migrations/up/0019_iam_legal_text_rich_content.sql`
+   - Erweitert das IAM-Schema um `name`, `content_html`, `status` und `updated_at` für fachlich editierbare Rechtstexte.
+4. `apps/sva-studio-react/src/routes/admin/legal-texts/-legal-texts-page.tsx`
+   - Stellt Liste sowie Create/Edit-Dialoge für fachliche Rechtstexte bereit und bindet einen App-spezifischen Rich-Text-Editor an.
+5. `apps/sva-studio-react/src/components/RichTextEditor.tsx`
+   - Bleibt bewusst im App-Layer, damit keine Editor-Abhängigkeiten oder UI-Typen in `packages/core` oder `packages/auth` gelangen.
 
 ### Ergänzung 2026-03: Manueller Keycloak-User-Import
 

@@ -42,8 +42,16 @@ export {
   removeGroupRoleHandler,
 } from './iam-groups.server.js';
 export {
+  createContentHandler,
+  getContentHandler,
+  getContentHistoryHandler,
+  listContentsHandler,
+  updateContentHandler,
+} from './iam-contents.server.js';
+export {
   createLegalTextHandler,
   listLegalTextsHandler,
+  listPendingLegalTextsHandler,
   updateLegalTextHandler,
 } from './iam-legal-texts.server.js';
 export {

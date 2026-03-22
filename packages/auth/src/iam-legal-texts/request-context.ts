@@ -16,11 +16,14 @@ export type ResolvedLegalTextsActor = {
   };
 };
 
+export const withLegalTextsRequestContext = <T>(request: Request, work: () => Promise<T>): Promise<T> =>
+  withRequestContext({ request, fallbackWorkspaceId: 'default' }, work);
+
 export const withAuthenticatedLegalTextsHandler = (
   request: Request,
   handler: (request: Request, ctx: AuthenticatedRequestContext) => Promise<Response>
 ): Promise<Response> =>
-  withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
+  withLegalTextsRequestContext(request, async () => {
     try {
       return await withAuthenticatedUser(request, (ctx) => handler(request, ctx));
     } catch (error) {

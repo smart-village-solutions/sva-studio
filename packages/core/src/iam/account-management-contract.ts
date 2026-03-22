@@ -152,16 +152,27 @@ export type IamGroupDetail = IamGroupListItem & {
 
 export type IamLegalTextListItem = {
   readonly id: IamUuid;
-  readonly legalTextId: string;
+  readonly name: string;
   readonly legalTextVersion: string;
   readonly locale: string;
-  readonly contentHash: string;
-  readonly isActive: boolean;
-  readonly publishedAt: string;
+  readonly contentHtml: string;
+  readonly status: 'draft' | 'valid' | 'archived';
+  readonly publishedAt?: string;
   readonly createdAt: string;
+  readonly updatedAt: string;
   readonly acceptanceCount: number;
   readonly activeAcceptanceCount: number;
   readonly lastAcceptedAt?: string;
+};
+
+export type IamPendingLegalTextItem = {
+  readonly id: IamUuid;
+  readonly legalTextId: string;
+  readonly name: string;
+  readonly legalTextVersion: string;
+  readonly locale: string;
+  readonly contentHtml: string;
+  readonly publishedAt?: string;
 };
 
 export type IamOrganizationType =

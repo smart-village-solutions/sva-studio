@@ -7,12 +7,14 @@
 import React from 'react';
 
 import Header from './Header';
+import { LegalTextAcceptanceDialog } from './LegalTextAcceptanceDialog';
 import Sidebar from './Sidebar';
 import { t } from '../i18n';
 import { useAuth } from '../providers/auth-provider';
 
 type AppShellProps = Readonly<{
   children: React.ReactNode;
+  currentPathname?: string;
   isLoading?: boolean;
   isMobileSidebarOpen?: boolean;
   onMobileSidebarOpenChange?: (open: boolean) => void;
@@ -29,6 +31,7 @@ type AppShellProps = Readonly<{
  */
 export default function AppShell({
   children,
+  currentPathname = '/',
   isLoading = false,
   isMobileSidebarOpen = false,
   onMobileSidebarOpenChange,
@@ -78,6 +81,7 @@ export default function AppShell({
             children
           )}
         </main>
+        <LegalTextAcceptanceDialog pathname={currentPathname} />
       </div>
     </div>
   );

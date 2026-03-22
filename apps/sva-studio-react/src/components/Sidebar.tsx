@@ -148,14 +148,14 @@ const SidebarPanel = ({
   return (
     <div className="flex h-full flex-col">
       <div className="px-4 py-4">
-        <div className={`relative flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
+        <div className={`relative flex min-h-12 items-center ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
           {!isCollapsed ? <p className="text-3xl font-semibold text-foreground">{t('shell.appName')}</p> : null}
           {allowCollapse ? (
             <Button
               type="button"
               size="icon"
               variant="outline"
-              className="absolute right-0 top-1/2 z-[80] hidden h-10 w-10 -translate-y-1/2 translate-x-[calc(60%+12px)] rounded-full border-sidebar-border bg-card shadow-shell lg:inline-flex"
+              className="absolute right-0 top-1/2 z-[100] hidden h-10 w-10 -translate-y-1/2 translate-x-[calc(60%+12px)] rounded-full border-sidebar-border bg-card shadow-shell lg:inline-flex"
               aria-label={isCollapsed ? t('shell.sidebar.expand') : t('shell.sidebar.collapse')}
               onClick={onToggleCollapsed}
             >
@@ -177,35 +177,36 @@ const SidebarPanel = ({
         </div>
       </div>
 
-      <nav aria-label={t('shell.sidebar.navAriaLabel')} className="overflow-y-auto px-3 py-4">
-        {isLoading ? (
-          <ul className="space-y-2">
-            {sidebarSkeletonKeys.map((key) => (
-              <li key={key}>
-                <span
-                  aria-hidden="true"
-                  className={`block animate-pulse rounded-xl border border-sidebar-border bg-muted ${
-                    isCollapsed ? 'mx-auto h-11 w-11' : 'h-11 w-full'
-                  }`}
-                />
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <div className="space-y-5">
-            {sections.map((section) => (
-              <section key={section.id} className="space-y-2">
-                {isCollapsed ? (
-                  <div className="px-2" aria-hidden="true">
-                    <span className="mx-auto block h-px w-8 bg-sidebar-border" />
-                  </div>
-                ) : (
-                  <p className="px-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-                    {section.label}
-                  </p>
-                )}
-                <ul className="space-y-1">
-                  {section.items.map((item) => {
+      <nav aria-label={t('shell.sidebar.navAriaLabel')} className="flex-1 min-h-0 overflow-visible px-3 py-4">
+        <div className="h-full overflow-y-auto overflow-x-visible">
+          {isLoading ? (
+            <ul className="space-y-2">
+              {sidebarSkeletonKeys.map((key) => (
+                <li key={key}>
+                  <span
+                    aria-hidden="true"
+                    className={`block animate-pulse rounded-xl border border-sidebar-border bg-muted ${
+                      isCollapsed ? 'mx-auto h-11 w-11' : 'h-11 w-full'
+                    }`}
+                  />
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="space-y-5">
+              {sections.map((section) => (
+                <section key={section.id} className="space-y-2">
+                  {isCollapsed ? (
+                    <div className="px-2" aria-hidden="true">
+                      <span className="mx-auto block h-px w-8 bg-sidebar-border" />
+                    </div>
+                  ) : (
+                    <p className="px-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+                      {section.label}
+                    </p>
+                  )}
+                  <ul className="space-y-1">
+                    {section.items.map((item) => {
                     if (item.kind === 'link') {
                       const isActive = isLeafActive(pathname, item);
                       const IconComponent = item.icon;
@@ -264,24 +265,23 @@ const SidebarPanel = ({
                       >
                         {isCollapsed ? (
                           <>
-                            <Button
+                            <button
                               type="button"
-                              className={getLinkClasses(isActive || isExpanded, true)}
+                              className={`${getLinkClasses(isActive || isExpanded, true)} w-full`}
                               aria-controls={`sidebar-group-${item.id}`}
                               aria-expanded={isExpanded}
                               aria-label={item.label}
                               title={item.label}
                               onClick={() => toggleGroup(item.id, true)}
                               onFocus={() => setFlyoutGroupId(item.id)}
-                              variant="ghost"
                             >
                               <IconComponent className="h-5 w-5 shrink-0" />
-                            </Button>
+                            </button>
 
                             {isExpanded ? (
                               <div
                                 id={`sidebar-group-${item.id}`}
-                                className="absolute left-[calc(100%+0.75rem)] top-0 z-50 w-64 rounded-2xl border border-sidebar-border bg-card p-3 shadow-[0_20px_50px_rgba(15,23,42,0.18)]"
+                                className="absolute left-[calc(100%+0.75rem)] top-0 z-[100] w-64 rounded-2xl border border-sidebar-border bg-card p-3 shadow-[0_20px_50px_rgba(15,23,42,0.18)]"
                               >
                                 <p className="px-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
                                   {item.label}
@@ -379,11 +379,12 @@ const SidebarPanel = ({
                       </li>
                     );
                   })}
-                </ul>
-              </section>
-            ))}
-          </div>
-        )}
+                  </ul>
+                </section>
+              ))}
+            </div>
+          )}
+        </div>
       </nav>
 
       {!isLoading ? (
@@ -681,7 +682,7 @@ export default function Sidebar({ isLoading = false, isMobileOpen = false, onMob
     <>
       <aside
         aria-label={t('shell.sidebar.ariaLabel')}
-        className={`relative z-[70] hidden overflow-visible border-r border-sidebar-border bg-sidebar shadow-shell transition-[width] duration-200 lg:sticky lg:top-0 lg:block lg:h-screen ${
+        className={`relative z-[90] hidden overflow-visible border-r border-sidebar-border bg-sidebar shadow-shell transition-[width] duration-200 lg:sticky lg:top-0 lg:block lg:h-screen ${
           isCollapsed ? 'lg:w-20' : 'lg:w-80'
         }`}
       >

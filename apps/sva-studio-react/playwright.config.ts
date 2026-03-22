@@ -21,7 +21,7 @@ export default defineConfig({
   },
   webServer: {
     // Start Vite directly to avoid nested Nx instability during Playwright startup.
-    command: `pnpm exec vite dev --port ${webServerPort}`,
+    command: `sh ./scripts/playwright-webserver.sh ${webServerPort}`,
     cwd: appRoot,
     url: baseURL,
     // Reusing arbitrary local processes can hide real failures by attaching to the wrong app.

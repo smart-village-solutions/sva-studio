@@ -41,10 +41,10 @@ test('interfaces page uses the real /_server transport for load and save', async
   });
 
   await page.goto('/interfaces');
-  await expect(page.getByRole('heading', { name: 'Schnittstellen' })).toBeVisible({ timeout: 15_000 });
   await expect
-    .poll(() => serverFnResponses.find((response) => response.method === 'GET')?.status, { timeout: 15_000 })
+    .poll(() => serverFnResponses.find((response) => response.method === 'GET')?.status, { timeout: 20_000 })
     .toBe(200);
+  await expect(page.getByRole('heading', { name: 'Schnittstellen' })).toBeVisible({ timeout: 20_000 });
 
   const loadResponse = serverFnResponses.find((response) => response.method === 'GET');
   expect(loadResponse?.url).toContain('/_server/');

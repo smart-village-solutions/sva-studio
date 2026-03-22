@@ -152,7 +152,7 @@ export const GroupsPage = () => {
 
   React.useEffect(() => {
     if (groupsApi.groups.length === 0) {
-      setDetailByGroupId({});
+      setDetailByGroupId((current) => (Object.keys(current).length === 0 ? current : {}));
       return;
     }
 

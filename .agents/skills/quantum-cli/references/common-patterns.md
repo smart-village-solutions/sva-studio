@@ -3,13 +3,13 @@
 ## List endpoints
 
 ```bash
-quantum-cli endpoints ls --output json
+quantum-cli endpoints ls
 ```
 
 ## List stacks on an endpoint
 
 ```bash
-quantum-cli stacks ls --endpoint "$QUANTUM_ENDPOINT" --output json
+quantum-cli stacks ls --endpoint "$QUANTUM_ENDPOINT"
 ```
 
 ## Inspect tasks for a stack
@@ -17,8 +17,7 @@ quantum-cli stacks ls --endpoint "$QUANTUM_ENDPOINT" --output json
 ```bash
 quantum-cli ps \
   --endpoint "$QUANTUM_ENDPOINT" \
-  --stack "$QUANTUM_STACK" \
-  --output json
+  --stack "$QUANTUM_STACK"
 ```
 
 ## Inspect all tasks for a service
@@ -28,8 +27,7 @@ quantum-cli ps \
   --endpoint "$QUANTUM_ENDPOINT" \
   --stack "$QUANTUM_STACK" \
   --service "$QUANTUM_SERVICE" \
-  --all \
-  --output json
+  --all
 ```
 
 ## Validate a project before deploy
@@ -86,10 +84,10 @@ quantum-cli exec \
   --endpoint "$QUANTUM_ENDPOINT" \
   --stack "$QUANTUM_STACK" \
   --service "$QUANTUM_SERVICE" \
-  --command "sh -lc 'env | sort'"
+  --command "sh -lc 'id && pwd && ls -la'"
 ```
 
-Use this kind of command carefully. Do not dump secrets back into the user response.
+Use this kind of command carefully. Avoid commands that dump full environment variables or other secret-bearing runtime state.
 
 ## Migrate a stack to another endpoint
 
@@ -106,13 +104,20 @@ Add `--up` only if the target stack should start immediately after the migration
 ## Use environment variables for CI-style deploys
 
 ```bash
-export QUANTUM_USER="$DEPLOY_USER"
-export QUANTUM_PASSWORD="$DEPLOY_PASSWORD"
+export QUANTUM_API_KEY="$DEPLOY_API_KEY"
 export QUANTUM_ENDPOINT="customer-prod"
 export QUANTUM_STACK="my-app"
+export QUANTUM_ENVIRONMENT="prod"
+export PROJECT_DIR="$CI_PROJECT_DIR"
 export RELEASE_VERSION="1.2.3"
 
-quantum-cli stacks update --create --wait
+quantum-cli stacks update \
+  --endpoint "$QUANTUM_ENDPOINT" \
+  --stack "$QUANTUM_STACK" \
+  --project "$PROJECT_DIR" \
+  --environment "$QUANTUM_ENVIRONMENT" \
+  --create \
+  --wait
 ```
 
 According to the docs, `quantum-cli` can pass environment variables into the deployment without rewriting the stack file in-place.

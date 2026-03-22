@@ -23,7 +23,6 @@ If MCP tools for Quantum are available in the session, prefer them for read-only
 
 - Start with read-only inspection before any mutating command.
 - Never guess flags. Run `quantum-cli help` or `quantum-cli <subcommand> --help` if a command shape is uncertain.
-- Prefer `--output json` for commands whose output you will filter or summarize programmatically.
 - Use shell-safe placeholders like `"$QUANTUM_ENDPOINT"` and `"$QUANTUM_STACK"` in examples. Avoid angle-bracket placeholders in shell snippets.
 - Do not expose API keys, passwords, tokens, or full environment dumps in the response.
 - Treat `--no-validate` and `--no-pre-pull` as exceptions. The docs explicitly say they are not recommended.
@@ -34,14 +33,15 @@ If MCP tools for Quantum are available in the session, prefer them for read-only
 
 ## Default Workflow
 
-### 1. Confirm auth and target
+### 1. Confirm CLI and target
 
-Start by checking authentication inputs and discovering available targets:
+Start by checking CLI availability, effective auth inputs, and available targets:
 
 ```bash
 command -v quantum-cli
-quantum-cli endpoints ls --output json
-quantum-cli stacks ls --endpoint "$QUANTUM_ENDPOINT" --output json
+test -n "$QUANTUM_API_KEY" || test -n "$QUANTUM_USER"
+quantum-cli endpoints ls
+quantum-cli stacks ls --endpoint "$QUANTUM_ENDPOINT"
 ```
 
 If the task depends on environment-driven configuration, check the effective variable source before mutating anything.
@@ -51,8 +51,8 @@ If the task depends on environment-driven configuration, check the effective var
 Before changing anything, inspect current tasks:
 
 ```bash
-quantum-cli ps --endpoint "$QUANTUM_ENDPOINT" --stack "$QUANTUM_STACK" --output json
-quantum-cli ps --endpoint "$QUANTUM_ENDPOINT" --stack "$QUANTUM_STACK" --service "$QUANTUM_SERVICE" --all --output json
+quantum-cli ps --endpoint "$QUANTUM_ENDPOINT" --stack "$QUANTUM_STACK"
+quantum-cli ps --endpoint "$QUANTUM_ENDPOINT" --stack "$QUANTUM_STACK" --service "$QUANTUM_SERVICE" --all
 ```
 
 Use `--all` when diagnosing restarts, failed rollouts, or non-running tasks.
@@ -89,7 +89,7 @@ Use `--create` only when the intent is to create the stack if missing. Use `stac
 After deployment, re-check tasks:
 
 ```bash
-quantum-cli ps --endpoint "$QUANTUM_ENDPOINT" --stack "$QUANTUM_STACK" --all --output json
+quantum-cli ps --endpoint "$QUANTUM_ENDPOINT" --stack "$QUANTUM_STACK" --all
 ```
 
 If needed, inspect a specific workload with `exec`.
@@ -140,12 +140,12 @@ This capability list is taken from the official CLI reference, not inferred from
 
 The docs describe two environment-variable layers:
 
-- global auth and host config such as `QUANTUM_HOST`, `QUANTUM_USER`, and `QUANTUM_PASSWORD`
+- global auth and host config such as `QUANTUM_HOST` and the preferred `QUANTUM_API_KEY` for API-key based auth; `QUANTUM_USER` and `QUANTUM_PASSWORD` exist as alternative credentials
 - command-scoped selectors such as `QUANTUM_ENDPOINT`, `QUANTUM_STACK`, `QUANTUM_SERVICE`, and migration-specific variables
 
 The docs also note compatibility aliases such as `PORTAINER_HOST`, `PORTAINER_USER`, `PORTAINER_PASSWORD`, and `PORTAINER_ENDPOINT`. Treat those as compatibility inputs, not the preferred naming scheme.
 
-When the task involves CI or a scripted deploy, prefer explicit environment variables over interactive flags, and avoid echoing them back to the user.
+When the task involves CI or a scripted deploy, prefer explicit environment variables over interactive flags, avoid echoing them back to the user, and prefer `QUANTUM_API_KEY` over `QUANTUM_USER` and `QUANTUM_PASSWORD` when setting up new pipelines or shells.
 
 ## Migration Notes
 

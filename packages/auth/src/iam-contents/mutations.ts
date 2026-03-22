@@ -12,7 +12,7 @@ import { validateCsrf } from '../iam-account-management/csrf.js';
 import { completeIdempotency, reserveIdempotency } from '../iam-account-management/shared.js';
 
 import type { ResolvedContentActor } from './request-context.js';
-import { createContent, loadContentById, updateContent } from './repository.js';
+import { createContent, loadContentDetail, updateContent } from './repository.js';
 import { createContentSchema, updateContentSchema } from './schemas.js';
 
 const logger = createSdkLogger({ component: 'iam-contents', level: 'info' });
@@ -96,7 +96,7 @@ export const createContentResponse = async (
       traceId: actor.traceId,
       ...parsed.data,
     });
-    const item = await loadContentById(actor.instanceId, createdId);
+    const item = await loadContentDetail(actor.instanceId, createdId);
     if (!item) {
       throw new Error('created_content_not_found');
     }
@@ -165,7 +165,7 @@ export const updateContentResponse = async (
       return createApiError(404, 'not_found', 'Inhalt wurde nicht gefunden.', actor.requestId);
     }
 
-    const item = await loadContentById(actor.instanceId, updatedId);
+    const item = await loadContentDetail(actor.instanceId, updatedId);
     return item
       ? jsonResponse(200, asApiItem(item, actor.requestId))
       : createApiError(404, 'not_found', 'Inhalt wurde nicht gefunden.', actor.requestId);

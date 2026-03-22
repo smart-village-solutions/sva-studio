@@ -4,7 +4,7 @@ import { asApiItem, asApiList, createApiError, readPathSegment } from '../iam-ac
 import type { AuthenticatedRequestContext } from '../middleware.server.js';
 import { withAuthenticatedContentHandler, resolveContentActor } from './request-context.js';
 import { createContentResponse, updateContentResponse } from './mutations.js';
-import { loadContentById, loadContentHistory, loadContentListItems } from './repository.js';
+import { loadContentById, loadContentDetail, loadContentHistory, loadContentListItems } from './repository.js';
 
 const logger = createSdkLogger({ component: 'iam-contents', level: 'info' });
 
@@ -56,7 +56,7 @@ export const getContentInternal = async (
   }
 
   try {
-    const item = await loadContentById(actorResolution.actor.instanceId, contentId);
+    const item = await loadContentDetail(actorResolution.actor.instanceId, contentId);
     return item
       ? new Response(JSON.stringify(asApiItem(item, actorResolution.actor.requestId)), {
           status: 200,

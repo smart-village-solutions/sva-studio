@@ -139,7 +139,7 @@ RETURNING id;
     );
 
     const legalTextVersionId = insert.rows[0]?.id;
-    if (!legalTextVersionId) {
+    if (legalTextVersionId === undefined) {
       return undefined;
     }
 

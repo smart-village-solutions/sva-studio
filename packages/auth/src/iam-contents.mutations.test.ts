@@ -17,7 +17,7 @@ const state = vi.hoisted(() => ({
   completeIdempotency: vi.fn(),
   createContent: vi.fn(),
   updateContent: vi.fn(),
-  loadContentById: vi.fn(),
+  loadContentDetail: vi.fn(),
 }));
 
 vi.mock('@sva/sdk/server', () => ({
@@ -44,7 +44,7 @@ vi.mock('./iam-account-management/shared.js', () => ({
 
 vi.mock('./iam-contents/repository.js', () => ({
   createContent: (...args: Parameters<typeof state.createContent>) => state.createContent(...args),
-  loadContentById: (...args: Parameters<typeof state.loadContentById>) => state.loadContentById(...args),
+  loadContentDetail: (...args: Parameters<typeof state.loadContentDetail>) => state.loadContentDetail(...args),
   updateContent: (...args: Parameters<typeof state.updateContent>) => state.updateContent(...args),
 }));
 
@@ -83,7 +83,7 @@ describe('iam-contents mutations', () => {
     state.completeIdempotency.mockReset();
     state.createContent.mockReset();
     state.updateContent.mockReset();
-    state.loadContentById.mockReset();
+    state.loadContentDetail.mockReset();
   });
 
   it('short-circuits create when csrf, idempotency or body parsing fails', async () => {
@@ -139,12 +139,12 @@ describe('iam-contents mutations', () => {
     state.parseRequestBody.mockResolvedValue({ ok: true, rawBody: '{}', data: { title: 'Startseite', contentType: 'generic' } });
     state.reserveIdempotency.mockResolvedValue({ status: 'reserved' });
     state.createContent.mockResolvedValueOnce('content-1');
-    state.loadContentById.mockResolvedValueOnce({ id: 'content-1', title: 'Startseite' });
+    state.loadContentDetail.mockResolvedValueOnce({ id: 'content-1', title: 'Startseite', history: [] });
 
     const successResponse = await createContentResponse(createRequest(), actor);
     expect(successResponse.status).toBe(201);
     expect(await successResponse.json()).toEqual({
-      data: { id: 'content-1', title: 'Startseite' },
+      data: { id: 'content-1', title: 'Startseite', history: [] },
       requestId: 'req-content',
     });
     expect(state.completeIdempotency).toHaveBeenCalledWith(
@@ -163,7 +163,7 @@ describe('iam-contents mutations', () => {
     });
 
     state.createContent.mockResolvedValueOnce('content-2');
-    state.loadContentById.mockResolvedValueOnce(undefined);
+    state.loadContentDetail.mockResolvedValueOnce(undefined);
     const missingCreatedResponse = await createContentResponse(createRequest(), actor);
     expect(missingCreatedResponse.status).toBe(503);
 
@@ -200,12 +200,12 @@ describe('iam-contents mutations', () => {
     expect(notFoundResponse.status).toBe(404);
 
     state.updateContent.mockResolvedValueOnce('content-1');
-    state.loadContentById.mockResolvedValueOnce(undefined);
+    state.loadContentDetail.mockResolvedValueOnce(undefined);
     const missingLoadedResponse = await updateContentResponse(updateRequest(), actor);
     expect(missingLoadedResponse.status).toBe(404);
 
     state.updateContent.mockResolvedValueOnce('content-1');
-    state.loadContentById.mockResolvedValueOnce({ id: 'content-1', title: 'Neu' });
+    state.loadContentDetail.mockResolvedValueOnce({ id: 'content-1', title: 'Neu', history: [] });
     const successResponse = await updateContentResponse(updateRequest(), actor);
     expect(successResponse.status).toBe(200);
 

@@ -172,6 +172,9 @@ describe('iam-contents handlers', () => {
       if (text.includes('INSERT INTO iam.content_history')) {
         return { rowCount: 1, rows: [] };
       }
+      if (text.includes('FROM iam.content_history history')) {
+        return { rowCount: 0, rows: [] };
+      }
       if (text.includes('INSERT INTO iam.activity_logs') || text.includes('UPDATE iam.idempotency_keys')) {
         return { rowCount: 1, rows: [] };
       }
@@ -205,6 +208,8 @@ describe('iam-contents handlers', () => {
       })
     );
     expect(createResponse.status).toBe(201);
+    const createPayload = (await createResponse.json()) as { data: { history: unknown[] } };
+    expect(createPayload.data.history).toEqual([]);
 
     const updateResponse = await updateContentHandler(
       new Request(`http://localhost:3000/api/v1/iam/contents/${contentRow.id}`, {
@@ -217,8 +222,9 @@ describe('iam-contents handlers', () => {
       })
     );
     expect(updateResponse.status).toBe(200);
-    const payload = (await updateResponse.json()) as { data: { title: string } };
+    const payload = (await updateResponse.json()) as { data: { title: string; history: unknown[] } };
     expect(payload.data.title).toBe('Neue Startseite');
+    expect(payload.data.history).toEqual([]);
   });
 
   it('loads content history and rejects users without allowed role', async () => {

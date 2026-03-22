@@ -1,5 +1,5 @@
 import type { ContentJsonValue } from '@sva/core';
-import { GENERIC_CONTENT_TYPE, iamContentStatuses } from '@sva/core';
+import { iamContentStatuses } from '@sva/core';
 import { z } from 'zod';
 
 const isoDateTimeString = z
@@ -37,7 +37,7 @@ const hasDefinedEntries = (value: Record<string, unknown>): boolean =>
 
 export const createContentSchema = z
   .object({
-    contentType: z.literal(GENERIC_CONTENT_TYPE),
+    contentType: z.string().trim().min(1).max(128),
     title: z.string().trim().min(1).max(255),
     payload: jsonValueSchema,
     status: contentStatusSchema.default('draft'),

@@ -22,6 +22,7 @@ const state = vi.hoisted(() => ({
   updateContentResponse: vi.fn(),
   loadContentListItems: vi.fn(),
   loadContentById: vi.fn(),
+  loadContentDetail: vi.fn(),
   loadContentHistory: vi.fn(),
 }));
 
@@ -56,6 +57,7 @@ vi.mock('./iam-contents/mutations.js', () => ({
 
 vi.mock('./iam-contents/repository.js', () => ({
   loadContentById: (...args: Parameters<typeof state.loadContentById>) => state.loadContentById(...args),
+  loadContentDetail: (...args: Parameters<typeof state.loadContentDetail>) => state.loadContentDetail(...args),
   loadContentHistory: (...args: Parameters<typeof state.loadContentHistory>) => state.loadContentHistory(...args),
   loadContentListItems: (...args: Parameters<typeof state.loadContentListItems>) => state.loadContentListItems(...args),
 }));
@@ -100,6 +102,7 @@ describe('iam-contents core', () => {
     state.updateContentResponse.mockReset();
     state.loadContentListItems.mockReset();
     state.loadContentById.mockReset();
+    state.loadContentDetail.mockReset();
     state.loadContentHistory.mockReset();
   });
 
@@ -134,11 +137,11 @@ describe('iam-contents core', () => {
     expect((await getContentInternal(new Request('http://localhost/api/v1/iam/contents'), ctx)).status).toBe(400);
 
     state.readPathSegment.mockReturnValueOnce('content-1');
-    state.loadContentById.mockResolvedValueOnce(undefined);
+    state.loadContentDetail.mockResolvedValueOnce(undefined);
     expect((await getContentInternal(new Request('http://localhost/api/v1/iam/contents/content-1'), ctx)).status).toBe(404);
 
     state.readPathSegment.mockReturnValueOnce('content-1');
-    state.loadContentById.mockRejectedValueOnce(new Error('db down'));
+    state.loadContentDetail.mockRejectedValueOnce(new Error('db down'));
     expect((await getContentInternal(new Request('http://localhost/api/v1/iam/contents/content-1'), ctx)).status).toBe(503);
 
     state.readPathSegment.mockReturnValueOnce('');
@@ -157,12 +160,12 @@ describe('iam-contents core', () => {
   it('returns detail and history payloads on successful reads', async () => {
     state.resolveContentActor.mockResolvedValue(actorResolution);
     state.readPathSegment.mockReturnValue('content-1');
-    state.loadContentById.mockResolvedValueOnce({ id: 'content-1', title: 'Startseite' });
+    state.loadContentDetail.mockResolvedValueOnce({ id: 'content-1', title: 'Startseite', history: [] });
 
     const detailResponse = await getContentInternal(new Request('http://localhost/api/v1/iam/contents/content-1'), ctx);
     expect(detailResponse.status).toBe(200);
     expect(await detailResponse.json()).toEqual({
-      data: { id: 'content-1', title: 'Startseite' },
+      data: { id: 'content-1', title: 'Startseite', history: [] },
       requestId: 'req-content',
     });
 
@@ -200,7 +203,7 @@ describe('iam-contents core', () => {
 
     state.resolveContentActor.mockResolvedValue(actorResolution);
     state.readPathSegment.mockReturnValueOnce('content-1');
-    state.loadContentById.mockRejectedValueOnce('db down');
+    state.loadContentDetail.mockRejectedValueOnce('db down');
     expect((await getContentInternal(new Request('http://localhost/api/v1/iam/contents/content-1'), ctx)).status).toBe(503);
 
     state.resolveContentActor.mockResolvedValue(actorResolution);
@@ -234,6 +237,7 @@ describe('iam-contents core', () => {
     state.loadContentListItems.mockResolvedValue([]);
     state.readPathSegment.mockReturnValue('content-1');
     state.loadContentById.mockResolvedValue({ id: 'content-1' });
+    state.loadContentDetail.mockResolvedValue({ id: 'content-1', history: [] });
     state.loadContentHistory.mockResolvedValue([]);
     state.createContentResponse.mockResolvedValue(new Response('created', { status: 201 }));
     state.updateContentResponse.mockResolvedValue(new Response('updated', { status: 200 }));

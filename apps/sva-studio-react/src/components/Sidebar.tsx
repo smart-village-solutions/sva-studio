@@ -229,6 +229,100 @@ const SidebarGroupContent = ({ item, pathname, onNavigate }: SidebarGroupContent
   </CollapsibleContent>
 );
 
+type SidebarNavItemProps = Readonly<{
+  item: SidebarItem;
+  pathname: string;
+  isCollapsed: boolean;
+  groupOpenState: Readonly<Record<string, boolean>>;
+  flyoutGroupId: string | null;
+  onNavigate?: () => void;
+  onToggleCollapsedGroup: (groupId: string) => void;
+  onToggleExpandedGroup: (groupId: string, open: boolean) => void;
+  onOpenFlyout: (groupId: string) => void;
+  onCloseFlyout: () => void;
+}>;
+
+const SidebarNavItem = ({
+  item,
+  pathname,
+  isCollapsed,
+  groupOpenState,
+  flyoutGroupId,
+  onNavigate,
+  onToggleCollapsedGroup,
+  onToggleExpandedGroup,
+  onOpenFlyout,
+  onCloseFlyout,
+}: SidebarNavItemProps) => {
+  if (item.kind === 'link') {
+    return (
+      <li key={item.id}>
+        <SidebarLeafLink
+          item={item}
+          isActive={isLeafActive(pathname, item)}
+          isCollapsed={isCollapsed}
+          onClick={onNavigate}
+        />
+      </li>
+    );
+  }
+
+  const isActive = isGroupActive(pathname, item);
+  const persistedOpen = groupOpenState[item.id];
+  const isExpanded = isCollapsed ? flyoutGroupId === item.id : persistedOpen ?? isActive;
+  const IconComponent = item.icon;
+  const handleBlurCapture = (event: React.FocusEvent<HTMLLIElement>) => {
+    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+      onCloseFlyout();
+    }
+  };
+
+  return (
+    <li
+      key={item.id}
+      className="relative"
+      onMouseEnter={isCollapsed ? () => onOpenFlyout(item.id) : undefined}
+      onMouseLeave={isCollapsed ? onCloseFlyout : undefined}
+      onBlurCapture={isCollapsed ? handleBlurCapture : undefined}
+    >
+      {isCollapsed ? (
+        <>
+          <button
+            type="button"
+            className={`${getLinkClasses(isActive || isExpanded, true)} w-full`}
+            aria-controls={`sidebar-group-${item.id}`}
+            aria-expanded={isExpanded}
+            aria-label={item.label}
+            title={item.label}
+            onClick={() => onToggleCollapsedGroup(item.id)}
+            onFocus={() => onOpenFlyout(item.id)}
+          >
+            <IconComponent className="h-5 w-5 shrink-0" />
+          </button>
+
+          {isExpanded ? (
+            <SidebarGroupFlyout item={item} pathname={pathname} onNavigate={onNavigate} closeFlyout={onCloseFlyout} />
+          ) : null}
+        </>
+      ) : (
+        <Collapsible open={isExpanded} onOpenChange={(open) => onToggleExpandedGroup(item.id, open)}>
+          <CollapsibleTrigger
+            className={`w-full ${getLinkClasses(isActive || isExpanded, false)}`}
+            aria-controls={`sidebar-group-${item.id}`}
+          >
+            <IconComponent className="h-5 w-5 shrink-0" />
+            <span className="truncate">{item.label}</span>
+            <span className="ml-auto inline-flex h-5 w-5 items-center justify-center text-muted-foreground">
+              {isExpanded ? <IconChevronDown className="h-4 w-4" /> : <IconChevronRight className="h-4 w-4" />}
+            </span>
+          </CollapsibleTrigger>
+          <SidebarGroupContent item={item} pathname={pathname} onNavigate={onNavigate} />
+        </Collapsible>
+      )}
+    </li>
+  );
+};
+
 const SidebarPanel = ({
   isLoading,
   sections,
@@ -246,14 +340,14 @@ const SidebarPanel = ({
   const [groupOpenState, setGroupOpenState] = React.useState<Record<string, boolean>>({});
   const [flyoutGroupId, setFlyoutGroupId] = React.useState<string | null>(null);
 
-  const toggleGroup = (groupId: string, isCollapsedGroup: boolean) => {
-    if (isCollapsedGroup) {
-      setFlyoutGroupId((current) => (current === groupId ? null : groupId));
-      return;
-    }
+  const toggleCollapsedGroup = (groupId: string) => {
+    setFlyoutGroupId((current) => (current === groupId ? null : groupId));
+  };
+
+  const toggleExpandedGroup = (groupId: string, open: boolean) => {
     setGroupOpenState((current) => ({
       ...current,
-      [groupId]: !(current[groupId] ?? false),
+      [groupId]: open,
     }));
   };
 
@@ -326,86 +420,21 @@ const SidebarPanel = ({
                     </p>
                   )}
                   <ul className="space-y-1">
-                    {section.items.map((item) => {
-                      if (item.kind === 'link') {
-                        return (
-                          <li key={item.id}>
-                            <SidebarLeafLink
-                              item={item}
-                              isActive={isLeafActive(pathname, item)}
-                              isCollapsed={isCollapsed}
-                              onClick={onNavigate}
-                            />
-                          </li>
-                        );
-                      }
-
-                      const isActive = isGroupActive(pathname, item);
-                      const persistedOpen = groupOpenState[item.id];
-                      const isExpanded = isCollapsed ? flyoutGroupId === item.id : persistedOpen ?? isActive;
-                      const IconComponent = item.icon;
-
-                      return (
-                        <li
-                          key={item.id}
-                          className="relative"
-                          onMouseEnter={isCollapsed ? () => setFlyoutGroupId(item.id) : undefined}
-                          onMouseLeave={isCollapsed ? closeFlyout : undefined}
-                          onBlurCapture={
-                            isCollapsed
-                              ? (event) => {
-                                  if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
-                                    closeFlyout();
-                                  }
-                                }
-                              : undefined
-                          }
-                        >
-                          {isCollapsed ? (
-                            <>
-                              <button
-                                type="button"
-                                className={`${getLinkClasses(isActive || isExpanded, true)} w-full`}
-                                aria-controls={`sidebar-group-${item.id}`}
-                                aria-expanded={isExpanded}
-                                aria-label={item.label}
-                                title={item.label}
-                                onClick={() => toggleGroup(item.id, true)}
-                                onFocus={() => setFlyoutGroupId(item.id)}
-                              >
-                                <IconComponent className="h-5 w-5 shrink-0" />
-                              </button>
-
-                              {isExpanded ? (
-                                <SidebarGroupFlyout
-                                  item={item}
-                                  pathname={pathname}
-                                  onNavigate={onNavigate}
-                                  closeFlyout={closeFlyout}
-                                />
-                              ) : null}
-                            </>
-                          ) : (
-                            <Collapsible
-                              open={isExpanded}
-                              onOpenChange={(open) => setGroupOpenState((current) => ({ ...current, [item.id]: open }))}
-                            >
-                              <CollapsibleTrigger
-                                className={`w-full ${getLinkClasses(isActive || isExpanded, false)}`}
-                                aria-controls={`sidebar-group-${item.id}`}
-                              >
-                                <IconComponent className="h-5 w-5 shrink-0" />
-                                <span className="truncate">{item.label}</span>
-                                <span className="ml-auto inline-flex h-5 w-5 items-center justify-center text-muted-foreground">
-                                  {isExpanded ? <IconChevronDown className="h-4 w-4" /> : <IconChevronRight className="h-4 w-4" />}
-                                </span>
-                              </CollapsibleTrigger>
-                              <SidebarGroupContent item={item} pathname={pathname} onNavigate={onNavigate} />
-                            </Collapsible>
-                          )}
-                        </li>
-                      );
-                    })}
+                    {section.items.map((item) => (
+                      <SidebarNavItem
+                        key={item.id}
+                        item={item}
+                        pathname={pathname}
+                        isCollapsed={isCollapsed}
+                        groupOpenState={groupOpenState}
+                        flyoutGroupId={flyoutGroupId}
+                        onNavigate={onNavigate}
+                        onToggleCollapsedGroup={toggleCollapsedGroup}
+                        onToggleExpandedGroup={toggleExpandedGroup}
+                        onOpenFlyout={setFlyoutGroupId}
+                        onCloseFlyout={closeFlyout}
+                      />
+                    ))}
                   </ul>
                 </section>
               ))}
@@ -416,18 +445,16 @@ const SidebarPanel = ({
       {showFooter ? (
         <div className="px-3 py-4">
           <ul className="space-y-1">
-            {footerItems.map((item) => {
-              return (
-                <li key={item.id}>
-                  <SidebarLeafLink
-                    item={item}
-                    isActive={isLeafActive(pathname, item)}
-                    isCollapsed={isCollapsed}
-                    onClick={onNavigate}
-                  />
-                </li>
-              );
-            })}
+            {footerItems.map((item) => (
+              <li key={item.id}>
+                <SidebarLeafLink
+                  item={item}
+                  isActive={isLeafActive(pathname, item)}
+                  isCollapsed={isCollapsed}
+                  onClick={onNavigate}
+                />
+              </li>
+            ))}
           </ul>
         </div>
       ) : null}
@@ -452,7 +479,7 @@ export default function Sidebar({ isLoading = false, isMobileOpen = false, onMob
   const [hasLoadedCollapsePreference, setHasLoadedCollapsePreference] = React.useState(false);
 
   React.useEffect(() => {
-    if (typeof globalThis.window === 'undefined') {
+    if (globalThis.window === undefined) {
       return;
     }
     setIsCollapsed(globalThis.window.localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY) === '1');
@@ -460,7 +487,7 @@ export default function Sidebar({ isLoading = false, isMobileOpen = false, onMob
   }, []);
 
   React.useEffect(() => {
-    if (typeof globalThis.window === 'undefined' || hasLoadedCollapsePreference === false) {
+    if (globalThis.window === undefined || hasLoadedCollapsePreference === false) {
       return;
     }
     globalThis.window.localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, isCollapsed ? '1' : '0');

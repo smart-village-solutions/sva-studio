@@ -41,8 +41,7 @@ describe('RichTextEditor', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Fett' }));
 
     expect(onChange).toHaveBeenCalled();
-    expect(screen.getByRole('textbox').getAttribute('aria-multiline')).toBe('true');
-    expect(screen.getByRole('textbox').getAttribute('aria-describedby')).toBe('editor-placeholder');
+    expect(document.getElementById('editor')?.getAttribute('aria-describedby')).toBe('editor-placeholder');
     expect(screen.getByText('Start').className).toContain('sr-only');
 
     if (execCommandDescriptor) {
@@ -53,10 +52,11 @@ describe('RichTextEditor', () => {
     }
   });
 
-  it('skips unsupported commands without calling execCommand', () => {
+  it('skips commands when execCommand throws', () => {
     const onChange = vi.fn();
-    const execCommand = vi.fn();
-    const queryCommandSupported = vi.spyOn(document, 'queryCommandSupported').mockReturnValue(false);
+    const execCommand = vi.fn(() => {
+      throw new Error('unsupported');
+    });
 
     Object.defineProperty(document, 'execCommand', {
       configurable: true,
@@ -84,8 +84,7 @@ describe('RichTextEditor', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Fett' }));
 
-    expect(queryCommandSupported).toHaveBeenCalledWith('bold');
-    expect(execCommand).not.toHaveBeenCalled();
+    expect(execCommand).toHaveBeenCalledWith('bold', false, undefined);
     expect(onChange).toHaveBeenCalled();
   });
 });

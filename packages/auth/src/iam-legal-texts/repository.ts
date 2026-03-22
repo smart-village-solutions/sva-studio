@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 import type { IamLegalTextListItem, IamPendingLegalTextItem } from '@sva/core';
 
 import { emitActivityLog, withInstanceScopedDb } from '../iam-account-management/shared.js';
@@ -44,6 +46,50 @@ type UpdateLegalTextInput = {
   contentHtml?: string;
   status?: 'draft' | 'valid' | 'archived';
   publishedAt?: string;
+};
+
+const LEGAL_TEXT_ID_FALLBACK = 'legal_text';
+const LEGAL_TEXT_ID_HASH_LENGTH = 12;
+const LEGAL_TEXT_ID_MAX_BASE_LENGTH = 48;
+
+const isAsciiLetterOrDigit = (character: string): boolean => {
+  const codePoint = character.charCodeAt(0);
+  return (
+    (codePoint >= 48 && codePoint <= 57) ||
+    (codePoint >= 65 && codePoint <= 90) ||
+    (codePoint >= 97 && codePoint <= 122)
+  );
+};
+
+const deriveLegalTextIdBase = (value: string): string => {
+  let result = '';
+  let previousWasSeparator = false;
+
+  for (const character of value.trim().toLowerCase()) {
+    if (isAsciiLetterOrDigit(character)) {
+      if (result.length >= LEGAL_TEXT_ID_MAX_BASE_LENGTH) {
+        break;
+      }
+      result += character;
+      previousWasSeparator = false;
+      continue;
+    }
+
+    if (!previousWasSeparator && result.length > 0 && result.length < LEGAL_TEXT_ID_MAX_BASE_LENGTH) {
+      result += '_';
+      previousWasSeparator = true;
+    }
+  }
+
+  return previousWasSeparator ? result.slice(0, -1) : result;
+};
+
+const deriveLegalTextId = (name: string): string => {
+  const trimmedName = name.trim();
+  const base = deriveLegalTextIdBase(trimmedName);
+  const hashSuffix = createHash('sha256').update(trimmedName).digest('hex').slice(0, LEGAL_TEXT_ID_HASH_LENGTH);
+
+  return `${base || LEGAL_TEXT_ID_FALLBACK}_${hashSuffix}`;
 };
 
 const mapLegalTextListItem = (row: LegalTextRow): IamLegalTextListItem => ({
@@ -168,6 +214,18 @@ export const createLegalTextVersion = async (input: CreateLegalTextInput): Promi
     const sanitizedContentHtml = sanitizeLegalTextHtml(input.contentHtml);
     const derivedContentHash = hashLegalTextHtml(sanitizedContentHtml);
     const isActive = input.status === 'valid';
+    const existingVersion = await client.query<{ legal_text_id: string }>(
+      `
+SELECT legal_text_id
+FROM iam.legal_text_versions
+WHERE instance_id = $1
+  AND name = $2
+ORDER BY updated_at DESC, created_at DESC
+LIMIT 1;
+`,
+      [input.instanceId, input.name]
+    );
+    const legalTextId = existingVersion.rows[0]?.legal_text_id ?? deriveLegalTextId(input.name);
     const insert = await client.query<{ id: string }>(
       `
 WITH generated AS (
@@ -189,7 +247,6 @@ INSERT INTO iam.legal_text_versions (
 SELECT
   generated.id,
   $1,
-  generated.id::text,
   $2,
   $3,
   $4,
@@ -204,6 +261,7 @@ RETURNING id;
 `,
       [
         input.instanceId,
+        legalTextId,
         input.name,
         input.legalTextVersion,
         input.locale,

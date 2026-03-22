@@ -260,14 +260,20 @@ describe('iam-legal-texts handlers', () => {
       if (text.includes('FROM iam.idempotency_keys')) {
         return { rowCount: 0, rows: [] };
       }
+      if (text.includes('SELECT legal_text_id') && text.includes('FROM iam.legal_text_versions')) {
+        expect(values).toEqual(['de-musterhausen', 'Terms of Use']);
+        return { rowCount: 0, rows: [] };
+      }
       if (text.includes('INSERT INTO iam.legal_text_versions')) {
         expect(values?.[0]).toBe('de-musterhausen');
-        expect(values?.[1]).toBe('Terms of Use');
-        expect(values?.[2]).toBe('2026-04');
-        expect(values?.[3]).toBe('en-GB');
-        expect(values?.[4]).toBe('<p>Terms of use</p>');
+        expect(values?.[1]).toBe('terms_of_use_12a0015fa322');
+        expect(values?.[2]).toBe('Terms of Use');
+        expect(values?.[3]).toBe('2026-04');
+        expect(values?.[4]).toBe('en-GB');
+        expect(values?.[5]).toBe('<p>Terms of use</p>');
         expect(values).toEqual([
           'de-musterhausen',
+          'terms_of_use_12a0015fa322',
           'Terms of Use',
           '2026-04',
           'en-GB',
@@ -328,6 +334,48 @@ describe('iam-legal-texts handlers', () => {
     });
     expect(state.queryLog.some((entry) => entry.text.includes('INSERT INTO iam.idempotency_keys'))).toBe(true);
     expect(state.queryLog.some((entry) => entry.text.includes('UPDATE iam.idempotency_keys'))).toBe(true);
+  });
+
+  it('reuses the existing legal_text_id when creating a new version for the same legal text name', async () => {
+    state.queryHandler = (text, values) => {
+      if (resolveActorAccountQuery(text)) {
+        return { rowCount: 1, rows: [{ account_id: 'account-1' }] };
+      }
+      if (text.includes('FROM iam.idempotency_keys')) {
+        return { rowCount: 0, rows: [] };
+      }
+      if (text.includes('SELECT legal_text_id') && text.includes('FROM iam.legal_text_versions')) {
+        expect(values).toEqual(['de-musterhausen', 'Privacy Policy']);
+        return { rowCount: 1, rows: [{ legal_text_id: 'privacy_policy_existing' }] };
+      }
+      if (text.includes('INSERT INTO iam.legal_text_versions')) {
+        expect(values?.[1]).toBe('privacy_policy_existing');
+        return { rowCount: 1, rows: [{ id: legalTextRow.id }] };
+      }
+      if (text.includes('FROM iam.legal_text_versions version')) {
+        return { rowCount: 1, rows: [legalTextRow] };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await createLegalTextHandler(
+      new Request('http://localhost:3000/api/v1/iam/legal-texts', {
+        method: 'POST',
+        headers: {
+          ...jsonHeaders,
+          'Idempotency-Key': 'idem-legal-text-reuse-id',
+        },
+        body: JSON.stringify({
+          name: 'Privacy Policy',
+          legalTextVersion: '2026-04',
+          locale: 'de-DE',
+          contentHtml: '<p>Updated policy</p>',
+          status: 'draft',
+        }),
+      })
+    );
+
+    expect(response.status).toBe(201);
   });
 
   it('updates an existing legal text version', async () => {
@@ -451,6 +499,9 @@ describe('iam-legal-texts handlers', () => {
       }
       if (text.includes('FROM iam.idempotency_keys')) {
         return { rowCount: 0, rows: [] };
+      }
+      if (text.includes('SELECT legal_text_id') && text.includes('FROM iam.legal_text_versions')) {
+        return { rowCount: 1, rows: [{ legal_text_id: 'privacy_policy_existing' }] };
       }
       if (text.includes('INSERT INTO iam.legal_text_versions')) {
         return { rowCount: 0, rows: [] };
@@ -721,6 +772,9 @@ describe('iam-legal-texts handlers', () => {
         return { rowCount: 1, rows: [{ account_id: 'account-1' }] };
       }
       if (text.includes('FROM iam.idempotency_keys')) {
+        return { rowCount: 0, rows: [] };
+      }
+      if (text.includes('SELECT legal_text_id') && text.includes('FROM iam.legal_text_versions')) {
         return { rowCount: 0, rows: [] };
       }
       if (text.includes('INSERT INTO iam.legal_text_versions')) {

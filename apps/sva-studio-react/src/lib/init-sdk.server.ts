@@ -28,6 +28,7 @@ export async function ensureSdkInitialized() {
     enableOtel: false,
   });
   const bootstrapTimeoutMs = Number.parseInt(process.env.SVA_OTEL_BOOTSTRAP_TIMEOUT_MS ?? '5000', 10);
+  let bootstrapTimeoutHandle: ReturnType<typeof setTimeout> | undefined;
 
   sdk.getInstanceConfig();
 
@@ -35,9 +36,10 @@ export async function ensureSdkInitialized() {
     await Promise.race([
       sdk.initializeOtelSdk(),
       new Promise((_, reject) => {
-        setTimeout(() => {
+        bootstrapTimeoutHandle = setTimeout(() => {
           reject(new Error(`SDK initialization timed out after ${bootstrapTimeoutMs}ms`));
         }, bootstrapTimeoutMs);
+        bootstrapTimeoutHandle.unref?.();
       }),
     ]);
     sdkInitialized = true;
@@ -49,5 +51,9 @@ export async function ensureSdkInitialized() {
       error_type: error instanceof Error ? error.constructor.name : 'unknown',
     });
     // Nicht werfen - App soll auch ohne SDK laufen
+  } finally {
+    if (bootstrapTimeoutHandle) {
+      clearTimeout(bootstrapTimeoutHandle);
+    }
   }
 }

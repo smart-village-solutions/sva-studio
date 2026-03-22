@@ -1,5 +1,6 @@
-import { createSdkLogger } from '@sva/sdk/server';
+import { createSdkLogger, getWorkspaceContext } from '@sva/sdk/server';
 
+import { createApiError } from './iam-account-management/api-helpers.js';
 import { withInstanceScopedDb } from './iam-account-management/shared.js';
 
 const logger = createSdkLogger({ component: 'iam-legal-compliance', level: 'info' });
@@ -46,6 +47,8 @@ export const withLegalTextCompliance = async (
   keycloakSubject: string,
   handler: () => Promise<Response>
 ): Promise<Response> => {
+  const requestId = getWorkspaceContext().requestId;
+
   try {
     const check = await checkPendingLegalAcceptances(instanceId, keycloakSubject);
 
@@ -56,9 +59,12 @@ export const withLegalTextCompliance = async (
         pending_count: check.pendingCount,
       });
 
-      return new Response(
-        JSON.stringify({ error: { code: 'legal_acceptance_required', pendingCount: check.pendingCount } }),
-        { status: 403, headers: { 'Content-Type': 'application/json' } }
+      return createApiError(
+        403,
+        'legal_acceptance_required',
+        'Vor der weiteren Nutzung müssen ausstehende Rechtstexte akzeptiert werden.',
+        requestId,
+        { pending_count: check.pendingCount }
       );
     }
 
@@ -69,9 +75,11 @@ export const withLegalTextCompliance = async (
       instance_id: instanceId,
       error: error instanceof Error ? error.message : String(error),
     });
-    return new Response(JSON.stringify({ error: { code: 'database_unavailable' } }), {
-      status: 503,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return createApiError(
+      503,
+      'database_unavailable',
+      'Rechtstext-Prüfung ist vorübergehend nicht verfügbar.',
+      requestId
+    );
   }
 };

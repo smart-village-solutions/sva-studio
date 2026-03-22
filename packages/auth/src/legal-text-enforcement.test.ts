@@ -49,8 +49,16 @@ describe('withLegalTextCompliance', () => {
     expect(response.status).toBe(403);
 
     const body = await response.json();
-    expect(body.error.code).toBe('legal_acceptance_required');
-    expect(body.error.pendingCount).toBe(2);
+    expect(body).toEqual({
+      error: {
+        code: 'legal_acceptance_required',
+        message: 'Vor der weiteren Nutzung müssen ausstehende Rechtstexte akzeptiert werden.',
+        details: {
+          pending_count: 2,
+        },
+      },
+      requestId: 'req-x',
+    });
   });
 
   it('enthält Content-Type application/json im 403', async () => {
@@ -70,7 +78,13 @@ describe('withLegalTextCompliance', () => {
 
     expect(handler).not.toHaveBeenCalled();
     expect(response.status).toBe(503);
-    expect(await response.json()).toEqual({ error: { code: 'database_unavailable' } });
+    expect(await response.json()).toEqual({
+      error: {
+        code: 'database_unavailable',
+        message: 'Rechtstext-Prüfung ist vorübergehend nicht verfügbar.',
+      },
+      requestId: 'req-x',
+    });
   });
 
   it('gibt handler-Response weiter wenn kein Fehler', async () => {
@@ -112,6 +126,12 @@ describe('withLegalTextCompliance — Non-Error-Throw', () => {
 
     expect(handler).not.toHaveBeenCalled();
     expect(response.status).toBe(503);
-    expect(await response.json()).toEqual({ error: { code: 'database_unavailable' } });
+    expect(await response.json()).toEqual({
+      error: {
+        code: 'database_unavailable',
+        message: 'Rechtstext-Prüfung ist vorübergehend nicht verfügbar.',
+      },
+      requestId: 'req-x',
+    });
   });
 });

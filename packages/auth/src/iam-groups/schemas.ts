@@ -1,8 +1,6 @@
 import { z } from 'zod';
 
-const UUID_LIKE_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-const uuidLikeString = () => z.string().regex(UUID_LIKE_PATTERN, 'roleId muss eine gültige ID sein');
+import { uuidLikeString } from '../shared/validators.js';
 
 export const groupKeySchema = z
   .string()
@@ -25,7 +23,7 @@ export const updateGroupSchema = z.object({
 });
 
 export const assignGroupRoleSchema = z.object({
-  roleId: uuidLikeString(),
+  roleId: uuidLikeString('roleId muss eine gültige ID sein'),
 });
 
 export const assignGroupMembershipSchema = z.object({

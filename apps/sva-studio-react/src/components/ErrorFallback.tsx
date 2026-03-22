@@ -14,9 +14,17 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
  */
 export default function ErrorFallback({ error, reset }: Readonly<ErrorComponentProps>) {
   const router = useRouter();
+  const metaEnv = import.meta as ImportMeta & {
+    env?: {
+      DEV?: boolean;
+      VITE_ENABLE_ERROR_DEBUG_DETAILS?: string;
+    };
+  };
   const isLocalDebugHost =
     typeof window !== 'undefined' &&
     (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+  const debugDetailsEnabled = metaEnv.env?.DEV === true || metaEnv.env?.VITE_ENABLE_ERROR_DEBUG_DETAILS === 'true';
+  const shouldShowDebugDetails = isLocalDebugHost && debugDetailsEnabled;
   const debugErrorMessage = error instanceof Error ? error.message : String(error ?? '');
   const debugErrorStack = error instanceof Error ? error.stack ?? null : null;
 
@@ -27,7 +35,7 @@ export default function ErrorFallback({ error, reset }: Readonly<ErrorComponentP
 
   // Fehler nur in Development loggen; in Produktion wird der Fehler
   // über das zentrale Error-Tracking (OTel/SDK) erfasst.
-  if ((import.meta.env.DEV || isLocalDebugHost) && error) {
+  if (metaEnv.env?.DEV === true && error) {
     console.error('[ErrorFallback]', error);
   }
 
@@ -50,7 +58,7 @@ export default function ErrorFallback({ error, reset }: Readonly<ErrorComponentP
               <Link to="/">{t('shared.errorFallback.home')}</Link>
             </Button>
           </div>
-          {isLocalDebugHost && debugErrorMessage ? (
+          {shouldShowDebugDetails && debugErrorMessage ? (
             <div className="rounded-md border border-border bg-muted/40 p-4 text-left">
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Lokale Diagnose</p>
               <pre className="mt-2 whitespace-pre-wrap break-words text-xs text-foreground">{debugErrorMessage}</pre>

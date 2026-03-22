@@ -21,6 +21,17 @@ test('bootstrap script validates usernames and uses identifier-safe grants', () 
 
   assert.match(script, /IAM_DATABASE_URL username must match \^\[a-zA-Z0-9_\]\{1,63\}\$\./);
   assert.match(script, /-v app_user="\$\{app_user\}" -v app_password="\$\{app_password\}"/);
-  assert.match(script, /EXECUTE format\('GRANT iam_app TO %I', v_app_user\)/);
+  assert.match(script, /GRANT iam_app TO :"app_user";/);
+  assert.match(script, /\\if :role_exists/);
+  assert.doesNotMatch(script, /DO \\\$\\\$/);
   assert.doesNotMatch(script, /GRANT iam_app TO "\$\{app_user\}"/);
+});
+
+test('migration script supports profile-specific postgres targets', () => {
+  const script = readRepoFile('data/scripts/run-migrations.sh');
+
+  assert.match(script, /POSTGRES_SERVICE="\$\{POSTGRES_SERVICE:-postgres\}"/);
+  assert.match(script, /SVA_LOCAL_POSTGRES_CONTAINER_NAME="\$\{SVA_LOCAL_POSTGRES_CONTAINER_NAME:-\}"/);
+  assert.match(script, /docker exec -i "\$\{SVA_LOCAL_POSTGRES_CONTAINER_NAME\}" psql/);
+  assert.match(script, /docker compose exec -T "\$\{POSTGRES_SERVICE\}" psql/);
 });

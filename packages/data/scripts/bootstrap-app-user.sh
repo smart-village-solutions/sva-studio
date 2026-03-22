@@ -39,27 +39,17 @@ if ! [[ "${app_user}" =~ ^[a-zA-Z0-9_]{1,63}$ ]]; then
 fi
 
 "${postgres_exec[@]}" -v ON_ERROR_STOP=1 -v app_user="${app_user}" -v app_password="${app_password}" -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" <<'SQL'
-DO \$\$
-DECLARE
-  v_app_user text := :'app_user';
-  v_app_password text := :'app_password';
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = v_app_user) THEN
-    EXECUTE format(
-      'CREATE ROLE %I LOGIN PASSWORD %L NOSUPERUSER NOCREATEDB NOCREATEROLE INHERIT',
-      v_app_user,
-      v_app_password
-    );
-  ELSE
-    EXECUTE format('ALTER ROLE %I WITH LOGIN INHERIT PASSWORD %L', v_app_user, v_app_password);
-  END IF;
+SELECT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'app_user') AS role_exists \gset
+\if :role_exists
+ALTER ROLE :"app_user" WITH LOGIN INHERIT PASSWORD :'app_password';
+\else
+CREATE ROLE :"app_user" LOGIN PASSWORD :'app_password' NOSUPERUSER NOCREATEDB NOCREATEROLE INHERIT;
+\endif
 
-  EXECUTE format('GRANT iam_app TO %I', v_app_user);
-  EXECUTE format('GRANT USAGE ON SCHEMA iam TO %I', v_app_user);
-  EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA iam TO %I', v_app_user);
-  EXECUTE format('GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA iam TO %I', v_app_user);
-END
-\$\$;
+GRANT iam_app TO :"app_user";
+GRANT USAGE ON SCHEMA iam TO :"app_user";
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA iam TO :"app_user";
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA iam TO :"app_user";
 SQL
 
 echo "Bootstrap for app DB user '${app_user}' completed."

@@ -5,7 +5,7 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  h3: 2.0.1-rc.16
+  h3: 2.0.1-rc.2
   minimatch: 10.2.3
   axios: 1.13.5
   rollup: 4.59.0
@@ -4001,6 +4001,15 @@ packages:
       crossws:
         optional: true
 
+  h3@2.0.1-rc.2:
+    resolution: {integrity: sha512-2vS7OETzPDzGQxmmcs6ttu7p0NW25zAdkPXYOr43dn4GZf81uUljJvupa158mcpUGpsQUqIy4O4THWUQT1yVeA==}
+    engines: {node: '>=20.11.1'}
+    peerDependencies:
+      crossws: ^0.4.1
+    peerDependenciesMeta:
+      crossws:
+        optional: true
+
   happy-dom@20.8.4:
     resolution: {integrity: sha512-GKhjq4OQCYB4VLFBzv8mmccUadwlAusOZOI7hC1D9xDIT5HhzkJK17c4el2f6R6C715P9xB4uiMxeKUa2nHMwQ==}
     engines: {node: '>=20.0.0'}
@@ -4855,6 +4864,9 @@ packages:
     resolution: {integrity: sha512-2oMpl67a3zCH9H79LeMcbDhXW/UmWG/y2zuqnF2jQq5uq9TbM9TVyXvA4+t+ne2IIkBdrLpAaRQAvo7YI/Yyeg==}
     engines: {node: '>=18.0.0', npm: '>=8.0.0'}
     hasBin: true
+
+  rou3@0.7.12:
+    resolution: {integrity: sha512-iFE4hLDuloSWcD7mjdCDhx2bKcIsYbtOTpfH5MHHLSKMOUyjqQXTeZVa289uuwEGEKFoE/BAPbhaU4B774nceg==}
 
   rou3@0.8.1:
     resolution: {integrity: sha512-ePa+XGk00/3HuCqrEnK3LxJW7I0SdNg6EFzKUJG73hMAdDcOUC/i/aSz7LSDwLrGr33kal/rqOGydzwl6U7zBA==}
@@ -9573,6 +9585,15 @@ snapshots:
     optionalDependencies:
       crossws: 0.4.4(srvx@0.8.16)
 
+  h3@2.0.1-rc.2(crossws@0.4.4(srvx@0.8.16)):
+    dependencies:
+      cookie-es: 2.0.0
+      fetchdts: 0.1.7
+      rou3: 0.7.12
+      srvx: 0.8.16
+    optionalDependencies:
+      crossws: 0.4.4(srvx@0.8.16)
+
   happy-dom@20.8.4:
     dependencies:
       '@types/node': 25.5.0
@@ -10001,7 +10022,7 @@ snapshots:
       db0: 0.3.4
       esbuild: 0.25.12
       fetchdts: 0.1.7
-      h3: 2.0.1-rc.16(crossws@0.4.4(srvx@0.8.16))
+      h3: 2.0.1-rc.2(crossws@0.4.4(srvx@0.8.16))
       jiti: 2.6.1
       nf3: 0.1.12
       ofetch: 1.5.1
@@ -10495,6 +10516,8 @@ snapshots:
       '@rollup/rollup-win32-x64-gnu': 4.59.0
       '@rollup/rollup-win32-x64-msvc': 4.59.0
       fsevents: 2.3.3
+
+  rou3@0.7.12: {}
 
   rou3@0.8.1: {}
 

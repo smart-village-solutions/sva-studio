@@ -49,8 +49,8 @@ If credentials are not already configured, authenticate explicitly:
 kcadm.sh config credentials \
   --server http://127.0.0.1:8080 \
   --realm master \
-  --user <admin-user> \
-  --password '<password>' \
+  --user "$ADMIN_USER" \
+  --password "$ADMIN_PASSWORD" \
   --config /tmp/kcadm.config
 ```
 
@@ -61,14 +61,14 @@ kcadm.sh config credentials \
   --server http://127.0.0.1:8080 \
   --realm master \
   --client admin-cli \
-  --client-secret '<secret>' \
+  --client-secret "$ADMIN_CLIENT_SECRET" \
   --config /tmp/kcadm.config
 ```
 
 If the server uses a non-public CA, configure a truststore before the first authenticated call:
 
 ```bash
-kcadm.sh config truststore --trustpass '<password>' ~/.keycloak/truststore.jks
+kcadm.sh config truststore --trustpass "$TRUSTSTORE_PASSWORD" ~/.keycloak/truststore.jks
 ```
 
 If tokens must not be written to disk, use `--no-config` and pass auth data on each invocation.
@@ -79,9 +79,9 @@ Inspect realms and query the relevant resource before changing anything:
 
 ```bash
 kcadm.sh get realms --config /tmp/kcadm.config
-kcadm.sh get users -r <realm> -q username=<username> --config /tmp/kcadm.config
-kcadm.sh get clients -r <realm> -q clientId=<client-id> --config /tmp/kcadm.config
-kcadm.sh get groups -r <realm> --config /tmp/kcadm.config
+kcadm.sh get users -r "$REALM" -q username="$USERNAME" --config /tmp/kcadm.config
+kcadm.sh get clients -r "$REALM" -q clientId="$CLIENT_ID" --config /tmp/kcadm.config
+kcadm.sh get groups -r "$REALM" --config /tmp/kcadm.config
 ```
 
 When you need an ID for a later mutation, extract it with `jq` instead of hardcoding assumptions.
@@ -91,9 +91,9 @@ When you need an ID for a later mutation, extract it with `jq` instead of hardco
 Use single-purpose commands and explicit field assignments:
 
 ```bash
-kcadm.sh create users -r <realm> -s username=<username> -s enabled=true --config /tmp/kcadm.config
-kcadm.sh update users/<user-id> -r <realm> -s firstName=Max -s lastName=Mustermann --config /tmp/kcadm.config
-kcadm.sh set-password -r <realm> --username <username> --new-password '<password>' --temporary --config /tmp/kcadm.config
+kcadm.sh create users -r "$REALM" -s username="$USERNAME" -s enabled=true --config /tmp/kcadm.config
+kcadm.sh update "users/$USER_ID" -r "$REALM" -s firstName=Max -s lastName=Mustermann --config /tmp/kcadm.config
+kcadm.sh set-password -r "$REALM" --username "$USERNAME" --new-password "$NEW_PASSWORD" --temporary --config /tmp/kcadm.config
 ```
 
 For more complex changes, prefer a checked JSON payload over long inline `-s` chains.
@@ -103,8 +103,9 @@ For more complex changes, prefer a checked JSON payload over long inline `-s` ch
 Always re-read the changed object and summarize the resulting state:
 
 ```bash
-kcadm.sh get users/<user-id> -r <realm> --config /tmp/kcadm.config
-kcadm.sh get clients/<client-id> -r <realm> --config /tmp/kcadm.config
+kcadm.sh get "users/$USER_ID" -r "$REALM" --config /tmp/kcadm.config
+kcadm.sh get clients -r "$REALM" -q clientId="$CLIENT_ID" --config /tmp/kcadm.config
+kcadm.sh get "clients/$CLIENT_UUID" -r "$REALM" --config /tmp/kcadm.config
 ```
 
 ## Built-in Helper Commands
@@ -139,11 +140,11 @@ See [common-patterns.md](./references/common-patterns.md) for compact examples c
 
 ## This Repository
 
-In this repo, Keycloak-related local work usually falls into two runtime profiles:
+In this repo, Keycloak-related local work usually falls into two runtime profiles. See also [runtime-profile-betrieb.md](../../../docs/development/runtime-profile-betrieb.md):
 
-- default local profile via [local-keycloak.vars](/Users/wilimzig/Documents/Projects/SVA/sva-studio/config/runtime/local-keycloak.vars)
+- default local profile via [`config/runtime/local-keycloak.vars`](../../../config/runtime/local-keycloak.vars)
   uses realm `svs-intern-studio-staging`
-- HB local profile via [local-keycloak.hb.local.vars](/Users/wilimzig/Documents/Projects/SVA/sva-studio/config/runtime/local-keycloak.hb.local.vars)
+- HB local profile via optional local override [`config/runtime/local-keycloak.hb.local.vars`](../../../config/runtime/local-keycloak.hb.local.vars)
   uses realm `saas-hb-meinquartier`
 
 Useful entry points:

@@ -12,7 +12,7 @@ import {
 } from './redis-session.server';
 import type { Session } from './types';
 import { getRedisClient, closeRedis } from './redis.server';
-import { ensureRedisAvailabilityChecked } from './redis-test-guard.test-utils.js';
+import { ensureRedisAvailabilityChecked } from '../test-utils/redis-test-guard.js';
 
 const envBackup = { ...process.env };
 const currentTestKeyPrefix = (): string =>

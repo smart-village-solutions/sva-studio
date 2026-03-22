@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
 import { createSession, getSession } from './redis-session.server';
 import { closeRedis, getRedisClient } from './redis.server';
 import type { Session } from './types';
-import { ensureRedisAvailabilityChecked } from './redis-test-guard.test-utils.js';
+import { ensureRedisAvailabilityChecked } from '../test-utils/redis-test-guard.js';
 
 const envBackup = { ...process.env };
 const currentTestKeyPrefix = (): string =>

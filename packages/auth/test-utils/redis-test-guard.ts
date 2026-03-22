@@ -1,4 +1,4 @@
-import { closeRedis, getLastRedisError, isRedisAvailable } from './redis.server.js';
+import { closeRedis, getLastRedisError, isRedisAvailable } from '../src/redis.server.js';
 
 let redisAvailable: boolean | undefined;
 

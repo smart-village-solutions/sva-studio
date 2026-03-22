@@ -5,7 +5,7 @@ set -eu
 PORT="${1:?port required}"
 ATTEMPT=1
 MAX_ATTEMPTS=2
-READY_TIMEOUT_SECONDS=120
+READY_TIMEOUT_SECONDS=30
 POLL_INTERVAL_SECONDS=1
 BASE_URL="http://127.0.0.1:${PORT}"
 
@@ -26,12 +26,7 @@ wait_for_server_readiness() {
     fi
 
     if curl -fsS "${BASE_URL}/@vite/client" >/dev/null 2>&1; then
-      STATUS_CODE="$(curl -sS -o /dev/null -w '%{http_code}' "${BASE_URL}/" || true)"
-      case "$STATUS_CODE" in
-        2??|3??)
-          return 0
-          ;;
-      esac
+      return 0
     fi
 
     sleep "$POLL_INTERVAL_SECONDS"
@@ -44,13 +39,14 @@ wait_for_server_readiness() {
 
 while [ "$ATTEMPT" -le "$MAX_ATTEMPTS" ]; do
   set +e
-  pnpm exec vite dev --port "$PORT" &
+  pnpm exec vite dev --host 127.0.0.1 --port "$PORT" &
   SERVER_PID=$!
   set -e
 
   trap cleanup EXIT INT TERM
 
   if wait_for_server_readiness; then
+    trap - EXIT INT TERM
     wait "$SERVER_PID"
     STATUS=$?
   else

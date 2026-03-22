@@ -11,7 +11,7 @@ const loadGuard = async () => {
     getLastRedisError: getLastRedisErrorMock,
     isRedisAvailable: isRedisAvailableMock,
   }));
-  return import('./redis-test-guard.test-utils.js');
+  return import('../test-utils/redis-test-guard.js');
 };
 
 describe('ensureRedisAvailabilityChecked', () => {

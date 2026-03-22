@@ -73,7 +73,7 @@ describe('translate', () => {
 
       setActiveLocale('en');
 
-      expect(getActiveLocale()).toBe('de');
+      expect(getActiveLocale()).toBe(previousActiveLocale);
     } finally {
       vi.unstubAllGlobals();
       setActiveLocale(previousActiveLocale);

@@ -3,7 +3,7 @@ import { serialize as serializeCookie, parse as parseCookie } from 'cookie-es';
 import type { Session } from './types';
 import { createSession, getSession } from './session';
 import { closeRedis } from './redis.server';
-import { ensureRedisAvailabilityChecked } from './redis-test-guard.test-utils.js';
+import { ensureRedisAvailabilityChecked } from '../test-utils/redis-test-guard.js';
 
 /**
  * E2E-Test für Cookie-Transport-Flow:

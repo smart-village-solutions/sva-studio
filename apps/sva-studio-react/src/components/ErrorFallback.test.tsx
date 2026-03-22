@@ -2,8 +2,6 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import ErrorFallback from './ErrorFallback';
-
 const invalidateMock = vi.fn();
 const consoleErrorMock = vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
@@ -29,9 +27,15 @@ beforeEach(() => {
   window.history.replaceState({}, '', '/');
 });
 
+const importErrorFallback = async () => {
+  const mod = await import('./ErrorFallback');
+  return mod.default;
+};
+
 describe('ErrorFallback', () => {
-  it('renders the localized fallback and retries via router invalidation', () => {
+  it('renders the localized fallback and retries via router invalidation', async () => {
     const resetMock = vi.fn();
+    const ErrorFallback = await importErrorFallback();
 
     render(<ErrorFallback error={new Error('kaputt')} reset={resetMock} info={{ componentStack: '' }} />);
 
@@ -42,8 +46,10 @@ describe('ErrorFallback', () => {
     expect(invalidateMock).toHaveBeenCalledTimes(1);
   });
 
-  it('shows debug details only with explicit opt-in on local hosts', () => {
+  it('shows debug details only with explicit opt-in on local hosts', async () => {
+    vi.resetModules();
     vi.stubEnv('VITE_ENABLE_ERROR_DEBUG_DETAILS', 'true');
+    const ErrorFallback = await importErrorFallback();
 
     render(
       <ErrorFallback error={new Error('debug details')} reset={vi.fn()} info={{ componentStack: '' }} />

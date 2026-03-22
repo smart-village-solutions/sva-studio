@@ -3,7 +3,7 @@ import { defineConfig } from '@playwright/test';
 
 const appRoot = fileURLToPath(new URL('./', import.meta.url));
 const configuredPort = process.env.PLAYWRIGHT_PORT ?? '3000';
-const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? `http://localhost:${configuredPort}`;
+const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? `http://127.0.0.1:${configuredPort}`;
 const webServerReadyURL = new URL('/@vite/client', baseURL).toString();
 const parsedBaseURL = new URL(baseURL);
 const webServerPort = parsedBaseURL.port || (parsedBaseURL.protocol === 'https:' ? '443' : '80');

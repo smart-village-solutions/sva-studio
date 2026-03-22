@@ -1,4 +1,4 @@
-import { it, expect, afterAll } from 'vitest';
+import { describe, it, expect, afterAll } from 'vitest';
 import type { Session } from './types';
 import { createSession, getSession, deleteSession, getSessionCount } from './redis-session.server';
 import { closeRedis } from './redis.server';

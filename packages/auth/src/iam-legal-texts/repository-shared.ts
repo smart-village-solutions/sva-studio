@@ -53,7 +53,7 @@ export type UpdateLegalTextInput = {
   publishedAt?: string;
 };
 
-export type InstanceScopedClient = Parameters<Parameters<typeof withInstanceScopedDb>[1]>[0];
+type InstanceScopedClient = Parameters<Parameters<typeof withInstanceScopedDb>[1]>[0];
 
 const LEGAL_TEXT_ID_FALLBACK = 'legal_text';
 const LEGAL_TEXT_ID_HASH_LENGTH = 12;
@@ -198,25 +198,6 @@ export const mapPendingLegalTextItem = (row: PendingLegalTextRow): IamPendingLeg
   contentHtml: row.content_html,
   ...(row.published_at ? { publishedAt: row.published_at } : {}),
 });
-
-export const loadLegalTextByIdWithClient = async (
-  client: InstanceScopedClient,
-  instanceId: string,
-  legalTextVersionId: string
-): Promise<IamLegalTextListItem | undefined> => {
-  const result = await client.query<LegalTextRow>(
-    `${LEGAL_TEXT_SELECT}
-WHERE version.instance_id = $1
-  AND version.id = $2::uuid
-GROUP BY version.id
-LIMIT 1;
-`,
-    [instanceId, legalTextVersionId]
-  );
-
-  const row = result.rows[0];
-  return row ? mapLegalTextListItem(row) : undefined;
-};
 
 export const LEGAL_TEXT_SELECT = `
 SELECT

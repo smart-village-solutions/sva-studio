@@ -7,7 +7,6 @@ import {
   collectUpdatedFields,
   type CreateLegalTextInput,
   deriveLegalTextId,
-  loadLegalTextByIdWithClient,
   type LegalTextRow,
   loadExistingLegalTextId,
   mapLegalTextListItem,
@@ -16,6 +15,27 @@ import {
   resolveLegalTextUpdateState,
   type UpdateLegalTextInput,
 } from './repository-shared.js';
+
+type InstanceScopedClient = Parameters<Parameters<typeof withInstanceScopedDb>[1]>[0];
+
+const loadLegalTextByIdWithClient = async (
+  client: InstanceScopedClient,
+  instanceId: string,
+  legalTextVersionId: string
+): Promise<IamLegalTextListItem | undefined> => {
+  const result = await client.query<LegalTextRow>(
+    `${LEGAL_TEXT_SELECT}
+WHERE version.instance_id = $1
+  AND version.id = $2::uuid
+GROUP BY version.id
+LIMIT 1;
+`,
+    [instanceId, legalTextVersionId]
+  );
+
+  const row = result.rows[0];
+  return row ? mapLegalTextListItem(row) : undefined;
+};
 
 export const loadLegalTextListItems = async (instanceId: string): Promise<readonly IamLegalTextListItem[]> =>
   withInstanceScopedDb(instanceId, async (client) => {

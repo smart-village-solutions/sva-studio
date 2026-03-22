@@ -39,7 +39,7 @@ Start by checking CLI availability, effective auth inputs, and available targets
 
 ```bash
 command -v quantum-cli
-test -n "$QUANTUM_API_KEY" || test -n "$QUANTUM_USER"
+test -n "$QUANTUM_API_KEY" || { test -n "$QUANTUM_USER" && test -n "$QUANTUM_PASSWORD"; }
 quantum-cli endpoints ls
 quantum-cli stacks ls --endpoint "$QUANTUM_ENDPOINT"
 ```
@@ -140,12 +140,12 @@ This capability list is taken from the official CLI reference, not inferred from
 
 The docs describe two environment-variable layers:
 
-- global auth and host config such as `QUANTUM_HOST` and the preferred `QUANTUM_API_KEY` for API-key based auth; `QUANTUM_USER` and `QUANTUM_PASSWORD` exist as alternative credentials
+- global auth and host config such as `QUANTUM_HOST`; the currently documented standard path is `QUANTUM_USER` plus `QUANTUM_PASSWORD`, while this repo is in the process of moving toward `QUANTUM_API_KEY`
 - command-scoped selectors such as `QUANTUM_ENDPOINT`, `QUANTUM_STACK`, `QUANTUM_SERVICE`, and migration-specific variables
 
 The docs also note compatibility aliases such as `PORTAINER_HOST`, `PORTAINER_USER`, `PORTAINER_PASSWORD`, and `PORTAINER_ENDPOINT`. Treat those as compatibility inputs, not the preferred naming scheme.
 
-When the task involves CI or a scripted deploy, prefer explicit environment variables over interactive flags, avoid echoing them back to the user, and prefer `QUANTUM_API_KEY` over `QUANTUM_USER` and `QUANTUM_PASSWORD` when setting up new pipelines or shells.
+When the task involves CI or a scripted deploy, prefer explicit environment variables over interactive flags and avoid echoing them back to the user. For generic Quantum CLI usage, assume `QUANTUM_USER` plus `QUANTUM_PASSWORD` unless the repo or environment already documents `QUANTUM_API_KEY` for that deployment path.
 
 ## Migration Notes
 

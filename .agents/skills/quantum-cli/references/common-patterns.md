@@ -104,7 +104,8 @@ Add `--up` only if the target stack should start immediately after the migration
 ## Use environment variables for CI-style deploys
 
 ```bash
-export QUANTUM_API_KEY="$DEPLOY_API_KEY"
+export QUANTUM_USER="$DEPLOY_USER"
+export QUANTUM_PASSWORD="$DEPLOY_PASSWORD"
 export QUANTUM_ENDPOINT="customer-prod"
 export QUANTUM_STACK="my-app"
 export QUANTUM_ENVIRONMENT="prod"
@@ -121,6 +122,8 @@ quantum-cli stacks update \
 ```
 
 According to the docs, `quantum-cli` can pass environment variables into the deployment without rewriting the stack file in-place.
+
+In this repository, some deployment paths are being migrated toward `QUANTUM_API_KEY`. Prefer the auth scheme already documented by the target runbook or workflow instead of mixing both styles ad hoc.
 
 ## Update the CLI itself
 

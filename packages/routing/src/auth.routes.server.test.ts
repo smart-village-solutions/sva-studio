@@ -227,6 +227,12 @@ describe('auth.routes.server', () => {
     expect(authServerMocks.healthLiveHandler).toHaveBeenCalledTimes(1);
   });
 
+  it('returns null for requests outside the auth runtime route set', async () => {
+    const response = await dispatchAuthRouteRequest(new Request('http://localhost/not-covered'));
+
+    expect(response).toBeNull();
+  });
+
   it('returns method_not_allowed for unsupported runtime auth methods', async () => {
     const response = await dispatchAuthRouteRequest(
       new Request('http://localhost/auth/logout', {

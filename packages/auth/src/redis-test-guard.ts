@@ -12,4 +12,5 @@ if (!redisAvailable) {
   await closeRedis().catch(() => undefined);
 }
 
-export const describeIfRedisAvailable = redisAvailable ? describe : describe.skip;
+export const describeIfRedisAvailable = ((title: string, factory: Parameters<typeof describe>[1]) =>
+  redisAvailable ? describe(title, factory) : describe.skip(title, factory)) as typeof describe;

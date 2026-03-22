@@ -1,4 +1,4 @@
-import { describe, it, expect, afterAll } from 'vitest';
+import { it, expect, afterAll } from 'vitest';
 import { serialize as serializeCookie, parse as parseCookie } from 'cookie-es';
 import type { Session } from './types';
 import { createSession, getSession } from './session';

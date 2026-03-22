@@ -21,12 +21,13 @@ const splitRoles = (value: string | undefined) =>
 export const isMockAuthEnabled = () => {
   const runtimeProfile = getRuntimeProfileFromEnv(process.env);
   const runtimeProfileAllowsMockAuth = runtimeProfile !== null && isMockAuthRuntimeProfile(runtimeProfile);
+  const mockAuthOptIn = process.env.SVA_MOCK_AUTH === 'true';
 
   if (process.env.NODE_ENV === 'production') {
-    return runtimeProfileAllowsMockAuth;
+    return mockAuthOptIn && runtimeProfileAllowsMockAuth;
   }
 
-  return process.env.SVA_MOCK_AUTH === 'true' || runtimeProfileAllowsMockAuth;
+  return mockAuthOptIn || runtimeProfileAllowsMockAuth;
 };
 
 export const createMockSessionUser = (): SessionUser => {

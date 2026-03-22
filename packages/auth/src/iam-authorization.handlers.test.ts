@@ -14,7 +14,7 @@ const testState = vi.hoisted(() => ({
   redisStore: new Map<string, string>(),
 }));
 
-vi.mock('./middleware.server', () => ({
+vi.mock('./middleware.server.js', () => ({
   withAuthenticatedUser: vi.fn(async (_request: Request, handler: (ctx: unknown) => Promise<Response>) =>
     handler({
       sessionId: 'session-1',
@@ -23,7 +23,7 @@ vi.mock('./middleware.server', () => ({
   ),
 }));
 
-vi.mock('./iam-governance.server', () => ({
+vi.mock('./iam-governance.server.js', () => ({
   resolveImpersonationSubject: vi.fn(async () => testState.impersonationResult),
 }));
 

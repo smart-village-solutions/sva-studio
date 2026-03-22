@@ -19,6 +19,21 @@ describe('mock-auth.server', () => {
     expect(isMockAuthEnabled()).toBe(true);
   });
 
+  it('requires explicit opt-in in production even with a mock runtime profile', () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('SVA_RUNTIME_PROFILE', 'local-builder');
+
+    expect(isMockAuthEnabled()).toBe(false);
+  });
+
+  it('enables mock auth in production only with opt-in and mock runtime profile', () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('SVA_RUNTIME_PROFILE', 'local-builder');
+    vi.stubEnv('SVA_MOCK_AUTH', 'true');
+
+    expect(isMockAuthEnabled()).toBe(true);
+  });
+
   it('creates a privileged default mock user', () => {
     vi.stubEnv('SVA_MOCK_AUTH', 'true');
 

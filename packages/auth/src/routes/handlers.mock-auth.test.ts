@@ -41,7 +41,7 @@ vi.mock('../shared/log-context', () => ({
   buildLogContext: vi.fn(() => ({ workspace_id: 'default' })),
 }));
 
-vi.mock('../middleware.server', () => ({
+vi.mock('../middleware.server.js', () => ({
   withAuthenticatedUser: vi.fn(),
 }));
 

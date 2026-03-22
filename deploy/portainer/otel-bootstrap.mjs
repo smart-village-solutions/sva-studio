@@ -15,12 +15,27 @@ const resolveServerBootstrapModuleUrl = () => {
   return null;
 };
 
+const parseBootstrapTimeoutMs = (rawValue) => {
+  const defaultBootstrapTimeoutMs = 5000;
+  const minBootstrapTimeoutMs = 100;
+  const maxBootstrapTimeoutMs = 600000;
+  const parsedBootstrapTimeout = rawValue === undefined
+    ? defaultBootstrapTimeoutMs
+    : Number.parseInt(rawValue, 10);
+
+  if (!Number.isFinite(parsedBootstrapTimeout) || parsedBootstrapTimeout <= 0) {
+    return defaultBootstrapTimeoutMs;
+  }
+
+  return Math.min(Math.max(parsedBootstrapTimeout, minBootstrapTimeoutMs), maxBootstrapTimeoutMs);
+};
+
 const serverBootstrapModuleUrl = resolveServerBootstrapModuleUrl();
 if (!serverBootstrapModuleUrl) {
   process.stderr.write('[otel-bootstrap] built server bootstrap entry not found; continuing without OTEL preload.\n');
 } else {
   const { createSdkLogger, getInstanceConfig, initializeOtelSdk } = await import(serverBootstrapModuleUrl);
-  const bootstrapTimeoutMs = Number.parseInt(process.env.SVA_OTEL_BOOTSTRAP_TIMEOUT_MS ?? '5000', 10);
+  const bootstrapTimeoutMs = parseBootstrapTimeoutMs(process.env.SVA_OTEL_BOOTSTRAP_TIMEOUT_MS);
 
   const logger = createSdkLogger({
     component: 'process-bootstrap',

@@ -12,6 +12,21 @@
 let sdkInitialized = false;
 let sdkInitializationPromise: Promise<void> | null = null;
 
+const parseBootstrapTimeoutMs = (rawValue: string | undefined) => {
+  const defaultBootstrapTimeoutMs = 5000;
+  const minBootstrapTimeoutMs = 100;
+  const maxBootstrapTimeoutMs = 600000;
+  const parsedBootstrapTimeout = rawValue === undefined
+    ? defaultBootstrapTimeoutMs
+    : Number.parseInt(rawValue, 10);
+
+  if (!Number.isFinite(parsedBootstrapTimeout) || parsedBootstrapTimeout <= 0) {
+    return defaultBootstrapTimeoutMs;
+  }
+
+  return Math.min(Math.max(parsedBootstrapTimeout, minBootstrapTimeoutMs), maxBootstrapTimeoutMs);
+};
+
 export async function ensureSdkInitialized() {
   if (sdkInitialized) {
     return;
@@ -29,7 +44,7 @@ export async function ensureSdkInitialized() {
       enableConsole: true,
       enableOtel: false,
     });
-    const bootstrapTimeoutMs = Number.parseInt(process.env.SVA_OTEL_BOOTSTRAP_TIMEOUT_MS ?? '5000', 10);
+    const bootstrapTimeoutMs = parseBootstrapTimeoutMs(process.env.SVA_OTEL_BOOTSTRAP_TIMEOUT_MS);
     let bootstrapTimeoutHandle: ReturnType<typeof setTimeout> | undefined;
     let instanceConfigValidated = false;
 

@@ -11,13 +11,13 @@ const mockUser = vi.hoisted(() => ({
   instanceId: undefined as string | undefined,
 }));
 
-vi.mock('../middleware.server', () => ({
+vi.mock('../middleware.server.js', () => ({
   withAuthenticatedUser: vi.fn(async (_req: Request, fn: (ctx: unknown) => Promise<Response>) =>
     fn({ sessionId: 'sess-1', user: mockUser })
   ),
 }));
 
-vi.mock('../iam-governance.server', () => ({
+vi.mock('../iam-governance.server.js', () => ({
   resolveImpersonationSubject: vi.fn(async () => ({ ok: true })),
 }));
 

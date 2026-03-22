@@ -86,4 +86,18 @@ describe('ensureSdkInitialized', () => {
     );
     expect(logger.info).toHaveBeenCalledTimes(1);
   });
+
+  it('falls back to the default bootstrap timeout for invalid env values', async () => {
+    vi.stubEnv('SVA_OTEL_BOOTSTRAP_TIMEOUT_MS', 'not-a-number');
+    getInstanceConfig.mockReturnValue(null);
+    initializeOtelSdk.mockResolvedValue(undefined);
+
+    const { ensureSdkInitialized } = await loadModule();
+
+    await expect(ensureSdkInitialized()).resolves.toBeUndefined();
+
+    expect(getInstanceConfig).toHaveBeenCalledTimes(1);
+    expect(initializeOtelSdk).toHaveBeenCalledTimes(1);
+    expect(logger.error).not.toHaveBeenCalled();
+  });
 });

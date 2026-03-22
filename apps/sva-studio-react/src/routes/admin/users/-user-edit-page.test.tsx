@@ -652,6 +652,7 @@ describe('UserEditPage', () => {
     const systemAdminCheckbox = screen.getByRole('checkbox', { name: 'system_admin' });
 
     fireEvent.change(systemAdminCheckbox, { target: { checked: true } });
+    fireEvent.change(systemAdminCheckbox, { target: { checked: true } });
     fireEvent.click(screen.getByRole('button', { name: 'Änderungen speichern' }));
 
     await waitFor(() => {

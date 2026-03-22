@@ -12,7 +12,7 @@ const integrationState = vi.hoisted(() => ({
   redisStore: new Map<string, string>(),
 }));
 
-vi.mock('./middleware.server', () => ({
+vi.mock('./middleware.server.js', () => ({
   withAuthenticatedUser: vi.fn(async (_request: Request, handler: (ctx: unknown) => Promise<Response>) =>
     handler({
       sessionId: 'session-integration',
@@ -105,7 +105,7 @@ vi.mock('./redis.server.js', () => ({
   }),
 }));
 
-vi.mock('./iam-governance.server', () => ({
+vi.mock('./iam-governance.server.js', () => ({
   resolveImpersonationSubject: vi.fn(async () => integrationState.impersonationResult),
 }));
 

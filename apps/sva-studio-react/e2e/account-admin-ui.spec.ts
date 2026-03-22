@@ -434,12 +434,15 @@ test('iam cockpit redirects unknown or disallowed tabs to the first allowed gove
   await expect(page.getByRole('heading', { name: 'Impersonation für Support-Fall' })).toBeVisible();
 });
 
-test('direct access to admin users redirects unauthenticated clients to login', async ({ page }) => {
-  await page.goto('/admin/users');
+test('direct access to admin users redirects unauthenticated clients to login', async ({ request }) => {
+  const response = await request.get('/admin/users', {
+    maxRedirects: 0,
+  });
 
-  await expect
-    .poll(() => page.url())
-    .toMatch(/(\/auth\/login\?redirect=%2Fadmin%2Fusers|\/protocol\/openid-connect\/auth\?|accounts\.google\.com\/(signin\/oauth\/error|o\/oauth2\/v2\/auth))/);
+  expect([302, 303, 307, 308]).toContain(response.status());
+  expect(response.headers().location).toMatch(
+    /(\/auth\/login\?redirect=%2Fadmin%2Fusers|\/protocol\/openid-connect\/auth\?|accounts\.google\.com\/(signin\/oauth\/error|o\/oauth2\/v2\/auth))/
+  );
 });
 
 test('responsive IAM views render on mobile, tablet, desktop', async ({ page }) => {

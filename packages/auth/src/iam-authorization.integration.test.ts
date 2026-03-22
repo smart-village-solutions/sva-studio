@@ -81,7 +81,7 @@ vi.mock('pg', () => ({
   },
 }));
 
-vi.mock('./redis.server', () => ({
+vi.mock('./redis.server.js', () => ({
   getRedisClient: () => ({
     async get(key: string) {
       return integrationState.redisStore.get(key) ?? null;

@@ -1,9 +1,9 @@
-import { it, expect, afterAll } from 'vitest';
+import { describe, it, expect, afterAll } from 'vitest';
 import { serialize as serializeCookie, parse as parseCookie } from 'cookie-es';
 import type { Session } from './types';
 import { createSession, getSession } from './session';
 import { closeRedis } from './redis.server';
-import { describeIfRedisAvailable } from './redis-test-guard';
+import { ensureRedisAvailabilityChecked } from './redis-test-guard.js';
 
 /**
  * E2E-Test für Cookie-Transport-Flow:
@@ -14,7 +14,7 @@ import { describeIfRedisAvailable } from './redis-test-guard';
  * 5. Browser sendet Cookie in nächster Request
  * 6. /auth/me gibt 200 mit User-Daten zurück
  */
-describeIfRedisAvailable('E2E: Cookie Transport Flow (OAuth-Login → Callback → /auth/me)', () => {
+(await ensureRedisAvailabilityChecked() ? describe : describe.skip)('E2E: Cookie Transport Flow (OAuth-Login → Callback → /auth/me)', () => {
   afterAll(async () => {
     await closeRedis();
   });

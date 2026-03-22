@@ -73,22 +73,6 @@ BEGIN
       CHECK (group_type IN ('role_bundle'));
   END IF;
 
-  IF NOT EXISTS (
-    SELECT 1
-    FROM pg_constraint
-    WHERE conname = 'account_groups_origin_chk'
-      AND conrelid = 'iam.account_groups'::regclass
-  ) AND EXISTS (
-    SELECT 1
-    FROM information_schema.columns
-    WHERE table_schema = 'iam'
-      AND table_name = 'account_groups'
-      AND column_name = 'origin'
-  ) THEN
-    ALTER TABLE iam.account_groups
-      ADD CONSTRAINT account_groups_origin_chk
-      CHECK (origin IN ('manual', 'seed', 'sync'));
-  END IF;
 
   IF NOT EXISTS (
     SELECT 1

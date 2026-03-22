@@ -30,8 +30,9 @@ if (!serverBootstrapModuleUrl) {
   });
   let timeoutHandle;
 
+  getInstanceConfig();
+
   try {
-    getInstanceConfig();
     const timeoutPromise = new Promise((_, reject) => {
       timeoutHandle = setTimeout(() => {
         reject(new Error(`OTEL bootstrap timed out after ${bootstrapTimeoutMs}ms`));

@@ -201,6 +201,107 @@ describe('withAuthenticatedUser', () => {
     expect(getSessionUserMock).not.toHaveBeenCalled();
   });
 
+  it('skips legal text compliance for exempt auth paths', async () => {
+    getSessionUserMock.mockResolvedValue({
+      id: 'user-auth-exempt',
+      name: 'Exempt Auth',
+      roles: ['admin'],
+      instanceId: 'de-musterhausen',
+    });
+    const { withAuthenticatedUser } = await import('./middleware.server');
+    const request = new Request('http://localhost/auth/login', {
+      headers: { cookie: 'sva_auth_session=session-auth-exempt' },
+    });
+
+    const response = await withAuthenticatedUser(request, () => new Response('ok'));
+
+    expect(response.status).toBe(200);
+    expect(withLegalTextComplianceMock).not.toHaveBeenCalled();
+  });
+
+  it('enforces legal text compliance for non-exempt governance workflow operations', async () => {
+    getSessionUserMock.mockResolvedValue({
+      id: 'user-governance-enforced',
+      name: 'Governance User',
+      roles: ['admin'],
+      instanceId: 'de-musterhausen',
+    });
+    const { withAuthenticatedUser } = await import('./middleware.server');
+    const request = new Request('http://localhost/api/v1/iam/governance/workflows', {
+      method: 'POST',
+      headers: {
+        cookie: 'sva_auth_session=session-governance-enforced',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ operation: 'approve_access_request' }),
+    });
+
+    const response = await withAuthenticatedUser(request, () => new Response('ok'));
+
+    expect(response.status).toBe(200);
+    expect(withLegalTextComplianceMock).toHaveBeenCalledWith(
+      'de-musterhausen',
+      'user-governance-enforced',
+      expect.any(Function)
+    );
+  });
+
+  it('enforces legal text compliance for iam authorize endpoint', async () => {
+    getSessionUserMock.mockResolvedValue({
+      id: 'user-authorize',
+      name: 'Authorize User',
+      roles: ['admin'],
+      instanceId: 'de-musterhausen',
+    });
+    const { withAuthenticatedUser } = await import('./middleware.server');
+    const request = new Request('http://localhost/iam/authorize', {
+      method: 'POST',
+      headers: {
+        cookie: 'sva_auth_session=session-authorize',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ action: 'content.read' }),
+    });
+
+    const response = await withAuthenticatedUser(request, () => new Response('ok'));
+
+    expect(response.status).toBe(200);
+    expect(withLegalTextComplianceMock).toHaveBeenCalledWith(
+      'de-musterhausen',
+      'user-authorize',
+      expect.any(Function)
+    );
+  });
+
+  it('returns legal text enforcement errors unchanged on protected routes', async () => {
+    getSessionUserMock.mockResolvedValue({
+      id: 'user-enforcement-error',
+      name: 'Enforcement Error',
+      roles: ['admin'],
+      instanceId: 'de-musterhausen',
+    });
+    withLegalTextComplianceMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: 'service_unavailable' }), {
+        status: 503,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
+    const { withAuthenticatedUser } = await import('./middleware.server');
+    const request = new Request('http://localhost/api/v1/iam/users', {
+      headers: { cookie: 'sva_auth_session=session-enforcement-error' },
+    });
+
+    const response = await withAuthenticatedUser(request, () => new Response('ok'));
+
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({ error: 'service_unavailable' });
+    expect(withLegalTextComplianceMock).toHaveBeenCalledWith(
+      'de-musterhausen',
+      'user-enforcement-error',
+      expect.any(Function)
+    );
+  });
+
   it('returns a flat json 500 and logs correlation ids when session resolution throws', async () => {
     getSessionUserMock.mockRejectedValue(new Error('boom'));
     const { withAuthenticatedUser } = await import('./middleware.server');

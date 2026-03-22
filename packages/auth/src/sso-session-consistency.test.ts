@@ -1,12 +1,12 @@
-import { afterAll, beforeAll, beforeEach, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { getSessionUser } from './auth.server';
 import { closeRedis } from './redis.server';
-import { describeIfRedisAvailable } from './redis-test-guard';
+import { ensureRedisAvailabilityChecked } from './redis-test-guard.js';
 import { createSession, deleteSession } from './redis-session.server';
 import type { Session } from './types';
 
-describeIfRedisAvailable('SSO Session Consistency (Multi-Tab)', () => {
+(await ensureRedisAvailabilityChecked() ? describe : describe.skip)('SSO Session Consistency (Multi-Tab)', () => {
   const sessionId = 'sso-multi-tab-session';
   const envBackup = { ...process.env };
 

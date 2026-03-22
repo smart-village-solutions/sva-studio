@@ -54,7 +54,7 @@ export const createTranslator = (locale: SupportedLocale = DEFAULT_LOCALE) => {
 };
 
 export const isSupportedLocale = (value: string): value is SupportedLocale => {
-  return value in i18nResources;
+  return Object.prototype.hasOwnProperty.call(i18nResources, value);
 };
 
 export const getActiveLocale = (): SupportedLocale => {

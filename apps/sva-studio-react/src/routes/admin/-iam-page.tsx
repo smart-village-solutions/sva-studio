@@ -359,7 +359,7 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
   }, [activeTab, allowedTabs]);
 
   React.useEffect(() => {
-    if (!cockpitEnabled || !canAccessCockpit || !instanceId || activeTab !== 'rights') {
+    if (!cockpitEnabled || !canAccessCockpit || !instanceId || activeTab !== 'rights' || !allowedTabs.includes('rights')) {
       return;
     }
 
@@ -414,10 +414,10 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
       active = false;
       window.clearTimeout(timer);
     };
-  }, [actingAsUserId, activeTab, canAccessCockpit, cockpitEnabled, instanceId, invalidatePermissions, organizationId]);
+  }, [actingAsUserId, activeTab, allowedTabs, canAccessCockpit, cockpitEnabled, instanceId, invalidatePermissions, organizationId]);
 
   React.useEffect(() => {
-    if (!cockpitEnabled || !canAccessCockpit || activeTab !== 'governance') {
+    if (!cockpitEnabled || !canAccessCockpit || activeTab !== 'governance' || !allowedTabs.includes('governance')) {
       return;
     }
 
@@ -454,10 +454,10 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [activeTab, canAccessCockpit, cockpitEnabled, governanceRequestQuery]);
+  }, [activeTab, allowedTabs, canAccessCockpit, cockpitEnabled, governanceRequestQuery]);
 
   React.useEffect(() => {
-    if (!cockpitEnabled || !canAccessCockpit || activeTab !== 'dsr') {
+    if (!cockpitEnabled || !canAccessCockpit || activeTab !== 'dsr' || !allowedTabs.includes('dsr')) {
       return;
     }
 
@@ -494,7 +494,7 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [activeTab, canAccessCockpit, cockpitEnabled, dsrRequestQuery]);
+  }, [activeTab, allowedTabs, canAccessCockpit, cockpitEnabled, dsrRequestQuery]);
 
   const filteredPermissions = React.useMemo(
     () =>

@@ -39,8 +39,7 @@ const logger = createSdkLogger({ component: 'iam-groups', level: 'info' });
 // Queries
 // ---------------------------------------------------------------------------
 
-const GROUP_LIST_SQL = `
-SELECT
+const GROUP_SELECT_SQL = `
   g.id,
   g.instance_id,
   g.group_key,
@@ -62,33 +61,19 @@ LEFT JOIN iam.group_roles gr
  AND gr.group_id = g.id
 WHERE g.instance_id = $1
 GROUP BY g.id
+`;
+
+const GROUP_LIST_SQL = `
+SELECT
+${GROUP_SELECT_SQL}
 ORDER BY g.display_name ASC
 `;
 
 const GROUP_DETAIL_SQL = `
 SELECT
-  g.id,
-  g.instance_id,
-  g.group_key,
-  g.display_name,
-  g.description,
-  g.group_type,
-  g.is_active,
-  g.created_at,
-  g.updated_at,
-  COUNT(DISTINCT ag.account_id)::int AS member_count,
-  COUNT(DISTINCT gr.role_id)::int    AS role_count
-FROM iam.groups g
-LEFT JOIN iam.account_groups ag
-  ON ag.instance_id = g.instance_id
- AND ag.group_id = g.id
- AND (ag.valid_until IS NULL OR ag.valid_until > now())
-LEFT JOIN iam.group_roles gr
-  ON gr.instance_id = g.instance_id
- AND gr.group_id = g.id
+${GROUP_SELECT_SQL}
 WHERE g.instance_id = $1
   AND g.id = $2::uuid
-GROUP BY g.id
 LIMIT 1
 `;
 

@@ -159,6 +159,50 @@ const buildConstraintDetails = (error: PgLikeError) =>
       } satisfies Readonly<Record<string, unknown>>)
     : {};
 
+const buildRequestDetails = (requestId?: string) =>
+  requestId
+    ? ({
+        request_id: requestId,
+      } satisfies Readonly<Record<string, unknown>>)
+    : {};
+
+const buildDiagnosticError = (input: {
+  code: ApiErrorCode;
+  dependency?: IamDiagnosticErrorShape['dependency'];
+  details: Readonly<Record<string, unknown>>;
+  message: string;
+  status: number;
+}): IamDiagnosticErrorShape => ({
+  status: input.status,
+  code: input.code,
+  message: input.message,
+  dependency: input.dependency,
+  details: input.details,
+});
+
+const buildDatabaseDiagnosticError = (input: {
+  code: ApiErrorCode;
+  detailsBase?: Readonly<Record<string, unknown>>;
+  fallbackMessage: string;
+  reasonCode: string;
+  requestId?: string;
+  status: number;
+  extraDetails?: Readonly<Record<string, unknown>>;
+}): IamDiagnosticErrorShape =>
+  buildDiagnosticError({
+    status: input.status,
+    code: input.code,
+    message: input.fallbackMessage,
+    dependency: 'database',
+    details: {
+      ...buildRequestDetails(input.requestId),
+      ...input.detailsBase,
+      ...input.extraDetails,
+      dependency: 'database',
+      reason_code: input.reasonCode,
+    },
+  });
+
 export const classifyIamDiagnosticError = (
   error: unknown,
   fallbackMessage: string,
@@ -168,132 +212,108 @@ export const classifyIamDiagnosticError = (
   const schemaObject = buildSchemaObject(pgError);
   const expectedMigration = lookupExpectedMigration(schemaObject);
   const detailsBase = {
-    ...(requestId ? { request_id: requestId } : {}),
     ...(schemaObject ? { schema_object: schemaObject } : {}),
     ...(expectedMigration ? { expected_migration: expectedMigration } : {}),
   };
 
   if (pgError?.code === '42P01') {
-    return {
+    return buildDatabaseDiagnosticError({
       status: 503,
       code: 'database_unavailable',
-      message: fallbackMessage,
-      dependency: 'database',
-      details: {
-        ...detailsBase,
-        dependency: 'database',
-        reason_code: 'missing_table',
-      },
-    };
+      fallbackMessage,
+      requestId,
+      detailsBase,
+      reasonCode: 'missing_table',
+    });
   }
 
   if (pgError?.code === '42703') {
-    return {
+    return buildDatabaseDiagnosticError({
       status: 500,
       code: 'internal_error',
-      message: fallbackMessage,
-      dependency: 'database',
-      details: {
-        ...detailsBase,
-        dependency: 'database',
-        reason_code: 'missing_column',
-      },
-    };
+      fallbackMessage,
+      requestId,
+      detailsBase,
+      reasonCode: 'missing_column',
+    });
   }
 
   if (pgError?.code === '23502') {
-    return {
+    return buildDatabaseDiagnosticError({
       status: 500,
       code: 'internal_error',
-      message: fallbackMessage,
-      dependency: 'database',
-      details: {
-        ...detailsBase,
-        dependency: 'database',
-        reason_code: 'not_null_violation',
-      },
-    };
+      fallbackMessage,
+      requestId,
+      detailsBase,
+      reasonCode: 'not_null_violation',
+    });
   }
 
   if (pgError?.code === '23503') {
-    return {
+    return buildDatabaseDiagnosticError({
       status: 500,
       code: 'internal_error',
-      message: fallbackMessage,
-      dependency: 'database',
-      details: {
-        ...detailsBase,
-        ...buildConstraintDetails(pgError),
-        dependency: 'database',
-        reason_code: 'foreign_key_violation',
-      },
-    };
+      fallbackMessage,
+      requestId,
+      detailsBase,
+      reasonCode: 'foreign_key_violation',
+      extraDetails: buildConstraintDetails(pgError),
+    });
   }
 
   if (
     pgError?.code === '42501' &&
     /row-level security|policy|permission denied/iu.test(pgError.message)
   ) {
-    return {
+    return buildDatabaseDiagnosticError({
       status: 500,
       code: 'internal_error',
-      message: fallbackMessage,
-      dependency: 'database',
-      details: {
-        ...detailsBase,
-        dependency: 'database',
-        reason_code: 'rls_denied',
-      },
-    };
+      fallbackMessage,
+      requestId,
+      detailsBase,
+      reasonCode: 'rls_denied',
+    });
   }
 
   if (pgError?.message?.startsWith('pii_encryption_required')) {
-    return {
+    return buildDiagnosticError({
       status: 503,
       code: 'internal_error',
       message: fallbackMessage,
       details: {
-        ...(requestId ? { request_id: requestId } : {}),
+        ...buildRequestDetails(requestId),
         reason_code: 'pii_encryption_missing',
       },
-    };
+    });
   }
 
   if (pgError?.message === 'jit_provision_failed') {
-    return {
+    return buildDatabaseDiagnosticError({
       status: 500,
       code: 'internal_error',
-      message: fallbackMessage,
-      dependency: 'database',
-      details: {
-        ...(requestId ? { request_id: requestId } : {}),
-        dependency: 'database',
-        reason_code: 'jit_provision_failed',
-      },
-    };
+      fallbackMessage,
+      requestId,
+      reasonCode: 'jit_provision_failed',
+    });
   }
 
   if (pgError?.message === 'IAM database not configured') {
-    return {
+    return buildDatabaseDiagnosticError({
       status: 503,
       code: 'database_unavailable',
-      message: fallbackMessage,
-      dependency: 'database',
-      details: {
-        ...(requestId ? { request_id: requestId } : {}),
-        dependency: 'database',
-        reason_code: 'database_not_configured',
-      },
-    };
+      fallbackMessage,
+      requestId,
+      reasonCode: 'database_not_configured',
+    });
   }
 
-  return {
+  return buildDiagnosticError({
     status: 500,
     code: 'internal_error',
     message: fallbackMessage,
     details: {
-      ...(requestId ? { request_id: requestId } : {}),
+      ...buildRequestDetails(requestId),
       reason_code: 'unexpected_internal_error',
     },
-  };
+  });
 };

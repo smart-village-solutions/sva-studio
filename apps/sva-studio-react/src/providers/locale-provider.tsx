@@ -16,12 +16,7 @@ export const LOCALE_STORAGE_KEY = 'sva-studio-locale';
 const LocaleContext = React.createContext<LocaleContextValue | null>(null);
 
 const resolveInitialLocale = (): SupportedLocale => {
-  if (typeof window === 'undefined') {
-    return DEFAULT_LOCALE;
-  }
-
-  const persistedLocale = window.localStorage.getItem(LOCALE_STORAGE_KEY);
-  return persistedLocale && isSupportedLocale(persistedLocale) ? persistedLocale : DEFAULT_LOCALE;
+  return DEFAULT_LOCALE;
 };
 
 export const LocaleProvider = ({ children }: LocaleProviderProps) => {
@@ -34,6 +29,20 @@ export const LocaleProvider = ({ children }: LocaleProviderProps) => {
   const setLocale = React.useCallback((nextLocale: SupportedLocale) => {
     setActiveLocale(nextLocale);
     setLocaleState(nextLocale);
+  }, []);
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const persistedLocale = window.localStorage.getItem(LOCALE_STORAGE_KEY);
+    if (!persistedLocale || !isSupportedLocale(persistedLocale) || persistedLocale === locale) {
+      return;
+    }
+
+    setActiveLocale(persistedLocale);
+    setLocaleState(persistedLocale);
   }, []);
 
   React.useEffect(() => {
@@ -53,7 +62,7 @@ export const LocaleProvider = ({ children }: LocaleProviderProps) => {
         setLocale,
       }}
     >
-      {children}
+      <React.Fragment key={locale}>{children}</React.Fragment>
     </LocaleContext.Provider>
   );
 };

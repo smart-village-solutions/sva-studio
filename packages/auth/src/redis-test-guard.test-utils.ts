@@ -7,15 +7,16 @@ export const ensureRedisAvailabilityChecked = async (): Promise<boolean> => {
     return redisAvailable;
   }
 
-  redisAvailable = await isRedisAvailable().catch(() => false);
+  redisAvailable = await Promise.resolve(isRedisAvailable()).catch(() => false);
   if (!redisAvailable) {
     const lastError = getLastRedisError();
     if (process.env.TEST_REDIS_GUARD_LOG === '1') {
+      const errorSuffix = lastError ? `: ${lastError}` : '';
       console.warn(
-        `[auth:test:unit] Skipping Redis-dependent tests because Redis is unavailable${lastError ? `: ${lastError}` : ''}`
+        `[auth:test:unit] Skipping Redis-dependent tests because Redis is unavailable${errorSuffix}`
       );
     }
-    await closeRedis().catch(() => undefined);
+    await Promise.resolve(closeRedis()).catch(() => undefined);
   }
 
   return redisAvailable;

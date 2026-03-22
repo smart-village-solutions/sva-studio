@@ -27,6 +27,8 @@ const readEnvOrSecret = (envNames: readonly string[], secretName: string): strin
   return readSecretFile(secretName);
 };
 
+const LOCAL_RUNTIME_PROFILES = new Set(['local-builder', 'local-keycloak']);
+
 export const getAuthClientSecret = (): string | undefined =>
   readEnvOrSecret(['SVA_AUTH_CLIENT_SECRET'], 'sva_studio_app_auth_client_secret');
 
@@ -62,6 +64,11 @@ export const getRedisUrl = (): string => {
   const redisUrl = process.env.REDIS_URL?.trim();
   if (redisUrl) {
     return redisUrl;
+  }
+
+  const runtimeProfile = process.env.SVA_RUNTIME_PROFILE?.trim();
+  if (runtimeProfile && LOCAL_RUNTIME_PROFILES.has(runtimeProfile)) {
+    return 'redis://localhost:6379';
   }
 
   return 'redis://redis:6379';

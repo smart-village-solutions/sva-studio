@@ -66,18 +66,17 @@ describe('translate', () => {
   });
 
   it('ignores locale mutations outside the browser runtime', () => {
-    const previousWindow = globalThis.window;
-    vi.stubGlobal('window', undefined);
+    const previousActiveLocale = getActiveLocale();
 
-    setActiveLocale('en');
+    try {
+      vi.stubGlobal('window', undefined);
 
-    expect(getActiveLocale()).toBe('de');
+      setActiveLocale('en');
 
-    if (previousWindow === undefined) {
+      expect(getActiveLocale()).toBe('de');
+    } finally {
       vi.unstubAllGlobals();
-      return;
+      setActiveLocale(previousActiveLocale);
     }
-
-    vi.stubGlobal('window', previousWindow);
   });
 });

@@ -30,7 +30,17 @@ if (!serverBootstrapModuleUrl) {
   });
   let timeoutHandle;
 
-  getInstanceConfig();
+  try {
+    getInstanceConfig();
+  } catch (error) {
+    logger.error('Process bootstrap wegen ungültiger Instance-Konfiguration abgebrochen', {
+      workspace_id: 'platform',
+      environment: process.env.NODE_ENV ?? 'production',
+      error: error instanceof Error ? error.message : String(error),
+      error_type: error instanceof Error ? error.constructor.name : 'unknown',
+    });
+    throw error;
+  }
 
   try {
     const timeoutPromise = new Promise((_, reject) => {

@@ -20,9 +20,9 @@ export default function ErrorFallback({ error, reset }: Readonly<ErrorComponentP
       VITE_ENABLE_ERROR_DEBUG_DETAILS?: string;
     };
   };
+  const browserWindow = typeof globalThis.window !== 'undefined' ? globalThis.window : undefined;
   const isLocalDebugHost =
-    typeof window !== 'undefined' &&
-    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+    browserWindow?.location.hostname === 'localhost' || browserWindow?.location.hostname === '127.0.0.1';
   const debugDetailsEnabled = metaEnv.env?.VITE_ENABLE_ERROR_DEBUG_DETAILS === 'true';
   const shouldShowDebugDetails = isLocalDebugHost && debugDetailsEnabled;
   const debugErrorMessage = error instanceof Error ? error.message : String(error ?? '');

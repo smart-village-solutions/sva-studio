@@ -22,10 +22,6 @@ export async function ensureSdkInitialized() {
     return;
   }
   sdkInitializationPromise = (async () => {
-    // Fail-fast: Instance-Config validieren, bevor die App Requests annimmt.
-    // Wirft bei ungültigen Allowlist-Einträgen einen Fehler, der den Start
-    // abbricht. Bei fehlendem SVA_PARENT_DOMAIN wird in lokaler Entwicklung
-    // kein Multi-Host-Modus aktiviert.
     const sdk = await import('@sva/sdk/server');
     const logger = sdk.createSdkLogger({
       component: 'sdk-init',
@@ -35,10 +31,12 @@ export async function ensureSdkInitialized() {
     });
     const bootstrapTimeoutMs = Number.parseInt(process.env.SVA_OTEL_BOOTSTRAP_TIMEOUT_MS ?? '5000', 10);
     let bootstrapTimeoutHandle: ReturnType<typeof setTimeout> | undefined;
-
-    sdk.getInstanceConfig();
+    let instanceConfigValidated = false;
 
     try {
+      sdk.getInstanceConfig();
+      instanceConfigValidated = true;
+
       await Promise.race([
         sdk.initializeOtelSdk(),
         new Promise((_, reject) => {
@@ -51,6 +49,14 @@ export async function ensureSdkInitialized() {
       sdkInitialized = true;
       logger.info('SDK initialisiert');
     } catch (error) {
+      if (!instanceConfigValidated) {
+        logger.error('SDK-Initialisierung wegen ungültiger Instance-Konfiguration abgebrochen', {
+          error: error instanceof Error ? error.message : String(error),
+          error_type: error instanceof Error ? error.constructor.name : 'unknown',
+        });
+        throw error;
+      }
+
       logger.error('SDK-Initialisierung fehlgeschlagen', {
         error: error instanceof Error ? error.message : String(error),
         error_type: error instanceof Error ? error.constructor.name : 'unknown',

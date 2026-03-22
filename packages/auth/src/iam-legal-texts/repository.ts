@@ -283,7 +283,8 @@ SELECT
   $6,
   $7,
   $8,
-  COALESCE($9::timestamptz, CASE WHEN $6 = 'valid' THEN NOW() ELSE NULL END)
+  $9,
+  COALESCE($10::timestamptz, CASE WHEN $7 = 'valid' THEN NOW() ELSE NULL END)
 FROM generated
 ON CONFLICT (instance_id, legal_text_id, legal_text_version, locale) DO NOTHING
 RETURNING id;

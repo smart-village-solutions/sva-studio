@@ -24,7 +24,13 @@ describe('iam legal texts html sanitization', () => {
   it('keeps allowed markup and http links', () => {
     expect(
       sanitizeLegalTextHtml('<p>Hallo <strong>Welt</strong> <a href="https://example.com" target="_blank" rel="noreferrer">Link</a></p>')
-    ).toBe('<p>Hallo <strong>Welt</strong> <a href="https://example.com" target="_blank" rel="noreferrer">Link</a></p>');
+    ).toBe('<p>Hallo <strong>Welt</strong> <a href="https://example.com" target="_blank" rel="noopener noreferrer">Link</a></p>');
+  });
+
+  it('enforces noopener noreferrer for blank targets', () => {
+    expect(sanitizeLegalTextHtml('<a href="https://example.com" target="_blank">Extern</a>')).toBe(
+      '<a href="https://example.com" target="_blank" rel="noopener noreferrer">Extern</a>'
+    );
   });
 
   it('hashes html content deterministically', () => {

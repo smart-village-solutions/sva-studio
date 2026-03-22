@@ -19,19 +19,36 @@ type RichTextEditorProps = {
   };
 };
 
+const PLACEHOLDER_DESCRIPTION_SUFFIX = '-placeholder';
+
+const isCommandSupported = (command: string) => {
+  if (typeof document.queryCommandSupported !== 'function') {
+    return true;
+  }
+
+  try {
+    return document.queryCommandSupported(command);
+  } catch {
+    return false;
+  }
+};
+
 const runCommand = (command: string, commandValue?: string) => {
   if (typeof document === 'undefined') {
     return;
   }
 
   const execCommand = Reflect.get(document, 'execCommand');
-  if (typeof execCommand === 'function') {
-    Reflect.apply(execCommand, document, [command, false, commandValue]);
+  if (typeof execCommand !== 'function' || !isCommandSupported(command)) {
+    return;
   }
+
+  Reflect.apply(execCommand, document, [command, false, commandValue]);
 };
 
 export const RichTextEditor = ({ id, labelId, value, onChange, placeholder, commands }: RichTextEditorProps) => {
   const editorRef = React.useRef<HTMLDivElement>(null);
+  const placeholderDescriptionId = `${id}${PLACEHOLDER_DESCRIPTION_SUFFIX}`;
 
   React.useEffect(() => {
     const editor = editorRef.current;
@@ -81,6 +98,9 @@ export const RichTextEditor = ({ id, labelId, value, onChange, placeholder, comm
         id={id}
         ref={editorRef}
         aria-labelledby={labelId}
+        aria-describedby={placeholder ? placeholderDescriptionId : undefined}
+        aria-multiline="true"
+        role="textbox"
         contentEditable
         suppressContentEditableWarning
         className="min-h-56 rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
@@ -88,6 +108,7 @@ export const RichTextEditor = ({ id, labelId, value, onChange, placeholder, comm
         onInput={syncValue}
         onBlur={syncValue}
       />
+      {placeholder ? <p id={placeholderDescriptionId} className="sr-only">{placeholder}</p> : null}
     </div>
   );
 };

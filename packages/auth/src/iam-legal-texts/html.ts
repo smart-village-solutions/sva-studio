@@ -1,6 +1,19 @@
 import { createHash } from 'node:crypto';
 import sanitizeHtml from 'sanitize-html';
 
+const SAFE_BLANK_TARGET_REL = 'noopener noreferrer';
+
+const normalizeAnchorAttributes = (attributes: sanitizeHtml.Attributes): sanitizeHtml.Attributes => {
+  if (attributes.target !== '_blank') {
+    return attributes;
+  }
+
+  return {
+    ...attributes,
+    rel: SAFE_BLANK_TARGET_REL,
+  };
+};
+
 const LEGAL_TEXT_SANITIZER_OPTIONS: sanitizeHtml.IOptions = {
   allowedTags: [
     'a',
@@ -32,6 +45,12 @@ const LEGAL_TEXT_SANITIZER_OPTIONS: sanitizeHtml.IOptions = {
   allowedSchemesAppliedToAttributes: ['href'],
   allowProtocolRelative: false,
   disallowedTagsMode: 'discard',
+  transformTags: {
+    a: (tagName, attributes) => ({
+      tagName,
+      attribs: normalizeAnchorAttributes(attributes),
+    }),
+  },
 };
 
 const collapseWhitespace = (value: string): string => {

@@ -265,6 +265,8 @@ describe('iam-legal-texts handlers', () => {
         return { rowCount: 0, rows: [] };
       }
       if (text.includes('INSERT INTO iam.legal_text_versions')) {
+        expect(text).toContain('$9,');
+        expect(text).toContain("COALESCE($10::timestamptz, CASE WHEN $7 = 'valid' THEN NOW() ELSE NULL END)");
         expect(values?.[0]).toBe('de-musterhausen');
         expect(values?.[1]).toBe('terms_of_use_12a0015fa322');
         expect(values?.[2]).toBe('Terms of Use');
@@ -349,6 +351,8 @@ describe('iam-legal-texts handlers', () => {
         return { rowCount: 1, rows: [{ legal_text_id: 'privacy_policy_existing' }] };
       }
       if (text.includes('INSERT INTO iam.legal_text_versions')) {
+        expect(text).toContain('$9,');
+        expect(text).toContain("COALESCE($10::timestamptz, CASE WHEN $7 = 'valid' THEN NOW() ELSE NULL END)");
         expect(values?.[1]).toBe('privacy_policy_existing');
         expect(values?.[9]).toBeNull();
         return { rowCount: 1, rows: [{ id: legalTextRow.id }] };

@@ -242,8 +242,27 @@ ALTER TABLE IF EXISTS iam.instance_integrations
   DROP CONSTRAINT IF EXISTS instance_integrations_instance_id_fkey;
 DROP INDEX IF EXISTS iam.idx_instance_integrations_instance_provider;
 
-ALTER TABLE iam.instances
-  DROP CONSTRAINT IF EXISTS instances_pkey;
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'iam'
+      AND table_name = 'instances'
+      AND column_name = 'instance_key'
+  ) OR EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'iam'
+      AND table_name = 'instances'
+      AND column_name = 'id'
+      AND udt_name <> 'text'
+  ) THEN
+    ALTER TABLE iam.instances
+      DROP CONSTRAINT IF EXISTS instances_pkey;
+  END IF;
+END
+$$;
 
 DO $$
 BEGIN
@@ -267,8 +286,19 @@ BEGIN
 END
 $$;
 
-ALTER TABLE iam.instances
-  ADD CONSTRAINT instances_pkey PRIMARY KEY (id);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'instances_pkey'
+      AND conrelid = 'iam.instances'::regclass
+  ) THEN
+    ALTER TABLE iam.instances
+      ADD CONSTRAINT instances_pkey PRIMARY KEY (id);
+  END IF;
+END
+$$;
 
 ALTER TABLE IF EXISTS iam.groups
   ADD CONSTRAINT groups_instance_id_fkey FOREIGN KEY (instance_id)

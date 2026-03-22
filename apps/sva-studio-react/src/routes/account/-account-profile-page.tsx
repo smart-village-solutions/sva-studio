@@ -4,6 +4,7 @@ import React from 'react';
 
 import { asIamError, getMyProfile, IamHttpError, updateMyProfile } from '../../lib/iam-api';
 import { Alert, AlertDescription, AlertTitle } from '../../components/ui/alert';
+import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
@@ -14,31 +15,23 @@ import { notifyIamUsersUpdated } from '../../lib/iam-user-events';
 import { useAuth } from '../../providers/auth-provider';
 
 type ProfileFormValues = {
-  username: string;
-  email: string;
   firstName: string;
   lastName: string;
-  displayName: string;
   phone: string;
   position: string;
   department: string;
   preferredLanguage: string;
-  timezone: string;
 };
 
 type ProfileErrors = Partial<Record<keyof ProfileFormValues, string>>;
 
 const EMPTY_FORM: ProfileFormValues = {
-  username: '',
-  email: '',
   firstName: '',
   lastName: '',
-  displayName: '',
   phone: '',
   position: '',
   department: '',
   preferredLanguage: '',
-  timezone: '',
 };
 
 const statusTranslationKeyByValue = {
@@ -48,32 +41,43 @@ const statusTranslationKeyByValue = {
 } as const;
 
 const toFormValues = (profile: IamUserDetail): ProfileFormValues => ({
-  username: profile.username ?? profile.email ?? '',
-  email: profile.email ?? '',
   firstName: profile.firstName ?? '',
   lastName: profile.lastName ?? '',
-  displayName: profile.displayName,
   phone: profile.phone ?? '',
   position: profile.position ?? '',
   department: profile.department ?? '',
   preferredLanguage: profile.preferredLanguage ?? 'de',
-  timezone: profile.timezone ?? 'Europe/Berlin',
 });
-
-const normalize = (value?: string | null): string => value?.trim() ?? '';
 
 const deriveDisplayName = (firstName: string, lastName: string): string =>
   [firstName.trim(), lastName.trim()].filter(Boolean).join(' ');
 
+const pickInitials = (displayName: string) => {
+  const parts = displayName
+    .split(' ')
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .slice(0, 2);
+
+  if (parts.length === 0) {
+    return 'NA';
+  }
+
+  return parts.map((entry) => entry.charAt(0).toUpperCase()).join('');
+};
+
+const formatDateTime = (value?: string) => {
+  if (!value) {
+    return '—';
+  }
+
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+};
+
 const validateForm = (values: ProfileFormValues): ProfileErrors => {
   const errors: ProfileErrors = {};
 
-  if (!values.username.trim() || /\s/.test(values.username.trim())) {
-    errors.username = t('account.validation.usernameInvalid');
-  }
-  if (!values.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(values.email.trim())) {
-    errors.email = t('account.validation.emailInvalid');
-  }
   if (!values.firstName.trim()) {
     errors.firstName = t('account.validation.firstNameRequired');
   }
@@ -114,16 +118,10 @@ export const AccountProfilePage = () => {
       const resolvedError = asIamError(cause);
       setLoadError(resolvedError);
       setProfile(null);
-      if (user) {
-        setFormValues((current) => ({
-          ...current,
-          displayName: user.name,
-        }));
-      }
     } finally {
       setIsLoading(false);
     }
-  }, [user]);
+  }, []);
 
   React.useEffect(() => {
     void loadProfile();
@@ -164,31 +162,16 @@ export const AccountProfilePage = () => {
     setSaveSuccess(false);
 
     try {
-      const previousDisplayName = normalize(profile?.displayName);
-      const previousDerivedDisplayName = deriveDisplayName(profile?.firstName ?? '', profile?.lastName ?? '');
       const nextDerivedDisplayName = deriveDisplayName(formValues.firstName, formValues.lastName);
-      const nextDisplayName = (() => {
-        const trimmedDisplayName = formValues.displayName.trim();
-        if (!trimmedDisplayName) {
-          return nextDerivedDisplayName;
-        }
-        if (trimmedDisplayName === previousDisplayName && previousDisplayName === previousDerivedDisplayName) {
-          return nextDerivedDisplayName;
-        }
-        return trimmedDisplayName;
-      })();
 
       const response = await updateMyProfile({
-        username: formValues.username.trim(),
-        email: formValues.email.trim(),
         firstName: formValues.firstName.trim(),
         lastName: formValues.lastName.trim(),
-        displayName: nextDisplayName,
+        displayName: nextDerivedDisplayName,
         phone: formValues.phone.trim() || undefined,
         position: formValues.position.trim() || undefined,
         department: formValues.department.trim() || undefined,
         preferredLanguage: formValues.preferredLanguage.trim() || undefined,
-        timezone: formValues.timezone.trim() || undefined,
       });
 
       setProfile(response.data);
@@ -243,37 +226,47 @@ export const AccountProfilePage = () => {
   }
 
   const statusKey = profile?.status ? statusTranslationKeyByValue[profile.status] : statusTranslationKeyByValue.pending;
+  const displayName =
+    profile?.displayName ??
+    deriveDisplayName(formValues.firstName, formValues.lastName) ??
+    user?.name ??
+    '-';
+  const email = profile?.email ?? user?.email ?? '-';
+  const roleNames = profile?.roles.map((role) => role.roleName).join(', ') || '-';
 
   return (
-    <section className="space-y-6" aria-busy={isSaving}>
+    <section className="space-y-5" aria-busy={isSaving}>
       <header className="space-y-2">
         <h1 className="text-3xl font-semibold text-foreground">{t('account.profile.title')}</h1>
         <p className="max-w-2xl text-sm text-muted-foreground">{t('account.profile.subtitle')}</p>
       </header>
 
-      <Card>
-        <CardContent className="grid gap-4 p-4 text-sm text-foreground sm:grid-cols-2">
-          <p>
-          <span className="font-semibold">{t('account.fields.username')}: </span>
-          {profile?.username ?? profile?.email ?? '-'}
-          </p>
-          <p>
-          <span className="font-semibold">{t('account.fields.email')}: </span>
-          {profile?.email ?? user?.email ?? '-'}
-          </p>
-          <p>
-          <span className="font-semibold">{t('account.fields.role')}: </span>
-          {profile?.roles.map((role) => role.roleName).join(', ') || '-'}
-          </p>
-          <p>
-          <span className="font-semibold">{t('account.fields.status')}: </span>
-          {t(statusKey)}
-          </p>
-          <p>
-          <span className="font-semibold">{t('account.fields.lastLogin')}: </span>
-          {profile?.lastLoginAt ?? '-'}
-          </p>
-        </CardContent>
+      <Card className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-4">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full border border-border bg-background text-lg font-semibold text-foreground">
+            {pickInitials(displayName)}
+          </div>
+          <div>
+            <h2 className="text-2xl font-semibold text-foreground">{displayName}</h2>
+            <p className="text-sm text-muted-foreground">{email}</p>
+            <div className="mt-2 flex flex-wrap gap-2 text-xs">
+              <Badge variant="outline">{t(statusKey)}</Badge>
+              {profile?.roles.length ? (
+                profile.roles.map((role) => (
+                  <Badge key={role.roleId} variant="outline" className="h-auto items-start py-1">
+                    <span className="block">{role.roleName}</span>
+                  </Badge>
+                ))
+              ) : (
+                <Badge variant="outline">{t('account.fields.role')}: -</Badge>
+              )}
+            </div>
+          </div>
+        </div>
+        <div className="text-sm text-muted-foreground">
+          <span className="font-medium text-foreground">{t('account.fields.lastLogin')}: </span>
+          {formatDateTime(profile?.lastLoginAt)}
+        </div>
       </Card>
 
       {Object.keys(validationErrors).length > 0 ? (
@@ -319,104 +312,79 @@ export const AccountProfilePage = () => {
         </CardContent>
       </Card>
 
-      <form className="grid gap-4 md:grid-cols-2" onSubmit={onSubmit} noValidate>
-        <div className="grid gap-2 text-sm text-foreground">
-          <Label htmlFor="account-username">{t('account.fields.username')}</Label>
-          <Input
-            id="account-username"
-            autoComplete="username"
-            value={formValues.username}
-            onChange={(event) => onFieldChange('username', event.target.value)}
-            aria-invalid={Boolean(validationErrors.username)}
-          />
-        </div>
-        <div className="grid gap-2 text-sm text-foreground">
-          <Label htmlFor="account-email">{t('account.fields.email')}</Label>
-          <Input
-            id="account-email"
-            type="email"
-            autoComplete="email"
-            value={formValues.email}
-            onChange={(event) => onFieldChange('email', event.target.value)}
-            aria-invalid={Boolean(validationErrors.email)}
-          />
-        </div>
-        <div className="grid gap-2 text-sm text-foreground">
-          <Label htmlFor="account-first-name">{t('account.fields.firstName')}</Label>
-          <Input
-            id="account-first-name"
-            autoComplete="given-name"
-            value={formValues.firstName}
-            onChange={(event) => onFieldChange('firstName', event.target.value)}
-            aria-invalid={Boolean(validationErrors.firstName)}
-          />
-        </div>
-        <div className="grid gap-2 text-sm text-foreground">
-          <Label htmlFor="account-last-name">{t('account.fields.lastName')}</Label>
-          <Input
-            id="account-last-name"
-            autoComplete="family-name"
-            value={formValues.lastName}
-            onChange={(event) => onFieldChange('lastName', event.target.value)}
-            aria-invalid={Boolean(validationErrors.lastName)}
-          />
-        </div>
-        <div className="grid gap-2 text-sm text-foreground">
-          <Label htmlFor="account-display-name">{t('account.fields.displayName')}</Label>
-          <Input
-            id="account-display-name"
-            autoComplete="name"
-            value={formValues.displayName}
-            onChange={(event) => onFieldChange('displayName', event.target.value)}
-          />
-        </div>
-        <div className="grid gap-2 text-sm text-foreground">
-          <Label htmlFor="account-phone">{t('account.fields.phone')}</Label>
-          <Input
-            id="account-phone"
-            autoComplete="tel"
-            value={formValues.phone}
-            onChange={(event) => onFieldChange('phone', event.target.value)}
-            aria-invalid={Boolean(validationErrors.phone)}
-          />
-        </div>
-        <div className="grid gap-2 text-sm text-foreground">
-          <Label htmlFor="account-position">{t('account.fields.position')}</Label>
-          <Input
-            id="account-position"
-            value={formValues.position}
-            onChange={(event) => onFieldChange('position', event.target.value)}
-          />
-        </div>
-        <div className="grid gap-2 text-sm text-foreground">
-          <Label htmlFor="account-department">{t('account.fields.department')}</Label>
-          <Input
-            id="account-department"
-            value={formValues.department}
-            onChange={(event) => onFieldChange('department', event.target.value)}
-          />
-        </div>
-        <div className="grid gap-2 text-sm text-foreground">
-          <Label htmlFor="account-language">{t('account.fields.language')}</Label>
-          <Select
-            id="account-language"
-            value={formValues.preferredLanguage}
-            onChange={(event) => onFieldChange('preferredLanguage', event.target.value)}
-          >
-            <option value="de">Deutsch</option>
-            <option value="en">English</option>
-          </Select>
-        </div>
-        <div className="grid gap-2 text-sm text-foreground">
-          <Label htmlFor="account-timezone">{t('account.fields.timezone')}</Label>
-          <Input
-            id="account-timezone"
-            value={formValues.timezone}
-            onChange={(event) => onFieldChange('timezone', event.target.value)}
-          />
-        </div>
+      <form className="space-y-4" onSubmit={onSubmit} noValidate>
+        <section className="grid gap-4 rounded-xl border border-border bg-card p-4 shadow-shell md:grid-cols-2">
+          <div className="grid gap-2 text-sm text-foreground">
+            <Label htmlFor="account-first-name">{t('account.fields.firstName')}</Label>
+            <Input
+              id="account-first-name"
+              autoComplete="given-name"
+              value={formValues.firstName}
+              onChange={(event) => onFieldChange('firstName', event.target.value)}
+              aria-invalid={Boolean(validationErrors.firstName)}
+            />
+          </div>
+          <div className="grid gap-2 text-sm text-foreground">
+            <Label htmlFor="account-last-name">{t('account.fields.lastName')}</Label>
+            <Input
+              id="account-last-name"
+              autoComplete="family-name"
+              value={formValues.lastName}
+              onChange={(event) => onFieldChange('lastName', event.target.value)}
+              aria-invalid={Boolean(validationErrors.lastName)}
+            />
+          </div>
+          <div className="grid gap-2 text-sm text-foreground md:col-span-2">
+            <Label htmlFor="account-phone">{t('account.fields.phone')}</Label>
+            <Input
+              id="account-phone"
+              autoComplete="tel"
+              value={formValues.phone}
+              onChange={(event) => onFieldChange('phone', event.target.value)}
+              aria-invalid={Boolean(validationErrors.phone)}
+            />
+          </div>
+        </section>
 
-        <div className="md:col-span-2 flex flex-wrap items-center gap-3">
+        <section className="grid gap-4 rounded-xl border border-border bg-card p-4 shadow-shell md:grid-cols-2">
+          <div className="grid gap-2 text-sm text-foreground">
+            <Label htmlFor="account-position">{t('account.fields.position')}</Label>
+            <Input
+              id="account-position"
+              value={formValues.position}
+              onChange={(event) => onFieldChange('position', event.target.value)}
+            />
+          </div>
+          <div className="grid gap-2 text-sm text-foreground">
+            <Label htmlFor="account-department">{t('account.fields.department')}</Label>
+            <Input
+              id="account-department"
+              value={formValues.department}
+              onChange={(event) => onFieldChange('department', event.target.value)}
+            />
+          </div>
+          <div className="grid gap-2 text-sm text-foreground">
+            <Label htmlFor="account-language">{t('account.fields.language')}</Label>
+            <Select
+              id="account-language"
+              value={formValues.preferredLanguage}
+              onChange={(event) => onFieldChange('preferredLanguage', event.target.value)}
+            >
+              <option value="de">Deutsch</option>
+              <option value="en">English</option>
+            </Select>
+          </div>
+          <div className="grid gap-2 text-sm text-foreground">
+            <Label htmlFor="account-status-readonly">{t('account.fields.status')}</Label>
+            <Input id="account-status-readonly" value={t(statusKey)} readOnly aria-readonly="true" />
+          </div>
+          <div className="grid gap-2 text-sm text-foreground md:col-span-2">
+            <Label htmlFor="account-roles-readonly">{t('account.fields.role')}</Label>
+            <Input id="account-roles-readonly" value={roleNames} readOnly aria-readonly="true" />
+          </div>
+        </section>
+
+        <div className="flex flex-wrap items-center gap-3">
           <Button type="submit" disabled={isSaving}>
             {isSaving ? t('account.actions.saving') : t('account.actions.save')}
           </Button>

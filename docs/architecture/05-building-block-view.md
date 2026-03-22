@@ -214,6 +214,19 @@ Neu hinzugekommene Bausteine im Change `add-iam-organization-management-hierarch
 4. `packages/auth/src/iam-governance/read-models.ts`, `packages/auth/src/iam-data-subject-rights/read-models.ts`, `packages/auth/src/iam-account-management/user-timeline-query.ts`
    - Serverseitige Normalisierung der Transparenzdaten statt Roh-JSON aus Einzeltabellen.
 
+### Ergänzung 2026-03: Fachliche Rechtstext-Verwaltung
+
+1. `packages/core/src/iam/account-management-contract.ts`
+   - Definiert das gemeinsame Rechtstext-Modell mit UUID, Name, Version, Locale, HTML-Inhalt, Status sowie Erstellungs-, Änderungs- und Veröffentlichungszeitpunkten.
+2. `packages/auth/src/iam-legal-texts/*`
+   - Kapselt Request-Validierung, Repository, Statusregeln, serverseitiges HTML-Sanitizing und API-Mapping für `GET/POST/PATCH /api/v1/iam/legal-texts`.
+3. `packages/data/migrations/up/0019_iam_legal_text_rich_content.sql`
+   - Erweitert das IAM-Schema um `name`, `content_html`, `status` und `updated_at` für fachlich editierbare Rechtstexte.
+4. `apps/sva-studio-react/src/routes/admin/legal-texts/-legal-texts-page.tsx`
+   - Stellt Liste sowie Create/Edit-Dialoge für fachliche Rechtstexte bereit und bindet einen App-spezifischen Rich-Text-Editor an.
+5. `apps/sva-studio-react/src/components/RichTextEditor.tsx`
+   - Bleibt bewusst im App-Layer, damit keine Editor-Abhängigkeiten oder UI-Typen in `packages/core` oder `packages/auth` gelangen.
+
 ### Ergänzung 2026-03: Manueller Keycloak-User-Import
 
 1. `packages/auth/src/iam-account-management/user-import-sync-handler.ts`

@@ -43,6 +43,7 @@ const authRoutePaths = [
   '/iam/me/data-export',
   '/iam/me/data-export/status',
   '/iam/me/data-subject-rights/requests',
+  '/iam/me/legal-texts/pending',
   '/iam/me/profile',
   '/iam/me/optional-processing/execute',
   '/iam/admin/data-subject-rights/export',

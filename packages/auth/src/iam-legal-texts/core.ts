@@ -2,9 +2,14 @@ import { createSdkLogger } from '@sva/sdk/server';
 
 import { asApiList, createApiError } from '../iam-account-management/api-helpers.js';
 import type { AuthenticatedRequestContext } from '../middleware.server.js';
+import { withAuthenticatedUser } from '../middleware.server.js';
 import { createLegalTextResponse, updateLegalTextResponse } from './mutations.js';
-import { loadLegalTextListItems } from './repository.js';
-import { resolveLegalTextsAdminActor, withAuthenticatedLegalTextsHandler } from './request-context.js';
+import { loadLegalTextById, loadLegalTextListItems, loadPendingLegalTexts } from './repository.js';
+import {
+  resolveLegalTextsAdminActor,
+  withAuthenticatedLegalTextsHandler,
+  withLegalTextsRequestContext,
+} from './request-context.js';
 
 const logger = createSdkLogger({ component: 'iam-legal-texts', level: 'info' });
 
@@ -59,6 +64,36 @@ export const updateLegalTextInternal = async (
 
 export const listLegalTextsHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedLegalTextsHandler(request, listLegalTextsInternal);
+
+export const listPendingLegalTextsHandler = async (request: Request): Promise<Response> =>
+  withLegalTextsRequestContext(request, async () =>
+    withAuthenticatedUser(request, async ({ user }) => {
+      if (!user.instanceId) {
+        return createApiError(401, 'unauthorized', 'Instanzkontext fehlt.', undefined);
+      }
+
+      try {
+        const items = await loadPendingLegalTexts(user.instanceId, user.id);
+        const pageSize = Math.max(1, items.length);
+        return new Response(JSON.stringify(asApiList(items, { page: 1, pageSize, total: items.length })), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      } catch (error) {
+        logger.error('Pending legal text query failed', {
+          operation: 'legal_texts_pending',
+          instance_id: user.instanceId,
+          user_id: user.id,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        return createApiError(
+          503,
+          'database_unavailable',
+          'Offene Rechtstexte konnten nicht geladen werden.'
+        );
+      }
+    })
+  );
 
 export const createLegalTextHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedLegalTextsHandler(request, createLegalTextInternal);

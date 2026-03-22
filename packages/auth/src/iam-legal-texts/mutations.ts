@@ -72,7 +72,7 @@ export const createLegalTextResponse = async (
 
   const parsed = await parseRequestBody(request, createLegalTextSchema);
   if (!parsed.ok) {
-    return createApiError(400, 'invalid_request', 'Ungültiger Payload.', actor.requestId);
+    return createApiError(400, 'invalid_request', parsed.message, actor.requestId);
   }
 
   const reserve = await reserveIdempotency({
@@ -110,6 +110,15 @@ export const createLegalTextResponse = async (
     await completeCreateIdempotency(actor, idempotencyKey.key, 201, responseBody);
     return jsonResponse(201, responseBody);
   } catch (error) {
+    if (error instanceof Error && error.message === 'legal_text_published_at_required') {
+      return createFailureResponse(
+        actor,
+        idempotencyKey.key,
+        400,
+        'invalid_request',
+        'Veröffentlichungsdatum ist für gültige Rechtstexte erforderlich.'
+      );
+    }
     logger.error('Legal text create failed', {
       operation: 'legal_text_create',
       instance_id: actor.instanceId,
@@ -143,7 +152,7 @@ export const updateLegalTextResponse = async (
 
   const parsed = await parseRequestBody(request, updateLegalTextSchema);
   if (!parsed.ok) {
-    return createApiError(400, 'invalid_request', 'Ungültiger Payload.', actor.requestId);
+    return createApiError(400, 'invalid_request', parsed.message, actor.requestId);
   }
 
   try {
@@ -164,6 +173,14 @@ export const updateLegalTextResponse = async (
       ? jsonResponse(200, asApiItem(item, actor.requestId))
       : createApiError(404, 'not_found', 'Rechtstext-Version wurde nicht gefunden.', actor.requestId);
   } catch (error) {
+    if (error instanceof Error && error.message === 'legal_text_published_at_required') {
+      return createApiError(
+        400,
+        'invalid_request',
+        'Veröffentlichungsdatum ist für gültige Rechtstexte erforderlich.',
+        actor.requestId
+      );
+    }
     logger.error('Legal text update failed', {
       operation: 'legal_text_update',
       instance_id: actor.instanceId,

@@ -341,6 +341,12 @@ const authHandlerMap = {
       return mod.dataSubjectRequestHandler(request);
     },
   },
+  '/iam/me/legal-texts/pending': {
+    GET: async ({ request }) => {
+      const mod = await import('@sva/auth/runtime-routes');
+      return mod.listPendingLegalTextsHandler(request);
+    },
+  },
   '/iam/me/profile': {
     POST: async ({ request }) => {
       const mod = await import('@sva/auth/runtime-routes');

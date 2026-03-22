@@ -103,13 +103,14 @@ const jsonHeaders = {
 
 const legalTextRow = {
   id: '11111111-1111-1111-1111-111111111111',
-  legal_text_id: 'privacy_policy',
+  name: 'Privacy Policy',
   legal_text_version: '2026-03',
   locale: 'de-DE',
-  content_hash: 'sha256:abc123',
-  is_active: true,
+  content_html: '<p>Existing legal text</p>',
+  status: 'valid',
   published_at: '2026-03-16T09:00:00.000Z',
   created_at: '2026-03-16T08:55:00.000Z',
+  updated_at: '2026-03-16T09:30:00.000Z',
   acceptance_count: 4,
   active_acceptance_count: 3,
   last_accepted_at: '2026-03-16T10:00:00.000Z',
@@ -151,11 +152,12 @@ describe('iam-legal-texts handlers', () => {
 
     expect(response.status).toBe(200);
     const payload = (await response.json()) as {
-      data: Array<{ legalTextId: string; activeAcceptanceCount: number; lastAcceptedAt?: string }>;
+      data: Array<{ name: string; status: string; activeAcceptanceCount: number; lastAcceptedAt?: string }>;
     };
     expect(payload.data).toHaveLength(1);
     expect(payload.data[0]).toMatchObject({
-      legalTextId: 'privacy_policy',
+      name: 'Privacy Policy',
+      status: 'valid',
       activeAcceptanceCount: 3,
       lastAcceptedAt: '2026-03-16T10:00:00.000Z',
     });
@@ -206,13 +208,20 @@ describe('iam-legal-texts handlers', () => {
         return { rowCount: 0, rows: [] };
       }
       if (text.includes('INSERT INTO iam.legal_text_versions')) {
+        expect(values?.[0]).toBe('de-musterhausen');
+        expect(values?.[1]).toBe('Terms of Use');
+        expect(values?.[2]).toBe('2026-04');
+        expect(values?.[3]).toBe('en-GB');
+        expect(values?.[4]).toBe('<p>Terms of use</p>');
         expect(values).toEqual([
           'de-musterhausen',
-          'terms_of_use',
+          'Terms of Use',
           '2026-04',
           'en-GB',
-          'sha256:def456',
-          false,
+          '<p>Terms of use</p>',
+          'valid',
+          'sha256:ca865ab6c23867842db126808617586ba6c09bbb8aa64ed12ee7c62fdecb42c0',
+          true,
           '2026-04-01T12:00:00.000Z',
         ]);
         return {
@@ -226,11 +235,11 @@ describe('iam-legal-texts handlers', () => {
           rows: [
             {
               ...legalTextRow,
-              legal_text_id: 'terms_of_use',
+              name: 'Terms of Use',
               legal_text_version: '2026-04',
               locale: 'en-GB',
-              content_hash: 'sha256:def456',
-              is_active: false,
+              content_html: '<p>Terms of use</p>',
+              status: 'valid',
               published_at: '2026-04-01T12:00:00.000Z',
             },
           ],
@@ -247,21 +256,21 @@ describe('iam-legal-texts handlers', () => {
           'Idempotency-Key': 'idem-legal-text-1',
         },
         body: JSON.stringify({
-          legalTextId: 'terms_of_use',
+          name: 'Terms of Use',
           legalTextVersion: '2026-04',
           locale: 'en-GB',
-          contentHash: 'sha256:def456',
-          isActive: false,
+          contentHtml: '<p>Terms of use</p>',
+          status: 'valid',
           publishedAt: '2026-04-01T12:00:00.000Z',
         }),
       })
     );
 
     expect(response.status).toBe(201);
-    const payload = (await response.json()) as { data: { legalTextId: string; isActive: boolean; locale: string } };
+    const payload = (await response.json()) as { data: { name: string; status: string; locale: string } };
     expect(payload.data).toMatchObject({
-      legalTextId: 'terms_of_use',
-      isActive: false,
+      name: 'Terms of Use',
+      status: 'valid',
       locale: 'en-GB',
     });
     expect(state.queryLog.some((entry) => entry.text.includes('INSERT INTO iam.idempotency_keys'))).toBe(true);
@@ -269,32 +278,44 @@ describe('iam-legal-texts handlers', () => {
   });
 
   it('updates an existing legal text version', async () => {
+    let legalTextSelectCount = 0;
     state.queryHandler = (text, values) => {
       if (resolveActorAccountQuery(text)) {
         return { rowCount: 1, rows: [{ account_id: 'account-1' }] };
+      }
+      if (text.includes('FROM iam.legal_text_versions version')) {
+        legalTextSelectCount += 1;
+        return {
+          rowCount: 1,
+          rows: [
+            legalTextSelectCount === 1
+              ? legalTextRow
+              : {
+                  ...legalTextRow,
+                  name: 'Updated Privacy Policy',
+                  legal_text_version: '2026-05',
+                  locale: 'en-US',
+                  content_html: '<p>Updated legal text</p>',
+                  status: 'archived',
+                  published_at: '2026-05-01T08:00:00.000Z',
+                },
+          ],
+        };
       }
       if (text.includes('UPDATE iam.legal_text_versions')) {
         expect(values).toEqual([
           'de-musterhausen',
           legalTextRow.id,
-          'sha256:updated',
+          'Updated Privacy Policy',
+          '2026-05',
+          'en-US',
+          '<p>Updated legal text</p>',
+          'archived',
+          'sha256:fdb8e67c0bbdea81aea4b16449ace29b824f48c39365c9ab6001d187c248b8d6',
           false,
           '2026-05-01T08:00:00.000Z',
         ]);
         return { rowCount: 1, rows: [{ id: legalTextRow.id }] };
-      }
-      if (text.includes('FROM iam.legal_text_versions version')) {
-        return {
-          rowCount: 1,
-          rows: [
-            {
-              ...legalTextRow,
-              content_hash: 'sha256:updated',
-              is_active: false,
-              published_at: '2026-05-01T08:00:00.000Z',
-            },
-          ],
-        };
       }
       return { rowCount: 0, rows: [] };
     };
@@ -304,28 +325,33 @@ describe('iam-legal-texts handlers', () => {
         method: 'PATCH',
         headers: jsonHeaders,
         body: JSON.stringify({
-          contentHash: 'sha256:updated',
-          isActive: false,
+          name: 'Updated Privacy Policy',
+          legalTextVersion: '2026-05',
+          locale: 'en-US',
+          contentHtml: '<p>Updated legal text</p>',
+          status: 'archived',
           publishedAt: '2026-05-01T08:00:00.000Z',
         }),
       })
     );
 
     expect(response.status).toBe(200);
-    const payload = (await response.json()) as { data: { contentHash: string; isActive: boolean } };
+    const payload = (await response.json()) as { data: { name: string; status: string; legalTextVersion: string } };
     expect(payload.data).toMatchObject({
-      contentHash: 'sha256:updated',
-      isActive: false,
+      name: 'Updated Privacy Policy',
+      status: 'archived',
+      legalTextVersion: '2026-05',
     });
   });
 
   it('replays an idempotent create request without inserting another record', async () => {
     const rawBody = JSON.stringify({
-      legalTextId: 'privacy_policy',
+      name: 'Privacy Policy',
       legalTextVersion: '2026-03',
       locale: 'de-DE',
-      contentHash: 'sha256:abc123',
-      isActive: true,
+      contentHtml: '<p>Existing legal text</p>',
+      status: 'valid',
+      publishedAt: '2026-03-16T09:00:00.000Z',
     });
     state.queryHandler = (text) => {
       if (resolveActorAccountQuery(text)) {
@@ -339,7 +365,7 @@ describe('iam-legal-texts handlers', () => {
               payload_hash: toPayloadHash(rawBody),
               status: 'COMPLETED',
               response_status: 201,
-              response_body: { data: { id: legalTextRow.id, legalTextId: 'privacy_policy' } },
+              response_body: { data: { id: legalTextRow.id, name: 'Privacy Policy', status: 'valid' } },
             },
           ],
         };
@@ -360,7 +386,7 @@ describe('iam-legal-texts handlers', () => {
 
     expect(response.status).toBe(201);
     await expect(response.json()).resolves.toEqual({
-      data: { id: legalTextRow.id, legalTextId: 'privacy_policy' },
+      data: { id: legalTextRow.id, name: 'Privacy Policy', status: 'valid' },
     });
     expect(state.queryLog.some((entry) => entry.text.includes('INSERT INTO iam.legal_text_versions'))).toBe(false);
   });
@@ -387,11 +413,12 @@ describe('iam-legal-texts handlers', () => {
           'Idempotency-Key': 'idem-legal-text-conflict',
         },
         body: JSON.stringify({
-          legalTextId: 'privacy_policy',
+          name: 'Privacy Policy',
           legalTextVersion: '2026-03',
           locale: 'de-DE',
-          contentHash: 'sha256:abc123',
-          isActive: true,
+          contentHtml: '<p>Existing legal text</p>',
+          status: 'valid',
+          publishedAt: '2026-03-16T09:00:00.000Z',
         }),
       })
     );
@@ -420,11 +447,12 @@ describe('iam-legal-texts handlers', () => {
           'Idempotency-Key': 'idem-legal-text-forbidden',
         },
         body: JSON.stringify({
-          legalTextId: 'privacy_policy',
+          name: 'Privacy Policy',
           legalTextVersion: '2026-03',
           locale: 'de-DE',
-          contentHash: 'sha256:abc123',
-          isActive: true,
+          contentHtml: '<p>Existing legal text</p>',
+          status: 'valid',
+          publishedAt: '2026-03-16T09:00:00.000Z',
         }),
       })
     );
@@ -433,7 +461,7 @@ describe('iam-legal-texts handlers', () => {
         method: 'PATCH',
         headers: jsonHeaders,
         body: JSON.stringify({
-          contentHash: 'sha256:updated',
+          contentHtml: '<p>Updated legal text</p>',
         }),
       })
     );
@@ -447,7 +475,7 @@ describe('iam-legal-texts handlers', () => {
       if (resolveActorAccountQuery(text)) {
         return { rowCount: 1, rows: [{ account_id: 'account-1' }] };
       }
-      if (text.includes('UPDATE iam.legal_text_versions')) {
+      if (text.includes('FROM iam.legal_text_versions version')) {
         return { rowCount: 0, rows: [] };
       }
       return { rowCount: 0, rows: [] };
@@ -458,7 +486,7 @@ describe('iam-legal-texts handlers', () => {
         method: 'PATCH',
         headers: jsonHeaders,
         body: JSON.stringify({
-          contentHash: 'sha256:updated',
+          contentHtml: '<p>Updated legal text</p>',
         }),
       })
     );
@@ -468,6 +496,9 @@ describe('iam-legal-texts handlers', () => {
     state.queryHandler = (text) => {
       if (resolveActorAccountQuery(text)) {
         return { rowCount: 1, rows: [{ account_id: 'account-1' }] };
+      }
+      if (text.includes('FROM iam.legal_text_versions version')) {
+        return { rowCount: 1, rows: [legalTextRow] };
       }
       if (text.includes('UPDATE iam.legal_text_versions')) {
         throw new Error('db down');
@@ -480,7 +511,7 @@ describe('iam-legal-texts handlers', () => {
         method: 'PATCH',
         headers: jsonHeaders,
         body: JSON.stringify({
-          contentHash: 'sha256:updated',
+          contentHtml: '<p>Updated legal text</p>',
         }),
       })
     );
@@ -551,11 +582,12 @@ describe('iam-legal-texts handlers', () => {
         method: 'POST',
         headers: jsonHeaders,
         body: JSON.stringify({
-          legalTextId: 'privacy_policy',
+          name: 'Privacy Policy',
           legalTextVersion: '2026-03',
           locale: 'de-DE',
-          contentHash: 'sha256:abc123',
-          isActive: true,
+          contentHtml: '<p>Existing legal text</p>',
+          status: 'valid',
+          publishedAt: '2026-03-16T09:00:00.000Z',
         }),
       })
     );
@@ -568,11 +600,12 @@ describe('iam-legal-texts handlers', () => {
           'Idempotency-Key': 'idem-legal-text-missing-csrf',
         },
         body: JSON.stringify({
-          legalTextId: 'privacy_policy',
+          name: 'Privacy Policy',
           legalTextVersion: '2026-03',
           locale: 'de-DE',
-          contentHash: 'sha256:abc123',
-          isActive: true,
+          contentHtml: '<p>Existing legal text</p>',
+          status: 'valid',
+          publishedAt: '2026-03-16T09:00:00.000Z',
         }),
       })
     );
@@ -585,7 +618,7 @@ describe('iam-legal-texts handlers', () => {
           'Idempotency-Key': 'idem-legal-text-invalid',
         },
         body: JSON.stringify({
-          legalTextId: '',
+          name: '',
         }),
       })
     );
@@ -595,7 +628,7 @@ describe('iam-legal-texts handlers', () => {
         method: 'PATCH',
         headers: jsonHeaders,
         body: JSON.stringify({
-          contentHash: 'sha256:updated',
+          contentHtml: '<p>Updated legal text</p>',
         }),
       })
     );
@@ -605,7 +638,7 @@ describe('iam-legal-texts handlers', () => {
         method: 'PATCH',
         headers: jsonHeaders,
         body: JSON.stringify({
-          isActive: 'yes',
+          status: 'invalid',
         }),
       })
     );
@@ -615,6 +648,18 @@ describe('iam-legal-texts handlers', () => {
     expect(invalidPayloadResponse.status).toBe(400);
     expect(missingPathResponse.status).toBe(400);
     expect(invalidUpdatePayloadResponse.status).toBe(400);
+    await expect(invalidPayloadResponse.json()).resolves.toMatchObject({
+      error: {
+        code: 'invalid_request',
+        message: 'name: Too small: expected string to have >=1 characters',
+      },
+    });
+    await expect(invalidUpdatePayloadResponse.json()).resolves.toMatchObject({
+      error: {
+        code: 'invalid_request',
+        message: "status: Invalid option: expected one of \"draft\"|\"valid\"|\"archived\"",
+      },
+    });
   });
 
   it('returns database_unavailable when a created version cannot be reloaded', async () => {
@@ -642,11 +687,11 @@ describe('iam-legal-texts handlers', () => {
           'Idempotency-Key': 'idem-legal-text-reload-failure',
         },
         body: JSON.stringify({
-          legalTextId: 'terms_of_use',
+          name: 'Terms of Use',
           legalTextVersion: '2026-04',
           locale: 'en-GB',
-          contentHash: 'sha256:def456',
-          isActive: false,
+          contentHtml: '<p>Terms of use</p>',
+          status: 'draft',
         }),
       })
     );

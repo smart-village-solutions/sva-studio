@@ -1592,25 +1592,29 @@ components:
             format: uuid
     LegalText:
       type: object
-      required: [id, legalTextId, legalTextVersion, locale, contentHash, isActive, publishedAt, createdAt]
+      required: [id, name, legalTextVersion, locale, contentHtml, status, createdAt, updatedAt]
       properties:
         id:
           type: string
           format: uuid
-        legalTextId:
+        name:
           type: string
         legalTextVersion:
           type: string
         locale:
           type: string
-        contentHash:
+        contentHtml:
           type: string
-        isActive:
-          type: boolean
+        status:
+          type: string
+          enum: [draft, valid, archived]
         publishedAt:
           type: string
           format: date-time
         createdAt:
+          type: string
+          format: date-time
+        updatedAt:
           type: string
           format: date-time
         acceptanceCount:
@@ -1642,18 +1646,20 @@ components:
           $ref: '#/components/schemas/LegalText'
     CreateLegalTextRequest:
       type: object
-      required: [legalTextId, legalTextVersion, locale, contentHash]
+      additionalProperties: false
+      required: [name, legalTextVersion, locale, contentHtml, status]
       properties:
-        legalTextId:
+        name:
           type: string
         legalTextVersion:
           type: string
         locale:
           type: string
-        contentHash:
+        contentHtml:
           type: string
-        isActive:
-          type: boolean
+        status:
+          type: string
+          enum: [draft, valid, archived]
         publishedAt:
           type: string
           format: date-time
@@ -1661,10 +1667,17 @@ components:
       type: object
       additionalProperties: false
       properties:
-        contentHash:
+        name:
           type: string
-        isActive:
-          type: boolean
+        legalTextVersion:
+          type: string
+        locale:
+          type: string
+        contentHtml:
+          type: string
+        status:
+          type: string
+          enum: [draft, valid, archived]
         publishedAt:
           type: string
           format: date-time

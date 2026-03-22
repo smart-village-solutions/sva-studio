@@ -44,6 +44,7 @@ export {
 export {
   createLegalTextHandler,
   listLegalTextsHandler,
+  listPendingLegalTextsHandler,
   updateLegalTextHandler,
 } from './iam-legal-texts.server.js';
 export {

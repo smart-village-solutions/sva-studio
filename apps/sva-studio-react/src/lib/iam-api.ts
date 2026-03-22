@@ -9,6 +9,7 @@ import type {
   IamDsrSelfServiceOverview,
   IamGovernanceCaseListItem,
   IamLegalTextListItem,
+  IamPendingLegalTextItem,
   IamOrganizationContext,
   IamOrganizationDetail,
   IamOrganizationListItem,
@@ -25,6 +26,8 @@ const IAM_HEADERS = {
   'Content-Type': 'application/json',
   'X-Requested-With': 'XMLHttpRequest',
 } as const;
+
+export const LEGAL_ACCEPTANCE_REQUIRED_EVENT = 'sva:legal-acceptance-required';
 
 export class IamHttpError extends Error {
   readonly status: number;
@@ -246,17 +249,20 @@ export type AssignGroupMembershipPayload = {
 };
 
 export type CreateLegalTextPayload = {
-  readonly legalTextId: string;
+  readonly name: string;
   readonly legalTextVersion: string;
   readonly locale: string;
-  readonly contentHash: string;
-  readonly isActive?: boolean;
+  readonly contentHtml: string;
+  readonly status: 'draft' | 'valid' | 'archived';
   readonly publishedAt?: string;
 };
 
 export type UpdateLegalTextPayload = {
-  readonly contentHash?: string;
-  readonly isActive?: boolean;
+  readonly name?: string;
+  readonly legalTextVersion?: string;
+  readonly locale?: string;
+  readonly contentHtml?: string;
+  readonly status?: 'draft' | 'valid' | 'archived';
   readonly publishedAt?: string;
 };
 
@@ -333,6 +339,10 @@ const readErrorPayload = async (response: Response): Promise<IamHttpError> => {
   const details = readSafeDiagnosticDetails(payload);
 
   logDevelopmentApiError({ requestId, status: response.status, code, details });
+
+  if (code === 'legal_acceptance_required' && typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent(LEGAL_ACCEPTANCE_REQUIRED_EVENT));
+  }
 
   return new IamHttpError({
     status: response.status,
@@ -712,6 +722,33 @@ export const listGovernanceCases = async (
 
 export const getMyDataSubjectRights = async (): Promise<ApiItemResponse<IamDsrSelfServiceOverview>> =>
   requestJson<ApiItemResponse<IamDsrSelfServiceOverview>>('/iam/me/data-subject-rights/requests');
+
+export const getMyPendingLegalTexts = async (): Promise<ApiListResponse<IamPendingLegalTextItem>> =>
+  requestJson<ApiListResponse<IamPendingLegalTextItem>>('/iam/me/legal-texts/pending');
+
+export const acceptLegalText = async (payload: {
+  readonly legalTextId: string;
+  readonly legalTextVersion: string;
+  readonly locale: string;
+}): Promise<ApiItemResponse<{ workflowId: string; operation: 'accept_legal_text'; status: 'ok' }>> =>
+  postJson<
+    ApiItemResponse<{ workflowId: string; operation: 'accept_legal_text'; status: 'ok' }>,
+    {
+      readonly operation: 'accept_legal_text';
+      readonly payload: {
+        readonly legalTextId: string;
+        readonly legalTextVersion: string;
+        readonly locale: string;
+      };
+    }
+  >('/iam/governance/workflows', {
+    operation: 'accept_legal_text',
+    payload: {
+      legalTextId: payload.legalTextId,
+      legalTextVersion: payload.legalTextVersion,
+      locale: payload.locale,
+    },
+  });
 
 export const createDataSubjectRequest = async (payload: {
   readonly instanceId?: string;

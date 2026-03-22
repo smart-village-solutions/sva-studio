@@ -45,7 +45,9 @@ vi.mock('@sva/sdk/server', () => ({
 import {
   authRoutePaths,
   authServerRouteFactories,
+  dispatchAuthRouteRequest,
   resolveAuthHandlers,
+  resolveAuthRoutePathForRequestPath,
   verifyAuthRouteHandlerCoverage,
   wrapHandlersWithJsonErrorBoundary,
 } from './auth.routes.server';
@@ -84,6 +86,15 @@ const authServerMocks = vi.hoisted(() => {
     syncUsersFromKeycloakHandler: vi.fn(async () => response('syncUsersFromKeycloakHandler')),
     getMyProfileHandler: vi.fn(async () => response('getMyProfileHandler')),
     updateMyProfileHandler: vi.fn(async () => response('updateMyProfileHandler')),
+    listGroupsHandler: vi.fn(async () => response('listGroupsHandler')),
+    createGroupHandler: vi.fn(async () => response('createGroupHandler')),
+    getGroupHandler: vi.fn(async () => response('getGroupHandler')),
+    updateGroupHandler: vi.fn(async () => response('updateGroupHandler')),
+    deleteGroupHandler: vi.fn(async () => response('deleteGroupHandler')),
+    assignGroupRoleHandler: vi.fn(async () => response('assignGroupRoleHandler')),
+    removeGroupRoleHandler: vi.fn(async () => response('removeGroupRoleHandler')),
+    assignGroupMembershipHandler: vi.fn(async () => response('assignGroupMembershipHandler')),
+    removeGroupMembershipHandler: vi.fn(async () => response('removeGroupMembershipHandler')),
     listOrganizationsHandler: vi.fn(async () => response('listOrganizationsHandler')),
     createOrganizationHandler: vi.fn(async () => response('createOrganizationHandler')),
     getOrganizationHandler: vi.fn(async () => response('getOrganizationHandler')),
@@ -97,11 +108,6 @@ const authServerMocks = vi.hoisted(() => {
     createRoleHandler: vi.fn(async () => response('createRoleHandler')),
     updateRoleHandler: vi.fn(async () => response('updateRoleHandler')),
     deleteRoleHandler: vi.fn(async () => response('deleteRoleHandler')),
-    listGroupsHandler: vi.fn(async () => response('listGroupsHandler')),
-    createGroupHandler: vi.fn(async () => response('createGroupHandler')),
-    getGroupHandler: vi.fn(async () => response('getGroupHandler')),
-    updateGroupHandler: vi.fn(async () => response('updateGroupHandler')),
-    deleteGroupHandler: vi.fn(async () => response('deleteGroupHandler')),
     listLegalTextsHandler: vi.fn(async () => response('listLegalTextsHandler')),
     createLegalTextHandler: vi.fn(async () => response('createLegalTextHandler')),
     updateLegalTextHandler: vi.fn(async () => response('updateLegalTextHandler')),
@@ -125,6 +131,11 @@ const authServerMocks = vi.hoisted(() => {
 });
 
 vi.mock('@sva/auth/server', () => authServerMocks);
+vi.mock('@sva/auth/runtime-routes', () => authServerMocks);
+vi.mock('@sva/auth/runtime-health', () => ({
+  healthLiveHandler: authServerMocks.healthLiveHandler,
+  healthReadyHandler: authServerMocks.healthReadyHandler,
+}));
 
 describe('auth.routes.server', () => {
   beforeEach(() => {
@@ -179,6 +190,8 @@ describe('auth.routes.server', () => {
     expect(authServerMocks.listUsersHandler).toHaveBeenCalled();
     expect(authServerMocks.getUserHandler).toHaveBeenCalled();
     expect(authServerMocks.updateUserHandler).toHaveBeenCalled();
+    expect(authServerMocks.listGroupsHandler).toHaveBeenCalled();
+    expect(authServerMocks.deleteGroupHandler).toHaveBeenCalled();
     expect(authServerMocks.listOrganizationsHandler).toHaveBeenCalled();
     expect(authServerMocks.updateMyOrganizationContextHandler).toHaveBeenCalled();
     expect(authServerMocks.deleteRoleHandler).toHaveBeenCalled();
@@ -196,6 +209,47 @@ describe('auth.routes.server', () => {
 
   it('throws for unknown auth path', () => {
     expect(() => resolveAuthHandlers('/auth/unknown')).toThrow('Unknown auth route path');
+  });
+
+  it('matches static and parameterized runtime auth paths', () => {
+    expect(resolveAuthRoutePathForRequestPath('/health/live')).toBe('/health/live');
+    expect(resolveAuthRoutePathForRequestPath('/api/v1/iam/users/abc-123')).toBe('/api/v1/iam/users/$userId');
+    expect(resolveAuthRoutePathForRequestPath('/api/v1/iam/groups/group-1/roles/role-1')).toBe(
+      '/api/v1/iam/groups/$groupId/roles/$roleId'
+    );
+    expect(resolveAuthRoutePathForRequestPath('/not-covered')).toBeNull();
+  });
+
+  it('dispatches runtime auth requests without going through the route tree', async () => {
+    const response = await dispatchAuthRouteRequest(new Request('http://localhost/health/live'));
+
+    expect(response?.status).toBe(200);
+    expect(authServerMocks.healthLiveHandler).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns null for requests outside the auth runtime route set', async () => {
+    const response = await dispatchAuthRouteRequest(new Request('http://localhost/not-covered'));
+
+    expect(response).toBeNull();
+  });
+
+  it('returns method_not_allowed for unsupported runtime auth methods', async () => {
+    const response = await dispatchAuthRouteRequest(
+      new Request('http://localhost/auth/logout', {
+        method: 'GET',
+        headers: {
+          'X-Request-Id': 'req-method',
+        },
+      })
+    );
+
+    expect(response?.status).toBe(405);
+    expect(response?.headers.get('Allow')).toBe('POST');
+    await expect(response?.json()).resolves.toEqual({
+      error: 'method_not_allowed',
+      message: 'HTTP-Methode nicht erlaubt.',
+      requestId: 'req-method',
+    });
   });
 
   it('returns a JSON 500 response when a wrapped handler throws', async () => {

@@ -1,9 +1,9 @@
 import type { IamDsrCanonicalStatus, IamDsrCaseListItem, IamDsrSelfServiceOverview } from '@sva/core';
 
-import { readString } from '../shared/input-readers';
-import { revealField } from '../iam-account-management/encryption';
-import { resolveUserDisplayName } from '../iam-account-management/user-mapping';
-import type { AdminDsrSourceRows, DsrFilters, DsrSelfServiceRows, ExportJobRow, LegalHoldRow, PersonColumns, ProfileCorrectionRow, RecipientNotificationRow, RequestRow } from './read-models.types';
+import { readString } from '../shared/input-readers.js';
+import { revealField } from '../iam-account-management/encryption.js';
+import { resolveUserDisplayName } from '../iam-account-management/user-mapping.js';
+import type { AdminDsrSourceRows, DsrFilters, DsrSelfServiceRows, ExportJobRow, LegalHoldRow, PersonColumns, ProfileCorrectionRow, RecipientNotificationRow, RequestRow } from './read-models.types.js';
 
 const readPersonName = (person: PersonColumns): string =>
   resolveUserDisplayName({

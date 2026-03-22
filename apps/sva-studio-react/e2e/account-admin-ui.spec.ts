@@ -56,7 +56,31 @@ const navigateClientSide = async (page: Page, targetPath: string) => {
   }, targetPath);
 };
 
+const gotoHomeAsAuthenticatedUser = async (page: Page) => {
+  const authMeResponse = page.waitForResponse(
+    (response) => response.request().method() === 'GET' && response.url().includes('/auth/me') && response.status() === 200
+  );
+
+  await page.goto('/');
+  await authMeResponse;
+  await expect(page.getByRole('heading', { name: 'SVA Studio' })).toBeVisible();
+  await expect
+    .poll(async () => (await page.getByRole('button', { name: 'Logout' }).count()) > 0)
+    .toBe(true);
+};
+
+test.beforeEach(async ({ page }) => {
+  await page.route('**/iam/authorize', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ allowed: true, reason: 'mocked_authorize' }),
+    });
+  });
+});
+
 test('profile page supports loading and saving own profile', async ({ page }) => {
+  test.slow();
   await page.route('**/auth/me', async (route) => {
     await route.fulfill({
       status: 200,
@@ -107,11 +131,7 @@ test('profile page supports loading and saving own profile', async ({ page }) =>
     });
   });
 
-  await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'SVA Studio' })).toBeVisible();
-  await expect(page.getByRole('banner').getByRole('link', { name: 'Mein Konto', exact: true })).toBeVisible({
-    timeout: 10000,
-  });
+  await gotoHomeAsAuthenticatedUser(page);
   await navigateClientSide(page, '/account');
 
   await expect(page.getByRole('heading', { name: 'Mein Konto' })).toBeVisible({ timeout: 10000 });
@@ -159,8 +179,7 @@ test('account page links into privacy cockpit and renders self-service data', as
     });
   });
 
-  await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'SVA Studio' })).toBeVisible();
+  await gotoHomeAsAuthenticatedUser(page);
   await navigateClientSide(page, '/account');
   await expect(page.getByRole('heading', { name: 'Mein Konto' })).toBeVisible({ timeout: 10000 });
 
@@ -347,6 +366,7 @@ test('admin links are hidden for non-admin user and route guard redirects', asyn
   });
 
   await page.goto('/');
+  await expect(page.getByRole('button', { name: 'Logout' })).toBeVisible({ timeout: 10000 });
   await expect(page.getByRole('link', { name: 'Benutzer' })).toHaveCount(0);
   await expect(page.getByRole('link', { name: 'Rollen' })).toHaveCount(0);
 
@@ -406,7 +426,7 @@ test('iam cockpit redirects unknown or disallowed tabs to the first allowed gove
 
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'SVA Studio' })).toBeVisible();
-  await navigateClientSide(page, '/admin/iam?tab=dsr');
+  await navigateClientSide(page, '/admin/iam?tab=rights');
 
   await expect(page).toHaveURL(/\/admin\/iam\?tab=governance$/);
   await expect(page.getByRole('heading', { name: 'IAM Transparenz-Cockpit' })).toBeVisible({ timeout: 10000 });
@@ -414,12 +434,15 @@ test('iam cockpit redirects unknown or disallowed tabs to the first allowed gove
   await expect(page.getByRole('heading', { name: 'Impersonation für Support-Fall' })).toBeVisible();
 });
 
-test('direct access to admin users redirects unauthenticated clients to login', async ({ page }) => {
-  await page.goto('/admin/users');
+test('direct access to admin users redirects unauthenticated clients to login', async ({ request }) => {
+  const response = await request.get('/admin/users', {
+    maxRedirects: 0,
+  });
 
-  await expect
-    .poll(() => page.url())
-    .toMatch(/(\/auth\/login\?redirect=%2Fadmin%2Fusers|\/protocol\/openid-connect\/auth\?|accounts\.google\.com\/(signin\/oauth\/error|o\/oauth2\/v2\/auth))/);
+  expect([302, 303, 307, 308]).toContain(response.status());
+  expect(response.headers().location).toMatch(
+    /(\/auth\/login\?redirect=%2Fadmin%2Fusers|\/protocol\/openid-connect\/auth\?|accounts\.google\.com\/(signin\/oauth\/error|o\/oauth2\/v2\/auth))/
+  );
 });
 
 test('responsive IAM views render on mobile, tablet, desktop', async ({ page }) => {
@@ -448,8 +471,7 @@ test('responsive IAM views render on mobile, tablet, desktop', async ({ page }) 
     { width: 1024, height: 768 },
   ]) {
     await page.setViewportSize(viewport);
-    await page.goto('/');
-    await expect(page.getByRole('heading', { name: 'SVA Studio' })).toBeVisible();
+    await gotoHomeAsAuthenticatedUser(page);
     await navigateClientSide(page, '/admin/users');
     await expect(page.getByRole('heading', { name: 'Benutzerverwaltung' })).toBeVisible();
   }

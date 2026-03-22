@@ -1,12 +1,12 @@
-import type { SessionUser } from '../types';
+import type { SessionUser } from '../types.js';
 import { createSdkLogger } from '@sva/sdk/server';
 
-import { getAuthConfig } from '../config';
-import { client, getOidcConfig } from '../oidc.server';
-import { deleteSession, getSession, updateSession } from '../redis-session.server';
-import { isTokenErrorLike } from '../shared/error-guards';
-import { buildLogContext } from '../shared/log-context';
-import { buildSessionUser, resolveExpiresAt, TOKEN_REFRESH_SKEW_MS } from './shared';
+import { getAuthConfig } from '../config.js';
+import { client, getOidcConfig } from '../oidc.server.js';
+import { deleteSession, getSession, updateSession } from '../redis-session.server.js';
+import { isTokenErrorLike } from '../shared/error-guards.js';
+import { buildLogContext } from '../shared/log-context.js';
+import { buildSessionUser, resolveExpiresAt, TOKEN_REFRESH_SKEW_MS } from './shared.js';
 
 const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
 

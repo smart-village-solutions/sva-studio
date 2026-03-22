@@ -13,6 +13,14 @@
     "./server": {
       "types": "./dist/index.server.d.ts",
       "default": "./dist/index.server.js"
+    },
+    "./runtime-routes": {
+      "types": "./dist/runtime-routes.server.d.ts",
+      "default": "./dist/runtime-routes.server.js"
+    },
+    "./runtime-health": {
+      "types": "./dist/runtime-health.server.d.ts",
+      "default": "./dist/runtime-health.server.js"
     }
   },
   "dependencies": {

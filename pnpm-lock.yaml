@@ -5,6 +5,7 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
+  h3: 2.0.1-rc.2
   minimatch: 10.2.3
   axios: 1.13.5
   rollup: 4.59.0

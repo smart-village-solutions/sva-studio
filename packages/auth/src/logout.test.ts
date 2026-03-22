@@ -2,6 +2,7 @@ import { describe, it, expect, afterAll } from 'vitest';
 import type { Session } from './types';
 import { createSession, getSession, deleteSession, getSessionCount } from './redis-session.server';
 import { closeRedis } from './redis.server';
+import { ensureRedisAvailabilityChecked } from '../test-utils/redis-test-guard.js';
 
 /**
  * Tests für Logout/Revocation-Flow mit Redis:
@@ -10,7 +11,7 @@ import { closeRedis } from './redis.server';
  * 3. Logout-URL (Keycloak End-Session-Endpoint) zurückgeben
  * 4. /auth/me gibt 401 nach Logout
  */
-describe('Logout/Revocation-Flow with Redis', () => {
+(await ensureRedisAvailabilityChecked() ? describe : describe.skip)('Logout/Revocation-Flow with Redis', () => {
   afterAll(async () => {
     await closeRedis();
   });

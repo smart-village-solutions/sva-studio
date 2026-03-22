@@ -1,15 +1,16 @@
 import { serialize as serializeCookie } from 'cookie-es';
 import { createSdkLogger, initializeOtelSdk, withRequestContext } from '@sva/sdk/server';
 
-import { createLoginUrl, handleCallback, logoutSession } from '../auth.server';
-import { emitAuthAuditEvent } from '../audit-events.server';
-import { getAuthConfig } from '../config';
-import { getSession } from '../redis-session.server';
-import { isTokenErrorLike } from '../shared/error-guards';
-import { buildLogContext } from '../shared/log-context';
-import { withAuthenticatedUser } from '../middleware.server';
-import { appendSetCookie, deleteCookieHeader, readCookieFromRequest } from './cookies';
-import { decodeLoginStateCookie, encodeLoginStateCookie, type LoginStateCookiePayload } from './login-state-cookie';
+import { createLoginUrl, handleCallback, logoutSession } from '../auth.server.js';
+import { emitAuthAuditEvent } from '../audit-events.server.js';
+import { getAuthConfig } from '../config.js';
+import { createMockSessionUser, isMockAuthEnabled } from '../mock-auth.server.js';
+import { getSession } from '../redis-session.server.js';
+import { isTokenErrorLike } from '../shared/error-guards.js';
+import { buildLogContext } from '../shared/log-context.js';
+import { withAuthenticatedUser } from '../middleware.server.js';
+import { appendSetCookie, deleteCookieHeader, readCookieFromRequest } from './cookies.js';
+import { decodeLoginStateCookie, encodeLoginStateCookie, type LoginStateCookiePayload } from './login-state-cookie.js';
 
 const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
 
@@ -27,21 +28,22 @@ const createRedirectResponse = (location: string) =>
     headers: { Location: location },
   });
 
-const createSessionCookie = (name: string, sessionId: string) =>
-  serializeCookie(name, sessionId, {
+const createAuthCookieOptions = () => {
+  const isBuilderDevAuth = process.env.BUILDER_DEV_AUTH === 'true';
+
+  return {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    secure: isBuilderDevAuth || process.env.NODE_ENV === 'production',
+    sameSite: isBuilderDevAuth ? ('none' as const) : ('lax' as const),
     path: '/',
-  });
+  };
+};
+
+const createSessionCookie = (name: string, sessionId: string) =>
+  serializeCookie(name, sessionId, createAuthCookieOptions());
 
 const createLoginStateCookie = (input: { name: string; secret: string; payload: LoginStateCookiePayload }) =>
-  serializeCookie(input.name, encodeLoginStateCookie(input.payload, input.secret), {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    path: '/',
-  });
+  serializeCookie(input.name, encodeLoginStateCookie(input.payload, input.secret), createAuthCookieOptions());
 
 const resolveCallbackInput = (request: Request) => {
   const url = new URL(request.url);
@@ -72,6 +74,10 @@ const isExpiredLoginState = (createdAt: number) => Date.now() - createdAt > 10 *
 
 export const loginHandler = async (request?: Request): Promise<Response> => {
   return withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
+    if (isMockAuthEnabled()) {
+      return createRedirectResponse('/?auth=mock-login');
+    }
+
     const { url, state, loginState } = await createLoginUrl();
     const { loginStateCookieName, loginStateSecret } = getAuthConfig();
     const response = createRedirectResponse(url);
@@ -99,6 +105,10 @@ export const loginHandler = async (request?: Request): Promise<Response> => {
 
 export const callbackHandler = async (request: Request): Promise<Response> => {
   return withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
+    if (isMockAuthEnabled()) {
+      return createRedirectResponse('/?auth=mock-callback');
+    }
+
     const { code, state, error, iss } = resolveCallbackInput(request);
     const { loginStateCookieName, sessionCookieName } = getAuthConfig();
 
@@ -174,6 +184,13 @@ export const callbackHandler = async (request: Request): Promise<Response> => {
 
 export const meHandler = async (request: Request): Promise<Response> => {
   return withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
+    if (isMockAuthEnabled()) {
+      return new Response(JSON.stringify({ user: createMockSessionUser() }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
     return withAuthenticatedUser(request, ({ user }) => {
       logger.debug('Auth check successful', {
         endpoint: '/auth/me',
@@ -194,6 +211,10 @@ export const meHandler = async (request: Request): Promise<Response> => {
 
 export const logoutHandler = async (request: Request): Promise<Response> => {
   return withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
+    if (isMockAuthEnabled()) {
+      return createRedirectResponse('/?auth=mock-logout');
+    }
+
     const { sessionCookieName, postLogoutRedirectUri } = getAuthConfig();
     const sessionId = readCookieFromRequest(request, sessionCookieName);
     let logoutUrl = postLogoutRedirectUri;

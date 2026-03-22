@@ -560,6 +560,7 @@ describe('UserEditPage', () => {
   });
 
   it.each([
+    ['invalid_request', 'Nutzer konnten nicht geladen werden.'],
     ['forbidden', 'Unzureichende Berechtigungen für diese Nutzeraktion.'],
     ['csrf_validation_failed', 'Sicherheitsprüfung fehlgeschlagen. Bitte Seite neu laden und erneut versuchen.'],
     ['rate_limited', 'Zu viele Anfragen in kurzer Zeit. Bitte kurz warten und erneut versuchen.'],
@@ -619,5 +620,47 @@ describe('UserEditPage', () => {
         message: 'unexpected failure',
       } as never)
     ).toBe('Nutzer konnten nicht geladen werden.');
+  });
+
+  it('does not submit duplicate role ids when a selected role is toggled again', async () => {
+    const save = vi.fn().mockResolvedValue(baseUser);
+
+    useUserMock.mockReturnValue({
+      user: baseUser,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      save,
+    });
+
+    useRolesMock.mockReturnValue({
+      roles: [
+        { id: 'role-1', roleName: 'system_admin' },
+        { id: 'role-2', roleName: 'editor' },
+      ],
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      createRole: vi.fn(),
+      updateRole: vi.fn(),
+      deleteRole: vi.fn(),
+    });
+
+    render(<UserEditPage userId="user-1" />);
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Verwaltung' }));
+    const systemAdminCheckbox = screen.getByRole('checkbox', { name: 'system_admin' });
+
+    fireEvent.change(systemAdminCheckbox, { target: { checked: true } });
+    fireEvent.change(systemAdminCheckbox, { target: { checked: true } });
+    fireEvent.click(screen.getByRole('button', { name: 'Änderungen speichern' }));
+
+    await waitFor(() => {
+      expect(save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          roleIds: ['role-1'],
+        })
+      );
+    });
   });
 });

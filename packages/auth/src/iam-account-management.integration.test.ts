@@ -100,10 +100,13 @@ describe('iam-account-management tenant isolation integration', () => {
       })
     );
 
-    const payload = (await response.json()) as { error: { code: string; message: string } };
+    const payload = (await response.json()) as {
+      error: { code: string; details?: { reason_code?: string }; message: string };
+    };
     expect(response.status).toBe(403);
     expect(payload.error.code).toBe('forbidden');
     expect(payload.error.message).toBe('Akteur-Account nicht gefunden.');
+    expect(payload.error.details?.reason_code).toBe('missing_actor_account');
   });
 
   it('returns 200 for list users when instanceId matches own tenant', async () => {
@@ -132,9 +135,12 @@ describe('iam-account-management tenant isolation integration', () => {
       )
     );
 
-    const payload = (await response.json()) as { error: { code: string; message: string } };
+    const payload = (await response.json()) as {
+      error: { code: string; details?: { reason_code?: string }; message: string };
+    };
     expect(response.status).toBe(403);
     expect(payload.error.code).toBe('forbidden');
     expect(payload.error.message).toBe('Akteur-Account nicht gefunden.');
+    expect(payload.error.details?.reason_code).toBe('missing_actor_account');
   });
 });

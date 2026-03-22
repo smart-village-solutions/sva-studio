@@ -1,1 +1,1 @@
-export * from './iam-account-management/index';
+export * from './iam-account-management/index.js';

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
-import { USER_STATUS } from './types';
+import { uuidLikeString } from '../shared/validators.js';
+import { USER_STATUS } from './types.js';
 
 const hasDefinedEntries = (value: Record<string, unknown>): boolean =>
   Object.values(value).some((entry) => entry !== undefined);
@@ -13,7 +14,7 @@ const optionalTrimmedSecretString = (maxLength: number) =>
 
 const uniqueUuidArray = (maxLength: number) =>
   z
-    .array(z.string().uuid())
+    .array(uuidLikeString('Ungültige ID.'))
     .max(maxLength)
     .refine((value) => new Set(value).size === value.length, 'IDs müssen eindeutig sein.');
 
@@ -30,7 +31,7 @@ export const createUserSchema = z.object({
   avatarUrl: z.string().url().max(1024).optional(),
   notes: z.string().trim().max(2000).optional(),
   status: z.enum(USER_STATUS).optional(),
-  roleIds: z.array(z.string().uuid()).max(20).default([]),
+  roleIds: z.array(uuidLikeString('Ungültige ID.')).max(20).default([]),
 });
 
 export const updateUserSchema = z
@@ -70,7 +71,7 @@ export const updateMyProfileSchema = z
   .refine(hasDefinedEntries, 'Mindestens ein Feld muss gesetzt werden.');
 
 export const bulkDeactivateSchema = z.object({
-  userIds: z.array(z.string().uuid()).min(1).max(50),
+  userIds: z.array(uuidLikeString('Ungültige ID.')).min(1).max(50),
 });
 
 export const createRoleSchema = z.object({
@@ -82,7 +83,7 @@ export const createRoleSchema = z.object({
     .regex(/^[a-z0-9_]+$/),
   displayName: z.string().trim().min(1).max(120).optional(),
   description: z.string().trim().max(500).optional(),
-  permissionIds: z.array(z.string().uuid()).max(100).default([]),
+  permissionIds: z.array(uuidLikeString('Ungültige ID.')).max(100).default([]),
   roleLevel: z.number().int().min(0).max(100).default(0),
 });
 
@@ -90,7 +91,7 @@ export const updateRoleSchema = z
   .object({
     displayName: z.string().trim().min(1).max(120).optional(),
     description: z.string().trim().max(500).optional(),
-    permissionIds: z.array(z.string().uuid()).max(100).optional(),
+    permissionIds: z.array(uuidLikeString('Ungültige ID.')).max(100).optional(),
     roleLevel: z.number().int().min(0).max(100).optional(),
     retrySync: z.boolean().optional(),
   })

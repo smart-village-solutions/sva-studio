@@ -2,10 +2,10 @@ import type {
   ApiErrorResponse,
   ApiItemResponse,
   ApiListResponse,
+  IamAdminGroupDetail,
+  IamAdminGroupListItem,
   IamDsrCanonicalStatus,
   IamDsrCaseListItem,
-  IamGroupDetail,
-  IamGroupListItem,
   IamDsrSelfServiceOverview,
   IamGovernanceCaseListItem,
   IamLegalTextListItem,
@@ -47,6 +47,15 @@ type IamErrorPayload =
       readonly message?: string;
       readonly requestId?: string;
     };
+
+type SafeDiagnosticDetails = Readonly<{
+  reason_code?: string;
+  dependency?: string;
+  schema_object?: string;
+  expected_migration?: string;
+  actor_resolution?: string;
+  instance_id?: string;
+}>;
 
 const hasTopLevelMessage = (
   payload: IamErrorPayload
@@ -99,7 +108,37 @@ const readErrorMessageFromPayload = (payload: IamErrorPayload | null, status: nu
   return `http_${status}`;
 };
 
-const logDevelopmentApiError = (input: { requestId?: string; status: number; code: string }) => {
+const readSafeDiagnosticDetails = (payload: IamErrorPayload | null): SafeDiagnosticDetails | undefined => {
+  if (!payload || typeof payload.error !== 'object' || !payload.error || !('details' in payload.error)) {
+    return undefined;
+  }
+
+  const details = (payload.error as { details?: unknown }).details;
+  if (!details || typeof details !== 'object') {
+    return undefined;
+  }
+
+  const source = details as Record<string, unknown>;
+  const safeDetails: SafeDiagnosticDetails = {
+    reason_code: typeof source.reason_code === 'string' ? source.reason_code : undefined,
+    dependency: typeof source.dependency === 'string' ? source.dependency : undefined,
+    schema_object: typeof source.schema_object === 'string' ? source.schema_object : undefined,
+    expected_migration:
+      typeof source.expected_migration === 'string' ? source.expected_migration : undefined,
+    actor_resolution:
+      typeof source.actor_resolution === 'string' ? source.actor_resolution : undefined,
+    instance_id: typeof source.instance_id === 'string' ? source.instance_id : undefined,
+  };
+
+  return Object.values(safeDetails).some((value) => typeof value === 'string') ? safeDetails : undefined;
+};
+
+const logDevelopmentApiError = (input: {
+  requestId?: string;
+  status: number;
+  code: string;
+  details?: SafeDiagnosticDetails;
+}) => {
   if (!isDevelopmentEnvironment()) {
     return;
   }
@@ -108,6 +147,7 @@ const logDevelopmentApiError = (input: { requestId?: string; status: number; cod
     request_id: input.requestId,
     status: input.status,
     code: input.code,
+    ...(input.details ? { details: input.details } : {}),
   });
 };
 
@@ -195,6 +235,16 @@ export type UpdateGroupPayload = {
   readonly isActive?: boolean;
 };
 
+export type AssignGroupRolePayload = {
+  readonly roleId: string;
+};
+
+export type AssignGroupMembershipPayload = {
+  readonly keycloakSubject: string;
+  readonly validFrom?: string;
+  readonly validUntil?: string;
+};
+
 export type CreateLegalTextPayload = {
   readonly legalTextId: string;
   readonly legalTextVersion: string;
@@ -280,8 +330,9 @@ const readErrorPayload = async (response: Response): Promise<IamHttpError> => {
   const payload = (await response.json().catch(() => null)) as IamErrorPayload | null;
   const code = readErrorCodeFromPayload(payload) ?? 'internal_error';
   const requestId = readRequestIdFromResponse(response, payload ?? undefined);
+  const details = readSafeDiagnosticDetails(payload);
 
-  logDevelopmentApiError({ requestId, status: response.status, code });
+  logDevelopmentApiError({ requestId, status: response.status, code, details });
 
   return new IamHttpError({
     status: response.status,
@@ -459,11 +510,11 @@ export const updateMyProfile = async (
 export const listRoles = async (): Promise<ApiListResponse<IamRoleListItem>> =>
   requestJson<ApiListResponse<IamRoleListItem>>('/api/v1/iam/roles');
 
-export const listGroups = async (): Promise<ApiListResponse<IamGroupListItem>> =>
-  requestJson<ApiListResponse<IamGroupListItem>>('/api/v1/iam/groups');
+export const listGroups = async (): Promise<ApiListResponse<IamAdminGroupListItem>> =>
+  requestJson<ApiListResponse<IamAdminGroupListItem>>('/api/v1/iam/groups');
 
-export const getGroup = async (groupId: string): Promise<ApiItemResponse<IamGroupDetail>> =>
-  requestJson<ApiItemResponse<IamGroupDetail>>(`/api/v1/iam/groups/${groupId}`);
+export const getGroup = async (groupId: string): Promise<ApiItemResponse<IamAdminGroupDetail>> =>
+  requestJson<ApiItemResponse<IamAdminGroupDetail>>(`/api/v1/iam/groups/${groupId}`);
 
 export const listLegalTexts = async (): Promise<ApiListResponse<IamLegalTextListItem>> =>
   requestJson<ApiListResponse<IamLegalTextListItem>>('/api/v1/iam/legal-texts');
@@ -551,8 +602,8 @@ export const createRole = async (
 
 export const createGroup = async (
   payload: CreateGroupPayload
-): Promise<ApiItemResponse<IamGroupDetail>> =>
-  postJson<ApiItemResponse<IamGroupDetail>, CreateGroupPayload>('/api/v1/iam/groups', payload, true);
+): Promise<ApiItemResponse<{ id: string }>> =>
+  postJson<ApiItemResponse<{ id: string }>, CreateGroupPayload>('/api/v1/iam/groups', payload, true);
 
 export const createLegalText = async (
   payload: CreateLegalTextPayload
@@ -565,8 +616,8 @@ export const updateRole = async (roleId: string, payload: UpdateRolePayload): Pr
 export const updateGroup = async (
   groupId: string,
   payload: UpdateGroupPayload
-): Promise<ApiItemResponse<IamGroupDetail>> =>
-  patchJson<ApiItemResponse<IamGroupDetail>, UpdateGroupPayload>(`/api/v1/iam/groups/${groupId}`, payload);
+): Promise<ApiItemResponse<{ id: string }>> =>
+  patchJson<ApiItemResponse<{ id: string }>, UpdateGroupPayload>(`/api/v1/iam/groups/${groupId}`, payload);
 
 export const updateLegalText = async (
   legalTextVersionId: string,
@@ -587,6 +638,45 @@ export const deleteGroup = async (groupId: string): Promise<ApiItemResponse<{ id
   requestJson<ApiItemResponse<{ id: string }>>(`/api/v1/iam/groups/${groupId}`, {
     method: 'DELETE',
     headers: IAM_HEADERS,
+  });
+
+export const assignGroupRole = async (
+  groupId: string,
+  payload: AssignGroupRolePayload
+): Promise<ApiItemResponse<{ groupId: string; roleId: string }>> =>
+  postJson<ApiItemResponse<{ groupId: string; roleId: string }>, AssignGroupRolePayload>(
+    `/api/v1/iam/groups/${groupId}/roles`,
+    payload,
+    true
+  );
+
+export const removeGroupRole = async (
+  groupId: string,
+  roleId: string
+): Promise<ApiItemResponse<{ groupId: string; roleId: string }>> =>
+  requestJson<ApiItemResponse<{ groupId: string; roleId: string }>>(`/api/v1/iam/groups/${groupId}/roles/${roleId}`, {
+    method: 'DELETE',
+    headers: IAM_HEADERS,
+  });
+
+export const assignGroupMembership = async (
+  groupId: string,
+  payload: AssignGroupMembershipPayload
+): Promise<ApiItemResponse<{ groupId: string }>> =>
+  postJson<ApiItemResponse<{ groupId: string }>, AssignGroupMembershipPayload>(
+    `/api/v1/iam/groups/${groupId}/memberships`,
+    payload,
+    true
+  );
+
+export const removeGroupMembership = async (
+  groupId: string,
+  keycloakSubject: string
+): Promise<ApiItemResponse<{ groupId: string }>> =>
+  requestJson<ApiItemResponse<{ groupId: string }>>(`/api/v1/iam/groups/${groupId}/memberships`, {
+    method: 'DELETE',
+    headers: IAM_HEADERS,
+    body: JSON.stringify({ keycloakSubject }),
   });
 
 export const reconcileRoles = async (): Promise<ApiItemResponse<RoleReconcileReport>> =>

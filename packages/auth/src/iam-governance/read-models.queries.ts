@@ -1,11 +1,11 @@
-import type { QueryClient } from '../shared/db-helpers';
+import type { QueryClient } from '../shared/db-helpers.js';
 import type {
   DelegationRow,
   GovernanceFilters,
   ImpersonationRow,
   LegalAcceptanceRow,
   PermissionChangeRow,
-} from './read-models.types';
+} from './read-models.types.js';
 
 const queryPermissionChanges = (client: QueryClient, input: GovernanceFilters) =>
   client.query<PermissionChangeRow>(

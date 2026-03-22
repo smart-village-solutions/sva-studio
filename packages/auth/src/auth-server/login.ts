@@ -1,6 +1,6 @@
-import { getAuthConfig } from '../config';
-import { client, getOidcConfig } from '../oidc.server';
-import { createLoginState } from '../redis-session.server';
+import { getAuthConfig } from '../config.js';
+import { client, getOidcConfig } from '../oidc.server.js';
+import { createLoginState } from '../redis-session.server.js';
 
 export const createLoginUrl = async () => {
   const authConfig = getAuthConfig();

@@ -40,6 +40,7 @@ type RequestContextSdk = {
 
 let sdkPromise: Promise<RequestContextSdk> | null = null;
 let loggerPromise: Promise<ServerTransportLogger> | null = null;
+let routingPromise: Promise<{ dispatchAuthRouteRequest: (request: Request) => Promise<Response | null> }> | null = null;
 
 const getSdk = async (): Promise<RequestContextSdk> => {
   sdkPromise ??= import('@sva/sdk/server') as Promise<RequestContextSdk>;
@@ -59,6 +60,13 @@ const getLogger = async (): Promise<ServerTransportLogger> => {
   return loggerPromise;
 };
 
+const getRoutingRuntime = async () => {
+  routingPromise ??= import('@sva/routing/server') as Promise<{
+    dispatchAuthRouteRequest: (request: Request) => Promise<Response | null>;
+  }>;
+  return routingPromise;
+};
+
 export type ServerEntry = { fetch: RequestHandler<Register> };
 
 export function createServerEntry(entry: ServerEntry): ServerEntry {
@@ -71,6 +79,12 @@ export function createServerEntry(entry: ServerEntry): ServerEntry {
 
 const instrumentedFetch: RequestHandler<Register> = async (...args) => {
   const [request, requestOptions] = args;
+
+  const { dispatchAuthRouteRequest } = await getRoutingRuntime();
+  const runtimeRouteResponse = await dispatchAuthRouteRequest(request);
+  if (runtimeRouteResponse) {
+    return runtimeRouteResponse;
+  }
 
   if (!diagnosticsEnabled) {
     return startFetch(request, requestOptions);

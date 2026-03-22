@@ -2,6 +2,8 @@
 
 Dieses Dokument beschreibt den lokalen Observability-Stack für die Entwicklung mit Docker Compose.
 
+Der Stack ist Teil der offiziellen Runtime-Profile `local-keycloak` und `local-builder`. Für den operativen Einstieg zuerst `./runtime-profile-betrieb.md` lesen; dieses Dokument bleibt die Detailreferenz für Monitoring-Konfiguration und Troubleshooting.
+
 Architektur-Referenz: [Logging Architecture](../architecture/logging-architecture.md)
 
 ## Überblick
@@ -110,12 +112,12 @@ Verbotene Labels (PII / High Cardinality):
 
 ## CI-Checks
 
-Fuer den Monitoring-Stack existiert ein dedizierter CI-Lauf:
+Für den Monitoring-Stack existiert ein dedizierter CI-Lauf:
 
 - Script: `scripts/ci/monitoring-stack-ci.sh`
 - Workflow: `.github/workflows/monitoring-stack-ci.yml`
 
-Der CI-Lauf prueft:
+Der CI-Lauf prüft:
 
 - Docker-Compose Validierung + Service-Health
 - Label-Schema in Loki (required + forbidden labels)

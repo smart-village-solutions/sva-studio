@@ -1,5 +1,5 @@
-import { readString } from '../shared/input-readers';
-import { createApiError } from './api-helpers';
+import { readString } from '../shared/input-readers.js';
+import { createApiError } from './api-helpers.js';
 
 const normalizeOrigin = (value: string): string | null => {
   try {

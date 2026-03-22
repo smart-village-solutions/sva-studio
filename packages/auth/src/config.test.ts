@@ -64,6 +64,8 @@ describe('getAuthConfig', () => {
   it('throws when required environment variables are missing', () => {
     delete process.env.SVA_AUTH_CLIENT_SECRET;
 
-    expect(() => getAuthConfig()).toThrow('Missing required env: SVA_AUTH_CLIENT_SECRET');
+    expect(() => getAuthConfig()).toThrow(
+      'Missing auth client secret (SVA_AUTH_CLIENT_SECRET or /run/secrets/sva_studio_app_auth_client_secret)'
+    );
   });
 });

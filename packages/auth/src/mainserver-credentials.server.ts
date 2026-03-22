@@ -1,5 +1,5 @@
-import type { IdentityUserAttributes } from './identity-provider-port';
-import { resolveIdentityProvider, trackKeycloakCall } from './iam-account-management/shared';
+import type { IdentityUserAttributes } from './identity-provider-port.js';
+import { resolveIdentityProvider, trackKeycloakCall } from './iam-account-management/shared.js';
 
 export type SvaMainserverCredentials = {
   readonly apiKey: string;

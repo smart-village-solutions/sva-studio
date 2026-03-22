@@ -1,10 +1,13 @@
 import type { IamUserDetail } from '@sva/core';
+import { createSdkLogger } from '@sva/sdk/server';
 
-import type { QueryClient } from '../shared/db-helpers';
+import type { QueryClient } from '../shared/db-helpers.js';
 
-import { revealField } from './encryption';
-import type { UserStatus } from './types';
-import { mapUserRowToListItem } from './user-mapping';
+import { revealField } from './encryption.js';
+import type { UserStatus } from './types.js';
+import { mapUserRowToListItem } from './user-mapping.js';
+
+const logger = createSdkLogger({ component: 'iam-user-detail-query', level: 'info' });
 
 type UserDetailRoleRow = {
   id: string;
@@ -91,7 +94,7 @@ SELECT
         'group_type', g.group_type,
         'origin', ag.origin,
         'valid_from', ag.valid_from::text,
-        'valid_to', ag.valid_to::text
+        'valid_to', ag.valid_until::text
       )
     ) FILTER (WHERE g.id IS NOT NULL),
     '[]'::json
@@ -123,7 +126,7 @@ LEFT JOIN iam.account_groups ag
   ON ag.instance_id = im.instance_id
  AND ag.account_id = im.account_id
  AND (ag.valid_from IS NULL OR ag.valid_from <= NOW())
- AND (ag.valid_to IS NULL OR ag.valid_to > NOW())
+ AND (ag.valid_until IS NULL OR ag.valid_until > NOW())
 LEFT JOIN iam.groups g
   ON g.instance_id = ag.instance_id
  AND g.id = ag.group_id
@@ -200,7 +203,41 @@ export const resolveUserDetail = async (
   client: QueryClient,
   input: { instanceId: string; userId: string }
 ): Promise<IamUserDetail | undefined> => {
-  const result = await client.query<UserDetailRow>(USER_DETAIL_QUERY, [input.instanceId, input.userId]);
-  const row = result.rows[0];
-  return row ? mapUserDetailRow(row) : undefined;
+  try {
+    const result = await client.query<UserDetailRow>(USER_DETAIL_QUERY, [input.instanceId, input.userId]);
+    const row = result.rows[0];
+    if (!row) {
+      logger.info('IAM user detail query returned no row', {
+        operation: 'resolve_user_detail',
+        instance_id: input.instanceId,
+        user_id: input.userId,
+      });
+      return undefined;
+    }
+
+    try {
+      return mapUserDetailRow(row);
+    } catch (error) {
+      logger.error('IAM user detail mapping failed', {
+        operation: 'resolve_user_detail',
+        instance_id: input.instanceId,
+        user_id: input.userId,
+        keycloak_subject: row.keycloak_subject,
+        error_type: error instanceof Error ? error.constructor.name : typeof error,
+        error: error instanceof Error ? error.message : String(error),
+        error_stack: error instanceof Error ? error.stack : undefined,
+      });
+      throw error;
+    }
+  } catch (error) {
+    logger.error('IAM user detail query failed', {
+      operation: 'resolve_user_detail',
+      instance_id: input.instanceId,
+      user_id: input.userId,
+      error_type: error instanceof Error ? error.constructor.name : typeof error,
+      error: error instanceof Error ? error.message : String(error),
+      error_stack: error instanceof Error ? error.stack : undefined,
+    });
+    throw error;
+  }
 };

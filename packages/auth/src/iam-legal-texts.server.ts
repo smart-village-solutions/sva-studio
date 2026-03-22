@@ -1,1 +1,1 @@
-export * from './iam-legal-texts';
+export * from './iam-legal-texts/index.js';

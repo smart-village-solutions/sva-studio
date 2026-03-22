@@ -16,6 +16,9 @@ export type TranslationVariables = Readonly<Record<string, string | number>>;
 
 type TranslationResources = Readonly<Record<SupportedLocale, TranslationResourceNode>>;
 
+let activeLocale: SupportedLocale = DEFAULT_LOCALE;
+const translatorCache = new Map<SupportedLocale, ReturnType<typeof createTranslatorFromResources>>();
+
 const readTranslationValue = (
   resources: TranslationResources,
   locale: SupportedLocale,
@@ -50,6 +53,22 @@ export const createTranslator = (locale: SupportedLocale = DEFAULT_LOCALE) => {
   return createTranslatorFromResources(i18nResources, locale);
 };
 
+export const isSupportedLocale = (value: string): value is SupportedLocale => {
+  return Object.prototype.hasOwnProperty.call(i18nResources, value);
+};
+
+export const getActiveLocale = (): SupportedLocale => {
+  return activeLocale;
+};
+
+export const setActiveLocale = (locale: SupportedLocale): void => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  activeLocale = locale;
+};
+
 export const createTranslatorFromResources = (
   resources: TranslationResources,
   locale: SupportedLocale = DEFAULT_LOCALE
@@ -69,4 +88,12 @@ export const createTranslatorFromResources = (
   };
 };
 
-export const t = createTranslator(DEFAULT_LOCALE);
+export const t = (key: TranslationKey, variables?: TranslationVariables): string => {
+  let translator = translatorCache.get(activeLocale);
+  if (!translator) {
+    translator = createTranslatorFromResources(i18nResources, activeLocale);
+    translatorCache.set(activeLocale, translator);
+  }
+
+  return translator(key, variables);
+};

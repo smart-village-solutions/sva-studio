@@ -2,32 +2,18 @@
 set -eu
 
 # ---------------------------------------------------------------------------
-# Swarm-Secrets in Umgebungsvariablen laden.
+# Laufzeitvariablen validieren und abgeleitete URLs aufbauen.
 #
-# Im Swarm-Modus liegen Secrets als Dateien unter /run/secrets/.
-# Dieser Entrypoint liest sie vor dem App-Start in Env-Variablen ein.
-# Ohne /run/secrets (z. B. lokaler Docker-Build) bleibt das Skript ein No-Op,
-# da die Variablen dann bereits über die environment-Sektion gesetzt sind.
+# Im Acceptance-Profil werden sensible Werte direkt als Stack-Variablen gesetzt.
+# Dieser Entrypoint validiert den Mindestvertrag und baut fehlende Verbindungs-URLs
+# aus den Einzelkomponenten zusammen.
 # ---------------------------------------------------------------------------
-
-load_secret() {
-  _file="/run/secrets/$1"
-  if [ -f "$_file" ]; then
-    # Command substitution entfernt finale Newlines; optionales CR aus CRLF wird danach entfernt.
-    _value=$(cat "$_file")
-    _cr=$(printf '\r')
-    case "$_value" in
-      *"$_cr") _value=${_value%"$_cr"} ;;
-    esac
-    printf '%s' "$_value"
-  fi
-}
 
 require_env() {
   _name="$1"
   eval "_value=\${$_name:-}"
   if [ -z "$_value" ]; then
-    echo "Required secret $_name is not set." >&2
+    echo "Required environment variable $_name is not set." >&2
     exit 1
   fi
 }
@@ -160,51 +146,111 @@ process.stderr.write(
 NODE
 }
 
-val=$(load_secret sva_studio_app_auth_client_secret)
-[ -n "$val" ] && export SVA_AUTH_CLIENT_SECRET="$val"
+patch_nitro_request_dispatch() {
+  server_entry_path="${SVA_SERVER_ENTRY_PATH:-/app/.output/server/index.mjs}"
 
-val=$(load_secret sva_studio_app_auth_state_secret)
-[ -n "$val" ] && export SVA_AUTH_STATE_SECRET="$val"
+  if [ ! -f "${server_entry_path}" ]; then
+    return 0
+  fi
 
-val=$(load_secret sva_studio_app_encryption_key)
-[ -n "$val" ] && export ENCRYPTION_KEY="$val"
+  node <<'NODE'
+const fs = require('node:fs');
 
-val=$(load_secret sva_studio_app_pii_keyring_json-k1)
-[ -n "$val" ] && export IAM_PII_KEYRING_JSON="$(node -e "process.stdout.write(JSON.stringify({k1: process.argv[1]}))" "$val")"
+const serverEntryPath = process.env.SVA_SERVER_ENTRY_PATH || '/app/.output/server/index.mjs';
+const expectedCall = 'const response = await h3App.request(req, void 0, req.context);';
+const compatibilityCall =
+  'const response = await (typeof h3App.request === "function" ? h3App.request(req, void 0, req.context) : h3App["~request"](req, req.context));';
+const legacyDelegatedServerCall = [
+  'const { default: tanstackServerEntry } = await import("./chunks/build/server.mjs");',
+  'const requestPathname = new URL(req.url).pathname;',
+  'const shouldDelegateToTanstackServer = !requestPathname.startsWith("/assets/") && !requestPathname.startsWith("/_server/") && !requestPathname.startsWith("/_build/") && !requestPathname.startsWith("/__vite");',
+  'const response = await (shouldDelegateToTanstackServer && typeof tanstackServerEntry?.fetch === "function"',
+  '  ? tanstackServerEntry.fetch(req)',
+  '  : (typeof h3App.request === "function" ? h3App.request(req, void 0, req.context) : h3App["~request"](req, req.context)));',
+].join('\n    ');
+const delegatedServerCall = [
+  'const { default: tanstackServerEntry } = await import("./chunks/build/server.mjs");',
+  'const requestPathname = new URL(req.url).pathname;',
+  'const tryServeStaticAsset = async () => {',
+  '  if (!requestPathname.startsWith("/assets/")) {',
+  '    return null;',
+  '  }',
+  '  const [{ readFile }, pathModule] = await Promise.all([import("node:fs/promises"), import("node:path")]);',
+  '  const publicRoot = pathModule.join(process.cwd(), ".output", "public");',
+  '  const candidatePath = pathModule.normalize(pathModule.join(publicRoot, requestPathname));',
+  '  if (!candidatePath.startsWith(publicRoot)) {',
+  '    return new Response("Not found", { status: 404 });',
+  '  }',
+  '  try {',
+  '    const body = await readFile(candidatePath);',
+  '    const extension = pathModule.extname(candidatePath);',
+  '    const contentType = extension === ".js"',
+  '      ? "text/javascript; charset=utf-8"',
+  '      : extension === ".css"',
+  '        ? "text/css; charset=utf-8"',
+  '        : "application/octet-stream";',
+  '    return new Response(body, {',
+  '      status: 200,',
+  '      headers: {',
+  '        "content-type": contentType,',
+  '        "cache-control": "public, max-age=31536000, immutable",',
+  '      },',
+  '    });',
+  '  } catch {',
+  '    return null;',
+  '  }',
+  '};',
+  'const staticAssetResponse = await tryServeStaticAsset();',
+  'const shouldDelegateToTanstackServer = !requestPathname.startsWith("/assets/") && !requestPathname.startsWith("/_server/") && !requestPathname.startsWith("/_build/") && !requestPathname.startsWith("/__vite");',
+  'const response = await (staticAssetResponse ?? (shouldDelegateToTanstackServer && typeof tanstackServerEntry?.fetch === "function"',
+  '  ? tanstackServerEntry.fetch(req)',
+  '  : (typeof h3App.request === "function" ? h3App.request(req, void 0, req.context) : h3App["~request"](req, req.context))));',
+].join('\n    ');
 
-val=$(load_secret sva_studio_app_db_password)
-[ -n "$val" ] && export APP_DB_PASSWORD="$val"
-
-val=$(load_secret sva_studio_redis_password)
-[ -n "$val" ] && export REDIS_PASSWORD="$val"
-
-val=$(load_secret sva_studio_keycloak_admin_client_secret)
-[ -n "$val" ] && export KEYCLOAK_ADMIN_CLIENT_SECRET="$val"
-
-has_expected_swarm_secret_file() {
-  for _secret_name in \
-    sva_studio_app_auth_client_secret \
-    sva_studio_app_auth_state_secret \
-    sva_studio_app_encryption_key \
-    sva_studio_app_pii_keyring_json-k1 \
-    sva_studio_app_db_password \
-    sva_studio_redis_password
-  do
-    if [ -f "/run/secrets/${_secret_name}" ]; then
-      return 0
-    fi
-  done
-  return 1
+if (!fs.existsSync(serverEntryPath)) {
+  process.exit(0);
 }
 
-if has_expected_swarm_secret_file; then
-  require_env SVA_AUTH_CLIENT_SECRET
-  require_env SVA_AUTH_STATE_SECRET
-  require_env ENCRYPTION_KEY
-  require_env IAM_PII_KEYRING_JSON
-  require_env APP_DB_PASSWORD
-  require_env REDIS_PASSWORD
+const source = fs.readFileSync(serverEntryPath, 'utf8');
+const hasExpectedCall = source.includes(expectedCall);
+const hasCompatibilityCall = source.includes(compatibilityCall);
+const hasDelegatedServerCall = source.includes('tanstackServerEntry.fetch(req)');
+const hasStaticAssetDelegation = source.includes('const staticAssetResponse = await tryServeStaticAsset();');
+const hasRequestBinding = source.includes('this.request = this.request.bind(this);');
+const hasTildeRequest = source.includes('this["~request"](request, context)') || source.includes('"~request"(request, context)');
+
+if ((hasStaticAssetDelegation && hasDelegatedServerCall) || hasRequestBinding || !hasTildeRequest) {
+  process.stderr.write('[entrypoint] nitro server-entry patch not needed\n');
+  process.exit(0);
+}
+
+const patched = source
+  .replace(expectedCall, delegatedServerCall)
+  .replace(compatibilityCall, delegatedServerCall)
+  .replace(legacyDelegatedServerCall, delegatedServerCall);
+if (patched === source) {
+  process.stderr.write('[entrypoint] nitro server-entry patch could not be applied\n');
+  process.exit(1);
+}
+
+fs.writeFileSync(serverEntryPath, patched, 'utf8');
+process.stderr.write('[entrypoint] applied nitro server-entry delegation patch\n');
+NODE
+}
+
+if [ -z "${APP_DB_PASSWORD:-}" ]; then
+  if [ -n "${POSTGRES_PASSWORD:-}" ]; then
+    export APP_DB_PASSWORD="${POSTGRES_PASSWORD}"
+  fi
 fi
+
+require_env SVA_AUTH_CLIENT_SECRET
+require_env SVA_AUTH_STATE_SECRET
+require_env ENCRYPTION_KEY
+require_env IAM_PII_KEYRING_JSON
+require_env APP_DB_PASSWORD
+require_env REDIS_PASSWORD
+require_env KEYCLOAK_ADMIN_CLIENT_SECRET
 
 # IAM_DATABASE_URL aus Einzelkomponenten zusammenbauen,
 # falls noch nicht explizit gesetzt.
@@ -214,13 +260,10 @@ if [ -z "${IAM_DATABASE_URL:-}" ] && [ -n "${APP_DB_PASSWORD:-}" ]; then
 fi
 
 if [ -z "${REDIS_URL:-}" ]; then
-  if [ -n "${REDIS_PASSWORD:-}" ]; then
-    redis_password_encoded=$(urlencode "${REDIS_PASSWORD}")
-    export REDIS_URL="redis://:${redis_password_encoded}@redis:6379"
-  else
-    export REDIS_URL="redis://redis:6379"
-  fi
+  export REDIS_URL="redis://redis:6379"
 fi
+
+patch_nitro_request_dispatch
 
 if [ "${SVA_START_DIAGNOSTICS:-0}" = "1" ]; then
   write_start_diagnostics

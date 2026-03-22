@@ -1,9 +1,9 @@
 import type { IamUserTimelineEvent } from '@sva/core';
 
-import type { QueryClient } from '../shared/db-helpers';
-import { readString } from '../shared/input-readers';
-import { listAdminDsrCases } from '../iam-data-subject-rights/read-models';
-import { listGovernanceCases } from '../iam-governance/read-models';
+import type { QueryClient } from '../shared/db-helpers.js';
+import { readString } from '../shared/input-readers.js';
+import { listAdminDsrCases } from '../iam-data-subject-rights/read-models.js';
+import { listGovernanceCases } from '../iam-governance/read-models.js';
 
 type ActivityLogRow = {
   id: string;

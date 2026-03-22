@@ -3,7 +3,10 @@
 ## Quickstart
 
 ```bash
-# Redis starten
+# Gesamtes lokales Profil mit Redis/Postgres/App/OTEL starten
+pnpm env:up:local-keycloak
+
+# Nur Redis als Einzelbaustein starten
 docker compose up -d redis
 
 # Status prüfen
@@ -18,6 +21,8 @@ docker compose exec redis redis-cli
 # Redis stoppen
 docker compose down
 ```
+
+Für die kanonischen Betriebsmodi `local-keycloak`, `local-builder` und `acceptance-hb` siehe `docs/development/runtime-profile-betrieb.md`.
 
 ## Konfiguration
 

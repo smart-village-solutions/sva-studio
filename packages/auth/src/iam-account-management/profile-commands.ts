@@ -1,17 +1,17 @@
-import type { ActorInfo } from './types';
+import type { ActorInfo } from './types.js';
 import { z } from 'zod';
 
-import { jitProvisionAccountWithClient } from '../jit-provisioning.server';
-import type { QueryClient } from '../shared/db-helpers';
+import { jitProvisionAccountWithClient } from '../jit-provisioning.server.js';
+import type { QueryClient } from '../shared/db-helpers.js';
 
-import { protectField } from './encryption';
+import { protectField } from './encryption.js';
 import {
   emitActivityLog,
   resolveActorAccountId,
   withInstanceScopedDb,
-} from './shared';
-import { updateMyProfileSchema } from './schemas';
-import { resolveUserDetail } from './user-detail-query';
+} from './shared.js';
+import { updateMyProfileSchema } from './schemas.js';
+import { resolveUserDetail } from './user-detail-query.js';
 
 export type ProfileUpdatePayload = z.infer<typeof updateMyProfileSchema>;
 

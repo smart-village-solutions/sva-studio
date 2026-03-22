@@ -1,1 +1,1 @@
-export * from './keycloak-admin-client/index';
+export * from './keycloak-admin-client/index.js';

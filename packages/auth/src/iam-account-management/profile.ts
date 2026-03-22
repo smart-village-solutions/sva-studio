@@ -1,1 +1,1 @@
-export { getMyProfileHandler, resolveUserDisplayName, updateMyProfileHandler } from './core';
+export { getMyProfileHandler, resolveUserDisplayName, updateMyProfileHandler } from './core.js';

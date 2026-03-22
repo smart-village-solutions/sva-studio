@@ -1,2 +1,2 @@
-export * from '../audit-events.server';
-export type * from '../audit-events.types';
+export * from '../audit-events.server.js';
+export type * from '../audit-events.types.js';

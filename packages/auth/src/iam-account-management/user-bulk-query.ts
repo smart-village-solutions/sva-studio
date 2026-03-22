@@ -1,8 +1,8 @@
 import type { IamUserRoleAssignment } from '@sva/core';
 
-import type { QueryClient } from '../shared/db-helpers';
+import type { QueryClient } from '../shared/db-helpers.js';
 
-import { getRoleDisplayName } from './role-audit';
+import { getRoleDisplayName } from './role-audit.js';
 
 type BulkUserRoleRow = {
   id: string;

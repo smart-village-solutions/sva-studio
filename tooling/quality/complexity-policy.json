@@ -138,6 +138,54 @@
       "status": "open",
       "summary": "IAM Account Management User- und Profile-Handler weiter in Query-, Mutation- und Profile-Module zerlegen"
     },
+    "iam-server:packages/auth/src/iam-account-management/profile-handlers.ts:cyclomaticComplexity": {
+      "ticketId": "QUAL-112",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "IAM Account Management User- und Profile-Handler weiter in Query-, Mutation- und Profile-Module zerlegen"
+    },
+    "iam-server:packages/auth/src/iam-account-management/diagnostics.ts:cyclomaticComplexity": {
+      "ticketId": "QUAL-112",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "IAM Account Management Diagnose- und Fehlerklassifizierungslogik in kleinere Schema-, DB- und Runtime-Bausteine zerlegen"
+    },
+    "iam-server:packages/auth/src/iam-account-management/diagnostics.ts:fileLines": {
+      "ticketId": "QUAL-112",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "IAM Account Management Diagnose- und Fehlerklassifizierungslogik in kleinere Schema-, DB- und Runtime-Bausteine zerlegen"
+    },
+    "iam-server:packages/auth/src/iam-account-management/diagnostics.ts:functionLines": {
+      "ticketId": "QUAL-112",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "IAM Account Management Diagnose- und Fehlerklassifizierungslogik in kleinere Schema-, DB- und Runtime-Bausteine zerlegen"
+    },
+    "iam-server:packages/auth/src/iam-account-management/platform-handlers.ts:cyclomaticComplexity": {
+      "ticketId": "QUAL-112",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "IAM Account Management Plattform-Handler weiter in Query-, Mutation- und Runtime-Checks zerlegen"
+    },
+    "iam-server:packages/auth/src/iam-account-management/platform-handlers.ts:functionLines": {
+      "ticketId": "QUAL-112",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "IAM Account Management Plattform-Handler weiter in Query-, Mutation- und Runtime-Checks zerlegen"
+    },
+    "iam-server:packages/auth/src/iam-account-management/schema-guard.ts:fileLines": {
+      "ticketId": "QUAL-112",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "IAM Account Management Schema-Guard in deklarative Checks und SQL-Bausteine zerlegen"
+    },
+    "iam-server:packages/auth/src/iam-account-management/shared.ts:cyclomaticComplexity": {
+      "ticketId": "QUAL-112",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "IAM Account Management Shared-Helfer weiter in Runtime-, Persistence- und Authorization-Bausteine zerlegen"
+    },
     "iam-server:packages/auth/src/iam-account-management/types.ts:publicExports": {
       "ticketId": "QUAL-101",
       "ticketSystem": "backlog",
@@ -311,6 +359,72 @@
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "Authorization-Shared-Logik für Gruppen- und Geo-Vererbung in kleinere Auswertungsbausteine zerlegen"
+    },
+    "iam-server:packages/auth/src/iam-authorization.cache.ts:cyclomaticComplexity": {
+      "ticketId": "QUAL-117",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Authorization-Cache und Snapshot-Invalidation weiter in Lade-, Merge- und Invalidation-Bausteine zerlegen"
+    },
+    "iam-server:packages/auth/src/iam-authorization.cache.ts:fileLines": {
+      "ticketId": "QUAL-117",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Authorization-Cache und Snapshot-Invalidation weiter in Lade-, Merge- und Invalidation-Bausteine zerlegen"
+    },
+    "iam-server:packages/auth/src/iam-authorization.cache.ts:functionLines": {
+      "ticketId": "QUAL-117",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Authorization-Cache und Snapshot-Invalidation weiter in Lade-, Merge- und Invalidation-Bausteine zerlegen"
+    },
+    "iam-server:packages/auth/src/iam-authorization/permission-store.ts:fileLines": {
+      "ticketId": "QUAL-117",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Permission-Store weiter in Snapshot-, Redis- und Conflict-Resolution-Bausteine zerlegen"
+    },
+    "iam-server:packages/auth/src/iam-authorization/permission-store.ts:functionLines": {
+      "ticketId": "QUAL-117",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Permission-Store weiter in Snapshot-, Redis- und Conflict-Resolution-Bausteine zerlegen"
+    },
+    "iam-server:packages/auth/src/iam-authorization/snapshot-invalidation.server.ts:cyclomaticComplexity": {
+      "ticketId": "QUAL-117",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Authorization-Cache und Snapshot-Invalidation weiter in Lade-, Merge- und Invalidation-Bausteine zerlegen"
+    },
+    "iam-server:packages/auth/src/routes/handlers.ts:fileLines": {
+      "ticketId": "QUAL-117",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Auth-Routenhandler weiter in Login-, Callback-, Logout- und Health-Bausteine zerlegen"
+    },
+    "iam-server:packages/auth/src/runtime-routes.server.ts:publicExports": {
+      "ticketId": "QUAL-117",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Runtime-Routen-Surface auf kleinere, explizite Exportflächen reduzieren"
+    },
+    "iam-server:packages/auth/src/iam-groups/handlers.ts:cyclomaticComplexity": {
+      "ticketId": "QUAL-118",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "IAM-Groups-Handler in Query-, Mutation-, Membership- und Role-Bausteine zerlegen"
+    },
+    "iam-server:packages/auth/src/iam-groups/handlers.ts:fileLines": {
+      "ticketId": "QUAL-118",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "IAM-Groups-Handler in Query-, Mutation-, Membership- und Role-Bausteine zerlegen"
+    },
+    "iam-server:packages/auth/src/iam-groups/handlers.ts:functionLines": {
+      "ticketId": "QUAL-118",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "IAM-Groups-Handler in Query-, Mutation-, Membership- und Role-Bausteine zerlegen"
     },
     "iam-data:packages/data/src/iam/repositories/statements.ts:fileLines": {
       "ticketId": "QUAL-116",

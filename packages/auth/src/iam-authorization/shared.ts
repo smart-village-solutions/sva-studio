@@ -7,15 +7,17 @@ import type {
   IamPermissionEffect,
   MePermissionsResponse,
 } from '@sva/core';
+import type { SnapshotCacheStatus } from '@sva/core';
 import { createSdkLogger, getWorkspaceContext } from '@sva/sdk/server';
 import { metrics } from '@opentelemetry/api';
 import type { PoolClient } from 'pg';
 
-import { parseInvalidationEvent, PermissionSnapshotCache } from '../iam-authorization.cache';
-import { createPoolResolver, jsonResponse, type QueryClient, withInstanceDb } from '../shared/db-helpers';
-import { isUuid, readString } from '../shared/input-readers';
-import { buildLogContext } from '../shared/log-context';
-import { authorizeRequestSchema } from '../shared/schemas';
+import { parseInvalidationEvent, PermissionSnapshotCache } from '../iam-authorization.cache.js';
+import { processSnapshotInvalidationEvent } from './snapshot-invalidation.server.js';
+import { createPoolResolver, jsonResponse, type QueryClient, withInstanceDb } from '../shared/db-helpers.js';
+import { isUuid, readString } from '../shared/input-readers.js';
+import { buildLogContext } from '../shared/log-context.js';
+import { authorizeRequestSchema } from '../shared/schemas.js';
 
 export type PermissionRow = {
   permission_key: string;
@@ -25,14 +27,20 @@ export type PermissionRow = {
   effect?: IamPermissionEffect | null;
   scope?: Record<string, unknown> | null;
   role_id: string;
-  group_id?: string | null;
-  source_kind?: 'direct_role' | 'group_role' | null;
   organization_id: string | null;
+  group_id?: string | null;
+  group_key?: string | null;
+  source_kind?: 'direct_role' | 'group_role' | null;
 };
 
 export type EffectivePermissionsResolution =
-  | { ok: true; permissions: readonly EffectivePermission[] }
-  | { ok: false; error: 'database_unavailable' | 'cache_stale_guard' };
+  | {
+      ok: true;
+      permissions: readonly EffectivePermission[];
+      cacheStatus: SnapshotCacheStatus;
+      snapshotVersion?: string;
+    }
+  | { ok: false; error: 'database_unavailable' };
 
 export const logger: ReturnType<typeof createSdkLogger> = createSdkLogger({ component: 'iam-authorize', level: 'info' });
 export const cacheLogger: ReturnType<typeof createSdkLogger> = createSdkLogger({
@@ -62,6 +70,17 @@ export const resolvePool = createPoolResolver(() => process.env.IAM_DATABASE_URL
 export const permissionSnapshotCache = new PermissionSnapshotCache(300_000, 300_000);
 export const CACHE_INVALIDATION_CHANNEL = 'iam_permission_snapshot_invalidation';
 export const cacheMetricsState = { lookups: 0, staleLookups: 0 };
+const CACHE_RECOMPUTE_WINDOW_MS = 60_000;
+const CACHE_DEGRADED_LATENCY_MS = 50;
+const CACHE_DEGRADED_RECOMPUTE_THRESHOLD = 20;
+const CACHE_FAILED_REDIS_FAILURE_THRESHOLD = 3;
+
+export const permissionCacheRuntimeState = {
+  coldStartLogged: false,
+  lastRedisLatencyMs: 0,
+  consecutiveRedisFailures: 0,
+  recomputeTimestampsMs: [] as number[],
+};
 
 let invalidationListenerInit: Promise<void> | null = null;
 let invalidationListenerClient: PoolClient | null = null;
@@ -74,6 +93,58 @@ iamCacheStaleEntriesGauge.addCallback((result) => {
 
 export const buildRequestContext = (workspaceId?: string) => buildLogContext(workspaceId, { includeTraceId: true });
 
+const pruneRecomputeTimestamps = (nowMs: number): void => {
+  permissionCacheRuntimeState.recomputeTimestampsMs =
+    permissionCacheRuntimeState.recomputeTimestampsMs.filter(
+      (timestamp) => nowMs - timestamp <= CACHE_RECOMPUTE_WINDOW_MS
+    );
+};
+
+export const recordPermissionCacheColdStart = (instanceId: string): void => {
+  if (permissionCacheRuntimeState.coldStartLogged) {
+    return;
+  }
+
+  permissionCacheRuntimeState.coldStartLogged = true;
+  cacheLogger.info('Permission cache cold start detected', {
+    operation: 'cache_lookup',
+    cache_cold_start: true,
+    ...buildRequestContext(instanceId),
+  });
+};
+
+export const recordPermissionCacheRedisLatency = (latencyMs: number, available: boolean): void => {
+  permissionCacheRuntimeState.lastRedisLatencyMs = latencyMs;
+  permissionCacheRuntimeState.consecutiveRedisFailures = available
+    ? 0
+    : permissionCacheRuntimeState.consecutiveRedisFailures + 1;
+};
+
+export const recordPermissionCacheRecompute = (nowMs = Date.now()): void => {
+  pruneRecomputeTimestamps(nowMs);
+  permissionCacheRuntimeState.recomputeTimestampsMs.push(nowMs);
+};
+
+export const getPermissionCacheHealth = (nowMs = Date.now()) => {
+  pruneRecomputeTimestamps(nowMs);
+  const recomputePerMinute = permissionCacheRuntimeState.recomputeTimestampsMs.length;
+  const status =
+    permissionCacheRuntimeState.consecutiveRedisFailures >= CACHE_FAILED_REDIS_FAILURE_THRESHOLD
+      ? 'failed'
+      : permissionCacheRuntimeState.lastRedisLatencyMs > CACHE_DEGRADED_LATENCY_MS ||
+          recomputePerMinute > CACHE_DEGRADED_RECOMPUTE_THRESHOLD
+        ? 'degraded'
+        : 'ready';
+
+  return {
+    status,
+    coldStart: !permissionCacheRuntimeState.coldStartLogged,
+    lastRedisLatencyMs: permissionCacheRuntimeState.lastRedisLatencyMs,
+    recomputePerMinute,
+    consecutiveRedisFailures: permissionCacheRuntimeState.consecutiveRedisFailures,
+  } as const;
+};
+
 export const readResourceType = (permissionKey: string) => permissionKey.split('.')[0] ?? permissionKey;
 
 const SOURCE_KIND_ORDER: Record<NonNullable<PermissionRow['source_kind']>, number> = {
@@ -83,7 +154,9 @@ const SOURCE_KIND_ORDER: Record<NonNullable<PermissionRow['source_kind']>, numbe
 
 const sortStrings = (values: readonly string[]): readonly string[] => [...values].sort((left, right) => left.localeCompare(right));
 
-const sortSourceKinds = (values: readonly NonNullable<PermissionRow['source_kind']>[]): readonly NonNullable<PermissionRow['source_kind']>[] =>
+const sortSourceKinds = (
+  values: readonly NonNullable<PermissionRow['source_kind']>[]
+): readonly NonNullable<PermissionRow['source_kind']>[] =>
   [...values].sort((left, right) => SOURCE_KIND_ORDER[left] - SOURCE_KIND_ORDER[right] || left.localeCompare(right));
 
 export const toEffectivePermissions = (rows: readonly PermissionRow[]): EffectivePermission[] => {
@@ -95,6 +168,8 @@ export const toEffectivePermissions = (rows: readonly PermissionRow[]): Effectiv
     const resourceId = row.resource_id?.trim() || undefined;
     const effect = row.effect ?? 'allow';
     const scope = row.scope ?? undefined;
+    const groupId = row.group_id ?? undefined;
+    const groupKey = row.group_key ?? undefined;
     const bucketKey = JSON.stringify({
       action,
       resourceType,
@@ -114,28 +189,27 @@ export const toEffectivePermissions = (rows: readonly PermissionRow[]): Effectiv
         effect,
         scope,
         sourceRoleIds: [row.role_id],
-        sourceGroupIds: row.group_id ? [row.group_id] : [],
+        sourceGroupIds: groupId ? [groupId] : [],
+        ...(groupKey ? { groupName: groupKey } : {}),
         provenance: row.source_kind ? { sourceKinds: [row.source_kind] } : undefined,
       });
       continue;
     }
 
-    const nextRoleIds = existing.sourceRoleIds.includes(row.role_id)
-      ? existing.sourceRoleIds
-      : [...existing.sourceRoleIds, row.role_id];
-    const nextGroupIds =
-      row.group_id && !existing.sourceGroupIds.includes(row.group_id)
-        ? [...existing.sourceGroupIds, row.group_id]
-        : existing.sourceGroupIds;
-    const nextSourceKinds = row.source_kind
+    const sourceRoleIds = existing.sourceRoleIds.includes(row.role_id) ? existing.sourceRoleIds : [...existing.sourceRoleIds, row.role_id];
+    const sourceGroupIds =
+      groupId && !existing.sourceGroupIds.includes(groupId) ? [...existing.sourceGroupIds, groupId] : existing.sourceGroupIds;
+    const groupName = groupKey ?? existing.groupName;
+    const sourceKinds = row.source_kind
       ? sortSourceKinds(Array.from(new Set([...(existing.provenance?.sourceKinds ?? []), row.source_kind])))
       : existing.provenance?.sourceKinds;
 
     buckets.set(bucketKey, {
       ...existing,
-      sourceRoleIds: sortStrings(nextRoleIds),
-      sourceGroupIds: sortStrings(nextGroupIds),
-      provenance: nextSourceKinds ? { ...(existing.provenance ?? {}), sourceKinds: nextSourceKinds } : existing.provenance,
+      sourceRoleIds: sortStrings(sourceRoleIds),
+      sourceGroupIds: sortStrings(sourceGroupIds),
+      ...(groupName ? { groupName } : {}),
+      provenance: sourceKinds ? { ...(existing.provenance ?? {}), sourceKinds } : existing.provenance,
     });
   }
 
@@ -199,6 +273,14 @@ export const ensureInvalidationListener = async (): Promise<void> => {
       permissionSnapshotCache.invalidate({
         instanceId: parsed.instanceId,
         keycloakSubject: parsed.keycloakSubject,
+      });
+      void processSnapshotInvalidationEvent(parsed.event).catch((error) => {
+        cacheLogger.error('Redis snapshot invalidation failed', {
+          operation: 'cache_invalidate_failed',
+          trigger: parsed.trigger,
+          error: error instanceof Error ? error.message : String(error),
+          ...buildRequestContext(parsed.instanceId),
+        });
       });
       iamCacheInvalidationLatencyHistogram.record(Date.now() - receivedAt, { trigger: parsed.trigger });
       cacheLogger.info('Cache invalidation event received', {

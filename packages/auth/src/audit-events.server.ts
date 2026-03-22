@@ -1,6 +1,6 @@
 import { createSdkLogger, getWorkspaceContext } from '@sva/sdk/server';
-import { persistAuthAuditEventToDb } from './audit-db-sink.server';
-import type { AuthAuditEvent } from './audit-events.types';
+import { persistAuthAuditEventToDb } from './audit-db-sink.server.js';
+import type { AuthAuditEvent } from './audit-events.types.js';
 
 const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
 

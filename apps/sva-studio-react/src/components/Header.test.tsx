@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import Header from './Header';
 
 const useAuthMock = vi.fn();
+const useLocaleMock = vi.fn();
 const useThemeMock = vi.fn();
 
 vi.mock('../providers/auth-provider', () => ({
@@ -14,6 +15,10 @@ vi.mock('../providers/auth-provider', () => ({
 
 vi.mock('../providers/theme-provider', () => ({
   useTheme: () => useThemeMock(),
+}));
+
+vi.mock('../providers/locale-provider', () => ({
+  useLocale: () => useLocaleMock(),
 }));
 
 vi.mock('@tanstack/react-router', () => ({
@@ -35,6 +40,7 @@ describe('Header auth actions', () => {
     cleanup();
     useAuthMock.mockReset();
     useThemeMock.mockReset();
+    useLocaleMock.mockReset();
     vi.unstubAllEnvs();
   });
 
@@ -54,6 +60,10 @@ describe('Header auth actions', () => {
       themeLabel: 'SVA Studio',
       setMode: vi.fn(),
       toggleMode: vi.fn(),
+    });
+    useLocaleMock.mockReturnValue({
+      locale: 'de',
+      setLocale: vi.fn(),
     });
 
     render(<Header />);
@@ -89,6 +99,10 @@ describe('Header auth actions', () => {
       setMode: vi.fn(),
       toggleMode: vi.fn(),
     });
+    useLocaleMock.mockReturnValue({
+      locale: 'de',
+      setLocale: vi.fn(),
+    });
 
     render(<Header />);
 
@@ -123,6 +137,10 @@ describe('Header auth actions', () => {
       setMode: vi.fn(),
       toggleMode: vi.fn(),
     });
+    useLocaleMock.mockReturnValue({
+      locale: 'de',
+      setLocale: vi.fn(),
+    });
 
     render(<Header />);
 
@@ -151,6 +169,10 @@ describe('Header auth actions', () => {
       setMode: vi.fn(),
       toggleMode: vi.fn(),
     });
+    useLocaleMock.mockReturnValue({
+      locale: 'de',
+      setLocale: vi.fn(),
+    });
 
     render(<Header isLoading />);
 
@@ -178,6 +200,10 @@ describe('Header auth actions', () => {
       themeLabel: 'SVA Studio',
       setMode: vi.fn(),
       toggleMode: toggleModeMock,
+    });
+    useLocaleMock.mockReturnValue({
+      locale: 'de',
+      setLocale: vi.fn(),
     });
 
     render(<Header />);
@@ -212,6 +238,10 @@ describe('Header auth actions', () => {
       setMode: vi.fn(),
       toggleMode: vi.fn(),
     });
+    useLocaleMock.mockReturnValue({
+      locale: 'de',
+      setLocale: vi.fn(),
+    });
 
     const { rerender } = render(<Header />);
 
@@ -220,5 +250,40 @@ describe('Header auth actions', () => {
     rerender(<Header onOpenMobileNavigation={vi.fn()} />);
 
     expect(screen.getByRole('button', { name: 'Navigation öffnen' })).toBeTruthy();
+  });
+
+  it('delegates language switch to the locale provider', async () => {
+    const setLocaleMock = vi.fn();
+
+    useAuthMock.mockReturnValue({
+      user: null,
+      isAuthenticated: false,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      logout: vi.fn(),
+      invalidatePermissions: vi.fn(),
+    });
+    useThemeMock.mockReturnValue({
+      mode: 'light',
+      themeName: 'sva-default',
+      themeLabel: 'SVA Studio',
+      setMode: vi.fn(),
+      toggleMode: vi.fn(),
+    });
+    useLocaleMock.mockReturnValue({
+      locale: 'de',
+      setLocale: setLocaleMock,
+    });
+
+    render(<Header />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Auf Englisch wechseln' })).toBeTruthy();
+    });
+
+    screen.getByRole('button', { name: 'Auf Englisch wechseln' }).click();
+
+    expect(setLocaleMock).toHaveBeenCalledWith('en');
   });
 });

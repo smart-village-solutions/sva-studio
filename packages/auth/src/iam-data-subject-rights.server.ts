@@ -1,1 +1,1 @@
-export * from './iam-data-subject-rights/index';
+export * from './iam-data-subject-rights/index.js';

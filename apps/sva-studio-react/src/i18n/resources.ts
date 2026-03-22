@@ -2,6 +2,7 @@ export const i18nResources = {
   de: {
     shell: {
       appName: 'SVA Studio',
+      skipToContent: 'Zum Inhalt springen',
       content: {
         loadingLabel: 'Inhalt lädt',
         loadingStatus: 'Inhalt wird geladen.',
@@ -9,6 +10,11 @@ export const i18nResources = {
       header: {
         navAriaLabel: 'Hauptnavigation',
         authLoading: 'Authentifizierungsstatus wird geladen.',
+        languageSwitcher: 'Sprache wechseln',
+        languageOptionDe: 'DE',
+        languageOptionEn: 'EN',
+        switchToGerman: 'Auf Deutsch wechseln',
+        switchToEnglish: 'Auf Englisch wechseln',
         login: 'Login',
         logout: 'Logout',
         openNavigation: 'Navigation öffnen',
@@ -90,6 +96,7 @@ export const i18nResources = {
         body: 'Bitte versuchen Sie es erneut oder kehren Sie zur Startseite zurück.',
         retry: 'Erneut versuchen',
         home: 'Zur Startseite',
+        diagnosticsLabel: 'Lokale Diagnose',
       },
       notFound: {
         heading: 'Seite nicht gefunden',
@@ -316,8 +323,7 @@ export const i18nResources = {
           mainserverApplicationSecretMissing: 'Es ist noch kein Secret hinterlegt.',
           mainserverApplicationSecretHint: 'Leer lassen, um das bestehende Secret unverändert zu lassen.',
           rolesLabel: 'Rollen-Zuweisung',
-          groupsLabel: 'Gruppenmitgliedschaften',
-          groupOrigin: 'Herkunft: {{value}}',
+          groupsLabel: 'Gruppen-Zuweisung',
           notesLabel: 'Notizen',
           notesCounter: '{{count}} / 2000 Zeichen',
           permissionsEmpty: 'Keine effektiven Berechtigungen vorhanden.',
@@ -330,6 +336,7 @@ export const i18nResources = {
           roleValidityRange: 'Gültig: {{from}} bis {{to}}',
           roleValidityFrom: 'Gültig ab {{from}}',
           roleValidityTo: 'Gültig bis {{to}}',
+          groupOrigin: 'Herkunft: {{value}}',
           historyCategory: {
             iam: 'IAM',
             governance: 'Governance',
@@ -569,7 +576,7 @@ export const i18nResources = {
       groups: {
         page: {
           title: 'Gruppenverwaltung',
-          subtitle: 'Instanzgebundene Gruppen verwalten und Rollenbündel pflegen',
+          subtitle: 'Instanzgebundene Gruppen verwalten, Rollen bündeln und Mitgliedschaften zuordnen',
         },
         table: {
           caption: 'Tabelle aller Gruppen in der aktiven Instanz',
@@ -584,7 +591,8 @@ export const i18nResources = {
         actions: {
           create: 'Gruppe anlegen',
           edit: 'Gruppe bearbeiten',
-          delete: 'Gruppe deaktivieren',
+          delete: 'Gruppe löschen',
+          save: 'Änderungen speichern',
           sort: 'Sortierung wechseln',
           retry: 'Erneut versuchen',
         },
@@ -595,27 +603,49 @@ export const i18nResources = {
         labels: {
           active: 'Aktiv',
           inactive: 'Inaktiv',
-          roleBundle: 'Rollenbündel',
           noDescription: 'Keine Beschreibung',
-          noRoles: 'Keine Rollen zugeordnet',
+          noValidity: 'Unbegrenzt',
+          roleCountOne: '1 Rolle',
+          roleCountOther: '{{count}} Rollen',
+          memberCountOne: '1 Mitglied',
+          memberCountOther: '{{count}} Mitglieder',
         },
         dialogs: {
           createTitle: 'Neue Gruppe erstellen',
           createDescription: 'Gruppen bündeln Rollen für wiederverwendbare Mitgliedschaften.',
           editTitle: 'Gruppe bearbeiten',
-          editDescription: 'Aktualisiert Rollenbündel und Status für {{groupKey}}.',
+          editDescription: 'Aktualisiert Rollenbündel, Status und Mitgliedschaften für {{groupKey}}.',
           keyLabel: 'Technischer Gruppenschlüssel',
           displayNameLabel: 'Anzeigename',
           descriptionLabel: 'Beschreibung',
           rolesLabel: 'Gebündelte Rollen',
         },
+        memberships: {
+          title: 'Mitgliedschaften',
+          subtitle: 'Benutzerkonten direkt in der Gruppenansicht zuweisen oder entziehen.',
+          subjectLabel: 'Keycloak-Subject',
+          validFromLabel: 'Gültig ab',
+          validUntilLabel: 'Gültig bis',
+          assign: 'Mitgliedschaft zuweisen',
+          remove: 'Entfernen',
+          caption: 'Tabelle der Gruppenmitgliedschaften',
+          tableAriaLabel: 'Gruppenmitgliedschaften',
+          tableSubject: 'Benutzerkonto',
+          tableValidity: 'Gültigkeit',
+          tableOrigin: 'Herkunft',
+          tableActions: 'Aktionen',
+          empty: 'Keine Gruppenmitgliedschaften vorhanden.',
+          validityRange: 'Von {{from}} bis {{to}}',
+          originManual: 'Manuell durch {{accountId}}',
+          originUnknown: 'Unbekannt',
+        },
         confirm: {
-          deleteTitle: 'Gruppe deaktivieren',
-          deleteDescription: 'Die Gruppe wird deaktiviert und steht nicht mehr für neue Zuweisungen zur Verfügung.',
+          deleteTitle: 'Gruppe löschen',
+          deleteDescription: 'Die Gruppe und ihre Mitgliedschaften werden dauerhaft entfernt.',
         },
         messages: {
           emptyState: 'Keine Gruppen gefunden.',
-          loading: 'Gruppen werden geladen ...',
+          loading: 'Gruppendetails werden geladen ...',
           error: 'Gruppen konnten nicht geladen werden.',
         },
         errors: {
@@ -827,6 +857,7 @@ export const i18nResources = {
   en: {
     shell: {
       appName: 'SVA Studio',
+      skipToContent: 'Skip to content',
       content: {
         loadingLabel: 'Loading content',
         loadingStatus: 'Content is loading.',
@@ -834,6 +865,11 @@ export const i18nResources = {
       header: {
         navAriaLabel: 'Main navigation',
         authLoading: 'Loading authentication status.',
+        languageSwitcher: 'Switch language',
+        languageOptionDe: 'DE',
+        languageOptionEn: 'EN',
+        switchToGerman: 'Switch to German',
+        switchToEnglish: 'Switch to English',
         login: 'Login',
         logout: 'Logout',
         openNavigation: 'Open navigation',
@@ -915,6 +951,7 @@ export const i18nResources = {
         body: 'Please try again or return to the home page.',
         retry: 'Try again',
         home: 'Go to home',
+        diagnosticsLabel: 'Local diagnostics',
       },
       notFound: {
         heading: 'Page not found',
@@ -1141,8 +1178,7 @@ export const i18nResources = {
           mainserverApplicationSecretMissing: 'No secret is configured yet.',
           mainserverApplicationSecretHint: 'Leave empty to keep the existing secret unchanged.',
           rolesLabel: 'Role assignment',
-          groupsLabel: 'Group memberships',
-          groupOrigin: 'Origin: {{value}}',
+          groupsLabel: 'Group assignment',
           notesLabel: 'Notes',
           notesCounter: '{{count}} / 2000 characters',
           permissionsEmpty: 'No effective permissions available.',
@@ -1155,6 +1191,7 @@ export const i18nResources = {
           roleValidityRange: 'Valid: {{from}} to {{to}}',
           roleValidityFrom: 'Valid from {{from}}',
           roleValidityTo: 'Valid until {{to}}',
+          groupOrigin: 'Origin: {{value}}',
           historyCategory: {
             iam: 'IAM',
             governance: 'Governance',
@@ -1394,7 +1431,7 @@ export const i18nResources = {
       groups: {
         page: {
           title: 'Group Management',
-          subtitle: 'Manage instance-bound groups and maintain bundled roles',
+          subtitle: 'Manage instance-bound groups, bundle roles, and assign memberships',
         },
         table: {
           caption: 'Table of all groups in the active instance',
@@ -1409,7 +1446,8 @@ export const i18nResources = {
         actions: {
           create: 'Create group',
           edit: 'Edit group',
-          delete: 'Deactivate group',
+          delete: 'Delete group',
+          save: 'Save changes',
           sort: 'Toggle sorting',
           retry: 'Retry',
         },
@@ -1420,27 +1458,49 @@ export const i18nResources = {
         labels: {
           active: 'Active',
           inactive: 'Inactive',
-          roleBundle: 'Role bundle',
           noDescription: 'No description',
-          noRoles: 'No roles assigned',
+          noValidity: 'Unlimited',
+          roleCountOne: '1 role',
+          roleCountOther: '{{count}} roles',
+          memberCountOne: '1 member',
+          memberCountOther: '{{count}} members',
         },
         dialogs: {
           createTitle: 'Create group',
           createDescription: 'Groups bundle roles for reusable memberships.',
           editTitle: 'Edit group',
-          editDescription: 'Updates bundled roles and status for {{groupKey}}.',
+          editDescription: 'Updates bundled roles, status, and memberships for {{groupKey}}.',
           keyLabel: 'Technical group key',
           displayNameLabel: 'Display name',
           descriptionLabel: 'Description',
           rolesLabel: 'Bundled roles',
         },
+        memberships: {
+          title: 'Memberships',
+          subtitle: 'Assign or remove user accounts directly from the group view.',
+          subjectLabel: 'Keycloak subject',
+          validFromLabel: 'Valid from',
+          validUntilLabel: 'Valid until',
+          assign: 'Assign membership',
+          remove: 'Remove',
+          caption: 'Table of group memberships',
+          tableAriaLabel: 'Group memberships',
+          tableSubject: 'User account',
+          tableValidity: 'Validity',
+          tableOrigin: 'Origin',
+          tableActions: 'Actions',
+          empty: 'No group memberships available.',
+          validityRange: 'From {{from}} to {{to}}',
+          originManual: 'Manually assigned by {{accountId}}',
+          originUnknown: 'Unknown',
+        },
         confirm: {
-          deleteTitle: 'Deactivate group',
-          deleteDescription: 'The group is deactivated and will no longer be available for new assignments.',
+          deleteTitle: 'Delete group',
+          deleteDescription: 'The group and all its memberships are removed permanently.',
         },
         messages: {
           emptyState: 'No groups found.',
-          loading: 'Loading groups ...',
+          loading: 'Loading group details ...',
           error: 'Groups could not be loaded.',
         },
         errors: {

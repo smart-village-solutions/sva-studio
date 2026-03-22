@@ -10,35 +10,80 @@
  */
 
 let sdkInitialized = false;
+let sdkInitializationPromise: Promise<void> | null = null;
+
+const parseBootstrapTimeoutMs = (rawValue: string | undefined) => {
+  const defaultBootstrapTimeoutMs = 5000;
+  const minBootstrapTimeoutMs = 100;
+  const maxBootstrapTimeoutMs = 600000;
+  const parsedBootstrapTimeout = rawValue === undefined
+    ? defaultBootstrapTimeoutMs
+    : Number.parseInt(rawValue, 10);
+
+  if (!Number.isFinite(parsedBootstrapTimeout) || parsedBootstrapTimeout <= 0) {
+    return defaultBootstrapTimeoutMs;
+  }
+
+  return Math.min(Math.max(parsedBootstrapTimeout, minBootstrapTimeoutMs), maxBootstrapTimeoutMs);
+};
 
 export async function ensureSdkInitialized() {
   if (sdkInitialized) {
     return;
   }
 
-  // Fail-fast: Instance-Config validieren, bevor die App Requests annimmt.
-  // Wirft bei ungültigen Allowlist-Einträgen einen Fehler, der den Start
-  // abbricht. Bei fehlendem SVA_PARENT_DOMAIN wird in lokaler Entwicklung
-  // kein Multi-Host-Modus aktiviert.
-  const sdk = await import('@sva/sdk/server');
-  const logger = sdk.createSdkLogger({
-    component: 'sdk-init',
-    level: 'info',
-    enableConsole: true,
-    enableOtel: false,
-  });
-
-  sdk.getInstanceConfig();
-
-  try {
-    await sdk.initializeOtelSdk();
-    sdkInitialized = true;
-    logger.info('SDK initialisiert');
-  } catch (error) {
-    logger.error('SDK-Initialisierung fehlgeschlagen', {
-      error: error instanceof Error ? error.message : String(error),
-      error_type: error instanceof Error ? error.constructor.name : 'unknown',
-    });
-    // Nicht werfen - App soll auch ohne SDK laufen
+  if (sdkInitializationPromise) {
+    await sdkInitializationPromise;
+    return;
   }
+  sdkInitializationPromise = (async () => {
+    const sdk = await import('@sva/sdk/server');
+    const logger = sdk.createSdkLogger({
+      component: 'sdk-init',
+      level: 'info',
+      enableConsole: true,
+      enableOtel: false,
+    });
+    const bootstrapTimeoutMs = parseBootstrapTimeoutMs(process.env.SVA_OTEL_BOOTSTRAP_TIMEOUT_MS);
+    let bootstrapTimeoutHandle: ReturnType<typeof setTimeout> | undefined;
+    let instanceConfigValidated = false;
+
+    try {
+      sdk.getInstanceConfig();
+      instanceConfigValidated = true;
+
+      await Promise.race([
+        sdk.initializeOtelSdk(),
+        new Promise((_, reject) => {
+          bootstrapTimeoutHandle = setTimeout(() => {
+            reject(new Error(`SDK initialization timed out after ${bootstrapTimeoutMs}ms`));
+          }, bootstrapTimeoutMs);
+          bootstrapTimeoutHandle.unref?.();
+        }),
+      ]);
+      sdkInitialized = true;
+      logger.info('SDK initialisiert');
+    } catch (error) {
+      if (!instanceConfigValidated) {
+        logger.error('SDK-Initialisierung wegen ungültiger Instance-Konfiguration abgebrochen', {
+          error: error instanceof Error ? error.message : String(error),
+          error_type: error instanceof Error ? error.constructor.name : 'unknown',
+        });
+        throw error;
+      }
+
+      logger.error('SDK-Initialisierung fehlgeschlagen', {
+        error: error instanceof Error ? error.message : String(error),
+        error_type: error instanceof Error ? error.constructor.name : 'unknown',
+      });
+      // Nicht werfen - App soll auch ohne SDK laufen. Ein späterer Request darf neu versuchen.
+    } finally {
+      if (bootstrapTimeoutHandle) {
+        clearTimeout(bootstrapTimeoutHandle);
+      }
+      sdkInitializationPromise = null;
+    }
+  })();
+
+  await sdkInitializationPromise;
 }

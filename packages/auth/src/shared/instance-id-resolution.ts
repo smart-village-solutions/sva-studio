@@ -1,7 +1,7 @@
 import type { Pool, PoolClient } from 'pg';
 
-import { type QueryClient } from './db-helpers';
-import { readString } from './input-readers';
+import { type QueryClient } from './db-helpers.js';
+import { readString } from './input-readers.js';
 
 export type InstanceIdResolutionResult =
   | {

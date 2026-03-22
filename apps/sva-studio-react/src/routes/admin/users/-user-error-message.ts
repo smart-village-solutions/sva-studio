@@ -12,6 +12,8 @@ export const userErrorMessage = (error: IamHttpError | null): string => {
   }
 
   switch (error.code) {
+    case 'invalid_request':
+      return t('admin.users.messages.error');
     case 'forbidden':
       return t('admin.users.errors.forbidden');
     case 'csrf_validation_failed':

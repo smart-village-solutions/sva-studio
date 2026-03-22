@@ -2,13 +2,13 @@ import type { ApiErrorResponse, IamUserDetail, IamUserRoleAssignment } from '@sv
 import { getWorkspaceContext } from '@sva/sdk/server';
 import type { z } from 'zod';
 
-import { KeycloakAdminRequestError, KeycloakAdminUnavailableError } from '../keycloak-admin-client';
-import type { AuthenticatedRequestContext } from '../middleware.server';
-import type { QueryClient } from '../shared/db-helpers';
-import { jsonResponse } from '../shared/db-helpers';
-import { isUuid } from '../shared/input-readers';
+import { KeycloakAdminRequestError, KeycloakAdminUnavailableError } from '../keycloak-admin-client.js';
+import type { AuthenticatedRequestContext } from '../middleware.server.js';
+import type { QueryClient } from '../shared/db-helpers.js';
+import { jsonResponse } from '../shared/db-helpers.js';
+import { isUuid } from '../shared/input-readers.js';
 
-import { ADMIN_ROLES } from './constants';
+import { ADMIN_ROLES } from './constants.js';
 import {
   asApiItem,
   createApiError,
@@ -16,9 +16,9 @@ import {
   readPathSegment,
   requireIdempotencyKey,
   toPayloadHash,
-} from './api-helpers';
-import { ensureFeature, getFeatureFlags } from './feature-flags';
-import { consumeRateLimit } from './rate-limit';
+} from './api-helpers.js';
+import { ensureFeature, getFeatureFlags } from './feature-flags.js';
+import { consumeRateLimit } from './rate-limit.js';
 import {
   assignGroups,
   assignRoles,
@@ -41,24 +41,24 @@ import {
   resolveSystemAdminCount,
   trackKeycloakCall,
   withInstanceScopedDb,
-} from './shared';
-import { validateCsrf } from './csrf';
-import { protectField } from './encryption';
-import type { IdentityUserAttributes } from '../identity-provider-port';
+} from './shared.js';
+import { validateCsrf } from './csrf.js';
+import { protectField } from './encryption.js';
+import type { IdentityUserAttributes } from '../identity-provider-port.js';
 import {
   buildMainserverIdentityAttributes,
   getSvaMainserverCredentialAttributeNames,
   resolveMainserverCredentialState,
-} from '../mainserver-credentials.server';
-import { buildRoleSyncFailure, getRoleExternalName } from './role-audit';
-import { bulkDeactivateSchema, updateUserSchema } from './schemas';
-import { resolveUsersForBulkDeactivation } from './user-bulk-query';
-import { resolveUserDetail } from './user-detail-query';
+} from '../mainserver-credentials.server.js';
+import { buildRoleSyncFailure, getRoleExternalName } from './role-audit.js';
+import { bulkDeactivateSchema, updateUserSchema } from './schemas.js';
+import { resolveUsersForBulkDeactivation } from './user-bulk-query.js';
+import { resolveUserDetail } from './user-detail-query.js';
 
-export { createUserInternal } from './user-create-handler';
-export { getMyProfileInternal, updateMyProfileInternal } from './profile-handlers';
-export { getUserInternal, getUserTimelineInternal, listUsersInternal } from './user-read-handlers';
-export { syncUsersFromKeycloakInternal } from './user-import-sync-handler';
+export { createUserInternal } from './user-create-handler.js';
+export { getMyProfileInternal, updateMyProfileInternal } from './profile-handlers.js';
+export { getUserInternal, getUserTimelineInternal, listUsersInternal } from './user-read-handlers.js';
+export { syncUsersFromKeycloakInternal } from './user-import-sync-handler.js';
 
 type UpdateUserPayload = z.infer<typeof updateUserSchema>;
 

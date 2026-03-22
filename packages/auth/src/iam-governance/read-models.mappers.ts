@@ -1,8 +1,8 @@
 import type { IamGovernanceCaseListItem } from '@sva/core';
 
-import { readString } from '../shared/input-readers';
-import { revealField } from '../iam-account-management/encryption';
-import { resolveUserDisplayName } from '../iam-account-management/user-mapping';
+import { readString } from '../shared/input-readers.js';
+import { revealField } from '../iam-account-management/encryption.js';
+import { resolveUserDisplayName } from '../iam-account-management/user-mapping.js';
 
 import type {
   DelegationRow,
@@ -10,7 +10,7 @@ import type {
   ImpersonationRow,
   LegalAcceptanceRow,
   PermissionChangeRow,
-} from './read-models.types';
+} from './read-models.types.js';
 
 type PersonColumns = {
   display_name_ciphertext: string | null;

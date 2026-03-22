@@ -5,7 +5,7 @@ import {
   type FieldEncryptionConfig,
 } from '@sva/core/security';
 
-import { parseBooleanFlag } from './feature-flags';
+import { parseBooleanFlag } from './feature-flags.js';
 
 let encryptionConfigCache: { signature: string; config: FieldEncryptionConfig | null } | null = null;
 

@@ -7,13 +7,13 @@ import {
   readPathSegment,
   requireIdempotencyKey,
   toPayloadHash,
-} from '../iam-account-management/api-helpers';
-import { validateCsrf } from '../iam-account-management/csrf';
-import { completeIdempotency, reserveIdempotency } from '../iam-account-management/shared';
+} from '../iam-account-management/api-helpers.js';
+import { validateCsrf } from '../iam-account-management/csrf.js';
+import { completeIdempotency, reserveIdempotency } from '../iam-account-management/shared.js';
 
-import type { ResolvedLegalTextsActor } from './request-context';
-import { createLegalTextVersion, loadLegalTextById, updateLegalTextVersion } from './repository';
-import { createLegalTextSchema, updateLegalTextSchema } from './schemas';
+import type { ResolvedLegalTextsActor } from './request-context.js';
+import { createLegalTextVersion, loadLegalTextById, updateLegalTextVersion } from './repository.js';
+import { createLegalTextSchema, updateLegalTextSchema } from './schemas.js';
 
 const logger = createSdkLogger({ component: 'iam-legal-texts', level: 'info' });
 

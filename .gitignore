@@ -23,6 +23,9 @@ out/
 .env
 .env.*
 !.env.example
+.config/*.env
+.config/*.env.local
+!.config/*.env.example
 
 # Python
 __pycache__/
@@ -64,6 +67,8 @@ dev/redis-tls/
 
 # Local monitoring artifacts
 artifacts/monitoring/
+artifacts/runtime/
+config/runtime/*.local.vars
 
 # Generated outputs in @sva/core source tree
 packages/core/src/**/*.d.ts
@@ -73,3 +78,9 @@ packages/core/src/**/*.js
 # SonarQube
 .scannerwork/
 .cache_ggshield
+config/runtime/acceptance-hb.vars
+config/runtime/base.vars
+config/runtime/local-builder.vars
+config/runtime/local-keycloak.vars
+deploy/portainer/.env.example
+deploy/portainer/docker-compose.yml

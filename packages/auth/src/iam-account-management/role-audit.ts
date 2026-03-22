@@ -3,10 +3,10 @@ import { redactObject } from '@sva/sdk/server';
 import {
   KeycloakAdminRequestError,
   KeycloakAdminUnavailableError,
-} from '../keycloak-admin-client';
-import { readString } from '../shared/input-readers';
-import { createApiError } from './api-helpers';
-import type { IamRoleRow, ManagedBy, RoleSyncErrorCode } from './types';
+} from '../keycloak-admin-client.js';
+import { readString } from '../shared/input-readers.js';
+import { createApiError } from './api-helpers.js';
+import type { IamRoleRow, ManagedBy, RoleSyncErrorCode } from './types.js';
 
 export const getRoleDisplayName = (role: Pick<IamRoleRow, 'display_name' | 'role_name'>): string =>
   readString(role.display_name) ?? role.role_name;

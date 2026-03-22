@@ -19,6 +19,7 @@ export type ApiErrorCode =
   | 'self_protection'
   | 'feature_disabled'
   | 'conflict'
+  | 'legal_acceptance_required'
   | 'internal_error';
 
 export type ApiPagination = {

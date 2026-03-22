@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
 import { createSession, getSession } from './redis-session.server';
 import { closeRedis, getRedisClient } from './redis.server';
 import type { Session } from './types';
+import { ensureRedisAvailabilityChecked } from '../test-utils/redis-test-guard.js';
 
 const envBackup = { ...process.env };
 const currentTestKeyPrefix = (): string =>
@@ -10,7 +11,7 @@ const currentTestKeyPrefix = (): string =>
     ? `vitest:${process.env.VITEST_WORKER_ID ?? process.env.VITEST_POOL_ID ?? 'default'}:`
     : '');
 
-describe('Redis Session Persistenz (Restart/HMR)', () => {
+(await ensureRedisAvailabilityChecked() ? describe : describe.skip)('Redis Session Persistenz (Restart/HMR)', () => {
   beforeAll(() => {
     process.env.SVA_AUTH_REDIS_KEY_PREFIX = 'vitest:redis-persistence-suite:';
   });

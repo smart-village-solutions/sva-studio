@@ -9,9 +9,10 @@ const integrationState = vi.hoisted(() => ({
   },
   queryHandler: null as null | ((text: string, values?: readonly unknown[]) => unknown),
   impersonationResult: { ok: true } as { ok: true } | { ok: false; reasonCode: string },
+  redisStore: new Map<string, string>(),
 }));
 
-vi.mock('./middleware.server', () => ({
+vi.mock('./middleware.server.js', () => ({
   withAuthenticatedUser: vi.fn(async (_request: Request, handler: (ctx: unknown) => Promise<Response>) =>
     handler({
       sessionId: 'session-integration',
@@ -80,7 +81,31 @@ vi.mock('pg', () => ({
   },
 }));
 
-vi.mock('./iam-governance.server', () => ({
+vi.mock('./redis.server.js', () => ({
+  getRedisClient: () => ({
+    async get(key: string) {
+      return integrationState.redisStore.get(key) ?? null;
+    },
+    async setex(key: string, _ttl: number, value: string) {
+      integrationState.redisStore.set(key, value);
+      return 'OK';
+    },
+    async del(...keys: string[]) {
+      let deleted = 0;
+      for (const key of keys) {
+        deleted += integrationState.redisStore.delete(key) ? 1 : 0;
+      }
+      return deleted;
+    },
+    async scan(_cursor: string, _matchToken: string, pattern: string) {
+      const regex = new RegExp(`^${pattern.replaceAll('*', '.*')}$`);
+      const keys = [...integrationState.redisStore.keys()].filter((key) => regex.test(key));
+      return ['0', keys];
+    },
+  }),
+}));
+
+vi.mock('./iam-governance.server.js', () => ({
   resolveImpersonationSubject: vi.fn(async () => integrationState.impersonationResult),
 }));
 
@@ -98,6 +123,7 @@ describe('IAM authorization integration denials', () => {
     };
     integrationState.queryHandler = null;
     integrationState.impersonationResult = { ok: true };
+    integrationState.redisStore.clear();
   });
 
   it('denies me/permissions for cross-instance request', async () => {
@@ -388,7 +414,7 @@ describe('IAM authorization integration denials', () => {
     });
   });
 
-  it('returns an empty permission set when a stale cache entry cannot be recomputed', async () => {
+  it('returns database_unavailable when a stale cache entry cannot be recomputed', async () => {
     integrationState.user = {
       ...integrationState.user,
       id: 'keycloak-sub-stale-guard',
@@ -416,18 +442,10 @@ describe('IAM authorization integration denials', () => {
     };
 
     const response = await mePermissionsHandler(new Request('http://localhost/iam/me/permissions'));
-    const payload = (await response.json()) as {
-      permissions: unknown[];
-      subject: { actorUserId: string; effectiveUserId: string; isImpersonating: boolean };
-    };
+    const payload = (await response.json()) as { error: string };
 
-    expect(response.status).toBe(200);
-    expect(payload.permissions).toEqual([]);
-    expect(payload.subject).toEqual({
-      actorUserId: 'keycloak-sub-stale-guard',
-      effectiveUserId: 'keycloak-sub-stale-guard',
-      isImpersonating: false,
-    });
+    expect(response.status).toBe(503);
+    expect(payload).toEqual({ error: 'database_unavailable' });
 
     permissionSnapshotCache.invalidate({
       instanceId,

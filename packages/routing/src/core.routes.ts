@@ -1,4 +1,4 @@
-import { authRouteFactories } from './auth.routes';
+import { authRouteFactories } from './auth.routes.js';
 
 /**
  * Core route factories - all routes that should be registered in all SVA apps

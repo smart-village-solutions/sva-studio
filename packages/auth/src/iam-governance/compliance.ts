@@ -1,1 +1,1 @@
-export { governanceComplianceExportHandler } from './core';
+export { governanceComplianceExportHandler } from './core.js';

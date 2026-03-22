@@ -1,13 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import { createSdkLogger } from '@sva/sdk/server';
 
-import { getAuthConfig } from '../config';
-import { jitProvisionAccount } from '../jit-provisioning.server';
-import { client, getOidcConfig } from '../oidc.server';
-import { consumeLoginState, createSession } from '../redis-session.server';
-import type { LoginState } from '../types';
-import { buildLogContext } from '../shared/log-context';
-import { buildSessionUser, resolveExpiresAt } from './shared';
+import { getAuthConfig } from '../config.js';
+import { jitProvisionAccount } from '../jit-provisioning.server.js';
+import { client, getOidcConfig } from '../oidc.server.js';
+import { consumeLoginState, createSession } from '../redis-session.server.js';
+import type { LoginState } from '../types.js';
+import { buildLogContext } from '../shared/log-context.js';
+import { buildSessionUser, resolveExpiresAt } from './shared.js';
 
 const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
 

@@ -4,4 +4,4 @@ export {
   getGroupHandler,
   listGroupsHandler,
   updateGroupHandler,
-} from './core';
+} from './core.js';

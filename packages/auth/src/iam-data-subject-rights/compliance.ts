@@ -3,4 +3,4 @@ export {
   legalHoldApplyHandler,
   legalHoldReleaseHandler,
   listAdminDataSubjectRightsCasesHandler,
-} from './core';
+} from './core.js';

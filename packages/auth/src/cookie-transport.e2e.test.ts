@@ -3,6 +3,7 @@ import { serialize as serializeCookie, parse as parseCookie } from 'cookie-es';
 import type { Session } from './types';
 import { createSession, getSession } from './session';
 import { closeRedis } from './redis.server';
+import { ensureRedisAvailabilityChecked } from '../test-utils/redis-test-guard.js';
 
 /**
  * E2E-Test für Cookie-Transport-Flow:
@@ -13,7 +14,7 @@ import { closeRedis } from './redis.server';
  * 5. Browser sendet Cookie in nächster Request
  * 6. /auth/me gibt 200 mit User-Daten zurück
  */
-describe('E2E: Cookie Transport Flow (OAuth-Login → Callback → /auth/me)', () => {
+(await ensureRedisAvailabilityChecked() ? describe : describe.skip)('E2E: Cookie Transport Flow (OAuth-Login → Callback → /auth/me)', () => {
   afterAll(async () => {
     await closeRedis();
   });

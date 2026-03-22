@@ -1,7 +1,7 @@
 import type { IamUserListItem, IamUserRoleAssignment } from '@sva/core';
-import { revealField } from './encryption';
-import { getRoleDisplayName } from './role-audit';
-import type { IamRoleRow, UserStatus } from './types';
+import { revealField } from './encryption.js';
+import { getRoleDisplayName } from './role-audit.js';
+import type { IamRoleRow, UserStatus } from './types.js';
 
 export const maskEmail = (value: string | undefined): string | undefined => {
   if (!value) {

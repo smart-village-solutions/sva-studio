@@ -1,4 +1,5 @@
 import { createSdkLogger } from '@sva/sdk/server';
+import { getKeycloakAdminClientSecret } from '../runtime-secrets.server.js';
 
 import type {
   CreateIdentityRoleInput,
@@ -11,7 +12,7 @@ import type {
   IdentityUserListQuery,
   UpdateIdentityRoleInput,
   UpdateIdentityUserInput,
-} from '../identity-provider-port';
+} from '../identity-provider-port.js';
 
 type FetchLike = (input: string | URL, init?: RequestInit) => Promise<Response>;
 
@@ -909,5 +910,5 @@ export const getKeycloakAdminClientConfigFromEnv = (): KeycloakAdminClientConfig
   baseUrl: requireEnv('KEYCLOAK_ADMIN_BASE_URL'),
   realm: requireEnv('KEYCLOAK_ADMIN_REALM'),
   clientId: requireEnv('KEYCLOAK_ADMIN_CLIENT_ID'),
-  clientSecret: requireEnv('KEYCLOAK_ADMIN_CLIENT_SECRET'),
+  clientSecret: getKeycloakAdminClientSecret() ?? requireEnv('KEYCLOAK_ADMIN_CLIENT_SECRET'),
 });

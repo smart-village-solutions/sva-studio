@@ -357,7 +357,6 @@ Liefert die vereinte Actor+Target-Historie für `/admin/users/:userId`.
 - `abac_condition_unmet`
 - `hierarchy_restriction`
 - `policy_conflict_restrictive_wins`
-- `cache_stale_guard`
 
 ## Error-Codes (API)
 

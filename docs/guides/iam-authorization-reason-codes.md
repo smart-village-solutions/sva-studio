@@ -21,7 +21,6 @@ Diese Referenz dokumentiert die stabilen `reason`-Codes für `POST /iam/authoriz
 | `abac_condition_unmet` | ABAC-Bedingungen sind nicht erfüllt. | Geo-Scope oder Zeitfenster verletzt. |
 | `hierarchy_restriction` | Hierarchieregel blockiert den Zugriff. | Untergeordnete Restriktionen heben geerbte Berechtigungen auf. |
 | `policy_conflict_restrictive_wins` | Konflikt zwischen Regeln wurde restriktiv aufgelöst. | Erlaubnis und Verbot treffen gleichzeitig zu; Deny gewinnt deterministisch. |
-| `cache_stale_guard` | Entscheidung wurde fail-closed abgebrochen. | Snapshot ist stale und Recompute/DB-Zugriff war nicht möglich. |
 
 ## Beispiele
 
@@ -53,17 +52,11 @@ Diese Referenz dokumentiert die stabilen `reason`-Codes für `POST /iam/authoriz
 }
 ```
 
-### Beispiel `cache_stale_guard`
+### Beispiel technischer Fehlerpfad (`database_unavailable`)
 
 ```json
 {
-  "allowed": false,
-  "reason": "cache_stale_guard",
-  "instanceId": "de-musterhausen",
-  "action": "content.read",
-  "resourceType": "content",
-  "resourceId": "article-1",
-  "evaluatedAt": "2026-02-28T11:02:00.000Z"
+  "error": "database_unavailable"
 }
 ```
 
@@ -71,4 +64,5 @@ Diese Referenz dokumentiert die stabilen `reason`-Codes für `POST /iam/authoriz
 
 - Bestehende Codes werden nicht semantisch umdefiniert.
 - Neue Codes werden nur additiv eingeführt.
+- Technische Fehler im Fail-Closed-Pfad sind API-Fehler (`error`) und keine `reason`-Codes.
 - Änderungen am Katalog sind breaking für Consumer und benötigen OpenSpec-Delta + Review.

@@ -53,6 +53,16 @@ Das bestehende Redaktionssystem ist umständlich, schwer erweiterbar und limitie
 
 Wir nutzen `pnpm` (Version in `package.json` / `.tool-versions`).
 
+## Betriebsprofile
+
+Die drei offiziellen Laufzeitprofile werden zentral über `SVA_RUNTIME_PROFILE` und die Kommandos `pnpm env:*:<profil>` gesteuert:
+
+- `local-keycloak` für lokalen Betrieb auf `http://localhost:3000` mit Test-Realm
+- `local-builder` für lokalen Builder.io-Betrieb mit Mock-User
+- `acceptance-hb` für die HB-Abnahme auf `https://hb-meinquartier.studio.smart-village.app`
+
+Kanonische Profildefinitionen liegen unter `config/runtime/`. Projektweite Start-, Stop-, Update-, Smoke- und Migrationskommandos sind in `docs/development/runtime-profile-betrieb.md` dokumentiert.
+
 ## Entwicklung: Node.js Version
 
 Das Repository erwartet eine aktuelle Node.js-LTS-Version gemäß `.nvmrc` bzw. `.node-version`.

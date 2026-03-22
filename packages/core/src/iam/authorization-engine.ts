@@ -64,10 +64,12 @@ const resolveSourceKinds = (permission: EffectivePermission): readonly IamPermis
   }
 
   const derivedKinds = new Set<IamPermissionSourceKind>();
-  if (permission.sourceRoleIds.length > 0) {
+  const sourceRoleIds = permission.sourceRoleIds ?? [];
+  const sourceGroupIds = permission.sourceGroupIds ?? [];
+  if (sourceRoleIds.length > 0) {
     derivedKinds.add('direct_role');
   }
-  if (permission.sourceGroupIds.length > 0) {
+  if (sourceGroupIds.length > 0) {
     derivedKinds.add('group_role');
   }
   return derivedKinds.size > 0 ? [...derivedKinds] : undefined;

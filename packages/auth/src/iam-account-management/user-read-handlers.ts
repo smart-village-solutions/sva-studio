@@ -1,36 +1,34 @@
 import type { IamUserDetail } from '@sva/core';
 import { getWorkspaceContext } from '@sva/sdk/server';
 
-import type { AuthenticatedRequestContext } from '../middleware.server';
-import { jsonResponse } from '../shared/db-helpers';
-import { isUuid, readString } from '../shared/input-readers';
+import type { AuthenticatedRequestContext } from '../middleware.server.js';
+import { jsonResponse } from '../shared/db-helpers.js';
+import { isUuid, readString } from '../shared/input-readers.js';
 
-import { ADMIN_ROLES } from './constants';
-import { asApiItem, asApiList, createApiError, readPage, readPathSegment } from './api-helpers';
-import { ensureFeature, getFeatureFlags } from './feature-flags';
-import { consumeRateLimit } from './rate-limit';
-import { buildRoleSyncFailure } from './role-audit';
+import { ADMIN_ROLES } from './constants.js';
+import { asApiItem, asApiList, createApiError, readPage, readPathSegment } from './api-helpers.js';
+import { classifyIamDiagnosticError } from './diagnostics.js';
+import { ensureFeature, getFeatureFlags } from './feature-flags.js';
+import { consumeRateLimit } from './rate-limit.js';
+import { buildRoleSyncFailure } from './role-audit.js';
 import {
   logger,
   requireRoles,
   resolveActorInfo,
-  resolveIdentityProvider,
-  resolveRolesByExternalNames,
-  trackKeycloakCall,
   withInstanceScopedDb,
-} from './shared';
-import type { UserStatus } from './types';
-import { USER_STATUS } from './types';
-import { resolveUserDetail } from './user-detail-query';
-import { resolveUsersWithPagination } from './user-list-query';
+} from './shared.js';
+import type { UserStatus } from './types.js';
+import { USER_STATUS } from './types.js';
+import { resolveUserDetail } from './user-detail-query.js';
+import { resolveUsersWithPagination } from './user-list-query.js';
 import {
   isRecoverableUserProjectionError,
   mergeMainserverCredentialState,
   resolveKeycloakRoleNames,
   resolveProjectedMainserverCredentialState,
   resolveProjectedUserDetail,
-} from './user-projection';
-import { resolveUserTimeline } from './user-timeline-query';
+} from './user-projection.js';
+import { resolveUserTimeline } from './user-timeline-query.js';
 
 export const listUsersInternal = async (
   request: Request,
@@ -88,6 +86,7 @@ export const listUsersInternal = async (
       asApiList(data.users, { page, pageSize, total: data.total }, actorResolution.actor.requestId)
     );
   } catch (error) {
+    const classified = classifyIamDiagnosticError(error, 'IAM-Datenbank ist nicht erreichbar.', actorResolution.actor.requestId);
     logger.error('IAM user list failed', {
       operation: 'list_users',
       instance_id: actorResolution.actor.instanceId,
@@ -95,12 +94,7 @@ export const listUsersInternal = async (
       trace_id: actorResolution.actor.traceId,
       error: error instanceof Error ? error.message : String(error),
     });
-    return createApiError(
-      503,
-      'database_unavailable',
-      'IAM-Datenbank ist nicht erreichbar.',
-      actorResolution.actor.requestId
-    );
+    return createApiError(classified.status, classified.code, classified.message, actorResolution.actor.requestId, classified.details);
   }
 };
 
@@ -166,6 +160,7 @@ export const getUserInternal = async (
 
     return jsonResponse(200, asApiItem(projectedUser, actorResolution.actor.requestId));
   } catch (error) {
+    const classified = classifyIamDiagnosticError(error, 'IAM-Datenbank ist nicht erreichbar.', actorResolution.actor.requestId);
     if (isRecoverableUserProjectionError(error)) {
       return buildRoleSyncFailure({
         error,
@@ -173,12 +168,7 @@ export const getUserInternal = async (
         fallbackMessage: 'Nutzerrollen konnten nicht aus Keycloak geladen werden.',
       });
     }
-    return createApiError(
-      503,
-      'database_unavailable',
-      'IAM-Datenbank ist nicht erreichbar.',
-      actorResolution.actor.requestId
-    );
+    return createApiError(classified.status, classified.code, classified.message, actorResolution.actor.requestId, classified.details);
   }
 };
 

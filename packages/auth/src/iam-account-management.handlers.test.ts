@@ -22,6 +22,19 @@ const state = vi.hoisted(() => ({
   },
   queryHandler: null as null | ((text: string, values?: readonly unknown[]) => { rowCount: number; rows: unknown[] }),
   redisAvailable: true,
+  permissionCacheHealth: {
+    status: 'ready',
+    coldStart: false,
+    lastRedisLatencyMs: 12,
+    recomputePerMinute: 0,
+    consecutiveRedisFailures: 0,
+  } as {
+    status: 'ready' | 'degraded' | 'failed';
+    coldStart: boolean;
+    lastRedisLatencyMs: number;
+    recomputePerMinute: number;
+    consecutiveRedisFailures: number;
+  },
   keycloakConfigAvailable: true,
   createRoleImpl: null as null | ((input: {
     externalName: string;
@@ -122,6 +135,10 @@ vi.mock('@opentelemetry/api', () => ({
 
 vi.mock('./redis.server', () => ({
   isRedisAvailable: vi.fn(async () => state.redisAvailable),
+}));
+
+vi.mock('./iam-authorization/shared', () => ({
+  getPermissionCacheHealth: vi.fn(() => state.permissionCacheHealth),
 }));
 
 vi.mock('./iam-account-management/user-timeline-query', () => ({
@@ -445,6 +462,13 @@ describe('iam-account-management handlers (guards)', () => {
     state.updateUserImpl = null;
     state.updateUserCalls = [];
     state.redisAvailable = true;
+    state.permissionCacheHealth = {
+      status: 'ready',
+      coldStart: false,
+      lastRedisLatencyMs: 12,
+      recomputePerMinute: 0,
+      consecutiveRedisFailures: 0,
+    };
     state.keycloakConfigAvailable = true;
     state.deactivateUserCalls = [];
     state.syncRolesImpl = null;
@@ -3452,7 +3476,7 @@ describe('iam-account-management handlers (guards)', () => {
     expect(payload.error.details?.syncError?.code).toBe('COMPENSATION_FAILED');
   });
 
-  it('reports orphaned studio-managed Keycloak roles during reconcile without deleting them', async () => {
+  it('imports studio-managed Keycloak roles during reconcile when metadata is complete', async () => {
     state.listRolesImpl = () => [
       {
         id: 'kc-custom_editor',
@@ -3463,6 +3487,70 @@ describe('iam-account-management handlers (guards)', () => {
           instance_id: ['de-musterhausen'],
           role_key: ['custom_editor'],
           display_name: ['Custom Editor'],
+        },
+      },
+    ];
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+      if (text.includes('FROM iam.roles') && text.includes("managed_by = 'studio'")) {
+        return { rowCount: 0, rows: [] };
+      }
+      if (text.includes('INSERT INTO iam.roles') && text.includes('RETURNING id')) {
+        return { rowCount: 1, rows: [{ id: targetRoleId }] };
+      }
+      if (text.includes('INSERT INTO iam.activity_logs')) {
+        return { rowCount: 1, rows: [] };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await reconcileHandler(
+      new Request('http://localhost/api/v1/iam/admin/reconcile', {
+        method: 'POST',
+        headers: {
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'http://localhost',
+        },
+      })
+    );
+
+    const payload = (await response.json()) as {
+      data: {
+        checkedCount: number;
+        correctedCount: number;
+        failedCount: number;
+        requiresManualActionCount: number;
+        roles: Array<{ action: string; status: string; errorCode?: string; externalRoleName: string }>;
+      };
+    };
+    expect(response.status).toBe(200);
+    expect(payload.data.checkedCount).toBe(0);
+    expect(payload.data.correctedCount).toBe(1);
+    expect(payload.data.failedCount).toBe(0);
+    expect(payload.data.requiresManualActionCount).toBe(0);
+    expect(payload.data.roles).toEqual([
+      {
+        action: 'create',
+        status: 'corrected',
+        externalRoleName: 'custom_editor',
+        roleId: targetRoleId,
+        roleKey: 'custom_editor',
+      },
+    ]);
+  });
+
+  it('reports studio-managed Keycloak roles with incomplete metadata during reconcile', async () => {
+    state.listRolesImpl = () => [
+      {
+        id: 'kc-custom_editor',
+        externalName: 'custom_editor',
+        description: 'Custom Editor',
+        attributes: {
+          managed_by: ['studio'],
+          instance_id: ['de-musterhausen'],
+          role_key: ['custom_editor'],
         },
       },
     ];
@@ -4273,6 +4361,75 @@ describe('iam-account-management additional handlers', () => {
     expect(payload.error.code).toBe('database_unavailable');
   });
 
+  it('returns schema_drift details when profile loading fails with unexpected internal error and critical schema drift is present', async () => {
+    state.user = {
+      id: 'keycloak-self-schema-drift',
+      name: 'Self User',
+      roles: ['member'],
+      instanceId: 'de-musterhausen',
+    };
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+      if (text.includes('WHERE a.id = $2::uuid')) {
+        throw new Error('unexpected profile query failure');
+      }
+      if (text.includes("to_regclass('iam.groups')")) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              groups_exists: true,
+              group_roles_exists: true,
+              account_groups_exists: true,
+              account_groups_origin_column_exists: false,
+              activity_logs_exists: true,
+              accounts_avatar_url_column_exists: true,
+              accounts_instance_id_column_exists: true,
+              accounts_username_ciphertext_column_exists: true,
+              accounts_notes_column_exists: true,
+              accounts_preferred_language_column_exists: true,
+              accounts_timezone_column_exists: true,
+              idx_accounts_kc_subject_instance_exists: true,
+              accounts_isolation_policy_matches: true,
+              instance_memberships_isolation_policy_matches: true,
+            },
+          ],
+        };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await getMyProfileHandler(
+      new Request('http://localhost/api/v1/iam/users/me', { method: 'GET' })
+    );
+    const payload = (await response.json()) as {
+      error: {
+        code: string;
+        details?: {
+          dependency?: string;
+          expected_migration?: string;
+          instance_id?: string;
+          reason_code?: string;
+          schema_object?: string;
+        };
+      };
+    };
+
+    expect(response.status).toBe(503);
+    expect(payload.error.code).toBe('database_unavailable');
+    expect(payload.error.details).toEqual(
+      expect.objectContaining({
+        dependency: 'database',
+        expected_migration: '0018_iam_account_groups_origin_compat.sql',
+        instance_id: 'de-musterhausen',
+        reason_code: 'schema_drift',
+        schema_object: 'iam.account_groups.origin',
+      })
+    );
+  });
+
   it('updates the current user profile', async () => {
     const selfAccountId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
     state.user = {
@@ -4534,6 +4691,29 @@ describe('iam-account-management additional handlers', () => {
       if (text.includes('SELECT 1;')) {
         return { rowCount: 1, rows: [{ '?column?': 1 }] };
       }
+      if (text.includes("to_regclass('iam.groups')")) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              groups_exists: true,
+              group_roles_exists: true,
+              account_groups_exists: true,
+              account_groups_origin_column_exists: true,
+              activity_logs_exists: true,
+              accounts_avatar_url_column_exists: true,
+              accounts_instance_id_column_exists: true,
+              accounts_username_ciphertext_column_exists: true,
+              accounts_notes_column_exists: true,
+              accounts_preferred_language_column_exists: true,
+              accounts_timezone_column_exists: true,
+              idx_accounts_kc_subject_instance_exists: true,
+              accounts_isolation_policy_matches: true,
+              instance_memberships_isolation_policy_matches: true,
+            },
+          ],
+        };
+      }
       return { rowCount: 0, rows: [] };
     };
 
@@ -4542,18 +4722,81 @@ describe('iam-account-management additional handlers', () => {
     );
     const payload = (await response.json()) as {
       status: string;
-      checks: { db: boolean; redis: boolean; keycloak: boolean };
+      checks: { db: boolean; redis: boolean; keycloak: boolean; errors: Record<string, string> };
     };
 
     expect(response.status).toBe(200);
     expect(payload).toEqual(
       expect.objectContaining({
         status: 'ready',
-        checks: {
+        checks: expect.objectContaining({
           db: true,
           redis: true,
           keycloak: true,
-        },
+          errors: {},
+          authorizationCache: expect.objectContaining({
+            status: 'ready',
+          }),
+        }),
+      })
+    );
+  });
+
+  it('returns degraded when authorization cache exceeds latency threshold', async () => {
+    state.redisAvailable = true;
+    state.permissionCacheHealth = {
+      status: 'degraded',
+      coldStart: true,
+      lastRedisLatencyMs: 77,
+      recomputePerMinute: 3,
+      consecutiveRedisFailures: 0,
+    };
+    state.listRolesImpl = async () => [];
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT 1;')) {
+        return { rowCount: 1, rows: [{ '?column?': 1 }] };
+      }
+      if (text.includes("to_regclass('iam.groups')")) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              groups_exists: true,
+              group_roles_exists: true,
+              account_groups_exists: true,
+              account_groups_origin_column_exists: true,
+              activity_logs_exists: true,
+              accounts_avatar_url_column_exists: true,
+              accounts_instance_id_column_exists: true,
+              accounts_username_ciphertext_column_exists: true,
+              accounts_notes_column_exists: true,
+              accounts_preferred_language_column_exists: true,
+              accounts_timezone_column_exists: true,
+              idx_accounts_kc_subject_instance_exists: true,
+              accounts_isolation_policy_matches: true,
+              instance_memberships_isolation_policy_matches: true,
+            },
+          ],
+        };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await healthReadyHandler(
+      new Request('http://localhost/api/v1/iam/health/ready', { method: 'GET' })
+    );
+    const payload = (await response.json()) as {
+      status: string;
+      checks: { authorizationCache: { status: string; coldStart: boolean; lastRedisLatencyMs: number } };
+    };
+
+    expect(response.status).toBe(200);
+    expect(payload.status).toBe('degraded');
+    expect(payload.checks.authorizationCache).toEqual(
+      expect.objectContaining({
+        status: 'degraded',
+        coldStart: true,
+        lastRedisLatencyMs: 77,
       })
     );
   });
@@ -4566,6 +4809,9 @@ describe('iam-account-management additional handlers', () => {
     state.queryHandler = (text) => {
       if (text.includes('SELECT 1;')) {
         throw new Error('db down');
+      }
+      if (text.includes("to_regclass('iam.groups')")) {
+        return { rowCount: 0, rows: [] };
       }
       return { rowCount: 0, rows: [] };
     };
@@ -4582,12 +4828,79 @@ describe('iam-account-management additional handlers', () => {
     expect(payload).toEqual(
       expect.objectContaining({
         status: 'not_ready',
-        checks: {
+        checks: expect.objectContaining({
           db: false,
           redis: false,
           keycloak: false,
-        },
+        }),
       })
+    );
+  });
+
+  it('returns not_ready when the critical IAM schema drifts', async () => {
+    state.redisAvailable = true;
+    state.listRolesImpl = async () => [];
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT 1;')) {
+        return { rowCount: 1, rows: [{ '?column?': 1 }] };
+      }
+      if (text.includes("to_regclass('iam.groups')")) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              groups_exists: true,
+              group_roles_exists: true,
+              account_groups_exists: false,
+              account_groups_origin_column_exists: false,
+              activity_logs_exists: true,
+              accounts_avatar_url_column_exists: true,
+              accounts_instance_id_column_exists: true,
+              accounts_username_ciphertext_column_exists: true,
+              accounts_notes_column_exists: true,
+              accounts_preferred_language_column_exists: true,
+              accounts_timezone_column_exists: true,
+              idx_accounts_kc_subject_instance_exists: true,
+              accounts_isolation_policy_matches: true,
+              instance_memberships_isolation_policy_matches: true,
+            },
+          ],
+        };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await healthReadyHandler(
+      new Request('http://localhost/api/v1/iam/health/ready', { method: 'GET' })
+    );
+    const payload = (await response.json()) as {
+      checks: {
+        db: boolean;
+        diagnostics?: {
+          db?: {
+            reason_code?: string;
+            schema_guard?: {
+              checks: Array<{ reasonCode: string; schemaObject: string }>;
+            };
+          };
+        };
+        errors: Record<string, string>;
+      };
+      status: string;
+    };
+
+    expect(response.status).toBe(503);
+    expect(payload.status).toBe('not_ready');
+    expect(payload.checks.db).toBe(false);
+    expect(payload.checks.errors.db).toContain('missing_table:iam.account_groups');
+    expect(payload.checks.diagnostics?.db?.reason_code).toBe('schema_drift');
+    expect(payload.checks.diagnostics?.db?.schema_guard?.checks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          reasonCode: 'missing_table',
+          schemaObject: 'iam.account_groups',
+        }),
+      ])
     );
   });
 

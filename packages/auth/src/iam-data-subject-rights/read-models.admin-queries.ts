@@ -1,4 +1,4 @@
-import type { QueryClient } from '../shared/db-helpers';
+import type { QueryClient } from '../shared/db-helpers.js';
 
 import type {
   AdminDsrSourceRows,
@@ -8,7 +8,7 @@ import type {
   ProfileCorrectionRow,
   RecipientNotificationRow,
   RequestRow,
-} from './read-models.types';
+} from './read-models.types.js';
 
 const queryAdminRequests = (client: QueryClient, input: DsrFilters) =>
   client.query<RequestRow>(

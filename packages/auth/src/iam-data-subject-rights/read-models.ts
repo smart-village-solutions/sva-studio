@@ -1,15 +1,15 @@
-import type { QueryClient } from '../shared/db-helpers';
+import type { QueryClient } from '../shared/db-helpers.js';
 import {
   buildAdminDsrItems,
   buildDsrSelfServiceOverview,
   filterAdminDsrItems,
   paginateDsrItems,
-} from './read-models.mappers';
-import { loadAdminDsrRows } from './read-models.admin-queries';
-import { loadDsrSelfServiceRows } from './read-models.self-service-queries';
-import type { DsrFilters } from './read-models.types';
+} from './read-models.mappers.js';
+import { loadAdminDsrRows } from './read-models.admin-queries.js';
+import { loadDsrSelfServiceRows } from './read-models.self-service-queries.js';
+import type { DsrFilters } from './read-models.types.js';
 
-export { toCanonicalDsrStatus } from './read-models.mappers';
+export { toCanonicalDsrStatus } from './read-models.mappers.js';
 
 export const loadDsrSelfServiceOverview = async (
   client: QueryClient,

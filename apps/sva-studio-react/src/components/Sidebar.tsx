@@ -132,10 +132,11 @@ type SidebarLeafLinkProps = Readonly<{
 
 const SidebarLeafLink = ({ item, isActive, isCollapsed, isChild = false, onClick }: SidebarLeafLinkProps) => {
   const IconComponent = item.icon;
+  const showLabel = isCollapsed === false;
   const content = (
     <>
       <IconComponent className={isChild ? 'h-4 w-4 shrink-0' : 'h-5 w-5 shrink-0'} />
-      {!isCollapsed ? <span className="truncate">{item.label}</span> : null}
+      {showLabel ? <span className="truncate">{item.label}</span> : null}
     </>
   );
 
@@ -259,12 +260,14 @@ const SidebarPanel = ({
   const closeFlyout = () => {
     setFlyoutGroupId(null);
   };
+  const showAppTitle = isCollapsed === false;
+  const showFooter = isLoading === false;
 
   return (
     <div className="flex h-full flex-col">
       <div className="px-4 py-4">
         <div className={`relative flex min-h-12 items-center ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
-          {!isCollapsed ? <p className="text-3xl font-semibold text-foreground">{t('shell.appName')}</p> : null}
+          {showAppTitle ? <p className="text-3xl font-semibold text-foreground">{t('shell.appName')}</p> : null}
           {allowCollapse ? (
             <Button
               type="button"
@@ -410,7 +413,7 @@ const SidebarPanel = ({
           )}
       </nav>
 
-      {!isLoading ? (
+      {showFooter ? (
         <div className="px-3 py-4">
           <ul className="space-y-1">
             {footerItems.map((item) => {
@@ -449,18 +452,18 @@ export default function Sidebar({ isLoading = false, isMobileOpen = false, onMob
   const [hasLoadedCollapsePreference, setHasLoadedCollapsePreference] = React.useState(false);
 
   React.useEffect(() => {
-    if (typeof window === 'undefined') {
+    if (typeof globalThis.window === 'undefined') {
       return;
     }
-    setIsCollapsed(window.localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY) === '1');
+    setIsCollapsed(globalThis.window.localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY) === '1');
     setHasLoadedCollapsePreference(true);
   }, []);
 
   React.useEffect(() => {
-    if (typeof window === 'undefined' || !hasLoadedCollapsePreference) {
+    if (typeof globalThis.window === 'undefined' || hasLoadedCollapsePreference === false) {
       return;
     }
-    window.localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, isCollapsed ? '1' : '0');
+    globalThis.window.localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, isCollapsed ? '1' : '0');
   }, [hasLoadedCollapsePreference, isCollapsed]);
 
   const sections = React.useMemo<readonly SidebarSection[]>(() => {

@@ -82,11 +82,11 @@ export const LegalTextAcceptanceDialog = ({ pathname }: LegalTextAcceptanceDialo
       void loadPendingTexts(true);
     };
 
-    window.addEventListener('focus', handleFocus);
-    window.addEventListener(LEGAL_ACCEPTANCE_REQUIRED_EVENT, handleLegalAcceptanceRequired);
+    globalThis.addEventListener('focus', handleFocus);
+    globalThis.addEventListener(LEGAL_ACCEPTANCE_REQUIRED_EVENT, handleLegalAcceptanceRequired);
     return () => {
-      window.removeEventListener('focus', handleFocus);
-      window.removeEventListener(LEGAL_ACCEPTANCE_REQUIRED_EVENT, handleLegalAcceptanceRequired);
+      globalThis.removeEventListener('focus', handleFocus);
+      globalThis.removeEventListener(LEGAL_ACCEPTANCE_REQUIRED_EVENT, handleLegalAcceptanceRequired);
     };
   }, [isAuthenticated, loadPendingTexts, promptSuppressed]);
 

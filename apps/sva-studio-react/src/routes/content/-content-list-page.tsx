@@ -46,6 +46,8 @@ const summarizePayload = (value: unknown): string => {
   return json.length <= 80 ? json : `${json.slice(0, 77)}...`;
 };
 
+const stringifyPayload = (value: unknown): string => JSON.stringify(value) ?? '';
+
 const renderContentListBody = ({
   isLoading,
   filteredContents,
@@ -149,15 +151,24 @@ export const ContentListPage = () => {
   const contentsApi = useContents();
   const [search, setSearch] = React.useState('');
   const [statusFilter, setStatusFilter] = React.useState<StatusFilter>('all');
+  const normalizedSearch = search.trim().toLowerCase();
 
-  const filteredContents = contentsApi.contents.filter((item) => {
-    const normalizedSearch = search.trim().toLowerCase();
+  const contentsWithPayloadJson = React.useMemo(
+    () =>
+      contentsApi.contents.map((item) => ({
+        ...item,
+        payloadJson: stringifyPayload(item.payload),
+      })),
+    [contentsApi.contents]
+  );
+
+  const filteredContents = contentsWithPayloadJson.filter((item) => {
     const matchesSearch =
       normalizedSearch.length === 0 ||
       item.title.toLowerCase().includes(normalizedSearch) ||
       item.author.toLowerCase().includes(normalizedSearch) ||
       item.contentType.toLowerCase().includes(normalizedSearch) ||
-      JSON.stringify(item.payload).toLowerCase().includes(normalizedSearch);
+      item.payloadJson.toLowerCase().includes(normalizedSearch);
 
     const matchesStatus = statusFilter === 'all' || item.status === statusFilter;
     return matchesSearch && matchesStatus;

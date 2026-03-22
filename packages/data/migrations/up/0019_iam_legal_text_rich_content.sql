@@ -16,6 +16,7 @@ WHERE name IS NULL
 
 ALTER TABLE iam.legal_text_versions
   ALTER COLUMN name SET NOT NULL,
+  ALTER COLUMN published_at DROP NOT NULL,
   ALTER COLUMN content_html SET NOT NULL,
   ALTER COLUMN status SET NOT NULL;
 

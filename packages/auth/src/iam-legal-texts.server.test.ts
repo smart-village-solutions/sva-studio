@@ -350,6 +350,7 @@ describe('iam-legal-texts handlers', () => {
       }
       if (text.includes('INSERT INTO iam.legal_text_versions')) {
         expect(values?.[1]).toBe('privacy_policy_existing');
+        expect(values?.[9]).toBeNull();
         return { rowCount: 1, rows: [{ id: legalTextRow.id }] };
       }
       if (text.includes('FROM iam.legal_text_versions version')) {

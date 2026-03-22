@@ -1,3 +1,4 @@
+import { GENERIC_CONTENT_TYPE } from '@sva/core';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -5,8 +6,6 @@ import {
   genericContentTypeDefinition,
   getContentTypeDefinition,
 } from '../src/content-types.js';
-
-const GENERIC_CONTENT_TYPE = 'generic';
 
 describe('content type registry', () => {
   it('registers and resolves content types', () => {

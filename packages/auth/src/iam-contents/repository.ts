@@ -360,23 +360,28 @@ WHERE instance_id = $1
       ]
     );
 
+    const statusChanged = nextStatus !== current.status;
+    const historyAction = statusChanged ? 'status_changed' : 'updated';
+    const historySummary = statusChanged ? 'Status geändert' : 'Inhalt aktualisiert';
+    const activityEventType = statusChanged ? 'iam.content.status_changed' : 'iam.content.updated';
+
     await insertContentHistory(client, {
       instanceId: input.instanceId,
       contentId: input.contentId,
       actorAccountId: input.actorAccountId,
       actorDisplayName: input.actorDisplayName,
-      action: nextStatus !== current.status ? 'status_changed' : 'updated',
+      action: historyAction,
       changedFields,
       previousStatus: current.status,
       nextStatus,
-      summary: nextStatus !== current.status ? 'Status geändert' : 'Inhalt aktualisiert',
+      summary: historySummary,
       snapshot: nextPayload,
     });
 
     await emitActivityLog(client, {
       instanceId: input.instanceId,
       accountId: input.actorAccountId,
-      eventType: nextStatus !== current.status ? 'iam.content.status_changed' : 'iam.content.updated',
+      eventType: activityEventType,
       result: 'success',
       payload: {
         content_id: input.contentId,

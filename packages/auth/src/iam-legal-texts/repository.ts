@@ -53,7 +53,11 @@ const LEGAL_TEXT_ID_HASH_LENGTH = 12;
 const LEGAL_TEXT_ID_MAX_BASE_LENGTH = 48;
 
 const isAsciiLetterOrDigit = (character: string): boolean => {
-  const codePoint = character.charCodeAt(0);
+  const codePoint = character.codePointAt(0);
+  if (codePoint === undefined) {
+    return false;
+  }
+
   return (
     (codePoint >= 48 && codePoint <= 57) ||
     (codePoint >= 65 && codePoint <= 90) ||
@@ -90,6 +94,31 @@ const deriveLegalTextId = (name: string): string => {
   const hashSuffix = createHash('sha256').update(trimmedName).digest('hex').slice(0, LEGAL_TEXT_ID_HASH_LENGTH);
 
   return `${base || LEGAL_TEXT_ID_FALLBACK}_${hashSuffix}`;
+};
+
+const collectUpdatedFields = (input: UpdateLegalTextInput): string[] => {
+  const updatedFields: string[] = [];
+
+  if (input.name !== undefined) {
+    updatedFields.push('name');
+  }
+  if (input.legalTextVersion !== undefined) {
+    updatedFields.push('legalTextVersion');
+  }
+  if (input.locale !== undefined) {
+    updatedFields.push('locale');
+  }
+  if (input.contentHtml !== undefined) {
+    updatedFields.push('contentHtml');
+  }
+  if (input.status !== undefined) {
+    updatedFields.push('status');
+  }
+  if (input.publishedAt !== undefined) {
+    updatedFields.push('publishedAt');
+  }
+
+  return updatedFields;
 };
 
 const mapLegalTextListItem = (row: LegalTextRow): IamLegalTextListItem => ({
@@ -344,7 +373,7 @@ RETURNING id;
     );
 
     const updatedLegalTextVersionId = updateResult.rows[0]?.id;
-    if (!updatedLegalTextVersionId) {
+    if (updatedLegalTextVersionId === undefined) {
       return undefined;
     }
 
@@ -355,14 +384,7 @@ RETURNING id;
       result: 'success',
       payload: {
         legal_text_version_id: updatedLegalTextVersionId,
-        updated_fields: Object.keys({
-          ...(input.name !== undefined ? { name: true } : {}),
-          ...(input.legalTextVersion !== undefined ? { legalTextVersion: true } : {}),
-          ...(input.locale !== undefined ? { locale: true } : {}),
-          ...(input.contentHtml !== undefined ? { contentHtml: true } : {}),
-          ...(input.status !== undefined ? { status: true } : {}),
-          ...(input.publishedAt !== undefined ? { publishedAt: true } : {}),
-        }),
+        updated_fields: collectUpdatedFields(input),
       },
       requestId: input.requestId,
       traceId: input.traceId,

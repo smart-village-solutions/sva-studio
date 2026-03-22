@@ -24,7 +24,10 @@ const runCommand = (command: string, commandValue?: string) => {
     return;
   }
 
-  document.execCommand(command, false, commandValue);
+  const execCommand = Reflect.get(document, 'execCommand');
+  if (typeof execCommand === 'function') {
+    Reflect.apply(execCommand, document, [command, false, commandValue]);
+  }
 };
 
 export const RichTextEditor = ({ id, labelId, value, onChange, placeholder, commands }: RichTextEditorProps) => {

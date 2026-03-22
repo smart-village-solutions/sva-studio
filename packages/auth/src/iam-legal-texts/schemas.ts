@@ -16,7 +16,7 @@ const validatePublishedAtForStatus = (
 ) => {
   if (value.status === 'valid' && !value.publishedAt) {
     ctx.addIssue({
-      code: z.ZodIssueCode.custom,
+      code: 'custom',
       path: ['publishedAt'],
       message: 'Veröffentlichungsdatum ist für gültige Rechtstexte erforderlich.',
     });

@@ -349,8 +349,8 @@ const readErrorPayload = async (response: Response): Promise<IamHttpError> => {
 
   logDevelopmentApiError({ requestId, status: response.status, code, details });
 
-  if (code === 'legal_acceptance_required' && typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent(LEGAL_ACCEPTANCE_REQUIRED_EVENT));
+  if (code === 'legal_acceptance_required' && typeof globalThis.window !== 'undefined') {
+    globalThis.dispatchEvent(new CustomEvent(LEGAL_ACCEPTANCE_REQUIRED_EVENT));
   }
 
   return new IamHttpError({

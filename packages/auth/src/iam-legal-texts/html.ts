@@ -34,8 +34,26 @@ const LEGAL_TEXT_SANITIZER_OPTIONS: sanitizeHtml.IOptions = {
   disallowedTagsMode: 'discard',
 };
 
-const collapseWhitespace = (value: string): string =>
-  value.replace(/\s+/g, ' ').trim();
+const collapseWhitespace = (value: string): string => {
+  let collapsed = '';
+  let previousWasWhitespace = true;
+
+  for (const character of value) {
+    const isWhitespace = character.trim().length === 0;
+    if (isWhitespace) {
+      if (!previousWasWhitespace) {
+        collapsed += ' ';
+        previousWasWhitespace = true;
+      }
+      continue;
+    }
+
+    collapsed += character;
+    previousWasWhitespace = false;
+  }
+
+  return previousWasWhitespace ? collapsed.trimEnd() : collapsed;
+};
 
 export const sanitizeLegalTextHtml = (value: string): string => {
   const sanitized = collapseWhitespace(sanitizeHtml(value, LEGAL_TEXT_SANITIZER_OPTIONS));

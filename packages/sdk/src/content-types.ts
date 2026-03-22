@@ -1,6 +1,4 @@
-import type { ContentJsonValue } from '@sva/core';
-
-const GENERIC_CONTENT_TYPE = 'generic';
+import { GENERIC_CONTENT_TYPE, type ContentJsonValue } from '@sva/core';
 
 export type ContentTypeEditorFieldKind = 'json' | 'text' | 'textarea' | 'datetime';
 

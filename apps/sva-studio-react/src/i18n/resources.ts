@@ -96,6 +96,7 @@ export const i18nResources = {
         body: 'Bitte versuchen Sie es erneut oder kehren Sie zur Startseite zurück.',
         retry: 'Erneut versuchen',
         home: 'Zur Startseite',
+        diagnosticsLabel: 'Lokale Diagnose',
       },
       notFound: {
         heading: 'Seite nicht gefunden',
@@ -950,6 +951,7 @@ export const i18nResources = {
         body: 'Please try again or return to the home page.',
         retry: 'Try again',
         home: 'Go to home',
+        diagnosticsLabel: 'Local diagnostics',
       },
       notFound: {
         heading: 'Page not found',

@@ -23,10 +23,9 @@ export default function ErrorFallback({ error, reset }: Readonly<ErrorComponentP
   const isLocalDebugHost =
     typeof window !== 'undefined' &&
     (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-  const debugDetailsEnabled = metaEnv.env?.DEV === true || metaEnv.env?.VITE_ENABLE_ERROR_DEBUG_DETAILS === 'true';
+  const debugDetailsEnabled = metaEnv.env?.VITE_ENABLE_ERROR_DEBUG_DETAILS === 'true';
   const shouldShowDebugDetails = isLocalDebugHost && debugDetailsEnabled;
   const debugErrorMessage = error instanceof Error ? error.message : String(error ?? '');
-  const debugErrorStack = error instanceof Error ? error.stack ?? null : null;
 
   const handleRetry = () => {
     reset();
@@ -60,13 +59,10 @@ export default function ErrorFallback({ error, reset }: Readonly<ErrorComponentP
           </div>
           {shouldShowDebugDetails && debugErrorMessage ? (
             <div className="rounded-md border border-border bg-muted/40 p-4 text-left">
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Lokale Diagnose</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                {t('shared.errorFallback.diagnosticsLabel')}
+              </p>
               <pre className="mt-2 whitespace-pre-wrap break-words text-xs text-foreground">{debugErrorMessage}</pre>
-              {debugErrorStack ? (
-                <pre className="mt-3 max-h-64 overflow-auto whitespace-pre-wrap break-words text-[11px] text-muted-foreground">
-                  {debugErrorStack}
-                </pre>
-              ) : null}
             </div>
           ) : null}
         </CardContent>

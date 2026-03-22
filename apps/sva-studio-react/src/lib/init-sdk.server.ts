@@ -10,50 +10,59 @@
  */
 
 let sdkInitialized = false;
+let sdkInitializationPromise: Promise<void> | null = null;
 
 export async function ensureSdkInitialized() {
   if (sdkInitialized) {
     return;
   }
 
-  // Fail-fast: Instance-Config validieren, bevor die App Requests annimmt.
-  // Wirft bei ungültigen Allowlist-Einträgen einen Fehler, der den Start
-  // abbricht. Bei fehlendem SVA_PARENT_DOMAIN wird in lokaler Entwicklung
-  // kein Multi-Host-Modus aktiviert.
-  const sdk = await import('@sva/sdk/server');
-  const logger = sdk.createSdkLogger({
-    component: 'sdk-init',
-    level: 'info',
-    enableConsole: true,
-    enableOtel: false,
-  });
-  const bootstrapTimeoutMs = Number.parseInt(process.env.SVA_OTEL_BOOTSTRAP_TIMEOUT_MS ?? '5000', 10);
-  let bootstrapTimeoutHandle: ReturnType<typeof setTimeout> | undefined;
-
-  sdk.getInstanceConfig();
-
-  try {
-    await Promise.race([
-      sdk.initializeOtelSdk(),
-      new Promise((_, reject) => {
-        bootstrapTimeoutHandle = setTimeout(() => {
-          reject(new Error(`SDK initialization timed out after ${bootstrapTimeoutMs}ms`));
-        }, bootstrapTimeoutMs);
-        bootstrapTimeoutHandle.unref?.();
-      }),
-    ]);
-    sdkInitialized = true;
-    logger.info('SDK initialisiert');
-  } catch (error) {
-    sdkInitialized = true;
-    logger.error('SDK-Initialisierung fehlgeschlagen', {
-      error: error instanceof Error ? error.message : String(error),
-      error_type: error instanceof Error ? error.constructor.name : 'unknown',
-    });
-    // Nicht werfen - App soll auch ohne SDK laufen
-  } finally {
-    if (bootstrapTimeoutHandle) {
-      clearTimeout(bootstrapTimeoutHandle);
-    }
+  if (sdkInitializationPromise) {
+    await sdkInitializationPromise;
+    return;
   }
+  sdkInitializationPromise = (async () => {
+    // Fail-fast: Instance-Config validieren, bevor die App Requests annimmt.
+    // Wirft bei ungültigen Allowlist-Einträgen einen Fehler, der den Start
+    // abbricht. Bei fehlendem SVA_PARENT_DOMAIN wird in lokaler Entwicklung
+    // kein Multi-Host-Modus aktiviert.
+    const sdk = await import('@sva/sdk/server');
+    const logger = sdk.createSdkLogger({
+      component: 'sdk-init',
+      level: 'info',
+      enableConsole: true,
+      enableOtel: false,
+    });
+    const bootstrapTimeoutMs = Number.parseInt(process.env.SVA_OTEL_BOOTSTRAP_TIMEOUT_MS ?? '5000', 10);
+    let bootstrapTimeoutHandle: ReturnType<typeof setTimeout> | undefined;
+
+    sdk.getInstanceConfig();
+
+    try {
+      await Promise.race([
+        sdk.initializeOtelSdk(),
+        new Promise((_, reject) => {
+          bootstrapTimeoutHandle = setTimeout(() => {
+            reject(new Error(`SDK initialization timed out after ${bootstrapTimeoutMs}ms`));
+          }, bootstrapTimeoutMs);
+          bootstrapTimeoutHandle.unref?.();
+        }),
+      ]);
+      sdkInitialized = true;
+      logger.info('SDK initialisiert');
+    } catch (error) {
+      logger.error('SDK-Initialisierung fehlgeschlagen', {
+        error: error instanceof Error ? error.message : String(error),
+        error_type: error instanceof Error ? error.constructor.name : 'unknown',
+      });
+      // Nicht werfen - App soll auch ohne SDK laufen. Ein späterer Request darf neu versuchen.
+    } finally {
+      if (bootstrapTimeoutHandle) {
+        clearTimeout(bootstrapTimeoutHandle);
+      }
+      sdkInitializationPromise = null;
+    }
+  })();
+
+  await sdkInitializationPromise;
 }

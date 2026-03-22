@@ -146,7 +146,7 @@ describe('LegalTextsPage', () => {
     fireEvent.change(within(createDialog).getByLabelText('Veröffentlicht am'), {
       target: { value: '2026-05-01T09:15' },
     });
-    setEditorHtml(within(createDialog).getByRole('textbox', { name: 'Inhalt' }), '<p>Hallo <strong>Welt</strong></p>');
+    setEditorHtml(within(createDialog).getByLabelText('Inhalt'), '<p>Hallo <strong>Welt</strong></p>');
 
     fireEvent.submit(within(createDialog).getByRole('button', { name: 'Rechtstext anlegen' }).closest('form')!);
 
@@ -172,7 +172,7 @@ describe('LegalTextsPage', () => {
     fireEvent.change(within(editDialog).getByLabelText('Status'), {
       target: { value: 'archived' },
     });
-    setEditorHtml(within(editDialog).getByRole('textbox', { name: 'Inhalt' }), '<p>Archivierte Fassung</p>');
+    setEditorHtml(within(editDialog).getByLabelText('Inhalt'), '<p>Archivierte Fassung</p>');
 
     fireEvent.submit(within(editDialog).getByRole('button', { name: 'Änderungen speichern' }).closest('form')!);
 

@@ -46,6 +46,89 @@ const summarizePayload = (value: unknown): string => {
   return json.length <= 80 ? json : `${json.slice(0, 77)}...`;
 };
 
+const renderContentListBody = ({
+  isLoading,
+  filteredContents,
+}: {
+  isLoading: boolean;
+  filteredContents: ReturnType<typeof useContents>['contents'];
+}) => {
+  if (isLoading) {
+    return <div className="p-6 text-sm text-muted-foreground">{t('content.messages.loading')}</div>;
+  }
+
+  if (filteredContents.length === 0) {
+    return (
+      <div className="space-y-2 p-6">
+        <h2 className="text-lg font-semibold text-foreground">{t('content.empty.title')}</h2>
+        <p className="text-sm text-muted-foreground">{t('content.empty.body')}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="min-w-full divide-y divide-border" aria-label={t('content.table.ariaLabel')}>
+        <caption className="sr-only">{t('content.table.caption')}</caption>
+        <thead className="bg-muted/30">
+          <tr>
+            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              {t('content.table.headerTitle')}
+            </th>
+            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              {t('content.table.headerType')}
+            </th>
+            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              {t('content.table.headerPublished')}
+            </th>
+            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              {t('content.table.headerCreated')}
+            </th>
+            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              {t('content.table.headerUpdated')}
+            </th>
+            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              {t('content.table.headerAuthor')}
+            </th>
+            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              {t('content.table.headerPayload')}
+            </th>
+            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              {t('content.table.headerStatus')}
+            </th>
+            <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              {t('content.table.headerActions')}
+            </th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-border">
+          {filteredContents.map((item) => (
+            <tr key={item.id} className="align-top">
+              <td className="px-4 py-3 text-sm font-medium text-foreground">{item.title}</td>
+              <td className="px-4 py-3 text-sm text-muted-foreground">{item.contentType}</td>
+              <td className="px-4 py-3 text-sm text-muted-foreground">{formatDateTime(item.publishedAt)}</td>
+              <td className="px-4 py-3 text-sm text-muted-foreground">{formatDateTime(item.createdAt)}</td>
+              <td className="px-4 py-3 text-sm text-muted-foreground">{formatDateTime(item.updatedAt)}</td>
+              <td className="px-4 py-3 text-sm text-muted-foreground">{item.author}</td>
+              <td className="max-w-sm px-4 py-3 text-sm text-foreground">{summarizePayload(item.payload)}</td>
+              <td className="px-4 py-3 text-sm text-foreground">
+                <Badge variant={statusVariantByValue[item.status]}>{t(statusLabelKeyByValue[item.status])}</Badge>
+              </td>
+              <td className="px-4 py-3 text-right">
+                <Button asChild size="sm" variant="outline">
+                  <Link to="/content/$contentId" params={{ contentId: item.id }}>
+                    {t('content.actions.edit')}
+                  </Link>
+                </Button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+};
+
 const statusVariantByValue = {
   draft: 'outline',
   in_review: 'secondary',
@@ -125,76 +208,7 @@ export const ContentListPage = () => {
         </div>
       </Card>
 
-      <Card className="overflow-hidden">
-        {contentsApi.isLoading ? (
-          <div className="p-6 text-sm text-muted-foreground">{t('content.messages.loading')}</div>
-        ) : filteredContents.length === 0 ? (
-          <div className="space-y-2 p-6">
-            <h2 className="text-lg font-semibold text-foreground">{t('content.empty.title')}</h2>
-            <p className="text-sm text-muted-foreground">{t('content.empty.body')}</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-border" aria-label={t('content.table.ariaLabel')}>
-              <caption className="sr-only">{t('content.table.caption')}</caption>
-              <thead className="bg-muted/30">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    {t('content.table.headerTitle')}
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    {t('content.table.headerType')}
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    {t('content.table.headerPublished')}
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    {t('content.table.headerCreated')}
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    {t('content.table.headerUpdated')}
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    {t('content.table.headerAuthor')}
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    {t('content.table.headerPayload')}
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    {t('content.table.headerStatus')}
-                  </th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    {t('content.table.headerActions')}
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {filteredContents.map((item) => (
-                  <tr key={item.id} className="align-top">
-                    <td className="px-4 py-3 text-sm font-medium text-foreground">{item.title}</td>
-                    <td className="px-4 py-3 text-sm text-muted-foreground">{item.contentType}</td>
-                    <td className="px-4 py-3 text-sm text-muted-foreground">{formatDateTime(item.publishedAt)}</td>
-                    <td className="px-4 py-3 text-sm text-muted-foreground">{formatDateTime(item.createdAt)}</td>
-                    <td className="px-4 py-3 text-sm text-muted-foreground">{formatDateTime(item.updatedAt)}</td>
-                    <td className="px-4 py-3 text-sm text-muted-foreground">{item.author}</td>
-                    <td className="max-w-sm px-4 py-3 text-sm text-foreground">{summarizePayload(item.payload)}</td>
-                    <td className="px-4 py-3 text-sm text-foreground">
-                      <Badge variant={statusVariantByValue[item.status]}>{t(statusLabelKeyByValue[item.status])}</Badge>
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <Button asChild size="sm" variant="outline">
-                        <Link to="/content/$contentId" params={{ contentId: item.id }}>
-                          {t('content.actions.edit')}
-                        </Link>
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Card>
+      <Card className="overflow-hidden">{renderContentListBody({ isLoading: contentsApi.isLoading, filteredContents })}</Card>
     </section>
   );
 };

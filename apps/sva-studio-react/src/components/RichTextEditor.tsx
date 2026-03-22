@@ -77,9 +77,7 @@ export const RichTextEditor = ({ id, labelId, value, onChange, placeholder, comm
       <div
         id={id}
         ref={editorRef}
-        role="textbox"
         aria-labelledby={labelId}
-        aria-multiline="true"
         contentEditable
         suppressContentEditableWarning
         className="min-h-56 rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"

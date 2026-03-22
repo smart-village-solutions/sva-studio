@@ -50,7 +50,7 @@ const richTextEditorCommands = {
   clearFormatting: t('admin.legalTexts.editor.clearFormatting'),
 } as const;
 
-const emptyCreateForm = (): CreateFormState => ({
+const createEmptyLegalTextFormState = (): CreateFormState => ({
   name: '',
   legalTextVersion: '',
   locale: 'de-DE',
@@ -59,14 +59,9 @@ const emptyCreateForm = (): CreateFormState => ({
   publishedAt: '',
 });
 
-const emptyEditForm = (): EditFormState => ({
-  name: '',
-  legalTextVersion: '',
-  locale: 'de-DE',
-  contentHtml: '<p></p>',
-  status: 'draft',
-  publishedAt: '',
-});
+const emptyCreateForm = (): CreateFormState => createEmptyLegalTextFormState();
+
+const emptyEditForm = (): EditFormState => createEmptyLegalTextFormState();
 
 const legalTextErrorMessage = (error: IamHttpError | null): string => {
   if (!error) {

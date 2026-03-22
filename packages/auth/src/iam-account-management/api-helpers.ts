@@ -57,12 +57,11 @@ export const parseRequestBody = async <T>(request: Request, schema: z.ZodSchema<
   const parsed = schema.safeParse(parsedJson);
   if (!parsed.success) {
     const firstIssue = parsed.error.issues[0];
-    const message =
-      firstIssue === undefined
-        ? 'Ungültiger Payload.'
-        : firstIssue.path.length > 0
-          ? `${String(firstIssue.path[0])}: ${firstIssue.message}`
-          : firstIssue.message;
+    let message = 'Ungültiger Payload.';
+    if (firstIssue !== undefined) {
+      message =
+        firstIssue.path.length > 0 ? `${String(firstIssue.path[0])}: ${firstIssue.message}` : firstIssue.message;
+    }
     return { ok: false as const, rawBody: raw, message };
   }
   return { ok: true as const, data: parsed.data, rawBody: raw };

@@ -129,6 +129,83 @@ const historyActionLabelKey = {
   status_changed: 'content.history.actions.statusChanged',
 } as const;
 
+const parseContentPayload = (payloadText: string): { ok: true; payload: unknown } | { ok: false; message: string } => {
+  try {
+    return { ok: true, payload: JSON.parse(payloadText) };
+  } catch {
+    return { ok: false, message: t('content.validation.payloadJsonInvalid') };
+  }
+};
+
+const renderContentMeta = ({
+  mode,
+  content,
+}: {
+  mode: ContentEditorPageProps['mode'];
+  content: ReturnType<typeof useContentDetail>['content'];
+}) => {
+  if (mode === 'create') {
+    return <p className="text-sm text-muted-foreground">{t('content.meta.createHint')}</p>;
+  }
+
+  return (
+    <dl className="space-y-3 text-sm">
+      <div>
+        <dt className="text-muted-foreground">{t('content.meta.author')}</dt>
+        <dd className="text-foreground">{content?.author}</dd>
+      </div>
+      <div>
+        <dt className="text-muted-foreground">{t('content.meta.createdAt')}</dt>
+        <dd className="text-foreground">{formatDateTime(content?.createdAt)}</dd>
+      </div>
+      <div>
+        <dt className="text-muted-foreground">{t('content.meta.updatedAt')}</dt>
+        <dd className="text-foreground">{formatDateTime(content?.updatedAt)}</dd>
+      </div>
+      <div>
+        <dt className="text-muted-foreground">{t('content.meta.id')}</dt>
+        <dd className="break-all text-foreground">{content?.id}</dd>
+      </div>
+    </dl>
+  );
+};
+
+const renderContentHistory = ({
+  mode,
+  history,
+}: {
+  mode: ContentEditorPageProps['mode'];
+  history: ReturnType<typeof useContentDetail>['history'];
+}) => {
+  if (mode === 'create') {
+    return <p className="text-sm text-muted-foreground">{t('content.history.createHint')}</p>;
+  }
+
+  if (history.length === 0) {
+    return <p className="text-sm text-muted-foreground">{t('content.history.empty')}</p>;
+  }
+
+  return (
+    <ol className="space-y-3">
+      {history.map((entry) => (
+        <li key={entry.id} className="rounded-lg border border-border p-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="text-sm font-medium text-foreground">{t(historyActionLabelKey[entry.action])}</span>
+            <span className="text-xs text-muted-foreground">{formatDateTime(entry.createdAt)}</span>
+          </div>
+          <p className="mt-1 text-sm text-muted-foreground">{t('content.history.byline', { actor: entry.actor })}</p>
+          {entry.summary ? <p className="mt-2 text-sm text-foreground">{entry.summary}</p> : null}
+          {entry.changedFields.length > 0 ? (
+            <p className="mt-2 text-xs text-muted-foreground">
+              {t('content.history.changedFields', { fields: entry.changedFields.join(', ') })}
+            </p>
+          ) : null}
+        </li>
+      ))}
+    </ol>
+  );
+};
+
 export const ContentEditorPage = ({ mode, contentId }: ContentEditorPageProps) => {
   const navigate = useNavigate();
   const createApi = useCreateContent();
@@ -146,15 +223,13 @@ export const ContentEditorPage = ({ mode, contentId }: ContentEditorPageProps) =
   const activeError = mode === 'create' ? createApi.mutationError : detailApi.mutationError;
   const isLoading = mode === 'create' ? false : detailApi.isLoading;
 
-  const submitForm = async (event: React.FormEvent<HTMLFormElement>) => {
+  const submitForm = async (event: React.SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault();
     setPayloadError(null);
 
-    let parsedPayload: unknown;
-    try {
-      parsedPayload = JSON.parse(formState.payloadText);
-    } catch {
-      setPayloadError(t('content.validation.payloadJsonInvalid'));
+    const parsedPayload = parseContentPayload(formState.payloadText);
+    if (!parsedPayload.ok) {
+      setPayloadError(parsedPayload.message);
       return;
     }
 
@@ -170,7 +245,7 @@ export const ContentEditorPage = ({ mode, contentId }: ContentEditorPageProps) =
         contentType: formState.contentType,
         status: formState.status,
         publishedAt,
-        payload: parsedPayload as CreateContentPayload['payload'],
+        payload: parsedPayload.payload as CreateContentPayload['payload'],
       };
 
       const success = await createApi.createContent(payload);
@@ -178,7 +253,7 @@ export const ContentEditorPage = ({ mode, contentId }: ContentEditorPageProps) =
         return;
       }
 
-      void navigate({ to: '/content' });
+      await navigate({ to: '/content' });
       return;
     }
 
@@ -190,7 +265,7 @@ export const ContentEditorPage = ({ mode, contentId }: ContentEditorPageProps) =
       title: formState.title.trim(),
       status: formState.status,
       publishedAt,
-      payload: parsedPayload as UpdateContentPayload['payload'],
+      payload: parsedPayload.payload as UpdateContentPayload['payload'],
     };
 
     await detailApi.updateContent(payload);
@@ -300,59 +375,12 @@ export const ContentEditorPage = ({ mode, contentId }: ContentEditorPageProps) =
           <div className="space-y-5">
             <Card className="space-y-3 p-5">
               <h2 className="text-lg font-semibold text-foreground">{t('content.meta.title')}</h2>
-              {mode === 'create' ? (
-                <p className="text-sm text-muted-foreground">{t('content.meta.createHint')}</p>
-              ) : (
-                <dl className="space-y-3 text-sm">
-                  <div>
-                    <dt className="text-muted-foreground">{t('content.meta.author')}</dt>
-                    <dd className="text-foreground">{content?.author}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-muted-foreground">{t('content.meta.createdAt')}</dt>
-                    <dd className="text-foreground">{formatDateTime(content?.createdAt)}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-muted-foreground">{t('content.meta.updatedAt')}</dt>
-                    <dd className="text-foreground">{formatDateTime(content?.updatedAt)}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-muted-foreground">{t('content.meta.id')}</dt>
-                    <dd className="break-all text-foreground">{content?.id}</dd>
-                  </div>
-                </dl>
-              )}
+              {renderContentMeta({ mode, content })}
             </Card>
 
             <Card className="space-y-3 p-5">
               <h2 className="text-lg font-semibold text-foreground">{t('content.history.title')}</h2>
-              {mode === 'create' ? (
-                <p className="text-sm text-muted-foreground">{t('content.history.createHint')}</p>
-              ) : detailApi.history.length === 0 ? (
-                <p className="text-sm text-muted-foreground">{t('content.history.empty')}</p>
-              ) : (
-                <ol className="space-y-3">
-                  {detailApi.history.map((entry) => (
-                    <li key={entry.id} className="rounded-lg border border-border p-3">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <span className="text-sm font-medium text-foreground">
-                          {t(historyActionLabelKey[entry.action])}
-                        </span>
-                        <span className="text-xs text-muted-foreground">{formatDateTime(entry.createdAt)}</span>
-                      </div>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        {t('content.history.byline', { actor: entry.actor })}
-                      </p>
-                      {entry.summary ? <p className="mt-2 text-sm text-foreground">{entry.summary}</p> : null}
-                      {entry.changedFields.length > 0 ? (
-                        <p className="mt-2 text-xs text-muted-foreground">
-                          {t('content.history.changedFields', { fields: entry.changedFields.join(', ') })}
-                        </p>
-                      ) : null}
-                    </li>
-                  ))}
-                </ol>
-              )}
+              {renderContentHistory({ mode, history: detailApi.history })}
             </Card>
           </div>
         </div>

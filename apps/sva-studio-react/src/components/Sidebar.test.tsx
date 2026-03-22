@@ -7,6 +7,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import Sidebar from './Sidebar';
 
+const LICENSE_ISSUE_URL = 'https://github.com/smart-village-solutions/sva-studio/issues/2';
+const HELP_DISCUSSIONS_URL = 'https://github.com/smart-village-solutions/sva-studio/discussions';
+const SUPPORT_ISSUES_URL = 'https://github.com/smart-village-solutions/sva-studio/issues';
+
 const useAuthMock = vi.fn();
 const useRouterStateMock = vi.fn();
 const localStorageState = new Map<string, string>();
@@ -112,9 +116,9 @@ describe('Sidebar', () => {
     expect(screen.getByRole('link', { name: 'Schnittstellen' }).getAttribute('href')).toBe('/interfaces');
     expect(screen.getByRole('link', { name: 'Module' }).getAttribute('href')).toBe('/modules');
     expect(screen.getByRole('link', { name: 'Monitoring' }).getAttribute('href')).toBe('/monitoring');
-    expect(screen.getByRole('link', { name: 'Hilfe' }).getAttribute('href')).toBe('/help');
-    expect(screen.getByRole('link', { name: 'Support' }).getAttribute('href')).toBe('/support');
-    expect(screen.getByRole('link', { name: 'Lizenz' }).getAttribute('href')).toBe('/license');
+    expect(screen.getByRole('link', { name: 'Hilfe' }).getAttribute('href')).toBe(HELP_DISCUSSIONS_URL);
+    expect(screen.getByRole('link', { name: 'Support' }).getAttribute('href')).toBe(SUPPORT_ISSUES_URL);
+    expect(screen.getByRole('link', { name: 'Lizenz' }).getAttribute('href')).toBe(LICENSE_ISSUE_URL);
   });
 
   it('rendert Schnittstellen fuer interface_manager ohne System-Untermenue', () => {
@@ -131,9 +135,9 @@ describe('Sidebar', () => {
     render(<Sidebar />);
 
     expect(screen.getByRole('link', { name: 'Schnittstellen' }).getAttribute('href')).toBe('/interfaces');
-    expect(screen.getByRole('link', { name: 'Hilfe' }).getAttribute('href')).toBe('/help');
-    expect(screen.getByRole('link', { name: 'Support' }).getAttribute('href')).toBe('/support');
-    expect(screen.getByRole('link', { name: 'Lizenz' }).getAttribute('href')).toBe('/license');
+    expect(screen.getByRole('link', { name: 'Hilfe' }).getAttribute('href')).toBe(HELP_DISCUSSIONS_URL);
+    expect(screen.getByRole('link', { name: 'Support' }).getAttribute('href')).toBe(SUPPORT_ISSUES_URL);
+    expect(screen.getByRole('link', { name: 'Lizenz' }).getAttribute('href')).toBe(LICENSE_ISSUE_URL);
     expect(screen.queryByRole('button', { name: 'Benutzer' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'Module' })).toBeNull();
   });

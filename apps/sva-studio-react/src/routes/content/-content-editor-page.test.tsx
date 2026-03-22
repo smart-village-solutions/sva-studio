@@ -144,4 +144,189 @@ describe('ContentEditorPage', () => {
       });
     });
   });
+
+  it('blocks publishing without date and does not navigate when create fails', async () => {
+    const createContent = vi.fn().mockResolvedValue(false);
+    useCreateContentMock.mockReturnValue({
+      mutationError: { code: 'database_unavailable', status: 503, message: 'db down' },
+      clearMutationError: vi.fn(),
+      createContent,
+    });
+    useContentDetailMock.mockReturnValue({
+      content: null,
+      history: [],
+      isLoading: false,
+      error: null,
+      mutationError: null,
+      refetch: vi.fn(),
+      clearMutationError: vi.fn(),
+      updateContent: vi.fn(),
+    });
+
+    render(<ContentEditorPage mode="create" />);
+
+    fireEvent.change(screen.getByLabelText('Titel'), {
+      target: { value: 'Landing Page' },
+    });
+    fireEvent.change(screen.getByLabelText('Status'), {
+      target: { value: 'published' },
+    });
+
+    fireEvent.submit(screen.getByRole('button', { name: 'Inhalt anlegen' }).closest('form')!);
+    expect(screen.getByText('Für veröffentlichte Inhalte ist ein Veröffentlichungsdatum erforderlich.')).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText('Veröffentlichungsdatum'), {
+      target: { value: '2026-03-22T12:00' },
+    });
+    fireEvent.submit(screen.getByRole('button', { name: 'Inhalt anlegen' }).closest('form')!);
+
+    await waitFor(() => {
+      expect(createContent).toHaveBeenCalled();
+      expect(navigateMock).not.toHaveBeenCalled();
+    });
+
+    expect(screen.getByText('Die Inhaltsdaten konnten wegen eines Datenbankproblems nicht verarbeitet werden.')).toBeTruthy();
+  });
+
+  it('renders edit errors and hides the form when no content is available', () => {
+    useCreateContentMock.mockReturnValue({
+      mutationError: null,
+      clearMutationError: vi.fn(),
+      createContent: vi.fn(),
+    });
+    useContentDetailMock.mockReturnValue({
+      content: null,
+      history: [],
+      isLoading: false,
+      error: { code: 'not_found', status: 404, message: 'missing' },
+      mutationError: null,
+      refetch: vi.fn(),
+      clearMutationError: vi.fn(),
+      updateContent: vi.fn(),
+    });
+
+    render(<ContentEditorPage mode="edit" contentId="content-1" />);
+
+    expect(screen.getByText('Der angeforderte Inhalt wurde nicht gefunden.')).toBeTruthy();
+    expect(screen.queryByLabelText('Titel')).toBeNull();
+  });
+
+  it('renders edit mode fallback metadata, empty history and generic validation errors', async () => {
+    const updateContent = vi.fn();
+    useCreateContentMock.mockReturnValue({
+      mutationError: { code: 'invalid_request', status: 400, message: 'http_400' },
+      clearMutationError: vi.fn(),
+      createContent: vi.fn(),
+    });
+    useContentDetailMock.mockReturnValue({
+      content: {
+        id: 'content-2',
+        contentType: 'generic',
+        title: 'Ohne Datum',
+        publishedAt: 'invalid-date',
+        createdAt: undefined,
+        updatedAt: undefined,
+        author: 'Editor',
+        payload: { hero: 'Test' },
+        status: 'approved',
+        history: [],
+      },
+      history: [],
+      isLoading: false,
+      error: null,
+      mutationError: { code: 'invalid_request', status: 400, message: 'http_400' },
+      refetch: vi.fn(),
+      clearMutationError: vi.fn(),
+      updateContent,
+    });
+
+    render(<ContentEditorPage mode="edit" contentId="content-2" />);
+
+    expect((screen.getByLabelText('Veröffentlichungsdatum') as HTMLInputElement).value).toBe('');
+    expect(screen.getByText('Für diesen Inhalt liegt noch keine Historie vor.')).toBeTruthy();
+    expect(screen.getByText('Der Inhalt enthält ungültige oder unvollständige Daten.')).toBeTruthy();
+
+    fireEvent.submit(screen.getByRole('button', { name: 'Änderungen speichern' }).closest('form')!);
+
+    await waitFor(() => {
+      expect(updateContent).toHaveBeenCalledWith({
+        title: 'Ohne Datum',
+        status: 'approved',
+        publishedAt: undefined,
+        payload: { hero: 'Test' },
+      });
+    });
+  });
+
+  it('renders history entries without optional summary fields and ignores submits without a content id', async () => {
+    const updateContent = vi.fn();
+    useCreateContentMock.mockReturnValue({
+      mutationError: null,
+      clearMutationError: vi.fn(),
+      createContent: vi.fn(),
+    });
+    useContentDetailMock.mockReturnValue({
+      content: {
+        id: 'content-3',
+        contentType: 'generic',
+        title: 'Ohne Summary',
+        publishedAt: '2026-03-21T10:00:00.000Z',
+        createdAt: '2026-03-20T10:00:00.000Z',
+        updatedAt: '2026-03-21T11:00:00.000Z',
+        author: 'Editor',
+        payload: { hero: 'Test' },
+        status: 'draft',
+        history: [],
+      },
+      history: [
+        {
+          id: 'history-2',
+          contentId: 'content-3',
+          action: 'updated',
+          actor: 'Editor',
+          changedFields: [],
+          createdAt: '2026-03-21T12:00:00.000Z',
+        },
+      ],
+      isLoading: false,
+      error: null,
+      mutationError: null,
+      refetch: vi.fn(),
+      clearMutationError: vi.fn(),
+      updateContent,
+    });
+
+    render(<ContentEditorPage mode="edit" />);
+
+    expect(screen.getByText('Inhalt aktualisiert')).toBeTruthy();
+    expect(screen.queryByText(/Geänderte Felder:/)).toBeNull();
+
+    fireEvent.submit(screen.getByRole('button', { name: 'Änderungen speichern' }).closest('form')!);
+
+    await waitFor(() => {
+      expect(updateContent).not.toHaveBeenCalled();
+    });
+  });
+
+  it('renders rate-limit errors in create mode', () => {
+    useCreateContentMock.mockReturnValue({
+      mutationError: { code: 'rate_limited', status: 429, message: 'too many requests' },
+      clearMutationError: vi.fn(),
+      createContent: vi.fn(),
+    });
+    useContentDetailMock.mockReturnValue({
+      content: null,
+      history: [],
+      isLoading: false,
+      error: null,
+      mutationError: null,
+      refetch: vi.fn(),
+      clearMutationError: vi.fn(),
+      updateContent: vi.fn(),
+    });
+
+    render(<ContentEditorPage mode="create" />);
+
+    expect(screen.getByText('Zu viele Anfragen in kurzer Zeit. Bitte kurz warten und erneut versuchen.')).toBeTruthy();
+  });
 });

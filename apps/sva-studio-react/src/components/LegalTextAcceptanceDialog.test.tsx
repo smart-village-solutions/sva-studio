@@ -7,6 +7,7 @@ import { LegalTextAcceptanceDialog } from './LegalTextAcceptanceDialog';
 
 const getMyPendingLegalTextsMock = vi.fn();
 const acceptLegalTextMock = vi.fn();
+const asIamErrorMock = vi.fn();
 
 vi.mock('../lib/iam-api', async () => {
   const actual = await vi.importActual<typeof import('../lib/iam-api')>('../lib/iam-api');
@@ -14,6 +15,7 @@ vi.mock('../lib/iam-api', async () => {
     ...actual,
     getMyPendingLegalTexts: (...args: unknown[]) => getMyPendingLegalTextsMock(...args),
     acceptLegalText: (...args: unknown[]) => acceptLegalTextMock(...args),
+    asIamError: (...args: unknown[]) => asIamErrorMock(...args),
   };
 });
 
@@ -21,6 +23,7 @@ describe('LegalTextAcceptanceDialog', () => {
   beforeEach(() => {
     getMyPendingLegalTextsMock.mockReset();
     acceptLegalTextMock.mockReset();
+    asIamErrorMock.mockReset();
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({
@@ -156,4 +159,111 @@ describe('LegalTextAcceptanceDialog', () => {
 
     expect(await screen.findByText('Datenschutzhinweise')).toBeTruthy();
   });
+
+  it('reloads pending texts on window focus', async () => {
+    getMyPendingLegalTextsMock
+      .mockResolvedValueOnce({
+        data: [],
+        pagination: { page: 1, pageSize: 1, total: 0 },
+      })
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 'version-3',
+            legalTextId: 'text-3',
+            name: 'Datenschutz',
+            legalTextVersion: '3',
+            locale: 'de-DE',
+            contentHtml: '<p>Aktualisiert</p>',
+            publishedAt: 'invalid-date',
+          },
+        ],
+        pagination: { page: 1, pageSize: 1, total: 1 },
+      });
+
+    render(
+      <AuthProvider>
+        <LegalTextAcceptanceDialog pathname="/" />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(getMyPendingLegalTextsMock).toHaveBeenCalledTimes(1);
+    });
+
+    window.dispatchEvent(new Event('focus'));
+
+    expect(await screen.findByText('Datenschutz')).toBeTruthy();
+    expect(screen.getByText(/invalid-date/)).toBeTruthy();
+  });
+
+  it('suppresses unauthorized load errors', async () => {
+    asIamErrorMock.mockReturnValueOnce({ code: 'unauthorized' });
+    getMyPendingLegalTextsMock.mockRejectedValueOnce(new Error('unauthorized'));
+
+    render(
+      <AuthProvider>
+        <LegalTextAcceptanceDialog pathname="/" />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByRole('alertdialog', { name: 'Bitte Rechtstexte akzeptieren' })).toBeNull();
+    });
+  });
+
+  it('shows generic load failures in the dialog', async () => {
+    asIamErrorMock.mockReturnValueOnce({ code: 'database_unavailable' });
+    getMyPendingLegalTextsMock.mockRejectedValueOnce(new Error('db down'));
+
+    render(
+      <AuthProvider>
+        <LegalTextAcceptanceDialog pathname="/account" />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert').textContent).toContain('Die offenen Rechtstexte konnten nicht geladen werden.');
+    });
+  });
+
+  it('shows acceptance errors and allows retry/logout actions', async () => {
+    getMyPendingLegalTextsMock.mockResolvedValue({
+      data: [
+        {
+          id: 'version-1',
+          legalTextId: 'text-1',
+          name: 'Nutzungsbedingungen',
+          legalTextVersion: '1',
+          locale: 'de-DE',
+          contentHtml: '<p>Bitte akzeptieren</p>',
+        },
+      ],
+      pagination: { page: 1, pageSize: 1, total: 1 },
+    });
+    acceptLegalTextMock.mockRejectedValue(new Error('failed'));
+
+    render(
+      <AuthProvider>
+        <LegalTextAcceptanceDialog pathname="/" />
+      </AuthProvider>
+    );
+
+    expect(await screen.findByText('Nutzungsbedingungen')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Alle akzeptieren' }));
+    await waitFor(() => {
+      expect(screen.getByRole('alert').textContent).toContain('Die Rechtstexte konnten nicht bestätigt werden.');
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Erneut laden' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Abmelden' }));
+
+    await waitFor(() => {
+      expect(getMyPendingLegalTextsMock).toHaveBeenCalledTimes(2);
+      const fetchMock = vi.mocked(fetch);
+      expect(fetchMock).toHaveBeenCalledWith('/auth/logout', expect.any(Object));
+    });
+  });
+
 });

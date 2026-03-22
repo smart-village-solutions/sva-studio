@@ -115,6 +115,37 @@ describe('useContents', () => {
     });
 
     expect(result.current.mutationError).toBe(conflictError);
+    act(() => {
+      result.current.clearMutationError();
+    });
+    expect(result.current.mutationError).toBeNull();
+  });
+
+  it('invalidates permissions on 403 errors and handles empty detail ids', async () => {
+    const forbiddenError = { status: 403, code: 'forbidden', message: 'Forbidden' };
+    asIamErrorMock.mockReturnValue(forbiddenError);
+    createContentMock.mockRejectedValueOnce(new Error('forbidden'));
+
+    const { result: createResult } = renderHook(() => useCreateContent());
+
+    await act(async () => {
+      const created = await createResult.current.createContent({
+        contentType: 'generic',
+        title: 'Landing Page',
+        payload: { hero: 'Hello' },
+        status: 'draft',
+      });
+      expect(created).toBe(false);
+    });
+
+    expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
+
+    const { result: detailResult } = renderHook(() => useContentDetail(null));
+    await waitFor(() => {
+      expect(detailResult.current.isLoading).toBe(false);
+      expect(detailResult.current.content).toBeNull();
+      expect(detailResult.current.history).toEqual([]);
+    });
   });
 
   it('loads content detail with history and updates content', async () => {
@@ -165,5 +196,141 @@ describe('useContents', () => {
     expect(updateContentMock).toHaveBeenCalledWith('content-1', {
       title: 'Neue Startseite',
     });
+  });
+
+  it('stores detail and update errors and invalidates permissions on 403', async () => {
+    const forbiddenError = { status: 403, code: 'forbidden', message: 'Forbidden' };
+    asIamErrorMock.mockReturnValue(forbiddenError);
+    getContentMock.mockRejectedValueOnce(new Error('forbidden'));
+    getContentHistoryMock.mockResolvedValue({ data: [], pagination: { page: 1, pageSize: 0, total: 0 } });
+
+    const { result } = renderHook(() => useContentDetail('content-1'));
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.error).toBe(forbiddenError);
+    });
+
+    expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
+
+    getContentMock.mockResolvedValue({
+      data: {
+        id: 'content-1',
+        contentType: 'generic',
+        title: 'Startseite',
+        createdAt: '2026-03-21T10:00:00.000Z',
+        updatedAt: '2026-03-21T11:00:00.000Z',
+        author: 'Editor',
+        payload: { blocks: [] },
+        status: 'draft',
+        history: [],
+      },
+    });
+    getContentHistoryMock.mockResolvedValue({
+      data: [],
+      pagination: { page: 1, pageSize: 0, total: 0 },
+    });
+
+    await act(async () => {
+      await result.current.refetch();
+    });
+
+    updateContentMock.mockRejectedValueOnce(new Error('forbidden'));
+
+    await act(async () => {
+      const updated = await result.current.updateContent({ title: 'Neu' });
+      expect(updated).toBe(false);
+    });
+
+    expect(result.current.mutationError).toBe(forbiddenError);
+  });
+
+  it('returns false for detail mutations without an id and clears stored mutation errors', async () => {
+    const createConflict = { status: 409, code: 'conflict', message: 'Conflict' };
+    asIamErrorMock.mockReturnValue(createConflict);
+    createContentMock.mockRejectedValueOnce(new Error('conflict'));
+
+    const { result: createResult } = renderHook(() => useCreateContent());
+
+    await act(async () => {
+      expect(
+        await createResult.current.createContent({
+          contentType: 'generic',
+          title: 'Landing Page',
+          payload: { hero: 'Hello' },
+          status: 'draft',
+        })
+      ).toBe(false);
+    });
+
+    expect(createResult.current.mutationError).toBe(createConflict);
+
+    act(() => {
+      createResult.current.clearMutationError();
+    });
+
+    expect(createResult.current.mutationError).toBeNull();
+
+    const { result: detailResult } = renderHook(() => useContentDetail(null));
+
+    await waitFor(() => {
+      expect(detailResult.current.isLoading).toBe(false);
+    });
+
+    await act(async () => {
+      expect(await detailResult.current.updateContent({ title: 'Neu' })).toBe(false);
+    });
+
+    act(() => {
+      detailResult.current.clearMutationError();
+    });
+
+    expect(detailResult.current.mutationError).toBeNull();
+  });
+
+  it('stores non-403 detail and update errors without invalidating permissions', async () => {
+    const genericError = { status: 500, code: 'database_unavailable', message: 'db down' };
+    asIamErrorMock.mockReturnValue(genericError);
+    getContentMock.mockRejectedValueOnce(new Error('db down'));
+    getContentHistoryMock.mockResolvedValue({ data: [], pagination: { page: 1, pageSize: 0, total: 0 } });
+
+    const { result } = renderHook(() => useContentDetail('content-1'));
+
+    await waitFor(() => {
+      expect(result.current.error).toBe(genericError);
+    });
+
+    expect(authMockValue.invalidatePermissions).not.toHaveBeenCalled();
+
+    getContentMock.mockResolvedValue({
+      data: {
+        id: 'content-1',
+        contentType: 'generic',
+        title: 'Startseite',
+        createdAt: '2026-03-21T10:00:00.000Z',
+        updatedAt: '2026-03-21T11:00:00.000Z',
+        author: 'Editor',
+        payload: { blocks: [] },
+        status: 'draft',
+        history: [],
+      },
+    });
+    getContentHistoryMock.mockResolvedValue({
+      data: [],
+      pagination: { page: 1, pageSize: 0, total: 0 },
+    });
+
+    await act(async () => {
+      await result.current.refetch();
+    });
+
+    updateContentMock.mockRejectedValueOnce(new Error('db down'));
+
+    await act(async () => {
+      expect(await result.current.updateContent({ title: 'Neu' })).toBe(false);
+    });
+
+    expect(result.current.mutationError).toBe(genericError);
+    expect(authMockValue.invalidatePermissions).not.toHaveBeenCalled();
   });
 });

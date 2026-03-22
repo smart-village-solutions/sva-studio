@@ -103,4 +103,77 @@ describe('ContentListPage', () => {
     rerender(<ContentListPage />);
     expect(screen.getByText('Inhalte werden geladen ...')).toBeTruthy();
   });
+
+  it('filters by status and falls back to the generic load error for unknown errors', () => {
+    useContentsMock.mockReturnValue({
+      contents: [
+        {
+          id: 'content-1',
+          contentType: 'generic',
+          title: 'Startseite',
+          createdAt: '2026-03-20T10:00:00.000Z',
+          updatedAt: '2026-03-21T11:00:00.000Z',
+          author: 'Editor',
+          payload: { long: 'x'.repeat(100) },
+          status: 'draft',
+        },
+        {
+          id: 'content-2',
+          contentType: 'generic',
+          title: 'Live',
+          publishedAt: 'invalid-date',
+          createdAt: '2026-03-20T10:00:00.000Z',
+          updatedAt: '2026-03-21T11:00:00.000Z',
+          author: 'Redaktion',
+          payload: { hero: 'Willkommen' },
+          status: 'published',
+        },
+      ],
+      isLoading: false,
+      error: { code: 'unexpected_error' },
+      mutationError: null,
+      refetch: vi.fn(),
+      clearMutationError: vi.fn(),
+    });
+
+    render(<ContentListPage />);
+
+    expect(screen.getByText('Inhalte konnten nicht geladen werden.')).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText('Status'), {
+      target: { value: 'published' },
+    });
+
+    expect(screen.queryByText('Startseite')).toBeNull();
+    expect(screen.getByText('Live')).toBeTruthy();
+    expect(screen.getByText('invalid-date')).toBeTruthy();
+  });
+
+  it('renders forbidden errors and falls back for empty payload summaries', () => {
+    useContentsMock.mockReturnValue({
+      contents: [
+        {
+          id: 'content-3',
+          contentType: 'legal',
+          title: 'Bedingungen',
+          createdAt: '2026-03-20T10:00:00.000Z',
+          updatedAt: '2026-03-21T11:00:00.000Z',
+          author: 'Compliance',
+          payload: undefined,
+          status: 'approved',
+        },
+      ],
+      isLoading: false,
+      error: { code: 'forbidden' },
+      mutationError: null,
+      refetch: vi.fn(),
+      clearMutationError: vi.fn(),
+    });
+
+    render(<ContentListPage />);
+
+    expect(screen.getByText('Unzureichende Berechtigungen für diese Inhaltsaktion.')).toBeTruthy();
+    expect(screen.getByText('{}')).toBeTruthy();
+    expect(screen.getByText('Nicht gesetzt')).toBeTruthy();
+  });
 });

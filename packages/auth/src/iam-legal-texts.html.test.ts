@@ -14,11 +14,17 @@ describe('iam legal texts html sanitization', () => {
       sanitizeLegalTextHtml(
         '<a href=" javascript:alert(1)" onclick="alert(1)" onmouseover=\'next()\' data-id="1">Link</a><img src=javascript:alert(1) onerror="boom">'
       )
-    ).toBe('<a href="#" data-id="1">Link</a><img src="#">');
+    ).toBe('<a>Link</a>');
   });
 
   it('falls back to an empty paragraph when the content becomes empty', () => {
     expect(sanitizeLegalTextHtml('<script>alert(1)</script>')).toBe('<p></p>');
+  });
+
+  it('keeps allowed markup and http links', () => {
+    expect(
+      sanitizeLegalTextHtml('<p>Hallo <strong>Welt</strong> <a href="https://example.com" target="_blank" rel="noreferrer">Link</a></p>')
+    ).toBe('<p>Hallo <strong>Welt</strong> <a href="https://example.com" target="_blank" rel="noreferrer">Link</a></p>');
   });
 
   it('hashes html content deterministically', () => {

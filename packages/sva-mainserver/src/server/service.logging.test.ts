@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { createSvaMainserverService, resetSvaMainserverServiceState } from './service';
+
 vi.mock('@opentelemetry/api', () => ({
   SpanStatusCode: {
     OK: 1,
@@ -57,14 +59,11 @@ describe('SVA Mainserver logging', () => {
     state.logger.error.mockReset();
   });
 
-  afterEach(async () => {
-    vi.resetModules();
-    const { resetSvaMainserverServiceState } = await import('./service');
+  afterEach(() => {
     resetSvaMainserverServiceState();
   });
 
   it('emits cache logs with workspace_id on repeated credential access', async () => {
-    const { createSvaMainserverService } = await import('./service');
     const fetchImpl = vi
       .fn()
       .mockResolvedValueOnce(

@@ -19,6 +19,8 @@ Prefer read-only inspection first. Use mutations only when the task clearly requ
 
 Use `kcadm.sh` for admin work. Use `kcreg.sh` only when the task is specifically self-service client registration through the Client Registration REST API.
 
+For this repository, `kcreg.sh` is usually not needed because the common workflows are admin-side IAM and realm operations, not delegated self-service client registration.
+
 ## Guardrails
 
 - Start by verifying that `kcadm.sh` exists and which Keycloak server and realm you are targeting.

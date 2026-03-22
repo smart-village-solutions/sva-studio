@@ -128,8 +128,50 @@ const toIsoDateTime = (value: string): string | undefined => {
   return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
 };
 
-const stripHtml = (value: string): string =>
-  value.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+const collapseWhitespace = (value: string): string => {
+  let result = '';
+  let previousWasWhitespace = true;
+
+  for (const character of value) {
+    if (/\s/.test(character)) {
+      if (!previousWasWhitespace) {
+        result += ' ';
+        previousWasWhitespace = true;
+      }
+      continue;
+    }
+
+    result += character;
+    previousWasWhitespace = false;
+  }
+
+  return result.trim();
+};
+
+const stripHtml = (value: string): string => {
+  let result = '';
+  let insideTag = false;
+
+  for (const character of value) {
+    if (character === '<') {
+      insideTag = true;
+      result += ' ';
+      continue;
+    }
+
+    if (character === '>') {
+      insideTag = false;
+      result += ' ';
+      continue;
+    }
+
+    if (!insideTag) {
+      result += character;
+    }
+  }
+
+  return collapseWhitespace(result);
+};
 
 const summarizeHtml = (value: string): string => {
   const plainText = stripHtml(value);

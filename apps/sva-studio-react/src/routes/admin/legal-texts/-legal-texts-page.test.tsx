@@ -36,6 +36,18 @@ const legalTextsFixture = [
     acceptanceCount: 1,
     activeAcceptanceCount: 0,
   },
+  {
+    id: '33333333-3333-3333-3333-333333333333',
+    name: 'Sicherheitshinweise',
+    legalTextVersion: '2026-05',
+    locale: 'de-DE',
+    contentHtml: '<div><<<<<<<<<<<<<<<<<<<<<<<Wichtige Hinweise>>>>>>>>>>>>>>>>>>>>>></div>',
+    status: 'draft' as const,
+    createdAt: '2026-04-01T11:00:00.000Z',
+    updatedAt: '2026-04-01T12:00:00.000Z',
+    acceptanceCount: 0,
+    activeAcceptanceCount: 0,
+  },
 ];
 
 const setEditorHtml = (element: HTMLElement, html: string) => {
@@ -79,6 +91,24 @@ describe('LegalTextsPage', () => {
 
     expect(screen.getByRole('dialog', { name: 'Rechtstext-Version bearbeiten' })).toBeTruthy();
     expect(screen.getByDisplayValue('Datenschutzhinweise')).toBeTruthy();
+  });
+
+  it('renders malformed tag-like html content without breaking the page', () => {
+    useLegalTextsMock.mockReturnValue({
+      legalTexts: legalTextsFixture,
+      isLoading: false,
+      error: null,
+      mutationError: null,
+      refetch: vi.fn(),
+      clearMutationError: vi.fn(),
+      createLegalText: vi.fn(),
+      updateLegalText: vi.fn(),
+    });
+
+    render(<LegalTextsPage />);
+
+    expect(screen.getByText('Sicherheitshinweise')).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Rechtstext-Verwaltung' })).toBeTruthy();
   });
 
   it('submits create and edit actions with html content and status', async () => {

@@ -25,6 +25,7 @@ Laufzeitknoten auf Basis des aktuellen Repos.
   - Grafana: `3001`
   - Promtail: `3101`
   - Alertmanager: `9093`
+  - Redis Exporter: `9121` (für Redis-/Permission-Cache-Metriken im Zielbild)
 
 ### Deployment-Bausteine (logisch)
 
@@ -34,9 +35,11 @@ Laufzeitknoten auf Basis des aktuellen Repos.
 - Externe Plattform (GitHub Actions) für CI-Ausführung
 - Keycloak als zentraler OIDC Identity Provider
 - Redis Session Store
+- Redis Permission Snapshot Cache als primärer Shared-Read-Path für effektive IAM-Berechtigungen
 - Postgres IAM Core Data Layer
 - OTEL Collector als Telemetrie-Hub
 - Loki/Prometheus als Storage, Grafana für Auswertung
+- `redis-exporter` als Prometheus-Scrape-Target für Redis-Infrastrukturmetriken
 
 ### Ergänzung 2026-03: Minimaler Server-Rollout mit Portainer
 
@@ -91,15 +94,21 @@ und Vorführungszwecke. Unterschiede zum Referenzprofil:
 
 - Der Build-Graph des Portainer-Images baut `sva-mainserver` explizit nach `auth` und vor `plugin-example`, damit die serverseitige Integrationsschicht im Deploy-Artefakt verlässlich vorhanden ist.
 
-- **Image-basiert:** Vorgebaute Images aus Container-Registry (`${SVA_REGISTRY}/sva-studio:${SVA_IMAGE_TAG}`). Kein `build:`-Block im Stack.
+- **Image-basiert:** Vorgebaute Images aus Container-Registry; für die App ist im Acceptance-Referenzpfad `SVA_IMAGE_REF` mit Digest verpflichtend, der Tag bleibt nur Metadatum. Kein `build:`-Block im Stack.
 - **Traefik-Labels:** Host-basiertes Routing über `HostRegexp` für Instanz-Subdomains unter `SVA_PARENT_DOMAIN`. TLS über Traefiks `certresolver`.
 - **Profilgrenze Traefik:** Das Referenzprofil verwendet Traefik v2+-Labels; das Demo-Profil bleibt bewusst bei Traefik-v1-kompatiblen Labels und ist deshalb kein 1:1-Abbild des Referenzbetriebs.
 - **Swarm Secrets:** Vertrauliche Werte als externe Docker-Swarm-Secrets mit Namenskonvention `sva_studio_<service>_<secret_name>`. Ein Shell-Entrypoint (`entrypoint.sh`) liest Secret-Dateien und exportiert sie als Env-Variablen.
 - **Versionierte Monitoring-Konfigurationen:** Prometheus-, Loki-, Grafana-, Promtail- und Alertmanager-Konfigurationen liegen versioniert im Repository und werden über ein dediziertes `monitoring-config-init`-Image einmalig in die Swarm-Volumes geschrieben.
 - **Rolling Updates:** `start-first` für Updates, `stop-first` für Rollbacks.
+- **Kanonischer Acceptance-Releasepfad:** `acceptance-hb` nutzt den orchestrierten Pfad `environment-precheck -> image-smoke -> optional migrate -> deploy -> internal-verify -> external-smoke -> release-decision -> Deploy-Report`.
+- **Release-Klassen:** Acceptance-Deploys unterscheiden `app-only` und `schema-and-app`; nur `schema-and-app` darf Migrationen auslösen.
+- **Deploy-Evidenz:** Jeder Acceptance-Deploy schreibt JSON- und Markdown-Artefakte unter `artifacts/runtime/deployments/` mit Image-, Actor-, Workflow-, Stack- und Verifikationsdaten.
+- **Health-Modell:** `live` bleibt prozessnah und ohne schwere optionale Abhängigkeiten; `ready` bildet nur minimale Traffic-Voraussetzungen ab; öffentliche Freigabe erfolgt erst über externe Smoke-Probes.
 - **Persistenz:** Named Volumes für Postgres, Redis, Prometheus, Loki, Grafana und Alertmanager.
 - **Monitoring-Bootstrap:** Der Node-Prozess lädt OpenTelemetry vor dem Nitro-Entry per `--import`, statt erst beim ersten Root-Request.
 - **Ressourcenprofile:** Das Referenzprofil setzt CPU-Limits für App, Datenbank und Monitoring-Services, damit der Stack auf kleinen Swarm-Nodes kontrolliert bleibt.
+- **Redis-Keyspaces:** Session-/Login-State und Permission-Snapshots teilen sich höchstens die Infrastruktur, werden aber fachlich getrennt behandelt (`session:*` vs. `perm:v1:*`).
+- **Eviction-Policy:** Für den Permission-Snapshot-Keyspace ist `allkeys-lru` verbindlich; wenn Session- und Snapshot-Keys dieselbe Redis-Instanz nutzen, muss das Betriebsprofil Evictions getrennt überwachen oder die Keyspaces logisch/physisch separieren.
 
 #### Instanz-Routing
 
@@ -110,7 +119,7 @@ und Vorführungszwecke. Unterschiede zum Referenzprofil:
 
 #### DB-Initialisierung
 
-Im Swarm-Stack sind keine automatischen Initialisierungsskripte enthalten. Die DB-Einrichtung (Migrationen, Runtime-User) ist ein bewusster, manueller Betriebsschritt. Details im [Swarm-Deployment-Runbook](../guides/swarm-deployment-runbook.md).
+Im Swarm-Stack sind keine automatischen Initialisierungsskripte enthalten. Die DB-Einrichtung bleibt ein bewusster Betriebsschritt, wird für `acceptance-hb` aber über den offiziellen `env:migrate`-/`env:deploy`-Pfad statt über ad-hoc SQL oder implizite Redeploys gesteuert. Details im [Swarm-Deployment-Runbook](../guides/swarm-deployment-runbook.md).
 
 Betriebliche Einordnung:
 
@@ -133,6 +142,9 @@ Referenzen:
 - Postgres mit Healthcheck (`pg_isready`) und separatem Volume
 - Healthchecks für zentrale Monitoring-Services konfiguriert
 - Graceful OTEL Shutdown im SDK vorgesehen
+- `/health/ready` bewertet den Authorization-Cache separat über `checks.authorizationCache` mit den Zuständen `ready`, `degraded` und `failed`
+- `degraded` gilt für den Permission-Cache bei Redis-Latenz > `50 ms` oder Recompute-Rate > `20/min`; `failed` bei drei aufeinanderfolgenden Redis-Fehlern
+- Session-Ausfälle und Permission-Cache-Ausfälle werden operativ getrennt behandelt: Session-Wiederherstellung folgt dem Plattform-RTO, Snapshots sind flüchtig und werden aus Postgres rekonstruiert
 - Keycloak wird aktuell als externer Dienst angebunden (nicht über Repo-Compose provisioniert)
 - Das IAM-Acceptance-Gate läuft gegen eine bereits vorhandene Testumgebung und startet keine eigene Keycloak-Topologie im Workflow.
 - Swarm-Stack: Secrets als externe Swarm-Secrets, nicht als Klartext-Env-Variablen
@@ -141,7 +153,8 @@ Referenzen:
 - Swarm-Stack: Startup-Validierung der Allowlist gegen `instanceId`-Regex (fail-fast)
 - Swarm-Stack: Monitoring-UI und Storage bleiben intern; keine öffentliche Exponierung ohne zusätzliche Zugangskontrolle
 - Swarm-Stack: `monitoring-config-init` ist ein One-shot-Initialisierer und soll nach erfolgreicher Volume-Befüllung beendet sein
-- Operative Zielwerte für das Referenzprofil: `RTO <= 2h` für App/Monitoring, `RPO <= 24h` für IAM-Daten in Postgres
+- Swarm-Stack: `postgres-schema-bootstrap` ist nur noch ein Legacy-Übergangspfad; der reguläre Schemarollout erfolgt über `pnpm env:migrate:acceptance-hb` bzw. `pnpm env:deploy:acceptance-hb -- --release-mode=schema-and-app`
+- Operative Zielwerte für das Referenzprofil: `RTO <= 2h` für App/Monitoring und Session-Store, `RTO <= 15 min` für den rekonstruierbaren Permission-Cache, `RPO <= 24h` für IAM-Daten in Postgres
 - Primäre betriebliche Eskalation via `operations@smart-village.app`, Sicherheits-/DSGVO-Eskalation via `security@smart-village.app`
 
 ### Noch offen (Stand heute)

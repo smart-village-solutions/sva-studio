@@ -1,5 +1,5 @@
-import type { WorkspaceContext } from './context.server';
-import type { OtelLoggerProvider } from '../logger/otel-logger.types';
+import type { WorkspaceContext } from './context.server.js';
+import type { OtelLoggerProvider } from '../logger/otel-logger.types.js';
 
 type MonitoringServerModule = {
   setWorkspaceContextGetter: (getter: () => WorkspaceContext) => void;

@@ -1,4 +1,4 @@
-import type { QueryClient } from '../shared/db-helpers';
+import type { QueryClient } from '../shared/db-helpers.js';
 
 import type {
   AccountSnapshotRow,
@@ -6,7 +6,7 @@ import type {
   ExportJobRow,
   LegalHoldRow,
   RequestRow,
-} from './read-models.types';
+} from './read-models.types.js';
 
 const queryAccountSnapshot = (client: QueryClient, input: { instanceId: string; accountId: string }) =>
   client.query<AccountSnapshotRow>(

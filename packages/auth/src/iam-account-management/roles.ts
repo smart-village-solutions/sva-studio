@@ -5,4 +5,4 @@ export {
   sanitizeRoleAuditDetails,
   sanitizeRoleErrorMessage,
   updateRoleHandler,
-} from './core';
+} from './core.js';

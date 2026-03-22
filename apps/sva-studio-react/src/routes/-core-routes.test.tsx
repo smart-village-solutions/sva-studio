@@ -98,16 +98,16 @@ vi.mock('./admin/legal-texts/-legal-texts-page', () => ({
   LegalTextsPage: () => <div>LegalTextsPage</div>,
 }));
 
+vi.mock('./admin/groups/-groups-page', () => ({
+  GroupsPage: () => <div>GroupsPage</div>,
+}));
+
 vi.mock('./admin/organizations/-organizations-page', () => ({
   OrganizationsPage: () => <div>OrganizationsPage</div>,
 }));
 
 vi.mock('./admin/roles/-roles-page', () => ({
   RolesPage: () => <div>RolesPage</div>,
-}));
-
-vi.mock('./admin/groups/-groups-page', () => ({
-  GroupsPage: () => <div>GroupsPage</div>,
 }));
 
 vi.mock('./admin/users/-user-edit-page', () => ({
@@ -150,22 +150,22 @@ describe('core routes', () => {
   it('configures guarded account and admin routes, including IAM tab normalization', async () => {
     const routes = buildRouteMap();
     const privacyRoute = readRouteOptions(routes.get('/account/privacy'));
-    const legalTextsRoute = readRouteOptions(routes.get('/admin/legal-texts'));
     const groupsRoute = readRouteOptions(routes.get('/admin/groups'));
+    const legalTextsRoute = readRouteOptions(routes.get('/admin/legal-texts'));
     const iamRoute = readRouteOptions(routes.get('/admin/iam'));
     const modulesRoute = readRouteOptions(routes.get('/modules'));
     const monitoringRoute = readRouteOptions(routes.get('/monitoring'));
 
     await privacyRoute.beforeLoad?.({ href: '/account/privacy' });
-    await legalTextsRoute.beforeLoad?.({ href: '/admin/legal-texts' });
     await groupsRoute.beforeLoad?.({ href: '/admin/groups' });
+    await legalTextsRoute.beforeLoad?.({ href: '/admin/legal-texts' });
     await iamRoute.beforeLoad?.({ href: '/admin/iam' });
     await modulesRoute.beforeLoad?.({ href: '/modules' });
     await monitoringRoute.beforeLoad?.({ href: '/monitoring' });
 
     expect(guardSpies.accountPrivacy).toHaveBeenCalledWith({ href: '/account/privacy' });
-    expect(guardSpies.adminRoles).toHaveBeenCalledWith({ href: '/admin/legal-texts' });
     expect(guardSpies.adminGroups).toHaveBeenCalledWith({ href: '/admin/groups' });
+    expect(guardSpies.adminRoles).toHaveBeenCalledWith({ href: '/admin/legal-texts' });
     expect(guardSpies.adminIam).toHaveBeenCalledWith({ href: '/admin/iam' });
     expect(guardSpies.adminRoles).toHaveBeenCalledWith({ href: '/modules' });
     expect(guardSpies.adminRoles).toHaveBeenCalledWith({ href: '/monitoring' });
@@ -210,6 +210,9 @@ describe('core routes', () => {
 
     renderPath('/account/privacy');
     expect(screen.getByText('AccountPrivacyPage')).toBeTruthy();
+
+    renderPath('/admin/groups');
+    expect(screen.getByText('GroupsPage')).toBeTruthy();
 
     renderPath('/admin/legal-texts');
     expect(screen.getByText('LegalTextsPage')).toBeTruthy();

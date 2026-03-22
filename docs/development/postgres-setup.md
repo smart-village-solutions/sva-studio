@@ -4,6 +4,8 @@
 
 Diese Anleitung ergänzt das bestehende Redis-Docker-Setup um eine lokale Postgres-Instanz für den IAM Core Data Layer.
 
+Die kanonischen Startpfade laufen jetzt über die Runtime-Profile aus `./runtime-profile-betrieb.md`. Die unten stehenden `data:db:*`-Targets bleiben die technische Grundlage, werden lokal aber bevorzugt über `pnpm env:*:local-keycloak` oder `pnpm env:*:local-builder` orchestriert.
+
 ## Voraussetzungen
 
 - Docker Desktop läuft lokal
@@ -41,7 +43,7 @@ POSTGRES_USER=sva
 POSTGRES_PASSWORD=sva_local_dev_password
 IAM_DATABASE_URL=postgres://sva_app:sva_app_local_dev_password@localhost:5432/sva_studio
 IAM_PII_ACTIVE_KEY_ID=k1
-IAM_PII_KEYRING_JSON={"k1":"MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDE="}
+IAM_PII_KEYRING_JSON={"k1":"BASE64_32_BYTE_KEY_FROM_SECRET_MANAGER"}
 ```
 
 Hinweis:

@@ -27,4 +27,23 @@ describe('updateUserSchema', () => {
       mainserverUserApplicationSecret: undefined,
     });
   });
+
+  it('accepts uuid-like role ids from seeded local IAM data', () => {
+    const result = updateUserSchema.safeParse({
+      displayName: 'Updated User',
+      roleIds: ['30666666-6666-6666-6666-666666666666'],
+      groupIds: ['20bbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'],
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects malformed ids for role and group assignments', () => {
+    const result = updateUserSchema.safeParse({
+      displayName: 'Updated User',
+      roleIds: ['not-a-role-id'],
+    });
+
+    expect(result.success).toBe(false);
+  });
 });

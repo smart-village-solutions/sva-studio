@@ -1,0 +1,22 @@
+services:
+  app-hb:
+    profiles: ["hb-app"]
+    image: ${SVA_LOCAL_APP_IMAGE:-sva-studio:local-arm64}
+    container_name: sva-studio-app-hb
+    env_file:
+      - ./config/runtime/local-keycloak.hb.docker.local.vars
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      postgres-hb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      otel-collector:
+        condition: service_started
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/health/live >/dev/null 2>&1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5

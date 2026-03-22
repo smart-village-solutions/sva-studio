@@ -72,6 +72,7 @@ describe('parseInvalidationEvent', () => {
   it('parses valid events', () => {
     const parsed = parseInvalidationEvent(
       JSON.stringify({
+        eventId: 'evt-1',
         instanceId: 'de-musterhausen',
         keycloakSubject: 'sub-1',
         trigger: 'pg_notify',
@@ -81,19 +82,19 @@ describe('parseInvalidationEvent', () => {
       instanceId: 'de-musterhausen',
       keycloakSubject: 'sub-1',
       trigger: 'pg_notify',
+      eventId: 'evt-1',
+      event: {
+        type: 'user_scope_changed',
+        instanceId: 'de-musterhausen',
+        keycloakSubject: 'sub-1',
+        eventId: 'evt-1',
+      },
     });
   });
 
   it('returns null for invalid payloads', () => {
     expect(parseInvalidationEvent('not-json')).toBeNull();
     expect(parseInvalidationEvent(JSON.stringify({ trigger: 'pg_notify' }))).toBeNull();
-    expect(
-      parseInvalidationEvent(
-        JSON.stringify({
-          instanceId: 'de-musterhausen',
-          trigger: 'invalid',
-        })
-      )
-    ).toBeNull();
+    expect(parseInvalidationEvent(JSON.stringify({ instanceId: '' }))).toBeNull();
   });
 });

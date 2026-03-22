@@ -1,0 +1,172 @@
+name: Acceptance Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_mode:
+        description: 'Release-Modus fuer acceptance-hb'
+        required: true
+        default: 'app-only'
+        type: choice
+        options:
+          - app-only
+          - schema-and-app
+      image_tag:
+        description: 'Unveraenderlicher Image-Tag fuer den Deploy'
+        required: false
+        type: string
+      image_digest:
+        description: 'Verbindlicher Image-Digest fuer den Acceptance-Deploy'
+        required: true
+        type: string
+      maintenance_window:
+        description: 'Pflicht fuer schema-and-app'
+        required: false
+        type: string
+      rollback_hint:
+        description: 'Rollback-Hinweis fuer den Deploy-Report'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  acceptance-deploy:
+    runs-on: ubuntu-latest
+    environment: acceptance-hb
+    env:
+      QUANTUM_API_KEY: ${{ secrets.QUANTUM_API_KEY }}
+      QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT || 'sva' }}
+      QUANTUM_ENVIRONMENT: ${{ vars.QUANTUM_ENVIRONMENT || 'swarm-secrets' }}
+      SVA_STACK_NAME: ${{ vars.SVA_STACK_NAME || 'sva-studio' }}
+      SVA_PUBLIC_BASE_URL: ${{ vars.SVA_PUBLIC_BASE_URL }}
+      SVA_PARENT_DOMAIN: ${{ vars.SVA_PARENT_DOMAIN }}
+      SVA_ALLOWED_INSTANCE_IDS: ${{ vars.SVA_ALLOWED_INSTANCE_IDS }}
+      SVA_PUBLIC_HOST: ${{ vars.SVA_PUBLIC_HOST }}
+      SVA_DB_ADMIN_HOST: ${{ vars.SVA_DB_ADMIN_HOST }}
+      SVA_AUTH_ISSUER: ${{ vars.SVA_AUTH_ISSUER }}
+      SVA_AUTH_CLIENT_ID: ${{ vars.SVA_AUTH_CLIENT_ID }}
+      SVA_AUTH_REDIRECT_URI: ${{ vars.SVA_AUTH_REDIRECT_URI }}
+      SVA_AUTH_POST_LOGOUT_REDIRECT_URI: ${{ vars.SVA_AUTH_POST_LOGOUT_REDIRECT_URI }}
+      IAM_CSRF_ALLOWED_ORIGINS: ${{ vars.IAM_CSRF_ALLOWED_ORIGINS }}
+      KEYCLOAK_ADMIN_BASE_URL: ${{ vars.KEYCLOAK_ADMIN_BASE_URL }}
+      KEYCLOAK_ADMIN_REALM: ${{ vars.KEYCLOAK_ADMIN_REALM }}
+      KEYCLOAK_ADMIN_CLIENT_ID: ${{ vars.KEYCLOAK_ADMIN_CLIENT_ID }}
+      ENABLE_OTEL: ${{ vars.ENABLE_OTEL || 'true' }}
+      OTEL_SERVICE_NAME: ${{ vars.OTEL_SERVICE_NAME || 'sva-studio' }}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${{ vars.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://otel-collector:4318' }}
+      IAM_UI_ENABLED: ${{ vars.IAM_UI_ENABLED || 'false' }}
+      IAM_ADMIN_ENABLED: ${{ vars.IAM_ADMIN_ENABLED || 'false' }}
+      IAM_BULK_ENABLED: ${{ vars.IAM_BULK_ENABLED || 'false' }}
+      VITE_IAM_UI_ENABLED: ${{ vars.VITE_IAM_UI_ENABLED || 'false' }}
+      VITE_IAM_ADMIN_ENABLED: ${{ vars.VITE_IAM_ADMIN_ENABLED || 'false' }}
+      VITE_IAM_BULK_ENABLED: ${{ vars.VITE_IAM_BULK_ENABLED || 'false' }}
+      SVA_GRAFANA_URL: ${{ vars.SVA_GRAFANA_URL }}
+      SVA_LOKI_URL: ${{ vars.SVA_LOKI_URL }}
+      SVA_AUTH_CLIENT_SECRET: ${{ secrets.SVA_AUTH_CLIENT_SECRET }}
+      SVA_AUTH_STATE_SECRET: ${{ secrets.SVA_AUTH_STATE_SECRET }}
+      KEYCLOAK_ADMIN_CLIENT_SECRET: ${{ secrets.KEYCLOAK_ADMIN_CLIENT_SECRET }}
+      ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
+      IAM_PII_KEYRING_JSON: ${{ secrets.IAM_PII_KEYRING_JSON }}
+      IAM_PII_ACTIVE_KEY_ID: ${{ vars.IAM_PII_ACTIVE_KEY_ID || 'k1' }}
+      POSTGRES_DB: ${{ vars.POSTGRES_DB || 'sva_studio' }}
+      POSTGRES_USER: ${{ vars.POSTGRES_USER || 'sva' }}
+      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+      APP_DB_USER: ${{ vars.APP_DB_USER || 'sva_app' }}
+      APP_DB_PASSWORD: ${{ secrets.APP_DB_PASSWORD }}
+      REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
+      REDIS_URL: ${{ vars.REDIS_URL }}
+      IAM_DATABASE_URL: ${{ secrets.IAM_DATABASE_URL }}
+      SVA_MAINSERVER_GRAPHQL_URL: ${{ vars.SVA_MAINSERVER_GRAPHQL_URL }}
+      SVA_MAINSERVER_OAUTH_TOKEN_URL: ${{ vars.SVA_MAINSERVER_OAUTH_TOKEN_URL }}
+      SVA_MAINSERVER_CLIENT_ID: ${{ vars.SVA_MAINSERVER_CLIENT_ID }}
+      SVA_MAINSERVER_CLIENT_SECRET: ${{ secrets.SVA_MAINSERVER_CLIENT_SECRET }}
+      SVA_IMAGE_REPOSITORY: ${{ vars.SVA_IMAGE_REPOSITORY || 'sva-studio' }}
+      SVA_IMAGE_TAG: ${{ github.event.inputs.image_tag || vars.SVA_IMAGE_TAG }}
+      SVA_IMAGE_DIGEST: ${{ github.event.inputs.image_digest }}
+      SVA_ACCEPTANCE_REPORT_SLUG: acceptance-deploy
+      SVA_ACCEPTANCE_DEPLOY_ACTOR: ${{ github.actor }}
+      SVA_ACCEPTANCE_DEPLOY_WORKFLOW: ${{ github.workflow }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: '.nvmrc'
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify quantum-cli availability
+        run: |
+          set -euo pipefail
+          command -v quantum-cli >/dev/null 2>&1 || {
+            echo "quantum-cli ist auf dem Runner nicht verfuegbar."
+            exit 1
+          }
+          quantum-cli auth status
+
+      - name: Validate immutable image input
+        run: |
+          set -euo pipefail
+          if [ -z "${SVA_IMAGE_DIGEST}" ]; then
+            echo "image_digest ist fuer Acceptance-Deploys verpflichtend."
+            exit 1
+          fi
+          if ! printf '%s' "${SVA_IMAGE_DIGEST}" | grep -Eq '^sha256:[a-f0-9]{64}$'; then
+            echo "image_digest muss ein sha256-Digest sein."
+            exit 1
+          fi
+          image_ref="${SVA_REGISTRY:-ghcr.io/smart-village-solutions}/${SVA_IMAGE_REPOSITORY}@${SVA_IMAGE_DIGEST}"
+          echo "SVA_IMAGE_REF=${image_ref}" >> "${GITHUB_ENV}"
+          docker pull "${image_ref}"
+
+      - name: Run canonical acceptance deploy
+        run: |
+          set -euo pipefail
+          args=(
+            "--release-mode=${{ github.event.inputs.release_mode }}"
+            "--actor=${GITHUB_ACTOR}"
+            "--workflow=${GITHUB_WORKFLOW}"
+          )
+
+          if [ -n "${{ github.event.inputs.maintenance_window }}" ]; then
+            args+=("--maintenance-window=${{ github.event.inputs.maintenance_window }}")
+          fi
+
+          if [ -n "${{ github.event.inputs.rollback_hint }}" ]; then
+            args+=("--rollback-hint=${{ github.event.inputs.rollback_hint }}")
+          fi
+
+          if [ -n "${{ github.event.inputs.image_tag }}" ]; then
+            args+=("--image-tag=${{ github.event.inputs.image_tag }}")
+          fi
+
+          args+=("--image-digest=${{ github.event.inputs.image_digest }}")
+
+          pnpm env:deploy:acceptance-hb -- --json "${args[@]}"
+
+      - name: Generate deploy feedback artifacts
+        if: always()
+        run: |
+          set -euo pipefail
+          pnpm env:feedback:acceptance-hb
+
+      - name: Upload acceptance deploy artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: acceptance-deploy-${{ github.run_id }}
+          path: artifacts/runtime/deployments
+          if-no-files-found: warn
+          retention-days: 14

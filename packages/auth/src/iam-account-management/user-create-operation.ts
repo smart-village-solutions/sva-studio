@@ -3,10 +3,10 @@ import {
   resolveIdentityProvider,
   trackKeycloakCall,
   withInstanceScopedDb,
-} from './shared';
-import type { CreateUserPayload } from './user-create-persistence';
-import { persistCreatedUser } from './user-create-persistence';
-import { maskEmail } from './user-mapping';
+} from './shared.js';
+import type { CreateUserPayload } from './user-create-persistence.js';
+import { persistCreatedUser } from './user-create-persistence.js';
+import { maskEmail } from './user-mapping.js';
 
 type CreateUserActorInfo = {
   instanceId: string;

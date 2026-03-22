@@ -1,13 +1,13 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { createSdkLogger, getWorkspaceContext, withRequestContext } from '@sva/sdk/server';
 
-import { withAuthenticatedUser } from '../middleware.server';
-import { createPoolResolver, jsonResponse, type QueryClient, withInstanceDb } from '../shared/db-helpers';
-import { isUuid, readNumber, readString } from '../shared/input-readers';
-import { buildLogContext } from '../shared/log-context';
-import { governanceRequestSchema, type GovernanceRequestInput } from '../shared/schemas';
-import { asApiList, createApiError, readPage } from '../iam-account-management/api-helpers';
-import { listGovernanceCases } from './read-models';
+import { withAuthenticatedUser } from '../middleware.server.js';
+import { createPoolResolver, jsonResponse, type QueryClient, withInstanceDb } from '../shared/db-helpers.js';
+import { isUuid, readNumber, readString } from '../shared/input-readers.js';
+import { buildLogContext } from '../shared/log-context.js';
+import { governanceRequestSchema, type GovernanceRequestInput } from '../shared/schemas.js';
+import { asApiList, createApiError, readPage } from '../iam-account-management/api-helpers.js';
+import { listGovernanceCases } from './read-models.js';
 
 const logger = createSdkLogger({ component: 'iam-governance', level: 'info' });
 

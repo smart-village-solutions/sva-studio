@@ -3,4 +3,4 @@ export {
   getMyDataSubjectRightsHandler,
   optionalProcessingExecuteHandler,
   profileCorrectionHandler,
-} from './core';
+} from './core.js';

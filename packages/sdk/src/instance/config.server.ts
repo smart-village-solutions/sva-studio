@@ -8,7 +8,7 @@
  * Fehler beim App-Start.
  */
 
-import { createSdkLogger } from '../logger/index.server';
+import { createSdkLogger } from '../logger/index.server.js';
 
 const INSTANCE_ID_REGEX = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
 const PUNYCODE_PREFIX = 'xn--';

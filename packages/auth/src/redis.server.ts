@@ -4,12 +4,14 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { ConnectionOptions as TlsConnectionOptions } from 'node:tls';
 import { createSdkLogger } from '@sva/sdk/server';
+import { getRedisPassword, getRedisUrl } from './runtime-secrets.server.js';
 
 const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
 
 let redisClient: Redis | null = null;
 let connectionErrorCount = 0;
 const MAX_CONNECTION_ERRORS = 10;
+let lastRedisError: string | null = null;
 
 /**
  * Build Redis client options with optional TLS and ACL support.
@@ -44,16 +46,21 @@ const buildRedisOptions = (): RedisOptions => {
     lazyConnect: true,
   };
 
+  const redisPassword = getRedisPassword();
+
   // Add ACL authentication if credentials provided
   if (process.env.REDIS_USERNAME) {
     options.username = process.env.REDIS_USERNAME;
-    options.password = process.env.REDIS_PASSWORD || '';
+    options.password = redisPassword || '';
     logger.info('Redis ACL enabled', {
       operation: 'redis_init',
       acl_enabled: true,
       username: process.env.REDIS_USERNAME,
-      has_password: !!process.env.REDIS_PASSWORD,
+      has_password: !!redisPassword,
     });
+  } else if (redisPassword) {
+    // Keep password auth explicit to avoid URL parsing differences across runtimes.
+    options.password = redisPassword;
   }
 
   return options;
@@ -103,8 +110,12 @@ const buildTlsOptions = (tlsEnabled: boolean): TlsConnectionOptions | null => {
  * Get or create the Redis client instance (singleton pattern).
  */
 export const getRedisClient = (): Redis => {
+  if (redisClient && redisClient.status === 'end') {
+    redisClient = null;
+  }
+
   if (!redisClient) {
-    const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+    const redisUrl = getRedisUrl();
     const tlsEnabled = process.env.TLS_ENABLED === 'true' || redisUrl.startsWith('rediss://');
     const options = buildRedisOptions();
     const tlsOptions = buildTlsOptions(tlsEnabled);
@@ -118,6 +129,7 @@ export const getRedisClient = (): Redis => {
       connectionErrorCount++;
 
       const errorMessage = err instanceof Error ? err.message : String(err);
+      lastRedisError = errorMessage;
       const isAuthError = errorMessage.includes('WRONGPASS') || errorMessage.includes('NOAUTH');
 
       logger.error('Redis connection error', {
@@ -145,6 +157,7 @@ export const getRedisClient = (): Redis => {
     redisClient.on('connect', () => {
       // Reset error count on successful connection
       connectionErrorCount = 0;
+      lastRedisError = null;
 
       logger.info('Redis connected', {
         operation: 'redis_connect',
@@ -154,6 +167,7 @@ export const getRedisClient = (): Redis => {
 
     // Connect immediately
     redisClient.connect().catch((err) => {
+      lastRedisError = err instanceof Error ? err.message : String(err);
       logger.error('Redis connection failed', {
         operation: 'redis_connect',
         error: err instanceof Error ? err.message : String(err),
@@ -172,6 +186,7 @@ export const closeRedis = async (): Promise<void> => {
   if (redisClient) {
     await redisClient.quit();
     redisClient = null;
+    lastRedisError = null;
     logger.info('Redis connection closed', {
       operation: 'redis_disconnect',
     });
@@ -185,8 +200,10 @@ export const isRedisAvailable = async (): Promise<boolean> => {
   try {
     const client = getRedisClient();
     await client.ping();
+    lastRedisError = null;
     return true;
   } catch (error) {
+    lastRedisError = error instanceof Error ? error.message : String(error);
     logger.warn('Redis unavailable, using in-memory fallback', {
       operation: 'redis_health_check',
       available: false,
@@ -196,3 +213,5 @@ export const isRedisAvailable = async (): Promise<boolean> => {
     return false;
   }
 };
+
+export const getLastRedisError = (): string | null => lastRedisError;

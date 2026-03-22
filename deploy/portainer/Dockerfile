@@ -4,6 +4,7 @@ WORKDIR /workspace
 
 ENV PNPM_HOME=/pnpm
 ENV PATH="${PNPM_HOME}:${PATH}"
+ENV NX_DAEMON=false
 
 RUN npm install -g pnpm@9.12.2
 

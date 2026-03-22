@@ -4,9 +4,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useGroups } from './use-groups';
 
 const listGroupsMock = vi.fn();
+const getGroupMock = vi.fn();
 const createGroupMock = vi.fn();
 const updateGroupMock = vi.fn();
 const deleteGroupMock = vi.fn();
+const assignGroupRoleMock = vi.fn();
+const removeGroupRoleMock = vi.fn();
+const assignGroupMembershipMock = vi.fn();
+const removeGroupMembershipMock = vi.fn();
 const asIamErrorMock = vi.fn();
 const authMockValue = {
   user: {
@@ -34,9 +39,14 @@ vi.mock('../lib/iam-api', () => ({
     }
   },
   listGroups: (...args: unknown[]) => listGroupsMock(...args),
+  getGroup: (...args: unknown[]) => getGroupMock(...args),
   createGroup: (...args: unknown[]) => createGroupMock(...args),
   updateGroup: (...args: unknown[]) => updateGroupMock(...args),
   deleteGroup: (...args: unknown[]) => deleteGroupMock(...args),
+  assignGroupRole: (...args: unknown[]) => assignGroupRoleMock(...args),
+  removeGroupRole: (...args: unknown[]) => removeGroupRoleMock(...args),
+  assignGroupMembership: (...args: unknown[]) => assignGroupMembershipMock(...args),
+  removeGroupMembership: (...args: unknown[]) => removeGroupMembershipMock(...args),
   asIamError: (...args: unknown[]) => asIamErrorMock(...args),
 }));
 
@@ -47,14 +57,19 @@ vi.mock('../providers/auth-provider', () => ({
 describe('useGroups', () => {
   beforeEach(() => {
     listGroupsMock.mockReset();
+    getGroupMock.mockReset();
     createGroupMock.mockReset();
     updateGroupMock.mockReset();
     deleteGroupMock.mockReset();
+    assignGroupRoleMock.mockReset();
+    removeGroupRoleMock.mockReset();
+    assignGroupMembershipMock.mockReset();
+    removeGroupMembershipMock.mockReset();
     asIamErrorMock.mockReset();
     authMockValue.invalidatePermissions.mockReset();
   });
 
-  it('loads and mutates groups', async () => {
+  it('loads groups, group details and all mutations', async () => {
     asIamErrorMock.mockImplementation((cause: unknown) => cause);
     listGroupsMock.mockResolvedValue({
       data: [
@@ -66,7 +81,7 @@ describe('useGroups', () => {
           groupType: 'role_bundle',
           isActive: true,
           memberCount: 2,
-          roles: [{ roleId: 'role-1', roleKey: 'system_admin', roleName: 'System Admin' }],
+          roleCount: 1,
         },
       ],
       pagination: {
@@ -75,9 +90,27 @@ describe('useGroups', () => {
         total: 1,
       },
     });
+    getGroupMock.mockResolvedValue({
+      data: {
+        id: 'group-1',
+        groupKey: 'admins',
+        displayName: 'Admins',
+        description: 'Administrative Gruppe',
+        groupType: 'role_bundle',
+        isActive: true,
+        memberCount: 2,
+        roleCount: 1,
+        assignedRoleIds: ['role-1'],
+        memberships: [],
+      },
+    });
     createGroupMock.mockResolvedValue({ data: { id: 'group-2' } });
     updateGroupMock.mockResolvedValue({ data: { id: 'group-1' } });
     deleteGroupMock.mockResolvedValue({ data: { id: 'group-1' } });
+    assignGroupRoleMock.mockResolvedValue({ data: { id: 'group-1' } });
+    removeGroupRoleMock.mockResolvedValue({ data: { id: 'group-1' } });
+    assignGroupMembershipMock.mockResolvedValue({ data: { id: 'group-1' } });
+    removeGroupMembershipMock.mockResolvedValue({ data: { id: 'group-1' } });
 
     const { result } = renderHook(() => useGroups());
 
@@ -87,15 +120,28 @@ describe('useGroups', () => {
     });
 
     await act(async () => {
+      await expect(result.current.loadGroupDetail('group-1')).resolves.toMatchObject({
+        id: 'group-1',
+        assignedRoleIds: ['role-1'],
+      });
       await result.current.createGroup({ groupKey: 'team_editors', displayName: 'Team Editors' });
       await result.current.updateGroup('group-1', { displayName: 'Editors' });
+      await result.current.assignRole('group-1', 'role-2');
+      await result.current.removeRole('group-1', 'role-1');
+      await result.current.assignMembership('group-1', { keycloakSubject: 'user-123' });
+      await result.current.removeMembership('group-1', 'user-123');
       await result.current.deleteGroup('group-1');
     });
 
+    expect(getGroupMock).toHaveBeenCalledWith('group-1');
     expect(createGroupMock).toHaveBeenCalledTimes(1);
     expect(updateGroupMock).toHaveBeenCalledTimes(1);
+    expect(assignGroupRoleMock).toHaveBeenCalledWith('group-1', { roleId: 'role-2' });
+    expect(removeGroupRoleMock).toHaveBeenCalledWith('group-1', 'role-1');
+    expect(assignGroupMembershipMock).toHaveBeenCalledWith('group-1', { keycloakSubject: 'user-123' });
+    expect(removeGroupMembershipMock).toHaveBeenCalledWith('group-1', 'user-123');
     expect(deleteGroupMock).toHaveBeenCalledTimes(1);
-    expect(listGroupsMock).toHaveBeenCalledTimes(4);
+    expect(listGroupsMock).toHaveBeenCalledTimes(8);
   });
 
   it('invalidates permissions when initial fetch returns 403', async () => {
@@ -114,7 +160,34 @@ describe('useGroups', () => {
     expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
   });
 
-  it('returns false and stores error when mutation fails without 403', async () => {
+  it('stores page error and invalidates permissions when detail fetch returns 403', async () => {
+    const forbiddenError = { status: 403, code: 'forbidden', message: 'Forbidden' };
+    asIamErrorMock.mockReturnValue(forbiddenError);
+    listGroupsMock.mockResolvedValueOnce({
+      data: [],
+      pagination: {
+        page: 1,
+        pageSize: 1,
+        total: 0,
+      },
+    });
+    getGroupMock.mockRejectedValueOnce(new Error('forbidden-detail'));
+
+    const { result } = renderHook(() => useGroups());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    await act(async () => {
+      await expect(result.current.loadGroupDetail('group-1')).resolves.toBeNull();
+    });
+
+    expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
+    expect(result.current.error).toBe(forbiddenError);
+  });
+
+  it('returns false and stores mutation error when create fails without 403', async () => {
     const conflictError = { status: 409, code: 'conflict', message: 'Conflict' };
     asIamErrorMock.mockReturnValue(conflictError);
     listGroupsMock.mockResolvedValueOnce({
@@ -127,7 +200,7 @@ describe('useGroups', () => {
           groupType: 'role_bundle',
           isActive: true,
           memberCount: 0,
-          roles: [],
+          roleCount: 0,
         },
       ],
       pagination: {
@@ -155,7 +228,7 @@ describe('useGroups', () => {
     expect(authMockValue.invalidatePermissions).not.toHaveBeenCalled();
   });
 
-  it('invalidates permissions when mutation fails with 403', async () => {
+  it('invalidates permissions when membership removal fails with 403', async () => {
     const forbiddenError = { status: 403, code: 'forbidden', message: 'Forbidden' };
     asIamErrorMock.mockReturnValue(forbiddenError);
     listGroupsMock.mockResolvedValueOnce({
@@ -166,7 +239,7 @@ describe('useGroups', () => {
         total: 0,
       },
     });
-    deleteGroupMock.mockRejectedValueOnce(new Error('forbidden-delete'));
+    removeGroupMembershipMock.mockRejectedValueOnce(new Error('forbidden-delete-membership'));
 
     const { result } = renderHook(() => useGroups());
 
@@ -175,8 +248,8 @@ describe('useGroups', () => {
     });
 
     await act(async () => {
-      const deleted = await result.current.deleteGroup('group-1');
-      expect(deleted).toBe(false);
+      const removed = await result.current.removeMembership('group-1', 'user-123');
+      expect(removed).toBe(false);
     });
 
     expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);

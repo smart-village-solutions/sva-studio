@@ -107,7 +107,7 @@ const getLinkClasses = (isActive: boolean, isCollapsed: boolean, isChild = false
       : `gap-3 ${isCollapsed ? 'justify-center px-0 py-3' : 'px-3 py-2.5 text-sm font-medium'}`,
     isActive
       ? 'border-sidebar-border bg-sidebar-accent text-sidebar-accent-foreground shadow-shell'
-      : 'border-transparent bg-sidebar hover:border-sidebar-border hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+      : 'border-transparent bg-sidebar hover:border-sidebar-primary hover:bg-sidebar-primary hover:text-sidebar-primary-foreground',
   ].join(' ');
 
 const SidebarPanel = ({
@@ -301,7 +301,7 @@ const SidebarPanel = ({
                         ) : (
                           <Collapsible open={isExpanded} onOpenChange={(open) => setGroupOpenState((current) => ({ ...current, [item.id]: open }))}>
                             <CollapsibleTrigger
-                              className={getLinkClasses(isActive || isExpanded, false)}
+                              className={`w-full ${getLinkClasses(isActive || isExpanded, false)}`}
                               aria-controls={`sidebar-group-${item.id}`}
                             >
                               <IconComponent className="h-5 w-5 shrink-0" />

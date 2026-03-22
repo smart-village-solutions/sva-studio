@@ -2,23 +2,23 @@ import { createHash } from 'node:crypto';
 import type { IamUserImportSyncReport } from '@sva/core';
 import { getWorkspaceContext } from '@sva/sdk/server';
 
-import type { IdentityListedUser } from '../identity-provider-port';
+import type { IdentityListedUser } from '../identity-provider-port.js';
 import {
   KeycloakAdminRequestError,
   KeycloakAdminUnavailableError,
-} from '../keycloak-admin-client';
-import type { AuthenticatedRequestContext } from '../middleware.server';
-import type { QueryClient } from '../shared/db-helpers';
-import { jsonResponse } from '../shared/db-helpers';
-import { buildLogContext } from '../shared/log-context';
+} from '../keycloak-admin-client.js';
+import type { AuthenticatedRequestContext } from '../middleware.server.js';
+import type { QueryClient } from '../shared/db-helpers.js';
+import { jsonResponse } from '../shared/db-helpers.js';
+import { buildLogContext } from '../shared/log-context.js';
 
-import { ADMIN_ROLES } from './constants';
-import { asApiItem, createApiError } from './api-helpers';
-import { validateCsrf } from './csrf';
-import { protectField } from './encryption';
-import { ensureFeature, getFeatureFlags } from './feature-flags';
-import { consumeRateLimit } from './rate-limit';
-import type { ActorInfo } from './types';
+import { ADMIN_ROLES } from './constants.js';
+import { asApiItem, createApiError } from './api-helpers.js';
+import { validateCsrf } from './csrf.js';
+import { protectField } from './encryption.js';
+import { ensureFeature, getFeatureFlags } from './feature-flags.js';
+import { consumeRateLimit } from './rate-limit.js';
+import type { ActorInfo } from './types.js';
 import {
   emitActivityLog,
   iamUserOperationsCounter,
@@ -28,7 +28,7 @@ import {
   resolveIdentityProvider,
   trackKeycloakCall,
   withInstanceScopedDb,
-} from './shared';
+} from './shared.js';
 
 const KEYCLOAK_PAGE_SIZE = 100;
 const SKIPPED_USER_DEBUG_LOG_CAP = 20;

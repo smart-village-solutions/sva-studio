@@ -1,1 +1,1 @@
-export { getIamFeatureFlags, healthLiveHandler, healthReadyHandler, isTrustedRequestOrigin, reconcileHandler } from './core';
+export { getIamFeatureFlags, healthLiveHandler, healthReadyHandler, isTrustedRequestOrigin, reconcileHandler } from './core.js';

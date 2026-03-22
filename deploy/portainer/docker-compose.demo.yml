@@ -19,7 +19,7 @@
 
 services:
   app:
-    image: ghcr.io/smart-village-solutions/sva-studio:${SVA_IMAGE_TAG}
+    image: ${SVA_REGISTRY}/sva-studio:${SVA_IMAGE_TAG}
     environment:
       NODE_ENV: production
       HOST: 0.0.0.0
@@ -32,8 +32,8 @@ services:
       APP_DB_PASSWORD: ${POSTGRES_PASSWORD}
       REDIS_PASSWORD: ${REDIS_PASSWORD}
       SVA_PUBLIC_BASE_URL: https://hb-meinquartier.studio.smart-village.app
-      SVA_AUTH_ISSUER: https://keycloak.smart-village.app/realms/svs-intern-studio-staging
-      SVA_AUTH_CLIENT_ID: studio-bff-staging
+      SVA_AUTH_ISSUER: https://keycloak.smart-village.app/realms/saas-hb-meinquartier
+      SVA_AUTH_CLIENT_ID: sva-studio
       SVA_AUTH_CLIENT_SECRET: ${SVA_AUTH_CLIENT_SECRET}
       SVA_AUTH_STATE_SECRET: ${SVA_AUTH_STATE_SECRET}
       SVA_AUTH_REDIRECT_URI: https://hb-meinquartier.studio.smart-village.app/auth/callback
@@ -44,14 +44,14 @@ services:
       ENCRYPTION_KEY: ${ENCRYPTION_KEY}
       SVA_PARENT_DOMAIN: studio.smart-village.app
       SVA_ALLOWED_INSTANCE_IDS: hb-meinquartier
-      VITE_IAM_UI_ENABLED: "false"
-      VITE_IAM_ADMIN_ENABLED: "false"
-      VITE_IAM_BULK_ENABLED: "false"
-      IAM_UI_ENABLED: "false"
-      IAM_ADMIN_ENABLED: "false"
-      IAM_BULK_ENABLED: "false"
+      VITE_IAM_UI_ENABLED: "true"
+      VITE_IAM_ADMIN_ENABLED: "true"
+      VITE_IAM_BULK_ENABLED: "true"
+      IAM_UI_ENABLED: "true"
+      IAM_ADMIN_ENABLED: "true"
+      IAM_BULK_ENABLED: "true"
       KEYCLOAK_ADMIN_BASE_URL: https://keycloak.smart-village.app
-      KEYCLOAK_ADMIN_REALM: svs-intern-studio-staging
+      KEYCLOAK_ADMIN_REALM: saas-hb-meinquartier
       KEYCLOAK_ADMIN_CLIENT_ID: sva-studio-iam-service
       KEYCLOAK_ADMIN_CLIENT_SECRET: ${KEYCLOAK_ADMIN_CLIENT_SECRET}
       IAM_ROLE_RECONCILE_INTERVAL_MS: "300000"
@@ -83,7 +83,7 @@ services:
         - traefik.enable=true
         - traefik.docker.network=public
         # Demo-Profil bleibt bewusst bei Traefik-v1-kompatiblen Labels.
-        - traefik.frontend.rule=Host:hb-meinquartier.studio.smart-village.app
+        - traefik.frontend.rule=Host:studio.smart-village.app,hb-meinquartier.studio.smart-village.app
         - traefik.port=3000
     healthcheck:
       test:
@@ -174,7 +174,7 @@ services:
       retries: 10
 
   monitoring-config-init:
-    image: ghcr.io/smart-village-solutions/sva-studio-monitoring-config-init:${SVA_MONITORING_CONFIG_INIT_IMAGE_TAG}
+    image: ${SVA_MONITORING_REGISTRY}/sva-studio-monitoring-config-init:${SVA_MONITORING_CONFIG_INIT_IMAGE_TAG}
     labels:
       com.sva-studio.monitoring: "enabled"
       com.sva-studio.component: "monitoring-config-init"

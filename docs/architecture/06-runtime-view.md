@@ -79,14 +79,14 @@ Fehlerpfad:
 
 1. Client ruft `POST /iam/authorize` mit `instanceId`, `action`, `resource` und optionalem ABAC-Kontext auf.
 2. Server erzwingt Instanzgrenze und wertet Hard-Deny-Regeln zuerst aus.
-3. Permission-Snapshot wird über User-/Instanz-/Org-Kontext im Cache gesucht.
+3. Permission-Snapshot wird zuerst im lokalen L1-Cache und danach in Redis über User-/Instanz-/Org-/Geo-Kontext gesucht.
 4. Bei Cache-Hit wertet die Engine die Entscheidung in fester Reihenfolge aus: RBAC-Basis, danach ABAC-Regeln und Hierarchie-Restriktionen.
-5. Bei Miss/Stale erfolgt Recompute aus Postgres als fachlicher Quelle und anschließende Snapshot-Aktualisierung.
-6. Bei Recompute-Fehler im Stale-Pfad greift Fail-Closed (`cache_stale_guard`).
+5. Bei Miss, Stale oder Integritätsfehler erfolgt Recompute aus Postgres als fachlicher Quelle; ein erfolgreicher Recompute schreibt zuerst Redis und danach den L1-Cache.
+6. Bei Redis- oder Recompute-Fehler im sicherheitskritischen Pfad greift Fail-Closed mit HTTP `503` und Fehlercode `database_unavailable`.
 
 Fehlerpfad:
 
-- Eventverlust bei Invalidation: TTL/Recompute begrenzen Stale-Dauer.
+- Eventverlust bei Invalidation: TTL begrenzt die Stale-Dauer; ein stale Snapshot darf bei technischem Fehler nicht fachlich weiterverwendet werden.
 - DB-Ausfall ohne nutzbaren Snapshot: `503 database_unavailable`.
 
 ### Szenario 6: IAM Governance-Workflow mit Approval, Delegation und Impersonation
@@ -107,15 +107,17 @@ Fehlerpfad:
 ### Szenario 7: Cache-Invalidierung nach Rollen-/Policy-Änderung
 
 1. Änderung an Rollen, Permission-Zuordnung oder Policy wird in Postgres persistiert.
-2. Writer emittiert ein Invalidation-Ereignis über `NOTIFY` mit `instanceId` und betroffenem Scope.
-3. Cache-Worker in `packages/auth` empfängt das Ereignis und invalidiert passende Snapshots.
-4. Nachfolgende `POST /iam/authorize`-Aufrufe erzwingen Recompute für invalidierte Einträge.
-5. Invalidation und Recompute werden mit `request_id`/`trace_id` strukturiert geloggt.
+2. Writer emittiert ein Invalidation-Ereignis über `NOTIFY` mit `eventId`, `instanceId` und betroffenem Scope.
+3. Der Autorisierungspfad prüft zuerst den lokalen L1-Snapshot und danach Redis als Shared-Read-Path.
+4. Cache-Worker in `packages/auth` empfängt das Event, dedupliziert per `eventId` und invalidiert passende Redis-Snapshots gezielt per `keycloakSubject` oder instanzweit.
+5. Nachfolgende `POST /iam/authorize`-Aufrufe erzwingen Recompute für invalidierte Einträge und schreiben zuerst Redis, danach den L1-Cache.
+6. Invalidation, Recompute, Cold-Start und Degraded-State werden mit `request_id`/`trace_id` strukturiert geloggt.
 
 Fehlerpfad:
 
-- Event kommt verspätet oder gar nicht an: TTL + Recompute-Fallback begrenzen Stale-Dauer.
-- Invalidation schlägt fehl: `cache_invalidate_failed` wird geloggt, Entscheidungspfad bleibt fail-closed.
+- Event kommt verspätet oder gar nicht an: TTL begrenzt die Stale-Dauer, ein stale Snapshot darf nach Recompute-Fehler aber nicht fachlich weiterverwendet werden.
+- Redis-Lookup, Snapshot-Write oder Recompute schlagen fehl: der Entscheidungspfad bleibt fail-closed mit HTTP 503.
+- Invalidation schlägt fehl: `cache_invalidate_failed` wird geloggt; der Readiness-Status kann auf `degraded` oder `failed` kippen.
 
 Referenzen:
 
@@ -216,6 +218,21 @@ Fehlerpfad:
 3. Beim Wechsel sendet die UI `PUT /api/v1/iam/me/context` mit der gewählten `organizationId`.
 4. Der Server validiert CSRF-Contract, Session, Instanzscope, Membership und Aktivstatus der Zielorganisation.
 5. Bei Erfolg wird der aktive Kontext serverseitig in der Session aktualisiert und ein Audit-/Betriebsereignis für `organization_context_switched` erzeugt.
+
+### Ergänzung 2026-03: Produktionsnahe Release-Validierung
+
+1. Der Operator startet `pnpm env:deploy:acceptance-hb` mit `--image-digest`.
+2. `environment-precheck` validiert Pflichtkonfiguration, Schema-Guard und Soll-/Live-Spec-Drift.
+3. `image-smoke` startet exakt das freizugebende Image isoliert und prüft `/health/live` und `/health/ready`.
+4. Nach optionaler Migration wird der Stack aktualisiert.
+5. `internal-verify` kombiniert interne HTTP-Probes gegen den App-Service mit `doctor`-Diagnostik.
+6. `external-smoke` prüft öffentliche URL, Health-Pfade, Auth-Entry und IAM-Kontext.
+7. Erst danach wird eine technische `release-decision` erzeugt und als Artefakt persistiert.
+
+Fehlerpfad:
+
+- Fehlschlag vor dem Rollout bleibt auf `config`, `image` oder `migration` klassifiziert.
+- Fehlschlag nach erfolgreichem Stack-Update, aber vor öffentlicher Verifikation, bleibt als `health` oder `ingress` sichtbar und wird nicht als erfolgreicher Release bewertet.
 6. Nachgelagerte UI- und Backend-Pfade lesen den aktiven Organisationskontext aus dem kanonischen Sessionzustand.
 
 ### Szenario 14: Admin verwaltet Gruppen und weist Rollenbündel zu

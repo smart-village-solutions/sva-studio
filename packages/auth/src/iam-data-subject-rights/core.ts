@@ -3,21 +3,21 @@ import { createSdkLogger, getWorkspaceContext, withRequestContext } from '@sva/s
 import type { IamDsrCanonicalStatus, IamDsrCaseListItem } from '@sva/core';
 import { decryptFieldValue, encryptFieldValue, parseFieldEncryptionConfigFromEnv } from '@sva/core/security';
 
-import { withAuthenticatedUser } from '../middleware.server';
+import { withAuthenticatedUser } from '../middleware.server.js';
 import {
   createPoolResolver,
   jsonResponse,
   textResponse,
   type QueryClient,
   withInstanceDb as withScopedDbTransaction,
-} from '../shared/db-helpers';
-import { isUuid, readBoolean, readNumber, readObject, readString } from '../shared/input-readers';
-import { buildLogContext } from '../shared/log-context';
-import { dataSubjectRightsRequestSchema } from '../shared/schemas';
-import { asApiItem, asApiList, createApiError, readPage, requireIdempotencyKey, toPayloadHash } from '../iam-account-management/api-helpers';
-import { completeIdempotency, reserveIdempotency } from '../iam-account-management/shared';
-import { validateCsrf } from '../iam-account-management/csrf';
-import { listAdminDsrCases, loadDsrSelfServiceOverview } from './read-models';
+} from '../shared/db-helpers.js';
+import { isUuid, readBoolean, readNumber, readObject, readString } from '../shared/input-readers.js';
+import { buildLogContext } from '../shared/log-context.js';
+import { dataSubjectRightsRequestSchema } from '../shared/schemas.js';
+import { asApiItem, asApiList, createApiError, readPage, requireIdempotencyKey, toPayloadHash } from '../iam-account-management/api-helpers.js';
+import { completeIdempotency, reserveIdempotency } from '../iam-account-management/shared.js';
+import { validateCsrf } from '../iam-account-management/csrf.js';
+import { listAdminDsrCases, loadDsrSelfServiceOverview } from './read-models.js';
 
 const logger = createSdkLogger({ component: 'iam-dsr', level: 'info' });
 

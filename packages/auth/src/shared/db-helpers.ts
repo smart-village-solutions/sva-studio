@@ -1,4 +1,5 @@
 import { Pool, type PoolClient } from 'pg';
+import { bootstrapAcceptanceAppDbUserIfNeeded } from '../postgres-app-user-bootstrap.server.js';
 
 export type QueryResult<TRow> = {
   rowCount: number;
@@ -61,7 +62,17 @@ export const withInstanceDb = async <T>(
     throw new Error('IAM database not configured');
   }
 
-  const client = (await pool.connect()) as PoolClient & QueryClient;
+  let client: (PoolClient & QueryClient) | null = null;
+  try {
+    client = (await pool.connect()) as PoolClient & QueryClient;
+  } catch (error) {
+    const bootstrapped = await bootstrapAcceptanceAppDbUserIfNeeded(error);
+    if (!bootstrapped) {
+      throw error;
+    }
+    client = (await pool.connect()) as PoolClient & QueryClient;
+  }
+
   try {
     await client.query('BEGIN');
     await client.query('SELECT set_config($1, $2, true);', ['app.instance_id', instanceId]);

@@ -1,6 +1,6 @@
-import type { FeatureFlags } from './types';
-import { createApiError } from './api-helpers';
-import { logger } from './shared';
+import type { FeatureFlags } from './types.js';
+import { createApiError } from './api-helpers.js';
+import { logger } from './shared.js';
 
 export const parseBooleanFlag = (value: string | undefined, defaultValue: boolean): boolean => {
   if (!value) {

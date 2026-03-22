@@ -2,11 +2,11 @@ import type { AuthorizeResponse } from '@sva/core';
 import { evaluateAuthorizeDecision } from '@sva/core';
 import { getWorkspaceContext, withRequestContext } from '@sva/sdk/server';
 
-import { resolveImpersonationSubject } from '../iam-governance.server';
-import { withAuthenticatedUser } from '../middleware.server';
-import { jsonResponse } from '../shared/db-helpers';
-import { readString } from '../shared/input-readers';
-import { resolveEffectivePermissions } from './permission-store';
+import { resolveImpersonationSubject } from '../iam-governance.server.js';
+import { withAuthenticatedUser } from '../middleware.server.js';
+import { jsonResponse } from '../shared/db-helpers.js';
+import { readString } from '../shared/input-readers.js';
+import { resolveEffectivePermissions } from './permission-store.js';
 import {
   buildRequestContext,
   type DeniedAuthorizeResponseInput,
@@ -14,7 +14,7 @@ import {
   iamAuthorizeLatencyHistogram,
   loadAuthorizeRequest,
   logger,
-} from './shared';
+} from './shared.js';
 
 const buildDeniedResponse = (input: DeniedAuthorizeResponseInput): AuthorizeResponse => ({
   allowed: false,
@@ -105,21 +105,6 @@ export const authorizeHandler = async (request: Request): Promise<Response> => {
           ...buildRequestContext(payload.instanceId),
         });
 
-        if (resolved.error === 'cache_stale_guard') {
-          const denied = buildDeniedResponse({
-            reason: 'cache_stale_guard',
-            instanceId: payload.instanceId,
-            action: payload.action,
-            resourceType: payload.resource.type,
-            resourceId: payload.resource.id,
-            requestId: payload.context?.requestId,
-            traceId: payload.context?.traceId,
-          });
-
-          recordLatency(false, denied.reason);
-          return jsonResponse(200, denied);
-        }
-
         recordLatency(false, 'database_unavailable');
         return errorResponse(503, 'database_unavailable');
       }
@@ -140,6 +125,8 @@ export const authorizeHandler = async (request: Request): Promise<Response> => {
         ...decision,
         requestId: decision.requestId ?? getWorkspaceContext().requestId,
         traceId: decision.traceId ?? getWorkspaceContext().traceId,
+        snapshotVersion: resolved.snapshotVersion ?? null,
+        cacheStatus: resolved.cacheStatus,
       });
     });
   });

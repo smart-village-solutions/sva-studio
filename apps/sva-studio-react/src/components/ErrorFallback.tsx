@@ -14,6 +14,11 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
  */
 export default function ErrorFallback({ error, reset }: Readonly<ErrorComponentProps>) {
   const router = useRouter();
+  const isLocalDebugHost =
+    typeof window !== 'undefined' &&
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+  const debugErrorMessage = error instanceof Error ? error.message : String(error ?? '');
+  const debugErrorStack = error instanceof Error ? error.stack ?? null : null;
 
   const handleRetry = () => {
     reset();
@@ -22,7 +27,7 @@ export default function ErrorFallback({ error, reset }: Readonly<ErrorComponentP
 
   // Fehler nur in Development loggen; in Produktion wird der Fehler
   // über das zentrale Error-Tracking (OTel/SDK) erfasst.
-  if (import.meta.env.DEV && error) {
+  if ((import.meta.env.DEV || isLocalDebugHost) && error) {
     console.error('[ErrorFallback]', error);
   }
 
@@ -45,6 +50,17 @@ export default function ErrorFallback({ error, reset }: Readonly<ErrorComponentP
               <Link to="/">{t('shared.errorFallback.home')}</Link>
             </Button>
           </div>
+          {isLocalDebugHost && debugErrorMessage ? (
+            <div className="rounded-md border border-border bg-muted/40 p-4 text-left">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Lokale Diagnose</p>
+              <pre className="mt-2 whitespace-pre-wrap break-words text-xs text-foreground">{debugErrorMessage}</pre>
+              {debugErrorStack ? (
+                <pre className="mt-3 max-h-64 overflow-auto whitespace-pre-wrap break-words text-[11px] text-muted-foreground">
+                  {debugErrorStack}
+                </pre>
+              ) : null}
+            </div>
+          ) : null}
         </CardContent>
       </Card>
     </div>

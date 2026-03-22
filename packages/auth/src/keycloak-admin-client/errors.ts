@@ -1,1 +1,1 @@
-export { KeycloakAdminRequestError, KeycloakAdminUnavailableError } from './core';
+export { KeycloakAdminRequestError, KeycloakAdminUnavailableError } from './core.js';

@@ -1,6 +1,6 @@
-import { getAuthConfig } from '../config';
-import { client, getOidcConfig } from '../oidc.server';
-import { deleteSession, getSession } from '../redis-session.server';
+import { getAuthConfig } from '../config.js';
+import { client, getOidcConfig } from '../oidc.server.js';
+import { deleteSession, getSession } from '../redis-session.server.js';
 
 export const logoutSession = async (sessionId: string): Promise<string> => {
   const authConfig = getAuthConfig();

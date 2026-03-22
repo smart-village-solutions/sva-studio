@@ -14,22 +14,47 @@ vi.mock('../../../hooks/use-roles', () => ({
   useRoles: () => useRolesMock(),
 }));
 
+const baseRolesApi = {
+  roles: [
+    { id: 'role-1', roleName: 'Editor' },
+    { id: 'role-2', roleName: 'System Admin' },
+  ],
+  isLoading: false,
+  error: null,
+  mutationError: null,
+  reconcileReport: null,
+  refetch: vi.fn(),
+  clearMutationError: vi.fn(),
+  createRole: vi.fn(),
+  updateRole: vi.fn(),
+  deleteRole: vi.fn(),
+  retryRoleSync: vi.fn(),
+  reconcile: vi.fn(),
+};
+
 describe('GroupsPage', () => {
   beforeEach(() => {
     useGroupsMock.mockReset();
     useRolesMock.mockReset();
+    useRolesMock.mockReturnValue(baseRolesApi);
+  });
 
-    useRolesMock.mockReturnValue({
-      roles: [
-        { id: 'role-1', roleName: 'Editor' },
-        { id: 'role-2', roleName: 'System Admin' },
-      ],
-      isLoading: false,
-      error: null,
-      refetch: vi.fn(),
-      createRole: vi.fn(),
-      updateRole: vi.fn(),
-      deleteRole: vi.fn(),
+  afterEach(() => {
+    cleanup();
+  });
+
+  it('renders groups and resolves bundled role labels from detail data', async () => {
+    const loadGroupDetail = vi.fn().mockResolvedValue({
+      id: 'group-1',
+      groupKey: 'admins',
+      displayName: 'Admins',
+      description: 'Administrative Gruppe',
+      groupType: 'role_bundle',
+      isActive: true,
+      memberCount: 2,
+      roleCount: 1,
+      assignedRoleIds: ['role-2'],
+      memberships: [],
     });
 
     useGroupsMock.mockReturnValue({
@@ -42,7 +67,7 @@ describe('GroupsPage', () => {
           groupType: 'role_bundle',
           isActive: true,
           memberCount: 2,
-          roles: [{ roleId: 'role-2', roleKey: 'system_admin', roleName: 'System Admin' }],
+          roleCount: 1,
         },
       ],
       isLoading: false,
@@ -53,58 +78,99 @@ describe('GroupsPage', () => {
       createGroup: vi.fn().mockResolvedValue(true),
       updateGroup: vi.fn().mockResolvedValue(true),
       deleteGroup: vi.fn().mockResolvedValue(true),
+      loadGroupDetail,
+      assignRole: vi.fn().mockResolvedValue(true),
+      removeRole: vi.fn().mockResolvedValue(true),
+      assignMembership: vi.fn().mockResolvedValue(true),
+      removeMembership: vi.fn().mockResolvedValue(true),
     });
-  });
 
-  afterEach(() => {
-    cleanup();
-  });
-
-  it('renders existing groups and bundled roles', () => {
     render(<GroupsPage />);
 
     expect(screen.getByText('Admins')).toBeTruthy();
     expect(screen.getByText('Administrative Gruppe')).toBeTruthy();
-    expect(screen.getByText('System Admin')).toBeTruthy();
+
+    await waitFor(() => {
+      expect(loadGroupDetail).toHaveBeenCalledWith('group-1');
+      expect(screen.getByText('System Admin')).toBeTruthy();
+    });
   });
 
-  it('creates a new group with selected bundled roles', async () => {
+  it('creates a new group with normalized payload', async () => {
     const createGroup = vi.fn().mockResolvedValue(true);
-    const clearMutationError = vi.fn();
-    const refetch = vi.fn();
     useGroupsMock.mockReturnValue({
       groups: [],
       isLoading: false,
       error: null,
-      createGroup,
       mutationError: null,
+      refetch: vi.fn(),
+      clearMutationError: vi.fn(),
+      createGroup,
       updateGroup: vi.fn().mockResolvedValue(true),
       deleteGroup: vi.fn().mockResolvedValue(true),
-      clearMutationError,
-      refetch,
+      loadGroupDetail: vi.fn().mockResolvedValue(null),
+      assignRole: vi.fn().mockResolvedValue(true),
+      removeRole: vi.fn().mockResolvedValue(true),
+      assignMembership: vi.fn().mockResolvedValue(true),
+      removeMembership: vi.fn().mockResolvedValue(true),
     });
 
     render(<GroupsPage />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Gruppe anlegen' }));
-    fireEvent.change(screen.getByLabelText('Technischer Gruppenschlüssel'), { target: { value: 'Redaktion' } });
-    fireEvent.change(screen.getByLabelText('Anzeigename'), { target: { value: 'Redaktion' } });
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Editor' }));
-    fireEvent.submit(screen.getByLabelText('Technischer Gruppenschlüssel').closest('form') as HTMLFormElement);
+    const dialog = screen.getByRole('dialog', { name: 'Neue Gruppe erstellen' });
+    fireEvent.change(within(dialog).getByLabelText('Technischer Gruppenschlüssel'), {
+      target: { value: ' Redaktion Team ' },
+    });
+    fireEvent.change(within(dialog).getByLabelText('Anzeigename'), {
+      target: { value: ' Redaktion ' },
+    });
+    fireEvent.change(within(dialog).getByLabelText('Beschreibung'), {
+      target: { value: ' Bündelt Redaktionsrechte ' },
+    });
+    fireEvent.submit(within(dialog).getByRole('button', { name: 'Gruppe anlegen' }).closest('form')!);
 
     await waitFor(() => {
       expect(createGroup).toHaveBeenCalledWith({
-        groupKey: 'redaktion',
+        groupKey: 'redaktion_team',
         displayName: 'Redaktion',
-        description: undefined,
-        roleIds: ['role-1'],
+        description: 'Bündelt Redaktionsrechte',
       });
     });
   });
 
-  it('filters groups, opens edit dialog and updates group assignments', async () => {
+  it('filters groups, edits role assignments and saves the active flag', async () => {
     const clearMutationError = vi.fn();
     const updateGroup = vi.fn().mockResolvedValue(true);
+    const assignRole = vi.fn().mockResolvedValue(true);
+    const detailMap = {
+      'group-1': {
+        id: 'group-1',
+        groupKey: 'admins',
+        displayName: 'Admins',
+        description: 'Administrative Gruppe',
+        groupType: 'role_bundle',
+        isActive: true,
+        memberCount: 2,
+        roleCount: 1,
+        assignedRoleIds: ['role-2'],
+        memberships: [],
+      },
+      'group-2': {
+        id: 'group-2',
+        groupKey: 'editors',
+        displayName: 'Editors',
+        description: 'Redaktion',
+        groupType: 'role_bundle',
+        isActive: false,
+        memberCount: 5,
+        roleCount: 1,
+        assignedRoleIds: ['role-1'],
+        memberships: [],
+      },
+    };
+    const loadGroupDetail = vi.fn(async (groupId: string) => detailMap[groupId as keyof typeof detailMap] ?? null);
+
     useGroupsMock.mockReturnValue({
       groups: [
         {
@@ -115,7 +181,7 @@ describe('GroupsPage', () => {
           groupType: 'role_bundle',
           isActive: true,
           memberCount: 2,
-          roles: [{ roleId: 'role-2', roleKey: 'system_admin', roleName: 'System Admin' }],
+          roleCount: 1,
         },
         {
           id: 'group-2',
@@ -125,20 +191,30 @@ describe('GroupsPage', () => {
           groupType: 'role_bundle',
           isActive: false,
           memberCount: 5,
-          roles: [{ roleId: 'role-1', roleKey: 'editor', roleName: 'Editor' }],
+          roleCount: 1,
         },
       ],
       isLoading: false,
       error: null,
-      createGroup: vi.fn().mockResolvedValue(true),
       mutationError: null,
+      refetch: vi.fn(),
+      clearMutationError,
+      createGroup: vi.fn().mockResolvedValue(true),
       updateGroup,
       deleteGroup: vi.fn().mockResolvedValue(true),
-      clearMutationError,
-      refetch: vi.fn(),
+      loadGroupDetail,
+      assignRole,
+      removeRole: vi.fn().mockResolvedValue(true),
+      assignMembership: vi.fn().mockResolvedValue(true),
+      removeMembership: vi.fn().mockResolvedValue(true),
     });
 
     render(<GroupsPage />);
+
+    await waitFor(() => {
+      expect(loadGroupDetail).toHaveBeenCalledWith('group-1');
+      expect(loadGroupDetail).toHaveBeenCalledWith('group-2');
+    });
 
     fireEvent.change(screen.getByLabelText('Suche'), { target: { value: 'Editors' } });
 
@@ -147,23 +223,121 @@ describe('GroupsPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Gruppe bearbeiten' }));
 
+    const dialog = await screen.findByRole('dialog', { name: 'Gruppe bearbeiten' });
     expect(clearMutationError).toHaveBeenCalledTimes(1);
-    fireEvent.change(screen.getByLabelText('Anzeigename'), { target: { value: 'Editors Updated' } });
-    fireEvent.click(screen.getByRole('checkbox', { name: 'System Admin' }));
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Aktiv' }));
-    fireEvent.submit(screen.getByLabelText('Anzeigename').closest('form') as HTMLFormElement);
+    fireEvent.change(within(dialog).getByLabelText('Anzeigename'), { target: { value: 'Editors Updated' } });
+    fireEvent.click(within(dialog).getByRole('checkbox', { name: 'System Admin' }));
+    fireEvent.click(within(dialog).getByRole('checkbox', { name: 'Aktiv' }));
+    fireEvent.submit(within(dialog).getByRole('button', { name: 'Änderungen speichern' }).closest('form')!);
 
     await waitFor(() => {
       expect(updateGroup).toHaveBeenCalledWith('group-2', {
         displayName: 'Editors Updated',
         description: 'Redaktion',
-        roleIds: ['role-1', 'role-2'],
         isActive: true,
+      });
+      expect(assignRole).toHaveBeenCalledWith('group-2', 'role-2');
+    });
+  });
+
+  it('assigns and removes memberships inside the edit dialog', async () => {
+    const assignMembership = vi.fn().mockResolvedValue(true);
+    const removeMembership = vi.fn().mockResolvedValue(true);
+    const loadGroupDetail = vi
+      .fn()
+      .mockResolvedValueOnce({
+        id: 'group-1',
+        groupKey: 'admins',
+        displayName: 'Admins',
+        description: 'Administrative Gruppe',
+        groupType: 'role_bundle',
+        isActive: true,
+        memberCount: 1,
+        roleCount: 1,
+        assignedRoleIds: ['role-2'],
+        memberships: [
+          {
+            accountId: 'acc-1',
+            groupId: 'group-1',
+            keycloakSubject: 'subject-1',
+            displayName: 'Editor User',
+            validFrom: '2025-01-01T00:00:00.000Z',
+            validUntil: undefined,
+            assignedAt: '2025-01-01T00:00:00.000Z',
+            assignedByAccountId: 'acc-admin',
+          },
+        ],
+      })
+      .mockResolvedValue({
+        id: 'group-1',
+        groupKey: 'admins',
+        displayName: 'Admins',
+        description: 'Administrative Gruppe',
+        groupType: 'role_bundle',
+        isActive: true,
+        memberCount: 1,
+        roleCount: 1,
+        assignedRoleIds: ['role-2'],
+        memberships: [],
+      });
+
+    useGroupsMock.mockReturnValue({
+      groups: [
+        {
+          id: 'group-1',
+          groupKey: 'admins',
+          displayName: 'Admins',
+          description: 'Administrative Gruppe',
+          groupType: 'role_bundle',
+          isActive: true,
+          memberCount: 1,
+          roleCount: 1,
+        },
+      ],
+      isLoading: false,
+      error: null,
+      mutationError: null,
+      refetch: vi.fn(),
+      clearMutationError: vi.fn(),
+      createGroup: vi.fn().mockResolvedValue(true),
+      updateGroup: vi.fn().mockResolvedValue(true),
+      deleteGroup: vi.fn().mockResolvedValue(true),
+      loadGroupDetail,
+      assignRole: vi.fn().mockResolvedValue(true),
+      removeRole: vi.fn().mockResolvedValue(true),
+      assignMembership,
+      removeMembership,
+    });
+
+    render(<GroupsPage />);
+
+    await waitFor(() => {
+      expect(loadGroupDetail).toHaveBeenCalledWith('group-1');
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Gruppe bearbeiten' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Gruppe bearbeiten' });
+
+    expect(within(dialog).getByText('Editor User')).toBeTruthy();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Entfernen' }));
+    await waitFor(() => {
+      expect(removeMembership).toHaveBeenCalledWith('group-1', 'subject-1');
+    });
+
+    fireEvent.change(within(dialog).getByLabelText('Keycloak-Subject'), { target: { value: 'subject-2' } });
+    fireEvent.change(within(dialog).getByLabelText('Gültig ab'), { target: { value: '2025-03-01T12:00' } });
+    fireEvent.submit(within(dialog).getByRole('button', { name: 'Mitgliedschaft zuweisen' }).closest('form')!);
+
+    await waitFor(() => {
+      expect(assignMembership).toHaveBeenCalledWith('group-1', {
+        keycloakSubject: 'subject-2',
+        validFrom: new Date('2025-03-01T12:00').toISOString(),
+        validUntil: undefined,
       });
     });
   });
 
-  it('shows list errors, retries reloads and deletes groups via confirmation', async () => {
+  it('shows load errors, retries reloads and deletes groups via confirmation', async () => {
     const refetch = vi.fn();
     const deleteGroup = vi.fn().mockResolvedValue(true);
     useGroupsMock.mockReturnValue({
@@ -176,7 +350,7 @@ describe('GroupsPage', () => {
           groupType: 'role_bundle',
           isActive: true,
           memberCount: 2,
-          roles: [],
+          roleCount: 0,
         },
       ],
       isLoading: false,
@@ -185,12 +359,17 @@ describe('GroupsPage', () => {
         code: 'database_unavailable',
         message: 'db down',
       },
-      createGroup: vi.fn().mockResolvedValue(true),
       mutationError: null,
+      refetch,
+      clearMutationError: vi.fn(),
+      createGroup: vi.fn().mockResolvedValue(true),
       updateGroup: vi.fn().mockResolvedValue(true),
       deleteGroup,
-      clearMutationError: vi.fn(),
-      refetch,
+      loadGroupDetail: vi.fn().mockResolvedValue(null),
+      assignRole: vi.fn().mockResolvedValue(true),
+      removeRole: vi.fn().mockResolvedValue(true),
+      assignMembership: vi.fn().mockResolvedValue(true),
+      removeMembership: vi.fn().mockResolvedValue(true),
     });
 
     render(<GroupsPage />);
@@ -200,31 +379,34 @@ describe('GroupsPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Erneut versuchen' }));
     expect(refetch).toHaveBeenCalledTimes(1);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Gruppe deaktivieren' }));
-    const dialog = await screen.findByRole('alertdialog');
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Gruppe deaktivieren' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Gruppe löschen' }));
+    const dialog = await screen.findByRole('alertdialog', { name: 'Gruppe löschen' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Gruppe löschen' }));
 
     await waitFor(() => {
       expect(deleteGroup).toHaveBeenCalledWith('group-1');
     });
   });
 
-  it('renders empty state after sorting when no groups match', () => {
+  it('renders the empty state when no groups match the filter', () => {
     useGroupsMock.mockReturnValue({
       groups: [],
       isLoading: false,
       error: null,
-      createGroup: vi.fn().mockResolvedValue(true),
       mutationError: null,
+      refetch: vi.fn(),
+      clearMutationError: vi.fn(),
+      createGroup: vi.fn().mockResolvedValue(true),
       updateGroup: vi.fn().mockResolvedValue(true),
       deleteGroup: vi.fn().mockResolvedValue(true),
-      clearMutationError: vi.fn(),
-      refetch: vi.fn(),
+      loadGroupDetail: vi.fn().mockResolvedValue(null),
+      assignRole: vi.fn().mockResolvedValue(true),
+      removeRole: vi.fn().mockResolvedValue(true),
+      assignMembership: vi.fn().mockResolvedValue(true),
+      removeMembership: vi.fn().mockResolvedValue(true),
     });
 
     render(<GroupsPage />);
-
-    fireEvent.click(screen.getByRole('button', { name: 'Sortierung wechseln' }));
 
     expect(screen.getByRole('status').textContent).toContain('Keine Gruppen gefunden.');
   });

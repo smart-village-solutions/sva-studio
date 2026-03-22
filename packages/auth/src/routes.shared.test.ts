@@ -4,6 +4,11 @@ import { authRoutePaths } from './routes.shared';
 
 describe('authRoutePaths', () => {
   it('contains organization and context endpoints exactly once', () => {
+    expect(authRoutePaths).toContain('/api/v1/iam/groups');
+    expect(authRoutePaths).toContain('/api/v1/iam/groups/$groupId');
+    expect(authRoutePaths).toContain('/api/v1/iam/groups/$groupId/roles');
+    expect(authRoutePaths).toContain('/api/v1/iam/groups/$groupId/roles/$roleId');
+    expect(authRoutePaths).toContain('/api/v1/iam/groups/$groupId/memberships');
     expect(authRoutePaths).toContain('/api/v1/iam/organizations');
     expect(authRoutePaths).toContain('/api/v1/iam/organizations/$organizationId');
     expect(authRoutePaths).toContain('/api/v1/iam/organizations/$organizationId/memberships');

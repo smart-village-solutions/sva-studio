@@ -1,1 +1,1 @@
-export { resolveImpersonationSubject } from './core';
+export { resolveImpersonationSubject } from './core.js';

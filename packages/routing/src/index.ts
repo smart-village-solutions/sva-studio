@@ -5,8 +5,8 @@
  * making it easy to compose routes from multiple sources (auth, data, plugins, etc.)
  */
 
-export { authRouteFactories, authRoutePaths } from './auth.routes';
-export { accountUiRouteGuards, accountUiRoutePaths, type AccountUiRouteKey } from './account-ui.routes';
-export { coreRouteFactories } from './core.routes';
-export { createAdminRoute, createProtectedRoute } from './protected.routes';
-export type { ProtectedRouteOptions, RouteGuardContext, RouteGuardUser } from './protected.routes';
+export { authRouteFactories, authRoutePaths } from './auth.routes.js';
+export { accountUiRouteGuards, accountUiRoutePaths, type AccountUiRouteKey } from './account-ui.routes.js';
+export { coreRouteFactories } from './core.routes.js';
+export { createAdminRoute, createProtectedRoute } from './protected.routes.js';
+export type { ProtectedRouteOptions, RouteGuardContext, RouteGuardUser } from './protected.routes.js';

@@ -1,28 +1,31 @@
 import { getWorkspaceContext } from '@sva/sdk/server';
 
-import type { UpdateIdentityUserInput } from '../identity-provider-port';
-import { KeycloakAdminRequestError, KeycloakAdminUnavailableError } from '../keycloak-admin-client';
-import type { AuthenticatedRequestContext } from '../middleware.server';
-import { jsonResponse } from '../shared/db-helpers';
+import type { UpdateIdentityUserInput } from '../identity-provider-port.js';
+import { KeycloakAdminRequestError, KeycloakAdminUnavailableError } from '../keycloak-admin-client.js';
+import type { AuthenticatedRequestContext } from '../middleware.server.js';
+import { jsonResponse } from '../shared/db-helpers.js';
 
-import { asApiItem, createApiError, parseRequestBody } from './api-helpers';
-import { ensureFeature, getFeatureFlags } from './feature-flags';
+import { asApiItem, createApiError, parseRequestBody } from './api-helpers.js';
+import { classifyIamDiagnosticError } from './diagnostics.js';
+import { ensureFeature, getFeatureFlags } from './feature-flags.js';
 import {
   loadMyProfileDetail,
   type ProfileUpdatePayload,
   updateMyProfileDetail,
-} from './profile-commands';
-import { consumeRateLimit } from './rate-limit';
+} from './profile-commands.js';
+import { consumeRateLimit } from './rate-limit.js';
 import {
   iamUserOperationsCounter,
   logger,
   resolveActorInfo,
   resolveIdentityProvider,
   trackKeycloakCall,
-} from './shared';
-import { validateCsrf } from './csrf';
-import { updateMyProfileSchema } from './schemas';
-import type { ActorInfo } from './types';
+  withInstanceScopedDb,
+} from './shared.js';
+import { runCriticalIamSchemaGuard } from './schema-guard.js';
+import { validateCsrf } from './csrf.js';
+import { updateMyProfileSchema } from './schemas.js';
+import type { ActorInfo } from './types.js';
 
 type ProfileActorContext = {
   actor: ActorInfo;
@@ -179,14 +182,9 @@ const handleProfileUpdateError = (actor: ActorInfo, error: unknown): Response =>
   }
 
   const errorMessage = error instanceof Error ? error.message : String(error);
-  const [errorCode] = errorMessage.split(':', 2);
-  if (errorCode === 'pii_encryption_required') {
-    return createApiError(
-      503,
-      'internal_error',
-      'PII-Verschlüsselung ist nicht konfiguriert.',
-      actor.requestId
-    );
+  const classified = classifyIamDiagnosticError(error, 'Profil konnte nicht aktualisiert werden.', actor.requestId);
+  if (classified.details.reason_code === 'pii_encryption_missing') {
+    return createApiError(classified.status, classified.code, 'PII-Verschlüsselung ist nicht konfiguriert.', actor.requestId, classified.details);
   }
 
   logger.error('IAM profile update failed', {
@@ -197,19 +195,95 @@ const handleProfileUpdateError = (actor: ActorInfo, error: unknown): Response =>
     error: errorMessage,
   });
   iamUserOperationsCounter.add(1, { action: 'update_my_profile', result: 'failure' });
-  return createApiError(500, 'internal_error', 'Profil konnte nicht aktualisiert werden.', actor.requestId);
+  return createApiError(
+    classified.status,
+    classified.code,
+    classified.message,
+    actor.requestId,
+    classified.details
+  );
 };
 
-const handleProfileFetchError = (actor: ActorInfo, error: unknown): Response => {
+const buildSchemaDriftFallbackResponse = async (
+  actor: ActorInfo,
+  fallbackMessage: string,
+): Promise<Response | undefined> => {
+  try {
+    const schemaGuard = await withInstanceScopedDb(actor.instanceId, (client) =>
+      runCriticalIamSchemaGuard(client),
+    );
+    const failed = schemaGuard.checks.find((check) => !check.ok);
+    if (!failed) {
+      return undefined;
+    }
+
+    return createApiError(503, 'database_unavailable', fallbackMessage, actor.requestId, {
+      dependency: 'database',
+      expected_migration: failed.expectedMigration,
+      instance_id: actor.instanceId,
+      reason_code: 'schema_drift',
+      schema_object: failed.schemaObject,
+    });
+  } catch {
+    return undefined;
+  }
+};
+
+const handleProfileFetchError = async (actor: ActorInfo, error: unknown): Promise<Response> => {
+  const classified = classifyIamDiagnosticError(error, 'Profil konnte nicht geladen werden.', actor.requestId);
+  const errorCause = error && typeof error === 'object' && 'cause' in error
+    ? (error as { cause?: unknown }).cause
+    : undefined;
+  if (classified.details.reason_code === 'unexpected_internal_error') {
+    const schemaDriftResponse = await buildSchemaDriftFallbackResponse(
+      actor,
+      'Profil konnte nicht geladen werden.',
+    );
+    if (schemaDriftResponse) {
+      return schemaDriftResponse;
+    }
+  }
+
   logger.error('IAM profile fetch failed', {
     operation: 'get_my_profile',
     instance_id: actor.instanceId,
     request_id: actor.requestId,
     trace_id: actor.traceId,
+    error_type: error instanceof Error ? error.constructor.name : typeof error,
     error: error instanceof Error ? error.message : String(error),
+    error_stack: error instanceof Error ? error.stack : undefined,
+    error_cause:
+      errorCause instanceof Error
+        ? errorCause.message
+        : errorCause !== undefined
+          ? String(errorCause)
+          : undefined,
+    classified_status: classified.status,
+    classified_code: classified.code,
+    classified_reason_code: classified.details.reason_code,
   });
   iamUserOperationsCounter.add(1, { action: 'get_my_profile', result: 'failure' });
-  return createApiError(500, 'internal_error', 'Profil konnte nicht geladen werden.', actor.requestId);
+  const debugDetails =
+    process.env.IAM_DEBUG_PROFILE_ERRORS === 'true'
+      ? {
+          debug_error_type: error instanceof Error ? error.constructor.name : typeof error,
+          debug_error_message: error instanceof Error ? error.message : String(error),
+          debug_error_stack: error instanceof Error ? error.stack : undefined,
+          debug_error_cause:
+            errorCause instanceof Error
+              ? errorCause.message
+              : errorCause !== undefined
+                ? String(errorCause)
+                : undefined,
+        }
+      : undefined;
+  return createApiError(
+    classified.status,
+    classified.code,
+    classified.message,
+    actor.requestId,
+    debugDetails ? { ...classified.details, ...debugDetails } : classified.details
+  );
 };
 
 export const updateMyProfileInternal = async (
@@ -281,6 +355,15 @@ export const getMyProfileInternal = async (
   }
 
   try {
+    logger.info('IAM profile fetch starting', {
+      operation: 'get_my_profile',
+      instance_id: actorContext.actor.instanceId,
+      request_id: actorContext.actor.requestId,
+      trace_id: actorContext.actor.traceId,
+      actor_account_id: actorContext.actor.actorAccountId ?? null,
+      db_keycloak_subject: actorContext.dbKeycloakSubject,
+    });
+
     const detail = await loadMyProfileDetail(actorContext.actor, actorContext.dbKeycloakSubject);
     if (!detail) {
       return createProfileNotFoundResponse(actorContext.actor.requestId);
@@ -289,6 +372,6 @@ export const getMyProfileInternal = async (
     iamUserOperationsCounter.add(1, { action: 'get_my_profile', result: 'success' });
     return jsonResponse(200, asApiItem(detail, actorContext.actor.requestId));
   } catch (error) {
-    return handleProfileFetchError(actorContext.actor, error);
+    return await handleProfileFetchError(actorContext.actor, error);
   }
 };

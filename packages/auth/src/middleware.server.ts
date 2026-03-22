@@ -1,10 +1,12 @@
 import { parse as parseCookie } from 'cookie-es';
 import { createSdkLogger, toJsonErrorResponse } from '@sva/sdk/server';
 
-import { getSessionUser } from './auth.server';
-import { getAuthConfig } from './config';
-import { buildLogContext } from './shared/log-context';
-import type { SessionUser } from './types';
+import { getSessionUser } from './auth.server.js';
+import { getAuthConfig } from './config.js';
+import { withLegalTextCompliance } from './legal-text-enforcement.server.js';
+import { createMockSessionUser, isMockAuthEnabled } from './mock-auth.server.js';
+import { buildLogContext } from './shared/log-context.js';
+import type { SessionUser } from './types.js';
 
 const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
 
@@ -25,6 +27,42 @@ const unauthorized = () =>
     headers: { 'Content-Type': 'application/json' },
   });
 
+const LEGAL_TEXT_PROTECTED_PATHS = new Set(['/iam/authorize', '/iam/me/permissions']);
+const LEGAL_TEXT_PROTECTED_PREFIXES = ['/api/v1/iam/'];
+const LEGAL_TEXT_EXEMPT_AUTH_PATHS = new Set(['/auth/login', '/auth/callback', '/auth/logout', '/auth/me']);
+const LEGAL_TEXT_EXEMPT_GOVERNANCE_OPERATIONS = new Set(['accept_legal_text', 'revoke_legal_acceptance']);
+
+const readWorkflowOperation = async (request: Request): Promise<string | undefined> => {
+  try {
+    const payload = await request.clone().json();
+    if (!payload || typeof payload !== 'object') {
+      return undefined;
+    }
+    const operation = (payload as { operation?: unknown }).operation;
+    return typeof operation === 'string' ? operation : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+const shouldEnforceLegalTextCompliance = async (request: Request): Promise<boolean> => {
+  const pathname = new URL(request.url).pathname;
+  if (LEGAL_TEXT_EXEMPT_AUTH_PATHS.has(pathname)) {
+    return false;
+  }
+
+  if (pathname === '/api/v1/iam/governance/workflows') {
+    const operation = await readWorkflowOperation(request);
+    return !LEGAL_TEXT_EXEMPT_GOVERNANCE_OPERATIONS.has(operation ?? '');
+  }
+
+  if (LEGAL_TEXT_PROTECTED_PATHS.has(pathname)) {
+    return true;
+  }
+
+  return LEGAL_TEXT_PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+};
+
 /**
  * Middleware helper that resolves an authenticated user from the current request.
  */
@@ -33,6 +71,10 @@ export const withAuthenticatedUser = async (
   handler: (ctx: AuthenticatedRequestContext) => Promise<Response> | Response
 ): Promise<Response> => {
   try {
+    if (isMockAuthEnabled()) {
+      return await handler({ sessionId: 'mock-auth-session', user: createMockSessionUser() });
+    }
+
     const sessionId = readSessionId(request);
     if (!sessionId) {
       logger.debug('Auth middleware rejected request without session cookie', {
@@ -57,7 +99,12 @@ export const withAuthenticatedUser = async (
       return unauthorized();
     }
 
-    return await handler({ sessionId, user });
+    const runHandler = async () => handler({ sessionId, user });
+    if (user.instanceId && (await shouldEnforceLegalTextCompliance(request))) {
+      return await withLegalTextCompliance(user.instanceId, user.id, runHandler);
+    }
+
+    return await runHandler();
   } catch (error) {
     const logContext = buildLogContext(undefined, { includeTraceId: true });
     logger.error('Auth middleware failed unexpectedly', {

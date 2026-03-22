@@ -66,6 +66,12 @@
         "command": "bash packages/data/scripts/run-migrations.sh up"
       }
     },
+    "db:bootstrap-app-user": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "bash packages/data/scripts/bootstrap-app-user.sh"
+      }
+    },
     "db:migrate:up": {
       "executor": "nx:run-commands",
       "options": {

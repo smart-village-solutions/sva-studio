@@ -1,9 +1,9 @@
 import winston, { type Logger, type Logform } from 'winston';
 import Transport from 'winston-transport';
-import type { OtelLogRecord, OtelLogger } from './otel-logger.types';
+import type { OtelLogRecord, OtelLogger } from './otel-logger.types.js';
 
-import { getWorkspaceContext } from '../observability/context.server';
-import { getGlobalLoggerProviderFromMonitoring } from '../observability/monitoring-client.bridge.server';
+import { getWorkspaceContext } from '../observability/context.server.js';
+import { getGlobalLoggerProviderFromMonitoring } from '../observability/monitoring-client.bridge.server.js';
 
 const SENSITIVE_KEYS = new Set([
   'password',

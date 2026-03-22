@@ -1,6 +1,6 @@
 import { extractRoles, parseJwtPayload, resolveInstanceId, resolveUserName } from '@sva/core';
 
-import type { SessionUser } from '../types';
+import type { SessionUser } from '../types.js';
 
 export const TOKEN_REFRESH_SKEW_MS = 60_000;
 

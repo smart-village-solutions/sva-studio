@@ -11,6 +11,7 @@ const testState = vi.hoisted(() => ({
   queryHandler: null as null | ((text: string, values?: readonly unknown[]) => unknown),
   latencyMetrics: [] as Array<{ durationMs: number; attributes?: Record<string, unknown> }>,
   impersonationResult: { ok: true } as { ok: true } | { ok: false; reasonCode: string },
+  redisStore: new Map<string, string>(),
 }));
 
 vi.mock('./middleware.server', () => ({
@@ -97,6 +98,30 @@ vi.mock('pg', () => ({
   },
 }));
 
+vi.mock('./redis.server', () => ({
+  getRedisClient: () => ({
+    async get(key: string) {
+      return testState.redisStore.get(key) ?? null;
+    },
+    async setex(key: string, _ttl: number, value: string) {
+      testState.redisStore.set(key, value);
+      return 'OK';
+    },
+    async del(...keys: string[]) {
+      let deleted = 0;
+      for (const key of keys) {
+        deleted += testState.redisStore.delete(key) ? 1 : 0;
+      }
+      return deleted;
+    },
+    async scan(_cursor: string, _matchToken: string, pattern: string) {
+      const regex = new RegExp(`^${pattern.replaceAll('*', '.*')}$`);
+      const keys = [...testState.redisStore.keys()].filter((key) => regex.test(key));
+      return ['0', keys];
+    },
+  }),
+}));
+
 import { authorizeHandler } from './iam-authorization.server';
 
 describe('authorizeHandler', () => {
@@ -106,6 +131,7 @@ describe('authorizeHandler', () => {
     testState.queryHandler = null;
     testState.latencyMetrics = [];
     testState.impersonationResult = { ok: true };
+    testState.redisStore.clear();
     testState.user = {
       id: 'keycloak-sub-1',
       name: 'Test User',

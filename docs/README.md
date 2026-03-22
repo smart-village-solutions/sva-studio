@@ -7,7 +7,7 @@ Diese Übersicht ist der zentrale Einstiegspunkt für die Projekt-Dokumentation 
 | Wenn du ... | Lies zuerst | Danach meist relevant |
 | --- | --- | --- |
 | das System verstehen willst | `./architecture/README.md` | `./adr/README.md`, `./monorepo.md` |
-| lokal entwickeln oder testen willst | `./development/playbook.md` | `./development/testing-coverage.md`, `./development/postgres-setup.md` |
+| lokal entwickeln oder testen willst | `./development/runtime-profile-betrieb.md` | `./development/playbook.md`, `./development/testing-coverage.md` |
 | Deployment oder Betrieb vorbereitest | `./guides/swarm-deployment-guide.md` | `./guides/swarm-deployment-runbook.md`, `./development/monitoring-stack.md` |
 | einen kanonischen Deployment-Einstieg suchst | `./guides/deployment-overview.md` | `./guides/swarm-deployment-guide.md`, `./guides/swarm-deployment-runbook.md` |
 | Security oder Incident-Prozesse prüfen willst | `./guides/security-policy.md` | `./guides/incident-response.md`, `./guides/troubleshooting.md` |
@@ -47,6 +47,7 @@ Für die technische Einordnung dieser Projekte sind folgende Dokumente die prim�
 Die folgenden Dokumente sind die primären Einstiege für übergreifende Governance- und Betriebsfragen:
 
 - Deployment: `./guides/deployment-overview.md`
+- Runtime-Profile und Betriebsmodi: `./development/runtime-profile-betrieb.md`
 - Security Policy: `./guides/security-policy.md`
 - Incident Response: `./guides/incident-response.md`
 - Troubleshooting: `./guides/troubleshooting.md`

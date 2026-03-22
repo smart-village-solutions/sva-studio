@@ -12,6 +12,7 @@ import { OrganizationContextSwitcher } from './OrganizationContextSwitcher';
 import { Button } from './ui/button';
 import { t } from '../i18n';
 import { useAuth } from '../providers/auth-provider';
+import { useLocale } from '../providers/locale-provider';
 import { useTheme } from '../providers/theme-provider';
 
 type HeaderProps = Readonly<{
@@ -32,6 +33,7 @@ export default function Header({
   onOpenMobileNavigation,
 }: HeaderProps) {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
+  const { locale, setLocale } = useLocale();
   const { mode, toggleMode } = useTheme();
   const [isHydrated, setIsHydrated] = React.useState(false);
   const resolvedMode = isHydrated ? mode : 'light';
@@ -96,6 +98,34 @@ export default function Header({
           {showOrganizationContext ? <OrganizationContextSwitcher /> : null}
         </div>
         <div className="flex flex-wrap items-center justify-end gap-3 text-muted-foreground sm:gap-4">
+          <div
+            role="group"
+            aria-label={t('shell.header.languageSwitcher')}
+            className="inline-flex items-center overflow-hidden rounded-md border border-border bg-background shadow-sm"
+          >
+            <Button
+              type="button"
+              variant={locale === 'de' ? 'default' : 'ghost'}
+              size="sm"
+              aria-pressed={locale === 'de'}
+              aria-label={t('shell.header.switchToGerman')}
+              className="rounded-none border-0"
+              onClick={() => setLocale('de')}
+            >
+              {t('shell.header.languageOptionDe')}
+            </Button>
+            <Button
+              type="button"
+              variant={locale === 'en' ? 'default' : 'ghost'}
+              size="sm"
+              aria-pressed={locale === 'en'}
+              aria-label={t('shell.header.switchToEnglish')}
+              className="rounded-none border-0 border-l border-border"
+              onClick={() => setLocale('en')}
+            >
+              {t('shell.header.languageOptionEn')}
+            </Button>
+          </div>
           <Button
             type="button"
             aria-label={

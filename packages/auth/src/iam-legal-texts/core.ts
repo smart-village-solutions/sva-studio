@@ -1,10 +1,10 @@
 import { createSdkLogger } from '@sva/sdk/server';
 
-import { asApiList, createApiError } from '../iam-account-management/api-helpers';
-import type { AuthenticatedRequestContext } from '../middleware.server';
-import { createLegalTextResponse, updateLegalTextResponse } from './mutations';
-import { loadLegalTextListItems } from './repository';
-import { resolveLegalTextsAdminActor, withAuthenticatedLegalTextsHandler } from './request-context';
+import { asApiList, createApiError } from '../iam-account-management/api-helpers.js';
+import type { AuthenticatedRequestContext } from '../middleware.server.js';
+import { createLegalTextResponse, updateLegalTextResponse } from './mutations.js';
+import { loadLegalTextListItems } from './repository.js';
+import { resolveLegalTextsAdminActor, withAuthenticatedLegalTextsHandler } from './request-context.js';
 
 const logger = createSdkLogger({ component: 'iam-legal-texts', level: 'info' });
 

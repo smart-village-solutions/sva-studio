@@ -1,6 +1,6 @@
 import type { IamLegalTextListItem } from '@sva/core';
 
-import { emitActivityLog, withInstanceScopedDb } from '../iam-account-management/shared';
+import { emitActivityLog, withInstanceScopedDb } from '../iam-account-management/shared.js';
 
 type LegalTextRow = {
   id: string;

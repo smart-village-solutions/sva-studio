@@ -1,1 +1,1 @@
-export type { KeycloakAdminUser, KeycloakListUsersQuery, KeycloakRealmRole } from './core';
+export type { KeycloakAdminUser, KeycloakListUsersQuery, KeycloakRealmRole } from './core.js';

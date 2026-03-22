@@ -1,19 +1,19 @@
 import type { IamUserDetail } from '@sva/core';
 import { z } from 'zod';
 
-import type { QueryClient } from '../shared/db-helpers';
+import type { QueryClient } from '../shared/db-helpers.js';
 
-import { protectField } from './encryption';
-import { getRoleExternalName } from './role-audit';
-import { createUserSchema } from './schemas';
+import { protectField } from './encryption.js';
+import { getRoleExternalName } from './role-audit.js';
+import { createUserSchema } from './schemas.js';
 import {
   assignRoles,
   emitActivityLog,
   ensureRoleAssignmentWithinActorLevel,
   notifyPermissionInvalidation,
   resolveRolesByIds,
-} from './shared';
-import { mapRoles } from './user-mapping';
+} from './shared.js';
+import { mapRoles } from './user-mapping.js';
 
 export type CreateUserPayload = z.infer<typeof createUserSchema>;
 

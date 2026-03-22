@@ -1,11 +1,11 @@
 import type { IamGroupDetail, IamGroupListItem, IamUserGroupAssignment } from '@sva/core';
 import { getWorkspaceContext } from '@sva/sdk/server';
 
-import type { AuthenticatedRequestContext } from '../middleware.server';
-import { jsonResponse, type QueryClient } from '../shared/db-helpers';
-import { isUuid } from '../shared/input-readers';
+import type { AuthenticatedRequestContext } from '../middleware.server.js';
+import { jsonResponse, type QueryClient } from '../shared/db-helpers.js';
+import { isUuid } from '../shared/input-readers.js';
 
-import { ADMIN_ROLES, SYSTEM_ADMIN_ROLES } from './constants';
+import { ADMIN_ROLES, SYSTEM_ADMIN_ROLES } from './constants.js';
 import {
   asApiItem,
   asApiList,
@@ -14,11 +14,11 @@ import {
   readPathSegment,
   requireIdempotencyKey,
   toPayloadHash,
-} from './api-helpers';
-import { validateCsrf } from './csrf';
-import { ensureFeature, getFeatureFlags } from './feature-flags';
-import { consumeRateLimit } from './rate-limit';
-import { createGroupSchema, updateGroupSchema } from './schemas';
+} from './api-helpers.js';
+import { validateCsrf } from './csrf.js';
+import { ensureFeature, getFeatureFlags } from './feature-flags.js';
+import { consumeRateLimit } from './rate-limit.js';
+import { createGroupSchema, updateGroupSchema } from './schemas.js';
 import {
   type ActorInfo,
   completeIdempotency,
@@ -31,7 +31,7 @@ import {
   resolveActorInfo,
   resolveRolesByIds,
   withInstanceScopedDb,
-} from './shared';
+} from './shared.js';
 
 type GroupRoleRow = {
   role_id: string;
@@ -128,7 +128,7 @@ LEFT JOIN iam.account_groups ag
   ON ag.instance_id = g.instance_id
  AND ag.group_id = g.id
  AND (ag.valid_from IS NULL OR ag.valid_from <= NOW())
- AND (ag.valid_to IS NULL OR ag.valid_to > NOW())
+ AND (ag.valid_until IS NULL OR ag.valid_until > NOW())
 WHERE g.instance_id = $1
 GROUP BY g.id
 ORDER BY g.is_active DESC, g.display_name ASC;
@@ -163,7 +163,7 @@ SELECT
         'group_type', g.group_type,
         'origin', ag.origin,
         'valid_from', ag.valid_from::text,
-        'valid_to', ag.valid_to::text
+        'valid_to', ag.valid_until::text
       )
     ) FILTER (WHERE ag.account_id IS NOT NULL),
     '[]'::json
@@ -179,7 +179,7 @@ LEFT JOIN iam.account_groups ag
   ON ag.instance_id = g.instance_id
  AND ag.group_id = g.id
  AND (ag.valid_from IS NULL OR ag.valid_from <= NOW())
- AND (ag.valid_to IS NULL OR ag.valid_to > NOW())
+ AND (ag.valid_until IS NULL OR ag.valid_until > NOW())
 WHERE g.instance_id = $1
   AND g.id = $2::uuid
 GROUP BY g.id

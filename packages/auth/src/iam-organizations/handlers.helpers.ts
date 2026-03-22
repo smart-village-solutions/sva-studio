@@ -6,10 +6,10 @@ import type {
   IamOrganizationType,
 } from '@sva/core';
 
-import { readString } from '../shared/input-readers';
+import { readString } from '../shared/input-readers.js';
 
-import { revealField } from '../iam-account-management/encryption';
-import { resolveUserDisplayName } from '../iam-account-management/user-mapping';
+import { revealField } from '../iam-account-management/encryption.js';
+import { resolveUserDisplayName } from '../iam-account-management/user-mapping.js';
 
 export type OrganizationRow = {
   id: string;

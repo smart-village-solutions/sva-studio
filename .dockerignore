@@ -2,9 +2,12 @@ node_modules
 .git
 .nx
 .pnpm-store
+.tmp
 
 coverage
 dist
+artifacts
+.deploy
 
 apps/*/dist
 apps/*/.output

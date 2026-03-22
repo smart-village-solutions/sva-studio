@@ -1,9 +1,9 @@
 import type { IamUserListItem } from '@sva/core';
 
-import type { QueryClient } from '../shared/db-helpers';
+import type { QueryClient } from '../shared/db-helpers.js';
 
-import type { UserStatus } from './types';
-import { mapUserRowToListItem } from './user-mapping';
+import type { UserStatus } from './types.js';
+import { mapUserRowToListItem } from './user-mapping.js';
 
 type UserListRoleRow = {
   id: string;

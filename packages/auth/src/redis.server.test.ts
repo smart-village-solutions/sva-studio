@@ -133,6 +133,28 @@ describe('redis.server', () => {
     expect(retryStrategy(11)).toBeNull();
   });
 
+  it('uses password auth from the runtime secret fallback without ACL username', async () => {
+    state.readFileSyncImpl.mockImplementation((path: string) => {
+      if (path === '/run/secrets/sva_studio_redis_password') {
+        return 'secret-from-swarm';
+      }
+      return `file:${path}`;
+    });
+
+    const { getRedisClient } = await import('./redis.server');
+    getRedisClient();
+    const instance = state.instances[0];
+
+    expect(instance?.url).toBe('redis://redis:6379');
+    expect(instance?.options).toEqual(
+      expect.objectContaining({
+        password: 'secret-from-swarm',
+        lazyConnect: true,
+        maxRetriesPerRequest: 3,
+      })
+    );
+  });
+
   it('falls back to plaintext redis when TLS certificate loading fails', async () => {
     process.env.TLS_ENABLED = 'true';
     state.readFileSyncImpl.mockImplementation(() => {

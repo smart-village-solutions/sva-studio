@@ -14,6 +14,8 @@
       "@sva/data/server": ["packages/data/src/server.ts"],
       "@sva/auth": ["packages/auth/src/index.ts"],
       "@sva/auth/server": ["packages/auth/src/index.server.ts"],
+      "@sva/auth/runtime-routes": ["packages/auth/src/runtime-routes.server.ts"],
+      "@sva/auth/runtime-health": ["packages/auth/src/runtime-health.server.ts"],
       "@sva/sdk": ["packages/sdk/src/index.ts"],
       "@sva/sdk/server": ["packages/sdk/src/server.ts"],
       "@sva/sdk/logger/index.server": ["packages/sdk/src/logger/index.server.ts"],

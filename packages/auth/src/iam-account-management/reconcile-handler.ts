@@ -1,14 +1,14 @@
 import { getWorkspaceContext } from '@sva/sdk/server';
 
-import type { IdentityProviderPort } from '../identity-provider-port';
-import type { AuthenticatedRequestContext } from '../middleware.server';
-import { jsonResponse } from '../shared/db-helpers';
-import { readString } from '../shared/input-readers';
+import type { IdentityProviderPort } from '../identity-provider-port.js';
+import type { AuthenticatedRequestContext } from '../middleware.server.js';
+import { jsonResponse } from '../shared/db-helpers.js';
+import { readString } from '../shared/input-readers.js';
 
-import { SYSTEM_ADMIN_ROLES } from './constants';
-import { asApiItem, createApiError } from './api-helpers';
-import { ensureFeature, getFeatureFlags } from './feature-flags';
-import { consumeRateLimit } from './rate-limit';
+import { SYSTEM_ADMIN_ROLES } from './constants.js';
+import { asApiItem, createApiError } from './api-helpers.js';
+import { ensureFeature, getFeatureFlags } from './feature-flags.js';
+import { consumeRateLimit } from './rate-limit.js';
 import {
   emitRoleAuditEvent,
   logger,
@@ -19,15 +19,15 @@ import {
   setRoleSyncState,
   trackKeycloakCall,
   withInstanceScopedDb,
-} from './shared';
-import { validateCsrf } from './csrf';
+} from './shared.js';
+import { validateCsrf } from './csrf.js';
 import {
   getRoleDisplayName,
   getRoleExternalName,
   mapRoleSyncErrorCode,
   sanitizeRoleErrorMessage,
-} from './role-audit';
-import type { ManagedRoleRow } from './types';
+} from './role-audit.js';
+import type { ManagedRoleRow } from './types.js';
 
 type ReconcileRoleEntry = {
   readonly roleId?: string;
@@ -60,6 +60,29 @@ const isStudioManagedIdentityRole = (
 ): boolean =>
   readRoleAttribute(role.attributes, 'managed_by') === 'studio' &&
   readRoleAttribute(role.attributes, 'instance_id') === instanceId;
+
+const readImportableRoleMetadata = (
+  role: Awaited<ReturnType<IdentityProviderPort['getRoleByName']>> extends infer T ? Exclude<T, null> : never
+): { roleKey: string; displayName: string; roleLevel: number } | null => {
+  const roleKey = readRoleAttribute(role.attributes, 'role_key');
+  const displayName = readRoleAttribute(role.attributes, 'display_name');
+  const roleLevelRaw = readRoleAttribute(role.attributes, 'role_level');
+  const parsedRoleLevel = roleLevelRaw ? Number(roleLevelRaw) : 0;
+
+  if (!roleKey || !displayName) {
+    return null;
+  }
+
+  if (!Number.isFinite(parsedRoleLevel) || parsedRoleLevel < 0 || parsedRoleLevel > 100) {
+    return null;
+  }
+
+  return {
+    roleKey,
+    displayName,
+    roleLevel: parsedRoleLevel,
+  };
+};
 
 export const runRoleCatalogReconciliation = async (input: {
   instanceId: string;
@@ -279,6 +302,79 @@ ORDER BY role_level DESC, COALESCE(display_name, role_name) ASC;
 
   for (const identityRole of managedIdpRoles) {
     if (!dbByExternalName.has(identityRole.externalName)) {
+      const importableMetadata = readImportableRoleMetadata(identityRole);
+      if (importableMetadata) {
+        try {
+          const importedRole = await withInstanceScopedDb(input.instanceId, async (client) => {
+            const inserted = await client.query<{ id: string }>(
+              `
+INSERT INTO iam.roles (
+  instance_id,
+  role_key,
+  role_name,
+  display_name,
+  external_role_name,
+  description,
+  is_system_role,
+  role_level,
+  managed_by,
+  sync_state,
+  last_synced_at,
+  last_error_code
+)
+VALUES ($1::uuid, $2, $3, $4, $5, $6, false, $7, 'studio', 'synced', NOW(), NULL)
+RETURNING id;
+`,
+              [
+                input.instanceId,
+                importableMetadata.roleKey,
+                importableMetadata.roleKey,
+                importableMetadata.displayName,
+                identityRole.externalName,
+                identityRole.description ?? null,
+                importableMetadata.roleLevel,
+              ]
+            );
+            const roleId = inserted.rows[0]?.id;
+            if (!roleId) {
+              throw new Error('role_import_failed');
+            }
+
+            await emitRoleAuditEvent(client, {
+              instanceId: input.instanceId,
+              accountId: input.actorAccountId,
+              roleId,
+              eventType: 'role.reconciled',
+              operation: 'reconcile_import',
+              result: 'success',
+              roleKey: importableMetadata.roleKey,
+              externalRoleName: identityRole.externalName,
+              requestId: input.requestId,
+              traceId: input.traceId,
+            });
+
+            return { roleId };
+          });
+          entries.push({
+            roleId: importedRole.roleId,
+            roleKey: importableMetadata.roleKey,
+            externalRoleName: identityRole.externalName,
+            action: 'create',
+            status: 'corrected',
+          });
+          continue;
+        } catch (error) {
+          entries.push({
+            roleKey: importableMetadata.roleKey,
+            externalRoleName: identityRole.externalName,
+            action: 'create',
+            status: 'failed',
+            errorCode: mapRoleSyncErrorCode(error),
+          });
+          continue;
+        }
+      }
+
       entries.push({
         externalRoleName: identityRole.externalName,
         roleKey: readRoleAttribute(identityRole.attributes, 'role_key'),

@@ -1,19 +1,23 @@
+import { randomUUID } from 'node:crypto';
+
 import type { ApiErrorCode, IamRoleSyncState } from '@sva/core';
 import { createSdkLogger, getWorkspaceContext } from '@sva/sdk/server';
 import { metrics } from '@opentelemetry/api';
 
-import type { IdentityProviderPort } from '../identity-provider-port';
+import type { IdentityProviderPort } from '../identity-provider-port.js';
 import {
   KeycloakAdminClient,
   getKeycloakAdminClientConfigFromEnv,
-} from '../keycloak-admin-client';
-import type { AuthenticatedRequestContext } from '../middleware.server';
-import { jitProvisionAccountWithClient } from '../jit-provisioning.server';
-import { createPoolResolver, type QueryClient, withInstanceDb } from '../shared/db-helpers';
-import { resolveInstanceId } from '../shared/instance-id-resolution';
+} from '../keycloak-admin-client.js';
+import type { AuthenticatedRequestContext } from '../middleware.server.js';
+import { jitProvisionAccountWithClient } from '../jit-provisioning.server.js';
+import { getIamDatabaseUrl } from '../runtime-secrets.server.js';
+import { createPoolResolver, type QueryClient, withInstanceDb } from '../shared/db-helpers.js';
+import { resolveInstanceId } from '../shared/instance-id-resolution.js';
 
-import { createApiError, readInstanceIdFromRequest } from './api-helpers';
-import { sanitizeRoleAuditDetails } from './role-audit';
+import { createApiError, readInstanceIdFromRequest } from './api-helpers.js';
+import { addActiveSpanEvent, annotateActiveSpan, createActorResolutionDetails } from './diagnostics.js';
+import { sanitizeRoleAuditDetails } from './role-audit.js';
 import type {
   ActorInfo,
   IamGroupRow,
@@ -21,8 +25,8 @@ import type {
   IdempotencyStatus,
   IamRoleRow,
   ResolveActorOptions,
-} from './types';
-export type { ActorInfo } from './types';
+} from './types.js';
+export type { ActorInfo } from './types.js';
 
 export const logger: ReturnType<typeof createSdkLogger> = createSdkLogger({
   component: 'iam-service',
@@ -54,7 +58,7 @@ const iamRoleDriftBacklogGauge = meter.createObservableGauge('iam_role_drift_bac
 
 const roleDriftBacklogByInstance = new Map<string, number>();
 
-export const resolvePool = createPoolResolver(() => process.env.IAM_DATABASE_URL);
+export const resolvePool = createPoolResolver(getIamDatabaseUrl);
 
 let identityProviderCache:
   | {
@@ -475,6 +479,7 @@ export const notifyPermissionInvalidation = async (
   await client.query('SELECT pg_notify($1, $2);', [
     'iam_permission_snapshot_invalidation',
     JSON.stringify({
+      eventId: randomUUID(),
       instanceId: input.instanceId,
       ...(input.keycloakSubject ? { keycloakSubject: input.keycloakSubject } : {}),
       trigger: 'pg_notify',
@@ -601,6 +606,14 @@ export const requireRoles = (
 ) => {
   const hasRole = ctx.user.roles.some((role) => roles.has(role));
   if (!hasRole) {
+    annotateActiveSpan({
+      'iam.actor_roles': ctx.user.roles.join(','),
+      'iam.reason_code': 'missing_required_role',
+      'iam.required_roles': [...roles].join(','),
+    });
+    addActiveSpanEvent('iam.role_guard_rejected', {
+      'iam.reason_code': 'missing_required_role',
+    });
     logger.warn('IAM role guard rejected request', {
       operation: 'require_roles',
       required_roles: [...roles],
@@ -663,11 +676,22 @@ export const resolveActorInfo = async (
       trace_id: requestContext.traceId,
     });
     return {
-      error: createApiError(status, code, message, requestContext.requestId),
+      error: createApiError(status, code, message, requestContext.requestId, {
+        dependency: resolvedInstance.reason === 'database_unavailable' ? 'database' : undefined,
+        reason_code:
+          resolvedInstance.reason === 'database_unavailable'
+            ? 'instance_lookup_failed'
+            : 'invalid_instance_id',
+        ...(requestedInstanceId ? { instance_id: requestedInstanceId } : {}),
+      }),
     };
   }
 
   const instanceId = resolvedInstance.instanceId;
+  annotateActiveSpan({
+    'iam.instance_id': instanceId,
+    'iam.actor_resolution': 'instance_resolved',
+  });
   const mayProvisionMissingActorMembership =
     options?.provisionMissingActorMembership === true &&
     (!requestedInstanceId || requestedInstanceId === ctx.user.instanceId);
@@ -690,6 +714,15 @@ export const resolveActorInfo = async (
       ).accountId;
     }
   } catch (error) {
+    annotateActiveSpan({
+      'dependency.database.status': 'error',
+      'iam.actor_resolution': 'database_unavailable',
+      'iam.reason_code': 'actor_lookup_failed',
+    });
+    addActiveSpanEvent('iam.actor_resolution_failed', {
+      'iam.reason_code': 'actor_lookup_failed',
+      'iam.instance_id': instanceId,
+    });
     logger.error('IAM actor resolution failed during account lookup', {
       operation: 'resolve_actor',
       instance_id: instanceId,
@@ -709,18 +742,78 @@ export const resolveActorInfo = async (
   }
 
   if (options?.requireActorMembership && !actorAccountId) {
+    let diagnosticReason: 'missing_actor_account' | 'missing_instance_membership' = 'missing_actor_account';
+
+    try {
+      const diagnosticRow = await withInstanceScopedDb(instanceId, async (client) => {
+        const result = await client.query<{
+          account_exists: boolean;
+          membership_exists: boolean;
+        }>(
+          `
+SELECT
+  EXISTS(SELECT 1 FROM iam.accounts WHERE keycloak_subject = $1) AS account_exists,
+  EXISTS(
+    SELECT 1
+    FROM iam.accounts a
+    JOIN iam.instance_memberships im
+      ON im.account_id = a.id
+     AND im.instance_id = $2
+    WHERE a.keycloak_subject = $1
+  ) AS membership_exists;
+`,
+          [ctx.user.id, instanceId]
+        );
+        return result.rows[0];
+      });
+
+      if (diagnosticRow?.account_exists) {
+        diagnosticReason = diagnosticRow.membership_exists
+          ? 'missing_actor_account'
+          : 'missing_instance_membership';
+      }
+    } catch {
+      // Prefer the original 403 path over masking with an auxiliary diagnostics failure.
+    }
+
+    annotateActiveSpan({
+      'iam.actor_resolution': diagnosticReason,
+      'iam.reason_code': diagnosticReason,
+      'iam.instance_id': instanceId,
+    });
+    addActiveSpanEvent('iam.actor_resolution_rejected', {
+      'iam.reason_code': diagnosticReason,
+      'iam.instance_id': instanceId,
+    });
     logger.warn('IAM actor resolution rejected request without actor membership', {
       operation: 'resolve_actor',
+      user_id: ctx.user.id,
       instance_id: instanceId,
       session_instance_id: ctx.user.instanceId,
       allow_jit_provision: mayProvisionMissingActorMembership,
+      actor_account_id: null,
+      diagnostic_reason: diagnosticReason,
       request_id: requestContext.requestId,
       trace_id: requestContext.traceId,
     });
     return {
-      error: createApiError(403, 'forbidden', 'Akteur-Account nicht gefunden.', requestContext.requestId),
+      error: createApiError(
+        403,
+        'forbidden',
+        'Akteur-Account nicht gefunden.',
+        requestContext.requestId,
+        createActorResolutionDetails({
+          actorResolution: diagnosticReason,
+          instanceId,
+        })
+      ),
     };
   }
+
+  annotateActiveSpan({
+    'iam.actor_account_present': Boolean(actorAccountId),
+    'iam.actor_resolution': actorAccountId ? 'resolved' : 'resolved_without_account',
+  });
 
   return {
     actor: {

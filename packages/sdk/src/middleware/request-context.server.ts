@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import { runWithWorkspaceContext } from '../observability/context.server';
-import type { WorkspaceContext } from '../observability/context.server';
+import { runWithWorkspaceContext } from '../observability/context.server.js';
+import type { WorkspaceContext } from '../observability/context.server.js';
 
 const HEADER_ID_MAX_LENGTH = 128;
 const SAFE_CONTEXT_ID_PATTERN = /^[A-Za-z0-9._:-]+$/;

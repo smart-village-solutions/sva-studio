@@ -12,6 +12,7 @@ import {
 } from './redis-session.server';
 import type { Session } from './types';
 import { getRedisClient, closeRedis } from './redis.server';
+import { describeIfRedisAvailable } from './redis-test-guard';
 
 const envBackup = { ...process.env };
 const currentTestKeyPrefix = (): string =>
@@ -20,7 +21,7 @@ const currentTestKeyPrefix = (): string =>
     ? `vitest:${process.env.VITEST_WORKER_ID ?? process.env.VITEST_POOL_ID ?? 'default'}:`
     : '');
 
-describe('Redis Session Management', () => {
+describeIfRedisAvailable('Redis Session Management', () => {
   beforeAll(() => {
     process.env.SVA_AUTH_REDIS_KEY_PREFIX = 'vitest:redis-session-suite:';
   });

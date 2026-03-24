@@ -98,11 +98,49 @@ SET
 RETURNING id, (xmax = 0) AS created;
 `;
 
+const UPSERT_ACCOUNT_QUERY_LEGACY = `
+INSERT INTO iam.accounts (
+  instance_id,
+  keycloak_subject,
+  email_ciphertext,
+  display_name_ciphertext,
+  first_name_ciphertext,
+  last_name_ciphertext,
+  status
+)
+VALUES (
+  $1,
+  $2,
+  $3,
+  $4,
+  $5,
+  $6,
+  $7
+)
+ON CONFLICT (keycloak_subject, instance_id) WHERE instance_id IS NOT NULL DO UPDATE
+SET
+  email_ciphertext = EXCLUDED.email_ciphertext,
+  display_name_ciphertext = EXCLUDED.display_name_ciphertext,
+  first_name_ciphertext = EXCLUDED.first_name_ciphertext,
+  last_name_ciphertext = EXCLUDED.last_name_ciphertext,
+  status = EXCLUDED.status,
+  updated_at = NOW()
+RETURNING id, (xmax = 0) AS created;
+`;
+
 const INSERT_MEMBERSHIP_QUERY = `
 INSERT INTO iam.instance_memberships (instance_id, account_id, membership_type)
 VALUES ($1, $2::uuid, 'member')
 ON CONFLICT (instance_id, account_id) DO NOTHING;
 `;
+
+const shouldRetryWithoutUsernameCiphertext = (error: unknown): boolean => {
+  const message = error instanceof Error ? error.message : String(error);
+  return (
+    message.includes('username_ciphertext') &&
+    (message.includes('does not exist') || message.includes('missing') || message.includes('undefined column'))
+  );
+};
 
 const upsertIdentityUser = async (
   client: QueryClient,
@@ -110,16 +148,49 @@ const upsertIdentityUser = async (
 ): Promise<{ accountId: string; created: boolean }> => {
   const status = input.user.enabled === false ? 'inactive' : 'active';
   const displayName = resolveDisplayName(input.user);
-  const upsert = await client.query<{ id: string; created: boolean }>(UPSERT_ACCOUNT_QUERY, [
-    input.instanceId,
-    input.user.externalId,
-    protectOptionalField(input.user.username, `iam.accounts.username:${input.user.externalId}`),
-    protectOptionalField(input.user.email, `iam.accounts.email:${input.user.externalId}`),
-    protectField(displayName, `iam.accounts.display_name:${input.user.externalId}`),
-    protectOptionalField(input.user.firstName, `iam.accounts.first_name:${input.user.externalId}`),
-    protectOptionalField(input.user.lastName, `iam.accounts.last_name:${input.user.externalId}`),
-    status,
-  ]);
+  const usernameCiphertext = protectOptionalField(input.user.username, `iam.accounts.username:${input.user.externalId}`);
+  const emailCiphertext = protectOptionalField(input.user.email, `iam.accounts.email:${input.user.externalId}`);
+  const displayNameCiphertext = protectField(displayName, `iam.accounts.display_name:${input.user.externalId}`);
+  const firstNameCiphertext = protectOptionalField(
+    input.user.firstName,
+    `iam.accounts.first_name:${input.user.externalId}`
+  );
+  const lastNameCiphertext = protectOptionalField(input.user.lastName, `iam.accounts.last_name:${input.user.externalId}`);
+
+  let upsert;
+  try {
+    upsert = await client.query<{ id: string; created: boolean }>(UPSERT_ACCOUNT_QUERY, [
+      input.instanceId,
+      input.user.externalId,
+      usernameCiphertext,
+      emailCiphertext,
+      displayNameCiphertext,
+      firstNameCiphertext,
+      lastNameCiphertext,
+      status,
+    ]);
+  } catch (error) {
+    if (!shouldRetryWithoutUsernameCiphertext(error)) {
+      throw error;
+    }
+
+    logger.warn('Keycloak user sync fell back to legacy account upsert without username ciphertext', {
+      operation: 'sync_keycloak_users',
+      instance_id: input.instanceId,
+      subject_ref: toSubjectRef(input.user.externalId),
+      error: error instanceof Error ? error.message : String(error),
+    });
+
+    upsert = await client.query<{ id: string; created: boolean }>(UPSERT_ACCOUNT_QUERY_LEGACY, [
+      input.instanceId,
+      input.user.externalId,
+      emailCiphertext,
+      displayNameCiphertext,
+      firstNameCiphertext,
+      lastNameCiphertext,
+      status,
+    ]);
+  }
 
   const accountId = upsert.rows[0]?.id;
   if (!accountId) {

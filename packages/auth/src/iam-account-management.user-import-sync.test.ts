@@ -190,4 +190,57 @@ describe('runKeycloakUserImportSync', () => {
       })
     );
   });
+
+  it('falls back to a legacy account upsert when username_ciphertext is missing in the schema', async () => {
+    state.listUsersImpl = () => [
+      {
+        externalId: 'kc-legacy',
+        username: 'legacy.user',
+        email: 'legacy@example.com',
+        firstName: 'Legacy',
+        lastName: 'User',
+        enabled: true,
+        attributes: {
+          instanceId: ['hb-meinquartier'],
+        },
+      },
+    ];
+
+    let upsertAttempts = 0;
+    state.withInstanceScopedDbImpl = async (_instanceId, work) =>
+      work({
+        query: async (text: string) => {
+          if (text.includes('INSERT INTO iam.accounts')) {
+            upsertAttempts += 1;
+            if (upsertAttempts === 1) {
+              throw new Error('column "username_ciphertext" of relation "accounts" does not exist');
+            }
+            return {
+              rows: [{ id: '33333333-3333-4333-8333-333333333333', created: true }],
+            };
+          }
+          return { rows: [] };
+        },
+      });
+
+    const { runKeycloakUserImportSync } = await import('./iam-account-management/user-import-sync-handler.js');
+
+    const result = await runKeycloakUserImportSync({
+      instanceId: 'hb-meinquartier',
+    });
+
+    expect(result.report).toEqual({
+      importedCount: 1,
+      updatedCount: 0,
+      skippedCount: 0,
+      totalKeycloakUsers: 1,
+    });
+    expect(state.logger.warn).toHaveBeenCalledWith(
+      'Keycloak user sync fell back to legacy account upsert without username ciphertext',
+      expect.objectContaining({
+        instance_id: 'hb-meinquartier',
+        subject_ref: expect.any(String),
+      })
+    );
+  });
 });

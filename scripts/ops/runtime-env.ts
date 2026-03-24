@@ -312,12 +312,16 @@ const runQuantumExec = (
   const result = runCaptureDetailed('quantum-cli', args, withoutDebugEnv(env));
   const combined = `${result.stdout ?? ''}\n${result.stderr ?? ''}`;
 
-  if (result.status !== 0) {
-    throw new Error(summarizeProcessOutput(combined) || options?.failureMessage || 'quantum-cli exec fehlgeschlagen.');
+  if (options?.marker) {
+    try {
+      return parseMarkedOutput(combined, options.marker);
+    } catch {
+      // Fall through to status/output handling below when no valid marker was emitted.
+    }
   }
 
-  if (options?.marker) {
-    return parseMarkedOutput(combined, options.marker);
+  if (result.status !== 0) {
+    throw new Error(summarizeProcessOutput(combined) || options?.failureMessage || 'quantum-cli exec fehlgeschlagen.');
   }
 
   return summarizeProcessOutput(combined);

@@ -3477,6 +3477,7 @@ describe('iam-account-management handlers (guards)', () => {
   });
 
   it('imports studio-managed Keycloak roles during reconcile when metadata is complete', async () => {
+    const executedStatements: string[] = [];
     state.listRolesImpl = () => [
       {
         id: 'kc-custom_editor',
@@ -3490,6 +3491,87 @@ describe('iam-account-management handlers (guards)', () => {
         },
       },
     ];
+    state.queryHandler = (text) => {
+      executedStatements.push(text);
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+      if (text.includes('FROM iam.roles') && text.includes("managed_by = 'studio'")) {
+        return { rowCount: 0, rows: [] };
+      }
+      if (text.includes('INSERT INTO iam.roles') && text.includes('RETURNING id')) {
+        return { rowCount: 1, rows: [{ id: targetRoleId }] };
+      }
+      if (text.includes('INSERT INTO iam.activity_logs')) {
+        return { rowCount: 1, rows: [] };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await reconcileHandler(
+      new Request('http://localhost/api/v1/iam/admin/reconcile', {
+        method: 'POST',
+        headers: {
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'http://localhost',
+        },
+      })
+    );
+
+    const payload = (await response.json()) as {
+      data: {
+        checkedCount: number;
+        correctedCount: number;
+        failedCount: number;
+        requiresManualActionCount: number;
+        roles: Array<{ action: string; status: string; errorCode?: string; externalRoleName: string }>;
+      };
+    };
+    expect(response.status).toBe(200);
+    expect(payload.data.checkedCount).toBe(1);
+    expect(payload.data.correctedCount).toBe(1);
+    expect(payload.data.failedCount).toBe(0);
+    expect(payload.data.requiresManualActionCount).toBe(0);
+    const importStatement = executedStatements.find((statement) => statement.includes('INSERT INTO iam.roles'));
+    expect(importStatement).toBeDefined();
+    expect(importStatement).not.toContain('$1::uuid');
+    expect(payload.data.roles).toEqual([
+      {
+        action: 'create',
+        status: 'corrected',
+        externalRoleName: 'custom_editor',
+        roleId: targetRoleId,
+        roleKey: 'custom_editor',
+      },
+    ]);
+  });
+
+  it('hydrates Keycloak role details during reconcile when listRoles omits attributes', async () => {
+    state.listRolesImpl = () => [
+      {
+        id: 'kc-system_admin',
+        externalName: 'system_admin',
+        description: 'System administration persona',
+        attributes: {},
+      },
+    ];
+    state.getRoleByNameImpl = async (externalName: string) => {
+      if (externalName !== 'system_admin') {
+        return null;
+      }
+      return {
+        id: 'kc-system_admin',
+        externalName: 'system_admin',
+        description: 'System administration persona',
+        attributes: {
+          managed_by: ['studio'],
+          instance_id: ['de-musterhausen'],
+          role_key: ['system_admin'],
+          display_name: ['system_admin'],
+          role_level: ['10'],
+        },
+      };
+    };
     state.queryHandler = (text) => {
       if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
         return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
@@ -3534,9 +3616,180 @@ describe('iam-account-management handlers (guards)', () => {
       {
         action: 'create',
         status: 'corrected',
-        externalRoleName: 'custom_editor',
+        externalRoleName: 'system_admin',
         roleId: targetRoleId,
-        roleKey: 'custom_editor',
+        roleKey: 'system_admin',
+      },
+    ]);
+  });
+
+  it('hydrates Keycloak role details during reconcile when listRoles returns only partial attributes', async () => {
+    state.listRolesImpl = () => [
+      {
+        id: 'kc-system_admin',
+        externalName: 'system_admin',
+        description: 'System administration persona',
+        attributes: {
+          role_level: ['10'],
+        },
+      },
+    ];
+    state.getRoleByNameImpl = async (externalName: string) => {
+      if (externalName !== 'system_admin') {
+        return null;
+      }
+      return {
+        id: 'kc-system_admin',
+        externalName: 'system_admin',
+        description: 'System administration persona',
+        attributes: {
+          managed_by: ['studio'],
+          instance_id: ['de-musterhausen'],
+          role_key: ['system_admin'],
+          display_name: ['system_admin'],
+          role_level: ['10'],
+        },
+      };
+    };
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+      if (text.includes('FROM iam.roles') && text.includes("managed_by = 'studio'")) {
+        return { rowCount: 0, rows: [] };
+      }
+      if (text.includes('INSERT INTO iam.roles') && text.includes('RETURNING id')) {
+        return { rowCount: 1, rows: [{ id: targetRoleId }] };
+      }
+      if (text.includes('INSERT INTO iam.activity_logs')) {
+        return { rowCount: 1, rows: [] };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await reconcileHandler(
+      new Request('http://localhost/api/v1/iam/admin/reconcile', {
+        method: 'POST',
+        headers: {
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'http://localhost',
+        },
+      })
+    );
+
+    const payload = (await response.json()) as {
+      data: {
+        checkedCount: number;
+        correctedCount: number;
+        failedCount: number;
+        requiresManualActionCount: number;
+        roles: Array<{ action: string; status: string; errorCode?: string; externalRoleName: string }>;
+      };
+    };
+    expect(response.status).toBe(200);
+    expect(payload.data.checkedCount).toBe(1);
+    expect(payload.data.correctedCount).toBe(1);
+    expect(payload.data.failedCount).toBe(0);
+    expect(payload.data.requiresManualActionCount).toBe(0);
+    expect(payload.data.roles).toEqual([
+      {
+        action: 'create',
+        status: 'corrected',
+        externalRoleName: 'system_admin',
+        roleId: targetRoleId,
+        roleKey: 'system_admin',
+      },
+    ]);
+  });
+
+  it('matches managed Keycloak roles by role_key during reconcile when external names drift', async () => {
+    state.listRolesImpl = () => [
+      {
+        id: 'kc-admin',
+        externalName: 'system_admin',
+        description: 'System administration persona',
+        attributes: {},
+      },
+    ];
+    state.getRoleByNameImpl = async (externalName: string) => {
+      if (externalName !== 'system_admin') {
+        return null;
+      }
+      return {
+        id: 'kc-admin',
+        externalName: 'system_admin',
+        description: 'System administration persona',
+        attributes: {
+          managed_by: ['studio'],
+          instance_id: ['de-musterhausen'],
+          role_key: ['mainserver_admin'],
+          display_name: ['Admin'],
+          role_level: ['10'],
+        },
+      };
+    };
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+      if (text.includes('FROM iam.roles') && text.includes("managed_by = 'studio'")) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              id: targetRoleId,
+              role_key: 'mainserver_admin',
+              role_name: 'mainserver_admin',
+              display_name: 'Admin',
+              external_role_name: 'Admin',
+              description: 'System administration persona',
+              is_system_role: false,
+              role_level: 10,
+              managed_by: 'studio',
+              sync_state: 'synced',
+              last_synced_at: null,
+              last_error_code: null,
+            },
+          ],
+        };
+      }
+      if (text.includes('INSERT INTO iam.activity_logs')) {
+        return { rowCount: 1, rows: [] };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await reconcileHandler(
+      new Request('http://localhost/api/v1/iam/admin/reconcile', {
+        method: 'POST',
+        headers: {
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'http://localhost',
+        },
+      })
+    );
+
+    const payload = (await response.json()) as {
+      data: {
+        checkedCount: number;
+        correctedCount: number;
+        failedCount: number;
+        requiresManualActionCount: number;
+        roles: Array<{ action: string; status: string; errorCode?: string; externalRoleName: string }>;
+      };
+    };
+    expect(response.status).toBe(200);
+    expect(payload.data.checkedCount).toBe(1);
+    expect(payload.data.correctedCount).toBe(0);
+    expect(payload.data.failedCount).toBe(0);
+    expect(payload.data.requiresManualActionCount).toBe(0);
+    expect(payload.data.roles).toEqual([
+      {
+        action: 'noop',
+        status: 'synced',
+        externalRoleName: 'Admin',
+        roleId: targetRoleId,
+        roleKey: 'mainserver_admin',
       },
     ]);
   });
@@ -3819,6 +4072,229 @@ describe('iam-account-management handlers (guards)', () => {
     const payload = (await response.json()) as { error: { code: string } };
     expect(response.status).toBe(403);
     expect(payload.error.code).toBe('csrf_validation_failed');
+  });
+
+  it('includes reconcile diagnostics when explicitly requested', async () => {
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+
+      if (text.includes('FROM iam.roles') && text.includes("managed_by = 'studio'")) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              id: 'role-1',
+              role_key: 'system_admin',
+              role_name: 'system_admin',
+              display_name: 'System Admin',
+              external_role_name: 'system_admin',
+              description: 'System administration persona',
+              is_system_role: true,
+              role_level: 10,
+              managed_by: 'studio',
+              sync_state: 'synced',
+              last_synced_at: null,
+              last_error_code: null,
+            },
+          ],
+        };
+      }
+
+      return { rowCount: 0, rows: [] };
+    };
+
+    state.listRolesImpl = async () => [
+      {
+        externalName: 'system_admin',
+        description: 'System administration persona',
+        clientRole: false,
+      },
+    ];
+
+    state.getRoleByNameImpl = async (externalName: string) =>
+      externalName === 'system_admin'
+        ? {
+            externalName: 'system_admin',
+            description: 'System administration persona',
+            clientRole: false,
+            attributes: {
+              managed_by: ['studio'],
+              instance_id: ['de-musterhausen'],
+              role_key: ['system_admin'],
+              display_name: ['System Admin'],
+            },
+          }
+        : null;
+
+    const response = await reconcileHandler(
+      new Request('http://localhost/api/v1/iam/admin/reconcile', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-requested-with': 'XMLHttpRequest',
+          'x-debug-reconcile': '1',
+          origin: 'http://localhost',
+        },
+        body: JSON.stringify({}),
+      })
+    );
+
+    const payload = (await response.json()) as {
+      data: {
+        debug?: {
+          instanceId: string;
+          dbRoleCount: number;
+          managedIdpRoleCount: number;
+          importFailures?: Array<{
+            roleKey?: string;
+            externalRoleName: string;
+            errorName: string;
+            errorMessage: string;
+          }>;
+          dbRoleMatches: Array<{
+            roleKey: string;
+            externalRoleName: string;
+            hasExternalNameMatch: boolean;
+            hasRoleKeyMatch: boolean;
+            hydratedManagedBy?: string;
+            hydratedInstanceId?: string;
+            hydratedRoleKey?: string;
+          }>;
+        };
+      };
+    };
+
+    expect(response.status).toBe(200);
+    expect(payload.data.debug).toEqual({
+      instanceId: 'de-musterhausen',
+      dbRoleCount: 1,
+      listedIdpRoleCount: 1,
+      hydratedIdpRoleCount: 1,
+      managedIdpRoleCount: 1,
+      importFailures: [],
+      dbRoleMatches: [
+        {
+          roleKey: 'system_admin',
+          externalRoleName: 'system_admin',
+          hasExternalNameMatch: true,
+          hasRoleKeyMatch: true,
+          matchingExternalNameByRoleKey: 'system_admin',
+          listedRoleFound: true,
+          listedRoleHasAttributes: false,
+          hydratedRoleFound: true,
+          hydratedManagedBy: 'studio',
+          hydratedInstanceId: 'de-musterhausen',
+          hydratedRoleKey: 'system_admin',
+          hydratedDisplayName: 'System Admin',
+        },
+      ],
+    });
+  });
+
+  it('includes sanitize import failure diagnostics during reconcile when requested', async () => {
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+
+      if (text.includes('FROM iam.roles') && text.includes("managed_by = 'studio'")) {
+        return { rowCount: 0, rows: [] };
+      }
+
+      if (text.includes('current_user') && text.includes("current_setting('app.instance_id', true)")) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              current_user: 'iam_app',
+              session_user: 'sva',
+              current_role: 'iam_app',
+              app_instance_id: 'de-musterhausen',
+            },
+          ],
+        };
+      }
+
+      if (text.includes('INSERT INTO iam.roles') && text.includes('RETURNING id')) {
+        throw new Error('insert into iam.roles failed because activity_logs is denied');
+      }
+
+      return { rowCount: 0, rows: [] };
+    };
+
+    state.listRolesImpl = async () => [
+      {
+        externalName: 'system_admin',
+        description: 'System administration persona',
+        clientRole: false,
+      },
+    ];
+
+    state.getRoleByNameImpl = async (externalName: string) =>
+      externalName === 'system_admin'
+        ? {
+            externalName: 'system_admin',
+            description: 'System administration persona',
+            clientRole: false,
+            attributes: {
+              managed_by: ['studio'],
+              instance_id: ['de-musterhausen'],
+              role_key: ['system_admin'],
+              display_name: ['System Admin'],
+              role_level: ['10'],
+            },
+          }
+        : null;
+
+    const response = await reconcileHandler(
+      new Request('http://localhost/api/v1/iam/admin/reconcile', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-requested-with': 'XMLHttpRequest',
+          'x-debug-reconcile': '1',
+          origin: 'http://localhost',
+        },
+        body: JSON.stringify({}),
+      })
+    );
+
+    const payload = (await response.json()) as {
+      data: {
+        debug?: {
+          importFailures?: Array<{
+            roleKey?: string;
+            externalRoleName: string;
+            errorName: string;
+            errorMessage: string;
+            dbContext?: {
+              currentUser?: string;
+              sessionUser?: string;
+              currentRole?: string;
+              appInstanceId?: string;
+            };
+          }>;
+        };
+      };
+    };
+
+    expect(response.status).toBe(200);
+    expect(payload.data.debug?.importFailures).toEqual([
+      {
+        roleKey: 'system_admin',
+        externalRoleName: 'system_admin',
+        errorName: 'Error',
+        errorMessage: 'insert into iam.roles failed because activity_logs is denied',
+        dbContext: {
+          currentUser: 'iam_app',
+          sessionUser: 'sva',
+          currentRole: 'iam_app',
+          appInstanceId: 'de-musterhausen',
+        },
+      },
+    ]);
   });
 
   it('creates a user successfully on happy path', async () => {
@@ -4556,6 +5032,7 @@ describe('iam-account-management additional handlers', () => {
         text === 'BEGIN' ||
         text === 'COMMIT' ||
         text === 'ROLLBACK' ||
+        text === 'SET LOCAL ROLE iam_app;' ||
         text.includes('SELECT set_config')
       ) {
         return { rowCount: 0, rows: [] };

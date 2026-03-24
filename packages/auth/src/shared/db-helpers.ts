@@ -79,6 +79,7 @@ export const withInstanceDb = async <T>(
 
   try {
     await client.query('BEGIN');
+    await client.query('SET LOCAL ROLE iam_app;');
     await client.query('SELECT set_config($1, $2, true);', ['app.instance_id', instanceId]);
     const result = await work(client);
     await client.query('COMMIT');

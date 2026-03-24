@@ -301,21 +301,32 @@ export const runKeycloakUserImportSync = async (input: {
     };
 
     if (input.actorAccountId) {
-      await emitActivityLog(client, {
-        instanceId: input.instanceId,
-        accountId: input.actorAccountId,
-        subjectId: input.actorAccountId,
-        eventType: 'user.keycloak_import_synced',
-        result: 'success',
-        payload: {
-          imported_count: summary.importedCount,
-          updated_count: summary.updatedCount,
-          skipped_count: summary.skippedCount,
-          total_keycloak_users: summary.totalKeycloakUsers,
-        },
-        requestId: input.requestId,
-        traceId: input.traceId,
-      });
+      try {
+        await emitActivityLog(client, {
+          instanceId: input.instanceId,
+          accountId: input.actorAccountId,
+          subjectId: input.actorAccountId,
+          eventType: 'user.keycloak_import_synced',
+          result: 'success',
+          payload: {
+            imported_count: summary.importedCount,
+            updated_count: summary.updatedCount,
+            skipped_count: summary.skippedCount,
+            total_keycloak_users: summary.totalKeycloakUsers,
+          },
+          requestId: input.requestId,
+          traceId: input.traceId,
+        });
+      } catch (error) {
+        logger.warn('Skipped audit log for Keycloak user sync after successful import', {
+          operation: 'sync_keycloak_users',
+          instance_id: input.instanceId,
+          actor_account_id: input.actorAccountId,
+          request_id: input.requestId,
+          trace_id: input.traceId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
     }
 
     return summary;

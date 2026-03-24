@@ -233,6 +233,32 @@ type RoleImportDbContext = {
   appInstanceId?: string;
 };
 
+type RoleReconcileAlias = {
+  readonly externalRoleName: string;
+  readonly identityRoleKey?: string;
+};
+
+const ROLE_RECONCILE_ALIASES: Readonly<Record<string, RoleReconcileAlias>> = {
+  editor: {
+    externalRoleName: 'Editor',
+    identityRoleKey: 'mainserver_editor',
+  },
+};
+
+const readRoleReconcileAlias = (roleKey: string): RoleReconcileAlias | undefined => ROLE_RECONCILE_ALIASES[roleKey];
+
+const isAcceptedIdentityRoleKey = (roleKey: string, identityRoleKey: string | undefined): boolean => {
+  if (!identityRoleKey) {
+    return false;
+  }
+
+  if (identityRoleKey === roleKey) {
+    return true;
+  }
+
+  return readRoleReconcileAlias(roleKey)?.identityRoleKey === identityRoleKey;
+};
+
 export const runRoleCatalogReconciliation = async (input: {
   instanceId: string;
   actorAccountId?: string;
@@ -283,6 +309,8 @@ ORDER BY role_level DESC, COALESCE(display_name, role_name) ASC;
   );
   const dbByExternalName = new Map(dbRoles.map((role) => [getRoleExternalName(role), role]));
   const dbByRoleKey = new Map(dbRoles.map((role) => [role.role_key, role]));
+  const matchedIdentityExternalNames = new Set<string>();
+  const matchedIdentityRoleKeys = new Set<string>();
 
   const entries: ReconcileRoleEntry[] = [];
   const importFailures: Array<{
@@ -300,9 +328,26 @@ ORDER BY role_level DESC, COALESCE(display_name, role_name) ASC;
 
   for (const role of dbRoles) {
     const externalRoleName = getRoleExternalName(role);
-    const matchingIdentityRole = idpByExternalName.get(externalRoleName) ?? idpByRoleKey.get(role.role_key);
+    const alias = readRoleReconcileAlias(role.role_key);
+    const matchingIdentityRole =
+      idpByExternalName.get(externalRoleName) ??
+      idpByRoleKey.get(role.role_key) ??
+      (alias ? idpByExternalName.get(alias.externalRoleName) : undefined) ??
+      (alias?.identityRoleKey ? idpByRoleKey.get(alias.identityRoleKey) : undefined);
     const expectedDisplayName = getRoleDisplayName(role);
     const identityDisplayName = readRoleAttribute(matchingIdentityRole?.attributes, 'display_name');
+    const identityRoleKey = readRoleAttribute(matchingIdentityRole?.attributes, 'role_key');
+    const canonicalExternalRoleName = matchingIdentityRole?.externalName ?? externalRoleName;
+    const matchedByAlias =
+      Boolean(alias) &&
+      identityRoleKey === alias?.identityRoleKey &&
+      (matchingIdentityRole?.externalName === alias?.externalRoleName ||
+        matchingIdentityRole?.externalName === idpByRoleKey.get(alias?.identityRoleKey ?? '')?.externalName) &&
+      alias.identityRoleKey !== role.role_key;
+    const aliasSatisfiedByCanonicalRole =
+      matchedByAlias &&
+      identityRoleKey === alias?.identityRoleKey;
+    const reportedExternalRoleName = matchedByAlias ? canonicalExternalRoleName : externalRoleName;
 
     if (!matchingIdentityRole) {
       try {
@@ -381,24 +426,34 @@ ORDER BY role_level DESC, COALESCE(display_name, role_name) ASC;
       continue;
     }
 
+    matchedIdentityExternalNames.add(matchingIdentityRole.externalName);
+    if (identityRoleKey) {
+      matchedIdentityRoleKeys.add(identityRoleKey);
+    }
+
     const descriptionChanged = (matchingIdentityRole.description ?? undefined) !== (role.description ?? undefined);
     const displayNameChanged = identityDisplayName !== expectedDisplayName;
-    const roleKeyChanged = readRoleAttribute(matchingIdentityRole.attributes, 'role_key') !== role.role_key;
+    const roleKeyChanged = !isAcceptedIdentityRoleKey(role.role_key, identityRoleKey);
+    const shouldUpdateIdentityRole =
+      !aliasSatisfiedByCanonicalRole && (descriptionChanged || displayNameChanged || roleKeyChanged);
+    const shouldResyncDbState = role.sync_state !== 'synced';
 
-    if (descriptionChanged || displayNameChanged || roleKeyChanged || role.sync_state !== 'synced') {
+    if (shouldUpdateIdentityRole || shouldResyncDbState) {
       try {
-        await trackKeycloakCall('reconcile_update_role', () =>
-          identityProvider.provider.updateRole(externalRoleName, {
-            description: role.description ?? undefined,
-            attributes: {
-              managedBy: 'studio',
-              instanceId: input.instanceId,
-              roleKey: role.role_key,
-              displayName: expectedDisplayName,
-            },
-          })
-        );
         await withInstanceScopedDb(input.instanceId, async (client) => {
+          if (shouldUpdateIdentityRole) {
+            await trackKeycloakCall('reconcile_update_role', () =>
+              identityProvider.provider.updateRole(canonicalExternalRoleName, {
+                description: role.description ?? undefined,
+                attributes: {
+                  managedBy: 'studio',
+                  instanceId: input.instanceId,
+                  roleKey: role.role_key,
+                  displayName: expectedDisplayName,
+                },
+              })
+            );
+          }
           await setRoleSyncState(client, {
             instanceId: input.instanceId,
             roleId: role.id,
@@ -422,8 +477,8 @@ ORDER BY role_level DESC, COALESCE(display_name, role_name) ASC;
         entries.push({
           roleId: role.id,
           roleKey: role.role_key,
-          externalRoleName,
-          action: 'update',
+          externalRoleName: reportedExternalRoleName,
+          action: shouldUpdateIdentityRole ? 'update' : 'noop',
           status: 'corrected',
         });
       } catch (error) {
@@ -452,8 +507,8 @@ ORDER BY role_level DESC, COALESCE(display_name, role_name) ASC;
         entries.push({
           roleId: role.id,
           roleKey: role.role_key,
-          externalRoleName,
-          action: 'update',
+          externalRoleName: reportedExternalRoleName,
+          action: shouldUpdateIdentityRole ? 'update' : 'noop',
           status: 'failed',
           errorCode,
         });
@@ -464,7 +519,7 @@ ORDER BY role_level DESC, COALESCE(display_name, role_name) ASC;
     entries.push({
       roleId: role.id,
       roleKey: role.role_key,
-      externalRoleName,
+      externalRoleName: reportedExternalRoleName,
       action: 'noop',
       status: 'synced',
     });
@@ -472,6 +527,12 @@ ORDER BY role_level DESC, COALESCE(display_name, role_name) ASC;
 
   for (const identityRole of managedIdpRoles) {
     const identityRoleKey = readRoleAttribute(identityRole.attributes, 'role_key');
+    if (matchedIdentityExternalNames.has(identityRole.externalName)) {
+      continue;
+    }
+    if (identityRoleKey && matchedIdentityRoleKeys.has(identityRoleKey)) {
+      continue;
+    }
     if (!dbByExternalName.has(identityRole.externalName) && (!identityRoleKey || !dbByRoleKey.has(identityRoleKey))) {
       const importableMetadata = readImportableRoleMetadata(identityRole);
       if (importableMetadata) {

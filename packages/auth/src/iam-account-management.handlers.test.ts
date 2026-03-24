@@ -3794,6 +3794,155 @@ describe('iam-account-management handlers (guards)', () => {
     ]);
   });
 
+  it('treats legacy editor aliases as satisfied when the canonical mainserver role already owns the Keycloak role', async () => {
+    const updateRoleImpl = vi.fn();
+    state.listRolesImpl = () => [
+      {
+        id: 'kc-mainserver-editor',
+        externalName: 'Editor',
+        description: 'Mainserver editor role',
+        attributes: {},
+      },
+    ];
+    state.getRoleByNameImpl = async (externalName: string) => {
+      if (externalName !== 'Editor') {
+        return null;
+      }
+      return {
+        id: 'kc-mainserver-editor',
+        externalName: 'Editor',
+        description: 'Mainserver editor role',
+        attributes: {
+          managed_by: ['studio'],
+          instance_id: ['de-musterhausen'],
+          role_key: ['mainserver_editor'],
+          display_name: ['Editor'],
+          role_level: ['40'],
+        },
+      };
+    };
+    state.updateRoleImpl = updateRoleImpl;
+    state.queryHandler = (text, values) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+      if (text.includes('FROM iam.roles') && text.includes("managed_by = 'studio'")) {
+        return {
+          rowCount: 2,
+          rows: [
+            {
+              id: '30dddddd-dddd-dddd-dddd-dddddddddddd',
+              role_key: 'mainserver_editor',
+              role_name: 'mainserver_editor',
+              display_name: 'Editor',
+              external_role_name: 'Editor',
+              description: 'Mainserver editor role',
+              is_system_role: false,
+              role_level: 40,
+              managed_by: 'studio',
+              sync_state: 'synced',
+              last_synced_at: null,
+              last_error_code: null,
+            },
+            {
+              id: targetRoleId,
+              role_key: 'editor',
+              role_name: 'editor',
+              display_name: 'Editor',
+              external_role_name: 'editor',
+              description: 'Mainserver editor role',
+              is_system_role: false,
+              role_level: 30,
+              managed_by: 'studio',
+              sync_state: 'synced',
+              last_synced_at: null,
+              last_error_code: null,
+            },
+          ],
+        };
+      }
+      if (text.includes('UPDATE iam.roles') && text.includes('last_error_code = $4')) {
+        return { rowCount: 1, rows: [] };
+      }
+      if (text.includes('INSERT INTO iam.activity_logs')) {
+        return { rowCount: 1, rows: [] };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const firstResponse = await reconcileHandler(
+      new Request('http://localhost/api/v1/iam/admin/reconcile', {
+        method: 'POST',
+        headers: {
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'http://localhost',
+        },
+      })
+    );
+    const firstPayload = (await firstResponse.json()) as {
+      data: {
+        correctedCount: number;
+        roles: Array<{ action: string; status: string; externalRoleName: string; roleKey?: string }>;
+      };
+    };
+
+    expect(firstResponse.status).toBe(200);
+    expect(firstPayload.data.correctedCount).toBe(0);
+    expect(firstPayload.data.roles).toEqual([
+      {
+        action: 'noop',
+        status: 'synced',
+        externalRoleName: 'Editor',
+        roleId: '30dddddd-dddd-dddd-dddd-dddddddddddd',
+        roleKey: 'mainserver_editor',
+      },
+      {
+        action: 'noop',
+        status: 'synced',
+        externalRoleName: 'Editor',
+        roleId: targetRoleId,
+        roleKey: 'editor',
+      },
+    ]);
+    expect(updateRoleImpl).not.toHaveBeenCalled();
+
+    const secondResponse = await reconcileHandler(
+      new Request('http://localhost/api/v1/iam/admin/reconcile', {
+        method: 'POST',
+        headers: {
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'http://localhost',
+        },
+      })
+    );
+    const secondPayload = (await secondResponse.json()) as {
+      data: {
+        correctedCount: number;
+        roles: Array<{ action: string; status: string; externalRoleName: string; roleKey?: string }>;
+      };
+    };
+
+    expect(secondResponse.status).toBe(200);
+    expect(secondPayload.data.correctedCount).toBe(0);
+    expect(secondPayload.data.roles).toEqual([
+      {
+        action: 'noop',
+        status: 'synced',
+        externalRoleName: 'Editor',
+        roleId: '30dddddd-dddd-dddd-dddd-dddddddddddd',
+        roleKey: 'mainserver_editor',
+      },
+      {
+        action: 'noop',
+        status: 'synced',
+        externalRoleName: 'Editor',
+        roleId: targetRoleId,
+        roleKey: 'editor',
+      },
+    ]);
+    expect(updateRoleImpl).not.toHaveBeenCalled();
+  });
+
   it('reports studio-managed Keycloak roles with incomplete metadata during reconcile', async () => {
     state.listRolesImpl = () => [
       {

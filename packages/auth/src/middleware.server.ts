@@ -1,5 +1,5 @@
 import { parse as parseCookie } from 'cookie-es';
-import { createSdkLogger, toJsonErrorResponse } from '@sva/sdk/server';
+import { createSdkLogger, parseInstanceIdFromHost, toJsonErrorResponse } from '@sva/sdk/server';
 
 import { getSessionUser } from './auth.server.js';
 import { getAuthConfig } from './config.js';
@@ -85,6 +85,31 @@ const shouldEnforceLegalTextCompliance = async (request: Request): Promise<boole
   return LEGAL_TEXT_PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 };
 
+const resolveSessionUser = (request: Request, user: SessionUser): SessionUser => {
+  if (user.instanceId) {
+    return user;
+  }
+
+  const derivedInstanceId = parseInstanceIdFromHost(new URL(request.url).host);
+  if (!derivedInstanceId) {
+    return user;
+  }
+
+  logger.warn('Auth middleware derived missing session instance from request host', {
+    endpoint: request.url,
+    operation: 'auth_middleware',
+    auth_state: 'authenticated',
+    user_id: user.id,
+    derived_instance_id: derivedInstanceId,
+    ...buildLogContext(derivedInstanceId, { includeTraceId: true }),
+  });
+
+  return {
+    ...user,
+    instanceId: derivedInstanceId,
+  };
+};
+
 /**
  * Middleware helper that resolves an authenticated user from the current request.
  */
@@ -108,8 +133,8 @@ export const withAuthenticatedUser = async (
       return unauthorized();
     }
 
-    const user = await getSessionUser(sessionId);
-    if (!user) {
+    const sessionUser = await getSessionUser(sessionId);
+    if (!sessionUser) {
       logger.warn('Auth middleware rejected request with invalid session', {
         endpoint: request.url,
         auth_state: 'invalid_session',
@@ -120,6 +145,7 @@ export const withAuthenticatedUser = async (
       });
       return unauthorized();
     }
+    const user = resolveSessionUser(request, sessionUser);
 
     if (shouldLogProfileDiagnostics(request)) {
       logger.info('Auth middleware resolved session user for self-service diagnostics', {

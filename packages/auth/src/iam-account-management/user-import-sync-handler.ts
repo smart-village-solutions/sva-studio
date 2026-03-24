@@ -261,6 +261,73 @@ const mapSyncErrorResponse = (error: unknown, requestId?: string): Response | un
   return undefined;
 };
 
+export const runKeycloakUserImportSync = async (input: {
+  instanceId: string;
+  actorAccountId?: string;
+  requestId?: string;
+  traceId?: string;
+}): Promise<{
+  report: IamUserImportSyncReport;
+  skippedCount: number;
+  skippedInstanceIds: ReadonlySet<string>;
+}> => {
+  const listedUsers = await listAllKeycloakUsers();
+  const { matchingUsers, skippedCount, skippedInstanceIds } = collectSyncCandidates(
+    listedUsers,
+    input.instanceId
+  );
+
+  const report = await withInstanceScopedDb(input.instanceId, async (client) => {
+    let importedCount = 0;
+    let updatedCount = 0;
+
+    for (const user of matchingUsers) {
+      const result = await upsertIdentityUser(client, {
+        instanceId: input.instanceId,
+        user,
+      });
+      if (result.created) {
+        importedCount += 1;
+      } else {
+        updatedCount += 1;
+      }
+    }
+
+    const summary: IamUserImportSyncReport = {
+      importedCount,
+      updatedCount,
+      skippedCount,
+      totalKeycloakUsers: listedUsers.length,
+    };
+
+    if (input.actorAccountId) {
+      await emitActivityLog(client, {
+        instanceId: input.instanceId,
+        accountId: input.actorAccountId,
+        subjectId: input.actorAccountId,
+        eventType: 'user.keycloak_import_synced',
+        result: 'success',
+        payload: {
+          imported_count: summary.importedCount,
+          updated_count: summary.updatedCount,
+          skipped_count: summary.skippedCount,
+          total_keycloak_users: summary.totalKeycloakUsers,
+        },
+        requestId: input.requestId,
+        traceId: input.traceId,
+      });
+    }
+
+    return summary;
+  });
+
+  return {
+    report,
+    skippedCount,
+    skippedInstanceIds,
+  };
+};
+
 export const syncUsersFromKeycloakInternal = async (
   request: Request,
   ctx: AuthenticatedRequestContext
@@ -272,52 +339,11 @@ export const syncUsersFromKeycloakInternal = async (
   const { actor } = actorResolution;
 
   try {
-    const listedUsers = await listAllKeycloakUsers();
-    const { matchingUsers, skippedCount, skippedInstanceIds } = collectSyncCandidates(
-      listedUsers,
-      actor.instanceId
-    );
-
-    const report = await withInstanceScopedDb(actor.instanceId, async (client) => {
-      let importedCount = 0;
-      let updatedCount = 0;
-
-      for (const user of matchingUsers) {
-        const result = await upsertIdentityUser(client, {
-          instanceId: actor.instanceId,
-          user,
-        });
-        if (result.created) {
-          importedCount += 1;
-        } else {
-          updatedCount += 1;
-        }
-      }
-
-      const summary: IamUserImportSyncReport = {
-        importedCount,
-        updatedCount,
-        skippedCount,
-        totalKeycloakUsers: listedUsers.length,
-      };
-
-      await emitActivityLog(client, {
-        instanceId: actor.instanceId,
-        accountId: actor.actorAccountId,
-        subjectId: actor.actorAccountId,
-        eventType: 'user.keycloak_import_synced',
-        result: 'success',
-        payload: {
-          imported_count: summary.importedCount,
-          updated_count: summary.updatedCount,
-          skipped_count: summary.skippedCount,
-          total_keycloak_users: summary.totalKeycloakUsers,
-        },
-        requestId: actor.requestId,
-        traceId: actor.traceId,
-      });
-
-      return summary;
+    const { report, skippedCount, skippedInstanceIds } = await runKeycloakUserImportSync({
+      instanceId: actor.instanceId,
+      actorAccountId: actor.actorAccountId,
+      requestId: actor.requestId,
+      traceId: actor.traceId,
     });
 
     if (skippedCount > 0) {

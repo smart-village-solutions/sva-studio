@@ -25,6 +25,7 @@ vi.mock('./config', () => ({
 vi.mock('@sva/sdk/server', () => ({
   createSdkLogger: () => middlewareLogger,
   getWorkspaceContext: () => workspaceContext,
+  parseInstanceIdFromHost: (host: string) => (host.startsWith('hb-meinquartier.') ? 'hb-meinquartier' : null),
   toJsonErrorResponse: (status: number, code: string, publicMessage?: string, options?: { requestId?: string }) =>
     new Response(
       JSON.stringify({
@@ -124,6 +125,35 @@ describe('withAuthenticatedUser', () => {
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ sessionId: 'session-2', userId: 'user-1' });
+  });
+
+  it('derives a missing session instance id from the request host', async () => {
+    getSessionUserMock.mockResolvedValue({
+      id: 'user-host-instance',
+      name: 'Host Derived',
+      roles: ['admin'],
+    });
+    const { withAuthenticatedUser } = await import('./middleware.server');
+    const request = new Request('https://hb-meinquartier.studio.smart-village.app/api/v1/iam/users', {
+      headers: { cookie: 'sva_auth_session=session-host-instance' },
+    });
+
+    const response = await withAuthenticatedUser(request, ({ user }) =>
+      new Response(JSON.stringify({ instanceId: user.instanceId }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ instanceId: 'hb-meinquartier' });
+    expect(middlewareLogger.warn).toHaveBeenCalledWith(
+      'Auth middleware derived missing session instance from request host',
+      expect.objectContaining({
+        user_id: 'user-host-instance',
+        derived_instance_id: 'hb-meinquartier',
+      })
+    );
   });
 
   it('enforces legal text compliance on protected IAM routes', async () => {

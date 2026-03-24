@@ -343,7 +343,7 @@ ORDER BY role_level DESC, COALESCE(display_name, role_name) ASC;
       identityRoleKey === alias?.identityRoleKey &&
       (matchingIdentityRole?.externalName === alias?.externalRoleName ||
         matchingIdentityRole?.externalName === idpByRoleKey.get(alias?.identityRoleKey ?? '')?.externalName) &&
-      alias.identityRoleKey !== role.role_key;
+      alias?.identityRoleKey !== role.role_key;
     const aliasSatisfiedByCanonicalRole =
       matchedByAlias &&
       identityRoleKey === alias?.identityRoleKey;

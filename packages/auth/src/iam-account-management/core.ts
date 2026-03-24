@@ -29,6 +29,7 @@ import {
   getUserInternal,
   getUserTimelineInternal,
   listUsersInternal,
+  runKeycloakUserImportSync,
   syncUsersFromKeycloakInternal,
   updateMyProfileInternal,
   updateUserInternal,
@@ -91,6 +92,8 @@ export const bulkDeactivateUsersHandler = async (request: Request): Promise<Resp
 
 export const syncUsersFromKeycloakHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedIamHandler(request, syncUsersFromKeycloakInternal);
+
+export { runKeycloakUserImportSync };
 
 export const updateMyProfileHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedIamHandler(request, updateMyProfileInternal);

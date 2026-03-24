@@ -148,6 +148,34 @@ describe('withAuthenticatedUser', () => {
     );
   });
 
+  it('logs session diagnostics for self-service profile requests when debug mode is enabled', async () => {
+    vi.stubEnv('IAM_DEBUG_PROFILE_ERRORS', 'true');
+    getSessionUserMock.mockResolvedValue({
+      id: 'user-profile-debug',
+      name: 'Profil Debug',
+      roles: ['member'],
+      instanceId: 'de-musterhausen',
+    });
+    const { withAuthenticatedUser } = await import('./middleware.server');
+    const request = new Request('http://localhost/api/v1/iam/users/me/profile', {
+      headers: { cookie: 'sva_auth_session=session-profile-debug' },
+    });
+
+    const response = await withAuthenticatedUser(request, () => new Response('ok'));
+
+    expect(response.status).toBe(200);
+    expect(middlewareLogger.info).toHaveBeenCalledWith(
+      'Auth middleware resolved session user for self-service diagnostics',
+      expect.objectContaining({
+        auth_state: 'authenticated',
+        session_instance_id: 'de-musterhausen',
+        session_roles: ['member'],
+        session_roles_count: 1,
+        user_id: 'user-profile-debug',
+      })
+    );
+  });
+
   it('skips legal text compliance for acceptance workflow operations', async () => {
     getSessionUserMock.mockResolvedValue({
       id: 'user-3',

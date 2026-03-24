@@ -3526,7 +3526,7 @@ describe('iam-account-management handlers (guards)', () => {
       };
     };
     expect(response.status).toBe(200);
-    expect(payload.data.checkedCount).toBe(0);
+    expect(payload.data.checkedCount).toBe(1);
     expect(payload.data.correctedCount).toBe(1);
     expect(payload.data.failedCount).toBe(0);
     expect(payload.data.requiresManualActionCount).toBe(0);
@@ -3584,7 +3584,77 @@ describe('iam-account-management handlers (guards)', () => {
       };
     };
     expect(response.status).toBe(200);
-    expect(payload.data.checkedCount).toBe(0);
+    expect(payload.data.checkedCount).toBe(1);
+    expect(payload.data.correctedCount).toBe(0);
+    expect(payload.data.failedCount).toBe(0);
+    expect(payload.data.requiresManualActionCount).toBe(1);
+    expect(payload.data.roles).toEqual([
+      {
+        action: 'report',
+        status: 'requires_manual_action',
+        errorCode: 'REQUIRES_MANUAL_ACTION',
+        externalRoleName: 'custom_editor',
+        roleKey: 'custom_editor',
+      },
+    ]);
+  });
+
+  it('reports unannotated custom Keycloak realm roles for manual review during reconcile', async () => {
+    state.listRolesImpl = () => [
+      {
+        id: 'kc-custom_editor',
+        externalName: 'custom_editor',
+        description: 'Custom Editor',
+        attributes: {},
+        clientRole: false,
+      },
+      {
+        id: 'kc-default',
+        externalName: 'default-roles-sva-saas',
+        description: 'Default realm role',
+        attributes: {},
+        clientRole: false,
+      },
+      {
+        id: 'kc-offline',
+        externalName: 'offline_access',
+        description: 'Offline access',
+        attributes: {},
+        clientRole: false,
+      },
+    ];
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+      if (text.includes('FROM iam.roles') && text.includes("managed_by = 'studio'")) {
+        return { rowCount: 0, rows: [] };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await reconcileHandler(
+      new Request('http://localhost/api/v1/iam/admin/reconcile', {
+        method: 'POST',
+        headers: {
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'http://localhost',
+        },
+      })
+    );
+
+    const payload = (await response.json()) as {
+      data: {
+        checkedCount: number;
+        correctedCount: number;
+        failedCount: number;
+        requiresManualActionCount: number;
+        roles: Array<{ action: string; status: string; errorCode?: string; externalRoleName: string; roleKey?: string }>;
+      };
+    };
+
+    expect(response.status).toBe(200);
+    expect(payload.data.checkedCount).toBe(1);
     expect(payload.data.correctedCount).toBe(0);
     expect(payload.data.failedCount).toBe(0);
     expect(payload.data.requiresManualActionCount).toBe(1);
@@ -4237,6 +4307,7 @@ describe('iam-account-management additional handlers', () => {
     delete process.env.IAM_UI_ENABLED;
     delete process.env.IAM_ADMIN_ENABLED;
     delete process.env.IAM_BULK_ENABLED;
+    delete process.env.IAM_DEBUG_PROFILE_ERRORS;
     delete process.env.IAM_PII_ALLOW_PLAINTEXT_FALLBACK;
     delete process.env.IAM_PII_ACTIVE_KEY_ID;
     delete process.env.IAM_PII_KEYRING_JSON;
@@ -4361,6 +4432,48 @@ describe('iam-account-management additional handlers', () => {
     expect(payload.error.code).toBe('database_unavailable');
   });
 
+  it('adds self-service diagnostics when profile actor resolution fails before the query', async () => {
+    process.env.IAM_DEBUG_PROFILE_ERRORS = 'true';
+    state.user = {
+      id: 'keycloak-self-no-instance',
+      name: 'Self User',
+      roles: ['member'],
+    };
+
+    const response = await getMyProfileHandler(
+      new Request('http://localhost/api/v1/iam/users/me/profile', { method: 'GET' })
+    );
+    const payload = (await response.json()) as {
+      error: {
+        code: string;
+        details?: {
+          diagnostic_stage?: string;
+          reason_code?: string;
+          session_instance_id?: string | null;
+          session_roles?: string[];
+          session_roles_count?: number;
+          session_user_id?: string;
+        };
+      };
+      requestId?: string;
+    };
+
+    expect(response.status).toBe(400);
+    expect(response.headers.get('X-Request-Id')).toBe('req-iam-handler');
+    expect(payload.requestId).toBe('req-iam-handler');
+    expect(payload.error.code).toBe('invalid_instance_id');
+    expect(payload.error.details).toEqual(
+      expect.objectContaining({
+        diagnostic_stage: 'actor_resolution',
+        reason_code: 'invalid_instance_id',
+        session_instance_id: null,
+        session_roles: ['member'],
+        session_roles_count: 1,
+        session_user_id: 'keycloak-self-no-instance',
+      })
+    );
+  });
+
   it('returns schema_drift details when profile loading fails with unexpected internal error and critical schema drift is present', async () => {
     state.user = {
       id: 'keycloak-self-schema-drift',
@@ -4428,6 +4541,155 @@ describe('iam-account-management additional handlers', () => {
         schema_object: 'iam.account_groups.origin',
       })
     );
+  });
+
+  it('adds self-service diagnostics to profile fetch failures when debug mode is enabled', async () => {
+    process.env.IAM_DEBUG_PROFILE_ERRORS = 'true';
+    state.user = {
+      id: 'keycloak-self-debug',
+      name: 'Self User',
+      roles: ['member'],
+      instanceId: 'de-musterhausen',
+    };
+    state.queryHandler = (text) => {
+      if (
+        text === 'BEGIN' ||
+        text === 'COMMIT' ||
+        text === 'ROLLBACK' ||
+        text.includes('SELECT set_config')
+      ) {
+        return { rowCount: 0, rows: [] };
+      }
+      if (text.includes('SELECT a.id AS account_id')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+      throw new Error('profile debug failure');
+    };
+
+    const response = await getMyProfileHandler(
+      new Request('http://localhost/api/v1/iam/users/me/profile', { method: 'GET' })
+    );
+    const payload = (await response.json()) as {
+      error: {
+        code: string;
+        details?: {
+          actor_account_id?: string | null;
+          actor_account_id_present?: boolean;
+          actor_instance_id?: string;
+          debug_error_message?: string;
+          diagnostic_stage?: string;
+          session_instance_id?: string | null;
+          session_roles?: string[];
+          session_roles_count?: number;
+          session_user_id?: string;
+        };
+      };
+      requestId?: string;
+    };
+
+    expect(response.status).toBe(500);
+    expect(response.headers.get('X-Request-Id')).toBe('req-iam-handler');
+    expect(payload.requestId).toBe('req-iam-handler');
+    expect(payload.error.code).toBe('internal_error');
+    expect(payload.error.details).toEqual(
+      expect.objectContaining({
+        actor_account_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+        actor_account_id_present: true,
+        actor_instance_id: 'de-musterhausen',
+        debug_error_message: 'profile debug failure',
+        diagnostic_stage: 'load_profile_detail',
+        session_instance_id: 'de-musterhausen',
+        session_roles: ['member'],
+        session_roles_count: 1,
+        session_user_id: 'keycloak-self-debug',
+      })
+    );
+  });
+
+  it('jit-provisions self-service profiles without writing jit activity logs', async () => {
+    let actorLookupCount = 0;
+    let activityLogInserts = 0;
+    state.user = {
+      id: 'keycloak-self-jit',
+      name: 'Self User',
+      roles: ['member'],
+      instanceId: 'de-musterhausen',
+    };
+    state.queryHandler = (text) => {
+      if (
+        text === 'BEGIN' ||
+        text === 'COMMIT' ||
+        text === 'ROLLBACK' ||
+        text.includes('SELECT set_config')
+      ) {
+        return { rowCount: 0, rows: [] };
+      }
+      if (text.includes('SELECT a.id AS account_id')) {
+        actorLookupCount += 1;
+        if (actorLookupCount === 1) {
+          return { rowCount: 0, rows: [] };
+        }
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+      if (text.includes('INSERT INTO iam.accounts') && text.includes("VALUES ($1, $2, 'pending')")) {
+        return {
+          rowCount: 1,
+          rows: [{ id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', created: true }],
+        };
+      }
+      if (text.includes('INSERT INTO iam.instance_memberships')) {
+        return { rowCount: 1, rows: [] };
+      }
+      if (text.includes('INSERT INTO iam.activity_logs')) {
+        activityLogInserts += 1;
+        return { rowCount: 1, rows: [] };
+      }
+      if (text.includes('WHERE a.id = $2::uuid')) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+              keycloak_subject: 'keycloak-self-jit',
+              username_ciphertext: null,
+              email_ciphertext: null,
+              first_name_ciphertext: null,
+              last_name_ciphertext: null,
+              display_name_ciphertext: null,
+              phone_ciphertext: null,
+              avatar_url: null,
+              position: null,
+              department: null,
+              preferred_language: null,
+              timezone: null,
+              notes: null,
+              status: 'pending',
+              roles: [],
+              permissions: [],
+              groups: [],
+              mainserver_user_application_secret_set: false,
+            },
+          ],
+        };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await getMyProfileHandler(
+      new Request('http://localhost/api/v1/iam/users/me/profile', { method: 'GET' })
+    );
+    const payload = (await response.json()) as {
+      data: { id: string; status: string };
+    };
+
+    expect(response.status).toBe(200);
+    expect(payload.data).toEqual(
+      expect.objectContaining({
+        id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+        status: 'pending',
+      })
+    );
+    expect(activityLogInserts).toBe(0);
   });
 
   it('updates the current user profile', async () => {

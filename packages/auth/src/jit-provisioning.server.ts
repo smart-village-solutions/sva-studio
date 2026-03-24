@@ -24,7 +24,13 @@ export type JitProvisionResult =
 
 export const jitProvisionAccountWithClient = async (
   client: QueryClient,
-  input: { instanceId: string; keycloakSubject: string; requestId?: string; traceId?: string }
+  input: {
+    instanceId: string;
+    keycloakSubject: string;
+    requestId?: string;
+    traceId?: string;
+    emitAuditLog?: boolean;
+  }
 ): Promise<{ accountId: string; created: boolean }> => {
   const upsert = await client.query<{ id: string; created: boolean }>(
     `
@@ -56,7 +62,7 @@ ON CONFLICT (instance_id, account_id) DO NOTHING;
     [input.instanceId, accountId]
   );
 
-  if (created) {
+  if (created && input.emitAuditLog !== false) {
     await client.query(
       `
 INSERT INTO iam.activity_logs (

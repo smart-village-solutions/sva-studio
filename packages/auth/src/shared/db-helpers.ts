@@ -13,10 +13,14 @@ export type QueryClient = {
   ): Promise<QueryResult<TRow>>;
 };
 
-export const jsonResponse = (status: number, payload: unknown): Response =>
+export const jsonResponse = (
+  status: number,
+  payload: unknown,
+  headers?: Record<string, string>
+): Response =>
   new Response(JSON.stringify(payload), {
     status,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...headers },
   });
 
 export const textResponse = (status: number, body: string, contentType: string): Response =>

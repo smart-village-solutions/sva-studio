@@ -51,6 +51,8 @@ const resolveOrProvisionAccountId = async (
     keycloakSubject,
     requestId: actor.requestId,
     traceId: actor.traceId,
+    // Self-service reads must not fail only because audit inserts are stricter than the read path.
+    emitAuditLog: false,
   });
   return provisioned.accountId;
 };

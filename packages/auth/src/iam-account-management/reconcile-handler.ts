@@ -84,6 +84,26 @@ const readImportableRoleMetadata = (
   };
 };
 
+const BUILTIN_REALM_ROLE_NAMES = new Set(['offline_access', 'uma_authorization']);
+
+const isPotentialStudioManagedRealmRole = (
+  role: Awaited<ReturnType<IdentityProviderPort['getRoleByName']>> extends infer T ? Exclude<T, null> : never
+): boolean => {
+  if (role.clientRole) {
+    return false;
+  }
+
+  if (BUILTIN_REALM_ROLE_NAMES.has(role.externalName)) {
+    return false;
+  }
+
+  if (role.externalName.startsWith('default-roles-')) {
+    return false;
+  }
+
+  return true;
+};
+
 export const runRoleCatalogReconciliation = async (input: {
   instanceId: string;
   actorAccountId?: string;
@@ -385,8 +405,26 @@ RETURNING id;
     }
   }
 
+  for (const identityRole of idpRoles) {
+    if (idpByExternalName.has(identityRole.externalName) || dbByExternalName.has(identityRole.externalName)) {
+      continue;
+    }
+
+    if (!isPotentialStudioManagedRealmRole(identityRole)) {
+      continue;
+    }
+
+    entries.push({
+      externalRoleName: identityRole.externalName,
+      roleKey: readRoleAttribute(identityRole.attributes, 'role_key') ?? identityRole.externalName,
+      action: 'report',
+      status: 'requires_manual_action',
+      errorCode: 'REQUIRES_MANUAL_ACTION',
+    });
+  }
+
   const report = {
-    checkedCount: dbRoles.length,
+    checkedCount: entries.length,
     correctedCount: entries.filter((entry) => entry.status === 'corrected').length,
     failedCount: entries.filter((entry) => entry.status === 'failed').length,
     requiresManualActionCount: entries.filter((entry) => entry.status === 'requires_manual_action').length,

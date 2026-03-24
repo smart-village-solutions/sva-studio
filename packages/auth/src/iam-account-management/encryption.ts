@@ -47,7 +47,12 @@ export const revealField = (value: string | null | undefined, aad: string): stri
   if (!value.startsWith('enc:v1:')) {
     return value;
   }
-  const config = getEncryptionConfig();
+  let config: FieldEncryptionConfig | null;
+  try {
+    config = getEncryptionConfig();
+  } catch {
+    return undefined;
+  }
   if (!config) {
     return undefined;
   }

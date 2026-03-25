@@ -1,4 +1,4 @@
-import type { ApiErrorResponse, IamUserDetail, IamUserRoleAssignment } from '@sva/core';
+import type { ApiErrorResponse, IamUserDetail } from '@sva/core';
 import { getWorkspaceContext } from '@sva/sdk/server';
 import type { z } from 'zod';
 
@@ -19,6 +19,7 @@ import {
 } from './api-helpers.js';
 import { ensureFeature, getFeatureFlags } from './feature-flags.js';
 import { consumeRateLimit } from './rate-limit.js';
+import { buildUpdatedUserParams, hasSystemAdminRole } from './user-update-utils.js';
 import {
   assignGroups,
   assignRoles,
@@ -68,10 +69,6 @@ type UserUpdatePlan = {
   nextRoleNames?: readonly string[];
 };
 
-export const hasSystemAdminRole = (
-  roles: readonly Pick<IamUserRoleAssignment, 'roleKey'>[]
-): boolean => roles.some((role) => role.roleKey === 'system_admin');
-
 const resolveExternalRoleNames = async (
   client: QueryClient,
   input: { instanceId: string; roleIds: readonly string[] }
@@ -79,41 +76,6 @@ const resolveExternalRoleNames = async (
   const roles = await resolveRolesByIds(client, input);
   return roles.map((role) => getRoleExternalName(role));
 };
-
-export const buildUpdatedUserParams = (
-  userId: string,
-  instanceId: string,
-  keycloakSubject: string,
-  payload: {
-    email?: string;
-    displayName?: string;
-    firstName?: string;
-    lastName?: string;
-    phone?: string;
-    position?: string;
-    department?: string;
-    avatarUrl?: string;
-    preferredLanguage?: string;
-    timezone?: string;
-    status?: 'active' | 'inactive' | 'pending';
-    notes?: string;
-  }
-): readonly (string | null)[] => [
-  userId,
-  instanceId,
-  payload.email ? protectField(payload.email, `iam.accounts.email:${keycloakSubject}`) : null,
-  payload.displayName ? protectField(payload.displayName, `iam.accounts.display_name:${keycloakSubject}`) : null,
-  payload.firstName ? protectField(payload.firstName, `iam.accounts.first_name:${keycloakSubject}`) : null,
-  payload.lastName ? protectField(payload.lastName, `iam.accounts.last_name:${keycloakSubject}`) : null,
-  payload.phone ? protectField(payload.phone, `iam.accounts.phone:${keycloakSubject}`) : null,
-  payload.position ?? null,
-  payload.department ?? null,
-  payload.avatarUrl ?? null,
-  payload.preferredLanguage ?? null,
-  payload.timezone ?? null,
-  payload.status ?? null,
-  payload.notes ?? null,
-];
 
 const resolveUserUpdatePlan = async (
   client: QueryClient,

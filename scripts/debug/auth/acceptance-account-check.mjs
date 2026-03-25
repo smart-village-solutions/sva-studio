@@ -1,8 +1,18 @@
 import { chromium } from '@playwright/test';
 
 const baseUrl = process.env.ACCEPTANCE_BASE_URL ?? 'https://hb-meinquartier.studio.smart-village.app';
-const username = process.env.ACCEPTANCE_TEST_USERNAME ?? 'codex-account-test-1774298362637@example.com';
-const password = process.env.ACCEPTANCE_TEST_PASSWORD ?? 'CodexTest!234';
+const username = process.env.ACCEPTANCE_TEST_USERNAME;
+const password = process.env.ACCEPTANCE_TEST_PASSWORD;
+
+if (!username) {
+  console.error('ACCEPTANCE_TEST_USERNAME fehlt.');
+  process.exit(2);
+}
+
+if (!password) {
+  console.error('ACCEPTANCE_TEST_PASSWORD fehlt.');
+  process.exit(2);
+}
 
 const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage();

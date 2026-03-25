@@ -76,7 +76,7 @@ const parseMarkedOutput = (output, marker) => {
   }
 
   const segment = cleaned.slice(startIndex + startMarker.length, endIndex === -1 ? undefined : endIndex);
-  const lines = filterRemoteOutputLines(segment.replace(/^n+/u, '').trimStart()).filter(
+  const lines = filterRemoteOutputLines(segment.replace(/^\n+/u, '').trimStart()).filter(
     (entry) => entry !== startMarker && entry !== endMarker,
   );
 
@@ -94,7 +94,7 @@ const parseMarkedOutput = (output, marker) => {
     return statusMatches.join('\n');
   }
 
-  throw new Error(`Markierte Ausgabe ${marker} enthaelt keine auswertbaren Daten.`);
+  throw new Error(`Markierte Ausgabe ${marker} enthält keine auswertbaren Daten.`);
 };
 
 const runQuantumExec = (remoteScript, marker, failureMessage) => {
@@ -135,7 +135,7 @@ const writeRemoteFile = () => {
   runQuantumExec(
     [
       'set -euo pipefail',
-      `: > ${remotePath}`,
+      `: > ${shellEscape(remotePath)}`,
       `printf '%s\\n' '__SEED_INIT___START'`,
       `printf '%s\\n' 'ok'`,
       `printf '%s\\n' '__SEED_INIT___END'`,
@@ -171,7 +171,7 @@ const writeRemoteFile = () => {
     runQuantumExec(
       [
         'set -euo pipefail',
-        `printf '%s' ${shellEscape(chunk)} | base64 -d >> ${remotePath}`,
+        `printf '%s' ${shellEscape(chunk)} | base64 -d >> ${shellEscape(remotePath)}`,
         `printf '%s\\n' '${marker}_START'`,
         `printf '%s\\n' 'ok'`,
         `printf '%s\\n' '${marker}_END'`,
@@ -191,7 +191,7 @@ const writeRemoteFile = () => {
     [
       'set -euo pipefail',
       `printf '%s\\n' '${sizeMarker}_START'`,
-      `wc -c < ${remotePath}`,
+      `wc -c < ${shellEscape(remotePath)}`,
       `printf '%s\\n' '${sizeMarker}_END'`,
       'sleep 1',
     ].join('\n'),
@@ -249,14 +249,14 @@ const importSeed = () => {
   const importResult = runQuantumExec(
     [
       'set -euo pipefail',
-      `if ! PGPASSWORD=${shellEscape(postgresPassword)} psql -X -P pager=off -q -v ON_ERROR_STOP=1 -U ${shellEscape(postgresUser)} -d ${shellEscape(postgresDb)} -f ${remotePath} >/tmp/hb-seed-import.log 2>&1; then`,
+      `if ! PGPASSWORD=${shellEscape(postgresPassword)} psql -X -P pager=off -q -v ON_ERROR_STOP=1 -U ${shellEscape(postgresUser)} -d ${shellEscape(postgresDb)} -f ${shellEscape(remotePath)} >/tmp/hb-seed-import.log 2>&1; then`,
       '  cat /tmp/hb-seed-import.log',
       '  exit 1',
       'fi',
       `printf '%s\\n' '${importMarker}_START'`,
       `printf '%s\\n' 'ok'`,
       `printf '%s\\n' '${importMarker}_END'`,
-      `rm -f ${remotePath} /tmp/hb-seed-import.log`,
+      `rm -f ${shellEscape(remotePath)} /tmp/hb-seed-import.log`,
       'sleep 1',
     ].join('\n'),
     importMarker,

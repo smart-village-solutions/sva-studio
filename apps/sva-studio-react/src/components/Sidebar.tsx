@@ -96,7 +96,8 @@ const SIDEBAR_COLLAPSED_STORAGE_KEY = 'sva-studio-sidebar-collapsed';
 const HELP_DISCUSSIONS_URL = 'https://github.com/smart-village-solutions/sva-studio/discussions';
 const SUPPORT_ISSUES_URL = 'https://github.com/smart-village-solutions/sva-studio/issues';
 const LICENSE_ISSUE_URL = 'https://github.com/smart-village-solutions/sva-studio/issues/2';
-const COCKPIT_URL = 'https://cockpit.guben.de';
+
+const getCockpitUrl = () => import.meta.env.VITE_COCKPIT_URL?.trim() || undefined;
 
 const isLeafActive = (pathname: string, item: SidebarLeafItem) => {
   if (!item.to) {
@@ -469,6 +470,7 @@ const SidebarPanel = ({
  */
 export default function Sidebar({ isLoading = false, isMobileOpen = false, onMobileOpenChange }: SidebarProps) {
   const { user, isAuthenticated } = useAuth();
+  const cockpitUrl = getCockpitUrl();
   const canAccessWorkspace = isAuthenticated && isIamUiEnabled();
   const canAccessAdminUsers = isAuthenticated && isIamAdminEnabled() && hasIamAdminRole(user);
   const canAccessAdminOrganizations = canAccessAdminUsers;
@@ -541,13 +543,17 @@ export default function Sidebar({ isLoading = false, isMobileOpen = false, onMob
             label: t('shell.sidebar.app'),
             icon: IconAppWindow,
           },
-          {
-            kind: 'link',
-            id: 'cockpit',
-            href: COCKPIT_URL,
-            label: t('shell.sidebar.cockpit'),
-            icon: IconGauge,
-          },
+          ...(cockpitUrl
+            ? [
+                {
+                  kind: 'link' as const,
+                  id: 'cockpit',
+                  href: cockpitUrl,
+                  label: t('shell.sidebar.cockpit'),
+                  icon: IconGauge,
+                },
+              ]
+            : []),
         ]
       : [];
 

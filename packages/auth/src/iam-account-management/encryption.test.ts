@@ -1,7 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { revealField } from './encryption.js';
-
 const originalEnv = { ...process.env };
 
 describe('iam-account-management encryption', () => {

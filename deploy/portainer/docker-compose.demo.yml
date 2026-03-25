@@ -174,7 +174,7 @@ services:
       retries: 10
 
   monitoring-config-init:
-    image: ${SVA_MONITORING_REGISTRY}/sva-studio-monitoring-config-init:${SVA_MONITORING_CONFIG_INIT_IMAGE_TAG}
+    image: ${SVA_MONITORING_REGISTRY:-ghcr.io/smart-village-solutions}/sva-studio-monitoring-config-init:${SVA_MONITORING_CONFIG_INIT_IMAGE_TAG}
     labels:
       com.sva-studio.monitoring: "enabled"
       com.sva-studio.component: "monitoring-config-init"

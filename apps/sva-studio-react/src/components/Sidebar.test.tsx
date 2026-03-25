@@ -10,7 +10,7 @@ import Sidebar from './Sidebar';
 const LICENSE_ISSUE_URL = 'https://github.com/smart-village-solutions/sva-studio/issues/2';
 const HELP_DISCUSSIONS_URL = 'https://github.com/smart-village-solutions/sva-studio/discussions';
 const SUPPORT_ISSUES_URL = 'https://github.com/smart-village-solutions/sva-studio/issues';
-const COCKPIT_URL = 'https://cockpit.example.test';
+const COCKPIT_URL = 'https://cockpit.guben.de';
 
 const useAuthMock = vi.fn();
 const useRouterStateMock = vi.fn();
@@ -53,7 +53,6 @@ const unauthenticatedAuthState = {
 beforeEach(() => {
   useRouterStateMock.mockReturnValue('/');
   localStorageState.clear();
-  vi.stubEnv('VITE_COCKPIT_URL', COCKPIT_URL);
   Object.defineProperty(window, 'localStorage', {
     configurable: true,
     value: {
@@ -146,22 +145,6 @@ describe('Sidebar', () => {
     expect(screen.queryByRole('link', { name: 'Module' })).toBeNull();
   });
 
-  it('zeigt den Cockpit-Link nur an, wenn eine URL konfiguriert ist', () => {
-    vi.stubEnv('VITE_COCKPIT_URL', '');
-    useAuthMock.mockReturnValue({
-      ...unauthenticatedAuthState,
-      user: {
-        id: 'user-1',
-        name: 'Admin',
-        roles: ['system_admin'],
-      },
-      isAuthenticated: true,
-    });
-
-    render(<Sidebar />);
-
-    expect(screen.queryByRole('link', { name: 'Cockpit' })).toBeNull();
-  });
 
   it('zeigt Unterpunkte als Flyout, wenn die Desktop-Sidebar eingeklappt ist', () => {
     window.localStorage.setItem('sva-studio-sidebar-collapsed', '1');

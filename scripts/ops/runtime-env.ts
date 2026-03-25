@@ -281,7 +281,7 @@ const parseMarkedOutput = (output: string, marker: string) => {
   }
 
   const segment = cleaned.slice(startIndex + startMarker.length, endIndex === -1 ? undefined : endIndex);
-  const lines = filterRemoteOutputLines(segment.replace(/^n+/u, '').trimStart()).filter(
+  const lines = filterRemoteOutputLines(segment.replace(/^\n+/u, '').trimStart()).filter(
     (entry) => entry !== startMarker && entry !== endMarker,
   );
   if (lines.length > 0) {
@@ -298,7 +298,7 @@ const parseMarkedOutput = (output: string, marker: string) => {
     return statusMatches.join('\n');
   }
 
-  throw new Error(`Markierte Ausgabe ${marker} enthaelt keine auswertbaren Daten.`);
+  throw new Error(`Markierte Ausgabe ${marker} enthält keine auswertbaren Daten.`);
 };
 
 const runQuantumExec = (
@@ -312,12 +312,16 @@ const runQuantumExec = (
   const result = runCaptureDetailed('quantum-cli', args, withoutDebugEnv(env));
   const combined = `${result.stdout ?? ''}\n${result.stderr ?? ''}`;
 
-  if (result.status !== 0) {
-    throw new Error(summarizeProcessOutput(combined) || options?.failureMessage || 'quantum-cli exec fehlgeschlagen.');
+  if (result.status === 0 && options?.marker) {
+    try {
+      return parseMarkedOutput(combined, options.marker);
+    } catch {
+      // Fall through to status/output handling below when no valid marker was emitted.
+    }
   }
 
-  if (options?.marker) {
-    return parseMarkedOutput(combined, options.marker);
+  if (result.status !== 0) {
+    throw new Error(summarizeProcessOutput(combined) || options?.failureMessage || 'quantum-cli exec fehlgeschlagen.');
   }
 
   return summarizeProcessOutput(combined);

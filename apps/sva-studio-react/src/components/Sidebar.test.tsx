@@ -10,6 +10,7 @@ import Sidebar from './Sidebar';
 const LICENSE_ISSUE_URL = 'https://github.com/smart-village-solutions/sva-studio/issues/2';
 const HELP_DISCUSSIONS_URL = 'https://github.com/smart-village-solutions/sva-studio/discussions';
 const SUPPORT_ISSUES_URL = 'https://github.com/smart-village-solutions/sva-studio/issues';
+const COCKPIT_URL = 'https://cockpit.guben.de';
 
 const useAuthMock = vi.fn();
 const useRouterStateMock = vi.fn();
@@ -103,6 +104,8 @@ describe('Sidebar', () => {
     expect(screen.getByRole('link', { name: 'Übersicht' }).getAttribute('href')).toBe('/');
     expect(screen.getByRole('link', { name: 'Inhalte' }).getAttribute('href')).toBe('/content');
     expect(screen.getByRole('link', { name: 'App' }).getAttribute('href')).toBe('/app');
+    expect(screen.getByRole('link', { name: 'Cockpit' }).getAttribute('href')).toBe(COCKPIT_URL);
+    expect(screen.getByRole('link', { name: 'Cockpit' }).getAttribute('target')).toBe('_blank');
 
     const usersToggle = screen.getByRole('button', { name: 'Benutzer' });
     fireEvent.click(usersToggle);
@@ -141,6 +144,7 @@ describe('Sidebar', () => {
     expect(screen.queryByRole('button', { name: 'Benutzer' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'Module' })).toBeNull();
   });
+
 
   it('zeigt Unterpunkte als Flyout, wenn die Desktop-Sidebar eingeklappt ist', () => {
     window.localStorage.setItem('sva-studio-sidebar-collapsed', '1');

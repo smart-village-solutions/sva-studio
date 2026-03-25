@@ -4,7 +4,7 @@ vi.mock('./encryption', () => ({
   protectField: (value: string) => `enc:${value}`,
 }));
 
-import { buildUpdatedUserParams, hasSystemAdminRole } from './users-handlers.ts';
+import { buildUpdatedUserParams, hasSystemAdminRole } from './user-update-utils.ts';
 
 describe('iam-account-management/users-handlers helpers', () => {
   it('detects system admin assignments', () => {

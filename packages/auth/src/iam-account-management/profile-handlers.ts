@@ -1,4 +1,5 @@
 import { getWorkspaceContext } from '@sva/sdk/server';
+import type { ApiErrorCode } from '@sva/core';
 
 import type { UpdateIdentityUserInput } from '../identity-provider-port.js';
 import { KeycloakAdminRequestError, KeycloakAdminUnavailableError } from '../keycloak-admin-client.js';
@@ -32,6 +33,79 @@ type ProfileActorContext = {
   dbKeycloakSubject: string;
 };
 
+type ProfileDiagnosticsStage =
+  | 'feature_gate'
+  | 'actor_resolution'
+  | 'rate_limit'
+  | 'load_profile_detail';
+
+type ProfileDiagnosticResponseBody = {
+  error?: {
+    code?: string;
+    details?: Readonly<Record<string, unknown>>;
+    message?: string;
+  };
+  requestId?: string;
+};
+
+const isProfileDiagnosticsEnabled = (): boolean => process.env.IAM_DEBUG_PROFILE_ERRORS === 'true';
+
+const buildProfileDiagnosticDetails = (
+  ctx: AuthenticatedRequestContext,
+  stage: ProfileDiagnosticsStage,
+  actor?: ActorInfo,
+  extraDetails?: Readonly<Record<string, unknown>>
+): Readonly<Record<string, unknown>> => ({
+  diagnostic_stage: stage,
+  session_user_id: ctx.user.id,
+  session_instance_id: ctx.user.instanceId ?? null,
+  session_roles: ctx.user.roles,
+  session_roles_count: ctx.user.roles.length,
+  ...(actor
+    ? {
+        actor_account_id: actor.actorAccountId ?? null,
+        actor_account_id_present: Boolean(actor.actorAccountId),
+        actor_instance_id: actor.instanceId,
+      }
+    : {}),
+  ...extraDetails,
+});
+
+const enrichProfileDiagnosticResponse = async (
+  response: Response,
+  ctx: AuthenticatedRequestContext,
+  stage: ProfileDiagnosticsStage,
+  actor?: ActorInfo,
+  extraDetails?: Readonly<Record<string, unknown>>
+): Promise<Response> => {
+  if (!isProfileDiagnosticsEnabled()) {
+    return response;
+  }
+
+  try {
+    const payload = (await response.clone().json()) as ProfileDiagnosticResponseBody;
+    const errorPayload = payload.error;
+    const code = errorPayload?.code as ApiErrorCode | undefined;
+    const message = errorPayload?.message;
+    if (!code || !message) {
+      return response;
+    }
+
+    return createApiError(
+      response.status,
+      code,
+      message,
+      payload.requestId,
+      {
+        ...errorPayload.details,
+        ...buildProfileDiagnosticDetails(ctx, stage, actor, extraDetails),
+      }
+    );
+  } catch {
+    return response;
+  }
+};
+
 const resolveProfileActorContext = async (
   request: Request,
   ctx: AuthenticatedRequestContext,
@@ -41,15 +115,38 @@ const resolveProfileActorContext = async (
   const requestContext = getWorkspaceContext();
   const featureCheck = ensureFeature(getFeatureFlags(), 'iam_ui', requestContext.requestId);
   if (featureCheck) {
-    return featureCheck;
+    return scope === 'read'
+      ? await enrichProfileDiagnosticResponse(featureCheck, ctx, 'feature_gate')
+      : featureCheck;
   }
 
   const actorResolution = await resolveActorInfo(request, ctx, {
     createMissingInstanceFromKey: process.env.NODE_ENV !== 'production',
   });
   if ('error' in actorResolution) {
-    return actorResolution.error;
+    logger.warn('IAM profile actor resolution failed', {
+      operation: 'get_my_profile',
+      request_id: requestContext.requestId,
+      trace_id: requestContext.traceId,
+      session_user_id: ctx.user.id,
+      session_instance_id: ctx.user.instanceId ?? null,
+      session_roles_count: ctx.user.roles.length,
+    });
+    return scope === 'read'
+      ? await enrichProfileDiagnosticResponse(actorResolution.error, ctx, 'actor_resolution')
+      : actorResolution.error;
   }
+
+  logger.info('IAM profile actor resolved', {
+    operation: scope === 'read' ? 'get_my_profile' : 'update_my_profile',
+    request_id: actorResolution.actor.requestId,
+    trace_id: actorResolution.actor.traceId,
+    session_user_id: ctx.user.id,
+    session_instance_id: ctx.user.instanceId ?? null,
+    session_roles_count: ctx.user.roles.length,
+    actor_instance_id: actorResolution.actor.instanceId,
+    actor_account_id_present: Boolean(actorResolution.actor.actorAccountId),
+  });
 
   if (options?.validateWriteCsrf) {
     const csrfError = validateCsrf(request, actorResolution.actor.requestId);
@@ -65,7 +162,14 @@ const resolveProfileActorContext = async (
     requestId: actorResolution.actor.requestId,
   });
   if (rateLimit) {
-    return rateLimit;
+    return scope === 'read'
+      ? await enrichProfileDiagnosticResponse(
+          rateLimit,
+          ctx,
+          'rate_limit',
+          actorResolution.actor
+        )
+      : rateLimit;
   }
 
   return {
@@ -229,7 +333,11 @@ const buildSchemaDriftFallbackResponse = async (
   }
 };
 
-const handleProfileFetchError = async (actor: ActorInfo, error: unknown): Promise<Response> => {
+const handleProfileFetchError = async (
+  actor: ActorInfo,
+  ctx: AuthenticatedRequestContext,
+  error: unknown
+): Promise<Response> => {
   const classified = classifyIamDiagnosticError(error, 'Profil konnte nicht geladen werden.', actor.requestId);
   const errorCause = error && typeof error === 'object' && 'cause' in error
     ? (error as { cause?: unknown }).cause
@@ -266,6 +374,7 @@ const handleProfileFetchError = async (actor: ActorInfo, error: unknown): Promis
   const debugDetails =
     process.env.IAM_DEBUG_PROFILE_ERRORS === 'true'
       ? {
+          ...buildProfileDiagnosticDetails(ctx, 'load_profile_detail', actor),
           debug_error_type: error instanceof Error ? error.constructor.name : typeof error,
           debug_error_message: error instanceof Error ? error.message : String(error),
           debug_error_stack: error instanceof Error ? error.stack : undefined,
@@ -372,6 +481,6 @@ export const getMyProfileInternal = async (
     iamUserOperationsCounter.add(1, { action: 'get_my_profile', result: 'success' });
     return jsonResponse(200, asApiItem(detail, actorContext.actor.requestId));
   } catch (error) {
-    return await handleProfileFetchError(actorContext.actor, error);
+    return await handleProfileFetchError(actorContext.actor, ctx, error);
   }
 };

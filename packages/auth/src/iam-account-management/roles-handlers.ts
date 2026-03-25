@@ -388,7 +388,7 @@ INSERT INTO iam.roles (
   last_synced_at,
   last_error_code
 )
-VALUES ($1::uuid, $2, $3, $4, $5, $6, false, $7, 'studio', 'synced', NOW(), NULL)
+VALUES ($1, $2, $3, $4, $5, $6, false, $7, 'studio', 'synced', NOW(), NULL)
 RETURNING id;
 `,
         [
@@ -410,7 +410,7 @@ RETURNING id;
         await client.query(
           `
 INSERT INTO iam.role_permissions (instance_id, role_id, permission_id)
-SELECT $1::uuid, $2::uuid, permission_id
+SELECT $1, $2::uuid, permission_id
 FROM unnest($3::uuid[]) AS permission_id
 ON CONFLICT (instance_id, role_id, permission_id) DO NOTHING;
 `,

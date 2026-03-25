@@ -98,11 +98,49 @@ SET
 RETURNING id, (xmax = 0) AS created;
 `;
 
+const UPSERT_ACCOUNT_QUERY_LEGACY = `
+INSERT INTO iam.accounts (
+  instance_id,
+  keycloak_subject,
+  email_ciphertext,
+  display_name_ciphertext,
+  first_name_ciphertext,
+  last_name_ciphertext,
+  status
+)
+VALUES (
+  $1,
+  $2,
+  $3,
+  $4,
+  $5,
+  $6,
+  $7
+)
+ON CONFLICT (keycloak_subject, instance_id) WHERE instance_id IS NOT NULL DO UPDATE
+SET
+  email_ciphertext = EXCLUDED.email_ciphertext,
+  display_name_ciphertext = EXCLUDED.display_name_ciphertext,
+  first_name_ciphertext = EXCLUDED.first_name_ciphertext,
+  last_name_ciphertext = EXCLUDED.last_name_ciphertext,
+  status = EXCLUDED.status,
+  updated_at = NOW()
+RETURNING id, (xmax = 0) AS created;
+`;
+
 const INSERT_MEMBERSHIP_QUERY = `
 INSERT INTO iam.instance_memberships (instance_id, account_id, membership_type)
 VALUES ($1, $2::uuid, 'member')
 ON CONFLICT (instance_id, account_id) DO NOTHING;
 `;
+
+const shouldRetryWithoutUsernameCiphertext = (error: unknown): boolean => {
+  const message = error instanceof Error ? error.message : String(error);
+  return (
+    message.includes('username_ciphertext') &&
+    (message.includes('does not exist') || message.includes('missing') || message.includes('undefined column'))
+  );
+};
 
 const upsertIdentityUser = async (
   client: QueryClient,
@@ -110,16 +148,49 @@ const upsertIdentityUser = async (
 ): Promise<{ accountId: string; created: boolean }> => {
   const status = input.user.enabled === false ? 'inactive' : 'active';
   const displayName = resolveDisplayName(input.user);
-  const upsert = await client.query<{ id: string; created: boolean }>(UPSERT_ACCOUNT_QUERY, [
-    input.instanceId,
-    input.user.externalId,
-    protectOptionalField(input.user.username, `iam.accounts.username:${input.user.externalId}`),
-    protectOptionalField(input.user.email, `iam.accounts.email:${input.user.externalId}`),
-    protectField(displayName, `iam.accounts.display_name:${input.user.externalId}`),
-    protectOptionalField(input.user.firstName, `iam.accounts.first_name:${input.user.externalId}`),
-    protectOptionalField(input.user.lastName, `iam.accounts.last_name:${input.user.externalId}`),
-    status,
-  ]);
+  const usernameCiphertext = protectOptionalField(input.user.username, `iam.accounts.username:${input.user.externalId}`);
+  const emailCiphertext = protectOptionalField(input.user.email, `iam.accounts.email:${input.user.externalId}`);
+  const displayNameCiphertext = protectField(displayName, `iam.accounts.display_name:${input.user.externalId}`);
+  const firstNameCiphertext = protectOptionalField(
+    input.user.firstName,
+    `iam.accounts.first_name:${input.user.externalId}`
+  );
+  const lastNameCiphertext = protectOptionalField(input.user.lastName, `iam.accounts.last_name:${input.user.externalId}`);
+
+  let upsert;
+  try {
+    upsert = await client.query<{ id: string; created: boolean }>(UPSERT_ACCOUNT_QUERY, [
+      input.instanceId,
+      input.user.externalId,
+      usernameCiphertext,
+      emailCiphertext,
+      displayNameCiphertext,
+      firstNameCiphertext,
+      lastNameCiphertext,
+      status,
+    ]);
+  } catch (error) {
+    if (!shouldRetryWithoutUsernameCiphertext(error)) {
+      throw error;
+    }
+
+    logger.warn('Keycloak user sync fell back to legacy account upsert without username ciphertext', {
+      operation: 'sync_keycloak_users',
+      instance_id: input.instanceId,
+      subject_ref: toSubjectRef(input.user.externalId),
+      error: error instanceof Error ? error.message : String(error),
+    });
+
+    upsert = await client.query<{ id: string; created: boolean }>(UPSERT_ACCOUNT_QUERY_LEGACY, [
+      input.instanceId,
+      input.user.externalId,
+      emailCiphertext,
+      displayNameCiphertext,
+      firstNameCiphertext,
+      lastNameCiphertext,
+      status,
+    ]);
+  }
 
   const accountId = upsert.rows[0]?.id;
   if (!accountId) {
@@ -261,6 +332,84 @@ const mapSyncErrorResponse = (error: unknown, requestId?: string): Response | un
   return undefined;
 };
 
+export const runKeycloakUserImportSync = async (input: {
+  instanceId: string;
+  actorAccountId?: string;
+  requestId?: string;
+  traceId?: string;
+}): Promise<{
+  report: IamUserImportSyncReport;
+  skippedCount: number;
+  skippedInstanceIds: ReadonlySet<string>;
+}> => {
+  const listedUsers = await listAllKeycloakUsers();
+  const { matchingUsers, skippedCount, skippedInstanceIds } = collectSyncCandidates(
+    listedUsers,
+    input.instanceId
+  );
+
+  const report = await withInstanceScopedDb(input.instanceId, async (client) => {
+    let importedCount = 0;
+    let updatedCount = 0;
+
+    for (const user of matchingUsers) {
+      const result = await upsertIdentityUser(client, {
+        instanceId: input.instanceId,
+        user,
+      });
+      if (result.created) {
+        importedCount += 1;
+      } else {
+        updatedCount += 1;
+      }
+    }
+
+    const summary: IamUserImportSyncReport = {
+      importedCount,
+      updatedCount,
+      skippedCount,
+      totalKeycloakUsers: listedUsers.length,
+    };
+
+    if (input.actorAccountId) {
+      try {
+        await emitActivityLog(client, {
+          instanceId: input.instanceId,
+          accountId: input.actorAccountId,
+          subjectId: input.actorAccountId,
+          eventType: 'user.keycloak_import_synced',
+          result: 'success',
+          payload: {
+            imported_count: summary.importedCount,
+            updated_count: summary.updatedCount,
+            skipped_count: summary.skippedCount,
+            total_keycloak_users: summary.totalKeycloakUsers,
+          },
+          requestId: input.requestId,
+          traceId: input.traceId,
+        });
+      } catch (error) {
+        logger.warn('Skipped audit log for Keycloak user sync after successful import', {
+          operation: 'sync_keycloak_users',
+          instance_id: input.instanceId,
+          actor_account_id: input.actorAccountId,
+          request_id: input.requestId,
+          trace_id: input.traceId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+
+    return summary;
+  });
+
+  return {
+    report,
+    skippedCount,
+    skippedInstanceIds,
+  };
+};
+
 export const syncUsersFromKeycloakInternal = async (
   request: Request,
   ctx: AuthenticatedRequestContext
@@ -272,52 +421,11 @@ export const syncUsersFromKeycloakInternal = async (
   const { actor } = actorResolution;
 
   try {
-    const listedUsers = await listAllKeycloakUsers();
-    const { matchingUsers, skippedCount, skippedInstanceIds } = collectSyncCandidates(
-      listedUsers,
-      actor.instanceId
-    );
-
-    const report = await withInstanceScopedDb(actor.instanceId, async (client) => {
-      let importedCount = 0;
-      let updatedCount = 0;
-
-      for (const user of matchingUsers) {
-        const result = await upsertIdentityUser(client, {
-          instanceId: actor.instanceId,
-          user,
-        });
-        if (result.created) {
-          importedCount += 1;
-        } else {
-          updatedCount += 1;
-        }
-      }
-
-      const summary: IamUserImportSyncReport = {
-        importedCount,
-        updatedCount,
-        skippedCount,
-        totalKeycloakUsers: listedUsers.length,
-      };
-
-      await emitActivityLog(client, {
-        instanceId: actor.instanceId,
-        accountId: actor.actorAccountId,
-        subjectId: actor.actorAccountId,
-        eventType: 'user.keycloak_import_synced',
-        result: 'success',
-        payload: {
-          imported_count: summary.importedCount,
-          updated_count: summary.updatedCount,
-          skipped_count: summary.skippedCount,
-          total_keycloak_users: summary.totalKeycloakUsers,
-        },
-        requestId: actor.requestId,
-        traceId: actor.traceId,
-      });
-
-      return summary;
+    const { report, skippedCount, skippedInstanceIds } = await runKeycloakUserImportSync({
+      instanceId: actor.instanceId,
+      actorAccountId: actor.actorAccountId,
+      requestId: actor.requestId,
+      traceId: actor.traceId,
     });
 
     if (skippedCount > 0) {

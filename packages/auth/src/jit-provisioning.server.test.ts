@@ -94,6 +94,22 @@ describe('jitProvisionAccountWithClient', () => {
     expect(mock.getActivityEvents()).toBe(1);
   });
 
+  it('can skip audit writes for self-service reads while still provisioning the account', async () => {
+    const mock = createMockClient();
+
+    const result = await jitProvisionAccountWithClient(mock.queryClient, {
+      instanceId: 'de-musterhausen',
+      keycloakSubject: 'kc-user-4',
+      requestId: 'req-4',
+      traceId: 'trace-4',
+      emitAuditLog: false,
+    });
+
+    expect(result.accountId).toBe('kc-user-4-account');
+    expect(result.created).toBe(true);
+    expect(mock.getActivityEvents()).toBe(0);
+  });
+
   it('handles concurrent first logins deterministically (one created, one updated)', async () => {
     const mock = createMockClient();
     const input = {

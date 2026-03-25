@@ -5,6 +5,7 @@ export {
   getUserHandler,
   getUserTimelineHandler,
   listUsersHandler,
+  runKeycloakUserImportSync,
   syncUsersFromKeycloakHandler,
   updateUserHandler,
 } from './core.js';

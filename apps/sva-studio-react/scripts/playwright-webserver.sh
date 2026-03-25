@@ -39,7 +39,7 @@ wait_for_server_readiness() {
 
 while [ "$ATTEMPT" -le "$MAX_ATTEMPTS" ]; do
   set +e
-  pnpm exec vite dev --host 127.0.0.1 --port "$PORT" &
+  pnpm exec vite dev --host 127.0.0.1 --port "$PORT" --strictPort &
   SERVER_PID=$!
   set -e
 

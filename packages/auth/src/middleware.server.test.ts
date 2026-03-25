@@ -25,6 +25,7 @@ vi.mock('./config', () => ({
 vi.mock('@sva/sdk/server', () => ({
   createSdkLogger: () => middlewareLogger,
   getWorkspaceContext: () => workspaceContext,
+  parseInstanceIdFromHost: (host: string) => (host.startsWith('hb-meinquartier.') ? 'hb-meinquartier' : null),
   toJsonErrorResponse: (status: number, code: string, publicMessage?: string, options?: { requestId?: string }) =>
     new Response(
       JSON.stringify({
@@ -126,6 +127,35 @@ describe('withAuthenticatedUser', () => {
     expect(await response.json()).toEqual({ sessionId: 'session-2', userId: 'user-1' });
   });
 
+  it('derives a missing session instance id from the request host', async () => {
+    getSessionUserMock.mockResolvedValue({
+      id: 'user-host-instance',
+      name: 'Host Derived',
+      roles: ['admin'],
+    });
+    const { withAuthenticatedUser } = await import('./middleware.server');
+    const request = new Request('https://hb-meinquartier.studio.smart-village.app/api/v1/iam/users', {
+      headers: { cookie: 'sva_auth_session=session-host-instance' },
+    });
+
+    const response = await withAuthenticatedUser(request, ({ user }) =>
+      new Response(JSON.stringify({ instanceId: user.instanceId }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ instanceId: 'hb-meinquartier' });
+    expect(middlewareLogger.warn).toHaveBeenCalledWith(
+      'Auth middleware derived missing session instance from request host',
+      expect.objectContaining({
+        user_id: 'user-host-instance',
+        derived_instance_id: 'hb-meinquartier',
+      })
+    );
+  });
+
   it('enforces legal text compliance on protected IAM routes', async () => {
     getSessionUserMock.mockResolvedValue({
       id: 'user-2',
@@ -145,6 +175,34 @@ describe('withAuthenticatedUser', () => {
       'de-musterhausen',
       'user-2',
       expect.any(Function)
+    );
+  });
+
+  it('logs session diagnostics for self-service profile requests when debug mode is enabled', async () => {
+    vi.stubEnv('IAM_DEBUG_PROFILE_ERRORS', 'true');
+    getSessionUserMock.mockResolvedValue({
+      id: 'user-profile-debug',
+      name: 'Profil Debug',
+      roles: ['member'],
+      instanceId: 'de-musterhausen',
+    });
+    const { withAuthenticatedUser } = await import('./middleware.server');
+    const request = new Request('http://localhost/api/v1/iam/users/me/profile', {
+      headers: { cookie: 'sva_auth_session=session-profile-debug' },
+    });
+
+    const response = await withAuthenticatedUser(request, () => new Response('ok'));
+
+    expect(response.status).toBe(200);
+    expect(middlewareLogger.info).toHaveBeenCalledWith(
+      'Auth middleware resolved session user for self-service diagnostics',
+      expect.objectContaining({
+        auth_state: 'authenticated',
+        session_instance_id: 'de-musterhausen',
+        session_roles: ['member'],
+        session_roles_count: 1,
+        user_id: 'user-profile-debug',
+      })
     );
   });
 

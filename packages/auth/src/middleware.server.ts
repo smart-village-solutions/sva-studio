@@ -1,5 +1,5 @@
 import { parse as parseCookie } from 'cookie-es';
-import { createSdkLogger, toJsonErrorResponse } from '@sva/sdk/server';
+import { createSdkLogger, parseInstanceIdFromHost, toJsonErrorResponse } from '@sva/sdk/server';
 
 import { getSessionUser } from './auth.server.js';
 import { getAuthConfig } from './config.js';
@@ -33,6 +33,18 @@ const LEGAL_TEXT_EXEMPT_AUTH_PATHS = new Set(['/auth/login', '/auth/callback', '
 const LEGAL_TEXT_EXEMPT_IAM_PREFIXES = ['/api/v1/iam/legal-texts'];
 const LEGAL_TEXT_EXEMPT_SELF_SERVICE_PREFIXES = ['/iam/me/legal-texts'];
 const LEGAL_TEXT_EXEMPT_GOVERNANCE_OPERATIONS = new Set(['accept_legal_text', 'revoke_legal_acceptance']);
+const PROFILE_DIAGNOSTIC_PATHS = new Set(['/auth/me', '/api/v1/iam/users/me/profile']);
+
+const isProfileDiagnosticsEnabled = (): boolean => process.env.IAM_DEBUG_PROFILE_ERRORS === 'true';
+
+const shouldLogProfileDiagnostics = (request: Request): boolean => {
+  if (!isProfileDiagnosticsEnabled()) {
+    return false;
+  }
+
+  const pathname = new URL(request.url).pathname;
+  return PROFILE_DIAGNOSTIC_PATHS.has(pathname);
+};
 
 const readWorkflowOperation = async (request: Request): Promise<string | undefined> => {
   try {
@@ -73,6 +85,31 @@ const shouldEnforceLegalTextCompliance = async (request: Request): Promise<boole
   return LEGAL_TEXT_PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 };
 
+const resolveSessionUser = (request: Request, user: SessionUser): SessionUser => {
+  if (user.instanceId) {
+    return user;
+  }
+
+  const derivedInstanceId = parseInstanceIdFromHost(new URL(request.url).host);
+  if (!derivedInstanceId) {
+    return user;
+  }
+
+  logger.warn('Auth middleware derived missing session instance from request host', {
+    endpoint: request.url,
+    operation: 'auth_middleware',
+    auth_state: 'authenticated',
+    user_id: user.id,
+    derived_instance_id: derivedInstanceId,
+    ...buildLogContext(derivedInstanceId, { includeTraceId: true }),
+  });
+
+  return {
+    ...user,
+    instanceId: derivedInstanceId,
+  };
+};
+
 /**
  * Middleware helper that resolves an authenticated user from the current request.
  */
@@ -96,8 +133,8 @@ export const withAuthenticatedUser = async (
       return unauthorized();
     }
 
-    const user = await getSessionUser(sessionId);
-    if (!user) {
+    const sessionUser = await getSessionUser(sessionId);
+    if (!sessionUser) {
       logger.warn('Auth middleware rejected request with invalid session', {
         endpoint: request.url,
         auth_state: 'invalid_session',
@@ -108,9 +145,33 @@ export const withAuthenticatedUser = async (
       });
       return unauthorized();
     }
+    const user = resolveSessionUser(request, sessionUser);
+
+    if (shouldLogProfileDiagnostics(request)) {
+      logger.info('Auth middleware resolved session user for self-service diagnostics', {
+        endpoint: request.url,
+        operation: 'auth_middleware',
+        auth_state: 'authenticated',
+        user_id: user.id,
+        session_id_present: true,
+        session_instance_id: user.instanceId ?? null,
+        session_roles: user.roles,
+        session_roles_count: user.roles.length,
+        ...buildLogContext(user.instanceId, { includeTraceId: true }),
+      });
+    }
 
     const runHandler = async () => handler({ sessionId, user });
     if (user.instanceId && (await shouldEnforceLegalTextCompliance(request))) {
+      if (shouldLogProfileDiagnostics(request)) {
+        logger.info('Auth middleware enforcing legal text compliance for self-service request', {
+          endpoint: request.url,
+          operation: 'auth_middleware',
+          user_id: user.id,
+          session_instance_id: user.instanceId,
+          ...buildLogContext(user.instanceId, { includeTraceId: true }),
+        });
+      }
       return await withLegalTextCompliance(user.instanceId, user.id, runHandler);
     }
 

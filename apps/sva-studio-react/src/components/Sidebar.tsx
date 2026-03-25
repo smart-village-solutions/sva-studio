@@ -12,6 +12,7 @@ import {
   IconChevronDown,
   IconChevronRight,
   IconFileText,
+  IconGauge,
   IconHeadset,
   IconHelpCircle,
   IconLayoutDashboard,
@@ -95,6 +96,7 @@ const SIDEBAR_COLLAPSED_STORAGE_KEY = 'sva-studio-sidebar-collapsed';
 const HELP_DISCUSSIONS_URL = 'https://github.com/smart-village-solutions/sva-studio/discussions';
 const SUPPORT_ISSUES_URL = 'https://github.com/smart-village-solutions/sva-studio/issues';
 const LICENSE_ISSUE_URL = 'https://github.com/smart-village-solutions/sva-studio/issues/2';
+const COCKPIT_URL = 'https://cockpit.guben.de';
 
 const isLeafActive = (pathname: string, item: SidebarLeafItem) => {
   if (!item.to) {
@@ -538,6 +540,13 @@ export default function Sidebar({ isLoading = false, isMobileOpen = false, onMob
             to: '/app',
             label: t('shell.sidebar.app'),
             icon: IconAppWindow,
+          },
+          {
+            kind: 'link',
+            id: 'cockpit',
+            href: COCKPIT_URL,
+            label: t('shell.sidebar.cockpit'),
+            icon: IconGauge,
           },
         ]
       : [];

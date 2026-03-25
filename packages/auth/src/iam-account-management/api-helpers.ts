@@ -20,14 +20,18 @@ export const createApiError = (
 ): Response => {
   annotateApiErrorSpan({ status, code, details });
 
-  return jsonResponse(status, {
-    error: {
-      code,
-      message,
-      ...(details ? { details } : {}),
-    },
-    ...(requestId ? { requestId } : {}),
-  } satisfies ApiErrorResponse);
+  return jsonResponse(
+    status,
+    {
+      error: {
+        code,
+        message,
+        ...(details ? { details } : {}),
+      },
+      ...(requestId ? { requestId } : {}),
+    } satisfies ApiErrorResponse,
+    requestId ? { 'X-Request-Id': requestId } : undefined
+  );
 };
 
 export const asApiItem = <T>(data: T, requestId?: string): ApiItemResponse<T> => ({

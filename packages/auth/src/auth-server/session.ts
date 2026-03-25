@@ -16,6 +16,24 @@ const shouldRefreshSession = (expiresAt: number | undefined): boolean =>
 const needsSessionUserHydration = (user: SessionUser | null | undefined): boolean =>
   !user || !user.instanceId || user.roles.length === 0;
 
+const logIncompleteSessionUser = (
+  user: SessionUser | null | undefined,
+  source: 'session_read' | 'access_token_hydrate' | 'token_refresh'
+) => {
+  if (!needsSessionUserHydration(user)) {
+    return;
+  }
+
+  logger.warn('Session user is missing required IAM context', {
+    operation: 'session_user_diagnostics',
+    source,
+    user_id: user?.id ?? null,
+    has_instance_id: Boolean(user?.instanceId),
+    roles_count: user?.roles.length ?? 0,
+    ...buildLogContext(user?.instanceId),
+  });
+};
+
 const hydrateSessionUserFromAccessToken = async (
   sessionId: string,
   session: { user?: SessionUser; accessToken?: string }
@@ -32,6 +50,7 @@ const hydrateSessionUserFromAccessToken = async (
   });
 
   if (!hydratedUser.id || needsSessionUserHydration(hydratedUser)) {
+    logIncompleteSessionUser(session.user, 'access_token_hydrate');
     return session.user ?? null;
   }
 
@@ -111,7 +130,9 @@ export const getSessionUser = async (sessionId: string) => {
   }
 
   if (!shouldRefreshSession(session.expiresAt)) {
-    return hydrateSessionUserFromAccessToken(sessionId, session);
+    const user = await hydrateSessionUserFromAccessToken(sessionId, session);
+    logIncompleteSessionUser(user, 'session_read');
+    return user;
   }
 
   if (!session.refreshToken) {
@@ -131,6 +152,7 @@ export const getSessionUser = async (sessionId: string) => {
 
     await refreshSession(sessionId, session.refreshToken, session.expiresAt);
     const updatedSession = await getSession(sessionId);
+    logIncompleteSessionUser(updatedSession?.user ?? null, 'token_refresh');
 
     logger.debug('Token refresh succeeded', {
       operation: 'token_refresh',

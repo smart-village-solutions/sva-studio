@@ -19,14 +19,14 @@
 
 services:
   app:
-    image: ${SVA_REGISTRY}/sva-studio:${SVA_IMAGE_TAG}
+    image: ${SVA_REGISTRY:-ghcr.io/smart-village-solutions}/sva-studio:${SVA_IMAGE_TAG}
     environment:
       NODE_ENV: production
       HOST: 0.0.0.0
       PORT: 3000
-      ENABLE_OTEL: "${ENABLE_OTEL}"
-      OTEL_SERVICE_NAME: "${OTEL_SERVICE_NAME}"
-      OTEL_EXPORTER_OTLP_ENDPOINT: "${OTEL_EXPORTER_OTLP_ENDPOINT}"
+      ENABLE_OTEL: "${ENABLE_OTEL:-true}"
+      OTEL_SERVICE_NAME: "${OTEL_SERVICE_NAME:-sva-studio-demo}"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "${OTEL_EXPORTER_OTLP_ENDPOINT:-http://otel-collector:4318}"
       POSTGRES_DB: sva_studio
       APP_DB_USER: sva
       APP_DB_PASSWORD: ${POSTGRES_PASSWORD}

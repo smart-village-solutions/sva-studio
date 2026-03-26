@@ -561,21 +561,27 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
 ### ✅ REQUIRED
 - **Server-Code**: SDK Logger verwenden (`createSdkLogger` aus `@sva/sdk`)
 - **Strukturierte Logs**: Immer mit Context-Feldern (component, operation, error, etc.)
-- **PII-Schutz**: Keine Session-IDs, Tokens, Emails direkt loggen
+- **PII-Schutz**: Keine Session-IDs, Tokens, tokenhaltigen URLs oder Emails direkt loggen
 - **Component-Labels**: Jeder Logger braucht eindeutigen `component` (z.B. `auth`, `auth-redis`)
 - **Error-Context**: Bei Errors immer `error`, `error_type`, `operation` mitloggen
+- **Development-Modell**: Console und lokale Dev-Konsole sind die primären Diagnosekanaele; OTEL ist in Development nur ein zusaetzlicher Kanal bei erfolgreicher Initialisierung
+- **Production-Modell**: Console und Dev-Konsole sind aus; produktives Server-Logging laeuft ueber OTEL
+- **Privacy-by-Default**: Pseudonyme technische IDs wie `session_user_id`, `db_keycloak_subject` oder `actor_account_id` gelten ebenfalls als personenbeziehbar und duerfen nur bei echter Betriebsnotwendigkeit geloggt werden
+- **Auth-Modell**: `/auth/me` liefert nur den minimalen Auth-Kern; Name und E-Mail gehoeren in dedizierte Profil-/Sync-Flows
 
 ### ❌ FORBIDDEN
 - `console.log/info/warn/error` in Production-Server-Code
 - Session-IDs, Access-Tokens, Refresh-Tokens in Klartext
+- Logout- oder Redirect-URLs mit `id_token_hint`, `code`, `access_token` oder vergleichbaren Query-Parametern im Logging
 - Unstrukturierte Error-Messages ohne Context
 - Logs ohne `component`-Label
 
 ### ✅ APPROVED - Frontend Dev-Only Logs
 Frontend darf `console.*` nutzen, aber:
-- Nur in Development (`if (process.env.NODE_ENV !== 'production')`)
+- Nur in Development
 - Mit strukturierten Feldern `{ component, endpoint, status, error }`
-- Keine PII (User-Email, Session-IDs)
+- Keine PII, Tokens oder tokenhaltigen URLs
+- Die lokale Dev-Konsole darf Browser- und redaktierte Server-Logs anzeigen, aber nie als produktiver Monitoring-Ersatz behandelt werden
 
 **Backend-Beispiel:**
 ```typescript

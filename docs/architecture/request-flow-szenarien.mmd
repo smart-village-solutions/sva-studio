@@ -1,0 +1,41 @@
+flowchart TD
+    A["Browser"] --> B["apps/sva-studio-react"]
+
+    B --> C{Pfadtyp?}
+
+    C -->|Normale UI-Seite| D["TanStack Start / Router"]
+    D --> E["React-Seite / SSR"]
+    E --> F["HTML an Browser"]
+
+    C -->|Server Function aus UI| G["ServerFn in sva-studio-react"]
+    G --> H["@sva/sdk\nRequest-Kontext / Logging"]
+    H --> I["@sva/auth\nSession / Rollen / Guards"]
+    I --> J{"Fachlogik"}
+
+    J -->|DB-basierte Seite| K["@sva/data"]
+    K --> L[("Postgres")]
+
+    J -->|Mainserver-Integration| M["@sva/sva-mainserver"]
+    M --> K
+    M --> N[Keycloak]
+    M --> O["OAuth2 / GraphQL\nexterner Mainserver"]
+
+    L --> P["Antwort an ServerFn"]
+    N --> P
+    O --> P
+    P --> Q["JSON / Daten an React-Komponente"]
+    Q --> R["UI-Update im Browser"]
+
+    C -->|Direkter Auth-/IAM-Endpunkt| S["@sva/routing/server"]
+    S --> T["@sva/auth runtime-routes"]
+    T --> H
+    T --> K
+    T --> N
+    T --> U["Redis Session Store"]
+    T --> V["@sva/core\nTypen / Authorization-Logik"]
+    T --> W["JSON / Redirect Response"]
+    W --> A
+
+    X["@sva/core"] -. fachliche Basis .-> D
+    X -. fachliche Basis .-> T
+    X -. Typen / Contracts .-> G

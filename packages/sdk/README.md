@@ -66,7 +66,7 @@ Der Logger maskiert automatisch sensible Daten:
 
 - **Redaktierte Keys:** `password`, `token`, `authorization`, `api_key`, `secret`, `email`
 - **E-Mail-Masking:** `john@example.com` → `j***@example.com`
-- **URL-/JWT-Schutz:** sensitive Query-Parameter wie `id_token_hint`, `access_token`, `refresh_token`, `code` und JWT-aehnliche Strings werden maskiert
+- **URL-/JWT-Schutz:** sensitive Query-Parameter wie `id_token_hint`, `access_token`, `refresh_token`, `code` und JWT-ähnliche Strings werden maskiert
 - **Kontexterweiterung:** `workspace_id`, `request_id`, `trace_id`, `user_id`, `session_id` werden automatisch aus dem AsyncLocalStorage-Context angehängt
 
 Wichtig:

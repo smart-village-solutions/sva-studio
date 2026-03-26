@@ -38,4 +38,35 @@ describe('development log buffer', () => {
       }),
     ]);
   });
+
+  it('serializes dates and errors while falling back for non-plain objects', () => {
+    class CustomDiagnostic {
+      toString() {
+        return 'custom-diagnostic';
+      }
+    }
+
+    appendDevelopmentLogEntry({
+      timestamp: '2026-03-25T10:00:00.000Z',
+      level: 'error',
+      source: 'server',
+      message: 'third',
+      component: 'gamma',
+      context: {
+        occurred_at: new Date('2026-03-25T10:00:00.000Z'),
+        failure: Object.assign(new Error('boom'), { code: 'E_TEST' }),
+        diagnostic: new CustomDiagnostic(),
+      },
+    });
+
+    expect(readDevelopmentLogEntries()[0]?.context).toEqual({
+      occurred_at: '2026-03-25T10:00:00.000Z',
+      failure: expect.objectContaining({
+        name: 'Error',
+        message: 'boom',
+        code: 'E_TEST',
+      }),
+      diagnostic: 'custom-diagnostic',
+    });
+  });
 });

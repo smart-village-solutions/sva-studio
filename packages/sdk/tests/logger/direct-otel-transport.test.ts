@@ -240,4 +240,20 @@ describe('DirectOtelTransport', () => {
 
     expect(logger.transports).toHaveLength(0);
   });
+
+  it('unregisters OTEL-aware loggers deterministically on close', () => {
+    const logger = createSdkLogger({
+      component: 'close-test',
+      enableOtel: true,
+      enableConsole: false,
+    });
+
+    logger.close();
+    setOtelInitializationResult({
+      status: 'ready',
+      reason: 'late-ready',
+    });
+
+    expect(logger.transports).toHaveLength(0);
+  });
 });

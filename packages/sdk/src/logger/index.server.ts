@@ -42,28 +42,26 @@ const SENSITIVE_KEYS = new Set([
 
 const emailRegex = /([\w.%+-])([\w.%+-]*)(@[\w-]+(?:\.[\w-]+)*\.[A-Za-z]{2,})/g;
 const jwtLikeRegex = /\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)?\b/g;
+const querySecretRegexSource = String.raw`([?&](?:access_token|refresh_token|id_token|id_token_hint|token|code|client_secret|api_key|authorization)=)([^&#\s]+)`;
+const inlineQuerySecretRegexSource = String.raw`((?:^|[\s,(])(?:access_token|refresh_token|id_token|id_token_hint|token|code|client_secret|api_key|authorization)[\w.-]{0,20}[=:]\s*)([^\s,)]+)`;
+const inlineSensitiveFieldRegexSource = String.raw`((?:^|[\s,(])(?:password|secret|session|cookie|csrf)[\w.-]{0,20}[=:]\s*)([^\s,)]+)`;
 const urlSecretPatterns: ReadonlyArray<readonly [RegExp, string]> = [
   [/\b(authorization:\s*)(bearer\s+)?[^\s,]+/gi, '$1[REDACTED]'],
-  [/\b(bearer\s+)[A-Za-z0-9._~+/=-]+/gi, '$1[REDACTED]'],
-  [
-    /([?&](?:access_token|refresh_token|id_token|id_token_hint|token|code|client_secret|api_key|authorization)=)([^&#\s]+)/gi,
-    '$1[REDACTED]',
-  ],
-  [
-    /((?:^|[\s,(])(?:access_token|refresh_token|id_token|id_token_hint|token|code|client_secret|api_key|authorization|password|secret|session|cookie|csrf)[\w.-]{0,20}[=:]\s*)([^\s,)]+)/gi,
-    '$1[REDACTED]',
-  ],
+  [/\b(bearer\s+)(?!\[REDACTED(?:_JWT)?\])[^\s,]+/gi, '$1[REDACTED]'],
+  [new RegExp(querySecretRegexSource, 'gi'), '$1[REDACTED]'],
+  [new RegExp(inlineQuerySecretRegexSource, 'gi'), '$1[REDACTED]'],
+  [new RegExp(inlineSensitiveFieldRegexSource, 'gi'), '$1[REDACTED]'],
 ];
 
 const maskEmail = (value: string): string => {
-  return value.replace(emailRegex, (_, firstChar, _middle, domain) => `${firstChar}***${domain}`);
+  return value.replaceAll(emailRegex, (_, firstChar, _middle, domain) => `${firstChar}***${domain}`);
 };
 
 const redactSensitiveString = (value: string): string => {
   let next = maskEmail(value);
-  next = next.replace(jwtLikeRegex, '[REDACTED_JWT]');
+  next = next.replaceAll(jwtLikeRegex, '[REDACTED_JWT]');
   for (const [pattern, replacement] of urlSecretPatterns) {
-    next = next.replace(pattern, replacement);
+    next = next.replaceAll(pattern, replacement);
   }
   return next;
 };
@@ -227,6 +225,20 @@ class DevelopmentUiTransport extends Transport {
   }
 }
 
+const patchLoggerCloseForRegistryCleanup = (logger: Logger, cleanup: () => void): void => {
+  const originalClose = logger.close.bind(logger);
+  let cleanedUp = false;
+
+  logger.close = (() => {
+    if (!cleanedUp) {
+      cleanup();
+      cleanedUp = true;
+    }
+
+    return originalClose();
+  }) as typeof logger.close;
+};
+
 export const createSdkLogger = ({
   component,
   environment = process.env.NODE_ENV ?? 'development',
@@ -276,30 +288,28 @@ export const createSdkLogger = ({
     transports: transportsArray
   });
 
-  registerOtelAwareLogger({
-    logger,
-    otelEnabled,
-    syncOtelTransport: (ready) => {
-      if (!otelEnabled) {
-        return;
-      }
+  if (otelEnabled) {
+    registerOtelAwareLogger({
+      logger,
+      otelEnabled,
+      syncOtelTransport: (ready) => {
+        if (ready && !otelTransport) {
+          otelTransport = new DirectOtelTransport();
+          logger.add(otelTransport);
+          return;
+        }
 
-      if (ready && !otelTransport) {
-        otelTransport = new DirectOtelTransport();
-        logger.add(otelTransport);
-        return;
-      }
+        if (!ready && otelTransport) {
+          logger.remove(otelTransport);
+          otelTransport = null;
+        }
+      },
+    });
 
-      if (!ready && otelTransport) {
-        logger.remove(otelTransport);
-        otelTransport = null;
-      }
-    },
-  });
-
-  logger.on('close', () => {
-    unregisterOtelAwareLogger(logger);
-  });
+    patchLoggerCloseForRegistryCleanup(logger, () => {
+      unregisterOtelAwareLogger(logger);
+    });
+  }
 
   return logger;
 };

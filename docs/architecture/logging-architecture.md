@@ -58,7 +58,7 @@ Damit werden Logs in async Workflows automatisch mit Kontext angereichert.
 - `initializeOtelSdk()` startet OTEL idempotent.
 - Aktivierung:
   - Production: verpflichtend aktiv
-  - Development: standardmaessig angefragt; per `ENABLE_OTEL=false|0` explizit deaktivierbar
+  - Development: standardmäßig angefragt; per `ENABLE_OTEL=false|0` explizit deaktivierbar
 - Rueckgabewert: strukturiertes Ergebnisobjekt mit `status: ready|disabled|failed`
 - Der Bootstrap erzwingt kein zusaetzliches OTEL-Diag-Console-Logging; regulaere App-Logs folgen ausschliesslich dem Runtime-Modell.
 - `flushOtelSdk()` fuer kontrolliertes Flush-Verhalten beim Shutdown.
@@ -189,7 +189,7 @@ In `dev/monitoring/promtail/promtail-config.yml`:
 
 - Console-Logging ist immer aktiv.
 - Die lokale Dev-Konsole im Frontend ist immer aktiv.
-- OTEL wird standardmaessig initialisiert, aber nur bei erfolgreichem SDK-Start als aktiver Transport zugeschaltet.
+- OTEL wird standardmäßig initialisiert, aber nur bei erfolgreichem SDK-Start als aktiver Transport zugeschaltet.
 - OTEL kann fuer lokale Entwicklungslaeufe explizit via `ENABLE_OTEL=false|0` deaktiviert werden.
 - Lokale Diagnosekanaele folgen denselben Redaction-Regeln wie OTEL; Development ist kein Privacy-Sonderfall.
 

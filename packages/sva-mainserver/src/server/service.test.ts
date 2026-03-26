@@ -235,6 +235,7 @@ describe('createSvaMainserverService', () => {
         fetchImpl: vi
           .fn()
           .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+          .mockResolvedValueOnce(new Response('forbidden', { status }))
           .mockResolvedValueOnce(new Response('forbidden', { status })),
       });
 

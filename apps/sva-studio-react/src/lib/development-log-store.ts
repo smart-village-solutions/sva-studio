@@ -19,22 +19,98 @@ let browserLogEntries: BrowserDevelopmentLogEntry[] = [];
 const browserLogListeners = new Set<BrowserLogListener>();
 let browserCaptureStop: (() => void) | null = null;
 
+const SENSITIVE_CONTEXT_KEYS = new Set([
+  'password',
+  'token',
+  'authorization',
+  'api_key',
+  'secret',
+  'client_secret',
+  'email',
+  'cookie',
+  'set-cookie',
+  'session',
+  'session_id',
+  'user_id',
+  'csrf',
+  'refresh_token',
+  'access_token',
+  'id_token',
+  'id_token_hint',
+  'x-api-key',
+  'x-csrf-token',
+  'actor_user_id',
+  'session_user_id',
+  'actor_account_id',
+  'keycloak_subject',
+  'db_keycloak_subject',
+]);
+const emailRegex = /([\w.%+-])([\w.%+-]*)(@[\w-]+(?:\.[\w-]+)*\.[A-Za-z]{2,})/g;
+const jwtLikeRegex = /\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)?\b/g;
+const querySecretRegexSource = String.raw`([?&](?:access_token|refresh_token|id_token|id_token_hint|token|code|client_secret|api_key|authorization)=)([^&#\s]+)`;
+const inlineQuerySecretRegexSource = String.raw`((?:^|[\s,(])(?:access_token|refresh_token|id_token|id_token_hint|token|code|client_secret|api_key|authorization)[\w.-]{0,20}[=:]\s*)([^\s,)]+)`;
+const inlineSensitiveFieldRegexSource = String.raw`((?:^|[\s,(])(?:password|secret|session|cookie|csrf)[\w.-]{0,20}[=:]\s*)([^\s,)]+)`;
+const urlSecretPatterns: ReadonlyArray<readonly [RegExp, string]> = [
+  [/\b(authorization:\s*)(bearer\s+)?[^\s,]+/gi, '$1[REDACTED]'],
+  [/\b(bearer\s+)(?!\[REDACTED(?:_JWT)?\])[^\s,]+/gi, '$1[REDACTED]'],
+  [new RegExp(querySecretRegexSource, 'gi'), '$1[REDACTED]'],
+  [new RegExp(inlineQuerySecretRegexSource, 'gi'), '$1[REDACTED]'],
+  [new RegExp(inlineSensitiveFieldRegexSource, 'gi'), '$1[REDACTED]'],
+];
+
+const isPlainObject = (value: unknown): value is Record<string, unknown> => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return false;
+  }
+
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+};
+
+const maskEmail = (value: string): string => {
+  return value.replaceAll(emailRegex, (_, firstChar, _middle, domain) => `${firstChar}***${domain}`);
+};
+
+const redactSensitiveString = (value: string): string => {
+  let next = maskEmail(value);
+  next = next.replaceAll(jwtLikeRegex, '[REDACTED_JWT]');
+  for (const [pattern, replacement] of urlSecretPatterns) {
+    next = next.replaceAll(pattern, replacement);
+  }
+  return next;
+};
+
 const serializeValue = (value: unknown): unknown => {
   if (value === null || value === undefined) {
     return value ?? null;
   }
 
   if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
-    return value;
+    return typeof value === 'string' ? redactSensitiveString(value) : value;
   }
 
   if (Array.isArray(value)) {
     return value.map((entry) => serializeValue(entry));
   }
 
-  if (typeof value === 'object') {
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? String(value) : value.toISOString();
+  }
+
+  if (value instanceof Error) {
+    return {
+      name: value.name,
+      message: redactSensitiveString(value.message),
+      ...(typeof value.stack === 'string' ? { stack: redactSensitiveString(value.stack) } : {}),
+    };
+  }
+
+  if (isPlainObject(value)) {
     return Object.fromEntries(
-      Object.entries(value as Record<string, unknown>).map(([key, entry]) => [key, serializeValue(entry)])
+      Object.entries(value).map(([key, entry]) => [
+        key,
+        SENSITIVE_CONTEXT_KEYS.has(key.toLowerCase()) ? '[REDACTED]' : serializeValue(entry),
+      ])
     );
   }
 
@@ -49,7 +125,7 @@ const stringifyMessage = (args: readonly unknown[]): string => {
   return args
     .map((value) => {
       if (typeof value === 'string') {
-        return value;
+        return redactSensitiveString(value);
       }
 
       try {
@@ -80,7 +156,7 @@ export const appendBrowserDevelopmentLog = (
     level,
     message: stringifyMessage(args),
     component: 'browser-console',
-    context,
+    context: isPlainObject(context) ? (serializeValue(context) as Record<string, unknown>) : undefined,
   };
 
   browserLogEntries = [...browserLogEntries, entry].slice(-MAX_BROWSER_DEVELOPMENT_LOG_ENTRIES);
@@ -102,7 +178,7 @@ export const subscribeToBrowserDevelopmentLogs = (listener: BrowserLogListener):
 };
 
 export const startBrowserDevelopmentLogCapture = (): (() => void) => {
-  if (browserCaptureStop || typeof window === 'undefined') {
+  if (browserCaptureStop || globalThis.window === undefined) {
     return browserCaptureStop ?? (() => undefined);
   }
 
@@ -147,16 +223,16 @@ export const startBrowserDevelopmentLogCapture = (): (() => void) => {
     });
   };
 
-  window.addEventListener('error', handleWindowError);
-  window.addEventListener('unhandledrejection', handleUnhandledRejection);
+  globalThis.addEventListener('error', handleWindowError);
+  globalThis.addEventListener('unhandledrejection', handleUnhandledRejection);
 
   browserCaptureStop = () => {
     console.debug = originalConsole.debug;
     console.info = originalConsole.info;
     console.warn = originalConsole.warn;
     console.error = originalConsole.error;
-    window.removeEventListener('error', handleWindowError);
-    window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+    globalThis.removeEventListener('error', handleWindowError);
+    globalThis.removeEventListener('unhandledrejection', handleUnhandledRejection);
     browserCaptureStop = null;
   };
 

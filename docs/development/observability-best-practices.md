@@ -13,7 +13,7 @@ Architektur-Referenz: [Logging Architecture](../architecture/logging-architectur
 - **Workspace Context**: Jedes Log sollte `workspace_id` beinhalten
 - **PII-Sicherheit**: Sensible Daten gehören in Message Body, nicht in Labels
 - **Keine Token-URLs**: Redirect- oder Logout-URLs mit `id_token_hint`, `code` oder anderen Geheimnissen werden nie als Rohwert geloggt
-- **Development-Modell**: Console und Dev-Konsole sind lokal aktiv; OTEL ist in Development ein zusaetzlicher Exportpfad nur bei erfolgreicher Initialisierung
+- **Development-Modell**: Console und Dev-Konsole sind lokal aktiv; OTEL ist in Development ein zusätzlicher Exportpfad nur bei erfolgreicher Initialisierung
 
 ### ✅ DO: Strukturiertes Logging mit SDK Logger
 

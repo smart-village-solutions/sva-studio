@@ -65,6 +65,17 @@ const mergeServerLogs = (
   return [...merged.values()].slice(-200);
 };
 
+const applyServerLogUpdate = (
+  entries: readonly DevelopmentLogEntry[],
+  latestServerLogIdRef: { current: number },
+  setServerLogs: React.Dispatch<React.SetStateAction<DevelopmentLogEntry[]>>
+): void => {
+  latestServerLogIdRef.current = entries.at(-1)?.id ?? latestServerLogIdRef.current;
+  startTransition(() => {
+    setServerLogs((current) => mergeServerLogs(current, entries));
+  });
+};
+
 export default function DevelopmentLogConsole() {
   const loadServerLogs = useServerFn(loadDevelopmentServerLogs) as (input: {
     readonly data: {
@@ -76,6 +87,9 @@ export default function DevelopmentLogConsole() {
   const [sourceFilter, setSourceFilter] = React.useState<LogSourceFilter>('all');
   const [serverLogs, setServerLogs] = React.useState<DevelopmentLogEntry[]>([]);
   const [browserLogs, setBrowserLogs] = React.useState<BrowserDevelopmentLogEntry[]>([]);
+  const [isDocumentVisible, setIsDocumentVisible] = React.useState(() => {
+    return typeof document === 'undefined' ? true : document.visibilityState === 'visible';
+  });
   const latestServerLogIdRef = React.useRef(0);
 
   React.useEffect(() => {
@@ -95,6 +109,27 @@ export default function DevelopmentLogConsole() {
   }, []);
 
   React.useEffect(() => {
+    if (typeof document === 'undefined') {
+      return undefined;
+    }
+
+    const handleVisibilityChange = () => {
+      setIsDocumentVisible(document.visibilityState === 'visible');
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    handleVisibilityChange();
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+
+  React.useEffect(() => {
+    if (!isOpen || !isDocumentVisible) {
+      return undefined;
+    }
+
     let cancelled = false;
 
     const refreshServerLogs = async () => {
@@ -109,10 +144,7 @@ export default function DevelopmentLogConsole() {
           return;
         }
 
-        latestServerLogIdRef.current = nextEntries[nextEntries.length - 1]?.id ?? latestServerLogIdRef.current;
-        startTransition(() => {
-          setServerLogs((current) => mergeServerLogs(current, nextEntries));
-        });
+        applyServerLogUpdate(nextEntries, latestServerLogIdRef, setServerLogs);
       } catch (error) {
         if (!cancelled) {
           console.warn('[DevelopmentLogConsole] Failed to load server logs', error);
@@ -121,15 +153,15 @@ export default function DevelopmentLogConsole() {
     };
 
     void refreshServerLogs();
-    const intervalId = window.setInterval(() => {
+    const intervalId = globalThis.setInterval(() => {
       void refreshServerLogs();
     }, POLLING_INTERVAL_MS);
 
     return () => {
       cancelled = true;
-      window.clearInterval(intervalId);
+      globalThis.clearInterval(intervalId);
     };
-  }, [loadServerLogs]);
+  }, [isDocumentVisible, isOpen, loadServerLogs]);
 
   const visibleEntries = React.useMemo(() => {
     return [...browserLogs, ...serverLogs]

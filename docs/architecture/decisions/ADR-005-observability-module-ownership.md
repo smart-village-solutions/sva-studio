@@ -83,4 +83,4 @@ Falls ein anderer Observability-Stack genutzt wird, wird nur `monitoring-client`
 
 **Links:**
 - [ADR-004: Monitoring Stack – Loki, Grafana & Prometheus](ADR-004-monitoring-stack-loki-grafana-prometheus.md)
-- [Design: Docker-basierter Monitoring Stack](../../../openspec/changes/add-docker-monitoring-dev-stack/design.md)
+- [Logging-Architektur](../logging-architecture.md)

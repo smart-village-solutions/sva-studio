@@ -19,6 +19,7 @@ gleichzeitig beeinflussen.
 - Signiertes Login-State-Cookie (HMAC)
 - Session-Cookies: `httpOnly`, `sameSite=lax`, `secure` in Production
 - Optionale Verschlüsselung von Tokens im Redis-Store via `ENCRYPTION_KEY`
+- Sessionen fuehren nur den minimalen Auth-Kern (`sub/id`, `instanceId`, Rollen); Profilattribute wie Name und E-Mail gehoeren nicht zum Pflichtumfang der Session
 - Application-Level Column Encryption für IAM-PII-Felder (`email_ciphertext`, `display_name_ciphertext`)
 - Schlüsselverwaltung über `IAM_PII_ACTIVE_KEY_ID` + `IAM_PII_KEYRING_JSON` (außerhalb der DB)
 - Fehlertexte der Feldverschlüsselung enthalten keine internen Key-IDs; technische Key-Kontexte werden nur als strukturierter Fehlerkontext geführt
@@ -36,6 +37,7 @@ gleichzeitig beeinflussen.
 - Inhaltstypen dürfen über das SDK zusätzliche Validierung, UI-Sektionen und Listenmetadaten registrieren, aber keine Core-Semantik oder das Statusmodell überschreiben
 - DataClient unterstützt optionale Runtime-Schema-Validierung (`get(path, schema)`) für API-Responses
 - IAM-Server-Fassaden bleiben bewusst dünn; fachliche Erweiterungen gehören in Unterordner und nicht zurück in Monolith-Dateien
+- Profil-Synchronisation mit Keycloak bleibt zulaessig, erfolgt aber ausschliesslich ueber dedizierte Profil-/Sync-Flows und nicht implizit ueber Session- oder Logging-Pfade
 
 ### IAM Multi-Tenancy, Caching und Audit-Logging
 
@@ -65,6 +67,8 @@ gleichzeitig beeinflussen.
 - Einheitlicher Server-Logger über `@sva/sdk/server`
 - AsyncLocalStorage für `workspace_id`/request context
 - OTEL Pipeline für Logs + Metrics
+- Development nutzt zusätzlich eine lokale Debug-Konsole im Frontend; sie zeigt Browser-Logs und redaktierte Server-Logs, ist aber kein produktiver Telemetriepfad
+- Operative Logs enthalten keine Tokens, keine tokenhaltigen Redirect- oder Logout-URLs und keine decodierbaren JWT-Strings; zulaessig sind nur sichere Summary-Felder
 - Runtime-Diagnostik folgt einem zweistufigen Modell: öffentliche Health-/API-Responses liefern knappe, nicht-sensitive `reason_code`s; OTEL liefert die tiefe technische Korrelation über Span-Attribute und Events
 - Label-Whitelist und PII-Blockliste in OTEL/Promtail
 - IAM-Authorize/Cache-Logs nutzen strukturierte Operations (`cache_lookup`, `cache_invalidate`, `cache_stale_detected`, `cache_invalidate_failed`)
@@ -88,6 +92,7 @@ gleichzeitig beeinflussen.
 - Finale Löschung pseudonymisiert Audit-Referenzen (`subject_pseudonym`) statt Klartext-PII
 - SDK-Logger nutzt typisierte OTEL-Bridge (keine `any`-Casts in Transport/Bootstrap)
 - Sensitive-Keys-Redaction umfasst zusätzlich Cookie-, Session-, CSRF- und API-Key-Header/Felder
+- Pseudonyme technische IDs bleiben personenbezogen und werden nur geloggt, wenn sie fuer Betrieb, Audit oder Korrelation wirklich erforderlich sind
 - Workspace-Context-Warnungen erfolgen über lazy `process.emitWarning` statt `console.warn`
 - Mainserver-Logs enthalten nur `instanceId`/`workspace_id`, `operation_name`, `request_id`, `trace_id`, Status und abstrahierte Fehlercodes; API-Key, Secret, Token und unredactete Variablen werden nie geloggt
 - IAM-Request-Spans tragen konsistente Diagnoseattribute wie `iam.endpoint`, `iam.instance_id`, `iam.actor_resolution`, `iam.reason_code`, `iam.feature_flags`, `db.schema_guard_result`, `dependency.redis.status` und `dependency.keycloak.status`
@@ -98,7 +103,7 @@ gleichzeitig beeinflussen.
 
 ### Fehlerbehandlung und Resilienz
 
-- OTEL-Init ist fehlertolerant (App läuft weiter ohne Telemetrie)
+- OTEL-Init ist in Development fehlertolerant; in Production wird fehlende OTEL-Readiness fail-closed behandelt
 - Die Routing-Error-Boundary liefert auch bei unerwarteten Fehlern immer JSON statt HTML-Fallbackseiten
 - Redis-Reconnect mit Backoff und Max-Retry Logik
 - Auth-Flow mit klaren Redirect-Fehlerpfaden (`auth=error`, `auth=state-expired`)

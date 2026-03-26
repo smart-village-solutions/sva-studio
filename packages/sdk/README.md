@@ -44,8 +44,8 @@ import { createSdkLogger } from '@sva/sdk/server';
 const logger = createSdkLogger({
   component: 'mein-modul',    // Pflicht – eindeutiger Modulname
   level: 'info',               // Optional (Default: 'info')
-  enableConsole: true,         // Optional (Default: true in non-production)
-  enableOtel: true,            // Optional (Default: true)
+  enableConsole: true,         // Optionaler Override; Runtime-Default folgt dem Betriebsmodus
+  enableOtel: true,            // Optionaler Override; OTEL wird nur bei Readiness aktiv
 });
 
 logger.info('Operation erfolgreich', {
@@ -66,11 +66,21 @@ Der Logger maskiert automatisch sensible Daten:
 
 - **Redaktierte Keys:** `password`, `token`, `authorization`, `api_key`, `secret`, `email`
 - **E-Mail-Masking:** `john@example.com` → `j***@example.com`
+- **URL-/JWT-Schutz:** sensitive Query-Parameter wie `id_token_hint`, `access_token`, `refresh_token`, `code` und JWT-aehnliche Strings werden maskiert
 - **Kontexterweiterung:** `workspace_id`, `request_id`, `trace_id`, `user_id`, `session_id` werden automatisch aus dem AsyncLocalStorage-Context angehängt
+
+Wichtig:
+- Tokenhaltige Redirect- oder Logout-URLs duerfen fachlich nicht als Rohwert in Logs auftauchen.
+- Pseudonyme technische IDs bleiben personenbezogen und sind kein Freifahrtschein fuer beliebiges Logging.
 
 ### OTEL-Transport
 
-Der Logger sendet Logs direkt an den OTEL Logger-Provider über einen eigenen `DirectOtelTransport`. Severity-Level werden automatisch von Winston auf OTEL gemappt.
+Der Logger sendet Logs direkt an den OTEL Logger-Provider über einen eigenen `DirectOtelTransport`. Severity-Level werden automatisch von Winston auf OTEL gemappt. Bereits erzeugte Logger werden nach erfolgreicher OTEL-Initialisierung zur Laufzeit um den OTEL-Transport erweitert.
+
+### Development Dev-Konsole
+
+In Development schreibt der SDK-Logger redaktierte Server-Logs zusätzlich in einen lokalen In-Memory-Buffer. Die React-App liest diesen Buffer aus und zeigt ihn in einer Debug-Konsole am Seitenende an.
+Außerhalb von Development liefert der zugehörige Serverpfad keine Einträge aus.
 
 ## Request-Context Middleware
 
@@ -123,8 +133,9 @@ await initializeOtelSdk();
 ```
 
 **Verhalten:**
-- **Development:** OTEL ist per Default aus, aktivierbar via `ENABLE_OTEL=true`
-- **Production:** OTEL ist immer aktiv
+- **Development:** Console und Dev-Konsole sind aktiv; OTEL wird standardmaessig initialisiert und nur bei erfolgreichem Start aktiv genutzt
+- **Development Override:** `ENABLE_OTEL=false` deaktiviert den lokalen OTEL-Start explizit
+- **Production:** OTEL ist verpflichtend aktiv, Console und Dev-Konsole sind aus; fehlende OTEL-Readiness ist ein Fehlerzustand
 - **Graceful Shutdown:** SIGTERM/SIGINT löst sauberes SDK-Shutdown aus
 
 ## Projektstruktur

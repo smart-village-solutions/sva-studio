@@ -74,6 +74,7 @@ PII-Redaction auf OTEL-Ebene – als letzte Sicherheitsschicht vor dem Export:
 
 - **Forbidden Label Keys:** Sensible Keys werden aus Log-Attributen entfernt
 - **E-Mail-Maskierung:** `john@example.com` → `j***@example.com`
+- **JWT-/Query-Parameter-Redaction:** `id_token_hint`, `access_token`, `refresh_token`, `code` und JWT-aehnliche Strings werden vor dem Export maskiert
 - Konfigurierbar via Label-Whitelist
 
 ### Workspace-Context-Getter
@@ -104,10 +105,16 @@ import {
 
 | Aspekt | Development | Production |
 | --- | --- | --- |
-| OTLP-Endpoint | `localhost:4318` | Über OTEL-Env-Vars |
+| OTLP-Endpoint | `localhost:4318` oder per Env überschrieben | Über OTEL-Env-Vars |
 | Batch-Size | Klein (schnelles Flush) | Groß (Performance) |
 | Auto-Instrumentation | HTTP | HTTP |
 | PII-Redaction | Aktiv | Aktiv |
+
+Hinweis:
+
+- In Development bleibt die App auch ohne erfolgreichen OTEL-Start lauffaehig; Console und Dev-Konsole decken den lokalen Diagnosefall ab.
+- In Production bleibt `@sva/monitoring-client` der verpflichtende Exportpfad fuer Server-Logs und Metriken; fehlende OTEL-Readiness ist kein regulaerer Fallback-Fall.
+- Development-Kanaele und OTEL-Export folgen derselben Privacy-Policy; tokenhaltige URLs und decodierbare JWTs sind in keinem Kanal zulaessig.
 
 ## Projektstruktur
 

@@ -12,6 +12,8 @@ Architektur-Referenz: [Logging Architecture](../architecture/logging-architectur
 - **Strukturiertes Logging**: Key-Value Pairs statt Textkonkatenation
 - **Workspace Context**: Jedes Log sollte `workspace_id` beinhalten
 - **PII-Sicherheit**: Sensible Daten gehören in Message Body, nicht in Labels
+- **Keine Token-URLs**: Redirect- oder Logout-URLs mit `id_token_hint`, `code` oder anderen Geheimnissen werden nie als Rohwert geloggt
+- **Development-Modell**: Console und Dev-Konsole sind lokal aktiv; OTEL ist in Development ein zusaetzlicher Exportpfad nur bei erfolgreicher Initialisierung
 
 ### ✅ DO: Strukturiertes Logging mit SDK Logger
 
@@ -38,6 +40,7 @@ logger.error('Database connection failed', {
 
 **Vorteile:**
 - Automatische Redaction von PII (email, token, api_key, etc.)
+- Automatische Maskierung von JWT-aehnlichen Strings und sensitiven URL-Query-Parametern
 - OTEL Integration (logs + metrics + traces)
 - Workspace-Kontext automatisch injiziert
 - Konsistente Log-Struktur für Aggregation
@@ -49,6 +52,12 @@ logger.error('Database connection failed', {
 console.log(`User ${email} signed in from IP ${ip}`);
 // → Email und IP könnten sichtbar sein!
 
+// ❌ BAD: Tokenhaltige Logout-URL
+logger.info('Logout successful', {
+  redirect_target: 'https://issuer.example/logout?id_token_hint=...',
+});
+// → Tokenhaltige URLs gehoeren nicht ins operative Logging
+
 // ❌ BAD: Keine Struktur
 console.log('Auth completed');
 // → Nicht filterbar, kein Context, schwer zu durchsuchen
@@ -59,6 +68,14 @@ logger.info('User login', {
   password: 'secret123'       // ← NIE!
 });
 ```
+
+### Development Runtime
+
+- In Development ist die Server-Console immer aktiv.
+- Die React-App rendert eine lokale Dev-Konsole fuer Browser- und Server-Logs.
+- Die Server-Schnittstelle fuer diese Dev-Konsole liefert ausserhalb von Development bewusst keine Eintraege.
+- OTEL darf in Development ausfallen oder explizit deaktiviert werden, ohne den App-Start zu blockieren.
+- In Production ist dieses Verhalten nicht zulaessig; dort ist OTEL verpflichtend.
 
 ## PII-Redaction
 
@@ -87,6 +104,11 @@ const allowedLabels = [
 ```
 john.doe@example.com → j***@example.com
 ```
+
+**Zusaetzliche Schutzregeln:**
+- JWT-aehnliche Strings werden maskiert
+- `id_token_hint`, `access_token`, `refresh_token` und `code` werden in URLs redacted
+- lokale Dev-Konsole, Console und OTEL folgen derselben Redaction
 
 ### Ebene 2: Log Collection (Promtail)
 
@@ -291,7 +313,7 @@ Für Entwicklung:
 ## References
 
 - [OTEL Best Practices](https://opentelemetry.io/docs/concepts/observability-primer/)
-- [Logging Strategy (ADR-006)](../openspec/changes/add-docker-monitoring-dev-stack/specs/logging-pipeline/spec.md)
-- [Label Schema & PII Policy (ADR-007)](../openspec/changes/add-docker-monitoring-dev-stack/specs/label-schema/spec.md)
+- [Logging Strategy (ADR-006)](../architecture/decisions/ADR-006-logging-pipeline-strategy.md)
+- [Label Schema & PII Policy (ADR-007)](../architecture/logging-architecture.md#pii--und-label-policy)
 - [Loki LogQL Documentation](https://grafana.com/docs/loki/latest/logql/)
 - [Prometheus PromQL Documentation](https://prometheus.io/docs/prometheus/latest/querying/basics/)

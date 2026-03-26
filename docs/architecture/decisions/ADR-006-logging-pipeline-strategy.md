@@ -45,7 +45,7 @@ Ziel ist eine Pipeline, die **Entwicklung, Tests und späteren Betrieb** konsist
 - ✅ **Standards-Compliance:** OTLP ist vendor-neutral und etabliert.
 - ✅ **Korrelation:** Logs, Metrics und Traces mit gemeinsamen Resource-Attributen.
 - ✅ **Backend-Flexibilität:** Loki kann später ersetzt werden, ohne App-Code zu ändern.
-- ✅ **Observability-Consistency:** Gleiches Setup für lokale Entwicklung und Produktion.
+- ✅ **Observability-Consistency:** Gleicher Exportstandard in Produktion; lokale Entwicklung bleibt diagnostikfreundlich ohne harten OTEL-Zwang.
 
 ---
 
@@ -62,6 +62,11 @@ Ziel ist eine Pipeline, die **Entwicklung, Tests und späteren Betrieb** konsist
 - ❌ Doppelpfad möglich (Promtail + OTEL) → Risiko von Duplikaten.
 
 **Mitigation:** Promtail dient nur als Fallback für nicht-OTEL-fähige Services; OTEL-Logs werden bevorzugt. Duplikate werden via Label oder Pipeline-Filter verhindert.
+
+## Betriebsmodell
+
+- **Development:** Console und lokale Dev-Konsole sind aktiv. OTEL wird nur als aktiver Zusatzkanal genutzt, wenn das SDK erfolgreich initialisiert wurde.
+- **Production:** Console und Dev-Konsole sind aus. OTEL ist der verpflichtende Exportpfad fuer Server-Logs; fehlende OTEL-Readiness ist ein Fehlerzustand.
 
 ---
 
@@ -82,4 +87,4 @@ Bei Wechsel zu z. B. Datadog oder ELK bleibt der App-Code gleich; nur der OTEL C
 
 **Links:**
 - [ADR-004: Monitoring Stack – Loki, Grafana & Prometheus](ADR-004-monitoring-stack-loki-grafana-prometheus.md)
-- [Design: Docker-basierter Monitoring Stack](../../../openspec/changes/add-docker-monitoring-dev-stack/design.md)
+- [Logging-Architektur](../logging-architecture.md)

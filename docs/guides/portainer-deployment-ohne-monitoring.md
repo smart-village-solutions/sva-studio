@@ -85,9 +85,15 @@ Wenn neue SQL-Migrationen dazugekommen sind, reicht ein normales Redeploy **nich
 1. Test-/Staging-System: Postgres-Volume bewusst neu anlegen und Stack frisch deployen.
 2. Bestehende Datenbank behalten: Migrationen kontrolliert manuell gegen die laufende Datenbank ausführen.
 
-## Betrieb ohne Monitoring
+## Historischer Hinweis zum Betrieb ohne Monitoring
 
-Im Stack ist `ENABLE_OTEL=false` vorgesehen. Damit bleibt der erste Server-Rollout frei von zusätzlicher Observability-Infrastruktur. Logs laufen zunächst nur über Docker/Portainer.
+Der hier beschriebene Ansatz mit `ENABLE_OTEL=false` entspricht **nicht** mehr dem aktuellen Zielmodell fuer produktive Umgebungen. Nach heutigem Stand gilt:
+
+- Production-Logging laeuft ueber OTEL.
+- Console- und Dev-Konsole sind dort keine regulaeren Betriebswege.
+- Fehlende OTEL-Readiness gilt in Production als Fehlerzustand.
+
+Die folgende Konstellation ist daher nur noch als historische oder provisorische Bring-up-Referenz zu verstehen, nicht als aktuelle Produktionsfreigabe.
 
 ## Nächster Schritt
 

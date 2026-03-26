@@ -45,7 +45,6 @@ const SENSITIVE_CONTEXT_KEYS = new Set([
   'keycloak_subject',
   'db_keycloak_subject',
 ]);
-const emailRegex = /([\w.%+-])([\w.%+-]*)(@[\w-]+(?:\.[\w-]+)*\.[A-Za-z]{2,})/g;
 const jwtLikeRegex = /\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)?\b/g;
 const querySecretRegexSource = String.raw`([?&](?:access_token|refresh_token|id_token|id_token_hint|token|code|client_secret|api_key|authorization)=)([^&#\s]+)`;
 const inlineQuerySecretRegexSource = String.raw`((?:^|[\s,(])(?:access_token|refresh_token|id_token|id_token_hint|token|code|client_secret|api_key|authorization)[\w.-]{0,20}[=:]\s*)([^\s,)]+)`;
@@ -67,8 +66,53 @@ const isPlainObject = (value: unknown): value is Record<string, unknown> => {
   return prototype === Object.prototype || prototype === null;
 };
 
+const isEmailCharacter = (character: string): boolean => {
+  return /[A-Za-z0-9._%+-]/.test(character);
+};
+
+const maskEmailToken = (token: string): string => {
+  const atIndex = token.indexOf('@');
+  if (atIndex <= 0 || atIndex === token.length - 1) {
+    return token;
+  }
+
+  const localPart = token.slice(0, atIndex);
+  const domain = token.slice(atIndex + 1);
+  if (!domain.includes('.') || !/\.[A-Za-z]{2,}$/.test(domain)) {
+    return token;
+  }
+
+  return `${localPart[0]}***@${domain}`;
+};
+
 const maskEmail = (value: string): string => {
-  return value.replaceAll(emailRegex, (_, firstChar, _middle, domain) => `${firstChar}***${domain}`);
+  let maskedValue = '';
+  let tokenStart = -1;
+
+  const flushToken = (tokenEnd: number) => {
+    if (tokenStart < 0) {
+      return;
+    }
+
+    maskedValue += maskEmailToken(value.slice(tokenStart, tokenEnd));
+    tokenStart = -1;
+  };
+
+  for (let index = 0; index < value.length; index += 1) {
+    const character = value[index] ?? '';
+    if (isEmailCharacter(character) || character === '@') {
+      if (tokenStart < 0) {
+        tokenStart = index;
+      }
+      continue;
+    }
+
+    flushToken(index);
+    maskedValue += character;
+  }
+
+  flushToken(value.length);
+  return maskedValue;
 };
 
 const redactSensitiveString = (value: string): string => {

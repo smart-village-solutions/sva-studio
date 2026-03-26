@@ -22,6 +22,7 @@ describe('development log store', () => {
     const entry = appendBrowserDevelopmentLog(
       'error',
       [
+        'contact test@example.org',
         'Authorization: Bearer secret-token-value',
         'https://issuer.example/logout?id_token_hint=eyJhbGciOiJub25lIn0.eyJzdWIiOiIxIn0.signature',
       ],
@@ -34,6 +35,7 @@ describe('development log store', () => {
       }
     );
 
+    expect(entry.message).toContain('contact t***@example.org');
     expect(entry.message).toContain('Authorization: [REDACTED]');
     expect(entry.message).toContain('id_token_hint=[REDACTED]');
     expect(entry.context).toEqual({

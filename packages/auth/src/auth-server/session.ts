@@ -1,12 +1,12 @@
-import type { SessionUser } from '../types.js';
+import type { Session, SessionUser } from '../types.js';
 import { createSdkLogger } from '@sva/sdk/server';
 
 import { getAuthConfig } from '../config.js';
 import { client, getOidcConfig } from '../oidc.server.js';
-import { deleteSession, getSession, updateSession } from '../redis-session.server.js';
+import { deleteSession, getSession, getSessionControlState, updateSession } from '../redis-session.server.js';
 import { isTokenErrorLike } from '../shared/error-guards.js';
 import { buildLogContext } from '../shared/log-context.js';
-import { buildSessionUser, resolveExpiresAt, TOKEN_REFRESH_SKEW_MS } from './shared.js';
+import { buildSessionUser, resolveSessionExpiry, TOKEN_REFRESH_SKEW_MS } from './shared.js';
 
 const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
 
@@ -15,6 +15,26 @@ const shouldRefreshSession = (expiresAt: number | undefined): boolean =>
 
 const needsSessionUserHydration = (user: SessionUser | null | undefined): boolean =>
   !user || !user.instanceId || user.roles.length === 0;
+
+const isSessionAllowed = async (session: Session): Promise<boolean> => {
+  const state = await getSessionControlState(session.userId);
+  if (!state) {
+    return true;
+  }
+
+  const sessionVersion = session.sessionVersion ?? 1;
+  const issuedAt = session.issuedAt ?? session.createdAt;
+
+  if (typeof state.minimumSessionVersion === 'number' && sessionVersion < state.minimumSessionVersion) {
+    return false;
+  }
+
+  if (typeof state.forcedReauthAt === 'number' && issuedAt < state.forcedReauthAt) {
+    return false;
+  }
+
+  return true;
+};
 
 const logIncompleteSessionUser = (
   user: SessionUser | null | undefined,
@@ -67,10 +87,10 @@ const hydrateSessionUserFromAccessToken = async (
   return hydratedUser;
 };
 
-const refreshSession = async (sessionId: string, refreshToken: string, fallbackExpiresAt?: number) => {
+const refreshSession = async (sessionId: string, session: Session) => {
   const authConfig = getAuthConfig();
   const config = await getOidcConfig();
-  const refreshed = await client.refreshTokenGrant(config, refreshToken);
+  const refreshed = await client.refreshTokenGrant(config, session.refreshToken ?? '');
   const updatedUser = buildSessionUser({
     accessToken: refreshed.access_token,
     claims: (refreshed.claims() ?? {}) as Record<string, unknown>,
@@ -80,9 +100,14 @@ const refreshSession = async (sessionId: string, refreshToken: string, fallbackE
   await updateSession(sessionId, {
     user: updatedUser,
     accessToken: refreshed.access_token,
-    refreshToken: refreshed.refresh_token ?? refreshToken,
+    refreshToken: refreshed.refresh_token ?? session.refreshToken,
     idToken: refreshed.id_token,
-    expiresAt: resolveExpiresAt(refreshed.expiresIn(), fallbackExpiresAt),
+    expiresAt: resolveSessionExpiry({
+      expiresInSeconds: refreshed.expiresIn(),
+      issuedAt: session.issuedAt ?? session.createdAt,
+      sessionTtlMs: authConfig.sessionTtlMs,
+      fallback: session.expiresAt,
+    }),
   });
 
   return updatedUser;
@@ -129,6 +154,11 @@ export const getSessionUser = async (sessionId: string) => {
     return null;
   }
 
+  if (!(await isSessionAllowed(session))) {
+    await deleteSession(sessionId);
+    return null;
+  }
+
   if (!shouldRefreshSession(session.expiresAt)) {
     const user = await hydrateSessionUserFromAccessToken(sessionId, session);
     logIncompleteSessionUser(user, 'session_read');
@@ -150,7 +180,7 @@ export const getSessionUser = async (sessionId: string) => {
       ...buildLogContext(session.user?.instanceId),
     });
 
-    await refreshSession(sessionId, session.refreshToken, session.expiresAt);
+    await refreshSession(sessionId, session);
     const updatedSession = await getSession(sessionId);
     logIncompleteSessionUser(updatedSession?.user ?? null, 'token_refresh');
 

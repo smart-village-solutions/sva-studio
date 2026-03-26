@@ -44,6 +44,12 @@ export const getAuthConfig = (): AuthConfig => {
     scopes: process.env.SVA_AUTH_SCOPES ?? 'openid',
     sessionCookieName: process.env.SVA_AUTH_SESSION_COOKIE ?? 'sva_auth_session',
     loginStateCookieName: process.env.SVA_AUTH_LOGIN_STATE_COOKIE ?? 'sva_auth_state',
+    silentSsoSuppressCookieName: process.env.SVA_AUTH_SILENT_SSO_SUPPRESS_COOKIE ?? 'sva_auth_silent_sso',
     sessionTtlMs: readNumber('SVA_AUTH_SESSION_TTL_MS', 60 * 60 * 1000),
+    sessionRedisTtlBufferMs: readNumber('SVA_AUTH_SESSION_REDIS_TTL_BUFFER_MS', 5 * 60 * 1000),
+    silentSsoSuppressAfterLogoutMs: readNumber(
+      'SVA_AUTH_SILENT_SSO_SUPPRESS_AFTER_LOGOUT_MS',
+      5 * 60 * 1000
+    ),
   };
 };

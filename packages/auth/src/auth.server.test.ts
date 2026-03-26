@@ -6,6 +6,7 @@ const consumeLoginStateMock = vi.fn();
 const createLoginStateMock = vi.fn();
 const createSessionMock = vi.fn();
 const getSessionMock = vi.fn<(_sessionId: string) => Promise<Session | undefined>>();
+const getSessionControlStateMock = vi.fn();
 const updateSessionMock = vi.fn();
 const deleteSessionMock = vi.fn();
 const refreshTokenGrantMock = vi.fn();
@@ -26,7 +27,10 @@ vi.mock('./config', () => ({
     scopes: 'openid',
     sessionCookieName: 'sva_auth_session',
     loginStateCookieName: 'sva_auth_state',
+    silentSsoSuppressCookieName: 'sva_auth_silent_sso',
     sessionTtlMs: 60_000,
+    sessionRedisTtlBufferMs: 5_000,
+    silentSsoSuppressAfterLogoutMs: 60_000,
   }),
 }));
 
@@ -36,6 +40,7 @@ vi.mock('./redis-session.server', () => ({
   createSession: createSessionMock,
   deleteSession: deleteSessionMock,
   getSession: getSessionMock,
+  getSessionControlState: getSessionControlStateMock,
   updateSession: updateSessionMock,
 }));
 
@@ -74,6 +79,7 @@ describe('getSessionUser', () => {
     buildAuthorizationUrlMock.mockReturnValue(new URL('https://issuer.example/auth?state=state-1'));
     buildEndSessionUrlMock.mockReturnValue(new URL('https://issuer.example/logout'));
     jitProvisionAccountMock.mockResolvedValue({ skipped: false, accountId: 'acc-1', created: true });
+    getSessionControlStateMock.mockResolvedValue(undefined);
   });
 
   const createUnsignedJwt = (claims: Record<string, unknown>) => {
@@ -278,6 +284,27 @@ describe('getSessionUser', () => {
       expect.objectContaining({
         codeVerifier: 'verifier-1',
         nonce: 'nonce-1',
+        silent: false,
+      })
+    );
+  });
+
+  it('createLoginUrl persists a silent login state and requests prompt none', async () => {
+    const { createLoginUrl } = await import('./auth.server');
+
+    await createLoginUrl({ returnTo: '/', silent: true });
+
+    expect(createLoginStateMock).toHaveBeenCalledWith(
+      'state-1',
+      expect.objectContaining({
+        returnTo: '/',
+        silent: true,
+      })
+    );
+    expect(buildAuthorizationUrlMock).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        prompt: 'none',
       })
     );
   });

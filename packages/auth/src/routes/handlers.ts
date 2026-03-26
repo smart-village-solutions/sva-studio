@@ -58,13 +58,43 @@ const createAuthCookieOptions = () => {
   };
 };
 
-const createSessionCookie = (name: string, sessionId: string) =>
-  serializeCookie(name, sessionId, createAuthCookieOptions());
+const createTimedCookieOptions = (expiresAt: number | undefined) => {
+  if (typeof expiresAt !== 'number') {
+    return createAuthCookieOptions();
+  }
+
+  const maxAgeSeconds = Math.max(1, Math.ceil((expiresAt - Date.now()) / 1000));
+  return {
+    ...createAuthCookieOptions(),
+    maxAge: maxAgeSeconds,
+    expires: new Date(Date.now() + maxAgeSeconds * 1000),
+  };
+};
+
+const createSessionCookie = (name: string, sessionId: string, expiresAt?: number) =>
+  serializeCookie(name, sessionId, createTimedCookieOptions(expiresAt));
 
 const createLoginStateCookie = (input: { name: string; secret: string; payload: LoginStateCookiePayload }) =>
   serializeCookie(input.name, encodeLoginStateCookie(input.payload, input.secret), createAuthCookieOptions());
 
-const DEFAULT_POST_LOGIN_REDIRECT = '/account';
+const createSilentSsoSuppressCookie = (name: string, suppressUntil: number) =>
+  serializeCookie(name, String(suppressUntil), createTimedCookieOptions(suppressUntil));
+
+const createSilentSsoResponse = (status: 'success' | 'failure') =>
+  new Response(
+    `<!doctype html><html><body><script>
+window.parent.postMessage({ type: 'sva-auth:silent-sso', status: '${status}' }, window.location.origin);
+</script></body></html>`,
+    {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Cache-Control': 'no-store',
+      },
+    }
+  );
+
+const DEFAULT_POST_LOGIN_REDIRECT = '/';
 
 const resolveCallbackInput = (request: Request) => {
   const url = new URL(request.url);
@@ -89,6 +119,7 @@ const resolveCookieLoginState = (request: Request, state: string) => {
     nonce: payload.nonce,
     createdAt: payload.createdAt,
     returnTo: sanitizeReturnTo(payload.returnTo),
+    silent: payload.silent === true,
   };
 };
 
@@ -110,20 +141,33 @@ const sanitizeReturnTo = (value: string | null | undefined): string => {
   return value;
 };
 
+const isSilentSsoSuppressed = (request: Request): boolean => {
+  const { silentSsoSuppressCookieName } = getAuthConfig();
+  const suppressUntil = Number(readCookieFromRequest(request, silentSsoSuppressCookieName) ?? '');
+  return Number.isFinite(suppressUntil) && suppressUntil > Date.now();
+};
+
 export const loginHandler = async (request?: Request): Promise<Response> => {
   return withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
     if (isMockAuthEnabled()) {
       return createRedirectResponse('/?auth=mock-login');
     }
 
-    const { url, state, loginState } = await createLoginUrl();
+    const url = request ? new URL(request.url) : null;
+    const isSilent = url?.searchParams.get('silent') === '1';
+    if (request && isSilent && isSilentSsoSuppressed(request)) {
+      return createSilentSsoResponse('failure');
+    }
+
     const { loginStateCookieName, loginStateSecret } = getAuthConfig();
-    const returnTo = request ? sanitizeReturnTo(new URL(request.url).searchParams.get('returnTo')) : DEFAULT_POST_LOGIN_REDIRECT;
-    const response = createRedirectResponse(url);
+    const returnTo = request ? sanitizeReturnTo(url?.searchParams.get('returnTo')) : DEFAULT_POST_LOGIN_REDIRECT;
+    const { url: authorizationUrl, state, loginState } = await createLoginUrl({ returnTo, silent: isSilent });
+    const response = createRedirectResponse(authorizationUrl);
 
     logger.info('Login-Flow initiiert', {
       operation: 'login_init',
       idp: 'keycloak',
+      is_silent: isSilent,
       state: `${state.substring(0, 8)}...`,
       nonce: `${loginState.nonce.substring(0, 8)}...`,
       ...buildLogContext(),
@@ -134,7 +178,7 @@ export const loginHandler = async (request?: Request): Promise<Response> => {
       createLoginStateCookie({
         name: loginStateCookieName,
         secret: loginStateSecret,
-        payload: { state, returnTo, ...loginState },
+        payload: { state, ...loginState },
       })
     );
 
@@ -150,16 +194,18 @@ export const callbackHandler = async (request: Request): Promise<Response> => {
 
     const { code, state, error, iss } = resolveCallbackInput(request);
     const { loginStateCookieName, sessionCookieName } = getAuthConfig();
+    const cookieLoginState = state ? resolveCookieLoginState(request, state) : null;
 
     if (error) {
-      return createRedirectResponse('/?auth=error');
+      const response = cookieLoginState?.silent ? createSilentSsoResponse('failure') : createRedirectResponse('/?auth=error');
+      appendSetCookie(response, deleteCookieHeader(loginStateCookieName));
+      return response;
     }
 
     if (!code || !state) {
       return createRedirectResponse('/auth/login');
     }
 
-    const cookieLoginState = resolveCookieLoginState(request, state);
     if (cookieLoginState && isExpiredLoginState(cookieLoginState.createdAt)) {
       const response = createRedirectResponse('/?auth=state-expired');
       appendSetCookie(response, deleteCookieHeader(loginStateCookieName));
@@ -167,13 +213,16 @@ export const callbackHandler = async (request: Request): Promise<Response> => {
     }
 
     try {
-      const { sessionId, user } = await handleCallback({ code, state, iss, loginState: cookieLoginState });
-      const redirectTarget = cookieLoginState?.returnTo ?? DEFAULT_POST_LOGIN_REDIRECT;
-      const response = createRedirectResponse(redirectTarget);
+      const { sessionId, user, expiresAt, loginState } = await handleCallback({ code, state, iss, loginState: cookieLoginState });
+      const effectiveLoginState = loginState ?? cookieLoginState;
+      const redirectTarget = effectiveLoginState?.returnTo ?? DEFAULT_POST_LOGIN_REDIRECT;
+      const isSilent = effectiveLoginState?.silent === true;
+      const response = isSilent ? createSilentSsoResponse('success') : createRedirectResponse(redirectTarget);
 
       logger.info('Auth callback successful', {
         auth_flow: 'callback',
         operation: 'login_callback',
+        is_silent: isSilent,
         session_created: true,
         redirect_target: redirectTarget,
         has_code: true,
@@ -183,9 +232,10 @@ export const callbackHandler = async (request: Request): Promise<Response> => {
       });
 
       appendSetCookie(response, deleteCookieHeader(loginStateCookieName));
-      appendSetCookie(response, createSessionCookie(sessionCookieName, sessionId));
+      appendSetCookie(response, createSessionCookie(sessionCookieName, sessionId, expiresAt));
+      appendSetCookie(response, deleteCookieHeader(getAuthConfig().silentSsoSuppressCookieName));
       await emitAuthAuditEvent({
-        eventType: 'login',
+        eventType: isSilent ? 'silent_reauth_success' : 'login',
         actorUserId: user.id,
         workspaceId: user.instanceId,
         outcome: 'success',
@@ -193,9 +243,11 @@ export const callbackHandler = async (request: Request): Promise<Response> => {
 
       return response;
     } catch (error) {
+      const isSilent = cookieLoginState?.silent === true;
       if (isTokenErrorLike(error)) {
         logger.warn('Token validation failed in callback', {
           operation: 'token_validate',
+          is_silent: isSilent,
           error_type: error instanceof Error ? error.constructor.name : typeof error,
           has_refresh_token: false,
           ...buildLogContext(),
@@ -204,6 +256,7 @@ export const callbackHandler = async (request: Request): Promise<Response> => {
         logger.error('Auth callback failed', {
           auth_flow: 'callback',
           operation: 'login_callback',
+          is_silent: isSilent,
           error: error instanceof Error ? error.message : String(error),
           error_type: error instanceof Error ? error.constructor.name : typeof error,
           has_code: true,
@@ -213,8 +266,14 @@ export const callbackHandler = async (request: Request): Promise<Response> => {
         });
       }
 
-      const response = createRedirectResponse('/?auth=error');
+      const response = isSilent ? createSilentSsoResponse('failure') : createRedirectResponse('/?auth=error');
       appendSetCookie(response, deleteCookieHeader(loginStateCookieName));
+      if (isSilent) {
+        await emitAuthAuditEvent({
+          eventType: 'silent_reauth_failed',
+          outcome: 'failure',
+        });
+      }
       return response;
     }
   });
@@ -229,14 +288,14 @@ export const meHandler = async (request: Request): Promise<Response> => {
       });
     }
 
-      return withAuthenticatedUser(request, ({ user }) => {
-        logger.debug('Auth check successful', {
-          endpoint: '/auth/me',
-          auth_state: 'authenticated',
-          operation: 'get_current_user',
-          roles_count: user.roles?.length ?? 0,
-          ...buildLogContext(user.instanceId),
-        });
+    return withAuthenticatedUser(request, ({ user }) => {
+      logger.debug('Auth check successful', {
+        endpoint: '/auth/me',
+        auth_state: 'authenticated',
+        operation: 'get_current_user',
+        roles_count: user.roles?.length ?? 0,
+        ...buildLogContext(user.instanceId),
+      });
 
       return new Response(JSON.stringify({ user }), {
         status: 200,
@@ -252,7 +311,8 @@ export const logoutHandler = async (request: Request): Promise<Response> => {
       return createRedirectResponse('/?auth=mock-logout');
     }
 
-    const { sessionCookieName, postLogoutRedirectUri } = getAuthConfig();
+    const { sessionCookieName, postLogoutRedirectUri, silentSsoSuppressCookieName, silentSsoSuppressAfterLogoutMs } =
+      getAuthConfig();
     const sessionId = readCookieFromRequest(request, sessionCookieName);
     let logoutUrl = postLogoutRedirectUri;
 
@@ -294,6 +354,10 @@ export const logoutHandler = async (request: Request): Promise<Response> => {
 
     const response = createRedirectResponse(logoutUrl);
     appendSetCookie(response, deleteCookieHeader(sessionCookieName));
+    appendSetCookie(
+      response,
+      createSilentSsoSuppressCookie(silentSsoSuppressCookieName, Date.now() + silentSsoSuppressAfterLogoutMs)
+    );
     return response;
   });
 };

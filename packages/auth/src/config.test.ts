@@ -15,7 +15,10 @@ describe('getAuthConfig', () => {
     delete process.env.SVA_AUTH_SCOPES;
     delete process.env.SVA_AUTH_SESSION_COOKIE;
     delete process.env.SVA_AUTH_LOGIN_STATE_COOKIE;
+    delete process.env.SVA_AUTH_SILENT_SSO_SUPPRESS_COOKIE;
     delete process.env.SVA_AUTH_SESSION_TTL_MS;
+    delete process.env.SVA_AUTH_SESSION_REDIS_TTL_BUFFER_MS;
+    delete process.env.SVA_AUTH_SILENT_SSO_SUPPRESS_AFTER_LOGOUT_MS;
   });
 
   afterEach(() => {
@@ -33,7 +36,10 @@ describe('getAuthConfig', () => {
       scopes: 'openid',
       sessionCookieName: 'sva_auth_session',
       loginStateCookieName: 'sva_auth_state',
+      silentSsoSuppressCookieName: 'sva_auth_silent_sso',
       sessionTtlMs: 60 * 60 * 1000,
+      sessionRedisTtlBufferMs: 5 * 60 * 1000,
+      silentSsoSuppressAfterLogoutMs: 5 * 60 * 1000,
     });
   });
 
@@ -42,7 +48,10 @@ describe('getAuthConfig', () => {
     process.env.SVA_AUTH_SCOPES = 'openid profile offline_access';
     process.env.SVA_AUTH_SESSION_COOKIE = 'custom-session';
     process.env.SVA_AUTH_LOGIN_STATE_COOKIE = 'custom-state';
+    process.env.SVA_AUTH_SILENT_SSO_SUPPRESS_COOKIE = 'custom-silent-sso';
     process.env.SVA_AUTH_SESSION_TTL_MS = '900000';
+    process.env.SVA_AUTH_SESSION_REDIS_TTL_BUFFER_MS = '45000';
+    process.env.SVA_AUTH_SILENT_SSO_SUPPRESS_AFTER_LOGOUT_MS = '120000';
 
     expect(getAuthConfig()).toEqual(
       expect.objectContaining({
@@ -50,7 +59,10 @@ describe('getAuthConfig', () => {
         scopes: 'openid profile offline_access',
         sessionCookieName: 'custom-session',
         loginStateCookieName: 'custom-state',
+        silentSsoSuppressCookieName: 'custom-silent-sso',
         sessionTtlMs: 900000,
+        sessionRedisTtlBufferMs: 45000,
+        silentSsoSuppressAfterLogoutMs: 120000,
       })
     );
   });

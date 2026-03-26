@@ -18,8 +18,12 @@ gleichzeitig beeinflussen.
 - OIDC Authorization Code Flow mit PKCE
 - Signiertes Login-State-Cookie (HMAC)
 - Session-Cookies: `httpOnly`, `sameSite=lax`, `secure` in Production
+- `Session.expiresAt` ist die fachlich führende Session-Gültigkeit; Cookie und Redis-TTL werden daraus abgeleitet
+- Sessions bleiben datensparsam und tragen nur Auth-Kern plus Lifecycle-Felder (`issuedAt`, `expiresAt`, `sessionVersion`)
 - Optionale Verschlüsselung von Tokens im Redis-Store via `ENCRYPTION_KEY`
 - Sessionen fuehren nur den minimalen Auth-Kern (`sub/id`, `instanceId`, Rollen); Profilattribute wie Name und E-Mail gehoeren nicht zum Pflichtumfang der Session
+- Forced Reauth pro Benutzer erfolgt über `minimumSessionVersion` und `forcedReauthAt`; Keycloak-Logout ist optional zuschaltbar
+- Silent SSO ist nur ein einmaliger Recovery-Versuch nach `401` und wird nach explizitem Logout temporär unterdrückt
 - Application-Level Column Encryption für IAM-PII-Felder (`email_ciphertext`, `display_name_ciphertext`)
 - Schlüsselverwaltung über `IAM_PII_ACTIVE_KEY_ID` + `IAM_PII_KEYRING_JSON` (außerhalb der DB)
 - Fehlertexte der Feldverschlüsselung enthalten keine internen Key-IDs; technische Key-Kontexte werden nur als strukturierter Fehlerkontext geführt
@@ -93,6 +97,7 @@ gleichzeitig beeinflussen.
 - SDK-Logger nutzt typisierte OTEL-Bridge (keine `any`-Casts in Transport/Bootstrap)
 - Sensitive-Keys-Redaction umfasst zusätzlich Cookie-, Session-, CSRF- und API-Key-Header/Felder
 - Pseudonyme technische IDs bleiben personenbezogen und werden nur geloggt, wenn sie fuer Betrieb, Audit oder Korrelation wirklich erforderlich sind
+- Auth-Audit und Betriebslogs unterscheiden `login`, `silent_reauth_success`, `silent_reauth_failed`, `forced_reauth` und `logout`
 - Workspace-Context-Warnungen erfolgen über lazy `process.emitWarning` statt `console.warn`
 - Mainserver-Logs enthalten nur `instanceId`/`workspace_id`, `operation_name`, `request_id`, `trace_id`, Status und abstrahierte Fehlercodes; API-Key, Secret, Token und unredactete Variablen werden nie geloggt
 - IAM-Request-Spans tragen konsistente Diagnoseattribute wie `iam.endpoint`, `iam.instance_id`, `iam.actor_resolution`, `iam.reason_code`, `iam.feature_flags`, `db.schema_guard_result`, `dependency.redis.status` und `dependency.keycloak.status`
@@ -107,6 +112,7 @@ gleichzeitig beeinflussen.
 - Die Routing-Error-Boundary liefert auch bei unerwarteten Fehlern immer JSON statt HTML-Fallbackseiten
 - Redis-Reconnect mit Backoff und Max-Retry Logik
 - Auth-Flow mit klaren Redirect-Fehlerpfaden (`auth=error`, `auth=state-expired`)
+- Silent Session-Recovery arbeitet ohne Retry-Schleifen und fällt bei Browser-/IdP-Limits deterministisch auf aktiven Login zurück
 - Root-Route nutzt ein zentrales `errorComponent` für unbehandelte Laufzeitfehler mit Retry-Option
 - Runtime-Profile verwenden einen verbindlichen Diagnosepfad `pnpm env:doctor:<profil>`; manuelle `psql`-/Browser-Netzwerkdiagnose ist nur Fallback
 - `acceptance-hb` verwendet einen verbindlichen, fehlertoleranten Deploypfad `pnpm env:deploy:acceptance-hb`; direkte `up`-/`update`-Deploys sind für Serverrollouts gesperrt

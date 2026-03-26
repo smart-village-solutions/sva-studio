@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   getSessionMock: vi.fn(),
+  getSessionControlStateMock: vi.fn(),
   updateSessionMock: vi.fn(),
   deleteSessionMock: vi.fn(),
   refreshTokenGrantMock: vi.fn(),
@@ -14,12 +15,13 @@ const mocks = vi.hoisted(() => ({
   },
 }));
 
-const { getSessionMock, updateSessionMock, deleteSessionMock, refreshTokenGrantMock, getOidcConfigMock, loggerMock } =
+const { getSessionMock, getSessionControlStateMock, updateSessionMock, deleteSessionMock, refreshTokenGrantMock, getOidcConfigMock, loggerMock } =
   mocks;
 
 vi.mock('../config', () => ({
   getAuthConfig: () => ({
     clientId: 'sva-client',
+    sessionTtlMs: 60_000,
   }),
 }));
 
@@ -32,6 +34,7 @@ vi.mock('../oidc.server', () => ({
 
 vi.mock('../redis-session.server', () => ({
   getSession: mocks.getSessionMock,
+  getSessionControlState: mocks.getSessionControlStateMock,
   updateSession: mocks.updateSessionMock,
   deleteSession: mocks.deleteSessionMock,
 }));
@@ -60,18 +63,22 @@ vi.mock('./shared', () => ({
     instanceId: typeof input.claims.instanceId === 'string' ? input.claims.instanceId : undefined,
     roles: Array.isArray(input.claims.roles) ? input.claims.roles : [],
   })),
-  resolveExpiresAt: vi.fn((expiresInSeconds: number | undefined, fallback?: number) =>
-    expiresInSeconds ? Date.now() + expiresInSeconds * 1000 : fallback
-  ),
+  resolveSessionExpiry: vi.fn((input: { expiresInSeconds?: number; fallback?: number; issuedAt: number; sessionTtlMs: number }) => {
+    if (typeof input.expiresInSeconds === 'number') {
+      return Math.min(Date.now() + input.expiresInSeconds * 1000, input.issuedAt + input.sessionTtlMs);
+    }
+    return input.fallback ?? input.issuedAt + input.sessionTtlMs;
+  }),
 }));
 
 import { getSessionUser } from './session.ts';
 
 describe('auth-server/session', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-03-10T10:00:00.000Z'));
+    getSessionControlStateMock.mockResolvedValue(undefined);
   });
 
   it('returns null when the session is missing', async () => {
@@ -80,12 +87,31 @@ describe('auth-server/session', () => {
     await expect(getSessionUser('session-1')).resolves.toBeNull();
   });
 
+  it('invalidates sessions below the minimum session version', async () => {
+    getSessionMock.mockResolvedValue({
+      userId: 'user-versioned',
+      user: {
+        id: 'user-versioned',
+        instanceId: 'instance-1',
+        roles: ['viewer'],
+      },
+      sessionVersion: 1,
+      createdAt: Date.now(),
+      expiresAt: Date.now() + 5 * 60_000,
+    });
+    getSessionControlStateMock.mockResolvedValue({
+      minimumSessionVersion: 2,
+      forcedReauthAt: Date.now(),
+    });
+
+    await expect(getSessionUser('session-versioned')).resolves.toBeNull();
+    expect(deleteSessionMock).toHaveBeenCalledWith('session-versioned');
+  });
+
   it('keeps the current user when no hydration is needed and no refresh is due', async () => {
     getSessionMock.mockResolvedValue({
       user: {
         id: 'user-2',
-        name: 'Stable User',
-        email: 'stable@example.com',
         instanceId: 'instance-1',
         roles: ['viewer'],
       },
@@ -103,14 +129,13 @@ describe('auth-server/session', () => {
 
   it('returns the original user when hydration from access token still lacks required fields', async () => {
     getSessionMock.mockResolvedValue({
-      user: { id: 'user-legacy', name: 'Legacy', roles: [] },
+      user: { id: 'user-legacy', roles: [] },
       accessToken: 'token-1',
       expiresAt: Date.now() + 5 * 60_000,
     });
 
     await expect(getSessionUser('session-hydrate')).resolves.toEqual({
       id: 'user-legacy',
-      name: 'Legacy',
       roles: [],
     });
     expect(updateSessionMock).not.toHaveBeenCalled();
@@ -119,9 +144,10 @@ describe('auth-server/session', () => {
   it('refreshes the session when expiry is within the skew window', async () => {
     getSessionMock
       .mockResolvedValueOnce({
-        user: { id: 'user-3', name: 'Old', roles: ['viewer'] },
+        user: { id: 'user-3', roles: ['viewer'] },
         refreshToken: 'refresh-1',
         expiresAt: Date.now() + 1_000,
+        createdAt: Date.now(),
       })
       .mockResolvedValueOnce({
         user: {
@@ -165,8 +191,9 @@ describe('auth-server/session', () => {
 
   it('deletes expired sessions when no refresh token exists', async () => {
     getSessionMock.mockResolvedValue({
-      user: { id: 'user-4', name: 'Expired', roles: ['viewer'] },
+      user: { id: 'user-4', roles: ['viewer'] },
       expiresAt: Date.now() - 1_000,
+      createdAt: Date.now() - 10_000,
     });
 
     await expect(getSessionUser('session-4')).resolves.toBeNull();
@@ -175,9 +202,10 @@ describe('auth-server/session', () => {
 
   it('returns the fallback user when token refresh fails but the session is still valid', async () => {
     getSessionMock.mockResolvedValue({
-      user: { id: 'user-5', name: 'Fallback', roles: ['viewer'], instanceId: 'instance-1' },
+      user: { id: 'user-5', roles: ['viewer'], instanceId: 'instance-1' },
       refreshToken: 'refresh-5',
       expiresAt: Date.now() + 5_000,
+      createdAt: Date.now(),
     });
     getOidcConfigMock.mockResolvedValue({ issuer: 'https://issuer.example' });
     refreshTokenGrantMock.mockRejectedValue({ code: 'token_invalid' });
@@ -193,9 +221,10 @@ describe('auth-server/session', () => {
 
   it('deletes the session when refresh fails after expiry', async () => {
     getSessionMock.mockResolvedValue({
-      user: { id: 'user-6', name: 'Expired', roles: ['viewer'], instanceId: 'instance-1' },
+      user: { id: 'user-6', roles: ['viewer'], instanceId: 'instance-1' },
       refreshToken: 'refresh-6',
       expiresAt: Date.now() - 5_000,
+      createdAt: Date.now() - 10_000,
     });
     getOidcConfigMock.mockResolvedValue({ issuer: 'https://issuer.example' });
     refreshTokenGrantMock.mockRejectedValue(new Error('refresh failed'));

@@ -11,6 +11,7 @@ const AuthProbe = () => {
       <p data-testid="status">{auth.isLoading ? 'loading' : 'ready'}</p>
       <p data-testid="authenticated">{auth.isAuthenticated ? 'yes' : 'no'}</p>
       <p data-testid="has-resolved-session">{auth.hasResolvedSession ? 'yes' : 'no'}</p>
+      <p data-testid="is-recovering-session">{auth.isRecoveringSession ? 'yes' : 'no'}</p>
       <p data-testid="user-id">{auth.user?.id ?? 'none'}</p>
       <p data-testid="user-roles">{auth.user?.roles.join(',') ?? 'none'}</p>
       <button type="button" onClick={() => void auth.refetch()}>
@@ -85,6 +86,51 @@ describe('AuthProvider', () => {
     expect(screen.getByTestId('authenticated').textContent).toBe('no');
     expect(screen.getByTestId('has-resolved-session').textContent).toBe('yes');
     expect(screen.getByTestId('user-id').textContent).toBe('none');
+  });
+
+  it('attempts silent session recovery once after a 401 and restores the user', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+      } satisfies Partial<Response>)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          user: {
+            id: 'user-2',
+            roles: ['editor'],
+            instanceId: 'instance-1',
+          },
+        }),
+      } satisfies Partial<Response>);
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <AuthProvider>
+        <AuthProbe />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('is-recovering-session').textContent).toBe('yes');
+    });
+
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        origin: window.location.origin,
+        data: { type: 'sva-auth:silent-sso', status: 'success' },
+      })
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('authenticated').textContent).toBe('yes');
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(screen.getByTestId('is-recovering-session').textContent).toBe('no');
   });
 
   it('supports explicit refetch', async () => {

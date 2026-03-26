@@ -1,4 +1,4 @@
-const DEFAULT_POST_LOGIN_PATH = '/account';
+const DEFAULT_POST_LOGIN_PATH = '/';
 
 const sanitizeReturnTo = (value: string | null | undefined): string => {
   if (!value) {

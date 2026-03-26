@@ -35,6 +35,8 @@ vi.mock('../config', () => ({
     loginStateCookieName: 'sva_auth_state',
     loginStateSecret: 'secret',
     sessionCookieName: 'sva_auth_session',
+    silentSsoSuppressCookieName: 'sva_auth_silent_sso',
+    silentSsoSuppressAfterLogoutMs: 60_000,
     postLogoutRedirectUri: 'http://localhost:3000',
   }),
 }));
@@ -104,6 +106,8 @@ describe('routes/handlers', () => {
         codeVerifier: 'verifier-1',
         nonce: 'nonce-1',
         createdAt: Date.now(),
+        returnTo: '/account?tab=profile',
+        silent: false,
       },
     });
 
@@ -124,9 +128,24 @@ describe('routes/handlers', () => {
     );
   });
 
+  it('returns a silent failure response when silent SSO is suppressed', async () => {
+    const { loginHandler } = await import('./handlers.js');
+
+    const response = await loginHandler(
+      new Request('http://localhost/auth/login?silent=1', {
+        headers: { cookie: `sva_auth_silent_sso=${Date.now() + 60_000}` },
+      })
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-type')).toContain('text/html');
+    expect(createLoginUrlMock).not.toHaveBeenCalled();
+  });
+
   it('redirects the callback to the original page after login', async () => {
     handleCallbackMock.mockResolvedValue({
       sessionId: 'session-1',
+      expiresAt: Date.now() + 60_000,
       user: {
         id: 'user-1',
         instanceId: 'de-musterhausen',
@@ -160,5 +179,46 @@ describe('routes/handlers', () => {
         redirect_target: '/account?tab=profile',
       })
     );
+  });
+
+  it('returns an iframe-safe response for successful silent callback logins', async () => {
+    handleCallbackMock.mockResolvedValue({
+      sessionId: 'session-1',
+      expiresAt: Date.now() + 60_000,
+      user: {
+        id: 'user-1',
+        instanceId: 'de-musterhausen',
+        roles: ['editor'],
+      },
+      loginState: {
+        state: 'state-1',
+        codeVerifier: 'verifier-1',
+        nonce: 'nonce-1',
+        createdAt: Date.now(),
+        returnTo: '/',
+        silent: true,
+      },
+    });
+
+    const { callbackHandler } = await import('./handlers.js');
+    const statePayload = {
+      state: 'state-1',
+      codeVerifier: 'verifier-1',
+      nonce: 'nonce-1',
+      createdAt: Date.now(),
+      returnTo: '/',
+      silent: true,
+    };
+    const encodedPayload = Buffer.from(JSON.stringify(statePayload), 'utf8').toString('base64url');
+    const signature = createHmac('sha256', 'secret').update(encodedPayload).digest('base64url');
+
+    const response = await callbackHandler(
+      new Request('http://localhost/auth/callback?code=abc&state=state-1', {
+        headers: { cookie: `sva_auth_state=${encodedPayload}.${signature}` },
+      })
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.text()).resolves.toContain('sva-auth:silent-sso');
   });
 });

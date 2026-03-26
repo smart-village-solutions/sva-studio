@@ -29,8 +29,8 @@ Fehlerpfad:
 1. Browser ruft `/auth/login` auf
 2. `loginHandler()` erstellt PKCE-LoginState, setzt signiertes State-Cookie und redirectet zum IdP
 3. IdP redirectet nach `/auth/callback?code=...&state=...`
-4. `callbackHandler()` validiert State, tauscht Code gegen Tokens und erstellt Redis-Session
-5. Session-Cookie wird gesetzt, Redirect zur App
+4. `callbackHandler()` validiert State, tauscht Code gegen Tokens und erstellt eine versionierte Session mit `issuedAt`, `expiresAt` und `sessionVersion`
+5. Session-Cookie wird mit expliziter Laufzeit aus `expiresAt` gesetzt; Redis-TTL wird technisch aus der Restlaufzeit plus Puffer abgeleitet
 6. App ruft `/auth/me` fuer minimalen Auth-Kontext (`id`, `instanceId`, Rollen)
 7. Falls UI Profildaten wie Name oder E-Mail braucht, laedt sie diese ueber dedizierte Profil-Endpunkte getrennt nach
 
@@ -39,6 +39,33 @@ Fehlerpfad:
 - Fehlender/abgelaufener State -> Redirect mit Fehlerstatus
 - Token-/Refresh-Fehler -> Session invalidiert oder unauthorized Antwort
 - Profilfehler beruehren die Session-Hydration nicht; die App behaelt ihren minimalen Auth-State
+
+### Szenario 2a: Silent Session-Recovery nach `401`
+
+1. `AuthProvider` ruft `/auth/me` auf und erhält `401`.
+2. Das Frontend startet genau einen stillen Recovery-Versuch über `/auth/login?silent=1` in einem versteckten iframe.
+3. `loginHandler()` setzt `prompt=none` und verwendet weiterhin `state`, `nonce` und PKCE.
+4. `callbackHandler()` antwortet im Silent-Fall mit einer iframe-sicheren HTML-Response statt mit einem normalen Redirect.
+5. Bei Erfolg lädt das Frontend `/auth/me` erneut und übernimmt den aktualisierten Sessionzustand.
+6. Bei Fehlschlag bleibt der Benutzer ausgeloggt und muss aktiv den regulären Login starten.
+
+Fehlerpfad:
+
+- Browser-/IdP-Cookies verhindern Silent SSO -> Recovery endet ohne Schleife im ausgeloggten Zustand.
+- Ein expliziter Logout blockiert den automatischen Silent-Recovery-Pfad zeitlich begrenzt.
+
+### Szenario 2b: Forced Reauth für einen Benutzer
+
+1. Ein interner Serverpfad ruft `forceReauthUser({ userId, mode, reason })` auf.
+2. Der Auth-Server erhöht `minimumSessionVersion`, setzt `forcedReauthAt` und invalidiert bekannte Studio-Sessions des Benutzers.
+3. Bei `app_and_idp` beendet der Keycloak-Admin-Client zusätzlich aktive IdP-Sessions des Benutzers.
+4. Nachfolgende Requests mit älteren Sessions schlagen bei der Session-Auflösung fehl.
+5. Das Frontend erhält dadurch spätestens beim nächsten `/auth/me` oder geschützten Request einen unauthentifizierten Zustand.
+
+Fehlerpfad:
+
+- Bei `app_only` kann eine vorhandene Keycloak-Session einen nachfolgenden interaktiven Login ohne Passwort erlauben.
+- Bei `app_and_idp` ist eine echte Re-Authentifizierung erforderlich.
 
 ### Szenario 3: Logging/Observability bei Server-Requests
 

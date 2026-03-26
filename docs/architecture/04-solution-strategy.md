@@ -21,6 +21,7 @@ Architekturprinzipien auf IST-Basis.
 - Trennung von client-sicheren und serverseitigen Routen/Handlern
 - Observability über OTEL-Standards statt vendor-spezifischer App-Anbindung
 - IAM folgt einer klaren Verantwortungsgrenze: Keycloak für Identity, Postgres für IAM-Fachdaten, Redis nur als Laufzeit-Cache
+- Auth-Sessions folgen einer klaren Führungslogik: `expiresAt` ist fachlich maßgeblich; Cookie und Redis-TTL sind abgeleitete Technik
 - Redis-Permission-Snapshots sind der primäre Shared-Read-Path für effektive IAM-Berechtigungen; der lokale In-Memory-Cache dient nur als L1
 - `instanceId` ist der kanonische Mandanten-Scope für IAM-Datenzugriff und Autorisierung und wird als fachlicher String-Schlüssel geführt
 - Externe SVA-Mainserver-Zugriffe laufen strikt serverseitig und per User delegiert; Browser-Code erhält nur Studio-eigene Server-Funktionsverträge
@@ -40,6 +41,7 @@ Architekturprinzipien auf IST-Basis.
 - Frontend-App-Workflows werden als explizite Nx-Targets mit dedizierten Executor-Semantiken modelliert
 - Betriebsfaehigkeit mit strukturierter Telemetrie
 - Security/Privacy-Anforderungen an Auth und Logging
+- Deterministische Session-Wiederherstellung und erzwungener Re-Login ohne Browser-Tokenhaltung
 - Sichere Delegation von Upstream-Zugriffen ohne Credential-Leakage in Browser, Session oder persistente Studio-Speicher
 - Konsistenter Fehlervertrag und korrelierbare Logs über Infrastruktur- und Fachschicht hinweg
 - Konsistente, zentrale Autorisierungsentscheidungen statt verteilter Fachmodul-Logik
@@ -66,6 +68,7 @@ Architekturprinzipien auf IST-Basis.
 - IAM-Permission-Modell und Laufzeitpfad: `ADR-012`, `ADR-013`, `ADR-014`
 - IAM-IdP-Abstraktion für Keycloak-Admin-Pfade: `ADR-016`
 - IAM-Server-Modularisierung und Restschuld-Führung: `ADR-017`
+- Session-Lifecycle, Forced Reauth und kontrolliertes Silent SSO: `ADR-023`
 - Per-User-Mainserver-Delegation und Integrationsgrenze: `ADR-021`
 
 Referenzen:
@@ -81,4 +84,5 @@ Referenzen:
 - `../adr/ADR-019-swarm-traefik-referenz-betriebsprofil.md`
 - `../adr/ADR-020-kanonischer-auth-host-multi-host-grenze.md`
 - `../adr/ADR-017-modulare-iam-server-bausteine.md`
+- `../adr/ADR-023-session-lifecycle-forced-reauth-und-silent-sso.md`
 - `../adr/ADR-021-per-user-sva-mainserver-delegation.md`

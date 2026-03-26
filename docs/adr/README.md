@@ -53,6 +53,7 @@ Architecture Decision Records dokumentieren **wichtige technische Entscheidungen
 | 019 | Swarm-/Traefik-Referenz-Betriebsprofil | ✅ | 2026-03-12 | Deployment / Betrieb |
 | 020 | Kanonischer Auth-Host und Multi-Host-Grenze | ✅ | 2026-03-12 | Auth / Deployment |
 | 021 | Per-User-SVA-Mainserver-Delegation | ✅ | 2026-03-14 | Integration / IAM |
+| 023 | Führender Session-Lifecycle, Forced Reauth und Silent SSO | ✅ | 2026-03-26 | Auth / Session |
 
 ### Kanonischer Ablageort
 

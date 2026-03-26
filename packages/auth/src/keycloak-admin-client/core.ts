@@ -660,6 +660,15 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     });
   }
 
+  async logoutUser(externalId: string): Promise<void> {
+    await this.assertWriteAvailability();
+    await this.executeWithResilience<void>({
+      method: 'POST',
+      path: `/admin/realms/${encodePathSegment(this.realm)}/users/${encodePathSegment(externalId)}/logout`,
+      operation: 'logout_user',
+    });
+  }
+
   getCircuitBreakerState(): number {
     return this.isCircuitOpen() ? 2 : 0;
   }

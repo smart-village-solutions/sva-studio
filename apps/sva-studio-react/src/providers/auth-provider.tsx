@@ -1,4 +1,5 @@
 import React from 'react';
+import { createLoginHref } from '../lib/auth-navigation';
 
 type SessionUser = {
   id: string;
@@ -12,6 +13,7 @@ type AuthState = {
   readonly isLoading: boolean;
   readonly error: Error | null;
   readonly hasResolvedSession: boolean;
+  readonly isRecoveringSession: boolean;
 };
 
 type AuthContextValue = AuthState & {
@@ -30,6 +32,8 @@ type AuthMeResponse = {
 
 const AUTH_ME_ENDPOINT = '/auth/me';
 const AUTH_LOGOUT_ENDPOINT = '/auth/logout';
+const SILENT_SSO_MESSAGE_TYPE = 'sva-auth:silent-sso';
+const SILENT_SSO_TIMEOUT_MS = process.env.NODE_ENV === 'test' ? 25 : 8_000;
 
 const AuthContext = React.createContext<AuthContextValue | null>(null);
 
@@ -51,6 +55,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<Error | null>(null);
   const [hasResolvedSession, setHasResolvedSession] = React.useState(false);
+  const [isRecoveringSession, setIsRecoveringSession] = React.useState(false);
 
   const isMountedRef = React.useRef(true);
 
@@ -59,6 +64,54 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     return () => {
       isMountedRef.current = false;
     };
+  }, []);
+
+  const attemptSilentSessionRecovery = React.useCallback(async (): Promise<boolean> => {
+    if (typeof window === 'undefined' || typeof document === 'undefined') {
+      return false;
+    }
+
+    return new Promise<boolean>((resolve) => {
+      const iframe = document.createElement('iframe');
+      iframe.hidden = true;
+      iframe.setAttribute('title', 'silent-auth-recovery');
+
+      let settled = false;
+      const cleanup = (result: boolean) => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        window.removeEventListener('message', handleMessage);
+        window.clearTimeout(timeoutId);
+        iframe.remove();
+        resolve(result);
+      };
+
+      const handleMessage = (event: MessageEvent) => {
+        if (event.origin !== window.location.origin) {
+          return;
+        }
+
+        if (!event.data || typeof event.data !== 'object') {
+          return;
+        }
+
+        const payload = event.data as { type?: unknown; status?: unknown };
+        if (payload.type !== SILENT_SSO_MESSAGE_TYPE) {
+          return;
+        }
+
+        cleanup(payload.status === 'success');
+      };
+
+      const timeoutId = window.setTimeout(() => cleanup(false), SILENT_SSO_TIMEOUT_MS);
+      window.addEventListener('message', handleMessage);
+      if (process.env.NODE_ENV !== 'test') {
+        iframe.src = `${createLoginHref()}&silent=1`;
+      }
+      document.body.appendChild(iframe);
+    });
   }, []);
 
   const loadUser = React.useCallback(async (silent: boolean) => {
@@ -71,7 +124,23 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
 
     try {
-      const response = await fetch(AUTH_ME_ENDPOINT, { credentials: 'include' });
+      let response = await fetch(AUTH_ME_ENDPOINT, { credentials: 'include' });
+
+      if (!response.ok && response.status === 401) {
+        if (isMountedRef.current) {
+          setIsRecoveringSession(true);
+        }
+
+        const recovered = await attemptSilentSessionRecovery();
+
+        if (isMountedRef.current) {
+          setIsRecoveringSession(false);
+        }
+
+        if (recovered) {
+          response = await fetch(AUTH_ME_ENDPOINT, { credentials: 'include' });
+        }
+      }
 
       if (!response.ok) {
         if (isMountedRef.current) {
@@ -91,6 +160,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setUser(null);
         setError(cause instanceof Error ? cause : new Error(String(cause)));
         setHasResolvedSession(true);
+        setIsRecoveringSession(false);
       }
     } finally {
       if (!silent && isMountedRef.current) {
@@ -123,9 +193,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setError(null);
         setIsLoading(false);
         setHasResolvedSession(true);
+        setIsRecoveringSession(false);
       }
     }
-  }, []);
+  }, [attemptSilentSessionRecovery]);
 
   const value = React.useMemo<AuthContextValue>(
     () => ({
@@ -134,11 +205,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       isLoading,
       error,
       hasResolvedSession,
+      isRecoveringSession,
       refetch,
       logout,
       invalidatePermissions,
     }),
-    [error, hasResolvedSession, invalidatePermissions, isLoading, logout, refetch, user]
+    [error, hasResolvedSession, invalidatePermissions, isLoading, isRecoveringSession, logout, refetch, user]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

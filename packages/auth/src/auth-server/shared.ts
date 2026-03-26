@@ -27,3 +27,19 @@ export const resolveExpiresAt = (expiresInSeconds: number | undefined, fallback?
 
   return Date.now() + expiresInSeconds * 1000;
 };
+
+export const resolveSessionExpiry = (input: {
+  expiresInSeconds: number | undefined;
+  issuedAt: number;
+  sessionTtlMs: number;
+  fallback?: number;
+}): number | undefined => {
+  const tokenExpiresAt = resolveExpiresAt(input.expiresInSeconds, input.fallback);
+  const absoluteSessionExpiresAt = input.issuedAt + input.sessionTtlMs;
+
+  if (typeof tokenExpiresAt !== 'number') {
+    return absoluteSessionExpiresAt;
+  }
+
+  return Math.min(tokenExpiresAt, absoluteSessionExpiresAt);
+};

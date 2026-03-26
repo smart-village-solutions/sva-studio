@@ -18,6 +18,8 @@ import { t } from '../i18n';
 
 import appCss from '../styles.css?url';
 
+const tanstackDevtoolsEnabled = import.meta.env.DEV && import.meta.env.VITE_ENABLE_TANSTACK_DEVTOOLS === 'true';
+
 const ensureRootSdkInitialized = createServerOnlyFn(async () => {
   const { ensureSdkInitialized } = await import('../lib/init-sdk.server');
   await ensureSdkInitialized();
@@ -132,17 +134,19 @@ function RootDocument({ children }: Readonly<{ children: React.ReactNode }>) {
             </ThemeProvider>
           </LocaleProvider>
         </AuthProvider>
-        <TanStackDevtools
-          config={{
-            position: 'bottom-right',
-          }}
-          plugins={[
-            {
-              name: 'Tanstack Router',
-              render: <TanStackRouterDevtoolsPanel />,
-            },
-          ]}
-        />
+        {tanstackDevtoolsEnabled ? (
+          <TanStackDevtools
+            config={{
+              position: 'bottom-right',
+            }}
+            plugins={[
+              {
+                name: 'Tanstack Router',
+                render: <TanStackRouterDevtoolsPanel />,
+              },
+            ]}
+          />
+        ) : null}
         {import.meta.env.DEV ? <DevelopmentLogConsole /> : null}
         <Scripts />
       </body>

@@ -15,7 +15,10 @@ const tanstackRouterBasepath = '/';
 const tanstackServerFnBase = '/_server';
 const tanstackServerFnTransportBase = `${tanstackServerFnBase}/`;
 const codecovEnabled = process.env.CODECOV_TOKEN !== undefined;
-const includeTanStackDevtoolsPlugin = process.env.CI !== 'true' && process.env.PLAYWRIGHT_TEST !== 'true';
+const tanstackDevtoolsEnabled =
+  process.env.VITE_ENABLE_TANSTACK_DEVTOOLS === 'true' &&
+  process.env.CI !== 'true' &&
+  process.env.PLAYWRIGHT_TEST !== 'true';
 
 const tanstackStartClientEnvCompatPlugin = () => ({
   name: 'tanstack-start-client-env-compat',
@@ -116,7 +119,7 @@ const config = defineConfig({
   plugins: [
     tsconfigPaths(),
     tanstackStartClientEnvCompatPlugin(),
-    ...(includeTanStackDevtoolsPlugin ? [devtools()] : []),
+    ...(tanstackDevtoolsEnabled ? [devtools()] : []),
     tanstackStart({
       serverFns: {
         base: tanstackServerFnBase,

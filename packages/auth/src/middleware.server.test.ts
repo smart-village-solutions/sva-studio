@@ -250,8 +250,6 @@ describe('withAuthenticatedUser', () => {
       sessionId: 'mock-auth-session',
       user: {
         id: 'seed:system_admin',
-        name: 'Mock User',
-        email: 'mock.user@sva.local',
         instanceId: 'de-musterhausen',
         roles: ['system_admin', 'iam_admin', 'support_admin', 'security_admin', 'interface_manager', 'app_manager', 'editor'],
       },
@@ -262,7 +260,6 @@ describe('withAuthenticatedUser', () => {
   it('skips legal text compliance for exempt auth paths', async () => {
     getSessionUserMock.mockResolvedValue({
       id: 'user-auth-exempt',
-      name: 'Exempt Auth',
       roles: ['admin'],
       instanceId: 'de-musterhausen',
     });

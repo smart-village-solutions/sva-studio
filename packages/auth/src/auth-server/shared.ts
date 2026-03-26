@@ -1,4 +1,4 @@
-import { extractRoles, parseJwtPayload, resolveInstanceId, resolveUserName } from '@sva/core';
+import { extractRoles, parseJwtPayload, resolveInstanceId } from '@sva/core';
 
 import type { SessionUser } from '../types.js';
 
@@ -15,8 +15,6 @@ export const buildSessionUser = (input: {
 
   return {
     id: String(claims.sub ?? ''),
-    name: resolveUserName(claims),
-    email: typeof claims.email === 'string' ? claims.email : undefined,
     instanceId: resolveInstanceId(claims),
     roles: extractRoles(roleClaims, input.clientId),
   };

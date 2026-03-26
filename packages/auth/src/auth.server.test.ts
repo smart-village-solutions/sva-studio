@@ -23,7 +23,7 @@ vi.mock('./config', () => ({
     loginStateSecret: 'state-secret',
     redirectUri: 'http://localhost:3000/auth/callback',
     postLogoutRedirectUri: 'http://localhost:3000',
-    scopes: 'openid profile email',
+    scopes: 'openid',
     sessionCookieName: 'sva_auth_session',
     loginStateCookieName: 'sva_auth_state',
     sessionTtlMs: 60_000,
@@ -89,8 +89,6 @@ describe('getSessionUser', () => {
       userId: 'user-1',
       user: {
         id: 'user-1',
-        name: 'Max Mustermann',
-        email: 'max@example.com',
         instanceId: 'de-musterhausen',
         roles: ['admin'],
       },
@@ -104,8 +102,6 @@ describe('getSessionUser', () => {
 
     expect(user).toEqual({
       id: 'user-1',
-      name: 'Max Mustermann',
-      email: 'max@example.com',
       instanceId: 'de-musterhausen',
       roles: ['admin'],
     });
@@ -130,8 +126,6 @@ describe('getSessionUser', () => {
       userId: 'user-legacy-1',
       user: {
         id: 'user-legacy-1',
-        name: 'Legacy User',
-        email: 'legacy@example.com',
         roles: [],
       },
       accessToken,
@@ -145,8 +139,6 @@ describe('getSessionUser', () => {
 
     expect(user).toEqual({
       id: 'user-legacy-1',
-      name: 'Legacy User',
-      email: 'legacy@example.com',
       instanceId: 'de-musterhausen',
       roles: ['Admin', 'system_admin'],
     });
@@ -169,7 +161,6 @@ describe('getSessionUser', () => {
       userId: 'user-old',
       user: {
         id: 'user-old',
-        name: 'Alter Nutzer',
         roles: ['viewer'],
       },
       refreshToken: 'refresh-token-2',
@@ -192,8 +183,6 @@ describe('getSessionUser', () => {
         ...expiredSession,
         user: {
           id: 'user-2',
-          name: 'Neuer Nutzer',
-          email: 'new@example.com',
           instanceId: 'de-musterhausen',
           roles: ['Admin', 'system_admin'],
         },
@@ -223,8 +212,6 @@ describe('getSessionUser', () => {
     );
     expect(user).toEqual({
       id: 'user-2',
-      name: 'Neuer Nutzer',
-      email: 'new@example.com',
       instanceId: 'de-musterhausen',
       roles: ['Admin', 'system_admin'],
     });
@@ -238,7 +225,6 @@ describe('getSessionUser', () => {
       userId: 'user-3',
       user: {
         id: 'user-3',
-        name: 'Abgelaufen',
         roles: ['viewer'],
       },
       refreshToken: 'refresh-token-3',

@@ -57,8 +57,6 @@ vi.mock('./shared', () => ({
   TOKEN_REFRESH_SKEW_MS: 60_000,
   buildSessionUser: vi.fn((input: { accessToken?: string; claims: Record<string, unknown> }) => ({
     id: String(input.claims.sub ?? ''),
-    name: String(input.claims.preferred_username ?? ''),
-    email: typeof input.claims.email === 'string' ? input.claims.email : undefined,
     instanceId: typeof input.claims.instanceId === 'string' ? input.claims.instanceId : undefined,
     roles: Array.isArray(input.claims.roles) ? input.claims.roles : [],
   })),
@@ -128,8 +126,6 @@ describe('auth-server/session', () => {
       .mockResolvedValueOnce({
         user: {
           id: 'user-3',
-          name: 'Refreshed',
-          email: 'refresh@example.com',
           instanceId: 'instance-1',
           roles: ['Admin'],
         },
@@ -161,7 +157,7 @@ describe('auth-server/session', () => {
     );
     expect(user).toEqual(
       expect.objectContaining({
-        name: 'Refreshed',
+        id: 'user-3',
         roles: ['Admin'],
       })
     );

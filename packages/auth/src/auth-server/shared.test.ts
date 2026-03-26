@@ -10,7 +10,6 @@ vi.mock('@sva/core', () => ({
     return payload ? JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')) : null;
   }),
   resolveInstanceId: vi.fn((claims: Record<string, unknown>) => claims.instanceId),
-  resolveUserName: vi.fn((claims: Record<string, unknown>) => claims.preferred_username ?? claims.name ?? ''),
 }));
 
 import { buildSessionUser, resolveExpiresAt } from './shared.ts';
@@ -26,7 +25,6 @@ describe('auth-server/shared', () => {
     const user = buildSessionUser({
       accessToken: createUnsignedJwt({
         sub: 'user-1',
-        preferred_username: 'Access User',
         roles: ['Admin'],
       }),
       claims: {
@@ -38,8 +36,6 @@ describe('auth-server/shared', () => {
 
     expect(user).toEqual({
       id: 'user-1',
-      name: 'Access User',
-      email: 'merged@example.com',
       instanceId: 'instance-1',
       roles: ['Admin', 'system_admin'],
     });
@@ -49,8 +45,6 @@ describe('auth-server/shared', () => {
     const user = buildSessionUser({
       claims: {
         sub: 'user-2',
-        name: 'Claims User',
-        email: 'claims@example.com',
         instanceId: 'instance-2',
         roles: ['viewer'],
       },
@@ -59,8 +53,6 @@ describe('auth-server/shared', () => {
 
     expect(user).toEqual({
       id: 'user-2',
-      name: 'Claims User',
-      email: 'claims@example.com',
       instanceId: 'instance-2',
       roles: ['viewer'],
     });

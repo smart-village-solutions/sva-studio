@@ -30,7 +30,7 @@ describe('getAuthConfig', () => {
       loginStateSecret: 'client-secret',
       redirectUri: 'https://app.example.com/auth/callback',
       postLogoutRedirectUri: 'https://app.example.com/logout',
-      scopes: 'openid profile email',
+      scopes: 'openid',
       sessionCookieName: 'sva_auth_session',
       loginStateCookieName: 'sva_auth_state',
       sessionTtlMs: 60 * 60 * 1000,

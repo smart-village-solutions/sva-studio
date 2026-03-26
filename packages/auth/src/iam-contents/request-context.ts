@@ -76,7 +76,7 @@ export const resolveContentActor = async (
     actor: {
       instanceId: actorResolution.actor.instanceId,
       actorAccountId: actorResolution.actor.actorAccountId ?? undefined,
-      actorDisplayName: ctx.user.name,
+      actorDisplayName: ctx.user.id,
       requestId: actorResolution.actor.requestId,
       traceId: actorResolution.actor.traceId,
     },

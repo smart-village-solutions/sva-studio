@@ -22,6 +22,7 @@ Dieses Dokument beschreibt die Review-Governance für Proposal- und PR-Reviews m
 | `interoperability-data.agent.md` | APIs, Standards, Datenmigration | Contracts, Exporte, Versionierung |
 | `logging.agent.md` | strukturierte Logs, Audit, Korrelationsfelder | Server-Code, Fehlerpfade |
 | `performance.agent.md` | Rendering, Caching, Hot Paths | Performance-sensitive Änderungen |
+| `pr-fixer.agent.md` | Iterativer PR-Fix (Threads, Tests, Quality Gates) | PRs merge-bereit machen |
 
 ## Trigger-Matrix
 

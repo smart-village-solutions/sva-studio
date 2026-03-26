@@ -3,6 +3,7 @@ import { setGlobalLoggerProviderForMonitoring } from '../../src/observability/mo
 import { createSdkLogger } from '../../src/logger/index.server';
 import { runWithWorkspaceContext } from '../../src/observability/context.server';
 import {
+  getRegisteredOtelLoggerCountForTests,
   resetLoggingRuntimeForTests,
   setOtelInitializationResult,
 } from '../../src/logger/logging-runtime.server';
@@ -255,5 +256,43 @@ describe('DirectOtelTransport', () => {
     });
 
     expect(logger.transports).toHaveLength(0);
+  });
+
+  it('clears pending logger registrations once OTEL initialization finishes', () => {
+    createSdkLogger({
+      component: 'pending-a',
+      enableOtel: true,
+      enableConsole: false,
+    });
+
+    createSdkLogger({
+      component: 'pending-b',
+      enableOtel: true,
+      enableConsole: false,
+    });
+
+    expect(getRegisteredOtelLoggerCountForTests()).toBe(2);
+
+    setOtelInitializationResult({
+      status: 'failed',
+      reason: 'collector unavailable',
+    });
+
+    expect(getRegisteredOtelLoggerCountForTests()).toBe(0);
+  });
+
+  it('does not retain newly created loggers after OTEL reached a final state', () => {
+    setOtelInitializationResult({
+      status: 'ready',
+      reason: 'ready',
+    });
+
+    createSdkLogger({
+      component: 'post-ready',
+      enableOtel: true,
+      enableConsole: false,
+    });
+
+    expect(getRegisteredOtelLoggerCountForTests()).toBe(0);
   });
 });

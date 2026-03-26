@@ -9,6 +9,7 @@ import { appendDevelopmentLogEntry } from './dev-log-buffer.server.js';
 import {
   getLoggingRuntimeConfig,
   isOtelRuntimeReady,
+  isOtelRuntimePending,
   registerOtelAwareLogger,
   unregisterOtelAwareLogger,
 } from './logging-runtime.server.js';
@@ -288,7 +289,7 @@ export const createSdkLogger = ({
     transports: transportsArray
   });
 
-  if (otelEnabled) {
+  if (otelEnabled && isOtelRuntimePending()) {
     registerOtelAwareLogger({
       logger,
       otelEnabled,

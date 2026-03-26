@@ -10,7 +10,7 @@ export interface LoggingRuntimeConfig {
 }
 
 export interface OtelInitializationResult {
-  readonly status: 'ready' | 'disabled' | 'failed';
+  readonly status: 'pending' | 'ready' | 'disabled' | 'failed';
   readonly sdk?: NodeSDK;
   readonly reason?: string;
 }
@@ -24,7 +24,7 @@ type RegisteredLogger = {
 const registeredLoggers = new Set<RegisteredLogger>();
 
 let otelRuntimeResult: OtelInitializationResult = {
-  status: 'disabled',
+  status: 'pending',
   reason: 'OTEL SDK wurde noch nicht initialisiert.',
 };
 
@@ -54,6 +54,10 @@ export const isOtelRuntimeReady = (): boolean => {
   return otelRuntimeResult.status === 'ready';
 };
 
+export const isOtelRuntimePending = (): boolean => {
+  return otelRuntimeResult.status === 'pending';
+};
+
 export const setOtelInitializationResult = (result: OtelInitializationResult): void => {
   otelRuntimeResult = result;
 
@@ -64,9 +68,18 @@ export const setOtelInitializationResult = (result: OtelInitializationResult): v
     }
     entry.syncOtelTransport(otelReady);
   }
+
+  if (result.status !== 'pending') {
+    registeredLoggers.clear();
+  }
 };
 
 export const registerOtelAwareLogger = (entry: RegisteredLogger): void => {
+  if (!isOtelRuntimePending()) {
+    entry.syncOtelTransport(isOtelRuntimeReady());
+    return;
+  }
+
   registeredLoggers.add(entry);
   entry.syncOtelTransport(isOtelRuntimeReady());
 };
@@ -83,7 +96,11 @@ export const unregisterOtelAwareLogger = (logger: Logger): void => {
 export const resetLoggingRuntimeForTests = (): void => {
   registeredLoggers.clear();
   otelRuntimeResult = {
-    status: 'disabled',
+    status: 'pending',
     reason: 'Test-Reset',
   };
+};
+
+export const getRegisteredOtelLoggerCountForTests = (): number => {
+  return registeredLoggers.size;
 };

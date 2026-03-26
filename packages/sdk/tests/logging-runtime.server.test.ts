@@ -52,4 +52,10 @@ describe('logging runtime config', () => {
       otelRequired: true,
     });
   });
+
+  it('starts in pending state before OTEL bootstrap finishes', async () => {
+    const { getOtelInitializationResult } = await import('../src/logger/logging-runtime.server');
+
+    expect(getOtelInitializationResult().status).toBe('pending');
+  });
 });

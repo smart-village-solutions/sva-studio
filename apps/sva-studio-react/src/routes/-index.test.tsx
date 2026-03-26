@@ -275,7 +275,6 @@ describe('HomePage IAM integration', () => {
     useAuthMock.mockReturnValue({
       user: {
         id: 'user-3',
-        name: 'No Instance User',
         roles: ['editor'],
       },
       isAuthenticated: true,
@@ -291,7 +290,7 @@ describe('HomePage IAM integration', () => {
     vi.stubGlobal('fetch', fetchMock);
     render(<HomePage />);
 
-    expect(screen.getByText('No Instance User')).toBeTruthy();
+    expect(screen.getByText('user-3')).toBeTruthy();
     expect(fetchMock).not.toHaveBeenCalled();
     expect(screen.getByText('Keine Authorize-Entscheidung verfügbar.')).toBeTruthy();
   });

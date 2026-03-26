@@ -2,8 +2,6 @@ import React from 'react';
 
 type SessionUser = {
   id: string;
-  name: string;
-  email?: string;
   instanceId?: string;
   roles: string[];
 };
@@ -13,13 +11,13 @@ type AuthState = {
   readonly isAuthenticated: boolean;
   readonly isLoading: boolean;
   readonly error: Error | null;
+  readonly hasResolvedSession: boolean;
 };
 
 type AuthContextValue = AuthState & {
   refetch: () => Promise<void>;
   logout: () => Promise<void>;
   invalidatePermissions: () => Promise<void>;
-  updateProfile: (profile: { name: string; email?: string }) => void;
 };
 
 type AuthProviderProps = Readonly<{
@@ -52,6 +50,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = React.useState<SessionUser | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<Error | null>(null);
+  const [hasResolvedSession, setHasResolvedSession] = React.useState(false);
 
   const isMountedRef = React.useRef(true);
 
@@ -77,6 +76,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       if (!response.ok) {
         if (isMountedRef.current) {
           setUser(null);
+          setHasResolvedSession(true);
         }
         return;
       }
@@ -84,11 +84,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       const payload = parseAuthUser(await response.json());
       if (isMountedRef.current) {
         setUser(payload);
+        setHasResolvedSession(true);
       }
     } catch (cause) {
       if (isMountedRef.current) {
         setUser(null);
         setError(cause instanceof Error ? cause : new Error(String(cause)));
+        setHasResolvedSession(true);
       }
     } finally {
       if (!silent && isMountedRef.current) {
@@ -109,22 +111,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     await loadUser(true);
   }, [loadUser]);
 
-  const updateProfile = React.useCallback((profile: { name: string; email?: string }) => {
-    if (!isMountedRef.current) {
-      return;
-    }
-
-    setUser((current) =>
-      current
-        ? {
-            ...current,
-            name: profile.name,
-            email: profile.email,
-          }
-        : current
-    );
-  }, []);
-
   const logout = React.useCallback(async () => {
     try {
       await fetch(AUTH_LOGOUT_ENDPOINT, {
@@ -136,6 +122,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setUser(null);
         setError(null);
         setIsLoading(false);
+        setHasResolvedSession(true);
       }
     }
   }, []);
@@ -146,12 +133,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       isAuthenticated: Boolean(user),
       isLoading,
       error,
+      hasResolvedSession,
       refetch,
       logout,
       invalidatePermissions,
-      updateProfile,
     }),
-    [error, invalidatePermissions, isLoading, logout, refetch, updateProfile, user]
+    [error, hasResolvedSession, invalidatePermissions, isLoading, logout, refetch, user]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

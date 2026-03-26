@@ -10,16 +10,14 @@ const AuthProbe = () => {
     <div>
       <p data-testid="status">{auth.isLoading ? 'loading' : 'ready'}</p>
       <p data-testid="authenticated">{auth.isAuthenticated ? 'yes' : 'no'}</p>
-      <p data-testid="user-name">{auth.user?.name ?? 'none'}</p>
+      <p data-testid="has-resolved-session">{auth.hasResolvedSession ? 'yes' : 'no'}</p>
+      <p data-testid="user-id">{auth.user?.id ?? 'none'}</p>
       <p data-testid="user-roles">{auth.user?.roles.join(',') ?? 'none'}</p>
       <button type="button" onClick={() => void auth.refetch()}>
         refetch
       </button>
       <button type="button" onClick={() => void auth.invalidatePermissions()}>
         invalidate
-      </button>
-      <button type="button" onClick={() => auth.updateProfile({ name: 'Ada Profile', email: 'ada@example.com' })}>
-        update-profile
       </button>
       <button type="button" onClick={() => void auth.logout()}>
         logout
@@ -42,7 +40,6 @@ describe('AuthProvider', () => {
         json: async () => ({
           user: {
             id: 'user-1',
-            name: 'Ada',
             roles: ['editor'],
             instanceId: 'instance-1',
           },
@@ -61,7 +58,8 @@ describe('AuthProvider', () => {
     });
 
     expect(screen.getByTestId('authenticated').textContent).toBe('yes');
-    expect(screen.getByTestId('user-name').textContent).toBe('Ada');
+    expect(screen.getByTestId('has-resolved-session').textContent).toBe('yes');
+    expect(screen.getByTestId('user-id').textContent).toBe('user-1');
     expect(screen.getByTestId('user-roles').textContent).toBe('editor');
   });
 
@@ -85,7 +83,8 @@ describe('AuthProvider', () => {
     });
 
     expect(screen.getByTestId('authenticated').textContent).toBe('no');
-    expect(screen.getByTestId('user-name').textContent).toBe('none');
+    expect(screen.getByTestId('has-resolved-session').textContent).toBe('yes');
+    expect(screen.getByTestId('user-id').textContent).toBe('none');
   });
 
   it('supports explicit refetch', async () => {
@@ -96,7 +95,6 @@ describe('AuthProvider', () => {
         json: async () => ({
           user: {
             id: 'user-1',
-            name: 'Ada',
             roles: ['editor'],
             instanceId: 'instance-1',
           },
@@ -107,7 +105,6 @@ describe('AuthProvider', () => {
         json: async () => ({
           user: {
             id: 'user-1',
-            name: 'Ada Updated',
             roles: ['admin'],
             instanceId: 'instance-1',
           },
@@ -123,13 +120,13 @@ describe('AuthProvider', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByTestId('user-name').textContent).toBe('Ada');
+      expect(screen.getByTestId('user-id').textContent).toBe('user-1');
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'refetch' }));
 
     await waitFor(() => {
-      expect(screen.getByTestId('user-name').textContent).toBe('Ada Updated');
+      expect(screen.getByTestId('user-id').textContent).toBe('user-1');
     });
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
@@ -145,7 +142,6 @@ describe('AuthProvider', () => {
         json: async () => ({
           user: {
             id: 'user-1',
-            name: 'Ada',
             roles: ['editor'],
             instanceId: 'instance-1',
           },
@@ -156,7 +152,6 @@ describe('AuthProvider', () => {
         json: async () => ({
           user: {
             id: 'user-1',
-            name: 'Ada',
             roles: ['system_admin'],
             instanceId: 'instance-1',
           },
@@ -185,41 +180,6 @@ describe('AuthProvider', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
-  it('updates the local user profile without refetch', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        user: {
-          id: 'user-1',
-          name: 'Ada',
-          email: 'old@example.com',
-          roles: ['editor'],
-          instanceId: 'instance-1',
-        },
-      }),
-    } satisfies Partial<Response>);
-
-    vi.stubGlobal('fetch', fetchMock);
-
-    render(
-      <AuthProvider>
-        <AuthProbe />
-      </AuthProvider>
-    );
-
-    await waitFor(() => {
-      expect(screen.getByTestId('user-name').textContent).toBe('Ada');
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: 'update-profile' }));
-
-    await waitFor(() => {
-      expect(screen.getByTestId('user-name').textContent).toBe('Ada Profile');
-    });
-
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-  });
-
   it('resets local auth state on logout', async () => {
     const fetchMock = vi
       .fn()
@@ -228,7 +188,6 @@ describe('AuthProvider', () => {
         json: async () => ({
           user: {
             id: 'user-1',
-            name: 'Ada',
             roles: ['editor'],
             instanceId: 'instance-1',
           },

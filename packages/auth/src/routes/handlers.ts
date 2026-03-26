@@ -28,6 +28,25 @@ const createRedirectResponse = (location: string) =>
     headers: { Location: location },
   });
 
+const summarizeRedirectTarget = (
+  value: string
+): { redirect_target_origin?: string; redirect_target_path: string; has_sensitive_query: boolean } => {
+  try {
+    const url = new URL(value);
+    return {
+      redirect_target_origin: url.origin,
+      redirect_target_path: url.pathname,
+      has_sensitive_query: url.searchParams.has('id_token_hint') || url.searchParams.has('code'),
+    };
+  } catch {
+    const [path] = value.split('?');
+    return {
+      redirect_target_path: path || value,
+      has_sensitive_query: value.includes('id_token_hint=') || value.includes('code='),
+    };
+  }
+};
+
 const createAuthCookieOptions = () => {
   const isBuilderDevAuth = process.env.BUILDER_DEV_AUTH === 'true';
 
@@ -44,6 +63,8 @@ const createSessionCookie = (name: string, sessionId: string) =>
 
 const createLoginStateCookie = (input: { name: string; secret: string; payload: LoginStateCookiePayload }) =>
   serializeCookie(input.name, encodeLoginStateCookie(input.payload, input.secret), createAuthCookieOptions());
+
+const DEFAULT_POST_LOGIN_REDIRECT = '/account';
 
 const resolveCallbackInput = (request: Request) => {
   const url = new URL(request.url);
@@ -67,10 +88,27 @@ const resolveCookieLoginState = (request: Request, state: string) => {
     codeVerifier: payload.codeVerifier,
     nonce: payload.nonce,
     createdAt: payload.createdAt,
+    returnTo: sanitizeReturnTo(payload.returnTo),
   };
 };
 
 const isExpiredLoginState = (createdAt: number) => Date.now() - createdAt > 10 * 60 * 1000;
+
+const sanitizeReturnTo = (value: string | null | undefined): string => {
+  if (!value) {
+    return DEFAULT_POST_LOGIN_REDIRECT;
+  }
+
+  if (!value.startsWith('/') || value.startsWith('//')) {
+    return DEFAULT_POST_LOGIN_REDIRECT;
+  }
+
+  if (value.startsWith('/auth/')) {
+    return DEFAULT_POST_LOGIN_REDIRECT;
+  }
+
+  return value;
+};
 
 export const loginHandler = async (request?: Request): Promise<Response> => {
   return withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
@@ -80,6 +118,7 @@ export const loginHandler = async (request?: Request): Promise<Response> => {
 
     const { url, state, loginState } = await createLoginUrl();
     const { loginStateCookieName, loginStateSecret } = getAuthConfig();
+    const returnTo = request ? sanitizeReturnTo(new URL(request.url).searchParams.get('returnTo')) : DEFAULT_POST_LOGIN_REDIRECT;
     const response = createRedirectResponse(url);
 
     logger.info('Login-Flow initiiert', {
@@ -95,7 +134,7 @@ export const loginHandler = async (request?: Request): Promise<Response> => {
       createLoginStateCookie({
         name: loginStateCookieName,
         secret: loginStateSecret,
-        payload: { state, ...loginState },
+        payload: { state, returnTo, ...loginState },
       })
     );
 
@@ -129,13 +168,14 @@ export const callbackHandler = async (request: Request): Promise<Response> => {
 
     try {
       const { sessionId, user } = await handleCallback({ code, state, iss, loginState: cookieLoginState });
-      const response = createRedirectResponse('/?auth=ok');
+      const redirectTarget = cookieLoginState?.returnTo ?? DEFAULT_POST_LOGIN_REDIRECT;
+      const response = createRedirectResponse(redirectTarget);
 
       logger.info('Auth callback successful', {
         auth_flow: 'callback',
         operation: 'login_callback',
         session_created: true,
-        redirect_target: '/?auth=ok',
+        redirect_target: redirectTarget,
         has_code: true,
         has_state: true,
         has_iss: Boolean(iss),
@@ -147,8 +187,6 @@ export const callbackHandler = async (request: Request): Promise<Response> => {
       await emitAuthAuditEvent({
         eventType: 'login',
         actorUserId: user.id,
-        actorEmail: user.email,
-        actorDisplayName: user.name,
         workspaceId: user.instanceId,
         outcome: 'success',
       });
@@ -191,15 +229,14 @@ export const meHandler = async (request: Request): Promise<Response> => {
       });
     }
 
-    return withAuthenticatedUser(request, ({ user }) => {
-      logger.debug('Auth check successful', {
-        endpoint: '/auth/me',
-        auth_state: 'authenticated',
-        operation: 'get_current_user',
-        user_id: user.id,
-        roles_count: user.roles?.length ?? 0,
-        ...buildLogContext(user.instanceId),
-      });
+      return withAuthenticatedUser(request, ({ user }) => {
+        logger.debug('Auth check successful', {
+          endpoint: '/auth/me',
+          auth_state: 'authenticated',
+          operation: 'get_current_user',
+          roles_count: user.roles?.length ?? 0,
+          ...buildLogContext(user.instanceId),
+        });
 
       return new Response(JSON.stringify({ user }), {
         status: 200,
@@ -227,15 +264,13 @@ export const logoutHandler = async (request: Request): Promise<Response> => {
         logger.info('Logout successful', {
           endpoint: '/auth/logout',
           operation: 'logout',
-          redirect_target: logoutUrl,
+          ...summarizeRedirectTarget(logoutUrl),
           ...buildLogContext(),
         });
 
         await emitAuthAuditEvent({
           eventType: 'logout',
           actorUserId: sessionBeforeLogout?.user?.id ?? sessionBeforeLogout?.userId,
-          actorEmail: sessionBeforeLogout?.user?.email,
-          actorDisplayName: sessionBeforeLogout?.user?.name,
           workspaceId: sessionBeforeLogout?.user?.instanceId,
           outcome: 'success',
         });

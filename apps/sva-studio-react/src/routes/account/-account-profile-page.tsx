@@ -11,6 +11,7 @@ import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Select } from '../../components/ui/select';
 import { t } from '../../i18n';
+import { createLoginHref, resolveCurrentReturnTo } from '../../lib/auth-navigation';
 import { notifyIamUsersUpdated } from '../../lib/iam-user-events';
 import { useAuth } from '../../providers/auth-provider';
 
@@ -93,7 +94,7 @@ const validateForm = (values: ProfileFormValues): ProfileErrors => {
 };
 
 export const AccountProfilePage = () => {
-  const { user, isAuthenticated, updateProfile } = useAuth();
+  const { user, isAuthenticated, isLoading: isAuthLoading, hasResolvedSession, refetch } = useAuth();
 
   const [profile, setProfile] = React.useState<IamUserDetail | null>(null);
   const [formValues, setFormValues] = React.useState<ProfileFormValues>(EMPTY_FORM);
@@ -105,6 +106,7 @@ export const AccountProfilePage = () => {
   const [validationErrors, setValidationErrors] = React.useState<ProfileErrors>({});
   const errorSummaryRef = React.useRef<HTMLDivElement>(null);
   const successMessageRef = React.useRef<HTMLDivElement>(null);
+  const loginHref = React.useMemo(() => createLoginHref(resolveCurrentReturnTo()), []);
 
   const loadProfile = React.useCallback(async () => {
     setIsLoading(true);
@@ -116,16 +118,35 @@ export const AccountProfilePage = () => {
       setFormValues(toFormValues(response.data));
     } catch (cause) {
       const resolvedError = asIamError(cause);
+      if (resolvedError.status === 401) {
+        await fetch('/auth/logout', {
+          method: 'POST',
+          credentials: 'include',
+          redirect: 'manual',
+        }).catch(() => undefined);
+        await refetch();
+      }
       setLoadError(resolvedError);
       setProfile(null);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [refetch]);
 
   React.useEffect(() => {
+    if (isAuthLoading || !hasResolvedSession) {
+      return;
+    }
+
+    if (!isAuthenticated) {
+      setProfile(null);
+      setLoadError(null);
+      setIsLoading(false);
+      return;
+    }
+
     void loadProfile();
-  }, [loadProfile]);
+  }, [hasResolvedSession, isAuthenticated, isAuthLoading, loadProfile]);
 
   React.useEffect(() => {
     if (Object.keys(validationErrors).length > 0) {
@@ -176,10 +197,6 @@ export const AccountProfilePage = () => {
 
       setProfile(response.data);
       setFormValues(toFormValues(response.data));
-      updateProfile({
-        name: response.data.displayName,
-        email: response.data.email,
-      });
       notifyIamUsersUpdated();
       setSaveSuccess(true);
       setValidationErrors({});
@@ -190,7 +207,7 @@ export const AccountProfilePage = () => {
     }
   };
 
-  if (isLoading) {
+  if (isLoading || isAuthLoading || !hasResolvedSession) {
     return (
       <section aria-busy="true" className="space-y-3">
         <h1 className="text-3xl font-semibold text-foreground">{t('account.profile.title')}</h1>
@@ -204,21 +221,35 @@ export const AccountProfilePage = () => {
   if (!isAuthenticated && !profile) {
     return (
       <Alert className="border-secondary/40 bg-secondary/10 text-sm text-secondary" role="status">
-        <AlertDescription>{t('account.messages.notAuthenticated')}</AlertDescription>
+        <AlertDescription className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <span>{t('account.messages.notAuthenticated')}</span>
+          <Button asChild variant="outline">
+            <a href={loginHref}>{t('shell.header.login')}</a>
+          </Button>
+        </AlertDescription>
       </Alert>
     );
   }
 
   if (loadError && !profile) {
+    const isUnauthorized = loadError.status === 401;
     return (
       <section className="space-y-4">
         <h1 className="text-3xl font-semibold text-foreground">{t('account.profile.title')}</h1>
         <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
-          <AlertTitle>{t('account.messages.loadError')}</AlertTitle>
+          <AlertTitle>{isUnauthorized ? t('account.messages.notAuthenticated') : t('account.messages.loadError')}</AlertTitle>
           <AlertDescription className="mt-3">
-            <Button type="button" variant="outline" onClick={() => void loadProfile()}>
-              {t('account.actions.retry')}
-            </Button>
+            <div className="flex flex-wrap gap-3">
+              {isUnauthorized ? (
+                <Button asChild type="button" variant="outline">
+                  <a href={loginHref}>{t('shell.header.login')}</a>
+                </Button>
+              ) : (
+                <Button type="button" variant="outline" onClick={() => void loadProfile()}>
+                  {t('account.actions.retry')}
+                </Button>
+              )}
+            </div>
           </AlertDescription>
         </Alert>
       </section>
@@ -229,9 +260,9 @@ export const AccountProfilePage = () => {
   const displayName =
     profile?.displayName ??
     deriveDisplayName(formValues.firstName, formValues.lastName) ??
-    user?.name ??
+    user?.id ??
     '-';
-  const email = profile?.email ?? user?.email ?? '-';
+  const email = profile?.email ?? '-';
   const roleNames = profile?.roles.map((role) => role.roleName).join(', ') || '-';
 
   return (

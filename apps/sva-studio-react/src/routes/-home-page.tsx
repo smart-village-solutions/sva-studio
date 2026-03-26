@@ -138,8 +138,8 @@ export const HomePage = () => {
               <p className="text-muted-foreground">Lade Session ...</p>
             ) : user ? (
               <div className="flex flex-col gap-1 text-foreground">
-                <span className="text-lg font-semibold">{user.name}</span>
-                {user.email ? <span className="text-sm text-muted-foreground">{user.email}</span> : null}
+                <span className="text-lg font-semibold">{user.id}</span>
+                {user.instanceId ? <span className="text-sm text-muted-foreground">Instanz: {user.instanceId}</span> : null}
                 <span className="text-sm text-muted-foreground">Rollen: {user.roles.join(', ') || 'keine'}</span>
               </div>
             ) : (

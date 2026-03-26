@@ -158,6 +158,7 @@ export const InterfacesPage = () => {
   const [lastStatus, setLastStatus] = React.useState<SvaMainserverConnectionStatus | null>(null);
   const [instanceId, setInstanceId] = React.useState<string>('');
   const [formValues, setFormValues] = React.useState<FormValues>(emptyFormValues);
+  const didInitialRefreshRef = React.useRef(false);
 
   const refresh = React.useCallback(async () => {
     setIsLoading(true);
@@ -176,6 +177,10 @@ export const InterfacesPage = () => {
   }, []);
 
   React.useEffect(() => {
+    if (didInitialRefreshRef.current) {
+      return;
+    }
+    didInitialRefreshRef.current = true;
     refresh().catch(() => undefined);
   }, [refresh]);
 

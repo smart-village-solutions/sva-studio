@@ -49,6 +49,7 @@
 ## Review-Agents
 
 - Für normale PRs und Code-Reviews steht `pr-review-orchestrator.agent.md` unter `.github/agents/` bereit.
+- Für das iterative Fixen von PRs (Threads, Tests, Quality Gates) steht `pr-fixer.agent.md` unter `.github/agents/` bereit.
 - Für Proposal-Reviews bleibt `proposal-review-orchestrator.agent.md` der Einstiegspunkt.
 - Spezialisierte Reviewer ergänzen die bestehende Matrix für:
   - Testqualität (`test-quality.agent.md`)

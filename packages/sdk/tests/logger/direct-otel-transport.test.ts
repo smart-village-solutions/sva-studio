@@ -2,6 +2,10 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { setGlobalLoggerProviderForMonitoring } from '../../src/observability/monitoring-client.bridge.server';
 import { createSdkLogger } from '../../src/logger/index.server';
 import { runWithWorkspaceContext } from '../../src/observability/context.server';
+import {
+  resetLoggingRuntimeForTests,
+  setOtelInitializationResult,
+} from '../../src/logger/logging-runtime.server';
 
 /**
  * Test suite for DirectOtelTransport
@@ -14,6 +18,8 @@ describe('DirectOtelTransport', () => {
 
   beforeEach(() => {
     // Clear global state
+    process.env.NODE_ENV = 'development';
+    resetLoggingRuntimeForTests();
     return setGlobalLoggerProviderForMonitoring(null);
   });
 
@@ -29,6 +35,10 @@ describe('DirectOtelTransport', () => {
     };
 
     await setGlobalLoggerProviderForMonitoring(mockProvider);
+    setOtelInitializationResult({
+      status: 'ready',
+      reason: 'test-ready',
+    });
 
     // Import and use DirectOtelTransport
     const logger = createSdkLogger({
@@ -59,6 +69,10 @@ describe('DirectOtelTransport', () => {
     };
 
     await setGlobalLoggerProviderForMonitoring(mockProvider);
+    setOtelInitializationResult({
+      status: 'ready',
+      reason: 'test-ready',
+    });
 
     const logger = createSdkLogger({
       component: 'test',
@@ -98,6 +112,35 @@ describe('DirectOtelTransport', () => {
     }).not.toThrow();
   });
 
+  it('adds OTEL transport to existing loggers after runtime becomes ready', async () => {
+    const mockEmit = vi.fn();
+    const mockProvider = {
+      getLogger: vi.fn(() => ({
+        emit: mockEmit,
+      })),
+    };
+
+    const logger = createSdkLogger({
+      component: 'late-otel',
+      enableOtel: true,
+      enableConsole: false,
+    });
+
+    logger.info('not yet ready');
+    await flushAsyncLogs();
+    expect(mockEmit).not.toHaveBeenCalled();
+
+    await setGlobalLoggerProviderForMonitoring(mockProvider);
+    setOtelInitializationResult({
+      status: 'ready',
+      reason: 'test-ready',
+    });
+
+    logger.info('ready now');
+    await flushAsyncLogs();
+    expect(mockEmit).toHaveBeenCalledTimes(1);
+  });
+
   it('should preserve log attributes through OTEL emit', async () => {
     let emittedData: Record<string, unknown> | null = null;
 
@@ -114,6 +157,10 @@ describe('DirectOtelTransport', () => {
     };
 
     await setGlobalLoggerProviderForMonitoring(mockProvider);
+    setOtelInitializationResult({
+      status: 'ready',
+      reason: 'test-ready',
+    });
 
     const logger = createSdkLogger({
       component: 'test-component',
@@ -146,6 +193,10 @@ describe('DirectOtelTransport', () => {
     };
 
     await setGlobalLoggerProviderForMonitoring(mockProvider);
+    setOtelInitializationResult({
+      status: 'ready',
+      reason: 'test-ready',
+    });
 
     const logger = createSdkLogger({
       component: 'ctx-test',
@@ -174,11 +225,13 @@ describe('DirectOtelTransport', () => {
     expect((emittedData?.attributes as Record<string, unknown>).context).toMatchObject({
       request_id: 'req-explicit',
       trace_id: 'trace-context',
-      user_id: 'user-123',
+      user_id: '[REDACTED]',
     });
   });
 
   it('creates no transports when console and otel are disabled', () => {
+    process.env.NODE_ENV = 'production';
+    resetLoggingRuntimeForTests();
     const logger = createSdkLogger({
       component: 'silent-test',
       enableOtel: false,

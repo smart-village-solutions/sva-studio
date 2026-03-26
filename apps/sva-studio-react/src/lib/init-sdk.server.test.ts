@@ -28,7 +28,7 @@ describe('ensureSdkInitialized', () => {
 
   it('initializes the SDK once and skips repeated calls after success', async () => {
     getInstanceConfig.mockReturnValue(null);
-    initializeOtelSdk.mockResolvedValue(undefined);
+    initializeOtelSdk.mockResolvedValue({ status: 'ready' });
 
     const { ensureSdkInitialized } = await loadModule();
 
@@ -47,7 +47,7 @@ describe('ensureSdkInitialized', () => {
       throw new Error('invalid instance config');
     });
     getInstanceConfig.mockReturnValueOnce(null);
-    initializeOtelSdk.mockResolvedValue(undefined);
+    initializeOtelSdk.mockResolvedValue({ status: 'ready' });
 
     const { ensureSdkInitialized } = await loadModule();
 
@@ -68,7 +68,7 @@ describe('ensureSdkInitialized', () => {
   it('logs initialization failures without throwing and retries later', async () => {
     getInstanceConfig.mockReturnValue(null);
     initializeOtelSdk.mockRejectedValueOnce(new Error('otel down'));
-    initializeOtelSdk.mockResolvedValueOnce(undefined);
+    initializeOtelSdk.mockResolvedValueOnce({ status: 'ready' });
 
     const { ensureSdkInitialized } = await loadModule();
 
@@ -90,7 +90,7 @@ describe('ensureSdkInitialized', () => {
   it('falls back to the default bootstrap timeout for invalid env values', async () => {
     vi.stubEnv('SVA_OTEL_BOOTSTRAP_TIMEOUT_MS', 'not-a-number');
     getInstanceConfig.mockReturnValue(null);
-    initializeOtelSdk.mockResolvedValue(undefined);
+    initializeOtelSdk.mockResolvedValue({ status: 'ready' });
 
     const { ensureSdkInitialized } = await loadModule();
 
@@ -99,5 +99,21 @@ describe('ensureSdkInitialized', () => {
     expect(getInstanceConfig).toHaveBeenCalledTimes(1);
     expect(initializeOtelSdk).toHaveBeenCalledTimes(1);
     expect(logger.error).not.toHaveBeenCalled();
+  });
+
+  it('logs a degraded startup when OTEL stays unavailable in development', async () => {
+    getInstanceConfig.mockReturnValue(null);
+    initializeOtelSdk.mockResolvedValue({
+      status: 'failed',
+      reason: 'collector unavailable',
+    });
+
+    const { ensureSdkInitialized } = await loadModule();
+
+    await expect(ensureSdkInitialized()).resolves.toBeUndefined();
+
+    expect(logger.error).toHaveBeenCalledWith('SDK-Initialisierung ohne OTEL fortgesetzt', {
+      reason: 'collector unavailable',
+    });
   });
 });

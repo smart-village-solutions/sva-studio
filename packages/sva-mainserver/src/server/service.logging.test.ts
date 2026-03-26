@@ -47,7 +47,7 @@ vi.mock('@sva/sdk/server', async (importOriginal) => {
       traceId: 'trace-mainserver',
       workspaceId: 'de-musterhausen',
     }),
-    initializeOtelSdk: async () => undefined,
+    initializeOtelSdk: async () => ({ status: 'ready' as const }),
   };
 });
 

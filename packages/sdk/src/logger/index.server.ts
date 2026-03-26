@@ -1,9 +1,17 @@
 import winston, { type Logger, type Logform } from 'winston';
 import Transport from 'winston-transport';
 import type { OtelLogRecord, OtelLogger } from './otel-logger.types.js';
+import type { DevelopmentLogJsonValue } from './dev-log-buffer.server.js';
 
 import { getWorkspaceContext } from '../observability/context.server.js';
 import { getGlobalLoggerProviderFromMonitoring } from '../observability/monitoring-client.bridge.server.js';
+import { appendDevelopmentLogEntry } from './dev-log-buffer.server.js';
+import {
+  getLoggingRuntimeConfig,
+  isOtelRuntimeReady,
+  registerOtelAwareLogger,
+  unregisterOtelAwareLogger,
+} from './logging-runtime.server.js';
 
 const SENSITIVE_KEYS = new Set([
   'password',
@@ -11,26 +19,58 @@ const SENSITIVE_KEYS = new Set([
   'authorization',
   'api_key',
   'secret',
+  'client_secret',
   'email',
   'cookie',
   'set-cookie',
   'session',
+  'session_id',
+  'user_id',
   'csrf',
   'refresh_token',
   'access_token',
+  'id_token',
+  'id_token_hint',
   'x-api-key',
-  'x-csrf-token'
+  'x-csrf-token',
+  'actor_user_id',
+  'session_user_id',
+  'actor_account_id',
+  'keycloak_subject',
+  'db_keycloak_subject'
 ]);
 
 const emailRegex = /([\w.%+-])([\w.%+-]*)(@[\w-]+(?:\.[\w-]+)*\.[A-Za-z]{2,})/g;
+const jwtLikeRegex = /\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)?\b/g;
+const urlSecretPatterns: ReadonlyArray<readonly [RegExp, string]> = [
+  [/\b(authorization:\s*)(bearer\s+)?[^\s,]+/gi, '$1[REDACTED]'],
+  [/\b(bearer\s+)[A-Za-z0-9._~+/=-]+/gi, '$1[REDACTED]'],
+  [
+    /([?&](?:access_token|refresh_token|id_token|id_token_hint|token|code|client_secret|api_key|authorization)=)([^&#\s]+)/gi,
+    '$1[REDACTED]',
+  ],
+  [
+    /((?:^|[\s,(])(?:access_token|refresh_token|id_token|id_token_hint|token|code|client_secret|api_key|authorization|password|secret|session|cookie|csrf)[\w.-]{0,20}[=:]\s*)([^\s,)]+)/gi,
+    '$1[REDACTED]',
+  ],
+];
 
 const maskEmail = (value: string): string => {
   return value.replace(emailRegex, (_, firstChar, _middle, domain) => `${firstChar}***${domain}`);
 };
 
+const redactSensitiveString = (value: string): string => {
+  let next = maskEmail(value);
+  next = next.replace(jwtLikeRegex, '[REDACTED_JWT]');
+  for (const [pattern, replacement] of urlSecretPatterns) {
+    next = next.replace(pattern, replacement);
+  }
+  return next;
+};
+
 const redactValue = (value: unknown): unknown => {
   if (typeof value === 'string') {
-    return maskEmail(value);
+    return redactSensitiveString(value);
   }
   if (Array.isArray(value)) {
     return value.map((item) => redactValue(item));
@@ -165,21 +205,51 @@ class DirectOtelTransport extends Transport {
   }
 }
 
+class DevelopmentUiTransport extends Transport {
+  log(info: Logform.TransformableInfo, callback?: () => void) {
+    setImmediate(() => {
+      const { level, message, component, context, timestamp } = info;
+
+      appendDevelopmentLogEntry({
+        timestamp: typeof timestamp === 'string' ? timestamp : new Date().toISOString(),
+        level: (typeof level === 'string' ? level : 'info') as 'debug' | 'info' | 'warn' | 'error' | 'verbose',
+        source: 'server',
+        message: typeof message === 'string' ? message : String(message),
+        component: typeof component === 'string' ? component : undefined,
+        context:
+          typeof context === 'object' && context
+            ? (context as Record<string, DevelopmentLogJsonValue>)
+            : undefined,
+      });
+
+      callback?.();
+    });
+  }
+}
+
 export const createSdkLogger = ({
   component,
   environment = process.env.NODE_ENV ?? 'development',
   level = 'info',
-  enableConsole = environment !== 'production',
-  enableOtel = true
+  enableConsole,
+  enableOtel
 }: LoggerOptions): Logger => {
+  const runtimeConfig = getLoggingRuntimeConfig();
+  const consoleEnabled = enableConsole ?? runtimeConfig.consoleEnabled;
+  const otelEnabled = enableOtel ?? runtimeConfig.otelRequested;
   const transportsArray: winston.transport[] = [];
+  let otelTransport: DirectOtelTransport | null = null;
 
-  // Nutze direkten OTEL Transport (umgeht Winston-Instrumentation-Timing-Problem)
-  if (enableOtel) {
-    transportsArray.push(new DirectOtelTransport());
+  if (otelEnabled && isOtelRuntimeReady()) {
+    otelTransport = new DirectOtelTransport();
+    transportsArray.push(otelTransport);
   }
 
-  if (enableConsole) {
+  if (runtimeConfig.uiEnabled) {
+    transportsArray.push(new DevelopmentUiTransport());
+  }
+
+  if (consoleEnabled) {
     transportsArray.push(
       new winston.transports.Console({
         format: winston.format.combine(
@@ -196,7 +266,7 @@ export const createSdkLogger = ({
     );
   }
 
-  return winston.createLogger({
+  const logger = winston.createLogger({
     level,
     defaultMeta: {
       component,
@@ -205,4 +275,31 @@ export const createSdkLogger = ({
     format: winston.format.combine(winston.format.timestamp(), enrichWithContext(), redactSensitive(), winston.format.json()),
     transports: transportsArray
   });
+
+  registerOtelAwareLogger({
+    logger,
+    otelEnabled,
+    syncOtelTransport: (ready) => {
+      if (!otelEnabled) {
+        return;
+      }
+
+      if (ready && !otelTransport) {
+        otelTransport = new DirectOtelTransport();
+        logger.add(otelTransport);
+        return;
+      }
+
+      if (!ready && otelTransport) {
+        logger.remove(otelTransport);
+        otelTransport = null;
+      }
+    },
+  });
+
+  logger.on('close', () => {
+    unregisterOtelAwareLogger(logger);
+  });
+
+  return logger;
 };

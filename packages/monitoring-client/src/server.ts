@@ -7,11 +7,11 @@
  * WICHTIG: Nie in Client-Code importieren! Nutzt @opentelemetry/sdk-node.
  */
 
-export type { OtelConfig } from './otel.server';
-export type { WorkspaceContext } from './otel.server';
-export { createOtelSdk, setWorkspaceContextGetter, startOtelSdk } from './otel.server';
+export type { OtelConfig } from './otel.server.js';
+export type { WorkspaceContext } from './otel.server.js';
+export { createOtelSdk, setWorkspaceContextGetter, startOtelSdk } from './otel.server.js';
 export {
   setGlobalLoggerProvider,
   getGlobalLoggerProvider,
   hasLoggerProvider
-} from './logger-provider.server';
+} from './logger-provider.server.js';

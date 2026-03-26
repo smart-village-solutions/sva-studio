@@ -57,4 +57,20 @@ describe('readDevelopmentServerLogs', () => {
     ]);
     expect(readDevelopmentLogEntries).toHaveBeenCalledWith({ afterId: 12 });
   });
+
+  it('forwards an empty query object when no cursor is provided', async () => {
+    getLoggingRuntimeConfig.mockReturnValue({
+      environment: 'development',
+      consoleEnabled: true,
+      uiEnabled: true,
+      otelRequested: true,
+      otelRequired: false,
+    });
+    readDevelopmentLogEntries.mockReturnValue([]);
+
+    const { readDevelopmentServerLogs } = await import('./development-logs');
+
+    await expect(readDevelopmentServerLogs()).resolves.toEqual([]);
+    expect(readDevelopmentLogEntries).toHaveBeenCalledWith({ afterId: undefined });
+  });
 });

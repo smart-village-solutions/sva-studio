@@ -18,6 +18,19 @@ pnpm install
 pnpm nx run sva-studio-react:serve
 ```
 
+### App mit Builder.io im Monorepo starten
+
+Builder.io arbeitet im Monorepo stabil über eine explizite Workspace-Datei:
+
+```bash
+cd apps/sva-studio-react
+pnpm run builder:launch
+```
+
+Die Workspace-Konfiguration liegt in [builder.workspace.json](./builder.workspace.json). Hintergrund und der Monorepo-Workaround sind in [docs/development/builder-io-local-editing.md](../../docs/development/builder-io-local-editing.md) dokumentiert.
+
+Für den vollständigen lokalen Builder-Betrieb mit Mock-User und Runtime-Profilen ist [docs/development/runtime-profile-betrieb.md](../../docs/development/runtime-profile-betrieb.md) die kanonische Referenz.
+
 ### Alternativ: App-Ordner
 
 ```bash

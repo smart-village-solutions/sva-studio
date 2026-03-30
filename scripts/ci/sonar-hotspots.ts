@@ -260,477 +260,386 @@ const readSharedOptions = (args: readonly string[], env: NodeJS.ProcessEnv) => {
   };
 };
 
+type FlagHandler<TState> = (state: TState, value: string | undefined) => void;
+
+interface FlagSpec<TState> {
+  takesValue: boolean;
+  handler: FlagHandler<TState>;
+}
+
+const parseFlags = <TState>(
+  args: readonly string[],
+  commandName: string,
+  state: TState,
+  specs: Readonly<Record<string, FlagSpec<TState>>>
+): void => {
+  for (let index = 0; index < args.length; index += 1) {
+    const argument = args[index];
+    const spec = specs[argument ?? ''];
+
+    if (!spec) {
+      error(`Unbekanntes Argument für ${commandName}: ${argument}`);
+    }
+
+    const value = spec.takesValue ? readFlagValue(args, index, argument ?? '') : undefined;
+    if (spec.takesValue) {
+      index += 1;
+    }
+    spec.handler(state, value);
+  }
+};
+
 export const parseCommand = (argv: readonly string[], env: NodeJS.ProcessEnv = process.env): ParsedCommand => {
   const normalizedArgv = argv[0] === '--' ? argv.slice(1) : argv;
   const [commandName = 'list', ...args] = normalizedArgv;
   const shared = readSharedOptions(args, env);
 
   if (commandName === 'list') {
-    let projectKey = DEFAULT_PROJECT_KEY;
-    let branch: string | undefined;
-    let pullRequest: string | undefined;
-    let status: string | undefined = 'TO_REVIEW';
-    let resolution: string | undefined;
-    let sinceLeakPeriod: boolean | undefined;
-    let pageSize = DEFAULT_PAGE_SIZE;
-    let maxPages: number | undefined = 1;
-    let ruleKey: string | undefined;
-    let filePathIncludes: string | undefined;
-    let output: ListOutputFormat = 'table';
+    const state: {
+      projectKey: string;
+      branch?: string;
+      pullRequest?: string;
+      status?: string;
+      resolution?: string;
+      sinceLeakPeriod?: boolean;
+      pageSize: number;
+      maxPages?: number;
+      ruleKey?: string;
+      filePathIncludes?: string;
+      output: ListOutputFormat;
+    } = {
+      projectKey: DEFAULT_PROJECT_KEY,
+      status: 'TO_REVIEW',
+      pageSize: DEFAULT_PAGE_SIZE,
+      maxPages: 1,
+      output: 'table',
+    };
 
-    for (let index = 0; index < args.length; index += 1) {
-      const argument = args[index];
-      switch (argument) {
-        case '--project':
-          projectKey = readFlagValue(args, index, argument);
-          index += 1;
-          break;
-        case '--branch':
-          branch = readFlagValue(args, index, argument);
-          index += 1;
-          break;
-        case '--pull-request':
-          pullRequest = readFlagValue(args, index, argument);
-          index += 1;
-          break;
-        case '--status':
-          status = readFlagValue(args, index, argument);
-          index += 1;
-          break;
-        case '--resolution':
-          resolution = readFlagValue(args, index, argument);
-          index += 1;
-          break;
-        case '--since-leak-period':
-          sinceLeakPeriod = normalizeBooleanFlag(readFlagValue(args, index, argument));
-          index += 1;
-          break;
-        case '--page-size':
-          pageSize = Number.parseInt(readFlagValue(args, index, argument), 10);
-          index += 1;
-          break;
-        case '--max-pages':
-          maxPages = Number.parseInt(readFlagValue(args, index, argument), 10);
-          index += 1;
-          break;
-        case '--rule':
-          ruleKey = readFlagValue(args, index, argument);
-          index += 1;
-          break;
-        case '--file-path-includes':
-          filePathIncludes = readFlagValue(args, index, argument);
-          index += 1;
-          break;
-        case '--json':
-          output = 'json';
-          break;
-        case '--csv':
-          output = 'csv';
-          break;
-        case '--base-url':
-          index += 1;
-          break;
-        default:
-          error(`Unbekanntes Argument für list: ${argument}`);
-      }
-    }
+    parseFlags(args, commandName, state, {
+      '--project': { takesValue: true, handler: (next, value) => (next.projectKey = value ?? next.projectKey) },
+      '--branch': { takesValue: true, handler: (next, value) => (next.branch = value) },
+      '--pull-request': { takesValue: true, handler: (next, value) => (next.pullRequest = value) },
+      '--status': { takesValue: true, handler: (next, value) => (next.status = value) },
+      '--resolution': { takesValue: true, handler: (next, value) => (next.resolution = value) },
+      '--since-leak-period': {
+        takesValue: true,
+        handler: (next, value) => {
+          next.sinceLeakPeriod = normalizeBooleanFlag(value ?? '');
+        },
+      },
+      '--page-size': {
+        takesValue: true,
+        handler: (next, value) => {
+          next.pageSize = Number.parseInt(value ?? '', 10);
+        },
+      },
+      '--max-pages': {
+        takesValue: true,
+        handler: (next, value) => {
+          next.maxPages = Number.parseInt(value ?? '', 10);
+        },
+      },
+      '--rule': { takesValue: true, handler: (next, value) => (next.ruleKey = value) },
+      '--file-path-includes': { takesValue: true, handler: (next, value) => (next.filePathIncludes = value) },
+      '--json': { takesValue: false, handler: (next) => (next.output = 'json') },
+      '--csv': { takesValue: false, handler: (next) => (next.output = 'csv') },
+      '--base-url': { takesValue: true, handler: () => {} },
+    });
 
-    if (!Number.isInteger(pageSize) || pageSize < 1 || pageSize > 500) {
+    if (!Number.isInteger(state.pageSize) || state.pageSize < 1 || state.pageSize > 500) {
       error('--page-size muss zwischen 1 und 500 liegen.');
     }
-    if (maxPages !== undefined && (!Number.isInteger(maxPages) || maxPages < 1)) {
+    if (state.maxPages !== undefined && (!Number.isInteger(state.maxPages) || state.maxPages < 1)) {
       error('--max-pages muss >= 1 sein.');
     }
 
     return {
       command: 'list',
       ...shared,
-      projectKey,
-      branch,
-      pullRequest,
-      status,
-      resolution,
-      sinceLeakPeriod,
-      pageSize,
-      maxPages,
-      ruleKey,
-      filePathIncludes,
-      output,
+      ...state,
     };
   }
 
   if (commandName === 'show') {
-    let hotspotKey = '';
-    let json = false;
+    const state: { hotspotKey: string; json: boolean } = { hotspotKey: '', json: false };
+    parseFlags(args, commandName, state, {
+      '--hotspot': { takesValue: true, handler: (next, value) => (next.hotspotKey = value ?? '') },
+      '--json': { takesValue: false, handler: (next) => (next.json = true) },
+      '--base-url': { takesValue: true, handler: () => {} },
+    });
 
-    for (let index = 0; index < args.length; index += 1) {
-      const argument = args[index];
-      switch (argument) {
-        case '--hotspot':
-          hotspotKey = readFlagValue(args, index, argument);
-          index += 1;
-          break;
-        case '--json':
-          json = true;
-          break;
-        case '--base-url':
-          index += 1;
-          break;
-        default:
-          error(`Unbekanntes Argument für show: ${argument}`);
-      }
-    }
-
-    if (hotspotKey.length === 0) {
+    if (state.hotspotKey.length === 0) {
       error('--hotspot ist erforderlich.');
     }
 
     return {
       command: 'show',
       ...shared,
-      hotspotKey,
-      json,
+      ...state,
     };
   }
 
   if (commandName === 'review') {
-    let hotspotKey = '';
-    let status: 'REVIEWED' = 'REVIEWED';
-    let resolution: 'SAFE' | 'FIXED' | 'ACKNOWLEDGED' = 'SAFE';
-    let comment = '';
+    const state: {
+      hotspotKey: string;
+      status: 'REVIEWED';
+      resolution: 'SAFE' | 'FIXED' | 'ACKNOWLEDGED';
+      comment: string;
+    } = {
+      hotspotKey: '',
+      status: 'REVIEWED',
+      resolution: 'SAFE',
+      comment: '',
+    };
 
-    for (let index = 0; index < args.length; index += 1) {
-      const argument = args[index];
-      switch (argument) {
-        case '--hotspot':
-          hotspotKey = readFlagValue(args, index, argument);
-          index += 1;
-          break;
-        case '--status': {
-          const value = readFlagValue(args, index, argument);
-          if (!REVIEWABLE_STATUSES.has(value)) {
+    parseFlags(args, commandName, state, {
+      '--hotspot': { takesValue: true, handler: (next, value) => (next.hotspotKey = value ?? '') },
+      '--status': {
+        takesValue: true,
+        handler: (next, value) => {
+          const statusValue = value ?? '';
+          if (!REVIEWABLE_STATUSES.has(statusValue)) {
             error('--status erlaubt nur REVIEWED.');
           }
-          status = value as 'REVIEWED';
-          index += 1;
-          break;
-        }
-        case '--resolution': {
-          const value = readFlagValue(args, index, argument);
-          if (!REVIEWABLE_RESOLUTIONS.has(value)) {
+          next.status = statusValue as 'REVIEWED';
+        },
+      },
+      '--resolution': {
+        takesValue: true,
+        handler: (next, value) => {
+          const resolutionValue = value ?? '';
+          if (!REVIEWABLE_RESOLUTIONS.has(resolutionValue)) {
             error('--resolution erlaubt nur SAFE, FIXED oder ACKNOWLEDGED.');
           }
-          resolution = value as 'SAFE' | 'FIXED' | 'ACKNOWLEDGED';
-          index += 1;
-          break;
-        }
-        case '--comment':
-          comment = readFlagValue(args, index, argument);
-          index += 1;
-          break;
-        case '--base-url':
-          index += 1;
-          break;
-        default:
-          error(`Unbekanntes Argument für review: ${argument}`);
-      }
-    }
+          next.resolution = resolutionValue as 'SAFE' | 'FIXED' | 'ACKNOWLEDGED';
+        },
+      },
+      '--comment': { takesValue: true, handler: (next, value) => (next.comment = value ?? '') },
+      '--base-url': { takesValue: true, handler: () => {} },
+    });
 
-    if (hotspotKey.length === 0) {
+    if (state.hotspotKey.length === 0) {
       error('--hotspot ist erforderlich.');
     }
-    if (comment.trim().length === 0) {
+    if (state.comment.trim().length === 0) {
       error('--comment ist erforderlich.');
     }
 
     return {
       command: 'review',
       ...shared,
-      hotspotKey,
-      status,
-      resolution,
-      comment,
+      ...state,
     };
   }
 
   if (commandName === 'bulk-review') {
-    const hotspotKeys: string[] = [];
-    let status: 'REVIEWED' = 'REVIEWED';
-    let resolution: 'SAFE' | 'FIXED' | 'ACKNOWLEDGED' = 'SAFE';
-    let comment = '';
+    const state: {
+      hotspotKeys: string[];
+      status: 'REVIEWED';
+      resolution: 'SAFE' | 'FIXED' | 'ACKNOWLEDGED';
+      comment: string;
+    } = {
+      hotspotKeys: [],
+      status: 'REVIEWED',
+      resolution: 'SAFE',
+      comment: '',
+    };
 
-    for (let index = 0; index < args.length; index += 1) {
-      const argument = args[index];
-      switch (argument) {
-        case '--hotspot':
-          hotspotKeys.push(readFlagValue(args, index, argument));
-          index += 1;
-          break;
-        case '--status': {
-          const value = readFlagValue(args, index, argument);
-          if (!REVIEWABLE_STATUSES.has(value)) {
+    parseFlags(args, commandName, state, {
+      '--hotspot': {
+        takesValue: true,
+        handler: (next, value) => {
+          if (value) {
+            next.hotspotKeys.push(value);
+          }
+        },
+      },
+      '--status': {
+        takesValue: true,
+        handler: (next, value) => {
+          const statusValue = value ?? '';
+          if (!REVIEWABLE_STATUSES.has(statusValue)) {
             error('--status erlaubt nur REVIEWED.');
           }
-          status = value as 'REVIEWED';
-          index += 1;
-          break;
-        }
-        case '--resolution': {
-          const value = readFlagValue(args, index, argument);
-          if (!REVIEWABLE_RESOLUTIONS.has(value)) {
+          next.status = statusValue as 'REVIEWED';
+        },
+      },
+      '--resolution': {
+        takesValue: true,
+        handler: (next, value) => {
+          const resolutionValue = value ?? '';
+          if (!REVIEWABLE_RESOLUTIONS.has(resolutionValue)) {
             error('--resolution erlaubt nur SAFE, FIXED oder ACKNOWLEDGED.');
           }
-          resolution = value as 'SAFE' | 'FIXED' | 'ACKNOWLEDGED';
-          index += 1;
-          break;
-        }
-        case '--comment':
-          comment = readFlagValue(args, index, argument);
-          index += 1;
-          break;
-        case '--base-url':
-          index += 1;
-          break;
-        default:
-          error(`Unbekanntes Argument für bulk-review: ${argument}`);
-      }
-    }
+          next.resolution = resolutionValue as 'SAFE' | 'FIXED' | 'ACKNOWLEDGED';
+        },
+      },
+      '--comment': { takesValue: true, handler: (next, value) => (next.comment = value ?? '') },
+      '--base-url': { takesValue: true, handler: () => {} },
+    });
 
-    if (hotspotKeys.length === 0) {
+    if (state.hotspotKeys.length === 0) {
       error('Mindestens ein --hotspot ist erforderlich.');
     }
-    if (comment.trim().length === 0) {
+    if (state.comment.trim().length === 0) {
       error('--comment ist erforderlich.');
     }
 
     return {
       command: 'bulk-review',
       ...shared,
-      hotspotKeys,
-      status,
-      resolution,
-      comment,
+      hotspotKeys: state.hotspotKeys,
+      status: state.status,
+      resolution: state.resolution,
+      comment: state.comment,
     };
   }
 
   if (commandName === 'issues:list') {
-    let projectKey = DEFAULT_PROJECT_KEY;
-    let branch: string | undefined;
-    let pullRequest: string | undefined;
-    let statuses: string | undefined = 'OPEN,CONFIRMED';
-    let severities: string | undefined;
-    let types: string | undefined;
-    let rules: string | undefined;
-    let impactSeverities: string | undefined;
-    let assignees: string | undefined;
-    let filePathIncludes: string | undefined;
-    let pageSize = DEFAULT_PAGE_SIZE;
-    let maxPages: number | undefined = 1;
-    let output: ListOutputFormat = 'table';
+    const state: {
+      projectKey: string;
+      branch?: string;
+      pullRequest?: string;
+      statuses?: string;
+      severities?: string;
+      types?: string;
+      rules?: string;
+      impactSeverities?: string;
+      assignees?: string;
+      filePathIncludes?: string;
+      pageSize: number;
+      maxPages?: number;
+      output: ListOutputFormat;
+    } = {
+      projectKey: DEFAULT_PROJECT_KEY,
+      statuses: 'OPEN,CONFIRMED',
+      pageSize: DEFAULT_PAGE_SIZE,
+      maxPages: 1,
+      output: 'table',
+    };
 
-    for (let index = 0; index < args.length; index += 1) {
-      const argument = args[index];
-      switch (argument) {
-        case '--project':
-          projectKey = readFlagValue(args, index, argument);
-          index += 1;
-          break;
-        case '--branch':
-          branch = readFlagValue(args, index, argument);
-          index += 1;
-          break;
-        case '--pull-request':
-          pullRequest = readFlagValue(args, index, argument);
-          index += 1;
-          break;
-        case '--statuses':
-          statuses = readFlagValue(args, index, argument);
-          index += 1;
-          break;
-        case '--severities':
-          severities = readFlagValue(args, index, argument);
-          index += 1;
-          break;
-        case '--types':
-          types = readFlagValue(args, index, argument);
-          index += 1;
-          break;
-        case '--rules':
-          rules = readFlagValue(args, index, argument);
-          index += 1;
-          break;
-        case '--impact-severities':
-          impactSeverities = readFlagValue(args, index, argument);
-          index += 1;
-          break;
-        case '--assignees':
-          assignees = readFlagValue(args, index, argument);
-          index += 1;
-          break;
-        case '--file-path-includes':
-          filePathIncludes = readFlagValue(args, index, argument);
-          index += 1;
-          break;
-        case '--page-size':
-          pageSize = Number.parseInt(readFlagValue(args, index, argument), 10);
-          index += 1;
-          break;
-        case '--max-pages':
-          maxPages = Number.parseInt(readFlagValue(args, index, argument), 10);
-          index += 1;
-          break;
-        case '--json':
-          output = 'json';
-          break;
-        case '--csv':
-          output = 'csv';
-          break;
-        case '--base-url':
-          index += 1;
-          break;
-        default:
-          error(`Unbekanntes Argument für issues:list: ${argument}`);
-      }
+    parseFlags(args, commandName, state, {
+      '--project': { takesValue: true, handler: (next, value) => (next.projectKey = value ?? next.projectKey) },
+      '--branch': { takesValue: true, handler: (next, value) => (next.branch = value) },
+      '--pull-request': { takesValue: true, handler: (next, value) => (next.pullRequest = value) },
+      '--statuses': { takesValue: true, handler: (next, value) => (next.statuses = value) },
+      '--severities': { takesValue: true, handler: (next, value) => (next.severities = value) },
+      '--types': { takesValue: true, handler: (next, value) => (next.types = value) },
+      '--rules': { takesValue: true, handler: (next, value) => (next.rules = value) },
+      '--impact-severities': { takesValue: true, handler: (next, value) => (next.impactSeverities = value) },
+      '--assignees': { takesValue: true, handler: (next, value) => (next.assignees = value) },
+      '--file-path-includes': { takesValue: true, handler: (next, value) => (next.filePathIncludes = value) },
+      '--page-size': {
+        takesValue: true,
+        handler: (next, value) => {
+          next.pageSize = Number.parseInt(value ?? '', 10);
+        },
+      },
+      '--max-pages': {
+        takesValue: true,
+        handler: (next, value) => {
+          next.maxPages = Number.parseInt(value ?? '', 10);
+        },
+      },
+      '--json': { takesValue: false, handler: (next) => (next.output = 'json') },
+      '--csv': { takesValue: false, handler: (next) => (next.output = 'csv') },
+      '--base-url': { takesValue: true, handler: () => {} },
+    });
+
+    if (!Number.isInteger(state.pageSize) || state.pageSize < 1 || state.pageSize > 500) {
+      error('--page-size muss zwischen 1 und 500 liegen.');
+    }
+    if (state.maxPages !== undefined && (!Number.isInteger(state.maxPages) || state.maxPages < 1)) {
+      error('--max-pages muss >= 1 sein.');
     }
 
     return {
       command: 'issues:list',
       ...shared,
-      projectKey,
-      branch,
-      pullRequest,
-      statuses,
-      severities,
-      types,
-      rules,
-      impactSeverities,
-      assignees,
-      filePathIncludes,
-      pageSize,
-      maxPages,
-      output,
+      ...state,
     };
   }
 
   if (commandName === 'issues:show') {
-    let issueKey = '';
-    let json = false;
+    const state: { issueKey: string; json: boolean } = { issueKey: '', json: false };
+    parseFlags(args, commandName, state, {
+      '--issue': { takesValue: true, handler: (next, value) => (next.issueKey = value ?? '') },
+      '--json': { takesValue: false, handler: (next) => (next.json = true) },
+      '--base-url': { takesValue: true, handler: () => {} },
+    });
 
-    for (let index = 0; index < args.length; index += 1) {
-      const argument = args[index];
-      switch (argument) {
-        case '--issue':
-          issueKey = readFlagValue(args, index, argument);
-          index += 1;
-          break;
-        case '--json':
-          json = true;
-          break;
-        case '--base-url':
-          index += 1;
-          break;
-        default:
-          error(`Unbekanntes Argument für issues:show: ${argument}`);
-      }
-    }
-
-    if (issueKey.length === 0) {
+    if (state.issueKey.length === 0) {
       error('--issue ist erforderlich.');
     }
 
     return {
       command: 'issues:show',
       ...shared,
-      issueKey,
-      json,
+      ...state,
     };
   }
 
   if (commandName === 'issues:transition') {
-    let issueKey = '';
-    let transition: IssueTransitionOptions['transition'] | undefined;
-    let comment: string | undefined;
+    const state: {
+      issueKey: string;
+      transition?: IssueTransitionOptions['transition'];
+      comment?: string;
+    } = {
+      issueKey: '',
+    };
 
-    for (let index = 0; index < args.length; index += 1) {
-      const argument = args[index];
-      switch (argument) {
-        case '--issue':
-          issueKey = readFlagValue(args, index, argument);
-          index += 1;
-          break;
-        case '--transition': {
-          const value = readFlagValue(args, index, argument);
-          if (!ISSUE_TRANSITIONS.has(value)) {
+    parseFlags(args, commandName, state, {
+      '--issue': { takesValue: true, handler: (next, value) => (next.issueKey = value ?? '') },
+      '--transition': {
+        takesValue: true,
+        handler: (next, value) => {
+          const transitionValue = value ?? '';
+          if (!ISSUE_TRANSITIONS.has(transitionValue)) {
             error('--transition erlaubt nur confirm, accept, reopen, resolve oder falsepositive.');
           }
-          transition = value as IssueTransitionOptions['transition'];
-          index += 1;
-          break;
-        }
-        case '--comment':
-          comment = readFlagValue(args, index, argument);
-          index += 1;
-          break;
-        case '--base-url':
-          index += 1;
-          break;
-        default:
-          error(`Unbekanntes Argument für issues:transition: ${argument}`);
-      }
-    }
+          next.transition = transitionValue as IssueTransitionOptions['transition'];
+        },
+      },
+      '--comment': { takesValue: true, handler: (next, value) => (next.comment = value) },
+      '--base-url': { takesValue: true, handler: () => {} },
+    });
 
-    if (issueKey.length === 0) {
+    if (state.issueKey.length === 0) {
       error('--issue ist erforderlich.');
     }
-    if (!transition) {
+    if (!state.transition) {
       error('--transition ist erforderlich.');
     }
-    const nextTransition = transition as IssueTransitionOptions['transition'];
+    const nextTransition = state.transition as IssueTransitionOptions['transition'];
 
     return {
       command: 'issues:transition',
       ...shared,
-      issueKey,
+      issueKey: state.issueKey,
       transition: nextTransition,
-      comment,
+      comment: state.comment,
     };
   }
 
   if (commandName === 'issues:comment') {
-    let issueKey = '';
-    let comment = '';
+    const state: { issueKey: string; comment: string } = { issueKey: '', comment: '' };
+    parseFlags(args, commandName, state, {
+      '--issue': { takesValue: true, handler: (next, value) => (next.issueKey = value ?? '') },
+      '--comment': { takesValue: true, handler: (next, value) => (next.comment = value ?? '') },
+      '--base-url': { takesValue: true, handler: () => {} },
+    });
 
-    for (let index = 0; index < args.length; index += 1) {
-      const argument = args[index];
-      switch (argument) {
-        case '--issue':
-          issueKey = readFlagValue(args, index, argument);
-          index += 1;
-          break;
-        case '--comment':
-          comment = readFlagValue(args, index, argument);
-          index += 1;
-          break;
-        case '--base-url':
-          index += 1;
-          break;
-        default:
-          error(`Unbekanntes Argument für issues:comment: ${argument}`);
-      }
-    }
-
-    if (issueKey.length === 0) {
+    if (state.issueKey.length === 0) {
       error('--issue ist erforderlich.');
     }
-    if (comment.trim().length === 0) {
+    if (state.comment.trim().length === 0) {
       error('--comment ist erforderlich.');
     }
 
     return {
       command: 'issues:comment',
       ...shared,
-      issueKey,
-      comment,
+      ...state,
     };
   }
 

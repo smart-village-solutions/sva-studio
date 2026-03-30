@@ -77,7 +77,7 @@ const isLikelyDomain = (domain: string): boolean => {
     return false;
   }
 
-  const topLevelLabel = labels[labels.length - 1] ?? '';
+  const topLevelLabel = labels[labels.length - 1];
   return labels.every((label) => /^[A-Za-z0-9-]+$/.test(label) && label.length > 0) && /^[A-Za-z]{2,}$/.test(topLevelLabel);
 };
 
@@ -128,7 +128,7 @@ export const maskEmailAddresses = (value: string): string => {
   return next;
 };
 
-const redactString = (value: string): string => {
+export const redactString = (value: string): string => {
   let next = maskEmailAddresses(value);
   next = next.replace(jwtLikeRegex, '[REDACTED_JWT]');
   for (const [pattern, replacement] of stringSecretPatterns) {
@@ -137,7 +137,7 @@ const redactString = (value: string): string => {
   return next;
 };
 
-const redactValue = (value: unknown): unknown => {
+export const redactValue = (value: unknown): unknown => {
   if (typeof value === 'string') {
     return redactString(value);
   }
@@ -155,7 +155,7 @@ const redactValue = (value: unknown): unknown => {
   return value;
 };
 
-const toAttributeValue = (value: unknown): AttributeValue => {
+export const toAttributeValue = (value: unknown): AttributeValue => {
   if (value === null || value === undefined) {
     return 'null';
   }
@@ -171,7 +171,7 @@ const toAttributeValue = (value: unknown): AttributeValue => {
   return String(value);
 };
 
-class RedactingLogProcessor implements LogRecordProcessor {
+export class RedactingLogProcessor implements LogRecordProcessor {
   public constructor(private readonly inner: LogRecordProcessor) {}
 
   public onEmit(logRecord: SdkLogRecord, context: Context): void {

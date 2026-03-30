@@ -42,7 +42,7 @@ const runCommand = (command: string, commandValue?: string) => {
 export const RichTextEditor = ({ id, labelId, value, onChange, placeholder, commands }: RichTextEditorProps) => {
   const editorRef = React.useRef<HTMLDivElement>(null);
   const placeholderDescriptionId = `${id}${PLACEHOLDER_DESCRIPTION_SUFFIX}`;
-  const sanitizedValue = sanitizeLegalTextHtml(value);
+  const sanitizedValue = React.useMemo(() => sanitizeLegalTextHtml(value), [value]);
 
   React.useEffect(() => {
     const editor = editorRef.current;

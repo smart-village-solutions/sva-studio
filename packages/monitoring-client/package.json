@@ -29,7 +29,8 @@
     "@opentelemetry/sdk-logs": "^0.213.0",
     "@opentelemetry/sdk-metrics": "^2.6.0",
     "@opentelemetry/sdk-node": "^0.213.0",
-    "@opentelemetry/semantic-conventions": "^1.40.0"
+    "@opentelemetry/semantic-conventions": "^1.40.0",
+    "@sva/core": "workspace:*"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^4.1.0",

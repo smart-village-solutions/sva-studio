@@ -13,6 +13,7 @@ const logoutSessionMock = vi.fn();
 const emitAuthAuditEventMock = vi.fn(async () => undefined);
 const createLoginUrlMock = vi.fn();
 const handleCallbackMock = vi.fn();
+const withAuthenticatedUserMock = vi.fn();
 
 vi.mock('@sva/sdk/server', () => ({
   createSdkLogger: () => loggerMock,
@@ -50,7 +51,7 @@ vi.mock('../shared/log-context', () => ({
 }));
 
 vi.mock('../middleware.server.js', () => ({
-  withAuthenticatedUser: vi.fn(),
+  withAuthenticatedUser: withAuthenticatedUserMock,
 }));
 
 describe('routes/handlers', () => {
@@ -142,6 +143,62 @@ describe('routes/handlers', () => {
     expect(createLoginUrlMock).not.toHaveBeenCalled();
   });
 
+  it('falls back to default returnTo when login returnTo points to auth or external targets', async () => {
+    createLoginUrlMock.mockResolvedValue({
+      url: 'https://issuer.example/auth',
+      state: 'state-2',
+      loginState: {
+        codeVerifier: 'verifier-2',
+        nonce: 'nonce-2',
+        createdAt: Date.now(),
+        returnTo: '/',
+        silent: false,
+      },
+    });
+
+    const { loginHandler } = await import('./handlers.js');
+
+    await loginHandler(new Request('http://localhost/auth/login?returnTo=%2Fauth%2Fcallback'));
+    await loginHandler(new Request('http://localhost/auth/login?returnTo=https%3A%2F%2Fevil.example'));
+    await loginHandler(new Request('http://localhost/auth/login?returnTo=%2F%2Fevil.example'));
+
+    expect(createLoginUrlMock).toHaveBeenNthCalledWith(1, expect.objectContaining({ returnTo: '/' }));
+    expect(createLoginUrlMock).toHaveBeenNthCalledWith(2, expect.objectContaining({ returnTo: '/' }));
+    expect(createLoginUrlMock).toHaveBeenNthCalledWith(3, expect.objectContaining({ returnTo: '/' }));
+  });
+
+  it('uses session cookie defaults when callback does not provide expiresAt', async () => {
+    handleCallbackMock.mockResolvedValue({
+      sessionId: 'session-no-expiry',
+      user: {
+        id: 'user-1',
+        instanceId: 'de-musterhausen',
+        roles: ['editor'],
+      },
+    });
+
+    const { callbackHandler } = await import('./handlers.js');
+    const statePayload = {
+      state: 'state-no-expiry',
+      codeVerifier: 'verifier-no-expiry',
+      nonce: 'nonce-no-expiry',
+      createdAt: Date.now(),
+      returnTo: '/account',
+    };
+    const encodedPayload = Buffer.from(JSON.stringify(statePayload), 'utf8').toString('base64url');
+    const signature = createHmac('sha256', 'secret').update(encodedPayload).digest('base64url');
+
+    const response = await callbackHandler(
+      new Request('http://localhost/auth/callback?code=abc&state=state-no-expiry', {
+        headers: { cookie: `sva_auth_state=${encodedPayload}.${signature}` },
+      })
+    );
+
+    expect(response.status).toBe(302);
+    const setCookie = response.headers.get('set-cookie') ?? '';
+    expect(setCookie).toContain('sva_auth_session=session-no-expiry');
+  });
+
   it('redirects the callback to the original page after login', async () => {
     handleCallbackMock.mockResolvedValue({
       sessionId: 'session-1',
@@ -220,5 +277,243 @@ describe('routes/handlers', () => {
 
     expect(response.status).toBe(200);
     await expect(response.text()).resolves.toContain('sva-auth:silent-sso');
+  });
+
+  it('returns silent callback failure response and clears login-state cookie when idp returns error', async () => {
+    const { callbackHandler } = await import('./handlers.js');
+    const statePayload = {
+      state: 'state-err',
+      codeVerifier: 'verifier-err',
+      nonce: 'nonce-err',
+      createdAt: Date.now(),
+      returnTo: '/',
+      silent: true,
+    };
+    const encodedPayload = Buffer.from(JSON.stringify(statePayload), 'utf8').toString('base64url');
+    const signature = createHmac('sha256', 'secret').update(encodedPayload).digest('base64url');
+
+    const response = await callbackHandler(
+      new Request('http://localhost/auth/callback?state=state-err&error=access_denied', {
+        headers: { cookie: `sva_auth_state=${encodedPayload}.${signature}` },
+      })
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('set-cookie')).toContain('sva_auth_state=');
+    await expect(response.text()).resolves.toContain("status: 'failure'");
+  });
+
+  it('redirects to /auth/login when callback misses code or state', async () => {
+    const { callbackHandler } = await import('./handlers.js');
+
+    const response = await callbackHandler(new Request('http://localhost/auth/callback?state=missing-code'));
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get('location')).toBe('/auth/login');
+  });
+
+  it('redirects to state-expired when callback login-state cookie is stale', async () => {
+    const { callbackHandler } = await import('./handlers.js');
+    const stalePayload = {
+      state: 'state-old',
+      codeVerifier: 'verifier-old',
+      nonce: 'nonce-old',
+      createdAt: Date.now() - 11 * 60 * 1000,
+      returnTo: '/account',
+    };
+    const encodedPayload = Buffer.from(JSON.stringify(stalePayload), 'utf8').toString('base64url');
+    const signature = createHmac('sha256', 'secret').update(encodedPayload).digest('base64url');
+
+    const response = await callbackHandler(
+      new Request('http://localhost/auth/callback?code=abc&state=state-old', {
+        headers: { cookie: `sva_auth_state=${encodedPayload}.${signature}` },
+      })
+    );
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get('location')).toBe('/?auth=state-expired');
+    expect(response.headers.get('set-cookie')).toContain('sva_auth_state=');
+  });
+
+  it('emits silent_reauth_failed audit event when silent callback processing throws', async () => {
+    handleCallbackMock.mockRejectedValue({ code: 'token_invalid' });
+
+    const { callbackHandler } = await import('./handlers.js');
+    const statePayload = {
+      state: 'state-fail',
+      codeVerifier: 'verifier-fail',
+      nonce: 'nonce-fail',
+      createdAt: Date.now(),
+      returnTo: '/',
+      silent: true,
+    };
+    const encodedPayload = Buffer.from(JSON.stringify(statePayload), 'utf8').toString('base64url');
+    const signature = createHmac('sha256', 'secret').update(encodedPayload).digest('base64url');
+
+    const response = await callbackHandler(
+      new Request('http://localhost/auth/callback?code=abc&state=state-fail', {
+        headers: { cookie: `sva_auth_state=${encodedPayload}.${signature}` },
+      })
+    );
+
+    expect(response.status).toBe(200);
+    expect(loggerMock.warn).toHaveBeenCalled();
+    expect(emitAuthAuditEventMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: 'silent_reauth_failed',
+        outcome: 'failure',
+      })
+    );
+  });
+
+  it('logs callback errors for non-token failures and redirects to auth error', async () => {
+    handleCallbackMock.mockRejectedValue(new Error('callback exploded'));
+
+    const { callbackHandler } = await import('./handlers.js');
+    const statePayload = {
+      state: 'state-hard-error',
+      codeVerifier: 'verifier-hard-error',
+      nonce: 'nonce-hard-error',
+      createdAt: Date.now(),
+      returnTo: '/account',
+      silent: false,
+    };
+    const encodedPayload = Buffer.from(JSON.stringify(statePayload), 'utf8').toString('base64url');
+    const signature = createHmac('sha256', 'secret').update(encodedPayload).digest('base64url');
+
+    const response = await callbackHandler(
+      new Request('http://localhost/auth/callback?code=abc&state=state-hard-error', {
+        headers: { cookie: `sva_auth_state=${encodedPayload}.${signature}` },
+      })
+    );
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get('location')).toBe('/?auth=error');
+    expect(loggerMock.error).toHaveBeenCalledWith(
+      'Auth callback failed',
+      expect.objectContaining({
+        operation: 'login_callback',
+        is_silent: false,
+      })
+    );
+  });
+
+  it('returns mock callback redirect when mock auth is enabled', async () => {
+    vi.stubEnv('SVA_MOCK_AUTH', 'true');
+    const { callbackHandler } = await import('./handlers.js');
+
+    const response = await callbackHandler(new Request('http://localhost/auth/callback?code=abc&state=state-mock'));
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get('location')).toBe('/?auth=mock-callback');
+  });
+
+  it('returns mock user response in meHandler when mock auth is enabled', async () => {
+    vi.stubEnv('SVA_MOCK_AUTH', 'true');
+    const { meHandler } = await import('./handlers.js');
+
+    const response = await meHandler(new Request('http://localhost/auth/me'));
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual(
+      expect.objectContaining({
+        user: expect.objectContaining({
+          id: expect.any(String),
+        }),
+      })
+    );
+  });
+
+  it('logs authenticated me requests through middleware branch', async () => {
+    withAuthenticatedUserMock.mockImplementation(async (_request: Request, callback: (input: { user: any }) => Response) =>
+      callback({
+        user: {
+          id: 'user-1',
+          instanceId: 'de-musterhausen',
+          roles: ['editor'],
+        },
+      })
+    );
+
+    const { meHandler } = await import('./handlers.js');
+    const response = await meHandler(new Request('http://localhost/auth/me'));
+
+    expect(response.status).toBe(200);
+    expect(loggerMock.debug).toHaveBeenCalledWith(
+      'Auth check successful',
+      expect.objectContaining({
+        endpoint: '/auth/me',
+        operation: 'get_current_user',
+      })
+    );
+  });
+
+  it('logs logout without session and still sets suppression cookie', async () => {
+    const { logoutHandler } = await import('./handlers.js');
+
+    const response = await logoutHandler(new Request('http://localhost/auth/logout', { method: 'POST' }));
+
+    expect(response.status).toBe(302);
+    expect(loggerMock.debug).toHaveBeenCalledWith(
+      'Logout without session',
+      expect.objectContaining({ operation: 'logout', session_exists: false })
+    );
+    expect(response.headers.get('set-cookie')).toContain('sva_auth_silent_sso=');
+  });
+
+  it('handles logout errors and falls back to post logout redirect', async () => {
+    getSessionMock.mockResolvedValue({
+      user: {
+        id: 'user-1',
+        instanceId: 'de-musterhausen',
+        roles: ['editor'],
+      },
+    });
+    logoutSessionMock.mockRejectedValue(new Error('logout failed'));
+
+    const { logoutHandler } = await import('./handlers.js');
+    const response = await logoutHandler(
+      new Request('http://localhost/auth/logout', {
+        method: 'POST',
+        headers: { cookie: 'sva_auth_session=session-err' },
+      })
+    );
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get('location')).toBe('http://localhost:3000');
+    expect(loggerMock.error).toHaveBeenCalledWith(
+      'Logout failed',
+      expect.objectContaining({ operation: 'logout' })
+    );
+  });
+
+  it('summarizes relative logout targets without leaking query details', async () => {
+    getSessionMock.mockResolvedValue({
+      user: {
+        id: 'user-1',
+        instanceId: 'de-musterhausen',
+        roles: ['editor'],
+      },
+    });
+    logoutSessionMock.mockResolvedValue('/signed-out?code=secret-code');
+
+    const { logoutHandler } = await import('./handlers.js');
+    const response = await logoutHandler(
+      new Request('http://localhost/auth/logout', {
+        method: 'POST',
+        headers: { cookie: 'sva_auth_session=session-rel' },
+      })
+    );
+
+    expect(response.status).toBe(302);
+    expect(loggerMock.info).toHaveBeenCalledWith(
+      'Logout successful',
+      expect.objectContaining({
+        redirect_target_path: '/signed-out',
+        has_sensitive_query: true,
+      })
+    );
+    const loggedMetadata = loggerMock.info.mock.calls.find(([message]) => message === 'Logout successful')?.[1];
+    expect(loggedMetadata?.redirect_target_origin).toBeUndefined();
   });
 });

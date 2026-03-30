@@ -8,6 +8,7 @@ import { createServerOnlyFn } from '@tanstack/react-start';
 import React from 'react';
 
 import AppShell from '../components/AppShell';
+import DevelopmentLogConsole from '../components/DevelopmentLogConsole';
 import ErrorFallback from '../components/ErrorFallback';
 import NotFound from '../components/NotFound';
 import { AuthProvider } from '../providers/auth-provider';
@@ -142,6 +143,7 @@ function RootDocument({ children }: Readonly<{ children: React.ReactNode }>) {
             },
           ]}
         />
+        {import.meta.env.DEV ? <DevelopmentLogConsole /> : null}
         <Scripts />
       </body>
     </html>

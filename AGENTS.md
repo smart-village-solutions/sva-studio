@@ -49,6 +49,7 @@
 ## Review-Agents
 
 - Für normale PRs und Code-Reviews steht `pr-review-orchestrator.agent.md` unter `.github/agents/` bereit.
+- Für das iterative Fixen von PRs (Threads, Tests, Quality Gates) steht `pr-fixer.agent.md` unter `.github/agents/` bereit.
 - Für Proposal-Reviews bleibt `proposal-review-orchestrator.agent.md` der Einstiegspunkt.
 - Spezialisierte Reviewer ergänzen die bestehende Matrix für:
   - Testqualität (`test-quality.agent.md`)
@@ -102,6 +103,7 @@ Die verbindlichen Entwicklungsrichtlinien liegen unter [DEVELOPMENT_RULES.md](DE
 
 1. **Texte & Übersetzungen**: Keine hardcoded Strings, immer `t('key')` verwenden
 2. **Logging**: Server-Code nutzt SDK Logger (`@sva/sdk`), nie `console.*`
+   Development: Console + lokale Dev-Konsole sind erlaubt; Production bleibt OTEL-first ohne Console-Ausgabe
 3. **Security**: Input-Validation client+server, PII-Schutz in Logs
 4. **CSS**: Design-System verwenden, keine inline-styles (außer dynamische Daten)
 5. **UI-Standard**: Neue UI mit `shadcn/ui` bauen; keine parallelen Basis-Komponenten ohne dokumentierte Architekturentscheidung

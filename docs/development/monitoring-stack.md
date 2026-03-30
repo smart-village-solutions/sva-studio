@@ -46,6 +46,11 @@ Die Dashboards werden beim Start automatisch aus dem Repo geladen:
 
 ## OTEL SDK (App-Integration)
 
+Das Logging-Modell unterscheidet zwei feste Betriebsmodi:
+
+- Development: Console und lokale Dev-Konsole sind aktiv; OTEL wird nur als aktiver Exportpfad genutzt, wenn das SDK erfolgreich initialisiert wurde.
+- Production: Console und Dev-Konsole sind aus; OTEL ist verpflichtender Exportpfad.
+
 Beispiel für die Initialisierung:
 
 ```ts
@@ -57,6 +62,13 @@ await startOtelSdk({
   otlpEndpoint: process.env.OTEL_EXPORTER_OTLP_ENDPOINT
 });
 ```
+
+Hinweis fuer lokale Entwicklung:
+
+- Ohne laufenden Monitoring-Stack bleibt die App funktionsfaehig.
+- Console und Dev-Konsole liefern weiterhin lokale Diagnose.
+- Fuer einen bewusst schlanken lokalen Lauf kann OTEL via `ENABLE_OTEL=false` deaktiviert werden.
+- Die lokale Dev-Konsole liest redaktierte Server-Logs nur in Development; in Production gibt es dafuer keinen aktiven UI- oder Serverpfad.
 
 Custom Metrics (Business Events):
 

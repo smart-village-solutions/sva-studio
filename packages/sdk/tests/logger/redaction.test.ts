@@ -25,4 +25,19 @@ describe('logger redaction', () => {
     expect(sanitized['x-csrf-token']).toBe('[REDACTED]');
     expect(sanitized.safe).toBe('ok');
   });
+
+  it('redacts sensitive query params, jwt payloads and inline bearer tokens in strings', () => {
+    const sanitized = redactObject({
+      redirect_target:
+        'https://issuer.example/logout?id_token_hint=eyJhbGciOiJub25lIn0.eyJlbWFpbCI6InRlc3RAZXhhbXBsZS5vcmcifQ.signature&post_logout_redirect_uri=http://localhost:3000',
+      authorization_header: 'Authorization: Bearer secret-token-value',
+      note: 'callback failed for bearer eyJhbGciOiJub25lIn0.eyJzdWIiOiIxIn0.signature and code=abc123',
+    });
+
+    expect(sanitized.redirect_target).toContain('id_token_hint=[REDACTED]');
+    expect(sanitized.redirect_target).not.toContain('test@example.org');
+    expect(sanitized.authorization_header).toContain('Authorization: [REDACTED]');
+    expect(sanitized.note).toContain('[REDACTED_JWT]');
+    expect(sanitized.note).toContain('code=[REDACTED]');
+  });
 });

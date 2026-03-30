@@ -41,8 +41,6 @@ export async function ensureSdkInitialized() {
     const logger = sdk.createSdkLogger({
       component: 'sdk-init',
       level: 'info',
-      enableConsole: true,
-      enableOtel: false,
     });
     const bootstrapTimeoutMs = parseBootstrapTimeoutMs(process.env.SVA_OTEL_BOOTSTRAP_TIMEOUT_MS);
     let bootstrapTimeoutHandle: ReturnType<typeof setTimeout> | undefined;
@@ -52,7 +50,7 @@ export async function ensureSdkInitialized() {
       sdk.getInstanceConfig();
       instanceConfigValidated = true;
 
-      await Promise.race([
+      const otelResult = await Promise.race<Awaited<ReturnType<typeof sdk.initializeOtelSdk>>>([
         sdk.initializeOtelSdk(),
         new Promise((_, reject) => {
           bootstrapTimeoutHandle = setTimeout(() => {
@@ -62,7 +60,17 @@ export async function ensureSdkInitialized() {
         }),
       ]);
       sdkInitialized = true;
-      logger.info('SDK initialisiert');
+      if (otelResult.status === 'ready') {
+        logger.info('SDK initialisiert');
+      } else if (otelResult.status === 'disabled') {
+        logger.info('SDK initialisiert ohne OTEL', {
+          reason: otelResult.reason,
+        });
+      } else {
+        logger.error('SDK-Initialisierung ohne OTEL fortgesetzt', {
+          reason: otelResult.reason,
+        });
+      }
     } catch (error) {
       if (!instanceConfigValidated) {
         logger.error('SDK-Initialisierung wegen ungültiger Instance-Konfiguration abgebrochen', {

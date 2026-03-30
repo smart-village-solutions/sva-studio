@@ -104,7 +104,7 @@ Das Referenzprofil `acceptance-hb` wird env-only betrieben. Sowohl nicht-sensiti
 | `SVA_IMAGE_REF` | kein Default | Vollständige Image-Referenz `${SVA_REGISTRY}/${SVA_IMAGE_REPOSITORY}@${SVA_IMAGE_DIGEST}` |
 | `SVA_MONITORING_CONFIG_INIT_IMAGE_TAG` | `0.0.0-dev` | Image-Tag des Monitoring-Init-Images; für Produktion Digest oder unveränderlichen Tag verwenden |
 | `SVA_ALLOWED_INSTANCE_IDS` | leer | Kommagetrennte erlaubte instanceIds |
-| `ENABLE_OTEL` | `true` | OpenTelemetry für die App aktivieren |
+| `ENABLE_OTEL` | `true` | OpenTelemetry für lokale Deaktivierungsfälle in Development; im produktionsnahen Betrieb bleibt OTEL verpflichtend |
 | `OTEL_SERVICE_NAME` | `sva-studio` | Service-Name für OTEL Resource Attributes |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | `http://otel-collector:4318` | Interner OTLP-HTTP-Endpoint |
 | `GF_SECURITY_ADMIN_PASSWORD` | kein Default | Pflichtwert für den internen Grafana-Login |

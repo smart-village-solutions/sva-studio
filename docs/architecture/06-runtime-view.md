@@ -31,25 +31,28 @@ Fehlerpfad:
 3. IdP redirectet nach `/auth/callback?code=...&state=...`
 4. `callbackHandler()` validiert State, tauscht Code gegen Tokens und erstellt Redis-Session
 5. Session-Cookie wird gesetzt, Redirect zur App
-6. App ruft `/auth/me` fuer User-Kontext
+6. App ruft `/auth/me` fuer minimalen Auth-Kontext (`id`, `instanceId`, Rollen)
+7. Falls UI Profildaten wie Name oder E-Mail braucht, laedt sie diese ueber dedizierte Profil-Endpunkte getrennt nach
 
 Fehlerpfad:
 
 - Fehlender/abgelaufener State -> Redirect mit Fehlerstatus
 - Token-/Refresh-Fehler -> Session invalidiert oder unauthorized Antwort
+- Profilfehler beruehren die Session-Hydration nicht; die App behaelt ihren minimalen Auth-State
 
 ### Szenario 3: Logging/Observability bei Server-Requests
 
 1. Server-Code loggt via `createSdkLogger(...)`
 2. Context (workspace/request) wird über AsyncLocalStorage injiziert
-3. Direct OTEL Transport emittiert LogRecords an globalen LoggerProvider
-4. OTEL Processor redacted und filtert Labels
-5. Export via OTLP an Collector -> Loki/Prometheus
+3. In Development schreiben Console- und Dev-UI-Transport die redaktierten Logs sofort lokal aus
+4. Sobald OTEL bereit ist, werden bestehende Logger um den Direct-OTEL-Transport erweitert
+5. OTEL Processor redacted und filtert Labels
+6. Export via OTLP an Collector -> Loki/Prometheus
 
 Fehlerpfad:
 
-- OTEL nicht initialisiert: Console-Fallback bleibt aktiv
-- fehlender LoggerProvider: OTEL-Emission no-op, App bleibt lauffähig
+- Development ohne OTEL-Readiness: Console und Dev-Konsole bleiben aktiv, die App bleibt lauffähig
+- Production ohne OTEL-Readiness: der Start gilt als Fehlerzustand und wird fail-closed behandelt
 
 ### Szenario 3a: Auth-Route wirft Fehler außerhalb des Request-Kontexts
 
@@ -137,13 +140,14 @@ Referenzen:
 2. `handleCallback()` erstellt Session und triggert `jitProvisionAccount(...)`.
 3. Account wird per `INSERT ... ON CONFLICT (keycloak_subject, instance_id)` idempotent angelegt/aktualisiert.
 4. Erstanlage wird als `user.jit_provisioned` auditierbar protokolliert.
-5. User öffnet `/account`, Profil wird über `GET /api/v1/iam/users/me/profile` geladen.
-6. Änderungen werden über `PATCH /api/v1/iam/users/me/profile` gespeichert.
+5. User oeffnet `/account`, Profil wird ueber `GET /api/v1/iam/users/me/profile` geladen.
+6. Aenderungen werden ueber `PATCH /api/v1/iam/users/me/profile` gespeichert.
 
 Fehlerpfad:
 
 - JIT-Fehler blockiert den Login nicht, wird aber strukturiert geloggt.
-- Profil-Update ohne gültigen CSRF-Header wird serverseitig abgewiesen.
+- Profil-Update ohne gueltigen CSRF-Header wird serverseitig abgewiesen.
+- Session und Autorisierung bleiben auch bei temporaer nicht verfuegbaren Profildaten stabil, da Name/E-Mail nicht Teil des Session-Kerns sind.
 
 ### Szenario 9: Admin-Flow User- und Rollenverwaltung
 

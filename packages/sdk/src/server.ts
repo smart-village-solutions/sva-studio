@@ -12,6 +12,10 @@
 // ============================================================================
 export type { LoggerOptions } from './logger/index.server.js';
 export { createSdkLogger, redactObject } from './logger/index.server.js';
+export type { DevelopmentLogEntry } from './logger/dev-log-buffer.server.js';
+export { readDevelopmentLogEntries } from './logger/dev-log-buffer.server.js';
+export type { LoggingRuntimeConfig, OtelInitializationResult } from './logger/logging-runtime.server.js';
+export { getLoggingRuntimeConfig, getOtelInitializationResult } from './logger/logging-runtime.server.js';
 
 // ============================================================================
 // Request Context Middleware

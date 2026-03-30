@@ -1,7 +1,7 @@
 # ADR-007: Label Schema & PII Policy
 
 **Datum:** 6. Februar 2026
-**Status:** ⏳ Proposed
+**Status:** Accepted
 **Kontext:** Label-Standards, PII-Redaction & Retention
 **Entscheider:** SVA Studio Team
 
@@ -23,8 +23,10 @@ Wir definieren ein **striktes Label-Schema** mit **Whitelist**, **PII-Redaction*
 
 **PII Policy:**
 - PII wird **vor Export** redacted (Logger + OTEL Processor).
-- PII darf **nur im Payload** auftauchen, nie als Label.
-- E-Mail-Masking und Secret-Redaction sind verpflichtend.
+- PII darf **nicht frei** in Labels auftauchen und in Payloads nur minimiert, redacted oder zweckgebunden erscheinen.
+- E-Mail-Masking, Secret-Redaction und JWT-/Query-Parameter-Redaction sind verpflichtend.
+- Tokens und tokenhaltige Redirect- oder Logout-URLs sind in operativen Logs generell unzulaessig.
+- Pseudonyme technische IDs (`session_user_id`, `actor_account_id`, `db_keycloak_subject`) gelten ebenfalls als personenbeziehbar und duerfen nur bei begruendeter Betriebsnotwendigkeit im Payload erscheinen.
 
 **Retention:**
 - **Development:** 7 Tage (lokaler Stack)
@@ -72,17 +74,17 @@ Die Entscheidung legt daher verbindliche Regeln fest, die **technisch durchgeset
 - ❌ Weniger Flexibilität bei Ad-hoc-Labels.
 - ❌ Zusätzlicher Implementierungsaufwand (Processor + Tests).
 
-**Mitigation:** Standardisierte Payload-Felder ermöglichen Details ohne Indexierung (z. B. `user_id` als Feld).
+**Mitigation:** Standardisierte Payload-Felder ermoeglichen Details ohne Indexierung, bleiben aber weiter dem Prinzip der Datenminimierung unterworfen.
 
 ---
 
 ## Implementierung / Ausblick
 
-- [ ] Logger-Redaction-Filter für `password`, `token`, `authorization`, `api_key`, `secret`.
-- [ ] OTEL Processor mit Label-Whitelist und Drop-Policy.
-- [ ] Promtail Relabeling Rules zur Entfernung verbotener Labels.
-- [ ] Tests für Label-Validation & PII-Redaction.
-- [ ] Dokumentation des Schemas in `docs/development/monitoring-stack.md`.
+- [x] Logger-Redaction-Filter fuer `password`, `token`, `authorization`, `api_key`, `secret` und sensitive Query-Parameter.
+- [x] OTEL Processor mit Label-Whitelist und Drop-Policy.
+- [x] Promtail Relabeling Rules zur Entfernung verbotener Labels.
+- [x] Tests fuer Label-Validation & PII-Redaction.
+- [x] Dokumentation des Schemas in Logging-/Monitoring-Dokumentation.
 
 ---
 
@@ -94,4 +96,4 @@ Die Policy ist stack-agnostisch und kann bei Backend-Wechsel unverändert übern
 
 **Links:**
 - [ADR-004: Monitoring Stack – Loki, Grafana & Prometheus](ADR-004-monitoring-stack-loki-grafana-prometheus.md)
-- [Design: Docker-basierter Monitoring Stack](../../../openspec/changes/add-docker-monitoring-dev-stack/design.md)
+- [Logging-Architektur](../logging-architecture.md)

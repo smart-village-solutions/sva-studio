@@ -16,7 +16,7 @@ import { BatchLogRecordProcessor, LogRecordProcessor, type SdkLogRecord } from '
 import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
 import { logs } from '@opentelemetry/api-logs';
 
-import { setGlobalLoggerProvider } from './logger-provider.server';
+import { setGlobalLoggerProvider } from './logger-provider.server.js';
 
 export interface WorkspaceContext {
   workspaceId?: string;
@@ -34,8 +34,15 @@ const forbiddenLabelKeys = new Set([
   'user_id',
   'session_id',
   'email',
+  'actor_user_id',
+  'session_user_id',
+  'actor_account_id',
+  'keycloak_subject',
+  'db_keycloak_subject',
   'request_id',
   'token',
+  'id_token',
+  'id_token_hint',
   'authorization',
   'api_key',
   'secret',
@@ -43,14 +50,47 @@ const forbiddenLabelKeys = new Set([
 ]);
 
 const emailRegex = /([\w.%+-])([\w.%+-]*)(@[\w-]+(?:\.[\w-]+)*\.[A-Za-z]{2,})/g;
+const jwtLikeRegex = /\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)?\b/g;
+const stringSecretPatterns: ReadonlyArray<readonly [RegExp, string]> = [
+  [/\b(authorization:\s*)(bearer\s+)?[^\s,]+/gi, '$1[REDACTED]'],
+  [/\b(bearer\s+)[A-Za-z0-9._~+/=-]+/gi, '$1[REDACTED]'],
+  [
+    /([?&](?:access_token|refresh_token|id_token|id_token_hint|token|code|client_secret|api_key|authorization)=)([^&#\s]+)/gi,
+    '$1[REDACTED]',
+  ],
+  [
+    /((?:^|[\s,(])(?:access_token|refresh_token|id_token|id_token_hint|token|code|client_secret|api_key|authorization|password|secret|session|cookie|csrf)[\w.-]{0,20}[=:]\s*)([^\s,)]+)/gi,
+    '$1[REDACTED]',
+  ],
+];
 
 const maskEmail = (value: string): string => {
   return value.replace(emailRegex, (_, firstChar, _middle, domain) => `${firstChar}***${domain}`);
 };
 
+const redactString = (value: string): string => {
+  let next = maskEmail(value);
+  next = next.replace(jwtLikeRegex, '[REDACTED_JWT]');
+  for (const [pattern, replacement] of stringSecretPatterns) {
+    next = next.replace(pattern, replacement);
+  }
+  return next;
+};
+
 const redactValue = (value: unknown): unknown => {
   if (typeof value === 'string') {
-    return maskEmail(value);
+    return redactString(value);
+  }
+  if (Array.isArray(value)) {
+    return value.map((entry) => redactValue(entry));
+  }
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(([key, entry]) => [
+        key,
+        forbiddenLabelKeys.has(key) ? '[REDACTED]' : redactValue(entry),
+      ])
+    );
   }
   return value;
 };
@@ -84,8 +124,11 @@ class RedactingLogProcessor implements LogRecordProcessor {
     const mutableAttributes = attributes as Record<string, AttributeValue>;
 
     const contextPayload = mutableAttributes.context;
+    if (typeof logRecord.body === 'string') {
+      logRecord.body = redactString(logRecord.body);
+    }
     if (contextPayload && typeof logRecord.body === 'string') {
-      logRecord.body = `${logRecord.body} ${JSON.stringify({ context: contextPayload })}`;
+      logRecord.body = `${logRecord.body} ${JSON.stringify({ context: redactValue(contextPayload) })}`;
     }
 
     for (const key of Object.keys(mutableAttributes)) {

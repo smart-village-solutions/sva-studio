@@ -3,7 +3,7 @@ import path from 'node:path';
 import { tmpdir } from 'node:os';
 import { describe, expect, it, vi } from 'vitest';
 
-const mockMkdir = vi.fn().mockResolvedValue(undefined);
+const mockMkdtemp = vi.fn().mockResolvedValue('/tmp/sva-router-diagnostics-abc123');
 const mockWriteFile = vi.fn().mockResolvedValue(undefined);
 const mockLogger = {
   error: vi.fn(),
@@ -16,7 +16,7 @@ vi.mock('node:fs/promises', async (importOriginal) => {
   return {
     ...(actual as object),
     default: actual,
-    mkdir: mockMkdir,
+    mkdtemp: mockMkdtemp,
     writeFile: mockWriteFile,
   };
 });
@@ -26,7 +26,7 @@ vi.mock('@sva/sdk/server', () => ({
 }));
 
 describe('router-diagnostics.server', () => {
-  const diagnosticsFile = path.join(tmpdir(), 'sva-router-diagnostics', 'snapshot.json');
+  const diagnosticsFile = path.join('/tmp/sva-router-diagnostics-abc123', 'snapshot.json');
 
   const routeTree = {
     id: '__root__',
@@ -45,10 +45,7 @@ describe('router-diagnostics.server', () => {
 
     await emitRouterDiagnosticsOnce(router as never, routeTree);
 
-    expect(mockMkdir).toHaveBeenCalledWith(path.join(tmpdir(), 'sva-router-diagnostics'), {
-      mode: 0o700,
-      recursive: true,
-    });
+    expect(mockMkdtemp).toHaveBeenCalledWith(path.join(tmpdir(), 'sva-router-diagnostics-'));
     expect(mockWriteFile).toHaveBeenCalledWith(
       diagnosticsFile,
       expect.stringContaining('"routeTreeNodeCount"'),

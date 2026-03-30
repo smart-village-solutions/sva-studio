@@ -72,7 +72,9 @@
         "env": "CI"
       }
     ],
-    "sharedGlobals": ["{workspaceRoot}/tsconfig.base.json", "{workspaceRoot}/pnpm-lock.yaml"]
-  },
-  "analytics": true
+    "sharedGlobals": [
+      "{workspaceRoot}/tsconfig.base.json",
+      "{workspaceRoot}/pnpm-lock.yaml"
+    ]
+  }
 }

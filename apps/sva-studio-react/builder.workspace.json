@@ -1,0 +1,28 @@
+{
+  "folders": [
+    {
+      "name": "sva-studio-react",
+      "path": "."
+    },
+    {
+      "name": "auth",
+      "path": "../../packages/auth"
+    },
+    {
+      "name": "core",
+      "path": "../../packages/core"
+    },
+    {
+      "name": "monitoring-client",
+      "path": "../../packages/monitoring-client"
+    },
+    {
+      "name": "routing",
+      "path": "../../packages/routing"
+    },
+    {
+      "name": "sdk",
+      "path": "../../packages/sdk"
+    }
+  ]
+}

@@ -74,7 +74,6 @@ export const SheetContent = ({
     />
     <DialogPrimitive.Content
       aria-label={ariaLabel}
-      aria-describedby={undefined}
       className={cn(
         'fixed top-0 z-50 h-full w-[18rem] border-border bg-sidebar shadow-shell focus-visible:outline-none lg:hidden',
         getSheetPositionClasses(side),
@@ -82,6 +81,13 @@ export const SheetContent = ({
       )}
     >
       <DialogPrimitive.Title className="sr-only">{ariaLabel}</DialogPrimitive.Title>
+      <DialogPrimitive.Close
+        aria-label={closeLabel}
+        className="absolute right-3 top-3 z-10 rounded-md border border-border bg-sidebar px-3 py-1 text-sm font-medium text-sidebar-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        type="button"
+      >
+        {closeLabel}
+      </DialogPrimitive.Close>
       <div className="h-full">{children}</div>
     </DialogPrimitive.Content>
   </DialogPrimitive.Portal>

@@ -1,3 +1,4 @@
+import type { RouteFactory } from '@sva/sdk';
 import { createRouter, type AnyRoute, type RootRoute } from '@tanstack/react-router';
 import { createIsomorphicFn } from '@tanstack/react-start';
 import { pluginExampleRoutes } from '@sva/plugin-example';
@@ -107,7 +108,7 @@ const getRouteGuardUser = createIsomorphicFn()
     }
   });
 
-type AppRouteFactory<TRoute extends AnyRoute = AnyRoute> = (rootRoute: RootRoute) => TRoute;
+type AppRouteFactory<TRoute extends AnyRoute = AnyRoute> = RouteFactory<RootRoute, TRoute>;
 type MaterializedRoutes<TFactories extends readonly AppRouteFactory[]> = {
   readonly [K in keyof TFactories]: ReturnType<TFactories[K]>;
 };
@@ -148,7 +149,7 @@ export const createRuntimeRouteTree = <
 ) => {
   const extensionRouteFactories = [
     ...runtimeAuthRouteFactories,
-    ...(pluginExampleRoutes as unknown as readonly AppRouteFactory[]),
+    ...pluginExampleRoutes,
   ] as const;
   const runtimeRoutes = [...materializeRoutes(runtimeCoreRouteFactories), ...materializeRoutes(extensionRouteFactories)] as const;
 

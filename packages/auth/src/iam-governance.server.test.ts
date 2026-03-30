@@ -1004,6 +1004,20 @@ describe('listGovernanceCasesHandler', () => {
     expect(crossInstanceResponse.status).toBe(403);
   });
 
+  it('rejects invalid governance type filters before querying', async () => {
+    const response = await listGovernanceCasesHandler(
+      new Request('http://localhost/iam/governance/workflows?instanceId=de-musterhausen&type=unexpected')
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        code: 'invalid_request',
+      },
+    });
+    expect(state.queryHandler).toBeNull();
+  });
+
   it('lists governance cases with filters and reports database failures', async () => {
     state.queryHandler = (text, values) => {
       if (text.includes('FROM iam.permission_change_requests request')) {

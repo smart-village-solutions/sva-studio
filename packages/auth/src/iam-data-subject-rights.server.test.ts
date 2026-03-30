@@ -379,6 +379,48 @@ describe('iam data subject rights handlers', () => {
     expect(payload.data.legalHolds).toEqual([]);
   });
 
+  it('returns not_found when the requester account snapshot disappears before the self-service overview query completes', async () => {
+    state.queryHandler = (text) => {
+      if (text.includes('FROM iam.accounts a')) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              id: '550e8400-e29b-41d4-a716-446655440000',
+            },
+          ],
+        };
+      }
+      if (text.includes('SELECT id, processing_restricted_at::text')) {
+        return {
+          rowCount: 0,
+          rows: [],
+        };
+      }
+      if (text.includes('FROM iam.data_subject_requests')) {
+        return { rowCount: 0, rows: [] };
+      }
+      if (text.includes('FROM iam.data_subject_export_jobs')) {
+        return { rowCount: 0, rows: [] };
+      }
+      if (text.includes('FROM iam.legal_holds')) {
+        return { rowCount: 0, rows: [] };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await getMyDataSubjectRightsHandler(
+      new Request('http://localhost/iam/me/data-subject-rights/requests', { method: 'GET' })
+    );
+
+    expect(response.status).toBe(404);
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        code: 'not_found',
+      },
+    });
+  });
+
   it('exports csv format with flattened key-value rows', async () => {
     state.queryHandler = (text) => {
       if (text.includes('FROM iam.accounts a')) {

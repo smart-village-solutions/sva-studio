@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
+import type { IamGovernanceCaseType } from '@sva/core';
 import { createSdkLogger, getWorkspaceContext, withRequestContext } from '@sva/sdk/server';
 
 import { withAuthenticatedUser } from '../middleware.server.js';
@@ -27,6 +28,12 @@ const GOVERNANCE_COMPLIANCE_EXPORT_ROLES = new Set([
   'system_admin',
   'security_admin',
   'compliance_officer',
+]);
+const GOVERNANCE_CASE_TYPES = new Set<IamGovernanceCaseType>([
+  'permission_change',
+  'delegation',
+  'impersonation',
+  'legal_acceptance',
 ]);
 
 type GovernanceOperation =
@@ -74,6 +81,13 @@ const parseWorkflowRequest = async (request: Request): Promise<GovernanceWorkflo
 
   const parsed = governanceRequestSchema.safeParse(body);
   return parsed.success ? parsed.data : null;
+};
+
+const readGovernanceCaseType = (value: string | undefined): IamGovernanceCaseType | undefined | null => {
+  if (!value) {
+    return undefined;
+  }
+  return GOVERNANCE_CASE_TYPES.has(value as IamGovernanceCaseType) ? (value as IamGovernanceCaseType) : null;
 };
 
 const withInstanceScopedDb = async <T>(
@@ -1077,12 +1091,7 @@ export const listGovernanceCasesHandler = async (request: Request): Promise<Resp
 
       const url = new URL(request.url);
       const instanceId = readString(url.searchParams.get('instanceId')) ?? user.instanceId;
-      const type = readString(url.searchParams.get('type')) as
-        | 'permission_change'
-        | 'delegation'
-        | 'impersonation'
-        | 'legal_acceptance'
-        | undefined;
+      const type = readGovernanceCaseType(readString(url.searchParams.get('type')));
       const status = readString(url.searchParams.get('status'));
       const search = readString(url.searchParams.get('search'));
       const { page, pageSize } = readPage(request);
@@ -1092,6 +1101,9 @@ export const listGovernanceCasesHandler = async (request: Request): Promise<Resp
       }
       if (user.instanceId && user.instanceId !== instanceId) {
         return createApiError(403, 'forbidden', 'Instanzkontext unzulässig.', getWorkspaceContext().requestId);
+      }
+      if (type === null) {
+        return createApiError(400, 'invalid_request', 'Ungültiger Governance-Typfilter.', getWorkspaceContext().requestId);
       }
 
       try {

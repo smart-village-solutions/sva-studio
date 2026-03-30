@@ -9,6 +9,7 @@ export type IamCockpitTabKey = 'rights' | 'governance' | 'dsr';
 const RIGHTS_ROLES = new Set(['iam_admin', 'support_admin', 'system_admin']);
 const GOVERNANCE_ROLES = new Set(['iam_admin', 'support_admin', 'system_admin', 'security_admin', 'compliance_officer']);
 const DSR_ROLES = new Set(['iam_admin', 'support_admin', 'system_admin']);
+const LEGACY_ADMIN_ROLES = new Set(['admin']);
 
 const readFlag = (value: string | undefined, fallback: boolean) => {
   if (value === undefined) {
@@ -19,7 +20,7 @@ const readFlag = (value: string | undefined, fallback: boolean) => {
 };
 
 const hasRole = (user: UserWithRoles | null | undefined, allowedRoles: ReadonlySet<string>) =>
-  Boolean(user?.roles?.some((role) => allowedRoles.has(role)));
+  Boolean(user?.roles?.some((role) => allowedRoles.has(role) || LEGACY_ADMIN_ROLES.has(role)));
 
 export const isIamCockpitEnabled = () =>
   isIamAdminEnabled() || readFlag(import.meta.env.VITE_ENABLE_IAM_ADMIN_VIEWER, import.meta.env.DEV);
@@ -41,6 +42,6 @@ export const getAllowedIamCockpitTabs = (user: UserWithRoles | null | undefined)
 export const hasIamCockpitAccessRole = (user: UserWithRoles | null | undefined) =>
   getAllowedIamCockpitTabs(user).length > 0;
 
-// Compatibility wrappers for existing imports/tests.
+// Compatibility wrappers for existing imports/tests, including the legacy `admin` role alias.
 export const isIamViewerEnabled = isIamCockpitEnabled;
 export const hasIamViewerAdminRole = hasIamCockpitAccessRole;

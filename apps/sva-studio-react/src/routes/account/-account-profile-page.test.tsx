@@ -7,20 +7,19 @@ import { AccountProfilePage } from './-account-profile-page';
 const getMyProfileMock = vi.fn();
 const updateMyProfileMock = vi.fn();
 const asIamErrorMock = vi.fn();
+const fetchMock = vi.fn();
 const authMockValue = {
   user: {
     id: 'user-1',
-    name: 'Jane Doe',
-    email: 'jane@example.com',
     roles: ['editor'],
   },
   isAuthenticated: true,
   isLoading: false,
   error: null,
+  hasResolvedSession: true,
   refetch: vi.fn(),
   logout: vi.fn(),
   invalidatePermissions: vi.fn(),
-  updateProfile: vi.fn(),
 };
 
 vi.mock('../../lib/iam-api', () => ({
@@ -53,18 +52,20 @@ describe('AccountProfilePage', () => {
   });
 
   beforeEach(() => {
+    vi.stubGlobal('fetch', fetchMock);
+    fetchMock.mockReset();
     getMyProfileMock.mockReset();
     updateMyProfileMock.mockReset();
     asIamErrorMock.mockReset();
     asIamErrorMock.mockImplementation((cause: unknown) => cause);
+    authMockValue.hasResolvedSession = true;
+    authMockValue.isLoading = false;
     authMockValue.isAuthenticated = true;
     authMockValue.user = {
       id: 'user-1',
-      name: 'Jane Doe',
-      email: 'jane@example.com',
       roles: ['editor'],
     };
-    authMockValue.updateProfile.mockReset();
+    authMockValue.refetch.mockReset();
   });
 
   it('loads profile and submits updates', async () => {
@@ -149,10 +150,6 @@ describe('AccountProfilePage', () => {
         preferredLanguage: 'en',
       })
     );
-    expect(authMockValue.updateProfile).toHaveBeenCalledWith({
-      name: 'Janet Doe',
-      email: 'jane@example.com',
-    });
   });
 
   it('shows unauthenticated state when profile cannot be loaded and user is not authenticated', async () => {
@@ -167,6 +164,36 @@ describe('AccountProfilePage', () => {
     await waitFor(() => {
       expect(screen.getByRole('status').textContent).toContain('Bitte zuerst anmelden, um Ihr Konto zu sehen.');
     });
+    expect(screen.getByRole('link', { name: 'Login' }).getAttribute('href')).toBe('/auth/login?returnTo=%2F');
+  });
+
+  it('waits for resolved auth before loading the profile', () => {
+    authMockValue.isLoading = true;
+    authMockValue.hasResolvedSession = false;
+
+    render(<AccountProfilePage />);
+
+    expect(getMyProfileMock).not.toHaveBeenCalled();
+    expect(screen.getByRole('status').textContent).toContain('Profil wird geladen ...');
+  });
+
+  it('clears an invalid session and offers re-login when the profile request returns 401', async () => {
+    const loadError = { status: 401, code: 'unauthorized', message: 'Unauthorized' };
+    asIamErrorMock.mockReturnValue(loadError);
+    getMyProfileMock.mockRejectedValue(loadError);
+    fetchMock.mockResolvedValue({ ok: true });
+
+    render(<AccountProfilePage />);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith('/auth/logout', {
+        method: 'POST',
+        credentials: 'include',
+        redirect: 'manual',
+      });
+    });
+    expect(authMockValue.refetch).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('link', { name: 'Login' }).getAttribute('href')).toBe('/auth/login?returnTo=%2F');
   });
 
   it('derives the display name from first and last name when no custom display name exists', async () => {

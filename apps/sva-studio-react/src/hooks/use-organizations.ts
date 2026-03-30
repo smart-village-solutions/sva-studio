@@ -79,6 +79,11 @@ export const useOrganizations = (initial?: Partial<OrganizationFilters>): UseOrg
   const [mutationError, setMutationError] = React.useState<IamHttpError | null>(null);
   const [selectedOrganization, setSelectedOrganization] = React.useState<IamOrganizationDetail | null>(null);
   const [detailLoading, setDetailLoading] = React.useState(false);
+  const organizationsRef = React.useRef(organizations);
+  const totalRef = React.useRef(total);
+
+  organizationsRef.current = organizations;
+  totalRef.current = total;
 
   React.useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedSearch(filters.search.trim()), 300);
@@ -149,8 +154,14 @@ export const useOrganizations = (initial?: Partial<OrganizationFilters>): UseOrg
     async <T,>(action: () => Promise<{ data: T }>, options?: { organizationId?: string }): Promise<T | null> => {
       setMutationError(null);
       try {
+        const previousOrganizations = organizationsRef.current;
+        const previousTotal = totalRef.current;
         const result = await action();
-        await loadOrganizations({ preserveStateOnError: true });
+        const reloaded = await loadOrganizations({ preserveStateOnError: true });
+        if (!reloaded) {
+          setOrganizations(previousOrganizations);
+          setTotal(previousTotal);
+        }
         if (options?.organizationId) {
           await loadOrganization(options.organizationId);
         }

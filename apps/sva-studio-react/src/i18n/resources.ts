@@ -217,6 +217,58 @@ export const i18nResources = {
         empty: 'Noch keine Log-Einträge vorhanden.',
       },
     },
+    home: {
+      hero: {
+        eyebrow: 'Studio Workspace',
+        subtitle: 'Smart Village App Self-Service Plattform für Inhalte, Module und Erweiterungen.',
+        body: 'Verwalten Sie Inhalte, Kontokontext und angeschlossene Module in einer gemeinsamen Oberfläche mit serverseitig abgesicherter Authentifizierung und Berechtigungsprüfung.',
+        primaryAction: 'Inhalte öffnen',
+        secondaryAction: 'Konto öffnen',
+        loginAction: 'Anmelden',
+      },
+      session: {
+        title: 'Sitzungsstatus',
+        description: 'Die Startseite zeigt nur den aktuellen Zugangszustand. Rollen- oder Authorize-Diagnostik gehört nicht in die Produktoberfläche.',
+        loading: 'Sitzung wird geladen ...',
+        authenticatedTitle: 'Sie sind angemeldet.',
+        authenticatedBody: 'Ihr Zugriff wird über den aktuellen Instanzkontext und serverseitige Berechtigungen gesteuert.',
+        unauthenticatedTitle: 'Keine aktive Sitzung.',
+        unauthenticatedBody: 'Melden Sie sich an, um Inhalte, Module und Verwaltungsfunktionen im freigegebenen Kontext zu nutzen.',
+        instance: 'Instanz: {{instanceId}}',
+      },
+      sections: {
+        overviewTitle: 'Direkte Einstiege',
+        overviewBody: 'Nutzen Sie die wichtigsten Bereiche direkt aus der Startseite. Details zu Rollen, Guards und technischen Entscheidungen bleiben in den jeweiligen Fachbereichen verankert.',
+      },
+      guest: {
+        title: 'Anmeldung erforderlich',
+        description: 'Mit ungültiger oder fehlender Sitzung werden keine geschützten Inhalte angezeigt. Melden Sie sich an, um auf die freigegebenen Bereiche zuzugreifen.',
+        action: 'Zum Login',
+      },
+      cards: {
+        content: {
+          title: 'Inhalte',
+          description: 'Pflegen Sie redaktionelle Inhalte, Metadaten und Veröffentlichungsstände in der zentralen Inhaltsverwaltung.',
+          action: 'Inhalte öffnen',
+        },
+        account: {
+          title: 'Konto',
+          description: 'Prüfen Sie Ihr Profil, Ihren Datenschutzkontext und weitere selbstbedienbare Kontofunktionen.',
+          action: 'Konto öffnen',
+        },
+        interfaces: {
+          title: 'Schnittstellen',
+          description: 'Überblicken Sie angebundene Integrationen und öffnen Sie die verwalteten Schnittstellenbereiche.',
+          action: 'Schnittstellen öffnen',
+        },
+      },
+      authError: {
+        loginFailed: 'Login fehlgeschlagen. Bitte erneut versuchen.',
+        stateExpired: 'Login abgebrochen oder abgelaufen. Bitte erneut anmelden.',
+        insufficientRole: 'Keine Berechtigung für diese Seite. Bitte wenden Sie sich an die Administration.',
+        sessionLoadFailed: 'Fehler beim Laden der Session. Bitte erneut anmelden.',
+      },
+    },
     interfaces: {
       page: {
         title: 'Schnittstellen',
@@ -1210,6 +1262,58 @@ export const i18nResources = {
         sourceBrowser: 'Browser',
         sourceServer: 'Server',
         empty: 'No log entries available yet.',
+      },
+    },
+    home: {
+      hero: {
+        eyebrow: 'Studio workspace',
+        subtitle: 'Smart Village App self-service platform for content, modules, and extensions.',
+        body: 'Manage content, account context, and connected modules in one shared interface with server-side authentication and authorization checks.',
+        primaryAction: 'Open content',
+        secondaryAction: 'Open account',
+        loginAction: 'Sign in',
+      },
+      session: {
+        title: 'Session status',
+        description: 'The home page only shows the current access state. Role or authorize diagnostics do not belong in the product surface.',
+        loading: 'Session is loading ...',
+        authenticatedTitle: 'You are signed in.',
+        authenticatedBody: 'Your access is controlled by the current instance context and server-side permissions.',
+        unauthenticatedTitle: 'No active session.',
+        unauthenticatedBody: 'Sign in to use content, modules, and administrative functions within the granted context.',
+        instance: 'Instance: {{instanceId}}',
+      },
+      sections: {
+        overviewTitle: 'Direct entry points',
+        overviewBody: 'Use the key areas directly from the home page. Details about roles, guards, and technical decisions remain within their dedicated feature areas.',
+      },
+      guest: {
+        title: 'Sign-in required',
+        description: 'No protected content is shown with a missing or invalid session. Sign in to access the granted areas.',
+        action: 'Go to login',
+      },
+      cards: {
+        content: {
+          title: 'Content',
+          description: 'Manage editorial content, metadata, and publication states in the central content area.',
+          action: 'Open content',
+        },
+        account: {
+          title: 'Account',
+          description: 'Review your profile, privacy context, and other self-service account capabilities.',
+          action: 'Open account',
+        },
+        interfaces: {
+          title: 'Interfaces',
+          description: 'Review connected integrations and open the managed interface sections.',
+          action: 'Open interfaces',
+        },
+      },
+      authError: {
+        loginFailed: 'Login failed. Please try again.',
+        stateExpired: 'Login was cancelled or expired. Please sign in again.',
+        insufficientRole: 'You do not have permission to access this page. Please contact an administrator.',
+        sessionLoadFailed: 'Session could not be loaded. Please sign in again.',
       },
     },
     interfaces: {

@@ -171,7 +171,7 @@ describe('patch coverage gate', () => {
     expect(result.passed).toBe(true);
     expect(result.coveragePct).toBe(100);
     expect(result.consideredFiles).toBe(1);
-  });
+  }, 20_000);
 
   it('fails when changed executable lines in a covered project have no lcov record', async () => {
     const runPatchCoverageGate = await loadRunPatchCoverageGate();

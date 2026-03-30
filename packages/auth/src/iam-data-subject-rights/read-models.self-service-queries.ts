@@ -125,12 +125,10 @@ export const loadDsrSelfServiceRows = async (
   client: QueryClient,
   input: { instanceId: string; accountId: string }
 ): Promise<DsrSelfServiceRows> => {
-  const [accountResult, requestResult, exportResult, holdResult] = await Promise.all([
-    queryAccountSnapshot(client, input),
-    querySelfServiceRequests(client, input),
-    querySelfServiceExportJobs(client, input),
-    querySelfServiceLegalHolds(client, input),
-  ]);
+  const accountResult = await queryAccountSnapshot(client, input);
+  const requestResult = await querySelfServiceRequests(client, input);
+  const exportResult = await querySelfServiceExportJobs(client, input);
+  const holdResult = await querySelfServiceLegalHolds(client, input);
 
   return {
     account: accountResult.rows[0]!,

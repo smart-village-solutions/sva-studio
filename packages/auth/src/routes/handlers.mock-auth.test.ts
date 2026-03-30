@@ -10,7 +10,7 @@ const loggerMock = {
 
 vi.mock('@sva/sdk/server', () => ({
   createSdkLogger: () => loggerMock,
-  initializeOtelSdk: vi.fn(async () => undefined),
+  initializeOtelSdk: vi.fn(async () => ({ status: 'ready' as const })),
   withRequestContext: requestContextMock,
 }));
 
@@ -61,8 +61,6 @@ describe('routes/handlers mock auth', () => {
     expect(await response.json()).toEqual({
       user: {
         id: 'seed:system_admin',
-        name: 'Mock User',
-        email: 'mock.user@sva.local',
         instanceId: 'de-musterhausen',
         roles: ['system_admin', 'iam_admin', 'support_admin', 'security_admin', 'interface_manager', 'app_manager', 'editor'],
       },

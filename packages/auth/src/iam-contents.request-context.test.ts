@@ -83,17 +83,17 @@ describe('iam-contents request-context', () => {
   it('delegates authenticated handlers and returns their response', async () => {
     state.withAuthenticatedUser.mockImplementation(async (_request, handler) =>
       handler({
-        user: { id: 'user-1', name: 'Editor', roles: ['editor'], instanceId: 'de-musterhausen' },
+        user: { id: 'user-1', roles: ['editor'], instanceId: 'de-musterhausen' },
         sessionId: 'session-1',
       })
     );
 
     const response = await withAuthenticatedContentHandler(
       new Request('http://localhost/api/v1/iam/contents'),
-      async (_request, ctx) => new Response(ctx.user.name)
+      async (_request, ctx) => new Response(ctx.user.id)
     );
 
-    expect(await response.text()).toBe('Editor');
+    expect(await response.text()).toBe('user-1');
   });
 
   it('returns a flat internal error response when auth handling throws unexpectedly', async () => {
@@ -134,7 +134,7 @@ describe('iam-contents request-context', () => {
   it('returns feature, role, actor and missing-account errors before producing a content actor', async () => {
     const request = new Request('http://localhost/api/v1/iam/contents');
     const ctx = {
-      user: { id: 'user-1', name: 'Editor', roles: ['editor'], instanceId: 'de-musterhausen' },
+      user: { id: 'user-1', roles: ['editor'], instanceId: 'de-musterhausen' },
       sessionId: 'session-1',
     };
 
@@ -188,7 +188,7 @@ describe('iam-contents request-context', () => {
       actor: {
         instanceId: 'de-musterhausen',
         actorAccountId: 'account-1',
-        actorDisplayName: 'Editor',
+        actorDisplayName: 'user-1',
         requestId: 'req-content',
         traceId: 'trace-content',
       },
@@ -218,7 +218,7 @@ describe('iam-contents request-context', () => {
       actor: {
         instanceId: 'de-musterhausen',
         actorAccountId: undefined,
-        actorDisplayName: 'Editor',
+        actorDisplayName: 'user-1',
         requestId: 'req-content',
         traceId: 'trace-content',
       },

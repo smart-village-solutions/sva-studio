@@ -35,8 +35,6 @@ export const createMockSessionUser = (): SessionUser => {
 
   return {
     id: process.env.SVA_MOCK_AUTH_USER_ID ?? 'seed:system_admin',
-    name: process.env.SVA_MOCK_AUTH_USER_NAME ?? 'Mock User',
-    email: process.env.SVA_MOCK_AUTH_USER_EMAIL ?? 'mock.user@sva.local',
     instanceId: process.env.SVA_MOCK_AUTH_INSTANCE_ID ?? 'de-musterhausen',
     roles: configuredRoles.length > 0 ? configuredRoles : [...DEFAULT_MOCK_AUTH_ROLES],
   };

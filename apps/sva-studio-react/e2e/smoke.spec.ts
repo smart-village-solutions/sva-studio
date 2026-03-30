@@ -26,7 +26,7 @@ const captureServerFnResponses = (page: Page) => {
 
     void response.text().then((body) => {
       entry.body = body;
-    });
+    }).catch(() => undefined);
   });
 
   return responses;

@@ -166,13 +166,11 @@ ORDER BY notification.created_at DESC;
   );
 
 export const loadAdminDsrRows = async (client: QueryClient, input: DsrFilters): Promise<AdminDsrSourceRows> => {
-  const [requests, exportJobs, legalHolds, profileCorrections, recipientNotifications] = await Promise.all([
-    queryAdminRequests(client, input),
-    queryAdminExportJobs(client, input),
-    queryAdminLegalHolds(client, input),
-    queryAdminProfileCorrections(client, input),
-    queryAdminRecipientNotifications(client, input),
-  ]);
+  const requests = await queryAdminRequests(client, input);
+  const exportJobs = await queryAdminExportJobs(client, input);
+  const legalHolds = await queryAdminLegalHolds(client, input);
+  const profileCorrections = await queryAdminProfileCorrections(client, input);
+  const recipientNotifications = await queryAdminRecipientNotifications(client, input);
 
   return {
     requests: requests.rows,

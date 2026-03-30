@@ -4,6 +4,7 @@ import type { LoginState } from '../types.js';
 
 export type LoginStateCookiePayload = LoginState & {
   state: string;
+  returnTo?: string;
 };
 
 export const encodeLoginStateCookie = (payload: LoginStateCookiePayload, secret: string) => {

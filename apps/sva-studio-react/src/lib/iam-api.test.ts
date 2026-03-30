@@ -28,6 +28,7 @@ import {
 describe('iam-api organization helpers', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllEnvs();
     vi.stubEnv('NODE_ENV', 'test');
   });
 
@@ -323,6 +324,12 @@ describe('iam-api organization helpers', () => {
 });
 
 describe('iam-api user sync helper', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllEnvs();
+    vi.stubEnv('NODE_ENV', 'test');
+  });
+
   it('posts to the keycloak sync endpoint with CSRF headers', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(
@@ -414,6 +421,7 @@ describe('iam-api user sync helper', () => {
 describe('iam-api group helpers', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllEnvs();
     vi.stubEnv('NODE_ENV', 'test');
   });
 
@@ -476,6 +484,7 @@ describe('iam-api group helpers', () => {
 describe('iam-api transparency helpers', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllEnvs();
     vi.stubEnv('NODE_ENV', 'test');
   });
 

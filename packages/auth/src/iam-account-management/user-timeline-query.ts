@@ -27,9 +27,8 @@ export const resolveUserTimeline = async (
   client: QueryClient,
   input: { instanceId: string; userId: string }
 ): Promise<readonly IamUserTimelineEvent[]> => {
-  const [activityLogs, governanceCases, dsrCases] = await Promise.all([
-    client.query<ActivityLogRow>(
-      `
+  const activityLogs = await client.query<ActivityLogRow>(
+    `
 SELECT id, event_type, created_at::text, payload, account_id::text
 FROM iam.activity_logs
 WHERE instance_id = $1
@@ -37,21 +36,20 @@ WHERE instance_id = $1
 ORDER BY created_at DESC
 LIMIT 100;
 `,
-      [input.instanceId, input.userId]
-    ),
-    listGovernanceCases(client, {
-      instanceId: input.instanceId,
-      relatedAccountId: input.userId,
-      page: 1,
-      pageSize: 100,
-    }),
-    listAdminDsrCases(client, {
-      instanceId: input.instanceId,
-      relatedAccountId: input.userId,
-      page: 1,
-      pageSize: 100,
-    }),
-  ]);
+    [input.instanceId, input.userId]
+  );
+  const governanceCases = await listGovernanceCases(client, {
+    instanceId: input.instanceId,
+    relatedAccountId: input.userId,
+    page: 1,
+    pageSize: 100,
+  });
+  const dsrCases = await listAdminDsrCases(client, {
+    instanceId: input.instanceId,
+    relatedAccountId: input.userId,
+    page: 1,
+    pageSize: 100,
+  });
 
   const timeline: IamUserTimelineEvent[] = [
     ...activityLogs.rows.map((row) => ({

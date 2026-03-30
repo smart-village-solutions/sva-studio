@@ -1,10 +1,10 @@
 export type SessionUser = {
   id: string;
-  name: string;
-  email?: string;
   instanceId?: string;
   roles: string[];
 };
+
+export type ForcedReauthMode = 'app_only' | 'app_and_idp';
 
 export type Session = {
   id: string; // Session ID for storage/retrieval
@@ -13,6 +13,8 @@ export type Session = {
   activeOrganizationId?: string;
   accessToken?: string;
   createdAt: number; // Unix timestamp in milliseconds (Date.now())
+  issuedAt?: number; // Unix timestamp in milliseconds (Date.now())
+  sessionVersion?: number;
   refreshToken?: string;
   idToken?: string;
   expiresAt?: number; // Unix timestamp in milliseconds
@@ -22,6 +24,19 @@ export type LoginState = {
   codeVerifier: string;
   nonce: string;
   createdAt: number;
+  returnTo?: string;
+  silent?: boolean;
+};
+
+export type SessionControlState = {
+  minimumSessionVersion: number;
+  forcedReauthAt?: number;
+};
+
+export type ForceReauthInput = {
+  userId: string;
+  mode: ForcedReauthMode;
+  reason: string;
 };
 
 export type AuthConfig = {
@@ -34,5 +49,8 @@ export type AuthConfig = {
   scopes: string;
   sessionCookieName: string;
   loginStateCookieName: string;
+  silentSsoSuppressCookieName: string;
   sessionTtlMs: number;
+  sessionRedisTtlBufferMs: number;
+  silentSsoSuppressAfterLogoutMs: number;
 };

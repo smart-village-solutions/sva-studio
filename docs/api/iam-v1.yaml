@@ -1092,6 +1092,208 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/RoleMutationResponse'
+  /api/v1/iam/groups:
+    get:
+      summary: Gruppenliste
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Gruppenliste.
+    post:
+      summary: Gruppe anlegen
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema:
+            type: string
+        - in: header
+          name: X-Requested-With
+          required: true
+          schema:
+            type: string
+            enum: [XMLHttpRequest]
+      responses:
+        '201':
+          description: Gruppe erstellt.
+  /api/v1/iam/groups/{groupId}:
+    get:
+      summary: Gruppendetail
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Gruppe geladen.
+    patch:
+      summary: Gruppe aktualisieren
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Gruppe aktualisiert.
+    delete:
+      summary: Gruppe loeschen
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Gruppe geloescht.
+  /api/v1/iam/groups/{groupId}/roles:
+    post:
+      summary: Rolle an Gruppe zuweisen
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: header
+          name: X-Requested-With
+          required: true
+          schema:
+            type: string
+            enum: [XMLHttpRequest]
+      responses:
+        '200':
+          description: Gruppenrolle gespeichert.
+  /api/v1/iam/groups/{groupId}/roles/{roleId}:
+    delete:
+      summary: Rolle von Gruppe entfernen
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: roleId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Gruppenrolle entfernt.
+  /api/v1/iam/groups/{groupId}/memberships:
+    post:
+      summary: Gruppen-Membership anlegen
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: header
+          name: X-Requested-With
+          required: true
+          schema:
+            type: string
+            enum: [XMLHttpRequest]
+      responses:
+        '200':
+          description: Gruppen-Membership gespeichert.
+    delete:
+      summary: Gruppen-Membership entfernen
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: header
+          name: X-Requested-With
+          required: true
+          schema:
+            type: string
+            enum: [XMLHttpRequest]
+      responses:
+        '200':
+          description: Gruppen-Membership entfernt.
+  /api/v1/iam/contents:
+    get:
+      summary: Inhalte auflisten
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Inhaltsliste.
+    post:
+      summary: Inhalt anlegen
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema:
+            type: string
+        - in: header
+          name: X-Requested-With
+          required: true
+          schema:
+            type: string
+            enum: [XMLHttpRequest]
+      responses:
+        '201':
+          description: Inhalt erstellt.
+  /api/v1/iam/contents/{contentId}:
+    get:
+      summary: Inhaltsdetail
+      parameters:
+        - name: contentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Inhalt geladen.
+    patch:
+      summary: Inhalt aktualisieren
+      parameters:
+        - name: contentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Inhalt aktualisiert.
+  /api/v1/iam/contents/{contentId}/history:
+    get:
+      summary: Inhaltshistorie
+      parameters:
+        - name: contentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Inhaltshistorie geladen.
   /api/v1/iam/legal-texts:
     get:
       summary: Rechtstext-Versionen auflisten
@@ -1164,6 +1366,12 @@ paths:
       responses:
         '501':
           description: Noch nicht implementiert.
+  /iam/me/legal-texts/pending:
+    get:
+      summary: Ausstehende Rechtstexte laden
+      responses:
+        '200':
+          description: Ausstehende Rechtstexte geladen.
 components:
   parameters:
     Page:

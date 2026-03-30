@@ -9,6 +9,7 @@ Authentifizierungs- und Autorisierungspaket für SVA Studio. Implementiert OIDC-
 - **Client-safe** (`@sva/auth`): Nur Route-Pfade und Typen – kein Server-Code im Browser-Bundle
 - **Server-only** (`@sva/auth/server`): Alle Handler, Session-Logik, Crypto, IAM-Entscheidungen
 - Server-Fassaden bleiben als stabile Importpfade erhalten; fachliche Zerlegung lebt in Unterordnern wie `auth-server/`, `routes/` und `iam-*/`
+- Die Session fuehrt bewusst nur einen minimalen Auth-Kern; Profil-PII wie Name und E-Mail wird getrennt ueber Profil-/Sync-Flows verarbeitet
 
 ```
 @sva/core ← IAM-Typen, Claims, JWT
@@ -41,6 +42,7 @@ Authentifizierungs- und Autorisierungspaket für SVA Studio. Implementiert OIDC-
 Vollständiger OIDC Authorization Code Flow mit PKCE über Keycloak.
 
 - **Login:** PKCE-basierter Redirect zum Identity Provider
+- **Silent SSO:** Kontrollierter Reauth über denselben Login-Pfad mit `prompt=none`
 - **Callback:** Token-Austausch, Session-Erstellung, HMAC-signiertes State-Cookie
 - **Logout:** Session-Löschung, RP-Initiated Logout
 - **Token-Refresh:** Automatische Erneuerung abgelaufener Access-Tokens
@@ -50,8 +52,13 @@ Vollständiger OIDC Authorization Code Flow mit PKCE über Keycloak.
 Redis-basierte Sessions mit optionaler Token-Verschlüsselung.
 
 - **Cookie-Sicherheit:** `httpOnly`, `secure` (Produktion), `sameSite: lax`
+- **Führende Session-Wahrheit:** `Session.expiresAt` steuert fachliche Gültigkeit, Cookie-Laufzeit und Redis-TTL
 - **Token-Verschlüsselung:** AES-256-GCM mit scrypt-Key-Derivation (optional via `ENCRYPTION_KEY`)
 - **Login-State:** HMAC-SHA256-signiert, 10-Minuten-TTL, Timing-safe Vergleich
+- **Minimaler SessionUser:** `id`, optionales `instanceId`, `roles`
+- **Versionierte Session:** `issuedAt`, `expiresAt`, `sessionVersion`
+- **Forced Reauth:** Benutzerbezogene Invalidierung via `forceReauthUser({ userId, mode })`
+- **Logout-Schutz:** Expliziter Logout unterdrückt automatische Silent-Recovery zeitlich begrenzt
 
 ### IAM-Autorisierung
 
@@ -79,10 +86,10 @@ Serverseitige Autorisierungsentscheidungen auf Basis des RBAC/ABAC-Modells aus `
 ### Authentifizierung
 | Pfad | Methode | Beschreibung |
 | --- | --- | --- |
-| `/auth/login` | GET | OIDC-Login initiieren |
+| `/auth/login` | GET | OIDC-Login initiieren; `?silent=1` nur für internen Silent-Reauth |
 | `/auth/callback` | GET | OIDC-Callback verarbeiten |
-| `/auth/me` | GET | Aktuelle Session/Nutzer-Info |
-| `/auth/logout` | GET | Session beenden, RP-Logout |
+| `/auth/me` | GET | Aktuelle Session als minimaler Auth-Kontext |
+| `/auth/logout` | POST | Session beenden, RP-Logout vorbereiten und Silent-SSO-Sperre setzen |
 
 ### IAM
 | Pfad | Methode | Beschreibung |
@@ -115,15 +122,34 @@ Serverseitige Autorisierungsentscheidungen auf Basis des RBAC/ABAC-Modells aus `
 | `SVA_AUTH_POST_LOGOUT_REDIRECT_URI` | Redirect nach Logout | Ja |
 | `SVA_AUTH_STATE_SECRET` | HMAC-Secret für Login-State-Cookie | Ja |
 | `ENCRYPTION_KEY` | AES-256-GCM Key für Token-Verschlüsselung | Empfohlen |
-| `SVA_AUTH_SCOPES` | OIDC-Scopes | Nein |
+| `SVA_AUTH_SCOPES` | OIDC-Scopes (Default: `openid`) | Nein |
 | `SVA_AUTH_SESSION_COOKIE` | Cookie-Name (Default: `sva_auth_session`) | Nein |
 | `SVA_AUTH_SESSION_TTL_MS` | Session-TTL in ms | Nein |
+| `SVA_AUTH_SILENT_SSO_SUPPRESS_COOKIE` | Cookie-Name für Logout-basierte Silent-SSO-Sperre | Nein |
+| `SVA_AUTH_SESSION_REDIS_TTL_BUFFER_MS` | Technischer Redis-Puffer oberhalb der Session-Restdauer | Nein |
+| `SVA_AUTH_SILENT_SSO_SUPPRESS_AFTER_LOGOUT_MS` | Dauer der Silent-SSO-Sperre nach Logout | Nein |
 | `KEYCLOAK_ADMIN_BASE_URL` | Keycloak-Basis-URL für Admin API | Für IAM-Admin-Client |
 | `KEYCLOAK_ADMIN_REALM` | Realm für Admin API | Für IAM-Admin-Client |
 | `KEYCLOAK_ADMIN_CLIENT_ID` | Service-Client-ID (z. B. `sva-studio-iam-service`) | Für IAM-Admin-Client |
 | `KEYCLOAK_ADMIN_CLIENT_SECRET` | Service-Client-Secret | Für IAM-Admin-Client |
 
 Hinweis: Der Keycloak Admin Client unterstützt Keycloak **>= 22.0**.
+
+## Datenminimierung und Profil-Sync
+
+- `/auth/me` liefert absichtlich keinen vollstaendigen Profil-Datensatz, sondern nur den Auth-Kern fuer Session und Autorisierung.
+- Name und E-Mail bleiben fuer Profilpflege und Synchronisation mit Keycloak zulaessig, werden aber ueber dedizierte Profil-/Sync-Operationen verarbeitet.
+- Verschluesselte Persistenz in `iam.accounts` (`email_ciphertext`, `display_name_ciphertext`) bleibt bestehen.
+- Operatives Logging darf keine Tokens und keine tokenhaltigen Redirect- oder Logout-URLs enthalten; Logout-Logging nutzt nur sichere Summary-Felder.
+
+## Session-Lifecycle und Reauth
+
+- Das BFF erneuert Tokens serverseitig; der Browser sieht weiterhin nur den Session-Cookie.
+- `expiresAt` ist die einzige fachliche Gültigkeitsquelle einer Session.
+- Redis-TTL ist nur technische Retention und liegt knapp oberhalb der verbleibenden Sessiondauer.
+- Nach `401` darf das Frontend genau einen stillen Reauth-Versuch per iframe starten.
+- Erfolgreicher Silent-Reauth rotiert die Session-ID.
+- `forceReauthUser()` unterstützt `app_only` und `app_and_idp`.
 
 ## Projektstruktur
 

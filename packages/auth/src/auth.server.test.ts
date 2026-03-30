@@ -6,6 +6,7 @@ const consumeLoginStateMock = vi.fn();
 const createLoginStateMock = vi.fn();
 const createSessionMock = vi.fn();
 const getSessionMock = vi.fn<(_sessionId: string) => Promise<Session | undefined>>();
+const getSessionControlStateMock = vi.fn();
 const updateSessionMock = vi.fn();
 const deleteSessionMock = vi.fn();
 const refreshTokenGrantMock = vi.fn();
@@ -23,10 +24,13 @@ vi.mock('./config', () => ({
     loginStateSecret: 'state-secret',
     redirectUri: 'http://localhost:3000/auth/callback',
     postLogoutRedirectUri: 'http://localhost:3000',
-    scopes: 'openid profile email',
+    scopes: 'openid',
     sessionCookieName: 'sva_auth_session',
     loginStateCookieName: 'sva_auth_state',
+    silentSsoSuppressCookieName: 'sva_auth_silent_sso',
     sessionTtlMs: 60_000,
+    sessionRedisTtlBufferMs: 5_000,
+    silentSsoSuppressAfterLogoutMs: 60_000,
   }),
 }));
 
@@ -36,6 +40,7 @@ vi.mock('./redis-session.server', () => ({
   createSession: createSessionMock,
   deleteSession: deleteSessionMock,
   getSession: getSessionMock,
+  getSessionControlState: getSessionControlStateMock,
   updateSession: updateSessionMock,
 }));
 
@@ -74,6 +79,7 @@ describe('getSessionUser', () => {
     buildAuthorizationUrlMock.mockReturnValue(new URL('https://issuer.example/auth?state=state-1'));
     buildEndSessionUrlMock.mockReturnValue(new URL('https://issuer.example/logout'));
     jitProvisionAccountMock.mockResolvedValue({ skipped: false, accountId: 'acc-1', created: true });
+    getSessionControlStateMock.mockResolvedValue(undefined);
   });
 
   const createUnsignedJwt = (claims: Record<string, unknown>) => {
@@ -89,8 +95,6 @@ describe('getSessionUser', () => {
       userId: 'user-1',
       user: {
         id: 'user-1',
-        name: 'Max Mustermann',
-        email: 'max@example.com',
         instanceId: 'de-musterhausen',
         roles: ['admin'],
       },
@@ -104,8 +108,6 @@ describe('getSessionUser', () => {
 
     expect(user).toEqual({
       id: 'user-1',
-      name: 'Max Mustermann',
-      email: 'max@example.com',
       instanceId: 'de-musterhausen',
       roles: ['admin'],
     });
@@ -130,8 +132,6 @@ describe('getSessionUser', () => {
       userId: 'user-legacy-1',
       user: {
         id: 'user-legacy-1',
-        name: 'Legacy User',
-        email: 'legacy@example.com',
         roles: [],
       },
       accessToken,
@@ -145,8 +145,6 @@ describe('getSessionUser', () => {
 
     expect(user).toEqual({
       id: 'user-legacy-1',
-      name: 'Legacy User',
-      email: 'legacy@example.com',
       instanceId: 'de-musterhausen',
       roles: ['Admin', 'system_admin'],
     });
@@ -169,7 +167,6 @@ describe('getSessionUser', () => {
       userId: 'user-old',
       user: {
         id: 'user-old',
-        name: 'Alter Nutzer',
         roles: ['viewer'],
       },
       refreshToken: 'refresh-token-2',
@@ -192,8 +189,6 @@ describe('getSessionUser', () => {
         ...expiredSession,
         user: {
           id: 'user-2',
-          name: 'Neuer Nutzer',
-          email: 'new@example.com',
           instanceId: 'de-musterhausen',
           roles: ['Admin', 'system_admin'],
         },
@@ -223,8 +218,6 @@ describe('getSessionUser', () => {
     );
     expect(user).toEqual({
       id: 'user-2',
-      name: 'Neuer Nutzer',
-      email: 'new@example.com',
       instanceId: 'de-musterhausen',
       roles: ['Admin', 'system_admin'],
     });
@@ -238,7 +231,6 @@ describe('getSessionUser', () => {
       userId: 'user-3',
       user: {
         id: 'user-3',
-        name: 'Abgelaufen',
         roles: ['viewer'],
       },
       refreshToken: 'refresh-token-3',
@@ -292,6 +284,27 @@ describe('getSessionUser', () => {
       expect.objectContaining({
         codeVerifier: 'verifier-1',
         nonce: 'nonce-1',
+        silent: false,
+      })
+    );
+  });
+
+  it('createLoginUrl persists a silent login state and requests prompt none', async () => {
+    const { createLoginUrl } = await import('./auth.server');
+
+    await createLoginUrl({ returnTo: '/', silent: true });
+
+    expect(createLoginStateMock).toHaveBeenCalledWith(
+      'state-1',
+      expect.objectContaining({
+        returnTo: '/',
+        silent: true,
+      })
+    );
+    expect(buildAuthorizationUrlMock).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        prompt: 'none',
       })
     );
   });

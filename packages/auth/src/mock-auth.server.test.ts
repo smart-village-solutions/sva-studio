@@ -39,8 +39,6 @@ describe('mock-auth.server', () => {
 
     expect(createMockSessionUser()).toEqual({
       id: 'seed:system_admin',
-      name: 'Mock User',
-      email: 'mock.user@sva.local',
       instanceId: 'de-musterhausen',
       roles: ['system_admin', 'iam_admin', 'support_admin', 'security_admin', 'interface_manager', 'app_manager', 'editor'],
     });
@@ -56,8 +54,6 @@ describe('mock-auth.server', () => {
 
     expect(createMockSessionUser()).toEqual({
       id: 'builder-user',
-      name: 'Builder User',
-      email: 'builder.user@example.com',
       instanceId: 'de-builder',
       roles: ['system_admin', 'editor'],
     });

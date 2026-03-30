@@ -11,6 +11,7 @@ import { Link } from '@tanstack/react-router';
 import { OrganizationContextSwitcher } from './OrganizationContextSwitcher';
 import { Button } from './ui/button';
 import { t } from '../i18n';
+import { createLoginHref, resolveCurrentReturnTo } from '../lib/auth-navigation';
 import { useAuth } from '../providers/auth-provider';
 import { useLocale } from '../providers/locale-provider';
 import { useTheme } from '../providers/theme-provider';
@@ -37,6 +38,7 @@ export default function Header({
   const { mode, toggleMode } = useTheme();
   const [isHydrated, setIsHydrated] = React.useState(false);
   const resolvedMode = isHydrated ? mode : 'light';
+  const loginHref = isHydrated ? createLoginHref(resolveCurrentReturnTo()) : '/auth/login';
   const showOrganizationContext = isHydrated && isAuthenticated && !isLoading && !isAuthLoading && Boolean(user);
 
   React.useEffect(() => {
@@ -57,7 +59,7 @@ export default function Header({
   } else if (!isAuthenticated) {
     authAction = (
       <Button asChild className="ml-2" variant="secondary">
-        <a href="/auth/login">{t('shell.header.login')}</a>
+        <a href={loginHref}>{t('shell.header.login')}</a>
       </Button>
     );
   } else if (user) {

@@ -402,6 +402,18 @@
       "status": "open",
       "summary": "Auth-Routenhandler weiter in Login-, Callback-, Logout- und Health-Bausteine zerlegen"
     },
+    "iam-server:packages/auth/src/routes/handlers.ts:cyclomaticComplexity": {
+      "ticketId": "QUAL-117",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Auth-Routenhandler weiter in Login-, Callback-, Logout- und Health-Bausteine zerlegen"
+    },
+    "iam-server:packages/auth/src/routes/handlers.ts:functionLines": {
+      "ticketId": "QUAL-117",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Auth-Routenhandler weiter in Login-, Callback-, Logout- und Health-Bausteine zerlegen"
+    },
     "iam-server:packages/auth/src/runtime-routes.server.ts:publicExports": {
       "ticketId": "QUAL-117",
       "ticketSystem": "backlog",

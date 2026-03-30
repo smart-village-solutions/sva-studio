@@ -161,12 +161,10 @@ ORDER BY acceptance.accepted_at DESC;
   );
 
 export const loadGovernanceSourceRows = async (client: QueryClient, input: GovernanceFilters) => {
-  const [permissionChanges, delegations, impersonations, legalAcceptances] = await Promise.all([
-    queryPermissionChanges(client, input),
-    queryDelegations(client, input),
-    queryImpersonations(client, input),
-    queryLegalAcceptances(client, input),
-  ]);
+  const permissionChanges = await queryPermissionChanges(client, input);
+  const delegations = await queryDelegations(client, input);
+  const impersonations = await queryImpersonations(client, input);
+  const legalAcceptances = await queryLegalAcceptances(client, input);
 
   return {
     permissionChanges: permissionChanges.rows,

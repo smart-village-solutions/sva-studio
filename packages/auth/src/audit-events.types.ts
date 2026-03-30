@@ -1,4 +1,10 @@
-export type AuthAuditEventType = 'login' | 'logout' | 'account_created';
+export type AuthAuditEventType =
+  | 'login'
+  | 'logout'
+  | 'account_created'
+  | 'forced_reauth'
+  | 'silent_reauth_success'
+  | 'silent_reauth_failed';
 
 export type AuthAuditEvent = {
   eventType: AuthAuditEventType;

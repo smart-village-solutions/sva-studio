@@ -4,10 +4,10 @@ import { createSdkLogger } from '@sva/sdk/server';
 import { getAuthConfig } from '../config.js';
 import { jitProvisionAccount } from '../jit-provisioning.server.js';
 import { client, getOidcConfig } from '../oidc.server.js';
-import { consumeLoginState, createSession } from '../redis-session.server.js';
+import { consumeLoginState, createSession, getSessionControlState } from '../redis-session.server.js';
 import type { LoginState } from '../types.js';
 import { buildLogContext } from '../shared/log-context.js';
-import { buildSessionUser, resolveExpiresAt } from './shared.js';
+import { buildSessionUser, resolveSessionExpiry } from './shared.js';
 
 const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
 
@@ -20,6 +20,16 @@ const persistSession = async (input: {
   expiresAt?: number;
 }) => {
   const sessionId = randomUUID();
+  const issuedAt = Date.now();
+  const { sessionTtlMs } = getAuthConfig();
+  const sessionControlState = await getSessionControlState(String(input.claims.sub ?? ''));
+  const sessionVersion = Math.max(sessionControlState?.minimumSessionVersion ?? 1, 1);
+  const expiresAt = resolveSessionExpiry({
+    expiresInSeconds: undefined,
+    issuedAt,
+    sessionTtlMs,
+    fallback: input.expiresAt,
+  });
   const user = buildSessionUser({
     accessToken: input.accessToken,
     claims: input.claims,
@@ -33,11 +43,13 @@ const persistSession = async (input: {
     accessToken: input.accessToken,
     refreshToken: input.refreshToken,
     idToken: input.idToken,
-    expiresAt: input.expiresAt,
-    createdAt: Date.now(),
+    expiresAt,
+    createdAt: issuedAt,
+    issuedAt,
+    sessionVersion,
   });
 
-  return { sessionId, user };
+  return { sessionId, user, expiresAt };
 };
 
 const syncJitProvisioning = async (instanceId: string | undefined, keycloakSubject: string) => {
@@ -88,7 +100,11 @@ export const handleCallback = async (params: {
     idToken: tokenSet.id_token,
     claims,
     clientId: authConfig.clientId,
-    expiresAt: resolveExpiresAt(tokenSet.expiresIn()),
+    expiresAt: resolveSessionExpiry({
+      expiresInSeconds: tokenSet.expiresIn(),
+      issuedAt: Date.now(),
+      sessionTtlMs: authConfig.sessionTtlMs,
+    }),
   });
 
   await syncJitProvisioning(persisted.user.instanceId, persisted.user.id);
@@ -100,5 +116,5 @@ export const handleCallback = async (params: {
     ...buildLogContext(persisted.user.instanceId),
   });
 
-  return persisted;
+  return { ...persisted, loginState };
 };

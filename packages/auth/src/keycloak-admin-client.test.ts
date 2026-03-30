@@ -263,6 +263,27 @@ describe('KeycloakAdminClient', () => {
     expect(String(calls[1]?.input)).toContain('/admin/realms/demo/users/user-123');
   });
 
+  it('logs out all active sessions for a user', async () => {
+    const { fetchImpl, calls } = createFetchStub([
+      createJsonResponse(200, { access_token: 'token-1', expires_in: 300 }),
+      createTextResponse(204, ''),
+    ]);
+
+    const client = new KeycloakAdminClient({
+      baseUrl: 'https://keycloak.example.com',
+      realm: 'demo',
+      clientId: 'svc-client',
+      clientSecret: 'svc-secret',
+      fetchImpl,
+    });
+
+    await client.logoutUser('user-123');
+
+    expect(calls).toHaveLength(2);
+    expect(String(calls[1]?.input)).toContain('/admin/realms/demo/users/user-123/logout');
+    expect(calls[1]?.init?.method).toBe('POST');
+  });
+
   it('omits the body field for GET requests without payload', async () => {
     const { fetchImpl, calls } = createFetchStub([
       createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }),

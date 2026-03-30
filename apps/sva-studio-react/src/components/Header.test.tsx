@@ -45,11 +45,13 @@ describe('Header auth actions', () => {
   });
 
   it('zeigt für unauthenticated user Theme-Toggle und Login', async () => {
+    window.history.replaceState({}, '', '/account?tab=profile');
     useAuthMock.mockReturnValue({
       user: null,
       isAuthenticated: false,
       isLoading: false,
       error: null,
+      hasResolvedSession: true,
       refetch: vi.fn(),
       logout: vi.fn(),
       invalidatePermissions: vi.fn(),
@@ -74,6 +76,9 @@ describe('Header auth actions', () => {
 
     expect(screen.queryByRole('button', { name: 'Logout' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'Konto' })).toBeNull();
+    expect(screen.getByRole('link', { name: 'Login' }).getAttribute('href')).toBe(
+      '/auth/login?returnTo=%2Faccount%3Ftab%3Dprofile'
+    );
     expect(screen.getByRole('button', { name: 'Dunklen Modus aktivieren' })).toBeTruthy();
     expect(screen.queryByTestId('organization-context-switcher')).toBeNull();
   });
@@ -88,6 +93,7 @@ describe('Header auth actions', () => {
       isAuthenticated: true,
       isLoading: false,
       error: null,
+      hasResolvedSession: true,
       refetch: vi.fn(),
       logout: vi.fn(),
       invalidatePermissions: vi.fn(),
@@ -126,6 +132,7 @@ describe('Header auth actions', () => {
       isAuthenticated: true,
       isLoading: false,
       error: null,
+      hasResolvedSession: true,
       refetch: vi.fn(),
       logout: vi.fn(),
       invalidatePermissions: vi.fn(),
@@ -158,6 +165,7 @@ describe('Header auth actions', () => {
       isAuthenticated: false,
       isLoading: true,
       error: null,
+      hasResolvedSession: false,
       refetch: vi.fn(),
       logout: vi.fn(),
       invalidatePermissions: vi.fn(),
@@ -190,6 +198,7 @@ describe('Header auth actions', () => {
       isAuthenticated: false,
       isLoading: false,
       error: null,
+      hasResolvedSession: true,
       refetch: vi.fn(),
       logout: vi.fn(),
       invalidatePermissions: vi.fn(),
@@ -227,6 +236,7 @@ describe('Header auth actions', () => {
       isAuthenticated: true,
       isLoading: false,
       error: null,
+      hasResolvedSession: true,
       refetch: vi.fn(),
       logout: vi.fn(),
       invalidatePermissions: vi.fn(),
@@ -260,6 +270,7 @@ describe('Header auth actions', () => {
       isAuthenticated: false,
       isLoading: false,
       error: null,
+      hasResolvedSession: true,
       refetch: vi.fn(),
       logout: vi.fn(),
       invalidatePermissions: vi.fn(),

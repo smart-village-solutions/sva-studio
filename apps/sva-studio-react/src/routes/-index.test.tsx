@@ -1,43 +1,41 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import React from 'react';
 
 import { HomePage } from './-home-page';
 
 const useAuthMock = vi.fn();
 
-const createDeferred = <T,>() => {
-  let resolve!: (value: T | PromiseLike<T>) => void;
-  let reject!: (reason?: unknown) => void;
-  const promise = new Promise<T>((res, rej) => {
-    resolve = res;
-    reject = rej;
-  });
-  return { promise, resolve, reject };
-};
-
 vi.mock('@tanstack/react-router', () => ({
   createFileRoute: () => () => ({}),
+  Link: ({
+    children,
+    to,
+    ...props
+  }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { to?: string }) => (
+    <a href={to} {...props}>
+      {children}
+    </a>
+  ),
 }));
 
 vi.mock('../providers/auth-provider', () => ({
   useAuth: () => useAuthMock(),
 }));
 
-describe('HomePage IAM integration', () => {
+describe('HomePage', () => {
   afterEach(() => {
     cleanup();
     globalThis.history.replaceState({}, '', '/');
     useAuthMock.mockReset();
-    vi.unstubAllGlobals();
   });
 
-  it('calls /iam/authorize for authenticated users with instanceId', async () => {
+  it('shows authenticated session summary without raw demo messaging', () => {
     useAuthMock.mockReturnValue({
       user: {
         id: 'user-1',
-        name: 'Test User',
-        roles: ['editor'],
-        instanceId: '11111111-1111-1111-8111-111111111111',
+        roles: ['editor', 'system_admin'],
+        instanceId: 'de-musterhausen',
       },
       isAuthenticated: true,
       isLoading: false,
@@ -45,109 +43,70 @@ describe('HomePage IAM integration', () => {
       refetch: vi.fn(),
       logout: vi.fn(),
       invalidatePermissions: vi.fn(),
+      hasResolvedSession: true,
+      isRecoveringSession: false,
     });
-
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValue({
-        ok: true,
-        json: async () => ({
-          allowed: true,
-          reason: 'allowed_by_rbac',
-        }),
-      } satisfies Partial<Response>);
-
-    vi.stubGlobal('fetch', fetchMock);
 
     render(<HomePage />);
 
-    await waitFor(() => {
-      expect(screen.getByText(/Erlaubt \(allowed_by_rbac\)/)).toBeTruthy();
-    });
-
-    expect(fetchMock).toHaveBeenCalledWith(
-      '/iam/authorize',
-      expect.objectContaining({
-        method: 'POST',
-        credentials: 'include',
-      })
-    );
+    expect(screen.getByText('Sie sind angemeldet.')).toBeTruthy();
+    expect(screen.getByText('Instanz: de-musterhausen')).toBeTruthy();
+    expect(screen.queryByText('Demo Session')).toBeNull();
+    expect(screen.queryByText('IAM-Authorize (Modulpfad)')).toBeNull();
+    expect(
+      screen
+        .getAllByRole('link', { name: 'Inhalte öffnen' })
+        .some((link) => link.getAttribute('href') === '/content')
+    ).toBe(true);
   });
 
-  it('shows denied decision when /iam/authorize returns non-OK status', async () => {
-    const invalidatePermissions = vi.fn();
+  it('shows signed-out copy without exposing role diagnostics', () => {
     useAuthMock.mockReturnValue({
-      user: {
-        id: 'user-2',
-        name: 'Denied User',
-        roles: ['editor'],
-        instanceId: '11111111-1111-1111-8111-111111111111',
-      },
-      isAuthenticated: true,
+      user: null,
+      isAuthenticated: false,
       isLoading: false,
       error: null,
       refetch: vi.fn(),
       logout: vi.fn(),
-      invalidatePermissions,
+      invalidatePermissions: vi.fn(),
+      hasResolvedSession: true,
+      isRecoveringSession: false,
     });
 
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValue({
-        ok: false,
-        status: 403,
-      } satisfies Partial<Response>);
-
-    vi.stubGlobal('fetch', fetchMock);
     render(<HomePage />);
 
-    await waitFor(() => {
-      expect(screen.getByText(/Verweigert \(authorize_http_403\)/)).toBeTruthy();
-    });
-    expect(invalidatePermissions).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('Keine aktive Sitzung.')).toBeTruthy();
+    expect(screen.getByText('Melden Sie sich an, um Inhalte, Module und Verwaltungsfunktionen im freigegebenen Kontext zu nutzen.')).toBeTruthy();
+    expect(screen.getByText('Anmeldung erforderlich')).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Zum Login' }).getAttribute('href')).toBe('/auth/login?returnTo=%2F');
+    expect(screen.queryByText('Direkte Einstiege')).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Inhalte öffnen' })).toBeNull();
   });
 
-  it('shows denied decision without invalidating permissions for non-403 status', async () => {
-    const invalidatePermissions = vi.fn();
+  it('shows loading state while auth is resolving', () => {
     useAuthMock.mockReturnValue({
-      user: {
-        id: 'user-4',
-        name: 'Server Error User',
-        roles: ['editor'],
-        instanceId: '11111111-1111-1111-8111-111111111111',
-      },
-      isAuthenticated: true,
-      isLoading: false,
+      user: null,
+      isAuthenticated: false,
+      isLoading: true,
       error: null,
       refetch: vi.fn(),
       logout: vi.fn(),
-      invalidatePermissions,
+      invalidatePermissions: vi.fn(),
+      hasResolvedSession: false,
+      isRecoveringSession: false,
     });
 
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValue({
-        ok: false,
-        status: 500,
-      } satisfies Partial<Response>);
-
-    vi.stubGlobal('fetch', fetchMock);
     render(<HomePage />);
 
-    await waitFor(() => {
-      expect(screen.getByText(/Verweigert \(authorize_http_500\)/)).toBeTruthy();
-    });
-
-    expect(invalidatePermissions).not.toHaveBeenCalled();
+    expect(screen.getByText('Sitzung wird geladen ...')).toBeTruthy();
   });
 
-  it('ignores authorize success response when component unmounts before fetch resolves', async () => {
+  it('shows direct entry points instead of debug cards', () => {
     useAuthMock.mockReturnValue({
       user: {
-        id: 'user-unmount-success',
-        name: 'Unmount Success',
+        id: 'user-1',
         roles: ['editor'],
-        instanceId: '11111111-1111-1111-8111-111111111111',
+        instanceId: 'de-musterhausen',
       },
       isAuthenticated: true,
       isLoading: false,
@@ -155,145 +114,24 @@ describe('HomePage IAM integration', () => {
       refetch: vi.fn(),
       logout: vi.fn(),
       invalidatePermissions: vi.fn(),
+      hasResolvedSession: true,
+      isRecoveringSession: false,
     });
 
-    const deferred = createDeferred<Partial<Response>>();
-    const fetchMock = vi.fn().mockImplementation(() => deferred.promise);
-    vi.stubGlobal('fetch', fetchMock);
-
-    const { unmount } = render(<HomePage />);
-    unmount();
-
-    deferred.resolve({
-      ok: true,
-      json: async () => ({ allowed: true, reason: 'late_success' }),
-    });
-
-    await Promise.resolve();
-    await Promise.resolve();
-
-    expect(screen.queryByText(/late_success/)).toBeNull();
-  });
-
-  it('stops processing 403 flow when component unmounts during permission invalidation', async () => {
-    const invalidateDeferred = createDeferred<void>();
-    const invalidatePermissions = vi.fn().mockImplementation(() => invalidateDeferred.promise);
-    useAuthMock.mockReturnValue({
-      user: {
-        id: 'user-unmount-403',
-        name: 'Unmount Forbidden',
-        roles: ['editor'],
-        instanceId: '11111111-1111-1111-8111-111111111111',
-      },
-      isAuthenticated: true,
-      isLoading: false,
-      error: null,
-      refetch: vi.fn(),
-      logout: vi.fn(),
-      invalidatePermissions,
-    });
-
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValue({
-        ok: false,
-        status: 403,
-      } satisfies Partial<Response>);
-
-    vi.stubGlobal('fetch', fetchMock);
-    const { unmount } = render(<HomePage />);
-
-    await waitFor(() => {
-      expect(invalidatePermissions).toHaveBeenCalledTimes(1);
-    });
-
-    unmount();
-    invalidateDeferred.resolve();
-    await Promise.resolve();
-    await Promise.resolve();
-
-    expect(screen.queryByText(/authorize_http_403/)).toBeNull();
-  });
-
-  it('shows caught authorize error reason when authorize request fails', async () => {
-    useAuthMock.mockReturnValue({
-      user: {
-        id: 'user-5',
-        name: 'Offline User',
-        roles: ['editor'],
-        instanceId: '11111111-1111-1111-8111-111111111111',
-      },
-      isAuthenticated: true,
-      isLoading: false,
-      error: null,
-      refetch: vi.fn(),
-      logout: vi.fn(),
-      invalidatePermissions: vi.fn(),
-    });
-
-    const fetchMock = vi.fn().mockRejectedValue(new Error('network_down'));
-
-    vi.stubGlobal('fetch', fetchMock);
     render(<HomePage />);
 
-    await waitFor(() => {
-      expect(screen.getByText(/Verweigert \(network_down\)/)).toBeTruthy();
-    });
-  });
-
-  it('ignores caught authorize error when component unmounts before rejection arrives', async () => {
-    useAuthMock.mockReturnValue({
-      user: {
-        id: 'user-unmount-catch',
-        name: 'Unmount Catch',
-        roles: ['editor'],
-        instanceId: '11111111-1111-1111-8111-111111111111',
-      },
-      isAuthenticated: true,
-      isLoading: false,
-      error: null,
-      refetch: vi.fn(),
-      logout: vi.fn(),
-      invalidatePermissions: vi.fn(),
-    });
-
-    const deferred = createDeferred<never>();
-    const fetchMock = vi.fn().mockImplementation(() => deferred.promise);
-    vi.stubGlobal('fetch', fetchMock);
-
-    const { unmount } = render(<HomePage />);
-    unmount();
-
-    deferred.reject(new Error('late_error'));
-    await Promise.resolve();
-    await Promise.resolve();
-
-    expect(screen.queryByText(/late_error/)).toBeNull();
-  });
-
-  it('does not call /iam/authorize when user has no instanceId', () => {
-    useAuthMock.mockReturnValue({
-      user: {
-        id: 'user-3',
-        name: 'No Instance User',
-        roles: ['editor'],
-      },
-      isAuthenticated: true,
-      isLoading: false,
-      error: null,
-      refetch: vi.fn(),
-      logout: vi.fn(),
-      invalidatePermissions: vi.fn(),
-    });
-
-    const fetchMock = vi.fn();
-
-    vi.stubGlobal('fetch', fetchMock);
-    render(<HomePage />);
-
-    expect(screen.getByText('No Instance User')).toBeTruthy();
-    expect(fetchMock).not.toHaveBeenCalled();
-    expect(screen.getByText('Keine Authorize-Entscheidung verfügbar.')).toBeTruthy();
+    expect(screen.getByText('Direkte Einstiege')).toBeTruthy();
+    expect(
+      screen
+        .getAllByRole('link', { name: 'Inhalte öffnen' })
+        .some((link) => link.getAttribute('href') === '/content')
+    ).toBe(true);
+    expect(
+      screen
+        .getAllByRole('link', { name: 'Konto öffnen' })
+        .some((link) => link.getAttribute('href') === '/account')
+    ).toBe(true);
+    expect(screen.getByRole('link', { name: 'Schnittstellen öffnen' }).getAttribute('href')).toBe('/interfaces');
   });
 
   it('shows a helpful message after insufficient role redirect', () => {
@@ -305,6 +143,8 @@ describe('HomePage IAM integration', () => {
       refetch: vi.fn(),
       logout: vi.fn(),
       invalidatePermissions: vi.fn(),
+      hasResolvedSession: true,
+      isRecoveringSession: false,
     });
 
     globalThis.history.replaceState({}, '', '/?error=auth.insufficientRole');
@@ -325,6 +165,8 @@ describe('HomePage IAM integration', () => {
       refetch: vi.fn(),
       logout: vi.fn(),
       invalidatePermissions: vi.fn(),
+      hasResolvedSession: true,
+      isRecoveringSession: false,
     });
 
     globalThis.history.replaceState({}, '', '/?auth=error');
@@ -343,6 +185,8 @@ describe('HomePage IAM integration', () => {
       refetch: vi.fn(),
       logout: vi.fn(),
       invalidatePermissions: vi.fn(),
+      hasResolvedSession: true,
+      isRecoveringSession: false,
     });
 
     globalThis.history.replaceState({}, '', '/?auth=state-expired');
@@ -361,76 +205,12 @@ describe('HomePage IAM integration', () => {
       refetch: vi.fn(),
       logout: vi.fn(),
       invalidatePermissions: vi.fn(),
+      hasResolvedSession: true,
+      isRecoveringSession: false,
     });
 
     render(<HomePage />);
 
     expect(screen.getByText('Fehler beim Laden der Session. Bitte erneut anmelden.')).toBeTruthy();
-  });
-
-  it('recognizes admin and editor roles case-insensitively on the home page', () => {
-    useAuthMock.mockReturnValue({
-      user: {
-        id: 'user-role-case',
-        name: 'Role Case User',
-        roles: ['Admin', 'Editor'],
-        instanceId: '11111111-1111-1111-8111-111111111111',
-      },
-      isAuthenticated: true,
-      isLoading: false,
-      error: null,
-      refetch: vi.fn(),
-      logout: vi.fn(),
-      invalidatePermissions: vi.fn(),
-    });
-
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({
-          allowed: true,
-          reason: 'allowed_by_rbac',
-        }),
-      } satisfies Partial<Response>)
-    );
-
-    render(<HomePage />);
-
-    expect(screen.getByText('Admin-Rolle erkannt: Administrationsfunktionen sichtbar.')).toBeTruthy();
-    expect(screen.getByText('Editor-Rolle erkannt: Redaktionsfunktionen sichtbar.')).toBeTruthy();
-  });
-
-  it('recognizes system_admin as elevated admin role on the home page', () => {
-    useAuthMock.mockReturnValue({
-      user: {
-        id: 'user-system-admin',
-        name: 'System Admin User',
-        roles: ['system_admin'],
-        instanceId: '11111111-1111-1111-8111-111111111111',
-      },
-      isAuthenticated: true,
-      isLoading: false,
-      error: null,
-      refetch: vi.fn(),
-      logout: vi.fn(),
-      invalidatePermissions: vi.fn(),
-    });
-
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({
-          allowed: true,
-          reason: 'allowed_by_rbac',
-        }),
-      } satisfies Partial<Response>)
-    );
-
-    render(<HomePage />);
-
-    expect(screen.getByText('Admin-Rolle erkannt: Administrationsfunktionen sichtbar.')).toBeTruthy();
-    expect(screen.getByText('Nur sichtbar mit Rolle: editor.')).toBeTruthy();
   });
 });

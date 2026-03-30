@@ -12,7 +12,7 @@ vi.mock('@sva/core', () => ({
   resolveInstanceId: vi.fn((claims: Record<string, unknown>) => claims.instanceId),
 }));
 
-import { buildSessionUser, resolveExpiresAt } from './shared.ts';
+import { buildSessionUser, resolveExpiresAt, resolveSessionExpiry } from './shared.ts';
 
 const createUnsignedJwt = (claims: Record<string, unknown>) => {
   const header = Buffer.from(JSON.stringify({ alg: 'none', typ: 'JWT' })).toString('base64url');
@@ -68,6 +68,52 @@ describe('auth-server/shared', () => {
     vi.setSystemTime(new Date('2026-03-10T10:00:00.000Z'));
 
     expect(resolveExpiresAt(60)).toBe(Date.now() + 60_000);
+
+    vi.useRealTimers();
+  });
+
+  it('uses the absolute session ttl when token expiry is missing', () => {
+    const issuedAt = 1_700_000_000_000;
+
+    expect(
+      resolveSessionExpiry({
+        expiresInSeconds: undefined,
+        issuedAt,
+        sessionTtlMs: 600_000,
+      })
+    ).toBe(issuedAt + 600_000);
+  });
+
+  it('prefers the earlier token expiry when both token and session expiry exist', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-03-10T10:00:00.000Z'));
+
+    const issuedAt = Date.now();
+
+    expect(
+      resolveSessionExpiry({
+        expiresInSeconds: 120,
+        issuedAt,
+        sessionTtlMs: 600_000,
+      })
+    ).toBe(issuedAt + 120_000);
+
+    vi.useRealTimers();
+  });
+
+  it('caps token expiry at session ttl when token lifetime is longer', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-03-10T10:00:00.000Z'));
+
+    const issuedAt = Date.now();
+
+    expect(
+      resolveSessionExpiry({
+        expiresInSeconds: 3600,
+        issuedAt,
+        sessionTtlMs: 600_000,
+      })
+    ).toBe(issuedAt + 600_000);
 
     vi.useRealTimers();
   });

@@ -13,10 +13,32 @@ const mocks = vi.hoisted(() => ({
     warn: vi.fn(),
     error: vi.fn(),
   },
+  buildSessionUserMock: vi.fn((input: { claims: Record<string, unknown> }) => ({
+    id: String(input.claims.sub ?? ''),
+    instanceId: typeof input.claims.instanceId === 'string' ? input.claims.instanceId : undefined,
+    roles: Array.isArray(input.claims.roles) ? input.claims.roles : [],
+  })),
+  resolveSessionExpiryMock: vi.fn(
+    (input: { expiresInSeconds?: number; fallback?: number; issuedAt: number; sessionTtlMs: number }) => {
+      if (typeof input.expiresInSeconds === 'number') {
+        return Math.min(Date.now() + input.expiresInSeconds * 1000, input.issuedAt + input.sessionTtlMs);
+      }
+      return input.fallback ?? input.issuedAt + input.sessionTtlMs;
+    }
+  ),
 }));
 
-const { getSessionMock, getSessionControlStateMock, updateSessionMock, deleteSessionMock, refreshTokenGrantMock, getOidcConfigMock, loggerMock } =
-  mocks;
+const {
+  getSessionMock,
+  getSessionControlStateMock,
+  updateSessionMock,
+  deleteSessionMock,
+  refreshTokenGrantMock,
+  getOidcConfigMock,
+  loggerMock,
+  buildSessionUserMock,
+  resolveSessionExpiryMock,
+} = mocks;
 
 vi.mock('../config', () => ({
   getAuthConfig: () => ({
@@ -58,17 +80,8 @@ vi.mock('@sva/sdk/server', () => ({
 
 vi.mock('./shared', () => ({
   TOKEN_REFRESH_SKEW_MS: 60_000,
-  buildSessionUser: vi.fn((input: { accessToken?: string; claims: Record<string, unknown> }) => ({
-    id: String(input.claims.sub ?? ''),
-    instanceId: typeof input.claims.instanceId === 'string' ? input.claims.instanceId : undefined,
-    roles: Array.isArray(input.claims.roles) ? input.claims.roles : [],
-  })),
-  resolveSessionExpiry: vi.fn((input: { expiresInSeconds?: number; fallback?: number; issuedAt: number; sessionTtlMs: number }) => {
-    if (typeof input.expiresInSeconds === 'number') {
-      return Math.min(Date.now() + input.expiresInSeconds * 1000, input.issuedAt + input.sessionTtlMs);
-    }
-    return input.fallback ?? input.issuedAt + input.sessionTtlMs;
-  }),
+  buildSessionUser: mocks.buildSessionUserMock,
+  resolveSessionExpiry: mocks.resolveSessionExpiryMock,
 }));
 
 import { getSessionUser } from './session.ts';
@@ -106,6 +119,27 @@ describe('auth-server/session', () => {
 
     await expect(getSessionUser('session-versioned')).resolves.toBeNull();
     expect(deleteSessionMock).toHaveBeenCalledWith('session-versioned');
+  });
+
+  it('invalidates sessions that were issued before forced reauth', async () => {
+    getSessionMock.mockResolvedValue({
+      userId: 'user-forced',
+      user: {
+        id: 'user-forced',
+        instanceId: 'instance-1',
+        roles: ['viewer'],
+      },
+      sessionVersion: 3,
+      issuedAt: Date.now() - 10_000,
+      createdAt: Date.now() - 20_000,
+      expiresAt: Date.now() + 5 * 60_000,
+    });
+    getSessionControlStateMock.mockResolvedValue({
+      forcedReauthAt: Date.now() - 5_000,
+    });
+
+    await expect(getSessionUser('session-forced')).resolves.toBeNull();
+    expect(deleteSessionMock).toHaveBeenCalledWith('session-forced');
   });
 
   it('keeps the current user when no hydration is needed and no refresh is due', async () => {
@@ -198,6 +232,38 @@ describe('auth-server/session', () => {
 
     await expect(getSessionUser('session-4')).resolves.toBeNull();
     expect(deleteSessionMock).toHaveBeenCalledWith('session-4');
+  });
+
+  it('hydrates session user from access token when no refresh token exists but session is still valid', async () => {
+    buildSessionUserMock.mockReturnValueOnce({
+      id: 'hydrated-user',
+      instanceId: 'instance-1',
+      roles: ['editor'],
+    });
+
+    getSessionMock.mockResolvedValue({
+      user: { id: 'legacy-user', roles: [] },
+      accessToken: 'access-token-with-claims',
+      expiresAt: Date.now() + 10_000,
+      createdAt: Date.now() - 5_000,
+    });
+
+    await expect(getSessionUser('session-hydrate-no-refresh')).resolves.toEqual({
+      id: 'hydrated-user',
+      instanceId: 'instance-1',
+      roles: ['editor'],
+    });
+
+    expect(updateSessionMock).toHaveBeenCalledWith(
+      'session-hydrate-no-refresh',
+      expect.objectContaining({
+        user: {
+          id: 'hydrated-user',
+          instanceId: 'instance-1',
+          roles: ['editor'],
+        },
+      })
+    );
   });
 
   it('returns the fallback user when token refresh fails but the session is still valid', async () => {

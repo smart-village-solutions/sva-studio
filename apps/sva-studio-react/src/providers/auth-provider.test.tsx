@@ -133,6 +133,90 @@ describe('AuthProvider', () => {
     expect(screen.getByTestId('is-recovering-session').textContent).toBe('no');
   });
 
+  it('stays unauthenticated when silent recovery fails', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+    } satisfies Partial<Response>);
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <AuthProvider>
+        <AuthProbe />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('is-recovering-session').textContent).toBe('yes');
+    });
+
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        origin: window.location.origin,
+        data: { type: 'sva-auth:silent-sso', status: 'failed' },
+      })
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('status').textContent).toBe('ready');
+    });
+
+    expect(screen.getByTestId('authenticated').textContent).toBe('no');
+    expect(screen.getByTestId('is-recovering-session').textContent).toBe('no');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('ignores cross-origin silent-sso messages and accepts same-origin success', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: false, status: 401 } satisfies Partial<Response>)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          user: {
+            id: 'user-3',
+            roles: ['editor'],
+            instanceId: 'instance-1',
+          },
+        }),
+      } satisfies Partial<Response>);
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <AuthProvider>
+        <AuthProbe />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('is-recovering-session').textContent).toBe('yes');
+    });
+
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        origin: 'https://example.invalid',
+        data: { type: 'sva-auth:silent-sso', status: 'success' },
+      })
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('is-recovering-session').textContent).toBe('yes');
+    });
+
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        origin: window.location.origin,
+        data: { type: 'sva-auth:silent-sso', status: 'success' },
+      })
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('authenticated').textContent).toBe('yes');
+    });
+  });
+
   it('supports explicit refetch', async () => {
     const fetchMock = vi
       .fn()

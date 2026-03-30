@@ -90,7 +90,7 @@
     "@nx/playwright": "^22.5.4",
     "@nx/vite": "^22.5.4",
     "@nx/vitest": "^22.5.4",
-    "@tailwindcss/postcss": "4.2.1",
+    "@tailwindcss/postcss": "4.2.2",
     "@types/node": "^25.5.0",
     "@types/pg": "^8.18.0",
     "@vitest/coverage-v8": "^4.1.0",

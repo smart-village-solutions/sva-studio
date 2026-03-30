@@ -1,13 +1,16 @@
 // Diagnose-Artefakte für SSR-Routing-Debug auf Swarm-Deployments.
 // Kontext: docs/staging/2026-03/router-diagnostik-2026-03-13.md
 
-import { writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { mkdir, writeFile } from 'node:fs/promises';
 
 import type { AnyRouter } from '@tanstack/react-router';
 
 import { createRouterDiagnosticsSnapshot } from './router-diagnostics';
 
-const ROUTER_DIAGNOSTICS_FILE = '/tmp/sva-router-diagnostics.json';
+const ROUTER_DIAGNOSTICS_DIR = path.join(tmpdir(), 'sva-router-diagnostics');
+const ROUTER_DIAGNOSTICS_FILE = path.join(ROUTER_DIAGNOSTICS_DIR, 'snapshot.json');
 type RouterDiagnosticsLogger = {
   error: (message: string, meta: Record<string, unknown>) => void;
   info: (message: string, meta: Record<string, unknown>) => void;
@@ -35,6 +38,10 @@ const getLogger = async (): Promise<RouterDiagnosticsLogger> => {
   return loggerPromise;
 };
 
+const ensureDiagnosticsDirectory = async (): Promise<void> => {
+  await mkdir(ROUTER_DIAGNOSTICS_DIR, { recursive: true, mode: 0o700 });
+};
+
 const logDiagnosticsError = async (message: string, error: unknown): Promise<void> => {
   (await getLogger()).error(message, {
     workspace_id: 'platform',
@@ -53,6 +60,7 @@ export const emitRouterModuleLoadDiagnosticsOnce = (routeTree: unknown): Promise
       publicBaseUrl: process.env.SVA_PUBLIC_BASE_URL,
     });
 
+    await ensureDiagnosticsDirectory();
     await writeFile(
       ROUTER_DIAGNOSTICS_FILE,
       `${JSON.stringify(
@@ -88,6 +96,7 @@ const writeRouterDiagnostics = async (router: AnyRouter, routeTree: unknown): Pr
     publicBaseUrl: process.env.SVA_PUBLIC_BASE_URL,
   });
 
+  await ensureDiagnosticsDirectory();
   await writeFile(ROUTER_DIAGNOSTICS_FILE, `${JSON.stringify(snapshot, null, 2)}\n`, 'utf8');
 
   (await getLogger()).info('Router-Diagnose geschrieben', {

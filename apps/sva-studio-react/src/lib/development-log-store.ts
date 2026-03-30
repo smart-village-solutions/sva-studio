@@ -66,6 +66,19 @@ const isPlainObject = (value: unknown): value is Record<string, unknown> => {
   return prototype === Object.prototype || prototype === null;
 };
 
+const stringifyNonPlainValue = (value: object): string => {
+  const stringifier = value.toString;
+  if (typeof stringifier === 'function' && stringifier !== Object.prototype.toString) {
+    try {
+      return redactSensitiveString(String(value));
+    } catch {
+      return Object.prototype.toString.call(value);
+    }
+  }
+
+  return Object.prototype.toString.call(value);
+};
+
 const isEmailCharacter = (character: string): boolean => {
   return /[A-Za-z0-9._%+-]/.test(character);
 };
@@ -158,7 +171,7 @@ const serializeValue = (value: unknown): unknown => {
     );
   }
 
-  return String(value);
+  return stringifyNonPlainValue(value);
 };
 
 const stringifyMessage = (args: readonly unknown[]): string => {
@@ -175,7 +188,7 @@ const stringifyMessage = (args: readonly unknown[]): string => {
       try {
         return JSON.stringify(serializeValue(value));
       } catch {
-        return String(value);
+        return value && typeof value === 'object' ? stringifyNonPlainValue(value) : String(value);
       }
     })
     .join(' ');

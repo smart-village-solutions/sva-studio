@@ -53,6 +53,19 @@ const serializeError = (value: Error): Record<string, DevelopmentLogJsonValue> =
   return serialized;
 };
 
+const stringifyNonPlainValue = (value: object): string => {
+  const stringifier = value.toString;
+  if (typeof stringifier === 'function' && stringifier !== Object.prototype.toString) {
+    try {
+      return String(value);
+    } catch {
+      return Object.prototype.toString.call(value);
+    }
+  }
+
+  return Object.prototype.toString.call(value);
+};
+
 const toSerializableValue = (value: unknown): DevelopmentLogJsonValue => {
   if (value === null || value === undefined) {
     return value ?? null;
@@ -78,7 +91,7 @@ const toSerializableValue = (value: unknown): DevelopmentLogJsonValue => {
     return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, toSerializableValue(entry)]));
   }
 
-  return String(value);
+  return stringifyNonPlainValue(value);
 };
 
 export const appendDevelopmentLogEntry = (entry: Omit<DevelopmentLogEntry, 'id'>): DevelopmentLogEntry => {

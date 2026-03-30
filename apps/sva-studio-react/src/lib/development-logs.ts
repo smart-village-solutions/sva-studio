@@ -16,7 +16,7 @@ export const readDevelopmentServerLogs = async (data: DevelopmentLogQueryInput =
 
   return sdk.readDevelopmentLogEntries({
     afterId: data.afterId,
-  }) as DevelopmentLogEntry[];
+  });
 };
 
 export const loadDevelopmentServerLogs = createServerFn()

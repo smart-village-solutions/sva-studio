@@ -28,8 +28,14 @@ export const ConfirmDialog = ({
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) => {
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) {
+      onCancel();
+    }
+  };
+
   return (
-    <AlertDialog open={open} onOpenChange={(nextOpen) => (!nextOpen ? onCancel() : undefined)}>
+    <AlertDialog open={open} onOpenChange={handleOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>

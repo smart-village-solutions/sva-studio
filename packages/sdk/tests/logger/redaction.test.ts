@@ -31,7 +31,7 @@ describe('logger redaction', () => {
       redirect_target:
         'https://issuer.example/logout?id_token_hint=eyJhbGciOiJub25lIn0.eyJlbWFpbCI6InRlc3RAZXhhbXBsZS5vcmcifQ.signature&post_logout_redirect_uri=http://localhost:3000',
       authorization_header: 'Authorization: Bearer secret-token-value',
-      note: 'callback failed for bearer eyJhbGciOiJub25lIn0.eyJzdWIiOiIxIn0.signature and code=abc123',
+      note: 'callback failed for bearer eyJhbGciOiJub25lIn0.eyJzdWIiOiIxIn0.signature and code=abc123 for alice@example.org',
     });
 
     expect(sanitized.redirect_target).toContain('id_token_hint=[REDACTED]');
@@ -39,5 +39,6 @@ describe('logger redaction', () => {
     expect(sanitized.authorization_header).toContain('Authorization: [REDACTED]');
     expect(sanitized.note).toContain('[REDACTED_JWT]');
     expect(sanitized.note).toContain('code=[REDACTED]');
+    expect(sanitized.note).toContain('a***@example.org');
   });
 });

@@ -164,7 +164,7 @@ const SidebarLeafLink = ({ item, isActive, isCollapsed, isChild = false, onClick
       aria-label={isCollapsed ? item.label : undefined}
       title={isCollapsed ? item.label : undefined}
       onClick={onClick}
-      rel="noreferrer"
+      rel="noopener noreferrer"
       target="_blank"
     >
       {content}

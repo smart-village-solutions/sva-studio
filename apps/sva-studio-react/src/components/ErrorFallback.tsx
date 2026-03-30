@@ -34,7 +34,7 @@ export default function ErrorFallback({ error, reset }: Readonly<ErrorComponentP
 
   // Fehler nur in Development loggen; in Produktion wird der Fehler
   // über das zentrale Error-Tracking (OTel/SDK) erfasst.
-  if (metaEnv.env?.DEV === true && error) {
+  if (metaEnv.env?.DEV === true && error !== undefined) {
     console.error('[ErrorFallback]', error);
   }
 

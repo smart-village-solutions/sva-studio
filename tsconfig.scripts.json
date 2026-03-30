@@ -12,6 +12,8 @@
     "scripts/ci/iam-acceptance.ts",
     "scripts/ci/iam-acceptance.test.ts",
     "scripts/ci/run-iam-acceptance.ts",
+    "scripts/ci/sonar-hotspots.ts",
+    "scripts/ci/sonar-hotspots.test.ts",
     "scripts/ops/**/*.ts"
   ]
 }

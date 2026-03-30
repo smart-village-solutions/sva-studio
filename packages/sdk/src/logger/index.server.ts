@@ -41,7 +41,6 @@ const SENSITIVE_KEYS = new Set([
   'db_keycloak_subject'
 ]);
 
-const emailRegex = /([\w.%+-])([\w.%+-]*)(@[\w-]+(?:\.[\w-]+)*\.[A-Za-z]{2,})/g;
 const jwtLikeRegex = /\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)?\b/g;
 const querySecretRegexSource = String.raw`([?&](?:access_token|refresh_token|id_token|id_token_hint|token|code|client_secret|api_key|authorization)=)([^&#\s]+)`;
 const inlineQuerySecretRegexSource = String.raw`((?:^|[\s,(])(?:access_token|refresh_token|id_token|id_token_hint|token|code|client_secret|api_key|authorization)[\w.-]{0,20}[=:]\s*)([^\s,)]+)`;
@@ -54,15 +53,72 @@ const urlSecretPatterns: ReadonlyArray<readonly [RegExp, string]> = [
   [new RegExp(inlineSensitiveFieldRegexSource, 'gi'), '$1[REDACTED]'],
 ];
 
-const maskEmail = (value: string): string => {
-  return value.replaceAll(emailRegex, (_, firstChar, _middle, domain) => `${firstChar}***${domain}`);
+const isEmailLocalChar = (character: string): boolean => /[A-Za-z0-9._%+-]/.test(character);
+
+const isEmailDomainChar = (character: string): boolean => /[A-Za-z0-9.-]/.test(character);
+
+const isLikelyDomain = (domain: string): boolean => {
+  const labels = domain.split('.');
+  if (labels.length < 2) {
+    return false;
+  }
+
+  const topLevelLabel = labels[labels.length - 1] ?? '';
+  return labels.every((label) => /^[A-Za-z0-9-]+$/.test(label) && label.length > 0) && /^[A-Za-z]{2,}$/.test(topLevelLabel);
+};
+
+const maskEmailAddresses = (value: string): string => {
+  let next = '';
+  let cursor = 0;
+
+  while (cursor < value.length) {
+    const atIndex = value.indexOf('@', cursor);
+    if (atIndex === -1) {
+      next += value.slice(cursor);
+      break;
+    }
+
+    let localStart = atIndex - 1;
+    while (localStart >= cursor) {
+      const localCharacter = value[localStart];
+      if (!localCharacter || !isEmailLocalChar(localCharacter)) {
+        break;
+      }
+      localStart -= 1;
+    }
+    localStart += 1;
+
+    let domainEnd = atIndex + 1;
+    while (domainEnd < value.length) {
+      const domainCharacter = value[domainEnd];
+      if (!domainCharacter || !isEmailDomainChar(domainCharacter)) {
+        break;
+      }
+      domainEnd += 1;
+    }
+
+    const localPart = value.slice(localStart, atIndex);
+    const domainPart = value.slice(atIndex + 1, domainEnd);
+
+    if (localPart.length === 0 || !isLikelyDomain(domainPart)) {
+      next += value.slice(cursor, atIndex + 1);
+      cursor = atIndex + 1;
+      continue;
+    }
+
+    next += value.slice(cursor, localStart);
+    next += `${localPart[0]}***@${domainPart}`;
+    cursor = domainEnd;
+  }
+
+  return next;
 };
 
 const redactSensitiveString = (value: string): string => {
-  let next = maskEmail(value);
-  next = next.replaceAll(jwtLikeRegex, '[REDACTED_JWT]');
+  let next = maskEmailAddresses(value);
+  next = next.replace(jwtLikeRegex, '[REDACTED_JWT]');
   for (const [pattern, replacement] of urlSecretPatterns) {
-    next = next.replaceAll(pattern, replacement);
+    next = next.replace(pattern, replacement);
   }
   return next;
 };

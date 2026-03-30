@@ -15,6 +15,7 @@ import { PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics';
 import { BatchLogRecordProcessor, LogRecordProcessor, type SdkLogRecord } from '@opentelemetry/sdk-logs';
 import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
 import { logs } from '@opentelemetry/api-logs';
+import { maskEmailAddresses as maskEmailAddressesShared } from '@sva/core';
 
 import { setGlobalLoggerProvider } from './logger-provider.server.js';
 
@@ -49,27 +50,30 @@ const forbiddenLabelKeys = new Set([
   'ip'
 ]);
 
-const emailRegex = /([\w.%+-])([\w.%+-]*)(@[\w-]+(?:\.[\w-]+)*\.[A-Za-z]{2,})/g;
 const jwtLikeRegex = /\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)?\b/g;
 const stringSecretPatterns: ReadonlyArray<readonly [RegExp, string]> = [
   [/\b(authorization:\s*)(bearer\s+)?[^\s,]+/gi, '$1[REDACTED]'],
-  [/\b(bearer\s+)[A-Za-z0-9._~+/=-]+/gi, '$1[REDACTED]'],
+  [/\b(bearer\s+)(?!\[REDACTED(?:_JWT)?\])[^\s,]+/gi, '$1[REDACTED]'],
   [
     /([?&](?:access_token|refresh_token|id_token|id_token_hint|token|code|client_secret|api_key|authorization)=)([^&#\s]+)/gi,
     '$1[REDACTED]',
   ],
   [
-    /((?:^|[\s,(])(?:access_token|refresh_token|id_token|id_token_hint|token|code|client_secret|api_key|authorization|password|secret|session|cookie|csrf)[\w.-]{0,20}[=:]\s*)([^\s,)]+)/gi,
+    /((?:^|[\s,(])(?:access_token|refresh_token|id_token|id_token_hint|token|code|client_secret|api_key|authorization)[\w.-]{0,20}[=:]\s*)([^\s,)]+)/gi,
+    '$1[REDACTED]',
+  ],
+  [
+    /((?:^|[\s,(])(?:password|secret|session|cookie|csrf)[\w.-]{0,20}[=:]\s*)([^\s,)]+)/gi,
     '$1[REDACTED]',
   ],
 ];
 
-const maskEmail = (value: string): string => {
-  return value.replace(emailRegex, (_, firstChar, _middle, domain) => `${firstChar}***${domain}`);
+export const maskEmailAddresses = (value: string): string => {
+  return maskEmailAddressesShared(value);
 };
 
-const redactString = (value: string): string => {
-  let next = maskEmail(value);
+export const redactString = (value: string): string => {
+  let next = maskEmailAddresses(value);
   next = next.replace(jwtLikeRegex, '[REDACTED_JWT]');
   for (const [pattern, replacement] of stringSecretPatterns) {
     next = next.replace(pattern, replacement);
@@ -77,7 +81,7 @@ const redactString = (value: string): string => {
   return next;
 };
 
-const redactValue = (value: unknown): unknown => {
+export const redactValue = (value: unknown): unknown => {
   if (typeof value === 'string') {
     return redactString(value);
   }
@@ -95,7 +99,7 @@ const redactValue = (value: unknown): unknown => {
   return value;
 };
 
-const toAttributeValue = (value: unknown): AttributeValue => {
+export const toAttributeValue = (value: unknown): AttributeValue => {
   if (value === null || value === undefined) {
     return 'null';
   }
@@ -106,12 +110,16 @@ const toAttributeValue = (value: unknown): AttributeValue => {
     return value.map((entry) => String(entry));
   }
   if (typeof value === 'object') {
-    return JSON.stringify(value);
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return Object.prototype.toString.call(value);
+    }
   }
   return String(value);
 };
 
-class RedactingLogProcessor implements LogRecordProcessor {
+export class RedactingLogProcessor implements LogRecordProcessor {
   public constructor(private readonly inner: LogRecordProcessor) {}
 
   public onEmit(logRecord: SdkLogRecord, context: Context): void {

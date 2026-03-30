@@ -28,15 +28,24 @@ const DEFAULT_LOGIN_PATH = '/auth/login';
 const DEFAULT_FALLBACK_PATH = '/';
 const DEFAULT_INSUFFICIENT_ROLE_KEY = 'auth.insufficientRole';
 const ADMIN_ROLES = ['system_admin', 'app_manager'] as const;
+const INTERNAL_REDIRECT_BASE = 'https://local.invalid';
+
+const isInternalPath = (value: string): boolean => value.startsWith('/') && value.startsWith('//') === false;
+
+const normalizeInternalPath = (value: string, fallbackPath: string): string => {
+  const candidate = isInternalPath(value) ? value : fallbackPath;
+  const url = new URL(candidate, INTERNAL_REDIRECT_BASE);
+  return `${url.pathname}${url.search}${url.hash}`;
+};
 
 const buildLoginHref = (loginPath: string, returnTo: string) => {
-  const url = new URL(loginPath, 'http://local');
-  url.searchParams.set('redirect', returnTo);
+  const url = new URL(normalizeInternalPath(loginPath, DEFAULT_LOGIN_PATH), INTERNAL_REDIRECT_BASE);
+  url.searchParams.set('redirect', normalizeInternalPath(returnTo, DEFAULT_FALLBACK_PATH));
   return `${url.pathname}${url.search}`;
 };
 
 const buildInsufficientRoleHref = (path: string, reasonKey: string) => {
-  const url = new URL(path, 'http://local');
+  const url = new URL(normalizeInternalPath(path, DEFAULT_FALLBACK_PATH), INTERNAL_REDIRECT_BASE);
   url.searchParams.set('error', reasonKey);
   return `${url.pathname}${url.search}`;
 };

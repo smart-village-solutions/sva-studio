@@ -82,6 +82,15 @@ describe('development log store', () => {
     expect(received[1]).toHaveLength(1);
   });
 
+  it('falls back to a structural tag for non-serializable values', () => {
+    const circular: Record<string, unknown> = {};
+    circular.self = circular;
+
+    const entry = appendBrowserDevelopmentLog('info', [circular], undefined);
+
+    expect(entry.message).toContain('[object Object]');
+  });
+
   it('captures console calls and browser events only once until stopped', () => {
     const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => undefined);
     const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => undefined);

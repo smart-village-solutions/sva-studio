@@ -1,3 +1,5 @@
+import { maskEmailAddresses } from '@sva/core';
+
 export type BrowserDevelopmentLogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 export interface BrowserDevelopmentLogEntry {
@@ -66,57 +68,21 @@ const isPlainObject = (value: unknown): value is Record<string, unknown> => {
   return prototype === Object.prototype || prototype === null;
 };
 
-const isEmailCharacter = (character: string): boolean => {
-  return /[A-Za-z0-9._%+-]/.test(character);
-};
-
-const maskEmailToken = (token: string): string => {
-  const atIndex = token.indexOf('@');
-  if (atIndex <= 0 || atIndex === token.length - 1) {
-    return token;
-  }
-
-  const localPart = token.slice(0, atIndex);
-  const domain = token.slice(atIndex + 1);
-  if (!domain.includes('.') || !/\.[A-Za-z]{2,}$/.test(domain)) {
-    return token;
-  }
-
-  return `${localPart[0]}***@${domain}`;
-};
-
-const maskEmail = (value: string): string => {
-  let maskedValue = '';
-  let tokenStart = -1;
-
-  const flushToken = (tokenEnd: number) => {
-    if (tokenStart < 0) {
-      return;
+const stringifyNonPlainValue = (value: object): string => {
+  const stringifier = value.toString;
+  if (typeof stringifier === 'function' && stringifier !== Object.prototype.toString) {
+    try {
+      return redactSensitiveString(String(value));
+    } catch {
+      return Object.prototype.toString.call(value);
     }
-
-    maskedValue += maskEmailToken(value.slice(tokenStart, tokenEnd));
-    tokenStart = -1;
-  };
-
-  for (let index = 0; index < value.length; index += 1) {
-    const character = value[index] ?? '';
-    if (isEmailCharacter(character) || character === '@') {
-      if (tokenStart < 0) {
-        tokenStart = index;
-      }
-      continue;
-    }
-
-    flushToken(index);
-    maskedValue += character;
   }
 
-  flushToken(value.length);
-  return maskedValue;
+  return Object.prototype.toString.call(value);
 };
 
 const redactSensitiveString = (value: string): string => {
-  let next = maskEmail(value);
+  let next = maskEmailAddresses(value);
   next = next.replaceAll(jwtLikeRegex, '[REDACTED_JWT]');
   for (const [pattern, replacement] of urlSecretPatterns) {
     next = next.replaceAll(pattern, replacement);
@@ -158,7 +124,7 @@ const serializeValue = (value: unknown): unknown => {
     );
   }
 
-  return String(value);
+  return stringifyNonPlainValue(value);
 };
 
 const stringifyMessage = (args: readonly unknown[]): string => {
@@ -175,7 +141,7 @@ const stringifyMessage = (args: readonly unknown[]): string => {
       try {
         return JSON.stringify(serializeValue(value));
       } catch {
-        return String(value);
+        return value && typeof value === 'object' ? stringifyNonPlainValue(value) : String(value);
       }
     })
     .join(' ');

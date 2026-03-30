@@ -1,13 +1,15 @@
 // Diagnose-Artefakte für SSR-Routing-Debug auf Swarm-Deployments.
 // Kontext: docs/staging/2026-03/router-diagnostik-2026-03-13.md
 
-import { writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { mkdtemp, writeFile } from 'node:fs/promises';
 
 import type { AnyRouter } from '@tanstack/react-router';
 
 import { createRouterDiagnosticsSnapshot } from './router-diagnostics';
 
-const ROUTER_DIAGNOSTICS_FILE = '/tmp/sva-router-diagnostics.json';
+const ROUTER_DIAGNOSTICS_DIR_PREFIX = path.join(tmpdir(), 'sva-router-diagnostics-');
 type RouterDiagnosticsLogger = {
   error: (message: string, meta: Record<string, unknown>) => void;
   info: (message: string, meta: Record<string, unknown>) => void;
@@ -17,6 +19,7 @@ type RouterDiagnosticsLogger = {
 let diagnosticsPromise: Promise<void> | null = null;
 let moduleLoadPromise: Promise<void> | null = null;
 let loggerPromise: Promise<RouterDiagnosticsLogger> | null = null;
+let diagnosticsFilePromise: Promise<string> | null = null;
 
 const summarizeRoutes = (routes: string[]): string[] => {
   return routes.slice(0, 20);
@@ -35,11 +38,19 @@ const getLogger = async (): Promise<RouterDiagnosticsLogger> => {
   return loggerPromise;
 };
 
-const logDiagnosticsError = async (message: string, error: unknown): Promise<void> => {
+const getDiagnosticsFile = async (): Promise<string> => {
+  diagnosticsFilePromise ??= mkdtemp(ROUTER_DIAGNOSTICS_DIR_PREFIX).then((directoryPath) =>
+    path.join(directoryPath, 'snapshot.json')
+  );
+
+  return diagnosticsFilePromise;
+};
+
+const logDiagnosticsError = async (message: string, error: unknown, diagnosticsFile?: string): Promise<void> => {
   (await getLogger()).error(message, {
     workspace_id: 'platform',
     environment: process.env.NODE_ENV ?? 'production',
-    diagnostics_file: ROUTER_DIAGNOSTICS_FILE,
+    diagnostics_file: diagnosticsFile ?? 'unresolved',
     error: error instanceof Error ? error.message : String(error),
     error_type: error instanceof Error ? error.constructor.name : 'unknown',
   });
@@ -47,6 +58,7 @@ const logDiagnosticsError = async (message: string, error: unknown): Promise<voi
 
 export const emitRouterModuleLoadDiagnosticsOnce = (routeTree: unknown): Promise<void> => {
   moduleLoadPromise ??= (async () => {
+    const diagnosticsFile = await getDiagnosticsFile();
     const snapshot = createRouterDiagnosticsSnapshot({
       routeTree,
       router: {},
@@ -54,7 +66,7 @@ export const emitRouterModuleLoadDiagnosticsOnce = (routeTree: unknown): Promise
     });
 
     await writeFile(
-      ROUTER_DIAGNOSTICS_FILE,
+      diagnosticsFile,
       `${JSON.stringify(
         {
           phase: 'router_module_loaded',
@@ -69,7 +81,7 @@ export const emitRouterModuleLoadDiagnosticsOnce = (routeTree: unknown): Promise
     (await getLogger()).info('Router-Modul geladen, Vorab-Diagnose geschrieben', {
       workspace_id: 'platform',
       environment: process.env.NODE_ENV ?? 'production',
-      diagnostics_file: ROUTER_DIAGNOSTICS_FILE,
+      diagnostics_file: diagnosticsFile,
       route_tree_node_count: snapshot.routeTreeNodeCount,
       has_root_route: snapshot.routeFlags.hasRootRoute,
       has_demo_route: snapshot.routeFlags.hasDemoRoute,
@@ -82,18 +94,19 @@ export const emitRouterModuleLoadDiagnosticsOnce = (routeTree: unknown): Promise
 };
 
 const writeRouterDiagnostics = async (router: AnyRouter, routeTree: unknown): Promise<void> => {
+  const diagnosticsFile = await getDiagnosticsFile();
   const snapshot = createRouterDiagnosticsSnapshot({
     routeTree,
     router,
     publicBaseUrl: process.env.SVA_PUBLIC_BASE_URL,
   });
 
-  await writeFile(ROUTER_DIAGNOSTICS_FILE, `${JSON.stringify(snapshot, null, 2)}\n`, 'utf8');
+  await writeFile(diagnosticsFile, `${JSON.stringify(snapshot, null, 2)}\n`, 'utf8');
 
   (await getLogger()).info('Router-Diagnose geschrieben', {
     workspace_id: 'platform',
     environment: process.env.NODE_ENV ?? 'production',
-    diagnostics_file: ROUTER_DIAGNOSTICS_FILE,
+    diagnostics_file: diagnosticsFile,
     route_tree_node_count: snapshot.routeTreeNodeCount,
     route_ids: summarizeRoutes(snapshot.routerRegistry.routeIds),
     route_paths: summarizeRoutes(snapshot.routerRegistry.routePaths),
@@ -107,7 +120,7 @@ const writeRouterDiagnostics = async (router: AnyRouter, routeTree: unknown): Pr
     (await getLogger()).warn('Router-Diagnose zeigt fehlende Routenregistrierung', {
       workspace_id: 'platform',
       environment: process.env.NODE_ENV ?? 'production',
-      diagnostics_file: ROUTER_DIAGNOSTICS_FILE,
+      diagnostics_file: diagnosticsFile,
       route_tree_node_count: snapshot.routeTreeNodeCount,
       route_ids: summarizeRoutes(snapshot.routerRegistry.routeIds),
       route_paths: summarizeRoutes(snapshot.routerRegistry.routePaths),

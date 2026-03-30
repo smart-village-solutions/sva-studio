@@ -1,4 +1,5 @@
 import React from 'react';
+import { sanitizeLegalTextHtml } from '@sva/auth';
 
 import { Button } from './ui/button';
 
@@ -41,18 +42,25 @@ const runCommand = (command: string, commandValue?: string) => {
 export const RichTextEditor = ({ id, labelId, value, onChange, placeholder, commands }: RichTextEditorProps) => {
   const editorRef = React.useRef<HTMLDivElement>(null);
   const placeholderDescriptionId = `${id}${PLACEHOLDER_DESCRIPTION_SUFFIX}`;
+  const sanitizedValue = React.useMemo(() => sanitizeLegalTextHtml(value), [value]);
 
   React.useEffect(() => {
     const editor = editorRef.current;
-    if (!editor || editor.innerHTML === value) {
+    if (!editor || editor.innerHTML === sanitizedValue) {
       return;
     }
 
-    editor.innerHTML = value;
-  }, [value]);
+    editor.innerHTML = sanitizedValue;
+  }, [sanitizedValue]);
+
+  React.useEffect(() => {
+    if (sanitizedValue !== value) {
+      onChange(sanitizedValue);
+    }
+  }, [onChange, sanitizedValue, value]);
 
   const syncValue = React.useCallback(() => {
-    onChange(editorRef.current?.innerHTML ?? '');
+    onChange(sanitizeLegalTextHtml(editorRef.current?.innerHTML ?? ''));
   }, [onChange]);
 
   const applyCommand = (command: string, commandValue?: string) => {
@@ -91,8 +99,11 @@ export const RichTextEditor = ({ id, labelId, value, onChange, placeholder, comm
         ref={editorRef}
         aria-labelledby={labelId}
         aria-describedby={placeholder ? placeholderDescriptionId : undefined}
+        aria-multiline="true"
         contentEditable
+        role="textbox"
         suppressContentEditableWarning
+        tabIndex={0}
         className="min-h-56 rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
         data-placeholder={placeholder}
         onInput={syncValue}

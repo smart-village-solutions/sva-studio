@@ -87,4 +87,68 @@ describe('RichTextEditor', () => {
     expect(execCommand).toHaveBeenCalledWith('bold', false, undefined);
     expect(onChange).toHaveBeenCalled();
   });
+
+  it('sanitizes incoming and outgoing html content', () => {
+    const onChange = vi.fn();
+
+    render(
+      <RichTextEditor
+        id="editor"
+        labelId="editor-label"
+        value={'<p>Hallo</p><script>alert(1)</script><a href="https://example.com" target="_blank">Link</a>'}
+        onChange={onChange}
+        commands={{
+          bold: 'Fett',
+          italic: 'Kursiv',
+          underline: 'Unterstrichen',
+          paragraph: 'Absatz',
+          heading: 'Überschrift',
+          bulletList: 'Liste',
+          clearFormatting: 'Formatierung entfernen',
+        }}
+      />
+    );
+
+    expect(document.getElementById('editor')?.innerHTML).toBe(
+      '<p>Hallo</p><a href="https://example.com" target="_blank" rel="noopener noreferrer">Link</a>'
+    );
+    expect(onChange).toHaveBeenCalledWith(
+      '<p>Hallo</p><a href="https://example.com" target="_blank" rel="noopener noreferrer">Link</a>'
+    );
+
+    fireEvent.input(document.getElementById('editor') as HTMLElement, {
+      target: {
+        innerHTML: '<p>Neu</p><img src=x onerror=alert(1)>',
+      },
+    });
+
+    expect(onChange).toHaveBeenLastCalledWith('<p>Neu</p>');
+  });
+
+  it('exposes textbox semantics for keyboard and assistive technology', () => {
+    const onChange = vi.fn();
+
+    render(
+      <RichTextEditor
+        id="editor"
+        labelId="editor-label"
+        value="<p>Hallo</p>"
+        onChange={onChange}
+        commands={{
+          bold: 'Fett',
+          italic: 'Kursiv',
+          underline: 'Unterstrichen',
+          paragraph: 'Absatz',
+          heading: 'Überschrift',
+          bulletList: 'Liste',
+          clearFormatting: 'Formatierung entfernen',
+        }}
+      />
+    );
+
+    const editor = document.getElementById('editor');
+    expect(editor?.getAttribute('role')).toBe('textbox');
+    expect(editor?.getAttribute('aria-multiline')).toBe('true');
+    expect(editor?.getAttribute('tabindex')).toBe('0');
+  });
 });

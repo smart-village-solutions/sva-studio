@@ -100,11 +100,8 @@ export default function Header({
           {showOrganizationContext ? <OrganizationContextSwitcher /> : null}
         </div>
         <div className="flex flex-wrap items-center justify-end gap-3 text-muted-foreground sm:gap-4">
-          <div
-            role="group"
-            aria-label={t('shell.header.languageSwitcher')}
-            className="inline-flex items-center overflow-hidden rounded-md border border-border bg-background shadow-sm"
-          >
+          <fieldset className="inline-flex items-center overflow-hidden rounded-md border border-border bg-background shadow-sm">
+            <legend className="sr-only">{t('shell.header.languageSwitcher')}</legend>
             <Button
               type="button"
               variant={locale === 'de' ? 'default' : 'ghost'}
@@ -127,7 +124,7 @@ export default function Header({
             >
               {t('shell.header.languageOptionEn')}
             </Button>
-          </div>
+          </fieldset>
           <Button
             type="button"
             aria-label={

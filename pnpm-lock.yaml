@@ -317,6 +317,9 @@ importers:
       '@opentelemetry/semantic-conventions':
         specifier: ^1.40.0
         version: 1.40.0
+      '@sva/core':
+        specifier: workspace:*
+        version: link:../core
     devDependencies:
       '@vitest/coverage-v8':
         specifier: ^4.1.0

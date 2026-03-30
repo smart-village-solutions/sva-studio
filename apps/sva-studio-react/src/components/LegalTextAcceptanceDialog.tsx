@@ -1,4 +1,5 @@
 import React from 'react';
+import { sanitizeLegalTextHtml } from '@sva/auth';
 
 import { acceptLegalText, asIamError, getMyPendingLegalTexts, LEGAL_ACCEPTANCE_REQUIRED_EVENT } from '../lib/iam-api';
 import { t } from '../i18n';
@@ -157,7 +158,7 @@ export const LegalTextAcceptanceDialog = ({ pathname }: LegalTextAcceptanceDialo
               </div>
               <div
                 className="prose prose-sm max-w-none text-foreground prose-headings:text-foreground prose-p:text-foreground"
-                dangerouslySetInnerHTML={{ __html: legalText.contentHtml }}
+                dangerouslySetInnerHTML={{ __html: sanitizeLegalTextHtml(legalText.contentHtml) }}
               />
             </Card>
           ))}

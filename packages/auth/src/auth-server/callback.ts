@@ -11,6 +11,11 @@ import { buildSessionUser, resolveSessionExpiry } from './shared.js';
 
 const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
 
+const readClaimSubject = (claims: Record<string, unknown>): string => {
+  const subject = claims.sub;
+  return typeof subject === 'string' ? subject : '';
+};
+
 const persistSession = async (input: {
   accessToken?: string;
   refreshToken?: string;
@@ -22,7 +27,7 @@ const persistSession = async (input: {
   const sessionId = randomUUID();
   const issuedAt = Date.now();
   const { sessionTtlMs } = getAuthConfig();
-  const sessionControlState = await getSessionControlState(String(input.claims.sub ?? ''));
+  const sessionControlState = await getSessionControlState(readClaimSubject(input.claims));
   const sessionVersion = Math.max(sessionControlState?.minimumSessionVersion ?? 1, 1);
   const expiresAt = resolveSessionExpiry({
     expiresInSeconds: undefined,

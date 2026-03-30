@@ -57,4 +57,21 @@ describe('protected routes', () => {
 
     await expect(invokeGuard(guard, { roles: ['app_manager'] }, '/admin/users')).resolves.toBeUndefined();
   });
+
+  it('normalizes external redirect targets back to internal defaults', async () => {
+    const guard = createProtectedRoute({
+      loginPath: 'https://evil.example/login',
+      fallbackPath: 'https://evil.example/fallback',
+    });
+
+    try {
+      await invokeGuard(guard, null, 'https://evil.example/admin');
+      expect.fail('Expected redirect');
+    } catch (error) {
+      expect(isRedirect(error)).toBe(true);
+      if (isRedirect(error)) {
+        expect(error.options.href).toBe('/auth/login?redirect=%2F');
+      }
+    }
+  });
 });

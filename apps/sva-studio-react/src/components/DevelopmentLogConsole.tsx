@@ -39,6 +39,19 @@ const stringifyContext = (context: unknown): string | null => {
   try {
     return JSON.stringify(context, null, 2);
   } catch {
+    if (typeof context === 'object') {
+      const stringifier = context.toString;
+      if (typeof stringifier === 'function' && stringifier !== Object.prototype.toString) {
+        try {
+          return String(context);
+        } catch {
+          return Object.prototype.toString.call(context);
+        }
+      }
+
+      return Object.prototype.toString.call(context);
+    }
+
     return String(context);
   }
 };

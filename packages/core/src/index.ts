@@ -18,3 +18,4 @@ export type {
 } from './content-management.js';
 export * from './routing/registry.js';
 export * from './iam/index.js';
+export { maskEmailAddresses } from './security/email-redaction.js';

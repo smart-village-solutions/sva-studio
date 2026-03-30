@@ -13,6 +13,7 @@ import {
   registerOtelAwareLogger,
   unregisterOtelAwareLogger,
 } from './logging-runtime.server.js';
+import { maskEmailAddresses } from '@sva/core';
 
 const SENSITIVE_KEYS = new Set([
   'password',
@@ -41,7 +42,6 @@ const SENSITIVE_KEYS = new Set([
   'db_keycloak_subject'
 ]);
 
-const emailRegex = /([\w.%+-])([\w.%+-]*)(@[\w-]+(?:\.[\w-]+)*\.[A-Za-z]{2,})/g;
 const jwtLikeRegex = /\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)?\b/g;
 const querySecretRegexSource = String.raw`([?&](?:access_token|refresh_token|id_token|id_token_hint|token|code|client_secret|api_key|authorization)=)([^&#\s]+)`;
 const inlineQuerySecretRegexSource = String.raw`((?:^|[\s,(])(?:access_token|refresh_token|id_token|id_token_hint|token|code|client_secret|api_key|authorization)[\w.-]{0,20}[=:]\s*)([^\s,)]+)`;
@@ -54,15 +54,11 @@ const urlSecretPatterns: ReadonlyArray<readonly [RegExp, string]> = [
   [new RegExp(inlineSensitiveFieldRegexSource, 'gi'), '$1[REDACTED]'],
 ];
 
-const maskEmail = (value: string): string => {
-  return value.replaceAll(emailRegex, (_, firstChar, _middle, domain) => `${firstChar}***${domain}`);
-};
-
 const redactSensitiveString = (value: string): string => {
-  let next = maskEmail(value);
-  next = next.replaceAll(jwtLikeRegex, '[REDACTED_JWT]');
+  let next = maskEmailAddresses(value);
+  next = next.replace(jwtLikeRegex, '[REDACTED_JWT]');
   for (const [pattern, replacement] of urlSecretPatterns) {
-    next = next.replaceAll(pattern, replacement);
+    next = next.replace(pattern, replacement);
   }
   return next;
 };

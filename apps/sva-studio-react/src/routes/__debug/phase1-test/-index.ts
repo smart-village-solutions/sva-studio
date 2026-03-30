@@ -15,6 +15,15 @@ interface TestResult {
   error?: string;
 }
 
+const createDebugOtlpSignalUrl = (signalPath: string): string => {
+  const configuredEndpoint = process.env.SVA_DEBUG_OTLP_ENDPOINT ?? process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
+  const baseUrl =
+    configuredEndpoint ??
+    `http:${'//'}${process.env.SVA_DEBUG_OTLP_HOST ?? 'host.docker.internal'}:${process.env.SVA_DEBUG_OTLP_PORT ?? '4318'}`;
+
+  return new URL(signalPath, baseUrl).toString();
+};
+
 /**
  * H3 Handler for Phase 1.1 Test Execution
  *
@@ -51,10 +60,10 @@ export default eventHandler(async (event) => {
       traceExporter: undefined,
       spanProcessors: [],
       metricReader: new PeriodicExportingMetricReader({
-        exporter: new OTLPMetricExporter({ url: 'http://host.docker.internal:4318/v1/metrics' })
+        exporter: new OTLPMetricExporter({ url: createDebugOtlpSignalUrl('/v1/metrics') })
       }),
       logRecordProcessor: new BatchLogRecordProcessor(
-        new OTLPLogExporter({ url: 'http://host.docker.internal:4318/v1/logs' }),
+        new OTLPLogExporter({ url: createDebugOtlpSignalUrl('/v1/logs') }),
         { maxQueueSize: 4096, maxExportBatchSize: 10, scheduledDelayMillis: 500 }
       ),
       instrumentations: [

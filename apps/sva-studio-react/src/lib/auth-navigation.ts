@@ -17,11 +17,12 @@ const sanitizeReturnTo = (value: string | null | undefined): string => {
 };
 
 export const resolveCurrentReturnTo = (): string => {
-  if (typeof window === 'undefined') {
+  const currentWindow = globalThis.window;
+  if (!currentWindow) {
     return DEFAULT_POST_LOGIN_PATH;
   }
 
-  return sanitizeReturnTo(`${window.location.pathname}${window.location.search}`);
+  return sanitizeReturnTo(`${currentWindow.location.pathname}${currentWindow.location.search}`);
 };
 
 export const createLoginHref = (returnTo?: string): string => {

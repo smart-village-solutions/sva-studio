@@ -30,6 +30,8 @@
     "check:file-placement": "tsx scripts/ci/check-file-placement.ts",
     "check:file-placement:staged": "tsx scripts/ci/check-file-placement.ts --staged",
     "check:openapi:iam": "tsx scripts/ci/check-openapi-iam.ts",
+    "sonar:hotspots": "tsx scripts/ci/sonar-hotspots.ts",
+    "sonar:hotspots:list": "tsx scripts/ci/sonar-hotspots.ts list",
     "env:up:local-keycloak": "tsx scripts/ops/runtime-env.ts up local-keycloak",
     "env:down:local-keycloak": "tsx scripts/ops/runtime-env.ts down local-keycloak",
     "env:update:local-keycloak": "tsx scripts/ops/runtime-env.ts update local-keycloak",

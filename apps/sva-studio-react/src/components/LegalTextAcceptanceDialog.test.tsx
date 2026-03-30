@@ -98,6 +98,37 @@ describe('LegalTextAcceptanceDialog', () => {
     });
   });
 
+  it('sanitizes rendered legal text html before injecting it into the dialog', async () => {
+    getMyPendingLegalTextsMock.mockResolvedValueOnce({
+      data: [
+        {
+          id: 'version-1',
+          legalTextId: 'text-1',
+          name: 'Nutzungsbedingungen',
+          legalTextVersion: '1',
+          locale: 'de-DE',
+          contentHtml:
+            '<p>Sicher</p><script>alert(1)</script><a href="https://example.com" target="_blank">Extern</a>',
+          publishedAt: '2026-03-22T19:00:00.000Z',
+        },
+      ],
+      pagination: { page: 1, pageSize: 1, total: 1 },
+    });
+
+    render(
+      <AuthProvider>
+        <LegalTextAcceptanceDialog pathname="/" />
+      </AuthProvider>
+    );
+
+    expect(await screen.findByText('Nutzungsbedingungen')).toBeTruthy();
+    expect(screen.getByText('Sicher')).toBeTruthy();
+
+    const externalLink = screen.getByRole('link', { name: 'Extern' });
+    expect(externalLink.getAttribute('rel')).toBe('noopener noreferrer');
+    expect(document.body.innerHTML).not.toContain('<script');
+  });
+
   it('suppresses the prompt on the legal text admin page', async () => {
     getMyPendingLegalTextsMock.mockResolvedValue({
       data: [

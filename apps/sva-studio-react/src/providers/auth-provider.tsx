@@ -67,12 +67,15 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   }, []);
 
   const attemptSilentSessionRecovery = React.useCallback(async (): Promise<boolean> => {
-    if (typeof window === 'undefined' || typeof document === 'undefined') {
+    const currentWindow = globalThis.window;
+    const currentDocument = globalThis.document;
+
+    if (!currentWindow || !currentDocument) {
       return false;
     }
 
     return new Promise<boolean>((resolve) => {
-      const iframe = document.createElement('iframe');
+      const iframe = currentDocument.createElement('iframe');
       iframe.hidden = true;
       iframe.setAttribute('title', 'silent-auth-recovery');
 
@@ -82,14 +85,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           return;
         }
         settled = true;
-        window.removeEventListener('message', handleMessage);
-        window.clearTimeout(timeoutId);
+        currentWindow.removeEventListener('message', handleMessage);
+        currentWindow.clearTimeout(timeoutId);
         iframe.remove();
         resolve(result);
       };
 
       const handleMessage = (event: MessageEvent) => {
-        if (event.origin !== window.location.origin) {
+        if (event.origin !== currentWindow.location.origin) {
           return;
         }
 
@@ -105,12 +108,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         cleanup(payload.status === 'success');
       };
 
-      const timeoutId = window.setTimeout(() => cleanup(false), SILENT_SSO_TIMEOUT_MS);
-      window.addEventListener('message', handleMessage);
+      const timeoutId = currentWindow.setTimeout(() => cleanup(false), SILENT_SSO_TIMEOUT_MS);
+      currentWindow.addEventListener('message', handleMessage);
       if (process.env.NODE_ENV !== 'test') {
         iframe.src = `${createLoginHref()}&silent=1`;
       }
-      document.body.appendChild(iframe);
+      currentDocument.body.appendChild(iframe);
     });
   }, []);
 

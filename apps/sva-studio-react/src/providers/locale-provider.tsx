@@ -32,11 +32,12 @@ export const LocaleProvider = ({ children }: LocaleProviderProps) => {
   }, []);
 
   React.useEffect(() => {
-    if (typeof window === 'undefined') {
+    const currentWindow = globalThis.window;
+    if (!currentWindow) {
       return;
     }
 
-    const persistedLocale = window.localStorage.getItem(LOCALE_STORAGE_KEY);
+    const persistedLocale = currentWindow.localStorage.getItem(LOCALE_STORAGE_KEY);
     if (!persistedLocale || !isSupportedLocale(persistedLocale) || persistedLocale === locale) {
       return;
     }
@@ -46,22 +47,25 @@ export const LocaleProvider = ({ children }: LocaleProviderProps) => {
   }, []);
 
   React.useEffect(() => {
-    if (typeof document !== 'undefined') {
-      document.documentElement.lang = locale;
+    if (globalThis.document) {
+      globalThis.document.documentElement.lang = locale;
     }
 
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem(LOCALE_STORAGE_KEY, locale);
+    if (globalThis.window) {
+      globalThis.window.localStorage.setItem(LOCALE_STORAGE_KEY, locale);
     }
   }, [locale]);
 
+  const contextValue = React.useMemo<LocaleContextValue>(
+    () => ({
+      locale,
+      setLocale,
+    }),
+    [locale, setLocale]
+  );
+
   return (
-    <LocaleContext.Provider
-      value={{
-        locale,
-        setLocale,
-      }}
-    >
+    <LocaleContext.Provider value={contextValue}>
       <React.Fragment key={locale}>{children}</React.Fragment>
     </LocaleContext.Provider>
   );

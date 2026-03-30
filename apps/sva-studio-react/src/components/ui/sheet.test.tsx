@@ -81,7 +81,6 @@ describe('Sheet', () => {
 
     const dialog = screen.getByRole('dialog', { name: 'Navigation' });
     const closeButton = screen.getByRole('button', { name: 'Schließen' });
-    const first = screen.getByRole('button', { name: 'First' });
     const second = screen.getByRole('button', { name: 'Second' });
 
     expect(document.activeElement).toBe(closeButton);

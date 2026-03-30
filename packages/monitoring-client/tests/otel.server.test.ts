@@ -2,7 +2,7 @@ import { ROOT_CONTEXT, diag } from '@opentelemetry/api';
 import type { AttributeValue } from '@opentelemetry/api';
 import type { Context } from '@opentelemetry/api';
 import type { LogRecordProcessor, SdkLogRecord } from '@opentelemetry/sdk-logs';
-import type { NodeSDK } from '@opentelemetry/sdk-node';
+import { NodeSDK } from '@opentelemetry/sdk-node';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -100,10 +100,14 @@ describe('otel.server helpers', () => {
   });
 
   it('toAttributeValue converts nulls, arrays and objects as expected', () => {
+    const circular: Record<string, unknown> = {};
+    circular.self = circular;
+
     expect(toAttributeValue(null)).toBe('null');
     expect(toAttributeValue(undefined)).toBe('null');
     expect(toAttributeValue(['a', 1, true])).toEqual(['a', '1', 'true']);
     expect(toAttributeValue({ k: 'v' })).toBe('{"k":"v"}');
+    expect(toAttributeValue(circular)).toBe('[object Object]');
     expect(toAttributeValue(false)).toBe(false);
     expect(toAttributeValue(Symbol('x'))).toBe('Symbol(x)');
   });
@@ -210,7 +214,10 @@ describe('otel.server helpers', () => {
   });
 
   it('startOtelSdk starts sdk and handles available global logger provider', async () => {
+    const startSpy = vi.spyOn(NodeSDK.prototype, 'start').mockResolvedValue(undefined as never);
+    const shutdownSpy = vi.spyOn(NodeSDK.prototype, 'shutdown').mockResolvedValue(undefined as never);
     const getLoggerProviderSpy = vi.spyOn(logs, 'getLoggerProvider');
+
     const sdk = await startOtelSdk({
       serviceName: 'svc-test',
       environment: 'production',
@@ -218,11 +225,15 @@ describe('otel.server helpers', () => {
     });
 
     expect(sdk).toBeDefined();
+    expect(startSpy).toHaveBeenCalled();
     expect(getLoggerProviderSpy).toHaveBeenCalled();
     await (sdk as NodeSDK).shutdown();
+    expect(shutdownSpy).toHaveBeenCalled();
   });
 
   it('startOtelSdk keeps working when no global logger provider exists', async () => {
+    const startSpy = vi.spyOn(NodeSDK.prototype, 'start').mockResolvedValue(undefined as never);
+    const shutdownSpy = vi.spyOn(NodeSDK.prototype, 'shutdown').mockResolvedValue(undefined as never);
     vi.spyOn(logs, 'getLoggerProvider').mockReturnValue(undefined as never);
 
     const sdk = await startOtelSdk({
@@ -232,6 +243,8 @@ describe('otel.server helpers', () => {
     });
 
     expect(sdk).toBeDefined();
+    expect(startSpy).toHaveBeenCalled();
     await (sdk as NodeSDK).shutdown();
+    expect(shutdownSpy).toHaveBeenCalled();
   });
 });

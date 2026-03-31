@@ -2,286 +2,126 @@
 
 ## Context
 
-Die bestehende IAM-Oberfläche trennt bereits Rollen, Gruppen, Benutzer und ein Transparenz-Cockpit. Für operative Rechtevergabe fehlt jedoch noch eine fachlich verständliche Arbeitsoberfläche, die Berechtigungen nicht nur als technische Permission-Keys, sondern entlang fachlicher Ressourcentypen und Scopes modelliert.
+Die heutige IAM-UI verfügt bereits über drei relevante Bausteine:
 
-Der gewünschte Umfang umfasst:
+- eine Rollenverwaltung unter `/admin/roles` mit Tabelle, Expand-Ansicht, Rollenmetadaten sowie Create/Edit/Delete-Flows
+- ein IAM-Cockpit unter `/admin/iam` mit Tabs für Rechteübersicht, Governance und DSR
+- vorhandene Authorize- und Permissions-Contracts mit strukturierten Feldern wie `action`, `resourceType`, `resourceId`, `organizationId`, `effect`, `scope`, `sourceRoleIds`, `sourceGroupIds`, Diagnosefeldern und allowlist-basierten Reason-Codes
 
-- Export als eigenständiges Recht pro Ressource
-- übertragbaren Datensatzbesitz
-- Ownership als Regelmodell dafür, was mit "eigenen" Daten passieren darf
-- Ownership-Übersteuerung ausschließlich durch Administratoren
-- sofort wirksame Besitzübertragung ohne zusätzlichen Freigabeschritt
-- Geltungsbereiche über:
-  - Module
-  - Datentypen
-  - räumliche Kategorien
-  - inhaltliche Kategorien
-  - Organisationen
-  - Instanzen
-
-Die Lösung muss sich in die bestehende Admin-Informationsarchitektur einfügen, neue UI-Bausteine auf `shadcn/ui` aufbauen und dieselben serverseitigen Autorisierungsgrundlagen für operative Prüfungen, Vorschau und Szenario-Tests verwenden.
+Die größte Lücke liegt nicht in einer fehlenden Policy-Engine, sondern in der Bedienbarkeit: Rollenrechte sind in der Rollenansicht heute primär als rohe `permissionKey`-Liste sichtbar, während technische Prüffunktionen in einer anderen Ansicht liegen. Der Change adressiert deshalb die UI- und Integrationslücke auf Basis vorhandener Daten und vermeidet bewusst ein neues Ownership-, Transfer- oder Override-Modell, das vom heutigen Code- und Spec-Stand nicht getragen wird.
 
 ## Goals / Non-Goals
 
 - Goals:
-  - Rollenverwaltung als primären Einstieg für Rechtepflege definieren
-  - eine verständliche Rechte-Matrix für CRUD-, Export- und Scope-Entscheidungen spezifizieren
-  - Ownership als separates, fachlich lesbares Regelmodell definieren
-  - den dafür notwendigen IAM-Contract für Scope-, Ownership- und Explainability-Daten explizit festlegen
-  - UI-seitige Zustände für erlaubte, eingeschränkte und besitzabhängige Aktionen vereinheitlichen
-  - die bestehenden Admin-Seiten und das IAM-Cockpit ergänzen statt ein Parallelmodul einzuführen
+  - die bestehende Rollenverwaltung zu einem klareren Berechtigungsarbeitsbereich weiterentwickeln
+  - vorhandene Rollen-Permissions fachlich lesbarer darstellen, ohne die Kompatibilität zu den aktuellen Contracts zu brechen
+  - Rollenverwaltung und vorhandene IAM-Prüffunktionen besser miteinander verzahnen
+  - Read-only- und Fehlzustände für System- und extern verwaltete Rollen normieren
+  - Anforderungen für priorisierte Fachseiten wie Content so formulieren, dass sie auf dem bestehenden Autorisierungsmodell aufsetzen
 - Non-Goals:
-  - keine abschließende Datenbank- oder API-Migration in diesem Change
-  - keine neue Policy-Engine außerhalb der bestehenden IAM-Architektur
-  - keine vollständige Modellierung aller möglichen ABAC-Sonderfälle
-  - keine Implementation eines generischen Policy-Builders mit frei formulierbaren Regeln in v1
+  - kein neues Ownership-Modell für Datensatzbesitz
+  - keine neue Scope-Taxonomie mit verpflichtenden Feldern wie `module`, `dataType`, `spatialCategory` oder `contentCategory`
+  - kein generischer Policy-Builder
+  - keine Abkehr vom bestehenden `permissionKey`-/Compatibility-Modell im selben Schritt
+  - keine Einführung eines separaten Top-Level-Admin-Moduls neben `/admin/roles` und `/admin/iam`
 
 ## Decisions
 
-- Decision: Rechteverwaltung bleibt in `/admin/roles` verankert.
-  - Rationale: Rollen sind der fachlich stabile Einstiegspunkt. Ein eigener Top-Level-Bereich `Permissions` würde das bestehende Admin-Modell fragmentieren.
+- Decision: Rechteverwaltung bleibt in `/admin/roles` verankert und erweitert die vorhandene Seite inkrementell.
+  - Rationale: Die existierende Rollenverwaltung ist bereits produktiv anschlussfähig. Ein kompletter Informationsarchitektur-Umbau würde unnötig viel Bewegung erzeugen.
 
-- Decision: Die Rollen-Detailansicht wird zum zentralen Arbeitsbereich.
-  - Rationale: Bestehende Rollenliste kann erhalten bleiben; die Detailbearbeitung ergänzt die vorhandene Struktur mit Tabs und Detailpanels.
+- Decision: Die Rollenliste bleibt Einstiegspunkt; Details werden als vertiefter Arbeitsbereich innerhalb derselben Seite oder desselben Flows spezifiziert.
+  - Rationale: Das passt zum aktuellen Tabellen-/Expand-Muster und erlaubt eine iterative Umsetzung.
 
-- Decision: Berechtigungen werden primär als fachliche Matrix dargestellt.
-  - Rationale: Anwender denken in "Inhalte lesen/bearbeiten/exportieren" statt in flachen Permission-IDs.
+- Decision: Die UI nutzt vorhandene Rollen- und Permissions-Daten weiter und ergänzt sie um fachliche Lesbarkeit statt um ein neues Datenmodell.
+  - Rationale: Der aktuelle Contract und das Rollen-API liefern schon genügend Informationen für eine erste verständlichere Darstellung.
 
-- Decision: Export bleibt ein eigenständiges Recht pro Ressource.
-  - Rationale: Export ist fachlich und sicherheitstechnisch eigenständig und darf nicht implizit aus `read` abgeleitet werden.
+- Decision: Technische `permissionKey`-Werte bleiben unterstützte Referenz, sind aber nicht mehr die primäre UI-Sprache.
+  - Rationale: Administratoren benötigen fachliche Lesbarkeit, technische Details müssen für Debugging und Migration aber weiterhin zugänglich bleiben.
 
-- Decision: Ownership wird als separates Regelmodell neben CRUD/Export geführt.
-  - Rationale: Besitz beschreibt nicht nur einzelne Aktionen, sondern Entscheidungshoheit über "eigene" Daten und muss deshalb sichtbar von Standardrechten getrennt bleiben.
+- Decision: Vorschau und Szenario-Prüfung bauen auf den bereits vorhandenen IAM-Cockpit- und Authorize-Pfaden auf.
+  - Rationale: Die Prüffunktion existiert bereits. Der Change soll sie in die Rechteverwaltung integrieren, nicht duplizieren.
 
-- Decision: Ownership ist übertragbar.
-  - Rationale: Fachliche Übergaben, Stellvertretung und organisatorische Wechsel müssen ohne Datenmigration oder Rollentausch möglich sein.
+- Decision: Read-only-Regeln für System- und extern verwaltete Rollen werden explizit als eigener UI-Zustand behandelt.
+  - Rationale: Dieser Zustand ist im aktuellen Code bereits vorhanden und muss spezifikativ klarer beschrieben werden.
 
-- Decision: Besitzübertragungen wirken sofort.
-  - Rationale: Übergaben sollen operativ einfach und ohne zusätzlichen Governance-Wartezustand funktionieren; ein Freigabeschritt würde die erste Version unnötig verkomplizieren. Sofortwirkung setzt aber transaktionale Persistenz, sofortige Re-Evaluierung effektiver Rechte, Invalidation betroffener Permission-Snapshots und Audit-Evidenz voraus.
-
-- Decision: Ownership-Overrides werden als separates, eng begrenztes Privileg modelliert.
-  - Rationale: Ownership schützt fachliche Verantwortung und darf nicht pauschal aus allgemeiner Administration folgen. Override-Fähigkeit muss als eigener Capability-Typ mit Least-Privilege-, Audit- und Self-Override-Schutz geführt werden.
-
-- Decision: Scope-Dimensionen werden explizit visualisiert.
-  - Rationale: Rechte entstehen nicht nur aus Aktion und Ressource, sondern aus Modul-, Kategorie-, Organisations- und Instanzkontext.
-
-- Decision: Rechtepflege und Ownership-Transfers bleiben standardmäßig innerhalb derselben `instanceId` und zulässiger Organisationsgrenzen.
-  - Rationale: Instanz- und Organisationsgrenzen sind sicherheits- und governance-relevante Grenzen. Cross-Instance- und unzulässige Cross-Org-Fälle würden den Scope unnötig erweitern und werden nicht in v1 generalisiert.
-
-- Decision: Vorschau, Szenario-Prüfung und operative Autorisierung nutzen dieselben serverseitigen Entscheidungsfelder.
-  - Rationale: So werden Drift zwischen UI-Vorschau und tatsächlicher Durchsetzung minimiert und Explainability auf denselben reason codes aufgebaut.
-
-- Decision: UI zeigt nur allowlist-basierte Konflikt- und Reason-Codes.
-  - Rationale: Die Oberfläche soll nachvollziehbar sein, aber keine Rohdiagnosen, fremden Identitätsdetails oder interne Policy-Strukturen preisgeben.
-
-- Decision: Die Starttaxonomie ist eine kanonische Menge stabiler IDs im IAM-Contract; sichtbare UI-Bezeichnungen bleiben lokalisiert.
-  - Rationale: Damit werden Headless- und Plugin-Fähigkeit gewahrt, während die UI weiterhin mit übersetzten Fachbegriffen statt internen Slugs arbeitet.
-
-- Decision: Neue Bausteine nutzen `shadcn/ui`.
-  - Rationale: Das entspricht den Projektregeln und hält visuelle und semantische Konsistenz mit bestehenden Admin-Flächen.
-
-## Initial Taxonomy Proposal
-
-Für die erste Version wird eine bewusst begrenzte, aber fachlich tragfähige Taxonomie vorgeschlagen.
-
-### Module
-
-- `content`
-- `iam`
-- `interfaces`
-- `legal`
-- `organizations`
-
-Begründung:
-
-- `content` deckt redaktionelle Kernarbeit ab und ist das wichtigste Fachmodul für die erste sichtbare Rechteintegration.
-- `iam` bündelt Benutzer-, Rollen-, Gruppen- und Governance-nahe Verwaltungsfunktionen.
-- `interfaces` bildet technische Anbindungen und deren Konfiguration ab.
-- `legal` deckt Rechtstexte, Akzeptanzverwaltung und rechtlich sensible Redaktionsobjekte ab.
-- `organizations` bildet Organisationsstruktur, Memberships und Kontextsteuerung ab.
-
-### Datentypen
-
-Für Modul `content`:
-
-- `generic_content`
-- `news`
-- `event`
-- `poi`
-- `service`
-- `construction_site`
-- `job`
-
-Für Modul `iam`:
-
-- `user`
-- `role`
-- `group`
-- `permission_bundle`
-
-Für Modul `legal`:
-
-- `legal_text`
-- `legal_acceptance`
-
-Für Modul `interfaces`:
-
-- `interface_configuration`
-- `interface_connection`
-
-Für Modul `organizations`:
-
-- `organization`
-- `organization_membership`
-
-Begründung:
-
-- Die Taxonomie orientiert sich an bereits sichtbaren oder absehbaren Verwaltungs- und Inhaltsobjekten im Projektkontext.
-- Sie ist klein genug für eine erste Rollenmatrix, aber groß genug, um die Scope-Architektur nicht nur auf ein einzelnes Content-Beispiel zu verengen.
-- `permission_bundle` bleibt eine technische Start-ID im Contract. Ob daraus später ein eigener sichtbarer Fachbegriff wird, ist nicht Teil dieses Changes.
+- Decision: Neue oder überarbeitete UI-Bausteine nutzen `shadcn/ui` und bestehende Admin-Patterns.
+  - Rationale: Das entspricht den Projektregeln und minimiert Design- und Accessibility-Drift.
 
 ## Proposed UI Architecture
 
 ### Rollenverwaltung
 
-`/admin/roles` bleibt die Übersichtsseite und wird um einen Detailarbeitsbereich erweitert:
+`/admin/roles` bleibt die zentrale Seite und umfasst weiterhin:
 
 - Rollenliste mit Suche, Sortierung und Status
-- Detailpanel oder Detailroute für die gewählte Rolle
-- Tabs:
-  - `Allgemein`
-  - `Berechtigungen`
-  - `Zuweisungen`
-  - `Vorschau`
+- Rollenmetadaten wie `externalRoleName`, `managedBy`, `roleLevel`, Sync-Status und Mitgliederzahl
+- Aktionen zum Anlegen, Bearbeiten, Löschen und Reconcile
 
-### Berechtigungsarbeitsbereich
+Der Berechtigungsarbeitsbereich wird inkrementell innerhalb der vorhandenen Seite ergänzt:
 
-Der Tab `Berechtigungen` besteht aus vier Zonen:
+- ausgewählte oder expandierte Rolle als Detailkontext
+- fachlich lesbare Berechtigungsdarstellung statt ausschließlicher Rohlisten
+- technischer Detailbereich für `permissionKey`, Herkunft oder Debug-Hinweise nur ergänzend
+- sichtbare Read-only-Hinweise für nicht editierbare Rollen
+- Einstieg in bestehende Prüffunktionen, statt einer zweiten unabhängigen Vorschauimplementierung
 
-1. Kontextfilter
+### Berechtigungsdarstellung
 
-- Instanz
-- Organisation
-- Modul
-- Datentyp
-- räumliche Kategorie
-- inhaltliche Kategorie
+Die UI priorisiert eine fachlich lesbare Gruppierung vorhandener Rechte. Je Berechtigung oder Berechtigungsgruppe werden mindestens sichtbar:
 
-1. Rechte-Matrix
+- fachliche Bezeichnung
+- technische Referenz bei Bedarf
+- Lesestatus oder Bearbeitbarkeit
+- erkennbare Read-only- oder Konfliktzustände
 
-- Zeilen: Ressourcentypen oder fachliche Datentypen
-- Spalten:
-  - `Lesen`
-  - `Erstellen`
-  - `Bearbeiten`
-  - `Löschen`
-  - `Exportieren`
-- Die Matrix wird semantisch als Tabelle mit klaren Zeilen- und Spaltenbezügen spezifiziert; auf kleinen Viewports wird sie in ein alternatives Karten- oder Akkordeonmuster überführt.
+Die erste Version muss keine vollwertige Matrix mit neuem Scope-Modell erzwingen. Zulässig sind auch:
 
-1. Scope-Panel pro Matrixeintrag
+- gruppierte Listen
+- Abschnittskarten
+- hybride Tabellen-/Detaildarstellungen
 
-- gesamte Instanz
-- ausgewählte Module
-- ausgewählte Datentypen
-- ausgewählte Organisationen
-- ausgewählte räumliche Kategorien
-- ausgewählte inhaltliche Kategorien
-- ausgewählte Datentypen
-- aktive Einschränkungen werden auch in eingeklapptem Zustand als zusammenfassende Chips oder Kurztexte sichtbar gehalten
+Entscheidend ist, dass die Darstellung aus heutiger Sicht auf dem bestehenden Rollen- und Permission-Modell aufbaut und nicht von zukünftigen Ownership- oder ABAC-Erweiterungen abhängig gemacht wird.
 
-1. Ownership-Regeln
+### Prüfintegration
 
-- Datensatz hat Besitzer
-- Besitz kann übertragen werden
-- Besitzer entscheidet über zulässige Aktionen auf eigenen Daten
-- Übersteuerung nur durch Administratoren
+Statt eines komplett neuen Vorschau-Backends nutzt die Rollenverwaltung die vorhandenen IAM-Prüfpfade:
 
-### Vorschau
+- Verlinkung oder eingebetteter Einstieg zur bestehenden Szenario-Prüfung
+- Wiederverwendung vorhandener strukturierter Diagnosefelder und Reason-Codes
+- klare Trennung zwischen:
+  - Rollenmetadaten
+  - Rollen-Permissions
+  - operativer Autorisierungsprüfung
 
-Der Tab `Vorschau` bietet:
+## Fach-UI-Integration
 
-- lesbare Zusammenfassung "Diese Rolle kann"
-- lesbare Zusammenfassung "Diese Rolle kann nicht"
-- Szenario-Prüfung für Aktion, Ressource und Scope
-- Begründungen für Allow- und Deny-Entscheidungen
-- verpflichtender Änderungsreview vor dem Speichern mit Diff neu hinzugekommener oder entfallender Rechte und betroffener Zuweisungen
+Priorisierte Fachseiten wie Content sollen nicht auf ein neues Ownership-Modell warten. Der Change spezifiziert stattdessen:
 
-### Fach-UI-Integration
+- konsistente Behandlung von serverseitigem `forbidden`
+- verständliche UI-Zustände für deaktivierte oder nicht erlaubte Aktionen
+- optionale Wiederverwendung vorhandener Diagnose- und Rechteinformationen, sofern verfügbar
 
-Fachseiten wie Content müssen dieselbe Logik sichtbar verwenden:
+## Contract Reuse
 
-- Aktionen werden nicht nur nach Server-`403` behandelt
-- UI kennt Zustände:
-  - erlaubt
-  - deaktiviert mit Begründung
-  - verborgen, wenn fachlich irrelevant
-  - blockiert durch Ownership
-- die Zustände werden als normierte Zustandsmatrix definiert und nicht nur über Farbe, Icons oder Tooltips vermittelt
+Der Change setzt auf den heute vorhandenen Contract-Feldern auf:
 
-## Required Components
+- Rollen-Permissions und Rollen-Metadaten aus den bestehenden Rollen-APIs
+- effektive Berechtigungen mit `action`, `resourceType`, optional `resourceId`, optional `organizationId`, optional `effect`, optional `scope`, `sourceRoleIds` und `sourceGroupIds`
+- Authorize-Antworten mit `allowed`, `reason`, `diagnostics`, optional `denialCode` und `provenance`
 
-- `RoleDetailTabs`
-- `RolePermissionMatrix`
-- `PermissionScopePanel`
-- `OwnershipRulesCard`
-- `RoleAssignmentImpactCard`
-- `RolePreviewPanel`
-- `PermissionScenarioTester`
-- `InlineAuthorizationHint`
-- `OwnershipTransferDialog`
-- `PermissionConflictBadge`
-
-Alle neuen Komponenten bauen auf `shadcn/ui`-Primitives wie `Tabs`, `Card`, `Table`, `Badge`, `Alert`, `Dialog`, `Popover`, `Tooltip`, `Checkbox`, `Select` und `Command` auf.
-
-## Content- und Terminologieprinzipien
-
-- Der IAM-Contract verwendet stabile technische IDs wie `content` oder `permission_bundle`.
-- Die UI verwendet für sichtbare Labels, Hilfetexte und Statusmeldungen ausschließlich lokalisierte Fachbegriffe über Translation-Keys in `de` und `en`.
-- Für v1 werden die Begriffe `Besitz`, `Besitzregel`, `Geltungsbereich` und `Übersteuerung` als primäre deutsche UI-Sprache verwendet; `Ownership`, `Scope` und `Override` bleiben technische Begriffe in Spezifikation und Contract.
+Neue verpflichtende Ownership-, Transfer- oder Override-Felder werden in diesem Change nicht eingeführt.
 
 ## Risks / Trade-offs
 
-- Mehrdimensionale Scopes können schnell überladen wirken.
-  - Mitigation: progressive disclosure, Standardfälle zuerst, erweiterte Bereiche einklappbar.
+- Eine inkrementelle Weiterentwicklung kann visuell weniger "neu" wirken als ein vollständiger Redesign-Ansatz.
+  - Mitigation: klare fachliche Gruppierung, bessere Begrifflichkeit und stärkerer Fokus auf Prüfeinstiege.
 
-- Ownership und Rollenrechte können für Nutzer semantisch verschwimmen.
-  - Mitigation: separater Ownership-Bereich mit eigener Sprache, Warnhinweisen und Vorschau.
+- Die bestehende Datenstruktur kann fachliche Darstellung nur begrenzt unterstützen.
+  - Mitigation: Der Change erlaubt fachliche Mapping-Schichten in der UI, ohne sofort einen Backend-Umbau zu verlangen.
 
-- Fach-UI kann inkonsistent werden, wenn nur Admin-Flächen angepasst werden.
-  - Mitigation: die Spezifikation verlangt sichtbare Aktionszustände auch in betroffenen Fachmodulen.
+- Rollenverwaltung und IAM-Cockpit können weiterhin getrennt wirken.
+  - Mitigation: Der Change schreibt die Verknüpfung der vorhandenen Prüffunktionen mit der Rollenverwaltung verbindlich fest.
 
-- Ein zu freies Policy-Modell würde Implementation und Usability entkoppeln.
-  - Mitigation: v1 bleibt strukturiert und formularbasiert, kein generischer Rule-Builder.
-
-- Vorschau und operative Entscheidung können auseinanderlaufen, wenn unterschiedliche Datenquellen verwendet werden.
-  - Mitigation: beide Wege nutzen denselben serverseitigen Entscheidungs-Contract und dieselben allowlist-basierten reason codes.
-
-- Ownership-Transfers und Overrides sind missbrauchsanfällig.
-  - Mitigation: separater Override-Capability-Typ, Audit-Evidenz, kein Self-Override, zulässige Instanz- und Organisationsgrenzen.
-
-## Migration Plan
-
-1. Rollen-UI um Detailarbeitsbereich und Permission-Matrix erweitern
-2. IAM-Contract für Scope-, Ownership- und Explainability-Felder als gemeinsame Grundlage für UI, Vorschau und Szenario-Prüfung festlegen
-3. Ownership-Modell und Transfer-Interaktionen mit Audit-, Boundary- und Override-Guardrails spezifizieren und danach technisch anbinden
-4. Fach-UI-Aktionszustände für priorisierte Module angleichen
-5. Dokumentation und arc42-Referenzen aktualisieren
-
-## Resolved Decisions
-
-- Initiale Modul-Taxonomie:
-  - `content`
-  - `iam`
-  - `interfaces`
-  - `legal`
-  - `organizations`
-- Initiale Datentyp-Taxonomie:
-  - Content: `generic_content`, `news`, `event`, `poi`, `service`, `construction_site`, `job`
-  - IAM: `user`, `role`, `group`, `permission_bundle`
-  - Legal: `legal_text`, `legal_acceptance`
-  - Interfaces: `interface_configuration`, `interface_connection`
-  - Organizations: `organization`, `organization_membership`
-- Ownership-Overrides sind ein separates, eng begrenztes Privileg.
-- Besitzübertragungen sind sofort wirksam.
-- Besitzübertragungen bleiben auf zulässige Instanz- und Organisationsgrenzen beschränkt.
-- Vorschau, Szenario-Prüfung und operative Autorisierung nutzen denselben serverseitigen Entscheidungs-Contract.
+- Fachseiten könnten weiterhin bei generischen `403`-Zuständen stehen bleiben.
+  - Mitigation: Der Change verlangt konsistentere Zustände in priorisierten Fach-UI-Flächen, ohne nicht vorhandene Ownership-Semantik vorzutäuschen.

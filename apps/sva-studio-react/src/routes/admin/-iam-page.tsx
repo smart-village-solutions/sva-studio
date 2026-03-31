@@ -25,6 +25,7 @@ import { t } from '../../i18n';
 import { useAuth } from '../../providers/auth-provider';
 import {
   filterPermissions,
+  formatPermissionSourceKinds,
   getFirstAllowedTab,
   mapAuthorizeDecision,
   mapDsrCanonicalStatusToTranslationKey,
@@ -128,6 +129,7 @@ const PermissionTable = ({
             <th className="py-2 pr-4 font-semibold">{t('admin.iam.rights.columns.scope')}</th>
             <th className="py-2 font-semibold">{t('admin.iam.rights.columns.sourceRoles')}</th>
             <th className="py-2 font-semibold">{t('admin.iam.rights.columns.sourceGroups')}</th>
+            <th className="py-2 font-semibold">{t('admin.iam.rights.columns.origin')}</th>
           </tr>
         </thead>
         <tbody>
@@ -144,6 +146,7 @@ const PermissionTable = ({
               <td className="py-2 pr-4">{formatObjectEntries(permission.scope)}</td>
               <td className="py-2">{permission.sourceRoleIds.length > 0 ? permission.sourceRoleIds.join(', ') : '—'}</td>
               <td className="py-2">{permission.sourceGroupIds.length > 0 ? permission.sourceGroupIds.join(', ') : '—'}</td>
+              <td className="py-2">{formatPermissionSourceKinds(permission)}</td>
             </tr>
           ))}
         </tbody>
@@ -775,7 +778,33 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
                 <p className="font-semibold text-foreground">
                   {authorizeDecision.allowed ? t('admin.iam.rights.authorize.allowed') : t('admin.iam.rights.authorize.denied')}
                 </p>
-                <p className="text-muted-foreground">{authorizeDecision.reasonCode ?? authorizeDecision.reason}</p>
+                <dl className="mt-3 grid gap-2 text-sm">
+                  <div>
+                    <dt className="text-xs uppercase tracking-wide text-muted-foreground">{t('admin.iam.rights.authorize.summary.action')}</dt>
+                    <dd className="text-foreground">{authorizeAction.trim() || '—'}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs uppercase tracking-wide text-muted-foreground">{t('admin.iam.rights.authorize.summary.resource')}</dt>
+                    <dd className="text-foreground">
+                      {[authorizeResourceType.trim(), authorizeResourceId.trim()].filter(Boolean).join(' / ') || '—'}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs uppercase tracking-wide text-muted-foreground">{t('admin.iam.rights.authorize.summary.organization')}</dt>
+                    <dd className="text-foreground">{authorizeOrganizationId.trim() || organizationId.trim() || '—'}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs uppercase tracking-wide text-muted-foreground">{t('admin.iam.rights.authorize.summary.cause')}</dt>
+                    <dd className="text-foreground">{authorizeDecision.reasonCode ?? authorizeDecision.reason}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs uppercase tracking-wide text-muted-foreground">{t('admin.iam.rights.authorize.summary.origin')}</dt>
+                    <dd className="text-foreground">
+                      {authorizeDecision.provenance?.sourceKinds?.join(', ') ||
+                        (authorizeDecision.matchedPermissions?.length ? authorizeDecision.matchedPermissions.map((permission) => permission.source).join(', ') : '—')}
+                    </dd>
+                  </div>
+                </dl>
                 {authorizeDecision.diagnostics ? (
                   <p className="mt-2 text-xs text-muted-foreground">
                     {formatObjectEntries(authorizeDecision.diagnostics)}

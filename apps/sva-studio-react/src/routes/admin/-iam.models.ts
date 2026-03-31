@@ -17,6 +17,7 @@ export type AuthorizeDecisionViewModel = {
   readonly diagnostics?: Readonly<Record<string, unknown>>;
   readonly evaluatedAt?: string;
   readonly provenance?: AuthorizeResponse['provenance'];
+  readonly matchedPermissions?: AuthorizeResponse['matchedPermissions'];
 };
 
 const VALID_TABS: readonly IamCockpitTabKey[] = ['rights', 'governance', 'dsr'];
@@ -65,7 +66,16 @@ export const mapAuthorizeDecision = (response: AuthorizeResponse): AuthorizeDeci
     diagnostics: response.diagnostics,
     evaluatedAt: response.evaluatedAt,
     provenance: response.provenance,
+    matchedPermissions: response.matchedPermissions,
   };
+};
+
+export const formatPermissionSourceKinds = (permission: EffectivePermission): string => {
+  const sourceKinds = permission.provenance?.sourceKinds ?? [];
+  if (sourceKinds.length === 0) {
+    return '—';
+  }
+  return sourceKinds.join(', ');
 };
 
 const includesIgnoreCase = (haystack: string | undefined, needle: string) =>

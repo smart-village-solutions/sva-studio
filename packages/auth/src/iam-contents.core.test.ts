@@ -24,6 +24,7 @@ const state = vi.hoisted(() => ({
   loadContentById: vi.fn(),
   loadContentDetail: vi.fn(),
   loadContentHistory: vi.fn(),
+  resolveEffectivePermissions: vi.fn(),
 }));
 
 vi.mock('@sva/sdk/server', () => ({
@@ -62,6 +63,16 @@ vi.mock('./iam-contents/repository.js', () => ({
   loadContentListItems: (...args: Parameters<typeof state.loadContentListItems>) => state.loadContentListItems(...args),
 }));
 
+vi.mock('./iam-authorization/permission-store.js', () => ({
+  resolveEffectivePermissions: (...args: Parameters<typeof state.resolveEffectivePermissions>) =>
+    state.resolveEffectivePermissions(...args),
+}));
+
+vi.mock('./iam-authorization/permission-store', () => ({
+  resolveEffectivePermissions: (...args: Parameters<typeof state.resolveEffectivePermissions>) =>
+    state.resolveEffectivePermissions(...args),
+}));
+
 import {
   createContentHandler,
   createContentInternal,
@@ -78,6 +89,7 @@ const actorResolution = {
   actor: {
     instanceId: 'de-musterhausen',
     actorAccountId: 'account-1',
+    keycloakSubject: 'user-1',
     actorDisplayName: 'Editor',
     requestId: 'req-content',
     traceId: 'trace-content',
@@ -104,6 +116,19 @@ describe('iam-contents core', () => {
     state.loadContentById.mockReset();
     state.loadContentDetail.mockReset();
     state.loadContentHistory.mockReset();
+    state.resolveEffectivePermissions.mockReset();
+    state.resolveEffectivePermissions.mockResolvedValue({
+      ok: true,
+      permissions: [
+        {
+          action: 'content.read',
+          resourceType: 'content',
+          sourceRoleIds: ['role-1'],
+          sourceGroupIds: [],
+        },
+      ],
+      cacheStatus: 'hit',
+    });
   });
 
   it('covers list handlers for actor errors, success and database failures', async () => {
@@ -160,12 +185,37 @@ describe('iam-contents core', () => {
   it('returns detail and history payloads on successful reads', async () => {
     state.resolveContentActor.mockResolvedValue(actorResolution);
     state.readPathSegment.mockReturnValue('content-1');
-    state.loadContentDetail.mockResolvedValueOnce({ id: 'content-1', title: 'Startseite', history: [] });
+    state.loadContentDetail.mockResolvedValueOnce({
+      id: 'content-1',
+      title: 'Startseite',
+      history: [],
+      access: {
+        state: 'editable',
+        canRead: true,
+        canCreate: true,
+        canUpdate: true,
+        organizationIds: [],
+        sourceKinds: [],
+      },
+    });
 
     const detailResponse = await getContentInternal(new Request('http://localhost/api/v1/iam/contents/content-1'), ctx);
     expect(detailResponse.status).toBe(200);
     expect(await detailResponse.json()).toEqual({
-      data: { id: 'content-1', title: 'Startseite', history: [] },
+      data: {
+        id: 'content-1',
+        title: 'Startseite',
+        history: [],
+        access: {
+          state: 'read_only',
+          canRead: true,
+          canCreate: false,
+          canUpdate: false,
+          reasonCode: 'context_restricted',
+          organizationIds: [],
+          sourceKinds: [],
+        },
+      },
       requestId: 'req-content',
     });
 
@@ -237,7 +287,18 @@ describe('iam-contents core', () => {
     state.loadContentListItems.mockResolvedValue([]);
     state.readPathSegment.mockReturnValue('content-1');
     state.loadContentById.mockResolvedValue({ id: 'content-1' });
-    state.loadContentDetail.mockResolvedValue({ id: 'content-1', history: [] });
+    state.loadContentDetail.mockResolvedValue({
+      id: 'content-1',
+      history: [],
+      access: {
+        state: 'editable',
+        canRead: true,
+        canCreate: true,
+        canUpdate: true,
+        organizationIds: [],
+        sourceKinds: [],
+      },
+    });
     state.loadContentHistory.mockResolvedValue([]);
     state.createContentResponse.mockResolvedValue(new Response('created', { status: 201 }));
     state.updateContentResponse.mockResolvedValue(new Response('updated', { status: 200 }));

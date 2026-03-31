@@ -1,5 +1,5 @@
 import { Link, useNavigate } from '@tanstack/react-router';
-import { GENERIC_CONTENT_TYPE, type IamContentStatus } from '@sva/core';
+import { GENERIC_CONTENT_TYPE, withServerDeniedContentAccess, type IamContentAccessSummary, type IamContentStatus } from '@sva/core';
 import React from 'react';
 
 import { Alert, AlertDescription } from '../../components/ui/alert';
@@ -10,6 +10,7 @@ import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Select } from '../../components/ui/select';
 import { Textarea } from '../../components/ui/textarea';
+import { useContentAccess } from '../../hooks/use-content-access';
 import { useContentDetail, useCreateContent } from '../../hooks/use-contents';
 import { t } from '../../i18n';
 import type { CreateContentPayload, IamHttpError, UpdateContentPayload } from '../../lib/iam-api';
@@ -109,6 +110,13 @@ const statusLabelKeyByValue = {
   archived: 'content.status.archived',
 } as const;
 
+const contentAccessLabelKeyByState = {
+  editable: 'content.access.states.editable',
+  read_only: 'content.access.states.readOnly',
+  blocked: 'content.access.states.blocked',
+  server_denied: 'content.access.states.serverDenied',
+} as const;
+
 const buildFormState = (content: {
   title: string;
   contentType: string;
@@ -140,12 +148,19 @@ const parseContentPayload = (payloadText: string): { ok: true; payload: unknown 
 const renderContentMeta = ({
   mode,
   content,
+  access,
 }: {
   mode: ContentEditorPageProps['mode'];
   content: ReturnType<typeof useContentDetail>['content'];
+  access: IamContentAccessSummary | null;
 }) => {
   if (mode === 'create') {
-    return <p className="text-sm text-muted-foreground">{t('content.meta.createHint')}</p>;
+    return (
+      <div className="space-y-2">
+        <p className="text-sm text-muted-foreground">{t('content.meta.createHint')}</p>
+        {access ? <p className="text-xs text-muted-foreground">{t('content.meta.accessContext', { value: access.organizationIds.join(', ') || '—' })}</p> : null}
+      </div>
+    );
   }
 
   return (
@@ -165,6 +180,10 @@ const renderContentMeta = ({
       <div>
         <dt className="text-muted-foreground">{t('content.meta.id')}</dt>
         <dd className="break-all text-foreground">{content?.id}</dd>
+      </div>
+      <div>
+        <dt className="text-muted-foreground">{t('content.meta.access')}</dt>
+        <dd className="text-foreground">{access ? t(contentAccessLabelKeyByState[access.state]) : '—'}</dd>
       </div>
     </dl>
   );
@@ -210,6 +229,7 @@ export const ContentEditorPage = ({ mode, contentId }: ContentEditorPageProps) =
   const navigate = useNavigate();
   const createApi = useCreateContent();
   const detailApi = useContentDetail(mode === 'edit' ? (contentId ?? null) : null);
+  const contentAccessApi = useContentAccess();
   const [formState, setFormState] = React.useState<ContentFormState>(emptyFormState);
   const [payloadError, setPayloadError] = React.useState<string | null>(null);
 
@@ -222,9 +242,20 @@ export const ContentEditorPage = ({ mode, contentId }: ContentEditorPageProps) =
 
   const activeError = mode === 'create' ? createApi.mutationError : detailApi.mutationError;
   const isLoading = mode === 'create' ? false : detailApi.isLoading;
+  const content = detailApi.content;
+  const activeAccess =
+    mode === 'edit'
+      ? content?.access ?? (detailApi.error?.code === 'forbidden' ? withServerDeniedContentAccess(undefined) : null)
+      : contentAccessApi.access ?? (activeError?.code === 'forbidden' ? withServerDeniedContentAccess(undefined) : null);
+  const isReadOnly = mode === 'edit' && activeAccess?.canRead === true && activeAccess.canUpdate === false;
+  const actionsDisabled =
+    mode === 'create' ? (activeAccess ? !activeAccess.canCreate : activeError?.code === 'forbidden') : !activeAccess?.canUpdate;
 
   const submitForm = async (event: React.SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (actionsDisabled) {
+      return;
+    }
     setPayloadError(null);
 
     const parsedPayload = parseContentPayload(formState.payloadText);
@@ -271,8 +302,6 @@ export const ContentEditorPage = ({ mode, contentId }: ContentEditorPageProps) =
     await detailApi.updateContent(payload);
   };
 
-  const content = detailApi.content;
-
   return (
     <section className="space-y-5" aria-busy={isLoading}>
       <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
@@ -288,6 +317,11 @@ export const ContentEditorPage = ({ mode, contentId }: ContentEditorPageProps) =
           <p className="max-w-3xl text-sm text-muted-foreground">
             {mode === 'create' ? t('content.editor.createSubtitle') : t('content.editor.editSubtitle')}
           </p>
+          {isReadOnly ? (
+            <p className="text-sm text-muted-foreground">{t('content.messages.readOnly')}</p>
+          ) : actionsDisabled ? (
+            <p className="text-sm text-muted-foreground">{t('content.messages.actionsDisabled')}</p>
+          ) : null}
         </div>
         <Button asChild variant="outline">
           <Link to="/content">{t('content.actions.back')}</Link>
@@ -306,6 +340,12 @@ export const ContentEditorPage = ({ mode, contentId }: ContentEditorPageProps) =
         </Alert>
       ) : null}
 
+      {isReadOnly ? (
+        <Alert className="border-secondary/40 bg-secondary/5 text-secondary">
+          <AlertDescription>{t('content.messages.readOnly')}</AlertDescription>
+        </Alert>
+      ) : null}
+
       {mode === 'edit' && !content && !detailApi.isLoading ? null : (
         <div className="grid gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
           <Card className="p-5">
@@ -316,6 +356,7 @@ export const ContentEditorPage = ({ mode, contentId }: ContentEditorPageProps) =
                   <Input
                     id="content-title"
                     value={formState.title}
+                    disabled={actionsDisabled}
                     onChange={(event) => setFormState((current) => ({ ...current, title: event.target.value }))}
                     required
                   />
@@ -329,6 +370,7 @@ export const ContentEditorPage = ({ mode, contentId }: ContentEditorPageProps) =
                   <Select
                     id="content-status"
                     value={formState.status}
+                    disabled={actionsDisabled}
                     onChange={(event) =>
                       setFormState((current) => ({ ...current, status: event.target.value as IamContentStatus }))
                     }
@@ -346,6 +388,7 @@ export const ContentEditorPage = ({ mode, contentId }: ContentEditorPageProps) =
                     id="content-published-at"
                     type="datetime-local"
                     value={formState.publishedAt}
+                    disabled={actionsDisabled}
                     required={formState.status === 'published'}
                     onChange={(event) => setFormState((current) => ({ ...current, publishedAt: event.target.value }))}
                   />
@@ -355,6 +398,7 @@ export const ContentEditorPage = ({ mode, contentId }: ContentEditorPageProps) =
                   <Textarea
                     id="content-payload"
                     value={formState.payloadText}
+                    disabled={actionsDisabled}
                     className="min-h-[22rem] font-mono text-xs"
                     onChange={(event) => setFormState((current) => ({ ...current, payloadText: event.target.value }))}
                   />
@@ -362,7 +406,7 @@ export const ContentEditorPage = ({ mode, contentId }: ContentEditorPageProps) =
               </div>
 
               <div className="flex flex-wrap gap-3">
-                <Button type="submit">
+                <Button type="submit" disabled={actionsDisabled}>
                   {mode === 'create' ? t('content.actions.createNow') : t('content.actions.save')}
                 </Button>
                 <Button asChild variant="outline">
@@ -375,7 +419,7 @@ export const ContentEditorPage = ({ mode, contentId }: ContentEditorPageProps) =
           <div className="space-y-5">
             <Card className="space-y-3 p-5">
               <h2 className="text-lg font-semibold text-foreground">{t('content.meta.title')}</h2>
-              {renderContentMeta({ mode, content })}
+              {renderContentMeta({ mode, content, access: activeAccess })}
             </Card>
 
             <Card className="space-y-3 p-5">

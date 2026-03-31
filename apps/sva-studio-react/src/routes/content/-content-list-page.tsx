@@ -1,3 +1,4 @@
+import { withServerDeniedContentAccess, type IamContentAccessSummary } from '@sva/core';
 import { Link } from '@tanstack/react-router';
 import React from 'react';
 
@@ -8,6 +9,7 @@ import { Card } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Select } from '../../components/ui/select';
+import { useContentAccess } from '../../hooks/use-content-access';
 import { useContents } from '../../hooks/use-contents';
 import { t } from '../../i18n';
 import type { IamHttpError } from '../../lib/iam-api';
@@ -48,12 +50,66 @@ const summarizePayload = (value: unknown): string => {
 
 const stringifyPayload = (value: unknown): string => JSON.stringify(value) ?? '';
 
+const resolveRowAccess = (
+  access: IamContentAccessSummary | undefined,
+  listError: IamHttpError | null
+): IamContentAccessSummary => {
+  if (access) {
+    return access;
+  }
+  if (listError?.code === 'forbidden') {
+    return withServerDeniedContentAccess(undefined);
+  }
+  return {
+    state: 'read_only',
+    canRead: true,
+    canCreate: false,
+    canUpdate: false,
+    reasonCode: 'content_update_missing',
+    organizationIds: [],
+    sourceKinds: [],
+  };
+};
+
+const contentAccessLabelKeyByState = {
+  editable: 'content.access.states.editable',
+  read_only: 'content.access.states.readOnly',
+  blocked: 'content.access.states.blocked',
+  server_denied: 'content.access.states.serverDenied',
+} as const;
+
+const contentAccessVariantByState = {
+  editable: 'default',
+  read_only: 'secondary',
+  blocked: 'destructive',
+  server_denied: 'destructive',
+} as const;
+
+const contentAccessReasonKeyByValue = {
+  content_read_missing: 'content.access.reasons.contentReadMissing',
+  content_update_missing: 'content.access.reasons.contentUpdateMissing',
+  context_restricted: 'content.access.reasons.contextRestricted',
+  server_forbidden: 'content.access.reasons.serverForbidden',
+} as const;
+
+const formatAccessContext = (access: IamContentAccessSummary) => {
+  if (access.organizationIds.length > 0) {
+    return t('content.access.context.organizationIds', { value: access.organizationIds.join(', ') });
+  }
+  if (access.sourceKinds.length > 0) {
+    return t('content.access.context.sourceKinds', { value: access.sourceKinds.join(', ') });
+  }
+  return t('content.access.context.none');
+};
+
 const renderContentListBody = ({
   isLoading,
   filteredContents,
+  listError,
 }: {
   isLoading: boolean;
   filteredContents: ReturnType<typeof useContents>['contents'];
+  listError: IamHttpError | null;
 }) => {
   if (isLoading) {
     return <div className="p-6 text-sm text-muted-foreground">{t('content.messages.loading')}</div>;
@@ -98,13 +154,23 @@ const renderContentListBody = ({
             <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               {t('content.table.headerStatus')}
             </th>
+            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              {t('content.table.headerAccess')}
+            </th>
+            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              {t('content.table.headerContext')}
+            </th>
             <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               {t('content.table.headerActions')}
             </th>
           </tr>
         </thead>
         <tbody className="divide-y divide-border">
-          {filteredContents.map((item) => (
+          {filteredContents.map((item) => {
+            const access = resolveRowAccess(item.access, listError);
+            const actionLabel = access.canUpdate ? t('content.actions.edit') : access.canRead ? t('content.actions.openReadOnly') : t('content.actions.blocked');
+
+            return (
             <tr key={item.id} className="align-top">
               <td className="px-4 py-3 text-sm font-medium text-foreground">{item.title}</td>
               <td className="px-4 py-3 text-sm text-muted-foreground">{item.contentType}</td>
@@ -116,15 +182,33 @@ const renderContentListBody = ({
               <td className="px-4 py-3 text-sm text-foreground">
                 <Badge variant={statusVariantByValue[item.status]}>{t(statusLabelKeyByValue[item.status])}</Badge>
               </td>
+              <td className="px-4 py-3 text-sm text-foreground">
+                <Badge variant={contentAccessVariantByState[access.state]}>
+                  {t(contentAccessLabelKeyByState[access.state])}
+                </Badge>
+                {access.reasonCode ? (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {t(contentAccessReasonKeyByValue[access.reasonCode])}
+                  </p>
+                ) : null}
+              </td>
+              <td className="px-4 py-3 text-sm text-muted-foreground">{formatAccessContext(access)}</td>
               <td className="px-4 py-3 text-right">
-                <Button asChild size="sm" variant="outline">
-                  <Link to="/content/$contentId" params={{ contentId: item.id }}>
-                    {t('content.actions.edit')}
-                  </Link>
-                </Button>
+                {!access.canRead ? (
+                  <Button type="button" size="sm" variant="outline" disabled>
+                    {actionLabel}
+                  </Button>
+                ) : (
+                  <Button asChild size="sm" variant="outline">
+                    <Link to="/content/$contentId" params={{ contentId: item.id }}>
+                      {actionLabel}
+                    </Link>
+                  </Button>
+                )}
               </td>
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -149,9 +233,12 @@ const statusLabelKeyByValue = {
 
 export const ContentListPage = () => {
   const contentsApi = useContents();
+  const contentAccessApi = useContentAccess();
   const [search, setSearch] = React.useState('');
   const [statusFilter, setStatusFilter] = React.useState<StatusFilter>('all');
   const normalizedSearch = search.trim().toLowerCase();
+  const createDisabled =
+    contentAccessApi.access ? !contentAccessApi.access.canCreate : contentsApi.error?.code === 'forbidden';
 
   const contentsWithPayloadJson = React.useMemo(
     () =>
@@ -180,15 +267,37 @@ export const ContentListPage = () => {
         <div className="space-y-2">
           <h1 className="text-3xl font-semibold text-foreground">{t('content.page.title')}</h1>
           <p className="max-w-3xl text-sm text-muted-foreground">{t('content.page.subtitle')}</p>
+          {contentAccessApi.access ? (
+            <p className="text-sm text-muted-foreground">
+              {t('content.messages.accessSummary', {
+                state: t(contentAccessLabelKeyByState[contentAccessApi.access.state]),
+                context: formatAccessContext(contentAccessApi.access),
+              })}
+            </p>
+          ) : createDisabled ? (
+            <p className="text-sm text-muted-foreground">{t('content.messages.actionsDisabled')}</p>
+          ) : null}
         </div>
-        <Button asChild>
-          <Link to="/content/new">{t('content.actions.create')}</Link>
-        </Button>
+        {createDisabled ? (
+          <Button type="button" disabled>
+            {t('content.actions.create')}
+          </Button>
+        ) : (
+          <Button asChild>
+            <Link to="/content/new">{t('content.actions.create')}</Link>
+          </Button>
+        )}
       </header>
 
       {contentsApi.error ? (
         <Alert className="border-destructive/40 bg-destructive/5 text-destructive">
           <AlertDescription>{contentErrorMessage(contentsApi.error)}</AlertDescription>
+        </Alert>
+      ) : null}
+
+      {contentAccessApi.error && !contentsApi.error ? (
+        <Alert className="border-secondary/40 bg-secondary/5 text-secondary">
+          <AlertDescription>{t('content.messages.accessLoadError')}</AlertDescription>
         </Alert>
       ) : null}
 
@@ -219,7 +328,13 @@ export const ContentListPage = () => {
         </div>
       </Card>
 
-      <Card className="overflow-hidden">{renderContentListBody({ isLoading: contentsApi.isLoading, filteredContents })}</Card>
+      <Card className="overflow-hidden">
+        {renderContentListBody({
+          isLoading: contentsApi.isLoading || contentAccessApi.isLoading,
+          filteredContents,
+          listError: contentsApi.error,
+        })}
+      </Card>
     </section>
   );
 };

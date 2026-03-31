@@ -1,9 +1,26 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import React from 'react';
 
 import { RolesPage } from './-roles-page';
 
 const useRolesMock = vi.fn();
+
+vi.mock('@tanstack/react-router', () => ({
+  Link: ({
+    children,
+    to,
+    search,
+    ...props
+  }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { to: string; search?: Record<string, string> }) => {
+    const href = search?.tab ? `${to}?tab=${search.tab}` : to;
+    return (
+      <a href={href} {...props}>
+        {children}
+      </a>
+    );
+  },
+}));
 
 vi.mock('../../../hooks/use-roles', () => ({
   useRoles: () => useRolesMock(),
@@ -80,7 +97,9 @@ describe('RolesPage', () => {
     expect(roleToggleButtons[0]?.textContent).toContain('system_admin');
 
     fireEvent.click(screen.getAllByRole('button', { name: /editor/i })[0]!);
-    expect(screen.getByText('content.write')).toBeTruthy();
+    expect(screen.getByText('Technischer Schlüssel: content.write')).toBeTruthy();
+    expect(screen.getByText('Bearbeiten Inhalte')).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Im IAM-Cockpit prüfen' }).getAttribute('href')).toBe('/admin/iam?tab=rights');
   }, 15000);
 
   it('opens create dialog and submits normalized payload', async () => {
@@ -213,6 +232,45 @@ describe('RolesPage', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Rolle löschen' }));
 
     expect(deleteRole).toHaveBeenCalledWith('role-custom');
+  });
+
+  it('renders system roles as read-only in the permission workspace', () => {
+    useRolesMock.mockReturnValue({
+      roles: [
+        {
+          id: 'role-1',
+          roleKey: 'system_admin',
+          roleName: 'system_admin',
+          externalRoleName: 'system_admin',
+          managedBy: 'studio',
+          description: 'System administration',
+          isSystemRole: true,
+          roleLevel: 90,
+          memberCount: 1,
+          syncState: 'synced',
+          permissions: [{ id: 'perm-1', permissionKey: 'iam.configure', description: 'System konfigurieren' }],
+        },
+      ],
+      isLoading: false,
+      error: null,
+      mutationError: null,
+      reconcileReport: null,
+      refetch: vi.fn(),
+      clearMutationError: vi.fn(),
+      createRole: vi.fn(),
+      updateRole: vi.fn(),
+      deleteRole: vi.fn(),
+      retryRoleSync: vi.fn(),
+      reconcile: vi.fn(),
+    });
+
+    render(<RolesPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: /system_admin/i }));
+    expect(screen.getByText('Read-only')).toBeTruthy();
+    expect(
+      screen.getByText('Systemrollen bleiben schreibgeschützt, damit Baseline-Rechte konsistent und nachvollziehbar bleiben.')
+    ).toBeTruthy();
   });
 
   it('offers retry sync, edit and reconcile summary for failed roles', async () => {
@@ -377,7 +435,7 @@ describe('RolesPage', () => {
 
     render(<RolesPage />);
 
-    expect(screen.getByText('Ausstehend')).toBeTruthy();
+    expect(screen.getAllByText('Ausstehend').length).toBeGreaterThan(0);
 
     fireEvent.change(screen.getByPlaceholderText('Nach Rolle oder Berechtigung suchen'), {
       target: { value: 'does-not-exist' },

@@ -105,6 +105,8 @@ export const i18nResources = {
         create: 'Neuer Inhalt',
         createNow: 'Inhalt anlegen',
         edit: 'Bearbeiten',
+        openReadOnly: 'Nur lesen',
+        blocked: 'Gesperrt',
         save: 'Änderungen speichern',
         cancel: 'Abbrechen',
         back: 'Zur Übersicht',
@@ -134,6 +136,8 @@ export const i18nResources = {
         headerAuthor: 'Autor',
         headerPayload: 'Payload',
         headerStatus: 'Status',
+        headerAccess: 'Bearbeitbarkeit',
+        headerContext: 'Kontext',
         headerActions: 'Aktionen',
         notPublished: 'Nicht gesetzt',
       },
@@ -150,6 +154,27 @@ export const i18nResources = {
         createdAt: 'Erstellt am',
         updatedAt: 'Geändert am',
         id: 'Inhalts-ID',
+        access: 'Zugriffsstatus',
+        accessContext: 'Organisationskontext: {{value}}',
+      },
+      access: {
+        states: {
+          editable: 'Bearbeitbar',
+          readOnly: 'Nur lesbar',
+          blocked: 'Gesperrt',
+          serverDenied: 'Serverseitig verweigert',
+        },
+        reasons: {
+          contentReadMissing: 'Leserechte fehlen oder sind im aktuellen Kontext eingeschränkt.',
+          contentUpdateMissing: 'Schreibrechte fehlen im aktuellen Kontext.',
+          contextRestricted: 'Der aktuelle Kontext liefert keine auswertbare Inhaltsberechtigung.',
+          serverForbidden: 'Die letzte Serverprüfung hat die Aktion verweigert.',
+        },
+        context: {
+          organizationIds: 'Organisationen: {{value}}',
+          sourceKinds: 'Herkunft: {{value}}',
+          none: 'Kein zusätzlicher Kontext',
+        },
       },
       history: {
         title: 'Historie',
@@ -172,6 +197,10 @@ export const i18nResources = {
         loadError: 'Inhalte konnten nicht geladen werden.',
         saveError: 'Inhalt konnte nicht gespeichert werden.',
         actionsDisabled: 'Aktionen bleiben deaktiviert, bis die erforderlichen Berechtigungen im aktuellen Kontext vorliegen.',
+        readOnly: 'Der Inhalt ist im aktuellen Kontext nur lesbar. Felder und Speichern bleiben deaktiviert.',
+        accessSummary: 'Aktueller Zugriffsstatus: {{state}}. {{context}}',
+        accessLoadError:
+          'Der globale Inhaltskontext konnte nicht vollständig geladen werden. Einzelne Statusangaben bleiben erhalten.',
       },
       errors: {
         forbidden: 'Unzureichende Berechtigungen für diese Inhaltsaktion.',
@@ -1013,6 +1042,7 @@ export const i18nResources = {
             scope: 'Scope',
             sourceRoles: 'Quellrollen',
             sourceGroups: 'Quellgruppen',
+            origin: 'Herkunft',
           },
           filters: {
             organization: 'Organisation',
@@ -1037,6 +1067,13 @@ export const i18nResources = {
             allowed: 'Erlaubt',
             denied: 'Verweigert',
             instanceRequired: 'Instanz-ID fehlt.',
+            summary: {
+              action: 'Geprüfte Aktion',
+              resource: 'Ressource',
+              organization: 'Kontext-Organisation',
+              cause: 'Ursache',
+              origin: 'Herleitung',
+            },
           },
         },
         governance: {
@@ -1190,6 +1227,8 @@ export const i18nResources = {
         create: 'New content',
         createNow: 'Create content',
         edit: 'Edit',
+        openReadOnly: 'Read only',
+        blocked: 'Blocked',
         save: 'Save changes',
         cancel: 'Cancel',
         back: 'Back to overview',
@@ -1219,6 +1258,8 @@ export const i18nResources = {
         headerAuthor: 'Author',
         headerPayload: 'Payload',
         headerStatus: 'Status',
+        headerAccess: 'Access',
+        headerContext: 'Context',
         headerActions: 'Actions',
         notPublished: 'Not set',
       },
@@ -1235,6 +1276,27 @@ export const i18nResources = {
         createdAt: 'Created at',
         updatedAt: 'Updated at',
         id: 'Content ID',
+        access: 'Access state',
+        accessContext: 'Organization context: {{value}}',
+      },
+      access: {
+        states: {
+          editable: 'Editable',
+          readOnly: 'Read only',
+          blocked: 'Blocked',
+          serverDenied: 'Denied by server',
+        },
+        reasons: {
+          contentReadMissing: 'Read permissions are missing or restricted in the current context.',
+          contentUpdateMissing: 'Write permissions are missing in the current context.',
+          contextRestricted: 'The current context does not provide a usable content permission.',
+          serverForbidden: 'The last server-side check denied this action.',
+        },
+        context: {
+          organizationIds: 'Organizations: {{value}}',
+          sourceKinds: 'Origin: {{value}}',
+          none: 'No extra context',
+        },
       },
       history: {
         title: 'History',
@@ -1257,6 +1319,10 @@ export const i18nResources = {
         loadError: 'Content could not be loaded.',
         saveError: 'Content could not be saved.',
         actionsDisabled: 'Actions stay disabled until the required permissions are available in the current context.',
+        readOnly: 'This content is read-only in the current context. Fields and save stay disabled.',
+        accessSummary: 'Current access state: {{state}}. {{context}}',
+        accessLoadError:
+          'The global content context could not be loaded completely. Per-item states remain available.',
       },
       errors: {
         forbidden: 'You do not have sufficient permissions for this content action.',
@@ -2098,6 +2164,7 @@ export const i18nResources = {
             scope: 'Scope',
             sourceRoles: 'Source roles',
             sourceGroups: 'Source groups',
+            origin: 'Origin',
           },
           filters: {
             organization: 'Organization',
@@ -2122,6 +2189,13 @@ export const i18nResources = {
             allowed: 'Allowed',
             denied: 'Denied',
             instanceRequired: 'Instance ID is missing.',
+            summary: {
+              action: 'Checked action',
+              resource: 'Resource',
+              organization: 'Context organization',
+              cause: 'Cause',
+              origin: 'Derivation',
+            },
           },
         },
         governance: {

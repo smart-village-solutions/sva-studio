@@ -11,6 +11,7 @@ const CONTENT_ROLES = new Set(['system_admin', 'app_manager', 'editor']);
 export type ResolvedContentActor = {
   actor: {
     instanceId: string;
+    keycloakSubject: string;
     actorAccountId?: string;
     actorDisplayName: string;
     requestId?: string;
@@ -75,6 +76,7 @@ export const resolveContentActor = async (
   return {
     actor: {
       instanceId: actorResolution.actor.instanceId,
+      keycloakSubject: ctx.user.id,
       actorAccountId: actorResolution.actor.actorAccountId ?? undefined,
       actorDisplayName: ctx.user.id,
       requestId: actorResolution.actor.requestId,

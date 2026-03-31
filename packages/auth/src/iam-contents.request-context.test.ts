@@ -187,6 +187,7 @@ describe('iam-contents request-context', () => {
     expect(result).toEqual({
       actor: {
         instanceId: 'de-musterhausen',
+        keycloakSubject: 'user-1',
         actorAccountId: 'account-1',
         actorDisplayName: 'user-1',
         requestId: 'req-content',
@@ -217,6 +218,7 @@ describe('iam-contents request-context', () => {
     expect(result).toEqual({
       actor: {
         instanceId: 'de-musterhausen',
+        keycloakSubject: 'user-1',
         actorAccountId: undefined,
         actorDisplayName: 'user-1',
         requestId: 'req-content',

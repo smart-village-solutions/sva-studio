@@ -2,96 +2,64 @@
 
 ## ADDED Requirements
 
-### Requirement: Mehrdimensionale Rechte-Scope-Modellierung
+### Requirement: Wiederverwendbare Autorisierungs- und Prüfdaten für Rechteverwaltung
 
-Das System SHALL Berechtigungen für Admin- und Fach-UI nicht nur über Aktion und Ressource, sondern zusätzlich über fachliche Scope-Dimensionen modellieren und auswertbar machen.
+Das System SHALL die bestehende Rollenverwaltung, Rechteübersicht und Szenario-Prüfung auf denselben vorhandenen Autorisierungs- und Permissions-Daten aufbauen lassen.
 
-#### Scenario: Scope-Dimensionen sind strukturiert beschreibbar
+#### Scenario: Rollennahe Rechteansichten nutzen bestehende Permissions-Felder
 
-- **WHEN** effektive Berechtigungen oder konfigurierbare Rollenrechte an die UI geliefert werden
-- **THEN** können Scope-Informationen mindestens `module`, `dataType`, `spatialCategory`, `contentCategory`, `organizationId` und `instanceId` ausdrücken
-- **AND** diese Dimensionen sind ohne clientseitiges Reverse-Engineering nutzbar
-- **AND** Instanz- und Organisationsgrenzen bleiben serverseitig autoritativ und dürfen nicht ausschließlich aus UI-Kontext abgeleitet werden
+- **WHEN** eine Admin-UI Rollenrechte, effektive Rechte oder Prüfergebnisse darstellt
+- **THEN** kann sie auf vorhandene strukturierte Felder wie `action`, `resourceType`, optionale `resourceId`, optionale `organizationId`, optionale `effect`, optionale `scope`, `sourceRoleIds` und `sourceGroupIds` zugreifen
+- **AND** diese Felder bleiben ohne zusätzliche serverseitige Sonderlogik UI-tauglich
 
-#### Scenario: Erste Version verwendet eine definierte Starttaxonomie
+#### Scenario: Rechteprüfung verwendet bestehende Authorize-Pfade
 
-- **WHEN** konfigurierbare Rollenrechte in der ersten Version bereitgestellt werden
-- **THEN** unterstützt das System mindestens die Module `content`, `iam`, `interfaces`, `legal` und `organizations`
-- **AND** es liefert dazu eine konsistente Startmenge fachlicher Datentypen als stabile technische IDs, die ohne freie Texteingabe in der UI auswählbar sind
+- **WHEN** ein Administrator aus der Rollenverwaltung heraus eine konkrete Rechteentscheidung nachvollziehen möchte
+- **THEN** verwendet die UI denselben serverseitigen Prüfpfad wie die bestehende IAM-Szenario-Prüfung oder operative Autorisierung
+- **AND** es entsteht keine zweite konkurrierende Entscheidungslogik nur für die Rollenansicht
 
-#### Scenario: Cross-Instance- und unzulässige Cross-Org-Fälle werden nicht generalisiert
+#### Scenario: Explainability bleibt auf vorhandene strukturierte Diagnostik begrenzt
 
-- **WHEN** Rollenrechte, Ownership-Regeln oder Besitzübertragungen außerhalb derselben `instanceId` oder außerhalb zulässiger Organisationsgrenzen angefragt werden
-- **THEN** verweigert das System die Konfiguration oder Ausführung strukturiert
-- **AND** die Ablehnung bleibt als Konflikttyp für die UI benennbar
+- **WHEN** Diagnose- oder Begründungsdaten an Rollenverwaltung oder Fach-UI ausgeliefert werden
+- **THEN** bestehen diese aus den bestehenden allowlist-basierten Diagnosefeldern, Reason-Codes oder Denial-Codes
+- **AND** die UI muss keine unstrukturierten Rohdiagnosen interpretieren
+- **AND** interne Policy- oder Identitätsdetails werden nicht offengelegt
 
-#### Scenario: Export bleibt eigenständige Aktion
+### Requirement: Inkrementelle Rechteverwaltung ohne neues Ownership-Modell
 
-- **WHEN** eine Ressource exportiert werden soll
-- **THEN** wird dies als eigenständige Aktion und Entscheidung behandelt
-- **AND** ein vorhandenes Leserecht impliziert kein Exportrecht
+Das System SHALL eine erweiterte Rechteverwaltungs-UI ermöglichen, ohne dafür in diesem Change ein neues Ownership-, Transfer- oder Override-Modell vorauszusetzen.
 
-### Requirement: Ownership als autorisierungsrelevantes Regelmodell
+#### Scenario: Bestehendes Rollen- und Permission-Modell bleibt Grundlage
 
-Das System SHALL Ownership als eigenständiges, übertragbares Regelmodell für Datensätze unterstützen, damit Entscheidungen über "eigene" Daten kontextabhängig ausgewertet werden können.
+- **WHEN** die Rechteverwaltungs-UI erweitert wird
+- **THEN** basiert sie weiterhin auf den bestehenden Rollen-, Permission- und Authorize-Contracts
+- **AND** ein neues autorisierungsrelevantes Ownership-Modell ist keine Voraussetzung für die erste Ausbaustufe
 
-#### Scenario: Ownership wird als strukturierter Kontext berücksichtigt
+#### Scenario: Technische Permission-Referenzen bleiben kompatibel nutzbar
 
-- **WHEN** eine Autorisierungsentscheidung für einen besitzfähigen Datensatz getroffen wird
-- **THEN** kann der Kontext zwischen aktuellem Nutzer, Besitzer und angefragter Aktion unterscheiden
-- **AND** die Entscheidung kann ownership-bedingt erlauben oder verweigern
+- **WHEN** Rollen-Permissions noch ganz oder teilweise über technische Referenzen wie `permissionKey` modelliert sind
+- **THEN** bleiben diese Referenzen im System und in kompatiblen APIs nutzbar
+- **AND** die UI darf darüber eine fachlich lesbarere Mapping-Schicht legen
+- **AND** bestehende Rollenauflösung und bestehende Entscheidungen brechen dadurch nicht
 
-#### Scenario: Ownership ist übertragbar
+#### Scenario: Read-only-Zustände sind serverseitig anschlussfähig
 
-- **WHEN** der Besitz eines Datensatzes an einen anderen berechtigten Nutzer übertragen wird
-- **THEN** wird der neue Besitzkontext für nachfolgende Entscheidungen wirksam
-- **AND** die Ownership-Regelung bleibt unabhängig von einer bloßen Rollenänderung modellierbar
-- **AND** die Übertragung wirkt unmittelbar nach erfolgreicher Bestätigung
+- **WHEN** eine Rolle aufgrund von `isSystemRole` oder `managedBy != studio` fachlich nicht editierbar ist
+- **THEN** bleibt die Bearbeitung serverseitig begrenzt oder verweigert
+- **AND** die UI kann diesen Zustand ohne eigene heuristische Sonderlogik konsistent darstellen
 
-#### Scenario: Besitzübertragung ist transaktional und invalidiert betroffene Berechtigungsableitungen
+### Requirement: Konsistente Fehler- und Konfliktkommunikation für Admin- und Fach-UI
 
-- **WHEN** eine Besitzübertragung erfolgreich bestätigt wird
-- **THEN** persistiert das System alten und neuen Besitzer, Ressource, Zeitpunkt und auslösenden Akteur atomar
-- **AND** betroffene effektive Berechtigungsableitungen oder Snapshots werden unmittelbar neu bewertet oder invalidiert
-- **AND** nachfolgende Prüfungen verwenden keinen veralteten Besitzkontext
+Das System SHALL für Rechteverwaltung und priorisierte Fach-UI stabile Fehler- und Konfliktsignale bereitstellen, die auf dem heutigen Modell aufsetzen.
 
-#### Scenario: Ownership ist nicht auf einzelne Aktionen fest verdrahtet
+#### Scenario: Serverseitige Verweigerung bleibt verständlich darstellbar
 
-- **WHEN** Fachregeln definieren, was ein Besitzer mit eigenen Daten tun darf
-- **THEN** kann Ownership Entscheidungen für verschiedene Aktionen wie Lesen, Bearbeiten, Löschen oder Exportieren beeinflussen
-- **AND** die Modellierung bleibt offen für weitere fachliche Aktionen
+- **WHEN** eine Rollenänderung, eine Rechteprüfung oder eine Fachaktion serverseitig verweigert wird
+- **THEN** liefert das System einen strukturierten Fehler- oder Denial-Kontext, der der UI eine verständliche Darstellung erlaubt
+- **AND** die UI muss nicht zwischen ungeprüften Textmeldungen und HTTP-Statuscodes reverse-engineeren
 
-#### Scenario: Ownership-Overrides sind ein separates Privileg
+#### Scenario: Vorschau und operative Prüfung bleiben logisch anschlussfähig
 
-- **WHEN** eine ownership-bedingt verweigerte Aktion übersteuert werden soll
-- **THEN** ist ein Override nur für Rollen mit einem expliziten Override-Privileg zulässig
-- **AND** nicht-administrative oder dafür nicht freigeschaltete Rollen können Ownership nicht brechen
-- **AND** Self-Overrides sind ausgeschlossen
-
-### Requirement: UI-taugliche Autorisierungsbegründungen für Scope- und Ownership-Konflikte
-
-Das System SHALL strukturierte Autorisierungsbegründungen liefern, die in Admin- und Fach-UI verständlich für Scope- und Ownership-Konflikte aufbereitet werden können.
-
-#### Scenario: Scope- und Ownership-Konflikte sind differenzierbar
-
-- **WHEN** eine Anfrage wegen Instanz-, Organisations-, Kategorie- oder Ownership-Kontext verweigert wird
-- **THEN** enthält die Entscheidung oder der Diagnosekontext genügend strukturierte Hinweise, um den Konflikttyp in der UI verständlich zu benennen
-- **AND** die UI muss dafür keine unstrukturierte Rohdiagnose interpretieren
-
-#### Scenario: Explainability bleibt auf allowlist-basierte Reason-Codes begrenzt
-
-- **WHEN** Diagnose- oder Begründungsdaten an Admin- oder Fach-UI ausgeliefert werden
-- **THEN** bestehen diese aus stabilen, dokumentierten Konflikt- und Reason-Codes statt aus unstrukturierten Rohdiagnosen
-- **AND** fremde Identitätsdetails oder interne Policy-Strukturen werden dabei nicht offengelegt
-
-#### Scenario: Vorschau und Szenario-Prüfung nutzen dieselben Entscheidungsgrundlagen
-
-- **WHEN** ein Administrator eine Rolle oder ein Prüfszenario in der UI bewertet
-- **THEN** basieren Vorschau und Szenario-Prüfung auf denselben strukturierten Entscheidungsfeldern wie operative Autorisierungsprüfungen
-- **AND** Unterschiede zwischen Rollenrecht, Scope-Einschränkung und Ownership-Regel bleiben nachvollziehbar
-
-#### Scenario: Kritische IAM-Änderungen erzeugen Audit-Evidenz
-
-- **WHEN** Rollenrechte, Ownership-Regeln, Besitzübertragungen oder Overrides geändert oder ausgeführt werden
-- **THEN** erzeugt das System eine nachvollziehbare Audit-Evidenz mit Aktion, betroffener Ressource, Actor, fachlichem Scope und Ergebnis
-- **AND** diese Evidenz ist für Governance- und Incident-Zwecke auswertbar, ohne die UI auf Rohlogs zu zwingen
+- **WHEN** eine UI eine Rechteprüfung vorab darstellt oder einen operativen Fehler nach einer Aktion verarbeitet
+- **THEN** beruhen beide auf demselben bestehenden Autorisierungs- und Diagnosemodell
+- **AND** Unterschiede zwischen Rollen-Kontext, effektiver Berechtigung und konkreter Anfrage bleiben nachvollziehbar

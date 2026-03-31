@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from '@tanstack/react-router';
 
 import { ConfirmDialog } from '../../../components/ConfirmDialog';
 import { ModalDialog } from '../../../components/ModalDialog';
@@ -15,6 +16,33 @@ import type { TranslationKey } from '../../../i18n/translate';
 import type { IamHttpError } from '../../../lib/iam-api';
 
 type SortDirection = 'asc' | 'desc';
+
+type PermissionBadgeTone = 'default' | 'secondary' | 'destructive' | 'outline';
+
+const ROLE_PERMISSION_ACTION_LABELS = {
+  read: 'admin.roles.permissionActions.read',
+  create: 'admin.roles.permissionActions.create',
+  write: 'admin.roles.permissionActions.write',
+  update: 'admin.roles.permissionActions.update',
+  delete: 'admin.roles.permissionActions.delete',
+  configure: 'admin.roles.permissionActions.configure',
+  export: 'admin.roles.permissionActions.export',
+} as const;
+
+const ROLE_PERMISSION_RESOURCE_LABELS = {
+  content: 'admin.roles.permissionResources.content',
+  iam: 'admin.roles.permissionResources.iam',
+  users: 'admin.roles.permissionResources.users',
+  user: 'admin.roles.permissionResources.users',
+  roles: 'admin.roles.permissionResources.roles',
+  role: 'admin.roles.permissionResources.roles',
+  groups: 'admin.roles.permissionResources.groups',
+  group: 'admin.roles.permissionResources.groups',
+  organizations: 'admin.roles.permissionResources.organizations',
+  organization: 'admin.roles.permissionResources.organizations',
+  legal: 'admin.roles.permissionResources.legal',
+  interfaces: 'admin.roles.permissionResources.interfaces',
+} as const;
 
 const statusTone = (syncState: 'synced' | 'pending' | 'failed'): string => {
   if (syncState === 'synced') {
@@ -65,6 +93,49 @@ const roleErrorMessage = (error: IamHttpError | null, fallbackKey: TranslationKe
     default:
       return t(fallbackKey);
   }
+};
+
+const humanizePermissionSegment = (value: string): string =>
+  value
+    .split(/[_-]+/)
+    .filter(Boolean)
+    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+    .join(' ');
+
+const mapPermissionActionLabel = (action: string): string => {
+  const normalizedAction = action.toLowerCase() as keyof typeof ROLE_PERMISSION_ACTION_LABELS;
+  return normalizedAction in ROLE_PERMISSION_ACTION_LABELS
+    ? t(ROLE_PERMISSION_ACTION_LABELS[normalizedAction])
+    : humanizePermissionSegment(action);
+};
+
+const mapPermissionResourceLabel = (resource: string): string => {
+  const normalizedResource = resource.toLowerCase() as keyof typeof ROLE_PERMISSION_RESOURCE_LABELS;
+  return normalizedResource in ROLE_PERMISSION_RESOURCE_LABELS
+    ? t(ROLE_PERMISSION_RESOURCE_LABELS[normalizedResource])
+    : humanizePermissionSegment(resource);
+};
+
+const permissionActionTone = (action: string): PermissionBadgeTone => {
+  switch (action.toLowerCase()) {
+    case 'delete':
+      return 'destructive';
+    case 'configure':
+    case 'export':
+      return 'secondary';
+    default:
+      return 'outline';
+  }
+};
+
+const summarizePermission = (permissionKey: string) => {
+  const [resourceSegment, actionSegment = 'access'] = permissionKey.split('.');
+  return {
+    resourceLabel: mapPermissionResourceLabel(resourceSegment),
+    actionLabel: mapPermissionActionLabel(actionSegment),
+    actionTone: permissionActionTone(actionSegment),
+    detailLabel: `${mapPermissionActionLabel(actionSegment)} ${mapPermissionResourceLabel(resourceSegment)}`,
+  };
 };
 
 export const RolesPage = () => {
@@ -348,20 +419,81 @@ export const RolesPage = () => {
                   </tr>
                   <tr id={`role-permissions-${role.id}`} hidden={!expanded} className="border-t border-border bg-muted/50">
                     <td colSpan={6} className="space-y-3 px-4 py-3">
-                      {role.permissions.length > 0 ? (
-                        <ul className="grid gap-2 text-xs text-foreground sm:grid-cols-2 lg:grid-cols-3">
-                          {role.permissions.map((permission) => (
-                            <li key={permission.id} className="rounded border border-border bg-background px-3 py-2">
-                              <p className="font-semibold">{permission.permissionKey}</p>
-                              {permission.description ? (
-                                <p className="mt-1 text-muted-foreground">{permission.description}</p>
-                              ) : null}
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p className="text-xs text-muted-foreground">{t('admin.roles.messages.permissionsEmpty')}</p>
-                      )}
+                      <div className="grid gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(17rem,1fr)]">
+                        <Card className="space-y-3 p-4 shadow-none">
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div className="space-y-1">
+                              <h2 className="text-sm font-semibold text-foreground">{t('admin.roles.workspace.title')}</h2>
+                              <p className="text-xs text-muted-foreground">{t('admin.roles.workspace.subtitle')}</p>
+                            </div>
+                            <Badge variant={isReadOnly ? 'secondary' : 'outline'}>
+                              {isReadOnly ? t('admin.roles.workspace.readOnly') : t('admin.roles.workspace.editable')}
+                            </Badge>
+                          </div>
+
+                          {isReadOnly ? (
+                            <Alert className="border-secondary/40 bg-secondary/10 text-secondary">
+                              <AlertDescription>
+                                {role.isSystemRole
+                                  ? t('admin.roles.workspace.readOnlySystemHint')
+                                  : t('admin.roles.workspace.readOnlyExternalHint')}
+                              </AlertDescription>
+                            </Alert>
+                          ) : null}
+
+                          {role.permissions.length > 0 ? (
+                            <ul className="grid gap-2 text-xs text-foreground sm:grid-cols-2">
+                              {role.permissions.map((permission) => {
+                                const permissionSummary = summarizePermission(permission.permissionKey);
+                                return (
+                                  <li key={permission.id} className="rounded border border-border bg-background px-3 py-3">
+                                    <div className="flex flex-wrap items-start justify-between gap-2">
+                                      <div className="space-y-1">
+                                        <p className="font-semibold">{permission.description ?? permissionSummary.detailLabel}</p>
+                                        <p className="text-muted-foreground">
+                                          {t('admin.roles.workspace.technicalKey', { value: permission.permissionKey })}
+                                        </p>
+                                      </div>
+                                      <Badge variant={permissionSummary.actionTone}>{permissionSummary.actionLabel}</Badge>
+                                    </div>
+                                    <p className="mt-2 text-muted-foreground">
+                                      {t('admin.roles.workspace.resourceLabel', { value: permissionSummary.resourceLabel })}
+                                    </p>
+                                  </li>
+                                );
+                              })}
+                            </ul>
+                          ) : (
+                            <p className="text-xs text-muted-foreground">{t('admin.roles.messages.permissionsEmpty')}</p>
+                          )}
+                        </Card>
+
+                        <Card className="space-y-3 p-4 shadow-none">
+                          <div className="space-y-1">
+                            <h2 className="text-sm font-semibold text-foreground">{t('admin.roles.workspace.sideTitle')}</h2>
+                            <p className="text-xs text-muted-foreground">{t('admin.roles.workspace.sideSubtitle')}</p>
+                          </div>
+                          <dl className="grid gap-2 text-xs text-foreground">
+                            <div>
+                              <dt className="text-muted-foreground">{t('admin.roles.workspace.permissionCountLabel')}</dt>
+                              <dd>{t('admin.roles.workspace.permissionCountValue', { count: String(role.permissions.length) })}</dd>
+                            </div>
+                            <div>
+                              <dt className="text-muted-foreground">{t('admin.roles.workspace.assignmentCountLabel')}</dt>
+                              <dd>{t('admin.roles.workspace.assignmentCountValue', { count: String(role.memberCount) })}</dd>
+                            </div>
+                            <div>
+                              <dt className="text-muted-foreground">{t('admin.roles.workspace.syncStateLabel')}</dt>
+                              <dd>{statusLabel(role.syncState)}</dd>
+                            </div>
+                          </dl>
+                          <Button asChild size="sm" variant="outline">
+                            <Link to="/admin/iam" search={{ tab: 'rights' }}>
+                              {t('admin.roles.workspace.openIamCta')}
+                            </Link>
+                          </Button>
+                        </Card>
+                      </div>
                     </td>
                   </tr>
                 </React.Fragment>

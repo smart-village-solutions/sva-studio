@@ -1,12 +1,70 @@
+import { summarizeContentAccess, type IamContentAccessSummary } from '@sva/core';
 import { createSdkLogger } from '@sva/sdk/server';
 
 import { asApiItem, asApiList, createApiError, readPathSegment } from '../iam-account-management/api-helpers.js';
+import { resolveEffectivePermissions } from '../iam-authorization/permission-store.js';
 import type { AuthenticatedRequestContext } from '../middleware.server.js';
 import { withAuthenticatedContentHandler, resolveContentActor } from './request-context.js';
 import { createContentResponse, updateContentResponse } from './mutations.js';
 import { loadContentById, loadContentDetail, loadContentHistory, loadContentListItems } from './repository.js';
 
 const logger = createSdkLogger({ component: 'iam-contents', level: 'info' });
+
+const resolveContentAccess = async (
+  actor: {
+    instanceId: string;
+    keycloakSubject: string;
+    requestId?: string;
+    traceId?: string;
+  }
+): Promise<IamContentAccessSummary> => {
+  try {
+    const resolved = await resolveEffectivePermissions({
+      instanceId: actor.instanceId,
+      keycloakSubject: actor.keycloakSubject,
+    });
+
+    if (!resolved.ok) {
+      logger.error('Content access resolution failed', {
+        operation: 'content_access',
+        instance_id: actor.instanceId,
+        request_id: actor.requestId,
+        trace_id: actor.traceId,
+        error: resolved.error,
+      });
+
+      return {
+        state: 'read_only',
+        canRead: true,
+        canCreate: false,
+        canUpdate: false,
+        reasonCode: 'context_restricted',
+        organizationIds: [],
+        sourceKinds: [],
+      };
+    }
+
+    return summarizeContentAccess(resolved.permissions);
+  } catch (error) {
+    logger.error('Content access resolution failed', {
+      operation: 'content_access',
+      instance_id: actor.instanceId,
+      request_id: actor.requestId,
+      trace_id: actor.traceId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+
+    return {
+      state: 'read_only',
+      canRead: true,
+      canCreate: false,
+      canUpdate: false,
+      reasonCode: 'context_restricted',
+      organizationIds: [],
+      sourceKinds: [],
+    };
+  }
+};
 
 export const listContentsInternal = async (
   request: Request,
@@ -18,10 +76,14 @@ export const listContentsInternal = async (
   }
 
   try {
-    const items = await loadContentListItems(actorResolution.actor.instanceId);
+    const [items, access] = await Promise.all([
+      loadContentListItems(actorResolution.actor.instanceId),
+      resolveContentAccess(actorResolution.actor),
+    ]);
+    const itemsWithAccess = items.map((item) => ({ ...item, access }));
     const pageSize = Math.max(1, items.length);
     return new Response(
-      JSON.stringify(asApiList(items, { page: 1, pageSize, total: items.length }, actorResolution.actor.requestId)),
+      JSON.stringify(asApiList(itemsWithAccess, { page: 1, pageSize, total: items.length }, actorResolution.actor.requestId)),
       { status: 200, headers: { 'Content-Type': 'application/json' } }
     );
   } catch (error) {
@@ -56,9 +118,12 @@ export const getContentInternal = async (
   }
 
   try {
-    const item = await loadContentDetail(actorResolution.actor.instanceId, contentId);
+    const [item, access] = await Promise.all([
+      loadContentDetail(actorResolution.actor.instanceId, contentId),
+      resolveContentAccess(actorResolution.actor),
+    ]);
     return item
-      ? new Response(JSON.stringify(asApiItem(item, actorResolution.actor.requestId)), {
+      ? new Response(JSON.stringify(asApiItem({ ...item, access }, actorResolution.actor.requestId)), {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
         })

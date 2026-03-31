@@ -139,4 +139,43 @@ describe('useContentAccess', () => {
 
     expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
   });
+
+  it('stores non-forbidden errors without invalidating permissions', async () => {
+    const serverError = { status: 500, code: 'http_500', message: 'http_500' };
+    const fetchMock = vi.fn().mockResolvedValue({ ok: false, status: 500 });
+    vi.stubGlobal('fetch', fetchMock);
+    asIamErrorMock.mockImplementation(() => serverError);
+
+    const { result } = renderHook(() => useContentAccess());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.error).toEqual(serverError);
+      expect(result.current.access).toBeNull();
+    });
+
+    expect(authMockValue.invalidatePermissions).not.toHaveBeenCalled();
+  });
+
+  it('aborts pending requests on unmount without updating state afterwards', async () => {
+    let rejectFetch: ((reason?: unknown) => void) | undefined;
+    const fetchMock = vi.fn().mockImplementation(
+      () =>
+        new Promise((_resolve, reject) => {
+          rejectFetch = reject;
+        })
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { result, unmount } = renderHook(() => useContentAccess());
+
+    expect(result.current.isLoading).toBe(true);
+
+    unmount();
+    rejectFetch?.(new Error('late failure'));
+    await Promise.resolve();
+
+    expect(asIamErrorMock).not.toHaveBeenCalled();
+    expect(authMockValue.invalidatePermissions).not.toHaveBeenCalled();
+  });
 });

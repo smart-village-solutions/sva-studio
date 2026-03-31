@@ -39,6 +39,12 @@ Das System SHALL die Pflege der Architektur-Dokumentation als Teil des Delivery-
 - **THEN** enthält der PR eine Aktualisierung der relevanten arc42-Abschnitte
 - **AND** die Review-Checkliste prüft diese Aktualisierung
 
+#### Scenario: Acceptance-Deployvertrag wird geändert
+
+- **WHEN** sich der verbindliche Serverdeploypfad für `acceptance-hb` ändert
+- **THEN** aktualisieren die arc42-Abschnitte `07-deployment-view` und `08-cross-cutting-concepts` den Releaseablauf, die Migrationsregeln und die Deploy-Evidenz
+- **AND** das zugehörige Runbook beschreibt dieselbe Reihenfolge wie die implementierten Ops-Kommandos
+
 ### Requirement: Verankerung der arc42-Struktur in Agent- und Skill-Anweisungen
 
 Das System SHALL die Vorgabe „Architektur-/Systemdoku erfolgt arc42-konform“ in den relevanten Agent- und Skill-Anweisungen verankern, sodass die Doku laufend konsistent und gut strukturiert erweitert wird.
@@ -48,3 +54,19 @@ Das System SHALL die Vorgabe „Architektur-/Systemdoku erfolgt arc42-konform“
 - **WHEN** ein Agent (oder Skill) eine Änderung mit Architektur-/Systembezug bewertet oder vorschlägt
 - **THEN** referenziert er die betroffenen arc42-Abschnitte unter `docs/architecture/`
 - **AND** fordert er die Aktualisierung dieser Abschnitte ein (oder dokumentiert bewusst begründete Abweichungen)
+
+### Requirement: Architektur- und Betriebsdoku für Diagnosepfade
+
+Das System SHALL Runtime-Diagnosepfade, Acceptance-Betriebsregeln und OTEL-Diagnosekonventionen explizit in der Architektur- und Betriebsdokumentation verankern.
+
+#### Scenario: Runtime-Doctor ist dokumentiert
+
+- **WHEN** ein Teammitglied das Betriebsmodell für `local-keycloak`, `local-builder` oder `acceptance-hb` nachschlägt
+- **THEN** dokumentieren die Runbooks `doctor`, `smoke`, `migrate` und die kritischen Diagnose-Overrides konsistent
+- **AND** die Doku beschreibt, welche Diagnosefelder öffentlich stabil sind und welche nur OTEL-intern bleiben
+
+#### Scenario: OTEL-Diagnosekonzept ist in arc42 verankert
+
+- **WHEN** ein OpenSpec-Change Runtime-Diagnostik oder Observability erweitert
+- **THEN** beschreibt `docs/architecture/08-cross-cutting-concepts.md` die OTEL-Diagnoseattribute, stabilen `reason_code`s und den verbindlichen `env:doctor:<profil>`-Pfad
+

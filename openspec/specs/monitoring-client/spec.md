@@ -37,20 +37,18 @@ Alle App-Container SHALL ihre Logs automatisch an Loki senden, ohne dass Entwick
 - **AND** sendet die Logs an Loki via HTTP API
 
 ### Requirement: OpenTelemetry SDK Integration
-Die Applikation SHALL OpenTelemetry SDK nutzen für Metriken und Logs, um Vendor-Neutralität zu gewährleisten.
+Die Applikation SHALL OpenTelemetry SDK fuer Metriken und Logs nutzen, um Vendor-Neutralitaet zu gewaehren. In Development bleibt die Applikation jedoch ohne aktiven OTEL-Transport lauffaehig, solange lokale Diagnosekanaele verfuegbar sind.
 
-#### Scenario: Metriken werden zu Prometheus exportiert
-- **WHEN** das Backend OpenTelemetry SDK initialisiert
-- **THEN** werden automatisch HTTP-Request-Metriken erfasst (Latency, Status-Codes)
-- **AND** Custom Business-Metriken können via `meter.createCounter()` definiert werden
-- **AND** alle Metriken werden via OTLP an den OTEL Collector gesendet
-- **AND** erscheinen in Prometheus unter `/metrics` Endpoint
+#### Scenario: Development ohne OTEL-Readiness
+- **WHEN** die Entwicklungsumgebung startet und OTEL nicht erfolgreich initialisiert werden kann
+- **THEN** bleiben Console-Logging und die lokale Dev-Konsole verfuegbar
+- **AND** die Anwendung bleibt benutzbar
+- **AND** OTEL wird nicht als aktiver Logger-Transport registriert
 
-#### Scenario: Context-basierte Label-Injection
-- **WHEN** eine API-Route workspace_id aus dem Request-Header liest
-- **THEN** wird workspace_id automatisch in den OTEL Context injected
-- **AND** alle nachfolgenden Logs/Metriken enthalten workspace_id als Label
-- **AND** Entwickler müssen workspace_id nicht manuell bei jedem Log-Call übergeben
+#### Scenario: Production ohne OTEL-Readiness
+- **WHEN** die Produktionsumgebung startet und OTEL nicht erfolgreich initialisiert werden kann
+- **THEN** gilt dies als Fehlerzustand
+- **AND** die Anwendung behandelt den Start fail-closed
 
 ### Requirement: Vorkonfigurierte Grafana-Dashboards
 Grafana SHALL mit mindestens 3 Dashboards vorkonfiguriert sein, die typische Entwicklungs-Use-Cases abdecken.
@@ -172,27 +170,22 @@ Der Monitoring Stack SHALL mit <2GB RAM auskommen, um Entwickler-Maschinen nicht
 - **AND** OTEL SDK loggt Warning, aber crashed nicht
 
 ### Requirement: PII-Redaction & Privacy-by-Default
-Das System SHALL personenbezogene Daten automatisch reduzieren/maskieren, um DSGVO-Konformität zu gewährleisten.
+Das System SHALL personenbezogene und sicherheitsrelevante Daten automatisch reduzieren oder maskieren, um DSGVO-Konformitaet und tokenfreies operatives Logging zu gewaehrleisten.
 
 #### Scenario: Automatische Redaction sensibler Felder
-- **WHEN** ein Log-Eintrag Felder wie `password`, `token`, `authorization` enthält
-- **THEN** werden diese Felder automatisch vor dem Export redacted (ersetzt durch `***`)
+- **WHEN** ein Log-Eintrag Felder wie `password`, `token`, `authorization`, `id_token_hint` oder `refresh_token` enthaelt
+- **THEN** werden diese Felder automatisch vor dem Export redacted
 - **AND** erscheinen nicht in Loki/Grafana
 
-#### Scenario: Email-Masking
-- **WHEN** ein Log-Eintrag eine Email-Adresse enthält
-- **THEN** wird sie automatisch maskiert (`user@example.com` → `u***@example.com`)
-- **AND** ist in Grafana nur teilweise sichtbar
+#### Scenario: Tokenhaltige URL wird maskiert
+- **WHEN** ein Log-Eintrag eine URL oder Redirect-Zieladresse mit sensitiven Query-Parametern wie `id_token_hint`, `access_token`, `refresh_token` oder `code` enthaelt
+- **THEN** werden diese Query-Parameter vor Console-, Dev-UI- und OTEL-Ausgabe maskiert
+- **AND** der Log-Eintrag enthaelt keine decodierbaren Token-Claims
 
-#### Scenario: User-IDs nur als Payload-Fields
-- **WHEN** ein Log-Eintrag `user_id` oder `session_id` enthält
-- **THEN** werden sie nur als Log-Payload-Fields gespeichert (nicht als Labels)
-- **AND** sind nicht über Grafana-Filter suchbar (nur im JSON-Detail sichtbar)
-
-#### Scenario: Promtail filtert nur SVA-Services
-- **WHEN** Promtail Docker-Logs sammelt
-- **THEN** werden nur Container mit Label `com.sva-studio.monitoring=enabled` erfasst
-- **AND** andere lokale Container werden ignoriert (keine Daten-Leakage)
+#### Scenario: JWT-aehnliche Strings werden maskiert
+- **WHEN** ein Log-Eintrag JWT-aehnliche Strings oder Inline-Bearer-Tokens in Freitextfeldern enthaelt
+- **THEN** werden diese Werte heuristisch erkannt und redacted
+- **AND** lokale Development-Kanaele und zentrale OTEL-Exporte verhalten sich konsistent
 
 ### Requirement: Security Defaults
 Das System SHALL sichere Default-Konfigurationen verwenden, um unbefugten Zugriff zu verhindern.
@@ -312,4 +305,42 @@ Alle Monitoring Services SHALL Health-Check Endpoints bereitstellen und Readines
 - **THEN** wird ein Init-Script automatisch die Dashboards importieren
 - **AND** wird die Loki-Datasource validiert (Test-Query)
 - **AND** gibt es bei Fehler ein Error-Log (kein Hard-Fail)
+
+### Requirement: OTEL-basierte Runtime- und IAM-Diagnostik
+
+Das System SHALL OpenTelemetry nicht nur für generische Logs und Metriken, sondern auch für korrelierbare Runtime- und IAM-Diagnostik nutzen.
+
+#### Scenario: IAM-Request-Spans tragen Diagnoseattribute
+
+- **WHEN** ein IAM-Request verarbeitet wird
+- **THEN** enthält der aktive Span Attribute wie `iam.endpoint`, `iam.instance_id`, `iam.actor_resolution`, `iam.reason_code`, `db.schema_guard_result`, `dependency.redis.status` und `dependency.keycloak.status`
+- **AND** diese Attribute enthalten keine Secrets oder PII
+
+#### Scenario: Diagnose-Events korrelieren Runtime-Pfade
+
+- **WHEN** ein Doctor-, Readiness- oder Migrationspfad eine Drift oder Abhängigkeitsstörung erkennt
+- **THEN** erzeugt das System OTEL-Events für Schema-Guard, Actor-Diagnose oder Migrationsverifikation
+- **AND** diese Events bleiben über `request_id` und `trace_id` mit Logs, Browser-Netzwerkdaten und Runbooks korrelierbar
+
+### Requirement: Feste Logging-Runtime-Modi
+Das System SHALL zwei feste Logging-Runtime-Modi fuer Development und Production bereitstellen.
+
+#### Scenario: Development Runtime
+- **WHEN** `NODE_ENV` nicht `production` ist
+- **THEN** sind Console-Logging und lokale Dev-Konsole aktiv
+- **AND** OTEL ist ein optionaler Zusatzkanal nur bei erfolgreicher Initialisierung
+
+#### Scenario: Production Runtime
+- **WHEN** `NODE_ENV=production` ist
+- **THEN** sind Console-Logging und lokale Dev-Konsole deaktiviert
+- **AND** OTEL ist der verpflichtende Exportpfad fuer Server-Logs
+
+### Requirement: Lokale Dev-Konsole
+Die React-Anwendung SHALL in Development eine lokale Debug-Konsole bereitstellen, die Browser-Logs und redaktierte Server-Logs anzeigt.
+
+#### Scenario: Browser- und Server-Logs in Development
+- **WHEN** ein Entwickler die App lokal in Development nutzt
+- **THEN** sieht er im Seitenfuss eine Debug-Konsole
+- **AND** die Konsole zeigt Browser-Logs und redaktierte Server-Logs
+- **AND** die Konsole kann nach Level und Quelle filtern
 

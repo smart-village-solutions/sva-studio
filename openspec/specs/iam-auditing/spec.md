@@ -4,20 +4,20 @@
 TBD - created by archiving change setup-iam-identity-auth. Update Purpose after archive.
 ## Requirements
 ### Requirement: Immutable Logging für Identity-Basisereignisse
-
-Das System MUST sicherheitsrelevante Identity-Ereignisse aus Child A unveränderbar protokollieren.
+Das System MUST sicherheitsrelevante Identity-Ereignisse aus Child A unveraenderbar protokollieren und Audit- von operativen Logging-Pfaden strikt trennen.
 
 #### Scenario: Login/Logout wird protokolliert
 
 - **WHEN** ein Benutzer sich erfolgreich anmeldet oder abmeldet
-- **THEN** wird ein unveränderbares Audit-Event mit Zeitpunkt, pseudonymisierter Actor-Referenz und Ergebnis erzeugt
+- **THEN** wird ein unveraenderbares Audit-Event mit Zeitpunkt, pseudonymisierter Actor-Referenz und Ergebnis erzeugt
 - **AND** Klartext-PII wird nicht gespeichert
+- **AND** tokenhaltige Redirect- oder Logout-URLs werden weder im Audit- noch im operativen Log als Klartext gespeichert
 
 #### Scenario: Token-Validierungsfehler wird protokolliert
 
-- **WHEN** Token-Validierung fehlschlägt (z. B. `invalid`, `expired`, `issuer_mismatch`, `audience_mismatch`)
-- **THEN** wird ein `warn`-fähiges Sicherheitsereignis mit Fehlerklasse erzeugt
-- **AND** Tokenwerte, Session-IDs und Klartext-PII werden nicht geloggt
+- **WHEN** Token-Validierung fehlschlaegt (z. B. `invalid`, `expired`, `issuer_mismatch`, `audience_mismatch`)
+- **THEN** wird ein `warn`-faehiges Sicherheitsereignis mit Fehlerklasse erzeugt
+- **AND** Tokenwerte, tokenhaltige URLs, Session-IDs und Klartext-PII werden nicht geloggt
 
 ### Requirement: Dual-Write für Child-A-Sicherheitsereignisse
 
@@ -119,4 +119,25 @@ Das System SHALL Audit-Nachweise nach finaler Account-Löschung pseudonymisiert 
 - **WHEN** ein gelöschter Account in Auditdaten referenziert ist
 - **THEN** enthalten Nachweise nur pseudonymisierte Referenzen
 - **AND** Rückschlüsse auf Klartext-PII sind ohne gesonderte Berechtigung nicht möglich
+
+### Requirement: Auditspur für Session-Recovery und Forced Reauth
+Das System SHALL Forced-Reauth- und Silent-Session-Recovery-Vorgänge revisionsfähig protokollieren.
+
+#### Scenario: Forced Reauth wird auditiert
+
+- **WHEN** ein Benutzer per Systementscheidung zum Re-Login gezwungen wird
+- **THEN** erzeugt das System ein Audit-Event `forced_reauth`
+- **AND** das Event enthält Ergebnis, pseudonymisierte Actor-Referenz und keinen Klartext von Tokens oder Session-IDs
+
+#### Scenario: Silent Reauth-Erfolg wird auditiert
+
+- **WHEN** ein stiller Reauth-Versuch erfolgreich eine neue App-Session herstellt
+- **THEN** erzeugt das System ein Audit-Event `silent_reauth_success`
+- **AND** das Event bleibt frei von Tokenwerten, Session-IDs und Klartext-PII
+
+#### Scenario: Silent Reauth-Fehlschlag wird auditiert
+
+- **WHEN** ein stiller Reauth-Versuch fehlschlägt
+- **THEN** erzeugt das System ein Audit-Event `silent_reauth_failed`
+- **AND** das Ereignis ist von einem normalen Logout oder Login-Fehler unterscheidbar
 

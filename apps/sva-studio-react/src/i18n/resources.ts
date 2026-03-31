@@ -1173,6 +1173,12 @@ export const i18nResources = {
               origin: 'Herleitung',
             },
           },
+          permissionSource: {
+            user: 'Nutzer',
+            role: 'Rolle',
+            group: 'Gruppe',
+            delegation: 'Delegation',
+          },
         },
         governance: {
           filters: {
@@ -2393,6 +2399,12 @@ export const i18nResources = {
               cause: 'Cause',
               origin: 'Derivation',
             },
+          },
+          permissionSource: {
+            user: 'User',
+            role: 'Role',
+            group: 'Group',
+            delegation: 'Delegation',
           },
         },
         governance: {

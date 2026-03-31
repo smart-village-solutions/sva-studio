@@ -144,8 +144,8 @@ const PermissionTable = ({
               <td className="py-2 pr-4">{permission.organizationId ?? t('admin.iam.rights.noOrganization')}</td>
               <td className="py-2 pr-4">{permission.effect ?? '—'}</td>
               <td className="py-2 pr-4">{formatObjectEntries(permission.scope)}</td>
-              <td className="py-2">{permission.sourceRoleIds.length > 0 ? permission.sourceRoleIds.join(', ') : '—'}</td>
-              <td className="py-2">{permission.sourceGroupIds.length > 0 ? permission.sourceGroupIds.join(', ') : '—'}</td>
+              <td className="py-2">{(permission.sourceRoleIds ?? []).length > 0 ? (permission.sourceRoleIds ?? []).join(', ') : '—'}</td>
+              <td className="py-2">{(permission.sourceGroupIds ?? []).length > 0 ? (permission.sourceGroupIds ?? []).join(', ') : '—'}</td>
               <td className="py-2">{formatPermissionSourceKinds(permission)}</td>
             </tr>
           ))}
@@ -800,8 +800,13 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
                   <div>
                     <dt className="text-xs uppercase tracking-wide text-muted-foreground">{t('admin.iam.rights.authorize.summary.origin')}</dt>
                     <dd className="text-foreground">
-                      {authorizeDecision.provenance?.sourceKinds?.join(', ') ||
-                        (authorizeDecision.matchedPermissions?.length ? authorizeDecision.matchedPermissions.map((permission) => permission.source).join(', ') : '—')}
+                      {authorizeDecision.provenance?.sourceKinds && authorizeDecision.provenance.sourceKinds.length > 0
+                        ? authorizeDecision.provenance.sourceKinds.join(', ')
+                        : authorizeDecision.matchedPermissions && authorizeDecision.matchedPermissions.length > 0
+                          ? [...new Set(authorizeDecision.matchedPermissions.map((p) => p.source))]
+                              .map((source) => t(`admin.iam.rights.permissionSource.${source}` as const))
+                              .join(', ')
+                          : '—'}
                     </dd>
                   </div>
                 </dl>

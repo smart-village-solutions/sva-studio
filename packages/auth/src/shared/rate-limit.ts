@@ -10,11 +10,24 @@ import { createApiError } from './request-helpers.js';
 
 const rateLimiterStore = new Map<string, RateBucket>();
 const RATE_WINDOW_SECONDS = RATE_WINDOW_MS / 1000;
+const MAX_RATE_BUCKETS = 10_000;
 
 const pruneExpiredBuckets = (now: number): void => {
   for (const [key, bucket] of rateLimiterStore.entries()) {
     if (now - bucket.windowStartedAt >= RATE_WINDOW_MS) {
       rateLimiterStore.delete(key);
+    }
+  }
+
+  if (rateLimiterStore.size > MAX_RATE_BUCKETS) {
+    let oldest: [string, RateBucket] | undefined;
+    for (const entry of rateLimiterStore.entries()) {
+      if (!oldest || entry[1].windowStartedAt < oldest[1].windowStartedAt) {
+        oldest = entry;
+      }
+    }
+    if (oldest) {
+      rateLimiterStore.delete(oldest[0]);
     }
   }
 };

@@ -40,8 +40,8 @@ export const resolveContentAccess = async (
       });
 
       return {
-        state: 'read_only',
-        canRead: true,
+        state: 'blocked',
+        canRead: false,
         canCreate: false,
         canUpdate: false,
         reasonCode: 'context_restricted',
@@ -61,8 +61,8 @@ export const resolveContentAccess = async (
     });
 
     return {
-      state: 'read_only',
-      canRead: true,
+      state: 'blocked',
+      canRead: false,
       canCreate: false,
       canUpdate: false,
       reasonCode: 'context_restricted',

@@ -1,7 +1,7 @@
 # iam-server-modularization Specification
 
 ## Purpose
-TBD - created by archiving change refactor-iam-server-modularization. Update Purpose after archive.
+Beschreibt die Aufteilung des IAM-Server-Monolithen in fachlich fokussierte Module mit klar abgegrenzter Verantwortlichkeit. Ziel ist eine wartbare, testbare Modulstruktur für Benutzerverwaltung, Rollenverwaltung, Profilverwaltung, Bulk-Operationen, Feature-Flags, Rate-Limiting und Schemadefinitionen – mit eindeutigen öffentlichen APIs und gemeinsamer Hilfslogik in dedizierten Shared-Modulen.
 ## Requirements
 ### Requirement: Fachlich fokussierte IAM-Server-Module
 

@@ -96,7 +96,7 @@ export type MatchedPermissionSummary = {
   readonly resourceId?: string;
   readonly effect: IamPermissionEffect;
   readonly source: 'user' | 'role' | 'group' | 'delegation';
-  readonly sourceId: IamUuid;
+  readonly sourceId?: IamUuid;
   readonly sourceName?: string;
   readonly geoScope?: string;
 };
@@ -110,9 +110,9 @@ export type EffectivePermission = {
   readonly organizationId?: IamUuid;
   readonly effect?: IamPermissionEffect;
   readonly scope?: Readonly<Record<string, unknown>>;
-  readonly sourceUserIds: readonly IamUuid[];
-  readonly sourceRoleIds: readonly IamUuid[];
-  readonly sourceGroupIds: readonly IamUuid[];
+  readonly sourceUserIds?: readonly IamUuid[];
+  readonly sourceRoleIds?: readonly IamUuid[];
+  readonly sourceGroupIds?: readonly IamUuid[];
   readonly groupName?: string;
   readonly geoScope?: string;
   readonly provenance?: IamPermissionProvenance;

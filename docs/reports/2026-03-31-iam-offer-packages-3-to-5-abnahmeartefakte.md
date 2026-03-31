@@ -7,9 +7,9 @@ Dieses Dokument bündelt die normativen Liefernachweise für `complete-iam-offer
 ## Paket 3: Gruppen, Geo-Vererbung und Transparenz
 
 - Referenz-Specs:
-  - `openspec/changes/complete-iam-offer-packages-3-to-5/specs/iam-access-control/spec.md`
-  - `openspec/changes/complete-iam-offer-packages-3-to-5/specs/iam-organizations/spec.md`
-  - `openspec/changes/complete-iam-offer-packages-3-to-5/specs/account-ui/spec.md`
+  - `openspec/changes/archive/2026-03-31-complete-iam-offer-packages-3-to-5/specs/iam-access-control/spec.md`
+  - `openspec/changes/archive/2026-03-31-complete-iam-offer-packages-3-to-5/specs/iam-organizations/spec.md`
+  - `openspec/changes/archive/2026-03-31-complete-iam-offer-packages-3-to-5/specs/account-ui/spec.md`
 - Pflichtnachweis:
   - Ergebnis der normierten Testmatrix für Gruppen- und Geo-Konfliktfälle
 - Mindestinhalt des Nachweises:
@@ -22,8 +22,8 @@ Dieses Dokument bündelt die normativen Liefernachweise für `complete-iam-offer
 ## Paket 4: Permission Engine und Redis-Snapshots
 
 - Referenz-Specs:
-  - `openspec/changes/complete-iam-offer-packages-3-to-5/specs/iam-access-control/spec.md`
-  - `openspec/changes/complete-iam-offer-packages-3-to-5/specs/iam-core/spec.md`
+  - `openspec/changes/archive/2026-03-31-complete-iam-offer-packages-3-to-5/specs/iam-access-control/spec.md`
+  - `openspec/changes/archive/2026-03-31-complete-iam-offer-packages-3-to-5/specs/iam-core/spec.md`
 - Pflichtnachweise:
   - Performance-Bericht für Cache-Hit, Cache-Miss und Recompute
   - Invalidation-Testprotokoll für user-scoped und hierarchische Events
@@ -44,9 +44,9 @@ Dieses Dokument bündelt die normativen Liefernachweise für `complete-iam-offer
 ## Paket 5: Rechtstexte, Enforcement und Nachweise
 
 - Referenz-Specs:
-  - `openspec/changes/complete-iam-offer-packages-3-to-5/specs/iam-core/spec.md`
-  - `openspec/changes/complete-iam-offer-packages-3-to-5/specs/account-ui/spec.md`
-  - `openspec/changes/complete-iam-offer-packages-3-to-5/specs/iam-auditing/spec.md`
+  - `openspec/changes/archive/2026-03-31-complete-iam-offer-packages-3-to-5/specs/iam-core/spec.md`
+  - `openspec/changes/archive/2026-03-31-complete-iam-offer-packages-3-to-5/specs/account-ui/spec.md`
+  - `openspec/changes/archive/2026-03-31-complete-iam-offer-packages-3-to-5/specs/iam-auditing/spec.md`
 - Pflichtnachweise:
   - Screenshot oder Screenrecord des blockierenden Akzeptanzflows
   - Testprotokoll für server-seitiges `403 legal_acceptance_required`

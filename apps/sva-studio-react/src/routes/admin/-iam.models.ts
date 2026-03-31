@@ -143,8 +143,8 @@ export const filterPermissions = (
       includesIgnoreCase(permission.resourceId, query) ||
       includesIgnoreCase(permission.organizationId, query) ||
       includesIgnoreCase(permission.effect, query) ||
-      includesIgnoreCase(permission.sourceRoleIds.join(' '), query) ||
-      includesIgnoreCase(permission.sourceGroupIds.join(' '), query) ||
+      includesIgnoreCase((permission.sourceRoleIds ?? []).join(' '), query) ||
+      includesIgnoreCase((permission.sourceGroupIds ?? []).join(' '), query) ||
       includesIgnoreCase(
         permission.provenance
           ? Object.values(permission.provenance)

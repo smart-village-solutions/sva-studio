@@ -242,8 +242,8 @@ describe('iam-contents request-context', () => {
         traceId: 'trace-content',
       })
     ).resolves.toEqual({
-      state: 'read_only',
-      canRead: true,
+        state: 'blocked',
+        canRead: false,
       canCreate: false,
       canUpdate: false,
       reasonCode: 'context_restricted',
@@ -260,8 +260,8 @@ describe('iam-contents request-context', () => {
         traceId: 'trace-content',
       })
     ).resolves.toEqual({
-      state: 'read_only',
-      canRead: true,
+        state: 'blocked',
+        canRead: false,
       canCreate: false,
       canUpdate: false,
       reasonCode: 'context_restricted',

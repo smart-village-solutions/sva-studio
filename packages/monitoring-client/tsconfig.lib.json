@@ -3,7 +3,10 @@
   "compilerOptions": {
     "composite": true,
     "declaration": true,
-    "declarationMap": true
+    "declarationMap": true,
+    "paths": {
+      "@sva/core": ["packages/core/dist/index.d.ts"]
+    }
   },
   "include": ["src/**/*.ts"]
 }

@@ -64,8 +64,12 @@ const resolveSourceKinds = (permission: EffectivePermission): readonly IamPermis
   }
 
   const derivedKinds = new Set<IamPermissionSourceKind>();
+  const sourceUserIds = permission.sourceUserIds ?? [];
   const sourceRoleIds = permission.sourceRoleIds ?? [];
   const sourceGroupIds = permission.sourceGroupIds ?? [];
+  if (sourceUserIds.length > 0) {
+    derivedKinds.add('direct_user');
+  }
   if (sourceRoleIds.length > 0) {
     derivedKinds.add('direct_role');
   }
@@ -426,6 +430,26 @@ export const evaluateAuthorizeDecision = (
   const matchedPermissions = permissions.filter((permission) =>
     isPermissionMatch(request, permission, targetOrganizationId, hierarchyPath)
   );
+  const matchedPermissionSummaries = matchedPermissions.map((permission) => {
+    const sourceUserIds = permission.sourceUserIds ?? [];
+    const sourceGroupIds = permission.sourceGroupIds ?? [];
+    const sourceRoleIds = permission.sourceRoleIds ?? [];
+
+    return {
+      action: permission.action,
+      resourceType: permission.resourceType,
+      ...(permission.resourceId ? { resourceId: permission.resourceId } : {}),
+      effect: permission.effect ?? ('allow' satisfies IamPermissionEffect),
+      source: (() => {
+        if (sourceUserIds.length > 0) return 'user' as const;
+        if (sourceGroupIds.length > 0) return 'group' as const;
+        return 'role' as const;
+      })(),
+      ...((() => { const id = sourceUserIds[0] ?? sourceGroupIds[0] ?? sourceRoleIds[0]; return id ? { sourceId: id } : {}; })()),
+      ...(permission.groupName ? { sourceName: permission.groupName } : {}),
+      ...(typeof permission.scope?.geoScope === 'string' ? { geoScope: permission.scope.geoScope } : {}),
+    };
+  });
   const denyPermissions = matchedPermissions.filter(
     (permission) => (permission.effect ?? ('allow' satisfies IamPermissionEffect)) === 'deny'
   );
@@ -445,6 +469,7 @@ export const evaluateAuthorizeDecision = (
       traceId: request.context?.traceId,
       evaluatedAt: new Date().toISOString(),
       diagnostics: { stage: 'rbac' },
+      matchedPermissions: matchedPermissionSummaries,
     };
   }
 
@@ -479,6 +504,7 @@ export const evaluateAuthorizeDecision = (
           stage: 'restrictive_rule',
           restricted_by_geo_unit_id: denyGeoMatch.matchedRestrictedGeoUnitId,
         },
+        matchedPermissions: matchedPermissionSummaries,
         provenance: buildProvenance(permission, {
           restrictedByGeoUnitId: denyGeoMatch.matchedRestrictedGeoUnitId,
         }),
@@ -511,6 +537,7 @@ export const evaluateAuthorizeDecision = (
       traceId: request.context?.traceId,
       evaluatedAt: new Date().toISOString(),
       diagnostics: { stage: 'abac' },
+      matchedPermissions: matchedPermissionSummaries,
       provenance: denyResult?.result.provenance,
     };
   }
@@ -527,6 +554,7 @@ export const evaluateAuthorizeDecision = (
     traceId: request.context?.traceId,
     evaluatedAt: new Date().toISOString(),
     diagnostics: { stage: 'final', matched_role_count: matchedPermissions.length },
+    matchedPermissions: matchedPermissionSummaries,
     provenance: firstAllowedResult.result.provenance,
   };
 };

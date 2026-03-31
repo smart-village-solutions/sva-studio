@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ContentListPage } from './-content-list-page';
 
 const useContentsMock = vi.fn();
+const useContentAccessMock = vi.fn();
 
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ children, to, params, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { to: string; params?: Record<string, string> }) => {
@@ -22,9 +23,26 @@ vi.mock('../../hooks/use-contents', () => ({
   useContents: () => useContentsMock(),
 }));
 
+vi.mock('../../hooks/use-content-access', () => ({
+  useContentAccess: () => useContentAccessMock(),
+}));
+
 describe('ContentListPage', () => {
   beforeEach(() => {
     useContentsMock.mockReset();
+    useContentAccessMock.mockReset();
+    useContentAccessMock.mockReturnValue({
+      access: {
+        state: 'editable',
+        canRead: true,
+        canCreate: true,
+        canUpdate: true,
+        organizationIds: ['org-1'],
+        sourceKinds: ['direct_role'],
+      },
+      isLoading: false,
+      error: null,
+    });
   });
 
   afterEach(() => {
@@ -44,6 +62,14 @@ describe('ContentListPage', () => {
           author: 'Editor',
           payload: { hero: 'Willkommen' },
           status: 'published',
+          access: {
+            state: 'editable',
+            canRead: true,
+            canCreate: true,
+            canUpdate: true,
+            organizationIds: ['org-1'],
+            sourceKinds: ['direct_role'],
+          },
         },
         {
           id: 'content-2',
@@ -54,6 +80,15 @@ describe('ContentListPage', () => {
           author: 'Redaktion',
           payload: { blocks: ['A'] },
           status: 'archived',
+          access: {
+            state: 'read_only',
+            canRead: true,
+            canCreate: true,
+            canUpdate: false,
+            reasonCode: 'content_update_missing',
+            organizationIds: ['org-1'],
+            sourceKinds: ['group_role'],
+          },
         },
       ],
       isLoading: false,
@@ -74,7 +109,8 @@ describe('ContentListPage', () => {
 
     expect(screen.queryByText('Startseite')).toBeNull();
     expect(screen.getByText('Archiv')).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'Bearbeiten' }).getAttribute('href')).toBe('/content/content-2');
+    expect(screen.getByRole('link', { name: 'Nur lesen' }).getAttribute('href')).toBe('/content/content-2');
+    expect(screen.getByText('Nur lesbar')).toBeTruthy();
   });
 
   it('shows loading, empty and error states', () => {
@@ -150,6 +186,19 @@ describe('ContentListPage', () => {
   });
 
   it('renders forbidden errors and falls back for empty payload summaries', () => {
+    useContentAccessMock.mockReturnValue({
+      access: {
+        state: 'server_denied',
+        canRead: false,
+        canCreate: false,
+        canUpdate: false,
+        reasonCode: 'server_forbidden',
+        organizationIds: [],
+        sourceKinds: [],
+      },
+      isLoading: false,
+      error: { code: 'forbidden', status: 403, message: 'forbidden' },
+    });
     useContentsMock.mockReturnValue({
       contents: [
         {
@@ -161,6 +210,15 @@ describe('ContentListPage', () => {
           author: 'Compliance',
           payload: undefined,
           status: 'approved',
+          access: {
+            state: 'server_denied',
+            canRead: false,
+            canCreate: false,
+            canUpdate: false,
+            reasonCode: 'server_forbidden',
+            organizationIds: [],
+            sourceKinds: [],
+          },
         },
       ],
       isLoading: false,
@@ -173,6 +231,9 @@ describe('ContentListPage', () => {
     render(<ContentListPage />);
 
     expect(screen.getByText('Unzureichende Berechtigungen für diese Inhaltsaktion.')).toBeTruthy();
+    expect(screen.getByText('Aktueller Zugriffsstatus: Serverseitig verweigert. Kein zusätzlicher Kontext')).toBeTruthy();
+    expect((screen.getByRole('button', { name: 'Neuer Inhalt' }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole('button', { name: 'Gesperrt' }) as HTMLButtonElement).disabled).toBe(true);
     expect(screen.getByText('{}')).toBeTruthy();
     expect(screen.getByText('Nicht gesetzt')).toBeTruthy();
   });

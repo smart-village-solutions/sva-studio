@@ -18,6 +18,11 @@ const uniqueUuidArray = (maxLength: number) =>
     .max(maxLength)
     .refine((value) => new Set(value).size === value.length, 'IDs müssen eindeutig sein.');
 
+const userDirectPermissionAssignmentSchema = z.object({
+  permissionId: uuidLikeString('Ungültige ID.'),
+  effect: z.enum(['allow', 'deny']),
+});
+
 export const createUserSchema = z.object({
   email: z.string().email(),
   firstName: z.string().trim().min(1).max(200).optional(),
@@ -50,6 +55,14 @@ export const updateUserSchema = z
     status: z.enum(USER_STATUS).optional(),
     roleIds: uniqueUuidArray(20).optional(),
     groupIds: uniqueUuidArray(50).optional(),
+    directPermissions: z
+      .array(userDirectPermissionAssignmentSchema)
+      .max(100)
+      .refine(
+        (value) => new Set(value.map((entry) => entry.permissionId)).size === value.length,
+        'Berechtigungen müssen eindeutig sein.'
+      )
+      .optional(),
     mainserverUserApplicationId: z.string().trim().max(255).optional(),
     mainserverUserApplicationSecret: optionalTrimmedSecretString(255),
   })

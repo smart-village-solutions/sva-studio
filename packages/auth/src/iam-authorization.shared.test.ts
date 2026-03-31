@@ -81,6 +81,7 @@ describe('iam authorization shared helpers', () => {
         organizationId: '22222222-2222-2222-8222-222222222222',
         effect: 'allow',
         scope: { allowedGeoScopes: ['de-bw'] },
+        sourceUserIds: [],
         sourceRoleIds: ['role-1', 'role-2'],
         sourceGroupIds: ['group-1'],
         provenance: { sourceKinds: ['direct_role', 'group_role'] },
@@ -91,6 +92,7 @@ describe('iam authorization shared helpers', () => {
         resourceId: 'article-1',
         organizationId: undefined,
         effect: 'deny',
+        sourceUserIds: [],
         sourceRoleIds: ['role-3'],
         sourceGroupIds: [],
         provenance: { sourceKinds: ['direct_role'] },
@@ -170,6 +172,7 @@ describe('iam authorization shared helpers', () => {
         {
           action: 'content.read',
           resourceType: 'content',
+          sourceUserIds: [],
           sourceRoleIds: ['role-1'],
           sourceGroupIds: ['group-1'],
           scope: { allowedGeoUnitIds: ['geo-root'] },
@@ -196,6 +199,7 @@ describe('iam authorization shared helpers', () => {
           isImpersonating: true,
         },
         provenance: {
+          hasDirectUserPermissions: false,
           hasGroupDerivedPermissions: true,
           hasGeoInheritance: true,
         },

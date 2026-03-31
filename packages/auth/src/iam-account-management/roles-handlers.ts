@@ -1,4 +1,4 @@
-import type { ApiErrorResponse, IamRoleListItem, IamRoleSyncState } from '@sva/core';
+import type { ApiErrorResponse, IamPermission, IamRoleListItem, IamRoleSyncState } from '@sva/core';
 import { getWorkspaceContext } from '@sva/sdk/server';
 
 import { KeycloakAdminRequestError } from '../keycloak-admin-client.js';
@@ -211,6 +211,37 @@ LIMIT 1;
   return row ? mapRoleListItem(row) : undefined;
 };
 
+const loadPermissions = async (
+  client: QueryClient,
+  instanceId: string
+): Promise<readonly IamPermission[]> => {
+  const result = await client.query<{
+    id: string;
+    instance_id: string;
+    permission_key: string;
+    description: string | null;
+  }>(
+    `
+SELECT
+  p.id,
+  p.instance_id,
+  p.permission_key,
+  p.description
+FROM iam.permissions p
+WHERE p.instance_id = $1
+ORDER BY p.permission_key ASC;
+`,
+    [instanceId]
+  );
+
+  return result.rows.map((row) => ({
+    id: row.id,
+    instanceId: row.instance_id,
+    permissionKey: row.permission_key,
+    ...(row.description ? { description: row.description } : {}),
+  }));
+};
+
 export const listRolesInternal = async (
   request: Request,
   ctx: AuthenticatedRequestContext
@@ -246,6 +277,56 @@ export const listRolesInternal = async (
     return jsonResponse(
       200,
       asApiList(roles, { page: 1, pageSize: roles.length, total: roles.length }, actorResolution.actor.requestId)
+    );
+  } catch (error) {
+    const classified = classifyIamDiagnosticError(
+      error,
+      'IAM-Datenbank ist nicht erreichbar.',
+      actorResolution.actor.requestId
+    );
+    return createApiError(classified.status, classified.code, classified.message, actorResolution.actor.requestId, classified.details);
+  }
+};
+
+export const listPermissionsInternal = async (
+  request: Request,
+  ctx: AuthenticatedRequestContext
+): Promise<Response> => {
+  const requestContext = getWorkspaceContext();
+  const featureCheck = ensureFeature(getFeatureFlags(), 'iam_admin', requestContext.requestId);
+  if (featureCheck) {
+    return featureCheck;
+  }
+  const roleCheck = requireRoles(ctx, ADMIN_ROLES, requestContext.requestId);
+  if (roleCheck) {
+    return roleCheck;
+  }
+  const actorResolution = await resolveActorInfo(request, ctx, { requireActorMembership: true });
+  if ('error' in actorResolution) {
+    return actorResolution.error;
+  }
+
+  const rateLimit = consumeRateLimit({
+    instanceId: actorResolution.actor.instanceId,
+    actorKeycloakSubject: ctx.user.id,
+    scope: 'read',
+    requestId: actorResolution.actor.requestId,
+  });
+  if (rateLimit) {
+    return rateLimit;
+  }
+
+  try {
+    const permissions = await withInstanceScopedDb(actorResolution.actor.instanceId, (client) =>
+      loadPermissions(client, actorResolution.actor.instanceId)
+    );
+    return jsonResponse(
+      200,
+      asApiList(
+        permissions,
+        { page: 1, pageSize: Math.max(1, permissions.length), total: permissions.length },
+        actorResolution.actor.requestId
+      )
     );
   } catch (error) {
     const classified = classifyIamDiagnosticError(
@@ -628,18 +709,6 @@ export const updateRoleInternal = async (
   }
 
   const identityProvider = resolveIdentityProvider();
-  if (!identityProvider) {
-    return createApiError(
-      503,
-      'keycloak_unavailable',
-      'Keycloak Admin API ist nicht konfiguriert.',
-      actorResolution.actor.requestId,
-      {
-        syncState: 'failed',
-        syncError: { code: 'IDP_UNAVAILABLE' },
-      }
-    );
-  }
 
   try {
     const existing = await withInstanceScopedDb(actorResolution.actor.instanceId, (client) =>
@@ -670,80 +739,101 @@ export const updateRoleInternal = async (
     const nextDescription = parsed.data.description ?? existing.description ?? undefined;
     const nextRoleLevel = parsed.data.roleLevel ?? existing.role_level;
     const externalRoleName = getRoleExternalName(existing);
+    const shouldSyncIdentityProvider =
+      parsed.data.retrySync === true ||
+      (parsed.data.displayName !== undefined && nextDisplayName !== getRoleDisplayName(existing)) ||
+      (parsed.data.description !== undefined && nextDescription !== (existing.description ?? undefined));
+    const syncedIdentityProvider = shouldSyncIdentityProvider ? identityProvider : null;
 
-    await withInstanceScopedDb(actorResolution.actor.instanceId, async (client) => {
-      await setRoleSyncState(client, {
-        instanceId: actorResolution.actor.instanceId,
-        roleId,
-        syncState: 'pending',
-        errorCode: null,
-      });
-      await emitRoleAuditEvent(client, {
-        instanceId: actorResolution.actor.instanceId,
-        accountId: actorResolution.actor.actorAccountId,
-        roleId,
-        eventType: 'role.sync_started',
-        operation: parsed.data.retrySync ? 'retry' : 'update',
-        result: 'success',
-        roleKey: existing.role_key,
-        externalRoleName,
-        requestId: actorResolution.actor.requestId,
-        traceId: actorResolution.actor.traceId,
-      });
-    });
+    if (shouldSyncIdentityProvider) {
+      if (!syncedIdentityProvider) {
+        return createApiError(
+          503,
+          'keycloak_unavailable',
+          'Keycloak Admin API ist nicht konfiguriert.',
+          actorResolution.actor.requestId,
+          {
+            syncState: 'failed',
+            syncError: { code: 'IDP_UNAVAILABLE' },
+          }
+        );
+      }
 
-    try {
-      await trackKeycloakCall('update_role', () =>
-        identityProvider.provider.updateRole(externalRoleName, {
-          description: nextDescription,
-          attributes: {
-            managedBy: 'studio',
-            instanceId: actorResolution.actor.instanceId,
-            roleKey: existing.role_key,
-            displayName: nextDisplayName,
-          },
-        })
-      );
-    } catch (error) {
-      const errorCode = mapRoleSyncErrorCode(error);
-      iamRoleSyncCounter.add(1, {
-        operation: parsed.data.retrySync ? 'retry' : 'update',
-        result: 'failure',
-        error_code: errorCode,
-      });
       await withInstanceScopedDb(actorResolution.actor.instanceId, async (client) => {
         await setRoleSyncState(client, {
           instanceId: actorResolution.actor.instanceId,
           roleId,
-          syncState: 'failed',
-          errorCode,
+          syncState: 'pending',
+          errorCode: null,
         });
         await emitRoleAuditEvent(client, {
           instanceId: actorResolution.actor.instanceId,
           accountId: actorResolution.actor.actorAccountId,
           roleId,
-          eventType: 'role.sync_failed',
+          eventType: 'role.sync_started',
           operation: parsed.data.retrySync ? 'retry' : 'update',
-          result: 'failure',
+          result: 'success',
           roleKey: existing.role_key,
           externalRoleName,
-          errorCode,
           requestId: actorResolution.actor.requestId,
           traceId: actorResolution.actor.traceId,
         });
       });
-      return buildRoleSyncFailure({
-        error,
-        requestId: actorResolution.actor.requestId,
-        fallbackMessage: 'Rolle konnte nicht mit Keycloak synchronisiert werden.',
-        roleId,
-      });
+
+      try {
+        await trackKeycloakCall('update_role', () =>
+          syncedIdentityProvider.provider.updateRole(externalRoleName, {
+            description: nextDescription,
+            attributes: {
+              managedBy: 'studio',
+              instanceId: actorResolution.actor.instanceId,
+              roleKey: existing.role_key,
+              displayName: nextDisplayName,
+            },
+          })
+        );
+      } catch (error) {
+        const errorCode = mapRoleSyncErrorCode(error);
+        iamRoleSyncCounter.add(1, {
+          operation: parsed.data.retrySync ? 'retry' : 'update',
+          result: 'failure',
+          error_code: errorCode,
+        });
+        await withInstanceScopedDb(actorResolution.actor.instanceId, async (client) => {
+          await setRoleSyncState(client, {
+            instanceId: actorResolution.actor.instanceId,
+            roleId,
+            syncState: 'failed',
+            errorCode,
+          });
+          await emitRoleAuditEvent(client, {
+            instanceId: actorResolution.actor.instanceId,
+            accountId: actorResolution.actor.actorAccountId,
+            roleId,
+            eventType: 'role.sync_failed',
+            operation: parsed.data.retrySync ? 'retry' : 'update',
+            result: 'failure',
+            roleKey: existing.role_key,
+            externalRoleName,
+            errorCode,
+            requestId: actorResolution.actor.requestId,
+            traceId: actorResolution.actor.traceId,
+          });
+        });
+        return buildRoleSyncFailure({
+          error,
+          requestId: actorResolution.actor.requestId,
+          fallbackMessage: 'Rolle konnte nicht mit Keycloak synchronisiert werden.',
+          roleId,
+        });
+      }
     }
 
     try {
       const roleItem = await withInstanceScopedDb(actorResolution.actor.instanceId, async (client) => {
         await client.query(
-          `
+          shouldSyncIdentityProvider
+            ? `
 UPDATE iam.roles
 SET
   display_name = $3,
@@ -752,6 +842,16 @@ SET
   sync_state = 'synced',
   last_synced_at = NOW(),
   last_error_code = NULL,
+  updated_at = NOW()
+WHERE instance_id = $1
+  AND id = $2::uuid;
+`
+            : `
+UPDATE iam.roles
+SET
+  display_name = $3,
+  description = $4,
+  role_level = $5,
   updated_at = NOW()
 WHERE instance_id = $1
   AND id = $2::uuid;
@@ -790,18 +890,20 @@ ON CONFLICT (instance_id, role_id, permission_id) DO NOTHING;
           requestId: actorResolution.actor.requestId,
           traceId: actorResolution.actor.traceId,
         });
-        await emitRoleAuditEvent(client, {
-          instanceId: actorResolution.actor.instanceId,
-          accountId: actorResolution.actor.actorAccountId,
-          roleId,
-          eventType: 'role.sync_succeeded',
-          operation: parsed.data.retrySync ? 'retry' : 'update',
-          result: 'success',
-          roleKey: existing.role_key,
-          externalRoleName,
-          requestId: actorResolution.actor.requestId,
-          traceId: actorResolution.actor.traceId,
-        });
+        if (shouldSyncIdentityProvider) {
+          await emitRoleAuditEvent(client, {
+            instanceId: actorResolution.actor.instanceId,
+            accountId: actorResolution.actor.actorAccountId,
+            roleId,
+            eventType: 'role.sync_succeeded',
+            operation: parsed.data.retrySync ? 'retry' : 'update',
+            result: 'success',
+            roleKey: existing.role_key,
+            externalRoleName,
+            requestId: actorResolution.actor.requestId,
+            traceId: actorResolution.actor.traceId,
+          });
+        }
         await notifyPermissionInvalidation(client, {
           instanceId: actorResolution.actor.instanceId,
           trigger: 'role_updated',
@@ -817,32 +919,69 @@ ON CONFLICT (instance_id, role_id, permission_id) DO NOTHING;
         return updatedRole;
       });
 
-      iamRoleSyncCounter.add(1, {
-        operation: parsed.data.retrySync ? 'retry' : 'update',
-        result: 'success',
-        error_code: 'none',
-      });
+      if (shouldSyncIdentityProvider) {
+        iamRoleSyncCounter.add(1, {
+          operation: parsed.data.retrySync ? 'retry' : 'update',
+          result: 'success',
+          error_code: 'none',
+        });
+      }
       return jsonResponse(200, asApiItem(roleItem, actorResolution.actor.requestId));
     } catch (error) {
-      try {
-        await trackKeycloakCall('update_role_compensation', () =>
-          identityProvider.provider.updateRole(externalRoleName, {
-            description: existing.description ?? undefined,
-            attributes: {
-              managedBy: 'studio',
+      if (shouldSyncIdentityProvider && syncedIdentityProvider) {
+        try {
+          await trackKeycloakCall('update_role_compensation', () =>
+            syncedIdentityProvider.provider.updateRole(externalRoleName, {
+              description: existing.description ?? undefined,
+              attributes: {
+                managedBy: 'studio',
+                instanceId: actorResolution.actor.instanceId,
+                roleKey: existing.role_key,
+                displayName: getRoleDisplayName(existing),
+              },
+            })
+          );
+        } catch {
+          await withInstanceScopedDb(actorResolution.actor.instanceId, async (client) => {
+            await setRoleSyncState(client, {
               instanceId: actorResolution.actor.instanceId,
+              roleId,
+              syncState: 'failed',
+              errorCode: 'COMPENSATION_FAILED',
+            });
+            await emitRoleAuditEvent(client, {
+              instanceId: actorResolution.actor.instanceId,
+              accountId: actorResolution.actor.actorAccountId,
+              roleId,
+              eventType: 'role.sync_failed',
+              operation: 'update',
+              result: 'failure',
               roleKey: existing.role_key,
-              displayName: getRoleDisplayName(existing),
-            },
-          })
-        );
-      } catch {
+              externalRoleName,
+              errorCode: 'COMPENSATION_FAILED',
+              requestId: actorResolution.actor.requestId,
+              traceId: actorResolution.actor.traceId,
+            });
+          });
+          iamRoleSyncCounter.add(1, { operation: 'update', result: 'failure', error_code: 'COMPENSATION_FAILED' });
+          return createApiError(
+            500,
+            'internal_error',
+            'Rolle konnte nicht konsistent aktualisiert werden.',
+            actorResolution.actor.requestId,
+            {
+              syncState: 'failed',
+              syncError: { code: 'COMPENSATION_FAILED' },
+            }
+          );
+        }
+
         await withInstanceScopedDb(actorResolution.actor.instanceId, async (client) => {
           await setRoleSyncState(client, {
             instanceId: actorResolution.actor.instanceId,
             roleId,
             syncState: 'failed',
-            errorCode: 'COMPENSATION_FAILED',
+            errorCode: 'DB_WRITE_FAILED',
           });
           await emitRoleAuditEvent(client, {
             instanceId: actorResolution.actor.instanceId,
@@ -853,47 +992,34 @@ ON CONFLICT (instance_id, role_id, permission_id) DO NOTHING;
             result: 'failure',
             roleKey: existing.role_key,
             externalRoleName,
-            errorCode: 'COMPENSATION_FAILED',
+            errorCode: 'DB_WRITE_FAILED',
             requestId: actorResolution.actor.requestId,
             traceId: actorResolution.actor.traceId,
           });
         });
-        iamRoleSyncCounter.add(1, { operation: 'update', result: 'failure', error_code: 'COMPENSATION_FAILED' });
+        iamRoleSyncCounter.add(1, { operation: 'update', result: 'failure', error_code: 'DB_WRITE_FAILED' });
+        logger.error('Role update database write failed after successful Keycloak update', {
+          operation: 'update_role',
+          instance_id: actorResolution.actor.instanceId,
+          request_id: actorResolution.actor.requestId,
+          trace_id: actorResolution.actor.traceId,
+          role_id: roleId,
+          role_key: existing.role_key,
+          error: sanitizeRoleErrorMessage(error),
+        });
         return createApiError(
           500,
           'internal_error',
-          'Rolle konnte nicht konsistent aktualisiert werden.',
+          'Rolle konnte nicht aktualisiert werden.',
           actorResolution.actor.requestId,
           {
             syncState: 'failed',
-            syncError: { code: 'COMPENSATION_FAILED' },
+            syncError: { code: 'DB_WRITE_FAILED' },
           }
         );
       }
 
-      await withInstanceScopedDb(actorResolution.actor.instanceId, async (client) => {
-        await setRoleSyncState(client, {
-          instanceId: actorResolution.actor.instanceId,
-          roleId,
-          syncState: 'failed',
-          errorCode: 'DB_WRITE_FAILED',
-        });
-        await emitRoleAuditEvent(client, {
-          instanceId: actorResolution.actor.instanceId,
-          accountId: actorResolution.actor.actorAccountId,
-          roleId,
-          eventType: 'role.sync_failed',
-          operation: 'update',
-          result: 'failure',
-          roleKey: existing.role_key,
-          externalRoleName,
-          errorCode: 'DB_WRITE_FAILED',
-          requestId: actorResolution.actor.requestId,
-          traceId: actorResolution.actor.traceId,
-        });
-      });
-      iamRoleSyncCounter.add(1, { operation: 'update', result: 'failure', error_code: 'DB_WRITE_FAILED' });
-      logger.error('Role update database write failed after successful Keycloak update', {
+      logger.error('Role update database write failed without identity provider sync', {
         operation: 'update_role',
         instance_id: actorResolution.actor.instanceId,
         request_id: actorResolution.actor.requestId,
@@ -902,16 +1028,7 @@ ON CONFLICT (instance_id, role_id, permission_id) DO NOTHING;
         role_key: existing.role_key,
         error: sanitizeRoleErrorMessage(error),
       });
-      return createApiError(
-        500,
-        'internal_error',
-        'Rolle konnte nicht aktualisiert werden.',
-        actorResolution.actor.requestId,
-        {
-          syncState: 'failed',
-          syncError: { code: 'DB_WRITE_FAILED' },
-        }
-      );
+      return createApiError(500, 'internal_error', 'Rolle konnte nicht aktualisiert werden.', actorResolution.actor.requestId);
     }
   } catch {
     return createApiError(500, 'internal_error', 'Rolle konnte nicht aktualisiert werden.', actorResolution.actor.requestId);

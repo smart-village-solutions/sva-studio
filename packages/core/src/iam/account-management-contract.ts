@@ -99,9 +99,17 @@ export type IamUserDetail = IamUserListItem & {
   readonly avatarUrl?: string;
   readonly notes?: string;
   readonly permissions?: readonly string[];
+  readonly directPermissions?: readonly IamUserDirectPermissionAssignment[];
   readonly groups?: readonly IamUserGroupAssignment[];
   readonly mainserverUserApplicationId?: string;
   readonly mainserverUserApplicationSecretSet: boolean;
+};
+
+export type IamUserDirectPermissionAssignment = {
+  readonly permissionId: IamUuid;
+  readonly permissionKey: string;
+  readonly effect: 'allow' | 'deny';
+  readonly description?: string;
 };
 
 export type IamUserImportSyncReport = {

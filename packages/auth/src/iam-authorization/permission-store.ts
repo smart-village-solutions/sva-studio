@@ -85,6 +85,7 @@ WITH target_organization AS (
     AND id = $3::uuid
     AND is_active = true
 )
+-- Pfad 1: Rollenbasierte Berechtigungen (role_permissions JOIN permissions)
 SELECT DISTINCT
   p.permission_key,
   p.action,
@@ -92,6 +93,7 @@ SELECT DISTINCT
   p.resource_id,
   p.effect,
   p.scope,
+  source.account_id,
   source.role_id,
   source.group_id,
   source.group_key,
@@ -103,12 +105,12 @@ JOIN (
   FROM iam.account_roles ar
   WHERE ar.valid_from <= NOW()
     AND (ar.valid_to IS NULL OR ar.valid_to > NOW())
-  UNION
+  UNION ALL
   SELECT d.delegatee_account_id AS account_id, d.role_id, d.instance_id, NULL::uuid AS group_id, NULL::text AS group_key, 'direct_role'::text AS source_kind
   FROM iam.delegations d
   WHERE d.status = 'active'
     AND now() BETWEEN d.starts_at AND d.ends_at
-  UNION
+  UNION ALL
   SELECT ag.account_id, gr.role_id, ag.instance_id, ag.group_id, g.group_key, 'group_role'::text AS source_kind
   FROM iam.account_groups ag
   JOIN iam.group_roles gr ON gr.instance_id = ag.instance_id AND gr.group_id = ag.group_id
@@ -121,14 +123,46 @@ JOIN (
 JOIN iam.account_organizations ao
   ON ao.instance_id = source.instance_id
  AND ao.account_id = source.account_id
-JOIN target_organization target
-  ON TRUE
+JOIN target_organization target ON TRUE
 JOIN iam.role_permissions rp
   ON rp.instance_id = source.instance_id
  AND rp.role_id = source.role_id
 JOIN iam.permissions p
- ON p.instance_id = rp.instance_id
+  ON p.instance_id = source.instance_id
  AND p.id = rp.permission_id
+WHERE a.keycloak_subject = $2
+  AND (
+    ao.organization_id = target.id
+    OR ao.organization_id = ANY(target.hierarchy_path)
+  )
+
+UNION
+
+-- Pfad 2: Direkte Nutzerrechte (account_permissions JOIN permissions)
+SELECT DISTINCT
+  p.permission_key,
+  p.action,
+  p.resource_type,
+  p.resource_id,
+  COALESCE(ap.effect, p.effect) AS effect,
+  p.scope,
+  a.id AS account_id,
+  NULL::uuid AS role_id,
+  NULL::uuid AS group_id,
+  NULL::text AS group_key,
+  'direct_user'::text AS source_kind,
+  $3::uuid AS organization_id
+FROM iam.accounts a
+JOIN iam.account_permissions ap
+  ON ap.instance_id = $1
+ AND ap.account_id = a.id
+JOIN iam.permissions p
+  ON p.instance_id = $1
+ AND p.id = ap.permission_id
+JOIN iam.account_organizations ao
+  ON ao.instance_id = $1
+ AND ao.account_id = a.id
+JOIN target_organization target ON TRUE
 WHERE a.keycloak_subject = $2
   AND (
     ao.organization_id = target.id
@@ -147,6 +181,7 @@ const listUnscopedPermissionRows = async (
 ): Promise<readonly PermissionRow[]> => {
   const unscopedQuery = await client.query<PermissionRow>(
     `
+-- Pfad 1: Rollenbasierte Berechtigungen (role_permissions JOIN permissions)
 SELECT DISTINCT
   p.permission_key,
   p.action,
@@ -154,6 +189,7 @@ SELECT DISTINCT
   p.resource_id,
   p.effect,
   p.scope,
+  source.account_id,
   source.role_id,
   source.group_id,
   source.group_key,
@@ -165,12 +201,12 @@ JOIN (
   FROM iam.account_roles ar
   WHERE ar.valid_from <= NOW()
     AND (ar.valid_to IS NULL OR ar.valid_to > NOW())
-  UNION
+  UNION ALL
   SELECT d.delegatee_account_id AS account_id, d.role_id, d.instance_id, NULL::uuid AS group_id, NULL::text AS group_key, 'direct_role'::text AS source_kind
   FROM iam.delegations d
   WHERE d.status = 'active'
     AND now() BETWEEN d.starts_at AND d.ends_at
-  UNION
+  UNION ALL
   SELECT ag.account_id, gr.role_id, ag.instance_id, ag.group_id, g.group_key, 'group_role'::text AS source_kind
   FROM iam.account_groups ag
   JOIN iam.group_roles gr ON gr.instance_id = ag.instance_id AND gr.group_id = ag.group_id
@@ -187,8 +223,36 @@ JOIN iam.role_permissions rp
   ON rp.instance_id = source.instance_id
  AND rp.role_id = source.role_id
 JOIN iam.permissions p
-  ON p.instance_id = rp.instance_id
+  ON p.instance_id = source.instance_id
  AND p.id = rp.permission_id
+WHERE a.keycloak_subject = $2
+
+UNION
+
+-- Pfad 2: Direkte Nutzerrechte (account_permissions JOIN permissions)
+SELECT DISTINCT
+  p.permission_key,
+  p.action,
+  p.resource_type,
+  p.resource_id,
+  COALESCE(ap.effect, p.effect) AS effect,
+  p.scope,
+  a.id AS account_id,
+  NULL::uuid AS role_id,
+  NULL::uuid AS group_id,
+  NULL::text AS group_key,
+  'direct_user'::text AS source_kind,
+  ao.organization_id
+FROM iam.accounts a
+JOIN iam.account_permissions ap
+  ON ap.instance_id = $1
+ AND ap.account_id = a.id
+JOIN iam.permissions p
+  ON p.instance_id = $1
+ AND p.id = ap.permission_id
+LEFT JOIN iam.account_organizations ao
+  ON ao.instance_id = $1
+ AND ao.account_id = a.id
 WHERE a.keycloak_subject = $2
 `,
     [input.instanceId, input.keycloakSubject]

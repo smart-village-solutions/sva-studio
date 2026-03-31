@@ -6,6 +6,7 @@
  */
 import React from 'react';
 
+import { AppBreadcrumbs } from './AppBreadcrumbs';
 import Header from './Header';
 import { LegalTextAcceptanceDialog } from './LegalTextAcceptanceDialog';
 import Sidebar from './Sidebar';
@@ -78,7 +79,10 @@ export default function AppShell({
               </div>
             </section>
           ) : (
-            children
+            <div className="space-y-6">
+              <AppBreadcrumbs pathname={currentPathname} />
+              {children}
+            </div>
           )}
         </main>
         <LegalTextAcceptanceDialog pathname={currentPathname} />

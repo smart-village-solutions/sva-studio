@@ -46,4 +46,28 @@ describe('updateUserSchema', () => {
 
     expect(result.success).toBe(false);
   });
+
+  it('accepts direct user permissions with allow and deny effects', () => {
+    const result = updateUserSchema.safeParse({
+      displayName: 'Updated User',
+      directPermissions: [
+        { permissionId: '30666666-6666-6666-6666-666666666666', effect: 'allow' },
+        { permissionId: '20bbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', effect: 'deny' },
+      ],
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects duplicate direct permission assignments', () => {
+    const result = updateUserSchema.safeParse({
+      displayName: 'Updated User',
+      directPermissions: [
+        { permissionId: '30666666-6666-6666-6666-666666666666', effect: 'allow' },
+        { permissionId: '30666666-6666-6666-6666-666666666666', effect: 'deny' },
+      ],
+    });
+
+    expect(result.success).toBe(false);
+  });
 });

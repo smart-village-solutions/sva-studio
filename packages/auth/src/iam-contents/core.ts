@@ -2,7 +2,7 @@ import { createSdkLogger } from '@sva/sdk/server';
 
 import { asApiItem, asApiList, createApiError, readPathSegment } from '../iam-account-management/api-helpers.js';
 import type { AuthenticatedRequestContext } from '../middleware.server.js';
-import { withAuthenticatedContentHandler, resolveContentActor } from './request-context.js';
+import { resolveContentAccess, resolveContentActor, withAuthenticatedContentHandler } from './request-context.js';
 import { createContentResponse, updateContentResponse } from './mutations.js';
 import { loadContentById, loadContentDetail, loadContentHistory, loadContentListItems } from './repository.js';
 
@@ -18,10 +18,14 @@ export const listContentsInternal = async (
   }
 
   try {
-    const items = await loadContentListItems(actorResolution.actor.instanceId);
+    const [items, access] = await Promise.all([
+      loadContentListItems(actorResolution.actor.instanceId),
+      resolveContentAccess(actorResolution.actor),
+    ]);
+    const itemsWithAccess = items.map((item) => ({ ...item, access }));
     const pageSize = Math.max(1, items.length);
     return new Response(
-      JSON.stringify(asApiList(items, { page: 1, pageSize, total: items.length }, actorResolution.actor.requestId)),
+      JSON.stringify(asApiList(itemsWithAccess, { page: 1, pageSize, total: items.length }, actorResolution.actor.requestId)),
       { status: 200, headers: { 'Content-Type': 'application/json' } }
     );
   } catch (error) {
@@ -56,9 +60,12 @@ export const getContentInternal = async (
   }
 
   try {
-    const item = await loadContentDetail(actorResolution.actor.instanceId, contentId);
+    const [item, access] = await Promise.all([
+      loadContentDetail(actorResolution.actor.instanceId, contentId),
+      resolveContentAccess(actorResolution.actor),
+    ]);
     return item
-      ? new Response(JSON.stringify(asApiItem(item, actorResolution.actor.requestId)), {
+      ? new Response(JSON.stringify(asApiItem({ ...item, access }, actorResolution.actor.requestId)), {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
         })

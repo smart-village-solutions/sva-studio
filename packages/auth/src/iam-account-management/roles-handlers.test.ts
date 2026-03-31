@@ -193,12 +193,102 @@ describe('iam-account-management/roles-handlers internals', () => {
     );
   });
 
-  it('rejects invalid role ids and missing identity provider during updates', async () => {
+  it('rejects invalid role ids and only requires an identity provider for metadata updates', async () => {
     const invalidResponse = await updateRoleInternal(
       new Request('http://localhost/api/v1/iam/roles/not-a-uuid', { method: 'PATCH' }),
       ctx
     );
     expect(invalidResponse.status).toBe(400);
+
+    state.actorResolution = {
+      actor: {
+        instanceId: 'de-musterhausen',
+        actorAccountId: 'account-1',
+        requestId: 'req-roles',
+        traceId: 'trace-roles',
+      },
+    };
+
+    const { withInstanceScopedDb } = await import('./shared.js');
+    vi.mocked(withInstanceScopedDb).mockImplementation(async (_instanceId, callback) =>
+      callback({
+        query: vi.fn(async (text: string) => {
+          if (text.includes('FROM iam.roles') && text.includes('external_role_name')) {
+            return {
+              rowCount: 1,
+              rows: [
+                {
+                  id: '11111111-1111-1111-8111-111111111111',
+                  role_key: 'editor',
+                  role_name: 'Editor',
+                  display_name: 'Editor',
+                  external_role_name: 'editor',
+                  description: 'desc',
+                  is_system_role: false,
+                  role_level: 10,
+                  managed_by: 'studio',
+                  sync_state: 'synced',
+                  last_synced_at: null,
+                  last_error_code: null,
+                },
+              ],
+            };
+          }
+
+          if (text.includes('UPDATE iam.roles')) {
+            return { rowCount: 1, rows: [] };
+          }
+
+          if (text.includes('DELETE FROM iam.role_permissions') || text.includes('INSERT INTO iam.role_permissions')) {
+            return { rowCount: 1, rows: [] };
+          }
+
+          if (text.includes('FROM iam.roles r') && text.includes('permission_rows')) {
+            return {
+              rowCount: 1,
+              rows: [
+                {
+                  id: '11111111-1111-1111-8111-111111111111',
+                  role_key: 'editor',
+                  role_name: 'Editor',
+                  display_name: 'Editor',
+                  external_role_name: 'editor',
+                  description: 'desc',
+                  is_system_role: false,
+                  role_level: 10,
+                  managed_by: 'studio',
+                  member_count: 0,
+                  sync_state: 'synced',
+                  last_synced_at: null,
+                  last_error_code: null,
+                  permission_rows: [],
+                },
+              ],
+            };
+          }
+
+          return { rowCount: 0, rows: [] };
+        }),
+      } as never)
+    );
+
+    state.parseResult = {
+      ok: true,
+      data: { permissionIds: [] },
+      rawBody: '{}',
+    };
+
+    const permissionOnlyResponse = await updateRoleInternal(
+      new Request('http://localhost/api/v1/iam/roles/11111111-1111-1111-8111-111111111111', { method: 'PATCH' }),
+      ctx
+    );
+    expect(permissionOnlyResponse.status).toBe(200);
+
+    state.parseResult = {
+      ok: true,
+      data: { displayName: 'Editors' },
+      rawBody: '{}',
+    };
 
     const validUrlResponse = await updateRoleInternal(
       new Request('http://localhost/api/v1/iam/roles/11111111-1111-1111-8111-111111111111', { method: 'PATCH' }),

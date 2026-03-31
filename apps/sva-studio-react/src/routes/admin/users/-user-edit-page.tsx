@@ -1,4 +1,5 @@
 import React from 'react';
+import type { IamPermission, IamUserDirectPermissionAssignment } from '@sva/core';
 
 import { ConfirmDialog } from '../../../components/ConfirmDialog';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
@@ -11,6 +12,7 @@ import { Label } from '../../../components/ui/label';
 import { Select } from '../../../components/ui/select';
 import { Textarea } from '../../../components/ui/textarea';
 import { useGroups } from '../../../hooks/use-groups';
+import { useRolePermissions } from '../../../hooks/use-role-permissions';
 import { useRoles } from '../../../hooks/use-roles';
 import { useUser } from '../../../hooks/use-user';
 import { t } from '../../../i18n';
@@ -37,10 +39,13 @@ type UserFormValues = {
   notes: string;
   roleIds: string[];
   groupIds: string[];
+  directPermissions: Array<Pick<IamUserDirectPermissionAssignment, 'permissionId' | 'effect'>>;
   mainserverUserApplicationId: string;
   mainserverUserApplicationSecret: string;
   mainserverUserApplicationSecretSet: boolean;
 };
+
+type DirectPermissionEffect = 'allow' | 'deny';
 
 const TABS: ReadonlyArray<{ key: UserEditTabKey; labelKey: 'personal' | 'management' | 'permissions' | 'history' }> = [
   { key: 'personal', labelKey: 'personal' },
@@ -88,6 +93,9 @@ const toFormValues = (input: ReturnType<typeof useUser>['user']): UserFormValues
   notes: input?.notes ?? '',
   roleIds: input?.roles.map((entry) => entry.roleId) ?? [],
   groupIds: input?.groups?.map((entry) => entry.groupId) ?? [],
+  directPermissions: [...(input?.directPermissions ?? [])]
+    .map((entry) => ({ permissionId: entry.permissionId, effect: entry.effect }))
+    .sort((left, right) => left.permissionId.localeCompare(right.permissionId)),
   mainserverUserApplicationId: input?.mainserverUserApplicationId ?? '',
   mainserverUserApplicationSecret: '',
   mainserverUserApplicationSecretSet: input?.mainserverUserApplicationSecretSet ?? false,
@@ -143,10 +151,69 @@ const formatMetadata = (metadata: Readonly<Record<string, unknown>>) => {
 const appendUnique = (values: readonly string[], nextValue: string): string[] =>
   values.includes(nextValue) ? [...values] : [...values, nextValue];
 
+const humanizePermissionSegment = (value: string) =>
+  value
+    .replace(/[_-]+/g, ' ')
+    .trim()
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+
+const summarizePermission = (permissionKey: string) => {
+  const [resourceSegment, actionSegment = 'access'] = permissionKey.split('.');
+  return {
+    resourceLabel: humanizePermissionSegment(resourceSegment),
+    actionLabel: humanizePermissionSegment(actionSegment),
+    detailLabel: `${humanizePermissionSegment(actionSegment)} ${humanizePermissionSegment(resourceSegment)}`,
+  };
+};
+
+const getDirectPermissionEffect = (
+  directPermissions: readonly Pick<IamUserDirectPermissionAssignment, 'permissionId' | 'effect'>[],
+  permissionId: string
+): DirectPermissionEffect | undefined =>
+  directPermissions.find((entry) => entry.permissionId === permissionId)?.effect;
+
+const updateDirectPermissionSelection = (
+  current: readonly Pick<IamUserDirectPermissionAssignment, 'permissionId' | 'effect'>[],
+  permissionId: string,
+  nextEffect: DirectPermissionEffect | undefined
+) => {
+  const remaining = current.filter((entry) => entry.permissionId !== permissionId);
+  if (!nextEffect) {
+    return remaining;
+  }
+
+  return [...remaining, { permissionId, effect: nextEffect }].sort((left, right) =>
+    left.permissionId.localeCompare(right.permissionId)
+  );
+};
+
+const buildPermissionBuckets = (permissions: readonly IamPermission[]): Map<string, IamPermission[]> => {
+  const buckets = new Map<string, IamPermission[]>();
+  for (const permission of permissions) {
+    const summary = summarizePermission(permission.permissionKey);
+    const existing = buckets.get(summary.resourceLabel) ?? [];
+    existing.push(permission);
+    buckets.set(summary.resourceLabel, existing);
+  }
+  return buckets;
+};
+
+const groupPermissions = (permissions: readonly IamPermission[]) => {
+  const buckets = buildPermissionBuckets(permissions);
+
+  return [...buckets.entries()]
+    .map(([resourceLabel, entries]) => [
+      resourceLabel,
+      [...entries].sort((left, right) => left.permissionKey.localeCompare(right.permissionKey)),
+    ] as const)
+    .sort(([left], [right]) => left.localeCompare(right));
+};
+
 export const UserEditPage = ({ userId }: UserEditPageProps) => {
   const userApi = useUser(userId);
   const rolesApi = useRoles();
   const groupsApi = useGroups();
+  const permissionsApi = useRolePermissions();
   const selectableGroups = React.useMemo(
     () => groupsApi.groups.filter((group) => group.isActive !== false),
     [groupsApi.groups]
@@ -181,6 +248,17 @@ export const UserEditPage = ({ userId }: UserEditPageProps) => {
   const baselineSignature = React.useMemo(() => JSON.stringify(toFormValues(userApi.user)), [userApi.user]);
   const currentSignature = React.useMemo(() => JSON.stringify(formValues), [formValues]);
   const hasUnsavedChanges = baselineSignature !== currentSignature;
+  const groupedPermissions = React.useMemo(() => groupPermissions(permissionsApi.permissions), [permissionsApi.permissions]);
+  const selectedDirectPermissions = React.useMemo(
+    () =>
+      formValues.directPermissions
+        .map((entry) => {
+          const permission = permissionsApi.permissions.find((candidate) => candidate.id === entry.permissionId);
+          return permission ? { ...entry, permission } : null;
+        })
+        .filter((entry): entry is { permissionId: string; effect: DirectPermissionEffect; permission: IamPermission } => entry !== null),
+    [formValues.directPermissions, permissionsApi.permissions]
+  );
 
   React.useEffect(() => {
     if (!hasUnsavedChanges) {
@@ -304,6 +382,7 @@ export const UserEditPage = ({ userId }: UserEditPageProps) => {
       notes: formValues.notes.slice(0, 2000) || undefined,
       roleIds: formValues.roleIds,
       groupIds: formValues.groupIds,
+      directPermissions: formValues.directPermissions,
       mainserverUserApplicationId: formValues.mainserverUserApplicationId.trim(),
       mainserverUserApplicationSecret: formValues.mainserverUserApplicationSecret.trim() || undefined,
     });
@@ -315,6 +394,17 @@ export const UserEditPage = ({ userId }: UserEditPageProps) => {
 
     setIsSaving(false);
   };
+
+  const onDirectPermissionChange = React.useCallback(
+    (permissionId: string, value: string) => {
+      const nextEffect = value === 'inherit' ? undefined : (value as DirectPermissionEffect);
+      setFormValues((current) => ({
+        ...current,
+        directPermissions: updateDirectPermissionSelection(current.directPermissions, permissionId, nextEffect),
+      }));
+    },
+    []
+  );
 
   if (userApi.isLoading) {
     return (
@@ -617,19 +707,107 @@ export const UserEditPage = ({ userId }: UserEditPageProps) => {
           role="tabpanel"
           aria-labelledby="user-edit-tab-permissions"
           hidden={activeTab !== 'permissions'}
-          className="rounded-xl border border-border bg-card p-4 shadow-shell"
+          className="space-y-4 rounded-xl border border-border bg-card p-4 shadow-shell"
         >
-          {userApi.user.permissions && userApi.user.permissions.length > 0 ? (
-            <ul className="grid gap-2 text-sm text-foreground sm:grid-cols-2">
-              {userApi.user.permissions.map((permission) => (
-                <li key={permission} className="rounded border border-border bg-background px-3 py-2">
-                  {permission}
-                </li>
-              ))}
-            </ul>
+          <div className="space-y-2">
+            <h2 className="text-lg font-semibold text-foreground">{t('admin.users.edit.directPermissionsTitle')}</h2>
+            <p className="text-sm text-muted-foreground">{t('admin.users.edit.directPermissionsHint')}</p>
+            {selectedDirectPermissions.length > 0 ? (
+              <ul className="flex flex-wrap gap-2">
+                {selectedDirectPermissions.map((entry) => (
+                  <li key={entry.permissionId}>
+                    <Badge variant={entry.effect === 'deny' ? 'destructive' : 'outline'} className="h-auto py-1">
+                      {entry.permission.permissionKey} ·{' '}
+                      {entry.effect === 'deny'
+                        ? t('admin.users.edit.directPermissionEffect.deny')
+                        : t('admin.users.edit.directPermissionEffect.allow')}
+                    </Badge>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-muted-foreground">{t('admin.users.edit.directPermissionsEmpty')}</p>
+            )}
+          </div>
+
+          {permissionsApi.isLoading ? (
+            <p className="text-sm text-muted-foreground">{t('admin.users.edit.permissionsLoading')}</p>
           ) : (
-            <p className="text-sm text-muted-foreground">{t('admin.users.edit.permissionsEmpty')}</p>
+            <div className="space-y-4">
+              {groupedPermissions.map(([resourceLabel, permissions]) => (
+                <Card key={resourceLabel} className="space-y-3 p-4">
+                  <div>
+                    <h3 className="text-sm font-semibold text-foreground">{resourceLabel}</h3>
+                    <p className="text-xs text-muted-foreground">{t('admin.users.edit.directPermissionsSectionHint')}</p>
+                  </div>
+                  <div className="space-y-3">
+                    {permissions.map((permission) => {
+                      const summary = summarizePermission(permission.permissionKey);
+                      const selectedEffect = getDirectPermissionEffect(formValues.directPermissions, permission.id);
+                      return (
+                        <div
+                          key={permission.id}
+                          className="grid gap-3 rounded-lg border border-border bg-background p-3 md:grid-cols-[minmax(0,1fr)_220px]"
+                        >
+                          <div className="space-y-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="font-medium text-foreground">{summary.detailLabel}</p>
+                              <Badge variant="outline">{permission.permissionKey}</Badge>
+                              {selectedEffect ? (
+                                <Badge variant={selectedEffect === 'deny' ? 'destructive' : 'secondary'}>
+                                  {selectedEffect === 'deny'
+                                    ? t('admin.users.edit.directPermissionEffect.deny')
+                                    : t('admin.users.edit.directPermissionEffect.allow')}
+                                </Badge>
+                              ) : null}
+                            </div>
+                            <p className="text-sm text-muted-foreground">
+                              {permission.description ?? t('admin.users.edit.permissionDescriptionFallback')}
+                            </p>
+                          </div>
+                          <div className="grid gap-2 text-sm text-foreground">
+                            <Label htmlFor={`user-direct-permission-${permission.id}`}>
+                              {t('admin.users.edit.directPermissionsSelectLabel', {
+                                permission: permission.permissionKey,
+                              })}
+                            </Label>
+                            <Select
+                              id={`user-direct-permission-${permission.id}`}
+                              value={selectedEffect ?? 'inherit'}
+                              onChange={(event) => {
+                                onDirectPermissionChange(permission.id, event.target.value);
+                              }}
+                              className="rounded-md border border-border bg-background px-3 py-2 text-foreground"
+                            >
+                              <option value="inherit">{t('admin.users.edit.directPermissionEffect.inherit')}</option>
+                              <option value="allow">{t('admin.users.edit.directPermissionEffect.allow')}</option>
+                              <option value="deny">{t('admin.users.edit.directPermissionEffect.deny')}</option>
+                            </Select>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </Card>
+              ))}
+            </div>
           )}
+
+          <div className="space-y-2 border-t border-border pt-4">
+            <h2 className="text-lg font-semibold text-foreground">{t('admin.users.edit.effectivePermissionsTitle')}</h2>
+            <p className="text-sm text-muted-foreground">{t('admin.users.edit.effectivePermissionsHint')}</p>
+            {userApi.user.permissions && userApi.user.permissions.length > 0 ? (
+              <ul className="grid gap-2 text-sm text-foreground sm:grid-cols-2">
+                {userApi.user.permissions.map((permission) => (
+                  <li key={permission} className="rounded border border-border bg-background px-3 py-2">
+                    {permission}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-muted-foreground">{t('admin.users.edit.permissionsEmpty')}</p>
+            )}
+          </div>
         </section>
 
         <section

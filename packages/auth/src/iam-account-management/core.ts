@@ -17,6 +17,7 @@ import {
 } from './groups-handlers.js';
 import {
   createRoleInternal,
+  listPermissionsInternal,
   deleteRoleInternal,
   listRolesInternal,
   updateRoleInternal,
@@ -103,6 +104,9 @@ export const getMyProfileHandler = async (request: Request): Promise<Response> =
 
 export const listRolesHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedIamHandler(request, listRolesInternal);
+
+export const listPermissionsHandler = async (request: Request): Promise<Response> =>
+  withAuthenticatedIamHandler(request, listPermissionsInternal);
 
 export const createRoleHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedIamHandler(request, createRoleInternal);

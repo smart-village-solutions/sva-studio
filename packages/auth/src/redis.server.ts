@@ -3,15 +3,33 @@ import type { RedisOptions } from 'ioredis';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { ConnectionOptions as TlsConnectionOptions } from 'node:tls';
+import { metrics } from '@opentelemetry/api';
 import { createSdkLogger } from '@sva/sdk/server';
 import { getRedisPassword, getRedisUrl } from './runtime-secrets.server.js';
 
 const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
+const meter = metrics.getMeter('sva.auth.redis');
 
 let redisClient: Redis | null = null;
 let connectionErrorCount = 0;
 const MAX_CONNECTION_ERRORS = 10;
 let lastRedisError: string | null = null;
+let redisConnectionStatus = 0;
+
+const redisConnectionStatusGauge = meter.createObservableGauge('redis_connection_status', {
+  description: 'Redis connection status for the auth session store (1=up, 0=down).',
+});
+
+redisConnectionStatusGauge.addCallback((result) => {
+  result.observe(redisConnectionStatus);
+});
+
+export type RedisHealthSnapshot = {
+  available: boolean;
+  status: 'up' | 'down';
+  errorCount: number;
+  lastError: string | null;
+};
 
 /**
  * Build Redis client options with optional TLS and ACL support.
@@ -130,6 +148,7 @@ export const getRedisClient = (): Redis => {
 
       const errorMessage = err instanceof Error ? err.message : String(err);
       lastRedisError = errorMessage;
+      redisConnectionStatus = 0;
       const isAuthError = errorMessage.includes('WRONGPASS') || errorMessage.includes('NOAUTH');
 
       logger.error('Redis connection error', {
@@ -158,6 +177,7 @@ export const getRedisClient = (): Redis => {
       // Reset error count on successful connection
       connectionErrorCount = 0;
       lastRedisError = null;
+      redisConnectionStatus = 1;
 
       logger.info('Redis connected', {
         operation: 'redis_connect',
@@ -168,6 +188,7 @@ export const getRedisClient = (): Redis => {
     // Connect immediately
     redisClient.connect().catch((err) => {
       lastRedisError = err instanceof Error ? err.message : String(err);
+      redisConnectionStatus = 0;
       logger.error('Redis connection failed', {
         operation: 'redis_connect',
         error: err instanceof Error ? err.message : String(err),
@@ -187,6 +208,7 @@ export const closeRedis = async (): Promise<void> => {
     await redisClient.quit();
     redisClient = null;
     lastRedisError = null;
+    redisConnectionStatus = 0;
     logger.info('Redis connection closed', {
       operation: 'redis_disconnect',
     });
@@ -201,9 +223,11 @@ export const isRedisAvailable = async (): Promise<boolean> => {
     const client = getRedisClient();
     await client.ping();
     lastRedisError = null;
+    redisConnectionStatus = 1;
     return true;
   } catch (error) {
     lastRedisError = error instanceof Error ? error.message : String(error);
+    redisConnectionStatus = 0;
     logger.warn('Redis unavailable, using in-memory fallback', {
       operation: 'redis_health_check',
       available: false,
@@ -215,3 +239,10 @@ export const isRedisAvailable = async (): Promise<boolean> => {
 };
 
 export const getLastRedisError = (): string | null => lastRedisError;
+
+export const getRedisHealthSnapshot = (): RedisHealthSnapshot => ({
+  available: redisConnectionStatus === 1,
+  status: redisConnectionStatus === 1 ? 'up' : 'down',
+  errorCount: connectionErrorCount,
+  lastError: lastRedisError,
+});

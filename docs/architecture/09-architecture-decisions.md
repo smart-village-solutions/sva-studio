@@ -28,7 +28,13 @@ mit Bezug auf die arc42-Abschnitte.
 - `ADR-019-swarm-traefik-referenz-betriebsprofil.md`
 - `ADR-020-kanonischer-auth-host-multi-host-grenze.md`
 - `ADR-021-per-user-sva-mainserver-delegation.md`
+- `ADR-022-iam-groups-geo-hierarchie-permission-caching.md`
 - `ADR-023-session-lifecycle-forced-reauth-und-silent-sso.md`
+- `ADR-024-iam-groups-als-eigenstaendige-entitaet.md`
+- `ADR-025-multi-scope-prioritaetsregel-fuer-iam.md`
+- `ADR-026-redis-als-primary-permission-cache.md`
+- `ADR-027-rechtstext-fail-closed-und-blockierte-session.md`
+- `ADR-028-iam-konfigurations-export-als-folgearbeit.md`
 
 ### Zuordnung zu arc42-Abschnitten
 
@@ -40,6 +46,7 @@ mit Bezug auf die arc42-Abschnitte.
 - Abschnitt 04/05/06/08/10/11 (Strategie/Bausteine/Laufzeit/Querschnitt/Qualität/Risiken): ADR-017
 - Abschnitt 04/05/06/08/10/11 (Strategie/Bausteine/Laufzeit/Querschnitt/Qualität/Risiken): ADR-018
 - Abschnitt 04/06/08/09/10/11 (Strategie/Laufzeit/Querschnitt/Entscheidungen/Qualität/Risiken): ADR-023
+- Abschnitt 04/05/06/08/10/11 (Strategie/Bausteine/Laufzeit/Querschnitt/Qualität/Risiken): ADR-022, ADR-024, ADR-025, ADR-026, ADR-027, ADR-028
 - Abschnitt 03/04/05/06/08 (Kontext/Strategie/Bausteine/Laufzeit/Querschnitt): ADR-021
 
 ### Zuordnung Swarm-Deployment-ADRs
@@ -59,7 +66,13 @@ mit Bezug auf die arc42-Abschnitte.
 - ADR-017: Modulare IAM-Server-Bausteine und Restschuldführung an realen Kernmodulen (Abschnitt 04, 05, 06, 08, 10, 11)
 - ADR-018: Header-basierte Korrelation und gemeinsamer Error-Response-Contract für Auth-/IAM-Routen (Abschnitt 04, 05, 06, 08, 10, 11)
 - ADR-021: Serverseitige, per User delegierte SVA-Mainserver-Integration mit Keycloak-Attributen und instanzgebundener Endpunktkonfiguration (Abschnitt 03, 04, 05, 06, 08)
+- ADR-022: Gruppen, Geo-Hierarchie und Permission-Caching als gemeinsames IAM-Zielbild (Abschnitt 04, 05, 06, 08, 10, 11)
 - ADR-023: Führender Session-Lifecycle, Forced Reauth und kontrolliertes Silent SSO im BFF-Modell (Abschnitt 04, 06, 08, 09, 10, 11)
+- ADR-024: Gruppen als eigenständige, instanzgebundene IAM-Entität (Abschnitt 04, 05, 06, 08, 10)
+- ADR-025: Konservative Prioritätsregel für Multi-Scope-IAM-Entscheidungen (Abschnitt 04, 06, 08, 10, 11)
+- ADR-026: Redis als primärer Shared Permission Cache (Abschnitt 04, 06, 07, 08, 10, 11)
+- ADR-027: Rechtstext-Fail-Closed und blockierter Session-Zustand (Abschnitt 05, 06, 08, 09, 10, 11)
+- ADR-028: IAM-Konfigurations-Export bleibt dokumentierte Folgearbeit (Abschnitt 09, 11)
 
 ### Pflege-Regel
 
@@ -156,6 +169,26 @@ Zuordnung:
 - Abschnitt 08 (Querschnitt): ADR-023
 - Abschnitt 09 (Entscheidungen): ADR-023
 
+### Fortschreibung 2026-03: IAM-Angebotsbausteine 3 bis 5
+
+- `ADR-022-iam-groups-geo-hierarchie-permission-caching.md`
+  - beschreibt das übergreifende Zielbild für Gruppen, Geo-Hierarchie und Permission-Caching.
+- `ADR-024-iam-groups-als-eigenstaendige-entitaet.md`
+  - fixiert Gruppen als eigenständige IAM-Entität mit Rollen-Container-Schnitt.
+- `ADR-025-multi-scope-prioritaetsregel-fuer-iam.md`
+  - normiert die Konfliktauflösung über Rollen, Gruppen, Org und Geo.
+- `ADR-026-redis-als-primary-permission-cache.md`
+  - legt Redis als führenden Shared-Read-Path für Permission-Snapshots fest.
+- `ADR-027-rechtstext-fail-closed-und-blockierte-session.md`
+  - verankert server-seitiges Pflichttext-Enforcement und blockierte Sessions.
+- `ADR-028-iam-konfigurations-export-als-folgearbeit.md`
+  - dokumentiert den ausstehenden IAM-Konfigurations-Export als bewusste Folgearbeit.
+
+Zuordnung:
+
+- Abschnitt 04/05/06/08/10/11: ADR-022, ADR-024, ADR-025, ADR-026, ADR-027
+- Abschnitt 09/11: ADR-028
+
 ### Fortschreibung 2026-03: IAM-Transparenz-UI ohne neue ADR
 
 - Für `add-iam-transparency-ui` war keine neue ADR erforderlich.
@@ -170,3 +203,18 @@ Zuordnung:
 
 - Abschnitt 04/05/06/08: ADR-012, ADR-013, ADR-017, ADR-018
 - Abschnitt 09: dokumentiert explizit, dass die Transparenz-UI eine Fortschreibung vorhandener Entscheidungen ist und kein neues Architekturpattern einführt
+
+### Fortschreibung 2026-03: Direkte Nutzerrechte ohne neue ADR
+
+- Für direkte Nutzerrechte war keine neue ADR erforderlich.
+  - Die Konfliktregel bleibt vollständig innerhalb der bestehenden Leitplanken aus ADR-025.
+  - Die Erweiterung führt kein neues IdP- oder Sync-Pattern ein, sondern ergänzt die bestehende Studio-IAM-Persistenz um eine zusätzliche Herkunft `direct_user`.
+- Die maßgeblichen Architekturentscheidungen bleiben daher:
+  - ADR-025 für `deny vor allow` und konservative Konfliktauflösung
+  - ADR-017 für die modulare Erweiterung der Auth-/IAM-Serverbausteine
+  - ADR-016 bleibt unverändert, weil direkte Nutzerrechte bewusst nicht in Keycloak gespiegelt werden
+
+Zuordnung:
+
+- Abschnitt 04/05/06/08/10/11: ADR-017, ADR-025
+- Abschnitt 09: dokumentiert explizit, dass direkte Nutzerrechte eine Fortschreibung vorhandener Entscheidungen sind und kein neues Architekturpattern einführen

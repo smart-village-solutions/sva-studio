@@ -18,6 +18,7 @@ const state = vi.hoisted(() => ({
   createContent: vi.fn(),
   updateContent: vi.fn(),
   loadContentDetail: vi.fn(),
+  resolveContentAccess: vi.fn(),
 }));
 
 vi.mock('@sva/sdk/server', () => ({
@@ -46,6 +47,10 @@ vi.mock('./iam-contents/repository.js', () => ({
   createContent: (...args: Parameters<typeof state.createContent>) => state.createContent(...args),
   loadContentDetail: (...args: Parameters<typeof state.loadContentDetail>) => state.loadContentDetail(...args),
   updateContent: (...args: Parameters<typeof state.updateContent>) => state.updateContent(...args),
+}));
+
+vi.mock('./iam-contents/request-context.js', () => ({
+  resolveContentAccess: (...args: Parameters<typeof state.resolveContentAccess>) => state.resolveContentAccess(...args),
 }));
 
 import { createContentResponse, updateContentResponse } from './iam-contents/mutations.js';
@@ -84,6 +89,15 @@ describe('iam-contents mutations', () => {
     state.createContent.mockReset();
     state.updateContent.mockReset();
     state.loadContentDetail.mockReset();
+    state.resolveContentAccess.mockReset();
+    state.resolveContentAccess.mockResolvedValue({
+      state: 'editable',
+      canRead: true,
+      canCreate: true,
+      canUpdate: true,
+      organizationIds: [],
+      sourceKinds: [],
+    });
   });
 
   it('short-circuits create when csrf, idempotency or body parsing fails', async () => {
@@ -144,7 +158,19 @@ describe('iam-contents mutations', () => {
     const successResponse = await createContentResponse(createRequest(), actor);
     expect(successResponse.status).toBe(201);
     expect(await successResponse.json()).toEqual({
-      data: { id: 'content-1', title: 'Startseite', history: [] },
+      data: {
+        id: 'content-1',
+        title: 'Startseite',
+        history: [],
+        access: {
+          state: 'editable',
+          canRead: true,
+          canCreate: true,
+          canUpdate: true,
+          organizationIds: [],
+          sourceKinds: [],
+        },
+      },
       requestId: 'req-content',
     });
     expect(state.completeIdempotency).toHaveBeenCalledWith(
@@ -208,6 +234,22 @@ describe('iam-contents mutations', () => {
     state.loadContentDetail.mockResolvedValueOnce({ id: 'content-1', title: 'Neu', history: [] });
     const successResponse = await updateContentResponse(updateRequest(), actor);
     expect(successResponse.status).toBe(200);
+    expect(await successResponse.json()).toEqual({
+      data: {
+        id: 'content-1',
+        title: 'Neu',
+        history: [],
+        access: {
+          state: 'editable',
+          canRead: true,
+          canCreate: true,
+          canUpdate: true,
+          organizationIds: [],
+          sourceKinds: [],
+        },
+      },
+      requestId: 'req-content',
+    });
 
     state.updateContent.mockRejectedValueOnce(new Error('content_published_at_required'));
     const publishedRequiredResponse = await updateContentResponse(updateRequest(), actor);

@@ -137,7 +137,7 @@ describe('iam-account-management/users-handlers internals', () => {
     expect(deactivateResponse.status).toBe(400);
   });
 
-  it('returns keycloak_unavailable before mutating users when no identity provider exists', async () => {
+  it('returns route-specific errors without identity provider for update and deactivate', async () => {
     const updateResponse = await updateUserInternal(
       new Request('http://localhost/api/v1/iam/users/11111111-1111-1111-8111-111111111111', { method: 'PATCH' }),
       ctx
@@ -147,7 +147,7 @@ describe('iam-account-management/users-handlers internals', () => {
       ctx
     );
 
-    expect(updateResponse.status).toBe(503);
+    expect(updateResponse.status).toBe(404);
     expect(deactivateResponse.status).toBe(503);
   });
 

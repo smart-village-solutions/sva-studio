@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { resolveUserDetail } from './iam-account-management/user-detail-query';
 
 describe('resolveUserDetail', () => {
-  it('maps group memberships and permission rows from the detail query', async () => {
+  it('maps group memberships, direct permissions and permission rows from the detail query', async () => {
     const query = vi.fn().mockResolvedValue({
       rows: [
         {
@@ -47,6 +47,14 @@ describe('resolveUserDetail', () => {
             },
           ],
           permission_rows: [{ permission_key: 'content.read' }],
+          direct_permission_rows: [
+            {
+              permission_id: 'perm-1',
+              permission_key: 'content.write',
+              effect: 'deny',
+              description: 'Inhalte bearbeiten',
+            },
+          ],
         },
       ],
     });
@@ -73,6 +81,14 @@ describe('resolveUserDetail', () => {
       avatarUrl: 'https://example.com/avatar.png',
       notes: 'Gruppenpflege aktiv',
       permissions: ['content.read'],
+      directPermissions: [
+        {
+          permissionId: 'perm-1',
+          permissionKey: 'content.write',
+          effect: 'deny',
+          description: 'Inhalte bearbeiten',
+        },
+      ],
       groups: [
         {
           groupId: 'group-1',

@@ -109,6 +109,7 @@ const authServerMocks = vi.hoisted(() => {
     removeOrganizationMembershipHandler: vi.fn(async () => response('removeOrganizationMembershipHandler')),
     getMyOrganizationContextHandler: vi.fn(async () => response('getMyOrganizationContextHandler')),
     updateMyOrganizationContextHandler: vi.fn(async () => response('updateMyOrganizationContextHandler')),
+    listPermissionsHandler: vi.fn(async () => response('listPermissionsHandler')),
     listRolesHandler: vi.fn(async () => response('listRolesHandler')),
     createRoleHandler: vi.fn(async () => response('createRoleHandler')),
     updateRoleHandler: vi.fn(async () => response('updateRoleHandler')),
@@ -200,6 +201,7 @@ describe('auth.routes.server', () => {
     expect(authServerMocks.deleteGroupHandler).toHaveBeenCalled();
     expect(authServerMocks.listOrganizationsHandler).toHaveBeenCalled();
     expect(authServerMocks.updateMyOrganizationContextHandler).toHaveBeenCalled();
+    expect(authServerMocks.listPermissionsHandler).toHaveBeenCalled();
     expect(authServerMocks.deleteRoleHandler).toHaveBeenCalled();
     expect(authServerMocks.listGroupsHandler).toHaveBeenCalled();
     expect(authServerMocks.deleteGroupHandler).toHaveBeenCalled();

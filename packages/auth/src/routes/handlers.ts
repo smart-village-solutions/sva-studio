@@ -199,6 +199,10 @@ export const callbackHandler = async (request: Request): Promise<Response> => {
     if (error) {
       const response = cookieLoginState?.silent ? createSilentSsoResponse('failure') : createRedirectResponse('/?auth=error');
       appendSetCookie(response, deleteCookieHeader(loginStateCookieName));
+      await emitAuthAuditEvent({
+        eventType: cookieLoginState?.silent ? 'silent_reauth_failed' : 'login',
+        outcome: 'failure',
+      });
       return response;
     }
 
@@ -209,6 +213,10 @@ export const callbackHandler = async (request: Request): Promise<Response> => {
     if (cookieLoginState && isExpiredLoginState(cookieLoginState.createdAt)) {
       const response = createRedirectResponse('/?auth=state-expired');
       appendSetCookie(response, deleteCookieHeader(loginStateCookieName));
+      await emitAuthAuditEvent({
+        eventType: 'login_state_expired',
+        outcome: 'failure',
+      });
       return response;
     }
 
@@ -268,12 +276,10 @@ export const callbackHandler = async (request: Request): Promise<Response> => {
 
       const response = isSilent ? createSilentSsoResponse('failure') : createRedirectResponse('/?auth=error');
       appendSetCookie(response, deleteCookieHeader(loginStateCookieName));
-      if (isSilent) {
-        await emitAuthAuditEvent({
-          eventType: 'silent_reauth_failed',
-          outcome: 'failure',
-        });
-      }
+      await emitAuthAuditEvent({
+        eventType: isSilent ? 'silent_reauth_failed' : 'login',
+        outcome: 'failure',
+      });
       return response;
     }
   });

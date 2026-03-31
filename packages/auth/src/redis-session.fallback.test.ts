@@ -36,6 +36,11 @@ vi.mock('./crypto.server.js', () => ({
 
 vi.mock('@sva/sdk/server', () => ({
   createSdkLogger: () => state.logger,
+  getWorkspaceContext: () => ({
+    workspaceId: 'hb-meinquartier',
+    requestId: 'req-fallback',
+    traceId: 'trace-fallback',
+  }),
 }));
 
 const originalEnv = { ...process.env };

@@ -217,15 +217,27 @@ describe('redis.server', () => {
   });
 
   it('reports redis availability via ping and falls back on failures', async () => {
-    const { isRedisAvailable } = await import('./redis.server');
+    const { getRedisHealthSnapshot, isRedisAvailable } = await import('./redis.server');
 
     expect(await isRedisAvailable()).toBe(true);
+    expect(getRedisHealthSnapshot()).toEqual({
+      available: true,
+      status: 'up',
+      errorCount: 0,
+      lastError: null,
+    });
 
     state.pingImpl = async () => {
       throw new Error('ping failed');
     };
 
     expect(await isRedisAvailable()).toBe(false);
+    expect(getRedisHealthSnapshot()).toEqual({
+      available: false,
+      status: 'down',
+      errorCount: 0,
+      lastError: 'ping failed',
+    });
     expect(state.logger.warn).toHaveBeenCalledWith(
       'Redis unavailable, using in-memory fallback',
       expect.objectContaining({

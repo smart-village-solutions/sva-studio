@@ -222,6 +222,12 @@
       "status": "open",
       "summary": "IAM Account Management User- und Profile-Handler weiter in Query-, Mutation- und Profile-Module zerlegen"
     },
+    "iam-server:packages/auth/src/iam-account-management/user-detail-query.ts:fileLines": {
+      "ticketId": "QUAL-112",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "IAM Account Management User- und Profile-Handler weiter in Query-, Mutation- und Profile-Module zerlegen"
+    },
     "iam-server:packages/auth/src/iam-authorization/authorize.ts:functionLines": {
       "ticketId": "QUAL-102",
       "ticketSystem": "backlog",

@@ -1,12 +1,9 @@
 import type { IamUserDetail } from '@sva/core';
 import { createSdkLogger } from '@sva/sdk/server';
-
 import type { QueryClient } from '../shared/db-helpers.js';
-
 import { revealField } from './encryption.js';
 import type { UserStatus } from './types.js';
 import { mapUserRowToListItem } from './user-mapping.js';
-
 const logger = createSdkLogger({ component: 'iam-user-detail-query', level: 'info' });
 
 type UserDetailRoleRow = {
@@ -57,7 +54,6 @@ type UserDetailRow = {
     description: string | null;
   }> | null;
 };
-
 const USER_DETAIL_QUERY = `
 SELECT
   a.id,
@@ -164,40 +160,32 @@ LEFT JOIN iam.activity_logs al
 WHERE a.id = $2::uuid
 GROUP BY a.id;
 `;
-
-const mapRoleRows = (roleRows: UserDetailRoleRow[] | null) =>
-  roleRows?.map((entry) => ({
-    id: entry.id,
-    role_key: entry.role_key,
-    role_name: entry.role_name,
-    display_name: entry.display_name,
-    role_level: Number(entry.role_level),
-    is_system_role: Boolean(entry.is_system_role),
-    valid_from: entry.valid_from,
-    valid_to: entry.valid_to,
-  })) ?? [];
-
-const mapPermissionRows = (permissionRows: UserDetailRow['permission_rows']) =>
-  permissionRows?.map((entry) => entry.permission_key) ?? [];
-
-const mapDirectPermissionRows = (permissionRows: UserDetailRow['direct_permission_rows']) =>
-  permissionRows?.map((entry) => ({
-    permissionId: entry.permission_id,
-    permissionKey: entry.permission_key,
-    effect: entry.effect,
-    ...(entry.description ? { description: entry.description } : {}),
-  })) ?? [];
-
-const mapGroupRows = (groupRows: UserDetailGroupRow[] | null) =>
-  groupRows?.map((entry) => ({
-    groupId: entry.id,
-    groupKey: entry.group_key,
-    displayName: entry.display_name,
-    groupType: entry.group_type,
-    origin: entry.origin,
-    validFrom: entry.valid_from ?? undefined,
-    validTo: entry.valid_to ?? undefined,
-  })) ?? [];
+const mapRoleRows = (roleRows: UserDetailRoleRow[] | null) => roleRows?.map((entry) => ({
+  id: entry.id,
+  role_key: entry.role_key,
+  role_name: entry.role_name,
+  display_name: entry.display_name,
+  role_level: Number(entry.role_level),
+  is_system_role: Boolean(entry.is_system_role),
+  valid_from: entry.valid_from,
+  valid_to: entry.valid_to,
+})) ?? [];
+const mapPermissionRows = (permissionRows: UserDetailRow['permission_rows']) => permissionRows?.map((entry) => entry.permission_key) ?? [];
+const mapDirectPermissionRows = (permissionRows: UserDetailRow['direct_permission_rows']) => permissionRows?.map((entry) => ({
+  permissionId: entry.permission_id,
+  permissionKey: entry.permission_key,
+  effect: entry.effect,
+  ...(entry.description ? { description: entry.description } : {}),
+})) ?? [];
+const mapGroupRows = (groupRows: UserDetailGroupRow[] | null) => groupRows?.map((entry) => ({
+  groupId: entry.id,
+  groupKey: entry.group_key,
+  displayName: entry.display_name,
+  groupType: entry.group_type,
+  origin: entry.origin,
+  validFrom: entry.valid_from ?? undefined,
+  validTo: entry.valid_to ?? undefined,
+})) ?? [];
 
 const mapUserDetailRow = (row: UserDetailRow): IamUserDetail => {
   const base = mapUserRowToListItem({
@@ -230,7 +218,19 @@ const mapUserDetailRow = (row: UserDetailRow): IamUserDetail => {
     mainserverUserApplicationSecretSet: false,
   };
 };
-
+const buildErrorMeta = (
+  input: { instanceId: string; userId: string },
+  error: unknown,
+  row?: Pick<UserDetailRow, 'keycloak_subject'>
+) => ({
+  operation: 'resolve_user_detail',
+  instance_id: input.instanceId,
+  user_id: input.userId,
+  ...(row ? { keycloak_subject: row.keycloak_subject } : {}),
+  error_type: error instanceof Error ? error.constructor.name : typeof error,
+  error: error instanceof Error ? error.message : String(error),
+  error_stack: error instanceof Error ? error.stack : undefined,
+});
 export const resolveUserDetail = async (
   client: QueryClient,
   input: { instanceId: string; userId: string }
@@ -250,26 +250,11 @@ export const resolveUserDetail = async (
     try {
       return mapUserDetailRow(row);
     } catch (error) {
-      logger.error('IAM user detail mapping failed', {
-        operation: 'resolve_user_detail',
-        instance_id: input.instanceId,
-        user_id: input.userId,
-        keycloak_subject: row.keycloak_subject,
-        error_type: error instanceof Error ? error.constructor.name : typeof error,
-        error: error instanceof Error ? error.message : String(error),
-        error_stack: error instanceof Error ? error.stack : undefined,
-      });
+      logger.error('IAM user detail mapping failed', buildErrorMeta(input, error, row));
       throw error;
     }
   } catch (error) {
-    logger.error('IAM user detail query failed', {
-      operation: 'resolve_user_detail',
-      instance_id: input.instanceId,
-      user_id: input.userId,
-      error_type: error instanceof Error ? error.constructor.name : typeof error,
-      error: error instanceof Error ? error.message : String(error),
-      error_stack: error instanceof Error ? error.stack : undefined,
-    });
+    logger.error('IAM user detail query failed', buildErrorMeta(input, error));
     throw error;
   }
 };

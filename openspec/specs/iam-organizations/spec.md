@@ -77,13 +77,19 @@ Das System SHALL versionierte Migrationen mit Rollback-Pfad und idempotenten See
 
 ### Requirement: Instanzgebundene Hierarchieauswertung
 
-Das System SHALL Hierarchie- und Vererbungsentscheidungen strikt innerhalb der aktiven `instanceId` auswerten.
+Das System SHALL Hierarchie- und Vererbungsentscheidungen strikt innerhalb der aktiven `instanceId` auswerten und die Organisationshierarchie als autoritative Eingangsgröße für effektive Permission-Vererbung bereitstellen.
 
 #### Scenario: Hierarchiezugriff über Instanzgrenze
 
 - **WHEN** eine Hierarchieauswertung Daten außerhalb der aktiven `instanceId` referenziert
 - **THEN** werden diese Daten nicht in die effektive Berechnung einbezogen
 - **AND** die Autorisierungsentscheidung bleibt instanzisoliert
+
+#### Scenario: Organisationshierarchie speist Permission-Vererbung
+
+- **WHEN** `POST /iam/authorize` oder `GET /iam/me/permissions` effektive Rechte im aktiven Organisationskontext berechnen
+- **THEN** nutzt die Berechnungsstrecke die persistierte Organisationshierarchie derselben `instanceId`
+- **AND** Parent-/Child-Beziehungen werden als autoritativer Vererbungsinput ausgewertet
 
 ### Requirement: Hierarchisches Organisationsmodell innerhalb einer Instanz
 
@@ -358,4 +364,95 @@ Das System MUST für die Organisations- und Membership-Funktionalität einen rep
 - **WHEN** der Paket-2-Abnahmeflow die Admin-Oberfläche prüft
 - **THEN** sind Benutzerliste, Organisationsstruktur und Membership-Zuweisung sichtbar korrekt
 - **AND** der Abnahmebericht dokumentiert den erfolgreichen UI-Nachweis
+
+### Requirement: Kanonisches Datenmodell für Organisationen und Geo-Hierarchie
+
+Das System SHALL Organisationen und geografische Einheiten als separate, instanzgebundene Entitäten persistieren. Owner dieses Modells ist `iam-organizations` (Schreibzugriff); `iam-access-control` hat ausschließlich Lesezugriff über ein definiertes Interface.
+
+**Datenbankschema (normativ):**
+
+Organisationen:
+- `id` UUID PK
+- `instance_id` UUID NOT NULL (FK, instanzgebunden)
+- `parent_id` UUID NULLABLE (FK → `organizations.id`, gleiche Instanz)
+- `name` TEXT NOT NULL
+- `type` TEXT NOT NULL (z. B. `municipality`, `district`)
+- `external_key` TEXT NULLABLE (Verwaltungsschlüssel)
+- Unique-Constraint: `(instance_id, external_key)` wenn external_key NOT NULL
+- Soft-Delete via `deleted_at` TIMESTAMP
+
+Geo-Hierarchie (Closure-Table):
+- `ancestor_id` UUID NOT NULL (FK → `geo_nodes.id`)
+- `descendant_id` UUID NOT NULL (FK → `geo_nodes.id`)
+- `depth` INTEGER NOT NULL (0 = self)
+- PK: `(ancestor_id, descendant_id)`
+
+Geo-Knoten:
+- `id` UUID PK
+- `instance_id` UUID NOT NULL
+- `key` TEXT NOT NULL (Format: `{ebene}:{schluessel}`, z. B. `district:09162`, `municipality:09162000`)
+- `name` TEXT NOT NULL
+- Unique-Constraint: `(instance_id, key)`
+- Maximale Tiefe: 5 Ebenen; tiefere Einfügeversuche werden mit HTTP 422 abgewiesen
+
+#### Scenario: Geo-Knoten-Einfügung überschreitet Tiefenlimit
+
+- **WHEN** ein Geo-Knoten mit einer Vorfahren-Kette von mehr als 5 Ebenen eingefügt werden soll
+- **THEN** lehnt das System die Operation mit HTTP 422 und einem dokumentierten Fehlercode ab
+- **AND** die bestehende Hierarchie bleibt unverändert
+
+### Requirement: Fachlicher Schlüsselraum für Geo-Knoten
+
+Das System SHALL für geografische Einheiten einen kanonischen, fachlich lesbaren Schlüsselraum verwenden, der zwischen Persistenz, Read-Modell, Snapshots und Diagnoseausgaben konsistent bleibt.
+
+#### Scenario: Geo-Schlüssel folgt dem kanonischen Format
+
+- **WHEN** ein Geo-Knoten angelegt, gelesen oder in einem Scope-Kontext referenziert wird
+- **THEN** verwendet das System das Format `{ebene}:{schluessel}`
+- **AND** `ebene` stammt aus einem normierten Vokabular wie `country`, `state`, `district`, `municipality`, `borough`
+- **AND** `schluessel` ist der fachliche Verwaltungsschlüssel der jeweiligen Ebene
+
+#### Scenario: Technische Surrogatschlüssel bleiben intern
+
+- **WHEN** `iam-access-control` oder `account-ui` Geo-Kontexte anzeigen oder serialisieren
+- **THEN** verwenden sie den fachlichen Geo-Schlüssel statt interner Datenbank-IDs als primären Referenzwert
+- **AND** Datenbank-IDs bleiben ein internes Persistenzdetail
+
+### Requirement: Kanonisches Geo-Read-Modell für Vorfahren und Nachfahren
+
+Das System SHALL ein Geo-Read-Modell bereitstellen, das Vorfahren, Nachfahren und Knotenmetadaten deterministisch und in einem stabilen Antwortformat liefert.
+
+#### Scenario: Read-Modell liefert Vorfahrenkette für einen Geo-Knoten
+
+- **WHEN** ein autorisierter Konsument die Vorfahren eines Geo-Knotens abfragt
+- **THEN** enthält die Antwort mindestens `nodeId`, `key`, `name`, `type`, `ancestorIds[]`, `ancestorKeys[]` und `maxDepth`
+- **AND** die Reihenfolge der Vorfahren ist stabil von der Wurzel zum Zielknoten
+
+#### Scenario: Read-Modell liefert Nachfahren für vererbbaren Geo-Scope
+
+- **WHEN** `iam-access-control` alle untergeordneten Geo-Einheiten für einen geerbten Scope benötigt
+- **THEN** liefert das Read-Modell die Nachfahren derselben `instanceId` in maximal 1 DB-Roundtrip
+- **AND** jede Zeile enthält mindestens `ancestorId`, `descendantId`, `depth`, `descendantKey` und `descendantType`
+
+#### Scenario: Instanzfremde Geo-Knoten bleiben aus dem Read-Modell ausgeschlossen
+
+- **WHEN** ein Read-Modell-Aufruf Geo-Knoten einer anderen `instanceId` einschließen würde
+- **THEN** werden diese Datensätze nicht zurückgegeben
+- **AND** der Konsument erhält ausschließlich Daten des aktiven Instanzkontexts
+
+### Requirement: Read-Interface für externe Konsumenten
+
+Das System SHALL ein Read-Interface für Hierarchiedaten bereitstellen, über das `iam-access-control` und andere autorisierte Module Org- und Geo-Hierarchien abfragen können, ohne direkt auf die Datenbanktabellen zuzugreifen.
+
+#### Scenario: Vorfahren-Abfrage für Org-Kontext
+
+- **WHEN** `iam-access-control` im Recompute-Pfad alle Vorfahren einer Organisation benötigt
+- **THEN** stellt `iam-organizations` diese Daten über ein Closure-Table-Query in maximal 1 DB-Roundtrip bereit
+- **AND** die Antwort enthält `orgId`, `ancestorIds[]` und `depth`-Werte
+
+#### Scenario: Geo-Hierarchie für Snapshot-Berechnung
+
+- **WHEN** der Geo-Kontext eines Nutzers für den Permission-Snapshot berechnet wird
+- **THEN** liefert `iam-organizations` alle relevanten Geo-Knoten (Vorfahren + Selbst) für den aktiven Geo-Scope
+- **AND** das Ergebnis ist auf die aktive `instanceId` begrenzt
 

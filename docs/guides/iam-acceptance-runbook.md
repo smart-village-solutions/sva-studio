@@ -1,8 +1,8 @@
-# IAM-Acceptance-Runbook für Paket 1 und 2
+# IAM-Acceptance-Runbook für die Paketabnahme
 
 ## Ziel
 
-Dieses Runbook beschreibt den reproduzierbaren Abnahmenachweis für die IAM-Basis und die Organisationsverwaltung. Der Lauf prüft echte Laufzeitpfade gegen eine vereinbarte Testumgebung und ist bewusst **kein** regulärer PR-CI-Blocker.
+Dieses Runbook beschreibt den reproduzierbaren Abnahmenachweis für die IAM-Basis. Der Lauf prüft echte Laufzeitpfade gegen eine vereinbarte Testumgebung und ist bewusst **kein** regulärer PR-CI-Blocker.
 
 ## Ausführbarer Vertrag
 
@@ -75,6 +75,15 @@ pnpm --filter sva-studio-react exec playwright install --with-deps chromium
 - Parent-/Child-Bezug, `hierarchy_path` und `depth` per DB-Assertion
 - Membership-Zuweisung für `acceptance-member` inklusive Default-Kontext
 - UI-Nachweis für Benutzerliste, Organisationsstruktur und Membership-Zuweisung
+
+### Vorbereitung für Paket 3 bis 5
+
+- Die Zielumgebung muss denselben Authorization-Vertrag wie lokal bereitstellen: `POST /iam/authorize` und `GET /iam/me/permissions` liefern additive `snapshotVersion`- und `cacheStatus`-Felder.
+- Geo-bezogene Acceptance-Fälle verwenden denselben Laufzeitkontext in beiden Endpunkten:
+  - `POST /iam/authorize` über `context.attributes.geoUnitId` und `context.attributes.geoHierarchy`
+  - `GET /iam/me/permissions` über `geoUnitId` und `geoHierarchy`
+- Offene Pflicht-Rechtstexte bleiben serverseitig fail-closed und blockieren geschützte Pfade mit `403 legal_acceptance_required`, bis die Akzeptanz erfolgreich abgeschlossen wurde.
+- Die morgigen Reports müssen Cache-/Invalidierungs- und Rechtstext-Nachweise getrennt ausweisen, auch wenn sie im selben Environment-Lauf erzeugt werden.
 
 ## Artefakte
 

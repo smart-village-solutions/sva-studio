@@ -264,47 +264,58 @@ Das System SHALL die neuen Felder in `POST /iam/authorize` und `GET /iam/me/perm
 **Normatives JSON-Beispiel `POST /iam/authorize` Response:**
 ```json
 {
-  "decision": "allow",
-  "reasoning": {
-    "matched_permissions": [
-      {
-        "action": "content:read",
-        "resource_type": "article",
-        "effect": "allow",
-        "source": "role",
-        "role_id": "uuid-role",
-        "inherited_from_org": "uuid-parent-org",
-        "geo_scope": "district:09162"
-      }
-    ],
-    "denial_reason": null,
-    "denial_code": null,
-    "cache_status": "hit"
+  "allowed": true,
+  "reason": "allowed_by_abac",
+  "instanceId": "de-musterhausen",
+  "action": "content.read",
+  "resourceType": "content",
+  "resourceId": "article-1",
+  "cacheStatus": "hit",
+  "snapshotVersion": "f84a6f7b9c3d2e10",
+  "provenance": {
+    "sourceKinds": ["group_role"],
+    "inheritedFromGeoUnitId": "geo-bw"
   }
 }
 ```
 
-Bei Verweigerung enthält `denial_reason` einen maschinenlesbaren Code (z. B. `geo_scope_mismatch`, `deny_rule_override`, `instance_boundary_violation`) und eine lesbare Beschreibung.
+Bei Verweigerung enthält `reason` einen maschinenlesbaren Code (z. B. `geo_scope_mismatch`, `hierarchy_restriction`, `instance_scope_mismatch`) und der bestehende Error-Envelope bleibt für echte `4xx/5xx`-Fehler stabil.
 
 **Normatives JSON-Beispiel `GET /iam/me/permissions` Response (Auszug):**
 ```json
 {
+  "instanceId": "de-musterhausen",
   "permissions": [
     {
-      "action": "content:write",
-      "resource_type": "article",
+      "action": "content.write",
+      "resourceType": "content",
       "effect": "allow",
-      "source": "group",
-      "group_id": "uuid-group",
-      "group_name": "Presseteam",
-      "org_scope": "uuid-org",
-      "geo_scope": "municipality:09162000"
+      "organizationId": "uuid-org",
+      "sourceRoleIds": ["uuid-role"],
+      "sourceGroupIds": ["uuid-group"],
+      "scope": {
+        "allowedGeoUnitIds": ["geo-bw"],
+        "restrictedGeoUnitIds": ["geo-bw-stuttgart"]
+      },
+      "provenance": {
+        "sourceKinds": ["group_role"]
+      }
     }
   ],
-  "snapshot_version": 7,
-  "computed_at": "2026-03-17T10:00:00Z"
+  "cacheStatus": "hit",
+  "snapshotVersion": "f84a6f7b9c3d2e10",
+  "provenance": {
+    "hasGroupDerivedPermissions": true,
+    "hasGeoInheritance": true
+  }
 }
 ```
+
+#### Scenario: Me-Permissions akzeptiert optionalen Geo-Kontext additiv
+
+- **WHEN** `GET /iam/me/permissions` mit `geoUnitId` und `geoHierarchy` aufgerufen wird
+- **THEN** werden diese Werte nur als additive Laufzeitdimension für Snapshot-Key, Provenance und Scope-Auswertung verwendet
+- **AND** ungültige Geo-Parameter werden mit `400 invalid_request` abgewiesen
 
 #### Scenario: Consumer mit strict-parse erhält unbekannte Felder
 

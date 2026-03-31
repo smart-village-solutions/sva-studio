@@ -42,6 +42,11 @@ export type EffectivePermissionsResolution =
     }
   | { ok: false; error: 'database_unavailable' };
 
+export type ResolvedGeoContext = {
+  readonly geoUnitId?: string;
+  readonly geoHierarchy?: readonly string[];
+};
+
 export const logger: ReturnType<typeof createSdkLogger> = createSdkLogger({ component: 'iam-authorize', level: 'info' });
 export const cacheLogger: ReturnType<typeof createSdkLogger> = createSdkLogger({
   component: 'iam-cache',
@@ -325,6 +330,8 @@ export const buildMePermissionsResponse = (input: {
   actorUserId: string;
   effectiveUserId: string;
   isImpersonating: boolean;
+  snapshotVersion?: string;
+  cacheStatus?: SnapshotCacheStatus;
 }): MePermissionsResponse => ({
   instanceId: input.instanceId,
   organizationId: input.organizationId,
@@ -337,6 +344,8 @@ export const buildMePermissionsResponse = (input: {
   evaluatedAt: new Date().toISOString(),
   requestId: getWorkspaceContext().requestId,
   traceId: getWorkspaceContext().traceId,
+  snapshotVersion: input.snapshotVersion,
+  cacheStatus: input.cacheStatus,
   provenance: {
     hasGroupDerivedPermissions: input.permissions.some((permission) => permission.sourceGroupIds.length > 0),
     hasGeoInheritance: input.permissions.some((permission) => {
@@ -377,4 +386,56 @@ export const resolveOrganizationIdFromRequest = (request: Request) => {
 export const resolveActingAsUserIdFromRequest = (request: Request) => {
   const url = new URL(request.url);
   return readString(url.searchParams.get('actingAsUserId'));
+};
+
+const MAX_GEO_HIERARCHY_LENGTH = 32;
+
+const normalizeGeoHierarchy = (
+  entries: readonly string[]
+): readonly string[] | undefined | null => {
+  const normalized = entries
+    .map((entry) => readString(entry))
+    .filter((entry): entry is string => Boolean(entry));
+
+  if (normalized.length === 0) {
+    return undefined;
+  }
+
+  const deduplicated = [...new Set(normalized)];
+  if (deduplicated.length > MAX_GEO_HIERARCHY_LENGTH) {
+    return null;
+  }
+
+  return deduplicated;
+};
+
+export const resolveGeoContextFromRequest = (request: Request): ResolvedGeoContext | null => {
+  const url = new URL(request.url);
+  const geoUnitId = readString(url.searchParams.get('geoUnitId'));
+  if (geoUnitId && !isUuid(geoUnitId)) {
+    return null;
+  }
+
+  const geoHierarchy = normalizeGeoHierarchy(
+    url.searchParams
+      .getAll('geoHierarchy')
+      .flatMap((entry) => entry.split(','))
+  );
+
+  if (geoHierarchy === null) {
+    return null;
+  }
+
+  if (geoHierarchy?.some((entry) => !isUuid(entry))) {
+    return null;
+  }
+
+  if (!geoUnitId && !geoHierarchy) {
+    return {};
+  }
+
+  return {
+    ...(geoUnitId ? { geoUnitId } : {}),
+    ...(geoHierarchy ? { geoHierarchy } : {}),
+  };
 };

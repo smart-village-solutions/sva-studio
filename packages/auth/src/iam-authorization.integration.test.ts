@@ -163,6 +163,17 @@ describe('IAM authorization integration denials', () => {
     expect(await response.json()).toEqual({ error: 'invalid_organization_id' });
   });
 
+  it('rejects me/permissions for invalid geo query context', async () => {
+    const request = new Request('http://localhost/iam/me/permissions?geoUnitId=invalid', {
+      method: 'GET',
+    });
+
+    const response = await mePermissionsHandler(request);
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: 'invalid_request' });
+  });
+
   it('denies authorize for cross-instance request', async () => {
     integrationState.user = {
       ...integrationState.user,
@@ -245,6 +256,8 @@ describe('IAM authorization integration denials', () => {
     const payload = (await response.json()) as {
       requestId?: string;
       traceId?: string;
+      snapshotVersion?: string | null;
+      cacheStatus?: string;
       permissions: unknown[];
       subject: {
         actorUserId: string;
@@ -256,6 +269,8 @@ describe('IAM authorization integration denials', () => {
     expect(response.status).toBe(200);
     expect(payload.requestId).toBe('req-integration');
     expect(payload.traceId).toBe('trace-integration');
+    expect(payload.snapshotVersion).toEqual(expect.any(String));
+    expect(payload.cacheStatus).toBe('miss');
     expect(payload.permissions.length).toBe(1);
     expect(payload.subject).toEqual({
       actorUserId: 'keycloak-sub-integration',

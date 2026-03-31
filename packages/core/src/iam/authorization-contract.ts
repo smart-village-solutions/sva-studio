@@ -121,6 +121,8 @@ export type MePermissionsRequest = {
   readonly instanceId: IamInstanceId;
   readonly organizationId?: IamUuid;
   readonly actingAsUserId?: string;
+  readonly geoUnitId?: IamUuid;
+  readonly geoHierarchy?: readonly IamUuid[];
 };
 
 export type MePermissionsSubject = {

@@ -27,6 +27,8 @@ Liefert die effektiven Berechtigungen für den aktuell authentifizierten Benutze
 - `instanceId` (optional, String): Überschreibt den Session-Kontext nur, wenn identisch zur User-Instanz
 - `organizationId` (optional, UUID): Filtert Berechtigungen auf Organisationskontext
 - `actingAsUserId` (optional, String): Effektives Ziel-Subjekt für Admin-Analyse, nur mit aktiver Impersonation-Session
+- `geoUnitId` (optional, UUID): Optionaler Geo-Kontext für dieselbe Snapshot- und Provenance-Auswertung wie im `authorize`-Pfad
+- `geoHierarchy` (optional, UUID-Liste): Wiederholbarer Query-Parameter oder kommaseparierte Liste für die hierarchische Geo-Auswertung; ungültige Werte führen zu `400 invalid_request`
 
 ### Erfolgsantwort (`200`)
 
@@ -60,6 +62,8 @@ Liefert die effektiven Berechtigungen für den aktuell authentifizierten Benutze
   "evaluatedAt": "2026-02-28T11:00:00.000Z",
   "requestId": "req-123",
   "traceId": "trace-abc",
+  "snapshotVersion": "f84a6f7b9c3d2e10",
+  "cacheStatus": "hit",
   "provenance": {
     "hasGroupDerivedPermissions": true,
     "hasGeoInheritance": true
@@ -70,6 +74,8 @@ Liefert die effektiven Berechtigungen für den aktuell authentifizierten Benutze
 ### Zusätzliche Zusagen für Transparenz-UI
 
 - `resourceId`, `effect`, `scope`, `sourceRoleIds`, `sourceGroupIds`, `provenance` und `subject` sind Teil des stabilen Read-Modells für das Rights-Tab in `/admin/iam`.
+- `snapshotVersion` und `cacheStatus` sind additive Diagnosefelder für Snapshot-Transparenz; bestehende Consumer dürfen diese Felder ignorieren.
+- `geoUnitId` und `geoHierarchy` beeinflussen nur die Snapshot-Dimension und Provenance-Auswertung, nicht die Session oder die Nutzeridentität.
 - Diagnosefelder bleiben allowlist-basiert. Die UI zeigt keine Roh-Policy-Dumps, Secrets oder Ciphertexte an.
 - `instanceId` bleibt der fachliche String-Scope. Ein technisches UUID-Format ist für Clients nicht vorausgesetzt.
 
@@ -142,6 +148,8 @@ Führt eine deterministische Autorisierungsentscheidung für `action` + `resourc
     "stage": "final",
     "matched_role_count": 2
   },
+  "snapshotVersion": "f84a6f7b9c3d2e10",
+  "cacheStatus": "hit",
   "provenance": {
     "sourceKinds": ["group_role"],
     "inheritedFromGeoUnitId": "geo-bw"
@@ -165,6 +173,7 @@ Der Fehlervertrag bleibt additiv: `error` ist und bleibt der maschinenlesbare St
 
 - `context.attributes.geoUnitId` und `context.attributes.geoHierarchy` bilden den kanonischen Geo-Eingang für hierarchische Auswertung.
 - `resource.attributes.geoUnitId` und `resource.attributes.geoHierarchy` dürfen dieselben Informationen ressourcenspezifisch überschreiben.
+- `GET /iam/me/permissions` nutzt für denselben Zweck die Query-Parameter `geoUnitId` und `geoHierarchy`; beide Endpunkte verwenden damit denselben Geo-Snapshot-Scope.
 - `allowedGeoUnitIds` und `restrictedGeoUnitIds` werden gegenüber `allowedGeoScopes` priorisiert; String-Scopes bleiben nur als Kompatibilitäts-Fallback erhalten.
 - `AuthorizeResponse.provenance` benennt vererbende oder restriktive Geo-Units strukturiert und ersetzt keine fachlichen Fehlercodes.
 

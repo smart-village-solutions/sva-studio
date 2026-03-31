@@ -928,7 +928,7 @@ ON CONFLICT (instance_id, role_id, permission_id) DO NOTHING;
       }
       return jsonResponse(200, asApiItem(roleItem, actorResolution.actor.requestId));
     } catch (error) {
-      if (shouldSyncIdentityProvider) {
+      if (shouldSyncIdentityProvider && syncedIdentityProvider) {
         try {
           await trackKeycloakCall('update_role_compensation', () =>
             syncedIdentityProvider.provider.updateRole(externalRoleName, {

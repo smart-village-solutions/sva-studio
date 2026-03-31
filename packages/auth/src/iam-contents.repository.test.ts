@@ -82,6 +82,14 @@ describe('iam-contents repository', () => {
         author: 'Editor',
         payload: { hero: 'Hallo' },
         status: 'draft',
+        access: {
+          state: 'editable',
+          canRead: true,
+          canCreate: true,
+          canUpdate: true,
+          organizationIds: [],
+          sourceKinds: [],
+        },
       },
     ]);
 
@@ -94,6 +102,14 @@ describe('iam-contents repository', () => {
       author: 'Editor',
       payload: { hero: 'Hallo' },
       status: 'draft',
+      access: {
+        state: 'editable',
+        canRead: true,
+        canCreate: true,
+        canUpdate: true,
+        organizationIds: [],
+        sourceKinds: [],
+      },
     });
 
     expect(await loadContentHistory('de-musterhausen', 'content-1')).toEqual([
@@ -142,6 +158,14 @@ describe('iam-contents repository', () => {
       author: 'Editor',
       payload: { hero: 'Hallo' },
       status: 'draft',
+      access: {
+        state: 'editable',
+        canRead: true,
+        canCreate: true,
+        canUpdate: true,
+        organizationIds: [],
+        sourceKinds: [],
+      },
       history: [
         {
           id: 'history-1',

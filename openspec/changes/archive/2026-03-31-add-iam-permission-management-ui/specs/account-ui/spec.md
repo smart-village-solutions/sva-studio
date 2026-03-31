@@ -13,6 +13,13 @@ Das System MUST eine Rollen-Verwaltungsseite unter `/admin/roles` bereitstellen,
 - **UND** Rollenrechte werden innerhalb derselben Seite oder desselben Bedienflusses vertieft statt in ein separates Top-Level-Modul ausgelagert
 - **UND** die bestehende Expand-, Detail- oder gleichwertige Arbeitsbereichslogik bleibt mit vorhandenen Admin-Patterns konsistent
 
+#### Scenario: Detailroute bleibt Teil desselben Rollenverwaltungsflusses
+
+- **WENN** eine Rolle aus der Rollenliste in einen vertieften Arbeitsbereich geöffnet wird
+- **DANN** ist eine dedizierte Detailroute wie `/admin/roles/$roleId` zulässig, sofern sie Teil desselben Rollenverwaltungsflusses bleibt
+- **UND** die Rollenliste weiterhin der primäre Einstiegspunkt ist
+- **UND** kein separates Top-Level-Admin-Modul für Rechtepflege entsteht
+
 #### Scenario: Rollenmetadaten und Editierbarkeit sind eindeutig sichtbar
 
 - **WENN** eine Rolle in der Rollenansicht dargestellt wird
@@ -32,6 +39,13 @@ Das System MUST eine Rollen-Verwaltungsseite unter `/admin/roles` bereitstellen,
 - **WENN** ein Administrator aus einer Rolle heraus eine Rechteentscheidung nachvollziehen möchte
 - **DANN** bietet die Rollenansicht einen klaren Einstieg in die bestehende IAM-Rechteübersicht oder Szenario-Prüfung
 - **UND** es wird kein davon losgelöster zweiter Prüfworkflow mit abweichender Logik eingeführt
+
+#### Scenario: Cockpit-Einstieg genügt für die erste Ausbaustufe
+
+- **WENN** die Rollenverwaltung eine bestehende IAM-Prüffunktion integriert
+- **DANN** ist ein klarer Link- oder Deep-Link-Einstieg in das bestehende IAM-Cockpit für die erste Ausbaustufe ausreichend
+- **UND** eine eingebettete Szenario-Prüfung innerhalb der Rollenansicht ist optional
+- **UND** fehlende Inline-Prüfmasken machen den Rollenarbeitsbereich in diesem Change nicht unvollständig
 
 ## ADDED Requirements
 

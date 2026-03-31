@@ -211,7 +211,7 @@ describe('iam-contents core', () => {
           canRead: true,
           canCreate: false,
           canUpdate: false,
-          reasonCode: 'context_restricted',
+          reasonCode: 'content_update_missing',
           organizationIds: [],
           sourceKinds: [],
         },

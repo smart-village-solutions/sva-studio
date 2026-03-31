@@ -32,6 +32,7 @@ Die größte Lücke liegt nicht in einer fehlenden Policy-Engine, sondern in der
 
 - Decision: Die Rollenliste bleibt Einstiegspunkt; Details werden als vertiefter Arbeitsbereich innerhalb derselben Seite oder desselben Flows spezifiziert.
   - Rationale: Das passt zum aktuellen Tabellen-/Expand-Muster und erlaubt eine iterative Umsetzung.
+  - Umsetzungskonsequenz: Für diesen Change ist eine dedizierte Detailroute unter `/admin/roles/$roleId` als gleichwertiger Arbeitsbereich im selben Bedienfluss zulässig. Ein Rückbau auf eine reine Inline-Expand-Ansicht ist nicht erforderlich.
 
 - Decision: Die UI nutzt vorhandene Rollen- und Permissions-Daten weiter und ergänzt sie um fachliche Lesbarkeit statt um ein neues Datenmodell.
   - Rationale: Der aktuelle Contract und das Rollen-API liefern schon genügend Informationen für eine erste verständlichere Darstellung.
@@ -41,6 +42,7 @@ Die größte Lücke liegt nicht in einer fehlenden Policy-Engine, sondern in der
 
 - Decision: Vorschau und Szenario-Prüfung bauen auf den bereits vorhandenen IAM-Cockpit- und Authorize-Pfaden auf.
   - Rationale: Die Prüffunktion existiert bereits. Der Change soll sie in die Rechteverwaltung integrieren, nicht duplizieren.
+  - Umsetzungskonsequenz: Ein klarer Link- oder Deep-Link-Einstieg in das bestehende IAM-Cockpit erfüllt diesen Change. Eine eingebettete Szenario-Prüfung innerhalb der Rollenansicht bleibt optional und ist nicht Voraussetzung für die Abnahme.
 
 - Decision: Read-only-Regeln für System- und extern verwaltete Rollen werden explizit als eigener UI-Zustand behandelt.
   - Rationale: Dieser Zustand ist im aktuellen Code bereits vorhanden und muss spezifikativ klarer beschrieben werden.
@@ -65,6 +67,8 @@ Der Berechtigungsarbeitsbereich wird inkrementell innerhalb der vorhandenen Seit
 - technischer Detailbereich für `permissionKey`, Herkunft oder Debug-Hinweise nur ergänzend
 - sichtbare Read-only-Hinweise für nicht editierbare Rollen
 - Einstieg in bestehende Prüffunktionen, statt einer zweiten unabhängigen Vorschauimplementierung
+
+Für die erste Umsetzung ist sowohl eine Inline-Vertiefung in `/admin/roles` als auch eine dedizierte Detailroute im selben Rollenverwaltungsfluss zulässig, sofern kein separates Top-Level-Modul entsteht.
 
 ### Berechtigungsdarstellung
 
@@ -93,6 +97,8 @@ Statt eines komplett neuen Vorschau-Backends nutzt die Rollenverwaltung die vorh
   - Rollenmetadaten
   - Rollen-Permissions
   - operativer Autorisierungsprüfung
+
+Für diesen Change genügt ein klarer, aus dem Rollenkontext erreichbarer Cockpit-Einstieg. Vorbefüllte oder eingebettete Prüfmasken sind mögliche Folgeverbesserungen, aber kein offener Muss-Punkt dieses Changes.
 
 ## Fach-UI-Integration
 

@@ -28,3 +28,8 @@
 - [x] 5.1 Negative und Randfälle für read-only-Rollen, fehlende Berechtigungen, serverseitige Konflikte und Prüfdaten in den Delta-Specs ergänzen
 - [x] 5.2 Verifikationsstrategie für Unit-, Integrations-, E2E-, Accessibility-, Responsive- und i18n-Prüfungen für die spätere Umsetzung festhalten
 - [x] 5.3 Proposal mit `openspec validate add-iam-permission-management-ui --strict` validieren
+
+## 6. Umsetzungsentscheidungen
+
+- [x] 6.1 Dokumentiert, dass eine Detailroute unter `/admin/roles/$roleId` als gleichwertiger Arbeitsbereich im selben Rollenverwaltungsfluss akzeptiert ist
+- [x] 6.2 Dokumentiert, dass für diesen Change ein klarer Cockpit-Einstieg die Prüfintegration erfüllt und eine eingebettete Szenario-Prüfung optional bleibt

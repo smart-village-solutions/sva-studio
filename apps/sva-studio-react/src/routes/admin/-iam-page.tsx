@@ -804,7 +804,20 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
                         ? authorizeDecision.provenance.sourceKinds.join(', ')
                         : authorizeDecision.matchedPermissions && authorizeDecision.matchedPermissions.length > 0
                           ? [...new Set(authorizeDecision.matchedPermissions.map((p) => p.source))]
-                              .map((source) => t(`admin.iam.rights.permissionSource.${source}` as const))
+                              .map((source) => {
+                                switch (source) {
+                                  case 'user':
+                                    return t('admin.iam.rights.permissionSource.user');
+                                  case 'role':
+                                    return t('admin.iam.rights.permissionSource.role');
+                                  case 'group':
+                                    return t('admin.iam.rights.permissionSource.group');
+                                  case 'delegation':
+                                    return t('admin.iam.rights.permissionSource.delegation');
+                                  default:
+                                    return source;
+                                }
+                              })
                               .join(', ')
                           : '—'}
                     </dd>

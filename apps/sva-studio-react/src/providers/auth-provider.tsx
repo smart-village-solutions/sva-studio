@@ -182,8 +182,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       }
       logAuthDebug('loadUser:authenticated', {
         hasUser: Boolean(payload),
-        userId: payload?.id ?? null,
-        instanceId: payload?.instanceId ?? null,
       });
     } catch (cause) {
       if (isMountedRef.current) {

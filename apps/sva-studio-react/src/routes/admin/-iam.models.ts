@@ -1,4 +1,5 @@
 import type { AuthorizeResponse, EffectivePermission, IamDsrCaseListItem, MePermissionsResponse } from '@sva/core';
+import { t } from '../../i18n';
 
 import type { IamCockpitTabKey } from '../../lib/iam-viewer-access';
 
@@ -70,12 +71,34 @@ export const mapAuthorizeDecision = (response: AuthorizeResponse): AuthorizeDeci
   };
 };
 
-export const formatPermissionSourceKinds = (permission: EffectivePermission): string => {
-  const sourceKinds = permission.provenance?.sourceKinds ?? [];
-  if (sourceKinds.length === 0) {
+const mapSourceKindToLabel = (sourceKind: string): string => {
+  switch (sourceKind) {
+    case 'direct_user':
+    case 'user':
+      return t('admin.iam.rights.permissionSource.user');
+    case 'direct_role':
+    case 'role':
+      return t('admin.iam.rights.permissionSource.role');
+    case 'group_role':
+    case 'group':
+      return t('admin.iam.rights.permissionSource.group');
+    case 'delegation':
+      return t('admin.iam.rights.permissionSource.delegation');
+    default:
+      return sourceKind;
+  }
+};
+
+export const formatPermissionSourceKindLabels = (sourceKinds: readonly string[] | undefined): string => {
+  if (!sourceKinds || sourceKinds.length === 0) {
     return '—';
   }
-  return sourceKinds.join(', ');
+  return sourceKinds.map(mapSourceKindToLabel).join(', ');
+};
+
+export const formatPermissionSourceKinds = (permission: EffectivePermission): string => {
+  const sourceKinds = permission.provenance?.sourceKinds ?? [];
+  return formatPermissionSourceKindLabels(sourceKinds);
 };
 
 const includesIgnoreCase = (haystack: string | undefined, needle: string) =>

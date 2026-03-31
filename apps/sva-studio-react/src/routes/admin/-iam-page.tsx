@@ -25,6 +25,7 @@ import { t } from '../../i18n';
 import { useAuth } from '../../providers/auth-provider';
 import {
   filterPermissions,
+  formatPermissionSourceKindLabels,
   formatPermissionSourceKinds,
   getFirstAllowedTab,
   mapAuthorizeDecision,
@@ -801,24 +802,11 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
                     <dt className="text-xs uppercase tracking-wide text-muted-foreground">{t('admin.iam.rights.authorize.summary.origin')}</dt>
                     <dd className="text-foreground">
                       {authorizeDecision.provenance?.sourceKinds && authorizeDecision.provenance.sourceKinds.length > 0
-                        ? authorizeDecision.provenance.sourceKinds.join(', ')
+                        ? formatPermissionSourceKindLabels(authorizeDecision.provenance.sourceKinds)
                         : authorizeDecision.matchedPermissions && authorizeDecision.matchedPermissions.length > 0
-                          ? [...new Set(authorizeDecision.matchedPermissions.map((p) => p.source))]
-                              .map((source) => {
-                                switch (source) {
-                                  case 'user':
-                                    return t('admin.iam.rights.permissionSource.user');
-                                  case 'role':
-                                    return t('admin.iam.rights.permissionSource.role');
-                                  case 'group':
-                                    return t('admin.iam.rights.permissionSource.group');
-                                  case 'delegation':
-                                    return t('admin.iam.rights.permissionSource.delegation');
-                                  default:
-                                    return source;
-                                }
-                              })
-                              .join(', ')
+                          ? formatPermissionSourceKindLabels([
+                              ...new Set(authorizeDecision.matchedPermissions.map((permission) => permission.source)),
+                            ] as readonly string[])
                           : '—'}
                     </dd>
                   </div>

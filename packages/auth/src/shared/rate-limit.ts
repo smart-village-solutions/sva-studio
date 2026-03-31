@@ -19,16 +19,12 @@ const pruneExpiredBuckets = (now: number): void => {
     }
   }
 
-  if (rateLimiterStore.size > MAX_RATE_BUCKETS) {
-    let oldest: [string, RateBucket] | undefined;
-    for (const entry of rateLimiterStore.entries()) {
-      if (!oldest || entry[1].windowStartedAt < oldest[1].windowStartedAt) {
-        oldest = entry;
-      }
+  while (rateLimiterStore.size > MAX_RATE_BUCKETS) {
+    const oldestKey = rateLimiterStore.keys().next().value;
+    if (!oldestKey) {
+      break;
     }
-    if (oldest) {
-      rateLimiterStore.delete(oldest[0]);
-    }
+    rateLimiterStore.delete(oldestKey);
   }
 };
 

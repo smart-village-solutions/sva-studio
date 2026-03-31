@@ -10,6 +10,7 @@ import { Card } from '../../../components/ui/card';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
 import { Textarea } from '../../../components/ui/textarea';
+import { useRolePermissions } from '../../../hooks/use-role-permissions';
 import { useRoles } from '../../../hooks/use-roles';
 import { t } from '../../../i18n';
 import type { TranslationKey } from '../../../i18n/translate';
@@ -138,12 +139,25 @@ const summarizePermission = (permissionKey: string) => {
   };
 };
 
+const sortPermissionIdsByCatalog = (
+  permissionIds: readonly string[],
+  catalog: readonly { id: string; permissionKey: string }[]
+) =>
+  [...permissionIds].sort((left, right) => {
+    const leftKey = catalog.find((permission) => permission.id === left)?.permissionKey ?? left;
+    const rightKey = catalog.find((permission) => permission.id === right)?.permissionKey ?? right;
+    return leftKey.localeCompare(rightKey);
+  });
+
 export const RolesPage = () => {
   const rolesApi = useRoles();
+  const permissionsApi = useRolePermissions();
 
   const [search, setSearch] = React.useState('');
   const [sortDirection, setSortDirection] = React.useState<SortDirection>('asc');
   const [expandedRoleIds, setExpandedRoleIds] = React.useState<string[]>([]);
+  const [permissionDrafts, setPermissionDrafts] = React.useState<Record<string, string[]>>({});
+  const [savingRoleIds, setSavingRoleIds] = React.useState<string[]>([]);
   const [createDialogOpen, setCreateDialogOpen] = React.useState(false);
   const [editRoleId, setEditRoleId] = React.useState<string | null>(null);
   const [deleteRoleId, setDeleteRoleId] = React.useState<string | null>(null);
@@ -188,10 +202,82 @@ export const RolesPage = () => {
     [editRoleId, rolesApi.roles]
   );
 
+  const groupedPermissions = React.useMemo(() => {
+    const buckets = new Map<string, typeof permissionsApi.permissions>();
+    for (const permission of permissionsApi.permissions) {
+      const summary = summarizePermission(permission.permissionKey);
+      buckets.set(summary.resourceLabel, [...(buckets.get(summary.resourceLabel) ?? []), permission]);
+    }
+
+    return [...buckets.entries()]
+      .map(([resourceLabel, permissions]) => [
+        resourceLabel,
+        [...permissions].sort((left, right) => left.permissionKey.localeCompare(right.permissionKey)),
+      ] as const)
+      .sort(([left], [right]) => left.localeCompare(right));
+  }, [permissionsApi.permissions]);
+
   const toggleExpanded = (roleId: string) => {
+    const role = rolesApi.roles.find((entry) => entry.id === roleId);
+    if (role && !(roleId in permissionDrafts)) {
+      setPermissionDrafts((current) => ({
+        ...current,
+        [roleId]: sortPermissionIdsByCatalog(
+          role.permissions.map((permission) => permission.id),
+          permissionsApi.permissions
+        ),
+      }));
+    }
     setExpandedRoleIds((current) =>
       current.includes(roleId) ? current.filter((entry) => entry !== roleId) : [...current, roleId]
     );
+  };
+
+  const togglePermissionDraft = (roleId: string, permissionId: string) => {
+    setPermissionDrafts((current) => {
+      const currentIds = current[roleId] ?? [];
+      const nextIds = currentIds.includes(permissionId)
+        ? currentIds.filter((entry) => entry !== permissionId)
+        : [...currentIds, permissionId];
+
+      return {
+        ...current,
+        [roleId]: sortPermissionIdsByCatalog(nextIds, permissionsApi.permissions),
+      };
+    });
+  };
+
+  const resetPermissionDraft = (roleId: string) => {
+    const role = rolesApi.roles.find((entry) => entry.id === roleId);
+    if (!role) {
+      return;
+    }
+    setPermissionDrafts((current) => ({
+      ...current,
+      [roleId]: sortPermissionIdsByCatalog(
+        role.permissions.map((permission) => permission.id),
+        permissionsApi.permissions
+      ),
+    }));
+  };
+
+  const savePermissionDraft = async (roleId: string) => {
+    const role = rolesApi.roles.find((entry) => entry.id === roleId);
+    const permissionIds =
+      permissionDrafts[roleId] ??
+      sortPermissionIdsByCatalog(
+        role?.permissions.map((permission) => permission.id) ?? [],
+        permissionsApi.permissions
+      );
+
+    setSavingRoleIds((current) => [...current, roleId]);
+    try {
+      await rolesApi.updateRole(roleId, {
+        permissionIds,
+      });
+    } finally {
+      setSavingRoleIds((current) => current.filter((entry) => entry !== roleId));
+    }
   };
 
   const onCreate = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -332,6 +418,7 @@ export const RolesPage = () => {
             {filteredRoles.map((role) => {
               const expanded = expandedRoleIds.includes(role.id);
               const isReadOnly = role.isSystemRole || role.managedBy !== 'studio';
+              const permissionDraft = permissionDrafts[role.id] ?? role.permissions.map((permission) => permission.id);
 
               return (
                 <React.Fragment key={role.id}>
@@ -466,6 +553,82 @@ export const RolesPage = () => {
                           ) : (
                             <p className="text-xs text-muted-foreground">{t('admin.roles.messages.permissionsEmpty')}</p>
                           )}
+
+                          <div className="space-y-3 rounded-lg border border-border bg-background p-4">
+                            <div className="space-y-1">
+                              <h3 className="text-sm font-semibold text-foreground">
+                                {t('admin.roles.workspace.editPermissionsTitle')}
+                              </h3>
+                              <p className="text-xs text-muted-foreground">
+                                {t('admin.roles.workspace.editPermissionsSubtitle')}
+                              </p>
+                            </div>
+
+                            {permissionsApi.error ? (
+                              <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
+                                <AlertDescription>{t('admin.roles.workspace.permissionsLoadError')}</AlertDescription>
+                              </Alert>
+                            ) : permissionsApi.isLoading ? (
+                              <p className="text-xs text-muted-foreground">{t('admin.roles.workspace.permissionsLoading')}</p>
+                            ) : (
+                              <div className="grid gap-3 lg:grid-cols-2">
+                                {groupedPermissions.map(([resourceLabel, permissions]) => (
+                                  <div key={resourceLabel} className="space-y-2 rounded-lg border border-border p-3">
+                                    <h4 className="text-sm font-medium text-foreground">{resourceLabel}</h4>
+                                    <div className="space-y-2">
+                                      {permissions.map((permission) => {
+                                        const permissionSummary = summarizePermission(permission.permissionKey);
+                                        return (
+                                          <label key={permission.id} className="flex items-start gap-3 text-sm">
+                                            <input
+                                              type="checkbox"
+                                              className="mt-1"
+                                              checked={permissionDraft.includes(permission.id)}
+                                              disabled={isReadOnly}
+                                              onChange={() => togglePermissionDraft(role.id, permission.id)}
+                                            />
+                                            <span className="space-y-1">
+                                              <span className="block font-medium text-foreground">
+                                                {permissionSummary.detailLabel}
+                                              </span>
+                                              <span className="block text-xs text-muted-foreground">
+                                                {permission.description ?? permission.permissionKey}
+                                              </span>
+                                            </span>
+                                          </label>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            <div className="flex flex-wrap gap-3">
+                              <Button
+                                type="button"
+                                disabled={
+                                  isReadOnly ||
+                                  permissionsApi.isLoading ||
+                                  Boolean(permissionsApi.error) ||
+                                  savingRoleIds.includes(role.id)
+                                }
+                                onClick={() => void savePermissionDraft(role.id)}
+                              >
+                                {savingRoleIds.includes(role.id)
+                                  ? t('admin.roles.workspace.savingPermissions')
+                                  : t('admin.roles.workspace.savePermissions')}
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                disabled={isReadOnly}
+                                onClick={() => resetPermissionDraft(role.id)}
+                              >
+                                {t('admin.roles.workspace.resetPermissions')}
+                              </Button>
+                            </div>
+                          </div>
                         </Card>
 
                         <Card className="space-y-3 p-4 shadow-none">

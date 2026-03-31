@@ -781,6 +781,8 @@ export const i18nResources = {
         workspace: {
           title: 'Berechtigungsarbeitsbereich',
           subtitle: 'Vorhandene Rollenrechte fachlich lesen und bei Bedarf über das IAM-Cockpit prüfen.',
+          editPermissionsTitle: 'Rechte bearbeiten',
+          editPermissionsSubtitle: 'Verfügbare Berechtigungen pro Fachbereich auswählen und direkt an der Rolle speichern.',
           sideTitle: 'Prüfkontext',
           sideSubtitle: 'Bestehende Prüffunktionen nutzen dieselben serverseitigen Entscheidungsgrundlagen wie operative Rechteprüfungen.',
           editable: 'Bearbeitbar',
@@ -795,6 +797,11 @@ export const i18nResources = {
           assignmentCountValue: '{{count}} Nutzer',
           syncStateLabel: 'Synchronisierung',
           openIamCta: 'Im IAM-Cockpit prüfen',
+          savePermissions: 'Rechte speichern',
+          savingPermissions: 'Speichert Rechte ...',
+          resetPermissions: 'Auswahl zurücksetzen',
+          permissionsLoading: 'Berechtigungskatalog wird geladen ...',
+          permissionsLoadError: 'Der Berechtigungskatalog konnte nicht geladen werden.',
         },
         errors: {
           forbidden: 'Unzureichende Berechtigungen für diese Rollenaktion.',
@@ -1903,6 +1910,8 @@ export const i18nResources = {
         workspace: {
           title: 'Permission workspace',
           subtitle: 'Read existing role permissions in business terms and verify them in the IAM cockpit when needed.',
+          editPermissionsTitle: 'Edit permissions',
+          editPermissionsSubtitle: 'Select available permissions by business area and save them directly on the role.',
           sideTitle: 'Verification context',
           sideSubtitle: 'Existing verification flows use the same server-side decision basis as operational permission checks.',
           editable: 'Editable',
@@ -1917,6 +1926,11 @@ export const i18nResources = {
           assignmentCountValue: '{{count}} users',
           syncStateLabel: 'Synchronization',
           openIamCta: 'Open in IAM cockpit',
+          savePermissions: 'Save permissions',
+          savingPermissions: 'Saving permissions ...',
+          resetPermissions: 'Reset selection',
+          permissionsLoading: 'Loading permission catalog ...',
+          permissionsLoadError: 'The permission catalog could not be loaded.',
         },
         errors: {
           forbidden: 'You do not have sufficient permissions for this role action.',

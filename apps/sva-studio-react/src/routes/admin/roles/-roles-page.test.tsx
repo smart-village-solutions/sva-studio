@@ -1,10 +1,11 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import React from 'react';
 
 import { RolesPage } from './-roles-page';
 
 const useRolesMock = vi.fn();
+const useRolePermissionsMock = vi.fn();
 
 vi.mock('@tanstack/react-router', () => ({
   Link: ({
@@ -26,7 +27,29 @@ vi.mock('../../../hooks/use-roles', () => ({
   useRoles: () => useRolesMock(),
 }));
 
+vi.mock('../../../hooks/use-role-permissions', () => ({
+  useRolePermissions: () => useRolePermissionsMock(),
+}));
+
 describe('RolesPage', () => {
+  const permissionCatalog = [
+    { id: 'perm-1', instanceId: 'de-musterhausen', permissionKey: 'content.read', description: 'Lesen' },
+    { id: 'perm-2', instanceId: 'de-musterhausen', permissionKey: 'content.write', description: 'Schreiben' },
+    { id: 'perm-3', instanceId: 'de-musterhausen', permissionKey: 'iam.configure', description: 'Konfigurieren' },
+  ];
+
+  const defaultPermissionsState = {
+    permissions: permissionCatalog,
+    isLoading: false,
+    error: null,
+    refetch: vi.fn(),
+  };
+
+  beforeEach(() => {
+    useRolePermissionsMock.mockReset();
+    useRolePermissionsMock.mockReturnValue(defaultPermissionsState);
+  });
+
   afterEach(() => {
     cleanup();
   });
@@ -98,7 +121,7 @@ describe('RolesPage', () => {
 
     fireEvent.click(screen.getAllByRole('button', { name: /editor/i })[0]!);
     expect(screen.getByText('Technischer Schlüssel: content.write')).toBeTruthy();
-    expect(screen.getByText('Bearbeiten Inhalte')).toBeTruthy();
+    expect(screen.getAllByText('Bearbeiten Inhalte').length).toBeGreaterThan(0);
     expect(screen.getByRole('link', { name: 'Im IAM-Cockpit prüfen' }).getAttribute('href')).toBe('/admin/iam?tab=rights');
   }, 15000);
 
@@ -614,5 +637,50 @@ describe('RolesPage', () => {
     });
 
     expect(clearMutationError).toHaveBeenCalledTimes(2);
+  });
+
+  it('saves edited permission selections for custom studio roles', async () => {
+    const updateRole = vi.fn().mockResolvedValue(true);
+
+    useRolesMock.mockReturnValue({
+      roles: [
+        {
+          id: 'role-editor',
+          roleKey: 'editor',
+          roleName: 'Editor',
+          externalRoleName: 'editor',
+          managedBy: 'studio',
+          description: 'Editorial role',
+          isSystemRole: false,
+          roleLevel: 20,
+          memberCount: 3,
+          syncState: 'synced',
+          permissions: [{ id: 'perm-1', permissionKey: 'content.read', description: 'Lesen' }],
+        },
+      ],
+      isLoading: false,
+      error: null,
+      mutationError: null,
+      reconcileReport: null,
+      refetch: vi.fn(),
+      clearMutationError: vi.fn(),
+      createRole: vi.fn(),
+      updateRole,
+      deleteRole: vi.fn(),
+      retryRoleSync: vi.fn(),
+      reconcile: vi.fn(),
+    });
+
+    render(<RolesPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: /editor/i }));
+    fireEvent.click(screen.getByRole('checkbox', { name: /Bearbeiten Inhalte/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Rechte speichern' }));
+
+    await waitFor(() => {
+      expect(updateRole).toHaveBeenCalledWith('role-editor', {
+        permissionIds: ['perm-1', 'perm-2'],
+      });
+    });
   });
 });

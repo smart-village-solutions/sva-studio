@@ -19,6 +19,7 @@ import type {
   IamOrganizationListItem,
   IamOrganizationMembershipVisibility,
   IamOrganizationType,
+  IamPermission,
   IamRoleListItem,
   IamUserTimelineEvent,
   IamUserDetail,
@@ -624,6 +625,9 @@ export const removeOrganizationMembership = async (
 
 export const getMyOrganizationContext = async (): Promise<ApiItemResponse<IamOrganizationContext>> =>
   requestJson<ApiItemResponse<IamOrganizationContext>>('/api/v1/iam/me/context');
+
+export const listPermissions = async (): Promise<ApiListResponse<IamPermission>> =>
+  requestJson<ApiListResponse<IamPermission>>('/api/v1/iam/permissions');
 
 export const updateMyOrganizationContext = async (
   organizationId: string

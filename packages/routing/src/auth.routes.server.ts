@@ -212,6 +212,12 @@ const authHandlerMap = {
       return mod.updateMyOrganizationContextHandler(request);
     },
   },
+  '/api/v1/iam/permissions': {
+    GET: async ({ request }) => {
+      const mod = await import('@sva/auth/runtime-routes');
+      return mod.listPermissionsHandler(request);
+    },
+  },
   '/api/v1/iam/roles': {
     GET: async ({ request }) => {
       const mod = await import('@sva/auth/runtime-routes');

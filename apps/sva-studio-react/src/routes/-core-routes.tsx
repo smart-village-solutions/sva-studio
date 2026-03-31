@@ -11,6 +11,7 @@ import { normalizeIamTab } from './admin/-iam.models';
 import { GroupsPage } from './admin/groups/-groups-page';
 import { LegalTextsPage } from './admin/legal-texts/-legal-texts-page';
 import { OrganizationsPage } from './admin/organizations/-organizations-page';
+import { normalizeRoleDetailTab, RoleDetailPage } from './admin/roles/-role-detail-page';
 import { RolesPage } from './admin/roles/-roles-page';
 import { UserEditPage } from './admin/users/-user-edit-page';
 import { UserListPage } from './admin/users/-user-list-page';
@@ -29,6 +30,7 @@ type AccountUiGuardKey =
   | 'adminUserDetail'
   | 'adminOrganizations'
   | 'adminRoles'
+  | 'adminRoleDetail'
   | 'adminGroups'
   | 'adminIam';
 
@@ -235,6 +237,23 @@ export const runtimeCoreRouteFactories = [
       beforeLoad: (options) => runAccountUiGuard('adminRoles', options),
       component: RolesPage,
     }),
+  (rootRoute: RootRoute) => {
+    const roleDetailRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/admin/roles/$roleId',
+      beforeLoad: (options) => runAccountUiGuard('adminRoleDetail', options),
+      validateSearch: (search: Record<string, unknown>) => ({
+        tab: normalizeRoleDetailTab(search.tab),
+      }),
+      component: () => (
+        <RoleDetailPage
+          roleId={roleDetailRoute.useParams().roleId}
+          activeTab={roleDetailRoute.useSearch().tab}
+        />
+      ),
+    });
+    return roleDetailRoute;
+  },
   (rootRoute: RootRoute) =>
     createRoute({
       getParentRoute: () => rootRoute,

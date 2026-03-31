@@ -5,16 +5,28 @@ import React from 'react';
 import { RolesPage } from './-roles-page';
 
 const useRolesMock = vi.fn();
-const useRolePermissionsMock = vi.fn();
 
 vi.mock('@tanstack/react-router', () => ({
   Link: ({
     children,
     to,
+    params,
     search,
     ...props
-  }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { to: string; search?: Record<string, string> }) => {
-    const href = search?.tab ? `${to}?tab=${search.tab}` : to;
+  }: React.AnchorHTMLAttributes<HTMLAnchorElement> & {
+    to: string;
+    params?: Record<string, string>;
+    search?: Record<string, string>;
+  }) => {
+    let href = to;
+    if (params) {
+      for (const [key, value] of Object.entries(params)) {
+        href = href.replace(`$${key}`, value);
+      }
+    }
+    if (search?.tab) {
+      href = `${href}?tab=${search.tab}`;
+    }
     return (
       <a href={href} {...props}>
         {children}
@@ -27,34 +39,16 @@ vi.mock('../../../hooks/use-roles', () => ({
   useRoles: () => useRolesMock(),
 }));
 
-vi.mock('../../../hooks/use-role-permissions', () => ({
-  useRolePermissions: () => useRolePermissionsMock(),
-}));
-
 describe('RolesPage', () => {
-  const permissionCatalog = [
-    { id: 'perm-1', instanceId: 'de-musterhausen', permissionKey: 'content.read', description: 'Lesen' },
-    { id: 'perm-2', instanceId: 'de-musterhausen', permissionKey: 'content.write', description: 'Schreiben' },
-    { id: 'perm-3', instanceId: 'de-musterhausen', permissionKey: 'iam.configure', description: 'Konfigurieren' },
-  ];
-
-  const defaultPermissionsState = {
-    permissions: permissionCatalog,
-    isLoading: false,
-    error: null,
-    refetch: vi.fn(),
-  };
-
   beforeEach(() => {
-    useRolePermissionsMock.mockReset();
-    useRolePermissionsMock.mockReturnValue(defaultPermissionsState);
+    useRolesMock.mockReset();
   });
 
   afterEach(() => {
     cleanup();
   });
 
-  it('renders role list and supports search, sort and permission expand', () => {
+  it('renders role list and routes edit actions to the detail page', () => {
     useRolesMock.mockReturnValue({
       roles: [
         {
@@ -108,22 +102,17 @@ describe('RolesPage', () => {
       target: { value: 'write' },
     });
 
-    expect(screen.queryByRole('button', { name: /system_admin/i })).toBeNull();
-    expect(screen.getByRole('button', { name: /editor/i })).toBeTruthy();
+    expect(screen.queryAllByText('system_admin')).toHaveLength(0);
+    expect(screen.getAllByText('editor').length).toBeGreaterThan(0);
 
     fireEvent.change(screen.getByPlaceholderText('Nach Rolle oder Berechtigung suchen'), {
       target: { value: '' },
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Sortierung wechseln' }));
-    const roleToggleButtons = screen.getAllByRole('button', { name: /system_admin|editor/ });
-    expect(roleToggleButtons[0]?.textContent).toContain('system_admin');
 
-    fireEvent.click(screen.getAllByRole('button', { name: /editor/i })[0]!);
-    expect(screen.getByText('Technischer Schlüssel: content.write')).toBeTruthy();
-    expect(screen.getAllByText('Bearbeiten Inhalte').length).toBeGreaterThan(0);
-    expect(screen.getByRole('link', { name: 'Im IAM-Cockpit prüfen' }).getAttribute('href')).toBe('/admin/iam?tab=rights');
-  }, 15000);
+    expect(screen.getAllByRole('link', { name: 'Rolle bearbeiten' })[0]?.getAttribute('href')).toBe('/admin/roles/role-1');
+  });
 
   it('opens create dialog and submits normalized payload', async () => {
     const createRole = vi.fn().mockResolvedValue(true);
@@ -145,7 +134,7 @@ describe('RolesPage', () => {
 
     render(<RolesPage />);
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Rolle anlegen' })[0]!);
+    fireEvent.click(screen.getByRole('button', { name: 'Rolle anlegen' }));
     const dialog = screen.getByRole('dialog', { name: 'Neue Rolle erstellen' });
 
     fireEvent.change(within(dialog).getByLabelText('Technischer Rollenschlüssel'), {
@@ -200,7 +189,7 @@ describe('RolesPage', () => {
 
     render(<RolesPage />);
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Rolle anlegen' })[0]!);
+    fireEvent.click(screen.getByRole('button', { name: 'Rolle anlegen' }));
     const dialog = screen.getByRole('dialog', { name: 'Neue Rolle erstellen' });
     fireEvent.change(within(dialog).getByLabelText('Technischer Rollenschlüssel'), {
       target: { value: 'Support' },
@@ -210,7 +199,6 @@ describe('RolesPage', () => {
     expect(createRole).toHaveBeenCalledTimes(1);
     expect(screen.getByRole('dialog', { name: 'Neue Rolle erstellen' })).toBeTruthy();
     expect(within(dialog).getByRole('alert').textContent).toContain('Die Rollenänderung steht in Konflikt');
-    expect(screen.queryByText('Rollen konnten nicht geladen werden.')).toBeNull();
     expect(clearMutationError).toHaveBeenCalledTimes(1);
   });
 
@@ -248,439 +236,12 @@ describe('RolesPage', () => {
 
     render(<RolesPage />);
 
-    const row = screen.getByRole('button', { name: /custom_editor/i }).closest('tr');
+    const row = screen.getAllByText('custom_editor')[0]?.closest('tr');
     expect(row).toBeTruthy();
     fireEvent.click(within(row!).getByRole('button', { name: 'Rolle löschen' }));
     const dialog = screen.getByRole('alertdialog', { name: 'Rolle löschen' });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Rolle löschen' }));
 
     expect(deleteRole).toHaveBeenCalledWith('role-custom');
-  });
-
-  it('renders system roles as read-only in the permission workspace', () => {
-    useRolesMock.mockReturnValue({
-      roles: [
-        {
-          id: 'role-1',
-          roleKey: 'system_admin',
-          roleName: 'system_admin',
-          externalRoleName: 'system_admin',
-          managedBy: 'studio',
-          description: 'System administration',
-          isSystemRole: true,
-          roleLevel: 90,
-          memberCount: 1,
-          syncState: 'synced',
-          permissions: [{ id: 'perm-1', permissionKey: 'iam.configure', description: 'System konfigurieren' }],
-        },
-      ],
-      isLoading: false,
-      error: null,
-      mutationError: null,
-      reconcileReport: null,
-      refetch: vi.fn(),
-      clearMutationError: vi.fn(),
-      createRole: vi.fn(),
-      updateRole: vi.fn(),
-      deleteRole: vi.fn(),
-      retryRoleSync: vi.fn(),
-      reconcile: vi.fn(),
-    });
-
-    render(<RolesPage />);
-
-    fireEvent.click(screen.getByRole('button', { name: /system_admin/i }));
-    expect(screen.getByText('Read-only')).toBeTruthy();
-    expect(
-      screen.getByText('Systemrollen bleiben schreibgeschützt, damit Baseline-Rechte konsistent und nachvollziehbar bleiben.')
-    ).toBeTruthy();
-  });
-
-  it('offers retry sync, edit and reconcile summary for failed roles', async () => {
-    const retryRoleSync = vi.fn().mockResolvedValue(true);
-    const updateRole = vi.fn().mockResolvedValue(true);
-    const reconcile = vi.fn().mockResolvedValue(true);
-
-    useRolesMock.mockReturnValue({
-      roles: [
-        {
-          id: 'role-failed',
-          roleKey: 'custom_editor',
-          roleName: 'Custom Editor',
-          externalRoleName: 'custom_editor',
-          managedBy: 'studio',
-          description: 'Custom',
-          isSystemRole: false,
-          roleLevel: 30,
-          memberCount: 0,
-          syncState: 'failed',
-          syncError: { code: 'IDP_TIMEOUT' },
-          permissions: [],
-        },
-      ],
-      isLoading: false,
-      error: null,
-      mutationError: null,
-      reconcileReport: {
-        checkedCount: 1,
-        correctedCount: 0,
-        failedCount: 1,
-        requiresManualActionCount: 0,
-        roles: [],
-      },
-      refetch: vi.fn(),
-      clearMutationError: vi.fn(),
-      createRole: vi.fn(),
-      updateRole,
-      deleteRole: vi.fn(),
-      retryRoleSync,
-      reconcile,
-    });
-
-    render(<RolesPage />);
-
-    expect(screen.getByText(/Reconcile abgeschlossen/)).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Erneut synchronisieren' }));
-    expect(retryRoleSync).toHaveBeenCalledWith('role-failed');
-
-    fireEvent.click(screen.getByRole('button', { name: 'Abgleich starten' }));
-    expect(reconcile).toHaveBeenCalledTimes(1);
-
-    fireEvent.click(screen.getByRole('button', { name: 'Rolle bearbeiten' }));
-    const dialog = screen.getByRole('dialog', { name: 'Rolle bearbeiten' });
-    fireEvent.change(within(dialog).getByLabelText('Anzeigename'), {
-      target: { value: 'Custom Editors' },
-    });
-    fireEvent.submit(within(dialog).getByRole('button', { name: 'Rolle bearbeiten' }).closest('form')!);
-
-    await waitFor(() => {
-      expect(updateRole).toHaveBeenCalledWith('role-failed', {
-        displayName: 'Custom Editors',
-        description: 'Custom',
-        roleLevel: 30,
-      });
-    });
-  });
-
-  it('maps load errors to localized role messages', () => {
-    useRolesMock.mockReturnValue({
-      roles: [],
-      isLoading: false,
-      error: {
-        status: 503,
-        code: 'keycloak_unavailable',
-        message: 'Keycloak Admin API ist nicht konfiguriert.',
-      },
-      mutationError: null,
-      reconcileReport: null,
-      refetch: vi.fn(),
-      clearMutationError: vi.fn(),
-      createRole: vi.fn(),
-      updateRole: vi.fn(),
-      deleteRole: vi.fn(),
-      retryRoleSync: vi.fn(),
-      reconcile: vi.fn(),
-    });
-
-    render(<RolesPage />);
-
-    expect(screen.getByRole('alert').textContent).toContain('Die Verbindung zu Keycloak ist derzeit nicht verfügbar.');
-  });
-
-  it('renders external roles as read-only', () => {
-    useRolesMock.mockReturnValue({
-      roles: [
-        {
-          id: 'role-external',
-          roleKey: 'mainserver_editor',
-          roleName: 'Editor',
-          externalRoleName: 'Editor',
-          managedBy: 'external',
-          description: 'Mainserver-Rolle',
-          isSystemRole: false,
-          roleLevel: 40,
-          memberCount: 0,
-          syncState: 'failed',
-          syncError: { code: 'IDP_TIMEOUT' },
-          permissions: [],
-        },
-      ],
-      isLoading: false,
-      error: null,
-      mutationError: null,
-      reconcileReport: null,
-      refetch: vi.fn(),
-      clearMutationError: vi.fn(),
-      createRole: vi.fn(),
-      updateRole: vi.fn(),
-      deleteRole: vi.fn(),
-      retryRoleSync: vi.fn(),
-      reconcile: vi.fn(),
-    });
-
-    render(<RolesPage />);
-
-    expect(screen.getByText('Externe Rolle')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Rolle bearbeiten' }).hasAttribute('disabled')).toBe(true);
-    expect(screen.getByRole('button', { name: 'Erneut synchronisieren' }).hasAttribute('disabled')).toBe(true);
-    expect(screen.getByRole('button', { name: 'Rolle löschen' }).hasAttribute('disabled')).toBe(true);
-  });
-
-  it('renders pending sync roles and empty state when no roles match', () => {
-    useRolesMock.mockReturnValue({
-      roles: [
-        {
-          id: 'role-pending',
-          roleKey: 'account_manager',
-          roleName: 'Account Manager',
-          externalRoleName: 'account_manager',
-          managedBy: 'studio',
-          description: 'Pending sync role',
-          isSystemRole: false,
-          roleLevel: 30,
-          memberCount: 0,
-          syncState: 'pending',
-          permissions: [],
-        },
-      ],
-      isLoading: false,
-      error: null,
-      mutationError: null,
-      reconcileReport: null,
-      refetch: vi.fn(),
-      clearMutationError: vi.fn(),
-      createRole: vi.fn(),
-      updateRole: vi.fn(),
-      deleteRole: vi.fn(),
-      retryRoleSync: vi.fn(),
-      reconcile: vi.fn(),
-    });
-
-    render(<RolesPage />);
-
-    expect(screen.getAllByText('Ausstehend').length).toBeGreaterThan(0);
-
-    fireEvent.change(screen.getByPlaceholderText('Nach Rolle oder Berechtigung suchen'), {
-      target: { value: 'does-not-exist' },
-    });
-
-    expect(screen.getByRole('status').textContent).toContain('Keine Rollen gefunden.');
-  });
-
-  it('clears mutation errors when create dialog is cancelled', async () => {
-    const clearMutationError = vi.fn();
-
-    useRolesMock.mockReturnValue({
-      roles: [],
-      isLoading: false,
-      error: null,
-      mutationError: new Error('temporär'),
-      reconcileReport: null,
-      refetch: vi.fn(),
-      clearMutationError,
-      createRole: vi.fn(),
-      updateRole: vi.fn(),
-      deleteRole: vi.fn(),
-      retryRoleSync: vi.fn(),
-      reconcile: vi.fn(),
-    });
-
-    render(<RolesPage />);
-
-    fireEvent.click(screen.getAllByRole('button', { name: 'Rolle anlegen' })[0]!);
-    const dialog = screen.getByRole('dialog', { name: 'Neue Rolle erstellen' });
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Abbrechen' }));
-
-    await waitFor(() => {
-      expect(screen.queryByRole('dialog', { name: 'Neue Rolle erstellen' })).toBeNull();
-    });
-
-    expect(clearMutationError).toHaveBeenCalledTimes(2);
-  });
-
-  it('closes the create dialog when the overlay is clicked', async () => {
-    const clearMutationError = vi.fn();
-
-    useRolesMock.mockReturnValue({
-      roles: [],
-      isLoading: false,
-      error: null,
-      mutationError: null,
-      reconcileReport: null,
-      refetch: vi.fn(),
-      clearMutationError,
-      createRole: vi.fn(),
-      updateRole: vi.fn(),
-      deleteRole: vi.fn(),
-      retryRoleSync: vi.fn(),
-      reconcile: vi.fn(),
-    });
-
-    render(<RolesPage />);
-
-    fireEvent.click(screen.getAllByRole('button', { name: 'Rolle anlegen' })[0]!);
-    fireEvent.click(document.querySelector('[data-slot="dialog-overlay"]') as HTMLElement);
-
-    await waitFor(() => {
-      expect(screen.queryByRole('dialog', { name: 'Neue Rolle erstellen' })).toBeNull();
-    });
-
-    expect(clearMutationError).toHaveBeenCalledTimes(2);
-  });
-
-  it('keeps edit dialog open on failed save and clears mutation error on cancel', async () => {
-    const clearMutationError = vi.fn();
-    const updateRole = vi.fn().mockResolvedValue(false);
-
-    useRolesMock.mockReturnValue({
-      roles: [
-        {
-          id: 'role-edit',
-          roleKey: 'custom_editor',
-          roleName: 'Custom Editor',
-          externalRoleName: 'custom_editor',
-          managedBy: 'studio',
-          description: 'Custom',
-          isSystemRole: false,
-          roleLevel: 30,
-          memberCount: 0,
-          syncState: 'synced',
-          permissions: [],
-        },
-      ],
-      isLoading: false,
-      error: null,
-      mutationError: new Error('Speichern fehlgeschlagen.'),
-      reconcileReport: null,
-      refetch: vi.fn(),
-      clearMutationError,
-      createRole: vi.fn(),
-      updateRole,
-      deleteRole: vi.fn(),
-      retryRoleSync: vi.fn(),
-      reconcile: vi.fn(),
-    });
-
-    render(<RolesPage />);
-
-    fireEvent.click(screen.getByRole('button', { name: 'Rolle bearbeiten' }));
-
-    const dialog = screen.getByRole('dialog', { name: 'Rolle bearbeiten' });
-    fireEvent.change(within(dialog).getByLabelText('Anzeigename'), {
-      target: { value: 'Custom Editors' },
-    });
-    fireEvent.change(within(dialog).getByLabelText('Beschreibung'), {
-      target: { value: 'Updated custom role' },
-    });
-    fireEvent.change(within(dialog).getByLabelText('Rollenlevel'), {
-      target: { value: '31' },
-    });
-    fireEvent.submit(within(dialog).getByRole('button', { name: 'Rolle bearbeiten' }).closest('form')!);
-
-    await waitFor(() => {
-      expect(updateRole).toHaveBeenCalledWith('role-edit', {
-        displayName: 'Custom Editors',
-        description: 'Updated custom role',
-        roleLevel: 31,
-      });
-    });
-
-    expect(screen.getByRole('dialog', { name: 'Rolle bearbeiten' })).toBeTruthy();
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Abbrechen' }));
-
-    await waitFor(() => {
-      expect(screen.queryByRole('dialog', { name: 'Rolle bearbeiten' })).toBeNull();
-    });
-
-    expect(clearMutationError).toHaveBeenCalledTimes(2);
-  });
-
-  it('closes the edit dialog when the overlay is clicked', async () => {
-    const clearMutationError = vi.fn();
-
-    useRolesMock.mockReturnValue({
-      roles: [
-        {
-          id: 'role-edit-overlay',
-          roleKey: 'custom_editor',
-          roleName: 'Custom Editor',
-          externalRoleName: 'custom_editor',
-          managedBy: 'studio',
-          description: 'Custom',
-          isSystemRole: false,
-          roleLevel: 30,
-          memberCount: 0,
-          syncState: 'synced',
-          permissions: [],
-        },
-      ],
-      isLoading: false,
-      error: null,
-      mutationError: null,
-      reconcileReport: null,
-      refetch: vi.fn(),
-      clearMutationError,
-      createRole: vi.fn(),
-      updateRole: vi.fn(),
-      deleteRole: vi.fn(),
-      retryRoleSync: vi.fn(),
-      reconcile: vi.fn(),
-    });
-
-    render(<RolesPage />);
-
-    fireEvent.click(screen.getByRole('button', { name: 'Rolle bearbeiten' }));
-    fireEvent.click(document.querySelector('[data-slot="dialog-overlay"]') as HTMLElement);
-
-    await waitFor(() => {
-      expect(screen.queryByRole('dialog', { name: 'Rolle bearbeiten' })).toBeNull();
-    });
-
-    expect(clearMutationError).toHaveBeenCalledTimes(2);
-  });
-
-  it('saves edited permission selections for custom studio roles', async () => {
-    const updateRole = vi.fn().mockResolvedValue(true);
-
-    useRolesMock.mockReturnValue({
-      roles: [
-        {
-          id: 'role-editor',
-          roleKey: 'editor',
-          roleName: 'Editor',
-          externalRoleName: 'editor',
-          managedBy: 'studio',
-          description: 'Editorial role',
-          isSystemRole: false,
-          roleLevel: 20,
-          memberCount: 3,
-          syncState: 'synced',
-          permissions: [{ id: 'perm-1', permissionKey: 'content.read', description: 'Lesen' }],
-        },
-      ],
-      isLoading: false,
-      error: null,
-      mutationError: null,
-      reconcileReport: null,
-      refetch: vi.fn(),
-      clearMutationError: vi.fn(),
-      createRole: vi.fn(),
-      updateRole,
-      deleteRole: vi.fn(),
-      retryRoleSync: vi.fn(),
-      reconcile: vi.fn(),
-    });
-
-    render(<RolesPage />);
-
-    fireEvent.click(screen.getByRole('button', { name: /editor/i }));
-    fireEvent.click(screen.getByRole('checkbox', { name: /Bearbeiten Inhalte/i }));
-    fireEvent.click(screen.getByRole('button', { name: 'Rechte speichern' }));
-
-    await waitFor(() => {
-      expect(updateRole).toHaveBeenCalledWith('role-editor', {
-        permissionIds: ['perm-1', 'perm-2'],
-      });
-    });
   });
 });

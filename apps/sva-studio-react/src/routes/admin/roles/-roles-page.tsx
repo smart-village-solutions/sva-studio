@@ -10,40 +10,12 @@ import { Card } from '../../../components/ui/card';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
 import { Textarea } from '../../../components/ui/textarea';
-import { useRolePermissions } from '../../../hooks/use-role-permissions';
 import { useRoles } from '../../../hooks/use-roles';
 import { t } from '../../../i18n';
 import type { TranslationKey } from '../../../i18n/translate';
 import type { IamHttpError } from '../../../lib/iam-api';
 
 type SortDirection = 'asc' | 'desc';
-
-type PermissionBadgeTone = 'default' | 'secondary' | 'destructive' | 'outline';
-
-const ROLE_PERMISSION_ACTION_LABELS = {
-  read: 'admin.roles.permissionActions.read',
-  create: 'admin.roles.permissionActions.create',
-  write: 'admin.roles.permissionActions.write',
-  update: 'admin.roles.permissionActions.update',
-  delete: 'admin.roles.permissionActions.delete',
-  configure: 'admin.roles.permissionActions.configure',
-  export: 'admin.roles.permissionActions.export',
-} as const;
-
-const ROLE_PERMISSION_RESOURCE_LABELS = {
-  content: 'admin.roles.permissionResources.content',
-  iam: 'admin.roles.permissionResources.iam',
-  users: 'admin.roles.permissionResources.users',
-  user: 'admin.roles.permissionResources.users',
-  roles: 'admin.roles.permissionResources.roles',
-  role: 'admin.roles.permissionResources.roles',
-  groups: 'admin.roles.permissionResources.groups',
-  group: 'admin.roles.permissionResources.groups',
-  organizations: 'admin.roles.permissionResources.organizations',
-  organization: 'admin.roles.permissionResources.organizations',
-  legal: 'admin.roles.permissionResources.legal',
-  interfaces: 'admin.roles.permissionResources.interfaces',
-} as const;
 
 const statusTone = (syncState: 'synced' | 'pending' | 'failed'): string => {
   if (syncState === 'synced') {
@@ -96,79 +68,16 @@ const roleErrorMessage = (error: IamHttpError | null, fallbackKey: TranslationKe
   }
 };
 
-const humanizePermissionSegment = (value: string): string =>
-  value
-    .split(/[_-]+/)
-    .filter(Boolean)
-    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
-    .join(' ');
-
-const mapPermissionActionLabel = (action: string): string => {
-  const normalizedAction = action.toLowerCase() as keyof typeof ROLE_PERMISSION_ACTION_LABELS;
-  return normalizedAction in ROLE_PERMISSION_ACTION_LABELS
-    ? t(ROLE_PERMISSION_ACTION_LABELS[normalizedAction])
-    : humanizePermissionSegment(action);
-};
-
-const mapPermissionResourceLabel = (resource: string): string => {
-  const normalizedResource = resource.toLowerCase() as keyof typeof ROLE_PERMISSION_RESOURCE_LABELS;
-  return normalizedResource in ROLE_PERMISSION_RESOURCE_LABELS
-    ? t(ROLE_PERMISSION_RESOURCE_LABELS[normalizedResource])
-    : humanizePermissionSegment(resource);
-};
-
-const permissionActionTone = (action: string): PermissionBadgeTone => {
-  switch (action.toLowerCase()) {
-    case 'delete':
-      return 'destructive';
-    case 'configure':
-    case 'export':
-      return 'secondary';
-    default:
-      return 'outline';
-  }
-};
-
-const summarizePermission = (permissionKey: string) => {
-  const [resourceSegment, actionSegment = 'access'] = permissionKey.split('.');
-  return {
-    resourceLabel: mapPermissionResourceLabel(resourceSegment),
-    actionLabel: mapPermissionActionLabel(actionSegment),
-    actionTone: permissionActionTone(actionSegment),
-    detailLabel: `${mapPermissionActionLabel(actionSegment)} ${mapPermissionResourceLabel(resourceSegment)}`,
-  };
-};
-
-const sortPermissionIdsByCatalog = (
-  permissionIds: readonly string[],
-  catalog: readonly { id: string; permissionKey: string }[]
-) =>
-  [...permissionIds].sort((left, right) => {
-    const leftKey = catalog.find((permission) => permission.id === left)?.permissionKey ?? left;
-    const rightKey = catalog.find((permission) => permission.id === right)?.permissionKey ?? right;
-    return leftKey.localeCompare(rightKey);
-  });
-
 export const RolesPage = () => {
   const rolesApi = useRoles();
-  const permissionsApi = useRolePermissions();
 
   const [search, setSearch] = React.useState('');
   const [sortDirection, setSortDirection] = React.useState<SortDirection>('asc');
-  const [expandedRoleIds, setExpandedRoleIds] = React.useState<string[]>([]);
-  const [permissionDrafts, setPermissionDrafts] = React.useState<Record<string, string[]>>({});
-  const [savingRoleIds, setSavingRoleIds] = React.useState<string[]>([]);
   const [createDialogOpen, setCreateDialogOpen] = React.useState(false);
-  const [editRoleId, setEditRoleId] = React.useState<string | null>(null);
   const [deleteRoleId, setDeleteRoleId] = React.useState<string | null>(null);
 
   const [createForm, setCreateForm] = React.useState({
     roleKey: '',
-    displayName: '',
-    description: '',
-    roleLevel: '10',
-  });
-  const [editForm, setEditForm] = React.useState({
     displayName: '',
     description: '',
     roleLevel: '10',
@@ -197,89 +106,6 @@ export const RolesPage = () => {
     return result;
   }, [rolesApi.roles, search, sortDirection]);
 
-  const editRole = React.useMemo(
-    () => rolesApi.roles.find((role) => role.id === editRoleId) ?? null,
-    [editRoleId, rolesApi.roles]
-  );
-
-  const groupedPermissions = React.useMemo(() => {
-    const buckets = new Map<string, typeof permissionsApi.permissions>();
-    for (const permission of permissionsApi.permissions) {
-      const summary = summarizePermission(permission.permissionKey);
-      buckets.set(summary.resourceLabel, [...(buckets.get(summary.resourceLabel) ?? []), permission]);
-    }
-
-    return [...buckets.entries()]
-      .map(([resourceLabel, permissions]) => [
-        resourceLabel,
-        [...permissions].sort((left, right) => left.permissionKey.localeCompare(right.permissionKey)),
-      ] as const)
-      .sort(([left], [right]) => left.localeCompare(right));
-  }, [permissionsApi.permissions]);
-
-  const toggleExpanded = (roleId: string) => {
-    const role = rolesApi.roles.find((entry) => entry.id === roleId);
-    if (role && !(roleId in permissionDrafts)) {
-      setPermissionDrafts((current) => ({
-        ...current,
-        [roleId]: sortPermissionIdsByCatalog(
-          role.permissions.map((permission) => permission.id),
-          permissionsApi.permissions
-        ),
-      }));
-    }
-    setExpandedRoleIds((current) =>
-      current.includes(roleId) ? current.filter((entry) => entry !== roleId) : [...current, roleId]
-    );
-  };
-
-  const togglePermissionDraft = (roleId: string, permissionId: string) => {
-    setPermissionDrafts((current) => {
-      const currentIds = current[roleId] ?? [];
-      const nextIds = currentIds.includes(permissionId)
-        ? currentIds.filter((entry) => entry !== permissionId)
-        : [...currentIds, permissionId];
-
-      return {
-        ...current,
-        [roleId]: sortPermissionIdsByCatalog(nextIds, permissionsApi.permissions),
-      };
-    });
-  };
-
-  const resetPermissionDraft = (roleId: string) => {
-    const role = rolesApi.roles.find((entry) => entry.id === roleId);
-    if (!role) {
-      return;
-    }
-    setPermissionDrafts((current) => ({
-      ...current,
-      [roleId]: sortPermissionIdsByCatalog(
-        role.permissions.map((permission) => permission.id),
-        permissionsApi.permissions
-      ),
-    }));
-  };
-
-  const savePermissionDraft = async (roleId: string) => {
-    const role = rolesApi.roles.find((entry) => entry.id === roleId);
-    const permissionIds =
-      permissionDrafts[roleId] ??
-      sortPermissionIdsByCatalog(
-        role?.permissions.map((permission) => permission.id) ?? [],
-        permissionsApi.permissions
-      );
-
-    setSavingRoleIds((current) => [...current, roleId]);
-    try {
-      await rolesApi.updateRole(roleId, {
-        permissionIds,
-      });
-    } finally {
-      setSavingRoleIds((current) => current.filter((entry) => entry !== roleId));
-    }
-  };
-
   const onCreate = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
@@ -303,38 +129,6 @@ export const RolesPage = () => {
   const openCreateDialog = () => {
     rolesApi.clearMutationError();
     setCreateDialogOpen(true);
-  };
-
-  const onOpenEdit = (roleId: string) => {
-    const role = rolesApi.roles.find((entry) => entry.id === roleId);
-    if (!role) {
-      return;
-    }
-    rolesApi.clearMutationError();
-    setEditRoleId(roleId);
-    setEditForm({
-      displayName: role.roleName,
-      description: role.description ?? '',
-      roleLevel: String(role.roleLevel),
-    });
-  };
-
-  const onEdit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!editRoleId) {
-      return;
-    }
-
-    const success = await rolesApi.updateRole(editRoleId, {
-      displayName: editForm.displayName.trim(),
-      description: editForm.description.trim() || undefined,
-      roleLevel: Number(editForm.roleLevel),
-    });
-    if (!success) {
-      return;
-    }
-
-    setEditRoleId(null);
   };
 
   return (
@@ -407,6 +201,9 @@ export const RolesPage = () => {
                 {t('admin.roles.table.headerDescription')}
               </th>
               <th scope="col" className="px-3 py-3">
+                {t('admin.roles.table.headerPermissions')}
+              </th>
+              <th scope="col" className="px-3 py-3">
                 {t('admin.roles.table.headerUserCount')}
               </th>
               <th scope="col" className="px-3 py-3 text-right">
@@ -416,250 +213,71 @@ export const RolesPage = () => {
           </thead>
           <tbody>
             {filteredRoles.map((role) => {
-              const expanded = expandedRoleIds.includes(role.id);
               const isReadOnly = role.isSystemRole || role.managedBy !== 'studio';
-              const permissionDraft = permissionDrafts[role.id] ?? role.permissions.map((permission) => permission.id);
 
               return (
-                <React.Fragment key={role.id}>
-                  <tr className="border-t border-border text-sm text-foreground">
-                    <td className="px-3 py-3 align-top">
+                <tr key={role.id} className="border-t border-border text-sm text-foreground">
+                  <td className="px-3 py-3 align-top">
+                    <div>
+                      <span className="block font-semibold">{role.roleName}</span>
+                      <span className="block text-xs text-muted-foreground">{role.roleKey}</span>
+                    </div>
+                  </td>
+                  <td className="px-3 py-3 align-top">{roleTypeLabel(role)}</td>
+                  <td className="px-3 py-3 align-top">
+                    <Badge
+                      className={`rounded-full ${statusTone(role.syncState)}`}
+                      aria-label={`${t('admin.roles.table.headerSync')}: ${statusLabel(role.syncState)}`}
+                      variant="outline"
+                    >
+                      {statusLabel(role.syncState)}
+                    </Badge>
+                    {role.syncError ? (
+                      <p className="mt-2 text-xs text-destructive" role="status">
+                        {t('admin.roles.messages.syncErrorCode', { code: role.syncError.code })}
+                      </p>
+                    ) : null}
+                  </td>
+                  <td className="px-3 py-3 align-top">
+                    <p>{role.description ?? t('admin.roles.messages.noDescription')}</p>
+                    <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+                      <p>{t('admin.roles.messages.externalRoleName', { value: role.externalRoleName })}</p>
+                      <p>{t('admin.roles.messages.managedBy', { value: role.managedBy })}</p>
+                      <p>{t('admin.roles.messages.roleLevel', { value: role.roleLevel })}</p>
+                    </div>
+                  </td>
+                  <td className="px-3 py-3 align-top">{role.permissions.length}</td>
+                  <td className="px-3 py-3 align-top">{role.memberCount}</td>
+                  <td className="px-3 py-3 align-top">
+                    <div className="flex justify-end gap-2">
+                      <Button asChild type="button" size="sm" variant="outline">
+                        <Link to="/admin/roles/$roleId" params={{ roleId: role.id }}>
+                          {t('admin.roles.actions.edit')}
+                        </Link>
+                      </Button>
+                      {role.syncState === 'failed' ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="secondary"
+                          disabled={role.managedBy !== 'studio'}
+                          onClick={() => void rolesApi.retryRoleSync(role.id)}
+                        >
+                          {t('admin.roles.actions.retrySync')}
+                        </Button>
+                      ) : null}
                       <Button
                         type="button"
-                        className="h-auto items-start justify-start gap-2 px-0 py-0 text-left hover:bg-transparent"
-                        aria-expanded={expanded}
-                        aria-controls={`role-permissions-${role.id}`}
-                        onClick={() => toggleExpanded(role.id)}
-                        variant="ghost"
+                        size="sm"
+                        variant="destructive"
+                        disabled={isReadOnly}
+                        onClick={() => setDeleteRoleId(role.id)}
                       >
-                        <span aria-hidden="true">{expanded ? '-' : '+'}</span>
-                        <span>
-                          <span className="block font-semibold">{role.roleName}</span>
-                          <span className="block text-xs text-muted-foreground">{role.roleKey}</span>
-                        </span>
+                        {t('admin.roles.actions.delete')}
                       </Button>
-                    </td>
-                    <td className="px-3 py-3 align-top">
-                      {roleTypeLabel(role)}
-                    </td>
-                    <td className="px-3 py-3 align-top">
-                      <Badge
-                        className={`rounded-full ${statusTone(role.syncState)}`}
-                        aria-label={`${t('admin.roles.table.headerSync')}: ${statusLabel(role.syncState)}`}
-                        variant="outline"
-                      >
-                        {statusLabel(role.syncState)}
-                      </Badge>
-                      {role.syncError ? (
-                        <p className="mt-2 text-xs text-destructive" role="status">
-                          {t('admin.roles.messages.syncErrorCode', { code: role.syncError.code })}
-                        </p>
-                      ) : null}
-                    </td>
-                    <td className="px-3 py-3 align-top">
-                      <p>{role.description ?? t('admin.roles.messages.noDescription')}</p>
-                      <div className="mt-2 space-y-1 text-xs text-muted-foreground">
-                        <p>{t('admin.roles.messages.externalRoleName', { value: role.externalRoleName })}</p>
-                        <p>{t('admin.roles.messages.managedBy', { value: role.managedBy })}</p>
-                        <p>{t('admin.roles.messages.roleLevel', { value: role.roleLevel })}</p>
-                      </div>
-                      {role.lastSyncedAt ? (
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          {t('admin.roles.messages.lastSyncedAt', { value: role.lastSyncedAt })}
-                        </p>
-                      ) : null}
-                    </td>
-                    <td className="px-3 py-3 align-top">{role.memberCount}</td>
-                    <td className="px-3 py-3 align-top">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          disabled={isReadOnly}
-                          onClick={() => onOpenEdit(role.id)}
-                        >
-                          {t('admin.roles.actions.edit')}
-                        </Button>
-                        {role.syncState === 'failed' ? (
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="secondary"
-                            disabled={role.managedBy !== 'studio'}
-                            onClick={() => void rolesApi.retryRoleSync(role.id)}
-                          >
-                            {t('admin.roles.actions.retrySync')}
-                          </Button>
-                        ) : null}
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="destructive"
-                          disabled={isReadOnly}
-                          onClick={() => setDeleteRoleId(role.id)}
-                        >
-                          {t('admin.roles.actions.delete')}
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                  <tr id={`role-permissions-${role.id}`} hidden={!expanded} className="border-t border-border bg-muted/50">
-                    <td colSpan={6} className="space-y-3 px-4 py-3">
-                      <div className="grid gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(17rem,1fr)]">
-                        <Card className="space-y-3 p-4 shadow-none">
-                          <div className="flex flex-wrap items-start justify-between gap-3">
-                            <div className="space-y-1">
-                              <h2 className="text-sm font-semibold text-foreground">{t('admin.roles.workspace.title')}</h2>
-                              <p className="text-xs text-muted-foreground">{t('admin.roles.workspace.subtitle')}</p>
-                            </div>
-                            <Badge variant={isReadOnly ? 'secondary' : 'outline'}>
-                              {isReadOnly ? t('admin.roles.workspace.readOnly') : t('admin.roles.workspace.editable')}
-                            </Badge>
-                          </div>
-
-                          {isReadOnly ? (
-                            <Alert className="border-secondary/40 bg-secondary/10 text-secondary">
-                              <AlertDescription>
-                                {role.isSystemRole
-                                  ? t('admin.roles.workspace.readOnlySystemHint')
-                                  : t('admin.roles.workspace.readOnlyExternalHint')}
-                              </AlertDescription>
-                            </Alert>
-                          ) : null}
-
-                          {role.permissions.length > 0 ? (
-                            <ul className="grid gap-2 text-xs text-foreground sm:grid-cols-2">
-                              {role.permissions.map((permission) => {
-                                const permissionSummary = summarizePermission(permission.permissionKey);
-                                return (
-                                  <li key={permission.id} className="rounded border border-border bg-background px-3 py-3">
-                                    <div className="flex flex-wrap items-start justify-between gap-2">
-                                      <div className="space-y-1">
-                                        <p className="font-semibold">{permission.description ?? permissionSummary.detailLabel}</p>
-                                        <p className="text-muted-foreground">
-                                          {t('admin.roles.workspace.technicalKey', { value: permission.permissionKey })}
-                                        </p>
-                                      </div>
-                                      <Badge variant={permissionSummary.actionTone}>{permissionSummary.actionLabel}</Badge>
-                                    </div>
-                                    <p className="mt-2 text-muted-foreground">
-                                      {t('admin.roles.workspace.resourceLabel', { value: permissionSummary.resourceLabel })}
-                                    </p>
-                                  </li>
-                                );
-                              })}
-                            </ul>
-                          ) : (
-                            <p className="text-xs text-muted-foreground">{t('admin.roles.messages.permissionsEmpty')}</p>
-                          )}
-
-                          <div className="space-y-3 rounded-lg border border-border bg-background p-4">
-                            <div className="space-y-1">
-                              <h3 className="text-sm font-semibold text-foreground">
-                                {t('admin.roles.workspace.editPermissionsTitle')}
-                              </h3>
-                              <p className="text-xs text-muted-foreground">
-                                {t('admin.roles.workspace.editPermissionsSubtitle')}
-                              </p>
-                            </div>
-
-                            {permissionsApi.error ? (
-                              <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
-                                <AlertDescription>{t('admin.roles.workspace.permissionsLoadError')}</AlertDescription>
-                              </Alert>
-                            ) : permissionsApi.isLoading ? (
-                              <p className="text-xs text-muted-foreground">{t('admin.roles.workspace.permissionsLoading')}</p>
-                            ) : (
-                              <div className="grid gap-3 lg:grid-cols-2">
-                                {groupedPermissions.map(([resourceLabel, permissions]) => (
-                                  <div key={resourceLabel} className="space-y-2 rounded-lg border border-border p-3">
-                                    <h4 className="text-sm font-medium text-foreground">{resourceLabel}</h4>
-                                    <div className="space-y-2">
-                                      {permissions.map((permission) => {
-                                        const permissionSummary = summarizePermission(permission.permissionKey);
-                                        return (
-                                          <label key={permission.id} className="flex items-start gap-3 text-sm">
-                                            <input
-                                              type="checkbox"
-                                              className="mt-1"
-                                              checked={permissionDraft.includes(permission.id)}
-                                              disabled={isReadOnly}
-                                              onChange={() => togglePermissionDraft(role.id, permission.id)}
-                                            />
-                                            <span className="space-y-1">
-                                              <span className="block font-medium text-foreground">
-                                                {permissionSummary.detailLabel}
-                                              </span>
-                                              <span className="block text-xs text-muted-foreground">
-                                                {permission.description ?? permission.permissionKey}
-                                              </span>
-                                            </span>
-                                          </label>
-                                        );
-                                      })}
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-
-                            <div className="flex flex-wrap gap-3">
-                              <Button
-                                type="button"
-                                disabled={
-                                  isReadOnly ||
-                                  permissionsApi.isLoading ||
-                                  Boolean(permissionsApi.error) ||
-                                  savingRoleIds.includes(role.id)
-                                }
-                                onClick={() => void savePermissionDraft(role.id)}
-                              >
-                                {savingRoleIds.includes(role.id)
-                                  ? t('admin.roles.workspace.savingPermissions')
-                                  : t('admin.roles.workspace.savePermissions')}
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                disabled={isReadOnly}
-                                onClick={() => resetPermissionDraft(role.id)}
-                              >
-                                {t('admin.roles.workspace.resetPermissions')}
-                              </Button>
-                            </div>
-                          </div>
-                        </Card>
-
-                        <Card className="space-y-3 p-4 shadow-none">
-                          <div className="space-y-1">
-                            <h2 className="text-sm font-semibold text-foreground">{t('admin.roles.workspace.sideTitle')}</h2>
-                            <p className="text-xs text-muted-foreground">{t('admin.roles.workspace.sideSubtitle')}</p>
-                          </div>
-                          <dl className="grid gap-2 text-xs text-foreground">
-                            <div>
-                              <dt className="text-muted-foreground">{t('admin.roles.workspace.permissionCountLabel')}</dt>
-                              <dd>{t('admin.roles.workspace.permissionCountValue', { count: String(role.permissions.length) })}</dd>
-                            </div>
-                            <div>
-                              <dt className="text-muted-foreground">{t('admin.roles.workspace.assignmentCountLabel')}</dt>
-                              <dd>{t('admin.roles.workspace.assignmentCountValue', { count: String(role.memberCount) })}</dd>
-                            </div>
-                            <div>
-                              <dt className="text-muted-foreground">{t('admin.roles.workspace.syncStateLabel')}</dt>
-                              <dd>{statusLabel(role.syncState)}</dd>
-                            </div>
-                          </dl>
-                          <Button asChild size="sm" variant="outline">
-                            <Link to="/admin/iam" search={{ tab: 'rights' }}>
-                              {t('admin.roles.workspace.openIamCta')}
-                            </Link>
-                          </Button>
-                        </Card>
-                      </div>
-                    </td>
-                  </tr>
-                </React.Fragment>
+                    </div>
+                  </td>
+                </tr>
               );
             })}
           </tbody>
@@ -736,81 +354,7 @@ export const RolesPage = () => {
             >
               {t('account.actions.cancel')}
             </Button>
-            <Button type="submit">
-              {t('admin.roles.actions.create')}
-            </Button>
-          </div>
-        </form>
-      </ModalDialog>
-
-      <ModalDialog
-        open={Boolean(editRole)}
-        title={t('admin.roles.editDialog.title')}
-        description={editRole ? t('admin.roles.editDialog.description', { roleKey: editRole.roleKey }) : ''}
-        onClose={() => {
-          rolesApi.clearMutationError();
-          setEditRoleId(null);
-        }}
-      >
-        <form className="grid gap-4" onSubmit={onEdit}>
-          {rolesApi.mutationError ? (
-            <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
-              <AlertDescription>{roleErrorMessage(rolesApi.mutationError, 'admin.roles.messages.error')}</AlertDescription>
-            </Alert>
-          ) : null}
-          <div className="grid gap-2 text-sm text-foreground">
-            <Label htmlFor="edit-role-key">{t('admin.roles.editDialog.keyLabel')}</Label>
-            <Input
-              id="edit-role-key"
-              value={editRole?.roleKey ?? ''}
-              disabled
-              className="bg-muted"
-            />
-          </div>
-          <div className="grid gap-2 text-sm text-foreground">
-            <Label htmlFor="edit-role-name">{t('admin.roles.editDialog.nameLabel')}</Label>
-            <Input
-              id="edit-role-name"
-              required
-              value={editForm.displayName}
-              onChange={(event) => setEditForm((current) => ({ ...current, displayName: event.target.value }))}
-            />
-          </div>
-          <div className="grid gap-2 text-sm text-foreground">
-            <Label htmlFor="edit-role-description">{t('admin.roles.editDialog.descriptionLabel')}</Label>
-            <Textarea
-              id="edit-role-description"
-              value={editForm.description}
-              onChange={(event) => setEditForm((current) => ({ ...current, description: event.target.value }))}
-            />
-          </div>
-          <div className="grid gap-2 text-sm text-foreground">
-            <Label htmlFor="edit-role-level">{t('admin.roles.editDialog.levelLabel')}</Label>
-            <Input
-              id="edit-role-level"
-              required
-              type="number"
-              min={0}
-              max={100}
-              value={editForm.roleLevel}
-              onChange={(event) => setEditForm((current) => ({ ...current, roleLevel: event.target.value }))}
-            />
-          </div>
-
-          <div className="mt-2 flex justify-end gap-3">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                rolesApi.clearMutationError();
-                setEditRoleId(null);
-              }}
-            >
-              {t('account.actions.cancel')}
-            </Button>
-            <Button type="submit" variant="secondary">
-              {t('admin.roles.actions.edit')}
-            </Button>
+            <Button type="submit">{t('admin.roles.actions.create')}</Button>
           </div>
         </form>
       </ModalDialog>

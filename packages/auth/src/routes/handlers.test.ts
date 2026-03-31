@@ -14,17 +14,6 @@ const emitAuthAuditEventMock = vi.fn(async () => undefined);
 const createLoginUrlMock = vi.fn();
 const handleCallbackMock = vi.fn();
 const withAuthenticatedUserMock = vi.fn();
-const startSetCookieMock = vi.fn(() => {
-  throw new Error('No StartEvent found in AsyncLocalStorage');
-});
-const startDeleteCookieMock = vi.fn(() => {
-  throw new Error('No StartEvent found in AsyncLocalStorage');
-});
-
-vi.mock('@tanstack/react-start/server', () => ({
-  setCookie: startSetCookieMock,
-  deleteCookie: startDeleteCookieMock,
-}));
 
 vi.mock('@sva/sdk/server', () => ({
   createSdkLogger: () => loggerMock,

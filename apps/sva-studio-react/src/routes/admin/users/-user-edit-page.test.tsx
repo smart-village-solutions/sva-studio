@@ -154,6 +154,66 @@ describe('UserEditPage', () => {
     expect(screen.getByRole('tab', { name: 'Persönliche Daten' }).getAttribute('aria-selected')).toBe('true');
   });
 
+  it('renders effective and inactive permission traces in the permissions tab', () => {
+    useUserMock.mockReturnValue({
+      user: {
+        ...baseUser,
+        directPermissions: [{ permissionId: 'perm-1', permissionKey: 'content.write', effect: 'deny' as const }],
+        permissionTrace: [
+          {
+            permissionKey: 'content.read',
+            action: 'content.read',
+            resourceType: 'content',
+            effect: 'allow' as const,
+            isEffective: true,
+            status: 'effective' as const,
+            sourceKind: 'group_role' as const,
+            roleName: 'system_admin',
+            groupDisplayName: 'Admins',
+            organizationId: 'org-1',
+            scope: { geoUnitId: 'geo-1' },
+          },
+          {
+            permissionKey: 'content.archive',
+            action: 'content.archive',
+            resourceType: 'content',
+            effect: 'deny' as const,
+            isEffective: false,
+            status: 'expired' as const,
+            sourceKind: 'direct_role' as const,
+            roleName: 'system_admin',
+          },
+        ],
+      },
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      save: vi.fn().mockResolvedValue(null),
+    });
+
+    useRolesMock.mockReturnValue({
+      roles: [{ id: 'role-1', roleName: 'system_admin' }],
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      createRole: vi.fn(),
+      updateRole: vi.fn(),
+      deleteRole: vi.fn(),
+    });
+
+    render(<UserEditPage userId="user-1" />);
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Berechtigungen' }));
+
+    expect(screen.getByText('Effektive Berechtigungen')).toBeTruthy();
+    expect(screen.getByText('Wirksame Quellen')).toBeTruthy();
+    expect(screen.getByText('Nicht wirksame Quellen')).toBeTruthy();
+    expect(screen.getByText('content.read')).toBeTruthy();
+    expect(screen.getByText('content.archive')).toBeTruthy();
+    expect(screen.getByText('Direkte Zuweisungen')).toBeTruthy();
+    expect(screen.getByText(/Organisation: org-1/)).toBeTruthy();
+  });
+
   it('loads unified history entries and renders role validity windows', async () => {
     useUserMock.mockReturnValue({
       user: {

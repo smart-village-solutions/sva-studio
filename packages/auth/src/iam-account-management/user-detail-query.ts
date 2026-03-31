@@ -1,4 +1,9 @@
-import type { IamUserDetail } from '@sva/core';
+import type {
+  IamUserDetail,
+  IamUserDirectPermissionAssignment,
+  IamUserPermissionTraceItem,
+  IamUserPermissionTraceStatus,
+} from '@sva/core';
 import { createSdkLogger } from '@sva/sdk/server';
 
 import type { QueryClient } from '../shared/db-helpers.js';
@@ -50,9 +55,152 @@ type UserDetailRow = {
   role_rows: UserDetailRoleRow[] | null;
   group_rows: UserDetailGroupRow[] | null;
   permission_rows: Array<{ permission_key: string }> | null;
+  direct_permission_rows:
+    | Array<{
+        permission_id: string;
+        permission_key: string;
+        effect: 'allow' | 'deny';
+        description: string | null;
+      }>
+    | null;
+  permission_trace_rows:
+    | Array<{
+        permission_key: string;
+        action: string;
+        resource_type: string;
+        resource_id: string | null;
+        organization_id: string | null;
+        effect: 'allow' | 'deny';
+        scope: Record<string, unknown> | null;
+        is_effective: boolean;
+        status: IamUserPermissionTraceStatus;
+        source_kind: 'direct_permission' | 'direct_role' | 'group_role';
+        role_id: string | null;
+        role_key: string | null;
+        role_name: string | null;
+        group_id: string | null;
+        group_key: string | null;
+        group_display_name: string | null;
+        group_active: boolean | null;
+        assignment_origin: 'manual' | 'seed' | 'sync' | null;
+        valid_from: string | null;
+        valid_to: string | null;
+      }>
+    | null;
 };
 
-const USER_DETAIL_QUERY = `
+type AccountPermissionsTableCheckRow = {
+  exists: boolean;
+};
+
+type UserDetailSchemaSupportRow = {
+  account_permissions_exists: boolean;
+  permissions_action_exists: boolean;
+  permissions_resource_type_exists: boolean;
+  permissions_resource_id_exists: boolean;
+  permissions_effect_exists: boolean;
+  permissions_scope_exists: boolean;
+};
+
+const DIRECT_PERMISSION_KEYS_SQL = `
+        UNION
+
+        SELECT p.permission_key
+        FROM iam.account_permissions ap
+        JOIN iam.permissions p
+          ON p.instance_id = ap.instance_id
+         AND p.id = ap.permission_id
+        WHERE ap.instance_id = im.instance_id
+          AND ap.account_id = im.account_id
+`;
+
+const DIRECT_PERMISSION_ROWS_SQL = `
+  COALESCE(
+    (
+      SELECT json_agg(
+        DISTINCT jsonb_build_object(
+          'permission_id', direct.permission_id,
+          'permission_key', direct.permission_key,
+          'effect', direct.effect,
+          'description', direct.description
+        )
+      )
+      FROM (
+        SELECT
+          p.id AS permission_id,
+          p.permission_key,
+          ap.effect,
+          p.description
+        FROM iam.account_permissions ap
+        JOIN iam.permissions p
+          ON p.instance_id = ap.instance_id
+         AND p.id = ap.permission_id
+        WHERE ap.instance_id = im.instance_id
+          AND ap.account_id = im.account_id
+      ) AS direct
+    ),
+    '[]'::json
+  ) AS direct_permission_rows,
+`;
+
+const EMPTY_DIRECT_PERMISSION_ROWS_SQL = `
+  '[]'::json AS direct_permission_rows,
+`;
+
+const buildPermissionProjection = (includeStructuredPermissions: boolean) =>
+  includeStructuredPermissions
+    ? {
+        action: `COALESCE(p.action, p.permission_key)`,
+        resourceType: `COALESCE(p.resource_type, split_part(p.permission_key, '.', 1))`,
+        resourceId: `p.resource_id::text`,
+        effect: `COALESCE(p.effect, 'allow')`,
+        scope: `p.scope`,
+      }
+    : {
+        action: `p.permission_key`,
+        resourceType: `split_part(p.permission_key, '.', 1)`,
+        resourceId: `NULL::text`,
+        effect: `'allow'::text`,
+        scope: `NULL::jsonb`,
+      };
+
+const buildDirectPermissionTraceSql = (includeStructuredPermissions: boolean) => {
+  const projection = buildPermissionProjection(includeStructuredPermissions);
+  return `
+
+        UNION ALL
+
+        SELECT
+          p.permission_key,
+          ${projection.action} AS action,
+          ${projection.resourceType} AS resource_type,
+          ${projection.resourceId} AS resource_id,
+          NULL::text AS organization_id,
+          ap.effect,
+          ${projection.scope} AS scope,
+          TRUE AS is_effective,
+          'effective'::text AS status,
+          'direct_permission'::text AS source_kind,
+          NULL::text AS role_id,
+          NULL::text AS role_key,
+          NULL::text AS role_name,
+          NULL::text AS group_id,
+          NULL::text AS group_key,
+          NULL::text AS group_display_name,
+          NULL::boolean AS group_active,
+          NULL::text AS assignment_origin,
+          NULL::text AS valid_from,
+          NULL::text AS valid_to
+        FROM iam.account_permissions ap
+        JOIN iam.permissions p
+          ON p.instance_id = ap.instance_id
+         AND p.id = ap.permission_id
+        WHERE ap.instance_id = im.instance_id
+          AND ap.account_id = im.account_id
+`;
+};
+
+const buildUserDetailQuery = (includeDirectPermissions: boolean, includeStructuredPermissions: boolean): string => `
 SELECT
   a.id,
   a.keycloak_subject,
@@ -100,13 +248,186 @@ SELECT
     '[]'::json
   ) AS group_rows,
   COALESCE(
-    json_agg(
-      DISTINCT jsonb_build_object(
-        'permission_key', p.permission_key
+    (
+      SELECT json_agg(
+        DISTINCT jsonb_build_object(
+          'permission_key', trace.permission_key
+        )
       )
-    ) FILTER (WHERE p.permission_key IS NOT NULL),
+      FROM (
+        SELECT p.permission_key
+        FROM iam.account_roles ar
+        JOIN iam.roles r
+          ON r.instance_id = ar.instance_id
+         AND r.id = ar.role_id
+        JOIN iam.role_permissions rp
+          ON rp.instance_id = r.instance_id
+         AND rp.role_id = r.id
+        JOIN iam.permissions p
+          ON p.instance_id = rp.instance_id
+         AND p.id = rp.permission_id
+        WHERE ar.instance_id = im.instance_id
+          AND ar.account_id = im.account_id
+          AND ar.valid_from <= NOW()
+          AND (ar.valid_to IS NULL OR ar.valid_to > NOW())
+${includeDirectPermissions ? DIRECT_PERMISSION_KEYS_SQL : ''}
+
+        UNION
+
+        SELECT p.permission_key
+        FROM iam.account_groups ag
+        JOIN iam.groups g
+          ON g.instance_id = ag.instance_id
+         AND g.id = ag.group_id
+         AND g.is_active = true
+        JOIN iam.group_roles gr
+          ON gr.instance_id = ag.instance_id
+         AND gr.group_id = ag.group_id
+        JOIN iam.roles r
+          ON r.instance_id = gr.instance_id
+         AND r.id = gr.role_id
+        JOIN iam.role_permissions rp
+          ON rp.instance_id = r.instance_id
+         AND rp.role_id = r.id
+        JOIN iam.permissions p
+          ON p.instance_id = rp.instance_id
+         AND p.id = rp.permission_id
+        WHERE ag.instance_id = im.instance_id
+          AND ag.account_id = im.account_id
+          AND (ag.valid_from IS NULL OR ag.valid_from <= NOW())
+          AND (ag.valid_until IS NULL OR ag.valid_until > NOW())
+
+      ) AS trace
+    ),
     '[]'::json
-  ) AS permission_rows
+  ) AS permission_rows,
+${includeDirectPermissions ? DIRECT_PERMISSION_ROWS_SQL : EMPTY_DIRECT_PERMISSION_ROWS_SQL}
+  COALESCE(
+    (
+      SELECT json_agg(
+        DISTINCT jsonb_build_object(
+          'permission_key', trace.permission_key,
+          'action', trace.action,
+          'resource_type', trace.resource_type,
+          'resource_id', trace.resource_id,
+          'organization_id', trace.organization_id,
+          'effect', trace.effect,
+          'scope', trace.scope,
+          'is_effective', trace.is_effective,
+          'status', trace.status,
+          'source_kind', trace.source_kind,
+          'role_id', trace.role_id,
+          'role_key', trace.role_key,
+          'role_name', trace.role_name,
+          'group_id', trace.group_id,
+          'group_key', trace.group_key,
+          'group_display_name', trace.group_display_name,
+          'group_active', trace.group_active,
+          'assignment_origin', trace.assignment_origin,
+          'valid_from', trace.valid_from,
+          'valid_to', trace.valid_to
+        )
+      )
+      FROM (
+        SELECT
+          p.permission_key,
+          ${buildPermissionProjection(includeStructuredPermissions).action} AS action,
+          ${buildPermissionProjection(includeStructuredPermissions).resourceType} AS resource_type,
+          ${buildPermissionProjection(includeStructuredPermissions).resourceId} AS resource_id,
+          ao.organization_id::text AS organization_id,
+          ${buildPermissionProjection(includeStructuredPermissions).effect} AS effect,
+          ${buildPermissionProjection(includeStructuredPermissions).scope} AS scope,
+          (ar.valid_from <= NOW() AND (ar.valid_to IS NULL OR ar.valid_to > NOW())) AS is_effective,
+          CASE
+            WHEN ar.valid_from > NOW() THEN 'inactive'
+            WHEN ar.valid_to IS NOT NULL AND ar.valid_to <= NOW() THEN 'expired'
+            ELSE 'effective'
+          END::text AS status,
+          'direct_role'::text AS source_kind,
+          r.id::text AS role_id,
+          r.role_key,
+          r.role_name,
+          NULL::text AS group_id,
+          NULL::text AS group_key,
+          NULL::text AS group_display_name,
+          NULL::boolean AS group_active,
+          NULL::text AS assignment_origin,
+          ar.valid_from::text,
+          ar.valid_to::text
+        FROM iam.account_roles ar
+        JOIN iam.roles r
+          ON r.instance_id = ar.instance_id
+         AND r.id = ar.role_id
+        JOIN iam.role_permissions rp
+          ON rp.instance_id = r.instance_id
+         AND rp.role_id = r.id
+        JOIN iam.permissions p
+          ON p.instance_id = rp.instance_id
+         AND p.id = rp.permission_id
+        LEFT JOIN iam.account_organizations ao
+          ON ao.instance_id = ar.instance_id
+         AND ao.account_id = ar.account_id
+        WHERE ar.instance_id = im.instance_id
+          AND ar.account_id = im.account_id
+
+        UNION ALL
+
+        SELECT
+          p.permission_key,
+          ${buildPermissionProjection(includeStructuredPermissions).action} AS action,
+          ${buildPermissionProjection(includeStructuredPermissions).resourceType} AS resource_type,
+          ${buildPermissionProjection(includeStructuredPermissions).resourceId} AS resource_id,
+          ao.organization_id::text AS organization_id,
+          ${buildPermissionProjection(includeStructuredPermissions).effect} AS effect,
+          ${buildPermissionProjection(includeStructuredPermissions).scope} AS scope,
+          (
+            g.is_active = true
+            AND (ag.valid_from IS NULL OR ag.valid_from <= NOW())
+            AND (ag.valid_until IS NULL OR ag.valid_until > NOW())
+          ) AS is_effective,
+          CASE
+            WHEN g.is_active IS NOT TRUE THEN 'disabled'
+            WHEN ag.valid_from IS NOT NULL AND ag.valid_from > NOW() THEN 'inactive'
+            WHEN ag.valid_until IS NOT NULL AND ag.valid_until <= NOW() THEN 'expired'
+            ELSE 'effective'
+          END::text AS status,
+          'group_role'::text AS source_kind,
+          r.id::text AS role_id,
+          r.role_key,
+          r.role_name,
+          g.id::text AS group_id,
+          g.group_key,
+          g.display_name AS group_display_name,
+          g.is_active AS group_active,
+          ag.origin::text AS assignment_origin,
+          ag.valid_from::text,
+          ag.valid_until::text AS valid_to
+        FROM iam.account_groups ag
+        JOIN iam.groups g
+          ON g.instance_id = ag.instance_id
+         AND g.id = ag.group_id
+        JOIN iam.group_roles gr
+          ON gr.instance_id = ag.instance_id
+         AND gr.group_id = ag.group_id
+        JOIN iam.roles r
+          ON r.instance_id = gr.instance_id
+         AND r.id = gr.role_id
+        JOIN iam.role_permissions rp
+          ON rp.instance_id = r.instance_id
+         AND rp.role_id = r.id
+        JOIN iam.permissions p
+          ON p.instance_id = rp.instance_id
+         AND p.id = rp.permission_id
+        LEFT JOIN iam.account_organizations ao
+          ON ao.instance_id = ag.instance_id
+         AND ao.account_id = ag.account_id
+        WHERE ag.instance_id = im.instance_id
+          AND ag.account_id = im.account_id
+${includeDirectPermissions ? buildDirectPermissionTraceSql(includeStructuredPermissions) : ''}
+      ) AS trace
+    ),
+    '[]'::json
+  ) AS permission_trace_rows
 FROM iam.accounts a
 JOIN iam.instance_memberships im
   ON im.account_id = a.id
@@ -131,9 +452,6 @@ LEFT JOIN iam.groups g
   ON g.instance_id = ag.instance_id
  AND g.id = ag.group_id
  AND g.is_active = true
-LEFT JOIN iam.permissions p
-  ON p.instance_id = rp.instance_id
- AND p.id = rp.permission_id
 LEFT JOIN iam.activity_logs al
   ON al.instance_id = im.instance_id
  AND al.account_id = a.id
@@ -141,6 +459,50 @@ LEFT JOIN iam.activity_logs al
 WHERE a.id = $2::uuid
 GROUP BY a.id;
 `;
+
+const USER_DETAIL_QUERY = buildUserDetailQuery(true, true);
+const USER_DETAIL_QUERY_NO_DIRECT_PERMISSIONS = buildUserDetailQuery(false, true);
+const USER_DETAIL_QUERY_LEGACY = buildUserDetailQuery(false, false);
+const USER_DETAIL_SCHEMA_SUPPORT_QUERY = `
+SELECT
+  to_regclass('iam.account_permissions') IS NOT NULL AS account_permissions_exists,
+  EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'iam' AND table_name = 'permissions' AND column_name = 'action'
+  ) AS permissions_action_exists,
+  EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'iam' AND table_name = 'permissions' AND column_name = 'resource_type'
+  ) AS permissions_resource_type_exists,
+  EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'iam' AND table_name = 'permissions' AND column_name = 'resource_id'
+  ) AS permissions_resource_id_exists,
+  EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'iam' AND table_name = 'permissions' AND column_name = 'effect'
+  ) AS permissions_effect_exists,
+  EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'iam' AND table_name = 'permissions' AND column_name = 'scope'
+  ) AS permissions_scope_exists;
+`;
+
+const readUserDetailSchemaSupport = async (
+  client: QueryClient
+): Promise<{ hasAccountPermissionsTable: boolean; hasStructuredPermissions: boolean }> => {
+  const result = await client.query<UserDetailSchemaSupportRow>(USER_DETAIL_SCHEMA_SUPPORT_QUERY);
+  const row = result.rows[0];
+  return {
+    hasAccountPermissionsTable: row?.account_permissions_exists === true,
+    hasStructuredPermissions:
+      row?.permissions_action_exists === true &&
+      row?.permissions_resource_type_exists === true &&
+      row?.permissions_resource_id_exists === true &&
+      row?.permissions_effect_exists === true &&
+      row?.permissions_scope_exists === true,
+  };
+};
 
 const mapRoleRows = (roleRows: UserDetailRoleRow[] | null) =>
   roleRows?.map((entry) => ({
@@ -157,6 +519,16 @@ const mapRoleRows = (roleRows: UserDetailRoleRow[] | null) =>
 const mapPermissionRows = (permissionRows: UserDetailRow['permission_rows']) =>
   permissionRows?.map((entry) => entry.permission_key) ?? [];
 
+const mapDirectPermissionRows = (
+  permissionRows: UserDetailRow['direct_permission_rows']
+): IamUserDirectPermissionAssignment[] =>
+  permissionRows?.map((entry) => ({
+    permissionId: entry.permission_id,
+    permissionKey: entry.permission_key,
+    effect: entry.effect,
+    ...(entry.description ? { description: entry.description } : {}),
+  })) ?? [];
+
 const mapGroupRows = (groupRows: UserDetailGroupRow[] | null) =>
   groupRows?.map((entry) => ({
     groupId: entry.id,
@@ -164,6 +536,32 @@ const mapGroupRows = (groupRows: UserDetailGroupRow[] | null) =>
     displayName: entry.display_name,
     groupType: entry.group_type,
     origin: entry.origin,
+    validFrom: entry.valid_from ?? undefined,
+    validTo: entry.valid_to ?? undefined,
+  })) ?? [];
+
+const mapPermissionTraceRows = (
+  permissionTraceRows: UserDetailRow['permission_trace_rows']
+): IamUserPermissionTraceItem[] =>
+  permissionTraceRows?.map((entry) => ({
+    permissionKey: entry.permission_key,
+    action: entry.action,
+    resourceType: entry.resource_type,
+    resourceId: entry.resource_id ?? undefined,
+    organizationId: entry.organization_id ?? undefined,
+    effect: entry.effect,
+    scope: entry.scope ?? undefined,
+    isEffective: entry.is_effective,
+    status: entry.status,
+    sourceKind: entry.source_kind,
+    roleId: entry.role_id ?? undefined,
+    roleKey: entry.role_key ?? undefined,
+    roleName: entry.role_name ?? undefined,
+    groupId: entry.group_id ?? undefined,
+    groupKey: entry.group_key ?? undefined,
+    groupDisplayName: entry.group_display_name ?? undefined,
+    groupActive: entry.group_active ?? undefined,
+    assignmentOrigin: entry.assignment_origin ?? undefined,
     validFrom: entry.valid_from ?? undefined,
     validTo: entry.valid_to ?? undefined,
   })) ?? [];
@@ -194,6 +592,8 @@ const mapUserDetailRow = (row: UserDetailRow): IamUserDetail => {
     avatarUrl: row.avatar_url ?? undefined,
     notes: row.notes ?? undefined,
     permissions: mapPermissionRows(row.permission_rows),
+    directPermissions: mapDirectPermissionRows(row.direct_permission_rows),
+    permissionTrace: mapPermissionTraceRows(row.permission_trace_rows),
     groups: mapGroupRows(row.group_rows),
     mainserverUserApplicationSecretSet: false,
   };
@@ -204,7 +604,30 @@ export const resolveUserDetail = async (
   input: { instanceId: string; userId: string }
 ): Promise<IamUserDetail | undefined> => {
   try {
-    const result = await client.query<UserDetailRow>(USER_DETAIL_QUERY, [input.instanceId, input.userId]);
+    const schemaSupport = await readUserDetailSchemaSupport(client);
+    if (!schemaSupport.hasAccountPermissionsTable) {
+      logger.warn('IAM user detail query fell back to legacy schema without direct permissions', {
+        operation: 'resolve_user_detail',
+        instance_id: input.instanceId,
+        user_id: input.userId,
+        missing_schema_object: 'iam.account_permissions',
+      });
+    }
+    if (!schemaSupport.hasStructuredPermissions) {
+      logger.warn('IAM user detail query fell back to legacy permission projection', {
+        operation: 'resolve_user_detail',
+        instance_id: input.instanceId,
+        user_id: input.userId,
+        missing_schema_object: 'iam.permissions.action/resource_type/resource_id/effect/scope',
+      });
+    }
+    const detailQuery =
+      schemaSupport.hasStructuredPermissions && schemaSupport.hasAccountPermissionsTable
+        ? USER_DETAIL_QUERY
+        : schemaSupport.hasStructuredPermissions
+          ? USER_DETAIL_QUERY_NO_DIRECT_PERMISSIONS
+          : USER_DETAIL_QUERY_LEGACY;
+    const result = await client.query<UserDetailRow>(detailQuery, [input.instanceId, input.userId]);
     const row = result.rows[0];
     if (!row) {
       logger.info('IAM user detail query returned no row', {

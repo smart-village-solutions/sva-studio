@@ -2,6 +2,11 @@ import React from 'react';
 import { sanitizeLegalTextHtml } from '@sva/auth';
 
 import { acceptLegalText, asIamError, getMyPendingLegalTexts, LEGAL_ACCEPTANCE_REQUIRED_EVENT } from '../lib/iam-api';
+import {
+  clearLegalAcceptanceReturnTo,
+  readLegalAcceptanceReturnTo,
+  storeLegalAcceptanceReturnTo,
+} from '../lib/legal-acceptance-navigation';
 import { t } from '../i18n';
 import { useAuth } from '../providers/auth-provider';
 import { Alert, AlertDescription } from './ui/alert';
@@ -41,7 +46,7 @@ export const LegalTextAcceptanceDialog = ({ pathname }: LegalTextAcceptanceDialo
         setPendingTexts([]);
         setLoadError(null);
         setIsLoadingPending(false);
-        return;
+        return [] as Awaited<ReturnType<typeof getMyPendingLegalTexts>>['data'];
       }
 
       if (!silent) {
@@ -52,6 +57,10 @@ export const LegalTextAcceptanceDialog = ({ pathname }: LegalTextAcceptanceDialo
         const response = await getMyPendingLegalTexts();
         setPendingTexts(response.data);
         setLoadError(null);
+        if (response.data.length > 0) {
+          storeLegalAcceptanceReturnTo(pathname);
+        }
+        return response.data;
       } catch (error) {
         const iamError = asIamError(error);
         if (iamError.code === 'unauthorized') {
@@ -60,6 +69,7 @@ export const LegalTextAcceptanceDialog = ({ pathname }: LegalTextAcceptanceDialo
         } else {
           setLoadError(t('admin.legalAcceptance.errorLoading'));
         }
+        return [] as Awaited<ReturnType<typeof getMyPendingLegalTexts>>['data'];
       } finally {
         setIsLoadingPending(false);
       }
@@ -76,10 +86,17 @@ export const LegalTextAcceptanceDialog = ({ pathname }: LegalTextAcceptanceDialo
       return undefined;
     }
 
+    storeLegalAcceptanceReturnTo(pathname);
+
     const handleFocus = () => {
       void loadPendingTexts(true);
     };
-    const handleLegalAcceptanceRequired = () => {
+    const handleLegalAcceptanceRequired = (event: Event) => {
+      const detail =
+        event instanceof CustomEvent && event.detail && typeof event.detail === 'object'
+          ? (event.detail as { return_to?: string })
+          : undefined;
+      storeLegalAcceptanceReturnTo(detail?.return_to ?? pathname);
       void loadPendingTexts(true);
     };
 
@@ -111,7 +128,12 @@ export const LegalTextAcceptanceDialog = ({ pathname }: LegalTextAcceptanceDialo
       }
 
       await invalidatePermissions();
-      await loadPendingTexts(true);
+      const remaining = await loadPendingTexts(true);
+      if (remaining.length === 0 && globalThis.window) {
+        const returnTo = readLegalAcceptanceReturnTo();
+        clearLegalAcceptanceReturnTo();
+        globalThis.window.location.assign(returnTo);
+      }
     } catch {
       setLoadError(t('admin.legalAcceptance.errorAccepting'));
     } finally {

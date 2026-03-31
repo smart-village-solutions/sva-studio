@@ -3,9 +3,17 @@ import { describe, expect, it, vi } from 'vitest';
 import { resolveUserDetail } from './iam-account-management/user-detail-query';
 
 describe('resolveUserDetail', () => {
-  it('maps group memberships and permission rows from the detail query', async () => {
+  it('maps groups, direct permissions and permission traces from the detail query', async () => {
     const query = vi.fn().mockResolvedValue({
       rows: [
+        {
+          account_permissions_exists: true,
+          permissions_action_exists: true,
+          permissions_resource_type_exists: true,
+          permissions_resource_id_exists: true,
+          permissions_effect_exists: true,
+          permissions_scope_exists: true,
+        },
         {
           id: 'bbbbbbbb-bbbb-4111-8bbb-bbbbbbbbbbbb',
           keycloak_subject: 'keycloak-target-1',
@@ -47,6 +55,60 @@ describe('resolveUserDetail', () => {
             },
           ],
           permission_rows: [{ permission_key: 'content.read' }],
+          direct_permission_rows: [
+            {
+              permission_id: 'perm-1',
+              permission_key: 'content.write',
+              effect: 'deny',
+              description: 'Schreiben verweigern',
+            },
+          ],
+          permission_trace_rows: [
+            {
+              permission_key: 'content.read',
+              action: 'content.read',
+              resource_type: 'content',
+              resource_id: null,
+              organization_id: 'org-1',
+              effect: 'allow',
+              scope: { geoUnitId: 'geo-1' },
+              is_effective: true,
+              status: 'effective',
+              source_kind: 'group_role',
+              role_id: 'role-1',
+              role_key: 'system_admin',
+              role_name: 'system_admin',
+              group_id: 'group-1',
+              group_key: 'admins',
+              group_display_name: 'Admins',
+              group_active: true,
+              assignment_origin: 'manual',
+              valid_from: '2026-03-05T10:00:00.000Z',
+              valid_to: null,
+            },
+            {
+              permission_key: 'content.archive',
+              action: 'content.archive',
+              resource_type: 'content',
+              resource_id: null,
+              organization_id: null,
+              effect: 'deny',
+              scope: null,
+              is_effective: false,
+              status: 'expired',
+              source_kind: 'direct_role',
+              role_id: 'role-1',
+              role_key: 'system_admin',
+              role_name: 'system_admin',
+              group_id: null,
+              group_key: null,
+              group_display_name: null,
+              group_active: null,
+              assignment_origin: null,
+              valid_from: '2026-02-01T10:00:00.000Z',
+              valid_to: '2026-02-28T10:00:00.000Z',
+            },
+          ],
         },
       ],
     });
@@ -56,10 +118,11 @@ describe('resolveUserDetail', () => {
       userId: 'bbbbbbbb-bbbb-4111-8bbb-bbbbbbbbbbbb',
     });
 
-    expect(query).toHaveBeenCalledWith(
+    expect(String(query.mock.calls[0]?.[0])).toContain("to_regclass('iam.account_permissions')");
+    expect(query.mock.calls[1]).toEqual([
       expect.stringContaining('AS group_rows'),
-      ['de-musterhausen', 'bbbbbbbb-bbbb-4111-8bbb-bbbbbbbbbbbb']
-    );
+      ['de-musterhausen', 'bbbbbbbb-bbbb-4111-8bbb-bbbbbbbbbbbb'],
+    ]);
     expect(detail).toMatchObject({
       id: 'bbbbbbbb-bbbb-4111-8bbb-bbbbbbbbbbbb',
       keycloakSubject: 'keycloak-target-1',
@@ -73,6 +136,32 @@ describe('resolveUserDetail', () => {
       avatarUrl: 'https://example.com/avatar.png',
       notes: 'Gruppenpflege aktiv',
       permissions: ['content.read'],
+      directPermissions: [
+        {
+          permissionId: 'perm-1',
+          permissionKey: 'content.write',
+          effect: 'deny',
+          description: 'Schreiben verweigern',
+        },
+      ],
+      permissionTrace: [
+        {
+          permissionKey: 'content.read',
+          sourceKind: 'group_role',
+          isEffective: true,
+          status: 'effective',
+          groupKey: 'admins',
+          roleKey: 'system_admin',
+          organizationId: 'org-1',
+        },
+        {
+          permissionKey: 'content.archive',
+          sourceKind: 'direct_role',
+          isEffective: false,
+          status: 'expired',
+          roleKey: 'system_admin',
+        },
+      ],
       groups: [
         {
           groupId: 'group-1',
@@ -88,7 +177,21 @@ describe('resolveUserDetail', () => {
   });
 
   it('returns undefined when the detail query finds no matching user', async () => {
-    const query = vi.fn().mockResolvedValue({ rows: [] });
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            account_permissions_exists: true,
+            permissions_action_exists: true,
+            permissions_resource_type_exists: true,
+            permissions_resource_id_exists: true,
+            permissions_effect_exists: true,
+            permissions_scope_exists: true,
+          },
+        ],
+      })
+      .mockResolvedValueOnce({ rows: [] });
 
     await expect(
       resolveUserDetail({ query } as never, {
@@ -96,5 +199,148 @@ describe('resolveUserDetail', () => {
         userId: 'cccccccc-cccc-4111-8ccc-cccccccccccc',
       })
     ).resolves.toBeUndefined();
+  });
+
+  it('falls back to the legacy detail query when account permissions table is not available', async () => {
+    const legacyRow = {
+      id: 'bbbbbbbb-bbbb-4111-8bbb-bbbbbbbbbbbb',
+      keycloak_subject: 'keycloak-target-legacy',
+      username_ciphertext: 'legacy.user',
+      display_name_ciphertext: 'Legacy User',
+      email_ciphertext: 'legacy@example.com',
+      first_name_ciphertext: 'Legacy',
+      last_name_ciphertext: 'User',
+      phone_ciphertext: null,
+      position: null,
+      department: null,
+      preferred_language: 'de',
+      timezone: null,
+      avatar_url: null,
+      notes: null,
+      status: 'active',
+      last_login_at: null,
+      role_rows: [],
+      group_rows: [],
+      permission_rows: [{ permission_key: 'content.read' }],
+      direct_permission_rows: [],
+      permission_trace_rows: [],
+    };
+
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            account_permissions_exists: false,
+            permissions_action_exists: true,
+            permissions_resource_type_exists: true,
+            permissions_resource_id_exists: true,
+            permissions_effect_exists: true,
+            permissions_scope_exists: true,
+          },
+        ],
+      })
+      .mockResolvedValueOnce({ rows: [legacyRow] });
+
+    const detail = await resolveUserDetail({ query } as never, {
+      instanceId: 'de-musterhausen',
+      userId: 'bbbbbbbb-bbbb-4111-8bbb-bbbbbbbbbbbb',
+    });
+
+    expect(query).toHaveBeenCalledTimes(2);
+    expect(String(query.mock.calls[0]?.[0])).toContain("to_regclass('iam.account_permissions')");
+    expect(detail).toMatchObject({
+      id: 'bbbbbbbb-bbbb-4111-8bbb-bbbbbbbbbbbb',
+      keycloakSubject: 'keycloak-target-legacy',
+      permissions: ['content.read'],
+      directPermissions: [],
+      permissionTrace: [],
+    });
+  });
+
+  it('falls back to the legacy permission projection when structured permission columns are not available', async () => {
+    const legacyRow = {
+      id: 'bbbbbbbb-bbbb-4111-8bbb-bbbbbbbbbbbb',
+      keycloak_subject: 'keycloak-target-legacy-projection',
+      username_ciphertext: 'legacy.projection',
+      display_name_ciphertext: 'Legacy Projection',
+      email_ciphertext: 'legacy.projection@example.com',
+      first_name_ciphertext: 'Legacy',
+      last_name_ciphertext: 'Projection',
+      phone_ciphertext: null,
+      position: null,
+      department: null,
+      preferred_language: 'de',
+      timezone: null,
+      avatar_url: null,
+      notes: null,
+      status: 'active',
+      last_login_at: null,
+      role_rows: [],
+      group_rows: [],
+      permission_rows: [{ permission_key: 'content.read' }],
+      direct_permission_rows: [],
+      permission_trace_rows: [
+        {
+          permission_key: 'content.read',
+          action: 'content.read',
+          resource_type: 'content',
+          resource_id: null,
+          organization_id: null,
+          effect: 'allow',
+          scope: null,
+          is_effective: true,
+          status: 'effective',
+          source_kind: 'direct_role',
+          role_id: 'role-1',
+          role_key: 'editor',
+          role_name: 'editor',
+          group_id: null,
+          group_key: null,
+          group_display_name: null,
+          group_active: null,
+          assignment_origin: null,
+          valid_from: null,
+          valid_to: null,
+        },
+      ],
+    };
+
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            account_permissions_exists: false,
+            permissions_action_exists: false,
+            permissions_resource_type_exists: false,
+            permissions_resource_id_exists: false,
+            permissions_effect_exists: false,
+            permissions_scope_exists: false,
+          },
+        ],
+      })
+      .mockResolvedValueOnce({ rows: [legacyRow] });
+
+    const detail = await resolveUserDetail({ query } as never, {
+      instanceId: 'de-musterhausen',
+      userId: 'bbbbbbbb-bbbb-4111-8bbb-bbbbbbbbbbbb',
+    });
+
+    expect(query).toHaveBeenCalledTimes(2);
+    expect(detail).toMatchObject({
+      keycloakSubject: 'keycloak-target-legacy-projection',
+      permissions: ['content.read'],
+      directPermissions: [],
+      permissionTrace: [
+        {
+          permissionKey: 'content.read',
+          action: 'content.read',
+          resourceType: 'content',
+          effect: 'allow',
+          sourceKind: 'direct_role',
+        },
+      ],
+    });
   });
 });

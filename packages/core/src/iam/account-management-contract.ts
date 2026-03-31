@@ -1,4 +1,4 @@
-import type { IamUuid } from './authorization-contract';
+import type { IamPermissionEffect, IamUuid } from './authorization-contract';
 
 export type ApiErrorCode =
   | 'unauthorized'
@@ -77,6 +77,39 @@ export type IamUserGroupAssignment = {
   readonly validTo?: string;
 };
 
+export type IamUserDirectPermissionAssignment = {
+  readonly permissionId: IamUuid;
+  readonly permissionKey: string;
+  readonly effect: IamPermissionEffect;
+  readonly description?: string;
+};
+
+export type IamUserPermissionTraceSourceKind = 'direct_permission' | 'direct_role' | 'group_role';
+export type IamUserPermissionTraceStatus = 'effective' | 'inactive' | 'expired' | 'disabled';
+
+export type IamUserPermissionTraceItem = {
+  readonly permissionKey: string;
+  readonly action: string;
+  readonly resourceType: string;
+  readonly resourceId?: string;
+  readonly organizationId?: IamUuid;
+  readonly effect: IamPermissionEffect;
+  readonly scope?: Readonly<Record<string, unknown>>;
+  readonly isEffective: boolean;
+  readonly status: IamUserPermissionTraceStatus;
+  readonly sourceKind: IamUserPermissionTraceSourceKind;
+  readonly roleId?: IamUuid;
+  readonly roleKey?: string;
+  readonly roleName?: string;
+  readonly groupId?: IamUuid;
+  readonly groupKey?: string;
+  readonly groupDisplayName?: string;
+  readonly groupActive?: boolean;
+  readonly assignmentOrigin?: IamGroupMembershipOrigin;
+  readonly validFrom?: string;
+  readonly validTo?: string;
+};
+
 export type IamUserListItem = {
   readonly id: IamUuid;
   readonly keycloakSubject: string;
@@ -99,6 +132,8 @@ export type IamUserDetail = IamUserListItem & {
   readonly avatarUrl?: string;
   readonly notes?: string;
   readonly permissions?: readonly string[];
+  readonly directPermissions?: readonly IamUserDirectPermissionAssignment[];
+  readonly permissionTrace?: readonly IamUserPermissionTraceItem[];
   readonly groups?: readonly IamUserGroupAssignment[];
   readonly mainserverUserApplicationId?: string;
   readonly mainserverUserApplicationSecretSet: boolean;

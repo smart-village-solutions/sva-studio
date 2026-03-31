@@ -1,14 +1,14 @@
 # Bericht zum Umsetzungsstand
 ## CMS-Upgrade Milestone 1, Pakete 1 bis 5
 
-Stand: 24.03.2026
+Stand: 31.03.2026
 
 ## Ziel und Abgrenzung
 
 Dieser Bericht bewertet den Umsetzungsstand der Punkte 1 bis 5 aus dem Dokument [concepts/konzeption-cms-v2/Auftrag-Milestone-1.md](../../concepts/konzeption-cms-v2/Auftrag-Milestone-1.md).
 
 
-Die Bewertung basiert auf dem aktuellen Repository-Stand, vorhandenen Tests, Architektur- und Betriebsdokumenten sowie vorhandenen Nachweis- und Staging-Dokumenten.
+Die Bewertung basiert auf dem aktuellen Repository-Stand vom 31.03.2026, vorhandenen Tests, Architektur- und Betriebsdokumenten sowie vorhandenen Nachweis- und Staging-Dokumenten.
 
 
 ## 1. Architektur & Basis-IAM-Inkrement
@@ -123,7 +123,7 @@ Weitgehend umgesetzt.
 
 ### Bewertung
 
-Backend-seitig weitgehend umgesetzt, UI-seitig teilweise umgesetzt.
+Weitgehend umgesetzt. Die Verwaltungs-UI ist gegenüber dem Stand vom 24.03.2026 deutlich weiter ausgebaut, die vollständige fachliche Abnahme bleibt aber evidenzseitig noch offen.
 
 ### Umgesetzte Elemente
 
@@ -131,12 +131,15 @@ Backend-seitig weitgehend umgesetzt, UI-seitig teilweise umgesetzt.
 - Gruppenverwaltung mit Gruppenrollen und Gruppenmitgliedschaften ist implementiert.
 - Rollen- und Gruppenbeziehungen fließen in die Berechtigungsauflösung ein.
 - Organisationsvererbung und Geo-Vererbung sind in der Autorisierungslogik und den zugehörigen Tests abgebildet.
+- Direkte Nutzerberechtigungen (`allow`/`deny`) sind zusätzlich als feingranularer Override-Pfad implementiert und in Datenmodell, Validierung, Detailabfrage und Permission-Auflösung integriert.
+- Die Admin-UI enthält inzwischen eine Rollen-Detailseite mit Tabs für Metadaten, Permission-Zuordnung, Benutzerzuweisungen und Sync-Status.
+- Die Benutzerverwaltung enthält inzwischen einen Read-Only-Bereich für effektive Berechtigungen mit Herkunftstransparenz für direkte Zuweisungen, direkte Rollen und Gruppenrollen einschließlich wirksamer und nicht wirksamer Quellen.
 - Für Gruppen, Rollen und Vererbungslogik liegen Unit- und Server-Tests vor.
 
 ### Einschränkungen
 
-- Die UI für Rollen erlaubt nach aktuellem Stand vor allem Metadatenpflege, nicht aber eine vollwertige Pflege feingranularer Permissions aus der Oberfläche heraus.
-- Damit ist der fachliche Anspruch "Verwaltungs-UI für System- und Custom-Rollen, Gruppen und effektive vererbte Rollen" nur teilweise erfüllt.
+- Die UI deckt die Pflege von Rollen-Metadaten und Rollen-Permissions inzwischen ab; die technische Transparenz effektiver Berechtigungen ist additiv im Benutzer-Detailvertrag und in der Admin-UI umgesetzt. Offen bleibt der formale fachliche Abnahme-Nachweis in Zielumgebung.
+- Für die Angebots- und technische Abnahme der Pakete 3 bis 5 liegt inzwischen ein separates Artefakt mit normativen Pflichtnachweisen vor, der ausgefüllte Nachweis selbst ist daraus noch nicht ableitbar.
 
 ### Fundstellen
 
@@ -146,8 +149,15 @@ Backend-seitig weitgehend umgesetzt, UI-seitig teilweise umgesetzt.
 - Keycloak-Admin-Client: [packages/auth/src/keycloak-admin-client/core.ts](../../packages/auth/src/keycloak-admin-client/core.ts)
 - Rollen-UI: [apps/sva-studio-react/src/routes/admin/roles/-roles-page.tsx](../../apps/sva-studio-react/src/routes/admin/roles/-roles-page.tsx)
 - Gruppen-UI: [apps/sva-studio-react/src/routes/admin/groups/-groups-page.tsx](../../apps/sva-studio-react/src/routes/admin/groups/-groups-page.tsx)
+- Rollen-Detail-UI: [apps/sva-studio-react/src/routes/admin/roles/-role-detail-page.tsx](../../apps/sva-studio-react/src/routes/admin/roles/-role-detail-page.tsx)
+- Benutzer-Detail-UI mit effektiven Berechtigungen: [apps/sva-studio-react/src/routes/admin/users/-user-edit-page.tsx](../../apps/sva-studio-react/src/routes/admin/users/-user-edit-page.tsx)
 - Autorisierungs-Engine: [packages/core/src/iam/authorization-engine.ts](../../packages/core/src/iam/authorization-engine.ts)
 - Autorisierungs-Engine-Tests: [packages/core/src/iam/authorization-engine.test.ts](../../packages/core/src/iam/authorization-engine.test.ts)
+- Direkte Nutzerberechtigungen Migration: [packages/data/migrations/up/0023_iam_account_permissions.sql](../../packages/data/migrations/up/0023_iam_account_permissions.sql)
+- Direkte Nutzerberechtigungen Handler: [packages/auth/src/iam-account-management/users-handlers.ts](../../packages/auth/src/iam-account-management/users-handlers.ts)
+- User-Detail mit direkten Berechtigungen: [packages/auth/src/iam-account-management/user-detail-query.ts](../../packages/auth/src/iam-account-management/user-detail-query.ts)
+- Benutzer-Detailvertrag mit Permission-Trace: [packages/core/src/iam/account-management-contract.ts](../../packages/core/src/iam/account-management-contract.ts)
+- Abnahmeartefakte Pakete 3 bis 5: [docs/reports/2026-03-31-iam-offer-packages-3-to-5-abnahmeartefakte.md](./2026-03-31-iam-offer-packages-3-to-5-abnahmeartefakte.md)
 - Geo-Hierarchie-Tests: [packages/auth/src/iam-organizations/geo-hierarchy.test.ts](../../packages/auth/src/iam-organizations/geo-hierarchy.test.ts)
 - Routing-/Guard-Schutz für Admin- und Content-Bereiche: [packages/routing/src/account-ui.routes.ts](../../packages/routing/src/account-ui.routes.ts)
 - Rollen-Sync-Runbook: [docs/guides/keycloak-rollen-sync-runbook.md](../guides/keycloak-rollen-sync-runbook.md)
@@ -172,7 +182,7 @@ Backend-seitig weitgehend umgesetzt, UI-seitig teilweise umgesetzt.
 
 ### Bewertung
 
-Weitgehend umgesetzt, End-to-End-Abnahme nur teilweise belegt.
+Weitgehend umgesetzt, mit zusätzlicher Evidenz für Invalidation- und Snapshot-Pfade. Die End-to-End-Abnahme unter Zielumgebungsbedingungen ist weiterhin nur teilweise belegt.
 
 ### Umgesetzte Elemente
 
@@ -181,12 +191,15 @@ Weitgehend umgesetzt, End-to-End-Abnahme nur teilweise belegt.
 - Redis-basierte Permission-Snapshots sind implementiert.
 - Ein lokaler In-Memory-L1-Cache und ein Redis-Shared-Read-Path sind vorgesehen und implementiert.
 - Cache-Invalidierung und Snapshot-Handling sind als eigene Bausteine vorhanden.
+- Direkte Nutzerberechtigungen invalidieren Permission-Snapshots inzwischen explizit über den Trigger `user_permission_changed`.
 - Architektur-, Qualitäts- und Benchmark-Dokumente für Performance und Cache-Verhalten liegen vor.
+- Zusätzlich ist nun eine ausführbare Harness für Cache-Hit, Cache-Miss, Recompute und user-scoped Invalidation im Repository vorhanden.
 
 ### Einschränkungen
 
 - Der evaluator-nahe Benchmark liegt vor und erfüllt den Zielwert deutlich.
-- Für die Arbeitspaket-Abnahme gefordert ist aber insbesondere ein belastbarer Endpunkt-/Umgebungsnachweis, einschließlich Cache-Hit, Cache-Miss, Redis-Nutzung und Lastbedingungen. Dieser Nachweis ist im Repository nur teilweise als operative Evidenz vorhanden.
+- Für die Arbeitspaket-Abnahme gefordert ist aber insbesondere ein belastbarer Endpunkt-/Umgebungsnachweis, einschließlich Cache-Hit, Cache-Miss, Redis-Nutzung und Lastbedingungen. Dieser Nachweis ist im Repository weiterhin nur teilweise als operative Evidenz vorhanden.
+- Das neue Artefakt für Pakete 3 bis 5 konkretisiert zwar die erwarteten Performance- und Invalidation-Nachweise, ersetzt aber noch keinen ausgeführten Messbericht.
 
 ### Fundstellen
 
@@ -194,15 +207,19 @@ Weitgehend umgesetzt, End-to-End-Abnahme nur teilweise belegt.
 - Permission-Store: [packages/auth/src/iam-authorization/permission-store.ts](../../packages/auth/src/iam-authorization/permission-store.ts)
 - Redis-Snapshot-Implementierung: [packages/auth/src/iam-authorization/redis-permission-snapshot.server.ts](../../packages/auth/src/iam-authorization/redis-permission-snapshot.server.ts)
 - Snapshot-Invalidierung: [packages/auth/src/iam-authorization/snapshot-invalidation.server.ts](../../packages/auth/src/iam-authorization/snapshot-invalidation.server.ts)
+- Benchmark-Harness: [packages/auth/src/iam-authorization/benchmark-harness.ts](../../packages/auth/src/iam-authorization/benchmark-harness.ts)
+- Benchmark-Szenarien: [packages/auth/bench/permission-cache-harness.ts](../../packages/auth/bench/permission-cache-harness.ts)
 - Me-Permissions-Handler: [packages/auth/src/iam-authorization/me-permissions.ts](../../packages/auth/src/iam-authorization/me-permissions.ts)
 - Autorisierungsvertrag: [packages/core/src/iam/authorization-contract.ts](../../packages/core/src/iam/authorization-contract.ts)
 - Autorisierungslogik: [packages/core/src/iam/authorization-engine.ts](../../packages/core/src/iam/authorization-engine.ts)
 - Integrations- und Cache-Tests: [packages/auth/src/iam-authorization.integration.test.ts](../../packages/auth/src/iam-authorization.integration.test.ts)
 - Cache-Tests: [packages/auth/src/iam-authorization.cache.test.ts](../../packages/auth/src/iam-authorization.cache.test.ts)
+- Runtime-View mit Invalidation für direkte Berechtigungen: [docs/architecture/06-runtime-view.md](../architecture/06-runtime-view.md)
 - Qualitätsanforderungen: [docs/architecture/10-quality-requirements.md](../architecture/10-quality-requirements.md)
 - Baseline-Bericht Authorize: [docs/reports/iam-authorize-baseline-2026-02-27.md](./iam-authorize-baseline-2026-02-27.md)
 - ABAC-/Cache-Benchmark: [docs/reports/iam-authorize-abac-cache-baseline-2026-02-28.md](./iam-authorize-abac-cache-baseline-2026-02-28.md)
 - Dashboard-/Observability-Hinweise: [docs/reports/iam-cache-grafana-dashboard-template-2026-02-28.md](./iam-cache-grafana-dashboard-template-2026-02-28.md)
+- Abnahmeartefakte Pakete 3 bis 5: [docs/reports/2026-03-31-iam-offer-packages-3-to-5-abnahmeartefakte.md](./2026-03-31-iam-offer-packages-3-to-5-abnahmeartefakte.md)
 
 ## 5. Rechtstexte & Akzeptanzsystem
 
@@ -222,7 +239,7 @@ Weitgehend umgesetzt, End-to-End-Abnahme nur teilweise belegt.
 
 ### Bewertung
 
-Weitgehend umgesetzt, fachlicher End-to-End-Nachweis noch offen.
+Weitgehend umgesetzt, mit stärkerer Repo-Evidenz für Enforcement, Sanitizing und Exportrechte. Der fachliche End-to-End-Nachweis bleibt jedoch offen.
 
 ### Umgesetzte Elemente
 
@@ -231,11 +248,14 @@ Weitgehend umgesetzt, fachlicher End-to-End-Nachweis noch offen.
 - Eine serverseitige Erzwingung offener Rechtstext-Akzeptanzen ist implementiert.
 - Ein Exportpfad für Zustimmungs-/Consent-Nachweise ist vorhanden.
 - Im Frontend existieren API-Helfer für ausstehende Rechtstexte und deren Akzeptanz.
+- Der Akzeptanzdialog im Frontend ist mit eigenen Tests abgedeckt, einschließlich Sanitizing des gerenderten HTML-Inhalts.
+- Der Exportpfad ist auf eine explizite Berechtigung `legal-consents:export` abgesichert und dafür getestet.
+- Der Deep-Link-/Return-Target-Flow ist technisch gehärtet: Rücksprungziele werden serverseitig und clientseitig auf interne Pfade begrenzt, in der Session zwischengespeichert und nach Akzeptanz deterministisch wiederaufgenommen.
 
 ### Einschränkungen
 
 - Die Staging-Testprotokolle markieren die Rechtstext- und Login-Szenarien noch als offen.
-- Im Repository ist kein abgeschlossener fachlicher End-to-End-Nachweis für Login-Umleitung, vollständiges Lesen, Akzeptieren und Rückkehr zum Ursprungspfad als abgeschlossen dokumentiert.
+- Im Repository ist kein abgeschlossener fachlicher End-to-End-Nachweis in der Zielumgebung dokumentiert; technisch ist der Rücksprung auf den validierten Ursprungspfad inzwischen implementiert und getestet.
 
 ### Fundstellen
 
@@ -246,31 +266,38 @@ Weitgehend umgesetzt, fachlicher End-to-End-Nachweis noch offen.
 - Rechtstext-UI: [apps/sva-studio-react/src/routes/admin/legal-texts/-legal-texts-page.tsx](../../apps/sva-studio-react/src/routes/admin/legal-texts/-legal-texts-page.tsx)
 - Frontend-Hooks: [apps/sva-studio-react/src/hooks/use-legal-texts.ts](../../apps/sva-studio-react/src/hooks/use-legal-texts.ts)
 - Frontend-API: [apps/sva-studio-react/src/lib/iam-api.ts](../../apps/sva-studio-react/src/lib/iam-api.ts)
+- Frontend-Rücksprungmodell: [apps/sva-studio-react/src/lib/legal-acceptance-navigation.ts](../../apps/sva-studio-react/src/lib/legal-acceptance-navigation.ts)
 - Erzwingung offener Akzeptanzen: [packages/auth/src/legal-text-enforcement.server.ts](../../packages/auth/src/legal-text-enforcement.server.ts)
 - Consent-Export: [packages/auth/src/iam-auditing/legal-consent-export.server.ts](../../packages/auth/src/iam-auditing/legal-consent-export.server.ts)
 - Rechtstext-Tests: [packages/auth/src/legal-text-enforcement.test.ts](../../packages/auth/src/legal-text-enforcement.test.ts)
 - Rechtstext-Repository-Tests: [packages/auth/src/iam-legal-texts.repository.test.ts](../../packages/auth/src/iam-legal-texts.repository.test.ts)
+- HTML-Sanitizing-Tests: [packages/auth/src/iam-legal-texts.html.test.ts](../../packages/auth/src/iam-legal-texts.html.test.ts)
+- Consent-Export-Tests: [packages/auth/src/iam-auditing/legal-consent-export.test.ts](../../packages/auth/src/iam-auditing/legal-consent-export.test.ts)
+- Frontend-Akzeptanzdialog: [apps/sva-studio-react/src/components/LegalTextAcceptanceDialog.test.tsx](../../apps/sva-studio-react/src/components/LegalTextAcceptanceDialog.test.tsx)
+- Abnahmeartefakte Pakete 3 bis 5: [docs/reports/2026-03-31-iam-offer-packages-3-to-5-abnahmeartefakte.md](./2026-03-31-iam-offer-packages-3-to-5-abnahmeartefakte.md)
 - Manueller Testkatalog: [docs/staging/2026-03/cms-v2-manueller-testkatalog-2026-03-22.md](../staging/2026-03/cms-v2-manueller-testkatalog-2026-03-22.md)
 - Testprotokoll-Vorlage mit offenen Szenarien: [docs/staging/2026-03/cms-v2-testprotokoll-vorlage-2026-03-22.md](../staging/2026-03/cms-v2-testprotokoll-vorlage-2026-03-22.md)
 
 ## Technische Verifikation
 
-Zum Repository-Stand wurden die relevanten Nx-Testtargets geprüft:
+Zum Stand vom 31.03.2026 wurden die relevanten Nx-Testtargets erneut geprüft:
 
 - `pnpm nx run core:test:unit`
-- `pnpm nx run routing:test:unit`
+- `pnpm nx run core:build`
 - `pnpm nx run auth:test:unit`
+- `pnpm nx run auth:test:types`
 - `pnpm nx run sva-studio-react:test:unit`
+- `pnpm nx run sva-studio-react:typecheck`
 
-Ergebnis: grün. Die Ausführung kam aus dem Nx-Cache, es wurden keine neuen Laufzeitnachweise gegen eine externe Zielumgebung erzeugt.
+Ergebnis: grün. Soweit Nx den Cache genutzt hat, wurden keine neuen Laufzeitnachweise gegen eine externe Zielumgebung erzeugt.
 
 ## Fazit
 
-Für die Punkte 1 bis 5 ist im Repository ein substanzieller Umsetzungsstand vorhanden. Besonders stark ausgeprägt sind Auth-Grundlagen, Accounts/Organisationen, zentrale Autorisierungslogik, Rollen-/Gruppen-Backend sowie Rechtstext-Backend und zugehörige Admin-Oberflächen.
+Für die Punkte 1 bis 5 ist im Repository zum 31.03.2026 ein substanzieller Umsetzungsstand vorhanden. Besonders stark ausgeprägt sind Auth-Grundlagen, Accounts/Organisationen, zentrale Autorisierungslogik, Rollen-/Gruppen-Backend, direkte Nutzerberechtigungen sowie Rechtstext-Backend und zugehörige Admin-Oberflächen.
 
 Nicht vollständig belegt oder nur teilweise umgesetzt sind vor allem:
 
 - die formale Umgebungsabnahme für Punkt 1
-- die vollständige UI-Pflege feingranularer Rollen-/Permission-Zuordnungen in Punkt 3
+- die formale fachliche Abnahme der vererbten Rollen-/Permission-Transparenz und der geforderten Nachweisartefakte in Punkt 3
 - belastbare End-to-End-Abnahmen unter Zielumgebungsbedingungen für Punkt 4
 - der vollständig dokumentierte fachliche E2E-Nachweis für Login-/Akzeptanzszenarien in Punkt 5

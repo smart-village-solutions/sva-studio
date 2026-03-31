@@ -1,4 +1,5 @@
 import React from 'react';
+import type { IamUserPermissionTraceItem } from '@sva/core';
 
 import { ConfirmDialog } from '../../../components/ConfirmDialog';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
@@ -74,6 +75,19 @@ const historyPerspectiveTranslationKeyByValue = {
   actor_and_target: 'admin.users.edit.historyPerspective.actor_and_target',
 } as const;
 
+const permissionTraceStatusTranslationKeyByValue = {
+  effective: 'admin.users.edit.permissionTrace.status.effective',
+  inactive: 'admin.users.edit.permissionTrace.status.inactive',
+  expired: 'admin.users.edit.permissionTrace.status.expired',
+  disabled: 'admin.users.edit.permissionTrace.status.disabled',
+} as const;
+
+const permissionTraceSourceTranslationKeyByValue = {
+  direct_permission: 'admin.users.edit.permissionTrace.source.directPermission',
+  direct_role: 'admin.users.edit.permissionTrace.source.directRole',
+  group_role: 'admin.users.edit.permissionTrace.source.groupRole',
+} as const;
+
 const toFormValues = (input: ReturnType<typeof useUser>['user']): UserFormValues => ({
   firstName: input?.firstName ?? '',
   lastName: input?.lastName ?? '',
@@ -140,6 +154,36 @@ const formatMetadata = (metadata: Readonly<Record<string, unknown>>) => {
     .join(', ');
 };
 
+const formatScope = (scope?: Readonly<Record<string, unknown>>) => {
+  if (!scope || Object.keys(scope).length === 0) {
+    return null;
+  }
+
+  return Object.entries(scope)
+    .map(([key, value]) => `${key}: ${String(value)}`)
+    .join(', ');
+};
+
+const describePermissionTraceSource = (entry: IamUserPermissionTraceItem) => {
+  const base = t(permissionTraceSourceTranslationKeyByValue[entry.sourceKind]);
+  if (entry.sourceKind === 'direct_permission') {
+    return base;
+  }
+
+  if (entry.sourceKind === 'group_role') {
+    const parts = [base];
+    if (entry.groupDisplayName) {
+      parts.push(entry.groupDisplayName);
+    }
+    if (entry.roleName) {
+      parts.push(entry.roleName);
+    }
+    return parts.join(' · ');
+  }
+
+  return entry.roleName ? `${base} · ${entry.roleName}` : base;
+};
+
 const appendUnique = (values: readonly string[], nextValue: string): string[] =>
   values.includes(nextValue) ? [...values] : [...values, nextValue];
 
@@ -181,6 +225,14 @@ export const UserEditPage = ({ userId }: UserEditPageProps) => {
   const baselineSignature = React.useMemo(() => JSON.stringify(toFormValues(userApi.user)), [userApi.user]);
   const currentSignature = React.useMemo(() => JSON.stringify(formValues), [formValues]);
   const hasUnsavedChanges = baselineSignature !== currentSignature;
+  const effectivePermissionTrace = React.useMemo(
+    () => (userApi.user?.permissionTrace ?? []).filter((entry) => entry.isEffective),
+    [userApi.user?.permissionTrace]
+  );
+  const inactivePermissionTrace = React.useMemo(
+    () => (userApi.user?.permissionTrace ?? []).filter((entry) => !entry.isEffective),
+    [userApi.user?.permissionTrace]
+  );
 
   React.useEffect(() => {
     if (!hasUnsavedChanges) {
@@ -617,9 +669,91 @@ export const UserEditPage = ({ userId }: UserEditPageProps) => {
           role="tabpanel"
           aria-labelledby="user-edit-tab-permissions"
           hidden={activeTab !== 'permissions'}
-          className="rounded-xl border border-border bg-card p-4 shadow-shell"
+          className="space-y-4 rounded-xl border border-border bg-card p-4 shadow-shell"
         >
-          {userApi.user.permissions && userApi.user.permissions.length > 0 ? (
+          <div className="space-y-2">
+            <h2 className="text-lg font-semibold text-foreground">{t('admin.users.edit.permissionTrace.title')}</h2>
+            <p className="text-sm text-muted-foreground">{t('admin.users.edit.permissionTrace.description')}</p>
+          </div>
+
+          {effectivePermissionTrace.length > 0 ? (
+            <div className="space-y-3">
+              <h3 className="text-sm font-medium text-foreground">{t('admin.users.edit.permissionTrace.effectiveTitle')}</h3>
+              <ul className="grid gap-3">
+                {effectivePermissionTrace.map((entry, index) => {
+                  const scopeText = formatScope(entry.scope);
+                  return (
+                    <li
+                      key={`${entry.permissionKey}:${entry.sourceKind}:${entry.roleId ?? 'none'}:${entry.groupId ?? 'none'}:${index}`}
+                      className="rounded-lg border border-border bg-background p-3"
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <p className="font-medium text-foreground">{entry.permissionKey}</p>
+                          <p className="mt-1 text-sm text-muted-foreground">{describePermissionTraceSource(entry)}</p>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <Badge variant="outline">{entry.effect}</Badge>
+                          <Badge variant="outline">{t(permissionTraceStatusTranslationKeyByValue[entry.status])}</Badge>
+                        </div>
+                      </div>
+                      <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground">
+                        <span>{t('admin.users.edit.permissionTrace.resourceType', { value: entry.resourceType })}</span>
+                        {entry.organizationId ? (
+                          <span>{t('admin.users.edit.permissionTrace.organization', { value: entry.organizationId })}</span>
+                        ) : null}
+                        {scopeText ? <span>{t('admin.users.edit.permissionTrace.scope', { value: scopeText })}</span> : null}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ) : null}
+
+          {inactivePermissionTrace.length > 0 ? (
+            <div className="space-y-3">
+              <h3 className="text-sm font-medium text-foreground">{t('admin.users.edit.permissionTrace.inactiveTitle')}</h3>
+              <ul className="grid gap-3">
+                {inactivePermissionTrace.map((entry, index) => (
+                  <li
+                    key={`${entry.permissionKey}:${entry.sourceKind}:${entry.roleId ?? 'none'}:${entry.groupId ?? 'none'}:inactive:${index}`}
+                    className="rounded-lg border border-dashed border-border bg-background p-3"
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <p className="font-medium text-foreground">{entry.permissionKey}</p>
+                        <p className="mt-1 text-sm text-muted-foreground">{describePermissionTraceSource(entry)}</p>
+                      </div>
+                      <Badge variant="outline">{t(permissionTraceStatusTranslationKeyByValue[entry.status])}</Badge>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+
+          {userApi.user.directPermissions && userApi.user.directPermissions.length > 0 ? (
+            <div className="space-y-3">
+              <h3 className="text-sm font-medium text-foreground">{t('admin.users.edit.permissionTrace.directAssignmentsTitle')}</h3>
+              <ul className="grid gap-2 text-sm text-foreground sm:grid-cols-2">
+                {userApi.user.directPermissions.map((permission) => (
+                  <li key={`${permission.permissionId}:${permission.effect}`} className="rounded border border-border bg-background px-3 py-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <span>{permission.permissionKey}</span>
+                      <Badge variant="outline">{permission.effect}</Badge>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+
+          {effectivePermissionTrace.length === 0 &&
+          inactivePermissionTrace.length === 0 &&
+          (!userApi.user.directPermissions || userApi.user.directPermissions.length === 0) &&
+          userApi.user.permissions &&
+          userApi.user.permissions.length > 0 ? (
             <ul className="grid gap-2 text-sm text-foreground sm:grid-cols-2">
               {userApi.user.permissions.map((permission) => (
                 <li key={permission} className="rounded border border-border bg-background px-3 py-2">
@@ -627,9 +761,14 @@ export const UserEditPage = ({ userId }: UserEditPageProps) => {
                 </li>
               ))}
             </ul>
-          ) : (
+          ) : null}
+
+          {effectivePermissionTrace.length === 0 &&
+          inactivePermissionTrace.length === 0 &&
+          (!userApi.user.directPermissions || userApi.user.directPermissions.length === 0) &&
+          (!userApi.user.permissions || userApi.user.permissions.length === 0) ? (
             <p className="text-sm text-muted-foreground">{t('admin.users.edit.permissionsEmpty')}</p>
-          )}
+          ) : null}
         </section>
 
         <section

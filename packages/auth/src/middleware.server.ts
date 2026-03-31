@@ -163,6 +163,7 @@ export const withAuthenticatedUser = async (
 
     const runHandler = async () => handler({ sessionId, user });
     if (user.instanceId && (await shouldEnforceLegalTextCompliance(request))) {
+      const requestUrl = new URL(request.url);
       if (shouldLogProfileDiagnostics(request)) {
         logger.info('Auth middleware enforcing legal text compliance for self-service request', {
           endpoint: request.url,
@@ -172,7 +173,9 @@ export const withAuthenticatedUser = async (
           ...buildLogContext(user.instanceId, { includeTraceId: true }),
         });
       }
-      return await withLegalTextCompliance(user.instanceId, user.id, runHandler);
+      return await withLegalTextCompliance(user.instanceId, user.id, runHandler, {
+        returnTo: `${requestUrl.pathname}${requestUrl.search}`,
+      });
     }
 
     return await runHandler();

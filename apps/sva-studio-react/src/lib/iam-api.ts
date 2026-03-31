@@ -63,6 +63,7 @@ type SafeDiagnosticDetails = Readonly<{
   expected_migration?: string;
   actor_resolution?: string;
   instance_id?: string;
+  return_to?: string;
 }>;
 
 const hasTopLevelMessage = (
@@ -136,6 +137,7 @@ const readSafeDiagnosticDetails = (payload: IamErrorPayload | null): SafeDiagnos
     actor_resolution:
       typeof source.actor_resolution === 'string' ? source.actor_resolution : undefined,
     instance_id: typeof source.instance_id === 'string' ? source.instance_id : undefined,
+    return_to: typeof source.return_to === 'string' ? source.return_to : undefined,
   };
 
   return Object.values(safeDetails).some((value) => typeof value === 'string') ? safeDetails : undefined;
@@ -350,7 +352,7 @@ const readErrorPayload = async (response: Response): Promise<IamHttpError> => {
   logDevelopmentApiError({ requestId, status: response.status, code, details });
 
   if (code === 'legal_acceptance_required' && globalThis.window !== undefined) {
-    globalThis.dispatchEvent(new CustomEvent(LEGAL_ACCEPTANCE_REQUIRED_EVENT));
+    globalThis.dispatchEvent(new CustomEvent(LEGAL_ACCEPTANCE_REQUIRED_EVENT, { detail: details }));
   }
 
   return new IamHttpError({

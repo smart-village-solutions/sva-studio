@@ -4,6 +4,10 @@ import { invalidateRedisPermissionSnapshots } from './redis-permission-snapshot.
 
 const logger = createSdkLogger({ component: 'iam-snapshot-invalidation', level: 'info' });
 
+export type SnapshotInvalidationDeps = Readonly<{
+  invalidateSnapshots: (instanceId: string, keycloakSubject?: string) => Promise<number>;
+}>;
+
 export type SnapshotInvalidationEvent =
   | { type: 'instance_scope_changed'; instanceId: string; eventId?: string; reason?: string }
   | { type: 'user_scope_changed'; instanceId: string; keycloakSubject: string; eventId?: string; reason?: string }
@@ -77,8 +81,13 @@ const shouldSkipEvent = (eventId: string | undefined): boolean => {
   return false;
 };
 
-export const processSnapshotInvalidationEvent = async (
-  event: SnapshotInvalidationEvent
+const defaultSnapshotInvalidationDeps: SnapshotInvalidationDeps = {
+  invalidateSnapshots: invalidateRedisPermissionSnapshots,
+};
+
+export const processSnapshotInvalidationEventWithDeps = async (
+  event: SnapshotInvalidationEvent,
+  deps: SnapshotInvalidationDeps
 ): Promise<void> => {
   if (shouldSkipEvent(event.eventId)) {
     logger.debug('Skipping duplicate snapshot invalidation event', {
@@ -99,19 +108,19 @@ export const processSnapshotInvalidationEvent = async (
 
   switch (event.type) {
     case 'instance_scope_changed':
-      await invalidateRedisPermissionSnapshots(event.instanceId);
+      await deps.invalidateSnapshots(event.instanceId);
       break;
 
     case 'user_scope_changed':
-      await invalidateRedisPermissionSnapshots(event.instanceId, event.keycloakSubject);
+      await deps.invalidateSnapshots(event.instanceId, event.keycloakSubject);
       break;
 
     case 'role_permission_changed':
-      await invalidateRedisPermissionSnapshots(event.instanceId);
+      await deps.invalidateSnapshots(event.instanceId);
       break;
 
     case 'group_membership_changed':
-      await invalidateRedisPermissionSnapshots(
+      await deps.invalidateSnapshots(
         event.instanceId,
         event.keycloakSubject
       );
@@ -120,32 +129,32 @@ export const processSnapshotInvalidationEvent = async (
     case 'group_deleted':
       if ((event.affectedKeycloakSubjects?.length ?? 0) > 0) {
         for (const keycloakSubject of event.affectedKeycloakSubjects ?? []) {
-          await invalidateRedisPermissionSnapshots(event.instanceId, keycloakSubject);
+          await deps.invalidateSnapshots(event.instanceId, keycloakSubject);
         }
         break;
       }
-      await invalidateRedisPermissionSnapshots(event.instanceId);
+      await deps.invalidateSnapshots(event.instanceId);
       break;
 
     case 'delegation_changed':
-      await invalidateRedisPermissionSnapshots(event.instanceId, event.delegateeKeycloakSubject);
+      await deps.invalidateSnapshots(event.instanceId, event.delegateeKeycloakSubject);
       break;
 
     case 'organization_membership_changed':
-      await invalidateRedisPermissionSnapshots(event.instanceId, event.keycloakSubject);
+      await deps.invalidateSnapshots(event.instanceId, event.keycloakSubject);
       break;
 
     case 'account_role_assignment_changed':
-      await invalidateRedisPermissionSnapshots(event.instanceId, event.keycloakSubject);
+      await deps.invalidateSnapshots(event.instanceId, event.keycloakSubject);
       break;
 
     case 'org_hierarchy_changed':
     case 'geo_assignment_changed':
-      await invalidateRedisPermissionSnapshots(event.instanceId);
+      await deps.invalidateSnapshots(event.instanceId);
       break;
 
     case 'instance_settings_changed':
-      await invalidateRedisPermissionSnapshots(event.instanceId);
+      await deps.invalidateSnapshots(event.instanceId);
       break;
 
     default: {
@@ -157,3 +166,7 @@ export const processSnapshotInvalidationEvent = async (
     }
   }
 };
+
+export const processSnapshotInvalidationEvent = async (
+  event: SnapshotInvalidationEvent
+): Promise<void> => processSnapshotInvalidationEventWithDeps(event, defaultSnapshotInvalidationDeps);

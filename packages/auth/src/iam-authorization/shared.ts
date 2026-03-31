@@ -388,6 +388,8 @@ export const resolveActingAsUserIdFromRequest = (request: Request) => {
   return readString(url.searchParams.get('actingAsUserId'));
 };
 
+const MAX_GEO_HIERARCHY_LENGTH = 32;
+
 const normalizeGeoHierarchy = (entries: readonly string[]): readonly string[] | undefined => {
   const normalized = entries
     .map((entry) => readString(entry))
@@ -397,7 +399,12 @@ const normalizeGeoHierarchy = (entries: readonly string[]): readonly string[] | 
     return undefined;
   }
 
-  return [...new Set(normalized)];
+  const deduplicated = [...new Set(normalized)];
+  if (deduplicated.length > MAX_GEO_HIERARCHY_LENGTH) {
+    return null;
+  }
+
+  return deduplicated;
 };
 
 export const resolveGeoContextFromRequest = (request: Request): ResolvedGeoContext | null => {

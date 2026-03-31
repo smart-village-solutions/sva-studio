@@ -53,7 +53,7 @@ const toGeoContextHash = (input: PermissionLookupInput): string | undefined => {
     return undefined;
   }
 
-  return createHash('sha256').update(JSON.stringify(normalized)).digest('hex').slice(0, 8);
+  return createHash('sha256').update(JSON.stringify(normalized)).digest('hex').slice(0, 16);
 };
 
 const toSnapshotLookupKey = (input: PermissionLookupInput) => ({

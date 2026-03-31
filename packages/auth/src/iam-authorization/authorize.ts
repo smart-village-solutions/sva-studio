@@ -27,8 +27,11 @@ const readGeoUuid = (value: unknown): string | undefined | null => {
 };
 
 const readGeoUuidArray = (value: unknown): readonly string[] | undefined | null => {
-  if (!Array.isArray(value)) {
+  if (value === undefined) {
     return undefined;
+  }
+  if (!Array.isArray(value)) {
+    return null;
   }
 
   const normalized = value

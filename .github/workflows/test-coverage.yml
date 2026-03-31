@@ -142,7 +142,6 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Run integration tests (optional on PR)
-        continue-on-error: true
         run: pnpm test:integration
 
   integration-required:

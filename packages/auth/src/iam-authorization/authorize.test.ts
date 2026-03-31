@@ -232,4 +232,31 @@ describe('authorizeHandler — geo context validation', () => {
     expect(await response.json()).toEqual({ error: 'invalid_request' });
     expect(resolvePermsMock).not.toHaveBeenCalled();
   });
+
+  it('gibt 400 invalid_request zurück wenn geoHierarchy vorhanden aber kein Array ist', async () => {
+    loadAuthReqMock.mockResolvedValueOnce({
+      instanceId: 'inst-1',
+      action: 'content.read',
+      resource: {
+        type: 'content',
+        id: 'art-1',
+        attributes: {
+          geoHierarchy: '00000000-0000-0000-0000-000000000000',
+        },
+      },
+      context: undefined,
+    });
+
+    const response = await authorizeHandler(
+      new Request('http://localhost/iam/authorize', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({}),
+      })
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: 'invalid_request' });
+    expect(resolvePermsMock).not.toHaveBeenCalled();
+  });
 });

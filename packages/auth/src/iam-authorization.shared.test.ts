@@ -153,6 +153,13 @@ describe('iam authorization shared helpers', () => {
     expect(
       resolveGeoContextFromRequest(new Request('http://localhost/iam/me/permissions?geoHierarchy=invalid'))
     ).toBeNull();
+    expect(
+      resolveGeoContextFromRequest(
+        new Request(
+          `http://localhost/iam/me/permissions?${Array.from({ length: 33 }, (_, index) => `geoHierarchy=00000000-0000-0000-0000-${String(index).padStart(12, '0')}`).join('&')}`
+        )
+      )
+    ).toBeNull();
   });
 
   it('builds me/permissions responses with request metadata and subject details', () => {

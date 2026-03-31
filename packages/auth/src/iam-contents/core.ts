@@ -1,70 +1,12 @@
-import { summarizeContentAccess, type IamContentAccessSummary } from '@sva/core';
 import { createSdkLogger } from '@sva/sdk/server';
 
 import { asApiItem, asApiList, createApiError, readPathSegment } from '../iam-account-management/api-helpers.js';
-import { resolveEffectivePermissions } from '../iam-authorization/permission-store.js';
 import type { AuthenticatedRequestContext } from '../middleware.server.js';
-import { withAuthenticatedContentHandler, resolveContentActor } from './request-context.js';
+import { resolveContentAccess, resolveContentActor, withAuthenticatedContentHandler } from './request-context.js';
 import { createContentResponse, updateContentResponse } from './mutations.js';
 import { loadContentById, loadContentDetail, loadContentHistory, loadContentListItems } from './repository.js';
 
 const logger = createSdkLogger({ component: 'iam-contents', level: 'info' });
-
-const resolveContentAccess = async (
-  actor: {
-    instanceId: string;
-    keycloakSubject: string;
-    requestId?: string;
-    traceId?: string;
-  }
-): Promise<IamContentAccessSummary> => {
-  try {
-    const resolved = await resolveEffectivePermissions({
-      instanceId: actor.instanceId,
-      keycloakSubject: actor.keycloakSubject,
-    });
-
-    if (!resolved.ok) {
-      logger.error('Content access resolution failed', {
-        operation: 'content_access',
-        instance_id: actor.instanceId,
-        request_id: actor.requestId,
-        trace_id: actor.traceId,
-        error: resolved.error,
-      });
-
-      return {
-        state: 'read_only',
-        canRead: true,
-        canCreate: false,
-        canUpdate: false,
-        reasonCode: 'context_restricted',
-        organizationIds: [],
-        sourceKinds: [],
-      };
-    }
-
-    return summarizeContentAccess(resolved.permissions);
-  } catch (error) {
-    logger.error('Content access resolution failed', {
-      operation: 'content_access',
-      instance_id: actor.instanceId,
-      request_id: actor.requestId,
-      trace_id: actor.traceId,
-      error: error instanceof Error ? error.message : String(error),
-    });
-
-    return {
-      state: 'read_only',
-      canRead: true,
-      canCreate: false,
-      canUpdate: false,
-      reasonCode: 'context_restricted',
-      organizationIds: [],
-      sourceKinds: [],
-    };
-  }
-};
 
 export const listContentsInternal = async (
   request: Request,

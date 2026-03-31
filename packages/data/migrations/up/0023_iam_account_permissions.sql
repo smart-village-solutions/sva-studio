@@ -21,3 +21,11 @@ CREATE INDEX IF NOT EXISTS idx_account_permissions_instance_account
 
 CREATE INDEX IF NOT EXISTS idx_account_permissions_instance_permission
   ON iam.account_permissions(instance_id, permission_id);
+
+ALTER TABLE iam.account_permissions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE iam.account_permissions FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS account_permissions_isolation_policy ON iam.account_permissions;
+CREATE POLICY account_permissions_isolation_policy
+  ON iam.account_permissions
+  USING (instance_id = iam.current_instance_id())
+  WITH CHECK (instance_id = iam.current_instance_id());

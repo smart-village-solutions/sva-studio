@@ -8,6 +8,7 @@ const state = vi.hoisted(() => ({
   getFeatureFlags: vi.fn(() => ({ iam_admin: true })),
   requireRoles: vi.fn(),
   resolveActorInfo: vi.fn(),
+  resolveEffectivePermissions: vi.fn(),
   createApiError: vi.fn((status: number, code: string, message: string, requestId?: string) =>
     new Response(JSON.stringify({ error: { code, message }, ...(requestId ? { requestId } : {}) }), {
       status,
@@ -46,11 +47,17 @@ vi.mock('./iam-account-management/shared.js', () => ({
   resolveActorInfo: (...args: Parameters<typeof state.resolveActorInfo>) => state.resolveActorInfo(...args),
 }));
 
+vi.mock('./iam-authorization/permission-store.js', () => ({
+  resolveEffectivePermissions: (...args: Parameters<typeof state.resolveEffectivePermissions>) =>
+    state.resolveEffectivePermissions(...args),
+}));
+
 vi.mock('./middleware.server.js', () => ({
   withAuthenticatedUser: (...args: Parameters<typeof state.withAuthenticatedUser>) => state.withAuthenticatedUser(...args),
 }));
 
 import {
+  resolveContentAccess,
   resolveContentActor,
   withAuthenticatedContentHandler,
   withContentRequestContext,
@@ -64,6 +71,7 @@ describe('iam-contents request-context', () => {
     state.getFeatureFlags.mockClear();
     state.requireRoles.mockReset();
     state.resolveActorInfo.mockReset();
+    state.resolveEffectivePermissions.mockReset();
     state.createApiError.mockClear();
     state.toJsonErrorResponse.mockClear();
     state.logger.error.mockClear();
@@ -194,6 +202,76 @@ describe('iam-contents request-context', () => {
         traceId: 'trace-content',
       },
     });
+  });
+
+  it('resolves content access from effective permissions and falls back on failures', async () => {
+    state.resolveEffectivePermissions.mockResolvedValueOnce({
+      ok: true,
+      permissions: [
+        {
+          action: 'content.read',
+          effect: 'allow',
+          provenance: { sourceKinds: ['direct_role'] },
+        },
+      ],
+    });
+
+    await expect(
+      resolveContentAccess({
+        instanceId: 'de-musterhausen',
+        keycloakSubject: 'user-1',
+        requestId: 'req-content',
+        traceId: 'trace-content',
+      })
+    ).resolves.toEqual({
+      state: 'read_only',
+      canRead: true,
+      canCreate: false,
+      canUpdate: false,
+      reasonCode: 'content_update_missing',
+      organizationIds: [],
+      sourceKinds: ['direct_role'],
+    });
+
+    state.resolveEffectivePermissions.mockResolvedValueOnce({ ok: false, error: 'db down' });
+    await expect(
+      resolveContentAccess({
+        instanceId: 'de-musterhausen',
+        keycloakSubject: 'user-1',
+        requestId: 'req-content',
+        traceId: 'trace-content',
+      })
+    ).resolves.toEqual({
+      state: 'read_only',
+      canRead: true,
+      canCreate: false,
+      canUpdate: false,
+      reasonCode: 'context_restricted',
+      organizationIds: [],
+      sourceKinds: [],
+    });
+
+    state.resolveEffectivePermissions.mockRejectedValueOnce(new Error('boom'));
+    await expect(
+      resolveContentAccess({
+        instanceId: 'de-musterhausen',
+        keycloakSubject: 'user-1',
+        requestId: 'req-content',
+        traceId: 'trace-content',
+      })
+    ).resolves.toEqual({
+      state: 'read_only',
+      canRead: true,
+      canCreate: false,
+      canUpdate: false,
+      reasonCode: 'context_restricted',
+      organizationIds: [],
+      sourceKinds: [],
+    });
+    expect(state.logger.error).toHaveBeenCalledWith(
+      'Content access resolution failed',
+      expect.objectContaining({ error: 'boom', request_id: 'req-content' })
+    );
   });
 
   it('keeps actorAccountId undefined when it is optional', async () => {

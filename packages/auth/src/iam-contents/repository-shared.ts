@@ -86,14 +86,6 @@ export const mapContentListItem = (row: ContentRow): IamContentListItem => ({
   author: row.author_display_name,
   payload: row.payload_json,
   status: row.status,
-  access: {
-    state: 'editable',
-    canRead: true,
-    canCreate: true,
-    canUpdate: true,
-    organizationIds: [],
-    sourceKinds: [],
-  },
 });
 
 export const mapContentHistoryItem = (row: ContentHistoryRow): IamContentHistoryEntry => ({

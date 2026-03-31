@@ -1,7 +1,9 @@
+import { summarizeContentAccess, type IamContentAccessSummary } from '@sva/core';
 import { getWorkspaceContext, toJsonErrorResponse, withRequestContext } from '@sva/sdk/server';
 
 import { createApiError } from '../iam-account-management/api-helpers.js';
 import { ensureFeature, getFeatureFlags } from '../iam-account-management/feature-flags.js';
+import { resolveEffectivePermissions } from '../iam-authorization/permission-store.js';
 import { logger as accountLogger, requireRoles, resolveActorInfo } from '../iam-account-management/shared.js';
 import type { AuthenticatedRequestContext } from '../middleware.server.js';
 import { withAuthenticatedUser } from '../middleware.server.js';
@@ -17,6 +19,57 @@ export type ResolvedContentActor = {
     requestId?: string;
     traceId?: string;
   };
+};
+
+export const resolveContentAccess = async (
+  actor: ResolvedContentActor['actor']
+): Promise<IamContentAccessSummary> => {
+  try {
+    const resolved = await resolveEffectivePermissions({
+      instanceId: actor.instanceId,
+      keycloakSubject: actor.keycloakSubject,
+    });
+
+    if (!resolved.ok) {
+      accountLogger.error('Content access resolution failed', {
+        operation: 'content_access',
+        instance_id: actor.instanceId,
+        request_id: actor.requestId,
+        trace_id: actor.traceId,
+        error: resolved.error,
+      });
+
+      return {
+        state: 'read_only',
+        canRead: true,
+        canCreate: false,
+        canUpdate: false,
+        reasonCode: 'context_restricted',
+        organizationIds: [],
+        sourceKinds: [],
+      };
+    }
+
+    return summarizeContentAccess(resolved.permissions);
+  } catch (error) {
+    accountLogger.error('Content access resolution failed', {
+      operation: 'content_access',
+      instance_id: actor.instanceId,
+      request_id: actor.requestId,
+      trace_id: actor.traceId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+
+    return {
+      state: 'read_only',
+      canRead: true,
+      canCreate: false,
+      canUpdate: false,
+      reasonCode: 'context_restricted',
+      organizationIds: [],
+      sourceKinds: [],
+    };
+  }
 };
 
 export const withContentRequestContext = <T>(request: Request, work: () => Promise<T>): Promise<T> =>

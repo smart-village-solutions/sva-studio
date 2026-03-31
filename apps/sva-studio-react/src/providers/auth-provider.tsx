@@ -34,6 +34,7 @@ const AUTH_ME_ENDPOINT = '/auth/me';
 const AUTH_LOGOUT_ENDPOINT = '/auth/logout';
 const SILENT_SSO_MESSAGE_TYPE = 'sva-auth:silent-sso';
 const SILENT_SSO_TIMEOUT_MS = process.env.NODE_ENV === 'test' ? 25 : 8_000;
+const AUTH_DEBUG_ENABLED = process.env.NODE_ENV !== 'production';
 
 const AuthContext = React.createContext<AuthContextValue | null>(null);
 
@@ -64,6 +65,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     return () => {
       isMountedRef.current = false;
     };
+  }, []);
+
+  const logAuthDebug = React.useCallback((message: string, details: Record<string, unknown> = {}) => {
+    if (!AUTH_DEBUG_ENABLED || typeof globalThis.console?.info !== 'function') {
+      return;
+    }
+
+    globalThis.console.info(`[auth-provider] ${message}`, details);
   }, []);
 
   const attemptSilentSessionRecovery = React.useCallback(async (): Promise<boolean> => {
@@ -127,14 +136,22 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
 
     try {
+      logAuthDebug('loadUser:start', { silent, path: globalThis.location?.pathname ?? null });
       let response = await fetch(AUTH_ME_ENDPOINT, { credentials: 'include' });
+      logAuthDebug('loadUser:response', {
+        silent,
+        status: response.status,
+        ok: response.ok,
+      });
 
       if (!response.ok && response.status === 401) {
         if (isMountedRef.current) {
           setIsRecoveringSession(true);
         }
 
+        logAuthDebug('loadUser:attemptSilentRecovery', { silent });
         const recovered = await attemptSilentSessionRecovery();
+        logAuthDebug('loadUser:silentRecoveryResult', { recovered });
 
         if (isMountedRef.current) {
           setIsRecoveringSession(false);
@@ -142,6 +159,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
         if (recovered) {
           response = await fetch(AUTH_ME_ENDPOINT, { credentials: 'include' });
+          logAuthDebug('loadUser:responseAfterRecovery', {
+            status: response.status,
+            ok: response.ok,
+          });
         }
       }
 
@@ -150,6 +171,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           setUser(null);
           setHasResolvedSession(true);
         }
+        logAuthDebug('loadUser:unauthenticated', { silent, status: response.status });
         return;
       }
 
@@ -158,6 +180,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setUser(payload);
         setHasResolvedSession(true);
       }
+      logAuthDebug('loadUser:authenticated', {
+        hasUser: Boolean(payload),
+        userId: payload?.id ?? null,
+        instanceId: payload?.instanceId ?? null,
+      });
     } catch (cause) {
       if (isMountedRef.current) {
         setUser(null);
@@ -165,12 +192,15 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setHasResolvedSession(true);
         setIsRecoveringSession(false);
       }
+      logAuthDebug('loadUser:error', {
+        message: cause instanceof Error ? cause.message : String(cause),
+      });
     } finally {
       if (!silent && isMountedRef.current) {
         setIsLoading(false);
       }
     }
-  }, []);
+  }, [attemptSilentSessionRecovery, logAuthDebug]);
 
   React.useEffect(() => {
     void loadUser(false);

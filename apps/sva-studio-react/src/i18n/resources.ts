@@ -846,6 +846,13 @@ export const i18nResources = {
           },
           permissions: {
             subtitle: 'Verfügbare Berechtigungen nach Fachbereich gruppiert direkt an der Rolle pflegen.',
+            cockpitHint:
+              'Für die technische Rechteprüfung und serverseitige Entscheidungsdetails bleibt das IAM-Cockpit die maßgebliche Referenz.',
+            showTechnicalDetails: 'Technische Details anzeigen',
+            hideTechnicalDetails: 'Technische Details ausblenden',
+            assigned: 'Zugeordnet',
+            notAssigned: 'Nicht zugeordnet',
+            actionLabel: 'Aktion: {{value}}',
           },
           assignments: {
             summaryTitle: 'Zuweisungsübersicht',
@@ -2060,6 +2067,13 @@ export const i18nResources = {
           },
           permissions: {
             subtitle: 'Maintain available permissions grouped by business area directly on the role.',
+            cockpitHint:
+              'The IAM cockpit remains the authoritative reference for technical permission checks and server-side decision details.',
+            showTechnicalDetails: 'Show technical details',
+            hideTechnicalDetails: 'Hide technical details',
+            assigned: 'Assigned',
+            notAssigned: 'Not assigned',
+            actionLabel: 'Action: {{value}}',
           },
           assignments: {
             summaryTitle: 'Assignment overview',

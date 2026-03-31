@@ -207,6 +207,54 @@ describe('RoleDetailPage', () => {
     });
   });
 
+  it('can reveal technical permission details and links to the IAM cockpit', () => {
+    useRolesMock.mockReturnValue({
+      roles: [
+        {
+          id: 'role-2',
+          roleKey: 'editor',
+          roleName: 'Editor',
+          externalRoleName: 'editor',
+          managedBy: 'studio',
+          description: 'Editorial role',
+          isSystemRole: false,
+          roleLevel: 20,
+          memberCount: 3,
+          syncState: 'synced',
+          permissions: [{ id: 'perm-2', permissionKey: 'content.write', description: null }],
+        },
+      ],
+      isLoading: false,
+      error: null,
+      mutationError: null,
+      reconcileReport: null,
+      refetch: vi.fn(),
+      clearMutationError: vi.fn(),
+      createRole: vi.fn(),
+      updateRole: vi.fn(),
+      deleteRole: vi.fn(),
+      retryRoleSync: vi.fn(),
+      reconcile: vi.fn(),
+    });
+
+    render(<RoleDetailPage roleId="role-2" activeTab="permissions" />);
+
+    const cockpitLinks = screen.getAllByRole('link', { name: 'Im IAM-Cockpit prüfen' });
+    expect(cockpitLinks).toHaveLength(2);
+    expect(cockpitLinks[0]?.getAttribute('href')).toBe('/admin/iam?tab=rights');
+    expect(cockpitLinks[1]?.getAttribute('href')).toBe('/admin/iam?tab=rights');
+    expect(screen.queryByText('Technischer Schlüssel: content.read')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Technische Details anzeigen' }));
+
+    expect(screen.getByText('Technischer Schlüssel: content.read')).toBeTruthy();
+    expect(screen.getAllByText('Fachbereich: Inhalte').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText('Aktion: Lesen')).toBeTruthy();
+    expect(screen.getByText('Aktion: Bearbeiten')).toBeTruthy();
+    expect(screen.getByText('Zugeordnet')).toBeTruthy();
+    expect(screen.getAllByText('Nicht zugeordnet').length).toBeGreaterThanOrEqual(1);
+  });
+
   it('renders system roles as read-only on the detail page', () => {
     useRolesMock.mockReturnValue({
       roles: [

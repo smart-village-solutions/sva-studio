@@ -161,6 +161,7 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
   const [isSavingMeta, setIsSavingMeta] = React.useState(false);
   const [isSavingPermissions, setIsSavingPermissions] = React.useState(false);
   const [isUpdatingAssignmentsForUserIds, setIsUpdatingAssignmentsForUserIds] = React.useState<string[]>([]);
+  const [showTechnicalDetails, setShowTechnicalDetails] = React.useState(false);
 
   React.useEffect(() => {
     if (!role) {
@@ -475,9 +476,35 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
         hidden={activeTab !== 'permissions'}
         className="space-y-4 rounded-xl border border-border bg-card p-4 shadow-shell"
       >
-        <div className="space-y-1">
-          <h2 className="text-lg font-semibold text-foreground">{t('admin.roles.workspace.editPermissionsTitle')}</h2>
-          <p className="text-sm text-muted-foreground">{t('admin.roles.detail.permissions.subtitle')}</p>
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
+          <div className="space-y-1">
+            <h2 className="text-lg font-semibold text-foreground">{t('admin.roles.workspace.editPermissionsTitle')}</h2>
+            <p className="text-sm text-muted-foreground">{t('admin.roles.detail.permissions.subtitle')}</p>
+          </div>
+          <Card className="space-y-3 p-4 shadow-none">
+            <div className="space-y-1">
+              <h3 className="text-sm font-semibold text-foreground">{t('admin.roles.workspace.sideTitle')}</h3>
+              <p className="text-sm text-muted-foreground">{t('admin.roles.workspace.sideSubtitle')}</p>
+            </div>
+            <p className="text-xs text-muted-foreground">{t('admin.roles.detail.permissions.cockpitHint')}</p>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                aria-pressed={showTechnicalDetails}
+                onClick={() => setShowTechnicalDetails((current) => !current)}
+              >
+                {showTechnicalDetails
+                  ? t('admin.roles.detail.permissions.hideTechnicalDetails')
+                  : t('admin.roles.detail.permissions.showTechnicalDetails')}
+              </Button>
+              <Button asChild type="button" variant="outline">
+                <Link to="/admin/iam" search={{ tab: 'rights' }}>
+                  {t('admin.roles.workspace.openIamCta')}
+                </Link>
+              </Button>
+            </div>
+          </Card>
         </div>
 
         {permissionsApi.error ? (
@@ -494,20 +521,41 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
                 <div className="space-y-2">
                   {permissions.map((permission) => {
                     const permissionSummary = summarizePermission(permission.permissionKey);
+                    const isAssigned = permissionDraft.includes(permission.id);
                     return (
                       <label key={permission.id} className="flex items-start gap-3 text-sm">
                         <input
                           type="checkbox"
                           className="mt-1"
-                          checked={permissionDraft.includes(permission.id)}
+                          checked={isAssigned}
                           disabled={isReadOnly}
                           onChange={() => togglePermissionDraft(permission.id)}
                         />
                         <span className="space-y-1">
-                          <span className="block font-medium text-foreground">{permissionSummary.detailLabel}</span>
+                          <span className="flex flex-wrap items-center gap-2">
+                            <span className="block font-medium text-foreground">{permissionSummary.detailLabel}</span>
+                            <Badge variant={isAssigned ? 'default' : 'outline'}>
+                              {isAssigned
+                                ? t('admin.roles.detail.permissions.assigned')
+                                : t('admin.roles.detail.permissions.notAssigned')}
+                            </Badge>
+                          </span>
                           <span className="block text-xs text-muted-foreground">
                             {permission.description ?? permission.permissionKey}
                           </span>
+                          {showTechnicalDetails ? (
+                            <span className="block rounded-md border border-border/70 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+                              <span className="block">
+                                {t('admin.roles.workspace.technicalKey', { value: permission.permissionKey })}
+                              </span>
+                              <span className="block">
+                                {t('admin.roles.workspace.resourceLabel', { value: permissionSummary.resourceLabel })}
+                              </span>
+                              <span className="block">
+                                {t('admin.roles.detail.permissions.actionLabel', { value: permissionSummary.actionLabel })}
+                              </span>
+                            </span>
+                          ) : null}
                         </span>
                       </label>
                     );

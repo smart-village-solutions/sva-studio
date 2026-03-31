@@ -16,6 +16,20 @@ import {
   logger,
 } from './shared.js';
 
+const readGeoString = (value: unknown): string | undefined => readString(value);
+
+const readGeoStringArray = (value: unknown): readonly string[] | undefined => {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+
+  const normalized = value
+    .map((entry) => readString(entry))
+    .filter((entry): entry is string => Boolean(entry));
+
+  return normalized.length > 0 ? [...new Set(normalized)] : undefined;
+};
+
 const buildDeniedResponse = (input: DeniedAuthorizeResponseInput): AuthorizeResponse => ({
   allowed: false,
   reason: input.reason,
@@ -96,6 +110,12 @@ export const authorizeHandler = async (request: Request): Promise<Response> => {
         instanceId: payload.instanceId,
         keycloakSubject: actingAsUserId ?? user.id,
         organizationId: payload.context?.organizationId ?? payload.resource.organizationId,
+        geoUnitId:
+          readGeoString(payload.resource.attributes?.geoUnitId) ??
+          readGeoString(payload.context?.attributes?.geoUnitId),
+        geoHierarchy:
+          readGeoStringArray(payload.resource.attributes?.geoHierarchy) ??
+          readGeoStringArray(payload.context?.attributes?.geoHierarchy),
       });
 
       if (!resolved.ok) {

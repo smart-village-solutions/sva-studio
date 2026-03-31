@@ -101,6 +101,8 @@ vi.mock('./redis-permission-snapshot.server', () => ({
 // Imports (nach Mocks)
 // ---------------------------------------------------------------------------
 import { resolveEffectivePermissions } from './permission-store';
+import { permissionSnapshotCache } from './shared';
+import { getRedisPermissionSnapshot, setRedisPermissionSnapshot } from './redis-permission-snapshot.server';
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -182,6 +184,41 @@ describe('resolveEffectivePermissions — Cache-Miss', () => {
     if (!result.ok) {
       expect(result.error).toBe('database_unavailable');
     }
+  });
+
+  it('berücksichtigt Geo-Kontext in Memory- und Redis-Snapshot-Keys', async () => {
+    await resolveEffectivePermissions({
+      ...baseInput,
+      organizationId: 'org-1',
+      geoUnitId: 'geo-1',
+      geoHierarchy: ['geo-root', 'geo-1'],
+    });
+
+    expect(permissionSnapshotCache.get).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: 'inst-test',
+        keycloakSubject: 'user-test',
+        organizationId: 'org-1',
+        geoContextHash: expect.any(String),
+      })
+    );
+    expect(getRedisPermissionSnapshot).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: 'inst-test',
+        userId: 'user-test',
+        organizationId: 'org-1',
+        geoCtxHash: expect.any(String),
+      })
+    );
+    expect(setRedisPermissionSnapshot).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: 'inst-test',
+        userId: 'user-test',
+        organizationId: 'org-1',
+        geoCtxHash: expect.any(String),
+      }),
+      expect.any(Array)
+    );
   });
 });
 

@@ -27,6 +27,7 @@ import {
   buildMePermissionsResponse,
   readResourceType,
   resolveActingAsUserIdFromRequest,
+  resolveGeoContextFromRequest,
   resolveInstanceIdFromRequest,
   resolveOrganizationIdFromRequest,
   toEffectivePermissions,
@@ -128,6 +129,30 @@ describe('iam authorization shared helpers', () => {
         new Request('http://localhost/iam/me/permissions?actingAsUserId=target-subject')
       )
     ).toBe('target-subject');
+  });
+
+  it('parses additive geo parameters for me/permissions', () => {
+    expect(
+      resolveGeoContextFromRequest(
+        new Request(
+          'http://localhost/iam/me/permissions?geoUnitId=22222222-2222-2222-8222-222222222222&geoHierarchy=11111111-1111-1111-8111-111111111111,22222222-2222-2222-8222-222222222222&geoHierarchy=33333333-3333-3333-8333-333333333333'
+        )
+      )
+    ).toEqual({
+      geoUnitId: '22222222-2222-2222-8222-222222222222',
+      geoHierarchy: [
+        '11111111-1111-1111-8111-111111111111',
+        '22222222-2222-2222-8222-222222222222',
+        '33333333-3333-3333-8333-333333333333',
+      ],
+    });
+
+    expect(
+      resolveGeoContextFromRequest(new Request('http://localhost/iam/me/permissions?geoUnitId=invalid'))
+    ).toBeNull();
+    expect(
+      resolveGeoContextFromRequest(new Request('http://localhost/iam/me/permissions?geoHierarchy=invalid'))
+    ).toBeNull();
   });
 
   it('builds me/permissions responses with request metadata and subject details', () => {

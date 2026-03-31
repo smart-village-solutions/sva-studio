@@ -163,6 +163,17 @@ describe('IAM authorization integration denials', () => {
     expect(await response.json()).toEqual({ error: 'invalid_organization_id' });
   });
 
+  it('rejects me/permissions for invalid geo query context', async () => {
+    const request = new Request('http://localhost/iam/me/permissions?geoUnitId=invalid', {
+      method: 'GET',
+    });
+
+    const response = await mePermissionsHandler(request);
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: 'invalid_request' });
+  });
+
   it('denies authorize for cross-instance request', async () => {
     integrationState.user = {
       ...integrationState.user,

@@ -1,4 +1,5 @@
 import type { EffectivePermission } from '@sva/core';
+import { createHash } from 'node:crypto';
 
 import type { PermSnapshotKey } from './redis-permission-snapshot.server.js';
 import {
@@ -26,12 +27,47 @@ type PermissionLookupInput = {
   instanceId: string;
   keycloakSubject: string;
   organizationId?: string;
+  geoUnitId?: string;
+  geoHierarchy?: readonly string[];
 };
+
+const normalizeGeoContext = (input: PermissionLookupInput) => {
+  const geoUnitId = input.geoUnitId?.trim() || undefined;
+  const geoHierarchy = input.geoHierarchy
+    ?.map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0);
+
+  if (!geoUnitId && (!geoHierarchy || geoHierarchy.length === 0)) {
+    return undefined;
+  }
+
+  return {
+    ...(geoUnitId ? { geoUnitId } : {}),
+    ...(geoHierarchy && geoHierarchy.length > 0 ? { geoHierarchy: [...new Set(geoHierarchy)] } : {}),
+  };
+};
+
+const toGeoContextHash = (input: PermissionLookupInput): string | undefined => {
+  const normalized = normalizeGeoContext(input);
+  if (!normalized) {
+    return undefined;
+  }
+
+  return createHash('sha256').update(JSON.stringify(normalized)).digest('hex').slice(0, 8);
+};
+
+const toSnapshotLookupKey = (input: PermissionLookupInput) => ({
+  instanceId: input.instanceId,
+  keycloakSubject: input.keycloakSubject,
+  organizationId: input.organizationId,
+  geoContextHash: toGeoContextHash(input),
+});
 
 const toRedisSnapshotKey = (input: PermissionLookupInput): PermSnapshotKey => ({
   instanceId: input.instanceId,
   userId: input.keycloakSubject,
   organizationId: input.organizationId,
+  geoCtxHash: toGeoContextHash(input),
 });
 
 const listScopedPermissionRows = async (
@@ -175,7 +211,8 @@ const loadPermissionsFromDb = async (input: PermissionLookupInput): Promise<read
 export const resolveEffectivePermissions = async (input: PermissionLookupInput): Promise<EffectivePermissionsResolution> => {
   await ensureInvalidationListener();
 
-  const lookup = permissionSnapshotCache.get(input);
+  const snapshotLookupKey = toSnapshotLookupKey(input);
+  const lookup = permissionSnapshotCache.get(snapshotLookupKey);
 
   if (lookup.status === 'hit' && lookup.snapshot) {
     cacheMetricsState.lookups += 1;
@@ -219,7 +256,12 @@ export const resolveEffectivePermissions = async (input: PermissionLookupInput):
 
   if (redisLookup.hit) {
     cacheMetricsState.lookups += 1;
-    const snapshot = permissionSnapshotCache.set(input, redisLookup.permissions, Date.now(), redisLookup.version);
+    const snapshot = permissionSnapshotCache.set(
+      snapshotLookupKey,
+      redisLookup.permissions,
+      Date.now(),
+      redisLookup.version
+    );
     iamCacheLookupCounter.add(1, { hit: true });
     cacheLogger.debug('Permission snapshot cache lookup', {
       operation: 'cache_lookup',
@@ -268,7 +310,12 @@ export const resolveEffectivePermissions = async (input: PermissionLookupInput):
       return { ok: false, error: 'database_unavailable' };
     }
     recordPermissionCacheRecompute();
-    const snapshot = permissionSnapshotCache.set(input, permissions, Date.now(), redisWrite.version);
+    const snapshot = permissionSnapshotCache.set(
+      snapshotLookupKey,
+      permissions,
+      Date.now(),
+      redisWrite.version
+    );
 
     if (lookup.status === 'stale') {
       cacheLogger.info('Permission snapshot recomputed after stale detection', {

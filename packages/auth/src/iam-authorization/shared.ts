@@ -42,6 +42,11 @@ export type EffectivePermissionsResolution =
     }
   | { ok: false; error: 'database_unavailable' };
 
+export type ResolvedGeoContext = {
+  readonly geoUnitId?: string;
+  readonly geoHierarchy?: readonly string[];
+};
+
 export const logger: ReturnType<typeof createSdkLogger> = createSdkLogger({ component: 'iam-authorize', level: 'info' });
 export const cacheLogger: ReturnType<typeof createSdkLogger> = createSdkLogger({
   component: 'iam-cache',
@@ -377,4 +382,43 @@ export const resolveOrganizationIdFromRequest = (request: Request) => {
 export const resolveActingAsUserIdFromRequest = (request: Request) => {
   const url = new URL(request.url);
   return readString(url.searchParams.get('actingAsUserId'));
+};
+
+const normalizeGeoHierarchy = (entries: readonly string[]): readonly string[] | undefined => {
+  const normalized = entries
+    .map((entry) => readString(entry))
+    .filter((entry): entry is string => Boolean(entry));
+
+  if (normalized.length === 0) {
+    return undefined;
+  }
+
+  return [...new Set(normalized)];
+};
+
+export const resolveGeoContextFromRequest = (request: Request): ResolvedGeoContext | null => {
+  const url = new URL(request.url);
+  const geoUnitId = readString(url.searchParams.get('geoUnitId'));
+  if (geoUnitId && !isUuid(geoUnitId)) {
+    return null;
+  }
+
+  const geoHierarchy = normalizeGeoHierarchy(
+    url.searchParams
+      .getAll('geoHierarchy')
+      .flatMap((entry) => entry.split(','))
+  );
+
+  if (geoHierarchy?.some((entry) => !isUuid(entry))) {
+    return null;
+  }
+
+  if (!geoUnitId && !geoHierarchy) {
+    return {};
+  }
+
+  return {
+    ...(geoUnitId ? { geoUnitId } : {}),
+    ...(geoHierarchy ? { geoHierarchy } : {}),
+  };
 };

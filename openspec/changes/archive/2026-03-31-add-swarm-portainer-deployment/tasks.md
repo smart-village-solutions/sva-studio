@@ -28,5 +28,3 @@
 - [x] 3.4 Dokumentation zur Ableitung `instanceId` aus der Subdomain, zur Root-Domain als kanonischem Auth-Host, zum fail-closed-Error-Contract (`403` + `{ error, message }` + `X-Request-Id`) und zum IDN/Punycode-Ausschluss ergänzen
 - [x] 3.5 Dokumentation zur Env-Allowlist als autoritativer Freigabequelle ergänzen (Startup-Validierung, Format, Skalierungsgrenze)
 - [x] 3.6 Compose-/Stack-Datei statisch validieren, z. B. über `docker compose -f deploy/portainer/docker-compose.yml config`
-- [ ] 3.7 Swarm-Smoke-Deployment mit Overlay-Netz, Stack-Deploy, erlaubtem Host, unbekanntem Host und Root-Domain-Verhalten validieren
-- [ ] 3.8 Kanonischen Login-/Logout-Flow sowie die fail-closed-Grenze für nicht unterstützte Instanz-Host-Auth-Flows validieren

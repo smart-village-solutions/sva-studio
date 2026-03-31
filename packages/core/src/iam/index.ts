@@ -27,6 +27,7 @@ export type {
   IamRoleSyncError,
   IamRoleSyncState,
   IamUserDetail,
+  IamUserDirectPermissionAssignment,
   IamUserGroupAssignment,
   IamUserImportSyncReport,
   IamUserListItem,

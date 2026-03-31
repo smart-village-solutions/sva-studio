@@ -26,11 +26,12 @@ export type PermissionRow = {
   resource_id?: string | null;
   effect?: IamPermissionEffect | null;
   scope?: Record<string, unknown> | null;
-  role_id: string;
+  account_id?: string | null;
+  role_id?: string | null;
   organization_id: string | null;
   group_id?: string | null;
   group_key?: string | null;
-  source_kind?: 'direct_role' | 'group_role' | null;
+  source_kind?: 'direct_user' | 'direct_role' | 'group_role' | null;
 };
 
 export type EffectivePermissionsResolution =
@@ -153,8 +154,9 @@ export const getPermissionCacheHealth = (nowMs = Date.now()) => {
 export const readResourceType = (permissionKey: string) => permissionKey.split('.')[0] ?? permissionKey;
 
 const SOURCE_KIND_ORDER: Record<NonNullable<PermissionRow['source_kind']>, number> = {
-  direct_role: 0,
-  group_role: 1,
+  direct_user: 0,
+  direct_role: 1,
+  group_role: 2,
 };
 
 const sortStrings = (values: readonly string[]): readonly string[] => [...values].sort((left, right) => left.localeCompare(right));
@@ -173,6 +175,7 @@ export const toEffectivePermissions = (rows: readonly PermissionRow[]): Effectiv
     const resourceId = row.resource_id?.trim() || undefined;
     const effect = row.effect ?? 'allow';
     const scope = row.scope ?? undefined;
+    const accountId = row.account_id ?? undefined;
     const groupId = row.group_id ?? undefined;
     const groupKey = row.group_key ?? undefined;
     const bucketKey = JSON.stringify({
@@ -193,7 +196,8 @@ export const toEffectivePermissions = (rows: readonly PermissionRow[]): Effectiv
         organizationId: row.organization_id ?? undefined,
         effect,
         scope,
-        sourceRoleIds: [row.role_id],
+        sourceUserIds: accountId ? [accountId] : [],
+        sourceRoleIds: row.role_id ? [row.role_id] : [],
         sourceGroupIds: groupId ? [groupId] : [],
         ...(groupKey ? { groupName: groupKey } : {}),
         provenance: row.source_kind ? { sourceKinds: [row.source_kind] } : undefined,
@@ -201,7 +205,10 @@ export const toEffectivePermissions = (rows: readonly PermissionRow[]): Effectiv
       continue;
     }
 
-    const sourceRoleIds = existing.sourceRoleIds.includes(row.role_id) ? existing.sourceRoleIds : [...existing.sourceRoleIds, row.role_id];
+    const sourceUserIds =
+      accountId && !existing.sourceUserIds.includes(accountId) ? [...existing.sourceUserIds, accountId] : existing.sourceUserIds;
+    const sourceRoleIds =
+      row.role_id && !existing.sourceRoleIds.includes(row.role_id) ? [...existing.sourceRoleIds, row.role_id] : existing.sourceRoleIds;
     const sourceGroupIds =
       groupId && !existing.sourceGroupIds.includes(groupId) ? [...existing.sourceGroupIds, groupId] : existing.sourceGroupIds;
     const groupName = groupKey ?? existing.groupName;
@@ -211,6 +218,7 @@ export const toEffectivePermissions = (rows: readonly PermissionRow[]): Effectiv
 
     buckets.set(bucketKey, {
       ...existing,
+      sourceUserIds: sortStrings(sourceUserIds),
       sourceRoleIds: sortStrings(sourceRoleIds),
       sourceGroupIds: sortStrings(sourceGroupIds),
       ...(groupName ? { groupName } : {}),
@@ -220,6 +228,7 @@ export const toEffectivePermissions = (rows: readonly PermissionRow[]): Effectiv
 
   return [...buckets.values()].map((permission) => ({
     ...permission,
+    sourceUserIds: sortStrings(permission.sourceUserIds),
     sourceRoleIds: sortStrings(permission.sourceRoleIds),
     sourceGroupIds: sortStrings(permission.sourceGroupIds),
     provenance: permission.provenance?.sourceKinds
@@ -347,7 +356,8 @@ export const buildMePermissionsResponse = (input: {
   snapshotVersion: input.snapshotVersion,
   cacheStatus: input.cacheStatus,
   provenance: {
-    hasGroupDerivedPermissions: input.permissions.some((permission) => permission.sourceGroupIds.length > 0),
+    hasDirectUserPermissions: input.permissions.some((permission) => (permission.sourceUserIds?.length ?? 0) > 0),
+    hasGroupDerivedPermissions: input.permissions.some((permission) => (permission.sourceGroupIds?.length ?? 0) > 0),
     hasGeoInheritance: input.permissions.some((permission) => {
       const scope = permission.scope;
       if (!scope) {

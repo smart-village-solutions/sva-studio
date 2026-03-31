@@ -24,7 +24,7 @@ type ContentPermissionView = {
   readonly effect?: 'allow' | 'deny';
   readonly organizationId?: string;
   readonly provenance?: {
-    readonly sourceKinds?: readonly ('direct_role' | 'group_role')[];
+    readonly sourceKinds?: readonly ('direct_user' | 'direct_role' | 'group_role')[];
   };
 };
 
@@ -35,7 +35,7 @@ export type IamContentAccessSummary = {
   readonly canUpdate: boolean;
   readonly reasonCode?: IamContentAccessReasonCode;
   readonly organizationIds: readonly string[];
-  readonly sourceKinds: readonly ('direct_role' | 'group_role')[];
+  readonly sourceKinds: readonly ('direct_user' | 'direct_role' | 'group_role')[];
 };
 
 export type IamContentHistoryEntry = {
@@ -83,7 +83,7 @@ const CONTENT_UPDATE_ACTIONS = new Set(['content.update', 'content.write']);
 
 const uniqueSortedStrings = (values: readonly string[]) => [...new Set(values.filter(Boolean))].sort((left, right) => left.localeCompare(right));
 
-const uniqueSortedSourceKinds = (values: readonly ('direct_role' | 'group_role')[]) =>
+const uniqueSortedSourceKinds = (values: readonly ('direct_user' | 'direct_role' | 'group_role')[]) =>
   [...new Set(values)].sort((left, right) => left.localeCompare(right));
 
 const matchesActionSet = (action: string, candidates: ReadonlySet<string>) => candidates.has(action.trim());

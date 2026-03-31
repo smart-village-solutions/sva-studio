@@ -90,8 +90,9 @@ SELECT DISTINCT
   p.action,
   p.resource_type,
   p.resource_id,
-  p.effect,
+  COALESCE(ap_direct.effect, p.effect) AS effect,
   p.scope,
+  source.account_id,
   source.role_id,
   source.group_id,
   source.group_key,
@@ -99,6 +100,9 @@ SELECT DISTINCT
   $3::uuid AS organization_id
 FROM iam.accounts a
 JOIN (
+  SELECT im.account_id, NULL::uuid AS role_id, im.instance_id, NULL::uuid AS group_id, NULL::text AS group_key, 'direct_user'::text AS source_kind
+  FROM iam.instance_memberships im
+  UNION
   SELECT ar.account_id, ar.role_id, ar.instance_id, NULL::uuid AS group_id, NULL::text AS group_key, 'direct_role'::text AS source_kind
   FROM iam.account_roles ar
   WHERE ar.valid_from <= NOW()
@@ -123,13 +127,30 @@ JOIN iam.account_organizations ao
  AND ao.account_id = source.account_id
 JOIN target_organization target
   ON TRUE
-JOIN iam.role_permissions rp
-  ON rp.instance_id = source.instance_id
- AND rp.role_id = source.role_id
 JOIN iam.permissions p
- ON p.instance_id = rp.instance_id
- AND p.id = rp.permission_id
+ ON p.instance_id = source.instance_id
+LEFT JOIN iam.account_permissions ap_direct
+  ON source.role_id IS NULL
+ AND ap_direct.instance_id = source.instance_id
+ AND ap_direct.account_id = source.account_id
+ AND ap_direct.permission_id = p.id
 WHERE a.keycloak_subject = $2
+  AND (
+    (
+      source.role_id IS NOT NULL
+      AND EXISTS (
+        SELECT 1
+        FROM iam.role_permissions rp
+        WHERE rp.instance_id = source.instance_id
+          AND rp.role_id = source.role_id
+          AND rp.permission_id = p.id
+      )
+    )
+    OR (
+      source.role_id IS NULL
+      AND ap_direct.permission_id IS NOT NULL
+    )
+  )
   AND (
     ao.organization_id = target.id
     OR ao.organization_id = ANY(target.hierarchy_path)
@@ -152,8 +173,9 @@ SELECT DISTINCT
   p.action,
   p.resource_type,
   p.resource_id,
-  p.effect,
+  COALESCE(ap_direct.effect, p.effect) AS effect,
   p.scope,
+  source.account_id,
   source.role_id,
   source.group_id,
   source.group_key,
@@ -161,6 +183,9 @@ SELECT DISTINCT
   ao.organization_id
 FROM iam.accounts a
 JOIN (
+  SELECT im.account_id, NULL::uuid AS role_id, im.instance_id, NULL::uuid AS group_id, NULL::text AS group_key, 'direct_user'::text AS source_kind
+  FROM iam.instance_memberships im
+  UNION
   SELECT ar.account_id, ar.role_id, ar.instance_id, NULL::uuid AS group_id, NULL::text AS group_key, 'direct_role'::text AS source_kind
   FROM iam.account_roles ar
   WHERE ar.valid_from <= NOW()
@@ -183,13 +208,30 @@ JOIN (
 LEFT JOIN iam.account_organizations ao
   ON ao.instance_id = source.instance_id
  AND ao.account_id = source.account_id
-JOIN iam.role_permissions rp
-  ON rp.instance_id = source.instance_id
- AND rp.role_id = source.role_id
 JOIN iam.permissions p
-  ON p.instance_id = rp.instance_id
- AND p.id = rp.permission_id
+  ON p.instance_id = source.instance_id
+LEFT JOIN iam.account_permissions ap_direct
+  ON source.role_id IS NULL
+ AND ap_direct.instance_id = source.instance_id
+ AND ap_direct.account_id = source.account_id
+ AND ap_direct.permission_id = p.id
 WHERE a.keycloak_subject = $2
+  AND (
+    (
+      source.role_id IS NOT NULL
+      AND EXISTS (
+        SELECT 1
+        FROM iam.role_permissions rp
+        WHERE rp.instance_id = source.instance_id
+          AND rp.role_id = source.role_id
+          AND rp.permission_id = p.id
+      )
+    )
+    OR (
+      source.role_id IS NULL
+      AND ap_direct.permission_id IS NOT NULL
+    )
+  )
 `,
     [input.instanceId, input.keycloakSubject]
   );

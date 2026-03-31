@@ -50,6 +50,12 @@ type UserDetailRow = {
   role_rows: UserDetailRoleRow[] | null;
   group_rows: UserDetailGroupRow[] | null;
   permission_rows: Array<{ permission_key: string }> | null;
+  direct_permission_rows: Array<{
+    permission_id: string;
+    permission_key: string;
+    effect: 'allow' | 'deny';
+    description: string | null;
+  }> | null;
 };
 
 const USER_DETAIL_QUERY = `
@@ -106,7 +112,18 @@ SELECT
       )
     ) FILTER (WHERE p.permission_key IS NOT NULL),
     '[]'::json
-  ) AS permission_rows
+  ) AS permission_rows,
+  COALESCE(
+    json_agg(
+      DISTINCT jsonb_build_object(
+        'permission_id', ap.permission_id,
+        'permission_key', ap_permission.permission_key,
+        'effect', ap.effect,
+        'description', ap_permission.description
+      )
+    ) FILTER (WHERE ap.permission_id IS NOT NULL),
+    '[]'::json
+  ) AS direct_permission_rows
 FROM iam.accounts a
 JOIN iam.instance_memberships im
   ON im.account_id = a.id
@@ -134,6 +151,12 @@ LEFT JOIN iam.groups g
 LEFT JOIN iam.permissions p
   ON p.instance_id = rp.instance_id
  AND p.id = rp.permission_id
+LEFT JOIN iam.account_permissions ap
+  ON ap.instance_id = im.instance_id
+ AND ap.account_id = im.account_id
+LEFT JOIN iam.permissions ap_permission
+  ON ap_permission.instance_id = ap.instance_id
+ AND ap_permission.id = ap.permission_id
 LEFT JOIN iam.activity_logs al
   ON al.instance_id = im.instance_id
  AND al.account_id = a.id
@@ -156,6 +179,14 @@ const mapRoleRows = (roleRows: UserDetailRoleRow[] | null) =>
 
 const mapPermissionRows = (permissionRows: UserDetailRow['permission_rows']) =>
   permissionRows?.map((entry) => entry.permission_key) ?? [];
+
+const mapDirectPermissionRows = (permissionRows: UserDetailRow['direct_permission_rows']) =>
+  permissionRows?.map((entry) => ({
+    permissionId: entry.permission_id,
+    permissionKey: entry.permission_key,
+    effect: entry.effect,
+    ...(entry.description ? { description: entry.description } : {}),
+  })) ?? [];
 
 const mapGroupRows = (groupRows: UserDetailGroupRow[] | null) =>
   groupRows?.map((entry) => ({
@@ -194,6 +225,7 @@ const mapUserDetailRow = (row: UserDetailRow): IamUserDetail => {
     avatarUrl: row.avatar_url ?? undefined,
     notes: row.notes ?? undefined,
     permissions: mapPermissionRows(row.permission_rows),
+    directPermissions: mapDirectPermissionRows(row.direct_permission_rows),
     groups: mapGroupRows(row.group_rows),
     mainserverUserApplicationSecretSet: false,
   };

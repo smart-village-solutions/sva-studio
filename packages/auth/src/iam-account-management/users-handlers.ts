@@ -49,6 +49,7 @@ import type { IdentityUserAttributes } from '../identity-provider-port.js';
 import {
   buildMainserverIdentityAttributes,
   getSvaMainserverCredentialAttributeNames,
+  type MainserverCredentialState,
   resolveMainserverCredentialState,
 } from '../mainserver-credentials.server.js';
 import { buildRoleSyncFailure, getRoleExternalName } from './role-audit.js';
@@ -75,6 +76,79 @@ const resolveExternalRoleNames = async (
 ): Promise<readonly string[]> => {
   const roles = await resolveRolesByIds(client, input);
   return roles.map((role) => getRoleExternalName(role));
+};
+
+const resolvePermissionIds = async (
+  client: QueryClient,
+  input: { instanceId: string; permissionIds: readonly string[] }
+): Promise<readonly string[]> => {
+  if (input.permissionIds.length === 0) {
+    return [];
+  }
+
+  const result = await client.query<{ id: string }>(
+    `
+SELECT p.id
+FROM iam.permissions p
+WHERE p.instance_id = $1
+  AND p.id = ANY($2::uuid[]);
+`,
+    [input.instanceId, input.permissionIds]
+  );
+
+  return result.rows.map((row) => row.id);
+};
+
+const assignDirectPermissions = async (
+  client: QueryClient,
+  input: {
+    instanceId: string;
+    accountId: string;
+    permissions: readonly { permissionId: string; effect: 'allow' | 'deny' }[];
+    assignedByAccountId: string;
+  }
+): Promise<void> => {
+  await client.query('DELETE FROM iam.account_permissions WHERE instance_id = $1 AND account_id = $2::uuid;', [
+    input.instanceId,
+    input.accountId,
+  ]);
+
+  if (input.permissions.length === 0) {
+    return;
+  }
+
+  await client.query(
+    `
+INSERT INTO iam.account_permissions (
+  instance_id,
+  account_id,
+  permission_id,
+  effect,
+  assigned_by_account_id
+)
+SELECT
+  $1,
+  $2::uuid,
+  entry.permission_id,
+  entry.effect::text,
+  $3::uuid
+FROM jsonb_to_recordset($4::jsonb) AS entry(permission_id uuid, effect text)
+ON CONFLICT (instance_id, account_id, permission_id) DO UPDATE
+SET
+  effect = EXCLUDED.effect,
+  assigned_by_account_id = EXCLUDED.assigned_by_account_id,
+  updated_at = NOW();
+`,
+    [
+      input.instanceId,
+      input.accountId,
+      input.assignedByAccountId,
+      JSON.stringify(input.permissions.map((permission) => ({
+        permission_id: permission.permissionId,
+        effect: permission.effect,
+      }))),
+    ]
+  );
 };
 
 const resolveUserUpdatePlan = async (
@@ -177,6 +251,17 @@ const resolveUserUpdatePlan = async (
       if (!roleValidation.ok) {
         throw new Error(`${roleValidation.code}:${roleValidation.message}`);
       }
+    }
+  }
+
+  if (input.payload.directPermissions) {
+    const permissionIds = input.payload.directPermissions.map((entry) => entry.permissionId);
+    const resolvedPermissionIds = await resolvePermissionIds(client, {
+      instanceId: input.instanceId,
+      permissionIds,
+    });
+    if (resolvedPermissionIds.length !== permissionIds.length) {
+      throw new Error('invalid_request:Mindestens eine Berechtigung existiert nicht.');
     }
   }
 
@@ -338,16 +423,6 @@ export const updateUserInternal = async (
     return createApiError(400, 'invalid_request', 'Ungültiger Payload.', actorResolution.actor.requestId);
   }
 
-  const identityProvider = resolveIdentityProvider();
-  if (!identityProvider) {
-    return createApiError(
-      503,
-      'keycloak_unavailable',
-      'Keycloak Admin API ist nicht konfiguriert.',
-      actorResolution.actor.requestId
-    );
-  }
-
   try {
     const plan = await withInstanceScopedDb(actorResolution.actor.instanceId, (client) =>
       resolveUserUpdatePlan(client, {
@@ -373,17 +448,33 @@ export const updateUserInternal = async (
       parsed.data.lastName !== undefined ||
       parsed.data.status !== undefined ||
       shouldUpdateIdentityAttributes;
+    const shouldSyncRoles = Boolean(plan.nextRoleNames);
+    const requiresIdentityProvider = shouldUpdateIdentity || shouldSyncRoles;
+    const identityProvider = requiresIdentityProvider ? resolveIdentityProvider() : null;
+    if (requiresIdentityProvider && !identityProvider) {
+      return createApiError(
+        503,
+        'keycloak_unavailable',
+        'Keycloak Admin API ist nicht konfiguriert.',
+        actorResolution.actor.requestId
+      );
+    }
+    const actorAccountId = actorResolution.actor.actorAccountId;
+    const syncedIdentityProvider = identityProvider;
     let shouldRestoreIdentity = false;
     let shouldRestoreRoles = false;
     let existingIdentityAttributes: IdentityUserAttributes | undefined;
     let nextIdentityAttributes: IdentityUserAttributes | undefined;
-    let nextMainserverCredentialState = resolveMainserverCredentialState(undefined);
+    let nextMainserverCredentialState: MainserverCredentialState = {
+      mainserverUserApplicationId: plan.existing.mainserverUserApplicationId,
+      mainserverUserApplicationSecretSet: plan.existing.mainserverUserApplicationSecretSet,
+    };
 
     try {
       if (shouldUpdateIdentity) {
         if (shouldUpdateIdentityAttributes) {
           existingIdentityAttributes = await trackKeycloakCall('get_user_attributes_for_update', () =>
-            identityProvider.provider.getUserAttributes(plan.existing.keycloakSubject)
+            syncedIdentityProvider!.provider.getUserAttributes(plan.existing.keycloakSubject)
           );
           nextIdentityAttributes = buildIdentityAttributesForUserUpdate({
             existingAttributes: existingIdentityAttributes,
@@ -392,14 +483,14 @@ export const updateUserInternal = async (
           nextMainserverCredentialState = resolveMainserverCredentialState(nextIdentityAttributes);
         } else {
           nextMainserverCredentialState = await trackKeycloakCall('get_user_attributes_for_response', () =>
-            identityProvider.provider
+            syncedIdentityProvider!.provider
               .getUserAttributes(plan.existing.keycloakSubject, getSvaMainserverCredentialAttributeNames())
               .then((attributes) => resolveMainserverCredentialState(attributes))
           );
         }
 
         await trackKeycloakCall('update_user', () =>
-          identityProvider.provider.updateUser(plan.existing.keycloakSubject, {
+          syncedIdentityProvider!.provider.updateUser(plan.existing.keycloakSubject, {
             email: parsed.data.email,
             firstName: parsed.data.firstName,
             lastName: parsed.data.lastName,
@@ -410,9 +501,9 @@ export const updateUserInternal = async (
         shouldRestoreIdentity = true;
       }
 
-      if (!shouldUpdateIdentity) {
+      if (!shouldUpdateIdentity && syncedIdentityProvider) {
         nextMainserverCredentialState = await trackKeycloakCall('get_user_attributes_for_response', () =>
-          identityProvider.provider
+          syncedIdentityProvider.provider
             .getUserAttributes(plan.existing.keycloakSubject, getSvaMainserverCredentialAttributeNames())
             .then((attributes) => resolveMainserverCredentialState(attributes))
         );
@@ -420,7 +511,7 @@ export const updateUserInternal = async (
 
       if (parsed.data.status === 'inactive') {
         await trackKeycloakCall('deactivate_user', () =>
-          identityProvider.provider.deactivateUser(plan.existing.keycloakSubject)
+          syncedIdentityProvider!.provider.deactivateUser(plan.existing.keycloakSubject)
         );
         shouldRestoreIdentity = true;
       }
@@ -428,7 +519,7 @@ export const updateUserInternal = async (
       if (plan.nextRoleNames) {
         const nextRoleNames = plan.nextRoleNames;
         await trackKeycloakCall('sync_roles', () =>
-          identityProvider.provider.syncRoles(plan.existing.keycloakSubject, [...nextRoleNames])
+          syncedIdentityProvider!.provider.syncRoles(plan.existing.keycloakSubject, [...nextRoleNames])
         );
         shouldRestoreRoles = true;
       }
@@ -439,7 +530,7 @@ export const updateUserInternal = async (
             instanceId: actorResolution.actor.instanceId,
             accountId: userId,
             roleIds: parsed.data.roleIds,
-            assignedBy: actorResolution.actor.actorAccountId,
+            assignedBy: actorAccountId,
           });
         }
 
@@ -449,6 +540,15 @@ export const updateUserInternal = async (
             accountId: userId,
             groupIds: parsed.data.groupIds,
             origin: 'manual',
+          });
+        }
+
+        if (parsed.data.directPermissions) {
+          await assignDirectPermissions(client, {
+            instanceId: actorResolution.actor.instanceId,
+            accountId: userId,
+            permissions: parsed.data.directPermissions,
+            assignedByAccountId: actorAccountId,
           });
         }
 
@@ -482,7 +582,7 @@ WHERE id = $1::uuid
 
         await emitActivityLog(client, {
           instanceId: actorResolution.actor.instanceId,
-          accountId: actorResolution.actor.actorAccountId,
+          accountId: actorAccountId,
           subjectId: userId,
           eventType: 'user.updated',
           result: 'success',
@@ -490,6 +590,7 @@ WHERE id = $1::uuid
             status: parsed.data.status ?? plan.existing.status,
             role_update: Boolean(parsed.data.roleIds),
             group_update: Boolean(parsed.data.groupIds),
+            direct_permission_update: Boolean(parsed.data.directPermissions),
           },
           requestId: actorResolution.actor.requestId,
           traceId: actorResolution.actor.traceId,
@@ -508,6 +609,14 @@ WHERE id = $1::uuid
             instanceId: actorResolution.actor.instanceId,
             keycloakSubject: plan.existing.keycloakSubject,
             trigger: 'user_group_changed',
+          });
+        }
+
+        if (parsed.data.directPermissions) {
+          await notifyPermissionInvalidation(client, {
+            instanceId: actorResolution.actor.instanceId,
+            keycloakSubject: plan.existing.keycloakSubject,
+            trigger: 'user_permission_changed',
           });
         }
 
@@ -539,17 +648,19 @@ WHERE id = $1::uuid
       iamUserOperationsCounter.add(1, { action: 'update_user', result: 'success' });
       return jsonResponse(200, asApiItem(detail, actorResolution.actor.requestId));
     } catch (error) {
-      await compensateUserIdentityUpdate({
-        instanceId: actorResolution.actor.instanceId,
-        requestId: actorResolution.actor.requestId,
-        traceId: actorResolution.actor.traceId,
-        userId,
-        plan,
-        restoreIdentity: shouldRestoreIdentity,
-        restoreRoles: shouldRestoreRoles,
-        restoreIdentityAttributes: existingIdentityAttributes,
-        identityProvider,
-      });
+      if (identityProvider) {
+        await compensateUserIdentityUpdate({
+          instanceId: actorResolution.actor.instanceId,
+          requestId: actorResolution.actor.requestId,
+          traceId: actorResolution.actor.traceId,
+          userId,
+          plan,
+          restoreIdentity: shouldRestoreIdentity,
+          restoreRoles: shouldRestoreRoles,
+          restoreIdentityAttributes: existingIdentityAttributes,
+          identityProvider,
+        });
+      }
       throw error;
     }
   } catch (error) {

@@ -390,7 +390,9 @@ export const resolveActingAsUserIdFromRequest = (request: Request) => {
 
 const MAX_GEO_HIERARCHY_LENGTH = 32;
 
-const normalizeGeoHierarchy = (entries: readonly string[]): readonly string[] | undefined => {
+const normalizeGeoHierarchy = (
+  entries: readonly string[]
+): readonly string[] | undefined | null => {
   const normalized = entries
     .map((entry) => readString(entry))
     .filter((entry): entry is string => Boolean(entry));
@@ -419,6 +421,10 @@ export const resolveGeoContextFromRequest = (request: Request): ResolvedGeoConte
       .getAll('geoHierarchy')
       .flatMap((entry) => entry.split(','))
   );
+
+  if (geoHierarchy === null) {
+    return null;
+  }
 
   if (geoHierarchy?.some((entry) => !isUuid(entry))) {
     return null;

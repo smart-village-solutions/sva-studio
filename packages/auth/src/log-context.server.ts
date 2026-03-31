@@ -1,12 +1,4 @@
-import { getWorkspaceContext } from '@sva/sdk/server';
-
-export const buildLogContext = (workspaceId?: string) => {
-  const context = getWorkspaceContext();
-  return {
-    workspace_id: workspaceId ?? context.workspaceId ?? 'default',
-    request_id: context.requestId,
-  };
-};
+export { buildLogContext } from './shared/log-context.js';
 
 export const isTokenErrorLike = (error: unknown) => {
   if (!error || typeof error !== 'object') {

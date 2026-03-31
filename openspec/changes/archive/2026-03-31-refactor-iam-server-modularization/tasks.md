@@ -26,13 +26,13 @@
 
 ## 5. Shared Modules und Duplikatsvermeidung
 
-- [ ] 5.1 Gemeinsame Hilfslogik für Maskierung, Parsing, Validierung, Rate-Limits und Logging-Kontext in dedizierten Shared-Modulen zentralisieren
+- [x] 5.1 Gemeinsame Hilfslogik für Maskierung, Parsing, Validierung, Rate-Limits und Logging-Kontext in dedizierten Shared-Modulen zentralisieren
 - [x] 5.2 Sicherstellen, dass neue Fachmodule Shared-Helfer konsumieren statt Logik zu duplizieren
 - [x] 5.3 Import-Grenzen und öffentliche APIs gegen ungewollte Querverkopplung prüfen
 
 ## 6. Verifikation und Dokumentation
 
-- [ ] 6.1 Unit-, Type- und Integrations-Tests pro zerlegtem Fachmodul ergänzen oder anpassen
+- [x] 6.1 Unit-, Type- und Integrations-Tests pro zerlegtem Fachmodul ergänzen oder anpassen
 - [x] 6.2 `pnpm complexity-gate` für die betroffenen Module ausführen und Restüberschreitungen mit Tickets dokumentieren
 - [x] 6.3 Betroffene arc42-Abschnitte `04`, `05`, `06`, `08`, `09`, `10` und `11` aktualisieren
 - [x] 6.4 Relevante Entwicklerdokumentation und Runbooks auf neue Modulgrenzen und Entry-Points anpassen

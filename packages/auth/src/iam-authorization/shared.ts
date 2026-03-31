@@ -330,6 +330,8 @@ export const buildMePermissionsResponse = (input: {
   actorUserId: string;
   effectiveUserId: string;
   isImpersonating: boolean;
+  snapshotVersion?: string;
+  cacheStatus?: SnapshotCacheStatus;
 }): MePermissionsResponse => ({
   instanceId: input.instanceId,
   organizationId: input.organizationId,
@@ -342,6 +344,8 @@ export const buildMePermissionsResponse = (input: {
   evaluatedAt: new Date().toISOString(),
   requestId: getWorkspaceContext().requestId,
   traceId: getWorkspaceContext().traceId,
+  snapshotVersion: input.snapshotVersion,
+  cacheStatus: input.cacheStatus,
   provenance: {
     hasGroupDerivedPermissions: input.permissions.some((permission) => permission.sourceGroupIds.length > 0),
     hasGeoInheritance: input.permissions.some((permission) => {

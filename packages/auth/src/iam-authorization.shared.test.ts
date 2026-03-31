@@ -171,6 +171,8 @@ describe('iam authorization shared helpers', () => {
       actorUserId: 'actor-sub',
       effectiveUserId: 'target-sub',
       isImpersonating: true,
+      snapshotVersion: 'f84a6f7b9c3d2e10',
+      cacheStatus: 'hit',
     });
 
     expect(response).toEqual(
@@ -179,6 +181,8 @@ describe('iam authorization shared helpers', () => {
         organizationId: '22222222-2222-2222-8222-222222222222',
         requestId: 'req-shared',
         traceId: 'trace-shared',
+        snapshotVersion: 'f84a6f7b9c3d2e10',
+        cacheStatus: 'hit',
         subject: {
           actorUserId: 'actor-sub',
           effectiveUserId: 'target-sub',

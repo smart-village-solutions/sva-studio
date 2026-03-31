@@ -256,6 +256,8 @@ describe('IAM authorization integration denials', () => {
     const payload = (await response.json()) as {
       requestId?: string;
       traceId?: string;
+      snapshotVersion?: string | null;
+      cacheStatus?: string;
       permissions: unknown[];
       subject: {
         actorUserId: string;
@@ -267,6 +269,8 @@ describe('IAM authorization integration denials', () => {
     expect(response.status).toBe(200);
     expect(payload.requestId).toBe('req-integration');
     expect(payload.traceId).toBe('trace-integration');
+    expect(payload.snapshotVersion).toEqual(expect.any(String));
+    expect(payload.cacheStatus).toBe('miss');
     expect(payload.permissions.length).toBe(1);
     expect(payload.subject).toEqual({
       actorUserId: 'keycloak-sub-integration',

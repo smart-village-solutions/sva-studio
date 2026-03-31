@@ -87,6 +87,8 @@ export const mePermissionsHandler = async (request: Request): Promise<Response> 
         actorUserId: user.id,
         effectiveUserId,
         isImpersonating,
+        snapshotVersion: resolved.snapshotVersion,
+        cacheStatus: resolved.cacheStatus,
       });
 
       logger.debug('Resolved effective permissions for current user', {

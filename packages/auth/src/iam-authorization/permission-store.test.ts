@@ -190,8 +190,11 @@ describe('resolveEffectivePermissions — Cache-Miss', () => {
     await resolveEffectivePermissions({
       ...baseInput,
       organizationId: 'org-1',
-      geoUnitId: 'geo-1',
-      geoHierarchy: ['geo-root', 'geo-1'],
+      geoUnitId: '11111111-1111-1111-1111-111111111111',
+      geoHierarchy: [
+        '00000000-0000-0000-0000-000000000000',
+        '11111111-1111-1111-1111-111111111111',
+      ],
     });
 
     expect(permissionSnapshotCache.get).toHaveBeenCalledWith(

@@ -112,6 +112,40 @@ Der Change setzt auf den heute vorhandenen Contract-Feldern auf:
 
 Neue verpflichtende Ownership-, Transfer- oder Override-Felder werden in diesem Change nicht eingeführt.
 
+## Arc42-Referenzen
+
+Die Architekturwirkung dieses Changes ist gegen die folgenden arc42-Abschnitte unter `docs/architecture/` zu prüfen und fortzuschreiben:
+
+- `04-solution-strategy.md`
+  - Rechteverwaltung bleibt ein inkrementeller Ausbau der bestehenden Admin-UI statt eines neuen Top-Level-Moduls.
+- `05-building-block-view.md`
+  - Der Rollenarbeitsbereich bleibt in `/admin/roles` verankert und nutzt bestehende Rollen-, Permissions- und IAM-Cockpit-Bausteine.
+- `06-runtime-view.md`
+  - Relevante Laufzeitszenarien sind Rollenansicht → Prüfeinstieg, Rollenänderung → serverseitige Verweigerung sowie Fach-UI-Aktion → verständliche Forbidden-Rückmeldung.
+- `08-cross-cutting-concepts.md`
+  - Betroffen sind i18n, Accessibility, Read-only-States, Fehlerkommunikation und Explainability.
+- `10-quality-requirements.md`
+  - Der Change verlangt verifizierbare Anforderungen für Unit-, Integrations-, E2E-, Accessibility-, Responsive- und i18n-Prüfungen.
+
+Wenn die spätere Implementierung diese Dateien nicht ändert, muss die Abweichung im Umsetzungs-PR begründet werden.
+
+## Terminologie
+
+- `fachliche Berechtigungsanzeige`
+  - Lokalisierte, für Administratoren verständliche Bezeichnung oder Gruppierung einer Berechtigung. Sie ist die primäre Sprache der UI.
+- `technische Referenz`
+  - Ergänzende Anzeige eines bestehenden technischen Werts wie `permissionKey`, `action` oder `resourceType` für Debugging, Support oder Migration.
+- `Read-only`
+  - Sichtbarer Zustand für Rollen oder Aktionen, die aufgrund von `isSystemRole`, `managedBy != studio` oder serverseitigen Regeln nicht bearbeitet werden dürfen.
+- `deaktiviert`
+  - Temporär nicht ausführbarer Zustand innerhalb einer grundsätzlich editierbaren Oberfläche, etwa wegen fehlender Eingaben oder unvollständiger Auswahl.
+- `serverseitig verweigert`
+  - Ergebnis einer tatsächlich ausgeführten Aktion oder Prüfung, bei der der Server einen strukturierten Denial-, Konflikt- oder Forbidden-Kontext zurückliefert.
+- `Reason-Code`
+  - Stable, allowlist-basierte Kennung zur verständlichen Begründung von Entscheidungen oder Verweigerungen.
+- `Diagnosefeld`
+  - Strukturiertes Zusatzfeld aus Authorize- oder Permissions-Antworten, das Admin- und Fach-UI bei Explainability unterstützt, ohne interne Policy-Details offenzulegen.
+
 ## Risks / Trade-offs
 
 - Eine inkrementelle Weiterentwicklung kann visuell weniger "neu" wirken als ein vollständiger Redesign-Ansatz.

@@ -25,6 +25,12 @@ Das System SHALL die bestehende Rollenverwaltung, Rechteübersicht und Szenario-
 - **AND** die UI muss keine unstrukturierten Rohdiagnosen interpretieren
 - **AND** interne Policy- oder Identitätsdetails werden nicht offengelegt
 
+#### Scenario: Fehlende Prüfdaten bleiben als definierter Zustand behandelbar
+
+- **WHEN** eine Autorisierungsentscheidung oder Permissions-Antwort keine optionalen Diagnosefelder enthält
+- **THEN** bleibt mindestens ein stabiler Entscheidungs- oder Fehlerkontext wie `allowed`, `reason` oder ein strukturierter Denial-Fehler verfügbar
+- **AND** die UI kann den Zustand verständlich darstellen, ohne aus dem Fehlen optionaler Prüfdaten eine Erlaubnis abzuleiten
+
 ### Requirement: Inkrementelle Rechteverwaltung ohne neues Ownership-Modell
 
 Das System SHALL eine erweiterte Rechteverwaltungs-UI ermöglichen, ohne dafür in diesem Change ein neues Ownership-, Transfer- oder Override-Modell vorauszusetzen.
@@ -57,6 +63,12 @@ Das System SHALL für Rechteverwaltung und priorisierte Fach-UI stabile Fehler- 
 - **WHEN** eine Rollenänderung, eine Rechteprüfung oder eine Fachaktion serverseitig verweigert wird
 - **THEN** liefert das System einen strukturierten Fehler- oder Denial-Kontext, der der UI eine verständliche Darstellung erlaubt
 - **AND** die UI muss nicht zwischen ungeprüften Textmeldungen und HTTP-Statuscodes reverse-engineeren
+
+#### Scenario: Konflikte bei Rollenänderungen bleiben von generischen Fehlern unterscheidbar
+
+- **WHEN** eine Rollenänderung aufgrund von Read-only-Regeln, Synchronisationsstand oder konkurrierender Änderung nicht übernommen werden kann
+- **THEN** liefert das System einen strukturierten Konflikt- oder Denial-Kontext mit stabiler Klassifikation
+- **AND** die UI kann diesen Zustand gesondert von generischen Transport- oder Validierungsfehlern behandeln
 
 #### Scenario: Vorschau und operative Prüfung bleiben logisch anschlussfähig
 

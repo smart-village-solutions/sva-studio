@@ -60,6 +60,14 @@ Das System MUST die bestehende Rollenverwaltung um einen inkrementellen Berechti
 - **UND** der read-only-Zustand wird in Detail- und Berechtigungsdarstellungen konsistent fortgeführt
 - **UND** die UI suggeriert keine Bearbeitbarkeit, die serverseitig nicht vorgesehen ist
 
+#### Scenario: Serverseitiger Konflikt überschreibt optimistische Bearbeitbarkeit
+
+- **WENN** eine Rolle in der UI zunächst bearbeitbar wirkt
+- **UND** der Server die Änderung wegen zwischenzeitlicher Externverwaltung, Systemschutz oder Konfliktzustand verweigert
+- **DANN** zeigt die Oberfläche einen verständlichen Fehler- oder Konflikthinweis statt eines generischen Fehlers
+- **UND** der Rollenarbeitsbereich synchronisiert sich auf den serverseitig gültigen Zustand zurück
+- **UND** irreführende Editierhinweise werden entfernt
+
 #### Scenario: Rechtepflege bleibt responsiv und zugänglich
 
 - **WENN** der Berechtigungsarbeitsbereich auf 320 px, 768 px oder 1024 px verwendet wird
@@ -81,5 +89,34 @@ Das System MUST in priorisierten Fachmodulen sichtbare und konsistente Zustände
 #### Scenario: Zustände folgen einer konsistenten Zustandslogik
 
 - **WENN** eine Aktion in einer Fach- oder Admin-UI nicht uneingeschränkt verfügbar ist
-- **DANN** unterscheidet die UI nachvollziehbar mindestens zwischen `erlaubt`, `deaktiviert/read-only` und `serverseitig verweigert`
+- **DANN** unterscheidet die UI nachvollziehbar mindestens zwischen `erlaubt`, `deaktiviert`, `read-only` und `serverseitig verweigert`
 - **UND** die Zustandslogik wird in priorisierten Modulen konsistent angewendet
+
+#### Scenario: Fehlende oder unvollständige Rechteinformationen führen nicht zu Scheinsicherheit
+
+- **WENN** einer Fach- oder Admin-UI für eine Aktion keine belastbare Rechte- oder Diagnosedatenbasis vorliegt
+- **DANN** zeigt die Oberfläche keine unbegründete Freigabe an
+- **UND** sie verwendet einen defensiven Zustand mit verständlichem Hinweis statt technischer Rohdaten
+- **UND** eine serverseitige Prüfung bleibt die maßgebliche Entscheidungsinstanz
+
+### Requirement: Verifizierbare Rechteverwaltungs-UI
+
+Das System MUST für den inkrementellen Rollenarbeitsbereich und die angrenzenden Fach-UI-Flächen eine umsetzungsnahe Verifikationsstrategie definieren.
+
+#### Scenario: Unit- und Integrationsprüfungen decken Zustandslogik ab
+
+- **WENN** die Rechteverwaltungs-UI umgesetzt oder geändert wird
+- **DANN** decken Unit- oder Integrationstests mindestens fachliche Berechtigungsdarstellung, technische Detailumschaltung, Read-only-Zustände und serverseitige Verweigerungen ab
+- **UND** die Tests prüfen lokalisierte UI-Texte statt hartcodierter Strings
+
+#### Scenario: E2E- und Responsive-Prüfungen sichern den Bedienfluss ab
+
+- **WENN** End-to-End-Prüfungen für `/admin/roles` oder priorisierte Fachseiten ausgeführt werden
+- **DANN** verifizieren sie mindestens den Rollenarbeitsbereich, den Prüfeinstieg und die Zustände auf 320 px, 768 px und 1024 px
+- **UND** sie prüfen, dass keine kritischen Bedienpfade durch Layout-Brüche oder unverständlichen Horizontal-Overflow unbenutzbar werden
+
+#### Scenario: Accessibility- und i18n-Prüfungen sind Teil der Umsetzung
+
+- **WENN** Komponenten oder Flows für die Rechteverwaltung geändert werden
+- **DANN** umfassen die Verifikationsschritte Tastaturbedienung, Screenreader-Semantik, Statuskommunikation sowie die Prüfung, dass sichtbare UI-Bezeichnungen aus i18n-Keys stammen
+- **UND** fehlende Übersetzungen oder verletzte Accessibility-Grundanforderungen gelten als Umsetzungsdefekte

@@ -26,11 +26,16 @@ import type {
   IamUserListItem,
   UpdateIamContentInput,
 } from '@sva/core';
+import { createBrowserLogger } from '@sva/sdk/logging';
 
 const IAM_HEADERS = {
   'Content-Type': 'application/json',
   'X-Requested-With': 'XMLHttpRequest',
 } as const;
+
+const browserLogger = createBrowserLogger({
+  component: 'iam-api',
+});
 
 export const LEGAL_ACCEPTANCE_REQUIRED_EVENT = 'sva:legal-acceptance-required';
 
@@ -153,7 +158,7 @@ const logDevelopmentApiError = (input: {
     return;
   }
 
-  console.error('IAM API request failed', {
+  browserLogger.error('IAM API request failed', {
     request_id: input.requestId,
     status: input.status,
     code: input.code,

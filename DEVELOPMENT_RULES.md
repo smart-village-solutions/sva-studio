@@ -560,6 +560,7 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
 
 ### ✅ REQUIRED
 - **Server-Code**: SDK Logger verwenden (`createSdkLogger` aus `@sva/sdk`)
+- **Produktiver Browser-App-Code**: Runtime-sicheren Browser-Logger aus dem SDK verwenden; rohe `console.*`-Aufrufe vermeiden
 - **Strukturierte Logs**: Immer mit Context-Feldern (component, operation, error, etc.)
 - **PII-Schutz**: Keine Session-IDs, Tokens, tokenhaltigen URLs oder Emails direkt loggen
 - **Component-Labels**: Jeder Logger braucht eindeutigen `component` (z.B. `auth`, `auth-redis`)
@@ -582,6 +583,7 @@ Frontend darf `console.*` nutzen, aber:
 - Mit strukturierten Feldern `{ component, endpoint, status, error }`
 - Keine PII, Tokens oder tokenhaltigen URLs
 - Die lokale Dev-Konsole darf Browser- und redaktierte Server-Logs anzeigen, aber nie als produktiver Monitoring-Ersatz behandelt werden
+- Tests, Dev-Capture-Implementierungen und Einweg-Skripte duerfen `console.*` weiterhin direkt nutzen
 
 **Backend-Beispiel:**
 ```typescript

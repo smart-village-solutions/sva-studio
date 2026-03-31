@@ -1,4 +1,9 @@
-import { maskEmailAddresses } from '@sva/core';
+import {
+  isBrowserConsoleCaptureSuppressed,
+  redactLogString,
+  registerBrowserLogSink,
+  serializeAndRedactLogValue,
+} from '@sva/sdk/logging';
 
 export type BrowserDevelopmentLogLevel = 'debug' | 'info' | 'warn' | 'error';
 
@@ -8,7 +13,7 @@ export interface BrowserDevelopmentLogEntry {
   readonly source: 'browser';
   readonly level: BrowserDevelopmentLogLevel;
   readonly message: string;
-  readonly component: 'browser-console';
+  readonly component: string;
   readonly context?: Record<string, unknown>;
 }
 
@@ -21,58 +26,11 @@ let browserLogEntries: BrowserDevelopmentLogEntry[] = [];
 const browserLogListeners = new Set<BrowserLogListener>();
 let browserCaptureStop: (() => void) | null = null;
 
-const SENSITIVE_CONTEXT_KEYS = new Set([
-  'password',
-  'token',
-  'authorization',
-  'api_key',
-  'secret',
-  'client_secret',
-  'email',
-  'cookie',
-  'set-cookie',
-  'session',
-  'session_id',
-  'user_id',
-  'csrf',
-  'refresh_token',
-  'access_token',
-  'id_token',
-  'id_token_hint',
-  'x-api-key',
-  'x-csrf-token',
-  'actor_user_id',
-  'session_user_id',
-  'actor_account_id',
-  'keycloak_subject',
-  'db_keycloak_subject',
-]);
-const jwtLikeRegex = /\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)?\b/g;
-const querySecretRegexSource = String.raw`([?&](?:access_token|refresh_token|id_token|id_token_hint|token|code|client_secret|api_key|authorization)=)([^&#\s]+)`;
-const inlineQuerySecretRegexSource = String.raw`((?:^|[\s,(])(?:access_token|refresh_token|id_token|id_token_hint|token|code|client_secret|api_key|authorization)[\w.-]{0,20}[=:]\s*)([^\s,)]+)`;
-const inlineSensitiveFieldRegexSource = String.raw`((?:^|[\s,(])(?:password|secret|session|cookie|csrf)[\w.-]{0,20}[=:]\s*)([^\s,)]+)`;
-const urlSecretPatterns: ReadonlyArray<readonly [RegExp, string]> = [
-  [/\b(authorization:\s*)(bearer\s+)?[^\s,]+/gi, '$1[REDACTED]'],
-  [/\b(bearer\s+)(?!\[REDACTED(?:_JWT)?\])[^\s,]+/gi, '$1[REDACTED]'],
-  [new RegExp(querySecretRegexSource, 'gi'), '$1[REDACTED]'],
-  [new RegExp(inlineQuerySecretRegexSource, 'gi'), '$1[REDACTED]'],
-  [new RegExp(inlineSensitiveFieldRegexSource, 'gi'), '$1[REDACTED]'],
-];
-
-const isPlainObject = (value: unknown): value is Record<string, unknown> => {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    return false;
-  }
-
-  const prototype = Object.getPrototypeOf(value);
-  return prototype === Object.prototype || prototype === null;
-};
-
 const stringifyNonPlainValue = (value: object): string => {
   const stringifier = value.toString;
   if (typeof stringifier === 'function' && stringifier !== Object.prototype.toString) {
     try {
-      return redactSensitiveString(String(value));
+      return redactLogString(String(value));
     } catch {
       return Object.prototype.toString.call(value);
     }
@@ -81,50 +39,8 @@ const stringifyNonPlainValue = (value: object): string => {
   return Object.prototype.toString.call(value);
 };
 
-const redactSensitiveString = (value: string): string => {
-  let next = maskEmailAddresses(value);
-  next = next.replaceAll(jwtLikeRegex, '[REDACTED_JWT]');
-  for (const [pattern, replacement] of urlSecretPatterns) {
-    next = next.replaceAll(pattern, replacement);
-  }
-  return next;
-};
-
 const serializeValue = (value: unknown): unknown => {
-  if (value === null || value === undefined) {
-    return value ?? null;
-  }
-
-  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
-    return typeof value === 'string' ? redactSensitiveString(value) : value;
-  }
-
-  if (Array.isArray(value)) {
-    return value.map((entry) => serializeValue(entry));
-  }
-
-  if (value instanceof Date) {
-    return Number.isNaN(value.getTime()) ? String(value) : value.toISOString();
-  }
-
-  if (value instanceof Error) {
-    return {
-      name: value.name,
-      message: redactSensitiveString(value.message),
-      ...(typeof value.stack === 'string' ? { stack: redactSensitiveString(value.stack) } : {}),
-    };
-  }
-
-  if (isPlainObject(value)) {
-    return Object.fromEntries(
-      Object.entries(value).map(([key, entry]) => [
-        key,
-        SENSITIVE_CONTEXT_KEYS.has(key.toLowerCase()) ? '[REDACTED]' : serializeValue(entry),
-      ])
-    );
-  }
-
-  return stringifyNonPlainValue(value);
+  return serializeAndRedactLogValue(value);
 };
 
 const stringifyMessage = (args: readonly unknown[]): string => {
@@ -135,7 +51,7 @@ const stringifyMessage = (args: readonly unknown[]): string => {
   return args
     .map((value) => {
       if (typeof value === 'string') {
-        return redactSensitiveString(value);
+        return redactLogString(value);
       }
 
       try {
@@ -157,7 +73,8 @@ const notifyBrowserLogListeners = () => {
 export const appendBrowserDevelopmentLog = (
   level: BrowserDevelopmentLogLevel,
   args: readonly unknown[],
-  context?: Record<string, unknown>
+  context?: Record<string, unknown>,
+  component = 'browser-console'
 ): BrowserDevelopmentLogEntry => {
   const entry: BrowserDevelopmentLogEntry = {
     id: nextBrowserLogId++,
@@ -165,8 +82,11 @@ export const appendBrowserDevelopmentLog = (
     source: 'browser',
     level,
     message: stringifyMessage(args),
-    component: 'browser-console',
-    context: isPlainObject(context) ? (serializeValue(context) as Record<string, unknown>) : undefined,
+    component,
+    context:
+      context && typeof context === 'object' && !Array.isArray(context)
+        ? (serializeValue(context) as Record<string, unknown>)
+        : undefined,
   };
 
   browserLogEntries = [...browserLogEntries, entry].slice(-MAX_BROWSER_DEVELOPMENT_LOG_ENTRIES);
@@ -200,24 +120,44 @@ export const startBrowserDevelopmentLogCapture = (): (() => void) => {
   };
 
   console.debug = (...args: unknown[]) => {
+    if (isBrowserConsoleCaptureSuppressed()) {
+      originalConsole.debug(...args);
+      return;
+    }
     appendBrowserDevelopmentLog('debug', args);
     originalConsole.debug(...args);
   };
 
   console.info = (...args: unknown[]) => {
+    if (isBrowserConsoleCaptureSuppressed()) {
+      originalConsole.info(...args);
+      return;
+    }
     appendBrowserDevelopmentLog('info', args);
     originalConsole.info(...args);
   };
 
   console.warn = (...args: unknown[]) => {
+    if (isBrowserConsoleCaptureSuppressed()) {
+      originalConsole.warn(...args);
+      return;
+    }
     appendBrowserDevelopmentLog('warn', args);
     originalConsole.warn(...args);
   };
 
   console.error = (...args: unknown[]) => {
+    if (isBrowserConsoleCaptureSuppressed()) {
+      originalConsole.error(...args);
+      return;
+    }
     appendBrowserDevelopmentLog('error', args);
     originalConsole.error(...args);
   };
+
+  const unregisterBrowserLogSink = registerBrowserLogSink((entry) => {
+    appendBrowserDevelopmentLog(entry.level, [entry.message], entry.context, entry.component);
+  });
 
   const handleWindowError = (event: ErrorEvent) => {
     appendBrowserDevelopmentLog('error', [event.message || 'window error'], {
@@ -243,6 +183,7 @@ export const startBrowserDevelopmentLogCapture = (): (() => void) => {
     console.error = originalConsole.error;
     globalThis.removeEventListener('error', handleWindowError);
     globalThis.removeEventListener('unhandledrejection', handleUnhandledRejection);
+    unregisterBrowserLogSink();
     browserCaptureStop = null;
   };
 

@@ -18,6 +18,7 @@
       "@sva/auth/runtime-routes": ["packages/auth/src/runtime-routes.server.ts"],
       "@sva/auth/runtime-health": ["packages/auth/src/runtime-health.server.ts"],
       "@sva/sdk": ["packages/sdk/src/index.ts"],
+      "@sva/sdk/logging": ["packages/sdk/src/logging.ts"],
       "@sva/sdk/server": ["packages/sdk/src/server.ts"],
       "@sva/sdk/logger/index.server": ["packages/sdk/src/logger/index.server.ts"],
       "@sva/sdk/middleware/request-context.server": ["packages/sdk/src/middleware/request-context.server.ts"],

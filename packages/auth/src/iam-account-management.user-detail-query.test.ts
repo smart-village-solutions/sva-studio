@@ -129,6 +129,12 @@ describe('resolveUserDetail', () => {
       expect.stringContaining('AS group_rows'),
       ['de-musterhausen', 'bbbbbbbb-bbbb-4111-8bbb-bbbbbbbbbbbb'],
     ]);
+    expect(String(query.mock.calls[1]?.[0])).toContain('WHERE ap.instance_id = $1');
+    expect(String(query.mock.calls[1]?.[0])).toContain('AND ap.account_id = a.id');
+    expect(String(query.mock.calls[1]?.[0])).toContain('WHERE ar.instance_id = $1');
+    expect(String(query.mock.calls[1]?.[0])).toContain('AND ar.account_id = a.id');
+    expect(String(query.mock.calls[1]?.[0])).toContain('WHERE ag.instance_id = $1');
+    expect(String(query.mock.calls[1]?.[0])).toContain('AND ag.account_id = a.id');
     expect(detail).toMatchObject({
       id: 'bbbbbbbb-bbbb-4111-8bbb-bbbbbbbbbbbb',
       keycloakSubject: 'keycloak-target-1',

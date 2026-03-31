@@ -110,8 +110,8 @@ const DIRECT_PERMISSION_KEYS_SQL = `
         JOIN iam.permissions p
           ON p.instance_id = ap.instance_id
          AND p.id = ap.permission_id
-        WHERE ap.instance_id = im.instance_id
-          AND ap.account_id = im.account_id
+        WHERE ap.instance_id = $1
+          AND ap.account_id = a.id
 `;
 
 const DIRECT_PERMISSION_ROWS_SQL = `
@@ -135,8 +135,8 @@ const DIRECT_PERMISSION_ROWS_SQL = `
         JOIN iam.permissions p
           ON p.instance_id = ap.instance_id
          AND p.id = ap.permission_id
-        WHERE ap.instance_id = im.instance_id
-          AND ap.account_id = im.account_id
+        WHERE ap.instance_id = $1
+          AND ap.account_id = a.id
       ) AS direct
     ),
     '[]'::json
@@ -195,8 +195,8 @@ const buildDirectPermissionTraceSql = (includeStructuredPermissions: boolean) =>
         JOIN iam.permissions p
           ON p.instance_id = ap.instance_id
          AND p.id = ap.permission_id
-        WHERE ap.instance_id = im.instance_id
-          AND ap.account_id = im.account_id
+        WHERE ap.instance_id = $1
+          AND ap.account_id = a.id
 `;
 };
 
@@ -266,8 +266,8 @@ SELECT
         JOIN iam.permissions p
           ON p.instance_id = rp.instance_id
          AND p.id = rp.permission_id
-        WHERE ar.instance_id = im.instance_id
-          AND ar.account_id = im.account_id
+        WHERE ar.instance_id = $1
+          AND ar.account_id = a.id
           AND ar.valid_from <= NOW()
           AND (ar.valid_to IS NULL OR ar.valid_to > NOW())
 ${includeDirectPermissions ? DIRECT_PERMISSION_KEYS_SQL : ''}
@@ -292,8 +292,8 @@ ${includeDirectPermissions ? DIRECT_PERMISSION_KEYS_SQL : ''}
         JOIN iam.permissions p
           ON p.instance_id = rp.instance_id
          AND p.id = rp.permission_id
-        WHERE ag.instance_id = im.instance_id
-          AND ag.account_id = im.account_id
+        WHERE ag.instance_id = $1
+          AND ag.account_id = a.id
           AND (ag.valid_from IS NULL OR ag.valid_from <= NOW())
           AND (ag.valid_until IS NULL OR ag.valid_until > NOW())
 
@@ -367,8 +367,8 @@ ${includeDirectPermissions ? DIRECT_PERMISSION_ROWS_SQL : EMPTY_DIRECT_PERMISSIO
         LEFT JOIN iam.account_organizations ao
           ON ao.instance_id = ar.instance_id
          AND ao.account_id = ar.account_id
-        WHERE ar.instance_id = im.instance_id
-          AND ar.account_id = im.account_id
+        WHERE ar.instance_id = $1
+          AND ar.account_id = a.id
 
         UNION ALL
 
@@ -421,8 +421,8 @@ ${includeDirectPermissions ? DIRECT_PERMISSION_ROWS_SQL : EMPTY_DIRECT_PERMISSIO
         LEFT JOIN iam.account_organizations ao
           ON ao.instance_id = ag.instance_id
          AND ao.account_id = ag.account_id
-        WHERE ag.instance_id = im.instance_id
-          AND ag.account_id = im.account_id
+        WHERE ag.instance_id = $1
+          AND ag.account_id = a.id
 ${includeDirectPermissions ? buildDirectPermissionTraceSql(includeStructuredPermissions) : ''}
       ) AS trace
     ),

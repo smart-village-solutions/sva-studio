@@ -1,10 +1,15 @@
 import { Link, useRouter } from '@tanstack/react-router';
 import type { ErrorComponentProps } from '@tanstack/react-router';
+import { createBrowserLogger } from '@sva/sdk/logging';
 
 import { t } from '../i18n';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+
+const browserLogger = createBrowserLogger({
+  component: 'error-fallback',
+});
 
 /**
  * Globaler Error-Fallback für nicht abgefangene Fehler in der Route-Hierarchie.
@@ -35,7 +40,9 @@ export default function ErrorFallback({ error, reset }: Readonly<ErrorComponentP
   // Fehler nur in Development loggen; in Produktion wird der Fehler
   // über das zentrale Error-Tracking (OTel/SDK) erfasst.
   if (metaEnv.env?.DEV === true && error !== undefined) {
-    console.error('[ErrorFallback]', error);
+    browserLogger.error('Route rendering failed', {
+      error,
+    });
   }
 
   return (

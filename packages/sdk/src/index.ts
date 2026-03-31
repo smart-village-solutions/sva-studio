@@ -29,3 +29,18 @@ export {
   parseRuntimeProfile,
   validateRuntimeProfileEnv,
 } from './runtime-profile.js';
+export type {
+  BrowserLogEntry,
+  BrowserLogLevel,
+  BrowserLogMeta,
+  BrowserLogger,
+  BrowserLoggerOptions,
+} from './logging.js';
+export {
+  createBrowserLogger,
+  isBrowserConsoleCaptureSuppressed,
+  redactLogMeta,
+  redactLogString,
+  registerBrowserLogSink,
+  serializeAndRedactLogValue,
+} from './logging.js';

@@ -187,12 +187,19 @@ const updateDirectPermissionSelection = (
   );
 };
 
-const groupPermissions = (permissions: readonly IamPermission[]) => {
+const buildPermissionBuckets = (permissions: readonly IamPermission[]): Map<string, IamPermission[]> => {
   const buckets = new Map<string, IamPermission[]>();
   for (const permission of permissions) {
     const summary = summarizePermission(permission.permissionKey);
-    buckets.set(summary.resourceLabel, [...(buckets.get(summary.resourceLabel) ?? []), permission]);
+    const existing = buckets.get(summary.resourceLabel) ?? [];
+    existing.push(permission);
+    buckets.set(summary.resourceLabel, existing);
   }
+  return buckets;
+};
+
+const groupPermissions = (permissions: readonly IamPermission[]) => {
+  const buckets = buildPermissionBuckets(permissions);
 
   return [...buckets.entries()]
     .map(([resourceLabel, entries]) => [
@@ -387,6 +394,17 @@ export const UserEditPage = ({ userId }: UserEditPageProps) => {
 
     setIsSaving(false);
   };
+
+  const onDirectPermissionChange = React.useCallback(
+    (permissionId: string, value: string) => {
+      const nextEffect = value === 'inherit' ? undefined : (value as DirectPermissionEffect);
+      setFormValues((current) => ({
+        ...current,
+        directPermissions: updateDirectPermissionSelection(current.directPermissions, permissionId, nextEffect),
+      }));
+    },
+    []
+  );
 
   if (userApi.isLoading) {
     return (
@@ -757,15 +775,7 @@ export const UserEditPage = ({ userId }: UserEditPageProps) => {
                               id={`user-direct-permission-${permission.id}`}
                               value={selectedEffect ?? 'inherit'}
                               onChange={(event) => {
-                                const nextValue = event.target.value;
-                                setFormValues((current) => ({
-                                  ...current,
-                                  directPermissions: updateDirectPermissionSelection(
-                                    current.directPermissions,
-                                    permission.id,
-                                    nextValue === 'inherit' ? undefined : (nextValue as DirectPermissionEffect)
-                                  ),
-                                }));
+                                onDirectPermissionChange(permission.id, event.target.value);
                               }}
                               className="rounded-md border border-border bg-background px-3 py-2 text-foreground"
                             >

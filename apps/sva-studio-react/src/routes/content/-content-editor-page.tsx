@@ -243,13 +243,52 @@ export const ContentEditorPage = ({ mode, contentId }: ContentEditorPageProps) =
   const activeError = mode === 'create' ? createApi.mutationError : detailApi.mutationError;
   const isLoading = mode === 'create' ? false : detailApi.isLoading;
   const content = detailApi.content;
-  const activeAccess =
-    mode === 'edit'
-      ? content?.access ?? (detailApi.error?.code === 'forbidden' ? withServerDeniedContentAccess(undefined) : null)
-      : contentAccessApi.access ?? (activeError?.code === 'forbidden' ? withServerDeniedContentAccess(undefined) : null);
+
+  const activeAccess = (() => {
+    if (mode === 'edit') {
+      return content?.access ?? (detailApi.error?.code === 'forbidden' ? withServerDeniedContentAccess(undefined) : null);
+    }
+    return contentAccessApi.access ?? (activeError?.code === 'forbidden' ? withServerDeniedContentAccess(undefined) : null);
+  })();
+
   const isReadOnly = mode === 'edit' && activeAccess?.canRead === true && activeAccess.canUpdate === false;
-  const actionsDisabled =
-    mode === 'create' ? (activeAccess ? !activeAccess.canCreate : activeError?.code === 'forbidden') : !activeAccess?.canUpdate;
+
+  const actionsDisabled = (() => {
+    if (mode === 'create') {
+      return activeAccess ? !activeAccess.canCreate : activeError?.code === 'forbidden';
+    }
+    return !activeAccess?.canUpdate;
+  })();
+
+  const submitCreate = async (parsedPayload: { payload: unknown }, publishedAt: string | null | undefined): Promise<void> => {
+    const payload: CreateContentPayload = {
+      title: formState.title.trim(),
+      contentType: formState.contentType,
+      status: formState.status,
+      publishedAt: publishedAt ?? undefined,
+      payload: parsedPayload.payload as CreateContentPayload['payload'],
+    };
+
+    const success = await createApi.createContent(payload);
+    if (success) {
+      await navigate({ to: '/content' });
+    }
+  };
+
+  const submitUpdate = async (parsedPayload: { payload: unknown }, publishedAt: string | null | undefined): Promise<void> => {
+    if (!contentId) {
+      return;
+    }
+
+    const payload: UpdateContentPayload = {
+      title: formState.title.trim(),
+      status: formState.status,
+      publishedAt: publishedAt ?? undefined,
+      payload: parsedPayload.payload as UpdateContentPayload['payload'],
+    };
+
+    await detailApi.updateContent(payload);
+  };
 
   const submitForm = async (event: React.SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -271,35 +310,10 @@ export const ContentEditorPage = ({ mode, contentId }: ContentEditorPageProps) =
     }
 
     if (mode === 'create') {
-      const payload: CreateContentPayload = {
-        title: formState.title.trim(),
-        contentType: formState.contentType,
-        status: formState.status,
-        publishedAt,
-        payload: parsedPayload.payload as CreateContentPayload['payload'],
-      };
-
-      const success = await createApi.createContent(payload);
-      if (!success) {
-        return;
-      }
-
-      await navigate({ to: '/content' });
-      return;
+      await submitCreate(parsedPayload, publishedAt);
+    } else {
+      await submitUpdate(parsedPayload, publishedAt);
     }
-
-    if (!contentId) {
-      return;
-    }
-
-    const payload: UpdateContentPayload = {
-      title: formState.title.trim(),
-      status: formState.status,
-      publishedAt,
-      payload: parsedPayload.payload as UpdateContentPayload['payload'],
-    };
-
-    await detailApi.updateContent(payload);
   };
 
   return (

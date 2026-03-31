@@ -137,6 +137,25 @@ const sortPermissionIdsByCatalog = (
     return leftKey.localeCompare(rightKey);
   });
 
+const groupPermissionsByCatalog = (
+  permissions: readonly { id: string; permissionKey: string; description?: string | null }[]
+): readonly (readonly [string, readonly { id: string; permissionKey: string; description?: string | null }[]])[] => {
+  const buckets = new Map<string, { id: string; permissionKey: string; description?: string | null }[]>();
+  for (const permission of permissions) {
+    const summary = summarizePermission(permission.permissionKey);
+    const existing = buckets.get(summary.resourceLabel) ?? [];
+    existing.push(permission);
+    buckets.set(summary.resourceLabel, existing);
+  }
+
+  return [...buckets.entries()]
+    .map(([resourceLabel, items]) => [
+      resourceLabel,
+      [...items].sort((left, right) => left.permissionKey.localeCompare(right.permissionKey)),
+    ] as const)
+    .sort(([left], [right]) => left.localeCompare(right));
+};
+
 export const normalizeRoleDetailTab = (value: unknown): RoleDetailTab => {
   if (typeof value !== 'string') {
     return 'general';
@@ -176,28 +195,18 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
     setPermissionDraft(sortPermissionIdsByCatalog(role.permissions.map((permission) => permission.id), permissionsApi.permissions));
   }, [permissionsApi.permissions, role]);
 
-  const groupedPermissions = React.useMemo(() => {
-    const buckets = new Map<string, typeof permissionsApi.permissions>();
-    for (const permission of permissionsApi.permissions) {
-      const summary = summarizePermission(permission.permissionKey);
-      buckets.set(summary.resourceLabel, [...(buckets.get(summary.resourceLabel) ?? []), permission]);
-    }
+  const groupedPermissions = React.useMemo(
+    () => groupPermissionsByCatalog(permissionsApi.permissions),
+    [permissionsApi.permissions]
+  );
 
-    return [...buckets.entries()]
-      .map(([resourceLabel, permissions]) => [
-        resourceLabel,
-        [...permissions].sort((left, right) => left.permissionKey.localeCompare(right.permissionKey)),
-      ] as const)
-      .sort(([left], [right]) => left.localeCompare(right));
-  }, [permissionsApi.permissions]);
-
-  const onTabIntent = (tab: RoleDetailTab) => {
-    void navigate({
+  const onTabIntent = (tab: RoleDetailTab): void => {
+    navigate({
       to: '/admin/roles/$roleId',
       params: { roleId },
       search: { tab },
       replace: true,
-    });
+    }).catch(() => undefined);
   };
 
   const assignedUsers = React.useMemo(() => {
@@ -216,7 +225,7 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
     return usersApi.users.filter((user) => user.roles.every((assignment) => assignment.roleId !== role.id));
   }, [role, usersApi.users]);
 
-  const onSaveGeneral = async (event: React.FormEvent<HTMLFormElement>) => {
+  const onSaveGeneral = async (event: React.SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!role || isReadOnly) {
       return;
@@ -572,7 +581,9 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
             disabled={isReadOnly || permissionsApi.isLoading || Boolean(permissionsApi.error) || isSavingPermissions}
             onClick={() => void onSavePermissions()}
           >
-            {isSavingPermissions ? t('admin.roles.workspace.savingPermissions') : t('admin.roles.workspace.savePermissions')}
+            {isSavingPermissions
+              ? t('admin.roles.workspace.savingPermissions')
+              : t('admin.roles.workspace.savePermissions')}
           </Button>
           <Button type="button" variant="outline" disabled={isReadOnly} onClick={resetPermissionDraft}>
             {t('admin.roles.workspace.resetPermissions')}
@@ -652,7 +663,9 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
                           disabled={isReadOnly || isBusy}
                           onClick={() => void removeRoleFromUser(user.id, roleIds)}
                         >
-                          {isBusy ? t('admin.roles.detail.assignments.updating') : t('admin.roles.detail.assignments.remove')}
+                          {isBusy
+                            ? t('admin.roles.detail.assignments.updating')
+                            : t('admin.roles.detail.assignments.remove')}
                         </Button>
                       </li>
                     );
@@ -684,7 +697,9 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
                           disabled={isReadOnly || isBusy}
                           onClick={() => void assignRoleToUser(user.id, roleIds)}
                         >
-                          {isBusy ? t('admin.roles.detail.assignments.updating') : t('admin.roles.detail.assignments.assign')}
+                          {isBusy
+                            ? t('admin.roles.detail.assignments.updating')
+                            : t('admin.roles.detail.assignments.assign')}
                         </Button>
                       </li>
                     );

@@ -440,12 +440,11 @@ export const evaluateAuthorizeDecision = (
       resourceType: permission.resourceType,
       ...(permission.resourceId ? { resourceId: permission.resourceId } : {}),
       effect: permission.effect ?? ('allow' satisfies IamPermissionEffect),
-      source:
-        sourceUserIds.length > 0
-          ? ('user' as const)
-          : sourceGroupIds.length > 0
-            ? ('group' as const)
-            : ('role' as const),
+      source: (() => {
+        if (sourceUserIds.length > 0) return 'user' as const;
+        if (sourceGroupIds.length > 0) return 'group' as const;
+        return 'role' as const;
+      })(),
       sourceId: sourceUserIds[0] ?? sourceGroupIds[0] ?? sourceRoleIds[0] ?? 'unknown',
       ...(permission.groupName ? { sourceName: permission.groupName } : {}),
       ...(typeof permission.scope?.geoScope === 'string' ? { geoScope: permission.scope.geoScope } : {}),

@@ -77,6 +77,27 @@ const sanitizeHref = (value: string): string | null => {
   }
 };
 
+const appendSanitizedChildren = (parent: Element | DocumentFragment, source: HTMLElement, document: Document): void => {
+  for (const child of source.childNodes) {
+    const sanitizedChild = sanitizeNode(child, document);
+    if (sanitizedChild) {
+      parent.appendChild(sanitizedChild);
+    }
+  }
+};
+
+const sanitizeAnchorAttributes = (element: HTMLElement, source: HTMLElement): void => {
+  const sanitizedHref = sanitizeHref(source.getAttribute('href') ?? '');
+  if (sanitizedHref) {
+    element.setAttribute('href', sanitizedHref);
+  }
+
+  if (source.getAttribute('target') === '_blank') {
+    element.setAttribute('target', '_blank');
+    element.setAttribute('rel', SAFE_BLANK_TARGET_REL);
+  }
+};
+
 const sanitizeNode = (node: Node, document: Document): Node | null => {
   if (node.nodeType === Node.TEXT_NODE) {
     return document.createTextNode(node.textContent ?? '');
@@ -95,40 +116,21 @@ const sanitizeNode = (node: Node, document: Document): Node | null => {
     }
 
     const fragment = document.createDocumentFragment();
-    for (const child of [...sourceElement.childNodes]) {
-      const sanitizedChild = sanitizeNode(child, document);
-      if (sanitizedChild) {
-        fragment.appendChild(sanitizedChild);
-      }
-    }
+    appendSanitizedChildren(fragment, sourceElement, document);
     return fragment;
   }
 
   const element = document.createElement(tagName);
   if (tagName === 'a') {
-    const sanitizedHref = sanitizeHref(sourceElement.getAttribute('href') ?? '');
-    if (sanitizedHref) {
-      element.setAttribute('href', sanitizedHref);
-    }
-
-    if (sourceElement.getAttribute('target') === '_blank') {
-      element.setAttribute('target', '_blank');
-      element.setAttribute('rel', SAFE_BLANK_TARGET_REL);
-    }
+    sanitizeAnchorAttributes(element, sourceElement);
   }
 
-  for (const child of [...sourceElement.childNodes]) {
-    const sanitizedChild = sanitizeNode(child, document);
-    if (sanitizedChild) {
-      element.appendChild(sanitizedChild);
-    }
-  }
-
+  appendSanitizedChildren(element, sourceElement, document);
   return element;
 };
 
 export const sanitizeLegalTextHtml = (value: string): string => {
-  if (typeof globalThis.document === 'undefined' || typeof DOMParser === 'undefined') {
+  if (globalThis.document === undefined || typeof DOMParser === 'undefined') {
     return createFallbackHtml(collapseWhitespace(value));
   }
 
@@ -137,7 +139,7 @@ export const sanitizeLegalTextHtml = (value: string): string => {
   const outputDocument = globalThis.document.implementation.createHTMLDocument('');
   const container = outputDocument.createElement('div');
 
-  for (const node of [...parsedDocument.body.childNodes]) {
+  for (const node of parsedDocument.body.childNodes) {
     const sanitizedNode = sanitizeNode(node, outputDocument);
     if (sanitizedNode) {
       container.appendChild(sanitizedNode);

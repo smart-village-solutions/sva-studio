@@ -168,7 +168,11 @@ const renderContentListBody = ({
         <tbody className="divide-y divide-border">
           {filteredContents.map((item) => {
             const access = resolveRowAccess(item.access, listError);
-            const actionLabel = access.canUpdate ? t('content.actions.edit') : access.canRead ? t('content.actions.openReadOnly') : t('content.actions.blocked');
+            const actionLabel = access.canUpdate
+              ? t('content.actions.edit')
+              : access.canRead
+                ? t('content.actions.openReadOnly')
+                : t('content.actions.blocked');
 
             return (
             <tr key={item.id} className="align-top">
@@ -194,15 +198,15 @@ const renderContentListBody = ({
               </td>
               <td className="px-4 py-3 text-sm text-muted-foreground">{formatAccessContext(access)}</td>
               <td className="px-4 py-3 text-right">
-                {!access.canRead ? (
-                  <Button type="button" size="sm" variant="outline" disabled>
-                    {actionLabel}
-                  </Button>
-                ) : (
+                {access.canRead ? (
                   <Button asChild size="sm" variant="outline">
                     <Link to="/content/$contentId" params={{ contentId: item.id }}>
                       {actionLabel}
                     </Link>
+                  </Button>
+                ) : (
+                  <Button type="button" size="sm" variant="outline" disabled>
+                    {actionLabel}
                   </Button>
                 )}
               </td>

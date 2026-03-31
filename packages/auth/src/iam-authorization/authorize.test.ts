@@ -82,6 +82,14 @@ vi.mock('./shared', () => ({
   buildRequestContext: vi.fn(() => ({})),
 }));
 
+vi.mock('../shared/input-readers.js', () => ({
+  readString: vi.fn((value: unknown) => (typeof value === 'string' ? value : undefined)),
+  isUuid: vi.fn(
+    (value: string) =>
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)
+  ),
+}));
+
 import { authorizeHandler } from './authorize';
 
 // ============================================================================
@@ -165,5 +173,63 @@ describe('authorizeHandler — context.organizationId Branch (L79)', () => {
     expect(resolvePermsMock).toHaveBeenCalledWith(
       expect.objectContaining({ organizationId: 'org-from-context' })
     );
+  });
+});
+
+describe('authorizeHandler — geo context validation', () => {
+  it('gibt 400 invalid_request zurück wenn geoUnitId keine UUID ist', async () => {
+    loadAuthReqMock.mockResolvedValueOnce({
+      instanceId: 'inst-1',
+      action: 'content.read',
+      resource: {
+        type: 'content',
+        id: 'art-1',
+        attributes: {
+          geoUnitId: 'geo-1',
+        },
+      },
+      context: undefined,
+    });
+
+    const response = await authorizeHandler(
+      new Request('http://localhost/iam/authorize', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({}),
+      })
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: 'invalid_request' });
+    expect(resolvePermsMock).not.toHaveBeenCalled();
+  });
+
+  it('gibt 400 invalid_request zurück wenn geoHierarchy zu viele Einträge enthält', async () => {
+    loadAuthReqMock.mockResolvedValueOnce({
+      instanceId: 'inst-1',
+      action: 'content.read',
+      resource: {
+        type: 'content',
+        id: 'art-1',
+        attributes: {
+          geoHierarchy: Array.from({ length: 33 }, (_, index) =>
+            `00000000-0000-0000-0000-${String(index).padStart(12, '0')}`
+          ),
+        },
+      },
+      context: undefined,
+    });
+
+    const response = await authorizeHandler(
+      new Request('http://localhost/iam/authorize', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({}),
+      })
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: 'invalid_request' });
+    expect(resolvePermsMock).not.toHaveBeenCalled();
   });
 });

@@ -63,11 +63,13 @@ const toSnapshotLookupKey = (input: PermissionLookupInput) => ({
   geoContextHash: toGeoContextHash(input),
 });
 
-const toRedisSnapshotKey = (input: PermissionLookupInput): PermSnapshotKey => ({
-  instanceId: input.instanceId,
-  userId: input.keycloakSubject,
-  organizationId: input.organizationId,
-  geoCtxHash: toGeoContextHash(input),
+const toRedisSnapshotKey = (
+  snapshotKey: ReturnType<typeof toSnapshotLookupKey>
+): PermSnapshotKey => ({
+  instanceId: snapshotKey.instanceId,
+  userId: snapshotKey.keycloakSubject,
+  organizationId: snapshotKey.organizationId,
+  geoCtxHash: snapshotKey.geoContextHash,
 });
 
 const listScopedPermissionRows = async (
@@ -246,7 +248,7 @@ export const resolveEffectivePermissions = async (input: PermissionLookupInput):
     recordPermissionCacheColdStart(input.instanceId);
   }
 
-  const redisKey = toRedisSnapshotKey(input);
+  const redisKey = toRedisSnapshotKey(snapshotLookupKey);
   const redisLookupStartedAt = performance.now();
   const redisLookup = await getRedisPermissionSnapshot(redisKey);
   recordPermissionCacheRedisLatency(

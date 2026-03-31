@@ -7,6 +7,9 @@ export const i18nResources = {
         loadingLabel: 'Inhalt lädt',
         loadingStatus: 'Inhalt wird geladen.',
       },
+      breadcrumbs: {
+        ariaLabel: 'Brotkrumen-Navigation',
+      },
       header: {
         navAriaLabel: 'Hauptnavigation',
         authLoading: 'Authentifizierungsstatus wird geladen.',
@@ -521,6 +524,22 @@ export const i18nResources = {
           groupsLabel: 'Gruppen-Zuweisung',
           notesLabel: 'Notizen',
           notesCounter: '{{count}} / 2000 Zeichen',
+          directPermissionsTitle: 'Direkte Rechte',
+          directPermissionsHint:
+            'Direkte Nutzerrechte ergänzen oder überschreiben Rollen- und Gruppenrechte. Direkte Verweigerungen haben Vorrang.',
+          directPermissionsSectionHint: 'Setzen Sie je Berechtigung eine direkte Wirkung oder lassen Sie die Vererbung aktiv.',
+          directPermissionsEmpty: 'Es sind keine direkten Nutzerrechte gesetzt.',
+          directPermissionsSelectLabel: 'Direkte Wirkung für {{permission}}',
+          effectivePermissionsTitle: 'Aktuell wirksame Rechte',
+          effectivePermissionsHint:
+            'Diese Liste zeigt die derzeit aufgelösten Rechte des Nutzers. Direkte Rechte werden separat gepflegt.',
+          permissionsLoading: 'Berechtigungskatalog wird geladen ...',
+          permissionDescriptionFallback: 'Keine zusätzliche Beschreibung vorhanden.',
+          directPermissionEffect: {
+            inherit: 'Nicht gesetzt',
+            allow: 'Erlauben',
+            deny: 'Verweigern',
+          },
           permissionsEmpty: 'Keine effektiven Berechtigungen vorhanden.',
           historyEmpty: 'Keine Historieneinträge vorhanden.',
           historyLoading: 'Historie wird geladen ...',
@@ -750,7 +769,7 @@ export const i18nResources = {
         },
         editDialog: {
           title: 'Rolle bearbeiten',
-          description: 'Synchronisiert Änderungen für {{roleKey}} direkt mit Keycloak.',
+          description: 'Nur Keycloak-relevante Rollenmetadaten werden für {{roleKey}} mit Keycloak synchronisiert.',
           keyLabel: 'Technischer Rollenschlüssel',
           nameLabel: 'Anzeigename',
           descriptionLabel: 'Beschreibung',
@@ -848,12 +867,24 @@ export const i18nResources = {
             updating: 'Aktualisiert ...',
           },
           sync: {
-            title: 'Synchronisierungsstatus',
-            lastSyncedAt: 'Zuletzt synchronisiert',
+            title: 'Keycloak-Metadatensynchronisierung',
+            subtitle: 'Diese Ansicht beschreibt ausschließlich den Abgleich der Studio-Rollenmetadaten mit Keycloak.',
+            metadataOnlyHint: 'Berechtigungen, Zuweisungen und lokale Rollenlevel werden im Studio gespeichert und verändern diesen Keycloak-Status nicht.',
+            externalHint: 'Diese Rolle wird extern verwaltet. Der angezeigte Status beschreibt nur den bekannten Keycloak-Bezug, nicht lokale Berechtigungszuordnungen.',
+            metadataStatus: 'Keycloak-Metadatenstatus',
+            lastSyncedAt: 'Zuletzt mit Keycloak synchronisiert',
             source: 'Führende Quelle',
+            errorCode: 'Keycloak-Fehlercode',
             notAvailable: 'Nicht verfügbar',
+            localChangesTitle: 'Lokale Studio-Änderungen',
+            localChangesBody: 'Folgende Änderungen bleiben lokal in der Studio-Datenbank und lösen keine Keycloak-Synchronisierung aus:',
+            localChangeItems: {
+              permissions: 'Berechtigungen der Rolle',
+              assignments: 'Benutzerzuweisungen zur Rolle',
+              roleLevel: 'Lokale Rollenlevel für Studio-interne Freigabelogik',
+            },
             actionsTitle: 'Synchronisierungsaktionen',
-            actionsBody: 'Fehlgeschlagene Studio-Rollen können erneut synchronisiert oder neu geladen werden.',
+            actionsBody: 'Nur fehlgeschlagene oder manuell angestoßene Keycloak-Metadatensynchronisierungen werden hier erneut ausgeführt.',
           },
         },
         errors: {
@@ -1188,6 +1219,9 @@ export const i18nResources = {
       content: {
         loadingLabel: 'Loading content',
         loadingStatus: 'Content is loading.',
+      },
+      breadcrumbs: {
+        ariaLabel: 'Breadcrumb navigation',
       },
       header: {
         navAriaLabel: 'Main navigation',
@@ -1703,6 +1737,23 @@ export const i18nResources = {
           groupsLabel: 'Group assignment',
           notesLabel: 'Notes',
           notesCounter: '{{count}} / 2000 characters',
+          directPermissionsTitle: 'Direct permissions',
+          directPermissionsHint:
+            'Direct user permissions extend or override role and group permissions. Direct denies take precedence.',
+          directPermissionsSectionHint:
+            'Set a direct effect per permission or keep inherited behavior.',
+          directPermissionsEmpty: 'No direct user permissions are set.',
+          directPermissionsSelectLabel: 'Direct effect for {{permission}}',
+          effectivePermissionsTitle: 'Currently effective permissions',
+          effectivePermissionsHint:
+            'This list shows the permissions currently resolved for the user. Direct rights are managed separately.',
+          permissionsLoading: 'Loading permission catalog ...',
+          permissionDescriptionFallback: 'No additional description available.',
+          directPermissionEffect: {
+            inherit: 'Not set',
+            allow: 'Allow',
+            deny: 'Deny',
+          },
           permissionsEmpty: 'No effective permissions available.',
           historyEmpty: 'No history entries available.',
           historyLoading: 'Loading history ...',
@@ -1932,7 +1983,7 @@ export const i18nResources = {
         },
         editDialog: {
           title: 'Edit role',
-          description: 'Synchronizes changes for {{roleKey}} directly to Keycloak.',
+          description: 'Only Keycloak-relevant role metadata is synchronized to Keycloak for {{roleKey}}.',
           keyLabel: 'Technical role key',
           nameLabel: 'Display name',
           descriptionLabel: 'Description',
@@ -2030,12 +2081,24 @@ export const i18nResources = {
             updating: 'Updating ...',
           },
           sync: {
-            title: 'Synchronization status',
-            lastSyncedAt: 'Last synchronized',
+            title: 'Keycloak metadata synchronization',
+            subtitle: 'This view only describes how Studio role metadata is synchronized with Keycloak.',
+            metadataOnlyHint: 'Permissions, assignments, and local role levels are stored in Studio and do not change this Keycloak status.',
+            externalHint: 'This role is managed externally. The shown status only describes the known Keycloak relation, not local permission assignments.',
+            metadataStatus: 'Keycloak metadata status',
+            lastSyncedAt: 'Last synchronized with Keycloak',
             source: 'Source of truth',
+            errorCode: 'Keycloak error code',
             notAvailable: 'Not available',
+            localChangesTitle: 'Local Studio changes',
+            localChangesBody: 'The following changes remain local to the Studio database and do not trigger a Keycloak synchronization:',
+            localChangeItems: {
+              permissions: 'Role permissions',
+              assignments: 'User assignments for the role',
+              roleLevel: 'Local role levels for Studio-internal release logic',
+            },
             actionsTitle: 'Synchronization actions',
-            actionsBody: 'Failed studio roles can be synchronized again or reloaded here.',
+            actionsBody: 'Only failed or explicitly triggered Keycloak metadata synchronizations are retried here.',
           },
         },
         errors: {

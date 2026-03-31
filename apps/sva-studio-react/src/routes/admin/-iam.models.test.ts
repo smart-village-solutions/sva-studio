@@ -43,6 +43,7 @@ describe('iam.models', () => {
         organizationId: 'org-a',
         effect: 'allow',
         resourceId: 'resource-a',
+        sourceUserIds: [],
         sourceRoleIds: ['role-1'],
         sourceGroupIds: [],
         scope: {
@@ -53,12 +54,14 @@ describe('iam.models', () => {
         action: 'iam.user.read',
         resourceType: 'iam',
         organizationId: 'org-b',
+        sourceUserIds: [],
         sourceRoleIds: ['role-2'],
         sourceGroupIds: ['group-1'],
       },
       {
         action: 'feature.toggle',
         resourceType: 'feature',
+        sourceUserIds: [],
         sourceRoleIds: ['role-3'],
         sourceGroupIds: [],
       },
@@ -78,6 +81,7 @@ describe('iam.models', () => {
       {
         action: 'feature.toggle',
         resourceType: 'feature',
+        sourceUserIds: [],
         sourceRoleIds: ['role-3'],
         sourceGroupIds: [],
       },
@@ -93,6 +97,7 @@ describe('iam.models', () => {
         resourceType: 'content',
         resourceId: 'article-1',
         effect: 'deny',
+        sourceUserIds: [],
         sourceRoleIds: ['role-1'],
         sourceGroupIds: ['group-1'],
         scope: {
@@ -123,6 +128,7 @@ describe('iam.models', () => {
           action: 'content.read',
           resourceType: 'content',
           organizationId: 'org-a',
+          sourceUserIds: [],
           sourceRoleIds: ['role-1'],
           sourceGroupIds: [],
         },

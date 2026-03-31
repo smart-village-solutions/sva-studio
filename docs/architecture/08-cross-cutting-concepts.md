@@ -48,8 +48,10 @@ gleichzeitig beeinflussen.
 - Mandantenisolation basiert auf kanonischem Scope `instanceId` als fachlichem String-Schlüssel (inkl. Mapping zu `workspace_id` in Logs)
 - Keycloak ist führend für Authentifizierung; Postgres ist führend für Studio-verwaltete IAM-Fachdaten
 - Autorisierungspfade erzwingen `instanceId`-Filterung vor Rollen-/Policy-Evaluation
-- Effektive Berechtigungen aggregieren direkte Rollen und gruppenvermittelte Rollen gleichwertig; die Provenance hält `direct_role` und `group_role` als strukturierte Quelle fest
+- Effektive Berechtigungen aggregieren direkte Nutzerrechte, direkte Rollen und gruppenvermittelte Rollen; die Provenance hält `direct_user`, `direct_role` und `group_role` als strukturierte Quelle fest
 - Gruppen sind instanzgebundene Rollenbündel (`group_type = role_bundle`); direkte Gruppen-Permissions sind bewusst nicht Teil des ersten Schnitts
+- Direkte Nutzerrechte werden in `iam.account_permissions` mit eigenem `effect` (`allow|deny`) persistiert und bewusst von Rollen-/Gruppenmitgliedschaften getrennt gepflegt
+- Konfliktregel für direkte Nutzerrechte bleibt konservativ: direkte Nutzer-Denies schlagen alle Allows; direkte Nutzer-Allows ergänzen nur, wenn kein restriktiver Konflikt greift
 - Gruppenmitgliedschaften werden mit Herkunft (`manual|seed|sync`) und optionalen Gültigkeitsfenstern in `iam.account_groups` geführt
 - Geo-Scopes werden kanonisch über `allowedGeoUnitIds` und `restrictedGeoUnitIds` gegen das Read-Modell `iam.geo_units` ausgewertet; `allowedGeoScopes` bleibt nur als Kompatibilitäts-Fallback bestehen
 - Geo-Vererbung ist strikt restriktiv: Parent-Allow darf auf Children vererben, ein spezifischer Child-Deny schlägt diesen Allow deterministisch
@@ -58,9 +60,11 @@ gleichzeitig beeinflussen.
 - Permission-Snapshot-Cache ist instanz- und kontextgebunden; der Leseweg läuft deterministisch über lokalen L1-Cache, Redis-Shared-Read-Path und erst dann Recompute aus Postgres
 - Invalidation erfolgt event-first über Postgres `NOTIFY` mit `eventId`; TTL begrenzt Eventverlust, ersetzt aber keinen technischen Failover-Pfad
 - Permission-Snapshots sind reine Laufzeitoptimierung und keine fachliche Source of Truth
+- Änderungen an direkten Nutzerrechten invalidieren dieselben Snapshot-Pfade wie Rollen- und Gruppenänderungen; Cache-Konsistenz ist damit für `me/permissions` und `authorize` identisch abgesichert
 - Audit-Logging für IAM-Ereignisse folgt Dual-Write (`iam.activity_logs` + OTEL via SDK Logger)
 - Audit-Daten enthalten korrelierbare IDs (`request_id`, `trace_id`) und pseudonymisierte Actor-Referenzen
 - Studio-verwaltete Rollen werden über `managed_by = 'studio'` und `instance_id` gegen fremdverwaltete Keycloak-Rollen abgegrenzt
+- Keycloak bleibt von direkten Nutzerrechten fachlich entkoppelt; diese Konfiguration ist ausschließlich Studio-intern und wird nicht in den IdP gespiegelt
 - `role_key` ist die stabile technische Identität, `display_name` der editierbare UI-Name
 - Rollen-Alias-Mapping für erhöhte Berechtigungen (z. B. `Admin -> system_admin`) wird ausschließlich aus `realm_access` übernommen; `resource_access`-Rollen bleiben client-spezifisch und erhalten keine globalen Privileg-Aliasse
 - Idempotency-Schlüssel für mutierende IAM-Endpoints sind mandantenspezifisch gescoped: (`instance_id`, `actor_account_id`, `endpoint`, `idempotency_key`)

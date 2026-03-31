@@ -657,9 +657,17 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
       >
         <Card className="space-y-3 p-4 shadow-none">
           <h2 className="text-base font-semibold text-foreground">{t('admin.roles.detail.sync.title')}</h2>
+          <p className="text-sm text-muted-foreground">{t('admin.roles.detail.sync.subtitle')}</p>
+          <Alert className="border-secondary/40 bg-secondary/5 text-secondary">
+            <AlertDescription>
+              {role.managedBy === 'studio'
+                ? t('admin.roles.detail.sync.metadataOnlyHint')
+                : t('admin.roles.detail.sync.externalHint')}
+            </AlertDescription>
+          </Alert>
           <dl className="grid gap-2 text-sm">
             <div>
-              <dt className="text-muted-foreground">{t('admin.roles.workspace.syncStateLabel')}</dt>
+              <dt className="text-muted-foreground">{t('admin.roles.detail.sync.metadataStatus')}</dt>
               <dd>{statusLabel(role.syncState)}</dd>
             </div>
             <div>
@@ -670,10 +678,23 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
               <dt className="text-muted-foreground">{t('admin.roles.detail.sync.source')}</dt>
               <dd>{role.managedBy}</dd>
             </div>
+            {role.syncError?.code ? (
+              <div>
+                <dt className="text-muted-foreground">{t('admin.roles.detail.sync.errorCode')}</dt>
+                <dd>{role.syncError.code}</dd>
+              </div>
+            ) : null}
           </dl>
         </Card>
         <Card className="space-y-3 p-4 shadow-none">
-          <h2 className="text-base font-semibold text-foreground">{t('admin.roles.detail.sync.actionsTitle')}</h2>
+          <h2 className="text-base font-semibold text-foreground">{t('admin.roles.detail.sync.localChangesTitle')}</h2>
+          <p className="text-sm text-muted-foreground">{t('admin.roles.detail.sync.localChangesBody')}</p>
+          <ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground">
+            <li>{t('admin.roles.detail.sync.localChangeItems.permissions')}</li>
+            <li>{t('admin.roles.detail.sync.localChangeItems.assignments')}</li>
+            <li>{t('admin.roles.detail.sync.localChangeItems.roleLevel')}</li>
+          </ul>
+          <h3 className="pt-2 text-sm font-semibold text-foreground">{t('admin.roles.detail.sync.actionsTitle')}</h3>
           <p className="text-sm text-muted-foreground">{t('admin.roles.detail.sync.actionsBody')}</p>
           <div className="flex flex-wrap gap-3">
             <Button

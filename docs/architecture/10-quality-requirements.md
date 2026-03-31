@@ -181,6 +181,14 @@ Referenzen:
 - Rollen-Gates für `system_admin`, `app_manager` und `editor` müssen auf Route-, UI- und Server-Ebene konsistent wirken.
 - Neue Inhaltsmigrationen gelten nur als verifiziert, wenn `pnpm nx run data:db:migrate:validate` lokal erfolgreich `up -> down -> up` bestätigt.
 
+### Ergänzung 2026-03: Qualitätsziele direkte Nutzerrechte
+
+- `PATCH /api/v1/iam/users/{userId}` mit `directPermissions` muss bekannte Permission-IDs streng validieren und doppelte Zuordnungen fail-closed abweisen.
+- `GET /iam/me/permissions` und `POST /iam/authorize` müssen direkte Nutzerrechte mit Provenance `direct_user` stabil serialisieren.
+- Direkte Nutzer-Denies müssen konfliktäre Allows aus Rollen oder Gruppen deterministisch schlagen; entsprechende Negativtests bleiben grün.
+- Reine Änderungen an direkten Nutzerrechten dürfen keinen Keycloak-Sync auslösen.
+- Die Nutzerdetailseite `/admin/users/{userId}` muss direkte Rechte und aktuell wirksame Rechte getrennt und ohne harte Strings darstellen.
+
 ### Ergänzung 2026-03: Qualitätsziele Swarm-Deployment und Multi-Host-Betrieb
 
 - `docker compose -f deploy/portainer/docker-compose.yml config` muss ohne Fehler durchlaufen (statische Stack-Validierung).

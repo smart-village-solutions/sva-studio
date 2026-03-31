@@ -372,4 +372,50 @@ describe('RoleDetailPage', () => {
       });
     });
   });
+
+  it('shows sync tab as Keycloak metadata sync only', () => {
+    useRolesMock.mockReturnValue({
+      roles: [
+        {
+          id: 'role-2',
+          roleKey: 'editor',
+          roleName: 'Editor',
+          externalRoleName: 'editor',
+          managedBy: 'studio',
+          description: 'Editorial role',
+          isSystemRole: false,
+          roleLevel: 20,
+          memberCount: 3,
+          syncState: 'failed',
+          lastSyncedAt: '2026-03-31T10:15:00.000Z',
+          syncError: { code: 'IDP_UNAVAILABLE' },
+          permissions: [{ id: 'perm-2', permissionKey: 'content.write', description: null }],
+        },
+      ],
+      isLoading: false,
+      error: null,
+      mutationError: null,
+      reconcileReport: null,
+      refetch: vi.fn(),
+      clearMutationError: vi.fn(),
+      createRole: vi.fn(),
+      updateRole: vi.fn(),
+      deleteRole: vi.fn(),
+      retryRoleSync: vi.fn(),
+      reconcile: vi.fn(),
+    });
+
+    render(<RoleDetailPage roleId="role-2" activeTab="sync" />);
+
+    expect(screen.getByText('Diese Ansicht beschreibt ausschließlich den Abgleich der Studio-Rollenmetadaten mit Keycloak.')).toBeTruthy();
+    expect(
+      screen.getByText(
+        'Berechtigungen, Zuweisungen und lokale Rollenlevel werden im Studio gespeichert und verändern diesen Keycloak-Status nicht.'
+      )
+    ).toBeTruthy();
+    expect(screen.getByText('Keycloak-Metadatenstatus')).toBeTruthy();
+    expect(screen.getByText('IDP_UNAVAILABLE')).toBeTruthy();
+    expect(screen.getByText('Berechtigungen der Rolle')).toBeTruthy();
+    expect(screen.getByText('Benutzerzuweisungen zur Rolle')).toBeTruthy();
+  });
 });

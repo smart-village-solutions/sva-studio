@@ -203,3 +203,18 @@ Zuordnung:
 
 - Abschnitt 04/05/06/08: ADR-012, ADR-013, ADR-017, ADR-018
 - Abschnitt 09: dokumentiert explizit, dass die Transparenz-UI eine Fortschreibung vorhandener Entscheidungen ist und kein neues Architekturpattern einführt
+
+### Fortschreibung 2026-03: Direkte Nutzerrechte ohne neue ADR
+
+- Für direkte Nutzerrechte war keine neue ADR erforderlich.
+  - Die Konfliktregel bleibt vollständig innerhalb der bestehenden Leitplanken aus ADR-025.
+  - Die Erweiterung führt kein neues IdP- oder Sync-Pattern ein, sondern ergänzt die bestehende Studio-IAM-Persistenz um eine zusätzliche Herkunft `direct_user`.
+- Die maßgeblichen Architekturentscheidungen bleiben daher:
+  - ADR-025 für `deny vor allow` und konservative Konfliktauflösung
+  - ADR-017 für die modulare Erweiterung der Auth-/IAM-Serverbausteine
+  - ADR-016 bleibt unverändert, weil direkte Nutzerrechte bewusst nicht in Keycloak gespiegelt werden
+
+Zuordnung:
+
+- Abschnitt 04/05/06/08/10/11: ADR-017, ADR-025
+- Abschnitt 09: dokumentiert explizit, dass direkte Nutzerrechte eine Fortschreibung vorhandener Entscheidungen sind und kein neues Architekturpattern einführen

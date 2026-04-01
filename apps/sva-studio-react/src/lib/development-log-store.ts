@@ -3,6 +3,7 @@ import {
   redactLogString,
   registerBrowserLogSink,
   serializeAndRedactLogValue,
+  stringifyNonPlainValue,
 } from '@sva/sdk/logging';
 
 export type BrowserDevelopmentLogLevel = 'debug' | 'info' | 'warn' | 'error';
@@ -25,22 +26,6 @@ let nextBrowserLogId = 1;
 let browserLogEntries: BrowserDevelopmentLogEntry[] = [];
 const browserLogListeners = new Set<BrowserLogListener>();
 let browserCaptureStop: (() => void) | null = null;
-
-const stringifyNonPlainValue = (value: object): string => {
-  const stringifier = value.toString;
-  if (typeof stringifier === 'function' && stringifier !== Object.prototype.toString) {
-    try {
-      const customString = stringifier.call(value);
-      return typeof customString === 'string'
-        ? redactLogString(customString)
-        : Object.prototype.toString.call(value);
-    } catch {
-      return Object.prototype.toString.call(value);
-    }
-  }
-
-  return Object.prototype.toString.call(value);
-};
 
 const serializeValue = (value: unknown): unknown => {
   return serializeAndRedactLogValue(value);

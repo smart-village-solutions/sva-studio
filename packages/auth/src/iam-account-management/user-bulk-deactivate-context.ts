@@ -5,15 +5,14 @@ import { z } from 'zod';
 import type { AuthenticatedRequestContext } from '../middleware.server.js';
 import { jsonResponse } from '../shared/db-helpers.js';
 
-import { ADMIN_ROLES } from './constants.js';
 import { asApiItem, createApiError, parseRequestBody, requireIdempotencyKey, toPayloadHash } from './api-helpers.js';
-import { validateCsrf } from './csrf.js';
-import { ensureFeature, getFeatureFlags } from './feature-flags.js';
-import { consumeRateLimit } from './rate-limit.js';
-import { type ActorInfo, requireRoles, resolveActorInfo } from './shared-actor-resolution.js';
 import { completeIdempotency, reserveIdempotency } from './shared-idempotency.js';
-import { resolveIdentityProvider } from './shared-runtime.js';
 import { bulkDeactivateSchema } from './schemas.js';
+import {
+  type UserMutationActor,
+  requireUserMutationIdentityProvider,
+  resolveUserMutationActor,
+} from './user-mutation-request-context.shared.js';
 import { createUserMutationErrorResponse } from './user-mutation-errors.js';
 
 type BulkDeactivatePayload = z.infer<typeof bulkDeactivateSchema>;
@@ -21,8 +20,8 @@ type BulkDeactivatePayload = z.infer<typeof bulkDeactivateSchema>;
 export type BulkDeactivateContext =
   | Response
   | {
-      actor: ActorInfo;
-      identityProvider: NonNullable<ReturnType<typeof resolveIdentityProvider>>;
+      actor: UserMutationActor;
+      identityProvider: Exclude<ReturnType<typeof requireUserMutationIdentityProvider>, Response>;
       payload: BulkDeactivatePayload;
       idempotencyKey: string;
     };
@@ -30,31 +29,19 @@ export type BulkDeactivateContext =
 const resolveBulkDeactivatePreconditions = async (
   request: Request,
   ctx: AuthenticatedRequestContext
-): Promise<Response | { actor: ActorInfo & { actorAccountId: string; requestId: string }; requestId: string }> => {
+): Promise<Response | { actor: UserMutationActor; requestId: string }> => {
   const requestContext = getWorkspaceContext();
-  const featureCheck = ensureFeature(getFeatureFlags(), 'iam_bulk', requestContext.requestId);
-  if (featureCheck) {
-    return featureCheck;
-  }
-
-  const roleCheck = requireRoles(ctx, ADMIN_ROLES, requestContext.requestId);
-  if (roleCheck) {
-    return roleCheck;
-  }
-
-  const actorResolution = await resolveActorInfo(request, ctx, {
-    requireActorMembership: true,
-    provisionMissingActorMembership: true,
+  const actorResolution = await resolveUserMutationActor(request, ctx, {
+    feature: 'iam_bulk',
+    scope: 'bulk',
+    requestId: requestContext.requestId,
   });
-  if ('error' in actorResolution) {
-    return actorResolution.error;
-  }
-  if (!actorResolution.actor.actorAccountId) {
-    return createApiError(403, 'forbidden', 'Akteur-Account nicht gefunden.', actorResolution.actor.requestId);
+  if ('response' in actorResolution) {
+    return actorResolution.response;
   }
 
   return {
-    actor: actorResolution.actor as ActorInfo & { actorAccountId: string; requestId: string },
+    actor: actorResolution.actor,
     requestId: actorResolution.actor.requestId ?? getWorkspaceContext().requestId ?? 'bulk-deactivate',
   };
 };
@@ -68,21 +55,6 @@ export const resolveBulkDeactivateContext = async (
     return resolved;
   }
   const { actor, requestId } = resolved;
-
-  const csrfError = validateCsrf(request, requestId);
-  if (csrfError) {
-    return csrfError;
-  }
-
-  const rateLimit = consumeRateLimit({
-    instanceId: actor.instanceId,
-    actorKeycloakSubject: ctx.user.id,
-    scope: 'bulk',
-    requestId,
-  });
-  if (rateLimit) {
-    return rateLimit;
-  }
 
   const idempotencyKey = requireIdempotencyKey(request, requestId);
   if ('error' in idempotencyKey) {
@@ -108,14 +80,9 @@ export const resolveBulkDeactivateContext = async (
     return createApiError(409, 'idempotency_key_reuse', reserve.message, requestId);
   }
 
-  const identityProvider = resolveIdentityProvider();
-  if (!identityProvider) {
-    return createApiError(
-      503,
-      'keycloak_unavailable',
-      'Keycloak Admin API ist nicht konfiguriert.',
-      requestId
-    );
+  const identityProvider = requireUserMutationIdentityProvider(requestId);
+  if (identityProvider instanceof Response) {
+    return identityProvider;
   }
 
   return {
@@ -127,7 +94,7 @@ export const resolveBulkDeactivateContext = async (
 };
 
 export const completeBulkDeactivateSuccess = async (input: {
-  actor: ActorInfo;
+  actor: UserMutationActor;
   idempotencyKey: string;
   details: readonly { id: string }[];
 }) => {
@@ -151,14 +118,13 @@ export const completeBulkDeactivateSuccess = async (input: {
 };
 
 export const completeBulkDeactivateFailure = async (input: {
-  actor: ActorInfo;
+  actor: UserMutationActor;
   idempotencyKey: string;
   error: unknown;
 }) => {
   const knownError = createUserMutationErrorResponse({
     error: input.error,
     requestId: input.actor.requestId,
-    fallbackMessage: 'Bulk-Deaktivierung fehlgeschlagen.',
     forbiddenFallbackMessage: 'Bulk-Deaktivierung enthält nicht erlaubte Zielnutzer.',
   });
   if (knownError) {

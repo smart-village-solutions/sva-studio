@@ -18,6 +18,21 @@ import { createPoolResolver, jsonResponse, type QueryClient, withInstanceDb } fr
 import { isUuid, readString } from '../shared/input-readers.js';
 import { buildLogContext } from '../shared/log-context.js';
 import { authorizeRequestSchema } from '../shared/schemas.js';
+import {
+  cacheMetricsState,
+  getPermissionCacheHealth,
+  buildPermissionCacheColdStartLog,
+  markPermissionCacheColdStart,
+  recordPermissionCacheRecompute,
+  recordPermissionCacheRedisLatency,
+} from './shared-cache-health.js';
+export {
+  cacheMetricsState,
+  getPermissionCacheHealth,
+  permissionCacheRuntimeState,
+  recordPermissionCacheRecompute,
+  recordPermissionCacheRedisLatency,
+} from './shared-cache-health.js';
 
 export type PermissionRow = {
   permission_key: string;
@@ -75,18 +90,6 @@ export const iamCacheStaleEntriesGauge = authMeter.createObservableGauge('sva_ia
 export const resolvePool = createPoolResolver(() => process.env.IAM_DATABASE_URL);
 export const permissionSnapshotCache = new PermissionSnapshotCache(300_000, 300_000);
 export const CACHE_INVALIDATION_CHANNEL = 'iam_permission_snapshot_invalidation';
-export const cacheMetricsState = { lookups: 0, staleLookups: 0 };
-const CACHE_RECOMPUTE_WINDOW_MS = 60_000;
-const CACHE_DEGRADED_LATENCY_MS = 50;
-const CACHE_DEGRADED_RECOMPUTE_THRESHOLD = 20;
-const CACHE_FAILED_REDIS_FAILURE_THRESHOLD = 3;
-
-export const permissionCacheRuntimeState = {
-  coldStartLogged: false,
-  lastRedisLatencyMs: 0,
-  consecutiveRedisFailures: 0,
-  recomputeTimestampsMs: [] as number[],
-};
 
 let invalidationListenerInit: Promise<void> | null = null;
 let invalidationListenerClient: PoolClient | null = null;
@@ -99,56 +102,13 @@ iamCacheStaleEntriesGauge.addCallback((result) => {
 
 export const buildRequestContext = (workspaceId?: string) => buildLogContext(workspaceId, { includeTraceId: true });
 
-const pruneRecomputeTimestamps = (nowMs: number): void => {
-  permissionCacheRuntimeState.recomputeTimestampsMs =
-    permissionCacheRuntimeState.recomputeTimestampsMs.filter(
-      (timestamp) => nowMs - timestamp <= CACHE_RECOMPUTE_WINDOW_MS
-    );
-};
-
 export const recordPermissionCacheColdStart = (instanceId: string): void => {
-  if (permissionCacheRuntimeState.coldStartLogged) {
+  if (!markPermissionCacheColdStart()) {
     return;
   }
 
-  permissionCacheRuntimeState.coldStartLogged = true;
-  cacheLogger.info('Permission cache cold start detected', {
-    operation: 'cache_lookup',
-    cache_cold_start: true,
-    ...buildRequestContext(instanceId),
-  });
-};
-
-export const recordPermissionCacheRedisLatency = (latencyMs: number, available: boolean): void => {
-  permissionCacheRuntimeState.lastRedisLatencyMs = latencyMs;
-  permissionCacheRuntimeState.consecutiveRedisFailures = available
-    ? 0
-    : permissionCacheRuntimeState.consecutiveRedisFailures + 1;
-};
-
-export const recordPermissionCacheRecompute = (nowMs = Date.now()): void => {
-  pruneRecomputeTimestamps(nowMs);
-  permissionCacheRuntimeState.recomputeTimestampsMs.push(nowMs);
-};
-
-export const getPermissionCacheHealth = (nowMs = Date.now()) => {
-  pruneRecomputeTimestamps(nowMs);
-  const recomputePerMinute = permissionCacheRuntimeState.recomputeTimestampsMs.length;
-  const status =
-    permissionCacheRuntimeState.consecutiveRedisFailures >= CACHE_FAILED_REDIS_FAILURE_THRESHOLD
-      ? 'failed'
-      : permissionCacheRuntimeState.lastRedisLatencyMs > CACHE_DEGRADED_LATENCY_MS ||
-          recomputePerMinute > CACHE_DEGRADED_RECOMPUTE_THRESHOLD
-        ? 'degraded'
-        : 'ready';
-
-  return {
-    status,
-    coldStart: !permissionCacheRuntimeState.coldStartLogged,
-    lastRedisLatencyMs: permissionCacheRuntimeState.lastRedisLatencyMs,
-    recomputePerMinute,
-    consecutiveRedisFailures: permissionCacheRuntimeState.consecutiveRedisFailures,
-  } as const;
+  const coldStartLog = buildPermissionCacheColdStartLog(instanceId);
+  cacheLogger.info(coldStartLog.message, coldStartLog.attributes);
 };
 
 export const readResourceType = (permissionKey: string) => permissionKey.split('.')[0] ?? permissionKey;

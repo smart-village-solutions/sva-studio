@@ -17,7 +17,6 @@ const parseMutationError = (
 export const createUserMutationErrorResponse = (input: {
   error: unknown;
   requestId?: string;
-  fallbackMessage: string;
   forbiddenFallbackMessage: string;
 }): Response | null => {
   const parsed = parseMutationError(input.error);

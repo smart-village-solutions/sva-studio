@@ -51,7 +51,7 @@ const isPlainObject = (value: unknown): value is Record<string, unknown> => {
   return prototype === Object.prototype || prototype === null;
 };
 
-const stringifyNonPlainValue = (value: object): string => {
+export const stringifyNonPlainValue = (value: object): string => {
   const stringifier = value.toString;
   if (typeof stringifier === 'function' && stringifier !== Object.prototype.toString) {
     try {

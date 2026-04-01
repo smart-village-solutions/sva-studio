@@ -81,6 +81,9 @@ type RoleReconcileAlias = {
   readonly identityRoleKey?: string;
 };
 
+type RoleReconcileOperation = 'reconcile_create' | 'reconcile_update' | 'reconcile_import';
+type RoleReconcileResult = 'success' | 'failure';
+
 const ROLE_RECONCILE_ALIASES: Readonly<Record<string, RoleReconcileAlias>> = {
   editor: {
     externalRoleName: 'Editor',
@@ -240,6 +243,51 @@ const buildReconcileDebugReport = (input: {
   } satisfies NonNullable<ReconcileReport['debug']>;
 };
 
+const appendReconcileEntry = (
+  entries: ReconcileRoleEntry[],
+  entry: ReconcileRoleEntry
+): void => {
+  entries.push(entry);
+};
+
+const persistRoleReconcileState = async (input: {
+  instanceId: string;
+  roleId: string;
+  actorAccountId?: string;
+  requestId?: string;
+  traceId?: string;
+  roleKey: string;
+  externalRoleName: string;
+  operation: RoleReconcileOperation;
+  result: RoleReconcileResult;
+  errorCode?: string | null;
+  syncState: 'synced' | 'failed';
+  syncedAt?: true;
+}) => {
+  await withInstanceScopedDb(input.instanceId, async (client) => {
+    await setRoleSyncState(client, {
+      instanceId: input.instanceId,
+      roleId: input.roleId,
+      syncState: input.syncState,
+      errorCode: input.errorCode ?? null,
+      ...(input.syncedAt ? { syncedAt: true } : {}),
+    });
+    await emitRoleAuditEvent(client, {
+      instanceId: input.instanceId,
+      accountId: input.actorAccountId,
+      roleId: input.roleId,
+      eventType: 'role.reconciled',
+      operation: input.operation,
+      result: input.result,
+      roleKey: input.roleKey,
+      externalRoleName: input.externalRoleName,
+      ...(input.errorCode ? { errorCode: input.errorCode } : {}),
+      requestId: input.requestId,
+      traceId: input.traceId,
+    });
+  });
+};
+
 const reconcileDatabaseRoles = async (input: {
   dbRoles: readonly ManagedRoleRow[];
   idpByExternalName: ReadonlyMap<string, IdentityRole>;
@@ -288,28 +336,20 @@ const reconcileDatabaseRoles = async (input: {
             },
           })
         );
-        await withInstanceScopedDb(input.instanceId, async (client) => {
-          await setRoleSyncState(client, {
-            instanceId: input.instanceId,
-            roleId: role.id,
-            syncState: 'synced',
-            errorCode: null,
-            syncedAt: true,
-          });
-          await emitRoleAuditEvent(client, {
-            instanceId: input.instanceId,
-            accountId: input.actorAccountId,
-            roleId: role.id,
-            eventType: 'role.reconciled',
-            operation: 'reconcile_create',
-            result: 'success',
-            roleKey: role.role_key,
-            externalRoleName,
-            requestId: input.requestId,
-            traceId: input.traceId,
-          });
+        await persistRoleReconcileState({
+          instanceId: input.instanceId,
+          roleId: role.id,
+          actorAccountId: input.actorAccountId,
+          requestId: input.requestId,
+          traceId: input.traceId,
+          roleKey: role.role_key,
+          externalRoleName,
+          operation: 'reconcile_create',
+          result: 'success',
+          syncState: 'synced',
+          syncedAt: true,
         });
-        input.entries.push({
+        appendReconcileEntry(input.entries, {
           roleId: role.id,
           roleKey: role.role_key,
           externalRoleName,
@@ -318,28 +358,20 @@ const reconcileDatabaseRoles = async (input: {
         });
       } catch (error) {
         const errorCode = mapRoleSyncErrorCode(error);
-        await withInstanceScopedDb(input.instanceId, async (client) => {
-          await setRoleSyncState(client, {
-            instanceId: input.instanceId,
-            roleId: role.id,
-            syncState: 'failed',
-            errorCode,
-          });
-          await emitRoleAuditEvent(client, {
-            instanceId: input.instanceId,
-            accountId: input.actorAccountId,
-            roleId: role.id,
-            eventType: 'role.reconciled',
-            operation: 'reconcile_create',
-            result: 'failure',
-            roleKey: role.role_key,
-            externalRoleName,
-            errorCode,
-            requestId: input.requestId,
-            traceId: input.traceId,
-          });
+        await persistRoleReconcileState({
+          instanceId: input.instanceId,
+          roleId: role.id,
+          actorAccountId: input.actorAccountId,
+          requestId: input.requestId,
+          traceId: input.traceId,
+          roleKey: role.role_key,
+          externalRoleName,
+          operation: 'reconcile_create',
+          result: 'failure',
+          errorCode,
+          syncState: 'failed',
         });
-        input.entries.push({
+        appendReconcileEntry(input.entries, {
           roleId: role.id,
           roleKey: role.role_key,
           externalRoleName,
@@ -365,41 +397,33 @@ const reconcileDatabaseRoles = async (input: {
 
     if (shouldUpdateIdentityRole || shouldResyncDbState) {
       try {
-        await withInstanceScopedDb(input.instanceId, async (client) => {
-          if (shouldUpdateIdentityRole) {
-            await trackKeycloakCall('reconcile_update_role', () =>
-              input.identityProvider.provider.updateRole(canonicalExternalRoleName, {
-                description: role.description ?? undefined,
-                attributes: {
-                  managedBy: 'studio',
-                  instanceId: input.instanceId,
-                  roleKey: role.role_key,
-                  displayName: expectedDisplayName,
-                },
-              })
-            );
-          }
-          await setRoleSyncState(client, {
-            instanceId: input.instanceId,
-            roleId: role.id,
-            syncState: 'synced',
-            errorCode: null,
-            syncedAt: true,
-          });
-          await emitRoleAuditEvent(client, {
-            instanceId: input.instanceId,
-            accountId: input.actorAccountId,
-            roleId: role.id,
-            eventType: 'role.reconciled',
-            operation: 'reconcile_update',
-            result: 'success',
-            roleKey: role.role_key,
-            externalRoleName,
-            requestId: input.requestId,
-            traceId: input.traceId,
-          });
+        if (shouldUpdateIdentityRole) {
+          await trackKeycloakCall('reconcile_update_role', () =>
+            input.identityProvider.provider.updateRole(canonicalExternalRoleName, {
+              description: role.description ?? undefined,
+              attributes: {
+                managedBy: 'studio',
+                instanceId: input.instanceId,
+                roleKey: role.role_key,
+                displayName: expectedDisplayName,
+              },
+            })
+          );
+        }
+        await persistRoleReconcileState({
+          instanceId: input.instanceId,
+          roleId: role.id,
+          actorAccountId: input.actorAccountId,
+          requestId: input.requestId,
+          traceId: input.traceId,
+          roleKey: role.role_key,
+          externalRoleName,
+          operation: 'reconcile_update',
+          result: 'success',
+          syncState: 'synced',
+          syncedAt: true,
         });
-        input.entries.push({
+        appendReconcileEntry(input.entries, {
           roleId: role.id,
           roleKey: role.role_key,
           externalRoleName: reportedExternalRoleName,
@@ -408,28 +432,20 @@ const reconcileDatabaseRoles = async (input: {
         });
       } catch (error) {
         const errorCode = mapRoleSyncErrorCode(error);
-        await withInstanceScopedDb(input.instanceId, async (client) => {
-          await setRoleSyncState(client, {
-            instanceId: input.instanceId,
-            roleId: role.id,
-            syncState: 'failed',
-            errorCode,
-          });
-          await emitRoleAuditEvent(client, {
-            instanceId: input.instanceId,
-            accountId: input.actorAccountId,
-            roleId: role.id,
-            eventType: 'role.reconciled',
-            operation: 'reconcile_update',
-            result: 'failure',
-            roleKey: role.role_key,
-            externalRoleName,
-            errorCode,
-            requestId: input.requestId,
-            traceId: input.traceId,
-          });
+        await persistRoleReconcileState({
+          instanceId: input.instanceId,
+          roleId: role.id,
+          actorAccountId: input.actorAccountId,
+          requestId: input.requestId,
+          traceId: input.traceId,
+          roleKey: role.role_key,
+          externalRoleName,
+          operation: 'reconcile_update',
+          result: 'failure',
+          errorCode,
+          syncState: 'failed',
         });
-        input.entries.push({
+        appendReconcileEntry(input.entries, {
           roleId: role.id,
           roleKey: role.role_key,
           externalRoleName: reportedExternalRoleName,
@@ -485,7 +501,7 @@ const reconcileManagedIdentityRoles = async (input: {
 
     const importableMetadata = readImportableRoleMetadata(identityRole);
     if (!importableMetadata) {
-      input.entries.push({
+      appendReconcileEntry(input.entries, {
         externalRoleName: identityRole.externalName,
         roleKey: readRoleAttribute(identityRole.attributes, 'role_key'),
         action: 'report',
@@ -573,7 +589,7 @@ RETURNING id;
 
         return { roleId };
       });
-      input.entries.push({
+      appendReconcileEntry(input.entries, {
         roleId: importedRole.roleId,
         roleKey: importableMetadata.roleKey,
         externalRoleName: identityRole.externalName,
@@ -588,7 +604,7 @@ RETURNING id;
         errorMessage: sanitizeRoleErrorMessage(error),
         dbContext: importDbContext,
       });
-      input.entries.push({
+      appendReconcileEntry(input.entries, {
         roleKey: importableMetadata.roleKey,
         externalRoleName: identityRole.externalName,
         action: 'create',
@@ -614,7 +630,7 @@ const reportRemainingPotentialStudioRoles = (input: {
       continue;
     }
 
-    input.entries.push({
+    appendReconcileEntry(input.entries, {
       externalRoleName: identityRole.externalName,
       roleKey: readRoleAttribute(identityRole.attributes, 'role_key') ?? identityRole.externalName,
       action: 'report',

@@ -1,4 +1,3 @@
-import type { EffectivePermission } from '@sva/core';
 import { createHash } from 'node:crypto';
 
 import type { PermSnapshotKey } from './redis-permission-snapshot.server.js';
@@ -6,7 +5,8 @@ import {
   getRedisPermissionSnapshot,
   setRedisPermissionSnapshot,
 } from './redis-permission-snapshot.server.js';
-import type { EffectivePermissionsResolution, PermissionRow } from './shared.js';
+import type { EffectivePermissionsResolution } from './shared.js';
+import { type PermissionLookupInput, loadPermissionsFromDb } from './permission-store.queries.js';
 import {
   buildRequestContext,
   cacheLogger,
@@ -18,18 +18,7 @@ import {
   recordPermissionCacheColdStart,
   recordPermissionCacheRecompute,
   recordPermissionCacheRedisLatency,
-  toEffectivePermissions,
-  withInstanceScopedDb,
 } from './shared.js';
-import type { QueryClient } from '../shared/db-helpers.js';
-
-type PermissionLookupInput = {
-  instanceId: string;
-  keycloakSubject: string;
-  organizationId?: string;
-  geoUnitId?: string;
-  geoHierarchy?: readonly string[];
-};
 
 const normalizeGeoContext = (input: PermissionLookupInput) => {
   const geoUnitId = input.geoUnitId?.trim() || undefined;
@@ -71,208 +60,6 @@ const toRedisSnapshotKey = (
   organizationId: snapshotKey.organizationId,
   geoCtxHash: snapshotKey.geoContextHash,
 });
-
-const listScopedPermissionRows = async (
-  client: QueryClient,
-  input: PermissionLookupInput & { organizationId: string }
-): Promise<readonly PermissionRow[]> => {
-  const scopedQuery = await client.query<PermissionRow>(
-    `
-WITH target_organization AS (
-  SELECT id, hierarchy_path
-  FROM iam.organizations
-  WHERE instance_id = $1
-    AND id = $3::uuid
-    AND is_active = true
-)
--- Pfad 1: Rollenbasierte Berechtigungen (role_permissions JOIN permissions)
-SELECT DISTINCT
-  p.permission_key,
-  p.action,
-  p.resource_type,
-  p.resource_id,
-  p.effect,
-  p.scope,
-  source.account_id,
-  source.role_id,
-  source.group_id,
-  source.group_key,
-  source.source_kind,
-  $3::uuid AS organization_id
-FROM iam.accounts a
-JOIN (
-  SELECT ar.account_id, ar.role_id, ar.instance_id, NULL::uuid AS group_id, NULL::text AS group_key, 'direct_role'::text AS source_kind
-  FROM iam.account_roles ar
-  WHERE ar.valid_from <= NOW()
-    AND (ar.valid_to IS NULL OR ar.valid_to > NOW())
-  UNION ALL
-  SELECT d.delegatee_account_id AS account_id, d.role_id, d.instance_id, NULL::uuid AS group_id, NULL::text AS group_key, 'direct_role'::text AS source_kind
-  FROM iam.delegations d
-  WHERE d.status = 'active'
-    AND now() BETWEEN d.starts_at AND d.ends_at
-  UNION ALL
-  SELECT ag.account_id, gr.role_id, ag.instance_id, ag.group_id, g.group_key, 'group_role'::text AS source_kind
-  FROM iam.account_groups ag
-  JOIN iam.group_roles gr ON gr.instance_id = ag.instance_id AND gr.group_id = ag.group_id
-  JOIN iam.groups g ON g.instance_id = ag.instance_id AND g.id = ag.group_id AND g.is_active = true
-  WHERE (ag.valid_from IS NULL OR ag.valid_from <= NOW())
-    AND (ag.valid_until IS NULL OR ag.valid_until > now())
-) source
-  ON source.account_id = a.id
- AND source.instance_id = $1
-JOIN iam.account_organizations ao
-  ON ao.instance_id = source.instance_id
- AND ao.account_id = source.account_id
-JOIN target_organization target ON TRUE
-JOIN iam.role_permissions rp
-  ON rp.instance_id = source.instance_id
- AND rp.role_id = source.role_id
-JOIN iam.permissions p
-  ON p.instance_id = source.instance_id
- AND p.id = rp.permission_id
-WHERE a.keycloak_subject = $2
-  AND (
-    ao.organization_id = target.id
-    OR ao.organization_id = ANY(target.hierarchy_path)
-  )
-
-UNION
-
--- Pfad 2: Direkte Nutzerrechte (account_permissions JOIN permissions)
-SELECT DISTINCT
-  p.permission_key,
-  p.action,
-  p.resource_type,
-  p.resource_id,
-  COALESCE(ap.effect, p.effect) AS effect,
-  p.scope,
-  a.id AS account_id,
-  NULL::uuid AS role_id,
-  NULL::uuid AS group_id,
-  NULL::text AS group_key,
-  'direct_user'::text AS source_kind,
-  $3::uuid AS organization_id
-FROM iam.accounts a
-JOIN iam.account_permissions ap
-  ON ap.instance_id = $1
- AND ap.account_id = a.id
-JOIN iam.permissions p
-  ON p.instance_id = $1
- AND p.id = ap.permission_id
-JOIN iam.account_organizations ao
-  ON ao.instance_id = $1
- AND ao.account_id = a.id
-JOIN target_organization target ON TRUE
-WHERE a.keycloak_subject = $2
-  AND (
-    ao.organization_id = target.id
-    OR ao.organization_id = ANY(target.hierarchy_path)
-  )
-`,
-    [input.instanceId, input.keycloakSubject, input.organizationId]
-  );
-
-  return scopedQuery.rows;
-};
-
-const listUnscopedPermissionRows = async (
-  client: QueryClient,
-  input: PermissionLookupInput
-): Promise<readonly PermissionRow[]> => {
-  const unscopedQuery = await client.query<PermissionRow>(
-    `
--- Pfad 1: Rollenbasierte Berechtigungen (role_permissions JOIN permissions)
-SELECT DISTINCT
-  p.permission_key,
-  p.action,
-  p.resource_type,
-  p.resource_id,
-  p.effect,
-  p.scope,
-  source.account_id,
-  source.role_id,
-  source.group_id,
-  source.group_key,
-  source.source_kind,
-  ao.organization_id
-FROM iam.accounts a
-JOIN (
-  SELECT ar.account_id, ar.role_id, ar.instance_id, NULL::uuid AS group_id, NULL::text AS group_key, 'direct_role'::text AS source_kind
-  FROM iam.account_roles ar
-  WHERE ar.valid_from <= NOW()
-    AND (ar.valid_to IS NULL OR ar.valid_to > NOW())
-  UNION ALL
-  SELECT d.delegatee_account_id AS account_id, d.role_id, d.instance_id, NULL::uuid AS group_id, NULL::text AS group_key, 'direct_role'::text AS source_kind
-  FROM iam.delegations d
-  WHERE d.status = 'active'
-    AND now() BETWEEN d.starts_at AND d.ends_at
-  UNION ALL
-  SELECT ag.account_id, gr.role_id, ag.instance_id, ag.group_id, g.group_key, 'group_role'::text AS source_kind
-  FROM iam.account_groups ag
-  JOIN iam.group_roles gr ON gr.instance_id = ag.instance_id AND gr.group_id = ag.group_id
-  JOIN iam.groups g ON g.instance_id = ag.instance_id AND g.id = ag.group_id AND g.is_active = true
-  WHERE (ag.valid_from IS NULL OR ag.valid_from <= NOW())
-    AND (ag.valid_until IS NULL OR ag.valid_until > now())
-) source
-  ON source.account_id = a.id
- AND source.instance_id = $1
-LEFT JOIN iam.account_organizations ao
-  ON ao.instance_id = source.instance_id
- AND ao.account_id = source.account_id
-JOIN iam.role_permissions rp
-  ON rp.instance_id = source.instance_id
- AND rp.role_id = source.role_id
-JOIN iam.permissions p
-  ON p.instance_id = source.instance_id
- AND p.id = rp.permission_id
-WHERE a.keycloak_subject = $2
-
-UNION
-
--- Pfad 2: Direkte Nutzerrechte (account_permissions JOIN permissions)
-SELECT DISTINCT
-  p.permission_key,
-  p.action,
-  p.resource_type,
-  p.resource_id,
-  COALESCE(ap.effect, p.effect) AS effect,
-  p.scope,
-  a.id AS account_id,
-  NULL::uuid AS role_id,
-  NULL::uuid AS group_id,
-  NULL::text AS group_key,
-  'direct_user'::text AS source_kind,
-  ao.organization_id
-FROM iam.accounts a
-JOIN iam.account_permissions ap
-  ON ap.instance_id = $1
- AND ap.account_id = a.id
-JOIN iam.permissions p
-  ON p.instance_id = $1
- AND p.id = ap.permission_id
-LEFT JOIN iam.account_organizations ao
-  ON ao.instance_id = $1
- AND ao.account_id = a.id
-WHERE a.keycloak_subject = $2
-`,
-    [input.instanceId, input.keycloakSubject]
-  );
-
-  return unscopedQuery.rows;
-};
-
-const listPermissionRows = async (
-  client: QueryClient,
-  input: PermissionLookupInput
-): Promise<readonly PermissionRow[]> =>
-  input.organizationId
-    ? listScopedPermissionRows(client, { ...input, organizationId: input.organizationId })
-    : listUnscopedPermissionRows(client, input);
-
-const loadPermissionsFromDb = async (input: PermissionLookupInput): Promise<readonly EffectivePermission[]> => {
-  const rows = await withInstanceScopedDb(input.instanceId, async (client) => listPermissionRows(client, input));
-  return toEffectivePermissions(rows);
-};
 
 export const resolveEffectivePermissions = async (input: PermissionLookupInput): Promise<EffectivePermissionsResolution> => {
   await ensureInvalidationListener();

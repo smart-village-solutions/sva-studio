@@ -257,6 +257,61 @@ describe('LegalTextAcceptanceDialog', () => {
     });
   });
 
+  it('falls back to the current ui pathname when the event return target points to an api route', async () => {
+    getMyPendingLegalTextsMock
+      .mockResolvedValueOnce({
+        data: [],
+        pagination: { page: 1, pageSize: 1, total: 0 },
+      })
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 'version-2',
+            legalTextId: 'text-2',
+            name: 'Datenschutzhinweise',
+            legalTextVersion: '2',
+            locale: 'de-DE',
+            contentHtml: '<p>Neu</p>',
+          },
+        ],
+        pagination: { page: 1, pageSize: 1, total: 1 },
+      })
+      .mockResolvedValueOnce({
+        data: [],
+        pagination: { page: 1, pageSize: 1, total: 0 },
+      });
+    acceptLegalTextMock.mockResolvedValue({
+      data: {
+        workflowId: 'workflow-3',
+        operation: 'accept_legal_text',
+        status: 'ok',
+      },
+    });
+
+    render(
+      <AuthProvider>
+        <LegalTextAcceptanceDialog pathname="/admin/users" />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(getMyPendingLegalTextsMock).toHaveBeenCalledTimes(1);
+    });
+
+    window.dispatchEvent(
+      new CustomEvent(LEGAL_ACCEPTANCE_REQUIRED_EVENT, {
+        detail: { return_to: '/api/v1/iam/users' },
+      })
+    );
+
+    expect(await screen.findByText('Datenschutzhinweise')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Alle akzeptieren' }));
+
+    await waitFor(() => {
+      expect(assignMock).toHaveBeenCalledWith('/admin/users');
+    });
+  });
+
   it('reloads pending texts on window focus', async () => {
     getMyPendingLegalTextsMock
       .mockResolvedValueOnce({

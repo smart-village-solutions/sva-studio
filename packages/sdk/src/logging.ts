@@ -10,4 +10,4 @@ export {
   isBrowserConsoleCaptureSuppressed,
   registerBrowserLogSink,
 } from './logging/browser.js';
-export { redactLogMeta, redactLogString, serializeAndRedactLogValue } from './logging/redaction.js';
+export { redactLogMeta, redactLogString, serializeAndRedactLogValue, stringifyNonPlainValue } from './logging/redaction.js';

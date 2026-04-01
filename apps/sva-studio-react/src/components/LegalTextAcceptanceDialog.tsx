@@ -19,6 +19,8 @@ type LegalTextAcceptanceDialogProps = Readonly<{
 }>;
 
 const EXEMPT_PATH_PREFIXES = ['/admin/legal-texts'];
+const isAcceptedUiReturnTo = (value: string | undefined): value is string =>
+  typeof value === 'string' && value.startsWith('/') && !value.startsWith('//') && !value.startsWith('/api/') && !value.startsWith('/auth/');
 
 const isPromptSuppressed = (pathname: string) => EXEMPT_PATH_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 
@@ -74,7 +76,7 @@ export const LegalTextAcceptanceDialog = ({ pathname }: LegalTextAcceptanceDialo
         setIsLoadingPending(false);
       }
     },
-    [isAuthenticated, promptSuppressed, user?.instanceId]
+    [isAuthenticated, pathname, promptSuppressed, user?.instanceId]
   );
 
   React.useEffect(() => {
@@ -96,7 +98,7 @@ export const LegalTextAcceptanceDialog = ({ pathname }: LegalTextAcceptanceDialo
         event instanceof CustomEvent && event.detail && typeof event.detail === 'object'
           ? (event.detail as { return_to?: string })
           : undefined;
-      storeLegalAcceptanceReturnTo(detail?.return_to ?? pathname);
+      storeLegalAcceptanceReturnTo(isAcceptedUiReturnTo(detail?.return_to) ? detail.return_to : pathname);
       void loadPendingTexts(true);
     };
 
@@ -106,7 +108,7 @@ export const LegalTextAcceptanceDialog = ({ pathname }: LegalTextAcceptanceDialo
       globalThis.removeEventListener('focus', handleFocus);
       globalThis.removeEventListener(LEGAL_ACCEPTANCE_REQUIRED_EVENT, handleLegalAcceptanceRequired);
     };
-  }, [isAuthenticated, loadPendingTexts, promptSuppressed]);
+  }, [isAuthenticated, loadPendingTexts, pathname, promptSuppressed]);
 
   const handleAcceptAll = React.useCallback(async () => {
     if (!user?.instanceId) {

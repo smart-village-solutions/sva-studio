@@ -1,7 +1,11 @@
+import { buildLogContext } from '../shared/log-context.js';
+
 const CACHE_RECOMPUTE_WINDOW_MS = 60_000;
 const CACHE_DEGRADED_LATENCY_MS = 50;
 const CACHE_DEGRADED_RECOMPUTE_THRESHOLD = 20;
 const CACHE_FAILED_REDIS_FAILURE_THRESHOLD = 3;
+
+const buildRequestContext = (workspaceId?: string) => buildLogContext(workspaceId, { includeTraceId: true });
 
 export const cacheMetricsState = { lookups: 0, staleLookups: 0 };
 
@@ -19,22 +23,23 @@ const pruneRecomputeTimestamps = (nowMs: number): void => {
     );
 };
 
-export const recordPermissionCacheColdStart = (
-  buildContext: (workspaceId?: string) => Record<string, unknown>,
-  log: (message: string, attributes: Record<string, unknown>) => void,
-  instanceId: string
-): void => {
+export const markPermissionCacheColdStart = (): boolean => {
   if (permissionCacheRuntimeState.coldStartLogged) {
-    return;
+    return false;
   }
 
   permissionCacheRuntimeState.coldStartLogged = true;
-  log('Permission cache cold start detected', {
+  return true;
+};
+
+export const buildPermissionCacheColdStartLog = (instanceId: string) => ({
+  message: 'Permission cache cold start detected',
+  attributes: {
     operation: 'cache_lookup',
     cache_cold_start: true,
-    ...buildContext(instanceId),
-  });
-};
+    ...buildRequestContext(instanceId),
+  },
+});
 
 export const recordPermissionCacheRedisLatency = (latencyMs: number, available: boolean): void => {
   permissionCacheRuntimeState.lastRedisLatencyMs = latencyMs;

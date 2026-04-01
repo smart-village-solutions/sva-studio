@@ -133,7 +133,6 @@ const handleUpdateUserError = (input: {
   const knownError = createUserMutationErrorResponse({
     error: input.error,
     requestId: input.actor.requestId,
-    fallbackMessage: 'Nutzer konnte nicht aktualisiert werden.',
     forbiddenFallbackMessage: 'Änderung dieses Nutzers ist nicht erlaubt.',
   });
   if (knownError) {

@@ -12,7 +12,6 @@ describe('iam-account-management/user-mutation-errors', () => {
     const response = createUserMutationErrorResponse({
       error: new Error('forbidden:Target user cannot be modified.'),
       requestId: 'req-1',
-      fallbackMessage: 'unused',
       forbiddenFallbackMessage: 'unused',
     });
 
@@ -33,7 +32,6 @@ describe('iam-account-management/user-mutation-errors', () => {
     const response = createUserMutationErrorResponse({
       error: new Error('self_protection:blocked'),
       requestId: 'req-2',
-      fallbackMessage: 'unused',
       forbiddenFallbackMessage: 'unused',
     });
 
@@ -55,7 +53,6 @@ describe('iam-account-management/user-mutation-errors', () => {
       createUserMutationErrorResponse({
         error: new Error('unexpected'),
         requestId: 'req-3',
-        fallbackMessage: 'unused',
         forbiddenFallbackMessage: 'unused',
       })
     ).toBeNull();

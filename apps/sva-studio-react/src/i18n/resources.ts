@@ -543,7 +543,7 @@ export const i18nResources = {
           permissionsEmpty: 'Keine effektiven Berechtigungen vorhanden.',
           permissionTrace: {
             title: 'Effektive Berechtigungen',
-            description: 'Read-only Auflösung aller wirksamen und nicht wirksamen Berechtigungsquellen.',
+            description: 'Schreibgeschützte Auflösung aller wirksamen und nicht wirksamen Berechtigungsquellen.',
             effectiveTitle: 'Wirksame Quellen',
             inactiveTitle: 'Nicht wirksame Quellen',
             directAssignmentsTitle: 'Direkte Zuweisungen',

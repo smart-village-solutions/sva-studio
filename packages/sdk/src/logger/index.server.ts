@@ -19,6 +19,21 @@ export const redactObject = (value: Record<string, unknown>): Record<string, unk
   return redactLogMeta(value);
 };
 
+const normalizeDevelopmentUiContext = (
+  context: unknown
+): Record<string, DevelopmentLogJsonValue> | undefined => {
+  if (!context || typeof context !== 'object' || Array.isArray(context)) {
+    return undefined;
+  }
+
+  const serializedContext = serializeAndRedactLogValue(context);
+  if (!serializedContext || typeof serializedContext !== 'object' || Array.isArray(serializedContext)) {
+    return undefined;
+  }
+
+  return serializedContext as Record<string, DevelopmentLogJsonValue>;
+};
+
 const enrichWithContext = winston.format((info) => {
   const context = getWorkspaceContext();
 
@@ -143,10 +158,7 @@ class DevelopmentUiTransport extends Transport {
         source: 'server',
         message: typeof message === 'string' ? message : String(message),
         component: typeof component === 'string' ? component : undefined,
-        context:
-          typeof context === 'object' && context
-            ? (serializeAndRedactLogValue(context) as Record<string, DevelopmentLogJsonValue>)
-            : undefined,
+        context: normalizeDevelopmentUiContext(context),
       });
 
       callback?.();

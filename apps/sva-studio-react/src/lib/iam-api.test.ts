@@ -372,7 +372,6 @@ describe('iam-api organization helpers', () => {
   });
 
   it('falls back to http status messages when json error payloads omit message and code', async () => {
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     vi.stubEnv('NODE_ENV', 'development');
     vi.stubGlobal(
       'fetch',
@@ -393,7 +392,7 @@ describe('iam-api organization helpers', () => {
       message: 'http_502',
       requestId: 'req-empty-error',
     });
-    expect(consoleError).toHaveBeenCalledWith(
+    expect(browserLoggerMock.error).toHaveBeenCalledWith(
       'IAM API request failed',
       expect.objectContaining({
         code: 'internal_error',

@@ -35,6 +35,7 @@ vi.mock('./api-helpers.js', () => ({
       headers: { 'content-type': 'application/json' },
     }),
   parseRequestBody: vi.fn(async () => ({ ok: true, data: {}, rawBody: '{}' })),
+  readInstanceIdFromRequest: vi.fn(() => undefined),
   readPathSegment: vi.fn(
     (request: Request, index: number) =>
       new URL(request.url).pathname.split('/').filter((segment) => segment.length > 0)[index]
@@ -79,6 +80,39 @@ vi.mock('./shared.js', () => ({
   resolveSystemAdminCount: vi.fn(),
   trackKeycloakCall: vi.fn(async (_operation: string, fn: () => Promise<unknown>) => fn()),
   withInstanceScopedDb: vi.fn(async () => undefined),
+}));
+
+vi.mock('./shared-actor-resolution.js', () => ({
+  requireRoles: vi.fn(() => null),
+  resolveActorInfo: vi.fn(async () => state.actorResolution),
+}));
+
+vi.mock('./shared-runtime.js', () => ({
+  resolveIdentityProvider: vi.fn(() => state.identityProvider),
+  withInstanceScopedDb: vi.fn(async () => undefined),
+}));
+
+vi.mock('./shared-idempotency.js', () => ({
+  completeIdempotency: vi.fn(),
+  reserveIdempotency: vi.fn(async () => state.reserve),
+}));
+
+vi.mock('./shared-observability.js', () => ({
+  iamUserOperationsCounter: { add: vi.fn() },
+  logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn() },
+  trackKeycloakCall: vi.fn(async (_operation: string, fn: () => Promise<unknown>) => fn()),
+}));
+
+vi.mock('./shared-activity.js', () => ({
+  emitActivityLog: vi.fn(),
+  notifyPermissionInvalidation: vi.fn(),
+}));
+
+vi.mock('./shared-actor-authorization.js', () => ({
+  ensureActorCanManageTarget: vi.fn(() => ({ ok: true })),
+  isSystemAdminAccount: vi.fn(async () => false),
+  resolveActorMaxRoleLevel: vi.fn(async () => 100),
+  resolveSystemAdminCount: vi.fn(async () => 2),
 }));
 
 vi.mock('./schemas.js', () => ({
@@ -147,7 +181,7 @@ describe('iam-account-management/users-handlers internals', () => {
       ctx
     );
 
-    expect(updateResponse.status).toBe(404);
+    expect(updateResponse.status).toBe(503);
     expect(deactivateResponse.status).toBe(503);
   });
 

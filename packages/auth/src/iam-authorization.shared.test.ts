@@ -81,7 +81,6 @@ describe('iam authorization shared helpers', () => {
         organizationId: '22222222-2222-2222-8222-222222222222',
         effect: 'allow',
         scope: { allowedGeoScopes: ['de-bw'] },
-        sourceUserIds: [],
         sourceRoleIds: ['role-1', 'role-2'],
         sourceGroupIds: ['group-1'],
         provenance: { sourceKinds: ['direct_role', 'group_role'] },
@@ -92,9 +91,7 @@ describe('iam authorization shared helpers', () => {
         resourceId: 'article-1',
         organizationId: undefined,
         effect: 'deny',
-        sourceUserIds: [],
         sourceRoleIds: ['role-3'],
-        sourceGroupIds: [],
         provenance: { sourceKinds: ['direct_role'] },
       },
     ]);

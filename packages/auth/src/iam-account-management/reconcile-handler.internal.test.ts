@@ -112,7 +112,8 @@ vi.mock('./role-audit.js', () => ({
   sanitizeRoleErrorMessage: vi.fn((error: unknown) => (error instanceof Error ? error.message : String(error))),
 }));
 
-import { reconcilePlaceholderInternal, runRoleCatalogReconciliation } from './reconcile-handler';
+import { reconcilePlaceholderInternal } from './reconcile-handler';
+import { runRoleCatalogReconciliation } from './reconcile-core';
 
 const ctx = {
   user: {

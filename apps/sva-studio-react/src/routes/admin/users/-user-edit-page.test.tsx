@@ -162,7 +162,6 @@ describe('UserEditPage', () => {
 
     fireEvent.click(screen.getByRole('tab', { name: 'Berechtigungen' }));
     expect(screen.getAllByText('content.read').length).toBeGreaterThan(0);
-    expect(screen.getByText('Direkte Rechte')).toBeTruthy();
 
     fireEvent.keyDown(screen.getByRole('tab', { name: 'Berechtigungen' }), { key: 'ArrowRight' });
     expect(screen.getByRole('tab', { name: 'Historie' }).getAttribute('aria-selected')).toBe('true');
@@ -454,7 +453,6 @@ describe('UserEditPage', () => {
         notes: undefined,
         roleIds: ['role-1', 'role-2'],
         groupIds: ['group-1'],
-        directPermissions: [],
         mainserverUserApplicationId: 'app-id-1',
         mainserverUserApplicationSecret: undefined,
       });
@@ -553,23 +551,25 @@ describe('UserEditPage', () => {
         notes: undefined,
         roleIds: ['role-1'],
         groupIds: ['group-1'],
-        directPermissions: [],
         mainserverUserApplicationId: 'updated-app-id',
         mainserverUserApplicationSecret: 'new-secret',
       });
     });
   });
 
-  it('submits direct user permission assignments from the permissions tab', async () => {
-    const save = vi.fn().mockResolvedValue({
+  it('renders direct user permission assignments read-only in the permissions tab', async () => {
+    const userWithDirectPermission = {
       ...baseUser,
       directPermissions: [{ permissionId: 'perm-write', permissionKey: 'content.write', effect: 'deny' as const }],
+    };
+    const save = vi.fn().mockResolvedValue({
+      ...userWithDirectPermission,
       mainserverUserApplicationId: 'app-id-1',
       mainserverUserApplicationSecretSet: true,
     });
 
     useUserMock.mockReturnValue({
-      user: baseUser,
+      user: userWithDirectPermission,
       isLoading: false,
       error: null,
       refetch: vi.fn(),
@@ -589,31 +589,12 @@ describe('UserEditPage', () => {
     render(<UserEditPage userId="user-1" />);
 
     fireEvent.click(screen.getByRole('tab', { name: 'Berechtigungen' }));
-    fireEvent.change(screen.getByLabelText('Direkte Wirkung für content.write'), {
-      target: { value: 'deny' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Änderungen speichern' }));
 
-    await waitFor(() => {
-      expect(save).toHaveBeenCalledWith({
-        firstName: 'Alice',
-        lastName: 'Admin',
-        displayName: 'Alice Admin',
-        email: 'alice@example.com',
-        phone: undefined,
-        position: undefined,
-        department: undefined,
-        status: 'active',
-        preferredLanguage: 'de',
-        timezone: 'Europe/Berlin',
-        notes: undefined,
-        roleIds: ['role-1'],
-        groupIds: ['group-1'],
-        directPermissions: [{ permissionId: 'perm-write', effect: 'deny' }],
-        mainserverUserApplicationId: 'app-id-1',
-        mainserverUserApplicationSecret: undefined,
-      });
-    });
+    expect(screen.getByText('Direkte Zuweisungen')).toBeTruthy();
+    expect(screen.getByText('content.write')).toBeTruthy();
+    expect(screen.getByText('deny')).toBeTruthy();
+    expect(screen.queryByLabelText('Direkte Wirkung für content.write')).toBeNull();
+    expect(save).not.toHaveBeenCalled();
   });
 
   it('shows permissions empty state and handles unsaved-tab dialog', async () => {

@@ -139,22 +139,27 @@ const mergePermissionBucket = (
   row: PermissionRow,
   normalized: NormalizedPermissionRow
 ): EffectivePermission => {
+  const nextSourceUserIds = withSortedValues(
+    appendUniqueString(existing.sourceUserIds, row.account_id ?? undefined)
+  );
+  const nextSourceRoleIds = withSortedValues(
+    appendUniqueString(existing.sourceRoleIds, row.role_id ?? undefined)
+  );
+  const nextSourceGroupIds = withSortedValues(
+    appendUniqueString(existing.sourceGroupIds, normalized.groupId)
+  );
+  const nextSourceKinds = mergeSourceKinds(existing.provenance?.sourceKinds, row.source_kind);
+
   return {
     ...existing,
-    ...(withSortedValues(appendUniqueString(existing.sourceUserIds, row.account_id ?? undefined))
-      ? { sourceUserIds: withSortedValues(appendUniqueString(existing.sourceUserIds, row.account_id ?? undefined)) }
-      : {}),
-    ...(withSortedValues(appendUniqueString(existing.sourceRoleIds, row.role_id ?? undefined))
-      ? { sourceRoleIds: withSortedValues(appendUniqueString(existing.sourceRoleIds, row.role_id ?? undefined)) }
-      : {}),
-    ...(withSortedValues(appendUniqueString(existing.sourceGroupIds, normalized.groupId))
-      ? { sourceGroupIds: withSortedValues(appendUniqueString(existing.sourceGroupIds, normalized.groupId)) }
-      : {}),
+    ...(nextSourceUserIds ? { sourceUserIds: nextSourceUserIds } : {}),
+    ...(nextSourceRoleIds ? { sourceRoleIds: nextSourceRoleIds } : {}),
+    ...(nextSourceGroupIds ? { sourceGroupIds: nextSourceGroupIds } : {}),
     ...((normalized.groupKey ?? existing.groupName) ? { groupName: normalized.groupKey ?? existing.groupName } : {}),
-    provenance: mergeSourceKinds(existing.provenance?.sourceKinds, row.source_kind)
+    provenance: nextSourceKinds
       ? {
           ...(existing.provenance ?? {}),
-          sourceKinds: mergeSourceKinds(existing.provenance?.sourceKinds, row.source_kind),
+          sourceKinds: nextSourceKinds,
         }
       : existing.provenance,
   };

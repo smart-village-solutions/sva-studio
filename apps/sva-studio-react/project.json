@@ -67,7 +67,7 @@
       ],
       "options": {
         "cwd": "apps/sva-studio-react",
-        "command": "mkdir -p .output/server && pnpm exec vite build"
+        "command": "pnpm exec node -e \"require('node:fs').mkdirSync('.output/server',{recursive:true})\" && pnpm exec vite build"
       }
     },
     "preview": {

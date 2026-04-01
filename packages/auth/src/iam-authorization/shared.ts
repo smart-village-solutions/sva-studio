@@ -20,11 +20,8 @@ import { buildLogContext } from '../shared/log-context.js';
 import { authorizeRequestSchema } from '../shared/schemas.js';
 import {
   cacheMetricsState,
-  getPermissionCacheHealth,
   buildPermissionCacheColdStartLog,
   markPermissionCacheColdStart,
-  recordPermissionCacheRecompute,
-  recordPermissionCacheRedisLatency,
 } from './shared-cache-health.js';
 export {
   cacheMetricsState,

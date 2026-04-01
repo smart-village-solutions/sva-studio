@@ -11,6 +11,11 @@ import { iamUserOperationsCounter, logger, trackKeycloakCall } from './shared-ob
 import { withInstanceScopedDb } from './shared-runtime.js';
 import { resolveUserDetail } from './user-detail-query.js';
 import {
+  isRecoverableUserProjectionError,
+  mergeMainserverCredentialState,
+  resolveProjectedMainserverCredentialState,
+} from './user-projection.js';
+import {
   requireUserId,
   requireUserMutationIdentityProvider,
   resolveUserMutationActor,
@@ -138,8 +143,30 @@ export const deactivateUserInternal = async (
       resolved.identityProvider.provider.deactivateUser(detail.keycloakSubject)
     );
 
+    let projectedDetail = detail;
+    try {
+      const mainserverCredentialState = await resolveProjectedMainserverCredentialState(detail.keycloakSubject);
+      projectedDetail = mergeMainserverCredentialState(detail, mainserverCredentialState);
+    } catch (projectionError) {
+      if (isRecoverableUserProjectionError(projectionError)) {
+        logger.warn('IAM deactivate user credential projection degraded', {
+          workspace_id: resolved.actor.instanceId,
+          context: {
+            operation: 'deactivate_user',
+            instance_id: resolved.actor.instanceId,
+            user_id: resolved.userId,
+            request_id: resolved.actor.requestId,
+            trace_id: resolved.actor.traceId,
+            error: projectionError.message,
+          },
+        });
+      } else {
+        throw projectionError;
+      }
+    }
+
     iamUserOperationsCounter.add(1, { action: 'deactivate_user', result: 'success' });
-    return jsonResponse(200, asApiItem(detail, resolved.actor.requestId));
+    return jsonResponse(200, asApiItem(projectedDetail, resolved.actor.requestId));
   } catch (error) {
     const knownError = createUserMutationErrorResponse({
       error,

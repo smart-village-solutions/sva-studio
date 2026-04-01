@@ -1,9 +1,4 @@
-import type { ApiErrorResponse } from '@sva/core';
-
 import type { AuthenticatedRequestContext } from '../middleware.server.js';
-import { jsonResponse } from '../shared/db-helpers.js';
-
-import { createApiError } from './api-helpers.js';
 import { ensureActorCanManageTarget, resolveActorMaxRoleLevel, resolveSystemAdminCount } from './shared-actor-authorization.js';
 import { type ActorInfo } from './shared-actor-resolution.js';
 import { emitActivityLog, notifyPermissionInvalidation } from './shared-activity.js';

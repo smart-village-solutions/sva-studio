@@ -33,7 +33,7 @@ export const resolveUpdatedIdentityState = async (input: {
 
   let existingIdentityAttributes: IdentityUserAttributes | undefined;
   let nextIdentityAttributes: IdentityUserAttributes | undefined;
-  let nextMainserverCredentialState = resolveMainserverCredentialState(undefined);
+  let nextMainserverCredentialState: ReturnType<typeof resolveMainserverCredentialState>;
 
   if (shouldUpdateIdentityAttributes) {
     existingIdentityAttributes = await trackKeycloakCall('get_user_attributes_for_update', () =>

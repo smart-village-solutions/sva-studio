@@ -13,7 +13,7 @@ import {
   resolveMissingActorDiagnosticReason,
 } from './shared-actor-resolution-helpers.js';
 import { logger } from './shared-observability.js';
-import { resolvePool, withInstanceScopedDb } from './shared-runtime.js';
+import { resolvePool } from './shared-runtime.js';
 import type { ActorInfo, ResolveActorOptions } from './types.js';
 
 export type { ActorInfo } from './types.js';

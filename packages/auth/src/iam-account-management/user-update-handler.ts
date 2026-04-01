@@ -1,14 +1,7 @@
-import type { IdentityUserAttributes } from '../identity-provider-port.js';
 import { KeycloakAdminRequestError, KeycloakAdminUnavailableError } from '../keycloak-admin-client.js';
 import type { AuthenticatedRequestContext } from '../middleware.server.js';
 import { jsonResponse } from '../shared/db-helpers.js';
-import { isUuid } from '../shared/input-readers.js';
-
-import { ADMIN_ROLES } from './constants.js';
-import { asApiItem, createApiError, parseRequestBody, readPathSegment } from './api-helpers.js';
-import { validateCsrf } from './csrf.js';
-import { ensureFeature, getFeatureFlags } from './feature-flags.js';
-import { consumeRateLimit } from './rate-limit.js';
+import { asApiItem, createApiError } from './api-helpers.js';
 import { buildRoleSyncFailure } from './role-audit.js';
 import { type ActorInfo } from './shared-actor-resolution.js';
 import { iamUserOperationsCounter, logger, trackKeycloakCall } from './shared-observability.js';

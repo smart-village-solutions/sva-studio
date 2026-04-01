@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { setGlobalLoggerProviderForMonitoring } from '../../src/observability/monitoring-client.bridge.server';
 import { createSdkLogger } from '../../src/logger/index.server';
+import { readDevelopmentLogEntries, resetDevelopmentLogBufferForTests } from '../../src/logger/dev-log-buffer.server';
 import { runWithWorkspaceContext } from '../../src/observability/context.server';
 import {
   getRegisteredOtelLoggerCountForTests,
@@ -21,6 +22,7 @@ describe('DirectOtelTransport', () => {
     // Clear global state
     process.env.NODE_ENV = 'development';
     resetLoggingRuntimeForTests();
+    resetDevelopmentLogBufferForTests();
     return setGlobalLoggerProviderForMonitoring(null);
   });
 
@@ -294,5 +296,32 @@ describe('DirectOtelTransport', () => {
     });
 
     expect(getRegisteredOtelLoggerCountForTests()).toBe(0);
+  });
+
+  it('drops non-object development ui context after serialization', async () => {
+    class CustomContext {
+      toString() {
+        return 'custom-context';
+      }
+    }
+
+    const logger = createSdkLogger({
+      component: 'dev-ui-test',
+      enableOtel: false,
+      enableConsole: false,
+    });
+
+    logger.info('Context message', {
+      context: new CustomContext(),
+    });
+    await flushAsyncLogs();
+
+    expect(readDevelopmentLogEntries()).toEqual([
+      expect.objectContaining({
+        component: 'dev-ui-test',
+        message: 'Context message',
+        context: undefined,
+      }),
+    ]);
   });
 });

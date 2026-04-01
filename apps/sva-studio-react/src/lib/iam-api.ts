@@ -28,11 +28,16 @@ import type {
   IamUserListItem,
   UpdateIamContentInput,
 } from '@sva/core';
+import { createBrowserLogger } from '@sva/sdk/logging';
 
 const IAM_HEADERS = {
   'Content-Type': 'application/json',
   'X-Requested-With': 'XMLHttpRequest',
 } as const;
+
+const browserLogger = createBrowserLogger({
+  component: 'iam-api',
+});
 
 export const LEGAL_ACCEPTANCE_REQUIRED_EVENT = 'sva:legal-acceptance-required';
 
@@ -65,6 +70,7 @@ type SafeDiagnosticDetails = Readonly<{
   expected_migration?: string;
   actor_resolution?: string;
   instance_id?: string;
+  return_to?: string;
 }>;
 
 const hasTopLevelMessage = (
@@ -138,6 +144,7 @@ const readSafeDiagnosticDetails = (payload: IamErrorPayload | null): SafeDiagnos
     actor_resolution:
       typeof source.actor_resolution === 'string' ? source.actor_resolution : undefined,
     instance_id: typeof source.instance_id === 'string' ? source.instance_id : undefined,
+    return_to: typeof source.return_to === 'string' ? source.return_to : undefined,
   };
 
   return Object.values(safeDetails).some((value) => typeof value === 'string') ? safeDetails : undefined;
@@ -153,7 +160,7 @@ const logDevelopmentApiError = (input: {
     return;
   }
 
-  console.error('IAM API request failed', {
+  browserLogger.error('IAM API request failed', {
     request_id: input.requestId,
     status: input.status,
     code: input.code,
@@ -353,7 +360,7 @@ const readErrorPayload = async (response: Response): Promise<IamHttpError> => {
   logDevelopmentApiError({ requestId, status: response.status, code, details });
 
   if (code === 'legal_acceptance_required' && globalThis.window !== undefined) {
-    globalThis.dispatchEvent(new CustomEvent(LEGAL_ACCEPTANCE_REQUIRED_EVENT));
+    globalThis.dispatchEvent(new CustomEvent(LEGAL_ACCEPTANCE_REQUIRED_EVENT, { detail: details }));
   }
 
   return new IamHttpError({

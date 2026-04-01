@@ -21,8 +21,11 @@ describe('consumeRateLimit', () => {
     const response = consumeRateLimit(input);
     expect(response?.status).toBe(429);
     expect(response).not.toBeNull();
+    if (!response) {
+      throw new Error('Rate limit response erwartet.');
+    }
 
-    const payload = (await response!.json()) as {
+    const payload = (await response.json()) as {
       error: { details?: { windowSeconds?: number } };
     };
     expect(payload.error.details?.windowSeconds).toBe(RATE_WINDOW_MS / 1000);

@@ -28,6 +28,12 @@ let mockBrowserEntries: BrowserDevelopmentLogEntry[] = [
 ];
 
 const loadServerLogs = vi.fn(async () => mockServerEntries);
+const browserLoggerMock = vi.hoisted(() => ({
+  debug: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+}));
 
 const subscribeToBrowserDevelopmentLogs = vi.fn((listener: (entries: typeof mockBrowserEntries) => void) => {
   listener(mockBrowserEntries);
@@ -46,6 +52,10 @@ vi.mock('../lib/development-log-store', () => ({
   getBrowserDevelopmentLogs: () => mockBrowserEntries,
   startBrowserDevelopmentLogCapture: () => () => undefined,
   subscribeToBrowserDevelopmentLogs,
+}));
+
+vi.mock('@sva/sdk/logging', () => ({
+  createBrowserLogger: () => browserLoggerMock,
 }));
 
 describe('DevelopmentLogConsole', () => {
@@ -74,6 +84,10 @@ describe('DevelopmentLogConsole', () => {
     ];
     loadServerLogs.mockClear();
     loadServerLogs.mockImplementation(async () => mockServerEntries);
+    browserLoggerMock.debug.mockReset();
+    browserLoggerMock.info.mockReset();
+    browserLoggerMock.warn.mockReset();
+    browserLoggerMock.error.mockReset();
     Object.defineProperty(document, 'visibilityState', {
       configurable: true,
       value: 'visible',
@@ -180,7 +194,6 @@ describe('DevelopmentLogConsole', () => {
   }, 15_000);
 
   it('warns when polling fails while the panel is open', async () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     loadServerLogs.mockRejectedValueOnce(new Error('network down'));
 
     const DevelopmentLogConsole = (await import('./DevelopmentLogConsole')).default;
@@ -189,7 +202,12 @@ describe('DevelopmentLogConsole', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Öffnen' }));
 
     await waitFor(() => {
-      expect(warnSpy).toHaveBeenCalledWith('[DevelopmentLogConsole] Failed to load server logs', expect.any(Error));
+      expect(browserLoggerMock.warn).toHaveBeenCalledWith(
+        'Failed to load server logs',
+        expect.objectContaining({
+          error: expect.any(Error),
+        })
+      );
     }, { timeout: 10_000 });
   }, 15_000);
 });

@@ -78,37 +78,73 @@
       "status": "open",
       "summary": "IAM Account Management Core weiter in kleinere Fach- und Shared-Module zerlegen"
     },
-    "iam-server:packages/auth/src/iam-account-management/reconcile-handler.ts:cyclomaticComplexity": {
+    "iam-server:packages/auth/src/iam-account-management/reconcile-core.ts:cyclomaticComplexity": {
       "ticketId": "QUAL-112",
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "IAM Account Management Reconcile-Scheduler und Reconcile-Operation in kleinere Laufzeit- und Drift-Bausteine zerlegen"
     },
-    "iam-server:packages/auth/src/iam-account-management/reconcile-handler.ts:fileLines": {
+    "iam-server:packages/auth/src/iam-account-management/reconcile-core.ts:fileLines": {
       "ticketId": "QUAL-112",
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "IAM Account Management Reconcile-Scheduler und Reconcile-Operation in kleinere Laufzeit- und Drift-Bausteine zerlegen"
     },
-    "iam-server:packages/auth/src/iam-account-management/reconcile-handler.ts:functionLines": {
+    "iam-server:packages/auth/src/iam-account-management/reconcile-core.ts:functionLines": {
       "ticketId": "QUAL-112",
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "IAM Account Management Reconcile-Scheduler und Reconcile-Operation in kleinere Laufzeit- und Drift-Bausteine zerlegen"
     },
-    "iam-server:packages/auth/src/iam-account-management/roles-handlers.ts:cyclomaticComplexity": {
+    "iam-server:packages/auth/src/iam-account-management/roles-handlers.create.ts:cyclomaticComplexity": {
       "ticketId": "QUAL-112",
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "IAM Account Management Rollen-Handler weiter in CRUD-, Sync- und Query-Module zerlegen"
     },
-    "iam-server:packages/auth/src/iam-account-management/roles-handlers.ts:fileLines": {
+    "iam-server:packages/auth/src/iam-account-management/roles-handlers.create.ts:fileLines": {
       "ticketId": "QUAL-112",
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "IAM Account Management Rollen-Handler weiter in CRUD-, Sync- und Query-Module zerlegen"
     },
-    "iam-server:packages/auth/src/iam-account-management/roles-handlers.ts:functionLines": {
+    "iam-server:packages/auth/src/iam-account-management/roles-handlers.create.ts:functionLines": {
+      "ticketId": "QUAL-112",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "IAM Account Management Rollen-Handler weiter in CRUD-, Sync- und Query-Module zerlegen"
+    },
+    "iam-server:packages/auth/src/iam-account-management/roles-handlers.update.ts:cyclomaticComplexity": {
+      "ticketId": "QUAL-112",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "IAM Account Management Rollen-Handler weiter in CRUD-, Sync- und Query-Module zerlegen"
+    },
+    "iam-server:packages/auth/src/iam-account-management/roles-handlers.update.ts:fileLines": {
+      "ticketId": "QUAL-112",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "IAM Account Management Rollen-Handler weiter in CRUD-, Sync- und Query-Module zerlegen"
+    },
+    "iam-server:packages/auth/src/iam-account-management/roles-handlers.update.ts:functionLines": {
+      "ticketId": "QUAL-112",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "IAM Account Management Rollen-Handler weiter in CRUD-, Sync- und Query-Module zerlegen"
+    },
+    "iam-server:packages/auth/src/iam-account-management/roles-handlers.delete.ts:cyclomaticComplexity": {
+      "ticketId": "QUAL-112",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "IAM Account Management Rollen-Handler weiter in CRUD-, Sync- und Query-Module zerlegen"
+    },
+    "iam-server:packages/auth/src/iam-account-management/roles-handlers.delete.ts:fileLines": {
+      "ticketId": "QUAL-112",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "IAM Account Management Rollen-Handler weiter in CRUD-, Sync- und Query-Module zerlegen"
+    },
+    "iam-server:packages/auth/src/iam-account-management/roles-handlers.delete.ts:functionLines": {
       "ticketId": "QUAL-112",
       "ticketSystem": "backlog",
       "status": "open",

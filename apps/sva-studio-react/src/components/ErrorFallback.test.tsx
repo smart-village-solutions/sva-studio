@@ -3,7 +3,12 @@ import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const invalidateMock = vi.fn();
-const consoleErrorMock = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+const browserLoggerMock = vi.hoisted(() => ({
+  debug: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+}));
 
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ to, children, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { to: string }) => (
@@ -16,15 +21,22 @@ vi.mock('@tanstack/react-router', () => ({
   }),
 }));
 
+vi.mock('@sva/sdk/logging', () => ({
+  createBrowserLogger: () => browserLoggerMock,
+}));
+
 afterEach(() => {
   cleanup();
   invalidateMock.mockReset();
-  consoleErrorMock.mockClear();
   vi.unstubAllEnvs();
 });
 
 beforeEach(() => {
   window.history.replaceState({}, '', '/');
+  browserLoggerMock.debug.mockReset();
+  browserLoggerMock.info.mockReset();
+  browserLoggerMock.warn.mockReset();
+  browserLoggerMock.error.mockReset();
 });
 
 const importErrorFallback = async () => {
@@ -57,5 +69,20 @@ describe('ErrorFallback', () => {
 
     expect(screen.getByText('Lokale Diagnose')).toBeTruthy();
     expect(screen.getByText('debug details')).toBeTruthy();
+  });
+
+  it('logs through the browser logger in development mode', async () => {
+    vi.resetModules();
+    vi.stubEnv('DEV', true);
+    const ErrorFallback = await importErrorFallback();
+
+    render(<ErrorFallback error={new Error('kaputt')} reset={vi.fn()} info={{ componentStack: '' }} />);
+
+    expect(browserLoggerMock.error).toHaveBeenCalledWith(
+      'Route rendering failed',
+      expect.objectContaining({
+        error: expect.any(Error),
+      })
+    );
   });
 });

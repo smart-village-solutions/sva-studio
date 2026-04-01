@@ -47,6 +47,23 @@ pnpm test:coverage:pr
 
 Das Kommando führt dieselben betroffenen Coverage-Targets wie der PR-Workflow aus und prüft danach die Patch-Coverage lokal gegen den Zielwert von `80%`.
 
+### GitHub-PR-Gates lokal vorprüfen
+
+```bash
+pnpm test:pr
+```
+
+Das Kommando bildet den blockierenden GitHub-PR-Workflow für lokale Vorprüfung nach:
+
+- `check:file-placement`
+- `nx affected --target=test:coverage --base=origin/main`
+- `coverage-gate` im PR-Modus mit optionalen Summary-Dateien
+- `complexity-gate`
+- `test:integration`
+- React-App-Build für denselben Build-Pfad wie im Coverage-Workflow
+
+Nicht Bestandteil von `pnpm test:pr` sind externe Plattform-Auswertungen wie SonarCloud, Codecov oder CodeQL. Diese bleiben GitHub-spezifisch, aber ihre häufigsten lokalen Vorbedingungen werden damit bereits abgedeckt.
+
 ### Baseline aktualisieren
 
 Nur nach bewusstem Team-Entscheid:
@@ -125,7 +142,7 @@ Wichtig:
 - Codecov berücksichtigt nur Projekte, für die im PR-Lauf auch tatsächlich `lcov.info` hochgeladen wird.
 - Projekte aus `exemptProjects` in `tooling/testing/coverage-policy.json` dürfen deshalb nicht im Codecov-Flag `unittests` auftauchen.
 - Der lokale Preview-Check `pnpm patch-coverage-gate --base=origin/main` nutzt denselben Workspace-Scope wie unsere interne Coverage-Governance, damit Abweichungen vor dem Push sichtbar werden.
-- Lokale `src/*.js`, `src/*.d.ts` oder `src/*.d.ts.map` in Paketen verfälschen Import-Auflösung und `lcov`-Pfadzuordnung. Vor Coverage-Debugging deshalb `pnpm clean:source-artifacts` und `pnpm check:file-placement` ausführen.
+- Lokale `src/*.js`, `src/*.d.ts` oder `src/*.d.ts.map` in Paketen verfälschen Import-Auflösung und `lcov`-Pfadzuordnung. Vor Coverage-Debugging deshalb `pnpm clean:generated-source-artifacts` und `pnpm check:file-placement` ausführen.
 
 ## Exemptions
 

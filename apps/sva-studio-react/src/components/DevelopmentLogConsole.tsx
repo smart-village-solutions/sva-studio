@@ -1,6 +1,7 @@
 import React, { startTransition } from 'react';
 import { useServerFn } from '@tanstack/react-start';
 
+import { createBrowserLogger } from '@sva/sdk/logging';
 import type { DevelopmentLogEntry } from '@sva/sdk/server';
 
 import { t } from '../i18n';
@@ -22,6 +23,9 @@ type LogSourceFilter = 'all' | 'browser' | 'server';
 type DevelopmentLogRecord = BrowserDevelopmentLogEntry | DevelopmentLogEntry;
 
 const POLLING_INTERVAL_MS = 1500;
+const browserLogger = createBrowserLogger({
+  component: 'development-log-console',
+});
 
 const isVisibleForLevel = (filter: LogLevelFilter, level: DevelopmentLogRecord['level']): boolean => {
   return filter === 'all' ? true : level === filter;
@@ -160,7 +164,9 @@ export default function DevelopmentLogConsole() {
         applyServerLogUpdate(nextEntries, latestServerLogIdRef, setServerLogs);
       } catch (error) {
         if (!cancelled) {
-          console.warn('[DevelopmentLogConsole] Failed to load server logs', error);
+          browserLogger.warn('Failed to load server logs', {
+            error,
+          });
         }
       }
     };

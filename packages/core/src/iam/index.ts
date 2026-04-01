@@ -31,6 +31,9 @@ export type {
   IamUserGroupAssignment,
   IamUserImportSyncReport,
   IamUserListItem,
+  IamUserPermissionTraceItem,
+  IamUserPermissionTraceSourceKind,
+  IamUserPermissionTraceStatus,
   IamUserRoleAssignment,
 } from './account-management-contract.js';
 export type {

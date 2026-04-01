@@ -27,7 +27,8 @@
     "test:coverage": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "pnpm --filter @sva/data exec vitest run --coverage --reporter=verbose --config vitest.config.ts"
+        "cwd": "packages/data",
+        "command": "pnpm exec vitest run --coverage --reporter=verbose --config vitest.config.ts"
       }
     },
     "test:integration": {

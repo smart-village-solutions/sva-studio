@@ -201,12 +201,14 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
   );
 
   const onTabIntent = (tab: RoleDetailTab): void => {
-    navigate({
-      to: '/admin/roles/$roleId',
-      params: { roleId },
-      search: { tab },
-      replace: true,
-    }).catch(() => undefined);
+    void Promise.resolve(
+      navigate({
+        to: '/admin/roles/$roleId',
+        params: { roleId },
+        search: { tab },
+        replace: true,
+      })
+    ).catch(() => undefined);
   };
 
   const assignedUsers = React.useMemo(() => {

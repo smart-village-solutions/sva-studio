@@ -1,6 +1,6 @@
-const DEFAULT_POST_LOGIN_PATH = '/';
+export const DEFAULT_POST_LOGIN_PATH = '/';
 
-const sanitizeReturnTo = (value: string | null | undefined): string => {
+export const sanitizeReturnTo = (value: string | null | undefined): string => {
   if (!value) {
     return DEFAULT_POST_LOGIN_PATH;
   }

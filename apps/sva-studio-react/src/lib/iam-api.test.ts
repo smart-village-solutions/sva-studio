@@ -1,5 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+const browserLoggerMock = vi.hoisted(() => ({
+  debug: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+}));
+
+vi.mock('@sva/sdk/logging', () => ({
+  createBrowserLogger: () => browserLoggerMock,
+}));
+
 import {
   asIamError,
   assignGroupMembership,
@@ -40,6 +51,10 @@ describe('iam-api organization helpers', () => {
     vi.restoreAllMocks();
     vi.unstubAllEnvs();
     vi.stubEnv('NODE_ENV', 'test');
+    browserLoggerMock.debug.mockReset();
+    browserLoggerMock.info.mockReset();
+    browserLoggerMock.warn.mockReset();
+    browserLoggerMock.error.mockReset();
   });
 
   it('builds organization list queries and sends credentials', async () => {
@@ -210,8 +225,6 @@ describe('iam-api organization helpers', () => {
   });
 
   it('supports the flat error response shape and request id header', async () => {
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
-    consoleError.mockClear();
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue(
@@ -236,7 +249,7 @@ describe('iam-api organization helpers', () => {
       code: 'organization_inactive',
       requestId: 'req-header-1',
     });
-    expect(consoleError).toHaveBeenCalledWith(
+    expect(browserLoggerMock.error).toHaveBeenCalledWith(
       'IAM API request failed',
       expect.objectContaining({
         request_id: 'req-header-1',
@@ -247,8 +260,6 @@ describe('iam-api organization helpers', () => {
   });
 
   it('logs only safe diagnostic details for json api failures in development', async () => {
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
-    consoleError.mockClear();
     vi.stubEnv('NODE_ENV', 'development');
     vi.stubGlobal(
       'fetch',
@@ -278,7 +289,7 @@ describe('iam-api organization helpers', () => {
       requestId: 'req-json-500',
     });
 
-    expect(consoleError).toHaveBeenCalledWith('IAM API request failed', {
+    expect(browserLoggerMock.error).toHaveBeenCalledWith('IAM API request failed', {
       request_id: 'req-json-500',
       status: 500,
       code: 'internal_error',
@@ -288,9 +299,9 @@ describe('iam-api organization helpers', () => {
         expected_migration: '0018_iam_account_groups_origin_compat.sql',
       },
     });
-    expect(consoleError.mock.calls[0]?.[1]).not.toHaveProperty('email');
-    expect(consoleError.mock.calls[0]?.[1]).not.toHaveProperty('body');
-    expect(consoleError.mock.calls[0]?.[1]).not.toHaveProperty('payload');
+    expect(browserLoggerMock.error.mock.calls[0]?.[1]).not.toHaveProperty('email');
+    expect(browserLoggerMock.error.mock.calls[0]?.[1]).not.toHaveProperty('body');
+    expect(browserLoggerMock.error.mock.calls[0]?.[1]).not.toHaveProperty('payload');
   });
 
   it('wraps unknown values in asIamError', () => {
@@ -361,7 +372,6 @@ describe('iam-api organization helpers', () => {
   });
 
   it('falls back to http status messages when json error payloads omit message and code', async () => {
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     vi.stubEnv('NODE_ENV', 'development');
     vi.stubGlobal(
       'fetch',
@@ -382,7 +392,7 @@ describe('iam-api organization helpers', () => {
       message: 'http_502',
       requestId: 'req-empty-error',
     });
-    expect(consoleError).toHaveBeenCalledWith(
+    expect(browserLoggerMock.error).toHaveBeenCalledWith(
       'IAM API request failed',
       expect.objectContaining({
         code: 'internal_error',
@@ -397,6 +407,10 @@ describe('iam-api user sync helper', () => {
     vi.restoreAllMocks();
     vi.unstubAllEnvs();
     vi.stubEnv('NODE_ENV', 'test');
+    browserLoggerMock.debug.mockReset();
+    browserLoggerMock.info.mockReset();
+    browserLoggerMock.warn.mockReset();
+    browserLoggerMock.error.mockReset();
   });
 
   it('posts to the keycloak sync endpoint with CSRF headers', async () => {
@@ -432,8 +446,6 @@ describe('iam-api user sync helper', () => {
   });
 
   it('logs non-json API failures in development with request id fallback', async () => {
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
-    consoleError.mockClear();
     vi.stubEnv('NODE_ENV', 'development');
     vi.stubGlobal(
       'fetch',
@@ -453,7 +465,7 @@ describe('iam-api user sync helper', () => {
       code: 'non_json_response',
       requestId: 'req-non-json',
     });
-    expect(consoleError).toHaveBeenCalledWith(
+    expect(browserLoggerMock.error).toHaveBeenCalledWith(
       'IAM API request failed',
       expect.objectContaining({
         request_id: 'req-non-json',
@@ -461,13 +473,11 @@ describe('iam-api user sync helper', () => {
         code: 'non_json_response',
       })
     );
-    expect(consoleError.mock.calls[0]?.[1]).not.toHaveProperty('body');
-    expect(consoleError.mock.calls[0]?.[1]).not.toHaveProperty('payload');
+    expect(browserLoggerMock.error.mock.calls[0]?.[1]).not.toHaveProperty('body');
+    expect(browserLoggerMock.error.mock.calls[0]?.[1]).not.toHaveProperty('payload');
   });
 
   it('does not log API failures in production', async () => {
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
-    consoleError.mockClear();
     vi.stubEnv('NODE_ENV', 'production');
     vi.stubGlobal(
       'fetch',
@@ -483,7 +493,7 @@ describe('iam-api user sync helper', () => {
       status: 500,
       code: 'internal_error',
     });
-    expect(consoleError).not.toHaveBeenCalled();
+    expect(browserLoggerMock.error).not.toHaveBeenCalled();
   });
 });
 

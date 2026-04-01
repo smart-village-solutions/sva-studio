@@ -21,13 +21,15 @@
     "test:unit": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "pnpm --filter @sva/core exec vitest run --reporter=verbose --config vitest.config.ts --passWithNoTests"
+        "cwd": "packages/core",
+        "command": "pnpm exec vitest run --reporter=verbose --config vitest.config.ts --passWithNoTests"
       }
     },
     "test:coverage": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "pnpm --filter @sva/core exec vitest run --coverage --reporter=verbose --config vitest.config.ts --passWithNoTests"
+        "cwd": "packages/core",
+        "command": "pnpm exec vitest run --coverage --reporter=verbose --config vitest.config.ts --passWithNoTests"
       }
     },
     "test:integration": {

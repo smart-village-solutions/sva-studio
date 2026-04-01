@@ -172,9 +172,9 @@ describe('toEffectivePermissions — Gruppen-Branches', () => {
     expect(result[0].groupName).toBe('admins');
   });
 
-  it('setzt leere sourceGroupIds wenn group_id null ist', () => {
+  it('setzt sourceGroupIds nicht wenn group_id null ist', () => {
     const result = toEffectivePermissions([makeRow({ group_id: null })]);
-    expect(result[0].sourceGroupIds).toEqual([]);
+    expect(result[0].sourceGroupIds).toBeUndefined();
   });
 });
 

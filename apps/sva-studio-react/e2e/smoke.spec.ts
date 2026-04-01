@@ -38,21 +38,30 @@ const isExternalAuthRedirect = (location: string | null | undefined) =>
 test('GET / returns 200 and renders app shell', async ({ page }) => {
   const response = await page.goto('/');
   expect(response).not.toBeNull();
-  expect(response!.status()).toBeLessThan(400);
+  if (!response) {
+    throw new Error('Antwort für GET / erwartet.');
+  }
+  expect(response.status()).toBeLessThan(400);
   await expect(page.getByRole('heading', { name: 'SVA Studio' })).toBeVisible();
 });
 
 test('GET /demo returns 200', async ({ page }) => {
   const response = await page.goto('/demo');
   expect(response).not.toBeNull();
-  expect(response!.status()).toBeLessThan(400);
+  if (!response) {
+    throw new Error('Antwort für GET /demo erwartet.');
+  }
+  expect(response.status()).toBeLessThan(400);
   await expect(page.getByText('TanStack Start Demos')).toBeVisible();
 });
 
 test('GET /plugins/example returns 200', async ({ page }) => {
   const response = await page.goto('/plugins/example');
   expect(response).not.toBeNull();
-  expect(response!.status()).toBeLessThan(400);
+  if (!response) {
+    throw new Error('Antwort für GET /plugins/example erwartet.');
+  }
+  expect(response.status()).toBeLessThan(400);
   await expect(page.getByRole('heading', { name: 'Plugin Example' })).toBeVisible();
 });
 

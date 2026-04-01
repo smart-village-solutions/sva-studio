@@ -162,13 +162,72 @@ describe('UserEditPage', () => {
 
     fireEvent.click(screen.getByRole('tab', { name: 'Berechtigungen' }));
     expect(screen.getAllByText('content.read').length).toBeGreaterThan(0);
-    expect(screen.getByText('Direkte Rechte')).toBeTruthy();
 
     fireEvent.keyDown(screen.getByRole('tab', { name: 'Berechtigungen' }), { key: 'ArrowRight' });
     expect(screen.getByRole('tab', { name: 'Historie' }).getAttribute('aria-selected')).toBe('true');
 
     fireEvent.keyDown(screen.getByRole('tab', { name: 'Historie' }), { key: 'Home' });
     expect(screen.getByRole('tab', { name: 'Persönliche Daten' }).getAttribute('aria-selected')).toBe('true');
+  });
+
+  it('renders effective and inactive permission traces in the permissions tab', () => {
+    useUserMock.mockReturnValue({
+      user: {
+        ...baseUser,
+        directPermissions: [{ permissionId: 'perm-1', permissionKey: 'content.write', effect: 'deny' as const }],
+        permissionTrace: [
+          {
+            permissionKey: 'content.read',
+            action: 'content.read',
+            resourceType: 'content',
+            effect: 'allow' as const,
+            isEffective: true,
+            status: 'effective' as const,
+            sourceKind: 'group_role' as const,
+            roleName: 'system_admin',
+            groupDisplayName: 'Admins',
+            organizationId: 'org-1',
+            scope: { geoUnitId: 'geo-1' },
+          },
+          {
+            permissionKey: 'content.archive',
+            action: 'content.archive',
+            resourceType: 'content',
+            effect: 'deny' as const,
+            isEffective: false,
+            status: 'expired' as const,
+            sourceKind: 'direct_role' as const,
+            roleName: 'system_admin',
+          },
+        ],
+      },
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      save: vi.fn().mockResolvedValue(null),
+    });
+
+    useRolesMock.mockReturnValue({
+      roles: [{ id: 'role-1', roleName: 'system_admin' }],
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      createRole: vi.fn(),
+      updateRole: vi.fn(),
+      deleteRole: vi.fn(),
+    });
+
+    render(<UserEditPage userId="user-1" />);
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Berechtigungen' }));
+
+    expect(screen.getByText('Effektive Berechtigungen')).toBeTruthy();
+    expect(screen.getByText('Wirksame Quellen')).toBeTruthy();
+    expect(screen.getByText('Nicht wirksame Quellen')).toBeTruthy();
+    expect(screen.getByText('content.read')).toBeTruthy();
+    expect(screen.getByText('content.archive')).toBeTruthy();
+    expect(screen.getByText('Direkte Zuweisungen')).toBeTruthy();
+    expect(screen.getByText(/Organisation: org-1/)).toBeTruthy();
   });
 
   it('loads unified history entries and renders role validity windows', async () => {
@@ -394,7 +453,6 @@ describe('UserEditPage', () => {
         notes: undefined,
         roleIds: ['role-1', 'role-2'],
         groupIds: ['group-1'],
-        directPermissions: [],
         mainserverUserApplicationId: 'app-id-1',
         mainserverUserApplicationSecret: undefined,
       });
@@ -493,23 +551,25 @@ describe('UserEditPage', () => {
         notes: undefined,
         roleIds: ['role-1'],
         groupIds: ['group-1'],
-        directPermissions: [],
         mainserverUserApplicationId: 'updated-app-id',
         mainserverUserApplicationSecret: 'new-secret',
       });
     });
   });
 
-  it('submits direct user permission assignments from the permissions tab', async () => {
-    const save = vi.fn().mockResolvedValue({
+  it('renders direct user permission assignments read-only in the permissions tab', async () => {
+    const userWithDirectPermission = {
       ...baseUser,
       directPermissions: [{ permissionId: 'perm-write', permissionKey: 'content.write', effect: 'deny' as const }],
+    };
+    const save = vi.fn().mockResolvedValue({
+      ...userWithDirectPermission,
       mainserverUserApplicationId: 'app-id-1',
       mainserverUserApplicationSecretSet: true,
     });
 
     useUserMock.mockReturnValue({
-      user: baseUser,
+      user: userWithDirectPermission,
       isLoading: false,
       error: null,
       refetch: vi.fn(),
@@ -529,31 +589,12 @@ describe('UserEditPage', () => {
     render(<UserEditPage userId="user-1" />);
 
     fireEvent.click(screen.getByRole('tab', { name: 'Berechtigungen' }));
-    fireEvent.change(screen.getByLabelText('Direkte Wirkung für content.write'), {
-      target: { value: 'deny' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Änderungen speichern' }));
 
-    await waitFor(() => {
-      expect(save).toHaveBeenCalledWith({
-        firstName: 'Alice',
-        lastName: 'Admin',
-        displayName: 'Alice Admin',
-        email: 'alice@example.com',
-        phone: undefined,
-        position: undefined,
-        department: undefined,
-        status: 'active',
-        preferredLanguage: 'de',
-        timezone: 'Europe/Berlin',
-        notes: undefined,
-        roleIds: ['role-1'],
-        groupIds: ['group-1'],
-        directPermissions: [{ permissionId: 'perm-write', effect: 'deny' }],
-        mainserverUserApplicationId: 'app-id-1',
-        mainserverUserApplicationSecret: undefined,
-      });
-    });
+    expect(screen.getByText('Direkte Zuweisungen')).toBeTruthy();
+    expect(screen.getByText('content.write')).toBeTruthy();
+    expect(screen.getByText('deny')).toBeTruthy();
+    expect(screen.queryByLabelText('Direkte Wirkung für content.write')).toBeNull();
+    expect(save).not.toHaveBeenCalled();
   });
 
   it('shows permissions empty state and handles unsaved-tab dialog', async () => {

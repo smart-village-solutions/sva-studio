@@ -26,6 +26,7 @@ Dieses Dokument beschreibt die übergeordnete Teststrategie für das Nx-Monorepo
 - Es wird nicht auf bekannt rotem Teststand weiterimplementiert.
 - Nx-Targets sind der Standardweg für projektbezogene Läufe.
 - Bei Typänderungen sind Type- und Unit-Checks obligatorisch.
+- Vor größeren Test- oder Coverage-Läufen werden versehentlich erzeugte Source-Artefakte mit `pnpm clean:generated-source-artifacts` bereinigt.
 
 ## Empfohlener lokaler Workflow
 
@@ -47,6 +48,22 @@ Dieses Dokument beschreibt die übergeordnete Teststrategie für das Nx-Monorepo
 
 - `pnpm nx affected --target=test:unit --base=origin/main`
 - bei Typänderungen zusätzlich `pnpm nx affected --target=test:types --base=origin/main`
+- bei PR-relevanten Quality-Gate-, Coverage-, Logging-, Auth-, Routing- oder Build-Änderungen zusätzlich `pnpm test:pr`
+
+### Vor PR-Update
+
+- `pnpm test:pr`
+
+`pnpm test:pr` spiegelt den blockierenden GitHub-PR-Pfad so nah wie lokal sinnvoll möglich:
+
+- `pnpm check:file-placement`
+- `pnpm nx affected --target=test:coverage --base=origin/main`
+- `pnpm coverage-gate` im PR-Modus
+- `pnpm complexity-gate`
+- `pnpm test:integration`
+- `pnpm nx run sva-studio-react:build`
+
+Nicht vollständig lokal abbildbar bleiben externe PR-Dienste wie SonarCloud, Codecov und CodeQL. `pnpm test:pr` reduziert aber die häufigsten Abweichungen zwischen lokalem Stand und GitHub-Checks deutlich.
 
 ### Vor Merge oder Release
 
@@ -90,6 +107,7 @@ Diese Strategie definiert nur die Leitplanken:
 - Erst den Scope eingrenzen: Projekt, Target, betroffene Datei.
 - Reproduzierbarkeit lokal herstellen, bevor Workarounds dokumentiert werden.
 - Flaky Tests werden entweder stabilisiert oder vorübergehend explizit aus dem Pflichtpfad herausgenommen, aber nicht stillschweigend ignoriert.
+- Flake-anfällige Vitest-Targets im Pflichtpfad laufen bevorzugt seriell, wenn Parallelisierung nachweislich Race- oder Timing-Probleme erzeugt.
 - Jede bewusste Testlücke braucht dokumentierte Folgearbeit.
 
 ## Dokumentationspflicht

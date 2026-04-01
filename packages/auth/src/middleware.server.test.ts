@@ -174,7 +174,8 @@ describe('withAuthenticatedUser', () => {
     expect(withLegalTextComplianceMock).toHaveBeenCalledWith(
       'de-musterhausen',
       'user-2',
-      expect.any(Function)
+      expect.any(Function),
+      { returnTo: '/api/v1/iam/users' }
     );
   });
 
@@ -379,7 +380,8 @@ describe('withAuthenticatedUser', () => {
     expect(withLegalTextComplianceMock).toHaveBeenCalledWith(
       'de-musterhausen',
       'user-governance-enforced',
-      expect.any(Function)
+      expect.any(Function),
+      { returnTo: '/api/v1/iam/governance/workflows' }
     );
   });
 
@@ -406,7 +408,8 @@ describe('withAuthenticatedUser', () => {
     expect(withLegalTextComplianceMock).toHaveBeenCalledWith(
       'de-musterhausen',
       'user-authorize',
-      expect.any(Function)
+      expect.any(Function),
+      { returnTo: '/iam/authorize' }
     );
   });
 
@@ -435,7 +438,8 @@ describe('withAuthenticatedUser', () => {
     expect(withLegalTextComplianceMock).toHaveBeenCalledWith(
       'de-musterhausen',
       'user-enforcement-error',
-      expect.any(Function)
+      expect.any(Function),
+      { returnTo: '/api/v1/iam/users' }
     );
   });
 

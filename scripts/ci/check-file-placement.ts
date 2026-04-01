@@ -113,24 +113,21 @@ export const findFilePlacementViolations = (files: readonly string[]): string[] 
 export const findGeneratedSourceArtifacts = (rootDir: string): string[] => {
   const packagesDir = path.join(rootDir, 'packages');
   const artifacts: string[] = [];
+  if (!fs.existsSync(packagesDir)) {
+    return artifacts;
+  }
 
-  const walk = (dir: string): void => {
-    if (!fs.existsSync(dir)) {
-      return;
-    }
-
+  const walkSourceTree = (dir: string): void => {
     const entries = fs.readdirSync(dir, { withFileTypes: true });
     for (const entry of entries) {
-      if (ignoredDirectories.has(entry.name)) {
+      if (entry.isDirectory()) {
+        if (!ignoredDirectories.has(entry.name)) {
+          walkSourceTree(path.join(dir, entry.name));
+        }
         continue;
       }
 
       const entryPath = path.join(dir, entry.name);
-      if (entry.isDirectory()) {
-        walk(entryPath);
-        continue;
-      }
-
       const relativePath = path.relative(rootDir, entryPath).split(path.sep).join('/');
       if (isGeneratedSourceArtifact(relativePath)) {
         artifacts.push(relativePath);
@@ -138,7 +135,17 @@ export const findGeneratedSourceArtifacts = (rootDir: string): string[] => {
     }
   };
 
-  walk(packagesDir);
+  for (const entry of fs.readdirSync(packagesDir, { withFileTypes: true })) {
+    if (!entry.isDirectory() || ignoredDirectories.has(entry.name)) {
+      continue;
+    }
+
+    const sourceDir = path.join(packagesDir, entry.name, 'src');
+    if (fs.existsSync(sourceDir)) {
+      walkSourceTree(sourceDir);
+    }
+  }
+
   artifacts.sort();
   return artifacts;
 };
@@ -161,7 +168,7 @@ export const runFilePlacementCheck = (
     for (const violation of violations) {
       console.error(`- ${violation}`);
     }
-    console.error('\nRun: pnpm check:file-placement\n');
+    console.error('\nRun: pnpm clean:generated-source-artifacts && pnpm check:file-placement\n');
     return 1;
   }
 

@@ -88,7 +88,7 @@ describe('AuthProvider', () => {
     expect(screen.getByTestId('user-id').textContent).toBe('none');
   });
 
-  it('attempts silent session recovery once after a 401 and restores the user', async () => {
+  it('attempts silent session recovery once after a 401 and retries the session lookup', async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce({
@@ -126,11 +126,12 @@ describe('AuthProvider', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByTestId('authenticated').textContent).toBe('yes');
+      expect(fetchMock).toHaveBeenCalledTimes(2);
     });
-
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(screen.getByTestId('is-recovering-session').textContent).toBe('no');
+    await waitFor(() => {
+      expect(screen.getByTestId('is-recovering-session').textContent).toBe('no');
+    });
+    expect(screen.getByTestId('has-resolved-session').textContent).toBe('yes');
   });
 
   it('stays unauthenticated when silent recovery fails', async () => {

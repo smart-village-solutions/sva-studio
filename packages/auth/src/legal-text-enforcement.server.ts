@@ -4,6 +4,23 @@ import { createApiError } from './iam-account-management/api-helpers.js';
 import { withInstanceScopedDb } from './iam-account-management/shared.js';
 
 const logger = createSdkLogger({ component: 'iam-legal-compliance', level: 'info' });
+const DEFAULT_RETURN_TO = '/';
+
+const sanitizeReturnTo = (value: string | null | undefined): string => {
+  if (!value) {
+    return DEFAULT_RETURN_TO;
+  }
+
+  if (!value.startsWith('/') || value.startsWith('//')) {
+    return DEFAULT_RETURN_TO;
+  }
+
+  if (value.startsWith('/auth/')) {
+    return DEFAULT_RETURN_TO;
+  }
+
+  return value;
+};
 
 type PendingAcceptanceResult =
   | { pending: false }
@@ -45,7 +62,8 @@ WHERE ltv.instance_id = $1
 export const withLegalTextCompliance = async (
   instanceId: string,
   keycloakSubject: string,
-  handler: () => Promise<Response>
+  handler: () => Promise<Response>,
+  options?: { returnTo?: string }
 ): Promise<Response> => {
   const requestId = getWorkspaceContext().requestId;
 
@@ -64,7 +82,10 @@ export const withLegalTextCompliance = async (
         'legal_acceptance_required',
         'Vor der weiteren Nutzung müssen ausstehende Rechtstexte akzeptiert werden.',
         requestId,
-        { pending_count: check.pendingCount }
+        {
+          pending_count: check.pendingCount,
+          return_to: sanitizeReturnTo(options?.returnTo),
+        }
       );
     }
 

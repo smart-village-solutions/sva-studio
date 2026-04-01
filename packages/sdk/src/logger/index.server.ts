@@ -13,78 +13,25 @@ import {
   registerOtelAwareLogger,
   unregisterOtelAwareLogger,
 } from './logging-runtime.server.js';
-import { maskEmailAddresses } from '@sva/core';
-
-const SENSITIVE_KEYS = new Set([
-  'password',
-  'token',
-  'authorization',
-  'api_key',
-  'secret',
-  'client_secret',
-  'email',
-  'cookie',
-  'set-cookie',
-  'session',
-  'session_id',
-  'user_id',
-  'csrf',
-  'refresh_token',
-  'access_token',
-  'id_token',
-  'id_token_hint',
-  'x-api-key',
-  'x-csrf-token',
-  'actor_user_id',
-  'session_user_id',
-  'actor_account_id',
-  'keycloak_subject',
-  'db_keycloak_subject'
-]);
-
-const jwtLikeRegex = /\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)?\b/g;
-const querySecretRegexSource = String.raw`([?&](?:access_token|refresh_token|id_token|id_token_hint|token|code|client_secret|api_key|authorization)=)([^&#\s]+)`;
-const inlineQuerySecretRegexSource = String.raw`((?:^|[\s,(])(?:access_token|refresh_token|id_token|id_token_hint|token|code|client_secret|api_key|authorization)[\w.-]{0,20}[=:]\s*)([^\s,)]+)`;
-const inlineSensitiveFieldRegexSource = String.raw`((?:^|[\s,(])(?:password|secret|session|cookie|csrf)[\w.-]{0,20}[=:]\s*)([^\s,)]+)`;
-const urlSecretPatterns: ReadonlyArray<readonly [RegExp, string]> = [
-  [/\b(authorization:\s*)(bearer\s+)?[^\s,]+/gi, '$1[REDACTED]'],
-  [/\b(bearer\s+)(?!\[REDACTED(?:_JWT)?\])[^\s,]+/gi, '$1[REDACTED]'],
-  [new RegExp(querySecretRegexSource, 'gi'), '$1[REDACTED]'],
-  [new RegExp(inlineQuerySecretRegexSource, 'gi'), '$1[REDACTED]'],
-  [new RegExp(inlineSensitiveFieldRegexSource, 'gi'), '$1[REDACTED]'],
-];
-
-const redactSensitiveString = (value: string): string => {
-  let next = maskEmailAddresses(value);
-  next = next.replace(jwtLikeRegex, '[REDACTED_JWT]');
-  for (const [pattern, replacement] of urlSecretPatterns) {
-    next = next.replace(pattern, replacement);
-  }
-  return next;
-};
-
-const redactValue = (value: unknown): unknown => {
-  if (typeof value === 'string') {
-    return redactSensitiveString(value);
-  }
-  if (Array.isArray(value)) {
-    return value.map((item) => redactValue(item));
-  }
-  if (value && typeof value === 'object') {
-    return redactObject(value as Record<string, unknown>);
-  }
-  return value;
-};
+import { redactLogMeta, serializeAndRedactLogValue } from '../logging/redaction.js';
 
 export const redactObject = (value: Record<string, unknown>): Record<string, unknown> => {
-  return Object.entries(value).reduce<Record<string, unknown>>((acc, [key, entry]) => {
-    if (SENSITIVE_KEYS.has(key.toLowerCase())) {
-      acc[key] = '[REDACTED]';
-      return acc;
-    }
-    acc[key] = redactValue(entry);
-    return acc;
-  }, {});
+  return redactLogMeta(value);
+};
+
+const normalizeDevelopmentUiContext = (
+  context: unknown
+): Record<string, DevelopmentLogJsonValue> | undefined => {
+  if (!context || typeof context !== 'object' || Array.isArray(context)) {
+    return undefined;
+  }
+
+  const serializedContext = serializeAndRedactLogValue(context);
+  if (!serializedContext || typeof serializedContext !== 'object' || Array.isArray(serializedContext)) {
+    return undefined;
+  }
+
+  return serializedContext as Record<string, DevelopmentLogJsonValue>;
 };
 
 const enrichWithContext = winston.format((info) => {
@@ -211,10 +158,7 @@ class DevelopmentUiTransport extends Transport {
         source: 'server',
         message: typeof message === 'string' ? message : String(message),
         component: typeof component === 'string' ? component : undefined,
-        context:
-          typeof context === 'object' && context
-            ? (context as Record<string, DevelopmentLogJsonValue>)
-            : undefined,
+        context: normalizeDevelopmentUiContext(context),
       });
 
       callback?.();

@@ -568,7 +568,7 @@ describe('iam-account-management handlers (guards)', () => {
 
   it('jit-provisions the actor account for listUsers when only a keycloak identity exists', async () => {
     let actorLookupCount = 0;
-    state.queryHandler = (text, values) => {
+    state.queryHandler = (text) => {
       if (text.includes('FROM iam.accounts a') && text.includes('WHERE a.keycloak_subject = $2')) {
         actorLookupCount += 1;
         if (actorLookupCount === 1) {
@@ -639,7 +639,7 @@ describe('iam-account-management handlers (guards)', () => {
         },
       },
     ];
-    state.queryHandler = (text, values) => {
+    state.queryHandler = (text) => {
       if (text.includes('FROM iam.accounts a') && text.includes('WHERE a.keycloak_subject = $2')) {
         return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
       }
@@ -3902,7 +3902,7 @@ describe('iam-account-management handlers (guards)', () => {
       };
     };
     state.updateRoleImpl = updateRoleImpl;
-    state.queryHandler = (text, values) => {
+    state.queryHandler = (text) => {
       if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
         return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
       }

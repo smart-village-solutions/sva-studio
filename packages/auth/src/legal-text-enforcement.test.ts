@@ -43,7 +43,9 @@ describe('withLegalTextCompliance', () => {
     );
 
     const handler = makeHandler();
-    const response = await withLegalTextCompliance('inst-2', 'user-sub', handler);
+    const response = await withLegalTextCompliance('inst-2', 'user-sub', handler, {
+      returnTo: '/admin/users?tab=permissions',
+    });
 
     expect(handler).not.toHaveBeenCalled();
     expect(response.status).toBe(403);
@@ -55,6 +57,7 @@ describe('withLegalTextCompliance', () => {
         message: 'Vor der weiteren Nutzung müssen ausstehende Rechtstexte akzeptiert werden.',
         details: {
           pending_count: 2,
+          return_to: '/admin/users?tab=permissions',
         },
       },
       requestId: 'req-x',

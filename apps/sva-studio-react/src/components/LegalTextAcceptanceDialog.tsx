@@ -1,6 +1,11 @@
 import React from 'react';
 
 import { acceptLegalText, asIamError, getMyPendingLegalTexts, LEGAL_ACCEPTANCE_REQUIRED_EVENT } from '../lib/iam-api';
+import {
+  clearLegalAcceptanceReturnTo,
+  readLegalAcceptanceReturnTo,
+  storeLegalAcceptanceReturnTo,
+} from '../lib/legal-acceptance-navigation';
 import { t } from '../i18n';
 import { sanitizeLegalTextHtml } from '../lib/legal-text-html';
 import { useAuth } from '../providers/auth-provider';
@@ -14,6 +19,8 @@ type LegalTextAcceptanceDialogProps = Readonly<{
 }>;
 
 const EXEMPT_PATH_PREFIXES = ['/admin/legal-texts'];
+const isAcceptedUiReturnTo = (value: string | undefined): value is string =>
+  typeof value === 'string' && value.startsWith('/') && !value.startsWith('//') && !value.startsWith('/api/') && !value.startsWith('/auth/');
 
 const isPromptSuppressed = (pathname: string) => EXEMPT_PATH_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 
@@ -41,7 +48,7 @@ export const LegalTextAcceptanceDialog = ({ pathname }: LegalTextAcceptanceDialo
         setPendingTexts([]);
         setLoadError(null);
         setIsLoadingPending(false);
-        return;
+        return [] as Awaited<ReturnType<typeof getMyPendingLegalTexts>>['data'];
       }
 
       if (!silent) {
@@ -52,6 +59,10 @@ export const LegalTextAcceptanceDialog = ({ pathname }: LegalTextAcceptanceDialo
         const response = await getMyPendingLegalTexts();
         setPendingTexts(response.data);
         setLoadError(null);
+        if (response.data.length > 0) {
+          storeLegalAcceptanceReturnTo(pathname);
+        }
+        return response.data;
       } catch (error) {
         const iamError = asIamError(error);
         if (iamError.code === 'unauthorized') {
@@ -60,11 +71,12 @@ export const LegalTextAcceptanceDialog = ({ pathname }: LegalTextAcceptanceDialo
         } else {
           setLoadError(t('admin.legalAcceptance.errorLoading'));
         }
+        return [] as Awaited<ReturnType<typeof getMyPendingLegalTexts>>['data'];
       } finally {
         setIsLoadingPending(false);
       }
     },
-    [isAuthenticated, promptSuppressed, user?.instanceId]
+    [isAuthenticated, pathname, promptSuppressed, user?.instanceId]
   );
 
   React.useEffect(() => {
@@ -76,10 +88,17 @@ export const LegalTextAcceptanceDialog = ({ pathname }: LegalTextAcceptanceDialo
       return undefined;
     }
 
+    storeLegalAcceptanceReturnTo(pathname);
+
     const handleFocus = () => {
       void loadPendingTexts(true);
     };
-    const handleLegalAcceptanceRequired = () => {
+    const handleLegalAcceptanceRequired = (event: Event) => {
+      const detail =
+        event instanceof CustomEvent && event.detail && typeof event.detail === 'object'
+          ? (event.detail as { return_to?: string })
+          : undefined;
+      storeLegalAcceptanceReturnTo(isAcceptedUiReturnTo(detail?.return_to) ? detail.return_to : pathname);
       void loadPendingTexts(true);
     };
 
@@ -89,7 +108,7 @@ export const LegalTextAcceptanceDialog = ({ pathname }: LegalTextAcceptanceDialo
       globalThis.removeEventListener('focus', handleFocus);
       globalThis.removeEventListener(LEGAL_ACCEPTANCE_REQUIRED_EVENT, handleLegalAcceptanceRequired);
     };
-  }, [isAuthenticated, loadPendingTexts, promptSuppressed]);
+  }, [isAuthenticated, loadPendingTexts, pathname, promptSuppressed]);
 
   const handleAcceptAll = React.useCallback(async () => {
     if (!user?.instanceId) {
@@ -111,7 +130,12 @@ export const LegalTextAcceptanceDialog = ({ pathname }: LegalTextAcceptanceDialo
       }
 
       await invalidatePermissions();
-      await loadPendingTexts(true);
+      const remaining = await loadPendingTexts(true);
+      if (remaining.length === 0 && globalThis.window) {
+        const returnTo = readLegalAcceptanceReturnTo();
+        clearLegalAcceptanceReturnTo();
+        globalThis.window.location.assign(returnTo);
+      }
     } catch {
       setLoadError(t('admin.legalAcceptance.errorAccepting'));
     } finally {

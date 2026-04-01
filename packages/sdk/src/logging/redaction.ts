@@ -86,9 +86,9 @@ const serializeError = (value: Error): Record<string, unknown> => {
 
 export const redactLogString = (value: string): string => {
   let next = maskEmailAddresses(value);
-  next = next.replaceAll(jwtLikeRegex, '[REDACTED_JWT]');
+  next = next.replace(jwtLikeRegex, '[REDACTED_JWT]');
   for (const [pattern, replacement] of urlSecretPatterns) {
-    next = next.replaceAll(pattern, replacement);
+    next = next.replace(pattern, replacement);
   }
   return next;
 };

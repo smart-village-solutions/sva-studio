@@ -108,6 +108,20 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
+      - name: Ensure full git history for SonarCloud
+        if: always()
+        run: |
+          set -euo pipefail
+          if [ "$(git rev-parse --is-shallow-repository)" = "true" ]; then
+            git fetch --unshallow --tags
+          else
+            git fetch --tags --prune
+          fi
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git fetch origin "${{ github.base_ref }}" --no-tags --prune
+          fi
+          git rev-parse --is-shallow-repository
+
       - name: SonarCloud Scan
         if: always() && env.SONAR_TOKEN != ''
         uses: SonarSource/sonarqube-scan-action@v7

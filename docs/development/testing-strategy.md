@@ -48,6 +48,22 @@ Dieses Dokument beschreibt die übergeordnete Teststrategie für das Nx-Monorepo
 
 - `pnpm nx affected --target=test:unit --base=origin/main`
 - bei Typänderungen zusätzlich `pnpm nx affected --target=test:types --base=origin/main`
+- bei PR-relevanten Quality-Gate-, Coverage-, Logging-, Auth-, Routing- oder Build-Änderungen zusätzlich `pnpm test:pr`
+
+### Vor PR-Update
+
+- `pnpm test:pr`
+
+`pnpm test:pr` spiegelt den blockierenden GitHub-PR-Pfad so nah wie lokal sinnvoll möglich:
+
+- `pnpm check:file-placement`
+- `pnpm nx affected --target=test:coverage --base=origin/main`
+- `pnpm coverage-gate` im PR-Modus
+- `pnpm complexity-gate`
+- `pnpm test:integration`
+- `pnpm nx run sva-studio-react:build`
+
+Nicht vollständig lokal abbildbar bleiben externe PR-Dienste wie SonarCloud, Codecov und CodeQL. `pnpm test:pr` reduziert aber die häufigsten Abweichungen zwischen lokalem Stand und GitHub-Checks deutlich.
 
 ### Vor Merge oder Release
 

@@ -47,6 +47,23 @@ pnpm test:coverage:pr
 
 Das Kommando führt dieselben betroffenen Coverage-Targets wie der PR-Workflow aus und prüft danach die Patch-Coverage lokal gegen den Zielwert von `80%`.
 
+### GitHub-PR-Gates lokal vorprüfen
+
+```bash
+pnpm test:pr
+```
+
+Das Kommando bildet den blockierenden GitHub-PR-Workflow für lokale Vorprüfung nach:
+
+- `check:file-placement`
+- `nx affected --target=test:coverage --base=origin/main`
+- `coverage-gate` im PR-Modus mit optionalen Summary-Dateien
+- `complexity-gate`
+- `test:integration`
+- React-App-Build für denselben Build-Pfad wie im Coverage-Workflow
+
+Nicht Bestandteil von `pnpm test:pr` sind externe Plattform-Auswertungen wie SonarCloud, Codecov oder CodeQL. Diese bleiben GitHub-spezifisch, aber ihre häufigsten lokalen Vorbedingungen werden damit bereits abgedeckt.
+
 ### Baseline aktualisieren
 
 Nur nach bewusstem Team-Entscheid:

@@ -1,8 +1,18 @@
 import type { EffectivePermission } from '@sva/core';
 
 import { runTimedScenario } from '../src/iam-authorization/benchmark-harness.js';
-import { resolveEffectivePermissionsWithDeps } from '../src/iam-authorization/permission-store.js';
+import * as permissionStoreModule from '../src/iam-authorization/permission-store.js';
 import { processSnapshotInvalidationEventWithDeps } from '../src/iam-authorization/snapshot-invalidation.server.js';
+
+const resolveEffectivePermissionsWithDeps =
+  'resolveEffectivePermissionsWithDeps' in permissionStoreModule &&
+  typeof permissionStoreModule.resolveEffectivePermissionsWithDeps === 'function'
+    ? permissionStoreModule.resolveEffectivePermissionsWithDeps
+    : 'default' in permissionStoreModule && typeof permissionStoreModule.default === 'function'
+      ? permissionStoreModule.default
+      : (() => {
+          throw new Error('resolveEffectivePermissionsWithDeps export not found');
+        });
 
 const PERMISSIONS: readonly EffectivePermission[] = [
   {

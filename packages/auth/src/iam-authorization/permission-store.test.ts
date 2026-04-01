@@ -95,7 +95,7 @@ vi.mock('./shared', async (importOriginal) => {
 vi.mock('./redis-permission-snapshot.server', () => ({
   getRedisPermissionSnapshot: vi.fn(() => Promise.resolve(redisState.lookup)),
   setRedisPermissionSnapshot: vi.fn(() => Promise.resolve(redisState.write)),
-  invalidateRedisPermissionSnapshots: vi.fn(() => Promise.resolve({ ok: true, invalidatedKeys: [] })),
+  invalidateRedisPermissionSnapshots: vi.fn(() => Promise.resolve(0)),
 }));
 
 // ---------------------------------------------------------------------------

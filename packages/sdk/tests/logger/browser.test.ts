@@ -56,4 +56,33 @@ describe('browser logger', () => {
     expect(infoSpy).toHaveBeenCalledWith('hello');
     expect(isBrowserConsoleCaptureSuppressed()).toBe(false);
   });
+
+  it('isolates failing sinks and still writes the log entry to console', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => undefined);
+    const healthySink = vi.fn();
+    const unregisterFailing = registerBrowserLogSink(() => {
+      throw new Error('sink failed');
+    });
+    const unregisterHealthy = registerBrowserLogSink(healthySink);
+    const logger = createBrowserLogger({ component: 'test-browser' });
+
+    logger.info('hello');
+
+    expect(warnSpy).toHaveBeenCalledWith('Browser log sink failed', {
+      component: 'test-browser',
+      sink_error: 'sink failed',
+    });
+    expect(healthySink).toHaveBeenCalledWith(
+      expect.objectContaining({
+        component: 'test-browser',
+        level: 'info',
+        message: 'hello',
+      })
+    );
+    expect(infoSpy).toHaveBeenCalledWith('hello');
+
+    unregisterHealthy();
+    unregisterFailing();
+  });
 });

@@ -35,13 +35,6 @@ const syncUpdatedIdentityAndRoles = async (input: {
     input.shouldRestoreIdentityRef.current = true;
   }
 
-  if (input.payload.status === 'inactive') {
-    await trackKeycloakCall('deactivate_user', () =>
-      input.identityProvider.provider.deactivateUser(input.plan.existing.keycloakSubject)
-    );
-    input.shouldRestoreIdentityRef.current = true;
-  }
-
   if (input.plan.nextRoleNames) {
     const nextRoleNames = input.plan.nextRoleNames;
     await trackKeycloakCall('sync_roles', () =>

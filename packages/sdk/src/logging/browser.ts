@@ -45,7 +45,19 @@ const shouldLogBrowserLevel = (configuredLevel: BrowserLogLevel, targetLevel: Br
 
 const emitBrowserLogEntry = (entry: BrowserLogEntry): void => {
   for (const sink of browserLogSinks) {
-    sink(entry);
+    try {
+      sink(entry);
+    } catch (error) {
+      suppressedBrowserConsoleCaptureDepth += 1;
+      try {
+        console.warn('Browser log sink failed', {
+          component: entry.component,
+          sink_error: error instanceof Error ? error.message : String(error),
+        });
+      } finally {
+        suppressedBrowserConsoleCaptureDepth -= 1;
+      }
+    }
   }
 };
 

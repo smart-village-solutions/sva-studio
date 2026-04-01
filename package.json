@@ -22,7 +22,7 @@
     "test:integration": "env -u NO_COLOR nx run-many -t test:integration",
     "test:e2e": "env -u NO_COLOR nx run sva-studio-react:test:e2e",
     "test:acceptance:iam": "env -u NO_COLOR nx run sva-studio-react:test:acceptance",
-    "test:ci": "pnpm check:file-placement && pnpm check:openapi:iam && pnpm test:types && pnpm test:unit && pnpm test:coverage && pnpm complexity-gate",
+    "test:ci": "pnpm clean:generated-source-artifacts && pnpm check:file-placement && pnpm check:openapi:iam && pnpm test:types && pnpm test:unit && pnpm test:coverage && pnpm complexity-gate",
     "coverage-gate": "tsx scripts/ci/coverage-gate.ts",
     "patch-coverage-gate": "tsx scripts/ci/patch-coverage-gate.ts",
     "complexity-gate": "tsx scripts/ci/complexity-gate.ts",

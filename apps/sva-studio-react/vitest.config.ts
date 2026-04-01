@@ -2,8 +2,6 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
 import tsconfigPaths from 'vite-tsconfig-paths';
 
-const isCi = Boolean(process.env.CI);
-
 export default defineConfig({
   resolve: {
     alias: {
@@ -39,11 +37,10 @@ export default defineConfig({
     name: 'sva-studio-react',
     environment: 'happy-dom',
     include: ['src/**/*.{test,spec}.{ts,tsx}'],
-    // Serielle Ausführung in CI: reduziert Flakes in der UI-Testumgebung.
-    // Lokal laufen Tests parallel für schnellere Iteration.
+    // Serielle Ausführung reduziert Flakes in der UI-Testumgebung und stabilisiert affected-Läufe.
     pool: 'threads',
-    fileParallelism: isCi ? false : undefined,
-    maxWorkers: isCi ? 1 : undefined,
+    fileParallelism: false,
+    maxWorkers: 1,
     coverage: {
       provider: 'v8',
       reporter: ['text-summary', 'json-summary', 'lcov'],

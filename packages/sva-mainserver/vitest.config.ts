@@ -7,6 +7,9 @@ export default defineConfig({
     include: ['src/**/*.test.ts'],
     exclude: ['dist/**', 'coverage/**', 'node_modules/**'],
     environment: 'node',
+    fileParallelism: false,
+    maxWorkers: 1,
+    testTimeout: 10_000,
     coverage: sharedCoverageConfig,
   },
   resolve: {

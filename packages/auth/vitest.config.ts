@@ -2,11 +2,20 @@ import { resolve } from 'node:path';
 import { defineConfig } from 'vitest/config';
 import { sharedCoverageConfig } from '../../vitest.config';
 
+const testEnv =
+  process.env.REDIS_URL || process.env.CI
+    ? {}
+    : {
+        // Local Docker exposes Redis on localhost; without this, auth tests fall back to redis://redis:6379.
+        REDIS_URL: 'redis://localhost:6379',
+      };
+
 export default defineConfig({
   test: {
     include: ['src/**/*.test.ts', 'src/**/*.integration.test.ts', 'src/**/*.e2e.test.ts'],
     exclude: ['dist/**', 'coverage/**', 'node_modules/**'],
     coverage: sharedCoverageConfig,
+    env: testEnv,
   },
   resolve: {
     alias: {

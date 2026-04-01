@@ -12,7 +12,12 @@ import { NodeSDK } from '@opentelemetry/sdk-node';
 import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http';
 import { OTLPLogExporter } from '@opentelemetry/exporter-logs-otlp-http';
 import { PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics';
-import { BatchLogRecordProcessor, LogRecordProcessor, type SdkLogRecord } from '@opentelemetry/sdk-logs';
+import {
+  BatchLogRecordProcessor,
+  LogRecordProcessor,
+  type LoggerProvider,
+  type SdkLogRecord,
+} from '@opentelemetry/sdk-logs';
 import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
 import { logs } from '@opentelemetry/api-logs';
 import { maskEmailAddresses as maskEmailAddressesShared } from '@sva/core';
@@ -237,7 +242,7 @@ export const startOtelSdk = async (config: OtelConfig): Promise<NodeSDK> => {
   // Get global logger provider from OTEL API after SDK started
   // Note: Type casting needed as API logs and SDK logs use different LoggerProvider types at runtime
   // but they are compatible (the API returns what SDK expects)
-  const globalLoggerProvider = logs.getLoggerProvider() as any;
+  const globalLoggerProvider = logs.getLoggerProvider() as unknown as LoggerProvider;
   if (globalLoggerProvider) {
     setGlobalLoggerProvider(globalLoggerProvider);
   }

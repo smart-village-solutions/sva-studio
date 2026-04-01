@@ -153,7 +153,7 @@ describe('iam-contents handlers', () => {
   });
 
   it('creates and updates content with history-safe responses', async () => {
-    state.queryHandler = (text, values) => {
+    state.queryHandler = (text) => {
       if (resolveActorAccountQuery(text)) {
         return { rowCount: 1, rows: [{ account_id: 'account-1' }] };
       }

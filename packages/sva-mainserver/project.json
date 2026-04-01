@@ -22,13 +22,15 @@
     "test:unit": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "pnpm --filter @sva/sva-mainserver exec vitest run --reporter=verbose --config vitest.config.ts"
+        "cwd": "packages/sva-mainserver",
+        "command": "pnpm exec vitest run --reporter=verbose --config vitest.config.ts"
       }
     },
     "test:coverage": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "pnpm --filter @sva/sva-mainserver exec vitest run --coverage --reporter=verbose --config vitest.config.ts"
+        "cwd": "packages/sva-mainserver",
+        "command": "pnpm exec vitest run --coverage --reporter=verbose --config vitest.config.ts"
       }
     }
   },

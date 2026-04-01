@@ -161,7 +161,7 @@ export const runFilePlacementCheck = (
     for (const violation of violations) {
       console.error(`- ${violation}`);
     }
-    console.error('\nRun: pnpm check:file-placement\n');
+    console.error('\nRun: pnpm clean:generated-source-artifacts && pnpm check:file-placement\n');
     return 1;
   }
 

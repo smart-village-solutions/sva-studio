@@ -26,6 +26,7 @@ Dieses Dokument beschreibt die übergeordnete Teststrategie für das Nx-Monorepo
 - Es wird nicht auf bekannt rotem Teststand weiterimplementiert.
 - Nx-Targets sind der Standardweg für projektbezogene Läufe.
 - Bei Typänderungen sind Type- und Unit-Checks obligatorisch.
+- Vor größeren Test- oder Coverage-Läufen werden versehentlich erzeugte Source-Artefakte mit `pnpm clean:generated-source-artifacts` bereinigt.
 
 ## Empfohlener lokaler Workflow
 
@@ -90,6 +91,7 @@ Diese Strategie definiert nur die Leitplanken:
 - Erst den Scope eingrenzen: Projekt, Target, betroffene Datei.
 - Reproduzierbarkeit lokal herstellen, bevor Workarounds dokumentiert werden.
 - Flaky Tests werden entweder stabilisiert oder vorübergehend explizit aus dem Pflichtpfad herausgenommen, aber nicht stillschweigend ignoriert.
+- Flake-anfällige Vitest-Targets im Pflichtpfad laufen bevorzugt seriell, wenn Parallelisierung nachweislich Race- oder Timing-Probleme erzeugt.
 - Jede bewusste Testlücke braucht dokumentierte Folgearbeit.
 
 ## Dokumentationspflicht

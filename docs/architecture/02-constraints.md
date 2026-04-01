@@ -15,7 +15,7 @@ im IST-System direkt beeinflussen.
 
 ### Technische Randbedingungen
 
-- Node.js LTS gemäß `.nvmrc`/`.node-version`, pnpm `>=9.12.2`
+- Node.js `>=22.0.0` gemäß `package.json`-Engine, pnpm `>=9.12.2`; lokale Entwicklung und CI müssen dieselbe Major-Version nutzen
 - Nx-Monorepo mit standardisierten Targets (`build`, `lint`, `test:unit`)
 - TanStack Start/Router für App und Server-Routen
 - Redis als Session-Store, lokal via Docker Compose

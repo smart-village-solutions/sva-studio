@@ -32,7 +32,7 @@
 
 ## 6. Verifikation und Dokumentation
 
-- [ ] 6.1 Unit-, Type- und Integrations-Tests pro zerlegtem Fachmodul ergänzen oder anpassen
+- [x] 6.1 Unit-, Type- und Integrations-Tests pro zerlegtem Fachmodul ergänzen oder anpassen
 - [x] 6.2 `pnpm complexity-gate` für die betroffenen Module ausführen und Restüberschreitungen mit Tickets dokumentieren
 - [x] 6.3 Betroffene arc42-Abschnitte `04`, `05`, `06`, `08`, `09`, `10` und `11` aktualisieren
 - [x] 6.4 Relevante Entwicklerdokumentation und Runbooks auf neue Modulgrenzen und Entry-Points anpassen
@@ -40,3 +40,5 @@
 ## Hinweis
 
 - Offene Restschuld bleibt gezielt in `packages/auth/src/*/core.ts`, `packages/auth/src/iam-authorization/*` sowie `packages/auth/src/redis-session.server.ts` und `packages/auth/src/audit-db-sink.server.ts` über die Tickets `QUAL-101`, `QUAL-102`, `QUAL-103`, `QUAL-104`, `QUAL-108`, `QUAL-110` und `QUAL-111` dokumentiert.
+- Gate-Stabilisierung erfolgt parallel: serielle Vitest-Konfiguration für flake-anfällige Pflicht-Targets sowie bereinigte Lint-Warnings sind Teil des laufenden Refactoring-Schnitts.
+- Der laufende `QUAL-112`-Abbau wurde weiter in interne Rollen- und Reconcile-Module aufgeteilt; das Complexity-Tracking referenziert deshalb jetzt die neuen Dateien `roles-handlers.create.ts`, `roles-handlers.update.ts`, `roles-handlers.delete.ts` und `reconcile-core.ts`.

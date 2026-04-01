@@ -24,13 +24,15 @@
     "test:unit": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "pnpm --filter @sva/sdk exec vitest run tests --reporter=verbose --config vitest.config.ts --passWithNoTests"
+        "cwd": "packages/sdk",
+        "command": "pnpm exec vitest run tests --reporter=verbose --config vitest.config.ts --passWithNoTests"
       }
     },
     "test:coverage": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "pnpm --filter @sva/sdk exec vitest run tests --coverage --reporter=verbose --config vitest.config.ts --passWithNoTests"
+        "cwd": "packages/sdk",
+        "command": "pnpm exec vitest run tests --coverage --reporter=verbose --config vitest.config.ts --passWithNoTests"
       }
     },
     "test:integration": {

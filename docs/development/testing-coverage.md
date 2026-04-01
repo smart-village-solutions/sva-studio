@@ -125,7 +125,7 @@ Wichtig:
 - Codecov berücksichtigt nur Projekte, für die im PR-Lauf auch tatsächlich `lcov.info` hochgeladen wird.
 - Projekte aus `exemptProjects` in `tooling/testing/coverage-policy.json` dürfen deshalb nicht im Codecov-Flag `unittests` auftauchen.
 - Der lokale Preview-Check `pnpm patch-coverage-gate --base=origin/main` nutzt denselben Workspace-Scope wie unsere interne Coverage-Governance, damit Abweichungen vor dem Push sichtbar werden.
-- Lokale `src/*.js`, `src/*.d.ts` oder `src/*.d.ts.map` in Paketen verfälschen Import-Auflösung und `lcov`-Pfadzuordnung. Vor Coverage-Debugging deshalb `pnpm clean:source-artifacts` und `pnpm check:file-placement` ausführen.
+- Lokale `src/*.js`, `src/*.d.ts` oder `src/*.d.ts.map` in Paketen verfälschen Import-Auflösung und `lcov`-Pfadzuordnung. Vor Coverage-Debugging deshalb `pnpm clean:generated-source-artifacts` und `pnpm check:file-placement` ausführen.
 
 ## Exemptions
 

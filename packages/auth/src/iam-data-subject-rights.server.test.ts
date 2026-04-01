@@ -1385,7 +1385,7 @@ describe('iam data subject rights handlers', () => {
   });
 
   it('applies profile corrections and records the completed rectification request', async () => {
-    state.queryHandler = (text, values) => {
+    state.queryHandler = (text) => {
       if (text.includes('FROM iam.accounts a')) {
         return {
           rowCount: 1,

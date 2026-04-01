@@ -604,6 +604,7 @@ const createAuthServerRouteFactory = (path: AuthRoutePath) => {
       },
       // TanStack router types do not currently model the `server` option in this context.
       // Keep the cast local until upstream types allow full inference here.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any);
   };
 };

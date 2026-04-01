@@ -52,4 +52,41 @@ describe('consumeRateLimit', () => {
       })
     ).toBeNull();
   });
+
+  it('evicts the oldest bucket when the in-memory cap is exceeded', () => {
+    const now = 30_000;
+    const oldestActor = `rate-limit-oldest-${Date.now()}`;
+
+    for (let index = 0; index < WRITE_RATE_LIMIT; index += 1) {
+      expect(
+        consumeRateLimit({
+          instanceId: 'de-musterhausen',
+          actorKeycloakSubject: oldestActor,
+          scope: 'write',
+          now,
+        })
+      ).toBeNull();
+    }
+
+    for (let index = 0; index < 10_000; index += 1) {
+      expect(
+        consumeRateLimit({
+          instanceId: 'de-musterhausen',
+          actorKeycloakSubject: `rate-limit-cap-${index}-${Date.now()}`,
+          scope: 'read',
+          now,
+        })
+      ).toBeNull();
+    }
+
+    // Der älteste Bucket wird beim Überschreiten des Caps entfernt und beginnt wieder bei count=1.
+    expect(
+      consumeRateLimit({
+        instanceId: 'de-musterhausen',
+        actorKeycloakSubject: oldestActor,
+        scope: 'write',
+        now,
+      })
+    ).toBeNull();
+  });
 });

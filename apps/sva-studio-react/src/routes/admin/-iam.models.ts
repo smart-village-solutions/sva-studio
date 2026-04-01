@@ -1,4 +1,5 @@
 import type { AuthorizeResponse, EffectivePermission, IamDsrCaseListItem, MePermissionsResponse } from '@sva/core';
+import { t } from '../../i18n';
 
 import type { IamCockpitTabKey } from '../../lib/iam-viewer-access';
 
@@ -17,6 +18,7 @@ export type AuthorizeDecisionViewModel = {
   readonly diagnostics?: Readonly<Record<string, unknown>>;
   readonly evaluatedAt?: string;
   readonly provenance?: AuthorizeResponse['provenance'];
+  readonly matchedPermissions?: AuthorizeResponse['matchedPermissions'];
 };
 
 const VALID_TABS: readonly IamCockpitTabKey[] = ['rights', 'governance', 'dsr'];
@@ -65,7 +67,38 @@ export const mapAuthorizeDecision = (response: AuthorizeResponse): AuthorizeDeci
     diagnostics: response.diagnostics,
     evaluatedAt: response.evaluatedAt,
     provenance: response.provenance,
+    matchedPermissions: response.matchedPermissions,
   };
+};
+
+const mapSourceKindToLabel = (sourceKind: string): string => {
+  switch (sourceKind) {
+    case 'direct_user':
+    case 'user':
+      return t('admin.iam.rights.permissionSource.user');
+    case 'direct_role':
+    case 'role':
+      return t('admin.iam.rights.permissionSource.role');
+    case 'group_role':
+    case 'group':
+      return t('admin.iam.rights.permissionSource.group');
+    case 'delegation':
+      return t('admin.iam.rights.permissionSource.delegation');
+    default:
+      return sourceKind;
+  }
+};
+
+export const formatPermissionSourceKindLabels = (sourceKinds: readonly string[] | undefined): string => {
+  if (!sourceKinds || sourceKinds.length === 0) {
+    return '—';
+  }
+  return sourceKinds.map(mapSourceKindToLabel).join(', ');
+};
+
+export const formatPermissionSourceKinds = (permission: EffectivePermission): string => {
+  const sourceKinds = permission.provenance?.sourceKinds ?? [];
+  return formatPermissionSourceKindLabels(sourceKinds);
 };
 
 const includesIgnoreCase = (haystack: string | undefined, needle: string) =>
@@ -133,8 +166,8 @@ export const filterPermissions = (
       includesIgnoreCase(permission.resourceId, query) ||
       includesIgnoreCase(permission.organizationId, query) ||
       includesIgnoreCase(permission.effect, query) ||
-      includesIgnoreCase(permission.sourceRoleIds.join(' '), query) ||
-      includesIgnoreCase(permission.sourceGroupIds.join(' '), query) ||
+      includesIgnoreCase((permission.sourceRoleIds ?? []).join(' '), query) ||
+      includesIgnoreCase((permission.sourceGroupIds ?? []).join(' '), query) ||
       includesIgnoreCase(
         permission.provenance
           ? Object.values(permission.provenance)

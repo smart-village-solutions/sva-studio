@@ -9,6 +9,7 @@ import {
   errorResponse,
   logger,
   resolveActingAsUserIdFromRequest,
+  resolveGeoContextFromRequest,
   resolveInstanceIdFromRequest,
   resolveOrganizationIdFromRequest,
 } from './shared.js';
@@ -32,6 +33,11 @@ export const mePermissionsHandler = async (request: Request): Promise<Response> 
       }
 
       const actingAsUserId = resolveActingAsUserIdFromRequest(request);
+      const geoContext = resolveGeoContextFromRequest(request);
+      if (geoContext === null) {
+        return errorResponse(400, 'invalid_request');
+      }
+
       const effectiveUserId = actingAsUserId && actingAsUserId !== user.id ? actingAsUserId : user.id;
       const isImpersonating = effectiveUserId !== user.id;
 
@@ -60,6 +66,8 @@ export const mePermissionsHandler = async (request: Request): Promise<Response> 
         instanceId,
         keycloakSubject: effectiveUserId,
         organizationId: organizationId ?? undefined,
+        geoUnitId: geoContext.geoUnitId,
+        geoHierarchy: geoContext.geoHierarchy,
       });
 
       if (!resolved.ok) {
@@ -79,6 +87,8 @@ export const mePermissionsHandler = async (request: Request): Promise<Response> 
         actorUserId: user.id,
         effectiveUserId,
         isImpersonating,
+        snapshotVersion: resolved.snapshotVersion,
+        cacheStatus: resolved.cacheStatus,
       });
 
       logger.debug('Resolved effective permissions for current user', {

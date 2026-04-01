@@ -1,12 +1,12 @@
 import type { EffectivePermission } from '@sva/core';
+import { createHash } from 'node:crypto';
 
 import type { PermSnapshotKey } from './redis-permission-snapshot.server.js';
 import {
   getRedisPermissionSnapshot,
   setRedisPermissionSnapshot,
 } from './redis-permission-snapshot.server.js';
-import { loadPermissionsFromDb, type PermissionLookupInput } from './permission-store.queries.js';
-import type { EffectivePermissionsResolution } from './shared.js';
+import type { EffectivePermissionsResolution, PermissionRow } from './shared.js';
 import {
   buildRequestContext,
   cacheLogger,
@@ -18,56 +18,272 @@ import {
   recordPermissionCacheColdStart,
   recordPermissionCacheRecompute,
   recordPermissionCacheRedisLatency,
+  toEffectivePermissions,
+  withInstanceScopedDb,
 } from './shared.js';
+import type { QueryClient } from '../shared/db-helpers.js';
 
-export type PermissionResolutionDeps = Readonly<{
-  ensureInvalidationListener: () => Promise<void>;
-  cache: Pick<typeof permissionSnapshotCache, 'get' | 'set' | 'size'>;
-  getRedisPermissionSnapshot: typeof getRedisPermissionSnapshot;
-  setRedisPermissionSnapshot: typeof setRedisPermissionSnapshot;
-  loadPermissionsFromDb: (input: PermissionLookupInput) => Promise<readonly EffectivePermission[]>;
-  recordPermissionCacheColdStart: typeof recordPermissionCacheColdStart;
-  recordPermissionCacheRedisLatency: typeof recordPermissionCacheRedisLatency;
-  recordPermissionCacheRecompute: typeof recordPermissionCacheRecompute;
-  iamCacheLookupCounter: typeof iamCacheLookupCounter;
-  cacheLogger: typeof cacheLogger;
-  logger: typeof logger;
-  cacheMetricsState: typeof cacheMetricsState;
-}>;
-
-const toRedisSnapshotKey = (input: PermissionLookupInput): PermSnapshotKey => ({
-  instanceId: input.instanceId,
-  userId: input.keycloakSubject,
-  organizationId: input.organizationId,
-});
-
-const defaultPermissionResolutionDeps: PermissionResolutionDeps = {
-  ensureInvalidationListener,
-  cache: permissionSnapshotCache,
-  getRedisPermissionSnapshot,
-  setRedisPermissionSnapshot,
-  loadPermissionsFromDb,
-  recordPermissionCacheColdStart,
-  recordPermissionCacheRedisLatency,
-  recordPermissionCacheRecompute,
-  iamCacheLookupCounter,
-  cacheLogger,
-  logger,
-  cacheMetricsState,
+type PermissionLookupInput = {
+  instanceId: string;
+  keycloakSubject: string;
+  organizationId?: string;
+  geoUnitId?: string;
+  geoHierarchy?: readonly string[];
 };
 
-export const resolveEffectivePermissionsWithDeps = async (
-  input: PermissionLookupInput,
-  deps: PermissionResolutionDeps
-): Promise<EffectivePermissionsResolution> => {
-  await deps.ensureInvalidationListener();
+const normalizeGeoContext = (input: PermissionLookupInput) => {
+  const geoUnitId = input.geoUnitId?.trim() || undefined;
+  const geoHierarchy = input.geoHierarchy
+    ?.map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0);
 
-  const lookup = deps.cache.get(input);
+  if (!geoUnitId && (!geoHierarchy || geoHierarchy.length === 0)) {
+    return undefined;
+  }
+
+  return {
+    ...(geoUnitId ? { geoUnitId } : {}),
+    ...(geoHierarchy && geoHierarchy.length > 0 ? { geoHierarchy: [...new Set(geoHierarchy)] } : {}),
+  };
+};
+
+const toGeoContextHash = (input: PermissionLookupInput): string | undefined => {
+  const normalized = normalizeGeoContext(input);
+  if (!normalized) {
+    return undefined;
+  }
+
+  return createHash('sha256').update(JSON.stringify(normalized)).digest('hex').slice(0, 16);
+};
+
+const toSnapshotLookupKey = (input: PermissionLookupInput) => ({
+  instanceId: input.instanceId,
+  keycloakSubject: input.keycloakSubject,
+  organizationId: input.organizationId,
+  geoContextHash: toGeoContextHash(input),
+});
+
+const toRedisSnapshotKey = (
+  snapshotKey: ReturnType<typeof toSnapshotLookupKey>
+): PermSnapshotKey => ({
+  instanceId: snapshotKey.instanceId,
+  userId: snapshotKey.keycloakSubject,
+  organizationId: snapshotKey.organizationId,
+  geoCtxHash: snapshotKey.geoContextHash,
+});
+
+const listScopedPermissionRows = async (
+  client: QueryClient,
+  input: PermissionLookupInput & { organizationId: string }
+): Promise<readonly PermissionRow[]> => {
+  const scopedQuery = await client.query<PermissionRow>(
+    `
+WITH target_organization AS (
+  SELECT id, hierarchy_path
+  FROM iam.organizations
+  WHERE instance_id = $1
+    AND id = $3::uuid
+    AND is_active = true
+)
+-- Pfad 1: Rollenbasierte Berechtigungen (role_permissions JOIN permissions)
+SELECT DISTINCT
+  p.permission_key,
+  p.action,
+  p.resource_type,
+  p.resource_id,
+  p.effect,
+  p.scope,
+  source.account_id,
+  source.role_id,
+  source.group_id,
+  source.group_key,
+  source.source_kind,
+  $3::uuid AS organization_id
+FROM iam.accounts a
+JOIN (
+  SELECT ar.account_id, ar.role_id, ar.instance_id, NULL::uuid AS group_id, NULL::text AS group_key, 'direct_role'::text AS source_kind
+  FROM iam.account_roles ar
+  WHERE ar.valid_from <= NOW()
+    AND (ar.valid_to IS NULL OR ar.valid_to > NOW())
+  UNION ALL
+  SELECT d.delegatee_account_id AS account_id, d.role_id, d.instance_id, NULL::uuid AS group_id, NULL::text AS group_key, 'direct_role'::text AS source_kind
+  FROM iam.delegations d
+  WHERE d.status = 'active'
+    AND now() BETWEEN d.starts_at AND d.ends_at
+  UNION ALL
+  SELECT ag.account_id, gr.role_id, ag.instance_id, ag.group_id, g.group_key, 'group_role'::text AS source_kind
+  FROM iam.account_groups ag
+  JOIN iam.group_roles gr ON gr.instance_id = ag.instance_id AND gr.group_id = ag.group_id
+  JOIN iam.groups g ON g.instance_id = ag.instance_id AND g.id = ag.group_id AND g.is_active = true
+  WHERE (ag.valid_from IS NULL OR ag.valid_from <= NOW())
+    AND (ag.valid_until IS NULL OR ag.valid_until > now())
+) source
+  ON source.account_id = a.id
+ AND source.instance_id = $1
+JOIN iam.account_organizations ao
+  ON ao.instance_id = source.instance_id
+ AND ao.account_id = source.account_id
+JOIN target_organization target ON TRUE
+JOIN iam.role_permissions rp
+  ON rp.instance_id = source.instance_id
+ AND rp.role_id = source.role_id
+JOIN iam.permissions p
+  ON p.instance_id = source.instance_id
+ AND p.id = rp.permission_id
+WHERE a.keycloak_subject = $2
+  AND (
+    ao.organization_id = target.id
+    OR ao.organization_id = ANY(target.hierarchy_path)
+  )
+
+UNION
+
+-- Pfad 2: Direkte Nutzerrechte (account_permissions JOIN permissions)
+SELECT DISTINCT
+  p.permission_key,
+  p.action,
+  p.resource_type,
+  p.resource_id,
+  COALESCE(ap.effect, p.effect) AS effect,
+  p.scope,
+  a.id AS account_id,
+  NULL::uuid AS role_id,
+  NULL::uuid AS group_id,
+  NULL::text AS group_key,
+  'direct_user'::text AS source_kind,
+  $3::uuid AS organization_id
+FROM iam.accounts a
+JOIN iam.account_permissions ap
+  ON ap.instance_id = $1
+ AND ap.account_id = a.id
+JOIN iam.permissions p
+  ON p.instance_id = $1
+ AND p.id = ap.permission_id
+JOIN iam.account_organizations ao
+  ON ao.instance_id = $1
+ AND ao.account_id = a.id
+JOIN target_organization target ON TRUE
+WHERE a.keycloak_subject = $2
+  AND (
+    ao.organization_id = target.id
+    OR ao.organization_id = ANY(target.hierarchy_path)
+  )
+`,
+    [input.instanceId, input.keycloakSubject, input.organizationId]
+  );
+
+  return scopedQuery.rows;
+};
+
+const listUnscopedPermissionRows = async (
+  client: QueryClient,
+  input: PermissionLookupInput
+): Promise<readonly PermissionRow[]> => {
+  const unscopedQuery = await client.query<PermissionRow>(
+    `
+-- Pfad 1: Rollenbasierte Berechtigungen (role_permissions JOIN permissions)
+SELECT DISTINCT
+  p.permission_key,
+  p.action,
+  p.resource_type,
+  p.resource_id,
+  p.effect,
+  p.scope,
+  source.account_id,
+  source.role_id,
+  source.group_id,
+  source.group_key,
+  source.source_kind,
+  ao.organization_id
+FROM iam.accounts a
+JOIN (
+  SELECT ar.account_id, ar.role_id, ar.instance_id, NULL::uuid AS group_id, NULL::text AS group_key, 'direct_role'::text AS source_kind
+  FROM iam.account_roles ar
+  WHERE ar.valid_from <= NOW()
+    AND (ar.valid_to IS NULL OR ar.valid_to > NOW())
+  UNION ALL
+  SELECT d.delegatee_account_id AS account_id, d.role_id, d.instance_id, NULL::uuid AS group_id, NULL::text AS group_key, 'direct_role'::text AS source_kind
+  FROM iam.delegations d
+  WHERE d.status = 'active'
+    AND now() BETWEEN d.starts_at AND d.ends_at
+  UNION ALL
+  SELECT ag.account_id, gr.role_id, ag.instance_id, ag.group_id, g.group_key, 'group_role'::text AS source_kind
+  FROM iam.account_groups ag
+  JOIN iam.group_roles gr ON gr.instance_id = ag.instance_id AND gr.group_id = ag.group_id
+  JOIN iam.groups g ON g.instance_id = ag.instance_id AND g.id = ag.group_id AND g.is_active = true
+  WHERE (ag.valid_from IS NULL OR ag.valid_from <= NOW())
+    AND (ag.valid_until IS NULL OR ag.valid_until > now())
+) source
+  ON source.account_id = a.id
+ AND source.instance_id = $1
+LEFT JOIN iam.account_organizations ao
+  ON ao.instance_id = source.instance_id
+ AND ao.account_id = source.account_id
+JOIN iam.role_permissions rp
+  ON rp.instance_id = source.instance_id
+ AND rp.role_id = source.role_id
+JOIN iam.permissions p
+  ON p.instance_id = source.instance_id
+ AND p.id = rp.permission_id
+WHERE a.keycloak_subject = $2
+
+UNION
+
+-- Pfad 2: Direkte Nutzerrechte (account_permissions JOIN permissions)
+SELECT DISTINCT
+  p.permission_key,
+  p.action,
+  p.resource_type,
+  p.resource_id,
+  COALESCE(ap.effect, p.effect) AS effect,
+  p.scope,
+  a.id AS account_id,
+  NULL::uuid AS role_id,
+  NULL::uuid AS group_id,
+  NULL::text AS group_key,
+  'direct_user'::text AS source_kind,
+  ao.organization_id
+FROM iam.accounts a
+JOIN iam.account_permissions ap
+  ON ap.instance_id = $1
+ AND ap.account_id = a.id
+JOIN iam.permissions p
+  ON p.instance_id = $1
+ AND p.id = ap.permission_id
+LEFT JOIN iam.account_organizations ao
+  ON ao.instance_id = $1
+ AND ao.account_id = a.id
+WHERE a.keycloak_subject = $2
+`,
+    [input.instanceId, input.keycloakSubject]
+  );
+
+  return unscopedQuery.rows;
+};
+
+const listPermissionRows = async (
+  client: QueryClient,
+  input: PermissionLookupInput
+): Promise<readonly PermissionRow[]> =>
+  input.organizationId
+    ? listScopedPermissionRows(client, { ...input, organizationId: input.organizationId })
+    : listUnscopedPermissionRows(client, input);
+
+const loadPermissionsFromDb = async (input: PermissionLookupInput): Promise<readonly EffectivePermission[]> => {
+  const rows = await withInstanceScopedDb(input.instanceId, async (client) => listPermissionRows(client, input));
+  return toEffectivePermissions(rows);
+};
+
+export const resolveEffectivePermissions = async (input: PermissionLookupInput): Promise<EffectivePermissionsResolution> => {
+  await ensureInvalidationListener();
+
+  const snapshotLookupKey = toSnapshotLookupKey(input);
+  const lookup = permissionSnapshotCache.get(snapshotLookupKey);
 
   if (lookup.status === 'hit' && lookup.snapshot) {
-    deps.cacheMetricsState.lookups += 1;
-    deps.iamCacheLookupCounter.add(1, { hit: true });
-    deps.cacheLogger.debug('Permission snapshot cache lookup', {
+    cacheMetricsState.lookups += 1;
+    iamCacheLookupCounter.add(1, { hit: true });
+    cacheLogger.debug('Permission snapshot cache lookup', {
       operation: 'cache_lookup',
       hit: true,
       cache_layer: 'memory',
@@ -83,8 +299,8 @@ export const resolveEffectivePermissionsWithDeps = async (
   }
 
   if (lookup.status === 'stale') {
-    deps.cacheMetricsState.staleLookups += 1;
-    deps.cacheLogger.warn('Stale permission snapshot detected', {
+    cacheMetricsState.staleLookups += 1;
+    cacheLogger.warn('Stale permission snapshot detected', {
       operation: 'cache_stale_detected',
       age_s: lookup.ageSeconds,
       max_ttl_s: 300,
@@ -92,23 +308,28 @@ export const resolveEffectivePermissionsWithDeps = async (
     });
   }
 
-  if (deps.cache.size() === 0) {
-    deps.recordPermissionCacheColdStart(input.instanceId);
+  if (permissionSnapshotCache.size() === 0) {
+    recordPermissionCacheColdStart(input.instanceId);
   }
 
-  const redisKey = toRedisSnapshotKey(input);
+  const redisKey = toRedisSnapshotKey(snapshotLookupKey);
   const redisLookupStartedAt = performance.now();
-  const redisLookup = await deps.getRedisPermissionSnapshot(redisKey);
-  deps.recordPermissionCacheRedisLatency(
+  const redisLookup = await getRedisPermissionSnapshot(redisKey);
+  recordPermissionCacheRedisLatency(
     performance.now() - redisLookupStartedAt,
     redisLookup.hit || redisLookup.reason !== 'redis_unavailable'
   );
 
   if (redisLookup.hit) {
-    deps.cacheMetricsState.lookups += 1;
-    const snapshot = deps.cache.set(input, redisLookup.permissions, Date.now(), redisLookup.version);
-    deps.iamCacheLookupCounter.add(1, { hit: true });
-    deps.cacheLogger.debug('Permission snapshot cache lookup', {
+    cacheMetricsState.lookups += 1;
+    const snapshot = permissionSnapshotCache.set(
+      snapshotLookupKey,
+      redisLookup.permissions,
+      Date.now(),
+      redisLookup.version
+    );
+    iamCacheLookupCounter.add(1, { hit: true });
+    cacheLogger.debug('Permission snapshot cache lookup', {
       operation: 'cache_lookup',
       hit: true,
       cache_layer: 'redis',
@@ -123,9 +344,9 @@ export const resolveEffectivePermissionsWithDeps = async (
   }
 
   if (redisLookup.reason === 'redis_unavailable') {
-    deps.cacheMetricsState.lookups += 1;
-    deps.iamCacheLookupCounter.add(1, { hit: false });
-    deps.logger.error('Redis permission snapshot lookup failed', {
+    cacheMetricsState.lookups += 1;
+    iamCacheLookupCounter.add(1, { hit: false });
+    logger.error('Redis permission snapshot lookup failed', {
       operation: 'cache_lookup_failed',
       error: redisLookup.reason,
       ...buildRequestContext(input.instanceId),
@@ -133,9 +354,9 @@ export const resolveEffectivePermissionsWithDeps = async (
     return { ok: false, error: 'database_unavailable' };
   }
 
-  deps.cacheMetricsState.lookups += 1;
-  deps.iamCacheLookupCounter.add(1, { hit: false });
-  deps.cacheLogger.debug('Permission snapshot cache lookup', {
+  cacheMetricsState.lookups += 1;
+  iamCacheLookupCounter.add(1, { hit: false });
+  cacheLogger.debug('Permission snapshot cache lookup', {
     operation: 'cache_lookup',
     hit: false,
     cache_layer: 'redis',
@@ -144,21 +365,26 @@ export const resolveEffectivePermissionsWithDeps = async (
   });
 
   try {
-    const permissions = await deps.loadPermissionsFromDb(input);
-    const redisWrite = await deps.setRedisPermissionSnapshot(redisKey, permissions);
+    const permissions = await loadPermissionsFromDb(input);
+    const redisWrite = await setRedisPermissionSnapshot(redisKey, permissions);
     if (!redisWrite.ok) {
-      deps.logger.error('Redis permission snapshot write failed after recompute', {
+      logger.error('Redis permission snapshot write failed after recompute', {
         operation: 'cache_store_failed',
         error: redisWrite.reason,
         ...buildRequestContext(input.instanceId),
       });
       return { ok: false, error: 'database_unavailable' };
     }
-    deps.recordPermissionCacheRecompute();
-    const snapshot = deps.cache.set(input, permissions, Date.now(), redisWrite.version);
+    recordPermissionCacheRecompute();
+    const snapshot = permissionSnapshotCache.set(
+      snapshotLookupKey,
+      permissions,
+      Date.now(),
+      redisWrite.version
+    );
 
     if (lookup.status === 'stale') {
-      deps.cacheLogger.info('Permission snapshot recomputed after stale detection', {
+      cacheLogger.info('Permission snapshot recomputed after stale detection', {
         operation: 'cache_invalidate',
         trigger: 'recompute',
         affected_keys: 1,
@@ -173,7 +399,7 @@ export const resolveEffectivePermissionsWithDeps = async (
       snapshotVersion: snapshot.snapshotVersion,
     };
   } catch (error) {
-    deps.logger.error('Failed to recompute permission snapshot', {
+    logger.error('Failed to recompute permission snapshot', {
       operation: 'cache_invalidate_failed',
       error: error instanceof Error ? error.message : String(error),
       ...buildRequestContext(input.instanceId),
@@ -182,6 +408,3 @@ export const resolveEffectivePermissionsWithDeps = async (
     return { ok: false, error: 'database_unavailable' };
   }
 };
-
-export const resolveEffectivePermissions = async (input: PermissionLookupInput): Promise<EffectivePermissionsResolution> =>
-  resolveEffectivePermissionsWithDeps(input, defaultPermissionResolutionDeps);

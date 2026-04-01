@@ -301,6 +301,12 @@ describe('routes/handlers', () => {
     expect(response.status).toBe(200);
     expect(response.headers.get('set-cookie')).toContain('sva_auth_state=');
     await expect(response.text()).resolves.toContain("status: 'failure'");
+    expect(emitAuthAuditEventMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: 'silent_reauth_failed',
+        outcome: 'failure',
+      })
+    );
   });
 
   it('redirects to /auth/login when callback misses code or state', async () => {
@@ -333,6 +339,12 @@ describe('routes/handlers', () => {
     expect(response.status).toBe(302);
     expect(response.headers.get('location')).toBe('/?auth=state-expired');
     expect(response.headers.get('set-cookie')).toContain('sva_auth_state=');
+    expect(emitAuthAuditEventMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: 'login_state_expired',
+        outcome: 'failure',
+      })
+    );
   });
 
   it('emits silent_reauth_failed audit event when silent callback processing throws', async () => {
@@ -394,6 +406,12 @@ describe('routes/handlers', () => {
       expect.objectContaining({
         operation: 'login_callback',
         is_silent: false,
+      })
+    );
+    expect(emitAuthAuditEventMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: 'login',
+        outcome: 'failure',
       })
     );
   });

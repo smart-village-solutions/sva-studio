@@ -24,6 +24,7 @@ const state = vi.hoisted(() => ({
   loadContentById: vi.fn(),
   loadContentDetail: vi.fn(),
   loadContentHistory: vi.fn(),
+  resolveContentAccess: vi.fn(),
 }));
 
 vi.mock('@sva/sdk/server', () => ({
@@ -46,6 +47,7 @@ vi.mock('./iam-account-management/api-helpers.js', () => ({
 
 vi.mock('./iam-contents/request-context.js', () => ({
   resolveContentActor: (...args: Parameters<typeof state.resolveContentActor>) => state.resolveContentActor(...args),
+  resolveContentAccess: (...args: Parameters<typeof state.resolveContentAccess>) => state.resolveContentAccess(...args),
   withAuthenticatedContentHandler: (...args: Parameters<typeof state.withAuthenticatedContentHandler>) =>
     state.withAuthenticatedContentHandler(...args),
 }));
@@ -78,6 +80,7 @@ const actorResolution = {
   actor: {
     instanceId: 'de-musterhausen',
     actorAccountId: 'account-1',
+    keycloakSubject: 'user-1',
     actorDisplayName: 'Editor',
     requestId: 'req-content',
     traceId: 'trace-content',
@@ -104,6 +107,16 @@ describe('iam-contents core', () => {
     state.loadContentById.mockReset();
     state.loadContentDetail.mockReset();
     state.loadContentHistory.mockReset();
+    state.resolveContentAccess.mockReset();
+    state.resolveContentAccess.mockResolvedValue({
+      state: 'read_only',
+      canRead: true,
+      canCreate: false,
+      canUpdate: false,
+      reasonCode: 'content_update_missing',
+      organizationIds: [],
+      sourceKinds: [],
+    });
   });
 
   it('covers list handlers for actor errors, success and database failures', async () => {
@@ -160,12 +173,29 @@ describe('iam-contents core', () => {
   it('returns detail and history payloads on successful reads', async () => {
     state.resolveContentActor.mockResolvedValue(actorResolution);
     state.readPathSegment.mockReturnValue('content-1');
-    state.loadContentDetail.mockResolvedValueOnce({ id: 'content-1', title: 'Startseite', history: [] });
+    state.loadContentDetail.mockResolvedValueOnce({
+      id: 'content-1',
+      title: 'Startseite',
+      history: [],
+    });
 
     const detailResponse = await getContentInternal(new Request('http://localhost/api/v1/iam/contents/content-1'), ctx);
     expect(detailResponse.status).toBe(200);
     expect(await detailResponse.json()).toEqual({
-      data: { id: 'content-1', title: 'Startseite', history: [] },
+      data: {
+        id: 'content-1',
+        title: 'Startseite',
+        history: [],
+        access: {
+          state: 'read_only',
+          canRead: true,
+          canCreate: false,
+          canUpdate: false,
+          reasonCode: 'content_update_missing',
+          organizationIds: [],
+          sourceKinds: [],
+        },
+      },
       requestId: 'req-content',
     });
 
@@ -237,7 +267,10 @@ describe('iam-contents core', () => {
     state.loadContentListItems.mockResolvedValue([]);
     state.readPathSegment.mockReturnValue('content-1');
     state.loadContentById.mockResolvedValue({ id: 'content-1' });
-    state.loadContentDetail.mockResolvedValue({ id: 'content-1', history: [] });
+    state.loadContentDetail.mockResolvedValue({
+      id: 'content-1',
+      history: [],
+    });
     state.loadContentHistory.mockResolvedValue([]);
     state.createContentResponse.mockResolvedValue(new Response('created', { status: 201 }));
     state.updateContentResponse.mockResolvedValue(new Response('updated', { status: 200 }));

@@ -7,18 +7,20 @@ export type PermissionRow = {
   resource_id?: string | null;
   effect?: IamPermissionEffect | null;
   scope?: Record<string, unknown> | null;
-  role_id: string;
+  account_id?: string | null;
+  role_id?: string | null;
   organization_id: string | null;
   group_id?: string | null;
   group_key?: string | null;
-  source_kind?: 'direct_role' | 'group_role' | null;
+  source_kind?: 'direct_user' | 'direct_role' | 'group_role' | null;
 };
 
 export const readResourceType = (permissionKey: string) => permissionKey.split('.')[0] ?? permissionKey;
 
 const SOURCE_KIND_ORDER: Record<NonNullable<PermissionRow['source_kind']>, number> = {
-  direct_role: 0,
-  group_role: 1,
+  direct_user: 0,
+  direct_role: 1,
+  group_role: 2,
 };
 
 const sortStrings = (values: readonly string[]): readonly string[] =>
@@ -72,8 +74,9 @@ const createPermissionBucket = (row: PermissionRow, normalized: NormalizedPermis
   organizationId: row.organization_id ?? undefined,
   effect: normalized.effect,
   scope: normalized.scope,
-  sourceRoleIds: [row.role_id],
-  sourceGroupIds: normalized.groupId ? [normalized.groupId] : [],
+  ...(row.account_id ? { sourceUserIds: [row.account_id] } : {}),
+  ...(row.role_id ? { sourceRoleIds: [row.role_id] } : {}),
+  ...(normalized.groupId ? { sourceGroupIds: [normalized.groupId] } : {}),
   ...(normalized.groupKey ? { groupName: normalized.groupKey } : {}),
   provenance: row.source_kind ? { sourceKinds: [row.source_kind] } : undefined,
 });
@@ -83,12 +86,19 @@ const mergePermissionBucket = (
   row: PermissionRow,
   normalized: NormalizedPermissionRow
 ): EffectivePermission => {
-  const sourceRoleIds = existing.sourceRoleIds.includes(row.role_id)
-    ? existing.sourceRoleIds
-    : [...existing.sourceRoleIds, row.role_id];
+  const sourceUserIds =
+    row.account_id && !(existing.sourceUserIds ?? []).includes(row.account_id)
+      ? [...(existing.sourceUserIds ?? []), row.account_id]
+      : existing.sourceUserIds;
+
+  const sourceRoleIds =
+    row.role_id && !(existing.sourceRoleIds ?? []).includes(row.role_id)
+      ? [...(existing.sourceRoleIds ?? []), row.role_id]
+      : existing.sourceRoleIds;
+
   const sourceGroupIds =
-    normalized.groupId && !existing.sourceGroupIds.includes(normalized.groupId)
-      ? [...existing.sourceGroupIds, normalized.groupId]
+    normalized.groupId && !(existing.sourceGroupIds ?? []).includes(normalized.groupId)
+      ? [...(existing.sourceGroupIds ?? []), normalized.groupId]
       : existing.sourceGroupIds;
   const groupName = normalized.groupKey ?? existing.groupName;
   const sourceKinds = row.source_kind
@@ -97,8 +107,9 @@ const mergePermissionBucket = (
 
   return {
     ...existing,
-    sourceRoleIds: sortStrings(sourceRoleIds),
-    sourceGroupIds: sortStrings(sourceGroupIds),
+    ...(sourceUserIds ? { sourceUserIds: sortStrings(sourceUserIds) } : {}),
+    ...(sourceRoleIds ? { sourceRoleIds: sortStrings(sourceRoleIds) } : {}),
+    ...(sourceGroupIds ? { sourceGroupIds: sortStrings(sourceGroupIds) } : {}),
     ...(groupName ? { groupName } : {}),
     provenance: sourceKinds ? { ...(existing.provenance ?? {}), sourceKinds } : existing.provenance,
   };
@@ -121,8 +132,9 @@ export const toEffectivePermissions = (rows: readonly PermissionRow[]): Effectiv
 
   return [...buckets.values()].map((permission) => ({
     ...permission,
-    sourceRoleIds: sortStrings(permission.sourceRoleIds),
-    sourceGroupIds: sortStrings(permission.sourceGroupIds),
+    ...(permission.sourceUserIds ? { sourceUserIds: sortStrings(permission.sourceUserIds) } : {}),
+    ...(permission.sourceRoleIds ? { sourceRoleIds: sortStrings(permission.sourceRoleIds) } : {}),
+    ...(permission.sourceGroupIds ? { sourceGroupIds: sortStrings(permission.sourceGroupIds) } : {}),
     provenance: permission.provenance?.sourceKinds
       ? { ...permission.provenance, sourceKinds: sortSourceKinds(permission.provenance.sourceKinds) }
       : permission.provenance,

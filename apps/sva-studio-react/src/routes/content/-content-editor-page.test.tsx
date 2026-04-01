@@ -6,6 +6,7 @@ import { ContentEditorPage } from './-content-editor-page';
 
 const useCreateContentMock = vi.fn();
 const useContentDetailMock = vi.fn();
+const useContentAccessMock = vi.fn();
 const navigateMock = vi.fn();
 
 vi.mock('@tanstack/react-router', () => ({
@@ -22,11 +23,28 @@ vi.mock('../../hooks/use-contents', () => ({
   useContentDetail: (...args: unknown[]) => useContentDetailMock(...args),
 }));
 
+vi.mock('../../hooks/use-content-access', () => ({
+  useContentAccess: () => useContentAccessMock(),
+}));
+
 describe('ContentEditorPage', () => {
   beforeEach(() => {
     useCreateContentMock.mockReset();
     useContentDetailMock.mockReset();
+    useContentAccessMock.mockReset();
     navigateMock.mockReset();
+    useContentAccessMock.mockReturnValue({
+      access: {
+        state: 'editable',
+        canRead: true,
+        canCreate: true,
+        canUpdate: true,
+        organizationIds: ['org-1'],
+        sourceKinds: ['direct_role'],
+      },
+      isLoading: false,
+      error: null,
+    });
   });
 
   afterEach(() => {
@@ -99,6 +117,14 @@ describe('ContentEditorPage', () => {
         author: 'Editor',
         payload: { hero: 'Willkommen' },
         status: 'published',
+        access: {
+          state: 'editable',
+          canRead: true,
+          canCreate: true,
+          canUpdate: true,
+          organizationIds: ['org-1'],
+          sourceKinds: ['direct_role'],
+        },
         history: [],
       },
       history: [
@@ -229,6 +255,14 @@ describe('ContentEditorPage', () => {
         author: 'Editor',
         payload: { hero: 'Test' },
         status: 'approved',
+        access: {
+          state: 'editable',
+          canRead: true,
+          canCreate: true,
+          canUpdate: true,
+          organizationIds: [],
+          sourceKinds: [],
+        },
         history: [],
       },
       history: [],
@@ -276,6 +310,14 @@ describe('ContentEditorPage', () => {
         author: 'Editor',
         payload: { hero: 'Test' },
         status: 'draft',
+        access: {
+          state: 'editable',
+          canRead: true,
+          canCreate: true,
+          canUpdate: true,
+          organizationIds: [],
+          sourceKinds: [],
+        },
         history: [],
       },
       history: [
@@ -328,5 +370,86 @@ describe('ContentEditorPage', () => {
     render(<ContentEditorPage mode="create" />);
 
     expect(screen.getByText('Zu viele Anfragen in kurzer Zeit. Bitte kurz warten und erneut versuchen.')).toBeTruthy();
+  });
+
+  it('disables submit actions when the current content action is forbidden', () => {
+    useCreateContentMock.mockReturnValue({
+      mutationError: null,
+      clearMutationError: vi.fn(),
+      createContent: vi.fn(),
+    });
+    useContentAccessMock.mockReturnValue({
+      access: {
+        state: 'server_denied',
+        canRead: false,
+        canCreate: false,
+        canUpdate: false,
+        reasonCode: 'server_forbidden',
+        organizationIds: [],
+        sourceKinds: [],
+      },
+      isLoading: false,
+      error: { code: 'forbidden', status: 403, message: 'forbidden' },
+    });
+    useContentDetailMock.mockReturnValue({
+      content: null,
+      history: [],
+      isLoading: false,
+      error: null,
+      mutationError: null,
+      refetch: vi.fn(),
+      clearMutationError: vi.fn(),
+      updateContent: vi.fn(),
+    });
+
+    render(<ContentEditorPage mode="create" />);
+
+    expect(screen.getByText('Aktionen bleiben deaktiviert, bis die erforderlichen Berechtigungen im aktuellen Kontext vorliegen.')).toBeTruthy();
+    expect((screen.getByRole('button', { name: 'Inhalt anlegen' }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('renders edit mode as read only when content access forbids updates', () => {
+    useCreateContentMock.mockReturnValue({
+      mutationError: null,
+      clearMutationError: vi.fn(),
+      createContent: vi.fn(),
+    });
+    useContentDetailMock.mockReturnValue({
+      content: {
+        id: 'content-4',
+        contentType: 'generic',
+        title: 'Read only',
+        publishedAt: '2026-03-21T10:00:00.000Z',
+        createdAt: '2026-03-20T10:00:00.000Z',
+        updatedAt: '2026-03-21T11:00:00.000Z',
+        author: 'Editor',
+        payload: { hero: 'Test' },
+        status: 'published',
+        access: {
+          state: 'read_only',
+          canRead: true,
+          canCreate: false,
+          canUpdate: false,
+          reasonCode: 'content_update_missing',
+          organizationIds: ['org-2'],
+          sourceKinds: ['group_role'],
+        },
+        history: [],
+      },
+      history: [],
+      isLoading: false,
+      error: null,
+      mutationError: null,
+      refetch: vi.fn(),
+      clearMutationError: vi.fn(),
+      updateContent: vi.fn(),
+    });
+
+    render(<ContentEditorPage mode="edit" contentId="content-4" />);
+
+    expect(screen.getAllByText('Der Inhalt ist im aktuellen Kontext nur lesbar. Felder und Speichern bleiben deaktiviert.').length).toBeGreaterThan(0);
+    expect((screen.getByRole('button', { name: 'Änderungen speichern' }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByLabelText('Titel') as HTMLInputElement).disabled).toBe(true);
+    expect(screen.getByText('Nur lesbar')).toBeTruthy();
   });
 });

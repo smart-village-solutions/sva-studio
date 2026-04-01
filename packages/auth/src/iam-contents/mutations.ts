@@ -12,6 +12,7 @@ import { validateCsrf } from '../iam-account-management/csrf.js';
 import { completeIdempotency, reserveIdempotency } from '../iam-account-management/shared.js';
 
 import type { ResolvedContentActor } from './request-context.js';
+import { resolveContentAccess } from './request-context.js';
 import { createContent, loadContentDetail, updateContent } from './repository.js';
 import { createContentSchema, updateContentSchema } from './schemas.js';
 
@@ -101,7 +102,8 @@ export const createContentResponse = async (
       throw new Error('created_content_not_found');
     }
 
-    const responseBody = asApiItem(item, actor.requestId);
+    const access = await resolveContentAccess(actor);
+    const responseBody = asApiItem({ ...item, access }, actor.requestId);
     await completeCreateIdempotency(actor, idempotencyKey.key, 201, responseBody);
     return jsonResponse(201, responseBody);
   } catch (error) {
@@ -166,8 +168,9 @@ export const updateContentResponse = async (
     }
 
     const item = await loadContentDetail(actor.instanceId, updatedId);
+    const access = await resolveContentAccess(actor);
     return item
-      ? jsonResponse(200, asApiItem(item, actor.requestId))
+      ? jsonResponse(200, asApiItem({ ...item, access }, actor.requestId))
       : createApiError(404, 'not_found', 'Inhalt wurde nicht gefunden.', actor.requestId);
   } catch (error) {
     if (error instanceof Error && error.message === 'content_published_at_required') {

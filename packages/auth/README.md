@@ -66,7 +66,9 @@ Serverseitige Autorisierungsentscheidungen auf Basis des RBAC/ABAC-Modells aus `
 
 - `authorize` – Prüft eine Aktion gegen Rollen und Berechtigungen
 - `mePermissions` – Gibt die effektiven Berechtigungen des aktuellen Nutzers zurück
-- **Cache:** In-Memory-Cache für Autorisierungsentscheidungen
+- **Cache:** Lokaler L1-In-Memory-Cache plus Redis-Snapshots als führender Shared-Read-Path
+- **Snapshot-Scope:** Cache-Schlüssel sind an `instanceId`, Nutzer, Organisationskontext und optionalen Geo-Kontext gebunden
+- **Fail-Closed:** Redis- oder Recompute-Fehler liefern im geschützten Autorisierungspfad stabil `503 database_unavailable`
 
 ### Governance-Workflows
 

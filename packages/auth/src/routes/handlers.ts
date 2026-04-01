@@ -80,6 +80,39 @@ const createLoginStateCookie = (input: { name: string; secret: string; payload: 
 const createSilentSsoSuppressCookie = (name: string, suppressUntil: number) =>
   serializeCookie(name, String(suppressUntil), createTimedCookieOptions(suppressUntil));
 
+const getSetCookieValues = (headers: Headers): string[] => {
+  const candidate = headers as Headers & { getSetCookie?: () => string[] };
+  if (typeof candidate.getSetCookie === 'function') {
+    return candidate.getSetCookie();
+  }
+
+  const combined = headers.get('set-cookie');
+  return combined ? [combined] : [];
+};
+
+const attachLoginStateCookie = (
+  response: Response,
+  input: { name: string; secret: string; payload: LoginStateCookiePayload }
+) => {
+  appendSetCookie(response, createLoginStateCookie(input));
+  return 'response';
+};
+
+const attachSessionCookie = (response: Response, name: string, sessionId: string, expiresAt?: number) => {
+  appendSetCookie(response, createSessionCookie(name, sessionId, expiresAt));
+  return 'response';
+};
+
+const attachSilentSsoSuppressCookie = (response: Response, name: string, suppressUntil: number) => {
+  appendSetCookie(response, createSilentSsoSuppressCookie(name, suppressUntil));
+  return 'response';
+};
+
+const attachDeletedCookie = (response: Response, name: string) => {
+  appendSetCookie(response, deleteCookieHeader(name));
+  return 'response';
+};
+
 const createSilentSsoResponse = (status: 'success' | 'failure') =>
   new Response(
     `<!doctype html><html><body><script>
@@ -173,14 +206,19 @@ export const loginHandler = async (request?: Request): Promise<Response> => {
       ...buildLogContext(),
     });
 
-    appendSetCookie(
-      response,
-      createLoginStateCookie({
-        name: loginStateCookieName,
-        secret: loginStateSecret,
-        payload: { state, ...loginState },
-      })
-    );
+    const loginStateCookieStrategy = attachLoginStateCookie(response, {
+      name: loginStateCookieName,
+      secret: loginStateSecret,
+      payload: { state, ...loginState },
+    });
+
+    logger.info('Login state cookie prepared', {
+      operation: 'login_init_cookie',
+      strategy: loginStateCookieStrategy,
+      response_set_cookie_count: getSetCookieValues(response.headers).length,
+      is_silent: isSilent,
+      ...buildLogContext(),
+    });
 
     return response;
   });
@@ -195,10 +233,22 @@ export const callbackHandler = async (request: Request): Promise<Response> => {
     const { code, state, error, iss } = resolveCallbackInput(request);
     const { loginStateCookieName, sessionCookieName } = getAuthConfig();
     const cookieLoginState = state ? resolveCookieLoginState(request, state) : null;
+    const hadSessionCookieOnCallback = Boolean(readCookieFromRequest(request, sessionCookieName));
 
     if (error) {
       const response = cookieLoginState?.silent ? createSilentSsoResponse('failure') : createRedirectResponse('/?auth=error');
-      appendSetCookie(response, deleteCookieHeader(loginStateCookieName));
+      const loginStateDeleteStrategy = attachDeletedCookie(response, loginStateCookieName);
+      logger.info('Callback cookie cleanup prepared', {
+        operation: 'login_callback_cookie_cleanup',
+        strategy: loginStateDeleteStrategy,
+        response_set_cookie_count: getSetCookieValues(response.headers).length,
+        had_session_cookie_on_callback: hadSessionCookieOnCallback,
+        ...buildLogContext(),
+      });
+      await emitAuthAuditEvent({
+        eventType: cookieLoginState?.silent ? 'silent_reauth_failed' : 'login',
+        outcome: 'failure',
+      });
       return response;
     }
 
@@ -208,7 +258,18 @@ export const callbackHandler = async (request: Request): Promise<Response> => {
 
     if (cookieLoginState && isExpiredLoginState(cookieLoginState.createdAt)) {
       const response = createRedirectResponse('/?auth=state-expired');
-      appendSetCookie(response, deleteCookieHeader(loginStateCookieName));
+      const loginStateDeleteStrategy = attachDeletedCookie(response, loginStateCookieName);
+      logger.info('Expired callback cookie cleanup prepared', {
+        operation: 'login_callback_cookie_cleanup',
+        strategy: loginStateDeleteStrategy,
+        response_set_cookie_count: getSetCookieValues(response.headers).length,
+        had_session_cookie_on_callback: hadSessionCookieOnCallback,
+        ...buildLogContext(),
+      });
+      await emitAuthAuditEvent({
+        eventType: 'login_state_expired',
+        outcome: 'failure',
+      });
       return response;
     }
 
@@ -231,9 +292,18 @@ export const callbackHandler = async (request: Request): Promise<Response> => {
         ...buildLogContext(),
       });
 
-      appendSetCookie(response, deleteCookieHeader(loginStateCookieName));
-      appendSetCookie(response, createSessionCookie(sessionCookieName, sessionId, expiresAt));
-      appendSetCookie(response, deleteCookieHeader(getAuthConfig().silentSsoSuppressCookieName));
+      const loginStateDeleteStrategy = attachDeletedCookie(response, loginStateCookieName);
+      const sessionCookieStrategy = attachSessionCookie(response, sessionCookieName, sessionId, expiresAt);
+      const silentSsoDeleteStrategy = attachDeletedCookie(response, getAuthConfig().silentSsoSuppressCookieName);
+      logger.info('Callback cookies prepared', {
+        operation: 'login_callback_cookies',
+        login_state_delete_strategy: loginStateDeleteStrategy,
+        session_cookie_strategy: sessionCookieStrategy,
+        silent_sso_delete_strategy: silentSsoDeleteStrategy,
+        response_set_cookie_count: getSetCookieValues(response.headers).length,
+        had_session_cookie_on_callback: hadSessionCookieOnCallback,
+        ...buildLogContext(user.instanceId),
+      });
       await emitAuthAuditEvent({
         eventType: isSilent ? 'silent_reauth_success' : 'login',
         actorUserId: user.id,
@@ -267,13 +337,18 @@ export const callbackHandler = async (request: Request): Promise<Response> => {
       }
 
       const response = isSilent ? createSilentSsoResponse('failure') : createRedirectResponse('/?auth=error');
-      appendSetCookie(response, deleteCookieHeader(loginStateCookieName));
-      if (isSilent) {
-        await emitAuthAuditEvent({
-          eventType: 'silent_reauth_failed',
-          outcome: 'failure',
-        });
-      }
+      const loginStateDeleteStrategy = attachDeletedCookie(response, loginStateCookieName);
+      logger.info('Failed callback cookie cleanup prepared', {
+        operation: 'login_callback_cookie_cleanup',
+        strategy: loginStateDeleteStrategy,
+        response_set_cookie_count: getSetCookieValues(response.headers).length,
+        had_session_cookie_on_callback: hadSessionCookieOnCallback,
+        ...buildLogContext(),
+      });
+      await emitAuthAuditEvent({
+        eventType: isSilent ? 'silent_reauth_failed' : 'login',
+        outcome: 'failure',
+      });
       return response;
     }
   });
@@ -287,6 +362,14 @@ export const meHandler = async (request: Request): Promise<Response> => {
         headers: { 'Content-Type': 'application/json' },
       });
     }
+
+    logger.info('Auth me request received', {
+      endpoint: '/auth/me',
+      operation: 'get_current_user',
+      cookie_header_present: Boolean(request.headers.get('cookie')),
+      session_cookie_present: Boolean(readCookieFromRequest(request, getAuthConfig().sessionCookieName)),
+      ...buildLogContext(),
+    });
 
     return withAuthenticatedUser(request, ({ user }) => {
       logger.debug('Auth check successful', {
@@ -353,11 +436,20 @@ export const logoutHandler = async (request: Request): Promise<Response> => {
     }
 
     const response = createRedirectResponse(logoutUrl);
-    appendSetCookie(response, deleteCookieHeader(sessionCookieName));
-    appendSetCookie(
+    const sessionDeleteStrategy = attachDeletedCookie(response, sessionCookieName);
+    const silentSsoSuppressStrategy = attachSilentSsoSuppressCookie(
       response,
-      createSilentSsoSuppressCookie(silentSsoSuppressCookieName, Date.now() + silentSsoSuppressAfterLogoutMs)
+      silentSsoSuppressCookieName,
+      Date.now() + silentSsoSuppressAfterLogoutMs
     );
+    logger.info('Logout cookies prepared', {
+      endpoint: '/auth/logout',
+      operation: 'logout_cookie_cleanup',
+      session_delete_strategy: sessionDeleteStrategy,
+      silent_sso_suppress_strategy: silentSsoSuppressStrategy,
+      response_set_cookie_count: getSetCookieValues(response.headers).length,
+      ...buildLogContext(),
+    });
     return response;
   });
 };

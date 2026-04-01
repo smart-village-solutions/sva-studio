@@ -1016,6 +1016,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/OrganizationContextResponse'
+  /api/v1/iam/permissions:
+    get:
+      summary: Berechtigungskatalog
+      responses:
+        '200':
+          description: Berechtigungskatalog geladen.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PermissionListResponse'
   /api/v1/iam/roles:
     get:
       summary: Rollenliste
@@ -1715,6 +1725,31 @@ components:
         organizationId:
           type: string
           format: uuid
+    Permission:
+      type: object
+      required: [id, instanceId, permissionKey]
+      properties:
+        id:
+          type: string
+          format: uuid
+        instanceId:
+          type: string
+        permissionKey:
+          type: string
+        description:
+          type: string
+    PermissionListResponse:
+      type: object
+      required: [data, pagination]
+      properties:
+        requestId:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Permission'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
     Role:
       type: object
       required: [id, roleName, isSystemRole, roleLevel, memberCount, permissions]

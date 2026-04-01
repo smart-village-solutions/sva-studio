@@ -74,5 +74,5 @@
     ],
     "sharedGlobals": ["{workspaceRoot}/tsconfig.base.json", "{workspaceRoot}/pnpm-lock.yaml"]
   },
-  "analytics": true
+  "analytics": false
 }

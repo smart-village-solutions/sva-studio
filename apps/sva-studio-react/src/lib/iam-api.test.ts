@@ -13,10 +13,15 @@ vi.mock('@sva/sdk/logging', () => ({
 
 import {
   asIamError,
+  assignGroupMembership,
+  assignGroupRole,
   assignOrganizationMembership,
+  bulkDeactivateUsers,
   createGroup,
   createOrganization,
   deleteGroup,
+  getMyPendingLegalTexts,
+  getMyProfile,
   getDataExportStatus,
   getMyDataSubjectRights,
   deactivateOrganization,
@@ -28,12 +33,17 @@ import {
   listGovernanceCases,
   listGroups,
   listOrganizations,
+  reconcileRoles,
+  removeGroupMembership,
+  removeGroupRole,
   requestDataExport,
   syncUsersFromKeycloak,
   removeOrganizationMembership,
+  updateMyProfile,
   updateMyOrganizationContext,
   updateGroup,
   updateOrganization,
+  LEGAL_ACCEPTANCE_REQUIRED_EVENT,
 } from './iam-api';
 
 describe('iam-api organization helpers', () => {
@@ -186,6 +196,34 @@ describe('iam-api organization helpers', () => {
     });
   });
 
+  it('dispatches the legal acceptance event on the corresponding error code', async () => {
+    const dispatchEvent = vi.fn();
+    vi.stubGlobal('dispatchEvent', dispatchEvent);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            error: {
+              code: 'legal_acceptance_required',
+              message: 'consent missing',
+            },
+            requestId: 'req-legal',
+          }),
+          { status: 403, headers: { 'content-type': 'application/json' } }
+        )
+      )
+    );
+
+    await expect(updateOrganization('org-1', { displayName: 'Alpha 2' })).rejects.toMatchObject({
+      status: 403,
+      code: 'legal_acceptance_required',
+      requestId: 'req-legal',
+    });
+    expect(dispatchEvent).toHaveBeenCalledWith(expect.any(CustomEvent));
+    expect((dispatchEvent.mock.calls[0]?.[0] as CustomEvent).type).toBe(LEGAL_ACCEPTANCE_REQUIRED_EVENT);
+  });
+
   it('supports the flat error response shape and request id header', async () => {
     vi.stubGlobal(
       'fetch',
@@ -329,6 +367,37 @@ describe('iam-api organization helpers', () => {
         headers: expect.objectContaining({
           'Idempotency-Key': 'uuid-test-1',
         }),
+      })
+    );
+  });
+
+  it('falls back to http status messages when json error payloads omit message and code', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    vi.stubEnv('NODE_ENV', 'development');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ error: {} }), {
+          status: 502,
+          headers: {
+            'content-type': 'application/json',
+            'X-Request-Id': 'req-empty-error',
+          },
+        })
+      )
+    );
+
+    await expect(updateOrganization('org-1', { displayName: 'Alpha 2' })).rejects.toMatchObject({
+      status: 502,
+      code: 'internal_error',
+      message: 'http_502',
+      requestId: 'req-empty-error',
+    });
+    expect(consoleError).toHaveBeenCalledWith(
+      'IAM API request failed',
+      expect.objectContaining({
+        code: 'internal_error',
+        request_id: 'req-empty-error',
       })
     );
   });
@@ -488,6 +557,105 @@ describe('iam-api group helpers', () => {
       5,
       '/api/v1/iam/groups/group-1',
       expect.objectContaining({ method: 'DELETE' })
+    );
+  });
+
+  it('covers group membership, role assignment and reconciliation endpoints', async () => {
+    const fetchMock = vi.fn().mockImplementation(async () =>
+      new Response(JSON.stringify({ data: { ok: true } }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      })
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    vi.stubGlobal('crypto', { randomUUID: () => 'uuid-group-op' });
+
+    await assignGroupRole('group-1', { roleId: 'role-1' });
+    await removeGroupRole('group-1', 'role-1');
+    await assignGroupMembership('group-1', { keycloakSubject: 'kc-1' });
+    await removeGroupMembership('group-1', 'kc-1');
+    await reconcileRoles();
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      '/api/v1/iam/groups/group-1/roles',
+      expect.objectContaining({ method: 'POST' })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      '/api/v1/iam/groups/group-1/roles/role-1',
+      expect.objectContaining({ method: 'DELETE' })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
+      '/api/v1/iam/groups/group-1/memberships',
+      expect.objectContaining({ method: 'POST' })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      4,
+      '/api/v1/iam/groups/group-1/memberships',
+      expect.objectContaining({
+        method: 'DELETE',
+        body: JSON.stringify({ keycloakSubject: 'kc-1' }),
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      5,
+      '/api/v1/iam/admin/reconcile',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({}),
+      })
+    );
+  });
+});
+
+describe('iam-api profile helpers', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllEnvs();
+    vi.stubEnv('NODE_ENV', 'test');
+  });
+
+  it('uses the profile, legal text and bulk deactivate endpoints with the expected contracts', async () => {
+    const fetchMock = vi.fn().mockImplementation(async () =>
+      new Response(JSON.stringify({ data: [] }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      })
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    vi.stubGlobal('crypto', { randomUUID: () => 'uuid-user-op' });
+
+    await getMyProfile();
+    await updateMyProfile({ displayName: 'Alice Example' });
+    await getMyPendingLegalTexts();
+    await bulkDeactivateUsers(['user-1', 'user-2']);
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      '/api/v1/iam/users/me/profile',
+      expect.objectContaining({ credentials: 'include' })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      '/api/v1/iam/users/me/profile',
+      expect.objectContaining({ method: 'PATCH' })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
+      '/iam/me/legal-texts/pending',
+      expect.objectContaining({ credentials: 'include' })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      4,
+      '/api/v1/iam/users/bulk-deactivate',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          'Idempotency-Key': 'uuid-user-op',
+        }),
+      })
     );
   });
 });

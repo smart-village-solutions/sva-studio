@@ -1,5 +1,4 @@
 import React from 'react';
-import { sanitizeLegalTextHtml } from '@sva/auth';
 
 import { acceptLegalText, asIamError, getMyPendingLegalTexts, LEGAL_ACCEPTANCE_REQUIRED_EVENT } from '../lib/iam-api';
 import {
@@ -8,6 +7,7 @@ import {
   storeLegalAcceptanceReturnTo,
 } from '../lib/legal-acceptance-navigation';
 import { t } from '../i18n';
+import { sanitizeLegalTextHtml } from '../lib/legal-text-html';
 import { useAuth } from '../providers/auth-provider';
 import { Alert, AlertDescription } from './ui/alert';
 import { Button } from './ui/button';

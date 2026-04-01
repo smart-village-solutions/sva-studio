@@ -19,7 +19,9 @@ import type {
   IamOrganizationListItem,
   IamOrganizationMembershipVisibility,
   IamOrganizationType,
+  IamPermission,
   IamRoleListItem,
+  IamUserDirectPermissionAssignment,
   IamUserTimelineEvent,
   IamUserDetail,
   IamUserImportSyncReport,
@@ -201,6 +203,7 @@ export type CreateUserPayload = {
 export type UpdateUserPayload = Partial<Omit<CreateUserPayload, 'roleIds'>> & {
   readonly roleIds?: readonly string[];
   readonly groupIds?: readonly string[];
+  readonly directPermissions?: readonly Pick<IamUserDirectPermissionAssignment, 'permissionId' | 'effect'>[];
   readonly status?: 'active' | 'inactive' | 'pending';
   readonly notes?: string;
   readonly mainserverUserApplicationId?: string;
@@ -631,6 +634,9 @@ export const removeOrganizationMembership = async (
 
 export const getMyOrganizationContext = async (): Promise<ApiItemResponse<IamOrganizationContext>> =>
   requestJson<ApiItemResponse<IamOrganizationContext>>('/api/v1/iam/me/context');
+
+export const listPermissions = async (): Promise<ApiListResponse<IamPermission>> =>
+  requestJson<ApiListResponse<IamPermission>>('/api/v1/iam/permissions');
 
 export const updateMyOrganizationContext = async (
   organizationId: string

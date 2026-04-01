@@ -9,6 +9,7 @@ export {
   deleteRoleHandler,
   getGroupHandler,
   getMyProfileHandler,
+  listPermissionsHandler,
   getUserHandler,
   getUserTimelineHandler,
   healthLiveHandler,

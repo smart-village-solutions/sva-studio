@@ -1,7 +1,7 @@
 /**
  * Unit-Tests für Struktur und Loading-Verhalten der AppShell.
  */
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -96,13 +96,18 @@ beforeEach(() => {
 describe('AppShell', () => {
   it('rendert Sidebar und Main-Landmark', () => {
     render(
-      <AppShell>
+      <AppShell currentPathname="/admin/users/123">
         <div>Inhalt</div>
       </AppShell>
     );
 
     expect(screen.getByLabelText('Seitenleiste')).toBeTruthy();
     expect(screen.getByRole('main')).toBeTruthy();
+    const breadcrumbNavigation = screen.getByRole('navigation', { name: 'Brotkrumen-Navigation' });
+    expect(breadcrumbNavigation).toBeTruthy();
+    expect(within(breadcrumbNavigation).getByRole('link', { name: 'Übersicht' }).getAttribute('href')).toBe('/');
+    expect(within(breadcrumbNavigation).getByRole('link', { name: 'Benutzerverwaltung' }).getAttribute('href')).toBe('/admin/users');
+    expect(within(breadcrumbNavigation).getByText('Nutzer bearbeiten')).toBeTruthy();
     expect(screen.getByText('Inhalt')).toBeTruthy();
   });
 

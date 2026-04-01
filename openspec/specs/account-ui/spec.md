@@ -177,37 +177,46 @@ Das System MUST eine User-Bearbeitungsseite unter `/admin/users/:userId` bereits
 
 Das System MUST eine Rollen-Verwaltungsseite unter `/admin/roles` bereitstellen, die das Anzeigen und Bearbeiten von System- und Custom-Rollen ermöglicht.
 
-#### Scenario: Rollen-Übersicht
+#### Scenario: Rollenansicht bleibt der zentrale Einstieg für Rechtepflege
 
-- **WENN** ein Administrator `/admin/roles` aufruft
-- **DANN** werden alle Rollen in einer semantischen Tabelle angezeigt mit: Name, Typ (System/Custom), Beschreibung, Anzahl zugewiesener Nutzer
-- **UND** System-Rollen sind als nicht-löschbar gekennzeichnet
-- **UND** die Rollennamen sind vorläufig und können sich im Laufe der Entwicklung ändern
-- **UND** ein Loading-State wird angezeigt, bis die Daten geladen sind
+- **WENN** ein Administrator `/admin/roles` öffnet
+- **DANN** bleibt die Rollenliste mit Suche, Sortierung, Rollenmetadaten und Aktionen der primäre Einstiegspunkt
+- **UND** Rollenrechte werden innerhalb derselben Seite oder desselben Bedienflusses vertieft statt in ein separates Top-Level-Modul ausgelagert
+- **UND** die bestehende Expand-, Detail- oder gleichwertige Arbeitsbereichslogik bleibt mit vorhandenen Admin-Patterns konsistent
 
-#### Scenario: Berechtigungs-Matrix einer Rolle
+#### Scenario: Detailroute bleibt Teil desselben Rollenverwaltungsflusses
 
-- **WENN** ein Administrator eine Rolle expandiert oder anklickt
-- **DANN** wird eine Berechtigungs-Matrix angezeigt
-- **UND** die expandierbare Zeile hat `aria-expanded` und `aria-controls`
-- **UND** die Matrix zeigt pro Ressourcentyp die Aktionen: Lesen, Erstellen, Bearbeiten, Löschen, Konfigurieren
-- **UND** für System-Rollen ist die Matrix read-only
+- **WENN** eine Rolle aus der Rollenliste in einen vertieften Arbeitsbereich geöffnet wird
+- **DANN** ist eine dedizierte Detailroute wie `/admin/roles/$roleId` zulässig, sofern sie Teil desselben Rollenverwaltungsflusses bleibt
+- **UND** die Rollenliste weiterhin der primäre Einstiegspunkt ist
+- **UND** kein separates Top-Level-Admin-Modul für Rechtepflege entsteht
 
-#### Scenario: Custom-Rolle erstellen
+#### Scenario: Rollenmetadaten und Editierbarkeit sind eindeutig sichtbar
 
-- **WENN** ein Administrator eine neue Custom-Rolle erstellt
-- **DANN** kann er einen Namen, eine Beschreibung und Berechtigungen aus der Matrix auswählen
-- **UND** die Rolle wird in der IAM-DB gespeichert
-- **UND** die Rolle ist sofort für User-Zuweisungen verfügbar
+- **WENN** eine Rolle in der Rollenansicht dargestellt wird
+- **DANN** sind mindestens `externalRoleName`, `managedBy`, `roleLevel`, Sync-Zustand und Mitgliederzahl sichtbar
+- **UND** System-Rollen und extern verwaltete Rollen sind als read-only kenntlich
+- **UND** destruktive oder fachlich nicht zulässige Aktionen sind nicht nur deaktiviert, sondern auch verständlich begründet
 
-#### Scenario: Custom-Rolle löschen
+#### Scenario: Rollenrechte werden fachlich lesbarer dargestellt
 
-- **WENN** ein Administrator eine Custom-Rolle löschen möchte
-- **UND** die Rolle noch Nutzern zugewiesen ist
-- **DANN** wird eine Warnung in einem `role="alertdialog"` angezeigt mit der Anzahl betroffener Nutzer
-- **UND** der Administrator muss die Löschung explizit bestätigen
-- **UND** die Rollenzuweisung wird von allen betroffenen Nutzern entfernt
-- **UND** ein `role.deleted`-Audit-Event wird geloggt
+- **WENN** ein Administrator die Rechte einer Rolle öffnet
+- **DANN** priorisiert die UI fachliche Bezeichnungen, Gruppierungen oder Beschreibungen der Rechte
+- **UND** technische Werte wie `permissionKey` bleiben höchstens ergänzende Detailinformation
+- **UND** die Oberfläche zwingt Administratoren nicht zur ausschließlichen Interpretation roher technischer Schlüssel
+
+#### Scenario: Rollenansicht verzahnt sich mit bestehender IAM-Prüfung
+
+- **WENN** ein Administrator aus einer Rolle heraus eine Rechteentscheidung nachvollziehen möchte
+- **DANN** bietet die Rollenansicht einen klaren Einstieg in die bestehende IAM-Rechteübersicht oder Szenario-Prüfung
+- **UND** es wird kein davon losgelöster zweiter Prüfworkflow mit abweichender Logik eingeführt
+
+#### Scenario: Cockpit-Einstieg genügt für die erste Ausbaustufe
+
+- **WENN** die Rollenverwaltung eine bestehende IAM-Prüffunktion integriert
+- **DANN** ist ein klarer Link- oder Deep-Link-Einstieg in das bestehende IAM-Cockpit für die erste Ausbaustufe ausreichend
+- **UND** eine eingebettete Szenario-Prüfung innerhalb der Rollenansicht ist optional
+- **UND** fehlende Inline-Prüfmasken machen den Rollenarbeitsbereich in diesem Change nicht unvollständig
 
 ### Requirement: Vollständige Internationalisierung der UI
 
@@ -372,13 +381,25 @@ Das System MUST im Admin-Bereich eine Oberfläche zur Verwaltung instanzgebunden
 
 - **WENN** ein berechtigter Administrator die Gruppenverwaltung öffnet
 - **DANN** kann er Gruppen anlegen, bearbeiten, deaktivieren und löschen
-- **UND** sieht pro Gruppe mindestens Name, Beschreibung, Typ, Mitgliederzahl und zugewiesene Rechtebündel
+- **UND** sieht pro Gruppe mindestens Name, Beschreibung, Typ, Mitgliederzahl (`t('admin.groups.memberCount_one')` / `t('admin.groups.memberCount_other')`) und zugewiesene Rechtebündel
+- **UND** alle sichtbaren Labels, Statuswerte und Aktionsbeschriftungen werden ausschließlich über i18n-Keys bezogen (kein Hardcoded-Text; Namespace `admin.groups.*`)
+- **UND** die Listenansicht ist als semantische `<table>` mit `<caption>`, `scope`-Attributen auf Spaltenköpfen implementiert
+- **UND** bei mehr als 50 Gruppen ist eine Paginierung vorhanden; die Liste ist über ein zugängliches Suchfeld filterbar (`role="search"`, `<label>`)
+- **UND** die aktive Sortierung ist per `aria-sort` auf dem Spalten-`<th>` angezeigt
+- **UND** destruktive Aktionen (Löschen) lösen einen Bestätigungsdialog mit `role="dialog"` und Focus-Trap aus
 
 #### Scenario: Gruppenzuweisung zu Benutzerkonten
 
 - **WENN** ein Administrator ein Benutzerkonto bearbeitet
 - **DANN** kann er Gruppenmitgliedschaften zuweisen oder entziehen
 - **UND** die UI zeigt bestehende Gruppenmitgliedschaften samt Gültigkeit und Herkunft korrekt an
+- **UND** alle Formular-Labels sind über `<label>`-Elemente programmatisch verknüpft
+
+#### Scenario: Gruppenansicht zeigt Rollenbündel und Mitgliedschaften gemeinsam
+
+- **WENN** ein Administrator die Detailansicht einer Gruppe öffnet
+- **DANN** sieht er mindestens Stammdaten, zugewiesene Rollen, aktuelle Mitglieder und Gültigkeitsinformationen in einem konsistenten Arbeitsbereich
+- **UND** deaktivierte oder gelöschte Gruppen werden eindeutig als nicht wirksam markiert
 
 ### Requirement: Sichtbare Gruppenherkunft in IAM-Transparenzdaten
 
@@ -387,8 +408,16 @@ Das System MUST gruppenbasierte Herkunft von Berechtigungen in den relevanten IA
 #### Scenario: Effektive Berechtigung stammt aus einer Gruppe
 
 - **WENN** eine effektive Berechtigung eines Benutzers aus einer Gruppenmitgliedschaft stammt
-- **DANN** zeigt die UI diese Herkunft explizit an
-- **UND** Administratoren müssen die Berechtigung nicht durch manuelle Rohdatenanalyse rekonstruieren
+- **DANN** zeigt die UI diese Herkunft explizit als lesbaren Namen direkt in der Listenansicht an (z. B. „Gruppe: Presseteam") — ohne zusätzlichen Klick oder Hover
+- **UND** Herkunftsbeschriftungen verwenden lesbare Namen statt interner IDs
+- **UND** falls Tooltip-Darstellung genutzt wird, ist diese per Tastatur erreichbar (`role="tooltip"`, `aria-describedby`)
+
+#### Scenario: Rollen- und Rechteansicht verdichtet Mehrfachherkunft nachvollziehbar
+
+- **WENN** eine effektive Berechtigung gleichzeitig aus direkter Rolle und aus einer oder mehreren Gruppen stammt
+- **DANN** zeigt die UI die Berechtigung nur einmal als fachliches Ergebnis
+- **UND** listet die gesamte Herkunft in lesbarer Form nach Quelle auf
+- **UND** direkte Rollen- und Gruppenherkunft bleiben visuell unterscheidbar
 
 ### Requirement: Organisations-Verwaltungsseite
 
@@ -634,3 +663,187 @@ Das System MUST heute verdeckte IAM-Metadaten in den bestehenden Benutzer-, Roll
 - **WENN** ein Benutzer mehrere Organisationskontexte zur Auswahl hat
 - **DANN** zeigt der globale Kontext-Switcher zusätzliche Kontextinformationen wie Organisationstyp, Schlüssel oder Standardkontext-Markierung
 - **UND** die Shell bleibt dabei kompakt und responsiv
+
+### Requirement: Fachliche Rechtstext-Verwaltung im Admin-Bereich
+
+Das System MUST im Admin-Bereich Rechtstexte als fachliche Inhalte mit UUID, Name, Versionsnummer, Sprachzuordnung, Status, Veröffentlichungsdatum sowie Erstell- und Änderungsdatum darstellen und bearbeiten.
+
+#### Scenario: Rechtstext-Liste zeigt fachliche Metadaten
+
+- **WENN** ein berechtigter Administrator die Rechtstext-Verwaltung öffnet
+- **DANN** zeigt die Liste für jeden Rechtstext mindestens UUID, Name, Versionsnummer, Sprache, Status, Veröffentlichungsdatum, Erstellungsdatum und Änderungsdatum
+- **UND** der Name darf mehrfach vorkommen, ohne dass die UI einen Konflikt meldet
+
+#### Scenario: Rechtstext mit HTML-Inhalt anlegen
+
+- **WENN** ein berechtigter Administrator einen neuen Rechtstext anlegt
+- **DANN** vergibt das System die UUID automatisch
+- **UND** die UI bietet Felder für Name, Versionsnummer, Sprache, Status, Veröffentlichungsdatum und HTML-Inhalt
+- **UND** der HTML-Inhalt ist über einen Rich-Text-Editor bearbeitbar
+
+#### Scenario: Rechtstext mit HTML-Inhalt bearbeiten
+
+- **WENN** ein berechtigter Administrator einen bestehenden Rechtstext bearbeitet
+- **DANN** kann er Name, Versionsnummer, Sprache, Status, Veröffentlichungsdatum und HTML-Inhalt ändern
+- **UND** die Oberfläche zeigt nach erfolgreichem Speichern den serverseitig persistierten Inhalt erneut an
+
+#### Scenario: Keine irreführenden Speicherhinweise
+
+- **WENN** die Rechtstext-Erstellung oder -Bearbeitung angezeigt wird
+- **DANN** enthält die UI keinen Hinweis, dass der Textkörper nicht serverseitig gespeichert werde
+
+### Requirement: Blockierender Rechtstext-Akzeptanzflow
+
+Das System MUST im Frontend einen blockierenden Akzeptanzflow für offene Pflicht-Rechtstexte bereitstellen.
+
+#### Scenario: Nutzer landet nach Login im Akzeptanz-Interstitial
+
+- **WENN** ein Nutzer mit offener Pflicht-Akzeptanz die Anwendung öffnet oder nach dem Login zurückkehrt
+- **DANN** sieht er einen dedizierten Akzeptanzscreen vor allen geschützten Fachansichten
+- **UND** reguläre Navigation, Deep-Links und geschützte Admin-Routen bleiben bis zur Entscheidung gesperrt
+- **UND** der Interstitial-Container hat `role="dialog"`, `aria-modal="true"`, `aria-labelledby` und `aria-describedby`
+- **UND** der Fokus wird beim Erscheinen auf den Heading-Knoten des Dialogs gesetzt (Focus-Trap bleibt bis zur Entscheidung aktiv)
+- **UND** ESC schließt den Dialog **nicht** (blockierender Pflichtflow ist kein schließbares Modal)
+- **UND** eine `aria-live="assertive"`-Region kündigt den Übergang nach Akzeptanz an
+
+#### Scenario: Rechtstext-Akzeptanz ist barrierefrei und eindeutig
+
+- **WENN** der Akzeptanzscreen angezeigt wird
+- **DANN** sind Version, Gültigkeit, Pflichtcharakter und die auslösbare Aktion eindeutig sichtbar
+- **UND** der Flow ist vollständig tastatur- und screenreader-bedienbar (WCAG 2.1 AA)
+- **UND** alle UI-Texte (Buttons, Hinweise, Statuszeilen) verwenden ausschließlich i18n-Keys aus dem Namespace `legalTexts.acceptance.*`
+- **UND** der rechtliche Inhalt des Rechtstexts selbst wird über die Content-API geliefert und ist kein i18n-Key
+
+#### Scenario: Nutzer lehnt Rechtstext ab oder verlässt den Flow ohne Entscheidung
+
+- **WENN** ein Nutzer den Rechtstext ablehnt oder den Akzeptanzscreen ohne Entscheidung verlässt (Tab schließen, Browser-Back)
+- **DANN** wird die Session beendet (Logout) und der Nutzer landet auf der Login-Seite mit einem lokalisierten, erklärenden Hinweis (`t('legalTexts.acceptance.status.rejected')`)
+- **UND** es gibt keine Endlosschleife und keinen stillen Fehlzustand
+
+#### Scenario: Akzeptanz-Endpunkt antwortet mit Fehler
+
+- **WENN** der Nutzer die Akzeptanz bestätigt und der Server einen Fehler zurückgibt
+- **DANN** zeigt die UI eine programmatisch verknüpfte Fehlermeldung über `role="alert"`
+- **UND** der Fokus wird auf die Fehlermeldung gesetzt
+- **UND** eine Retry-Aktion ist per Tastatur erreichbar
+- **UND** der blockierende Zustand bleibt bestehen (kein impliziter Durchlass bei Fehler)
+- **UND** alle Fehlermeldungen verwenden i18n-Keys (`t('legalTexts.acceptance.errors.submitFailed')`, `t('legalTexts.acceptance.errors.versionExpired')`)
+
+#### Scenario: Rückkehr nach Akzeptanz zur ursprünglichen Route
+
+- **WENN** der Nutzer nach erfolgreicher Akzeptanz weitergeleitet wird
+- **DANN** landet er auf der ursprünglich aufgerufenen Route (Deep-Link-Preservation via Session-State)
+- **UND** nach der Weiterleitung wird der Fokus auf den Seitenbereich der Zielroute gesetzt
+
+### Requirement: Admin-Oberfläche für Rechtstext-Nachweise
+
+Das System MUST Administratoren eine explizite UI für Nachweis, Filterung und Export von Rechtstext-Akzeptanzen bereitstellen.
+
+#### Scenario: Admin exportiert Akzeptanznachweise
+
+- **WENN** ein berechtigter Administrator (mit Permission `legal-consents:export`) die Rechtstext-Verwaltung unter `/admin/iam/legal-texts` öffnet
+- **DANN** kann er Akzeptanzen nach Benutzer, Text, Version und Zeitraum filtern
+- **UND** sieht vor dem Export eine Vorschau mit Trefferanzahl und Spaltenübersicht
+- **UND** wählt das Exportformat (JSON oder CSV)
+- **UND** erhält nach dem Export eine barrierefreie Statusankündigung per `aria-live="polite"` (z. B. „Export als CSV gestartet.")
+- **UND** alle Tabellenspalten-Überschriften und Filterbezeichner verwenden i18n-Keys (`t('legalTexts.audit.columns.*')`)
+
+#### Scenario: Nachweis-Tabelle ist barrierefrei
+
+- **WENN** die Nachweistabelle angezeigt wird
+- **DANN** ist sie als semantische `<table>` mit `<caption>`, `<th scope="col">` für Spalten und `<th scope="row">` für Zeilenidentifikatoren implementiert
+- **UND** aktive Sortierung ist per `aria-sort` kommuniziert
+- **UND** leere Filterergebnisse werden programmatisch angekündigt
+
+#### Scenario: Unberechtigter Nutzer sieht keine Nachweisdaten
+
+- **WENN** ein Nutzer ohne die Permission `legal-consents:export` eine Nachweis- oder Exportansicht aufruft
+- **DANN** werden keine sensitiven Akzeptanzdaten offengelegt
+- **UND** die UI zeigt einen sicheren verweigerten Zustand
+
+### Requirement: Inkrementeller Berechtigungsarbeitsbereich für Rollen
+
+Das System MUST die bestehende Rollenverwaltung um einen inkrementellen Berechtigungsarbeitsbereich erweitern, der auf den vorhandenen Rollen- und Permission-Daten aufsetzt.
+
+#### Scenario: Arbeitsbereich baut auf vorhandenem Rollenmodell auf
+
+- **WENN** die Rechtepflege einer Rolle erweitert wird
+- **DANN** verwendet die UI weiterhin die bestehenden Rollen-APIs, Rollenmetadaten und Permission-Zuordnungen als Grundlage
+- **UND** die erste Version verlangt kein neues Ownership-, Transfer- oder Override-Modell
+- **UND** die Umsetzung bleibt kompatibel zu den aktuellen Create/Edit/Delete- und Reconcile-Flows
+
+#### Scenario: Fachliche und technische Sicht ergänzen sich
+
+- **WENN** eine Rolle Berechtigungen mit technischen Referenzen enthält
+- **DANN** kann die UI diese in eine fachlich lesbare Darstellung übersetzen oder gruppieren
+- **UND** technische Referenzen bleiben für Debugging, Support oder Migration erreichbar
+- **UND** sichtbare UI-Bezeichnungen werden lokalisiert statt aus technischen IDs direkt abgeleitet
+
+#### Scenario: Read-only-Rollen bleiben sicher und nachvollziehbar
+
+- **WENN** eine System-Rolle oder extern verwaltete Rolle geöffnet wird
+- **DANN** bleiben Bearbeitungs- und Löschaktionen gesperrt
+- **UND** der read-only-Zustand wird in Detail- und Berechtigungsdarstellungen konsistent fortgeführt
+- **UND** die UI suggeriert keine Bearbeitbarkeit, die serverseitig nicht vorgesehen ist
+
+#### Scenario: Serverseitiger Konflikt überschreibt optimistische Bearbeitbarkeit
+
+- **WENN** eine Rolle in der UI zunächst bearbeitbar wirkt
+- **UND** der Server die Änderung wegen zwischenzeitlicher Externverwaltung, Systemschutz oder Konfliktzustand verweigert
+- **DANN** zeigt die Oberfläche einen verständlichen Fehler- oder Konflikthinweis statt eines generischen Fehlers
+- **UND** der Rollenarbeitsbereich synchronisiert sich auf den serverseitig gültigen Zustand zurück
+- **UND** irreführende Editierhinweise werden entfernt
+
+#### Scenario: Rechtepflege bleibt responsiv und zugänglich
+
+- **WENN** der Berechtigungsarbeitsbereich auf 320 px, 768 px oder 1024 px verwendet wird
+- **DANN** bleiben Rollenliste, Detailbereich, Dialoge und Prüfeinstiege ohne unverständlichen Horizontal-Overflow nutzbar
+- **UND** alle Interaktionen sind per Tastatur erreichbar
+- **UND** Status, Fehlermeldungen und read-only-Hinweise sind für Screenreader semantisch verständlich
+
+### Requirement: Rechtebewusste Fach-UI in priorisierten Modulen
+
+Das System MUST in priorisierten Fachmodulen sichtbare und konsistente Zustände für erlaubte, deaktivierte und serverseitig verweigerte Aktionen verwenden.
+
+#### Scenario: Inhaltsmodul vermeidet unverständliche Rechtefehler
+
+- **WENN** ein Nutzer Listen- oder Detailansichten für Inhalte verwendet
+- **DANN** sind Aktionen wie Anlegen oder Bearbeiten möglichst an die wirksamen Rechte gebunden
+- **UND** serverseitige Verweigerungen werden verständlich dargestellt
+- **UND** die Oberfläche reduziert blind sichtbare Aktionen ohne realistische Ausführbarkeit
+
+#### Scenario: Zustände folgen einer konsistenten Zustandslogik
+
+- **WENN** eine Aktion in einer Fach- oder Admin-UI nicht uneingeschränkt verfügbar ist
+- **DANN** unterscheidet die UI nachvollziehbar mindestens zwischen `erlaubt`, `deaktiviert`, `read-only` und `serverseitig verweigert`
+- **UND** die Zustandslogik wird in priorisierten Modulen konsistent angewendet
+
+#### Scenario: Fehlende oder unvollständige Rechteinformationen führen nicht zu Scheinsicherheit
+
+- **WENN** einer Fach- oder Admin-UI für eine Aktion keine belastbare Rechte- oder Diagnosedatenbasis vorliegt
+- **DANN** zeigt die Oberfläche keine unbegründete Freigabe an
+- **UND** sie verwendet einen defensiven Zustand mit verständlichem Hinweis statt technischer Rohdaten
+- **UND** eine serverseitige Prüfung bleibt die maßgebliche Entscheidungsinstanz
+
+### Requirement: Verifizierbare Rechteverwaltungs-UI
+
+Das System MUST für den inkrementellen Rollenarbeitsbereich und die angrenzenden Fach-UI-Flächen eine umsetzungsnahe Verifikationsstrategie definieren.
+
+#### Scenario: Unit- und Integrationsprüfungen decken Zustandslogik ab
+
+- **WENN** die Rechteverwaltungs-UI umgesetzt oder geändert wird
+- **DANN** decken Unit- oder Integrationstests mindestens fachliche Berechtigungsdarstellung, technische Detailumschaltung, Read-only-Zustände und serverseitige Verweigerungen ab
+- **UND** die Tests prüfen lokalisierte UI-Texte statt hartcodierter Strings
+
+#### Scenario: E2E- und Responsive-Prüfungen sichern den Bedienfluss ab
+
+- **WENN** End-to-End-Prüfungen für `/admin/roles` oder priorisierte Fachseiten ausgeführt werden
+- **DANN** verifizieren sie mindestens den Rollenarbeitsbereich, den Prüfeinstieg und die Zustände auf 320 px, 768 px und 1024 px
+- **UND** sie prüfen, dass keine kritischen Bedienpfade durch Layout-Brüche oder unverständlichen Horizontal-Overflow unbenutzbar werden
+
+#### Scenario: Accessibility- und i18n-Prüfungen sind Teil der Umsetzung
+
+- **WENN** Komponenten oder Flows für die Rechteverwaltung geändert werden
+- **DANN** umfassen die Verifikationsschritte Tastaturbedienung, Screenreader-Semantik, Statuskommunikation sowie die Prüfung, dass sichtbare UI-Bezeichnungen aus i18n-Keys stammen
+- **UND** fehlende Übersetzungen oder verletzte Accessibility-Grundanforderungen gelten als Umsetzungsdefekte
+

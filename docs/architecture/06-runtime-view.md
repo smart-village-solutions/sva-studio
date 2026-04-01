@@ -107,7 +107,7 @@ Fehlerpfad:
 
 ### Szenario 5: IAM Authorize mit ABAC, Hierarchie und Snapshot-Cache
 
-1. Client ruft `POST /iam/authorize` mit `instanceId`, `action`, `resource` und optionalem ABAC-Kontext auf.
+1. Client ruft `POST /iam/authorize` mit `instanceId`, `action`, `resource` und optionalem ABAC-Kontext auf; `GET /iam/me/permissions` nutzt denselben Snapshot-Pfad optional mit `organizationId`, `geoUnitId` und `geoHierarchy`.
 2. Server erzwingt Instanzgrenze und wertet Hard-Deny-Regeln zuerst aus.
 3. Permission-Snapshot wird zuerst im lokalen L1-Cache und danach in Redis über User-/Instanz-/Org-/Geo-Kontext gesucht.
 4. Bei Cache-Hit wertet die Engine die Entscheidung in fester Reihenfolge aus: RBAC-Basis, danach ABAC-Regeln und Hierarchie-Restriktionen.
@@ -294,6 +294,21 @@ Fehlerpfad:
 
 - Nicht existente Gruppen oder instanzfremde IDs werden mit `invalid_request` abgewiesen.
 - Läuft die Invalidation nicht sofort durch, begrenzen TTL und Recompute den Stale-Zeitraum fail-closed.
+
+### Szenario 15a: Admin pflegt direkte Nutzerrechte
+
+1. Ein Admin öffnet `/admin/users/:userId` und wechselt in den Tab `Berechtigungen`.
+2. Die UI lädt den globalen Permission-Katalog sowie die direkten Nutzerrechte aus `GET /api/v1/iam/users/:userId`.
+3. Pro Permission wird eine direkte Wirkung `nicht gesetzt`, `allow` oder `deny` gewählt und mit `PATCH /api/v1/iam/users/:userId` gespeichert.
+4. Der Server validiert die referenzierten `permissionId`s instanzgebunden und ersetzt die aktiven Einträge in `iam.account_permissions`.
+5. Anschließend wird ein `user_permission_changed`-Invalidation-Event emittiert; der nächste `GET /iam/me/permissions`- oder `POST /iam/authorize`-Aufruf recomputet den Snapshot.
+6. `me/permissions` und `authorize` liefern die Quelle als `direct_user`; direkte `deny`-Einträge schlagen konfliktäre Allows aus Rollen oder Gruppen deterministisch.
+
+Fehlerpfad:
+
+- Unbekannte Permissions oder doppelte Zuordnungen im Payload werden mit `invalid_request` abgewiesen.
+- Fehlt der Admin-Kontext oder ist die Zielperson außerhalb des zulässigen Manage-Scope, endet der Vorgang fail-closed mit `forbidden`.
+- Reine Nutzerrechte-Änderungen schreiben nur Studio-IAM-Daten und lösen keinen Keycloak-Write aus.
 
 ### Szenario 16: Authorize wertet Geo-Hierarchie mit restriktiver Priorität aus
 

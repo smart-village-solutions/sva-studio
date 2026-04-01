@@ -36,6 +36,11 @@ vi.mock('./crypto.server.js', () => ({
 
 vi.mock('@sva/sdk/server', () => ({
   createSdkLogger: () => state.logger,
+  getWorkspaceContext: () => ({
+    workspaceId: 'hb-meinquartier',
+    requestId: 'req-fallback',
+    traceId: 'trace-fallback',
+  }),
 }));
 
 const originalEnv = { ...process.env };
@@ -107,5 +112,40 @@ describe('redis-session in-memory fallback', () => {
         }),
       })
     );
+  });
+
+  it('tracks fallback user sessions and session control state in memory', async () => {
+    const {
+      createSession,
+      deleteSession,
+      listUserSessionIds,
+      setSessionControlState,
+      getSessionControlState,
+    } = await import('./redis-session.server.js');
+
+    await createSession('session-a', {
+      id: 'session-a',
+      userId: 'user-42',
+      createdAt: Date.now(),
+    });
+    await createSession('session-b', {
+      id: 'session-b',
+      userId: 'user-42',
+      createdAt: Date.now(),
+    });
+
+    expect(await listUserSessionIds('user-42')).toEqual(['session-a', 'session-b']);
+
+    await deleteSession('session-a');
+    expect(await listUserSessionIds('user-42')).toEqual(['session-b']);
+
+    await setSessionControlState('user-42', {
+      forceReauthAt: Date.now(),
+      mode: 'app_only',
+    });
+    await expect(getSessionControlState('user-42')).resolves.toEqual({
+      forceReauthAt: expect.any(Number),
+      mode: 'app_only',
+    });
   });
 });

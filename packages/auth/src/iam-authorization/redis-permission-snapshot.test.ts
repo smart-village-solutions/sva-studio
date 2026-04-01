@@ -177,6 +177,15 @@ describe('setRedisPermissionSnapshot', () => {
     // orgHash darf nicht 'none' sein wenn organizationId gesetzt
     expect(parts[4]).not.toBe('none');
   });
+
+  it('enthält geoHash wenn geoCtxHash gesetzt', async () => {
+    mockRedis.setex.mockResolvedValueOnce('OK');
+    const result = await setRedisPermissionSnapshot({ ...baseKey, geoCtxHash: 'geo-hash-1' }, []);
+    expect(result).toMatchObject({ ok: true });
+    const redisKey = mockRedis.setex.mock.calls[0]![0] as string;
+    const parts = redisKey.split(':');
+    expect(parts[5]).toBe('geo-hash-1');
+  });
 });
 
 // ---------------------------------------------------------------------------

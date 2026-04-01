@@ -53,7 +53,13 @@ Architecture Decision Records dokumentieren **wichtige technische Entscheidungen
 | 019 | Swarm-/Traefik-Referenz-Betriebsprofil | ✅ | 2026-03-12 | Deployment / Betrieb |
 | 020 | Kanonischer Auth-Host und Multi-Host-Grenze | ✅ | 2026-03-12 | Auth / Deployment |
 | 021 | Per-User-SVA-Mainserver-Delegation | ✅ | 2026-03-14 | Integration / IAM |
+| 022 | IAM-Gruppen, Geo-Hierarchie und Permission-Caching | ✅ | 2026-03-17 | IAM / Authorization / Runtime |
 | 023 | Führender Session-Lifecycle, Forced Reauth und Silent SSO | ✅ | 2026-03-26 | Auth / Session |
+| 024 | IAM-Gruppen als eigenständige, instanzgebundene Entität | ✅ | 2026-03-31 | IAM / Authorization |
+| 025 | Prioritätsregel für Multi-Scope-IAM-Entscheidungen | ✅ | 2026-03-31 | IAM / Authorization |
+| 026 | Redis als primärer Shared Permission Cache | ✅ | 2026-03-31 | Runtime / IAM |
+| 027 | Rechtstext-Fail-Closed und blockierter Session-Zustand | ✅ | 2026-03-31 | Auth / Legal / IAM |
+| 028 | IAM-Konfigurations-Export als dokumentierte Folgearbeit | ✅ | 2026-03-31 | IAM / Technical Debt |
 
 ### Kanonischer Ablageort
 

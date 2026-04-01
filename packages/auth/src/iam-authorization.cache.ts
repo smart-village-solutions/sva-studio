@@ -6,6 +6,7 @@ export interface PermissionSnapshotKey {
   readonly instanceId: string;
   readonly keycloakSubject: string;
   readonly organizationId?: string;
+  readonly geoContextHash?: string;
   readonly version: number;
 }
 
@@ -31,6 +32,7 @@ const formatSnapshotKey = (key: PermissionSnapshotKey): string => {
     key.instanceId,
     key.keycloakSubject,
     key.organizationId ?? 'global',
+    key.geoContextHash ?? 'geo-global',
     `v${key.version}`,
   ].join(':');
 };

@@ -9,6 +9,8 @@ export type PermissionLookupInput = {
   instanceId: string;
   keycloakSubject: string;
   organizationId?: string;
+  geoUnitId?: string;
+  geoHierarchy?: readonly string[];
 };
 
 const listScopedPermissionRows = async (

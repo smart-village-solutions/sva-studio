@@ -1,7 +1,8 @@
 import { getWorkspaceContext } from '@sva/sdk/server';
+import type { IamPermission } from '@sva/core';
 
 import type { AuthenticatedRequestContext } from '../middleware.server.js';
-import { jsonResponse } from '../shared/db-helpers.js';
+import { jsonResponse, type QueryClient } from '../shared/db-helpers.js';
 
 import { ADMIN_ROLES } from './constants.js';
 import { asApiList, createApiError } from './api-helpers.js';
@@ -14,6 +15,37 @@ import { deleteRoleInternal } from './roles-handlers.delete.js';
 import { updateRoleInternal } from './roles-handlers.update.js';
 import { requireRoles, resolveActorInfo } from './shared-actor-resolution.js';
 import { withInstanceScopedDb } from './shared-runtime.js';
+
+const loadPermissions = async (
+  client: QueryClient,
+  instanceId: string
+): Promise<readonly IamPermission[]> => {
+  const result = await client.query<{
+    id: string;
+    instance_id: string;
+    permission_key: string;
+    description: string | null;
+  }>(
+    `
+SELECT
+  p.id,
+  p.instance_id,
+  p.permission_key,
+  p.description
+FROM iam.permissions p
+WHERE p.instance_id = $1
+ORDER BY p.permission_key ASC;
+`,
+    [instanceId]
+  );
+
+  return result.rows.map((row) => ({
+    id: row.id,
+    instanceId: row.instance_id,
+    permissionKey: row.permission_key,
+    ...(row.description ? { description: row.description } : {}),
+  }));
+};
 
 export const listRolesInternal = async (
   request: Request,
@@ -50,6 +82,62 @@ export const listRolesInternal = async (
     return jsonResponse(
       200,
       asApiList(roles, { page: 1, pageSize: roles.length, total: roles.length }, actorResolution.actor.requestId)
+    );
+  } catch (error) {
+    const classified = classifyIamDiagnosticError(
+      error,
+      'IAM-Datenbank ist nicht erreichbar.',
+      actorResolution.actor.requestId
+    );
+    return createApiError(
+      classified.status,
+      classified.code,
+      classified.message,
+      actorResolution.actor.requestId,
+      classified.details
+    );
+  }
+};
+
+export const listPermissionsInternal = async (
+  request: Request,
+  ctx: AuthenticatedRequestContext
+): Promise<Response> => {
+  const requestContext = getWorkspaceContext();
+  const featureCheck = ensureFeature(getFeatureFlags(), 'iam_admin', requestContext.requestId);
+  if (featureCheck) {
+    return featureCheck;
+  }
+  const roleCheck = requireRoles(ctx, ADMIN_ROLES, requestContext.requestId);
+  if (roleCheck) {
+    return roleCheck;
+  }
+  const actorResolution = await resolveActorInfo(request, ctx, { requireActorMembership: true });
+  if ('error' in actorResolution) {
+    return actorResolution.error;
+  }
+
+  const rateLimit = consumeRateLimit({
+    instanceId: actorResolution.actor.instanceId,
+    actorKeycloakSubject: ctx.user.id,
+    scope: 'read',
+    requestId: actorResolution.actor.requestId,
+  });
+  if (rateLimit) {
+    return rateLimit;
+  }
+
+  try {
+    const permissions = await withInstanceScopedDb(actorResolution.actor.instanceId, (client) =>
+      loadPermissions(client, actorResolution.actor.instanceId)
+    );
+    return jsonResponse(
+      200,
+      asApiList(
+        permissions,
+        { page: 1, pageSize: Math.max(1, permissions.length), total: permissions.length },
+        actorResolution.actor.requestId
+      )
     );
   } catch (error) {
     const classified = classifyIamDiagnosticError(

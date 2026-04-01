@@ -3124,6 +3124,86 @@ describe('iam-account-management handlers (guards)', () => {
     expect(payload.data.syncState).toBe('synced');
   });
 
+  it('updates role permissions without requiring Keycloak when only permissionIds change', async () => {
+    state.keycloakConfigAvailable = false;
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
+        return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
+      }
+
+      if (text.includes('FROM iam.roles') && text.includes('external_role_name')) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              id: targetRoleId,
+              role_key: 'custom_editor',
+              role_name: 'custom_editor',
+              display_name: 'Custom Editor',
+              external_role_name: 'custom_editor',
+              description: 'Custom Editor',
+              is_system_role: false,
+              role_level: 25,
+              managed_by: 'studio',
+              sync_state: 'failed',
+              last_synced_at: null,
+              last_error_code: 'IDP_TIMEOUT',
+            },
+          ],
+        };
+      }
+
+      if (text.includes('UPDATE iam.roles') || text.includes('DELETE FROM iam.role_permissions') || text.includes('INSERT INTO iam.role_permissions')) {
+        return { rowCount: 1, rows: [] };
+      }
+
+      if (text.includes('FROM iam.roles r') && text.includes('r.role_key')) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              id: targetRoleId,
+              role_key: 'custom_editor',
+              role_name: 'custom_editor',
+              display_name: 'Custom Editor',
+              external_role_name: 'custom_editor',
+              description: 'Custom Editor',
+              is_system_role: false,
+              role_level: 25,
+              managed_by: 'studio',
+              member_count: 0,
+              sync_state: 'failed',
+              last_synced_at: null,
+              last_error_code: 'IDP_TIMEOUT',
+              permission_rows: [],
+            },
+          ],
+        };
+      }
+
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await updateRoleHandler(
+      new Request(`http://localhost/api/v1/iam/roles/${targetRoleId}`, {
+        method: 'PATCH',
+        headers: {
+          'content-type': 'application/json',
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'http://localhost',
+        },
+        body: JSON.stringify({
+          permissionIds: [],
+        }),
+      })
+    );
+
+    const payload = (await response.json()) as { data: { id: string; syncState: string } };
+    expect(response.status).toBe(200);
+    expect(payload.data.id).toBe(targetRoleId);
+    expect(payload.data.syncState).toBe('failed');
+  });
+
   it('rejects updates for externally managed roles', async () => {
     state.queryHandler = (text) => {
       if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {

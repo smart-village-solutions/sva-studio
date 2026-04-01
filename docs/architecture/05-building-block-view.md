@@ -222,6 +222,19 @@ Neu hinzugekommene Bausteine im Change `add-iam-organization-management-hierarch
 4. `packages/auth/src/iam-governance/read-models.ts`, `packages/auth/src/iam-data-subject-rights/read-models.ts`, `packages/auth/src/iam-account-management/user-timeline-query.ts`
    - Serverseitige Normalisierung der Transparenzdaten statt Roh-JSON aus Einzeltabellen.
 
+### Ergänzung 2026-03: Direkte Nutzerrechte in der Benutzerverwaltung
+
+1. `packages/data/migrations/up/0023_iam_account_permissions.sql`
+   - Führt `iam.account_permissions` als instanzgebundene Zuordnung `Account -> Permission -> effect` ein.
+2. `packages/auth/src/iam-account-management/users-handlers.ts` und `packages/auth/src/iam-account-management/user-detail-query.ts`
+   - Erweitern den User-Update- und Read-Pfad um direkte Nutzerrechte einschließlich Validierung, Persistenz und Invalidation.
+3. `packages/auth/src/iam-authorization/permission-store.ts` und `packages/auth/src/iam-authorization/shared.ts`
+   - Laden direkte Nutzerrechte zusätzlich zu Rollen- und Gruppenrechten und serialisieren deren Herkunft als `direct_user`.
+4. `packages/core/src/iam/authorization-contract.ts` und `packages/core/src/iam/account-management-contract.ts`
+   - Erweitern die gemeinsamen Verträge um direkte Nutzerrechte, zusätzliche Provenance und die Admin-Read-Modelle für den Nutzer-Editor.
+5. `apps/sva-studio-react/src/routes/admin/users/-user-edit-page.tsx`
+   - Ergänzt im Nutzer-Detail eine eigene Rechte-Tab mit Drei-Zustands-Auswahl `nicht gesetzt | erlauben | verweigern` und separater Wirksicht.
+
 ### Ergänzung 2026-03: Fachliche Rechtstext-Verwaltung
 
 1. `packages/core/src/iam/account-management-contract.ts`

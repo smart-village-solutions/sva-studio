@@ -27,67 +27,52 @@ Das System MUST eine OIDC-basierte Authentifizierung über Keycloak bereitstelle
 - **AND** wenn die Erneuerung fehlschlägt, wird HTTP 401 zurückgegeben
 
 ### Requirement: Token Validation & User Identity
-
-Das System MUST von Keycloak ausgestellte JWT-Tokens validieren und Identity-Claims für nachgelagerte Autorisierungsentscheidungen extrahieren.
-
-#### Scenario: Token signature verification
-
-- **WHEN** eine Anfrage mit einem JWT-Token eingeht
-- **THEN** verifiziert das Backend die Signatur mit dem öffentlichen Schlüssel von Keycloak
-- **AND** validiert die Claims (`iss`, `aud`, `exp`, `nbf`)
-- **AND** wenn eine Validierung fehlschlägt, wird die Anfrage abgelehnt
+Das System MUST von Keycloak ausgestellte JWT-Tokens validieren und nur die fuer Session- und Autorisierungspfad erforderlichen Identity-Claims extrahieren.
 
 #### Scenario: User context extraction
 
-- **WHEN** ein Token gültig ist
-- **THEN** extrahiert das System die Claims `sub` (Benutzer-ID), `email` und `name`
-- **AND** lädt zusätzliche Benutzerdaten aus der CMS-Datenbank (Organisationen, Rollen)
-- **AND** injiziert ein `UserContext`-Objekt in die Anfrage für nachgelagerte Handler
+- **WHEN** ein Token gueltig ist
+- **THEN** extrahiert das System mindestens die Claims `sub` (Benutzer-ID), `instanceId` und Rollen-/Berechtigungsinformationen
+- **AND** `email` oder `name` sind keine Pflichtclaims fuer Session-Hydration oder Autorisierung
+- **AND** zusaetzliche Profildaten werden nur in dedizierten Profil-/Sync-Flows geladen
+- **AND** das System injiziert daraus einen minimalen `UserContext` fuer nachgelagerte Handler
 
 ### Requirement: Session Management
+Das System MUST Benutzersitzungen sicher verwalten, einschließlich serverseitiger Token-Erneuerung, einer fachlich führenden Session-Gültigkeit, Redis-basierter Persistenz aktiver App-Sessions und kontrollierter Wiederherstellung nach Session-Ablauf.
 
-Das System MUST Benutzersitzungen sicher verwalten, einschließlich automatischer Ablaufbehandlung und Token-Erneuerung.
+#### Scenario: Serverseitige Session-Erneuerung innerhalb der Maxdauer
+- **WHEN** ein Access-Token kurz vor dem Ablauf steht
+- **THEN** versucht das BFF serverseitig einen Refresh mit dem gespeicherten Refresh-Token
+- **AND** ein erfolgreicher Refresh darf `Session.expiresAt` nur innerhalb der absoluten Session-Maxdauer fortschreiben
+- **AND** der Browser erhält weiterhin nur den Session-Cookie und keine OIDC-Tokens
 
-#### Scenario: Session expiration
+#### Scenario: Fachliche Session-Wahrheit steuert Cookie und Redis
+- **WHEN** eine Session erstellt oder aktualisiert wird
+- **THEN** ist `Session.expiresAt` die führende fachliche Gültigkeitsquelle
+- **AND** Redis-TTL wird nur als technischer Puffer oberhalb der verbleibenden Sessiondauer gesetzt
+- **AND** der Session-Cookie lebt nie länger als die fachliche Session
 
-- **WHEN** das Access Token eines Benutzers abläuft
-- **THEN** schlägt eine API-Anfrage mit HTTP 401 fehl
-- **AND** das Frontend stößt eine Token-Erneuerung an
-- **AND** das neue Access Token wird sicher gespeichert (HttpOnly-Cookie)
+#### Scenario: Session überlebt Server-Neustart
+- **WHEN** eine gültige App-Session bereits in Redis persistiert wurde
+- **AND** der Serverprozess neu startet
+- **THEN** bleibt die Session bis zum Erreichen ihrer fachlichen Gültigkeitsgrenze weiter auflösbar
 
-#### Scenario: Logout
+#### Scenario: Tokens bleiben serverseitig und geschützt
+- **WHEN** Access-, Refresh- oder ID-Token im Session-Store persistiert werden
+- **THEN** werden diese Werte verschlüsselt gespeichert
+- **AND** die Redis-Anbindung verwendet abgesicherte Transport- und Authentifizierungsmechanismen
+- **AND** Tokenwerte erscheinen nicht in operativen Logs oder Browser-seitigen Persistenzkanälen
 
-- **WHEN** ein Benutzer auf „Logout“ klickt
-- **THEN** wird die Sitzung invalidiert (Cookies gelöscht, Tokens widerrufen)
-- **AND** der Benutzer wird zum Keycloak-Logout-Endpunkt weitergeleitet
-- **AND** anschließend zurück zur öffentlichen CMS-Startseite
+#### Scenario: Logout invalidiert persistierte Session
+- **WHEN** ein Benutzer sich explizit abmeldet
+- **THEN** invalidiert das System die aktuelle Session im Redis-basierten Store
+- **AND** ein automatischer Silent-Reauth-Versuch darf unmittelbar danach nicht erfolgen
 
-#### Scenario: Session-Ablauf (Frontend-Weiterleitung)
-
-- **WENN** die Sitzung eines Benutzers abläuft
-- **DANN** leitet das System zur Login-Seite weiter
-- **UND** das abgelaufene Session-Cookie wird gelöscht
-
-#### Scenario: AuthProvider-Integration mit Session
-
-- **WENN** die `AuthProvider`-Komponente (in `sva-studio-react`) gemountet wird
-- **DANN** ruft sie `/auth/me` auf, um die aktuelle Sitzung aufzulösen
-- **UND** bei gültiger Sitzung werden die User-Daten über den `useAuth()`-Context bereitgestellt
-- **UND** bei ungültiger oder abgelaufener Sitzung gibt `useAuth()` `{ user: null, isAuthenticated: false }` zurück
-
-#### Scenario: Logout über AuthProvider
-
-- **WENN** ein Benutzer `logout()` aus dem `useAuth()`-Hook aufruft
-- **DANN** ruft das System `POST /auth/logout` auf
-- **UND** der AuthProvider-State wird auf `{ user: null, isAuthenticated: false }` zurückgesetzt
-- **UND** der Benutzer wird auf die Post-Logout-Seite weitergeleitet
-
-#### Scenario: Cache-Invalidierung bei Rollen-Änderungen
-
-- **WENN** ein Administrator Rollen eines Benutzers ändert (Zuweisung oder Entfernung)
-- **DANN** wird `invalidatePermissions()` aufgerufen
-- **UND** der `PermissionSnapshotCache` wird neu berechnet
-- **UND** `/auth/me` wird refetcht, um den aktuellen Auth-State zu aktualisieren
+#### Scenario: AuthProvider-Recovery nach 401
+- **WHEN** `AuthProvider` auf `/auth/me` oder einem geschützten Auth-Read ein `401` erhält
+- **THEN** startet das Frontend genau einen stillen Reauth-Versuch
+- **AND** bei Erfolg wird `/auth/me` erneut geladen
+- **AND** bei Misserfolg bleibt `useAuth()` bei `{ user: null, isAuthenticated: false }`
 
 ### Requirement: Multi-Organization Support
 
@@ -124,53 +109,14 @@ Das System MUST alle sicherheitsrelevanten IAM-Ereignisse unveränderbar protoko
 - **AND** das Erstellungsereignis wird mit der Keycloak-ID als Verknüpfung protokolliert
 
 ### Requirement: SDK Logger for IAM Server Modules
-
-Das System MUST den SDK Logger (`createSdkLogger` aus `@sva/sdk`) für alle operativen Logs in IAM-Servermodulen verwenden, gemäß ADR-006 und Observability Best Practices. `console.log`/`console.error` DÜRFEN im IAM-Servercode NICHT verwendet werden.
+Das System MUST den SDK Logger (`createSdkLogger` aus `@sva/sdk`) fuer alle operativen Logs in IAM-Servermodulen verwenden und tokenhaltige oder personenbeziehbare Werte minimieren.
 
 #### Scenario: Structured logging with mandatory fields
 
 - **WHEN** ein IAM-Servermodul einen Log-Eintrag erzeugt
-- **THEN** enthält der Eintrag mindestens: `workspace_id` (= `instanceId`), `component` (z. B. `iam-auth`), `environment`, `level`
+- **THEN** enthaelt der Eintrag mindestens: `workspace_id` (= `instanceId`), `component` (z. B. `iam-auth`), `environment`, `level`
 - **AND** PII-Redaktion wird automatisch durch den SDK Logger angewendet
-- **AND** es erscheinen keine Klartext-Tokens, Session-IDs oder E-Mail-Adressen in Logs
-
-#### Scenario: Correlation IDs in authentication flows
-
-- **WHEN** ein IAM-API-Endpunkt aufgerufen wird
-- **THEN** wird eine `request_id` erzeugt oder aus dem `X-Request-Id`-Header übernommen
-- **AND** der OTEL-Trace-Kontext wird propagiert
-- **AND** alle Log-Einträge innerhalb der Anfrage referenzieren `request_id` und `trace_id`
-
-#### Scenario: Token validation error logging
-
-- **WHEN** eine Token-Validierung fehlschlägt (invalid, expired, audience mismatch, issuer mismatch)
-- **THEN** emittiert der SDK Logger einen `warn`-Eintrag mit `operation`, `error_type`, `has_refresh_token`, `request_id`
-- **AND** es werden keine Tokenwerte oder Session-IDs im Log-Eintrag enthalten
-
-#### Scenario: Correlation IDs in Handler-Catch-Blöcken
-
-- **WHEN** ein `withAuthenticatedIamHandler`-Catch-Block einen unerwarteten Fehler abfängt
-- **THEN** enthält der `error`-Log-Eintrag `request_id` und `trace_id` via `buildLogContext({ includeTraceId: true })` aus `packages/auth/src/shared/log-context.ts` (kanonische Implementierung)
-- **AND** der Eintrag enthält `error_type` (Constructor-Name oder `typeof`-Fallback) und `error_message`
-- **AND** der Eintrag enthält **kein** `error.stack`-Feld (Observability Best Practices: keine Stack-Traces in strukturierten Log-Feldern)
-
-#### Scenario: Correlation IDs bei fehlendem AsyncLocalStorage-Context
-
-- **WHEN** ein `withAuthenticatedIamHandler`-Catch-Block ausgelöst wird und der AsyncLocalStorage-Context leer ist (z. B. bei Worker-Threads oder außerhalb des Request-Lifecycle)
-- **THEN** enthält der Log-Eintrag `request_id: undefined` und `trace_id: undefined`
-- **AND** der Logger wirft keinen eigenen Fehler
-
-#### Scenario: Middleware-Logs mit Trace-Kontext
-
-- **WHEN** Auth-Middleware einen Log-Eintrag erzeugt (z. B. bei Session-Auflösung oder Redirect)
-- **THEN** enthält der Eintrag `trace_id` via `buildLogContext({ includeTraceId: true })` aus `packages/auth/src/shared/log-context.ts`
-
-#### Scenario: Error-Response über einheitlichen Utility
-
-- **WHEN** `withAuthenticatedIamHandler` einen unerwarteten Fehler abfängt
-- **THEN** wird die Error-Response über `toJsonErrorResponse()` aus `@sva/sdk/server` erzeugt
-- **AND** der Response-Shape ist für stabile IAM-v1-Endpunkte `{ error: "internal_error", message?: "..." }` mit HTTP 500
-- **AND** rohe Exception-Texte, Provider-Fehler und Stack-Fragmente gelangen nie in das Feld `message`
+- **AND** es erscheinen keine Klartext-Tokens, tokenhaltigen Redirect-URLs, Session-IDs oder E-Mail-Adressen in operativen Logs
 
 ### Requirement: Governance-Funktionen nur für berechtigte Identitäten
 
@@ -700,3 +646,230 @@ Das System MUST im Abnahmepfad nachweisen, dass ein erfolgreicher Login determin
 - **WHEN** derselbe Test-Benutzer den Login erneut durchläuft
 - **THEN** entstehen keine doppelten Account-Datensätze
 - **AND** der bestehende Account-Kontext bleibt stabil
+
+### Requirement: Nicht-sensitive Diagnosefelder für IAM-Hotspots
+
+Das System MUST für stabile IAM-v1-Hotspots strukturierte, nicht-sensitive Diagnosefelder bereitstellen, damit fachliche Ursachen ohne Provider- oder Secret-Leakage erkennbar werden.
+
+#### Scenario: Fehlender Actor-Account wird explizit diagnostiziert
+
+- **WHEN** ein IAM-Endpunkt wie `/api/v1/iam/me/context` oder `/api/v1/iam/users` den Actor im aktiven Instanzkontext nicht auflösen kann
+- **THEN** bleibt der öffentliche Fehlercode stabil (`forbidden` oder `database_unavailable`)
+- **AND** die Antwort enthält additive `details.reason_code`-Werte wie `missing_actor_account` oder `missing_instance_membership`
+- **AND** die Antwort enthält keine rohen SQL-, Token- oder Provider-Interna
+
+#### Scenario: Schema-Drift wird deterministisch gemeldet
+
+- **WHEN** ein kritischer IAM-Schema-Bestandteil wie `iam.account_groups`, `iam.groups`, `idx_accounts_kc_subject_instance` oder eine RLS-Policy fehlt
+- **THEN** melden `/health/ready`, `env:doctor:*` und betroffene IAM-Hotspots eine maschinenlesbare Ursache wie `schema_drift`, `missing_table` oder `missing_column`
+- **AND** optionale Hinweise wie `schema_object` und `expected_migration` bleiben nicht-sensitiv
+
+### Requirement: Kritischer IAM-Schema-Guard
+
+Das System MUST vor Acceptance-Smoke und nach Migrationen den kritischen IAM-Sollstand validieren.
+
+#### Scenario: Migration validiert den Sollstand
+
+- **WHEN** `env:migrate:acceptance-hb` erfolgreich alle SQL-Dateien angewendet hat
+- **THEN** validiert ein Schema-Guard kritische Tabellen, Spalten, Indizes und RLS-Policies
+- **AND** der Befehl endet nicht erfolgreich, solange kritische Drift verbleibt
+
+#### Scenario: Smoke erkennt Drift vor Fachfehlern
+
+- **WHEN** `env:smoke:<profil>` oder `env:doctor:<profil>` gegen einen Drift-Zustand ausgeführt wird
+- **THEN** wird die Drift als eigener Fehler gemeldet
+- **AND** die Betriebsanalyse muss nicht erst über zufällige `500`- oder `403`-Antworten auf indirekten Fachpfaden erfolgen
+
+### Requirement: Profil-Sync getrennt vom Session-Kern
+Das System SHALL Profilattribute wie Name und E-Mail getrennt vom Session- und Autorisierungskern verarbeiten.
+
+#### Scenario: Profilanzeige ueber dedizierten Profilpfad
+
+- **WHEN** die App Profildaten fuer Anzeige oder Bearbeitung benoetigt
+- **THEN** laedt sie diese ueber dedizierte Profil-Endpunkte oder Sync-Flows
+- **AND** die Session bleibt auf Auth-Kernfelder begrenzt
+- **AND** Profil-PII wird nicht als Nebenprodukt des Login-Flows in operative Logs oder generische Session-Nutzlasten gezogen
+
+#### Scenario: Synchronisation mit Keycloak bleibt moeglich
+
+- **WHEN** Studio Name oder E-Mail mit Keycloak synchron halten muss
+- **THEN** erfolgt dies ueber dedizierte Profil-/Sync-Operationen
+- **AND** die verschluesselte Persistenz in `iam.accounts` bleibt erhalten
+- **AND** die Synchronisation haengt nicht davon ab, dass Name oder E-Mail im Session-Kern enthalten sind
+
+### Requirement: Erzwungener Re-Login pro Benutzer
+Das System SHALL einen deterministischen Forced-Reauth-Mechanismus pro Benutzer bereitstellen.
+
+#### Scenario: App-only Forced Reauth
+
+- **WHEN** das System `forceReauthUser({ userId, mode: 'app_only' })` ausführt
+- **THEN** werden alle bekannten Studio-Sessions dieses Benutzers ungültig
+- **AND** neue Requests mit alten Sessions schlagen fehl
+- **AND** eine weiterhin aktive Keycloak-SSO-Session bleibt unberührt
+
+#### Scenario: Forced Reauth inklusive IdP-Logout
+
+- **WHEN** das System `forceReauthUser({ userId, mode: 'app_and_idp' })` ausführt
+- **THEN** werden alle bekannten Studio-Sessions des Benutzers ungültig
+- **AND** aktive Keycloak-User-Sessions werden zusätzlich per Admin-API beendet
+- **AND** ein nachfolgender Login erfordert eine echte Re-Authentifizierung
+
+### Requirement: Versionierte Session-Gültigkeit
+Das System SHALL Session-Version und benutzerbezogene Reauth-Marker gemeinsam auswerten.
+
+#### Scenario: Session-Version ist veraltet
+
+- **WHEN** eine Session eine niedrigere `sessionVersion` als die aktuelle `minimumSessionVersion` des Benutzers trägt
+- **THEN** behandelt das System die Session als ungültig
+- **AND** `/auth/me` oder geschützte Requests liefern kein erfolgreiches Session-Ergebnis mehr
+
+#### Scenario: Forced-Reauth-Zeitpunkt überholt Session
+
+- **WHEN** `forcedReauthAt` nach der Ausstellung einer Session gesetzt wurde
+- **THEN** wird die ältere Session bei der nächsten Auflösung verworfen
+- **AND** ein Re-Login ist erforderlich
+
+### Requirement: Persistentes fachliches Rechtstext-Modell
+
+Das System SHALL Rechtstext-Versionen serverseitig als fachliche Inhalte mit UUID, Name, Versionsnummer, Sprache, HTML-Inhalt, Status sowie Erstellungs-, Änderungs- und Veröffentlichungsdatum persistieren.
+
+#### Scenario: Rechtstext serverseitig erstellen
+
+- **WHEN** ein berechtigter Administrator eine neue Rechtstext-Version anlegt
+- **THEN** vergibt das System eine UUID automatisch
+- **AND** speichert Name, Versionsnummer, Sprache, HTML-Inhalt, Status und Zeitstempel serverseitig
+
+#### Scenario: Rechtstext serverseitig aktualisieren
+
+- **WHEN** ein berechtigter Administrator eine bestehende Rechtstext-Version bearbeitet
+- **THEN** persistiert das System die geänderten Fachfelder serverseitig
+- **AND** aktualisiert das Änderungsdatum
+
+#### Scenario: Statusmodell wird fachlich validiert
+
+- **WHEN** eine Rechtstext-Version erstellt oder aktualisiert wird
+- **THEN** akzeptiert das System nur die Statuswerte `draft`, `valid` oder `archived`
+- **AND** lehnt ungültige Statuswerte mit einem Validierungsfehler ab
+
+#### Scenario: Gültige Rechtstexte verlangen Veröffentlichungsdatum
+
+- **WHEN** eine Rechtstext-Version mit Status `valid` gespeichert wird
+- **THEN** verlangt das System ein Veröffentlichungsdatum
+- **AND** speichert den Datensatz nicht ohne diese Angabe
+
+### Requirement: Readiness-Nachweis für Redis-gestützte Autorisierung
+
+Das System MUST die Betriebsbereitschaft der Redis-gestützten Autorisierungsstrecke explizit nachweisen.
+
+#### Scenario: Readiness-Gate prüft Redis-Authorize-Pfad
+
+- **WHEN** der System-Readiness-Check (`GET /health/ready`) ausgeführt wird
+- **THEN** bestätigt er die Erreichbarkeit und Nutzbarkeit von Redis für den Permission-Snapshot-Pfad
+- **AND** die Response enthält das Feld `cache_status: "empty" | "warming" | "ready"` für den Redis-Snapshot-Pfad
+- **AND** ein Fehler im Redis-Authorize-Pfad macht den Readiness-Status `degraded` (Redis-Latenz > 50 ms ODER Recompute-Rate > 20/min) oder `failed` (Connection refused nach 3 Retries) sichtbar
+
+#### Scenario: Redis-Warm-up nach Neustart
+
+- **WHEN** Redis nach einem Neustart gestartet wird
+- **THEN** loggt das System den Cache-Cold-Start-Zustand mit `cache_cold_start: true`
+- **AND** der erste erfolgreiche Snapshot-Write nach dem Start wird als Betriebsereignis protokolliert
+- **AND** der Readiness-Endpoint gibt `cache_status: "warming"` zurück bis die Rate der erfolgreichen Snapshots einen stabilen Zustand anzeigt
+
+#### Scenario: Autorisierung bleibt bei Cache-Störung fail-closed
+
+- **WHEN** Redis oder der Snapshot-Recompute in einem Autorisierungspfad ausfällt
+- **THEN** gewährt das System keinen stillschweigenden Zugriff (HTTP 503)
+- **AND** ein abgelaufener Snapshot darf nach TTL-Ablauf **nicht** als Notfall-Fallback verwendet werden
+- **AND** der Fehlerzustand ist über strukturierte Logs und Betriebsmetriken nachvollziehbar
+
+### Requirement: Server-seitiges Enforcement der Rechtstext-Akzeptanz
+
+Das System MUST die Rechtstext-Akzeptanz-Prüfung server-seitig in einer TanStack Start Middleware durchführen, bevor jede geschützte Ressource ausgeliefert oder verarbeitet wird.
+
+#### Scenario: Pflichttext- und Versionslogik wird vor Freigabe ausgewertet
+
+- **WHEN** ein Benutzer eine authentifizierte Session aufbaut oder mit bestehender Session erstmals eine geschützte Route oder API anfragt
+- **THEN** bestimmt das System vor jeder fachlichen Freigabe alle für die aktive `instanceId` geltenden Pflicht-Rechtstexte und deren aktuelle Pflichtversionen
+- **AND** jede fehlende Akzeptanz der aktuellen Pflichtversion gilt als blockierend, auch wenn ältere Versionen desselben Rechtstexts akzeptiert wurden
+- **AND** optionale oder nicht mehr aktuelle Rechtstexte blockieren den Zugriff nicht
+
+#### Scenario: Server-Middleware blockiert direkten API-Aufruf ohne Akzeptanz
+
+- **WHEN** ein authentifizierter Benutzer mit offener Pflichtakzeptanz eine geschützte API-Route direkt aufruft (ohne Frontend-Interstitial)
+- **THEN** antwortet das System mit HTTP 403 und einem strukturierten Fehlercode (`legal_acceptance_required`)
+- **AND** kein fachlicher Inhalt wird ausgeliefert
+- **AND** der Fehlerzustand ist über einen maschinenlesbaren Error-Code adressierbar
+
+#### Scenario: Offene Pflichtversion blockiert fachlichen Zugriff
+
+- **WHEN** ein authentifizierter Benutzer eine aktuelle Pflichtversion eines Rechtstexts noch nicht akzeptiert hat
+- **THEN** erhält er keinen fachlichen Zugriff auf geschützte Anwendungspfade
+- **AND** das System leitet ihn in einen dedizierten Akzeptanzflow
+
+#### Scenario: Akzeptanz hebt die Sperre auf
+
+- **WHEN** der Benutzer die geforderte Rechtstext-Version erfolgreich akzeptiert
+- **THEN** wird die Akzeptanz revisionssicher gespeichert
+- **AND** der Benutzer erhält anschließend Zugriff auf die ursprünglich angeforderte geschützte Anwendung (Deep-Link-Preservation via Session-State)
+
+### Requirement: Guard- und Session-Verhalten für blockierte Benutzer
+
+Das System MUST für Benutzer mit offener Pflichtakzeptanz einen konsistent blockierten Session-Zustand führen, bis eine gültige Entscheidung vorliegt.
+
+#### Scenario: Blockierte Session darf nur den Akzeptanzpfad nutzen
+
+- **WHEN** eine Session als `legal_acceptance_pending` markiert ist
+- **THEN** darf dieselbe Session ausschließlich Login-bezogene Endpunkte, den Akzeptanzstatus und die Akzeptanz- oder Logout-Aktion ausführen
+- **AND** alle anderen geschützten Anfragen enden mit HTTP 403 und dem Fehlercode `legal_acceptance_required`
+
+#### Scenario: Ablehnung oder Abbruch beendet die blockierte Session
+
+- **WHEN** der Benutzer den Pflichttext explizit ablehnt oder der Server einen irreparablen Konflikt zwischen Session-Zustand und Pflichtversion feststellt
+- **THEN** wird die Session beendet
+- **AND** nachfolgende Zugriffe erfordern einen erneuten Login
+- **AND** es bleibt keine teilfreigeschaltete Session bestehen
+
+### Requirement: Zugriffsgates und Deep-Link-Verhalten für Rechtstext-Sichten
+
+Das System MUST den Rechtstext-Akzeptanzpfad als einzig zulässigen Deep-Link für blockierte Benutzer behandeln und alle übrigen geschützten Ziele server- und client-seitig konsistent sperren.
+
+#### Scenario: Deep-Link auf geschützte Fachroute wird abgefangen
+
+- **WHEN** ein Benutzer mit offener Pflichtakzeptanz direkt eine geschützte Fachroute oder Admin-Route per URL aufruft
+- **THEN** wird das eigentliche Ziel nicht ausgeliefert
+- **AND** das System speichert die Zielroute als Fortsetzungsziel in der Session
+- **AND** der Benutzer wird in den Akzeptanzflow geleitet
+
+#### Scenario: Rechtstext-Sicht ist ohne blockierenden Status nicht dauerhaft erreichbar
+
+- **WHEN** ein Benutzer ohne offene Pflichtakzeptanz die Akzeptanzroute direkt aufruft
+- **THEN** wird kein künstlicher Blockierzustand erzeugt
+- **AND** das System leitet den Benutzer auf die reguläre Zielroute oder den fachlichen Standardzielpfad zurück
+
+### Requirement: Fail-Closed bei unklarem Pflichttextstatus
+
+Das System MUST bei unklarem oder fehlerhaftem Pflichttextstatus keinen stillschweigenden fachlichen Zugriff gewähren.
+
+#### Scenario: Pflichttextstatus kann nicht bestimmt werden (DB-Timeout, unvollständige Antwort)
+
+- **WHEN** das System beim Login den Status erforderlicher Rechtstexte nicht vollständig bestimmen kann (z. B. DB-Timeout, fehlende Versionsdaten, partiell unbekannte Kategorien)
+- **THEN** blockiert das System den fachlichen Zugriff — jede nicht abschließend geprüfte Pflichtkategorie gilt als ausstehend
+- **AND** der Benutzer erhält einen klaren Fehlerzustand mit lokalisiertem Hinweistext (`t('legalTexts.acceptance.errors.statusUnknown')`) und der Möglichkeit, die Seite neu zu laden
+- **AND** der HTTP-Statuscode der Middleware-Antwort ist 503 bei technischen Fehlern, 403 bei bekannt ausstehender Akzeptanz
+
+### Requirement: Test- und Berichtsnachweise für Enforcement und Export
+
+Das System SHALL für Paket 5 verbindliche Nachweisartefakte definieren, damit Angebotsabnahme und technische Abnahme dieselben Rechtstext-Belege referenzieren.
+
+#### Scenario: Enforcement-Nachweis ist normiert
+
+- **WHEN** der blockierende Akzeptanzflow abgenommen wird
+- **THEN** existiert mindestens ein versionierter Nachweis mit Screenshot oder Screenrecord des Interstitials, ein Testprotokoll für Deep-Link-Blockierung und ein Testfall für server-seitiges HTTP-403-Enforcement
+- **AND** die Artefakte liegen unter `docs/reports/` oder einem dort referenzierten PR-/Staging-Unterordner
+
+#### Scenario: Export-Nachweis ist normiert
+
+- **WHEN** die Nachweis- und Exportfunktion abgenommen wird
+- **THEN** existiert mindestens ein versioniertes Export-Testprotokoll für JSON und CSV, ein Negativtest ohne `legal-consents:export` sowie ein Konsistenzabgleich gegen die Auditspur
+- **AND** alle Artefakte referenzieren dieselbe Pflichtversions- und Filterkonstellation
+

@@ -60,7 +60,7 @@ export type IamApiErrorResponse = {
   readonly error: IamApiErrorCode;
 };
 
-export type IamPermissionSourceKind = 'direct_role' | 'group_role';
+export type IamPermissionSourceKind = 'direct_user' | 'direct_role' | 'group_role';
 
 export type IamPermissionProvenance = {
   readonly sourceKinds?: readonly IamPermissionSourceKind[];
@@ -95,8 +95,8 @@ export type MatchedPermissionSummary = {
   readonly resourceType: string;
   readonly resourceId?: string;
   readonly effect: IamPermissionEffect;
-  readonly source: 'role' | 'group' | 'delegation';
-  readonly sourceId: IamUuid;
+  readonly source: 'user' | 'role' | 'group' | 'delegation';
+  readonly sourceId?: IamUuid;
   readonly sourceName?: string;
   readonly geoScope?: string;
 };
@@ -110,8 +110,9 @@ export type EffectivePermission = {
   readonly organizationId?: IamUuid;
   readonly effect?: IamPermissionEffect;
   readonly scope?: Readonly<Record<string, unknown>>;
-  readonly sourceRoleIds: readonly IamUuid[];
-  readonly sourceGroupIds: readonly IamUuid[];
+  readonly sourceUserIds?: readonly IamUuid[];
+  readonly sourceRoleIds?: readonly IamUuid[];
+  readonly sourceGroupIds?: readonly IamUuid[];
   readonly groupName?: string;
   readonly geoScope?: string;
   readonly provenance?: IamPermissionProvenance;
@@ -121,6 +122,8 @@ export type MePermissionsRequest = {
   readonly instanceId: IamInstanceId;
   readonly organizationId?: IamUuid;
   readonly actingAsUserId?: string;
+  readonly geoUnitId?: IamUuid;
+  readonly geoHierarchy?: readonly IamUuid[];
 };
 
 export type MePermissionsSubject = {
@@ -141,6 +144,7 @@ export type MePermissionsResponse = {
   readonly snapshotVersion?: string;
   readonly cacheStatus?: SnapshotCacheStatus;
   readonly provenance?: Readonly<{
+    readonly hasDirectUserPermissions: boolean;
     readonly hasGroupDerivedPermissions: boolean;
     readonly hasGeoInheritance: boolean;
   }>;

@@ -226,3 +226,13 @@ Referenzen:
    - Impact: mittel (Betrieb braucht weiterhin Seeds oder direkte Datenpflege)
    - Wahrscheinlichkeit: hoch
    - Maßnahme: klarer Scope-Schnitt in Doku und OpenSpec, spätere Pflegepfade als separaten Change planen
+
+29. Übernutzung direkter Nutzerrechte statt Rollen-/Gruppenmodell
+   - Impact: mittel bis hoch (schwer nachvollziehbare Sonderfälle, Governance-Drift)
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: UI-Hinweise auf Ausnahmecharakter, getrennte Darstellung von direkten und wirksamen Rechten und Review-Gate für privilegierte Einzelzuweisungen
+
+30. Konfliktwahrnehmung zwischen direkter Nutzerzuweisung und geerbten Rechten
+   - Impact: hoch (falsche Erwartung an die effektive Berechtigung)
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: Provenance in `me/permissions`/`authorize`, explizite `deny vor allow`-Doku und gezielte Negativtests

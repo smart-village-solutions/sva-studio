@@ -24,7 +24,7 @@ export const storeLegalAcceptanceReturnTo = (value: string | null | undefined): 
   try {
     getStorage()?.setItem(LEGAL_ACCEPTANCE_RETURN_TO_KEY, sanitized);
   } catch {
-    return sanitized;
+    // Ignore storage failures and still return the sanitized navigation target.
   }
   return sanitized;
 };

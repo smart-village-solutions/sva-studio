@@ -117,13 +117,20 @@ const finalizePermissionBucket = (permission: EffectivePermission): EffectivePer
   const sourceKinds = permission.provenance?.sourceKinds
     ? sortSourceKinds(permission.provenance.sourceKinds)
     : undefined;
+  const normalizedSourceUserIds = withSortedValues(permission.sourceUserIds);
+  const normalizedSourceRoleIds = withSortedValues(permission.sourceRoleIds);
+  const normalizedSourceGroupIds = withSortedValues(permission.sourceGroupIds);
 
   return {
     ...permission,
-    ...(withSortedValues(permission.sourceUserIds) ? { sourceUserIds: withSortedValues(permission.sourceUserIds) } : {}),
-    ...(withSortedValues(permission.sourceRoleIds) ? { sourceRoleIds: withSortedValues(permission.sourceRoleIds) } : {}),
-    ...(withSortedValues(permission.sourceGroupIds) ? { sourceGroupIds: withSortedValues(permission.sourceGroupIds) } : {}),
-    provenance: sourceKinds ? { ...permission.provenance, sourceKinds } : permission.provenance,
+    ...(normalizedSourceUserIds ? { sourceUserIds: normalizedSourceUserIds } : {}),
+    ...(normalizedSourceRoleIds ? { sourceRoleIds: normalizedSourceRoleIds } : {}),
+    ...(normalizedSourceGroupIds ? { sourceGroupIds: normalizedSourceGroupIds } : {}),
+    provenance: sourceKinds
+      ? permission.provenance
+        ? { ...permission.provenance, sourceKinds }
+        : { sourceKinds }
+      : permission.provenance,
   };
 };
 

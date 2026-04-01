@@ -11,37 +11,58 @@ import type { UserDetailRow } from './user-detail-query.types.js';
 
 const logger = createSdkLogger({ component: 'iam-user-detail-query', level: 'info' });
 
+const logLegacySchemaFallbacks = (
+  input: { instanceId: string; userId: string },
+  schemaSupport: Awaited<ReturnType<typeof readUserDetailSchemaSupport>>
+): void => {
+  if (!schemaSupport.hasAccountPermissionsTable) {
+    logger.warn('IAM user detail query fell back to legacy schema without direct permissions', {
+      operation: 'resolve_user_detail',
+      instance_id: input.instanceId,
+      user_id: input.userId,
+      missing_schema_object: 'iam.account_permissions',
+    });
+  }
+
+  if (!schemaSupport.hasStructuredPermissions) {
+    logger.warn('IAM user detail query fell back to legacy permission projection', {
+      operation: 'resolve_user_detail',
+      instance_id: input.instanceId,
+      user_id: input.userId,
+      missing_schema_object: 'iam.permissions.action/resource_type/resource_id/effect/scope',
+    });
+  }
+};
+
+const logMissingUserDetail = (input: { instanceId: string; userId: string }): void => {
+  logger.info('IAM user detail query returned no row', {
+    operation: 'resolve_user_detail',
+    instance_id: input.instanceId,
+    user_id: input.userId,
+  });
+};
+
+const buildErrorContext = (input: { instanceId: string; userId: string }, error: unknown) => ({
+  operation: 'resolve_user_detail',
+  instance_id: input.instanceId,
+  user_id: input.userId,
+  error_type: error instanceof Error ? error.constructor.name : typeof error,
+  error: error instanceof Error ? error.message : String(error),
+  error_stack: error instanceof Error ? error.stack : undefined,
+});
+
 export const resolveUserDetail = async (
   client: QueryClient,
   input: { instanceId: string; userId: string }
 ): Promise<IamUserDetail | undefined> => {
   try {
     const schemaSupport = await readUserDetailSchemaSupport(client);
-    if (!schemaSupport.hasAccountPermissionsTable) {
-      logger.warn('IAM user detail query fell back to legacy schema without direct permissions', {
-        operation: 'resolve_user_detail',
-        instance_id: input.instanceId,
-        user_id: input.userId,
-        missing_schema_object: 'iam.account_permissions',
-      });
-    }
-    if (!schemaSupport.hasStructuredPermissions) {
-      logger.warn('IAM user detail query fell back to legacy permission projection', {
-        operation: 'resolve_user_detail',
-        instance_id: input.instanceId,
-        user_id: input.userId,
-        missing_schema_object: 'iam.permissions.action/resource_type/resource_id/effect/scope',
-      });
-    }
+    logLegacySchemaFallbacks(input, schemaSupport);
     const detailQuery = selectUserDetailQuery(schemaSupport);
     const result = await client.query<UserDetailRow>(detailQuery, [input.instanceId, input.userId]);
     const row = result.rows[0];
     if (!row) {
-      logger.info('IAM user detail query returned no row', {
-        operation: 'resolve_user_detail',
-        instance_id: input.instanceId,
-        user_id: input.userId,
-      });
+      logMissingUserDetail(input);
       return undefined;
     }
 
@@ -49,25 +70,13 @@ export const resolveUserDetail = async (
       return mapUserDetailRow(row);
     } catch (error) {
       logger.error('IAM user detail mapping failed', {
-        operation: 'resolve_user_detail',
-        instance_id: input.instanceId,
-        user_id: input.userId,
+        ...buildErrorContext(input, error),
         keycloak_subject: row.keycloak_subject,
-        error_type: error instanceof Error ? error.constructor.name : typeof error,
-        error: error instanceof Error ? error.message : String(error),
-        error_stack: error instanceof Error ? error.stack : undefined,
       });
       throw error;
     }
   } catch (error) {
-    logger.error('IAM user detail query failed', {
-      operation: 'resolve_user_detail',
-      instance_id: input.instanceId,
-      user_id: input.userId,
-      error_type: error instanceof Error ? error.constructor.name : typeof error,
-      error: error instanceof Error ? error.message : String(error),
-      error_stack: error instanceof Error ? error.stack : undefined,
-    });
+    logger.error('IAM user detail query failed', buildErrorContext(input, error));
     throw error;
   }
 };

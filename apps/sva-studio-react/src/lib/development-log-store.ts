@@ -30,7 +30,10 @@ const stringifyNonPlainValue = (value: object): string => {
   const stringifier = value.toString;
   if (typeof stringifier === 'function' && stringifier !== Object.prototype.toString) {
     try {
-      return redactLogString(String(value));
+      const customString = stringifier.call(value);
+      return typeof customString === 'string'
+        ? redactLogString(customString)
+        : Object.prototype.toString.call(value);
     } catch {
       return Object.prototype.toString.call(value);
     }

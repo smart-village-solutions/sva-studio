@@ -3,7 +3,7 @@ import { DEFAULT_POST_LOGIN_PATH, sanitizeReturnTo } from './auth-navigation';
 const LEGAL_ACCEPTANCE_RETURN_TO_KEY = 'sva:legal-acceptance:return-to';
 
 const getStorage = () => {
-  if (typeof globalThis.window === 'undefined') {
+  if (globalThis.window === undefined) {
     return null;
   }
 

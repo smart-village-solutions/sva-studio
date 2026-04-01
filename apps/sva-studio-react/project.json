@@ -67,7 +67,7 @@
       ],
       "options": {
         "cwd": "apps/sva-studio-react",
-        "command": "pnpm exec vite build"
+        "command": "mkdir -p .output/server && pnpm exec vite build"
       }
     },
     "preview": {

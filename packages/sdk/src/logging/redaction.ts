@@ -55,7 +55,10 @@ const stringifyNonPlainValue = (value: object): string => {
   const stringifier = value.toString;
   if (typeof stringifier === 'function' && stringifier !== Object.prototype.toString) {
     try {
-      return redactLogString(String(value));
+      const customString = stringifier.call(value);
+      return typeof customString === 'string'
+        ? redactLogString(customString)
+        : Object.prototype.toString.call(value);
     } catch {
       return Object.prototype.toString.call(value);
     }
@@ -83,9 +86,9 @@ const serializeError = (value: Error): Record<string, unknown> => {
 
 export const redactLogString = (value: string): string => {
   let next = maskEmailAddresses(value);
-  next = next.replace(jwtLikeRegex, '[REDACTED_JWT]');
+  next = next.replaceAll(jwtLikeRegex, '[REDACTED_JWT]');
   for (const [pattern, replacement] of urlSecretPatterns) {
-    next = next.replace(pattern, replacement);
+    next = next.replaceAll(pattern, replacement);
   }
   return next;
 };

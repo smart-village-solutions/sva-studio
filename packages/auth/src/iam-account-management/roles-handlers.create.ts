@@ -1,20 +1,9 @@
 import type { ApiErrorResponse } from '@sva/core';
-import { getWorkspaceContext } from '@sva/sdk/server';
 
 import type { AuthenticatedRequestContext } from '../middleware.server.js';
 import { jsonResponse } from '../shared/db-helpers.js';
 
-import { SYSTEM_ADMIN_ROLES } from './constants.js';
-import {
-  asApiItem,
-  createApiError,
-  parseRequestBody,
-  requireIdempotencyKey,
-  toPayloadHash,
-} from './api-helpers.js';
-import { createActorResolutionDetails } from './diagnostics.js';
-import { ensureFeature, getFeatureFlags } from './feature-flags.js';
-import { consumeRateLimit } from './rate-limit.js';
+import { asApiItem, createApiError, parseRequestBody, requireIdempotencyKey, toPayloadHash } from './api-helpers.js';
 import {
   buildRoleSyncFailure,
   mapRoleSyncErrorCode,
@@ -22,13 +11,11 @@ import {
 } from './role-audit.js';
 import { loadRoleListItemById } from './role-query.js';
 import { createRoleSchema } from './schemas.js';
-import { validateCsrf } from './csrf.js';
 import {
   emitActivityLog,
   emitRoleAuditEvent,
   notifyPermissionInvalidation,
 } from './shared-activity.js';
-import { requireRoles, resolveActorInfo } from './shared-actor-resolution.js';
 import { completeIdempotency, reserveIdempotency } from './shared-idempotency.js';
 import {
   iamRoleSyncCounter,
@@ -36,67 +23,195 @@ import {
   logger,
   trackKeycloakCall,
 } from './shared-observability.js';
-import { resolveIdentityProvider, withInstanceScopedDb } from './shared-runtime.js';
+import { withInstanceScopedDb } from './shared-runtime.js';
+import {
+  buildRoleAttributes,
+  requireRoleIdentityProvider,
+  resolveRoleMutationActor,
+  type RoleMutationActor,
+} from './roles-handlers.shared.js';
+
+const CREATE_ROLE_ENDPOINT = 'POST:/api/v1/iam/roles';
+
+const buildCreateRoleUnavailableBody = (requestId?: string): ApiErrorResponse => ({
+  error: {
+    code: 'keycloak_unavailable',
+    message: 'Keycloak Admin API ist nicht konfiguriert.',
+    details: {
+      syncState: 'failed',
+      syncError: { code: 'IDP_UNAVAILABLE' },
+    },
+  },
+  ...(requestId ? { requestId } : {}),
+});
+
+const completeCreateRoleIdempotency = async (input: {
+  actor: RoleMutationActor;
+  idempotencyKey: string;
+  status: 'COMPLETED' | 'FAILED';
+  responseStatus: number;
+  responseBody: unknown;
+}) => {
+  await completeIdempotency({
+    instanceId: input.actor.instanceId,
+    actorAccountId: input.actor.actorAccountId,
+    endpoint: CREATE_ROLE_ENDPOINT,
+    idempotencyKey: input.idempotencyKey,
+    status: input.status,
+    responseStatus: input.responseStatus,
+    responseBody: input.responseBody,
+  });
+};
+
+const persistCreatedRole = async (input: {
+  actor: RoleMutationActor;
+  roleKey: string;
+  displayName: string;
+  externalRoleName: string;
+  description?: string;
+  roleLevel: number;
+  permissionIds: readonly string[];
+}) => {
+  return withInstanceScopedDb(input.actor.instanceId, async (client) => {
+    const inserted = await client.query<{ id: string }>(
+      `
+INSERT INTO iam.roles (
+  instance_id,
+  role_key,
+  role_name,
+  display_name,
+  external_role_name,
+  description,
+  is_system_role,
+  role_level,
+  managed_by,
+  sync_state,
+  last_synced_at,
+  last_error_code
+)
+VALUES ($1, $2, $3, $4, $5, $6, false, $7, 'studio', 'synced', NOW(), NULL)
+RETURNING id;
+`,
+      [
+        input.actor.instanceId,
+        input.roleKey,
+        input.roleKey,
+        input.displayName,
+        input.externalRoleName,
+        input.description ?? null,
+        input.roleLevel,
+      ]
+    );
+    const roleId = inserted.rows[0]?.id;
+    if (!roleId) {
+      throw new Error('conflict');
+    }
+
+    if (input.permissionIds.length > 0) {
+      await client.query(
+        `
+INSERT INTO iam.role_permissions (instance_id, role_id, permission_id)
+SELECT $1, $2::uuid, permission_id
+FROM unnest($3::uuid[]) AS permission_id
+ON CONFLICT (instance_id, role_id, permission_id) DO NOTHING;
+`,
+        [input.actor.instanceId, roleId, input.permissionIds]
+      );
+    }
+
+    await emitRoleAuditEvent(client, {
+      instanceId: input.actor.instanceId,
+      accountId: input.actor.actorAccountId,
+      roleId,
+      eventType: 'role.sync_started',
+      operation: 'create',
+      result: 'success',
+      roleKey: input.roleKey,
+      externalRoleName: input.externalRoleName,
+      requestId: input.actor.requestId,
+      traceId: input.actor.traceId,
+    });
+
+    await emitActivityLog(client, {
+      instanceId: input.actor.instanceId,
+      accountId: input.actor.actorAccountId,
+      eventType: 'role.created',
+      result: 'success',
+      payload: {
+        role_id: roleId,
+        role_key: input.roleKey,
+        display_name: input.displayName,
+      },
+      requestId: input.actor.requestId,
+      traceId: input.actor.traceId,
+    });
+
+    await emitRoleAuditEvent(client, {
+      instanceId: input.actor.instanceId,
+      accountId: input.actor.actorAccountId,
+      roleId,
+      eventType: 'role.sync_succeeded',
+      operation: 'create',
+      result: 'success',
+      roleKey: input.roleKey,
+      externalRoleName: input.externalRoleName,
+      requestId: input.actor.requestId,
+      traceId: input.actor.traceId,
+    });
+
+    await notifyPermissionInvalidation(client, {
+      instanceId: input.actor.instanceId,
+      trigger: 'role_created',
+    });
+
+    const roleItem = await loadRoleListItemById(client, {
+      instanceId: input.actor.instanceId,
+      roleId,
+    });
+    if (!roleItem) {
+      throw new Error('role_load_failed');
+    }
+
+    return roleItem;
+  });
+};
+
+const buildCreateRoleDbWriteFailureBody = (requestId?: string): ApiErrorResponse => ({
+  error: {
+    code: 'conflict',
+    message: 'Rolle konnte nicht erstellt werden.',
+    details: {
+      syncState: 'failed',
+      syncError: { code: 'DB_WRITE_FAILED' },
+    },
+  },
+  ...(requestId ? { requestId } : {}),
+});
 
 export const createRoleInternal = async (
   request: Request,
   ctx: AuthenticatedRequestContext
 ): Promise<Response> => {
-  const requestContext = getWorkspaceContext();
-  const featureCheck = ensureFeature(getFeatureFlags(), 'iam_admin', requestContext.requestId);
-  if (featureCheck) {
-    return featureCheck;
-  }
-  const roleCheck = requireRoles(ctx, SYSTEM_ADMIN_ROLES, requestContext.requestId);
-  if (roleCheck) {
-    return roleCheck;
-  }
-  const actorResolution = await resolveActorInfo(request, ctx, { requireActorMembership: true });
-  if ('error' in actorResolution) {
-    return actorResolution.error;
-  }
-  if (!actorResolution.actor.actorAccountId) {
-    return createApiError(
-      403,
-      'forbidden',
-      'Akteur-Account nicht gefunden.',
-      actorResolution.actor.requestId,
-      createActorResolutionDetails({
-        actorResolution: 'missing_actor_account',
-        instanceId: actorResolution.actor.instanceId,
-      })
-    );
+  const resolvedActor = await resolveRoleMutationActor(request, ctx);
+  if ('response' in resolvedActor) {
+    return resolvedActor.response;
   }
 
-  const csrfError = validateCsrf(request, actorResolution.actor.requestId);
-  if (csrfError) {
-    return csrfError;
-  }
-
-  const rateLimit = consumeRateLimit({
-    instanceId: actorResolution.actor.instanceId,
-    actorKeycloakSubject: ctx.user.id,
-    scope: 'write',
-    requestId: actorResolution.actor.requestId,
-  });
-  if (rateLimit) {
-    return rateLimit;
-  }
-
-  const idempotencyKey = requireIdempotencyKey(request, actorResolution.actor.requestId);
+  const { actor } = resolvedActor;
+  const idempotencyKey = requireIdempotencyKey(request, actor.requestId);
   if ('error' in idempotencyKey) {
     return idempotencyKey.error;
   }
 
   const parsed = await parseRequestBody(request, createRoleSchema);
   if (!parsed.ok) {
-    return createApiError(400, 'invalid_request', 'Ungültiger Payload.', actorResolution.actor.requestId);
+    return createApiError(400, 'invalid_request', 'Ungültiger Payload.', actor.requestId);
   }
 
   const reserve = await reserveIdempotency({
-    instanceId: actorResolution.actor.instanceId,
-    actorAccountId: actorResolution.actor.actorAccountId,
-    endpoint: 'POST:/api/v1/iam/roles',
+    instanceId: actor.instanceId,
+    actorAccountId: actor.actorAccountId,
+    endpoint: CREATE_ROLE_ENDPOINT,
     idempotencyKey: idempotencyKey.key,
     payloadHash: toPayloadHash(parsed.rawBody),
   });
@@ -104,26 +219,14 @@ export const createRoleInternal = async (
     return jsonResponse(reserve.responseStatus, reserve.responseBody);
   }
   if (reserve.status === 'conflict') {
-    return createApiError(409, 'idempotency_key_reuse', reserve.message, actorResolution.actor.requestId);
+    return createApiError(409, 'idempotency_key_reuse', reserve.message, actor.requestId);
   }
 
-  const identityProvider = resolveIdentityProvider();
-  if (!identityProvider) {
-    const responseBody = {
-      error: {
-        code: 'keycloak_unavailable',
-        message: 'Keycloak Admin API ist nicht konfiguriert.',
-        details: {
-          syncState: 'failed',
-          syncError: { code: 'IDP_UNAVAILABLE' },
-        },
-      },
-      ...(actorResolution.actor.requestId ? { requestId: actorResolution.actor.requestId } : {}),
-    } satisfies ApiErrorResponse;
-    await completeIdempotency({
-      instanceId: actorResolution.actor.instanceId,
-      actorAccountId: actorResolution.actor.actorAccountId,
-      endpoint: 'POST:/api/v1/iam/roles',
+  const identityProvider = requireRoleIdentityProvider(actor.requestId);
+  if (identityProvider instanceof Response) {
+    const responseBody = buildCreateRoleUnavailableBody(actor.requestId);
+    await completeCreateRoleIdempotency({
+      actor,
       idempotencyKey: idempotencyKey.key,
       status: 'FAILED',
       responseStatus: 503,
@@ -142,124 +245,31 @@ export const createRoleInternal = async (
       identityProvider.provider.createRole({
         externalName: externalRoleName,
         description: parsed.data.description ?? undefined,
-        attributes: {
-          managedBy: 'studio',
-          instanceId: actorResolution.actor.instanceId,
+        attributes: buildRoleAttributes({
+          instanceId: actor.instanceId,
           roleKey,
           displayName,
-        },
+        }),
       })
     );
     createdInIdentityProvider = true;
 
-    const role = await withInstanceScopedDb(actorResolution.actor.instanceId, async (client) => {
-      const inserted = await client.query<{ id: string }>(
-        `
-INSERT INTO iam.roles (
-  instance_id,
-  role_key,
-  role_name,
-  display_name,
-  external_role_name,
-  description,
-  is_system_role,
-  role_level,
-  managed_by,
-  sync_state,
-  last_synced_at,
-  last_error_code
-)
-VALUES ($1, $2, $3, $4, $5, $6, false, $7, 'studio', 'synced', NOW(), NULL)
-RETURNING id;
-`,
-        [
-          actorResolution.actor.instanceId,
-          roleKey,
-          roleKey,
-          displayName,
-          externalRoleName,
-          parsed.data.description ?? null,
-          parsed.data.roleLevel,
-        ]
-      );
-      const roleId = inserted.rows[0]?.id;
-      if (!roleId) {
-        throw new Error('conflict');
-      }
-
-      if (parsed.data.permissionIds.length > 0) {
-        await client.query(
-          `
-INSERT INTO iam.role_permissions (instance_id, role_id, permission_id)
-SELECT $1, $2::uuid, permission_id
-FROM unnest($3::uuid[]) AS permission_id
-ON CONFLICT (instance_id, role_id, permission_id) DO NOTHING;
-`,
-          [actorResolution.actor.instanceId, roleId, parsed.data.permissionIds]
-        );
-      }
-
-      await emitRoleAuditEvent(client, {
-        instanceId: actorResolution.actor.instanceId,
-        accountId: actorResolution.actor.actorAccountId,
-        roleId,
-        eventType: 'role.sync_started',
-        operation: 'create',
-        result: 'success',
-        roleKey,
-        externalRoleName,
-        requestId: actorResolution.actor.requestId,
-        traceId: actorResolution.actor.traceId,
-      });
-
-      await emitActivityLog(client, {
-        instanceId: actorResolution.actor.instanceId,
-        accountId: actorResolution.actor.actorAccountId,
-        eventType: 'role.created',
-        result: 'success',
-        payload: {
-          role_id: roleId,
-          role_key: roleKey,
-          display_name: displayName,
-        },
-        requestId: actorResolution.actor.requestId,
-        traceId: actorResolution.actor.traceId,
-      });
-
-      await emitRoleAuditEvent(client, {
-        instanceId: actorResolution.actor.instanceId,
-        accountId: actorResolution.actor.actorAccountId,
-        roleId,
-        eventType: 'role.sync_succeeded',
-        operation: 'create',
-        result: 'success',
-        roleKey,
-        externalRoleName,
-        requestId: actorResolution.actor.requestId,
-        traceId: actorResolution.actor.traceId,
-      });
-
-      await notifyPermissionInvalidation(client, {
-        instanceId: actorResolution.actor.instanceId,
-        trigger: 'role_created',
-      });
-
-      const roleItem = await loadRoleListItemById(client, {
-        instanceId: actorResolution.actor.instanceId,
-        roleId,
-      });
-      if (!roleItem) {
-        throw new Error('role_load_failed');
-      }
-      return roleItem;
+    const role = await persistCreatedRole({
+      actor,
+      roleKey,
+      displayName,
+      externalRoleName,
+      description: parsed.data.description ?? undefined,
+      roleLevel: parsed.data.roleLevel,
+      permissionIds: parsed.data.permissionIds,
     });
+
     iamUserOperationsCounter.add(1, { action: 'create_role', result: 'success' });
     iamRoleSyncCounter.add(1, { operation: 'create', result: 'success', error_code: 'none' });
-    const responseBody = asApiItem(role, actorResolution.actor.requestId);
-    await completeIdempotency({
-      instanceId: actorResolution.actor.instanceId,
-      actorAccountId: actorResolution.actor.actorAccountId,
-      endpoint: 'POST:/api/v1/iam/roles',
+
+    const responseBody = asApiItem(role, actor.requestId);
+    await completeCreateRoleIdempotency({
+      actor,
       idempotencyKey: idempotencyKey.key,
       status: 'COMPLETED',
       responseStatus: 201,
@@ -280,9 +290,9 @@ ON CONFLICT (instance_id, role_id, permission_id) DO NOTHING;
         });
         logger.error('Role create compensation failed', {
           operation: 'create_role_compensation',
-          instance_id: actorResolution.actor.instanceId,
-          request_id: actorResolution.actor.requestId,
-          trace_id: actorResolution.actor.traceId,
+          instance_id: actor.instanceId,
+          request_id: actor.requestId,
+          trace_id: actor.traceId,
           role_key: roleKey,
           external_role_name: externalRoleName,
           error_code: 'COMPENSATION_FAILED',
@@ -292,16 +302,14 @@ ON CONFLICT (instance_id, role_id, permission_id) DO NOTHING;
           500,
           'internal_error',
           'Rolle konnte nicht konsistent erstellt werden.',
-          actorResolution.actor.requestId,
+          actor.requestId,
           {
             syncState: 'failed',
             syncError: { code: 'COMPENSATION_FAILED' },
           }
         );
-        await completeIdempotency({
-          instanceId: actorResolution.actor.instanceId,
-          actorAccountId: actorResolution.actor.actorAccountId,
-          endpoint: 'POST:/api/v1/iam/roles',
+        await completeCreateRoleIdempotency({
+          actor,
           idempotencyKey: idempotencyKey.key,
           status: 'FAILED',
           responseStatus: 500,
@@ -315,21 +323,9 @@ ON CONFLICT (instance_id, role_id, permission_id) DO NOTHING;
         result: 'failure',
         error_code: 'DB_WRITE_FAILED',
       });
-      const responseBody = {
-        error: {
-          code: 'conflict',
-          message: 'Rolle konnte nicht erstellt werden.',
-          details: {
-            syncState: 'failed',
-            syncError: { code: 'DB_WRITE_FAILED' },
-          },
-        },
-        ...(actorResolution.actor.requestId ? { requestId: actorResolution.actor.requestId } : {}),
-      } satisfies ApiErrorResponse;
-      await completeIdempotency({
-        instanceId: actorResolution.actor.instanceId,
-        actorAccountId: actorResolution.actor.actorAccountId,
-        endpoint: 'POST:/api/v1/iam/roles',
+      const responseBody = buildCreateRoleDbWriteFailureBody(actor.requestId);
+      await completeCreateRoleIdempotency({
+        actor,
         idempotencyKey: idempotencyKey.key,
         status: 'FAILED',
         responseStatus: 409,
@@ -339,20 +335,18 @@ ON CONFLICT (instance_id, role_id, permission_id) DO NOTHING;
     }
 
     iamUserOperationsCounter.add(1, { action: 'create_role', result: 'failure' });
-    const failureResponse = buildRoleSyncFailure({
-      error,
-      requestId: actorResolution.actor.requestId,
-      fallbackMessage: 'Rolle konnte nicht erstellt werden.',
-    });
     iamRoleSyncCounter.add(1, {
       operation: 'create',
       result: 'failure',
       error_code: mapRoleSyncErrorCode(error),
     });
-    await completeIdempotency({
-      instanceId: actorResolution.actor.instanceId,
-      actorAccountId: actorResolution.actor.actorAccountId,
-      endpoint: 'POST:/api/v1/iam/roles',
+    const failureResponse = buildRoleSyncFailure({
+      error,
+      requestId: actor.requestId,
+      fallbackMessage: 'Rolle konnte nicht erstellt werden.',
+    });
+    await completeCreateRoleIdempotency({
+      actor,
       idempotencyKey: idempotencyKey.key,
       status: 'FAILED',
       responseStatus: failureResponse.status,

@@ -51,13 +51,17 @@ export const recordPermissionCacheRecompute = (nowMs = Date.now()): void => {
 export const getPermissionCacheHealth = (nowMs = Date.now()) => {
   pruneRecomputeTimestamps(nowMs);
   const recomputePerMinute = permissionCacheRuntimeState.recomputeTimestampsMs.length;
-  const status =
-    permissionCacheRuntimeState.consecutiveRedisFailures >= CACHE_FAILED_REDIS_FAILURE_THRESHOLD
-      ? 'failed'
-      : permissionCacheRuntimeState.lastRedisLatencyMs > CACHE_DEGRADED_LATENCY_MS ||
-          recomputePerMinute > CACHE_DEGRADED_RECOMPUTE_THRESHOLD
-        ? 'degraded'
-        : 'ready';
+  const hasFailedRedis =
+    permissionCacheRuntimeState.consecutiveRedisFailures >= CACHE_FAILED_REDIS_FAILURE_THRESHOLD;
+  const hasDegradedLatency = permissionCacheRuntimeState.lastRedisLatencyMs > CACHE_DEGRADED_LATENCY_MS;
+  const hasFrequentRecomputes = recomputePerMinute > CACHE_DEGRADED_RECOMPUTE_THRESHOLD;
+
+  let status: 'failed' | 'degraded' | 'ready' = 'ready';
+  if (hasFailedRedis) {
+    status = 'failed';
+  } else if (hasDegradedLatency || hasFrequentRecomputes) {
+    status = 'degraded';
+  }
 
   return {
     status,

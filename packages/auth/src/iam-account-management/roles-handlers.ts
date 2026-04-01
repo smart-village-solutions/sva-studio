@@ -10,9 +10,6 @@ import { classifyIamDiagnosticError } from './diagnostics.js';
 import { ensureFeature, getFeatureFlags } from './feature-flags.js';
 import { consumeRateLimit } from './rate-limit.js';
 import { loadRoleListItems } from './role-query.js';
-import { createRoleInternal } from './roles-handlers.create.js';
-import { deleteRoleInternal } from './roles-handlers.delete.js';
-import { updateRoleInternal } from './roles-handlers.update.js';
 import { requireRoles, resolveActorInfo } from './shared-actor-resolution.js';
 import { withInstanceScopedDb } from './shared-runtime.js';
 
@@ -155,4 +152,6 @@ export const listPermissionsInternal = async (
   }
 };
 
-export { createRoleInternal, deleteRoleInternal, updateRoleInternal };
+export { createRoleInternal } from './roles-handlers.create.js';
+export { deleteRoleInternal } from './roles-handlers.delete.js';
+export { updateRoleInternal } from './roles-handlers.update.js';

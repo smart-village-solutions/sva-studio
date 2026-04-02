@@ -8,10 +8,8 @@
  * Fehler beim App-Start.
  */
 
+import { classifyHost, isValidInstanceId, normalizeHost } from '@sva/core';
 import { createSdkLogger } from '../logger/index.server.js';
-
-const INSTANCE_ID_REGEX = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
-const PUNYCODE_PREFIX = 'xn--';
 const logger = createSdkLogger({
   component: 'instance-config',
   level: 'info',
@@ -60,14 +58,8 @@ function loadAndValidateInstanceConfig(): InstanceConfig | null {
     : [];
 
   for (const id of ids) {
-    if (id.startsWith(PUNYCODE_PREFIX)) {
-      throwInvalidInstanceId(
-        id,
-        'IDN/Punycode-Labels (xn--) sind nicht erlaubt.'
-      );
-    }
-    if (!INSTANCE_ID_REGEX.test(id)) {
-      throwInvalidInstanceId(id, `Erlaubtes Muster: ${INSTANCE_ID_REGEX.source}`);
+    if (!isValidInstanceId(id)) {
+      throwInvalidInstanceId(id, 'Erlaubtes Muster: lowercase DNS-Label ohne Punycode.');
     }
   }
 
@@ -89,36 +81,16 @@ export function parseInstanceIdFromHost(host: string): string | null {
   const config = getInstanceConfig();
   if (!config) return null;
 
-  const normalized = normalizeHost(host);
-
-  if (normalized === config.parentDomain) {
+  const classification = classifyHost(host, config.parentDomain);
+  if (classification.kind !== 'tenant') {
     return null;
   }
 
-  const suffix = `.${config.parentDomain}`;
-  if (!normalized.endsWith(suffix)) {
+  if (!config.allowedInstanceIds.has(classification.instanceId)) {
     return null;
   }
 
-  const subdomain = normalized.slice(0, -suffix.length);
-
-  if (subdomain.includes('.')) {
-    return null;
-  }
-
-  if (subdomain.startsWith(PUNYCODE_PREFIX)) {
-    return null;
-  }
-
-  if (!INSTANCE_ID_REGEX.test(subdomain)) {
-    return null;
-  }
-
-  if (!config.allowedInstanceIds.has(subdomain)) {
-    return null;
-  }
-
-  return subdomain;
+  return classification.instanceId;
 }
 
 /**
@@ -137,14 +109,4 @@ function throwInvalidInstanceId(id: string, reason: string): never {
     reason,
   });
   throw new Error(`[InstanceConfig] Ungültige instanceId "${id}": ${reason}`);
-}
-
-function normalizeHost(host: string): string {
-  const hostWithoutPort = host.toLowerCase().split(':')[0] ?? '';
-  // Trailing dots ohne Regex entfernen, um ReDoS-Warnungen auf unkontrollierten Inputs zu vermeiden.
-  let end = hostWithoutPort.length;
-  while (end > 0 && hostWithoutPort[end - 1] === '.') {
-    end -= 1;
-  }
-  return hostWithoutPort.slice(0, end);
 }

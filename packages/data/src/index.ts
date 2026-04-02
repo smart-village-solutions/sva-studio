@@ -5,6 +5,7 @@ export * from './iam/repositories';
 export * from './iam/seed-plan';
 export * from './iam/types';
 export * from './integrations/instance-integrations';
+export * from './instance-registry';
 
 type CacheEntry<T> = {
   value: T;

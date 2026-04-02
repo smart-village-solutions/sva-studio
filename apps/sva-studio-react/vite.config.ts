@@ -19,6 +19,13 @@ const tanstackDevtoolsEnabled =
   process.env.VITE_ENABLE_TANSTACK_DEVTOOLS === 'true' &&
   process.env.CI !== 'true' &&
   process.env.PLAYWRIGHT_TEST !== 'true';
+const configuredParentDomain = process.env.SVA_PARENT_DOMAIN?.trim().toLowerCase();
+const allowedHosts = [
+  'localhost',
+  '127.0.0.1',
+  '.lvh.me',
+  ...(configuredParentDomain ? [configuredParentDomain, `.${configuredParentDomain}`] : []),
+];
 
 const tanstackStartClientEnvCompatPlugin = () => ({
   name: 'tanstack-start-client-env-compat',
@@ -54,6 +61,7 @@ const config = defineConfig({
   server: {
     // Disable HMR in this TanStack Start SSR setup to avoid React preamble runtime crashes.
     hmr: false,
+    allowedHosts,
     fs: {
       // Nx restricts dev-server access to the app root. TanStack Start resolves
       // its virtual client/server entries into workspace-level pnpm store paths.

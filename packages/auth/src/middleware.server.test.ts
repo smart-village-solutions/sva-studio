@@ -10,6 +10,11 @@ const middlewareLogger = vi.hoisted(() => ({
   error: vi.fn(),
 }));
 const withLegalTextComplianceMock = vi.hoisted(() => vi.fn());
+const loadInstanceByHostnameMock = vi.hoisted(() => vi.fn(async () => null));
+const instanceConfigState = vi.hoisted(() => ({
+  canonicalAuthHost: 'studio.example.org',
+  parentDomain: 'studio.example.org',
+}));
 const workspaceContext = vi.hoisted(() => ({
   workspaceId: 'default',
   requestId: 'req-middleware',
@@ -24,6 +29,7 @@ vi.mock('./config', () => ({
 
 vi.mock('@sva/sdk/server', () => ({
   createSdkLogger: () => middlewareLogger,
+  getInstanceConfig: () => instanceConfigState,
   getWorkspaceContext: () => workspaceContext,
   parseInstanceIdFromHost: (host: string) => (host.startsWith('hb-meinquartier.') ? 'hb-meinquartier' : null),
   toJsonErrorResponse: (status: number, code: string, publicMessage?: string, options?: { requestId?: string }) =>
@@ -43,6 +49,10 @@ vi.mock('@sva/sdk/server', () => ({
     ),
 }));
 
+vi.mock('@sva/data/server', () => ({
+  loadInstanceByHostname: loadInstanceByHostnameMock,
+}));
+
 vi.mock('./auth.server', () => ({
   getSessionUser: getSessionUserMock,
 }));
@@ -55,6 +65,9 @@ describe('withAuthenticatedUser', () => {
   beforeEach(() => {
     vi.unstubAllEnvs();
     vi.resetAllMocks();
+    loadInstanceByHostnameMock.mockResolvedValue(null);
+    instanceConfigState.canonicalAuthHost = 'studio.example.org';
+    instanceConfigState.parentDomain = 'studio.example.org';
     workspaceContext.workspaceId = 'default';
     workspaceContext.requestId = 'req-middleware';
     workspaceContext.traceId = 'trace-middleware';
@@ -64,6 +77,8 @@ describe('withAuthenticatedUser', () => {
   });
 
   it('returns 401 when session cookie is missing', async () => {
+    instanceConfigState.canonicalAuthHost = 'localhost';
+    instanceConfigState.parentDomain = 'localhost';
     const { withAuthenticatedUser } = await import('./middleware.server');
     const request = new Request('http://localhost/auth/me');
 
@@ -83,6 +98,8 @@ describe('withAuthenticatedUser', () => {
   });
 
   it('returns 401 when session is invalid', async () => {
+    instanceConfigState.canonicalAuthHost = 'localhost';
+    instanceConfigState.parentDomain = 'localhost';
     getSessionUserMock.mockResolvedValue(null);
     const { withAuthenticatedUser } = await import('./middleware.server');
     const request = new Request('http://localhost/auth/me', {
@@ -105,6 +122,8 @@ describe('withAuthenticatedUser', () => {
   });
 
   it('passes authenticated user to handler', async () => {
+    instanceConfigState.canonicalAuthHost = 'localhost';
+    instanceConfigState.parentDomain = 'localhost';
     getSessionUserMock.mockResolvedValue({
       id: 'user-1',
       name: 'Max',
@@ -128,6 +147,18 @@ describe('withAuthenticatedUser', () => {
   });
 
   it('derives a missing session instance id from the request host', async () => {
+    instanceConfigState.canonicalAuthHost = 'studio.smart-village.app';
+    instanceConfigState.parentDomain = 'studio.smart-village.app';
+    loadInstanceByHostnameMock.mockResolvedValue({
+      instanceId: 'hb-meinquartier',
+      displayName: 'HB Meinquartier',
+      status: 'active',
+      parentDomain: 'studio.smart-village.app',
+      primaryHostname: 'hb-meinquartier.studio.smart-village.app',
+      featureFlags: {},
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    });
     getSessionUserMock.mockResolvedValue({
       id: 'user-host-instance',
       name: 'Host Derived',
@@ -157,6 +188,8 @@ describe('withAuthenticatedUser', () => {
   });
 
   it('enforces legal text compliance on protected IAM routes', async () => {
+    instanceConfigState.canonicalAuthHost = 'localhost';
+    instanceConfigState.parentDomain = 'localhost';
     getSessionUserMock.mockResolvedValue({
       id: 'user-2',
       name: 'Erika',
@@ -180,6 +213,8 @@ describe('withAuthenticatedUser', () => {
   });
 
   it('logs session diagnostics for self-service profile requests when debug mode is enabled', async () => {
+    instanceConfigState.canonicalAuthHost = 'localhost';
+    instanceConfigState.parentDomain = 'localhost';
     vi.stubEnv('IAM_DEBUG_PROFILE_ERRORS', 'true');
     getSessionUserMock.mockResolvedValue({
       id: 'user-profile-debug',
@@ -208,6 +243,8 @@ describe('withAuthenticatedUser', () => {
   });
 
   it('skips legal text compliance for acceptance workflow operations', async () => {
+    instanceConfigState.canonicalAuthHost = 'localhost';
+    instanceConfigState.parentDomain = 'localhost';
     getSessionUserMock.mockResolvedValue({
       id: 'user-3',
       name: 'Jule',
@@ -235,6 +272,8 @@ describe('withAuthenticatedUser', () => {
   });
 
   it('returns the configured mock user when mock auth is enabled', async () => {
+    instanceConfigState.canonicalAuthHost = 'localhost';
+    instanceConfigState.parentDomain = 'localhost';
     vi.stubEnv('SVA_MOCK_AUTH', 'true');
     const { withAuthenticatedUser } = await import('./middleware.server');
     const request = new Request('http://localhost/auth/me');
@@ -252,13 +291,24 @@ describe('withAuthenticatedUser', () => {
       user: {
         id: 'seed:system_admin',
         instanceId: 'de-musterhausen',
-        roles: ['system_admin', 'iam_admin', 'support_admin', 'security_admin', 'interface_manager', 'app_manager', 'editor'],
+        roles: [
+          'system_admin',
+          'iam_admin',
+          'support_admin',
+          'security_admin',
+          'instance_registry_admin',
+          'interface_manager',
+          'app_manager',
+          'editor',
+        ],
       },
     });
     expect(getSessionUserMock).not.toHaveBeenCalled();
   });
 
   it('skips legal text compliance for exempt auth paths', async () => {
+    instanceConfigState.canonicalAuthHost = 'localhost';
+    instanceConfigState.parentDomain = 'localhost';
     getSessionUserMock.mockResolvedValue({
       id: 'user-auth-exempt',
       roles: ['admin'],
@@ -276,6 +326,8 @@ describe('withAuthenticatedUser', () => {
   });
 
   it('skips legal text compliance for pending legal text self-service endpoint', async () => {
+    instanceConfigState.canonicalAuthHost = 'localhost';
+    instanceConfigState.parentDomain = 'localhost';
     getSessionUserMock.mockResolvedValue({
       id: 'user-legal-pending',
       name: 'Legal Pending',
@@ -294,6 +346,8 @@ describe('withAuthenticatedUser', () => {
   });
 
   it('skips legal text compliance for legal text self-service subpaths', async () => {
+    instanceConfigState.canonicalAuthHost = 'localhost';
+    instanceConfigState.parentDomain = 'localhost';
     getSessionUserMock.mockResolvedValue({
       id: 'user-legal-pending-subpath',
       name: 'Legal Pending Subpath',
@@ -312,6 +366,8 @@ describe('withAuthenticatedUser', () => {
   });
 
   it('skips legal text compliance for legal text admin endpoints', async () => {
+    instanceConfigState.canonicalAuthHost = 'localhost';
+    instanceConfigState.parentDomain = 'localhost';
     getSessionUserMock.mockResolvedValue({
       id: 'user-legal-admin',
       name: 'Legal Admin',
@@ -335,6 +391,8 @@ describe('withAuthenticatedUser', () => {
   });
 
   it('skips legal text compliance for legal text admin detail endpoints', async () => {
+    instanceConfigState.canonicalAuthHost = 'localhost';
+    instanceConfigState.parentDomain = 'localhost';
     getSessionUserMock.mockResolvedValue({
       id: 'user-legal-admin-detail',
       name: 'Legal Admin Detail',
@@ -358,6 +416,8 @@ describe('withAuthenticatedUser', () => {
   });
 
   it('enforces legal text compliance for non-exempt governance workflow operations', async () => {
+    instanceConfigState.canonicalAuthHost = 'localhost';
+    instanceConfigState.parentDomain = 'localhost';
     getSessionUserMock.mockResolvedValue({
       id: 'user-governance-enforced',
       name: 'Governance User',
@@ -386,6 +446,8 @@ describe('withAuthenticatedUser', () => {
   });
 
   it('enforces legal text compliance for iam authorize endpoint', async () => {
+    instanceConfigState.canonicalAuthHost = 'localhost';
+    instanceConfigState.parentDomain = 'localhost';
     getSessionUserMock.mockResolvedValue({
       id: 'user-authorize',
       name: 'Authorize User',
@@ -414,6 +476,8 @@ describe('withAuthenticatedUser', () => {
   });
 
   it('returns legal text enforcement errors unchanged on protected routes', async () => {
+    instanceConfigState.canonicalAuthHost = 'localhost';
+    instanceConfigState.parentDomain = 'localhost';
     getSessionUserMock.mockResolvedValue({
       id: 'user-enforcement-error',
       name: 'Enforcement Error',
@@ -444,6 +508,8 @@ describe('withAuthenticatedUser', () => {
   });
 
   it('returns a flat json 500 and logs correlation ids when session resolution throws', async () => {
+    instanceConfigState.canonicalAuthHost = 'localhost';
+    instanceConfigState.parentDomain = 'localhost';
     getSessionUserMock.mockRejectedValue(new Error('boom'));
     const { withAuthenticatedUser } = await import('./middleware.server');
     const request = new Request('http://localhost/auth/me', {
@@ -470,6 +536,8 @@ describe('withAuthenticatedUser', () => {
   });
 
   it('logs undefined correlation ids without follow-up failures when request context is missing', async () => {
+    instanceConfigState.canonicalAuthHost = 'localhost';
+    instanceConfigState.parentDomain = 'localhost';
     getSessionUserMock.mockRejectedValue('boom');
     workspaceContext.requestId = undefined;
     workspaceContext.traceId = undefined;
@@ -494,5 +562,56 @@ describe('withAuthenticatedUser', () => {
         error_message: 'boom',
       })
     );
+  });
+
+  it('rejects unknown tenant hosts fail-closed before session lookup', async () => {
+    instanceConfigState.canonicalAuthHost = 'studio.example.org';
+    instanceConfigState.parentDomain = 'studio.example.org';
+    loadInstanceByHostnameMock.mockResolvedValue(null);
+
+    const { withAuthenticatedUser } = await import('./middleware.server');
+    const response = await withAuthenticatedUser(
+      new Request('https://blocked.studio.example.org/auth/me', {
+        headers: { cookie: 'sva_auth_session=session-blocked' },
+      }),
+      () => new Response('ok')
+    );
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({
+      error: 'forbidden',
+      message: 'Host not permitted for this operation',
+    });
+    expect(getSessionUserMock).not.toHaveBeenCalled();
+  });
+
+  it('rejects suspended tenant hosts with the same public response as unknown hosts', async () => {
+    instanceConfigState.canonicalAuthHost = 'studio.example.org';
+    instanceConfigState.parentDomain = 'studio.example.org';
+    loadInstanceByHostnameMock.mockResolvedValue({
+      instanceId: 'hb',
+      displayName: 'HB',
+      status: 'suspended',
+      parentDomain: 'studio.example.org',
+      primaryHostname: 'hb.studio.example.org',
+      featureFlags: {},
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    });
+
+    const { withAuthenticatedUser } = await import('./middleware.server');
+    const response = await withAuthenticatedUser(
+      new Request('https://hb.studio.example.org/auth/me', {
+        headers: { cookie: 'sva_auth_session=session-suspended' },
+      }),
+      () => new Response('ok')
+    );
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({
+      error: 'forbidden',
+      message: 'Host not permitted for this operation',
+    });
+    expect(getSessionUserMock).not.toHaveBeenCalled();
   });
 });

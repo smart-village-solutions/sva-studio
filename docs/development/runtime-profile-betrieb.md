@@ -6,7 +6,7 @@ Dieses Runbook definiert die drei offiziellen Betriebsprofile für SVA Studio un
 
 - `local-keycloak`: lokaler Betrieb auf `http://localhost:3000` mit Test-Realm
 - `local-builder`: lokaler Betrieb auf `http://localhost:3000` mit Builder.io und Mock-User
-- `acceptance-hb`: Serverbetrieb auf `https://hb-meinquartier.studio.smart-village.app`
+- `acceptance-hb`: Serverbetrieb mit Root-Host `https://studio.smart-village.app` und registry-gesteuerten Tenant-Hosts unter `https://<instanceId>.studio.smart-village.app`
 
 Die kanonischen Profildefinitionen liegen unter `config/runtime/`. Sensible oder standortspezifische Werte werden optional in `config/runtime/<profil>.local.vars` übersteuert.
 
@@ -77,6 +77,8 @@ pnpm env:down:local-keycloak
 ```
 
 Für zusätzliche lokale Instanzen oder zweite lokale Datenbanken ist `../guides/lokale-instanz-db-initialisierung.md` der kanonische Bootstrap-Pfad.
+
+Für lokale Multi-Tenant-Hosttests ist `../guides/instance-registry-local-development.md` der kanonische Pfad. Offiziell unterstützt sind `studio.lvh.me` und `<instanceId>.studio.lvh.me`.
 
 ### Lokal mit Builder.io
 
@@ -187,8 +189,10 @@ Alle Profile prüfen mindestens:
 Zusatzprüfungen:
 
 - lokal: OTEL Collector `http://127.0.0.1:13133/healthz`
+- lokal im Multi-Tenant-Pfad: Root-Host `studio.lvh.me`, Tenant-Host `hb.studio.lvh.me` und fail-closed-Fall `blocked.studio.lvh.me`
 - Acceptance: Container-Status für `app`, `redis`, `postgres`, `otel-collector`
-- Acceptance: öffentliche Smoke-Probes gegen `/`, `/health/live`, `/health/ready`, `/auth/login`, `/api/v1/iam/me/context`
+- Acceptance: öffentliche Smoke-Probes gegen Root-Host `/`, `/health/live`, `/health/ready`, `/auth/login`, `/api/v1/iam/me/context`
+- Acceptance: mindestens ein aktiver Tenant-Host und ein negativer Host-Fall gegen dieselbe App-Instanz
 
 `smoke` validiert zusätzlich den kritischen IAM-Schema-Stand. Fehlende Tabellen, Indizes oder RLS-Policies gelten als deterministischer Fehler und werden als maschinenlesbarer Drift gemeldet.
 

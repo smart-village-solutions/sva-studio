@@ -47,7 +47,16 @@ const isMockAuthEnabled = async () => {
 };
 
 const createMockRouteGuardUser = (): RouteGuardUser => ({
-  roles: ['system_admin', 'iam_admin', 'support_admin', 'security_admin', 'interface_manager', 'app_manager', 'editor'],
+  roles: [
+    'system_admin',
+    'iam_admin',
+    'support_admin',
+    'security_admin',
+    'instance_registry_admin',
+    'interface_manager',
+    'app_manager',
+    'editor',
+  ],
 });
 
 const readRouteGuardUser = (payload: unknown): RouteGuardUser => {

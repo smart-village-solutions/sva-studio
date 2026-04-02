@@ -15,6 +15,7 @@ import {
   IconGauge,
   IconHeadset,
   IconHelpCircle,
+  IconHierarchy3,
   IconLayoutDashboard,
   IconPackages,
   IconPhoto,
@@ -31,6 +32,7 @@ import React from 'react';
 import { t } from '../i18n';
 import {
   hasIamAdminRole,
+  hasInstanceRegistryAdminRole,
   hasInterfacesAccessRole,
   hasSystemAdminRole,
   isIamAdminEnabled,
@@ -472,6 +474,7 @@ export default function Sidebar({ isLoading = false, isMobileOpen = false, onMob
   const canAccessWorkspace = isAuthenticated && isIamUiEnabled();
   const canAccessAdminUsers = isAuthenticated && isIamAdminEnabled() && hasIamAdminRole(user);
   const canAccessAdminOrganizations = canAccessAdminUsers;
+  const canAccessAdminInstances = isAuthenticated && isIamAdminEnabled() && hasInstanceRegistryAdminRole(user);
   const canAccessAdminRoles = canAccessAdminUsers && hasSystemAdminRole(user);
   const canAccessAdminPrivacy = canAccessAdminUsers;
   const canAccessInterfaces = isAuthenticated && isIamUiEnabled() && hasInterfacesAccessRole(user);
@@ -571,6 +574,17 @@ export default function Sidebar({ isLoading = false, isMobileOpen = false, onMob
               to: '/admin/organizations',
               label: t('shell.sidebar.organizations'),
               icon: IconBuildingCommunity,
+            },
+          ]
+        : []),
+      ...(canAccessAdminInstances
+        ? [
+            {
+              kind: 'link' as const,
+              id: 'instances',
+              to: '/admin/instances',
+              label: t('shell.sidebar.instances'),
+              icon: IconHierarchy3,
             },
           ]
         : []),
@@ -682,6 +696,7 @@ export default function Sidebar({ isLoading = false, isMobileOpen = false, onMob
     ];
   }, [
     canAccessAdminOrganizations,
+    canAccessAdminInstances,
     canAccessAdminPrivacy,
     canAccessAdminRoles,
     canAccessAdminUsers,

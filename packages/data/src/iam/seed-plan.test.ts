@@ -4,8 +4,8 @@ import assert from 'node:assert/strict';
 import { getPersonaSeed, iamSeedPlan } from './seed-plan';
 
 describe('iam seed plan', () => {
-  it('contains exactly seven personas', () => {
-    assert.equal(iamSeedPlan.personas.length, 7);
+  it('contains exactly eight personas', () => {
+    assert.equal(iamSeedPlan.personas.length, 8);
   });
 
   it('uses unique role slugs and keycloak subjects', () => {
@@ -29,6 +29,13 @@ describe('iam seed plan', () => {
     assert.equal(editor.roleSlug, 'editor');
     assert.equal(editor.roleLevel, 30);
     assert.deepEqual(editor.permissionKeys, ['content.read', 'content.create', 'content.update']);
+  });
+
+  it('includes the global instance registry administrator persona', () => {
+    const registryAdmin = getPersonaSeed('instance_registry_admin');
+
+    assert.equal(registryAdmin.roleSlug, 'instance_registry_admin');
+    assert.ok(registryAdmin.permissionKeys.includes('instance.registry.manage'));
   });
 
   it('contains hierarchical organizations for context-switch scenarios', () => {

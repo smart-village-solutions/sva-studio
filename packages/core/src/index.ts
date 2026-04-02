@@ -25,4 +25,25 @@ export type {
 } from './content-management.js';
 export * from './routing/registry.js';
 export * from './iam/index.js';
+export {
+  buildPrimaryHostname,
+  canTransitionInstanceStatus,
+  classifyHost,
+  instanceStatuses,
+  isInstanceStatus,
+  isTrafficEnabledInstanceStatus,
+  isValidHostname,
+  isValidInstanceId,
+  isValidParentDomain,
+  normalizeHost,
+  trafficEnabledInstanceStatuses,
+} from './instances/registry.js';
+export type {
+  HostClassification,
+  InstanceAuditEvent,
+  InstanceProvisioningOperation,
+  InstanceProvisioningRun,
+  InstanceRegistryRecord,
+  TrafficEnabledInstanceStatus,
+} from './instances/registry.js';
 export { maskEmailAddresses } from './security/email-redaction.js';

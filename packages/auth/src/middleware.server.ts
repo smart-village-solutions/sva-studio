@@ -1,5 +1,8 @@
 import { parse as parseCookie } from 'cookie-es';
-import { createSdkLogger, parseInstanceIdFromHost, toJsonErrorResponse } from '@sva/sdk/server';
+import { createSdkLogger, getInstanceConfig, parseInstanceIdFromHost, toJsonErrorResponse } from '@sva/sdk/server';
+import { classifyHost } from '@sva/core';
+import { loadInstanceByHostname } from '@sva/data/server';
+import { isTrafficEnabledInstanceStatus } from '@sva/core';
 
 import { getSessionUser } from './auth.server.js';
 import { getAuthConfig } from './config.js';
@@ -18,6 +21,12 @@ export type AuthenticatedRequestContext = {
 type SessionResolution =
   | { kind: 'authenticated'; sessionId: string; user: SessionUser }
   | { kind: 'response'; response: Response };
+
+const forbiddenTenantHost = () =>
+  new Response(JSON.stringify({ error: 'forbidden', message: 'Host not permitted for this operation' }), {
+    status: 403,
+    headers: { 'Content-Type': 'application/json' },
+  });
 
 const readSessionId = (request: Request) => {
   const { sessionCookieName } = getAuthConfig();
@@ -89,12 +98,14 @@ const shouldEnforceLegalTextCompliance = async (request: Request): Promise<boole
   return LEGAL_TEXT_PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 };
 
-const resolveSessionUser = (request: Request, user: SessionUser): SessionUser => {
+const resolveSessionUser = async (request: Request, user: SessionUser): Promise<SessionUser> => {
   if (user.instanceId) {
     return user;
   }
 
-  const derivedInstanceId = parseInstanceIdFromHost(new URL(request.url).host);
+  const host = new URL(request.url).host;
+  const registryEntry = await loadInstanceByHostname(host).catch(() => null);
+  const derivedInstanceId = registryEntry?.instanceId ?? parseInstanceIdFromHost(host);
   if (!derivedInstanceId) {
     return user;
   }
@@ -114,7 +125,40 @@ const resolveSessionUser = (request: Request, user: SessionUser): SessionUser =>
   };
 };
 
+const validateTenantHost = async (request: Request): Promise<Response | null> => {
+  const host = new URL(request.url).host;
+  const config = getInstanceConfig();
+  if (!config) {
+    return null;
+  }
+
+  const classification = classifyHost(host, config.parentDomain);
+  if (classification.kind !== 'tenant') {
+    return null;
+  }
+
+  const registryEntry = await loadInstanceByHostname(host).catch(() => null);
+  if (!registryEntry || !isTrafficEnabledInstanceStatus(registryEntry.status)) {
+    logger.warn('Auth middleware rejected request for invalid or inactive tenant host', {
+      endpoint: request.url,
+      operation: 'auth_middleware',
+      tenant_host: host,
+      registry_found: Boolean(registryEntry),
+      registry_status: registryEntry?.status ?? null,
+      ...buildLogContext(undefined, { includeTraceId: true }),
+    });
+    return forbiddenTenantHost();
+  }
+
+  return null;
+};
+
 const createAuthenticatedContext = async (request: Request): Promise<SessionResolution> => {
+  const tenantHostError = await validateTenantHost(request);
+  if (tenantHostError) {
+    return { kind: 'response', response: tenantHostError };
+  }
+
   if (isMockAuthEnabled()) {
     return {
       kind: 'authenticated',
@@ -150,7 +194,7 @@ const createAuthenticatedContext = async (request: Request): Promise<SessionReso
   return {
     kind: 'authenticated',
     sessionId,
-    user: resolveSessionUser(request, sessionUser),
+    user: await resolveSessionUser(request, sessionUser),
   };
 };
 

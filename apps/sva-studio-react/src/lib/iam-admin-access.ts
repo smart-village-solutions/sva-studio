@@ -5,6 +5,7 @@ type UserWithRoles = {
 const ADMIN_ROLES = new Set(['system_admin', 'app_manager']);
 const INTERFACES_ROLES = new Set(['system_admin', 'app_manager', 'interface_manager', 'interface-manager']);
 const SYSTEM_ADMIN_ROLES = new Set(['system_admin']);
+const INSTANCE_REGISTRY_ADMIN_ROLES = new Set(['instance_registry_admin']);
 
 const readFlag = (value: string | undefined, fallback: boolean) => {
   if (value === undefined) {
@@ -28,3 +29,6 @@ export const hasInterfacesAccessRole = (user: UserWithRoles | null | undefined) 
 
 export const hasSystemAdminRole = (user: UserWithRoles | null | undefined) =>
   Boolean(user?.roles?.some((role) => SYSTEM_ADMIN_ROLES.has(role)));
+
+export const hasInstanceRegistryAdminRole = (user: UserWithRoles | null | undefined) =>
+  Boolean(user?.roles?.some((role) => INSTANCE_REGISTRY_ADMIN_ROLES.has(role)));

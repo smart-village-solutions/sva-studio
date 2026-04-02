@@ -74,3 +74,11 @@ export {
   optionalProcessingExecuteHandler,
   profileCorrectionHandler,
 } from './iam-data-subject-rights.server.js';
+export {
+  activateInstanceHandler,
+  archiveInstanceHandler,
+  createInstanceHandler,
+  getInstanceHandler,
+  listInstancesHandler,
+  suspendInstanceHandler,
+} from './iam-instance-registry/index.js';

@@ -10,7 +10,9 @@
     "skipLibCheck": true,
     "paths": {
       "@sva/core": ["packages/core/dist/index.d.ts"],
-      "@sva/core/security": ["packages/core/dist/security/index.d.ts"]
+      "@sva/core/security": ["packages/core/dist/security/index.d.ts"],
+      "@sva/data": ["packages/data/dist/index.d.ts"],
+      "@sva/data/server": ["packages/data/dist/server.d.ts"]
     }
   },
   "include": ["src/**/*.ts"],

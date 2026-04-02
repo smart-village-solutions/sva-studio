@@ -53,6 +53,7 @@ Regel:
   ```
 - Das App-Image ist vorgebaut und in einer Container-Registry verfügbar
 - DNS-Einträge für `SVA_PARENT_DOMAIN` und `*.SVA_PARENT_DOMAIN` zeigen auf den Swarm-Ingress
+- TLS deckt `SVA_PARENT_DOMAIN` und `*.SVA_PARENT_DOMAIN` über denselben Ingress-Vertrag ab
 
 ## Dateien
 
@@ -103,7 +104,7 @@ Das Referenzprofil `acceptance-hb` wird env-only betrieben. Sowohl nicht-sensiti
 | `SVA_IMAGE_DIGEST` | kein Default | Verbindlicher SHA256-Digest für produktionsnahe Releases |
 | `SVA_IMAGE_REF` | kein Default | Vollständige Image-Referenz `${SVA_REGISTRY}/${SVA_IMAGE_REPOSITORY}@${SVA_IMAGE_DIGEST}` |
 | `SVA_MONITORING_CONFIG_INIT_IMAGE_TAG` | `0.0.0-dev` | Image-Tag des Monitoring-Init-Images; für Produktion Digest oder unveränderlichen Tag verwenden |
-| `SVA_ALLOWED_INSTANCE_IDS` | leer | Kommagetrennte erlaubte instanceIds |
+| `SVA_ALLOWED_INSTANCE_IDS` | leer | Nur lokaler oder migrierender Fallback; im Registry-Betrieb keine führende Freigabequelle |
 | `ENABLE_OTEL` | `true` | OpenTelemetry für lokale Deaktivierungsfälle in Development; im produktionsnahen Betrieb bleibt OTEL verpflichtend |
 | `OTEL_SERVICE_NAME` | `sva-studio` | Service-Name für OTEL Resource Attributes |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | `http://otel-collector:4318` | Interner OTLP-HTTP-Endpoint |
@@ -134,6 +135,24 @@ htpasswd -nbB admin '<starkes-passwort>'
 ```
 
 Der komplette Output muss unverändert als `SVA_DB_ADMIN_BASIC_AUTH` gesetzt werden.
+
+## Schritt 1a: DNS- und TLS-Vertrag prüfen
+
+Vor jedem Acceptance-Rollout und vor jeder neuen Instanzfreigabe muss der gemeinsame Plattformvertrag für Root- und Tenant-Hosts erfüllt sein:
+
+- `studio.smart-village.app` zeigt auf den gemeinsamen Swarm-/Traefik-Ingress
+- `*.studio.smart-village.app` zeigt auf denselben Ingress
+- das Zertifikat deckt Root-Domain und Wildcard ab
+- Root-Host und Tenant-Hosts landen auf demselben App-Service
+
+Stichproben:
+
+```bash
+dig +short studio.smart-village.app
+dig +short hb-meinquartier.studio.smart-village.app
+curl -I https://studio.smart-village.app
+curl -I https://hb-meinquartier.studio.smart-village.app
+```
 
 ### Ressourcenlimits des Referenzprofils
 
@@ -236,6 +255,35 @@ Der Deploypfad führt verbindlich aus:
 7. `release-decision`
 8. Schreiben eines Deploy-Reports unter `artifacts/runtime/deployments/`
 
+## Schritt 3a: Neue Instanz im Registry-Modell anlegen
+
+Neue Instanzen werden nicht mehr über `SVA_ALLOWED_INSTANCE_IDS`, neue Stacks oder neue Runtime-Profile freigeschaltet. Der verbindliche Pfad läuft über die zentrale Instanz-Registry.
+
+Zulässige Einstiege:
+
+- Studio-Control-Plane auf dem Root-Host unter `/admin/instances`
+- nicht-interaktive CLI unter `scripts/ops/instance-registry.ts`
+
+Beispiel:
+
+```bash
+pnpm exec tsx scripts/ops/instance-registry.ts create \
+  --instance-id hb-neu \
+  --display-name "HB Neu" \
+  --parent-domain studio.smart-village.app \
+  --actor-id release-operator
+pnpm exec tsx scripts/ops/instance-registry.ts activate \
+  --instance-id hb-neu \
+  --actor-id release-operator
+```
+
+Prüfkriterien:
+
+- Registry-Eintrag existiert
+- `primaryHostname` entspricht `<instanceId>.studio.smart-village.app`
+- Status ist nach Freigabe `active`
+- kein neues App-Deployment und kein neues Runtime-Profil wurden benötigt
+
 ### Fallback über Portainer oder CLI
 
 Dieser Pfad bleibt nur Fallback für Ausnahmefälle oder die initiale Stack-Anlage. Danach muss die Verifikation immer wieder über `pnpm env:doctor:acceptance-hb` und `pnpm env:smoke:acceptance-hb` abgesichert werden.
@@ -307,8 +355,9 @@ Stabile Diagnosecodes umfassen unter anderem:
 | `GET https://<SVA_PARENT_DOMAIN>/health/live` | HTTP 200 |
 | `GET https://<SVA_PARENT_DOMAIN>/health/ready` | HTTP 200, Redis + DB bereit |
 | `GET https://<SVA_PARENT_DOMAIN>/auth/login` | Redirect zum OIDC-Provider |
-| `GET https://foo.<SVA_PARENT_DOMAIN>/` | HTTP 200 (wenn `foo` in Allowlist) |
-| `GET https://unknown.<SVA_PARENT_DOMAIN>/` | HTTP 403 (wenn nicht in Allowlist) |
+| `GET https://<aktive-instance>.<SVA_PARENT_DOMAIN>/` | HTTP 200 ohne neues Deployment |
+| `GET https://unknown.<SVA_PARENT_DOMAIN>/` | fail-closed, ohne tenant-spezifische Detailoffenlegung |
+| `GET https://<suspendierte-instance>.<SVA_PARENT_DOMAIN>/auth/me` | gleiches fail-closed-Verhalten wie unbekannter Host |
 | App in Portainer | Status: `healthy` |
 | Monitoring-Services in Portainer | `otel-collector`, `loki`, `prometheus`, `grafana`, `promtail`, `alertmanager` laufen |
 
@@ -400,7 +449,8 @@ Der Monitoring-Block bleibt intern:
 Instanzen werden über Subdomains adressiert: `<instanceId>.<SVA_PARENT_DOMAIN>`.
 
 - `foo.studio.smart-village.app` → `instanceId = "foo"`
-- Nur Einträge aus `SVA_ALLOWED_INSTANCE_IDS` sind gültig
+- Die Registry ist die führende Quelle für gültige Instanzen und Hostnamen
+- `SVA_ALLOWED_INSTANCE_IDS` bleibt nur lokaler oder migrierender Fallback
 - Root-Domain (`studio.smart-village.app`) ist der kanonische Auth-Host
 - OIDC-Login/Logout-Flows laufen ausschließlich über den kanonischen Auth-Host
 

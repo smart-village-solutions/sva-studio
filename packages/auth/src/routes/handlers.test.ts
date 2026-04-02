@@ -14,11 +14,25 @@ const emitAuthAuditEventMock = vi.fn(async () => undefined);
 const createLoginUrlMock = vi.fn();
 const handleCallbackMock = vi.fn();
 const withAuthenticatedUserMock = vi.fn();
+const loadInstanceByHostnameMock = vi.fn();
+const instanceConfigState = {
+  canonicalAuthHost: 'studio.example.org',
+  parentDomain: 'studio.example.org',
+};
 
 vi.mock('@sva/sdk/server', () => ({
   createSdkLogger: () => loggerMock,
+  getInstanceConfig: () => instanceConfigState,
   initializeOtelSdk: vi.fn(async () => ({ status: 'ready' as const })),
+  isCanonicalAuthHost: (host: string) => {
+    const normalized = host.toLowerCase().replace(/:\d+$/, '').replace(/\.$/, '');
+    return normalized === instanceConfigState.canonicalAuthHost;
+  },
   withRequestContext: requestContextMock,
+}));
+
+vi.mock('@sva/data/server', () => ({
+  loadInstanceByHostname: loadInstanceByHostnameMock,
 }));
 
 vi.mock('../auth.server', () => ({
@@ -60,6 +74,9 @@ describe('routes/handlers', () => {
     vi.clearAllMocks();
     vi.stubEnv('SVA_MOCK_AUTH', 'false');
     vi.stubEnv('NODE_ENV', 'development');
+    loadInstanceByHostnameMock.mockResolvedValue(null);
+    instanceConfigState.canonicalAuthHost = 'studio.example.org';
+    instanceConfigState.parentDomain = 'studio.example.org';
   });
 
   it('logs only a summarized logout redirect target', async () => {
@@ -125,6 +142,58 @@ describe('routes/handlers', () => {
     expect(decodedPayload).toEqual(
       expect.objectContaining({
         returnTo: '/account?tab=profile',
+      })
+    );
+  });
+
+  it('redirects tenant-host login requests to the canonical auth host and preserves tenant returnTo', async () => {
+    const { loginHandler } = await import('./handlers.js');
+
+    const response = await loginHandler(
+      new Request('https://hb.studio.example.org/auth/login?returnTo=%2Fadmin%2Finstances')
+    );
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get('location')).toBe(
+      'https://studio.example.org/auth/login?returnTo=https%3A%2F%2Fhb.studio.example.org%2Fadmin%2Finstances'
+    );
+    expect(createLoginUrlMock).not.toHaveBeenCalled();
+  });
+
+  it('allows trusted tenant return targets on the canonical auth host', async () => {
+    loadInstanceByHostnameMock.mockResolvedValue({
+      instanceId: 'hb',
+      displayName: 'HB',
+      status: 'active',
+      parentDomain: 'studio.example.org',
+      primaryHostname: 'hb.studio.example.org',
+      featureFlags: {},
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    });
+    createLoginUrlMock.mockResolvedValue({
+      url: 'https://issuer.example/auth',
+      state: 'state-tenant',
+      loginState: {
+        codeVerifier: 'verifier-tenant',
+        nonce: 'nonce-tenant',
+        createdAt: Date.now(),
+        returnTo: 'https://hb.studio.example.org/admin/instances',
+        silent: false,
+      },
+    });
+
+    const { loginHandler } = await import('./handlers.js');
+
+    await loginHandler(
+      new Request(
+        'https://studio.example.org/auth/login?returnTo=https%3A%2F%2Fhb.studio.example.org%2Fadmin%2Finstances'
+      )
+    );
+
+    expect(createLoginUrlMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        returnTo: 'https://hb.studio.example.org/admin/instances',
       })
     );
   });
@@ -236,6 +305,80 @@ describe('routes/handlers', () => {
         redirect_target: '/account?tab=profile',
       })
     );
+  });
+
+  it('redirects the callback back to a trusted tenant host after login', async () => {
+    loadInstanceByHostnameMock.mockResolvedValue({
+      instanceId: 'hb',
+      displayName: 'HB',
+      status: 'active',
+      parentDomain: 'studio.example.org',
+      primaryHostname: 'hb.studio.example.org',
+      featureFlags: {},
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    });
+    handleCallbackMock.mockResolvedValue({
+      sessionId: 'session-tenant',
+      expiresAt: Date.now() + 60_000,
+      user: {
+        id: 'user-tenant',
+        instanceId: 'hb',
+        roles: ['editor'],
+      },
+    });
+
+    const { callbackHandler } = await import('./handlers.js');
+    const statePayload = {
+      state: 'state-tenant-callback',
+      codeVerifier: 'verifier-tenant-callback',
+      nonce: 'nonce-tenant-callback',
+      createdAt: Date.now(),
+      returnTo: 'https://hb.studio.example.org/admin/instances',
+    };
+    const encodedPayload = Buffer.from(JSON.stringify(statePayload), 'utf8').toString('base64url');
+    const signature = createHmac('sha256', 'secret').update(encodedPayload).digest('base64url');
+
+    const response = await callbackHandler(
+      new Request('https://studio.example.org/auth/callback?code=abc&state=state-tenant-callback', {
+        headers: { cookie: `sva_auth_state=${encodedPayload}.${signature}` },
+      })
+    );
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get('location')).toBe('https://hb.studio.example.org/admin/instances');
+  });
+
+  it('falls back to root path when callback returnTo targets an untrusted host', async () => {
+    handleCallbackMock.mockResolvedValue({
+      sessionId: 'session-untrusted',
+      expiresAt: Date.now() + 60_000,
+      user: {
+        id: 'user-untrusted',
+        instanceId: 'hb',
+        roles: ['editor'],
+      },
+    });
+
+    const { callbackHandler } = await import('./handlers.js');
+    const statePayload = {
+      state: 'state-untrusted-callback',
+      codeVerifier: 'verifier-untrusted-callback',
+      nonce: 'nonce-untrusted-callback',
+      createdAt: Date.now(),
+      returnTo: 'https://evil.example/admin/instances',
+    };
+    const encodedPayload = Buffer.from(JSON.stringify(statePayload), 'utf8').toString('base64url');
+    const signature = createHmac('sha256', 'secret').update(encodedPayload).digest('base64url');
+
+    const response = await callbackHandler(
+      new Request('https://studio.example.org/auth/callback?code=abc&state=state-untrusted-callback', {
+        headers: { cookie: `sva_auth_state=${encodedPayload}.${signature}` },
+      })
+    );
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get('location')).toBe('/');
   });
 
   it('returns an iframe-safe response for successful silent callback logins', async () => {

@@ -87,7 +87,6 @@ const PROFILE_DEFINITIONS = {
       'KEYCLOAK_ADMIN_BASE_URL',
       'KEYCLOAK_ADMIN_REALM',
       'KEYCLOAK_ADMIN_CLIENT_ID',
-      'SVA_ALLOWED_INSTANCE_IDS',
       'SVA_PARENT_DOMAIN',
     ],
     usesBuilder: false,

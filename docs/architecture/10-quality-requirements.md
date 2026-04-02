@@ -59,6 +59,10 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
   - Snapshot-TTL = 300 s, maximal tolerierte Stale-Dauer = 300 s
   - Cache-Hit P95 < 5 ms, Cache-Miss P95 < 80 ms, Recompute P95 < 300 ms bei `N = 100` gleichzeitigen Requests, endpoint-nah gemessen
   - Zusätzliches Beobachtungsprofil `Slow-4G` wird dokumentiert, auch wenn dort keine harte Abnahmegrenze gilt
+- Instanz-Registry:
+  - unbekannte, ungültige, suspendierte und archivierte Hosts liefern identisches fail-closed-Verhalten
+  - neue Instanzen müssen ohne App-Redeploy über Registry und Cache-Invalidation erreichbar werden
+  - Root-Host-Instanzverwaltung ist in Deutsch und Englisch vollständig über `t('...')` lokalisiert
 - IAM Authorization-Cache-Readiness:
   - `/health/ready` liefert `checks.authorizationCache`
   - `degraded` ab Redis-Latenz > `50 ms` oder Recompute-Rate > `20/min`

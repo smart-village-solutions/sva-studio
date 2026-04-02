@@ -24,6 +24,18 @@ Fehlerpfad:
 
 - Fehlerhafte Route-Factory oder server-only Import im Client kann Build/Runtime brechen.
 
+### Szenario 1a: Tenant-Request mit Registry-Lookup
+
+1. Request trifft mit Host-Header auf die Runtime.
+2. Middleware klassifiziert Root-Host, Tenant-Host oder ungültigen Host.
+3. Tenant-Hosts werden über die Instanz-Registry aufgelöst.
+4. Nur `active`-Instanzen erhalten Traffic.
+5. Unbekannte, suspendierte und archivierte Hosts werden identisch fail-closed beantwortet.
+
+Fehlerpfad:
+
+- Registry-Eintrag fehlt oder ist nicht traffic-fähig -> identische fail-closed-Antwort.
+
 ### Szenario 2: OIDC Login-Flow
 
 1. Browser ruft `/auth/login` auf
@@ -39,6 +51,20 @@ Fehlerpfad:
 - Fehlender/abgelaufener State -> Redirect mit Fehlerstatus
 - Token-/Refresh-Fehler -> Session invalidiert oder unauthorized Antwort
 - Profilfehler beruehren die Session-Hydration nicht; die App behaelt ihren minimalen Auth-State
+
+### Szenario 2c: Root-Host-Instanzverwaltung
+
+1. Admin öffnet `/admin/instances` auf dem Root-Host.
+2. UI lädt `GET /iam/instances`.
+3. Mutationen senden CSRF-Header, Idempotency-Key und Reauth-Bestätigung.
+4. `packages/auth` delegiert an die gemeinsame Provisioning-Fassade.
+5. Die Fassade schreibt Registry-Daten, Provisioning-Run und Audit-Event.
+6. Der Host-Cache wird für betroffene Hostnamen invalidiert.
+
+Fehlerpfad:
+
+- Tenant-Host statt Root-Host -> `403 forbidden`.
+- fehlende Re-Authentisierung -> `403 reauth_required`.
 
 ### Szenario 2a: Silent Session-Recovery nach `401`
 

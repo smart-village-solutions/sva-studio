@@ -115,8 +115,9 @@ und Vorführungszwecke. Unterschiede zum Referenzprofil:
 
 - `<instanceId>.<SVA_PARENT_DOMAIN>` → Instanz-Kontext
 - Root-Domain (`SVA_PARENT_DOMAIN`) → Kanonischer Auth-Host
-- Env-basierte Allowlist (`SVA_ALLOWED_INSTANCE_IDS`) als autoritative Freigabequelle
-- Startup-Validierung gegen `instanceId`-Regex, fail-fast bei ungültigen Einträgen
+- Registry-basierte Freigabe in Postgres als autoritative Quelle
+- Env-basierte Allowlist (`SVA_ALLOWED_INSTANCE_IDS`) nur noch als lokaler oder migrationsbezogener Kompatibilitätspfad
+- Startup-Validierung gegen `instanceId`-Regex bleibt für Kompatibilitätsprofile aktiv
 
 #### DB-Initialisierung
 
@@ -151,8 +152,8 @@ Referenzen:
 - Das IAM-Acceptance-Gate läuft gegen eine bereits vorhandene Testumgebung und startet keine eigene Keycloak-Topologie im Workflow.
 - Swarm-Stack: Secrets als externe Swarm-Secrets, nicht als Klartext-Env-Variablen
 - Swarm-Stack: Entrypoint-basierte Secret-Injektion, abwärtskompatibel mit Nicht-Swarm-Betrieb
-- Swarm-Stack: Host-Validierung gegen Env-Allowlist mit fail-closed-Policy (identische 403-Antwort)
-- Swarm-Stack: Startup-Validierung der Allowlist gegen `instanceId`-Regex (fail-fast)
+- Swarm-Stack: Host-Validierung gegen Registry-Status mit fail-closed-Policy (identische 403-Antwort)
+- Swarm-Stack: Root-Host rendert die globale Instanzverwaltung, Tenant-Hosts nicht
 - Swarm-Stack: Monitoring-UI und Storage bleiben intern; keine öffentliche Exponierung ohne zusätzliche Zugangskontrolle
 - Swarm-Stack: `monitoring-config-init` ist ein One-shot-Initialisierer und soll nach erfolgreicher Volume-Befüllung beendet sein
 - Swarm-Stack: `postgres-schema-bootstrap` ist nur noch ein Legacy-Übergangspfad; der reguläre Schemarollout erfolgt über `pnpm env:migrate:acceptance-hb` bzw. `pnpm env:deploy:acceptance-hb -- --release-mode=schema-and-app`
@@ -163,7 +164,7 @@ Referenzen:
 
 - HA-/Skalierungsdetails für produktiven Betrieb sind nur teilweise als ADR/Doku beschrieben
 - Sichere externe Erreichbarkeit für Grafana oder alternative interne Zugriffswege sind noch kein Teil des Referenzprofils
-- DB-gestützte `instanceId`-Registry bei Wachstum über 50 Instanzen
+- Redis-L2-Cache für Registry-Lookups ist Folgearbeit
 
 Referenzen:
 
@@ -172,6 +173,7 @@ Referenzen:
 - `deploy/portainer/docker-compose.yml` (Swarm-Referenzprofil)
 - `docs/development/postgres-setup.md`
 - `docs/guides/swarm-deployment-runbook.md`
+- `docs/guides/instance-registry-local-development.md`
 - `packages/sdk/src/server/bootstrap.server.ts`
 
 ### Ergänzung 2026-03: IAM-Admin-Integration

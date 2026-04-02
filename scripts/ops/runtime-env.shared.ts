@@ -108,6 +108,7 @@ export type AcceptanceDeployReport = {
   migrationFiles: readonly string[];
   migrationReport?: {
     completedAt?: string;
+    details?: Readonly<Record<string, unknown>>;
     errorMessage?: string;
     startedAt?: string;
     status: 'error' | 'ok' | 'skipped';
@@ -321,6 +322,9 @@ export const formatAcceptanceDeployReportMarkdown = (report: AcceptanceDeployRep
     '',
     ...(report.migrationFiles.length > 0 ? report.migrationFiles.map((file) => `- \`${file}\``) : ['- keine']),
     `- Migrationsstatus: \`${report.migrationReport?.status ?? 'skipped'}\``,
+    report.migrationReport?.details?.gooseVersion
+      ? `- Goose-Version: \`${String(report.migrationReport.details.gooseVersion)}\``
+      : null,
     '',
     '## Schritte',
     '',

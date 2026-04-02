@@ -226,17 +226,18 @@ Beispiele für `details`:
 
 - `reason_code=missing_table`
 - `reason_code=missing_instance_membership`
-- `expected_migration=0018_iam_account_groups_origin_compat.sql`
+- `expected_migration=0019_iam_account_groups_origin_compat.sql`
 - `schema_guard.failures=["missing_table:iam.account_groups"]`
 
 ### `migrate`
 
 - lokal: `pnpm nx run data:db:migrate`
-- Acceptance: führt alle SQL-Dateien aus `packages/data/migrations/up/*.sql` in Reihenfolge gegen den laufenden Swarm-Postgres aus
+- Acceptance: führt den kanonischen `goose`-Migrationspfad aus `packages/data/migrations/*.sql` gegen den laufenden Swarm-Postgres aus
   - bevorzugt automatisch per `quantum-cli exec --endpoint sva --stack sva-studio --service postgres`
   - Fallback: lokaler `docker exec` nur dann, wenn der Acceptance-Stack über denselben Docker-Daemon sichtbar ist
+  - `goose` wird dabei mit gepinnter Version temporär bereitgestellt; eine Vorinstallation auf dem Zielsystem ist nicht erforderlich
   - für `pnpm env:migrate:acceptance-hb` werden keine Mainserver-Smoke-Werte benötigt; der Befehl validiert nur noch den für Migrationen relevanten Acceptance-Kontext
-  - nach dem SQL-Lauf prüft ein verbindlicher Schema-Guard den kritischen IAM-Sollstand (`groups`, `group_roles`, `account_groups`, Schlüsselspalten, Indizes, RLS-Policies)
+  - nach dem `goose`-Lauf prüft ein verbindlicher Schema-Guard den kritischen IAM-Sollstand (`groups`, `group_roles`, `account_groups`, Schlüsselspalten, Indizes, RLS-Policies)
 
 ## Rollback und Betriebsregeln
 

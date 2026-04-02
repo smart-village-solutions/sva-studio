@@ -272,7 +272,7 @@ describe('iam-api organization helpers', () => {
               details: {
                 reason_code: 'missing_column',
                 schema_object: 'iam.account_groups.origin',
-                expected_migration: '0018_iam_account_groups_origin_compat.sql',
+                expected_migration: '0019_iam_account_groups_origin_compat.sql',
                 email: 'alice@example.com',
               },
             },
@@ -296,7 +296,7 @@ describe('iam-api organization helpers', () => {
       details: {
         reason_code: 'missing_column',
         schema_object: 'iam.account_groups.origin',
-        expected_migration: '0018_iam_account_groups_origin_compat.sql',
+        expected_migration: '0019_iam_account_groups_origin_compat.sql',
       },
     });
     expect(browserLoggerMock.error.mock.calls[0]?.[1]).not.toHaveProperty('email');

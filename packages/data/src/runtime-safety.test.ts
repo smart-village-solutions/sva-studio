@@ -8,7 +8,7 @@ const testDirectory = dirname(fileURLToPath(import.meta.url));
 const readRepoFile = (relativePath: string) => readFileSync(resolve(testDirectory, '..', '..', relativePath), 'utf8');
 
 test('geo hierarchy migration validates only paths affected by the new edge', () => {
-  const sql = readRepoFile('data/migrations/up/0015_iam_geo_hierarchy.sql');
+  const sql = readRepoFile('data/migrations/0016_iam_geo_hierarchy.sql');
 
   assert.match(sql, /max_result_depth INTEGER/);
   assert.match(sql, /parent\.descendant_id = NEW\.ancestor_id/);
@@ -31,7 +31,10 @@ test('migration script supports profile-specific postgres targets', () => {
   const script = readRepoFile('data/scripts/run-migrations.sh');
 
   assert.match(script, /POSTGRES_SERVICE="\$\{POSTGRES_SERVICE:-postgres\}"/);
+  assert.match(script, /POSTGRES_PASSWORD="\$\{POSTGRES_PASSWORD:-sva_local_dev_password\}"/);
   assert.match(script, /SVA_LOCAL_POSTGRES_CONTAINER_NAME="\$\{SVA_LOCAL_POSTGRES_CONTAINER_NAME:-\}"/);
-  assert.match(script, /docker exec -i "\$\{SVA_LOCAL_POSTGRES_CONTAINER_NAME\}" psql/);
-  assert.match(script, /docker compose exec -T "\$\{POSTGRES_SERVICE\}" psql/);
+  assert.match(script, /GOOSE_WRAPPER="\$\{GOOSE_WRAPPER:-packages\/data\/scripts\/goosew\.sh\}"/);
+  assert.match(script, /Invalid goose command: '\$\{GOOSE_COMMAND\}'/);
+  assert.match(script, /db_string="postgres:\/\/\$\{POSTGRES_USER\}@\$\{POSTGRES_HOST\}:\$\{POSTGRES_PORT\}\/\$\{POSTGRES_DB\}\?sslmode=disable"/);
+  assert.match(script, /exec env PGPASSWORD="\$\{POSTGRES_PASSWORD\}" "\$\{GOOSE_WRAPPER\}"/);
 });

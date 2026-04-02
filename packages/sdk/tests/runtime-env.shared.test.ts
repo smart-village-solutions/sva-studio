@@ -119,11 +119,14 @@ describe('runtime-env.shared', () => {
       ],
       maintenanceWindow: '2026-03-20 19:00-19:15 CET',
       rollbackHint: 'Redeploy previous digest',
-      migrationFiles: ['packages/data/migrations/up/0001_init.sql'],
+      migrationFiles: ['packages/data/migrations/0001_init.sql'],
       migrationReport: {
         status: 'ok',
         startedAt: '2026-03-20T11:59:50.000Z',
         completedAt: '2026-03-20T11:59:59.000Z',
+        details: {
+          gooseVersion: 'v3.26.0',
+        },
       },
       stackName: 'sva-studio',
       observability: {
@@ -187,7 +190,8 @@ describe('runtime-env.shared', () => {
 
     expect(markdown).toContain('Release-Modus: `schema-and-app`');
     expect(markdown).toContain('Rollback-Hinweis: Redeploy previous digest');
-    expect(markdown).toContain('`packages/data/migrations/up/0001_init.sql`');
+    expect(markdown).toContain('`packages/data/migrations/0001_init.sql`');
+    expect(markdown).toContain('Goose-Version: `v3.26.0`');
     expect(markdown).toContain('Grafana: https://grafana.internal');
     expect(markdown).toContain('service summary');
     expect(markdown).toContain('Image-Ref: `ghcr.io/example/sva-studio@sha256:abc`');

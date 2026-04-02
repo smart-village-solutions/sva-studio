@@ -54,7 +54,7 @@
 
 > **Wichtig:** Das bestehende Schema (`0001_iam_core.sql`) mit Multi-Tenancy, RLS und PII-Verschlüsselung bleibt unangetastet. Die Migration erweitert es nur.
 
-- [x] 2.1.1 Delta-Migration `0004_iam_account_profile.sql` in `packages/data/migrations/up/` erstellen
+- [x] 2.1.1 Delta-Migration `0004_iam_account_profile.sql` in `packages/data/migrations/` erstellen
 - [x] 2.1.2 `ALTER TABLE iam.accounts`: Profilfelder ergänzen (`first_name_ciphertext`, `last_name_ciphertext`, `phone_ciphertext`, `position`, `department`, `avatar_url`, `preferred_language`, `timezone`, `status`, `notes`)
 - [x] 2.1.3 `ALTER TABLE iam.account_roles`: Temporale Spalten `assigned_by`, `valid_from`, `valid_to` ergänzen
 - [x] 2.1.4 `ALTER TABLE iam.activity_logs`: `subject_id` und `result`-Spalte ergänzen
@@ -63,7 +63,7 @@
 - [x] 2.1.7 `role_level INTEGER` Spalte in `iam.roles` ergänzen (Level-Hierarchie, CHECK 0–100)
 - [x] 2.1.8 `retention_days INTEGER DEFAULT 90` Spalte in `iam.instances` ergänzen (mandantenspezifische Retention für DSGVO-Anonymisierung)
 - [x] 2.1.9 `audit_retention_days INTEGER DEFAULT 365` Spalte in `iam.instances` ergänzen (mandantenspezifische Retention für Audit-Archivierung)
-- [x] 2.1.10 Down-Migration `0004_iam_account_profile.sql` in `packages/data/migrations/down/` erstellen (**Reihenfolge:** Trigger droppen VOR Spalten droppen)
+- [x] 2.1.10 Down-Migration `0004_iam_account_profile.sql` in `packages/data/migrations/` erstellen (**Reihenfolge:** Trigger droppen VOR Spalten droppen)
 - [x] 2.1.11 Idempotentes Seed-Script für System-Rollen mit role_level (Rollen sind vorläufig, werden sich entwickeln)
 - [x] 2.1.12 Migration lokal testen: Up + Down + Re-Up
 

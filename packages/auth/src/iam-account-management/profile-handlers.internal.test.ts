@@ -249,7 +249,7 @@ describe('iam-account-management/profile-handlers internals', () => {
     state.schemaChecks = [
       {
         ok: false,
-        expectedMigration: '0018_iam_account_groups_origin_compat.sql',
+        expectedMigration: '0019_iam_account_groups_origin_compat.sql',
         schemaObject: 'iam.account_groups.origin',
       },
     ];
@@ -263,7 +263,7 @@ describe('iam-account-management/profile-handlers internals', () => {
         message: 'Profil konnte nicht geladen werden.',
         details: {
           dependency: 'database',
-          expected_migration: '0018_iam_account_groups_origin_compat.sql',
+          expected_migration: '0019_iam_account_groups_origin_compat.sql',
           instance_id: 'de-musterhausen',
           reason_code: 'schema_drift',
           schema_object: 'iam.account_groups.origin',

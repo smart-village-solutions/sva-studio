@@ -21,7 +21,7 @@ export type IamDiagnosticErrorShape = {
 
 const SCHEMA_OBJECT_MIGRATION_HINTS: Record<string, string> = {
   'iam.account_groups': '0014_iam_groups.sql',
-  'iam.account_groups.origin': '0018_iam_account_groups_origin_compat.sql',
+  'iam.account_groups.origin': '0019_iam_account_groups_origin_compat.sql',
   'iam.activity_logs': '0001_iam_core.sql',
   'iam.accounts.avatar_url': '0004_iam_account_profile.sql',
   'iam.group_roles': '0014_iam_groups.sql',
@@ -32,7 +32,7 @@ const SCHEMA_OBJECT_MIGRATION_HINTS: Record<string, string> = {
   'iam.accounts.timezone': '0004_iam_account_profile.sql',
   'iam.accounts.username_ciphertext': '0011_iam_account_username.sql',
   'idx_accounts_kc_subject_instance': '0004_iam_account_profile.sql',
-  'policy:accounts_isolation_policy': '0017_iam_accounts_instance_policy.sql',
+  'policy:accounts_isolation_policy': '0018_iam_accounts_instance_policy.sql',
   'policy:instance_memberships_isolation_policy': '0001_iam_core.sql',
 } as const;
 

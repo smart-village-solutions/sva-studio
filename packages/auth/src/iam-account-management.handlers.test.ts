@@ -5240,7 +5240,7 @@ describe('iam-account-management additional handlers', () => {
     expect(payload.error.details).toEqual(
       expect.objectContaining({
         dependency: 'database',
-        expected_migration: '0018_iam_account_groups_origin_compat.sql',
+        expected_migration: '0019_iam_account_groups_origin_compat.sql',
         instance_id: 'de-musterhausen',
         reason_code: 'schema_drift',
         schema_object: 'iam.account_groups.origin',

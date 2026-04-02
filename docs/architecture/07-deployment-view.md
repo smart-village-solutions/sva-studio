@@ -102,6 +102,7 @@ und Vorführungszwecke. Unterschiede zum Referenzprofil:
 - **Rolling Updates:** `start-first` für Updates, `stop-first` für Rollbacks.
 - **Kanonischer Acceptance-Releasepfad:** `acceptance-hb` nutzt den orchestrierten Pfad `environment-precheck -> image-smoke -> optional migrate -> deploy -> internal-verify -> external-smoke -> release-decision -> Deploy-Report`.
 - **Release-Klassen:** Acceptance-Deploys unterscheiden `app-only` und `schema-and-app`; nur `schema-and-app` darf Migrationen auslösen.
+- **Gepinnter Goose-Pfad:** Schema-Rollouts laufen über einen repository-lokalen `goose`-Wrapper mit fixer Version; Zielsysteme benötigen keine permanente `goose`-Vorinstallation.
 - **Deploy-Evidenz:** Jeder Acceptance-Deploy schreibt JSON- und Markdown-Artefakte unter `artifacts/runtime/deployments/` mit Image-, Actor-, Workflow-, Stack- und Verifikationsdaten.
 - **Health-Modell:** `live` bleibt prozessnah und ohne schwere optionale Abhängigkeiten; `ready` bildet nur minimale Traffic-Voraussetzungen ab; öffentliche Freigabe erfolgt erst über externe Smoke-Probes.
 - **Persistenz:** Named Volumes für Postgres, Redis, Prometheus, Loki, Grafana und Alertmanager.
@@ -125,6 +126,7 @@ Betriebliche Einordnung:
 
 - App läuft als Node-/Nitro-Server aus dem TanStack-Start-Build.
 - Für spätere Updates bestehender Datenbanken bleiben Migrationen ein bewusster separater Betriebsschritt.
+- Der kanonische Migrationspfad nutzt ein einzelnes `goose`-SQL-File pro Version mit `Up` und `Down`; ein getrennter `up`/`down`-Dateibaum ist kein Sollzustand mehr.
 
 Referenzen:
 

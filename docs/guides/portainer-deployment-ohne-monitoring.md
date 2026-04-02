@@ -65,7 +65,7 @@ Damit sind keine Keycloak-Admin-Service-Credentials zwingend notwendig.
 Beim ersten Deploy auf ein leeres Postgres-Volume passiert automatisch:
 
 1. Postgres wird initialisiert.
-2. Alle SQL-Dateien aus `packages/data/migrations/up/` werden angewendet.
+2. Alle SQL-Dateien aus `packages/data/migrations/` werden angewendet.
 3. Der dedizierte Runtime-User `APP_DB_USER` wird angelegt und an `iam_app` gebunden.
 4. Danach startet die App.
 

@@ -1,4 +1,4 @@
--- packages/data/migrations/up/0001_iam_core.sql
+-- packages/data/migrations/0001_iam_core.sql
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
@@ -270,7 +270,7 @@ CREATE POLICY activity_logs_isolation_policy
   WITH CHECK (instance_id = iam.current_instance_id());
 
 
--- packages/data/migrations/up/0002_iam_governance_workflows.sql
+-- packages/data/migrations/0002_iam_governance_workflows.sql
 
 CREATE TABLE IF NOT EXISTS iam.permission_change_requests (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -449,7 +449,7 @@ CREATE POLICY legal_text_acceptances_isolation_policy
   WITH CHECK (instance_id = iam.current_instance_id());
 
 
--- packages/data/migrations/up/0003_iam_data_subject_rights.sql
+-- packages/data/migrations/0003_iam_data_subject_rights.sql
 
 ALTER TABLE iam.accounts
   ADD COLUMN IF NOT EXISTS is_blocked BOOLEAN NOT NULL DEFAULT false,
@@ -647,7 +647,7 @@ CREATE POLICY data_subject_recipient_notifications_isolation_policy
   WITH CHECK (instance_id = iam.current_instance_id());
 
 
--- packages/data/migrations/up/0004_iam_account_profile.sql
+-- packages/data/migrations/0004_iam_account_profile.sql
 
 ALTER TABLE iam.instances
   ADD COLUMN IF NOT EXISTS retention_days INTEGER NOT NULL DEFAULT 90,
@@ -826,7 +826,7 @@ FOR EACH ROW
 EXECUTE FUNCTION iam.prevent_activity_logs_mutation();
 
 
--- packages/data/migrations/up/0005_iam_idempotency_keys.sql
+-- packages/data/migrations/0005_iam_idempotency_keys.sql
 
 CREATE TABLE IF NOT EXISTS iam.idempotency_keys (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -861,7 +861,7 @@ CREATE POLICY idempotency_keys_isolation_policy
   WITH CHECK (instance_id = iam.current_instance_id());
 
 
--- packages/data/migrations/up/0006_iam_activity_log_archive.sql
+-- packages/data/migrations/0006_iam_activity_log_archive.sql
 
 CREATE TABLE IF NOT EXISTS iam.activity_logs_archive (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -892,7 +892,7 @@ CREATE POLICY activity_logs_archive_isolation_policy
   WITH CHECK (instance_id = iam.current_instance_id());
 
 
--- packages/data/migrations/up/0007_iam_role_catalog_sync.sql
+-- packages/data/migrations/0007_iam_role_catalog_sync.sql
 
 ALTER TABLE iam.roles
   ADD COLUMN IF NOT EXISTS role_key TEXT,
@@ -970,7 +970,7 @@ CREATE INDEX IF NOT EXISTS idx_roles_managed_scope
   ON iam.roles(instance_id, managed_by, external_role_name);
 
 
--- packages/data/migrations/up/0008_iam_idempotency_scope.sql
+-- packages/data/migrations/0008_iam_idempotency_scope.sql
 
 DROP INDEX IF EXISTS uq_idempotency_keys_scope;
 
@@ -978,7 +978,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_idempotency_keys_scope
   ON iam.idempotency_keys(instance_id, actor_account_id, endpoint, idempotency_key);
 
 
--- packages/data/migrations/up/0009_iam_organization_management.sql
+-- packages/data/migrations/0009_iam_organization_management.sql
 
 ALTER TABLE iam.organizations
   ADD COLUMN IF NOT EXISTS parent_organization_id UUID,
@@ -1147,7 +1147,7 @@ WHERE organization.id = organization_tree.id
   AND organization.instance_id = organization_tree.instance_id;
 
 
--- packages/data/migrations/up/0010_iam_structured_permissions.sql
+-- packages/data/migrations/0010_iam_structured_permissions.sql
 
 ALTER TABLE iam.permissions
   ADD COLUMN IF NOT EXISTS action TEXT,
@@ -1192,13 +1192,13 @@ CREATE INDEX IF NOT EXISTS idx_permissions_instance_action_resource_effect
   ON iam.permissions(instance_id, action, resource_type, effect);
 
 
--- packages/data/migrations/up/0011_iam_account_username.sql
+-- packages/data/migrations/0011_iam_account_username.sql
 
 ALTER TABLE iam.accounts
   ADD COLUMN IF NOT EXISTS username_ciphertext TEXT;
 
 
--- packages/data/migrations/up/0012_iam_instance_id_text_scope.sql
+-- packages/data/migrations/0012_iam_instance_id_text_scope.sql
 
 DROP TRIGGER IF EXISTS trg_immutable_activity_logs ON iam.activity_logs;
 
@@ -1839,7 +1839,7 @@ CREATE POLICY activity_logs_archive_isolation_policy
   WITH CHECK (instance_id = iam.current_instance_id());
 
 
--- packages/data/migrations/up/0013_iam_instance_integrations.sql
+-- packages/data/migrations/0013_iam_instance_integrations.sql
 
 CREATE TABLE IF NOT EXISTS iam.instance_integrations (
   instance_id TEXT NOT NULL REFERENCES iam.instances(id) ON DELETE CASCADE,
@@ -1866,7 +1866,7 @@ CREATE POLICY instance_integrations_isolation_policy
   WITH CHECK (instance_id = iam.current_instance_id());
 
 
--- packages/data/migrations/up/0014_iam_groups.sql
+-- packages/data/migrations/0014_iam_groups.sql
 
 -- Migration 0014: IAM Groups
 -- Instanzgebundene Gruppen als eigenständige IAM-Entität (Paket 3).
@@ -1953,7 +1953,7 @@ CREATE POLICY account_groups_isolation_policy
   WITH CHECK (instance_id = iam.current_instance_id());
 
 
--- packages/data/migrations/up/0014_iam_groups_geo_units.sql
+-- packages/data/migrations/0015_iam_groups_geo_units.sql
 
 CREATE TABLE IF NOT EXISTS iam.groups (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -2163,7 +2163,7 @@ CREATE POLICY geo_units_isolation_policy
   WITH CHECK (instance_id = iam.current_instance_id());
 
 
--- packages/data/migrations/up/0015_iam_geo_hierarchy.sql
+-- packages/data/migrations/0016_iam_geo_hierarchy.sql
 
 -- Migration 0015: Geo-Hierarchie Closure-Table (Paket 3)
 -- Kanonisches Hierarchie-Read-Modell für geografische Einheiten.
@@ -2246,7 +2246,7 @@ CREATE POLICY geo_nodes_isolation_policy
   WITH CHECK (instance_id = iam.current_instance_id());
 
 
--- packages/data/migrations/up/0016_iam_legal_acceptance_audit.sql
+-- packages/data/migrations/0017_iam_legal_acceptance_audit.sql
 
 -- Migration 0016: Legal-Text-Acceptance Audit-Felder (Paket 5)
 -- Ergänzt die bestehende Tabelle iam.legal_text_acceptances um Pflichtfelder
@@ -2286,7 +2286,7 @@ CREATE INDEX IF NOT EXISTS idx_legal_text_acceptances_subject
 -- wird über den idempotenten Seed-Plan eingespielt, nicht direkt hier.
 
 
--- packages/data/migrations/up/0017_iam_accounts_instance_policy.sql
+-- packages/data/migrations/0018_iam_accounts_instance_policy.sql
 
 DROP POLICY IF EXISTS accounts_isolation_policy ON iam.accounts;
 
@@ -2296,7 +2296,7 @@ CREATE POLICY accounts_isolation_policy
   WITH CHECK (instance_id = iam.current_instance_id());
 
 
--- packages/data/migrations/up/0018_iam_account_groups_origin_compat.sql
+-- packages/data/migrations/0019_iam_account_groups_origin_compat.sql
 
 ALTER TABLE iam.account_groups
   ADD COLUMN IF NOT EXISTS origin TEXT NOT NULL DEFAULT 'manual';

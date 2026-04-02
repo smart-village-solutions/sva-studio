@@ -165,28 +165,17 @@ cd "$(git rev-parse --show-toplevel)"
 pnpm env:migrate:acceptance-hb
 ```
 
-Der Befehl wendet die SQL-Dateien aus `packages/data/migrations/up/*.sql` in Reihenfolge gegen den laufenden Acceptance-Postgres an:
+Der Befehl wendet die kanonischen `goose`-Migrationen aus `packages/data/migrations/*.sql` gegen den laufenden Acceptance-Postgres an:
 
 - bevorzugt remote via `quantum-cli exec --endpoint sva --stack sva-studio --service postgres`
 - nur als Fallback lokal via `docker exec`, wenn der Swarm-Postgres auf demselben Docker-Daemon sichtbar ist
-- nach erfolgreichem SQL-Lauf validiert ein kritischer IAM-Schema-Guard automatisch Tabellen, Spalten, Indizes und RLS-Policies
+- `goose` wird mit gepinnter Version temporär bereitgestellt; eine permanente Installation auf dem Zielsystem ist nicht erforderlich
+- nach erfolgreichem Migrationslauf validiert ein kritischer IAM-Schema-Guard automatisch Tabellen, Spalten, Indizes und RLS-Policies
 - bei Drift endet der Befehl mit einem maschinenlesbaren Fehlerbild statt mit einem stillschweigend unvollständigen Zustand
 
 Damit ist kein manuelles Paste-in-`psql` mehr erforderlich.
 
-```bash
-# Postgres-Container identifizieren
-docker ps --filter name=sva-studio_postgres
-
-# Migrationen vom Artefaktpfad kopieren und ausführen
-docker cp <MIGRATIONS_SOURCE_DIR>/. <CONTAINER_ID>:/tmp/migrations/
-docker exec <CONTAINER_ID> sh -c '
-  for f in /tmp/migrations/*.sql; do
-    echo "Applying $f"
-    psql -v ON_ERROR_STOP=1 -U sva -d sva_studio -f "$f"
-  done
-'
-```
+Das Fallback über manuelle `psql`-Schleifen bleibt nur für Recovery-Sonderfälle reserviert; der kanonische Betriebsweg ist `pnpm env:migrate:acceptance-hb`.
 
 ### Runtime-User anlegen
 

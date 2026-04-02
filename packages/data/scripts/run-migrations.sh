@@ -52,10 +52,10 @@ if ! find "${MIGRATIONS_DIR}" -maxdepth 1 -name '*.sql' -print -quit | grep -q .
   exit 0
 fi
 
-db_string="postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}?sslmode=disable"
+db_string="postgres://${POSTGRES_USER}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}?sslmode=disable"
 
 if [ "${GOOSE_COMMAND}" = "down" ]; then
-  exec "${GOOSE_WRAPPER}" -dir "${MIGRATIONS_DIR}" postgres "${db_string}" down-to 0
+  exec env PGPASSWORD="${POSTGRES_PASSWORD}" "${GOOSE_WRAPPER}" -dir "${MIGRATIONS_DIR}" postgres "${db_string}" down-to 0
 fi
 
 if [ "${GOOSE_COMMAND}" = "up-to" ] || [ "${GOOSE_COMMAND}" = "down-to" ]; then
@@ -64,7 +64,7 @@ if [ "${GOOSE_COMMAND}" = "up-to" ] || [ "${GOOSE_COMMAND}" = "down-to" ]; then
     echo "${GOOSE_COMMAND} requires a target version."
     exit 1
   fi
-  exec "${GOOSE_WRAPPER}" -dir "${MIGRATIONS_DIR}" postgres "${db_string}" "${GOOSE_COMMAND}" "${target_version}"
+  exec env PGPASSWORD="${POSTGRES_PASSWORD}" "${GOOSE_WRAPPER}" -dir "${MIGRATIONS_DIR}" postgres "${db_string}" "${GOOSE_COMMAND}" "${target_version}"
 fi
 
-exec "${GOOSE_WRAPPER}" -dir "${MIGRATIONS_DIR}" postgres "${db_string}" "${GOOSE_COMMAND}"
+exec env PGPASSWORD="${POSTGRES_PASSWORD}" "${GOOSE_WRAPPER}" -dir "${MIGRATIONS_DIR}" postgres "${db_string}" "${GOOSE_COMMAND}"

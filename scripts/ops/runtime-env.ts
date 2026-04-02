@@ -134,12 +134,11 @@ const getGooseLocalBinaryPath = () => runCapture('bash', [gooseWrapperPath, '--p
 
 const buildPostgresConnectionString = (
   user: string,
-  password: string,
   database: string,
   host: string,
   port: string,
 ) =>
-  `postgres://${encodeURIComponent(user)}:${encodeURIComponent(password)}@${host}:${port}/${database}?sslmode=disable`;
+  `postgres://${encodeURIComponent(user)}@${host}:${port}/${database}?sslmode=disable`;
 
 const parseVarsFile = (filePath: string): Record<string, string> => {
   const parsed: Record<string, string> = {};
@@ -1073,23 +1072,28 @@ const runGooseAgainstLocalAcceptanceContainer = (
   gooseCommand: 'status' | 'up',
 ) => {
   const gooseBinary = getGooseLocalBinaryPath();
-  const dbString = buildPostgresConnectionString(postgresUser, postgresPassword, postgresDb, '127.0.0.1', '5432');
-  const escapedRoot = shellEscape(rootDir);
-  const escapedContainerId = shellEscape(containerId);
-  const escapedDbString = shellEscape(dbString);
+  const dbString = buildPostgresConnectionString(postgresUser, postgresDb, '127.0.0.1', '5432');
+  const dockerEnv = { ...process.env, PGPASSWORD: postgresPassword };
 
-  const command =
-    `set -euo pipefail; ` +
-    `cd ${escapedRoot}; ` +
-    `docker cp ${shellEscape(gooseBinary)} ${escapedContainerId}:/tmp/goose; ` +
-    `docker exec ${escapedContainerId} chmod +x /tmp/goose; ` +
-    `docker exec ${escapedContainerId} rm -rf /tmp/sva-goose-migrations; ` +
-    `docker exec ${escapedContainerId} mkdir -p /tmp/sva-goose-migrations; ` +
-    `docker cp packages/data/migrations/. ${escapedContainerId}:/tmp/sva-goose-migrations/; ` +
-    `docker exec ${escapedContainerId} sh -lc '/tmp/goose -dir /tmp/sva-goose-migrations postgres ${escapedDbString} ${gooseCommand}'; ` +
-    `docker exec ${escapedContainerId} rm -rf /tmp/sva-goose-migrations /tmp/goose`;
+  run('docker', ['cp', gooseBinary, `${containerId}:/tmp/goose`], dockerEnv);
+  run('docker', ['exec', containerId, 'chmod', '+x', '/tmp/goose'], dockerEnv);
+  run('docker', ['exec', containerId, 'rm', '-rf', '/tmp/sva-goose-migrations'], dockerEnv);
+  run('docker', ['exec', containerId, 'mkdir', '-p', '/tmp/sva-goose-migrations'], dockerEnv);
+  run('docker', ['cp', `${gooseMigrationsDir}/.`, `${containerId}:/tmp/sva-goose-migrations/`], dockerEnv);
 
-  return runCapture('sh', ['-lc', command]);
+  try {
+    return runCapture(
+      'docker',
+      ['exec', '-e', `PGPASSWORD=${postgresPassword}`, containerId, '/tmp/goose', '-dir', '/tmp/sva-goose-migrations', 'postgres', dbString, gooseCommand],
+      dockerEnv,
+    );
+  } finally {
+    try {
+      run('docker', ['exec', containerId, 'rm', '-rf', '/tmp/sva-goose-migrations', '/tmp/goose'], dockerEnv);
+    } catch {
+      // Best-effort cleanup; the primary failure should remain visible to the caller.
+    }
+  }
 };
 
 const prepareAcceptanceGooseAssets = (
@@ -1111,12 +1115,28 @@ const prepareAcceptanceGooseAssets = (
     'esac',
     'mkdir -p /tmp/sva-goose-migrations',
     `download_url="https://github.com/${repo}/releases/download/${version}/\${asset}"`,
+    `checksums_url="https://github.com/${repo}/releases/download/${version}/checksums.txt"`,
     'if command -v wget >/dev/null 2>&1; then',
     '  wget -qO /tmp/goose "${download_url}"',
+    '  wget -qO /tmp/goose.checksums "${checksums_url}"',
     'elif command -v curl >/dev/null 2>&1; then',
     '  curl -fsSL "${download_url}" -o /tmp/goose',
+    '  curl -fsSL "${checksums_url}" -o /tmp/goose.checksums',
     'else',
     '  echo "Neither wget nor curl is available in the target container." >&2',
+    '  exit 1',
+    'fi',
+    'grep "[[:space:]]\\${asset}$" /tmp/goose.checksums > /tmp/goose.checksums.filtered',
+    'if [ ! -s /tmp/goose.checksums.filtered ]; then',
+    '  echo "No checksum entry found for downloaded goose binary." >&2',
+    '  exit 1',
+    'fi',
+    'if command -v sha256sum >/dev/null 2>&1; then',
+    '  (cd /tmp && sha256sum -c /tmp/goose.checksums.filtered)',
+    'elif command -v shasum >/dev/null 2>&1; then',
+    '  (cd /tmp && shasum -a 256 -c /tmp/goose.checksums.filtered)',
+    'else',
+    '  echo "Neither sha256sum nor shasum is available in the target container." >&2',
     '  exit 1',
     'fi',
     'chmod +x /tmp/goose',
@@ -1130,11 +1150,18 @@ const prepareAcceptanceGooseAssets = (
   for (const migrationFile of migrationFiles) {
     const sql = readFileSync(resolve(rootDir, migrationFile), 'utf8');
     const remoteTarget = `/tmp/sva-goose-migrations/${basename(migrationFile)}`;
+    const encodedSql = Buffer.from(sql, 'utf8').toString('base64');
+    const heredocMarker = `__SVA_GOOSE_${basename(migrationFile).replaceAll(/[^A-Za-z0-9]/g, '_')}__`;
     const uploadScript = [
       'set -euo pipefail',
-      `cat <<'SQL' >${remoteTarget}`,
-      sql,
-      'SQL',
+      'if command -v base64 >/dev/null 2>&1; then',
+      `  cat <<'${heredocMarker}' | base64 -d >${shellEscape(remoteTarget)}`,
+      encodedSql,
+      heredocMarker,
+      'else',
+      '  echo "base64 is required for remote migration upload." >&2',
+      '  exit 1',
+      'fi',
     ].join('\n');
 
     runAcceptanceServiceScript(env, service, uploadScript, {
@@ -1179,14 +1206,15 @@ const runGooseAgainstAcceptance = (
   }
 
   prepareAcceptanceGooseAssets(env, quantumService, quantumSlot, migrationFiles);
-  const dbString = buildPostgresConnectionString(postgresUser, postgresPassword, postgresDb, '127.0.0.1', '5432');
+  const dbString = buildPostgresConnectionString(postgresUser, postgresDb, '127.0.0.1', '5432');
   const summary = runAcceptanceServiceScript(
     env,
     quantumService,
     [
       'set -euo pipefail',
-      `/tmp/goose -dir /tmp/sva-goose-migrations postgres ${shellEscape(dbString)} ${gooseCommand}`,
-      'rm -rf /tmp/sva-goose-migrations /tmp/goose',
+      "cleanup() { rm -rf /tmp/sva-goose-migrations /tmp/goose /tmp/goose.checksums /tmp/goose.checksums.filtered; }",
+      'trap cleanup EXIT',
+      `PGPASSWORD=${shellEscape(postgresPassword)} /tmp/goose -dir /tmp/sva-goose-migrations postgres ${shellEscape(dbString)} ${gooseCommand}`,
     ].join('\n'),
     {
       failureMessage: `Remote-Goose-${gooseCommand} fehlgeschlagen.`,

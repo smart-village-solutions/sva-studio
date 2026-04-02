@@ -55,8 +55,9 @@ fi
 
 echo "Ensure target database exists..."
 db_exists=$(
-  docker compose exec -T postgres psql -tA -U "${POSTGRES_USER}" -d postgres \
-    -c "SELECT 1 FROM pg_database WHERE datname = '${POSTGRES_DB}'"
+  docker compose exec -T postgres psql -tA -U "${POSTGRES_USER}" -d postgres -v db_name="${POSTGRES_DB}" <<'SQL'
+SELECT 1 FROM pg_database WHERE datname = :'db_name';
+SQL
 )
 if [ "${db_exists}" != "1" ]; then
   docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U "${POSTGRES_USER}" -d postgres \
@@ -64,14 +65,15 @@ if [ "${db_exists}" != "1" ]; then
 fi
 
 echo "Recreate target database for a clean seed integration run..."
-docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U "${POSTGRES_USER}" -d postgres <<SQL
+docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U "${POSTGRES_USER}" -d postgres -v db_name="${POSTGRES_DB}" <<'SQL'
 SELECT pg_terminate_backend(pid)
 FROM pg_stat_activity
-WHERE datname = '${POSTGRES_DB}'
+WHERE datname = :'db_name'
   AND pid <> pg_backend_pid();
-
-DROP DATABASE IF EXISTS "${POSTGRES_DB}";
-CREATE DATABASE "${POSTGRES_DB}";
+SELECT format('DROP DATABASE IF EXISTS %I;', :'db_name');
+\gexec
+SELECT format('CREATE DATABASE %I;', :'db_name');
+\gexec
 SQL
 
 echo "Apply migrations..."

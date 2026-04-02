@@ -1,14 +1,42 @@
 BEGIN;
 
-INSERT INTO iam.instances (id, display_name)
+INSERT INTO iam.instances (
+  id,
+  display_name,
+  status,
+  parent_domain,
+  primary_hostname,
+  feature_flags
+)
 VALUES (
   'de-musterhausen',
-  'Seed Instance Default'
+  'Seed Instance Default',
+  'active',
+  'studio.smart-village.app',
+  'de-musterhausen.studio.smart-village.app',
+  '{}'::jsonb
 )
 ON CONFLICT (id) DO UPDATE
 SET
   display_name = EXCLUDED.display_name,
+  status = EXCLUDED.status,
+  parent_domain = EXCLUDED.parent_domain,
+  primary_hostname = EXCLUDED.primary_hostname,
+  feature_flags = EXCLUDED.feature_flags,
   updated_at = NOW();
+
+INSERT INTO iam.instance_hostnames (hostname, instance_id, is_primary, created_by)
+VALUES (
+  'de-musterhausen.studio.smart-village.app',
+  'de-musterhausen',
+  true,
+  'seed:0001_iam_personas'
+)
+ON CONFLICT (hostname) DO UPDATE
+SET
+  instance_id = EXCLUDED.instance_id,
+  is_primary = EXCLUDED.is_primary,
+  created_by = EXCLUDED.created_by;
 
 INSERT INTO iam.organizations (
   id,

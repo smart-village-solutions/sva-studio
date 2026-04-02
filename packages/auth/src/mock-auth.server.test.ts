@@ -40,7 +40,16 @@ describe('mock-auth.server', () => {
     expect(createMockSessionUser()).toEqual({
       id: 'seed:system_admin',
       instanceId: 'de-musterhausen',
-      roles: ['system_admin', 'iam_admin', 'support_admin', 'security_admin', 'interface_manager', 'app_manager', 'editor'],
+      roles: [
+        'system_admin',
+        'iam_admin',
+        'support_admin',
+        'security_admin',
+        'instance_registry_admin',
+        'interface_manager',
+        'app_manager',
+        'editor',
+      ],
     });
   });
 

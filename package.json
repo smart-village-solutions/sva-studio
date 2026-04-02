@@ -19,7 +19,7 @@
     "test:coverage": "env -u NO_COLOR nx run-many -t test:coverage",
     "test:coverage:affected": "env -u NO_COLOR nx affected --target=test:coverage --base=origin/main",
     "test:coverage:pr": "pnpm test:coverage:affected && pnpm patch-coverage-gate --base=origin/main",
-    "test:pr": "pnpm clean:generated-source-artifacts && pnpm check:file-placement && env COVERAGE_GATE_REQUIRE_SUMMARIES=0 pnpm nx affected --target=test:coverage --base=origin/main --output-style=stream && env COVERAGE_GATE_REQUIRE_SUMMARIES=0 pnpm coverage-gate && pnpm complexity-gate && pnpm test:integration && pnpm nx run sva-studio-react:build",
+    "test:pr": "pnpm clean:generated-source-artifacts && pnpm check:file-placement && env COVERAGE_GATE_REQUIRE_SUMMARIES=0 pnpm nx affected --target=test:coverage --base=origin/main --output-style=stream && pnpm patch-coverage-gate --base=origin/main && env COVERAGE_GATE_REQUIRE_SUMMARIES=0 pnpm coverage-gate && pnpm complexity-gate && pnpm test:integration && pnpm nx run sva-studio-react:build",
     "test:integration": "env -u NO_COLOR nx run-many -t test:integration",
     "test:e2e": "env -u NO_COLOR nx run sva-studio-react:test:e2e",
     "test:acceptance:iam": "env -u NO_COLOR nx run sva-studio-react:test:acceptance",

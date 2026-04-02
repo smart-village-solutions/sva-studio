@@ -81,6 +81,18 @@ test('GET /auth/login returns redirect response', async ({ request }) => {
   });
 });
 
+test('tenant-host login fails closed when canonical auth redirect prerequisites are unavailable', async ({ request }) => {
+  const tenantLoginUrl = process.env.PLAYWRIGHT_TENANT_LOGIN_URL ?? 'http://hb.studio.lvh.me:4173/auth/login?returnTo=%2Fadmin%2Finstances';
+  const response = await request.get(tenantLoginUrl, {
+    maxRedirects: 0,
+  });
+
+  expect(response.status()).toBe(500);
+  await expect(response.json()).resolves.toMatchObject({
+    error: 'internal_error',
+  });
+});
+
 test('demo server function uses the real /_server transport', async ({ page }) => {
   const pageErrors: string[] = [];
   const serverFnResponses = captureServerFnResponses(page);

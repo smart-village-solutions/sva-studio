@@ -80,6 +80,16 @@ Schulden auf IST-Basis.
    - Wahrscheinlichkeit: hoch
    - Maßnahme: `complexity-gate`, ticketpflichtige tracked findings, Hotspot-Coverage für kritische Dateien
 
+14. Registry-Cache aktuell nur als L1 im App-Prozess
+   - Impact: mittel (mehr DB-Last oder inkonsistente Sicht bei mehreren Prozessen)
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: Redis-L2-Cache oder NOTIFY-basierte Cross-Process-Invalidierung als Folgearbeit bewerten
+
+15. Re-Authentisierung für Instanzmutationen aktuell nur als schlanker technischer Nachweis modelliert
+   - Impact: mittel bis hoch (Sicherheitsniveau hängt an nachgelagerten Integrationsschritten)
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: Session-seitig frische Reauth-Zeitmarke und serverseitige Prüfung als nächste Härtung einführen
+
 14. Übergangsphase mit modularen Fassaden und verbleibenden `core.ts`-Hotspots
    - Impact: mittel bis hoch (Reviewer müssen zwischen stabiler API und Restschuld-Kern unterscheiden)
    - Wahrscheinlichkeit: hoch

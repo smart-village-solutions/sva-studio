@@ -73,6 +73,7 @@ Architekturprinzipien auf IST-Basis.
 - Session-Lifecycle, Forced Reauth und kontrolliertes Silent SSO: `ADR-023`
 - Per-User-Mainserver-Delegation und Integrationsgrenze: `ADR-021`
 - OSS-Standard für SQL-Migrationen: `ADR-029`
+- Registry-basierte Instanzfreigabe und gemeinsamer Provisioning-Vertrag: `ADR-030`
 
 Referenzen:
 
@@ -89,3 +90,10 @@ Referenzen:
 - `../adr/ADR-017-modulare-iam-server-bausteine.md`
 - `../adr/ADR-023-session-lifecycle-forced-reauth-und-silent-sso.md`
 - `../adr/ADR-021-per-user-sva-mainserver-delegation.md`
+- `../adr/ADR-030-registry-basierte-instance-freigabe-und-provisioning.md`
+
+### Fortschreibung 2026-04: Registry-basierte Tenant-Freigabe
+
+- Tenant-Freigabe wird nicht mehr strategisch über tenant-spezifische Env-Konfiguration modelliert, sondern über eine zentrale Registry in Postgres.
+- Root-Host bleibt die einzige globale Control-Plane-Oberfläche; Tenant-Hosts dienen nur dem instanzgebundenen Betrieb.
+- HTTP, Studio-UI und Ops-CLI verwenden denselben fachlichen Provisioning-Vertrag für Neuanlage und Statusmutationen.

@@ -3,6 +3,7 @@ export type IamInstanceId = string;
 
 export type PersonaKey =
   | 'system_admin'
+  | 'instance_registry_admin'
   | 'app_manager'
   | 'feature_manager'
   | 'interface_manager'
@@ -32,7 +33,8 @@ export type PermissionKey =
   | 'content.publish'
   | 'content.moderate'
   | 'integration.manage'
-  | 'feature.toggle';
+  | 'feature.toggle'
+  | 'instance.registry.manage';
 
 export type PermissionEffect = 'allow' | 'deny';
 

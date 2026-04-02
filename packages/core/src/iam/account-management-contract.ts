@@ -20,7 +20,17 @@ export type ApiErrorCode =
   | 'feature_disabled'
   | 'conflict'
   | 'legal_acceptance_required'
+  | 'reauth_required'
   | 'internal_error';
+
+export type InstanceStatus =
+  | 'requested'
+  | 'validated'
+  | 'provisioning'
+  | 'active'
+  | 'failed'
+  | 'suspended'
+  | 'archived';
 
 export type ApiPagination = {
   readonly page: number;
@@ -245,6 +255,57 @@ export type IamOrganizationMembership = {
   readonly visibility: IamOrganizationMembershipVisibility;
   readonly isDefaultContext: boolean;
   readonly createdAt: string;
+};
+
+export type IamInstanceProvisioningOperation = 'create' | 'activate' | 'suspend' | 'archive';
+
+export type IamInstanceProvisioningRun = {
+  readonly id: string;
+  readonly instanceId: string;
+  readonly operation: IamInstanceProvisioningOperation;
+  readonly status: InstanceStatus;
+  readonly stepKey?: string;
+  readonly idempotencyKey: string;
+  readonly errorCode?: string;
+  readonly errorMessage?: string;
+  readonly requestId?: string;
+  readonly actorId?: string;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+};
+
+export type IamInstanceAuditEvent = {
+  readonly id: string;
+  readonly instanceId: string;
+  readonly eventType: string;
+  readonly actorId?: string;
+  readonly requestId?: string;
+  readonly details: Readonly<Record<string, unknown>>;
+  readonly createdAt: string;
+};
+
+export type IamInstanceListItem = {
+  readonly instanceId: string;
+  readonly displayName: string;
+  readonly status: InstanceStatus;
+  readonly parentDomain: string;
+  readonly primaryHostname: string;
+  readonly themeKey?: string;
+  readonly featureFlags: Readonly<Record<string, boolean>>;
+  readonly mainserverConfigRef?: string;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+  readonly latestProvisioningRun?: IamInstanceProvisioningRun;
+};
+
+export type IamInstanceDetail = IamInstanceListItem & {
+  readonly hostnames: readonly {
+    readonly hostname: string;
+    readonly isPrimary: boolean;
+    readonly createdAt: string;
+  }[];
+  readonly provisioningRuns: readonly IamInstanceProvisioningRun[];
+  readonly auditEvents: readonly IamInstanceAuditEvent[];
 };
 
 export type IamOrganizationChildItem = {

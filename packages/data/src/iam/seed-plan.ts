@@ -14,6 +14,7 @@ const permissions = [
   ['40111111-1111-1111-1111-111111111121', 'content.moderate', 'Moderate content'],
   ['40111111-1111-1111-1111-111111111122', 'integration.manage', 'Manage integrations'],
   ['40111111-1111-1111-1111-111111111123', 'feature.toggle', 'Toggle feature flags'],
+  ['40111111-1111-1111-1111-111111111124', 'instance.registry.manage', 'Manage instance registry and provisioning'],
 ] as const satisfies readonly [string, PermissionKey, string][];
 
 const personas: readonly PersonaSeed[] = [
@@ -29,6 +30,19 @@ const personas: readonly PersonaSeed[] = [
     keycloakSubject: 'seed:system_admin',
     seedEmailPlaceholder: 'seed.system_admin@sva.local',
     seedDisplayNamePlaceholder: 'System Administrator',
+  },
+  {
+    personaKey: 'instance_registry_admin',
+    roleSlug: 'instance_registry_admin',
+    roleLevel: 95,
+    displayName: 'Instance Registry Administrator',
+    scopeDefault: 'instance',
+    mfaPolicy: 'required',
+    permissionKeys: ['instance.registry.manage', 'feature.toggle', 'integration.manage'],
+    accountId: '50888888-8888-8888-8888-888888888888',
+    keycloakSubject: 'seed:instance_registry_admin',
+    seedEmailPlaceholder: 'seed.instance_registry_admin@sva.local',
+    seedDisplayNamePlaceholder: 'Instance Registry Administrator',
   },
   {
     personaKey: 'app_manager',

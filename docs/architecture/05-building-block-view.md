@@ -46,6 +46,11 @@ Abhängigkeiten des aktuellen Systems.
    - trennt client-sichere Typen von serverseitigen Delegations- und Diagnostikfunktionen
 9. Plugin Example (`packages/plugin-example`)
    - Beispielroute fuer Plugin-Erweiterbarkeit
+10. Instanz-Registry (`packages/core`, `packages/data`, `packages/auth`, `apps/sva-studio-react`)
+   - `packages/core`: Host-Klassifikation, Statusmodell und Validierung
+   - `packages/data`: Registry-Repositories, Migrationen und L1-Cache
+   - `packages/auth`: Plattformvertrag, Provisioning-Fassade und Root-Host-Guard
+   - `apps/sva-studio-react`: Admin-Control-Plane unter `/admin/instances`
 
 ### IAM-Bausteine und Package-Zuordnung
 

@@ -36,6 +36,7 @@ mit Bezug auf die arc42-Abschnitte.
 - `ADR-027-rechtstext-fail-closed-und-blockierte-session.md`
 - `ADR-028-iam-konfigurations-export-als-folgearbeit.md`
 - `ADR-029-goose-als-oss-standard-fuer-sql-migrationen.md`
+- `ADR-030-registry-basierte-instance-freigabe-und-provisioning.md`
 
 ### Zuordnung zu arc42-Abschnitten
 
@@ -49,6 +50,7 @@ mit Bezug auf die arc42-Abschnitte.
 - Abschnitt 04/06/08/09/10/11 (Strategie/Laufzeit/Querschnitt/Entscheidungen/Qualität/Risiken): ADR-023
 - Abschnitt 04/05/06/08/10/11 (Strategie/Bausteine/Laufzeit/Querschnitt/Qualität/Risiken): ADR-022, ADR-024, ADR-025, ADR-026, ADR-027, ADR-028
 - Abschnitt 04/07/08/09/10/11 (Strategie/Deployment/Querschnitt/Entscheidungen/Qualität/Risiken): ADR-029
+- Abschnitt 04/05/06/07/08/09/10/11 (Strategie/Bausteine/Laufzeit/Deployment/Querschnitt/Entscheidungen/Qualität/Risiken): ADR-030
 - Abschnitt 03/04/05/06/08 (Kontext/Strategie/Bausteine/Laufzeit/Querschnitt): ADR-021
 
 ### Zuordnung Swarm-Deployment-ADRs
@@ -76,6 +78,7 @@ mit Bezug auf die arc42-Abschnitte.
 - ADR-027: Rechtstext-Fail-Closed und blockierter Session-Zustand (Abschnitt 05, 06, 08, 09, 10, 11)
 - ADR-028: IAM-Konfigurations-Export bleibt dokumentierte Folgearbeit (Abschnitt 09, 11)
 - ADR-029: `goose` als OSS-Standard für SQL-Migrationen (Abschnitt 04, 07, 08, 09, 10, 11)
+- ADR-030: Registry-basierte Instance-Freigabe und gemeinsamer Provisioning-Vertrag (Abschnitt 04, 05, 06, 07, 08, 09, 10, 11)
 
 ### Pflege-Regel
 
@@ -236,3 +239,14 @@ Zuordnung:
 
 - Abschnitt 04/05/06/08/10/11: ADR-017, ADR-025
 - Abschnitt 09: dokumentiert explizit, dass direkte Nutzerrechte eine Fortschreibung vorhandener Entscheidungen sind und kein neues Architekturpattern einführen
+
+### Fortschreibung 2026-04: Zentrale Instanz-Registry und Provisioning
+
+- `ADR-030-registry-basierte-instance-freigabe-und-provisioning.md`
+  - definiert Postgres als führende Registry für Instanzfreigabe, Hostnamen, Status und Audit
+  - konkretisiert den gemeinsamen Provisioning-Vertrag für HTTP, Studio-Control-Plane und Ops-CLI
+  - hält den Root-Host als einzige globale Instanzverwaltung fest und belässt ADR-020 als gültige Auth-Grenze
+
+Zuordnung:
+
+- Abschnitt 04/05/06/07/08/09/10/11: ADR-030

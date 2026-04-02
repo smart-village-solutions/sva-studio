@@ -1,5 +1,7 @@
 import { serialize as serializeCookie } from 'cookie-es';
-import { createSdkLogger, initializeOtelSdk, withRequestContext } from '@sva/sdk/server';
+import { classifyHost, isTrafficEnabledInstanceStatus } from '@sva/core';
+import { loadInstanceByHostname } from '@sva/data/server';
+import { createSdkLogger, getInstanceConfig, initializeOtelSdk, isCanonicalAuthHost, withRequestContext } from '@sva/sdk/server';
 
 import { createLoginUrl, handleCallback, logoutSession } from '../auth.server.js';
 import { emitAuthAuditEvent } from '../audit-events.server.js';
@@ -129,6 +131,17 @@ window.parent.postMessage({ type: 'sva-auth:silent-sso', status: '${status}' }, 
 
 const DEFAULT_POST_LOGIN_REDIRECT = '/';
 
+const buildCanonicalAuthUrl = (request: Request, pathname: string, searchParams?: URLSearchParams): URL => {
+  const requestUrl = new URL(request.url);
+  const config = getInstanceConfig();
+  const target = new URL(requestUrl.toString());
+  const portSuffix = requestUrl.port ? `:${requestUrl.port}` : '';
+  target.host = `${config?.canonicalAuthHost ?? requestUrl.hostname}${portSuffix}`;
+  target.pathname = pathname;
+  target.search = searchParams ? searchParams.toString() : '';
+  return target;
+};
+
 const resolveCallbackInput = (request: Request) => {
   const url = new URL(request.url);
   return {
@@ -139,7 +152,54 @@ const resolveCallbackInput = (request: Request) => {
   };
 };
 
-const resolveCookieLoginState = (request: Request, state: string) => {
+const isTrustedAbsoluteReturnTo = async (request: Request, target: URL): Promise<boolean> => {
+  if (target.protocol !== 'http:' && target.protocol !== 'https:') {
+    return false;
+  }
+
+  if (target.pathname.startsWith('/auth/')) {
+    return false;
+  }
+
+  const config = getInstanceConfig();
+  if (!config) {
+    return false;
+  }
+
+  if (isCanonicalAuthHost(target.host)) {
+    return true;
+  }
+
+  const classification = classifyHost(target.host, config.parentDomain);
+  if (classification.kind !== 'tenant') {
+    return false;
+  }
+
+  const registryEntry = await loadInstanceByHostname(target.host).catch(() => null);
+  return Boolean(registryEntry && isTrafficEnabledInstanceStatus(registryEntry.status));
+};
+
+const sanitizeReturnTo = async (request: Request, value: string | null | undefined): Promise<string> => {
+  if (!value) {
+    return DEFAULT_POST_LOGIN_REDIRECT;
+  }
+
+  if (value.startsWith('/')) {
+    if (value.startsWith('//') || value.startsWith('/auth/')) {
+      return DEFAULT_POST_LOGIN_REDIRECT;
+    }
+    return value;
+  }
+
+  try {
+    const target = new URL(value);
+    return (await isTrustedAbsoluteReturnTo(request, target)) ? target.toString() : DEFAULT_POST_LOGIN_REDIRECT;
+  } catch {
+    return DEFAULT_POST_LOGIN_REDIRECT;
+  }
+};
+
+const resolveCookieLoginState = async (request: Request, state: string) => {
   const { loginStateCookieName, loginStateSecret } = getAuthConfig();
   const payload = decodeLoginStateCookie(readCookieFromRequest(request, loginStateCookieName), loginStateSecret);
 
@@ -151,27 +211,40 @@ const resolveCookieLoginState = (request: Request, state: string) => {
     codeVerifier: payload.codeVerifier,
     nonce: payload.nonce,
     createdAt: payload.createdAt,
-    returnTo: sanitizeReturnTo(payload.returnTo),
+    returnTo: await sanitizeReturnTo(request, payload.returnTo),
     silent: payload.silent === true,
   };
 };
 
 const isExpiredLoginState = (createdAt: number) => Date.now() - createdAt > 10 * 60 * 1000;
 
-const sanitizeReturnTo = (value: string | null | undefined): string => {
-  if (!value) {
-    return DEFAULT_POST_LOGIN_REDIRECT;
+const redirectTenantLoginToCanonicalHost = async (request: Request): Promise<Response | null> => {
+  const config = getInstanceConfig();
+  if (!config) {
+    return null;
   }
 
-  if (!value.startsWith('/') || value.startsWith('//')) {
-    return DEFAULT_POST_LOGIN_REDIRECT;
+  const requestUrl = new URL(request.url);
+  if (isCanonicalAuthHost(requestUrl.host)) {
+    return null;
   }
 
-  if (value.startsWith('/auth/')) {
-    return DEFAULT_POST_LOGIN_REDIRECT;
+  const hostClassification = classifyHost(requestUrl.host, config.parentDomain);
+  if (hostClassification.kind !== 'tenant') {
+    return null;
   }
 
-  return value;
+  const requestedReturnTo = await sanitizeReturnTo(request, requestUrl.searchParams.get('returnTo'));
+  const tenantReturnTo = requestedReturnTo.startsWith('/')
+    ? `${requestUrl.origin}${requestedReturnTo}`
+    : requestedReturnTo;
+  const redirectParams = new URLSearchParams({ returnTo: tenantReturnTo });
+
+  if (requestUrl.searchParams.get('silent') === '1') {
+    redirectParams.set('silent', '1');
+  }
+
+  return createRedirectResponse(buildCanonicalAuthUrl(request, '/auth/login', redirectParams).toString());
 };
 
 const isSilentSsoSuppressed = (request: Request): boolean => {
@@ -186,6 +259,13 @@ export const loginHandler = async (request?: Request): Promise<Response> => {
       return createRedirectResponse('/?auth=mock-login');
     }
 
+    if (request) {
+      const canonicalRedirect = await redirectTenantLoginToCanonicalHost(request);
+      if (canonicalRedirect) {
+        return canonicalRedirect;
+      }
+    }
+
     const url = request ? new URL(request.url) : null;
     const isSilent = url?.searchParams.get('silent') === '1';
     if (request && isSilent && isSilentSsoSuppressed(request)) {
@@ -193,7 +273,7 @@ export const loginHandler = async (request?: Request): Promise<Response> => {
     }
 
     const { loginStateCookieName, loginStateSecret } = getAuthConfig();
-    const returnTo = request ? sanitizeReturnTo(url?.searchParams.get('returnTo')) : DEFAULT_POST_LOGIN_REDIRECT;
+    const returnTo = request ? await sanitizeReturnTo(request, url?.searchParams.get('returnTo')) : DEFAULT_POST_LOGIN_REDIRECT;
     const { url: authorizationUrl, state, loginState } = await createLoginUrl({ returnTo, silent: isSilent });
     const response = createRedirectResponse(authorizationUrl);
 
@@ -232,7 +312,7 @@ export const callbackHandler = async (request: Request): Promise<Response> => {
 
     const { code, state, error, iss } = resolveCallbackInput(request);
     const { loginStateCookieName, sessionCookieName } = getAuthConfig();
-    const cookieLoginState = state ? resolveCookieLoginState(request, state) : null;
+    const cookieLoginState = state ? await resolveCookieLoginState(request, state) : null;
     const hadSessionCookieOnCallback = Boolean(readCookieFromRequest(request, sessionCookieName));
 
     if (error) {

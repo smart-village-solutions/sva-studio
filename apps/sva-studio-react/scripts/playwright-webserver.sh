@@ -9,6 +9,12 @@ READY_TIMEOUT_SECONDS=30
 POLL_INTERVAL_SECONDS=1
 BASE_URL="http://127.0.0.1:${PORT}"
 
+: "${SVA_PARENT_DOMAIN:=studio.lvh.me}"
+: "${SVA_PUBLIC_BASE_URL:=http://studio.lvh.me:${PORT}}"
+
+export SVA_PARENT_DOMAIN
+export SVA_PUBLIC_BASE_URL
+
 cleanup() {
   if [ -n "${SERVER_PID:-}" ] && kill -0 "$SERVER_PID" 2>/dev/null; then
     kill "$SERVER_PID" 2>/dev/null || true
@@ -39,7 +45,7 @@ wait_for_server_readiness() {
 
 while [ "$ATTEMPT" -le "$MAX_ATTEMPTS" ]; do
   set +e
-  pnpm exec vite dev --host 127.0.0.1 --port "$PORT" --strictPort &
+  pnpm exec vite dev --host 0.0.0.0 --port "$PORT" --strictPort &
   SERVER_PID=$!
   set -e
 

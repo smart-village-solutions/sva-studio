@@ -12,6 +12,8 @@ import type {
   IamDsrCaseListItem,
   IamDsrSelfServiceOverview,
   IamGovernanceCaseListItem,
+  IamInstanceDetail,
+  IamInstanceListItem,
   IamLegalTextListItem,
   IamPendingLegalTextItem,
   IamOrganizationContext,
@@ -345,6 +347,20 @@ export type DsrAdminCasesQuery = {
   readonly search?: string;
 };
 
+export type InstancesQuery = {
+  readonly search?: string;
+  readonly status?: IamInstanceListItem['status'];
+};
+
+export type CreateInstancePayload = {
+  readonly instanceId: string;
+  readonly displayName: string;
+  readonly parentDomain: string;
+  readonly themeKey?: string;
+  readonly mainserverConfigRef?: string;
+  readonly featureFlags?: Readonly<Record<string, boolean>>;
+};
+
 type IamRequestOptions = Readonly<{
   signal?: AbortSignal;
 }>;
@@ -472,6 +488,17 @@ const postJson = async <TResponse, TPayload>(path: string, payload: TPayload, id
     body: JSON.stringify(payload),
   });
 
+const postJsonWithReauth = async <TResponse, TPayload>(path: string, payload: TPayload, idempotent = false) =>
+  requestJson<TResponse>(path, {
+    method: 'POST',
+    headers: {
+      ...IAM_HEADERS,
+      'X-SVA-Reauth-Confirmed': 'true',
+      ...(idempotent ? { 'Idempotency-Key': createIdempotencyKey() } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+
 export const listUsers = async (query: UsersQuery): Promise<ApiListResponse<IamUserListItem>> => {
   const params = new URLSearchParams({
     page: String(query.page),
@@ -586,6 +613,47 @@ export const listOrganizations = async (
 
   return requestJson<ApiListResponse<IamOrganizationListItem>>(`/api/v1/iam/organizations?${params.toString()}`);
 };
+
+export const listInstances = async (query: InstancesQuery = {}): Promise<ApiListResponse<IamInstanceListItem>> => {
+  const params = new URLSearchParams();
+  if (query.search) {
+    params.set('search', query.search);
+  }
+  if (query.status) {
+    params.set('status', query.status);
+  }
+  const suffix = params.toString();
+  return requestJson<ApiListResponse<IamInstanceListItem>>(`/api/v1/iam/instances${suffix ? `?${suffix}` : ''}`);
+};
+
+export const getInstance = async (instanceId: string): Promise<ApiItemResponse<IamInstanceDetail>> =>
+  requestJson<ApiItemResponse<IamInstanceDetail>>(`/api/v1/iam/instances/${instanceId}`);
+
+export const createInstance = async (
+  payload: CreateInstancePayload
+): Promise<ApiItemResponse<IamInstanceListItem>> =>
+  postJsonWithReauth<ApiItemResponse<IamInstanceListItem>, CreateInstancePayload>('/api/v1/iam/instances', payload, true);
+
+export const activateInstance = async (instanceId: string): Promise<ApiItemResponse<IamInstanceListItem>> =>
+  postJsonWithReauth<ApiItemResponse<IamInstanceListItem>, { status: 'active' }>(
+    `/api/v1/iam/instances/${instanceId}/activate`,
+    { status: 'active' },
+    true
+  );
+
+export const suspendInstance = async (instanceId: string): Promise<ApiItemResponse<IamInstanceListItem>> =>
+  postJsonWithReauth<ApiItemResponse<IamInstanceListItem>, { status: 'suspended' }>(
+    `/api/v1/iam/instances/${instanceId}/suspend`,
+    { status: 'suspended' },
+    true
+  );
+
+export const archiveInstance = async (instanceId: string): Promise<ApiItemResponse<IamInstanceListItem>> =>
+  postJsonWithReauth<ApiItemResponse<IamInstanceListItem>, { status: 'archived' }>(
+    `/api/v1/iam/instances/${instanceId}/archive`,
+    { status: 'archived' },
+    true
+  );
 
 export const getOrganization = async (organizationId: string): Promise<ApiItemResponse<IamOrganizationDetail>> =>
   requestJson<ApiItemResponse<IamOrganizationDetail>>(`/api/v1/iam/organizations/${organizationId}`);

@@ -153,6 +153,7 @@ Für PR-Reviews und Code-Analysen stehen Claude-Varianten der Copilot-Agents unt
 |-------|-------|---------|
 | **PR Orchestrator** | `pr-review-orchestrator.md` | Einstiegspunkt für jeden PR-Review |
 | **PR Fixer** | `pr-fixer.agent.md` | Iterativer Fix-Loop: Threads, Tests, Quality Gates |
+| **Rollout Operator** | `rollout-operator.agent.md` | Deployments, Image-Build, Quantum, Keycloak |
 | **Code Quality** | `code-quality.md` | Jede Codeänderung |
 | **Documentation** | `documentation.md` | Jede PR |
 | **Test Quality** | `test-quality.md` | Neue Logik, Verhaltensänderungen |

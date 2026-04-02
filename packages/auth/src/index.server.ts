@@ -7,6 +7,7 @@ export * from './iam-contents.server.js';
 export * from './iam-legal-texts.server.js';
 export * from './iam-organizations.server.js';
 export * from './iam-governance.server.js';
+export * from './iam-instance-registry/index.js';
 export * from './iam-authorization.server.js';
 export {
   assignGroupMembershipHandler,

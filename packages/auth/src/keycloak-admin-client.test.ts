@@ -1158,6 +1158,21 @@ describe('getKeycloakAdminClientConfigFromEnv', () => {
     });
   });
 
+  it('allows overriding the target realm while keeping the admin realm for token exchange', () => {
+    process.env.KEYCLOAK_ADMIN_BASE_URL = 'https://keycloak.example.com';
+    process.env.KEYCLOAK_ADMIN_REALM = 'master';
+    process.env.KEYCLOAK_ADMIN_CLIENT_ID = 'svc-client';
+    process.env.KEYCLOAK_ADMIN_CLIENT_SECRET = 'svc-secret';
+
+    expect(getKeycloakAdminClientConfigFromEnv('bb-guben')).toEqual({
+      baseUrl: 'https://keycloak.example.com',
+      realm: 'bb-guben',
+      adminRealm: 'master',
+      clientId: 'svc-client',
+      clientSecret: 'svc-secret',
+    });
+  });
+
   it('throws for missing environment variables', () => {
     delete process.env.KEYCLOAK_ADMIN_BASE_URL;
     process.env.KEYCLOAK_ADMIN_REALM = 'demo';
@@ -1165,5 +1180,105 @@ describe('getKeycloakAdminClientConfigFromEnv', () => {
     process.env.KEYCLOAK_ADMIN_CLIENT_SECRET = 'svc-secret';
 
     expect(() => getKeycloakAdminClientConfigFromEnv()).toThrow('Missing required env: KEYCLOAK_ADMIN_BASE_URL');
+  });
+});
+
+describe('realm provisioning helpers', () => {
+  it('treats an existing realm as idempotent', async () => {
+    const { fetchImpl, calls } = createFetchStub([
+      createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }),
+      createJsonResponse(409, { errorMessage: 'Realm already exists' }),
+    ]);
+
+    const client = new KeycloakAdminClient({
+      baseUrl: 'https://keycloak.example.com',
+      realm: 'bb-guben',
+      clientId: 'svc-client',
+      clientSecret: 'svc-secret',
+      fetchImpl,
+      maxRetries: 0,
+    });
+
+    await expect(client.ensureRealm({ displayName: 'BB Guben' })).resolves.toBeUndefined();
+    expect(calls[1]?.init?.method).toBe('POST');
+    expect(calls[1]?.init?.body).toBe(
+      JSON.stringify({
+        realm: 'bb-guben',
+        enabled: true,
+        displayName: 'BB Guben',
+      })
+    );
+  });
+
+  it('creates an oidc client only when none exists yet', async () => {
+    const { fetchImpl, calls } = createFetchStub([
+      createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }),
+      createJsonResponse(200, []),
+      createTextResponse(201, ''),
+    ]);
+
+    const client = new KeycloakAdminClient({
+      baseUrl: 'https://keycloak.example.com',
+      realm: 'bb-guben',
+      clientId: 'svc-client',
+      clientSecret: 'svc-secret',
+      fetchImpl,
+    });
+
+    await client.ensureOidcClient({
+      clientId: 'sva-studio',
+      redirectUris: ['https://bb-guben.studio.smart-village.app/auth/callback'],
+      postLogoutRedirectUris: ['https://bb-guben.studio.smart-village.app/'],
+      webOrigins: ['https://bb-guben.studio.smart-village.app'],
+      rootUrl: 'https://bb-guben.studio.smart-village.app',
+    });
+
+    expect(calls).toHaveLength(3);
+    expect(String(calls[1]?.input)).toContain('/clients?clientId=sva-studio');
+    expect(calls[2]?.init?.body).toBe(
+      JSON.stringify({
+        clientId: 'sva-studio',
+        name: 'sva-studio',
+        enabled: true,
+        protocol: 'openid-connect',
+        publicClient: false,
+        standardFlowEnabled: true,
+        directAccessGrantsEnabled: false,
+        serviceAccountsEnabled: false,
+        redirectUris: ['https://bb-guben.studio.smart-village.app/auth/callback'],
+        webOrigins: ['https://bb-guben.studio.smart-village.app'],
+        attributes: {
+          'post.logout.redirect.uris': 'https://bb-guben.studio.smart-village.app/',
+        },
+        rootUrl: 'https://bb-guben.studio.smart-village.app',
+        baseUrl: '/',
+        adminUrl: 'https://bb-guben.studio.smart-village.app',
+      })
+    );
+  });
+
+  it('skips oidc client creation when the client already exists', async () => {
+    const { fetchImpl, calls } = createFetchStub([
+      createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }),
+      createJsonResponse(200, [{ id: 'client-1', clientId: 'sva-studio' }]),
+    ]);
+
+    const client = new KeycloakAdminClient({
+      baseUrl: 'https://keycloak.example.com',
+      realm: 'bb-guben',
+      clientId: 'svc-client',
+      clientSecret: 'svc-secret',
+      fetchImpl,
+    });
+
+    await client.ensureOidcClient({
+      clientId: 'sva-studio',
+      redirectUris: ['https://bb-guben.studio.smart-village.app/auth/callback'],
+      postLogoutRedirectUris: ['https://bb-guben.studio.smart-village.app/'],
+      webOrigins: ['https://bb-guben.studio.smart-village.app'],
+      rootUrl: 'https://bb-guben.studio.smart-village.app',
+    });
+
+    expect(calls).toHaveLength(2);
   });
 });

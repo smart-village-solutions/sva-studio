@@ -3,8 +3,13 @@
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=smart-village-app_sva-studio&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=smart-village-app_sva-studio)
 [![Test Coverage](https://github.com/smart-village-solutions/sva-studio/actions/workflows/test-coverage.yml/badge.svg?branch=main)](https://github.com/smart-village-solutions/sva-studio/actions/workflows/test-coverage.yml)
 [![Codecov](https://codecov.io/gh/smart-village-solutions/sva-studio/branch/main/graph/badge.svg)](https://codecov.io/gh/smart-village-solutions/sva-studio)
-[![Node.js](https://img.shields.io/badge/node-LTS-339933?logo=node.js&logoColor=white)](./.nvmrc)
-[![pnpm](https://img.shields.io/badge/pnpm-9.12.2-F69220?logo=pnpm&logoColor=white)](./package.json)
+
+[![Security](https://img.shields.io/badge/security-dependabot-enabled-brightgreen?logo=github)](https://github.com/smart-village-solutions/sva-studio/security)
+
+[![Status](https://img.shields.io/badge/status-early%20development-yellow)]()
+[![Focus](https://img.shields.io/badge/focus-GovTech-2b7bb9)]()
+[![Quality](https://img.shields.io/badge/quality-tested%20%7C%20secure%20%7C%20modular-brightgreen)]()
+
 [![TypeScript](https://img.shields.io/badge/TypeScript-Strict-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Nx](https://img.shields.io/badge/Nx-Monorepo-143055?logo=nx&logoColor=white)](https://nx.dev/)
 

@@ -1,7 +1,10 @@
 # Proposal: Debug OTEL Logging Pipeline E2E
 
+> Status: Obsolet. Dieser Debug-Plan wird nicht weiter als aktiver OpenSpec-Change verfolgt.
+> Die vorhandenen Ergebnisse bleiben als historische Untersuchungsartefakte erhalten.
+
 **Change ID:** `debug-otel-logging-e2e`
-**Status:** PROPOSAL (Requires Approval)
+**Status:** ARCHIVED (OBSOLETE)
 **Date:** 2026-02-10
 **Impact:** Observability / Logging
 
@@ -30,6 +33,21 @@ Ein sauberes, schrittweise testbares Debugging-Workflow mit:
 3. **Systematisches Vorgehen** - Top-down: SDK → Provider → Transport → Exporter → Collector → Loki
 4. **Reproducibility** - Jeder Fehler reproduzierbar und dokumentiert
 5. **E2E-Validierung** - Am Ende ein vollständiger Logs-Pipeline-Test
+
+## Closure Decision
+
+Der Change wird als veralteter Debug-Arbeitsstand geschlossen und archiviert.
+
+Gründe:
+- Der Change enthält keine Spec-Deltas und ist damit kein valider OpenSpec-Change.
+- Ein Teil der ursprünglich geplanten Debug-Artefakte wurde inzwischen direkt im Repo umgesetzt oder durch andere Tests ersetzt.
+- Die dokumentierten Ergebnisse grenzen das Problem auf Infrastruktur bzw. Collector-zu-Loki-Verhalten ein, statt auf eine offene Produktanforderung.
+- Die verbleibende Arbeit ist eher operative Fehlersuche als spec-getriebene Produktänderung.
+
+Konsequenz:
+- Kein weiterer Ausbau dieser 94-Task-Checkliste
+- Keine Archivierung als abgeschlossener Feature-Change
+- Beibehaltung nur als historische Referenz im Archiv
 
 ## Solution Approach
 

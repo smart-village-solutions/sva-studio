@@ -82,7 +82,13 @@
     "db:migrate:down": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "bash packages/data/scripts/run-migrations.sh down"
+        "command": "bash packages/data/scripts/run-migrations.sh down-to 0"
+      }
+    },
+    "db:migrate:status": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "bash packages/data/scripts/run-migrations.sh status"
       }
     },
     "db:migrate:validate": {

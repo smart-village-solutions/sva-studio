@@ -63,8 +63,16 @@ if [ "${db_exists}" != "1" ]; then
     -c "CREATE DATABASE \"${POSTGRES_DB}\";"
 fi
 
-echo "Reset database to a known migration state..."
-bash packages/data/scripts/run-migrations.sh down || true
+echo "Recreate target database for a clean seed integration run..."
+docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U "${POSTGRES_USER}" -d postgres <<SQL
+SELECT pg_terminate_backend(pid)
+FROM pg_stat_activity
+WHERE datname = '${POSTGRES_DB}'
+  AND pid <> pg_backend_pid();
+
+DROP DATABASE IF EXISTS "${POSTGRES_DB}";
+CREATE DATABASE "${POSTGRES_DB}";
+SQL
 
 echo "Apply migrations..."
 bash packages/data/scripts/run-migrations.sh up

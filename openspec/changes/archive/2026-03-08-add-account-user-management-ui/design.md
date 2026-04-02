@@ -307,10 +307,10 @@ Die Level sind als `role_level INTEGER` in `iam.roles` gespeichert. Custom-Rolle
 
 ### 8. DB-Migrations-Tooling
 
-**Entscheidung:** Raw SQL-Migrationen in `packages/data/migrations/up/`, konsistent mit dem bestehenden Pattern (`0001_iam_core.sql`).
+**Entscheidung:** Raw SQL-Migrationen in `packages/data/migrations/`, konsistent mit dem bestehenden Pattern (`0001_iam_core.sql`).
 
 - Neue Migration: `0004_iam_account_profile.sql` (oder nächste freie Nummer)
-- Jede Migration hat ein korrespondierendes Down-Script in `packages/data/migrations/down/`
+- Jede Migration hat ein korrespondierendes Down-Script in `packages/data/migrations/`
 - Schema-Änderungen sind backward-compatible (Expand/Contract-Pattern)
 - Idempotente Seed-Scripts für System-Rollen
 

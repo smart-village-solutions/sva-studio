@@ -9,7 +9,21 @@ if [ -z "$(docker compose ps -q postgres)" ]; then
   exit 1
 fi
 
-bash packages/data/scripts/run-migrations.sh up
+echo "Recreate target database for a clean RLS integration run..."
+docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U "${POSTGRES_USER}" -d postgres <<SQL
+SELECT pg_terminate_backend(pid)
+FROM pg_stat_activity
+WHERE datname = '${POSTGRES_DB}'
+  AND pid <> pg_backend_pid();
+
+DROP DATABASE IF EXISTS "${POSTGRES_DB}";
+CREATE DATABASE "${POSTGRES_DB}";
+SQL
+
+# RLS is explicitly disabled again in 0023_iam_disable_rls.sql for the current
+# runtime compatibility profile. This integration check validates the last
+# schema version that still enforces tenant isolation via RLS.
+bash packages/data/scripts/run-migrations.sh up-to 22
 
 docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" <<'SQL'
 TRUNCATE iam.activity_logs, iam.role_permissions, iam.account_roles, iam.account_organizations,

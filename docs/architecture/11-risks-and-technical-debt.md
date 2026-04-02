@@ -236,3 +236,8 @@ Referenzen:
    - Impact: hoch (falsche Erwartung an die effektive Berechtigung)
    - Wahrscheinlichkeit: mittel
    - Maßnahme: Provenance in `me/permissions`/`authorize`, explizite `deny vor allow`-Doku und gezielte Negativtests
+
+31. Einführungsrisiko bei historischer Renummerierung der SQL-Migrationen
+   - Impact: mittel bis hoch (falsche Referenzen in Diagnose, Doku oder Acceptance-Operationen)
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: einheitlicher `goose`-Pfad, repo-weite Referenzaktualisierung, `db:migrate:status` und Schema-Guard parallel verifizieren

@@ -140,8 +140,8 @@ Referenzen:
 - `packages/auth/src/mainserver-credentials.server.ts`
   - liest und kanonisiert die Keycloak-Attribute `mainserverUserApplicationId` und `mainserverUserApplicationSecret`; Legacy-Namen bleiben als Fallback lesbar
 - `packages/sdk/src/server.ts`
-- `packages/data/migrations/up/0001_iam_core.sql`
-- `packages/data/migrations/up/0013_iam_instance_integrations.sql`
+- `packages/data/migrations/0001_iam_core.sql`
+- `packages/data/migrations/0013_iam_instance_integrations.sql`
 - `packages/sva-mainserver/src/server/service.ts`
 - `docs/architecture/iam-service-architektur.md`
 - `apps/sva-studio-react/src/components/Header.tsx`
@@ -176,7 +176,7 @@ Neu hinzugekommene Bausteine im Change `add-keycloak-role-catalog-sync`:
    - Erweitert die IdP-Abstraktion um Role-Catalog-Operationen (`list`, `get`, `create`, `update`, `delete`).
 3. `packages/auth/src/keycloak-admin-client.ts` + `packages/auth/src/keycloak-admin-client/*`
    - Fassade und Teilmodule für Konfiguration, Fehlertypen, Modelle und Keycloak-Adapter-Core.
-4. `packages/data/migrations/up/0007_iam_role_catalog_sync.sql`
+4. `packages/data/migrations/0007_iam_role_catalog_sync.sql`
    - Erweitert `iam.roles` um Mapping- und Sync-Felder (`role_key`, `external_role_name`, `sync_state`, `last_synced_at`, `last_error_code`).
 5. `apps/sva-studio-react/src/routes/admin/roles/-roles-page.tsx`
    - Zeigt Sync-Status, Retry-Aktion und manuelles Reconcile für `system_admin`.
@@ -185,7 +185,7 @@ Neu hinzugekommene Bausteine im Change `add-keycloak-role-catalog-sync`:
 
 Neu hinzugekommene Bausteine im Change `add-iam-organization-management-hierarchy`:
 
-1. `packages/data/migrations/up/0009_iam_organization_management.sql`
+1. `packages/data/migrations/0009_iam_organization_management.sql`
    - Erweitert `iam.organizations` und `iam.account_organizations` um Hierarchie-, Typ-, Policy- und Kontextfelder.
 2. `packages/auth/src/iam-organizations.server.ts` + `packages/auth/src/iam-organizations/*`
    - Fassade und Fachbausteine für Organisationsliste, Detailpflege, Memberships und sessionbasierten Org-Kontext.
@@ -200,7 +200,7 @@ Neu hinzugekommene Bausteine im Change `add-iam-organization-management-hierarch
 
 ### Ergänzung 2026-03: Strukturierte Permissions und Hierarchie-Vererbung
 
-1. `packages/data/migrations/up/0010_iam_structured_permissions.sql`
+1. `packages/data/migrations/0010_iam_structured_permissions.sql`
    - Erweitert `iam.permissions` um `action`, `resource_type`, `resource_id`, `effect` und `scope` als strukturiertes Read-/Compute-Modell.
 2. `packages/data/seeds/0001_iam_personas.sql`
    - Seedet Basis-Permissions rückwärtskompatibel sowohl mit `permission_key` als auch mit strukturierten Feldern.
@@ -224,7 +224,7 @@ Neu hinzugekommene Bausteine im Change `add-iam-organization-management-hierarch
 
 ### Ergänzung 2026-03: Direkte Nutzerrechte in der Benutzerverwaltung
 
-1. `packages/data/migrations/up/0023_iam_account_permissions.sql`
+1. `packages/data/migrations/0024_iam_account_permissions.sql`
    - Führt `iam.account_permissions` als instanzgebundene Zuordnung `Account -> Permission -> effect` ein.
 2. `packages/auth/src/iam-account-management/users-handlers.ts` und `packages/auth/src/iam-account-management/user-detail-query.ts`
    - Erweitern den User-Update- und Read-Pfad um direkte Nutzerrechte einschließlich Validierung, Persistenz und Invalidation.
@@ -241,7 +241,7 @@ Neu hinzugekommene Bausteine im Change `add-iam-organization-management-hierarch
    - Definiert das gemeinsame Rechtstext-Modell mit UUID, Name, Version, Locale, HTML-Inhalt, Status sowie Erstellungs-, Änderungs- und Veröffentlichungszeitpunkten.
 2. `packages/auth/src/iam-legal-texts/*`
    - Kapselt Request-Validierung, Repository, Statusregeln, serverseitiges HTML-Sanitizing und API-Mapping für `GET/POST/PATCH /api/v1/iam/legal-texts`.
-3. `packages/data/migrations/up/0019_iam_legal_text_rich_content.sql`
+3. `packages/data/migrations/0020_iam_legal_text_rich_content.sql`
    - Erweitert das IAM-Schema um `name`, `content_html`, `status` und `updated_at` für fachlich editierbare Rechtstexte.
 4. `apps/sva-studio-react/src/routes/admin/legal-texts/-legal-texts-page.tsx`
    - Stellt Liste sowie Create/Edit-Dialoge für fachliche Rechtstexte bereit und bindet einen App-spezifischen Rich-Text-Editor an.

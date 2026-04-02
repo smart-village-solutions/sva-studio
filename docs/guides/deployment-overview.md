@@ -78,6 +78,7 @@ Für `acceptance-hb` gilt zusätzlich:
 - Profil ohne Monitoring für reduzierte Setups: `./portainer-deployment-ohne-monitoring.md`
 
 Wichtig: Bestehende Datenbank-Volumes übernehmen neue SQL-Dateien nicht automatisch. Dafür ist ein expliziter Migrationslauf erforderlich.
+Im Sollzustand läuft dieser Migrationsschritt über den repository-lokalen `goose`-Pfad und nicht über manuelle `psql`-Schleifen.
 
 ## Rollback
 

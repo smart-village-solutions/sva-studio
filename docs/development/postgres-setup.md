@@ -88,15 +88,16 @@ docker compose logs postgres --tail=200
 
 Migrationen liegen unter:
 
-- `packages/data/migrations/up/*.sql`
-- `packages/data/migrations/down/*.sql`
+- `packages/data/migrations/*.sql`
+- ein `goose`-Migrationsfile enthält jeweils `Up` und `Down`
 
 Ausführung:
 
-- `db:migrate` bzw. `db:migrate:up` führt alle Up-Migrationen lexikographisch aus
-- `db:migrate:down` führt Down-Migrationen in umgekehrter Reihenfolge aus
+- `db:migrate` bzw. `db:migrate:up` führt alle `goose`-Up-Migrationen in Versionsreihenfolge aus
+- `db:migrate:down` rollt kontrolliert bis Version `0` zurück
+- `db:migrate:status` zeigt den `goose`-Status und den letzten angewendeten Stand
 - `db:migrate:validate` prüft `up -> down -> up` auf einer separaten temporären Validierungs-Datenbank und greift die aktive lokale Dev-Datenbank nicht an
-- `db:test:rls` prüft Instanzisolation, Fail-Closed ohne `app.instance_id`, Runtime-Rollenhärtung sowie Privilege-Escalation-Guards
+- `db:test:rls` prüft Instanzisolation, Fail-Closed ohne `app.instance_id`, Runtime-Rollenhärtung sowie Privilege-Escalation-Guards auf dem letzten RLS-erzwingenden Schema-Stand vor `0023_iam_disable_rls.sql`
 
 ## Verbindlicher Prüfpfad für neue Inhaltsmigrationen
 
@@ -117,7 +118,7 @@ pnpm nx run data:db:migrate:validate
 
 Erwartung für Inhaltsänderungen:
 
-- neue Tabellen und Constraints in `packages/data/migrations/up/` und `down/` werden immer als Paar geliefert
+- neue Inhaltsmigrationen werden als einzelnes `goose`-SQL-File mit `Up` und `Down` geliefert
 - der Pfad `up -> down -> up` muss ohne manuelle Nacharbeit funktionieren
 - lokale Prüfungen müssen vor Push oder Review auf demselben Workspace-Stand nachvollzogen werden
 - Fehlerbilder wie fehlende Down-Migrationen, nicht mehr löschbare FK-Abhängigkeiten oder unvollständige Seeds werden nicht in spätere Umgebungen verschoben

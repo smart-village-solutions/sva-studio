@@ -35,6 +35,7 @@ mit Bezug auf die arc42-Abschnitte.
 - `ADR-026-redis-als-primary-permission-cache.md`
 - `ADR-027-rechtstext-fail-closed-und-blockierte-session.md`
 - `ADR-028-iam-konfigurations-export-als-folgearbeit.md`
+- `ADR-029-goose-als-oss-standard-fuer-sql-migrationen.md`
 
 ### Zuordnung zu arc42-Abschnitten
 
@@ -47,6 +48,7 @@ mit Bezug auf die arc42-Abschnitte.
 - Abschnitt 04/05/06/08/10/11 (Strategie/Bausteine/Laufzeit/Querschnitt/Qualität/Risiken): ADR-018
 - Abschnitt 04/06/08/09/10/11 (Strategie/Laufzeit/Querschnitt/Entscheidungen/Qualität/Risiken): ADR-023
 - Abschnitt 04/05/06/08/10/11 (Strategie/Bausteine/Laufzeit/Querschnitt/Qualität/Risiken): ADR-022, ADR-024, ADR-025, ADR-026, ADR-027, ADR-028
+- Abschnitt 04/07/08/09/10/11 (Strategie/Deployment/Querschnitt/Entscheidungen/Qualität/Risiken): ADR-029
 - Abschnitt 03/04/05/06/08 (Kontext/Strategie/Bausteine/Laufzeit/Querschnitt): ADR-021
 
 ### Zuordnung Swarm-Deployment-ADRs
@@ -73,6 +75,7 @@ mit Bezug auf die arc42-Abschnitte.
 - ADR-026: Redis als primärer Shared Permission Cache (Abschnitt 04, 06, 07, 08, 10, 11)
 - ADR-027: Rechtstext-Fail-Closed und blockierter Session-Zustand (Abschnitt 05, 06, 08, 09, 10, 11)
 - ADR-028: IAM-Konfigurations-Export bleibt dokumentierte Folgearbeit (Abschnitt 09, 11)
+- ADR-029: `goose` als OSS-Standard für SQL-Migrationen (Abschnitt 04, 07, 08, 09, 10, 11)
 
 ### Pflege-Regel
 
@@ -203,6 +206,21 @@ Zuordnung:
 
 - Abschnitt 04/05/06/08: ADR-012, ADR-013, ADR-017, ADR-018
 - Abschnitt 09: dokumentiert explizit, dass die Transparenz-UI eine Fortschreibung vorhandener Entscheidungen ist und kein neues Architekturpattern einführt
+
+### Fortschreibung 2026-04: OSS-Standardisierung für SQL-Migrationen
+
+- `ADR-029-goose-als-oss-standard-fuer-sql-migrationen.md`
+  - legt `goose` als verbindlichen OSS-Standard für versionierte SQL-Migrationen fest
+  - hält SQL als führende Schema-Vertragsebene für Postgres-, IAM- und RLS-nahe Änderungen fest
+  - ersetzt mittelfristig den rein dateibasierten Migrationslauf ohne standardisierte Historie
+
+Zuordnung:
+
+- Abschnitt 04 (Strategie): ADR-029
+- Abschnitt 07 (Deployment): ADR-029
+- Abschnitt 08 (Querschnitt): ADR-029
+- Abschnitt 09 (Entscheidungen): ADR-029
+- Abschnitt 10/11 (Qualität/Risiken): ADR-029
 
 ### Fortschreibung 2026-03: Direkte Nutzerrechte ohne neue ADR
 

@@ -119,7 +119,7 @@ const REQUIRED_SCHEMA_CHECKS = [
     kind: 'column',
     schemaObject: 'iam.account_groups.origin',
     reasonCode: 'missing_column',
-    expectedMigration: '0018_iam_account_groups_origin_compat.sql',
+    expectedMigration: '0019_iam_account_groups_origin_compat.sql',
     message: 'Kritische IAM-Spalte iam.account_groups.origin fehlt.',
   },
   {
@@ -135,7 +135,7 @@ const REQUIRED_SCHEMA_CHECKS = [
     kind: 'policy',
     schemaObject: 'policy:accounts_isolation_policy',
     reasonCode: 'policy_mismatch',
-    expectedMigration: '0017_iam_accounts_instance_policy.sql',
+    expectedMigration: '0018_iam_accounts_instance_policy.sql',
     message: 'accounts_isolation_policy ist nicht im Sollzustand.',
   },
   {

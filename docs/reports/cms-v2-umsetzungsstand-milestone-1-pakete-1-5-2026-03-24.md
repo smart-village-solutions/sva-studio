@@ -153,7 +153,7 @@ Weitgehend umgesetzt. Die Verwaltungs-UI ist gegenüber dem Stand vom 24.03.2026
 - Benutzer-Detail-UI mit effektiven Berechtigungen: [apps/sva-studio-react/src/routes/admin/users/-user-edit-page.tsx](../../apps/sva-studio-react/src/routes/admin/users/-user-edit-page.tsx)
 - Autorisierungs-Engine: [packages/core/src/iam/authorization-engine.ts](../../packages/core/src/iam/authorization-engine.ts)
 - Autorisierungs-Engine-Tests: [packages/core/src/iam/authorization-engine.test.ts](../../packages/core/src/iam/authorization-engine.test.ts)
-- Direkte Nutzerberechtigungen Migration: [packages/data/migrations/up/0023_iam_account_permissions.sql](../../packages/data/migrations/up/0023_iam_account_permissions.sql)
+- Direkte Nutzerberechtigungen Migration: [packages/data/migrations/0024_iam_account_permissions.sql](../../packages/data/migrations/0024_iam_account_permissions.sql)
 - Direkte Nutzerberechtigungen Handler: [packages/auth/src/iam-account-management/users-handlers.ts](../../packages/auth/src/iam-account-management/users-handlers.ts)
 - User-Detail mit direkten Berechtigungen: [packages/auth/src/iam-account-management/user-detail-query.ts](../../packages/auth/src/iam-account-management/user-detail-query.ts)
 - Benutzer-Detailvertrag mit Permission-Trace: [packages/core/src/iam/account-management-contract.ts](../../packages/core/src/iam/account-management-contract.ts)

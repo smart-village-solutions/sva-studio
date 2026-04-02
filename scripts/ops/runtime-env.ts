@@ -1,6 +1,6 @@
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, openSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { existsSync, mkdirSync, openSync, readFileSync, readdirSync, unlinkSync, writeFileSync } from 'node:fs';
+import { basename, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
@@ -65,6 +65,10 @@ const runtimeArtifactsDir = resolve(rootDir, 'artifacts/runtime');
 const localStateFile = resolve(runtimeArtifactsDir, 'local-app-state.json');
 const appLogDir = resolve(runtimeArtifactsDir, 'logs');
 const deployReportDir = resolve(runtimeArtifactsDir, 'deployments');
+const gooseConfigPath = resolve(rootDir, 'packages/data/goose.config.json');
+const gooseWrapperPath = resolve(rootDir, 'packages/data/scripts/goosew.sh');
+const gooseMigrationsDir = resolve(rootDir, 'packages/data/migrations');
+const gooseConfig = JSON.parse(readFileSync(gooseConfigPath, 'utf8')) as { repo: string; version: string };
 
 const composeBaseArgs = ['compose', '-f', 'docker-compose.yml'];
 const composeWithMonitoringArgs = ['compose', '-f', 'docker-compose.yml', '-f', 'docker-compose.monitoring.yml'];
@@ -117,6 +121,25 @@ const getGitCommitSha = () => {
 const sqlLiteral = (value: string) => `'${value.replaceAll("'", "''")}'`;
 
 const sqlIdentifier = (value: string) => `"${value.replaceAll('"', '""')}"`;
+
+const listGooseMigrationFiles = () =>
+  readdirSync(gooseMigrationsDir, { withFileTypes: true })
+    .filter((entry) => entry.isFile() && entry.name.endsWith('.sql'))
+    .map((entry) => `packages/data/migrations/${entry.name}`)
+    .sort();
+
+const getGooseConfiguredVersion = () => gooseConfig.version;
+
+const getGooseLocalBinaryPath = () => runCapture('bash', [gooseWrapperPath, '--print-bin']);
+
+const buildPostgresConnectionString = (
+  user: string,
+  password: string,
+  database: string,
+  host: string,
+  port: string,
+) =>
+  `postgres://${encodeURIComponent(user)}:${encodeURIComponent(password)}@${host}:${port}/${database}?sslmode=disable`;
 
 const parseVarsFile = (filePath: string): Record<string, string> => {
   const parsed: Record<string, string> = {};
@@ -1034,6 +1057,175 @@ const buildAcceptancePostgresCheck = (env: NodeJS.ProcessEnv) => {
   }
 };
 
+const runLocalGooseStatus = (env: NodeJS.ProcessEnv) => {
+  const summary = runCapture('bash', ['packages/data/scripts/run-migrations.sh', 'status'], env);
+  return {
+    summary,
+    version: getGooseConfiguredVersion(),
+  };
+};
+
+const runGooseAgainstLocalAcceptanceContainer = (
+  containerId: string,
+  postgresUser: string,
+  postgresPassword: string,
+  postgresDb: string,
+  gooseCommand: 'status' | 'up',
+) => {
+  const gooseBinary = getGooseLocalBinaryPath();
+  const dbString = buildPostgresConnectionString(postgresUser, postgresPassword, postgresDb, '127.0.0.1', '5432');
+  const escapedRoot = shellEscape(rootDir);
+  const escapedContainerId = shellEscape(containerId);
+  const escapedDbString = shellEscape(dbString);
+
+  const command =
+    `set -euo pipefail; ` +
+    `cd ${escapedRoot}; ` +
+    `docker cp ${shellEscape(gooseBinary)} ${escapedContainerId}:/tmp/goose; ` +
+    `docker exec ${escapedContainerId} chmod +x /tmp/goose; ` +
+    `docker exec ${escapedContainerId} rm -rf /tmp/sva-goose-migrations; ` +
+    `docker exec ${escapedContainerId} mkdir -p /tmp/sva-goose-migrations; ` +
+    `docker cp packages/data/migrations/. ${escapedContainerId}:/tmp/sva-goose-migrations/; ` +
+    `docker exec ${escapedContainerId} sh -lc '/tmp/goose -dir /tmp/sva-goose-migrations postgres ${escapedDbString} ${gooseCommand}'; ` +
+    `docker exec ${escapedContainerId} rm -rf /tmp/sva-goose-migrations /tmp/goose`;
+
+  return runCapture('sh', ['-lc', command]);
+};
+
+const prepareAcceptanceGooseAssets = (
+  env: NodeJS.ProcessEnv,
+  service: string,
+  slot: string,
+  migrationFiles: readonly string[],
+) => {
+  const repo = gooseConfig.repo;
+  const version = gooseConfig.version;
+
+  const bootstrapScript = [
+    'set -euo pipefail',
+    'arch="$(uname -m)"',
+    'case "${arch}" in',
+    '  x86_64|amd64) asset="goose_linux_x86_64" ;;',
+    '  arm64|aarch64) asset="goose_linux_arm64" ;;',
+    '  *) echo "Unsupported architecture: ${arch}" >&2; exit 1 ;;',
+    'esac',
+    'mkdir -p /tmp/sva-goose-migrations',
+    `download_url="https://github.com/${repo}/releases/download/${version}/\${asset}"`,
+    'if command -v wget >/dev/null 2>&1; then',
+    '  wget -qO /tmp/goose "${download_url}"',
+    'elif command -v curl >/dev/null 2>&1; then',
+    '  curl -fsSL "${download_url}" -o /tmp/goose',
+    'else',
+    '  echo "Neither wget nor curl is available in the target container." >&2',
+    '  exit 1',
+    'fi',
+    'chmod +x /tmp/goose',
+  ].join('\n');
+
+  runAcceptanceServiceScript(env, service, bootstrapScript, {
+    failureMessage: 'Remote-Goose-Bootstrap fehlgeschlagen.',
+    slot,
+  });
+
+  for (const migrationFile of migrationFiles) {
+    const sql = readFileSync(resolve(rootDir, migrationFile), 'utf8');
+    const remoteTarget = `/tmp/sva-goose-migrations/${basename(migrationFile)}`;
+    const uploadScript = [
+      'set -euo pipefail',
+      `cat <<'SQL' >${remoteTarget}`,
+      sql,
+      'SQL',
+    ].join('\n');
+
+    runAcceptanceServiceScript(env, service, uploadScript, {
+      failureMessage: `Remote-Migrationsupload ${migrationFile} fehlgeschlagen.`,
+      slot,
+    });
+  }
+};
+
+const runGooseAgainstAcceptance = (
+  env: NodeJS.ProcessEnv,
+  gooseCommand: 'status' | 'up',
+) => {
+  const stackName = env.SVA_STACK_NAME ?? 'sva-studio';
+  const postgresUser = env.POSTGRES_USER ?? 'sva';
+  const postgresPassword = env.POSTGRES_PASSWORD ?? '';
+  const postgresDb = env.POSTGRES_DB ?? 'sva_studio';
+  const quantumService = env.SVA_ACCEPTANCE_POSTGRES_SERVICE ?? 'postgres';
+  const quantumSlot = env.SVA_ACCEPTANCE_POSTGRES_SLOT ?? '1';
+  const migrationFiles = listGooseMigrationFiles();
+
+  if (migrationFiles.length === 0) {
+    throw new Error('Keine Goose-Migrationen unter packages/data/migrations gefunden.');
+  }
+
+  if (!postgresPassword) {
+    throw new Error('POSTGRES_PASSWORD ist fuer Goose-Operationen im Acceptance-Profil erforderlich.');
+  }
+
+  const localContainerId = runCapture('docker', ['ps', '--filter', `name=${stackName}_postgres`, '--format', '{{.ID}}'], env);
+  if (localContainerId.length > 0) {
+    return {
+      summary: runGooseAgainstLocalAcceptanceContainer(localContainerId, postgresUser, postgresPassword, postgresDb, gooseCommand),
+      version: getGooseConfiguredVersion(),
+    };
+  }
+
+  if (!commandExists('quantum-cli')) {
+    throw new Error(
+      `Postgres-Container fuer Stack ${stackName} lokal nicht gefunden und quantum-cli ist nicht verfuegbar.`,
+    );
+  }
+
+  prepareAcceptanceGooseAssets(env, quantumService, quantumSlot, migrationFiles);
+  const dbString = buildPostgresConnectionString(postgresUser, postgresPassword, postgresDb, '127.0.0.1', '5432');
+  const summary = runAcceptanceServiceScript(
+    env,
+    quantumService,
+    [
+      'set -euo pipefail',
+      `/tmp/goose -dir /tmp/sva-goose-migrations postgres ${shellEscape(dbString)} ${gooseCommand}`,
+      'rm -rf /tmp/sva-goose-migrations /tmp/goose',
+    ].join('\n'),
+    {
+      failureMessage: `Remote-Goose-${gooseCommand} fehlgeschlagen.`,
+      slot: quantumSlot,
+    }
+  );
+
+  return {
+    summary,
+    version: getGooseConfiguredVersion(),
+  };
+};
+
+const buildMigrationStatusCheck = (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv): DoctorCheck => {
+  try {
+    const result = runtimeProfile === 'acceptance-hb' ? runGooseAgainstAcceptance(env, 'status') : runLocalGooseStatus(env);
+    return toDoctorCheck(
+      'migration-status',
+      'ok',
+      'goose_status_ok',
+      'Goose-Migrationsstatus konnte abgefragt werden.',
+      {
+        gooseVersion: result.version,
+        summary: result.summary,
+      }
+    );
+  } catch (error) {
+    return toDoctorCheck(
+      'migration-status',
+      runtimeProfile === 'acceptance-hb' ? 'warn' : 'error',
+      runtimeProfile === 'acceptance-hb' ? 'goose_status_unavailable' : 'goose_status_failed',
+      error instanceof Error ? error.message : String(error),
+      {
+        gooseVersion: getGooseConfiguredVersion(),
+      }
+    );
+  }
+};
+
 const precheckAcceptance = async (
   env: NodeJS.ProcessEnv,
   options?: AcceptanceDeployOptions
@@ -1066,6 +1258,7 @@ const precheckAcceptance = async (
 
   checks.push(buildAcceptanceServiceCheck(env));
   checks.push(buildAcceptancePostgresCheck(env));
+  checks.push(buildMigrationStatusCheck('acceptance-hb', env));
   checks.push(buildSchemaGuardCheck('acceptance-hb', env));
   if (options) {
     checks.push(buildAcceptanceLiveSpecCheck(env, options));
@@ -1173,6 +1366,7 @@ const doctorRuntime = async (runtimeProfile: RuntimeProfile, env: NodeJS.Process
   }
 
   checks.push(buildFeatureFlagCheck(env));
+  checks.push(buildMigrationStatusCheck(runtimeProfile, env));
   checks.push(buildSchemaGuardCheck(runtimeProfile, env));
   checks.push(buildActorDoctorCheck(runtimeProfile, env));
 
@@ -1440,85 +1634,15 @@ const runLocalCommand = async (runtimeProfile: RuntimeProfile, runtimeCommand: R
 };
 
 const migrateAcceptance = (env: NodeJS.ProcessEnv) => {
-  const stackName = env.SVA_STACK_NAME ?? 'sva-studio';
-  const postgresUser = env.POSTGRES_USER ?? 'sva';
-  const postgresDb = env.POSTGRES_DB ?? 'sva_studio';
-  const quantumEndpoint = env.QUANTUM_ENDPOINT ?? env.PORTAINER_ENDPOINT ?? 'sva';
-  const quantumService = env.SVA_ACCEPTANCE_POSTGRES_SERVICE ?? 'postgres';
-  const quantumSlot = env.SVA_ACCEPTANCE_POSTGRES_SLOT ?? '1';
-  const migrationFiles = runCapture('sh', ['-lc', 'printf "%s\n" packages/data/migrations/up/*.sql'])
-    .split('\n')
-    .map((entry) => entry.trim())
-    .filter((entry) => entry.length > 0);
+  const migrationFiles = listGooseMigrationFiles();
 
   if (migrationFiles.length === 0) {
-    throw new Error('Keine SQL-Up-Migrationen in packages/data/migrations/up gefunden.');
+    throw new Error('Keine Goose-Migrationen unter packages/data/migrations gefunden.');
   }
 
-  const localContainerId = runCapture('docker', ['ps', '--filter', `name=${stackName}_postgres`, '--format', '{{.ID}}'], env);
-  if (localContainerId.length > 0) {
-    const escapedRoot = shellEscape(rootDir);
-    const command =
-      `cd ${escapedRoot} && ` +
-      `for f in packages/data/migrations/up/*.sql; do ` +
-      `echo "Applying $f"; ` +
-      `docker exec ${shellEscape(localContainerId)} psql -v ON_ERROR_STOP=1 -U ${shellEscape(postgresUser)} -d ${shellEscape(postgresDb)} -f "$f"; ` +
-      'done';
-
-    run('sh', ['-lc', command], env);
-    return;
-  }
-
-  if (!commandExists('quantum-cli')) {
-    throw new Error(
-      `Postgres-Container fuer Stack ${stackName} lokal nicht gefunden und quantum-cli ist nicht verfuegbar.`,
-    );
-  }
-
-  for (const migrationFile of migrationFiles) {
-    const sql = readFileSync(resolve(rootDir, migrationFile), 'utf8');
-    const remoteScript = [
-      'set -euo pipefail',
-      `cat <<'SQL' >/tmp/sva-runtime-migration.sql`,
-      sql,
-      'SQL',
-      `psql -X -P pager=off -q -v ON_ERROR_STOP=1 -U ${shellEscape(postgresUser)} -d ${shellEscape(postgresDb)} -f /tmp/sva-runtime-migration.sql >/tmp/sva-runtime-migration.log 2>&1`,
-      'rm -f /tmp/sva-runtime-migration.sql',
-    ].join('\n');
-
-    const marker = '__SVA_MIGRATION_STATUS__';
-    const markedRemoteScript = [
-      remoteScript,
-      `printf '%s\\n' '${marker}_START'`,
-      `printf '%s\\n' 'applied:${migrationFile}'`,
-      `printf '%s\\n' '${marker}_END'`,
-      'sleep 1',
-    ].join('\n');
-
-    const summary = runQuantumExec(
-      [
-        'exec',
-        '--endpoint',
-        quantumEndpoint,
-        '--stack',
-        stackName,
-        '--service',
-        quantumService,
-        '--slot',
-        quantumSlot,
-        '-c',
-        `sh -lc ${shellEscape(markedRemoteScript)}`,
-      ],
-      env,
-      {
-        marker,
-        failureMessage: `Remote-Migration ${migrationFile} fehlgeschlagen.`,
-      }
-    );
-
-    console.log(`Applying migration remotely via quantum-cli: ${migrationFile}`);
-    console.log(summary);
-  }
+  const result = runGooseAgainstAcceptance(env, 'up');
+  console.log(`Applying Goose migrations for acceptance with ${result.version}`);
+  console.log(result.summary);
 
   const schemaGuard = runSchemaGuard('acceptance-hb', env);
   if (!schemaGuard.ok) {
@@ -2146,13 +2270,7 @@ const runExternalSmoke = async (env: NodeJS.ProcessEnv): Promise<readonly Accept
 
 const runAcceptanceDeploy = async (env: NodeJS.ProcessEnv) => {
   const options = resolveAcceptanceDeployOptions(env, cliOptions);
-  const migrationFiles =
-    options.releaseMode === 'schema-and-app'
-      ? runCapture('sh', ['-lc', 'printf "%s\n" packages/data/migrations/up/*.sql'])
-          .split('\n')
-          .map((entry) => entry.trim())
-          .filter((entry) => entry.length > 0)
-      : [];
+  const migrationFiles = options.releaseMode === 'schema-and-app' ? listGooseMigrationFiles() : [];
 
   let report = createBaseAcceptanceDeployReport(env, options, migrationFiles);
   const steps: AcceptanceDeployStep[] = [];
@@ -2205,13 +2323,23 @@ const runAcceptanceDeploy = async (env: NodeJS.ProcessEnv) => {
     if (options.releaseMode === 'schema-and-app') {
       const migrateStartedAt = Date.now();
       try {
-        migrateAcceptance(env);
+        const migrationResult = runGooseAgainstAcceptance(env, 'up');
+        console.log(`Applying Goose migrations for acceptance with ${migrationResult.version}`);
+        console.log(migrationResult.summary);
+        const schemaGuard = runSchemaGuard('acceptance-hb', env);
+        if (!schemaGuard.ok) {
+          throw new Error(`Kritische IAM-Schema-Drift nach Acceptance-Migration: ${summarizeSchemaGuardFailures(schemaGuard)}`);
+        }
         report = {
           ...report,
           migrationReport: {
             status: 'ok',
             startedAt: new Date(migrateStartedAt).toISOString(),
             completedAt: new Date().toISOString(),
+            details: {
+              gooseVersion: migrationResult.version,
+              summary: migrationResult.summary,
+            },
           },
         };
         steps.push(
@@ -2228,6 +2356,9 @@ const runAcceptanceDeploy = async (env: NodeJS.ProcessEnv) => {
             startedAt: new Date(migrateStartedAt).toISOString(),
             completedAt: new Date().toISOString(),
             errorMessage: error instanceof Error ? error.message : String(error),
+            details: {
+              gooseVersion: getGooseConfiguredVersion(),
+            },
           },
         };
         steps.push(
@@ -2247,6 +2378,9 @@ const runAcceptanceDeploy = async (env: NodeJS.ProcessEnv) => {
         ...report,
         migrationReport: {
           status: 'skipped',
+          details: {
+            gooseVersion: getGooseConfiguredVersion(),
+          },
         },
       };
       steps.push(createStepResult('migrate', migrateStartedAt, 'skipped', 'Migrationen fuer app-only ausgelassen.'));

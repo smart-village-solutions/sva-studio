@@ -27,6 +27,7 @@ Architekturprinzipien auf IST-Basis.
 - Externe SVA-Mainserver-Zugriffe laufen strikt serverseitig und per User delegiert; Browser-Code erhält nur Studio-eigene Server-Funktionsverträge
 - Der SVA-Mainserver wird über ein dediziertes Integrationspaket mit client-sicheren Root-Exports und serverseitigem `./server`-Subpfad angebunden
 - Instanzbezogene Upstream-Endpunkte liegen in Postgres, per-User-Credentials ausschließlich in Keycloak-Attributen
+- Datenbankmigrationen bleiben SQL-first und werden über einen repository-lokalen, versionsgepinn­ten `goose`-Pfad statt über ad-hoc SQL-Ausführung standardisiert
 - IAM-Server-Module folgen einer Fassade-plus-Kernmodul-Strategie: dünne öffentliche Entry-Points, fachliche Unterordner und explizit dokumentierte Restschuld in `core.ts`
 - HTTP-spezifische Fehlerantworten werden nicht im Core modelliert, sondern serverseitig über gemeinsame Utilities in `@sva/sdk/server`
 - Doku-getriebene Architekturpflege (arc42 + OpenSpec + ADR)
@@ -71,6 +72,7 @@ Architekturprinzipien auf IST-Basis.
 - IAM-Server-Modularisierung und Restschuld-Führung: `ADR-017`
 - Session-Lifecycle, Forced Reauth und kontrolliertes Silent SSO: `ADR-023`
 - Per-User-Mainserver-Delegation und Integrationsgrenze: `ADR-021`
+- OSS-Standard für SQL-Migrationen: `ADR-029`
 
 Referenzen:
 

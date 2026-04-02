@@ -115,5 +115,5 @@ Die Middleware `withLegalTextCompliance` prüft, ob der Nutzer alle aktiven Rech
 | Migration | Inhalt |
 |---|---|
 | `0014_iam_groups` | Tabellen `iam.groups`, `iam.group_roles`, `iam.account_groups` mit RLS |
-| `0015_iam_geo_hierarchy` | Tabellen `iam.geo_nodes`, `iam.geo_hierarchy` (Closure-Table) mit Trigger |
-| `0016_iam_legal_acceptance_audit` | ALTER TABLE `iam.legal_text_acceptances`: neue Spalten für Consent-Export |
+| `0016_iam_geo_hierarchy` | Tabellen `iam.geo_nodes`, `iam.geo_hierarchy` (Closure-Table) mit Trigger |
+| `0017_iam_legal_acceptance_audit` | ALTER TABLE `iam.legal_text_acceptances`: neue Spalten für Consent-Export |

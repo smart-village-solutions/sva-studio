@@ -67,6 +67,7 @@ Dieses Dokument bündelt typische Störungen und schnelle Diagnosepfade für lok
 
 - ob ein bestehendes Postgres-Volume verwendet wird
 - ob der bewusste Migrationsschritt durchgeführt wurde
+- ob `pnpm nx run data:db:migrate:status` bzw. `pnpm env:doctor:<profil>` den erwarteten `goose`-Stand anzeigen
 
 **Typische Ursache:** `docker-entrypoint-initdb.d` läuft nur bei leerem Volume. Siehe `./swarm-deployment-runbook.md` und `../development/postgres-setup.md`.
 

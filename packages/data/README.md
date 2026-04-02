@@ -119,8 +119,9 @@ src/
 | --- | --- |
 | `pnpm nx run data:db:up` | Startet Postgres lokal via Docker Compose |
 | `pnpm nx run data:db:status` | Zeigt den Service-Status |
-| `pnpm nx run data:db:migrate` | Führt SQL-Up-Migrationen aus `migrations/up/*.sql` aus |
-| `pnpm nx run data:db:migrate:down` | Führt SQL-Down-Migrationen aus `migrations/down/*.sql` aus |
+| `pnpm nx run data:db:migrate` | Führt kanonische `goose`-Up-Migrationen aus `migrations/*.sql` aus |
+| `pnpm nx run data:db:migrate:down` | Führt den Rollback bis Version `0` über `goose` aus |
+| `pnpm nx run data:db:migrate:status` | Zeigt den `goose`-Migrationsstatus der lokalen Datenbank |
 | `pnpm nx run data:db:migrate:validate` | Prüft den Zyklus `up → down → up` auf einer separaten temporären Datenbank |
 | `pnpm nx run data:db:seed` | Führt idempotente IAM-Seeds aus `seeds/*.sql` aus |
 | `pnpm nx run data:db:reset` | Entfernt lokalen Postgres-Container und Volume |
@@ -133,7 +134,7 @@ src/
 | `pnpm nx run data:test:integration` | Seed-Integrationscheck gegen lokale Postgres-DB |
 | `pnpm nx run data:db:test:seeds` | Prüft Seed-Idempotenz (zweifache Ausführung) |
 | `pnpm nx run data:db:test:encryption` | Prüft PII-At-Rest-Verschlüsselung via SQL |
-| `pnpm nx run data:db:test:rls` | Validiert Instanzisolation (RLS Fail-Closed) |
+| `pnpm nx run data:db:test:rls` | Validiert Instanzisolation (RLS Fail-Closed) auf dem letzten RLS-erzwingenden Schema-Stand vor `0023_iam_disable_rls.sql` |
 
 ## Verwandte Dokumentation
 

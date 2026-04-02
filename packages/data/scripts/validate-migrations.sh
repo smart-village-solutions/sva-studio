@@ -83,9 +83,9 @@ CREATE DATABASE "${VALIDATION_DB_NAME}";
 SQL
 
 echo "Validating migrations against temporary database..."
-POSTGRES_DB="${VALIDATION_DB_NAME}" bash packages/data/scripts/run-migrations.sh down || true
+POSTGRES_DB="${VALIDATION_DB_NAME}" bash packages/data/scripts/run-migrations.sh down-to 0 || true
 POSTGRES_DB="${VALIDATION_DB_NAME}" bash packages/data/scripts/run-migrations.sh up
-POSTGRES_DB="${VALIDATION_DB_NAME}" bash packages/data/scripts/run-migrations.sh down
+POSTGRES_DB="${VALIDATION_DB_NAME}" bash packages/data/scripts/run-migrations.sh down-to 0
 POSTGRES_DB="${VALIDATION_DB_NAME}" bash packages/data/scripts/run-migrations.sh up
 
 echo "Migration validation successful (up -> down -> up) on temporary database ${VALIDATION_DB_NAME}."

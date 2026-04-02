@@ -15,7 +15,7 @@ const optionalUrlSchema = z
       new URL(value);
     } catch {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: 'custom',
         message: 'Ungültige URL',
       });
     }

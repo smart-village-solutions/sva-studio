@@ -23,6 +23,7 @@ Dieses Dokument beschreibt die Review-Governance für Proposal- und PR-Reviews m
 | `logging.agent.md` | strukturierte Logs, Audit, Korrelationsfelder | Server-Code, Fehlerpfade |
 | `performance.agent.md` | Rendering, Caching, Hot Paths | Performance-sensitive Änderungen |
 | `pr-fixer.agent.md` | Iterativer PR-Fix (Threads, Tests, Quality Gates) | PRs merge-bereit machen |
+| `rollout-operator.agent.md` | Rollouts durchführen und verifizieren | Deployments, Image-Build, Quantum, Keycloak |
 
 ## Trigger-Matrix
 

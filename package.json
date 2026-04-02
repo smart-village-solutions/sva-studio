@@ -100,7 +100,7 @@
     "@vitest/coverage-v8": "^4.1.0",
     "autoprefixer": "10.4.27",
     "eslint": "^10.1.0",
-    "happy-dom": "^20.8.4",
+    "happy-dom": "^20.8.9",
     "nx": "^22.6.3",
     "postcss": "8.5.8",
     "tailwindcss": "4.2.1",

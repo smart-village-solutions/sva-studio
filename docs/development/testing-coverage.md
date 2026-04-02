@@ -57,12 +57,13 @@ Das Kommando bildet den blockierenden GitHub-PR-Workflow für lokale Vorprüfung
 
 - `check:file-placement`
 - `nx affected --target=test:coverage --base=origin/main`
+- `patch-coverage-gate --base=origin/main` für geänderte, ausführbare Zeilen im PR-Diff
 - `coverage-gate` im PR-Modus mit optionalen Summary-Dateien
 - `complexity-gate`
 - `test:integration`
 - React-App-Build für denselben Build-Pfad wie im Coverage-Workflow
 
-Nicht Bestandteil von `pnpm test:pr` sind externe Plattform-Auswertungen wie SonarCloud, Codecov oder CodeQL. Diese bleiben GitHub-spezifisch, aber ihre häufigsten lokalen Vorbedingungen werden damit bereits abgedeckt.
+Nicht Bestandteil von `pnpm test:pr` sind externe Plattform-Auswertungen wie SonarCloud, Codecov oder CodeQL. Die lokale New-Code-/Patch-Coverage wird aber jetzt bereits vor dem Push geprüft, sodass die häufigste Abweichung zwischen lokalem PR-Gate und Sonar früher sichtbar wird.
 
 ### Baseline aktualisieren
 

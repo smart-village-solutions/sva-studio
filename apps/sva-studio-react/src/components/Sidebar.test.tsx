@@ -91,7 +91,7 @@ describe('Sidebar', () => {
       user: {
         id: 'user-1',
         name: 'Admin',
-        roles: ['system_admin'],
+        roles: ['system_admin', 'instance_registry_admin'],
       },
       isAuthenticated: true,
     });
@@ -112,6 +112,7 @@ describe('Sidebar', () => {
 
     expect(screen.getByRole('link', { name: 'Accounts' }).getAttribute('href')).toBe('/admin/users');
     expect(screen.getByRole('link', { name: 'Organisationen' }).getAttribute('href')).toBe('/admin/organizations');
+    expect(screen.getByRole('link', { name: 'Instanzen' }).getAttribute('href')).toBe('/admin/instances');
     expect(screen.getByRole('link', { name: 'Rollen' }).getAttribute('href')).toBe('/admin/roles');
     expect(screen.getByRole('link', { name: 'Gruppen' }).getAttribute('href')).toBe('/admin/groups');
     expect(screen.getByRole('link', { name: 'Rechtstexte' }).getAttribute('href')).toBe('/admin/legal-texts');
@@ -153,7 +154,7 @@ describe('Sidebar', () => {
       user: {
         id: 'user-1',
         name: 'Admin',
-        roles: ['system_admin'],
+        roles: ['system_admin', 'instance_registry_admin'],
       },
       isAuthenticated: true,
     });
@@ -166,6 +167,7 @@ describe('Sidebar', () => {
     fireEvent.click(usersToggle);
 
     expect(screen.getByRole('link', { name: 'Accounts' }).getAttribute('href')).toBe('/admin/users');
+    expect(screen.getByRole('link', { name: 'Instanzen' }).getAttribute('href')).toBe('/admin/instances');
     expect(screen.getByRole('link', { name: 'Gruppen' }).getAttribute('href')).toBe('/admin/groups');
     expect(screen.getByRole('link', { name: 'Datenschutz' }).getAttribute('href')).toBe('/admin/iam');
   });

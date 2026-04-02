@@ -13,16 +13,20 @@ vi.mock('@sva/sdk/logging', () => ({
 
 import {
   asIamError,
+  activateInstance,
   assignGroupMembership,
   assignGroupRole,
+  archiveInstance,
   assignOrganizationMembership,
   bulkDeactivateUsers,
+  createInstance,
   createGroup,
   createOrganization,
   deleteGroup,
   getMyPendingLegalTexts,
   getMyProfile,
   getDataExportStatus,
+  getInstance,
   getMyDataSubjectRights,
   deactivateOrganization,
   getGroup,
@@ -32,6 +36,7 @@ import {
   listAdminDsrCases,
   listGovernanceCases,
   listGroups,
+  listInstances,
   listOrganizations,
   reconcileRoles,
   removeGroupMembership,
@@ -39,6 +44,7 @@ import {
   requestDataExport,
   syncUsersFromKeycloak,
   removeOrganizationMembership,
+  suspendInstance,
   updateMyProfile,
   updateMyOrganizationContext,
   updateGroup,
@@ -604,6 +610,89 @@ describe('iam-api group helpers', () => {
       expect.objectContaining({
         method: 'POST',
         body: JSON.stringify({}),
+      })
+    );
+  });
+});
+
+describe('iam-api instance helpers', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllEnvs();
+    vi.stubEnv('NODE_ENV', 'test');
+    browserLoggerMock.debug.mockReset();
+    browserLoggerMock.info.mockReset();
+    browserLoggerMock.warn.mockReset();
+    browserLoggerMock.error.mockReset();
+  });
+
+  it('uses the canonical instance endpoints with reauth and idempotency headers', async () => {
+    const fetchMock = vi.fn().mockImplementation(async () =>
+      new Response(JSON.stringify({ data: { instanceId: 'demo', status: 'active' } }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      })
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    vi.stubGlobal('crypto', { randomUUID: () => 'uuid-instance-1' });
+
+    await listInstances({ search: 'demo', status: 'active' });
+    await getInstance('demo');
+    await createInstance({
+      instanceId: 'demo',
+      displayName: 'Demo',
+      parentDomain: 'studio.example.org',
+    });
+    await activateInstance('demo');
+    await suspendInstance('demo');
+    await archiveInstance('demo');
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      '/api/v1/iam/instances?search=demo&status=active',
+      expect.objectContaining({ credentials: 'include' })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      '/api/v1/iam/instances/demo',
+      expect.objectContaining({ credentials: 'include' })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
+      '/api/v1/iam/instances',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          'X-SVA-Reauth-Confirmed': 'true',
+          'Idempotency-Key': 'uuid-instance-1',
+        }),
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      4,
+      '/api/v1/iam/instances/demo/activate',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          'X-SVA-Reauth-Confirmed': 'true',
+        }),
+        body: JSON.stringify({ status: 'active' }),
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      5,
+      '/api/v1/iam/instances/demo/suspend',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ status: 'suspended' }),
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      6,
+      '/api/v1/iam/instances/demo/archive',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ status: 'archived' }),
       })
     );
   });

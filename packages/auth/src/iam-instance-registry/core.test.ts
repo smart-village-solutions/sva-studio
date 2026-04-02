@@ -1,0 +1,288 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { z } from 'zod';
+
+const createApiErrorMock = vi.hoisted(() =>
+  vi.fn((status: number, code: string, message: string, requestId?: string) =>
+    new Response(JSON.stringify({ error: code, message, requestId }), {
+      status,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  )
+);
+const asApiListMock = vi.hoisted(() => vi.fn((data, pagination, requestId) => ({ data, pagination, requestId })));
+const asApiItemMock = vi.hoisted(() => vi.fn((data, requestId) => ({ data, requestId })));
+const parseRequestBodyMock = vi.hoisted(() => vi.fn());
+const requireIdempotencyKeyMock = vi.hoisted(() => vi.fn());
+const validateCsrfMock = vi.hoisted(() => vi.fn());
+const jsonResponseMock = vi.hoisted(() =>
+  vi.fn((status: number, payload: unknown) =>
+    new Response(JSON.stringify(payload), {
+      status,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  )
+);
+const buildLogContextMock = vi.hoisted(() => vi.fn(() => ({ trace_id: 'trace-1' })));
+const loggerMock = vi.hoisted(() => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }));
+const withRegistryServiceMock = vi.hoisted(() => vi.fn());
+const ensurePlatformAccessMock = vi.hoisted(() => vi.fn());
+const requireFreshReauthMock = vi.hoisted(() => vi.fn());
+const readDetailInstanceIdMock = vi.hoisted(() => vi.fn());
+const workspaceContext = vi.hoisted(() => ({ requestId: 'req-core' }));
+
+vi.mock('../iam-account-management/api-helpers.js', () => ({
+  asApiItem: asApiItemMock,
+  asApiList: asApiListMock,
+  createApiError: createApiErrorMock,
+  parseRequestBody: parseRequestBodyMock,
+  requireIdempotencyKey: requireIdempotencyKeyMock,
+}));
+
+vi.mock('../iam-account-management/csrf.js', () => ({
+  validateCsrf: validateCsrfMock,
+}));
+
+vi.mock('../shared/db-helpers.js', () => ({
+  jsonResponse: jsonResponseMock,
+}));
+
+vi.mock('../shared/log-context.js', () => ({
+  buildLogContext: buildLogContextMock,
+}));
+
+vi.mock('@sva/sdk/server', () => ({
+  createSdkLogger: () => loggerMock,
+  getWorkspaceContext: () => workspaceContext,
+}));
+
+vi.mock('./repository.js', () => ({
+  withRegistryService: withRegistryServiceMock,
+}));
+
+vi.mock('./http.js', () => ({
+  createInstanceSchema: z.object({
+    instanceId: z.string(),
+    displayName: z.string(),
+    parentDomain: z.string(),
+    themeKey: z.string().optional(),
+    featureFlags: z.record(z.string(), z.boolean()).optional(),
+    mainserverConfigRef: z.string().optional(),
+  }),
+  ensurePlatformAccess: ensurePlatformAccessMock,
+  listQuerySchema: z.object({
+    search: z.string().optional(),
+    status: z.enum(['requested', 'validated', 'provisioning', 'active', 'failed', 'suspended', 'archived']).optional(),
+  }),
+  readDetailInstanceId: readDetailInstanceIdMock,
+  requireFreshReauth: requireFreshReauthMock,
+  statusMutationSchema: z.object({
+    status: z.enum(['active', 'suspended', 'archived']),
+  }),
+}));
+
+import {
+  activateInstanceInternal,
+  archiveInstanceInternal,
+  createInstanceInternal,
+  createTenantForbiddenResponse,
+  getInstanceInternal,
+  isInstanceTrafficAllowed,
+  listInstancesInternal,
+  resolveRuntimeInstanceFromRequest,
+  suspendInstanceInternal,
+} from './core.js';
+
+describe('iam-instance-registry core handlers', () => {
+  const ctx = { user: { id: 'admin-1' } } as never;
+  const service = {
+    listInstances: vi.fn(),
+    getInstanceDetail: vi.fn(),
+    createProvisioningRequest: vi.fn(),
+    changeStatus: vi.fn(),
+    resolveRuntimeInstance: vi.fn(),
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    ensurePlatformAccessMock.mockReturnValue(null);
+    validateCsrfMock.mockReturnValue(null);
+    requireFreshReauthMock.mockReturnValue(null);
+    requireIdempotencyKeyMock.mockReturnValue({ key: 'idem-1' });
+    parseRequestBodyMock.mockResolvedValue({ ok: true, data: {} });
+    readDetailInstanceIdMock.mockReturnValue('demo');
+    withRegistryServiceMock.mockImplementation(async (work) => work(service));
+  });
+
+  it('lists instances and rejects invalid filters', async () => {
+    service.listInstances.mockResolvedValueOnce([{ instanceId: 'hb', status: 'active' }]);
+    const success = await listInstancesInternal(
+      new Request('https://studio.example.org/api/v1/iam/instances?search=hb&status=active'),
+      ctx
+    );
+
+    expect(success.status).toBe(200);
+    await expect(success.json()).resolves.toMatchObject({
+      data: [{ instanceId: 'hb', status: 'active' }],
+      requestId: 'req-core',
+    });
+
+    const invalid = await listInstancesInternal(
+      new Request('https://studio.example.org/api/v1/iam/instances?status=bogus'),
+      ctx
+    );
+
+    expect(invalid.status).toBe(400);
+    await expect(invalid.json()).resolves.toMatchObject({ error: 'invalid_request' });
+  });
+
+  it('returns detail responses and handles missing instances', async () => {
+    service.getInstanceDetail.mockResolvedValueOnce({ instanceId: 'demo', status: 'active' }).mockResolvedValueOnce(null);
+
+    const found = await getInstanceInternal(
+      new Request('https://studio.example.org/api/v1/iam/instances/demo'),
+      ctx
+    );
+    readDetailInstanceIdMock.mockReturnValueOnce(undefined);
+    const missingId = await getInstanceInternal(
+      new Request('https://studio.example.org/api/v1/iam/instances'),
+      ctx
+    );
+    readDetailInstanceIdMock.mockReturnValueOnce('missing');
+    const missing = await getInstanceInternal(
+      new Request('https://studio.example.org/api/v1/iam/instances/missing'),
+      ctx
+    );
+
+    expect(found.status).toBe(200);
+    await expect(found.json()).resolves.toMatchObject({ data: { instanceId: 'demo' } });
+    expect(missingId.status).toBe(400);
+    expect(missing.status).toBe(404);
+  });
+
+  it('creates instances, logs successful provisioning, and handles conflicts', async () => {
+    parseRequestBodyMock.mockResolvedValue({
+      ok: true,
+      data: {
+        instanceId: 'demo',
+        displayName: 'Demo',
+        parentDomain: 'Studio.Example.org',
+        themeKey: 'modern',
+        featureFlags: { beta: true },
+      },
+    });
+    service.createProvisioningRequest
+      .mockResolvedValueOnce({ ok: true, instance: { instanceId: 'demo', status: 'requested' } })
+      .mockResolvedValueOnce({ ok: false, reason: 'already_exists' });
+
+    const created = await createInstanceInternal(
+      new Request('https://studio.example.org/api/v1/iam/instances', { method: 'POST' }),
+      ctx
+    );
+    const conflict = await createInstanceInternal(
+      new Request('https://studio.example.org/api/v1/iam/instances', { method: 'POST' }),
+      ctx
+    );
+
+    expect(created.status).toBe(201);
+    expect(service.createProvisioningRequest).toHaveBeenCalledWith(
+      expect.objectContaining({
+        idempotencyKey: 'idem-1',
+        actorId: 'admin-1',
+        parentDomain: 'Studio.Example.org',
+      })
+    );
+    expect(loggerMock.info).toHaveBeenCalledWith(
+      'Instance provisioning requested',
+      expect.objectContaining({
+        operation: 'instance_create',
+        instance_id: 'demo',
+      })
+    );
+    expect(conflict.status).toBe(409);
+  });
+
+  it('short-circuits create requests on security and validation failures', async () => {
+    ensurePlatformAccessMock.mockReturnValueOnce(new Response('forbidden', { status: 403 }));
+    validateCsrfMock.mockReturnValueOnce(new Response('csrf', { status: 403 }));
+    requireFreshReauthMock.mockReturnValueOnce(new Response('reauth', { status: 403 }));
+    requireIdempotencyKeyMock.mockReturnValueOnce({ error: new Response('idem', { status: 400 }) });
+    parseRequestBodyMock.mockResolvedValueOnce({ ok: false, message: 'kaputt' });
+
+    expect(
+      (await createInstanceInternal(new Request('https://studio.example.org/api/v1/iam/instances'), ctx)).status
+    ).toBe(403);
+    expect(
+      (await createInstanceInternal(new Request('https://studio.example.org/api/v1/iam/instances'), ctx)).status
+    ).toBe(403);
+    expect(
+      (await createInstanceInternal(new Request('https://studio.example.org/api/v1/iam/instances'), ctx)).status
+    ).toBe(403);
+    expect(
+      (await createInstanceInternal(new Request('https://studio.example.org/api/v1/iam/instances'), ctx)).status
+    ).toBe(400);
+    expect(
+      (await createInstanceInternal(new Request('https://studio.example.org/api/v1/iam/instances'), ctx)).status
+    ).toBe(400);
+    expect(service.createProvisioningRequest).not.toHaveBeenCalled();
+  });
+
+  it('handles instance status mutations across success and failure branches', async () => {
+    parseRequestBodyMock
+      .mockResolvedValueOnce({ ok: true, data: { status: 'active' } })
+      .mockResolvedValueOnce({ ok: true, data: { status: 'active' } })
+      .mockResolvedValueOnce({ ok: true, data: { status: 'active' } })
+      .mockResolvedValueOnce({ ok: false, message: 'bad' });
+    service.changeStatus
+      .mockResolvedValueOnce({ ok: true, instance: { instanceId: 'demo', status: 'active' } })
+      .mockResolvedValueOnce({ ok: false, reason: 'not_found' })
+      .mockResolvedValueOnce({ ok: false, reason: 'invalid_transition' });
+
+    const activated = await activateInstanceInternal(
+      new Request('https://studio.example.org/api/v1/iam/instances/demo/activate', { method: 'POST' }),
+      ctx
+    );
+    const notFound = await activateInstanceInternal(
+      new Request('https://studio.example.org/api/v1/iam/instances/demo/activate', { method: 'POST' }),
+      ctx
+    );
+    const conflict = await activateInstanceInternal(
+      new Request('https://studio.example.org/api/v1/iam/instances/demo/activate', { method: 'POST' }),
+      ctx
+    );
+    const invalidBody = await suspendInstanceInternal(
+      new Request('https://studio.example.org/api/v1/iam/instances/demo/suspend', { method: 'POST' }),
+      ctx
+    );
+    readDetailInstanceIdMock.mockReturnValueOnce(undefined);
+    parseRequestBodyMock.mockResolvedValueOnce({ ok: true, data: { status: 'archived' } });
+    const missingId = await archiveInstanceInternal(
+      new Request('https://studio.example.org/api/v1/iam/instances/demo/archive', { method: 'POST' }),
+      ctx
+    );
+
+    expect(activated.status).toBe(200);
+    expect(notFound.status).toBe(404);
+    expect(conflict.status).toBe(409);
+    expect(invalidBody.status).toBe(400);
+    expect(missingId.status).toBe(400);
+  });
+
+  it('resolves runtime instances and exposes helper responses', async () => {
+    service.resolveRuntimeInstance.mockResolvedValue({
+      hostClassification: { kind: 'tenant', normalizedHost: 'demo.studio.example.org', instanceId: 'demo' },
+      instance: { instanceId: 'demo', status: 'active' },
+    });
+
+    const resolved = await resolveRuntimeInstanceFromRequest(
+      new Request('https://demo.studio.example.org/admin/instances')
+    );
+
+    expect(resolved).toEqual({
+      hostClassification: { kind: 'tenant', normalizedHost: 'demo.studio.example.org', instanceId: 'demo' },
+      instance: { instanceId: 'demo', status: 'active' },
+    });
+    expect(createTenantForbiddenResponse().status).toBe(403);
+    expect(isInstanceTrafficAllowed('active')).toBe(true);
+    expect(isInstanceTrafficAllowed('archived')).toBe(false);
+  });
+});

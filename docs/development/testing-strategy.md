@@ -58,12 +58,13 @@ Dieses Dokument beschreibt die übergeordnete Teststrategie für das Nx-Monorepo
 
 - `pnpm check:file-placement`
 - `pnpm nx affected --target=test:coverage --base=origin/main`
+- `pnpm patch-coverage-gate --base=origin/main` für New-Code-/Patch-Coverage
 - `pnpm coverage-gate` im PR-Modus
 - `pnpm complexity-gate`
 - `pnpm test:integration`
 - `pnpm nx run sva-studio-react:build`
 
-Nicht vollständig lokal abbildbar bleiben externe PR-Dienste wie SonarCloud, Codecov und CodeQL. `pnpm test:pr` reduziert aber die häufigsten Abweichungen zwischen lokalem Stand und GitHub-Checks deutlich.
+Nicht vollständig lokal abbildbar bleiben externe PR-Dienste wie SonarCloud, Codecov und CodeQL. `pnpm test:pr` deckt jetzt aber neben der Repo-Coverage auch die lokale Patch-Coverage ab und reduziert damit die häufigsten Abweichungen zwischen lokalem Stand und GitHub-Checks deutlicher.
 
 ### Vor Merge oder Release
 

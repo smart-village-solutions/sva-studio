@@ -16,6 +16,8 @@ describe('translate', () => {
 
     expect(t('admin.users.page.title')).toBe('User Management');
     expect(t('admin.roles.table.headerName')).toBe('Role');
+    expect(t('admin.instances.page.title')).toBe('Instance Management');
+    expect(t('admin.instances.actions.create')).toBe('Create instance');
   });
 
   it('interpolates variables', () => {

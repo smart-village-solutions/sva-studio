@@ -11,6 +11,7 @@ const guardSpies = vi.hoisted(() => ({
   adminUsers: vi.fn(async () => undefined),
   adminUserDetail: vi.fn(async () => undefined),
   adminOrganizations: vi.fn(async () => undefined),
+  adminInstances: vi.fn(async () => undefined),
   adminRoles: vi.fn(async () => undefined),
   adminGroups: vi.fn(async () => undefined),
   adminIam: vi.fn(async () => undefined),
@@ -109,6 +110,10 @@ vi.mock('./admin/organizations/-organizations-page', () => ({
   OrganizationsPage: () => <div>OrganizationsPage</div>,
 }));
 
+vi.mock('./admin/instances/-instances-page', () => ({
+  InstancesPage: () => <div>InstancesPage</div>,
+}));
+
 vi.mock('./admin/roles/-roles-page', () => ({
   RolesPage: () => <div>RolesPage</div>,
 }));
@@ -167,6 +172,7 @@ describe('core routes', () => {
     const contentCreateRoute = readRouteOptions(routes.get('/content/new'));
     const contentDetailRoute = readRouteOptions(routes.get('/content/$contentId'));
     const groupsRoute = readRouteOptions(routes.get('/admin/groups'));
+    const instancesRoute = readRouteOptions(routes.get('/admin/instances'));
     const legalTextsRoute = readRouteOptions(routes.get('/admin/legal-texts'));
     const iamRoute = readRouteOptions(routes.get('/admin/iam'));
     const modulesRoute = readRouteOptions(routes.get('/modules'));
@@ -177,6 +183,7 @@ describe('core routes', () => {
     await contentCreateRoute.beforeLoad?.({ href: '/content/new' });
     await contentDetailRoute.beforeLoad?.({ href: '/content/content-1' });
     await groupsRoute.beforeLoad?.({ href: '/admin/groups' });
+    await instancesRoute.beforeLoad?.({ href: '/admin/instances' });
     await legalTextsRoute.beforeLoad?.({ href: '/admin/legal-texts' });
     await iamRoute.beforeLoad?.({ href: '/admin/iam' });
     await modulesRoute.beforeLoad?.({ href: '/modules' });
@@ -187,6 +194,7 @@ describe('core routes', () => {
     expect(guardSpies.contentCreate).toHaveBeenCalledWith({ href: '/content/new' });
     expect(guardSpies.contentDetail).toHaveBeenCalledWith({ href: '/content/content-1' });
     expect(guardSpies.adminGroups).toHaveBeenCalledWith({ href: '/admin/groups' });
+    expect(guardSpies.adminInstances).toHaveBeenCalledWith({ href: '/admin/instances' });
     expect(guardSpies.adminRoles).toHaveBeenCalledWith({ href: '/admin/legal-texts' });
     expect(guardSpies.adminIam).toHaveBeenCalledWith({ href: '/admin/iam' });
     expect(guardSpies.adminRoles).toHaveBeenCalledWith({ href: '/modules' });
@@ -241,6 +249,9 @@ describe('core routes', () => {
 
     renderPath('/admin/groups');
     expect(screen.getByText('GroupsPage')).toBeTruthy();
+
+    renderPath('/admin/instances');
+    expect(screen.getByText('InstancesPage')).toBeTruthy();
 
     renderPath('/admin/legal-texts');
     expect(screen.getByText('LegalTextsPage')).toBeTruthy();

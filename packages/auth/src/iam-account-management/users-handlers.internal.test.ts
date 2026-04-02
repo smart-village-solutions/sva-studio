@@ -74,6 +74,7 @@ vi.mock('./shared.js', () => ({
   resolveActorInfo: vi.fn(async () => state.actorResolution),
   resolveActorMaxRoleLevel: vi.fn(),
   resolveIdentityProvider: vi.fn(() => state.identityProvider),
+  resolveIdentityProviderForInstance: vi.fn(async () => state.identityProvider),
   resolveGroupsByIds: vi.fn(),
   resolveRoleIdsForGroups: vi.fn(),
   resolveRolesByIds: vi.fn(),
@@ -89,6 +90,7 @@ vi.mock('./shared-actor-resolution.js', () => ({
 
 vi.mock('./shared-runtime.js', () => ({
   resolveIdentityProvider: vi.fn(() => state.identityProvider),
+  resolveIdentityProviderForInstance: vi.fn(async () => state.identityProvider),
   withInstanceScopedDb: vi.fn(async () => undefined),
 }));
 

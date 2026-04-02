@@ -642,6 +642,8 @@ describe('iam-api instance helpers', () => {
       instanceId: 'demo',
       displayName: 'Demo',
       parentDomain: 'studio.example.org',
+      authRealm: 'demo',
+      authClientId: 'sva-studio',
     });
     await activateInstance('demo');
     await suspendInstance('demo');

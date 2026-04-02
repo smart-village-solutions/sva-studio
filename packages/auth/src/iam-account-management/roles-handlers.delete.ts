@@ -167,7 +167,7 @@ export const deleteRoleInternal = async (
     return roleId;
   }
 
-  const identityProvider = requireRoleIdentityProvider(actor.requestId);
+  const identityProvider = await requireRoleIdentityProvider(actor.instanceId, actor.requestId);
   if (identityProvider instanceof Response) {
     return identityProvider;
   }

@@ -2,8 +2,9 @@ import * as client from 'openid-client';
 import { createSdkLogger, getWorkspaceContext } from '@sva/sdk/server';
 
 import { getAuthConfig } from './config.js';
+import type { AuthConfig } from './types.js';
 
-let configPromise: Promise<client.Configuration> | undefined;
+const configPromises = new Map<string, Promise<client.Configuration>>();
 const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
 
 /**
@@ -12,15 +13,22 @@ const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
  * Lazily discovers the issuer configuration on first call and reuses it
  * for subsequent requests to avoid repeated discovery network calls.
  */
-export const getOidcConfig = async (): Promise<client.Configuration> => {
-  if (!configPromise) {
-    const { issuer, clientId, clientSecret } = getAuthConfig();
-    configPromise = client.discovery(new URL(issuer), clientId, clientSecret).catch((error: unknown) => {
+export const getOidcConfig = async (
+  authConfig: Pick<AuthConfig, 'issuer' | 'clientId' | 'clientSecret'> = getAuthConfig()
+): Promise<client.Configuration> => {
+  const cacheKey = `${authConfig.issuer}::${authConfig.clientId}`;
+  const cached = configPromises.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  const promise = client.discovery(new URL(authConfig.issuer), authConfig.clientId, authConfig.clientSecret).catch(
+    (error: unknown) => {
       const context = getWorkspaceContext();
-      configPromise = undefined;
+      configPromises.delete(cacheKey);
       logger.error('OIDC discovery failed', {
         operation: 'oidc_discovery',
-        issuer,
+        issuer: authConfig.issuer,
         error: error instanceof Error ? error.message : String(error),
         error_type: error instanceof Error ? error.constructor.name : typeof error,
         workspace_id: context.workspaceId ?? 'default',
@@ -28,9 +36,11 @@ export const getOidcConfig = async (): Promise<client.Configuration> => {
         trace_id: context.traceId,
       });
       throw error;
-    });
-  }
-  return configPromise;
+    }
+  );
+
+  configPromises.set(cacheKey, promise);
+  return promise;
 };
 
 export { client };

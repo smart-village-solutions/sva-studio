@@ -8,7 +8,7 @@ import { validateCsrf } from './csrf.js';
 import { ensureFeature, getFeatureFlags } from './feature-flags.js';
 import { consumeRateLimit } from './rate-limit.js';
 import { requireRoles, resolveActorInfo } from './shared-actor-resolution.js';
-import { resolveIdentityProvider } from './shared-runtime.js';
+import { resolveIdentityProviderForInstance } from './shared-runtime.js';
 
 type ResolvedActor = Exclude<Awaited<ReturnType<typeof resolveActorInfo>>, { error: Response }>['actor'];
 
@@ -84,8 +84,8 @@ export const requireUserId = (request: Request, requestId?: string): string | Re
   return userId;
 };
 
-export const requireUserMutationIdentityProvider = (requestId?: string) => {
-  const identityProvider = resolveIdentityProvider();
+export const requireUserMutationIdentityProvider = async (instanceId: string, requestId?: string) => {
+  const identityProvider = await resolveIdentityProviderForInstance(instanceId);
   if (identityProvider) {
     return identityProvider;
   }

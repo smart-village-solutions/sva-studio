@@ -32,7 +32,7 @@ pnpm --filter sva-studio-react exec playwright install --with-deps chromium
 | `IAM_ACCEPTANCE_MEMBER_PASSWORD` | Passwort des dedizierten Acceptance-Members |
 | `IAM_DATABASE_URL` oder `IAM_ACCEPTANCE_DATABASE_URL` | PostgreSQL-Verbindung zur IAM-Datenbank |
 | `KEYCLOAK_ADMIN_BASE_URL` | Keycloak-Basis-URL für den Service-Account |
-| `KEYCLOAK_ADMIN_REALM` | dedizierter Acceptance-Realm |
+| `KEYCLOAK_ADMIN_REALM` | technischer Realm des Service-Accounts für den Token-Bezug |
 | `KEYCLOAK_ADMIN_CLIENT_ID` | Keycloak-Service-Account-Client-ID |
 | `KEYCLOAK_ADMIN_CLIENT_SECRET` | Secret des Keycloak-Service-Accounts |
 
@@ -49,9 +49,11 @@ pnpm --filter sva-studio-react exec playwright install --with-deps chromium
 
 ## Testdaten- und Realm-Kontrakt
 
+- Die aktive Acceptance-Instanz in `iam.instances` besitzt mindestens `authRealm` und `authClientId`; der Acceptance-Doctor blockiert den Rollout sonst vorab.
 - Der Realm enthält zwei dedizierte Testbenutzer:
   - `acceptance-admin`
   - `acceptance-member`
+- Der fachliche Ziel-Realm der Acceptance-Instanz wird aus `iam.instances.authRealm` aufgelöst, nicht aus `KEYCLOAK_ADMIN_REALM`.
 - Beide Benutzer tragen `instanceId = de-musterhausen`.
 - `acceptance-admin` liefert im Laufzeitkontext mindestens die Rolle `system_admin`. Ein Alias über `realm_access.Admin -> system_admin` bleibt zulässig.
 - Beide Benutzer sind vor dem Lauf **nicht** dauerhaft in `iam.accounts` vorgesehen. Der Runner räumt ihre IAM-Datensätze kontrolliert auf, damit JIT-Provisioning reproduzierbar geprüft wird.

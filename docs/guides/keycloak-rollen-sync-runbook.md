@@ -24,6 +24,12 @@ IAM_ROLE_RECONCILE_INTERVAL_MS=900000
 IAM_ROLE_RECONCILE_INSTANCE_IDS=<uuid-1>,<uuid-2>
 ```
 
+Wichtig:
+
+- `KEYCLOAK_ADMIN_REALM` ist nur der technische Token-Realm des Service-Accounts.
+- Der Rollen-Sync arbeitet pro `instance_id` gegen den in `iam.instances.authRealm` hinterlegten Ziel-Realm.
+- Fehlt `authRealm` oder `authClientId` bei einer aktiven Instanz, muss der Lauf fail-closed behandelt und vor dem nächsten Reconcile korrigiert werden.
+
 Empfohlene Startwerte:
 
 - `IAM_ROLE_RECONCILE_INTERVAL_MS=900000` für produktive Umgebungen (`15 Minuten`)

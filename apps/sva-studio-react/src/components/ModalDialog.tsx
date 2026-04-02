@@ -23,7 +23,6 @@ export const ModalDialog = ({
   const triggerRef = React.useRef<HTMLElement | null>(null);
   const previousOpenRef = React.useRef(false);
   const overlayCloseRef = React.useRef(false);
-  const descriptionId = React.useId();
 
   React.useEffect(() => {
     const wasOpen = previousOpenRef.current;
@@ -77,7 +76,7 @@ export const ModalDialog = ({
         />
         <DialogPrimitive.Content
           role={role}
-          aria-describedby={description ? descriptionId : undefined}
+          aria-describedby={description ? undefined : undefined}
           className={cn(
             'fixed left-1/2 top-1/2 z-50 w-full max-w-2xl -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-card p-6 shadow-2xl focus-visible:outline-none'
           )}
@@ -85,11 +84,7 @@ export const ModalDialog = ({
         >
           <header className="mb-4">
             <DialogPrimitive.Title className="text-lg font-semibold text-foreground">{title}</DialogPrimitive.Title>
-            {description ? (
-              <DialogPrimitive.Description id={descriptionId} className="mt-1 text-sm text-muted-foreground">
-                {description}
-              </DialogPrimitive.Description>
-            ) : null}
+            {description ? <DialogPrimitive.Description className="mt-1 text-sm text-muted-foreground">{description}</DialogPrimitive.Description> : null}
           </header>
           {children}
         </DialogPrimitive.Content>

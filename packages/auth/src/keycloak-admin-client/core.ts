@@ -35,6 +35,7 @@ type ReadFallback = {
 export type KeycloakAdminClientConfig = {
   readonly baseUrl: string;
   readonly realm: string;
+  readonly adminRealm?: string;
   readonly clientId: string;
   readonly clientSecret: string;
   readonly connectTimeoutMs?: number;
@@ -275,6 +276,7 @@ const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number, phase: Tim
 export class KeycloakAdminClient implements IdentityProviderPort {
   private readonly baseUrl: string;
   private readonly realm: string;
+  private readonly adminRealm: string;
   private readonly clientId: string;
   private readonly clientSecret: string;
   private readonly connectTimeoutMs: number;
@@ -295,6 +297,7 @@ export class KeycloakAdminClient implements IdentityProviderPort {
   constructor(config: KeycloakAdminClientConfig) {
     this.baseUrl = normalizeBaseUrl(config.baseUrl);
     this.realm = config.realm;
+    this.adminRealm = config.adminRealm ?? config.realm;
     this.clientId = config.clientId;
     this.clientSecret = config.clientSecret;
     this.connectTimeoutMs = config.connectTimeoutMs ?? DEFAULT_CONNECT_TIMEOUT_MS;
@@ -669,6 +672,69 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     });
   }
 
+  async ensureRealm(input: { displayName?: string }): Promise<void> {
+    await this.assertWriteAvailability();
+    try {
+      await this.executeWithResilience<void>({
+        method: 'POST',
+        path: '/admin/realms',
+        body: JSON.stringify({
+          realm: this.realm,
+          enabled: true,
+          displayName: input.displayName,
+        }),
+        operation: 'create_realm',
+      });
+    } catch (error) {
+      if (!(error instanceof KeycloakAdminRequestError) || error.statusCode !== 409) {
+        throw error;
+      }
+    }
+  }
+
+  async ensureOidcClient(input: {
+    clientId: string;
+    redirectUris: readonly string[];
+    postLogoutRedirectUris: readonly string[];
+    webOrigins: readonly string[];
+    rootUrl: string;
+  }): Promise<void> {
+    await this.assertWriteAvailability();
+    const query = await this.executeWithResilience<Array<{ id: string; clientId: string }>>({
+      method: 'GET',
+      path: `/admin/realms/${encodePathSegment(this.realm)}/clients?clientId=${encodeURIComponent(input.clientId)}`,
+      operation: 'find_client',
+    });
+
+    if (query.length > 0) {
+      return;
+    }
+
+    await this.executeWithResilience<void>({
+      method: 'POST',
+      path: `/admin/realms/${encodePathSegment(this.realm)}/clients`,
+      operation: 'create_client',
+      body: JSON.stringify({
+        clientId: input.clientId,
+        name: input.clientId,
+        enabled: true,
+        protocol: 'openid-connect',
+        publicClient: false,
+        standardFlowEnabled: true,
+        directAccessGrantsEnabled: false,
+        serviceAccountsEnabled: false,
+        redirectUris: [...input.redirectUris],
+        webOrigins: [...input.webOrigins],
+        attributes: {
+          'post.logout.redirect.uris': input.postLogoutRedirectUris.join('##'),
+        },
+        rootUrl: input.rootUrl,
+        baseUrl: '/',
+        adminUrl: input.rootUrl,
+      }),
+    });
+  }
+
   getCircuitBreakerState(): number {
     return this.isCircuitOpen() ? 2 : 0;
   }
@@ -861,7 +927,7 @@ export class KeycloakAdminClient implements IdentityProviderPort {
   }
 
   private async fetchAccessToken(): Promise<string> {
-    const tokenEndpoint = `${this.baseUrl}/realms/${encodePathSegment(this.realm)}/protocol/openid-connect/token`;
+    const tokenEndpoint = `${this.baseUrl}/realms/${encodePathSegment(this.adminRealm)}/protocol/openid-connect/token`;
     const body = new URLSearchParams({
       grant_type: 'client_credentials',
       client_id: this.clientId,
@@ -915,9 +981,10 @@ const requireEnv = (key: string): string => {
   return value;
 };
 
-export const getKeycloakAdminClientConfigFromEnv = (): KeycloakAdminClientConfig => ({
+export const getKeycloakAdminClientConfigFromEnv = (realm = requireEnv('KEYCLOAK_ADMIN_REALM')): KeycloakAdminClientConfig => ({
   baseUrl: requireEnv('KEYCLOAK_ADMIN_BASE_URL'),
-  realm: requireEnv('KEYCLOAK_ADMIN_REALM'),
+  realm,
+  adminRealm: requireEnv('KEYCLOAK_ADMIN_REALM'),
   clientId: requireEnv('KEYCLOAK_ADMIN_CLIENT_ID'),
   clientSecret: getKeycloakAdminClientSecret() ?? requireEnv('KEYCLOAK_ADMIN_CLIENT_SECRET'),
 });

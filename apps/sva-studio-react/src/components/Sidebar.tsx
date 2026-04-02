@@ -753,6 +753,7 @@ export default function Sidebar({ isLoading = false, isMobileOpen = false, onMob
         <SheetContent
           aria-label={t('shell.sidebar.ariaLabel')}
           closeLabel={t('shell.header.closeNavigation')}
+          description={t('shell.sidebar.ariaLabel')}
           className="p-0"
           side="left"
         >

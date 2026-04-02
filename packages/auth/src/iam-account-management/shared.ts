@@ -35,6 +35,7 @@ export {
 export {
   isKeycloakIdentityProvider,
   resolveIdentityProvider,
+  resolveIdentityProviderForInstance,
   resolvePool,
   withInstanceScopedDb,
 } from './shared-runtime.js';

@@ -5,7 +5,7 @@ import { createSdkLogger, getInstanceConfig, initializeOtelSdk, isCanonicalAuthH
 
 import { createLoginUrl, handleCallback, logoutSession } from '../auth.server.js';
 import { emitAuthAuditEvent } from '../audit-events.server.js';
-import { getAuthConfig } from '../config.js';
+import { getAuthConfig, resolveAuthConfigForRequest } from '../config.js';
 import { createMockSessionUser, isMockAuthEnabled } from '../mock-auth.server.js';
 import { getSession } from '../redis-session.server.js';
 import { isTokenErrorLike } from '../shared/error-guards.js';
@@ -131,17 +131,6 @@ window.parent.postMessage({ type: 'sva-auth:silent-sso', status: '${status}' }, 
 
 const DEFAULT_POST_LOGIN_REDIRECT = '/';
 
-const buildCanonicalAuthUrl = (request: Request, pathname: string, searchParams?: URLSearchParams): URL => {
-  const requestUrl = new URL(request.url);
-  const config = getInstanceConfig();
-  const target = new URL(requestUrl.toString());
-  const portSuffix = requestUrl.port ? `:${requestUrl.port}` : '';
-  target.host = `${config?.canonicalAuthHost ?? requestUrl.hostname}${portSuffix}`;
-  target.pathname = pathname;
-  target.search = searchParams ? searchParams.toString() : '';
-  return target;
-};
-
 const resolveCallbackInput = (request: Request) => {
   const url = new URL(request.url);
   return {
@@ -218,35 +207,6 @@ const resolveCookieLoginState = async (request: Request, state: string) => {
 
 const isExpiredLoginState = (createdAt: number) => Date.now() - createdAt > 10 * 60 * 1000;
 
-const redirectTenantLoginToCanonicalHost = async (request: Request): Promise<Response | null> => {
-  const config = getInstanceConfig();
-  if (!config) {
-    return null;
-  }
-
-  const requestUrl = new URL(request.url);
-  if (isCanonicalAuthHost(requestUrl.host)) {
-    return null;
-  }
-
-  const hostClassification = classifyHost(requestUrl.host, config.parentDomain);
-  if (hostClassification.kind !== 'tenant') {
-    return null;
-  }
-
-  const requestedReturnTo = await sanitizeReturnTo(request, requestUrl.searchParams.get('returnTo'));
-  const tenantReturnTo = requestedReturnTo.startsWith('/')
-    ? `${requestUrl.origin}${requestedReturnTo}`
-    : requestedReturnTo;
-  const redirectParams = new URLSearchParams({ returnTo: tenantReturnTo });
-
-  if (requestUrl.searchParams.get('silent') === '1') {
-    redirectParams.set('silent', '1');
-  }
-
-  return createRedirectResponse(buildCanonicalAuthUrl(request, '/auth/login', redirectParams).toString());
-};
-
 const isSilentSsoSuppressed = (request: Request): boolean => {
   const { silentSsoSuppressCookieName } = getAuthConfig();
   const suppressUntil = Number(readCookieFromRequest(request, silentSsoSuppressCookieName) ?? '');
@@ -259,22 +219,20 @@ export const loginHandler = async (request?: Request): Promise<Response> => {
       return createRedirectResponse('/?auth=mock-login');
     }
 
-    if (request) {
-      const canonicalRedirect = await redirectTenantLoginToCanonicalHost(request);
-      if (canonicalRedirect) {
-        return canonicalRedirect;
-      }
-    }
-
     const url = request ? new URL(request.url) : null;
     const isSilent = url?.searchParams.get('silent') === '1';
     if (request && isSilent && isSilentSsoSuppressed(request)) {
       return createSilentSsoResponse('failure');
     }
 
-    const { loginStateCookieName, loginStateSecret } = getAuthConfig();
+    const authConfig = request ? await resolveAuthConfigForRequest(request) : getAuthConfig();
+    const { loginStateCookieName, loginStateSecret } = authConfig;
     const returnTo = request ? await sanitizeReturnTo(request, url?.searchParams.get('returnTo')) : DEFAULT_POST_LOGIN_REDIRECT;
-    const { url: authorizationUrl, state, loginState } = await createLoginUrl({ returnTo, silent: isSilent });
+    const { url: authorizationUrl, state, loginState } = await createLoginUrl({
+      returnTo,
+      silent: isSilent,
+      authConfig,
+    });
     const response = createRedirectResponse(authorizationUrl);
 
     logger.info('Login-Flow initiiert', {
@@ -311,7 +269,8 @@ export const callbackHandler = async (request: Request): Promise<Response> => {
     }
 
     const { code, state, error, iss } = resolveCallbackInput(request);
-    const { loginStateCookieName, sessionCookieName } = getAuthConfig();
+    const authConfig = await resolveAuthConfigForRequest(request);
+    const { loginStateCookieName, sessionCookieName } = authConfig;
     const cookieLoginState = state ? await resolveCookieLoginState(request, state) : null;
     const hadSessionCookieOnCallback = Boolean(readCookieFromRequest(request, sessionCookieName));
 
@@ -354,7 +313,13 @@ export const callbackHandler = async (request: Request): Promise<Response> => {
     }
 
     try {
-      const { sessionId, user, expiresAt, loginState } = await handleCallback({ code, state, iss, loginState: cookieLoginState });
+      const { sessionId, user, expiresAt, loginState } = await handleCallback({
+        code,
+        state,
+        iss,
+        loginState: cookieLoginState,
+        authConfig,
+      });
       const effectiveLoginState = loginState ?? cookieLoginState;
       const redirectTarget = effectiveLoginState?.returnTo ?? DEFAULT_POST_LOGIN_REDIRECT;
       const isSilent = effectiveLoginState?.silent === true;
@@ -374,7 +339,7 @@ export const callbackHandler = async (request: Request): Promise<Response> => {
 
       const loginStateDeleteStrategy = attachDeletedCookie(response, loginStateCookieName);
       const sessionCookieStrategy = attachSessionCookie(response, sessionCookieName, sessionId, expiresAt);
-      const silentSsoDeleteStrategy = attachDeletedCookie(response, getAuthConfig().silentSsoSuppressCookieName);
+      const silentSsoDeleteStrategy = attachDeletedCookie(response, authConfig.silentSsoSuppressCookieName);
       logger.info('Callback cookies prepared', {
         operation: 'login_callback_cookies',
         login_state_delete_strategy: loginStateDeleteStrategy,
@@ -474,15 +439,16 @@ export const logoutHandler = async (request: Request): Promise<Response> => {
       return createRedirectResponse('/?auth=mock-logout');
     }
 
+    const authConfig = await resolveAuthConfigForRequest(request).catch(() => getAuthConfig());
     const { sessionCookieName, postLogoutRedirectUri, silentSsoSuppressCookieName, silentSsoSuppressAfterLogoutMs } =
-      getAuthConfig();
+      authConfig;
     const sessionId = readCookieFromRequest(request, sessionCookieName);
     let logoutUrl = postLogoutRedirectUri;
 
     if (sessionId) {
       try {
         const sessionBeforeLogout = await getSession(sessionId);
-        logoutUrl = await logoutSession(sessionId);
+        logoutUrl = await logoutSession(sessionId, authConfig);
 
         logger.info('Logout successful', {
           endpoint: '/auth/logout',

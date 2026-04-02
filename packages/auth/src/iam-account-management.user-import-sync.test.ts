@@ -22,6 +22,11 @@ vi.mock('./iam-account-management/shared.js', async () => {
         listUsers: async () => state.listUsersImpl?.() ?? [],
       },
     }),
+    resolveIdentityProviderForInstance: async () => ({
+      provider: {
+        listUsers: async () => state.listUsersImpl?.() ?? [],
+      },
+    }),
     trackKeycloakCall: async (_operation: string, execute: () => Promise<unknown>) => execute(),
     withInstanceScopedDb: async (instanceId: string, work: (client: unknown) => Promise<unknown>) => {
       if (state.withInstanceScopedDbImpl) {

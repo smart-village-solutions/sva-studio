@@ -11,7 +11,11 @@ import {
 } from '../mainserver-credentials.server.js';
 
 import { getRoleDisplayName } from './role-audit.js';
-import { resolveIdentityProvider, resolveRolesByExternalNames, trackKeycloakCall } from './shared.js';
+import {
+  resolveIdentityProviderForInstance,
+  resolveRolesByExternalNames,
+  trackKeycloakCall,
+} from './shared.js';
 
 const mapProjectedRoles = (
   roles: Awaited<ReturnType<typeof resolveRolesByExternalNames>>
@@ -37,8 +41,11 @@ export const mergeMainserverCredentialState = (
   mainserverUserApplicationSecretSet: state.mainserverUserApplicationSecretSet,
 });
 
-export const resolveKeycloakRoleNames = async (keycloakSubject: string): Promise<readonly string[] | null> => {
-  const identityProvider = resolveIdentityProvider();
+export const resolveKeycloakRoleNames = async (
+  instanceId: string,
+  keycloakSubject: string
+): Promise<readonly string[] | null> => {
+  const identityProvider = await resolveIdentityProviderForInstance(instanceId);
   if (!identityProvider) {
     return null;
   }
@@ -73,11 +80,15 @@ export const resolveProjectedUserDetail = async (input: {
   return changed ? mergeProjectedRoles(input.user, projectedRoles) : input.user;
 };
 
-export const resolveProjectedMainserverCredentialState = async (keycloakSubject: string) =>
+export const resolveProjectedMainserverCredentialState = async (
+  keycloakSubject: string,
+  instanceId: string
+) =>
   resolveMainserverCredentialState(
     await readIdentityUserAttributes({
       keycloakSubject,
       attributeNames: getSvaMainserverCredentialAttributeNames(),
+      instanceId,
     })
   );
 

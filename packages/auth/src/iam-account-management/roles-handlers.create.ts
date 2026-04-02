@@ -222,7 +222,7 @@ export const createRoleInternal = async (
     return createApiError(409, 'idempotency_key_reuse', reserve.message, actor.requestId);
   }
 
-  const identityProvider = requireRoleIdentityProvider(actor.requestId);
+  const identityProvider = await requireRoleIdentityProvider(actor.instanceId, actor.requestId);
   if (identityProvider instanceof Response) {
     const responseBody = buildCreateRoleUnavailableBody(actor.requestId);
     await completeCreateRoleIdempotency({

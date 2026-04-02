@@ -23,17 +23,11 @@ vi.mock('../redis-session.server', () => ({
   setSessionControlState: setSessionControlStateMock,
 }));
 
-vi.mock('../keycloak-admin-client.js', () => ({
-  KeycloakAdminClient: vi.fn(
-    class {
-      logoutUser = logoutUserMock;
-    }
-  ),
-  getKeycloakAdminClientConfigFromEnv: vi.fn(() => ({
-    baseUrl: 'https://keycloak.example.com',
-    realm: 'demo',
-    clientId: 'svc-client',
-    clientSecret: 'svc-secret',
+vi.mock('../iam-account-management/shared-runtime.js', () => ({
+  resolveIdentityProviderForInstance: vi.fn(async () => ({
+    provider: {
+      logoutUser: logoutUserMock,
+    },
   })),
 }));
 
@@ -92,6 +86,7 @@ describe('auth-server/reauth', () => {
       userId: 'user-2',
       mode: 'app_and_idp',
       reason: 'security_incident',
+      instanceId: 'demo',
     });
 
     expect(logoutUserMock).toHaveBeenCalledWith('user-2');

@@ -6,6 +6,8 @@ INSERT INTO iam.instances (
   status,
   parent_domain,
   primary_hostname,
+  auth_realm,
+  auth_client_id,
   feature_flags
 )
 VALUES (
@@ -14,6 +16,8 @@ VALUES (
   'active',
   'studio.smart-village.app',
   'de-musterhausen.studio.smart-village.app',
+  'de-musterhausen',
+  'sva-studio',
   '{}'::jsonb
 )
 ON CONFLICT (id) DO UPDATE
@@ -22,6 +26,8 @@ SET
   status = EXCLUDED.status,
   parent_domain = EXCLUDED.parent_domain,
   primary_hostname = EXCLUDED.primary_hostname,
+  auth_realm = EXCLUDED.auth_realm,
+  auth_client_id = EXCLUDED.auth_client_id,
   feature_flags = EXCLUDED.feature_flags,
   updated_at = NOW();
 

@@ -56,13 +56,22 @@ const logIncompleteSessionUser = (
 
 const hydrateSessionUserFromAccessToken = async (
   sessionId: string,
-  session: { user?: SessionUser; accessToken?: string }
+  session: { user?: SessionUser; accessToken?: string; auth?: Session['auth'] }
 ): Promise<SessionUser | null> => {
   if (!session.accessToken || !needsSessionUserHydration(session.user)) {
     return session.user ?? null;
   }
 
-  const authConfig = getAuthConfig();
+  const authConfig = session.auth
+    ? {
+        ...getAuthConfig(),
+        instanceId: session.auth.instanceId,
+        authRealm: session.auth.authRealm,
+        issuer: session.auth.issuer,
+        clientId: session.auth.clientId,
+        postLogoutRedirectUri: session.auth.postLogoutRedirectUri,
+      }
+    : getAuthConfig();
   const hydratedUser = buildSessionUser({
     accessToken: session.accessToken,
     claims: {},
@@ -88,8 +97,17 @@ const hydrateSessionUserFromAccessToken = async (
 };
 
 const refreshSession = async (sessionId: string, session: Session) => {
-  const authConfig = getAuthConfig();
-  const config = await getOidcConfig();
+  const authConfig = session.auth
+    ? {
+        ...getAuthConfig(),
+        instanceId: session.auth.instanceId,
+        authRealm: session.auth.authRealm,
+        issuer: session.auth.issuer,
+        clientId: session.auth.clientId,
+        postLogoutRedirectUri: session.auth.postLogoutRedirectUri,
+      }
+    : getAuthConfig();
+  const config = await getOidcConfig(authConfig);
   const refreshed = await client.refreshTokenGrant(config, session.refreshToken ?? '');
   const updatedUser = buildSessionUser({
     accessToken: refreshed.access_token,

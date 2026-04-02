@@ -206,7 +206,7 @@ export const updateRoleInternal = async (
     return createApiError(400, 'invalid_request', 'Ungültiger Payload.', actor.requestId);
   }
 
-  const identityProvider = requireRoleIdentityProvider(actor.requestId);
+  const identityProvider = await requireRoleIdentityProvider(actor.instanceId, actor.requestId);
   if (identityProvider instanceof Response) {
     return identityProvider;
   }

@@ -24,10 +24,16 @@ vi.mock('@tanstack/react-router', () => ({
   }: React.AnchorHTMLAttributes<HTMLAnchorElement> & {
     to: string;
     children: React.ReactNode;
+    activeOptions?: unknown;
   }) => (
-    <a href={to} {...props}>
-      {children}
-    </a>
+    (() => {
+      const { activeOptions: _activeOptions, ...anchorProps } = props;
+      return (
+        <a href={to} {...anchorProps}>
+          {children}
+        </a>
+      );
+    })()
   ),
   useRouterState: (options?: { select?: (state: { location: { pathname: string } }) => unknown }) => {
     const pathname = useRouterStateMock();

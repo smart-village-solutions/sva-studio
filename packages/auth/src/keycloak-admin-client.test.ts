@@ -1152,6 +1152,7 @@ describe('getKeycloakAdminClientConfigFromEnv', () => {
     expect(getKeycloakAdminClientConfigFromEnv()).toEqual({
       baseUrl: 'https://keycloak.example.com',
       realm: 'demo',
+      adminRealm: 'demo',
       clientId: 'svc-client',
       clientSecret: 'svc-secret',
     });

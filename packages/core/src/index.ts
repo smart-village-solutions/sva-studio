@@ -44,6 +44,7 @@ export type {
   InstanceProvisioningOperation,
   InstanceProvisioningRun,
   InstanceRegistryRecord,
+  InstanceStatus,
   TrafficEnabledInstanceStatus,
 } from './instances/registry.js';
 export { maskEmailAddresses } from './security/email-redaction.js';

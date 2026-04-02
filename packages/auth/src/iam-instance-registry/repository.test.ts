@@ -72,6 +72,7 @@ describe('iam-instance-registry repository wiring', () => {
     expect(createInstanceRegistryServiceMock).toHaveBeenCalledWith({
       repository,
       invalidateHost: invalidateInstanceRegistryHostMock,
+      provisionInstanceAuth: expect.any(Function),
     });
     expect(release).toHaveBeenCalledTimes(1);
   });

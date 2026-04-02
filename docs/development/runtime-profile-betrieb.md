@@ -50,11 +50,15 @@ Gemeinsam:
 
 Nur Keycloak-Profile:
 
-- `SVA_AUTH_ISSUER`
-- `SVA_AUTH_CLIENT_ID`
 - `SVA_AUTH_CLIENT_SECRET`
 - `SVA_AUTH_REDIRECT_URI`
 - `SVA_AUTH_POST_LOGOUT_REDIRECT_URI`
+
+Nur produktionsnahe Registry-Profile:
+
+- `authRealm` und `authClientId` liegen pro Instanz in `iam.instances`
+- optional `authIssuerUrl`, wenn der Issuer nicht aus `KEYCLOAK_ADMIN_BASE_URL + /realms/<authRealm>` gebildet werden soll
+- `SVA_AUTH_ISSUER` und `SVA_AUTH_CLIENT_ID` bleiben nur lokale Fallbacks für nicht-registry-gesteuerte Pfade
 
 Nur Builder:
 

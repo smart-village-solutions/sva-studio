@@ -25,7 +25,7 @@ import {
   logger,
   requireRoles,
   resolveActorInfo,
-  resolveIdentityProvider,
+  resolveIdentityProviderForInstance,
   trackKeycloakCall,
   withInstanceScopedDb,
 } from './shared.js';
@@ -204,8 +204,8 @@ const upsertIdentityUser = async (
   };
 };
 
-const listAllKeycloakUsers = async (): Promise<readonly IdentityListedUser[]> => {
-  const identityProvider = resolveIdentityProvider();
+const listAllKeycloakUsers = async (instanceId: string): Promise<readonly IdentityListedUser[]> => {
+  const identityProvider = await resolveIdentityProviderForInstance(instanceId);
   if (!identityProvider) {
     throw new KeycloakAdminUnavailableError('Keycloak Admin API ist nicht konfiguriert.');
   }
@@ -342,7 +342,7 @@ export const runKeycloakUserImportSync = async (input: {
   skippedCount: number;
   skippedInstanceIds: ReadonlySet<string>;
 }> => {
-  const listedUsers = await listAllKeycloakUsers();
+  const listedUsers = await listAllKeycloakUsers(input.instanceId);
   const { matchingUsers, skippedCount, skippedInstanceIds } = collectSyncCandidates(
     listedUsers,
     input.instanceId

@@ -54,6 +54,21 @@ vi.mock('../config', () => ({
     silentSsoSuppressAfterLogoutMs: 60_000,
     postLogoutRedirectUri: 'http://localhost:3000',
   }),
+  resolveAuthConfigForRequest: vi.fn(async () => ({
+    loginStateCookieName: 'sva_auth_state',
+    loginStateSecret: 'secret',
+    sessionCookieName: 'sva_auth_session',
+    silentSsoSuppressCookieName: 'sva_auth_silent_sso',
+    silentSsoSuppressAfterLogoutMs: 60_000,
+    postLogoutRedirectUri: 'http://localhost:3000',
+    redirectUri: 'http://localhost:3000/auth/callback',
+    issuer: 'https://issuer.example',
+    clientId: 'client-id',
+    clientSecret: 'client-secret',
+    scopes: 'openid',
+    sessionTtlMs: 60 * 60 * 1000,
+    sessionRedisTtlBufferMs: 5 * 60 * 1000,
+  })),
 }));
 
 vi.mock('../redis-session.server', () => ({
@@ -146,7 +161,18 @@ describe('routes/handlers', () => {
     );
   });
 
-  it('redirects tenant-host login requests to the canonical auth host and preserves tenant returnTo', async () => {
+  it('starts tenant-host login locally on the tenant host', async () => {
+    createLoginUrlMock.mockResolvedValue({
+      url: 'https://issuer.example/auth',
+      state: 'state-tenant-login',
+      loginState: {
+        codeVerifier: 'verifier-tenant-login',
+        nonce: 'nonce-tenant-login',
+        createdAt: Date.now(),
+        returnTo: '/admin/instances',
+        silent: false,
+      },
+    });
     const { loginHandler } = await import('./handlers.js');
 
     const response = await loginHandler(
@@ -154,10 +180,8 @@ describe('routes/handlers', () => {
     );
 
     expect(response.status).toBe(302);
-    expect(response.headers.get('location')).toBe(
-      'https://studio.example.org/auth/login?returnTo=https%3A%2F%2Fhb.studio.example.org%2Fadmin%2Finstances'
-    );
-    expect(createLoginUrlMock).not.toHaveBeenCalled();
+    expect(response.headers.get('location')).toBe('https://issuer.example/auth');
+    expect(createLoginUrlMock).toHaveBeenCalled();
   });
 
   it('allows trusted tenant return targets on the canonical auth host', async () => {

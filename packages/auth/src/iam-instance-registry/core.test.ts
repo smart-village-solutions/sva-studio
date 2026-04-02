@@ -64,6 +64,9 @@ vi.mock('./http.js', () => ({
     instanceId: z.string(),
     displayName: z.string(),
     parentDomain: z.string(),
+    authRealm: z.string(),
+    authClientId: z.string(),
+    authIssuerUrl: z.string().optional(),
     themeKey: z.string().optional(),
     featureFlags: z.record(z.string(), z.boolean()).optional(),
     mainserverConfigRef: z.string().optional(),
@@ -185,12 +188,14 @@ describe('iam-instance-registry core handlers', () => {
         instanceId: 'demo',
         displayName: 'Demo',
         parentDomain: 'Studio.Example.org',
+        authRealm: 'demo-realm',
+        authClientId: 'sva-studio',
         themeKey: 'modern',
         featureFlags: { beta: true },
       },
     });
     service.createProvisioningRequest
-      .mockResolvedValueOnce({ ok: true, instance: { instanceId: 'demo', status: 'requested' } })
+      .mockResolvedValueOnce({ ok: true, instance: { instanceId: 'demo', status: 'validated' } })
       .mockResolvedValueOnce({ ok: false, reason: 'already_exists' });
 
     const created = await createInstanceInternal(
@@ -208,6 +213,8 @@ describe('iam-instance-registry core handlers', () => {
         idempotencyKey: 'idem-1',
         actorId: 'admin-1',
         parentDomain: 'Studio.Example.org',
+        authRealm: 'demo-realm',
+        authClientId: 'sva-studio',
       })
     );
     expect(loggerMock.info).toHaveBeenCalledWith(

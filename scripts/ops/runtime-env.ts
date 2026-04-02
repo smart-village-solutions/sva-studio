@@ -982,6 +982,80 @@ const buildFeatureFlagCheck = (env: NodeJS.ProcessEnv) => {
   });
 };
 
+const buildInstanceAuthConfigCheck = (
+  runtimeProfile: RuntimeProfile,
+  env: NodeJS.ProcessEnv
+): DoctorCheck => {
+  const sql = `
+SELECT json_build_object(
+  'invalid_instance_ids',
+  COALESCE(
+    (
+      SELECT json_agg(instance_id ORDER BY instance_id)
+      FROM (
+        SELECT id AS instance_id
+        FROM iam.instances
+        WHERE status = 'active'
+          AND (
+            NULLIF(BTRIM(auth_realm), '') IS NULL
+            OR NULLIF(BTRIM(auth_client_id), '') IS NULL
+          )
+      ) invalid_instances
+    ),
+    '[]'::json
+  ),
+  'checked_active_instance_count',
+  (
+    SELECT COUNT(*)
+    FROM iam.instances
+    WHERE status = 'active'
+  )
+)::text;
+`;
+
+  try {
+    const payload = JSON.parse(createDbSqlRunner(runtimeProfile, env)(sql)) as {
+      checked_active_instance_count?: number;
+      invalid_instance_ids?: string[];
+    };
+    const invalidInstanceIds = Array.isArray(payload.invalid_instance_ids) ? payload.invalid_instance_ids : [];
+    const checkedActiveInstanceCount =
+      typeof payload.checked_active_instance_count === 'number' ? payload.checked_active_instance_count : 0;
+
+    if (invalidInstanceIds.length > 0) {
+      return toDoctorCheck(
+        'instance-auth-config',
+        'error',
+        'instance_auth_config_missing',
+        'Mindestens eine aktive Instanz hat keine vollstaendige Auth-Konfiguration.',
+        {
+          checkedActiveInstanceCount,
+          invalidInstanceIds,
+          requiredFields: ['authRealm', 'authClientId'],
+        }
+      );
+    }
+
+    return toDoctorCheck(
+      'instance-auth-config',
+      'ok',
+      'instance_auth_config_complete',
+      'Alle aktiven Instanzen besitzen authRealm und authClientId.',
+      {
+        checkedActiveInstanceCount,
+        requiredFields: ['authRealm', 'authClientId'],
+      }
+    );
+  } catch (error) {
+    return toDoctorCheck(
+      'instance-auth-config',
+      'error',
+      'instance_auth_config_check_failed',
+      error instanceof Error ? error.message : String(error)
+    );
+  }
+};
+
 const buildAcceptanceServiceCheck = (env: NodeJS.ProcessEnv) => {
   if (!commandExists('quantum-cli')) {
     return toDoctorCheck(
@@ -1007,6 +1081,24 @@ const buildAcceptanceServiceCheck = (env: NodeJS.ProcessEnv) => {
       error instanceof Error ? error.message : String(error)
     );
   }
+};
+
+const isExpectedOidcRedirect = (location: string, env: NodeJS.ProcessEnv) => {
+  if (location.length === 0) {
+    return false;
+  }
+
+  const authIssuer = env.SVA_AUTH_ISSUER?.trim();
+  if (authIssuer && location.startsWith(authIssuer)) {
+    return true;
+  }
+
+  const keycloakAdminBaseUrl = env.KEYCLOAK_ADMIN_BASE_URL?.trim();
+  if (keycloakAdminBaseUrl && location.startsWith(`${keycloakAdminBaseUrl.replace(/\/+$/u, '')}/realms/`)) {
+    return true;
+  }
+
+  return location.includes('/realms/') && location.includes('/protocol/openid-connect/auth');
 };
 
 const buildAcceptancePostgresCheck = (env: NodeJS.ProcessEnv) => {
@@ -1288,6 +1380,7 @@ const precheckAcceptance = async (
   checks.push(buildAcceptancePostgresCheck(env));
   checks.push(buildMigrationStatusCheck('acceptance-hb', env));
   checks.push(buildSchemaGuardCheck('acceptance-hb', env));
+  checks.push(buildInstanceAuthConfigCheck('acceptance-hb', env));
   if (options) {
     checks.push(buildAcceptanceLiveSpecCheck(env, options));
   }
@@ -1396,6 +1489,9 @@ const doctorRuntime = async (runtimeProfile: RuntimeProfile, env: NodeJS.Process
   checks.push(buildFeatureFlagCheck(env));
   checks.push(buildMigrationStatusCheck(runtimeProfile, env));
   checks.push(buildSchemaGuardCheck(runtimeProfile, env));
+  if (runtimeProfile !== 'local-builder') {
+    checks.push(buildInstanceAuthConfigCheck(runtimeProfile, env));
+  }
   checks.push(buildActorDoctorCheck(runtimeProfile, env));
 
   return finalizeDoctorReport(runtimeProfile, checks);
@@ -1414,9 +1510,8 @@ const assertLoginFlow = async (runtimeProfile: RuntimeProfile, env: NodeJS.Proce
     return;
   }
 
-  const issuer = env.SVA_AUTH_ISSUER ?? '';
-  if (response.status !== 302 || !location.startsWith(issuer)) {
-    throw new Error(`OIDC-Login redirect stimmt nicht. Erwartet Prefix ${issuer}, erhalten ${location}`);
+  if (response.status !== 302 || !isExpectedOidcRedirect(location, env)) {
+    throw new Error(`OIDC-Login redirect stimmt nicht. Erhalten ${location}`);
   }
 };
 
@@ -2242,7 +2337,6 @@ const runInternalVerify = async (env: NodeJS.ProcessEnv): Promise<{
 
 const runExternalSmoke = async (env: NodeJS.ProcessEnv): Promise<readonly AcceptanceProbeResult[]> => {
   const baseUrl = env.SVA_PUBLIC_BASE_URL ?? 'http://localhost:3000';
-  const authIssuer = env.SVA_AUTH_ISSUER ?? '';
 
   return await Promise.all([
     runHttpProbe({
@@ -2273,7 +2367,7 @@ const runExternalSmoke = async (env: NodeJS.ProcessEnv): Promise<readonly Accept
         if (response.status !== 302) {
           return `Erwartet Redirect, erhalten ${response.status}.`;
         }
-        if (authIssuer && !location.startsWith(authIssuer)) {
+        if (!isExpectedOidcRedirect(location, env)) {
           return `OIDC-Redirect stimmt nicht: ${location}`;
         }
         return null;

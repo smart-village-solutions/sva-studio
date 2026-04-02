@@ -135,6 +135,25 @@ describe('iam-instance-registry core handlers', () => {
     await expect(invalid.json()).resolves.toMatchObject({ error: 'invalid_request' });
   });
 
+  it('reports pageSize 0 for empty instance lists', async () => {
+    service.listInstances.mockResolvedValueOnce([]);
+
+    const response = await listInstancesInternal(
+      new Request('https://studio.example.org/api/v1/iam/instances'),
+      ctx
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      data: [],
+      pagination: {
+        page: 1,
+        pageSize: 0,
+        total: 0,
+      },
+    });
+  });
+
   it('returns detail responses and handles missing instances', async () => {
     service.getInstanceDetail.mockResolvedValueOnce({ instanceId: 'demo', status: 'active' }).mockResolvedValueOnce(null);
 

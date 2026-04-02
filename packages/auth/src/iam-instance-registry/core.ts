@@ -48,7 +48,7 @@ export const listInstancesInternal = async (request: Request, ctx: Authenticated
 
   const enriched = await withRegistryService((service) => service.listInstances(parsed.data));
 
-  return jsonResponse(200, asApiList(enriched, { page: 1, pageSize: enriched.length || 1, total: enriched.length }, getWorkspaceContext().requestId));
+  return jsonResponse(200, asApiList(enriched, { page: 1, pageSize: enriched.length, total: enriched.length }, getWorkspaceContext().requestId));
 };
 
 export const getInstanceInternal = async (request: Request, ctx: AuthenticatedRequestContext): Promise<Response> => {

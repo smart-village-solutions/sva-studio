@@ -93,6 +93,16 @@ export const resetInstanceRegistryCache = (): void => {
   hostCache.clear();
 };
 
+export const resetInstanceRegistryServerState = async (): Promise<void> => {
+  resetInstanceRegistryCache();
+
+  const poolsToClose = [...poolsByDatabaseUrl.values()];
+  poolsByDatabaseUrl.clear();
+  for (const pool of poolsToClose) {
+    await pool.end();
+  }
+};
+
 export const invalidateInstanceRegistryHost = (hostname: string): void => {
   const normalizedHostname = normalizeHost(hostname);
   for (const cacheKey of hostCache.keys()) {

@@ -1,5 +1,5 @@
-const INSTANCE_ID_REGEX = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
 const HOST_LABEL_REGEX = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
+const INSTANCE_ID_REGEX = HOST_LABEL_REGEX;
 const PUNYCODE_PREFIX = 'xn--';
 
 export const instanceStatuses = [
@@ -171,4 +171,3 @@ const allowedTransitions: Readonly<Record<InstanceStatus, readonly InstanceStatu
 
 export const canTransitionInstanceStatus = (from: InstanceStatus, to: InstanceStatus): boolean =>
   from === to || allowedTransitions[from].includes(to);
-

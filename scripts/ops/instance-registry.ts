@@ -215,7 +215,14 @@ const withTransaction = async <T>(pool: Pool, work: (service: ReturnType<typeof 
     await client.query('COMMIT');
     return result;
   } catch (error) {
-    await client.query('ROLLBACK');
+    try {
+      await client.query('ROLLBACK');
+    } catch (rollbackError) {
+      logger.warn('Instance registry CLI rollback failed', {
+        error_type: rollbackError instanceof Error ? rollbackError.constructor.name : typeof rollbackError,
+        error_message: rollbackError instanceof Error ? rollbackError.message : String(rollbackError),
+      });
+    }
     throw error;
   } finally {
     client.release();

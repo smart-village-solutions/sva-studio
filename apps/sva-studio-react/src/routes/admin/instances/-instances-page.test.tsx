@@ -117,22 +117,19 @@ describe('InstancesPage', () => {
     await waitFor(() => {
       expect((screen.getByLabelText('Instanz-ID') as HTMLInputElement).value).toBe('');
       expect((screen.getByLabelText('Anzeigename') as HTMLInputElement).value).toBe('');
-      expect((screen.getByLabelText('Parent-Domain') as HTMLInputElement).value).toBe(' studio.example.org ');
+      expect((screen.getByLabelText('Parent-Domain') as HTMLInputElement).value).toBe('studio.example.org');
     });
   });
 
   it('starts with an empty parent-domain field and uses runtime config as placeholder', () => {
-    const previousParentDomain = process.env.SVA_PARENT_DOMAIN;
-    process.env.SVA_PARENT_DOMAIN = 'studio.example.org';
     useInstancesMock.mockReturnValue(createInstancesApiState());
+    window.history.replaceState({}, '', '/admin/instances');
 
     render(<InstancesPage />);
 
     const input = screen.getByLabelText('Parent-Domain') as HTMLInputElement;
     expect(input.value).toBe('');
-    expect(input.placeholder).toBe('studio.example.org');
-
-    process.env.SVA_PARENT_DOMAIN = previousParentDomain;
+    expect(input.placeholder).toBe('localhost');
   });
 
   it('renders api-specific error states and selected instance details', () => {
@@ -163,8 +160,12 @@ describe('InstancesPage', () => {
 
     const alerts = screen.getAllByRole('alert');
     expect(alerts).toHaveLength(2);
-    expect(within(alerts[0]!).getByText('Keine Berechtigung für die Instanzverwaltung.')).toBeTruthy();
-    expect(within(alerts[1]!).getByText('Die gewünschte Änderung steht im Konflikt mit dem aktuellen Instanzstatus.')).toBeTruthy();
+    const [accessAlert, conflictAlert] = alerts;
+    if (!accessAlert || !conflictAlert) {
+      throw new Error('Zwei Alerts erwartet.');
+    }
+    expect(within(accessAlert).getByText('Keine Berechtigung für die Instanzverwaltung.')).toBeTruthy();
+    expect(within(conflictAlert).getByText('Die gewünschte Änderung steht im Konflikt mit dem aktuellen Instanzstatus.')).toBeTruthy();
     expect(screen.getByText('Primärer Hostname: demo.studio.example.org')).toBeTruthy();
     expect(screen.getByText('Parent-Domain: studio.example.org')).toBeTruthy();
     expect(screen.getByText('Status: Suspendiert')).toBeTruthy();

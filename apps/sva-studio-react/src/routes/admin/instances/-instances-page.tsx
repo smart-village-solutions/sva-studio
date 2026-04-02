@@ -43,18 +43,12 @@ const getErrorMessage = (error: IamHttpError | null) => {
 };
 
 const readSuggestedParentDomain = () => {
-  const configuredParentDomain = process.env.SVA_PARENT_DOMAIN?.trim();
-  if (configuredParentDomain) {
-    return configuredParentDomain;
-  }
-
-  const publicBaseUrl = process.env.SVA_PUBLIC_BASE_URL?.trim();
-  if (!publicBaseUrl) {
+  if (typeof window === 'undefined') {
     return '';
   }
 
   try {
-    return new URL(publicBaseUrl).hostname;
+    return new URL(window.location.href).hostname;
   } catch {
     return '';
   }
@@ -67,7 +61,11 @@ export const InstancesPage = () => {
     displayName: '',
     parentDomain: '',
   });
-  const suggestedParentDomain = readSuggestedParentDomain();
+  const [suggestedParentDomain, setSuggestedParentDomain] = React.useState('');
+
+  React.useEffect(() => {
+    setSuggestedParentDomain(readSuggestedParentDomain());
+  }, []);
 
   const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -79,7 +77,7 @@ export const InstancesPage = () => {
     if (!created) {
       return;
     }
-    setFormValues({ instanceId: '', displayName: '', parentDomain: formValues.parentDomain });
+    setFormValues({ instanceId: '', displayName: '', parentDomain: formValues.parentDomain.trim() });
   };
 
   return (

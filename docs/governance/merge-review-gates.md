@@ -4,6 +4,10 @@
 
 Dieses Dokument definiert die verbindlichen Merge-Gates fuer das Trunk-plus-Stacked-Modell. `main` ist der einzige langlebige Integrationsbranch. Ein Merge nach `main` ist nur zulaessig, wenn alle Pflichtchecks und Review-Regeln erfuellt sind.
 
+## Betriebsmodell
+
+Die Regeln in diesem Dokument sind auf kleine Teams und wachsende Maintainer-Strukturen ausgelegt. Rollen sind funktionsbasiert definiert und koennen in fruehen Projektphasen von derselben Verantwortungsgruppe wahrgenommen werden. Verschaerfte organisatorische Trennung wird erst verbindlich, wenn ausreichend unabhaengige Reviewer verfuegbar sind und die zugehoerige Enforcement-Phase gem. `docs/governance/rollout-plan.md` aktiv ist.
+
 ## Required Checks (explizite Namen)
 
 Die folgenden Status-Checks muessen im Branch-Schutz fuer `main` als **required** eingetragen sein:
@@ -21,9 +25,10 @@ Verbindliche Regel: Kein unspezifisches "CI ist gruen". Entscheidend sind genau 
 ## Review-Anforderungen
 
 - Mindestanzahl Reviews fuer jeden PR nach `main`: **1** Approve (numerisch, hartes Minimum).
-- Fuer kritische Pfade (`.github/workflows/**`, `packages/core/**`, `packages/auth/**`): **2** Approvals.
+- Fuer kritische Pfade (`.github/workflows/**`, `packages/core/**`, `packages/auth/**`): Zielmodell **2** Approvals; verbindlich spaetestens ab verfuegbarer unabhaengiger Reviewer-Struktur und aktivierter Enforcement-Phase.
 - Self-Approval zaehlt nicht.
 - Stale-Approval wird bei neuem Commit invalidiert; ein neuer Approve ist erforderlich.
+- Bis zur vollen organisatorischen Trennung gilt fuer kritische Pfade mindestens ein dokumentierter fachlicher Review durch die zustaendige Verantwortungsgruppe.
 
 ## Merge-Methode pro Branch-Typ
 
@@ -48,13 +53,14 @@ Queue-Verhalten:
 - Nur PRs mit vollstaendig erfuellten Required Checks + Review-Regeln werden aufgenommen.
 - Bei Queue-Fail (flaky oder echter Fail) wird der PR aus der Queue entfernt, als `queue-failed` markiert und muss nach neuem Gruen erneut eingereiht werden.
 - Fallback bei Queue-Ausfall: serielle Maintainer-Merges (ein PR nach dem anderen), weiterhin mit identischen Required Checks und Review-Mindestwerten.
+- In fruehen Projektphasen darf die Queue zunaechst selektiv fuer parallele oder risikoreiche Aenderungen genutzt werden; das Zielmodell bleibt davon unberuehrt.
 
 ## Broken-Main SOP (High Severity)
 
 ### Owner
 
 - Primaerer Owner: Merge-Verursacher:in (Autor:in des zuletzt gemergten PRs) als Incident Owner.
-- Sekundaerer Owner: On-Call Maintainer, falls primaerer Owner nicht innerhalb der Reaktionszeit uebernimmt.
+- Sekundaerer Owner: On-Call Maintainer oder die aktuell zustaendige Verantwortungsgruppe, falls primaerer Owner nicht innerhalb der Reaktionszeit uebernimmt.
 
 ### Verbindliche Aktionen und Zeitbudget
 

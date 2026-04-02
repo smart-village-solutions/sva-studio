@@ -12,6 +12,10 @@ Das Modell baut auf folgenden Grundlagen auf:
 - `docs/governance/rollout-plan.md` (Phasenziele)
 - `README.md` und `docs/development/monitoring-stack.md` (OpenTelemetry, Prometheus, Grafana, Label-Schema)
 
+## Betriebsmodell
+
+Owner in diesem Dokument sind Funktionsrollen, keine Aussage ueber bereits vollstaendig getrennte Teams. In fruehen Projektphasen koennen mehrere KPI-Verantwortungen von derselben Verantwortungsgruppe getragen werden. Entscheidend ist, dass Messung, Reaktion und Eskalation nachvollziehbar einer klar benannten Rolle zugeordnet bleiben.
+
 ## Messprinzipien
 
 - Keine KPI ohne Messquelle (GitHub API, GitHub Actions API, Prometheus, Billing API oder Git).
@@ -132,3 +136,4 @@ Das Modell baut auf folgenden Grundlagen auf:
 - Globales Governance-Board (Platform + Maintainer + Product Owner) verantwortet Repository-Zielwerte.
 - Team Leads verantworten KPI-Abweichungen in ihren `component`-Scopes.
 - Monatsreview kombiniert `global`-Sicht (Repository) und `component`-Sicht (Packages/Teams), um lokale Hotspots sichtbar zu machen.
+- In fruehen Projektphasen kann das Governance-Board aus einer kleinen Verantwortungsgruppe bestehen, solange Rollen fuer Plattform, Maintainer und Budget/Akzeptanz explizit benannt sind.

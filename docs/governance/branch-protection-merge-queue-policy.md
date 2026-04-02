@@ -4,6 +4,10 @@
 
 Diese Policy definiert die verbindlichen Branch-Protection-Regeln fuer `main` und die Einfuehrung der Merge Queue. Sie konkretisiert die Gate-Basis aus `docs/governance/merge-review-gates.md` und nutzt die Kritikalitaetsdefinition aus `docs/governance/codeowners-strategy.md` als Quelle fuer kritische Pfade (spaeter in `.github/CODEOWNERS` technisch abgebildet).
 
+## Betriebsmodell
+
+Die Policy ist fuer kleine Teams und wachsende Maintainer-Strukturen geschrieben. Rollen und Owner werden funktionsbasiert verstanden; mehrere Rollen koennen in fruehen Projektphasen von derselben Verantwortungsgruppe wahrgenommen werden. Harte technische Durchsetzung erfolgt risikobasiert und phasenweise gem. `docs/governance/rollout-plan.md`.
+
 ## Verbindliche Branch-Protection-Regeln fuer `main`
 
 ### Required Status Checks (exakte GitHub-Check-Namen)
@@ -25,7 +29,7 @@ Quellen:
 ### Required Reviews
 
 - Standard-Pfade: mindestens `1` Approval.
-- Kritische Pfade: mindestens `2` Approvals.
+- Kritische Pfade: Zielmodell mindestens `2` Approvals; verbindlich spaetestens mit verfuegbarer unabhaengiger Reviewer-Struktur und aktivierter Enforcement-Phase.
 - Kritische Pfade richten sich nach `docs/governance/codeowners-strategy.md` (insbesondere `apps/`, `packages/core/`, `.github/workflows/`, sowie weitere dort als KRITISCH markierte Bereiche).
 
 ### Zuschnitt der Schutzregeln
@@ -41,13 +45,19 @@ Quellen:
 
 Die Merge Queue wird **phasenweise** eingefuehrt:
 
-- Phase 1 (ab sofort): Queue aktiviert fuer PRs, die mindestens eines der Aktivierungskriterien erfuellen.
-- Phase 2 (nach 14 Kalendertagen): Queue ist Standard fuer alle PRs nach `main`; Ausnahmen nur gemaess Bypass-Policy.
+- Phase 1 (Pilot): Queue optional bzw. selektiv aktiviert fuer PRs, die mindestens eines der Aktivierungskriterien erfuellen oder bewusst in den Pilot aufgenommen werden.
+- Phase 2 (nach erfolgreichem Pilot): Queue ist Standard fuer parallele, risikoreiche oder kritische PRs nach `main`.
+- Phase 3 (reifer Betrieb): Queue ist Standard fuer alle PRs nach `main`; Ausnahmen nur gemaess Bypass-Policy.
 
 Uebergangskriterium Phase 1 -> Phase 2:
 
 - In den letzten `14` Tagen wurden mindestens `20` PRs erfolgreich ueber die Queue gemergt.
 - Queue-bedingte Ejections liegen unter `10 %`.
+
+Uebergangskriterium Phase 2 -> Phase 3:
+
+- Die Queue laeuft mindestens `14` Kalendertage stabil fuer kritische und parallele PRs.
+- Es bestehen keine offenen Rollback-Trigger aus `docs/governance/rollout-plan.md`.
 
 ### Aktivierungskriterien (numerisch, verbindlich)
 
@@ -75,7 +85,7 @@ Ein PR wird in die Merge Queue aufgenommen, wenn mindestens ein Kriterium zutrif
 
 ### Eskalation
 
-- Bei jedem Eject wird der zuständige Owner (aus CODEOWNERS bzw. Maintainer-Fallback) innerhalb von `15` Minuten benachrichtigt.
+- Bei jedem Eject wird der zustaendige Owner (aus CODEOWNERS bzw. Maintainer-Fallback) innerhalb von `15` Minuten benachrichtigt.
 - Der PR bleibt blockiert, bis Ursache dokumentiert und Checks wieder gruen sind.
 
 ## Bypass-Policy

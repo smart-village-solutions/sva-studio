@@ -8,6 +8,10 @@ Diese SOP definiert den verbindlichen Incident-Ablauf bei rotem `main` sowie den
 - `docs/governance/branch-protection-merge-queue-policy.md` (Required Checks, Bypass)
 - `docs/governance/preview-security-compliance-guardrails.md` (Incident-Reaktionsmuster)
 
+## Betriebsmodell
+
+Die Rollen in dieser SOP sind funktionsbasiert definiert. In fruehen Projektphasen oder bei kleiner Besetzung koennen mehrere Rollen durch dieselbe Verantwortungsgruppe wahrgenommen werden, sofern Incident-Owner, Entscheidung und Audit-Spur klar dokumentiert bleiben. Das Zielbild einer staerkeren organisatorischen Trennung bleibt davon unberuehrt.
+
 ## Verbindliche Leitplanken
 
 - **SLA:** `main` muss spätestens innerhalb von **30 Minuten** nach Detection wieder grün sein.
@@ -35,7 +39,7 @@ Diese SOP definiert den verbindlichen Incident-Ablauf bei rotem `main` sowie den
 | Level | Trigger | Reaktionszeit | Rolle | Pflichtaktion |
 | --- | --- | ---: | --- | --- |
 | L1 | Detection erfolgt | 15 Minuten | Merge-Verursacher:in | Incident übernehmen, Revert vorbereiten/einspielen |
-| L2 | L1 nicht aktiv oder keine grüne Tendenz | weitere 15 Minuten | On-Call Maintainer | Entscheidung Revert vs. Forward-Fix, Umsetzung steuern |
+| L2 | L1 nicht aktiv oder keine grüne Tendenz | weitere 15 Minuten | On-Call Maintainer bzw. zuständige Verantwortungsgruppe | Entscheidung Revert vs. Forward-Fix, Umsetzung steuern |
 | L3 | SLA-Risiko oder Blockade durch Protection | sofort nach Minute 30 oder früher bei P0/P1 | Admin (Emergency) | nur bei P0/P1: kontrollierter Bypass gemäß Audit-Pflichten |
 
 ## Mitigationsentscheidung: Revert-first
@@ -106,6 +110,7 @@ Nachgelagerte Pflichtmaßnahmen:
 - **On-Call Maintainer (L2):** Entscheidungshoheit bei Forward-Fix, Sicherstellung SLA-Konformität.
 - **Admin Emergency (L3):** letzter Eskalationspfad für P0/P1-Bypass unter vollständiger Auditpflicht.
 - **Incident-Owner:** Abschlussverifikation, Dokumentation, Follow-up-Tracking.
+- **Fruehphasen-Regel:** Wenn L1, L2 oder Incident-Owner personell zusammenfallen, muss dieser Zustand im Incident explizit vermerkt werden; die Freigabe- und Auditpflichten bleiben unveraendert bestehen.
 
 ## Definition of Done für Incident-Abschluss
 

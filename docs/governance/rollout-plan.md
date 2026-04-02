@@ -2,12 +2,14 @@
 
 Dieser Plan beschreibt die schrittweise Einführung der neuen Branching-Strategie und Preview-Governance für das SVA Studio Projekt. Ziel ist eine risikoarme Umstellung, die die Entwicklungsgeschwindigkeit erhöht, ohne die Stabilität des Hauptzweigs (`main`) zu gefährden.
 
+Die Governance ist bewusst fuer kleine Teams und wachsende Maintainer-Strukturen ausgelegt. Rollen in diesem Dokument sind funktionsbasiert definiert und koennen in fruehen Projektphasen von derselben Verantwortungsgruppe wahrgenommen werden. Verschaerfte Gates und organisatorische Trennung werden risikobasiert und nach Reifegrad aktiviert.
+
 ## Übersicht der Phasen
 
 | Phase | Fokus | Dauer (geschätzt) | Status |
 | :--- | :--- | :--- | :--- |
-| **1. Pilot** | Validierung mit Kern-Teams | 14 Tage | Ausstehend |
-| **2. Transition** | Onboarding aller internen Teams | 30 Tage | Ausstehend |
+| **1. Pilot** | Validierung mit Kern-Verantwortungsgruppe | 14 Tage | Ausstehend |
+| **2. Transition** | Onboarding aller aktiven Mitwirkenden | 30 Tage | Ausstehend |
 | **3. Enforcement** | Verbindliche Durchsetzung (Gates) | Kontinuierlich | Ausstehend |
 | **4. Standard** | Operative Exzellenz & Optimierung | Kontinuierlich | Ausstehend |
 
@@ -15,9 +17,9 @@ Dieser Plan beschreibt die schrittweise Einführung der neuen Branching-Strategi
 
 ## Phase 1: Pilot (Validierung)
 
-In dieser Phase testen ausgewählte Teams (z. B. Core- und Plattform-Team) die neuen Prozesse unter realen Bedingungen.
+In dieser Phase testet eine kleine Kern-Verantwortungsgruppe die neuen Prozesse unter realen Bedingungen.
 
-- **Verantwortlich**: Platform Team / Tech Lead
+- **Verantwortlich**: Plattform-/Maintainer-Verantwortung
 - **Eintrittskriterien**:
   - Dokumente T1 bis T10 sind finalisiert und abgenommen.
   - Preview-Infrastruktur ist bereitgestellt (gemäß T6/T7).
@@ -36,15 +38,15 @@ In dieser Phase testen ausgewählte Teams (z. B. Core- und Plattform-Team) die n
 
 ## Phase 2: Transition (Onboarding)
 
-Ausweitung auf alle internen Entwicklungsteams. Fokus liegt auf Schulung und Feedback-Integration.
+Ausweitung auf alle aktiven Mitwirkenden. Fokus liegt auf Schulung, Feedback-Integration und robuster Alltagsanwendung.
 
 - **Verantwortlich**: Maintainer-Gruppe
 - **Eintrittskriterien**:
   - Erfolgreicher Abschluss der Pilotphase.
-  - Durchführung eines Onboarding-Workshops für alle Entwickler.
+  - Durchführung eines Onboarding-Formats für alle aktiven Mitwirkenden.
   - `CODEOWNERS` (T5) sind aktiv hinterlegt.
 - **Exit-Kriterien**:
-  - 100 % der internen PRs nutzen die neue Branch-Taxonomie (T2).
+  - 100 % der aktiven PRs nutzen die neue Branch-Taxonomie (T2).
   - Feedback-Loop etabliert (wöchentliches Sync-Meeting).
 - **KPIs**:
   - **Preview-Adoption**: 100 % der PRs verfügen über eine aktive Preview-Umgebung.
@@ -57,14 +59,14 @@ Ausweitung auf alle internen Entwicklungsteams. Fokus liegt auf Schulung und Fee
 
 ## Phase 3: Enforcement (Durchsetzung)
 
-Die Regeln werden technisch über Branch-Protection-Regeln und automatisierte Hooks erzwungen.
+Die Regeln werden technisch über Branch-Protection-Regeln und automatisierte Hooks erzwungen. Vollständige Scharfschaltung erfolgt erst, wenn die Pilot- und Transition-Phasen ohne strukturelle Blocker durchlaufen wurden.
 
-- **Verantwortlich**: GitHub Organization Admins
+- **Verantwortlich**: GitHub-Administrationsrolle / Maintainer-Verantwortung
 - **Eintrittskriterien**:
   - Stabiler Betrieb in der Transition-Phase (mind. 14 Tage ohne Rollback-Trigger).
   - Dokumentation in `DEVELOPMENT_RULES.md` aktualisiert.
 - **Exit-Kriterien**:
-  - Branch-Protection ist für `main` und `develop` scharf geschaltet.
+  - Branch-Protection ist fuer `main` scharf geschaltet; zusaetzliche Zielbranches nur falls organisatorisch und technisch weiter benoetigt.
   - Manuelle Bypasses sind auf P0-Notfälle begrenzt (T10).
 - **KPIs**:
   - **CI Green Rate**: > 95 % (Erfolgsquote der Pipeline-Checks).
@@ -101,3 +103,4 @@ Sollte eine Phase aufgrund der definierten Rollback-Trigger abgebrochen werden m
 - **Training**: Vor Phase 2 müssen alle Beteiligten die neuen `Stacked PR` Regeln (T3) und `Security Guidelines` (T9) verstanden haben.
 - **Monitoring**: Real-time Monitoring der GitHub Actions Kontingente und Preview-Ressourcen.
 - **Escape Hatches**: Administratoren behalten das Recht, die Policy bei kritischen Bugfixes (Hotfixes) zu umgehen, wobei jeder Bypass dokumentiert werden muss.
+- **Reifegradprinzip**: Neue Gates werden erst von "empfohlen" auf "verbindlich" gestellt, wenn Nutzen und operative Tragfaehigkeit im laufenden Betrieb belegt sind.

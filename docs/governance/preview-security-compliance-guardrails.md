@@ -9,6 +9,10 @@ Dieses Dokument definiert verbindliche, auditierbare Sicherheits- und Compliance
 
 Inhaltlicher Fokus: Secret-Handling, Zugriffsschutz, PII-Schutz, Datenquellen, Incident-Reaktion bei Secret-Leaks.
 
+## Betriebsmodell
+
+Die in diesem Dokument benannten Sicherheitsrollen sind Funktionsrollen. In fruehen Projektphasen kann dieselbe Verantwortungsgruppe mehrere dieser Rollen wahrnehmen, sofern Verantwortlichkeit, Freigaben und Incident-Dokumentation klar zuordenbar bleiben. Das Zielbild bleibt eine organisatorisch klar getrennte Security-Verantwortung bei wachsender Teamgroesse oder hoeherem Risikoprofil.
+
 ## Policy-Objekt (maschinenpruefbar)
 
 ```yaml
@@ -128,6 +132,8 @@ preview_security:
   - Zugriffsprotokolle auditieren,
   - betroffene Systeme und Datenpfade dokumentieren,
   - Lessons Learned in Governance-Backlog uebernehmen.
+
+Hinweis: Ist `security_team` in einer fruehen Projektphase noch keine eigenstaendige organisatorische Einheit, wird die Rolle durch die benannte Sicherheits-Verantwortung innerhalb der Maintainer-Struktur wahrgenommen.
 
 ## Audit-Nachweise (Minimum)
 

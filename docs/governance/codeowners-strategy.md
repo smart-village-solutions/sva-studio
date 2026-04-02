@@ -2,6 +2,10 @@
 
 Dieses Dokument beschreibt die Strategie zur Zuweisung von Pfadverantwortlichkeiten im SVA Studio Repository. Ziel ist es, sicherzustellen, dass kritische Codebereiche immer von den richtigen Fachexperten geprüft werden und keine "verwaisten" Pfade ohne klare Zuständigkeit existieren.
 
+## Betriebsmodell
+
+Die CODEOWNERS-Strategie ist rollenbasiert formuliert und fuer kleine Teams sowie wachsende Maintainer-Strukturen geeignet. Teamnamen in diesem Dokument beschreiben Funktionsrollen, keine zwingend bereits organisatorisch getrennten Einheiten. In fruehen Projektphasen koennen mehrere Rollen kommissarisch durch dieselbe Verantwortungsgruppe wahrgenommen werden, solange Review-Pfade, Audit-Spur und Eskalation eindeutig bleiben.
+
 ## 1. Kategorisierung der Pfade
 
 Wir unterteilen das Repository in drei Kritikalitätsstufen, um den Review-Aufwand und die notwendige Expertise zu steuern.
@@ -49,6 +53,7 @@ Wir setzen primär auf **Team-Ownership** statt auf Einzelpersonen, um "Bus-Fakt
 - **Fachteams:** Spezialisierte Gruppen (z.B. `@sva-studio/security-team`) für kritische Domänen.
 - **Maintainers Team:** Eine Gruppe von Kern-Entwicklern (`@sva-studio/maintainers`), die als Fallback für alle Pfade fungiert.
 - **Admins:** Globale Administratoren für Notfälle und Infrastruktur-Änderungen.
+- **Fruehphasen-Regel:** Wenn eine Rolle noch nicht als separates Team besetzt ist, uebernimmt die benannte Verantwortungsgruppe die Funktion kommissarisch, ohne dass das Zielmodell der Pfadverantwortung geaendert wird.
 
 ## 3. Fallback und Eskalation
 
@@ -59,7 +64,7 @@ Wir setzen primär auf **Team-Ownership** statt auf Einzelpersonen, um "Bus-Fakt
 
 | Kategorie | Mindestanzahl Reviews | Reviewer-Typ |
 | --- | --- | --- |
-| **KRITISCH** | 2 | Mind. 1 Mitglied des zuständigen Fachteams |
+| **KRITISCH** | Zielmodell 2 | Mind. 1 Mitglied der zuständigen Funktionsrolle; organisatorisch verbindlich als Vier-Augen-Prinzip ab verfuegbarer unabhaengiger Reviewer-Struktur |
 | **WICHTIG** | 1 | Mitglied des Teams oder Maintainer |
 | **OPTIONAL** | 1 | Beliebiger Maintainer |
 

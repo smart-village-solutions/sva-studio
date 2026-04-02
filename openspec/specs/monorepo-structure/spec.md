@@ -412,10 +412,16 @@ Das System SHALL für jedes Runtime-Profil standardisierte Befehle für `up`, `d
 - **THEN** existieren `env:*:<profil>`-Skripte für alle drei Runtime-Profile
 - **AND** die Skripte delegieren an eine gemeinsame Implementierung statt an profilindividuelle Ad-hoc-Kommandos
 
+#### Scenario: Smoke-Checks prüfen Kernabhängigkeiten
+
+- **WHEN** ein Runtime-`smoke`-Befehl ausgeführt wird
+- **THEN** prüft er mindestens Live-/Ready-Health, Auth-Verhalten und Mainserver-Basisfunktion
+- **AND** lokale Profile prüfen zusätzlich den OTEL-Collector
+- **AND** das Acceptance-Profil prüft den serverseitigen Stack-Zustand
+
 #### Scenario: Migrationspfad nutzt gepinnten Goose-Wrapper
 
 - **WHEN** ein lokaler oder Acceptance-`migrate`-Pfad ausgelöst wird
 - **THEN** ruft das System nur einen repository-lokalen `goose`-Wrapper auf
 - **AND** der Wrapper installiert bzw. verwendet eine gepinnte `goose`-Version
 - **AND** es ist keine globale `goose`-Installation Voraussetzung
-

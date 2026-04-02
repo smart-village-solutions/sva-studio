@@ -4,7 +4,7 @@
 > Die vorhandenen Ergebnisse bleiben als historische Untersuchungsartefakte erhalten.
 
 **Change ID:** `debug-otel-logging-e2e`
-**Status:** PROPOSAL (Requires Approval)
+**Status:** ARCHIVED (OBSOLETE)
 **Date:** 2026-02-10
 **Impact:** Observability / Logging
 

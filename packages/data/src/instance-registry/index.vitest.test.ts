@@ -1,5 +1,4 @@
-import assert from 'node:assert/strict';
-import { describe, it } from 'node:test';
+import { describe, expect, it } from 'vitest';
 
 import type { SqlExecutionResult, SqlExecutor, SqlStatement } from '../iam/repositories/types';
 import { createInstanceRegistryRepository } from './index';
@@ -23,8 +22,8 @@ const createSequencedExecutor = (
   };
 };
 
-describe('instance registry repository', () => {
-  it('maps list results', async () => {
+describe('instance registry repository (vitest)', () => {
+  it('maps list results with nullable fields', async () => {
     const execute = createExecute({
       rowCount: 1,
       rows: [
@@ -35,7 +34,7 @@ describe('instance registry repository', () => {
           parent_domain: 'studio.example.org',
           primary_hostname: 'hb.studio.example.org',
           theme_key: null,
-          feature_flags: { provisioning: true },
+          feature_flags: null,
           mainserver_config_ref: null,
           created_at: '2026-01-01T00:00:00.000Z',
           created_by: null,
@@ -46,73 +45,26 @@ describe('instance registry repository', () => {
     });
 
     const repository = createInstanceRegistryRepository({ execute });
-    const items = await repository.listInstances();
 
-    assert.equal(items.length, 1);
-    assert.deepEqual(items[0], {
-      instanceId: 'hb',
-      displayName: 'HB',
-      status: 'active',
-      parentDomain: 'studio.example.org',
-      primaryHostname: 'hb.studio.example.org',
-      themeKey: undefined,
-      featureFlags: { provisioning: true },
-      mainserverConfigRef: undefined,
-      createdAt: '2026-01-01T00:00:00.000Z',
-      createdBy: undefined,
-      updatedAt: '2026-01-01T00:00:00.000Z',
-      updatedBy: undefined,
-    });
+    await expect(repository.listInstances()).resolves.toEqual([
+      {
+        instanceId: 'hb',
+        displayName: 'HB',
+        status: 'active',
+        parentDomain: 'studio.example.org',
+        primaryHostname: 'hb.studio.example.org',
+        themeKey: undefined,
+        featureFlags: {},
+        mainserverConfigRef: undefined,
+        createdAt: '2026-01-01T00:00:00.000Z',
+        createdBy: undefined,
+        updatedAt: '2026-01-01T00:00:00.000Z',
+        updatedBy: undefined,
+      },
+    ]);
   });
 
-  it('creates provisioning runs with passed metadata', async () => {
-    const execute = createExecute({
-      rowCount: 1,
-      rows: [
-        {
-          id: 'run-1',
-          instance_id: 'hb',
-          operation: 'create',
-          status: 'requested',
-          step_key: null,
-          idempotency_key: 'idem-1',
-          error_code: null,
-          error_message: null,
-          request_id: 'req-1',
-          actor_id: 'actor-1',
-          created_at: '2026-01-01T00:00:00.000Z',
-          updated_at: '2026-01-01T00:00:00.000Z',
-        },
-      ],
-    });
-
-    const repository = createInstanceRegistryRepository({ execute });
-    const run = await repository.createProvisioningRun({
-      instanceId: 'hb',
-      operation: 'create',
-      status: 'requested',
-      idempotencyKey: 'idem-1',
-      requestId: 'req-1',
-      actorId: 'actor-1',
-    });
-
-    assert.deepEqual(run, {
-      id: 'run-1',
-      instanceId: 'hb',
-      operation: 'create',
-      status: 'requested',
-      stepKey: undefined,
-      idempotencyKey: 'idem-1',
-      errorCode: undefined,
-      errorMessage: undefined,
-      requestId: 'req-1',
-      actorId: 'actor-1',
-      createdAt: '2026-01-01T00:00:00.000Z',
-      updatedAt: '2026-01-01T00:00:00.000Z',
-    });
-  });
-
-  it('returns null when no instance exists for id or hostname', async () => {
+  it('returns null when lookups have no rows', async () => {
     const execute = createExecute({
       rowCount: 0,
       rows: [],
@@ -120,11 +72,12 @@ describe('instance registry repository', () => {
 
     const repository = createInstanceRegistryRepository({ execute });
 
-    assert.equal(await repository.getInstanceById('unknown'), null);
-    assert.equal(await repository.resolveHostname('unknown.studio.example.org'), null);
+    await expect(repository.getInstanceById('unknown')).resolves.toBeNull();
+    await expect(repository.resolveHostname('unknown.studio.example.org')).resolves.toBeNull();
+    await expect(repository.setInstanceStatus({ instanceId: 'unknown', status: 'archived' })).resolves.toBeNull();
   });
 
-  it('maps provisioning runs and audit events with optional fields populated', async () => {
+  it('maps provisioning runs and audit events including optional fields', async () => {
     const execute = createSequencedExecutor([
       {
         rowCount: 1,
@@ -152,9 +105,9 @@ describe('instance registry repository', () => {
             id: 'event-1',
             instance_id: 'hb',
             event_type: 'instance_activated',
-            actor_id: 'actor-2',
-            request_id: 'req-2',
-            details: { previousStatus: 'provisioning' },
+            actor_id: null,
+            request_id: null,
+            details: null,
             created_at: '2026-01-02T00:00:02.000Z',
           },
         ],
@@ -163,7 +116,7 @@ describe('instance registry repository', () => {
 
     const repository = createInstanceRegistryRepository({ execute });
 
-    assert.deepEqual(await repository.listProvisioningRuns('hb'), [
+    await expect(repository.listProvisioningRuns('hb')).resolves.toEqual([
       {
         id: 'run-2',
         instanceId: 'hb',
@@ -179,20 +132,20 @@ describe('instance registry repository', () => {
         updatedAt: '2026-01-02T00:00:01.000Z',
       },
     ]);
-    assert.deepEqual(await repository.listAuditEvents('hb'), [
+    await expect(repository.listAuditEvents('hb')).resolves.toEqual([
       {
         id: 'event-1',
         instanceId: 'hb',
         eventType: 'instance_activated',
-        actorId: 'actor-2',
-        requestId: 'req-2',
-        details: { previousStatus: 'provisioning' },
+        actorId: undefined,
+        requestId: undefined,
+        details: {},
         createdAt: '2026-01-02T00:00:02.000Z',
       },
     ]);
   });
 
-  it('creates instances and falls back to system actor plus empty feature flags', async () => {
+  it('creates instances with default actors and writes hostname rows', async () => {
     const statements: SqlStatement[] = [];
     const execute = createSequencedExecutor(
       [
@@ -224,15 +177,16 @@ describe('instance registry repository', () => {
     );
 
     const repository = createInstanceRegistryRepository({ execute });
-    const instance = await repository.createInstance({
-      instanceId: 'demo',
-      displayName: 'Demo',
-      status: 'requested',
-      parentDomain: 'studio.example.org',
-      primaryHostname: 'demo.studio.example.org',
-    });
 
-    assert.deepEqual(instance, {
+    await expect(
+      repository.createInstance({
+        instanceId: 'demo',
+        displayName: 'Demo',
+        status: 'requested',
+        parentDomain: 'studio.example.org',
+        primaryHostname: 'demo.studio.example.org',
+      })
+    ).resolves.toEqual({
       instanceId: 'demo',
       displayName: 'Demo',
       status: 'requested',
@@ -246,19 +200,34 @@ describe('instance registry repository', () => {
       updatedAt: '2026-01-03T00:00:00.000Z',
       updatedBy: 'system',
     });
-    assert.equal(statements.length, 2);
-    assert.equal(statements[0]?.values[6], '{}');
-    assert.equal(statements[0]?.values[8], 'system');
-    assert.equal(statements[1]?.values[2], 'system');
+    expect(statements).toHaveLength(2);
+    expect(statements[0]?.values[6]).toBe('{}');
+    expect(statements[0]?.values[8]).toBe('system');
+    expect(statements[1]?.values[2]).toBe('system');
   });
 
-  it('returns null for missing status updates and persists empty audit details by default', async () => {
+  it('writes provisioning and audit statements with null-safe defaults', async () => {
     const statements: SqlStatement[] = [];
     const execute = createSequencedExecutor(
       [
         {
-          rowCount: 0,
-          rows: [],
+          rowCount: 1,
+          rows: [
+            {
+              id: 'run-1',
+              instance_id: 'hb',
+              operation: 'create',
+              status: 'requested',
+              step_key: null,
+              idempotency_key: 'idem-1',
+              error_code: null,
+              error_message: null,
+              request_id: null,
+              actor_id: null,
+              created_at: '2026-01-01T00:00:00.000Z',
+              updated_at: '2026-01-01T00:00:00.000Z',
+            },
+          ],
         },
         {
           rowCount: 1,
@@ -270,22 +239,36 @@ describe('instance registry repository', () => {
 
     const repository = createInstanceRegistryRepository({ execute });
 
-    assert.equal(
-      await repository.setInstanceStatus({
-        instanceId: 'unknown',
-        status: 'archived',
-      }),
-      null
-    );
-
-    await repository.appendAuditEvent({
-      instanceId: 'unknown',
-      eventType: 'instance_archived',
+    await expect(
+      repository.createProvisioningRun({
+        instanceId: 'hb',
+        operation: 'create',
+        status: 'requested',
+        idempotencyKey: 'idem-1',
+      })
+    ).resolves.toEqual({
+      id: 'run-1',
+      instanceId: 'hb',
+      operation: 'create',
+      status: 'requested',
+      stepKey: undefined,
+      idempotencyKey: 'idem-1',
+      errorCode: undefined,
+      errorMessage: undefined,
+      requestId: undefined,
+      actorId: undefined,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
     });
 
-    assert.equal(statements[0]?.values[2], 'system');
-    assert.equal(statements[1]?.values[2], null);
-    assert.equal(statements[1]?.values[3], null);
-    assert.equal(statements[1]?.values[4], '{}');
+    await repository.appendAuditEvent({
+      instanceId: 'hb',
+      eventType: 'instance_requested',
+    });
+
+    expect(statements[0]?.values.slice(3)).toEqual([null, 'idem-1', null, null, null, null]);
+    expect(statements[1]?.values[2]).toBe(null);
+    expect(statements[1]?.values[3]).toBe(null);
+    expect(statements[1]?.values[4]).toBe('{}');
   });
 });

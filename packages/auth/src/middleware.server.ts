@@ -1,12 +1,11 @@
 import { parse as parseCookie } from 'cookie-es';
-import { createSdkLogger, getInstanceConfig, parseInstanceIdFromHost, toJsonErrorResponse } from '@sva/sdk/server';
-import { classifyHost } from '@sva/core';
-import { loadInstanceByHostname } from '@sva/data/server';
-import { isTrafficEnabledInstanceStatus } from '@sva/core';
+import { createSdkLogger, toJsonErrorResponse } from '@sva/sdk/server';
 
 import { getSessionUser } from './auth.server.js';
 import { getAuthConfig } from './config.js';
 import { withLegalTextCompliance } from './legal-text-enforcement.server.js';
+import { shouldEnforceLegalTextCompliance } from './middleware-compliance.js';
+import { resolveSessionUser, validateTenantHost } from './middleware-hosts.js';
 import { createMockSessionUser, isMockAuthEnabled } from './mock-auth.server.js';
 import { buildLogContext } from './shared/log-context.js';
 import type { SessionUser } from './types.js';
@@ -22,12 +21,6 @@ type SessionResolution =
   | { kind: 'authenticated'; sessionId: string; user: SessionUser }
   | { kind: 'response'; response: Response };
 
-const forbiddenTenantHost = () =>
-  new Response(JSON.stringify({ error: 'forbidden', message: 'Host not permitted for this operation' }), {
-    status: 403,
-    headers: { 'Content-Type': 'application/json' },
-  });
-
 const readSessionId = (request: Request) => {
   const { sessionCookieName } = getAuthConfig();
   const cookies = parseCookie(request.headers.get('cookie') ?? '');
@@ -39,13 +32,6 @@ const unauthorized = () =>
     status: 401,
     headers: { 'Content-Type': 'application/json' },
   });
-
-const LEGAL_TEXT_PROTECTED_PATHS = new Set(['/iam/authorize', '/iam/me/permissions']);
-const LEGAL_TEXT_PROTECTED_PREFIXES = ['/api/v1/iam/'];
-const LEGAL_TEXT_EXEMPT_AUTH_PATHS = new Set(['/auth/login', '/auth/callback', '/auth/logout', '/auth/me']);
-const LEGAL_TEXT_EXEMPT_IAM_PREFIXES = ['/api/v1/iam/legal-texts'];
-const LEGAL_TEXT_EXEMPT_SELF_SERVICE_PREFIXES = ['/iam/me/legal-texts'];
-const LEGAL_TEXT_EXEMPT_GOVERNANCE_OPERATIONS = new Set(['accept_legal_text', 'revoke_legal_acceptance']);
 const PROFILE_DIAGNOSTIC_PATHS = new Set(['/auth/me', '/api/v1/iam/users/me/profile']);
 
 const isProfileDiagnosticsEnabled = (): boolean => process.env.IAM_DEBUG_PROFILE_ERRORS === 'true';
@@ -57,100 +43,6 @@ const shouldLogProfileDiagnostics = (request: Request): boolean => {
 
   const pathname = new URL(request.url).pathname;
   return PROFILE_DIAGNOSTIC_PATHS.has(pathname);
-};
-
-const readWorkflowOperation = async (request: Request): Promise<string | undefined> => {
-  try {
-    const payload = await request.clone().json();
-    if (!payload || typeof payload !== 'object') {
-      return undefined;
-    }
-    const operation = (payload as { operation?: unknown }).operation;
-    return typeof operation === 'string' ? operation : undefined;
-  } catch {
-    return undefined;
-  }
-};
-
-const shouldEnforceLegalTextCompliance = async (request: Request): Promise<boolean> => {
-  const pathname = new URL(request.url).pathname;
-  if (LEGAL_TEXT_EXEMPT_AUTH_PATHS.has(pathname)) {
-    return false;
-  }
-
-  if (LEGAL_TEXT_EXEMPT_SELF_SERVICE_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
-    return false;
-  }
-
-  if (LEGAL_TEXT_EXEMPT_IAM_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
-    return false;
-  }
-
-  if (pathname === '/api/v1/iam/governance/workflows') {
-    const operation = await readWorkflowOperation(request);
-    return !LEGAL_TEXT_EXEMPT_GOVERNANCE_OPERATIONS.has(operation ?? '');
-  }
-
-  if (LEGAL_TEXT_PROTECTED_PATHS.has(pathname)) {
-    return true;
-  }
-
-  return LEGAL_TEXT_PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
-};
-
-const resolveSessionUser = async (request: Request, user: SessionUser): Promise<SessionUser> => {
-  if (user.instanceId) {
-    return user;
-  }
-
-  const host = new URL(request.url).host;
-  const registryEntry = await loadInstanceByHostname(host).catch(() => null);
-  const derivedInstanceId = registryEntry?.instanceId ?? parseInstanceIdFromHost(host);
-  if (!derivedInstanceId) {
-    return user;
-  }
-
-  logger.warn('Auth middleware derived missing session instance from request host', {
-    endpoint: request.url,
-    operation: 'auth_middleware',
-    auth_state: 'authenticated',
-    user_id: user.id,
-    derived_instance_id: derivedInstanceId,
-    ...buildLogContext(derivedInstanceId, { includeTraceId: true }),
-  });
-
-  return {
-    ...user,
-    instanceId: derivedInstanceId,
-  };
-};
-
-const validateTenantHost = async (request: Request): Promise<Response | null> => {
-  const host = new URL(request.url).host;
-  const config = getInstanceConfig();
-  if (!config) {
-    return null;
-  }
-
-  const classification = classifyHost(host, config.parentDomain);
-  if (classification.kind !== 'tenant') {
-    return null;
-  }
-
-  const registryEntry = await loadInstanceByHostname(host).catch(() => null);
-  if (!registryEntry || !isTrafficEnabledInstanceStatus(registryEntry.status)) {
-    logger.warn('Auth middleware rejected request for invalid or inactive tenant host', {
-      endpoint: request.url,
-      operation: 'auth_middleware',
-      tenant_host: host,
-      registry_found: Boolean(registryEntry),
-      registry_status: registryEntry?.status ?? null,
-      ...buildLogContext(undefined, { includeTraceId: true }),
-    });
-    return forbiddenTenantHost();
-  }
-
-  return null;
 };
 
 const createAuthenticatedContext = async (request: Request): Promise<SessionResolution> => {

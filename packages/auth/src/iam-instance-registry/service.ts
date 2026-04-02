@@ -4,65 +4,19 @@ import {
   classifyHost,
   isTrafficEnabledInstanceStatus,
   normalizeHost,
-  type HostClassification,
   type InstanceStatus,
-  type IamInstanceAuditEvent,
   type IamInstanceDetail,
   type IamInstanceListItem,
 } from '@sva/core';
 
 import type { InstanceRegistryRepository } from '@sva/data';
-
-export type InstanceRegistryMutationActor = {
-  readonly actorId?: string;
-  readonly requestId?: string;
-};
-
-export type CreateInstanceProvisioningInput = InstanceRegistryMutationActor & {
-  readonly idempotencyKey: string;
-  readonly instanceId: string;
-  readonly displayName: string;
-  readonly parentDomain: string;
-  readonly themeKey?: string;
-  readonly mainserverConfigRef?: string;
-  readonly featureFlags?: Readonly<Record<string, boolean>>;
-};
-
-export type ChangeInstanceStatusInput = InstanceRegistryMutationActor & {
-  readonly idempotencyKey: string;
-  readonly instanceId: string;
-  readonly nextStatus: Extract<InstanceStatus, 'active' | 'suspended' | 'archived'>;
-};
-
-export type CreateInstanceProvisioningResult =
-  | { readonly ok: true; readonly instance: IamInstanceListItem }
-  | { readonly ok: false; readonly reason: 'already_exists' };
-
-export type ChangeInstanceStatusResult =
-  | { readonly ok: true; readonly instance: IamInstanceListItem }
-  | { readonly ok: false; readonly reason: 'not_found' | 'invalid_transition'; readonly currentStatus?: InstanceStatus };
-
-export type ResolveRuntimeInstanceResult = {
-  readonly hostClassification: HostClassification;
-  readonly instance: IamInstanceListItem | null;
-};
-
-export type InstanceRegistryService = {
-  listInstances(input?: {
-    search?: string;
-    status?: InstanceStatus;
-  }): Promise<readonly IamInstanceListItem[]>;
-  getInstanceDetail(instanceId: string): Promise<IamInstanceDetail | null>;
-  createProvisioningRequest(input: CreateInstanceProvisioningInput): Promise<CreateInstanceProvisioningResult>;
-  changeStatus(input: ChangeInstanceStatusInput): Promise<ChangeInstanceStatusResult>;
-  resolveRuntimeInstance(host: string): Promise<ResolveRuntimeInstanceResult>;
-  isTrafficAllowed(status: InstanceStatus): boolean;
-};
-
-export type InstanceRegistryServiceDeps = {
-  readonly repository: InstanceRegistryRepository;
-  readonly invalidateHost: (hostname: string) => void;
-};
+import type {
+  ChangeInstanceStatusInput,
+  CreateInstanceProvisioningInput,
+  InstanceRegistryService,
+  InstanceRegistryServiceDeps,
+  ResolveRuntimeInstanceResult,
+} from './types.js';
 
 const toListItem = (
   item: Awaited<ReturnType<InstanceRegistryRepository['listInstances']>>[number],
@@ -86,42 +40,87 @@ const createAuditDetails = (
 ): Readonly<Record<string, unknown>> => input ?? {};
 
 export const createInstanceRegistryService = (deps: InstanceRegistryServiceDeps): InstanceRegistryService => ({
-  async listInstances(input = {}) {
-    const instances = await deps.repository.listInstances(input);
+  listInstances: createListInstances(deps.repository),
+  getInstanceDetail: createGetInstanceDetail(deps.repository),
+  createProvisioningRequest: createProvisioningRequestHandler(deps),
+  changeStatus: createChangeStatusHandler(deps),
+  resolveRuntimeInstance: createRuntimeResolver(deps.repository),
+  isTrafficAllowed: isTrafficEnabledInstanceStatus,
+});
+
+const createListInstances =
+  (repository: InstanceRegistryRepository): InstanceRegistryService['listInstances'] =>
+  async (input = {}) => {
+    const instances = await repository.listInstances(input);
     return Promise.all(
       instances.map(async (instance) => {
-        const latestProvisioningRun = (await deps.repository.listProvisioningRuns(instance.instanceId))[0];
+        const latestProvisioningRun = (await repository.listProvisioningRuns(instance.instanceId))[0];
         return toListItem(instance, latestProvisioningRun);
       })
     );
-  },
+  };
 
-  async getInstanceDetail(instanceId) {
-    const instance = await deps.repository.getInstanceById(instanceId);
+const buildInstanceDetail = (
+  instance: Awaited<ReturnType<InstanceRegistryRepository['getInstanceById']>> extends infer T ? Exclude<T, null> : never,
+  provisioningRuns: Awaited<ReturnType<InstanceRegistryRepository['listProvisioningRuns']>>,
+  auditEvents: Awaited<ReturnType<InstanceRegistryRepository['listAuditEvents']>>
+): IamInstanceDetail => ({
+  ...toListItem(instance, provisioningRuns[0]),
+  hostnames: [
+    {
+      hostname: instance.primaryHostname,
+      isPrimary: true,
+      createdAt: instance.createdAt,
+    },
+  ],
+  provisioningRuns,
+  auditEvents,
+});
+
+const createGetInstanceDetail =
+  (repository: InstanceRegistryRepository): InstanceRegistryService['getInstanceDetail'] =>
+  async (instanceId) => {
+    const instance = await repository.getInstanceById(instanceId);
     if (!instance) {
       return null;
     }
 
     const [provisioningRuns, auditEvents] = await Promise.all([
-      deps.repository.listProvisioningRuns(instanceId),
-      deps.repository.listAuditEvents(instanceId),
+      repository.listProvisioningRuns(instanceId),
+      repository.listAuditEvents(instanceId),
     ]);
 
-    return {
-      ...toListItem(instance, provisioningRuns[0]),
-      hostnames: [
-        {
-          hostname: instance.primaryHostname,
-          isPrimary: true,
-          createdAt: instance.createdAt,
-        },
-      ],
-      provisioningRuns,
-      auditEvents,
-    };
-  },
+    return buildInstanceDetail(instance, provisioningRuns, auditEvents);
+  };
 
-  async createProvisioningRequest(input) {
+const createProvisioningArtifacts = async (
+  repository: InstanceRegistryRepository,
+  instance: Awaited<ReturnType<InstanceRegistryRepository['createInstance']>>,
+  input: CreateInstanceProvisioningInput
+): Promise<void> => {
+  await repository.createProvisioningRun({
+    instanceId: instance.instanceId,
+    operation: 'create',
+    status: 'requested',
+    idempotencyKey: input.idempotencyKey,
+    actorId: input.actorId,
+    requestId: input.requestId,
+  });
+  await repository.appendAuditEvent({
+    instanceId: instance.instanceId,
+    eventType: 'instance_requested',
+    actorId: input.actorId,
+    requestId: input.requestId,
+    details: createAuditDetails({
+      parentDomain: instance.parentDomain,
+      primaryHostname: instance.primaryHostname,
+    }),
+  });
+};
+
+const createProvisioningRequestHandler =
+  (deps: InstanceRegistryServiceDeps): InstanceRegistryService['createProvisioningRequest'] =>
+  async (input) => {
     const existing = await deps.repository.getInstanceById(input.instanceId);
     if (existing) {
       return { ok: false, reason: 'already_exists' };
@@ -129,7 +128,6 @@ export const createInstanceRegistryService = (deps: InstanceRegistryServiceDeps)
 
     const normalizedParentDomain = normalizeHost(input.parentDomain);
     const primaryHostname = buildPrimaryHostname(input.instanceId, normalizedParentDomain);
-
     const instance = await deps.repository.createInstance({
       instanceId: input.instanceId,
       displayName: input.displayName,
@@ -143,33 +141,45 @@ export const createInstanceRegistryService = (deps: InstanceRegistryServiceDeps)
       mainserverConfigRef: input.mainserverConfigRef,
     });
 
-    await deps.repository.createProvisioningRun({
-      instanceId: instance.instanceId,
-      operation: 'create',
-      status: 'requested',
-      idempotencyKey: input.idempotencyKey,
-      actorId: input.actorId,
-      requestId: input.requestId,
-    });
-    await deps.repository.appendAuditEvent({
-      instanceId: instance.instanceId,
-      eventType: 'instance_requested',
-      actorId: input.actorId,
-      requestId: input.requestId,
-      details: createAuditDetails({
-        parentDomain: instance.parentDomain,
-        primaryHostname: instance.primaryHostname,
-      }),
-    });
-
+    await createProvisioningArtifacts(deps.repository, instance, input);
     deps.invalidateHost(instance.primaryHostname);
-    return {
-      ok: true,
-      instance: toListItem(instance),
-    };
-  },
+    return { ok: true, instance: toListItem(instance) };
+  };
 
-  async changeStatus(input) {
+const getStatusOperation = (status: ChangeInstanceStatusInput['nextStatus']): 'activate' | 'suspend' | 'archive' =>
+  status === 'active' ? 'activate' : status === 'suspended' ? 'suspend' : 'archive';
+
+const getAuditEventType = (status: ChangeInstanceStatusInput['nextStatus']): 'instance_activated' | 'instance_suspended' | 'instance_archived' =>
+  status === 'active' ? 'instance_activated' : status === 'suspended' ? 'instance_suspended' : 'instance_archived';
+
+const createStatusArtifacts = async (
+  repository: InstanceRegistryRepository,
+  input: ChangeInstanceStatusInput,
+  previousStatus: InstanceStatus
+): Promise<void> => {
+  await repository.createProvisioningRun({
+    instanceId: input.instanceId,
+    operation: getStatusOperation(input.nextStatus),
+    status: input.nextStatus,
+    idempotencyKey: input.idempotencyKey,
+    actorId: input.actorId,
+    requestId: input.requestId,
+  });
+  await repository.appendAuditEvent({
+    instanceId: input.instanceId,
+    eventType: getAuditEventType(input.nextStatus),
+    actorId: input.actorId,
+    requestId: input.requestId,
+    details: createAuditDetails({
+      previousStatus,
+      nextStatus: input.nextStatus,
+    }),
+  });
+};
+
+const createChangeStatusHandler =
+  (deps: InstanceRegistryServiceDeps): InstanceRegistryService['changeStatus'] =>
+  async (input) => {
     const current = await deps.repository.getInstanceById(input.instanceId);
     if (!current) {
       return { ok: false, reason: 'not_found' };
@@ -185,47 +195,20 @@ export const createInstanceRegistryService = (deps: InstanceRegistryServiceDeps)
       actorId: input.actorId,
       requestId: input.requestId,
     });
-
     if (!updated) {
       return { ok: false, reason: 'not_found' };
     }
 
-    const operation = input.nextStatus === 'active' ? 'activate' : input.nextStatus === 'suspended' ? 'suspend' : 'archive';
-
-    await deps.repository.createProvisioningRun({
-      instanceId: input.instanceId,
-      operation,
-      status: input.nextStatus,
-      idempotencyKey: input.idempotencyKey,
-      actorId: input.actorId,
-      requestId: input.requestId,
-    });
-    await deps.repository.appendAuditEvent({
-      instanceId: input.instanceId,
-      eventType:
-        input.nextStatus === 'active'
-          ? 'instance_activated'
-          : input.nextStatus === 'suspended'
-            ? 'instance_suspended'
-            : 'instance_archived',
-      actorId: input.actorId,
-      requestId: input.requestId,
-      details: createAuditDetails({
-        previousStatus: current.status,
-        nextStatus: input.nextStatus,
-      }),
-    });
-
+    await createStatusArtifacts(deps.repository, input, current.status);
     deps.invalidateHost(updated.primaryHostname);
-    return {
-      ok: true,
-      instance: toListItem(updated),
-    };
-  },
+    return { ok: true, instance: toListItem(updated) };
+  };
 
-  async resolveRuntimeInstance(host) {
+const createRuntimeResolver =
+  (repository: InstanceRegistryRepository): InstanceRegistryService['resolveRuntimeInstance'] =>
+  async (host): Promise<ResolveRuntimeInstanceResult> => {
     const normalizedHost = normalizeHost(host);
-    const instance = await deps.repository.resolveHostname(normalizedHost);
+    const instance = await repository.resolveHostname(normalizedHost);
     if (!instance) {
       return {
         hostClassification: {
@@ -241,9 +224,4 @@ export const createInstanceRegistryService = (deps: InstanceRegistryServiceDeps)
       hostClassification: classifyHost(normalizedHost, instance.parentDomain),
       instance: toListItem(instance),
     };
-  },
-
-  isTrafficAllowed(status) {
-    return isTrafficEnabledInstanceStatus(status);
-  },
-});
+  };

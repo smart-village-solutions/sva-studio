@@ -19,7 +19,7 @@ import {
   iamUserOperationsCounter,
   logger,
   resolveActorInfo,
-  resolveIdentityProvider,
+  resolveIdentityProviderForInstance,
   trackKeycloakCall,
   withInstanceScopedDb,
 } from './shared.js';
@@ -194,8 +194,8 @@ const readProfileUpdatePayload = async (
 const createProfileNotFoundResponse = (requestId?: string): Response =>
   createApiError(404, 'not_found', 'Nutzerprofil nicht gefunden.', requestId);
 
-const ensureIdentityProvider = (requestId?: string) => {
-  const identityProvider = resolveIdentityProvider();
+const ensureIdentityProvider = async (instanceId: string, requestId?: string) => {
+  const identityProvider = await resolveIdentityProviderForInstance(instanceId);
   if (!identityProvider) {
     return createApiError(
       503,
@@ -415,7 +415,10 @@ export const updateMyProfileInternal = async (
       return createProfileNotFoundResponse(actorContext.actor.requestId);
     }
 
-    const identityProvider = ensureIdentityProvider(actorContext.actor.requestId);
+    const identityProvider = await ensureIdentityProvider(
+      actorContext.actor.instanceId,
+      actorContext.actor.requestId
+    );
     if (identityProvider instanceof Response) {
       return identityProvider;
     }

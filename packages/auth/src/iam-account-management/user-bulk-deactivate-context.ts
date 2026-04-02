@@ -6,6 +6,7 @@ import type { AuthenticatedRequestContext } from '../middleware.server.js';
 import { jsonResponse } from '../shared/db-helpers.js';
 
 import { asApiItem, createApiError, parseRequestBody, requireIdempotencyKey, toPayloadHash } from './api-helpers.js';
+import type { IdentityProviderResolution } from './shared-runtime.js';
 import { completeIdempotency, reserveIdempotency } from './shared-idempotency.js';
 import { bulkDeactivateSchema } from './schemas.js';
 import {
@@ -21,7 +22,7 @@ export type BulkDeactivateContext =
   | Response
   | {
       actor: UserMutationActor;
-      identityProvider: Exclude<ReturnType<typeof requireUserMutationIdentityProvider>, Response>;
+      identityProvider: IdentityProviderResolution;
       payload: BulkDeactivatePayload;
       idempotencyKey: string;
     };
@@ -80,7 +81,7 @@ export const resolveBulkDeactivateContext = async (
     return createApiError(409, 'idempotency_key_reuse', reserve.message, requestId);
   }
 
-  const identityProvider = requireUserMutationIdentityProvider(requestId);
+  const identityProvider = await requireUserMutationIdentityProvider(actor.instanceId, requestId);
   if (identityProvider instanceof Response) {
     return identityProvider;
   }

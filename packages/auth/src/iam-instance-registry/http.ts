@@ -7,6 +7,20 @@ import { z } from 'zod';
 import type { AuthenticatedRequestContext } from '../middleware.server.js';
 
 const ADMIN_ROLES = new Set(['instance_registry_admin']);
+const optionalUrlSchema = z
+  .string()
+  .trim()
+  .superRefine((value, ctx) => {
+    try {
+      new URL(value);
+    } catch {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Ungültige URL',
+      });
+    }
+  })
+  .optional();
 
 export const listQuerySchema = z.object({
   search: z.string().trim().min(1).optional(),
@@ -17,6 +31,9 @@ export const createInstanceSchema = z.object({
   instanceId: z.string().trim().min(1),
   displayName: z.string().trim().min(1),
   parentDomain: z.string().trim().min(1),
+  authRealm: z.string().trim().min(1),
+  authClientId: z.string().trim().min(1),
+  authIssuerUrl: optionalUrlSchema,
   themeKey: z.string().trim().min(1).optional(),
   mainserverConfigRef: z.string().trim().min(1).optional(),
   featureFlags: z.record(z.string(), z.boolean()).optional(),

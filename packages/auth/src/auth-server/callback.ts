@@ -5,7 +5,7 @@ import { getAuthConfig } from '../config.js';
 import { jitProvisionAccount } from '../jit-provisioning.server.js';
 import { client, getOidcConfig } from '../oidc.server.js';
 import { consumeLoginState, createSession, getSessionControlState } from '../redis-session.server.js';
-import type { LoginState } from '../types.js';
+import type { AuthConfig, LoginState } from '../types.js';
 import { buildLogContext } from '../shared/log-context.js';
 import { buildSessionUser, resolveSessionExpiry } from './shared.js';
 
@@ -22,11 +22,12 @@ const persistSession = async (input: {
   idToken?: string;
   claims: Record<string, unknown>;
   clientId: string;
+  authConfig: AuthConfig;
   expiresAt?: number;
 }) => {
   const sessionId = randomUUID();
   const issuedAt = Date.now();
-  const { sessionTtlMs } = getAuthConfig();
+  const { sessionTtlMs } = input.authConfig;
   const sessionControlState = await getSessionControlState(readClaimSubject(input.claims));
   const sessionVersion = Math.max(sessionControlState?.minimumSessionVersion ?? 1, 1);
   const expiresAt = resolveSessionExpiry({
@@ -45,6 +46,13 @@ const persistSession = async (input: {
     id: sessionId,
     userId: user.id,
     user,
+    auth: {
+      instanceId: input.authConfig.instanceId,
+      issuer: input.authConfig.issuer,
+      clientId: input.authConfig.clientId,
+      authRealm: input.authConfig.authRealm,
+      postLogoutRedirectUri: input.authConfig.postLogoutRedirectUri,
+    },
     accessToken: input.accessToken,
     refreshToken: input.refreshToken,
     idToken: input.idToken,
@@ -76,9 +84,10 @@ export const handleCallback = async (params: {
   state: string;
   iss?: string | null;
   loginState?: LoginState | null;
+  authConfig?: AuthConfig;
 }) => {
-  const authConfig = getAuthConfig();
-  const config = await getOidcConfig();
+  const authConfig = params.authConfig ?? getAuthConfig();
+  const config = await getOidcConfig(authConfig);
   const loginState = params.loginState ?? (await consumeLoginState(params.state));
 
   if (!loginState) {
@@ -105,6 +114,7 @@ export const handleCallback = async (params: {
     idToken: tokenSet.id_token,
     claims,
     clientId: authConfig.clientId,
+    authConfig,
     expiresAt: resolveSessionExpiry({
       expiresInSeconds: tokenSet.expiresIn(),
       issuedAt: Date.now(),

@@ -1,9 +1,10 @@
 import {
   logger,
-  resolveIdentityProvider,
+  resolveIdentityProviderForInstance,
   trackKeycloakCall,
   withInstanceScopedDb,
 } from './shared.js';
+import type { IdentityProviderResolution } from './shared-runtime.js';
 import type { CreateUserPayload } from './user-create-persistence.js';
 import { persistCreatedUser } from './user-create-persistence.js';
 import { maskEmail } from './user-mapping.js';
@@ -20,7 +21,7 @@ const deactivateCreatedExternalUser = async (input: {
   actor: CreateUserActorInfo;
   createdExternalId: string;
 }) => {
-  const fallbackIdentityProvider = resolveIdentityProvider();
+  const fallbackIdentityProvider = await resolveIdentityProviderForInstance(input.actor.instanceId);
   if (!fallbackIdentityProvider) {
     return;
   }
@@ -34,7 +35,7 @@ const deactivateCreatedExternalUser = async (input: {
 export const executeCreateUser = async (input: {
   actor: CreateUserActorInfo;
   actorSubject: string;
-  identityProvider: NonNullable<ReturnType<typeof resolveIdentityProvider>>;
+  identityProvider: IdentityProviderResolution;
   payload: CreateUserPayload;
 }): Promise<Awaited<ReturnType<typeof persistCreatedUser>>> => {
   const { actor, actorSubject, identityProvider, payload } = input;

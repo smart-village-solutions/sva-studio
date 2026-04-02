@@ -1,10 +1,10 @@
 import { createSdkLogger } from '@sva/sdk/server';
 
 import { deleteSession, getSessionControlState, listUserSessionIds, setSessionControlState } from '../redis-session.server.js';
-import { KeycloakAdminClient, getKeycloakAdminClientConfigFromEnv } from '../keycloak-admin-client.js';
 import { emitAuthAuditEvent } from '../audit-events.server.js';
 import type { ForceReauthInput, SessionControlState } from '../types.js';
 import { buildLogContext } from '../shared/log-context.js';
+import { resolveIdentityProviderForInstance } from '../iam-account-management/shared-runtime.js';
 
 const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
 
@@ -26,9 +26,17 @@ export const forceReauthUser = async (input: ForceReauthInput): Promise<void> =>
   const sessionIds = await listUserSessionIds(input.userId);
   await Promise.all(sessionIds.map(async (sessionId) => deleteSession(sessionId)));
 
-  if (input.mode === 'app_and_idp') {
-    const keycloakAdminClient = new KeycloakAdminClient(getKeycloakAdminClientConfigFromEnv());
-    await keycloakAdminClient.logoutUser(input.userId);
+  if (input.mode === 'app_and_idp' && input.instanceId) {
+    const identityProvider = await resolveIdentityProviderForInstance(input.instanceId);
+    const logoutUser =
+      identityProvider?.provider &&
+      'logoutUser' in identityProvider.provider &&
+      typeof identityProvider.provider.logoutUser === 'function'
+        ? identityProvider.provider.logoutUser.bind(identityProvider.provider)
+        : null;
+    if (logoutUser) {
+      await logoutUser(input.userId);
+    }
   }
 
   logger.info('Forced reauth applied for user', {

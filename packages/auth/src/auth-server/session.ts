@@ -1,7 +1,7 @@
 import type { Session, SessionUser } from '../types.js';
 import { createSdkLogger } from '@sva/sdk/server';
 
-import { getAuthConfig } from '../config.js';
+import { getAuthConfig, resolveAuthConfigFromSessionAuth } from '../config.js';
 import { client, getOidcConfig } from '../oidc.server.js';
 import { deleteSession, getSession, getSessionControlState, updateSession } from '../redis-session.server.js';
 import { isTokenErrorLike } from '../shared/error-guards.js';
@@ -56,13 +56,13 @@ const logIncompleteSessionUser = (
 
 const hydrateSessionUserFromAccessToken = async (
   sessionId: string,
-  session: { user?: SessionUser; accessToken?: string }
+  session: { user?: SessionUser; accessToken?: string; auth?: Session['auth'] }
 ): Promise<SessionUser | null> => {
   if (!session.accessToken || !needsSessionUserHydration(session.user)) {
     return session.user ?? null;
   }
 
-  const authConfig = getAuthConfig();
+  const authConfig = session.auth ? resolveAuthConfigFromSessionAuth(session.auth) : getAuthConfig();
   const hydratedUser = buildSessionUser({
     accessToken: session.accessToken,
     claims: {},
@@ -88,8 +88,8 @@ const hydrateSessionUserFromAccessToken = async (
 };
 
 const refreshSession = async (sessionId: string, session: Session) => {
-  const authConfig = getAuthConfig();
-  const config = await getOidcConfig();
+  const authConfig = session.auth ? resolveAuthConfigFromSessionAuth(session.auth) : getAuthConfig();
+  const config = await getOidcConfig(authConfig);
   const refreshed = await client.refreshTokenGrant(config, session.refreshToken ?? '');
   const updatedUser = buildSessionUser({
     accessToken: refreshed.access_token,

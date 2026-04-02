@@ -60,6 +60,12 @@ KEYCLOAK_ADMIN_CLIENT_ID=sva-studio-iam-service
 KEYCLOAK_ADMIN_CLIENT_SECRET=<injected-via-secrets-manager>
 ```
 
+Wichtig:
+
+- `KEYCLOAK_ADMIN_REALM` bezeichnet nur den Realm, in dem der technische Service-Account sein Access-Token holt.
+- Der fachliche Ziel-Realm für User-, Rollen- und Provisioning-Operationen wird pro Instanz aus `iam.instances.authRealm` aufgelöst.
+- Neue produktive Instanzen benötigen deshalb in der Registry mindestens `authRealm` und `authClientId`.
+
 Für den geplanten Reconcile-Lauf zusätzlich:
 
 ```env

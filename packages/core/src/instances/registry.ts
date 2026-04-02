@@ -23,6 +23,9 @@ export type InstanceRegistryRecord = {
   readonly status: InstanceStatus;
   readonly parentDomain: string;
   readonly primaryHostname: string;
+  readonly authRealm: string;
+  readonly authClientId: string;
+  readonly authIssuerUrl?: string;
   readonly themeKey?: string;
   readonly featureFlags: Readonly<Record<string, boolean>>;
   readonly mainserverConfigRef?: string;

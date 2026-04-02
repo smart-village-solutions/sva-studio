@@ -46,6 +46,9 @@ const createRepository = (): InstanceRegistryRepository => {
         status: input.status,
         parentDomain: input.parentDomain,
         primaryHostname: input.primaryHostname,
+        authRealm: input.authRealm,
+        authClientId: input.authClientId,
+        authIssuerUrl: input.authIssuerUrl,
         themeKey: input.themeKey,
         featureFlags: input.featureFlags ?? {},
         mainserverConfigRef: input.mainserverConfigRef,
@@ -108,9 +111,11 @@ const createRepository = (): InstanceRegistryRepository => {
 describe('iam-instance-registry service', () => {
   it('resolves a newly provisioned instance without requiring a redeploy', async () => {
     const invalidateHost = vi.fn();
+    const provisionInstanceAuth = vi.fn().mockResolvedValue(undefined);
     const service = createInstanceRegistryService({
       repository: createRepository(),
       invalidateHost,
+      provisionInstanceAuth,
     });
 
     const created = await service.createProvisioningRequest({
@@ -118,6 +123,8 @@ describe('iam-instance-registry service', () => {
       instanceId: 'demo',
       displayName: 'Demo',
       parentDomain: 'studio.lvh.me',
+      authRealm: 'demo',
+      authClientId: 'sva-studio',
       actorId: 'actor-1',
       requestId: 'req-1',
     });
@@ -133,11 +140,20 @@ describe('iam-instance-registry service', () => {
     expect(resolved.instance).toEqual(
       expect.objectContaining({
         instanceId: 'demo',
-        status: 'requested',
+        status: 'validated',
         primaryHostname: 'demo.studio.lvh.me',
+        authRealm: 'demo',
+        authClientId: 'sva-studio',
       })
     );
     expect(invalidateHost).toHaveBeenCalledWith('demo.studio.lvh.me');
+    expect(provisionInstanceAuth).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: 'demo',
+        authRealm: 'demo',
+        authClientId: 'sva-studio',
+      })
+    );
   });
 
   it('records follow-up runs and audit events when an instance is activated', async () => {
@@ -145,6 +161,7 @@ describe('iam-instance-registry service', () => {
     const service = createInstanceRegistryService({
       repository,
       invalidateHost: vi.fn(),
+      provisionInstanceAuth: vi.fn(),
     });
 
     await repository.createInstance({
@@ -153,6 +170,8 @@ describe('iam-instance-registry service', () => {
       status: 'provisioning',
       parentDomain: 'studio.lvh.me',
       primaryHostname: 'hb.studio.lvh.me',
+      authRealm: 'hb',
+      authClientId: 'sva-studio',
       actorId: 'actor-1',
       requestId: 'req-1',
     });
@@ -202,6 +221,7 @@ describe('iam-instance-registry service', () => {
     const service = createInstanceRegistryService({
       repository,
       invalidateHost: vi.fn(),
+      provisionInstanceAuth: vi.fn(),
     });
 
     await repository.createInstance({
@@ -210,6 +230,8 @@ describe('iam-instance-registry service', () => {
       status: 'active',
       parentDomain: 'studio.lvh.me',
       primaryHostname: 'hb.studio.lvh.me',
+      authRealm: 'hb',
+      authClientId: 'sva-studio',
     });
     await repository.createProvisioningRun({
       instanceId: 'hb',
@@ -223,6 +245,8 @@ describe('iam-instance-registry service', () => {
       status: 'requested',
       parentDomain: 'studio.lvh.me',
       primaryHostname: 'demo.studio.lvh.me',
+      authRealm: 'demo',
+      authClientId: 'sva-studio',
     });
     await repository.createProvisioningRun({
       instanceId: 'demo',
@@ -237,5 +261,32 @@ describe('iam-instance-registry service', () => {
     expect(listLatestProvisioningRuns).toHaveBeenCalledWith(['hb', 'demo']);
     expect(listProvisioningRuns).not.toHaveBeenCalled();
     expect(items.map((item) => item.latestProvisioningRun?.id)).toEqual(['hb-activate-active', 'demo-create-requested']);
+  });
+
+  it('marks the instance as failed when auth provisioning throws', async () => {
+    const service = createInstanceRegistryService({
+      repository: createRepository(),
+      invalidateHost: vi.fn(),
+      provisionInstanceAuth: vi.fn().mockRejectedValue(new Error('boom')),
+    });
+
+    const created = await service.createProvisioningRequest({
+      idempotencyKey: 'idem-fail',
+      instanceId: 'failed-demo',
+      displayName: 'Failed Demo',
+      parentDomain: 'studio.lvh.me',
+      authRealm: 'failed-demo',
+      authClientId: 'sva-studio',
+    });
+
+    expect(created).toEqual(
+      expect.objectContaining({
+        ok: true,
+        instance: expect.objectContaining({
+          instanceId: 'failed-demo',
+          status: 'failed',
+        }),
+      })
+    );
   });
 });

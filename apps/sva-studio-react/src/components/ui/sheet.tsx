@@ -13,6 +13,7 @@ type SheetContentProps = Readonly<{
   children: React.ReactNode;
   className?: string;
   closeLabel?: string;
+  description?: string;
   side?: 'left' | 'right';
   'aria-label': string;
 }>;
@@ -60,6 +61,7 @@ export const SheetContent = ({
   children,
   className = '',
   closeLabel = 'Close',
+  description,
   side = 'left',
   'aria-label': ariaLabel,
 }: SheetContentProps) => (
@@ -81,6 +83,7 @@ export const SheetContent = ({
       )}
     >
       <DialogPrimitive.Title className="sr-only">{ariaLabel}</DialogPrimitive.Title>
+      {description ? <DialogPrimitive.Description className="sr-only">{description}</DialogPrimitive.Description> : null}
       <DialogPrimitive.Close
         aria-label={closeLabel}
         className="absolute right-3 top-3 z-10 rounded-md border border-border bg-sidebar px-3 py-1 text-sm font-medium text-sidebar-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"

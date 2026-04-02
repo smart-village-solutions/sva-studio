@@ -9,7 +9,7 @@ import { ensureFeature, getFeatureFlags } from './feature-flags.js';
 import { consumeRateLimit } from './rate-limit.js';
 import { validateCsrf } from './csrf.js';
 import { requireRoles, resolveActorInfo } from './shared-actor-resolution.js';
-import { resolveIdentityProvider } from './shared-runtime.js';
+import { resolveIdentityProviderForInstance } from './shared-runtime.js';
 
 type ResolvedActor = Exclude<Awaited<ReturnType<typeof resolveActorInfo>>, { error: Response }>['actor'];
 
@@ -79,8 +79,8 @@ export const requireRoleId = (request: Request, requestId?: string): string | Re
   return roleId;
 };
 
-export const requireRoleIdentityProvider = (requestId?: string) => {
-  const identityProvider = resolveIdentityProvider();
+export const requireRoleIdentityProvider = async (instanceId: string, requestId?: string) => {
+  const identityProvider = await resolveIdentityProviderForInstance(instanceId);
   if (identityProvider) {
     return identityProvider;
   }

@@ -4,12 +4,21 @@ export type SessionUser = {
   roles: string[];
 };
 
+export type SessionAuthContext = {
+  instanceId?: string;
+  issuer: string;
+  clientId: string;
+  authRealm?: string;
+  postLogoutRedirectUri: string;
+};
+
 export type ForcedReauthMode = 'app_only' | 'app_and_idp';
 
 export type Session = {
   id: string; // Session ID for storage/retrieval
   userId: string;
   user?: SessionUser;
+  auth?: SessionAuthContext;
   activeOrganizationId?: string;
   accessToken?: string;
   createdAt: number; // Unix timestamp in milliseconds (Date.now())
@@ -37,9 +46,12 @@ export type ForceReauthInput = {
   userId: string;
   mode: ForcedReauthMode;
   reason: string;
+  instanceId?: string;
 };
 
 export type AuthConfig = {
+  instanceId?: string;
+  authRealm?: string;
   issuer: string;
   clientId: string;
   clientSecret: string;

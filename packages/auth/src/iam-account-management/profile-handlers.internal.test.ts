@@ -116,6 +116,7 @@ vi.mock('./shared.js', () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
   resolveActorInfo: vi.fn(async () => state.actorResolution),
   resolveIdentityProvider: vi.fn(() => state.identityProvider),
+  resolveIdentityProviderForInstance: vi.fn(async () => state.identityProvider),
   trackKeycloakCall: vi.fn(async (_operation: string, fn: () => Promise<unknown>) => fn()),
   withInstanceScopedDb: vi.fn(async (_instanceId: string, fn: (client: unknown) => Promise<unknown>) =>
     fn({ query: vi.fn() })

@@ -14,6 +14,9 @@ type InstanceListRow = {
   status: InstanceStatus;
   parent_domain: string;
   primary_hostname: string;
+  auth_realm: string;
+  auth_client_id: string;
+  auth_issuer_url: string | null;
   theme_key: string | null;
   feature_flags: Record<string, boolean> | null;
   mainserver_config_ref: string | null;
@@ -54,6 +57,9 @@ const mapInstance = (row: InstanceListRow): InstanceRegistryRecord => ({
   status: row.status,
   parentDomain: row.parent_domain,
   primaryHostname: row.primary_hostname,
+  authRealm: row.auth_realm,
+  authClientId: row.auth_client_id,
+  authIssuerUrl: row.auth_issuer_url ?? undefined,
   themeKey: row.theme_key ?? undefined,
   featureFlags: row.feature_flags ?? {},
   mainserverConfigRef: row.mainserver_config_ref ?? undefined,
@@ -103,6 +109,9 @@ export type InstanceRegistryRepository = {
     status: InstanceStatus;
     parentDomain: string;
     primaryHostname: string;
+    authRealm: string;
+    authClientId: string;
+    authIssuerUrl?: string;
     actorId?: string;
     requestId?: string;
     themeKey?: string;
@@ -154,6 +163,9 @@ SELECT
   status,
   parent_domain,
   primary_hostname,
+  auth_realm,
+  auth_client_id,
+  auth_issuer_url,
   theme_key,
   feature_flags,
   mainserver_config_ref,
@@ -183,6 +195,9 @@ SELECT
   status,
   parent_domain,
   primary_hostname,
+  auth_realm,
+  auth_client_id,
+  auth_issuer_url,
   theme_key,
   feature_flags,
   mainserver_config_ref,
@@ -211,6 +226,9 @@ SELECT
   instance.status,
   instance.parent_domain,
   instance.primary_hostname,
+  instance.auth_realm,
+  instance.auth_client_id,
+  instance.auth_issuer_url,
   instance.theme_key,
   instance.feature_flags,
   instance.mainserver_config_ref,
@@ -332,19 +350,25 @@ INSERT INTO iam.instances (
   status,
   parent_domain,
   primary_hostname,
+  auth_realm,
+  auth_client_id,
+  auth_issuer_url,
   theme_key,
   feature_flags,
   mainserver_config_ref,
   created_by,
   updated_by
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $9)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11, $12, $12)
 ON CONFLICT (id) DO UPDATE
 SET
   display_name = EXCLUDED.display_name,
   status = EXCLUDED.status,
   parent_domain = EXCLUDED.parent_domain,
   primary_hostname = EXCLUDED.primary_hostname,
+  auth_realm = EXCLUDED.auth_realm,
+  auth_client_id = EXCLUDED.auth_client_id,
+  auth_issuer_url = EXCLUDED.auth_issuer_url,
   theme_key = EXCLUDED.theme_key,
   feature_flags = EXCLUDED.feature_flags,
   mainserver_config_ref = EXCLUDED.mainserver_config_ref,
@@ -356,6 +380,9 @@ RETURNING
   status,
   parent_domain,
   primary_hostname,
+  auth_realm,
+  auth_client_id,
+  auth_issuer_url,
   theme_key,
   feature_flags,
   mainserver_config_ref,
@@ -370,6 +397,9 @@ RETURNING
           input.status,
           input.parentDomain,
           input.primaryHostname,
+          input.authRealm,
+          input.authClientId,
+          input.authIssuerUrl ?? null,
           input.themeKey ?? null,
           JSON.stringify(input.featureFlags ?? {}),
           input.mainserverConfigRef ?? null,
@@ -410,6 +440,9 @@ RETURNING
   status,
   parent_domain,
   primary_hostname,
+  auth_realm,
+  auth_client_id,
+  auth_issuer_url,
   theme_key,
   feature_flags,
   mainserver_config_ref,

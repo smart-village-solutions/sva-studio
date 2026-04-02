@@ -2,36 +2,45 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Session } from './types';
 
-const consumeLoginStateMock = vi.fn();
-const createLoginStateMock = vi.fn();
-const createSessionMock = vi.fn();
-const getSessionMock = vi.fn<(_sessionId: string) => Promise<Session | undefined>>();
-const getSessionControlStateMock = vi.fn();
-const updateSessionMock = vi.fn();
-const deleteSessionMock = vi.fn();
-const refreshTokenGrantMock = vi.fn();
-const getOidcConfigMock = vi.fn();
-const authorizationCodeGrantMock = vi.fn();
-const buildAuthorizationUrlMock = vi.fn();
-const buildEndSessionUrlMock = vi.fn();
-const jitProvisionAccountMock = vi.fn();
+const authState = vi.hoisted(() => ({
+  consumeLoginStateMock: vi.fn(),
+  createLoginStateMock: vi.fn(),
+  createSessionMock: vi.fn(),
+  getSessionMock: vi.fn<(_sessionId: string) => Promise<Session | undefined>>(),
+  getSessionControlStateMock: vi.fn(),
+  updateSessionMock: vi.fn(),
+  deleteSessionMock: vi.fn(),
+  refreshTokenGrantMock: vi.fn(),
+  getOidcConfigMock: vi.fn(),
+  authorizationCodeGrantMock: vi.fn(),
+  buildAuthorizationUrlMock: vi.fn(),
+  buildEndSessionUrlMock: vi.fn(),
+  jitProvisionAccountMock: vi.fn(),
+  getAuthConfigMock: vi.fn(),
+  resolveAuthConfigFromSessionAuthMock: vi.fn(),
+}));
+
+const {
+  consumeLoginStateMock,
+  createLoginStateMock,
+  createSessionMock,
+  getSessionMock,
+  getSessionControlStateMock,
+  updateSessionMock,
+  deleteSessionMock,
+  refreshTokenGrantMock,
+  getOidcConfigMock,
+  authorizationCodeGrantMock,
+  buildAuthorizationUrlMock,
+  buildEndSessionUrlMock,
+  jitProvisionAccountMock,
+  getAuthConfigMock,
+  resolveAuthConfigFromSessionAuthMock,
+} = authState;
 
 vi.mock('./config', () => ({
-  getAuthConfig: () => ({
-    issuer: 'https://issuer.example',
-    clientId: 'sva-client',
-    clientSecret: 'secret',
-    loginStateSecret: 'state-secret',
-    redirectUri: 'http://localhost:3000/auth/callback',
-    postLogoutRedirectUri: 'http://localhost:3000',
-    scopes: 'openid',
-    sessionCookieName: 'sva_auth_session',
-    loginStateCookieName: 'sva_auth_state',
-    silentSsoSuppressCookieName: 'sva_auth_silent_sso',
-    sessionTtlMs: 60_000,
-    sessionRedisTtlBufferMs: 5_000,
-    silentSsoSuppressAfterLogoutMs: 60_000,
-  }),
+  getAuthConfig: getAuthConfigMock,
+  resolveAuthConfigFromSessionAuth: resolveAuthConfigFromSessionAuthMock,
 }));
 
 vi.mock('./redis-session.server', () => ({
@@ -75,6 +84,33 @@ vi.mock('./shared/db-helpers', () => ({
 describe('getSessionUser', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    getAuthConfigMock.mockReturnValue({
+      issuer: 'https://issuer.example',
+      clientId: 'sva-client',
+      clientSecret: 'secret',
+      loginStateSecret: 'state-secret',
+      redirectUri: 'http://localhost:3000/auth/callback',
+      postLogoutRedirectUri: 'http://localhost:3000',
+      scopes: 'openid',
+      sessionCookieName: 'sva_auth_session',
+      loginStateCookieName: 'sva_auth_state',
+      silentSsoSuppressCookieName: 'sva_auth_silent_sso',
+      sessionTtlMs: 60_000,
+      sessionRedisTtlBufferMs: 5_000,
+      silentSsoSuppressAfterLogoutMs: 60_000,
+    });
+    resolveAuthConfigFromSessionAuthMock.mockImplementation((auth) => ({
+      clientSecret: 'secret',
+      loginStateSecret: 'state-secret',
+      scopes: 'openid',
+      sessionCookieName: 'sva_auth_session',
+      loginStateCookieName: 'sva_auth_state',
+      silentSsoSuppressCookieName: 'sva_auth_silent_sso',
+      sessionTtlMs: 60_000,
+      sessionRedisTtlBufferMs: 5_000,
+      silentSsoSuppressAfterLogoutMs: 60_000,
+      ...auth,
+    }));
     getOidcConfigMock.mockResolvedValue({ issuer: 'https://issuer.example' });
     buildAuthorizationUrlMock.mockReturnValue(new URL('https://issuer.example/auth?state=state-1'));
     buildEndSessionUrlMock.mockReturnValue(new URL('https://issuer.example/logout'));
@@ -436,5 +472,35 @@ describe('getSessionUser', () => {
     expect(url).toBe('https://issuer.example/logout');
     expect(buildEndSessionUrlMock).toHaveBeenCalledTimes(1);
     expect(deleteSessionMock).toHaveBeenCalledWith('session-logout-2');
+  });
+
+  it('logoutSession resolves auth config from the stored session context without global env config', async () => {
+    getAuthConfigMock.mockImplementation(() => {
+      throw new Error('Missing required env: SVA_AUTH_ISSUER');
+    });
+    getSessionMock.mockResolvedValue({
+      id: 'session-logout-3',
+      userId: 'user-3',
+      user: { id: 'user-3', roles: [] },
+      auth: {
+        issuer: 'https://issuer.example/realms/bb-guben',
+        clientId: 'tenant-client',
+        postLogoutRedirectUri: 'https://bb-guben.studio.smart-village.app/',
+        instanceId: 'bb-guben',
+        authRealm: 'bb-guben',
+      },
+      createdAt: Date.now(),
+    } satisfies Session);
+
+    const { logoutSession } = await import('./auth.server');
+    const url = await logoutSession('session-logout-3');
+
+    expect(url).toBe('https://bb-guben.studio.smart-village.app/');
+    expect(resolveAuthConfigFromSessionAuthMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: 'bb-guben',
+        authRealm: 'bb-guben',
+      })
+    );
   });
 });

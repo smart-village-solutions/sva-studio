@@ -4,40 +4,21 @@ import {
   classifyHost,
   isTrafficEnabledInstanceStatus,
   normalizeHost,
-  type InstanceStatus,
-  type IamInstanceDetail,
-  type IamInstanceListItem,
 } from '@sva/core';
 
 import type { InstanceRegistryRepository } from '@sva/data';
 import type {
-  ChangeInstanceStatusInput,
   CreateInstanceProvisioningInput,
   InstanceRegistryService,
   InstanceRegistryServiceDeps,
   ResolveRuntimeInstanceResult,
 } from './types.js';
-
-const toListItem = (
-  item: Awaited<ReturnType<InstanceRegistryRepository['listInstances']>>[number],
-  latestProvisioningRun?: Awaited<ReturnType<InstanceRegistryRepository['listProvisioningRuns']>>[number]
-): IamInstanceListItem => ({
-  instanceId: item.instanceId,
-  displayName: item.displayName,
-  status: item.status,
-  parentDomain: item.parentDomain,
-  primaryHostname: item.primaryHostname,
-  themeKey: item.themeKey,
-  featureFlags: item.featureFlags,
-  mainserverConfigRef: item.mainserverConfigRef,
-  createdAt: item.createdAt,
-  updatedAt: item.updatedAt,
-  latestProvisioningRun,
-});
-
-const createAuditDetails = (
-  input?: Readonly<Record<string, unknown>>
-): Readonly<Record<string, unknown>> => input ?? {};
+import {
+  buildInstanceDetail,
+  createAuditDetails,
+  createStatusArtifacts,
+  toListItem,
+} from './service-helpers.js';
 
 export const createInstanceRegistryService = (deps: InstanceRegistryServiceDeps): InstanceRegistryService => ({
   listInstances: createListInstances(deps.repository),
@@ -58,23 +39,6 @@ const createListInstances =
 
     return instances.map((instance) => toListItem(instance, latestProvisioningRuns[instance.instanceId]));
   };
-
-const buildInstanceDetail = (
-  instance: Awaited<ReturnType<InstanceRegistryRepository['getInstanceById']>> extends infer T ? Exclude<T, null> : never,
-  provisioningRuns: Awaited<ReturnType<InstanceRegistryRepository['listProvisioningRuns']>>,
-  auditEvents: Awaited<ReturnType<InstanceRegistryRepository['listAuditEvents']>>
-): IamInstanceDetail => ({
-  ...toListItem(instance, provisioningRuns[0]),
-  hostnames: [
-    {
-      hostname: instance.primaryHostname,
-      isPrimary: true,
-      createdAt: instance.createdAt,
-    },
-  ],
-  provisioningRuns,
-  auditEvents,
-});
 
 const createGetInstanceDetail =
   (repository: InstanceRegistryRepository): InstanceRegistryService['getInstanceDetail'] =>
@@ -117,6 +81,78 @@ const createProvisioningArtifacts = async (
   });
 };
 
+const provisionInstanceAuth = async (
+  deps: InstanceRegistryServiceDeps,
+  instance: Awaited<ReturnType<InstanceRegistryRepository['createInstance']>>,
+  input: CreateInstanceProvisioningInput
+): Promise<Awaited<ReturnType<InstanceRegistryRepository['createInstance']>>> => {
+  if (!deps.provisionInstanceAuth) {
+    return instance;
+  }
+
+  await deps.repository.createProvisioningRun({
+    instanceId: instance.instanceId,
+    operation: 'create',
+    status: 'provisioning',
+    stepKey: 'keycloak',
+    idempotencyKey: input.idempotencyKey,
+    actorId: input.actorId,
+    requestId: input.requestId,
+  });
+
+  try {
+    await deps.provisionInstanceAuth({
+      instanceId: instance.instanceId,
+      primaryHostname: instance.primaryHostname,
+      authRealm: instance.authRealm,
+      authClientId: instance.authClientId,
+      authIssuerUrl: instance.authIssuerUrl,
+    });
+
+    const validatedInstance =
+      (await deps.repository.setInstanceStatus({
+        instanceId: instance.instanceId,
+        status: 'validated',
+        actorId: input.actorId,
+        requestId: input.requestId,
+      })) ?? instance;
+
+    await deps.repository.createProvisioningRun({
+      instanceId: instance.instanceId,
+      operation: 'create',
+      status: validatedInstance.status,
+      stepKey: 'keycloak',
+      idempotencyKey: input.idempotencyKey,
+      actorId: input.actorId,
+      requestId: input.requestId,
+    });
+
+    return validatedInstance;
+  } catch (error) {
+    const failedInstance =
+      (await deps.repository.setInstanceStatus({
+        instanceId: instance.instanceId,
+        status: 'failed',
+        actorId: input.actorId,
+        requestId: input.requestId,
+      })) ?? instance;
+
+    await deps.repository.createProvisioningRun({
+      instanceId: instance.instanceId,
+      operation: 'create',
+      status: failedInstance.status,
+      stepKey: 'keycloak',
+      idempotencyKey: input.idempotencyKey,
+      actorId: input.actorId,
+      requestId: input.requestId,
+      errorCode: 'keycloak_provisioning_failed',
+      errorMessage: error instanceof Error ? error.message : String(error),
+    });
+
+    return failedInstance;
+  }
+};
+
 const createProvisioningRequestHandler =
   (deps: InstanceRegistryServiceDeps): InstanceRegistryService['createProvisioningRequest'] =>
   async (input) => {
@@ -133,6 +169,9 @@ const createProvisioningRequestHandler =
       status: 'requested',
       parentDomain: normalizedParentDomain,
       primaryHostname,
+      authRealm: input.authRealm,
+      authClientId: input.authClientId,
+      authIssuerUrl: input.authIssuerUrl,
       actorId: input.actorId,
       requestId: input.requestId,
       themeKey: input.themeKey,
@@ -141,40 +180,10 @@ const createProvisioningRequestHandler =
     });
 
     await createProvisioningArtifacts(deps.repository, instance, input);
-    deps.invalidateHost(instance.primaryHostname);
-    return { ok: true, instance: toListItem(instance) };
+    const provisionedInstance = await provisionInstanceAuth(deps, instance, input);
+    deps.invalidateHost(provisionedInstance.primaryHostname);
+    return { ok: true, instance: toListItem(provisionedInstance) };
   };
-
-const getStatusOperation = (status: ChangeInstanceStatusInput['nextStatus']): 'activate' | 'suspend' | 'archive' =>
-  status === 'active' ? 'activate' : status === 'suspended' ? 'suspend' : 'archive';
-
-const getAuditEventType = (status: ChangeInstanceStatusInput['nextStatus']): 'instance_activated' | 'instance_suspended' | 'instance_archived' =>
-  status === 'active' ? 'instance_activated' : status === 'suspended' ? 'instance_suspended' : 'instance_archived';
-
-const createStatusArtifacts = async (
-  repository: InstanceRegistryRepository,
-  input: ChangeInstanceStatusInput,
-  previousStatus: InstanceStatus
-): Promise<void> => {
-  await repository.createProvisioningRun({
-    instanceId: input.instanceId,
-    operation: getStatusOperation(input.nextStatus),
-    status: input.nextStatus,
-    idempotencyKey: input.idempotencyKey,
-    actorId: input.actorId,
-    requestId: input.requestId,
-  });
-  await repository.appendAuditEvent({
-    instanceId: input.instanceId,
-    eventType: getAuditEventType(input.nextStatus),
-    actorId: input.actorId,
-    requestId: input.requestId,
-    details: createAuditDetails({
-      previousStatus,
-      nextStatus: input.nextStatus,
-    }),
-  });
-};
 
 const createChangeStatusHandler =
   (deps: InstanceRegistryServiceDeps): InstanceRegistryService['changeStatus'] =>

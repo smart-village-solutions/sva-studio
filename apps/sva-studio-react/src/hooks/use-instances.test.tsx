@@ -132,6 +132,8 @@ describe('useInstances', () => {
         instanceId: 'demo',
         displayName: 'Demo',
         parentDomain: 'studio.example.org',
+        authRealm: 'demo',
+        authClientId: 'sva-studio',
       });
       await result.current.activateInstance('demo');
       await result.current.suspendInstance('demo');
@@ -181,6 +183,8 @@ describe('useInstances', () => {
         instanceId: 'demo',
         displayName: 'Demo',
         parentDomain: 'studio.example.org',
+        authRealm: 'demo',
+        authClientId: 'sva-studio',
       });
       expect(created).toBeNull();
     });

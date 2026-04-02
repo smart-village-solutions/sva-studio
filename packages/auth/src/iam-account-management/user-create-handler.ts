@@ -21,7 +21,7 @@ import {
   requireRoles,
   reserveIdempotency,
   resolveActorInfo,
-  resolveIdentityProvider,
+  resolveIdentityProviderForInstance,
 } from './shared.js';
 import { validateCsrf } from './csrf.js';
 import { executeCreateUser } from './user-create-operation.js';
@@ -150,7 +150,7 @@ export const createUserInternal = async (
     return createApiError(409, 'idempotency_key_reuse', reserve.message, actorContext.actor.requestId);
   }
 
-  const identityProvider = resolveIdentityProvider();
+  const identityProvider = await resolveIdentityProviderForInstance(actorContext.actor.instanceId);
   if (!identityProvider) {
     return failCreateIdempotency(
       actorContext.actor,

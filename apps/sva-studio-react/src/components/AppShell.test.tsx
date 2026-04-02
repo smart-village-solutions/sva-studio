@@ -17,16 +17,14 @@ vi.mock('@tanstack/react-router', () => ({
     const state = { location: { pathname: '/' } };
     return options?.select ? options.select(state) : state;
   },
-  Link: ({ to, children, activeOptions, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { to: string; activeOptions?: unknown }) => (
-    (() => {
-      void activeOptions;
-      return (
-    <a href={to} {...props}>
+  Link: ({ to, children, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { to: string; activeOptions?: unknown }) => {
+    const { activeOptions: _activeOptions, ...anchorProps } = props;
+    return (
+    <a href={to} {...anchorProps}>
       {children}
     </a>
-      );
-    })()
-  ),
+    );
+  },
 }));
 
 vi.mock('../providers/auth-provider', () => ({

@@ -356,6 +356,9 @@ export type CreateInstancePayload = {
   readonly instanceId: string;
   readonly displayName: string;
   readonly parentDomain: string;
+  readonly authRealm: string;
+  readonly authClientId: string;
+  readonly authIssuerUrl?: string;
   readonly themeKey?: string;
   readonly mainserverConfigRef?: string;
   readonly featureFlags?: Readonly<Record<string, boolean>>;

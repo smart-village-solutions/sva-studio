@@ -86,8 +86,6 @@ Das Referenzprofil `acceptance-hb` wird env-only betrieben. Sowohl nicht-sensiti
 | `SVA_PUBLIC_BASE_URL` | `https://studio.smart-village.app` |
 | `SVA_PUBLIC_HOST` | `studio.smart-village.app` |
 | `SVA_DB_ADMIN_HOST` | `studio-db.smart-village.app` |
-| `SVA_AUTH_ISSUER` | `https://keycloak.example.org/realms/sva` |
-| `SVA_AUTH_CLIENT_ID` | `sva-studio` |
 | `SVA_AUTH_REDIRECT_URI` | `https://studio.smart-village.app/auth/callback` |
 | `SVA_AUTH_POST_LOGOUT_REDIRECT_URI` | `https://studio.smart-village.app/` |
 | `SVA_PARENT_DOMAIN` | `studio.smart-village.app` |
@@ -119,6 +117,12 @@ Das Referenzprofil `acceptance-hb` wird env-only betrieben. Sowohl nicht-sensiti
 
 Die vollständige Variablenliste inklusive Keycloak-Admin- und Rollenabgleich-Optionen steht in `deploy/portainer/.env.example`.
 Für produktionsnahe Acceptance-Deployments ist `SVA_IMAGE_DIGEST` verpflichtend; `SVA_IMAGE_REF` muss auf genau dieses Artefakt zeigen. `SVA_IMAGE_TAG` bleibt nur ergänzende Metadaten für Lesbarkeit und Rückverfolgung. Wenn App- und Monitoring-Image aus unterschiedlichen Registries bezogen werden, müssen `SVA_REGISTRY` und `SVA_MONITORING_REGISTRY` konsistent gesetzt sein.
+
+Für tenant-spezifisches Auth-Routing gilt zusätzlich:
+
+- `authRealm` und `authClientId` müssen für jede aktive Instanz in der Registry gesetzt sein.
+- Neue Instanzen sind erst nach erfolgreichem Keycloak-Provisioning traffic-fähig.
+- `SVA_AUTH_ISSUER` und `SVA_AUTH_CLIENT_ID` sind im Acceptance-/Swarm-Betrieb keine führenden Variablen mehr.
 
 ### Adminer für Acceptance
 

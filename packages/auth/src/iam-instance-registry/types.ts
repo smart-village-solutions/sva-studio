@@ -11,6 +11,9 @@ export type CreateInstanceProvisioningInput = InstanceRegistryMutationActor & {
   readonly instanceId: string;
   readonly displayName: string;
   readonly parentDomain: string;
+  readonly authRealm: string;
+  readonly authClientId: string;
+  readonly authIssuerUrl?: string;
   readonly themeKey?: string;
   readonly mainserverConfigRef?: string;
   readonly featureFlags?: Readonly<Record<string, boolean>>;
@@ -50,4 +53,11 @@ export type InstanceRegistryService = {
 export type InstanceRegistryServiceDeps = {
   readonly repository: InstanceRegistryRepository;
   readonly invalidateHost: (hostname: string) => void;
+  readonly provisionInstanceAuth?: (input: {
+    instanceId: string;
+    primaryHostname: string;
+    authRealm: string;
+    authClientId: string;
+    authIssuerUrl?: string;
+  }) => Promise<void>;
 };

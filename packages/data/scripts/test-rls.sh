@@ -31,10 +31,10 @@ TRUNCATE iam.activity_logs, iam.role_permissions, iam.account_roles, iam.account
   iam.instance_memberships, iam.permissions, iam.roles, iam.organizations, iam.accounts, iam.instances
   RESTART IDENTITY CASCADE;
 
-INSERT INTO iam.instances(id, display_name)
+INSERT INTO iam.instances(id, display_name, auth_realm, auth_client_id)
 VALUES
-  ('instance-a', 'Instance A'),
-  ('instance-b', 'Instance B');
+  ('instance-a', 'Instance A', 'instance-a', 'sva-studio'),
+  ('instance-b', 'Instance B', 'instance-b', 'sva-studio');
 
 INSERT INTO iam.organizations(id, instance_id, organization_key, display_name)
 VALUES

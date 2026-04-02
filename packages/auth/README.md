@@ -117,11 +117,11 @@ Serverseitige Autorisierungsentscheidungen auf Basis des RBAC/ABAC-Modells aus `
 
 | Variable | Beschreibung | Pflicht |
 | --- | --- | --- |
-| `SVA_AUTH_ISSUER` | OIDC-Issuer-URL (Keycloak) | Ja |
-| `SVA_AUTH_CLIENT_ID` | OIDC Client-ID | Ja |
+| `SVA_AUTH_ISSUER` | Globaler OIDC-Issuer nur für lokale Fallback-/Übergangspfade | Nur lokal/Übergang |
+| `SVA_AUTH_CLIENT_ID` | Globaler OIDC-Client nur für lokale Fallback-/Übergangspfade | Nur lokal/Übergang |
 | `SVA_AUTH_CLIENT_SECRET` | OIDC Client-Secret | Ja |
-| `SVA_AUTH_REDIRECT_URI` | Redirect-URI nach Login | Ja |
-| `SVA_AUTH_POST_LOGOUT_REDIRECT_URI` | Redirect nach Logout | Ja |
+| `SVA_AUTH_REDIRECT_URI` | Globaler Redirect nur für lokale Fallback-/Übergangspfade | Nur lokal/Übergang |
+| `SVA_AUTH_POST_LOGOUT_REDIRECT_URI` | Globaler Logout-Redirect nur für lokale Fallback-/Übergangspfade | Nur lokal/Übergang |
 | `SVA_AUTH_STATE_SECRET` | HMAC-Secret für Login-State-Cookie | Ja |
 | `ENCRYPTION_KEY` | AES-256-GCM Key für Token-Verschlüsselung | Empfohlen |
 | `SVA_AUTH_SCOPES` | OIDC-Scopes (Default: `openid`) | Nein |
@@ -131,11 +131,13 @@ Serverseitige Autorisierungsentscheidungen auf Basis des RBAC/ABAC-Modells aus `
 | `SVA_AUTH_SESSION_REDIS_TTL_BUFFER_MS` | Technischer Redis-Puffer oberhalb der Session-Restdauer | Nein |
 | `SVA_AUTH_SILENT_SSO_SUPPRESS_AFTER_LOGOUT_MS` | Dauer der Silent-SSO-Sperre nach Logout | Nein |
 | `KEYCLOAK_ADMIN_BASE_URL` | Keycloak-Basis-URL für Admin API | Für IAM-Admin-Client |
-| `KEYCLOAK_ADMIN_REALM` | Realm für Admin API | Für IAM-Admin-Client |
+| `KEYCLOAK_ADMIN_REALM` | Realm des Service-Accounts für den technischen Token-Bezug, nicht der Ziel-Realm der Instanz | Für IAM-Admin-Client |
 | `KEYCLOAK_ADMIN_CLIENT_ID` | Service-Client-ID (z. B. `sva-studio-iam-service`) | Für IAM-Admin-Client |
 | `KEYCLOAK_ADMIN_CLIENT_SECRET` | Service-Client-Secret | Für IAM-Admin-Client |
 
 Hinweis: Der Keycloak Admin Client unterstützt Keycloak **>= 22.0**.
+
+Im produktiven Multi-Instance-Betrieb ist die Instanz-Registry führend. Jede aktive Instanz in `iam.instances` muss mindestens `authRealm` und `authClientId` besitzen; optional kann `authIssuerUrl` gesetzt werden. Login, Callback, Logout und Keycloak-Admin-Aufrufe werden dann zur Laufzeit pro Host bzw. `instanceId` aufgelöst.
 
 ## Datenminimierung und Profil-Sync
 

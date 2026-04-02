@@ -53,14 +53,20 @@ Pflichtwerte:
 - `SVA_ALLOWED_INSTANCE_IDS=<instanz>`
 - `IAM_DATABASE_URL` auf die Ziel-Datenbank
 - `SVA_LOCAL_POSTGRES_CONTAINER_NAME=<ziel-container>`
-- `SVA_AUTH_ISSUER`
-- `SVA_AUTH_CLIENT_ID`
+- `SVA_AUTH_ISSUER` nur für lokale Fallback-Pfade
+- `SVA_AUTH_CLIENT_ID` nur für lokale Fallback-Pfade
 - `SVA_AUTH_CLIENT_SECRET`
 - `SVA_AUTH_STATE_SECRET`
 - `KEYCLOAK_ADMIN_BASE_URL`
-- `KEYCLOAK_ADMIN_REALM`
+- `KEYCLOAK_ADMIN_REALM` als technischer Service-Account-Realm
 - `KEYCLOAK_ADMIN_CLIENT_ID`
 - `KEYCLOAK_ADMIN_CLIENT_SECRET`
+
+Zusätzlich muss der Ziel-Instanzdatensatz in `iam.instances` gepflegt sein:
+
+- `authRealm=<ziel-realm>`
+- `authClientId=<oidc-client-id>`
+- optional `authIssuerUrl=<issuer-url>`
 
 Wichtig:
 
@@ -167,6 +173,8 @@ Das Skript liest aktive User aus der Ziel-Realm über die Keycloak-Admin-API und
 - `iam.instance_memberships(instance_id, account_id, membership_type)`
 
 Damit passt die lokale IAM-Datenbank zur echten Realm und der Fehler `missing_actor_account` verschwindet.
+
+Der Login-Pfad der App liest den Ziel-Realm lokal trotzdem aus der Instanz-Registry. Die globalen Variablen `SVA_AUTH_ISSUER` und `SVA_AUTH_CLIENT_ID` bleiben nur für lokale Fallback- oder Migrationspfade bestehen und sollen für neue Instanzen nicht mehr die führende Quelle sein.
 
 ## Empfohlene Optionen
 

@@ -40,8 +40,8 @@ Pflichtwerte:
 - `POSTGRES_PASSWORD`
 - `APP_DB_PASSWORD`
 - `SVA_PUBLIC_BASE_URL`
-- `SVA_AUTH_ISSUER`
-- `SVA_AUTH_CLIENT_ID`
+- `SVA_AUTH_ISSUER` nur für den historischen Single-Realm- oder lokalen Fallback-Betrieb
+- `SVA_AUTH_CLIENT_ID` nur für den historischen Single-Realm- oder lokalen Fallback-Betrieb
 - `SVA_AUTH_CLIENT_SECRET`
 - `SVA_AUTH_REDIRECT_URI`
 - `SVA_AUTH_POST_LOGOUT_REDIRECT_URI`
@@ -59,6 +59,8 @@ Für den ersten Schritt ohne Admin-Features sollten diese Flags auf `false` blei
 - `VITE_IAM_BULK_ENABLED`
 
 Damit sind keine Keycloak-Admin-Service-Credentials zwingend notwendig.
+
+Für das heutige Zielmodell mit tenant-spezifischen Realms ist dieses Dokument nicht mehr ausreichend. Produktive oder Acceptance-Instanzen müssen ihre führende Auth-Konfiguration in `iam.instances` über `authRealm` und `authClientId` tragen; die aktuelle Referenz dafür ist das [Swarm-Deployment-Runbook](./swarm-deployment-runbook.md).
 
 ## Erstdeploy
 

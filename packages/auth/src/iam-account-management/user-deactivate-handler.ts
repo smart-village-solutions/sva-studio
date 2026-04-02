@@ -38,7 +38,10 @@ const resolveDeactivateRequestContext = async (request: Request, ctx: Authentica
     return userId;
   }
 
-  const identityProvider = requireUserMutationIdentityProvider(actorResolution.actor.requestId);
+  const identityProvider = await requireUserMutationIdentityProvider(
+    actorResolution.actor.instanceId,
+    actorResolution.actor.requestId
+  );
   if (identityProvider instanceof Response) {
     return identityProvider;
   }
@@ -145,7 +148,10 @@ export const deactivateUserInternal = async (
 
     let projectedDetail = detail;
     try {
-      const mainserverCredentialState = await resolveProjectedMainserverCredentialState(detail.keycloakSubject);
+      const mainserverCredentialState = await resolveProjectedMainserverCredentialState(
+        detail.keycloakSubject,
+        resolved.actor.instanceId
+      );
       projectedDetail = mergeMainserverCredentialState(detail, mainserverCredentialState);
     } catch (projectionError) {
       if (isRecoverableUserProjectionError(projectionError)) {

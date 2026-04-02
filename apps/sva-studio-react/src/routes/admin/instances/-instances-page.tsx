@@ -73,6 +73,8 @@ export const InstancesPage = () => {
       instanceId: formValues.instanceId.trim(),
       displayName: formValues.displayName.trim(),
       parentDomain: formValues.parentDomain.trim(),
+      authRealm: formValues.instanceId.trim(),
+      authClientId: 'sva-studio',
     });
     if (!created) {
       return;

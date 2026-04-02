@@ -1,5 +1,4 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { InstancesPage } from './-instances-page';
@@ -111,6 +110,8 @@ describe('InstancesPage', () => {
         instanceId: 'demo',
         displayName: 'Demo',
         parentDomain: 'studio.example.org',
+        authRealm: 'demo',
+        authClientId: 'sva-studio',
       });
     });
 

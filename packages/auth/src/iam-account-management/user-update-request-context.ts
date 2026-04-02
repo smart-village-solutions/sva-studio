@@ -3,6 +3,7 @@ import { getWorkspaceContext } from '@sva/sdk/server';
 import type { AuthenticatedRequestContext } from '../middleware.server.js';
 
 import { createApiError, parseRequestBody } from './api-helpers.js';
+import type { IdentityProviderResolution } from './shared-runtime.js';
 import { updateUserSchema } from './schemas.js';
 import {
   type UserMutationActor,
@@ -16,7 +17,7 @@ export type UserUpdateRequestContext =
   | Response
   | {
       actor: UserMutationActor;
-      identityProvider: Exclude<ReturnType<typeof requireUserMutationIdentityProvider>, Response>;
+      identityProvider: IdentityProviderResolution;
       payload: UpdateUserPayload;
       userId: string;
     };
@@ -45,7 +46,10 @@ export const resolveUpdateRequestContext = async (
     return createApiError(400, 'invalid_request', 'Ungültiger Payload.', actorResolution.actor.requestId);
   }
 
-  const identityProvider = requireUserMutationIdentityProvider(actorResolution.actor.requestId);
+  const identityProvider = await requireUserMutationIdentityProvider(
+    actorResolution.actor.instanceId,
+    actorResolution.actor.requestId
+  );
   if (identityProvider instanceof Response) {
     return identityProvider;
   }

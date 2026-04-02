@@ -34,6 +34,9 @@ describe('instance registry repository', () => {
           status: 'active',
           parent_domain: 'studio.example.org',
           primary_hostname: 'hb.studio.example.org',
+          auth_realm: 'hb',
+          auth_client_id: 'sva-studio',
+          auth_issuer_url: null,
           theme_key: null,
           feature_flags: { provisioning: true },
           mainserver_config_ref: null,
@@ -55,6 +58,9 @@ describe('instance registry repository', () => {
       status: 'active',
       parentDomain: 'studio.example.org',
       primaryHostname: 'hb.studio.example.org',
+      authRealm: 'hb',
+      authClientId: 'sva-studio',
+      authIssuerUrl: undefined,
       themeKey: undefined,
       featureFlags: { provisioning: true },
       mainserverConfigRef: undefined,
@@ -282,6 +288,9 @@ describe('instance registry repository', () => {
               status: 'requested',
               parent_domain: 'studio.example.org',
               primary_hostname: 'demo.studio.example.org',
+              auth_realm: 'demo',
+              auth_client_id: 'sva-studio',
+              auth_issuer_url: null,
               theme_key: null,
               feature_flags: null,
               mainserver_config_ref: null,
@@ -307,6 +316,8 @@ describe('instance registry repository', () => {
       status: 'requested',
       parentDomain: 'studio.example.org',
       primaryHostname: 'demo.studio.example.org',
+      authRealm: 'demo',
+      authClientId: 'sva-studio',
     });
 
     assert.deepEqual(instance, {
@@ -315,6 +326,9 @@ describe('instance registry repository', () => {
       status: 'requested',
       parentDomain: 'studio.example.org',
       primaryHostname: 'demo.studio.example.org',
+      authRealm: 'demo',
+      authClientId: 'sva-studio',
+      authIssuerUrl: undefined,
       themeKey: undefined,
       featureFlags: {},
       mainserverConfigRef: undefined,
@@ -324,8 +338,8 @@ describe('instance registry repository', () => {
       updatedBy: 'system',
     });
     assert.equal(statements.length, 2);
-    assert.equal(statements[0]?.values[6], '{}');
-    assert.equal(statements[0]?.values[8], 'system');
+    assert.equal(statements[0]?.values[9], '{}');
+    assert.equal(statements[0]?.values[11], 'system');
     assert.equal(statements[1]?.values[2], 'system');
   });
 

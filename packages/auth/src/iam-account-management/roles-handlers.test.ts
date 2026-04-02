@@ -122,6 +122,7 @@ vi.mock('./shared-observability.js', () => ({
 
 vi.mock('./shared-runtime.js', () => ({
   resolveIdentityProvider: vi.fn(() => state.identityProvider),
+  resolveIdentityProviderForInstance: vi.fn(async () => state.identityProvider),
   withInstanceScopedDb: vi.fn(async () => undefined),
 }));
 

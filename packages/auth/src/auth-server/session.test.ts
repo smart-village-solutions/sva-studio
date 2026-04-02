@@ -7,6 +7,8 @@ const mocks = vi.hoisted(() => ({
   deleteSessionMock: vi.fn(),
   refreshTokenGrantMock: vi.fn(),
   getOidcConfigMock: vi.fn(),
+  getAuthConfigMock: vi.fn(),
+  resolveAuthConfigFromSessionAuthMock: vi.fn(),
   loggerMock: {
     debug: vi.fn(),
     info: vi.fn(),
@@ -35,16 +37,16 @@ const {
   deleteSessionMock,
   refreshTokenGrantMock,
   getOidcConfigMock,
+  getAuthConfigMock,
+  resolveAuthConfigFromSessionAuthMock,
   loggerMock,
   buildSessionUserMock,
   resolveSessionExpiryMock,
 } = mocks;
 
 vi.mock('../config', () => ({
-  getAuthConfig: () => ({
-    clientId: 'sva-client',
-    sessionTtlMs: 60_000,
-  }),
+  getAuthConfig: mocks.getAuthConfigMock,
+  resolveAuthConfigFromSessionAuth: mocks.resolveAuthConfigFromSessionAuthMock,
 }));
 
 vi.mock('../oidc.server', () => ({
@@ -92,6 +94,21 @@ describe('auth-server/session', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-03-10T10:00:00.000Z'));
     getSessionControlStateMock.mockResolvedValue(undefined);
+    getAuthConfigMock.mockReturnValue({
+      issuer: 'https://issuer.example',
+      clientId: 'sva-client',
+      clientSecret: 'secret',
+      sessionTtlMs: 60_000,
+    });
+    resolveAuthConfigFromSessionAuthMock.mockImplementation((auth) => ({
+      issuer: auth.issuer,
+      clientId: auth.clientId,
+      clientSecret: 'secret',
+      postLogoutRedirectUri: auth.postLogoutRedirectUri,
+      sessionTtlMs: 60_000,
+      instanceId: auth.instanceId,
+      authRealm: auth.authRealm,
+    }));
   });
 
   it('returns null when the session is missing', async () => {
@@ -219,6 +236,90 @@ describe('auth-server/session', () => {
       expect.objectContaining({
         id: 'user-3',
         roles: ['Admin'],
+      })
+    );
+  });
+
+  it('hydrates from stored session auth without requiring global auth config', async () => {
+    buildSessionUserMock.mockReturnValueOnce({
+      id: 'hydrated-user',
+      instanceId: 'bb-guben',
+      roles: ['editor'],
+    });
+    getAuthConfigMock.mockImplementation(() => {
+      throw new Error('Missing required env: SVA_AUTH_ISSUER');
+    });
+    getSessionMock.mockResolvedValue({
+      user: { id: 'legacy-user', roles: [] },
+      accessToken: 'access-token',
+      auth: {
+        issuer: 'https://issuer.example/realms/bb-guben',
+        clientId: 'tenant-client',
+        postLogoutRedirectUri: 'https://bb-guben.studio.smart-village.app/',
+        instanceId: 'bb-guben',
+        authRealm: 'bb-guben',
+      },
+      expiresAt: Date.now() + 10_000,
+      createdAt: Date.now() - 5_000,
+    });
+
+    await expect(getSessionUser('session-hydrate-tenant')).resolves.toEqual({
+      id: 'hydrated-user',
+      instanceId: 'bb-guben',
+      roles: ['editor'],
+    });
+    expect(resolveAuthConfigFromSessionAuthMock).toHaveBeenCalled();
+  });
+
+  it('refreshes with stored session auth without requiring global auth config', async () => {
+    getAuthConfigMock.mockImplementation(() => {
+      throw new Error('Missing required env: SVA_AUTH_ISSUER');
+    });
+    getSessionMock
+      .mockResolvedValueOnce({
+        user: { id: 'user-tenant', roles: ['viewer'] },
+        auth: {
+          issuer: 'https://issuer.example/realms/bb-guben',
+          clientId: 'tenant-client',
+          postLogoutRedirectUri: 'https://bb-guben.studio.smart-village.app/',
+          instanceId: 'bb-guben',
+          authRealm: 'bb-guben',
+        },
+        refreshToken: 'refresh-tenant',
+        expiresAt: Date.now() + 1_000,
+        createdAt: Date.now(),
+      })
+      .mockResolvedValueOnce({
+        user: {
+          id: 'user-tenant',
+          instanceId: 'bb-guben',
+          roles: ['Admin'],
+        },
+      });
+    getOidcConfigMock.mockResolvedValue({ issuer: 'https://issuer.example/realms/bb-guben' });
+    refreshTokenGrantMock.mockResolvedValue({
+      access_token: 'access-tenant',
+      refresh_token: 'refresh-tenant-2',
+      id_token: 'id-tenant',
+      claims: () => ({
+        sub: 'user-tenant',
+        instanceId: 'bb-guben',
+        roles: ['Admin'],
+      }),
+      expiresIn: () => 600,
+    });
+
+    await expect(getSessionUser('session-tenant-refresh')).resolves.toEqual(
+      expect.objectContaining({
+        id: 'user-tenant',
+        roles: ['Admin'],
+      })
+    );
+    expect(resolveAuthConfigFromSessionAuthMock).toHaveBeenCalled();
+    expect(getOidcConfigMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        issuer: 'https://issuer.example/realms/bb-guben',
+        clientId: 'tenant-client',
       })
     );
   });

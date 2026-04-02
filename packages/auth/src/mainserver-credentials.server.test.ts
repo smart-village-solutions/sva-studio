@@ -2,11 +2,13 @@ import { describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
   resolveIdentityProvider: vi.fn(),
+  resolveIdentityProviderForInstance: vi.fn(),
   trackKeycloakCall: vi.fn(async (_operation: string, execute: () => Promise<unknown>) => execute()),
 }));
 
 vi.mock('./iam-account-management/shared', () => ({
   resolveIdentityProvider: state.resolveIdentityProvider,
+  resolveIdentityProviderForInstance: state.resolveIdentityProviderForInstance,
   trackKeycloakCall: state.trackKeycloakCall,
 }));
 

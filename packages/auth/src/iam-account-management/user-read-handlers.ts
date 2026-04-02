@@ -145,8 +145,8 @@ export const getUserInternal = async (
     }
 
     const [keycloakRoleNames, mainserverCredentialState] = await Promise.all([
-      resolveKeycloakRoleNames(user.keycloakSubject),
-      resolveProjectedMainserverCredentialState(user.keycloakSubject),
+      resolveKeycloakRoleNames(actorResolution.actor.instanceId, user.keycloakSubject),
+      resolveProjectedMainserverCredentialState(user.keycloakSubject, actorResolution.actor.instanceId),
     ]);
     const projectedUserWithRoles = await withInstanceScopedDb(actorResolution.actor.instanceId, (client) =>
       resolveProjectedUserDetail({

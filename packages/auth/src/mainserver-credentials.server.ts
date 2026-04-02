@@ -1,5 +1,9 @@
 import type { IdentityUserAttributes } from './identity-provider-port.js';
-import { resolveIdentityProvider, trackKeycloakCall } from './iam-account-management/shared.js';
+import {
+  resolveIdentityProvider,
+  resolveIdentityProviderForInstance,
+  trackKeycloakCall,
+} from './iam-account-management/shared.js';
 
 export type SvaMainserverCredentials = {
   readonly apiKey: string;
@@ -26,6 +30,7 @@ type ReadSvaMainserverCredentialsResult =
 type ReadIdentityUserAttributesInput = {
   readonly keycloakSubject: string;
   readonly attributeNames?: readonly string[];
+  readonly instanceId?: string;
 };
 
 export const MAINSERVER_APPLICATION_ID_ATTRIBUTE = 'mainserverUserApplicationId';
@@ -122,7 +127,9 @@ export const buildMainserverIdentityAttributes = (input: {
 export const readIdentityUserAttributes = async (
   input: ReadIdentityUserAttributesInput
 ): Promise<IdentityUserAttributes | null> => {
-  const identityProvider = resolveIdentityProvider();
+  const identityProvider = input.instanceId
+    ? await resolveIdentityProviderForInstance(input.instanceId)
+    : resolveIdentityProvider();
   if (!identityProvider) {
     return null;
   }
@@ -133,9 +140,10 @@ export const readIdentityUserAttributes = async (
 };
 
 export const readSvaMainserverCredentials = async (
-  keycloakSubject: string
+  keycloakSubject: string,
+  instanceId?: string
 ): Promise<SvaMainserverCredentials | null> => {
-  const result = await readSvaMainserverCredentialsWithStatus(keycloakSubject);
+  const result = await readSvaMainserverCredentialsWithStatus(keycloakSubject, instanceId);
   if (result.status !== 'ok') {
     return null;
   }
@@ -144,11 +152,13 @@ export const readSvaMainserverCredentials = async (
 };
 
 export const readSvaMainserverCredentialsWithStatus = async (
-  keycloakSubject: string
+  keycloakSubject: string,
+  instanceId?: string
 ): Promise<ReadSvaMainserverCredentialsResult> => {
   const attributes = await readIdentityUserAttributes({
     keycloakSubject,
     attributeNames: getSvaMainserverCredentialAttributeNames(),
+    instanceId,
   });
   if (!attributes) {
     return {

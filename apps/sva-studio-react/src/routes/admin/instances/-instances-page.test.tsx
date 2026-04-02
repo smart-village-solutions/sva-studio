@@ -121,6 +121,20 @@ describe('InstancesPage', () => {
     });
   });
 
+  it('starts with an empty parent-domain field and uses runtime config as placeholder', () => {
+    const previousParentDomain = process.env.SVA_PARENT_DOMAIN;
+    process.env.SVA_PARENT_DOMAIN = 'studio.example.org';
+    useInstancesMock.mockReturnValue(createInstancesApiState());
+
+    render(<InstancesPage />);
+
+    const input = screen.getByLabelText('Parent-Domain') as HTMLInputElement;
+    expect(input.value).toBe('');
+    expect(input.placeholder).toBe('studio.example.org');
+
+    process.env.SVA_PARENT_DOMAIN = previousParentDomain;
+  });
+
   it('renders api-specific error states and selected instance details', () => {
     useInstancesMock.mockReturnValue(
       createInstancesApiState({

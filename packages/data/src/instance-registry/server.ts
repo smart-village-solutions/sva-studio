@@ -21,8 +21,27 @@ type CacheEntry = {
   readonly value: InstanceRegistryRecord | null;
 };
 
+const HOST_CACHE_MAX_ENTRIES = 500;
 const hostCache = new Map<string, CacheEntry>();
 const poolsByDatabaseUrl = new Map<string, Pool>();
+
+const buildHostCacheKey = (databaseUrl: string, hostname: string) => `${databaseUrl}::${hostname}`;
+
+const pruneHostCache = (now: number): void => {
+  for (const [cacheKey, entry] of hostCache) {
+    if (entry.expiresAt <= now) {
+      hostCache.delete(cacheKey);
+    }
+  }
+
+  while (hostCache.size > HOST_CACHE_MAX_ENTRIES) {
+    const oldestKey = hostCache.keys().next().value;
+    if (!oldestKey) {
+      return;
+    }
+    hostCache.delete(oldestKey);
+  }
+};
 
 const getPool = (databaseUrl: string | undefined): Pool | null => {
   if (!databaseUrl) {
@@ -75,7 +94,12 @@ export const resetInstanceRegistryCache = (): void => {
 };
 
 export const invalidateInstanceRegistryHost = (hostname: string): void => {
-  hostCache.delete(normalizeHost(hostname));
+  const normalizedHostname = normalizeHost(hostname);
+  for (const cacheKey of hostCache.keys()) {
+    if (cacheKey.endsWith(`::${normalizedHostname}`)) {
+      hostCache.delete(cacheKey);
+    }
+  }
 };
 
 export const loadInstanceByHostname = async (
@@ -89,24 +113,31 @@ export const loadInstanceByHostname = async (
   const normalizedHostname = normalizeHost(hostname);
   const now = options.now ?? Date.now;
   const cacheTtlMs = options.cacheTtlMs ?? 5_000;
-  const cached = hostCache.get(normalizedHostname);
+  const databaseUrl = options.getDatabaseUrl?.() ?? process.env.IAM_DATABASE_URL;
+  if (!databaseUrl) {
+    throw new Error('IAM database not configured');
+  }
+  const cacheKey = buildHostCacheKey(databaseUrl, normalizedHostname);
+  const cached = hostCache.get(cacheKey);
 
   if (cached && cached.expiresAt > now()) {
     return cached.value;
   }
 
+  pruneHostCache(now());
   const value = await withClient(
     async (client) => {
       const repository = createInstanceRegistryRepository(createExecutor(client));
       return repository.resolveHostname(normalizedHostname);
     },
-    { getDatabaseUrl: options.getDatabaseUrl }
+    { getDatabaseUrl: () => databaseUrl }
   );
 
-  hostCache.set(normalizedHostname, {
+  hostCache.set(cacheKey, {
     value,
     expiresAt: now() + cacheTtlMs,
   });
+  pruneHostCache(now());
 
   return value;
 };

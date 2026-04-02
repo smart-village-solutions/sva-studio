@@ -52,12 +52,11 @@ const createListInstances =
   (repository: InstanceRegistryRepository): InstanceRegistryService['listInstances'] =>
   async (input = {}) => {
     const instances = await repository.listInstances(input);
-    return Promise.all(
-      instances.map(async (instance) => {
-        const latestProvisioningRun = (await repository.listProvisioningRuns(instance.instanceId))[0];
-        return toListItem(instance, latestProvisioningRun);
-      })
+    const latestProvisioningRuns = await repository.listLatestProvisioningRuns(
+      instances.map((instance) => instance.instanceId)
     );
+
+    return instances.map((instance) => toListItem(instance, latestProvisioningRuns[instance.instanceId]));
   };
 
 const buildInstanceDetail = (

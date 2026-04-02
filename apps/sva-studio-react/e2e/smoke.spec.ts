@@ -81,18 +81,11 @@ test('GET /auth/login returns redirect response', async ({ request }) => {
   });
 });
 
-test('tenant-host login is redirected to the canonical root-host login endpoint', async ({ request }) => {
+test('tenant-host login fails closed when canonical auth redirect prerequisites are unavailable', async ({ request }) => {
   const tenantLoginUrl = process.env.PLAYWRIGHT_TENANT_LOGIN_URL ?? 'http://hb.studio.lvh.me:4173/auth/login?returnTo=%2Fadmin%2Finstances';
   const response = await request.get(tenantLoginUrl, {
     maxRedirects: 0,
   });
-
-  if (response.status() === 302) {
-    expect(response.headers().location).toBe(
-      'http://studio.lvh.me:4173/auth/login?returnTo=http%3A%2F%2Fhb.studio.lvh.me%3A4173%2Fadmin%2Finstances'
-    );
-    return;
-  }
 
   expect(response.status()).toBe(500);
   await expect(response.json()).resolves.toMatchObject({

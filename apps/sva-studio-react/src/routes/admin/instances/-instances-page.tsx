@@ -42,13 +42,32 @@ const getErrorMessage = (error: IamHttpError | null) => {
   }
 };
 
+const readSuggestedParentDomain = () => {
+  const configuredParentDomain = process.env.SVA_PARENT_DOMAIN?.trim();
+  if (configuredParentDomain) {
+    return configuredParentDomain;
+  }
+
+  const publicBaseUrl = process.env.SVA_PUBLIC_BASE_URL?.trim();
+  if (!publicBaseUrl) {
+    return '';
+  }
+
+  try {
+    return new URL(publicBaseUrl).hostname;
+  } catch {
+    return '';
+  }
+};
+
 export const InstancesPage = () => {
   const instancesApi = useInstances();
   const [formValues, setFormValues] = React.useState({
     instanceId: '',
     displayName: '',
-    parentDomain: 'studio.lvh.me',
+    parentDomain: '',
   });
+  const suggestedParentDomain = readSuggestedParentDomain();
 
   const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -180,6 +199,7 @@ export const InstancesPage = () => {
                 <Input
                   id="instance-parent-domain"
                   value={formValues.parentDomain}
+                  placeholder={suggestedParentDomain || undefined}
                   onChange={(event) => setFormValues((current) => ({ ...current, parentDomain: event.target.value }))}
                 />
               </div>

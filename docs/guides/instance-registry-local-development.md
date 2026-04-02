@@ -72,7 +72,7 @@ pnpm nx run sva-studio-react:test:e2e -- --grep "tenant-host login"
 
 ## Ops-CLI
 
-Die nicht-interaktive CLI liegt unter [scripts/ops/instance-registry.ts](/Users/wilimzig/Documents/Projects/SVA/sva-studio/scripts/ops/instance-registry.ts).
+Die nicht-interaktive CLI liegt unter [scripts/ops/instance-registry.ts](../../scripts/ops/instance-registry.ts).
 
 Beispiele:
 

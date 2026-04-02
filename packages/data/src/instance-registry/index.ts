@@ -93,6 +93,9 @@ export type InstanceRegistryRepository = {
   getInstanceById(instanceId: string): Promise<InstanceRegistryRecord | null>;
   resolveHostname(hostname: string): Promise<InstanceRegistryRecord | null>;
   listProvisioningRuns(instanceId: string): Promise<readonly InstanceProvisioningRun[]>;
+  listLatestProvisioningRuns(
+    instanceIds: readonly string[]
+  ): Promise<Readonly<Record<string, InstanceProvisioningRun | undefined>>>;
   listAuditEvents(instanceId: string): Promise<readonly InstanceAuditEvent[]>;
   createInstance(input: {
     instanceId: string;
@@ -132,7 +135,7 @@ export type InstanceRegistryRepository = {
   }): Promise<void>;
 };
 
-const statement = (text: string, values: readonly (string | null)[]): SqlStatement => ({ text, values });
+const statement = (text: string, values: readonly (string | number | boolean | null)[]): SqlStatement => ({ text, values });
 
 const queryRows = async <TRow>(executor: SqlExecutor, sql: SqlStatement): Promise<readonly TRow[]> => {
   const result: SqlExecutionResult<TRow> = await executor.execute<TRow>(sql);
@@ -253,6 +256,46 @@ ORDER BY created_at DESC, id DESC;
       )
     );
     return rows.map(mapProvisioningRun);
+  },
+
+  async listLatestProvisioningRuns(instanceIds) {
+    if (instanceIds.length === 0) {
+      return {};
+    }
+
+    const values = [...instanceIds];
+    const placeholders = values.map((_, index) => `$${index + 1}`).join(', ');
+    const rows = await queryRows<ProvisioningRow>(
+      executor,
+      statement(
+        `
+SELECT DISTINCT ON (instance_id)
+  id::text,
+  instance_id,
+  operation,
+  status,
+  step_key,
+  idempotency_key,
+  error_code,
+  error_message,
+  request_id,
+  actor_id,
+  created_at::text,
+  updated_at::text
+FROM iam.instance_provisioning_runs
+WHERE instance_id IN (${placeholders})
+ORDER BY instance_id ASC, created_at DESC, id DESC;
+`,
+        values
+      )
+    );
+
+    return Object.fromEntries(
+      rows.map((row) => {
+        const run = mapProvisioningRun(row);
+        return [run.instanceId, run] as const;
+      })
+    );
   },
 
   async listAuditEvents(instanceId) {

@@ -31,6 +31,11 @@ const createRepository = (): InstanceRegistryRepository => {
     async listProvisioningRuns(instanceId) {
       return provisioningRuns.get(instanceId) ?? [];
     },
+    async listLatestProvisioningRuns(instanceIds) {
+      return Object.fromEntries(
+        instanceIds.map((instanceId) => [instanceId, (provisioningRuns.get(instanceId) ?? [])[0]])
+      );
+    },
     async listAuditEvents(instanceId) {
       return auditEvents.get(instanceId) ?? [];
     },
@@ -188,5 +193,49 @@ describe('iam-instance-registry service', () => {
     const detail = await service.getInstanceDetail('hb');
     expect(detail?.provisioningRuns.map((run) => run.operation)).toEqual(['activate', 'create']);
     expect(detail?.auditEvents.map((event) => event.eventType)).toEqual(['instance_activated', 'instance_requested']);
+  });
+
+  it('loads latest provisioning runs for list views in a single repository call', async () => {
+    const repository = createRepository();
+    const listLatestProvisioningRuns = vi.spyOn(repository, 'listLatestProvisioningRuns');
+    const listProvisioningRuns = vi.spyOn(repository, 'listProvisioningRuns');
+    const service = createInstanceRegistryService({
+      repository,
+      invalidateHost: vi.fn(),
+    });
+
+    await repository.createInstance({
+      instanceId: 'hb',
+      displayName: 'HB',
+      status: 'active',
+      parentDomain: 'studio.lvh.me',
+      primaryHostname: 'hb.studio.lvh.me',
+    });
+    await repository.createProvisioningRun({
+      instanceId: 'hb',
+      operation: 'activate',
+      status: 'active',
+      idempotencyKey: 'idem-hb',
+    });
+    await repository.createInstance({
+      instanceId: 'demo',
+      displayName: 'Demo',
+      status: 'requested',
+      parentDomain: 'studio.lvh.me',
+      primaryHostname: 'demo.studio.lvh.me',
+    });
+    await repository.createProvisioningRun({
+      instanceId: 'demo',
+      operation: 'create',
+      status: 'requested',
+      idempotencyKey: 'idem-demo',
+    });
+
+    const items = await service.listInstances();
+
+    expect(items).toHaveLength(2);
+    expect(listLatestProvisioningRuns).toHaveBeenCalledWith(['hb', 'demo']);
+    expect(listProvisioningRuns).not.toHaveBeenCalled();
+    expect(items.map((item) => item.latestProvisioningRun?.id)).toEqual(['hb-activate-active', 'demo-create-requested']);
   });
 });

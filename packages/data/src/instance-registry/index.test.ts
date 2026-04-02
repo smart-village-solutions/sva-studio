@@ -192,6 +192,83 @@ describe('instance registry repository', () => {
     ]);
   });
 
+  it('loads the latest provisioning run for multiple instances in one query', async () => {
+    const statements: SqlStatement[] = [];
+    const execute = createSequencedExecutor(
+      [
+        {
+          rowCount: 2,
+          rows: [
+            {
+              id: 'run-2',
+              instance_id: 'hb',
+              operation: 'activate',
+              status: 'active',
+              step_key: null,
+              idempotency_key: 'idem-hb',
+              error_code: null,
+              error_message: null,
+              request_id: null,
+              actor_id: null,
+              created_at: '2026-01-02T00:00:00.000Z',
+              updated_at: '2026-01-02T00:00:00.000Z',
+            },
+            {
+              id: 'run-1',
+              instance_id: 'demo',
+              operation: 'create',
+              status: 'requested',
+              step_key: null,
+              idempotency_key: 'idem-demo',
+              error_code: null,
+              error_message: null,
+              request_id: null,
+              actor_id: null,
+              created_at: '2026-01-01T00:00:00.000Z',
+              updated_at: '2026-01-01T00:00:00.000Z',
+            },
+          ],
+        },
+      ],
+      statements
+    );
+
+    const repository = createInstanceRegistryRepository({ execute });
+    const latestRuns = await repository.listLatestProvisioningRuns(['hb', 'demo']);
+
+    assert.deepEqual(latestRuns, {
+      hb: {
+        id: 'run-2',
+        instanceId: 'hb',
+        operation: 'activate',
+        status: 'active',
+        stepKey: undefined,
+        idempotencyKey: 'idem-hb',
+        errorCode: undefined,
+        errorMessage: undefined,
+        requestId: undefined,
+        actorId: undefined,
+        createdAt: '2026-01-02T00:00:00.000Z',
+        updatedAt: '2026-01-02T00:00:00.000Z',
+      },
+      demo: {
+        id: 'run-1',
+        instanceId: 'demo',
+        operation: 'create',
+        status: 'requested',
+        stepKey: undefined,
+        idempotencyKey: 'idem-demo',
+        errorCode: undefined,
+        errorMessage: undefined,
+        requestId: undefined,
+        actorId: undefined,
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      },
+    });
+    assert.match(statements[0]?.text ?? '', /SELECT DISTINCT ON \(instance_id\)/);
+  });
+
   it('creates instances and falls back to system actor plus empty feature flags', async () => {
     const statements: SqlStatement[] = [];
     const execute = createSequencedExecutor(

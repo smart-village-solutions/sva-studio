@@ -13,10 +13,8 @@ import {
   buildPrimaryHostname,
   isTrafficEnabledInstanceStatus,
   normalizeHost,
-  type HostClassification,
   type InstanceStatus,
 } from '@sva/core';
-import { loadInstanceByHostname } from '@sva/data/server';
 
 import type { AuthenticatedRequestContext } from '../middleware.server.js';
 import {
@@ -28,6 +26,7 @@ import {
   statusMutationSchema,
 } from './http.js';
 import { withRegistryService } from './repository.js';
+import type { ResolveRuntimeInstanceResult } from './types.js';
 
 const logger = createSdkLogger({ component: 'iam-instance-registry', level: 'info' });
 
@@ -193,10 +192,7 @@ export const suspendInstanceInternal = async (request: Request, ctx: Authenticat
 export const archiveInstanceInternal = async (request: Request, ctx: AuthenticatedRequestContext): Promise<Response> =>
   mutateInstanceStatus(request, ctx, 'archived');
 
-export const resolveRuntimeInstanceFromRequest = async (request: Request): Promise<{
-  readonly hostClassification: HostClassification;
-  readonly instance: Awaited<ReturnType<typeof loadInstanceByHostname>>;
-}> => {
+export const resolveRuntimeInstanceFromRequest = async (request: Request): Promise<ResolveRuntimeInstanceResult> => {
   const host = new URL(request.url).host;
   const resolved = await withRegistryService((service) => service.resolveRuntimeInstance(host));
   return {

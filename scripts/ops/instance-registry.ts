@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { Pool } from 'pg';
 
+import { isInstanceStatus, type InstanceStatus } from '../../packages/core/src/instances/registry.js';
 import { createInstanceRegistryService } from '../../packages/auth/src/iam-instance-registry/service.js';
 import { createInstanceRegistryRepository } from '../../packages/data/src/instance-registry/index.js';
 import { invalidateInstanceRegistryHost } from '../../packages/data/src/instance-registry/server.js';
@@ -22,7 +23,7 @@ type CliOptions = {
   readonly mainserverConfigRef?: string;
   readonly parentDomain?: string;
   readonly search?: string;
-  readonly status?: string;
+  readonly status?: InstanceStatus;
   readonly themeKey?: string;
 };
 
@@ -143,7 +144,7 @@ const parseCliOptions = (argv: readonly string[]): CliOptions => {
     mainserverConfigRef: parsed.mainserverConfigRef,
     parentDomain: parsed.parentDomain,
     search: parsed.search,
-    status: parsed.status,
+    status: parseStatusOption(parsed.status),
     themeKey: parsed.themeKey,
   };
 };
@@ -153,6 +154,18 @@ const assertRequired = (value: string | undefined, flag: string): string => {
     throw new Error(`Option ${flag} ist erforderlich.`);
   }
   return value.trim();
+};
+
+const parseStatusOption = (value: string | undefined): InstanceStatus | undefined => {
+  if (!value) {
+    return undefined;
+  }
+
+  if (!isInstanceStatus(value)) {
+    throw new Error(`Ungültiger Statuswert für --status: ${value}.`);
+  }
+
+  return value;
 };
 
 const renderResult = (jsonOutput: boolean, payload: unknown) => {
@@ -227,7 +240,7 @@ const run = async () => {
       });
       const instances = await service.listInstances({
         search: options.search,
-        status: options.status as never,
+        status: options.status,
       });
       renderResult(options.jsonOutput, instances);
       return;

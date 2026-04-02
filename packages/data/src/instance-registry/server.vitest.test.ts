@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const resolveHostnameMock = vi.hoisted(() => vi.fn());
 const getInstanceByIdMock = vi.hoisted(() => vi.fn());
@@ -31,6 +31,8 @@ vi.mock('./index', () => ({
 }));
 
 describe('instance-registry server helpers', () => {
+  const originalDatabaseUrl = process.env.IAM_DATABASE_URL;
+
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
@@ -43,7 +45,12 @@ describe('instance-registry server helpers', () => {
     getInstanceByIdMock.mockResolvedValue(null);
   });
 
+  afterEach(() => {
+    process.env.IAM_DATABASE_URL = originalDatabaseUrl;
+  });
+
   it('throws when the IAM database is not configured', async () => {
+    delete process.env.IAM_DATABASE_URL;
     const { loadInstanceByHostname } = await import('./server');
 
     await expect(
@@ -93,6 +100,46 @@ describe('instance-registry server helpers', () => {
     await loadInstanceByHostname('demo.studio.example.org', options);
     expect(resolveHostnameMock).toHaveBeenCalledTimes(3);
     expect(PoolMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('scopes hostname cache entries by database url', async () => {
+    const { loadInstanceByHostname, resetInstanceRegistryCache } = await import('./server');
+    resolveHostnameMock
+      .mockResolvedValueOnce({
+        instanceId: 'demo-a',
+        displayName: 'Demo A',
+        status: 'active',
+        parentDomain: 'studio.example.org',
+        primaryHostname: 'demo.studio.example.org',
+        featureFlags: {},
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      })
+      .mockResolvedValueOnce({
+        instanceId: 'demo-b',
+        displayName: 'Demo B',
+        status: 'active',
+        parentDomain: 'studio.example.org',
+        primaryHostname: 'demo.studio.example.org',
+        featureFlags: {},
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      });
+
+    await expect(
+      loadInstanceByHostname('demo.studio.example.org', {
+        getDatabaseUrl: () => 'postgres://iam-a',
+      })
+    ).resolves.toMatchObject({ instanceId: 'demo-a' });
+    await expect(
+      loadInstanceByHostname('demo.studio.example.org', {
+        getDatabaseUrl: () => 'postgres://iam-b',
+      })
+    ).resolves.toMatchObject({ instanceId: 'demo-b' });
+
+    expect(resolveHostnameMock).toHaveBeenCalledTimes(2);
+    expect(PoolMock).toHaveBeenCalledTimes(2);
+    resetInstanceRegistryCache();
   });
 
   it('loads instances by id without using the hostname cache', async () => {

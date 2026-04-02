@@ -19,7 +19,7 @@ const createDebugOtlpSignalUrl = (signalPath: string): string => {
   const configuredEndpoint = process.env.SVA_DEBUG_OTLP_ENDPOINT ?? process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
   const baseUrl =
     configuredEndpoint ??
-    `http:${'//'}${process.env.SVA_DEBUG_OTLP_HOST ?? 'host.docker.internal'}:${process.env.SVA_DEBUG_OTLP_PORT ?? '4318'}`;
+    `http:${'//'}${process.env.SVA_DEBUG_OTLP_HOST ?? 'localhost'}:${process.env.SVA_DEBUG_OTLP_PORT ?? '4318'}`;
 
   return new URL(signalPath, baseUrl).toString();
 };

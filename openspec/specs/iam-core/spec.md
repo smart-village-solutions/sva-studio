@@ -118,6 +118,20 @@ Das System MUST den SDK Logger (`createSdkLogger` aus `@sva/sdk`) fuer alle oper
 - **AND** PII-Redaktion wird automatisch durch den SDK Logger angewendet
 - **AND** es erscheinen keine Klartext-Tokens, tokenhaltigen Redirect-URLs, Session-IDs oder E-Mail-Adressen in operativen Logs
 
+### Requirement: Browser diagnostics use safe structured logging in development
+Das System MUST für produktiven Browser-App-Code bevorzugt eine browser-taugliche Logger-API statt rohem `console.*` verwenden, wenn operative IAM-Diagnostik erzeugt wird.
+
+#### Scenario: IAM browser api errors use the browser logger
+- **WHEN** produktiver Browser-App-Code einen IAM-API-Fehler im Development diagnostisch protokolliert
+- **THEN** nutzt dieser Code den Browser-Logger
+- **AND** der Logeintrag enthält `request_id`, `status` und `code`
+- **AND** nur explizit erlaubte sichere Diagnosedetails werden geloggt
+
+#### Scenario: Development-only browser capture may still hook console
+- **WHEN** die Browser-Development-Log-Capture globale Browser-Events oder Third-Party-Console-Ausgaben mitschneidet
+- **THEN** darf dieser Infrastrukturpfad weiterhin `console.*` hooken
+- **AND** die dabei gespeicherten Einträge nutzen dieselben Redaction-Regeln wie der Browser-Logger
+
 ### Requirement: Governance-Funktionen nur für berechtigte Identitäten
 
 Das System SHALL Governance-Aktionen ausschließlich für authentifizierte und explizit berechtigte Identitäten im aktiven Instanzkontext zulassen.
@@ -872,4 +886,3 @@ Das System SHALL für Paket 5 verbindliche Nachweisartefakte definieren, damit A
 - **WHEN** die Nachweis- und Exportfunktion abgenommen wird
 - **THEN** existiert mindestens ein versioniertes Export-Testprotokoll für JSON und CSV, ein Negativtest ohne `legal-consents:export` sowie ein Konsistenzabgleich gegen die Auditspur
 - **AND** alle Artefakte referenzieren dieselbe Pflichtversions- und Filterkonstellation
-

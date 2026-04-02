@@ -14,7 +14,7 @@ import { diag, DiagConsoleLogger, DiagLogLevel } from '@opentelemetry/api';
 // Aktiviere Debug-Logging
 diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.DEBUG);
 
-const endpoint = 'http://host.docker.internal:4318';
+const endpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT ?? 'http://localhost:4318';
 
 console.log('=== OTLP Direct Test ===');
 console.log(`Endpoint: ${endpoint}`);

@@ -328,7 +328,7 @@ berücksichtigen, damit der Container korrekt deployed werden kann.
 
 ### Requirement: Standardisierter Runtime-Doctor pro Profil
 
-Das System SHALL für jedes kanonische Runtime-Profil ein offizielles `doctor`-Kommando bereitstellen, das nicht nur Erreichbarkeit, sondern auch Schema- und Kontextdiagnostik ausführt.
+Das System SHALL für jedes kanonische Runtime-Profil ein offizielles `doctor`-Kommando bereitstellen, das nicht nur Erreichbarkeit, sondern auch Schema-, Kontext- und Migrationsdiagnostik ausführt.
 
 #### Scenario: Root-Scripts bilden den Diagnosepfad ab
 
@@ -341,6 +341,12 @@ Das System SHALL für jedes kanonische Runtime-Profil ein offizielles `doctor`-K
 - **WHEN** ein `env:doctor:<profil>`-Befehl mit `--json` ausgeführt wird
 - **THEN** liefert das System pro Check mindestens `status`, `code`, `message` und optionale `details`
 - **AND** die Ausgabe enthält keine Secrets oder PII
+
+#### Scenario: Doctor meldet Goose-Migrationsstatus
+
+- **WHEN** ein `env:doctor:<profil>`-Befehl ausgeführt wird
+- **THEN** enthält die Diagnose einen separaten Check für `goose`-Verfügbarkeit und Migrationsstatus
+- **AND** `details` enthalten mindestens die verwendete `goose`-Version oder den Remote-Status
 
 ### Requirement: Kanonischer Acceptance-Deploypfad
 
@@ -369,6 +375,12 @@ Das System SHALL für jeden orchestrierten Acceptance-Deploy maschinenlesbare un
 - **AND** die Artefakte enthalten mindestens Image-Referenz, Actor, Workflow, Release-Modus, Schrittstatus und Stack-Zusammenfassung
 - **AND** die Artefakte enthalten keine Secrets oder PII
 
+#### Scenario: Migrations-Evidenz enthält Goose-Status
+
+- **WHEN** ein Acceptance-Deploy mit oder ohne Migrationsschritt dokumentiert wird
+- **THEN** enthalten die Artefakte den `goose`-Status der Migration
+- **AND** die Migrationsevidenz kann die verwendete `goose`-Version ausweisen
+
 ### Requirement: Direkte Acceptance-`up`/`update`-Deploys sind gesperrt
 
 Das System SHALL direkte Serverdeploys für `acceptance-hb` über die Kommandos `up` und `update` standardmäßig verhindern.
@@ -392,7 +404,7 @@ Das System SHALL drei kanonische Runtime-Profile (`local-keycloak`, `local-build
 
 ### Requirement: Standardisierte Runtime-Kommandos pro Profil
 
-Das System SHALL für jedes Runtime-Profil standardisierte Befehle für `up`, `down`, `update`, `status`, `smoke` und `migrate` bereitstellen.
+Das System SHALL für jedes Runtime-Profil standardisierte Befehle für `up`, `down`, `update`, `status`, `smoke` und `migrate` bereitstellen. Der kanonische Migrationspfad SHALL über einen repository-lokalen, versionsgepinnnten `goose`-Wrapper laufen und keine globale Tool-Installation voraussetzen.
 
 #### Scenario: Root-Scripts bilden das Operations-Interface ab
 
@@ -400,10 +412,10 @@ Das System SHALL für jedes Runtime-Profil standardisierte Befehle für `up`, `d
 - **THEN** existieren `env:*:<profil>`-Skripte für alle drei Runtime-Profile
 - **AND** die Skripte delegieren an eine gemeinsame Implementierung statt an profilindividuelle Ad-hoc-Kommandos
 
-#### Scenario: Smoke-Checks prüfen Kernabhängigkeiten
+#### Scenario: Migrationspfad nutzt gepinnten Goose-Wrapper
 
-- **WHEN** ein Runtime-`smoke`-Befehl ausgeführt wird
-- **THEN** prüft er mindestens Live-/Ready-Health, Auth-Verhalten und Mainserver-Basisfunktion
-- **AND** lokale Profile prüfen zusätzlich den OTEL-Collector
-- **AND** das Acceptance-Profil prüft den serverseitigen Stack-Zustand
+- **WHEN** ein lokaler oder Acceptance-`migrate`-Pfad ausgelöst wird
+- **THEN** ruft das System nur einen repository-lokalen `goose`-Wrapper auf
+- **AND** der Wrapper installiert bzw. verwendet eine gepinnte `goose`-Version
+- **AND** es ist keine globale `goose`-Installation Voraussetzung
 

@@ -113,6 +113,13 @@ Das System SHALL dokumentieren, wie stateful Services, Secrets, Configs, Migrati
 - **THEN** beschreibt die Dokumentation ein kompatibles Rollback-Fenster für App- und Schema-Änderungen
 - **AND** grenzt destruktive oder nicht rückwärtskompatible Migrationen aus diesem Change aus
 
+#### Scenario: Acceptance-Migration nutzt gepinntes Goose ohne Vorinstallation
+
+- **WHEN** der dokumentierte Acceptance-Migrationspfad ausgeführt wird
+- **THEN** verwendet er eine gepinnte `goose`-Version
+- **AND** setzt keine permanente `goose`-Installation auf dem Zielserver voraus
+- **AND** beschreibt, wie Binary und Migrationsbundle temporär in den Zielkontext gelangen oder dort reproduzierbar bereitgestellt werden
+
 ### Requirement: Dokumentierte Grenzen für dynamische Multi-Host-OIDC-Redirects
 
 Das System SHALL dokumentieren, unter welchen Bedingungen dynamische OIDC- und Logout-Redirects für Instanz-Subdomains unterstützt werden können.

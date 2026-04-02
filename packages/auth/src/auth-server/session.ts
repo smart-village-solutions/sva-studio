@@ -1,7 +1,7 @@
 import type { Session, SessionUser } from '../types.js';
 import { createSdkLogger } from '@sva/sdk/server';
 
-import { getAuthConfig } from '../config.js';
+import { getAuthConfig, resolveAuthConfigFromSessionAuth } from '../config.js';
 import { client, getOidcConfig } from '../oidc.server.js';
 import { deleteSession, getSession, getSessionControlState, updateSession } from '../redis-session.server.js';
 import { isTokenErrorLike } from '../shared/error-guards.js';
@@ -62,16 +62,7 @@ const hydrateSessionUserFromAccessToken = async (
     return session.user ?? null;
   }
 
-  const authConfig = session.auth
-    ? {
-        ...getAuthConfig(),
-        instanceId: session.auth.instanceId,
-        authRealm: session.auth.authRealm,
-        issuer: session.auth.issuer,
-        clientId: session.auth.clientId,
-        postLogoutRedirectUri: session.auth.postLogoutRedirectUri,
-      }
-    : getAuthConfig();
+  const authConfig = session.auth ? resolveAuthConfigFromSessionAuth(session.auth) : getAuthConfig();
   const hydratedUser = buildSessionUser({
     accessToken: session.accessToken,
     claims: {},
@@ -97,16 +88,7 @@ const hydrateSessionUserFromAccessToken = async (
 };
 
 const refreshSession = async (sessionId: string, session: Session) => {
-  const authConfig = session.auth
-    ? {
-        ...getAuthConfig(),
-        instanceId: session.auth.instanceId,
-        authRealm: session.auth.authRealm,
-        issuer: session.auth.issuer,
-        clientId: session.auth.clientId,
-        postLogoutRedirectUri: session.auth.postLogoutRedirectUri,
-      }
-    : getAuthConfig();
+  const authConfig = session.auth ? resolveAuthConfigFromSessionAuth(session.auth) : getAuthConfig();
   const config = await getOidcConfig(authConfig);
   const refreshed = await client.refreshTokenGrant(config, session.refreshToken ?? '');
   const updatedUser = buildSessionUser({

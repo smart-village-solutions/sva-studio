@@ -8,7 +8,6 @@ import {
 
 import type { InstanceRegistryRepository } from '@sva/data';
 import type {
-  ChangeInstanceStatusInput,
   CreateInstanceProvisioningInput,
   InstanceRegistryService,
   InstanceRegistryServiceDeps,

@@ -1,4 +1,4 @@
-import type { AuthConfig } from './types.js';
+import type { AuthConfig, SessionAuthContext } from './types.js';
 import { isTrafficEnabledInstanceStatus, normalizeHost } from '@sva/core';
 import { loadInstanceByHostname, loadInstanceById } from '@sva/data/server';
 import { getInstanceConfig } from '@sva/sdk/server';
@@ -27,7 +27,7 @@ const readNumber = (key: string, fallback: number) => {
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
-const resolveBaseAuthConfig = () => {
+export const resolveBaseAuthConfig = () => {
   const clientSecret = getAuthClientSecret();
   if (!clientSecret) {
     throw new Error(
@@ -51,7 +51,13 @@ const resolveBaseAuthConfig = () => {
   };
 };
 
-const normalizeBaseUrl = (value: string): string => value.replace(/\/+$/, '');
+const normalizeBaseUrl = (value: string): string => {
+  let end = value.length;
+  while (end > 0 && value[end - 1] === '/') {
+    end -= 1;
+  }
+  return end === value.length ? value : value.slice(0, end);
+};
 
 const buildIssuerUrl = (realm: string, explicitIssuerUrl?: string): string => {
   if (explicitIssuerUrl) {
@@ -82,6 +88,11 @@ const mergeAuthConfig = (
   ...overrides,
   clientSecret: base.clientSecret,
   loginStateSecret: base.loginStateSecret,
+});
+
+export const resolveAuthConfigFromSessionAuth = (auth: SessionAuthContext) => ({
+  ...resolveBaseAuthConfig(),
+  ...auth,
 });
 
 /**

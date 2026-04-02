@@ -6,6 +6,18 @@ import type { AuthConfig } from './types.js';
 
 const configPromises = new Map<string, Promise<client.Configuration>>();
 const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
+const MAX_OIDC_CONFIG_CACHE_ENTRIES = 32;
+
+const evictOldestOidcConfig = (): void => {
+  if (configPromises.size < MAX_OIDC_CONFIG_CACHE_ENTRIES) {
+    return;
+  }
+
+  const oldestKey = configPromises.keys().next().value;
+  if (oldestKey) {
+    configPromises.delete(oldestKey);
+  }
+};
 
 /**
  * Returns a cached OpenID Connect client configuration.
@@ -39,6 +51,7 @@ export const getOidcConfig = async (
     }
   );
 
+  evictOldestOidcConfig();
   configPromises.set(cacheKey, promise);
   return promise;
 };

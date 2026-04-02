@@ -137,6 +137,7 @@ describe('ModalDialog', () => {
     );
 
     expect(screen.getByText('Dialog Beschreibung')).toBeTruthy();
+    expect(screen.getByRole('dialog', { name: 'Dialog' }).getAttribute('aria-describedby')).toBeTruthy();
   });
 
   it('restores focus to trigger when dialog closes', () => {

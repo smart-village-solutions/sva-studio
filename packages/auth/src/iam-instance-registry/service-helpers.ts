@@ -54,13 +54,27 @@ export const createAuditDetails = (
 
 export const getStatusOperation = (
   status: ChangeInstanceStatusInput['nextStatus']
-): 'activate' | 'suspend' | 'archive' =>
-  status === 'active' ? 'activate' : status === 'suspended' ? 'suspend' : 'archive';
+): 'activate' | 'suspend' | 'archive' => {
+  if (status === 'active') {
+    return 'activate';
+  }
+  if (status === 'suspended') {
+    return 'suspend';
+  }
+  return 'archive';
+};
 
 export const getAuditEventType = (
   status: ChangeInstanceStatusInput['nextStatus']
-): 'instance_activated' | 'instance_suspended' | 'instance_archived' =>
-  status === 'active' ? 'instance_activated' : status === 'suspended' ? 'instance_suspended' : 'instance_archived';
+): 'instance_activated' | 'instance_suspended' | 'instance_archived' => {
+  if (status === 'active') {
+    return 'instance_activated';
+  }
+  if (status === 'suspended') {
+    return 'instance_suspended';
+  }
+  return 'instance_archived';
+};
 
 export const createStatusArtifacts = async (
   repository: InstanceRegistryRepository,

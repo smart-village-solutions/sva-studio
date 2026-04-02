@@ -20,10 +20,12 @@
 
 - **Kritisch:** Während der Entwicklung immer Unit- und Type-Tests ausführen – bei Fehlschlägen nicht weitermachen
 - **Testarten:** `pnpm test:unit`, `pnpm test:types`, `pnpm test:eslint`, `pnpm test:e2e`
+- **PR-Standard-Gate (bevorzugt):** Vor PR-Erstellung und vor Push nach Möglichkeit `pnpm test:pr` ausführen; dieser Workflow deckt affected Coverage, Coverage-Gate, Complexity-Gate, Integrationstests und den Frontend-Build ab
+- **Coverage-PR-Gate:** Wenn gezielt Coverage für einen PR geprüft werden soll, `pnpm test:coverage:pr` verwenden
 - **Komplette CI-Suite:** `pnpm test:ci`
 - **ESLint ausführen:** `pnpm lint`
 - **Shift-left (verbindlich):** Nach jedem abgeschlossenen Änderungsblock sofort die betroffenen Tests ausführen (nicht erst am Ende der Umsetzung)
-- **Push-Gate (verbindlich):** Vor jedem Push mindestens `pnpm nx affected --target=test:unit --base=origin/main` ausführen; bei Typänderungen zusätzlich `pnpm nx affected --target=test:types --base=origin/main`
+- **Push-Gate (Mindestanforderung):** Wenn `pnpm test:pr` aus Zeit- oder Ressourcen-Gründen nicht läuft, vor jedem Push mindestens `pnpm nx affected --target=test:unit --base=origin/main` ausführen; bei Typänderungen zusätzlich `pnpm nx affected --target=test:types --base=origin/main`
 - **Arbeitsregel:** Keine weitere Implementierung auf bekannt rotem Teststand
 - **Effizienter, zielgerichteter Test-Workflow:**
   1. **Nur affected:** `pnpm nx affected --target=test:unit` (vergleicht mit `main`-Branch)
@@ -37,6 +39,8 @@
 
 ## PR-Anweisungen
 
+- Für die PR-Vorbereitung bevorzugt immer `pnpm test:pr` statt nur einzelner Teilchecks ausführen
+- Wenn nur Coverage/Change-Risk für den PR geprüft werden soll, `pnpm test:coverage:pr` verwenden
 - Vor dem Commit immer `pnpm test:unit`, `pnpm test:types`, `pnpm test:eslint` und `pnpm test:e2e` ausführen
 - Änderungen an den relevanten Stellen testen
 - Bei neuen Features die passende Doku im Verzeichnis `docs/` aktualisieren

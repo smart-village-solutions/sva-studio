@@ -18,9 +18,11 @@ Die folgenden Status-Checks muessen im Branch-Schutz fuer `main` als **required*
 | `Unit / unit` | Root-Command `pnpm test:unit` | immer |
 | `Types / types` | Root-Command `pnpm test:types` | immer |
 | `Test Coverage / coverage` | Workflow `.github/workflows/test-coverage.yml`, Job `coverage` | immer |
-| `App E2E / e2e` | Workflow `.github/workflows/app-e2e.yml`, Job `e2e` | nur bei Pfadtreffern gemaess `app-e2e.yml` (`apps/sva-studio-react/**`, `packages/auth/**`, `packages/routing/**`, `packages/plugin-example/**`, `docker-compose*.yml`, `dev/monitoring/**`, Workflow-Datei selbst) |
+| `App E2E / e2e` | Workflow `.github/workflows/app-e2e.yml`, Job `e2e` | Zielmodell: immer required. Der Workflow muss dafuer fuer alle PRs laufen und bei Nicht-Treffern fruehzeitig mit `success` enden. Solange `.github/workflows/app-e2e.yml` noch ueber `pull_request.paths` eingeschraenkt ist, darf der Check nicht als strikt required fuer alle PRs konfiguriert werden. |
 
 Verbindliche Regel: Kein unspezifisches "CI ist gruen". Entscheidend sind genau die oben genannten Check-Namen.
+
+Hinweis zur aktuellen Repository-Situation: `.github/workflows/app-e2e.yml` verwendet derzeit `pull_request.paths`. Damit ist die oben beschriebene Zielkonfiguration fuer `App E2E / e2e` noch nicht vollstaendig technisch durchgesetzt und muss vor harter Aktivierung angepasst werden.
 
 ## Review-Anforderungen
 

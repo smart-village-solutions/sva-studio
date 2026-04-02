@@ -17,9 +17,9 @@ Es gibt keine unbefristeten Integrations-Branches außer `main`.
 Alle Klassen verwenden dasselbe Namensmuster:
 
 - Format: `<klasse>/<kebab-case-beschreibung>`
-- Regex (final): `^(feature|fix|chore|stack|epic)/[a-z0-9]+(-[a-z0-9]+)*$`
-- Zeichenregeln: nur Kleinbuchstaben `a-z`, Ziffern `0-9` und Bindestrich `-`
-- Verbote: Leerzeichen, Umlaute im Branch-Namen, Unterstriche, doppelte Slash-Segmente
+- Regex (final, Policy): `^(feature|fix|chore|stack|epic)/[a-z0-9]+(-[a-z0-9]+)*$`
+- Zeichenregeln (Policy): nur Kleinbuchstaben `a-z`, Ziffern `0-9` und Bindestrich `-`
+- Verbote (Policy): Leerzeichen, Umlaute im Branch-Namen, Unterstriche, doppelte Slash-Segmente sowie Backticks `` ` `` und einfache/doppelte Anführungszeichen `'` / `"`
 
 ## Klassen, Verwendung und TTL
 
@@ -108,6 +108,7 @@ Alle Klassen verwenden dasselbe Namensmuster:
 Aktueller Hook-Stand (`.githooks/reference-transaction:14-15`):
 
 - Erlaubte Prefixes derzeit: `feature|fix|chore|docs|setup|adr|hotfix|epic|release|refactor|dev`
+- Erlaubtes Zeichenset im Hook ist aktuell weiter gefasst als die finale Policy und akzeptiert zusaetzlich Backticks und doppelte Anfuehrungszeichen.
 - Damit sind `feature/`, `fix/`, `chore/`, `epic/` bereits validierbar.
 - `stack/` ist im Hook noch nicht freigeschaltet.
 
@@ -115,6 +116,7 @@ Migrationsregel bis Hook-Anpassung:
 
 - Diese Taxonomie ist das Zielmodell für neue Branches.
 - Für vollständige technische Durchsetzung muss `stack` in die Hook-Prefixliste aufgenommen werden.
+- Fuer vollständige Zeichensatz-Durchsetzung muss der Hook zudem auf das finale Policy-Regex verengt werden.
 - Bis zur Hook-Migration sind `stack/*`-Branches Governance-konform, werden lokal aber erst nach Hook-Update strikt validiert.
 
 ## QA-Kriterien

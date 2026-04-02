@@ -103,6 +103,6 @@ escalation:
 
 ## Referenz fuer CI-Implementierung
 
-- Workflow-Datei: `.github/workflows/stacked-pr-governance.yml`.
+- Geplante Workflow-Datei: `.github/workflows/stacked-pr-governance.yml` (zum Zeitpunkt dieses Dokuments noch nicht im Repository angelegt).
 - Job-Frequenz muss den Triggern entsprechen (`schedule` alle 6h plus `pull_request` und `push`).
 - Bei `fail` muss der Job mit Exit-Code `1` enden.

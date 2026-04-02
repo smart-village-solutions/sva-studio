@@ -238,4 +238,4 @@ preview_budget_utilization_percentage
 **Erstellt:** 2026-02-19  
 **Letzte Aktualisierung:** 2026-02-19  
 **Status:** Aktiv (Pilot-Phase)  
-**Nächstes Review:** Tag 30 (2026-03-21)
+**Nächstes Review:** Tag 30 nach Start der Pilot-Phase

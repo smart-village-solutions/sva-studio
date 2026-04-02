@@ -18,13 +18,19 @@ Die folgenden Checks muessen in GitHub Branch Protection fuer `main` als `requir
 2. `Unit / unit`
 3. `Types / types`
 4. `Test Coverage / coverage`
-5. `App E2E / e2e` (nur wenn `apps/` betroffen ist)
+5. `App E2E / e2e`
 
 Quellen:
 
 - Coverage-Workflow: `.github/workflows/test-coverage.yml`
 - E2E-Workflow: `.github/workflows/app-e2e.yml`
 - Gate-Baseline: `docs/governance/merge-review-gates.md`
+
+Enforcement-Hinweis fuer `App E2E / e2e`:
+
+- Zielmodell: Der Check ist in Branch Protection immer als `required` hinterlegt.
+- Technische Voraussetzung: `.github/workflows/app-e2e.yml` muss dafuer fuer alle PRs laufen und bei PRs ohne relevante Pfadtreffer fruehzeitig mit Status `success` enden.
+- Solange der Workflow noch ueber `pull_request.paths` eingeschraenkt ist, darf der Check nicht als strikt required fuer alle PRs aktiviert werden, damit PRs ohne Trigger nicht im Status `expected` haengen bleiben.
 
 ### Required Reviews
 

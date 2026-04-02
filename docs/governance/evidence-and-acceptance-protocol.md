@@ -2,7 +2,7 @@
 
 > Standard für Evidence-basierte Qualitätssicherung und Agent-exekutierbare Verifikation
 
-**Gültigkeitsbereich**: Alle Governance-Arbeiten, die über `.sisyphus/plans/*.md` strukturiert sind  
+**Gültigkeitsbereich**: Alle Governance-Arbeiten, die - sofern im Repository genutzt - über `.sisyphus/plans/*.md` oder eine projektspezifisch definierte Plan-Ablage strukturiert sind  
 **Version**: 1.0  
 **Letzte Aktualisierung**: 2026-02-19
 
@@ -160,7 +160,7 @@ Eine Aufgabe gilt als **NICHT ABGESCHLOSSEN**, wenn nicht für jedes QA-Szenario
 **Beispiel**:
 ```bash
 # Szenario: Concurrency Cap validieren
-grep -E "max_active_previews|priority_queue_max" docs/governance/preview-capacity-constraints.md \
+grep -E "max_active_previews|priority_queue_max" docs/governance/preview-cost-capacity-guardrails.md \
   > .sisyphus/evidence/task-8-concurrency-cap.txt
 
 git add .sisyphus/evidence/task-8-concurrency-cap.txt
@@ -199,7 +199,7 @@ test -f .sisyphus/evidence/task-8-concurrency-cap.txt && \
 
 ### 5.1 Verzeichnisstruktur
 
-**Pfad**: `.sisyphus/evidence/` (flat structure)
+**Pfad**: `.sisyphus/evidence/` (flat structure), sofern dieses Evidence-Schema im Projekt initialisiert wurde; andernfalls ist die im Projekt definierte gleichwertige Ablage zu verwenden.
 
 **Rationale**:
 - Einfache Glob-Patterns (`task-*.txt`)

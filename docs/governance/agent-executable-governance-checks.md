@@ -2,7 +2,7 @@
 
 ## Ziel
 
-Dieser Katalog übersetzt die Governance-Regeln aus T2-T14 in deterministische, tool-basierte Prüfungen mit klaren PASS/FAIL-Kriterien. Alle Kommandos sind ohne Platzhalter und für `smart-village-solutions/sva-studio` direkt ausführbar.
+Dieser Katalog übersetzt die Governance-Regeln aus T2-T14 in deterministische, tool-basierte Prüfungen mit klaren PASS/FAIL-Kriterien. Alle Kommandos sind ohne Platzhalter formuliert und im Kontext eines vollständig initialisierten Governance-/Evidence-Setups für `smart-village-solutions/sva-studio` direkt ausführbar.
 
 ## Prüfumfang
 
@@ -44,12 +44,12 @@ Governance Source: T2 - branch-taxonomy.md + .githooks/reference-transaction
 Tool: `bash`
 Command:
 ```bash
-grep -E "^prefixes='" .githooks/reference-transaction && grep -F "stack/ ist im Hook noch nicht freigeschaltet" docs/governance/branch-taxonomy.md
+grep -E "^prefixes='" .githooks/reference-transaction && grep -F '`stack/` ist im Hook noch nicht freigeschaltet.' docs/governance/branch-taxonomy.md
 ```
 Expected:
 ```
 prefixes='feature|fix|chore|docs|setup|adr|hotfix|epic|release|refactor|dev'
-- stack/ ist im Hook noch nicht freigeschaltet.
+- `stack/` ist im Hook noch nicht freigeschaltet.
 ```
 Failure:
 - Hook-Zeile nicht auffindbar

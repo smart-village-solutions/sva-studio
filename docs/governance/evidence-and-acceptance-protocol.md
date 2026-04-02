@@ -60,7 +60,7 @@ task-{N}-{scenario-slug}.{ext}
 | `.txt` | Plain-Text-Output, Grep-Ergebnisse, Validierungslogs, einfache Assertions | Command-Output, Counts, Boolean-Checks | `task-8-concurrency-cap.txt` |
 | `.json` | Strukturierte Daten, API-Responses, Konfigurationssnapshots | GitHub API Response, Parsed Config | `task-10-branch-protection.json` |
 | `.log` | Vollständige Command-Logs mit Zeitstempeln, Debug-Output | CI-Run-Logs, Multi-Command-Execution | `task-12-migration-coverage.log` |
-| `.md` | Strukturierte Reports, Tabellen, mehrsektige Analysen | Vergleichsmatrizen, Feature-Analysen | `task-6-comparison-matrix.md` |
+| `.md` | Strukturierte Reports, Tabellen, mehrseitige Analysen | Vergleichsmatrizen, Feature-Analysen | `task-6-comparison-matrix.md` |
 
 #### Beispiel: `.txt` (Plain Text)
 ```

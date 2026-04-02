@@ -69,10 +69,10 @@ grep -A10 "ttl_days:" docs/governance/stacked-pr-rules.md
 Expected:
 ```
 ttl_days:
-  docs: 3
   fix: 3
   chore: 7
   feature: 7
+  stack: 7
   epic: 14
 ```
 Failure:
@@ -88,7 +88,7 @@ Governance Source: T3 - stacked-pr-rules.md
 Tool: `bash`
 Command:
 ```bash
-grep -E "max_stack_depth:[[:space:]]*3|`max_stack_depth = 3`" docs/governance/stacked-pr-rules.md
+grep -E 'max_stack_depth:[[:space:]]*3|`max_stack_depth = 3`' docs/governance/stacked-pr-rules.md
 ```
 Expected:
 ```
@@ -173,7 +173,7 @@ Governance Source: T4 - merge-review-gates.md
 Tool: `bash`
 Command:
 ```bash
-grep -E "`(Lint / lint|Unit / unit|Types / types|Test Coverage / coverage|App E2E / e2e)`" docs/governance/merge-review-gates.md
+grep -E '`(Lint / lint|Unit / unit|Types / types|Test Coverage / coverage|App E2E / e2e)`' docs/governance/merge-review-gates.md
 ```
 Expected:
 ```
@@ -236,7 +236,7 @@ Governance Source: T4/T10 - merge-review-gates.md + branch-protection-merge-queu
 Tool: `bash`
 Command:
 ```bash
-grep -E "mindestens `2`|`> 30`|kritischen Pfad" docs/governance/branch-protection-merge-queue-policy.md
+grep -E 'mindestens `2`|`> 30`|kritischen Pfad' docs/governance/branch-protection-merge-queue-policy.md
 ```
 Expected:
 ```
@@ -297,7 +297,7 @@ Governance Source: T10 - branch-protection-merge-queue-policy.md
 Tool: `bash`
 Command:
 ```bash
-grep -E "Dismiss stale approvals: aktiviert|Require conversation resolution before merge: aktiviert|Force-push auf `main`: verboten|Deletion von `main`: verboten" docs/governance/branch-protection-merge-queue-policy.md
+grep -E 'Dismiss stale approvals: aktiviert|Require conversation resolution before merge: aktiviert|Force-push auf `main`: verboten|Deletion von `main`: verboten' docs/governance/branch-protection-merge-queue-policy.md
 ```
 Expected:
 ```
@@ -365,7 +365,7 @@ Governance Source: T7 - preview-lifecycle-policy.md
 Tool: `bash`
 Command:
 ```bash
-grep -E "\| `opened` \||\| `synchronize` \||\| `closed` \|" docs/governance/preview-lifecycle-policy.md
+grep -E '\| `opened` \||\| `synchronize` \||\| `closed` \|' docs/governance/preview-lifecycle-policy.md
 ```
 Expected:
 ```
@@ -408,7 +408,7 @@ Governance Source: T7 - preview-lifecycle-policy.md
 Tool: `bash`
 Command:
 ```bash
-grep -E "15 Minuten|2 Stunden|Hard-TTL: `14` Tage|Inaktivitaets-TTL: `7` Tage" docs/governance/preview-lifecycle-policy.md
+grep -E '15 Minuten|2 Stunden|Hard-TTL: `14` Tage|Inaktivitaets-TTL: `7` Tage' docs/governance/preview-lifecycle-policy.md
 ```
 Expected:
 ```
@@ -430,7 +430,7 @@ Governance Source: T7 - preview-lifecycle-policy.md
 Tool: `bash`
 Command:
 ```bash
-grep -E "Retry 1: nach `5` Minuten|Retry 2: nach `15` Minuten|Retry 3: nach `60` Minuten|Incident-Label `preview-cleanup-failed`|Sweep-Job \(`24` Stunden Takt\)" docs/governance/preview-lifecycle-policy.md
+grep -E 'Retry 1: nach `5` Minuten|Retry 2: nach `15` Minuten|Retry 3: nach `60` Minuten|Incident-Label `preview-cleanup-failed`|Sweep-Job \(`24` Stunden Takt\)' docs/governance/preview-lifecycle-policy.md
 ```
 Expected:
 ```
@@ -454,7 +454,7 @@ Governance Source: T8 - preview-cost-capacity-guardrails.md
 Tool: `bash`
 Command:
 ```bash
-grep -E "max_active_previews`: `10`|Maximale Queue-Länge: `5` PRs" docs/governance/preview-cost-capacity-guardrails.md
+grep -E 'max_active_previews`: `10`|Maximale Queue-Länge: `5` PRs' docs/governance/preview-cost-capacity-guardrails.md
 ```
 Expected:
 ```
@@ -474,7 +474,7 @@ Governance Source: T8 - preview-cost-capacity-guardrails.md
 Tool: `bash`
 Command:
 ```bash
-grep -E "2 Labels pro Team pro Woche|automatisch auf `priority:default` zurückgesetzt" docs/governance/preview-cost-capacity-guardrails.md
+grep -E '2 Labels pro Team pro Woche|automatisch auf `priority:default` zurückgesetzt' docs/governance/preview-cost-capacity-guardrails.md
 ```
 Expected:
 ```
@@ -494,7 +494,7 @@ Governance Source: T8 - preview-cost-capacity-guardrails.md
 Tool: `bash`
 Command:
 ```bash
-grep -E "Stale-Schwelle.*7 Tage|Auto-Destroy-Schwelle.*14 Tage|Maximale Verlängerungen: `2x`" docs/governance/preview-cost-capacity-guardrails.md
+grep -E 'Stale-Schwelle.*7 Tage|Auto-Destroy-Schwelle.*14 Tage|Maximale Verlängerungen: `2x`' docs/governance/preview-cost-capacity-guardrails.md
 ```
 Expected:
 ```
@@ -516,7 +516,7 @@ Governance Source: T8 - preview-cost-capacity-guardrails.md
 Tool: `bash`
 Command:
 ```bash
-grep -E "Retry-Logik: 3 Versuche im Abstand von `5 Minuten`|SRE-Team muss innerhalb von 24 Stunden" docs/governance/preview-cost-capacity-guardrails.md
+grep -E 'Retry-Logik: 3 Versuche im Abstand von `5 Minuten`|SRE-Team muss innerhalb von 24 Stunden' docs/governance/preview-cost-capacity-guardrails.md
 ```
 Expected:
 ```

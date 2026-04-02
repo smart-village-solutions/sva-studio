@@ -6,7 +6,7 @@ Dieses Dokument definiert messbare Leitplanken für Preview-Umgebungen, um Koste
 
 ## Kontext
 
-- Preview-Umgebungen werden automatisch für jeden PR bereitgestellt (siehe `docs/governance/branch-preview-lifecycle.md`).
+- Preview-Umgebungen werden automatisch für jeden PR bereitgestellt (siehe `docs/governance/preview-lifecycle-policy.md`).
 - Ohne Kapazitätsgrenzen können parallele PRs unkontrollierte Kosten oder Ressourcenknappheit verursachen.
 - Die Regeln müssen operational messbar sein (numerische Trigger, nicht "bei Bedarf").
 
@@ -221,9 +221,9 @@ preview_budget_utilization_percentage
 
 ## Abhängigkeiten zu anderen Governance-Dokumenten
 
-- `docs/governance/branch-preview-lifecycle.md` (T1): Definiert Event-Trigger (`opened/synchronize/closed`).
-- `docs/governance/branch-naming-conventions.md` (T2): Bestimmt welche Branches überhaupt Previews erhalten.
-- `docs/governance/merge-gates-checklist.md` (T4): Merge darf Preview-Tests nicht blockieren (parallel-path).
+- `docs/governance/preview-lifecycle-policy.md` (T7): Definiert Event-Trigger (`opened/synchronize/closed`).
+- `docs/governance/branch-taxonomy.md` (T2): Bestimmt welche Branches überhaupt Previews erhalten.
+- `docs/governance/merge-review-gates.md` (T4): Merge darf Preview-Tests nicht blockieren (parallel-path).
 - `docs/governance/preview-platform-comparison.md` (T6): Kostenmodell und Plattform-Constraints.
 
 ## Review und Aktualisierung

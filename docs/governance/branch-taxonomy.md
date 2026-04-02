@@ -27,7 +27,10 @@ Alle Klassen verwenden dasselbe Namensmuster:
 
 - Zweck: Neue fachliche Funktionalität mit produktrelevantem Mehrwert
 - Basisbranch: `main` (oder bei Stacking der direkte Vorgänger-Branch)
-- TTL: keine harte TTL, aber kurzlebig halten (Review-ready in wenigen Tagen)
+- **TTL (hart): max. 7 Kalendertage ab Branch-Erstellung**
+- **TTL-Verhalten:**
+  - Tag 5: Review-Status prüfen und ggf. rebasen/splitten
+  - Tag 7: Branch muss gemerged, retargetet oder geschlossen werden
 
 **Gültige Beispiele:**
 - `feature/user-profile-editor`
@@ -40,7 +43,10 @@ Alle Klassen verwenden dasselbe Namensmuster:
 
 - Zweck: Fehlerbehebungen mit klarer Ursache/Wirkung
 - Basisbranch: `main` (oder direkter Stack-Vorgänger)
-- TTL: keine harte TTL, schnell integrieren
+- **TTL (hart): max. 3 Kalendertage ab Branch-Erstellung**
+- **TTL-Verhalten:**
+  - Tag 2: Status prüfen und offene Blocker beseitigen
+  - Tag 3: Branch muss gemerged oder geschlossen werden
 
 **Gültige Beispiele:**
 - `fix/session-timeout-race`
@@ -53,7 +59,10 @@ Alle Klassen verwenden dasselbe Namensmuster:
 
 - Zweck: Wartung, Build/Tooling, Refactoring ohne direktes Feature-Verhalten
 - Basisbranch: `main` (oder direkter Stack-Vorgänger)
-- TTL: keine harte TTL, klein schneiden
+- **TTL (hart): max. 7 Kalendertage ab Branch-Erstellung**
+- **TTL-Verhalten:**
+  - Tag 5: Scope prüfen und bei Bedarf weiter aufteilen
+  - Tag 7: Branch muss gemerged, retargetet oder geschlossen werden
 
 **Gültige Beispiele:**
 - `chore/update-nx-cache-keys`

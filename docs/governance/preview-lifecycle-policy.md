@@ -7,7 +7,7 @@ Diese Policy definiert den verbindlichen Lifecycle fuer PR-Preview-Umgebungen im
 - Managed Preview-Plattformen (z. B. Vercel)
 - Self-hosted Preview-Laufzeiten (z. B. VM/Kubernetes)
 
-Nicht erlaubt sind manuelle Sonderwege je Teammitglied. Jeder offene PR folgt exakt demselben Lifecycle und endet immer mit automatischer Entsorgung.
+Nicht erlaubt sind manuelle, nicht dokumentierte Sonderwege je Teammitglied. Jeder offene PR folgt exakt demselben Lifecycle und endet immer mit automatischer Entsorgung. Die in `docs/governance/preview-cost-capacity-guardrails.md` beschriebenen manuellen PR-Kommandos (`/preview keep`, `/preview recreate`) sind Teil dieses standardisierten Lifecycles und explizit zugelassene Interaktionen; sie stellen kein Opt-out von der automatischen Entsorgung dar.
 
 ## Event-zu-Aktion-Mapping (genau ein Schritt pro Event)
 

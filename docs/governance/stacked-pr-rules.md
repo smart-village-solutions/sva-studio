@@ -10,10 +10,10 @@ Diese Regeln gelten fuer alle Branches und Pull Requests im Trunk-plus-Stacked-M
 policy_version: 1
 max_stack_depth: 3
 ttl_days:
-  docs: 3
   fix: 3
   chore: 7
   feature: 7
+  stack: 7
   epic: 14
 rebase:
   cadence_hours: 24
@@ -53,13 +53,13 @@ escalation:
 ## Regel 2: TTL pro Branch-Klasse
 
 - TTL startet bei `branch_created_at`.
-- Branch-Klasse wird aus Prefix gelesen (`docs/`, `fix/`, `chore/`, `feature/`, `epic/`).
+- Branch-Klasse wird aus Prefix gelesen (`fix/`, `chore/`, `feature/`, `stack/`, `epic/`).
 - Verbot: `now - branch_created_at > ttl_days[class]`.
 - Grenzwerte:
-  - `docs`: 3 Tage
   - `fix`: 3 Tage
   - `chore`: 7 Tage
   - `feature`: 7 Tage
+  - `stack`: 7 Tage
   - `epic`: 14 Tage
 - Durchsetzung bei TTL-Verletzung: Label `governance/ttl-violated` setzen und Merge blockieren.
 

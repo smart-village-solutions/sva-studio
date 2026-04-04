@@ -81,6 +81,7 @@ describe('runtime auth config resolution', () => {
       SVA_AUTH_CLIENT_SECRET: 'global-secret',
       SVA_AUTH_REDIRECT_URI: 'https://studio.smart-village.app/auth/callback',
       SVA_AUTH_POST_LOGOUT_REDIRECT_URI: 'https://studio.smart-village.app/',
+      SVA_TRUST_FORWARDED_HEADERS: 'true',
     };
     delete process.env.KEYCLOAK_ADMIN_BASE_URL;
     state.instanceConfig = { instanceId: 'bb-guben' };

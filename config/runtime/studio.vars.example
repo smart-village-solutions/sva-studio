@@ -74,6 +74,7 @@ SVA_IMAGE_REPOSITORY=sva-studio
 ENABLE_OTEL=false
 # OTEL_EXPORTER_OTLP_ENDPOINT wird nur benoetigt, wenn ENABLE_OTEL=true gesetzt ist.
 SVA_ENABLE_SERVER_CONSOLE_LOGS=true
+SVA_TRUST_FORWARDED_HEADERS=true
 # Observability-Overlays fuer Operatoren koennen lokal in ~/.config/quantum/env liegen:
 # SVA_GRAFANA_URL=https://logs.tpwd.de
 # SVA_LOKI_URL=<loki-endpoint>

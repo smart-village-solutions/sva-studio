@@ -46,6 +46,7 @@ Damit kann `env:doctor:*` in allen Profilen denselben Actor-/Membership-Pfad pr√
 Fuer `studio` gilt zusaetzlich ein expliziter Observability-Vertrag:
 
 - `ENABLE_OTEL=false` plus `SVA_ENABLE_SERVER_CONSOLE_LOGS=true` bedeutet `console_to_loki` und ist in der fruehen Testphase der bevorzugte Diagnosepfad
+- `SVA_TRUST_FORWARDED_HEADERS=true` aktiviert im Reverse-Proxy-Betrieb die Auswertung von `X-Forwarded-*` und `Forwarded`; ohne dieses Flag faellt die Host-/Proto-Aufloesung strikt auf `request.url` zurueck
 - `ENABLE_OTEL=true` bedeutet `otel_to_loki`; der Bootstrap muss dann `observability_ready` schreiben
 - Fuer `studio` ist der belastbare Tenant-Auth-Beweis erreicht, wenn nach frischen `/auth/login`-Probes in Loki `tenant_auth_resolution_summary` mit `secret_source="tenant"` und `oidc_cache_key_scope="tenant_secret"` fuer die aktiven Tenants sichtbar ist
 - wenn weder OTEL noch produktive Console-Logs aktiv sind, gilt das Profil als `degraded` und `doctor`/`precheck` muessen daran scheitern

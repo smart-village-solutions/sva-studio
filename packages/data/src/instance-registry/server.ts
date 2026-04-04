@@ -182,7 +182,7 @@ export const loadInstanceByHostname = async (
   const cached = hostCache.get(cacheKey);
 
   if (cached && cached.expiresAt > now()) {
-    logger.info('Instance hostname lookup served from cache', {
+    logger.debug('Instance hostname lookup served from cache', {
       hostname: normalizedHostname,
       cache_hit: true,
       instance_id: cached.value?.instanceId ?? undefined,
@@ -196,7 +196,7 @@ export const loadInstanceByHostname = async (
       try {
         const repository = createInstanceRegistryRepository(createExecutor(client));
         const result = await repository.resolveHostname(normalizedHostname);
-        logger.info('Instance hostname lookup completed via database', {
+        logger.debug('Instance hostname lookup completed via database', {
           hostname: normalizedHostname,
           cache_hit: false,
           instance_id: result?.instanceId ?? undefined,

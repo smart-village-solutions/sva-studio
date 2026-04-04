@@ -23,4 +23,19 @@ describe('logger/index.server logging mode metadata', () => {
       logging_mode: 'degraded',
     });
   });
+
+  it('uses the effective logger environment for console transport and metadata', () => {
+    const logger = createSdkLogger({
+      component: 'logging-mode-test',
+      environment: 'test',
+      enableConsole: true,
+      enableOtel: false,
+    });
+
+    expect((logger as unknown as { defaultMeta?: Record<string, unknown> }).defaultMeta).toMatchObject({
+      component: 'logging-mode-test',
+      environment: 'test',
+      logging_mode: 'console_to_loki',
+    });
+  });
 });

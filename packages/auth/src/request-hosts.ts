@@ -1,5 +1,33 @@
 import { normalizeHost } from '@sva/core';
 
+const parseBooleanEnv = (value: string | undefined): boolean | null => {
+  const normalized = value?.trim().toLowerCase();
+  if (!normalized) {
+    return null;
+  }
+
+  if (normalized === 'true' || normalized === '1') {
+    return true;
+  }
+  if (normalized === 'false' || normalized === '0') {
+    return false;
+  }
+
+  return null;
+};
+
+const shouldTrustForwardedHeaders = (): boolean =>
+  parseBooleanEnv(process.env.SVA_TRUST_FORWARDED_HEADERS) ?? process.env.NODE_ENV === 'production';
+
+const normalizeTrustedProto = (value: string | null): string | null => {
+  const normalized = value?.trim().toLowerCase() ?? null;
+  if (normalized === 'http' || normalized === 'https') {
+    return normalized;
+  }
+
+  return null;
+};
+
 const readForwardedPair = (forwarded: string | null, key: 'host' | 'proto'): string | null => {
   if (!forwarded) {
     return null;
@@ -40,7 +68,7 @@ export const parseForwardedHost = (value: string | null): string | null => {
 
 export const parseForwardedProto = (value: string | null): string | null => {
   const proto = readForwardedPair(value, 'proto');
-  return proto ? proto.toLowerCase() : null;
+  return normalizeTrustedProto(proto);
 };
 
 const parseHostHeader = (value: string | null): string | null => {
@@ -50,21 +78,29 @@ const parseHostHeader = (value: string | null): string | null => {
 
 const parseProtoHeader = (value: string | null): string | null => {
   const proto = value?.split(',')[0]?.trim() ?? null;
-  return proto ? proto.toLowerCase() : null;
+  return normalizeTrustedProto(proto);
 };
 
 export const resolveEffectiveRequestHost = (request: Request): string => {
   const url = new URL(request.url);
+  if (!shouldTrustForwardedHeaders()) {
+    return normalizeHost(url.host);
+  }
+
   return (
     parseHostHeader(request.headers.get('x-forwarded-host')) ??
-    parseHostHeader(request.headers.get('host')) ??
     parseForwardedHost(request.headers.get('forwarded')) ??
+    parseHostHeader(request.headers.get('host')) ??
     normalizeHost(url.host)
   );
 };
 
 export const resolveEffectiveRequestProtocol = (request: Request): string => {
   const url = new URL(request.url);
+  if (!shouldTrustForwardedHeaders()) {
+    return url.protocol.replace(/:$/, '');
+  }
+
   return (
     parseProtoHeader(request.headers.get('x-forwarded-proto')) ??
     parseForwardedProto(request.headers.get('forwarded')) ??

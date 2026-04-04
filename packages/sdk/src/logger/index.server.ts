@@ -235,11 +235,11 @@ export const createSdkLogger = ({
   }
 
   if (consoleEnabled) {
-    transportsArray.push(buildConsoleTransport(runtimeConfig.environment));
+    transportsArray.push(buildConsoleTransport(environment));
   }
 
   if (transportsArray.length === 0) {
-    transportsArray.push(buildConsoleTransport(runtimeConfig.environment, true));
+    transportsArray.push(buildConsoleTransport(environment, true));
   }
 
   const logger = winston.createLogger({

@@ -64,6 +64,7 @@ vi.mock('./legal-text-enforcement.server', () => ({
 describe('withAuthenticatedUser', () => {
   beforeEach(() => {
     vi.unstubAllEnvs();
+    vi.stubEnv('SVA_TRUST_FORWARDED_HEADERS', 'true');
     vi.resetAllMocks();
     loadInstanceByHostnameMock.mockResolvedValue(null);
     instanceConfigState.canonicalAuthHost = 'studio.example.org';

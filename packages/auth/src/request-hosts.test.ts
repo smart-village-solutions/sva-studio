@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 import {
   buildRequestOriginFromHeaders,
@@ -9,6 +9,11 @@ import {
 } from './request-hosts';
 
 describe('request-hosts', () => {
+  beforeEach(() => {
+    process.env.NODE_ENV = 'test';
+    delete process.env.SVA_TRUST_FORWARDED_HEADERS;
+  });
+
   it('accepts explicit host and proto pairs from RFC Forwarded headers', () => {
     expect(parseForwardedHost('for=192.0.2.60;proto=https;host=bb-guben.studio.example.org')).toBe(
       'bb-guben.studio.example.org',
@@ -22,6 +27,7 @@ describe('request-hosts', () => {
   });
 
   it('prefers dedicated x-forwarded headers and falls back to the request url otherwise', () => {
+    process.env.SVA_TRUST_FORWARDED_HEADERS = 'true';
     const request = new Request('http://internal:3000/auth/login', {
       headers: {
         'x-forwarded-host': 'bb-guben.studio.example.org, proxy.internal',
@@ -35,6 +41,7 @@ describe('request-hosts', () => {
   });
 
   it('does not treat raw Forwarded fragments as hosts or protocols', () => {
+    process.env.SVA_TRUST_FORWARDED_HEADERS = 'true';
     const request = new Request('https://studio.example.org/auth/login', {
       headers: {
         forwarded: 'for=192.0.2.60;by=203.0.113.43',
@@ -44,5 +51,30 @@ describe('request-hosts', () => {
     expect(resolveEffectiveRequestHost(request)).toBe('studio.example.org');
     expect(resolveEffectiveRequestProtocol(request)).toBe('https');
     expect(buildRequestOriginFromHeaders(request)).toBe('https://studio.example.org');
+  });
+
+  it('ignores forwarded headers completely when trust is disabled', () => {
+    process.env.SVA_TRUST_FORWARDED_HEADERS = 'false';
+    const request = new Request('https://studio.example.org/auth/login', {
+      headers: {
+        host: 'spoofed.example.org',
+        'x-forwarded-host': 'bb-guben.studio.example.org',
+        'x-forwarded-proto': 'https',
+      },
+    });
+
+    expect(resolveEffectiveRequestHost(request)).toBe('studio.example.org');
+    expect(resolveEffectiveRequestProtocol(request)).toBe('https');
+  });
+
+  it('falls back to request.url when forwarded proto is invalid', () => {
+    process.env.SVA_TRUST_FORWARDED_HEADERS = 'true';
+    const request = new Request('https://studio.example.org/auth/login', {
+      headers: {
+        'x-forwarded-proto': 'javascript',
+      },
+    });
+
+    expect(resolveEffectiveRequestProtocol(request)).toBe('https');
   });
 });

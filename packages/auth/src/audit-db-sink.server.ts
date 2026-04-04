@@ -6,6 +6,7 @@ import {
 } from '@sva/core/security';
 
 import type { AuthAuditEvent, AuthAuditEventType } from './audit-events.types.js';
+import { getIamDatabaseUrl } from './runtime-secrets.server.js';
 
 export type PersistAuthAuditResult = {
   persisted: boolean;
@@ -30,7 +31,7 @@ let cachedEncryptionConfig: FieldEncryptionConfig | null = null;
 let cachedEncryptionConfigSignature: string | null = null;
 
 const resolveAuditPool = (): Pool | null => {
-  const databaseUrl = process.env.IAM_DATABASE_URL;
+  const databaseUrl = getIamDatabaseUrl();
   if (!databaseUrl) {
     return null;
   }

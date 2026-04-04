@@ -2,7 +2,7 @@ import type { RuntimeDependencyKey, RuntimeDependencyStatus } from '@sva/core';
 
 import { Badge } from './ui/badge';
 import { useRuntimeHealth } from '../hooks/use-runtime-health';
-import { t } from '../i18n';
+import { getActiveLocale, t } from '../i18n';
 import { cn } from '../lib/utils';
 
 const serviceOrder: readonly RuntimeDependencyKey[] = ['database', 'redis', 'keycloak', 'authorizationCache'];
@@ -35,13 +35,13 @@ const serviceStatusLabels: Readonly<Record<RuntimeDependencyStatus, string>> = {
   unknown: t('shell.runtimeHealth.status.unknown'),
 };
 
-const formatTimestamp = (timestamp: string): string => {
+const formatTimestamp = (timestamp: string, locale: string): string => {
   const date = new Date(timestamp);
   if (Number.isNaN(date.getTime()) || date.getTime() === 0) {
     return t('shell.runtimeHealth.notAvailable');
   }
 
-  return new Intl.DateTimeFormat('de-DE', {
+  return new Intl.DateTimeFormat(locale, {
     day: '2-digit',
     hour: '2-digit',
     minute: '2-digit',
@@ -78,6 +78,8 @@ const toReasonLabel = (reasonCode: string | undefined): string | null => {
 
 export function RuntimeHealthIndicator() {
   const { error, health, isLoading } = useRuntimeHealth();
+  const activeLocale = getActiveLocale();
+  const overallStatus: RuntimeDependencyStatus = error || isLoading ? 'unknown' : health.status;
 
   return (
     <section
@@ -91,12 +93,12 @@ export function RuntimeHealthIndicator() {
           <p className="text-xs text-muted-foreground">{t('shell.runtimeHealth.description')}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Badge className={cn(statusBadgeClassNames[health.status === 'not_ready' ? 'not_ready' : health.status])}>
-            {overallStatusLabels[health.status]}
+          <Badge className={cn(statusBadgeClassNames[overallStatus])}>
+            {overallStatusLabels[overallStatus]}
           </Badge>
           <span className="text-xs text-muted-foreground">
             {t('shell.runtimeHealth.lastUpdated', {
-              timestamp: formatTimestamp(health.timestamp),
+              timestamp: formatTimestamp(health.timestamp, activeLocale),
             })}
           </span>
         </div>
@@ -116,7 +118,7 @@ export function RuntimeHealthIndicator() {
                 <div className="space-y-1">
                   <h3 className="text-sm font-medium text-foreground">{serviceLabels[serviceKey]}</h3>
                   <p className="text-xs text-muted-foreground">
-                    {reasonLabel ?? t('shell.runtimeHealth.reasons.ok')}
+                    {reasonLabel ?? t(service.status === 'ready' ? 'shell.runtimeHealth.reasons.ok' : 'shell.runtimeHealth.reasons.unknown')}
                   </p>
                 </div>
                 <Badge className={cn(statusBadgeClassNames[service.status])}>

@@ -10,6 +10,7 @@ vi.mock('../hooks/use-runtime-health', () => ({
 }));
 
 vi.mock('../i18n', () => ({
+  getActiveLocale: () => 'en',
   t: (key: string, params?: Record<string, string>) => {
     if (params?.timestamp) {
       return `${key}:${params.timestamp}`;
@@ -22,7 +23,16 @@ vi.mock('../i18n', () => ({
 }));
 
 describe('RuntimeHealthIndicator', () => {
+  const dateTimeFormatSpy = vi.spyOn(Intl, 'DateTimeFormat');
+
   beforeEach(() => {
+    dateTimeFormatSpy.mockImplementation(
+      (function mockDateTimeFormat(locale: string | string[] | undefined) {
+        return {
+          format: () => `formatted:${Array.isArray(locale) ? locale.join(',') : locale ?? 'default'}`,
+        } as Intl.DateTimeFormat;
+      }) as typeof Intl.DateTimeFormat
+    );
     useRuntimeHealthMock.mockReturnValue({
       error: null,
       health: {
@@ -56,6 +66,7 @@ describe('RuntimeHealthIndicator', () => {
 
   afterEach(() => {
     cleanup();
+    dateTimeFormatSpy.mockReset();
     useRuntimeHealthMock.mockReset();
   });
 
@@ -70,6 +81,7 @@ describe('RuntimeHealthIndicator', () => {
     expect(screen.getByText('shell.runtimeHealth.reasons.keycloakDependencyFailed')).toBeTruthy();
     expect(screen.getByText('shell.runtimeHealth.reasons.redisPingFailed')).toBeTruthy();
     expect(screen.getByText('shell.runtimeHealth.overall.degraded')).toBeTruthy();
+    expect(screen.getByText('shell.runtimeHealth.lastUpdated:formatted:en')).toBeTruthy();
   });
 
   it('renders loading and fetch error hints', () => {
@@ -107,6 +119,8 @@ describe('RuntimeHealthIndicator', () => {
 
     render(<RuntimeHealthIndicator />);
 
+    expect(screen.getByText('shell.runtimeHealth.overall.unknown')).toBeTruthy();
+    expect(screen.getAllByText('shell.runtimeHealth.reasons.unknown')).toHaveLength(4);
     expect(screen.getByText('shell.runtimeHealth.loading')).toBeTruthy();
     expect(screen.getByText('shell.runtimeHealth.fetchError:req-runtime-health')).toBeTruthy();
   });

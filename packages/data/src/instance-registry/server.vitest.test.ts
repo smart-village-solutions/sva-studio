@@ -217,7 +217,7 @@ describe('instance-registry server helpers', () => {
     ).resolves.toMatchObject({ instanceId: 'demo-a' });
     await expect(
       loadInstanceByHostname('demo.studio.example.org', {
-        getDatabaseUrl: () => 'postgres://user:pa%20ss@db.example:5432/sva',
+        getDatabaseUrl: () => 'postgres://user:pa ss@db.example/sva',
       }),
     ).resolves.toMatchObject({ instanceId: 'demo-a' });
 

@@ -1,11 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const resolveHostnameMock = vi.hoisted(() => vi.fn());
+const resolvePrimaryHostnameMock = vi.hoisted(() => vi.fn());
 const getInstanceByIdMock = vi.hoisted(() => vi.fn());
 const getAuthClientSecretCiphertextMock = vi.hoisted(() => vi.fn());
 const createInstanceRegistryRepositoryMock = vi.hoisted(() =>
   vi.fn(() => ({
     resolveHostname: resolveHostnameMock,
+    resolvePrimaryHostname: resolvePrimaryHostnameMock,
     getInstanceById: getInstanceByIdMock,
     getAuthClientSecretCiphertext: getAuthClientSecretCiphertextMock,
   }))
@@ -59,6 +61,7 @@ describe('instance-registry server helpers', () => {
       release: vi.fn(),
     });
     resolveHostnameMock.mockResolvedValue(null);
+    resolvePrimaryHostnameMock.mockResolvedValue(null);
     getInstanceByIdMock.mockResolvedValue(null);
     getAuthClientSecretCiphertextMock.mockResolvedValue(null);
   });
@@ -177,6 +180,53 @@ describe('instance-registry server helpers', () => {
     await loadInstanceByHostname('demo.studio.example.org', options);
     expect(resolveHostnameMock).toHaveBeenCalledTimes(3);
     expect(PoolMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('falls back to primary_hostname when the hostname registry has no row', async () => {
+    const { loadInstanceByHostname } = await import('./server');
+    resolveHostnameMock.mockResolvedValue(null);
+    resolvePrimaryHostnameMock.mockResolvedValue({
+      instanceId: 'bb-guben',
+      displayName: 'BB Guben',
+      status: 'active',
+      parentDomain: 'studio.smart-village.app',
+      primaryHostname: 'bb-guben.studio.smart-village.app',
+      featureFlags: {},
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    });
+
+    await expect(
+      loadInstanceByHostname('bb-guben.studio.smart-village.app', {
+        getDatabaseUrl: () => 'postgres://iam',
+      })
+    ).resolves.toMatchObject({ instanceId: 'bb-guben' });
+
+    expect(resolveHostnameMock).toHaveBeenCalledWith('bb-guben.studio.smart-village.app');
+    expect(resolvePrimaryHostnameMock).toHaveBeenCalledWith('bb-guben.studio.smart-village.app');
+  });
+
+  it('falls back to primary_hostname when instance_hostnames is unavailable', async () => {
+    const { loadInstanceByHostname } = await import('./server');
+    resolveHostnameMock.mockRejectedValue(new Error('permission denied for table instance_hostnames'));
+    resolvePrimaryHostnameMock.mockResolvedValue({
+      instanceId: 'de-musterhausen',
+      displayName: 'DE Musterhausen',
+      status: 'active',
+      parentDomain: 'studio.smart-village.app',
+      primaryHostname: 'de-musterhausen.studio.smart-village.app',
+      featureFlags: {},
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    });
+
+    await expect(
+      loadInstanceByHostname('de-musterhausen.studio.smart-village.app', {
+        getDatabaseUrl: () => 'postgres://iam',
+      })
+    ).resolves.toMatchObject({ instanceId: 'de-musterhausen' });
+
+    expect(resolvePrimaryHostnameMock).toHaveBeenCalledWith('de-musterhausen.studio.smart-village.app');
   });
 
   it('scopes hostname cache entries by database url', async () => {

@@ -200,6 +200,47 @@ describe('iam-instance-registry service', () => {
     );
   });
 
+  it('passes tenant auth bootstrap values through the create provisioning path', async () => {
+    const provisionInstanceAuth = vi.fn().mockResolvedValue(undefined);
+    const service = createInstanceRegistryService({
+      repository: createRepository(),
+      invalidateHost: vi.fn(),
+      provisionInstanceAuth,
+    });
+
+    const created = await service.createProvisioningRequest({
+      idempotencyKey: 'idem-create',
+      instanceId: 'demo',
+      displayName: 'Demo',
+      parentDomain: 'studio.lvh.me',
+      authRealm: 'demo',
+      authClientId: 'sva-studio',
+      authClientSecret: 'tenant-client-secret',
+      tenantAdminBootstrap: {
+        username: 'tenant-admin',
+        email: 'tenant-admin@test.invalid',
+        firstName: 'Tenant',
+        lastName: 'Admin',
+      },
+      actorId: 'actor-1',
+      requestId: 'req-1',
+    });
+
+    expect(created.ok).toBe(true);
+    expect(provisionInstanceAuth).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: 'demo',
+        authClientSecret: 'tenant-client-secret',
+        tenantAdminBootstrap: {
+          username: 'tenant-admin',
+          email: 'tenant-admin@test.invalid',
+          firstName: 'Tenant',
+          lastName: 'Admin',
+        },
+      })
+    );
+  });
+
   it('records follow-up runs and audit events when an instance is activated', async () => {
     const repository = createRepository();
     const service = createInstanceRegistryService({

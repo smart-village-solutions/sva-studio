@@ -53,6 +53,8 @@ export const provisionInstanceAuth = async (
       authRealm: instance.authRealm,
       authClientId: instance.authClientId,
       authIssuerUrl: instance.authIssuerUrl,
+      authClientSecret: input.authClientSecret,
+      tenantAdminBootstrap: input.tenantAdminBootstrap,
     });
 
     const validatedInstance =

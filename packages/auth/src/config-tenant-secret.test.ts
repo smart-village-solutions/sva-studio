@@ -83,7 +83,7 @@ describe('resolveTenantAuthClientSecret', () => {
       readable: false,
       secret: 'global-auth-secret',
       source: 'global',
-      reason: 'tenant_auth_client_secret_missing',
+      reason: 'tenant_auth_client_secret_lookup_failed',
     });
     expect(state.loggerWarn).toHaveBeenCalledWith(
       'Tenant auth client secret lookup failed; falling back to global auth secret',

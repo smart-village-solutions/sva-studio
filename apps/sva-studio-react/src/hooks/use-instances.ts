@@ -75,8 +75,11 @@ export const useInstances = () => {
       try {
         const [detailResponse, statusResponse] = await Promise.all([
           getInstance(instanceId),
-          getInstanceKeycloakStatus(instanceId).catch((cause) => {
+          getInstanceKeycloakStatus(instanceId).catch(async (cause) => {
             const resolvedError = asIamError(cause);
+            if (resolvedError.status === 403) {
+              await invalidatePermissions();
+            }
             setMutationError(resolvedError);
             return null;
           }),

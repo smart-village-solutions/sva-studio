@@ -32,7 +32,9 @@ const buildGlobalFallback = (
 
 export const resolveTenantAuthClientSecret = async (instanceId: string): Promise<ResolvedTenantClientSecret> => {
   const globalSecret = getAuthClientSecret();
+  let fallbackReason: ResolvedTenantClientSecret['reason'] = 'tenant_auth_client_secret_missing';
   const ciphertext = await loadInstanceAuthClientSecretCiphertext(instanceId).catch((error) => {
+    fallbackReason = 'tenant_auth_client_secret_lookup_failed';
     logger.warn('Tenant auth client secret lookup failed; falling back to global auth secret', {
       operation: 'tenant_auth_secret_lookup',
       auth_resolution_mode: 'global_fallback',
@@ -44,7 +46,7 @@ export const resolveTenantAuthClientSecret = async (instanceId: string): Promise
   });
 
   if (!ciphertext) {
-    return buildGlobalFallback(globalSecret, 'tenant_auth_client_secret_missing');
+    return buildGlobalFallback(globalSecret, fallbackReason);
   }
 
   const tenantSecret = revealField(ciphertext, buildAuthClientSecretAad(instanceId));

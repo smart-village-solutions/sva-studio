@@ -278,6 +278,29 @@ describe('useInstances', () => {
     );
   });
 
+  it('invalidates permissions when loading keycloak status during detail fetch returns forbidden', async () => {
+    getInstanceKeycloakStatusMock.mockRejectedValueOnce({
+      status: 403,
+      code: 'forbidden',
+      message: 'forbidden',
+    });
+
+    const { result } = renderHook(() => useInstances());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    await act(async () => {
+      await result.current.loadInstance('demo');
+    });
+
+    expect(result.current.selectedInstance?.instanceId).toBe('demo');
+    expect(result.current.selectedInstance?.keycloakStatus).toBeUndefined();
+    expect(result.current.mutationError).toEqual(expect.objectContaining({ status: 403, code: 'forbidden' }));
+    expect(authMockValue.invalidatePermissions).toHaveBeenCalled();
+  });
+
   it('refreshes keycloak status in-place and handles forbidden refreshes', async () => {
     const { result } = renderHook(() => useInstances());
 

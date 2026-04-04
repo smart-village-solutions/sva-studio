@@ -1,10 +1,10 @@
 import {
   buildPrimaryHostname,
   canTransitionInstanceStatus,
-  classifyHost,
   isTrafficEnabledInstanceStatus,
   normalizeHost,
 } from '@sva/core';
+import { protectField } from '../iam-account-management/encryption.js';
 
 import type { InstanceRegistryRepository } from '@sva/data';
 import type {
@@ -12,22 +12,40 @@ import type {
   InstanceRegistryService,
   InstanceRegistryServiceDeps,
   ResolveRuntimeInstanceResult,
+  UpdateInstanceInput,
 } from './types.js';
 import {
   buildInstanceDetail,
-  createAuditDetails,
   createStatusArtifacts,
   toListItem,
 } from './service-helpers.js';
+import {
+  createGetKeycloakStatusHandler,
+  createReconcileKeycloakHandler,
+  createRuntimeResolver,
+  loadRepositoryAuthClientSecret,
+} from './service-keycloak.js';
+import { createProvisioningArtifacts, provisionInstanceAuth } from './service-provisioning.js';
 
 export const createInstanceRegistryService = (deps: InstanceRegistryServiceDeps): InstanceRegistryService => ({
   listInstances: createListInstances(deps.repository),
   getInstanceDetail: createGetInstanceDetail(deps.repository),
   createProvisioningRequest: createProvisioningRequestHandler(deps),
+  updateInstance: createUpdateInstanceHandler(deps),
   changeStatus: createChangeStatusHandler(deps),
+  getKeycloakStatus: createGetKeycloakStatusHandler(deps),
+  reconcileKeycloak: createReconcileKeycloakHandler(deps),
   resolveRuntimeInstance: createRuntimeResolver(deps.repository),
   isTrafficAllowed: isTrafficEnabledInstanceStatus,
 });
+
+const encryptAuthClientSecret = (instanceId: string, secret: string | undefined): string | undefined => {
+  const normalizedSecret = secret?.trim();
+  if (!normalizedSecret) {
+    return undefined;
+  }
+  return protectField(normalizedSecret, `iam.instances.auth_client_secret:${instanceId}`) ?? undefined;
+};
 
 const createListInstances =
   (repository: InstanceRegistryRepository): InstanceRegistryService['listInstances'] =>
@@ -56,103 +74,6 @@ const createGetInstanceDetail =
     return buildInstanceDetail(instance, provisioningRuns, auditEvents);
   };
 
-const createProvisioningArtifacts = async (
-  repository: InstanceRegistryRepository,
-  instance: Awaited<ReturnType<InstanceRegistryRepository['createInstance']>>,
-  input: CreateInstanceProvisioningInput
-): Promise<void> => {
-  await repository.createProvisioningRun({
-    instanceId: instance.instanceId,
-    operation: 'create',
-    status: 'requested',
-    idempotencyKey: input.idempotencyKey,
-    actorId: input.actorId,
-    requestId: input.requestId,
-  });
-  await repository.appendAuditEvent({
-    instanceId: instance.instanceId,
-    eventType: 'instance_requested',
-    actorId: input.actorId,
-    requestId: input.requestId,
-    details: createAuditDetails({
-      parentDomain: instance.parentDomain,
-      primaryHostname: instance.primaryHostname,
-    }),
-  });
-};
-
-const provisionInstanceAuth = async (
-  deps: InstanceRegistryServiceDeps,
-  instance: Awaited<ReturnType<InstanceRegistryRepository['createInstance']>>,
-  input: CreateInstanceProvisioningInput
-): Promise<Awaited<ReturnType<InstanceRegistryRepository['createInstance']>>> => {
-  if (!deps.provisionInstanceAuth) {
-    return instance;
-  }
-
-  await deps.repository.createProvisioningRun({
-    instanceId: instance.instanceId,
-    operation: 'create',
-    status: 'provisioning',
-    stepKey: 'keycloak',
-    idempotencyKey: input.idempotencyKey,
-    actorId: input.actorId,
-    requestId: input.requestId,
-  });
-
-  try {
-    await deps.provisionInstanceAuth({
-      instanceId: instance.instanceId,
-      primaryHostname: instance.primaryHostname,
-      authRealm: instance.authRealm,
-      authClientId: instance.authClientId,
-      authIssuerUrl: instance.authIssuerUrl,
-    });
-
-    const validatedInstance =
-      (await deps.repository.setInstanceStatus({
-        instanceId: instance.instanceId,
-        status: 'validated',
-        actorId: input.actorId,
-        requestId: input.requestId,
-      })) ?? instance;
-
-    await deps.repository.createProvisioningRun({
-      instanceId: instance.instanceId,
-      operation: 'create',
-      status: validatedInstance.status,
-      stepKey: 'keycloak',
-      idempotencyKey: input.idempotencyKey,
-      actorId: input.actorId,
-      requestId: input.requestId,
-    });
-
-    return validatedInstance;
-  } catch (error) {
-    const failedInstance =
-      (await deps.repository.setInstanceStatus({
-        instanceId: instance.instanceId,
-        status: 'failed',
-        actorId: input.actorId,
-        requestId: input.requestId,
-      })) ?? instance;
-
-    await deps.repository.createProvisioningRun({
-      instanceId: instance.instanceId,
-      operation: 'create',
-      status: failedInstance.status,
-      stepKey: 'keycloak',
-      idempotencyKey: input.idempotencyKey,
-      actorId: input.actorId,
-      requestId: input.requestId,
-      errorCode: 'keycloak_provisioning_failed',
-      errorMessage: error instanceof Error ? error.message : String(error),
-    });
-
-    return failedInstance;
-  }
-};
-
 const createProvisioningRequestHandler =
   (deps: InstanceRegistryServiceDeps): InstanceRegistryService['createProvisioningRequest'] =>
   async (input) => {
@@ -172,6 +93,8 @@ const createProvisioningRequestHandler =
       authRealm: input.authRealm,
       authClientId: input.authClientId,
       authIssuerUrl: input.authIssuerUrl,
+      authClientSecretCiphertext: encryptAuthClientSecret(input.instanceId, input.authClientSecret),
+      tenantAdminBootstrap: input.tenantAdminBootstrap,
       actorId: input.actorId,
       requestId: input.requestId,
       themeKey: input.themeKey,
@@ -212,24 +135,54 @@ const createChangeStatusHandler =
     return { ok: true, instance: toListItem(updated) };
   };
 
-const createRuntimeResolver =
-  (repository: InstanceRegistryRepository): InstanceRegistryService['resolveRuntimeInstance'] =>
-  async (host): Promise<ResolveRuntimeInstanceResult> => {
-    const normalizedHost = normalizeHost(host);
-    const instance = await repository.resolveHostname(normalizedHost);
-    if (!instance) {
-      return {
-        hostClassification: {
-          kind: 'invalid',
-          normalizedHost,
-          reason: 'unknown_host',
-        },
-        instance: null,
-      };
+const createUpdateInstanceHandler =
+  (deps: InstanceRegistryServiceDeps): InstanceRegistryService['updateInstance'] =>
+  async (input: UpdateInstanceInput) => {
+    const existing = await deps.repository.getInstanceById(input.instanceId);
+    if (!existing) {
+      return null;
     }
 
-    return {
-      hostClassification: classifyHost(normalizedHost, instance.parentDomain),
-      instance: toListItem(instance),
-    };
+    const normalizedParentDomain = normalizeHost(input.parentDomain);
+    const primaryHostname = buildPrimaryHostname(input.instanceId, normalizedParentDomain);
+    const updated = await deps.repository.updateInstance({
+      instanceId: input.instanceId,
+      displayName: input.displayName,
+      parentDomain: normalizedParentDomain,
+      primaryHostname,
+      authRealm: input.authRealm,
+      authClientId: input.authClientId,
+      authIssuerUrl: input.authIssuerUrl,
+      authClientSecretCiphertext: encryptAuthClientSecret(input.instanceId, input.authClientSecret),
+      keepExistingAuthClientSecret: !input.authClientSecret?.trim(),
+      tenantAdminBootstrap: input.tenantAdminBootstrap,
+      actorId: input.actorId,
+      requestId: input.requestId,
+      themeKey: input.themeKey,
+      featureFlags: input.featureFlags,
+      mainserverConfigRef: input.mainserverConfigRef,
+    });
+    if (!updated) {
+      return null;
+    }
+
+    deps.invalidateHost(existing.primaryHostname);
+    deps.invalidateHost(updated.primaryHostname);
+
+    const [provisioningRuns, auditEvents, keycloakStatus] = await Promise.all([
+      deps.repository.listProvisioningRuns(updated.instanceId),
+      deps.repository.listAuditEvents(updated.instanceId),
+      deps.getKeycloakStatus?.({
+        instanceId: updated.instanceId,
+        primaryHostname: updated.primaryHostname,
+        authRealm: updated.authRealm,
+        authClientId: updated.authClientId,
+        authIssuerUrl: updated.authIssuerUrl,
+        authClientSecretConfigured: updated.authClientSecretConfigured,
+        authClientSecret: await loadRepositoryAuthClientSecret(deps.repository, updated.instanceId),
+        tenantAdminBootstrap: updated.tenantAdminBootstrap,
+      }) ?? Promise.resolve(undefined),
+    ]);
+
+    return buildInstanceDetail(updated, provisioningRuns, auditEvents, keycloakStatus);
   };

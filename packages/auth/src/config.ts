@@ -1,12 +1,18 @@
 import type { AuthConfig, SessionAuthContext } from './types.js';
 import { isTrafficEnabledInstanceStatus, normalizeHost } from '@sva/core';
-import { loadInstanceByHostname, loadInstanceById } from '@sva/data/server';
+import { loadInstanceById } from '@sva/data/server';
 import { getInstanceConfig } from '@sva/sdk/server';
 import { getAuthClientSecret, getAuthStateSecret } from './runtime-secrets.server.js';
+import { buildRequestOriginFromHeaders, resolveEffectiveRequestHost } from './request-hosts.js';
+import { resolveTenantAuthClientSecret } from './config-tenant-secret.js';
+import {
+  assertActiveRegistryEntry,
+  loadRegistryEntryForHost,
+  logGlobalAuthResolution,
+  logInstanceConfigMissing,
+  logTenantAuthResolution,
+} from './config-request.js';
 
-/**
- * Reads a required environment variable or throws.
- */
 const requireEnv = (key: string) => {
   const value = process.env[key];
   if (!value) {
@@ -15,9 +21,6 @@ const requireEnv = (key: string) => {
   return value;
 };
 
-/**
- * Parses a numeric environment variable with a fallback.
- */
 const readNumber = (key: string, fallback: number) => {
   const raw = process.env[key];
   if (!raw) {
@@ -27,8 +30,8 @@ const readNumber = (key: string, fallback: number) => {
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
-export const resolveBaseAuthConfig = () => {
-  const clientSecret = getAuthClientSecret();
+export const resolveBaseAuthConfig = (overrides: { clientSecret?: string } = {}) => {
+  const clientSecret = overrides.clientSecret ?? getAuthClientSecret();
   if (!clientSecret) {
     throw new Error(
       'Missing auth client secret (SVA_AUTH_CLIENT_SECRET or /run/secrets/sva_studio_app_auth_client_secret)'
@@ -72,11 +75,8 @@ const buildIssuerUrl = (realm: string, explicitIssuerUrl?: string): string => {
   return `${normalizeBaseUrl(baseUrl)}/realms/${realm}`;
 };
 
-const buildRequestOrigin = (request: Request): string => {
-  const url = new URL(request.url);
-  return url.origin;
-};
-
+const buildRequestOrigin = (request: Request): string => buildRequestOriginFromHeaders(request);
+const resolveRequestHost = (request: Request): string => resolveEffectiveRequestHost(request);
 const buildHostOrigin = (hostname: string, protocol = 'https'): string => `${protocol}://${normalizeHost(hostname)}`;
 
 const mergeAuthConfig = (
@@ -95,9 +95,6 @@ export const resolveAuthConfigFromSessionAuth = (auth: SessionAuthContext) => ({
   ...auth,
 });
 
-/**
- * Builds the auth configuration from environment variables.
- */
 export const getAuthConfig = (): AuthConfig => {
   const base = resolveBaseAuthConfig();
   return mergeAuthConfig(base, {
@@ -118,7 +115,8 @@ export const resolveAuthConfigForInstance = async (
   }
 
   const origin = options.origin ?? buildHostOrigin(instance.primaryHostname, options.protocol);
-  return mergeAuthConfig(resolveBaseAuthConfig(), {
+  const tenantSecret = await resolveTenantAuthClientSecret(instance.instanceId);
+  return mergeAuthConfig(resolveBaseAuthConfig({ clientSecret: tenantSecret.secret }), {
     instanceId: instance.instanceId,
     authRealm: instance.authRealm,
     issuer: buildIssuerUrl(instance.authRealm, instance.authIssuerUrl),
@@ -129,27 +127,30 @@ export const resolveAuthConfigForInstance = async (
 };
 
 export const resolveAuthConfigForRequest = async (request: Request): Promise<AuthConfig> => {
-  const host = normalizeHost(new URL(request.url).host);
-  const instanceConfig = getInstanceConfig();
-  if (!instanceConfig) {
+  const host = resolveRequestHost(request);
+  const requestOrigin = buildRequestOrigin(request);
+
+  if (!getInstanceConfig()) {
+    logInstanceConfigMissing(host, requestOrigin);
     return getAuthConfig();
   }
 
-  const registryEntry = await loadInstanceByHostname(host).catch(() => null);
+  const registryEntry = await loadRegistryEntryForHost(host, requestOrigin);
   if (!registryEntry) {
+    logGlobalAuthResolution(request, host, requestOrigin);
     return getAuthConfig();
   }
 
-  if (!isTrafficEnabledInstanceStatus(registryEntry.status)) {
-    throw new Error(`Tenant host ${host} is not active`);
-  }
-
-  return mergeAuthConfig(resolveBaseAuthConfig(), {
+  assertActiveRegistryEntry(host, requestOrigin, registryEntry);
+  const tenantSecret = await resolveTenantAuthClientSecret(registryEntry.instanceId);
+  const authConfig = mergeAuthConfig(resolveBaseAuthConfig({ clientSecret: tenantSecret.secret }), {
     instanceId: registryEntry.instanceId,
     authRealm: registryEntry.authRealm,
     issuer: buildIssuerUrl(registryEntry.authRealm, registryEntry.authIssuerUrl),
     clientId: registryEntry.authClientId,
-    redirectUri: `${buildRequestOrigin(request)}/auth/callback`,
-    postLogoutRedirectUri: `${buildRequestOrigin(request)}/`,
+    redirectUri: `${requestOrigin}/auth/callback`,
+    postLogoutRedirectUri: `${requestOrigin}/`,
   });
+  logTenantAuthResolution(request, host, requestOrigin, authConfig, registryEntry, tenantSecret);
+  return authConfig;
 };

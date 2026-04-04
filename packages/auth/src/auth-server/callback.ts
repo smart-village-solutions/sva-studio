@@ -3,8 +3,9 @@ import { createSdkLogger } from '@sva/sdk/server';
 
 import { getAuthConfig } from '../config.js';
 import { jitProvisionAccount } from '../jit-provisioning.server.js';
-import { client, getOidcConfig } from '../oidc.server.js';
+import { client, getOidcConfig, invalidateOidcConfig } from '../oidc.server.js';
 import { consumeLoginState, createSession, getSessionControlState } from '../redis-session.server.js';
+import { isTokenErrorLike } from '../shared/error-guards.js';
 import type { AuthConfig, LoginState } from '../types.js';
 import { buildLogContext } from '../shared/log-context.js';
 import { buildSessionUser, resolveSessionExpiry } from './shared.js';
@@ -79,6 +80,45 @@ const syncJitProvisioning = async (instanceId: string | undefined, keycloakSubje
   }
 };
 
+const exchangeAuthorizationCode = async (input: {
+  authConfig: AuthConfig;
+  callbackUrl: URL;
+  loginState: LoginState;
+  state: string;
+}) => {
+  const grant = async () => {
+    const config = await getOidcConfig(input.authConfig);
+    return client.authorizationCodeGrant(config, input.callbackUrl, {
+      pkceCodeVerifier: input.loginState.codeVerifier,
+      expectedState: input.state,
+      expectedNonce: input.loginState.nonce,
+    });
+  };
+
+  try {
+    return {
+      tokenSet: await grant(),
+      retryPerformed: false,
+    };
+  } catch (error) {
+    if (!isTokenErrorLike(error)) {
+      throw error;
+    }
+
+    invalidateOidcConfig(input.authConfig);
+    logger.warn('OIDC config cache invalidated after token exchange failure; retrying once', {
+      operation: 'token_validate_retry',
+      issuer: input.authConfig.issuer,
+      client_id: input.authConfig.clientId,
+      ...buildLogContext(input.authConfig.instanceId),
+    });
+    return {
+      tokenSet: await grant(),
+      retryPerformed: true,
+    };
+  }
+};
+
 export const handleCallback = async (params: {
   code: string;
   state: string;
@@ -87,7 +127,6 @@ export const handleCallback = async (params: {
   authConfig?: AuthConfig;
 }) => {
   const authConfig = params.authConfig ?? getAuthConfig();
-  const config = await getOidcConfig(authConfig);
   const loginState = params.loginState ?? (await consumeLoginState(params.state));
 
   if (!loginState) {
@@ -101,10 +140,11 @@ export const handleCallback = async (params: {
     callbackUrl.searchParams.set('iss', params.iss);
   }
 
-  const tokenSet = await client.authorizationCodeGrant(config, callbackUrl, {
-    pkceCodeVerifier: loginState.codeVerifier,
-    expectedState: params.state,
-    expectedNonce: loginState.nonce,
+  const { tokenSet, retryPerformed } = await exchangeAuthorizationCode({
+    authConfig,
+    callbackUrl,
+    loginState,
+    state: params.state,
   });
   const claims = (tokenSet.claims() ?? {}) as Record<string, unknown>;
 
@@ -131,5 +171,5 @@ export const handleCallback = async (params: {
     ...buildLogContext(persisted.user.instanceId),
   });
 
-  return { ...persisted, loginState };
+  return { ...persisted, loginState, retryPerformed };
 };

@@ -15,6 +15,21 @@ const createLoginUrlMock = vi.fn();
 const handleCallbackMock = vi.fn();
 const withAuthenticatedUserMock = vi.fn();
 const loadInstanceByHostnameMock = vi.fn();
+const resolvedAuthConfigState = {
+  loginStateCookieName: 'sva_auth_state',
+  loginStateSecret: 'secret',
+  sessionCookieName: 'sva_auth_session',
+  silentSsoSuppressCookieName: 'sva_auth_silent_sso',
+  silentSsoSuppressAfterLogoutMs: 60_000,
+  postLogoutRedirectUri: 'http://localhost:3000',
+  redirectUri: 'http://localhost:3000/auth/callback',
+  issuer: 'https://issuer.example',
+  clientId: 'client-id',
+  clientSecret: 'client-secret',
+  scopes: 'openid',
+  sessionTtlMs: 60 * 60 * 1000,
+  sessionRedisTtlBufferMs: 5 * 60 * 1000,
+};
 const instanceConfigState = {
   canonicalAuthHost: 'studio.example.org',
   parentDomain: 'studio.example.org',
@@ -54,21 +69,7 @@ vi.mock('../config', () => ({
     silentSsoSuppressAfterLogoutMs: 60_000,
     postLogoutRedirectUri: 'http://localhost:3000',
   }),
-  resolveAuthConfigForRequest: vi.fn(async () => ({
-    loginStateCookieName: 'sva_auth_state',
-    loginStateSecret: 'secret',
-    sessionCookieName: 'sva_auth_session',
-    silentSsoSuppressCookieName: 'sva_auth_silent_sso',
-    silentSsoSuppressAfterLogoutMs: 60_000,
-    postLogoutRedirectUri: 'http://localhost:3000',
-    redirectUri: 'http://localhost:3000/auth/callback',
-    issuer: 'https://issuer.example',
-    clientId: 'client-id',
-    clientSecret: 'client-secret',
-    scopes: 'openid',
-    sessionTtlMs: 60 * 60 * 1000,
-    sessionRedisTtlBufferMs: 5 * 60 * 1000,
-  })),
+  resolveAuthConfigForRequest: vi.fn(async () => ({ ...resolvedAuthConfigState })),
 }));
 
 vi.mock('../redis-session.server', () => ({
@@ -87,9 +88,15 @@ describe('routes/handlers', () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
+    vi.unstubAllEnvs();
     vi.stubEnv('SVA_MOCK_AUTH', 'false');
     vi.stubEnv('NODE_ENV', 'development');
     loadInstanceByHostnameMock.mockResolvedValue(null);
+    resolvedAuthConfigState.instanceId = undefined;
+    resolvedAuthConfigState.authRealm = undefined;
+    resolvedAuthConfigState.clientId = 'client-id';
+    resolvedAuthConfigState.redirectUri = 'http://localhost:3000/auth/callback';
+    resolvedAuthConfigState.issuer = 'https://issuer.example';
     instanceConfigState.canonicalAuthHost = 'studio.example.org';
     instanceConfigState.parentDomain = 'studio.example.org';
   });
@@ -157,6 +164,114 @@ describe('routes/handlers', () => {
     expect(decodedPayload).toEqual(
       expect.objectContaining({
         returnTo: '/account?tab=profile',
+      })
+    );
+  });
+
+  it('logs the resolved auth config for login requests', async () => {
+    resolvedAuthConfigState.instanceId = 'bb-guben';
+    resolvedAuthConfigState.authRealm = 'bb-guben';
+    resolvedAuthConfigState.clientId = 'sva-studio';
+    resolvedAuthConfigState.redirectUri = 'https://bb-guben.studio.example.org/auth/callback';
+    resolvedAuthConfigState.issuer = 'https://keycloak.example/realms/bb-guben';
+    createLoginUrlMock.mockResolvedValue({
+      url: 'https://issuer.example/auth',
+      state: 'state-log-auth-config',
+      loginState: {
+        codeVerifier: 'verifier-log-auth-config',
+        nonce: 'nonce-log-auth-config',
+        createdAt: Date.now(),
+        returnTo: '/',
+        silent: false,
+      },
+    });
+
+    const { loginHandler } = await import('./handlers.js');
+
+    await loginHandler(new Request('https://bb-guben.studio.example.org/auth/login'));
+
+    expect(loggerMock.info).toHaveBeenCalledWith(
+      'Login auth config resolved',
+      expect.objectContaining({
+        operation: 'login_auth_config_resolved',
+        auth_instance_id: 'bb-guben',
+        auth_realm: 'bb-guben',
+        auth_client_id: 'sva-studio',
+        auth_redirect_uri: 'https://bb-guben.studio.example.org/auth/callback',
+        auth_issuer: 'https://keycloak.example/realms/bb-guben',
+      })
+    );
+  });
+
+  it('attaches debug auth headers for login requests when enabled', async () => {
+    vi.stubEnv('SVA_AUTH_DEBUG_HEADERS', 'true');
+    resolvedAuthConfigState.instanceId = 'bb-guben';
+    resolvedAuthConfigState.authRealm = 'bb-guben';
+    resolvedAuthConfigState.clientId = 'sva-studio';
+    resolvedAuthConfigState.redirectUri = 'https://bb-guben.studio.example.org/auth/callback';
+    resolvedAuthConfigState.issuer = 'https://keycloak.example/realms/bb-guben';
+    createLoginUrlMock.mockResolvedValue({
+      url: 'https://issuer.example/auth',
+      state: 'state-debug-headers',
+      loginState: {
+        codeVerifier: 'verifier-debug-headers',
+        nonce: 'nonce-debug-headers',
+        createdAt: Date.now(),
+        returnTo: '/',
+        silent: false,
+      },
+    });
+
+    const { loginHandler } = await import('./handlers.js');
+
+    const response = await loginHandler(new Request('https://bb-guben.studio.example.org/auth/login'));
+
+    expect(response.headers.get('x-sva-debug-request-host')).toBe('bb-guben.studio.example.org');
+    expect(response.headers.get('x-sva-debug-request-origin')).toBe('https://bb-guben.studio.example.org');
+    expect(response.headers.get('x-sva-debug-auth-instance-id')).toBe('bb-guben');
+    expect(response.headers.get('x-sva-debug-auth-realm')).toBe('bb-guben');
+    expect(response.headers.get('x-sva-debug-auth-client-id')).toBe('sva-studio');
+    expect(response.headers.get('x-sva-debug-auth-redirect-uri')).toBe(
+      'https://bb-guben.studio.example.org/auth/callback'
+    );
+  });
+
+  it('emits callback failure audit events with the tenant workspace id', async () => {
+    resolvedAuthConfigState.instanceId = 'de-musterhausen';
+    resolvedAuthConfigState.authRealm = 'de-musterhausen';
+    resolvedAuthConfigState.clientId = 'sva-studio';
+    resolvedAuthConfigState.redirectUri = 'https://de-musterhausen.studio.example.org/auth/callback';
+    handleCallbackMock.mockRejectedValueOnce(new Error('invalid_client'));
+
+    const { callbackHandler } = await import('./handlers.js');
+
+    const secret = 'secret';
+    const payload = {
+      state: 'state-failure',
+      codeVerifier: 'verifier-failure',
+      nonce: 'nonce-failure',
+      createdAt: Date.now(),
+      returnTo: '/',
+      silent: false,
+      workspaceId: 'de-musterhausen',
+    };
+    const payloadBase64 = Buffer.from(JSON.stringify(payload)).toString('base64url');
+    const signature = createHmac('sha256', secret).update(payloadBase64).digest('base64url');
+    const cookie = `sva_auth_state=${payloadBase64}.${signature}`;
+
+    const response = await callbackHandler(
+      new Request('https://de-musterhausen.studio.example.org/auth/callback?code=code-1&state=state-failure', {
+        headers: { cookie },
+      })
+    );
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get('location')).toBe('/?auth=error');
+    expect(emitAuthAuditEventMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: 'login',
+        outcome: 'failure',
+        workspaceId: 'de-musterhausen',
       })
     );
   });
@@ -541,6 +656,43 @@ describe('routes/handlers', () => {
       expect.objectContaining({
         eventType: 'silent_reauth_failed',
         outcome: 'failure',
+      })
+    );
+  });
+
+  it('logs token callback failures with oauth error details when available', async () => {
+    handleCallbackMock.mockRejectedValue({
+      name: 'ResponseBodyError',
+      error: 'invalid_client',
+      error_description: 'Invalid client secret',
+      response: { status: 401 },
+    });
+
+    const { callbackHandler } = await import('./handlers.js');
+    const statePayload = {
+      state: 'state-token-details',
+      codeVerifier: 'verifier-token-details',
+      nonce: 'nonce-token-details',
+      createdAt: Date.now(),
+      returnTo: '/',
+      silent: false,
+    };
+    const encodedPayload = Buffer.from(JSON.stringify(statePayload), 'utf8').toString('base64url');
+    const signature = createHmac('sha256', 'secret').update(encodedPayload).digest('base64url');
+
+    const response = await callbackHandler(
+      new Request('http://localhost/auth/callback?code=abc&state=state-token-details', {
+        headers: { cookie: `sva_auth_state=${encodedPayload}.${signature}` },
+      })
+    );
+
+    expect(response.status).toBe(302);
+    expect(loggerMock.warn).toHaveBeenCalledWith(
+      'Token validation failed in callback',
+      expect.objectContaining({
+        oauth_error: 'invalid_client',
+        oauth_error_description: 'Invalid client secret',
+        oauth_status: 401,
       })
     );
   });

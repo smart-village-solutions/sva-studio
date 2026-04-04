@@ -1,5 +1,9 @@
 import { resolve } from 'node:path';
 
+import type { RuntimeProfile } from '../../packages/sdk/src/runtime-profile.ts';
+
+export type RemoteRuntimeProfile = Exclude<RuntimeProfile, 'local-builder' | 'local-keycloak'>;
+
 export type AcceptanceReleaseMode = 'app-only' | 'schema-and-app';
 export type AcceptanceDeployStepName =
   | 'environment-precheck'
@@ -71,7 +75,7 @@ export type AcceptanceReleaseManifest = {
   imageRepository: string;
   imageTag?: string;
   monitoringConfigImageTag?: string;
-  profile: 'acceptance-hb';
+  profile: RemoteRuntimeProfile;
   releaseMode: AcceptanceReleaseMode;
   workflow: string;
 };
@@ -119,7 +123,12 @@ export type AcceptanceDeployReport = {
     notes: readonly string[];
   };
   externalProbes: readonly AcceptanceProbeResult[];
-  profile: 'acceptance-hb';
+  profile: RemoteRuntimeProfile;
+  runtimeContract: {
+    derivedKeys: readonly string[];
+    effectiveSummary: Readonly<Record<string, unknown>>;
+    requiredKeys: readonly string[];
+  };
   releaseDecision: {
     summary: string;
     technicalGatePassed: boolean;
@@ -159,6 +168,10 @@ export const parseRuntimeCliOptions = (rawOptions: readonly string[]): RuntimeCl
 
   for (let index = 0; index < rawOptions.length; index += 1) {
     const rawOption = rawOptions[index];
+
+    if (rawOption === '--') {
+      continue;
+    }
 
     if (rawOption === '--json') {
       parsed.jsonOutput = true;
@@ -228,11 +241,12 @@ const sanitizeSlug = (value: string) =>
 
 export const resolveAcceptanceDeployOptions = (
   env: NodeJS.ProcessEnv,
-  cliOptions: RuntimeCliOptions
+  cliOptions: RuntimeCliOptions,
+  runtimeProfile: RemoteRuntimeProfile = 'acceptance-hb'
 ): AcceptanceDeployOptions => {
   const releaseMode = cliOptions.releaseMode ?? (env.SVA_ACCEPTANCE_RELEASE_MODE as AcceptanceReleaseMode | undefined) ?? 'app-only';
   if (releaseMode !== 'app-only' && releaseMode !== 'schema-and-app') {
-    throw new Error(`Ungueltiger Acceptance-Release-Modus: ${releaseMode}`);
+    throw new Error(`Ungueltiger Release-Modus fuer ${runtimeProfile}: ${releaseMode}`);
   }
 
   const maintenanceWindow =
@@ -248,7 +262,7 @@ export const resolveAcceptanceDeployOptions = (
 
   const imageDigest = cliOptions.imageDigest?.trim() || env.SVA_IMAGE_DIGEST?.trim() || undefined;
   if (!imageDigest) {
-    throw new Error('Produktionsnahe Acceptance-Releases erfordern einen Image-Digest (--image-digest oder SVA_IMAGE_DIGEST).');
+    throw new Error(`Produktionsnahe Releases fuer ${runtimeProfile} erfordern einen Image-Digest (--image-digest oder SVA_IMAGE_DIGEST).`);
   }
 
   const imageRepository = env.SVA_IMAGE_REPOSITORY?.trim() || 'sva-studio';
@@ -267,7 +281,7 @@ export const resolveAcceptanceDeployOptions = (
     maintenanceWindow,
     monitoringConfigImageTag: env.SVA_MONITORING_CONFIG_INIT_IMAGE_TAG?.trim() || undefined,
     releaseMode,
-    reportSlug: sanitizeSlug(cliOptions.reportSlug || env.SVA_ACCEPTANCE_REPORT_SLUG || 'acceptance-deploy'),
+    reportSlug: sanitizeSlug(cliOptions.reportSlug || env.SVA_ACCEPTANCE_REPORT_SLUG || `${runtimeProfile}-deploy`),
     rollbackHint,
   };
 };
@@ -294,7 +308,7 @@ export const buildAcceptanceReportPaths = (
 
 export const formatAcceptanceDeployReportMarkdown = (report: AcceptanceDeployReport) => {
   const lines = [
-    `# Acceptance-Deploy-Report ${report.reportId}`,
+    `# Deploy-Report ${report.reportId}`,
     '',
     `- Profil: \`${report.profile}\``,
     `- Status: \`${report.status}\``,
@@ -317,6 +331,12 @@ export const formatAcceptanceDeployReportMarkdown = (report: AcceptanceDeployRep
     `- Commit: \`${report.releaseManifest.commitSha ?? 'n/a'}\``,
     `- Image-Repository: \`${report.releaseManifest.imageRepository}\``,
     `- Monitoring-Config-Image-Tag: \`${report.releaseManifest.monitoringConfigImageTag ?? 'n/a'}\``,
+    '',
+    '## Runtime-Contract',
+    '',
+    `- Pflichtschluessel: \`${report.runtimeContract.requiredKeys.join(', ') || 'keine'}\``,
+    `- Ableitbare Schluessel: \`${report.runtimeContract.derivedKeys.join(', ') || 'keine'}\``,
+    `- Effektiver Kontext: \`${JSON.stringify(report.runtimeContract.effectiveSummary)}\``,
     '',
     '## Migrationen',
     '',

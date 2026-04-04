@@ -1,0 +1,108 @@
+# Runtime-Profil: studio (Production auf einer Studio-Domain)
+# Vorlage fuer lokale/operative Nutzung.
+# Nicht-sensitive Struktur kann im Repo liegen; Secrets und lokale Overrides bleiben in studio.local.vars oder im Secret-Store.
+
+SVA_RUNTIME_PROFILE=studio
+QUANTUM_ENVIRONMENT=studio
+
+# ---------------------------------------------------------------------------
+# Instance-Routing
+# ---------------------------------------------------------------------------
+SVA_PARENT_DOMAIN=studio.example.invalid
+SVA_ALLOWED_INSTANCE_IDS=example-instance
+
+# Kanonischer Auth-Host (Root-Domain, Fallback fuer Nicht-Instanz-Hosts)
+SVA_PUBLIC_BASE_URL=https://studio.example.invalid
+SVA_PUBLIC_HOST=studio.example.invalid
+SVA_AUTH_ISSUER=https://keycloak.example.invalid/realms/sva-studio
+SVA_AUTH_CLIENT_ID=sva-studio
+SVA_AUTH_REDIRECT_URI=https://studio.example.invalid/auth/callback
+SVA_AUTH_POST_LOGOUT_REDIRECT_URI=https://studio.example.invalid/
+IAM_CSRF_ALLOWED_ORIGINS=https://studio.example.invalid,https://example-instance.studio.example.invalid
+SVA_MAINSERVER_CLIENT_ID=studio-mainserver
+
+# ---------------------------------------------------------------------------
+# Auth / Keycloak
+# ---------------------------------------------------------------------------
+KEYCLOAK_ADMIN_BASE_URL=https://keycloak.example.invalid
+KEYCLOAK_ADMIN_REALM=sva-studio
+KEYCLOAK_ADMIN_CLIENT_ID=sva-studio-iam-service
+IAM_PII_ACTIVE_KEY_ID=k1
+
+# ---------------------------------------------------------------------------
+# Datenbank
+# ---------------------------------------------------------------------------
+POSTGRES_DB=sva_studio
+POSTGRES_USER=sva
+APP_DB_USER=sva_app
+
+# ---------------------------------------------------------------------------
+# Mainserver-Smoke (optional in der fruehen Studio-Testphase)
+# ---------------------------------------------------------------------------
+SVA_MAINSERVER_GRAPHQL_URL=https://example-instance.server.example.invalid/graphql
+SVA_MAINSERVER_OAUTH_TOKEN_URL=https://example-instance.server.example.invalid/oauth/token
+# SVA_MAINSERVER_CLIENT_SECRET liegt in studio.local.vars / Secret-Store
+SVA_MAINSERVER_REQUIRED=false
+SVA_MIGRATION_STATUS_REQUIRED=false
+SVA_QUANTUM_NO_PRE_PULL=true
+
+# ---------------------------------------------------------------------------
+# Feature-Flags
+# ---------------------------------------------------------------------------
+IAM_UI_ENABLED=true
+IAM_ADMIN_ENABLED=true
+IAM_BULK_ENABLED=true
+VITE_IAM_UI_ENABLED=true
+VITE_IAM_ADMIN_ENABLED=true
+VITE_IAM_BULK_ENABLED=true
+
+# ---------------------------------------------------------------------------
+# Deployment (Quantum / Portainer)
+# ---------------------------------------------------------------------------
+SVA_STACK_NAME=studio
+QUANTUM_ENDPOINT=sva
+
+# ---------------------------------------------------------------------------
+# Image
+# ---------------------------------------------------------------------------
+SVA_REGISTRY=ghcr.io/smart-village-solutions
+SVA_IMAGE_REPOSITORY=sva-studio
+
+# ---------------------------------------------------------------------------
+# Monitoring (deaktiviert – kein Monitoring-Stack in diesem Profil)
+# ---------------------------------------------------------------------------
+ENABLE_OTEL=false
+# OTEL_EXPORTER_OTLP_ENDPOINT wird nur benoetigt, wenn ENABLE_OTEL=true gesetzt ist.
+SVA_ENABLE_SERVER_CONSOLE_LOGS=true
+# Observability-Overlays fuer Operatoren koennen lokal in ~/.config/quantum/env liegen:
+# SVA_GRAFANA_URL=https://logs.tpwd.de
+# SVA_LOKI_URL=<loki-endpoint>
+# SVA_GRAFANA_TOKEN=<read-only-token>
+SVA_AUTH_DEBUG_HEADERS=true
+
+# ---------------------------------------------------------------------------
+# Sensible Variablen in studio.local.vars / Secret-Store / Deploy-Umgebung
+# ---------------------------------------------------------------------------
+# SVA_AUTH_CLIENT_SECRET=
+# SVA_AUTH_STATE_SECRET=
+# KEYCLOAK_ADMIN_CLIENT_SECRET=
+# ENCRYPTION_KEY=
+# IAM_PII_KEYRING_JSON=
+# SVA_MAINSERVER_CLIENT_SECRET=
+# POSTGRES_PASSWORD=
+# APP_DB_PASSWORD=
+# REDIS_PASSWORD=
+
+# Optional ableitbar fuer Remote-Profile:
+# IAM_DATABASE_URL=postgres://...
+# REDIS_URL=redis://...
+# POSTGRES_PASSWORD
+# APP_DB_PASSWORD
+# REDIS_PASSWORD
+# IAM_DATABASE_URL (optional, wird sonst aus APP_DB_* / POSTGRES_* abgeleitet)
+# REDIS_URL (optional, wird sonst zur Laufzeit abgeleitet)
+# SVA_AUTH_CLIENT_SECRET
+# SVA_AUTH_STATE_SECRET
+# KEYCLOAK_ADMIN_CLIENT_SECRET
+# ENCRYPTION_KEY
+# IAM_PII_KEYRING_JSON

@@ -21,6 +21,18 @@ const INSTANCE_STATUS_LABELS = {
   archived: 'admin.instances.status.archived',
 } as const;
 
+const readSuggestedParentDomain = () => {
+  if (typeof window === 'undefined') {
+    return '';
+  }
+
+  try {
+    return new URL(window.location.href).hostname;
+  } catch {
+    return '';
+  }
+};
+
 const getErrorMessage = (error: IamHttpError | null) => {
   if (!error) {
     return t('admin.instances.messages.error');
@@ -37,56 +49,185 @@ const getErrorMessage = (error: IamHttpError | null) => {
       return t('admin.instances.errors.conflict');
     case 'database_unavailable':
       return t('admin.instances.errors.databaseUnavailable');
+    case 'tenant_auth_client_secret_missing':
+      return t('admin.instances.errors.tenantAuthClientSecretMissing');
+    case 'keycloak_unavailable':
+      return t('admin.instances.errors.keycloakUnavailable');
+    case 'encryption_not_configured':
+      return t('admin.instances.errors.encryptionNotConfigured');
     default:
       return t('admin.instances.messages.error');
   }
 };
 
-const readSuggestedParentDomain = () => {
-  if (typeof window === 'undefined') {
-    return '';
+const createEmptyTenantAdminBootstrap = () => ({
+  username: '',
+  email: '',
+  firstName: '',
+  lastName: '',
+});
+
+const createEmptyCreateForm = (parentDomain = '') => ({
+  instanceId: '',
+  displayName: '',
+  parentDomain,
+  authRealm: '',
+  authClientId: 'sva-studio',
+  authIssuerUrl: '',
+  authClientSecret: '',
+  tenantAdminBootstrap: createEmptyTenantAdminBootstrap(),
+});
+
+const createDetailForm = (instance: NonNullable<ReturnType<typeof useInstances>['selectedInstance']>) => ({
+  displayName: instance.displayName,
+  parentDomain: instance.parentDomain,
+  authRealm: instance.authRealm,
+  authClientId: instance.authClientId,
+  authIssuerUrl: instance.authIssuerUrl ?? '',
+  authClientSecret: '',
+  tenantAdminBootstrap: {
+    username: instance.tenantAdminBootstrap?.username ?? '',
+    email: instance.tenantAdminBootstrap?.email ?? '',
+    firstName: instance.tenantAdminBootstrap?.firstName ?? '',
+    lastName: instance.tenantAdminBootstrap?.lastName ?? '',
+  },
+  tenantAdminTemporaryPassword: '',
+  rotateClientSecret: false,
+});
+
+const getKeycloakStatusEntries = (selectedInstance: NonNullable<ReturnType<typeof useInstances>['selectedInstance']>) => {
+  const status = selectedInstance.keycloakStatus;
+  if (!status) {
+    return [];
   }
 
-  try {
-    return new URL(window.location.href).hostname;
-  } catch {
-    return '';
-  }
+  return [
+    ['admin.instances.keycloakStatus.realmExists', status.realmExists],
+    ['admin.instances.keycloakStatus.clientExists', status.clientExists],
+    ['admin.instances.keycloakStatus.instanceIdMapperExists', status.instanceIdMapperExists],
+    ['admin.instances.keycloakStatus.tenantAdminExists', status.tenantAdminExists],
+    ['admin.instances.keycloakStatus.tenantAdminHasSystemAdmin', status.tenantAdminHasSystemAdmin],
+    ['admin.instances.keycloakStatus.tenantAdminHasInstanceRegistryAdmin', !status.tenantAdminHasInstanceRegistryAdmin],
+    ['admin.instances.keycloakStatus.redirectUrisMatch', status.redirectUrisMatch],
+    ['admin.instances.keycloakStatus.logoutUrisMatch', status.logoutUrisMatch],
+    ['admin.instances.keycloakStatus.webOriginsMatch', status.webOriginsMatch],
+    ['admin.instances.keycloakStatus.clientSecretConfigured', status.clientSecretConfigured],
+    ['admin.instances.keycloakStatus.tenantClientSecretReadable', status.tenantClientSecretReadable],
+    ['admin.instances.keycloakStatus.clientSecretAligned', status.clientSecretAligned],
+    ['admin.instances.keycloakStatus.runtimeSecretSourceTenant', status.runtimeSecretSource === 'tenant'],
+  ] as const;
 };
+
+const KeycloakStatusBadge = ({ ready }: { ready: boolean }) => (
+  <Badge variant={ready ? 'secondary' : 'outline'}>
+    {ready ? t('admin.instances.keycloakStatus.ok') : t('admin.instances.keycloakStatus.missing')}
+  </Badge>
+);
 
 export const InstancesPage = () => {
   const instancesApi = useInstances();
-  const [formValues, setFormValues] = React.useState({
-    instanceId: '',
-    displayName: '',
-    parentDomain: '',
-  });
   const [suggestedParentDomain, setSuggestedParentDomain] = React.useState('');
+  const [createFormValues, setCreateFormValues] = React.useState(createEmptyCreateForm());
+  const [detailFormValues, setDetailFormValues] = React.useState<ReturnType<typeof createDetailForm> | null>(null);
 
   React.useEffect(() => {
-    setSuggestedParentDomain(readSuggestedParentDomain());
+    const parentDomain = readSuggestedParentDomain();
+    setSuggestedParentDomain(parentDomain);
+    setCreateFormValues((current) => (current.parentDomain ? current : createEmptyCreateForm(parentDomain)));
   }, []);
 
-  const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+  React.useEffect(() => {
+    if (!instancesApi.selectedInstance) {
+      setDetailFormValues(null);
+      return;
+    }
+    setDetailFormValues(createDetailForm(instancesApi.selectedInstance));
+  }, [instancesApi.selectedInstance]);
+
+  const onCreateSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const instanceId = createFormValues.instanceId.trim();
     const created = await instancesApi.createInstance({
-      instanceId: formValues.instanceId.trim(),
-      displayName: formValues.displayName.trim(),
-      parentDomain: formValues.parentDomain.trim(),
-      authRealm: formValues.instanceId.trim(),
-      authClientId: 'sva-studio',
+      instanceId,
+      displayName: createFormValues.displayName.trim(),
+      parentDomain: createFormValues.parentDomain.trim(),
+      authRealm: createFormValues.authRealm.trim() || instanceId,
+      authClientId: createFormValues.authClientId.trim() || 'sva-studio',
+      authIssuerUrl: createFormValues.authIssuerUrl.trim() || undefined,
+      authClientSecret: createFormValues.authClientSecret.trim() || undefined,
+      tenantAdminBootstrap: createFormValues.tenantAdminBootstrap.username.trim()
+        ? {
+            username: createFormValues.tenantAdminBootstrap.username.trim(),
+            email: createFormValues.tenantAdminBootstrap.email.trim() || undefined,
+            firstName: createFormValues.tenantAdminBootstrap.firstName.trim() || undefined,
+            lastName: createFormValues.tenantAdminBootstrap.lastName.trim() || undefined,
+          }
+        : undefined,
     });
     if (!created) {
       return;
     }
-    setFormValues({ instanceId: '', displayName: '', parentDomain: formValues.parentDomain.trim() });
+    setCreateFormValues(createEmptyCreateForm(createFormValues.parentDomain.trim()));
+    await instancesApi.loadInstance(created.instanceId);
+  };
+
+  const onUpdateSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!instancesApi.selectedInstance || !detailFormValues) {
+      return;
+    }
+
+    await instancesApi.updateInstance(instancesApi.selectedInstance.instanceId, {
+      displayName: detailFormValues.displayName.trim(),
+      parentDomain: detailFormValues.parentDomain.trim(),
+      authRealm: detailFormValues.authRealm.trim(),
+      authClientId: detailFormValues.authClientId.trim(),
+      authIssuerUrl: detailFormValues.authIssuerUrl.trim() || undefined,
+      authClientSecret: detailFormValues.authClientSecret.trim() || undefined,
+      tenantAdminBootstrap: detailFormValues.tenantAdminBootstrap.username.trim()
+        ? {
+            username: detailFormValues.tenantAdminBootstrap.username.trim(),
+            email: detailFormValues.tenantAdminBootstrap.email.trim() || undefined,
+            firstName: detailFormValues.tenantAdminBootstrap.firstName.trim() || undefined,
+            lastName: detailFormValues.tenantAdminBootstrap.lastName.trim() || undefined,
+          }
+        : undefined,
+    });
+    setDetailFormValues((current) =>
+      current
+        ? {
+            ...current,
+            authClientSecret: '',
+          }
+        : current
+    );
+  };
+
+  const runKeycloakReconcile = async (rotateClientSecret: boolean) => {
+    if (!instancesApi.selectedInstance || !detailFormValues) {
+      return;
+    }
+
+    await instancesApi.reconcileKeycloak(instancesApi.selectedInstance.instanceId, {
+      rotateClientSecret,
+      tenantAdminTemporaryPassword: detailFormValues.tenantAdminTemporaryPassword.trim() || undefined,
+    });
+    setDetailFormValues((current) =>
+      current
+        ? {
+            ...current,
+            tenantAdminTemporaryPassword: '',
+            rotateClientSecret: false,
+          }
+        : current
+    );
   };
 
   return (
-    <section className="space-y-5" aria-busy={instancesApi.isLoading}>
+    <section className="space-y-5" aria-busy={instancesApi.isLoading || instancesApi.detailLoading}>
       <header className="space-y-2">
         <h1 className="text-3xl font-semibold text-foreground">{t('admin.instances.page.title')}</h1>
-        <p className="max-w-2xl text-sm text-muted-foreground">{t('admin.instances.page.subtitle')}</p>
+        <p className="max-w-3xl text-sm text-muted-foreground">{t('admin.instances.page.subtitle')}</p>
       </header>
 
       <Card className="grid gap-4 p-4 lg:grid-cols-[1fr_14rem]">
@@ -122,7 +263,7 @@ export const InstancesPage = () => {
         </Alert>
       ) : null}
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.2fr)_minmax(22rem,0.8fr)]">
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(24rem,0.9fr)]">
         <Card className="overflow-x-auto p-0">
           <table className="min-w-full border-collapse" aria-label={t('admin.instances.table.ariaLabel')}>
             <thead className="bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground">
@@ -177,31 +318,134 @@ export const InstancesPage = () => {
               <h2 className="text-lg font-semibold text-foreground">{t('admin.instances.form.title')}</h2>
               <p className="text-sm text-muted-foreground">{t('admin.instances.form.subtitle')}</p>
             </div>
-            <form className="space-y-3" onSubmit={onSubmit}>
-              <div className="space-y-1">
-                <Label htmlFor="instance-id">{t('admin.instances.form.instanceId')}</Label>
-                <Input
-                  id="instance-id"
-                  value={formValues.instanceId}
-                  onChange={(event) => setFormValues((current) => ({ ...current, instanceId: event.target.value }))}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="instance-display-name">{t('admin.instances.form.displayName')}</Label>
-                <Input
-                  id="instance-display-name"
-                  value={formValues.displayName}
-                  onChange={(event) => setFormValues((current) => ({ ...current, displayName: event.target.value }))}
-                />
+            <form className="space-y-3" onSubmit={onCreateSubmit}>
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="space-y-1">
+                  <Label htmlFor="instance-id">{t('admin.instances.form.instanceId')}</Label>
+                  <Input
+                    id="instance-id"
+                    value={createFormValues.instanceId}
+                    onChange={(event) =>
+                      setCreateFormValues((current) => ({
+                        ...current,
+                        instanceId: event.target.value,
+                        authRealm: current.authRealm ? current.authRealm : event.target.value,
+                      }))
+                    }
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="instance-display-name">{t('admin.instances.form.displayName')}</Label>
+                  <Input
+                    id="instance-display-name"
+                    value={createFormValues.displayName}
+                    onChange={(event) => setCreateFormValues((current) => ({ ...current, displayName: event.target.value }))}
+                  />
+                </div>
               </div>
               <div className="space-y-1">
                 <Label htmlFor="instance-parent-domain">{t('admin.instances.form.parentDomain')}</Label>
                 <Input
                   id="instance-parent-domain"
-                  value={formValues.parentDomain}
+                  value={createFormValues.parentDomain}
                   placeholder={suggestedParentDomain || undefined}
-                  onChange={(event) => setFormValues((current) => ({ ...current, parentDomain: event.target.value }))}
+                  onChange={(event) => setCreateFormValues((current) => ({ ...current, parentDomain: event.target.value }))}
                 />
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="space-y-1">
+                  <Label htmlFor="instance-auth-realm">{t('admin.instances.form.authRealm')}</Label>
+                  <Input
+                    id="instance-auth-realm"
+                    value={createFormValues.authRealm}
+                    onChange={(event) => setCreateFormValues((current) => ({ ...current, authRealm: event.target.value }))}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="instance-auth-client-id">{t('admin.instances.form.authClientId')}</Label>
+                  <Input
+                    id="instance-auth-client-id"
+                    value={createFormValues.authClientId}
+                    onChange={(event) => setCreateFormValues((current) => ({ ...current, authClientId: event.target.value }))}
+                  />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="instance-auth-issuer-url">{t('admin.instances.form.authIssuerUrl')}</Label>
+                <Input
+                  id="instance-auth-issuer-url"
+                  value={createFormValues.authIssuerUrl}
+                  onChange={(event) => setCreateFormValues((current) => ({ ...current, authIssuerUrl: event.target.value }))}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="instance-auth-client-secret">{t('admin.instances.form.authClientSecret')}</Label>
+                <Input
+                  id="instance-auth-client-secret"
+                  type="password"
+                  value={createFormValues.authClientSecret}
+                  onChange={(event) => setCreateFormValues((current) => ({ ...current, authClientSecret: event.target.value }))}
+                />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-sm font-medium text-foreground">{t('admin.instances.form.tenantAdminTitle')}</h3>
+                <p className="text-xs text-muted-foreground">{t('admin.instances.form.tenantAdminSubtitle')}</p>
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="space-y-1">
+                  <Label htmlFor="instance-admin-username">{t('admin.instances.form.tenantAdminUsername')}</Label>
+                  <Input
+                    id="instance-admin-username"
+                    value={createFormValues.tenantAdminBootstrap.username}
+                    onChange={(event) =>
+                      setCreateFormValues((current) => ({
+                        ...current,
+                        tenantAdminBootstrap: { ...current.tenantAdminBootstrap, username: event.target.value },
+                      }))
+                    }
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="instance-admin-email">{t('admin.instances.form.tenantAdminEmail')}</Label>
+                  <Input
+                    id="instance-admin-email"
+                    value={createFormValues.tenantAdminBootstrap.email}
+                    onChange={(event) =>
+                      setCreateFormValues((current) => ({
+                        ...current,
+                        tenantAdminBootstrap: { ...current.tenantAdminBootstrap, email: event.target.value },
+                      }))
+                    }
+                  />
+                </div>
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="space-y-1">
+                  <Label htmlFor="instance-admin-first-name">{t('admin.instances.form.tenantAdminFirstName')}</Label>
+                  <Input
+                    id="instance-admin-first-name"
+                    value={createFormValues.tenantAdminBootstrap.firstName}
+                    onChange={(event) =>
+                      setCreateFormValues((current) => ({
+                        ...current,
+                        tenantAdminBootstrap: { ...current.tenantAdminBootstrap, firstName: event.target.value },
+                      }))
+                    }
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="instance-admin-last-name">{t('admin.instances.form.tenantAdminLastName')}</Label>
+                  <Input
+                    id="instance-admin-last-name"
+                    value={createFormValues.tenantAdminBootstrap.lastName}
+                    onChange={(event) =>
+                      setCreateFormValues((current) => ({
+                        ...current,
+                        tenantAdminBootstrap: { ...current.tenantAdminBootstrap, lastName: event.target.value },
+                      }))
+                    }
+                  />
+                </div>
               </div>
               <Button type="submit">{t('admin.instances.actions.create')}</Button>
             </form>
@@ -212,13 +456,13 @@ export const InstancesPage = () => {
             ) : null}
           </Card>
 
-          <Card className="space-y-3 p-4">
+          <Card className="space-y-4 p-4">
             <div className="space-y-1">
               <h2 className="text-lg font-semibold text-foreground">{t('admin.instances.detail.title')}</h2>
               <p className="text-sm text-muted-foreground">{t('admin.instances.detail.subtitle')}</p>
             </div>
-            {instancesApi.selectedInstance ? (
-              <div className="space-y-3 text-sm">
+            {instancesApi.selectedInstance && detailFormValues ? (
+              <div className="space-y-5 text-sm">
                 <div>
                   <div className="font-medium text-foreground">{instancesApi.selectedInstance.displayName}</div>
                   <div className="text-muted-foreground">{instancesApi.selectedInstance.instanceId}</div>
@@ -226,6 +470,233 @@ export const InstancesPage = () => {
                 <div>{t('admin.instances.detail.primaryHostname', { value: instancesApi.selectedInstance.primaryHostname })}</div>
                 <div>{t('admin.instances.detail.parentDomain', { value: instancesApi.selectedInstance.parentDomain })}</div>
                 <div>{t('admin.instances.detail.status', { value: t(INSTANCE_STATUS_LABELS[instancesApi.selectedInstance.status]) })}</div>
+
+                <form className="space-y-3" onSubmit={onUpdateSubmit}>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div className="space-y-1">
+                      <Label htmlFor="detail-display-name">{t('admin.instances.form.displayName')}</Label>
+                      <Input
+                        id="detail-display-name"
+                        value={detailFormValues.displayName}
+                        onChange={(event) =>
+                          setDetailFormValues((current) => (current ? { ...current, displayName: event.target.value } : current))
+                        }
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="detail-parent-domain">{t('admin.instances.form.parentDomain')}</Label>
+                      <Input
+                        id="detail-parent-domain"
+                        value={detailFormValues.parentDomain}
+                        onChange={(event) =>
+                          setDetailFormValues((current) => (current ? { ...current, parentDomain: event.target.value } : current))
+                        }
+                      />
+                    </div>
+                  </div>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div className="space-y-1">
+                      <Label htmlFor="detail-auth-realm">{t('admin.instances.form.authRealm')}</Label>
+                      <Input
+                        id="detail-auth-realm"
+                        value={detailFormValues.authRealm}
+                        onChange={(event) =>
+                          setDetailFormValues((current) => (current ? { ...current, authRealm: event.target.value } : current))
+                        }
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="detail-auth-client-id">{t('admin.instances.form.authClientId')}</Label>
+                      <Input
+                        id="detail-auth-client-id"
+                        value={detailFormValues.authClientId}
+                        onChange={(event) =>
+                          setDetailFormValues((current) => (current ? { ...current, authClientId: event.target.value } : current))
+                        }
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="detail-auth-issuer-url">{t('admin.instances.form.authIssuerUrl')}</Label>
+                    <Input
+                      id="detail-auth-issuer-url"
+                      value={detailFormValues.authIssuerUrl}
+                      onChange={(event) =>
+                        setDetailFormValues((current) => (current ? { ...current, authIssuerUrl: event.target.value } : current))
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="detail-auth-client-secret">{t('admin.instances.form.authClientSecret')}</Label>
+                    <Input
+                      id="detail-auth-client-secret"
+                      type="password"
+                      placeholder={
+                        instancesApi.selectedInstance.authClientSecretConfigured
+                          ? t('admin.instances.form.authClientSecretConfigured')
+                          : t('admin.instances.form.authClientSecretMissing')
+                      }
+                      value={detailFormValues.authClientSecret}
+                      onChange={(event) =>
+                        setDetailFormValues((current) => (current ? { ...current, authClientSecret: event.target.value } : current))
+                      }
+                    />
+                    <p className="text-xs text-muted-foreground">{t('admin.instances.form.authClientSecretHint')}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <h3 className="text-sm font-medium text-foreground">{t('admin.instances.form.tenantAdminTitle')}</h3>
+                  </div>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div className="space-y-1">
+                      <Label htmlFor="detail-admin-username">{t('admin.instances.form.tenantAdminUsername')}</Label>
+                      <Input
+                        id="detail-admin-username"
+                        value={detailFormValues.tenantAdminBootstrap.username}
+                        onChange={(event) =>
+                          setDetailFormValues((current) =>
+                            current
+                              ? {
+                                  ...current,
+                                  tenantAdminBootstrap: {
+                                    ...current.tenantAdminBootstrap,
+                                    username: event.target.value,
+                                  },
+                                }
+                              : current
+                          )
+                        }
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="detail-admin-email">{t('admin.instances.form.tenantAdminEmail')}</Label>
+                      <Input
+                        id="detail-admin-email"
+                        value={detailFormValues.tenantAdminBootstrap.email}
+                        onChange={(event) =>
+                          setDetailFormValues((current) =>
+                            current
+                              ? {
+                                  ...current,
+                                  tenantAdminBootstrap: {
+                                    ...current.tenantAdminBootstrap,
+                                    email: event.target.value,
+                                  },
+                                }
+                              : current
+                          )
+                        }
+                      />
+                    </div>
+                  </div>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div className="space-y-1">
+                      <Label htmlFor="detail-admin-first-name">{t('admin.instances.form.tenantAdminFirstName')}</Label>
+                      <Input
+                        id="detail-admin-first-name"
+                        value={detailFormValues.tenantAdminBootstrap.firstName}
+                        onChange={(event) =>
+                          setDetailFormValues((current) =>
+                            current
+                              ? {
+                                  ...current,
+                                  tenantAdminBootstrap: {
+                                    ...current.tenantAdminBootstrap,
+                                    firstName: event.target.value,
+                                  },
+                                }
+                              : current
+                          )
+                        }
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="detail-admin-last-name">{t('admin.instances.form.tenantAdminLastName')}</Label>
+                      <Input
+                        id="detail-admin-last-name"
+                        value={detailFormValues.tenantAdminBootstrap.lastName}
+                        onChange={(event) =>
+                          setDetailFormValues((current) =>
+                            current
+                              ? {
+                                  ...current,
+                                  tenantAdminBootstrap: {
+                                    ...current.tenantAdminBootstrap,
+                                    lastName: event.target.value,
+                                  },
+                                }
+                              : current
+                          )
+                        }
+                      />
+                    </div>
+                  </div>
+                  <Button type="submit" variant="outline">
+                    {t('admin.instances.actions.save')}
+                  </Button>
+                </form>
+
+                <div className="space-y-3 rounded-lg border border-border p-3">
+                  <div className="space-y-1">
+                    <div className="font-medium text-foreground">{t('admin.instances.keycloakPanel.title')}</div>
+                    <p className="text-xs text-muted-foreground">{t('admin.instances.keycloakPanel.subtitle')}</p>
+                  </div>
+                  <div className="grid gap-2">
+                    {getKeycloakStatusEntries(instancesApi.selectedInstance).map(([labelKey, ready]) => (
+                      <div key={labelKey} className="flex items-center justify-between gap-3 rounded-md border border-border p-2">
+                        <span>{t(labelKey)}</span>
+                        <KeycloakStatusBadge ready={ready} />
+                      </div>
+                    ))}
+                  </div>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div className="space-y-1 md:col-span-2">
+                      <Label htmlFor="tenant-admin-password">{t('admin.instances.keycloakPanel.temporaryPassword')}</Label>
+                      <Input
+                        id="tenant-admin-password"
+                        type="password"
+                        value={detailFormValues.tenantAdminTemporaryPassword}
+                        onChange={(event) =>
+                          setDetailFormValues((current) =>
+                            current ? { ...current, tenantAdminTemporaryPassword: event.target.value } : current
+                          )
+                        }
+                      />
+                      <p className="text-xs text-muted-foreground">{t('admin.instances.keycloakPanel.passwordHint')}</p>
+                    </div>
+                    <label className="flex items-center gap-2 text-sm text-foreground md:col-span-2">
+                      <input
+                        type="checkbox"
+                        checked={detailFormValues.rotateClientSecret}
+                        onChange={(event) =>
+                          setDetailFormValues((current) =>
+                            current ? { ...current, rotateClientSecret: event.target.checked } : current
+                          )
+                        }
+                      />
+                      <span>{t('admin.instances.keycloakPanel.rotateClientSecret')}</span>
+                    </label>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => void instancesApi.refreshKeycloakStatus(instancesApi.selectedInstance!.instanceId)}
+                      disabled={instancesApi.statusLoading}
+                    >
+                      {t('admin.instances.actions.checkKeycloakStatus')}
+                    </Button>
+                    <Button type="button" onClick={() => void runKeycloakReconcile(false)}>
+                      {t('admin.instances.actions.reconcileKeycloak')}
+                    </Button>
+                    <Button type="button" variant="outline" onClick={() => void runKeycloakReconcile(false)}>
+                      {t('admin.instances.actions.resetTenantAdmin')}
+                    </Button>
+                    <Button type="button" variant="outline" onClick={() => void runKeycloakReconcile(true)}>
+                      {t('admin.instances.actions.rotateClientSecret')}
+                    </Button>
+                  </div>
+                </div>
+
                 <div className="space-y-2">
                   <div className="font-medium text-foreground">{t('admin.instances.detail.runs')}</div>
                   {instancesApi.selectedInstance.provisioningRuns.length > 0 ? (

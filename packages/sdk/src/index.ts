@@ -22,6 +22,7 @@ export type {
 } from './runtime-profile.js';
 export {
   RUNTIME_PROFILES,
+  getRuntimeProfileDerivedEnvKeys,
   getRuntimeProfileDefinition,
   getRuntimeProfileFromEnv,
   getRuntimeProfileRequiredEnvKeys,

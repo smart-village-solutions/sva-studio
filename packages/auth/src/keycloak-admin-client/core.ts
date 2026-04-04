@@ -70,6 +70,32 @@ type KeycloakRoleMapping = {
   readonly containerId?: string;
 };
 
+type KeycloakClientRepresentation = {
+  readonly id: string;
+  readonly clientId: string;
+  readonly name?: string;
+  readonly enabled?: boolean;
+  readonly protocol?: string;
+  readonly publicClient?: boolean;
+  readonly standardFlowEnabled?: boolean;
+  readonly directAccessGrantsEnabled?: boolean;
+  readonly serviceAccountsEnabled?: boolean;
+  readonly redirectUris?: readonly string[];
+  readonly webOrigins?: readonly string[];
+  readonly rootUrl?: string;
+  readonly baseUrl?: string;
+  readonly adminUrl?: string;
+  readonly attributes?: Readonly<Record<string, string>>;
+};
+
+type KeycloakProtocolMapperRepresentation = {
+  readonly id: string;
+  readonly name: string;
+  readonly protocol?: string;
+  readonly protocolMapper?: string;
+  readonly config?: Readonly<Record<string, string>>;
+};
+
 type KeycloakUserCreateResponse = {
   readonly location: string | null;
 };
@@ -172,6 +198,31 @@ const normalizeAttributes = (
 const normalizeManagedRoleAttributes = (
   attributes: Readonly<Record<string, readonly string[]> | Record<string, string | readonly string[]>>
 ): Record<string, readonly string[]> => normalizeAttributes(attributes as Readonly<Record<string, string | readonly string[]>>) ?? {};
+
+const toSortedUniqueStrings = (values: readonly string[] | undefined): string[] =>
+  [...new Set((values ?? []).map((value) => value.trim()).filter((value) => value.length > 0))].sort((left, right) =>
+    left.localeCompare(right)
+  );
+
+const areStringSetsEqual = (left: readonly string[] | undefined, right: readonly string[] | undefined): boolean => {
+  const normalizedLeft = toSortedUniqueStrings(left);
+  const normalizedRight = toSortedUniqueStrings(right);
+  if (normalizedLeft.length !== normalizedRight.length) {
+    return false;
+  }
+  return normalizedLeft.every((value, index) => value === normalizedRight[index]);
+};
+
+const readPostLogoutRedirectUris = (attributes: Readonly<Record<string, string>> | undefined): readonly string[] => {
+  const raw = attributes?.['post.logout.redirect.uris'];
+  if (!raw) {
+    return [];
+  }
+  return raw
+    .split('##')
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0);
+};
 
 const mapKeycloakRole = (role: KeycloakRealmRole): IdentityRole => ({
   id: role.id,
@@ -692,45 +743,259 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     }
   }
 
+  async getRealm(): Promise<{ realm: string } | null> {
+    if (this.isCircuitOpen()) {
+      throw new KeycloakAdminUnavailableError('Keycloak unavailable and realm lookup is temporarily disabled.');
+    }
+
+    try {
+      const realm = await this.executeWithResilience<{ realm: string }>({
+        method: 'GET',
+        path: `/admin/realms/${encodePathSegment(this.realm)}`,
+        operation: 'get_realm',
+      });
+      return realm;
+    } catch (error) {
+      if (error instanceof KeycloakAdminRequestError && error.statusCode === 404) {
+        return null;
+      }
+      throw error;
+    }
+  }
+
+  async getOidcClientByClientId(clientId: string): Promise<KeycloakClientRepresentation | null> {
+    if (this.isCircuitOpen()) {
+      throw new KeycloakAdminUnavailableError('Keycloak unavailable and client lookup is temporarily disabled.');
+    }
+
+    const query = await this.executeWithResilience<KeycloakClientRepresentation[]>({
+      method: 'GET',
+      path: `/admin/realms/${encodePathSegment(this.realm)}/clients?clientId=${encodeURIComponent(clientId)}`,
+      operation: 'find_client',
+    });
+
+    return query[0] ?? null;
+  }
+
+  async getOidcClientSecretValue(clientId: string): Promise<string | null> {
+    const client = await this.getOidcClientByClientId(clientId);
+    if (!client) {
+      return null;
+    }
+
+    const response = await this.executeWithResilience<{ value?: string }>({
+      method: 'GET',
+      path: `/admin/realms/${encodePathSegment(this.realm)}/clients/${encodePathSegment(client.id)}/client-secret`,
+      operation: 'get_client_secret',
+    });
+
+    return typeof response.value === 'string' && response.value.length > 0 ? response.value : null;
+  }
+
   async ensureOidcClient(input: {
     clientId: string;
     redirectUris: readonly string[];
     postLogoutRedirectUris: readonly string[];
     webOrigins: readonly string[];
     rootUrl: string;
+    clientSecret?: string;
   }): Promise<void> {
     await this.assertWriteAvailability();
-    const query = await this.executeWithResilience<Array<{ id: string; clientId: string }>>({
-      method: 'GET',
-      path: `/admin/realms/${encodePathSegment(this.realm)}/clients?clientId=${encodeURIComponent(input.clientId)}`,
-      operation: 'find_client',
-    });
+    const existing = await this.getOidcClientByClientId(input.clientId);
+    const payload = {
+      clientId: input.clientId,
+      name: input.clientId,
+      enabled: true,
+      protocol: 'openid-connect',
+      publicClient: false,
+      standardFlowEnabled: true,
+      directAccessGrantsEnabled: false,
+      serviceAccountsEnabled: false,
+      redirectUris: [...toSortedUniqueStrings(input.redirectUris)],
+      webOrigins: [...toSortedUniqueStrings(input.webOrigins)],
+      attributes: {
+        'post.logout.redirect.uris': toSortedUniqueStrings(input.postLogoutRedirectUris).join('##'),
+      },
+      rootUrl: input.rootUrl,
+      baseUrl: '/',
+      adminUrl: input.rootUrl,
+    };
 
-    if (query.length > 0) {
+    if (!existing) {
+      await this.executeWithResilience<void>({
+        method: 'POST',
+        path: `/admin/realms/${encodePathSegment(this.realm)}/clients`,
+        operation: 'create_client',
+        body: JSON.stringify(payload),
+      });
+    } else {
+      const requiresUpdate =
+        existing.rootUrl !== payload.rootUrl ||
+        !areStringSetsEqual(existing.redirectUris, payload.redirectUris) ||
+        !areStringSetsEqual(existing.webOrigins, payload.webOrigins) ||
+        !areStringSetsEqual(readPostLogoutRedirectUris(existing.attributes), input.postLogoutRedirectUris);
+
+      if (requiresUpdate) {
+        await this.executeWithResilience<void>({
+          method: 'PUT',
+          path: `/admin/realms/${encodePathSegment(this.realm)}/clients/${encodePathSegment(existing.id)}`,
+          operation: 'update_client',
+          body: JSON.stringify({
+            ...existing,
+            ...payload,
+          }),
+        });
+      }
+    }
+
+    if (input.clientSecret) {
+      const resolvedClient = existing ?? (await this.getOidcClientByClientId(input.clientId));
+      if (!resolvedClient) {
+        throw new KeycloakAdminRequestError({
+          message: 'Keycloak client secret could not be updated because the client is missing.',
+          statusCode: 404,
+          code: 'client_not_found',
+          retryable: false,
+        });
+      }
+      await this.executeWithResilience<void>({
+        method: 'POST',
+        path: `/admin/realms/${encodePathSegment(this.realm)}/clients/${encodePathSegment(resolvedClient.id)}/client-secret`,
+        operation: 'rotate_client_secret',
+        body: JSON.stringify({ type: 'secret', value: input.clientSecret }),
+      });
+    }
+  }
+
+  async listClientProtocolMappers(clientId: string): Promise<readonly KeycloakProtocolMapperRepresentation[]> {
+    const client = await this.getOidcClientByClientId(clientId);
+    if (!client) {
+      return [];
+    }
+
+    return this.executeWithResilience<KeycloakProtocolMapperRepresentation[]>({
+      method: 'GET',
+      path: `/admin/realms/${encodePathSegment(this.realm)}/clients/${encodePathSegment(client.id)}/protocol-mappers/models`,
+      operation: 'list_protocol_mappers',
+    });
+  }
+
+  async ensureUserAttributeProtocolMapper(input: {
+    clientId: string;
+    name: string;
+    userAttribute: string;
+    claimName: string;
+  }): Promise<void> {
+    await this.assertWriteAvailability();
+    const client = await this.getOidcClientByClientId(input.clientId);
+    if (!client) {
+      throw new KeycloakAdminRequestError({
+        message: `Keycloak client ${input.clientId} is missing.`,
+        statusCode: 404,
+        code: 'client_not_found',
+        retryable: false,
+      });
+    }
+
+    const existingMappers = await this.listClientProtocolMappers(input.clientId);
+    const existingMapper = existingMappers.find((mapper) => mapper.name === input.name);
+    const payload = {
+      name: input.name,
+      protocol: 'openid-connect',
+      protocolMapper: 'oidc-usermodel-attribute-mapper',
+      config: {
+        'user.attribute': input.userAttribute,
+        'claim.name': input.claimName,
+        'jsonType.label': 'String',
+        'id.token.claim': 'true',
+        'access.token.claim': 'true',
+        'userinfo.token.claim': 'true',
+      },
+    };
+
+    if (!existingMapper) {
+      await this.executeWithResilience<void>({
+        method: 'POST',
+        path: `/admin/realms/${encodePathSegment(this.realm)}/clients/${encodePathSegment(client.id)}/protocol-mappers/models`,
+        operation: 'create_protocol_mapper',
+        body: JSON.stringify(payload),
+      });
+      return;
+    }
+
+    const existingConfig = existingMapper.config ?? {};
+    const needsUpdate =
+      existingMapper.protocol !== payload.protocol ||
+      existingMapper.protocolMapper !== payload.protocolMapper ||
+      Object.entries(payload.config).some(([key, value]) => existingConfig[key] !== value);
+
+    if (!needsUpdate) {
       return;
     }
 
     await this.executeWithResilience<void>({
-      method: 'POST',
-      path: `/admin/realms/${encodePathSegment(this.realm)}/clients`,
-      operation: 'create_client',
+      method: 'PUT',
+      path: `/admin/realms/${encodePathSegment(this.realm)}/clients/${encodePathSegment(client.id)}/protocol-mappers/models/${encodePathSegment(existingMapper.id)}`,
+      operation: 'update_protocol_mapper',
       body: JSON.stringify({
-        clientId: input.clientId,
-        name: input.clientId,
-        enabled: true,
-        protocol: 'openid-connect',
-        publicClient: false,
-        standardFlowEnabled: true,
-        directAccessGrantsEnabled: false,
-        serviceAccountsEnabled: false,
-        redirectUris: [...input.redirectUris],
-        webOrigins: [...input.webOrigins],
-        attributes: {
-          'post.logout.redirect.uris': input.postLogoutRedirectUris.join('##'),
-        },
-        rootUrl: input.rootUrl,
-        baseUrl: '/',
-        adminUrl: input.rootUrl,
+        ...existingMapper,
+        ...payload,
+      }),
+    });
+  }
+
+  async ensureRealmRole(externalName: string): Promise<void> {
+    const existing = await this.getRoleByName(externalName);
+    if (existing) {
+      return;
+    }
+    await this.createRole({
+      externalName,
+      attributes: {
+        managedBy: 'studio',
+        instanceId: this.realm,
+        roleKey: externalName,
+        displayName: externalName,
+      },
+    });
+  }
+
+  async findUserByUsername(username: string): Promise<KeycloakAdminUser | null> {
+    if (this.isCircuitOpen()) {
+      throw new KeycloakAdminUnavailableError('Keycloak unavailable and user lookup is temporarily disabled.');
+    }
+
+    const users = await this.executeWithResilience<KeycloakAdminUser[]>({
+      method: 'GET',
+      path: `/admin/realms/${encodePathSegment(this.realm)}/users?exact=true&username=${encodeURIComponent(username)}`,
+      operation: 'find_user_by_username',
+    });
+
+    return users.find((user) => user.username === username) ?? null;
+  }
+
+  async setUserPassword(externalId: string, password: string, temporary = true): Promise<void> {
+    await this.assertWriteAvailability();
+    await this.executeWithResilience<void>({
+      method: 'PUT',
+      path: `/admin/realms/${encodePathSegment(this.realm)}/users/${encodePathSegment(externalId)}/reset-password`,
+      operation: 'reset_user_password',
+      body: JSON.stringify({
+        type: 'password',
+        value: password,
+        temporary,
+      }),
+    });
+  }
+
+  async setUserRequiredActions(externalId: string, requiredActions: readonly string[]): Promise<void> {
+    await this.assertWriteAvailability();
+    await this.executeWithResilience<void>({
+      method: 'PUT',
+      path: `/admin/realms/${encodePathSegment(this.realm)}/users/${encodePathSegment(externalId)}`,
+      operation: 'set_user_required_actions',
+      body: JSON.stringify({
+        requiredActions: [...requiredActions],
       }),
     });
   }

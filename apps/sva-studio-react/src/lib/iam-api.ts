@@ -359,9 +359,39 @@ export type CreateInstancePayload = {
   readonly authRealm: string;
   readonly authClientId: string;
   readonly authIssuerUrl?: string;
+  readonly authClientSecret?: string;
+  readonly tenantAdminBootstrap?: {
+    readonly username: string;
+    readonly email?: string;
+    readonly firstName?: string;
+    readonly lastName?: string;
+  };
   readonly themeKey?: string;
   readonly mainserverConfigRef?: string;
   readonly featureFlags?: Readonly<Record<string, boolean>>;
+};
+
+export type UpdateInstancePayload = {
+  readonly displayName: string;
+  readonly parentDomain: string;
+  readonly authRealm: string;
+  readonly authClientId: string;
+  readonly authIssuerUrl?: string;
+  readonly authClientSecret?: string;
+  readonly tenantAdminBootstrap?: {
+    readonly username: string;
+    readonly email?: string;
+    readonly firstName?: string;
+    readonly lastName?: string;
+  };
+  readonly themeKey?: string;
+  readonly mainserverConfigRef?: string;
+  readonly featureFlags?: Readonly<Record<string, boolean>>;
+};
+
+export type ReconcileInstanceKeycloakPayload = {
+  readonly tenantAdminTemporaryPassword?: string;
+  readonly rotateClientSecret?: boolean;
 };
 
 type IamRequestOptions = Readonly<{
@@ -471,6 +501,16 @@ const patchJson = async <TResponse, TPayload>(path: string, payload: TPayload) =
   requestJson<TResponse>(path, {
     method: 'PATCH',
     headers: IAM_HEADERS,
+    body: JSON.stringify(payload),
+  });
+
+const patchJsonWithReauth = async <TResponse, TPayload>(path: string, payload: TPayload) =>
+  requestJson<TResponse>(path, {
+    method: 'PATCH',
+    headers: {
+      ...IAM_HEADERS,
+      'X-SVA-Reauth-Confirmed': 'true',
+    },
     body: JSON.stringify(payload),
   });
 
@@ -636,6 +676,30 @@ export const createInstance = async (
   payload: CreateInstancePayload
 ): Promise<ApiItemResponse<IamInstanceListItem>> =>
   postJsonWithReauth<ApiItemResponse<IamInstanceListItem>, CreateInstancePayload>('/api/v1/iam/instances', payload, true);
+
+export const updateInstance = async (
+  instanceId: string,
+  payload: UpdateInstancePayload
+): Promise<ApiItemResponse<IamInstanceDetail>> =>
+  patchJsonWithReauth<ApiItemResponse<IamInstanceDetail>, UpdateInstancePayload>(
+    `/api/v1/iam/instances/${instanceId}`,
+    payload
+  );
+
+export const getInstanceKeycloakStatus = async (
+  instanceId: string
+): Promise<ApiItemResponse<IamInstanceDetail['keycloakStatus']>> =>
+  requestJson<ApiItemResponse<IamInstanceDetail['keycloakStatus']>>(`/api/v1/iam/instances/${instanceId}/keycloak/status`);
+
+export const reconcileInstanceKeycloak = async (
+  instanceId: string,
+  payload: ReconcileInstanceKeycloakPayload
+): Promise<ApiItemResponse<IamInstanceDetail['keycloakStatus']>> =>
+  postJsonWithReauth<ApiItemResponse<IamInstanceDetail['keycloakStatus']>, ReconcileInstanceKeycloakPayload>(
+    `/api/v1/iam/instances/${instanceId}/keycloak/reconcile`,
+    payload,
+    true
+  );
 
 export const activateInstance = async (instanceId: string): Promise<ApiItemResponse<IamInstanceListItem>> =>
   postJsonWithReauth<ApiItemResponse<IamInstanceListItem>, { status: 'active' }>(

@@ -55,6 +55,8 @@ pnpm exec tsx scripts/ops/instance-registry.ts create \
   --instance-id demo2 \
   --display-name "Demo 2" \
   --parent-domain studio.lvh.me \
+  --auth-realm demo2 \
+  --auth-client-id sva-studio \
   --actor-id local-admin
 pnpm exec tsx scripts/ops/instance-registry.ts activate \
   --instance-id demo2 \
@@ -82,6 +84,8 @@ pnpm exec tsx scripts/ops/instance-registry.ts create \
   --instance-id demo \
   --display-name "Demo" \
   --parent-domain studio.lvh.me \
+  --auth-realm demo \
+  --auth-client-id sva-studio \
   --actor-id local-admin
 pnpm exec tsx scripts/ops/instance-registry.ts activate \
   --instance-id demo \

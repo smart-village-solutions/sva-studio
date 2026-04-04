@@ -26,6 +26,13 @@ export type InstanceRegistryRecord = {
   readonly authRealm: string;
   readonly authClientId: string;
   readonly authIssuerUrl?: string;
+  readonly authClientSecretConfigured: boolean;
+  readonly tenantAdminBootstrap?: {
+    readonly username: string;
+    readonly email?: string;
+    readonly firstName?: string;
+    readonly lastName?: string;
+  };
   readonly themeKey?: string;
   readonly featureFlags: Readonly<Record<string, boolean>>;
   readonly mainserverConfigRef?: string;

@@ -17,14 +17,20 @@ import {
 } from '@sva/core';
 
 import type { AuthenticatedRequestContext } from '../middleware.server.js';
+import { resolveEffectiveRequestHost } from '../request-hosts.js';
 import {
   createInstanceSchema,
   ensurePlatformAccess,
   listQuerySchema,
   readDetailInstanceId,
   requireFreshReauth,
-  statusMutationSchema,
+  updateInstanceSchema,
 } from './http.js';
+import {
+  mapInstanceMutationError,
+  mutateInstanceStatus,
+  reconcileInstanceKeycloakMutation,
+} from './core-mutations.js';
 import { withRegistryService } from './repository.js';
 import type { ResolveRuntimeInstanceResult } from './types.js';
 
@@ -108,6 +114,8 @@ export const createInstanceInternal = async (request: Request, ctx: Authenticate
       authRealm: payloadResult.data.authRealm,
       authClientId: payloadResult.data.authClientId,
       authIssuerUrl: payloadResult.data.authIssuerUrl,
+      authClientSecret: payloadResult.data.authClientSecret,
+      tenantAdminBootstrap: payloadResult.data.tenantAdminBootstrap,
       actorId: ctx.user.id,
       requestId: getWorkspaceContext().requestId,
       themeKey: payloadResult.data.themeKey,
@@ -131,11 +139,7 @@ export const createInstanceInternal = async (request: Request, ctx: Authenticate
   return jsonResponse(201, asApiItem(result.instance, getWorkspaceContext().requestId));
 };
 
-const mutateInstanceStatus = async (
-  request: Request,
-  ctx: AuthenticatedRequestContext,
-  nextStatus: Extract<InstanceStatus, 'active' | 'suspended' | 'archived'>
-): Promise<Response> => {
+export const updateInstanceInternal = async (request: Request, ctx: AuthenticatedRequestContext): Promise<Response> => {
   const accessError = ensurePlatformAccess(request, ctx);
   if (accessError) {
     return accessError;
@@ -151,14 +155,53 @@ const mutateInstanceStatus = async (
     return reauthError;
   }
 
-  const idempotencyResult = requireIdempotencyKey(request, getWorkspaceContext().requestId);
-  if ('error' in idempotencyResult) {
-    return idempotencyResult.error;
+  const instanceId = readDetailInstanceId(request);
+  if (!instanceId) {
+    return createApiError(400, 'invalid_instance_id', 'Instanz-ID fehlt.', getWorkspaceContext().requestId);
   }
 
-  const payloadResult = await parseRequestBody(request, statusMutationSchema);
-  if (!payloadResult.ok || payloadResult.data.status !== nextStatus) {
-    return createApiError(400, 'invalid_request', 'Ungültiger Statuswechsel.', getWorkspaceContext().requestId);
+  const payloadResult = await parseRequestBody(request, updateInstanceSchema);
+  if (!payloadResult.ok) {
+    return createApiError(400, 'invalid_request', payloadResult.message, getWorkspaceContext().requestId);
+  }
+
+  let updated;
+  try {
+    updated = await withRegistryService((service) =>
+      service.updateInstance({
+        instanceId,
+        displayName: payloadResult.data.displayName,
+        parentDomain: payloadResult.data.parentDomain,
+        authRealm: payloadResult.data.authRealm,
+        authClientId: payloadResult.data.authClientId,
+        authIssuerUrl: payloadResult.data.authIssuerUrl,
+        authClientSecret: payloadResult.data.authClientSecret,
+        tenantAdminBootstrap: payloadResult.data.tenantAdminBootstrap,
+        actorId: ctx.user.id,
+        requestId: getWorkspaceContext().requestId,
+        themeKey: payloadResult.data.themeKey,
+        featureFlags: payloadResult.data.featureFlags,
+        mainserverConfigRef: payloadResult.data.mainserverConfigRef,
+      })
+    );
+  } catch (error) {
+    return mapInstanceMutationError(error);
+  }
+
+  if (!updated) {
+    return createApiError(404, 'not_found', 'Instanz wurde nicht gefunden.', getWorkspaceContext().requestId);
+  }
+
+  return jsonResponse(200, asApiItem(updated, getWorkspaceContext().requestId));
+};
+
+export const getInstanceKeycloakStatusInternal = async (
+  request: Request,
+  ctx: AuthenticatedRequestContext
+): Promise<Response> => {
+  const accessError = ensurePlatformAccess(request, ctx);
+  if (accessError) {
+    return accessError;
   }
 
   const instanceId = readDetailInstanceId(request);
@@ -166,25 +209,21 @@ const mutateInstanceStatus = async (
     return createApiError(400, 'invalid_instance_id', 'Instanz-ID fehlt.', getWorkspaceContext().requestId);
   }
 
-  const result = await withRegistryService((service) =>
-    service.changeStatus({
-      idempotencyKey: idempotencyResult.key,
-      instanceId,
-      nextStatus,
-      actorId: ctx.user.id,
-      requestId: getWorkspaceContext().requestId,
-    })
-  );
-
-  if (!result.ok) {
-    if (result.reason === 'not_found') {
+  try {
+    const status = await withRegistryService((service) => service.getKeycloakStatus(instanceId));
+    if (!status) {
       return createApiError(404, 'not_found', 'Instanz wurde nicht gefunden.', getWorkspaceContext().requestId);
     }
-    return createApiError(409, 'conflict', 'Statuswechsel ist im aktuellen Zustand nicht erlaubt.', getWorkspaceContext().requestId);
+    return jsonResponse(200, asApiItem(status, getWorkspaceContext().requestId));
+  } catch (error) {
+    return mapInstanceMutationError(error);
   }
-
-  return jsonResponse(200, asApiItem(result.instance, getWorkspaceContext().requestId));
 };
+
+export const reconcileInstanceKeycloakInternal = async (
+  request: Request,
+  ctx: AuthenticatedRequestContext
+): Promise<Response> => reconcileInstanceKeycloakMutation(request, ctx);
 
 export const activateInstanceInternal = async (request: Request, ctx: AuthenticatedRequestContext): Promise<Response> =>
   mutateInstanceStatus(request, ctx, 'active');
@@ -196,7 +235,7 @@ export const archiveInstanceInternal = async (request: Request, ctx: Authenticat
   mutateInstanceStatus(request, ctx, 'archived');
 
 export const resolveRuntimeInstanceFromRequest = async (request: Request): Promise<ResolveRuntimeInstanceResult> => {
-  const host = new URL(request.url).host;
+  const host = resolveEffectiveRequestHost(request);
   const resolved = await withRegistryService((service) => service.resolveRuntimeInstance(host));
   return {
     hostClassification: resolved.hostClassification,

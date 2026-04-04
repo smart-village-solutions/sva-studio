@@ -1260,7 +1260,16 @@ describe('realm provisioning helpers', () => {
   it('skips oidc client creation when the client already exists', async () => {
     const { fetchImpl, calls } = createFetchStub([
       createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }),
-      createJsonResponse(200, [{ id: 'client-1', clientId: 'sva-studio' }]),
+      createJsonResponse(200, [{
+        id: 'client-1',
+        clientId: 'sva-studio',
+        redirectUris: ['https://bb-guben.studio.smart-village.app/auth/callback'],
+        webOrigins: ['https://bb-guben.studio.smart-village.app'],
+        attributes: {
+          'post.logout.redirect.uris': 'https://bb-guben.studio.smart-village.app/',
+        },
+        rootUrl: 'https://bb-guben.studio.smart-village.app',
+      }]),
     ]);
 
     const client = new KeycloakAdminClient({

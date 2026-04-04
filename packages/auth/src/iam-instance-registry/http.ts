@@ -5,11 +5,13 @@ import { instanceStatuses } from '@sva/core';
 import { z } from 'zod';
 
 import type { AuthenticatedRequestContext } from '../middleware.server.js';
+import { resolveEffectiveRequestHost } from '../request-hosts.js';
 
 const ADMIN_ROLES = new Set(['instance_registry_admin']);
 const optionalUrlSchema = z
   .string()
   .trim()
+  .min(1)
   .superRefine((value, ctx) => {
     try {
       new URL(value);
@@ -19,6 +21,15 @@ const optionalUrlSchema = z
         message: 'Ungültige URL',
       });
     }
+  })
+  .optional();
+
+const tenantAdminBootstrapSchema = z
+  .object({
+    username: z.string().trim().min(1),
+    email: z.string().trim().email().optional(),
+    firstName: z.string().trim().min(1).optional(),
+    lastName: z.string().trim().min(1).optional(),
   })
   .optional();
 
@@ -34,16 +45,27 @@ export const createInstanceSchema = z.object({
   authRealm: z.string().trim().min(1),
   authClientId: z.string().trim().min(1),
   authIssuerUrl: optionalUrlSchema,
+  authClientSecret: z.string().trim().min(1).optional(),
+  tenantAdminBootstrap: tenantAdminBootstrapSchema,
   themeKey: z.string().trim().min(1).optional(),
   mainserverConfigRef: z.string().trim().min(1).optional(),
   featureFlags: z.record(z.string(), z.boolean()).optional(),
+});
+
+export const updateInstanceSchema = createInstanceSchema.omit({
+  instanceId: true,
 });
 
 export const statusMutationSchema = z.object({
   status: z.enum(['active', 'suspended', 'archived']),
 });
 
-const isRootHostRequest = (request: Request): boolean => isCanonicalAuthHost(new URL(request.url).host);
+export const reconcileKeycloakSchema = z.object({
+  tenantAdminTemporaryPassword: z.string().min(1).optional(),
+  rotateClientSecret: z.boolean().optional(),
+});
+
+const isRootHostRequest = (request: Request): boolean => isCanonicalAuthHost(resolveEffectiveRequestHost(request));
 
 export const ensurePlatformAccess = (request: Request, ctx: AuthenticatedRequestContext): Response | null => {
   if (!isRootHostRequest(request)) {

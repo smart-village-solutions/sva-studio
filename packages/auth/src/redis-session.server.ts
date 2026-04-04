@@ -392,7 +392,14 @@ export async function clearExpiredSessions(): Promise<void> {
  */
 export async function createLoginState(
   state: string,
-  data: { codeVerifier: string; nonce: string; createdAt: number; returnTo?: string; silent?: boolean }
+  data: {
+    codeVerifier: string;
+    nonce: string;
+    createdAt: number;
+    returnTo?: string;
+    silent?: boolean;
+    workspaceId?: string;
+  }
 ): Promise<void> {
   await trackSessionOperation('create_login_state', async () => {
     await runWithSessionFallback({
@@ -415,6 +422,7 @@ export async function createLoginState(
 
     await emitAuthAuditEvent({
       eventType: 'login_state_created',
+      workspaceId: data.workspaceId,
       outcome: 'success',
     });
   });
@@ -425,7 +433,14 @@ export async function createLoginState(
  */
 export async function consumeLoginState(
   state: string
-): Promise<{ codeVerifier: string; nonce: string; createdAt: number; returnTo?: string; silent?: boolean } | undefined> {
+): Promise<{
+  codeVerifier: string;
+  nonce: string;
+  createdAt: number;
+  returnTo?: string;
+  silent?: boolean;
+  workspaceId?: string;
+} | undefined> {
   return trackSessionOperation('consume_login_state', async () => {
     const data = await runWithSessionFallback({
       operation: 'consume_login_state',
@@ -458,6 +473,7 @@ export async function consumeLoginState(
       createdAt: number;
       returnTo?: string;
       silent?: boolean;
+      workspaceId?: string;
     };
 
     logger.debug('Login state consumed', {
@@ -467,6 +483,7 @@ export async function consumeLoginState(
     });
     await emitAuthAuditEvent({
       eventType: 'login_state_consumed',
+      workspaceId: result.workspaceId,
       outcome: 'success',
     });
     return result;

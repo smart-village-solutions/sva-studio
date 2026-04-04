@@ -22,10 +22,54 @@ RUN pnpm install --frozen-lockfile
 RUN pnpm nx run core:build --skip-nx-cache
 RUN pnpm nx run monitoring-client:build --skip-nx-cache
 RUN pnpm nx run sdk:build --skip-nx-cache
+RUN pnpm nx run data:build --skip-nx-cache
 RUN pnpm nx run auth:build --skip-nx-cache
 RUN pnpm nx run sva-mainserver:build --skip-nx-cache
 RUN pnpm nx run routing:build --skip-nx-cache
 RUN pnpm nx run plugin-example:build --skip-nx-cache
+# Fix ESM relative imports/exports: add .js extensions to extensionless local paths.
+# Some TypeScript emits extensionless ESM in dist/, which fails under Node ESM in runtime images.
+RUN node -e "\
+const fs = require('fs'); const path = require('path'); \
+const distRoots = fs.readdirSync('packages', { withFileTypes: true }) \
+  .filter((entry) => entry.isDirectory()) \
+  .map((entry) => path.join('packages', entry.name, 'dist')) \
+  .filter((dir) => fs.existsSync(dir)); \
+const hasRuntimeExt = (p) => /\.(mjs|cjs|js|json)$/i.test(p); \
+const needsPatch = (p) => p.startsWith('./') || p.startsWith('../'); \
+const resolvePatchedSpecifier = (filePath, specifier) => { \
+  if (!needsPatch(specifier) || hasRuntimeExt(specifier)) return specifier; \
+  const baseDir = path.dirname(filePath); \
+  const absPath = path.resolve(baseDir, specifier); \
+  if (fs.existsSync(absPath + '.js')) return specifier + '.js'; \
+  if (fs.existsSync(absPath + '.mjs')) return specifier + '.mjs'; \
+  if (fs.existsSync(absPath)) { \
+    try { \
+      if (fs.statSync(absPath).isDirectory()) { \
+        if (fs.existsSync(path.join(absPath, 'index.js'))) return specifier + '/index.js'; \
+        if (fs.existsSync(path.join(absPath, 'index.mjs'))) return specifier + '/index.mjs'; \
+      } \
+    } catch {} \
+  } \
+  return specifier + '.js'; \
+}; \
+const patchFile = (filePath) => { \
+  const source = fs.readFileSync(filePath, 'utf8'); \
+  let patched = source.replace(/(from\\s+['\"])(\\.\\.?\\/[^'\"]+)(['\"])/g, (m, a, b, c) => a + resolvePatchedSpecifier(filePath, b) + c); \
+  patched = patched.replace(/(import\\s+['\"])(\\.\\.?\\/[^'\"]+)(['\"])/g, (m, a, b, c) => a + resolvePatchedSpecifier(filePath, b) + c); \
+  if (patched !== source) { \
+    fs.writeFileSync(filePath, patched, 'utf8'); \
+    console.log('patched', filePath); \
+  } \
+}; \
+const walk = (dir) => { \
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) { \
+    const fullPath = path.join(dir, entry.name); \
+    if (entry.isDirectory()) walk(fullPath); \
+    else if (entry.isFile() && fullPath.endsWith('.js')) patchFile(fullPath); \
+  } \
+}; \
+for (const distRoot of distRoots) walk(distRoot);"
 # The app build must invoke Vite directly. The Nx Vite executor currently only
 # emits the client bundle for this TanStack Start app, while `vite build`
 # produces client, SSR service bundle and Nitro server output in one pass.

@@ -95,6 +95,15 @@ const authServerMocks = vi.hoisted(() => {
     removeGroupRoleHandler: vi.fn(async () => response('removeGroupRoleHandler')),
     assignGroupMembershipHandler: vi.fn(async () => response('assignGroupMembershipHandler')),
     removeGroupMembershipHandler: vi.fn(async () => response('removeGroupMembershipHandler')),
+    listInstancesHandler: vi.fn(async () => response('listInstancesHandler')),
+    getInstanceHandler: vi.fn(async () => response('getInstanceHandler')),
+    createInstanceHandler: vi.fn(async () => response('createInstanceHandler')),
+    updateInstanceHandler: vi.fn(async () => response('updateInstanceHandler')),
+    getInstanceKeycloakStatusHandler: vi.fn(async () => response('getInstanceKeycloakStatusHandler')),
+    reconcileInstanceKeycloakHandler: vi.fn(async () => response('reconcileInstanceKeycloakHandler')),
+    activateInstanceHandler: vi.fn(async () => response('activateInstanceHandler')),
+    suspendInstanceHandler: vi.fn(async () => response('suspendInstanceHandler')),
+    archiveInstanceHandler: vi.fn(async () => response('archiveInstanceHandler')),
     listContentsHandler: vi.fn(async () => response('listContentsHandler')),
     createContentHandler: vi.fn(async () => response('createContentHandler')),
     getContentHandler: vi.fn(async () => response('getContentHandler')),
@@ -210,6 +219,9 @@ describe('auth.routes.server', () => {
     expect(authServerMocks.getContentHandler).toHaveBeenCalled();
     expect(authServerMocks.updateContentHandler).toHaveBeenCalled();
     expect(authServerMocks.getContentHistoryHandler).toHaveBeenCalled();
+    expect(authServerMocks.updateInstanceHandler).toHaveBeenCalled();
+    expect(authServerMocks.getInstanceKeycloakStatusHandler).toHaveBeenCalled();
+    expect(authServerMocks.reconcileInstanceKeycloakHandler).toHaveBeenCalled();
     expect(authServerMocks.listLegalTextsHandler).toHaveBeenCalled();
     expect(authServerMocks.createLegalTextHandler).toHaveBeenCalled();
     expect(authServerMocks.updateLegalTextHandler).toHaveBeenCalled();
@@ -219,6 +231,19 @@ describe('auth.routes.server', () => {
     expect(authServerMocks.listPendingLegalTextsHandler).toHaveBeenCalled();
     expect(authServerMocks.listAdminDataSubjectRightsCasesHandler).toHaveBeenCalled();
     expect(authServerMocks.dataSubjectMaintenanceHandler).toHaveBeenCalled();
+  });
+
+  it('passes the incoming request to the login handler', async () => {
+    const handlers = resolveAuthHandlers('/auth/login');
+    const request = new Request('https://bb-guben.studio.example.org/auth/login', {
+      method: 'GET',
+      headers: { host: 'bb-guben.studio.example.org' },
+    });
+
+    const response = await handlers.GET?.({ request });
+
+    expect(response?.status).toBe(200);
+    expect(authServerMocks.loginHandler).toHaveBeenCalledWith(request);
   });
 
   it('throws for unknown auth path', () => {

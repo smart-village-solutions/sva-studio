@@ -107,4 +107,27 @@ describe('oidc.server getOidcConfig', () => {
     expect(repeat).toBe(configA);
     expect(state.discoveryImpl).toHaveBeenCalledTimes(2);
   });
+
+  it('separates cached OIDC discovery results by client secret changes', async () => {
+    const configA = { issuer: 'issuer-a' } as unknown;
+    const configB = { issuer: 'issuer-a-refreshed' } as unknown;
+    state.discoveryImpl.mockResolvedValueOnce(configA).mockResolvedValueOnce(configB);
+
+    const { getOidcConfig } = await import('./oidc.server');
+
+    const first = await getOidcConfig({
+      issuer: 'https://issuer.example.com/realms/a',
+      clientId: 'client-a',
+      clientSecret: 'secret-a',
+    });
+    const second = await getOidcConfig({
+      issuer: 'https://issuer.example.com/realms/a',
+      clientId: 'client-a',
+      clientSecret: 'secret-b',
+    });
+
+    expect(first).toBe(configA);
+    expect(second).toBe(configB);
+    expect(state.discoveryImpl).toHaveBeenCalledTimes(2);
+  });
 });

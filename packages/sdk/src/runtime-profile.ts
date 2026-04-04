@@ -1,4 +1,4 @@
-export const RUNTIME_PROFILES = ['local-keycloak', 'local-builder', 'acceptance-hb'] as const;
+export const RUNTIME_PROFILES = ['local-keycloak', 'local-builder', 'acceptance-hb', 'studio'] as const;
 
 export type RuntimeProfile = (typeof RUNTIME_PROFILES)[number];
 export type RuntimeProfileAuthMode = 'keycloak' | 'mock';
@@ -12,6 +12,7 @@ export type RuntimeProfileDefinition = {
 };
 
 export type RuntimeProfileEnvValidationResult = {
+  readonly derived: string[];
   readonly invalid: string[];
   readonly missing: string[];
   readonly placeholders: string[];
@@ -20,16 +21,26 @@ export type RuntimeProfileEnvValidationResult = {
 const COMMON_REQUIRED_ENV_KEYS = [
   'SVA_RUNTIME_PROFILE',
   'SVA_PUBLIC_BASE_URL',
-  'REDIS_URL',
-  'IAM_DATABASE_URL',
   'IAM_PII_ACTIVE_KEY_ID',
   'IAM_PII_KEYRING_JSON',
   'ENCRYPTION_KEY',
-  'OTEL_EXPORTER_OTLP_ENDPOINT',
   'SVA_MAINSERVER_GRAPHQL_URL',
   'SVA_MAINSERVER_OAUTH_TOKEN_URL',
   'SVA_MAINSERVER_CLIENT_ID',
   'SVA_MAINSERVER_CLIENT_SECRET',
+] as const;
+
+const LOCAL_CONNECTION_REQUIRED_ENV_KEYS = ['REDIS_URL', 'IAM_DATABASE_URL', 'OTEL_EXPORTER_OTLP_ENDPOINT'] as const;
+
+const REMOTE_CONNECTION_REQUIRED_ENV_KEYS = [
+  'POSTGRES_DB',
+  'POSTGRES_USER',
+  'POSTGRES_PASSWORD',
+  'APP_DB_USER',
+  'APP_DB_PASSWORD',
+  'REDIS_PASSWORD',
+  'SVA_STACK_NAME',
+  'QUANTUM_ENDPOINT',
 ] as const;
 
 const KEYCLOAK_AUTH_REQUIRED_ENV_KEYS = [
@@ -55,6 +66,7 @@ const PROFILE_DEFINITIONS = {
     isLocal: true,
     requiredEnvKeys: [
       ...COMMON_REQUIRED_ENV_KEYS,
+      ...LOCAL_CONNECTION_REQUIRED_ENV_KEYS,
       ...KEYCLOAK_AUTH_REQUIRED_ENV_KEYS,
       ...KEYCLOAK_ADMIN_REQUIRED_ENV_KEYS,
     ],
@@ -66,6 +78,7 @@ const PROFILE_DEFINITIONS = {
     isLocal: true,
     requiredEnvKeys: [
       ...COMMON_REQUIRED_ENV_KEYS,
+      ...LOCAL_CONNECTION_REQUIRED_ENV_KEYS,
       ...KEYCLOAK_ADMIN_REQUIRED_ENV_KEYS,
       'SVA_MOCK_AUTH',
       'VITE_MOCK_AUTH',
@@ -79,6 +92,26 @@ const PROFILE_DEFINITIONS = {
     isLocal: false,
     requiredEnvKeys: [
       ...COMMON_REQUIRED_ENV_KEYS,
+      ...REMOTE_CONNECTION_REQUIRED_ENV_KEYS,
+      'SVA_AUTH_CLIENT_SECRET',
+      'SVA_AUTH_STATE_SECRET',
+      'SVA_AUTH_REDIRECT_URI',
+      'SVA_AUTH_POST_LOGOUT_REDIRECT_URI',
+      'KEYCLOAK_ADMIN_BASE_URL',
+      'KEYCLOAK_ADMIN_REALM',
+      'KEYCLOAK_ADMIN_CLIENT_SECRET',
+      'KEYCLOAK_ADMIN_CLIENT_ID',
+      'SVA_PARENT_DOMAIN',
+    ],
+    usesBuilder: false,
+  },
+  studio: {
+    authMode: 'keycloak',
+    description: 'Produktionsnaher Serverbetrieb fuer Studio auf eigener Domain und eigenem Stack.',
+    isLocal: false,
+    requiredEnvKeys: [
+      ...COMMON_REQUIRED_ENV_KEYS,
+      ...REMOTE_CONNECTION_REQUIRED_ENV_KEYS,
       'SVA_AUTH_CLIENT_SECRET',
       'SVA_AUTH_STATE_SECRET',
       'SVA_AUTH_REDIRECT_URI',
@@ -95,6 +128,11 @@ const PROFILE_DEFINITIONS = {
 
 const PLACEHOLDER_PREFIXES = ['__SET_', '__REQUIRED_', '__OVERRIDE_'] as const;
 
+const isDisabledFlag = (value: string): boolean => {
+  const normalized = value.trim().toLowerCase();
+  return normalized === 'false' || normalized === '0';
+};
+
 const isPlaceholderValue = (value: string | undefined) =>
   typeof value === 'string' &&
   PLACEHOLDER_PREFIXES.some((prefix) => value.startsWith(prefix));
@@ -103,6 +141,12 @@ const readEnvValue = (env: NodeJS.ProcessEnv, key: string) => {
   const value = env[key];
   return typeof value === 'string' ? value.trim() : '';
 };
+
+const hasAnyValue = (env: NodeJS.ProcessEnv, keys: readonly string[]) =>
+  keys.some((key) => readEnvValue(env, key).length > 0);
+
+const hasAllValues = (env: NodeJS.ProcessEnv, keys: readonly string[]) =>
+  keys.every((key) => readEnvValue(env, key).length > 0);
 
 const isJsonObjectValue = (value: string) => {
   try {
@@ -142,6 +186,9 @@ export const getRuntimeProfileDefinition = (profile: RuntimeProfile): RuntimePro
 export const getRuntimeProfileRequiredEnvKeys = (profile: RuntimeProfile): readonly string[] =>
   PROFILE_DEFINITIONS[profile].requiredEnvKeys;
 
+export const getRuntimeProfileDerivedEnvKeys = (profile: RuntimeProfile): readonly string[] =>
+  PROFILE_DEFINITIONS[profile].isLocal ? [] : ['IAM_DATABASE_URL', 'REDIS_URL'];
+
 export const isMockAuthRuntimeProfile = (profile: RuntimeProfile) =>
   PROFILE_DEFINITIONS[profile].authMode === 'mock';
 
@@ -149,6 +196,7 @@ export const validateRuntimeProfileEnv = (
   profile: RuntimeProfile,
   env: NodeJS.ProcessEnv,
 ): RuntimeProfileEnvValidationResult => {
+  const derived: string[] = [];
   const invalid: string[] = [];
   const missing: string[] = [];
   const placeholders: string[] = [];
@@ -171,5 +219,45 @@ export const validateRuntimeProfileEnv = (
     }
   }
 
-  return { invalid, missing, placeholders };
+  const definition = PROFILE_DEFINITIONS[profile];
+  const requireOtelEndpoint = !isDisabledFlag(readEnvValue(env, 'ENABLE_OTEL'));
+  if (requireOtelEndpoint) {
+    const otelEndpoint = readEnvValue(env, 'OTEL_EXPORTER_OTLP_ENDPOINT');
+    if (otelEndpoint.length === 0) {
+      missing.push('OTEL_EXPORTER_OTLP_ENDPOINT');
+    } else if (isPlaceholderValue(otelEndpoint)) {
+      placeholders.push('OTEL_EXPORTER_OTLP_ENDPOINT');
+    }
+  }
+
+  if (!definition.isLocal) {
+    const explicitIamDatabaseUrl = readEnvValue(env, 'IAM_DATABASE_URL');
+    if (explicitIamDatabaseUrl.length === 0) {
+      if (hasAllValues(env, ['APP_DB_USER', 'POSTGRES_DB']) && hasAnyValue(env, ['APP_DB_PASSWORD', 'POSTGRES_PASSWORD'])) {
+        derived.push('IAM_DATABASE_URL');
+      } else {
+        missing.push('IAM_DATABASE_URL');
+      }
+    } else if (isPlaceholderValue(explicitIamDatabaseUrl)) {
+      placeholders.push('IAM_DATABASE_URL');
+    }
+
+    const explicitRedisUrl = readEnvValue(env, 'REDIS_URL');
+    if (explicitRedisUrl.length === 0) {
+      if (hasAllValues(env, ['REDIS_PASSWORD'])) {
+        derived.push('REDIS_URL');
+      } else {
+        missing.push('REDIS_URL');
+      }
+    } else if (isPlaceholderValue(explicitRedisUrl)) {
+      placeholders.push('REDIS_URL');
+    }
+  }
+
+  return {
+    derived: [...new Set(derived)],
+    invalid: [...new Set(invalid)],
+    missing: [...new Set(missing)],
+    placeholders: [...new Set(placeholders)],
+  };
 };

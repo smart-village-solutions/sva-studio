@@ -29,24 +29,37 @@ type SdkNodeInstance = NodeSDK & {
   loggerProvider?: SdkLoggerProvider;
 };
 
-// Global reference um das SDK später zu flushen
 let globalSdk: SdkNodeInstance | null = null;
 let globalInitializationResult: OtelInitializationResult = getOtelInitializationResult();
-
-// Global flag um mehrfache Initialisierungen zu verhindern
 let otelSdkInitialized = false;
 
-/**
- * Initialisiert den OpenTelemetry SDK für die App.
- *
- * Diese Funktion sollte einmalig beim Server-Start aufgerufen werden.
- * Sie ist idempotent - mehrfache Aufrufe sind sicher.
- *
- * Achtung: Diese Funktion muss sehr früh im Server-Lifecycle aufgerufen werden,
- * bevor Auto-Instrumentationen nicht aktiv sind.
- */
+const emitObservabilityStatus = (input: {
+  result: 'ready' | 'degraded';
+  otelStatus: OtelInitializationResult['status'];
+  reason?: string;
+}) => {
+  const runtimeConfig = getLoggingRuntimeConfig();
+  const payload = {
+    operation: 'observability_bootstrap',
+    logger_mode: runtimeConfig.mode,
+    otel_status: input.otelStatus,
+    console_enabled: runtimeConfig.consoleEnabled,
+    otel_requested: runtimeConfig.otelRequested,
+    reason: input.reason,
+  };
+
+  if (input.result === 'ready') {
+    logger.info('observability_ready', payload);
+    return;
+  }
+
+  logger.error('observability_degraded', {
+    ...payload,
+    error_type: 'observability_transport_degraded',
+  });
+};
+
 export const initializeOtelSdk = async (): Promise<OtelInitializationResult> => {
-  // Verhindere mehrfache Initialisierungen
   if (otelSdkInitialized) {
     return globalInitializationResult;
   }
@@ -56,12 +69,18 @@ export const initializeOtelSdk = async (): Promise<OtelInitializationResult> => 
   if (!runtimeConfig.otelRequested) {
     globalInitializationResult = {
       status: 'disabled',
-      reason: 'OTEL in der Development-Umgebung explizit deaktiviert.',
+      reason: 'OTEL fuer dieses Laufzeitprofil deaktiviert.',
     };
     setOtelInitializationResult(globalInitializationResult);
     otelSdkInitialized = true;
     logger.info('OTEL SDK nicht initialisiert', {
       environment: process.env.NODE_ENV,
+      reason: globalInitializationResult.reason,
+      logger_mode: runtimeConfig.mode,
+    });
+    emitObservabilityStatus({
+      result: runtimeConfig.consoleEnabled ? 'ready' : 'degraded',
+      otelStatus: globalInitializationResult.status,
       reason: globalInitializationResult.reason,
     });
     return globalInitializationResult;
@@ -71,16 +90,13 @@ export const initializeOtelSdk = async (): Promise<OtelInitializationResult> => 
     await setWorkspaceContextGetterForMonitoring(getWorkspaceContext);
 
     const serviceName = process.env.OTEL_SERVICE_NAME ?? 'sva-studio';
-
-    // OTLP Endpoint für Collector
-    // Development: localhost:4318 (Docker Port-Forward)
-    // Production: otel-collector Service (Docker/K8s)
     const endpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT ?? 'http://localhost:4318';
 
     logger.info('Initialisiere OpenTelemetry SDK', {
       serviceName,
       endpoint,
-      environment: process.env.NODE_ENV
+      environment: process.env.NODE_ENV,
+      logger_mode: runtimeConfig.mode,
     });
 
     const sdk = (await startOtelSdkFromMonitoring({
@@ -97,14 +113,17 @@ export const initializeOtelSdk = async (): Promise<OtelInitializationResult> => 
     setOtelInitializationResult(globalInitializationResult);
 
     logger.info('OpenTelemetry SDK erfolgreich initialisiert', {
-      serviceName
+      serviceName,
+      logger_mode: runtimeConfig.mode,
+    });
+    emitObservabilityStatus({
+      result: 'ready',
+      otelStatus: globalInitializationResult.status,
     });
 
-    // Register graceful shutdown
     const gracefulShutdown = async (signal: string) => {
       logger.info(`${signal} empfangen, fahre OTEL SDK herunter...`);
       try {
-        // Force flush von Log Records bevor wir herunterfahren
         if (sdk.loggerProvider) {
           await sdk.loggerProvider.forceFlush(5000);
         }
@@ -132,6 +151,11 @@ export const initializeOtelSdk = async (): Promise<OtelInitializationResult> => 
     logger.error('Fehler beim Initialisieren des OTEL SDK', {
       error: error instanceof Error ? error.message : String(error)
     });
+    emitObservabilityStatus({
+      result: runtimeConfig.consoleEnabled ? 'ready' : 'degraded',
+      otelStatus: globalInitializationResult.status,
+      reason: globalInitializationResult.reason,
+    });
     otelSdkInitialized = true;
     if (runtimeConfig.otelRequired) {
       throw error;
@@ -140,10 +164,6 @@ export const initializeOtelSdk = async (): Promise<OtelInitializationResult> => 
   }
 };
 
-/**
- * Force-flush pending logs to OTEL Collector.
- * Sollte vor App-Shutdown aufgerufen werden.
- */
 export const flushOtelSdk = async (timeoutMs = 5000): Promise<void> => {
   if (!globalSdk) return;
   try {

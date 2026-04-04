@@ -76,10 +76,26 @@ vi.mock('./http.js', () => ({
     search: z.string().optional(),
     status: z.enum(['requested', 'validated', 'provisioning', 'active', 'failed', 'suspended', 'archived']).optional(),
   }),
+  reconcileKeycloakSchema: z.object({
+    tenantAdminTemporaryPassword: z.string().optional(),
+    rotateClientSecret: z.boolean().optional(),
+  }),
   readDetailInstanceId: readDetailInstanceIdMock,
   requireFreshReauth: requireFreshReauthMock,
   statusMutationSchema: z.object({
     status: z.enum(['active', 'suspended', 'archived']),
+  }),
+  updateInstanceSchema: z.object({
+    displayName: z.string(),
+    parentDomain: z.string(),
+    authRealm: z.string(),
+    authClientId: z.string(),
+    authIssuerUrl: z.string().optional(),
+    authClientSecret: z.string().optional(),
+    tenantAdminBootstrap: z.any().optional(),
+    themeKey: z.string().optional(),
+    featureFlags: z.record(z.string(), z.boolean()).optional(),
+    mainserverConfigRef: z.string().optional(),
   }),
 }));
 
@@ -89,10 +105,13 @@ import {
   createInstanceInternal,
   createTenantForbiddenResponse,
   getInstanceInternal,
+  getInstanceKeycloakStatusInternal,
   isInstanceTrafficAllowed,
   listInstancesInternal,
+  reconcileInstanceKeycloakInternal,
   resolveRuntimeInstanceFromRequest,
   suspendInstanceInternal,
+  updateInstanceInternal,
 } from './core.js';
 
 describe('iam-instance-registry core handlers', () => {
@@ -101,7 +120,10 @@ describe('iam-instance-registry core handlers', () => {
     listInstances: vi.fn(),
     getInstanceDetail: vi.fn(),
     createProvisioningRequest: vi.fn(),
+    updateInstance: vi.fn(),
     changeStatus: vi.fn(),
+    getKeycloakStatus: vi.fn(),
+    reconcileKeycloak: vi.fn(),
     resolveRuntimeInstance: vi.fn(),
   };
 
@@ -291,6 +313,99 @@ describe('iam-instance-registry core handlers', () => {
     expect(conflict.status).toBe(409);
     expect(invalidBody.status).toBe(400);
     expect(missingId.status).toBe(400);
+  });
+
+  it('updates instances and exposes keycloak status endpoints', async () => {
+    parseRequestBodyMock
+      .mockResolvedValueOnce({
+        ok: true,
+        data: {
+          displayName: 'Updated Demo',
+          parentDomain: 'studio.example.org',
+          authRealm: 'demo',
+          authClientId: 'sva-studio',
+        },
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        data: {
+          rotateClientSecret: true,
+          tenantAdminTemporaryPassword: 'test-temp-password',
+        },
+      });
+    service.updateInstance.mockResolvedValueOnce({ instanceId: 'demo', displayName: 'Updated Demo' });
+    service.getKeycloakStatus.mockResolvedValueOnce({ realmExists: true });
+    service.reconcileKeycloak.mockResolvedValueOnce({ realmExists: true, clientExists: true });
+
+    const updated = await updateInstanceInternal(
+      new Request('https://studio.example.org/api/v1/iam/instances/demo', { method: 'PATCH' }),
+      ctx
+    );
+    const status = await getInstanceKeycloakStatusInternal(
+      new Request('https://studio.example.org/api/v1/iam/instances/demo/keycloak/status'),
+      ctx
+    );
+    const reconcile = await reconcileInstanceKeycloakInternal(
+      new Request('https://studio.example.org/api/v1/iam/instances/demo/keycloak/reconcile', { method: 'POST' }),
+      ctx
+    );
+
+    expect(updated.status).toBe(200);
+    expect(status.status).toBe(200);
+    expect(reconcile.status).toBe(200);
+    expect(service.updateInstance).toHaveBeenCalledWith(expect.objectContaining({ instanceId: 'demo' }));
+    expect(service.getKeycloakStatus).toHaveBeenCalledWith('demo');
+    expect(service.reconcileKeycloak).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: 'demo',
+        tenantAdminTemporaryPassword: 'test-temp-password',
+        rotateClientSecret: true,
+      })
+    );
+  });
+
+  it('maps instance mutation errors to stable API codes', async () => {
+    parseRequestBodyMock
+      .mockResolvedValueOnce({
+        ok: true,
+        data: {
+          displayName: 'Updated Demo',
+          parentDomain: 'studio.example.org',
+          authRealm: 'demo',
+          authClientId: 'sva-studio',
+        },
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        data: {},
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        data: {},
+      });
+    service.updateInstance.mockRejectedValueOnce(new Error('tenant_auth_client_secret_missing'));
+    service.getKeycloakStatus.mockRejectedValueOnce(new Error('pii_encryption_required:missing_key'));
+    service.reconcileKeycloak.mockRejectedValueOnce(new Error('boom'));
+
+    const update = await updateInstanceInternal(
+      new Request('https://studio.example.org/api/v1/iam/instances/demo', { method: 'PATCH' }),
+      ctx
+    );
+    const status = await getInstanceKeycloakStatusInternal(
+      new Request('https://studio.example.org/api/v1/iam/instances/demo/keycloak/status'),
+      ctx
+    );
+    const reconcile = await reconcileInstanceKeycloakInternal(
+      new Request('https://studio.example.org/api/v1/iam/instances/demo/keycloak/reconcile', { method: 'POST' }),
+      ctx
+    );
+
+    expect(update.status).toBe(409);
+    await expect(update.json()).resolves.toMatchObject({ error: 'tenant_auth_client_secret_missing' });
+    expect(status.status).toBe(503);
+    await expect(status.json()).resolves.toMatchObject({ error: 'encryption_not_configured' });
+    expect(reconcile.status).toBe(502);
+    await expect(reconcile.json()).resolves.toMatchObject({ error: 'keycloak_unavailable' });
   });
 
   it('resolves runtime instances and exposes helper responses', async () => {

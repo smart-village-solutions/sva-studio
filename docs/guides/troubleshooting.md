@@ -23,6 +23,55 @@ Dieses Dokument bündelt typische Störungen und schnelle Diagnosepfade für lok
 
 **Typische Ursache:** Falsche Origin, falsch registrierte Redirect-URI oder inkonsistenter Demo-/Referenzprofil-Host.
 
+### 1a. Tenant-Login landet immer im Root-Realm
+
+**Symptom:** `https://<instanceId>.studio.../auth/login` landet am Ende auf dem Root-Realm oder Root-Callback.
+
+**Prüfen:**
+
+- externen Redirect von `/auth/login`
+- internen Request im laufenden `studio_app`-Container mit explizitem `Host`
+- `iam.instance_hostnames`
+- `instanceId`-Claim im Token
+- Protocol Mapper `instanceId` auf dem Client `sva-studio`
+
+**Typische Ursache:** Kein App-/Resolver-Kontext, fehlender `instanceId`-Mapper oder falsch angebundener Tenant-Realm.
+
+### 1b. Login geht in den richtigen Realm, aber Studio bleibt tenant-los
+
+**Symptom:** Keycloak-Login funktioniert, `/auth/me` oder Session-Kontext hat aber keine `instanceId`.
+
+**Prüfen:**
+
+- User-Attribut `instanceId`
+- Protocol Mapper `instanceId`
+- Token-/Userinfo-Claims
+
+**Typische Ursache:** `instanceId` nur als User-Attribut vorhanden, aber nicht als OIDC-Claim gemappt.
+
+### 1c. Tenant-Login funktioniert erst nach Secret-Heilung im Studio
+
+**Symptom:** `/auth/login` leitet bereits korrekt in den Tenant-Realm, der Callback oder der eigentliche Login endet aber trotzdem auf `?auth=error` oder faellt intern auf den globalen Secret-Pfad zurueck.
+
+**Pruefen:**
+
+- ob `pnpm env:migrate:studio` `0027_iam_instance_keycloak_bootstrap.sql` bereits angewendet hat
+- ob `iam.instances.auth_client_secret_ciphertext` fuer den betroffenen Tenant gesetzt ist
+- in Loki nach `tenant_auth_resolution_summary` suchen und auf diese Felder achten:
+  - `secret_source`
+  - `tenant_secret_configured`
+  - `tenant_secret_readable`
+  - `oidc_cache_key_scope`
+
+**Sollzustand:**
+
+- `secret_source=\"tenant\"`
+- `tenant_secret_configured=true`
+- `tenant_secret_readable=true`
+- `oidc_cache_key_scope=\"tenant_secret\"`
+
+**Typische Ursache:** Realm und Redirects stimmen bereits, aber Studio kennt das tenant-spezifische Client-Secret noch nicht und faellt deshalb auf `SVA_AUTH_CLIENT_SECRET` zurueck.
+
 ### 2. OIDC-State oder CSRF schlägt fehl
 
 **Symptom:** Login startet, endet aber mit `state invalid`, Session- oder CSRF-Fehler.
@@ -59,6 +108,11 @@ Dieses Dokument bündelt typische Störungen und schnelle Diagnosepfade für lok
 
 **Typische Ursache:** Passwortwechsel bei bestehendem Volume ohne Neuinitialisierung.
 
+Zusatz für `studio`:
+
+- prüfen, ob sich `APP_DB_USER` tatsächlich gegen `POSTGRES_DB` anmelden kann
+- ein grüner `schema-guard` beweist nicht, dass der Laufzeit-User `sva_app` existiert
+
 ### 5. Neue SQL-Migrationen werden nach Redeploy nicht ausgeführt
 
 **Symptom:** Das neue Image läuft, aber Tabellen oder Spalten fehlen.
@@ -70,6 +124,11 @@ Dieses Dokument bündelt typische Störungen und schnelle Diagnosepfade für lok
 - ob `pnpm nx run data:db:migrate:status` bzw. `pnpm env:doctor:<profil>` den erwarteten `goose`-Stand anzeigen
 
 **Typische Ursache:** `docker-entrypoint-initdb.d` läuft nur bei leerem Volume. Siehe `./swarm-deployment-runbook.md` und `../development/postgres-setup.md`.
+
+Zusatz fuer `studio`:
+
+- wenn neue Instanzverwaltungs- oder Keycloak-Bootstrap-Felder bereits im Live-Code verwendet werden, darf `0027_iam_instance_keycloak_bootstrap.sql` nicht mehr `Pending` sein
+- ein manuell angelegtes Spaltenset heilt die Anwendung nur teilweise; fuer einen sauberen Betriebszustand muss Goose denselben Stand ebenfalls kennen
 
 ### 6. Monitoring-Dashboards oder Alerting-Regeln fehlen
 
@@ -131,6 +190,11 @@ Dieses Dokument bündelt typische Störungen und schnelle Diagnosepfade für lok
 
 **Typische Ursache:** Demo-Profil und Referenzprofil verwenden bewusst unterschiedliche Label-Schemata.
 
+Zusatz für Portainer/Quantum:
+
+- Top-Level-`name:` kann im vorgerenderten Compose stören
+- numerische `deploy.resources.limits.cpus` müssen ggf. als Strings serialisiert werden
+
 ### 11. App ist öffentlich erreichbar, Monitoring aber versehentlich ebenfalls
 
 **Symptom:** Grafana oder Prometheus tauchen hinter Traefik auf.
@@ -141,6 +205,49 @@ Dieses Dokument bündelt typische Störungen und schnelle Diagnosepfade für lok
 - ob interne Monitoring-Services fälschlich ins Public-Netz gelegt wurden
 
 **Typische Ursache:** Profilabweichung oder manuelle Compose-Anpassung außerhalb des Runbooks.
+
+### 11a. `observability-readiness` ist rot
+
+**Symptom:** `env:doctor:studio` oder `env:precheck:studio` meldet den Gate-Namen `observability-readiness` als `warn` oder `error`.
+
+**Prüfen:**
+
+- `ENABLE_OTEL` und `SVA_ENABLE_SERVER_CONSOLE_LOGS`
+- ob die App `observability_ready` oder `observability_degraded` schreibt
+- ob `~/.config/quantum/env` valide `SVA_GRAFANA_URL`, `SVA_LOKI_URL` und optional `SVA_GRAFANA_TOKEN` enthält
+- ob frische `studio_app`-Logs in Loki sichtbar sind
+
+**Typische Ursache:** Logger läuft ohne aktiven Transport, OTEL ist halb aktiviert oder Loki/Grafana-Zugang ist lokal nicht verfügbar.
+
+### 11b. Loki zeigt nur Startup-Rauschen, aber keine verwertbaren App-Diagnoselogs
+
+**Symptom:** Grafana/Loki ist erreichbar, aber tenant- oder auth-spezifische Logs fehlen.
+
+**Prüfen:**
+
+- ob `SVA_ENABLE_SERVER_CONSOLE_LOGS=true` im Live-Service wirklich ankommt
+- ob die App meldet, dass keine Log-Transports aktiv sind
+- ob aktuelle Container-Logs überhaupt in Loki landen
+
+**Typische Ursache:** Observability-Zugriff ist vorhanden, aber die produktive Console-/Transport-Konfiguration der App ist nicht aktiv.
+
+Praxisbeweis fuer `studio`:
+
+- der Logging-Pfad gilt erst dann als wirklich brauchbar, wenn nach frischen Tenant-Probes sowohl `observability_ready` als auch `tenant_auth_resolution_summary` fuer `bb-guben` und `de-musterhausen` in Loki auftauchen
+- nur allgemeine Startup-Logs reichen nicht als Auth-Diagnose
+
+### 11c. Deploy-Report ist rot, obwohl der Stack faktisch gesund ist
+
+**Symptom:** Report unter `artifacts/runtime/deployments/` endet auf `error`, aber Service-Spec, Tasks und externe Smokes sind grün.
+
+**Prüfen:**
+
+- laufende Tasks via `quantum-cli ps`
+- tatsächliche Live-Service-Spec
+- externe Health- und Login-Smokes
+- bekannte `quantum-cli exec`-/Websocket-Flakes
+
+**Typische Ursache:** False-Negative im Verify-/Transportpfad, nicht zwingend ein fehlgeschlagener Rollout.
 
 ### 12. E2E-Smoke-Test bricht vor dem eigentlichen Browserlauf ab
 
@@ -216,9 +323,16 @@ An abweichenden Labels, Secrets und Routing-Annahmen.
 **20. Wohin mit nicht-sensitiven Folgearbeiten nach einem Incident?**  
 Als normales GitHub Issue, nachdem sensible Details entfernt wurden.
 
+**21. Reicht für Tenant-Realm-Admins `instance_registry_admin`?**  
+Nein. Das ist eine Plattformrolle. Für tenant-lokale Admin-Funktionen ist im Minimalfall `system_admin` maßgeblich.
+
+**22. Reicht ein Keycloak-User-Attribut `instanceId` ohne Mapper?**  
+Nein. Studio erwartet `instanceId` als OIDC-Claim.
+
 ## Verweise
 
 - Security-Meldungen: `./security-policy.md`
 - Incident-Prozess: `./incident-response.md`
 - Deployment-Überblick: `./deployment-overview.md`
 - Swarm-Runbook: `./swarm-deployment-runbook.md`
+- Tenant-Realm-Bootstrap: `./keycloak-tenant-realm-bootstrap.md`

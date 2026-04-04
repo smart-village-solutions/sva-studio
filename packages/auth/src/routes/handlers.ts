@@ -8,6 +8,7 @@ import { emitAuthAuditEvent } from '../audit-events.server.js';
 import { getAuthConfig, resolveAuthConfigForRequest } from '../config.js';
 import { createMockSessionUser, isMockAuthEnabled } from '../mock-auth.server.js';
 import { getSession } from '../redis-session.server.js';
+import { buildRequestOriginFromHeaders, resolveEffectiveRequestHost } from '../request-hosts.js';
 import { isTokenErrorLike } from '../shared/error-guards.js';
 import { buildLogContext } from '../shared/log-context.js';
 import { withAuthenticatedUser } from '../middleware.server.js';
@@ -15,6 +16,8 @@ import { appendSetCookie, deleteCookieHeader, readCookieFromRequest } from './co
 import { decodeLoginStateCookie, encodeLoginStateCookie, type LoginStateCookiePayload } from './login-state-cookie.js';
 
 const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
+
+const shouldAttachDebugAuthHeaders = (): boolean => process.env.SVA_AUTH_DEBUG_HEADERS === 'true';
 
 initializeOtelSdk().catch((error: unknown) => {
   logger.error('Fehler bei OTEL SDK Initialisierung im Auth-Modul', {
@@ -29,6 +32,30 @@ const createRedirectResponse = (location: string) =>
     status: 302,
     headers: { Location: location },
   });
+
+const attachDebugAuthHeaders = (
+  response: Response,
+  input: {
+    request: Request;
+    authConfig: {
+      instanceId?: string;
+      authRealm?: string;
+      clientId: string;
+      redirectUri: string;
+    };
+  }
+): void => {
+  if (!shouldAttachDebugAuthHeaders()) {
+    return;
+  }
+
+  response.headers.set('x-sva-debug-request-host', resolveEffectiveRequestHost(input.request));
+  response.headers.set('x-sva-debug-request-origin', buildRequestOriginFromHeaders(input.request));
+  response.headers.set('x-sva-debug-auth-instance-id', input.authConfig.instanceId ?? 'global');
+  response.headers.set('x-sva-debug-auth-realm', input.authConfig.authRealm ?? 'global');
+  response.headers.set('x-sva-debug-auth-client-id', input.authConfig.clientId);
+  response.headers.set('x-sva-debug-auth-redirect-uri', input.authConfig.redirectUri);
+};
 
 const summarizeRedirectTarget = (
   value: string
@@ -90,6 +117,40 @@ const getSetCookieValues = (headers: Headers): string[] => {
 
   const combined = headers.get('set-cookie');
   return combined ? [combined] : [];
+};
+
+const describeTokenError = (error: unknown): Record<string, unknown> => {
+  if (!error || typeof error !== 'object') {
+    return {};
+  }
+
+  const typed = error as {
+    error?: unknown;
+    error_description?: unknown;
+    code?: unknown;
+    cause?: unknown;
+    response?: { status?: unknown };
+  };
+  const cause =
+    typed.cause && typeof typed.cause === 'object'
+      ? (typed.cause as {
+          error?: unknown;
+          error_description?: unknown;
+          code?: unknown;
+          response?: { status?: unknown };
+        })
+      : null;
+
+  const readString = (value: unknown): string | undefined => (typeof value === 'string' && value.length > 0 ? value : undefined);
+  const readStatus = (value: unknown): number | undefined => (typeof value === 'number' ? value : undefined);
+
+  return {
+    oauth_error: readString(typed.error) ?? readString(cause?.error),
+    oauth_error_description:
+      readString(typed.error_description) ?? readString(cause?.error_description),
+    oauth_code: readString(typed.code) ?? readString(cause?.code),
+    oauth_status: readStatus(typed.response?.status) ?? readStatus(cause?.response?.status),
+  };
 };
 
 const attachLoginStateCookie = (
@@ -202,6 +263,7 @@ const resolveCookieLoginState = async (request: Request, state: string) => {
     createdAt: payload.createdAt,
     returnTo: await sanitizeReturnTo(request, payload.returnTo),
     silent: payload.silent === true,
+    workspaceId: payload.workspaceId,
   };
 };
 
@@ -234,6 +296,20 @@ export const loginHandler = async (request?: Request): Promise<Response> => {
       authConfig,
     });
     const response = createRedirectResponse(authorizationUrl);
+    if (request) {
+      attachDebugAuthHeaders(response, { request, authConfig });
+    }
+
+    logger.info('Login auth config resolved', {
+      operation: 'login_auth_config_resolved',
+      request_url: request?.url,
+      auth_instance_id: authConfig.instanceId ?? null,
+      auth_realm: authConfig.authRealm ?? null,
+      auth_client_id: authConfig.clientId,
+      auth_redirect_uri: authConfig.redirectUri,
+      auth_issuer: authConfig.issuer,
+      ...buildLogContext(authConfig.instanceId),
+    });
 
     logger.info('Login-Flow initiiert', {
       operation: 'login_init',
@@ -241,7 +317,12 @@ export const loginHandler = async (request?: Request): Promise<Response> => {
       is_silent: isSilent,
       state: `${state.substring(0, 8)}...`,
       nonce: `${loginState.nonce.substring(0, 8)}...`,
-      ...buildLogContext(),
+      auth_instance_id: authConfig.instanceId ?? null,
+      auth_realm: authConfig.authRealm ?? null,
+      auth_client_id: authConfig.clientId,
+      auth_redirect_uri: authConfig.redirectUri,
+      auth_issuer: authConfig.issuer,
+      ...buildLogContext(authConfig.instanceId),
     });
 
     const loginStateCookieStrategy = attachLoginStateCookie(response, {
@@ -286,6 +367,7 @@ export const callbackHandler = async (request: Request): Promise<Response> => {
       });
       await emitAuthAuditEvent({
         eventType: cookieLoginState?.silent ? 'silent_reauth_failed' : 'login',
+        workspaceId: cookieLoginState?.workspaceId ?? authConfig.instanceId,
         outcome: 'failure',
       });
       return response;
@@ -307,13 +389,14 @@ export const callbackHandler = async (request: Request): Promise<Response> => {
       });
       await emitAuthAuditEvent({
         eventType: 'login_state_expired',
+        workspaceId: cookieLoginState.workspaceId ?? authConfig.instanceId,
         outcome: 'failure',
       });
       return response;
     }
 
     try {
-      const { sessionId, user, expiresAt, loginState } = await handleCallback({
+      const { sessionId, user, expiresAt, loginState, retryPerformed } = await handleCallback({
         code,
         state,
         iss,
@@ -324,6 +407,19 @@ export const callbackHandler = async (request: Request): Promise<Response> => {
       const redirectTarget = effectiveLoginState?.returnTo ?? DEFAULT_POST_LOGIN_REDIRECT;
       const isSilent = effectiveLoginState?.silent === true;
       const response = isSilent ? createSilentSsoResponse('success') : createRedirectResponse(redirectTarget);
+
+      logger.info('tenant_auth_callback_result', {
+        operation: 'tenant_auth_callback',
+        instance_id: user.instanceId ?? authConfig.instanceId ?? 'global',
+        auth_realm: authConfig.authRealm ?? 'global',
+        client_id: authConfig.clientId,
+        issuer: authConfig.issuer,
+        redirect_uri: authConfig.redirectUri,
+        is_silent: isSilent,
+        retry_performed: retryPerformed,
+        result: 'success',
+        ...buildLogContext(user.instanceId ?? authConfig.instanceId),
+      });
 
       logger.info('Auth callback successful', {
         auth_flow: 'callback',
@@ -365,7 +461,21 @@ export const callbackHandler = async (request: Request): Promise<Response> => {
           is_silent: isSilent,
           error_type: error instanceof Error ? error.constructor.name : typeof error,
           has_refresh_token: false,
-          ...buildLogContext(),
+          ...describeTokenError(error),
+          ...buildLogContext(cookieLoginState?.workspaceId ?? authConfig.instanceId),
+        });
+        logger.warn('tenant_auth_callback_result', {
+          operation: 'tenant_auth_callback',
+          instance_id: cookieLoginState?.workspaceId ?? authConfig.instanceId ?? 'global',
+          auth_realm: authConfig.authRealm ?? 'global',
+          client_id: authConfig.clientId,
+          issuer: authConfig.issuer,
+          redirect_uri: authConfig.redirectUri,
+          is_silent: isSilent,
+          retry_performed: false,
+          result: 'failure',
+          ...describeTokenError(error),
+          ...buildLogContext(cookieLoginState?.workspaceId ?? authConfig.instanceId),
         });
       } else {
         logger.error('Auth callback failed', {
@@ -377,7 +487,21 @@ export const callbackHandler = async (request: Request): Promise<Response> => {
           has_code: true,
           has_state: true,
           has_iss: Boolean(iss),
-          ...buildLogContext(),
+          ...buildLogContext(cookieLoginState?.workspaceId ?? authConfig.instanceId),
+        });
+        logger.error('tenant_auth_callback_result', {
+          operation: 'tenant_auth_callback',
+          instance_id: cookieLoginState?.workspaceId ?? authConfig.instanceId ?? 'global',
+          auth_realm: authConfig.authRealm ?? 'global',
+          client_id: authConfig.clientId,
+          issuer: authConfig.issuer,
+          redirect_uri: authConfig.redirectUri,
+          is_silent: isSilent,
+          retry_performed: false,
+          result: 'failure',
+          error_type: error instanceof Error ? error.constructor.name : typeof error,
+          error: error instanceof Error ? error.message : String(error),
+          ...buildLogContext(cookieLoginState?.workspaceId ?? authConfig.instanceId),
         });
       }
 
@@ -392,6 +516,7 @@ export const callbackHandler = async (request: Request): Promise<Response> => {
       });
       await emitAuthAuditEvent({
         eventType: isSilent ? 'silent_reauth_failed' : 'login',
+        workspaceId: cookieLoginState?.workspaceId ?? authConfig.instanceId,
         outcome: 'failure',
       });
       return response;

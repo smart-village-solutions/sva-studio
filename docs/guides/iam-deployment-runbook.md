@@ -9,6 +9,8 @@ Sicherer Rollout des Changes `add-account-user-management-ui` inklusive Datenban
 - Keycloak Service-Account `sva-studio-iam-service` ist eingerichtet.
 - Secrets für Keycloak-Admin-Zugang sind im Zielsystem hinterlegt.
 - Datenbankzugriff auf IAM-Schema ist vorhanden.
+- Für tenant-spezifische Realms ist der Sollzustand aus `./keycloak-tenant-realm-bootstrap.md` erfüllt.
+- Die Root-Host-Instanzverwaltung unter `/admin/instances` ist der führende Pflegepfad für `authRealm`, `authClientId`, tenant-spezifische Client-Secrets und den initialen Tenant-Admin-Bootstrap.
 
 ## Rollout-Schritte
 
@@ -25,6 +27,7 @@ Sicherer Rollout des Changes `add-account-user-management-ui` inklusive Datenban
 4. **Readiness prüfen**
    - `GET /health/ready` muss Keycloak/DB/Redis als `true` melden.
    - `checks.authorizationCache.status` muss mindestens `degraded`, idealerweise `ready` sein.
+   - bei tenant-gesteuertem Login muss `/auth/me` nach erfolgreichem OIDC-Login einen `instanceId`-Claim liefern.
 5. **Stufenweise aktivieren**
    - Stufe A: `IAM_UI_ENABLED=true`
    - Stufe B: `IAM_ADMIN_ENABLED=true`
@@ -33,13 +36,34 @@ Sicherer Rollout des Changes `add-account-user-management-ui` inklusive Datenban
    - `VITE_IAM_UI_ENABLED`
    - `VITE_IAM_ADMIN_ENABLED`
    - `VITE_IAM_BULK_ENABLED`
-7. **Smoke/E2E ausführen**
+7. **Tenant-Realm-Status am Root-Host prüfen**
+   - betroffene Instanz unter `/admin/instances` öffnen
+   - `authClientSecretConfigured=true` prüfen
+   - Keycloak-Status prüfen:
+     - Realm vorhanden
+     - Client vorhanden
+     - `instanceId`-Mapper vorhanden
+     - Tenant-Admin vorhanden
+     - Tenant-Admin hat `system_admin`
+     - Tenant-Admin hat nicht `instance_registry_admin`
+   - bei Drift explizit "Realm anwenden / bootstrapen" ausführen
+8. **Smoke/E2E ausführen**
+   - `observability-readiness` im zugehörigen `env:doctor:studio` oder `env:precheck:studio` prüfen
+   - in Loki nach `tenant_auth_resolution_summary`, `tenant_auth_callback_result` und `keycloak_reconcile_summary` für den betroffenen Tenant suchen
    - Profilseite laden und speichern
    - Admin-Userliste öffnen
    - Rollenliste öffnen
-8. **Separates IAM-Acceptance-Gate ausführen**
+   - tenant-spezifischen Login auf korrekten Realm und korrekte Callback-URL prüfen
+9. **Separates IAM-Acceptance-Gate ausführen**
    - `pnpm nx run sva-studio-react:test:acceptance`
    - Details zum Environment- und Testdatenkontrakt: `./iam-acceptance-runbook.md`
+
+## Operative Regeln für Tenant-Realms
+
+- Tenant-spezifische OIDC-Client-Secrets werden in Studio verschlüsselt gespeichert und von dort nach Keycloak abgeglichen.
+- Ein leeres Secret-Feld in der Instanzverwaltung rotiert das Secret nicht und löscht keine bestehende Konfiguration.
+- Temporäre Tenant-Admin-Passwörter sind write-only und werden nur für Bootstrap oder Reset verwendet.
+- Tenant-lokale `system_admin`s erhalten keinen Zugriff auf die globale Instanzverwaltung; diese bleibt am Root-Host an `instance_registry_admin` gebunden.
 
 ## Rollback
 
@@ -72,6 +96,7 @@ Sicherer Rollout des Changes `add-account-user-management-ui` inklusive Datenban
 ## Referenzen
 
 - `docs/guides/keycloak-service-account-setup-iam.md`
+- `docs/guides/keycloak-tenant-realm-bootstrap.md`
 - `docs/guides/iam-acceptance-runbook.md`
 - `docs/guides/iam-alerting-konzept.md`
 - `docs/guides/iam-retention-automation.md`

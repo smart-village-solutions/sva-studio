@@ -1,12 +1,13 @@
-# Runtime-Profile für Lokal, Builder und Abnahme
+# Runtime-Profile für Lokal, Builder und Remote-Betrieb
 
 ## Ziel
 
-Dieses Runbook definiert die drei offiziellen Betriebsprofile für SVA Studio und vereinheitlicht Start, Update, Stop, Diagnose, Smoke-Checks und Migrationen:
+Dieses Runbook definiert die offiziellen Betriebsprofile für SVA Studio und vereinheitlicht Start, Update, Stop, Diagnose, Smoke-Checks und Migrationen:
 
 - `local-keycloak`: lokaler Betrieb auf `http://localhost:3000` mit Test-Realm
 - `local-builder`: lokaler Betrieb auf `http://localhost:3000` mit Builder.io und Mock-User
 - `acceptance-hb`: Serverbetrieb mit Root-Host `https://studio.smart-village.app` und registry-gesteuerten Tenant-Hosts unter `https://<instanceId>.studio.smart-village.app`
+- `studio`: produktionsnaher Serverbetrieb auf `https://studio.smart-village.app` mit dediziertem Swarm-Stack
 
 Die kanonischen Profildefinitionen liegen unter `config/runtime/`. Sensible oder standortspezifische Werte werden optional in `config/runtime/<profil>.local.vars` übersteuert.
 
@@ -26,6 +27,14 @@ Die Runtime-Kommandos setzen daraus konsistent:
 - Redis-/Postgres-/OTEL-Konfiguration
 - Mainserver-Smoke-Konfiguration
 
+Für `studio` gilt zusaetzlich ein pragmatischer Testphasen-Vertrag:
+
+- kanonischer Pfad nur ueber `precheck -> deploy -> smoke`
+- `SVA_STACK_NAME=studio`, `QUANTUM_ENDPOINT=sva`, `SVA_RUNTIME_PROFILE=studio`
+- `IAM_DATABASE_URL` und `REDIS_URL` duerfen fuer Remote-Profile aus den vorhandenen DB-/Redis-Bausteinen abgeleitet werden
+- lokale Dev-Defaults aus `base.vars` duerfen Remote-Fehlkonfigurationen nicht still kaschieren
+- bei Quantum-Auth-Problemen muss ein lokaler Override durch `QUANTUM_API_KEY` mitgedacht werden; ein funktionierender Benutzerkontext kann lokal durch veraltete Shell-Umgebungen sabotiert werden
+
 Zusätzlich unterstützt der Diagnosepfad optionale Doctor-Overrides:
 
 - `SVA_DOCTOR_KEYCLOAK_SUBJECT`
@@ -34,19 +43,43 @@ Zusätzlich unterstützt der Diagnosepfad optionale Doctor-Overrides:
 
 Damit kann `env:doctor:*` in allen Profilen denselben Actor-/Membership-Pfad prüfen, ohne PII oder Secrets auszugeben.
 
+Fuer `studio` gilt zusaetzlich ein expliziter Observability-Vertrag:
+
+- `ENABLE_OTEL=false` plus `SVA_ENABLE_SERVER_CONSOLE_LOGS=true` bedeutet `console_to_loki` und ist in der fruehen Testphase der bevorzugte Diagnosepfad
+- `ENABLE_OTEL=true` bedeutet `otel_to_loki`; der Bootstrap muss dann `observability_ready` schreiben
+- Fuer `studio` ist der belastbare Tenant-Auth-Beweis erreicht, wenn nach frischen `/auth/login`-Probes in Loki `tenant_auth_resolution_summary` mit `secret_source="tenant"` und `oidc_cache_key_scope="tenant_secret"` fuer die aktiven Tenants sichtbar ist
+- wenn weder OTEL noch produktive Console-Logs aktiv sind, gilt das Profil als `degraded` und `doctor`/`precheck` muessen daran scheitern
+- `scripts/ops/runtime-env.ts` laedt fuer Remote-Diagnosen zusaetzlich lokale Operator-Overlays aus `~/.config/quantum/env`, z. B. `SVA_GRAFANA_URL`, `SVA_LOKI_URL` und `SVA_GRAFANA_TOKEN`
+
 ### Wichtige Variablen
 
 Gemeinsam:
 
 - `SVA_RUNTIME_PROFILE`
 - `SVA_PUBLIC_BASE_URL`
-- `REDIS_URL`
-- `IAM_DATABASE_URL`
 - `OTEL_EXPORTER_OTLP_ENDPOINT`
 - `SVA_MAINSERVER_GRAPHQL_URL`
 - `SVA_MAINSERVER_OAUTH_TOKEN_URL`
 - `SVA_MAINSERVER_CLIENT_ID`
 - `SVA_MAINSERVER_CLIENT_SECRET`
+- optional `SVA_MAINSERVER_REQUIRED=false`, wenn der Mainserver-Smoke in der fruehen Testphase bewusst nicht blockieren darf
+- optional `SVA_MIGRATION_STATUS_REQUIRED=false`, wenn der Remote-Goose-Status in der fruehen Studio-Testphase nur als Zusatzsignal und nicht als blockierendes Gate gewertet werden soll
+
+Remote (`acceptance-hb`, `studio`) verpflichtend:
+
+- `SVA_STACK_NAME`
+- `QUANTUM_ENDPOINT`
+- `POSTGRES_DB`
+- `POSTGRES_USER`
+- `POSTGRES_PASSWORD`
+- `APP_DB_USER`
+- `APP_DB_PASSWORD`
+- `REDIS_PASSWORD`
+
+Ableitbar fuer Remote-Profile:
+
+- `IAM_DATABASE_URL`
+- `REDIS_URL`
 
 Nur Keycloak-Profile:
 
@@ -59,6 +92,7 @@ Nur produktionsnahe Registry-Profile:
 - `authRealm` und `authClientId` liegen pro Instanz in `iam.instances`
 - optional `authIssuerUrl`, wenn der Issuer nicht aus `KEYCLOAK_ADMIN_BASE_URL + /realms/<authRealm>` gebildet werden soll
 - `SVA_AUTH_ISSUER` und `SVA_AUTH_CLIENT_ID` bleiben nur lokale Fallbacks für nicht-registry-gesteuerte Pfade
+- der operative Sollzustand des fachlichen Tenant-Realm-Setups ist unter `../guides/keycloak-tenant-realm-bootstrap.md` dokumentiert
 
 Nur Builder:
 
@@ -109,6 +143,19 @@ pnpm env:migrate:acceptance-hb
 pnpm env:down:acceptance-hb
 ```
 
+### Studio (Remote)
+
+```bash
+pnpm env:precheck:studio
+pnpm env:deploy:studio -- --release-mode=app-only
+pnpm env:deploy:studio -- --release-mode=schema-and-app --maintenance-window="2026-03-20 19:00-19:15 CET"
+pnpm env:status:studio
+pnpm env:doctor:studio
+pnpm env:smoke:studio
+pnpm env:migrate:studio
+pnpm env:down:studio
+```
+
 ### Lokale HB-Produktivsimulation in Docker
 
 ```bash
@@ -126,36 +173,36 @@ Dieser Pfad startet die App als Produktionscontainer lokal gegen `postgres-hb`, 
 - lokale Profile starten Docker Compose für Redis/Postgres und optional den Monitoring-Stack
 - lokale Profile starten zusätzlich Adminer auf `http://127.0.0.1:8080`
 - lokale Profile starten danach den Dev-Server für `sva-studio-react`
-- `acceptance-hb` nutzt stattdessen den kanonischen Releasepfad `deploy`; direkte Acceptance-Deploys über `up` sind gesperrt
+- Remote-Profile (`acceptance-hb`, `studio`) nutzen stattdessen den kanonischen Releasepfad `deploy`; direkte Remote-Deploys über `up` sind gesperrt
 
 ### `update`
 
 - lokale Profile ziehen Compose-Images neu, starten Infrastruktur erneut und starten den Dev-Server kontrolliert neu
-- `acceptance-hb` nutzt stattdessen den kanonischen Releasepfad `deploy`; direkte Acceptance-Redeploys über `update` sind gesperrt
+- Remote-Profile (`acceptance-hb`, `studio`) nutzen stattdessen den kanonischen Releasepfad `deploy`; direkte Remote-Redeploys über `update` sind gesperrt
 
 ### `down`
 
 - lokale Profile stoppen Dev-Server und Compose-Stack
-- `acceptance-hb` entfernt den Swarm-Stack
+- Remote-Profile entfernen den Swarm-Stack
 
 ### `status`
 
 - lokale Profile geben lokalen App-Status plus `docker compose ps` aus
-- `acceptance-hb` gibt `docker stack services` und `docker stack ps` aus
+- Remote-Profile geben `docker stack services` und `docker stack ps` aus
 
 ### `precheck`
 
 - lokal derzeit nicht belegt
-- `acceptance-hb` prüft vor einem Release verbindlich:
+- Remote-Profile prüfen vor einem Release verbindlich:
   - effektive Runtime-Konfiguration und Pflichtvariablen
   - Remote-Service-Sicht via `quantum-cli`
-  - Erreichbarkeit des Acceptance-Postgres
+  - Erreichbarkeit des Postgres des Ziel-Stacks
   - offensichtliche kritische Schema-Drift
-- `pnpm env:precheck:acceptance-hb --json` liefert die Prüfung maschinenlesbar
+- `pnpm env:precheck:<profil> --json` liefert die Prüfung maschinenlesbar
 
 ### `deploy`
 
-- nur für `acceptance-hb`
+- nur für Remote-Profile (`acceptance-hb`, `studio`)
 - ist der kanonische Release-Einstiegspunkt für Serverdeploys
 - Orchestrierung in fixer Reihenfolge:
   1. `environment-precheck` inklusive Soll-/Live-Spec-Drift und Pflichtvariablen
@@ -177,6 +224,7 @@ Dieser Pfad startet die App als Produktionscontainer lokal gegen `postgres-hb`, 
   - `--actor=...`
   - `--workflow=...`
 - Acceptance-Releases sind nur mit `--image-digest=sha256:...` gültig; der Tag bleibt rein ergänzende Lesbarkeit
+- Remote-Releases sind nur mit `--image-digest=sha256:...` gültig; der Tag bleibt rein ergänzende Lesbarkeit
 - `--json` schreibt zusätzlich zur Artefakterzeugung den vollständigen Deploy-Report auf stdout
 
 ### `smoke`
@@ -190,13 +238,37 @@ Alle Profile prüfen mindestens:
 - IAM-Kontext über `/api/v1/iam/me/context`
 - Mainserver-Basisfunktion über OAuth-Token + GraphQL `{ __typename }`
 
+Ausnahme fuer `studio` in der fruehen Testphase:
+
+- wenn `SVA_MAINSERVER_REQUIRED=false` gesetzt ist, wird der Mainserver-Smoke in `doctor` und `smoke` als optional markiert und blockiert die Studio-Einrichtung nicht
+- wenn `SVA_MIGRATION_STATUS_REQUIRED=false` gesetzt ist, wird ein nicht verfuegbarer Remote-Goose-Status in `precheck` als optional markiert; der harte Schema-Guard bleibt weiterhin verbindlich
+- die Mainserver-URLs bleiben trotzdem dokumentiert und koennen spaeter ohne Skriptumbau wieder als verbindliches Gate aktiviert werden
+
 Zusatzprüfungen:
 
 - lokal: OTEL Collector `http://127.0.0.1:13133/healthz`
 - lokal im Multi-Tenant-Pfad: Root-Host `studio.lvh.me`, Tenant-Host `hb.studio.lvh.me` und fail-closed-Fall `blocked.studio.lvh.me`
-- Acceptance: Container-Status für `app`, `redis`, `postgres`, `otel-collector`
-- Acceptance: öffentliche Smoke-Probes gegen Root-Host `/`, `/health/live`, `/health/ready`, `/auth/login`, `/api/v1/iam/me/context`
-- Acceptance: mindestens ein aktiver Tenant-Host und ein negativer Host-Fall gegen dieselbe App-Instanz
+- Remote: Container-Status für `app`, `redis`, `postgres`
+- Remote: `otel-collector` nur dann zusätzlich, wenn `ENABLE_OTEL` im Zielprofil aktiviert ist
+- Remote: öffentliche Smoke-Probes gegen Root-Host `/`, `/health/live`, `/health/ready`, `/auth/login`, `/api/v1/iam/me/context`
+- Remote: zusätzlich `/api/v1/iam/instances`
+- Remote: mindestens ein aktiver Tenant-Host und ein negativer Host-Fall gegen dieselbe App-Instanz
+
+Im Profil `studio` pruefen die externen Smokes zusaetzlich die in `SVA_ALLOWED_INSTANCE_IDS` freigegebenen Tenant-Hosts auf tenant-spezifische OIDC-Redirects.
+
+Fuer `studio` gilt bei Tenant-Smokes zusaetzlich:
+
+- wenn ein externer Tenant-Redirect falsch ist, denselben Request intern im `studio_app`-Container mit explizitem `Host` wiederholen
+- wenn der interne Request bereits falsch ist, liegt das Problem nicht mehr im Ingress
+- `/auth/me` muss nach erfolgreichem Tenant-Login einen `instanceId`-Claim liefern; ein blosses Keycloak-User-Attribut ohne Protocol Mapper reicht nicht
+
+Zusatzvertrag fuer den Root-Host:
+
+- `/admin/instances` ist die fuehrende Control Plane fuer tenant-spezifische Realm-Basisdaten
+- dort werden `authRealm`, `authClientId`, optional `authIssuerUrl`, das tenant-spezifische OIDC-Client-Secret und die Tenant-Admin-Stammdaten gepflegt
+- das Client-Secret ist write-only; im UI wird nur angezeigt, ob es bereits konfiguriert ist
+- Realm-/Client-/Mapper-/Tenant-Admin-Abgleich erfolgt explizit ueber den Keycloak-Reconcile-Pfad der Instanzverwaltung
+- tenant-lokale `system_admin`s duerfen diese globale Root-Host-Verwaltung nicht sehen oder mutieren
 
 `smoke` validiert zusätzlich den kritischen IAM-Schema-Stand. Fehlende Tabellen, Indizes oder RLS-Policies gelten als deterministischer Fehler und werden als maschinenlesbarer Drift gemeldet.
 
@@ -215,12 +287,16 @@ Prüfungen in Reihenfolge:
 - IAM-Feature-Flags (`IAM_*`, `VITE_IAM_*`)
 - kritischer IAM-Schema-Guard
 - optional Actor-/Membership-Diagnose über `SVA_DOCTOR_*`
-- Acceptance zusätzlich: Remote-Service-Zustand via `quantum-cli`
+- Remote zusätzlich: Remote-Service-Zustand via `quantum-cli`
 
 Optional:
 
 ```bash
 pnpm env:doctor:acceptance-hb --json
+```
+
+```bash
+pnpm env:doctor:studio --json
 ```
 
 Ausgabeformat pro Check:
@@ -236,26 +312,57 @@ Beispiele für `details`:
 - `reason_code=missing_instance_membership`
 - `expected_migration=0019_iam_account_groups_origin_compat.sql`
 - `schema_guard.failures=["missing_table:iam.account_groups"]`
+- `tenant_hostnames=["bb-guben.studio.smart-village.app"]`
+- `derived=["IAM_DATABASE_URL","REDIS_URL"]`
+- `configDrift=["SVA_PARENT_DOMAIN","APP_DB_USER"]`
+
+## Deploy-Reports
+
+Deploy-Reports unter `artifacts/runtime/deployments/` sind die primaere Diagnosequelle fuer `studio`. Sie enthalten mindestens:
+
+- Commit-SHA
+- Image-Ref und Digest
+- Runtime-Profil, Stack und Endpoint
+- Pflicht- und ableitbare Runtime-Schluessel
+- Gate-Ergebnisse fuer Precheck, Migration, Deploy, interne Verifikation und externe Smokes
+- Rollback-Hinweis
+
+Wichtig fuer die Interpretation:
+
+- ein roter Report kann in fruehen Testphasen auch durch Verify-/Transport-Flakes entstehen
+- wenn Service-Spec, laufende Tasks und externe Smokes gruen sind, ist der naechste Schritt die gezielte Trennung zwischen echtem Rollout-Fehler und Report-False-Negative
 
 ### `migrate`
 
 - lokal: `pnpm nx run data:db:migrate`
-- Acceptance: führt den kanonischen `goose`-Migrationspfad aus `packages/data/migrations/*.sql` gegen den laufenden Swarm-Postgres aus
+- Remote: führt den kanonischen `goose`-Migrationspfad aus `packages/data/migrations/*.sql` gegen den laufenden Swarm-Postgres aus
   - bevorzugt automatisch per `quantum-cli exec --endpoint sva --stack sva-studio --service postgres`
   - Fallback: lokaler `docker exec` nur dann, wenn der Acceptance-Stack über denselben Docker-Daemon sichtbar ist
   - `goose` wird dabei mit gepinnter Version temporär bereitgestellt; eine Vorinstallation auf dem Zielsystem ist nicht erforderlich
-  - für `pnpm env:migrate:acceptance-hb` werden keine Mainserver-Smoke-Werte benötigt; der Befehl validiert nur noch den für Migrationen relevanten Acceptance-Kontext
+  - für `pnpm env:migrate:<profil>` werden keine Mainserver-Smoke-Werte benötigt; der Befehl validiert nur den für Migrationen relevanten Remote-Kontext
   - nach dem `goose`-Lauf prüft ein verbindlicher Schema-Guard den kritischen IAM-Sollstand (`groups`, `group_roles`, `account_groups`, Schlüsselspalten, Indizes, RLS-Policies)
 
 ## Rollback und Betriebsregeln
 
 - Schemaänderungen bleiben ein separater, bewusster Schritt und sind nie Teil von `up`
-- Acceptance-Deploys laufen nur noch über `pnpm env:deploy:acceptance-hb`
-- vor einem Acceptance-Release mit `--release-mode=schema-and-app` ist ein dokumentiertes Wartungsfenster Pflicht
-- `schema-and-app` führt Migrationen nur innerhalb des orchestrierten Deploypfads oder bewusst separat über `pnpm env:migrate:acceptance-hb` aus
-- jeder Acceptance-Deploy erzeugt einen maschinenlesbaren und menschenlesbaren Bericht unter `artifacts/runtime/deployments/`
-- jeder Acceptance-Deploy erzeugt zusätzlich Release-Manifest, Phasenreport, Migrationsreport, interne Probe-Ergebnisse und externe Probe-Ergebnisse als eigene JSON-Artefakte
-- nach jedem Acceptance-Deploy folgt `pnpm env:feedback:acceptance-hb`; der Befehl erzeugt eine Trend-Zusammenfassung und einen Review-Entwurf fuer den juengsten Lauf
+- Remote-Deploys laufen nur noch über `pnpm env:deploy:<profil>`
+- vor einem Remote-Release mit `--release-mode=schema-and-app` ist ein dokumentiertes Wartungsfenster Pflicht
+- fuer `studio` gilt in der fruehen Testphase: erst Runtime-/Tenant-/DB-Vertrag stabilisieren, dann weitere Automatisierungsgates verschaerfen
+
+## Observability und Live-Diagnose
+
+Fuer den produktionsnahen `studio`-Betrieb gilt:
+
+- Grafana/Loki-Zugaenge koennen lokal ueber `~/.config/quantum/env` hinterlegt werden (`SVA_GRAFANA_URL`, `SVA_LOKI_URL`, `SVA_GRAFANA_TOKEN`)
+- Logs muessen weiterhin PII- und Secret-arm bleiben; Diagnostik nutzt den SDK-Logger
+- Wenn in Loki keine verwertbaren App-Diagnoselogs erscheinen, zuerst pruefen:
+  - ob die aktuelle App-Version wirklich deployt ist
+  - ob Runtime-Flags fuer Console-/Transport-Verhalten im Live-Service angekommen sind
+  - ob der Log-Stream neue Container-Ausgaben ueberhaupt aufnimmt
+- `schema-and-app` führt Migrationen nur innerhalb des orchestrierten Deploypfads oder bewusst separat über `pnpm env:migrate:<profil>` aus
+- jeder Remote-Deploy erzeugt einen maschinenlesbaren und menschenlesbaren Bericht unter `artifacts/runtime/deployments/`
+- jeder Remote-Deploy erzeugt zusätzlich Release-Manifest, Phasenreport, Migrationsreport, interne Probe-Ergebnisse und externe Probe-Ergebnisse als eigene JSON-Artefakte
+- nach jedem Remote-Deploy folgt `pnpm env:feedback:acceptance-hb` für den Acceptance-Feedback-Loop
 - fehlgeschlagene oder manuell stabilisierte Deploys muessen zusaetzlich als Review unter `docs/reports/` festgehalten werden
 - vor einer tieferen Fehlersuche immer zuerst `pnpm env:doctor:<profil>` ausführen; manuelles `psql` und Browser-Netzwerk sind nur Fallback
 - bei lokalen Profilwechseln nie zwei Profile parallel auf Port `3000` betreiben
@@ -272,7 +379,10 @@ Beispiele für `details`:
 - `doctor` meldet `missing_actor_account` oder `missing_instance_membership`: Actor-/Membership-Kontext per `SVA_DOCTOR_KEYCLOAK_SUBJECT` gegen die Zielinstanz prüfen
 - bei neuer lokaler Instanz-DB zuerst `pnpm env:bootstrap:local-instance-db -- ...` verwenden statt manuell Tabellen oder User aus einer anderen Instanz zu kopieren
 - `doctor` oder `/health/ready` melden `schema_drift`: zuerst `pnpm env:migrate:<profil>`, dann `pnpm env:doctor:<profil>`
-- Acceptance-Deploy scheitert: unvollständige Portainer-Variablen in `deploy/portainer/.env.example`
-- Acceptance-Migration findet keinen lokalen `postgres`-Container: erwartbar bei Remote-Swarm; der Befehl nutzt dann automatisch `quantum-cli exec`
-- `env:deploy:acceptance-hb --release-mode=schema-and-app` scheitert sofort: Wartungsfenster fehlt oder `quantum-cli`/Stack-Zugriff ist nicht verfügbar
-- `env:deploy:acceptance-hb` scheitert vor dem Rollout: `SVA_IMAGE_DIGEST` fehlt oder das Digest-Artefakt besteht den `image-smoke` nicht
+- Remote-Deploy scheitert: unvollständige Portainer-Variablen in `deploy/portainer/.env.example`
+- Remote-Migration findet keinen lokalen `postgres`-Container: erwartbar bei Remote-Swarm; der Befehl nutzt dann automatisch `quantum-cli exec`
+- `env:deploy:<profil> --release-mode=schema-and-app` scheitert sofort: Wartungsfenster fehlt oder `quantum-cli`/Stack-Zugriff ist nicht verfügbar
+- `env:deploy:<profil>` scheitert vor dem Rollout: `SVA_IMAGE_DIGEST` fehlt oder das Digest-Artefakt besteht den `image-smoke` nicht
+Für das frühe `studio`-Profil sind produktive Console-Logs bewusst per `SVA_ENABLE_SERVER_CONSOLE_LOGS=true` erlaubt, damit Loki die Serverdiagnostik auch ohne internen OTEL-Collector erfassen kann. Das Flag ist ein temporärer Testphasen-Hebel und soll in einer späteren Betriebsphase wieder deaktiviert werden, sobald die OTEL-Pipeline im Zielprofil stabil verfügbar ist.
+
+Zusätzlich kann `SVA_AUTH_DEBUG_HEADERS=true` im frühen `studio`-Profil aktiviert werden. Dann liefert `/auth/login` auf Redirect-Antworten diagnostische Header wie effektiven Request-Host, Origin, aufgelöste `instanceId`, `authRealm` und `redirectUri`. Das ist ausschließlich für gezielte Tenant-Diagnosen gedacht und soll nach Abschluss des Debuggings wieder deaktiviert werden.

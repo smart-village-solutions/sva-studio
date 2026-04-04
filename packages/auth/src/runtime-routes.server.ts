@@ -79,6 +79,9 @@ export {
   archiveInstanceHandler,
   createInstanceHandler,
   getInstanceHandler,
+  getInstanceKeycloakStatusHandler,
   listInstancesHandler,
+  reconcileInstanceKeycloakHandler,
   suspendInstanceHandler,
+  updateInstanceHandler,
 } from './iam-instance-registry/index.js';

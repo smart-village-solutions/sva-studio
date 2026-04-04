@@ -26,6 +26,7 @@ describe('logging runtime config', () => {
       uiEnabled: true,
       otelRequested: true,
       otelRequired: false,
+      mode: 'otel_to_loki',
     });
   });
 
@@ -35,12 +36,53 @@ describe('logging runtime config', () => {
 
     const { getLoggingRuntimeConfig } = await import('../src/logger/logging-runtime.server');
 
-    expect(getLoggingRuntimeConfig().otelRequested).toBe(false);
+    expect(getLoggingRuntimeConfig()).toEqual({
+      environment: 'development',
+      consoleEnabled: true,
+      uiEnabled: true,
+      otelRequested: false,
+      otelRequired: false,
+      mode: 'console_to_loki',
+    });
   });
 
-  it('forces OTEL and disables console/UI in production', async () => {
+  it('supports console-to-loki mode in production when OTEL is disabled explicitly', async () => {
     process.env.NODE_ENV = 'production';
     process.env.ENABLE_OTEL = 'false';
+    process.env.SVA_ENABLE_SERVER_CONSOLE_LOGS = 'true';
+
+    const { getLoggingRuntimeConfig } = await import('../src/logger/logging-runtime.server');
+
+    expect(getLoggingRuntimeConfig()).toEqual({
+      environment: 'production',
+      consoleEnabled: true,
+      uiEnabled: false,
+      otelRequested: false,
+      otelRequired: false,
+      mode: 'console_to_loki',
+    });
+  });
+
+  it('reports degraded mode in production when both OTEL and console logging are disabled', async () => {
+    process.env.NODE_ENV = 'production';
+    process.env.ENABLE_OTEL = 'false';
+    delete process.env.SVA_ENABLE_SERVER_CONSOLE_LOGS;
+
+    const { getLoggingRuntimeConfig } = await import('../src/logger/logging-runtime.server');
+
+    expect(getLoggingRuntimeConfig()).toEqual({
+      environment: 'production',
+      consoleEnabled: false,
+      uiEnabled: false,
+      otelRequested: false,
+      otelRequired: false,
+      mode: 'degraded',
+    });
+  });
+
+  it('keeps OTEL-first mode in production by default', async () => {
+    process.env.NODE_ENV = 'production';
+    delete process.env.ENABLE_OTEL;
 
     const { getLoggingRuntimeConfig } = await import('../src/logger/logging-runtime.server');
 
@@ -50,6 +92,7 @@ describe('logging runtime config', () => {
       uiEnabled: false,
       otelRequested: true,
       otelRequired: true,
+      mode: 'otel_to_loki',
     });
   });
 

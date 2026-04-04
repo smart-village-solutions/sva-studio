@@ -35,6 +35,14 @@ describe('runtime-env.shared', () => {
     });
   });
 
+  it('ignores a standalone script option separator', () => {
+    const result = parseRuntimeCliOptions(['--', '--json']);
+
+    expect(result).toEqual({
+      jsonOutput: true,
+    });
+  });
+
   it('requires an image digest for production-like acceptance releases', () => {
     expect(() =>
       resolveAcceptanceDeployOptions(
@@ -76,7 +84,8 @@ describe('runtime-env.shared', () => {
       },
       {
         jsonOutput: false,
-      }
+      },
+      'acceptance-hb'
     );
 
     expect(result).toEqual({
@@ -133,6 +142,15 @@ describe('runtime-env.shared', () => {
         grafanaUrl: 'https://grafana.internal',
         lokiUrl: 'https://loki.internal',
         notes: ['Internal only'],
+      },
+      runtimeContract: {
+        requiredKeys: ['SVA_RUNTIME_PROFILE', 'SVA_PUBLIC_BASE_URL', 'SVA_STACK_NAME'],
+        derivedKeys: ['IAM_DATABASE_URL', 'REDIS_URL'],
+        effectiveSummary: {
+          runtimeProfile: 'acceptance-hb',
+          stackName: 'sva-studio',
+          publicBaseUrl: 'https://example.test',
+        },
       },
       externalProbes: [
         {
@@ -196,6 +214,21 @@ describe('runtime-env.shared', () => {
     expect(markdown).toContain('service summary');
     expect(markdown).toContain('Image-Ref: `ghcr.io/example/sva-studio@sha256:abc`');
     expect(markdown).toContain('Freigabeentscheidung: Alle technischen Gates erfolgreich.');
+    expect(markdown).toContain('Ableitbare Schluessel: `IAM_DATABASE_URL, REDIS_URL`');
     expect(markdown).toContain('`public-iam-context` -> `ok`');
+  });
+
+  it('uses the runtime profile in default deploy slugs', () => {
+    const result = resolveAcceptanceDeployOptions(
+      {
+        SVA_IMAGE_DIGEST: 'sha256:def',
+      },
+      {
+        jsonOutput: false,
+      },
+      'studio'
+    );
+
+    expect(result.reportSlug).toBe('studio-deploy');
   });
 });

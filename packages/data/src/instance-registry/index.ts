@@ -17,6 +17,11 @@ type InstanceListRow = {
   auth_realm: string;
   auth_client_id: string;
   auth_issuer_url: string | null;
+  auth_client_secret_ciphertext: string | null;
+  tenant_admin_username: string | null;
+  tenant_admin_email: string | null;
+  tenant_admin_first_name: string | null;
+  tenant_admin_last_name: string | null;
   theme_key: string | null;
   feature_flags: Record<string, boolean> | null;
   mainserver_config_ref: string | null;
@@ -60,6 +65,15 @@ const mapInstance = (row: InstanceListRow): InstanceRegistryRecord => ({
   authRealm: row.auth_realm,
   authClientId: row.auth_client_id,
   authIssuerUrl: row.auth_issuer_url ?? undefined,
+  authClientSecretConfigured: Boolean(row.auth_client_secret_ciphertext),
+  tenantAdminBootstrap: row.tenant_admin_username
+    ? {
+        username: row.tenant_admin_username,
+        email: row.tenant_admin_email ?? undefined,
+        firstName: row.tenant_admin_first_name ?? undefined,
+        lastName: row.tenant_admin_last_name ?? undefined,
+      }
+    : undefined,
   themeKey: row.theme_key ?? undefined,
   featureFlags: row.feature_flags ?? {},
   mainserverConfigRef: row.mainserver_config_ref ?? undefined,
@@ -97,6 +111,7 @@ const mapAuditEvent = (row: AuditRow): InstanceAuditEvent => ({
 export type InstanceRegistryRepository = {
   listInstances(input?: { search?: string; status?: InstanceStatus }): Promise<readonly InstanceRegistryRecord[]>;
   getInstanceById(instanceId: string): Promise<InstanceRegistryRecord | null>;
+  getAuthClientSecretCiphertext(instanceId: string): Promise<string | null>;
   resolveHostname(hostname: string): Promise<InstanceRegistryRecord | null>;
   listProvisioningRuns(instanceId: string): Promise<readonly InstanceProvisioningRun[]>;
   listLatestProvisioningRuns(
@@ -112,12 +127,41 @@ export type InstanceRegistryRepository = {
     authRealm: string;
     authClientId: string;
     authIssuerUrl?: string;
+    authClientSecretCiphertext?: string;
+    tenantAdminBootstrap?: {
+      username: string;
+      email?: string;
+      firstName?: string;
+      lastName?: string;
+    };
     actorId?: string;
     requestId?: string;
     themeKey?: string;
     featureFlags?: Readonly<Record<string, boolean>>;
     mainserverConfigRef?: string;
   }): Promise<InstanceRegistryRecord>;
+  updateInstance(input: {
+    instanceId: string;
+    displayName: string;
+    parentDomain: string;
+    primaryHostname: string;
+    authRealm: string;
+    authClientId: string;
+    authIssuerUrl?: string;
+    authClientSecretCiphertext?: string;
+    keepExistingAuthClientSecret?: boolean;
+    tenantAdminBootstrap?: {
+      username: string;
+      email?: string;
+      firstName?: string;
+      lastName?: string;
+    };
+    actorId?: string;
+    requestId?: string;
+    themeKey?: string;
+    featureFlags?: Readonly<Record<string, boolean>>;
+    mainserverConfigRef?: string;
+  }): Promise<InstanceRegistryRecord | null>;
   setInstanceStatus(input: {
     instanceId: string;
     status: InstanceStatus;
@@ -166,6 +210,11 @@ SELECT
   auth_realm,
   auth_client_id,
   auth_issuer_url,
+  auth_client_secret_ciphertext,
+  tenant_admin_username,
+  tenant_admin_email,
+  tenant_admin_first_name,
+  tenant_admin_last_name,
   theme_key,
   feature_flags,
   mainserver_config_ref,
@@ -198,6 +247,11 @@ SELECT
   auth_realm,
   auth_client_id,
   auth_issuer_url,
+  auth_client_secret_ciphertext,
+  tenant_admin_username,
+  tenant_admin_email,
+  tenant_admin_first_name,
+  tenant_admin_last_name,
   theme_key,
   feature_flags,
   mainserver_config_ref,
@@ -215,6 +269,22 @@ LIMIT 1;
     return rows[0] ? mapInstance(rows[0]) : null;
   },
 
+  async getAuthClientSecretCiphertext(instanceId) {
+    const rows = await queryRows<{ auth_client_secret_ciphertext: string | null }>(
+      executor,
+      statement(
+        `
+SELECT auth_client_secret_ciphertext
+FROM iam.instances
+WHERE id = $1
+LIMIT 1;
+`,
+        [instanceId]
+      )
+    );
+    return rows[0]?.auth_client_secret_ciphertext ?? null;
+  },
+
   async resolveHostname(hostname) {
     const rows = await queryRows<InstanceListRow>(
       executor,
@@ -229,6 +299,11 @@ SELECT
   instance.auth_realm,
   instance.auth_client_id,
   instance.auth_issuer_url,
+  instance.auth_client_secret_ciphertext,
+  instance.tenant_admin_username,
+  instance.tenant_admin_email,
+  instance.tenant_admin_first_name,
+  instance.tenant_admin_last_name,
   instance.theme_key,
   instance.feature_flags,
   instance.mainserver_config_ref,
@@ -353,13 +428,18 @@ INSERT INTO iam.instances (
   auth_realm,
   auth_client_id,
   auth_issuer_url,
+  auth_client_secret_ciphertext,
+  tenant_admin_username,
+  tenant_admin_email,
+  tenant_admin_first_name,
+  tenant_admin_last_name,
   theme_key,
   feature_flags,
   mainserver_config_ref,
   created_by,
   updated_by
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11, $12, $12)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15::jsonb, $16, $17, $17)
 ON CONFLICT (id) DO UPDATE
 SET
   display_name = EXCLUDED.display_name,
@@ -369,6 +449,11 @@ SET
   auth_realm = EXCLUDED.auth_realm,
   auth_client_id = EXCLUDED.auth_client_id,
   auth_issuer_url = EXCLUDED.auth_issuer_url,
+  auth_client_secret_ciphertext = EXCLUDED.auth_client_secret_ciphertext,
+  tenant_admin_username = EXCLUDED.tenant_admin_username,
+  tenant_admin_email = EXCLUDED.tenant_admin_email,
+  tenant_admin_first_name = EXCLUDED.tenant_admin_first_name,
+  tenant_admin_last_name = EXCLUDED.tenant_admin_last_name,
   theme_key = EXCLUDED.theme_key,
   feature_flags = EXCLUDED.feature_flags,
   mainserver_config_ref = EXCLUDED.mainserver_config_ref,
@@ -383,6 +468,11 @@ RETURNING
   auth_realm,
   auth_client_id,
   auth_issuer_url,
+  auth_client_secret_ciphertext,
+  tenant_admin_username,
+  tenant_admin_email,
+  tenant_admin_first_name,
+  tenant_admin_last_name,
   theme_key,
   feature_flags,
   mainserver_config_ref,
@@ -400,6 +490,11 @@ RETURNING
           input.authRealm,
           input.authClientId,
           input.authIssuerUrl ?? null,
+          input.authClientSecretCiphertext ?? null,
+          input.tenantAdminBootstrap?.username ?? null,
+          input.tenantAdminBootstrap?.email ?? null,
+          input.tenantAdminBootstrap?.firstName ?? null,
+          input.tenantAdminBootstrap?.lastName ?? null,
           input.themeKey ?? null,
           JSON.stringify(input.featureFlags ?? {}),
           input.mainserverConfigRef ?? null,
@@ -443,6 +538,11 @@ RETURNING
   auth_realm,
   auth_client_id,
   auth_issuer_url,
+  auth_client_secret_ciphertext,
+  tenant_admin_username,
+  tenant_admin_email,
+  tenant_admin_first_name,
+  tenant_admin_last_name,
   theme_key,
   feature_flags,
   mainserver_config_ref,
@@ -455,6 +555,96 @@ RETURNING
       )
     );
     return rows[0] ? mapInstance(rows[0]) : null;
+  },
+
+  async updateInstance(input) {
+    const rows = await queryRows<InstanceListRow>(
+      executor,
+      statement(
+        `
+UPDATE iam.instances
+SET
+  display_name = $2,
+  parent_domain = $3,
+  primary_hostname = $4,
+  auth_realm = $5,
+  auth_client_id = $6,
+  auth_issuer_url = $7,
+  auth_client_secret_ciphertext = CASE
+    WHEN $8::boolean THEN auth_client_secret_ciphertext
+    ELSE $9
+  END,
+  tenant_admin_username = $10,
+  tenant_admin_email = $11,
+  tenant_admin_first_name = $12,
+  tenant_admin_last_name = $13,
+  theme_key = $14,
+  feature_flags = $15::jsonb,
+  mainserver_config_ref = $16,
+  updated_by = $17,
+  updated_at = NOW()
+WHERE id = $1
+RETURNING
+  id AS instance_id,
+  display_name,
+  status,
+  parent_domain,
+  primary_hostname,
+  auth_realm,
+  auth_client_id,
+  auth_issuer_url,
+  auth_client_secret_ciphertext,
+  tenant_admin_username,
+  tenant_admin_email,
+  tenant_admin_first_name,
+  tenant_admin_last_name,
+  theme_key,
+  feature_flags,
+  mainserver_config_ref,
+  created_at::text,
+  created_by,
+  updated_at::text,
+  updated_by;
+`,
+        [
+          input.instanceId,
+          input.displayName,
+          input.parentDomain,
+          input.primaryHostname,
+          input.authRealm,
+          input.authClientId,
+          input.authIssuerUrl ?? null,
+          input.keepExistingAuthClientSecret !== false && typeof input.authClientSecretCiphertext === 'undefined',
+          input.authClientSecretCiphertext ?? null,
+          input.tenantAdminBootstrap?.username ?? null,
+          input.tenantAdminBootstrap?.email ?? null,
+          input.tenantAdminBootstrap?.firstName ?? null,
+          input.tenantAdminBootstrap?.lastName ?? null,
+          input.themeKey ?? null,
+          JSON.stringify(input.featureFlags ?? {}),
+          input.mainserverConfigRef ?? null,
+          input.actorId ?? 'system',
+        ]
+      )
+    );
+
+    if (!rows[0]) {
+      return null;
+    }
+
+    await executor.execute({
+      text: `
+INSERT INTO iam.instance_hostnames (hostname, instance_id, is_primary, created_by)
+VALUES ($1, $2, true, $3)
+ON CONFLICT (hostname) DO UPDATE
+SET
+  instance_id = EXCLUDED.instance_id,
+  is_primary = EXCLUDED.is_primary;
+`,
+      values: [input.primaryHostname, input.instanceId, input.actorId ?? 'system'],
+    });
+
+    return mapInstance(rows[0]);
   },
 
   async createProvisioningRun(input) {

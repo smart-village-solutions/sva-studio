@@ -14,6 +14,8 @@ export type ApiErrorCode =
   | 'idempotency_key_reuse'
   | 'idempotency_in_progress'
   | 'keycloak_unavailable'
+  | 'tenant_auth_client_secret_missing'
+  | 'encryption_not_configured'
   | 'database_unavailable'
   | 'last_admin_protection'
   | 'self_protection'
@@ -293,12 +295,35 @@ export type IamInstanceListItem = {
   readonly authRealm: string;
   readonly authClientId: string;
   readonly authIssuerUrl?: string;
+  readonly authClientSecretConfigured: boolean;
+  readonly tenantAdminBootstrap?: {
+    readonly username: string;
+    readonly email?: string;
+    readonly firstName?: string;
+    readonly lastName?: string;
+  };
   readonly themeKey?: string;
   readonly featureFlags: Readonly<Record<string, boolean>>;
   readonly mainserverConfigRef?: string;
   readonly createdAt: string;
   readonly updatedAt: string;
   readonly latestProvisioningRun?: IamInstanceProvisioningRun;
+};
+
+export type IamInstanceKeycloakStatus = {
+  readonly realmExists: boolean;
+  readonly clientExists: boolean;
+  readonly instanceIdMapperExists: boolean;
+  readonly tenantAdminExists: boolean;
+  readonly tenantAdminHasSystemAdmin: boolean;
+  readonly tenantAdminHasInstanceRegistryAdmin: boolean;
+  readonly redirectUrisMatch: boolean;
+  readonly logoutUrisMatch: boolean;
+  readonly webOriginsMatch: boolean;
+  readonly clientSecretConfigured: boolean;
+  readonly tenantClientSecretReadable: boolean;
+  readonly clientSecretAligned: boolean;
+  readonly runtimeSecretSource: 'tenant' | 'global';
 };
 
 export type IamInstanceDetail = IamInstanceListItem & {
@@ -309,6 +334,7 @@ export type IamInstanceDetail = IamInstanceListItem & {
   }[];
   readonly provisioningRuns: readonly IamInstanceProvisioningRun[];
   readonly auditEvents: readonly IamInstanceAuditEvent[];
+  readonly keycloakStatus?: IamInstanceKeycloakStatus;
 };
 
 export type IamOrganizationChildItem = {

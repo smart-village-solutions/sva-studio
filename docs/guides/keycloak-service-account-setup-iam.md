@@ -5,6 +5,8 @@
 Diese Anleitung beschreibt die minimale Keycloak-Konfiguration für den IAM-Service des SVA Studio (`sva-studio-iam-service`).
 Sie deckt sowohl User-Management als auch den Studio-verwalteten Rollen-Katalog-Sync nach Keycloak ab.
 
+Der fachliche Sollzustand tenant-spezifischer Realms, inklusive `sva-studio`-Client, `instanceId`-Claim, Protocol Mappern und minimalen Tenant-Admin-Rollen, ist separat unter [Keycloak-Tenant-Realm-Bootstrap für Studio](./keycloak-tenant-realm-bootstrap.md) dokumentiert.
+
 ## Unterstützte Keycloak-Version
 
 - Mindestversion: **Keycloak 22.0**

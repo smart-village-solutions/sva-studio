@@ -38,4 +38,15 @@ describe('logger/index.server logging mode metadata', () => {
       logging_mode: 'console_to_loki',
     });
   });
+
+  it('keeps an emergency console transport when both console and otel are disabled', () => {
+    const logger = createSdkLogger({
+      component: 'logging-mode-test',
+      environment: 'test',
+      enableConsole: false,
+      enableOtel: false,
+    });
+
+    expect(logger.transports).toHaveLength(1);
+  });
 });

@@ -21,6 +21,13 @@ describe('request-hosts', () => {
     expect(parseForwardedProto('for=192.0.2.60;proto=https;host=bb-guben.studio.example.org')).toBe('https');
   });
 
+  it('accepts quoted RFC Forwarded host pairs and rejects unsupported proto values', () => {
+    expect(parseForwardedHost('for=192.0.2.60;host="BB-GUBEN.studio.example.org"')).toBe(
+      'bb-guben.studio.example.org',
+    );
+    expect(parseForwardedProto('for=192.0.2.60;proto=javascript')).toBeNull();
+  });
+
   it('ignores Forwarded headers without an explicit host or proto pair', () => {
     expect(parseForwardedHost('for=192.0.2.60;proto=https')).toBeNull();
     expect(parseForwardedProto('for=192.0.2.60;host=bb-guben.studio.example.org')).toBeNull();
@@ -76,5 +83,29 @@ describe('request-hosts', () => {
     });
 
     expect(resolveEffectiveRequestProtocol(request)).toBe('https');
+  });
+
+  it('trusts forwarded headers by default in production mode', () => {
+    process.env.NODE_ENV = 'production';
+    const request = new Request('http://internal:3000/auth/login', {
+      headers: {
+        'x-forwarded-host': 'bb-guben.studio.example.org',
+        'x-forwarded-proto': 'https',
+      },
+    });
+
+    expect(resolveEffectiveRequestHost(request)).toBe('bb-guben.studio.example.org');
+    expect(resolveEffectiveRequestProtocol(request)).toBe('https');
+  });
+
+  it('falls back to request.url when the forwarded trust flag is invalid in non-production', () => {
+    process.env.SVA_TRUST_FORWARDED_HEADERS = 'maybe';
+    const request = new Request('https://studio.example.org/auth/login', {
+      headers: {
+        'x-forwarded-host': 'bb-guben.studio.example.org',
+      },
+    });
+
+    expect(resolveEffectiveRequestHost(request)).toBe('studio.example.org');
   });
 });

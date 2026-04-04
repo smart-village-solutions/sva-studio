@@ -28,6 +28,20 @@ const HOST_CACHE_MAX_ENTRIES = 500;
 const hostCache = new Map<string, CacheEntry>();
 const poolsByDatabaseUrl = new Map<string, Pool>();
 
+const shouldRetryWithPrimaryHostname = (error: unknown): boolean => {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const message = error.message.toLowerCase();
+  return (
+    message.includes('instance_hostnames') ||
+    message.includes('permission denied') ||
+    message.includes('does not exist') ||
+    message.includes('undefined_table')
+  );
+};
+
 const ensureValidIamDatabaseUrl = (databaseUrl: string | undefined): string | null => {
   if (!databaseUrl) {
     return null;
@@ -206,7 +220,10 @@ export const loadInstanceByHostname = async (
     async (client) => {
       try {
         const repository = createInstanceRegistryRepository(createExecutor(client));
-        const result = await repository.resolveHostname(normalizedHostname);
+        let result = await repository.resolveHostname(normalizedHostname);
+        if (!result) {
+          result = await repository.resolvePrimaryHostname(normalizedHostname);
+        }
         logger.debug('Instance hostname lookup completed via database', {
           hostname: normalizedHostname,
           cache_hit: false,
@@ -215,6 +232,17 @@ export const loadInstanceByHostname = async (
         });
         return result;
       } catch (error) {
+        if (shouldRetryWithPrimaryHostname(error)) {
+          const repository = createInstanceRegistryRepository(createExecutor(client));
+          const fallbackResult = await repository.resolvePrimaryHostname(normalizedHostname);
+          logger.warn('Instance hostname lookup retried via primary_hostname fallback', {
+            hostname: normalizedHostname,
+            reason: 'tenant_host_resolution_primary_hostname_fallback',
+            error: error instanceof Error ? error.message : String(error),
+            instance_id: fallbackResult?.instanceId ?? undefined,
+          });
+          return fallbackResult;
+        }
         logger.error('Instance hostname lookup failed in repository layer', {
           hostname: normalizedHostname,
           reason: 'tenant_host_resolution_failed',

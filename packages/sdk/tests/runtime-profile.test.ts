@@ -192,6 +192,35 @@ describe('runtime-profile', () => {
     });
   });
 
+  it('does not require an OTEL endpoint for local profiles when OTEL is disabled', () => {
+    const result = validateRuntimeProfileEnv('local-keycloak', {
+      SVA_RUNTIME_PROFILE: 'local-keycloak',
+      SVA_PUBLIC_BASE_URL: 'http://localhost:3000',
+      ENABLE_OTEL: 'false',
+      REDIS_URL: 'redis://localhost:6379',
+      IAM_DATABASE_URL: 'postgres://localhost/sva',
+      SVA_MAINSERVER_GRAPHQL_URL: 'https://mainserver.example/graphql',
+      SVA_MAINSERVER_OAUTH_TOKEN_URL: 'https://mainserver.example/oauth/token',
+      SVA_MAINSERVER_CLIENT_ID: 'client-id',
+      SVA_MAINSERVER_CLIENT_SECRET: 'client-secret',
+      SVA_AUTH_ISSUER: 'https://keycloak.example/realms/demo',
+      SVA_AUTH_CLIENT_ID: 'sva-studio',
+      SVA_AUTH_CLIENT_SECRET: 'tenant-client-secret',
+      SVA_AUTH_STATE_SECRET: 'state-secret',
+      SVA_AUTH_REDIRECT_URI: 'http://localhost:3000/auth/callback',
+      SVA_AUTH_POST_LOGOUT_REDIRECT_URI: 'http://localhost:3000',
+      KEYCLOAK_ADMIN_BASE_URL: 'https://keycloak.example',
+      KEYCLOAK_ADMIN_REALM: 'demo',
+      KEYCLOAK_ADMIN_CLIENT_ID: 'svc-client',
+      KEYCLOAK_ADMIN_CLIENT_SECRET: 'svc-secret',
+      IAM_PII_ACTIVE_KEY_ID: 'active',
+      IAM_PII_KEYRING_JSON: '{"active":"secret"}',
+      ENCRYPTION_KEY: 'encryption-key',
+    });
+
+    expect(result.missing).not.toContain('OTEL_EXPORTER_OTLP_ENDPOINT');
+  });
+
   it('treats explicit remote derived values as placeholders when they still use rollout markers', () => {
     const result = validateRuntimeProfileEnv('studio', {
       SVA_RUNTIME_PROFILE: 'studio',

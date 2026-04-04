@@ -169,7 +169,16 @@ export const loadInstanceByHostname = async (
     });
     throw new Error('iam_database_url_missing: IAM database not configured');
   }
-  const cacheKey = buildHostCacheKey(databaseUrl, normalizedHostname);
+  const normalizedDatabaseUrl = ensureValidIamDatabaseUrl(databaseUrl);
+  if (!normalizedDatabaseUrl) {
+    logger.warn('Instance hostname lookup aborted because no IAM database URL could be resolved', {
+      hostname: normalizedHostname,
+      reason: 'iam_database_url_missing',
+    });
+    throw new Error('iam_database_url_missing: IAM database not configured');
+  }
+
+  const cacheKey = buildHostCacheKey(normalizedDatabaseUrl, normalizedHostname);
   const cached = hostCache.get(cacheKey);
 
   if (cached && cached.expiresAt > now()) {
@@ -205,7 +214,7 @@ export const loadInstanceByHostname = async (
         );
       }
     },
-    { getDatabaseUrl: () => databaseUrl }
+    { getDatabaseUrl: () => normalizedDatabaseUrl }
   );
 
   hostCache.set(cacheKey, {

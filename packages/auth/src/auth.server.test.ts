@@ -518,6 +518,51 @@ describe('getSessionUser', () => {
     expect(authorizationCodeGrantMock).toHaveBeenCalledTimes(2);
   });
 
+  it('handleCallback does not retry non-secret token exchange failures', async () => {
+    authorizationCodeGrantMock.mockRejectedValueOnce({
+      name: 'ResponseBodyError',
+      error: 'invalid_grant',
+      error_description: 'Code already used',
+      status: 400,
+    });
+
+    const { handleCallback } = await import('./auth.server');
+
+    await expect(
+      handleCallback({
+        code: 'code-invalid-grant',
+        state: 'state-invalid-grant',
+        authConfig: {
+          issuer: 'https://issuer.example/realms/bb-guben',
+          clientId: 'sva-studio',
+          clientSecret: 'tenant-secret',
+          loginStateSecret: 'state-secret',
+          redirectUri: 'https://bb-guben.studio.example.org/auth/callback',
+          postLogoutRedirectUri: 'https://bb-guben.studio.example.org/',
+          scopes: 'openid',
+          sessionCookieName: 'sva_auth_session',
+          loginStateCookieName: 'sva_auth_state',
+          silentSsoSuppressCookieName: 'sva_auth_silent_sso',
+          sessionTtlMs: 60_000,
+          sessionRedisTtlBufferMs: 5_000,
+          silentSsoSuppressAfterLogoutMs: 60_000,
+          instanceId: 'bb-guben',
+          authRealm: 'bb-guben',
+        },
+        loginState: {
+          codeVerifier: 'verifier-no-retry',
+          nonce: 'nonce-no-retry',
+          createdAt: Date.now(),
+        },
+      }),
+    ).rejects.toMatchObject({
+      error: 'invalid_grant',
+    });
+
+    expect(invalidateOidcConfigMock).not.toHaveBeenCalled();
+    expect(authorizationCodeGrantMock).toHaveBeenCalledTimes(1);
+  });
+
   it('logoutSession falls back to post logout redirect without id token', async () => {
     getSessionMock.mockResolvedValue({
       id: 'session-logout-1',

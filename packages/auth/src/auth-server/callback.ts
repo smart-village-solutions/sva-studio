@@ -5,7 +5,7 @@ import { getAuthConfig } from '../config.js';
 import { jitProvisionAccount } from '../jit-provisioning.server.js';
 import { client, getOidcConfig, invalidateOidcConfig } from '../oidc.server.js';
 import { consumeLoginState, createSession, getSessionControlState } from '../redis-session.server.js';
-import { isTokenErrorLike } from '../shared/error-guards.js';
+import { isRetryableTokenExchangeError } from '../shared/error-guards.js';
 import type { AuthConfig, LoginState } from '../types.js';
 import { buildLogContext } from '../shared/log-context.js';
 import { buildSessionUser, resolveSessionExpiry } from './shared.js';
@@ -101,7 +101,7 @@ const exchangeAuthorizationCode = async (input: {
       retryPerformed: false,
     };
   } catch (error) {
-    if (!isTokenErrorLike(error)) {
+    if (!isRetryableTokenExchangeError(error)) {
       throw error;
     }
 

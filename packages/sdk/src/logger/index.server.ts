@@ -169,6 +169,19 @@ const patchLoggerCloseForRegistryCleanup = (logger: Logger, cleanup: () => void)
 
 let hasReportedMissingTransport = false;
 
+const resolveEffectiveLoggingMode = (input: {
+  readonly consoleEnabled: boolean;
+  readonly otelEnabled: boolean;
+}): 'console_to_loki' | 'otel_to_loki' | 'degraded' => {
+  if (input.otelEnabled) {
+    return 'otel_to_loki';
+  }
+  if (input.consoleEnabled) {
+    return 'console_to_loki';
+  }
+  return 'degraded';
+};
+
 const buildConsoleTransport = (environment: string, emergencyFallback = false): winston.transport => {
   if (environment === 'development' && !emergencyFallback) {
     return new winston.transports.Console({
@@ -205,6 +218,10 @@ export const createSdkLogger = ({
   const runtimeConfig = getLoggingRuntimeConfig();
   const consoleEnabled = enableConsole ?? runtimeConfig.consoleEnabled;
   const otelEnabled = enableOtel ?? runtimeConfig.otelRequested;
+  const loggingMode = resolveEffectiveLoggingMode({
+    consoleEnabled,
+    otelEnabled,
+  });
   const transportsArray: winston.transport[] = [];
   let otelTransport: DirectOtelTransport | null = null;
 
@@ -230,7 +247,7 @@ export const createSdkLogger = ({
     defaultMeta: {
       component,
       environment,
-      logging_mode: consoleEnabled ? runtimeConfig.mode : (otelEnabled ? runtimeConfig.mode : 'degraded')
+      logging_mode: loggingMode,
     },
     format: winston.format.combine(winston.format.timestamp(), enrichWithContext(), redactSensitive(), winston.format.json()),
     transports: transportsArray

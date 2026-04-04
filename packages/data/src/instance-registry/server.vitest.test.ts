@@ -197,6 +197,35 @@ describe('instance-registry server helpers', () => {
     resetInstanceRegistryCache();
   });
 
+  it('normalizes database urls before deriving hostname cache scope', async () => {
+    const { loadInstanceByHostname, resetInstanceRegistryCache } = await import('./server');
+    resolveHostnameMock.mockResolvedValue({
+      instanceId: 'demo-a',
+      displayName: 'Demo A',
+      status: 'active',
+      parentDomain: 'studio.example.org',
+      primaryHostname: 'demo.studio.example.org',
+      featureFlags: {},
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    });
+
+    await expect(
+      loadInstanceByHostname('demo.studio.example.org', {
+        getDatabaseUrl: () => 'postgres://user:pa%20ss@db.example/sva',
+      }),
+    ).resolves.toMatchObject({ instanceId: 'demo-a' });
+    await expect(
+      loadInstanceByHostname('demo.studio.example.org', {
+        getDatabaseUrl: () => 'postgres://user:pa%20ss@db.example:5432/sva',
+      }),
+    ).resolves.toMatchObject({ instanceId: 'demo-a' });
+
+    expect(resolveHostnameMock).toHaveBeenCalledTimes(1);
+    expect(PoolMock).toHaveBeenCalledTimes(1);
+    resetInstanceRegistryCache();
+  });
+
   it('resets cache and closes pooled database connections', async () => {
     const { loadInstanceByHostname, resetInstanceRegistryServerState } = await import('./server');
     resolveHostnameMock.mockResolvedValue({

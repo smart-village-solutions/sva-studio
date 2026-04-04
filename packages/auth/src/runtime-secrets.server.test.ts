@@ -31,4 +31,21 @@ describe('runtime-secrets.server', () => {
 
     expect(getRedisUrl()).toBe('redis://redis:6379');
   });
+
+  it('derives an encoded IAM database URL when an explicit url is invalid', async () => {
+    process.env = {
+      ...originalEnv,
+      IAM_DATABASE_URL:
+        'postgresql://sva_app:fixture-credential+/value@postgres.sva.docker:5432/sva_studio',
+      APP_DB_USER: 'sva_app',
+      APP_DB_PASSWORD: 'fixture-credential+/value',
+      POSTGRES_DB: 'sva_studio',
+    };
+
+    const { getIamDatabaseUrl } = await import('./runtime-secrets.server');
+
+    expect(getIamDatabaseUrl()).toBe(
+      'postgres://sva_app:fixture-credential%2B%2Fvalue@postgres:5432/sva_studio'
+    );
+  });
 });

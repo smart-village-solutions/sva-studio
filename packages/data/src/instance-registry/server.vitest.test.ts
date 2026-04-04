@@ -109,10 +109,32 @@ describe('instance-registry server helpers', () => {
 
   it('fails with a structured error when the IAM database URL is invalid', async () => {
     process.env.IAM_DATABASE_URL = '::not-a-url::';
+    delete process.env.APP_DB_PASSWORD;
+    delete process.env.POSTGRES_PASSWORD;
 
     const { loadInstanceByHostname } = await import('./server');
 
     await expect(loadInstanceByHostname('demo.studio.example.org')).rejects.toThrow('iam_database_url_invalid');
+  });
+
+  it('falls back to a derived IAM database URL when the explicit url is invalid', async () => {
+    process.env.IAM_DATABASE_URL = 'postgresql://sva_app:fixture-credential+/value@postgres.sva.docker:5432/sva_studio';
+    process.env.APP_DB_USER = 'sva_app';
+    process.env.APP_DB_PASSWORD = 'fixture-credential+/value';
+    process.env.POSTGRES_DB = 'sva_studio';
+    process.env.POSTGRES_HOST = 'postgres.sva.docker';
+    process.env.POSTGRES_PORT = '5432';
+
+    const { loadInstanceByHostname } = await import('./server');
+
+    await expect(loadInstanceByHostname('bb-guben.studio.smart-village.app')).resolves.toBeNull();
+
+    expect(PoolMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        connectionString:
+          'postgres://sva_app:fixture-credential%2B%2Fvalue@postgres.sva.docker:5432/sva_studio',
+      })
+    );
   });
 
   it('loads, caches, invalidates, and refreshes hostname lookups', async () => {

@@ -40,12 +40,7 @@ const ensureValidIamDatabaseUrl = (databaseUrl: string | undefined): string | nu
   }
 };
 
-const resolveIamDatabaseUrl = (): string | undefined => {
-  const explicit = process.env.IAM_DATABASE_URL?.trim();
-  if (explicit) {
-    return explicit;
-  }
-
+const buildDerivedIamDatabaseUrl = (): string | undefined => {
   const password = process.env.APP_DB_PASSWORD?.trim() ?? process.env.POSTGRES_PASSWORD?.trim();
   if (!password) {
     return undefined;
@@ -57,6 +52,22 @@ const resolveIamDatabaseUrl = (): string | undefined => {
   const port = process.env.POSTGRES_PORT?.trim() || '5432';
 
   return `postgres://${encodeURIComponent(user)}:${encodeURIComponent(password)}@${host}:${port}/${encodeURIComponent(database)}`;
+};
+
+const resolveIamDatabaseUrl = (): string | undefined => {
+  const explicit = process.env.IAM_DATABASE_URL?.trim();
+  if (explicit) {
+    try {
+      return ensureValidIamDatabaseUrl(explicit) ?? undefined;
+    } catch (error) {
+      logger.warn('Explicit IAM database URL is invalid; falling back to derived database credentials', {
+        reason: 'iam_database_url_invalid',
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  return buildDerivedIamDatabaseUrl();
 };
 
 const buildHostCacheKey = (databaseUrl: string, hostname: string) => `${databaseUrl}::${hostname}`;

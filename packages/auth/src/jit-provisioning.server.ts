@@ -1,10 +1,11 @@
 import { createSdkLogger, getWorkspaceContext } from '@sva/sdk/server';
 
 import { createPoolResolver, type QueryClient, withInstanceDb } from './shared/db-helpers.js';
+import { getIamDatabaseUrl } from './runtime-secrets.server.js';
 import { resolveInstanceId } from './shared/instance-id-resolution.js';
 
 const logger = createSdkLogger({ component: 'iam-service', level: 'info' });
-const resolvePool = createPoolResolver(() => process.env.IAM_DATABASE_URL);
+const resolvePool = createPoolResolver(getIamDatabaseUrl);
 
 export type JitProvisionInput = {
   readonly instanceId?: string;

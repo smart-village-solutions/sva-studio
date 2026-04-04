@@ -15,6 +15,7 @@ import type { PoolClient } from 'pg';
 import { parseInvalidationEvent, PermissionSnapshotCache } from '../iam-authorization.cache.js';
 import { processSnapshotInvalidationEvent } from './snapshot-invalidation.server.js';
 import { createPoolResolver, jsonResponse, type QueryClient, withInstanceDb } from '../shared/db-helpers.js';
+import { getIamDatabaseUrl } from '../runtime-secrets.server.js';
 import { isUuid, readString } from '../shared/input-readers.js';
 import { buildLogContext } from '../shared/log-context.js';
 import { authorizeRequestSchema } from '../shared/schemas.js';
@@ -84,7 +85,7 @@ export const iamCacheStaleEntriesGauge = authMeter.createObservableGauge('sva_ia
   description: 'Ratio of stale cache lookups in IAM authorization path.',
 });
 
-export const resolvePool = createPoolResolver(() => process.env.IAM_DATABASE_URL);
+export const resolvePool = createPoolResolver(getIamDatabaseUrl);
 export const permissionSnapshotCache = new PermissionSnapshotCache(300_000, 300_000);
 export const CACHE_INVALIDATION_CHANNEL = 'iam_permission_snapshot_invalidation';
 

@@ -109,9 +109,9 @@ describe('RolesPage', () => {
       target: { value: '' },
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Sortierung wechseln' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Rolle' }));
 
-    expect(screen.getAllByRole('link', { name: 'Rolle bearbeiten' })[0]?.getAttribute('href')).toBe('/admin/roles/role-1');
+    expect(screen.getAllByRole('link', { name: 'Rolle bearbeiten' })[0]?.getAttribute('href')).toBe('/admin/roles/role-2');
   });
 
   it('opens create dialog and submits normalized payload', async () => {

@@ -197,14 +197,14 @@ describe('UserListPage', () => {
     fireEvent.click(nameHeader);
 
     let rows = screen.getAllByRole('row');
-    expect(rows[1]?.textContent).toContain('Bob');
-    expect(rows[2]?.textContent).toContain('Alice');
+    expect(rows[1]?.textContent).toContain('Alice');
+    expect(rows[2]?.textContent).toContain('Bob');
 
     fireEvent.click(nameHeader);
 
     rows = screen.getAllByRole('row');
-    expect(rows[1]?.textContent).toContain('Alice');
-    expect(rows[2]?.textContent).toContain('Bob');
+    expect(rows[1]?.textContent).toContain('Bob');
+    expect(rows[2]?.textContent).toContain('Alice');
   });
 
   it('submits create user form and closes dialog on success', async () => {
@@ -272,7 +272,7 @@ describe('UserListPage', () => {
       expect(deactivateUser).toHaveBeenCalledWith('user-1');
     });
 
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Alle Nutzer markieren' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Benutzertabelle: Alle Zeilen auswählen' }));
     fireEvent.click(screen.getByRole('button', { name: 'Auswahl deaktivieren' }));
     fireEvent.click(screen.getAllByRole('button', { name: 'Deaktivieren' }).at(-1) as HTMLButtonElement);
 
@@ -325,8 +325,8 @@ describe('UserListPage', () => {
 
     render(<UserListPage />);
 
-    expect(screen.getByText('0 Nutzer gefunden.')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Auswahl deaktivieren' })).toHaveProperty('disabled', true);
+    expect(screen.getByText('Keine Nutzer gefunden.')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Auswahl deaktivieren' })).toBeNull();
   });
 
   it('keeps bulk actions hidden when the feature is disabled', () => {

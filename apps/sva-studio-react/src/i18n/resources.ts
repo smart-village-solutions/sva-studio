@@ -123,6 +123,12 @@ export const i18nResources = {
         adminApiTest: 'Admin-API-Test',
       },
     },
+    studioTable: {
+      selection: {
+        selectAll: '{{label}}: Alle Zeilen auswählen',
+        selectRow: '{{label}}: Zeile auswählen',
+      },
+    },
     placeholder: {
       eyebrow: 'Platzhalterseite',
       description: 'Für „{{area}}“ ist die Seitenstruktur bereits vorbereitet. Fachlogik und Datenquellen können hier als Nächstes ergänzt werden.',
@@ -1516,6 +1522,12 @@ export const i18nResources = {
         roleManagement: 'Role Management',
         groupManagement: 'Group Management',
         adminApiTest: 'Admin API Test',
+      },
+    },
+    studioTable: {
+      selection: {
+        selectAll: '{{label}}: Select all rows',
+        selectRow: '{{label}}: Select row',
       },
     },
     placeholder: {

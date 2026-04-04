@@ -9,7 +9,6 @@ import React from 'react';
 import { AppBreadcrumbs } from './AppBreadcrumbs';
 import Header from './Header';
 import { LegalTextAcceptanceDialog } from './LegalTextAcceptanceDialog';
-import { RuntimeHealthIndicator } from './RuntimeHealthIndicator';
 import Sidebar from './Sidebar';
 import { t } from '../i18n';
 import { useAuth } from '../providers/auth-provider';
@@ -22,6 +21,13 @@ type AppShellProps = Readonly<{
   onMobileSidebarOpenChange?: (open: boolean) => void;
   sidebarSlot?: React.ReactNode;
 }>;
+
+const LazyRuntimeHealthIndicator = React.lazy(async () => {
+  const module = await import('./RuntimeHealthIndicator');
+  return {
+    default: module.RuntimeHealthIndicator,
+  };
+});
 
 /**
  * Rendert das anwendungsweite Shell-Layout mit austauschbarem Sidebar-Slot.
@@ -83,7 +89,9 @@ export default function AppShell({
             <div className="space-y-6">
               <AppBreadcrumbs pathname={currentPathname} />
               {children}
-              <RuntimeHealthIndicator />
+              <React.Suspense fallback={null}>
+                <LazyRuntimeHealthIndicator />
+              </React.Suspense>
             </div>
           )}
         </main>

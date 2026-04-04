@@ -96,7 +96,7 @@ beforeEach(() => {
  * Testet das Rendering der AppShell in regulären und Loading-Zuständen.
  */
 describe('AppShell', () => {
-  it('rendert Sidebar und Main-Landmark', () => {
+  it('rendert Sidebar und Main-Landmark', async () => {
     render(
       <AppShell currentPathname="/admin/users/123">
         <div>Inhalt</div>
@@ -111,7 +111,7 @@ describe('AppShell', () => {
     expect(within(breadcrumbNavigation).getByRole('link', { name: 'Benutzerverwaltung' }).getAttribute('href')).toBe('/admin/users');
     expect(within(breadcrumbNavigation).getByText('Nutzer bearbeiten')).toBeTruthy();
     expect(screen.getByText('Inhalt')).toBeTruthy();
-    expect(screen.getByTestId('runtime-health-indicator')).toBeTruthy();
+    expect(await screen.findByTestId('runtime-health-indicator')).toBeTruthy();
   });
 
   it('zeigt Skeleton-Content im Ladezustand', () => {

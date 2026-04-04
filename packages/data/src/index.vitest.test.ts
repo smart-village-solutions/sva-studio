@@ -109,4 +109,34 @@ describe('createDataClient', () => {
       expect.objectContaining({ operation: 'get', path: '/users/invalid', source: 'network' })
     );
   });
+
+  it('invalidates cache entries after schema validation failures on cache hits', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ age: 'stale-invalid' }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ age: 42 }),
+      });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = createDataClient({
+      baseUrl: 'https://data.example.invalid',
+      cacheTtlMs: 10_000,
+    });
+    const schema = z.object({ age: z.number() });
+
+    await client.get('/users/cache-invalid');
+    await expect(client.get('/users/cache-invalid', schema)).rejects.toThrow();
+
+    await expect(client.get('/users/cache-invalid', schema)).resolves.toEqual({ age: 42 });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(state.logger.error).toHaveBeenCalledWith(
+      'schema_validation_failed',
+      expect.objectContaining({ operation: 'get', path: '/users/cache-invalid', source: 'cache' })
+    );
+  });
 });

@@ -196,9 +196,15 @@ describe('UserListPage', () => {
     const nameHeader = screen.getByRole('button', { name: 'Name' });
     fireEvent.click(nameHeader);
 
-    const rows = screen.getAllByRole('row');
+    let rows = screen.getAllByRole('row');
     expect(rows[1]?.textContent).toContain('Bob');
     expect(rows[2]?.textContent).toContain('Alice');
+
+    fireEvent.click(nameHeader);
+
+    rows = screen.getAllByRole('row');
+    expect(rows[1]?.textContent).toContain('Alice');
+    expect(rows[2]?.textContent).toContain('Bob');
   });
 
   it('submits create user form and closes dialog on success', async () => {

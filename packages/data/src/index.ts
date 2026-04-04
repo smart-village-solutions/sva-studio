@@ -69,6 +69,7 @@ export const createDataClient = (options: DataClientOptions) => {
       try {
         return schema.parse(cached.value);
       } catch (error) {
+        inMemoryCache.delete(cacheKey);
         logger.error('schema_validation_failed', {
           operation: 'get',
           path,

@@ -16,6 +16,13 @@ import {
   type GovernanceCasesQuery,
 } from '../../lib/iam-api';
 import {
+  createOperationLogger,
+  logBrowserOperationAbort,
+  logBrowserOperationFailure,
+  logBrowserOperationStart,
+  logBrowserOperationSuccess,
+} from '../../lib/browser-operation-logging';
+import {
   getAllowedIamCockpitTabs,
   hasIamCockpitAccessRole,
   isIamCockpitEnabled,
@@ -49,6 +56,7 @@ type IamViewerPageProps = {
 };
 
 const FILTER_REQUEST_DEBOUNCE_MS = 300;
+const iamViewerLogger = createOperationLogger('iam-viewer-page', 'debug');
 
 const buildPermissionsPath = (query: IamPermissionsQuery) => {
   const searchParams = new URLSearchParams();
@@ -369,6 +377,12 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
 
     let active = true;
     const timer = window.setTimeout(async () => {
+      logBrowserOperationStart(iamViewerLogger, 'iam_permissions_load_started', {
+        operation: 'load_permissions',
+        instance_id: instanceId,
+        organization_id: organizationId.trim() || undefined,
+        acting_as_user_id: actingAsUserId.trim() || undefined,
+      });
       setIsLoadingPermissions(true);
       setPermissionsError(null);
 
@@ -389,24 +403,51 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
         if (!response.ok) {
           if (response.status === 403) {
             await invalidatePermissions();
+            iamViewerLogger.info('permission_invalidated_after_403', {
+              operation: 'load_permissions',
+              status: response.status,
+            });
           }
           const payload = (await response.json().catch(() => null)) as IamApiErrorPayload | null;
           setPermissions([]);
           setPermissionSubject(null);
           setPermissionsError(payload?.error ?? `http_${response.status}`);
+          logBrowserOperationFailure(iamViewerLogger, 'iam_permissions_load_failed', new Error(payload?.error ?? `http_${response.status}`), {
+            operation: 'load_permissions',
+            instance_id: instanceId,
+            status: response.status,
+          });
           return;
         }
 
         const payload = (await response.json()) as IamPermissionsResponse;
         setPermissions(payload.permissions);
         setPermissionSubject(payload.subject);
+        logBrowserOperationSuccess(
+          iamViewerLogger,
+          'iam_permissions_load_succeeded',
+          {
+            operation: 'load_permissions',
+            instance_id: instanceId,
+            permission_count: payload.permissions.length,
+          },
+          'debug'
+        );
       } catch (error) {
         if (!active) {
+          logBrowserOperationAbort(iamViewerLogger, 'iam_permissions_load_aborted', {
+            operation: 'load_permissions',
+            instance_id: instanceId,
+          });
           return;
         }
         setPermissions([]);
         setPermissionSubject(null);
         setPermissionsError(error instanceof Error ? error.message : String(error));
+        logBrowserOperationFailure(iamViewerLogger, 'iam_permissions_load_failed', error, {
+          operation: 'load_permissions',
+          instance_id: instanceId,
+        });
       } finally {
         if (active) {
           setIsLoadingPermissions(false);
@@ -427,6 +468,9 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
 
     const controller = new AbortController();
     const timer = window.setTimeout(() => {
+      logBrowserOperationStart(iamViewerLogger, 'iam_governance_load_started', {
+        operation: 'list_governance_cases',
+      });
       setIsLoadingGovernance(true);
       setGovernanceError(null);
 
@@ -439,13 +483,28 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
           setSelectedGovernanceId((current) =>
             response.data.some((item) => item.id === current) ? current : (response.data[0]?.id ?? null)
           );
+          logBrowserOperationSuccess(
+            iamViewerLogger,
+            'iam_governance_load_succeeded',
+            {
+              operation: 'list_governance_cases',
+              item_count: response.data.length,
+            },
+            'debug'
+          );
         })
         .catch((error) => {
           if (isAbortError(error) || controller.signal.aborted) {
+            logBrowserOperationAbort(iamViewerLogger, 'iam_governance_load_aborted', {
+              operation: 'list_governance_cases',
+            });
             return;
           }
           setGovernanceItems([]);
           setGovernanceError(error instanceof Error ? error.message : String(error));
+          logBrowserOperationFailure(iamViewerLogger, 'iam_governance_load_failed', error, {
+            operation: 'list_governance_cases',
+          });
         })
         .finally(() => {
           if (!controller.signal.aborted) {
@@ -467,6 +526,9 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
 
     const controller = new AbortController();
     const timer = window.setTimeout(() => {
+      logBrowserOperationStart(iamViewerLogger, 'iam_dsr_load_started', {
+        operation: 'list_admin_dsr_cases',
+      });
       setIsLoadingDsr(true);
       setDsrError(null);
 
@@ -479,13 +541,28 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
           setSelectedDsrId((current) =>
             response.data.some((item) => item.id === current) ? current : (response.data[0]?.id ?? null)
           );
+          logBrowserOperationSuccess(
+            iamViewerLogger,
+            'iam_dsr_load_succeeded',
+            {
+              operation: 'list_admin_dsr_cases',
+              item_count: response.data.length,
+            },
+            'debug'
+          );
         })
         .catch((error) => {
           if (isAbortError(error) || controller.signal.aborted) {
+            logBrowserOperationAbort(iamViewerLogger, 'iam_dsr_load_aborted', {
+              operation: 'list_admin_dsr_cases',
+            });
             return;
           }
           setDsrItems([]);
           setDsrError(error instanceof Error ? error.message : String(error));
+          logBrowserOperationFailure(iamViewerLogger, 'iam_dsr_load_failed', error, {
+            operation: 'list_admin_dsr_cases',
+          });
         })
         .finally(() => {
           if (!controller.signal.aborted) {
@@ -534,6 +611,11 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
 
     setIsAuthorizing(true);
     setAuthorizeError(null);
+    logBrowserOperationStart(iamViewerLogger, 'iam_authorize_started', {
+      operation: 'authorize',
+      instance_id: instanceId,
+      resource_type: authorizeResourceType.trim(),
+    });
 
     try {
       const response = await fetch('/iam/authorize', {
@@ -559,18 +641,36 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
       if (!response.ok) {
         if (response.status === 403) {
           await invalidatePermissions();
+          iamViewerLogger.info('permission_invalidated_after_403', {
+            operation: 'authorize',
+            status: response.status,
+          });
         }
         const payload = (await response.json().catch(() => null)) as IamApiErrorPayload | null;
         setAuthorizeDecision(null);
         setAuthorizeError(payload?.error ?? `http_${response.status}`);
+        logBrowserOperationFailure(iamViewerLogger, 'iam_authorize_failed', new Error(payload?.error ?? `http_${response.status}`), {
+          operation: 'authorize',
+          instance_id: instanceId,
+          status: response.status,
+        });
         return;
       }
 
       const payload = (await response.json()) as AuthorizeResponse;
       setAuthorizeDecision(mapAuthorizeDecision(payload));
+      logBrowserOperationSuccess(iamViewerLogger, 'iam_authorize_succeeded', {
+        operation: 'authorize',
+        instance_id: instanceId,
+        allowed: payload.allowed,
+      });
     } catch (error) {
       setAuthorizeDecision(null);
       setAuthorizeError(error instanceof Error ? error.message : String(error));
+      logBrowserOperationFailure(iamViewerLogger, 'iam_authorize_failed', error, {
+        operation: 'authorize',
+        instance_id: instanceId,
+      });
     } finally {
       setIsAuthorizing(false);
     }

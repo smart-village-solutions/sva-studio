@@ -1,5 +1,18 @@
 import { describe, expect, it, vi } from 'vitest';
 
+const state = vi.hoisted(() => ({
+  logger: {
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  },
+}));
+
+vi.mock('@sva/sdk/server', () => ({
+  createSdkLogger: () => state.logger,
+}));
+
 import {
   getKeycloakAdminClientConfigFromEnv,
   KeycloakAdminClient,
@@ -52,6 +65,82 @@ const createFetchStub = (responses: Array<Response | (() => Response)>) => {
 };
 
 describe('KeycloakAdminClient', () => {
+  it('logs create client and client secret rotation without exposing the secret value', async () => {
+    state.logger.debug.mockReset();
+    state.logger.info.mockReset();
+    state.logger.warn.mockReset();
+    state.logger.error.mockReset();
+
+    const { fetchImpl } = createFetchStub([
+      createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }),
+      createJsonResponse(200, []),
+      createTextResponse(201, ''),
+      createJsonResponse(200, [{ id: 'client-1', clientId: 'studio-client' }]),
+      createTextResponse(204, ''),
+    ]);
+
+    const client = new KeycloakAdminClient({
+      baseUrl: 'https://keycloak.example.com',
+      realm: 'demo',
+      clientId: 'svc-client',
+      clientSecret: 'svc-secret',
+      fetchImpl,
+    });
+
+    await client.ensureOidcClient({
+      clientId: 'studio-client',
+      redirectUris: ['https://studio.example.com/callback'],
+      postLogoutRedirectUris: ['https://studio.example.com/logout'],
+      webOrigins: ['https://studio.example.com'],
+      rootUrl: 'https://studio.example.com',
+      clientSecret: 'super-secret',
+    });
+
+    expect(state.logger.info).toHaveBeenCalledWith(
+      'create_client',
+      expect.objectContaining({ realm: 'demo', client_id: 'studio-client' })
+    );
+    expect(state.logger.info).toHaveBeenCalledWith(
+      'rotate_client_secret',
+      expect.objectContaining({ realm: 'demo', client_id: 'studio-client' })
+    );
+    expect(state.logger.info).not.toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ value: 'super-secret' })
+    );
+  });
+
+  it('logs password reset success without exposing the password', async () => {
+    state.logger.debug.mockReset();
+    state.logger.info.mockReset();
+    state.logger.warn.mockReset();
+    state.logger.error.mockReset();
+
+    const { fetchImpl } = createFetchStub([
+      createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }),
+      createTextResponse(204, ''),
+    ]);
+
+    const client = new KeycloakAdminClient({
+      baseUrl: 'https://keycloak.example.com',
+      realm: 'demo',
+      clientId: 'svc-client',
+      clientSecret: 'svc-secret',
+      fetchImpl,
+    });
+
+    await client.setUserPassword('user-123', 'temp-password', false);
+
+    expect(state.logger.info).toHaveBeenCalledWith(
+      'reset_user_password',
+      expect.objectContaining({ realm: 'demo', temporary: false })
+    );
+    expect(state.logger.info).not.toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ password: 'temp-password', value: 'temp-password' })
+    );
+  });
+
   it('creates user and reads external id from location header', async () => {
     const { fetchImpl, calls } = createFetchStub([
       createJsonResponse(200, { access_token: 'token-1', expires_in: 300 }),
@@ -416,7 +505,7 @@ describe('KeycloakAdminClient', () => {
     nowMs += 30_001;
   });
 
-  it('uses read fallback when circuit breaker is open', async () => {
+  it('fails fast when listUsers is called with an open circuit', async () => {
     let nowMs = 0;
     const { fetchImpl } = createFetchStub([
       createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }),
@@ -436,21 +525,17 @@ describe('KeycloakAdminClient', () => {
       now: () => nowMs,
       maxRetries: 0,
       circuitBreakerFailureThreshold: 5,
-      readFallback: {
-        listUsers: async () => [{ id: 'db-fallback-user' }],
-      },
     });
 
     for (let i = 0; i < 5; i += 1) {
       await expect(client.listRoles()).rejects.toBeInstanceOf(KeycloakAdminRequestError);
     }
 
-    const users = await client.listUsers({ max: 25 });
-    expect(users).toEqual([{ externalId: 'db-fallback-user' }]);
+    await expect(client.listUsers({ max: 25 })).rejects.toBeInstanceOf(KeycloakAdminUnavailableError);
     nowMs += 1;
   });
 
-  it('uses listRoles fallback when circuit breaker is open', async () => {
+  it('fails fast when listRoles is called with an open circuit', async () => {
     let nowMs = 0;
     const { fetchImpl } = createFetchStub([
       createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }),
@@ -461,7 +546,6 @@ describe('KeycloakAdminClient', () => {
       createJsonResponse(503, { error: 'service_unavailable' }),
     ]);
 
-    const fallbackListRoles = vi.fn(async () => [{ id: 'db-fallback-role', name: 'db_fallback_role' }]);
     const client = new KeycloakAdminClient({
       baseUrl: 'https://keycloak.example.com',
       realm: 'demo',
@@ -471,28 +555,22 @@ describe('KeycloakAdminClient', () => {
       now: () => nowMs,
       maxRetries: 0,
       circuitBreakerFailureThreshold: 5,
-      readFallback: {
-        listRoles: fallbackListRoles,
-      },
     });
 
     for (let i = 0; i < 5; i += 1) {
       await expect(client.getRoleByName(`role-${i}`)).rejects.toBeInstanceOf(KeycloakAdminRequestError);
     }
 
-    const roles = await client.listRoles();
-    expect(roles).toEqual([expect.objectContaining({ id: 'db-fallback-role', externalName: 'db_fallback_role' })]);
-    expect(fallbackListRoles).toHaveBeenCalledTimes(1);
+    await expect(client.listRoles()).rejects.toBeInstanceOf(KeycloakAdminUnavailableError);
     nowMs += 1;
   });
 
-  it('uses listUsers fallback after retryable read error', async () => {
+  it('fails fast after a retryable listUsers error', async () => {
     const { fetchImpl } = createFetchStub([
       createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }),
       createJsonResponse(503, { error: 'service_unavailable' }),
     ]);
 
-    const fallbackListUsers = vi.fn(async () => [{ id: 'fallback-user-1' }]);
     const client = new KeycloakAdminClient({
       baseUrl: 'https://keycloak.example.com',
       realm: 'demo',
@@ -500,23 +578,19 @@ describe('KeycloakAdminClient', () => {
       clientSecret: 'svc-secret',
       fetchImpl,
       maxRetries: 0,
-      readFallback: {
-        listUsers: fallbackListUsers,
-      },
     });
 
-    const users = await client.listUsers({ first: 1, max: 5, search: 'alice', email: 'a@example.com', username: 'alice', enabled: true });
-    expect(users).toEqual([{ externalId: 'fallback-user-1' }]);
-    expect(fallbackListUsers).toHaveBeenCalledTimes(1);
+    await expect(
+      client.listUsers({ first: 1, max: 5, search: 'alice', email: 'a@example.com', username: 'alice', enabled: true })
+    ).rejects.toBeInstanceOf(KeycloakAdminRequestError);
   });
 
-  it('uses listRoles fallback after retryable read error', async () => {
+  it('fails fast after a retryable listRoles error', async () => {
     const { fetchImpl } = createFetchStub([
       createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }),
       createJsonResponse(503, { error: 'service_unavailable' }),
     ]);
 
-    const fallbackListRoles = vi.fn(async () => [{ id: 'role-fallback', name: 'fallback_role' }]);
     const client = new KeycloakAdminClient({
       baseUrl: 'https://keycloak.example.com',
       realm: 'demo',
@@ -524,14 +598,9 @@ describe('KeycloakAdminClient', () => {
       clientSecret: 'svc-secret',
       fetchImpl,
       maxRetries: 0,
-      readFallback: {
-        listRoles: fallbackListRoles,
-      },
     });
 
-    const roles = await client.listRoles();
-    expect(roles).toEqual([expect.objectContaining({ id: 'role-fallback', externalName: 'fallback_role' })]);
-    expect(fallbackListRoles).toHaveBeenCalledTimes(1);
+    await expect(client.listRoles()).rejects.toBeInstanceOf(KeycloakAdminRequestError);
   });
 
   it('serializes updateUser attributes to string arrays', async () => {

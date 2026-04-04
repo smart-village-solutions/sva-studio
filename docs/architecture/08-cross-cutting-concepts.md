@@ -81,6 +81,7 @@ gleichzeitig beeinflussen.
 - Development nutzt zusätzlich eine lokale Debug-Konsole im Frontend; sie zeigt Browser-Logs und redaktierte Server-Logs, ist aber kein produktiver Telemetriepfad
 - Operative Logs enthalten keine Tokens, keine tokenhaltigen Redirect- oder Logout-URLs und keine decodierbaren JWT-Strings; zulaessig sind nur sichere Summary-Felder
 - Runtime-Diagnostik folgt einem zweistufigen Modell: öffentliche Health-/API-Responses liefern knappe, nicht-sensitive `reason_code`s; OTEL liefert die tiefe technische Korrelation über Span-Attribute und Events
+- Die Studio-Root-Shell rendert in allen Environments einen sichtbaren Runtime-Health-Indikator auf Basis des bestehenden IAM-Readiness-Endpunkts; die UI zeigt nur sichere Statuszustände und `reason_code`s, keine rohen Provider- oder Stack-Details
 - Label-Whitelist und PII-Blockliste in OTEL/Promtail
 - IAM-Authorize/Cache-Logs nutzen strukturierte Operations (`cache_lookup`, `cache_invalidate`, `cache_stale_detected`, `cache_invalidate_failed`)
 - Cold-Start-, Recompute- und Store-Fehler im Snapshot-Pfad werden als strukturierte Cache-Events (`cache_cold_start`, `cache_store_failed`) geloggt
@@ -186,6 +187,7 @@ gleichzeitig beeinflussen.
 - Ein Skip-Link ermöglicht direkten Sprung in den Contentbereich (`#main-content`)
 - Skeleton-Zustände werden konsistent über alle drei Kernbereiche bereitgestellt
 - Mobile-first Layout: Sidebar bleibt auf kleinen Viewports nutzbar, auf großen Viewports als feste Seitenleiste
+- Am unteren Ende jeder Studio-Seite wird ein kompakter Runtime-Health-Indikator mit Polling für Postgres, Redis, Keycloak und den Autorisierungs-Cache angezeigt; ein Fehler beim Polling degradiert nur die Anzeige, nicht die restliche Shell
 
 Referenzen:
 

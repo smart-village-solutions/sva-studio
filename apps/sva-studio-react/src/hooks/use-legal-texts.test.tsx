@@ -3,6 +3,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useLegalTexts } from './use-legal-texts';
 
+const browserLoggerMock = vi.hoisted(() => ({
+  debug: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+}));
 const listLegalTextsMock = vi.fn();
 const createLegalTextMock = vi.fn();
 const updateLegalTextMock = vi.fn();
@@ -42,6 +48,10 @@ vi.mock('../providers/auth-provider', () => ({
   useAuth: () => authMockValue,
 }));
 
+vi.mock('@sva/sdk/logging', () => ({
+  createBrowserLogger: () => browserLoggerMock,
+}));
+
 describe('useLegalTexts', () => {
   beforeEach(() => {
     listLegalTextsMock.mockReset();
@@ -49,6 +59,10 @@ describe('useLegalTexts', () => {
     updateLegalTextMock.mockReset();
     asIamErrorMock.mockReset();
     authMockValue.invalidatePermissions.mockReset();
+    browserLoggerMock.debug.mockReset();
+    browserLoggerMock.info.mockReset();
+    browserLoggerMock.warn.mockReset();
+    browserLoggerMock.error.mockReset();
   });
 
   it('loads and mutates legal texts', async () => {
@@ -94,6 +108,14 @@ describe('useLegalTexts', () => {
 
     expect(createLegalTextMock).toHaveBeenCalledTimes(1);
     expect(updateLegalTextMock).toHaveBeenCalledTimes(1);
+    expect(browserLoggerMock.debug).toHaveBeenCalledWith(
+      'mutation_started',
+      expect.objectContaining({ operation: 'create_legal_text', event: 'legal_text_mutation' })
+    );
+    expect(browserLoggerMock.debug).toHaveBeenCalledWith(
+      'mutation_started',
+      expect.objectContaining({ operation: 'update_legal_text', event: 'legal_text_mutation' })
+    );
   });
 
   it('invalidates permissions when initial fetch returns 403', async () => {

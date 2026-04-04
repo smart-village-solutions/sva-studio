@@ -2,6 +2,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
   revealField: vi.fn(),
+  logger: {
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  },
+}));
+
+vi.mock('@sva/sdk/server', () => ({
+  createSdkLogger: () => state.logger,
 }));
 
 vi.mock('../iam-account-management/encryption.js', () => ({
@@ -13,6 +23,10 @@ describe('iam-instance-registry service-keycloak helpers', () => {
     vi.clearAllMocks();
     vi.resetModules();
     state.revealField.mockReset();
+    state.logger.debug.mockReset();
+    state.logger.info.mockReset();
+    state.logger.warn.mockReset();
+    state.logger.error.mockReset();
   });
 
   it('decrypts repository secrets with the instance-specific aad', async () => {
@@ -79,6 +93,10 @@ describe('iam-instance-registry service-keycloak helpers', () => {
         authClientSecret: 'tenant-secret-value',
       })
     );
+    expect(state.logger.info).toHaveBeenCalledWith(
+      'keycloak_status_check_completed',
+      expect.objectContaining({ instance_id: 'bb-guben' })
+    );
   });
 
   it('throws when reconcile requires a missing tenant secret', async () => {
@@ -109,6 +127,10 @@ describe('iam-instance-registry service-keycloak helpers', () => {
         requestId: 'req-1',
       })
     ).rejects.toThrow('tenant_auth_client_secret_missing');
+    expect(state.logger.error).toHaveBeenCalledWith(
+      'tenant_auth_client_secret_missing',
+      expect.objectContaining({ instance_id: 'bb-guben', request_id: 'req-1' })
+    );
   });
 
   it('reconciles the tenant auth artifacts and returns refreshed status', async () => {
@@ -152,6 +174,14 @@ describe('iam-instance-registry service-keycloak helpers', () => {
         authClientSecret: 'tenant-secret-value',
         rotateClientSecret: true,
       })
+    );
+    expect(state.logger.info).toHaveBeenCalledWith(
+      'keycloak_reconcile_started',
+      expect.objectContaining({ instance_id: 'bb-guben', request_id: 'req-1' })
+    );
+    expect(state.logger.info).toHaveBeenCalledWith(
+      'keycloak_reconcile_completed',
+      expect.objectContaining({ instance_id: 'bb-guben', request_id: 'req-1' })
     );
   });
 

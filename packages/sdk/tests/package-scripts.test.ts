@@ -8,9 +8,25 @@ interface RootPackageJson {
   scripts?: Record<string, string>;
 }
 
+interface CoveragePolicy {
+  globalFloors: {
+    lines: number;
+    statements: number;
+    functions: number;
+    branches: number;
+  };
+}
+
 function loadRootPackageJson(): RootPackageJson {
   const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
   return JSON.parse(fs.readFileSync(path.join(rootDir, 'package.json'), 'utf8')) as RootPackageJson;
+}
+
+function loadCoveragePolicy(): CoveragePolicy {
+  const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
+  return JSON.parse(
+    fs.readFileSync(path.join(rootDir, 'tooling/testing/coverage-policy.json'), 'utf8')
+  ) as CoveragePolicy;
 }
 
 describe('workspace package scripts', () => {
@@ -26,5 +42,16 @@ describe('workspace package scripts', () => {
     const testCoveragePrScript = packageJson.scripts?.['test:coverage:pr'];
 
     expect(testCoveragePrScript).toContain('pnpm patch-coverage-gate --base=origin/main');
+  });
+
+  it('requires 85 percent global coverage across all tracked metrics', () => {
+    const policy = loadCoveragePolicy();
+
+    expect(policy.globalFloors).toEqual({
+      lines: 85,
+      statements: 85,
+      functions: 85,
+      branches: 85,
+    });
   });
 });

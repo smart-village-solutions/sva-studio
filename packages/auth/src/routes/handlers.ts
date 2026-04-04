@@ -1,7 +1,14 @@
 import { serialize as serializeCookie } from 'cookie-es';
 import { classifyHost, isTrafficEnabledInstanceStatus } from '@sva/core';
 import { loadInstanceByHostname } from '@sva/data/server';
-import { createSdkLogger, getInstanceConfig, initializeOtelSdk, isCanonicalAuthHost, withRequestContext } from '@sva/sdk/server';
+import {
+  createSdkLogger,
+  getInstanceConfig,
+  initializeOtelSdk,
+  isCanonicalAuthHost,
+  toJsonErrorResponse,
+  withRequestContext,
+} from '@sva/sdk/server';
 
 import { createLoginUrl, handleCallback, logoutSession } from '../auth.server.js';
 import { emitAuthAuditEvent } from '../audit-events.server.js';
@@ -9,6 +16,7 @@ import { getAuthConfig, resolveAuthConfigForRequest } from '../config.js';
 import { createMockSessionUser, isMockAuthEnabled } from '../mock-auth.server.js';
 import { getSession } from '../redis-session.server.js';
 import { buildRequestOriginFromHeaders, resolveEffectiveRequestHost } from '../request-hosts.js';
+import { SessionStoreUnavailableError, TenantAuthResolutionError } from '../runtime-errors.js';
 import { isTokenErrorLike } from '../shared/error-guards.js';
 import { buildLogContext } from '../shared/log-context.js';
 import { withAuthenticatedUser } from '../middleware.server.js';
@@ -32,6 +40,57 @@ const createRedirectResponse = (location: string) =>
     status: 302,
     headers: { Location: location },
   });
+
+const createAuthDependencyErrorResponse = (
+  request: Request,
+  operation: 'auth_callback' | 'auth_login' | 'auth_logout',
+  error: unknown
+): Response => {
+  const requestId = request.headers.get('x-request-id') ?? undefined;
+
+  if (error instanceof TenantAuthResolutionError) {
+    logger.error('Auth route failed during tenant auth resolution', {
+      endpoint: request.url,
+      operation,
+      error: error.message,
+      error_type: error.name,
+      reason: error.reason,
+      tenant_host: error.host,
+      request_id: requestId,
+      ...buildLogContext(),
+    });
+    return toJsonErrorResponse(503, 'internal_error', error.publicMessage, { requestId });
+  }
+
+  if (error instanceof SessionStoreUnavailableError) {
+    logger.error('Auth route failed because session storage is unavailable', {
+      endpoint: request.url,
+      operation,
+      error: error.message,
+      error_type: error.name,
+      request_id: requestId,
+      ...buildLogContext(),
+    });
+    return toJsonErrorResponse(
+      503,
+      'internal_error',
+      'Authentifizierung ist momentan nicht verfügbar, weil der Sitzungsspeicher nicht erreichbar ist.',
+      { requestId }
+    );
+  }
+
+  logger.error('Auth route failed unexpectedly', {
+    endpoint: request.url,
+    operation,
+    error: error instanceof Error ? error.message : String(error),
+    error_type: error instanceof Error ? error.name : typeof error,
+    request_id: requestId,
+    ...buildLogContext(),
+  });
+  return toJsonErrorResponse(500, 'internal_error', 'Authentifizierung ist momentan nicht verfügbar.', {
+    requestId,
+  });
+};
 
 const attachDebugAuthHeaders = (
   response: Response,
@@ -281,65 +340,71 @@ export const loginHandler = async (request?: Request): Promise<Response> => {
       return createRedirectResponse('/?auth=mock-login');
     }
 
-    const url = request ? new URL(request.url) : null;
-    const isSilent = url?.searchParams.get('silent') === '1';
-    if (request && isSilent && isSilentSsoSuppressed(request)) {
-      return createSilentSsoResponse('failure');
+    try {
+      const url = request ? new URL(request.url) : null;
+      const isSilent = url?.searchParams.get('silent') === '1';
+      if (request && isSilent && isSilentSsoSuppressed(request)) {
+        return createSilentSsoResponse('failure');
+      }
+
+      const authConfig = request ? await resolveAuthConfigForRequest(request) : getAuthConfig();
+      const { loginStateCookieName, loginStateSecret } = authConfig;
+      const returnTo = request ? await sanitizeReturnTo(request, url?.searchParams.get('returnTo')) : DEFAULT_POST_LOGIN_REDIRECT;
+      const { url: authorizationUrl, state, loginState } = await createLoginUrl({
+        returnTo,
+        silent: isSilent,
+        authConfig,
+      });
+      const response = createRedirectResponse(authorizationUrl);
+      if (request) {
+        attachDebugAuthHeaders(response, { request, authConfig });
+      }
+
+      logger.info('Login auth config resolved', {
+        operation: 'login_auth_config_resolved',
+        request_url: request?.url,
+        auth_instance_id: authConfig.instanceId ?? null,
+        auth_realm: authConfig.authRealm ?? null,
+        auth_client_id: authConfig.clientId,
+        auth_redirect_uri: authConfig.redirectUri,
+        auth_issuer: authConfig.issuer,
+        ...buildLogContext(authConfig.instanceId),
+      });
+
+      logger.info('Login-Flow initiiert', {
+        operation: 'login_init',
+        idp: 'keycloak',
+        is_silent: isSilent,
+        state: `${state.substring(0, 8)}...`,
+        nonce: `${loginState.nonce.substring(0, 8)}...`,
+        auth_instance_id: authConfig.instanceId ?? null,
+        auth_realm: authConfig.authRealm ?? null,
+        auth_client_id: authConfig.clientId,
+        auth_redirect_uri: authConfig.redirectUri,
+        auth_issuer: authConfig.issuer,
+        ...buildLogContext(authConfig.instanceId),
+      });
+
+      const loginStateCookieStrategy = attachLoginStateCookie(response, {
+        name: loginStateCookieName,
+        secret: loginStateSecret,
+        payload: { state, ...loginState },
+      });
+
+      logger.info('Login state cookie prepared', {
+        operation: 'login_init_cookie',
+        strategy: loginStateCookieStrategy,
+        response_set_cookie_count: getSetCookieValues(response.headers).length,
+        is_silent: isSilent,
+        ...buildLogContext(),
+      });
+
+      return response;
+    } catch (error) {
+      return request
+        ? createAuthDependencyErrorResponse(request, 'auth_login', error)
+        : toJsonErrorResponse(500, 'internal_error', 'Authentifizierung ist momentan nicht verfügbar.');
     }
-
-    const authConfig = request ? await resolveAuthConfigForRequest(request) : getAuthConfig();
-    const { loginStateCookieName, loginStateSecret } = authConfig;
-    const returnTo = request ? await sanitizeReturnTo(request, url?.searchParams.get('returnTo')) : DEFAULT_POST_LOGIN_REDIRECT;
-    const { url: authorizationUrl, state, loginState } = await createLoginUrl({
-      returnTo,
-      silent: isSilent,
-      authConfig,
-    });
-    const response = createRedirectResponse(authorizationUrl);
-    if (request) {
-      attachDebugAuthHeaders(response, { request, authConfig });
-    }
-
-    logger.info('Login auth config resolved', {
-      operation: 'login_auth_config_resolved',
-      request_url: request?.url,
-      auth_instance_id: authConfig.instanceId ?? null,
-      auth_realm: authConfig.authRealm ?? null,
-      auth_client_id: authConfig.clientId,
-      auth_redirect_uri: authConfig.redirectUri,
-      auth_issuer: authConfig.issuer,
-      ...buildLogContext(authConfig.instanceId),
-    });
-
-    logger.info('Login-Flow initiiert', {
-      operation: 'login_init',
-      idp: 'keycloak',
-      is_silent: isSilent,
-      state: `${state.substring(0, 8)}...`,
-      nonce: `${loginState.nonce.substring(0, 8)}...`,
-      auth_instance_id: authConfig.instanceId ?? null,
-      auth_realm: authConfig.authRealm ?? null,
-      auth_client_id: authConfig.clientId,
-      auth_redirect_uri: authConfig.redirectUri,
-      auth_issuer: authConfig.issuer,
-      ...buildLogContext(authConfig.instanceId),
-    });
-
-    const loginStateCookieStrategy = attachLoginStateCookie(response, {
-      name: loginStateCookieName,
-      secret: loginStateSecret,
-      payload: { state, ...loginState },
-    });
-
-    logger.info('Login state cookie prepared', {
-      operation: 'login_init_cookie',
-      strategy: loginStateCookieStrategy,
-      response_set_cookie_count: getSetCookieValues(response.headers).length,
-      is_silent: isSilent,
-      ...buildLogContext(),
-    });
-
-    return response;
   });
 };
 
@@ -349,177 +414,181 @@ export const callbackHandler = async (request: Request): Promise<Response> => {
       return createRedirectResponse('/?auth=mock-callback');
     }
 
-    const { code, state, error, iss } = resolveCallbackInput(request);
-    const authConfig = await resolveAuthConfigForRequest(request);
-    const { loginStateCookieName, sessionCookieName } = authConfig;
-    const cookieLoginState = state ? await resolveCookieLoginState(request, state) : null;
-    const hadSessionCookieOnCallback = Boolean(readCookieFromRequest(request, sessionCookieName));
-
-    if (error) {
-      const response = cookieLoginState?.silent ? createSilentSsoResponse('failure') : createRedirectResponse('/?auth=error');
-      const loginStateDeleteStrategy = attachDeletedCookie(response, loginStateCookieName);
-      logger.info('Callback cookie cleanup prepared', {
-        operation: 'login_callback_cookie_cleanup',
-        strategy: loginStateDeleteStrategy,
-        response_set_cookie_count: getSetCookieValues(response.headers).length,
-        had_session_cookie_on_callback: hadSessionCookieOnCallback,
-        ...buildLogContext(),
-      });
-      await emitAuthAuditEvent({
-        eventType: cookieLoginState?.silent ? 'silent_reauth_failed' : 'login',
-        workspaceId: cookieLoginState?.workspaceId ?? authConfig.instanceId,
-        outcome: 'failure',
-      });
-      return response;
-    }
-
-    if (!code || !state) {
-      return createRedirectResponse('/auth/login');
-    }
-
-    if (cookieLoginState && isExpiredLoginState(cookieLoginState.createdAt)) {
-      const response = createRedirectResponse('/?auth=state-expired');
-      const loginStateDeleteStrategy = attachDeletedCookie(response, loginStateCookieName);
-      logger.info('Expired callback cookie cleanup prepared', {
-        operation: 'login_callback_cookie_cleanup',
-        strategy: loginStateDeleteStrategy,
-        response_set_cookie_count: getSetCookieValues(response.headers).length,
-        had_session_cookie_on_callback: hadSessionCookieOnCallback,
-        ...buildLogContext(),
-      });
-      await emitAuthAuditEvent({
-        eventType: 'login_state_expired',
-        workspaceId: cookieLoginState.workspaceId ?? authConfig.instanceId,
-        outcome: 'failure',
-      });
-      return response;
-    }
-
     try {
-      const { sessionId, user, expiresAt, loginState, retryPerformed } = await handleCallback({
-        code,
-        state,
-        iss,
-        loginState: cookieLoginState,
-        authConfig,
-      });
-      const effectiveLoginState = loginState ?? cookieLoginState;
-      const redirectTarget = effectiveLoginState?.returnTo ?? DEFAULT_POST_LOGIN_REDIRECT;
-      const isSilent = effectiveLoginState?.silent === true;
-      const response = isSilent ? createSilentSsoResponse('success') : createRedirectResponse(redirectTarget);
+      const { code, state, error, iss } = resolveCallbackInput(request);
+      const authConfig = await resolveAuthConfigForRequest(request);
+      const { loginStateCookieName, sessionCookieName } = authConfig;
+      const cookieLoginState = state ? await resolveCookieLoginState(request, state) : null;
+      const hadSessionCookieOnCallback = Boolean(readCookieFromRequest(request, sessionCookieName));
 
-      logger.info('tenant_auth_callback_result', {
-        operation: 'tenant_auth_callback',
-        instance_id: user.instanceId ?? authConfig.instanceId ?? 'global',
-        auth_realm: authConfig.authRealm ?? 'global',
-        client_id: authConfig.clientId,
-        issuer: authConfig.issuer,
-        redirect_uri: authConfig.redirectUri,
-        is_silent: isSilent,
-        retry_performed: retryPerformed,
-        result: 'success',
-        ...buildLogContext(user.instanceId ?? authConfig.instanceId),
-      });
-
-      logger.info('Auth callback successful', {
-        auth_flow: 'callback',
-        operation: 'login_callback',
-        is_silent: isSilent,
-        session_created: true,
-        redirect_target: redirectTarget,
-        has_code: true,
-        has_state: true,
-        has_iss: Boolean(iss),
-        ...buildLogContext(),
-      });
-
-      const loginStateDeleteStrategy = attachDeletedCookie(response, loginStateCookieName);
-      const sessionCookieStrategy = attachSessionCookie(response, sessionCookieName, sessionId, expiresAt);
-      const silentSsoDeleteStrategy = attachDeletedCookie(response, authConfig.silentSsoSuppressCookieName);
-      logger.info('Callback cookies prepared', {
-        operation: 'login_callback_cookies',
-        login_state_delete_strategy: loginStateDeleteStrategy,
-        session_cookie_strategy: sessionCookieStrategy,
-        silent_sso_delete_strategy: silentSsoDeleteStrategy,
-        response_set_cookie_count: getSetCookieValues(response.headers).length,
-        had_session_cookie_on_callback: hadSessionCookieOnCallback,
-        ...buildLogContext(user.instanceId),
-      });
-      await emitAuthAuditEvent({
-        eventType: isSilent ? 'silent_reauth_success' : 'login',
-        actorUserId: user.id,
-        workspaceId: user.instanceId,
-        outcome: 'success',
-      });
-
-      return response;
-    } catch (error) {
-      const isSilent = cookieLoginState?.silent === true;
-      if (isTokenErrorLike(error)) {
-        logger.warn('Token validation failed in callback', {
-          operation: 'token_validate',
-          is_silent: isSilent,
-          error_type: error instanceof Error ? error.constructor.name : typeof error,
-          has_refresh_token: false,
-          ...describeTokenError(error),
-          ...buildLogContext(cookieLoginState?.workspaceId ?? authConfig.instanceId),
+      if (error) {
+        const response = cookieLoginState?.silent ? createSilentSsoResponse('failure') : createRedirectResponse('/?auth=error');
+        const loginStateDeleteStrategy = attachDeletedCookie(response, loginStateCookieName);
+        logger.info('Callback cookie cleanup prepared', {
+          operation: 'login_callback_cookie_cleanup',
+          strategy: loginStateDeleteStrategy,
+          response_set_cookie_count: getSetCookieValues(response.headers).length,
+          had_session_cookie_on_callback: hadSessionCookieOnCallback,
+          ...buildLogContext(),
         });
-        logger.warn('tenant_auth_callback_result', {
+        await emitAuthAuditEvent({
+          eventType: cookieLoginState?.silent ? 'silent_reauth_failed' : 'login',
+          workspaceId: cookieLoginState?.workspaceId ?? authConfig.instanceId,
+          outcome: 'failure',
+        });
+        return response;
+      }
+
+      if (!code || !state) {
+        return createRedirectResponse('/auth/login');
+      }
+
+      if (cookieLoginState && isExpiredLoginState(cookieLoginState.createdAt)) {
+        const response = createRedirectResponse('/?auth=state-expired');
+        const loginStateDeleteStrategy = attachDeletedCookie(response, loginStateCookieName);
+        logger.info('Expired callback cookie cleanup prepared', {
+          operation: 'login_callback_cookie_cleanup',
+          strategy: loginStateDeleteStrategy,
+          response_set_cookie_count: getSetCookieValues(response.headers).length,
+          had_session_cookie_on_callback: hadSessionCookieOnCallback,
+          ...buildLogContext(),
+        });
+        await emitAuthAuditEvent({
+          eventType: 'login_state_expired',
+          workspaceId: cookieLoginState.workspaceId ?? authConfig.instanceId,
+          outcome: 'failure',
+        });
+        return response;
+      }
+
+      try {
+        const { sessionId, user, expiresAt, loginState, retryPerformed } = await handleCallback({
+          code,
+          state,
+          iss,
+          loginState: cookieLoginState,
+          authConfig,
+        });
+        const effectiveLoginState = loginState ?? cookieLoginState;
+        const redirectTarget = effectiveLoginState?.returnTo ?? DEFAULT_POST_LOGIN_REDIRECT;
+        const isSilent = effectiveLoginState?.silent === true;
+        const response = isSilent ? createSilentSsoResponse('success') : createRedirectResponse(redirectTarget);
+
+        logger.info('tenant_auth_callback_result', {
           operation: 'tenant_auth_callback',
-          instance_id: cookieLoginState?.workspaceId ?? authConfig.instanceId ?? 'global',
+          instance_id: user.instanceId ?? authConfig.instanceId ?? 'global',
           auth_realm: authConfig.authRealm ?? 'global',
           client_id: authConfig.clientId,
           issuer: authConfig.issuer,
           redirect_uri: authConfig.redirectUri,
           is_silent: isSilent,
-          retry_performed: false,
-          result: 'failure',
-          ...describeTokenError(error),
-          ...buildLogContext(cookieLoginState?.workspaceId ?? authConfig.instanceId),
+          retry_performed: retryPerformed,
+          result: 'success',
+          ...buildLogContext(user.instanceId ?? authConfig.instanceId),
         });
-      } else {
-        logger.error('Auth callback failed', {
+
+        logger.info('Auth callback successful', {
           auth_flow: 'callback',
           operation: 'login_callback',
           is_silent: isSilent,
-          error: error instanceof Error ? error.message : String(error),
-          error_type: error instanceof Error ? error.constructor.name : typeof error,
+          session_created: true,
+          redirect_target: redirectTarget,
           has_code: true,
           has_state: true,
           has_iss: Boolean(iss),
-          ...buildLogContext(cookieLoginState?.workspaceId ?? authConfig.instanceId),
+          ...buildLogContext(),
         });
-        logger.error('tenant_auth_callback_result', {
-          operation: 'tenant_auth_callback',
-          instance_id: cookieLoginState?.workspaceId ?? authConfig.instanceId ?? 'global',
-          auth_realm: authConfig.authRealm ?? 'global',
-          client_id: authConfig.clientId,
-          issuer: authConfig.issuer,
-          redirect_uri: authConfig.redirectUri,
-          is_silent: isSilent,
-          retry_performed: false,
-          result: 'failure',
-          error_type: error instanceof Error ? error.constructor.name : typeof error,
-          error: error instanceof Error ? error.message : String(error),
-          ...buildLogContext(cookieLoginState?.workspaceId ?? authConfig.instanceId),
-        });
-      }
 
-      const response = isSilent ? createSilentSsoResponse('failure') : createRedirectResponse('/?auth=error');
-      const loginStateDeleteStrategy = attachDeletedCookie(response, loginStateCookieName);
-      logger.info('Failed callback cookie cleanup prepared', {
-        operation: 'login_callback_cookie_cleanup',
-        strategy: loginStateDeleteStrategy,
-        response_set_cookie_count: getSetCookieValues(response.headers).length,
-        had_session_cookie_on_callback: hadSessionCookieOnCallback,
-        ...buildLogContext(),
-      });
-      await emitAuthAuditEvent({
-        eventType: isSilent ? 'silent_reauth_failed' : 'login',
-        workspaceId: cookieLoginState?.workspaceId ?? authConfig.instanceId,
-        outcome: 'failure',
-      });
-      return response;
+        const loginStateDeleteStrategy = attachDeletedCookie(response, loginStateCookieName);
+        const sessionCookieStrategy = attachSessionCookie(response, sessionCookieName, sessionId, expiresAt);
+        const silentSsoDeleteStrategy = attachDeletedCookie(response, authConfig.silentSsoSuppressCookieName);
+        logger.info('Callback cookies prepared', {
+          operation: 'login_callback_cookies',
+          login_state_delete_strategy: loginStateDeleteStrategy,
+          session_cookie_strategy: sessionCookieStrategy,
+          silent_sso_delete_strategy: silentSsoDeleteStrategy,
+          response_set_cookie_count: getSetCookieValues(response.headers).length,
+          had_session_cookie_on_callback: hadSessionCookieOnCallback,
+          ...buildLogContext(user.instanceId),
+        });
+        await emitAuthAuditEvent({
+          eventType: isSilent ? 'silent_reauth_success' : 'login',
+          actorUserId: user.id,
+          workspaceId: user.instanceId,
+          outcome: 'success',
+        });
+
+        return response;
+      } catch (error) {
+        const isSilent = cookieLoginState?.silent === true;
+        if (isTokenErrorLike(error)) {
+          logger.warn('Token validation failed in callback', {
+            operation: 'token_validate',
+            is_silent: isSilent,
+            error_type: error instanceof Error ? error.constructor.name : typeof error,
+            has_refresh_token: false,
+            ...describeTokenError(error),
+            ...buildLogContext(cookieLoginState?.workspaceId ?? authConfig.instanceId),
+          });
+          logger.warn('tenant_auth_callback_result', {
+            operation: 'tenant_auth_callback',
+            instance_id: cookieLoginState?.workspaceId ?? authConfig.instanceId ?? 'global',
+            auth_realm: authConfig.authRealm ?? 'global',
+            client_id: authConfig.clientId,
+            issuer: authConfig.issuer,
+            redirect_uri: authConfig.redirectUri,
+            is_silent: isSilent,
+            retry_performed: false,
+            result: 'failure',
+            ...describeTokenError(error),
+            ...buildLogContext(cookieLoginState?.workspaceId ?? authConfig.instanceId),
+          });
+        } else {
+          logger.error('Auth callback failed', {
+            auth_flow: 'callback',
+            operation: 'login_callback',
+            is_silent: isSilent,
+            error: error instanceof Error ? error.message : String(error),
+            error_type: error instanceof Error ? error.constructor.name : typeof error,
+            has_code: true,
+            has_state: true,
+            has_iss: Boolean(iss),
+            ...buildLogContext(cookieLoginState?.workspaceId ?? authConfig.instanceId),
+          });
+          logger.error('tenant_auth_callback_result', {
+            operation: 'tenant_auth_callback',
+            instance_id: cookieLoginState?.workspaceId ?? authConfig.instanceId ?? 'global',
+            auth_realm: authConfig.authRealm ?? 'global',
+            client_id: authConfig.clientId,
+            issuer: authConfig.issuer,
+            redirect_uri: authConfig.redirectUri,
+            is_silent: isSilent,
+            retry_performed: false,
+            result: 'failure',
+            error_type: error instanceof Error ? error.constructor.name : typeof error,
+            error: error instanceof Error ? error.message : String(error),
+            ...buildLogContext(cookieLoginState?.workspaceId ?? authConfig.instanceId),
+          });
+        }
+
+        const response = isSilent ? createSilentSsoResponse('failure') : createRedirectResponse('/?auth=error');
+        const loginStateDeleteStrategy = attachDeletedCookie(response, loginStateCookieName);
+        logger.info('Failed callback cookie cleanup prepared', {
+          operation: 'login_callback_cookie_cleanup',
+          strategy: loginStateDeleteStrategy,
+          response_set_cookie_count: getSetCookieValues(response.headers).length,
+          had_session_cookie_on_callback: hadSessionCookieOnCallback,
+          ...buildLogContext(),
+        });
+        await emitAuthAuditEvent({
+          eventType: isSilent ? 'silent_reauth_failed' : 'login',
+          workspaceId: cookieLoginState?.workspaceId ?? authConfig.instanceId,
+          outcome: 'failure',
+        });
+        return response;
+      }
+    } catch (error) {
+      return createAuthDependencyErrorResponse(request, 'auth_callback', error);
     }
   });
 };
@@ -564,63 +633,70 @@ export const logoutHandler = async (request: Request): Promise<Response> => {
       return createRedirectResponse('/?auth=mock-logout');
     }
 
-    const authConfig = await resolveAuthConfigForRequest(request).catch(() => getAuthConfig());
-    const { sessionCookieName, postLogoutRedirectUri, silentSsoSuppressCookieName, silentSsoSuppressAfterLogoutMs } =
-      authConfig;
-    const sessionId = readCookieFromRequest(request, sessionCookieName);
-    let logoutUrl = postLogoutRedirectUri;
+    try {
+      const authConfig = await resolveAuthConfigForRequest(request);
+      const { sessionCookieName, postLogoutRedirectUri, silentSsoSuppressCookieName, silentSsoSuppressAfterLogoutMs } =
+        authConfig;
+      const sessionId = readCookieFromRequest(request, sessionCookieName);
+      let logoutUrl = postLogoutRedirectUri;
 
-    if (sessionId) {
-      try {
-        const sessionBeforeLogout = await getSession(sessionId);
-        logoutUrl = await logoutSession(sessionId, authConfig);
+      if (sessionId) {
+        try {
+          const sessionBeforeLogout = await getSession(sessionId);
+          logoutUrl = await logoutSession(sessionId, authConfig);
 
-        logger.info('Logout successful', {
+          logger.info('Logout successful', {
+            endpoint: '/auth/logout',
+            operation: 'logout',
+            ...summarizeRedirectTarget(logoutUrl),
+            ...buildLogContext(),
+          });
+
+          await emitAuthAuditEvent({
+            eventType: 'logout',
+            actorUserId: sessionBeforeLogout?.user?.id ?? sessionBeforeLogout?.userId,
+            workspaceId: sessionBeforeLogout?.user?.instanceId,
+            outcome: 'success',
+          });
+        } catch (error) {
+          if (error instanceof SessionStoreUnavailableError) {
+            throw error;
+          }
+          logger.error('Logout failed', {
+            endpoint: '/auth/logout',
+            operation: 'logout',
+            error: error instanceof Error ? error.message : String(error),
+            error_type: error instanceof Error ? error.constructor.name : typeof error,
+            ...buildLogContext(),
+          });
+        }
+      } else {
+        logger.debug('Logout without session', {
           endpoint: '/auth/logout',
           operation: 'logout',
-          ...summarizeRedirectTarget(logoutUrl),
-          ...buildLogContext(),
-        });
-
-        await emitAuthAuditEvent({
-          eventType: 'logout',
-          actorUserId: sessionBeforeLogout?.user?.id ?? sessionBeforeLogout?.userId,
-          workspaceId: sessionBeforeLogout?.user?.instanceId,
-          outcome: 'success',
-        });
-      } catch (error) {
-        logger.error('Logout failed', {
-          endpoint: '/auth/logout',
-          operation: 'logout',
-          error: error instanceof Error ? error.message : String(error),
-          error_type: error instanceof Error ? error.constructor.name : typeof error,
+          session_exists: false,
           ...buildLogContext(),
         });
       }
-    } else {
-      logger.debug('Logout without session', {
+
+      const response = createRedirectResponse(logoutUrl);
+      const sessionDeleteStrategy = attachDeletedCookie(response, sessionCookieName);
+      const silentSsoSuppressStrategy = attachSilentSsoSuppressCookie(
+        response,
+        silentSsoSuppressCookieName,
+        Date.now() + silentSsoSuppressAfterLogoutMs
+      );
+      logger.info('Logout cookies prepared', {
         endpoint: '/auth/logout',
-        operation: 'logout',
-        session_exists: false,
+        operation: 'logout_cookie_cleanup',
+        session_delete_strategy: sessionDeleteStrategy,
+        silent_sso_suppress_strategy: silentSsoSuppressStrategy,
+        response_set_cookie_count: getSetCookieValues(response.headers).length,
         ...buildLogContext(),
       });
+      return response;
+    } catch (error) {
+      return createAuthDependencyErrorResponse(request, 'auth_logout', error);
     }
-
-    const response = createRedirectResponse(logoutUrl);
-    const sessionDeleteStrategy = attachDeletedCookie(response, sessionCookieName);
-    const silentSsoSuppressStrategy = attachSilentSsoSuppressCookie(
-      response,
-      silentSsoSuppressCookieName,
-      Date.now() + silentSsoSuppressAfterLogoutMs
-    );
-    logger.info('Logout cookies prepared', {
-      endpoint: '/auth/logout',
-      operation: 'logout_cookie_cleanup',
-      session_delete_strategy: sessionDeleteStrategy,
-      silent_sso_suppress_strategy: silentSsoSuppressStrategy,
-      response_set_cookie_count: getSetCookieValues(response.headers).length,
-      ...buildLogContext(),
-    });
-    return response;
   });
 };

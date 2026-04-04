@@ -17,7 +17,7 @@ const getAuthRouteFactories = createIsomorphicFn()
     return mod.authRouteFactories;
   });
 
-const resolveBaseUrl = () => {
+export const resolveBaseUrl = () => {
   if (typeof globalThis.window !== 'undefined') {
     return globalThis.window.location.origin;
   }
@@ -26,7 +26,7 @@ const resolveBaseUrl = () => {
 
 let sdkRuntimeProfilePromise: Promise<Pick<typeof import('@sva/sdk'), 'isMockAuthRuntimeProfile' | 'parseRuntimeProfile'>> | null = null;
 
-const getSdkRuntimeProfileHelpers = async () => {
+export const getSdkRuntimeProfileHelpers = async () => {
   sdkRuntimeProfilePromise ??= import('@sva/sdk').then((mod) => ({
     isMockAuthRuntimeProfile: mod.isMockAuthRuntimeProfile,
     parseRuntimeProfile: mod.parseRuntimeProfile,
@@ -35,7 +35,7 @@ const getSdkRuntimeProfileHelpers = async () => {
   return sdkRuntimeProfilePromise;
 };
 
-const isMockAuthEnabled = async () => {
+export const isMockAuthEnabled = async () => {
   const sdk = await getSdkRuntimeProfileHelpers();
   const runtimeProfile = sdk.parseRuntimeProfile(import.meta.env.VITE_SVA_RUNTIME_PROFILE);
 
@@ -46,7 +46,7 @@ const isMockAuthEnabled = async () => {
   );
 };
 
-const createMockRouteGuardUser = (): RouteGuardUser => ({
+export const createMockRouteGuardUser = (): RouteGuardUser => ({
   roles: [
     'system_admin',
     'iam_admin',
@@ -59,7 +59,7 @@ const createMockRouteGuardUser = (): RouteGuardUser => ({
   ],
 });
 
-const readRouteGuardUser = (payload: unknown): RouteGuardUser => {
+export const readRouteGuardUser = (payload: unknown): RouteGuardUser => {
   const parsedPayload = payload as {
     user?: {
       roles?: unknown;
@@ -122,7 +122,7 @@ type MaterializedRoutes<TFactories extends readonly AppRouteFactory[]> = {
   readonly [K in keyof TFactories]: ReturnType<TFactories[K]>;
 };
 
-const areDemoRoutesEnabled = () => {
+export const areDemoRoutesEnabled = () => {
   const configuredValue = import.meta.env.VITE_ENABLE_DEMO_ROUTES;
   if (configuredValue === true || configuredValue === 'true') {
     return true;

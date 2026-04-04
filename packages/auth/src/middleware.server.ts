@@ -7,6 +7,7 @@ import { withLegalTextCompliance } from './legal-text-enforcement.server.js';
 import { shouldEnforceLegalTextCompliance } from './middleware-compliance.js';
 import { resolveSessionUser, validateTenantHost } from './middleware-hosts.js';
 import { createMockSessionUser, isMockAuthEnabled } from './mock-auth.server.js';
+import { SessionStoreUnavailableError } from './runtime-errors.js';
 import { buildLogContext } from './shared/log-context.js';
 import type { SessionUser } from './types.js';
 
@@ -141,6 +142,27 @@ const runWithLegalTextComplianceIfRequired = async (
 
 const logUnexpectedMiddlewareError = (request: Request, error: unknown): Response => {
   const logContext = buildLogContext(undefined, { includeTraceId: true });
+  if (error instanceof SessionStoreUnavailableError) {
+    logger.error('Auth middleware dependency failed', {
+      endpoint: request.url,
+      operation: 'auth_middleware',
+      dependency: 'redis',
+      dependency_operation: error.operation,
+      error_type: error.name,
+      error_message: error.message,
+      ...logContext,
+    });
+
+    return toJsonErrorResponse(
+      503,
+      'internal_error',
+      'Authentifizierung ist momentan nicht verfügbar, weil der Sitzungsspeicher nicht erreichbar ist.',
+      {
+        requestId: logContext.request_id,
+      }
+    );
+  }
+
   logger.error('Auth middleware failed unexpectedly', {
     endpoint: request.url,
     operation: 'auth_middleware',

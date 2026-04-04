@@ -41,7 +41,7 @@ export interface RunPatchCoverageGateResult {
   uncoveredFiles: UncoveredFileSummary[];
 }
 
-const defaultTargetPct = 80;
+const defaultTargetPct = 85;
 
 function loadPolicy(rootDir: string): CoveragePolicy {
   const policyPath = path.join(rootDir, 'tooling/testing/coverage-policy.json');

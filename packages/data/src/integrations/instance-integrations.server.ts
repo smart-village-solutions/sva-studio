@@ -1,4 +1,5 @@
 import { Pool } from 'pg';
+import { createSdkLogger } from '@sva/sdk/server';
 
 import {
   createCachedInstanceIntegrationLoader,
@@ -7,6 +8,8 @@ import {
   type IntegrationProviderKey,
 } from './instance-integrations';
 import type { SqlStatement } from '../iam/repositories/types';
+
+const logger = createSdkLogger({ component: 'instance-integrations-server', level: 'info' });
 
 type QueryResult<TRow> = {
   readonly rowCount: number;
@@ -65,22 +68,55 @@ const withInstanceDb = async <T>(
 ): Promise<T> => {
   const resolvedPool = getPool(input.getDatabaseUrl);
   if (!resolvedPool) {
+    logger.warn('database_not_configured', {
+      operation: 'instance_integration_db_tx',
+      instance_id: input.instanceId,
+    });
     throw new Error('IAM database not configured');
   }
 
-  const client = await resolvedPool.connect();
+  let client: QueryClient;
+  try {
+    client = await resolvedPool.connect();
+  } catch (error) {
+    logger.error('pool_connect_failed', {
+      operation: 'instance_integration_db_tx',
+      instance_id: input.instanceId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    throw error;
+  }
+
+  logger.debug('instance_integration_db_tx_started', {
+    operation: 'instance_integration_db_tx',
+    instance_id: input.instanceId,
+  });
   try {
     await client.query('BEGIN');
     await client.query('SELECT set_config($1, $2, true);', ['app.instance_id', input.instanceId]);
     const result = await work(client);
     await client.query('COMMIT');
+    logger.debug('instance_integration_db_tx_committed', {
+      operation: 'instance_integration_db_tx',
+      instance_id: input.instanceId,
+    });
     return result;
   } catch (error) {
     try {
       await client.query('ROLLBACK');
+      logger.warn('instance_integration_db_tx_rolled_back', {
+        operation: 'instance_integration_db_tx',
+        instance_id: input.instanceId,
+        error: error instanceof Error ? error.message : String(error),
+      });
     } catch {
       // Der ursprüngliche Fehler bleibt führend; Rollback-Fehler sollen ihn nicht überdecken.
     }
+    logger.error('instance_integration_db_tx_failed', {
+      operation: 'instance_integration_db_tx',
+      instance_id: input.instanceId,
+      error: error instanceof Error ? error.message : String(error),
+    });
     throw error;
   } finally {
     client.release();

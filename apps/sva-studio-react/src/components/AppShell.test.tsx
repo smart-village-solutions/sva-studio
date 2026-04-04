@@ -56,6 +56,10 @@ vi.mock('./LegalTextAcceptanceDialog', () => ({
   LegalTextAcceptanceDialog: () => <div data-testid="legal-text-acceptance-dialog" />,
 }));
 
+vi.mock('./RuntimeHealthIndicator', () => ({
+  RuntimeHealthIndicator: () => <div data-testid="runtime-health-indicator" />,
+}));
+
 /**
  * Führt nach jedem Test ein DOM-Cleanup aus.
  */
@@ -107,6 +111,7 @@ describe('AppShell', () => {
     expect(within(breadcrumbNavigation).getByRole('link', { name: 'Benutzerverwaltung' }).getAttribute('href')).toBe('/admin/users');
     expect(within(breadcrumbNavigation).getByText('Nutzer bearbeiten')).toBeTruthy();
     expect(screen.getByText('Inhalt')).toBeTruthy();
+    expect(screen.getByTestId('runtime-health-indicator')).toBeTruthy();
   });
 
   it('zeigt Skeleton-Content im Ladezustand', () => {

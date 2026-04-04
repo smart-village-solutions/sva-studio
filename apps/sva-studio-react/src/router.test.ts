@@ -1,10 +1,14 @@
 import { createRouter } from '@tanstack/react-router';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { createRuntimeRouteTree } from './router';
+import { areDemoRoutesEnabled, createRuntimeRouteTree, readRouteGuardUser, resolveBaseUrl } from './router';
 import { createRouterDiagnosticsSnapshot } from './lib/router-diagnostics';
 
 describe('createRuntimeRouteTree', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   it('merges file routes with core, auth and plugin runtime routes', async () => {
     const { authRouteFactories } = await import('@sva/routing');
     const { demoRouteFactory } = await import('./routes/-demo-routes');
@@ -30,5 +34,53 @@ describe('createRuntimeRouteTree', () => {
     expect(normalizedRoutePaths).toEqual(
       expect.arrayContaining(['/', '/account', '/admin/users', '/demo', '/plugins/example', '/auth/login']),
     );
+  });
+
+  it('reads route guard roles defensively from mixed payloads', () => {
+    expect(
+      readRouteGuardUser({
+        user: {
+          roles: ['iam_admin', 1, null, 'editor'],
+        },
+      }),
+    ).toEqual({ roles: ['iam_admin', 'editor'] });
+
+    expect(readRouteGuardUser({ user: { roles: 'not-an-array' } })).toEqual({ roles: [] });
+  });
+
+  it('resolves the runtime base url from window, env, and localhost fallback', () => {
+    expect(resolveBaseUrl()).toBe(window.location.origin);
+
+    const originalWindow = globalThis.window;
+    Object.defineProperty(globalThis, 'window', {
+      value: undefined,
+      configurable: true,
+    });
+
+    vi.stubEnv('SVA_PUBLIC_BASE_URL', 'https://studio.example.org');
+    expect(resolveBaseUrl()).toBe('https://studio.example.org');
+
+    vi.unstubAllEnvs();
+    expect(resolveBaseUrl()).toBe('http://localhost:3000');
+
+    Object.defineProperty(globalThis, 'window', {
+      value: originalWindow,
+      configurable: true,
+    });
+  });
+
+  it('enables demo routes explicitly, disables them explicitly, and defaults by NODE_ENV', () => {
+    vi.stubEnv('VITE_ENABLE_DEMO_ROUTES', 'true');
+    expect(areDemoRoutesEnabled()).toBe(true);
+
+    vi.stubEnv('VITE_ENABLE_DEMO_ROUTES', 'false');
+    expect(areDemoRoutesEnabled()).toBe(false);
+
+    vi.unstubAllEnvs();
+    vi.stubEnv('NODE_ENV', 'production');
+    expect(areDemoRoutesEnabled()).toBe(false);
+
+    vi.stubEnv('NODE_ENV', 'development');
+    expect(areDemoRoutesEnabled()).toBe(true);
   });
 });

@@ -210,6 +210,12 @@
       "status": "open",
       "summary": "IAM Account Management Plattform-Handler weiter in Query-, Mutation- und Runtime-Checks zerlegen"
     },
+    "iam-server:packages/auth/src/iam-account-management/platform-handlers.ts:fileLines": {
+      "ticketId": "QUAL-112",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "IAM Account Management Plattform-Handler weiter in Query-, Mutation- und Runtime-Checks zerlegen"
+    },
     "iam-server:packages/auth/src/iam-account-management/schema-guard.ts:fileLines": {
       "ticketId": "QUAL-112",
       "ticketSystem": "backlog",
@@ -331,6 +337,12 @@
       "summary": "Audit-DB-Sink in kleinere Persistenz- und Mapping-Bausteine aufteilen"
     },
     "iam-server:packages/auth/src/keycloak-admin-client/core.ts:fileLines": {
+      "ticketId": "QUAL-108",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Keycloak-Admin-Core weiter in API-spezifische Unteradapter zerlegen"
+    },
+    "iam-server:packages/auth/src/keycloak-admin-client/core.ts:functionLines": {
       "ticketId": "QUAL-108",
       "ticketSystem": "backlog",
       "status": "open",
@@ -479,6 +491,12 @@
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "IAM-Groups-Handler in Query-, Mutation-, Membership- und Role-Bausteine zerlegen"
+    },
+    "iam-server:packages/auth/src/iam-instance-registry/service-provisioning.ts:functionLines": {
+      "ticketId": "QUAL-119",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Instance-Registry-Provisioning in Step-Orchestrierung, Keycloak-Provisioning und Fehlerbehandlung zerlegen"
     },
     "iam-data:packages/data/src/iam/repositories/statements.ts:fileLines": {
       "ticketId": "QUAL-116",

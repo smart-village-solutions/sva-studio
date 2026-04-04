@@ -20,7 +20,7 @@ import appCss from '../styles.css?url';
 
 const tanstackDevtoolsEnabled = import.meta.env.DEV && import.meta.env.VITE_ENABLE_TANSTACK_DEVTOOLS === 'true';
 
-const ensureRootSdkInitialized = createServerOnlyFn(async () => {
+export const ensureRootSdkInitialized = createServerOnlyFn(async () => {
   const { ensureSdkInitialized } = await import('../lib/init-sdk.server');
   await ensureSdkInitialized();
 });
@@ -28,7 +28,7 @@ const ensureRootSdkInitialized = createServerOnlyFn(async () => {
 /**
  * Initialisiert serverseitig notwendige SDK-Bausteine für die Root-Route.
  */
-const loadRootData = async () => {
+export const loadRootData = async () => {
   if (import.meta.env.SSR) {
     await ensureRootSdkInitialized();
   }
@@ -38,7 +38,7 @@ const loadRootData = async () => {
 /**
  * Definiert Meta- und Link-Tags für das Root-Dokument.
  */
-const getRootHead = () => ({
+export const getRootHead = () => ({
   meta: [
     {
       charSet: 'utf-8',
@@ -82,7 +82,7 @@ function RootComponent() {
   );
 }
 
-function RootDocument({ children }: Readonly<{ children: React.ReactNode }>) {
+export function RootDocument({ children }: Readonly<{ children: React.ReactNode }>) {
   const isRouterPending = useRouterState({
     select: (state) => state.status === 'pending' || state.isLoading,
   });

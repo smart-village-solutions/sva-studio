@@ -1,7 +1,7 @@
 import type { AuthConfig, SessionAuthContext } from './types.js';
-import { isTrafficEnabledInstanceStatus, normalizeHost } from '@sva/core';
+import { classifyHost, isTrafficEnabledInstanceStatus, normalizeHost } from '@sva/core';
 import { loadInstanceById } from '@sva/data/server';
-import { getInstanceConfig } from '@sva/sdk/server';
+import { getInstanceConfig, isCanonicalAuthHost } from '@sva/sdk/server';
 import { getAuthClientSecret, getAuthStateSecret } from './runtime-secrets.server.js';
 import { buildRequestOriginFromHeaders, resolveEffectiveRequestHost } from './request-hosts.js';
 import { resolveTenantAuthClientSecret } from './config-tenant-secret.js';
@@ -10,8 +10,10 @@ import {
   loadRegistryEntryForHost,
   logGlobalAuthResolution,
   logInstanceConfigMissing,
+  logTenantAuthResolutionFailure,
   logTenantAuthResolution,
 } from './config-request.js';
+import { TenantAuthResolutionError } from './runtime-errors.js';
 
 const requireEnv = (key: string) => {
   const value = process.env[key];
@@ -130,15 +132,48 @@ export const resolveAuthConfigForRequest = async (request: Request): Promise<Aut
   const host = resolveRequestHost(request);
   const requestOrigin = buildRequestOrigin(request);
 
-  if (!getInstanceConfig()) {
+  const instanceConfig = getInstanceConfig();
+  if (!instanceConfig) {
     logInstanceConfigMissing(host, requestOrigin);
     return getAuthConfig();
   }
 
-  const registryEntry = await loadRegistryEntryForHost(host, requestOrigin);
-  if (!registryEntry) {
+  if (isCanonicalAuthHost(host)) {
     logGlobalAuthResolution(request, host, requestOrigin);
     return getAuthConfig();
+  }
+
+  const hostClassification = classifyHost(host, instanceConfig.parentDomain);
+  if (hostClassification.kind === 'root') {
+    logGlobalAuthResolution(request, host, requestOrigin);
+    return getAuthConfig();
+  }
+
+  if (hostClassification.kind !== 'tenant') {
+    logTenantAuthResolutionFailure(request, {
+      host,
+      requestOrigin,
+      reason: 'tenant_host_invalid',
+    });
+    throw new TenantAuthResolutionError({
+      host,
+      reason: 'tenant_host_invalid',
+      publicMessage:
+        'Anmeldung ist für diese Host-Konfiguration nicht verfügbar. Bitte die Adresse prüfen oder den Support kontaktieren.',
+    });
+  }
+
+  const registryEntry = await loadRegistryEntryForHost(host, requestOrigin);
+  if (!registryEntry) {
+    logTenantAuthResolutionFailure(request, {
+      host,
+      requestOrigin,
+      reason: 'tenant_not_found',
+    });
+    throw new TenantAuthResolutionError({
+      host,
+      reason: 'tenant_not_found',
+    });
   }
 
   assertActiveRegistryEntry(host, requestOrigin, registryEntry);

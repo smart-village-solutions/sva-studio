@@ -3,6 +3,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useRolePermissions } from './use-role-permissions';
 
+const browserLoggerMock = vi.hoisted(() => ({
+  debug: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+}));
 const authMockValue = {
   invalidatePermissions: vi.fn(),
 };
@@ -22,15 +28,23 @@ vi.mock('./use-iam-admin-list', () => ({
   useIamAdminList: (...args: Parameters<typeof useIamAdminListMock>) => useIamAdminListMock(...args),
 }));
 
+vi.mock('@sva/sdk/logging', () => ({
+  createBrowserLogger: () => browserLoggerMock,
+}));
+
 describe('useRolePermissions', () => {
   beforeEach(() => {
     authMockValue.invalidatePermissions.mockReset();
     listPermissionsMock.mockReset();
     useIamAdminListMock.mockReset();
+    browserLoggerMock.debug.mockReset();
+    browserLoggerMock.info.mockReset();
+    browserLoggerMock.warn.mockReset();
+    browserLoggerMock.error.mockReset();
   });
 
   it('maps the admin list hook result into the role permissions contract', async () => {
-    const refetch = vi.fn();
+    const refetch = vi.fn().mockResolvedValue(undefined);
     const error = { code: 'database_unavailable' };
     const items = [
       {
@@ -55,7 +69,17 @@ describe('useRolePermissions', () => {
       permissions: items,
       isLoading: true,
       error,
-      refetch,
+      refetch: expect.any(Function),
     });
+
+    await result.current.refetch();
+    expect(browserLoggerMock.debug).toHaveBeenCalledWith(
+      'role_permissions_refetch_started',
+      expect.objectContaining({ operation: 'refetch_role_permissions' })
+    );
+    expect(browserLoggerMock.debug).toHaveBeenCalledWith(
+      'role_permissions_refetch_succeeded',
+      expect.objectContaining({ operation: 'refetch_role_permissions' })
+    );
   });
 });

@@ -11,29 +11,6 @@ import type { UserDetailRow } from './user-detail-query.types.js';
 
 const logger = createSdkLogger({ component: 'iam-user-detail-query', level: 'info' });
 
-const logLegacySchemaFallbacks = (
-  input: { instanceId: string; userId: string },
-  schemaSupport: Awaited<ReturnType<typeof readUserDetailSchemaSupport>>
-): void => {
-  if (!schemaSupport.hasAccountPermissionsTable) {
-    logger.warn('IAM user detail query fell back to legacy schema without direct permissions', {
-      operation: 'resolve_user_detail',
-      instance_id: input.instanceId,
-      user_id: input.userId,
-      missing_schema_object: 'iam.account_permissions',
-    });
-  }
-
-  if (!schemaSupport.hasStructuredPermissions) {
-    logger.warn('IAM user detail query fell back to legacy permission projection', {
-      operation: 'resolve_user_detail',
-      instance_id: input.instanceId,
-      user_id: input.userId,
-      missing_schema_object: 'iam.permissions.action/resource_type/resource_id/effect/scope',
-    });
-  }
-};
-
 const logMissingUserDetail = (input: { instanceId: string; userId: string }): void => {
   logger.info('IAM user detail query returned no row', {
     operation: 'resolve_user_detail',
@@ -57,7 +34,6 @@ export const resolveUserDetail = async (
 ): Promise<IamUserDetail | undefined> => {
   try {
     const schemaSupport = await readUserDetailSchemaSupport(client);
-    logLegacySchemaFallbacks(input, schemaSupport);
     const detailQuery = selectUserDetailQuery(schemaSupport);
     const result = await client.query<UserDetailRow>(detailQuery, [input.instanceId, input.userId]);
     const row = result.rows[0];

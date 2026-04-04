@@ -1,4 +1,5 @@
 import { coreVersion } from '@sva/core';
+import { createSdkLogger } from '@sva/sdk/server';
 import { z } from 'zod';
 
 export * from './iam/repositories';
@@ -13,6 +14,7 @@ type CacheEntry<T> = {
 };
 
 const inMemoryCache = new Map<string, CacheEntry<unknown>>();
+const logger = createSdkLogger({ component: 'data-client', level: 'info' });
 
 export type DataClientOptions = {
   baseUrl: string;
@@ -56,8 +58,38 @@ export const createDataClient = (options: DataClientOptions) => {
     const cached = inMemoryCache.get(cacheKey);
 
     if (cached && cached.expiresAt > Date.now()) {
-      return schema ? schema.parse(cached.value) : (cached.value as T);
+      logger.debug('cache_hit', {
+        operation: 'get',
+        path,
+        cache_key: cacheKey,
+      });
+      if (!schema) {
+        return cached.value as T;
+      }
+      try {
+        return schema.parse(cached.value);
+      } catch (error) {
+        logger.error('schema_validation_failed', {
+          operation: 'get',
+          path,
+          cache_key: cacheKey,
+          source: 'cache',
+          error: error instanceof Error ? error.message : String(error),
+        });
+        throw error;
+      }
     }
+
+    logger.debug('cache_miss', {
+      operation: 'get',
+      path,
+      cache_key: cacheKey,
+    });
+    logger.debug('request_started', {
+      operation: 'get',
+      path,
+      base_url: options.baseUrl,
+    });
 
     const response = await fetch(`${options.baseUrl}${path}`, {
       ...init,
@@ -68,11 +100,31 @@ export const createDataClient = (options: DataClientOptions) => {
     });
 
     if (!response.ok) {
+      logger.error('request_failed', {
+        operation: 'get',
+        path,
+        status: response.status,
+      });
       throw new Error(`DataClient GET ${path} failed with ${response.status}`);
     }
 
     const rawPayload: unknown = await response.json();
-    const payload = schema ? schema.parse(rawPayload) : (rawPayload as T);
+    let payload: T;
+    if (schema) {
+      try {
+        payload = schema.parse(rawPayload);
+      } catch (error) {
+        logger.error('schema_validation_failed', {
+          operation: 'get',
+          path,
+          source: 'network',
+          error: error instanceof Error ? error.message : String(error),
+        });
+        throw error;
+      }
+    } else {
+      payload = rawPayload as T;
+    }
     inMemoryCache.set(cacheKey, {
       value: payload,
       expiresAt: Date.now() + cacheTtlMs,

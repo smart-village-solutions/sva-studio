@@ -11,6 +11,7 @@ import type { AuthenticatedRequestContext } from '../middleware.server.js';
 import type { QueryClient } from '../shared/db-helpers.js';
 import { jsonResponse } from '../shared/db-helpers.js';
 import { buildLogContext } from '../shared/log-context.js';
+import { IamSchemaDriftError } from '../runtime-errors.js';
 
 import { ADMIN_ROLES } from './constants.js';
 import { asApiItem, createApiError } from './api-helpers.js';
@@ -98,36 +99,6 @@ SET
 RETURNING id, (xmax = 0) AS created;
 `;
 
-const UPSERT_ACCOUNT_QUERY_LEGACY = `
-INSERT INTO iam.accounts (
-  instance_id,
-  keycloak_subject,
-  email_ciphertext,
-  display_name_ciphertext,
-  first_name_ciphertext,
-  last_name_ciphertext,
-  status
-)
-VALUES (
-  $1,
-  $2,
-  $3,
-  $4,
-  $5,
-  $6,
-  $7
-)
-ON CONFLICT (keycloak_subject, instance_id) WHERE instance_id IS NOT NULL DO UPDATE
-SET
-  email_ciphertext = EXCLUDED.email_ciphertext,
-  display_name_ciphertext = EXCLUDED.display_name_ciphertext,
-  first_name_ciphertext = EXCLUDED.first_name_ciphertext,
-  last_name_ciphertext = EXCLUDED.last_name_ciphertext,
-  status = EXCLUDED.status,
-  updated_at = NOW()
-RETURNING id, (xmax = 0) AS created;
-`;
-
 const INSERT_MEMBERSHIP_QUERY = `
 INSERT INTO iam.instance_memberships (instance_id, account_id, membership_type)
 VALUES ($1, $2::uuid, 'member')
@@ -174,22 +145,21 @@ const upsertIdentityUser = async (
       throw error;
     }
 
-    logger.warn('Keycloak user sync fell back to legacy account upsert without username ciphertext', {
+    logger.error('Keycloak user sync aborted because IAM schema is outdated', {
       operation: 'sync_keycloak_users',
       instance_id: input.instanceId,
       subject_ref: toSubjectRef(input.user.externalId),
       error: error instanceof Error ? error.message : String(error),
+      schema_object: 'iam.accounts.username_ciphertext',
+      mode: 'fail_fast',
     });
-
-    upsert = await client.query<{ id: string; created: boolean }>(UPSERT_ACCOUNT_QUERY_LEGACY, [
-      input.instanceId,
-      input.user.externalId,
-      emailCiphertext,
-      displayNameCiphertext,
-      firstNameCiphertext,
-      lastNameCiphertext,
-      status,
-    ]);
+    throw new IamSchemaDriftError({
+      message: 'IAM user sync requires iam.accounts.username_ciphertext',
+      operation: 'sync_keycloak_users',
+      schemaObject: 'iam.accounts.username_ciphertext',
+      expectedMigration: '0011_iam_account_username.sql',
+      cause: error,
+    });
   }
 
   const accountId = upsert.rows[0]?.id;
@@ -329,6 +299,20 @@ const mapSyncErrorResponse = (error: unknown, requestId?: string): Response | un
       requestId
     );
   }
+  if (error instanceof IamSchemaDriftError) {
+    return createApiError(
+      503,
+      'database_unavailable',
+      'Das IAM-Schema ist veraltet. Keycloak-Benutzer konnten nicht synchronisiert werden.',
+      requestId,
+      {
+        dependency: 'database',
+        expected_migration: error.expectedMigration,
+        reason_code: 'schema_drift',
+        schema_object: error.schemaObject,
+      }
+    );
+  }
   return undefined;
 };
 
@@ -342,6 +326,14 @@ export const runKeycloakUserImportSync = async (input: {
   skippedCount: number;
   skippedInstanceIds: ReadonlySet<string>;
 }> => {
+  const startedAt = Date.now();
+  logger.info('sync_keycloak_users_started', {
+    operation: 'sync_keycloak_users',
+    instance_id: input.instanceId,
+    actor_account_id: input.actorAccountId,
+    request_id: input.requestId,
+    trace_id: input.traceId,
+  });
   const listedUsers = await listAllKeycloakUsers(input.instanceId);
   const { matchingUsers, skippedCount, skippedInstanceIds } = collectSyncCandidates(
     listedUsers,
@@ -401,6 +393,19 @@ export const runKeycloakUserImportSync = async (input: {
     }
 
     return summary;
+  });
+
+  logger.info('sync_keycloak_users_completed', {
+    operation: 'sync_keycloak_users',
+    instance_id: input.instanceId,
+    actor_account_id: input.actorAccountId,
+    request_id: input.requestId,
+    trace_id: input.traceId,
+    imported_count: report.importedCount,
+    updated_count: report.updatedCount,
+    skipped_count: report.skippedCount,
+    total_keycloak_users: report.totalKeycloakUsers,
+    duration_ms: Date.now() - startedAt,
   });
 
   return {

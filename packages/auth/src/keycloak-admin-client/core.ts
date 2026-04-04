@@ -296,6 +296,24 @@ const toRetryLogReason = (error: unknown): string => {
   return 'unknown_error';
 };
 
+const logKeycloakWriteSuccess = (
+  event: string,
+  meta: Readonly<Record<string, string | number | boolean | undefined>>
+): void => {
+  logger.info(event, meta);
+};
+
+const logKeycloakWriteFailure = (
+  event: string,
+  meta: Readonly<Record<string, string | number | boolean | undefined>>,
+  error: unknown
+): void => {
+  logger.error(event, {
+    ...meta,
+    error: error instanceof Error ? error.message : String(error),
+  });
+};
+
 const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number, phase: TimeoutPhase): Promise<T> => {
   if (timeoutMs <= 0) {
     return promise;
@@ -491,7 +509,7 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     attributeNames?: readonly string[]
   ): Promise<IdentityUserAttributes> {
     if (this.isCircuitOpen()) {
-      throw new KeycloakAdminUnavailableError('Keycloak unavailable and no read fallback configured.');
+      throw new KeycloakAdminUnavailableError('Keycloak unavailable; user list cannot be loaded.');
     }
 
     const user = await this.executeWithResilience<KeycloakAdminUser>({
@@ -505,11 +523,11 @@ export class KeycloakAdminClient implements IdentityProviderPort {
 
   async listUsers(query?: KeycloakListUsersQuery): Promise<readonly IdentityListedUser[]> {
     if (this.isCircuitOpen()) {
-      if (this.readFallback?.listUsers) {
-        logger.warn('Circuit open; using listUsers fallback', { operation: 'list_users', source: 'fallback' });
-        return (await this.readFallback.listUsers(query)).map(mapKeycloakUser);
-      }
-      throw new KeycloakAdminUnavailableError('Keycloak unavailable and no read fallback configured.');
+      logger.error('Keycloak read blocked because circuit breaker is open', {
+        operation: 'list_users',
+        mode: 'fail_fast',
+      });
+      throw new KeycloakAdminUnavailableError('Keycloak unavailable; user list cannot be loaded.');
     }
 
     const searchParams = new URLSearchParams();
@@ -541,13 +559,12 @@ export class KeycloakAdminClient implements IdentityProviderPort {
       });
       return users.map(mapKeycloakUser);
     } catch (error) {
-      if (this.readFallback?.listUsers && this.isRetryableError(error)) {
-        logger.warn('Keycloak read failed; using listUsers fallback', {
+      if (this.isRetryableError(error)) {
+        logger.error('Keycloak read failed without fallback', {
           operation: 'list_users',
-          source: 'fallback',
+          mode: 'fail_fast',
           reason: toRetryLogReason(error),
         });
-        return (await this.readFallback.listUsers(query)).map(mapKeycloakUser);
       }
       throw error;
     }
@@ -570,11 +587,11 @@ export class KeycloakAdminClient implements IdentityProviderPort {
 
   async listRoles(): Promise<readonly IdentityRole[]> {
     if (this.isCircuitOpen()) {
-      if (this.readFallback?.listRoles) {
-        logger.warn('Circuit open; using listRoles fallback', { operation: 'list_roles', source: 'fallback' });
-        return (await this.readFallback.listRoles()).map(mapKeycloakRole);
-      }
-      throw new KeycloakAdminUnavailableError('Keycloak unavailable and no read fallback configured.');
+      logger.error('Keycloak read blocked because circuit breaker is open', {
+        operation: 'list_roles',
+        mode: 'fail_fast',
+      });
+      throw new KeycloakAdminUnavailableError('Keycloak unavailable; role list cannot be loaded.');
     }
 
     try {
@@ -585,13 +602,12 @@ export class KeycloakAdminClient implements IdentityProviderPort {
       });
       return roles.map(mapKeycloakRole);
     } catch (error) {
-      if (this.readFallback?.listRoles && this.isRetryableError(error)) {
-        logger.warn('Keycloak read failed; using listRoles fallback', {
+      if (this.isRetryableError(error)) {
+        logger.error('Keycloak read failed without fallback', {
           operation: 'list_roles',
-          source: 'fallback',
+          mode: 'fail_fast',
           reason: toRetryLogReason(error),
         });
-        return (await this.readFallback.listRoles()).map(mapKeycloakRole);
       }
       throw error;
     }
@@ -736,8 +752,20 @@ export class KeycloakAdminClient implements IdentityProviderPort {
         }),
         operation: 'create_realm',
       });
+      logKeycloakWriteSuccess('create_realm', {
+        operation: 'create_realm',
+        realm: this.realm,
+      });
     } catch (error) {
       if (!(error instanceof KeycloakAdminRequestError) || error.statusCode !== 409) {
+        logKeycloakWriteFailure(
+          'create_realm_failed',
+          {
+            operation: 'create_realm',
+            realm: this.realm,
+          },
+          error
+        );
         throw error;
       }
     }
@@ -822,12 +850,30 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     };
 
     if (!existing) {
-      await this.executeWithResilience<void>({
-        method: 'POST',
-        path: `/admin/realms/${encodePathSegment(this.realm)}/clients`,
-        operation: 'create_client',
-        body: JSON.stringify(payload),
-      });
+      try {
+        await this.executeWithResilience<void>({
+          method: 'POST',
+          path: `/admin/realms/${encodePathSegment(this.realm)}/clients`,
+          operation: 'create_client',
+          body: JSON.stringify(payload),
+        });
+        logKeycloakWriteSuccess('create_client', {
+          operation: 'create_client',
+          realm: this.realm,
+          client_id: input.clientId,
+        });
+      } catch (error) {
+        logKeycloakWriteFailure(
+          'create_client_failed',
+          {
+            operation: 'create_client',
+            realm: this.realm,
+            client_id: input.clientId,
+          },
+          error
+        );
+        throw error;
+      }
     } else {
       const requiresUpdate =
         existing.rootUrl !== payload.rootUrl ||
@@ -836,15 +882,33 @@ export class KeycloakAdminClient implements IdentityProviderPort {
         !areStringSetsEqual(readPostLogoutRedirectUris(existing.attributes), input.postLogoutRedirectUris);
 
       if (requiresUpdate) {
-        await this.executeWithResilience<void>({
-          method: 'PUT',
-          path: `/admin/realms/${encodePathSegment(this.realm)}/clients/${encodePathSegment(existing.id)}`,
-          operation: 'update_client',
-          body: JSON.stringify({
-            ...existing,
-            ...payload,
-          }),
-        });
+        try {
+          await this.executeWithResilience<void>({
+            method: 'PUT',
+            path: `/admin/realms/${encodePathSegment(this.realm)}/clients/${encodePathSegment(existing.id)}`,
+            operation: 'update_client',
+            body: JSON.stringify({
+              ...existing,
+              ...payload,
+            }),
+          });
+          logKeycloakWriteSuccess('update_client', {
+            operation: 'update_client',
+            realm: this.realm,
+            client_id: input.clientId,
+          });
+        } catch (error) {
+          logKeycloakWriteFailure(
+            'update_client_failed',
+            {
+              operation: 'update_client',
+              realm: this.realm,
+              client_id: input.clientId,
+            },
+            error
+          );
+          throw error;
+        }
       }
     }
 
@@ -858,12 +922,30 @@ export class KeycloakAdminClient implements IdentityProviderPort {
           retryable: false,
         });
       }
-      await this.executeWithResilience<void>({
-        method: 'POST',
-        path: `/admin/realms/${encodePathSegment(this.realm)}/clients/${encodePathSegment(resolvedClient.id)}/client-secret`,
-        operation: 'rotate_client_secret',
-        body: JSON.stringify({ type: 'secret', value: input.clientSecret }),
-      });
+      try {
+        await this.executeWithResilience<void>({
+          method: 'POST',
+          path: `/admin/realms/${encodePathSegment(this.realm)}/clients/${encodePathSegment(resolvedClient.id)}/client-secret`,
+          operation: 'rotate_client_secret',
+          body: JSON.stringify({ type: 'secret', value: input.clientSecret }),
+        });
+        logKeycloakWriteSuccess('rotate_client_secret', {
+          operation: 'rotate_client_secret',
+          realm: this.realm,
+          client_id: input.clientId,
+        });
+      } catch (error) {
+        logKeycloakWriteFailure(
+          'rotate_client_secret_failed',
+          {
+            operation: 'rotate_client_secret',
+            realm: this.realm,
+            client_id: input.clientId,
+          },
+          error
+        );
+        throw error;
+      }
     }
   }
 
@@ -976,16 +1058,34 @@ export class KeycloakAdminClient implements IdentityProviderPort {
 
   async setUserPassword(externalId: string, password: string, temporary = true): Promise<void> {
     await this.assertWriteAvailability();
-    await this.executeWithResilience<void>({
-      method: 'PUT',
-      path: `/admin/realms/${encodePathSegment(this.realm)}/users/${encodePathSegment(externalId)}/reset-password`,
-      operation: 'reset_user_password',
-      body: JSON.stringify({
-        type: 'password',
-        value: password,
+    try {
+      await this.executeWithResilience<void>({
+        method: 'PUT',
+        path: `/admin/realms/${encodePathSegment(this.realm)}/users/${encodePathSegment(externalId)}/reset-password`,
+        operation: 'reset_user_password',
+        body: JSON.stringify({
+          type: 'password',
+          value: password,
+          temporary,
+        }),
+      });
+      logKeycloakWriteSuccess('reset_user_password', {
+        operation: 'reset_user_password',
+        realm: this.realm,
         temporary,
-      }),
-    });
+      });
+    } catch (error) {
+      logKeycloakWriteFailure(
+        'reset_user_password_failed',
+        {
+          operation: 'reset_user_password',
+          realm: this.realm,
+          temporary,
+        },
+        error
+      );
+      throw error;
+    }
   }
 
   async setUserRequiredActions(externalId: string, requiredActions: readonly string[]): Promise<void> {

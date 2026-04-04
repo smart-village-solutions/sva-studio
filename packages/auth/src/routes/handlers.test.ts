@@ -2,6 +2,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createHmac } from 'node:crypto';
 
 const requestContextMock = vi.fn(async (_ctx: unknown, callback: () => Promise<Response>) => callback());
+const toJsonErrorResponseMock = vi.fn(
+  (status: number, code: string, message?: string, options?: { requestId?: string }) =>
+    new Response(JSON.stringify({ error: { code, message }, requestId: options?.requestId ?? null }), {
+      status,
+      headers: { 'content-type': 'application/json' },
+    })
+);
 const loggerMock = {
   info: vi.fn(),
   warn: vi.fn(),
@@ -34,6 +41,7 @@ const instanceConfigState = {
   canonicalAuthHost: 'studio.example.org',
   parentDomain: 'studio.example.org',
 };
+const resolveAuthConfigForRequestMock = vi.fn(async () => ({ ...resolvedAuthConfigState }));
 
 vi.mock('@sva/sdk/server', () => ({
   createSdkLogger: () => loggerMock,
@@ -43,6 +51,7 @@ vi.mock('@sva/sdk/server', () => ({
     const normalized = host.toLowerCase().replace(/:\d+$/, '').replace(/\.$/, '');
     return normalized === instanceConfigState.canonicalAuthHost;
   },
+  toJsonErrorResponse: toJsonErrorResponseMock,
   withRequestContext: requestContextMock,
 }));
 
@@ -69,7 +78,8 @@ vi.mock('../config', () => ({
     silentSsoSuppressAfterLogoutMs: 60_000,
     postLogoutRedirectUri: 'http://localhost:3000',
   }),
-  resolveAuthConfigForRequest: vi.fn(async () => ({ ...resolvedAuthConfigState })),
+  resolveAuthConfigForRequest: (...args: Parameters<typeof resolveAuthConfigForRequestMock>) =>
+    resolveAuthConfigForRequestMock(...args),
 }));
 
 vi.mock('../redis-session.server', () => ({
@@ -86,7 +96,6 @@ vi.mock('../middleware.server.js', () => ({
 
 describe('routes/handlers', () => {
   beforeEach(() => {
-    vi.resetModules();
     vi.clearAllMocks();
     vi.unstubAllEnvs();
     vi.stubEnv('SVA_MOCK_AUTH', 'false');
@@ -99,6 +108,9 @@ describe('routes/handlers', () => {
     resolvedAuthConfigState.issuer = 'https://issuer.example';
     instanceConfigState.canonicalAuthHost = 'studio.example.org';
     instanceConfigState.parentDomain = 'studio.example.org';
+    resolveAuthConfigForRequestMock.mockReset();
+    resolveAuthConfigForRequestMock.mockImplementation(async () => ({ ...resolvedAuthConfigState }));
+    toJsonErrorResponseMock.mockClear();
   });
 
   it('logs only a summarized logout redirect target', async () => {
@@ -299,6 +311,30 @@ describe('routes/handlers', () => {
     expect(createLoginUrlMock).toHaveBeenCalled();
   });
 
+  it('returns 503 JSON when login auth resolution fails for a tenant host', async () => {
+    const { TenantAuthResolutionError: RuntimeTenantAuthResolutionError } = await import('../runtime-errors.js');
+    resolveAuthConfigForRequestMock.mockRejectedValueOnce(
+      new RuntimeTenantAuthResolutionError({
+        host: 'bb-guben.studio.example.org',
+        reason: 'tenant_lookup_failed',
+        publicMessage: 'Mandantenanmeldung ist momentan nicht verfügbar.',
+      })
+    );
+    const { loginHandler } = await import('./handlers.js');
+
+    const response = await loginHandler(new Request('https://bb-guben.studio.example.org/auth/login'));
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toEqual(
+      expect.objectContaining({
+        error: expect.objectContaining({
+          code: 'internal_error',
+          message: 'Mandantenanmeldung ist momentan nicht verfügbar.',
+        }),
+      })
+    );
+  });
+
   it('allows trusted tenant return targets on the canonical auth host', async () => {
     loadInstanceByHostnameMock.mockResolvedValue({
       instanceId: 'hb',
@@ -405,6 +441,31 @@ describe('routes/handlers', () => {
     expect(response.status).toBe(302);
     const setCookie = response.headers.get('set-cookie') ?? '';
     expect(setCookie).toContain('sva_auth_session=session-no-expiry');
+  });
+
+  it('returns 503 JSON when callback auth resolution fails', async () => {
+    const { TenantAuthResolutionError: RuntimeTenantAuthResolutionError } = await import('../runtime-errors.js');
+    resolveAuthConfigForRequestMock.mockRejectedValueOnce(
+      new RuntimeTenantAuthResolutionError({
+        host: 'de-musterhausen.studio.example.org',
+        reason: 'tenant_not_found',
+      })
+    );
+
+    const { callbackHandler } = await import('./handlers.js');
+    const response = await callbackHandler(
+      new Request('https://de-musterhausen.studio.example.org/auth/callback?code=abc&state=state-1')
+    );
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toEqual(
+      expect.objectContaining({
+        error: expect.objectContaining({
+          code: 'internal_error',
+          message: 'Anmeldung ist für diesen Mandanten momentan nicht verfügbar. Bitte später erneut versuchen.',
+        }),
+      })
+    );
   });
 
   it('redirects the callback to the original page after login', async () => {
@@ -559,6 +620,52 @@ describe('routes/handlers', () => {
 
     expect(response.status).toBe(200);
     await expect(response.text()).resolves.toContain('sva-auth:silent-sso');
+  });
+
+  it('returns 503 JSON when logout auth resolution fails', async () => {
+    const { TenantAuthResolutionError: RuntimeTenantAuthResolutionError } = await import('../runtime-errors.js');
+    resolveAuthConfigForRequestMock.mockRejectedValueOnce(
+      new RuntimeTenantAuthResolutionError({
+        host: 'de-musterhausen.studio.example.org',
+        reason: 'tenant_lookup_failed',
+      })
+    );
+    const { logoutHandler } = await import('./handlers.js');
+
+    const response = await logoutHandler(new Request('https://de-musterhausen.studio.example.org/auth/logout'));
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toEqual(
+      expect.objectContaining({
+        error: expect.objectContaining({
+          code: 'internal_error',
+          message: 'Anmeldung ist für diesen Mandanten momentan nicht verfügbar. Bitte später erneut versuchen.',
+        }),
+      })
+    );
+  });
+
+  it('returns 503 JSON when logout cannot access the session store', async () => {
+    const { SessionStoreUnavailableError: RuntimeSessionStoreUnavailableError } = await import('../runtime-errors.js');
+    getSessionMock.mockRejectedValueOnce(new RuntimeSessionStoreUnavailableError('get_session', new Error('redis down')));
+    const { logoutHandler } = await import('./handlers.js');
+
+    const response = await logoutHandler(
+      new Request('https://studio.example.org/auth/logout', {
+        method: 'POST',
+        headers: { cookie: 'sva_auth_session=session-1' },
+      })
+    );
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toEqual(
+      expect.objectContaining({
+        error: expect.objectContaining({
+          code: 'internal_error',
+          message: 'Authentifizierung ist momentan nicht verfügbar, weil der Sitzungsspeicher nicht erreichbar ist.',
+        }),
+      })
+    );
   });
 
   it('returns silent callback failure response and clears login-state cookie when idp returns error', async () => {

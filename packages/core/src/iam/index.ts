@@ -80,6 +80,11 @@ export type {
   MePermissionsSubject,
   MePermissionsResponse,
   ReadinessStatus,
+  RuntimeDependencyHealth,
+  RuntimeDependencyKey,
+  RuntimeDependencyStatus,
+  RuntimeHealthResponse,
+  RuntimeHealthServices,
   SnapshotCacheStatus,
 } from './authorization-contract.js';
 export type {

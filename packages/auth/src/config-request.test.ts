@@ -5,6 +5,7 @@ import type { ResolvedTenantClientSecret } from './config-tenant-secret.js';
 const state = vi.hoisted(() => ({
   loggerInfo: vi.fn(),
   loggerWarn: vi.fn(),
+  loggerError: vi.fn(),
   instanceConfig: {
     canonicalAuthHost: 'studio.smart-village.app',
     parentDomain: 'studio.smart-village.app',
@@ -17,7 +18,7 @@ vi.mock('@sva/sdk/server', () => ({
     debug: vi.fn(),
     info: state.loggerInfo,
     warn: state.loggerWarn,
-    error: vi.fn(),
+    error: state.loggerError,
   }),
   getInstanceConfig: () => state.instanceConfig,
 }));
@@ -78,16 +79,16 @@ describe('config-request helpers', () => {
     );
   });
 
-  it('returns null and logs when registry hostname lookup fails', async () => {
+  it('throws and logs when registry hostname lookup fails', async () => {
     state.loadInstanceByHostname.mockRejectedValue(new Error('lookup failed'));
     const { loadRegistryEntryForHost } = await import('./config-request.js');
 
     await expect(
       loadRegistryEntryForHost('bb-guben.studio.smart-village.app', 'https://bb-guben.studio.smart-village.app')
-    ).resolves.toBeNull();
+    ).rejects.toThrow('Tenant auth configuration could not be loaded for bb-guben.studio.smart-village.app');
 
-    expect(state.loggerWarn).toHaveBeenCalledWith(
-      'Tenant hostname lookup failed during auth resolution; falling back to global auth config',
+    expect(state.loggerError).toHaveBeenCalledWith(
+      'Tenant hostname lookup failed during auth resolution',
       expect.objectContaining({
         host: 'bb-guben.studio.smart-village.app',
         reason: 'tenant_lookup_failed',

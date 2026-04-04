@@ -44,4 +44,19 @@ describe('iam seed plan', () => {
     assert.equal(iamSeedPlan.organizations[1].parentOrganizationId, iamSeedPlan.organizations[0].id);
     assert.equal(iamSeedPlan.organizations[2].depth, 2);
   });
+
+  it('derives stable resource types from permission keys', () => {
+    assert.equal(
+      iamSeedPlan.permissions.find((permission) => permission.key === 'instance.registry.manage')?.resourceType,
+      'instance'
+    );
+    assert.equal(
+      iamSeedPlan.permissions.find((permission) => permission.key === 'content.publish')?.resourceType,
+      'content'
+    );
+  });
+
+  it('throws for unknown persona keys', () => {
+    assert.throws(() => getPersonaSeed('unknown' as never), /Unknown persona key: unknown/);
+  });
 });

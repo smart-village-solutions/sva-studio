@@ -3,6 +3,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useUsers } from './use-users';
 
+const browserLoggerMock = vi.hoisted(() => ({
+  debug: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+}));
+
 const listUsersMock = vi.fn();
 const createUserMock = vi.fn();
 const updateUserMock = vi.fn();
@@ -60,6 +67,10 @@ vi.mock('../lib/iam-api', () => ({
 
 vi.mock('../providers/auth-provider', () => ({
   useAuth: () => authMockValue,
+}));
+
+vi.mock('@sva/sdk/logging', () => ({
+  createBrowserLogger: () => browserLoggerMock,
 }));
 
 describe('useUsers', () => {
@@ -120,6 +131,12 @@ describe('useUsers', () => {
     expect(deactivateUserMock).toHaveBeenCalledTimes(1);
     expect(bulkDeactivateUsersMock).toHaveBeenCalledTimes(1);
     expect(syncUsersFromKeycloakMock).toHaveBeenCalledTimes(1);
+    expect(browserLoggerMock.info).toHaveBeenCalledWith(
+      'user_sync_keycloak_succeeded',
+      expect.objectContaining({
+        operation: 'user_sync_keycloak',
+      })
+    );
   });
 
   it('invalidates permissions on 403 during initial load', async () => {
@@ -138,6 +155,12 @@ describe('useUsers', () => {
     expect(result.current.error?.status).toBe(403);
     expect(result.current.users).toHaveLength(0);
     expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
+    expect(browserLoggerMock.info).toHaveBeenCalledWith(
+      'permission_invalidated_after_403',
+      expect.objectContaining({
+        operation: 'list_users',
+      })
+    );
   });
 
   it('resets pagination when search/status/role changes and clamps page to minimum 1', async () => {

@@ -239,11 +239,10 @@ describe('redis.server', () => {
       lastError: 'ping failed',
     });
     expect(state.logger.warn).toHaveBeenCalledWith(
-      'Redis unavailable, using in-memory fallback',
+      'Redis unavailable',
       expect.objectContaining({
         operation: 'redis_health_check',
         available: false,
-        fallback: 'in-memory',
         error: 'ping failed',
       })
     );

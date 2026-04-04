@@ -1,5 +1,18 @@
 import { describe, expect, it, vi } from 'vitest';
 
+const loggerState = vi.hoisted(() => ({
+  logger: {
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  },
+}));
+
+vi.mock('@sva/sdk/server', () => ({
+  createSdkLogger: () => loggerState.logger,
+}));
+
 vi.mock('../iam-account-management/encryption.js', () => ({
   protectField: vi.fn((value: string) => `enc:${value}`),
   revealField: vi.fn((value: string | null | undefined) =>
@@ -153,6 +166,52 @@ const createRepository = (): InstanceRegistryRepository => {
 };
 
 describe('iam-instance-registry service', () => {
+  it('logs duplicate create requests and successful host invalidation', async () => {
+    loggerState.logger.debug.mockReset();
+    loggerState.logger.info.mockReset();
+    loggerState.logger.warn.mockReset();
+    loggerState.logger.error.mockReset();
+
+    const repository = createRepository();
+    const service = createInstanceRegistryService({
+      repository,
+      invalidateHost: vi.fn(),
+      provisionInstanceAuth: vi.fn().mockResolvedValue(undefined),
+    });
+
+    await service.createProvisioningRequest({
+      idempotencyKey: 'idem-create',
+      instanceId: 'demo',
+      displayName: 'Demo',
+      parentDomain: 'studio.lvh.me',
+      authRealm: 'demo',
+      authClientId: 'sva-studio',
+      requestId: 'req-1',
+    });
+    await service.createProvisioningRequest({
+      idempotencyKey: 'idem-create-2',
+      instanceId: 'demo',
+      displayName: 'Demo',
+      parentDomain: 'studio.lvh.me',
+      authRealm: 'demo',
+      authClientId: 'sva-studio',
+      requestId: 'req-2',
+    });
+
+    expect(loggerState.logger.info).toHaveBeenCalledWith(
+      'instance_create_completed',
+      expect.objectContaining({ instance_id: 'demo', request_id: 'req-1' })
+    );
+    expect(loggerState.logger.warn).toHaveBeenCalledWith(
+      'instance_create_rejected_duplicate',
+      expect.objectContaining({ instance_id: 'demo', request_id: 'req-2' })
+    );
+    expect(loggerState.logger.debug).toHaveBeenCalledWith(
+      'instance_host_cache_invalidated',
+      expect.objectContaining({ instance_id: 'demo', hostname: 'demo.studio.lvh.me' })
+    );
+  });
+
   it('resolves a newly provisioned instance without requiring a redeploy', async () => {
     const invalidateHost = vi.fn();
     const provisionInstanceAuth = vi.fn().mockResolvedValue(undefined);
@@ -242,6 +301,10 @@ describe('iam-instance-registry service', () => {
   });
 
   it('records follow-up runs and audit events when an instance is activated', async () => {
+    loggerState.logger.debug.mockReset();
+    loggerState.logger.info.mockReset();
+    loggerState.logger.warn.mockReset();
+    loggerState.logger.error.mockReset();
     const repository = createRepository();
     const service = createInstanceRegistryService({
       repository,
@@ -297,6 +360,14 @@ describe('iam-instance-registry service', () => {
     const detail = await service.getInstanceDetail('hb');
     expect(detail?.provisioningRuns.map((run) => run.operation)).toEqual(['activate', 'create']);
     expect(detail?.auditEvents.map((event) => event.eventType)).toEqual(['instance_activated', 'instance_requested']);
+    expect(loggerState.logger.info).toHaveBeenCalledWith(
+      'instance_status_transition_completed',
+      expect.objectContaining({
+        instance_id: 'hb',
+        previous_status: 'provisioning',
+        next_status: 'active',
+      })
+    );
   });
 
   it('loads latest provisioning runs for list views in a single repository call', async () => {

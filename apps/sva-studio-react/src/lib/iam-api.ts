@@ -23,6 +23,7 @@ import type {
   IamOrganizationType,
   IamPermission,
   IamRoleListItem,
+  RuntimeHealthResponse,
   IamUserDirectPermissionAssignment,
   IamUserTimelineEvent,
   IamUserDetail,
@@ -690,6 +691,11 @@ export const getInstanceKeycloakStatus = async (
   instanceId: string
 ): Promise<ApiItemResponse<IamInstanceDetail['keycloakStatus']>> =>
   requestJson<ApiItemResponse<IamInstanceDetail['keycloakStatus']>>(`/api/v1/iam/instances/${instanceId}/keycloak/status`);
+
+export const getRuntimeHealth = async (options: IamRequestOptions = {}): Promise<RuntimeHealthResponse> =>
+  requestJson<RuntimeHealthResponse>('/api/v1/iam/health/ready', {
+    signal: options.signal,
+  });
 
 export const reconcileInstanceKeycloak = async (
   instanceId: string,

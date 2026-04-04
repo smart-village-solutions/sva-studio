@@ -2,6 +2,7 @@ import { getRedisClient } from './redis.server.js';
 import { encryptToken, decryptToken } from './crypto.server.js';
 import { getAuthConfig } from './config.js';
 import { emitAuthAuditEvent } from './audit-events.server.js';
+import { SessionStoreUnavailableError } from './runtime-errors.js';
 import { metrics } from '@opentelemetry/api';
 import {
   clearExpiredLoginStates as clearExpiredInMemoryLoginStates,
@@ -50,10 +51,6 @@ const DEFAULT_SESSION_CONTROL_TTL = 60 * 60 * 24 * 30; // 30 days in seconds
 const inMemorySessionControl = new Map<string, SessionControlState>();
 const inMemoryUserSessions = new Map<string, Set<string>>();
 
-const shouldUseInMemorySessionFallback = (): boolean =>
-  process.env.SVA_RUNTIME_PROFILE === 'acceptance-hb' &&
-  process.env.SVA_AUTH_ALLOW_IN_MEMORY_SESSION_FALLBACK !== 'false';
-
 const runWithSessionFallback = async <T>(input: {
   operation: string;
   redis: () => Promise<T>;
@@ -62,18 +59,13 @@ const runWithSessionFallback = async <T>(input: {
   try {
     return await input.redis();
   } catch (error) {
-    if (!shouldUseInMemorySessionFallback()) {
-      throw error;
-    }
-
-    logger.warn('Redis session store unavailable, using in-memory fallback', {
+    logger.error('Redis session store unavailable', {
       operation: input.operation,
-      runtime_profile: process.env.SVA_RUNTIME_PROFILE ?? 'unknown',
       error: error instanceof Error ? error.message : String(error),
-      fallback: 'in-memory-session-store',
+      error_type: error instanceof Error ? error.constructor.name : typeof error,
+      mode: 'fail_fast',
     });
-
-    return await input.fallback();
+    throw new SessionStoreUnavailableError(input.operation, error);
   }
 };
 
@@ -376,10 +368,6 @@ export async function deleteSession(sessionId: string): Promise<void> {
  * This is mainly for compatibility with the in-memory implementation.
  */
 export async function clearExpiredSessions(): Promise<void> {
-  if (shouldUseInMemorySessionFallback()) {
-    clearExpiredInMemorySessions(Date.now(), DEFAULT_SESSION_TTL * 1000);
-  }
-
   logger.debug('Expired sessions cleanup skipped', {
     operation: 'cleanup_sessions',
     reason: 'redis_ttl_handles_expiration',
@@ -563,7 +551,16 @@ export async function getAllSessionKeys(): Promise<string[]> {
  * Count active sessions.
  */
 export async function getSessionCount(): Promise<number> {
-  const redis = getRedisClient();
-  const keys = await redis.keys(sessionPrefix() + '*');
-  return keys.length;
+  return runWithSessionFallback({
+    operation: 'get_session_count',
+    redis: async () => {
+      const redis = getRedisClient();
+      const keys = await redis.keys(sessionPrefix() + '*');
+      return keys.length;
+    },
+    fallback: () => {
+      clearExpiredInMemorySessions(Date.now(), DEFAULT_SESSION_TTL * 1000);
+      return 0;
+    },
+  });
 }

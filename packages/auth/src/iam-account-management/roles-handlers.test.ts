@@ -134,7 +134,7 @@ vi.mock('../keycloak-admin-client.js', () => ({
   KeycloakAdminRequestError: class KeycloakAdminRequestError extends Error {},
 }));
 
-import { createRoleInternal, updateRoleInternal } from './roles-handlers';
+import { createRoleInternal, listPermissionsInternal, listRolesInternal, updateRoleInternal } from './roles-handlers';
 
 const ctx = {
   user: {
@@ -326,6 +326,64 @@ describe('iam-account-management/roles-handlers internals', () => {
           syncState: 'failed',
           syncError: { code: 'IDP_UNAVAILABLE' },
         },
+      },
+      requestId: 'req-roles',
+    });
+  });
+
+  it('returns rate limited responses before listing roles', async () => {
+    const { consumeRateLimit } = await import('./rate-limit.js');
+    vi.mocked(consumeRateLimit).mockReturnValueOnce(
+      new Response(JSON.stringify({ error: { code: 'rate_limited' } }), { status: 429 })
+    );
+
+    const response = await listRolesInternal(new Request('http://localhost/api/v1/iam/roles'), ctx);
+
+    expect(response.status).toBe(429);
+  });
+
+  it('lists permissions and keeps page size at least one for empty result sets', async () => {
+    const { withInstanceScopedDb } = await import('./shared-runtime.js');
+    const { asApiList } = await import('./api-helpers.js');
+    vi.mocked(withInstanceScopedDb).mockImplementation(async (_instanceId, callback) =>
+      callback({
+        query: vi.fn(async () => ({
+          rows: [],
+        })),
+      } as never)
+    );
+    vi.mocked(asApiList).mockImplementation((data, meta, requestId) => ({ data, meta, requestId }) as never);
+
+    const response = await listPermissionsInternal(new Request('http://localhost/api/v1/iam/permissions'), ctx);
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      data: [],
+      meta: { page: 1, pageSize: 1, total: 0 },
+      requestId: 'req-roles',
+    });
+  });
+
+  it('maps diagnostic database errors while listing roles', async () => {
+    const dbError = new Error('db down');
+    const { withInstanceScopedDb } = await import('./shared-runtime.js');
+    const { classifyIamDiagnosticError } = await import('./diagnostics.js');
+    vi.mocked(withInstanceScopedDb).mockRejectedValueOnce(dbError);
+    vi.mocked(classifyIamDiagnosticError).mockReturnValueOnce({
+      status: 503,
+      code: 'database_unavailable',
+      message: 'IAM-Datenbank ist nicht erreichbar.',
+      details: { retryable: true },
+    } as never);
+
+    const response = await listRolesInternal(new Request('http://localhost/api/v1/iam/roles'), ctx);
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toEqual({
+      error: {
+        code: 'database_unavailable',
+        message: 'IAM-Datenbank ist nicht erreichbar.',
+        details: { retryable: true },
       },
       requestId: 'req-roles',
     });

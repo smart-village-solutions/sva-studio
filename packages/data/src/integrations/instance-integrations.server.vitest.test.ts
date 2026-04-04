@@ -36,8 +36,18 @@ const state = vi.hoisted(() => {
     setFailRollback,
     shouldFailSelect,
     shouldFailRollback,
+    logger: {
+      debug: vi.fn(),
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+    },
   };
 });
+
+vi.mock('@sva/sdk/server', () => ({
+  createSdkLogger: () => state.logger,
+}));
 
 const endMock = vi.hoisted(() => vi.fn(async () => undefined));
 
@@ -94,6 +104,10 @@ vi.mock('pg', () => {
 describe('loadInstanceIntegrationRecord (server)', () => {
   beforeEach(async () => {
     state.reset();
+    state.logger.debug.mockReset();
+    state.logger.info.mockReset();
+    state.logger.warn.mockReset();
+    state.logger.error.mockReset();
     process.env.IAM_DATABASE_URL = 'postgres://local/test';
     const mod = await import('./instance-integrations.server');
     await mod.resetInstanceIntegrationServerState();
@@ -108,6 +122,10 @@ describe('loadInstanceIntegrationRecord (server)', () => {
         getDatabaseUrl: () => undefined,
       })
     ).rejects.toThrow('IAM database not configured');
+    expect(state.logger.warn).toHaveBeenCalledWith(
+      'database_not_configured',
+      expect.objectContaining({ instance_id: 'de-musterhausen' })
+    );
   });
 
   it('loads and maps records via transactional DB access', async () => {
@@ -139,6 +157,10 @@ describe('loadInstanceIntegrationRecord (server)', () => {
     ).toBe(true);
     expect(state.queries.some((entry) => entry.text === 'COMMIT')).toBe(true);
     expect(state.clients[0]?.release).toHaveBeenCalledTimes(1);
+    expect(state.logger.debug).toHaveBeenCalledWith(
+      'instance_integration_db_tx_committed',
+      expect.objectContaining({ instance_id: 'de-musterhausen' })
+    );
   });
 
   it('rolls back transaction when repository execution fails', async () => {
@@ -153,6 +175,10 @@ describe('loadInstanceIntegrationRecord (server)', () => {
     ).rejects.toThrow('boom');
 
     expect(state.queries.some((entry) => entry.text === 'ROLLBACK')).toBe(true);
+    expect(state.logger.error).toHaveBeenCalledWith(
+      'instance_integration_db_tx_failed',
+      expect.objectContaining({ instance_id: 'de-musterhausen', error: 'boom' })
+    );
   });
 
   it('preserves original error when rollback itself fails', async () => {

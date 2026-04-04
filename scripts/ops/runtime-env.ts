@@ -42,6 +42,11 @@ import {
   withoutDebugEnv,
 } from './runtime/process.ts';
 import {
+  assertRequiredImagePlatform,
+  formatImagePlatforms,
+  inspectImagePlatforms,
+} from './runtime/image-platform.ts';
+import {
   getGooseConfiguredVersion as getGooseConfiguredVersionFromConfig,
   listGooseMigrationFiles as listGooseMigrationFilesFromDir,
   runGooseAgainstAcceptance as runGooseAgainstAcceptanceWithDeps,
@@ -160,6 +165,76 @@ const getGitCommitSha = () => {
     return runCapture('git', ['rev-parse', 'HEAD']);
   } catch {
     return undefined;
+  }
+};
+
+const resolveEffectiveImageRefForRemoteChecks = (
+  env: NodeJS.ProcessEnv,
+  options?: AcceptanceDeployOptions
+) => {
+  const optionImageRef = options?.imageRef?.trim();
+  if (optionImageRef) {
+    return optionImageRef;
+  }
+
+  const configuredImageRef = env.SVA_IMAGE_REF?.trim();
+  if (configuredImageRef) {
+    return configuredImageRef;
+  }
+
+  const imageDigest = env.SVA_IMAGE_DIGEST?.trim();
+  if (!imageDigest) {
+    return undefined;
+  }
+
+  const registry = env.SVA_REGISTRY?.trim() || 'ghcr.io/smart-village-solutions';
+  const repository = env.SVA_IMAGE_REPOSITORY?.trim() || 'sva-studio';
+  return `${registry}/${repository}@${imageDigest}`;
+};
+
+const buildImagePlatformDoctorCheck = (
+  env: NodeJS.ProcessEnv,
+  options?: AcceptanceDeployOptions
+): DoctorCheck => {
+  const imageRef = resolveEffectiveImageRefForRemoteChecks(env, options);
+
+  if (!imageRef) {
+    return toDoctorCheck(
+      'image-platform',
+      'error',
+      'image_ref_missing',
+      'Keine Image-Referenz fuer die Plattform-Pruefung vorhanden.'
+    );
+  }
+
+  try {
+    const platforms = inspectImagePlatforms(imageRef, withoutDebugEnv(env), {
+      commandExists,
+      runCaptureDetailed,
+    });
+    assertRequiredImagePlatform(imageRef, platforms);
+    return toDoctorCheck(
+      'image-platform',
+      'ok',
+      'image_platform_supported',
+      'Image-Plattform ist fuer den Linux-Swarm geeignet.',
+      {
+        imageRef,
+        platforms: formatImagePlatforms(platforms),
+        requiredPlatform: 'linux/amd64',
+      }
+    );
+  } catch (error) {
+    return toDoctorCheck(
+      'image-platform',
+      'error',
+      'image_platform_unsupported',
+      error instanceof Error ? error.message : String(error),
+      {
+        imageRef,
+        requiredPlatform: 'linux/amd64',
+      }
+    );
   }
 };
 
@@ -1606,6 +1681,7 @@ const precheckAcceptance = async (
     );
   }
 
+  checks.push(buildImagePlatformDoctorCheck(env, options));
   checks.push(buildAcceptanceServiceCheck(env));
   checks.push(await buildObservabilityDoctorCheck(runtimeProfile, env));
   checks.push(await buildTenantAuthProofCheck(env));

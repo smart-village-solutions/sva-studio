@@ -203,12 +203,13 @@ ghcr.io/smart-village-solutions/sva-studio:9722bd6
 **Build-Prozess (falls neu):**
 ```bash
 cd "$(git rev-parse --show-toplevel)"
-docker buildx build -f deploy/portainer/Dockerfile \
+docker buildx build --platform linux/amd64 -f deploy/portainer/Dockerfile \
   -t ghcr.io/smart-village-solutions/sva-studio:latest \
   -t ghcr.io/smart-village-solutions/sva-studio:$(git rev-parse --short HEAD) \
+  --push \
   .
-docker push ghcr.io/smart-village-solutions/sva-studio:latest
-docker push ghcr.io/smart-village-solutions/sva-studio:$(git rev-parse --short HEAD)
+
+docker manifest inspect -v ghcr.io/smart-village-solutions/sva-studio:$(git rev-parse --short HEAD)
 ```
 
 ---

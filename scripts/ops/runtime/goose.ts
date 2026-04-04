@@ -29,6 +29,12 @@ type GooseConfig = {
 
 type GooseCommand = 'status' | 'up';
 
+type MigrationFileEntry = {
+  file: string;
+  versionId: number;
+  basename: string;
+};
+
 const buildPostgresConnectionString = (
   user: string,
   database: string,
@@ -43,6 +49,21 @@ export const listGooseMigrationFiles = (gooseMigrationsDir: string) =>
     .sort();
 
 export const getGooseConfiguredVersion = (gooseConfig: GooseConfig) => gooseConfig.version;
+
+const getMigrationFileEntries = (gooseMigrationsDir: string): MigrationFileEntry[] =>
+  listGooseMigrationFiles(gooseMigrationsDir).map((file) => {
+    const fileBasename = basename(file);
+    const versionPrefix = fileBasename.split('_', 1)[0] ?? '';
+    const versionId = Number.parseInt(versionPrefix, 10);
+    if (!Number.isInteger(versionId)) {
+      throw new Error(`Migration ${fileBasename} hat keinen gueltigen numerischen Versionspraefix.`);
+    }
+    return {
+      file,
+      versionId,
+      basename: fileBasename,
+    };
+  });
 
 export const getGooseLocalBinaryPath = (
   deps: Pick<GooseDeps, 'rootDir' | 'runCapture'>,
@@ -234,6 +255,122 @@ const prepareAcceptanceGooseAssets = (
   }
 };
 
+const queryAppliedRemoteVersions = (
+  deps: Pick<GooseDeps, 'runAcceptanceServiceScript' | 'shellEscape'>,
+  env: NodeJS.ProcessEnv,
+  service: string,
+  slot: string,
+  postgresUser: string,
+  postgresDb: string,
+) => {
+  const marker = '__SVA_GOOSE_APPLIED__';
+  const summary = deps.runAcceptanceServiceScript(
+    env,
+    service,
+    [
+      'set -euo pipefail',
+      `printf '%s\\n' '${marker}_START'`,
+      `psql -X -P pager=off -U ${deps.shellEscape(postgresUser)} -d ${deps.shellEscape(postgresDb)} -Atqc ${deps.shellEscape(
+        'SELECT version_id::text FROM goose_db_version WHERE is_applied = true ORDER BY version_id;',
+      )}`,
+      `printf '%s\\n' '${marker}_END'`,
+    ].join('\n'),
+    {
+      marker,
+      failureMessage: 'Remote-Goose-Statusabfrage fehlgeschlagen.',
+      slot,
+    },
+  );
+
+  return new Set(
+    summary
+      .split('\n')
+      .map((entry) => Number.parseInt(entry.trim(), 10))
+      .filter((entry) => Number.isInteger(entry)),
+  );
+};
+
+const buildRemoteStatusSummary = (
+  migrationEntries: readonly MigrationFileEntry[],
+  appliedVersions: ReadonlySet<number>,
+) =>
+  migrationEntries
+    .map((entry) => `${appliedVersions.has(entry.versionId) ? 'applied' : 'pending'}:${entry.basename}`)
+    .join('\n');
+
+const applyRemoteMigrationWithPsql = (
+  deps: Pick<GooseDeps, 'rootDir' | 'runAcceptanceServiceScript' | 'shellEscape'>,
+  env: NodeJS.ProcessEnv,
+  service: string,
+  slot: string,
+  postgresUser: string,
+  postgresDb: string,
+  migrationEntry: MigrationFileEntry,
+) => {
+  const remoteTarget = `/var/tmp/sva-goose/migrations/${migrationEntry.basename}`;
+  const sql = readFileSync(resolve(deps.rootDir, migrationEntry.file), 'utf8');
+  const encodedSql = Buffer.from(sql, 'utf8').toString('base64');
+  const uploadMarker = `__SVA_GOOSE_UPLOAD_${migrationEntry.versionId}__`;
+  deps.runAcceptanceServiceScript(
+    env,
+    service,
+    [
+      'set -euo pipefail',
+      'if ! command -v base64 >/dev/null 2>&1; then',
+      '  echo "base64 is required for remote migration upload." >&2',
+      '  exit 1',
+      'fi',
+      `mkdir -p ${deps.shellEscape('/var/tmp/sva-goose/migrations')}`,
+      `printf '%s' ${deps.shellEscape(encodedSql)} | base64 -d >${deps.shellEscape(remoteTarget)}`,
+      `printf '%s\\n' '${uploadMarker}_START'`,
+      `printf 'uploaded:%s\\n' ${deps.shellEscape(migrationEntry.basename)}`,
+      `printf '%s\\n' '${uploadMarker}_END'`,
+    ].join('\n'),
+    {
+      marker: uploadMarker,
+      failureMessage: `Remote-Migrationsupload ${migrationEntry.basename} fehlgeschlagen.`,
+      slot,
+    },
+  );
+
+  const applyMarker = `__SVA_GOOSE_APPLY_${migrationEntry.versionId}__`;
+  return deps.runAcceptanceServiceScript(
+    env,
+    service,
+    [
+      'set -euo pipefail',
+      `log_file=${deps.shellEscape(`/var/tmp/sva-goose/${migrationEntry.basename}.log`)}`,
+      'status=0',
+      `psql -X -P pager=off -v ON_ERROR_STOP=1 -U ${deps.shellEscape(postgresUser)} -d ${deps.shellEscape(postgresDb)} -f ${deps.shellEscape(remoteTarget)} >"$log_file" 2>&1 || status=$?`,
+      'if [ "$status" -eq 0 ]; then',
+      `  psql -X -P pager=off -v ON_ERROR_STOP=1 -U ${deps.shellEscape(postgresUser)} -d ${deps.shellEscape(postgresDb)} -c ${deps.shellEscape(
+        `INSERT INTO goose_db_version (version_id, is_applied, tstamp)
+SELECT ${migrationEntry.versionId}, true, now()
+WHERE NOT EXISTS (
+  SELECT 1 FROM goose_db_version WHERE version_id = ${migrationEntry.versionId} AND is_applied = true
+);`,
+      )} >>"$log_file" 2>&1`,
+      'fi',
+      `printf '%s\\n' '${applyMarker}_START'`,
+      'if [ "$status" -eq 0 ]; then',
+      `  printf 'applied:%s\\n' ${deps.shellEscape(migrationEntry.basename)}`,
+      'else',
+      '  tail -n 40 "$log_file" || true',
+      `  printf 'psql_exit:%s\\n' "$status"`,
+      'fi',
+      `printf '%s\\n' '${applyMarker}_END'`,
+      'if [ "$status" -ne 0 ]; then',
+      '  exit "$status"',
+      'fi',
+    ].join('\n'),
+    {
+      marker: applyMarker,
+      failureMessage: `Remote-Migration ${migrationEntry.basename} fehlgeschlagen.`,
+      slot,
+    },
+  );
+};
+
 export const runGooseAgainstAcceptance = (
   deps: GooseDeps,
   gooseConfig: GooseConfig,
@@ -249,9 +386,9 @@ export const runGooseAgainstAcceptance = (
   const postgresDb = env.POSTGRES_DB ?? 'sva_studio';
   const quantumService = env.SVA_ACCEPTANCE_POSTGRES_SERVICE ?? 'postgres';
   const quantumSlot = env.SVA_ACCEPTANCE_POSTGRES_SLOT ?? '1';
-  const migrationFiles = listGooseMigrationFiles(gooseMigrationsDir);
+  const migrationEntries = getMigrationFileEntries(gooseMigrationsDir);
 
-  if (migrationFiles.length === 0) {
+  if (migrationEntries.length === 0) {
     throw new Error('Keine Goose-Migrationen unter packages/data/migrations gefunden.');
   }
 
@@ -282,48 +419,31 @@ export const runGooseAgainstAcceptance = (
     );
   }
 
-  prepareAcceptanceGooseAssets(deps, gooseConfig, gooseMigrationsDir, env, quantumService, quantumSlot, migrationFiles);
-  const dbString = buildPostgresConnectionString(postgresUser, postgresDb, '127.0.0.1', '5432');
-  const gooseRuntimeDir = '/var/tmp/sva-goose';
-  const gooseRuntimeBinary = `${gooseRuntimeDir}/goose`;
-  const gooseRuntimeMigrationsDir = `${gooseRuntimeDir}/migrations`;
-  const gooseRuntimeExecLog = `${gooseRuntimeDir}/goose.exec.log`;
-  const marker = '__SVA_GOOSE_RESULT__';
-  const summary = deps.runAcceptanceServiceScript(
+  if (gooseCommand === 'status') {
+    const appliedVersions = queryAppliedRemoteVersions(deps, env, quantumService, quantumSlot, postgresUser, postgresDb);
+    return {
+      summary: buildRemoteStatusSummary(migrationEntries, appliedVersions),
+      version: getGooseConfiguredVersion(gooseConfig),
+    };
+  }
+
+  prepareAcceptanceGooseAssets(
+    deps,
+    gooseConfig,
+    gooseMigrationsDir,
     env,
     quantumService,
-    [
-      'set -euo pipefail',
-      `if [ ! -s ${deps.shellEscape(gooseRuntimeBinary)} ]; then`,
-      `  echo "Remote goose binary missing after bootstrap: ${gooseRuntimeBinary}" >&2`,
-      '  exit 1',
-      'fi',
-      `chmod 755 ${deps.shellEscape(gooseRuntimeBinary)}`,
-      `if [ ! -x ${deps.shellEscape(gooseRuntimeBinary)} ]; then`,
-      `  echo "Remote goose binary is not executable after chmod: ${gooseRuntimeBinary}" >&2`,
-      '  exit 1',
-      'fi',
-      `cleanup() { rm -rf ${deps.shellEscape(gooseRuntimeDir)}; }`,
-      'trap cleanup EXIT',
-      `printf '%s\\n' '${marker}_START'`,
-      `status=0`,
-      `PGPASSWORD=${deps.shellEscape(postgresPassword)} ${deps.shellEscape(gooseRuntimeBinary)} -dir ${deps.shellEscape(gooseRuntimeMigrationsDir)} postgres ${deps.shellEscape(dbString)} ${gooseCommand} >${deps.shellEscape(gooseRuntimeExecLog)} 2>&1 || status=$?`,
-      `if [ -f ${deps.shellEscape(gooseRuntimeExecLog)} ]; then cat ${deps.shellEscape(gooseRuntimeExecLog)}; fi`,
-      `printf 'goose_exit:%s\\n' \"$status\"`,
-      `if [ \"$status\" -ne 0 ]; then ls -l ${deps.shellEscape(gooseRuntimeBinary)} 2>&1 || true; fi`,
-      `printf '%s\\n' '${marker}_END'`,
-      `if [ \"$status\" -ne 0 ]; then exit \"$status\"; fi`,
-      'sleep 1',
-    ].join('\n'),
-    {
-      marker,
-      failureMessage: `Remote-Goose-${gooseCommand} fehlgeschlagen.`,
-      slot: quantumSlot,
-    }
+    quantumSlot,
+    migrationEntries.map((entry) => entry.file),
+  );
+  const appliedVersions = queryAppliedRemoteVersions(deps, env, quantumService, quantumSlot, postgresUser, postgresDb);
+  const pendingEntries = migrationEntries.filter((entry) => !appliedVersions.has(entry.versionId));
+  const appliedSummaries = pendingEntries.map((entry) =>
+    applyRemoteMigrationWithPsql(deps, env, quantumService, quantumSlot, postgresUser, postgresDb, entry),
   );
 
   return {
-    summary,
+    summary: appliedSummaries.length > 0 ? appliedSummaries.join('\n') : 'already_up_to_date',
     version: getGooseConfiguredVersion(gooseConfig),
   };
 };

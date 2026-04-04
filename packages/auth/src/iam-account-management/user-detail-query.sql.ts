@@ -1,4 +1,5 @@
 import type { QueryClient } from '../shared/db-helpers.js';
+import { IamSchemaDriftError } from '../runtime-errors.js';
 
 import { buildDirectPermissionRowsSql, buildPermissionRowsSql } from './user-detail-query.permission-rows.js';
 import { buildPermissionTraceRowsSql } from './user-detail-query.permission-trace.js';
@@ -96,9 +97,6 @@ const buildUserDetailQuery = (includeDirectPermissions: boolean, includeStructur
   ].join('');
 
 const USER_DETAIL_QUERY = buildUserDetailQuery(true, true);
-const USER_DETAIL_QUERY_NO_DIRECT_PERMISSIONS = buildUserDetailQuery(false, true);
-const USER_DETAIL_QUERY_LEGACY = buildUserDetailQuery(false, false);
-
 const USER_DETAIL_SCHEMA_SUPPORT_QUERY = `
 SELECT
   to_regclass('iam.account_permissions') IS NOT NULL AS account_permissions_exists,
@@ -146,9 +144,18 @@ export const selectUserDetailQuery = (schemaSupport: UserDetailSchemaSupport): s
     return USER_DETAIL_QUERY;
   }
 
-  if (schemaSupport.hasStructuredPermissions) {
-    return USER_DETAIL_QUERY_NO_DIRECT_PERMISSIONS;
+  if (!schemaSupport.hasAccountPermissionsTable) {
+    throw new IamSchemaDriftError({
+      message: 'IAM user detail query requires iam.account_permissions',
+      operation: 'resolve_user_detail',
+      schemaObject: 'iam.account_permissions',
+      expectedMigration: '0014_iam_groups.sql',
+    });
   }
 
-  return USER_DETAIL_QUERY_LEGACY;
+  throw new IamSchemaDriftError({
+    message: 'IAM user detail query requires structured permission columns',
+    operation: 'resolve_user_detail',
+    schemaObject: 'iam.permissions.action/resource_type/resource_id/effect/scope',
+  });
 };

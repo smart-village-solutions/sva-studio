@@ -12,6 +12,12 @@ import {
   type CreateContentPayload,
   type UpdateContentPayload,
 } from '../lib/iam-api';
+import {
+  createOperationLogger,
+  logBrowserOperationFailure,
+  logBrowserOperationStart,
+  logBrowserOperationSuccess,
+} from '../lib/browser-operation-logging';
 import { useAuth } from '../providers/auth-provider';
 import { useIamAdminList } from './use-iam-admin-list';
 
@@ -41,6 +47,8 @@ type UseCreateContentResult = {
   readonly createContent: (payload: CreateContentPayload) => Promise<boolean>;
 };
 
+const contentsLogger = createOperationLogger('contents-hook', 'debug');
+
 export const useContents = (): UseContentsResult => {
   const { invalidatePermissions } = useAuth();
   const adminList = useIamAdminList(listContents, invalidatePermissions);
@@ -62,15 +70,29 @@ export const useCreateContent = (): UseCreateContentResult => {
   const runMutation = React.useCallback(
     async (payload: CreateContentPayload) => {
       setMutationError(null);
+      logBrowserOperationStart(contentsLogger, 'content_create_started', {
+        operation: 'create_content',
+      });
       try {
         await createContent(payload);
+        logBrowserOperationSuccess(contentsLogger, 'content_create_succeeded', {
+          operation: 'create_content',
+        });
         return true;
       } catch (cause) {
         const resolvedError = asIamError(cause);
         if (resolvedError.status === 403) {
           await invalidatePermissions();
+          contentsLogger.info('permission_invalidated_after_403', {
+            operation: 'create_content',
+            status: resolvedError.status,
+            error_code: resolvedError.code,
+          });
         }
         setMutationError(resolvedError);
+        logBrowserOperationFailure(contentsLogger, 'content_create_failed', resolvedError, {
+          operation: 'create_content',
+        });
         return false;
       }
     },
@@ -101,6 +123,10 @@ export const useContentDetail = (contentId: string | null): UseContentDetailResu
       return;
     }
 
+    logBrowserOperationStart(contentsLogger, 'content_detail_refetch_started', {
+      operation: 'get_content_detail',
+      content_id: contentId,
+    });
     setIsLoading(true);
     setError(null);
 
@@ -111,14 +137,29 @@ export const useContentDetail = (contentId: string | null): UseContentDetailResu
         history: historyResponse.data,
       });
       setHistory(historyResponse.data);
+      logBrowserOperationSuccess(contentsLogger, 'content_detail_refetch_succeeded', {
+        operation: 'get_content_detail',
+        content_id: contentId,
+        history_count: historyResponse.data.length,
+      });
     } catch (cause) {
       const resolvedError = asIamError(cause);
       if (resolvedError.status === 403) {
         await invalidatePermissions();
+        contentsLogger.info('permission_invalidated_after_403', {
+          operation: 'get_content_detail',
+          status: resolvedError.status,
+          error_code: resolvedError.code,
+          content_id: contentId,
+        });
       }
       setContent(null);
       setHistory([]);
       setError(resolvedError);
+      logBrowserOperationFailure(contentsLogger, 'content_detail_refetch_failed', resolvedError, {
+        operation: 'get_content_detail',
+        content_id: contentId,
+      });
     } finally {
       setIsLoading(false);
     }
@@ -134,16 +175,34 @@ export const useContentDetail = (contentId: string | null): UseContentDetailResu
       if (!contentId) {
         return false;
       }
+      logBrowserOperationStart(contentsLogger, 'content_update_started', {
+        operation: 'update_content',
+        content_id: contentId,
+      });
       try {
         await updateContent(contentId, payload);
         await refetch();
+        logBrowserOperationSuccess(contentsLogger, 'content_update_succeeded', {
+          operation: 'update_content',
+          content_id: contentId,
+        });
         return true;
       } catch (cause) {
         const resolvedError = asIamError(cause);
         if (resolvedError.status === 403) {
           await invalidatePermissions();
+          contentsLogger.info('permission_invalidated_after_403', {
+            operation: 'update_content',
+            status: resolvedError.status,
+            error_code: resolvedError.code,
+            content_id: contentId,
+          });
         }
         setMutationError(resolvedError);
+        logBrowserOperationFailure(contentsLogger, 'content_update_failed', resolvedError, {
+          operation: 'update_content',
+          content_id: contentId,
+        });
         return false;
       }
     },

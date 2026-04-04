@@ -2,10 +2,10 @@
   "version": 1,
   "metrics": ["lines", "statements", "functions", "branches"],
   "globalFloors": {
-    "lines": 10,
-    "statements": 10,
-    "functions": 20,
-    "branches": 20
+    "lines": 85,
+    "statements": 85,
+    "functions": 85,
+    "branches": 85
   },
   "maxAllowedDropPctPoints": 0.5,
   "exemptProjects": [

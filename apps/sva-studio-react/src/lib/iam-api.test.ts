@@ -29,6 +29,7 @@ import {
   getDataExportStatus,
   getInstance,
   getInstanceKeycloakStatus,
+  getRuntimeHealth,
   getMyDataSubjectRights,
   deactivateOrganization,
   getGroup,
@@ -654,6 +655,7 @@ describe('iam-api instance helpers', () => {
       authRealm: 'demo',
       authClientId: 'sva-studio',
     });
+    await getRuntimeHealth();
     await getInstanceKeycloakStatus('demo');
     await reconcileInstanceKeycloak('demo', {
       tenantAdminTemporaryPassword: 'test-temp-password',
@@ -696,11 +698,16 @@ describe('iam-api instance helpers', () => {
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
       5,
-      '/api/v1/iam/instances/demo/keycloak/status',
+      '/api/v1/iam/health/ready',
       expect.objectContaining({ credentials: 'include' })
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
       6,
+      '/api/v1/iam/instances/demo/keycloak/status',
+      expect.objectContaining({ credentials: 'include' })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      7,
       '/api/v1/iam/instances/demo/keycloak/reconcile',
       expect.objectContaining({
         method: 'POST',
@@ -710,7 +717,7 @@ describe('iam-api instance helpers', () => {
       })
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
-      7,
+      8,
       '/api/v1/iam/instances/demo/activate',
       expect.objectContaining({
         method: 'POST',
@@ -721,7 +728,7 @@ describe('iam-api instance helpers', () => {
       })
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
-      8,
+      9,
       '/api/v1/iam/instances/demo/suspend',
       expect.objectContaining({
         method: 'POST',
@@ -729,7 +736,7 @@ describe('iam-api instance helpers', () => {
       })
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
-      9,
+      10,
       '/api/v1/iam/instances/demo/archive',
       expect.objectContaining({
         method: 'POST',

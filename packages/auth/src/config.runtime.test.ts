@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { TenantAuthResolutionError } from './runtime-errors.js';
 
 type MockInstance = {
   instanceId: string;
@@ -10,7 +11,7 @@ type MockInstance = {
 };
 
 const state: {
-  instanceConfig: { instanceId?: string } | null;
+  instanceConfig: { canonicalAuthHost: string; instanceId?: string; parentDomain: string } | null;
   instanceById: MockInstance | null;
   instanceByHostname: MockInstance | null;
   loadInstanceByHostnameError: Error | null;
@@ -18,7 +19,11 @@ const state: {
   authStateSecret: string | null;
   instanceAuthClientSecretCiphertext: string | null;
 } = {
-  instanceConfig: { instanceId: 'bb-guben' },
+  instanceConfig: {
+    canonicalAuthHost: 'studio.smart-village.app',
+    instanceId: 'bb-guben',
+    parentDomain: 'studio.smart-village.app',
+  },
   instanceById: null,
   instanceByHostname: null,
   loadInstanceByHostnameError: null,
@@ -46,6 +51,10 @@ vi.mock('@sva/sdk/server', () => ({
     error: vi.fn(),
   })),
   getInstanceConfig: vi.fn(() => state.instanceConfig),
+  isCanonicalAuthHost: vi.fn((host: string) => {
+    const canonicalAuthHost = 'studio.smart-village.app';
+    return host.toLowerCase().replace(/:\d+$/, '').replace(/\.$/, '') === canonicalAuthHost;
+  }),
 }));
 
 vi.mock('./runtime-secrets.server.js', () => ({
@@ -84,7 +93,11 @@ describe('runtime auth config resolution', () => {
       SVA_TRUST_FORWARDED_HEADERS: 'true',
     };
     delete process.env.KEYCLOAK_ADMIN_BASE_URL;
-    state.instanceConfig = { instanceId: 'bb-guben' };
+    state.instanceConfig = {
+      canonicalAuthHost: 'studio.smart-village.app',
+      instanceId: 'bb-guben',
+      parentDomain: 'studio.smart-village.app',
+    };
     state.instanceById = null;
     state.instanceByHostname = null;
     state.loadInstanceByHostnameError = null;
@@ -212,12 +225,18 @@ describe('runtime auth config resolution', () => {
     await expect(resolveAuthConfigForRequest(request)).resolves.toEqual(getAuthConfig());
   });
 
-  it('falls back to the global auth config when hostname lookup fails', async () => {
+  it('fails fast when hostname lookup fails for a tenant host', async () => {
     state.loadInstanceByHostnameError = new Error('db offline');
 
     const request = new Request('https://bb-guben.studio.smart-village.app/admin');
 
-    await expect(resolveAuthConfigForRequest(request)).resolves.toEqual(getAuthConfig());
+    await expect(resolveAuthConfigForRequest(request)).rejects.toBeInstanceOf(TenantAuthResolutionError);
+  });
+
+  it('fails fast when a tenant host does not resolve to a registry entry', async () => {
+    const request = new Request('https://bb-guben.studio.smart-village.app/admin');
+
+    await expect(resolveAuthConfigForRequest(request)).rejects.toBeInstanceOf(TenantAuthResolutionError);
   });
 
   it('rejects inactive tenant hosts', async () => {

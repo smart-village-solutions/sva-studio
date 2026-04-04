@@ -222,3 +222,36 @@ export type HealthReadyResponse = {
   readonly cacheStatus: ReadinessStatus;
   readonly checkedAt: string;
 };
+
+export type RuntimeDependencyStatus = 'ready' | 'degraded' | 'not_ready' | 'unknown';
+
+export type RuntimeDependencyKey = 'authorizationCache' | 'database' | 'keycloak' | 'redis';
+
+export type RuntimeDependencyHealth = {
+  readonly reasonCode?: string;
+  readonly status: RuntimeDependencyStatus;
+};
+
+export type RuntimeHealthServices = Readonly<Record<RuntimeDependencyKey, RuntimeDependencyHealth>>;
+
+export type RuntimeHealthResponse = {
+  readonly checks: {
+    readonly authorizationCache: {
+      readonly coldStart: boolean;
+      readonly consecutiveRedisFailures: number;
+      readonly lastRedisLatencyMs?: number;
+      readonly recomputePerMinute: number;
+      readonly status: ReadinessStatus;
+    };
+    readonly db: boolean;
+    readonly diagnostics?: Record<string, unknown>;
+    readonly errors: Readonly<Record<string, string>>;
+    readonly keycloak: boolean;
+    readonly redis: boolean;
+    readonly services: RuntimeHealthServices;
+  };
+  readonly path: string;
+  readonly requestId?: string;
+  readonly status: 'ready' | 'degraded' | 'not_ready';
+  readonly timestamp: string;
+};

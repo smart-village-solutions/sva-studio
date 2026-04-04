@@ -5,6 +5,13 @@ import { LEGAL_ACCEPTANCE_REQUIRED_EVENT } from '../lib/iam-api';
 import { AuthProvider } from '../providers/auth-provider';
 import { LegalTextAcceptanceDialog } from './LegalTextAcceptanceDialog';
 
+const browserLoggerMock = vi.hoisted(() => ({
+  debug: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+}));
+
 const getMyPendingLegalTextsMock = vi.fn();
 const acceptLegalTextMock = vi.fn();
 const asIamErrorMock = vi.fn();
@@ -18,6 +25,10 @@ vi.mock('../lib/iam-api', async () => {
     asIamError: (...args: unknown[]) => asIamErrorMock(...args),
   };
 });
+
+vi.mock('@sva/sdk/logging', () => ({
+  createBrowserLogger: () => browserLoggerMock,
+}));
 
 describe('LegalTextAcceptanceDialog', () => {
   let assignMock: ReturnType<typeof vi.fn>;
@@ -52,6 +63,10 @@ describe('LegalTextAcceptanceDialog', () => {
 
   afterEach(() => {
     cleanup();
+    browserLoggerMock.debug.mockReset();
+    browserLoggerMock.info.mockReset();
+    browserLoggerMock.warn.mockReset();
+    browserLoggerMock.error.mockReset();
     vi.unstubAllGlobals();
   });
 

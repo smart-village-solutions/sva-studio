@@ -3,6 +3,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useInstances } from './use-instances';
 
+const browserLoggerMock = vi.hoisted(() => ({
+  debug: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+}));
+
 const listInstancesMock = vi.fn();
 const getInstanceMock = vi.fn();
 const getInstanceKeycloakStatusMock = vi.fn();
@@ -50,6 +57,10 @@ vi.mock('../lib/iam-api', () => ({
 
 vi.mock('../providers/auth-provider', () => ({
   useAuth: () => authMockValue,
+}));
+
+vi.mock('@sva/sdk/logging', () => ({
+  createBrowserLogger: () => browserLoggerMock,
 }));
 
 describe('useInstances', () => {
@@ -142,6 +153,12 @@ describe('useInstances', () => {
 
     expect(result.current.selectedInstance?.instanceId).toBe('demo');
     expect(result.current.selectedInstance?.keycloakStatus).toEqual({ realmExists: true });
+    expect(browserLoggerMock.debug).toHaveBeenCalledWith(
+      'instance_detail_load_started',
+      expect.objectContaining({
+        instance_id: 'demo',
+      })
+    );
 
     act(() => {
       result.current.clearSelectedInstance();
@@ -184,6 +201,13 @@ describe('useInstances', () => {
     expect(suspendInstanceMock).toHaveBeenCalledTimes(1);
     expect(archiveInstanceMock).toHaveBeenCalledTimes(1);
     expect(getInstanceMock).toHaveBeenCalled();
+    expect(browserLoggerMock.info).toHaveBeenCalledWith(
+      'instance_mutation_succeeded',
+      expect.objectContaining({
+        operation: 'archive_instance',
+        instance_id: 'demo',
+      })
+    );
   });
 
   it('invalidates permissions on forbidden load and mutation failures', async () => {

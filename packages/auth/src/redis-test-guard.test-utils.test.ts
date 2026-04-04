@@ -51,4 +51,5 @@ describe('ensureRedisAvailabilityChecked', () => {
       '[auth:test:unit] Skipping Redis-dependent tests because Redis is unavailable: ENOTFOUND redis'
     );
   });
+
 });

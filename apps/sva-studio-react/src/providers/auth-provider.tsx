@@ -1,4 +1,10 @@
 import React from 'react';
+import {
+  createOperationLogger,
+  logBrowserOperationFailure,
+  logBrowserOperationStart,
+  logBrowserOperationSuccess,
+} from '../lib/browser-operation-logging';
 import { createLoginHref } from '../lib/auth-navigation';
 
 type SessionUser = {
@@ -35,6 +41,7 @@ const AUTH_LOGOUT_ENDPOINT = '/auth/logout';
 const SILENT_SSO_MESSAGE_TYPE = 'sva-auth:silent-sso';
 const SILENT_SSO_TIMEOUT_MS = process.env.NODE_ENV === 'test' ? 25 : 8_000;
 const AUTH_DEBUG_ENABLED = process.env.NODE_ENV !== 'production';
+const authLogger = createOperationLogger('auth-provider', AUTH_DEBUG_ENABLED ? 'debug' : 'info');
 
 const AuthContext = React.createContext<AuthContextValue | null>(null);
 
@@ -68,11 +75,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   }, []);
 
   const logAuthDebug = React.useCallback((message: string, details: Record<string, unknown> = {}) => {
-    if (!AUTH_DEBUG_ENABLED || typeof globalThis.console?.info !== 'function') {
+    if (!AUTH_DEBUG_ENABLED) {
       return;
     }
 
-    globalThis.console.info(`[auth-provider] ${message}`, details);
+    authLogger.debug(message, details);
   }, []);
 
   const attemptSilentSessionRecovery = React.useCallback(async (): Promise<boolean> => {
@@ -84,6 +91,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
 
     return new Promise<boolean>((resolve) => {
+      logBrowserOperationStart(authLogger, 'auth_silent_recovery_started', {
+        operation: 'silent_session_recovery',
+        pathname: currentWindow.location.pathname,
+      });
       const iframe = currentDocument.createElement('iframe');
       iframe.hidden = true;
       iframe.setAttribute('title', 'silent-auth-recovery');
@@ -97,27 +108,40 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         currentWindow.removeEventListener('message', handleMessage);
         currentWindow.clearTimeout(timeoutId);
         iframe.remove();
+        authLogger.info(result ? 'auth_silent_recovery_succeeded' : 'auth_silent_recovery_failed', {
+          operation: 'silent_session_recovery',
+          result: result ? 'succeeded' : 'failed',
+        });
         resolve(result);
       };
 
       const handleMessage = (event: MessageEvent) => {
         if (event.origin !== currentWindow.location.origin) {
+          logAuthDebug('auth_silent_recovery_ignored_origin', { origin: event.origin });
           return;
         }
 
         if (!event.data || typeof event.data !== 'object') {
+          logAuthDebug('auth_silent_recovery_invalid_payload', { reason: 'non_object_payload' });
           return;
         }
 
         const payload = event.data as { type?: unknown; status?: unknown };
         if (payload.type !== SILENT_SSO_MESSAGE_TYPE) {
+          logAuthDebug('auth_silent_recovery_invalid_payload', { reason: 'unexpected_type' });
           return;
         }
 
         cleanup(payload.status === 'success');
       };
 
-      const timeoutId = currentWindow.setTimeout(() => cleanup(false), SILENT_SSO_TIMEOUT_MS);
+      const timeoutId = currentWindow.setTimeout(() => {
+        authLogger.warn('auth_silent_recovery_timed_out', {
+          operation: 'silent_session_recovery',
+          timeout_ms: SILENT_SSO_TIMEOUT_MS,
+        });
+        cleanup(false);
+      }, SILENT_SSO_TIMEOUT_MS);
       currentWindow.addEventListener('message', handleMessage);
       if (process.env.NODE_ENV !== 'test') {
         iframe.src = `${createLoginHref()}&silent=1`;
@@ -136,9 +160,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
 
     try {
-      logAuthDebug('loadUser:start', { silent, path: globalThis.location?.pathname ?? null });
+      logBrowserOperationStart(authLogger, 'auth_session_load_started', {
+        operation: silent ? 'invalidate_permissions' : 'load_session',
+        silent,
+        pathname: globalThis.location?.pathname ?? null,
+      });
       let response = await fetch(AUTH_ME_ENDPOINT, { credentials: 'include' });
-      logAuthDebug('loadUser:response', {
+      logAuthDebug('auth_session_load_response', {
         silent,
         status: response.status,
         ok: response.ok,
@@ -149,9 +177,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           setIsRecoveringSession(true);
         }
 
-        logAuthDebug('loadUser:attemptSilentRecovery', { silent });
         const recovered = await attemptSilentSessionRecovery();
-        logAuthDebug('loadUser:silentRecoveryResult', { recovered });
+        logAuthDebug('auth_silent_recovery_result', { recovered });
 
         if (isMountedRef.current) {
           setIsRecoveringSession(false);
@@ -159,7 +186,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
         if (recovered) {
           response = await fetch(AUTH_ME_ENDPOINT, { credentials: 'include' });
-          logAuthDebug('loadUser:responseAfterRecovery', {
+          logAuthDebug('auth_session_load_response_after_recovery', {
             status: response.status,
             ok: response.ok,
           });
@@ -171,7 +198,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           setUser(null);
           setHasResolvedSession(true);
         }
-        logAuthDebug('loadUser:unauthenticated', { silent, status: response.status });
+        authLogger.info('auth_session_unauthenticated', {
+          operation: silent ? 'invalidate_permissions' : 'load_session',
+          silent,
+          status: response.status,
+        });
         return;
       }
 
@@ -180,8 +211,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setUser(payload);
         setHasResolvedSession(true);
       }
-      logAuthDebug('loadUser:authenticated', {
-        hasUser: Boolean(payload),
+      logBrowserOperationSuccess(authLogger, 'auth_session_authenticated', {
+        operation: silent ? 'invalidate_permissions' : 'load_session',
+        silent,
+        has_user: Boolean(payload),
+        roles_count: payload?.roles.length ?? 0,
+        instance_id: payload?.instanceId,
       });
     } catch (cause) {
       if (isMountedRef.current) {
@@ -190,8 +225,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setHasResolvedSession(true);
         setIsRecoveringSession(false);
       }
-      logAuthDebug('loadUser:error', {
-        message: cause instanceof Error ? cause.message : String(cause),
+      logBrowserOperationFailure(authLogger, 'auth_session_load_failed', cause, {
+        operation: silent ? 'invalidate_permissions' : 'load_session',
+        silent,
       });
     } finally {
       if (!silent && isMountedRef.current) {
@@ -213,11 +249,22 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   }, [loadUser]);
 
   const logout = React.useCallback(async () => {
+    logBrowserOperationStart(authLogger, 'auth_logout_started', {
+      operation: 'logout',
+    });
     try {
       await fetch(AUTH_LOGOUT_ENDPOINT, {
         method: 'POST',
         credentials: 'include',
       });
+      logBrowserOperationSuccess(authLogger, 'auth_logout_completed', {
+        operation: 'logout',
+      });
+    } catch (cause) {
+      logBrowserOperationFailure(authLogger, 'auth_logout_failed', cause, {
+        operation: 'logout',
+      });
+      throw cause;
     } finally {
       if (isMountedRef.current) {
         setUser(null);

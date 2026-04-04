@@ -33,8 +33,16 @@ export const useLegalTexts = (): UseLegalTextsResult => {
     mutationError: adminList.mutationError,
     refetch: adminList.refetch,
     clearMutationError: adminList.clearMutationError,
-    createLegalText: (payload) => adminList.runMutation(() => createLegalText(payload)),
+    createLegalText: (payload) =>
+      adminList.runMutation(() => createLegalText(payload), {
+        operation: 'create_legal_text',
+        event: 'legal_text_mutation',
+      }),
     updateLegalText: (legalTextVersionId, payload) =>
-      adminList.runMutation(() => updateLegalText(legalTextVersionId, payload)),
+      adminList.runMutation(() => updateLegalText(legalTextVersionId, payload), {
+        operation: 'update_legal_text',
+        event: 'legal_text_mutation',
+        legal_text_version_id: legalTextVersionId,
+      }),
   };
 };

@@ -22,6 +22,13 @@ type AppShellProps = Readonly<{
   sidebarSlot?: React.ReactNode;
 }>;
 
+const LazyRuntimeHealthIndicator = React.lazy(async () => {
+  const module = await import('./RuntimeHealthIndicator');
+  return {
+    default: module.RuntimeHealthIndicator,
+  };
+});
+
 /**
  * Rendert das anwendungsweite Shell-Layout mit austauschbarem Sidebar-Slot.
  *
@@ -82,6 +89,9 @@ export default function AppShell({
             <div className="space-y-6">
               <AppBreadcrumbs pathname={currentPathname} />
               {children}
+              <React.Suspense fallback={null}>
+                <LazyRuntimeHealthIndicator />
+              </React.Suspense>
             </div>
           )}
         </main>

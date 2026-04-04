@@ -3,6 +3,17 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { AuthProvider, useAuth } from './auth-provider';
 
+const browserLoggerMock = vi.hoisted(() => ({
+  debug: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+}));
+
+vi.mock('@sva/sdk/logging', () => ({
+  createBrowserLogger: () => browserLoggerMock,
+}));
+
 const AuthProbe = () => {
   const auth = useAuth();
 
@@ -30,6 +41,10 @@ const AuthProbe = () => {
 describe('AuthProvider', () => {
   afterEach(() => {
     cleanup();
+    browserLoggerMock.debug.mockReset();
+    browserLoggerMock.info.mockReset();
+    browserLoggerMock.warn.mockReset();
+    browserLoggerMock.error.mockReset();
     vi.unstubAllGlobals();
   });
 
@@ -62,6 +77,13 @@ describe('AuthProvider', () => {
     expect(screen.getByTestId('has-resolved-session').textContent).toBe('yes');
     expect(screen.getByTestId('user-id').textContent).toBe('user-1');
     expect(screen.getByTestId('user-roles').textContent).toBe('editor');
+    expect(browserLoggerMock.info).toHaveBeenCalledWith(
+      'auth_session_authenticated',
+      expect.objectContaining({
+        operation: 'load_session',
+        instance_id: 'instance-1',
+      })
+    );
   });
 
   it('falls back to unauthenticated user when /auth/me is not ok', async () => {
@@ -86,6 +108,12 @@ describe('AuthProvider', () => {
     expect(screen.getByTestId('authenticated').textContent).toBe('no');
     expect(screen.getByTestId('has-resolved-session').textContent).toBe('yes');
     expect(screen.getByTestId('user-id').textContent).toBe('none');
+    expect(browserLoggerMock.info).toHaveBeenCalledWith(
+      'auth_session_unauthenticated',
+      expect.objectContaining({
+        status: 401,
+      })
+    );
   });
 
   it('attempts silent session recovery once after a 401 and retries the session lookup', async () => {
@@ -132,6 +160,12 @@ describe('AuthProvider', () => {
       expect(screen.getByTestId('is-recovering-session').textContent).toBe('no');
     });
     expect(screen.getByTestId('has-resolved-session').textContent).toBe('yes');
+    expect(browserLoggerMock.info).toHaveBeenCalledWith(
+      'auth_silent_recovery_succeeded',
+      expect.objectContaining({
+        operation: 'silent_session_recovery',
+      })
+    );
   });
 
   it('stays unauthenticated when silent recovery fails', async () => {

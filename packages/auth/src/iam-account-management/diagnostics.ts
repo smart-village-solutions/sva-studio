@@ -1,5 +1,6 @@
 import type { ApiErrorCode } from '@sva/core';
 import * as otelApi from '@opentelemetry/api';
+import { IamSchemaDriftError } from '../runtime-errors.js';
 
 type DiagnosticAttributes = Record<string, boolean | number | string | undefined>;
 
@@ -208,6 +209,20 @@ export const classifyIamDiagnosticError = (
   fallbackMessage: string,
   requestId?: string
 ): IamDiagnosticErrorShape => {
+  if (error instanceof IamSchemaDriftError) {
+    return buildDatabaseDiagnosticError({
+      status: 503,
+      code: 'database_unavailable',
+      fallbackMessage,
+      requestId,
+      reasonCode: 'schema_drift',
+      detailsBase: {
+        expected_migration: error.expectedMigration,
+        schema_object: error.schemaObject,
+      },
+    });
+  }
+
   const pgError = error as PgLikeError;
   const schemaObject = buildSchemaObject(pgError);
   const expectedMigration = lookupExpectedMigration(schemaObject);

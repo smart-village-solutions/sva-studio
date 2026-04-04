@@ -1,6 +1,9 @@
+import { createSdkLogger } from '@sva/sdk/server';
 import type { InstanceRegistryRepository } from '@sva/data';
 import type { CreateInstanceProvisioningInput, InstanceRegistryServiceDeps } from './types.js';
 import { createAuditDetails } from './service-helpers.js';
+
+const logger = createSdkLogger({ component: 'iam-instance-registry-provisioning', level: 'info' });
 
 export const createProvisioningArtifacts = async (
   repository: InstanceRegistryRepository,
@@ -36,6 +39,12 @@ export const provisionInstanceAuth = async (
     return instance;
   }
 
+  logger.info('provisioning_step_started', {
+    operation: 'create_instance',
+    step_key: 'keycloak',
+    instance_id: instance.instanceId,
+    request_id: input.requestId,
+  });
   await deps.repository.createProvisioningRun({
     instanceId: instance.instanceId,
     operation: 'create',
@@ -75,6 +84,13 @@ export const provisionInstanceAuth = async (
       requestId: input.requestId,
     });
 
+    logger.info('provisioning_step_completed', {
+      operation: 'create_instance',
+      step_key: 'keycloak',
+      instance_id: validatedInstance.instanceId,
+      status: validatedInstance.status,
+      request_id: input.requestId,
+    });
     return validatedInstance;
   } catch (error) {
     const failedInstance =
@@ -97,6 +113,13 @@ export const provisionInstanceAuth = async (
       errorMessage: error instanceof Error ? error.message : String(error),
     });
 
+    logger.error('provisioning_step_failed', {
+      operation: 'create_instance',
+      step_key: 'keycloak',
+      instance_id: failedInstance.instanceId,
+      request_id: input.requestId,
+      error: error instanceof Error ? error.message : String(error),
+    });
     return failedInstance;
   }
 };

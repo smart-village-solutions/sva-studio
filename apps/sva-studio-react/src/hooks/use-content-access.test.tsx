@@ -3,6 +3,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useContentAccess } from './use-content-access';
 
+const browserLoggerMock = vi.hoisted(() => ({
+  debug: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+}));
 const authMockValue = {
   user: {
     id: 'editor-1',
@@ -33,6 +39,10 @@ vi.mock('../providers/auth-provider', () => ({
   useAuth: () => authMockValue,
 }));
 
+vi.mock('@sva/sdk/logging', () => ({
+  createBrowserLogger: () => browserLoggerMock,
+}));
+
 describe('useContentAccess', () => {
   beforeEach(() => {
     authMockValue.user = {
@@ -44,6 +54,10 @@ describe('useContentAccess', () => {
     authMockValue.invalidatePermissions.mockReset();
     asIamErrorMock.mockReset();
     asIamErrorMock.mockImplementation((error: unknown) => error);
+    browserLoggerMock.debug.mockReset();
+    browserLoggerMock.info.mockReset();
+    browserLoggerMock.warn.mockReset();
+    browserLoggerMock.error.mockReset();
   });
 
   afterEach(() => {
@@ -113,6 +127,10 @@ describe('useContentAccess', () => {
       credentials: 'include',
       signal: expect.any(AbortSignal),
     });
+    expect(browserLoggerMock.debug).toHaveBeenCalledWith(
+      'content_access_load_succeeded',
+      expect.objectContaining({ operation: 'load_content_access', instance_id: 'de-musterhausen' })
+    );
   });
 
   it('invalidates permissions and exposes a server denied access state on 403', async () => {
@@ -138,6 +156,18 @@ describe('useContentAccess', () => {
     });
 
     expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
+    expect(browserLoggerMock.debug).toHaveBeenCalledWith(
+      'permission_invalidated_after_403',
+      expect.objectContaining({ operation: 'load_content_access', instance_id: 'de-musterhausen' })
+    );
+    expect(browserLoggerMock.warn).toHaveBeenCalledWith(
+      'content_access_load_failed',
+      expect.objectContaining({
+        operation: 'load_content_access',
+        instance_id: 'de-musterhausen',
+        status: 403,
+      })
+    );
   });
 
   it('stores non-forbidden errors without invalidating permissions', async () => {

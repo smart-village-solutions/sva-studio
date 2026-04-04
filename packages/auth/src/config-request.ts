@@ -3,6 +3,7 @@ import type { ResolvedTenantClientSecret } from './config-tenant-secret.js';
 import { createSdkLogger, getInstanceConfig } from '@sva/sdk/server';
 import { isTrafficEnabledInstanceStatus } from '@sva/core';
 import { loadInstanceByHostname } from '@sva/data/server';
+import { TenantAuthResolutionError, type TenantAuthResolutionFailureReason } from './runtime-errors.js';
 
 const logger = createSdkLogger({ component: 'iam-auth-config', level: 'info' });
 
@@ -30,6 +31,30 @@ export const logGlobalAuthResolution = (request: Request, host: string, requestO
   });
 };
 
+export const logTenantAuthResolutionFailure = (
+  request: Request,
+  input: {
+    host: string;
+    requestOrigin: string;
+    reason: TenantAuthResolutionFailureReason;
+    error?: unknown;
+  }
+): void => {
+  const instanceConfig = getInstanceConfig();
+  logger.error('tenant_auth_resolution_failed', {
+    operation: 'tenant_auth_resolution',
+    host: input.host,
+    request_origin: input.requestOrigin,
+    forwarded_host_header: request.headers.get('x-forwarded-host') ?? undefined,
+    request_host_header: request.headers.get('host') ?? undefined,
+    forwarded_header_present: request.headers.get('forwarded') ? 'true' : 'false',
+    canonical_auth_host: instanceConfig?.canonicalAuthHost,
+    parent_domain: instanceConfig?.parentDomain,
+    reason: input.reason,
+    error: input.error instanceof Error ? input.error.message : input.error ? String(input.error) : undefined,
+  });
+};
+
 export const logInstanceConfigMissing = (host: string, requestOrigin: string): void => {
   logger.info('tenant_auth_resolution_summary', {
     operation: 'tenant_auth_resolution',
@@ -48,15 +73,18 @@ export const logInstanceConfigMissing = (host: string, requestOrigin: string): v
 
 export const loadRegistryEntryForHost = async (host: string, requestOrigin: string): Promise<RegistryEntry> =>
   loadInstanceByHostname(host).catch((error) => {
-    logger.warn('Tenant hostname lookup failed during auth resolution; falling back to global auth config', {
+    logger.error('Tenant hostname lookup failed during auth resolution', {
       operation: 'tenant_auth_resolution',
-      auth_resolution_mode: 'global_fallback',
       host,
       request_origin: requestOrigin,
       reason: 'tenant_lookup_failed',
       error: error instanceof Error ? error.message : String(error),
     });
-    return null;
+    throw new TenantAuthResolutionError({
+      host,
+      reason: 'tenant_lookup_failed',
+      cause: error,
+    });
   });
 
 export const assertActiveRegistryEntry = (host: string, requestOrigin: string, registryEntry: NonNullable<RegistryEntry>): void => {

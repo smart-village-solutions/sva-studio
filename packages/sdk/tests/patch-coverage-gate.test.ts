@@ -165,7 +165,7 @@ describe('patch coverage gate', () => {
       rootDir,
       baseRef: 'main',
       headRef: 'HEAD',
-      targetPct: 80,
+      targetPct: 85,
     });
 
     expect(result.passed).toBe(true);
@@ -189,7 +189,7 @@ describe('patch coverage gate', () => {
       rootDir,
       baseRef: 'main',
       headRef: 'HEAD',
-      targetPct: 80,
+      targetPct: 85,
     });
 
     expect(result.passed).toBe(false);
@@ -215,7 +215,7 @@ describe('patch coverage gate', () => {
       rootDir,
       baseRef: 'main',
       headRef: 'HEAD',
-      targetPct: 80,
+      targetPct: 85,
     });
 
     expect(result.passed).toBe(true);
@@ -242,7 +242,7 @@ describe('patch coverage gate', () => {
       rootDir,
       baseRef: 'main',
       headRef: 'HEAD',
-      targetPct: 80,
+      targetPct: 85,
     });
 
     expect(result.passed).toBe(true);
@@ -270,7 +270,7 @@ describe('patch coverage gate', () => {
       rootDir,
       baseRef: 'main',
       headRef: 'HEAD',
-      targetPct: 80,
+      targetPct: 85,
     });
 
     expect(result.passed).toBe(true);
@@ -308,7 +308,7 @@ describe('patch coverage gate', () => {
       rootDir,
       baseRef: 'main',
       headRef: 'HEAD',
-      targetPct: 80,
+      targetPct: 85,
     });
 
     expect(result.passed).toBe(true);

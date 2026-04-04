@@ -134,6 +134,7 @@ vi.mock('@opentelemetry/api', () => ({
 }));
 
 vi.mock('./redis.server', () => ({
+  getLastRedisError: vi.fn(() => (state.redisAvailable ? null : 'Redis ping failed')),
   isRedisAvailable: vi.fn(async () => state.redisAvailable),
 }));
 
@@ -155,12 +156,34 @@ vi.mock('pg', () => ({
     async connect() {
       return {
         async query(text: string, values?: readonly unknown[]) {
+          const isUserDetailSchemaSupportQuery =
+            text.includes("to_regclass('iam.account_permissions')") &&
+            text.includes('permissions_action_exists') &&
+            text.includes('permissions_scope_exists');
+
           if (state.queryHandler) {
             const handled = state.queryHandler(text, values);
-            if (handled) {
+            if (handled && (!isUserDetailSchemaSupportQuery || handled.rowCount > 0)) {
               return handled;
             }
           }
+
+          if (isUserDetailSchemaSupportQuery) {
+            return {
+              rowCount: 1,
+              rows: [
+                {
+                  account_permissions_exists: true,
+                  permissions_action_exists: true,
+                  permissions_resource_type_exists: true,
+                  permissions_resource_id_exists: true,
+                  permissions_effect_exists: true,
+                  permissions_scope_exists: true,
+                },
+              ],
+            };
+          }
+
           return { rowCount: 0, rows: [] };
         },
         release() {
@@ -5705,6 +5728,12 @@ describe('iam-account-management additional handlers', () => {
           authorizationCache: expect.objectContaining({
             status: 'ready',
           }),
+          services: expect.objectContaining({
+            authorizationCache: expect.objectContaining({ status: 'ready' }),
+            database: expect.objectContaining({ status: 'ready' }),
+            keycloak: expect.objectContaining({ status: 'ready' }),
+            redis: expect.objectContaining({ status: 'ready' }),
+          }),
         }),
       })
     );
@@ -5771,6 +5800,13 @@ describe('iam-account-management additional handlers', () => {
 
   it('returns not_ready when dependencies fail', async () => {
     state.redisAvailable = false;
+    state.permissionCacheHealth = {
+      status: 'ready',
+      coldStart: false,
+      lastRedisLatencyMs: 12,
+      recomputePerMinute: 0,
+      consecutiveRedisFailures: 0,
+    };
     state.listRolesImpl = async () => {
       throw new Error('keycloak down');
     };
@@ -5800,6 +5836,21 @@ describe('iam-account-management additional handlers', () => {
           db: false,
           redis: false,
           keycloak: false,
+          services: expect.objectContaining({
+            authorizationCache: expect.objectContaining({ status: 'ready' }),
+            database: expect.objectContaining({
+              reasonCode: 'database_connection_failed',
+              status: 'not_ready',
+            }),
+            keycloak: expect.objectContaining({
+              reasonCode: 'keycloak_dependency_failed',
+              status: 'not_ready',
+            }),
+            redis: expect.objectContaining({
+              reasonCode: 'redis_ping_failed',
+              status: 'not_ready',
+            }),
+          }),
         }),
       })
     );

@@ -4,6 +4,7 @@ import { createSdkLogger } from '@sva/sdk/server';
 import { getAuthConfig, resolveAuthConfigFromSessionAuth } from '../config.js';
 import { client, getOidcConfig } from '../oidc.server.js';
 import { deleteSession, getSession, getSessionControlState, updateSession } from '../redis-session.server.js';
+import { SessionStoreUnavailableError } from '../runtime-errors.js';
 import { isTokenErrorLike } from '../shared/error-guards.js';
 import { buildLogContext } from '../shared/log-context.js';
 import { buildSessionUser, resolveSessionExpiry, TOKEN_REFRESH_SKEW_MS } from './shared.js';
@@ -121,6 +122,10 @@ const handleRefreshFailure = async (input: {
   workspaceId?: string;
   fallbackUser: SessionUser | null;
 }): Promise<SessionUser | null> => {
+  if (input.error instanceof SessionStoreUnavailableError) {
+    throw input.error;
+  }
+
   const now = Date.now();
   if (isTokenErrorLike(input.error)) {
     logger.warn('Token validation/refresh failed', {

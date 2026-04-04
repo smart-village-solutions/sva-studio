@@ -2,6 +2,12 @@ import React from 'react';
 
 import { acceptLegalText, asIamError, getMyPendingLegalTexts, LEGAL_ACCEPTANCE_REQUIRED_EVENT } from '../lib/iam-api';
 import {
+  createOperationLogger,
+  logBrowserOperationFailure,
+  logBrowserOperationStart,
+  logBrowserOperationSuccess,
+} from '../lib/browser-operation-logging';
+import {
   clearLegalAcceptanceReturnTo,
   readLegalAcceptanceReturnTo,
   storeLegalAcceptanceReturnTo,
@@ -19,6 +25,7 @@ type LegalTextAcceptanceDialogProps = Readonly<{
 }>;
 
 const EXEMPT_PATH_PREFIXES = ['/admin/legal-texts'];
+const legalAcceptanceLogger = createOperationLogger('legal-acceptance-dialog', 'debug');
 const isAcceptedUiReturnTo = (value: string | undefined): value is string =>
   typeof value === 'string' && value.startsWith('/') && !value.startsWith('//') && !value.startsWith('/api/') && !value.startsWith('/auth/');
 
@@ -56,12 +63,28 @@ export const LegalTextAcceptanceDialog = ({ pathname }: LegalTextAcceptanceDialo
       }
 
       try {
+        logBrowserOperationStart(legalAcceptanceLogger, 'pending_legal_texts_load_started', {
+          operation: 'get_my_pending_legal_texts',
+          pathname,
+          silent,
+        });
         const response = await getMyPendingLegalTexts();
         setPendingTexts(response.data);
         setLoadError(null);
         if (response.data.length > 0) {
           storeLegalAcceptanceReturnTo(pathname);
         }
+        logBrowserOperationSuccess(
+          legalAcceptanceLogger,
+          'pending_legal_texts_load_succeeded',
+          {
+            operation: 'get_my_pending_legal_texts',
+            pathname,
+            silent,
+            pending_count: response.data.length,
+          },
+          'debug'
+        );
         return response.data;
       } catch (error) {
         const iamError = asIamError(error);
@@ -71,6 +94,11 @@ export const LegalTextAcceptanceDialog = ({ pathname }: LegalTextAcceptanceDialo
         } else {
           setLoadError(t('admin.legalAcceptance.errorLoading'));
         }
+        logBrowserOperationFailure(legalAcceptanceLogger, 'pending_legal_texts_load_failed', iamError, {
+          operation: 'get_my_pending_legal_texts',
+          pathname,
+          silent,
+        });
         return [] as Awaited<ReturnType<typeof getMyPendingLegalTexts>>['data'];
       } finally {
         setIsLoadingPending(false);
@@ -98,6 +126,16 @@ export const LegalTextAcceptanceDialog = ({ pathname }: LegalTextAcceptanceDialo
         event instanceof CustomEvent && event.detail && typeof event.detail === 'object'
           ? (event.detail as { return_to?: string })
           : undefined;
+      logBrowserOperationSuccess(
+        legalAcceptanceLogger,
+        'legal_acceptance_required_event_received',
+        {
+          operation: 'handle_legal_acceptance_required',
+          pathname,
+          return_to: detail?.return_to,
+        },
+        'debug'
+      );
       storeLegalAcceptanceReturnTo(isAcceptedUiReturnTo(detail?.return_to) ? detail.return_to : pathname);
       void loadPendingTexts(true);
     };
@@ -120,6 +158,11 @@ export const LegalTextAcceptanceDialog = ({ pathname }: LegalTextAcceptanceDialo
     setLoadError(null);
 
     try {
+      logBrowserOperationStart(legalAcceptanceLogger, 'legal_accept_all_started', {
+        operation: 'accept_legal_texts',
+        instance_id: user.instanceId,
+        pending_count: pendingTexts.length,
+      });
       for (const legalText of pendingTexts) {
         await acceptLegalText({
           instanceId: user.instanceId,
@@ -134,10 +177,23 @@ export const LegalTextAcceptanceDialog = ({ pathname }: LegalTextAcceptanceDialo
       if (remaining.length === 0 && globalThis.window) {
         const returnTo = readLegalAcceptanceReturnTo();
         clearLegalAcceptanceReturnTo();
+        logBrowserOperationSuccess(legalAcceptanceLogger, 'legal_acceptance_redirecting', {
+          operation: 'accept_legal_texts',
+          instance_id: user.instanceId,
+          return_to: returnTo,
+        });
         globalThis.window.location.assign(returnTo);
       }
-    } catch {
+      logBrowserOperationSuccess(legalAcceptanceLogger, 'legal_accept_all_succeeded', {
+        operation: 'accept_legal_texts',
+        instance_id: user.instanceId,
+      });
+    } catch (error) {
       setLoadError(t('admin.legalAcceptance.errorAccepting'));
+      logBrowserOperationFailure(legalAcceptanceLogger, 'legal_accept_all_failed', error, {
+        operation: 'accept_legal_texts',
+        instance_id: user.instanceId,
+      });
     } finally {
       setIsSubmitting(false);
     }

@@ -228,10 +228,9 @@ export const isRedisAvailable = async (): Promise<boolean> => {
   } catch (error) {
     lastRedisError = error instanceof Error ? error.message : String(error);
     redisConnectionStatus = 0;
-    logger.warn('Redis unavailable, using in-memory fallback', {
+    logger.warn('Redis unavailable', {
       operation: 'redis_health_check',
       available: false,
-      fallback: 'in-memory',
       error: error instanceof Error ? error.message : String(error),
     });
     return false;

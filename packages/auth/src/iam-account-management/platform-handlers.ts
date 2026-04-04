@@ -1,4 +1,5 @@
-import { getWorkspaceContext } from '@sva/sdk/server';
+import { createSdkLogger, getWorkspaceContext } from '@sva/sdk/server';
+import type { RuntimeDependencyHealth, RuntimeHealthServices } from '@sva/core';
 
 import { getPermissionCacheHealth } from '../iam-authorization/shared.js';
 import { bootstrapAcceptanceAppDbUserIfNeeded } from '../postgres-app-user-bootstrap.server.js';
@@ -13,6 +14,28 @@ import {
 } from './shared.js';
 import { addActiveSpanEvent, annotateActiveSpan } from './diagnostics.js';
 import { runCriticalIamSchemaGuard, summarizeSchemaGuardFailures } from './schema-guard.js';
+
+const logger = createSdkLogger({ component: 'iam-platform-readiness', level: 'info' });
+
+const toDependencyStatus = (input: { failed: boolean; ready?: boolean }): RuntimeDependencyHealth['status'] => {
+  if (input.failed) {
+    return 'not_ready';
+  }
+  if (input.ready === true) {
+    return 'ready';
+  }
+  return 'unknown';
+};
+
+const toAuthorizationCacheStatus = (status: 'degraded' | 'failed' | 'ready'): RuntimeDependencyHealth['status'] => {
+  if (status === 'failed') {
+    return 'not_ready';
+  }
+  if (status === 'degraded') {
+    return 'degraded';
+  }
+  return 'ready';
+};
 
 export const readyInternal = async (request: Request): Promise<Response> => {
   const requestContext = getWorkspaceContext();
@@ -150,6 +173,29 @@ export const readyInternal = async (request: Request): Promise<Response> => {
     ...(redisStatus.ready ? {} : { redis: redisStatus.diagnostics }),
     ...(keycloakStatus.ready ? {} : { keycloak: keycloakStatus.diagnostics }),
   };
+  const services: RuntimeHealthServices = {
+    authorizationCache: {
+      reasonCode:
+        authorizationCache.status === 'ready'
+          ? undefined
+          : authorizationCache.status === 'degraded'
+            ? 'authorization_cache_degraded'
+            : 'authorization_cache_failed',
+      status: toAuthorizationCacheStatus(authorizationCache.status),
+    },
+    database: {
+      reasonCode: dbStatus.ready ? undefined : dbStatus.diagnostics?.reason_code,
+      status: toDependencyStatus({ failed: !dbStatus.ready, ready: dbStatus.ready }),
+    },
+    keycloak: {
+      reasonCode: keycloakStatus.ready ? undefined : keycloakStatus.diagnostics?.reason_code,
+      status: toDependencyStatus({ failed: !keycloakStatus.ready, ready: keycloakStatus.ready }),
+    },
+    redis: {
+      reasonCode: redisStatus.ready ? undefined : redisStatus.diagnostics?.reason_code,
+      status: toDependencyStatus({ failed: !redisStatus.ready, ready: redisStatus.ready }),
+    },
+  };
 
   annotateActiveSpan({
     'dependency.database.status': dbStatus.ready ? 'ready' : 'not_ready',
@@ -164,8 +210,45 @@ export const readyInternal = async (request: Request): Promise<Response> => {
     'dependency.keycloak.status': keycloakStatus.ready ? 'ready' : 'not_ready',
   });
 
+  const status = failed ? 'not_ready' : authorizationCache.status === 'degraded' ? 'degraded' : 'ready';
+  if (!dbStatus.ready) {
+    logger.error('iam_readiness_dependency_failed', {
+      operation: 'ready_internal',
+      dependency: 'database',
+      reason_code: dbStatus.diagnostics?.reason_code,
+      error: dbStatus.error,
+      request_id: requestContext.requestId,
+    });
+  }
+  if (!redisStatus.ready) {
+    logger.error('iam_readiness_dependency_failed', {
+      operation: 'ready_internal',
+      dependency: 'redis',
+      reason_code: redisStatus.diagnostics?.reason_code,
+      error: redisStatus.error,
+      request_id: requestContext.requestId,
+    });
+  }
+  if (!keycloakStatus.ready) {
+    logger.error('iam_readiness_dependency_failed', {
+      operation: 'ready_internal',
+      dependency: 'keycloak',
+      reason_code: keycloakStatus.diagnostics?.reason_code,
+      error: keycloakStatus.error,
+      request_id: requestContext.requestId,
+    });
+  }
+  if (authorizationCache.status === 'degraded') {
+    logger.warn('iam_readiness_degraded', {
+      operation: 'ready_internal',
+      dependency: 'authorization_cache',
+      reason_code: 'authorization_cache_degraded',
+      request_id: requestContext.requestId,
+    });
+  }
+
   return jsonResponse(failed ? 503 : 200, {
-    status: failed ? 'not_ready' : authorizationCache.status === 'degraded' ? 'degraded' : 'ready',
+    status,
     checks: {
       db: dbStatus.ready,
       redis: redisStatus.ready,
@@ -177,6 +260,7 @@ export const readyInternal = async (request: Request): Promise<Response> => {
       },
       diagnostics,
       authorizationCache,
+      services,
     },
     ...(requestContext.requestId ? { requestId: requestContext.requestId } : {}),
     timestamp: new Date().toISOString(),

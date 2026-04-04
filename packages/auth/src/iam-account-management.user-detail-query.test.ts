@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { resolveUserDetail } from './iam-account-management/user-detail-query';
+import { IamSchemaDriftError } from './runtime-errors.js';
 
 describe('resolveUserDetail', () => {
   it('maps groups, direct permissions and permission traces from the detail query', async () => {
@@ -213,31 +214,7 @@ describe('resolveUserDetail', () => {
     ).resolves.toBeUndefined();
   });
 
-  it('falls back to the legacy detail query when account permissions table is not available', async () => {
-    const legacyRow = {
-      id: 'bbbbbbbb-bbbb-4111-8bbb-bbbbbbbbbbbb',
-      keycloak_subject: 'keycloak-target-legacy',
-      username_ciphertext: 'legacy.user',
-      display_name_ciphertext: 'Legacy User',
-      email_ciphertext: 'legacy@example.com',
-      first_name_ciphertext: 'Legacy',
-      last_name_ciphertext: 'User',
-      phone_ciphertext: null,
-      position: null,
-      department: null,
-      preferred_language: 'de',
-      timezone: null,
-      avatar_url: null,
-      notes: null,
-      status: 'active',
-      last_login_at: null,
-      role_rows: [],
-      group_rows: [],
-      permission_rows: [{ permission_key: 'content.read' }],
-      direct_permission_rows: [],
-      permission_trace_rows: [],
-    };
-
+  it('fails fast when the account permissions table is not available', async () => {
     const query = vi
       .fn()
       .mockResolvedValueOnce({
@@ -251,73 +228,18 @@ describe('resolveUserDetail', () => {
             permissions_scope_exists: true,
           },
         ],
+      });
+
+    await expect(
+      resolveUserDetail({ query } as never, {
+        instanceId: 'de-musterhausen',
+        userId: 'bbbbbbbb-bbbb-4111-8bbb-bbbbbbbbbbbb',
       })
-      .mockResolvedValueOnce({ rows: [legacyRow] });
-
-    const detail = await resolveUserDetail({ query } as never, {
-      instanceId: 'de-musterhausen',
-      userId: 'bbbbbbbb-bbbb-4111-8bbb-bbbbbbbbbbbb',
-    });
-
-    expect(query).toHaveBeenCalledTimes(2);
-    expect(String(query.mock.calls[0]?.[0])).toContain("to_regclass('iam.account_permissions')");
-    expect(detail).toMatchObject({
-      id: 'bbbbbbbb-bbbb-4111-8bbb-bbbbbbbbbbbb',
-      keycloakSubject: 'keycloak-target-legacy',
-      permissions: ['content.read'],
-      directPermissions: [],
-      permissionTrace: [],
-    });
+    ).rejects.toBeInstanceOf(IamSchemaDriftError);
+    expect(query).toHaveBeenCalledTimes(1);
   });
 
-  it('falls back to the legacy permission projection when structured permission columns are not available', async () => {
-    const legacyRow = {
-      id: 'bbbbbbbb-bbbb-4111-8bbb-bbbbbbbbbbbb',
-      keycloak_subject: 'keycloak-target-legacy-projection',
-      username_ciphertext: 'legacy.projection',
-      display_name_ciphertext: 'Legacy Projection',
-      email_ciphertext: 'legacy.projection@example.com',
-      first_name_ciphertext: 'Legacy',
-      last_name_ciphertext: 'Projection',
-      phone_ciphertext: null,
-      position: null,
-      department: null,
-      preferred_language: 'de',
-      timezone: null,
-      avatar_url: null,
-      notes: null,
-      status: 'active',
-      last_login_at: null,
-      role_rows: [],
-      group_rows: [],
-      permission_rows: [{ permission_key: 'content.read' }],
-      direct_permission_rows: [],
-      permission_trace_rows: [
-        {
-          permission_key: 'content.read',
-          action: 'content.read',
-          resource_type: 'content',
-          resource_id: null,
-          organization_id: null,
-          effect: 'allow',
-          scope: null,
-          is_effective: true,
-          status: 'effective',
-          source_kind: 'direct_role',
-          role_id: 'role-1',
-          role_key: 'editor',
-          role_name: 'editor',
-          group_id: null,
-          group_key: null,
-          group_display_name: null,
-          group_active: null,
-          assignment_origin: null,
-          valid_from: null,
-          valid_to: null,
-        },
-      ],
-    };
-
+  it('fails fast when structured permission columns are not available', async () => {
     const query = vi
       .fn()
       .mockResolvedValueOnce({
@@ -331,28 +253,14 @@ describe('resolveUserDetail', () => {
             permissions_scope_exists: false,
           },
         ],
+      });
+
+    await expect(
+      resolveUserDetail({ query } as never, {
+        instanceId: 'de-musterhausen',
+        userId: 'bbbbbbbb-bbbb-4111-8bbb-bbbbbbbbbbbb',
       })
-      .mockResolvedValueOnce({ rows: [legacyRow] });
-
-    const detail = await resolveUserDetail({ query } as never, {
-      instanceId: 'de-musterhausen',
-      userId: 'bbbbbbbb-bbbb-4111-8bbb-bbbbbbbbbbbb',
-    });
-
-    expect(query).toHaveBeenCalledTimes(2);
-    expect(detail).toMatchObject({
-      keycloakSubject: 'keycloak-target-legacy-projection',
-      permissions: ['content.read'],
-      directPermissions: [],
-      permissionTrace: [
-        {
-          permissionKey: 'content.read',
-          action: 'content.read',
-          resourceType: 'content',
-          effect: 'allow',
-          sourceKind: 'direct_role',
-        },
-      ],
-    });
+    ).rejects.toBeInstanceOf(IamSchemaDriftError);
+    expect(query).toHaveBeenCalledTimes(1);
   });
 });

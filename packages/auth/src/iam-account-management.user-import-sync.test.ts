@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { IamSchemaDriftError } from './runtime-errors.js';
 
 const state = vi.hoisted(() => ({
   listUsersImpl: null as null | (() => unknown[]),
@@ -6,7 +7,10 @@ const state = vi.hoisted(() => ({
   emitActivityLog: vi.fn(async () => undefined),
   logger: {
     isLevelEnabled: vi.fn(() => false),
+    debug: vi.fn(),
+    info: vi.fn(),
     warn: vi.fn(),
+    error: vi.fn(),
   },
 }));
 
@@ -42,7 +46,10 @@ vi.mock('./iam-account-management/shared.js', async () => {
       ...actual.logger,
       isLevelEnabled: (...args: Parameters<typeof state.logger.isLevelEnabled>) =>
         state.logger.isLevelEnabled(...args),
+      debug: (...args: Parameters<typeof state.logger.debug>) => state.logger.debug(...args),
+      info: (...args: Parameters<typeof state.logger.info>) => state.logger.info(...args),
       warn: (...args: Parameters<typeof state.logger.warn>) => state.logger.warn(...args),
+      error: (...args: Parameters<typeof state.logger.error>) => state.logger.error(...args),
     },
   };
 });
@@ -60,7 +67,10 @@ describe('runKeycloakUserImportSync', () => {
     state.emitActivityLog.mockResolvedValue(undefined);
     state.logger.isLevelEnabled.mockReset();
     state.logger.isLevelEnabled.mockReturnValue(false);
+    state.logger.debug.mockReset();
+    state.logger.info.mockReset();
     state.logger.warn.mockReset();
+    state.logger.error.mockReset();
     process.env.IAM_PII_ACTIVE_KEY_ID = 'k1';
     process.env.IAM_PII_KEYRING_JSON = '{"k1":"MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDE="}';
   });
@@ -139,6 +149,16 @@ describe('runKeycloakUserImportSync', () => {
       skippedCount: 1,
       totalKeycloakUsers: 3,
     });
+    expect(state.logger.info).toHaveBeenCalledWith(
+      'sync_keycloak_users_completed',
+      expect.objectContaining({
+        instance_id: 'hb-meinquartier',
+        imported_count: 1,
+        updated_count: 1,
+        skipped_count: 1,
+        total_keycloak_users: 3,
+      })
+    );
   });
 
   it('does not fail a successful import when audit logging fails afterwards', async () => {
@@ -196,7 +216,7 @@ describe('runKeycloakUserImportSync', () => {
     );
   });
 
-  it('falls back to a legacy account upsert when username_ciphertext is missing in the schema', async () => {
+  it('fails fast when username_ciphertext is missing in the schema', async () => {
     state.listUsersImpl = () => [
       {
         externalId: 'kc-legacy',
@@ -230,21 +250,17 @@ describe('runKeycloakUserImportSync', () => {
 
     const { runKeycloakUserImportSync } = await import('./iam-account-management/user-import-sync-handler.js');
 
-    const result = await runKeycloakUserImportSync({
-      instanceId: 'hb-meinquartier',
-    });
-
-    expect(result.report).toEqual({
-      importedCount: 1,
-      updatedCount: 0,
-      skippedCount: 0,
-      totalKeycloakUsers: 1,
-    });
-    expect(state.logger.warn).toHaveBeenCalledWith(
-      'Keycloak user sync fell back to legacy account upsert without username ciphertext',
+    await expect(
+      runKeycloakUserImportSync({
+        instanceId: 'hb-meinquartier',
+      })
+    ).rejects.toBeInstanceOf(IamSchemaDriftError);
+    expect(state.logger.error).toHaveBeenCalledWith(
+      'Keycloak user sync aborted because IAM schema is outdated',
       expect.objectContaining({
         instance_id: 'hb-meinquartier',
         subject_ref: expect.any(String),
+        schema_object: 'iam.accounts.username_ciphertext',
       })
     );
   });

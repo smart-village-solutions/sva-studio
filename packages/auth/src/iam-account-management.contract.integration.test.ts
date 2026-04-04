@@ -366,6 +366,22 @@ vi.mock('pg', () => ({
     async connect() {
       return {
         async query(text: string, values?: readonly unknown[]) {
+          if (text.includes("to_regclass('iam.account_permissions')")) {
+            return {
+              rowCount: 1,
+              rows: [
+                {
+                  account_permissions_exists: true,
+                  permissions_action_exists: true,
+                  permissions_resource_type_exists: true,
+                  permissions_resource_id_exists: true,
+                  permissions_effect_exists: true,
+                  permissions_scope_exists: true,
+                },
+              ],
+            };
+          }
+
           if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
             const instanceId = String(values?.[0]);
             const subject = String(values?.[1]);

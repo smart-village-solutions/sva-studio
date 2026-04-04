@@ -15,11 +15,11 @@ const DemoSectionLayout = () => (
 
 const demoNames = ['Aria', 'Jona', 'Mika', 'Lea', 'Noah'];
 
-const getNames = createServerFn().handler(async () => {
+export const getNames = createServerFn().handler(async () => {
   return demoNames;
 });
 
-const submitGreeting = createServerFn({ method: 'POST' })
+export const submitGreeting = createServerFn({ method: 'POST' })
   .inputValidator((data: { name?: string }) => data)
   .handler(async ({ data }) => {
     const name = data?.name?.trim() || 'Welt';
@@ -29,7 +29,7 @@ const submitGreeting = createServerFn({ method: 'POST' })
     };
   });
 
-const getPunkSongs = () => {
+export const getPunkSongs = () => {
   return [
     { title: 'Holiday in Cambodia', artist: 'Dead Kennedys' },
     { title: 'Rise Above', artist: 'Black Flag' },
@@ -112,7 +112,7 @@ const StartHome = () => {
   );
 };
 
-const ServerFuncsDemo = () => {
+export const ServerFuncsDemo = () => {
   const [isHydrated, setIsHydrated] = React.useState(false);
   const [result, setResult] = React.useState<null | { message: string; serverTime: string }>(null);
   const [loading, setLoading] = React.useState(false);
@@ -172,7 +172,7 @@ const ServerFuncsDemo = () => {
   );
 };
 
-const ApiRequestDemo = () => {
+export const ApiRequestDemo = () => {
   const [names, setNames] = React.useState<string[]>([]);
   const [loading, setLoading] = React.useState(false);
   const runServerFn = useServerFn(getNames);

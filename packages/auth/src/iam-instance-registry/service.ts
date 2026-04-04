@@ -4,6 +4,7 @@ import {
   isTrafficEnabledInstanceStatus,
   normalizeHost,
 } from '@sva/core';
+import { createSdkLogger } from '@sva/sdk/server';
 import { protectField } from '../iam-account-management/encryption.js';
 
 import type { InstanceRegistryRepository } from '@sva/data';
@@ -26,6 +27,21 @@ import {
   loadRepositoryAuthClientSecret,
 } from './service-keycloak.js';
 import { createProvisioningArtifacts, provisionInstanceAuth } from './service-provisioning.js';
+
+const logger = createSdkLogger({ component: 'iam-instance-registry-service', level: 'info' });
+
+const invalidateHostWithLog = (
+  invalidateHost: InstanceRegistryServiceDeps['invalidateHost'],
+  hostname: string,
+  instanceId: string
+): void => {
+  invalidateHost(hostname);
+  logger.debug('instance_host_cache_invalidated', {
+    operation: 'invalidate_host',
+    instance_id: instanceId,
+    hostname,
+  });
+};
 
 export const createInstanceRegistryService = (deps: InstanceRegistryServiceDeps): InstanceRegistryService => ({
   listInstances: createListInstances(deps.repository),
@@ -77,8 +93,19 @@ const createGetInstanceDetail =
 const createProvisioningRequestHandler =
   (deps: InstanceRegistryServiceDeps): InstanceRegistryService['createProvisioningRequest'] =>
   async (input) => {
+    logger.info('instance_create_requested', {
+      operation: 'create_instance',
+      instance_id: input.instanceId,
+      request_id: input.requestId,
+      actor_id: input.actorId,
+    });
     const existing = await deps.repository.getInstanceById(input.instanceId);
     if (existing) {
+      logger.warn('instance_create_rejected_duplicate', {
+        operation: 'create_instance',
+        instance_id: input.instanceId,
+        request_id: input.requestId,
+      });
       return { ok: false, reason: 'already_exists' };
     }
 
@@ -104,7 +131,13 @@ const createProvisioningRequestHandler =
 
     await createProvisioningArtifacts(deps.repository, instance, input);
     const provisionedInstance = await provisionInstanceAuth(deps, instance, input);
-    deps.invalidateHost(provisionedInstance.primaryHostname);
+    invalidateHostWithLog(deps.invalidateHost, provisionedInstance.primaryHostname, provisionedInstance.instanceId);
+    logger.info('instance_create_completed', {
+      operation: 'create_instance',
+      instance_id: provisionedInstance.instanceId,
+      status: provisionedInstance.status,
+      request_id: input.requestId,
+    });
     return { ok: true, instance: toListItem(provisionedInstance) };
   };
 
@@ -117,6 +150,13 @@ const createChangeStatusHandler =
     }
 
     if (!canTransitionInstanceStatus(current.status, input.nextStatus)) {
+      logger.warn('instance_status_transition_rejected', {
+        operation: 'change_instance_status',
+        instance_id: input.instanceId,
+        current_status: current.status,
+        next_status: input.nextStatus,
+        request_id: input.requestId,
+      });
       return { ok: false, reason: 'invalid_transition', currentStatus: current.status };
     }
 
@@ -131,13 +171,26 @@ const createChangeStatusHandler =
     }
 
     await createStatusArtifacts(deps.repository, input, current.status);
-    deps.invalidateHost(updated.primaryHostname);
+    invalidateHostWithLog(deps.invalidateHost, updated.primaryHostname, updated.instanceId);
+    logger.info('instance_status_transition_completed', {
+      operation: 'change_instance_status',
+      instance_id: updated.instanceId,
+      previous_status: current.status,
+      next_status: updated.status,
+      request_id: input.requestId,
+    });
     return { ok: true, instance: toListItem(updated) };
   };
 
 const createUpdateInstanceHandler =
   (deps: InstanceRegistryServiceDeps): InstanceRegistryService['updateInstance'] =>
   async (input: UpdateInstanceInput) => {
+    logger.info('instance_update_started', {
+      operation: 'update_instance',
+      instance_id: input.instanceId,
+      request_id: input.requestId,
+      actor_id: input.actorId,
+    });
     const existing = await deps.repository.getInstanceById(input.instanceId);
     if (!existing) {
       return null;
@@ -166,8 +219,8 @@ const createUpdateInstanceHandler =
       return null;
     }
 
-    deps.invalidateHost(existing.primaryHostname);
-    deps.invalidateHost(updated.primaryHostname);
+    invalidateHostWithLog(deps.invalidateHost, existing.primaryHostname, updated.instanceId);
+    invalidateHostWithLog(deps.invalidateHost, updated.primaryHostname, updated.instanceId);
 
     const [provisioningRuns, auditEvents, keycloakStatus] = await Promise.all([
       deps.repository.listProvisioningRuns(updated.instanceId),
@@ -184,5 +237,12 @@ const createUpdateInstanceHandler =
       }) ?? Promise.resolve(undefined),
     ]);
 
+    logger.info('instance_update_completed', {
+      operation: 'update_instance',
+      instance_id: updated.instanceId,
+      request_id: input.requestId,
+      previous_hostname: existing.primaryHostname,
+      next_hostname: updated.primaryHostname,
+    });
     return buildInstanceDetail(updated, provisioningRuns, auditEvents, keycloakStatus);
   };

@@ -1,6 +1,13 @@
 import React from 'react';
 
 import { asIamError, type IamHttpError } from '../lib/iam-api';
+import {
+  createOperationLogger,
+  logBrowserOperationFailure,
+  logBrowserOperationStart,
+  logBrowserOperationSuccess,
+  type BrowserOperationLogMeta,
+} from '../lib/browser-operation-logging';
 
 type ListResponse<TItem> = {
   readonly data: readonly TItem[];
@@ -14,8 +21,10 @@ type UseIamAdminListResult<TItem> = {
   readonly refetch: () => Promise<void>;
   readonly clearMutationError: () => void;
   readonly setError: (error: IamHttpError | null) => void;
-  readonly runMutation: (action: () => Promise<unknown>) => Promise<boolean>;
+  readonly runMutation: (action: () => Promise<unknown>, meta?: BrowserOperationLogMeta) => Promise<boolean>;
 };
+
+const adminListLogger = createOperationLogger('iam-admin-list', 'debug');
 
 export const useIamAdminList = <TItem>(
   listItems: () => Promise<ListResponse<TItem>>,
@@ -27,19 +36,34 @@ export const useIamAdminList = <TItem>(
   const [mutationError, setMutationError] = React.useState<IamHttpError | null>(null);
 
   const refetch = React.useCallback(async () => {
+    logBrowserOperationStart(adminListLogger, 'list_refetch_started');
     setIsLoading(true);
     setError(null);
 
     try {
       const response = await listItems();
       setItems(response.data);
+      logBrowserOperationSuccess(
+        adminListLogger,
+        'list_refetch_succeeded',
+        {
+          item_count: response.data.length,
+        },
+        'debug'
+      );
     } catch (cause) {
       const resolvedError = asIamError(cause);
       if (resolvedError.status === 403) {
         await invalidatePermissions();
+        adminListLogger.info('permission_invalidated_after_403', {
+          operation: 'list_refetch',
+          status: resolvedError.status,
+          error_code: resolvedError.code,
+        });
       }
       setItems([]);
       setError(resolvedError);
+      logBrowserOperationFailure(adminListLogger, 'list_refetch_failed', resolvedError);
     } finally {
       setIsLoading(false);
     }
@@ -50,18 +74,26 @@ export const useIamAdminList = <TItem>(
   }, [refetch]);
 
   const runMutation = React.useCallback(
-    async (action: () => Promise<unknown>) => {
+    async (action: () => Promise<unknown>, meta: BrowserOperationLogMeta = {}) => {
+      logBrowserOperationStart(adminListLogger, 'mutation_started', meta);
       setMutationError(null);
       try {
         await action();
         await refetch();
+        logBrowserOperationSuccess(adminListLogger, 'mutation_succeeded', meta);
         return true;
       } catch (cause) {
         const resolvedError = asIamError(cause);
         if (resolvedError.status === 403) {
           await invalidatePermissions();
+          adminListLogger.info('permission_invalidated_after_403', {
+            operation: typeof meta.operation === 'string' ? meta.operation : 'mutation',
+            status: resolvedError.status,
+            error_code: resolvedError.code,
+          });
         }
         setMutationError(resolvedError);
+        logBrowserOperationFailure(adminListLogger, 'mutation_failed', resolvedError, meta);
         return false;
       }
     },

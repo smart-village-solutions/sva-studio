@@ -45,7 +45,7 @@ vi.mock('@sva/sdk/server', () => ({
 
 const originalEnv = { ...process.env };
 
-describe('redis-session in-memory fallback', () => {
+describe('redis-session fail-fast behavior', () => {
   beforeEach(() => {
     vi.resetModules();
     state.logger.debug.mockReset();
@@ -63,46 +63,34 @@ describe('redis-session in-memory fallback', () => {
     process.env = { ...originalEnv };
   });
 
-  it('stores and consumes login state in memory when redis is unavailable', async () => {
+  it('fails fast when login state storage is unavailable', async () => {
     const { createLoginState, consumeLoginState } = await import('./redis-session.server.js');
 
-    await createLoginState('state-1', {
-      codeVerifier: 'verifier',
-      nonce: 'nonce',
-      createdAt: Date.now(),
+    await expect(
+      createLoginState('state-1', {
+        codeVerifier: 'verifier',
+        nonce: 'nonce',
+        createdAt: Date.now(),
+      })
+    ).rejects.toMatchObject({ name: 'SessionStoreUnavailableError', operation: 'create_login_state' });
+    await expect(consumeLoginState('state-1')).rejects.toMatchObject({
+      name: 'SessionStoreUnavailableError',
+      operation: 'consume_login_state',
     });
-
-    await expect(consumeLoginState('state-1')).resolves.toEqual({
-      codeVerifier: 'verifier',
-      nonce: 'nonce',
-      createdAt: expect.any(Number),
-    });
-    await expect(consumeLoginState('state-1')).resolves.toBeUndefined();
-    expect(state.logger.warn).toHaveBeenCalledWith(
-      'Redis session store unavailable, using in-memory fallback',
+    expect(state.logger.error).toHaveBeenCalledWith(
+      'Redis session store unavailable',
       expect.objectContaining({
         operation: 'create_login_state',
-        runtime_profile: 'acceptance-hb',
+        mode: 'fail_fast',
       })
     );
   });
 
-  it('stores and reads sessions in memory when redis is unavailable', async () => {
+  it('fails fast when session storage is unavailable', async () => {
     const { createSession, getSession } = await import('./redis-session.server.js');
 
-    await createSession('session-1', {
-      id: 'session-1',
-      userId: 'user-1',
-      user: {
-        id: 'user-1',
-        roles: ['system_admin'],
-        instanceId: 'hb-meinquartier',
-      },
-      createdAt: Date.now(),
-    });
-
-    await expect(getSession('session-1')).resolves.toEqual(
-      expect.objectContaining({
+    await expect(
+      createSession('session-1', {
         id: 'session-1',
         userId: 'user-1',
         user: expect.objectContaining({
@@ -110,42 +98,38 @@ describe('redis-session in-memory fallback', () => {
           roles: ['system_admin'],
           instanceId: 'hb-meinquartier',
         }),
-      })
-    );
+        createdAt: Date.now(),
+      } as never)
+    ).rejects.toMatchObject({ name: 'SessionStoreUnavailableError', operation: 'create_session' });
+
+    await expect(getSession('session-1')).rejects.toMatchObject({
+      name: 'SessionStoreUnavailableError',
+      operation: 'get_session',
+    });
   });
 
-  it('tracks fallback user sessions and session control state in memory', async () => {
-    const {
-      createSession,
-      deleteSession,
-      listUserSessionIds,
-      setSessionControlState,
-      getSessionControlState,
-    } = await import('./redis-session.server.js');
+  it('fails fast for session metadata operations when redis is unavailable', async () => {
+    const { listUserSessionIds, setSessionControlState, getSessionControlState, getSessionCount } = await import(
+      './redis-session.server.js'
+    );
 
-    await createSession('session-a', {
-      id: 'session-a',
-      userId: 'user-42',
-      createdAt: Date.now(),
+    await expect(listUserSessionIds('user-42')).rejects.toMatchObject({
+      name: 'SessionStoreUnavailableError',
+      operation: 'list_user_sessions',
     });
-    await createSession('session-b', {
-      id: 'session-b',
-      userId: 'user-42',
-      createdAt: Date.now(),
+    await expect(
+      setSessionControlState('user-42', {
+        forceReauthAt: Date.now(),
+        mode: 'app_only',
+      })
+    ).rejects.toMatchObject({ name: 'SessionStoreUnavailableError', operation: 'set_session_control_state' });
+    await expect(getSessionControlState('user-42')).rejects.toMatchObject({
+      name: 'SessionStoreUnavailableError',
+      operation: 'get_session_control_state',
     });
-
-    expect(await listUserSessionIds('user-42')).toEqual(['session-a', 'session-b']);
-
-    await deleteSession('session-a');
-    expect(await listUserSessionIds('user-42')).toEqual(['session-b']);
-
-    await setSessionControlState('user-42', {
-      forceReauthAt: Date.now(),
-      mode: 'app_only',
-    });
-    await expect(getSessionControlState('user-42')).resolves.toEqual({
-      forceReauthAt: expect.any(Number),
-      mode: 'app_only',
+    await expect(getSessionCount()).rejects.toMatchObject({
+      name: 'SessionStoreUnavailableError',
+      operation: 'get_session_count',
     });
   });
 });

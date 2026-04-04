@@ -164,6 +164,49 @@ describe('UserListPage', () => {
     expect(setPage).toHaveBeenCalledWith(3);
   });
 
+  it('toggles sorting direction when the same column header is clicked repeatedly', () => {
+    useUsersMock.mockReturnValue(
+      createUsersApiState({
+        users: [
+          {
+            id: 'user-1',
+            keycloakSubject: 'subject-1',
+            displayName: 'Bob',
+            email: 'bob@example.com',
+            status: 'active',
+            lastLoginAt: '2026-03-04T10:00:00Z',
+            roles: [{ roleId: 'role-1', roleName: 'editor', roleLevel: 40 }],
+          },
+          {
+            id: 'user-2',
+            keycloakSubject: 'subject-2',
+            displayName: 'Alice',
+            email: 'alice@example.com',
+            status: 'inactive',
+            lastLoginAt: '2026-03-03T08:00:00Z',
+            roles: [{ roleId: 'role-2', roleName: 'system_admin', roleLevel: 90 }],
+          },
+        ],
+      }),
+    );
+    useRolesMock.mockReturnValue(createRolesApiState());
+
+    render(<UserListPage />);
+
+    const nameHeader = screen.getByRole('button', { name: 'Name' });
+    fireEvent.click(nameHeader);
+
+    let rows = screen.getAllByRole('row');
+    expect(rows[1]?.textContent).toContain('Bob');
+    expect(rows[2]?.textContent).toContain('Alice');
+
+    fireEvent.click(nameHeader);
+
+    rows = screen.getAllByRole('row');
+    expect(rows[1]?.textContent).toContain('Alice');
+    expect(rows[2]?.textContent).toContain('Bob');
+  });
+
   it('submits create user form and closes dialog on success', async () => {
     const createUser = vi.fn().mockResolvedValue(true);
     useUsersMock.mockReturnValue(createUsersApiState({ createUser }));
@@ -236,6 +279,22 @@ describe('UserListPage', () => {
     await waitFor(() => {
       expect(bulkDeactivate).toHaveBeenCalledWith(['user-1', 'user-2']);
     });
+  });
+
+  it('closes the deactivate dialog without executing an action when cancelled', async () => {
+    const deactivateUser = vi.fn().mockResolvedValue(true);
+    useUsersMock.mockReturnValue(createUsersApiState({ deactivateUser }));
+    useRolesMock.mockReturnValue(createRolesApiState());
+
+    render(<UserListPage />);
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Deaktivieren' })[0]);
+    fireEvent.click(screen.getByRole('button', { name: 'Abbrechen' }));
+
+    await waitFor(() => {
+      expect(screen.queryByText('Benutzer deaktivieren')).toBeNull();
+    });
+    expect(deactivateUser).not.toHaveBeenCalled();
   });
 
   it('triggers keycloak sync and shows the sync result', async () => {

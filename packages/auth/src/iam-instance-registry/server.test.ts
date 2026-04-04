@@ -15,6 +15,9 @@ const coreHandlers = {
   listInstancesInternal: vi.fn(),
   getInstanceInternal: vi.fn(),
   createInstanceInternal: vi.fn(),
+  updateInstanceInternal: vi.fn(),
+  getInstanceKeycloakStatusInternal: vi.fn(),
+  reconcileInstanceKeycloakInternal: vi.fn(),
   activateInstanceInternal: vi.fn(),
   suspendInstanceInternal: vi.fn(),
   archiveInstanceInternal: vi.fn(),
@@ -46,6 +49,9 @@ describe('iam-instance-registry server handlers', () => {
     coreHandlers.listInstancesInternal.mockResolvedValue(new Response('list', { status: 200 }));
     coreHandlers.getInstanceInternal.mockResolvedValue(new Response('detail', { status: 200 }));
     coreHandlers.createInstanceInternal.mockResolvedValue(new Response('create', { status: 201 }));
+    coreHandlers.updateInstanceInternal.mockResolvedValue(new Response('update', { status: 200 }));
+    coreHandlers.getInstanceKeycloakStatusInternal.mockResolvedValue(new Response('status', { status: 200 }));
+    coreHandlers.reconcileInstanceKeycloakInternal.mockResolvedValue(new Response('reconcile', { status: 200 }));
     coreHandlers.activateInstanceInternal.mockResolvedValue(new Response('activate', { status: 200 }));
     coreHandlers.suspendInstanceInternal.mockResolvedValue(new Response('suspend', { status: 200 }));
     coreHandlers.archiveInstanceInternal.mockResolvedValue(new Response('archive', { status: 200 }));
@@ -56,6 +62,9 @@ describe('iam-instance-registry server handlers', () => {
       listInstancesHandler,
       getInstanceHandler,
       createInstanceHandler,
+      updateInstanceHandler,
+      getInstanceKeycloakStatusHandler,
+      reconcileInstanceKeycloakHandler,
       activateInstanceHandler,
       suspendInstanceHandler,
       archiveInstanceHandler,
@@ -65,12 +74,15 @@ describe('iam-instance-registry server handlers', () => {
     expect((await listInstancesHandler(request)).status).toBe(200);
     expect((await getInstanceHandler(request)).status).toBe(200);
     expect((await createInstanceHandler(request)).status).toBe(201);
+    expect((await updateInstanceHandler(request)).status).toBe(200);
+    expect((await getInstanceKeycloakStatusHandler(request)).status).toBe(200);
+    expect((await reconcileInstanceKeycloakHandler(request)).status).toBe(200);
     expect((await activateInstanceHandler(request)).status).toBe(200);
     expect((await suspendInstanceHandler(request)).status).toBe(200);
     expect((await archiveInstanceHandler(request)).status).toBe(200);
 
     expect(withRequestContextMock).toHaveBeenCalled();
-    expect(withAuthenticatedUserMock).toHaveBeenCalledTimes(6);
+    expect(withAuthenticatedUserMock).toHaveBeenCalledTimes(9);
     expect(coreHandlers.listInstancesInternal).toHaveBeenCalled();
     expect(coreHandlers.archiveInstanceInternal).toHaveBeenCalled();
   });

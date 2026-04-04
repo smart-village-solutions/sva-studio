@@ -1,5 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 
+vi.mock('../iam-account-management/encryption.js', () => ({
+  protectField: vi.fn((value: string) => `enc:${value}`),
+  revealField: vi.fn((value: string | null | undefined) =>
+    typeof value === 'string' && value.startsWith('enc:') ? value.slice(4) : undefined
+  ),
+}));
+
 import { createInstanceRegistryService } from './service.js';
 
 import type { InstanceRegistryRepository } from '@sva/data';
@@ -11,6 +18,7 @@ const createRepository = (): InstanceRegistryRepository => {
   const instances = new Map<string, InstanceRegistryRecord>();
   const provisioningRuns = new Map<string, InstanceProvisioningRun[]>();
   const auditEvents = new Map<string, InstanceAuditEvent[]>();
+  const secretCiphertexts = new Map<string, string | null>();
 
   return {
     async listInstances(input = {}) {
@@ -24,6 +32,9 @@ const createRepository = (): InstanceRegistryRepository => {
     },
     async getInstanceById(instanceId) {
       return instances.get(instanceId) ?? null;
+    },
+    async getAuthClientSecretCiphertext(instanceId) {
+      return secretCiphertexts.get(instanceId) ?? null;
     },
     async resolveHostname(hostname) {
       return [...instances.values()].find((instance) => instance.primaryHostname === hostname) ?? null;
@@ -49,6 +60,8 @@ const createRepository = (): InstanceRegistryRepository => {
         authRealm: input.authRealm,
         authClientId: input.authClientId,
         authIssuerUrl: input.authIssuerUrl,
+        authClientSecretConfigured: Boolean(input.authClientSecretCiphertext),
+        tenantAdminBootstrap: input.tenantAdminBootstrap,
         themeKey: input.themeKey,
         featureFlags: input.featureFlags ?? {},
         mainserverConfigRef: input.mainserverConfigRef,
@@ -57,8 +70,39 @@ const createRepository = (): InstanceRegistryRepository => {
         updatedAt: now,
         updatedBy: input.actorId,
       };
+      secretCiphertexts.set(record.instanceId, input.authClientSecretCiphertext ?? null);
       instances.set(record.instanceId, record);
       return record;
+    },
+    async updateInstance(input) {
+      const current = instances.get(input.instanceId);
+      if (!current) {
+        return null;
+      }
+
+      const updated: InstanceRegistryRecord = {
+        ...current,
+        displayName: input.displayName,
+        parentDomain: input.parentDomain,
+        primaryHostname: input.primaryHostname,
+        authRealm: input.authRealm,
+        authClientId: input.authClientId,
+        authIssuerUrl: input.authIssuerUrl,
+        authClientSecretConfigured: input.keepExistingAuthClientSecret
+          ? current.authClientSecretConfigured
+          : Boolean(input.authClientSecretCiphertext),
+        tenantAdminBootstrap: input.tenantAdminBootstrap,
+        themeKey: input.themeKey,
+        featureFlags: input.featureFlags ?? {},
+        mainserverConfigRef: input.mainserverConfigRef,
+        updatedAt: now,
+        updatedBy: input.actorId,
+      };
+      if (!input.keepExistingAuthClientSecret) {
+        secretCiphertexts.set(updated.instanceId, input.authClientSecretCiphertext ?? null);
+      }
+      instances.set(updated.instanceId, updated);
+      return updated;
     },
     async setInstanceStatus(input) {
       const current = instances.get(input.instanceId);
@@ -152,6 +196,47 @@ describe('iam-instance-registry service', () => {
         instanceId: 'demo',
         authRealm: 'demo',
         authClientId: 'sva-studio',
+      })
+    );
+  });
+
+  it('passes tenant auth bootstrap values through the create provisioning path', async () => {
+    const provisionInstanceAuth = vi.fn().mockResolvedValue(undefined);
+    const service = createInstanceRegistryService({
+      repository: createRepository(),
+      invalidateHost: vi.fn(),
+      provisionInstanceAuth,
+    });
+
+    const created = await service.createProvisioningRequest({
+      idempotencyKey: 'idem-create',
+      instanceId: 'demo',
+      displayName: 'Demo',
+      parentDomain: 'studio.lvh.me',
+      authRealm: 'demo',
+      authClientId: 'sva-studio',
+      authClientSecret: 'tenant-client-secret',
+      tenantAdminBootstrap: {
+        username: 'tenant-admin',
+        email: 'tenant-admin@test.invalid',
+        firstName: 'Tenant',
+        lastName: 'Admin',
+      },
+      actorId: 'actor-1',
+      requestId: 'req-1',
+    });
+
+    expect(created.ok).toBe(true);
+    expect(provisionInstanceAuth).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: 'demo',
+        authClientSecret: 'tenant-client-secret',
+        tenantAdminBootstrap: {
+          username: 'tenant-admin',
+          email: 'tenant-admin@test.invalid',
+          firstName: 'Tenant',
+          lastName: 'Admin',
+        },
       })
     );
   });
@@ -288,5 +373,172 @@ describe('iam-instance-registry service', () => {
         }),
       })
     );
+  });
+
+  it('updates instance details, normalizes the parent domain, and refreshes keycloak status', async () => {
+    const repository = createRepository();
+    const invalidateHost = vi.fn();
+    const getKeycloakStatus = vi.fn().mockResolvedValue({
+      realmExists: true,
+      clientExists: true,
+      instanceIdMapperExists: true,
+      tenantAdminExists: true,
+    });
+    const service = createInstanceRegistryService({
+      repository,
+      invalidateHost,
+      getKeycloakStatus,
+    });
+
+    await repository.createInstance({
+      instanceId: 'demo',
+      displayName: 'Demo',
+      status: 'active',
+      parentDomain: 'studio.lvh.me',
+      primaryHostname: 'demo.studio.lvh.me',
+      authRealm: 'demo',
+      authClientId: 'sva-studio',
+      authClientSecretCiphertext: 'enc:old-secret',
+      tenantAdminBootstrap: {
+        username: 'demo-admin',
+        email: 'demo@example.org',
+      },
+      actorId: 'actor-1',
+      requestId: 'req-1',
+    });
+
+    const updated = await service.updateInstance({
+      instanceId: 'demo',
+      displayName: 'Demo Updated',
+      parentDomain: 'Studio.Example.org',
+      authRealm: 'demo-updated',
+      authClientId: 'tenant-client',
+      authIssuerUrl: 'https://issuer.example.org',
+      actorId: 'actor-2',
+      requestId: 'req-2',
+      tenantAdminBootstrap: {
+        username: 'new-admin',
+      },
+    });
+
+    expect(updated).toEqual(
+      expect.objectContaining({
+        instanceId: 'demo',
+        displayName: 'Demo Updated',
+        parentDomain: 'studio.example.org',
+        primaryHostname: 'demo.studio.example.org',
+        authRealm: 'demo-updated',
+        authClientId: 'tenant-client',
+        authClientSecretConfigured: true,
+        keycloakStatus: expect.objectContaining({
+          realmExists: true,
+          clientExists: true,
+        }),
+      })
+    );
+    expect(invalidateHost).toHaveBeenCalledWith('demo.studio.lvh.me');
+    expect(invalidateHost).toHaveBeenCalledWith('demo.studio.example.org');
+    expect(getKeycloakStatus).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: 'demo',
+        authRealm: 'demo-updated',
+        authClientId: 'tenant-client',
+        authClientSecretConfigured: true,
+        authClientSecret: 'old-secret',
+        tenantAdminBootstrap: { username: 'new-admin' },
+      })
+    );
+  });
+
+  it('reconciles keycloak using the decrypted tenant secret and returns refreshed status', async () => {
+    const repository = createRepository();
+    const getKeycloakStatus = vi.fn().mockResolvedValue({ realmExists: true, clientSecretAligned: true });
+    const provisionInstanceAuth = vi.fn().mockResolvedValue(undefined);
+    const service = createInstanceRegistryService({
+      repository,
+      invalidateHost: vi.fn(),
+      getKeycloakStatus,
+      provisionInstanceAuth,
+    });
+
+    await repository.createInstance({
+      instanceId: 'demo',
+      displayName: 'Demo',
+      status: 'validated',
+      parentDomain: 'studio.example.org',
+      primaryHostname: 'demo.studio.example.org',
+      authRealm: 'demo',
+      authClientId: 'sva-studio',
+      authClientSecretCiphertext: 'enc:test-client-secret',
+      tenantAdminBootstrap: {
+        username: 'demo-admin',
+      },
+      actorId: 'actor-1',
+      requestId: 'req-1',
+    });
+
+    const status = await service.reconcileKeycloak({
+      instanceId: 'demo',
+      actorId: 'actor-2',
+      requestId: 'req-2',
+      rotateClientSecret: true,
+      tenantAdminTemporaryPassword: 'test-temp-password',
+    });
+
+    expect(provisionInstanceAuth).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: 'demo',
+        authClientSecret: 'test-client-secret',
+        rotateClientSecret: true,
+        tenantAdminTemporaryPassword: 'test-temp-password',
+      })
+    );
+    expect(getKeycloakStatus).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: 'demo',
+        authClientSecret: 'test-client-secret',
+      })
+    );
+    expect(status).toEqual(expect.objectContaining({ realmExists: true, clientSecretAligned: true }));
+  });
+
+  it('fails keycloak reconcile when the tenant secret is missing and classifies unknown runtime hosts', async () => {
+    const repository = createRepository();
+    const service = createInstanceRegistryService({
+      repository,
+      invalidateHost: vi.fn(),
+      provisionInstanceAuth: vi.fn(),
+      getKeycloakStatus: vi.fn(),
+    });
+
+    await repository.createInstance({
+      instanceId: 'demo',
+      displayName: 'Demo',
+      status: 'active',
+      parentDomain: 'studio.example.org',
+      primaryHostname: 'demo.studio.example.org',
+      authRealm: 'demo',
+      authClientId: 'sva-studio',
+      actorId: 'actor-1',
+      requestId: 'req-1',
+    });
+
+    await expect(
+      service.reconcileKeycloak({
+        instanceId: 'demo',
+        actorId: 'actor-2',
+        requestId: 'req-2',
+      })
+    ).rejects.toThrow('tenant_auth_client_secret_missing');
+
+    await expect(service.getKeycloakStatus('missing')).resolves.toBeNull();
+    await expect(service.resolveRuntimeInstance('missing.studio.example.org')).resolves.toEqual({
+      hostClassification: {
+        kind: 'invalid',
+        normalizedHost: 'missing.studio.example.org',
+        reason: 'unknown_host',
+      },
+      instance: null,
+    });
   });
 });

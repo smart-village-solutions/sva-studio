@@ -1,10 +1,13 @@
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, openSync, readFileSync, readdirSync, unlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, openSync, readFileSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { basename, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
+  getRuntimeProfileDerivedEnvKeys,
   getRuntimeProfileDefinition,
+  parseRuntimeProfile,
   getRuntimeProfileRequiredEnvKeys,
   type RuntimeProfile,
   validateRuntimeProfileEnv,
@@ -26,7 +29,24 @@ import {
   type AcceptanceFailureCategory,
   type AcceptanceProbeResult,
   type AcceptanceReleaseManifest,
+  type RemoteRuntimeProfile,
 } from './runtime-env.shared.ts';
+import {
+  commandExists as commandExistsForRoot,
+  run as runForRoot,
+  runCapture as runCaptureForRoot,
+  runCaptureDetailed as runCaptureDetailedForRoot,
+  runQuantumExec as runQuantumExecForRoot,
+  summarizeProcessOutput,
+  wait,
+  withoutDebugEnv,
+} from './runtime/process.ts';
+import {
+  getGooseConfiguredVersion as getGooseConfiguredVersionFromConfig,
+  listGooseMigrationFiles as listGooseMigrationFilesFromDir,
+  runGooseAgainstAcceptance as runGooseAgainstAcceptanceWithDeps,
+  runLocalGooseStatus as runLocalGooseStatusWithDeps,
+} from './runtime/goose.ts';
 
 type RuntimeCommand = 'deploy' | 'doctor' | 'down' | 'migrate' | 'precheck' | 'reset' | 'smoke' | 'status' | 'up' | 'update';
 type DoctorCheckStatus = 'error' | 'ok' | 'skipped' | 'warn';
@@ -69,11 +89,24 @@ const gooseConfigPath = resolve(rootDir, 'packages/data/goose.config.json');
 const gooseWrapperPath = resolve(rootDir, 'packages/data/scripts/goosew.sh');
 const gooseMigrationsDir = resolve(rootDir, 'packages/data/migrations');
 const gooseConfig = JSON.parse(readFileSync(gooseConfigPath, 'utf8')) as { repo: string; version: string };
+const run = (commandName: string, args: readonly string[], env: NodeJS.ProcessEnv = process.env) =>
+  runForRoot(rootDir, commandName, args, env);
+const runCapture = (commandName: string, args: readonly string[], env: NodeJS.ProcessEnv = process.env) =>
+  runCaptureForRoot(rootDir, commandName, args, env);
+const runCaptureDetailed = (commandName: string, args: readonly string[], env: NodeJS.ProcessEnv = process.env) =>
+  runCaptureDetailedForRoot(rootDir, commandName, args, env);
+const commandExists = (commandName: string) => commandExistsForRoot(rootDir, commandName);
+const runQuantumExec = (
+  args: readonly string[],
+  env: NodeJS.ProcessEnv,
+  options?: {
+    marker?: string;
+    failureMessage: string;
+  }
+) => runQuantumExecForRoot(rootDir, args, env, options);
 
 const composeBaseArgs = ['compose', '-f', 'docker-compose.yml'];
 const composeWithMonitoringArgs = ['compose', '-f', 'docker-compose.yml', '-f', 'docker-compose.monitoring.yml'];
-const localProfiles: readonly RuntimeProfile[] = ['local-keycloak', 'local-builder'];
-
 const usage = () => {
   console.error(
     'Usage: tsx scripts/ops/runtime-env.ts <up|down|update|status|smoke|migrate|doctor|reset|precheck|deploy> <profile> [--json] [--local-override-file=<path>] [--release-mode=<app-only|schema-and-app>] [--image-digest=<sha256:...>] [--maintenance-window=<text>] [--rollback-hint=<text>]'
@@ -90,16 +123,28 @@ const ensureKnownCommand = (value: RuntimeCommand | undefined): RuntimeCommand =
     throw new Error('Unreachable');
   }
 
-  return value as RuntimeCommand;
+  return value;
 };
 
 const ensureKnownProfile = (value: RuntimeProfile | undefined): RuntimeProfile => {
-  if (!value || !['local-keycloak', 'local-builder', 'acceptance-hb'].includes(value)) {
+  const parsed = parseRuntimeProfile(value);
+  if (!parsed) {
     usage();
     throw new Error('Unreachable');
   }
 
-  return value as RuntimeProfile;
+  return parsed;
+};
+
+const isRemoteRuntimeProfile = (runtimeProfile: RuntimeProfile): runtimeProfile is RemoteRuntimeProfile =>
+  !getRuntimeProfileDefinition(runtimeProfile).isLocal;
+
+const requireRemoteRuntimeProfile = (runtimeProfile: RuntimeProfile): RemoteRuntimeProfile => {
+  if (!isRemoteRuntimeProfile(runtimeProfile)) {
+    throw new Error(`Remote-Runtime-Profil erwartet, erhalten: ${runtimeProfile}`);
+  }
+
+  return runtimeProfile;
 };
 
 const shellEscape = (value: string) => {
@@ -122,23 +167,9 @@ const sqlLiteral = (value: string) => `'${value.replaceAll("'", "''")}'`;
 
 const sqlIdentifier = (value: string) => `"${value.replaceAll('"', '""')}"`;
 
-const listGooseMigrationFiles = () =>
-  readdirSync(gooseMigrationsDir, { withFileTypes: true })
-    .filter((entry) => entry.isFile() && entry.name.endsWith('.sql'))
-    .map((entry) => `packages/data/migrations/${entry.name}`)
-    .sort();
+const listGooseMigrationFiles = () => listGooseMigrationFilesFromDir(gooseMigrationsDir);
 
-const getGooseConfiguredVersion = () => gooseConfig.version;
-
-const getGooseLocalBinaryPath = () => runCapture('bash', [gooseWrapperPath, '--print-bin']);
-
-const buildPostgresConnectionString = (
-  user: string,
-  database: string,
-  host: string,
-  port: string,
-) =>
-  `postgres://${encodeURIComponent(user)}@${host}:${port}/${database}?sslmode=disable`;
+const getGooseConfiguredVersion = () => getGooseConfiguredVersionFromConfig(gooseConfig);
 
 const parseVarsFile = (filePath: string): Record<string, string> => {
   const parsed: Record<string, string> = {};
@@ -174,12 +205,35 @@ const buildProfileEnv = (runtimeProfile: RuntimeProfile): NodeJS.ProcessEnv => {
   const localOverridePath = cliOptions.localOverrideFile
     ? resolve(rootDir, cliOptions.localOverrideFile)
     : resolve(rootDir, `config/runtime/${runtimeProfile}.local.vars`);
+  const baseEnv = parseVarsFile(baseEnvPath);
+  const profileEnv = parseVarsFile(profileEnvPath);
+  const localOverrideEnv = existsSync(localOverridePath) ? parseVarsFile(localOverridePath) : {};
+  const userQuantumEnvPath = process.env.HOME ? resolve(process.env.HOME, '.config/quantum/env') : '';
+  const userQuantumEnv = userQuantumEnvPath && existsSync(userQuantumEnvPath) ? parseVarsFile(userQuantumEnvPath) : {};
   const env = {
+    ...baseEnv,
+    ...profileEnv,
+    ...localOverrideEnv,
+    ...userQuantumEnv,
     ...process.env,
-    ...parseVarsFile(baseEnvPath),
-    ...parseVarsFile(profileEnvPath),
-    ...(existsSync(localOverridePath) ? parseVarsFile(localOverridePath) : {}),
   };
+
+  if (!getRuntimeProfileDefinition(runtimeProfile).isLocal) {
+    const remoteOnlyKeys = [
+      'SVA_STACK_NAME',
+      'OTEL_EXPORTER_OTLP_ENDPOINT',
+      'REDIS_URL',
+      'POSTGRES_PASSWORD',
+      'IAM_DATABASE_URL',
+      'IAM_PII_KEYRING_JSON',
+    ] as const;
+
+    for (const key of remoteOnlyKeys) {
+      if (!(key in profileEnv) && !(key in localOverrideEnv) && !(key in process.env)) {
+        delete env[key];
+      }
+    }
+  }
 
   env.SVA_RUNTIME_PROFILE = runtimeProfile;
   env.VITE_SVA_RUNTIME_PROFILE = runtimeProfile;
@@ -216,137 +270,319 @@ const assertRuntimeEnv = (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv
   throw new Error(lines.join('\n'));
 };
 
-const run = (commandName: string, args: readonly string[], env: NodeJS.ProcessEnv = process.env) => {
-  const result = spawnSync(commandName, args, {
-    cwd: rootDir,
-    env,
-    stdio: 'inherit',
-  });
-
-  if (result.status !== 0) {
-    throw new Error(`${commandName} ${args.join(' ')} failed with exit code ${result.status ?? 1}`);
-  }
-};
-
-const runCapture = (commandName: string, args: readonly string[], env: NodeJS.ProcessEnv = process.env) => {
-  const result = spawnSync(commandName, args, {
-    cwd: rootDir,
-    env,
-    encoding: 'utf8',
-  });
-
-  if (result.status !== 0) {
-    throw new Error(result.stderr?.trim() || `${commandName} ${args.join(' ')} failed`);
+const getConfiguredStackName = (env: NodeJS.ProcessEnv) => {
+  const stackName = env.SVA_STACK_NAME?.trim();
+  if (!stackName) {
+    throw new Error('runtime_profile_invalid: SVA_STACK_NAME fehlt fuer den Remote-Betrieb.');
   }
 
-  return result.stdout.trim();
+  return stackName;
 };
 
-const runCaptureDetailed = (commandName: string, args: readonly string[], env: NodeJS.ProcessEnv = process.env) =>
-  spawnSync(commandName, args, {
-    cwd: rootDir,
-    env,
-    encoding: 'utf8',
-  });
+const getConfiguredQuantumEndpoint = (env: NodeJS.ProcessEnv) => {
+  const endpoint = env.QUANTUM_ENDPOINT?.trim() || env.PORTAINER_ENDPOINT?.trim();
+  if (!endpoint) {
+    throw new Error('runtime_profile_invalid: QUANTUM_ENDPOINT fehlt fuer den Remote-Betrieb.');
+  }
 
-const commandExists = (commandName: string) =>
-  spawnSync(commandName, ['--help'], {
-    cwd: rootDir,
-    stdio: 'ignore',
-  }).status === 0;
-
-const wait = (ms: number) => new Promise((resolvePromise) => setTimeout(resolvePromise, ms));
-
-const stripControlArtifacts = (value: string) => value.replaceAll('\u0000', '');
-
-const stripAnsiArtifacts = (value: string) => {
-  const escapeChar = String.fromCharCode(27);
-  return value.replace(new RegExp(`${escapeChar}\\[[0-9;?]*[ -/]*[@-~]`, 'gu'), '');
+  return endpoint;
 };
 
-const stripCaretControlArtifacts = (value: string) => value.replaceAll('^@', '');
-
-const sanitizeProcessOutput = (value: string) =>
-  stripCaretControlArtifacts(stripAnsiArtifacts(stripControlArtifacts(value)));
-
-const filterRemoteOutputLines = (value: string) =>
-  sanitizeProcessOutput(value)
-    .replace(/\ntime=.*level=/gu, '\ntime=')
-    .split(/\r?\n/u)
+const getRuntimeContractSummary = (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => ({
+  enableOtel: (env.ENABLE_OTEL?.trim() || 'true').toLowerCase() !== 'false',
+  mainserverRequired: isMainserverCheckRequired(runtimeProfile, env),
+  parentDomain: env.SVA_PARENT_DOMAIN?.trim() || null,
+  publicBaseUrl: env.SVA_PUBLIC_BASE_URL?.trim() || null,
+  quantumEndpoint: getRuntimeProfileDefinition(runtimeProfile).isLocal ? null : (env.QUANTUM_ENDPOINT?.trim() || null),
+  runtimeProfile,
+  stackName: getRuntimeProfileDefinition(runtimeProfile).isLocal ? null : (env.SVA_STACK_NAME?.trim() || null),
+  supportedTenantHosts: (env.SVA_ALLOWED_INSTANCE_IDS ?? '')
+    .split(',')
     .map((entry) => entry.trim())
     .filter((entry) => entry.length > 0)
-    .filter((entry) => !/^time=.*level=/u.test(entry))
-    .filter((entry) => entry !== 'standard input')
-    .filter((entry) => !/^~+$/u.test(entry));
+    .map((instanceId) => `${instanceId}.${env.SVA_PARENT_DOMAIN?.trim() || '<missing-parent-domain>'}`),
+});
 
-const summarizeProcessOutput = (value: string, maxLines = 40) => {
-  const lines = filterRemoteOutputLines(value);
+const isMainserverCheckRequired = (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => {
+  const explicit = env.SVA_MAINSERVER_REQUIRED?.trim().toLowerCase();
+  if (explicit === 'true') {
+    return true;
+  }
+  if (explicit === 'false') {
+    return false;
+  }
 
-  return lines.slice(-maxLines).join('\n');
+  return runtimeProfile !== 'studio';
 };
 
-const withoutDebugEnv = (env: NodeJS.ProcessEnv): NodeJS.ProcessEnv => {
-  const sanitized = { ...env };
-  delete sanitized.DEBUG;
-  return sanitized;
+const isMigrationStatusCheckRequired = (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => {
+  const explicit = env.SVA_MIGRATION_STATUS_REQUIRED?.trim().toLowerCase();
+  if (explicit === 'true') {
+    return true;
+  }
+  if (explicit === 'false') {
+    return false;
+  }
+
+  return runtimeProfile !== 'studio';
 };
 
-const parseMarkedOutput = (output: string, marker: string) => {
-  const cleaned = sanitizeProcessOutput(output);
-  const startMarker = `${marker}_START`;
-  const endMarker = `${marker}_END`;
-  const startIndex = cleaned.lastIndexOf(startMarker);
-  const endIndex = startIndex === -1 ? -1 : cleaned.indexOf(endMarker, startIndex + startMarker.length);
 
-  if (startIndex === -1) {
-    throw new Error(`Markierte Ausgabe ${marker} nicht gefunden.`);
-  }
-
-  const segment = cleaned.slice(startIndex + startMarker.length, endIndex === -1 ? undefined : endIndex);
-  const lines = filterRemoteOutputLines(segment.replace(/^\n+/u, '').trimStart()).filter(
-    (entry) => entry !== startMarker && entry !== endMarker,
-  );
-  if (lines.length > 0) {
-    return lines.join('\n');
-  }
-
-  const boolMatrixMatches = Array.from(segment.matchAll(/(?:t|f)(?:\|(?:t|f)){3,}/gu)).map((match) => match[0]);
-  if (boolMatrixMatches.length > 0) {
-    return boolMatrixMatches.at(-1) ?? boolMatrixMatches[0];
-  }
-
-  const statusMatches = Array.from(segment.matchAll(/\b(?:ok|applied:[^\s]+)\b/gu)).map((match) => match[0]);
-  if (statusMatches.length > 0) {
-    return statusMatches.join('\n');
-  }
-
-  throw new Error(`Markierte Ausgabe ${marker} enthält keine auswertbaren Daten.`);
+const isTruthyFlag = (value: string | undefined): boolean => {
+  const normalized = value?.trim().toLowerCase();
+  return normalized === 'true' || normalized === '1';
 };
 
-const runQuantumExec = (
-  args: readonly string[],
-  env: NodeJS.ProcessEnv,
-  options?: {
-    marker?: string;
-    failureMessage: string;
-  }
-) => {
-  const result = runCaptureDetailed('quantum-cli', args, withoutDebugEnv(env));
-  const combined = `${result.stdout ?? ''}\n${result.stderr ?? ''}`;
+const resolveObservabilityMode = (env: NodeJS.ProcessEnv): 'console_to_loki' | 'otel_to_loki' | 'degraded' => {
+  const otelEnabled = !['false', '0'].includes((env.ENABLE_OTEL?.trim() || '').toLowerCase());
+  const consoleEnabled = isTruthyFlag(env.SVA_ENABLE_SERVER_CONSOLE_LOGS);
 
-  if (result.status === 0 && options?.marker) {
-    try {
-      return parseMarkedOutput(combined, options.marker);
-    } catch {
-      // Fall through to status/output handling below when no valid marker was emitted.
+  if (otelEnabled) {
+    return 'otel_to_loki';
+  }
+  if (consoleEnabled) {
+    return 'console_to_loki';
+  }
+  return 'degraded';
+};
+
+const getObservabilitySummary = (env: NodeJS.ProcessEnv) => ({
+  consoleEnabled: isTruthyFlag(env.SVA_ENABLE_SERVER_CONSOLE_LOGS),
+  loggerMode: resolveObservabilityMode(env),
+  lokiConfigured: Boolean(env.SVA_LOKI_URL?.trim() && env.SVA_GRAFANA_TOKEN?.trim()),
+  otelEnabled: !['false', '0'].includes((env.ENABLE_OTEL?.trim() || '').toLowerCase()),
+  otelEndpoint: env.OTEL_EXPORTER_OTLP_ENDPOINT?.trim() || null,
+});
+
+const queryRecentLokiLines = async (env: NodeJS.ProcessEnv, query: string, limit = 20): Promise<readonly string[]> => {
+  const lokiUrl = env.SVA_LOKI_URL?.trim();
+  const grafanaToken = env.SVA_GRAFANA_TOKEN?.trim();
+  if (!lokiUrl || !grafanaToken) {
+    throw new Error('loki_probe_unconfigured');
+  }
+
+  const url = new URL(`${lokiUrl.replace(/\/+$/u, '')}/query_range`);
+  url.searchParams.set('query', query);
+  url.searchParams.set('limit', String(limit));
+  url.searchParams.set('start', String((Date.now() - 15 * 60 * 1000) * 1_000_000));
+  const response = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${grafanaToken}`,
+    },
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!response.ok) {
+    throw new Error(`loki_probe_failed:${response.status}`);
+  }
+  const payload = (await response.json()) as {
+    data?: { result?: Array<{ values?: string[][] }> };
+  };
+  return (payload.data?.result ?? []).flatMap((entry) => (entry.values ?? []).map((value) => value[1] ?? '')).filter((line) => line.length > 0);
+};
+
+const buildObservabilityDoctorCheck = async (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv): Promise<DoctorCheck> => {
+  const summary = getObservabilitySummary(env);
+  if (summary.loggerMode === 'degraded') {
+    return toDoctorCheck(
+      'observability-readiness',
+      'error',
+      'observability_transport_missing',
+      'Weder OTEL noch produktives Console-Logging sind aktiv; der Logger waere im degradierten Modus.',
+      summary
+    );
+  }
+
+  if (runtimeProfile === 'local-builder' || runtimeProfile === 'local-keycloak') {
+    return toDoctorCheck(
+      'observability-readiness',
+      'ok',
+      'observability_local_ready',
+      'Lokales Laufzeitprofil verwendet einen gueltigen Logger-Modus.',
+      summary
+    );
+  }
+
+  try {
+    const stackName = getConfiguredStackName(env);
+    const lines = await queryRecentLokiLines(
+      env,
+      `{swarm_stack="${stackName}",swarm_service="${stackName}_app"} |= "observability_"`,
+      50
+    );
+    const readyLine = [...lines].reverse().find((line) => line.includes('observability_ready'));
+    const degradedLine = [...lines].reverse().find((line) => line.includes('observability_degraded'));
+    if (readyLine) {
+      return toDoctorCheck(
+        'observability-readiness',
+        'ok',
+        'observability_ready',
+        'Ein frisches Observability-Ready-Event ist in Loki sichtbar.',
+        {
+          ...summary,
+          sample: readyLine,
+        }
+      );
     }
+    if (degradedLine) {
+      return toDoctorCheck(
+        'observability-readiness',
+        'warn',
+        'observability_degraded',
+        'Die App meldet einen degradierten Observability-Zustand in Loki.',
+        {
+          ...summary,
+          sample: degradedLine,
+        }
+      );
+    }
+
+    return toDoctorCheck(
+      'observability-readiness',
+      'warn',
+      'observability_probe_empty',
+      'Es wurden keine frischen Observability-Ereignisse in Loki gefunden.',
+      summary
+    );
+  } catch (error) {
+    return toDoctorCheck(
+      'observability-readiness',
+      'warn',
+      error instanceof Error && error.message === 'loki_probe_unconfigured' ? 'loki_probe_unconfigured' : 'loki_probe_failed',
+      error instanceof Error ? error.message : String(error),
+      summary
+    );
+  }
+};
+
+const buildTenantAuthProofCheck = async (env: NodeJS.ProcessEnv): Promise<DoctorCheck> => {
+  const parentDomain = env.SVA_PARENT_DOMAIN?.trim();
+  const tenantInstanceIds = (env.SVA_ALLOWED_INSTANCE_IDS ?? '')
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0);
+
+  if (!parentDomain || tenantInstanceIds.length === 0) {
+    return toDoctorCheck('tenant-auth-proof', 'skipped', 'tenant_auth_optional', 'Kein Tenant-Auth-Proof konfiguriert.', {
+      parentDomain,
+      tenantInstanceIds,
+    });
   }
 
-  if (result.status !== 0) {
-    throw new Error(summarizeProcessOutput(combined) || options?.failureMessage || 'quantum-cli exec fehlgeschlagen.');
+  const baseProtocol = new URL(env.SVA_PUBLIC_BASE_URL ?? 'https://studio.smart-village.app').protocol;
+  const probeResults: Array<{ instanceId: string; location: string }> = [];
+  for (const instanceId of tenantInstanceIds.slice(0, 2)) {
+    const target = `${baseProtocol}//${instanceId}.${parentDomain}/auth/login`;
+    const response = await fetch(target, { redirect: 'manual', signal: AbortSignal.timeout(10_000) });
+    const location = response.headers.get('location') ?? '';
+    if (response.status !== 302 || !location.includes(`/realms/${instanceId}/`)) {
+      return toDoctorCheck(
+        'tenant-auth-proof',
+        'error',
+        'tenant_auth_redirect_failed',
+        `Tenant-Login fuer ${instanceId} liefert keinen korrekten Realm-Redirect.`,
+        { instanceId, location, status: response.status }
+      );
+    }
+    probeResults.push({ instanceId, location });
   }
 
-  return summarizeProcessOutput(combined);
+  try {
+    const stackName = getConfiguredStackName(env);
+    const missingEvidence: string[] = [];
+    for (const probe of probeResults) {
+      const lines = await queryRecentLokiLines(
+        env,
+        `{swarm_stack="${stackName}",swarm_service="${stackName}_app"} |= "tenant_auth_resolution_summary" |= "${probe.instanceId}"`,
+        20
+      );
+      if (lines.length === 0) {
+        missingEvidence.push(probe.instanceId);
+      }
+    }
+
+    if (missingEvidence.length > 0) {
+      return toDoctorCheck(
+        'tenant-auth-proof',
+        'warn',
+        'tenant_auth_log_missing',
+        'Tenant-Redirects sind korrekt, aber Loki enthaelt noch nicht fuer alle Tenant-Probes die passenden Resolution-Logs.',
+        { missingEvidence, probeResults }
+      );
+    }
+
+    return toDoctorCheck(
+      'tenant-auth-proof',
+      'ok',
+      'tenant_auth_resolution_logged',
+      'Tenant-Redirects und zugehoerige Resolution-Logs sind vorhanden.',
+      { probeResults }
+    );
+  } catch (error) {
+    return toDoctorCheck(
+      'tenant-auth-proof',
+      'warn',
+      'tenant_auth_log_probe_failed',
+      error instanceof Error ? error.message : String(error),
+      { probeResults }
+    );
+  }
+};
+
+const shouldSkipQuantumPrePull = (env: NodeJS.ProcessEnv) => env.SVA_QUANTUM_NO_PRE_PULL?.trim().toLowerCase() === 'true';
+
+const RUNTIME_CONTRACT_COMPARISON_KEYS = [
+  'SVA_RUNTIME_PROFILE',
+  'SVA_PUBLIC_BASE_URL',
+  'SVA_PARENT_DOMAIN',
+  'SVA_ALLOWED_INSTANCE_IDS',
+  'APP_DB_USER',
+  'POSTGRES_DB',
+  'KEYCLOAK_ADMIN_BASE_URL',
+  'KEYCLOAK_ADMIN_REALM',
+  'KEYCLOAK_ADMIN_CLIENT_ID',
+  'IAM_UI_ENABLED',
+  'IAM_ADMIN_ENABLED',
+  'IAM_BULK_ENABLED',
+  'VITE_IAM_UI_ENABLED',
+  'VITE_IAM_ADMIN_ENABLED',
+  'VITE_IAM_BULK_ENABLED',
+] as const;
+
+const RUNTIME_CONTRACT_SECRET_PRESENCE_KEYS = [
+  'SVA_AUTH_CLIENT_SECRET',
+  'SVA_AUTH_STATE_SECRET',
+  'KEYCLOAK_ADMIN_CLIENT_SECRET',
+  'ENCRYPTION_KEY',
+  'IAM_PII_KEYRING_JSON',
+  'APP_DB_PASSWORD',
+  'POSTGRES_PASSWORD',
+  'REDIS_PASSWORD',
+] as const;
+
+const parseContainerEnv = (serialized: string) => {
+  const normalized = serialized.trim();
+  if (!normalized) {
+    return {} as Record<string, string>;
+  }
+
+  const parsed = JSON.parse(normalized) as string[];
+  return Object.fromEntries(
+    parsed
+      .filter((entry) => entry.includes('='))
+      .map((entry) => {
+        const separatorIndex = entry.indexOf('=');
+        return [entry.slice(0, separatorIndex), entry.slice(separatorIndex + 1)] as const;
+      })
+  );
+};
+
+const getRemoteComposeFile = (env: NodeJS.ProcessEnv) => {
+  const runtimeProfile = env.SVA_RUNTIME_PROFILE?.trim();
+  if (runtimeProfile === 'studio') {
+    return 'deploy/portainer/docker-compose.studio.yml';
+  }
+
+  return 'deploy/portainer/docker-compose.yml';
 };
 
 const toDoctorCheck = (
@@ -678,8 +914,8 @@ const createDbSqlRunner = (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEn
       throw new Error('quantum-cli ist fuer den Acceptance-DB-Check nicht verfuegbar.');
     }
 
-    const stackName = env.SVA_STACK_NAME ?? 'sva-studio';
-    const quantumEndpoint = env.QUANTUM_ENDPOINT ?? env.PORTAINER_ENDPOINT ?? 'sva';
+    const stackName = getConfiguredStackName(env);
+    const quantumEndpoint = getConfiguredQuantumEndpoint(env);
     const quantumService = env.SVA_ACCEPTANCE_POSTGRES_SERVICE ?? 'postgres';
     const quantumSlot = env.SVA_ACCEPTANCE_POSTGRES_SLOT ?? '1';
     const marker = '__SVA_DOCTOR_JSON__';
@@ -735,7 +971,7 @@ const createDbSqlRunner = (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEn
     return lines.at(-1) ?? output;
   };
 
-  return (sql: string) => (runtimeProfile === 'acceptance-hb' ? runAcceptanceSql(sql) : runLocalSql(sql));
+  return (sql: string) => (isRemoteRuntimeProfile(runtimeProfile) ? runAcceptanceSql(sql) : runLocalSql(sql));
 };
 
 const runSchemaGuard = (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv): SchemaGuardReport => {
@@ -986,6 +1222,40 @@ const buildInstanceAuthConfigCheck = (
   runtimeProfile: RuntimeProfile,
   env: NodeJS.ProcessEnv
 ): DoctorCheck => {
+  const evaluateInstanceAuthPayload = (payload: {
+    checked_active_instance_count?: number;
+    invalid_instance_ids?: string[];
+  }): DoctorCheck => {
+    const invalidInstanceIds = Array.isArray(payload.invalid_instance_ids) ? payload.invalid_instance_ids : [];
+    const checkedActiveInstanceCount =
+      typeof payload.checked_active_instance_count === 'number' ? payload.checked_active_instance_count : 0;
+
+    if (invalidInstanceIds.length > 0) {
+      return toDoctorCheck(
+        'instance-auth-config',
+        'error',
+        'instance_auth_config_missing',
+        'Mindestens eine aktive Instanz hat keine vollstaendige Auth-Konfiguration.',
+        {
+          checkedActiveInstanceCount,
+          invalidInstanceIds,
+          requiredFields: ['authRealm', 'authClientId'],
+        }
+      );
+    }
+
+    return toDoctorCheck(
+      'instance-auth-config',
+      'ok',
+      'instance_auth_config_complete',
+      'Alle aktiven Instanzen besitzen authRealm und authClientId.',
+      {
+        checkedActiveInstanceCount,
+        requiredFields: ['authRealm', 'authClientId'],
+      }
+    );
+  };
+
   const sql = `
 SELECT json_build_object(
   'invalid_instance_ids',
@@ -1018,40 +1288,121 @@ SELECT json_build_object(
       checked_active_instance_count?: number;
       invalid_instance_ids?: string[];
     };
-    const invalidInstanceIds = Array.isArray(payload.invalid_instance_ids) ? payload.invalid_instance_ids : [];
-    const checkedActiveInstanceCount =
-      typeof payload.checked_active_instance_count === 'number' ? payload.checked_active_instance_count : 0;
+    return evaluateInstanceAuthPayload(payload);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const jsonMatch = message.match(/\{[\s\S]*\}/u);
 
-    if (invalidInstanceIds.length > 0) {
+    if (jsonMatch) {
+      try {
+        const fallbackPayload = JSON.parse(jsonMatch[0]) as {
+          checked_active_instance_count?: number;
+          invalid_instance_ids?: string[];
+        };
+
+        return evaluateInstanceAuthPayload(fallbackPayload);
+      } catch {
+        // Keep original error below when fallback payload cannot be parsed.
+      }
+    }
+
+    return toDoctorCheck(
+      'instance-auth-config',
+      'error',
+      'instance_auth_config_check_failed',
+      message
+    );
+  }
+};
+
+const buildInstanceHostnameMappingCheck = (
+  runtimeProfile: RuntimeProfile,
+  env: NodeJS.ProcessEnv
+): DoctorCheck => {
+  const parentDomain = env.SVA_PARENT_DOMAIN?.trim();
+  const instanceIds = (env.SVA_ALLOWED_INSTANCE_IDS ?? '')
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0);
+
+  if (!parentDomain || instanceIds.length === 0) {
+    return toDoctorCheck(
+      'instance-hostnames',
+      'skipped',
+      'instance_hostname_scope_missing',
+      'Keine Tenant-Host-Pruefung konfiguriert; Parent-Domain oder erlaubte Instanz-IDs fehlen.'
+    );
+  }
+
+  const expectedHostnames = instanceIds.map((instanceId) => ({
+    hostname: `${instanceId}.${parentDomain}`,
+    instanceId,
+  }));
+
+  const sql = `
+SELECT json_build_object(
+  'missing_hostnames',
+  COALESCE(
+    (
+      SELECT json_agg(expected.hostname ORDER BY expected.hostname)
+      FROM (
+        VALUES ${expectedHostnames
+          .map(({ hostname, instanceId }) => `(${sqlLiteral(hostname)}, ${sqlLiteral(instanceId)})`)
+          .join(',\n        ')}
+      ) AS expected(hostname, instance_id)
+      LEFT JOIN iam.instance_hostnames actual
+        ON actual.hostname = expected.hostname
+       AND actual.instance_id = expected.instance_id
+       AND actual.is_primary = true
+      WHERE actual.hostname IS NULL
+    ),
+    '[]'::json
+  ),
+  'checked_hostnames',
+  ${sqlLiteral(expectedHostnames.map(({ hostname }) => hostname).join(','))}
+)::text;
+`;
+
+  try {
+    const payload = JSON.parse(createDbSqlRunner(runtimeProfile, env)(sql)) as {
+      checked_hostnames?: string;
+      missing_hostnames?: string[];
+    };
+
+    const missingHostnames = Array.isArray(payload.missing_hostnames) ? payload.missing_hostnames : [];
+    if (missingHostnames.length > 0) {
       return toDoctorCheck(
-        'instance-auth-config',
+        'instance-hostnames',
         'error',
-        'instance_auth_config_missing',
-        'Mindestens eine aktive Instanz hat keine vollstaendige Auth-Konfiguration.',
+        'tenant_instance_not_found',
+        'Mindestens ein erwartetes Tenant-Hostname-Mapping fehlt oder ist nicht primaer.',
         {
-          checkedActiveInstanceCount,
-          invalidInstanceIds,
-          requiredFields: ['authRealm', 'authClientId'],
+          missingHostnames,
+          parentDomain,
         }
       );
     }
 
     return toDoctorCheck(
-      'instance-auth-config',
+      'instance-hostnames',
       'ok',
-      'instance_auth_config_complete',
-      'Alle aktiven Instanzen besitzen authRealm und authClientId.',
+      'tenant_hostnames_ready',
+      'Alle erwarteten Tenant-Hostname-Mappings sind vorhanden.',
       {
-        checkedActiveInstanceCount,
-        requiredFields: ['authRealm', 'authClientId'],
+        hostnames: expectedHostnames.map(({ hostname }) => hostname),
+        parentDomain,
       }
     );
   } catch (error) {
     return toDoctorCheck(
-      'instance-auth-config',
+      'instance-hostnames',
       'error',
-      'instance_auth_config_check_failed',
-      error instanceof Error ? error.message : String(error)
+      'tenant_host_resolution_failed',
+      error instanceof Error ? error.message : String(error),
+      {
+        hostnames: expectedHostnames.map(({ hostname }) => hostname),
+        parentDomain,
+      }
     );
   }
 };
@@ -1067,8 +1418,8 @@ const buildAcceptanceServiceCheck = (env: NodeJS.ProcessEnv) => {
   }
 
   try {
-    const stackName = env.SVA_STACK_NAME ?? 'sva-studio';
-    const quantumEndpoint = env.QUANTUM_ENDPOINT ?? env.PORTAINER_ENDPOINT ?? 'sva';
+    const stackName = getConfiguredStackName(env);
+    const quantumEndpoint = getConfiguredQuantumEndpoint(env);
     const output = runCapture('quantum-cli', ['ps', '--endpoint', quantumEndpoint, '--stack', stackName, '--all'], withoutDebugEnv(env));
     return toDoctorCheck('acceptance-services', 'ok', 'remote_services_visible', 'Remote-Service-Status konnte abgefragt werden.', {
       summary: output,
@@ -1121,12 +1472,12 @@ const buildAcceptancePostgresCheck = (env: NodeJS.ProcessEnv) => {
         'postgres-health',
         'ok',
         'postgres_ready',
-        'Acceptance-Postgres ist ueber den offiziellen Betriebsweg erreichbar.',
+      'Remote-Postgres des Ziel-Stacks ist ueber den offiziellen Betriebsweg erreichbar.',
         { summary }
       );
     }
 
-    const containerOutput = runCapture('docker', ['ps', '--filter', `name=${env.SVA_STACK_NAME ?? 'sva-studio'}_postgres`, '--format', '{{.Status}}'], env);
+    const containerOutput = runCapture('docker', ['ps', '--filter', `name=${getConfiguredStackName(env)}_postgres`, '--format', '{{.Status}}'], env);
     if (!containerOutput.trim()) {
       throw new Error('Weder quantum-cli noch lokaler Postgres-Container verfuegbar.');
     }
@@ -1135,7 +1486,7 @@ const buildAcceptancePostgresCheck = (env: NodeJS.ProcessEnv) => {
       'postgres-health',
       'ok',
       'postgres_visible',
-      'Lokaler Acceptance-Postgres-Container ist sichtbar.',
+      'Lokaler Remote-Postgres-Container ist sichtbar.',
       { summary: containerOutput }
     );
   } catch (error) {
@@ -1148,181 +1499,39 @@ const buildAcceptancePostgresCheck = (env: NodeJS.ProcessEnv) => {
   }
 };
 
-const runLocalGooseStatus = (env: NodeJS.ProcessEnv) => {
-  const summary = runCapture('bash', ['packages/data/scripts/run-migrations.sh', 'status'], env);
-  return {
-    summary,
-    version: getGooseConfiguredVersion(),
-  };
-};
-
-const runGooseAgainstLocalAcceptanceContainer = (
-  containerId: string,
-  postgresUser: string,
-  postgresPassword: string,
-  postgresDb: string,
-  gooseCommand: 'status' | 'up',
-) => {
-  const gooseBinary = getGooseLocalBinaryPath();
-  const dbString = buildPostgresConnectionString(postgresUser, postgresDb, '127.0.0.1', '5432');
-  const dockerEnv = { ...process.env, PGPASSWORD: postgresPassword };
-
-  run('docker', ['cp', gooseBinary, `${containerId}:/tmp/goose`], dockerEnv);
-  run('docker', ['exec', containerId, 'chmod', '+x', '/tmp/goose'], dockerEnv);
-  run('docker', ['exec', containerId, 'rm', '-rf', '/tmp/sva-goose-migrations'], dockerEnv);
-  run('docker', ['exec', containerId, 'mkdir', '-p', '/tmp/sva-goose-migrations'], dockerEnv);
-  run('docker', ['cp', `${gooseMigrationsDir}/.`, `${containerId}:/tmp/sva-goose-migrations/`], dockerEnv);
-
-  try {
-    return runCapture(
-      'docker',
-      ['exec', '-e', `PGPASSWORD=${postgresPassword}`, containerId, '/tmp/goose', '-dir', '/tmp/sva-goose-migrations', 'postgres', dbString, gooseCommand],
-      dockerEnv,
-    );
-  } finally {
-    try {
-      run('docker', ['exec', containerId, 'rm', '-rf', '/tmp/sva-goose-migrations', '/tmp/goose'], dockerEnv);
-    } catch {
-      // Best-effort cleanup; the primary failure should remain visible to the caller.
-    }
-  }
-};
-
-const prepareAcceptanceGooseAssets = (
-  env: NodeJS.ProcessEnv,
-  service: string,
-  slot: string,
-  migrationFiles: readonly string[],
-) => {
-  const repo = gooseConfig.repo;
-  const version = gooseConfig.version;
-
-  const bootstrapScript = [
-    'set -euo pipefail',
-    'arch="$(uname -m)"',
-    'case "${arch}" in',
-    '  x86_64|amd64) asset="goose_linux_x86_64" ;;',
-    '  arm64|aarch64) asset="goose_linux_arm64" ;;',
-    '  *) echo "Unsupported architecture: ${arch}" >&2; exit 1 ;;',
-    'esac',
-    'mkdir -p /tmp/sva-goose-migrations',
-    `download_url="https://github.com/${repo}/releases/download/${version}/\${asset}"`,
-    `checksums_url="https://github.com/${repo}/releases/download/${version}/checksums.txt"`,
-    'if command -v wget >/dev/null 2>&1; then',
-    '  wget -qO /tmp/goose "${download_url}"',
-    '  wget -qO /tmp/goose.checksums "${checksums_url}"',
-    'elif command -v curl >/dev/null 2>&1; then',
-    '  curl -fsSL "${download_url}" -o /tmp/goose',
-    '  curl -fsSL "${checksums_url}" -o /tmp/goose.checksums',
-    'else',
-    '  echo "Neither wget nor curl is available in the target container." >&2',
-    '  exit 1',
-    'fi',
-    'grep "[[:space:]]\\${asset}$" /tmp/goose.checksums > /tmp/goose.checksums.filtered',
-    'if [ ! -s /tmp/goose.checksums.filtered ]; then',
-    '  echo "No checksum entry found for downloaded goose binary." >&2',
-    '  exit 1',
-    'fi',
-    'if command -v sha256sum >/dev/null 2>&1; then',
-    '  (cd /tmp && sha256sum -c /tmp/goose.checksums.filtered)',
-    'elif command -v shasum >/dev/null 2>&1; then',
-    '  (cd /tmp && shasum -a 256 -c /tmp/goose.checksums.filtered)',
-    'else',
-    '  echo "Neither sha256sum nor shasum is available in the target container." >&2',
-    '  exit 1',
-    'fi',
-    'chmod +x /tmp/goose',
-  ].join('\n');
-
-  runAcceptanceServiceScript(env, service, bootstrapScript, {
-    failureMessage: 'Remote-Goose-Bootstrap fehlgeschlagen.',
-    slot,
-  });
-
-  for (const migrationFile of migrationFiles) {
-    const sql = readFileSync(resolve(rootDir, migrationFile), 'utf8');
-    const remoteTarget = `/tmp/sva-goose-migrations/${basename(migrationFile)}`;
-    const encodedSql = Buffer.from(sql, 'utf8').toString('base64');
-    const heredocMarker = `__SVA_GOOSE_${basename(migrationFile).replaceAll(/[^A-Za-z0-9]/g, '_')}__`;
-    const uploadScript = [
-      'set -euo pipefail',
-      'if command -v base64 >/dev/null 2>&1; then',
-      `  cat <<'${heredocMarker}' | base64 -d >${shellEscape(remoteTarget)}`,
-      encodedSql,
-      heredocMarker,
-      'else',
-      '  echo "base64 is required for remote migration upload." >&2',
-      '  exit 1',
-      'fi',
-    ].join('\n');
-
-    runAcceptanceServiceScript(env, service, uploadScript, {
-      failureMessage: `Remote-Migrationsupload ${migrationFile} fehlgeschlagen.`,
-      slot,
-    });
-  }
-};
+const runLocalGooseStatus = (env: NodeJS.ProcessEnv) =>
+  runLocalGooseStatusWithDeps({ rootDir, runCapture: runCaptureForRoot }, gooseConfig, env);
 
 const runGooseAgainstAcceptance = (
   env: NodeJS.ProcessEnv,
+  runtimeProfile: RemoteRuntimeProfile,
   gooseCommand: 'status' | 'up',
-) => {
-  const stackName = env.SVA_STACK_NAME ?? 'sva-studio';
-  const postgresUser = env.POSTGRES_USER ?? 'sva';
-  const postgresPassword = env.POSTGRES_PASSWORD ?? '';
-  const postgresDb = env.POSTGRES_DB ?? 'sva_studio';
-  const quantumService = env.SVA_ACCEPTANCE_POSTGRES_SERVICE ?? 'postgres';
-  const quantumSlot = env.SVA_ACCEPTANCE_POSTGRES_SLOT ?? '1';
-  const migrationFiles = listGooseMigrationFiles();
-
-  if (migrationFiles.length === 0) {
-    throw new Error('Keine Goose-Migrationen unter packages/data/migrations gefunden.');
-  }
-
-  if (!postgresPassword) {
-    throw new Error('POSTGRES_PASSWORD ist fuer Goose-Operationen im Acceptance-Profil erforderlich.');
-  }
-
-  const localContainerId = runCapture('docker', ['ps', '--filter', `name=${stackName}_postgres`, '--format', '{{.ID}}'], env);
-  if (localContainerId.length > 0) {
-    return {
-      summary: runGooseAgainstLocalAcceptanceContainer(localContainerId, postgresUser, postgresPassword, postgresDb, gooseCommand),
-      version: getGooseConfiguredVersion(),
-    };
-  }
-
-  if (!commandExists('quantum-cli')) {
-    throw new Error(
-      `Postgres-Container fuer Stack ${stackName} lokal nicht gefunden und quantum-cli ist nicht verfuegbar.`,
-    );
-  }
-
-  prepareAcceptanceGooseAssets(env, quantumService, quantumSlot, migrationFiles);
-  const dbString = buildPostgresConnectionString(postgresUser, postgresDb, '127.0.0.1', '5432');
-  const summary = runAcceptanceServiceScript(
-    env,
-    quantumService,
-    [
-      'set -euo pipefail',
-      "cleanup() { rm -rf /tmp/sva-goose-migrations /tmp/goose /tmp/goose.checksums /tmp/goose.checksums.filtered; }",
-      'trap cleanup EXIT',
-      `PGPASSWORD=${shellEscape(postgresPassword)} /tmp/goose -dir /tmp/sva-goose-migrations postgres ${shellEscape(dbString)} ${gooseCommand}`,
-    ].join('\n'),
+) =>
+  runGooseAgainstAcceptanceWithDeps(
     {
-      failureMessage: `Remote-Goose-${gooseCommand} fehlgeschlagen.`,
-      slot: quantumSlot,
-    }
+      commandExists: commandExistsForRoot,
+      getConfiguredStackName,
+      rootDir,
+      run: runForRoot,
+      runAcceptanceServiceScript,
+      runCapture: runCaptureForRoot,
+      shellEscape,
+    },
+    gooseConfig,
+    gooseMigrationsDir,
+    gooseWrapperPath,
+    env,
+    runtimeProfile,
+    gooseCommand,
   );
 
-  return {
-    summary,
-    version: getGooseConfiguredVersion(),
-  };
-};
-
 const buildMigrationStatusCheck = (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv): DoctorCheck => {
+  const migrationStatusRequired = isMigrationStatusCheckRequired(runtimeProfile, env);
+
   try {
-    const result = runtimeProfile === 'acceptance-hb' ? runGooseAgainstAcceptance(env, 'status') : runLocalGooseStatus(env);
+    const result = isRemoteRuntimeProfile(runtimeProfile)
+      ? runGooseAgainstAcceptance(env, runtimeProfile, 'status')
+      : runLocalGooseStatus(env);
     return toDoctorCheck(
       'migration-status',
       'ok',
@@ -1334,10 +1543,23 @@ const buildMigrationStatusCheck = (runtimeProfile: RuntimeProfile, env: NodeJS.P
       }
     );
   } catch (error) {
+    if (!migrationStatusRequired) {
+      return toDoctorCheck(
+        'migration-status',
+        'skipped',
+        'migration_status_optional',
+        'Remote-Goose-Status ist fuer dieses Runtime-Profil optional und blockiert die fruehe Studio-Testphase nicht.',
+        {
+          gooseVersion: getGooseConfiguredVersion(),
+          reason: error instanceof Error ? error.message : String(error),
+        }
+      );
+    }
+
     return toDoctorCheck(
       'migration-status',
-      runtimeProfile === 'acceptance-hb' ? 'warn' : 'error',
-      runtimeProfile === 'acceptance-hb' ? 'goose_status_unavailable' : 'goose_status_failed',
+      isRemoteRuntimeProfile(runtimeProfile) ? 'warn' : 'error',
+      isRemoteRuntimeProfile(runtimeProfile) ? 'goose_status_unavailable' : 'goose_status_failed',
       error instanceof Error ? error.message : String(error),
       {
         gooseVersion: getGooseConfiguredVersion(),
@@ -1347,11 +1569,13 @@ const buildMigrationStatusCheck = (runtimeProfile: RuntimeProfile, env: NodeJS.P
 };
 
 const precheckAcceptance = async (
+  runtimeProfile: RemoteRuntimeProfile,
   env: NodeJS.ProcessEnv,
   options?: AcceptanceDeployOptions
 ): Promise<DoctorReport> => {
   const checks: DoctorCheck[] = [];
-  const validation = validateRuntimeProfileEnv('acceptance-hb', env);
+  const validation = validateRuntimeProfileEnv(runtimeProfile, env);
+  const runtimeContract = getRuntimeContractSummary(runtimeProfile, env);
 
   if (validation.missing.length > 0 || validation.placeholders.length > 0 || validation.invalid.length > 0) {
     checks.push(
@@ -1359,38 +1583,48 @@ const precheckAcceptance = async (
         'runtime-env',
         'error',
         'runtime_env_invalid',
-        'Acceptance-Profil ist nicht vollstaendig konfiguriert.',
+        'Remote-Profil ist nicht vollstaendig konfiguriert.',
         {
+          derived: validation.derived,
+          effectiveSummary: runtimeContract,
           invalid: validation.invalid,
           missing: validation.missing,
           placeholders: validation.placeholders,
-          requiredKeys: getRuntimeProfileRequiredEnvKeys('acceptance-hb'),
+          derivedKeys: getRuntimeProfileDerivedEnvKeys(runtimeProfile),
+          requiredKeys: getRuntimeProfileRequiredEnvKeys(runtimeProfile),
         }
       )
     );
   } else {
     checks.push(
-      toDoctorCheck('runtime-env', 'ok', 'runtime_env_valid', 'Acceptance-Profil ist vollstaendig konfiguriert.', {
-        requiredKeys: getRuntimeProfileRequiredEnvKeys('acceptance-hb'),
+      toDoctorCheck('runtime-env', 'ok', 'runtime_env_valid', 'Remote-Profil ist vollstaendig konfiguriert.', {
+        derived: validation.derived,
+        effectiveSummary: runtimeContract,
+        derivedKeys: getRuntimeProfileDerivedEnvKeys(runtimeProfile),
+        requiredKeys: getRuntimeProfileRequiredEnvKeys(runtimeProfile),
       })
     );
   }
 
   checks.push(buildAcceptanceServiceCheck(env));
+  checks.push(await buildObservabilityDoctorCheck(runtimeProfile, env));
+  checks.push(await buildTenantAuthProofCheck(env));
   checks.push(buildAcceptancePostgresCheck(env));
-  checks.push(buildMigrationStatusCheck('acceptance-hb', env));
-  checks.push(buildSchemaGuardCheck('acceptance-hb', env));
-  checks.push(buildInstanceAuthConfigCheck('acceptance-hb', env));
+  checks.push(buildMigrationStatusCheck(runtimeProfile, env));
+  checks.push(buildSchemaGuardCheck(runtimeProfile, env));
+  checks.push(buildInstanceAuthConfigCheck(runtimeProfile, env));
+  checks.push(buildInstanceHostnameMappingCheck(runtimeProfile, env));
   if (options) {
-    checks.push(buildAcceptanceLiveSpecCheck(env, options));
+    checks.push(buildAcceptanceLiveSpecCheck(runtimeProfile, env, options));
   }
 
-  return finalizeDoctorReport('acceptance-hb', checks);
+  return finalizeDoctorReport(runtimeProfile, checks);
 };
 
 const doctorRuntime = async (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv): Promise<DoctorReport> => {
   const checks: DoctorCheck[] = [];
   const validation = validateRuntimeProfileEnv(runtimeProfile, env);
+  const runtimeContract = getRuntimeContractSummary(runtimeProfile, env);
 
   if (validation.missing.length > 0 || validation.placeholders.length > 0 || validation.invalid.length > 0) {
     checks.push(
@@ -1400,9 +1634,12 @@ const doctorRuntime = async (runtimeProfile: RuntimeProfile, env: NodeJS.Process
         'runtime_env_invalid',
         'Runtime-Profil ist nicht vollstaendig konfiguriert.',
         {
+          derived: validation.derived,
+          effectiveSummary: runtimeContract,
           invalid: validation.invalid,
           missing: validation.missing,
           placeholders: validation.placeholders,
+          derivedKeys: getRuntimeProfileDerivedEnvKeys(runtimeProfile),
           requiredKeys: getRuntimeProfileRequiredEnvKeys(runtimeProfile),
         }
       )
@@ -1410,6 +1647,9 @@ const doctorRuntime = async (runtimeProfile: RuntimeProfile, env: NodeJS.Process
   } else {
     checks.push(
       toDoctorCheck('runtime-env', 'ok', 'runtime_env_valid', 'Runtime-Profil ist vollstaendig konfiguriert.', {
+        derived: validation.derived,
+        effectiveSummary: runtimeContract,
+        derivedKeys: getRuntimeProfileDerivedEnvKeys(runtimeProfile),
         requiredKeys: getRuntimeProfileRequiredEnvKeys(runtimeProfile),
       })
     );
@@ -1468,14 +1708,25 @@ const doctorRuntime = async (runtimeProfile: RuntimeProfile, env: NodeJS.Process
     checks.push(toDoctorCheck('auth-me', 'error', 'auth_me_failed', error instanceof Error ? error.message : String(error)));
   }
 
-  try {
-    await assertMainserverSmoke(env);
-    checks.push(toDoctorCheck('mainserver', 'ok', 'mainserver_ok', 'Mainserver-OAuth und GraphQL sind erreichbar.'));
-  } catch (error) {
-    checks.push(toDoctorCheck('mainserver', 'error', 'mainserver_failed', error instanceof Error ? error.message : String(error)));
+  if (isMainserverCheckRequired(runtimeProfile, env)) {
+    try {
+      await assertMainserverSmoke(env);
+      checks.push(toDoctorCheck('mainserver', 'ok', 'mainserver_ok', 'Mainserver-OAuth und GraphQL sind erreichbar.'));
+    } catch (error) {
+      checks.push(toDoctorCheck('mainserver', 'error', 'mainserver_failed', error instanceof Error ? error.message : String(error)));
+    }
+  } else {
+    checks.push(
+      toDoctorCheck(
+        'mainserver',
+        'skipped',
+        'mainserver_optional',
+        'Mainserver-Smoke ist fuer dieses Runtime-Profil optional und blockiert die Studio-Einrichtung nicht.'
+      )
+    );
   }
 
-  if (localProfiles.includes(runtimeProfile)) {
+  if (getRuntimeProfileDefinition(runtimeProfile).isLocal) {
     try {
       await assertOtelLocal(env);
       checks.push(toDoctorCheck('otel', 'ok', 'otel_ok', 'Lokaler OTEL-Collector ist erreichbar.'));
@@ -1485,12 +1736,17 @@ const doctorRuntime = async (runtimeProfile: RuntimeProfile, env: NodeJS.Process
   } else {
     checks.push(buildAcceptanceServiceCheck(env));
   }
+  checks.push(await buildObservabilityDoctorCheck(runtimeProfile, env));
+  if (isRemoteRuntimeProfile(runtimeProfile)) {
+    checks.push(await buildTenantAuthProofCheck(env));
+  }
 
   checks.push(buildFeatureFlagCheck(env));
   checks.push(buildMigrationStatusCheck(runtimeProfile, env));
   checks.push(buildSchemaGuardCheck(runtimeProfile, env));
   if (runtimeProfile !== 'local-builder') {
     checks.push(buildInstanceAuthConfigCheck(runtimeProfile, env));
+    checks.push(buildInstanceHostnameMappingCheck(runtimeProfile, env));
   }
   checks.push(buildActorDoctorCheck(runtimeProfile, env));
 
@@ -1646,11 +1902,14 @@ const assertOtelLocal = async (env: NodeJS.ProcessEnv) => {
 };
 
 const assertAcceptanceContainerHealth = (env: NodeJS.ProcessEnv) => {
-  const stackName = env.SVA_STACK_NAME ?? 'sva-studio';
-  const services = ['app', 'redis', 'postgres', 'otel-collector'];
+  const stackName = getConfiguredStackName(env);
+  const services =
+    (env.ENABLE_OTEL?.trim() || 'true').toLowerCase() === 'false'
+      ? ['app', 'redis', 'postgres']
+      : ['app', 'redis', 'postgres', 'otel-collector'];
 
   if (commandExists('quantum-cli')) {
-    const quantumEndpoint = env.QUANTUM_ENDPOINT ?? env.PORTAINER_ENDPOINT ?? 'sva';
+    const quantumEndpoint = getConfiguredQuantumEndpoint(env);
     const summary = runCapture('quantum-cli', ['ps', '--endpoint', quantumEndpoint, '--stack', stackName, '--all'], withoutDebugEnv(env));
     for (const service of services) {
       if (!summary.includes(service)) {
@@ -1684,9 +1943,11 @@ const smokeRuntime = async (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessE
   await assertLoginFlow(runtimeProfile, env);
   await assertMeEndpoint(runtimeProfile, env);
   await assertIamContextEndpoint(env);
-  await assertMainserverSmoke(env);
+  if (isMainserverCheckRequired(runtimeProfile, env)) {
+    await assertMainserverSmoke(env);
+  }
 
-  if (localProfiles.includes(runtimeProfile)) {
+  if (getRuntimeProfileDefinition(runtimeProfile).isLocal) {
     await assertOtelLocal(env);
   } else {
     assertAcceptanceContainerHealth(env);
@@ -1756,20 +2017,21 @@ const runLocalCommand = async (runtimeProfile: RuntimeProfile, runtimeCommand: R
   }
 };
 
-const migrateAcceptance = (env: NodeJS.ProcessEnv) => {
+const migrateAcceptance = (runtimeProfile: RemoteRuntimeProfile, env: NodeJS.ProcessEnv) => {
   const migrationFiles = listGooseMigrationFiles();
 
   if (migrationFiles.length === 0) {
     throw new Error('Keine Goose-Migrationen unter packages/data/migrations gefunden.');
   }
 
-  const result = runGooseAgainstAcceptance(env, 'up');
-  console.log(`Applying Goose migrations for acceptance with ${result.version}`);
+  const result = runGooseAgainstAcceptance(env, runtimeProfile, 'up');
+  console.log(`Applying Goose migrations for ${runtimeProfile} with ${result.version}`);
   console.log(result.summary);
+  ensureAcceptancePostMigrationState(runtimeProfile, env);
 
-  const schemaGuard = runSchemaGuard('acceptance-hb', env);
+  const schemaGuard = runSchemaGuard(runtimeProfile, env);
   if (!schemaGuard.ok) {
-    throw new Error(`Kritische IAM-Schema-Drift nach Acceptance-Migration: ${summarizeSchemaGuardFailures(schemaGuard)}`);
+    throw new Error(`Kritische IAM-Schema-Drift nach Migration fuer ${runtimeProfile}: ${summarizeSchemaGuardFailures(schemaGuard)}`);
   }
 };
 
@@ -1782,13 +2044,13 @@ const runAcceptanceServiceScript = (
     marker?: string;
     slot?: string;
   }
-) => {
+  ) => {
   if (!commandExists('quantum-cli')) {
-    throw new Error('quantum-cli ist fuer Acceptance-Operationen nicht verfuegbar.');
+    throw new Error('quantum-cli ist fuer Remote-Operationen nicht verfuegbar.');
   }
 
-  const stackName = env.SVA_STACK_NAME ?? 'sva-studio';
-  const quantumEndpoint = env.QUANTUM_ENDPOINT ?? env.PORTAINER_ENDPOINT ?? 'sva';
+  const stackName = getConfiguredStackName(env);
+  const quantumEndpoint = getConfiguredQuantumEndpoint(env);
 
   return runQuantumExec(
     [
@@ -1825,11 +2087,14 @@ const runAcceptanceSqlAgainstDatabase = (
     "cat <<'SQL' >/tmp/sva-runtime-reset.sql",
     sql,
     'SQL',
-    `psql -X -P pager=off -q -v ON_ERROR_STOP=1 -U ${shellEscape(postgresUser)} -d ${shellEscape(database)} -f /tmp/sva-runtime-reset.sql >/tmp/sva-runtime-reset.log 2>&1`,
-    'rm -f /tmp/sva-runtime-reset.sql /tmp/sva-runtime-reset.log',
+    'status=0',
+    `psql -X -P pager=off -q -v ON_ERROR_STOP=1 -U ${shellEscape(postgresUser)} -d ${shellEscape(database)} -f /tmp/sva-runtime-reset.sql >/tmp/sva-runtime-reset.log 2>&1 || status=$?`,
     `printf '%s\\n' '${marker}_START'`,
-    "printf '%s\\n' 'ok'",
+    "if [ -f /tmp/sva-runtime-reset.log ]; then cat /tmp/sva-runtime-reset.log; fi",
+    "printf 'sql_exit:%s\\n' \"$status\"",
     `printf '%s\\n' '${marker}_END'`,
+    'rm -f /tmp/sva-runtime-reset.sql /tmp/sva-runtime-reset.log',
+    'if [ "$status" -ne 0 ]; then exit "$status"; fi',
     'sleep 1',
   ].join('\n');
 
@@ -1877,26 +2142,80 @@ const seedAcceptanceInstances = (env: NodeJS.ProcessEnv) => {
     .split(',')
     .map((entry) => entry.trim())
     .filter((entry) => entry.length > 0);
+  const parentDomain = env.SVA_PARENT_DOMAIN?.trim();
 
-  if (instanceIds.length === 0) {
+  if (instanceIds.length === 0 || !parentDomain) {
     return;
   }
 
   const values = instanceIds
-    .map((instanceId) => `(${sqlLiteral(instanceId)}, ${sqlLiteral(instanceId)})`)
+    .map(
+      (instanceId) =>
+        `(${sqlLiteral(instanceId)}, ${sqlLiteral(instanceId)}, 'active', ${sqlLiteral(parentDomain)}, ${sqlLiteral(`${instanceId}.${parentDomain}`)}, ${sqlLiteral(instanceId)}, ${sqlLiteral('sva-studio')})`
+    )
     .join(',\n');
 
   const sql = `
-INSERT INTO iam.instances (id, display_name)
+INSERT INTO iam.instances (id, display_name, status, parent_domain, primary_hostname, auth_realm, auth_client_id)
 VALUES
 ${values}
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT (id) DO UPDATE
+SET
+  status = EXCLUDED.status,
+  parent_domain = EXCLUDED.parent_domain,
+  primary_hostname = EXCLUDED.primary_hostname,
+  auth_realm = EXCLUDED.auth_realm,
+  auth_client_id = EXCLUDED.auth_client_id,
+  updated_at = NOW();
+
+INSERT INTO iam.instance_hostnames (hostname, instance_id, is_primary, created_by)
+VALUES
+${instanceIds
+  .map((instanceId) => `(${sqlLiteral(`${instanceId}.${parentDomain}`)}, ${sqlLiteral(instanceId)}, true, 'runtime-reset')`)
+  .join(',\n')}
+ON CONFLICT (hostname) DO UPDATE
+SET
+  instance_id = EXCLUDED.instance_id,
+  is_primary = EXCLUDED.is_primary;
 `;
 
   runAcceptanceSqlAgainstDatabase(env, sql, env.POSTGRES_DB ?? 'sva_studio', 'Acceptance-Instanz-Seed fehlgeschlagen.');
 };
 
-const resetAcceptance = (env: NodeJS.ProcessEnv) => {
+const isRetryableAcceptanceMutationFailure = (error: unknown) => {
+  const message = error instanceof Error ? error.message : String(error);
+  const normalized = message.toLowerCase();
+  return (
+    normalized.includes('broken pipe') ||
+    normalized.includes('connection reset by peer') ||
+    normalized.includes('markierte ausgabe __sva_reset_status__ nicht gefunden')
+  );
+};
+
+const ensureAcceptancePostMigrationState = (runtimeProfile: RemoteRuntimeProfile, env: NodeJS.ProcessEnv) => {
+  try {
+    bootstrapAcceptanceAppUser(env);
+  } catch (error) {
+    if (!isRetryableAcceptanceMutationFailure(error)) {
+      throw error;
+    }
+  }
+
+  try {
+    seedAcceptanceInstances(env);
+  } catch (error) {
+    if (!isRetryableAcceptanceMutationFailure(error)) {
+      throw error;
+    }
+  }
+
+  const hostnameCheck = buildInstanceHostnameMappingCheck(runtimeProfile, env);
+  if (hostnameCheck.status !== 'ok') {
+    throw new Error(hostnameCheck.message);
+  }
+};
+
+const resetAcceptance = (runtimeProfile: RemoteRuntimeProfile, env: NodeJS.ProcessEnv) => {
   const postgresDb = env.POSTGRES_DB ?? 'sva_studio';
   const redisPassword = env.REDIS_PASSWORD?.trim();
 
@@ -1926,23 +2245,23 @@ const resetAcceptance = (env: NodeJS.ProcessEnv) => {
     failureMessage: 'Acceptance-Redis-Reset fehlgeschlagen.',
   });
 
-  migrateAcceptance(env);
+  migrateAcceptance(runtimeProfile, env);
   bootstrapAcceptanceAppUser(env);
   seedAcceptanceInstances(env);
 
-  const schemaGuard = runSchemaGuard('acceptance-hb', env);
+  const schemaGuard = runSchemaGuard(runtimeProfile, env);
   if (!schemaGuard.ok) {
-    throw new Error(`Kritische IAM-Schema-Drift nach Acceptance-Reset: ${summarizeSchemaGuardFailures(schemaGuard)}`);
+    throw new Error(`Kritische IAM-Schema-Drift nach Reset fuer ${runtimeProfile}: ${summarizeSchemaGuardFailures(schemaGuard)}`);
   }
 };
 
 const captureAcceptanceStackStatus = (env: NodeJS.ProcessEnv) => {
-  const stackName = env.SVA_STACK_NAME ?? 'sva-studio';
+  const stackName = getConfiguredStackName(env);
 
   try {
     if (commandExists('quantum-cli')) {
       try {
-        const quantumEndpoint = env.QUANTUM_ENDPOINT ?? env.PORTAINER_ENDPOINT ?? 'sva';
+        const quantumEndpoint = getConfiguredQuantumEndpoint(env);
         const services = runCapture(
           'quantum-cli',
           ['ps', '--endpoint', quantumEndpoint, '--stack', stackName, '--all'],
@@ -1984,6 +2303,7 @@ const createProbeResult = (input: {
 });
 
 const buildAcceptanceReleaseManifest = (
+  runtimeProfile: RemoteRuntimeProfile,
   options: AcceptanceDeployOptions
 ): AcceptanceReleaseManifest => ({
   actor: options.actor,
@@ -1993,7 +2313,7 @@ const buildAcceptanceReleaseManifest = (
   imageRepository: options.imageRepository,
   imageTag: options.imageTag,
   monitoringConfigImageTag: options.monitoringConfigImageTag,
-  profile: 'acceptance-hb',
+  profile: runtimeProfile,
   releaseMode: options.releaseMode,
   workflow: options.workflow,
 });
@@ -2002,27 +2322,69 @@ const writeJsonArtifact = (filePath: string, payload: unknown) => {
   writeFileSync(filePath, `${JSON.stringify(payload, null, 2)}\n`, 'utf8');
 };
 
+const normalizeRenderedComposeForQuantum = (value: string) =>
+  value
+    .replace(/^name:\s.*\n/imu, '')
+    .replace(/^(\s*cpus:\s*)([0-9.]+)$/gmu, '$1"$2"');
+
+const renderQuantumDeployProject = (env: NodeJS.ProcessEnv) => {
+  const runtimeProfile = env.SVA_RUNTIME_PROFILE?.trim() || 'acceptance-hb';
+  const sourceComposeFile = resolve(rootDir, getRemoteComposeFile(env));
+  const renderedCompose = normalizeRenderedComposeForQuantum(
+    runCapture('docker', ['compose', '-f', sourceComposeFile, 'config'], env)
+  );
+  const projectDir = mkdtempSync(resolve(tmpdir(), `sva-studio-${runtimeProfile}-deploy-`));
+  const renderedComposePath = resolve(projectDir, 'docker-compose.rendered.yml');
+  const quantumProjectPath = resolve(projectDir, '.quantum');
+
+  writeFileSync(renderedComposePath, `${renderedCompose}\n`, 'utf8');
+  writeFileSync(
+    quantumProjectPath,
+    [
+      '---',
+      'version: "1.0"',
+      'compose: docker-compose.rendered.yml',
+      'environments:',
+      `  - name: ${runtimeProfile}`,
+      '    compose: docker-compose.rendered.yml',
+      '',
+    ].join('\n'),
+    'utf8'
+  );
+
+  return {
+    projectDir,
+    cleanup: () => rmSync(projectDir, { force: true, recursive: true }),
+  };
+};
+
 const deployAcceptanceStack = (env: NodeJS.ProcessEnv) => {
-  const stackName = env.SVA_STACK_NAME ?? 'sva-studio';
+  const stackName = getConfiguredStackName(env);
 
   if (commandExists('quantum-cli')) {
+    const renderedProject = renderQuantumDeployProject(env);
     const commandArgs = [
       'stacks',
       'update',
       ...(env.QUANTUM_ENVIRONMENT?.trim() ? ['--environment', env.QUANTUM_ENVIRONMENT.trim()] : []),
       '--endpoint',
-      env.QUANTUM_ENDPOINT ?? env.PORTAINER_ENDPOINT ?? 'sva',
+      getConfiguredQuantumEndpoint(env),
       '--stack',
       stackName,
       '--wait',
+      ...(shouldSkipQuantumPrePull(env) ? ['--no-pre-pull'] : []),
       '--project',
-      '.',
+      renderedProject.projectDir,
     ];
-    run('quantum-cli', commandArgs, withoutDebugEnv(env));
-    return;
+    try {
+      run('quantum-cli', commandArgs, withoutDebugEnv(env));
+      return;
+    } finally {
+      renderedProject.cleanup();
+    }
   }
 
-  run('docker', ['stack', 'deploy', '-c', 'deploy/portainer/docker-compose.yml', stackName], env);
+  run('docker', ['stack', 'deploy', '-c', getRemoteComposeFile(env), stackName], env);
 };
 
 const writeAcceptanceDeployReport = (report: AcceptanceDeployReport) => {
@@ -2049,16 +2411,17 @@ const writeAcceptanceDeployReport = (report: AcceptanceDeployReport) => {
 };
 
 const createBaseAcceptanceDeployReport = (
+  runtimeProfile: RemoteRuntimeProfile,
   env: NodeJS.ProcessEnv,
   options: AcceptanceDeployOptions,
   migrationFiles: readonly string[]
 ): AcceptanceDeployReport => {
   const generatedAt = new Date().toISOString();
   const reportPaths = buildAcceptanceReportPaths(deployReportDir, options.reportSlug, generatedAt);
-  const releaseManifest = buildAcceptanceReleaseManifest(options);
+  const releaseManifest = buildAcceptanceReleaseManifest(runtimeProfile, options);
 
   return {
-    profile: 'acceptance-hb',
+    profile: runtimeProfile,
     status: 'ok',
     generatedAt,
     reportId: reportPaths.reportId,
@@ -2079,13 +2442,18 @@ const createBaseAcceptanceDeployReport = (
       summary: 'Technische Freigabe noch nicht entschieden.',
     },
     releaseManifest,
-    stackName: env.SVA_STACK_NAME ?? 'sva-studio',
+    stackName: getConfiguredStackName(env),
     observability: {
       grafanaUrl: options.grafanaUrl,
       lokiUrl: options.lokiUrl,
       notes: [
         'Logs und Metriken bleiben intern; die Referenzen sind fuer Incident- und Release-Evidenz gedacht.',
       ],
+    },
+    runtimeContract: {
+      derivedKeys: getRuntimeProfileDerivedEnvKeys(runtimeProfile),
+      effectiveSummary: getRuntimeContractSummary(runtimeProfile, env),
+      requiredKeys: getRuntimeProfileRequiredEnvKeys(runtimeProfile),
     },
     steps: [],
     artifacts: {
@@ -2100,16 +2468,33 @@ const createBaseAcceptanceDeployReport = (
   };
 };
 
-const buildAcceptanceLiveSpecCheck = (env: NodeJS.ProcessEnv, options: AcceptanceDeployOptions): DoctorCheck => {
+const buildAcceptanceLiveSpecCheck = (
+  runtimeProfile: RuntimeProfile,
+  env: NodeJS.ProcessEnv,
+  options: AcceptanceDeployOptions
+): DoctorCheck => {
   const expected = {
+    derivedKeys: getRuntimeProfileDerivedEnvKeys(runtimeProfile),
+    effectiveSummary: getRuntimeContractSummary(runtimeProfile, env),
     imageRef: options.imageRef,
-    requiredKeys: getRuntimeProfileRequiredEnvKeys('acceptance-hb'),
+    requiredKeys: getRuntimeProfileRequiredEnvKeys(runtimeProfile),
   };
 
   try {
-    const stackName = env.SVA_STACK_NAME ?? 'sva-studio';
+    const stackName = getConfiguredStackName(env);
     const dockerResult = runCaptureDetailed('docker', ['service', 'inspect', `${stackName}_app`, '--format', '{{.Spec.TaskTemplate.ContainerSpec.Image}}'], env);
     const liveImage = dockerResult.status === 0 ? dockerResult.stdout.trim() : '';
+    const liveEnvResult = runCaptureDetailed(
+      'docker',
+      ['service', 'inspect', `${stackName}_app`, '--format', '{{json .Spec.TaskTemplate.ContainerSpec.Env}}'],
+      env
+    );
+    const liveEnv =
+      liveEnvResult.status === 0
+        ? parseContainerEnv(liveEnvResult.stdout)
+        : ({} as Record<string, string>);
+    const configDrift = RUNTIME_CONTRACT_COMPARISON_KEYS.filter((key) => (env[key]?.trim() || '') !== (liveEnv[key]?.trim() || ''));
+    const missingSecretKeys = RUNTIME_CONTRACT_SECRET_PRESENCE_KEYS.filter((key) => (liveEnv[key]?.trim() || '').length === 0);
 
     if (!liveImage) {
       return toDoctorCheck(
@@ -2123,14 +2508,18 @@ const buildAcceptanceLiveSpecCheck = (env: NodeJS.ProcessEnv, options: Acceptanc
 
     return toDoctorCheck(
       'live-spec-drift',
-      liveImage === options.imageRef ? 'ok' : 'warn',
-      liveImage === options.imageRef ? 'live_spec_matches' : 'live_spec_differs',
-      liveImage === options.imageRef
-        ? 'Live-Service-Spec entspricht dem Zielartefakt.'
-        : 'Live-Service-Spec weicht vom Zielartefakt ab; Rollout aktualisiert diese Abweichung.',
+      liveImage === options.imageRef && configDrift.length === 0 && missingSecretKeys.length === 0 ? 'ok' : 'warn',
+      liveImage === options.imageRef && configDrift.length === 0 && missingSecretKeys.length === 0
+        ? 'live_spec_matches'
+        : 'live_spec_differs',
+      liveImage === options.imageRef && configDrift.length === 0 && missingSecretKeys.length === 0
+        ? 'Live-Service-Spec entspricht dem Zielartefakt und dem Studio-Runtime-Contract.'
+        : 'Live-Service-Spec weicht vom Zielartefakt oder vom erwarteten Studio-Runtime-Contract ab.',
       {
         ...expected,
+        configDrift,
         liveImage,
+        missingSecretKeys,
       }
     );
   } catch {
@@ -2278,7 +2667,7 @@ const runImageSmoke = async (
   }
 };
 
-const runInternalVerify = async (env: NodeJS.ProcessEnv): Promise<{
+const runInternalVerify = async (runtimeProfile: RemoteRuntimeProfile, env: NodeJS.ProcessEnv): Promise<{
   doctorReport: DoctorReport;
   probes: readonly AcceptanceProbeResult[];
 }> => {
@@ -2323,20 +2712,92 @@ const runInternalVerify = async (env: NodeJS.ProcessEnv): Promise<{
     }
   };
 
-  const doctorReport = await doctorRuntime('acceptance-hb', env);
-  const probes = [
-    buildServiceProbe('internal-live', '/health/live'),
-    buildServiceProbe('internal-ready', '/health/ready'),
-  ];
+  const maxAttempts = Number(env.SVA_INTERNAL_VERIFY_MAX_ATTEMPTS ?? '6');
+  const retryDelayMs = Number(env.SVA_INTERNAL_VERIFY_RETRY_DELAY_MS ?? '5000');
+  let lastDoctorReport: DoctorReport | null = null;
+  let lastProbes: AcceptanceProbeResult[] = [];
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const doctorReport = await doctorRuntime(runtimeProfile, env);
+    const probes = [
+      buildServiceProbe('internal-live', '/health/live'),
+      buildServiceProbe('internal-ready', '/health/ready'),
+    ];
+
+    lastDoctorReport = doctorReport;
+    lastProbes = probes;
+
+    const hasExternalWarmupOnlyErrors = doctorReport.checks
+      .filter((check) => check.status === 'error')
+      .every((check) =>
+        ['health-live', 'health-ready', 'auth-login', 'auth-me'].includes(check.name) &&
+        typeof check.message === 'string' &&
+        check.message.includes('404'),
+      );
+    const hasRetriableProbeErrors =
+      probes.filter((probe) => probe.status === 'error').length > 0 &&
+      probes
+        .filter((probe) => probe.status === 'error')
+        .every((probe) => probe.message.includes('Markierte Ausgabe __SVA_INTERNAL_HTTP__ nicht gefunden.'));
+
+    const probesFailed = probes.some((probe) => probe.status === 'error');
+    const doctorFailed = doctorReport.status === 'error';
+
+    if (!doctorFailed && !probesFailed) {
+      return {
+        doctorReport,
+        probes,
+      };
+    }
+
+    if (attempt < maxAttempts && (( !probesFailed && hasExternalWarmupOnlyErrors) || hasRetriableProbeErrors)) {
+      await wait(retryDelayMs);
+      continue;
+    }
+
+    return {
+      doctorReport,
+      probes,
+    };
+  }
 
   return {
-    doctorReport,
-    probes,
+    doctorReport: lastDoctorReport ?? (await doctorRuntime(runtimeProfile, env)),
+    probes: lastProbes,
   };
 };
 
 const runExternalSmoke = async (env: NodeJS.ProcessEnv): Promise<readonly AcceptanceProbeResult[]> => {
   const baseUrl = env.SVA_PUBLIC_BASE_URL ?? 'http://localhost:3000';
+  const base = new URL(baseUrl);
+  const parentDomain = env.SVA_PARENT_DOMAIN?.trim();
+  const tenantInstanceIds = (env.SVA_ALLOWED_INSTANCE_IDS ?? '')
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0);
+  const tenantProbes = parentDomain
+    ? tenantInstanceIds.map((instanceId) =>
+        runHttpProbe({
+          name: `public-auth-login-${instanceId}`,
+          scope: 'external',
+          target: new URL('/auth/login', `${base.protocol}//${instanceId}.${parentDomain}`).toString(),
+          expect: (response) => {
+            const location = response.headers.get('location') ?? '';
+            if (response.status !== 302) {
+              return `Erwartet Redirect fuer Tenant ${instanceId}, erhalten ${response.status}.`;
+            }
+            if (!location.includes(`/realms/${instanceId}/`)) {
+              return `Tenant-Realm stimmt nicht fuer ${instanceId}: ${location}`;
+            }
+            const encodedRedirect = encodeURIComponent(`${base.protocol}//${instanceId}.${parentDomain}/auth/callback`);
+            if (!location.includes(`redirect_uri=${encodedRedirect}`)) {
+              return `Tenant-Redirect-URI stimmt nicht fuer ${instanceId}: ${location}`;
+            }
+            return null;
+          },
+        })
+      )
+    : [];
 
   return await Promise.all([
     runHttpProbe({
@@ -2379,27 +2840,42 @@ const runExternalSmoke = async (env: NodeJS.ProcessEnv): Promise<readonly Accept
       target: new URL('/api/v1/iam/me/context', baseUrl).toString(),
       expect: (response, payload) => {
         if ([200, 401, 403].includes(response.status)) {
+          if (typeof payload === 'string' && payload.toLowerCase().includes('<html')) {
+            return 'IAM-Kontext lieferte HTML statt eines API-Vertrags.';
+          }
           return null;
-        }
-        if (typeof payload === 'string' && payload.toLowerCase().includes('<html')) {
-          return 'IAM-Kontext lieferte HTML statt eines API-Vertrags.';
         }
         return `Unerwarteter IAM-Kontext-Status ${response.status}.`;
       },
     }),
+    runHttpProbe({
+      name: 'public-iam-instances',
+      scope: 'external',
+      target: new URL('/api/v1/iam/instances', baseUrl).toString(),
+      expect: (response, payload) => {
+        if ([200, 401, 403].includes(response.status)) {
+          if (typeof payload === 'string' && payload.toLowerCase().includes('<html')) {
+            return 'IAM-Instanzliste lieferte HTML statt JSON/API-Vertrag.';
+          }
+          return null;
+        }
+        return `Unerwarteter IAM-Instanzlisten-Status ${response.status}.`;
+      },
+    }),
+    ...tenantProbes,
   ]);
 };
 
-const runAcceptanceDeploy = async (env: NodeJS.ProcessEnv) => {
-  const options = resolveAcceptanceDeployOptions(env, cliOptions);
+const runAcceptanceDeploy = async (runtimeProfile: RemoteRuntimeProfile, env: NodeJS.ProcessEnv) => {
+  const options = resolveAcceptanceDeployOptions(env, cliOptions, runtimeProfile);
   const migrationFiles = options.releaseMode === 'schema-and-app' ? listGooseMigrationFiles() : [];
 
-  let report = createBaseAcceptanceDeployReport(env, options, migrationFiles);
+  let report = createBaseAcceptanceDeployReport(runtimeProfile, env, options, migrationFiles);
   const steps: AcceptanceDeployStep[] = [];
 
   try {
     const precheckStartedAt = Date.now();
-    const precheckReport = await precheckAcceptance(env, options);
+    const precheckReport = await precheckAcceptance(runtimeProfile, env, options);
     if (precheckReport.status === 'error') {
       steps.push(
         createStepResult('environment-precheck', precheckStartedAt, 'error', 'Acceptance-Precheck ist fehlgeschlagen.', {
@@ -2445,12 +2921,13 @@ const runAcceptanceDeploy = async (env: NodeJS.ProcessEnv) => {
     if (options.releaseMode === 'schema-and-app') {
       const migrateStartedAt = Date.now();
       try {
-        const migrationResult = runGooseAgainstAcceptance(env, 'up');
-        console.log(`Applying Goose migrations for acceptance with ${migrationResult.version}`);
+        const migrationResult = runGooseAgainstAcceptance(env, runtimeProfile, 'up');
+        console.log(`Applying Goose migrations for ${runtimeProfile} with ${migrationResult.version}`);
         console.log(migrationResult.summary);
-        const schemaGuard = runSchemaGuard('acceptance-hb', env);
+        ensureAcceptancePostMigrationState(runtimeProfile, env);
+        const schemaGuard = runSchemaGuard(runtimeProfile, env);
         if (!schemaGuard.ok) {
-          throw new Error(`Kritische IAM-Schema-Drift nach Acceptance-Migration: ${summarizeSchemaGuardFailures(schemaGuard)}`);
+          throw new Error(`Kritische IAM-Schema-Drift nach Migration fuer ${runtimeProfile}: ${summarizeSchemaGuardFailures(schemaGuard)}`);
         }
         report = {
           ...report,
@@ -2532,7 +3009,7 @@ const runAcceptanceDeploy = async (env: NodeJS.ProcessEnv) => {
     }
 
     const internalVerifyStartedAt = Date.now();
-    const internalVerify = await runInternalVerify(env);
+    const internalVerify = await runInternalVerify(runtimeProfile, env);
     report = {
       ...report,
       internalProbes: [...report.internalProbes, ...internalVerify.probes],
@@ -2642,15 +3119,15 @@ const runAcceptanceDeploy = async (env: NodeJS.ProcessEnv) => {
   }
 };
 
-const runAcceptanceCommand = async (runtimeProfile: RuntimeProfile, runtimeCommand: RuntimeCommand) => {
+const runAcceptanceCommand = async (runtimeProfile: RemoteRuntimeProfile, runtimeCommand: RuntimeCommand) => {
   const env = applyCliOptionEnvOverrides(buildProfileEnv(runtimeProfile));
-  const stackName = env.SVA_STACK_NAME ?? 'sva-studio';
+  const stackName = getConfiguredStackName(env);
 
   switch (runtimeCommand) {
     case 'up':
     case 'update':
       throw new Error(
-        `Direkte Acceptance-Deploys ueber ${runtimeCommand} sind gesperrt. Nutze den kanonischen Pfad pnpm env:deploy:${runtimeProfile}.`
+        `Direkte Remote-Deploys ueber ${runtimeCommand} sind gesperrt. Nutze den kanonischen Pfad pnpm env:deploy:${runtimeProfile}.`
       );
     case 'down':
       run('docker', ['stack', 'rm', stackName], env);
@@ -2662,7 +3139,7 @@ const runAcceptanceCommand = async (runtimeProfile: RuntimeProfile, runtimeComma
       run('docker', ['stack', 'ps', stackName], env);
       return;
     case 'precheck': {
-      const report = await precheckAcceptance(env);
+      const report = await precheckAcceptance(runtimeProfile, env);
       printDoctorReport(report);
       if (report.status === 'error') {
         process.exitCode = 1;
@@ -2671,7 +3148,8 @@ const runAcceptanceCommand = async (runtimeProfile: RuntimeProfile, runtimeComma
     }
     case 'deploy':
       assertRuntimeEnv(runtimeProfile, env);
-      await runAcceptanceDeploy(env);
+      env.QUANTUM_ENVIRONMENT = env.QUANTUM_ENVIRONMENT?.trim() || runtimeProfile;
+      await runAcceptanceDeploy(runtimeProfile, env);
       return;
     case 'smoke':
       assertRuntimeEnv(runtimeProfile, env);
@@ -2679,12 +3157,12 @@ const runAcceptanceCommand = async (runtimeProfile: RuntimeProfile, runtimeComma
       console.log(`Smoke-Checks fuer ${runtimeProfile} erfolgreich.`);
       return;
     case 'migrate':
-      migrateAcceptance(env);
+      migrateAcceptance(runtimeProfile, env);
       console.log(`Migrationen fuer ${runtimeProfile} abgeschlossen.`);
       return;
     case 'reset':
       assertRuntimeEnv(runtimeProfile, env);
-      resetAcceptance(env);
+      resetAcceptance(runtimeProfile, env);
       console.log(`Postgres und Redis fuer ${runtimeProfile} wurden zurueckgesetzt.`);
       return;
     case 'doctor': {
@@ -2710,7 +3188,7 @@ const main = async () => {
     return;
   }
 
-  await runAcceptanceCommand(runtimeProfile, runtimeCommand);
+  await runAcceptanceCommand(requireRemoteRuntimeProfile(runtimeProfile), runtimeCommand);
 };
 
 main().catch((error: unknown) => {

@@ -55,6 +55,7 @@ pnpm --filter sva-studio-react exec playwright install --with-deps chromium
   - `acceptance-member`
 - Der fachliche Ziel-Realm der Acceptance-Instanz wird aus `iam.instances.authRealm` aufgelöst, nicht aus `KEYCLOAK_ADMIN_REALM`.
 - Beide Benutzer tragen `instanceId = de-musterhausen`.
+- Das User-Attribut `instanceId` muss über einen Protocol Mapper auf dem Client `sva-studio` als OIDC-Claim `instanceId` in Token und Userinfo erscheinen; ein bloßes User-Attribut ohne Mapper reicht nicht aus.
 - `acceptance-admin` liefert im Laufzeitkontext mindestens die Rolle `system_admin`. Ein Alias über `realm_access.Admin -> system_admin` bleibt zulässig.
 - Beide Benutzer sind vor dem Lauf **nicht** dauerhaft in `iam.accounts` vorgesehen. Der Runner räumt ihre IAM-Datensätze kontrolliert auf, damit JIT-Provisioning reproduzierbar geprüft wird.
 - Die bestehenden Seeds bleiben maßgeblich:

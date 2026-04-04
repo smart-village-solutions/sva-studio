@@ -8,6 +8,8 @@ const startOtelSdkFromMonitoring = vi.fn(async () => ({
 }));
 
 const setWorkspaceContextGetterForMonitoring = vi.fn(async () => undefined);
+const infoMock = vi.fn();
+const errorMock = vi.fn();
 
 vi.mock('../src/observability/monitoring-client.bridge.server', () => ({
   setWorkspaceContextGetterForMonitoring,
@@ -17,8 +19,8 @@ vi.mock('../src/observability/monitoring-client.bridge.server', () => ({
 vi.mock('../src/logger/index.server', () => ({
   createSdkLogger: () => ({
     debug: vi.fn(),
-    info: vi.fn(),
-    error: vi.fn(),
+    info: infoMock,
+    error: errorMock,
     on: vi.fn(),
   }),
 }));
@@ -36,9 +38,10 @@ describe('initializeOtelSdk', () => {
     process.env = { ...originalEnv };
   });
 
-  it('does not initialize OTEL in development when ENABLE_OTEL=false is set', async () => {
-    process.env.NODE_ENV = 'development';
+  it('does not initialize OTEL when disabled explicitly', async () => {
+    process.env.NODE_ENV = 'production';
     process.env.ENABLE_OTEL = 'false';
+    process.env.SVA_ENABLE_SERVER_CONSOLE_LOGS = 'true';
 
     const runtime = await import('../src/logger/logging-runtime.server');
     runtime.resetLoggingRuntimeForTests();
@@ -47,13 +50,17 @@ describe('initializeOtelSdk', () => {
 
     expect(result).toEqual({
       status: 'disabled',
-      reason: 'OTEL in der Development-Umgebung explizit deaktiviert.',
+      reason: 'OTEL fuer dieses Laufzeitprofil deaktiviert.',
     });
     expect(setWorkspaceContextGetterForMonitoring).not.toHaveBeenCalled();
     expect(startOtelSdkFromMonitoring).not.toHaveBeenCalled();
+    expect(infoMock).toHaveBeenCalledWith('observability_ready', expect.objectContaining({
+      logger_mode: 'console_to_loki',
+      otel_status: 'disabled',
+    }));
   });
 
-  it('initializes OTEL in development by default', async () => {
+  it('initializes OTEL when requested', async () => {
     process.env.NODE_ENV = 'development';
     delete process.env.ENABLE_OTEL;
 
@@ -65,6 +72,10 @@ describe('initializeOtelSdk', () => {
     expect(result.status).toBe('ready');
     expect(setWorkspaceContextGetterForMonitoring).toHaveBeenCalledTimes(1);
     expect(startOtelSdkFromMonitoring).toHaveBeenCalledTimes(1);
+    expect(infoMock).toHaveBeenCalledWith('observability_ready', expect.objectContaining({
+      logger_mode: 'otel_to_loki',
+      otel_status: 'ready',
+    }));
   });
 
   it('throws in production when OTEL initialization fails', async () => {
@@ -76,5 +87,9 @@ describe('initializeOtelSdk', () => {
     const { initializeOtelSdk } = await import('../src/server/bootstrap.server');
 
     await expect(initializeOtelSdk()).rejects.toThrow('collector unavailable');
+    expect(errorMock).toHaveBeenCalledWith('observability_degraded', expect.objectContaining({
+      logger_mode: 'otel_to_loki',
+      otel_status: 'failed',
+    }));
   });
 });

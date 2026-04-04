@@ -7,6 +7,12 @@ Status: **Docker-Image gebaut & gepusht** ✅ | **Demo-Profil mit integriertem M
 
 Dieses Dokument beschreibt das Setup für den Deployment von sva-studio auf Planetary Quantum's Docker Swarm Cluster.
 
+Hinweis:
+
+- Für produktionsnahe Rollouts ist der kanonische Einstieg heute `pnpm env:deploy:<profil>`.
+- Neben `acceptance-hb` wird auch das Remoteprofil `studio` unterstützt.
+- Für tenant-spezifische Realm- und Client-Vorgaben siehe zusätzlich `./keycloak-tenant-realm-bootstrap.md`.
+
 **Setup-Schritte:**
 1. Demo-Umgebungsvariablen setzen
 2. .quantum Konfiguration validieren
@@ -234,6 +240,12 @@ quantum-cli stacks update --environment swarm-secrets --endpoint sva --stack sva
 quantum-cli validate --project .
 ```
 
+Wichtige Betriebsnotizen:
+
+- Ein lokal gesetztes, veraltetes `QUANTUM_API_KEY` kann einen ansonsten funktionierenden Quantum-Kontext überschreiben. Bei unerklärlichen `401 Invalid JWT token` einmal mit `env -u QUANTUM_API_KEY quantum-cli ...` gegenprüfen.
+- Wenn Runtime-Variablen im Live-Stack fehlen, obwohl sie lokal korrekt gesetzt waren, den kanonischen `pnpm env:deploy:<profil>`-Pfad verwenden statt rohe `quantum-cli stacks update`-Aufrufe zu wiederholen.
+- `docker compose config` ist nicht automatisch 1:1 Portainer-/Quantum-kompatibel; insbesondere Top-Level-`name:` und numerische `cpus` können beim Vorabrendering stören.
+
 ### Status prüfen:
 ```bash
 quantum-cli ps --endpoint sva --stack sva-studio
@@ -264,6 +276,17 @@ export QUANTUM_API_KEY=ptr_...
 quantum-cli auth status
 ```
 
+### `401 Invalid JWT token`, obwohl `quantum-cli endpoints ls` sonst funktioniert
+**Ursache:** Häufig überschreibt ein veralteter lokaler `QUANTUM_API_KEY` den funktionierenden CLI-Kontext.
+**Lösung:**
+```bash
+env -u QUANTUM_API_KEY quantum-cli endpoints ls
+```
+
+### Stack ist gesund, aber IAM-/Audit-Pfade scheitern mit `password authentication failed for user "sva_app"`
+**Ursache:** Der dedizierte Laufzeit-User `sva_app` existiert im Ziel-Postgres nicht oder hat ein anderes Passwort als `APP_DB_PASSWORD`.
+**Lösung:** Nicht nur Schema und Health prüfen, sondern den Login des App-DB-Users explizit gegen `POSTGRES_DB` verifizieren.
+
 ---
 
 ## 6. Interne Abhängigkeiten
@@ -292,12 +315,16 @@ Falls dieser Node nicht existiert oder nicht erreichbar ist, ändere diese Const
 
 Nach erfolgreichem Deploy:
 
-1. **DB initialisieren** (erste Ausführung):
-   ```bash
-   # Via exec in laufenden Container
-   quantum-cli exec --endpoint sva --stack sva-studio --service app \
-     pnpm run db:migrate
-   ```
+1. **Migrationen über den kanonischen Runtime-Pfad ausführen** (erste Ausführung oder Schema-Update):
+    ```bash
+    # Acceptance-Profil
+    pnpm env:migrate:acceptance-hb
+
+    # Studio-Profil
+    pnpm env:migrate:studio
+    ```
+
+  Der Migrationslauf verwendet den repository-lokalen, versionsgepinnten Goose-Pfad und stellt die Binary auf dem Zielsystem temporär bereit. Eine feste Goose-Installation im App-Container ist nicht erforderlich.
 
 2. **Health-Check:**
    ```bash
@@ -308,6 +335,27 @@ Nach erfolgreichem Deploy:
    ```bash
    quantum-cli ps --endpoint sva --stack sva-studio --all
    ```
+
+### Kanonische Remote-Kommandos (kurz)
+
+```bash
+# Acceptance
+pnpm env:precheck:acceptance-hb
+pnpm env:deploy:acceptance-hb -- --release-mode=app-only
+
+# Studio
+pnpm env:precheck:studio
+pnpm env:deploy:studio -- --release-mode=app-only
+```
+
+### Zusätzliche Keycloak-Checks für Tenant-Realms
+
+Vor Tenant-Freigaben zusätzlich prüfen:
+
+- `authRealm` und `authClientId` in der Registry stimmen
+- Client `sva-studio` existiert
+- `instanceId` wird über einen Protocol Mapper als Claim ausgeliefert
+- Tenant-Admins haben `system_admin`, aber nicht automatisch `instance_registry_admin`
 
 ---
 

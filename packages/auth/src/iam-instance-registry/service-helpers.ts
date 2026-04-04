@@ -5,7 +5,7 @@ import type {
 } from '@sva/core';
 
 import type { InstanceRegistryRepository } from '@sva/data';
-import type { ChangeInstanceStatusInput } from './types.js';
+import type { ChangeInstanceStatusInput, KeycloakTenantStatus } from './types.js';
 
 type InstanceRecord = Awaited<ReturnType<InstanceRegistryRepository['listInstances']>>[number];
 type ProvisioningRun = Awaited<ReturnType<InstanceRegistryRepository['listProvisioningRuns']>>[number];
@@ -23,6 +23,8 @@ export const toListItem = (
   authRealm: item.authRealm,
   authClientId: item.authClientId,
   authIssuerUrl: item.authIssuerUrl,
+  authClientSecretConfigured: item.authClientSecretConfigured,
+  tenantAdminBootstrap: item.tenantAdminBootstrap,
   themeKey: item.themeKey,
   featureFlags: item.featureFlags,
   mainserverConfigRef: item.mainserverConfigRef,
@@ -34,7 +36,8 @@ export const toListItem = (
 export const buildInstanceDetail = (
   instance: Exclude<Awaited<ReturnType<InstanceRegistryRepository['getInstanceById']>>, null>,
   provisioningRuns: readonly ProvisioningRun[],
-  auditEvents: readonly AuditEvent[]
+  auditEvents: readonly AuditEvent[],
+  keycloakStatus?: KeycloakTenantStatus
 ): IamInstanceDetail => ({
   ...toListItem(instance, provisioningRuns[0]),
   hostnames: [
@@ -46,6 +49,7 @@ export const buildInstanceDetail = (
   ],
   provisioningRuns,
   auditEvents,
+  keycloakStatus,
 });
 
 export const createAuditDetails = (

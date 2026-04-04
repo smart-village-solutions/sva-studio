@@ -8,8 +8,11 @@ import {
   archiveInstanceInternal,
   createInstanceInternal,
   getInstanceInternal,
+  getInstanceKeycloakStatusInternal,
   listInstancesInternal,
+  reconcileInstanceKeycloakInternal,
   suspendInstanceInternal,
+  updateInstanceInternal,
 } from './core.js';
 
 const logger = createSdkLogger({ component: 'iam-instance-registry', level: 'info' });
@@ -47,6 +50,15 @@ export const getInstanceHandler = async (request: Request): Promise<Response> =>
 
 export const createInstanceHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedRegistryHandler(request, createInstanceInternal);
+
+export const updateInstanceHandler = async (request: Request): Promise<Response> =>
+  withAuthenticatedRegistryHandler(request, updateInstanceInternal);
+
+export const getInstanceKeycloakStatusHandler = async (request: Request): Promise<Response> =>
+  withAuthenticatedRegistryHandler(request, getInstanceKeycloakStatusInternal);
+
+export const reconcileInstanceKeycloakHandler = async (request: Request): Promise<Response> =>
+  withAuthenticatedRegistryHandler(request, reconcileInstanceKeycloakInternal);
 
 export const activateInstanceHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedRegistryHandler(request, activateInstanceInternal);

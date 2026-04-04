@@ -2,7 +2,7 @@ import { createPoolResolver } from '../shared/db-helpers.js';
 import { createInstanceRegistryRepository } from '@sva/data';
 import { invalidateInstanceRegistryHost } from '@sva/data/server';
 
-import { provisionInstanceAuthArtifacts } from './provisioning-auth.js';
+import { getInstanceKeycloakStatus, provisionInstanceAuthArtifacts } from './provisioning-auth.js';
 import { createInstanceRegistryService } from './service.js';
 
 const resolvePool = createPoolResolver(() => process.env.IAM_DATABASE_URL);
@@ -45,6 +45,7 @@ export const withRegistryService = async <T>(work: (service: ReturnType<typeof c
         repository,
         invalidateHost: invalidateInstanceRegistryHost,
         provisionInstanceAuth: provisionInstanceAuthArtifacts,
+        getKeycloakStatus: getInstanceKeycloakStatus,
       })
     )
   );

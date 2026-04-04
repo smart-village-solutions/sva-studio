@@ -4,13 +4,14 @@ Dieses Dokument ist der kanonische Einstieg für Deployment- und Betriebsfragen.
 
 ## Zielbild
 
-SVA Studio kennt aktuell drei relevante Betriebsmodi:
+SVA Studio kennt aktuell vier relevante Betriebsmodi:
 
 | Modus | Zweck | Primäre Dokumente |
 | --- | --- | --- |
 | Lokal | Entwicklung, schnelle Verifikation, E2E | `../development/playbook.md`, `../development/app-e2e-integration-testing.md` |
 | Swarm-Referenzprofil | kanonischer Betriebsweg mit Swarm-Secrets und Traefik-v2+-Labels | `./swarm-deployment-guide.md`, `./swarm-deployment-runbook.md` |
 | Demo-Profil | vereinfachter Stack ohne Secret-Provisioning, mit Traefik-v1-kompatiblen Labels | `./swarm-deployment-guide.md`, `./swarm-deployment-runbook.md` |
+| Studio-Remoteprofil | produktionsnaher Betrieb als eigener Stack auf `studio.smart-village.app` | `./swarm-deployment-guide.md`, `../development/runtime-profile-betrieb.md` |
 
 ## Profilwahl
 
@@ -38,16 +39,41 @@ Das Demo-Profil ist bewusst einfacher gehalten:
 
 Die Profilgrenzen sind bewusst dokumentiert. Das Demo-Profil ist kein verstecktes zweites Referenzprofil.
 
+### Studio-Remoteprofil
+
+Das Studio-Profil bildet einen separaten produktionsnahen Rollout-Pfad:
+
+- Runtime-Profil: `studio`
+- Stack typischerweise: `studio`
+- Quantum-Environment: `studio`
+- Traefik auf `sva` läuft derzeit v1.7.34; daher sind nur v1-kompatible Labels wirksam
+
+Wichtig:
+
+- produktionsnahe Werte liegen lokal in `config/runtime/studio.vars` und `config/runtime/studio.local.vars`
+- im Repository liegt nur die Vorlage `config/runtime/studio.vars.example`
+- Tenant-Realms folgen dem operativen Vertrag aus `./keycloak-tenant-realm-bootstrap.md`
+- bei `studio` haben `pnpm env:precheck:studio`, `pnpm env:deploy:studio` und `pnpm env:smoke:studio` Vorrang vor manuellen `quantum-cli`- oder Portainer-Pfaden
+
 ## Standardablauf für Releases
 
 1. Image mit konkretem Tag bereitstellen.
 2. Zielprofil auswählen.
 3. Zielumgebungsvariablen oder Secrets prüfen.
-4. Für `acceptance-hb` zuerst `pnpm env:precheck:acceptance-hb` ausführen.
-5. Den kanonischen Serverdeploy über `pnpm env:deploy:acceptance-hb` starten.
+4. Für das Ziel-Remoteprofil zuerst `pnpm env:precheck:<profil>` ausführen (z. B. `acceptance-hb` oder `studio`).
+5. Den kanonischen Serverdeploy über `pnpm env:deploy:<profil>` starten.
 6. Den erzeugten Deploy-Report unter `artifacts/runtime/deployments/` prüfen.
 7. Monitoring und Logs auf Fehler prüfen.
 8. Nicht-sensitive Folgearbeiten als GitHub Issues nachziehen.
+
+Für `studio` zusätzlich wichtig:
+
+- der Rollout gilt erst als erfolgreich, wenn Runtime, Keycloak, Observability und Tenant-Auth gemeinsam grün sind
+- `observability-readiness` prüft Logger-Modus, Transportzustand und frische Loki-Sichtbarkeit
+- `tenant-auth-proof` prüft tenant-spezifische Redirects und zugehörige Diagnose-Events in Loki
+- Shell-Overrides und einzelne Runtime-Flags können bei direktem `quantum-cli stacks update` verloren gehen
+- wenn die Env-Propagation zweifelhaft ist, muss der Deploy über den vorgerenderten Runtime-Pfad laufen statt über rohe Compose-Dateien
+- ein gesunder Stack ersetzt nicht die Prüfung, ob sich `APP_DB_USER` tatsächlich gegen `POSTGRES_DB` anmelden kann
 
 Die operativen Details und Beispielkommandos stehen unter `./swarm-deployment-runbook.md`.
 
@@ -62,11 +88,17 @@ Nach jedem Deployment sind mindestens diese Prüfungen verpflichtend:
 
 Für den reproduzierbaren Browser-Smoke-Test gilt `../development/app-e2e-integration-testing.md`. Die PR- und Release-Checkliste verweist zusätzlich auf `../reports/PR_CHECKLIST.md`.
 
+Für tenant-spezifische Remote-Smokes ist zusätzlich verpflichtend:
+
+- Root-Login redirectet auf den Root-Realm
+- Tenant-Login redirectet auf den Tenant-Realm
+- `/auth/me` liefert `instanceId` und erwartete Rollen
+
 ## Migrationen
 
 Migrationen sind ein bewusster Betriebsschritt und nicht implizit Teil jedes Redeployments.
 
-Für `acceptance-hb` gilt zusätzlich:
+Für Remote-Profile (`acceptance-hb`, `studio`) gilt zusätzlich:
 
 - `app-only` und `schema-and-app` sind zwei explizite Release-Klassen
 - `schema-and-app` erfordert ein dokumentiertes Wartungsfenster
@@ -94,6 +126,7 @@ Wenn eine Änderung ein neues Schema voraussetzt, ist ein reiner Image-Rollback 
 
 - Das Referenzprofil nutzt Traefik v2+.
 - Das Demo-Profil bleibt absichtlich Traefik-v1-kompatibel.
+- Das Studio-Remoteprofil auf Endpoint `sva` nutzt aktuell ebenfalls Traefik-v1-kompatible Labels.
 - `monitoring-config-init` schreibt Monitoring-Konfiguration einmalig in Volumes und beendet sich danach erfolgreich.
 - Ressourcenlimits, RTO/RPO und Eskalationswege sind im Runbook verbindlich dokumentiert.
 
@@ -101,5 +134,6 @@ Wenn eine Änderung ein neues Schema voraussetzt, ist ein reiner Image-Rollback 
 
 - Swarm-Leitfaden: `./swarm-deployment-guide.md`
 - Swarm-Runbook: `./swarm-deployment-runbook.md`
+- Tenant-Realm-Bootstrap: `./keycloak-tenant-realm-bootstrap.md`
 - Verteilungssicht: `../architecture/07-deployment-view.md`
 - Monitoring-Details: `../development/monitoring-stack.md`

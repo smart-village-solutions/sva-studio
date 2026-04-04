@@ -61,6 +61,8 @@ describe('instance registry repository', () => {
       authRealm: 'hb',
       authClientId: 'sva-studio',
       authIssuerUrl: undefined,
+      authClientSecretConfigured: false,
+      tenantAdminBootstrap: undefined,
       themeKey: undefined,
       featureFlags: { provisioning: true },
       mainserverConfigRef: undefined,
@@ -329,6 +331,8 @@ describe('instance registry repository', () => {
       authRealm: 'demo',
       authClientId: 'sva-studio',
       authIssuerUrl: undefined,
+      authClientSecretConfigured: false,
+      tenantAdminBootstrap: undefined,
       themeKey: undefined,
       featureFlags: {},
       mainserverConfigRef: undefined,
@@ -338,8 +342,8 @@ describe('instance registry repository', () => {
       updatedBy: 'system',
     });
     assert.equal(statements.length, 2);
-    assert.equal(statements[0]?.values[9], '{}');
-    assert.equal(statements[0]?.values[11], 'system');
+    assert.equal(statements[0]?.values[14], '{}');
+    assert.equal(statements[0]?.values[16], 'system');
     assert.equal(statements[1]?.values[2], 'system');
   });
 
@@ -378,5 +382,107 @@ describe('instance registry repository', () => {
     assert.equal(statements[1]?.values[2], null);
     assert.equal(statements[1]?.values[3], null);
     assert.equal(statements[1]?.values[4], '{}');
+  });
+
+  it('loads stored tenant client secret ciphertext by instance id', async () => {
+    const execute = createExecute({
+      rowCount: 1,
+      rows: [{ auth_client_secret_ciphertext: 'enc:tenant-secret' }],
+    });
+
+    const repository = createInstanceRegistryRepository({ execute });
+
+    assert.equal(await repository.getAuthClientSecretCiphertext('bb-guben'), 'enc:tenant-secret');
+  });
+
+  it('updates instance auth bootstrap fields and can keep an existing tenant secret', async () => {
+    const statements: SqlStatement[] = [];
+    const execute = createSequencedExecutor(
+      [
+        {
+          rowCount: 1,
+          rows: [
+            {
+              instance_id: 'bb-guben',
+              display_name: 'BB Guben',
+              status: 'active',
+              parent_domain: 'studio.smart-village.app',
+              primary_hostname: 'bb-guben.studio.smart-village.app',
+              auth_realm: 'bb-guben',
+              auth_client_id: 'sva-studio',
+              auth_issuer_url: 'https://keycloak.smart-village.app/realms/bb-guben',
+              auth_client_secret_ciphertext: 'enc:tenant-secret',
+              tenant_admin_username: 'tenant-admin',
+              tenant_admin_email: 'tenant@example.org',
+              tenant_admin_first_name: 'Tenant',
+              tenant_admin_last_name: 'Admin',
+              theme_key: 'guben',
+              feature_flags: { provisioning: true },
+              mainserver_config_ref: 'mainserver-guben',
+              created_at: '2026-01-01T00:00:00.000Z',
+              created_by: 'seed',
+              updated_at: '2026-01-02T00:00:00.000Z',
+              updated_by: 'actor-1',
+            },
+          ],
+        },
+        {
+          rowCount: 1,
+          rows: [],
+        },
+      ],
+      statements
+    );
+
+    const repository = createInstanceRegistryRepository({ execute });
+    const instance = await repository.updateInstance({
+      instanceId: 'bb-guben',
+      displayName: 'BB Guben',
+      parentDomain: 'studio.smart-village.app',
+      primaryHostname: 'bb-guben.studio.smart-village.app',
+      authRealm: 'bb-guben',
+      authClientId: 'sva-studio',
+      authIssuerUrl: 'https://keycloak.smart-village.app/realms/bb-guben',
+      keepExistingAuthClientSecret: true,
+      tenantAdminBootstrap: {
+        username: 'tenant-admin',
+        email: 'tenant@example.org',
+        firstName: 'Tenant',
+        lastName: 'Admin',
+      },
+      actorId: 'actor-1',
+      featureFlags: { provisioning: true },
+      themeKey: 'guben',
+      mainserverConfigRef: 'mainserver-guben',
+    });
+
+    assert.deepEqual(instance, {
+      instanceId: 'bb-guben',
+      displayName: 'BB Guben',
+      status: 'active',
+      parentDomain: 'studio.smart-village.app',
+      primaryHostname: 'bb-guben.studio.smart-village.app',
+      authRealm: 'bb-guben',
+      authClientId: 'sva-studio',
+      authIssuerUrl: 'https://keycloak.smart-village.app/realms/bb-guben',
+      authClientSecretConfigured: true,
+      tenantAdminBootstrap: {
+        username: 'tenant-admin',
+        email: 'tenant@example.org',
+        firstName: 'Tenant',
+        lastName: 'Admin',
+      },
+      themeKey: 'guben',
+      featureFlags: { provisioning: true },
+      mainserverConfigRef: 'mainserver-guben',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      createdBy: 'seed',
+      updatedAt: '2026-01-02T00:00:00.000Z',
+      updatedBy: 'actor-1',
+    });
+    assert.equal(statements[0]?.values[7], true);
+    assert.equal(statements[0]?.values[8], null);
+    assert.equal(statements[0]?.values[9], 'tenant-admin');
+    assert.equal(statements[1]?.values[0], 'bb-guben.studio.smart-village.app');
   });
 });

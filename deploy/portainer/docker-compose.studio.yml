@@ -1,0 +1,193 @@
+# ---------------------------------------------------------------------------
+# SVA Studio – Production-Betriebsprofil (ohne Monitoring)
+#
+# Profil fuer den Stack "studio" auf Endpoint "sva".
+# Nur App + Redis + Postgres. Monitoring wird separat betrieben.
+#
+# Sensible Werte werden fuer studio bewusst als Stack-Variablen in Portainer gesetzt.
+# Dieses Profil nutzt aktuell absichtlich keine Swarm-Secrets; die Variablen sind
+# damit im Swarm-/Portainer-Kontext kein hartes Secret-Handling und muessen wie
+# kompromittierbare Deploy-Zugangsdaten behandelt und bei Bedarf rotiert werden.
+# ---------------------------------------------------------------------------
+version: "3.8"
+
+services:
+  app:
+    image: ${SVA_IMAGE_REF}
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 3000
+      SVA_DEPLOY_REVISION: "${SVA_DEPLOY_REVISION:-unset}"
+      SVA_RUNTIME_PROFILE: "${SVA_RUNTIME_PROFILE}"
+      SVA_AUTH_CLIENT_SECRET: "${SVA_AUTH_CLIENT_SECRET}"
+      SVA_AUTH_STATE_SECRET: "${SVA_AUTH_STATE_SECRET}"
+      KEYCLOAK_ADMIN_CLIENT_SECRET: "${KEYCLOAK_ADMIN_CLIENT_SECRET}"
+      ENCRYPTION_KEY: "${ENCRYPTION_KEY}"
+      IAM_PII_KEYRING_JSON: "${IAM_PII_KEYRING_JSON}"
+      APP_DB_PASSWORD: "${APP_DB_PASSWORD}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
+      REDIS_PASSWORD: "${REDIS_PASSWORD}"
+      ENABLE_OTEL: "false"
+      SVA_ENABLE_SERVER_CONSOLE_LOGS: "${SVA_ENABLE_SERVER_CONSOLE_LOGS:-false}"
+      SVA_AUTH_DEBUG_HEADERS: "${SVA_AUTH_DEBUG_HEADERS:-false}"
+      POSTGRES_DB: sva_studio
+      APP_DB_USER: "${APP_DB_USER}"
+      SVA_PUBLIC_BASE_URL: "${SVA_PUBLIC_BASE_URL}"
+      SVA_AUTH_ISSUER: "${SVA_AUTH_ISSUER}"
+      SVA_AUTH_CLIENT_ID: "${SVA_AUTH_CLIENT_ID}"
+      SVA_AUTH_REDIRECT_URI: "${SVA_AUTH_REDIRECT_URI}"
+      SVA_AUTH_POST_LOGOUT_REDIRECT_URI: "${SVA_AUTH_POST_LOGOUT_REDIRECT_URI}"
+      IAM_PII_ACTIVE_KEY_ID: k1
+      IAM_CSRF_ALLOWED_ORIGINS: "${IAM_CSRF_ALLOWED_ORIGINS}"
+      SVA_PARENT_DOMAIN: "${SVA_PARENT_DOMAIN}"
+      SVA_ALLOWED_INSTANCE_IDS: "${SVA_ALLOWED_INSTANCE_IDS}"
+      VITE_IAM_UI_ENABLED: "${VITE_IAM_UI_ENABLED}"
+      VITE_IAM_ADMIN_ENABLED: "${VITE_IAM_ADMIN_ENABLED}"
+      VITE_IAM_BULK_ENABLED: "${VITE_IAM_BULK_ENABLED}"
+      IAM_UI_ENABLED: "${IAM_UI_ENABLED}"
+      IAM_ADMIN_ENABLED: "${IAM_ADMIN_ENABLED}"
+      IAM_BULK_ENABLED: "${IAM_BULK_ENABLED}"
+      IAM_DEBUG_PROFILE_ERRORS: "${IAM_DEBUG_PROFILE_ERRORS}"
+      KEYCLOAK_ADMIN_BASE_URL: "${KEYCLOAK_ADMIN_BASE_URL}"
+      KEYCLOAK_ADMIN_REALM: "${KEYCLOAK_ADMIN_REALM}"
+      KEYCLOAK_ADMIN_CLIENT_ID: "${KEYCLOAK_ADMIN_CLIENT_ID}"
+      IAM_ROLE_RECONCILE_INTERVAL_MS: "300000"
+      IAM_ROLE_RECONCILE_INSTANCE_IDS: ""
+    labels:
+      com.sva-studio.component: "app"
+      com.sva-studio.environment: "production"
+    networks:
+      - public
+      - internal
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.hostname == node-005.sva
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: stop-first
+      rollback_config:
+        parallelism: 1
+        order: stop-first
+      restart_policy:
+        condition: any
+        delay: 5s
+        max_attempts: 5
+        window: 120s
+      resources:
+        reservations:
+          memory: 256M
+        limits:
+          memory: 512M
+          cpus: '1.0'
+      labels:
+        - traefik.enable=true
+        - traefik.docker.network=public
+        - traefik.main.frontend.rule=Host:${SVA_PUBLIC_HOST},${SVA_PARENT_DOMAIN}
+        - traefik.main.frontend.priority=200
+        - traefik.main.frontend.passHostHeader=true
+        - traefik.main.port=3000
+        - traefik.instance.frontend.rule=HostRegexp:{subdomain:[a-z0-9-]+}.${SVA_PARENT_DOMAIN}
+        - traefik.instance.frontend.priority=200
+        - traefik.instance.frontend.passHostHeader=true
+        - traefik.instance.port=3000
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - node -e "fetch('http://127.0.0.1:3000/health/live').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+
+  redis:
+    image: redis:7-alpine
+    environment:
+      REDIS_PASSWORD: "${REDIS_PASSWORD}"
+    command:
+      - sh
+      - -ec
+      - |
+        exec redis-server \
+          --appendonly yes \
+          --maxmemory 256mb \
+          --maxmemory-policy allkeys-lru \
+          --requirepass "$${REDIS_PASSWORD}"
+    labels:
+      com.sva-studio.component: "redis"
+      com.sva-studio.environment: "production"
+    volumes:
+      - redis-data:/data
+    networks:
+      - internal
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.hostname == node-005.sva
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 60s
+      resources:
+        reservations:
+          memory: 128M
+        limits:
+          memory: 320M
+          cpus: '0.25'
+    healthcheck:
+      test: ["CMD-SHELL", "REDISCLI_AUTH=$${REDIS_PASSWORD} redis-cli ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: sva_studio
+      POSTGRES_USER: sva
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
+    labels:
+      com.sva-studio.component: "postgres"
+      com.sva-studio.environment: "production"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - internal
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.hostname == node-005.sva
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 60s
+      resources:
+        reservations:
+          memory: 256M
+        limits:
+          memory: 1G
+          cpus: '0.5'
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+networks:
+  public:
+    external: true
+  internal:
+    driver: overlay
+
+volumes:
+  postgres-data:
+    driver: local
+  redis-data:
+    driver: local

@@ -17,6 +17,7 @@ export const createLoginUrl = async (input?: { returnTo?: string; silent?: boole
     createdAt,
     returnTo: input?.returnTo,
     silent: input?.silent ?? false,
+    workspaceId: authConfig.instanceId,
   };
 
   await createLoginState(state, loginState);

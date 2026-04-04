@@ -3,7 +3,7 @@ import { createRoute } from '@tanstack/react-router';
 
 /**
  * Auth Routes - Client-safe route definitions
- * 
+ *
  * These routes define the auth routing structure without server handlers.
  * Use @sva/routing/server for server-side route definitions with handlers.
  */
@@ -36,6 +36,13 @@ const authRoutePaths = [
   '/api/v1/iam/groups/$groupId/roles',
   '/api/v1/iam/groups/$groupId/roles/$roleId',
   '/api/v1/iam/groups/$groupId/memberships',
+  '/api/v1/iam/instances',
+  '/api/v1/iam/instances/$instanceId',
+  '/api/v1/iam/instances/$instanceId/keycloak/status',
+  '/api/v1/iam/instances/$instanceId/keycloak/reconcile',
+  '/api/v1/iam/instances/$instanceId/activate',
+  '/api/v1/iam/instances/$instanceId/suspend',
+  '/api/v1/iam/instances/$instanceId/archive',
   '/api/v1/iam/contents',
   '/api/v1/iam/contents/$contentId',
   '/api/v1/iam/contents/$contentId/history',

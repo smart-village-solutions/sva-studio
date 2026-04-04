@@ -123,6 +123,14 @@ Für tenant-spezifisches Auth-Routing gilt zusätzlich:
 - `authRealm` und `authClientId` müssen für jede aktive Instanz in der Registry gesetzt sein.
 - Neue Instanzen sind erst nach erfolgreichem Keycloak-Provisioning traffic-fähig.
 - `SVA_AUTH_ISSUER` und `SVA_AUTH_CLIENT_ID` sind im Acceptance-/Swarm-Betrieb keine führenden Variablen mehr.
+- Der Keycloak-Sollzustand pro Tenant-Realm, inklusive `instanceId`-Claim, Client-Mappern und minimalen Admin-Rollen, ist unter [Keycloak-Tenant-Realm-Bootstrap für Studio](./keycloak-tenant-realm-bootstrap.md) beschrieben.
+
+Pragmatische Betriebsregeln aus den letzten Rollouts:
+
+- bei Quantum-`401` immer auch die lokale Shell-Umgebung prüfen; ein veraltetes `QUANTUM_API_KEY` kann den funktionierenden Kontext uebersteuern
+- wenn Runtime-Overrides im Live-Stack fehlen, nicht blind denselben `quantum-cli stacks update` wiederholen, sondern den kanonischen Runtime-Pfad mit vorgerenderter Compose nutzen
+- ein gruener Stack ersetzt nicht die Laufzeitpruefung des App-DB-Users; `sva_app` muss real existieren und sich anmelden koennen
+- fuer Tenant-Debugging externe und interne Host-Requests trennen, bevor Ingress-Komponenten verdaechtigt werden
 
 ### Adminer für Acceptance
 
@@ -218,6 +226,11 @@ GRANT iam_app TO sva_app;
 
 `<APP_DB_PASSWORD>` muss dem Wert der Stack-Variable `APP_DB_PASSWORD` entsprechen.
 
+Zusatz fuer den Betrieb:
+
+- nach dem Anlegen nicht nur Grants pruefen, sondern den Login des Laufzeit-Users aktiv verifizieren
+- wenn `Auth audit DB sink failed` oder `password authentication failed for user "sva_app"` auftaucht, zuerst diesen Pfad reparieren, bevor Auth-/Realm-Fehler an anderer Stelle vermutet werden
+
 ## Schritt 3: Kanonischen Acceptance-Deploy ausführen
 
 Der reguläre Serverdeploy für `acceptance-hb` läuft nur noch über den orchestrierten Einstiegspunkt `pnpm env:deploy:acceptance-hb`. Direkte Acceptance-Redeploys über `up`/`update`, Portainer-Klickpfade oder Ad-hoc-`docker stack deploy` sind nicht mehr der verbindliche Standard.
@@ -257,6 +270,11 @@ Der Deploypfad führt verbindlich aus:
 5. `internal-verify` mit internen Probes und `doctor`
 6. `external-smoke`
 7. `release-decision`
+
+Interpretationshilfe:
+
+- wenn der Deploy-Report rot ist, aber Service-Spec, laufende Tasks und externe Smokes gruen sind, liegt wahrscheinlich ein False-Negative im Verify-/Transportpfad vor
+- in diesem Fall zuerst Live-Service und Smokes als Wahrheitsebene pruefen, dann den Reportpfad debuggen
 8. Schreiben eines Deploy-Reports unter `artifacts/runtime/deployments/`
 
 ## Schritt 3a: Neue Instanz im Registry-Modell anlegen
@@ -275,6 +293,8 @@ pnpm exec tsx scripts/ops/instance-registry.ts create \
   --instance-id hb-neu \
   --display-name "HB Neu" \
   --parent-domain studio.smart-village.app \
+  --auth-realm hb-neu \
+  --auth-client-id sva-studio \
   --actor-id release-operator
 pnpm exec tsx scripts/ops/instance-registry.ts activate \
   --instance-id hb-neu \
@@ -287,6 +307,13 @@ Prüfkriterien:
 - `primaryHostname` entspricht `<instanceId>.studio.smart-village.app`
 - Status ist nach Freigabe `active`
 - kein neues App-Deployment und kein neues Runtime-Profil wurden benötigt
+- Realm-Basisdaten werden am Root-Host unter `/admin/instances` gepflegt:
+  - `authRealm`
+  - `authClientId`
+  - optional `authIssuerUrl`
+  - tenant-spezifisches OIDC-Client-Secret
+  - initialer Tenant-Admin-Bootstrap
+- Keycloak-Status und Reconcile laufen ueber dieselbe Root-Host-Instanzverwaltung; direkte Keycloak-Handedits sind nur Fallback
 
 ### Fallback über Portainer oder CLI
 

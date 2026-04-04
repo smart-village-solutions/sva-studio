@@ -14,6 +14,9 @@ type Command = 'list' | 'create' | 'activate' | 'suspend' | 'archive';
 
 type CliOptions = {
   readonly actorId?: string;
+  readonly authClientId?: string;
+  readonly authIssuerUrl?: string;
+  readonly authRealm?: string;
   readonly command: Command;
   readonly displayName?: string;
   readonly featureFlags?: Readonly<Record<string, boolean>>;
@@ -73,6 +76,9 @@ const parseCliOptions = (argv: readonly string[]): CliOptions => {
 
   const parsed: {
     actorId?: string;
+    authClientId?: string;
+    authIssuerUrl?: string;
+    authRealm?: string;
     displayName?: string;
     featureFlagsRaw?: string;
     instanceId?: string;
@@ -100,6 +106,15 @@ const parseCliOptions = (argv: readonly string[]): CliOptions => {
     switch (flag) {
       case '--actor-id':
         parsed.actorId = value;
+        break;
+      case '--auth-client-id':
+        parsed.authClientId = value;
+        break;
+      case '--auth-issuer-url':
+        parsed.authIssuerUrl = value;
+        break;
+      case '--auth-realm':
+        parsed.authRealm = value;
         break;
       case '--instance-id':
         parsed.instanceId = value;
@@ -135,6 +150,9 @@ const parseCliOptions = (argv: readonly string[]): CliOptions => {
 
   return {
     actorId: parsed.actorId,
+    authClientId: parsed.authClientId,
+    authIssuerUrl: parsed.authIssuerUrl,
+    authRealm: parsed.authRealm,
     command: commandRaw as Command,
     displayName: parsed.displayName,
     featureFlags: parseFeatureFlags(parsed.featureFlagsRaw),
@@ -258,6 +276,9 @@ const run = async () => {
         case 'create':
           return service.createProvisioningRequest({
             actorId: options.actorId,
+            authClientId: assertRequired(options.authClientId, '--auth-client-id'),
+            authIssuerUrl: options.authIssuerUrl,
+            authRealm: assertRequired(options.authRealm, '--auth-realm'),
             displayName: assertRequired(options.displayName, '--display-name'),
             featureFlags: options.featureFlags,
             idempotencyKey: options.idempotencyKey,

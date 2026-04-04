@@ -73,6 +73,7 @@ describe('iam-instance-registry repository wiring', () => {
       repository,
       invalidateHost: invalidateInstanceRegistryHostMock,
       provisionInstanceAuth: expect.any(Function),
+      getKeycloakStatus: expect.any(Function),
     });
     expect(release).toHaveBeenCalledTimes(1);
   });

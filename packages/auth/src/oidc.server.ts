@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import * as client from 'openid-client';
 import { createSdkLogger, getWorkspaceContext } from '@sva/sdk/server';
 
@@ -7,6 +8,11 @@ import type { AuthConfig } from './types.js';
 const configPromises = new Map<string, Promise<client.Configuration>>();
 const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
 const MAX_OIDC_CONFIG_CACHE_ENTRIES = 32;
+
+const buildOidcConfigCacheKey = (authConfig: Pick<AuthConfig, 'issuer' | 'clientId' | 'clientSecret'>): string => {
+  const secretFingerprint = createHash('sha256').update(authConfig.clientSecret).digest('hex').slice(0, 16);
+  return `${authConfig.issuer}::${authConfig.clientId}::${secretFingerprint}`;
+};
 
 const evictOldestOidcConfig = (): void => {
   if (configPromises.size < MAX_OIDC_CONFIG_CACHE_ENTRIES) {
@@ -28,7 +34,7 @@ const evictOldestOidcConfig = (): void => {
 export const getOidcConfig = async (
   authConfig: Pick<AuthConfig, 'issuer' | 'clientId' | 'clientSecret'> = getAuthConfig()
 ): Promise<client.Configuration> => {
-  const cacheKey = `${authConfig.issuer}::${authConfig.clientId}`;
+  const cacheKey = buildOidcConfigCacheKey(authConfig);
   const cached = configPromises.get(cacheKey);
   if (cached) {
     return cached;
@@ -54,6 +60,12 @@ export const getOidcConfig = async (
   evictOldestOidcConfig();
   configPromises.set(cacheKey, promise);
   return promise;
+};
+
+export const invalidateOidcConfig = (
+  authConfig: Pick<AuthConfig, 'issuer' | 'clientId' | 'clientSecret'> = getAuthConfig()
+): void => {
+  configPromises.delete(buildOidcConfigCacheKey(authConfig));
 };
 
 export { client };

@@ -35,6 +35,7 @@ export type LoginState = {
   createdAt: number;
   returnTo?: string;
   silent?: boolean;
+  workspaceId?: string;
 };
 
 export type SessionControlState = {

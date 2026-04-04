@@ -6,11 +6,16 @@ import {
   archiveInstance,
   asIamError,
   createInstance,
+  getInstanceKeycloakStatus,
   getInstance,
   IamHttpError,
   listInstances,
+  reconcileInstanceKeycloak,
   suspendInstance,
+  updateInstance,
   type CreateInstancePayload,
+  type ReconcileInstanceKeycloakPayload,
+  type UpdateInstancePayload,
 } from '../lib/iam-api';
 import { useAuth } from '../providers/auth-provider';
 
@@ -29,6 +34,7 @@ export const useInstances = () => {
   const [selectedInstance, setSelectedInstance] = React.useState<IamInstanceDetail | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [detailLoading, setDetailLoading] = React.useState(false);
+  const [statusLoading, setStatusLoading] = React.useState(false);
   const [error, setError] = React.useState<IamHttpError | null>(null);
   const [mutationError, setMutationError] = React.useState<IamHttpError | null>(null);
 
@@ -65,10 +71,25 @@ export const useInstances = () => {
   const loadInstance = React.useCallback(
     async (instanceId: string) => {
       setDetailLoading(true);
+      setMutationError(null);
       try {
-        const response = await getInstance(instanceId);
-        setSelectedInstance(response.data);
-        return response.data;
+        const [detailResponse, statusResponse] = await Promise.all([
+          getInstance(instanceId),
+          getInstanceKeycloakStatus(instanceId).catch(async (cause) => {
+            const resolvedError = asIamError(cause);
+            if (resolvedError.status === 403) {
+              await invalidatePermissions();
+            }
+            setMutationError(resolvedError);
+            return null;
+          }),
+        ]);
+        const nextInstance = {
+          ...detailResponse.data,
+          keycloakStatus: statusResponse?.data ?? detailResponse.data.keycloakStatus,
+        };
+        setSelectedInstance(nextInstance);
+        return nextInstance;
       } catch (cause) {
         const resolvedError = asIamError(cause);
         if (resolvedError.status === 403) {
@@ -84,7 +105,7 @@ export const useInstances = () => {
   );
 
   const mutate = React.useCallback(
-    async <T extends IamInstanceListItem>(action: () => Promise<{ data: T }>, instanceId?: string) => {
+    async <T>(action: () => Promise<{ data: T }>, instanceId?: string) => {
       setMutationError(null);
       try {
         const result = await action();
@@ -110,6 +131,7 @@ export const useInstances = () => {
     selectedInstance,
     isLoading,
     detailLoading,
+    statusLoading,
     error,
     mutationError,
     filters,
@@ -120,6 +142,49 @@ export const useInstances = () => {
     clearSelectedInstance: () => setSelectedInstance(null),
     clearMutationError: () => setMutationError(null),
     createInstance: async (payload: CreateInstancePayload) => mutate(() => createInstance(payload), payload.instanceId),
+    updateInstance: async (instanceId: string, payload: UpdateInstancePayload) =>
+      mutate(() => updateInstance(instanceId, payload), instanceId),
+    refreshKeycloakStatus: async (instanceId: string) => {
+      setStatusLoading(true);
+      setMutationError(null);
+      try {
+        const response = await getInstanceKeycloakStatus(instanceId);
+        setSelectedInstance((current) =>
+          current && current.instanceId === instanceId
+            ? {
+                ...current,
+                keycloakStatus: response.data,
+              }
+            : current
+        );
+        return response.data;
+      } catch (cause) {
+        const resolvedError = asIamError(cause);
+        if (resolvedError.status === 403) {
+          await invalidatePermissions();
+        }
+        setMutationError(resolvedError);
+        return null;
+      } finally {
+        setStatusLoading(false);
+      }
+    },
+    reconcileKeycloak: async (instanceId: string, payload: ReconcileInstanceKeycloakPayload) =>
+      mutate(
+        async () => {
+          const response = await reconcileInstanceKeycloak(instanceId, payload);
+          setSelectedInstance((current) =>
+            current && current.instanceId === instanceId
+              ? {
+                  ...current,
+                  keycloakStatus: response.data,
+                }
+              : current
+          );
+          return response;
+        },
+        instanceId
+      ),
     activateInstance: async (instanceId: string) => mutate(() => activateInstance(instanceId), instanceId),
     suspendInstance: async (instanceId: string) => mutate(() => suspendInstance(instanceId), instanceId),
     archiveInstance: async (instanceId: string) => mutate(() => archiveInstance(instanceId), instanceId),

@@ -3,6 +3,7 @@ import { loadInstanceByHostname } from '@sva/data/server';
 import { createSdkLogger, getInstanceConfig, parseInstanceIdFromHost } from '@sva/sdk/server';
 
 import { buildLogContext } from './shared/log-context.js';
+import { resolveEffectiveRequestHost } from './request-hosts.js';
 import type { SessionUser } from './types.js';
 
 const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
@@ -18,7 +19,7 @@ export const resolveSessionUser = async (request: Request, user: SessionUser): P
     return user;
   }
 
-  const host = new URL(request.url).host;
+  const host = resolveEffectiveRequestHost(request);
   const registryEntry = await loadInstanceByHostname(host).catch(() => null);
   const derivedInstanceId = registryEntry?.instanceId ?? parseInstanceIdFromHost(host);
   if (!derivedInstanceId) {
@@ -41,7 +42,7 @@ export const resolveSessionUser = async (request: Request, user: SessionUser): P
 };
 
 export const validateTenantHost = async (request: Request): Promise<Response | null> => {
-  const host = new URL(request.url).host;
+  const host = resolveEffectiveRequestHost(request);
   const config = getInstanceConfig();
   if (!config) {
     return null;

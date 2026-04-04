@@ -77,20 +77,12 @@ export interface LoggerOptions {
   enableOtel?: boolean;
 }
 
-/**
- * Custom Winston Transport der Logs direkt an den OTEL Logger Provider sendet.
- * Umgeht das Timing-Problem mit der Winston-Instrumentation.
- *
- * Nutzt winston-transport für vollständige Kompatibilität.
- */
 class DirectOtelTransport extends Transport {
   private otelLogger: OtelLogger | null = null;
 
   log(info: Logform.TransformableInfo, callback?: () => void) {
-    // Winston-kompatible async operation mit setImmediate
     setImmediate(() => {
       void (async () => {
-        // Lazy-Init: Solange retryen, bis ein Logger Provider verfügbar ist.
         if (!this.otelLogger) {
           try {
             const provider = await getGlobalLoggerProviderFromMonitoring();
@@ -98,17 +90,13 @@ class DirectOtelTransport extends Transport {
               this.otelLogger = provider.getLogger('@sva/winston', '1.0.0');
             }
           } catch (e) {
-            // Provider noch nicht verfügbar - log wird dann über Console gesendet
             this.emit('error', e);
           }
         }
 
-        // Wenn Logger verfügbar, sende Log
         if (this.otelLogger) {
           try {
             const { level, message, component, environment, workspace_id, context, ...rest } = info;
-
-            // Map Winston level to OTEL severity
             const severityMap: Record<string, OtelLogRecord['severityNumber']> = {
               error: 17,
               warn: 13,
@@ -137,12 +125,11 @@ class DirectOtelTransport extends Transport {
             this.emit('error', e);
           }
         }
-      })()
-        .finally(() => {
-          if (callback) {
-            callback();
-          }
-        });
+      })().finally(() => {
+        if (callback) {
+          callback();
+        }
+      });
     });
   }
 }
@@ -180,6 +167,47 @@ const patchLoggerCloseForRegistryCleanup = (logger: Logger, cleanup: () => void)
   }) as typeof logger.close;
 };
 
+let hasReportedMissingTransport = false;
+
+const resolveEffectiveLoggingMode = (input: {
+  readonly consoleEnabled: boolean;
+  readonly otelEnabled: boolean;
+}): 'console_to_loki' | 'otel_to_loki' | 'degraded' => {
+  if (input.otelEnabled) {
+    return 'otel_to_loki';
+  }
+  if (input.consoleEnabled) {
+    return 'console_to_loki';
+  }
+  return 'degraded';
+};
+
+const buildConsoleTransport = (environment: string, emergencyFallback = false): winston.transport => {
+  if (environment === 'development' && !emergencyFallback) {
+    return new winston.transports.Console({
+      format: winston.format.combine(
+        winston.format.colorize(),
+        winston.format.timestamp(),
+        enrichWithContext(),
+        redactSensitive(),
+        winston.format.printf(({ timestamp, level, message, ...meta }) => {
+          const metaString = Object.keys(meta).length > 0 ? JSON.stringify(meta) : '';
+          return `${timestamp} ${level}: ${message} ${metaString}`.trim();
+        })
+      )
+    });
+  }
+
+  return new winston.transports.Console({
+    format: winston.format.combine(
+      winston.format.timestamp(),
+      enrichWithContext(),
+      redactSensitive(),
+      winston.format.json()
+    ),
+  });
+};
+
 export const createSdkLogger = ({
   component,
   environment = process.env.NODE_ENV ?? 'development',
@@ -190,6 +218,10 @@ export const createSdkLogger = ({
   const runtimeConfig = getLoggingRuntimeConfig();
   const consoleEnabled = enableConsole ?? runtimeConfig.consoleEnabled;
   const otelEnabled = enableOtel ?? runtimeConfig.otelRequested;
+  const loggingMode = resolveEffectiveLoggingMode({
+    consoleEnabled,
+    otelEnabled,
+  });
   const transportsArray: winston.transport[] = [];
   let otelTransport: DirectOtelTransport | null = null;
 
@@ -203,31 +235,34 @@ export const createSdkLogger = ({
   }
 
   if (consoleEnabled) {
-    transportsArray.push(
-      new winston.transports.Console({
-        format: winston.format.combine(
-          winston.format.colorize(),
-          winston.format.timestamp(),
-          enrichWithContext(),
-          redactSensitive(),
-          winston.format.printf(({ timestamp, level, message, ...meta }) => {
-            const metaString = Object.keys(meta).length > 0 ? JSON.stringify(meta) : '';
-            return `${timestamp} ${level}: ${message} ${metaString}`.trim();
-          })
-        )
-      })
-    );
+    transportsArray.push(buildConsoleTransport(environment));
+  }
+
+  if (transportsArray.length === 0) {
+    transportsArray.push(buildConsoleTransport(environment, true));
   }
 
   const logger = winston.createLogger({
     level,
     defaultMeta: {
       component,
-      environment
+      environment,
+      logging_mode: loggingMode,
     },
     format: winston.format.combine(winston.format.timestamp(), enrichWithContext(), redactSensitive(), winston.format.json()),
     transports: transportsArray
   });
+
+  if (!consoleEnabled && !otelEnabled && !hasReportedMissingTransport) {
+    hasReportedMissingTransport = true;
+    logger.error('Observability degraded: logger started without configured transport; emergency console fallback enabled', {
+      operation: 'observability_bootstrap',
+      error_type: 'logger_transport_missing',
+      logger_mode: 'degraded',
+      otel_requested: otelEnabled,
+      console_enabled: consoleEnabled,
+    });
+  }
 
   if (otelEnabled && isOtelRuntimePending()) {
     registerOtelAwareLogger({

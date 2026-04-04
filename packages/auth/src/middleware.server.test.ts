@@ -64,6 +64,7 @@ vi.mock('./legal-text-enforcement.server', () => ({
 describe('withAuthenticatedUser', () => {
   beforeEach(() => {
     vi.unstubAllEnvs();
+    vi.stubEnv('SVA_TRUST_FORWARDED_HEADERS', 'true');
     vi.resetAllMocks();
     loadInstanceByHostnameMock.mockResolvedValue(null);
     instanceConfigState.canonicalAuthHost = 'studio.example.org';
@@ -185,6 +186,44 @@ describe('withAuthenticatedUser', () => {
         derived_instance_id: 'hb-meinquartier',
       })
     );
+  });
+
+  it('derives a missing session instance id from the host header when request.url stays on the root host', async () => {
+    instanceConfigState.canonicalAuthHost = 'studio.smart-village.app';
+    instanceConfigState.parentDomain = 'studio.smart-village.app';
+    loadInstanceByHostnameMock.mockResolvedValue({
+      instanceId: 'hb-meinquartier',
+      displayName: 'HB Meinquartier',
+      status: 'active',
+      parentDomain: 'studio.smart-village.app',
+      primaryHostname: 'hb-meinquartier.studio.smart-village.app',
+      featureFlags: {},
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    });
+    getSessionUserMock.mockResolvedValue({
+      id: 'user-root-url-instance',
+      name: 'Root URL Derived',
+      roles: ['admin'],
+    });
+    const { withAuthenticatedUser } = await import('./middleware.server');
+    const request = new Request('https://studio.smart-village.app/api/v1/iam/users', {
+      headers: {
+        cookie: 'sva_auth_session=session-root-url-instance',
+        host: 'hb-meinquartier.studio.smart-village.app',
+      },
+    });
+
+    const response = await withAuthenticatedUser(request, ({ user }) =>
+      new Response(JSON.stringify({ instanceId: user.instanceId }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ instanceId: 'hb-meinquartier' });
+    expect(loadInstanceByHostnameMock).toHaveBeenCalledWith('hb-meinquartier.studio.smart-village.app');
   });
 
   it('enforces legal text compliance on protected IAM routes', async () => {

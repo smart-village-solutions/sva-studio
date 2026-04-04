@@ -7,6 +7,7 @@ export interface LoggingRuntimeConfig {
   readonly uiEnabled: boolean;
   readonly otelRequested: boolean;
   readonly otelRequired: boolean;
+  readonly mode: 'console_to_loki' | 'otel_to_loki' | 'degraded';
 }
 
 export interface OtelInitializationResult {
@@ -32,17 +33,41 @@ const resolveEnvironment = (value: string | undefined): LoggingRuntimeConfig['en
   return value === 'production' ? 'production' : 'development';
 };
 
+const isDisabledFlag = (value: string | undefined): boolean => {
+  const normalized = value?.trim().toLowerCase();
+  return normalized === 'false' || normalized === '0';
+};
+
+const resolveLoggingMode = (input: {
+  consoleEnabled: boolean;
+  otelRequested: boolean;
+}): LoggingRuntimeConfig['mode'] => {
+  if (input.otelRequested) {
+    return 'otel_to_loki';
+  }
+  if (input.consoleEnabled) {
+    return 'console_to_loki';
+  }
+  return 'degraded';
+};
+
 export const getLoggingRuntimeConfig = (): LoggingRuntimeConfig => {
   const environment = resolveEnvironment(process.env.NODE_ENV);
-  const devDisableFlag = process.env.ENABLE_OTEL;
-  const otelRequested = environment === 'production' ? true : devDisableFlag !== 'false' && devDisableFlag !== '0';
+  const otelRequested = !isDisabledFlag(process.env.ENABLE_OTEL);
+  const consoleOverride = (process.env.SVA_ENABLE_SERVER_CONSOLE_LOGS?.trim() || '').toLowerCase();
+  const consoleEnabledInProduction = consoleOverride === 'true' || consoleOverride === '1';
+  const consoleEnabled = environment === 'development' || consoleEnabledInProduction;
 
   return {
     environment,
-    consoleEnabled: environment === 'development',
+    consoleEnabled,
     uiEnabled: environment === 'development',
     otelRequested,
-    otelRequired: environment === 'production',
+    otelRequired: environment === 'production' && otelRequested,
+    mode: resolveLoggingMode({
+      consoleEnabled,
+      otelRequested,
+    }),
   };
 };
 

@@ -16,6 +16,7 @@ const state: {
   loadInstanceByHostnameError: Error | null;
   authClientSecret: string | null;
   authStateSecret: string | null;
+  instanceAuthClientSecretCiphertext: string | null;
 } = {
   instanceConfig: { instanceId: 'bb-guben' },
   instanceById: null,
@@ -23,6 +24,7 @@ const state: {
   loadInstanceByHostnameError: null,
   authClientSecret: 'client-secret',
   authStateSecret: null,
+  instanceAuthClientSecretCiphertext: null,
 };
 
 vi.mock('@sva/data/server', () => ({
@@ -33,15 +35,24 @@ vi.mock('@sva/data/server', () => ({
     }
     return state.instanceByHostname;
   }),
+  loadInstanceAuthClientSecretCiphertext: vi.fn(async () => state.instanceAuthClientSecretCiphertext),
 }));
 
 vi.mock('@sva/sdk/server', () => ({
+  createSdkLogger: vi.fn(() => ({
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  })),
   getInstanceConfig: vi.fn(() => state.instanceConfig),
 }));
 
 vi.mock('./runtime-secrets.server.js', () => ({
   getAuthClientSecret: vi.fn(() => state.authClientSecret),
   getAuthStateSecret: vi.fn(() => state.authStateSecret),
+  getIamDatabaseUrl: vi.fn(() => 'postgres://test:test@localhost:5432/test'),
+  getRedisUrl: vi.fn(() => 'redis://localhost:6379'),
 }));
 
 import {
@@ -70,6 +81,7 @@ describe('runtime auth config resolution', () => {
       SVA_AUTH_CLIENT_SECRET: 'global-secret',
       SVA_AUTH_REDIRECT_URI: 'https://studio.smart-village.app/auth/callback',
       SVA_AUTH_POST_LOGOUT_REDIRECT_URI: 'https://studio.smart-village.app/',
+      SVA_TRUST_FORWARDED_HEADERS: 'true',
     };
     delete process.env.KEYCLOAK_ADMIN_BASE_URL;
     state.instanceConfig = { instanceId: 'bb-guben' };
@@ -78,6 +90,7 @@ describe('runtime auth config resolution', () => {
     state.loadInstanceByHostnameError = null;
     state.authClientSecret = 'client-secret';
     state.authStateSecret = null;
+    state.instanceAuthClientSecretCiphertext = null;
   });
 
   afterEach(() => {
@@ -104,8 +117,80 @@ describe('runtime auth config resolution', () => {
     state.instanceByHostname = createActiveInstance({
       authIssuerUrl: 'https://sso.example.com/realms/bb-guben',
     });
+    state.instanceAuthClientSecretCiphertext = 'tenant-secret';
 
     const request = new Request('https://BB-GUBEN.studio.smart-village.app/admin');
+
+    await expect(resolveAuthConfigForRequest(request)).resolves.toEqual(
+      expect.objectContaining({
+        instanceId: 'bb-guben',
+        authRealm: 'bb-guben',
+        issuer: 'https://sso.example.com/realms/bb-guben',
+        clientId: 'sva-studio',
+        clientSecret: 'tenant-secret',
+        redirectUri: 'https://bb-guben.studio.smart-village.app/auth/callback',
+        postLogoutRedirectUri: 'https://bb-guben.studio.smart-village.app/',
+      })
+    );
+  });
+
+  it('uses forwarded host and proto when request URL contains canonical host', async () => {
+    state.instanceByHostname = createActiveInstance({
+      authIssuerUrl: 'https://sso.example.com/realms/bb-guben',
+    });
+
+    const request = new Request('http://studio.smart-village.app/auth/login', {
+      headers: {
+        'x-forwarded-host': 'BB-GUBEN.studio.smart-village.app',
+        'x-forwarded-proto': 'https',
+      },
+    });
+
+    await expect(resolveAuthConfigForRequest(request)).resolves.toEqual(
+      expect.objectContaining({
+        instanceId: 'bb-guben',
+        authRealm: 'bb-guben',
+        issuer: 'https://sso.example.com/realms/bb-guben',
+        clientId: 'sva-studio',
+        redirectUri: 'https://bb-guben.studio.smart-village.app/auth/callback',
+        postLogoutRedirectUri: 'https://bb-guben.studio.smart-village.app/',
+      })
+    );
+  });
+
+  it('uses the request host header when forwarded headers are absent', async () => {
+    state.instanceByHostname = createActiveInstance({
+      authIssuerUrl: 'https://sso.example.com/realms/bb-guben',
+    });
+
+    const request = new Request('https://studio.smart-village.app/auth/login', {
+      headers: {
+        host: 'BB-GUBEN.studio.smart-village.app',
+      },
+    });
+
+    await expect(resolveAuthConfigForRequest(request)).resolves.toEqual(
+      expect.objectContaining({
+        instanceId: 'bb-guben',
+        authRealm: 'bb-guben',
+        issuer: 'https://sso.example.com/realms/bb-guben',
+        clientId: 'sva-studio',
+        redirectUri: 'https://bb-guben.studio.smart-village.app/auth/callback',
+        postLogoutRedirectUri: 'https://bb-guben.studio.smart-village.app/',
+      })
+    );
+  });
+
+  it('supports RFC forwarded header for tenant host resolution', async () => {
+    state.instanceByHostname = createActiveInstance({
+      authIssuerUrl: 'https://sso.example.com/realms/bb-guben',
+    });
+
+    const request = new Request('http://studio.smart-village.app/auth/login', {
+      headers: {
+        forwarded: 'for=10.0.0.1;proto=https;host=bb-guben.studio.smart-village.app',
+      },
+    });
 
     await expect(resolveAuthConfigForRequest(request)).resolves.toEqual(
       expect.objectContaining({

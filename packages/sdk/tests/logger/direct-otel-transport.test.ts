@@ -232,7 +232,7 @@ describe('DirectOtelTransport', () => {
     });
   });
 
-  it('creates no transports when console and otel are disabled', () => {
+  it('creates an emergency fallback transport when console and otel are disabled', () => {
     process.env.NODE_ENV = 'production';
     resetLoggingRuntimeForTests();
     const logger = createSdkLogger({
@@ -241,7 +241,7 @@ describe('DirectOtelTransport', () => {
       enableConsole: false,
     });
 
-    expect(logger.transports).toHaveLength(0);
+    expect(logger.transports).toHaveLength(1);
   });
 
   it('unregisters OTEL-aware loggers deterministically on close', () => {

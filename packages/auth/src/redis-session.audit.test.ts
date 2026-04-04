@@ -148,6 +148,7 @@ describe('redis-session audit events', () => {
       nonce: 'nonce',
       createdAt: Date.now(),
       returnTo: '/',
+      workspaceId: 'de-musterhausen',
     });
 
     expect(state.emitAuthAuditEvent).toHaveBeenNthCalledWith(
@@ -155,6 +156,7 @@ describe('redis-session audit events', () => {
       expect.objectContaining({
         eventType: 'login_state_created',
         outcome: 'success',
+        workspaceId: 'de-musterhausen',
       })
     );
 

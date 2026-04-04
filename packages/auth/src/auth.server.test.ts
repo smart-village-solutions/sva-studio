@@ -12,6 +12,7 @@ const authState = vi.hoisted(() => ({
   deleteSessionMock: vi.fn(),
   refreshTokenGrantMock: vi.fn(),
   getOidcConfigMock: vi.fn(),
+  invalidateOidcConfigMock: vi.fn(),
   authorizationCodeGrantMock: vi.fn(),
   buildAuthorizationUrlMock: vi.fn(),
   buildEndSessionUrlMock: vi.fn(),
@@ -30,6 +31,7 @@ const {
   deleteSessionMock,
   refreshTokenGrantMock,
   getOidcConfigMock,
+  invalidateOidcConfigMock,
   authorizationCodeGrantMock,
   buildAuthorizationUrlMock,
   buildEndSessionUrlMock,
@@ -55,6 +57,7 @@ vi.mock('./redis-session.server', () => ({
 
 vi.mock('./oidc.server', () => ({
   getOidcConfig: getOidcConfigMock,
+  invalidateOidcConfig: invalidateOidcConfigMock,
   client: {
     randomPKCECodeVerifier: vi.fn(() => 'verifier-1'),
     calculatePKCECodeChallenge: vi.fn(async () => 'challenge-1'),
@@ -72,6 +75,7 @@ vi.mock('./jit-provisioning.server', () => ({
 }));
 
 const resolveInstanceIdMock = vi.fn();
+const loadInstanceByIdMock = vi.fn();
 
 vi.mock('./shared/instance-id-resolution', () => ({
   resolveInstanceId: resolveInstanceIdMock,
@@ -79,6 +83,10 @@ vi.mock('./shared/instance-id-resolution', () => ({
 
 vi.mock('./shared/db-helpers', () => ({
   createPoolResolver: () => () => null,
+}));
+
+vi.mock('@sva/data/server', () => ({
+  loadInstanceById: loadInstanceByIdMock,
 }));
 
 describe('getSessionUser', () => {
@@ -112,6 +120,7 @@ describe('getSessionUser', () => {
       ...auth,
     }));
     getOidcConfigMock.mockResolvedValue({ issuer: 'https://issuer.example' });
+    invalidateOidcConfigMock.mockReset();
     buildAuthorizationUrlMock.mockReturnValue(new URL('https://issuer.example/auth?state=state-1'));
     buildEndSessionUrlMock.mockReturnValue(new URL('https://issuer.example/logout'));
     jitProvisionAccountMock.mockResolvedValue({ skipped: false, accountId: 'acc-1', created: true });
@@ -440,6 +449,118 @@ describe('getSessionUser', () => {
     await expect(handleCallback({ code: 'code-2', state: 'state-missing' })).rejects.toThrow(
       'Invalid login state'
     );
+  });
+
+  it('handleCallback invalidates the cached OIDC config and retries token exchange once', async () => {
+    const accessToken = createUnsignedJwt({
+      sub: 'user-cb-retry',
+      preferred_username: 'Retry User',
+      email: 'retry@example.com',
+      instanceId: 'bb-guben',
+      realm_access: { roles: ['Admin'] },
+    });
+
+    authorizationCodeGrantMock
+      .mockRejectedValueOnce({
+        name: 'ResponseBodyError',
+        error: 'invalid_client',
+        error_description: 'Secret changed',
+      })
+      .mockResolvedValueOnce({
+        access_token: accessToken,
+        refresh_token: 'refresh-cb-retry',
+        id_token: 'id-cb-retry',
+        claims: () => ({
+          sub: 'user-cb-retry',
+          preferred_username: 'Retry User',
+          email: 'retry@example.com',
+          instanceId: 'bb-guben',
+          realm_access: { roles: ['Admin'] },
+        }),
+        expiresIn: () => 300,
+      });
+
+    const { handleCallback } = await import('./auth.server');
+    const result = await handleCallback({
+      code: 'code-retry',
+      state: 'state-retry',
+      authConfig: {
+        issuer: 'https://issuer.example/realms/bb-guben',
+        clientId: 'sva-studio',
+        clientSecret: 'tenant-secret',
+        loginStateSecret: 'state-secret',
+        redirectUri: 'https://bb-guben.studio.example.org/auth/callback',
+        postLogoutRedirectUri: 'https://bb-guben.studio.example.org/',
+        scopes: 'openid',
+        sessionCookieName: 'sva_auth_session',
+        loginStateCookieName: 'sva_auth_state',
+        silentSsoSuppressCookieName: 'sva_auth_silent_sso',
+        sessionTtlMs: 60_000,
+        sessionRedisTtlBufferMs: 5_000,
+        silentSsoSuppressAfterLogoutMs: 60_000,
+        instanceId: 'bb-guben',
+        authRealm: 'bb-guben',
+      },
+      loginState: {
+        codeVerifier: 'verifier-retry',
+        nonce: 'nonce-retry',
+        createdAt: Date.now(),
+      },
+    });
+
+    expect(result.user.instanceId).toBe('bb-guben');
+    expect(invalidateOidcConfigMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        issuer: 'https://issuer.example/realms/bb-guben',
+        clientId: 'sva-studio',
+      }),
+    );
+    expect(authorizationCodeGrantMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('handleCallback does not retry non-secret token exchange failures', async () => {
+    authorizationCodeGrantMock.mockRejectedValueOnce({
+      name: 'ResponseBodyError',
+      error: 'invalid_grant',
+      error_description: 'Code already used',
+      status: 400,
+    });
+
+    const { handleCallback } = await import('./auth.server');
+
+    await expect(
+      handleCallback({
+        code: 'code-invalid-grant',
+        state: 'state-invalid-grant',
+        authConfig: {
+          issuer: 'https://issuer.example/realms/bb-guben',
+          clientId: 'sva-studio',
+          clientSecret: 'tenant-secret',
+          loginStateSecret: 'state-secret',
+          redirectUri: 'https://bb-guben.studio.example.org/auth/callback',
+          postLogoutRedirectUri: 'https://bb-guben.studio.example.org/',
+          scopes: 'openid',
+          sessionCookieName: 'sva_auth_session',
+          loginStateCookieName: 'sva_auth_state',
+          silentSsoSuppressCookieName: 'sva_auth_silent_sso',
+          sessionTtlMs: 60_000,
+          sessionRedisTtlBufferMs: 5_000,
+          silentSsoSuppressAfterLogoutMs: 60_000,
+          instanceId: 'bb-guben',
+          authRealm: 'bb-guben',
+        },
+        loginState: {
+          codeVerifier: 'verifier-no-retry',
+          nonce: 'nonce-no-retry',
+          createdAt: Date.now(),
+        },
+      }),
+    ).rejects.toMatchObject({
+      error: 'invalid_grant',
+    });
+
+    expect(invalidateOidcConfigMock).not.toHaveBeenCalled();
+    expect(authorizationCodeGrantMock).toHaveBeenCalledTimes(1);
   });
 
   it('logoutSession falls back to post logout redirect without id token', async () => {

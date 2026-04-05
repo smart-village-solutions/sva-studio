@@ -245,7 +245,7 @@ describe('instance-registry server helpers', () => {
       loadInstanceByHostname('de-musterhausen.studio.smart-village.app', {
         getDatabaseUrl: () => 'postgres://iam',
       })
-    ).rejects.toThrow('tenant_host_resolution_failed: de-musterhausen.studio.smart-village.app');
+    ).rejects.toThrow('tenant_host_resolution_failed');
   });
 
   it('scopes hostname cache entries by database url', async () => {
@@ -386,7 +386,7 @@ describe('instance-registry server helpers', () => {
       loadInstanceByHostname('de-error-case.studio.smart-village.app', {
         getDatabaseUrl: () => 'postgres://iam',
       })
-    ).rejects.toThrow('tenant_host_resolution_fallback_failed: de-error-case.studio.smart-village.app');
+    ).rejects.toThrow('tenant_host_resolution_fallback_failed');
 
     expect(resolvePrimaryHostnameMock).toHaveBeenCalledWith('de-error-case.studio.smart-village.app');
   });
@@ -404,7 +404,7 @@ describe('instance-registry server helpers', () => {
       throw new Error('Should have thrown');
     } catch (err: unknown) {
       const error = err as any;
-      expect(error.message).toBe('tenant_host_resolution_fallback_failed: de-sensitive.studio.smart-village.app');
+      expect(error.message).toBe('tenant_host_resolution_fallback_failed');
       expect(error.cause).toBe(originalError);
       // Ensure original error message is NOT exposed in the thrown error message
       expect(error.message).not.toContain('SENSITIVE_CONNECTION_STRING_HERE');

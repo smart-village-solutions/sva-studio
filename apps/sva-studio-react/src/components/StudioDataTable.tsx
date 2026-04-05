@@ -73,6 +73,61 @@ const SortIcon = ({ direction }: { direction: false | 'asc' | 'desc' }) => {
   return <ArrowUpDown className="h-4 w-4" aria-hidden="true" />;
 };
 
+const renderSelectionHeader = <TData,>(
+  table: ReturnType<typeof useReactTable<TData>>,
+  ariaLabel: string
+) => (
+  <Checkbox
+    aria-label={t('studioTable.selection.selectAll', { label: ariaLabel })}
+    checked={table.getIsAllRowsSelected()}
+    aria-checked={table.getIsSomeRowsSelected() && !table.getIsAllRowsSelected() ? 'mixed' : table.getIsAllRowsSelected()}
+    ref={(element) => {
+      if (element) {
+        element.indeterminate = table.getIsSomeRowsSelected() && !table.getIsAllRowsSelected();
+      }
+    }}
+    onChange={(event) => table.toggleAllRowsSelected(event.target.checked)}
+  />
+);
+
+const renderSelectionCell = <TData,>(row: CellContext<TData, unknown>['row'], ariaLabel: string) => (
+  <Checkbox
+    aria-label={t('studioTable.selection.selectRowById', { label: ariaLabel, rowId: row.id })}
+    checked={row.getIsSelected()}
+    ref={undefined}
+    onChange={(event) => row.toggleSelected(event.target.checked)}
+  />
+);
+
+const renderActionsCell = <TData,>(row: CellContext<TData, unknown>['row'], rowActions: (row: TData) => React.ReactNode) => (
+  <div className="flex justify-end gap-2">{rowActions(row.original)}</div>
+);
+
+const renderHeaderCellContent = <TData,>(header: ReturnType<ReturnType<typeof useReactTable<TData>>['getHeaderGroups']>[number]['headers'][number]) => {
+  if (header.isPlaceholder) {
+    return null;
+  }
+
+  const canSort = header.column.getCanSort();
+  const sortingState = header.column.getIsSorted();
+
+  if (!canSort) {
+    return <span className="font-semibold text-foreground">{flexRender(header.column.columnDef.header, header.getContext())}</span>;
+  }
+
+  return (
+    <Button
+      type="button"
+      className="h-auto px-0 py-0 font-semibold hover:bg-transparent"
+      variant="ghost"
+      onClick={header.column.getToggleSortingHandler()}
+    >
+      {flexRender(header.column.columnDef.header, header.getContext())}
+      <SortIcon direction={sortingState} />
+    </Button>
+  );
+};
+
 export function StudioDataTable<TData>({
   ariaLabel,
   caption,
@@ -90,6 +145,7 @@ export function StudioDataTable<TData>({
 }: StudioDataTableProps<TData>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
+  const selectedRowCount = Object.keys(rowSelection).length;
 
   React.useEffect(() => {
     setRowSelection({});
@@ -120,26 +176,12 @@ export function StudioDataTable<TData>({
       mappedColumns.push({
         id: '__select__',
         enableSorting: false,
-        header: ({ table }) => (
-          <Checkbox
-            aria-label={t('studioTable.selection.selectAll', { label: ariaLabel })}
-            checked={table.getIsAllRowsSelected()}
-            ref={undefined}
-            onChange={(event) => table.toggleAllRowsSelected(event.target.checked)}
-          />
-        ),
-        cell: ({ row }) => (
-          <Checkbox
-            aria-label={t('studioTable.selection.selectRow', { label: ariaLabel })}
-            checked={row.getIsSelected()}
-            ref={undefined}
-            onChange={(event) => row.toggleSelected(event.target.checked)}
-          />
-        ),
+        header: ({ table }) => renderSelectionHeader(table, ariaLabel),
+        cell: ({ row }) => renderSelectionCell(row, ariaLabel),
         meta: {
           className: 'w-12',
           headerClassName: 'w-12',
-          mobileLabel: 'Auswahl',
+          mobileLabel: t('studioTable.columns.selection'),
           mobileClassName: 'w-auto',
         },
       });
@@ -151,12 +193,12 @@ export function StudioDataTable<TData>({
       mappedColumns.push({
         id: '__actions__',
         enableSorting: false,
-        header: () => 'Aktionen',
-        cell: ({ row }) => <div className="flex justify-end gap-2">{rowActions(row.original)}</div>,
+        header: () => t('studioTable.columns.actions'),
+        cell: ({ row }) => renderActionsCell(row, rowActions),
         meta: {
           className: 'text-right',
           headerClassName: 'text-right',
-          mobileLabel: 'Aktionen',
+          mobileLabel: t('studioTable.columns.actions'),
           mobileClassName: 'justify-end',
         },
       });
@@ -185,8 +227,10 @@ export function StudioDataTable<TData>({
 
   if (isLoading) {
     return (
-      <div className="rounded-xl border border-border bg-card shadow-shell">
-        <div className="p-6 text-sm text-muted-foreground">{loadingState}</div>
+      <div className="rounded-xl border border-border bg-card shadow-shell" aria-busy="true">
+        <div className="p-6 text-sm text-muted-foreground" role="status" aria-live="polite">
+          {loadingState ?? t('studioTable.status.loading')}
+        </div>
       </div>
     );
   }
@@ -194,13 +238,13 @@ export function StudioDataTable<TData>({
   if (data.length === 0) {
     return (
       <div className="rounded-xl border border-border bg-card shadow-shell">
-        <div className="p-6">{emptyState}</div>
+        <div className="p-6" role="status" aria-live="polite">{emptyState}</div>
       </div>
     );
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-card shadow-shell">
+    <div className="overflow-hidden rounded-xl border border-border bg-card shadow-shell" aria-busy="false" data-selected-rows={selectedRowCount}>
       {hasToolbar ? (
         <div className="flex flex-col gap-3 border-b border-border px-4 py-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex flex-wrap items-center gap-2">
@@ -232,8 +276,6 @@ export function StudioDataTable<TData>({
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
                 {headerGroup.headers.map((header) => {
-                  const canSort = header.column.getCanSort();
-                  const sortingState = header.column.getIsSorted();
                   const meta = header.column.columnDef.meta as
                     | { headerClassName?: string }
                     | undefined;
@@ -243,23 +285,9 @@ export function StudioDataTable<TData>({
                       key={header.id}
                       scope="col"
                       className={cn('px-3 py-3', meta?.headerClassName)}
-                      aria-sort={canSort ? getAriaSort(sortingState) : undefined}
+                      aria-sort={header.column.getCanSort() ? getAriaSort(header.column.getIsSorted()) : undefined}
                     >
-                      {header.isPlaceholder ? null : canSort ? (
-                        <Button
-                          type="button"
-                          className="h-auto px-0 py-0 font-semibold hover:bg-transparent"
-                          variant="ghost"
-                          onClick={header.column.getToggleSortingHandler()}
-                        >
-                          {flexRender(header.column.columnDef.header, header.getContext())}
-                          <SortIcon direction={sortingState} />
-                        </Button>
-                      ) : (
-                        <span className="font-semibold text-foreground">
-                          {flexRender(header.column.columnDef.header, header.getContext())}
-                        </span>
-                      )}
+                      {renderHeaderCellContent(header)}
                     </th>
                   );
                 })}
@@ -290,8 +318,8 @@ export function StudioDataTable<TData>({
           <article key={row.id} className="rounded-lg border border-border bg-card p-3 text-sm text-foreground shadow-shell">
             {selectionMode === 'multiple' ? (
               <div className="mb-3 flex justify-end">
-          <Checkbox
-                  aria-label={t('studioTable.selection.selectRow', { label: ariaLabel })}
+                <Checkbox
+                  aria-label={t('studioTable.selection.selectRowById', { label: ariaLabel, rowId: row.id })}
                   checked={row.getIsSelected()}
                   ref={undefined}
                   onChange={(event) => row.toggleSelected(event.target.checked)}

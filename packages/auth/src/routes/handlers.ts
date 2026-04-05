@@ -44,6 +44,18 @@ const createRedirectResponse = (location: string) =>
     headers: { Location: location },
   });
 
+const summarizeRequestUrl = (request: Request): { endpoint_path: string; has_sensitive_query: boolean } => {
+  const url = new URL(request.url);
+  return {
+    endpoint_path: url.pathname,
+    has_sensitive_query:
+      url.searchParams.has('code') ||
+      url.searchParams.has('state') ||
+      url.searchParams.has('id_token_hint') ||
+      url.searchParams.has('iss'),
+  };
+};
+
 const createAuthDependencyErrorResponse = (
   request: Request,
   operation: 'auth_callback' | 'auth_login' | 'auth_logout',
@@ -53,7 +65,7 @@ const createAuthDependencyErrorResponse = (
 
   if (error instanceof TenantAuthResolutionError) {
     logger.error('Auth route failed during tenant auth resolution', {
-      endpoint: request.url,
+      ...summarizeRequestUrl(request),
       operation,
       error_type: error.name,
       reason_code: 'scope_resolution_failed',
@@ -67,7 +79,7 @@ const createAuthDependencyErrorResponse = (
 
   if (error instanceof SessionStoreUnavailableError) {
     logger.error('Auth route failed because session storage is unavailable', {
-      endpoint: request.url,
+      ...summarizeRequestUrl(request),
       operation,
       error_type: error.name,
       reason_code: 'session_store_unavailable',
@@ -83,7 +95,7 @@ const createAuthDependencyErrorResponse = (
   }
 
   logger.error('Auth route failed unexpectedly', {
-    endpoint: request.url,
+    ...summarizeRequestUrl(request),
     operation,
     error_type: error instanceof Error ? error.name : typeof error,
     reason_code: 'internal_auth_route_failure',
@@ -376,7 +388,7 @@ export const loginHandler = async (request?: Request): Promise<Response> => {
       logger.info('Login auth config resolved', {
         operation: 'login_auth_config_resolved',
         scope_kind: authScope.kind,
-        request_url: request?.url,
+        ...(request ? summarizeRequestUrl(request) : { endpoint_path: '/auth/login', has_sensitive_query: false }),
         auth_instance_id: authConfig.kind === 'instance' ? authConfig.instanceId : null,
         auth_realm: authConfig.authRealm ?? null,
         auth_client_id: authConfig.clientId,
@@ -515,7 +527,7 @@ export const callbackHandler = async (request: Request): Promise<Response> => {
           operation: 'login_callback',
           is_silent: isSilent,
           session_created: true,
-          redirect_target: redirectTarget,
+          ...summarizeRedirectTarget(redirectTarget),
           has_code: true,
           has_state: true,
           has_iss: Boolean(iss),
@@ -645,10 +657,10 @@ export const meHandler = async (request: Request): Promise<Response> => {
     return withAuthenticatedUser(request, ({ user }) => {
       logger.debug('Auth check successful', {
         endpoint: '/auth/me',
-          auth_state: 'authenticated',
-          operation: 'get_current_user',
-          roles_count: user.roles?.length ?? 0,
-          ...buildLogContext(user.instanceId ? { kind: 'instance', instanceId: user.instanceId } : undefined),
+        auth_state: 'authenticated',
+        operation: 'get_current_user',
+        roles_count: user.roles?.length ?? 0,
+        ...buildLogContext(user.instanceId ? { kind: 'instance', instanceId: user.instanceId } : undefined),
       });
 
       return new Response(JSON.stringify({ user }), {

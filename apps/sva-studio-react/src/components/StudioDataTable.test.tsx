@@ -84,8 +84,8 @@ describe('StudioDataTable', () => {
       />
     );
 
-    const rowCheckbox = screen.getAllByLabelText('Abholorte: Zeile auswählen')[0];
-    fireEvent.click(rowCheckbox!);
+    const rowCheckbox = screen.getByLabelText('Abholorte: Zeile 1 auswählen');
+    fireEvent.click(rowCheckbox);
     fireEvent.click(screen.getByRole('button', { name: 'Löschen' }));
 
     expect(bulkAction).toHaveBeenCalledWith([
@@ -105,6 +105,7 @@ describe('StudioDataTable', () => {
     );
 
     expect(screen.getByText('Keine Daten')).toBeTruthy();
+    expect(screen.getByRole('status')).toBeTruthy();
 
     rerender(
       <StudioDataTable
@@ -119,6 +120,7 @@ describe('StudioDataTable', () => {
     );
 
     expect(screen.getByText('Lädt')).toBeTruthy();
+    expect(screen.getByRole('status')).toBeTruthy();
   });
 
   it('renders mobile card content with labels', () => {

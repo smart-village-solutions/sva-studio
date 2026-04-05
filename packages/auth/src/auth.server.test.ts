@@ -93,6 +93,7 @@ describe('getSessionUser', () => {
   beforeEach(() => {
     vi.resetAllMocks();
     getAuthConfigMock.mockReturnValue({
+      kind: 'platform',
       issuer: 'https://issuer.example',
       clientId: 'sva-client',
       clientSecret: 'secret',
@@ -395,7 +396,9 @@ describe('getSessionUser', () => {
     });
 
     expect(result.user.id).toBe('user-cb-1');
-    expect(result.user.roles.sort()).toEqual(['Admin', 'system_admin'].sort());
+    expect(result.user.roles.toSorted((left, right) => left.localeCompare(right))).toEqual(
+      ['Admin', 'system_admin'].toSorted((left, right) => left.localeCompare(right))
+    );
     expect(createSessionMock).toHaveBeenCalledTimes(1);
     expect(jitProvisionAccountMock).toHaveBeenCalledWith({
       instanceId: 'de-musterhausen',
@@ -431,7 +434,7 @@ describe('getSessionUser', () => {
       code: 'code-3',
       state: 'state-3',
       loginState: {
-        kind: 'platform',
+          kind: 'platform',
         codeVerifier: 'verifier-3',
         nonce: 'nonce-3',
         createdAt: Date.now(),
@@ -473,6 +476,94 @@ describe('getSessionUser', () => {
         } as never,
       })
     ).rejects.toThrow('Invalid login state: missing instanceId for instance scope');
+  });
+
+  it('handleCallback fails closed for login state payloads with invalid primitives', async () => {
+    const { handleCallback } = await import('./auth.server');
+
+    await expect(
+      handleCallback({
+        code: 'code-invalid-shape',
+        state: 'state-invalid-shape',
+        loginState: {
+          kind: 'platform',
+          codeVerifier: '',
+          nonce: 'nonce-invalid-shape',
+          createdAt: Number.NaN,
+        } as never,
+      })
+    ).rejects.toThrow('Invalid login state payload');
+  });
+
+  it('handleCallback rejects platform login state for instance auth config', async () => {
+    const { handleCallback } = await import('./auth.server');
+
+    await expect(
+      handleCallback({
+        code: 'code-scope-mismatch',
+        state: 'state-scope-mismatch',
+        authConfig: {
+          issuer: 'https://issuer.example/realms/bb-guben',
+          clientId: 'sva-studio',
+          clientSecret: 'tenant-secret',
+          loginStateSecret: 'state-secret',
+          redirectUri: 'https://bb-guben.studio.example.org/auth/callback',
+          postLogoutRedirectUri: 'https://bb-guben.studio.example.org/',
+          scopes: 'openid',
+          sessionCookieName: 'sva_auth_session',
+          loginStateCookieName: 'sva_auth_state',
+          silentSsoSuppressCookieName: 'sva_auth_silent_sso',
+          sessionTtlMs: 60_000,
+          sessionRedisTtlBufferMs: 5_000,
+          silentSsoSuppressAfterLogoutMs: 60_000,
+          kind: 'instance',
+          instanceId: 'bb-guben',
+          authRealm: 'bb-guben',
+        },
+        loginState: {
+          kind: 'platform',
+          codeVerifier: 'verifier-scope-mismatch',
+          nonce: 'nonce-scope-mismatch',
+          createdAt: Date.now(),
+        },
+      })
+    ).rejects.toThrow('Invalid login state: scope mismatch');
+  });
+
+  it('handleCallback rejects mismatched instance login state for auth config', async () => {
+    const { handleCallback } = await import('./auth.server');
+
+    await expect(
+      handleCallback({
+        code: 'code-instance-mismatch',
+        state: 'state-instance-mismatch',
+        authConfig: {
+          issuer: 'https://issuer.example/realms/bb-guben',
+          clientId: 'sva-studio',
+          clientSecret: 'tenant-secret',
+          loginStateSecret: 'state-secret',
+          redirectUri: 'https://bb-guben.studio.example.org/auth/callback',
+          postLogoutRedirectUri: 'https://bb-guben.studio.example.org/',
+          scopes: 'openid',
+          sessionCookieName: 'sva_auth_session',
+          loginStateCookieName: 'sva_auth_state',
+          silentSsoSuppressCookieName: 'sva_auth_silent_sso',
+          sessionTtlMs: 60_000,
+          sessionRedisTtlBufferMs: 5_000,
+          silentSsoSuppressAfterLogoutMs: 60_000,
+          kind: 'instance',
+          instanceId: 'bb-guben',
+          authRealm: 'bb-guben',
+        },
+        loginState: {
+          kind: 'instance',
+          instanceId: 'de-musterhausen',
+          codeVerifier: 'verifier-instance-mismatch',
+          nonce: 'nonce-instance-mismatch',
+          createdAt: Date.now(),
+        },
+      })
+    ).rejects.toThrow('Invalid login state: instance mismatch');
   });
 
   it('handleCallback invalidates the cached OIDC config and retries token exchange once', async () => {

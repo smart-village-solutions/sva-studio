@@ -1,14 +1,5 @@
-# GitGuardian configuration for sva-studio
-# Test fixture exclusion rules for unit test files
-
-# Whitelist specific incident IDs (test-only credential patterns)
-whitelisted-incidents:
-  - 29617339  # Generic Password in test fixture files
-
-# File patterns to exclude from scanning
-ignore-paths:
-  - 'packages/**/*.test.ts'
-  - 'packages/**/*.test.tsx'
-  - 'packages/**/*.vitest.test.ts'
-  - '**/__tests__/**'
-  - '**/tests/**'
+version: 2
+secret:
+  ignored_matches:
+    - name: pr240-test-fixture-password
+      match: example-value+/unsafe

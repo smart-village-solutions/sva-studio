@@ -38,6 +38,10 @@ const parseMarkedOutput = (output: string, marker: string) => {
     throw new Error(`Markierte Ausgabe ${marker} nicht gefunden.`);
   }
 
+  if (endIndex === -1) {
+    throw new Error(`Markierte Ausgabe ${marker} unvollstaendig (END fehlt).`);
+  }
+
   const segment = cleaned.slice(startIndex + startMarker.length, endIndex === -1 ? undefined : endIndex);
   const lines = filterRemoteOutputLines(segment.replace(/^\n+/u, '').trimStart()).filter(
     (entry) => entry !== startMarker && entry !== endMarker,
@@ -136,7 +140,7 @@ export const runQuantumExec = (
     failureMessage: string;
   }
 ) => {
-  const maxAttempts = options?.marker ? 3 : 1;
+  const maxAttempts = options?.marker ? 6 : 1;
   let lastCombined = '';
   let lastMarkerError: Error | null = null;
 
@@ -151,6 +155,7 @@ export const runQuantumExec = (
       } catch (error) {
         lastMarkerError = error instanceof Error ? error : new Error(String(error));
         if (attempt < maxAttempts) {
+          spawnSync('sleep', ['1'], { cwd: rootDir, stdio: 'ignore' });
           continue;
         }
         throw new Error(

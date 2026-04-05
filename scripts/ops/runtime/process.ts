@@ -136,7 +136,7 @@ export const runQuantumExec = (
     failureMessage: string;
   }
 ) => {
-  const maxAttempts = options?.marker ? 3 : 1;
+  const maxAttempts = options?.marker ? 6 : 1;
   let lastCombined = '';
   let lastMarkerError: Error | null = null;
 
@@ -151,6 +151,7 @@ export const runQuantumExec = (
       } catch (error) {
         lastMarkerError = error instanceof Error ? error : new Error(String(error));
         if (attempt < maxAttempts) {
+          spawnSync('sleep', ['1'], { cwd: rootDir, stdio: 'ignore' });
           continue;
         }
         throw new Error(

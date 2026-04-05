@@ -102,6 +102,18 @@ const authHandlerMap = {
       return mod.healthLiveHandler(request);
     },
   },
+  '/api/v1/iam/health/ready': {
+    GET: async ({ request }) => {
+      const mod = await import('@sva/auth/runtime-health');
+      return mod.healthReadyHandler(request);
+    },
+  },
+  '/api/v1/iam/health/live': {
+    GET: async ({ request }) => {
+      const mod = await import('@sva/auth/runtime-health');
+      return mod.healthLiveHandler(request);
+    },
+  },
   '/iam/me/permissions': {
     GET: async ({ request }) => {
       const mod = await import('@sva/auth/runtime-routes');

@@ -1,20 +1,19 @@
 import type { IamUserDetail } from '@sva/core';
-import { getWorkspaceContext } from '@sva/sdk/server';
 
 import type { AuthenticatedRequestContext } from '../middleware.server.js';
 import { jsonResponse } from '../shared/db-helpers.js';
-import { isUuid, readString } from '../shared/input-readers.js';
+import { readString } from '../shared/input-readers.js';
 
-import { ADMIN_ROLES } from './constants.js';
-import { asApiItem, asApiList, createApiError, readPage, readPathSegment } from './api-helpers.js';
-import { classifyIamDiagnosticError } from './diagnostics.js';
-import { ensureFeature, getFeatureFlags } from './feature-flags.js';
+import { asApiItem, asApiList, createApiError, readPage } from './api-helpers.js';
 import { consumeRateLimit } from './rate-limit.js';
-import { buildRoleSyncFailure } from './role-audit.js';
+import {
+  createDatabaseApiError,
+  logUserProjectionDegraded,
+  readValidatedUserId,
+  resolveUserReadAccess,
+} from './user-read-shared.js';
 import {
   logger,
-  requireRoles,
-  resolveActorInfo,
   withInstanceScopedDb,
 } from './shared.js';
 import type { UserStatus } from './types.js';
@@ -22,7 +21,6 @@ import { USER_STATUS } from './types.js';
 import { resolveUserDetail } from './user-detail-query.js';
 import { resolveUsersWithPagination } from './user-list-query.js';
 import {
-  isRecoverableUserProjectionError,
   mergeMainserverCredentialState,
   resolveKeycloakRoleNames,
   resolveProjectedMainserverCredentialState,
@@ -34,27 +32,15 @@ export const listUsersInternal = async (
   request: Request,
   ctx: AuthenticatedRequestContext
 ): Promise<Response> => {
-  const requestContext = getWorkspaceContext();
-  const featureCheck = ensureFeature(getFeatureFlags(), 'iam_admin', requestContext.requestId);
-  if (featureCheck) {
-    return featureCheck;
-  }
-  const roleCheck = requireRoles(ctx, ADMIN_ROLES, requestContext.requestId);
-  if (roleCheck) {
-    return roleCheck;
-  }
-  const actorResolution = await resolveActorInfo(request, ctx, {
-    requireActorMembership: true,
-    provisionMissingActorMembership: true,
-  });
-  if ('error' in actorResolution) {
-    return actorResolution.error;
+  const access = await resolveUserReadAccess(request, ctx);
+  if (access.response) {
+    return access.response;
   }
   const rateLimit = consumeRateLimit({
-    instanceId: actorResolution.actor.instanceId,
+    instanceId: access.actor.instanceId,
     actorKeycloakSubject: ctx.user.id,
     scope: 'read',
-    requestId: actorResolution.actor.requestId,
+    requestId: access.actor.requestId,
   });
   if (rateLimit) {
     return rateLimit;
@@ -66,13 +52,13 @@ export const listUsersInternal = async (
   const search = readString(url.searchParams.get('search'));
 
   if (status && !USER_STATUS.includes(status)) {
-    return createApiError(400, 'invalid_request', 'Ungültiger Status-Filter.', actorResolution.actor.requestId);
+    return createApiError(400, 'invalid_request', 'Ungültiger Status-Filter.', access.actor.requestId);
   }
 
   try {
-    const data = await withInstanceScopedDb(actorResolution.actor.instanceId, (client) =>
+    const data = await withInstanceScopedDb(access.actor.instanceId, (client) =>
       resolveUsersWithPagination(client, {
-        instanceId: actorResolution.actor.instanceId,
+        instanceId: access.actor.instanceId,
         page,
         pageSize,
         status,
@@ -83,18 +69,17 @@ export const listUsersInternal = async (
 
     return jsonResponse(
       200,
-      asApiList(data.users, { page, pageSize, total: data.total }, actorResolution.actor.requestId)
+      asApiList(data.users, { page, pageSize, total: data.total }, access.actor.requestId)
     );
   } catch (error) {
-    const classified = classifyIamDiagnosticError(error, 'IAM-Datenbank ist nicht erreichbar.', actorResolution.actor.requestId);
     logger.error('IAM user list failed', {
       operation: 'list_users',
-      instance_id: actorResolution.actor.instanceId,
-      request_id: actorResolution.actor.requestId,
-      trace_id: actorResolution.actor.traceId,
+      instance_id: access.actor.instanceId,
+      request_id: access.actor.requestId,
+      trace_id: access.actor.traceId,
       error: error instanceof Error ? error.message : String(error),
     });
-    return createApiError(classified.status, classified.code, classified.message, actorResolution.actor.requestId, classified.details);
+    return createDatabaseApiError(error, access.actor.requestId);
   }
 };
 
@@ -102,73 +87,70 @@ export const getUserInternal = async (
   request: Request,
   ctx: AuthenticatedRequestContext
 ): Promise<Response> => {
-  const requestContext = getWorkspaceContext();
-  const featureCheck = ensureFeature(getFeatureFlags(), 'iam_admin', requestContext.requestId);
-  if (featureCheck) {
-    return featureCheck;
+  const access = await resolveUserReadAccess(request, ctx);
+  if (access.response) {
+    return access.response;
   }
-  const roleCheck = requireRoles(ctx, ADMIN_ROLES, requestContext.requestId);
-  if (roleCheck) {
-    return roleCheck;
+  const userIdResult = readValidatedUserId(request, access.actor.requestId);
+  if (userIdResult.response) {
+    return userIdResult.response;
   }
-  const actorResolution = await resolveActorInfo(request, ctx, {
-    requireActorMembership: true,
-    provisionMissingActorMembership: true,
-  });
-  if ('error' in actorResolution) {
-    return actorResolution.error;
-  }
-  const userId = readPathSegment(request, 4);
-  if (!userId || !isUuid(userId)) {
-    return createApiError(400, 'invalid_request', 'Ungültige userId.', actorResolution.actor.requestId);
-  }
+  const { userId } = userIdResult;
 
   const rateLimit = consumeRateLimit({
-    instanceId: actorResolution.actor.instanceId,
+    instanceId: access.actor.instanceId,
     actorKeycloakSubject: ctx.user.id,
     scope: 'read',
-    requestId: actorResolution.actor.requestId,
+    requestId: access.actor.requestId,
   });
   if (rateLimit) {
     return rateLimit;
   }
 
   try {
-    const user = await withInstanceScopedDb(actorResolution.actor.instanceId, (client) =>
+    const user = await withInstanceScopedDb(access.actor.instanceId, (client) =>
       resolveUserDetail(client, {
-        instanceId: actorResolution.actor.instanceId,
+        instanceId: access.actor.instanceId,
         userId,
       })
     );
     if (!user) {
-      return createApiError(404, 'not_found', 'Nutzer nicht gefunden.', actorResolution.actor.requestId);
+      return createApiError(404, 'not_found', 'Nutzer nicht gefunden.', access.actor.requestId);
     }
 
-    const [keycloakRoleNames, mainserverCredentialState] = await Promise.all([
-      resolveKeycloakRoleNames(actorResolution.actor.instanceId, user.keycloakSubject),
-      resolveProjectedMainserverCredentialState(user.keycloakSubject, actorResolution.actor.instanceId),
+    const [keycloakRoleNamesResult, mainserverCredentialStateResult] = await Promise.allSettled([
+      resolveKeycloakRoleNames(access.actor.instanceId, user.keycloakSubject),
+      resolveProjectedMainserverCredentialState(user.keycloakSubject, access.actor.instanceId),
     ]);
-    const projectedUserWithRoles = await withInstanceScopedDb(actorResolution.actor.instanceId, (client) =>
+
+    const keycloakRoleNames =
+      keycloakRoleNamesResult.status === 'fulfilled' ? keycloakRoleNamesResult.value : null;
+    const mainserverCredentialState =
+      mainserverCredentialStateResult.status === 'fulfilled'
+        ? mainserverCredentialStateResult.value
+        : { mainserverUserApplicationId: undefined, mainserverUserApplicationSecretSet: false };
+
+    logUserProjectionDegraded({
+      actor: access.actor,
+      userId,
+      keycloakRoleNamesResult,
+      mainserverCredentialStateResult,
+      logger,
+    });
+
+    const projectedUserWithRoles = await withInstanceScopedDb(access.actor.instanceId, (client) =>
       resolveProjectedUserDetail({
         client,
-        instanceId: actorResolution.actor.instanceId,
+        instanceId: access.actor.instanceId,
         user,
         keycloakRoleNames,
       })
     );
     const projectedUser = mergeMainserverCredentialState(projectedUserWithRoles, mainserverCredentialState);
 
-    return jsonResponse(200, asApiItem(projectedUser, actorResolution.actor.requestId));
+    return jsonResponse(200, asApiItem(projectedUser, access.actor.requestId));
   } catch (error) {
-    const classified = classifyIamDiagnosticError(error, 'IAM-Datenbank ist nicht erreichbar.', actorResolution.actor.requestId);
-    if (isRecoverableUserProjectionError(error)) {
-      return buildRoleSyncFailure({
-        error,
-        requestId: actorResolution.actor.requestId,
-        fallbackMessage: 'Nutzerrollen konnten nicht aus Keycloak geladen werden.',
-      });
-    }
-    return createApiError(classified.status, classified.code, classified.message, actorResolution.actor.requestId, classified.details);
+    return createDatabaseApiError(error, access.actor.requestId);
   }
 };
 
@@ -176,48 +158,37 @@ export const getUserTimelineInternal = async (
   request: Request,
   ctx: AuthenticatedRequestContext
 ): Promise<Response> => {
-  const requestContext = getWorkspaceContext();
-  const featureCheck = ensureFeature(getFeatureFlags(), 'iam_admin', requestContext.requestId);
-  if (featureCheck) {
-    return featureCheck;
+  const access = await resolveUserReadAccess(request, ctx);
+  if (access.response) {
+    return access.response;
   }
-  const roleCheck = requireRoles(ctx, ADMIN_ROLES, requestContext.requestId);
-  if (roleCheck) {
-    return roleCheck;
+  const userIdResult = readValidatedUserId(request, access.actor.requestId);
+  if (userIdResult.response) {
+    return userIdResult.response;
   }
-  const actorResolution = await resolveActorInfo(request, ctx, {
-    requireActorMembership: true,
-    provisionMissingActorMembership: true,
-  });
-  if ('error' in actorResolution) {
-    return actorResolution.error;
-  }
-  const userId = readPathSegment(request, 4);
-  if (!userId || !isUuid(userId)) {
-    return createApiError(400, 'invalid_request', 'Ungültige userId.', actorResolution.actor.requestId);
-  }
+  const { userId } = userIdResult;
 
   try {
-    const events = await withInstanceScopedDb(actorResolution.actor.instanceId, (client) =>
+    const events = await withInstanceScopedDb(access.actor.instanceId, (client) =>
       resolveUserTimeline(client, {
-        instanceId: actorResolution.actor.instanceId,
+        instanceId: access.actor.instanceId,
         userId,
       })
     );
-    return jsonResponse(200, asApiList(events, { page: 1, pageSize: events.length || 1, total: events.length }, actorResolution.actor.requestId));
+    return jsonResponse(200, asApiList(events, { page: 1, pageSize: events.length || 1, total: events.length }, access.actor.requestId));
   } catch (error) {
     logger.error('IAM user timeline failed', {
       operation: 'get_user_timeline',
-      instance_id: actorResolution.actor.instanceId,
-      request_id: actorResolution.actor.requestId,
-      trace_id: actorResolution.actor.traceId,
+      instance_id: access.actor.instanceId,
+      request_id: access.actor.requestId,
+      trace_id: access.actor.traceId,
       error: error instanceof Error ? error.message : String(error),
     });
     return createApiError(
       503,
       'database_unavailable',
       'IAM-Historie ist nicht erreichbar.',
-      actorResolution.actor.requestId
+      access.actor.requestId
     );
   }
 };

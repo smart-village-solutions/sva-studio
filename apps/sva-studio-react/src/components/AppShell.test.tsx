@@ -114,6 +114,18 @@ describe('AppShell', () => {
     expect(await screen.findByTestId('runtime-health-indicator')).toBeTruthy();
   });
 
+  it('versteckt die Breadcrumbs auf der Startseite', async () => {
+    render(
+      <AppShell currentPathname="/">
+        <div>Startseite</div>
+      </AppShell>
+    );
+
+    expect(screen.queryByRole('navigation', { name: 'Brotkrumen-Navigation' })).toBeNull();
+    expect(screen.getByText('Startseite')).toBeTruthy();
+    expect(await screen.findByTestId('runtime-health-indicator')).toBeTruthy();
+  });
+
   it('zeigt Skeleton-Content im Ladezustand', () => {
     render(
       <AppShell isLoading>

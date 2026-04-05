@@ -48,7 +48,10 @@ type UseUsersResult = {
   readonly updateUser: (userId: string, payload: UpdateUserPayload) => Promise<IamUserDetail | null>;
   readonly deactivateUser: (userId: string) => Promise<boolean>;
   readonly bulkDeactivate: (userIds: readonly string[]) => Promise<boolean>;
-  readonly syncUsersFromKeycloak: () => Promise<IamUserImportSyncReport | null>;
+  readonly syncUsersFromKeycloak: () => Promise<
+    | { readonly ok: true; readonly report: IamUserImportSyncReport }
+    | { readonly ok: false; readonly error: IamHttpError }
+  >;
 };
 
 const DEFAULT_FILTERS: UserFilters = {
@@ -209,8 +212,54 @@ export const useUsers = (initial?: Partial<UserFilters>): UseUsersResult => {
       return Boolean(response);
     },
     syncUsersFromKeycloak: async () => {
-      const response = await mutate(() => syncUsersFromKeycloakRequest(), 'user_sync_keycloak');
-      return response?.data ?? null;
+      logBrowserOperationStart(usersLogger, 'user_sync_keycloak_started', {
+        operation: 'user_sync_keycloak',
+      });
+      try {
+        const response = await syncUsersFromKeycloakRequest();
+        // Do not block the visible sync feedback on the follow-up list refresh.
+        // The list reload keeps its own loading/error handling.
+        void loadUsers();
+        if (response.data.importedCount === 0 && response.data.updatedCount === 0) {
+          logBrowserOperationSuccess(
+            usersLogger,
+            'user_sync_keycloak_empty',
+            {
+              operation: 'user_sync_keycloak',
+              skipped_count: response.data.skippedCount,
+              total_keycloak_users: response.data.totalKeycloakUsers,
+            },
+            'info'
+          );
+        } else {
+          logBrowserOperationSuccess(
+            usersLogger,
+            'user_sync_keycloak_succeeded',
+            {
+              operation: 'user_sync_keycloak',
+              imported_count: response.data.importedCount,
+              updated_count: response.data.updatedCount,
+              skipped_count: response.data.skippedCount,
+            },
+            'info'
+          );
+        }
+        return { ok: true, report: response.data };
+      } catch (cause) {
+        const resolvedError = asIamError(cause);
+        if (resolvedError.status === 403) {
+          await invalidatePermissions();
+          usersLogger.info('permission_invalidated_after_403', {
+            operation: 'user_sync_keycloak',
+            status: resolvedError.status,
+            error_code: resolvedError.code,
+          });
+        }
+        logBrowserOperationFailure(usersLogger, 'user_sync_keycloak_failed', resolvedError, {
+          operation: 'user_sync_keycloak',
+        });
+        return { ok: false, error: resolvedError };
+      }
     },
   };
 };

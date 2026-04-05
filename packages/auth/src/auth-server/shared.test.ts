@@ -38,6 +38,7 @@ describe('auth-server/shared', () => {
       id: 'user-1',
       instanceId: 'instance-1',
       roles: ['Admin', 'system_admin'],
+      email: 'merged@example.com',
     });
   });
 
@@ -46,6 +47,11 @@ describe('auth-server/shared', () => {
       claims: {
         sub: 'user-2',
         instanceId: 'instance-2',
+        preferred_username: 'jane.doe',
+        email: 'jane@example.com',
+        given_name: 'Jane',
+        family_name: 'Doe',
+        name: 'Jane Doe',
         roles: ['viewer'],
       },
       clientId: 'sva-client',
@@ -55,6 +61,11 @@ describe('auth-server/shared', () => {
       id: 'user-2',
       instanceId: 'instance-2',
       roles: ['viewer'],
+      username: 'jane.doe',
+      email: 'jane@example.com',
+      firstName: 'Jane',
+      lastName: 'Doe',
+      displayName: 'Jane Doe',
     });
   });
 

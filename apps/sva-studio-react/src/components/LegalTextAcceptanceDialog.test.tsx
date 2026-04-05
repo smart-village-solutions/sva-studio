@@ -358,10 +358,35 @@ describe('LegalTextAcceptanceDialog', () => {
       expect(getMyPendingLegalTextsMock).toHaveBeenCalledTimes(1);
     });
 
-    window.dispatchEvent(new Event('focus'));
+    window.dispatchEvent(new FocusEvent('focus'));
 
     expect(await screen.findByText('Datenschutz')).toBeTruthy();
     expect(screen.getByText(/invalid-date/)).toBeTruthy();
+  });
+
+  it('ignores focus events from descendant elements', async () => {
+    getMyPendingLegalTextsMock.mockResolvedValue({
+      data: [],
+      pagination: { page: 1, pageSize: 1, total: 0 },
+    });
+
+    render(
+      <AuthProvider>
+        <LegalTextAcceptanceDialog pathname="/" />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(getMyPendingLegalTextsMock).toHaveBeenCalledTimes(1);
+    });
+
+    const button = document.createElement('button');
+    document.body.appendChild(button);
+    button.dispatchEvent(new FocusEvent('focus', { bubbles: false }));
+
+    await waitFor(() => {
+      expect(getMyPendingLegalTextsMock).toHaveBeenCalledTimes(1);
+    });
   });
 
   it('suppresses unauthorized load errors', async () => {

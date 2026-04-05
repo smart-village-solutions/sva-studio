@@ -4,7 +4,7 @@
 
 Dieses Runbook definiert die offiziellen Betriebsprofile für SVA Studio und vereinheitlicht Start, Update, Stop, Diagnose, Smoke-Checks und Migrationen:
 
-- `local-keycloak`: lokaler Betrieb auf `http://localhost:3000` mit Test-Realm
+- `local-keycloak`: lokaler Betrieb auf `http://localhost:3000` mit globalem Test-Realm `svs-intern-studio-staging`
 - `local-builder`: lokaler Betrieb auf `http://localhost:3000` mit Builder.io und Mock-User
 - `acceptance-hb`: Serverbetrieb mit Root-Host `https://studio.smart-village.app` und registry-gesteuerten Tenant-Hosts unter `https://<instanceId>.studio.smart-village.app`
 - `studio`: produktionsnaher Serverbetrieb auf `https://studio.smart-village.app` mit dediziertem Swarm-Stack
@@ -114,6 +114,13 @@ pnpm env:migrate:local-keycloak
 pnpm env:update:local-keycloak
 pnpm env:down:local-keycloak
 ```
+
+Wichtig für den lokalen `local-keycloak`-Pfad:
+
+- Der kanonische lokale Ziel-Realm ist `svs-intern-studio-staging`.
+- `KEYCLOAK_ADMIN_REALM`, `SVA_AUTH_ISSUER` und der lokale Instanzdatensatz für `de-musterhausen` müssen deshalb auf denselben Realm zeigen.
+- `de-musterhausen` ist im lokalen Standardpfad die fachliche Test-Instanz, nicht ein eigener lokaler Tenant-Realm.
+- User- und Rollen-Abgleich laufen lokal gegen den globalen Test-Realm; die Zuordnung zur Test-Instanz erfolgt über `instanceId`-Attribute und die lokale Registry.
 
 Für zusätzliche lokale Instanzen oder zweite lokale Datenbanken ist `../guides/lokale-instanz-db-initialisierung.md` der kanonische Bootstrap-Pfad.
 

@@ -83,14 +83,21 @@ const buildHostOrigin = (hostname: string, protocol = 'https'): string => `${pro
 
 const mergeAuthConfig = (
   base: ReturnType<typeof resolveBaseAuthConfig>,
-  overrides: Pick<AuthConfig, 'issuer' | 'clientId' | 'redirectUri' | 'postLogoutRedirectUri'> &
-    Partial<Pick<AuthConfig, 'instanceId' | 'authRealm'>>
+  overrides: {
+    kind: 'platform' | 'instance';
+    issuer: string;
+    clientId: string;
+    redirectUri: string;
+    postLogoutRedirectUri: string;
+    authRealm?: string;
+    instanceId?: string;
+  }
 ): AuthConfig => ({
   ...base,
   ...overrides,
   clientSecret: base.clientSecret,
   loginStateSecret: base.loginStateSecret,
-});
+}) as AuthConfig;
 
 export const resolveAuthConfigFromSessionAuth = (auth: SessionAuthContext) => ({
   ...resolveBaseAuthConfig(),
@@ -100,6 +107,7 @@ export const resolveAuthConfigFromSessionAuth = (auth: SessionAuthContext) => ({
 export const getAuthConfig = (): AuthConfig => {
   const base = resolveBaseAuthConfig();
   return mergeAuthConfig(base, {
+    kind: 'platform',
     issuer: requireEnv('SVA_AUTH_ISSUER'),
     clientId: requireEnv('SVA_AUTH_CLIENT_ID'),
     redirectUri: requireEnv('SVA_AUTH_REDIRECT_URI'),
@@ -119,6 +127,7 @@ export const resolveAuthConfigForInstance = async (
   const origin = options.origin ?? buildHostOrigin(instance.primaryHostname, options.protocol);
   const tenantSecret = await resolveTenantAuthClientSecret(instance.instanceId);
   return mergeAuthConfig(resolveBaseAuthConfig({ clientSecret: tenantSecret.secret }), {
+    kind: 'instance',
     instanceId: instance.instanceId,
     authRealm: instance.authRealm,
     issuer: buildIssuerUrl(instance.authRealm, instance.authIssuerUrl),
@@ -179,6 +188,7 @@ export const resolveAuthConfigForRequest = async (request: Request): Promise<Aut
   assertActiveRegistryEntry(host, requestOrigin, registryEntry);
   const tenantSecret = await resolveTenantAuthClientSecret(registryEntry.instanceId);
   const authConfig = mergeAuthConfig(resolveBaseAuthConfig({ clientSecret: tenantSecret.secret }), {
+    kind: 'instance',
     instanceId: registryEntry.instanceId,
     authRealm: registryEntry.authRealm,
     issuer: buildIssuerUrl(registryEntry.authRealm, registryEntry.authIssuerUrl),

@@ -4,6 +4,8 @@ export type AuthRoutePath =
   | '/auth/callback'
   | '/auth/me'
   | '/auth/logout'
+  | '/api/v1/iam/health/ready'
+  | '/api/v1/iam/health/live'
   | '/health/ready'
   | '/health/live'
   | '/iam/me/permissions'
@@ -53,6 +55,8 @@ export const authRoutePaths = [
   '/auth/callback',
   '/auth/me',
   '/auth/logout',
+  '/api/v1/iam/health/ready',
+  '/api/v1/iam/health/live',
   '/health/ready',
   '/health/live',
   '/iam/me/permissions',

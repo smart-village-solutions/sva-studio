@@ -1,9 +1,9 @@
 import { loadInstanceIntegrationRecord } from '@sva/data/server';
 import { createSdkLogger, getWorkspaceContext } from '@sva/sdk/server';
 
-import type { SvaMainserverInstanceConfig } from '../types';
-import { SvaMainserverError } from './errors';
-import { normalizeSvaMainserverUpstreamUrl } from './upstream-url-validation';
+import type { SvaMainserverInstanceConfig } from '../types.js';
+import { SvaMainserverError } from './errors.js';
+import { normalizeSvaMainserverUpstreamUrl } from './upstream-url-validation.js';
 
 const logger = createSdkLogger({ component: 'sva-mainserver-config', level: 'debug' });
 

@@ -141,7 +141,53 @@ describe('instance registry repository (vitest)', () => {
 
     await expect(repository.getInstanceById('unknown')).resolves.toBeNull();
     await expect(repository.resolveHostname('unknown.studio.example.org')).resolves.toBeNull();
+    await expect(repository.resolvePrimaryHostname('unknown.studio.example.org')).resolves.toBeNull();
     await expect(repository.setInstanceStatus({ instanceId: 'unknown', status: 'archived' })).resolves.toBeNull();
+  });
+
+  it('resolves instances directly by primary hostname', async () => {
+    const statements: SqlStatement[] = [];
+    const execute = createSequencedExecutor(
+      [
+        {
+          rowCount: 1,
+          rows: [
+            {
+              instance_id: 'bb-guben',
+              display_name: 'BB Guben',
+              status: 'active',
+              parent_domain: 'studio.smart-village.app',
+              primary_hostname: 'bb-guben.studio.smart-village.app',
+              auth_realm: 'bb-guben',
+              auth_client_id: 'sva-studio',
+              auth_issuer_url: 'https://keycloak.smart-village.app/realms/bb-guben',
+              auth_client_secret_ciphertext: null,
+              tenant_admin_username: null,
+              tenant_admin_email: null,
+              tenant_admin_first_name: null,
+              tenant_admin_last_name: null,
+              theme_key: null,
+              feature_flags: null,
+              mainserver_config_ref: null,
+              created_at: '2026-01-01T00:00:00.000Z',
+              created_by: null,
+              updated_at: '2026-01-01T00:00:00.000Z',
+              updated_by: null,
+            },
+          ],
+        },
+      ],
+      statements
+    );
+
+    const repository = createInstanceRegistryRepository({ execute });
+
+    await expect(repository.resolvePrimaryHostname('bb-guben.studio.smart-village.app')).resolves.toMatchObject({
+      instanceId: 'bb-guben',
+      primaryHostname: 'bb-guben.studio.smart-village.app',
+    });
+    expect(statements[0]?.text).toContain('FROM iam.instances');
+    expect(statements[0]?.text).toContain('WHERE primary_hostname = $1');
   });
 
   it('loads stored tenant client secret ciphertext by instance id', async () => {

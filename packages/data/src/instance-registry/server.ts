@@ -2,7 +2,7 @@ import { normalizeHost, type InstanceRegistryRecord } from '@sva/core';
 import { Pool } from 'pg';
 import { createSdkLogger } from '@sva/sdk/server';
 
-import { createInstanceRegistryRepository } from './index';
+import { createInstanceRegistryRepository } from './index.js';
 
 const logger = createSdkLogger({ component: 'instance-registry-server', level: 'info' });
 
@@ -28,6 +28,25 @@ const HOST_CACHE_MAX_ENTRIES = 500;
 const hostCache = new Map<string, CacheEntry>();
 const poolsByDatabaseUrl = new Map<string, Pool>();
 
+const shouldRetryWithPrimaryHostname = (error: unknown): boolean => {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const message = error.message.toLowerCase();
+  return (
+    message.includes('instance_hostnames') ||
+    message.includes('permission denied') ||
+    message.includes('does not exist') ||
+    message.includes('undefined_table')
+  );
+};
+
+const readErrorType = (error: unknown): string =>
+  error instanceof Error && error.constructor?.name ? error.constructor.name : typeof error;
+
+const withErrorCause = (message: string, cause: unknown): Error => new Error(message, { cause });
+
 const ensureValidIamDatabaseUrl = (databaseUrl: string | undefined): string | null => {
   if (!databaseUrl) {
     return null;
@@ -35,17 +54,12 @@ const ensureValidIamDatabaseUrl = (databaseUrl: string | undefined): string | nu
 
   try {
     return new URL(databaseUrl).toString();
-  } catch (error) {
-    throw new Error(`iam_database_url_invalid: ${(error instanceof Error ? error.message : String(error)).trim()}`);
+  } catch {
+    throw new Error('iam_database_url_invalid');
   }
 };
 
-const resolveIamDatabaseUrl = (): string | undefined => {
-  const explicit = process.env.IAM_DATABASE_URL?.trim();
-  if (explicit) {
-    return explicit;
-  }
-
+const buildDerivedIamDatabaseUrl = (): string | undefined => {
   const password = process.env.APP_DB_PASSWORD?.trim() ?? process.env.POSTGRES_PASSWORD?.trim();
   if (!password) {
     return undefined;
@@ -57,6 +71,22 @@ const resolveIamDatabaseUrl = (): string | undefined => {
   const port = process.env.POSTGRES_PORT?.trim() || '5432';
 
   return `postgres://${encodeURIComponent(user)}:${encodeURIComponent(password)}@${host}:${port}/${encodeURIComponent(database)}`;
+};
+
+const resolveIamDatabaseUrl = (): string | undefined => {
+  const explicit = process.env.IAM_DATABASE_URL?.trim();
+  if (explicit) {
+    try {
+      return ensureValidIamDatabaseUrl(explicit) ?? undefined;
+    } catch (error) {
+      logger.warn('Explicit IAM database URL is invalid; falling back to derived database credentials', {
+        reason: 'iam_database_url_invalid',
+        error_type: readErrorType(error),
+      });
+    }
+  }
+
+  return buildDerivedIamDatabaseUrl();
 };
 
 const buildHostCacheKey = (databaseUrl: string, hostname: string) => `${databaseUrl}::${hostname}`;
@@ -195,7 +225,8 @@ export const loadInstanceByHostname = async (
     async (client) => {
       try {
         const repository = createInstanceRegistryRepository(createExecutor(client));
-        const result = await repository.resolveHostname(normalizedHostname);
+        let result = await repository.resolveHostname(normalizedHostname);
+        result ??= await repository.resolvePrimaryHostname(normalizedHostname);
         logger.debug('Instance hostname lookup completed via database', {
           hostname: normalizedHostname,
           cache_hit: false,
@@ -204,14 +235,35 @@ export const loadInstanceByHostname = async (
         });
         return result;
       } catch (error) {
+        if (shouldRetryWithPrimaryHostname(error)) {
+          const repository = createInstanceRegistryRepository(createExecutor(client));
+          try {
+            const fallbackResult = await repository.resolvePrimaryHostname(normalizedHostname);
+            logger.warn('Instance hostname lookup retried via primary_hostname fallback', {
+              hostname: normalizedHostname,
+              reason_code: 'tenant_host_resolution_primary_hostname_fallback',
+              error_type: readErrorType(error),
+              dependency: 'iam_database',
+              instance_id: fallbackResult?.instanceId ?? undefined,
+            });
+            return fallbackResult;
+          } catch (fallbackError) {
+            logger.error('Instance hostname lookup failed in primary_hostname fallback', {
+              hostname: normalizedHostname,
+              reason_code: 'tenant_host_resolution_fallback_failed',
+              error_type: readErrorType(fallbackError),
+              dependency: 'iam_database',
+            });
+            throw withErrorCause('tenant_host_resolution_fallback_failed', fallbackError);
+          }
+        }
         logger.error('Instance hostname lookup failed in repository layer', {
           hostname: normalizedHostname,
-          reason: 'tenant_host_resolution_failed',
-          error: error instanceof Error ? error.message : String(error),
+          reason_code: 'tenant_host_resolution_failed',
+          error_type: readErrorType(error),
+          dependency: 'iam_database',
         });
-        throw new Error(
-          `tenant_host_resolution_failed: ${normalizedHostname}: ${error instanceof Error ? error.message : String(error)}`
-        );
+        throw withErrorCause('tenant_host_resolution_failed', error);
       }
     },
     { getDatabaseUrl: () => normalizedDatabaseUrl }

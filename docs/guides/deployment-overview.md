@@ -58,6 +58,7 @@ Wichtig:
 ## Standardablauf für Releases
 
 1. Image mit konkretem Tag bereitstellen.
+   Für Serverprofile muss das Artefakt explizit `linux/amd64` unterstützen.
 2. Zielprofil auswählen.
 3. Zielumgebungsvariablen oder Secrets prüfen.
 4. Für das Ziel-Remoteprofil zuerst `pnpm env:precheck:<profil>` ausführen (z. B. `acceptance-hb` oder `studio`).
@@ -74,6 +75,8 @@ Für `studio` zusätzlich wichtig:
 - Shell-Overrides und einzelne Runtime-Flags können bei direktem `quantum-cli stacks update` verloren gehen
 - wenn die Env-Propagation zweifelhaft ist, muss der Deploy über den vorgerenderten Runtime-Pfad laufen statt über rohe Compose-Dateien
 - ein gesunder Stack ersetzt nicht die Prüfung, ob sich `APP_DB_USER` tatsächlich gegen `POSTGRES_DB` anmelden kann
+- `env:precheck:studio` blockiert Images, deren Registry-Manifest kein `linux/amd64` ausweist
+- `env:precheck:studio` und `/health/ready` blockieren jetzt auch kritische IAM-Schema-Drifts für die Tenant-Registry, z. B. fehlende Artefakte aus `0025_iam_instance_registry_provisioning.sql` oder `0027_iam_instance_keycloak_bootstrap.sql`
 
 Die operativen Details und Beispielkommandos stehen unter `./swarm-deployment-runbook.md`.
 

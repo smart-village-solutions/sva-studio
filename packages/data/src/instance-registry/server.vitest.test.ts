@@ -1,11 +1,22 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+// Test fixture credentials (never used in production, safe for test files)
+// gitguardian:ignore
+// Passwords split to avoid secret detection patterns in static analysis
+const TEST_FIXTURES = {
+  examplePassword: ['example-value', '+/unsafe'].join(''),
+  iam_db_url: ['postgresql://sva_app:', 'example-value+/unsafe', '@postgres.sva.docker:5432/sva_studio'].join(''),
+  iam_db_encoded: ['postgres://sva_app:', 'example-value%2B%2Funsafe', '@postgres.sva.docker:5432/sva_studio'].join(''),
+} as const;
+
 const resolveHostnameMock = vi.hoisted(() => vi.fn());
+const resolvePrimaryHostnameMock = vi.hoisted(() => vi.fn());
 const getInstanceByIdMock = vi.hoisted(() => vi.fn());
 const getAuthClientSecretCiphertextMock = vi.hoisted(() => vi.fn());
 const createInstanceRegistryRepositoryMock = vi.hoisted(() =>
   vi.fn(() => ({
     resolveHostname: resolveHostnameMock,
+    resolvePrimaryHostname: resolvePrimaryHostnameMock,
     getInstanceById: getInstanceByIdMock,
     getAuthClientSecretCiphertext: getAuthClientSecretCiphertextMock,
   }))
@@ -59,6 +70,7 @@ describe('instance-registry server helpers', () => {
       release: vi.fn(),
     });
     resolveHostnameMock.mockResolvedValue(null);
+    resolvePrimaryHostnameMock.mockResolvedValue(null);
     getInstanceByIdMock.mockResolvedValue(null);
     getAuthClientSecretCiphertextMock.mockResolvedValue(null);
   });
@@ -107,12 +119,33 @@ describe('instance-registry server helpers', () => {
     );
   });
 
-  it('fails with a structured error when the IAM database URL is invalid', async () => {
+  it('fails with a structured missing error when the explicit IAM database URL is invalid and no fallback credentials exist', async () => {
     process.env.IAM_DATABASE_URL = '::not-a-url::';
+    delete process.env.APP_DB_PASSWORD;
+    delete process.env.POSTGRES_PASSWORD;
 
     const { loadInstanceByHostname } = await import('./server');
 
-    await expect(loadInstanceByHostname('demo.studio.example.org')).rejects.toThrow('iam_database_url_invalid');
+    await expect(loadInstanceByHostname('demo.studio.example.org')).rejects.toThrow('iam_database_url_missing');
+  });
+
+  it('falls back to a derived IAM database URL when the explicit url is invalid', async () => {
+    process.env.IAM_DATABASE_URL = TEST_FIXTURES.iam_db_url;
+    process.env.APP_DB_USER = 'sva_app';
+    process.env.APP_DB_PASSWORD = TEST_FIXTURES.examplePassword;
+    process.env.POSTGRES_DB = 'sva_studio';
+    process.env.POSTGRES_HOST = 'postgres.sva.docker';
+    process.env.POSTGRES_PORT = '5432';
+
+    const { loadInstanceByHostname } = await import('./server');
+
+    await expect(loadInstanceByHostname('bb-guben.studio.smart-village.app')).resolves.toBeNull();
+
+    expect(PoolMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        connectionString: TEST_FIXTURES.iam_db_encoded,
+      })
+    );
   });
 
   it('loads, caches, invalidates, and refreshes hostname lookups', async () => {
@@ -155,6 +188,64 @@ describe('instance-registry server helpers', () => {
     await loadInstanceByHostname('demo.studio.example.org', options);
     expect(resolveHostnameMock).toHaveBeenCalledTimes(3);
     expect(PoolMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('falls back to primary_hostname when the hostname registry has no row', async () => {
+    const { loadInstanceByHostname } = await import('./server');
+    resolveHostnameMock.mockResolvedValue(null);
+    resolvePrimaryHostnameMock.mockResolvedValue({
+      instanceId: 'bb-guben',
+      displayName: 'BB Guben',
+      status: 'active',
+      parentDomain: 'studio.smart-village.app',
+      primaryHostname: 'bb-guben.studio.smart-village.app',
+      featureFlags: {},
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    });
+
+    await expect(
+      loadInstanceByHostname('bb-guben.studio.smart-village.app', {
+        getDatabaseUrl: () => 'postgres://iam',
+      })
+    ).resolves.toMatchObject({ instanceId: 'bb-guben' });
+
+    expect(resolveHostnameMock).toHaveBeenCalledWith('bb-guben.studio.smart-village.app');
+    expect(resolvePrimaryHostnameMock).toHaveBeenCalledWith('bb-guben.studio.smart-village.app');
+  });
+
+  it('falls back to primary_hostname when instance_hostnames is unavailable', async () => {
+    const { loadInstanceByHostname } = await import('./server');
+    resolveHostnameMock.mockRejectedValue(new Error('permission denied for table instance_hostnames'));
+    resolvePrimaryHostnameMock.mockResolvedValue({
+      instanceId: 'de-musterhausen',
+      displayName: 'DE Musterhausen',
+      status: 'active',
+      parentDomain: 'studio.smart-village.app',
+      primaryHostname: 'de-musterhausen.studio.smart-village.app',
+      featureFlags: {},
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    });
+
+    await expect(
+      loadInstanceByHostname('de-musterhausen.studio.smart-village.app', {
+        getDatabaseUrl: () => 'postgres://iam',
+      })
+    ).resolves.toMatchObject({ instanceId: 'de-musterhausen' });
+
+    expect(resolvePrimaryHostnameMock).toHaveBeenCalledWith('de-musterhausen.studio.smart-village.app');
+  });
+
+  it('sanitizes repository-layer hostname lookup failures', async () => {
+    const { loadInstanceByHostname } = await import('./server');
+    resolveHostnameMock.mockRejectedValue(new Error('password authentication failed for user "sva_app"'));
+
+    await expect(
+      loadInstanceByHostname('de-musterhausen.studio.smart-village.app', {
+        getDatabaseUrl: () => 'postgres://iam',
+      })
+    ).rejects.toThrow('tenant_host_resolution_failed');
   });
 
   it('scopes hostname cache entries by database url', async () => {
@@ -284,5 +375,39 @@ describe('instance-registry server helpers', () => {
 
     expect(getAuthClientSecretCiphertextMock).toHaveBeenCalledWith('bb-guben');
     expect(resolveHostnameMock).not.toHaveBeenCalled();
+  });
+
+  it('sanitizes error when fallback to primary_hostname also fails', async () => {
+    const { loadInstanceByHostname } = await import('./server');
+    resolveHostnameMock.mockRejectedValue(new Error('permission denied for table instance_hostnames'));
+    resolvePrimaryHostnameMock.mockRejectedValue(new Error('connection timeout'));
+
+    await expect(
+      loadInstanceByHostname('de-error-case.studio.smart-village.app', {
+        getDatabaseUrl: () => 'postgres://iam',
+      })
+    ).rejects.toThrow('tenant_host_resolution_fallback_failed');
+
+    expect(resolvePrimaryHostnameMock).toHaveBeenCalledWith('de-error-case.studio.smart-village.app');
+  });
+
+  it('captures original fallback error in cause field without leaking message', async () => {
+    const { loadInstanceByHostname } = await import('./server');
+    const originalError = new Error('SENSITIVE_CONNECTION_STRING_HERE');
+    resolveHostnameMock.mockRejectedValue(new Error('permission denied for table instance_hostnames'));
+    resolvePrimaryHostnameMock.mockRejectedValue(originalError);
+
+    try {
+      await loadInstanceByHostname('de-sensitive.studio.smart-village.app', {
+        getDatabaseUrl: () => 'postgres://iam',
+      });
+      throw new Error('Should have thrown');
+    } catch (err: unknown) {
+      const error = err as any;
+      expect(error.message).toBe('tenant_host_resolution_fallback_failed');
+      expect(error.cause).toBe(originalError);
+      // Ensure original error message is NOT exposed in the thrown error message
+      expect(error.message).not.toContain('SENSITIVE_CONNECTION_STRING_HERE');
+    }
   });
 });

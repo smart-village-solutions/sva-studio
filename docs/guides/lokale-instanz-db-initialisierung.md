@@ -26,6 +26,12 @@ Nicht verwenden für:
 - reguläre lokale Standardentwicklung gegen `de-musterhausen`
 - Acceptance- oder Swarm-Serverdeployments
 
+Für die reguläre lokale Standardentwicklung gilt stattdessen:
+
+- globaler Realm: `svs-intern-studio-staging`
+- fachliche Test-Instanz: `de-musterhausen`
+- Instanzbindung lokal über `instanceId`, nicht über einen eigenen Tenant-Realm
+
 ## Voraussetzungen
 
 - Docker-Container für die Ziel-Datenbank läuft lokal

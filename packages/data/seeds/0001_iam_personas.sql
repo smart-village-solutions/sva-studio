@@ -16,7 +16,7 @@ VALUES (
   'active',
   'studio.smart-village.app',
   'de-musterhausen.studio.smart-village.app',
-  'de-musterhausen',
+  'svs-intern-studio-staging',
   'sva-studio',
   '{}'::jsonb
 )

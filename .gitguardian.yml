@@ -1,15 +1,19 @@
-paths-to-ignore:
-  # Exclude test files that contain fixture passwords (not real secrets)
+# GitGuardian configuration for excluding test fixtures and false positives
+# This file helps maintain security while allowing known test-only secrets to pass
+
+# Version 1 - Path-based ignores for known test files
+ignore-paths:
   - 'packages/auth/src/runtime-secrets.server.test.ts'
   - 'packages/data/src/instance-registry/server.vitest.test.ts'
 
-# Policy for handling false positives in test environments
-policies:
-  - name: test-fixtures
-    description: 'Exclude known test-only fixtures from secret detection'
-    paths:
-      - '**/*.test.ts'
-      - '**/*.test.tsx'
-      - '**/*.vitest.test.ts'
-    matches:
-      - 'example-value+/unsafe'  # Known test fixture
+# Incident policy - marks known false positives as test-only
+incident-policy:
+  - name: 'test-fixtures'
+    description: 'Known test fixture passwords that are not real credentials'
+    match:
+      files:
+        - '*.test.ts'
+        - '*.test.tsx'
+        - '*.vitest.test.ts'
+    action: 'ignore'
+

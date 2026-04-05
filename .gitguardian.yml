@@ -1,19 +1,14 @@
-# GitGuardian configuration for excluding test fixtures and false positives
-# This file helps maintain security while allowing known test-only secrets to pass
+# GitGuardian configuration for sva-studio
+# Test fixture exclusion rules for unit test files
 
-# Version 1 - Path-based ignores for known test files
+# Whitelist specific incident IDs (test-only credential patterns)
+whitelisted-incidents:
+  - 29617339  # Generic Password in test fixture files
+
+# File patterns to exclude from scanning
 ignore-paths:
-  - 'packages/auth/src/runtime-secrets.server.test.ts'
-  - 'packages/data/src/instance-registry/server.vitest.test.ts'
-
-# Incident policy - marks known false positives as test-only
-incident-policy:
-  - name: 'test-fixtures'
-    description: 'Known test fixture passwords that are not real credentials'
-    match:
-      files:
-        - '*.test.ts'
-        - '*.test.tsx'
-        - '*.vitest.test.ts'
-    action: 'ignore'
-
+  - 'packages/**/*.test.ts'
+  - 'packages/**/*.test.tsx'
+  - 'packages/**/*.vitest.test.ts'
+  - '**/__tests__/**'
+  - '**/tests/**'

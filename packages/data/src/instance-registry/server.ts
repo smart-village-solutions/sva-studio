@@ -237,15 +237,30 @@ export const loadInstanceByHostname = async (
       } catch (error) {
         if (shouldRetryWithPrimaryHostname(error)) {
           const repository = createInstanceRegistryRepository(createExecutor(client));
-          const fallbackResult = await repository.resolvePrimaryHostname(normalizedHostname);
-          logger.warn('Instance hostname lookup retried via primary_hostname fallback', {
-            hostname: normalizedHostname,
-            reason_code: 'tenant_host_resolution_primary_hostname_fallback',
-            error_type: readErrorType(error),
-            dependency: 'iam_database',
-            instance_id: fallbackResult?.instanceId ?? undefined,
-          });
-          return fallbackResult;
+          try {
+            const fallbackResult = await repository.resolvePrimaryHostname(normalizedHostname);
+            logger.warn('Instance hostname lookup retried via primary_hostname fallback', {
+              hostname: normalizedHostname,
+              reason_code: 'tenant_host_resolution_primary_hostname_fallback',
+              error_type: readErrorType(error),
+              dependency: 'iam_database',
+              instance_id: fallbackResult?.instanceId ?? undefined,
+            });
+            return fallbackResult;
+          } catch (fallbackError) {
+            logger.error('Instance hostname lookup failed in primary_hostname fallback', {
+              hostname: normalizedHostname,
+              reason_code: 'tenant_host_resolution_fallback_failed',
+              error_type: readErrorType(fallbackError),
+              dependency: 'iam_database',
+            });
+            const sanitizedError = new Error(`tenant_host_resolution_fallback_failed: ${normalizedHostname}`);
+            if (fallbackError instanceof Error) {
+              // Keep the original error for diagnostics without leaking its message into the thrown text.
+              (sanitizedError as unknown as { cause?: unknown }).cause = fallbackError;
+            }
+            throw sanitizedError;
+          }
         }
         logger.error('Instance hostname lookup failed in repository layer', {
           hostname: normalizedHostname,

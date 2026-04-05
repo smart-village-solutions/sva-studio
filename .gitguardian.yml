@@ -1,0 +1,15 @@
+paths-to-ignore:
+  # Exclude test files that contain fixture passwords (not real secrets)
+  - 'packages/auth/src/runtime-secrets.server.test.ts'
+  - 'packages/data/src/instance-registry/server.vitest.test.ts'
+
+# Policy for handling false positives in test environments
+policies:
+  - name: test-fixtures
+    description: 'Exclude known test-only fixtures from secret detection'
+    paths:
+      - '**/*.test.ts'
+      - '**/*.test.tsx'
+      - '**/*.vitest.test.ts'
+    matches:
+      - 'example-value+/unsafe'  # Known test fixture

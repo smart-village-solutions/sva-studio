@@ -37,6 +37,7 @@ const state = vi.hoisted(() => ({
   },
   keycloakConfigAvailable: true,
   runtimeAuthRealm: 'svs-intern-studio-staging',
+  runtimeAuthIssuer: null as null | string,
   createRoleImpl: null as null | ((input: {
     externalName: string;
     description?: string;
@@ -142,7 +143,7 @@ vi.mock('./redis.server', () => ({
 vi.mock('./config.js', () => ({
   resolveAuthConfigForRequest: vi.fn(async () => ({
     authRealm: state.runtimeAuthRealm,
-    issuer: `https://keycloak.local/realms/${state.runtimeAuthRealm}`,
+    issuer: state.runtimeAuthIssuer ?? `https://keycloak.local/realms/${state.runtimeAuthRealm}`,
   })),
 }));
 
@@ -502,6 +503,7 @@ describe('iam-account-management handlers (guards)', () => {
     };
     state.keycloakConfigAvailable = true;
     state.runtimeAuthRealm = 'svs-intern-studio-staging';
+    state.runtimeAuthIssuer = null;
     state.deactivateUserCalls = [];
     state.syncRolesImpl = null;
     state.syncRolesCalls = [];
@@ -5879,6 +5881,67 @@ describe('iam-account-management additional handlers', () => {
     );
   });
 
+  it('derives the runtime auth realm from the issuer when the explicit realm is missing', async () => {
+    vi.resetModules();
+    state.redisAvailable = true;
+    state.runtimeAuthRealm = undefined as never;
+    state.runtimeAuthIssuer = 'https://keycloak.local/realms/platform-root';
+    state.listRolesImpl = async () => [];
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT 1;')) {
+        return { rowCount: 1, rows: [{ '?column?': 1 }] };
+      }
+      if (text.includes("to_regclass('iam.groups')")) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              groups_exists: true,
+              group_roles_exists: true,
+              account_groups_exists: true,
+              account_groups_origin_column_exists: true,
+              activity_logs_exists: true,
+              platform_activity_logs_exists: true,
+              accounts_avatar_url_column_exists: true,
+              accounts_instance_id_column_exists: true,
+              accounts_username_ciphertext_column_exists: true,
+              accounts_notes_column_exists: true,
+              accounts_preferred_language_column_exists: true,
+              accounts_timezone_column_exists: true,
+              instance_hostnames_exists: true,
+              instance_hostnames_rls_disabled: true,
+              instances_primary_hostname_column_exists: true,
+              instances_auth_realm_column_exists: true,
+              instances_auth_client_id_column_exists: true,
+              instances_auth_issuer_url_column_exists: true,
+              instances_auth_client_secret_ciphertext_column_exists: true,
+              instances_rls_disabled: true,
+              instances_tenant_admin_username_column_exists: true,
+              instances_tenant_admin_email_column_exists: true,
+              instances_tenant_admin_first_name_column_exists: true,
+              instances_tenant_admin_last_name_column_exists: true,
+              idx_accounts_kc_subject_instance_exists: true,
+              accounts_isolation_policy_matches: true,
+              instance_memberships_isolation_policy_matches: true,
+            },
+          ],
+        };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const { healthReadyHandler: freshHealthReadyHandler } = await import('./iam-account-management.server');
+    const response = await freshHealthReadyHandler(
+      new Request('http://localhost/api/v1/iam/health/ready', { method: 'GET' })
+    );
+    const payload = (await response.json()) as {
+      checks: { auth: { realm?: string } };
+    };
+
+    expect(response.status).toBe(200);
+    expect(payload.checks.auth.realm).toBe('platform-root');
+  });
+
   it('returns not_ready when dependencies fail', async () => {
     vi.resetModules();
     state.redisAvailable = false;
@@ -6078,6 +6141,26 @@ describe('iam-account-management additional handlers', () => {
       error: {
         code: 'database_unavailable',
         message: 'IAM-Historie ist nicht erreichbar.',
+      },
+      requestId: 'req-iam-handler',
+    });
+  });
+
+  it('rejects timeline requests for actors without admin roles', async () => {
+    state.user = {
+      ...state.user,
+      roles: ['member'],
+    };
+
+    const response = await getUserTimelineHandler(
+      new Request('http://localhost/api/v1/iam/users/not-a-uuid/timeline', { method: 'GET' })
+    );
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toEqual({
+      error: {
+        code: 'forbidden',
+        message: 'Unzureichende Berechtigungen.',
       },
       requestId: 'req-iam-handler',
     });

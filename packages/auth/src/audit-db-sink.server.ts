@@ -278,6 +278,87 @@ VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7);
   );
 };
 
+const resolveAuditAccountContext = async (
+  client: AuditSqlClient,
+  scope: RuntimeScopeRef,
+  event: Required<Pick<AuthAuditEvent, 'workspaceId'>> & AuthAuditEvent
+) => {
+  if (scope.kind !== 'instance' || !event.actorUserId) {
+    return {
+      accountId: undefined,
+      writtenEventTypes: [] as AuthAuditEventType[],
+    };
+  }
+
+  if (event.eventType !== 'login' || event.outcome !== 'success') {
+    return {
+      accountId: await resolveAccountId(client, {
+        keycloakSubject: event.actorUserId,
+        instanceId: scope.instanceId,
+      }),
+      writtenEventTypes: [] as AuthAuditEventType[],
+    };
+  }
+
+  const encryptedEmailCiphertext = encryptOptionalPii(
+    event.actorEmail,
+    `iam.accounts.email:${event.actorUserId}`
+  );
+  const encryptedDisplayNameCiphertext = encryptOptionalPii(
+    event.actorDisplayName,
+    `iam.accounts.display_name:${event.actorUserId}`
+  );
+
+  const ensured = await ensureAccount(client, {
+    instanceId: scope.instanceId,
+    keycloakSubject: event.actorUserId,
+    encryptedEmailCiphertext,
+    encryptedDisplayNameCiphertext,
+  });
+  const writtenEventTypes: AuthAuditEventType[] = [];
+
+  if (ensured.created) {
+    await insertActivityLog(client, {
+      eventType: 'account_created',
+      instanceId: scope.instanceId,
+      accountId: ensured.accountId,
+      actorUserId: event.actorUserId,
+      outcome: 'success',
+      requestId: event.requestId,
+      traceId: event.traceId,
+    });
+    writtenEventTypes.push('account_created');
+  }
+
+  return {
+    accountId: ensured.accountId,
+    writtenEventTypes,
+  };
+};
+
+const writeScopedAuditEvent = async (
+  client: AuditSqlClient,
+  scope: RuntimeScopeRef,
+  input: {
+    eventType: AuthAuditEventType;
+    accountId?: string;
+    actorUserId?: string;
+    outcome: AuthAuditEvent['outcome'];
+    requestId?: string;
+    traceId?: string;
+  }
+) => {
+  if (scope.kind === 'platform') {
+    await insertPlatformActivityLog(client, input);
+    return;
+  }
+
+  await insertActivityLog(client, {
+    ...input,
+    instanceId: scope.instanceId,
+  });
+};
+
 export const persistAuthAuditEventWithClient = async (
   client: AuditSqlClient,
   event: Required<Pick<AuthAuditEvent, 'workspaceId'>> & AuthAuditEvent & { scope?: RuntimeScopeRef }
@@ -292,69 +373,16 @@ export const persistAuthAuditEventWithClient = async (
       writtenEventTypes: [],
     };
   }
-  const writtenEventTypes: AuthAuditEventType[] = [];
-  const isLoginSuccess = event.eventType === 'login' && event.outcome === 'success';
-  let accountId: string | undefined;
+  const { accountId, writtenEventTypes } = await resolveAuditAccountContext(client, scope, event);
 
-  if (scope.kind === 'instance' && event.actorUserId) {
-    if (isLoginSuccess) {
-      const encryptedEmailCiphertext = encryptOptionalPii(
-        event.actorEmail,
-        `iam.accounts.email:${event.actorUserId}`
-      );
-      const encryptedDisplayNameCiphertext = encryptOptionalPii(
-        event.actorDisplayName,
-        `iam.accounts.display_name:${event.actorUserId}`
-      );
-
-      const ensured = await ensureAccount(client, {
-        instanceId: scope.instanceId,
-        keycloakSubject: event.actorUserId,
-        encryptedEmailCiphertext,
-        encryptedDisplayNameCiphertext,
-      });
-      accountId = ensured.accountId;
-
-      if (ensured.created) {
-        await insertActivityLog(client, {
-          eventType: 'account_created',
-          instanceId: scope.instanceId,
-          accountId,
-          actorUserId: event.actorUserId,
-          outcome: 'success',
-          requestId: event.requestId,
-          traceId: event.traceId,
-        });
-        writtenEventTypes.push('account_created');
-      }
-    } else {
-      accountId = await resolveAccountId(client, {
-        keycloakSubject: event.actorUserId,
-        instanceId: scope.instanceId,
-      });
-    }
-  }
-
-  if (scope.kind === 'platform') {
-    await insertPlatformActivityLog(client, {
-      eventType: event.eventType,
-      accountId,
-      actorUserId: event.actorUserId,
-      outcome: event.outcome,
-      requestId: event.requestId,
-      traceId: event.traceId,
-    });
-  } else {
-    await insertActivityLog(client, {
-      eventType: event.eventType,
-      instanceId: scope.instanceId,
-      accountId,
-      actorUserId: event.actorUserId,
-      outcome: event.outcome,
-      requestId: event.requestId,
-      traceId: event.traceId,
-    });
-  }
+  await writeScopedAuditEvent(client, scope, {
+    eventType: event.eventType,
+    accountId,
+    actorUserId: event.actorUserId,
+    outcome: event.outcome,
+    requestId: event.requestId,
+    traceId: event.traceId,
+  });
   writtenEventTypes.push(event.eventType);
 
   return {
@@ -363,9 +391,9 @@ export const persistAuthAuditEventWithClient = async (
   };
 };
 
-export const persistAuthAuditEventToDb = async (
+const resolveValidatedAuditScope = (
   event: Required<Pick<AuthAuditEvent, 'workspaceId'>> & AuthAuditEvent
-): Promise<PersistAuthAuditResult> => {
+): RuntimeScopeRef | PersistAuthAuditResult => {
   const scope =
     event.scope
     ?? getRuntimeScopeRef({ workspaceId: event.workspaceId });
@@ -386,6 +414,46 @@ export const persistAuthAuditEventToDb = async (
     };
   }
 
+  return scope;
+};
+
+const withAuditTransaction = async <TResult>(
+  client: PoolClient & AuditSqlClient,
+  scope: RuntimeScopeRef,
+  handler: () => Promise<TResult>
+): Promise<TResult> => {
+  try {
+    await client.query('BEGIN');
+    await assertIamAppRuntimeRole(client);
+    await client.query(
+      'SELECT set_config($1, $2, true);',
+      ['app.instance_id', scope.kind === 'instance' ? scope.instanceId : '']
+    );
+
+    const result = await handler();
+    await client.query('COMMIT');
+    return result;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    const enrichedError = error instanceof Error ? error : new Error(String(error));
+    (
+      enrichedError as Error & {
+        reasonCode?: PersistAuthAuditResult['reason'];
+      }
+    ).reasonCode = scope.kind === 'platform' ? 'platform_audit_unavailable' : 'tenant_audit_unavailable';
+    throw enrichedError;
+  }
+};
+
+export const persistAuthAuditEventToDb = async (
+  event: Required<Pick<AuthAuditEvent, 'workspaceId'>> & AuthAuditEvent
+): Promise<PersistAuthAuditResult> => {
+  const resolvedScope = resolveValidatedAuditScope(event);
+  if ('persisted' in resolvedScope) {
+    return resolvedScope;
+  }
+  const scope = resolvedScope;
+
   const pool = resolveAuditPool();
   if (!pool) {
     return {
@@ -397,29 +465,12 @@ export const persistAuthAuditEventToDb = async (
 
   const client = (await pool.connect()) as PoolClient & AuditSqlClient;
   try {
-    await client.query('BEGIN');
-    await assertIamAppRuntimeRole(client);
-    await client.query(
-      'SELECT set_config($1, $2, true);',
-      ['app.instance_id', scope.kind === 'instance' ? scope.instanceId : '']
+    return await withAuditTransaction(client, scope, () =>
+      persistAuthAuditEventWithClient(client, {
+        ...event,
+        scope,
+      })
     );
-
-    const result = await persistAuthAuditEventWithClient(client, {
-      ...event,
-      scope,
-    });
-    await client.query('COMMIT');
-
-    return result;
-  } catch (error) {
-    await client.query('ROLLBACK');
-    const enrichedError = error instanceof Error ? error : new Error(String(error));
-    (
-      enrichedError as Error & {
-        reasonCode?: PersistAuthAuditResult['reason'];
-      }
-    ).reasonCode = scope.kind === 'platform' ? 'platform_audit_unavailable' : 'tenant_audit_unavailable';
-    throw enrichedError;
   } finally {
     client.release();
   }

@@ -39,7 +39,12 @@ type AuthMeResponse = {
 const AUTH_ME_ENDPOINT = '/auth/me';
 const AUTH_LOGOUT_ENDPOINT = '/auth/logout';
 const SILENT_SSO_MESSAGE_TYPE = 'sva-auth:silent-sso';
-const SILENT_SSO_TIMEOUT_MS = process.env.NODE_ENV === 'test' ? 25 : 8_000;
+const isTestRuntime = () =>
+  process.env.NODE_ENV === 'test' ||
+  process.env.VITEST === 'true' ||
+  import.meta.env?.MODE === 'test' ||
+  import.meta.env?.VITEST === true;
+const SILENT_SSO_TIMEOUT_MS = isTestRuntime() ? 25 : 8_000;
 const AUTH_DEBUG_ENABLED = process.env.NODE_ENV !== 'production';
 const authLogger = createOperationLogger('auth-provider', AUTH_DEBUG_ENABLED ? 'debug' : 'info');
 
@@ -143,7 +148,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         cleanup(false);
       }, SILENT_SSO_TIMEOUT_MS);
       currentWindow.addEventListener('message', handleMessage);
-      if (process.env.NODE_ENV !== 'test') {
+      if (!isTestRuntime()) {
         iframe.src = `${createLoginHref()}&silent=1`;
       }
       currentDocument.body.appendChild(iframe);

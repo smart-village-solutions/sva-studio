@@ -253,9 +253,12 @@ export const loadInstanceByHostname = async (
           error_type: readErrorType(error),
           dependency: 'iam_database',
         });
-        throw new Error(`tenant_host_resolution_failed: ${normalizedHostname}`, {
-          cause: error instanceof Error ? error : undefined,
-        });
+        const sanitizedError = new Error(`tenant_host_resolution_failed: ${normalizedHostname}`);
+        if (error instanceof Error) {
+          // Keep the original error for diagnostics without leaking its message into the thrown text.
+          (sanitizedError as unknown as { cause?: unknown }).cause = error;
+        }
+        throw sanitizedError;
       }
     },
     { getDatabaseUrl: () => normalizedDatabaseUrl }

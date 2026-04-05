@@ -5,8 +5,9 @@ import { getAuthConfig } from '../config.js';
 import { jitProvisionAccount } from '../jit-provisioning.server.js';
 import { client, getOidcConfig, invalidateOidcConfig } from '../oidc.server.js';
 import { consumeLoginState, createSession, getSessionControlState } from '../redis-session.server.js';
+import { getScopeFromAuthConfig } from '../scope.js';
 import { isRetryableTokenExchangeError } from '../shared/error-guards.js';
-import type { AuthConfig, LoginState } from '../types.js';
+import type { AuthConfig, InstanceScopeRef, LoginState, PlatformScopeRef } from '../types.js';
 import { buildLogContext } from '../shared/log-context.js';
 import { buildSessionUser, resolveSessionExpiry } from './shared.js';
 
@@ -48,7 +49,7 @@ const persistSession = async (input: {
     userId: user.id,
     user,
     auth: {
-      instanceId: input.authConfig.instanceId,
+      ...getScopeFromAuthConfig(input.authConfig),
       issuer: input.authConfig.issuer,
       clientId: input.authConfig.clientId,
       authRealm: input.authConfig.authRealm,
@@ -110,7 +111,7 @@ const exchangeAuthorizationCode = async (input: {
       operation: 'token_validate_retry',
       issuer: input.authConfig.issuer,
       client_id: input.authConfig.clientId,
-      ...buildLogContext(input.authConfig.instanceId),
+      ...buildLogContext(getScopeFromAuthConfig(input.authConfig)),
     });
     return {
       tokenSet: await grant(),
@@ -132,6 +133,16 @@ export const handleCallback = async (params: {
   if (!loginState) {
     throw new Error('Invalid login state');
   }
+  let normalizedLoginState: LoginState;
+  if (loginState.kind === 'platform') {
+    normalizedLoginState = loginState as PlatformScopeRef & Omit<LoginState, 'kind' | 'instanceId'>;
+  } else {
+    normalizedLoginState = {
+      ...loginState,
+      kind: 'instance',
+      instanceId: loginState.instanceId as string,
+    } satisfies InstanceScopeRef & Omit<LoginState, 'kind' | 'instanceId'>;
+  }
 
   const callbackUrl = new URL(authConfig.redirectUri);
   callbackUrl.searchParams.set('code', params.code);
@@ -143,7 +154,7 @@ export const handleCallback = async (params: {
   const { tokenSet, retryPerformed } = await exchangeAuthorizationCode({
     authConfig,
     callbackUrl,
-    loginState,
+    loginState: normalizedLoginState,
     state: params.state,
   });
   const claims = (tokenSet.claims() ?? {}) as Record<string, unknown>;
@@ -171,5 +182,5 @@ export const handleCallback = async (params: {
     ...buildLogContext(persisted.user.instanceId),
   });
 
-  return { ...persisted, loginState, retryPerformed };
+  return { ...persisted, loginState: normalizedLoginState, retryPerformed };
 };

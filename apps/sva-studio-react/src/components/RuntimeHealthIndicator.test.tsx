@@ -18,6 +18,9 @@ vi.mock('../i18n', () => ({
     if (params?.requestId) {
       return `${key}:${params.requestId}`;
     }
+    if (params?.realm) {
+      return `${key}:${params.realm}`;
+    }
     return key;
   },
 }));
@@ -42,6 +45,9 @@ describe('RuntimeHealthIndicator', () => {
             consecutiveRedisFailures: 0,
             recomputePerMinute: 0,
             status: 'ready',
+          },
+          auth: {
+            realm: 'svs-intern-studio-staging',
           },
           db: true,
           diagnostics: {},
@@ -82,6 +88,7 @@ describe('RuntimeHealthIndicator', () => {
     expect(screen.getByText('shell.runtimeHealth.reasons.redisPingFailed')).toBeTruthy();
     expect(screen.getByText('shell.runtimeHealth.overall.degraded')).toBeTruthy();
     expect(screen.getByText('shell.runtimeHealth.lastUpdated:formatted:en')).toBeTruthy();
+    expect(screen.getByText('shell.runtimeHealth.realmLabel:svs-intern-studio-staging')).toBeTruthy();
   });
 
   it('renders loading and fetch error hints', () => {
@@ -97,6 +104,7 @@ describe('RuntimeHealthIndicator', () => {
             recomputePerMinute: 0,
             status: 'empty',
           },
+          auth: {},
           db: false,
           diagnostics: {},
           errors: {},
@@ -123,5 +131,41 @@ describe('RuntimeHealthIndicator', () => {
     expect(screen.getAllByText('shell.runtimeHealth.reasons.unknown')).toHaveLength(4);
     expect(screen.getByText('shell.runtimeHealth.loading')).toBeTruthy();
     expect(screen.getByText('shell.runtimeHealth.fetchError:req-runtime-health')).toBeTruthy();
+  });
+
+  it('renders the realm fallback when auth metadata is missing', () => {
+    useRuntimeHealthMock.mockReturnValue({
+      error: null,
+      health: {
+        checks: {
+          authorizationCache: {
+            coldStart: false,
+            consecutiveRedisFailures: 0,
+            recomputePerMinute: 0,
+            status: 'ready',
+          },
+          db: true,
+          diagnostics: {},
+          errors: {},
+          keycloak: true,
+          redis: true,
+          services: {
+            authorizationCache: { status: 'ready' },
+            database: { status: 'ready' },
+            keycloak: { status: 'ready' },
+            redis: { status: 'ready' },
+          },
+        },
+        path: '/api/v1/iam/health/ready',
+        status: 'ready',
+        timestamp: '2026-04-04T12:34:00.000Z',
+      },
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+
+    render(<RuntimeHealthIndicator />);
+
+    expect(screen.getByText('shell.runtimeHealth.realmLabel:shell.runtimeHealth.notAvailable')).toBeTruthy();
   });
 });

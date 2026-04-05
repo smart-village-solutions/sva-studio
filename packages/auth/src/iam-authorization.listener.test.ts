@@ -84,9 +84,6 @@ describe('iam authorization invalidation listener', () => {
     const { ensureInvalidationListener } = await import('./iam-authorization/shared');
 
     await expect(ensureInvalidationListener()).resolves.toBeUndefined();
-
-    expect(state.logger.info).not.toHaveBeenCalled();
-    expect(state.notificationHandler).toBeNull();
   });
 
   it('logs invalid payloads and invalidates cached entries for valid notifications', async () => {

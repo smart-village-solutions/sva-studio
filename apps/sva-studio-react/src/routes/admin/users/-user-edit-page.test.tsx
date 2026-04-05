@@ -38,6 +38,7 @@ describe('UserEditPage', () => {
   const baseUser = {
     id: 'user-1',
     keycloakSubject: 'subject-1',
+    username: 'alice.admin',
     displayName: 'Alice Admin',
     firstName: 'Alice',
     lastName: 'Admin',
@@ -159,6 +160,8 @@ describe('UserEditPage', () => {
 
     expect(screen.getByRole('heading', { name: 'Alice Admin' })).toBeTruthy();
     expect(screen.getByRole('img', { name: 'Profilbild von Alice Admin' })).toBeTruthy();
+    expect(screen.getAllByText(/Benutzername: alice\.admin/).length).toBeGreaterThan(0);
+    expect((screen.getByLabelText('Benutzername') as HTMLInputElement).value).toBe('alice.admin');
 
     fireEvent.click(screen.getByRole('tab', { name: 'Berechtigungen' }));
     expect(screen.getAllByText('content.read').length).toBeGreaterThan(0);

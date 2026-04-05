@@ -10,15 +10,15 @@ import {
   svaMainserverQueryRootTypenameDocument,
   type SvaMainserverMutationRootTypenameMutation,
   type SvaMainserverQueryRootTypenameQuery,
-} from '../generated/diagnostics';
+} from '../generated/diagnostics.js';
 import type {
   SvaMainserverConnectionInput,
   SvaMainserverConnectionStatus,
   SvaMainserverErrorCode,
   SvaMainserverInstanceConfig,
-} from '../types';
-import { loadSvaMainserverInstanceConfig } from './config-store';
-import { SvaMainserverError } from './errors';
+} from '../types.js';
+import { loadSvaMainserverInstanceConfig } from './config-store.js';
+import { SvaMainserverError } from './errors.js';
 
 type CredentialValue = {
   readonly apiKey: string;

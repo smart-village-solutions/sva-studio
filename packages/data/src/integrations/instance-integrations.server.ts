@@ -6,8 +6,8 @@ import {
   createInstanceIntegrationRepository,
   type InstanceIntegrationRecord,
   type IntegrationProviderKey,
-} from './instance-integrations';
-import type { SqlStatement } from '../iam/repositories/types';
+} from './instance-integrations.js';
+import type { SqlStatement } from '../iam/repositories/types.js';
 
 const logger = createSdkLogger({ component: 'instance-integrations-server', level: 'info' });
 

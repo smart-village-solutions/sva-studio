@@ -10,7 +10,6 @@ import { asApiItem, asApiList, createApiError, readPage, readPathSegment } from 
 import { classifyIamDiagnosticError } from './diagnostics.js';
 import { ensureFeature, getFeatureFlags } from './feature-flags.js';
 import { consumeRateLimit } from './rate-limit.js';
-import { buildRoleSyncFailure } from './role-audit.js';
 import {
   logger,
   requireRoles,
@@ -22,7 +21,6 @@ import { USER_STATUS } from './types.js';
 import { resolveUserDetail } from './user-detail-query.js';
 import { resolveUsersWithPagination } from './user-list-query.js';
 import {
-  isRecoverableUserProjectionError,
   mergeMainserverCredentialState,
   resolveKeycloakRoleNames,
   resolveProjectedMainserverCredentialState,
@@ -144,10 +142,40 @@ export const getUserInternal = async (
       return createApiError(404, 'not_found', 'Nutzer nicht gefunden.', actorResolution.actor.requestId);
     }
 
-    const [keycloakRoleNames, mainserverCredentialState] = await Promise.all([
+    const [keycloakRoleNamesResult, mainserverCredentialStateResult] = await Promise.allSettled([
       resolveKeycloakRoleNames(actorResolution.actor.instanceId, user.keycloakSubject),
       resolveProjectedMainserverCredentialState(user.keycloakSubject, actorResolution.actor.instanceId),
     ]);
+
+    const keycloakRoleNames =
+      keycloakRoleNamesResult.status === 'fulfilled' ? keycloakRoleNamesResult.value : null;
+    const mainserverCredentialState =
+      mainserverCredentialStateResult.status === 'fulfilled'
+        ? mainserverCredentialStateResult.value
+        : { mainserverUserApplicationId: undefined, mainserverUserApplicationSecretSet: false };
+
+    if (keycloakRoleNamesResult.status === 'rejected' || mainserverCredentialStateResult.status === 'rejected') {
+      logger.warn('IAM user detail projection degraded because Keycloak data could not be loaded', {
+        operation: 'get_user',
+        instance_id: actorResolution.actor.instanceId,
+        user_id: userId,
+        request_id: actorResolution.actor.requestId,
+        trace_id: actorResolution.actor.traceId,
+        keycloak_roles_error:
+          keycloakRoleNamesResult.status === 'rejected'
+            ? keycloakRoleNamesResult.reason instanceof Error
+              ? keycloakRoleNamesResult.reason.message
+              : String(keycloakRoleNamesResult.reason)
+            : undefined,
+        mainserver_credentials_error:
+          mainserverCredentialStateResult.status === 'rejected'
+            ? mainserverCredentialStateResult.reason instanceof Error
+              ? mainserverCredentialStateResult.reason.message
+              : String(mainserverCredentialStateResult.reason)
+            : undefined,
+      });
+    }
+
     const projectedUserWithRoles = await withInstanceScopedDb(actorResolution.actor.instanceId, (client) =>
       resolveProjectedUserDetail({
         client,
@@ -161,13 +189,6 @@ export const getUserInternal = async (
     return jsonResponse(200, asApiItem(projectedUser, actorResolution.actor.requestId));
   } catch (error) {
     const classified = classifyIamDiagnosticError(error, 'IAM-Datenbank ist nicht erreichbar.', actorResolution.actor.requestId);
-    if (isRecoverableUserProjectionError(error)) {
-      return buildRoleSyncFailure({
-        error,
-        requestId: actorResolution.actor.requestId,
-        fallbackMessage: 'Nutzerrollen konnten nicht aus Keycloak geladen werden.',
-      });
-    }
     return createApiError(classified.status, classified.code, classified.message, actorResolution.actor.requestId, classified.details);
   }
 };

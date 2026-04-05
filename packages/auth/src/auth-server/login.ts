@@ -1,6 +1,7 @@
 import { getAuthConfig } from '../config.js';
 import { client, getOidcConfig } from '../oidc.server.js';
 import { createLoginState } from '../redis-session.server.js';
+import { getScopeFromAuthConfig } from '../scope.js';
 import type { AuthConfig } from '../types.js';
 
 export const createLoginUrl = async (input?: { returnTo?: string; silent?: boolean; authConfig?: AuthConfig }) => {
@@ -17,7 +18,7 @@ export const createLoginUrl = async (input?: { returnTo?: string; silent?: boole
     createdAt,
     returnTo: input?.returnTo,
     silent: input?.silent ?? false,
-    workspaceId: authConfig.instanceId,
+    ...getScopeFromAuthConfig(authConfig),
   };
 
   await createLoginState(state, loginState);

@@ -6,7 +6,7 @@ import type {
   InstanceStatus,
 } from '@sva/core';
 
-import type { SqlExecutionResult, SqlExecutor, SqlStatement } from '../iam/repositories/types';
+import type { SqlExecutionResult, SqlExecutor, SqlStatement } from '../iam/repositories/types.js';
 
 type InstanceListRow = {
   instance_id: string;

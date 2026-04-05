@@ -9,6 +9,7 @@ describe('evaluateCriticalIamSchemaGuard', () => {
       group_roles_exists: true,
       account_groups_exists: true,
       activity_logs_exists: true,
+      platform_activity_logs_exists: true,
       accounts_instance_id_column_exists: true,
       accounts_username_ciphertext_column_exists: true,
       accounts_avatar_url_column_exists: true,

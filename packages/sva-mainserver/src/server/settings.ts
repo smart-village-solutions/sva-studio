@@ -1,7 +1,7 @@
 import { loadInstanceIntegrationRecord, saveInstanceIntegrationRecord } from '@sva/data/server';
 
-import type { SvaMainserverInstanceConfig } from '../types';
-import { normalizeSvaMainserverUpstreamUrl } from './upstream-url-validation';
+import type { SvaMainserverInstanceConfig } from '../types.js';
+import { normalizeSvaMainserverUpstreamUrl } from './upstream-url-validation.js';
 
 const mapToConfig = (input: {
   instanceId: string;

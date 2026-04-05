@@ -192,6 +192,11 @@ describe('getSessionUser', () => {
       id: 'user-legacy-1',
       instanceId: 'de-musterhausen',
       roles: ['Admin', 'system_admin'],
+      username: 'Legacy User',
+      email: 'legacy@example.com',
+      firstName: undefined,
+      lastName: undefined,
+      displayName: 'Legacy User',
     });
     expect(updateSessionMock).toHaveBeenCalledWith(
       'session-legacy-1',

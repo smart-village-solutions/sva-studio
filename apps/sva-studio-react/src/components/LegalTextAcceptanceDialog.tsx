@@ -118,7 +118,10 @@ export const LegalTextAcceptanceDialog = ({ pathname }: LegalTextAcceptanceDialo
 
     storeLegalAcceptanceReturnTo(pathname);
 
-    const handleFocus = () => {
+    const handleFocus = (event: FocusEvent) => {
+      if (event.target instanceof Element) {
+        return;
+      }
       void loadPendingTexts(true);
     };
     const handleLegalAcceptanceRequired = (event: Event) => {

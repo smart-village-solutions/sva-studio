@@ -20,6 +20,7 @@ type SchemaGuardRow = {
   account_groups_exists: boolean;
   account_groups_origin_column_exists: boolean;
   activity_logs_exists: boolean;
+  platform_activity_logs_exists: boolean;
   accounts_avatar_url_column_exists: boolean;
   accounts_instance_id_column_exists: boolean;
   accounts_isolation_policy_matches: boolean;
@@ -50,6 +51,7 @@ export const CRITICAL_IAM_SCHEMA_GUARD_FIELDS = [
   'group_roles_exists',
   'account_groups_exists',
   'activity_logs_exists',
+  'platform_activity_logs_exists',
   'accounts_instance_id_column_exists',
   'accounts_username_ciphertext_column_exists',
   'accounts_avatar_url_column_exists',
@@ -154,6 +156,14 @@ const REQUIRED_SCHEMA_CHECKS = [
     reasonCode: 'missing_table',
     expectedMigration: '0001_iam_core.sql',
     message: 'Kritische IAM-Tabelle iam.activity_logs fehlt.',
+  },
+  {
+    field: 'platform_activity_logs_exists',
+    kind: 'table',
+    schemaObject: 'iam.platform_activity_logs',
+    reasonCode: 'missing_table',
+    expectedMigration: '0028_iam_platform_activity_logs.sql',
+    message: 'Kritische IAM-Tabelle iam.platform_activity_logs fehlt.',
   },
   {
     field: 'account_groups_origin_column_exists',
@@ -298,6 +308,7 @@ SELECT
   to_regclass('iam.group_roles') IS NOT NULL AS group_roles_exists,
   to_regclass('iam.account_groups') IS NOT NULL AS account_groups_exists,
   to_regclass('iam.activity_logs') IS NOT NULL AS activity_logs_exists,
+  to_regclass('iam.platform_activity_logs') IS NOT NULL AS platform_activity_logs_exists,
   EXISTS (
     SELECT 1
     FROM information_schema.columns

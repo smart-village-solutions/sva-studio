@@ -15,6 +15,8 @@ describe('auth.routes', () => {
 
     expect(authRoutePaths).toContain('/auth/login');
     expect(authRoutePaths).toContain('/auth/logout');
+    expect(authRoutePaths).toContain('/api/v1/iam/health/ready');
+    expect(authRoutePaths).toContain('/api/v1/iam/health/live');
     expect(authRoutePaths).toContain('/iam/authorize');
     expect(authRoutePaths).toContain('/api/v1/iam/groups');
     expect(authRoutePaths).toContain('/api/v1/iam/groups/$groupId');

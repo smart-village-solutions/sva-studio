@@ -149,6 +149,15 @@ gleichzeitig beeinflussen.
 - Die App-Unit-Tests erzwingen wegen Node-25-/`jsdom`-Instabilitäten einen einzelnen Vitest-Worker im Thread-Pool
 - Das IAM-Acceptance-Gate ist bewusst ein separates Nx-Target ohne PR-CI-Zwang, weil es reale Laufzeitabhängigkeiten gegen eine dedizierte Testumgebung prüft
 
+### TypeScript-, Bundler- und Node-ESM-Vertrag
+
+- Das Monorepo nutzt `moduleResolution: "Bundler"` für produktive Dev-Tooling-Pfade mit Vite, `tsx` und Vitest
+- Diese Bundler-Auflösung ist bewusst nicht identisch mit der Laufzeitauflösung von Node-ESM für gebaute `dist/*.js`-Packages
+- Serverseitig direkt von Node geladene Workspace-Packages müssen deshalb ESM-strikte relative Runtime-Imports mit expliziter Laufzeitendung (`.js`) verwenden
+- Runtime-Imports auf andere Workspace-Packages bleiben nur dann gültig, wenn die jeweilige Dependency im lokalen `package.json` des importierenden Packages deklariert ist
+- Der technische Schutz gegen Drift liegt im zentralen Guard `pnpm check:server-runtime`, der statische Source-Prüfung und `dist`-Smoke-Imports kombiniert
+- `pnpm test:types` gilt dadurch zugleich als Typ- und Node-ESM-Kompatibilitäts-Gate für die serverseitigen Workspace-Packages
+
 ### i18n und Accessibility
 
 - UI-Texte sind derzeit überwiegend direkt im Code und noch nicht durchgängig i18n-basiert
@@ -210,6 +219,7 @@ Referenzen:
 - `docs/development/iam-server-modularization.md`
 - `docs/development/runtime-profile-betrieb.md`
 - `docs/development/review-agent-governance.md`
+- `docs/development/server-package-runtime-guards.md`
 - `docs/development/iam-schluesselmanagement-strategie.md`
 - `docs/guides/iam-governance-runbook.md`
 - `docs/guides/iam-governance-freigabematrix.md`

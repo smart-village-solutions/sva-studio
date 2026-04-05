@@ -6,6 +6,10 @@
 - Framework-agnostische Kernlogik, getrennt von React-Bindings
 - Typsicheres Routing mit Search-Params und Path-Params
 - Workspace-Protokoll für interne Abhängigkeiten verwenden (`workspace:*`)
+- Für serverseitig von Node geladene Workspace-Packages gilt ESM-strikte Schreibweise:
+  - relative Runtime-Imports und Re-Exports immer mit expliziter Laufzeitendung (`.js`)
+  - reine `import type`-Pfade dürfen typbezogen bleiben, Runtime-Pfade nicht
+  - Runtime-Imports auf andere Workspace-Packages müssen im lokalen `package.json` unter `dependencies` stehen
 
 ## Tipps zur Entwicklungsumgebung
 
@@ -20,6 +24,7 @@
 
 - **Kritisch:** Während der Entwicklung immer Unit- und Type-Tests ausführen – bei Fehlschlägen nicht weitermachen
 - **Testarten:** `pnpm test:unit`, `pnpm test:types`, `pnpm test:eslint`, `pnpm test:e2e`
+- **Server-Runtime-Gate:** Für serverseitige Packages zusätzlich `pnpm check:server-runtime` beachten; der Check steckt auch in `pnpm test:types`, soll aber bei Änderungen an `packages/{core,data,monitoring-client,sdk,auth,routing,sva-mainserver}` gezielt früh ausgeführt werden
 - **PR-Standard-Gate (bevorzugt):** Vor PR-Erstellung und vor Push nach Möglichkeit `pnpm test:pr` ausführen; dieser Workflow deckt affected Coverage, Coverage-Gate, Complexity-Gate, Integrationstests und den Frontend-Build ab
 - **Coverage-PR-Gate:** Wenn gezielt Coverage für einen PR geprüft werden soll, `pnpm test:coverage:pr` verwenden
 - **Komplette CI-Suite:** `pnpm test:ci`
@@ -100,6 +105,7 @@
 - **Typsicherheit**: Umfangreiches TypeScript für typsicheres Routing
 - **Framework-agnostisch**: Kernlogik getrennt von Framework-Bindings
 - **Code-basiertes Routing**: Unterstützung für code-basiertes Routing (dynamische Routen aus Plugins)
+- **Bundler vs. Node-ESM**: `moduleResolution: "Bundler"` ist für das Dev-Tooling bequem, ersetzt aber nicht die strengeren Node-ESM-Regeln für gebaute `dist/*.js`-Packages
 
 ## Development Rules
 
@@ -115,6 +121,7 @@ Die verbindlichen Entwicklungsrichtlinien liegen unter [DEVELOPMENT_RULES.md](DE
 5. **UI-Standard**: Neue UI mit `shadcn/ui` bauen; keine parallelen Basis-Komponenten ohne dokumentierte Architekturentscheidung
 6. **Accessibility**: WCAG 2.1 AA compliant
 7. **Docs**: Alle Änderungen müssen relevante Dokumentation aktualisieren (Code, Architektur, Guides)
+8. **Server-Package-Runtime**: Bei serverseitigen Workspace-Packages keine endungslosen relativen Runtime-Imports; `pnpm check:server-runtime` muss für entsprechende Änderungen grün bleiben
 
 **Details:** Siehe [DEVELOPMENT_RULES.md](DEVELOPMENT_RULES.md)
 

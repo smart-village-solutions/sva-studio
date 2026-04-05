@@ -1055,7 +1055,7 @@ describe('iam-account-management handlers (guards)', () => {
     expect(payload.data.mainserverUserApplicationId).toBeUndefined();
     expect(payload.data.mainserverUserApplicationSecretSet).toBe(false);
     expect(state.logger.warn).toHaveBeenCalledWith(
-      'IAM user detail projection degraded because Keycloak data could not be loaded',
+      'IAM user detail projection degraded because external data could not be loaded',
       expect.objectContaining({
         operation: 'get_user',
         user_id: targetUserId,

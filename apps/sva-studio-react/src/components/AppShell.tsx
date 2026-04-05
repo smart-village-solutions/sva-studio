@@ -47,6 +47,7 @@ export default function AppShell({
 }: AppShellProps) {
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const showSidebar = isAuthenticated && !isAuthLoading;
+  const showBreadcrumbs = currentPathname !== '/';
 
   return (
     <div className="isolate flex min-h-screen w-full flex-1 flex-col bg-background lg:flex-row">
@@ -87,7 +88,7 @@ export default function AppShell({
             </section>
           ) : (
             <div className="space-y-6">
-              <AppBreadcrumbs pathname={currentPathname} />
+              {showBreadcrumbs ? <AppBreadcrumbs pathname={currentPathname} /> : null}
               {children}
               <React.Suspense fallback={null}>
                 <LazyRuntimeHealthIndicator />

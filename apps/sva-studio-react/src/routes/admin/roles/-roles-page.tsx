@@ -2,7 +2,6 @@ import React from 'react';
 import { Link } from '@tanstack/react-router';
 
 import { ConfirmDialog } from '../../../components/ConfirmDialog';
-import { ModalDialog } from '../../../components/ModalDialog';
 import { StudioDataTable, type StudioColumnDef } from '../../../components/StudioDataTable';
 import { StudioListPageTemplate } from '../../../components/StudioListPageTemplate';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
@@ -11,7 +10,6 @@ import { Button } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
-import { Textarea } from '../../../components/ui/textarea';
 import { useRoles } from '../../../hooks/use-roles';
 import { t } from '../../../i18n';
 import type { TranslationKey } from '../../../i18n/translate';
@@ -72,15 +70,7 @@ export const RolesPage = () => {
   const rolesApi = useRoles();
 
   const [search, setSearch] = React.useState('');
-  const [createDialogOpen, setCreateDialogOpen] = React.useState(false);
   const [deleteRoleId, setDeleteRoleId] = React.useState<string | null>(null);
-
-  const [createForm, setCreateForm] = React.useState({
-    roleKey: '',
-    displayName: '',
-    description: '',
-    roleLevel: '10',
-  });
 
   const filteredRoles = React.useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -97,31 +87,6 @@ export const RolesPage = () => {
       );
     });
   }, [rolesApi.roles, search]);
-
-  const onCreate = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    const roleKey = createForm.roleKey.trim().toLowerCase().replace(/\s+/g, '_');
-    const success = await rolesApi.createRole({
-      roleName: roleKey,
-      displayName: createForm.displayName.trim() || undefined,
-      description: createForm.description.trim() || undefined,
-      roleLevel: Number(createForm.roleLevel),
-      permissionIds: [],
-    });
-
-    if (!success) {
-      return;
-    }
-
-    setCreateDialogOpen(false);
-    setCreateForm({ roleKey: '', displayName: '', description: '', roleLevel: '10' });
-  };
-
-  const openCreateDialog = () => {
-    rolesApi.clearMutationError();
-    setCreateDialogOpen(true);
-  };
 
   const roleColumns = React.useMemo<readonly StudioColumnDef<(typeof filteredRoles)[number]>[]>(
     () => [
@@ -201,7 +166,16 @@ export const RolesPage = () => {
         description={t('admin.roles.page.subtitle')}
         primaryAction={{
           label: t('admin.roles.actions.create'),
-          onClick: openCreateDialog,
+          render: (
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" variant="secondary" onClick={() => void rolesApi.reconcile()}>
+                {t('admin.roles.actions.importFromKeycloak')}
+              </Button>
+              <Button asChild type="button">
+                <Link to="/admin/roles/new">{t('admin.roles.actions.create')}</Link>
+              </Button>
+            </div>
+          ),
         }}
       >
         <StudioDataTable
@@ -228,11 +202,6 @@ export const RolesPage = () => {
                 placeholder={t('admin.roles.filters.searchPlaceholder')}
               />
             </div>
-          }
-          toolbarEnd={
-            <Button type="button" variant="secondary" onClick={() => void rolesApi.reconcile()}>
-              {t('admin.roles.actions.reconcile')}
-            </Button>
           }
           rowActions={(role) => {
             const isReadOnly = role.isSystemRole || role.managedBy !== 'studio';
@@ -293,75 +262,6 @@ export const RolesPage = () => {
           </AlertDescription>
         </Alert>
       ) : null}
-
-      <ModalDialog
-        open={createDialogOpen}
-        title={t('admin.roles.createDialog.title')}
-        description={t('admin.roles.createDialog.description')}
-        onClose={() => {
-          rolesApi.clearMutationError();
-          setCreateDialogOpen(false);
-        }}
-      >
-        <form className="grid gap-4" onSubmit={onCreate}>
-          {rolesApi.mutationError ? (
-            <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
-              <AlertDescription>{roleErrorMessage(rolesApi.mutationError, 'admin.roles.messages.error')}</AlertDescription>
-            </Alert>
-          ) : null}
-          <div className="grid gap-2 text-sm text-foreground">
-            <Label htmlFor="create-role-key">{t('admin.roles.createDialog.keyLabel')}</Label>
-            <Input
-              id="create-role-key"
-              required
-              value={createForm.roleKey}
-              onChange={(event) => setCreateForm((current) => ({ ...current, roleKey: event.target.value }))}
-            />
-          </div>
-          <div className="grid gap-2 text-sm text-foreground">
-            <Label htmlFor="create-role-name">{t('admin.roles.createDialog.nameLabel')}</Label>
-            <Input
-              id="create-role-name"
-              value={createForm.displayName}
-              onChange={(event) => setCreateForm((current) => ({ ...current, displayName: event.target.value }))}
-            />
-          </div>
-          <div className="grid gap-2 text-sm text-foreground">
-            <Label htmlFor="create-role-description">{t('admin.roles.createDialog.descriptionLabel')}</Label>
-            <Textarea
-              id="create-role-description"
-              value={createForm.description}
-              onChange={(event) => setCreateForm((current) => ({ ...current, description: event.target.value }))}
-            />
-          </div>
-          <div className="grid gap-2 text-sm text-foreground">
-            <Label htmlFor="create-role-level">{t('admin.roles.createDialog.levelLabel')}</Label>
-            <Input
-              id="create-role-level"
-              required
-              type="number"
-              min={0}
-              max={100}
-              value={createForm.roleLevel}
-              onChange={(event) => setCreateForm((current) => ({ ...current, roleLevel: event.target.value }))}
-            />
-          </div>
-
-          <div className="mt-2 flex justify-end gap-3">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                rolesApi.clearMutationError();
-                setCreateDialogOpen(false);
-              }}
-            >
-              {t('account.actions.cancel')}
-            </Button>
-            <Button type="submit">{t('admin.roles.actions.create')}</Button>
-          </div>
-        </form>
-      </ModalDialog>
 
       <ConfirmDialog
         open={Boolean(deleteRoleId)}

@@ -7,10 +7,17 @@ import {
 
 import type { AuthAuditEvent, AuthAuditEventType } from './audit-events.types.js';
 import { getIamDatabaseUrl } from './runtime-secrets.server.js';
+import { getRuntimeScopeRef } from './scope.js';
+import type { RuntimeScopeRef } from './types.js';
 
 export type PersistAuthAuditResult = {
   persisted: boolean;
-  reason?: 'missing_database_url' | 'invalid_instance_id';
+  reason?:
+    | 'missing_database_url'
+    | 'invalid_scope'
+    | 'invalid_instance_id'
+    | 'platform_audit_unavailable'
+    | 'tenant_audit_unavailable';
   writtenEventTypes: readonly AuthAuditEventType[];
 };
 
@@ -230,15 +237,66 @@ VALUES ($1, $2, $3, $4::jsonb, $5, $6);
   );
 };
 
+const insertPlatformActivityLog = async (
+  client: AuditSqlClient,
+  input: {
+    eventType: AuthAuditEventType;
+    accountId?: string;
+    actorUserId?: string;
+    outcome: AuthAuditEvent['outcome'];
+    requestId?: string;
+    traceId?: string;
+  }
+) => {
+  const payload = {
+    outcome: input.outcome,
+    actor_user_id: input.actorUserId ?? null,
+  };
+
+  await client.query(
+    `
+INSERT INTO iam.platform_activity_logs (
+  scope_kind,
+  account_id,
+  event_type,
+  actor_user_id,
+  payload,
+  request_id,
+  trace_id
+)
+VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7);
+`,
+    [
+      'platform',
+      input.accountId ?? null,
+      input.eventType,
+      input.actorUserId ?? null,
+      JSON.stringify(payload),
+      input.requestId ?? null,
+      input.traceId ?? null,
+    ]
+  );
+};
+
 export const persistAuthAuditEventWithClient = async (
   client: AuditSqlClient,
-  event: Required<Pick<AuthAuditEvent, 'workspaceId'>> & AuthAuditEvent
+  event: Required<Pick<AuthAuditEvent, 'workspaceId'>> & AuthAuditEvent & { scope?: RuntimeScopeRef }
 ): Promise<PersistAuthAuditResult> => {
+  const scope =
+    event.scope
+    ?? getRuntimeScopeRef({ workspaceId: event.workspaceId });
+  if (!scope) {
+    return {
+      persisted: false,
+      reason: 'invalid_scope',
+      writtenEventTypes: [],
+    };
+  }
   const writtenEventTypes: AuthAuditEventType[] = [];
   const isLoginSuccess = event.eventType === 'login' && event.outcome === 'success';
   let accountId: string | undefined;
 
-  if (event.actorUserId) {
+  if (scope.kind === 'instance' && event.actorUserId) {
     if (isLoginSuccess) {
       const encryptedEmailCiphertext = encryptOptionalPii(
         event.actorEmail,
@@ -250,7 +308,7 @@ export const persistAuthAuditEventWithClient = async (
       );
 
       const ensured = await ensureAccount(client, {
-        instanceId: event.workspaceId,
+        instanceId: scope.instanceId,
         keycloakSubject: event.actorUserId,
         encryptedEmailCiphertext,
         encryptedDisplayNameCiphertext,
@@ -260,7 +318,7 @@ export const persistAuthAuditEventWithClient = async (
       if (ensured.created) {
         await insertActivityLog(client, {
           eventType: 'account_created',
-          instanceId: event.workspaceId,
+          instanceId: scope.instanceId,
           accountId,
           actorUserId: event.actorUserId,
           outcome: 'success',
@@ -272,20 +330,31 @@ export const persistAuthAuditEventWithClient = async (
     } else {
       accountId = await resolveAccountId(client, {
         keycloakSubject: event.actorUserId,
-        instanceId: event.workspaceId,
+        instanceId: scope.instanceId,
       });
     }
   }
 
-  await insertActivityLog(client, {
-    eventType: event.eventType,
-    instanceId: event.workspaceId,
-    accountId,
-    actorUserId: event.actorUserId,
-    outcome: event.outcome,
-    requestId: event.requestId,
-    traceId: event.traceId,
-  });
+  if (scope.kind === 'platform') {
+    await insertPlatformActivityLog(client, {
+      eventType: event.eventType,
+      accountId,
+      actorUserId: event.actorUserId,
+      outcome: event.outcome,
+      requestId: event.requestId,
+      traceId: event.traceId,
+    });
+  } else {
+    await insertActivityLog(client, {
+      eventType: event.eventType,
+      instanceId: scope.instanceId,
+      accountId,
+      actorUserId: event.actorUserId,
+      outcome: event.outcome,
+      requestId: event.requestId,
+      traceId: event.traceId,
+    });
+  }
   writtenEventTypes.push(event.eventType);
 
   return {
@@ -297,7 +366,19 @@ export const persistAuthAuditEventWithClient = async (
 export const persistAuthAuditEventToDb = async (
   event: Required<Pick<AuthAuditEvent, 'workspaceId'>> & AuthAuditEvent
 ): Promise<PersistAuthAuditResult> => {
-  if (!event.workspaceId || event.workspaceId.trim().length === 0) {
+  const scope =
+    event.scope
+    ?? getRuntimeScopeRef({ workspaceId: event.workspaceId });
+
+  if (!scope) {
+    return {
+      persisted: false,
+      reason: 'invalid_scope',
+      writtenEventTypes: [],
+    };
+  }
+
+  if (scope.kind === 'instance' && (!scope.instanceId || scope.instanceId.trim().length === 0)) {
     return {
       persisted: false,
       reason: 'invalid_instance_id',
@@ -318,15 +399,27 @@ export const persistAuthAuditEventToDb = async (
   try {
     await client.query('BEGIN');
     await assertIamAppRuntimeRole(client);
-    await client.query('SELECT set_config($1, $2, true);', ['app.instance_id', event.workspaceId]);
+    await client.query(
+      'SELECT set_config($1, $2, true);',
+      ['app.instance_id', scope.kind === 'instance' ? scope.instanceId : '']
+    );
 
-    const result = await persistAuthAuditEventWithClient(client, event);
+    const result = await persistAuthAuditEventWithClient(client, {
+      ...event,
+      scope,
+    });
     await client.query('COMMIT');
 
     return result;
   } catch (error) {
     await client.query('ROLLBACK');
-    throw error;
+    const enrichedError = error instanceof Error ? error : new Error(String(error));
+    (
+      enrichedError as Error & {
+        reasonCode?: PersistAuthAuditResult['reason'];
+      }
+    ).reasonCode = scope.kind === 'platform' ? 'platform_audit_unavailable' : 'tenant_audit_unavailable';
+    throw enrichedError;
   } finally {
     client.release();
   }

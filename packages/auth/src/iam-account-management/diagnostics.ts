@@ -24,6 +24,7 @@ const SCHEMA_OBJECT_MIGRATION_HINTS: Record<string, string> = {
   'iam.account_groups': '0014_iam_groups.sql',
   'iam.account_groups.origin': '0019_iam_account_groups_origin_compat.sql',
   'iam.activity_logs': '0001_iam_core.sql',
+  'iam.platform_activity_logs': '0028_iam_platform_activity_logs.sql',
   'iam.accounts.avatar_url': '0004_iam_account_profile.sql',
   'iam.group_roles': '0014_iam_groups.sql',
   'iam.groups': '0014_iam_groups.sql',

@@ -1,6 +1,7 @@
 import { createSdkLogger, getWorkspaceContext } from '@sva/sdk/server';
 import type { RuntimeDependencyHealth, RuntimeHealthServices } from '@sva/core';
 
+import { resolveAuthConfigForRequest } from '../config.js';
 import { getPermissionCacheHealth } from '../iam-authorization/shared.js';
 import { bootstrapAcceptanceAppDbUserIfNeeded } from '../postgres-app-user-bootstrap.server.js';
 import { getLastRedisError, isRedisAvailable } from '../redis.server.js';
@@ -37,8 +38,30 @@ const toAuthorizationCacheStatus = (status: 'degraded' | 'failed' | 'ready'): Ru
   return 'ready';
 };
 
+const extractRealmFromIssuer = (issuer: string): string | undefined => {
+  try {
+    const url = new URL(issuer);
+    const match = url.pathname.match(/\/realms\/([^/]+)\/?$/);
+    return match?.[1];
+  } catch {
+    return undefined;
+  }
+};
+
 export const readyInternal = async (request: Request): Promise<Response> => {
   const requestContext = getWorkspaceContext();
+  const runtimeAuth = await (async () => {
+    try {
+      const authConfig = await resolveAuthConfigForRequest(request);
+      return {
+        realm: authConfig.authRealm ?? extractRealmFromIssuer(authConfig.issuer),
+      };
+    } catch {
+      return {
+        realm: undefined,
+      };
+    }
+  })();
   const dbStatus = await (async () => {
     try {
       const pool = resolvePool();
@@ -253,6 +276,7 @@ export const readyInternal = async (request: Request): Promise<Response> => {
       db: dbStatus.ready,
       redis: redisStatus.ready,
       keycloak: keycloakStatus.ready,
+      auth: runtimeAuth,
       errors: {
         ...(dbStatus.ready ? {} : { db: dbStatus.error }),
         ...(redisStatus.ready ? {} : { redis: redisStatus.error }),

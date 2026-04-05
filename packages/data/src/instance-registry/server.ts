@@ -2,7 +2,7 @@ import { normalizeHost, type InstanceRegistryRecord } from '@sva/core';
 import { Pool } from 'pg';
 import { createSdkLogger } from '@sva/sdk/server';
 
-import { createInstanceRegistryRepository } from './index';
+import { createInstanceRegistryRepository } from './index.js';
 
 const logger = createSdkLogger({ component: 'instance-registry-server', level: 'info' });
 

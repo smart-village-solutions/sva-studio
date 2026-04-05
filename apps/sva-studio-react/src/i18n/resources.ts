@@ -15,6 +15,7 @@ export const i18nResources = {
         fetchError: 'Systemstatus konnte nicht aktualisiert werden. Request-ID: {{requestId}}',
         lastUpdated: 'Stand: {{timestamp}}',
         notAvailable: 'n. v.',
+        realmLabel: 'Realm: {{realm}}',
         overall: {
           degraded: 'Teilweise gestört',
           not_ready: 'Gestört',
@@ -303,26 +304,13 @@ export const i18nResources = {
         body: 'Verwalten Sie Inhalte, Kontokontext und angeschlossene Module in einer gemeinsamen Oberfläche mit serverseitig abgesicherter Authentifizierung und Berechtigungsprüfung.',
         primaryAction: 'Inhalte öffnen',
         secondaryAction: 'Konto öffnen',
-        loginAction: 'Anmelden',
       },
       session: {
-        title: 'Sitzungsstatus',
-        description: 'Die Startseite zeigt nur den aktuellen Zugangszustand. Rollen- oder Authorize-Diagnostik gehört nicht in die Produktoberfläche.',
         loading: 'Sitzung wird geladen ...',
-        authenticatedTitle: 'Sie sind angemeldet.',
-        authenticatedBody: 'Ihr Zugriff wird über den aktuellen Instanzkontext und serverseitige Berechtigungen gesteuert.',
-        unauthenticatedTitle: 'Keine aktive Sitzung.',
-        unauthenticatedBody: 'Melden Sie sich an, um Inhalte, Module und Verwaltungsfunktionen im freigegebenen Kontext zu nutzen.',
-        instance: 'Instanz: {{instanceId}}',
       },
       sections: {
         overviewTitle: 'Direkte Einstiege',
         overviewBody: 'Nutzen Sie die wichtigsten Bereiche direkt aus der Startseite. Details zu Rollen, Guards und technischen Entscheidungen bleiben in den jeweiligen Fachbereichen verankert.',
-      },
-      guest: {
-        title: 'Anmeldung erforderlich',
-        description: 'Mit ungültiger oder fehlender Sitzung werden keine geschützten Inhalte angezeigt. Melden Sie sich an, um auf die freigegebenen Bereiche zuzugreifen.',
-        action: 'Zum Login',
       },
       cards: {
         content: {
@@ -555,10 +543,12 @@ export const i18nResources = {
         },
         actions: {
           create: 'Instanz anlegen',
+          edit: 'Bearbeiten',
           save: 'Instanz speichern',
           activate: 'Aktivieren',
           suspend: 'Suspendieren',
           archive: 'Archivieren',
+          back: 'Zur Übersicht',
           checkKeycloakStatus: 'Keycloak-Status prüfen',
           reconcileKeycloak: 'Realm anwenden',
           resetTenantAdmin: 'Tenant-Admin neu setzen',
@@ -599,6 +589,7 @@ export const i18nResources = {
         },
         messages: {
           error: 'Die Instanzverwaltung konnte nicht geladen werden.',
+          emptyState: 'Es sind aktuell keine Instanzen vorhanden.',
         },
         errors: {
           forbidden: 'Keine Berechtigung für die Instanzverwaltung.',
@@ -754,6 +745,8 @@ export const i18nResources = {
           loading: 'Nutzer werden geladen ...',
           error: 'Nutzer konnten nicht geladen werden.',
           resultCount: '{{count}} Nutzer gefunden.',
+          syncRunning: 'Synchronisierung läuft ...',
+          syncEmpty: 'Keine neuen oder geänderten Benutzer gefunden. {{skippedCount}} ohne passenden Instanzkontext übersprungen.',
           syncResult:
             '{{importedCount}} importiert, {{updatedCount}} aktualisiert, {{skippedCount}} ohne passenden Instanzkontext übersprungen.',
         },
@@ -901,6 +894,7 @@ export const i18nResources = {
           edit: 'Rolle bearbeiten',
           delete: 'Rolle löschen',
           reconcile: 'Abgleich starten',
+          importFromKeycloak: 'Bereits in Keycloak angelegte Rollen importieren',
           retrySync: 'Erneut synchronisieren',
           sort: 'Sortierung wechseln',
           retry: 'Erneut versuchen',
@@ -938,9 +932,17 @@ export const i18nResources = {
           title: 'Neue Rolle erstellen',
           description: 'Benutzerdefinierte Rollen können später weiter angepasst werden.',
           keyLabel: 'Technischer Rollenschlüssel',
+          keyHint: 'Mindestens 3 Zeichen, nur Kleinbuchstaben, Ziffern und Unterstriche.',
           nameLabel: 'Anzeigename',
           descriptionLabel: 'Beschreibung',
           levelLabel: 'Rollenlevel',
+          errors: {
+            invalidRoleKey:
+              'Der Rollenschlüssel muss 3 bis 64 Zeichen lang sein und darf nur Kleinbuchstaben, Ziffern und Unterstriche enthalten.',
+            invalidRequest: 'Die Rollenanlage enthält ungültige oder unvollständige Daten.',
+            retry: 'Die Anfrage wurde bereits verarbeitet oder kollidiert mit einem vorherigen Versuch. Bitte die Seite neu laden und erneut versuchen.',
+            submitFailed: 'Die Rolle konnte nicht erstellt werden.',
+          },
         },
         editDialog: {
           title: 'Rolle bearbeiten',
@@ -1416,6 +1418,7 @@ export const i18nResources = {
         fetchError: 'System health could not be refreshed. Request ID: {{requestId}}',
         lastUpdated: 'Updated: {{timestamp}}',
         notAvailable: 'n/a',
+        realmLabel: 'Realm: {{realm}}',
         overall: {
           degraded: 'Degraded',
           not_ready: 'Unavailable',
@@ -1704,26 +1707,13 @@ export const i18nResources = {
         body: 'Manage content, account context, and connected modules in one shared interface with server-side authentication and authorization checks.',
         primaryAction: 'Open content',
         secondaryAction: 'Open account',
-        loginAction: 'Sign in',
       },
       session: {
-        title: 'Session status',
-        description: 'The home page only shows the current access state. Role or authorize diagnostics do not belong in the product surface.',
         loading: 'Session is loading ...',
-        authenticatedTitle: 'You are signed in.',
-        authenticatedBody: 'Your access is controlled by the current instance context and server-side permissions.',
-        unauthenticatedTitle: 'No active session.',
-        unauthenticatedBody: 'Sign in to use content, modules, and administrative functions within the granted context.',
-        instance: 'Instance: {{instanceId}}',
       },
       sections: {
         overviewTitle: 'Direct entry points',
         overviewBody: 'Use the key areas directly from the home page. Details about roles, guards, and technical decisions remain within their dedicated feature areas.',
-      },
-      guest: {
-        title: 'Sign-in required',
-        description: 'No protected content is shown with a missing or invalid session. Sign in to access the granted areas.',
-        action: 'Go to login',
       },
       cards: {
         content: {
@@ -1956,10 +1946,12 @@ export const i18nResources = {
         },
         actions: {
           create: 'Create instance',
+          edit: 'Edit',
           save: 'Save instance',
           activate: 'Activate',
           suspend: 'Suspend',
           archive: 'Archive',
+          back: 'Back to overview',
           checkKeycloakStatus: 'Check Keycloak status',
           reconcileKeycloak: 'Apply realm',
           resetTenantAdmin: 'Reset tenant admin',
@@ -2000,6 +1992,7 @@ export const i18nResources = {
         },
         messages: {
           error: 'The instance management view could not be loaded.',
+          emptyState: 'There are currently no instances.',
         },
         errors: {
           forbidden: 'You do not have permission to manage instances.',
@@ -2156,6 +2149,8 @@ export const i18nResources = {
           loading: 'Loading users ...',
           error: 'Users could not be loaded.',
           resultCount: '{{count}} users found.',
+          syncRunning: 'Synchronization in progress ...',
+          syncEmpty: 'No new or changed users found. {{skippedCount}} skipped without matching instance context.',
           syncResult:
             '{{importedCount}} imported, {{updatedCount}} updated, {{skippedCount}} skipped without matching instance context.',
         },
@@ -2303,6 +2298,7 @@ export const i18nResources = {
           edit: 'Edit role',
           delete: 'Delete role',
           reconcile: 'Run reconcile',
+          importFromKeycloak: 'Import roles already created in Keycloak',
           retrySync: 'Retry sync',
           sort: 'Toggle sorting',
           retry: 'Retry',
@@ -2340,9 +2336,17 @@ export const i18nResources = {
           title: 'Create role',
           description: 'Custom roles can be refined later.',
           keyLabel: 'Technical role key',
+          keyHint: 'At least 3 characters, only lowercase letters, digits, and underscores.',
           nameLabel: 'Display name',
           descriptionLabel: 'Description',
           levelLabel: 'Role level',
+          errors: {
+            invalidRoleKey:
+              'The role key must be 3 to 64 characters long and contain only lowercase letters, digits, and underscores.',
+            invalidRequest: 'The role creation request contains invalid or incomplete data.',
+            retry: 'The request was already processed or conflicts with a previous attempt. Reload the page and try again.',
+            submitFailed: 'The role could not be created.',
+          },
         },
         editDialog: {
           title: 'Edit role',

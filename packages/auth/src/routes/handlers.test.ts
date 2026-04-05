@@ -23,6 +23,7 @@ const handleCallbackMock = vi.fn();
 const withAuthenticatedUserMock = vi.fn();
 const loadInstanceByHostnameMock = vi.fn();
 const resolvedAuthConfigState = {
+  kind: 'platform' as const,
   loginStateCookieName: 'sva_auth_state',
   loginStateSecret: 'secret',
   sessionCookieName: 'sva_auth_session',
@@ -101,6 +102,7 @@ describe('routes/handlers', () => {
     vi.stubEnv('SVA_MOCK_AUTH', 'false');
     vi.stubEnv('NODE_ENV', 'development');
     loadInstanceByHostnameMock.mockResolvedValue(null);
+    resolvedAuthConfigState.kind = 'platform';
     resolvedAuthConfigState.instanceId = undefined;
     resolvedAuthConfigState.authRealm = undefined;
     resolvedAuthConfigState.clientId = 'client-id';
@@ -181,6 +183,7 @@ describe('routes/handlers', () => {
   });
 
   it('logs the resolved auth config for login requests', async () => {
+    resolvedAuthConfigState.kind = 'instance';
     resolvedAuthConfigState.instanceId = 'bb-guben';
     resolvedAuthConfigState.authRealm = 'bb-guben';
     resolvedAuthConfigState.clientId = 'sva-studio';
@@ -211,12 +214,15 @@ describe('routes/handlers', () => {
         auth_client_id: 'sva-studio',
         auth_redirect_uri: 'https://bb-guben.studio.example.org/auth/callback',
         auth_issuer: 'https://keycloak.example/realms/bb-guben',
+        auth_scope_kind: 'instance',
+        scope_kind: 'instance',
       })
     );
   });
 
   it('attaches debug auth headers for login requests when enabled', async () => {
     vi.stubEnv('SVA_AUTH_DEBUG_HEADERS', 'true');
+    resolvedAuthConfigState.kind = 'instance';
     resolvedAuthConfigState.instanceId = 'bb-guben';
     resolvedAuthConfigState.authRealm = 'bb-guben';
     resolvedAuthConfigState.clientId = 'sva-studio';
@@ -249,6 +255,7 @@ describe('routes/handlers', () => {
   });
 
   it('emits callback failure audit events with the tenant workspace id', async () => {
+    resolvedAuthConfigState.kind = 'instance';
     resolvedAuthConfigState.instanceId = 'de-musterhausen';
     resolvedAuthConfigState.authRealm = 'de-musterhausen';
     resolvedAuthConfigState.clientId = 'sva-studio';
@@ -259,13 +266,14 @@ describe('routes/handlers', () => {
 
     const secret = 'secret';
     const payload = {
+      kind: 'instance',
+      instanceId: 'de-musterhausen',
       state: 'state-failure',
       codeVerifier: 'verifier-failure',
       nonce: 'nonce-failure',
       createdAt: Date.now(),
       returnTo: '/',
       silent: false,
-      workspaceId: 'de-musterhausen',
     };
     const payloadBase64 = Buffer.from(JSON.stringify(payload)).toString('base64url');
     const signature = createHmac('sha256', secret).update(payloadBase64).digest('base64url');
@@ -284,6 +292,10 @@ describe('routes/handlers', () => {
         eventType: 'login',
         outcome: 'failure',
         workspaceId: 'de-musterhausen',
+        scope: expect.objectContaining({
+          kind: 'instance',
+          instanceId: 'de-musterhausen',
+        }),
       })
     );
   });

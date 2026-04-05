@@ -78,10 +78,12 @@ Außerhalb des Scopes:
 
 - Persistiert Rollen, Permissions, Benutzer, Organisationsbezüge und Auditdaten im `iam`-Schema.
 - Erzwingt Mandantenisolierung über `instance_id` und RLS-nahe Betriebsregeln.
+- Modelliert den Root-Host separat als `platform`-Scope außerhalb von `iam.instances`.
 
 ### 5. Audit- und Observability-Pfad
 
-- Sicherheitsrelevante Ereignisse werden in `iam.activity_logs` persistiert.
+- Sicherheitsrelevante Tenant-Ereignisse werden in `iam.activity_logs` persistiert.
+- Sicherheitsrelevante Plattform-Ereignisse werden in `iam.platform_activity_logs` persistiert.
 - Operative Logs laufen über den SDK Logger in die OTEL-Pipeline.
 
 ### 6. Cache- und Reconcile-Pfad
@@ -130,7 +132,8 @@ Außerhalb des Scopes:
 | `iam.organizations` | Untereinheiten innerhalb einer Instanz |
 | `iam.roles` | Rollenkatalog pro Instanz inklusive technischer Identität |
 | `iam.permissions` | Berechtigungsdefinitionen pro Instanz |
-| `iam.activity_logs` | unveränderbare Audit- und Compliance-Nachweise |
+| `iam.activity_logs` | unveränderbare Tenant-Audit- und Compliance-Nachweise |
+| `iam.platform_activity_logs` | unveränderbare Plattform-Audit-Nachweise für Root-Host- und Control-Plane-Ereignisse |
 
 ### Zuordnungstabellen
 
@@ -144,6 +147,7 @@ Außerhalb des Scopes:
 ### Modellierungsregeln
 
 - Alle mandantenrelevanten Tabellen tragen `instance_id`.
+- `platform` ist ein eigener Runtime-Scope ohne synthetischen `instance_id`-Wert.
 - `organizations` sind Untereinheiten einer Instanz, kein eigener Primär-Mandantenscope.
 - `role_key` ist die stabile technische Rollenidentität.
 - Anzeigenamen bleiben davon getrennt und dürfen editierbar sein.

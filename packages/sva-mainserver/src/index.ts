@@ -4,4 +4,4 @@ export type {
   SvaMainserverErrorCode,
   SvaMainserverInstanceConfig,
   SvaMainserverProviderKey,
-} from './types';
+} from './types.js';

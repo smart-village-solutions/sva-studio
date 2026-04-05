@@ -1,2 +1,2 @@
-export * from './integrations/instance-integrations.server';
-export * from './instance-registry/server';
+export * from './integrations/instance-integrations.server.js';
+export * from './instance-registry/server.js';

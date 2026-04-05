@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import React from 'react';
 
@@ -114,8 +114,8 @@ describe('RolesPage', () => {
     expect(screen.getAllByRole('link', { name: 'Rolle bearbeiten' })[0]?.getAttribute('href')).toBe('/admin/roles/role-2');
   });
 
-  it('opens create dialog and submits normalized payload', async () => {
-    const createRole = vi.fn().mockResolvedValue(true);
+  it('links the create action to the dedicated creation page', () => {
+    const reconcile = vi.fn();
 
     useRolesMock.mockReturnValue({
       roles: [],
@@ -125,81 +125,18 @@ describe('RolesPage', () => {
       reconcileReport: null,
       refetch: vi.fn(),
       clearMutationError: vi.fn(),
-      createRole,
+      createRole: vi.fn(),
       updateRole: vi.fn(),
       deleteRole: vi.fn(),
       retryRoleSync: vi.fn(),
-      reconcile: vi.fn(),
+      reconcile,
     });
 
     render(<RolesPage />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Rolle anlegen' }));
-    const dialog = screen.getByRole('dialog', { name: 'Neue Rolle erstellen' });
-
-    fireEvent.change(within(dialog).getByLabelText('Technischer Rollenschlüssel'), {
-      target: { value: '  Team Lead  ' },
-    });
-    fireEvent.change(within(dialog).getByLabelText('Anzeigename'), {
-      target: { value: ' Team Lead ' },
-    });
-    fireEvent.change(within(dialog).getByLabelText('Beschreibung'), {
-      target: { value: ' Verantwortlich für Teamkoordination ' },
-    });
-    fireEvent.change(within(dialog).getByLabelText('Rollenlevel'), {
-      target: { value: '42' },
-    });
-
-    fireEvent.submit(within(dialog).getByRole('button', { name: 'Rolle anlegen' }).closest('form')!);
-
-    expect(createRole).toHaveBeenCalledWith({
-      roleName: 'team_lead',
-      displayName: 'Team Lead',
-      description: 'Verantwortlich für Teamkoordination',
-      roleLevel: 42,
-      permissionIds: [],
-    });
-    await waitFor(() => {
-      expect(screen.queryByRole('dialog', { name: 'Neue Rolle erstellen' })).toBeNull();
-    });
-  });
-
-  it('shows retry on list error and keeps create dialog open on create failure', () => {
-    const createRole = vi.fn().mockResolvedValue(false);
-    const clearMutationError = vi.fn();
-
-    useRolesMock.mockReturnValue({
-      roles: [],
-      isLoading: false,
-      error: null,
-      mutationError: {
-        status: 409,
-        code: 'conflict',
-        message: 'conflict',
-      },
-      reconcileReport: null,
-      refetch: vi.fn(),
-      clearMutationError,
-      createRole,
-      updateRole: vi.fn(),
-      deleteRole: vi.fn(),
-      retryRoleSync: vi.fn(),
-      reconcile: vi.fn(),
-    });
-
-    render(<RolesPage />);
-
-    fireEvent.click(screen.getByRole('button', { name: 'Rolle anlegen' }));
-    const dialog = screen.getByRole('dialog', { name: 'Neue Rolle erstellen' });
-    fireEvent.change(within(dialog).getByLabelText('Technischer Rollenschlüssel'), {
-      target: { value: 'Support' },
-    });
-    fireEvent.submit(within(dialog).getByRole('button', { name: 'Rolle anlegen' }).closest('form')!);
-
-    expect(createRole).toHaveBeenCalledTimes(1);
-    expect(screen.getByRole('dialog', { name: 'Neue Rolle erstellen' })).toBeTruthy();
-    expect(within(dialog).getByRole('alert').textContent).toContain('Die Rollenänderung steht in Konflikt');
-    expect(clearMutationError).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('link', { name: 'Rolle anlegen' }).getAttribute('href')).toBe('/admin/roles/new');
+    fireEvent.click(screen.getByRole('button', { name: 'Bereits in Keycloak angelegte Rollen importieren' }));
+    expect(reconcile).toHaveBeenCalledTimes(1);
   });
 
   it('triggers delete confirmation for custom roles', () => {

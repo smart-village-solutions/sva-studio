@@ -38,12 +38,13 @@ export const UserListPage = () => {
   const [deactivateDialog, setDeactivateDialog] = React.useState<{ mode: 'single' | 'bulk'; userId?: string; userIds?: string[] } | null>(
     null
   );
+  const [syncStatus, setSyncStatus] = React.useState<'idle' | 'pending' | 'success' | 'empty' | 'error'>('idle');
   const [syncResult, setSyncResult] = React.useState<{
     importedCount: number;
     updatedCount: number;
     skippedCount: number;
   } | null>(null);
-  const [isSyncing, setIsSyncing] = React.useState(false);
+  const [syncError, setSyncError] = React.useState<Parameters<typeof userErrorMessage>[0]>(null);
 
   const [createForm, setCreateForm] = React.useState({
     email: '',
@@ -91,18 +92,22 @@ export const UserListPage = () => {
   };
 
   const onSyncUsers = async () => {
-    setIsSyncing(true);
+    setSyncStatus('pending');
+    setSyncResult(null);
+    setSyncError(null);
     const result = await usersApi.syncUsersFromKeycloak();
-    setIsSyncing(false);
-    if (!result) {
+    if (!result.ok) {
+      setSyncStatus('error');
+      setSyncError(result.error);
       return;
     }
 
     setSyncResult({
-      importedCount: result.importedCount,
-      updatedCount: result.updatedCount,
-      skippedCount: result.skippedCount,
+      importedCount: result.report.importedCount,
+      updatedCount: result.report.updatedCount,
+      skippedCount: result.report.skippedCount,
     });
+    setSyncStatus(result.report.importedCount === 0 && result.report.updatedCount === 0 ? 'empty' : 'success');
   };
 
   const pageCount = Math.max(1, Math.ceil(usersApi.total / usersApi.pageSize));
@@ -224,10 +229,10 @@ export const UserListPage = () => {
               <Button
                 type="button"
                 variant="outline"
-                disabled={isSyncing}
+                disabled={syncStatus === 'pending'}
                 onClick={() => void onSyncUsers()}
               >
-                {isSyncing ? t('admin.users.actions.syncing') : t('admin.users.actions.syncKeycloak')}
+                {syncStatus === 'pending' ? t('admin.users.actions.syncing') : t('admin.users.actions.syncKeycloak')}
               </Button>
             </>
           }
@@ -246,14 +251,45 @@ export const UserListPage = () => {
         />
       </StudioListPageTemplate>
 
-      {syncResult ? (
+      {syncStatus === 'pending' ? (
         <p role="status" aria-live="polite" className="text-xs text-muted-foreground">
-          {t('admin.users.messages.syncResult', {
-            importedCount: syncResult.importedCount,
-            updatedCount: syncResult.updatedCount,
-            skippedCount: syncResult.skippedCount,
-          })}
+          {t('admin.users.messages.syncRunning')}
         </p>
+      ) : null}
+
+      {syncStatus === 'success' && syncResult ? (
+        <Alert className="border-secondary/40 bg-secondary/10 text-secondary" role="status">
+          <AlertDescription>
+            {t('admin.users.messages.syncResult', {
+              importedCount: syncResult.importedCount,
+              updatedCount: syncResult.updatedCount,
+              skippedCount: syncResult.skippedCount,
+            })}
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
+      {syncStatus === 'empty' && syncResult ? (
+        <Alert className="border-secondary/40 bg-secondary/10 text-secondary" role="status">
+          <AlertDescription>
+            {t('admin.users.messages.syncEmpty', {
+              skippedCount: syncResult.skippedCount,
+            })}
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
+      {syncStatus === 'error' && syncError ? (
+        <Alert className="border-destructive/40 bg-destructive/10 text-destructive" role="alert">
+          <AlertDescription className="flex flex-col gap-3">
+            <span>{userErrorMessage(syncError)}</span>
+            <div>
+              <Button type="button" size="sm" variant="outline" onClick={() => void onSyncUsers()}>
+                {t('admin.users.actions.retry')}
+              </Button>
+            </div>
+          </AlertDescription>
+        </Alert>
       ) : null}
 
       {usersApi.error ? (

@@ -1,7 +1,7 @@
 import { lookup as dnsLookup } from 'node:dns/promises';
 import { isIP } from 'node:net';
 
-import { SvaMainserverError } from './errors';
+import { SvaMainserverError } from './errors.js';
 
 const localhostHosts = new Set(['localhost', '127.0.0.1', '::1', '[::1]']);
 

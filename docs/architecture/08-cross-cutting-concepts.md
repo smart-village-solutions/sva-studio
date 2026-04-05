@@ -61,8 +61,11 @@ gleichzeitig beeinflussen.
 - Invalidation erfolgt event-first über Postgres `NOTIFY` mit `eventId`; TTL begrenzt Eventverlust, ersetzt aber keinen technischen Failover-Pfad
 - Permission-Snapshots sind reine Laufzeitoptimierung und keine fachliche Source of Truth
 - Änderungen an direkten Nutzerrechten invalidieren dieselben Snapshot-Pfade wie Rollen- und Gruppenänderungen; Cache-Konsistenz ist damit für `me/permissions` und `authorize` identisch abgesichert
-- Audit-Logging für IAM-Ereignisse folgt Dual-Write (`iam.activity_logs` + OTEL via SDK Logger)
+- Audit-Logging für IAM-Ereignisse folgt Dual-Write:
+  - Tenant-Scope: `iam.activity_logs` + OTEL via SDK Logger
+  - Plattform-Scope: `iam.platform_activity_logs` + OTEL via SDK Logger
 - Audit-Daten enthalten korrelierbare IDs (`request_id`, `trace_id`) und pseudonymisierte Actor-Referenzen
+- Der Root-Host ist ein expliziter Plattform-Scope und keine Pseudo-Instanz in `iam.instances`
 - Studio-verwaltete Rollen werden über `managed_by = 'studio'` und `instance_id` gegen fremdverwaltete Keycloak-Rollen abgegrenzt
 - Keycloak bleibt von direkten Nutzerrechten fachlich entkoppelt; diese Konfiguration ist ausschließlich Studio-intern und wird nicht in den IdP gespiegelt
 - `role_key` ist die stabile technische Identität, `display_name` der editierbare UI-Name
@@ -86,9 +89,11 @@ gleichzeitig beeinflussen.
 - IAM-Authorize/Cache-Logs nutzen strukturierte Operations (`cache_lookup`, `cache_invalidate`, `cache_stale_detected`, `cache_invalidate_failed`)
 - Cold-Start-, Recompute- und Store-Fehler im Snapshot-Pfad werden als strukturierte Cache-Events (`cache_cold_start`, `cache_store_failed`) geloggt
 - Korrelationsfelder `request_id` und `trace_id` sind im IAM-Pfad verpflichtend
+- Scope-aware Logs enthalten zusätzlich `scope_kind`, `workspace_id` und im Tenant-Scope `instance_id`
 - Außerhalb des `AsyncLocalStorage`-Kontexts werden `request_id` und `trace_id` best effort aus validierten Headern (`X-Request-Id`, `traceparent`) extrahiert
 - Serverseitige JSON-Fehlerantworten für Auth-/IAM-Hotspots nutzen den flachen Vertrag `{ error: string, message?: string }` und setzen best effort `X-Request-Id`
 - IAM-v1-Fehlerantworten dürfen additive `details` tragen, enthalten dort aber nur nicht-sensitive Diagnosefelder wie `reason_code`, `dependency`, `schema_object`, `expected_migration`, `actor_resolution` und `instance_id`
+- Auth-, Resolver- und Audit-Fehler protokollieren redigiert nur `error_type`, `reason_code`, `dependency`, `scope_kind` und Korrelationsfelder; rohe Provider-/DB-Fehltexte bleiben außerhalb des Standard-Logs
 - IAM-Readiness und Diagnosepfade exponieren Schema-Drift bewusst knapp (`schema_drift`, `missing_table`, `missing_column`) statt rohe SQL-, Redis- oder Provider-Fehler an UI oder Browser weiterzugeben
 - Runtime-Doctor und Deploy-Report ergänzen den fachlichen Schema-Guard um `goose`-Status und die verwendete `goose`-Version, ohne Secrets oder Roh-SQL nach außen zu exponieren
 - Keycloak-User-Sync loggt übersprungene Benutzer nur begrenzt, auf Debug-Level und ohne Klartext-PII; Summary-Logs enthalten `skipped_count` und `sample_instance_ids`

@@ -1,3 +1,4 @@
+import { createSdkLogger } from '@sva/sdk/server';
 import { metrics } from '@opentelemetry/api';
 import { getRuntimeProfileFromEnv } from '@sva/sdk';
 
@@ -11,6 +12,8 @@ import { getIamDatabaseUrl } from '../runtime-secrets.server.js';
 import { createPoolResolver, type QueryClient, withInstanceDb } from '../shared/db-helpers.js';
 
 export const resolvePool = createPoolResolver(getIamDatabaseUrl);
+
+const logger = createSdkLogger({ component: 'iam-identity-provider', level: 'info' });
 
 let identityProviderCache:
   | IdentityProviderResolution
@@ -48,11 +51,30 @@ export const resolveIdentityProviderForInstance = async (
   | null
 > => {
   const runtimeProfile = getRuntimeProfileFromEnv(process.env);
-  const allowGlobalFallback = runtimeProfile === null || runtimeProfile === 'local-builder' || runtimeProfile === 'local-keycloak'
-    || process.env.NODE_ENV === 'test';
+  const isLocalRuntimeProfile = runtimeProfile === 'local-builder' || runtimeProfile === 'local-keycloak';
+  const allowGlobalFallback = runtimeProfile === null || isLocalRuntimeProfile || process.env.NODE_ENV === 'test';
   const instance = await loadInstanceById(instanceId).catch(() => null);
   if (!instance) {
     return allowGlobalFallback ? resolveIdentityProvider() : null;
+  }
+
+  const globalRealm = process.env.KEYCLOAK_ADMIN_REALM;
+  const prefersGlobalRealmInLocalProfile =
+    isLocalRuntimeProfile &&
+    typeof globalRealm === 'string' &&
+    globalRealm.trim().length > 0 &&
+    instance.authRealm !== globalRealm;
+
+  if (prefersGlobalRealmInLocalProfile) {
+    logger.info('Using global Keycloak admin realm for local instance resolution', {
+      operation: 'resolve_identity_provider_for_instance',
+      instance_id: instanceId,
+      instance_auth_realm: instance.authRealm,
+      configured_admin_realm: globalRealm,
+      runtime_profile: runtimeProfile ?? 'unset',
+      reason_code: 'local_global_realm_fallback',
+    });
+    return resolveIdentityProvider();
   }
 
   try {

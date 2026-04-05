@@ -110,14 +110,14 @@ describe('instance-registry server helpers', () => {
     );
   });
 
-  it('fails with a structured error when the IAM database URL is invalid', async () => {
+  it('fails with a structured missing error when the explicit IAM database URL is invalid and no fallback credentials exist', async () => {
     process.env.IAM_DATABASE_URL = '::not-a-url::';
     delete process.env.APP_DB_PASSWORD;
     delete process.env.POSTGRES_PASSWORD;
 
     const { loadInstanceByHostname } = await import('./server');
 
-    await expect(loadInstanceByHostname('demo.studio.example.org')).rejects.toThrow('iam_database_url_invalid');
+    await expect(loadInstanceByHostname('demo.studio.example.org')).rejects.toThrow('iam_database_url_missing');
   });
 
   it('falls back to a derived IAM database URL when the explicit url is invalid', async () => {

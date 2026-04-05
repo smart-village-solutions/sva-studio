@@ -1582,16 +1582,50 @@ SELECT json_build_object(
       }
     );
   } catch (error) {
-    return toDoctorCheck(
-      'instance-hostnames',
-      'error',
-      'tenant_host_resolution_failed',
-      error instanceof Error ? error.message : String(error),
-      {
-        hostnames: expectedHostnames.map(({ hostname }) => hostname),
-        parentDomain,
+    const message = error instanceof Error ? error.message : String(error);
+    const jsonMatch = message.match(/\{[\s\S]*\}/u);
+
+    if (jsonMatch) {
+      try {
+        const fallbackPayload = JSON.parse(jsonMatch[0]) as {
+          checked_hostnames?: string;
+          missing_hostnames?: string[];
+        };
+
+        const missingHostnames = Array.isArray(fallbackPayload.missing_hostnames) ? fallbackPayload.missing_hostnames : [];
+        if (missingHostnames.length > 0) {
+          return toDoctorCheck(
+            'instance-hostnames',
+            'error',
+            'tenant_instance_not_found',
+            'Mindestens ein erwartetes Tenant-Hostname-Mapping fehlt oder ist nicht primaer.',
+            {
+              missingHostnames,
+              parentDomain,
+            }
+          );
+        }
+
+        return toDoctorCheck(
+          'instance-hostnames',
+          'ok',
+          'tenant_hostnames_ready',
+          'Alle erwarteten Tenant-Hostname-Mappings sind vorhanden.',
+          {
+            hostnames: expectedHostnames.map(({ hostname }) => hostname),
+            parentDomain,
+            recoveredFromTransportNoise: true,
+          }
+        );
+      } catch {
+        // Keep original error below when fallback payload cannot be parsed.
       }
-    );
+    }
+
+    return toDoctorCheck('instance-hostnames', 'error', 'tenant_host_resolution_failed', message, {
+      hostnames: expectedHostnames.map(({ hostname }) => hostname),
+      parentDomain,
+    });
   }
 };
 

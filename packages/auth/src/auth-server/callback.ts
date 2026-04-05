@@ -7,20 +7,34 @@ import { client, getOidcConfig, invalidateOidcConfig } from '../oidc.server.js';
 import { consumeLoginState, createSession, getSessionControlState } from '../redis-session.server.js';
 import { getScopeFromAuthConfig } from '../scope.js';
 import { isRetryableTokenExchangeError } from '../shared/error-guards.js';
-import type { AuthConfig, InstanceScopeRef, LoginState, PlatformScopeRef } from '../types.js';
+import type { AuthConfig, InstanceScopeRef, LoginState, PlatformScopeRef, ScopeKind } from '../types.js';
 import { buildLogContext } from '../shared/log-context.js';
 import { buildSessionUser, resolveSessionExpiry } from './shared.js';
 
 const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
+
+type UntrustedLoginState = {
+  codeVerifier: string;
+  nonce: string;
+  createdAt: number;
+  returnTo?: string;
+  silent?: boolean;
+  kind: ScopeKind;
+  instanceId?: string;
+};
 
 const readClaimSubject = (claims: Record<string, unknown>): string => {
   const subject = claims.sub;
   return typeof subject === 'string' ? subject : '';
 };
 
-const normalizeLoginState = (loginState: LoginState): LoginState => {
+const normalizeLoginState = (loginState: UntrustedLoginState): LoginState => {
   if (loginState.kind === 'platform') {
-    return loginState satisfies PlatformScopeRef & Omit<LoginState, 'kind' | 'instanceId'>;
+    const { instanceId: _ignored, ...rest } = loginState;
+    return {
+      ...rest,
+      kind: 'platform',
+    } satisfies PlatformScopeRef & Omit<LoginState, 'kind' | 'instanceId'>;
   }
 
   const instanceId = typeof loginState.instanceId === 'string' ? loginState.instanceId.trim() : '';
@@ -141,7 +155,7 @@ export const handleCallback = async (params: {
   code: string;
   state: string;
   iss?: string | null;
-  loginState?: LoginState | null;
+  loginState?: UntrustedLoginState | null;
   authConfig?: AuthConfig;
 }) => {
   const authConfig = params.authConfig ?? getAuthConfig();

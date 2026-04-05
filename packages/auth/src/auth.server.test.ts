@@ -387,6 +387,7 @@ describe('getSessionUser', () => {
       code: 'code-1',
       state: 'state-1',
       loginState: {
+        kind: 'platform',
         codeVerifier: 'verifier-1',
         nonce: 'nonce-1',
         createdAt: Date.now(),
@@ -430,6 +431,7 @@ describe('getSessionUser', () => {
       code: 'code-3',
       state: 'state-3',
       loginState: {
+        kind: 'platform',
         codeVerifier: 'verifier-3',
         nonce: 'nonce-3',
         createdAt: Date.now(),
@@ -454,6 +456,23 @@ describe('getSessionUser', () => {
     await expect(handleCallback({ code: 'code-2', state: 'state-missing' })).rejects.toThrow(
       'Invalid login state'
     );
+  });
+
+  it('handleCallback fails closed for instance-scoped login state without instanceId', async () => {
+    const { handleCallback } = await import('./auth.server');
+
+    await expect(
+      handleCallback({
+        code: 'code-missing-instance',
+        state: 'state-missing-instance',
+        loginState: {
+          kind: 'instance',
+          codeVerifier: 'verifier-missing-instance',
+          nonce: 'nonce-missing-instance',
+          createdAt: Date.now(),
+        } as never,
+      })
+    ).rejects.toThrow('Invalid login state: missing instanceId for instance scope');
   });
 
   it('handleCallback invalidates the cached OIDC config and retries token exchange once', async () => {
@@ -507,6 +526,8 @@ describe('getSessionUser', () => {
         authRealm: 'bb-guben',
       },
       loginState: {
+        kind: 'instance',
+        instanceId: 'bb-guben',
         codeVerifier: 'verifier-retry',
         nonce: 'nonce-retry',
         createdAt: Date.now(),
@@ -555,6 +576,8 @@ describe('getSessionUser', () => {
           authRealm: 'bb-guben',
         },
         loginState: {
+          kind: 'instance',
+          instanceId: 'bb-guben',
           codeVerifier: 'verifier-no-retry',
           nonce: 'nonce-no-retry',
           createdAt: Date.now(),

@@ -42,6 +42,9 @@ const shouldRetryWithPrimaryHostname = (error: unknown): boolean => {
   );
 };
 
+const readErrorType = (error: unknown): string =>
+  error instanceof Error && error.constructor?.name ? error.constructor.name : typeof error;
+
 const ensureValidIamDatabaseUrl = (databaseUrl: string | undefined): string | null => {
   if (!databaseUrl) {
     return null;
@@ -237,20 +240,22 @@ export const loadInstanceByHostname = async (
           const fallbackResult = await repository.resolvePrimaryHostname(normalizedHostname);
           logger.warn('Instance hostname lookup retried via primary_hostname fallback', {
             hostname: normalizedHostname,
-            reason: 'tenant_host_resolution_primary_hostname_fallback',
-            error: error instanceof Error ? error.message : String(error),
+            reason_code: 'tenant_host_resolution_primary_hostname_fallback',
+            error_type: readErrorType(error),
+            dependency: 'iam_database',
             instance_id: fallbackResult?.instanceId ?? undefined,
           });
           return fallbackResult;
         }
         logger.error('Instance hostname lookup failed in repository layer', {
           hostname: normalizedHostname,
-          reason: 'tenant_host_resolution_failed',
-          error: error instanceof Error ? error.message : String(error),
+          reason_code: 'tenant_host_resolution_failed',
+          error_type: readErrorType(error),
+          dependency: 'iam_database',
         });
-        throw new Error(
-          `tenant_host_resolution_failed: ${normalizedHostname}: ${error instanceof Error ? error.message : String(error)}`
-        );
+        throw new Error(`tenant_host_resolution_failed: ${normalizedHostname}`, {
+          cause: error instanceof Error ? error : undefined,
+        });
       }
     },
     { getDatabaseUrl: () => normalizedDatabaseUrl }

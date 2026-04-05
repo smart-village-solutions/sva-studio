@@ -18,6 +18,23 @@ const readClaimSubject = (claims: Record<string, unknown>): string => {
   return typeof subject === 'string' ? subject : '';
 };
 
+const normalizeLoginState = (loginState: LoginState): LoginState => {
+  if (loginState.kind === 'platform') {
+    return loginState satisfies PlatformScopeRef & Omit<LoginState, 'kind' | 'instanceId'>;
+  }
+
+  const instanceId = typeof loginState.instanceId === 'string' ? loginState.instanceId.trim() : '';
+  if (!instanceId) {
+    throw new Error('Invalid login state: missing instanceId for instance scope');
+  }
+
+  return {
+    ...loginState,
+    kind: 'instance',
+    instanceId,
+  } satisfies InstanceScopeRef & Omit<LoginState, 'kind' | 'instanceId'>;
+};
+
 const persistSession = async (input: {
   accessToken?: string;
   refreshToken?: string;
@@ -133,16 +150,7 @@ export const handleCallback = async (params: {
   if (!loginState) {
     throw new Error('Invalid login state');
   }
-  let normalizedLoginState: LoginState;
-  if (loginState.kind === 'platform') {
-    normalizedLoginState = loginState as PlatformScopeRef & Omit<LoginState, 'kind' | 'instanceId'>;
-  } else {
-    normalizedLoginState = {
-      ...loginState,
-      kind: 'instance',
-      instanceId: loginState.instanceId as string,
-    } satisfies InstanceScopeRef & Omit<LoginState, 'kind' | 'instanceId'>;
-  }
+  const normalizedLoginState = normalizeLoginState(loginState);
 
   const callbackUrl = new URL(authConfig.redirectUri);
   callbackUrl.searchParams.set('code', params.code);

@@ -99,7 +99,7 @@ export const getKeycloakStatusEntries = (selectedInstance: NonNullable<ReturnTyp
     ['admin.instances.keycloakStatus.instanceIdMapperExists', status.instanceIdMapperExists],
     ['admin.instances.keycloakStatus.tenantAdminExists', status.tenantAdminExists],
     ['admin.instances.keycloakStatus.tenantAdminHasSystemAdmin', status.tenantAdminHasSystemAdmin],
-    ['admin.instances.keycloakStatus.tenantAdminHasInstanceRegistryAdmin', !status.tenantAdminHasInstanceRegistryAdmin],
+    ['admin.instances.keycloakStatus.tenantAdminHasInstanceRegistryAdmin', status.tenantAdminHasInstanceRegistryAdmin],
     ['admin.instances.keycloakStatus.redirectUrisMatch', status.redirectUrisMatch],
     ['admin.instances.keycloakStatus.logoutUrisMatch', status.logoutUrisMatch],
     ['admin.instances.keycloakStatus.webOriginsMatch', status.webOriginsMatch],

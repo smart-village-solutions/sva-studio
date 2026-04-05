@@ -229,6 +229,17 @@ describe('instance-registry server helpers', () => {
     expect(resolvePrimaryHostnameMock).toHaveBeenCalledWith('de-musterhausen.studio.smart-village.app');
   });
 
+  it('sanitizes repository-layer hostname lookup failures', async () => {
+    const { loadInstanceByHostname } = await import('./server');
+    resolveHostnameMock.mockRejectedValue(new Error('password authentication failed for user "sva_app"'));
+
+    await expect(
+      loadInstanceByHostname('de-musterhausen.studio.smart-village.app', {
+        getDatabaseUrl: () => 'postgres://iam',
+      })
+    ).rejects.toThrow('tenant_host_resolution_failed: de-musterhausen.studio.smart-village.app');
+  });
+
   it('scopes hostname cache entries by database url', async () => {
     const { loadInstanceByHostname, resetInstanceRegistryCache } = await import('./server');
     resolveHostnameMock

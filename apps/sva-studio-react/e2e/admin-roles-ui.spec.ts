@@ -49,7 +49,23 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test('role create dialog opens and remains interactive', async ({ page }) => {
+test('role create page opens and submits successfully', async ({ page }) => {
+  const roles = [
+    {
+      id: 'role-1',
+      roleKey: 'editor',
+      roleName: 'editor',
+      externalRoleName: 'editor',
+      managedBy: 'studio',
+      description: 'Editorial role',
+      isSystemRole: false,
+      roleLevel: 20,
+      memberCount: 3,
+      syncState: 'synced',
+      permissions: [{ id: 'perm-1', permissionKey: 'content.write', description: null }],
+    },
+  ];
+
   await page.route('**/auth/me', async (route) => {
     await route.fulfill({
       status: 200,
@@ -66,25 +82,25 @@ test('role create dialog opens and remains interactive', async ({ page }) => {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          data: [
-            {
-              id: 'role-1',
-              roleKey: 'editor',
-              roleName: 'editor',
-              externalRoleName: 'editor',
-              managedBy: 'studio',
-              description: 'Editorial role',
-              isSystemRole: false,
-              roleLevel: 20,
-              memberCount: 3,
-              syncState: 'synced',
-              permissions: [{ id: 'perm-1', permissionKey: 'content.write', description: null }],
-            },
-          ],
+          data: roles,
         }),
       });
       return;
     }
+
+    roles.push({
+      id: 'role-new',
+      roleKey: 'team_lead',
+      roleName: 'team_lead',
+      externalRoleName: 'team_lead',
+      managedBy: 'studio',
+      description: 'Team lead',
+      isSystemRole: false,
+      roleLevel: 42,
+      memberCount: 0,
+      syncState: 'pending',
+      permissions: [],
+    });
 
     await route.fulfill({
       status: 201,
@@ -112,15 +128,19 @@ test('role create dialog opens and remains interactive', async ({ page }) => {
 
   await expect(page.getByRole('heading', { name: 'Rollenverwaltung' })).toBeVisible({ timeout: 10000 });
 
-  await page.getByRole('button', { name: 'Rolle anlegen' }).click();
+  await page.getByRole('link', { name: 'Rolle anlegen' }).click();
 
-  const dialog = page.getByRole('dialog', { name: 'Neue Rolle erstellen' });
-  await expect(dialog).toBeVisible();
+  await expect(page).toHaveURL(/\/admin\/roles\/new$/);
+  await expect(page.getByRole('heading', { name: 'Neue Rolle erstellen' })).toBeVisible();
 
-  const roleKeyInput = dialog.getByLabel('Technischer Rollenschlüssel');
+  const roleKeyInput = page.getByLabel('Technischer Rollenschlüssel');
   await roleKeyInput.fill('Team Lead');
   await expect(roleKeyInput).toHaveValue('Team Lead');
 
-  await dialog.getByRole('button', { name: 'Abbrechen' }).click();
-  await expect(dialog).toBeHidden();
+  await page.getByLabel('Anzeigename').fill('Team Lead');
+  await page.getByLabel('Beschreibung').fill('Verantwortlich für Teamkoordination');
+  await page.getByLabel('Rollenlevel').fill('42');
+  await page.getByRole('button', { name: 'Rolle anlegen' }).click();
+
+  await expect(page).toHaveURL(/\/admin\/roles\/role-new$/);
 });

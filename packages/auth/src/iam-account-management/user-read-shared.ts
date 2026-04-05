@@ -65,7 +65,7 @@ export const logUserProjectionDegraded = (input: {
     return;
   }
 
-  input.logger.warn('IAM user detail projection degraded because Keycloak data could not be loaded', {
+  input.logger.warn('IAM user detail projection degraded because external data could not be loaded', {
     operation: 'get_user',
     instance_id: input.actor.instanceId,
     user_id: input.userId,

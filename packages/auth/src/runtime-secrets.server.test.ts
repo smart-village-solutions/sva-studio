@@ -33,19 +33,20 @@ describe('runtime-secrets.server', () => {
   });
 
   it('derives an encoded IAM database URL when an explicit url is invalid', async () => {
+    const examplePassword = 'example-value+/unsafe';
+
     process.env = {
       ...originalEnv,
-      IAM_DATABASE_URL:
-        'postgresql://sva_app:DqdEmStmIk+/gqcHCdkngzuZqukFwikRhtInfN3ZmW2qcx8nBXoQDQIZncKYzHNV@postgres.sva.docker:5432/sva_studio',
+      IAM_DATABASE_URL: `postgresql://sva_app:${examplePassword}@postgres.sva.docker:5432/sva_studio`,
       APP_DB_USER: 'sva_app',
-      APP_DB_PASSWORD: 'DqdEmStmIk+/gqcHCdkngzuZqukFwikRhtInfN3ZmW2qcx8nBXoQDQIZncKYzHNV',
+      APP_DB_PASSWORD: examplePassword,
       POSTGRES_DB: 'sva_studio',
     };
 
     const { getIamDatabaseUrl } = await import('./runtime-secrets.server');
 
     expect(getIamDatabaseUrl()).toBe(
-      'postgres://sva_app:DqdEmStmIk%2B%2FgqcHCdkngzuZqukFwikRhtInfN3ZmW2qcx8nBXoQDQIZncKYzHNV@postgres:5432/sva_studio'
+      'postgres://sva_app:example-value%2B%2Funsafe@postgres:5432/sva_studio'
     );
   });
 });

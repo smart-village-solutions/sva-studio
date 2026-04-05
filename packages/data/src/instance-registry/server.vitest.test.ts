@@ -121,9 +121,11 @@ describe('instance-registry server helpers', () => {
   });
 
   it('falls back to a derived IAM database URL when the explicit url is invalid', async () => {
-    process.env.IAM_DATABASE_URL = 'postgresql://sva_app:DqdEmStmIk+/gqcHCdkngzuZqukFwikRhtInfN3ZmW2qcx8nBXoQDQIZncKYzHNV@postgres.sva.docker:5432/sva_studio';
+    const examplePassword = 'example-value+/unsafe';
+
+    process.env.IAM_DATABASE_URL = `postgresql://sva_app:${examplePassword}@postgres.sva.docker:5432/sva_studio`;
     process.env.APP_DB_USER = 'sva_app';
-    process.env.APP_DB_PASSWORD = 'DqdEmStmIk+/gqcHCdkngzuZqukFwikRhtInfN3ZmW2qcx8nBXoQDQIZncKYzHNV';
+    process.env.APP_DB_PASSWORD = examplePassword;
     process.env.POSTGRES_DB = 'sva_studio';
     process.env.POSTGRES_HOST = 'postgres.sva.docker';
     process.env.POSTGRES_PORT = '5432';
@@ -135,7 +137,7 @@ describe('instance-registry server helpers', () => {
     expect(PoolMock).toHaveBeenCalledWith(
       expect.objectContaining({
         connectionString:
-          'postgres://sva_app:DqdEmStmIk%2B%2FgqcHCdkngzuZqukFwikRhtInfN3ZmW2qcx8nBXoQDQIZncKYzHNV@postgres.sva.docker:5432/sva_studio',
+          'postgres://sva_app:example-value%2B%2Funsafe@postgres.sva.docker:5432/sva_studio',
       })
     );
   });

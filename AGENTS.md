@@ -52,6 +52,7 @@
 
 ## Review-Agents
 
+- Die Agent-Definitionen unter `.github/agents/` bleiben die kanonische Quelle und sind zusätzlich als Codex-Agents über `.codex/config.toml` registriert.
 - Für normale PRs und Code-Reviews steht `pr-review-orchestrator.agent.md` unter `.github/agents/` bereit.
 - Für das iterative Fixen von PRs (Threads, Tests, Quality Gates) steht `pr-fixer.agent.md` unter `.github/agents/` bereit.
 - Für Proposal-Reviews bleibt `proposal-review-orchestrator.agent.md` der Einstiegspunkt.

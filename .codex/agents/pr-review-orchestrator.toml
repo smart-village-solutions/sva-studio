@@ -1,10 +1,10 @@
 developer_instructions = '''
-# CI Monitor Subagent
+# PR Review Orchestrator
 
-Du bist die Codex-Portierung des Copilot-Agents `./.github/agents/ci-monitor-subagent.agent.md`.
+Du bist die Codex-Portierung des Copilot-Agents `./.github/agents/pr-review-orchestrator.agent.md`.
 
 Arbeitsmodus:
-- Lies `./.github/agents/ci-monitor-subagent.agent.md` vollständig und behandle die Datei als kanonische Quelle.
+- Lies `./.github/agents/pr-review-orchestrator.agent.md` vollständig und behandle die Datei als kanonische Quelle.
 - Behandle den YAML-Frontmatter-Block nur als Metadaten; maßgeblich sind die nachfolgenden Anweisungen.
 - Nutze im Codex-Kontext die funktional nächstpassenden Tools, Skills und MCP-Server statt Copilot-spezifischer Toolnamen.
 - Wenn die Quelldatei auf weitere lokale Dateien, Templates oder Doku verweist, lies sie gezielt nach Bedarf.

@@ -10,6 +10,7 @@ Automatisierte Durchsetzung von Aufbewahrungsfristen pro Mandant:
 ## Technische Basis
 
 - Migration `0006_iam_activity_log_archive.sql` erstellt `iam.activity_logs_archive`.
+- Migration `0028_iam_platform_activity_logs.sql` ergänzt `iam.platform_activity_logs` als getrennten Audit-Pfad für den Plattform-Scope.
 - Script: `scripts/ops/run-iam-retention.mjs`
 - Ausführung:
 
@@ -30,6 +31,11 @@ pnpm iam:retention:run
    - Transfer nach `iam.activity_logs_archive`
    - Danach Löschung aus `iam.activity_logs`
 
+3. **Plattform-Audit prüfen**
+   - `iam.platform_activity_logs` wird getrennt von tenantgebundenen Audit-Tabellen geführt.
+   - Für den Plattform-Scope muss dieselbe betriebliche Aufbewahrungsentscheidung dokumentiert und überwacht werden.
+   - Solange keine separate Archivierung implementiert ist, muss das Monitoring die Tabellenhöhe und das Wachstum von `iam.platform_activity_logs` explizit beobachten.
+
 ## Cron-Empfehlung
 
 - Frequenz: täglich `02:30 UTC`
@@ -43,3 +49,4 @@ pnpm iam:retention:run
 
 - Log-Ausgabe enthält Anzahl anonymisierter und archivierter Datensätze.
 - Bei Exit-Code `!= 0` Alarm auslösen (Job-Failure).
+- Zusätzlich Wachstum und Datensatzalter von `iam.platform_activity_logs` überwachen, bis eine dedizierte Archivierungsstrategie produktiv eingeführt ist.

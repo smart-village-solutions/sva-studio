@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { createSdkLogger } from '@sva/sdk/server';
+import { z } from 'zod';
 
 import { getAuthConfig } from '../config.js';
 import { jitProvisionAccount } from '../jit-provisioning.server.js';
@@ -23,30 +24,74 @@ type UntrustedLoginState = {
   instanceId?: string;
 };
 
+const nonNegativeFiniteNumberSchema = z.number().refine(
+  (value) => Number.isFinite(value) && value >= 0,
+  'expected non-negative finite number'
+);
+
+const baseLoginStateSchema = z.object({
+  codeVerifier: z.string().trim().min(1),
+  nonce: z.string().trim().min(1),
+  createdAt: nonNegativeFiniteNumberSchema,
+  returnTo: z.string().trim().min(1).optional(),
+  silent: z.boolean().optional(),
+});
+
+const untrustedLoginStateSchema = z.discriminatedUnion('kind', [
+  baseLoginStateSchema.extend({ kind: z.literal('platform') }),
+  baseLoginStateSchema.extend({
+    kind: z.literal('instance'),
+    instanceId: z.string().trim().min(1),
+  }),
+]);
+
 const readClaimSubject = (claims: Record<string, unknown>): string => {
   const subject = claims.sub;
   return typeof subject === 'string' ? subject : '';
 };
 
 const normalizeLoginState = (loginState: UntrustedLoginState): LoginState => {
-  if (loginState.kind === 'platform') {
-    const { instanceId: _ignored, ...rest } = loginState;
+  if (loginState.kind === 'instance' && typeof loginState.instanceId !== 'string') {
+    throw new Error('Invalid login state: missing instanceId for instance scope');
+  }
+
+  const parsedLoginState = untrustedLoginStateSchema.safeParse(loginState);
+  if (!parsedLoginState.success) {
+    throw new Error('Invalid login state payload');
+  }
+
+  const normalizedState = parsedLoginState.data;
+
+  if (normalizedState.kind === 'platform') {
+    const { ...rest } = normalizedState;
     return {
       ...rest,
       kind: 'platform',
     } satisfies PlatformScopeRef & Omit<LoginState, 'kind' | 'instanceId'>;
   }
 
-  const instanceId = typeof loginState.instanceId === 'string' ? loginState.instanceId.trim() : '';
+  const instanceId = normalizedState.instanceId.trim();
   if (!instanceId) {
     throw new Error('Invalid login state: missing instanceId for instance scope');
   }
 
   return {
-    ...loginState,
+    ...normalizedState,
     kind: 'instance',
     instanceId,
   } satisfies InstanceScopeRef & Omit<LoginState, 'kind' | 'instanceId'>;
+};
+
+const assertLoginStateMatchesAuthConfig = (authConfig: AuthConfig, loginState: LoginState): void => {
+  const authScope = getScopeFromAuthConfig(authConfig);
+
+  if (authScope.kind !== loginState.kind) {
+    throw new Error('Invalid login state: scope mismatch');
+  }
+
+  if (authScope.kind === 'instance' && loginState.instanceId !== authScope.instanceId) {
+    throw new Error('Invalid login state: instance mismatch');
+  }
 };
 
 const persistSession = async (input: {
@@ -165,6 +210,7 @@ export const handleCallback = async (params: {
     throw new Error('Invalid login state');
   }
   const normalizedLoginState = normalizeLoginState(loginState);
+  assertLoginStateMatchesAuthConfig(authConfig, normalizedLoginState);
 
   const callbackUrl = new URL(authConfig.redirectUri);
   callbackUrl.searchParams.set('code', params.code);

@@ -45,6 +45,8 @@ const shouldRetryWithPrimaryHostname = (error: unknown): boolean => {
 const readErrorType = (error: unknown): string =>
   error instanceof Error && error.constructor?.name ? error.constructor.name : typeof error;
 
+const withErrorCause = (message: string, cause: unknown): Error => new Error(message, { cause });
+
 const ensureValidIamDatabaseUrl = (databaseUrl: string | undefined): string | null => {
   if (!databaseUrl) {
     return null;
@@ -52,8 +54,8 @@ const ensureValidIamDatabaseUrl = (databaseUrl: string | undefined): string | nu
 
   try {
     return new URL(databaseUrl).toString();
-  } catch (error) {
-    throw new Error(`iam_database_url_invalid: ${(error instanceof Error ? error.message : String(error)).trim()}`);
+  } catch {
+    throw new Error('iam_database_url_invalid');
   }
 };
 
@@ -79,7 +81,7 @@ const resolveIamDatabaseUrl = (): string | undefined => {
     } catch (error) {
       logger.warn('Explicit IAM database URL is invalid; falling back to derived database credentials', {
         reason: 'iam_database_url_invalid',
-        error: error instanceof Error ? error.message : String(error),
+        error_type: readErrorType(error),
       });
     }
   }
@@ -224,9 +226,7 @@ export const loadInstanceByHostname = async (
       try {
         const repository = createInstanceRegistryRepository(createExecutor(client));
         let result = await repository.resolveHostname(normalizedHostname);
-        if (!result) {
-          result = await repository.resolvePrimaryHostname(normalizedHostname);
-        }
+        result ??= await repository.resolvePrimaryHostname(normalizedHostname);
         logger.debug('Instance hostname lookup completed via database', {
           hostname: normalizedHostname,
           cache_hit: false,
@@ -254,12 +254,7 @@ export const loadInstanceByHostname = async (
               error_type: readErrorType(fallbackError),
               dependency: 'iam_database',
             });
-            const sanitizedError = new Error(`tenant_host_resolution_fallback_failed: ${normalizedHostname}`);
-            if (fallbackError instanceof Error) {
-              // Keep the original error for diagnostics without leaking its message into the thrown text.
-              (sanitizedError as unknown as { cause?: unknown }).cause = fallbackError;
-            }
-            throw sanitizedError;
+            throw withErrorCause('tenant_host_resolution_fallback_failed', fallbackError);
           }
         }
         logger.error('Instance hostname lookup failed in repository layer', {
@@ -268,12 +263,7 @@ export const loadInstanceByHostname = async (
           error_type: readErrorType(error),
           dependency: 'iam_database',
         });
-        const sanitizedError = new Error(`tenant_host_resolution_failed: ${normalizedHostname}`);
-        if (error instanceof Error) {
-          // Keep the original error for diagnostics without leaking its message into the thrown text.
-          (sanitizedError as unknown as { cause?: unknown }).cause = error;
-        }
-        throw sanitizedError;
+        throw withErrorCause('tenant_host_resolution_failed', error);
       }
     },
     { getDatabaseUrl: () => normalizedDatabaseUrl }

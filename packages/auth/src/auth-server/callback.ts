@@ -89,7 +89,11 @@ const assertLoginStateMatchesAuthConfig = (authConfig: AuthConfig, loginState: L
     throw new Error('Invalid login state: scope mismatch');
   }
 
-  if (authScope.kind === 'instance' && loginState.instanceId !== authScope.instanceId) {
+  if (
+    authScope.kind === 'instance' &&
+    loginState.kind === 'instance' &&
+    loginState.instanceId !== authScope.instanceId
+  ) {
     throw new Error('Invalid login state: instance mismatch');
   }
 };

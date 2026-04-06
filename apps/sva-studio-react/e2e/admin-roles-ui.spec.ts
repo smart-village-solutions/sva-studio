@@ -142,5 +142,5 @@ test('role create page opens and submits successfully', async ({ page }) => {
   await page.getByLabel('Rollenlevel').fill('42');
   await page.getByRole('button', { name: 'Rolle anlegen' }).click();
 
-  await expect(page).toHaveURL(/\/admin\/roles\/role-new$/);
+  await expect(page).toHaveURL(/\/admin\/roles\/role-new\?tab=general$/);
 });

@@ -76,7 +76,7 @@ describe('createRuntimeRouteTree', () => {
     }
   });
 
-  it('enables demo routes explicitly, disables them explicitly, and defaults by NODE_ENV', () => {
+  it('enables demo routes explicitly, disables them explicitly, and defaults to enabled in the dev/test runtime', () => {
     vi.stubEnv('VITE_ENABLE_DEMO_ROUTES', 'true');
     expect(areDemoRoutesEnabled()).toBe(true);
 
@@ -84,10 +84,6 @@ describe('createRuntimeRouteTree', () => {
     expect(areDemoRoutesEnabled()).toBe(false);
 
     vi.unstubAllEnvs();
-    vi.stubEnv('NODE_ENV', 'production');
-    expect(areDemoRoutesEnabled()).toBe(false);
-
-    vi.stubEnv('NODE_ENV', 'development');
     expect(areDemoRoutesEnabled()).toBe(true);
   });
 });

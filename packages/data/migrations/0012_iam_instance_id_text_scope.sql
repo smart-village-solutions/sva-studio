@@ -98,7 +98,13 @@ DROP POLICY IF EXISTS data_subject_export_jobs_isolation_policy ON iam.data_subj
 DROP POLICY IF EXISTS legal_holds_isolation_policy ON iam.legal_holds;
 DROP POLICY IF EXISTS account_profile_corrections_isolation_policy ON iam.account_profile_corrections;
 DROP POLICY IF EXISTS data_subject_recipient_notifications_isolation_policy ON iam.data_subject_recipient_notifications;
-DROP POLICY IF EXISTS account_permissions_isolation_policy ON iam.account_permissions;
+DO $$
+BEGIN
+  IF to_regclass('iam.account_permissions') IS NOT NULL THEN
+    EXECUTE 'DROP POLICY IF EXISTS account_permissions_isolation_policy ON iam.account_permissions';
+  END IF;
+END
+$$;
 DROP POLICY IF EXISTS idempotency_keys_isolation_policy ON iam.idempotency_keys;
 DROP POLICY IF EXISTS activity_logs_archive_isolation_policy ON iam.activity_logs_archive;
 DROP POLICY IF EXISTS instance_integrations_isolation_policy ON iam.instance_integrations;

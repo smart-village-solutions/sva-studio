@@ -81,23 +81,30 @@ const buildRequestOrigin = (request: Request): string => buildRequestOriginFromH
 const resolveRequestHost = (request: Request): string => resolveEffectiveRequestHost(request);
 const buildHostOrigin = (hostname: string, protocol = 'https'): string => `${protocol}://${normalizeHost(hostname)}`;
 
-const mergeAuthConfig = (
-  base: ReturnType<typeof resolveBaseAuthConfig>,
-  overrides: {
-    kind: 'platform' | 'instance';
-    issuer: string;
-    clientId: string;
-    redirectUri: string;
-    postLogoutRedirectUri: string;
-    authRealm?: string;
-    instanceId?: string;
+type BaseAuthConfig = ReturnType<typeof resolveBaseAuthConfig>;
+type PlatformAuthConfig = Extract<AuthConfig, { kind: 'platform' }>;
+type InstanceAuthConfig = Extract<AuthConfig, { kind: 'instance' }>;
+type PlatformAuthOverrides = Omit<PlatformAuthConfig, keyof BaseAuthConfig>;
+type InstanceAuthOverrides = Omit<InstanceAuthConfig, keyof BaseAuthConfig>;
+
+function mergeAuthConfig(base: BaseAuthConfig, overrides: PlatformAuthOverrides): PlatformAuthConfig;
+function mergeAuthConfig(base: BaseAuthConfig, overrides: InstanceAuthOverrides): InstanceAuthConfig;
+function mergeAuthConfig(
+  base: BaseAuthConfig,
+  overrides: PlatformAuthOverrides | InstanceAuthOverrides
+): AuthConfig {
+  if (overrides.kind === 'instance') {
+    return {
+      ...base,
+      ...overrides,
+    };
   }
-): AuthConfig => ({
-  ...base,
-  ...overrides,
-  clientSecret: base.clientSecret,
-  loginStateSecret: base.loginStateSecret,
-}) as AuthConfig;
+
+  return {
+    ...base,
+    ...overrides,
+  };
+}
 
 export const resolveAuthConfigFromSessionAuth = (auth: SessionAuthContext) => ({
   ...resolveBaseAuthConfig(),

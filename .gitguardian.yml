@@ -1,5 +1,1 @@
 version: 2
-secret:
-  ignored_matches:
-    - name: pr240-test-fixture-password
-      match: example-value+/unsafe

@@ -1,6 +1,7 @@
 import { resolve } from 'node:path';
 
 import type { RuntimeProfile } from '../../packages/sdk/src/runtime-profile.ts';
+import { getRuntimeProfileDefinition } from '../../packages/sdk/src/runtime-profile.ts';
 
 export type RemoteRuntimeProfile = Exclude<RuntimeProfile, 'local-builder' | 'local-keycloak'>;
 
@@ -146,6 +147,9 @@ export type AcceptanceDeployReport = {
   steps: readonly AcceptanceDeployStep[];
   workflow: string;
 };
+
+export const getRuntimeStatusExecutionMode = (runtimeProfile: RuntimeProfile): 'local' | 'remote' =>
+  getRuntimeProfileDefinition(runtimeProfile).isLocal ? 'local' : 'remote';
 
 const takeOptionValue = (raw: string, all: readonly string[], index: number) => {
   const [flag, inlineValue] = raw.split('=', 2);

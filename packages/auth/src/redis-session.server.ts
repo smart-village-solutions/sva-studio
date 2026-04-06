@@ -3,6 +3,7 @@ import { encryptToken, decryptToken } from './crypto.server.js';
 import { getAuthConfig } from './config.js';
 import { emitAuthAuditEvent } from './audit-events.server.js';
 import { SessionStoreUnavailableError } from './runtime-errors.js';
+import { getRuntimeScopeRef, getWorkspaceIdForScope } from './scope.js';
 import { metrics } from '@opentelemetry/api';
 import {
   clearExpiredLoginStates as clearExpiredInMemoryLoginStates,
@@ -14,7 +15,7 @@ import {
   getSession as getInMemorySession,
   updateSession as updateInMemorySession,
 } from './session.js';
-import type { Session, SessionControlState } from './types.js';
+import type { LoginState, Session, SessionControlState } from './types.js';
 import { createSdkLogger } from '@sva/sdk/server';
 
 const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
@@ -225,7 +226,8 @@ export async function createSession(
     await emitAuthAuditEvent({
       eventType: 'session_created',
       actorUserId: session.user?.id ?? session.userId,
-      workspaceId: session.user?.instanceId,
+      scope: session.auth,
+      workspaceId: getWorkspaceIdForScope(session.auth),
       outcome: 'success',
     });
   });
@@ -356,7 +358,8 @@ export async function deleteSession(sessionId: string): Promise<void> {
       await emitAuthAuditEvent({
         eventType: 'session_deleted',
         actorUserId: existingSession.user?.id ?? existingSession.userId,
-        workspaceId: existingSession.user?.instanceId,
+        scope: existingSession.auth,
+        workspaceId: getWorkspaceIdForScope(existingSession.auth),
         outcome: 'success',
       });
     }
@@ -380,14 +383,7 @@ export async function clearExpiredSessions(): Promise<void> {
  */
 export async function createLoginState(
   state: string,
-  data: {
-    codeVerifier: string;
-    nonce: string;
-    createdAt: number;
-    returnTo?: string;
-    silent?: boolean;
-    workspaceId?: string;
-  }
+  data: LoginState
 ): Promise<void> {
   await trackSessionOperation('create_login_state', async () => {
     await runWithSessionFallback({
@@ -410,7 +406,8 @@ export async function createLoginState(
 
     await emitAuthAuditEvent({
       eventType: 'login_state_created',
-      workspaceId: data.workspaceId,
+      scope: getRuntimeScopeRef(data),
+      workspaceId: getWorkspaceIdForScope(getRuntimeScopeRef(data)),
       outcome: 'success',
     });
   });
@@ -427,7 +424,8 @@ export async function consumeLoginState(
   createdAt: number;
   returnTo?: string;
   silent?: boolean;
-  workspaceId?: string;
+  kind: 'platform' | 'instance';
+  instanceId?: string;
 } | undefined> {
   return trackSessionOperation('consume_login_state', async () => {
     const data = await runWithSessionFallback({
@@ -461,7 +459,8 @@ export async function consumeLoginState(
       createdAt: number;
       returnTo?: string;
       silent?: boolean;
-      workspaceId?: string;
+      kind: 'platform' | 'instance';
+      instanceId?: string;
     };
 
     logger.debug('Login state consumed', {
@@ -471,7 +470,8 @@ export async function consumeLoginState(
     });
     await emitAuthAuditEvent({
       eventType: 'login_state_consumed',
-      workspaceId: result.workspaceId,
+      scope: getRuntimeScopeRef(result),
+      workspaceId: getWorkspaceIdForScope(getRuntimeScopeRef(result)),
       outcome: 'success',
     });
     return result;

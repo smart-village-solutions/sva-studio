@@ -1,5 +1,7 @@
 import { spawnSync } from 'node:child_process';
 
+const retryDelayBuffer = new Int32Array(new SharedArrayBuffer(4));
+
 const stripControlArtifacts = (value: string) => value.replaceAll('\u0000', '');
 
 const stripAnsiArtifacts = (value: string) => {
@@ -70,6 +72,11 @@ const isRetryableQuantumTransportFailure = (value: string) => {
   );
 };
 
+const pauseRetryLoop = (attempt: number) => {
+  const delayMs = Math.min(250 * 2 ** Math.max(attempt - 1, 0), 1_500);
+  Atomics.wait(retryDelayBuffer, 0, 0, delayMs);
+};
+
 export const withoutDebugEnv = (env: NodeJS.ProcessEnv): NodeJS.ProcessEnv => {
   const sanitized = { ...env };
   delete sanitized.DEBUG;
@@ -136,7 +143,7 @@ export const runQuantumExec = (
     failureMessage: string;
   }
 ) => {
-  const maxAttempts = options?.marker ? 3 : 1;
+  const maxAttempts = options?.marker ? 6 : 1;
   let lastCombined = '';
   let lastMarkerError: Error | null = null;
 
@@ -151,6 +158,7 @@ export const runQuantumExec = (
       } catch (error) {
         lastMarkerError = error instanceof Error ? error : new Error(String(error));
         if (attempt < maxAttempts) {
+          pauseRetryLoop(attempt);
           continue;
         }
         throw new Error(
@@ -165,6 +173,7 @@ export const runQuantumExec = (
     }
 
     if (result.status !== 0 && attempt < maxAttempts && isRetryableQuantumTransportFailure(combined)) {
+      pauseRetryLoop(attempt);
       continue;
     }
 

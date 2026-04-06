@@ -17,6 +17,8 @@ describe('log-context.server', () => {
   it('buildLogContext prefers explicit workspace id', () => {
     expect(buildLogContext('explicit-workspace')).toEqual({
       workspace_id: 'explicit-workspace',
+      scope_kind: 'instance',
+      instance_id: 'explicit-workspace',
       request_id: 'request-123',
     });
   });

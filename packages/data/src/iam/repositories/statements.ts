@@ -1,6 +1,6 @@
-import type { IamInstanceId, IamUuid } from '../types';
-import type { SqlStatement } from './types';
-import type { RoleManagedBy, RoleSyncState } from './role-sync-types';
+import type { IamInstanceId, IamUuid } from '../types.js';
+import type { SqlStatement } from './types.js';
+import type { RoleManagedBy, RoleSyncState } from './role-sync-types.js';
 
 const asUuidArrayParameter = (values: readonly IamUuid[]) => ({
   sqlType: 'uuid[]' as const,

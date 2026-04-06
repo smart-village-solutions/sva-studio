@@ -243,6 +243,9 @@ export type RuntimeHealthResponse = {
       readonly recomputePerMinute: number;
       readonly status: ReadinessStatus;
     };
+    readonly auth: {
+      readonly realm?: string;
+    };
     readonly db: boolean;
     readonly diagnostics?: Record<string, unknown>;
     readonly errors: Readonly<Record<string, string>>;

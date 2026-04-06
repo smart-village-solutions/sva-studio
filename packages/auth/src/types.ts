@@ -1,11 +1,28 @@
+export type ScopeKind = 'platform' | 'instance';
+
+export type PlatformScopeRef = {
+  kind: 'platform';
+};
+
+export type InstanceScopeRef = {
+  kind: 'instance';
+  instanceId: string;
+};
+
+export type RuntimeScopeRef = PlatformScopeRef | InstanceScopeRef;
+
 export type SessionUser = {
   id: string;
   instanceId?: string;
   roles: string[];
+  username?: string;
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+  displayName?: string;
 };
 
-export type SessionAuthContext = {
-  instanceId?: string;
+export type SessionAuthContext = RuntimeScopeRef & {
   issuer: string;
   clientId: string;
   authRealm?: string;
@@ -29,13 +46,12 @@ export type Session = {
   expiresAt?: number; // Unix timestamp in milliseconds
 };
 
-export type LoginState = {
+export type LoginState = RuntimeScopeRef & {
   codeVerifier: string;
   nonce: string;
   createdAt: number;
   returnTo?: string;
   silent?: boolean;
-  workspaceId?: string;
 };
 
 export type SessionControlState = {
@@ -50,8 +66,7 @@ export type ForceReauthInput = {
   instanceId?: string;
 };
 
-export type AuthConfig = {
-  instanceId?: string;
+export type AuthConfig = RuntimeScopeRef & {
   authRealm?: string;
   issuer: string;
   clientId: string;

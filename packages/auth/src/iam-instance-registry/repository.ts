@@ -4,8 +4,9 @@ import { invalidateInstanceRegistryHost } from '@sva/data/server';
 
 import { getInstanceKeycloakStatus, provisionInstanceAuthArtifacts } from './provisioning-auth.js';
 import { createInstanceRegistryService } from './service.js';
+import { getIamDatabaseUrl } from '../runtime-secrets.server.js';
 
-const resolvePool = createPoolResolver(() => process.env.IAM_DATABASE_URL);
+const resolvePool = createPoolResolver(getIamDatabaseUrl);
 
 type QueryClient = {
   query<TRow = Record<string, unknown>>(text: string, values?: readonly unknown[]): Promise<{ rowCount: number; rows: TRow[] }>;

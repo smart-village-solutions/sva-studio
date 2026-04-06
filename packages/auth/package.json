@@ -26,6 +26,7 @@
   "dependencies": {
     "@opentelemetry/api": "^1.9.0",
     "@sva/core": "workspace:*",
+    "@sva/data": "workspace:*",
     "@sva/sdk": "workspace:*",
     "@types/sanitize-html": "^2.16.1",
     "cookie-es": "^2.0.0",

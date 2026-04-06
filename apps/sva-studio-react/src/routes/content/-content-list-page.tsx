@@ -2,10 +2,11 @@ import { withServerDeniedContentAccess, type IamContentAccessSummary } from '@sv
 import { Link } from '@tanstack/react-router';
 import React from 'react';
 
+import { StudioDataTable, type StudioColumnDef } from '../../components/StudioDataTable';
+import { StudioListPageTemplate } from '../../components/StudioListPageTemplate';
 import { Alert, AlertDescription } from '../../components/ui/alert';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
-import { Card } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Select } from '../../components/ui/select';
@@ -102,123 +103,6 @@ const formatAccessContext = (access: IamContentAccessSummary) => {
   return t('content.access.context.none');
 };
 
-const renderContentListBody = ({
-  isLoading,
-  filteredContents,
-  listError,
-}: {
-  isLoading: boolean;
-  filteredContents: ReturnType<typeof useContents>['contents'];
-  listError: IamHttpError | null;
-}) => {
-  if (isLoading) {
-    return <div className="p-6 text-sm text-muted-foreground">{t('content.messages.loading')}</div>;
-  }
-
-  if (filteredContents.length === 0) {
-    return (
-      <div className="space-y-2 p-6">
-        <h2 className="text-lg font-semibold text-foreground">{t('content.empty.title')}</h2>
-        <p className="text-sm text-muted-foreground">{t('content.empty.body')}</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="overflow-x-auto">
-      <table className="min-w-full divide-y divide-border" aria-label={t('content.table.ariaLabel')}>
-        <caption className="sr-only">{t('content.table.caption')}</caption>
-        <thead className="bg-muted/30">
-          <tr>
-            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              {t('content.table.headerTitle')}
-            </th>
-            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              {t('content.table.headerType')}
-            </th>
-            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              {t('content.table.headerPublished')}
-            </th>
-            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              {t('content.table.headerCreated')}
-            </th>
-            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              {t('content.table.headerUpdated')}
-            </th>
-            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              {t('content.table.headerAuthor')}
-            </th>
-            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              {t('content.table.headerPayload')}
-            </th>
-            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              {t('content.table.headerStatus')}
-            </th>
-            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              {t('content.table.headerAccess')}
-            </th>
-            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              {t('content.table.headerContext')}
-            </th>
-            <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              {t('content.table.headerActions')}
-            </th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border">
-          {filteredContents.map((item) => {
-            const access = resolveRowAccess(item.access, listError);
-            const actionLabel = access.canUpdate
-              ? t('content.actions.edit')
-              : access.canRead
-                ? t('content.actions.openReadOnly')
-                : t('content.actions.blocked');
-
-            return (
-            <tr key={item.id} className="align-top">
-              <td className="px-4 py-3 text-sm font-medium text-foreground">{item.title}</td>
-              <td className="px-4 py-3 text-sm text-muted-foreground">{item.contentType}</td>
-              <td className="px-4 py-3 text-sm text-muted-foreground">{formatDateTime(item.publishedAt)}</td>
-              <td className="px-4 py-3 text-sm text-muted-foreground">{formatDateTime(item.createdAt)}</td>
-              <td className="px-4 py-3 text-sm text-muted-foreground">{formatDateTime(item.updatedAt)}</td>
-              <td className="px-4 py-3 text-sm text-muted-foreground">{item.author}</td>
-              <td className="max-w-sm px-4 py-3 text-sm text-foreground">{summarizePayload(item.payload)}</td>
-              <td className="px-4 py-3 text-sm text-foreground">
-                <Badge variant={statusVariantByValue[item.status]}>{t(statusLabelKeyByValue[item.status])}</Badge>
-              </td>
-              <td className="px-4 py-3 text-sm text-foreground">
-                <Badge variant={contentAccessVariantByState[access.state]}>
-                  {t(contentAccessLabelKeyByState[access.state])}
-                </Badge>
-                {access.reasonCode ? (
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    {t(contentAccessReasonKeyByValue[access.reasonCode])}
-                  </p>
-                ) : null}
-              </td>
-              <td className="px-4 py-3 text-sm text-muted-foreground">{formatAccessContext(access)}</td>
-              <td className="px-4 py-3 text-right">
-                {access.canRead ? (
-                  <Button asChild size="sm" variant="outline">
-                    <Link to="/content/$contentId" params={{ contentId: item.id }}>
-                      {actionLabel}
-                    </Link>
-                  </Button>
-                ) : (
-                  <Button type="button" size="sm" variant="outline" disabled>
-                    {actionLabel}
-                  </Button>
-                )}
-              </td>
-            </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
-  );
-};
-
 const statusVariantByValue = {
   draft: 'outline',
   in_review: 'secondary',
@@ -265,33 +149,119 @@ export const ContentListPage = () => {
     return matchesSearch && matchesStatus;
   });
 
+  const contentColumns = React.useMemo<readonly StudioColumnDef<(typeof filteredContents)[number]>[]>(
+    () => [
+      {
+        id: 'title',
+        header: t('content.table.headerTitle'),
+        cell: (item) => <span className="font-medium text-foreground">{item.title}</span>,
+        sortable: true,
+        sortValue: (item) => item.title.toLowerCase(),
+      },
+      {
+        id: 'contentType',
+        header: t('content.table.headerType'),
+        cell: (item) => item.contentType,
+        sortable: true,
+        sortValue: (item) => item.contentType.toLowerCase(),
+      },
+      {
+        id: 'publishedAt',
+        header: t('content.table.headerPublished'),
+        cell: (item) => formatDateTime(item.publishedAt),
+        sortable: true,
+        sortValue: (item) => item.publishedAt ?? '',
+      },
+      {
+        id: 'createdAt',
+        header: t('content.table.headerCreated'),
+        cell: (item) => formatDateTime(item.createdAt),
+        sortable: true,
+        sortValue: (item) => item.createdAt,
+      },
+      {
+        id: 'updatedAt',
+        header: t('content.table.headerUpdated'),
+        cell: (item) => formatDateTime(item.updatedAt),
+        sortable: true,
+        sortValue: (item) => item.updatedAt,
+      },
+      {
+        id: 'author',
+        header: t('content.table.headerAuthor'),
+        cell: (item) => item.author,
+        sortable: true,
+        sortValue: (item) => item.author.toLowerCase(),
+      },
+      {
+        id: 'payload',
+        header: t('content.table.headerPayload'),
+        cell: (item) => <span className="max-w-sm text-foreground">{summarizePayload(item.payload)}</span>,
+      },
+      {
+        id: 'status',
+        header: t('content.table.headerStatus'),
+        cell: (item) => <Badge variant={statusVariantByValue[item.status]}>{t(statusLabelKeyByValue[item.status])}</Badge>,
+        sortable: true,
+        sortValue: (item) => item.status,
+      },
+      {
+        id: 'access',
+        header: t('content.table.headerAccess'),
+        cell: (item) => {
+          const access = resolveRowAccess(item.access, contentsApi.error);
+          return (
+            <div>
+              <Badge variant={contentAccessVariantByState[access.state]}>
+                {t(contentAccessLabelKeyByState[access.state])}
+              </Badge>
+              {access.reasonCode ? (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {t(contentAccessReasonKeyByValue[access.reasonCode])}
+                </p>
+              ) : null}
+            </div>
+          );
+        },
+      },
+      {
+        id: 'context',
+        header: t('content.table.headerContext'),
+        cell: (item) => formatAccessContext(resolveRowAccess(item.access, contentsApi.error)),
+      },
+    ],
+    [contentsApi.error, filteredContents]
+  );
+
   return (
     <section className="space-y-5" aria-busy={contentsApi.isLoading}>
-      <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-        <div className="space-y-2">
-          <h1 className="text-3xl font-semibold text-foreground">{t('content.page.title')}</h1>
-          <p className="max-w-3xl text-sm text-muted-foreground">{t('content.page.subtitle')}</p>
-          {contentAccessApi.access ? (
-            <p className="text-sm text-muted-foreground">
-              {t('content.messages.accessSummary', {
-                state: t(contentAccessLabelKeyByState[contentAccessApi.access.state]),
-                context: formatAccessContext(contentAccessApi.access),
-              })}
-            </p>
-          ) : createDisabled ? (
-            <p className="text-sm text-muted-foreground">{t('content.messages.actionsDisabled')}</p>
-          ) : null}
-        </div>
-        {createDisabled ? (
-          <Button type="button" disabled>
-            {t('content.actions.create')}
-          </Button>
-        ) : (
-          <Button asChild>
-            <Link to="/content/new">{t('content.actions.create')}</Link>
-          </Button>
-        )}
-      </header>
+      <StudioListPageTemplate
+        title={t('content.page.title')}
+        description={t('content.page.subtitle')}
+        primaryAction={{
+          label: t('content.actions.create'),
+          render: createDisabled ? (
+            <Button type="button" disabled>
+              {t('content.actions.create')}
+            </Button>
+          ) : (
+            <Button asChild>
+              <Link to="/content/new">{t('content.actions.create')}</Link>
+            </Button>
+          ),
+        }}
+      >
+        {contentAccessApi.access ? (
+          <p className="text-sm text-muted-foreground">
+            {t('content.messages.accessSummary', {
+              state: t(contentAccessLabelKeyByState[contentAccessApi.access.state]),
+              context: formatAccessContext(contentAccessApi.access),
+            })}
+          </p>
+        ) : createDisabled ? (
+          <p className="text-sm text-muted-foreground">{t('content.messages.actionsDisabled')}</p>
+        ) : null}
+      </StudioListPageTemplate>
 
       {contentsApi.error ? (
         <Alert className="border-destructive/40 bg-destructive/5 text-destructive">
@@ -305,40 +275,70 @@ export const ContentListPage = () => {
         </Alert>
       ) : null}
 
-      <Card className="grid gap-3 p-4 lg:grid-cols-[1fr_14rem]">
-        <div className="flex flex-col gap-1">
-          <Label htmlFor="content-search">{t('content.filters.searchLabel')}</Label>
-          <Input
-            id="content-search"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder={t('content.filters.searchPlaceholder')}
-          />
-        </div>
-        <div className="flex flex-col gap-1">
-          <Label htmlFor="content-status-filter">{t('content.filters.statusLabel')}</Label>
-          <Select
-            id="content-status-filter"
-            value={statusFilter}
-            onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}
-          >
-            <option value="all">{t('content.filters.statusAll')}</option>
-            <option value="draft">{t('content.status.draft')}</option>
-            <option value="in_review">{t('content.status.inReview')}</option>
-            <option value="approved">{t('content.status.approved')}</option>
-            <option value="published">{t('content.status.published')}</option>
-            <option value="archived">{t('content.status.archived')}</option>
-          </Select>
-        </div>
-      </Card>
+      <StudioDataTable
+        ariaLabel={t('content.table.ariaLabel')}
+        caption={t('content.table.caption')}
+        data={filteredContents}
+        columns={contentColumns}
+        getRowId={(item) => item.id}
+        selectionMode="none"
+        isLoading={contentsApi.isLoading || contentAccessApi.isLoading}
+        loadingState={t('content.messages.loading')}
+        emptyState={
+          <div className="space-y-2">
+            <h2 className="text-lg font-semibold text-foreground">{t('content.empty.title')}</h2>
+            <p className="text-sm text-muted-foreground">{t('content.empty.body')}</p>
+          </div>
+        }
+        toolbarStart={
+          <>
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="content-search">{t('content.filters.searchLabel')}</Label>
+              <Input
+                id="content-search"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder={t('content.filters.searchPlaceholder')}
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="content-status-filter">{t('content.filters.statusLabel')}</Label>
+              <Select
+                id="content-status-filter"
+                value={statusFilter}
+                onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}
+              >
+                <option value="all">{t('content.filters.statusAll')}</option>
+                <option value="draft">{t('content.status.draft')}</option>
+                <option value="in_review">{t('content.status.inReview')}</option>
+                <option value="approved">{t('content.status.approved')}</option>
+                <option value="published">{t('content.status.published')}</option>
+                <option value="archived">{t('content.status.archived')}</option>
+              </Select>
+            </div>
+          </>
+        }
+        rowActions={(item) => {
+          const access = resolveRowAccess(item.access, contentsApi.error);
+          const actionLabel = access.canUpdate
+            ? t('content.actions.edit')
+            : access.canRead
+              ? t('content.actions.openReadOnly')
+              : t('content.actions.blocked');
 
-      <Card className="overflow-hidden">
-        {renderContentListBody({
-          isLoading: contentsApi.isLoading || contentAccessApi.isLoading,
-          filteredContents,
-          listError: contentsApi.error,
-        })}
-      </Card>
+          return access.canRead ? (
+            <Button asChild size="sm" variant="outline">
+              <Link to="/content/$contentId" params={{ contentId: item.id }}>
+                {actionLabel}
+              </Link>
+            </Button>
+          ) : (
+            <Button type="button" size="sm" variant="outline" disabled>
+              {actionLabel}
+            </Button>
+          );
+        }}
+      />
     </section>
   );
 };

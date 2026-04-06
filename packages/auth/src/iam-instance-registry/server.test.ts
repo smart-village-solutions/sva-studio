@@ -99,7 +99,7 @@ describe('iam-instance-registry server handlers', () => {
       expect.objectContaining({
         operation: 'instance_registry_request',
         error_type: 'Error',
-        error_message: 'db offline',
+        reason_code: 'platform_scope_unhandled_failure',
       })
     );
     expect(toJsonErrorResponseMock).toHaveBeenCalledWith(

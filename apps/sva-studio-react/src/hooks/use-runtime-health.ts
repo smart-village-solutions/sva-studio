@@ -33,6 +33,7 @@ export const createUnknownRuntimeHealth = (): RuntimeHealthResponse => ({
       recomputePerMinute: 0,
       status: 'empty',
     },
+    auth: {},
     db: false,
     diagnostics: {},
     errors: {},

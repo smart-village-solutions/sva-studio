@@ -108,9 +108,9 @@ describe('ContentListPage', () => {
     });
 
     expect(screen.queryByText('Startseite')).toBeNull();
-    expect(screen.getByText('Archiv')).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'Nur lesen' }).getAttribute('href')).toBe('/content/content-2');
-    expect(screen.getByText('Nur lesbar')).toBeTruthy();
+    expect(screen.getAllByText('Archiv').length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('link', { name: 'Nur lesen' })[0]?.getAttribute('href')).toBe('/content/content-2');
+    expect(screen.getAllByText('Nur lesbar').length).toBeGreaterThan(0);
   });
 
   it('shows loading, empty and error states', () => {
@@ -181,8 +181,8 @@ describe('ContentListPage', () => {
     });
 
     expect(screen.queryByText('Startseite')).toBeNull();
-    expect(screen.getByText('Live')).toBeTruthy();
-    expect(screen.getByText('invalid-date')).toBeTruthy();
+    expect(screen.getAllByText('Live').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('invalid-date').length).toBeGreaterThan(0);
   });
 
   it('renders forbidden errors and falls back for empty payload summaries', () => {
@@ -233,8 +233,8 @@ describe('ContentListPage', () => {
     expect(screen.getByText('Unzureichende Berechtigungen für diese Inhaltsaktion.')).toBeTruthy();
     expect(screen.getByText('Aktueller Zugriffsstatus: Serverseitig verweigert. Kein zusätzlicher Kontext')).toBeTruthy();
     expect((screen.getByRole('button', { name: 'Neuer Inhalt' }) as HTMLButtonElement).disabled).toBe(true);
-    expect((screen.getByRole('button', { name: 'Gesperrt' }) as HTMLButtonElement).disabled).toBe(true);
-    expect(screen.getByText('{}')).toBeTruthy();
-    expect(screen.getByText('Nicht gesetzt')).toBeTruthy();
+    expect(screen.getAllByRole('button', { name: 'Gesperrt' }).every((button) => (button as HTMLButtonElement).disabled)).toBe(true);
+    expect(screen.getAllByText('{}').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Nicht gesetzt').length).toBeGreaterThan(0);
   });
 });

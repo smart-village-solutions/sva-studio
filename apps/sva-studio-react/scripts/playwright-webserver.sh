@@ -11,9 +11,13 @@ BASE_URL="http://127.0.0.1:${PORT}"
 
 : "${SVA_PARENT_DOMAIN:=studio.lvh.me}"
 : "${SVA_PUBLIC_BASE_URL:=http://studio.lvh.me:${PORT}}"
+: "${PLAYWRIGHT_TEST:=true}"
+: "${VITE_PLAYWRIGHT_TEST:=true}"
 
 export SVA_PARENT_DOMAIN
 export SVA_PUBLIC_BASE_URL
+export PLAYWRIGHT_TEST
+export VITE_PLAYWRIGHT_TEST
 
 cleanup() {
   if [ -n "${SERVER_PID:-}" ] && kill -0 "$SERVER_PID" 2>/dev/null; then

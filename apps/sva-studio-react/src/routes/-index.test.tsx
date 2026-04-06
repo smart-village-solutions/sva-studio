@@ -49,8 +49,6 @@ describe('HomePage', () => {
 
     render(<HomePage />);
 
-    expect(screen.getByText('Sie sind angemeldet.')).toBeTruthy();
-    expect(screen.getByText('Instanz: de-musterhausen')).toBeTruthy();
     expect(screen.queryByText('Demo Session')).toBeNull();
     expect(screen.queryByText('IAM-Authorize (Modulpfad)')).toBeNull();
     expect(
@@ -75,10 +73,10 @@ describe('HomePage', () => {
 
     render(<HomePage />);
 
-    expect(screen.getByText('Keine aktive Sitzung.')).toBeTruthy();
-    expect(screen.getByText('Melden Sie sich an, um Inhalte, Module und Verwaltungsfunktionen im freigegebenen Kontext zu nutzen.')).toBeTruthy();
-    expect(screen.getByText('Anmeldung erforderlich')).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'Zum Login' }).getAttribute('href')).toBe('/auth/login?returnTo=%2F');
+    expect(screen.queryByText('Sitzungsstatus')).toBeNull();
+    expect(screen.queryByText('Keine aktive Sitzung.')).toBeNull();
+    expect(screen.queryByText('Anmeldung erforderlich')).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Zum Login' })).toBeNull();
     expect(screen.queryByText('Direkte Einstiege')).toBeNull();
     expect(screen.queryByRole('link', { name: 'Inhalte öffnen' })).toBeNull();
   });

@@ -29,6 +29,8 @@ const LazyRuntimeHealthIndicator = React.lazy(async () => {
   };
 });
 
+const runtimeHealthIndicatorEnabled = import.meta.env.VITE_PLAYWRIGHT_TEST !== 'true';
+
 /**
  * Rendert das anwendungsweite Shell-Layout mit austauschbarem Sidebar-Slot.
  *
@@ -90,9 +92,11 @@ export default function AppShell({
             <div className="space-y-6">
               {showBreadcrumbs ? <AppBreadcrumbs pathname={currentPathname} /> : null}
               {children}
-              <React.Suspense fallback={null}>
-                <LazyRuntimeHealthIndicator />
-              </React.Suspense>
+              {runtimeHealthIndicatorEnabled ? (
+                <React.Suspense fallback={null}>
+                  <LazyRuntimeHealthIndicator />
+                </React.Suspense>
+              ) : null}
             </div>
           )}
         </main>

@@ -84,7 +84,8 @@ describe('StudioDataTable', () => {
       />
     );
 
-    const rowCheckbox = screen.getByLabelText('Abholorte: Zeile 1 auswählen');
+    const [rowCheckbox] = screen.getAllByLabelText('Abholorte: Zeile 1 auswählen');
+    expect(rowCheckbox).toBeTruthy();
     fireEvent.click(rowCheckbox);
     fireEvent.click(screen.getByRole('button', { name: 'Löschen' }));
 

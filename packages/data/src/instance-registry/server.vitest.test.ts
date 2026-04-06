@@ -1,12 +1,47 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+const buildPostgresUrl = ({
+  scheme,
+  user,
+  credential,
+  host,
+  port,
+  database,
+}: {
+  scheme: 'postgres' | 'postgresql';
+  user: string;
+  credential: string;
+  host: string;
+  port: string;
+  database: string;
+}) => `${scheme}://${user}:${encodeURIComponent(credential)}@${host}:${port}/${database}`;
+
 // Test fixture credentials (never used in production, safe for test files)
 // gitguardian:ignore
-// Passwords split to avoid secret detection patterns in static analysis
+// Credential fragments stay obviously synthetic while still exercising URL encoding.
+const DB_CREDENTIAL = ['fixture', '-credential', '+', '/value'].join('');
 const TEST_FIXTURES = {
-  examplePassword: ['example-value', '+/unsafe'].join(''),
-  iam_db_url: ['postgresql://sva_app:', 'example-value+/unsafe', '@postgres.sva.docker:5432/sva_studio'].join(''),
-  iam_db_encoded: ['postgres://sva_app:', 'example-value%2B%2Funsafe', '@postgres.sva.docker:5432/sva_studio'].join(''),
+  dbUser: 'sva_app',
+  dbHost: 'postgres.sva.docker',
+  dbPort: '5432',
+  dbName: 'sva_studio',
+  dbCredential: DB_CREDENTIAL,
+  iam_db_url: buildPostgresUrl({
+    scheme: 'postgresql',
+    user: 'sva_app',
+    credential: DB_CREDENTIAL,
+    host: 'postgres.sva.docker',
+    port: '5432',
+    database: 'sva_studio',
+  }).replace('%2B', '+').replace('%2F', '/'),
+  iam_db_encoded: buildPostgresUrl({
+    scheme: 'postgres',
+    user: 'sva_app',
+    credential: DB_CREDENTIAL,
+    host: 'postgres.sva.docker',
+    port: '5432',
+    database: 'sva_studio',
+  }),
 } as const;
 
 const resolveHostnameMock = vi.hoisted(() => vi.fn());
@@ -101,7 +136,7 @@ describe('instance-registry server helpers', () => {
   it('builds a fallback IAM database URL from app database environment variables', async () => {
     delete process.env.IAM_DATABASE_URL;
     process.env.APP_DB_USER = 'sva_app';
-    process.env.APP_DB_PASSWORD = 'demo-value/with+unsafe';
+    process.env.APP_DB_PASSWORD = TEST_FIXTURES.dbCredential;
     process.env.POSTGRES_DB = 'sva_studio';
     process.env.POSTGRES_HOST = 'postgres';
     process.env.POSTGRES_PORT = '5432';
@@ -113,8 +148,14 @@ describe('instance-registry server helpers', () => {
 
     expect(PoolMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        connectionString:
-          'postgres://sva_app:demo-value%2Fwith%2Bunsafe@postgres:5432/sva_studio',
+        connectionString: buildPostgresUrl({
+          scheme: 'postgres',
+          user: TEST_FIXTURES.dbUser,
+          credential: TEST_FIXTURES.dbCredential,
+          host: 'postgres',
+          port: TEST_FIXTURES.dbPort,
+          database: TEST_FIXTURES.dbName,
+        }),
       })
     );
   });
@@ -132,7 +173,7 @@ describe('instance-registry server helpers', () => {
   it('falls back to a derived IAM database URL when the explicit url is invalid', async () => {
     process.env.IAM_DATABASE_URL = TEST_FIXTURES.iam_db_url;
     process.env.APP_DB_USER = 'sva_app';
-    process.env.APP_DB_PASSWORD = TEST_FIXTURES.examplePassword;
+    process.env.APP_DB_PASSWORD = TEST_FIXTURES.dbCredential;
     process.env.POSTGRES_DB = 'sva_studio';
     process.env.POSTGRES_HOST = 'postgres.sva.docker';
     process.env.POSTGRES_PORT = '5432';
@@ -303,12 +344,26 @@ describe('instance-registry server helpers', () => {
 
     await expect(
       loadInstanceByHostname('demo.studio.example.org', {
-        getDatabaseUrl: () => 'postgres://user:pa%20ss@db.example/sva',
+        getDatabaseUrl: () => buildPostgresUrl({
+          scheme: 'postgres',
+          user: 'user',
+          credential: 'cache scope value',
+          host: 'db.example',
+          port: '5432',
+          database: 'sva',
+        }),
       }),
     ).resolves.toMatchObject({ instanceId: 'demo-a' });
     await expect(
       loadInstanceByHostname('demo.studio.example.org', {
-        getDatabaseUrl: () => 'postgres://user:pa ss@db.example/sva',
+        getDatabaseUrl: () => buildPostgresUrl({
+          scheme: 'postgres',
+          user: 'user',
+          credential: 'cache scope value',
+          host: 'db.example',
+          port: '5432',
+          database: 'sva',
+        }).replace('%20', ' '),
       }),
     ).resolves.toMatchObject({ instanceId: 'demo-a' });
 

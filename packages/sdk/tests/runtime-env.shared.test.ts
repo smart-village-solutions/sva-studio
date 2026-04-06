@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildAcceptanceReportPaths,
   formatAcceptanceDeployReportMarkdown,
+  getRuntimeStatusExecutionMode,
   parseRuntimeCliOptions,
   resolveAcceptanceDeployOptions,
   type AcceptanceDeployReport,
@@ -230,5 +231,11 @@ describe('runtime-env.shared', () => {
     );
 
     expect(result.reportSlug).toBe('studio-deploy');
+  });
+
+  it('uses remote status execution for swarm profiles and local status execution for local profiles', () => {
+    expect(getRuntimeStatusExecutionMode('studio')).toBe('remote');
+    expect(getRuntimeStatusExecutionMode('acceptance-hb')).toBe('remote');
+    expect(getRuntimeStatusExecutionMode('local-keycloak')).toBe('local');
   });
 });

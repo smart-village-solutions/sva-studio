@@ -22,6 +22,7 @@ import {
 import {
   buildAcceptanceReportPaths,
   formatAcceptanceDeployReportMarkdown,
+  getRuntimeStatusExecutionMode,
   parseRuntimeCliOptions,
   resolveAcceptanceDeployOptions,
   type AcceptanceDeployOptions,
@@ -3359,6 +3360,16 @@ const runAcceptanceCommand = async (runtimeProfile: RemoteRuntimeProfile, runtim
       return;
     case 'status':
       assertRuntimeEnv(runtimeProfile, env);
+      if (getRuntimeStatusExecutionMode(runtimeProfile) === 'remote') {
+        if (!commandExists('quantum-cli')) {
+          throw new Error('quantum-cli ist fuer Remote-Status nicht verfuegbar.');
+        }
+
+        const quantumEndpoint = getConfiguredQuantumEndpoint(env);
+        run('quantum-cli', ['ps', '--endpoint', quantumEndpoint, '--stack', stackName, '--all'], withoutDebugEnv(env));
+        return;
+      }
+
       run('docker', ['stack', 'services', stackName], env);
       run('docker', ['stack', 'ps', stackName], env);
       return;

@@ -547,22 +547,24 @@ function evaluateFloors(
   });
   errors.push(...projectFloorErrors);
 
-  const globalCoverage = mergeGlobal(activeProjects.map(([, values]) => values));
-  const globalFloorErrors = metrics.flatMap((metric) => {
-    const floor = Number(policy.globalFloors?.[metric] ?? 0);
-    const current = Number(globalCoverage[metric] ?? 0);
-    if (current >= floor) {
-      return [];
-    }
+  if (requireSummaries) {
+    const globalCoverage = mergeGlobal(activeProjects.map(([, values]) => values));
+    const globalFloorErrors = metrics.flatMap((metric) => {
+      const floor = Number(policy.globalFloors?.[metric] ?? 0);
+      const current = Number(globalCoverage[metric] ?? 0);
+      if (current >= floor) {
+        return [];
+      }
 
-    return [
-      {
-        scope: 'global' as const,
-        message: `[global] ${metric} below floor: ${current.toFixed(2)} < ${floor.toFixed(2)}`,
-      },
-    ];
-  });
-  errors.push(...globalFloorErrors);
+      return [
+        {
+          scope: 'global' as const,
+          message: `[global] ${metric} below floor: ${current.toFixed(2)} < ${floor.toFixed(2)}`,
+        },
+      ];
+    });
+    errors.push(...globalFloorErrors);
+  }
 
   return errors;
 }

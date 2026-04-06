@@ -1,5 +1,5 @@
-import type { IamInstanceId } from '../iam/types';
-import type { SqlExecutor, SqlStatement } from '../iam/repositories/types';
+import type { IamInstanceId } from '../iam/types.js';
+import type { SqlExecutor, SqlStatement } from '../iam/repositories/types.js';
 
 export type IntegrationProviderKey = 'sva_mainserver';
 
@@ -192,4 +192,4 @@ export const instanceIntegrationStatements = {
   upsert: upsertStatement,
 } as const;
 
-export type { SqlExecutionResult } from '../iam/repositories/types';
+export type { SqlExecutionResult } from '../iam/repositories/types.js';

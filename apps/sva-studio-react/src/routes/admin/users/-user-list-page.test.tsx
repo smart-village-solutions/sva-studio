@@ -71,10 +71,13 @@ const createUsersApiState = (overrides: Record<string, unknown> = {}) => ({
   deactivateUser: vi.fn().mockResolvedValue(true),
   bulkDeactivate: vi.fn().mockResolvedValue(true),
   syncUsersFromKeycloak: vi.fn().mockResolvedValue({
-    importedCount: 1,
-    updatedCount: 2,
-    skippedCount: 3,
-    totalKeycloakUsers: 6,
+    ok: true,
+    report: {
+      importedCount: 1,
+      updatedCount: 2,
+      skippedCount: 3,
+      totalKeycloakUsers: 6,
+    },
   }),
   ...overrides,
 });
@@ -197,14 +200,14 @@ describe('UserListPage', () => {
     fireEvent.click(nameHeader);
 
     let rows = screen.getAllByRole('row');
-    expect(rows[1]?.textContent).toContain('Bob');
-    expect(rows[2]?.textContent).toContain('Alice');
+    expect(rows[1]?.textContent).toContain('Alice');
+    expect(rows[2]?.textContent).toContain('Bob');
 
     fireEvent.click(nameHeader);
 
     rows = screen.getAllByRole('row');
-    expect(rows[1]?.textContent).toContain('Alice');
-    expect(rows[2]?.textContent).toContain('Bob');
+    expect(rows[1]?.textContent).toContain('Bob');
+    expect(rows[2]?.textContent).toContain('Alice');
   });
 
   it('submits create user form and closes dialog on success', async () => {
@@ -272,7 +275,7 @@ describe('UserListPage', () => {
       expect(deactivateUser).toHaveBeenCalledWith('user-1');
     });
 
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Alle Nutzer markieren' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Benutzertabelle: Alle Zeilen auswählen' }));
     fireEvent.click(screen.getByRole('button', { name: 'Auswahl deaktivieren' }));
     fireEvent.click(screen.getAllByRole('button', { name: 'Deaktivieren' }).at(-1) as HTMLButtonElement);
 
@@ -299,10 +302,13 @@ describe('UserListPage', () => {
 
   it('triggers keycloak sync and shows the sync result', async () => {
     const syncUsersFromKeycloak = vi.fn().mockResolvedValue({
-      importedCount: 2,
-      updatedCount: 1,
-      skippedCount: 4,
-      totalKeycloakUsers: 7,
+      ok: true,
+      report: {
+        importedCount: 2,
+        updatedCount: 1,
+        skippedCount: 4,
+        totalKeycloakUsers: 7,
+      },
     });
     useUsersMock.mockReturnValue(createUsersApiState({ syncUsersFromKeycloak }));
     useRolesMock.mockReturnValue(createRolesApiState());
@@ -319,14 +325,53 @@ describe('UserListPage', () => {
     });
   });
 
+  it('shows a pending state immediately when keycloak sync starts', async () => {
+    let resolveSync: undefined | ((value: {
+      ok: true;
+      report: { importedCount: number; updatedCount: number; skippedCount: number; totalKeycloakUsers: number };
+    }) => void);
+    const syncUsersFromKeycloak = vi.fn().mockImplementation(
+      () =>
+        new Promise<{
+          ok: true;
+          report: { importedCount: number; updatedCount: number; skippedCount: number; totalKeycloakUsers: number };
+        }>((resolve) => {
+          resolveSync = resolve;
+        })
+    );
+    useUsersMock.mockReturnValue(createUsersApiState({ syncUsersFromKeycloak }));
+    useRolesMock.mockReturnValue(createRolesApiState());
+
+    render(<UserListPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Aus Keycloak synchronisieren' }));
+
+    expect((screen.getByRole('button', { name: 'Synchronisiert ...' }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByText('Synchronisierung läuft ...')).toBeTruthy();
+
+    resolveSync?.({
+      ok: true,
+      report: {
+        importedCount: 1,
+        updatedCount: 0,
+        skippedCount: 0,
+        totalKeycloakUsers: 1,
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('1 importiert, 0 aktualisiert, 0 ohne passenden Instanzkontext übersprungen.')).toBeTruthy();
+    });
+  });
+
   it('renders an empty table state and disables bulk actions when there are no users', () => {
     useUsersMock.mockReturnValue(createUsersApiState({ users: [], total: 0 }));
     useRolesMock.mockReturnValue(createRolesApiState());
 
     render(<UserListPage />);
 
-    expect(screen.getByText('0 Nutzer gefunden.')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Auswahl deaktivieren' })).toHaveProperty('disabled', true);
+    expect(screen.getByText('Keine Nutzer gefunden.')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Auswahl deaktivieren' })).toBeNull();
   });
 
   it('keeps bulk actions hidden when the feature is disabled', () => {
@@ -339,8 +384,16 @@ describe('UserListPage', () => {
     expect(screen.queryByRole('button', { name: 'Auswahl deaktivieren' })).toBeNull();
   });
 
-  it('keeps the sync result unchanged when the sync call returns no report', async () => {
-    const syncUsersFromKeycloak = vi.fn().mockResolvedValue(null);
+  it('shows an explicit no-op result when the sync finds no changes', async () => {
+    const syncUsersFromKeycloak = vi.fn().mockResolvedValue({
+      ok: true,
+      report: {
+        importedCount: 0,
+        updatedCount: 0,
+        skippedCount: 4,
+        totalKeycloakUsers: 4,
+      },
+    });
     useUsersMock.mockReturnValue(createUsersApiState({ syncUsersFromKeycloak }));
     useRolesMock.mockReturnValue(createRolesApiState());
 
@@ -352,6 +405,45 @@ describe('UserListPage', () => {
       expect(syncUsersFromKeycloak).toHaveBeenCalledTimes(1);
     });
 
-    expect(screen.queryByText(/importiert, .* aktualisiert, .* übersprungen/)).toBeNull();
+    expect(
+      screen.getByText('Keine neuen oder geänderten Benutzer gefunden. 4 ohne passenden Instanzkontext übersprungen.')
+    ).toBeTruthy();
+  });
+
+  it('shows a dedicated sync error and clears it on retry', async () => {
+    const syncUsersFromKeycloak = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        error: { status: 503, code: 'keycloak_unavailable', message: 'boom' },
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        report: {
+          importedCount: 1,
+          updatedCount: 0,
+          skippedCount: 0,
+          totalKeycloakUsers: 1,
+        },
+      });
+    useUsersMock.mockReturnValue(createUsersApiState({ syncUsersFromKeycloak }));
+    useRolesMock.mockReturnValue(createRolesApiState());
+
+    render(<UserListPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Aus Keycloak synchronisieren' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert').textContent).toContain(
+        'Die Verbindung zu Keycloak ist derzeit nicht verfügbar. Bitte später erneut versuchen.'
+      );
+    });
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Erneut versuchen' })[0]);
+
+    await waitFor(() => {
+      expect(syncUsersFromKeycloak).toHaveBeenCalledTimes(2);
+      expect(screen.getByText('1 importiert, 0 aktualisiert, 0 ohne passenden Instanzkontext übersprungen.')).toBeTruthy();
+    });
   });
 });

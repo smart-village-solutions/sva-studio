@@ -27,7 +27,7 @@ const createRouteMock = vi.hoisted(() =>
         return { ...route, children };
       },
       useLoaderData: () => ['Rise Above'],
-      useParams: () => ({ userId: 'user-1', contentId: 'content-1' }),
+      useParams: () => ({ userId: 'user-1', contentId: 'content-1', instanceId: 'instance-1' }),
       useSearch: () => ({ tab: 'governance' }),
     };
     return route;
@@ -42,6 +42,7 @@ vi.mock('@tanstack/react-router', () => ({
   ),
   Outlet: () => <div data-testid="outlet" />,
   createRoute: createRouteMock,
+  useNavigate: () => vi.fn(),
 }));
 
 vi.mock('@tanstack/react-start', () => ({
@@ -114,8 +115,20 @@ vi.mock('./admin/instances/-instances-page', () => ({
   InstancesPage: () => <div>InstancesPage</div>,
 }));
 
+vi.mock('./admin/instances/-instance-create-page', () => ({
+  InstanceCreatePage: () => <div>InstanceCreatePage</div>,
+}));
+
+vi.mock('./admin/instances/-instance-detail-page', () => ({
+  InstanceDetailPage: ({ instanceId }: { instanceId: string }) => <div>{`InstanceDetailPage:${instanceId}`}</div>,
+}));
+
 vi.mock('./admin/roles/-roles-page', () => ({
   RolesPage: () => <div>RolesPage</div>,
+}));
+
+vi.mock('./admin/roles/-role-create-page', () => ({
+  RoleCreatePage: () => <div>RoleCreatePage</div>,
 }));
 
 vi.mock('./admin/users/-user-edit-page', () => ({
@@ -173,6 +186,9 @@ describe('core routes', () => {
     const contentDetailRoute = readRouteOptions(routes.get('/content/$contentId'));
     const groupsRoute = readRouteOptions(routes.get('/admin/groups'));
     const instancesRoute = readRouteOptions(routes.get('/admin/instances'));
+    const instanceCreateRoute = readRouteOptions(routes.get('/admin/instances/new'));
+    const instanceDetailRoute = readRouteOptions(routes.get('/admin/instances/$instanceId'));
+    const roleCreateRoute = readRouteOptions(routes.get('/admin/roles/new'));
     const legalTextsRoute = readRouteOptions(routes.get('/admin/legal-texts'));
     const iamRoute = readRouteOptions(routes.get('/admin/iam'));
     const modulesRoute = readRouteOptions(routes.get('/modules'));
@@ -184,6 +200,9 @@ describe('core routes', () => {
     await contentDetailRoute.beforeLoad?.({ href: '/content/content-1' });
     await groupsRoute.beforeLoad?.({ href: '/admin/groups' });
     await instancesRoute.beforeLoad?.({ href: '/admin/instances' });
+    await instanceCreateRoute.beforeLoad?.({ href: '/admin/instances/new' });
+    await instanceDetailRoute.beforeLoad?.({ href: '/admin/instances/instance-1' });
+    await roleCreateRoute.beforeLoad?.({ href: '/admin/roles/new' });
     await legalTextsRoute.beforeLoad?.({ href: '/admin/legal-texts' });
     await iamRoute.beforeLoad?.({ href: '/admin/iam' });
     await modulesRoute.beforeLoad?.({ href: '/modules' });
@@ -195,6 +214,9 @@ describe('core routes', () => {
     expect(guardSpies.contentDetail).toHaveBeenCalledWith({ href: '/content/content-1' });
     expect(guardSpies.adminGroups).toHaveBeenCalledWith({ href: '/admin/groups' });
     expect(guardSpies.adminInstances).toHaveBeenCalledWith({ href: '/admin/instances' });
+    expect(guardSpies.adminInstances).toHaveBeenCalledWith({ href: '/admin/instances/new' });
+    expect(guardSpies.adminInstances).toHaveBeenCalledWith({ href: '/admin/instances/instance-1' });
+    expect(guardSpies.adminRoles).toHaveBeenCalledWith({ href: '/admin/roles/new' });
     expect(guardSpies.adminRoles).toHaveBeenCalledWith({ href: '/admin/legal-texts' });
     expect(guardSpies.adminIam).toHaveBeenCalledWith({ href: '/admin/iam' });
     expect(guardSpies.adminRoles).toHaveBeenCalledWith({ href: '/modules' });
@@ -252,6 +274,15 @@ describe('core routes', () => {
 
     renderPath('/admin/instances');
     expect(screen.getByText('InstancesPage')).toBeTruthy();
+
+    renderPath('/admin/roles/new');
+    expect(screen.getByText('RoleCreatePage')).toBeTruthy();
+
+    renderPath('/admin/instances/new');
+    expect(screen.getByText('InstanceCreatePage')).toBeTruthy();
+
+    renderPath('/admin/instances/$instanceId');
+    expect(screen.getByText('InstanceDetailPage:instance-1')).toBeTruthy();
 
     renderPath('/admin/legal-texts');
     expect(screen.getByText('LegalTextsPage')).toBeTruthy();

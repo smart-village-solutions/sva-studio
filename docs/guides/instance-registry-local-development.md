@@ -18,6 +18,7 @@ Diese Anleitung beschreibt den lokalen Standardpfad und den registry-nahen Multi
 - lokale Seeds enthalten mindestens zwei aktive Instanzen und einen negativen Fall
 - für Browser- oder Playwright-Tests ist `SVA_PARENT_DOMAIN=studio.lvh.me` gesetzt
 - die Dev- oder Playwright-Instanz erlaubt `studio.lvh.me` und `*.studio.lvh.me` als lokale Hosts
+- im Standardprofil `local-keycloak` ist `svs-intern-studio-staging` der globale Keycloak-Realm und `de-musterhausen` die fachliche Test-Instanz
 
 ## Schneller Standardpfad
 
@@ -29,6 +30,7 @@ Diese Anleitung beschreibt den lokalen Standardpfad und den registry-nahen Multi
 
 Empfohlene Seed-Instanzen:
 
+- `de-musterhausen`
 - `hb`
 - `demo`
 - negativer Fall über unbekannten Host, zum Beispiel `blocked.studio.lvh.me`
@@ -48,6 +50,11 @@ curl -i http://blocked.studio.lvh.me:3000/auth/me
 3. nach erfolgreicher Anlage Tenant-Host direkt öffnen
 4. unbekannte oder suspendierte Hosts auf identisches fail-closed-Verhalten prüfen
 
+Hinweis zum lokalen Realm-Modell:
+
+- Für `local-keycloak` wird lokal nicht pro Instanz ein eigener Realm erwartet.
+- Neue lokale Test-Instanzen dürfen deshalb auf denselben globalen Test-Realm `svs-intern-studio-staging` zeigen, solange User und Rollen dort sauber mit `instanceId`-Attributen getrennt werden.
+
 Verifikation:
 
 ```bash
@@ -55,7 +62,7 @@ pnpm exec tsx scripts/ops/instance-registry.ts create \
   --instance-id demo2 \
   --display-name "Demo 2" \
   --parent-domain studio.lvh.me \
-  --auth-realm demo2 \
+  --auth-realm svs-intern-studio-staging \
   --auth-client-id sva-studio \
   --actor-id local-admin
 pnpm exec tsx scripts/ops/instance-registry.ts activate \
@@ -84,7 +91,7 @@ pnpm exec tsx scripts/ops/instance-registry.ts create \
   --instance-id demo \
   --display-name "Demo" \
   --parent-domain studio.lvh.me \
-  --auth-realm demo \
+  --auth-realm svs-intern-studio-staging \
   --auth-client-id sva-studio \
   --actor-id local-admin
 pnpm exec tsx scripts/ops/instance-registry.ts activate \

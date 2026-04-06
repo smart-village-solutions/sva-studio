@@ -9,9 +9,12 @@ import { Phase1TestPage } from './admin/api/-phase1-test-page';
 import { IamViewerPage } from './admin/-iam-page';
 import { normalizeIamTab } from './admin/-iam.models';
 import { GroupsPage } from './admin/groups/-groups-page';
+import { InstanceCreatePage } from './admin/instances/-instance-create-page';
+import { InstanceDetailPage } from './admin/instances/-instance-detail-page';
 import { InstancesPage } from './admin/instances/-instances-page';
 import { LegalTextsPage } from './admin/legal-texts/-legal-texts-page';
 import { OrganizationsPage } from './admin/organizations/-organizations-page';
+import { RoleCreatePage } from './admin/roles/-role-create-page';
 import { normalizeRoleDetailTab, RoleDetailPage } from './admin/roles/-role-detail-page';
 import { RolesPage } from './admin/roles/-roles-page';
 import { UserEditPage } from './admin/users/-user-edit-page';
@@ -242,9 +245,32 @@ export const runtimeCoreRouteFactories = [
   (rootRoute: RootRoute) =>
     createRoute({
       getParentRoute: () => rootRoute,
+      path: '/admin/instances/new',
+      beforeLoad: (options) => runAccountUiGuard('adminInstances', options),
+      component: InstanceCreatePage,
+    }),
+  (rootRoute: RootRoute) => {
+    const instanceDetailRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/admin/instances/$instanceId',
+      beforeLoad: (options) => runAccountUiGuard('adminInstances', options),
+      component: () => <InstanceDetailPage instanceId={instanceDetailRoute.useParams().instanceId} />,
+    });
+    return instanceDetailRoute;
+  },
+  (rootRoute: RootRoute) =>
+    createRoute({
+      getParentRoute: () => rootRoute,
       path: '/admin/roles',
       beforeLoad: (options) => runAccountUiGuard('adminRoles', options),
       component: RolesPage,
+    }),
+  (rootRoute: RootRoute) =>
+    createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/admin/roles/new',
+      beforeLoad: (options) => runAccountUiGuard('adminRoles', options),
+      component: RoleCreatePage,
     }),
   (rootRoute: RootRoute) => {
     const roleDetailRoute = createRoute({

@@ -8,3 +8,67 @@ multi_agent = true
 [agents.ci-monitor-subagent]
 description = "Polls Nx Cloud CI pipeline and self-healing status. Returns structured state when actionable. Spawned by /monitor-ci command to monitor CI Attempt status."
 config_file = ".codex/agents/ci-monitor-subagent.toml"
+
+[agents.architecture]
+description = "Prüft Architekturentscheidungen und föderale IT-Konformität."
+config_file = ".codex/agents/architecture.toml"
+
+[agents.code-quality-guardian]
+description = "Risikobasierter Quality- und Architektur-Review fuer TypeScript-strict im Nx-Monorepo mit TanStack."
+config_file = ".codex/agents/code-quality-guardian.toml"
+
+[agents.documentation]
+description = "Prueft, pflegt und verbessert Projekt-Dokumentation in Code, OpenSpec und PR/Proposal-Kontext."
+config_file = ".codex/agents/documentation.toml"
+
+[agents.i18n-content]
+description = "Prüft Übersetzungsdisziplin, Key-Konventionen, harte Strings und Textklarheit."
+config_file = ".codex/agents/i18n-content.toml"
+
+[agents.interoperability-data]
+description = "Prüft APIs, Datenformate, Versionierung und Migrationsfähigkeit."
+config_file = ".codex/agents/interoperability-data.toml"
+
+[agents.logging]
+description = "Prueft Logging-Qualitaet, Struktur, Korrelation und Debugging-Tauglichkeit."
+config_file = ".codex/agents/logging.toml"
+
+[agents.operations-reliability]
+description = "Prüft Betrieb, Wartung, Deployments, Backups und Observability."
+config_file = ".codex/agents/operations-reliability.toml"
+
+[agents.performance]
+description = "Prüft evidenzbasiert Performance-Risiken in Rendering, Datenfluss, Caching und Hot Paths."
+config_file = ".codex/agents/performance.toml"
+
+[agents.pr-fixer]
+description = "Bearbeitet aktive PRs iterativ bis zur Merge-Bereitschaft und fixt Threads, Tests und Quality Gates."
+config_file = ".codex/agents/pr-fixer.toml"
+
+[agents.pr-review-orchestrator]
+description = "Koordiniert spezialisierte Review-Agents für normale PRs und Code-Reviews."
+config_file = ".codex/agents/pr-review-orchestrator.toml"
+
+[agents.proposal-review-orchestrator]
+description = "Koordiniert die spezialisierten Review-Agents für OpenSpec-Proposals und konsolidiert deren Ergebnisse."
+config_file = ".codex/agents/proposal-review-orchestrator.toml"
+
+[agents.rollout-operator]
+description = "Führt Rollouts durch und verifiziert sie von Image-Build über Quantum Deploy bis zu Smoke-Tests."
+config_file = ".codex/agents/rollout-operator.toml"
+
+[agents.security-privacy]
+description = "Prüft Security-, Datenschutz- und BSI/DSGVO-Anforderungen."
+config_file = ".codex/agents/security-privacy.toml"
+
+[agents.test-quality]
+description = "Prüft Teststrategie, Coverage-Risiken, Nx-Test-Targeting und Verifikationslücken."
+config_file = ".codex/agents/test-quality.toml"
+
+[agents.user-journey-usability]
+description = "Bewertet Aufgabenorientierung, Friktion und Verständlichkeit explizit aus Nutzersicht."
+config_file = ".codex/agents/user-journey-usability.toml"
+
+[agents.ux-accessibility]
+description = "Prüft normative Bedienbarkeit und Barrierefreiheit nach WCAG/BITV."
+config_file = ".codex/agents/ux-accessibility.toml"

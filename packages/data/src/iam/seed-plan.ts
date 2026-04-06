@@ -1,4 +1,4 @@
-import type { IamSeedPlan, PermissionKey, PersonaSeed } from './types';
+import type { IamSeedPlan, PermissionKey, PersonaSeed } from './types.js';
 
 const permissions = [
   ['40111111-1111-1111-1111-111111111111', 'iam.user.read', 'Read account data'],

@@ -177,6 +177,11 @@ Referenzen:
    - Wahrscheinlichkeit: hoch
    - Maßnahme: Retention-Automation (Anonymisierung + Archivierung) mit mandantenspezifischen Policies
 
+16a. Drift zwischen Plattform-Scope und Tenant-Scope
+   - Impact: hoch (falsche Audit-Zuordnung, Root-Host-Fehler, unklare Logs)
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: explizites `platform`-/`instance`-Scope-Modell, separate Audit-Stores und strukturierte `reason_code`-Fehlerpfade
+
 17. Fehlkonfigurierte Keycloak-Service-Account-Rechte für Rollen-Sync
    - Impact: hoch (Role-CRUD und Reconcile schlagen reproduzierbar fehl)
    - Wahrscheinlichkeit: mittel

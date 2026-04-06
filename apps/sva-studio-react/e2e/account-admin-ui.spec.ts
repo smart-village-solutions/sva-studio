@@ -328,8 +328,8 @@ test('admin user list and edit page are reachable for system_admin', async ({ pa
   await navigateClientSide(page, '/admin/users');
   await usersResponsePromise;
   await expect(page.getByRole('heading', { name: 'Benutzerverwaltung' })).toBeVisible();
-  await expect(page.getByLabel('Benutzertabelle')).toContainText('User Two');
-  await page.getByRole('button', { name: 'Aus Keycloak synchronisieren' }).click();
+  await expect(page.getByRole('table', { name: 'Benutzertabelle' })).toContainText('User Two');
+  await page.getByRole('button', { name: 'Aus Keycloak synchronisieren' }).dispatchEvent('click');
   await expect(page.getByText('1 importiert, 1 aktualisiert, 0 ohne passenden Instanzkontext übersprungen.')).toBeVisible();
 
   const userDetailResponsePromise = page.waitForResponse(

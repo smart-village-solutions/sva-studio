@@ -80,6 +80,7 @@ export function RuntimeHealthIndicator() {
   const { error, health, isLoading } = useRuntimeHealth();
   const activeLocale = getActiveLocale();
   const overallStatus: RuntimeDependencyStatus = error || isLoading ? 'unknown' : health.status;
+  const keycloakRealm = health.checks.auth?.realm?.trim() || t('shell.runtimeHealth.notAvailable');
 
   return (
     <section
@@ -120,6 +121,11 @@ export function RuntimeHealthIndicator() {
                   <p className="text-xs text-muted-foreground">
                     {reasonLabel ?? t(service.status === 'ready' ? 'shell.runtimeHealth.reasons.ok' : 'shell.runtimeHealth.reasons.unknown')}
                   </p>
+                  {serviceKey === 'keycloak' ? (
+                    <p className="text-xs text-muted-foreground">
+                      {t('shell.runtimeHealth.realmLabel', { realm: keycloakRealm })}
+                    </p>
+                  ) : null}
                 </div>
                 <Badge className={cn(statusBadgeClassNames[service.status])}>
                   {serviceStatusLabels[service.status]}

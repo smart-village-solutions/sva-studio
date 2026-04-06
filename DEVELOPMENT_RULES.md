@@ -107,6 +107,35 @@ These rules are **NON-NEGOTIABLE** and must be followed in all development work.
 
 ---
 
+## 1.3 Server-Package-Runtime und Node-ESM
+
+### ✅ REQUIRED
+- Für Workspace-Packages, deren `dist/*.js` direkt von Node geladen wird, müssen relative Runtime-Imports und Re-Exports explizite Laufzeitendungen tragen, in der Regel `.js`.
+- Runtime-Imports auf andere Workspace-Packages müssen im jeweiligen `package.json` unter `dependencies` deklariert sein.
+- Vor PR und Push für Änderungen an serverseitigen Packages `pnpm check:server-runtime` ausführen; das Gate läuft zusätzlich in `pnpm test:types`.
+- Bei neuen Server-Packages denselben Guard früh mitdenken und als Nx-Target `check:runtime` integrieren.
+
+### ❌ FORBIDDEN
+- Relative Runtime-Imports wie `./server`, `../types` oder `export * from './foo'` in Node-ESM-relevanten Packages ohne Endung.
+- Verlassen auf transitive, Root- oder Alias-Auflösung für echte Runtime-Dependencies.
+- Annahme, dass `moduleResolution: "Bundler"` oder Vite/`tsx` automatisch garantiert, dass gebautes `dist/*.js` in Node korrekt läuft.
+
+**Warum diese Regel kritisch ist:**
+- TypeScript ist hier die Quellsprache, die Laufzeit ist dennoch Node mit ESM-Regeln.
+- `moduleResolution: "Bundler"` verdeckt Fehler, die erst in gebauten Packages auftreten.
+- Ohne Guard fallen Probleme oft erst spät im Dev-Server oder im produktionsnahen Laufzeitpfad auf.
+
+**Pflicht-Checks:**
+```bash
+pnpm check:server-runtime
+pnpm test:types
+```
+
+**Referenzdoku:**
+- `docs/development/server-package-runtime-guards.md`
+
+---
+
 ## 2. Translation System
 
 ### Process for UI Texts

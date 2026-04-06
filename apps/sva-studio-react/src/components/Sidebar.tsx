@@ -38,6 +38,11 @@ import {
   isIamAdminEnabled,
   isIamUiEnabled,
 } from '../lib/iam-admin-access';
+import {
+  createOperationLogger,
+  logBrowserOperationStart,
+  logBrowserOperationSuccess,
+} from '../lib/browser-operation-logging';
 import { useAuth } from '../providers/auth-provider';
 import { Button } from './ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
@@ -99,6 +104,31 @@ const HELP_DISCUSSIONS_URL = 'https://github.com/smart-village-solutions/sva-stu
 const SUPPORT_ISSUES_URL = 'https://github.com/smart-village-solutions/sva-studio/issues';
 const LICENSE_ISSUE_URL = 'https://github.com/smart-village-solutions/sva-studio/issues/2';
 const COCKPIT_URL = 'https://cockpit.guben.de';
+const sidebarLogger = createOperationLogger('sidebar', 'debug');
+
+const isSidebarDebugEnabled = () => {
+  if (typeof process !== 'undefined' && typeof process.env?.NODE_ENV === 'string') {
+    return process.env.NODE_ENV !== 'production';
+  }
+
+  const meta = import.meta as ImportMeta & { env?: { DEV?: boolean; PROD?: boolean } };
+  if (typeof meta.env?.DEV === 'boolean') {
+    return meta.env.DEV;
+  }
+  if (typeof meta.env?.PROD === 'boolean') {
+    return !meta.env.PROD;
+  }
+
+  return true;
+};
+
+const logSidebarDebug = (eventName: string, meta: Record<string, unknown>) => {
+  if (!isSidebarDebugEnabled()) {
+    return;
+  }
+
+  logBrowserOperationStart(sidebarLogger, eventName, meta);
+};
 
 const isLeafActive = (pathname: string, item: SidebarLeafItem) => {
   if (!item.to) {
@@ -276,6 +306,17 @@ const SidebarNavItem = ({
   const isExpanded = isCollapsed ? flyoutGroupId === item.id : persistedOpen ?? isActive;
   const IconComponent = item.icon;
   const handleBlurCapture = (event: React.FocusEvent<HTMLLIElement>) => {
+    logSidebarDebug('sidebar_group_blur_capture', {
+      item_id: item.id,
+      item_label: item.label,
+      is_collapsed: isCollapsed,
+      is_active: isActive,
+      is_expanded: isExpanded,
+      related_target_tag:
+        event.relatedTarget instanceof HTMLElement ? event.relatedTarget.tagName : null,
+      related_target_text:
+        event.relatedTarget instanceof HTMLElement ? event.relatedTarget.textContent?.trim().slice(0, 80) : null,
+    });
     if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
       onCloseFlyout();
     }
@@ -298,8 +339,44 @@ const SidebarNavItem = ({
             aria-expanded={isExpanded}
             aria-label={item.label}
             title={item.label}
-            onClick={() => onToggleCollapsedGroup(item.id)}
-            onFocus={() => onOpenFlyout(item.id)}
+            onPointerDown={() => {
+              logSidebarDebug('sidebar_group_pointer_down', {
+                item_id: item.id,
+                item_label: item.label,
+                is_collapsed: true,
+                is_active: isActive,
+                is_expanded: isExpanded,
+              });
+            }}
+            onMouseDown={() => {
+              logSidebarDebug('sidebar_group_mouse_down', {
+                item_id: item.id,
+                item_label: item.label,
+                is_collapsed: true,
+                is_active: isActive,
+                is_expanded: isExpanded,
+              });
+            }}
+            onClick={() => {
+              logSidebarDebug('sidebar_group_click', {
+                item_id: item.id,
+                item_label: item.label,
+                is_collapsed: true,
+                is_active: isActive,
+                is_expanded: isExpanded,
+              });
+              onToggleCollapsedGroup(item.id);
+            }}
+            onFocus={() => {
+              logSidebarDebug('sidebar_group_focus', {
+                item_id: item.id,
+                item_label: item.label,
+                is_collapsed: true,
+                is_active: isActive,
+                is_expanded: isExpanded,
+              });
+              onOpenFlyout(item.id);
+            }}
           >
             <IconComponent className="h-5 w-5 shrink-0" />
           </button>
@@ -313,6 +390,42 @@ const SidebarNavItem = ({
           <CollapsibleTrigger
             className={`w-full ${getLinkClasses(isActive || isExpanded, false)}`}
             aria-controls={`sidebar-group-${item.id}`}
+            onPointerDown={() => {
+              logSidebarDebug('sidebar_group_pointer_down', {
+                item_id: item.id,
+                item_label: item.label,
+                is_collapsed: false,
+                is_active: isActive,
+                is_expanded: isExpanded,
+              });
+            }}
+            onMouseDown={() => {
+              logSidebarDebug('sidebar_group_mouse_down', {
+                item_id: item.id,
+                item_label: item.label,
+                is_collapsed: false,
+                is_active: isActive,
+                is_expanded: isExpanded,
+              });
+            }}
+            onFocus={() => {
+              logSidebarDebug('sidebar_group_focus', {
+                item_id: item.id,
+                item_label: item.label,
+                is_collapsed: false,
+                is_active: isActive,
+                is_expanded: isExpanded,
+              });
+            }}
+            onClick={() => {
+              logSidebarDebug('sidebar_group_click', {
+                item_id: item.id,
+                item_label: item.label,
+                is_collapsed: false,
+                is_active: isActive,
+                is_expanded: isExpanded,
+              });
+            }}
           >
             <IconComponent className="h-5 w-5 shrink-0" />
             <span className="truncate">{item.label}</span>
@@ -345,10 +458,23 @@ const SidebarPanel = ({
   const [flyoutGroupId, setFlyoutGroupId] = React.useState<string | null>(null);
 
   const toggleCollapsedGroup = (groupId: string) => {
+    logSidebarDebug('sidebar_toggle_collapsed_group', {
+      group_id: groupId,
+      pathname,
+      is_collapsed: isCollapsed,
+      current_flyout_group_id: flyoutGroupId,
+    });
     setFlyoutGroupId((current) => (current === groupId ? null : groupId));
   };
 
   const toggleExpandedGroup = (groupId: string, open: boolean) => {
+    logSidebarDebug('sidebar_toggle_expanded_group', {
+      group_id: groupId,
+      pathname,
+      is_collapsed: isCollapsed,
+      open,
+      current_group_open_state: groupOpenState,
+    });
     setGroupOpenState((current) => ({
       ...current,
       [groupId]: open,
@@ -356,8 +482,37 @@ const SidebarPanel = ({
   };
 
   const closeFlyout = () => {
+    logSidebarDebug('sidebar_close_flyout', {
+      pathname,
+      is_collapsed: isCollapsed,
+      current_flyout_group_id: flyoutGroupId,
+    });
     setFlyoutGroupId(null);
   };
+
+  const openFlyout = (groupId: string) => {
+    logSidebarDebug('sidebar_open_flyout', {
+      group_id: groupId,
+      pathname,
+      is_collapsed: isCollapsed,
+      current_flyout_group_id: flyoutGroupId,
+    });
+    setFlyoutGroupId(groupId);
+  };
+
+  React.useEffect(() => {
+    if (!isSidebarDebugEnabled()) {
+      return;
+    }
+
+    logBrowserOperationSuccess(sidebarLogger, 'sidebar_state_snapshot', {
+      pathname,
+      is_collapsed: isCollapsed,
+      flyout_group_id: flyoutGroupId,
+      group_open_state: groupOpenState,
+      sections_count: sections.length,
+    }, 'debug');
+  }, [flyoutGroupId, groupOpenState, isCollapsed, pathname, sections.length]);
   const showAppTitle = isCollapsed === false;
   const showFooter = isLoading === false;
 
@@ -435,7 +590,7 @@ const SidebarPanel = ({
                         onNavigate={onNavigate}
                         onToggleCollapsedGroup={toggleCollapsedGroup}
                         onToggleExpandedGroup={toggleExpandedGroup}
-                        onOpenFlyout={setFlyoutGroupId}
+                        onOpenFlyout={openFlyout}
                         onCloseFlyout={closeFlyout}
                       />
                     ))}

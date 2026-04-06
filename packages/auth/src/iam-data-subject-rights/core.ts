@@ -4,6 +4,7 @@ import type { IamDsrCanonicalStatus, IamDsrCaseListItem } from '@sva/core';
 import { decryptFieldValue, encryptFieldValue, parseFieldEncryptionConfigFromEnv } from '@sva/core/security';
 
 import { withAuthenticatedUser } from '../middleware.server.js';
+import { getIamDatabaseUrl } from '../runtime-secrets.server.js';
 import {
   createPoolResolver,
   jsonResponse,
@@ -80,7 +81,7 @@ type ExportPayload = {
   };
 };
 
-const resolvePool = createPoolResolver(() => process.env.IAM_DATABASE_URL);
+const resolvePool = createPoolResolver(getIamDatabaseUrl);
 const withInstanceScopedDb = async <T>(
   instanceId: string,
   work: (client: QueryClient) => Promise<T>

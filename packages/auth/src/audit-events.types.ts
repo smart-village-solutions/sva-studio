@@ -1,3 +1,5 @@
+import type { RuntimeScopeRef } from './types.js';
+
 export type AuthAuditEventType =
   | 'login'
   | 'logout'
@@ -16,6 +18,7 @@ export type AuthAuditEvent = {
   actorUserId?: string;
   actorEmail?: string;
   actorDisplayName?: string;
+  scope?: RuntimeScopeRef;
   workspaceId?: string;
   outcome: 'success' | 'failure';
   requestId?: string;

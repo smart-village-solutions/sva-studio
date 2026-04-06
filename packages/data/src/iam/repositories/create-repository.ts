@@ -1,5 +1,5 @@
-import type { IamSeedRepository, SqlExecutor } from './types';
-import { iamSeedStatements } from './statements';
+import type { IamSeedRepository, SqlExecutor } from './types.js';
+import { iamSeedStatements } from './statements.js';
 
 type SqlUuidArrayParameter = {
   readonly sqlType: 'uuid[]';

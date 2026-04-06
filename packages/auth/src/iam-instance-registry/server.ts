@@ -33,7 +33,7 @@ const withAuthenticatedRegistryHandler = (
         operation: 'instance_registry_request',
         endpoint: request.url,
         error_type: error instanceof Error ? error.constructor.name : typeof error,
-        error_message: error instanceof Error ? error.message : String(error),
+        reason_code: 'platform_scope_unhandled_failure',
         ...logContext,
       });
       return toJsonErrorResponse(500, 'internal_error', 'Unbehandelter Instanzverwaltungsfehler.', {

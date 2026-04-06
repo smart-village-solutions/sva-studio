@@ -139,6 +139,126 @@ describe('useUsers', () => {
     );
   });
 
+  it('returns a structured sync error without overwriting the list error state', async () => {
+    listUsersMock.mockResolvedValue({
+      data: [],
+      pagination: { page: 1, pageSize: 25, total: 0 },
+    });
+    syncUsersFromKeycloakMock.mockRejectedValue({
+      status: 503,
+      code: 'keycloak_unavailable',
+      message: 'kaputt',
+    });
+
+    const { result } = renderHook(() => useUsers());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    let syncResult:
+      | Awaited<ReturnType<typeof result.current.syncUsersFromKeycloak>>
+      | undefined;
+    await act(async () => {
+      syncResult = await result.current.syncUsersFromKeycloak();
+    });
+
+    expect(syncResult).toEqual({
+      ok: false,
+      error: {
+        status: 503,
+        code: 'keycloak_unavailable',
+        message: 'kaputt',
+      },
+    });
+    expect(result.current.error).toBeNull();
+    expect(browserLoggerMock.warn).toHaveBeenCalledWith(
+      'user_sync_keycloak_failed',
+      expect.objectContaining({
+        operation: 'user_sync_keycloak',
+        status: 503,
+        error_code: 'keycloak_unavailable',
+      })
+    );
+  });
+
+  it('returns a structured sync success result for empty reports', async () => {
+    listUsersMock.mockResolvedValue({
+      data: [],
+      pagination: { page: 1, pageSize: 25, total: 0 },
+    });
+    syncUsersFromKeycloakMock.mockResolvedValue({
+      data: { importedCount: 0, updatedCount: 0, skippedCount: 4, totalKeycloakUsers: 4 },
+    });
+
+    const { result } = renderHook(() => useUsers());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    let syncResult:
+      | Awaited<ReturnType<typeof result.current.syncUsersFromKeycloak>>
+      | undefined;
+    await act(async () => {
+      syncResult = await result.current.syncUsersFromKeycloak();
+    });
+
+    expect(syncResult).toEqual({
+      ok: true,
+      report: {
+        importedCount: 0,
+        updatedCount: 0,
+        skippedCount: 4,
+        totalKeycloakUsers: 4,
+      },
+    });
+    expect(browserLoggerMock.info).toHaveBeenCalledWith(
+      'user_sync_keycloak_empty',
+      expect.objectContaining({
+        operation: 'user_sync_keycloak',
+        skipped_count: 4,
+      })
+    );
+  });
+
+  it('does not block the sync result on a slow follow-up list refresh', async () => {
+    listUsersMock
+      .mockResolvedValueOnce({
+        data: [],
+        pagination: { page: 1, pageSize: 25, total: 0 },
+      })
+      .mockImplementationOnce(() => new Promise(() => undefined));
+    syncUsersFromKeycloakMock.mockResolvedValue({
+      data: { importedCount: 2, updatedCount: 1, skippedCount: 0, totalKeycloakUsers: 3 },
+    });
+
+    const { result } = renderHook(() => useUsers());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    let syncResult:
+      | Awaited<ReturnType<typeof result.current.syncUsersFromKeycloak>>
+      | undefined;
+    await act(async () => {
+      syncResult = await result.current.syncUsersFromKeycloak();
+    });
+
+    expect(syncResult).toEqual({
+      ok: true,
+      report: {
+        importedCount: 2,
+        updatedCount: 1,
+        skippedCount: 0,
+        totalKeycloakUsers: 3,
+      },
+    });
+    expect(syncUsersFromKeycloakMock).toHaveBeenCalledTimes(1);
+    expect(listUsersMock).toHaveBeenCalledTimes(2);
+  });
+
   it('invalidates permissions on 403 during initial load', async () => {
     listUsersMock.mockRejectedValue({
       status: 403,

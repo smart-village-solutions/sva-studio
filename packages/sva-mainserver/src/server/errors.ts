@@ -1,4 +1,4 @@
-import type { SvaMainserverErrorCode } from '../types';
+import type { SvaMainserverErrorCode } from '../types.js';
 
 export class SvaMainserverError extends Error {
   readonly code: SvaMainserverErrorCode;

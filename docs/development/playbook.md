@@ -70,6 +70,13 @@ Goldene Regel: Niemals Code committen, den man nicht selbst erklären kann.
 ## 11. Team-Synchronisation und Standards
 KI-Instruktionen: Wir geben der KI unsere Team-Standards (Stil, Patterns, Do’s & Don’ts) explizit mit.
 
+### Server-Packages explizit nennen
+Wenn eine KI an `packages/core`, `packages/data`, `packages/monitoring-client`, `packages/sdk`, `packages/auth`, `packages/routing` oder `packages/sva-mainserver` arbeitet, muss explizit kommuniziert werden:
+
+- relative Runtime-Imports und Re-Exports immer mit `.js`
+- Workspace-Runtime-Imports brauchen einen passenden `dependencies`-Eintrag
+- nach Änderungen `pnpm check:server-runtime` bzw. mindestens das betroffene `check:runtime`-Target ausführen
+
 ## 12. Automatisierung nutzen
 Kombination: Wir integrieren KI in unsere bestehende Tool-Kette (CI/CD, Linter, Type-Checks).
 Workflow: Die KI schreibt Code, die Pipeline validiert diesen. Fehler-Logs werden an die KI zurückgegeben, um Korrekturen zu beschleunigen.

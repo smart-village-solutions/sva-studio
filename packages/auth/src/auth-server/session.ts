@@ -1,4 +1,5 @@
 import type { Session, SessionUser } from '../types.js';
+import type { RuntimeScopeRef } from '../types.js';
 import { createSdkLogger } from '@sva/sdk/server';
 
 import { getAuthConfig, resolveAuthConfigFromSessionAuth } from '../config.js';
@@ -39,7 +40,10 @@ const isSessionAllowed = async (session: Session): Promise<boolean> => {
 
 const logIncompleteSessionUser = (
   user: SessionUser | null | undefined,
-  source: 'session_read' | 'access_token_hydrate' | 'token_refresh'
+  source: 'session_read' | 'access_token_hydrate' | 'token_refresh',
+  scope: RuntimeScopeRef | undefined = user?.instanceId
+    ? { kind: 'instance', instanceId: user.instanceId }
+    : undefined
 ) => {
   if (!needsSessionUserHydration(user)) {
     return;
@@ -51,7 +55,7 @@ const logIncompleteSessionUser = (
     user_id: user?.id ?? null,
     has_instance_id: Boolean(user?.instanceId),
     roles_count: user?.roles.length ?? 0,
-    ...buildLogContext(user?.instanceId),
+    ...buildLogContext(scope),
   });
 };
 
@@ -71,7 +75,7 @@ const hydrateSessionUserFromAccessToken = async (
   });
 
   if (!hydratedUser.id || needsSessionUserHydration(hydratedUser)) {
-    logIncompleteSessionUser(session.user, 'access_token_hydrate');
+    logIncompleteSessionUser(session.user, 'access_token_hydrate', session.auth);
     return session.user ?? null;
   }
 
@@ -82,7 +86,7 @@ const hydrateSessionUserFromAccessToken = async (
     hydration_source: 'access_token',
     had_instance_id: Boolean(session.user?.instanceId),
     had_roles: (session.user?.roles.length ?? 0) > 0,
-    ...buildLogContext(hydratedUser.instanceId),
+    ...buildLogContext(hydratedUser.instanceId ? { kind: 'instance', instanceId: hydratedUser.instanceId } : session.auth),
   });
 
   return hydratedUser;
@@ -119,7 +123,7 @@ const handleRefreshFailure = async (input: {
   sessionId: string;
   refreshToken?: string;
   expiresAt?: number;
-  workspaceId?: string;
+  scope?: Session['auth'];
   fallbackUser: SessionUser | null;
 }): Promise<SessionUser | null> => {
   if (input.error instanceof SessionStoreUnavailableError) {
@@ -133,15 +137,16 @@ const handleRefreshFailure = async (input: {
       error_type: input.error instanceof Error ? input.error.constructor.name : typeof input.error,
       has_refresh_token: Boolean(input.refreshToken),
       session_expired: input.expiresAt ? input.expiresAt < now : false,
-      ...buildLogContext(input.workspaceId),
+      reason_code: 'token_refresh_failed',
+      ...buildLogContext(input.scope),
     });
   } else {
     logger.error('Token refresh failed', {
       operation: 'refresh_token',
-      error: input.error instanceof Error ? input.error.message : String(input.error),
       error_type: input.error instanceof Error ? input.error.constructor.name : typeof input.error,
+      reason_code: 'token_refresh_failed',
       session_expired: input.expiresAt ? input.expiresAt < now : false,
-      ...buildLogContext(input.workspaceId),
+      ...buildLogContext(input.scope),
     });
   }
 
@@ -182,17 +187,17 @@ export const getSessionUser = async (sessionId: string) => {
     logger.debug('Refreshing access token for session', {
       operation: 'token_refresh',
       has_refresh_token: true,
-      ...buildLogContext(session.user?.instanceId),
+      ...buildLogContext(session.auth),
     });
 
     await refreshSession(sessionId, session);
     const updatedSession = await getSession(sessionId);
-    logIncompleteSessionUser(updatedSession?.user ?? null, 'token_refresh');
+    logIncompleteSessionUser(updatedSession?.user ?? null, 'token_refresh', updatedSession?.auth);
 
     logger.debug('Token refresh succeeded', {
       operation: 'token_refresh',
       has_refresh_token: true,
-      ...buildLogContext(updatedSession?.user?.instanceId),
+      ...buildLogContext(updatedSession?.auth),
     });
 
     return updatedSession?.user ?? null;
@@ -202,7 +207,7 @@ export const getSessionUser = async (sessionId: string) => {
       sessionId,
       refreshToken: session.refreshToken,
       expiresAt: session.expiresAt,
-      workspaceId: session.user?.instanceId,
+      scope: session.auth,
       fallbackUser: session.user ?? null,
     });
   }

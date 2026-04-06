@@ -27,6 +27,7 @@ describe('getAuthConfig', () => {
 
   it('builds the config with defaults derived from required environment variables', () => {
     expect(getAuthConfig()).toEqual({
+      kind: 'platform',
       issuer: 'https://issuer.example.com',
       clientId: 'client-id',
       clientSecret: 'client-secret',

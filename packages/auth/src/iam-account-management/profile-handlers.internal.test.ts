@@ -142,6 +142,11 @@ const ctx = {
     id: 'kc-session',
     roles: ['editor'],
     instanceId: 'de-musterhausen',
+    username: 'kc-user',
+    email: 'kc@example.com',
+    firstName: 'KC',
+    lastName: 'Session',
+    displayName: 'KC Session',
   },
 } as never;
 
@@ -191,6 +196,23 @@ describe('iam-account-management/profile-handlers internals', () => {
       },
       requestId: 'req-profile',
     });
+  });
+
+  it('passes session profile seed data into the profile load path', async () => {
+    await getMyProfileInternal(new Request('http://localhost/api/v1/iam/users/me/profile'), ctx);
+
+    const { loadMyProfileDetail } = await import('./profile-commands.js');
+    expect(loadMyProfileDetail).toHaveBeenCalledWith(
+      expect.anything(),
+      'kc-session',
+      expect.objectContaining({
+        username: 'kc-user',
+        email: 'kc@example.com',
+        firstName: 'KC',
+        lastName: 'Session',
+        displayName: 'KC Session',
+      })
+    );
   });
 
   it('returns keycloak_unavailable for write requests without an identity provider', async () => {

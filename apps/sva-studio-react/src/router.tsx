@@ -131,7 +131,7 @@ export const areDemoRoutesEnabled = () => {
     return false;
   }
 
-  return (process.env.NODE_ENV ?? 'development') !== 'production';
+  return !import.meta.env.PROD;
 };
 
 const getRuntimeCoreRouteFactories = async (): Promise<readonly AppRouteFactory[]> => {

@@ -4,6 +4,8 @@ import { authRoutePaths } from './routes.shared';
 
 describe('authRoutePaths', () => {
   it('contains organization and context endpoints exactly once', () => {
+    expect(authRoutePaths).toContain('/api/v1/iam/health/ready');
+    expect(authRoutePaths).toContain('/api/v1/iam/health/live');
     expect(authRoutePaths).toContain('/api/v1/iam/groups');
     expect(authRoutePaths).toContain('/api/v1/iam/groups/$groupId');
     expect(authRoutePaths).toContain('/api/v1/iam/groups/$groupId/roles');

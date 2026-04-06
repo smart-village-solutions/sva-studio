@@ -160,6 +160,14 @@ Fehlerpfad:
 - Self-Approval: Aktion wird fail-closed abgewiesen.
 - Impersonation abgelaufen: Session wird als `expired` markiert, Acting-As wird verweigert.
 
+### Szenario 6a: Root-Host-Login und Plattform-Audit
+
+1. Request trifft auf dem Root-Host ein und wird als `scope_kind=platform` klassifiziert.
+2. Der Auth-Resolver lädt den Plattform-Auth-Kontext ohne Tenant-Fallback-Instanz.
+3. Login, Logout und Silent-Reauth emittieren operative Logs mit `workspace_id=platform`, `reason_code`, `request_id` und `trace_id`.
+4. DB-Audit wird in `iam.platform_activity_logs` persistiert.
+5. Optionale Audit-Fehler bleiben non-blocking; die Auth-Antwort wird nur bei fachlichem Scope- oder Provider-Fehler fail-closed.
+
 ### Szenario 7: Cache-Invalidierung nach Rollen-/Policy-Änderung
 
 1. Änderung an Rollen, Permission-Zuordnung oder Policy wird in Postgres persistiert.

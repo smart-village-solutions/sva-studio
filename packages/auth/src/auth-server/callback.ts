@@ -1,20 +1,101 @@
 import { randomUUID } from 'node:crypto';
 import { createSdkLogger } from '@sva/sdk/server';
+import { z } from 'zod';
 
 import { getAuthConfig } from '../config.js';
 import { jitProvisionAccount } from '../jit-provisioning.server.js';
 import { client, getOidcConfig, invalidateOidcConfig } from '../oidc.server.js';
 import { consumeLoginState, createSession, getSessionControlState } from '../redis-session.server.js';
+import { getScopeFromAuthConfig } from '../scope.js';
 import { isRetryableTokenExchangeError } from '../shared/error-guards.js';
-import type { AuthConfig, LoginState } from '../types.js';
+import type { AuthConfig, InstanceScopeRef, LoginState, PlatformScopeRef, ScopeKind } from '../types.js';
 import { buildLogContext } from '../shared/log-context.js';
 import { buildSessionUser, resolveSessionExpiry } from './shared.js';
 
 const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
 
+type UntrustedLoginState = {
+  codeVerifier: string;
+  nonce: string;
+  createdAt: number;
+  returnTo?: string;
+  silent?: boolean;
+  kind: ScopeKind;
+  instanceId?: string;
+};
+
+const nonNegativeFiniteNumberSchema = z.number().refine(
+  (value) => Number.isFinite(value) && value >= 0,
+  'expected non-negative finite number'
+);
+
+const baseLoginStateSchema = z.object({
+  codeVerifier: z.string().trim().min(1),
+  nonce: z.string().trim().min(1),
+  createdAt: nonNegativeFiniteNumberSchema,
+  returnTo: z.string().trim().min(1).optional(),
+  silent: z.boolean().optional(),
+});
+
+const untrustedLoginStateSchema = z.discriminatedUnion('kind', [
+  baseLoginStateSchema.extend({ kind: z.literal('platform') }),
+  baseLoginStateSchema.extend({
+    kind: z.literal('instance'),
+    instanceId: z.string().trim().min(1),
+  }),
+]);
+
 const readClaimSubject = (claims: Record<string, unknown>): string => {
   const subject = claims.sub;
   return typeof subject === 'string' ? subject : '';
+};
+
+const normalizeLoginState = (loginState: UntrustedLoginState): LoginState => {
+  if (loginState.kind === 'instance' && typeof loginState.instanceId !== 'string') {
+    throw new Error('Invalid login state: missing instanceId for instance scope');
+  }
+
+  const parsedLoginState = untrustedLoginStateSchema.safeParse(loginState);
+  if (!parsedLoginState.success) {
+    throw new Error('Invalid login state payload');
+  }
+
+  const normalizedState = parsedLoginState.data;
+
+  if (normalizedState.kind === 'platform') {
+    const { ...rest } = normalizedState;
+    return {
+      ...rest,
+      kind: 'platform',
+    } satisfies PlatformScopeRef & Omit<LoginState, 'kind' | 'instanceId'>;
+  }
+
+  const instanceId = normalizedState.instanceId.trim();
+  if (!instanceId) {
+    throw new Error('Invalid login state: missing instanceId for instance scope');
+  }
+
+  return {
+    ...normalizedState,
+    kind: 'instance',
+    instanceId,
+  } satisfies InstanceScopeRef & Omit<LoginState, 'kind' | 'instanceId'>;
+};
+
+const assertLoginStateMatchesAuthConfig = (authConfig: AuthConfig, loginState: LoginState): void => {
+  const authScope = getScopeFromAuthConfig(authConfig);
+
+  if (authScope.kind !== loginState.kind) {
+    throw new Error('Invalid login state: scope mismatch');
+  }
+
+  if (
+    authScope.kind === 'instance' &&
+    loginState.kind === 'instance' &&
+    loginState.instanceId !== authScope.instanceId
+  ) {
+    throw new Error('Invalid login state: instance mismatch');
+  }
 };
 
 const persistSession = async (input: {
@@ -48,7 +129,7 @@ const persistSession = async (input: {
     userId: user.id,
     user,
     auth: {
-      instanceId: input.authConfig.instanceId,
+      ...getScopeFromAuthConfig(input.authConfig),
       issuer: input.authConfig.issuer,
       clientId: input.authConfig.clientId,
       authRealm: input.authConfig.authRealm,
@@ -110,7 +191,7 @@ const exchangeAuthorizationCode = async (input: {
       operation: 'token_validate_retry',
       issuer: input.authConfig.issuer,
       client_id: input.authConfig.clientId,
-      ...buildLogContext(input.authConfig.instanceId),
+      ...buildLogContext(getScopeFromAuthConfig(input.authConfig)),
     });
     return {
       tokenSet: await grant(),
@@ -123,7 +204,7 @@ export const handleCallback = async (params: {
   code: string;
   state: string;
   iss?: string | null;
-  loginState?: LoginState | null;
+  loginState?: UntrustedLoginState | null;
   authConfig?: AuthConfig;
 }) => {
   const authConfig = params.authConfig ?? getAuthConfig();
@@ -132,6 +213,8 @@ export const handleCallback = async (params: {
   if (!loginState) {
     throw new Error('Invalid login state');
   }
+  const normalizedLoginState = normalizeLoginState(loginState);
+  assertLoginStateMatchesAuthConfig(authConfig, normalizedLoginState);
 
   const callbackUrl = new URL(authConfig.redirectUri);
   callbackUrl.searchParams.set('code', params.code);
@@ -143,7 +226,7 @@ export const handleCallback = async (params: {
   const { tokenSet, retryPerformed } = await exchangeAuthorizationCode({
     authConfig,
     callbackUrl,
-    loginState,
+    loginState: normalizedLoginState,
     state: params.state,
   });
   const claims = (tokenSet.claims() ?? {}) as Record<string, unknown>;
@@ -171,5 +254,5 @@ export const handleCallback = async (params: {
     ...buildLogContext(persisted.user.instanceId),
   });
 
-  return { ...persisted, loginState, retryPerformed };
+  return { ...persisted, loginState: normalizedLoginState, retryPerformed };
 };

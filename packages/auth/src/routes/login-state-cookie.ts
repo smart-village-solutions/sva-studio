@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
+import { z } from 'zod';
 
 import type { LoginState } from '../types.js';
 
@@ -6,6 +7,30 @@ export type LoginStateCookiePayload = LoginState & {
   state: string;
   returnTo?: string;
 };
+
+const nonNegativeFiniteNumberSchema = z.number().refine(
+  (value) => Number.isFinite(value) && value >= 0,
+  'expected non-negative finite number'
+);
+
+const baseLoginStateCookieSchema = z.object({
+  state: z.string().trim().min(1),
+  codeVerifier: z.string().trim().min(1),
+  nonce: z.string().trim().min(1),
+  createdAt: nonNegativeFiniteNumberSchema,
+  returnTo: z.string().trim().min(1).optional(),
+  silent: z.boolean().optional(),
+});
+
+const loginStateCookiePayloadSchema = z.discriminatedUnion('kind', [
+  baseLoginStateCookieSchema.extend({
+    kind: z.literal('platform'),
+  }),
+  baseLoginStateCookieSchema.extend({
+    kind: z.literal('instance'),
+    instanceId: z.string().trim().min(1),
+  }),
+]);
 
 export const encodeLoginStateCookie = (payload: LoginStateCookiePayload, secret: string) => {
   const json = JSON.stringify(payload);
@@ -38,8 +63,9 @@ export const decodeLoginStateCookie = (value: string | undefined, secret: string
 
   try {
     const json = Buffer.from(data, 'base64url').toString('utf8');
-    const parsed = JSON.parse(json) as LoginStateCookiePayload;
-    return parsed && typeof parsed === 'object' ? parsed : null;
+    const parsed = JSON.parse(json);
+    const result = loginStateCookiePayloadSchema.safeParse(parsed);
+    return result.success ? (result.data as LoginStateCookiePayload) : null;
   } catch {
     return null;
   }

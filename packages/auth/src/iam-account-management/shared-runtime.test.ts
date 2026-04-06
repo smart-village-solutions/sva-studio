@@ -66,6 +66,7 @@ const importModule = async () => import('./shared-runtime.js');
 describe('resolveIdentityProviderForInstance', () => {
   beforeEach(() => {
     process.env.NODE_ENV = 'test';
+    process.env.KEYCLOAK_ADMIN_REALM = 'global';
     state.runtimeProfile = null;
     state.instance = null;
     state.loadInstanceError = null;
@@ -98,6 +99,30 @@ describe('resolveIdentityProviderForInstance', () => {
 
     expect(result?.provider).toBeDefined();
     expect(state.clients).toEqual([{ realm: 'global' }]);
+  });
+
+  it('falls back to the configured global realm in local profiles when the instance auth realm differs', async () => {
+    state.runtimeProfile = 'local-keycloak';
+    state.instance = { authRealm: 'de-musterhausen' };
+    process.env.KEYCLOAK_ADMIN_REALM = 'svs-intern-studio-staging';
+    const { resolveIdentityProviderForInstance } = await importModule();
+
+    const result = await resolveIdentityProviderForInstance('de-musterhausen');
+
+    expect(result?.provider).toBeDefined();
+    expect(state.clients).toEqual([{ realm: 'global' }]);
+  });
+
+  it('keeps the instance-specific realm in local profiles when it matches the configured admin realm', async () => {
+    state.runtimeProfile = 'local-keycloak';
+    state.instance = { authRealm: 'de-musterhausen' };
+    process.env.KEYCLOAK_ADMIN_REALM = 'de-musterhausen';
+    const { resolveIdentityProviderForInstance } = await importModule();
+
+    const result = await resolveIdentityProviderForInstance('de-musterhausen');
+
+    expect(result?.provider).toBeDefined();
+    expect(state.clients).toEqual([{ realm: 'de-musterhausen' }]);
   });
 
   it('returns null in non-local profiles when no instance auth config can be resolved', async () => {

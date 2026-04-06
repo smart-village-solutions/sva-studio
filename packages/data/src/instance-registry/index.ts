@@ -6,7 +6,7 @@ import type {
   InstanceStatus,
 } from '@sva/core';
 
-import type { SqlExecutionResult, SqlExecutor, SqlStatement } from '../iam/repositories/types';
+import type { SqlExecutionResult, SqlExecutor, SqlStatement } from '../iam/repositories/types.js';
 
 type InstanceListRow = {
   instance_id: string;
@@ -113,6 +113,7 @@ export type InstanceRegistryRepository = {
   getInstanceById(instanceId: string): Promise<InstanceRegistryRecord | null>;
   getAuthClientSecretCiphertext(instanceId: string): Promise<string | null>;
   resolveHostname(hostname: string): Promise<InstanceRegistryRecord | null>;
+  resolvePrimaryHostname(hostname: string): Promise<InstanceRegistryRecord | null>;
   listProvisioningRuns(instanceId: string): Promise<readonly InstanceProvisioningRun[]>;
   listLatestProvisioningRuns(
     instanceIds: readonly string[]
@@ -315,6 +316,42 @@ FROM iam.instance_hostnames hostname
 JOIN iam.instances instance
   ON instance.id = hostname.instance_id
 WHERE hostname.hostname = $1
+LIMIT 1;
+`,
+        [hostname]
+      )
+    );
+    return rows[0] ? mapInstance(rows[0]) : null;
+  },
+
+  async resolvePrimaryHostname(hostname) {
+    const rows = await queryRows<InstanceListRow>(
+      executor,
+      statement(
+        `
+SELECT
+  id AS instance_id,
+  display_name,
+  status,
+  parent_domain,
+  primary_hostname,
+  auth_realm,
+  auth_client_id,
+  auth_issuer_url,
+  auth_client_secret_ciphertext,
+  tenant_admin_username,
+  tenant_admin_email,
+  tenant_admin_first_name,
+  tenant_admin_last_name,
+  theme_key,
+  feature_flags,
+  mainserver_config_ref,
+  created_at,
+  created_by,
+  updated_at,
+  updated_by
+FROM iam.instances
+WHERE primary_hostname = $1
 LIMIT 1;
 `,
         [hostname]

@@ -48,12 +48,16 @@ const originalEnv = {
   IAM_DATABASE_URL: process.env.IAM_DATABASE_URL,
   IAM_PII_ACTIVE_KEY_ID: process.env.IAM_PII_ACTIVE_KEY_ID,
   IAM_PII_KEYRING_JSON: process.env.IAM_PII_KEYRING_JSON,
+  APP_DB_PASSWORD: process.env.APP_DB_PASSWORD,
+  POSTGRES_PASSWORD: process.env.POSTGRES_PASSWORD,
 };
 
 afterEach(() => {
   process.env.IAM_DATABASE_URL = originalEnv.IAM_DATABASE_URL;
   process.env.IAM_PII_ACTIVE_KEY_ID = originalEnv.IAM_PII_ACTIVE_KEY_ID;
   process.env.IAM_PII_KEYRING_JSON = originalEnv.IAM_PII_KEYRING_JSON;
+  process.env.APP_DB_PASSWORD = originalEnv.APP_DB_PASSWORD;
+  process.env.POSTGRES_PASSWORD = originalEnv.POSTGRES_PASSWORD;
 });
 
 describe('persistAuthAuditEventWithClient', () => {
@@ -91,6 +95,30 @@ describe('persistAuthAuditEventWithClient', () => {
 
     const accountInserts = queries.filter((entry) => entry.text.includes('INSERT INTO iam.accounts'));
     expect(accountInserts.length).toBe(0);
+  });
+
+  it('persists platform audit events without tenant activity log writes', async () => {
+    const { client, queries } = createMockClient();
+
+    const result = await persistAuthAuditEventWithClient(client, {
+      eventType: 'silent_reauth_failed',
+      workspaceId: 'platform',
+      scope: { kind: 'platform' },
+      outcome: 'failure',
+      requestId: 'req-platform-1',
+      traceId: 'trace-platform-1',
+    });
+
+    expect(result.persisted).toBe(true);
+    expect(result.writtenEventTypes).toEqual(['silent_reauth_failed']);
+
+    const platformInserts = queries.filter((entry) =>
+      entry.text.includes('INSERT INTO iam.platform_activity_logs')
+    );
+    expect(platformInserts).toHaveLength(1);
+
+    const tenantInserts = queries.filter((entry) => entry.text.includes('INSERT INTO iam.activity_logs'));
+    expect(tenantInserts).toHaveLength(0);
   });
 
   it('updates an existing account instead of attempting a conflicting insert on login', async () => {
@@ -220,6 +248,8 @@ describe('persistAuthAuditEventToDb', () => {
 
   it('skips persist when no IAM database url is configured', async () => {
     delete process.env.IAM_DATABASE_URL;
+    delete process.env.APP_DB_PASSWORD;
+    delete process.env.POSTGRES_PASSWORD;
 
     const result = await persistAuthAuditEventToDb({
       eventType: 'login',
@@ -230,6 +260,21 @@ describe('persistAuthAuditEventToDb', () => {
 
     expect(result.persisted).toBe(false);
     expect(result.reason).toBe('missing_database_url');
+    expect(result.writtenEventTypes).toEqual([]);
+  });
+
+  it('skips persist when no valid scope can be resolved', async () => {
+    process.env.IAM_DATABASE_URL = 'postgres://example.invalid/sva';
+
+    const result = await persistAuthAuditEventToDb({
+      eventType: 'login',
+      actorUserId: 'keycloak-sub-3',
+      workspaceId: 'default',
+      outcome: 'success',
+    });
+
+    expect(result.persisted).toBe(false);
+    expect(result.reason).toBe('invalid_scope');
     expect(result.writtenEventTypes).toEqual([]);
   });
 });

@@ -17,6 +17,7 @@ import { createMockSessionUser, isMockAuthEnabled } from '../mock-auth.server.js
 import { getSession } from '../redis-session.server.js';
 import { buildRequestOriginFromHeaders, resolveEffectiveRequestHost } from '../request-hosts.js';
 import { SessionStoreUnavailableError, TenantAuthResolutionError } from '../runtime-errors.js';
+import { DEFAULT_WORKSPACE_ID, PLATFORM_WORKSPACE_ID, getScopeFromAuthConfig, getWorkspaceIdForScope } from '../scope.js';
 import { isTokenErrorLike } from '../shared/error-guards.js';
 import { buildLogContext } from '../shared/log-context.js';
 import { withAuthenticatedUser } from '../middleware.server.js';
@@ -29,9 +30,11 @@ const shouldAttachDebugAuthHeaders = (): boolean => process.env.SVA_AUTH_DEBUG_H
 
 initializeOtelSdk().catch((error: unknown) => {
   logger.error('Fehler bei OTEL SDK Initialisierung im Auth-Modul', {
-    error: error instanceof Error ? error.message : String(error),
     component: 'iam-auth',
-    ...buildLogContext('default'),
+    dependency: 'otel',
+    error_type: error instanceof Error ? error.name : typeof error,
+    reason_code: 'otel_init_failed',
+    ...buildLogContext(DEFAULT_WORKSPACE_ID),
   });
 });
 
@@ -40,6 +43,18 @@ const createRedirectResponse = (location: string) =>
     status: 302,
     headers: { Location: location },
   });
+
+const summarizeRequestUrl = (request: Request): { endpoint_path: string; has_sensitive_query: boolean } => {
+  const url = new URL(request.url);
+  return {
+    endpoint_path: url.pathname,
+    has_sensitive_query:
+      url.searchParams.has('code') ||
+      url.searchParams.has('state') ||
+      url.searchParams.has('id_token_hint') ||
+      url.searchParams.has('iss'),
+  };
+};
 
 const createAuthDependencyErrorResponse = (
   request: Request,
@@ -50,10 +65,10 @@ const createAuthDependencyErrorResponse = (
 
   if (error instanceof TenantAuthResolutionError) {
     logger.error('Auth route failed during tenant auth resolution', {
-      endpoint: request.url,
+      ...summarizeRequestUrl(request),
       operation,
-      error: error.message,
       error_type: error.name,
+      reason_code: 'scope_resolution_failed',
       reason: error.reason,
       tenant_host: error.host,
       request_id: requestId,
@@ -64,10 +79,10 @@ const createAuthDependencyErrorResponse = (
 
   if (error instanceof SessionStoreUnavailableError) {
     logger.error('Auth route failed because session storage is unavailable', {
-      endpoint: request.url,
+      ...summarizeRequestUrl(request),
       operation,
-      error: error.message,
       error_type: error.name,
+      reason_code: 'session_store_unavailable',
       request_id: requestId,
       ...buildLogContext(),
     });
@@ -80,10 +95,10 @@ const createAuthDependencyErrorResponse = (
   }
 
   logger.error('Auth route failed unexpectedly', {
-    endpoint: request.url,
+    ...summarizeRequestUrl(request),
     operation,
-    error: error instanceof Error ? error.message : String(error),
     error_type: error instanceof Error ? error.name : typeof error,
+    reason_code: 'internal_auth_route_failure',
     request_id: requestId,
     ...buildLogContext(),
   });
@@ -97,6 +112,7 @@ const attachDebugAuthHeaders = (
   input: {
     request: Request;
     authConfig: {
+      kind: 'platform' | 'instance';
       instanceId?: string;
       authRealm?: string;
       clientId: string;
@@ -110,8 +126,16 @@ const attachDebugAuthHeaders = (
 
   response.headers.set('x-sva-debug-request-host', resolveEffectiveRequestHost(input.request));
   response.headers.set('x-sva-debug-request-origin', buildRequestOriginFromHeaders(input.request));
-  response.headers.set('x-sva-debug-auth-instance-id', input.authConfig.instanceId ?? 'global');
-  response.headers.set('x-sva-debug-auth-realm', input.authConfig.authRealm ?? 'global');
+  response.headers.set('x-sva-debug-auth-scope-kind', input.authConfig.kind);
+  const debugInstanceId =
+    input.authConfig.kind === 'instance'
+      ? (input.authConfig.instanceId ?? PLATFORM_WORKSPACE_ID)
+      : PLATFORM_WORKSPACE_ID;
+  response.headers.set(
+    'x-sva-debug-auth-instance-id',
+    debugInstanceId
+  );
+  response.headers.set('x-sva-debug-auth-realm', input.authConfig.authRealm ?? PLATFORM_WORKSPACE_ID);
   response.headers.set('x-sva-debug-auth-client-id', input.authConfig.clientId);
   response.headers.set('x-sva-debug-auth-redirect-uri', input.authConfig.redirectUri);
 };
@@ -322,7 +346,7 @@ const resolveCookieLoginState = async (request: Request, state: string) => {
     createdAt: payload.createdAt,
     returnTo: await sanitizeReturnTo(request, payload.returnTo),
     silent: payload.silent === true,
-    workspaceId: payload.workspaceId,
+    ...(payload.kind === 'instance' ? { kind: 'instance' as const, instanceId: payload.instanceId } : { kind: 'platform' as const }),
   };
 };
 
@@ -348,6 +372,7 @@ export const loginHandler = async (request?: Request): Promise<Response> => {
       }
 
       const authConfig = request ? await resolveAuthConfigForRequest(request) : getAuthConfig();
+      const authScope = getScopeFromAuthConfig(authConfig);
       const { loginStateCookieName, loginStateSecret } = authConfig;
       const returnTo = request ? await sanitizeReturnTo(request, url?.searchParams.get('returnTo')) : DEFAULT_POST_LOGIN_REDIRECT;
       const { url: authorizationUrl, state, loginState } = await createLoginUrl({
@@ -362,27 +387,32 @@ export const loginHandler = async (request?: Request): Promise<Response> => {
 
       logger.info('Login auth config resolved', {
         operation: 'login_auth_config_resolved',
-        request_url: request?.url,
-        auth_instance_id: authConfig.instanceId ?? null,
+        scope_kind: authScope.kind,
+        ...(request ? summarizeRequestUrl(request) : { endpoint_path: '/auth/login', has_sensitive_query: false }),
+        auth_instance_id: authConfig.kind === 'instance' ? authConfig.instanceId : null,
         auth_realm: authConfig.authRealm ?? null,
         auth_client_id: authConfig.clientId,
         auth_redirect_uri: authConfig.redirectUri,
         auth_issuer: authConfig.issuer,
-        ...buildLogContext(authConfig.instanceId),
+        auth_scope_kind: authScope.kind,
+        resolution_result: authScope.kind,
+        ...buildLogContext(authScope),
       });
 
       logger.info('Login-Flow initiiert', {
         operation: 'login_init',
+        scope_kind: authScope.kind,
         idp: 'keycloak',
         is_silent: isSilent,
         state: `${state.substring(0, 8)}...`,
         nonce: `${loginState.nonce.substring(0, 8)}...`,
-        auth_instance_id: authConfig.instanceId ?? null,
+        auth_instance_id: authConfig.kind === 'instance' ? authConfig.instanceId : null,
         auth_realm: authConfig.authRealm ?? null,
         auth_client_id: authConfig.clientId,
         auth_redirect_uri: authConfig.redirectUri,
         auth_issuer: authConfig.issuer,
-        ...buildLogContext(authConfig.instanceId),
+        auth_scope_kind: authScope.kind,
+        ...buildLogContext(authScope),
       });
 
       const loginStateCookieStrategy = attachLoginStateCookie(response, {
@@ -396,7 +426,7 @@ export const loginHandler = async (request?: Request): Promise<Response> => {
         strategy: loginStateCookieStrategy,
         response_set_cookie_count: getSetCookieValues(response.headers).length,
         is_silent: isSilent,
-        ...buildLogContext(),
+        ...buildLogContext(authScope),
       });
 
       return response;
@@ -417,6 +447,7 @@ export const callbackHandler = async (request: Request): Promise<Response> => {
     try {
       const { code, state, error, iss } = resolveCallbackInput(request);
       const authConfig = await resolveAuthConfigForRequest(request);
+      const authScope = getScopeFromAuthConfig(authConfig);
       const { loginStateCookieName, sessionCookieName } = authConfig;
       const cookieLoginState = state ? await resolveCookieLoginState(request, state) : null;
       const hadSessionCookieOnCallback = Boolean(readCookieFromRequest(request, sessionCookieName));
@@ -429,11 +460,12 @@ export const callbackHandler = async (request: Request): Promise<Response> => {
           strategy: loginStateDeleteStrategy,
           response_set_cookie_count: getSetCookieValues(response.headers).length,
           had_session_cookie_on_callback: hadSessionCookieOnCallback,
-          ...buildLogContext(),
+          ...buildLogContext(authScope),
         });
         await emitAuthAuditEvent({
           eventType: cookieLoginState?.silent ? 'silent_reauth_failed' : 'login',
-          workspaceId: cookieLoginState?.workspaceId ?? authConfig.instanceId,
+          scope: cookieLoginState ?? authScope,
+          workspaceId: getWorkspaceIdForScope(cookieLoginState ?? authScope),
           outcome: 'failure',
         });
         return response;
@@ -451,11 +483,12 @@ export const callbackHandler = async (request: Request): Promise<Response> => {
           strategy: loginStateDeleteStrategy,
           response_set_cookie_count: getSetCookieValues(response.headers).length,
           had_session_cookie_on_callback: hadSessionCookieOnCallback,
-          ...buildLogContext(),
+          ...buildLogContext(cookieLoginState ?? authScope),
         });
         await emitAuthAuditEvent({
           eventType: 'login_state_expired',
-          workspaceId: cookieLoginState.workspaceId ?? authConfig.instanceId,
+          scope: cookieLoginState ?? authScope,
+          workspaceId: getWorkspaceIdForScope(cookieLoginState ?? authScope),
           outcome: 'failure',
         });
         return response;
@@ -476,15 +509,17 @@ export const callbackHandler = async (request: Request): Promise<Response> => {
 
         logger.info('tenant_auth_callback_result', {
           operation: 'tenant_auth_callback',
-          instance_id: user.instanceId ?? authConfig.instanceId ?? 'global',
-          auth_realm: authConfig.authRealm ?? 'global',
+          scope_kind: user.instanceId ? 'instance' : authScope.kind,
+          instance_id: user.instanceId ?? (authConfig.kind === 'instance' ? authConfig.instanceId : undefined),
+          auth_realm: authConfig.authRealm ?? PLATFORM_WORKSPACE_ID,
           client_id: authConfig.clientId,
           issuer: authConfig.issuer,
           redirect_uri: authConfig.redirectUri,
           is_silent: isSilent,
           retry_performed: retryPerformed,
           result: 'success',
-          ...buildLogContext(user.instanceId ?? authConfig.instanceId),
+          auth_scope_kind: authScope.kind,
+          ...buildLogContext(user.instanceId ? { kind: 'instance', instanceId: user.instanceId } : authScope),
         });
 
         logger.info('Auth callback successful', {
@@ -492,11 +527,11 @@ export const callbackHandler = async (request: Request): Promise<Response> => {
           operation: 'login_callback',
           is_silent: isSilent,
           session_created: true,
-          redirect_target: redirectTarget,
+          ...summarizeRedirectTarget(redirectTarget),
           has_code: true,
           has_state: true,
           has_iss: Boolean(iss),
-          ...buildLogContext(),
+          ...buildLogContext(user.instanceId ? { kind: 'instance', instanceId: user.instanceId } : authScope),
         });
 
         const loginStateDeleteStrategy = attachDeletedCookie(response, loginStateCookieName);
@@ -509,12 +544,13 @@ export const callbackHandler = async (request: Request): Promise<Response> => {
           silent_sso_delete_strategy: silentSsoDeleteStrategy,
           response_set_cookie_count: getSetCookieValues(response.headers).length,
           had_session_cookie_on_callback: hadSessionCookieOnCallback,
-          ...buildLogContext(user.instanceId),
+          ...buildLogContext(user.instanceId ? { kind: 'instance', instanceId: user.instanceId } : authScope),
         });
         await emitAuthAuditEvent({
           eventType: isSilent ? 'silent_reauth_success' : 'login',
           actorUserId: user.id,
-          workspaceId: user.instanceId,
+          scope: user.instanceId ? { kind: 'instance', instanceId: user.instanceId } : authScope,
+          workspaceId: user.instanceId ?? getWorkspaceIdForScope(authScope),
           outcome: 'success',
         });
 
@@ -522,43 +558,49 @@ export const callbackHandler = async (request: Request): Promise<Response> => {
       } catch (error) {
         const isSilent = cookieLoginState?.silent === true;
         if (isTokenErrorLike(error)) {
+          const callbackScope = cookieLoginState ?? authScope;
           logger.warn('Token validation failed in callback', {
             operation: 'token_validate',
             is_silent: isSilent,
             error_type: error instanceof Error ? error.constructor.name : typeof error,
+            reason_code: 'token_validate_failed',
             has_refresh_token: false,
             ...describeTokenError(error),
-            ...buildLogContext(cookieLoginState?.workspaceId ?? authConfig.instanceId),
+            ...buildLogContext(callbackScope),
           });
           logger.warn('tenant_auth_callback_result', {
             operation: 'tenant_auth_callback',
-            instance_id: cookieLoginState?.workspaceId ?? authConfig.instanceId ?? 'global',
-            auth_realm: authConfig.authRealm ?? 'global',
+            scope_kind: callbackScope.kind,
+            instance_id: callbackScope.kind === 'instance' ? callbackScope.instanceId : undefined,
+            auth_realm: authConfig.authRealm ?? PLATFORM_WORKSPACE_ID,
             client_id: authConfig.clientId,
             issuer: authConfig.issuer,
             redirect_uri: authConfig.redirectUri,
             is_silent: isSilent,
             retry_performed: false,
             result: 'failure',
+            auth_scope_kind: authScope.kind,
             ...describeTokenError(error),
-            ...buildLogContext(cookieLoginState?.workspaceId ?? authConfig.instanceId),
+            ...buildLogContext(callbackScope),
           });
         } else {
+          const callbackScope = cookieLoginState ?? authScope;
           logger.error('Auth callback failed', {
             auth_flow: 'callback',
             operation: 'login_callback',
             is_silent: isSilent,
-            error: error instanceof Error ? error.message : String(error),
             error_type: error instanceof Error ? error.constructor.name : typeof error,
+            reason_code: 'callback_failed',
             has_code: true,
             has_state: true,
             has_iss: Boolean(iss),
-            ...buildLogContext(cookieLoginState?.workspaceId ?? authConfig.instanceId),
+            ...buildLogContext(callbackScope),
           });
           logger.error('tenant_auth_callback_result', {
             operation: 'tenant_auth_callback',
-            instance_id: cookieLoginState?.workspaceId ?? authConfig.instanceId ?? 'global',
-            auth_realm: authConfig.authRealm ?? 'global',
+            scope_kind: callbackScope.kind,
+            instance_id: callbackScope.kind === 'instance' ? callbackScope.instanceId : undefined,
+            auth_realm: authConfig.authRealm ?? PLATFORM_WORKSPACE_ID,
             client_id: authConfig.clientId,
             issuer: authConfig.issuer,
             redirect_uri: authConfig.redirectUri,
@@ -566,8 +608,9 @@ export const callbackHandler = async (request: Request): Promise<Response> => {
             retry_performed: false,
             result: 'failure',
             error_type: error instanceof Error ? error.constructor.name : typeof error,
-            error: error instanceof Error ? error.message : String(error),
-            ...buildLogContext(cookieLoginState?.workspaceId ?? authConfig.instanceId),
+            reason_code: 'callback_failed',
+            auth_scope_kind: authScope.kind,
+            ...buildLogContext(callbackScope),
           });
         }
 
@@ -578,11 +621,12 @@ export const callbackHandler = async (request: Request): Promise<Response> => {
           strategy: loginStateDeleteStrategy,
           response_set_cookie_count: getSetCookieValues(response.headers).length,
           had_session_cookie_on_callback: hadSessionCookieOnCallback,
-          ...buildLogContext(),
+          ...buildLogContext(cookieLoginState ?? authScope),
         });
         await emitAuthAuditEvent({
           eventType: isSilent ? 'silent_reauth_failed' : 'login',
-          workspaceId: cookieLoginState?.workspaceId ?? authConfig.instanceId,
+          scope: cookieLoginState ?? authScope,
+          workspaceId: getWorkspaceIdForScope(cookieLoginState ?? authScope),
           outcome: 'failure',
         });
         return response;
@@ -616,7 +660,7 @@ export const meHandler = async (request: Request): Promise<Response> => {
         auth_state: 'authenticated',
         operation: 'get_current_user',
         roles_count: user.roles?.length ?? 0,
-        ...buildLogContext(user.instanceId),
+        ...buildLogContext(user.instanceId ? { kind: 'instance', instanceId: user.instanceId } : undefined),
       });
 
       return new Response(JSON.stringify({ user }), {
@@ -635,6 +679,7 @@ export const logoutHandler = async (request: Request): Promise<Response> => {
 
     try {
       const authConfig = await resolveAuthConfigForRequest(request);
+      const authScope = getScopeFromAuthConfig(authConfig);
       const { sessionCookieName, postLogoutRedirectUri, silentSsoSuppressCookieName, silentSsoSuppressAfterLogoutMs } =
         authConfig;
       const sessionId = readCookieFromRequest(request, sessionCookieName);
@@ -649,13 +694,20 @@ export const logoutHandler = async (request: Request): Promise<Response> => {
             endpoint: '/auth/logout',
             operation: 'logout',
             ...summarizeRedirectTarget(logoutUrl),
-            ...buildLogContext(),
+            ...buildLogContext(sessionBeforeLogout?.user?.instanceId
+              ? { kind: 'instance', instanceId: sessionBeforeLogout.user.instanceId }
+              : authScope),
           });
 
           await emitAuthAuditEvent({
             eventType: 'logout',
             actorUserId: sessionBeforeLogout?.user?.id ?? sessionBeforeLogout?.userId,
-            workspaceId: sessionBeforeLogout?.user?.instanceId,
+            scope: sessionBeforeLogout?.user?.instanceId
+              ? { kind: 'instance', instanceId: sessionBeforeLogout.user.instanceId }
+              : authScope,
+            workspaceId:
+              sessionBeforeLogout?.user?.instanceId
+                ?? getWorkspaceIdForScope(authScope),
             outcome: 'success',
           });
         } catch (error) {
@@ -665,9 +717,9 @@ export const logoutHandler = async (request: Request): Promise<Response> => {
           logger.error('Logout failed', {
             endpoint: '/auth/logout',
             operation: 'logout',
-            error: error instanceof Error ? error.message : String(error),
             error_type: error instanceof Error ? error.constructor.name : typeof error,
-            ...buildLogContext(),
+            reason_code: 'logout_failed',
+            ...buildLogContext(authScope),
           });
         }
       } else {
@@ -675,7 +727,7 @@ export const logoutHandler = async (request: Request): Promise<Response> => {
           endpoint: '/auth/logout',
           operation: 'logout',
           session_exists: false,
-          ...buildLogContext(),
+          ...buildLogContext(authScope),
         });
       }
 
@@ -692,7 +744,7 @@ export const logoutHandler = async (request: Request): Promise<Response> => {
         session_delete_strategy: sessionDeleteStrategy,
         silent_sso_suppress_strategy: silentSsoSuppressStrategy,
         response_set_cookie_count: getSetCookieValues(response.headers).length,
-        ...buildLogContext(),
+        ...buildLogContext(authScope),
       });
       return response;
     } catch (error) {

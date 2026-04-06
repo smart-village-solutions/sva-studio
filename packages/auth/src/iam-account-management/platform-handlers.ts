@@ -37,8 +37,35 @@ const toAuthorizationCacheStatus = (status: 'degraded' | 'failed' | 'ready'): Ru
   return 'ready';
 };
 
+const extractRealmFromIssuer = (issuer: string): string | undefined => {
+  try {
+    const url = new URL(issuer);
+    const match = url.pathname.match(/\/realms\/([^/]+)\/?$/);
+    return match?.[1];
+  } catch {
+    return undefined;
+  }
+};
+
+const resolveRuntimeAuthRealm = (): string | undefined => {
+  const explicitRealm = process.env.KEYCLOAK_ADMIN_REALM?.trim();
+  if (explicitRealm) {
+    return explicitRealm;
+  }
+
+  const issuer = process.env.SVA_AUTH_ISSUER?.trim();
+  if (!issuer) {
+    return undefined;
+  }
+
+  return extractRealmFromIssuer(issuer);
+};
+
 export const readyInternal = async (request: Request): Promise<Response> => {
   const requestContext = getWorkspaceContext();
+  const runtimeAuth = {
+    realm: resolveRuntimeAuthRealm(),
+  };
   const dbStatus = await (async () => {
     try {
       const pool = resolvePool();
@@ -253,6 +280,7 @@ export const readyInternal = async (request: Request): Promise<Response> => {
       db: dbStatus.ready,
       redis: redisStatus.ready,
       keycloak: keycloakStatus.ready,
+      auth: runtimeAuth,
       errors: {
         ...(dbStatus.ready ? {} : { db: dbStatus.error }),
         ...(redisStatus.ready ? {} : { redis: redisStatus.error }),

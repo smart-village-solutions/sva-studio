@@ -37,10 +37,12 @@ export const resolveTenantAuthClientSecret = async (instanceId: string): Promise
     fallbackReason = 'tenant_auth_client_secret_lookup_failed';
     logger.warn('Tenant auth client secret lookup failed; falling back to global auth secret', {
       operation: 'tenant_auth_secret_lookup',
-      auth_resolution_mode: 'global_fallback',
+      auth_scope_kind: 'platform',
+      resolution_result: 'platform',
       instance_id: instanceId,
-      reason: 'tenant_auth_client_secret_lookup_failed',
-      error: error instanceof Error ? error.message : String(error),
+      reason_code: 'tenant_auth_client_secret_lookup_failed',
+      dependency: 'database',
+      error_type: error instanceof Error ? error.name : typeof error,
     });
     return null;
   });
@@ -53,9 +55,10 @@ export const resolveTenantAuthClientSecret = async (instanceId: string): Promise
   if (!tenantSecret) {
     logger.warn('Tenant auth client secret could not be decrypted; falling back to global auth secret', {
       operation: 'tenant_auth_secret_lookup',
-      auth_resolution_mode: 'global_fallback',
+      auth_scope_kind: 'platform',
+      resolution_result: 'platform',
       instance_id: instanceId,
-      reason: 'tenant_auth_client_secret_unreadable',
+      reason_code: 'tenant_auth_client_secret_unreadable',
     });
     return buildGlobalFallback(globalSecret, 'tenant_auth_client_secret_unreadable');
   }

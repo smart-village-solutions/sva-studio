@@ -3,6 +3,7 @@ import type { IamGovernanceCaseType } from '@sva/core';
 import { createSdkLogger, getWorkspaceContext, withRequestContext } from '@sva/sdk/server';
 
 import { withAuthenticatedUser } from '../middleware.server.js';
+import { getIamDatabaseUrl } from '../runtime-secrets.server.js';
 import { createPoolResolver, jsonResponse, type QueryClient, withInstanceDb } from '../shared/db-helpers.js';
 import { isUuid, readNumber, readString } from '../shared/input-readers.js';
 import { buildLogContext } from '../shared/log-context.js';
@@ -65,7 +66,7 @@ type GovernanceActor = {
   traceId?: string;
 };
 
-const resolvePool = createPoolResolver(() => process.env.IAM_DATABASE_URL);
+const resolvePool = createPoolResolver(getIamDatabaseUrl);
 
 const pseudonymize = (value: string) => createHash('sha256').update(value).digest('hex').slice(0, 16);
 const buildGovernanceLogContext = (instanceId?: string) =>

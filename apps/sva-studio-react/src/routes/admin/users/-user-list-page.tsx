@@ -3,11 +3,12 @@ import React from 'react';
 
 import { ConfirmDialog } from '../../../components/ConfirmDialog';
 import { ModalDialog } from '../../../components/ModalDialog';
+import { StudioDataTable, type StudioColumnDef } from '../../../components/StudioDataTable';
+import { StudioListPageTemplate } from '../../../components/StudioListPageTemplate';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
-import { Checkbox } from '../../../components/ui/checkbox';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
 import { Select } from '../../../components/ui/select';
@@ -16,9 +17,6 @@ import { useUsers } from '../../../hooks/use-users';
 import { isIamBulkEnabled } from '../../../lib/iam-admin-access';
 import { t } from '../../../i18n';
 import { userErrorMessage } from './-user-error-message';
-
-type SortKey = 'displayName' | 'email' | 'status' | 'role' | 'lastLoginAt';
-type SortDirection = 'asc' | 'desc';
 
 const statusClassByValue: Record<'active' | 'inactive' | 'pending', string> = {
   active: 'border-primary/40 bg-primary/15 text-primary',
@@ -32,46 +30,21 @@ const statusTranslationKeyByValue = {
   pending: 'account.status.pending',
 } as const;
 
-const resolveSortValue = (input: {
-  displayName: string;
-  email?: string;
-  status: string;
-  roleName?: string;
-  lastLoginAt?: string;
-}, key: SortKey): string => {
-  switch (key) {
-    case 'displayName':
-      return input.displayName;
-    case 'email':
-      return input.email ?? '';
-    case 'status':
-      return input.status;
-    case 'role':
-      return input.roleName ?? '';
-    case 'lastLoginAt':
-      return input.lastLoginAt ?? '';
-    default:
-      return '';
-  }
-};
-
 export const UserListPage = () => {
   const usersApi = useUsers();
   const rolesApi = useRoles();
 
-  const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
-  const [sortKey, setSortKey] = React.useState<SortKey>('displayName');
-  const [sortDirection, setSortDirection] = React.useState<SortDirection>('asc');
   const [createDialogOpen, setCreateDialogOpen] = React.useState(false);
-  const [deactivateDialog, setDeactivateDialog] = React.useState<{ mode: 'single' | 'bulk'; userId?: string } | null>(
+  const [deactivateDialog, setDeactivateDialog] = React.useState<{ mode: 'single' | 'bulk'; userId?: string; userIds?: string[] } | null>(
     null
   );
+  const [syncStatus, setSyncStatus] = React.useState<'idle' | 'pending' | 'success' | 'empty' | 'error'>('idle');
   const [syncResult, setSyncResult] = React.useState<{
     importedCount: number;
     updatedCount: number;
     skippedCount: number;
   } | null>(null);
-  const [isSyncing, setIsSyncing] = React.useState(false);
+  const [syncError, setSyncError] = React.useState<Parameters<typeof userErrorMessage>[0]>(null);
 
   const [createForm, setCreateForm] = React.useState({
     email: '',
@@ -79,72 +52,6 @@ export const UserListPage = () => {
     lastName: '',
     roleId: '',
   });
-
-  const sortedUsers = React.useMemo(() => {
-    const result = [...usersApi.users];
-    result.sort((left, right) => {
-      const leftRole = left.roles[0]?.roleName;
-      const rightRole = right.roles[0]?.roleName;
-
-      const leftValue = resolveSortValue(
-        {
-          displayName: left.displayName,
-          email: left.email,
-          status: left.status,
-          roleName: leftRole,
-          lastLoginAt: left.lastLoginAt,
-        },
-        sortKey
-      ).toLowerCase();
-      const rightValue = resolveSortValue(
-        {
-          displayName: right.displayName,
-          email: right.email,
-          status: right.status,
-          roleName: rightRole,
-          lastLoginAt: right.lastLoginAt,
-        },
-        sortKey
-      ).toLowerCase();
-
-      return sortDirection === 'asc' ? leftValue.localeCompare(rightValue) : rightValue.localeCompare(leftValue);
-    });
-
-    return result;
-  }, [sortDirection, sortKey, usersApi.users]);
-
-  const onSort = (nextKey: SortKey) => {
-    if (sortKey === nextKey) {
-      setSortDirection((current) => (current === 'asc' ? 'desc' : 'asc'));
-      return;
-    }
-
-    setSortKey(nextKey);
-    setSortDirection('asc');
-  };
-
-  const onSelectAll = (checked: boolean) => {
-    if (!checked) {
-      setSelectedIds([]);
-      return;
-    }
-
-    setSelectedIds(sortedUsers.slice(0, 50).map((entry) => entry.id));
-  };
-
-  const onSelectSingle = (userId: string, checked: boolean) => {
-    setSelectedIds((current) => {
-      if (!checked) {
-        return current.filter((entry) => entry !== userId);
-      }
-
-      if (current.includes(userId) || current.length >= 50) {
-        return current;
-      }
-
-      return [...current, userId];
-    });
-  };
 
   const onCreateUser = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -176,102 +83,213 @@ export const UserListPage = () => {
 
     if (action.mode === 'single' && action.userId) {
       await usersApi.deactivateUser(action.userId);
-      setSelectedIds((current) => current.filter((entry) => entry !== action.userId));
       return;
     }
 
-    if (action.mode === 'bulk') {
-      const success = await usersApi.bulkDeactivate(selectedIds);
-      if (success) {
-        setSelectedIds([]);
-      }
+    if (action.mode === 'bulk' && action.userIds) {
+      await usersApi.bulkDeactivate(action.userIds);
     }
   };
 
   const onSyncUsers = async () => {
-    setIsSyncing(true);
+    setSyncStatus('pending');
+    setSyncResult(null);
+    setSyncError(null);
     const result = await usersApi.syncUsersFromKeycloak();
-    setIsSyncing(false);
-    if (!result) {
+    if (!result.ok) {
+      setSyncStatus('error');
+      setSyncError(result.error);
       return;
     }
 
     setSyncResult({
-      importedCount: result.importedCount,
-      updatedCount: result.updatedCount,
-      skippedCount: result.skippedCount,
+      importedCount: result.report.importedCount,
+      updatedCount: result.report.updatedCount,
+      skippedCount: result.report.skippedCount,
     });
+    setSyncStatus(result.report.importedCount === 0 && result.report.updatedCount === 0 ? 'empty' : 'success');
   };
 
   const pageCount = Math.max(1, Math.ceil(usersApi.total / usersApi.pageSize));
+  const userColumns = React.useMemo<readonly StudioColumnDef<(typeof usersApi.users)[number]>[]>(
+    () => [
+      {
+        id: 'displayName',
+        header: t('admin.users.table.headerName'),
+        cell: (user) => user.displayName,
+        sortable: true,
+        sortValue: (user) => user.displayName.toLowerCase(),
+      },
+      {
+        id: 'email',
+        header: t('admin.users.table.headerEmail'),
+        cell: (user) => user.email ?? '-',
+        sortable: true,
+        sortValue: (user) => (user.email ?? '').toLowerCase(),
+      },
+      {
+        id: 'role',
+        header: t('admin.users.table.headerRole'),
+        cell: (user) => user.roles[0]?.roleName ?? '-',
+        sortable: true,
+        sortValue: (user) => (user.roles[0]?.roleName ?? '').toLowerCase(),
+      },
+      {
+        id: 'status',
+        header: t('admin.users.table.headerStatus'),
+        cell: (user) => (
+          <Badge className={`rounded-full ${statusClassByValue[user.status]}`} variant="outline">
+            {t(statusTranslationKeyByValue[user.status])}
+          </Badge>
+        ),
+        sortable: true,
+        sortValue: (user) => user.status,
+      },
+      {
+        id: 'lastLoginAt',
+        header: t('admin.users.table.headerLastLogin'),
+        cell: (user) => user.lastLoginAt ?? '-',
+        sortable: true,
+        sortValue: (user) => user.lastLoginAt ?? '',
+      },
+    ],
+    [usersApi.users]
+  );
 
   return (
     <section className="space-y-5" aria-busy={usersApi.isLoading}>
-      <header className="space-y-2">
-        <h1 className="text-3xl font-semibold text-foreground">{t('admin.users.page.title')}</h1>
-        <p className="max-w-2xl text-sm text-muted-foreground">{t('admin.users.page.subtitle')}</p>
-      </header>
+      <StudioListPageTemplate
+        title={t('admin.users.page.title')}
+        description={t('admin.users.page.subtitle')}
+        primaryAction={{
+          label: t('admin.users.actions.create'),
+          onClick: () => setCreateDialogOpen(true),
+        }}
+      >
+        <StudioDataTable
+          ariaLabel={t('admin.users.table.ariaLabel')}
+          caption={t('admin.users.table.caption')}
+          data={usersApi.users}
+          columns={userColumns}
+          getRowId={(user) => user.id}
+          isLoading={usersApi.isLoading}
+          loadingState={t('content.messages.loading')}
+          emptyState={
+            <Card className="border-none p-0 text-sm text-muted-foreground shadow-none" role="status">
+              {t('admin.users.messages.emptyState')}
+            </Card>
+          }
+          bulkActions={
+            isIamBulkEnabled()
+              ? [
+                  {
+                    id: 'bulk-deactivate',
+                    label: t('admin.users.actions.bulkDeactivate'),
+                    variant: 'destructive',
+                    onClick: ({ selectedRows }) =>
+                      setDeactivateDialog({
+                        mode: 'bulk',
+                        userIds: selectedRows.map((user) => user.id),
+                      }),
+                  },
+                ]
+              : []
+          }
+          toolbarStart={
+            <>
+              <div className="flex flex-col gap-1 text-xs uppercase tracking-wide text-muted-foreground">
+                <Label htmlFor="users-search">{t('admin.users.filters.searchLabel')}</Label>
+                <Input
+                  id="users-search"
+                  placeholder={t('admin.users.filters.searchPlaceholder')}
+                  value={usersApi.filters.search}
+                  onChange={(event) => usersApi.setSearch(event.target.value)}
+                />
+              </div>
+              <div className="flex flex-col gap-1 text-xs uppercase tracking-wide text-muted-foreground">
+                <Label htmlFor="users-status">{t('admin.users.filters.statusLabel')}</Label>
+                <Select
+                  id="users-status"
+                  value={usersApi.filters.status}
+                  onChange={(event) => usersApi.setStatus(event.target.value as 'active' | 'inactive' | 'pending' | 'all')}
+                >
+                  <option value="all">{t('admin.users.filters.statusAll')}</option>
+                  <option value="active">{t('admin.users.filters.statusActive')}</option>
+                  <option value="inactive">{t('admin.users.filters.statusInactive')}</option>
+                  <option value="pending">{t('admin.users.filters.statusPending')}</option>
+                </Select>
+              </div>
+            </>
+          }
+          toolbarEnd={
+            <>
+              <p role="status" className="text-xs text-muted-foreground">
+                {t('admin.users.messages.resultCount', { count: usersApi.total })}
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={syncStatus === 'pending'}
+                onClick={() => void onSyncUsers()}
+              >
+                {syncStatus === 'pending' ? t('admin.users.actions.syncing') : t('admin.users.actions.syncKeycloak')}
+              </Button>
+            </>
+          }
+          rowActions={(user) => (
+            <>
+              <Button asChild size="sm" variant="outline">
+                <Link to="/admin/users/$userId" params={{ userId: user.id }}>
+                  {t('admin.users.actions.edit')}
+                </Link>
+              </Button>
+              <Button type="button" size="sm" variant="destructive" onClick={() => setDeactivateDialog({ mode: 'single', userId: user.id })}>
+                {t('admin.users.actions.deactivate')}
+              </Button>
+            </>
+          )}
+        />
+      </StudioListPageTemplate>
 
-      <Card className="grid gap-3 p-4 lg:grid-cols-[1fr_auto_auto]">
-        <div className="flex flex-col gap-1 text-xs uppercase tracking-wide text-muted-foreground">
-          <Label htmlFor="users-search">{t('admin.users.filters.searchLabel')}</Label>
-          <Input
-            id="users-search"
-            placeholder={t('admin.users.filters.searchPlaceholder')}
-            value={usersApi.filters.search}
-            onChange={(event) => usersApi.setSearch(event.target.value)}
-          />
-        </div>
-        <div className="flex flex-col gap-1 text-xs uppercase tracking-wide text-muted-foreground">
-          <Label htmlFor="users-status">{t('admin.users.filters.statusLabel')}</Label>
-          <Select
-            id="users-status"
-            value={usersApi.filters.status}
-            onChange={(event) => usersApi.setStatus(event.target.value as 'active' | 'inactive' | 'pending' | 'all')}
-          >
-            <option value="all">{t('admin.users.filters.statusAll')}</option>
-            <option value="active">{t('admin.users.filters.statusActive')}</option>
-            <option value="inactive">{t('admin.users.filters.statusInactive')}</option>
-            <option value="pending">{t('admin.users.filters.statusPending')}</option>
-          </Select>
-        </div>
-        <div className="flex items-end justify-end gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            disabled={isSyncing}
-            onClick={() => void onSyncUsers()}
-          >
-            {isSyncing ? t('admin.users.actions.syncing') : t('admin.users.actions.syncKeycloak')}
-          </Button>
-          {isIamBulkEnabled() ? (
-            <Button
-              type="button"
-              variant="destructive"
-              disabled={selectedIds.length === 0}
-              onClick={() => setDeactivateDialog({ mode: 'bulk' })}
-            >
-              {t('admin.users.actions.bulkDeactivate')}
-            </Button>
-          ) : null}
-          <Button type="button" onClick={() => setCreateDialogOpen(true)}>
-            {t('admin.users.actions.create')}
-          </Button>
-        </div>
-      </Card>
-
-      <p role="status" className="text-xs text-muted-foreground">
-        {t('admin.users.messages.resultCount', { count: usersApi.total })}
-      </p>
-
-      {syncResult ? (
+      {syncStatus === 'pending' ? (
         <p role="status" aria-live="polite" className="text-xs text-muted-foreground">
-          {t('admin.users.messages.syncResult', {
-            importedCount: syncResult.importedCount,
-            updatedCount: syncResult.updatedCount,
-            skippedCount: syncResult.skippedCount,
-          })}
+          {t('admin.users.messages.syncRunning')}
         </p>
+      ) : null}
+
+      {syncStatus === 'success' && syncResult ? (
+        <Alert className="border-secondary/40 bg-secondary/10 text-secondary" role="status">
+          <AlertDescription>
+            {t('admin.users.messages.syncResult', {
+              importedCount: syncResult.importedCount,
+              updatedCount: syncResult.updatedCount,
+              skippedCount: syncResult.skippedCount,
+            })}
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
+      {syncStatus === 'empty' && syncResult ? (
+        <Alert className="border-secondary/40 bg-secondary/10 text-secondary" role="status">
+          <AlertDescription>
+            {t('admin.users.messages.syncEmpty', {
+              skippedCount: syncResult.skippedCount,
+            })}
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
+      {syncStatus === 'error' && syncError ? (
+        <Alert className="border-destructive/40 bg-destructive/10 text-destructive" role="alert">
+          <AlertDescription className="flex flex-col gap-3">
+            <span>{userErrorMessage(syncError)}</span>
+            <div>
+              <Button type="button" size="sm" variant="outline" onClick={() => void onSyncUsers()}>
+                {t('admin.users.actions.retry')}
+              </Button>
+            </div>
+          </AlertDescription>
+        </Alert>
       ) : null}
 
       {usersApi.error ? (
@@ -285,175 +303,6 @@ export const UserListPage = () => {
             </div>
           </AlertDescription>
         </Alert>
-      ) : null}
-
-      <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-shell">
-        <table className="hidden min-w-full border-collapse md:table" aria-label={t('admin.users.table.ariaLabel')}>
-          <caption className="sr-only">{t('admin.users.table.caption')}</caption>
-          <thead className="bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground">
-            <tr>
-              <th scope="col" className="px-3 py-3">
-                <Checkbox
-                  type="checkbox"
-                  aria-label={t('admin.users.table.selectAll')}
-                  checked={selectedIds.length > 0 && selectedIds.length === sortedUsers.slice(0, 50).length}
-                  onChange={(event) => onSelectAll(event.target.checked)}
-                />
-              </th>
-              <th
-                scope="col"
-                className="px-3 py-3"
-                aria-sort={sortKey === 'displayName' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
-              >
-                <Button
-                  type="button"
-                  className="h-auto px-0 py-0 font-semibold hover:bg-transparent"
-                  onClick={() => onSort('displayName')}
-                  variant="ghost"
-                >
-                  {t('admin.users.table.headerName')}
-                </Button>
-              </th>
-              <th
-                scope="col"
-                className="px-3 py-3"
-                aria-sort={sortKey === 'email' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
-              >
-                <Button
-                  type="button"
-                  className="h-auto px-0 py-0 font-semibold hover:bg-transparent"
-                  onClick={() => onSort('email')}
-                  variant="ghost"
-                >
-                  {t('admin.users.table.headerEmail')}
-                </Button>
-              </th>
-              <th
-                scope="col"
-                className="px-3 py-3"
-                aria-sort={sortKey === 'role' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
-              >
-                <Button
-                  type="button"
-                  className="h-auto px-0 py-0 font-semibold hover:bg-transparent"
-                  onClick={() => onSort('role')}
-                  variant="ghost"
-                >
-                  {t('admin.users.table.headerRole')}
-                </Button>
-              </th>
-              <th
-                scope="col"
-                className="px-3 py-3"
-                aria-sort={sortKey === 'status' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
-              >
-                <Button
-                  type="button"
-                  className="h-auto px-0 py-0 font-semibold hover:bg-transparent"
-                  onClick={() => onSort('status')}
-                  variant="ghost"
-                >
-                  {t('admin.users.table.headerStatus')}
-                </Button>
-              </th>
-              <th
-                scope="col"
-                className="px-3 py-3"
-                aria-sort={sortKey === 'lastLoginAt' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
-              >
-                <Button
-                  type="button"
-                  className="h-auto px-0 py-0 font-semibold hover:bg-transparent"
-                  onClick={() => onSort('lastLoginAt')}
-                  variant="ghost"
-                >
-                  {t('admin.users.table.headerLastLogin')}
-                </Button>
-              </th>
-              <th scope="col" className="px-3 py-3 text-right">
-                {t('admin.users.table.headerActions')}
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {sortedUsers.map((user) => (
-              <tr key={user.id} className="border-t border-border text-sm text-foreground">
-                <td className="px-3 py-3 align-top">
-                  <Checkbox
-                    type="checkbox"
-                    aria-label={t('admin.users.table.selectOne', { name: user.displayName })}
-                    checked={selectedIds.includes(user.id)}
-                    onChange={(event) => onSelectSingle(user.id, event.target.checked)}
-                  />
-                </td>
-                <td className="px-3 py-3 align-top">{user.displayName}</td>
-                <td className="px-3 py-3 align-top">{user.email ?? '-'}</td>
-                <td className="px-3 py-3 align-top">{user.roles[0]?.roleName ?? '-'}</td>
-                <td className="px-3 py-3 align-top">
-                  <Badge className={`rounded-full ${statusClassByValue[user.status]}`} variant="outline">
-                    {t(statusTranslationKeyByValue[user.status])}
-                  </Badge>
-                </td>
-                <td className="px-3 py-3 align-top">{user.lastLoginAt ?? '-'}</td>
-                <td className="px-3 py-3 align-top">
-                  <div className="flex justify-end gap-2">
-                    <Button asChild size="sm" variant="outline">
-                      <Link to="/admin/users/$userId" params={{ userId: user.id }}>
-                        {t('admin.users.actions.edit')}
-                      </Link>
-                    </Button>
-                    <Button type="button" size="sm" variant="destructive" onClick={() => setDeactivateDialog({ mode: 'single', userId: user.id })}>
-                      {t('admin.users.actions.deactivate')}
-                    </Button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        <div className="space-y-3 p-3 md:hidden">
-          {sortedUsers.map((user) => (
-            <article key={user.id} className="rounded-lg border border-border bg-card p-3 text-sm text-foreground shadow-shell">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <p className="font-semibold">{user.displayName}</p>
-                  <p className="text-xs text-muted-foreground">{user.email ?? '-'}</p>
-                </div>
-                <Checkbox
-                  type="checkbox"
-                  aria-label={t('admin.users.table.selectOne', { name: user.displayName })}
-                  checked={selectedIds.includes(user.id)}
-                  onChange={(event) => onSelectSingle(user.id, event.target.checked)}
-                />
-              </div>
-              <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                <Badge variant="outline">
-                  {user.roles[0]?.roleName ?? '-'}
-                </Badge>
-                <Badge className={statusClassByValue[user.status]} variant="outline">
-                  {t(statusTranslationKeyByValue[user.status])}
-                </Badge>
-              </div>
-              <div className="mt-3 flex gap-2">
-                <Button asChild size="sm" variant="outline">
-                  <Link to="/admin/users/$userId" params={{ userId: user.id }}>
-                    {t('admin.users.actions.edit')}
-                  </Link>
-                </Button>
-                <Button type="button" size="sm" variant="destructive" onClick={() => setDeactivateDialog({ mode: 'single', userId: user.id })}>
-                  {t('admin.users.actions.deactivate')}
-                </Button>
-              </div>
-            </article>
-          ))}
-        </div>
-      </div>
-
-      {!usersApi.isLoading && sortedUsers.length === 0 ? (
-        <Card className="p-5 text-sm text-muted-foreground" role="status">
-          {t('admin.users.messages.emptyState')}
-        </Card>
       ) : null}
 
       <footer className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">

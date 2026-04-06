@@ -11,6 +11,13 @@
         "command": "tsc -p packages/sdk/tsconfig.lib.json"
       }
     },
+    "check:runtime": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["build"],
+      "options": {
+        "command": "pnpm exec node --import tsx scripts/ci/check-server-package-runtime.ts --package sdk"
+      }
+    },
     "lint": {
       "executor": "@nx/eslint:lint",
       "options": {

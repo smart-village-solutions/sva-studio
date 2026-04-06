@@ -285,14 +285,17 @@ quantum-cli ps --endpoint "$QUANTUM_ENDPOINT" --stack "$QUANTUM_STACK" --all
 
 ```bash
 # Image bauen (Multi-Stage via deploy/portainer/Dockerfile)
-docker build -t ghcr.io/smart-village-solutions/sva-studio:$TAG -f deploy/portainer/Dockerfile .
-
-# In GHCR pushen
-echo "$GITHUB_TOKEN" | docker login ghcr.io -u USERNAME --password-stdin
-docker push ghcr.io/smart-village-solutions/sva-studio:$TAG
+docker buildx build \
+  --platform linux/amd64 \
+  -t ghcr.io/smart-village-solutions/sva-studio:$TAG \
+  -f deploy/portainer/Dockerfile \
+  --push .
 
 # Immutable Digest extrahieren
 docker inspect --format='{{index .RepoDigests 0}}' ghcr.io/smart-village-solutions/sva-studio:$TAG
+
+# Plattform verifizieren
+docker manifest inspect -v ghcr.io/smart-village-solutions/sva-studio:$TAG
 ```
 
 ### Phase 2 – Precheck
@@ -305,6 +308,7 @@ Prüft:
 - Env-Variablen vollständig
 - `.quantum`-Konfiguration valide
 - Image-Digest erreichbar
+- Image unterstützt `linux/amd64`
 - Quantum-CLI Auth funktioniert
 
 ### Phase 3 – Deploy

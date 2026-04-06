@@ -103,7 +103,7 @@
     "@nx/vite": "^22.6.3",
     "@nx/vitest": "^22.6.3",
     "@tailwindcss/postcss": "4.2.2",
-    "@types/node": "^25.5.0",
+    "@types/node": "^25.5.2",
     "@types/pg": "^8.20.0",
     "@vitest/coverage-v8": "^4.1.0",
     "autoprefixer": "10.4.27",

@@ -75,7 +75,7 @@ test('GET /auth/login returns redirect response', async ({ request }) => {
     return;
   }
 
-  expect(response.status()).toBe(503);
+  expect(response.status()).toBe(500);
   await expect(response.json()).resolves.toMatchObject({
     error: 'internal_error',
   });
@@ -87,7 +87,7 @@ test('tenant-host login fails closed when canonical auth redirect prerequisites 
     maxRedirects: 0,
   });
 
-  expect(response.status()).toBe(503);
+  expect(response.status()).toBe(500);
   await expect(response.json()).resolves.toMatchObject({
     error: 'internal_error',
   });

@@ -41,6 +41,14 @@ BEFORE UPDATE OR DELETE ON iam.platform_activity_logs
 FOR EACH ROW
 EXECUTE FUNCTION iam.prevent_platform_activity_logs_mutation();
 
+ALTER TABLE iam.platform_activity_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE iam.platform_activity_logs FORCE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS platform_activity_logs_platform_scope ON iam.platform_activity_logs;
+CREATE POLICY platform_activity_logs_platform_scope ON iam.platform_activity_logs
+  USING (iam.current_instance_id() IS NULL)
+  WITH CHECK (iam.current_instance_id() IS NULL);
+
 GRANT SELECT, INSERT ON iam.platform_activity_logs TO iam_app;
 -- +goose StatementEnd
 

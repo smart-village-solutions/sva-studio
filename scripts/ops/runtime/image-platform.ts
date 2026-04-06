@@ -105,7 +105,7 @@ export const assertRequiredImagePlatform = (
   }
 
   throw new Error(
-    `Image ${imageRef} unterstuetzt ${requiredPlatform.os}/${requiredPlatform.architecture} nicht. ` +
+    `Image ${imageRef} unterstützt ${requiredPlatform.os}/${requiredPlatform.architecture} nicht. ` +
       `Gefunden: ${formatImagePlatforms(platforms)}. ` +
       `Baue und publishe das Artefakt explizit mit docker buildx build --platform ${requiredPlatform.os}/${requiredPlatform.architecture} --push.`
   );
@@ -120,14 +120,14 @@ export const inspectImagePlatforms = (
   }
 ): readonly ImagePlatform[] => {
   if (!deps.commandExists('docker')) {
-    throw new Error('docker ist fuer die Image-Plattform-Pruefung nicht verfuegbar.');
+    throw new Error('docker ist für die Image-Plattform-Prüfung nicht verfügbar.');
   }
 
   const result = deps.runCaptureDetailed('docker', ['manifest', 'inspect', '-v', imageRef], env);
   if (result.status !== 0) {
     throw new Error(
       summarizeProcessOutput(`${result.stdout ?? ''}\n${result.stderr ?? ''}`) ||
-        `docker manifest inspect fuer ${imageRef} ist fehlgeschlagen.`
+        `docker manifest inspect für ${imageRef} ist fehlgeschlagen.`
     );
   }
 

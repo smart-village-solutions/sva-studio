@@ -363,7 +363,6 @@ import {
   getUserHandler,
   getUserTimelineHandler,
   healthLiveHandler,
-  healthReadyHandler,
   listGroupsHandler,
   listRolesHandler,
   listUsersHandler,
@@ -504,6 +503,8 @@ describe('iam-account-management handlers (guards)', () => {
     state.keycloakConfigAvailable = true;
     state.runtimeAuthRealm = 'svs-intern-studio-staging';
     state.runtimeAuthIssuer = null;
+    process.env.KEYCLOAK_ADMIN_REALM = 'svs-intern-studio-staging';
+    process.env.SVA_AUTH_ISSUER = 'https://keycloak.local/realms/svs-intern-studio-staging';
     state.deactivateUserCalls = [];
     state.syncRolesImpl = null;
     state.syncRolesCalls = [];
@@ -5886,6 +5887,8 @@ describe('iam-account-management additional handlers', () => {
     state.redisAvailable = true;
     state.runtimeAuthRealm = undefined as never;
     state.runtimeAuthIssuer = 'https://keycloak.local/realms/platform-root';
+    delete process.env.KEYCLOAK_ADMIN_REALM;
+    process.env.SVA_AUTH_ISSUER = state.runtimeAuthIssuer;
     state.listRolesImpl = async () => [];
     state.queryHandler = (text) => {
       if (text.includes('SELECT 1;')) {

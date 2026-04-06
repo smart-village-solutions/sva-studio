@@ -1,7 +1,6 @@
 import { createSdkLogger, getWorkspaceContext } from '@sva/sdk/server';
 import type { RuntimeDependencyHealth, RuntimeHealthServices } from '@sva/core';
 
-import { resolveAuthConfigForRequest } from '../config.js';
 import { getPermissionCacheHealth } from '../iam-authorization/shared.js';
 import { bootstrapAcceptanceAppDbUserIfNeeded } from '../postgres-app-user-bootstrap.server.js';
 import { getLastRedisError, isRedisAvailable } from '../redis.server.js';
@@ -48,20 +47,25 @@ const extractRealmFromIssuer = (issuer: string): string | undefined => {
   }
 };
 
+const resolveRuntimeAuthRealm = (): string | undefined => {
+  const explicitRealm = process.env.KEYCLOAK_ADMIN_REALM?.trim();
+  if (explicitRealm) {
+    return explicitRealm;
+  }
+
+  const issuer = process.env.SVA_AUTH_ISSUER?.trim();
+  if (!issuer) {
+    return undefined;
+  }
+
+  return extractRealmFromIssuer(issuer);
+};
+
 export const readyInternal = async (request: Request): Promise<Response> => {
   const requestContext = getWorkspaceContext();
-  const runtimeAuth = await (async () => {
-    try {
-      const authConfig = await resolveAuthConfigForRequest(request);
-      return {
-        realm: authConfig.authRealm ?? extractRealmFromIssuer(authConfig.issuer),
-      };
-    } catch {
-      return {
-        realm: undefined,
-      };
-    }
-  })();
+  const runtimeAuth = {
+    realm: resolveRuntimeAuthRealm(),
+  };
   const dbStatus = await (async () => {
     try {
       const pool = resolvePool();

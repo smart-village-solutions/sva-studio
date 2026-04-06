@@ -16,6 +16,22 @@ const buildPostgresUrl = ({
   database: string;
 }) => `${scheme}://${user}:${encodeURIComponent(credential)}@${host}:${port}/${database}`;
 
+const buildInvalidPostgresUrl = ({
+  scheme,
+  user,
+  credential,
+  host,
+  port,
+  database,
+}: {
+  scheme: 'postgres' | 'postgresql';
+  user: string;
+  credential: string;
+  host: string;
+  port: string;
+  database: string;
+}) => `${scheme}://${user}:${credential}@${host}:${port}/${database}`;
+
 // Test fixture credentials (never used in production, safe for test files)
 // gitguardian:ignore
 // Credential fragments stay obviously synthetic while still exercising URL encoding.
@@ -33,7 +49,7 @@ const TEST_FIXTURES = {
     host: 'postgres.sva.docker',
     port: '5432',
     database: 'sva_studio',
-  }).replace('%2B', '+').replace('%2F', '/'),
+  }),
   iam_db_encoded: buildPostgresUrl({
     scheme: 'postgres',
     user: 'sva_app',
@@ -43,6 +59,15 @@ const TEST_FIXTURES = {
     database: 'sva_studio',
   }),
 } as const;
+
+const INVALID_IAM_DB_URL = buildInvalidPostgresUrl({
+  scheme: 'postgresql',
+  user: TEST_FIXTURES.dbUser,
+  credential: TEST_FIXTURES.dbCredential,
+  host: TEST_FIXTURES.dbHost,
+  port: TEST_FIXTURES.dbPort,
+  database: TEST_FIXTURES.dbName,
+});
 
 const resolveHostnameMock = vi.hoisted(() => vi.fn());
 const resolvePrimaryHostnameMock = vi.hoisted(() => vi.fn());
@@ -171,7 +196,7 @@ describe('instance-registry server helpers', () => {
   });
 
   it('falls back to a derived IAM database URL when the explicit url is invalid', async () => {
-    process.env.IAM_DATABASE_URL = TEST_FIXTURES.iam_db_url;
+    process.env.IAM_DATABASE_URL = INVALID_IAM_DB_URL;
     process.env.APP_DB_USER = 'sva_app';
     process.env.APP_DB_PASSWORD = TEST_FIXTURES.dbCredential;
     process.env.POSTGRES_DB = 'sva_studio';

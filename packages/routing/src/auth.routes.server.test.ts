@@ -164,6 +164,26 @@ describe('auth.routes.server', () => {
     }
   });
 
+  it('maps runtime health API paths to the runtime health handlers', async () => {
+    const readyHandlers = resolveAuthHandlers('/api/v1/iam/health/ready');
+    const liveHandlers = resolveAuthHandlers('/api/v1/iam/health/live');
+
+    expect(readyHandlers?.GET).toBeDefined();
+    expect(liveHandlers?.GET).toBeDefined();
+
+    const readyResponse = await readyHandlers!.GET!({
+      request: new Request('http://localhost/api/v1/iam/health/ready', { method: 'GET' }),
+    });
+    const liveResponse = await liveHandlers!.GET!({
+      request: new Request('http://localhost/api/v1/iam/health/live', { method: 'GET' }),
+    });
+
+    expect(readyResponse.status).toBe(200);
+    expect(liveResponse.status).toBe(200);
+    expect(authServerMocks.healthReadyHandler).toHaveBeenCalled();
+    expect(authServerMocks.healthLiveHandler).toHaveBeenCalled();
+  });
+
   it('executes all mapped handlers for all routes', async () => {
     for (const path of authRoutePaths) {
       const handlers = resolveAuthHandlers(path);

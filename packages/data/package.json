@@ -17,12 +17,13 @@
   },
   "dependencies": {
     "@sva/core": "workspace:*",
+    "@sva/sdk": "workspace:*",
     "pg": "^8.20.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/pg": "^8.20.0",
-    "@vitest/coverage-v8": "^4.1.0",
-    "vitest": "^4.1.0"
+    "@vitest/coverage-v8": "^4.1.2",
+    "vitest": "^4.1.2"
   }
 }

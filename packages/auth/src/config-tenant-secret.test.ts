@@ -88,9 +88,13 @@ describe('resolveTenantAuthClientSecret', () => {
     expect(state.loggerWarn).toHaveBeenCalledWith(
       'Tenant auth client secret lookup failed; falling back to global auth secret',
       expect.objectContaining({
+        auth_scope_kind: 'platform',
+        dependency: 'database',
+        error_type: 'Error',
         operation: 'tenant_auth_secret_lookup',
         instance_id: 'bb-guben',
-        reason: 'tenant_auth_client_secret_lookup_failed',
+        reason_code: 'tenant_auth_client_secret_lookup_failed',
+        resolution_result: 'platform',
       })
     );
   });
@@ -112,9 +116,11 @@ describe('resolveTenantAuthClientSecret', () => {
     expect(state.loggerWarn).toHaveBeenCalledWith(
       'Tenant auth client secret could not be decrypted; falling back to global auth secret',
       expect.objectContaining({
+        auth_scope_kind: 'platform',
         operation: 'tenant_auth_secret_lookup',
         instance_id: 'bb-guben',
-        reason: 'tenant_auth_client_secret_unreadable',
+        reason_code: 'tenant_auth_client_secret_unreadable',
+        resolution_result: 'platform',
       })
     );
   });

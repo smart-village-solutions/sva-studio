@@ -19,6 +19,7 @@ import { t } from '../i18n';
 import appCss from '../styles.css?url';
 
 const tanstackDevtoolsEnabled = import.meta.env.DEV && import.meta.env.VITE_ENABLE_TANSTACK_DEVTOOLS === 'true';
+const playwrightDevRuntimeDisabled = import.meta.env.VITE_PLAYWRIGHT_TEST === 'true';
 
 export const ensureRootSdkInitialized = createServerOnlyFn(async () => {
   const { ensureSdkInitialized } = await import('../lib/init-sdk.server');
@@ -147,7 +148,7 @@ export function RootDocument({ children }: Readonly<{ children: React.ReactNode 
             ]}
           />
         ) : null}
-        {import.meta.env.DEV ? <DevelopmentLogConsole /> : null}
+        {import.meta.env.DEV && !playwrightDevRuntimeDisabled ? <DevelopmentLogConsole /> : null}
         <Scripts />
       </body>
     </html>

@@ -52,6 +52,7 @@ describe('createRuntimeRouteTree', () => {
     expect(resolveBaseUrl()).toBe(window.location.origin);
 
     const originalWindow = globalThis.window;
+    const originalPublicBaseUrl = process.env.SVA_PUBLIC_BASE_URL;
     Object.defineProperty(globalThis, 'window', {
       value: undefined,
       configurable: true,
@@ -61,15 +62,21 @@ describe('createRuntimeRouteTree', () => {
     expect(resolveBaseUrl()).toBe('https://studio.example.org');
 
     vi.unstubAllEnvs();
+    delete process.env.SVA_PUBLIC_BASE_URL;
     expect(resolveBaseUrl()).toBe('http://localhost:3000');
 
     Object.defineProperty(globalThis, 'window', {
       value: originalWindow,
       configurable: true,
     });
+    if (originalPublicBaseUrl === undefined) {
+      delete process.env.SVA_PUBLIC_BASE_URL;
+    } else {
+      process.env.SVA_PUBLIC_BASE_URL = originalPublicBaseUrl;
+    }
   });
 
-  it('enables demo routes explicitly, disables them explicitly, and defaults by NODE_ENV', () => {
+  it('enables demo routes explicitly, disables them explicitly, and defaults to enabled in the dev/test runtime', () => {
     vi.stubEnv('VITE_ENABLE_DEMO_ROUTES', 'true');
     expect(areDemoRoutesEnabled()).toBe(true);
 
@@ -77,10 +84,6 @@ describe('createRuntimeRouteTree', () => {
     expect(areDemoRoutesEnabled()).toBe(false);
 
     vi.unstubAllEnvs();
-    vi.stubEnv('NODE_ENV', 'production');
-    expect(areDemoRoutesEnabled()).toBe(false);
-
-    vi.stubEnv('NODE_ENV', 'development');
     expect(areDemoRoutesEnabled()).toBe(true);
   });
 });

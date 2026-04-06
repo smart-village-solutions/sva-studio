@@ -81,16 +81,30 @@ const buildRequestOrigin = (request: Request): string => buildRequestOriginFromH
 const resolveRequestHost = (request: Request): string => resolveEffectiveRequestHost(request);
 const buildHostOrigin = (hostname: string, protocol = 'https'): string => `${protocol}://${normalizeHost(hostname)}`;
 
-const mergeAuthConfig = (
-  base: ReturnType<typeof resolveBaseAuthConfig>,
-  overrides: Pick<AuthConfig, 'issuer' | 'clientId' | 'redirectUri' | 'postLogoutRedirectUri'> &
-    Partial<Pick<AuthConfig, 'instanceId' | 'authRealm'>>
-): AuthConfig => ({
-  ...base,
-  ...overrides,
-  clientSecret: base.clientSecret,
-  loginStateSecret: base.loginStateSecret,
-});
+type BaseAuthConfig = ReturnType<typeof resolveBaseAuthConfig>;
+type PlatformAuthConfig = Extract<AuthConfig, { kind: 'platform' }>;
+type InstanceAuthConfig = Extract<AuthConfig, { kind: 'instance' }>;
+type PlatformAuthOverrides = Omit<PlatformAuthConfig, keyof BaseAuthConfig>;
+type InstanceAuthOverrides = Omit<InstanceAuthConfig, keyof BaseAuthConfig>;
+
+function mergeAuthConfig(base: BaseAuthConfig, overrides: PlatformAuthOverrides): PlatformAuthConfig;
+function mergeAuthConfig(base: BaseAuthConfig, overrides: InstanceAuthOverrides): InstanceAuthConfig;
+function mergeAuthConfig(
+  base: BaseAuthConfig,
+  overrides: PlatformAuthOverrides | InstanceAuthOverrides
+): AuthConfig {
+  if (overrides.kind === 'instance') {
+    return {
+      ...base,
+      ...overrides,
+    };
+  }
+
+  return {
+    ...base,
+    ...overrides,
+  };
+}
 
 export const resolveAuthConfigFromSessionAuth = (auth: SessionAuthContext) => ({
   ...resolveBaseAuthConfig(),
@@ -100,6 +114,7 @@ export const resolveAuthConfigFromSessionAuth = (auth: SessionAuthContext) => ({
 export const getAuthConfig = (): AuthConfig => {
   const base = resolveBaseAuthConfig();
   return mergeAuthConfig(base, {
+    kind: 'platform',
     issuer: requireEnv('SVA_AUTH_ISSUER'),
     clientId: requireEnv('SVA_AUTH_CLIENT_ID'),
     redirectUri: requireEnv('SVA_AUTH_REDIRECT_URI'),
@@ -119,6 +134,7 @@ export const resolveAuthConfigForInstance = async (
   const origin = options.origin ?? buildHostOrigin(instance.primaryHostname, options.protocol);
   const tenantSecret = await resolveTenantAuthClientSecret(instance.instanceId);
   return mergeAuthConfig(resolveBaseAuthConfig({ clientSecret: tenantSecret.secret }), {
+    kind: 'instance',
     instanceId: instance.instanceId,
     authRealm: instance.authRealm,
     issuer: buildIssuerUrl(instance.authRealm, instance.authIssuerUrl),
@@ -179,6 +195,7 @@ export const resolveAuthConfigForRequest = async (request: Request): Promise<Aut
   assertActiveRegistryEntry(host, requestOrigin, registryEntry);
   const tenantSecret = await resolveTenantAuthClientSecret(registryEntry.instanceId);
   const authConfig = mergeAuthConfig(resolveBaseAuthConfig({ clientSecret: tenantSecret.secret }), {
+    kind: 'instance',
     instanceId: registryEntry.instanceId,
     authRealm: registryEntry.authRealm,
     issuer: buildIssuerUrl(registryEntry.authRealm, registryEntry.authIssuerUrl),

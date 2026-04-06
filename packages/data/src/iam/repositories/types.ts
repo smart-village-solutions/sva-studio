@@ -8,8 +8,8 @@ import type {
   OrganizationMembershipVisibility,
   OrganizationType,
   PermissionEffect,
-} from '../types';
-import type { RoleManagedBy, RoleSyncState } from './role-sync-types';
+} from '../types.js';
+import type { RoleManagedBy, RoleSyncState } from './role-sync-types.js';
 
 type SqlArrayPrimitive = Readonly<{
   sqlType: 'uuid[]';

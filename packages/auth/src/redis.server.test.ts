@@ -134,6 +134,7 @@ describe('redis.server', () => {
   });
 
   it('uses password auth from the runtime secret fallback without ACL username', async () => {
+    process.env.REDIS_URL = 'redis://redis:6379';
     state.readFileSyncImpl.mockImplementation((path: string) => {
       if (path === '/run/secrets/sva_studio_redis_password') {
         return 'secret-from-swarm';

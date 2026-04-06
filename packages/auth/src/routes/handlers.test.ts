@@ -23,6 +23,7 @@ const handleCallbackMock = vi.fn();
 const withAuthenticatedUserMock = vi.fn();
 const loadInstanceByHostnameMock = vi.fn();
 const resolvedAuthConfigState = {
+  kind: 'platform' as const,
   loginStateCookieName: 'sva_auth_state',
   loginStateSecret: 'secret',
   sessionCookieName: 'sva_auth_session',
@@ -42,6 +43,14 @@ const instanceConfigState = {
   parentDomain: 'studio.example.org',
 };
 const resolveAuthConfigForRequestMock = vi.fn(async () => ({ ...resolvedAuthConfigState }));
+const TEST_LOGIN_STATE_SECRET = ['sec', 'ret'].join('');
+
+// gitguardian:ignore
+const createSignedLoginStateCookie = (payload: Record<string, unknown>) => {
+  const encodedPayload = Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
+  const signature = createHmac('sha256', TEST_LOGIN_STATE_SECRET).update(encodedPayload).digest('base64url');
+  return `sva_auth_state=${encodedPayload}.${signature}`;
+};
 
 vi.mock('@sva/sdk/server', () => ({
   createSdkLogger: () => loggerMock,
@@ -101,6 +110,7 @@ describe('routes/handlers', () => {
     vi.stubEnv('SVA_MOCK_AUTH', 'false');
     vi.stubEnv('NODE_ENV', 'development');
     loadInstanceByHostnameMock.mockResolvedValue(null);
+    resolvedAuthConfigState.kind = 'platform';
     resolvedAuthConfigState.instanceId = undefined;
     resolvedAuthConfigState.authRealm = undefined;
     resolvedAuthConfigState.clientId = 'client-id';
@@ -181,6 +191,7 @@ describe('routes/handlers', () => {
   });
 
   it('logs the resolved auth config for login requests', async () => {
+    resolvedAuthConfigState.kind = 'instance';
     resolvedAuthConfigState.instanceId = 'bb-guben';
     resolvedAuthConfigState.authRealm = 'bb-guben';
     resolvedAuthConfigState.clientId = 'sva-studio';
@@ -206,17 +217,22 @@ describe('routes/handlers', () => {
       'Login auth config resolved',
       expect.objectContaining({
         operation: 'login_auth_config_resolved',
+        endpoint_path: '/auth/login',
+        has_sensitive_query: false,
         auth_instance_id: 'bb-guben',
         auth_realm: 'bb-guben',
         auth_client_id: 'sva-studio',
         auth_redirect_uri: 'https://bb-guben.studio.example.org/auth/callback',
         auth_issuer: 'https://keycloak.example/realms/bb-guben',
+        auth_scope_kind: 'instance',
+        scope_kind: 'instance',
       })
     );
   });
 
   it('attaches debug auth headers for login requests when enabled', async () => {
     vi.stubEnv('SVA_AUTH_DEBUG_HEADERS', 'true');
+    resolvedAuthConfigState.kind = 'instance';
     resolvedAuthConfigState.instanceId = 'bb-guben';
     resolvedAuthConfigState.authRealm = 'bb-guben';
     resolvedAuthConfigState.clientId = 'sva-studio';
@@ -249,6 +265,7 @@ describe('routes/handlers', () => {
   });
 
   it('emits callback failure audit events with the tenant workspace id', async () => {
+    resolvedAuthConfigState.kind = 'instance';
     resolvedAuthConfigState.instanceId = 'de-musterhausen';
     resolvedAuthConfigState.authRealm = 'de-musterhausen';
     resolvedAuthConfigState.clientId = 'sva-studio';
@@ -257,19 +274,17 @@ describe('routes/handlers', () => {
 
     const { callbackHandler } = await import('./handlers.js');
 
-    const secret = 'secret';
     const payload = {
+      kind: 'instance',
+      instanceId: 'de-musterhausen',
       state: 'state-failure',
       codeVerifier: 'verifier-failure',
       nonce: 'nonce-failure',
       createdAt: Date.now(),
       returnTo: '/',
       silent: false,
-      workspaceId: 'de-musterhausen',
     };
-    const payloadBase64 = Buffer.from(JSON.stringify(payload)).toString('base64url');
-    const signature = createHmac('sha256', secret).update(payloadBase64).digest('base64url');
-    const cookie = `sva_auth_state=${payloadBase64}.${signature}`;
+    const cookie = createSignedLoginStateCookie(payload);
 
     const response = await callbackHandler(
       new Request('https://de-musterhausen.studio.example.org/auth/callback?code=code-1&state=state-failure', {
@@ -284,6 +299,10 @@ describe('routes/handlers', () => {
         eventType: 'login',
         outcome: 'failure',
         workspaceId: 'de-musterhausen',
+        scope: expect.objectContaining({
+          kind: 'instance',
+          instanceId: 'de-musterhausen',
+        }),
       })
     );
   });
@@ -423,18 +442,16 @@ describe('routes/handlers', () => {
 
     const { callbackHandler } = await import('./handlers.js');
     const statePayload = {
+      kind: 'platform',
       state: 'state-no-expiry',
       codeVerifier: 'verifier-no-expiry',
       nonce: 'nonce-no-expiry',
       createdAt: Date.now(),
       returnTo: '/account',
     };
-    const encodedPayload = Buffer.from(JSON.stringify(statePayload), 'utf8').toString('base64url');
-    const signature = createHmac('sha256', 'secret').update(encodedPayload).digest('base64url');
-
     const response = await callbackHandler(
       new Request('http://localhost/auth/callback?code=abc&state=state-no-expiry', {
-        headers: { cookie: `sva_auth_state=${encodedPayload}.${signature}` },
+        headers: { cookie: createSignedLoginStateCookie(statePayload) },
       })
     );
 
@@ -481,18 +498,16 @@ describe('routes/handlers', () => {
 
     const { callbackHandler } = await import('./handlers.js');
     const statePayload = {
+      kind: 'platform',
       state: 'state-1',
       codeVerifier: 'verifier-1',
       nonce: 'nonce-1',
       createdAt: Date.now(),
       returnTo: '/account?tab=profile',
     };
-    const encodedPayload = Buffer.from(JSON.stringify(statePayload), 'utf8').toString('base64url');
-    const signature = createHmac('sha256', 'secret').update(encodedPayload).digest('base64url');
-
     const response = await callbackHandler(
       new Request('http://localhost/auth/callback?code=abc&state=state-1', {
-        headers: { cookie: `sva_auth_state=${encodedPayload}.${signature}` },
+        headers: { cookie: createSignedLoginStateCookie(statePayload) },
       })
     );
 
@@ -502,9 +517,38 @@ describe('routes/handlers', () => {
     expect(loggerMock.info).toHaveBeenCalledWith(
       'Auth callback successful',
       expect.objectContaining({
-        redirect_target: '/account?tab=profile',
+        redirect_target_path: '/account',
+        has_sensitive_query: false,
       })
     );
+  });
+
+  it('sanitizes sensitive callback query parameters in dependency-error logs', async () => {
+    const { SessionStoreUnavailableError: RuntimeSessionStoreUnavailableError } = await import('../runtime-errors.js');
+    resolveAuthConfigForRequestMock.mockRejectedValueOnce(
+      new RuntimeSessionStoreUnavailableError('resolve_auth_config', new Error('redis down'))
+    );
+
+    const { callbackHandler } = await import('./handlers.js');
+
+    const response = await callbackHandler(
+      new Request('https://studio.example.org/auth/callback?code=secret-code&state=secret-state&iss=https://issuer.example')
+    );
+
+    expect(response.status).toBe(503);
+    expect(loggerMock.error).toHaveBeenCalledWith(
+      'Auth route failed because session storage is unavailable',
+      expect.objectContaining({
+        endpoint_path: '/auth/callback',
+        has_sensitive_query: true,
+      })
+    );
+
+    const metadata = loggerMock.error.mock.calls.find(
+      ([message]) => message === 'Auth route failed because session storage is unavailable'
+    )?.[1];
+    expect(JSON.stringify(metadata)).not.toContain('secret-code');
+    expect(JSON.stringify(metadata)).not.toContain('secret-state');
   });
 
   it('redirects the callback back to a trusted tenant host after login', async () => {
@@ -530,18 +574,16 @@ describe('routes/handlers', () => {
 
     const { callbackHandler } = await import('./handlers.js');
     const statePayload = {
+      kind: 'platform',
       state: 'state-tenant-callback',
       codeVerifier: 'verifier-tenant-callback',
       nonce: 'nonce-tenant-callback',
       createdAt: Date.now(),
       returnTo: 'https://hb.studio.example.org/admin/instances',
     };
-    const encodedPayload = Buffer.from(JSON.stringify(statePayload), 'utf8').toString('base64url');
-    const signature = createHmac('sha256', 'secret').update(encodedPayload).digest('base64url');
-
     const response = await callbackHandler(
       new Request('https://studio.example.org/auth/callback?code=abc&state=state-tenant-callback', {
-        headers: { cookie: `sva_auth_state=${encodedPayload}.${signature}` },
+        headers: { cookie: createSignedLoginStateCookie(statePayload) },
       })
     );
 
@@ -562,18 +604,16 @@ describe('routes/handlers', () => {
 
     const { callbackHandler } = await import('./handlers.js');
     const statePayload = {
+      kind: 'platform',
       state: 'state-untrusted-callback',
       codeVerifier: 'verifier-untrusted-callback',
       nonce: 'nonce-untrusted-callback',
       createdAt: Date.now(),
       returnTo: 'https://evil.example/admin/instances',
     };
-    const encodedPayload = Buffer.from(JSON.stringify(statePayload), 'utf8').toString('base64url');
-    const signature = createHmac('sha256', 'secret').update(encodedPayload).digest('base64url');
-
     const response = await callbackHandler(
       new Request('https://studio.example.org/auth/callback?code=abc&state=state-untrusted-callback', {
-        headers: { cookie: `sva_auth_state=${encodedPayload}.${signature}` },
+        headers: { cookie: createSignedLoginStateCookie(statePayload) },
       })
     );
 
@@ -591,6 +631,7 @@ describe('routes/handlers', () => {
         roles: ['editor'],
       },
       loginState: {
+        kind: 'platform',
         state: 'state-1',
         codeVerifier: 'verifier-1',
         nonce: 'nonce-1',
@@ -602,6 +643,7 @@ describe('routes/handlers', () => {
 
     const { callbackHandler } = await import('./handlers.js');
     const statePayload = {
+      kind: 'platform',
       state: 'state-1',
       codeVerifier: 'verifier-1',
       nonce: 'nonce-1',
@@ -609,12 +651,9 @@ describe('routes/handlers', () => {
       returnTo: '/',
       silent: true,
     };
-    const encodedPayload = Buffer.from(JSON.stringify(statePayload), 'utf8').toString('base64url');
-    const signature = createHmac('sha256', 'secret').update(encodedPayload).digest('base64url');
-
     const response = await callbackHandler(
       new Request('http://localhost/auth/callback?code=abc&state=state-1', {
-        headers: { cookie: `sva_auth_state=${encodedPayload}.${signature}` },
+        headers: { cookie: createSignedLoginStateCookie(statePayload) },
       })
     );
 
@@ -671,6 +710,7 @@ describe('routes/handlers', () => {
   it('returns silent callback failure response and clears login-state cookie when idp returns error', async () => {
     const { callbackHandler } = await import('./handlers.js');
     const statePayload = {
+      kind: 'platform',
       state: 'state-err',
       codeVerifier: 'verifier-err',
       nonce: 'nonce-err',
@@ -678,12 +718,9 @@ describe('routes/handlers', () => {
       returnTo: '/',
       silent: true,
     };
-    const encodedPayload = Buffer.from(JSON.stringify(statePayload), 'utf8').toString('base64url');
-    const signature = createHmac('sha256', 'secret').update(encodedPayload).digest('base64url');
-
     const response = await callbackHandler(
       new Request('http://localhost/auth/callback?state=state-err&error=access_denied', {
-        headers: { cookie: `sva_auth_state=${encodedPayload}.${signature}` },
+        headers: { cookie: createSignedLoginStateCookie(statePayload) },
       })
     );
 
@@ -710,18 +747,16 @@ describe('routes/handlers', () => {
   it('redirects to state-expired when callback login-state cookie is stale', async () => {
     const { callbackHandler } = await import('./handlers.js');
     const stalePayload = {
+      kind: 'platform',
       state: 'state-old',
       codeVerifier: 'verifier-old',
       nonce: 'nonce-old',
       createdAt: Date.now() - 11 * 60 * 1000,
       returnTo: '/account',
     };
-    const encodedPayload = Buffer.from(JSON.stringify(stalePayload), 'utf8').toString('base64url');
-    const signature = createHmac('sha256', 'secret').update(encodedPayload).digest('base64url');
-
     const response = await callbackHandler(
       new Request('http://localhost/auth/callback?code=abc&state=state-old', {
-        headers: { cookie: `sva_auth_state=${encodedPayload}.${signature}` },
+        headers: { cookie: createSignedLoginStateCookie(stalePayload) },
       })
     );
 
@@ -741,6 +776,7 @@ describe('routes/handlers', () => {
 
     const { callbackHandler } = await import('./handlers.js');
     const statePayload = {
+      kind: 'platform',
       state: 'state-fail',
       codeVerifier: 'verifier-fail',
       nonce: 'nonce-fail',
@@ -748,12 +784,9 @@ describe('routes/handlers', () => {
       returnTo: '/',
       silent: true,
     };
-    const encodedPayload = Buffer.from(JSON.stringify(statePayload), 'utf8').toString('base64url');
-    const signature = createHmac('sha256', 'secret').update(encodedPayload).digest('base64url');
-
     const response = await callbackHandler(
       new Request('http://localhost/auth/callback?code=abc&state=state-fail', {
-        headers: { cookie: `sva_auth_state=${encodedPayload}.${signature}` },
+        headers: { cookie: createSignedLoginStateCookie(statePayload) },
       })
     );
 
@@ -777,6 +810,7 @@ describe('routes/handlers', () => {
 
     const { callbackHandler } = await import('./handlers.js');
     const statePayload = {
+      kind: 'platform',
       state: 'state-token-details',
       codeVerifier: 'verifier-token-details',
       nonce: 'nonce-token-details',
@@ -784,12 +818,9 @@ describe('routes/handlers', () => {
       returnTo: '/',
       silent: false,
     };
-    const encodedPayload = Buffer.from(JSON.stringify(statePayload), 'utf8').toString('base64url');
-    const signature = createHmac('sha256', 'secret').update(encodedPayload).digest('base64url');
-
     const response = await callbackHandler(
       new Request('http://localhost/auth/callback?code=abc&state=state-token-details', {
-        headers: { cookie: `sva_auth_state=${encodedPayload}.${signature}` },
+        headers: { cookie: createSignedLoginStateCookie(statePayload) },
       })
     );
 
@@ -809,6 +840,7 @@ describe('routes/handlers', () => {
 
     const { callbackHandler } = await import('./handlers.js');
     const statePayload = {
+      kind: 'platform',
       state: 'state-hard-error',
       codeVerifier: 'verifier-hard-error',
       nonce: 'nonce-hard-error',
@@ -816,12 +848,9 @@ describe('routes/handlers', () => {
       returnTo: '/account',
       silent: false,
     };
-    const encodedPayload = Buffer.from(JSON.stringify(statePayload), 'utf8').toString('base64url');
-    const signature = createHmac('sha256', 'secret').update(encodedPayload).digest('base64url');
-
     const response = await callbackHandler(
       new Request('http://localhost/auth/callback?code=abc&state=state-hard-error', {
-        headers: { cookie: `sva_auth_state=${encodedPayload}.${signature}` },
+        headers: { cookie: createSignedLoginStateCookie(statePayload) },
       })
     );
 

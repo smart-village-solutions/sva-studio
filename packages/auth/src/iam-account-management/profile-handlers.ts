@@ -31,6 +31,13 @@ import type { ActorInfo } from './types.js';
 type ProfileActorContext = {
   actor: ActorInfo;
   dbKeycloakSubject: string;
+  sessionProfile: {
+    username?: string;
+    email?: string;
+    firstName?: string;
+    lastName?: string;
+    displayName?: string;
+  };
 };
 
 type ProfileDiagnosticsStage =
@@ -175,6 +182,13 @@ const resolveProfileActorContext = async (
   return {
     actor: actorResolution.actor,
     dbKeycloakSubject: ctx.user.id,
+    sessionProfile: {
+      username: ctx.user.username,
+      email: ctx.user.email,
+      firstName: ctx.user.firstName,
+      lastName: ctx.user.lastName,
+      displayName: ctx.user.displayName,
+    },
   };
 };
 
@@ -410,7 +424,11 @@ export const updateMyProfileInternal = async (
   }
 
   try {
-    const existingDetail = await loadMyProfileDetail(actorContext.actor, actorContext.dbKeycloakSubject);
+    const existingDetail = await loadMyProfileDetail(
+      actorContext.actor,
+      actorContext.dbKeycloakSubject,
+      actorContext.sessionProfile
+    );
     if (!existingDetail) {
       return createProfileNotFoundResponse(actorContext.actor.requestId);
     }
@@ -476,7 +494,11 @@ export const getMyProfileInternal = async (
       db_keycloak_subject: actorContext.dbKeycloakSubject,
     });
 
-    const detail = await loadMyProfileDetail(actorContext.actor, actorContext.dbKeycloakSubject);
+    const detail = await loadMyProfileDetail(
+      actorContext.actor,
+      actorContext.dbKeycloakSubject,
+      actorContext.sessionProfile
+    );
     if (!detail) {
       return createProfileNotFoundResponse(actorContext.actor.requestId);
     }

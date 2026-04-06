@@ -408,6 +408,9 @@ export const UserEditPage = ({ userId }: UserEditPageProps) => {
           <div>
             <h1 className="text-2xl font-semibold text-foreground">{userApi.user.displayName}</h1>
             <p className="text-sm text-muted-foreground">{userApi.user.email ?? '-'}</p>
+            <p className="text-sm text-muted-foreground">
+              {t('account.fields.username')}: {userApi.user.username ?? '-'}
+            </p>
             <div className="mt-2 flex flex-wrap gap-2 text-xs">
               <Badge variant="outline">
                 {t(statusTranslationKeyByValue[userApi.user.status])}
@@ -470,6 +473,10 @@ export const UserEditPage = ({ userId }: UserEditPageProps) => {
           hidden={activeTab !== 'personal'}
           className="grid gap-4 rounded-xl border border-border bg-card p-4 shadow-shell md:grid-cols-2"
         >
+          <div className="grid gap-2 text-sm text-foreground">
+            <Label htmlFor="user-username">{t('account.fields.username')}</Label>
+            <Input id="user-username" value={userApi.user.username ?? ''} readOnly aria-readonly="true" />
+          </div>
           <div className="grid gap-2 text-sm text-foreground">
             <Label htmlFor="user-first-name">{t('account.fields.firstName')}</Label>
             <Input

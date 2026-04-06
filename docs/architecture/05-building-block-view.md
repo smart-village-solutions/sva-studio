@@ -65,10 +65,14 @@ Abhängigkeiten des aktuellen Systems.
   - `packages/auth` (`iam-authorization.server.ts`, `iam-authorization/*`)
 - Organisations- und Mandantenkontext (`instanceId`) inkl. RLS-nahe Datenmodelle:
   - `packages/data` (IAM-Migrationen, Seeds, SQL-Policies, `iam/repositories/*`)
+- Plattformkontext (`platform`) für Root-Host-Control-Plane, Root-Host-Auth und globale Readiness:
+  - `packages/auth` (`scope.ts`, `config-request.ts`, `routes/handlers.ts`, `iam-instance-registry/*`, `iam-account-management/platform-handlers.ts`)
 - Instanzgebundene Mainserver-Endpunkte:
   - `packages/data` (`integrations/instance-integrations.ts`, Migration `0013_iam_instance_integrations.sql`)
 - Auditierung und Nachvollziehbarkeit:
   - `packages/auth` (`audit-db-sink.server.ts`) + `packages/sdk` (`createSdkLogger`)
+  - tenantgebunden: `iam.activity_logs`
+  - plattformgebunden: `iam.platform_activity_logs`
 - Governance und DSGVO-Betroffenenrechte:
   - `packages/auth` (`iam-governance.server.ts`, `iam-governance/*`, `iam-data-subject-rights.server.ts`, `iam-data-subject-rights/*`)
 - Inhaltsverwaltung als Core-Element:
@@ -92,6 +96,7 @@ Abhängigkeiten des aktuellen Systems.
 
 - Keycloak ist führend für Authentifizierung, Token-Claims und IdP-nahe Admin-Operationen.
 - Postgres ist führend für Studio-verwaltete IAM-Fachdaten wie Accounts, Rollen, Permissions und Auditdaten.
+- `iam.instances` modelliert ausschließlich Tenant-Instanzen; der Root-Host ist ein separater Plattform-Scope.
 - Redis hält lediglich Permission-Snapshots zur Beschleunigung des Authorize-Pfads.
 - Der SVA-Mainserver bleibt fachliche Source of Truth für seine GraphQL-Daten; Studio hält nur Endpunktkonfiguration und kurzlebige Laufzeit-Caches für Credentials und Access-Tokens.
 - Fachmodule konsumieren zentrale IAM-Entscheidungen und duplizieren keine eigene Berechtigungsauflösung gegen IAM-Tabellen.

@@ -17,6 +17,21 @@ export const buildSessionUser = (input: {
     id: String(claims.sub ?? ''),
     instanceId: resolveInstanceId(claims),
     roles: extractRoles(roleClaims, input.clientId),
+    username:
+      typeof claims.preferred_username === 'string'
+        ? claims.preferred_username
+        : typeof claims.username === 'string'
+          ? claims.username
+          : undefined,
+    email: typeof claims.email === 'string' ? claims.email : undefined,
+    firstName: typeof claims.given_name === 'string' ? claims.given_name : undefined,
+    lastName: typeof claims.family_name === 'string' ? claims.family_name : undefined,
+    displayName:
+      typeof claims.name === 'string'
+        ? claims.name
+        : typeof claims.preferred_username === 'string'
+          ? claims.preferred_username
+          : undefined,
   };
 };
 

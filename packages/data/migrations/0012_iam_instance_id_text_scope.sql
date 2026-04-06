@@ -41,6 +41,7 @@ BEGIN
     'legal_holds',
     'account_profile_corrections',
     'data_subject_recipient_notifications',
+    'account_permissions',
     'idempotency_keys',
     'activity_logs_archive'
   ] LOOP
@@ -97,6 +98,13 @@ DROP POLICY IF EXISTS data_subject_export_jobs_isolation_policy ON iam.data_subj
 DROP POLICY IF EXISTS legal_holds_isolation_policy ON iam.legal_holds;
 DROP POLICY IF EXISTS account_profile_corrections_isolation_policy ON iam.account_profile_corrections;
 DROP POLICY IF EXISTS data_subject_recipient_notifications_isolation_policy ON iam.data_subject_recipient_notifications;
+DO $$
+BEGIN
+  IF to_regclass('iam.account_permissions') IS NOT NULL THEN
+    EXECUTE 'DROP POLICY IF EXISTS account_permissions_isolation_policy ON iam.account_permissions';
+  END IF;
+END
+$$;
 DROP POLICY IF EXISTS idempotency_keys_isolation_policy ON iam.idempotency_keys;
 DROP POLICY IF EXISTS activity_logs_archive_isolation_policy ON iam.activity_logs_archive;
 DROP POLICY IF EXISTS instance_integrations_isolation_policy ON iam.instance_integrations;
@@ -195,6 +203,13 @@ ALTER TABLE iam.data_subject_recipient_notifications
   DROP CONSTRAINT IF EXISTS data_subject_recipient_notifications_instance_id_fkey,
   DROP CONSTRAINT IF EXISTS data_subject_recipient_notifications_unique;
 DROP INDEX IF EXISTS iam.idx_data_subject_recipient_notifications_request;
+
+ALTER TABLE IF EXISTS iam.account_permissions
+  DROP CONSTRAINT IF EXISTS account_permissions_pkey,
+  DROP CONSTRAINT IF EXISTS account_permissions_membership_fk,
+  DROP CONSTRAINT IF EXISTS account_permissions_permission_fk;
+DROP INDEX IF EXISTS iam.idx_account_permissions_instance_account;
+DROP INDEX IF EXISTS iam.idx_account_permissions_instance_permission;
 
 ALTER TABLE iam.idempotency_keys
   DROP CONSTRAINT IF EXISTS idempotency_keys_instance_id_fkey,
@@ -331,6 +346,7 @@ BEGIN
     'legal_holds',
     'account_profile_corrections',
     'data_subject_recipient_notifications',
+    'account_permissions',
     'idempotency_keys',
     'activity_logs_archive'
   ] LOOP
@@ -577,6 +593,23 @@ ALTER TABLE iam.data_subject_recipient_notifications
 CREATE INDEX IF NOT EXISTS idx_data_subject_recipient_notifications_request
   ON iam.data_subject_recipient_notifications(instance_id, request_id, created_at DESC);
 
+ALTER TABLE IF EXISTS iam.account_permissions
+  ADD CONSTRAINT account_permissions_pkey PRIMARY KEY (instance_id, account_id, permission_id),
+  ADD CONSTRAINT account_permissions_membership_fk FOREIGN KEY (instance_id, account_id)
+    REFERENCES iam.instance_memberships(instance_id, account_id) ON DELETE CASCADE,
+  ADD CONSTRAINT account_permissions_permission_fk FOREIGN KEY (instance_id, permission_id)
+    REFERENCES iam.permissions(instance_id, id) ON DELETE CASCADE;
+DO $$
+BEGIN
+  IF to_regclass('iam.account_permissions') IS NOT NULL THEN
+    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_account_permissions_instance_account
+      ON iam.account_permissions(instance_id, account_id)';
+    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_account_permissions_instance_permission
+      ON iam.account_permissions(instance_id, permission_id)';
+  END IF;
+END
+$$;
+
 ALTER TABLE iam.idempotency_keys
   ADD CONSTRAINT idempotency_keys_instance_id_fkey FOREIGN KEY (instance_id)
     REFERENCES iam.instances(id) ON DELETE CASCADE,
@@ -690,6 +723,16 @@ CREATE POLICY data_subject_recipient_notifications_isolation_policy
   ON iam.data_subject_recipient_notifications
   USING (instance_id = iam.current_instance_id())
   WITH CHECK (instance_id = iam.current_instance_id());
+DO $$
+BEGIN
+  IF to_regclass('iam.account_permissions') IS NOT NULL THEN
+    EXECUTE 'CREATE POLICY account_permissions_isolation_policy
+      ON iam.account_permissions
+      USING (instance_id = iam.current_instance_id())
+      WITH CHECK (instance_id = iam.current_instance_id())';
+  END IF;
+END
+$$;
 CREATE POLICY idempotency_keys_isolation_policy
   ON iam.idempotency_keys
   USING (instance_id = iam.current_instance_id())

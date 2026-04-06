@@ -14,6 +14,7 @@ import {
 } from '../../packages/sdk/src/runtime-profile.ts';
 import {
   CRITICAL_IAM_SCHEMA_GUARD_SQL,
+  CRITICAL_IAM_SCHEMA_GUARD_FIELDS,
   evaluateCriticalIamSchemaGuard,
   summarizeSchemaGuardFailures,
   type SchemaGuardReport,
@@ -41,6 +42,11 @@ import {
   wait,
   withoutDebugEnv,
 } from './runtime/process.ts';
+import {
+  assertRequiredImagePlatform,
+  formatImagePlatforms,
+  inspectImagePlatforms,
+} from './runtime/image-platform.ts';
 import {
   getGooseConfiguredVersion as getGooseConfiguredVersionFromConfig,
   listGooseMigrationFiles as listGooseMigrationFilesFromDir,
@@ -163,8 +169,77 @@ const getGitCommitSha = () => {
   }
 };
 
-const sqlLiteral = (value: string) => `'${value.replaceAll("'", "''")}'`;
+const resolveEffectiveImageRefForRemoteChecks = (
+  env: NodeJS.ProcessEnv,
+  options?: AcceptanceDeployOptions
+) => {
+  const optionImageRef = options?.imageRef?.trim();
+  if (optionImageRef) {
+    return optionImageRef;
+  }
 
+  const configuredImageRef = env.SVA_IMAGE_REF?.trim();
+  if (configuredImageRef) {
+    return configuredImageRef;
+  }
+
+  const imageDigest = env.SVA_IMAGE_DIGEST?.trim();
+  if (!imageDigest) {
+    return undefined;
+  }
+
+  const registry = env.SVA_REGISTRY?.trim() || 'ghcr.io/smart-village-solutions';
+  const repository = env.SVA_IMAGE_REPOSITORY?.trim() || 'sva-studio';
+  return `${registry}/${repository}@${imageDigest}`;
+};
+
+const buildImagePlatformDoctorCheck = (
+  env: NodeJS.ProcessEnv,
+  options?: AcceptanceDeployOptions
+): DoctorCheck => {
+  const imageRef = resolveEffectiveImageRefForRemoteChecks(env, options);
+
+  if (!imageRef) {
+    return toDoctorCheck(
+      'image-platform',
+      'error',
+      'image_ref_missing',
+      'Keine Image-Referenz fuer die Plattform-Pruefung vorhanden.'
+    );
+  }
+
+  try {
+    const platforms = inspectImagePlatforms(imageRef, withoutDebugEnv(env), {
+      commandExists,
+      runCaptureDetailed,
+    });
+    assertRequiredImagePlatform(imageRef, platforms);
+    return toDoctorCheck(
+      'image-platform',
+      'ok',
+      'image_platform_supported',
+      'Image-Plattform ist fuer den Linux-Swarm geeignet.',
+      {
+        imageRef,
+        platforms: formatImagePlatforms(platforms),
+        requiredPlatform: 'linux/amd64',
+      }
+    );
+  } catch (error) {
+    return toDoctorCheck(
+      'image-platform',
+      'error',
+      'image_platform_unsupported',
+      error instanceof Error ? error.message : String(error),
+      {
+        imageRef,
+        requiredPlatform: 'linux/amd64',
+      }
+    );
+  }
+};
+
+const sqlLiteral = (value: string) => `'${value.replaceAll("'", "''")}'`;
 const sqlIdentifier = (value: string) => `"${value.replaceAll('"', '""')}"`;
 
 const listGooseMigrationFiles = () => listGooseMigrationFilesFromDir(gooseMigrationsDir);
@@ -354,6 +429,115 @@ const getObservabilitySummary = (env: NodeJS.ProcessEnv) => ({
   otelEndpoint: env.OTEL_EXPORTER_OTLP_ENDPOINT?.trim() || null,
 });
 
+type LiveRuntimeFlags = {
+  ENABLE_OTEL: string;
+  SVA_ENABLE_SERVER_CONSOLE_LOGS: string;
+  SVA_RUNTIME_PROFILE: string;
+};
+
+const parseLiveRuntimeFlags = (raw: string): LiveRuntimeFlags => {
+  const entries = new Map<string, string>();
+  for (const line of raw.split(/\r?\n/u)) {
+    const separatorIndex = line.indexOf('=');
+    if (separatorIndex === -1) {
+      continue;
+    }
+    const key = line.slice(0, separatorIndex).trim();
+    const value = line.slice(separatorIndex + 1).trim();
+    if (key.length > 0) {
+      entries.set(key, value);
+    }
+  }
+
+  return {
+    ENABLE_OTEL: entries.get('ENABLE_OTEL') ?? '',
+    SVA_ENABLE_SERVER_CONSOLE_LOGS: entries.get('SVA_ENABLE_SERVER_CONSOLE_LOGS') ?? '',
+    SVA_RUNTIME_PROFILE: entries.get('SVA_RUNTIME_PROFILE') ?? '',
+  };
+};
+
+const readLiveRuntimeFlags = (env: NodeJS.ProcessEnv): LiveRuntimeFlags => {
+  const marker = '__SVA_RUNTIME_FLAGS__';
+  const commandScript = [
+    `printf '%s\\n' '${marker}_START'`,
+    'printf \'ENABLE_OTEL=%s\\n\' "$ENABLE_OTEL"',
+    'printf \'SVA_ENABLE_SERVER_CONSOLE_LOGS=%s\\n\' "$SVA_ENABLE_SERVER_CONSOLE_LOGS"',
+    'printf \'SVA_RUNTIME_PROFILE=%s\\n\' "$SVA_RUNTIME_PROFILE"',
+    `printf '%s\\n' '${marker}_END'`,
+  ].join('; ');
+  const output = runQuantumExec(
+    [
+      'exec',
+      '--endpoint',
+      getConfiguredQuantumEndpoint(env),
+      '--stack',
+      getConfiguredStackName(env),
+      '--service',
+      'app',
+      '--command',
+      `sh -lc ${shellEscape(commandScript)}`,
+    ],
+    env,
+    {
+      marker,
+      failureMessage: 'Laufende Runtime-Umgebung des App-Containers konnte nicht gelesen werden.',
+    }
+  );
+
+  return parseLiveRuntimeFlags(output);
+};
+
+const buildLiveRuntimeEnvCheck = (runtimeProfile: RemoteRuntimeProfile, env: NodeJS.ProcessEnv): DoctorCheck => {
+  try {
+    const liveFlags = readLiveRuntimeFlags(env);
+    const expectedFlags = {
+      ENABLE_OTEL: env.ENABLE_OTEL?.trim() || '',
+      SVA_ENABLE_SERVER_CONSOLE_LOGS: env.SVA_ENABLE_SERVER_CONSOLE_LOGS?.trim() || '',
+      SVA_RUNTIME_PROFILE: runtimeProfile,
+    };
+
+    const mismatches = Object.entries(expectedFlags)
+      .filter(([key, expectedValue]) => liveFlags[key as keyof LiveRuntimeFlags] !== expectedValue)
+      .map(([key, expectedValue]) => ({
+        actual: liveFlags[key as keyof LiveRuntimeFlags],
+        expected: expectedValue,
+        key,
+      }));
+
+    if (mismatches.length > 0) {
+      return toDoctorCheck(
+        'runtime-env-live',
+        'error',
+        'runtime_env_live_mismatch',
+        'Die effektive Container-Umgebung weicht von den erwarteten Runtime-Flags ab.',
+        {
+          expectedFlags,
+          liveFlags,
+          mismatches,
+        }
+      );
+    }
+
+    return toDoctorCheck(
+      'runtime-env-live',
+      'ok',
+      'runtime_env_live_match',
+      'Die effektive Container-Umgebung entspricht den erwarteten Runtime-Flags.',
+      {
+        expectedFlags,
+        liveFlags,
+      }
+    );
+  } catch (error) {
+    return toDoctorCheck(
+      'runtime-env-live',
+      'warn',
+      'runtime_env_live_unavailable',
+      error instanceof Error ? error.message : String(error)
+    );
+  }
+};
+
 const queryRecentLokiLines = async (env: NodeJS.ProcessEnv, query: string, limit = 20): Promise<readonly string[]> => {
   const lokiUrl = env.SVA_LOKI_URL?.trim();
   const grafanaToken = env.SVA_GRAFANA_TOKEN?.trim();
@@ -380,6 +564,27 @@ const queryRecentLokiLines = async (env: NodeJS.ProcessEnv, query: string, limit
   return (payload.data?.result ?? []).flatMap((entry) => (entry.values ?? []).map((value) => value[1] ?? '')).filter((line) => line.length > 0);
 };
 
+const queryRecentLokiLinesWithRetry = async (
+  env: NodeJS.ProcessEnv,
+  query: string,
+  options: { attempts?: number; delayMs?: number; limit?: number } = {},
+): Promise<readonly string[]> => {
+  const attempts = options.attempts ?? 3;
+  const delayMs = options.delayMs ?? 2_000;
+  const limit = options.limit ?? 20;
+
+  let lastLines: readonly string[] = [];
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    lastLines = await queryRecentLokiLines(env, query, limit);
+    if (lastLines.length > 0 || attempt >= attempts) {
+      return lastLines;
+    }
+    await wait(delayMs);
+  }
+
+  return lastLines;
+};
+
 const buildObservabilityDoctorCheck = async (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv): Promise<DoctorCheck> => {
   const summary = getObservabilitySummary(env);
   if (summary.loggerMode === 'degraded') {
@@ -404,10 +609,10 @@ const buildObservabilityDoctorCheck = async (runtimeProfile: RuntimeProfile, env
 
   try {
     const stackName = getConfiguredStackName(env);
-    const lines = await queryRecentLokiLines(
+    const lines = await queryRecentLokiLinesWithRetry(
       env,
       `{swarm_stack="${stackName}",swarm_service="${stackName}_app"} |= "observability_"`,
-      50
+      { attempts: 3, delayMs: 2_000, limit: 50 }
     );
     const readyLine = [...lines].reverse().find((line) => line.includes('observability_ready'));
     const degradedLine = [...lines].reverse().find((line) => line.includes('observability_degraded'));
@@ -490,10 +695,10 @@ const buildTenantAuthProofCheck = async (env: NodeJS.ProcessEnv): Promise<Doctor
     const stackName = getConfiguredStackName(env);
     const missingEvidence: string[] = [];
     for (const probe of probeResults) {
-      const lines = await queryRecentLokiLines(
+      const lines = await queryRecentLokiLinesWithRetry(
         env,
         `{swarm_stack="${stackName}",swarm_service="${stackName}_app"} |= "tenant_auth_resolution_summary" |= "${probe.instanceId}"`,
-        20
+        { attempts: 3, delayMs: 2_000, limit: 20 }
       );
       if (lines.length === 0) {
         missingEvidence.push(probe.instanceId);
@@ -977,59 +1182,31 @@ const createDbSqlRunner = (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEn
 const runSchemaGuard = (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv): SchemaGuardReport => {
   const runSql = createDbSqlRunner(runtimeProfile, env);
   const output = runSql(`${CRITICAL_IAM_SCHEMA_GUARD_SQL}`);
-  const matches = Array.from(output.matchAll(/(?:t|f)(?:\|(?:t|f)){13}/gu)).map((match) => match[0]);
+  const fieldCount = CRITICAL_IAM_SCHEMA_GUARD_FIELDS.length;
+  const boolMatrixPattern = new RegExp(`(?:t|f)(?:\\|(?:t|f)){${fieldCount - 1}}`, 'gu');
+  const matches = Array.from(output.matchAll(boolMatrixPattern)).map((match) => match[0]);
   const line = matches.at(-1);
   if (!line) {
     throw new Error(`Schema-Guard-Ausgabe konnte nicht als Bool-Matrix gelesen werden: ${output}`);
   }
   const row = Object.fromEntries(
-    line.split('|').map((value, index) => {
-      const keys = [
-        'groups_exists',
-        'group_roles_exists',
-        'account_groups_exists',
-        'activity_logs_exists',
-        'accounts_instance_id_column_exists',
-        'accounts_username_ciphertext_column_exists',
-        'accounts_avatar_url_column_exists',
-        'accounts_preferred_language_column_exists',
-        'accounts_timezone_column_exists',
-        'accounts_notes_column_exists',
-        'account_groups_origin_column_exists',
-        'idx_accounts_kc_subject_instance_exists',
-        'accounts_isolation_policy_matches',
-        'instance_memberships_isolation_policy_matches',
-      ] as const;
-      return [keys[index], value];
-    })
+    line.split('|').map((value, index) => [CRITICAL_IAM_SCHEMA_GUARD_FIELDS[index], value])
   );
   return evaluateCriticalIamSchemaGuard(row);
 };
 
 const recoverSchemaGuardReportFromOutput = (value: string): SchemaGuardReport | null => {
-  const matches = Array.from(value.matchAll(/(?:t|f)(?:\|(?:t|f)){13}/gu)).map((match) => match[0]);
+  const fieldCount = CRITICAL_IAM_SCHEMA_GUARD_FIELDS.length;
+  const boolMatrixPattern = new RegExp(`(?:t|f)(?:\\|(?:t|f)){${fieldCount - 1}}`, 'gu');
+  const matches = Array.from(value.matchAll(boolMatrixPattern)).map((match) => match[0]);
   const line = matches.at(-1);
   if (!line) {
     return null;
   }
 
-  const keys = [
-    'groups_exists',
-    'group_roles_exists',
-    'account_groups_exists',
-    'activity_logs_exists',
-    'accounts_instance_id_column_exists',
-    'accounts_username_ciphertext_column_exists',
-    'accounts_avatar_url_column_exists',
-    'accounts_preferred_language_column_exists',
-    'accounts_timezone_column_exists',
-    'accounts_notes_column_exists',
-    'account_groups_origin_column_exists',
-    'idx_accounts_kc_subject_instance_exists',
-    'accounts_isolation_policy_matches',
-    'instance_memberships_isolation_policy_matches',
-  ] as const;
-  const row = Object.fromEntries(line.split('|').map((entry, index) => [keys[index], entry]));
+  const row = Object.fromEntries(
+    line.split('|').map((entry, index) => [CRITICAL_IAM_SCHEMA_GUARD_FIELDS[index], entry])
+  );
   return evaluateCriticalIamSchemaGuard(row);
 };
 
@@ -1222,6 +1399,7 @@ const buildInstanceAuthConfigCheck = (
   runtimeProfile: RuntimeProfile,
   env: NodeJS.ProcessEnv
 ): DoctorCheck => {
+  const appDbUser = env.APP_DB_USER?.trim() || 'sva_app';
   const evaluateInstanceAuthPayload = (payload: {
     checked_active_instance_count?: number;
     invalid_instance_ids?: string[];
@@ -1257,6 +1435,8 @@ const buildInstanceAuthConfigCheck = (
   };
 
   const sql = `
+SET ROLE ${sqlIdentifier(appDbUser)};
+
 SELECT json_build_object(
   'invalid_instance_ids',
   COALESCE(
@@ -1338,8 +1518,11 @@ const buildInstanceHostnameMappingCheck = (
     hostname: `${instanceId}.${parentDomain}`,
     instanceId,
   }));
+  const appDbUser = env.APP_DB_USER?.trim() || 'sva_app';
 
   const sql = `
+SET ROLE ${sqlIdentifier(appDbUser)};
+
 SELECT json_build_object(
   'missing_hostnames',
   COALESCE(
@@ -1350,11 +1533,16 @@ SELECT json_build_object(
           .map(({ hostname, instanceId }) => `(${sqlLiteral(hostname)}, ${sqlLiteral(instanceId)})`)
           .join(',\n        ')}
       ) AS expected(hostname, instance_id)
-      LEFT JOIN iam.instance_hostnames actual
+      LEFT JOIN (
+        SELECT hostname.hostname, instance.id AS instance_id
+        FROM iam.instance_hostnames hostname
+        JOIN iam.instances instance
+          ON instance.id = hostname.instance_id
+        WHERE hostname.is_primary = true
+      ) actual
         ON actual.hostname = expected.hostname
        AND actual.instance_id = expected.instance_id
-       AND actual.is_primary = true
-      WHERE actual.hostname IS NULL
+      WHERE actual.instance_id IS NULL
     ),
     '[]'::json
   ),
@@ -1394,16 +1582,50 @@ SELECT json_build_object(
       }
     );
   } catch (error) {
-    return toDoctorCheck(
-      'instance-hostnames',
-      'error',
-      'tenant_host_resolution_failed',
-      error instanceof Error ? error.message : String(error),
-      {
-        hostnames: expectedHostnames.map(({ hostname }) => hostname),
-        parentDomain,
+    const message = error instanceof Error ? error.message : String(error);
+    const jsonMatch = message.match(/\{[\s\S]*\}/u);
+
+    if (jsonMatch) {
+      try {
+        const fallbackPayload = JSON.parse(jsonMatch[0]) as {
+          checked_hostnames?: string;
+          missing_hostnames?: string[];
+        };
+
+        const missingHostnames = Array.isArray(fallbackPayload.missing_hostnames) ? fallbackPayload.missing_hostnames : [];
+        if (missingHostnames.length > 0) {
+          return toDoctorCheck(
+            'instance-hostnames',
+            'error',
+            'tenant_instance_not_found',
+            'Mindestens ein erwartetes Tenant-Hostname-Mapping fehlt oder ist nicht primaer.',
+            {
+              missingHostnames,
+              parentDomain,
+            }
+          );
+        }
+
+        return toDoctorCheck(
+          'instance-hostnames',
+          'ok',
+          'tenant_hostnames_ready',
+          'Alle erwarteten Tenant-Hostname-Mappings sind vorhanden.',
+          {
+            hostnames: expectedHostnames.map(({ hostname }) => hostname),
+            parentDomain,
+            recoveredFromTransportNoise: true,
+          }
+        );
+      } catch {
+        // Keep original error below when fallback payload cannot be parsed.
       }
-    );
+    }
+
+    return toDoctorCheck('instance-hostnames', 'error', 'tenant_host_resolution_failed', message, {
+      hostnames: expectedHostnames.map(({ hostname }) => hostname),
+      parentDomain,
+    });
   }
 };
 
@@ -1606,7 +1828,9 @@ const precheckAcceptance = async (
     );
   }
 
+  checks.push(buildImagePlatformDoctorCheck(env, options));
   checks.push(buildAcceptanceServiceCheck(env));
+  checks.push(buildLiveRuntimeEnvCheck(runtimeProfile, env));
   checks.push(await buildObservabilityDoctorCheck(runtimeProfile, env));
   checks.push(await buildTenantAuthProofCheck(env));
   checks.push(buildAcceptancePostgresCheck(env));

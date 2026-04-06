@@ -54,9 +54,13 @@ describe('config-request helpers', () => {
       'tenant_auth_resolution_summary',
       expect.objectContaining({
         host: 'bb-guben.studio.smart-village.app',
-        instance_id: 'global',
+        scope_kind: 'platform',
+        auth_scope_kind: 'platform',
+        workspace_id: 'platform',
         auth_realm: 'global',
         secret_source: 'global',
+        result: 'platform',
+        resolution_result: 'platform',
         forwarded_header_present: 'true',
         canonical_auth_host: 'studio.smart-village.app',
       })
@@ -73,7 +77,11 @@ describe('config-request helpers', () => {
       'tenant_auth_resolution_summary',
       expect.objectContaining({
         host: 'studio.smart-village.app',
-        result: 'global',
+        scope_kind: 'platform',
+        auth_scope_kind: 'platform',
+        workspace_id: 'platform',
+        result: 'platform',
+        resolution_result: 'platform',
         reason: 'instance_config_missing',
       })
     );
@@ -90,8 +98,10 @@ describe('config-request helpers', () => {
     expect(state.loggerError).toHaveBeenCalledWith(
       'Tenant hostname lookup failed during auth resolution',
       expect.objectContaining({
+        dependency: 'database',
+        error_type: 'Error',
         host: 'bb-guben.studio.smart-village.app',
-        reason: 'tenant_lookup_failed',
+        reason_code: 'tenant_lookup_failed',
       })
     );
   });

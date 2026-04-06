@@ -102,6 +102,7 @@ describe('redis-session audit events', () => {
     const session: Session = {
       id: 'session-1',
       userId: 'user-1',
+      auth: { kind: 'instance', instanceId: 'de-musterhausen' },
       user: { id: 'user-1', instanceId: 'de-musterhausen', roles: ['editor'] },
       createdAt: Date.now(),
       expiresAt: Date.now() + 60_000,
@@ -123,6 +124,7 @@ describe('redis-session audit events', () => {
     const session: Session = {
       id: 'session-2',
       userId: 'user-2',
+      auth: { kind: 'instance', instanceId: 'de-musterhausen' },
       user: { id: 'user-2', instanceId: 'de-musterhausen', roles: ['editor'] },
       createdAt: Date.now(),
       expiresAt: Date.now() + 60_000,
@@ -144,11 +146,12 @@ describe('redis-session audit events', () => {
 
   it('emits login-state audit events for creation and consumption', async () => {
     await createLoginState('state-1', {
+      kind: 'instance',
+      instanceId: 'de-musterhausen',
       codeVerifier: 'verifier',
       nonce: 'nonce',
       createdAt: Date.now(),
       returnTo: '/',
-      workspaceId: 'de-musterhausen',
     });
 
     expect(state.emitAuthAuditEvent).toHaveBeenNthCalledWith(

@@ -23,7 +23,7 @@
     "@sva/auth": "workspace:*",
     "@sva/core": "workspace:*",
     "@sva/sdk": "workspace:*",
-    "@tanstack/react-router": "^1.168.8"
+    "@tanstack/react-router": "^1.168.10"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^4.1.0",

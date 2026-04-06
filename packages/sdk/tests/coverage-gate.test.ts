@@ -221,6 +221,42 @@ describe('coverage gate', () => {
     expect(result.errors.some((error) => error.includes('[sdk] missing coverage-summary.json'))).toBe(true);
   });
 
+  it('does not enforce global floors for partial affected coverage runs', () => {
+    const rootDir = createTempWorkspace();
+    writePolicy(rootDir, {
+      globalFloors: {
+        lines: 85,
+        statements: 85,
+        functions: 85,
+        branches: 85,
+      },
+      perProjectFloors: {
+        sdk: {
+          lines: 0,
+          statements: 0,
+          functions: 0,
+          branches: 0,
+        },
+        'sva-studio-react': {
+          lines: 0,
+          statements: 0,
+          functions: 0,
+          branches: 0,
+        },
+      },
+    });
+    writeBaseline(rootDir);
+    writeCoverageSummary(rootDir, 90, 90, 90, 70);
+
+    const result = runCoverageGate({
+      rootDir,
+      requireSummaries: false,
+    });
+
+    expect(result.passed).toBe(true);
+    expect(result.errors.some((error) => error.includes('[global] branches below floor'))).toBe(false);
+  });
+
   it('fails when per-project floor is not met', () => {
     const rootDir = createTempWorkspace();
     writePolicy(rootDir, {

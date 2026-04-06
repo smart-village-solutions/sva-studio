@@ -381,14 +381,14 @@ describe('instance-registry server helpers', () => {
     ).resolves.toMatchObject({ instanceId: 'demo-a' });
     await expect(
       loadInstanceByHostname('demo.studio.example.org', {
-        getDatabaseUrl: () => buildPostgresUrl({
+        getDatabaseUrl: () => buildInvalidPostgresUrl({
           scheme: 'postgres',
           user: 'user',
           credential: 'cache scope value',
           host: 'db.example',
           port: '5432',
           database: 'sva',
-        }).replace('%20', ' '),
+        }),
       }),
     ).resolves.toMatchObject({ instanceId: 'demo-a' });
 

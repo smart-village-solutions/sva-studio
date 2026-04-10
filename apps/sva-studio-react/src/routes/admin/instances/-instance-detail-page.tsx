@@ -8,16 +8,40 @@ import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
 import { useInstances } from '../../../hooks/use-instances';
 import { t } from '../../../i18n';
+import { FieldHelp } from './-field-help';
 import {
   createDetailForm,
   getErrorMessage,
   getKeycloakStatusEntries,
+  getSetupWorkflowSteps,
+  getStatusGuidance,
+  INSTANCE_FIELD_HELP,
   INSTANCE_STATUS_LABELS,
   KeycloakStatusBadge,
+  ProvisioningStepBadge,
+  WorkflowStatusBadge,
 } from './-instances-shared';
 
 type InstanceDetailPageProps = {
   readonly instanceId: string;
+};
+
+const FormLabelWithHelp = ({
+  htmlFor,
+  label,
+  helpKey,
+}: {
+  htmlFor: string;
+  label: string;
+  helpKey: keyof typeof INSTANCE_FIELD_HELP;
+}) => {
+  const help = INSTANCE_FIELD_HELP[helpKey];
+  return (
+    <div className="flex items-center gap-2">
+      <Label htmlFor={htmlFor}>{label}</Label>
+      <FieldHelp {...help} />
+    </div>
+  );
 };
 
 export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
@@ -48,6 +72,7 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
     await instancesApi.updateInstance(selectedInstance.instanceId, {
       displayName: detailFormValues.displayName.trim(),
       parentDomain: detailFormValues.parentDomain.trim(),
+      realmMode: detailFormValues.realmMode,
       authRealm: detailFormValues.authRealm.trim(),
       authClientId: detailFormValues.authClientId.trim(),
       authIssuerUrl: detailFormValues.authIssuerUrl.trim() || undefined,
@@ -62,35 +87,45 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
         : undefined,
     });
 
-    setDetailFormValues((current) =>
-      current
-        ? {
-            ...current,
-            authClientSecret: '',
-          }
-        : current
-    );
+    setDetailFormValues((current) => (current ? { ...current, authClientSecret: '' } : current));
   };
 
-  const runKeycloakReconcile = async (rotateClientSecret: boolean) => {
+  const executeProvisioning = async (intent: 'provision' | 'reset_tenant_admin' | 'rotate_client_secret') => {
     if (!selectedInstance || !detailFormValues) {
       return;
     }
 
-    await instancesApi.reconcileKeycloak(selectedInstance.instanceId, {
-      rotateClientSecret,
+    await instancesApi.executeKeycloakProvisioning(selectedInstance.instanceId, {
+      intent,
       tenantAdminTemporaryPassword: detailFormValues.tenantAdminTemporaryPassword.trim() || undefined,
     });
+    await instancesApi.loadInstance(selectedInstance.instanceId);
+    setDetailFormValues((current) => (current ? { ...current, tenantAdminTemporaryPassword: '' } : current));
+  };
 
-    setDetailFormValues((current) =>
-      current
-        ? {
-            ...current,
-            tenantAdminTemporaryPassword: '',
-            rotateClientSecret: false,
-          }
-        : current
-    );
+  const triggerWorkflowAction = async (
+    action: 'check_preflight' | 'check_keycloak_status' | 'plan_provisioning' | 'execute_provisioning' | 'activate_instance'
+  ) => {
+    if (!selectedInstance) {
+      return;
+    }
+
+    switch (action) {
+      case 'check_preflight':
+        await instancesApi.refreshKeycloakPreflight(selectedInstance.instanceId);
+        return;
+      case 'check_keycloak_status':
+        await instancesApi.refreshKeycloakStatus(selectedInstance.instanceId);
+        return;
+      case 'plan_provisioning':
+        await instancesApi.planKeycloakProvisioning(selectedInstance.instanceId);
+        return;
+      case 'execute_provisioning':
+        await executeProvisioning('provision');
+        return;
+      case 'activate_instance':
+        await instancesApi.activateInstance(selectedInstance.instanceId);
+    }
   };
 
   return (
@@ -105,231 +140,334 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
         </Button>
       </header>
 
-      {instancesApi.mutationError ? (
+      {instancesApi.mutationError && instancesApi.mutationError.code !== 'keycloak_unavailable' ? (
         <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
           <AlertDescription>{getErrorMessage(instancesApi.mutationError)}</AlertDescription>
         </Alert>
       ) : null}
 
       {selectedInstance && detailFormValues ? (
-        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(22rem,0.9fr)]">
-          <Card className="space-y-5 p-4">
-            <div className="space-y-1 text-sm">
-              <div className="font-medium text-foreground">{selectedInstance.displayName}</div>
-              <div className="text-muted-foreground">{selectedInstance.instanceId}</div>
-              <div>{t('admin.instances.detail.primaryHostname', { value: selectedInstance.primaryHostname })}</div>
-              <div>{t('admin.instances.detail.parentDomain', { value: selectedInstance.parentDomain })}</div>
-              <div>{t('admin.instances.detail.status', { value: t(INSTANCE_STATUS_LABELS[selectedInstance.status]) })}</div>
-            </div>
+        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(25rem,0.9fr)]">
+          <div className="space-y-5">
+            <Card className="space-y-4 p-4">
+              <div className="space-y-1 text-sm">
+                <div className="font-medium text-foreground">{selectedInstance.displayName}</div>
+                <div className="text-muted-foreground">{selectedInstance.instanceId}</div>
+                <div>{t('admin.instances.detail.primaryHostname', { value: selectedInstance.primaryHostname })}</div>
+                <div>{t('admin.instances.detail.parentDomain', { value: selectedInstance.parentDomain })}</div>
+                <div>{t('admin.instances.detail.status', { value: t(INSTANCE_STATUS_LABELS[selectedInstance.status]) })}</div>
+              </div>
+              <div className="rounded-lg border border-border bg-muted/30 p-3">
+                <div className="font-medium text-foreground">{getStatusGuidance(selectedInstance).title}</div>
+                <p className="mt-1 text-sm text-muted-foreground">{getStatusGuidance(selectedInstance).body}</p>
+              </div>
+              {instancesApi.mutationError?.code === 'keycloak_unavailable' ? (
+                <Alert>
+                  <AlertDescription>{t('admin.instances.guidance.keycloakUnavailable')}</AlertDescription>
+                </Alert>
+              ) : null}
+            </Card>
 
-            <form className="space-y-3" onSubmit={onUpdateSubmit}>
-              <div className="grid gap-3 md:grid-cols-2">
-                <div className="space-y-1">
-                  <Label htmlFor="detail-display-name">{t('admin.instances.form.displayName')}</Label>
-                  <Input
-                    id="detail-display-name"
-                    value={detailFormValues.displayName}
-                    onChange={(event) =>
-                      setDetailFormValues((current) => (current ? { ...current, displayName: event.target.value } : current))
-                    }
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="detail-parent-domain">{t('admin.instances.form.parentDomain')}</Label>
-                  <Input
-                    id="detail-parent-domain"
-                    value={detailFormValues.parentDomain}
-                    onChange={(event) =>
-                      setDetailFormValues((current) => (current ? { ...current, parentDomain: event.target.value } : current))
-                    }
-                  />
-                </div>
+            <Card className="space-y-4 p-4">
+              <div className="space-y-1">
+                <div className="font-medium text-foreground">{t('admin.instances.workflow.title')}</div>
+                <p className="text-xs text-muted-foreground">{t('admin.instances.workflow.subtitle')}</p>
               </div>
-              <div className="grid gap-3 md:grid-cols-2">
+              <div className="grid gap-2">
+                {getSetupWorkflowSteps(selectedInstance, instancesApi.mutationError).map((step) => (
+                  <div key={step.key} className="rounded-lg border border-border p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="font-medium text-foreground">{step.title}</div>
+                        <p className="mt-1 text-xs text-muted-foreground">{step.description}</p>
+                      </div>
+                      <WorkflowStatusBadge status={step.status} />
+                    </div>
+                    {step.action && step.actionLabel ? (
+                      <div className="mt-3">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            if (!step.action) {
+                              return;
+                            }
+                            void triggerWorkflowAction(step.action);
+                          }}
+                          disabled={instancesApi.statusLoading}
+                        >
+                          {step.actionLabel}
+                        </Button>
+                      </div>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            </Card>
+
+            <Card className="space-y-5 p-4">
+              <form className="space-y-4" onSubmit={onUpdateSubmit}>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-sm font-medium text-foreground">{t('admin.instances.flow.realmModeTitle')}</h2>
+                    <FieldHelp {...INSTANCE_FIELD_HELP.realmMode} />
+                  </div>
+                  <p className="text-xs text-muted-foreground">{t('admin.instances.flow.realmModeSubtitle')}</p>
+                </div>
+                <div className="grid gap-2 md:grid-cols-2">
+                  <label className="flex items-start gap-2 rounded-md border border-border p-3 text-sm">
+                    <input
+                      type="radio"
+                      name="detail-realm-mode"
+                      checked={detailFormValues.realmMode === 'new'}
+                      onChange={() => setDetailFormValues((current) => (current ? { ...current, realmMode: 'new' } : current))}
+                    />
+                    <span>{t('admin.instances.flow.realmModeNew')}</span>
+                  </label>
+                  <label className="flex items-start gap-2 rounded-md border border-border p-3 text-sm">
+                    <input
+                      type="radio"
+                      name="detail-realm-mode"
+                      checked={detailFormValues.realmMode === 'existing'}
+                      onChange={() =>
+                        setDetailFormValues((current) => (current ? { ...current, realmMode: 'existing' } : current))
+                      }
+                    />
+                    <span>{t('admin.instances.flow.realmModeExisting')}</span>
+                  </label>
+                </div>
+
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div className="space-y-1">
+                    <FormLabelWithHelp htmlFor="detail-display-name" label={t('admin.instances.form.displayName')} helpKey="displayName" />
+                    <Input
+                      id="detail-display-name"
+                      value={detailFormValues.displayName}
+                      onChange={(event) =>
+                        setDetailFormValues((current) => (current ? { ...current, displayName: event.target.value } : current))
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <FormLabelWithHelp htmlFor="detail-parent-domain" label={t('admin.instances.form.parentDomain')} helpKey="parentDomain" />
+                    <Input
+                      id="detail-parent-domain"
+                      value={detailFormValues.parentDomain}
+                      onChange={(event) =>
+                        setDetailFormValues((current) => (current ? { ...current, parentDomain: event.target.value } : current))
+                      }
+                    />
+                  </div>
+                </div>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div className="space-y-1">
+                    <FormLabelWithHelp htmlFor="detail-auth-realm" label={t('admin.instances.form.authRealm')} helpKey="authRealm" />
+                    <Input
+                      id="detail-auth-realm"
+                      value={detailFormValues.authRealm}
+                      onChange={(event) =>
+                        setDetailFormValues((current) => (current ? { ...current, authRealm: event.target.value } : current))
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <FormLabelWithHelp
+                      htmlFor="detail-auth-client-id"
+                      label={t('admin.instances.form.authClientId')}
+                      helpKey="authClientId"
+                    />
+                    <Input
+                      id="detail-auth-client-id"
+                      value={detailFormValues.authClientId}
+                      onChange={(event) =>
+                        setDetailFormValues((current) => (current ? { ...current, authClientId: event.target.value } : current))
+                      }
+                    />
+                  </div>
+                </div>
                 <div className="space-y-1">
-                  <Label htmlFor="detail-auth-realm">{t('admin.instances.form.authRealm')}</Label>
+                  <FormLabelWithHelp
+                    htmlFor="detail-auth-issuer-url"
+                    label={t('admin.instances.form.authIssuerUrl')}
+                    helpKey="authIssuerUrl"
+                  />
                   <Input
-                    id="detail-auth-realm"
-                    value={detailFormValues.authRealm}
+                    id="detail-auth-issuer-url"
+                    value={detailFormValues.authIssuerUrl}
                     onChange={(event) =>
-                      setDetailFormValues((current) => (current ? { ...current, authRealm: event.target.value } : current))
+                      setDetailFormValues((current) => (current ? { ...current, authIssuerUrl: event.target.value } : current))
                     }
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label htmlFor="detail-auth-client-id">{t('admin.instances.form.authClientId')}</Label>
+                  <FormLabelWithHelp
+                    htmlFor="detail-auth-client-secret"
+                    label={t('admin.instances.form.authClientSecret')}
+                    helpKey="authClientSecret"
+                  />
                   <Input
-                    id="detail-auth-client-id"
-                    value={detailFormValues.authClientId}
+                    id="detail-auth-client-secret"
+                    type="password"
+                    placeholder={
+                      selectedInstance.authClientSecretConfigured
+                        ? t('admin.instances.form.authClientSecretConfigured')
+                        : t('admin.instances.form.authClientSecretMissing')
+                    }
+                    value={detailFormValues.authClientSecret}
                     onChange={(event) =>
-                      setDetailFormValues((current) => (current ? { ...current, authClientId: event.target.value } : current))
+                      setDetailFormValues((current) => (current ? { ...current, authClientSecret: event.target.value } : current))
                     }
                   />
+                  <p className="text-xs text-muted-foreground">{t('admin.instances.form.authClientSecretHint')}</p>
                 </div>
+
+                <div className="space-y-1">
+                  <h2 className="text-sm font-medium text-foreground">{t('admin.instances.form.tenantAdminTitle')}</h2>
+                  <p className="text-xs text-muted-foreground">{t('admin.instances.form.tenantAdminSubtitle')}</p>
+                </div>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div className="space-y-1">
+                    <FormLabelWithHelp
+                      htmlFor="detail-admin-username"
+                      label={t('admin.instances.form.tenantAdminUsername')}
+                      helpKey="tenantAdminUsername"
+                    />
+                    <Input
+                      id="detail-admin-username"
+                      value={detailFormValues.tenantAdminBootstrap.username}
+                      onChange={(event) =>
+                        setDetailFormValues((current) =>
+                          current
+                            ? {
+                                ...current,
+                                tenantAdminBootstrap: { ...current.tenantAdminBootstrap, username: event.target.value },
+                              }
+                            : current
+                        )
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <FormLabelWithHelp
+                      htmlFor="detail-admin-email"
+                      label={t('admin.instances.form.tenantAdminEmail')}
+                      helpKey="tenantAdminEmail"
+                    />
+                    <Input
+                      id="detail-admin-email"
+                      value={detailFormValues.tenantAdminBootstrap.email}
+                      onChange={(event) =>
+                        setDetailFormValues((current) =>
+                          current
+                            ? {
+                                ...current,
+                                tenantAdminBootstrap: { ...current.tenantAdminBootstrap, email: event.target.value },
+                              }
+                            : current
+                        )
+                      }
+                    />
+                  </div>
+                </div>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div className="space-y-1">
+                    <FormLabelWithHelp
+                      htmlFor="detail-admin-first-name"
+                      label={t('admin.instances.form.tenantAdminFirstName')}
+                      helpKey="tenantAdminFirstName"
+                    />
+                    <Input
+                      id="detail-admin-first-name"
+                      value={detailFormValues.tenantAdminBootstrap.firstName}
+                      onChange={(event) =>
+                        setDetailFormValues((current) =>
+                          current
+                            ? {
+                                ...current,
+                                tenantAdminBootstrap: { ...current.tenantAdminBootstrap, firstName: event.target.value },
+                              }
+                            : current
+                        )
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <FormLabelWithHelp
+                      htmlFor="detail-admin-last-name"
+                      label={t('admin.instances.form.tenantAdminLastName')}
+                      helpKey="tenantAdminLastName"
+                    />
+                    <Input
+                      id="detail-admin-last-name"
+                      value={detailFormValues.tenantAdminBootstrap.lastName}
+                      onChange={(event) =>
+                        setDetailFormValues((current) =>
+                          current
+                            ? {
+                                ...current,
+                                tenantAdminBootstrap: { ...current.tenantAdminBootstrap, lastName: event.target.value },
+                              }
+                            : current
+                        )
+                      }
+                    />
+                  </div>
+                </div>
+                <Button type="submit" variant="outline">
+                  {t('admin.instances.actions.save')}
+                </Button>
+              </form>
+            </Card>
+
+            <Card className="space-y-3 p-4">
+              <div className="space-y-1">
+                <div className="font-medium text-foreground">{t('admin.instances.flow.executeTitle')}</div>
+                <p className="text-xs text-muted-foreground">{t('admin.instances.flow.executeSubtitle')}</p>
               </div>
               <div className="space-y-1">
-                <Label htmlFor="detail-auth-issuer-url">{t('admin.instances.form.authIssuerUrl')}</Label>
+                <Label htmlFor="tenant-admin-password">{t('admin.instances.keycloakPanel.temporaryPassword')}</Label>
                 <Input
-                  id="detail-auth-issuer-url"
-                  value={detailFormValues.authIssuerUrl}
-                  onChange={(event) =>
-                    setDetailFormValues((current) => (current ? { ...current, authIssuerUrl: event.target.value } : current))
-                  }
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="detail-auth-client-secret">{t('admin.instances.form.authClientSecret')}</Label>
-                <Input
-                  id="detail-auth-client-secret"
+                  id="tenant-admin-password"
                   type="password"
-                  placeholder={
-                    selectedInstance.authClientSecretConfigured
-                      ? t('admin.instances.form.authClientSecretConfigured')
-                      : t('admin.instances.form.authClientSecretMissing')
-                  }
-                  value={detailFormValues.authClientSecret}
+                  value={detailFormValues.tenantAdminTemporaryPassword}
                   onChange={(event) =>
-                    setDetailFormValues((current) => (current ? { ...current, authClientSecret: event.target.value } : current))
+                    setDetailFormValues((current) =>
+                      current ? { ...current, tenantAdminTemporaryPassword: event.target.value } : current
+                    )
                   }
                 />
-                <p className="text-xs text-muted-foreground">{t('admin.instances.form.authClientSecretHint')}</p>
+                <p className="text-xs text-muted-foreground">{t('admin.instances.keycloakPanel.passwordHint')}</p>
               </div>
-              <div className="space-y-1">
-                <h2 className="text-sm font-medium text-foreground">{t('admin.instances.form.tenantAdminTitle')}</h2>
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" onClick={() => void executeProvisioning('provision')}>
+                  {t('admin.instances.actions.executeProvisioning')}
+                </Button>
+                <Button type="button" variant="outline" onClick={() => void executeProvisioning('reset_tenant_admin')}>
+                  {t('admin.instances.actions.resetTenantAdmin')}
+                </Button>
+                <Button type="button" variant="outline" onClick={() => void executeProvisioning('rotate_client_secret')}>
+                  {t('admin.instances.actions.rotateClientSecret')}
+                </Button>
               </div>
-              <div className="grid gap-3 md:grid-cols-2">
-                <div className="space-y-1">
-                  <Label htmlFor="detail-admin-username">{t('admin.instances.form.tenantAdminUsername')}</Label>
-                  <Input
-                    id="detail-admin-username"
-                    value={detailFormValues.tenantAdminBootstrap.username}
-                    onChange={(event) =>
-                      setDetailFormValues((current) =>
-                        current
-                          ? {
-                              ...current,
-                              tenantAdminBootstrap: {
-                                ...current.tenantAdminBootstrap,
-                                username: event.target.value,
-                              },
-                            }
-                          : current
-                      )
-                    }
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="detail-admin-email">{t('admin.instances.form.tenantAdminEmail')}</Label>
-                  <Input
-                    id="detail-admin-email"
-                    value={detailFormValues.tenantAdminBootstrap.email}
-                    onChange={(event) =>
-                      setDetailFormValues((current) =>
-                        current
-                          ? {
-                              ...current,
-                              tenantAdminBootstrap: {
-                                ...current.tenantAdminBootstrap,
-                                email: event.target.value,
-                              },
-                            }
-                          : current
-                      )
-                    }
-                  />
-                </div>
-              </div>
-              <div className="grid gap-3 md:grid-cols-2">
-                <div className="space-y-1">
-                  <Label htmlFor="detail-admin-first-name">{t('admin.instances.form.tenantAdminFirstName')}</Label>
-                  <Input
-                    id="detail-admin-first-name"
-                    value={detailFormValues.tenantAdminBootstrap.firstName}
-                    onChange={(event) =>
-                      setDetailFormValues((current) =>
-                        current
-                          ? {
-                              ...current,
-                              tenantAdminBootstrap: {
-                                ...current.tenantAdminBootstrap,
-                                firstName: event.target.value,
-                              },
-                            }
-                          : current
-                      )
-                    }
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="detail-admin-last-name">{t('admin.instances.form.tenantAdminLastName')}</Label>
-                  <Input
-                    id="detail-admin-last-name"
-                    value={detailFormValues.tenantAdminBootstrap.lastName}
-                    onChange={(event) =>
-                      setDetailFormValues((current) =>
-                        current
-                          ? {
-                              ...current,
-                              tenantAdminBootstrap: {
-                                ...current.tenantAdminBootstrap,
-                                lastName: event.target.value,
-                              },
-                            }
-                          : current
-                      )
-                    }
-                  />
-                </div>
-              </div>
-              <Button type="submit" variant="outline">
-                {t('admin.instances.actions.save')}
-              </Button>
-            </form>
-          </Card>
+            </Card>
+          </div>
 
           <div className="space-y-5">
             <Card className="space-y-3 p-4">
               <div className="space-y-1">
-                <div className="font-medium text-foreground">{t('admin.instances.keycloakPanel.title')}</div>
-                <p className="text-xs text-muted-foreground">{t('admin.instances.keycloakPanel.subtitle')}</p>
-              </div>
-              <div className="grid gap-2">
-                {getKeycloakStatusEntries(selectedInstance).map(([labelKey, ready]) => (
-                  <div key={labelKey} className="flex items-center justify-between gap-3 rounded-md border border-border p-2">
-                    <span>{t(labelKey)}</span>
-                    <KeycloakStatusBadge ready={ready} />
-                  </div>
-                ))}
-              </div>
-              <div className="grid gap-3 md:grid-cols-2">
-                <div className="space-y-1 md:col-span-2">
-                  <Label htmlFor="tenant-admin-password">{t('admin.instances.keycloakPanel.temporaryPassword')}</Label>
-                  <Input
-                    id="tenant-admin-password"
-                    type="password"
-                    value={detailFormValues.tenantAdminTemporaryPassword}
-                    onChange={(event) =>
-                      setDetailFormValues((current) =>
-                        current ? { ...current, tenantAdminTemporaryPassword: event.target.value } : current
-                      )
-                    }
-                  />
-                  <p className="text-xs text-muted-foreground">{t('admin.instances.keycloakPanel.passwordHint')}</p>
-                </div>
-                <label className="flex items-center gap-2 text-sm text-foreground md:col-span-2">
-                  <input
-                    type="checkbox"
-                    checked={detailFormValues.rotateClientSecret}
-                    onChange={(event) =>
-                      setDetailFormValues((current) =>
-                        current ? { ...current, rotateClientSecret: event.target.checked } : current
-                      )
-                    }
-                  />
-                  <span>{t('admin.instances.keycloakPanel.rotateClientSecret')}</span>
-                </label>
+                <div className="font-medium text-foreground">{t('admin.instances.flow.preflightTitle')}</div>
+                <p className="text-xs text-muted-foreground">{t('admin.instances.flow.preflightSubtitle')}</p>
               </div>
               <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => void instancesApi.refreshKeycloakPreflight(selectedInstance.instanceId)}
+                  disabled={instancesApi.statusLoading}
+                >
+                  {t('admin.instances.actions.checkPreflight')}
+                </Button>
                 <Button
                   type="button"
                   variant="outline"
@@ -338,16 +476,111 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
                 >
                   {t('admin.instances.actions.checkKeycloakStatus')}
                 </Button>
-                <Button type="button" onClick={() => void runKeycloakReconcile(false)}>
-                  {t('admin.instances.actions.reconcileKeycloak')}
-                </Button>
-                <Button type="button" variant="outline" onClick={() => void runKeycloakReconcile(false)}>
-                  {t('admin.instances.actions.resetTenantAdmin')}
-                </Button>
-                <Button type="button" variant="outline" onClick={() => void runKeycloakReconcile(true)}>
-                  {t('admin.instances.actions.rotateClientSecret')}
+              </div>
+              <div className="grid gap-2">
+                {selectedInstance.keycloakPreflight?.checks.map((check) => (
+                  <div key={check.checkKey} className="rounded-md border border-border p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="font-medium text-foreground">{check.title}</span>
+                      <KeycloakStatusBadge ready={check.status === 'ready'} />
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">{check.summary}</p>
+                  </div>
+                )) ?? <p className="text-sm text-muted-foreground">{t('admin.instances.flow.preflightEmpty')}</p>}
+              </div>
+            </Card>
+
+            <Card className="space-y-3 p-4">
+              <div className="space-y-1">
+                <div className="font-medium text-foreground">{t('admin.instances.flow.previewTitle')}</div>
+                <p className="text-xs text-muted-foreground">{t('admin.instances.flow.previewSubtitle')}</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => void instancesApi.planKeycloakProvisioning(selectedInstance.instanceId)}
+                  disabled={instancesApi.statusLoading}
+                >
+                  {t('admin.instances.actions.planProvisioning')}
                 </Button>
               </div>
+              <div className="grid gap-2">
+                {selectedInstance.keycloakPlan?.steps.length ? (
+                  selectedInstance.keycloakPlan.steps.map((step) => (
+                    <div key={step.stepKey} className="rounded-md border border-border p-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="font-medium text-foreground">{step.title}</span>
+                        <span className="text-xs text-muted-foreground">{step.action}</span>
+                      </div>
+                      <p className="mt-1 text-xs text-muted-foreground">{step.summary}</p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground">{t('admin.instances.flow.previewEmpty')}</p>
+                )}
+              </div>
+            </Card>
+
+            <Card className="space-y-3 p-4">
+              <div className="space-y-1">
+                <div className="font-medium text-foreground">{t('admin.instances.keycloakPanel.title')}</div>
+                <p className="text-xs text-muted-foreground">{t('admin.instances.keycloakPanel.subtitle')}</p>
+              </div>
+              <div className="grid gap-2">
+                {getKeycloakStatusEntries(selectedInstance).length ? (
+                  getKeycloakStatusEntries(selectedInstance).map(([labelKey, ready]) => (
+                    <div key={labelKey} className="flex items-center justify-between gap-3 rounded-md border border-border p-2">
+                      <span>{t(labelKey)}</span>
+                      <KeycloakStatusBadge ready={ready} />
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground">{t('admin.instances.keycloakPanel.empty')}</p>
+                )}
+              </div>
+            </Card>
+
+            <Card className="space-y-3 p-4">
+              <div className="space-y-1">
+                <div className="font-medium text-foreground">{t('admin.instances.flow.protocolTitle')}</div>
+                <p className="text-xs text-muted-foreground">{t('admin.instances.flow.protocolSubtitle')}</p>
+              </div>
+              {selectedInstance.keycloakProvisioningRuns.length > 0 ? (
+                selectedInstance.keycloakProvisioningRuns.map((run) => (
+                  <div key={run.id} className="rounded-lg border border-border p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <div className="font-medium text-foreground">{run.intent}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {run.mode} • {run.overallStatus} • {run.requestId ?? 'n/a'}
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => void instancesApi.loadKeycloakProvisioningRun(selectedInstance.instanceId, run.id)}
+                      >
+                        {t('admin.instances.actions.loadRun')}
+                      </Button>
+                    </div>
+                    <p className="mt-2 text-xs text-muted-foreground">{run.driftSummary}</p>
+                    <div className="mt-3 grid gap-2">
+                      {run.steps.map((step) => (
+                        <div key={`${run.id}-${step.stepKey}`} className="rounded-md border border-border p-2">
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="font-medium text-foreground">{step.title}</span>
+                            <ProvisioningStepBadge status={step.status} />
+                          </div>
+                          <p className="mt-1 text-xs text-muted-foreground">{step.summary}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground">{t('admin.instances.flow.protocolEmpty')}</p>
+              )}
             </Card>
 
             <Card className="space-y-2 p-4">

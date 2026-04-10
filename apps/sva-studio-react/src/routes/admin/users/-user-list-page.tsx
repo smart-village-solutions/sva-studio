@@ -2,7 +2,6 @@ import { Link } from '@tanstack/react-router';
 import React from 'react';
 
 import { ConfirmDialog } from '../../../components/ConfirmDialog';
-import { ModalDialog } from '../../../components/ModalDialog';
 import { StudioDataTable, type StudioColumnDef } from '../../../components/StudioDataTable';
 import { StudioListPageTemplate } from '../../../components/StudioListPageTemplate';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
@@ -12,7 +11,6 @@ import { Card } from '../../../components/ui/card';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
 import { Select } from '../../../components/ui/select';
-import { useRoles } from '../../../hooks/use-roles';
 import { useUsers } from '../../../hooks/use-users';
 import { isIamBulkEnabled } from '../../../lib/iam-admin-access';
 import { t } from '../../../i18n';
@@ -32,9 +30,7 @@ const statusTranslationKeyByValue = {
 
 export const UserListPage = () => {
   const usersApi = useUsers();
-  const rolesApi = useRoles();
 
-  const [createDialogOpen, setCreateDialogOpen] = React.useState(false);
   const [deactivateDialog, setDeactivateDialog] = React.useState<{ mode: 'single' | 'bulk'; userId?: string; userIds?: string[] } | null>(
     null
   );
@@ -45,33 +41,6 @@ export const UserListPage = () => {
     skippedCount: number;
   } | null>(null);
   const [syncError, setSyncError] = React.useState<Parameters<typeof userErrorMessage>[0]>(null);
-
-  const [createForm, setCreateForm] = React.useState({
-    email: '',
-    firstName: '',
-    lastName: '',
-    roleId: '',
-  });
-
-  const onCreateUser = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    const roleIds = createForm.roleId ? [createForm.roleId] : [];
-    const result = await usersApi.createUser({
-      email: createForm.email.trim(),
-      firstName: createForm.firstName.trim() || undefined,
-      lastName: createForm.lastName.trim() || undefined,
-      displayName: `${createForm.firstName} ${createForm.lastName}`.trim() || undefined,
-      roleIds,
-    });
-
-    if (!result) {
-      return;
-    }
-
-    setCreateDialogOpen(false);
-    setCreateForm({ email: '', firstName: '', lastName: '', roleId: '' });
-  };
 
   const onConfirmDeactivate = async () => {
     const action = deactivateDialog;
@@ -163,7 +132,11 @@ export const UserListPage = () => {
         description={t('admin.users.page.subtitle')}
         primaryAction={{
           label: t('admin.users.actions.create'),
-          onClick: () => setCreateDialogOpen(true),
+          render: (
+            <Button asChild type="button">
+              <Link to="/admin/users/new">{t('admin.users.actions.create')}</Link>
+            </Button>
+          ),
         }}
       >
         <StudioDataTable
@@ -330,68 +303,6 @@ export const UserListPage = () => {
           </Button>
         </div>
       </footer>
-
-      <ModalDialog
-        open={createDialogOpen}
-        title={t('admin.users.createDialog.title')}
-        description={t('admin.users.createDialog.description')}
-        onClose={() => setCreateDialogOpen(false)}
-      >
-        <form className="grid gap-4" onSubmit={onCreateUser}>
-          <div className="grid gap-2 text-sm text-foreground">
-            <Label htmlFor="create-user-email">{t('account.fields.email')}</Label>
-            <Input
-              id="create-user-email"
-              required
-              type="email"
-              value={createForm.email}
-              onChange={(event) => setCreateForm((current) => ({ ...current, email: event.target.value }))}
-            />
-          </div>
-          <div className="grid gap-2 text-sm text-foreground">
-            <Label htmlFor="create-user-first-name">{t('account.fields.firstName')}</Label>
-            <Input
-              id="create-user-first-name"
-              required
-              value={createForm.firstName}
-              onChange={(event) => setCreateForm((current) => ({ ...current, firstName: event.target.value }))}
-            />
-          </div>
-          <div className="grid gap-2 text-sm text-foreground">
-            <Label htmlFor="create-user-last-name">{t('account.fields.lastName')}</Label>
-            <Input
-              id="create-user-last-name"
-              required
-              value={createForm.lastName}
-              onChange={(event) => setCreateForm((current) => ({ ...current, lastName: event.target.value }))}
-            />
-          </div>
-          <div className="grid gap-2 text-sm text-foreground">
-            <Label htmlFor="create-user-role">{t('admin.users.createDialog.roleLabel')}</Label>
-            <Select
-              id="create-user-role"
-              value={createForm.roleId}
-              onChange={(event) => setCreateForm((current) => ({ ...current, roleId: event.target.value }))}
-            >
-              <option value="">{t('admin.users.createDialog.rolePlaceholder')}</option>
-              {rolesApi.roles.map((role) => (
-                <option key={role.id} value={role.id}>
-                  {role.roleName}
-                </option>
-              ))}
-            </Select>
-          </div>
-
-          <div className="mt-2 flex justify-end gap-3">
-            <Button type="button" variant="outline" onClick={() => setCreateDialogOpen(false)}>
-              {t('account.actions.cancel')}
-            </Button>
-            <Button type="submit">
-              {t('admin.users.actions.create')}
-            </Button>
-          </div>
-        </form>
-      </ModalDialog>
 
       <ConfirmDialog
         open={Boolean(deactivateDialog)}

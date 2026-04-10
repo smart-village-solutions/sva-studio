@@ -58,13 +58,14 @@ Die Instanzverwaltung ist damit die operative Control Plane für:
 
 - `authRealm`
 - `authClientId`
-- tenant-spezifisches OIDC-Client-Secret
+- tenant-spezifisches OIDC-Client-Secret oder dessen Erzeugung bei `new`
 - initialen Tenant-Admin-Bootstrap
 
 Wichtige Regeln:
 
 - das Client-Secret ist write-only und wird in Studio nur verschlüsselt gespeichert
-- ein leeres Secret-Feld bedeutet "unverändert lassen"
+- bei `existing` bedeutet ein leeres Secret-Feld "unverändert lassen"
+- bei `new` wird kein Secret als Eingabe erwartet; es wird beim Provisioning erzeugt und danach in Studio gespeichert
 - temporäre Admin-Passwörter werden nur für den Bootstrap-/Reset-Vorgang verwendet und nicht gespeichert
 - Realm-, Client-, Mapper- und Tenant-Admin-Abgleich laufen idempotent über den expliziten Provisioning-Pfad
 
@@ -217,13 +218,42 @@ Vor Freigabe eines Tenant-Realm müssen mindestens diese Punkte erfüllt sein:
 
 1. `iam.instances.authRealm` zeigt auf den korrekten Realm
 2. `iam.instances.authClientId = sva-studio`
-3. Client `sva-studio` existiert im Realm
-4. `rootUrl`, `redirectUris`, `webOrigins` und `post.logout.redirect.uris` sind tenant-spezifisch
-5. Protocol Mapper `instanceId` existiert
-6. mindestens ein aktiver Tenant-Admin existiert
-7. Tenant-Admin hat `system_admin`
-8. Tenant-Admin hat nicht automatisch `instance_registry_admin`
-9. User-Attribut `instanceId` entspricht dem Tenant
+3. `rootUrl`, `redirectUris`, `webOrigins` und `post.logout.redirect.uris` passen exakt zum Tenant-Host
+4. der Protocol Mapper `instanceId` existiert
+5. ein Tenant-Admin existiert mit:
+   - Rolle `system_admin`
+   - ohne Rolle `instance_registry_admin`
+   - `attributes.instanceId = <instanceId>`
+6. das Tenant-Client-Secret ist bei `existing` mit der Registry abgeglichen oder wurde bei `new` erfolgreich erzeugt und zurückgeschrieben
+
+## Operativer Freigabehinweis
+
+Für den täglichen Betrieb gilt:
+
+- Die Realm-Existenz oder ein erfolgreiches Provisioning allein reichen nicht als Freigabe.
+- Eine Instanz ist erst dann betriebsbereit, wenn die Detailseite unter `/admin/instances/<instanceId>` alle fachlichen Prüfpunkte grün zeigt.
+- Bei bestehenden Realms ist Secret-Drift der häufigste verbleibende Fehler. Der Standard-Fix ist `Rotate client secret`.
+
+Die vollständige Root-Host-Bedienfolge steht unter [Instanzverwaltung als Keycloak-Control-Plane](./instance-keycloak-provisioning.md).
+
+## Traceability-Matrix für Studio-Felder und Keycloak-Artefakte
+
+Die folgende Matrix ist die schlanke Referenz dafür, welche Eingaben in Studio zu welchen Keycloak-Artefakten führen. Sie dient als gemeinsame Grundlage für UI, Registry, Worker und Statusanzeige.
+
+| Studio-/Registry-Feld | Keycloak-Ziel | Erwarteter Zustand |
+| --- | --- | --- |
+| `realmMode` + `authRealm` | Realm | `existing`: Realm existiert bereits. `new`: Realm darf angelegt werden. |
+| `authClientId` | OIDC-Client | Client existiert im Tenant-Realm. |
+| `instanceId` + `parentDomain` | `rootUrl`, `redirectUris`, `webOrigins`, `post.logout.redirect.uris` | Alle URLs zeigen ausschließlich auf den Tenant-Host. |
+| `instanceId` | Protocol Mapper `instanceId` | Claim `instanceId` wird in ID-, Access- und Userinfo-Token ausgegeben. |
+| `authClientSecret` | Client-Secret | `existing`: Das in der Registry gespeicherte Secret entspricht dem aktiven Keycloak-Secret. `new`: Das Secret wird beim Provisioning erzeugt und danach in der Registry gespeichert. |
+| `tenantAdminBootstrap.username` | Tenant-Admin-User | User existiert. |
+| `tenantAdminBootstrap.firstName`, `lastName`, `email` | Tenant-Admin-Userprofil | Stammdaten sind auf dem User gepflegt. |
+| `tenantAdminBootstrap.username` | Realm-Rolle `system_admin` | Rolle ist zugewiesen. |
+| `tenantAdminBootstrap.username` | Realm-Rolle `instance_registry_admin` | Rolle ist nicht zugewiesen. |
+| `instanceId` + `tenantAdminBootstrap.username` | User-Attribut `instanceId` | Attribut stimmt exakt mit der Instanz-ID überein. |
+
+Wenn einer dieser Punkte fehlt, darf der Provisioning-Status nicht als fachlich sauber bewertet werden.
 
 ## Smoke-Nachweis
 

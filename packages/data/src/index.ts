@@ -14,8 +14,8 @@ type CacheEntry<T> = {
 
 const inMemoryCache = new Map<string, CacheEntry<unknown>>();
 
-// No-op logger to avoid SDK dependency in universal module
-const logger = {
+// Default no-op logger to avoid SDK dependency in universal module
+const defaultLogger = {
   debug: () => undefined,
   error: () => undefined,
 };
@@ -23,10 +23,12 @@ const logger = {
 export type DataClientOptions = {
   baseUrl: string;
   cacheTtlMs?: number;
+  logger?: typeof defaultLogger;
 };
 
 export const createDataClient = (options: DataClientOptions) => {
   const cacheTtlMs = options.cacheTtlMs ?? 30_000;
+  const logger = options.logger ?? defaultLogger;
   const warnedPaths = new Set<string>();
 
   const emitMissingSchemaWarning = (path: string) => {

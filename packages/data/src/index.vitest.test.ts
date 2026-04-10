@@ -10,10 +10,6 @@ const state = vi.hoisted(() => ({
   },
 }));
 
-vi.mock('@sva/sdk/server', () => ({
-  createSdkLogger: () => state.logger,
-}));
-
 import { createDataClient } from './index';
 
 describe('createDataClient', () => {
@@ -36,6 +32,7 @@ describe('createDataClient', () => {
     const client = createDataClient({
       baseUrl: 'https://data.example.invalid',
       cacheTtlMs: 10_000,
+      logger: state.logger,
     });
 
     const schema = z.object({ name: z.string(), age: z.number() });
@@ -83,7 +80,7 @@ describe('createDataClient', () => {
       }))
     );
 
-    const client = createDataClient({ baseUrl: 'https://data.example.invalid' });
+    const client = createDataClient({ baseUrl: 'https://data.example.invalid', logger: state.logger });
 
     await expect(client.get('/down')).rejects.toThrow('DataClient GET /down failed with 503');
     expect(state.logger.error).toHaveBeenCalledWith(
@@ -101,7 +98,7 @@ describe('createDataClient', () => {
       }))
     );
 
-    const client = createDataClient({ baseUrl: 'https://data.example.invalid' });
+    const client = createDataClient({ baseUrl: 'https://data.example.invalid', logger: state.logger });
 
     await expect(client.get('/users/invalid', z.object({ age: z.number() }))).rejects.toThrow();
     expect(state.logger.error).toHaveBeenCalledWith(
@@ -126,6 +123,7 @@ describe('createDataClient', () => {
     const client = createDataClient({
       baseUrl: 'https://data.example.invalid',
       cacheTtlMs: 10_000,
+      logger: state.logger,
     });
     const schema = z.object({ age: z.number() });
 

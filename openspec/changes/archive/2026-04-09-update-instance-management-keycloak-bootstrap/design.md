@@ -11,9 +11,10 @@ Die bestehende Instanzverwaltung ist Root-Host-zentriert und darf nur von Plattf
 
 ### Führende Datenquelle
 
-- Registry bleibt führend für Realm-Zuordnung, Client-ID, optionalen Issuer und künftig auch das tenant-spezifische Client-Secret
+- Registry bleibt führend für Realm-Zuordnung, Realm-Modus, Client-ID, optionalen Issuer und das tenant-spezifische Client-Secret
 - temporäre Admin-Passwörter bleiben write-only und werden nicht persistiert
-- Keycloak-Status wird nicht in der Datenbank materialisiert, sondern serverseitig on-demand berechnet
+- Keycloak-Status, Preflight und Plan werden serverseitig on-demand berechnet
+- Provisioning-Läufe und Schrittprotokolle werden persistent gespeichert
 
 ### Sicherheitsmodell
 
@@ -21,10 +22,11 @@ Die bestehende Instanzverwaltung ist Root-Host-zentriert und darf nur von Plattf
 - alle neuen Mutationen bleiben an `instance_registry_admin` gebunden
 - Secrets werden mit der bestehenden Feldverschlüsselung aus `@sva/core/security` gespeichert
 - Responses und Logs geben niemals Klartext-Secrets oder Einmalpasswörter zurück
+- Keycloak-Mutationen laufen erst nach explizitem Preflight und blockieren bei fehlenden technischen oder fachlichen Voraussetzungen
 
-### Reconcile-Verhalten
+### Provisioning-Verhalten
 
-Die Reconcile-Aktion ist idempotent und erzwingt pro Instanz:
+Provisioning ist idempotent, realm-modusbewusst und erzwingt pro Instanz:
 
 - Realm existiert und ist aktiviert
 - OIDC-Client `authClientId`
@@ -32,10 +34,13 @@ Die Reconcile-Aktion ist idempotent und erzwingt pro Instanz:
 - `instanceId`-Mapper auf dem Client
 - Tenant-Admin existiert, trägt `attributes.instanceId=<instanceId>` und hat genau `system_admin` als Minimalrolle
 - `instance_registry_admin` wird aktiv entfernt, wenn dem Tenant-Admin versehentlich zugewiesen
+- jeder Lauf erzeugt einen persistenten Run mit Schrittprotokoll, Request-ID und Drift-Zusammenfassung
+- `Registry speichern` und `Provisioning ausführen` bleiben getrennte Aktionen
 
 ### UI-Modell
 
 - Instanzliste bleibt kompakt
-- Instanzdetail wird zur editierbaren Steuerungsfläche
-- Keycloak-Status ist read-only, Reconcile/Bootstrap ist explizit auszulösen
+- Instanzdetail wird zur gefuehrten Steuerungsflaeche
+- die UI zeigt Vorbedingungen, Realm-Modus, Konfiguration, Vorschau, Ausfuehrung und Protokoll
+- Keycloak-Status ist read-only, Provisioning ist explizit auszulösen
 - Client-Secret und temporäre Admin-Passwörter sind write-only

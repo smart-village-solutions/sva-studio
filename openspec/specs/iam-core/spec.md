@@ -259,6 +259,26 @@ Das System MUST über einen dedizierten Service-Account mit der Keycloak Admin R
 - **UND** Write-Operationen geben `503 Service Unavailable` zurück
 - **UND** der Health-Check `/health/ready` meldet Keycloak als `degraded`
 
+### Requirement: Instanz-Registry speichert Auth-Metadaten pro Instanz
+
+Die Instanz-Registry SHALL für jede produktive Instanz verpflichtend Realm- und Client-Metadaten für OIDC- und Keycloak-Admin-Auflösung speichern.
+
+#### Scenario: Neue Instanz wird mit Auth-Metadaten angelegt
+
+- **WHEN** eine Instanz über den Provisioning-Vertrag angelegt wird
+- **THEN** `authRealm` und `authClientId` werden validiert und persistiert
+- **AND** die Instanz wird ohne vollständige Auth-Metadaten nicht als traffic-fähig aktiviert
+
+### Requirement: Provisioning erstellt tenant-spezifische Keycloak-Artefakte
+
+Das Provisioning SHALL Realm- und Standard-Client-Artefakte in Keycloak für neue Instanzen anlegen und den Fortschritt idempotent protokollieren.
+
+#### Scenario: Realm-Provisioning schlägt teilweise fehl
+
+- **WHEN** die Realm-Erzeugung erfolgreich ist, aber die Client-Konfiguration fehlschlägt
+- **THEN** der Provisioning-Run speichert den fehlgeschlagenen Step-Key und Fehlerkontext
+- **AND** ein späterer Wiederholungslauf kann denselben Vorgang ohne doppelte Realm-Erzeugung fortsetzen
+
 ### Requirement: Idempotency für duplikatskritische IAM-Endpunkte
 
 Das System MUST Idempotency für duplikatskritische Mutationen erzwingen, um doppelte Keycloak- und Datenbankoperationen bei Retries zu verhindern.
@@ -330,20 +350,26 @@ Das System MUST alle IAM-API-Endpunkte serverseitig gegen unberechtigte Zugriffe
 - **UND** E-Mail-Adressen werden maskiert (`u***@example.com`) falls in Fehlermeldungen nötig
 
 ### Requirement: Health-Checks und Observability
-
-Das System MUST Health-Check-Endpunkte bereitstellen, die den Zustand der IAM-Infrastruktur prüfen.
+Das System MUST Health-Check-Endpunkte bereitstellen, die den Zustand der IAM-Infrastruktur prüfen und eine stabile, UI-taugliche Darstellung zentraler Abhängigkeiten liefern.
 
 #### Scenario: Readiness-Probe
-
 - **WENN** ein Orchestrator (K8s, Docker) die Readiness prüft via `GET /health/ready`
 - **DANN** prüft der Endpunkt: DB-Connection, Keycloak-Konnektivität, Redis-Session-Store
 - **UND** gibt `200 OK` zurück, wenn alle Systeme erreichbar sind
 - **UND** gibt `503 Service Unavailable` mit Details zurück, wenn ein System ausgefallen ist
 
-#### Scenario: Liveness-Probe
+#### Scenario: UI-taugliche Dienstübersicht für das Studio
+- **WHEN** das Studio den Readiness-Endpunkt für die Shell-Anzeige abfragt
+- **THEN** enthält die Antwort eine stabile Liste oder Struktur einzelner Dienste mit Namen und Status
+- **AND** mindestens `database`, `redis` und `keycloak` sind einzeln auswertbar
+- **AND** jeder Dienst liefert einen maschinenlesbaren Status wie `ready`, `degraded`, `not_ready` oder `unknown`
+- **AND** optionale Diagnosefelder bleiben auf sichere, nicht-sensitive Werte wie `reason_code` und lokalisierbare Kurzmeldungen begrenzt
 
-- **WENN** ein Orchestrator `GET /health/live` aufruft
-- **DANN** gibt der Endpunkt `200 OK` zurück, solange der Prozess nicht hängt
+#### Scenario: Readiness-Response bleibt für UI und Betrieb korrelierbar
+- **WHEN** der Readiness-Endpunkt antwortet
+- **THEN** enthält die Antwort weiterhin `requestId` und Zeitstempel
+- **AND** fehlgeschlagene Dienstprüfungen werden serverseitig strukturiert geloggt
+- **AND** die öffentliche Response enthält keine Stacktraces, Secrets oder rohen Provider-Interna
 
 ### Requirement: Correlation-IDs und Tracing
 
@@ -886,3 +912,71 @@ Das System SHALL für Paket 5 verbindliche Nachweisartefakte definieren, damit A
 - **WHEN** die Nachweis- und Exportfunktion abgenommen wird
 - **THEN** existiert mindestens ein versioniertes Export-Testprotokoll für JSON und CSV, ein Negativtest ohne `legal-consents:export` sowie ein Konsistenzabgleich gegen die Auditspur
 - **AND** alle Artefakte referenzieren dieselbe Pflichtversions- und Filterkonstellation
+
+### Requirement: Mandanten- und Plattform-Scope werden getrennt modelliert
+
+Das System MUST Tenant-Instanzen und den globalen Root-Host als getrennte fachliche Runtime-Scopes modellieren.
+
+#### Scenario: Tenant-Request verwendet Instanz-Scope
+
+- **WHEN** ein Request ueber eine Tenant-Subdomain eingeht
+- **THEN** arbeitet der Runtime-Kontext mit `scope_kind=instance`
+- **AND** `instanceId` verweist auf einen Eintrag in `iam.instances`
+
+#### Scenario: Root-Host verwendet Plattform-Scope
+
+- **WHEN** ein Request ueber den Root-Host der Plattform eingeht
+- **THEN** arbeitet der Runtime-Kontext mit `scope_kind=platform`
+- **AND** `instanceId` bleibt leer
+- **AND** der Plattform-Scope wird nicht durch eine Pseudo-Instanz in `iam.instances` modelliert
+
+### Requirement: Instanzdetails enthalten Keycloak-Control-Plane-Zustand
+
+Das System SHALL im Instanzdetail den relevanten Keycloak-Control-Plane-Zustand einer Instanz ohne Offenlegung von Secrets bereitstellen.
+
+#### Scenario: Instanzdetail zeigt Secret nur als Konfigurationszustand
+
+- **WHEN** ein Plattform-Admin das Detail einer Instanz laedt
+- **THEN** enthaelt die Antwort nur ein Flag, ob ein Tenant-Client-Secret konfiguriert ist
+- **AND** niemals den Secret-Klartext
+
+#### Scenario: Instanzdetail zeigt Keycloak-Readiness
+
+- **WHEN** ein Plattform-Admin den Keycloak-Status einer Instanz abfragt
+- **THEN** enthaelt die Antwort Informationen zu Realm, Client, Mapper, Redirect-/Logout-Drift und Tenant-Admin-Rollen
+
+#### Scenario: Instanzdetail zeigt Preflight, Plan und Provisioning-Runs
+
+- **WHEN** ein Plattform-Admin das Detail einer Instanz laedt
+- **THEN** enthaelt die Antwort zusaetzlich den aktuellen Preflight, den aktuellen Plan und die bekannten Provisioning-Runs
+- **AND** jeder Run enthaelt Modus, Intent, Gesamtstatus, Drift-Zusammenfassung und Schrittprotokoll
+
+### Requirement: Tenant-spezifische Client-Secrets bleiben write-only
+
+Das System SHALL tenant-spezifische OIDC-Client-Secrets write-only behandeln.
+
+#### Scenario: Update ohne neues Secret behaelt bestehendes Secret
+
+- **WHEN** eine Instanz aktualisiert wird ohne neues Client-Secret
+- **THEN** bleibt das bestehende Secret unveraendert gespeichert
+
+#### Scenario: Reconcile nutzt das gespeicherte Secret
+
+- **WHEN** ein Keycloak-Provisioning ausgefuehrt wird
+- **THEN** verwendet er das verschluesselt gespeicherte tenant-spezifische Client-Secret fuer den Ziel-Client
+
+### Requirement: Keycloak-Provisioning folgt einem expliziten Ablauf
+
+Das System SHALL Keycloak-Provisioning als expliziten Ablauf aus Preflight, Plan, Ausfuehrung und persistiertem Protokoll modellieren.
+
+#### Scenario: Blockierter Preflight verhindert Provisioning
+
+- **WHEN** ein Preflight den Status `blocked` liefert
+- **THEN** wird kein Keycloak-Mutationslauf ausgefuehrt
+- **AND** der erzeugte Run bleibt als fehlgeschlagener oder blockierter Vorgang nachvollziehbar
+
+#### Scenario: Getrennte Aktionen fuer Speichern und Ausfuehren
+
+- **WHEN** ein Plattform-Admin Instanzdaten aktualisiert
+- **THEN** schreibt die Operation nur Registry-Daten
+- **AND** eine Keycloak-Mutation erfolgt erst durch einen separaten Execute-Aufruf

@@ -10,6 +10,7 @@ Die Plattform nutzt heute einen globalen OIDC-Issuer und einen globalen Keycloak
 - Runtime-Auth, Reauth und Keycloak-Admin-Pfade werden auf instanzspezifische Realm-Auflösung umgestellt.
 - Provisioning erzeugt Realm- und Client-Artefakte in Keycloak für neue Instanzen.
 - Runtime-Profile, Deploy-Checks und Runbooks werden vom globalen Realm-Modell auf tenant-spezifische Auth-Konfiguration umgestellt.
+- Der Change setzt einen bereits gehaerteten `studio`-Rolloutvertrag voraus und fuehrt keine parallele neue Betriebsmechanik fuer Migration, Diagnose oder Netzwerk-Reconcile ein.
 
 ## Impact
 

@@ -847,3 +847,25 @@ Das System MUST für den inkrementellen Rollenarbeitsbereich und die angrenzende
 - **DANN** umfassen die Verifikationsschritte Tastaturbedienung, Screenreader-Semantik, Statuskommunikation sowie die Prüfung, dass sichtbare UI-Bezeichnungen aus i18n-Keys stammen
 - **UND** fehlende Übersetzungen oder verletzte Accessibility-Grundanforderungen gelten als Umsetzungsdefekte
 
+### Requirement: Admin-CRUD-Ressourcen nutzen kanonische Seitenrouten
+
+Die Account-UI SHALL CRUD-artige Admin-Ressourcen ueber kanonische Listen-, Erstellungs- und Detailrouten bereitstellen.
+
+#### Scenario: Listenansicht einer Admin-Ressource
+
+- **WHEN** ein berechtigter Nutzer eine CRUD-artige Admin-Ressource oeffnet
+- **THEN** die Liste ist unter `/admin/<resource>` erreichbar
+- **AND** die Liste zeigt tabellarische Eintraege, Filter und Listenaktionen
+- **AND** Create- und Edit-Flows werden nicht als Modal ueber lokalen Seitenspeicher geoeffnet
+
+#### Scenario: Erstellungsansicht einer Admin-Ressource
+
+- **WHEN** ein berechtigter Nutzer eine neue Ressource anlegen will
+- **THEN** die UI navigiert auf `/admin/<resource>/new`
+- **AND** die Erstellungsmaske wird als eigenstaendige Seite mit Ruecklink zur Liste angezeigt
+
+#### Scenario: Detailansicht einer Admin-Ressource
+
+- **WHEN** ein berechtigter Nutzer einen bestehenden Eintrag oeffnen oder bearbeiten will
+- **THEN** die UI navigiert auf `/admin/<resource>/$id`
+- **AND** Bearbeitung und ressourcenspezifische Sekundaeraktionen erfolgen auf dieser Detailseite

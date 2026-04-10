@@ -337,6 +337,15 @@ export const createReconcileKeycloakHandler =
     tenantAdminTemporaryPassword?: string;
     rotateClientSecret?: boolean;
   }) => {
+    const loaded = await loadInstanceWithSecret(deps, input.instanceId);
+    if (!loaded) {
+      return null;
+    }
+
+    if (!loaded.authClientSecret) {
+      throw new Error('tenant_auth_client_secret_missing');
+    }
+
     const run = await createExecuteKeycloakProvisioningHandler(deps)({
       instanceId: input.instanceId,
       actorId: input.actorId,

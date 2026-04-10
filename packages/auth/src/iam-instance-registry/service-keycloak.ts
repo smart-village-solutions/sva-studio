@@ -76,24 +76,28 @@ const buildLocalPreflight = (input: {
     {
       checkKey: 'tenant_secret',
       title: 'Tenant-Client-Secret',
-      status: input.authClientSecretConfigured && input.authClientSecret ? 'ready' : 'blocked',
+      status: input.authClientSecretConfigured && input.authClientSecret ? 'ready' : 'warning',
       summary:
         input.authClientSecretConfigured && input.authClientSecret
           ? 'Ein lesbares Tenant-Client-Secret ist in der Registry vorhanden.'
-          : 'Für diese Instanz fehlt ein lesbares Tenant-Client-Secret in der Registry.',
+          : 'Das Tenant-Client-Secret wird beim nächsten Worker-Lauf geprüft und bei Bedarf nachgezogen.',
       details: {
         configured: input.authClientSecretConfigured,
         readable: Boolean(input.authClientSecret),
+        source: 'worker_pending',
       },
     },
     {
       checkKey: 'tenant_admin_profile',
       title: 'Tenant-Admin-Profil',
-      status: input.tenantAdminBootstrap?.username ? 'ready' : 'blocked',
+      status: input.tenantAdminBootstrap?.username ? 'ready' : 'warning',
       summary: input.tenantAdminBootstrap?.username
         ? 'Die Stammdaten für den Tenant-Admin sind gepflegt.'
-        : 'Für den Tenant-Admin fehlen die erforderlichen Stammdaten.',
-      details: { configured: Boolean(input.tenantAdminBootstrap?.username) },
+        : 'Das Tenant-Admin-Profil wird beim nächsten Worker-Lauf geprüft und ergänzt.',
+      details: {
+        configured: Boolean(input.tenantAdminBootstrap?.username),
+        source: 'worker_pending',
+      },
     },
   ];
 

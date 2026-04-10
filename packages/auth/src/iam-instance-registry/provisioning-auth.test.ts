@@ -16,6 +16,7 @@ const state: {
   listClientProtocolMappers: ReturnType<typeof vi.fn>;
   listUserRoleNames: ReturnType<typeof vi.fn>;
   getOidcClientSecretValue: ReturnType<typeof vi.fn>;
+  getRoleByName: ReturnType<typeof vi.fn>;
   configCalls: string[];
   clientConfigs: Array<{ realm: string }>;
 } = {
@@ -34,6 +35,7 @@ const state: {
   listClientProtocolMappers: vi.fn(async () => []),
   listUserRoleNames: vi.fn(async () => []),
   getOidcClientSecretValue: vi.fn(async () => null),
+  getRoleByName: vi.fn(async (roleName: string) => ({ name: roleName })),
   configCalls: [],
   clientConfigs: [],
 };
@@ -57,6 +59,7 @@ vi.mock('../keycloak-admin-client.js', () => ({
       listClientProtocolMappers: state.listClientProtocolMappers,
       listUserRoleNames: state.listUserRoleNames,
       getOidcClientSecretValue: state.getOidcClientSecretValue,
+      getRoleByName: state.getRoleByName,
     };
   }),
   getKeycloakAdminClientConfigFromEnv: vi.fn((realm: string) => {
@@ -90,6 +93,8 @@ describe('provisionInstanceAuthArtifacts', () => {
     state.listUserRoleNames.mockResolvedValue([]);
     state.getOidcClientSecretValue.mockReset();
     state.getOidcClientSecretValue.mockResolvedValue(null);
+    state.getRoleByName.mockReset();
+    state.getRoleByName.mockImplementation(async (roleName: string) => ({ name: roleName }));
     state.configCalls = [];
     state.clientConfigs = [];
     delete process.env.SVA_PUBLIC_BASE_URL;

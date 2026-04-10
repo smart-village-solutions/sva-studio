@@ -13,6 +13,8 @@ const browserLoggerMock = vi.hoisted(() => ({
 const listInstancesMock = vi.fn();
 const getInstanceMock = vi.fn();
 const getInstanceKeycloakStatusMock = vi.fn();
+const getInstanceKeycloakPreflightMock = vi.fn();
+const planInstanceKeycloakProvisioningMock = vi.fn();
 const createInstanceMock = vi.fn();
 const updateInstanceMock = vi.fn();
 const reconcileInstanceKeycloakMock = vi.fn();
@@ -47,6 +49,8 @@ vi.mock('../lib/iam-api', () => ({
   listInstances: (...args: unknown[]) => listInstancesMock(...args),
   getInstance: (...args: unknown[]) => getInstanceMock(...args),
   getInstanceKeycloakStatus: (...args: unknown[]) => getInstanceKeycloakStatusMock(...args),
+  getInstanceKeycloakPreflight: (...args: unknown[]) => getInstanceKeycloakPreflightMock(...args),
+  planInstanceKeycloakProvisioning: (...args: unknown[]) => planInstanceKeycloakProvisioningMock(...args),
   createInstance: (...args: unknown[]) => createInstanceMock(...args),
   updateInstance: (...args: unknown[]) => updateInstanceMock(...args),
   reconcileInstanceKeycloak: (...args: unknown[]) => reconcileInstanceKeycloakMock(...args),
@@ -93,6 +97,18 @@ describe('useInstances', () => {
     getInstanceKeycloakStatusMock.mockResolvedValue({
       data: {
         realmExists: true,
+      },
+    });
+    getInstanceKeycloakPreflightMock.mockResolvedValue({
+      data: {
+        overallStatus: 'ready',
+        checks: [],
+      },
+    });
+    planInstanceKeycloakProvisioningMock.mockResolvedValue({
+      data: {
+        overallStatus: 'ready',
+        steps: [],
       },
     });
     createInstanceMock.mockResolvedValue({
@@ -179,12 +195,14 @@ describe('useInstances', () => {
         instanceId: 'demo',
         displayName: 'Demo',
         parentDomain: 'studio.example.org',
+        realmMode: 'new',
         authRealm: 'demo',
         authClientId: 'sva-studio',
       });
       await result.current.updateInstance('demo', {
         displayName: 'Demo updated',
         parentDomain: 'studio.example.org',
+        realmMode: 'existing',
         authRealm: 'demo',
         authClientId: 'sva-studio',
       });
@@ -251,6 +269,7 @@ describe('useInstances', () => {
         instanceId: 'demo',
         displayName: 'Demo',
         parentDomain: 'studio.example.org',
+        realmMode: 'new',
         authRealm: 'demo',
         authClientId: 'sva-studio',
       });
@@ -261,6 +280,7 @@ describe('useInstances', () => {
       const updated = await result.current.updateInstance('demo', {
         displayName: 'Demo updated',
         parentDomain: 'studio.example.org',
+        realmMode: 'existing',
         authRealm: 'demo',
         authClientId: 'sva-studio',
       });
@@ -321,8 +341,29 @@ describe('useInstances', () => {
 
     expect(result.current.selectedInstance?.instanceId).toBe('demo');
     expect(result.current.selectedInstance?.keycloakStatus).toBeUndefined();
-    expect(result.current.mutationError).toEqual(expect.objectContaining({ status: 403, code: 'forbidden' }));
+    expect(result.current.mutationError).toBeNull();
     expect(authMockValue.invalidatePermissions).toHaveBeenCalled();
+  });
+
+  it('clears non-keycloak detail warnings after the instance detail itself loads successfully', async () => {
+    getInstanceKeycloakStatusMock.mockRejectedValueOnce({
+      status: 500,
+      code: 'internal_error',
+      message: 'kaputt',
+    });
+
+    const { result } = renderHook(() => useInstances());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    await act(async () => {
+      await result.current.loadInstance('demo');
+    });
+
+    expect(result.current.selectedInstance?.instanceId).toBe('demo');
+    expect(result.current.mutationError).toBeNull();
   });
 
   it('refreshes keycloak status in-place and handles forbidden refreshes', async () => {
@@ -375,5 +416,42 @@ describe('useInstances', () => {
 
     expect(result.current.mutationError).toEqual(expect.objectContaining({ status: 403, code: 'forbidden' }));
     expect(authMockValue.invalidatePermissions).toHaveBeenCalled();
+  });
+
+  it('normalizes unexpected preflight and plan failures to keycloak_unavailable', async () => {
+    getInstanceKeycloakPreflightMock.mockRejectedValueOnce({
+      status: 500,
+      code: 'internal_error',
+      message: 'Authentifizierungsfehler.',
+    });
+    planInstanceKeycloakProvisioningMock.mockRejectedValueOnce({
+      status: 500,
+      code: 'internal_error',
+      message: 'kaputt',
+    });
+
+    const { result } = renderHook(() => useInstances());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    await act(async () => {
+      const preflight = await result.current.refreshKeycloakPreflight('demo');
+      expect(preflight).toBeNull();
+    });
+
+    expect(result.current.mutationError).toEqual(
+      expect.objectContaining({ status: 502, code: 'keycloak_unavailable' })
+    );
+
+    await act(async () => {
+      const plan = await result.current.planKeycloakProvisioning('demo');
+      expect(plan).toBeNull();
+    });
+
+    expect(result.current.mutationError).toEqual(
+      expect.objectContaining({ status: 502, code: 'keycloak_unavailable' })
+    );
   });
 });

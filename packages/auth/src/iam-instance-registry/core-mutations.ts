@@ -6,6 +6,7 @@ import type { InstanceStatus } from '@sva/core';
 import type { AuthenticatedRequestContext } from '../middleware.server.js';
 import {
   ensurePlatformAccess,
+  executeKeycloakProvisioningSchema,
   readDetailInstanceId,
   reconcileKeycloakSchema,
   requireFreshReauth,
@@ -72,6 +73,59 @@ export const reconcileInstanceKeycloakMutation = async (
       return createApiError(404, 'not_found', 'Instanz wurde nicht gefunden.', getWorkspaceContext().requestId);
     }
     return jsonResponse(200, asApiItem(status, getWorkspaceContext().requestId));
+  } catch (error) {
+    return mapInstanceMutationError(error);
+  }
+};
+
+export const executeInstanceKeycloakProvisioningMutation = async (
+  request: Request,
+  ctx: AuthenticatedRequestContext
+): Promise<Response> => {
+  const accessError = ensurePlatformAccess(request, ctx);
+  if (accessError) {
+    return accessError;
+  }
+
+  const csrfError = validateCsrf(request, getWorkspaceContext().requestId);
+  if (csrfError) {
+    return csrfError;
+  }
+
+  const reauthError = requireFreshReauth(request);
+  if (reauthError) {
+    return reauthError;
+  }
+
+  const idempotencyResult = requireIdempotencyKey(request, getWorkspaceContext().requestId);
+  if ('error' in idempotencyResult) {
+    return idempotencyResult.error;
+  }
+
+  const instanceId = readDetailInstanceId(request);
+  if (!instanceId) {
+    return createApiError(400, 'invalid_instance_id', 'Instanz-ID fehlt.', getWorkspaceContext().requestId);
+  }
+
+  const payloadResult = await parseRequestBody(request, executeKeycloakProvisioningSchema);
+  if (!payloadResult.ok) {
+    return createApiError(400, 'invalid_request', payloadResult.message, getWorkspaceContext().requestId);
+  }
+
+  try {
+    const run = await withRegistryService((service) =>
+      service.executeKeycloakProvisioning({
+        instanceId,
+        actorId: ctx.user.id,
+        requestId: getWorkspaceContext().requestId,
+        intent: payloadResult.data.intent,
+        tenantAdminTemporaryPassword: payloadResult.data.tenantAdminTemporaryPassword,
+      })
+    );
+    if (!run) {
+      return createApiError(404, 'not_found', 'Instanz wurde nicht gefunden.', getWorkspaceContext().requestId);
+    }
+    return jsonResponse(200, asApiItem(run, getWorkspaceContext().requestId));
   } catch (error) {
     return mapInstanceMutationError(error);
   }

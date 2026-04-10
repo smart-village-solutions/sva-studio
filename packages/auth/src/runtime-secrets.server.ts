@@ -38,6 +38,12 @@ export const getAuthStateSecret = (): string | undefined =>
 export const getKeycloakAdminClientSecret = (): string | undefined =>
   readEnvOrSecret(['KEYCLOAK_ADMIN_CLIENT_SECRET'], 'sva_studio_keycloak_admin_client_secret');
 
+export const getKeycloakProvisionerClientSecret = (): string | undefined =>
+  readEnvOrSecret(
+    ['KEYCLOAK_PROVISIONER_CLIENT_SECRET', 'KEYCLOAK_ADMIN_CLIENT_SECRET'],
+    'sva_studio_keycloak_provisioner_client_secret'
+  );
+
 export const getAppDbPassword = (): string | undefined =>
   readEnvOrSecret(['APP_DB_PASSWORD', 'POSTGRES_PASSWORD'], 'sva_studio_app_db_password');
 

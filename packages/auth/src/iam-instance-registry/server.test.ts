@@ -16,11 +16,17 @@ const coreHandlers = {
   getInstanceInternal: vi.fn(),
   createInstanceInternal: vi.fn(),
   updateInstanceInternal: vi.fn(),
-  getInstanceKeycloakStatusInternal: vi.fn(),
-  reconcileInstanceKeycloakInternal: vi.fn(),
   activateInstanceInternal: vi.fn(),
   suspendInstanceInternal: vi.fn(),
   archiveInstanceInternal: vi.fn(),
+};
+const keycloakHandlers = {
+  getInstanceKeycloakStatusInternal: vi.fn(),
+  getInstanceKeycloakPreflightInternal: vi.fn(),
+  planInstanceKeycloakProvisioningInternal: vi.fn(),
+  executeInstanceKeycloakProvisioningInternal: vi.fn(),
+  getInstanceKeycloakProvisioningRunInternal: vi.fn(),
+  reconcileInstanceKeycloakInternal: vi.fn(),
 };
 
 vi.mock('@sva/sdk/server', () => ({
@@ -38,6 +44,7 @@ vi.mock('../shared/log-context.js', () => ({
 }));
 
 vi.mock('./core.js', () => coreHandlers);
+vi.mock('./core-keycloak.js', () => keycloakHandlers);
 
 describe('iam-instance-registry server handlers', () => {
   beforeEach(() => {
@@ -50,36 +57,30 @@ describe('iam-instance-registry server handlers', () => {
     coreHandlers.getInstanceInternal.mockResolvedValue(new Response('detail', { status: 200 }));
     coreHandlers.createInstanceInternal.mockResolvedValue(new Response('create', { status: 201 }));
     coreHandlers.updateInstanceInternal.mockResolvedValue(new Response('update', { status: 200 }));
-    coreHandlers.getInstanceKeycloakStatusInternal.mockResolvedValue(new Response('status', { status: 200 }));
-    coreHandlers.reconcileInstanceKeycloakInternal.mockResolvedValue(new Response('reconcile', { status: 200 }));
+    keycloakHandlers.getInstanceKeycloakStatusInternal.mockResolvedValue(new Response('status', { status: 200 }));
+    keycloakHandlers.getInstanceKeycloakPreflightInternal.mockResolvedValue(new Response('preflight', { status: 200 }));
+    keycloakHandlers.planInstanceKeycloakProvisioningInternal.mockResolvedValue(new Response('plan', { status: 200 }));
+    keycloakHandlers.executeInstanceKeycloakProvisioningInternal.mockResolvedValue(new Response('execute', { status: 200 }));
+    keycloakHandlers.getInstanceKeycloakProvisioningRunInternal.mockResolvedValue(new Response('run', { status: 200 }));
+    keycloakHandlers.reconcileInstanceKeycloakInternal.mockResolvedValue(new Response('reconcile', { status: 200 }));
     coreHandlers.activateInstanceInternal.mockResolvedValue(new Response('activate', { status: 200 }));
     coreHandlers.suspendInstanceInternal.mockResolvedValue(new Response('suspend', { status: 200 }));
     coreHandlers.archiveInstanceInternal.mockResolvedValue(new Response('archive', { status: 200 }));
   });
 
   it('wraps registry handlers with request context and authentication', async () => {
-    const {
-      listInstancesHandler,
-      getInstanceHandler,
-      createInstanceHandler,
-      updateInstanceHandler,
-      getInstanceKeycloakStatusHandler,
-      reconcileInstanceKeycloakHandler,
-      activateInstanceHandler,
-      suspendInstanceHandler,
-      archiveInstanceHandler,
-    } = await import('./server.js');
+    const { instanceRegistryHandlers } = await import('./server.js');
     const request = new Request('https://studio.example.org/api/v1/iam/instances');
 
-    expect((await listInstancesHandler(request)).status).toBe(200);
-    expect((await getInstanceHandler(request)).status).toBe(200);
-    expect((await createInstanceHandler(request)).status).toBe(201);
-    expect((await updateInstanceHandler(request)).status).toBe(200);
-    expect((await getInstanceKeycloakStatusHandler(request)).status).toBe(200);
-    expect((await reconcileInstanceKeycloakHandler(request)).status).toBe(200);
-    expect((await activateInstanceHandler(request)).status).toBe(200);
-    expect((await suspendInstanceHandler(request)).status).toBe(200);
-    expect((await archiveInstanceHandler(request)).status).toBe(200);
+    expect((await instanceRegistryHandlers.listInstances(request)).status).toBe(200);
+    expect((await instanceRegistryHandlers.getInstance(request)).status).toBe(200);
+    expect((await instanceRegistryHandlers.createInstance(request)).status).toBe(201);
+    expect((await instanceRegistryHandlers.updateInstance(request)).status).toBe(200);
+    expect((await instanceRegistryHandlers.getInstanceKeycloakStatus(request)).status).toBe(200);
+    expect((await instanceRegistryHandlers.reconcileInstanceKeycloak(request)).status).toBe(200);
+    expect((await instanceRegistryHandlers.activateInstance(request)).status).toBe(200);
+    expect((await instanceRegistryHandlers.suspendInstance(request)).status).toBe(200);
+    expect((await instanceRegistryHandlers.archiveInstance(request)).status).toBe(200);
 
     expect(withRequestContextMock).toHaveBeenCalled();
     expect(withAuthenticatedUserMock).toHaveBeenCalledTimes(9);
@@ -89,9 +90,9 @@ describe('iam-instance-registry server handlers', () => {
 
   it('converts unexpected failures into sanitized json errors', async () => {
     withAuthenticatedUserMock.mockRejectedValueOnce(new Error('db offline'));
-    const { listInstancesHandler } = await import('./server.js');
+    const { instanceRegistryHandlers } = await import('./server.js');
 
-    const response = await listInstancesHandler(new Request('https://studio.example.org/api/v1/iam/instances'));
+    const response = await instanceRegistryHandlers.listInstances(new Request('https://studio.example.org/api/v1/iam/instances'));
 
     expect(response.status).toBe(500);
     expect(loggerMock.error).toHaveBeenCalledWith(

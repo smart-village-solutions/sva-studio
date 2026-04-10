@@ -357,6 +357,7 @@ export type CreateInstancePayload = {
   readonly instanceId: string;
   readonly displayName: string;
   readonly parentDomain: string;
+  readonly realmMode: 'new' | 'existing';
   readonly authRealm: string;
   readonly authClientId: string;
   readonly authIssuerUrl?: string;
@@ -375,6 +376,7 @@ export type CreateInstancePayload = {
 export type UpdateInstancePayload = {
   readonly displayName: string;
   readonly parentDomain: string;
+  readonly realmMode: 'new' | 'existing';
   readonly authRealm: string;
   readonly authClientId: string;
   readonly authIssuerUrl?: string;
@@ -393,6 +395,11 @@ export type UpdateInstancePayload = {
 export type ReconcileInstanceKeycloakPayload = {
   readonly tenantAdminTemporaryPassword?: string;
   readonly rotateClientSecret?: boolean;
+};
+
+export type ExecuteInstanceKeycloakProvisioningPayload = {
+  readonly intent: 'provision' | 'reset_tenant_admin' | 'rotate_client_secret';
+  readonly tenantAdminTemporaryPassword?: string;
 };
 
 type IamRequestOptions = Readonly<{
@@ -691,6 +698,39 @@ export const getInstanceKeycloakStatus = async (
   instanceId: string
 ): Promise<ApiItemResponse<IamInstanceDetail['keycloakStatus']>> =>
   requestJson<ApiItemResponse<IamInstanceDetail['keycloakStatus']>>(`/api/v1/iam/instances/${instanceId}/keycloak/status`);
+
+export const getInstanceKeycloakPreflight = async (
+  instanceId: string
+): Promise<ApiItemResponse<IamInstanceDetail['keycloakPreflight']>> =>
+  requestJson<ApiItemResponse<IamInstanceDetail['keycloakPreflight']>>(
+    `/api/v1/iam/instances/${instanceId}/keycloak/preflight`
+  );
+
+export const planInstanceKeycloakProvisioning = async (
+  instanceId: string
+): Promise<ApiItemResponse<IamInstanceDetail['keycloakPlan']>> =>
+  postJsonWithReauth<ApiItemResponse<IamInstanceDetail['keycloakPlan']>, Record<string, never>>(
+    `/api/v1/iam/instances/${instanceId}/keycloak/plan`,
+    {},
+    true
+  );
+
+export const executeInstanceKeycloakProvisioning = async (
+  instanceId: string,
+  payload: ExecuteInstanceKeycloakProvisioningPayload
+): Promise<ApiItemResponse<IamInstanceDetail['latestKeycloakProvisioningRun']>> =>
+  postJsonWithReauth<
+    ApiItemResponse<IamInstanceDetail['latestKeycloakProvisioningRun']>,
+    ExecuteInstanceKeycloakProvisioningPayload
+  >(`/api/v1/iam/instances/${instanceId}/keycloak/execute`, payload, true);
+
+export const getInstanceKeycloakProvisioningRun = async (
+  instanceId: string,
+  runId: string
+): Promise<ApiItemResponse<IamInstanceDetail['latestKeycloakProvisioningRun']>> =>
+  requestJson<ApiItemResponse<IamInstanceDetail['latestKeycloakProvisioningRun']>>(
+    `/api/v1/iam/instances/${instanceId}/keycloak/runs/${runId}`
+  );
 
 export const getRuntimeHealth = async (options: IamRequestOptions = {}): Promise<RuntimeHealthResponse> =>
   requestJson<RuntimeHealthResponse>('/api/v1/iam/health/ready', {

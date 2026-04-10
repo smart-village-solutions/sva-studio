@@ -134,6 +134,10 @@ Serverseitige Autorisierungsentscheidungen auf Basis des RBAC/ABAC-Modells aus `
 | `KEYCLOAK_ADMIN_REALM` | Realm des Service-Accounts für den technischen Token-Bezug, nicht der Ziel-Realm der Instanz | Für IAM-Admin-Client |
 | `KEYCLOAK_ADMIN_CLIENT_ID` | Service-Client-ID (z. B. `sva-studio-iam-service`) | Für IAM-Admin-Client |
 | `KEYCLOAK_ADMIN_CLIENT_SECRET` | Service-Client-Secret | Für IAM-Admin-Client |
+| `KEYCLOAK_PROVISIONER_BASE_URL` | Keycloak-Basis-URL für den Provisioning-Worker | Für globalen Provisioner |
+| `KEYCLOAK_PROVISIONER_REALM` | Realm des globalen Provisioner-Service-Accounts (typisch `master`) | Für globalen Provisioner |
+| `KEYCLOAK_PROVISIONER_CLIENT_ID` | Client-ID des globalen Provisioners | Für globalen Provisioner |
+| `KEYCLOAK_PROVISIONER_CLIENT_SECRET` | Secret des globalen Provisioners | Für globalen Provisioner |
 
 Hinweis: Der Keycloak Admin Client unterstützt Keycloak **>= 22.0**.
 

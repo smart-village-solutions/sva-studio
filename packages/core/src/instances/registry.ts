@@ -23,6 +23,7 @@ export type InstanceRegistryRecord = {
   readonly status: InstanceStatus;
   readonly parentDomain: string;
   readonly primaryHostname: string;
+  readonly realmMode: InstanceRealmMode;
   readonly authRealm: string;
   readonly authClientId: string;
   readonly authIssuerUrl?: string;
@@ -42,6 +43,7 @@ export type InstanceRegistryRecord = {
   readonly updatedBy?: string;
 };
 
+export type InstanceRealmMode = 'new' | 'existing';
 export type InstanceProvisioningOperation = 'create' | 'activate' | 'suspend' | 'archive';
 
 export type InstanceProvisioningRun = {
@@ -72,6 +74,69 @@ export type InstanceAuditEvent = {
   readonly requestId?: string;
   readonly details: Readonly<Record<string, unknown>>;
   readonly createdAt: string;
+};
+
+export type InstanceKeycloakProvisioningIntent =
+  | 'provision'
+  | 'reset_tenant_admin'
+  | 'rotate_client_secret';
+
+export type InstanceKeycloakProvisioningRunStatus =
+  | 'planned'
+  | 'running'
+  | 'succeeded'
+  | 'failed';
+
+export type InstanceKeycloakProvisioningStepStatus =
+  | 'pending'
+  | 'running'
+  | 'done'
+  | 'failed'
+  | 'skipped'
+  | 'unchanged';
+
+export type InstanceKeycloakCheckStatus = 'ready' | 'warning' | 'blocked';
+
+export type InstanceKeycloakPreflightCheck = {
+  readonly checkKey: string;
+  readonly title: string;
+  readonly status: InstanceKeycloakCheckStatus;
+  readonly summary: string;
+  readonly details: Readonly<Record<string, unknown>>;
+};
+
+export type InstanceKeycloakProvisioningPlanStep = {
+  readonly stepKey: string;
+  readonly title: string;
+  readonly action: 'create' | 'update' | 'verify' | 'skip';
+  readonly status: 'ready' | 'blocked';
+  readonly summary: string;
+  readonly details: Readonly<Record<string, unknown>>;
+};
+
+export type InstanceKeycloakProvisioningRunStep = {
+  readonly stepKey: string;
+  readonly title: string;
+  readonly status: InstanceKeycloakProvisioningStepStatus;
+  readonly startedAt?: string;
+  readonly finishedAt?: string;
+  readonly summary: string;
+  readonly details: Readonly<Record<string, unknown>>;
+  readonly requestId?: string;
+};
+
+export type InstanceKeycloakProvisioningRun = {
+  readonly id: string;
+  readonly instanceId: string;
+  readonly mode: InstanceRealmMode;
+  readonly intent: InstanceKeycloakProvisioningIntent;
+  readonly overallStatus: InstanceKeycloakProvisioningRunStatus;
+  readonly driftSummary: string;
+  readonly requestId?: string;
+  readonly actorId?: string;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+  readonly steps: readonly InstanceKeycloakProvisioningRunStep[];
 };
 
 export type HostClassification =

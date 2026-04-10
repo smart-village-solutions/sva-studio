@@ -646,12 +646,14 @@ describe('iam-api instance helpers', () => {
       instanceId: 'demo',
       displayName: 'Demo',
       parentDomain: 'studio.example.org',
+      realmMode: 'new',
       authRealm: 'demo',
       authClientId: 'sva-studio',
     });
     await updateInstance('demo', {
       displayName: 'Demo Updated',
       parentDomain: 'studio.example.org',
+      realmMode: 'existing',
       authRealm: 'demo',
       authClientId: 'sva-studio',
     });

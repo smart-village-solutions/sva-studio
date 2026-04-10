@@ -299,51 +299,51 @@ const authHandlerMap = {
   '/api/v1/iam/instances': {
     GET: async (ctx: { request: Request }) => {
       const mod = await import('@sva/auth/runtime-routes');
-      return mod.listInstancesHandler(ctx.request);
+      return mod.instanceRegistryHandlers.listInstances(ctx.request);
     },
     POST: async (ctx: { request: Request }) => {
       const mod = await import('@sva/auth/runtime-routes');
-      return mod.createInstanceHandler(ctx.request);
+      return mod.instanceRegistryHandlers.createInstance(ctx.request);
     },
   },
   '/api/v1/iam/instances/$instanceId': {
     GET: async (ctx: { request: Request }) => {
       const mod = await import('@sva/auth/runtime-routes');
-      return mod.getInstanceHandler(ctx.request);
+      return mod.instanceRegistryHandlers.getInstance(ctx.request);
     },
     PATCH: async (ctx: { request: Request }) => {
       const mod = await import('@sva/auth/runtime-routes');
-      return mod.updateInstanceHandler(ctx.request);
+      return mod.instanceRegistryHandlers.updateInstance(ctx.request);
     },
   },
   '/api/v1/iam/instances/$instanceId/keycloak/status': {
     GET: async (ctx: { request: Request }) => {
       const mod = await import('@sva/auth/runtime-routes');
-      return mod.getInstanceKeycloakStatusHandler(ctx.request);
+      return mod.instanceRegistryHandlers.getInstanceKeycloakStatus(ctx.request);
     },
   },
   '/api/v1/iam/instances/$instanceId/keycloak/reconcile': {
     POST: async (ctx: { request: Request }) => {
       const mod = await import('@sva/auth/runtime-routes');
-      return mod.reconcileInstanceKeycloakHandler(ctx.request);
+      return mod.instanceRegistryHandlers.reconcileInstanceKeycloak(ctx.request);
     },
   },
   '/api/v1/iam/instances/$instanceId/activate': {
     POST: async (ctx: { request: Request }) => {
       const mod = await import('@sva/auth/runtime-routes');
-      return mod.activateInstanceHandler(ctx.request);
+      return mod.instanceRegistryHandlers.activateInstance(ctx.request);
     },
   },
   '/api/v1/iam/instances/$instanceId/suspend': {
     POST: async (ctx: { request: Request }) => {
       const mod = await import('@sva/auth/runtime-routes');
-      return mod.suspendInstanceHandler(ctx.request);
+      return mod.instanceRegistryHandlers.suspendInstance(ctx.request);
     },
   },
   '/api/v1/iam/instances/$instanceId/archive': {
     POST: async (ctx: { request: Request }) => {
       const mod = await import('@sva/auth/runtime-routes');
-      return mod.archiveInstanceHandler(ctx.request);
+      return mod.instanceRegistryHandlers.archiveInstance(ctx.request);
     },
   },
   '/api/v1/iam/contents': {

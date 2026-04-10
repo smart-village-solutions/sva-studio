@@ -161,7 +161,9 @@ export const useUsers = (initial?: Partial<UserFilters>): UseUsersResult => {
       logBrowserOperationStart(usersLogger, `${operation}_started`, { operation });
       try {
         const result = await action();
-        await loadUsers();
+        // Do not block the visible mutation result on the follow-up list refresh.
+        // If the reload is slow, the create/edit/deactivate flow should still complete.
+        void loadUsers();
         logBrowserOperationSuccess(usersLogger, `${operation}_succeeded`, { operation });
         return result;
       } catch (cause) {

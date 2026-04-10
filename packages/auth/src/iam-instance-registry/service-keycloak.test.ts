@@ -15,6 +15,7 @@ vi.mock('@sva/sdk/server', () => ({
 }));
 
 vi.mock('../iam-account-management/encryption.js', () => ({
+  protectField: vi.fn((value: string) => `enc:${value}`),
   revealField: (ciphertext: string | null | undefined, aad: string) => state.revealField(ciphertext, aad),
 }));
 
@@ -63,83 +64,55 @@ describe('iam-instance-registry service-keycloak helpers', () => {
     await expect(getStatus('bb-guben')).resolves.toBeNull();
   });
 
-  it('resolves keycloak status with decrypted tenant secret', async () => {
-    state.revealField.mockReturnValue('tenant-secret-value');
+  it('resolves keycloak status from the latest worker snapshot', async () => {
     const { createGetKeycloakStatusHandler } = await import('./service-keycloak.js');
     const repository = {
       getInstanceById: vi.fn().mockResolvedValue({
         instanceId: 'bb-guben',
-        primaryHostname: 'bb-guben.studio.smart-village.app',
-        authRealm: 'bb-guben',
-        authClientId: 'sva-studio',
-        authIssuerUrl: 'https://keycloak.example.com/realms/bb-guben',
-        authClientSecretConfigured: true,
-        tenantAdminBootstrap: { username: 'bootstrap-user' },
       }),
-      getAuthClientSecretCiphertext: vi.fn().mockResolvedValue('enc:value'),
+      listKeycloakProvisioningRuns: vi.fn().mockResolvedValue([
+        {
+          id: 'run-1',
+          instanceId: 'bb-guben',
+          mode: 'existing',
+          intent: 'provision',
+          overallStatus: 'succeeded',
+          driftSummary: 'ok',
+          steps: [
+            {
+              stepKey: 'status_snapshot',
+              title: 'snapshot',
+              status: 'done',
+              summary: 'saved',
+              details: {
+                status: { realmExists: true, clientExists: true },
+              },
+            },
+          ],
+        },
+      ]),
     };
-    const getKeycloakStatus = vi.fn().mockResolvedValue({ realmExists: true });
 
     const getStatus = createGetKeycloakStatusHandler({
       repository: repository as never,
       invalidateHost: vi.fn(),
-      getKeycloakStatus,
     });
 
-    await expect(getStatus('bb-guben')).resolves.toEqual({ realmExists: true });
-    expect(getKeycloakStatus).toHaveBeenCalledWith(
-      expect.objectContaining({
-        instanceId: 'bb-guben',
-        authClientSecret: 'tenant-secret-value',
-      })
-    );
+    await expect(getStatus('bb-guben')).resolves.toEqual({ realmExists: true, clientExists: true });
     expect(state.logger.info).toHaveBeenCalledWith(
       'keycloak_status_check_completed',
       expect.objectContaining({ instance_id: 'bb-guben' })
     );
   });
 
-  it('throws when reconcile requires a missing tenant secret', async () => {
-    state.revealField.mockReturnValue(undefined);
-    const { createReconcileKeycloakHandler } = await import('./service-keycloak.js');
-    const repository = {
-      getInstanceById: vi.fn().mockResolvedValue({
-        instanceId: 'bb-guben',
-        primaryHostname: 'bb-guben.studio.smart-village.app',
-        authRealm: 'bb-guben',
-        authClientId: 'sva-studio',
-        authClientSecretConfigured: true,
-      }),
-      getAuthClientSecretCiphertext: vi.fn().mockResolvedValue('enc:value'),
-    };
-
-    const reconcile = createReconcileKeycloakHandler({
-      repository: repository as never,
-      invalidateHost: vi.fn(),
-      provisionInstanceAuth: vi.fn(),
-      getKeycloakStatus: vi.fn(),
-    });
-
-    await expect(
-      reconcile({
-        instanceId: 'bb-guben',
-        actorId: 'actor-1',
-        requestId: 'req-1',
-      })
-    ).rejects.toThrow('tenant_auth_client_secret_missing');
-    expect(state.logger.error).toHaveBeenCalledWith(
-      'tenant_auth_client_secret_missing',
-      expect.objectContaining({ instance_id: 'bb-guben', request_id: 'req-1' })
-    );
-  });
-
-  it('reconciles the tenant auth artifacts and returns refreshed status', async () => {
+  it('builds a local warning preflight until the worker has produced a snapshot', async () => {
     state.revealField.mockReturnValue('tenant-secret-value');
-    const { createReconcileKeycloakHandler } = await import('./service-keycloak.js');
+    const { createGetKeycloakPreflightHandler } = await import('./service-keycloak.js');
     const repository = {
       getInstanceById: vi.fn().mockResolvedValue({
         instanceId: 'bb-guben',
         primaryHostname: 'bb-guben.studio.smart-village.app',
+        realmMode: 'existing',
         authRealm: 'bb-guben',
         authClientId: 'sva-studio',
         authIssuerUrl: 'https://keycloak.example.com/realms/bb-guben',
@@ -147,15 +120,55 @@ describe('iam-instance-registry service-keycloak helpers', () => {
         tenantAdminBootstrap: { username: 'bootstrap-user' },
       }),
       getAuthClientSecretCiphertext: vi.fn().mockResolvedValue('enc:value'),
+      listKeycloakProvisioningRuns: vi.fn().mockResolvedValue([]),
     };
-    const provisionInstanceAuth = vi.fn().mockResolvedValue(undefined);
-    const getKeycloakStatus = vi.fn().mockResolvedValue({ secretAligned: true });
+
+    const getPreflight = createGetKeycloakPreflightHandler({
+      repository: repository as never,
+      invalidateHost: vi.fn(),
+    });
+
+    await expect(getPreflight('bb-guben')).resolves.toEqual(
+      expect.objectContaining({
+        overallStatus: 'warning',
+        checks: expect.arrayContaining([
+          expect.objectContaining({
+            checkKey: 'keycloak_admin_access',
+            status: 'warning',
+          }),
+        ]),
+      })
+    );
+  });
+
+  it('reconcile enqueues a provisioning run and returns no immediate status snapshot', async () => {
+    state.revealField.mockReturnValue('tenant-secret-value');
+    const { createReconcileKeycloakHandler } = await import('./service-keycloak.js');
+    const repository = {
+      getInstanceById: vi.fn().mockResolvedValue({
+        instanceId: 'bb-guben',
+        primaryHostname: 'bb-guben.studio.smart-village.app',
+        realmMode: 'existing',
+        authRealm: 'bb-guben',
+        authClientId: 'sva-studio',
+        authClientSecretConfigured: true,
+        tenantAdminBootstrap: { username: 'bootstrap-user' },
+      }),
+      getAuthClientSecretCiphertext: vi.fn().mockResolvedValue('enc:value'),
+      createKeycloakProvisioningRun: vi.fn().mockResolvedValue({
+        id: 'run-1',
+      }),
+      appendKeycloakProvisioningStep: vi.fn().mockResolvedValue(undefined),
+      getKeycloakProvisioningRun: vi.fn().mockResolvedValue({
+        id: 'run-1',
+        overallStatus: 'planned',
+      }),
+      listKeycloakProvisioningRuns: vi.fn().mockResolvedValue([]),
+    };
 
     const reconcile = createReconcileKeycloakHandler({
       repository: repository as never,
       invalidateHost: vi.fn(),
-      provisionInstanceAuth,
-      getKeycloakStatus,
     });
 
     await expect(
@@ -163,25 +176,69 @@ describe('iam-instance-registry service-keycloak helpers', () => {
         instanceId: 'bb-guben',
         actorId: 'actor-1',
         requestId: 'req-1',
-        tenantAdminTemporaryPassword: 'test-temp-password',
         rotateClientSecret: true,
       })
-    ).resolves.toEqual({ secretAligned: true });
-
-    expect(provisionInstanceAuth).toHaveBeenCalledWith(
+    ).resolves.toBeNull();
+    expect(repository.createKeycloakProvisioningRun).toHaveBeenCalledWith(
       expect.objectContaining({
         instanceId: 'bb-guben',
-        authClientSecret: 'tenant-secret-value',
-        rotateClientSecret: true,
+        overallStatus: 'planned',
+        intent: 'rotate_client_secret',
       })
     );
-    expect(state.logger.info).toHaveBeenCalledWith(
-      'keycloak_reconcile_started',
-      expect.objectContaining({ instance_id: 'bb-guben', request_id: 'req-1' })
-    );
-    expect(state.logger.info).toHaveBeenCalledWith(
-      'keycloak_reconcile_completed',
-      expect.objectContaining({ instance_id: 'bb-guben', request_id: 'req-1' })
+  });
+
+  it('loads the latest preflight snapshot from the worker run', async () => {
+    state.revealField.mockReturnValue('tenant-secret-value');
+    const { createGetKeycloakPreflightHandler } = await import('./service-keycloak.js');
+    const repository = {
+      getInstanceById: vi.fn().mockResolvedValue({
+        instanceId: 'bb-guben',
+        primaryHostname: 'bb-guben.studio.smart-village.app',
+        realmMode: 'existing',
+        authRealm: 'bb-guben',
+        authClientId: 'sva-studio',
+        authIssuerUrl: 'https://keycloak.example.com/realms/bb-guben',
+        authClientSecretConfigured: true,
+        tenantAdminBootstrap: { username: 'bootstrap-user' },
+      }),
+      getAuthClientSecretCiphertext: vi.fn().mockResolvedValue('enc:value'),
+      listKeycloakProvisioningRuns: vi.fn().mockResolvedValue([
+        {
+          id: 'run-1',
+          instanceId: 'bb-guben',
+          mode: 'existing',
+          intent: 'provision',
+          overallStatus: 'succeeded',
+          driftSummary: 'ok',
+          steps: [
+            {
+              stepKey: 'worker_preflight_snapshot',
+              title: 'Vorbedingungen prüfen',
+              status: 'done',
+              summary: 'ok',
+              details: {
+                preflight: {
+                  overallStatus: 'ready',
+                  checkedAt: '2026-01-01T00:00:00.000Z',
+                  checks: [],
+                },
+              },
+            },
+          ],
+        },
+      ]),
+    };
+
+    const getPreflight = createGetKeycloakPreflightHandler({
+      repository: repository as never,
+      invalidateHost: vi.fn(),
+    });
+
+    await expect(getPreflight('bb-guben')).resolves.toEqual(
+      expect.objectContaining({
+        overallStatus: 'ready',
+      })
     );
   });
 

@@ -1,1 +1,5 @@
-export { getKeycloakAdminClientConfigFromEnv, type KeycloakAdminClientConfig } from './core.js';
+export {
+  getKeycloakAdminClientConfigFromEnv,
+  getKeycloakProvisionerClientConfigFromEnv,
+  type KeycloakAdminClientConfig,
+} from './core.js';

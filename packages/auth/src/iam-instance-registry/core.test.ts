@@ -103,16 +103,13 @@ import {
   activateInstanceInternal,
   archiveInstanceInternal,
   createInstanceInternal,
-  createTenantForbiddenResponse,
   getInstanceInternal,
-  getInstanceKeycloakStatusInternal,
-  isInstanceTrafficAllowed,
   listInstancesInternal,
-  reconcileInstanceKeycloakInternal,
-  resolveRuntimeInstanceFromRequest,
   suspendInstanceInternal,
   updateInstanceInternal,
 } from './core.js';
+import { getInstanceKeycloakStatusInternal, reconcileInstanceKeycloakInternal } from './core-keycloak.js';
+import { createTenantForbiddenResponse, isInstanceTrafficAllowed, resolveRuntimeInstanceFromRequest } from './core-runtime.js';
 
 describe('iam-instance-registry core handlers', () => {
   const ctx = { user: { id: 'admin-1' } } as never;

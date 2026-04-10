@@ -1,5 +1,5 @@
 import { createSdkLogger } from '@sva/sdk/server';
-import { getKeycloakAdminClientSecret } from '../runtime-secrets.server.js';
+import { getKeycloakAdminClientSecret, getKeycloakProvisionerClientSecret } from '../runtime-secrets.server.js';
 
 import type {
   CreateIdentityRoleInput,
@@ -1352,4 +1352,17 @@ export const getKeycloakAdminClientConfigFromEnv = (realm = requireEnv('KEYCLOAK
   adminRealm: requireEnv('KEYCLOAK_ADMIN_REALM'),
   clientId: requireEnv('KEYCLOAK_ADMIN_CLIENT_ID'),
   clientSecret: getKeycloakAdminClientSecret() ?? requireEnv('KEYCLOAK_ADMIN_CLIENT_SECRET'),
+});
+
+const readProvisionerEnv = (key: 'BASE_URL' | 'REALM' | 'CLIENT_ID' | 'CLIENT_SECRET'): string =>
+  process.env[`KEYCLOAK_PROVISIONER_${key}`] || requireEnv(`KEYCLOAK_ADMIN_${key}`);
+
+export const getKeycloakProvisionerClientConfigFromEnv = (
+  realm = readProvisionerEnv('REALM')
+): KeycloakAdminClientConfig => ({
+  baseUrl: readProvisionerEnv('BASE_URL'),
+  realm,
+  adminRealm: readProvisionerEnv('REALM'),
+  clientId: readProvisionerEnv('CLIENT_ID'),
+  clientSecret: getKeycloakProvisionerClientSecret() ?? readProvisionerEnv('CLIENT_SECRET'),
 });

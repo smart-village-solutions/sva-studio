@@ -89,6 +89,36 @@ describe('createDataClient', () => {
     );
   });
 
+  it('returns cached payload without schema validation on cache hit', async () => {
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ health: 'ok' }),
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = createDataClient({ baseUrl: 'https://data.example.invalid', cacheTtlMs: 10_000 });
+
+    await expect(client.get('/health/raw')).resolves.toEqual({ health: 'ok' });
+    await expect(client.get('/health/raw')).resolves.toEqual({ health: 'ok' });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('handles non-ok responses without injected logger', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({
+        ok: false,
+        status: 500,
+      }))
+    );
+
+    const client = createDataClient({ baseUrl: 'https://data.example.invalid' });
+
+    await expect(client.get('/default-logger-failure')).rejects.toThrow(
+      'DataClient GET /default-logger-failure failed with 500'
+    );
+  });
+
   it('logs schema validation failures for network payloads', async () => {
     vi.stubGlobal(
       'fetch',

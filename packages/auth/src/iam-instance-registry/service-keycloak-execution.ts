@@ -41,7 +41,11 @@ const appendWorkerRunningStep = async (deps: InstanceRegistryServiceDeps, run: I
   });
 
 const appendPreflightSnapshot = async (deps: InstanceRegistryServiceDeps, run: InstanceKeycloakProvisioningRun, provisioningInput: ReturnType<typeof buildProvisioningInput>) => {
-  const preflight = await deps.getKeycloakPreflight!(provisioningInput);
+  const getKeycloakPreflight = deps.getKeycloakPreflight;
+  if (!getKeycloakPreflight) {
+    throw new Error('dependency_missing_getKeycloakPreflight');
+  }
+  const preflight = await getKeycloakPreflight(provisioningInput);
   await appendRunStep(deps, {
     runId: run.id,
     stepKey: 'worker_preflight_snapshot',
@@ -58,7 +62,11 @@ const appendPreflightSnapshot = async (deps: InstanceRegistryServiceDeps, run: I
 };
 
 const appendPlanSnapshot = async (deps: InstanceRegistryServiceDeps, run: InstanceKeycloakProvisioningRun, provisioningInput: ReturnType<typeof buildProvisioningInput>) => {
-  const plan = await deps.planKeycloakProvisioning!(provisioningInput);
+  const planKeycloakProvisioning = deps.planKeycloakProvisioning;
+  if (!planKeycloakProvisioning) {
+    throw new Error('dependency_missing_planKeycloakProvisioning');
+  }
+  const plan = await planKeycloakProvisioning(provisioningInput);
   await appendRunStep(deps, {
     runId: run.id,
     stepKey: 'worker_plan_snapshot',
@@ -103,7 +111,12 @@ const executeClaimedRun = async (deps: InstanceRegistryServiceDeps, run: Instanc
     return deps.repository.getKeycloakProvisioningRun(run.instanceId, run.id);
   }
 
-  await deps.provisionInstanceAuth!({
+  const provisionInstanceAuth = deps.provisionInstanceAuth;
+  if (!provisionInstanceAuth) {
+    throw new Error('dependency_missing_provisionInstanceAuth');
+  }
+
+  await provisionInstanceAuth({
     ...provisioningInput,
     tenantAdminTemporaryPassword,
     rotateClientSecret: run.intent === 'rotate_client_secret',

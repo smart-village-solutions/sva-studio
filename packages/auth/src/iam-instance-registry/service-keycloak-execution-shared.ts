@@ -168,7 +168,11 @@ export const completeRun = async (
     tenantAdminTemporaryPassword?: string;
   }
 ) => {
-  const status = await deps.getKeycloakStatus!(buildProvisioningInput(input.loaded));
+  const getKeycloakStatus = deps.getKeycloakStatus;
+  if (!getKeycloakStatus) {
+    throw new Error('dependency_missing_getKeycloakStatus');
+  }
+  const status = await getKeycloakStatus(buildProvisioningInput(input.loaded));
 
   await appendRunStep(deps, {
     runId: input.runId,

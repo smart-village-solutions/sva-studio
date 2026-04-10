@@ -202,6 +202,7 @@ describe('iam-instance-registry keycloak execution handlers', () => {
         overallStatus: 'succeeded',
       }),
       updateInstance: vi.fn().mockResolvedValue({}),
+      setInstanceStatus: vi.fn().mockResolvedValue({ status: 'provisioning' }),
     };
 
     const deps = {

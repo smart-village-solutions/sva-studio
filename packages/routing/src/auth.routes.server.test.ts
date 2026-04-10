@@ -177,10 +177,17 @@ describe('auth.routes.server', () => {
     expect(readyHandlers?.GET).toBeDefined();
     expect(liveHandlers?.GET).toBeDefined();
 
-    const readyResponse = await readyHandlers!.GET!({
+    const readyGet = readyHandlers?.GET;
+    const liveGet = liveHandlers?.GET;
+
+    if (!readyGet || !liveGet) {
+      throw new Error('Expected GET handlers to be defined');
+    }
+
+    const readyResponse = await readyGet({
       request: new Request('http://localhost/api/v1/iam/health/ready', { method: 'GET' }),
     });
-    const liveResponse = await liveHandlers!.GET!({
+    const liveResponse = await liveGet({
       request: new Request('http://localhost/api/v1/iam/health/live', { method: 'GET' }),
     });
 

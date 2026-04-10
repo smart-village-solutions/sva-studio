@@ -1,5 +1,4 @@
 import { coreVersion } from '@sva/core';
-import { createSdkLogger } from '@sva/sdk/server';
 import { z } from 'zod';
 
 export * from './iam/repositories.js';
@@ -14,7 +13,12 @@ type CacheEntry<T> = {
 };
 
 const inMemoryCache = new Map<string, CacheEntry<unknown>>();
-const logger = createSdkLogger({ component: 'data-client', level: 'info' });
+
+// No-op logger to avoid SDK dependency in universal module
+const logger = {
+  debug: () => undefined,
+  error: () => undefined,
+};
 
 export type DataClientOptions = {
   baseUrl: string;

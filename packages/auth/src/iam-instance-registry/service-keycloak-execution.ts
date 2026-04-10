@@ -174,7 +174,7 @@ export const processClaimedKeycloakProvisioningRun = async (
   await appendWorkerRunningStep(deps, run);
 
   try {
-    return executeClaimedRun(deps, run, loaded, tenantAdminTemporaryPassword, provisioningInput);
+    return await executeClaimedRun(deps, run, loaded, tenantAdminTemporaryPassword, provisioningInput);
   } catch (error) {
     await failRun(deps, { runId: run.id, requestId: run.requestId, error });
     logger.error('keycloak_provisioning_failed', {

@@ -369,7 +369,7 @@ export const getSetupWorkflowSteps = (
             ? t('admin.instances.workflow.provisioning.running')
           : t('admin.instances.workflow.keycloakAccess.pending'),
       status:
-        keycloakUnavailable ? 'blocked' : keycloakAccessCheck?.status === 'ready' ? 'done' : provisioningQueued || provisioningRunning ? 'current' : 'current',
+        keycloakUnavailable ? 'blocked' : keycloakAccessCheck?.status === 'ready' ? 'done' : 'current',
       actionLabel: t('admin.instances.actions.checkPreflight'),
       action: 'check_preflight',
     }),

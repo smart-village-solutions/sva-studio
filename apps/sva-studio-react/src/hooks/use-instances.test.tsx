@@ -14,7 +14,9 @@ const listInstancesMock = vi.fn();
 const getInstanceMock = vi.fn();
 const getInstanceKeycloakStatusMock = vi.fn();
 const getInstanceKeycloakPreflightMock = vi.fn();
+const getInstanceKeycloakProvisioningRunMock = vi.fn();
 const planInstanceKeycloakProvisioningMock = vi.fn();
+const executeInstanceKeycloakProvisioningMock = vi.fn();
 const createInstanceMock = vi.fn();
 const updateInstanceMock = vi.fn();
 const reconcileInstanceKeycloakMock = vi.fn();
@@ -50,7 +52,9 @@ vi.mock('../lib/iam-api', () => ({
   getInstance: (...args: unknown[]) => getInstanceMock(...args),
   getInstanceKeycloakStatus: (...args: unknown[]) => getInstanceKeycloakStatusMock(...args),
   getInstanceKeycloakPreflight: (...args: unknown[]) => getInstanceKeycloakPreflightMock(...args),
+  getInstanceKeycloakProvisioningRun: (...args: unknown[]) => getInstanceKeycloakProvisioningRunMock(...args),
   planInstanceKeycloakProvisioning: (...args: unknown[]) => planInstanceKeycloakProvisioningMock(...args),
+  executeInstanceKeycloakProvisioning: (...args: unknown[]) => executeInstanceKeycloakProvisioningMock(...args),
   createInstance: (...args: unknown[]) => createInstanceMock(...args),
   updateInstance: (...args: unknown[]) => updateInstanceMock(...args),
   reconcileInstanceKeycloak: (...args: unknown[]) => reconcileInstanceKeycloakMock(...args),
@@ -91,6 +95,7 @@ describe('useInstances', () => {
         primaryHostname: 'demo.studio.example.org',
         hostnames: [],
         provisioningRuns: [],
+        keycloakProvisioningRuns: [],
         auditEvents: [],
       },
     });
@@ -105,11 +110,17 @@ describe('useInstances', () => {
         checks: [],
       },
     });
+    getInstanceKeycloakProvisioningRunMock.mockResolvedValue({
+      data: null,
+    });
     planInstanceKeycloakProvisioningMock.mockResolvedValue({
       data: {
         overallStatus: 'ready',
         steps: [],
       },
+    });
+    executeInstanceKeycloakProvisioningMock.mockResolvedValue({
+      data: null,
     });
     createInstanceMock.mockResolvedValue({
       data: {
@@ -129,6 +140,7 @@ describe('useInstances', () => {
         primaryHostname: 'demo.studio.example.org',
         hostnames: [],
         provisioningRuns: [],
+        keycloakProvisioningRuns: [],
         auditEvents: [],
       },
     });
@@ -453,5 +465,101 @@ describe('useInstances', () => {
     expect(result.current.mutationError).toEqual(
       expect.objectContaining({ status: 502, code: 'keycloak_unavailable' })
     );
+  });
+
+  it('stores provisioning runs returned by execute and load operations', async () => {
+    const { result } = renderHook(() => useInstances());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    await act(async () => {
+      await result.current.loadInstance('demo');
+    });
+
+    reconcileInstanceKeycloakMock.mockResolvedValueOnce({
+      data: {
+        realmExists: true,
+        clientExists: true,
+        runtimeSecretSource: 'tenant',
+      },
+    });
+
+    const queuedRun = {
+      id: 'run-2',
+      intent: 'provision',
+      mode: 'existing',
+      overallStatus: 'planned',
+      driftSummary: 'queued',
+      requestId: 'req-2',
+      steps: [],
+    };
+    const finishedRun = {
+      ...queuedRun,
+      overallStatus: 'succeeded',
+      driftSummary: 'done',
+    };
+
+    executeInstanceKeycloakProvisioningMock.mockResolvedValueOnce({
+      data: queuedRun,
+    });
+    getInstanceKeycloakProvisioningRunMock.mockResolvedValueOnce({
+      data: finishedRun,
+    });
+
+    await act(async () => {
+      const queued = await result.current.executeKeycloakProvisioning('demo', { intent: 'provision' });
+      expect(queued).toEqual(queuedRun);
+    });
+
+    await act(async () => {
+      const loaded = await result.current.loadKeycloakProvisioningRun('demo', 'run-2');
+      expect(loaded).toEqual(finishedRun);
+    });
+
+    expect(result.current.selectedInstance?.latestKeycloakProvisioningRun).toEqual(finishedRun);
+    expect(result.current.selectedInstance?.keycloakProvisioningRuns?.[0]).toEqual(finishedRun);
+
+    await act(async () => {
+      const reconciled = await result.current.reconcileKeycloak('demo', { rotateClientSecret: true });
+      expect(reconciled).toEqual(
+        expect.objectContaining({
+          clientExists: true,
+          runtimeSecretSource: 'tenant',
+        })
+      );
+    });
+  });
+
+  it('keeps selected instance unchanged when provisioning updates target a different instance', async () => {
+    const { result } = renderHook(() => useInstances());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    await act(async () => {
+      await result.current.loadInstance('demo');
+    });
+
+    executeInstanceKeycloakProvisioningMock.mockResolvedValueOnce({
+      data: {
+        id: 'run-3',
+        intent: 'provision',
+        mode: 'existing',
+        overallStatus: 'planned',
+        driftSummary: 'queued',
+        requestId: 'req-3',
+        steps: [],
+      },
+    });
+
+    await act(async () => {
+      await result.current.executeKeycloakProvisioning('other', { intent: 'provision' });
+      await result.current.loadKeycloakProvisioningRun('other', 'run-3');
+    });
+
+    expect(result.current.selectedInstance?.instanceId).toBe('demo');
   });
 });

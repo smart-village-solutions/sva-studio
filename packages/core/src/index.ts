@@ -38,6 +38,11 @@ export {
   normalizeHost,
   trafficEnabledInstanceStatuses,
 } from './instances/registry.js';
+export {
+  areAllInstanceKeycloakRequirementsSatisfied,
+  INSTANCE_KEYCLOAK_REQUIREMENTS,
+  isInstanceKeycloakRequirementSatisfied,
+} from './instances/keycloak-checklist.js';
 export type {
   HostClassification,
   InstanceAuditEvent,
@@ -56,4 +61,5 @@ export type {
   InstanceStatus,
   TrafficEnabledInstanceStatus,
 } from './instances/registry.js';
+export type { InstanceKeycloakRequirement, InstanceKeycloakRequirementKey } from './instances/keycloak-checklist.js';
 export { maskEmailAddresses } from './security/email-redaction.js';

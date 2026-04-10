@@ -94,9 +94,17 @@ const buildRolesCompletionStep = (status: KeycloakTenantStatus): CompletionStep 
 const buildTenantAdminCompletionStep = (status: KeycloakTenantStatus): CompletionStep => ({
   stepKey: 'tenant_admin',
   title: 'Tenant-Admin sicherstellen',
-  summary: status.tenantAdminExists ? 'Der Tenant-Admin ist vorhanden.' : 'Der Tenant-Admin fehlt weiterhin.',
-  details: { tenantAdminExists: status.tenantAdminExists },
-  ok: status.tenantAdminExists,
+  summary:
+    status.tenantAdminExists && status.tenantAdminInstanceIdMatches
+      ? 'Der Tenant-Admin ist vorhanden und dem korrekten instanceId-Attribut zugeordnet.'
+      : status.tenantAdminExists
+        ? 'Der Tenant-Admin ist vorhanden, aber das instanceId-Attribut weicht ab.'
+        : 'Der Tenant-Admin fehlt weiterhin.',
+  details: {
+    tenantAdminExists: status.tenantAdminExists,
+    tenantAdminInstanceIdMatches: status.tenantAdminInstanceIdMatches,
+  },
+  ok: status.tenantAdminExists && status.tenantAdminInstanceIdMatches,
 });
 
 const buildTenantAdminPasswordStep = (usedTemporaryPassword: boolean): CompletionStep => ({

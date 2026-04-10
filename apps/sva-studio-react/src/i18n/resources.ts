@@ -531,6 +531,8 @@ export const i18nResources = {
           authClientSecretConfigured: 'Secret bereits konfiguriert',
           authClientSecretMissing: 'Noch kein Secret hinterlegt',
           authClientSecretHint: 'Leer lassen, um das bestehende Secret unverändert zu lassen.',
+          authClientSecretGeneratedHint: 'Bei neuen Realms wird das Secret beim Provisioning automatisch erzeugt und danach in Studio gespeichert.',
+          authClientSecretGeneratedDuringProvisioning: 'Wird beim Provisioning automatisch erzeugt',
           tenantAdminTitle: 'Initialer Tenant-Admin',
           tenantAdminSubtitle: 'Diese Daten werden für den Bootstrap des Realm-Admins genutzt.',
           tenantAdminUsername: 'Admin-Benutzername',
@@ -624,6 +626,7 @@ export const i18nResources = {
             secretTitle: 'Tenant-Client-Secret',
             secretReady: 'Ein Secret wird mit der Instanz gespeichert und kann im Provisioning direkt geprüft werden.',
             secretMissing: 'Noch kein Secret eingetragen. Der spätere Abgleich bleibt dadurch unvollständig.',
+            secretGenerated: 'Bei einem neuen Realm wird das Tenant-Client-Secret erst beim Provisioning erzeugt und danach gespeichert.',
             tenantAdminTitle: 'Initialer Tenant-Admin',
             tenantAdminReady: 'Ein Tenant-Admin ist hinterlegt und kann beim ersten Bootstrap oder Reset verwendet werden.',
             tenantAdminMissing: 'Kein Tenant-Admin hinterlegt. Der Schritt bleibt nach dem Erstellen manuell offen.',
@@ -631,6 +634,7 @@ export const i18nResources = {
             followUpSummary: 'Nach dem Speichern folgt im Detail die technische Prüfung und das Keycloak-Provisioning.',
           },
           authHint: 'Das Tenant-Client-Secret ist für bestehende Realms stark empfohlen, damit Status- und Drift-Prüfungen vollständig laufen.',
+          authSecretGeneratedHint: 'Für neue Realms müssen Sie hier kein Secret kennen. Studio erzeugt es beim Provisioning und speichert es anschließend.',
           tenantAdminOptional: 'Diese Angaben sind optional, solange der Tenant-Admin nicht direkt beim ersten Provisioning neu gesetzt werden muss.',
           reviewTitle: 'Eingaben prüfen',
           reviewSubtitle: 'Die Instanz wird jetzt nur angelegt. Der eigentliche Keycloak-Abgleich folgt danach auf der Detailseite.',
@@ -717,9 +721,12 @@ export const i18nResources = {
           authClientSecret: {
             title: 'Tenant-Client-Secret',
             what: 'Secret des Tenant-Clients, das Studio verschlüsselt speichert und für technische Abgleiche nutzt.',
-            value: 'Das aktuelle Secret des konfigurierten Tenant-Clients eintragen.',
-            source: 'Kommt aus den Client-Credentials in Keycloak.',
-            impact: 'Fehlt das Secret, bleiben Secret-Checks und Teile des Provisioning-/Drift-Abgleichs blockiert.',
+            value:
+              'Bei bestehenden Realms das aktuelle Secret des konfigurierten Tenant-Clients eintragen. Bei neuen Realms leer lassen.',
+            source:
+              'Bei bestehenden Realms kommt es aus den Client-Credentials in Keycloak. Bei neuen Realms wird es erst beim Provisioning erzeugt.',
+            impact:
+              'Bei bestehenden Realms blockiert ein fehlendes Secret Secret-Checks und Teile des Provisioning-/Drift-Abgleichs. Bei neuen Realms wird es nach dem Provisioning automatisch gespeichert.',
           },
           tenantAdminUsername: {
             title: 'Admin-Benutzername',
@@ -791,6 +798,7 @@ export const i18nResources = {
           tenantSecret: {
             title: 'Tenant-Secret prüfen',
             missing: 'Es ist noch kein Tenant-Client-Secret gespeichert. Dieser Schritt blockiert technische Abgleiche.',
+            generatedDuringProvisioning: 'Für neue Realms wird das Tenant-Client-Secret erst beim Provisioning erzeugt und danach gespeichert.',
             ready: 'Das Tenant-Secret ist gespeichert und technisch lesbar.',
             blocked: 'Das Secret konnte noch nicht gegen Keycloak geprüft werden.',
             pending: 'Das Secret ist vorhanden, muss aber noch technisch gegen Keycloak geprüft werden.',
@@ -856,6 +864,7 @@ export const i18nResources = {
           tenantAdminExists: 'Tenant-Admin vorhanden',
           tenantAdminHasSystemAdmin: 'Tenant-Admin hat system_admin',
           tenantAdminHasInstanceRegistryAdmin: 'Tenant-Admin hat instance_registry_admin',
+          tenantAdminInstanceIdMatches: 'Tenant-Admin hat passendes instanceId-Attribut',
           redirectUrisMatch: 'Redirect-URIs stimmen',
           logoutUrisMatch: 'Logout-URIs stimmen',
           webOriginsMatch: 'Web-Origins stimmen',
@@ -2237,6 +2246,9 @@ export const i18nResources = {
           authClientSecretConfigured: 'Secret already configured',
           authClientSecretMissing: 'No secret configured yet',
           authClientSecretHint: 'Leave empty to keep the existing secret unchanged.',
+          authClientSecretGeneratedHint:
+            'For new realms, the secret is generated automatically during provisioning and stored in Studio afterwards.',
+          authClientSecretGeneratedDuringProvisioning: 'Generated automatically during provisioning',
           tenantAdminTitle: 'Initial tenant admin',
           tenantAdminSubtitle: 'These values are used for tenant realm bootstrap.',
           tenantAdminUsername: 'Admin username',
@@ -2330,6 +2342,8 @@ export const i18nResources = {
             secretTitle: 'Tenant client secret',
             secretReady: 'A secret will be stored with the instance so provisioning can verify it immediately.',
             secretMissing: 'No secret entered yet. Later drift and status checks will remain incomplete.',
+            secretGenerated:
+              'For a new realm, the tenant client secret is only generated during provisioning and stored afterwards.',
             tenantAdminTitle: 'Initial tenant admin',
             tenantAdminReady: 'A tenant admin is stored and can be reused for the first bootstrap or reset.',
             tenantAdminMissing: 'No tenant admin stored. This follow-up step will stay manual after creation.',
@@ -2337,6 +2351,8 @@ export const i18nResources = {
             followUpSummary: 'After saving, continue on the detail page with technical checks and Keycloak provisioning.',
           },
           authHint: 'The tenant client secret is strongly recommended for existing realms so status and drift checks can run completely.',
+          authSecretGeneratedHint:
+            'For new realms, you do not need to know a secret here. Studio generates it during provisioning and stores it afterwards.',
           tenantAdminOptional: 'These values are optional as long as the tenant admin does not need to be reset during the first provisioning run.',
           reviewTitle: 'Review input',
           reviewSubtitle: 'The instance will only be created now. The actual Keycloak reconciliation happens afterwards on the detail page.',
@@ -2423,9 +2439,12 @@ export const i18nResources = {
           authClientSecret: {
             title: 'Tenant client secret',
             what: 'Secret of the tenant client that Studio stores encrypted and uses for technical reconciliation.',
-            value: 'Enter the current secret of the configured tenant client.',
-            source: 'Comes from the client credentials in Keycloak.',
-            impact: 'Without the secret, secret checks and parts of provisioning/drift reconciliation stay blocked.',
+            value:
+              'For existing realms, enter the current secret of the configured tenant client. For new realms, leave it empty.',
+            source:
+              'For existing realms, it comes from the client credentials in Keycloak. For new realms, it is generated during provisioning.',
+            impact:
+              'For existing realms, missing the secret blocks secret checks and parts of provisioning/drift reconciliation. For new realms, it is stored automatically after provisioning.',
           },
           tenantAdminUsername: {
             title: 'Admin username',
@@ -2497,6 +2516,8 @@ export const i18nResources = {
           tenantSecret: {
             title: 'Check tenant secret',
             missing: 'No tenant client secret is stored yet. This blocks technical reconciliation.',
+            generatedDuringProvisioning:
+              'For new realms, the tenant client secret is only generated during provisioning and stored afterwards.',
             ready: 'The tenant secret is stored and technically readable.',
             blocked: 'The secret could not be checked against Keycloak yet.',
             pending: 'The secret exists but still needs a technical check against Keycloak.',
@@ -2562,6 +2583,7 @@ export const i18nResources = {
           tenantAdminExists: 'Tenant admin exists',
           tenantAdminHasSystemAdmin: 'Tenant admin has system_admin',
           tenantAdminHasInstanceRegistryAdmin: 'Tenant admin has instance_registry_admin',
+          tenantAdminInstanceIdMatches: 'Tenant admin has matching instanceId attribute',
           redirectUrisMatch: 'Redirect URIs match',
           logoutUrisMatch: 'Logout URIs match',
           webOriginsMatch: 'Web origins match',

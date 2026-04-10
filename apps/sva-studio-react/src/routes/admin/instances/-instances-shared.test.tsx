@@ -5,6 +5,7 @@ import {
   getCreateReadinessChecks,
   getErrorMessage,
   getCreateStepValidationMessages,
+  getKeycloakStatusEntries,
   getPostCreateGuidance,
   getSetupWorkflowSteps,
   getStatusGuidance,
@@ -79,6 +80,51 @@ describe('instances shared helpers', () => {
     });
   });
 
+  it('treats the tenant secret as generated follow-up state for new realms', () => {
+    const formValues = createEmptyCreateForm('studio.smart-village.app');
+    formValues.realmMode = 'new';
+    formValues.authRealm = 'saas-demo';
+
+    expect(getCreateReadinessChecks(formValues)).toContainEqual({
+      key: 'secret',
+      title: 'Tenant-Client-Secret',
+      ready: true,
+      summary: 'Bei einem neuen Realm wird das Tenant-Client-Secret erst beim Provisioning erzeugt und danach gespeichert.',
+    });
+
+    const workflow = getSetupWorkflowSteps(
+      {
+        instanceId: 'demo',
+        displayName: 'Demo',
+        status: 'requested',
+        featureFlags: {},
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+        parentDomain: 'studio.example.org',
+        primaryHostname: 'demo.studio.example.org',
+        realmMode: 'new',
+        authRealm: 'demo',
+        authClientId: 'sva-studio',
+        authClientSecretConfigured: false,
+        hostnames: [],
+        provisioningRuns: [],
+        auditEvents: [],
+        keycloakPreflight: undefined,
+        keycloakPlan: undefined,
+        keycloakProvisioningRuns: [],
+        tenantAdminBootstrap: undefined,
+        keycloakStatus: undefined,
+        latestKeycloakProvisioningRun: undefined,
+      } as const,
+      null
+    );
+
+    expect(workflow.find((step) => step.key === 'tenantSecret')).toMatchObject({
+      status: 'pending',
+      description: 'Für neue Realms wird das Tenant-Client-Secret erst beim Provisioning erzeugt und danach gespeichert.',
+    });
+  });
+
   it('maps setup workflow and status guidance for a blocked requested instance', () => {
     const instance = {
       instanceId: 'demo',
@@ -146,5 +192,35 @@ describe('instances shared helpers', () => {
       title: 'Instanz gespeichert, aber noch nicht betriebsbereit',
       body: 'Die Registry-Daten sind angelegt. Als Nächstes sollten Sie den Keycloak-Status prüfen und das Provisioning ausführen.',
     });
+  });
+
+  it('marks tenant admin status as not fulfilled when the instanceId attribute is missing', () => {
+    const entries = getKeycloakStatusEntries({
+      keycloakStatus: {
+        realmExists: true,
+        clientExists: true,
+        instanceIdMapperExists: true,
+        tenantAdminExists: true,
+        tenantAdminHasSystemAdmin: true,
+        tenantAdminHasInstanceRegistryAdmin: false,
+        tenantAdminInstanceIdMatches: false,
+        redirectUrisMatch: true,
+        logoutUrisMatch: true,
+        webOriginsMatch: true,
+        clientSecretConfigured: true,
+        tenantClientSecretReadable: true,
+        clientSecretAligned: true,
+        runtimeSecretSource: 'tenant',
+      },
+    } as never);
+
+    expect(entries).toContainEqual([
+      'admin.instances.keycloakStatus.tenantAdminInstanceIdMatches',
+      false,
+    ]);
+    expect(entries).toContainEqual([
+      'admin.instances.keycloakStatus.tenantAdminHasInstanceRegistryAdmin',
+      true,
+    ]);
   });
 });

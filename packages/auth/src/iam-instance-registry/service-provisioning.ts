@@ -60,6 +60,7 @@ export const provisionInstanceAuth = async (
     await deps.provisionInstanceAuth({
       instanceId: instance.instanceId,
       primaryHostname: instance.primaryHostname,
+      realmMode: instance.realmMode,
       authRealm: instance.authRealm,
       authClientId: instance.authClientId,
       authIssuerUrl: instance.authIssuerUrl,

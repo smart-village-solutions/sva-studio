@@ -80,11 +80,14 @@ const buildLocalPreflight = (input: {
       summary:
         input.authClientSecretConfigured && input.authClientSecret
           ? 'Ein lesbares Tenant-Client-Secret ist in der Registry vorhanden.'
-          : 'Das Tenant-Client-Secret wird beim nächsten Worker-Lauf geprüft und bei Bedarf nachgezogen.',
+          : input.realmMode === 'new'
+            ? 'Das Tenant-Client-Secret wird beim Anlegen des neuen Realm automatisch erzeugt und danach gespeichert.'
+            : 'Das Tenant-Client-Secret wird beim nächsten Worker-Lauf geprüft und bei Bedarf nachgezogen.',
       details: {
         configured: input.authClientSecretConfigured,
         readable: Boolean(input.authClientSecret),
         source: 'worker_pending',
+        generatedDuringProvisioning: input.realmMode === 'new',
       },
     },
     {

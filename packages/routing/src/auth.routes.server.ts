@@ -322,6 +322,30 @@ const authHandlerMap = {
       return mod.instanceRegistryHandlers.getInstanceKeycloakStatus(ctx.request);
     },
   },
+  '/api/v1/iam/instances/$instanceId/keycloak/preflight': {
+    GET: async (ctx: { request: Request }) => {
+      const mod = await import('@sva/auth/runtime-routes');
+      return mod.instanceRegistryHandlers.getInstanceKeycloakPreflight(ctx.request);
+    },
+  },
+  '/api/v1/iam/instances/$instanceId/keycloak/plan': {
+    POST: async (ctx: { request: Request }) => {
+      const mod = await import('@sva/auth/runtime-routes');
+      return mod.instanceRegistryHandlers.planInstanceKeycloakProvisioning(ctx.request);
+    },
+  },
+  '/api/v1/iam/instances/$instanceId/keycloak/execute': {
+    POST: async (ctx: { request: Request }) => {
+      const mod = await import('@sva/auth/runtime-routes');
+      return mod.instanceRegistryHandlers.executeInstanceKeycloakProvisioning(ctx.request);
+    },
+  },
+  '/api/v1/iam/instances/$instanceId/keycloak/runs/$runId': {
+    GET: async (ctx: { request: Request }) => {
+      const mod = await import('@sva/auth/runtime-routes');
+      return mod.instanceRegistryHandlers.getInstanceKeycloakProvisioningRun(ctx.request);
+    },
+  },
   '/api/v1/iam/instances/$instanceId/keycloak/reconcile': {
     POST: async (ctx: { request: Request }) => {
       const mod = await import('@sva/auth/runtime-routes');

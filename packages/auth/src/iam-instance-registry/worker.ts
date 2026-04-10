@@ -1,4 +1,7 @@
 import { createSdkLogger } from '@sva/sdk/server';
+import { realpathSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { withRegistryProvisioningWorkerDeps } from './repository.js';
 import { processNextQueuedKeycloakProvisioningRun } from './service-keycloak-execution.js';
 
@@ -11,6 +14,23 @@ const sleep = async (ms: number) =>
 
 export const runKeycloakProvisioningWorkerIteration = async () =>
   withRegistryProvisioningWorkerDeps((deps) => processNextQueuedKeycloakProvisioningRun(deps));
+
+export const isWorkerEntrypoint = (moduleUrl: string, argvEntry?: string) => {
+  if (!argvEntry) {
+    return false;
+  }
+
+  const resolvedEntry = resolve(argvEntry);
+  const normalizedEntry = (() => {
+    try {
+      return realpathSync(resolvedEntry);
+    } catch {
+      return resolvedEntry;
+    }
+  })();
+
+  return moduleUrl === pathToFileURL(normalizedEntry).href;
+};
 
 export const runKeycloakProvisioningWorkerLoop = async (input?: {
   pollIntervalMs?: number;
@@ -38,6 +58,6 @@ export const runKeycloakProvisioningWorkerLoop = async (input?: {
   }
 };
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (isWorkerEntrypoint(import.meta.url, process.argv[1])) {
   await runKeycloakProvisioningWorkerLoop();
 }

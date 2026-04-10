@@ -118,7 +118,8 @@ const buildTenantAdminStep = (
   const hasMinimalProfile = Boolean(
     adminStatus?.tenantAdminExists &&
       adminStatus.tenantAdminHasSystemAdmin &&
-      !adminStatus.tenantAdminHasInstanceRegistryAdmin
+      !adminStatus.tenantAdminHasInstanceRegistryAdmin &&
+      adminStatus.tenantAdminInstanceIdMatches
   );
 
   return {

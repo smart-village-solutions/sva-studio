@@ -17,6 +17,7 @@ import {
   getErrorMessage,
   getPostCreateGuidance,
   INSTANCE_FIELD_HELP,
+  isTenantSecretUserInputRequired,
   readSuggestedParentDomain,
   WorkflowStatusBadge,
 } from './-instances-shared';
@@ -148,6 +149,7 @@ export const InstanceCreatePage = () => {
 
   const readinessChecks = getCreateReadinessChecks(formValues);
   const successGuidance = createdInstance ? getPostCreateGuidance(createdInstance) : null;
+  const tenantSecretUserInputRequired = isTenantSecretUserInputRequired(formValues.realmMode);
 
   return (
     <section className="space-y-5" aria-busy={instancesApi.isLoading}>
@@ -344,10 +346,20 @@ export const InstanceCreatePage = () => {
                 <Input
                   id="instance-auth-client-secret"
                   type="password"
+                  disabled={!tenantSecretUserInputRequired}
+                  placeholder={
+                    tenantSecretUserInputRequired
+                      ? undefined
+                      : t('admin.instances.form.authClientSecretGeneratedDuringProvisioning')
+                  }
                   value={formValues.authClientSecret}
                   onChange={(event) => updateForm((current) => ({ ...current, authClientSecret: event.target.value }))}
                 />
-                <p className="text-xs text-muted-foreground">{t('admin.instances.wizard.authHint')}</p>
+                <p className="text-xs text-muted-foreground">
+                  {tenantSecretUserInputRequired
+                    ? t('admin.instances.wizard.authHint')
+                    : t('admin.instances.wizard.authSecretGeneratedHint')}
+                </p>
               </div>
             </div>
           ) : null}

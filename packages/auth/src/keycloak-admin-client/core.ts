@@ -827,6 +827,7 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     webOrigins: readonly string[];
     rootUrl: string;
     clientSecret?: string;
+    rotateClientSecret?: boolean;
   }): Promise<void> {
     await this.assertWriteAvailability();
     const existing = await this.getOidcClientByClientId(input.clientId);
@@ -922,6 +923,13 @@ export class KeycloakAdminClient implements IdentityProviderPort {
           retryable: false,
         });
       }
+      const currentSecret = await this.getOidcClientSecretValue(input.clientId);
+      const shouldUpdateSecret = input.rotateClientSecret || currentSecret !== input.clientSecret;
+      if (!shouldUpdateSecret) {
+        return;
+      }
+      const logEvent = input.rotateClientSecret ? 'rotate_client_secret' : 'sync_client_secret';
+      const logFailureEvent = input.rotateClientSecret ? 'rotate_client_secret_failed' : 'sync_client_secret_failed';
       try {
         await this.executeWithResilience<void>({
           method: 'POST',
@@ -929,14 +937,14 @@ export class KeycloakAdminClient implements IdentityProviderPort {
           operation: 'rotate_client_secret',
           body: JSON.stringify({ type: 'secret', value: input.clientSecret }),
         });
-        logKeycloakWriteSuccess('rotate_client_secret', {
+        logKeycloakWriteSuccess(logEvent, {
           operation: 'rotate_client_secret',
           realm: this.realm,
           client_id: input.clientId,
         });
       } catch (error) {
         logKeycloakWriteFailure(
-          'rotate_client_secret_failed',
+          logFailureEvent,
           {
             operation: 'rotate_client_secret',
             realm: this.realm,
@@ -1054,6 +1062,20 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     });
 
     return users.find((user) => user.username === username) ?? null;
+  }
+
+  async findUserByEmail(email: string): Promise<KeycloakAdminUser | null> {
+    if (this.isCircuitOpen()) {
+      throw new KeycloakAdminUnavailableError('Keycloak unavailable and user lookup is temporarily disabled.');
+    }
+
+    const users = await this.executeWithResilience<KeycloakAdminUser[]>({
+      method: 'GET',
+      path: `/admin/realms/${encodePathSegment(this.realm)}/users?exact=true&email=${encodeURIComponent(email)}`,
+      operation: 'find_user_by_email',
+    });
+
+    return users.find((user) => user.email?.toLowerCase() === email.toLowerCase()) ?? null;
   }
 
   async setUserPassword(externalId: string, password: string, temporary = true): Promise<void> {

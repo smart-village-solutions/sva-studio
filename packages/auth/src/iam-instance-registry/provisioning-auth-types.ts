@@ -17,6 +17,7 @@ export type TenantAdminStatus = {
   readonly tenantAdminExists: boolean;
   readonly tenantAdminHasSystemAdmin: boolean;
   readonly tenantAdminHasInstanceRegistryAdmin: boolean;
+  readonly tenantAdminInstanceIdMatches: boolean;
 };
 
 export type KeycloakReadState = {

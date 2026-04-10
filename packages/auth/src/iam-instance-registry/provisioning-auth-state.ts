@@ -40,24 +40,54 @@ const ensureTenantAdmin = async (client: KeycloakAdminClient, input: {
   await client.ensureRealmRole(SYSTEM_ADMIN_ROLE);
   await client.ensureRealmRole(INSTANCE_REGISTRY_ADMIN_ROLE);
 
-  const existing = await client.findUserByUsername(input.username);
+  const existing = (await client.findUserByUsername(input.username))
+    ?? (resolvedEmail ? await client.findUserByEmail(resolvedEmail) : null);
   if (!existing) {
-    const created = await client.createUser({
-      username: input.username,
-      email: resolvedEmail,
-      firstName: input.firstName,
-      lastName: input.lastName,
-      enabled: true,
-      attributes: {
-        instanceId: [input.instanceId],
-      },
-    });
-    await client.syncRoles(created.externalId, [SYSTEM_ADMIN_ROLE]);
-    if (input.temporaryPassword) {
-      await client.setUserPassword(created.externalId, input.temporaryPassword, true);
-      await client.setUserRequiredActions(created.externalId, ['UPDATE_PASSWORD']);
+    try {
+      const created = await client.createUser({
+        username: input.username,
+        email: resolvedEmail,
+        firstName: input.firstName,
+        lastName: input.lastName,
+        enabled: true,
+        attributes: {
+          instanceId: [input.instanceId],
+        },
+      });
+      await client.syncRoles(created.externalId, [SYSTEM_ADMIN_ROLE]);
+      if (input.temporaryPassword) {
+        await client.setUserPassword(created.externalId, input.temporaryPassword, true);
+        await client.setUserRequiredActions(created.externalId, ['UPDATE_PASSWORD']);
+      }
+      return;
+    } catch (error) {
+      if (!(error instanceof KeycloakAdminRequestError) || error.statusCode !== 409) {
+        throw error;
+      }
+
+      const conflictingUser = await client.findUserByEmail(resolvedEmail);
+      if (!conflictingUser) {
+        throw error;
+      }
+
+      await client.updateUser(conflictingUser.id, {
+        username: input.username,
+        email: resolvedEmail,
+        firstName: input.firstName,
+        lastName: input.lastName,
+        enabled: conflictingUser.enabled ?? true,
+        attributes: {
+          ...(conflictingUser.attributes ?? {}),
+          instanceId: [input.instanceId],
+        },
+      });
+      await client.syncRoles(conflictingUser.id, [SYSTEM_ADMIN_ROLE]);
+      if (input.temporaryPassword) {
+        await client.setUserPassword(conflictingUser.id, input.temporaryPassword, true);
+        await client.setUserRequiredActions(conflictingUser.id, ['UPDATE_PASSWORD']);
+      }
+      return;
     }
-    return;
   }
 
   await client.updateUser(existing.id, {
@@ -80,22 +110,28 @@ const ensureTenantAdmin = async (client: KeycloakAdminClient, input: {
 
 const readTenantAdminStatus = async (
   client: KeycloakAdminClient,
-  username: string | undefined
+  input: {
+    username: string | undefined;
+    instanceId: string;
+  }
 ): Promise<TenantAdminStatus> => {
-  if (!username) {
+  if (!input.username) {
     return {
       tenantAdminExists: false,
       tenantAdminHasSystemAdmin: false,
       tenantAdminHasInstanceRegistryAdmin: false,
+      tenantAdminInstanceIdMatches: false,
     };
   }
 
-  const tenantAdmin = await client.findUserByUsername(username);
+  const tenantAdmin = await client.findUserByUsername(input.username);
   const tenantAdminRoles = tenantAdmin ? await client.listUserRoleNames(tenantAdmin.id) : [];
+  const tenantAdminInstanceIds = tenantAdmin?.attributes?.instanceId ?? [];
   return {
     tenantAdminExists: Boolean(tenantAdmin),
     tenantAdminHasSystemAdmin: tenantAdminRoles.includes(SYSTEM_ADMIN_ROLE),
     tenantAdminHasInstanceRegistryAdmin: tenantAdminRoles.includes(INSTANCE_REGISTRY_ADMIN_ROLE),
+    tenantAdminInstanceIdMatches: tenantAdminInstanceIds.includes(input.instanceId),
   };
 };
 
@@ -118,6 +154,7 @@ const readKeycloakStateWithResolver = async (
         tenantAdminExists: false,
         tenantAdminHasSystemAdmin: false,
         tenantAdminHasInstanceRegistryAdmin: false,
+        tenantAdminInstanceIdMatches: false,
       },
       keycloakClientSecret: null,
       systemAdminRole: null,
@@ -127,7 +164,10 @@ const readKeycloakStateWithResolver = async (
 
   const clientRepresentation = await client.getOidcClientByClientId(input.authClientId);
   const protocolMappers = clientRepresentation ? await client.listClientProtocolMappers(input.authClientId) : [];
-  const tenantAdminStatus = await readTenantAdminStatus(client, input.tenantAdminBootstrap?.username);
+  const tenantAdminStatus = await readTenantAdminStatus(client, {
+    username: input.tenantAdminBootstrap?.username,
+    instanceId: input.instanceId,
+  });
   const keycloakClientSecret = clientRepresentation ? await client.getOidcClientSecretValue(input.authClientId) : null;
   const [systemAdminRole, instanceRegistryAdminRole] = await Promise.all([
     client.getRoleByName(SYSTEM_ADMIN_ROLE),
@@ -157,6 +197,7 @@ const provisionInstanceAuthArtifactsWithResolver = async (
   input: {
   instanceId: string;
   primaryHostname: string;
+  realmMode: 'new' | 'existing';
   authRealm: string;
   authClientId: string;
   authIssuerUrl?: string;
@@ -170,7 +211,14 @@ const provisionInstanceAuthArtifactsWithResolver = async (
   const client = new KeycloakAdminClient(resolveConfig(input.authRealm));
   const expectedClient = buildExpectedClientConfig(input.primaryHostname);
 
-  await client.ensureRealm({ displayName: input.instanceId });
+  if (input.realmMode === 'new') {
+    await client.ensureRealm({ displayName: input.instanceId });
+  } else {
+    const realm = await client.getRealm();
+    if (!realm) {
+      throw new Error(`Keycloak realm ${input.authRealm} does not exist`);
+    }
+  }
   await client.ensureOidcClient({
     clientId: input.authClientId,
     redirectUris: expectedClient.redirectUris,
@@ -178,6 +226,7 @@ const provisionInstanceAuthArtifactsWithResolver = async (
     webOrigins: expectedClient.webOrigins,
     rootUrl: expectedClient.rootUrl,
     clientSecret: input.authClientSecret,
+    rotateClientSecret: input.rotateClientSecret,
   });
   await client.ensureUserAttributeProtocolMapper({
     clientId: input.authClientId,
@@ -198,6 +247,7 @@ const provisionInstanceAuthArtifactsWithResolver = async (
 export const provisionInstanceAuthArtifacts = async (input: {
   instanceId: string;
   primaryHostname: string;
+  realmMode: 'new' | 'existing';
   authRealm: string;
   authClientId: string;
   authIssuerUrl?: string;
@@ -210,6 +260,7 @@ export const provisionInstanceAuthArtifacts = async (input: {
 export const provisionInstanceAuthArtifactsViaProvisioner = async (input: {
   instanceId: string;
   primaryHostname: string;
+  realmMode: 'new' | 'existing';
   authRealm: string;
   authClientId: string;
   authIssuerUrl?: string;

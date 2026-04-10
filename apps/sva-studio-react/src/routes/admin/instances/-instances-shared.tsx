@@ -1,4 +1,9 @@
-import type { IamInstanceDetail, IamInstanceKeycloakPreflight } from '@sva/core';
+import {
+  INSTANCE_KEYCLOAK_REQUIREMENTS,
+  isInstanceKeycloakRequirementSatisfied,
+  type IamInstanceDetail,
+  type IamInstanceKeycloakPreflight,
+} from '@sva/core';
 
 import { Badge } from '../../../components/ui/badge';
 import { t } from '../../../i18n';
@@ -44,6 +49,8 @@ export type SetupWorkflowStep = {
 };
 
 type IamInstanceKeycloakStatus = NonNullable<IamInstanceDetail['keycloakStatus']>;
+
+export const isTenantSecretUserInputRequired = (realmMode: 'new' | 'existing') => realmMode === 'existing';
 
 export const readSuggestedParentDomain = () => {
   if (typeof window === 'undefined') {
@@ -271,10 +278,12 @@ export const getCreateReadinessChecks = (formValues: CreateFormValues) => [
   {
     key: 'secret',
     title: t('admin.instances.wizard.readiness.secretTitle'),
-    ready: Boolean(trimValue(formValues.authClientSecret)),
-    summary: trimValue(formValues.authClientSecret)
-      ? t('admin.instances.wizard.readiness.secretReady')
-      : t('admin.instances.wizard.readiness.secretMissing'),
+    ready: isTenantSecretUserInputRequired(formValues.realmMode) ? Boolean(trimValue(formValues.authClientSecret)) : true,
+    summary: isTenantSecretUserInputRequired(formValues.realmMode)
+      ? trimValue(formValues.authClientSecret)
+        ? t('admin.instances.wizard.readiness.secretReady')
+        : t('admin.instances.wizard.readiness.secretMissing')
+      : t('admin.instances.wizard.readiness.secretGenerated'),
   },
   {
     key: 'tenantAdmin',
@@ -315,18 +324,16 @@ const findPreflightCheck = (preflight: IamInstanceKeycloakPreflight | undefined,
 
 const createWorkflowStep = (input: SetupWorkflowStep): SetupWorkflowStep => input;
 
-const readWorkflowStatus = (
+const readRequirementGroupSatisfied = (
   keycloakStatus: IamInstanceKeycloakStatus | undefined,
-  key: keyof Pick<
-    IamInstanceKeycloakStatus,
-    | 'realmExists'
-    | 'clientExists'
-    | 'instanceIdMapperExists'
-    | 'tenantClientSecretReadable'
-    | 'tenantAdminExists'
-    | 'tenantAdminHasSystemAdmin'
-  >
-) => Boolean(keycloakStatus?.[key]);
+  uiStepKey: string
+) =>
+  Boolean(
+    keycloakStatus &&
+      INSTANCE_KEYCLOAK_REQUIREMENTS.filter((requirement) => requirement.uiStepKey === uiStepKey).every((requirement) =>
+        isInstanceKeycloakRequirementSatisfied(keycloakStatus, requirement)
+      )
+  );
 
 export const getSetupWorkflowSteps = (
   instance: IamInstanceDetail,
@@ -372,7 +379,7 @@ export const getSetupWorkflowSteps = (
       description:
         instance.realmMode === 'new'
           ? t('admin.instances.workflow.realm.newRealm')
-          : readWorkflowStatus(instance.keycloakStatus, 'realmExists')
+          : readRequirementGroupSatisfied(instance.keycloakStatus, 'realm')
             ? t('admin.instances.workflow.realm.ready')
             : realmModeCheck?.status === 'blocked'
               ? t('admin.instances.workflow.realm.blocked')
@@ -382,7 +389,7 @@ export const getSetupWorkflowSteps = (
           ? provisioningSucceeded
             ? 'done'
             : 'current'
-          : readWorkflowStatus(instance.keycloakStatus, 'realmExists')
+          : readRequirementGroupSatisfied(instance.keycloakStatus, 'realm')
             ? 'done'
             : keycloakUnavailable || realmModeCheck?.status === 'blocked'
               ? 'blocked'
@@ -393,12 +400,12 @@ export const getSetupWorkflowSteps = (
     createWorkflowStep({
       key: 'client',
       title: t('admin.instances.workflow.client.title'),
-      description: readWorkflowStatus(instance.keycloakStatus, 'clientExists')
+      description: readRequirementGroupSatisfied(instance.keycloakStatus, 'client')
         ? t('admin.instances.workflow.client.ready')
         : keycloakUnavailable
           ? t('admin.instances.workflow.client.blocked')
           : t('admin.instances.workflow.client.pending'),
-      status: readWorkflowStatus(instance.keycloakStatus, 'clientExists')
+      status: readRequirementGroupSatisfied(instance.keycloakStatus, 'client')
         ? 'done'
         : keycloakUnavailable
           ? 'blocked'
@@ -409,12 +416,12 @@ export const getSetupWorkflowSteps = (
     createWorkflowStep({
       key: 'mapper',
       title: t('admin.instances.workflow.mapper.title'),
-      description: readWorkflowStatus(instance.keycloakStatus, 'instanceIdMapperExists')
+      description: readRequirementGroupSatisfied(instance.keycloakStatus, 'mapper')
         ? t('admin.instances.workflow.mapper.ready')
         : keycloakUnavailable
           ? t('admin.instances.workflow.mapper.blocked')
           : t('admin.instances.workflow.mapper.pending'),
-      status: readWorkflowStatus(instance.keycloakStatus, 'instanceIdMapperExists')
+      status: readRequirementGroupSatisfied(instance.keycloakStatus, 'mapper')
         ? 'done'
         : keycloakUnavailable
           ? 'blocked'
@@ -424,15 +431,19 @@ export const getSetupWorkflowSteps = (
       key: 'tenantSecret',
       title: t('admin.instances.workflow.tenantSecret.title'),
       description: !instance.authClientSecretConfigured
-        ? t('admin.instances.workflow.tenantSecret.missing')
-        : readWorkflowStatus(instance.keycloakStatus, 'tenantClientSecretReadable')
+        ? instance.realmMode === 'new'
+          ? t('admin.instances.workflow.tenantSecret.generatedDuringProvisioning')
+          : t('admin.instances.workflow.tenantSecret.missing')
+        : readRequirementGroupSatisfied(instance.keycloakStatus, 'tenantSecret')
           ? t('admin.instances.workflow.tenantSecret.ready')
           : keycloakUnavailable
             ? t('admin.instances.workflow.tenantSecret.blocked')
             : t('admin.instances.workflow.tenantSecret.pending'),
       status: !instance.authClientSecretConfigured
-        ? 'blocked'
-        : readWorkflowStatus(instance.keycloakStatus, 'tenantClientSecretReadable')
+        ? instance.realmMode === 'new'
+          ? 'pending'
+          : 'blocked'
+        : readRequirementGroupSatisfied(instance.keycloakStatus, 'tenantSecret')
           ? 'done'
           : keycloakUnavailable
             ? 'blocked'
@@ -443,16 +454,14 @@ export const getSetupWorkflowSteps = (
       title: t('admin.instances.workflow.tenantAdmin.title'),
       description: !tenantAdminConfigured
         ? t('admin.instances.workflow.tenantAdmin.missing')
-        : readWorkflowStatus(instance.keycloakStatus, 'tenantAdminExists') &&
-            readWorkflowStatus(instance.keycloakStatus, 'tenantAdminHasSystemAdmin')
+        : readRequirementGroupSatisfied(instance.keycloakStatus, 'tenantAdmin')
           ? t('admin.instances.workflow.tenantAdmin.ready')
           : keycloakUnavailable
             ? t('admin.instances.workflow.tenantAdmin.blocked')
             : t('admin.instances.workflow.tenantAdmin.pending'),
       status: !tenantAdminConfigured
         ? 'blocked'
-        : readWorkflowStatus(instance.keycloakStatus, 'tenantAdminExists') &&
-            readWorkflowStatus(instance.keycloakStatus, 'tenantAdminHasSystemAdmin')
+        : readRequirementGroupSatisfied(instance.keycloakStatus, 'tenantAdmin')
           ? 'done'
           : keycloakUnavailable
             ? 'blocked'
@@ -538,18 +547,12 @@ export const getKeycloakStatusEntries = (selectedInstance: NonNullable<ReturnTyp
   }
 
   return [
-    ['admin.instances.keycloakStatus.realmExists', status.realmExists],
-    ['admin.instances.keycloakStatus.clientExists', status.clientExists],
-    ['admin.instances.keycloakStatus.instanceIdMapperExists', status.instanceIdMapperExists],
-    ['admin.instances.keycloakStatus.tenantAdminExists', status.tenantAdminExists],
-    ['admin.instances.keycloakStatus.tenantAdminHasSystemAdmin', status.tenantAdminHasSystemAdmin],
-    ['admin.instances.keycloakStatus.tenantAdminHasInstanceRegistryAdmin', status.tenantAdminHasInstanceRegistryAdmin],
-    ['admin.instances.keycloakStatus.redirectUrisMatch', status.redirectUrisMatch],
-    ['admin.instances.keycloakStatus.logoutUrisMatch', status.logoutUrisMatch],
-    ['admin.instances.keycloakStatus.webOriginsMatch', status.webOriginsMatch],
+    ...INSTANCE_KEYCLOAK_REQUIREMENTS.map((requirement) => [
+      `admin.instances.keycloakStatus.${requirement.statusField}`,
+      isInstanceKeycloakRequirementSatisfied(status, requirement),
+    ] as const),
     ['admin.instances.keycloakStatus.clientSecretConfigured', status.clientSecretConfigured],
     ['admin.instances.keycloakStatus.tenantClientSecretReadable', status.tenantClientSecretReadable],
-    ['admin.instances.keycloakStatus.clientSecretAligned', status.clientSecretAligned],
     ['admin.instances.keycloakStatus.runtimeSecretSourceTenant', status.runtimeSecretSource === 'tenant'],
   ] as const;
 };

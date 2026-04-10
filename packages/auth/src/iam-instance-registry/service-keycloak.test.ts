@@ -141,6 +141,45 @@ describe('iam-instance-registry service-keycloak helpers', () => {
     );
   });
 
+  it('treats a missing tenant secret for new realms as generated follow-up state', async () => {
+    state.revealField.mockReturnValue(undefined);
+    const { createGetKeycloakPreflightHandler } = await import('./service-keycloak.js');
+    const repository = {
+      getInstanceById: vi.fn().mockResolvedValue({
+        instanceId: 'bb-guben',
+        primaryHostname: 'bb-guben.studio.smart-village.app',
+        realmMode: 'new',
+        authRealm: 'bb-guben',
+        authClientId: 'sva-studio',
+        authIssuerUrl: undefined,
+        authClientSecretConfigured: false,
+        tenantAdminBootstrap: undefined,
+      }),
+      getAuthClientSecretCiphertext: vi.fn().mockResolvedValue(null),
+      listKeycloakProvisioningRuns: vi.fn().mockResolvedValue([]),
+    };
+
+    const getPreflight = createGetKeycloakPreflightHandler({
+      repository: repository as never,
+      invalidateHost: vi.fn(),
+    });
+
+    await expect(getPreflight('bb-guben')).resolves.toEqual(
+      expect.objectContaining({
+        checks: expect.arrayContaining([
+          expect.objectContaining({
+            checkKey: 'tenant_secret',
+            status: 'warning',
+            summary: 'Das Tenant-Client-Secret wird beim Anlegen des neuen Realm automatisch erzeugt und danach gespeichert.',
+            details: expect.objectContaining({
+              generatedDuringProvisioning: true,
+            }),
+          }),
+        ]),
+      })
+    );
+  });
+
   it('reconcile enqueues a provisioning run and returns no immediate status snapshot', async () => {
     state.revealField.mockReturnValue('tenant-secret-value');
     const { createReconcileKeycloakHandler } = await import('./service-keycloak.js');

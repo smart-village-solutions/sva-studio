@@ -58,6 +58,7 @@ export type InstanceRegistryServiceDeps = {
   readonly provisionInstanceAuth?: (input: {
     instanceId: string;
     primaryHostname: string;
+    realmMode: InstanceRealmMode;
     authRealm: string;
     authClientId: string;
     authIssuerUrl?: string;

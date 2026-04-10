@@ -105,7 +105,11 @@ const createInstanceKeycloakStatusReader =
     client_exists: status.clientExists,
     mapper_exists: status.instanceIdMapperExists,
     admin_exists: status.tenantAdminExists,
-    roles_ok: status.tenantAdminHasSystemAdmin && !status.tenantAdminHasInstanceRegistryAdmin,
+    roles_ok:
+      status.tenantAdminHasSystemAdmin
+      && !status.tenantAdminHasInstanceRegistryAdmin
+      && status.tenantAdminInstanceIdMatches,
+    tenant_admin_instance_id_matches: status.tenantAdminInstanceIdMatches,
     secret_aligned: status.clientSecretAligned,
     runtime_secret_source: status.runtimeSecretSource,
   });

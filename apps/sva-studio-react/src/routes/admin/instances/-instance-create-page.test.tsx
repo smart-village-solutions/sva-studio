@@ -162,6 +162,67 @@ describe('InstanceCreatePage', () => {
     expect(screen.getByRole('alert').textContent).not.toContain('Bitte eine Parent-Domain angeben.');
   });
 
+  it('does not require a tenant secret for new realms and explains generation during provisioning', async () => {
+    const createInstance = vi.fn().mockResolvedValue(
+      createCreatedInstance({
+        instanceId: 'demo-new',
+        realmMode: 'new',
+        authRealm: 'saas-demo-new',
+        authClientSecretConfigured: false,
+      })
+    );
+    useInstancesMock.mockReturnValue(createInstancesApiState({ createInstance }));
+
+    render(<InstanceCreatePage />);
+
+    fireEvent.click(screen.getAllByRole('radio')[0]!);
+    fireEvent.change(screen.getByLabelText('Instanz-ID', { selector: '#instance-id' }), { target: { value: 'demo-new' } });
+    fireEvent.change(screen.getByLabelText('Anzeigename', { selector: '#instance-display-name' }), {
+      target: { value: 'Demo New' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+
+    const secretInput = screen.getByLabelText('Tenant-Client-Secret', {
+      selector: '#instance-auth-client-secret',
+    }) as HTMLInputElement;
+    expect(secretInput.disabled).toBe(true);
+    expect(secretInput.placeholder).toBe('Wird beim Provisioning automatisch erzeugt');
+    expect(
+      screen.getByText(
+        'Für neue Realms müssen Sie hier kein Secret kennen. Studio erzeugt es beim Provisioning und speichert es anschließend.'
+      )
+    ).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText('Auth-Realm', { selector: '#instance-auth-realm' }), {
+      target: { value: 'saas-demo-new' },
+    });
+    fireEvent.change(screen.getByLabelText('Auth-Client-ID', { selector: '#instance-auth-client-id' }), {
+      target: { value: 'sva-studio' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+
+    expect(
+      screen.getByText('Bei einem neuen Realm wird das Tenant-Client-Secret erst beim Provisioning erzeugt und danach gespeichert.')
+    ).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Instanz anlegen' }));
+
+    await waitFor(() => {
+      expect(createInstance).toHaveBeenCalledWith({
+        instanceId: 'demo-new',
+        displayName: 'Demo New',
+        parentDomain: 'localhost',
+        realmMode: 'new',
+        authRealm: 'saas-demo-new',
+        authClientId: 'sva-studio',
+        authIssuerUrl: undefined,
+        authClientSecret: undefined,
+        tenantAdminBootstrap: undefined,
+      });
+    });
+  });
+
   it('renders mutation errors', () => {
     useInstancesMock.mockReturnValue(
       createInstancesApiState({

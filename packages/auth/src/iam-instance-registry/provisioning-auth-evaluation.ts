@@ -14,6 +14,7 @@ export const buildMissingRealmStatus = (
   tenantAdminExists: false,
   tenantAdminHasSystemAdmin: false,
   tenantAdminHasInstanceRegistryAdmin: false,
+  tenantAdminInstanceIdMatches: false,
   redirectUrisMatch: false,
   logoutUrisMatch: false,
   webOriginsMatch: false,
@@ -22,6 +23,8 @@ export const buildMissingRealmStatus = (
   clientSecretAligned: false,
   runtimeSecretSource: authClientSecret ? 'tenant' : 'global',
 });
+
+const isTenantSecretRequired = (realmMode: InstanceRealmMode): boolean => realmMode === 'existing';
 
 const createPreflightCheck = (
   checkKey: string,
@@ -92,13 +95,20 @@ export const buildPreflightChecks = (input: {
     createPreflightCheck(
       'tenant_secret',
       'Tenant-Client-Secret',
-      input.authClientSecretConfigured && input.authClientSecret ? 'ready' : 'blocked',
+      input.authClientSecretConfigured && input.authClientSecret
+        ? 'ready'
+        : isTenantSecretRequired(input.realmMode)
+          ? 'blocked'
+          : 'warning',
       input.authClientSecretConfigured && input.authClientSecret
         ? 'Ein lesbares Tenant-Client-Secret ist in der Registry vorhanden.'
-        : 'Für diese Instanz fehlt ein lesbares Tenant-Client-Secret in der Registry.',
+        : isTenantSecretRequired(input.realmMode)
+          ? 'Für diese Instanz fehlt ein lesbares Tenant-Client-Secret in der Registry.'
+          : 'Das Tenant-Client-Secret wird beim Erstellen des neuen Realm automatisch erzeugt und anschließend gespeichert.',
       {
         configured: input.authClientSecretConfigured,
         readable: Boolean(input.authClientSecret),
+        generatedDuringProvisioning: input.realmMode === 'new',
       }
     ),
     createPreflightCheck(

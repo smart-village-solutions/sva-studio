@@ -71,6 +71,7 @@ const createSelectedInstance = (overrides: Record<string, unknown> = {}) => ({
     tenantAdminExists: true,
     tenantAdminHasSystemAdmin: true,
     tenantAdminHasInstanceRegistryAdmin: false,
+    tenantAdminInstanceIdMatches: true,
     redirectUrisMatch: true,
     logoutUrisMatch: true,
     webOriginsMatch: true,
@@ -284,6 +285,46 @@ describe('InstanceDetailPage', () => {
     await waitFor(() => {
       expect(refreshKeycloakPreflight).toHaveBeenCalledWith('demo');
     });
+  });
+
+  it('keeps the tenant secret field read-only for new realms and marks generation as pending', () => {
+    useInstancesMock.mockReturnValue(
+      createInstancesApiState({
+        selectedInstance: createSelectedInstance({
+          realmMode: 'new',
+          authClientSecretConfigured: false,
+          keycloakStatus: {
+            realmExists: false,
+            clientExists: false,
+            instanceIdMapperExists: false,
+            tenantAdminExists: false,
+            tenantAdminHasSystemAdmin: false,
+            tenantAdminHasInstanceRegistryAdmin: false,
+            tenantAdminInstanceIdMatches: false,
+            redirectUrisMatch: false,
+            logoutUrisMatch: false,
+            webOriginsMatch: false,
+            clientSecretConfigured: false,
+            tenantClientSecretReadable: false,
+            clientSecretAligned: false,
+            runtimeSecretSource: 'instance',
+          },
+          latestKeycloakProvisioningRun: undefined,
+        }),
+      })
+    );
+
+    render(<InstanceDetailPage instanceId="demo" />);
+
+    const secretInput = screen.getByLabelText('Tenant-Client-Secret', {
+      selector: '#detail-auth-client-secret',
+    }) as HTMLInputElement;
+    expect(secretInput.disabled).toBe(true);
+    expect(secretInput.placeholder).toBe('Wird beim Provisioning automatisch erzeugt');
+    expect(screen.getByText('Für neue Realms wird das Tenant-Client-Secret erst beim Provisioning erzeugt und danach gespeichert.')).toBeTruthy();
+    expect(
+      screen.getByText('Bei neuen Realms wird das Secret beim Provisioning automatisch erzeugt und danach in Studio gespeichert.')
+    ).toBeTruthy();
   });
 
   it('renders non-keycloak mutation errors', () => {

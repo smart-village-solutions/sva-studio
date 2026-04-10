@@ -106,7 +106,7 @@ services:
   provisioner:
     image: ${SVA_IMAGE_REF}
     entrypoint:
-      - ./entrypoint.sh
+      - ./provisioner-entrypoint.sh
     command:
       - node
       - --import

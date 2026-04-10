@@ -1,15 +1,17 @@
 import { createSdkLogger } from '@sva/sdk/server';
-import type { InstanceKeycloakProvisioningRun } from '@sva/core';
+import { areAllInstanceKeycloakRequirementsSatisfied, type InstanceKeycloakProvisioningRun } from '@sva/core';
 
 import type { ExecuteInstanceKeycloakProvisioningInput } from './mutation-types.js';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
 import { createGetKeycloakStatusHandler, loadInstanceWithSecret } from './service-keycloak.js';
 import { appendRunStep, buildFinalRunSteps } from './service-keycloak-run-steps.js';
 import { protectField, revealField } from '../iam-account-management/encryption.js';
+import { readKeycloakStateViaProvisioner } from './provisioning-auth-state.js';
 
 const logger = createSdkLogger({ component: 'iam-instance-registry-keycloak', level: 'info' });
 
 const buildTempPasswordAad = (runId: string): string => `iam.instances.keycloak_run_temp_password:${runId}`;
+const buildAuthClientSecretAad = (instanceId: string): string => `iam.instances.auth_client_secret:${instanceId}`;
 
 export const buildProvisioningInput = (
   loaded: NonNullable<Awaited<ReturnType<typeof loadInstanceWithSecret>>>
@@ -70,12 +72,97 @@ const createQueuedRun = async (
   return { provisioningInput, run };
 };
 
+const encryptAuthClientSecret = (instanceId: string, secret: string | undefined): string | undefined => {
+  const normalizedSecret = secret?.trim();
+  if (!normalizedSecret) {
+    return undefined;
+  }
+  return protectField(normalizedSecret, buildAuthClientSecretAad(instanceId)) ?? undefined;
+};
+
+const syncRotatedClientSecretToRegistry = async (
+  deps: InstanceRegistryServiceDeps,
+  input: {
+    loaded: NonNullable<Awaited<ReturnType<typeof loadInstanceWithSecret>>>;
+    requestId?: string;
+    actorId?: string;
+  }
+) => {
+  const state = await readKeycloakStateViaProvisioner(buildProvisioningInput(input.loaded));
+  const rotatedSecret = state.keycloakClientSecret;
+  if (!rotatedSecret) {
+    throw new Error('tenant_auth_client_secret_missing_after_rotation');
+  }
+
+  await deps.repository.updateInstance({
+    instanceId: input.loaded.instance.instanceId,
+    displayName: input.loaded.instance.displayName,
+    parentDomain: input.loaded.instance.parentDomain,
+    primaryHostname: input.loaded.instance.primaryHostname,
+    realmMode: input.loaded.instance.realmMode,
+    authRealm: input.loaded.instance.authRealm,
+    authClientId: input.loaded.instance.authClientId,
+    authIssuerUrl: input.loaded.instance.authIssuerUrl,
+    authClientSecretCiphertext: encryptAuthClientSecret(input.loaded.instance.instanceId, rotatedSecret),
+    keepExistingAuthClientSecret: false,
+    tenantAdminBootstrap: input.loaded.instance.tenantAdminBootstrap,
+    actorId: input.actorId,
+    requestId: input.requestId,
+    themeKey: input.loaded.instance.themeKey,
+    featureFlags: input.loaded.instance.featureFlags,
+    mainserverConfigRef: input.loaded.instance.mainserverConfigRef,
+  });
+
+  input.loaded.authClientSecret = rotatedSecret;
+};
+
+const syncProvisionedClientSecretToRegistry = async (
+  deps: InstanceRegistryServiceDeps,
+  input: {
+    loaded: NonNullable<Awaited<ReturnType<typeof loadInstanceWithSecret>>>;
+    requestId?: string;
+    actorId?: string;
+  }
+) => {
+  if (input.loaded.authClientSecret) {
+    return;
+  }
+
+  const state = await readKeycloakStateViaProvisioner(buildProvisioningInput(input.loaded));
+  const provisionedSecret = state.keycloakClientSecret;
+  if (!provisionedSecret) {
+    return;
+  }
+
+  await deps.repository.updateInstance({
+    instanceId: input.loaded.instance.instanceId,
+    displayName: input.loaded.instance.displayName,
+    parentDomain: input.loaded.instance.parentDomain,
+    primaryHostname: input.loaded.instance.primaryHostname,
+    realmMode: input.loaded.instance.realmMode,
+    authRealm: input.loaded.instance.authRealm,
+    authClientId: input.loaded.instance.authClientId,
+    authIssuerUrl: input.loaded.instance.authIssuerUrl,
+    authClientSecretCiphertext: encryptAuthClientSecret(input.loaded.instance.instanceId, provisionedSecret),
+    keepExistingAuthClientSecret: false,
+    tenantAdminBootstrap: input.loaded.instance.tenantAdminBootstrap,
+    actorId: input.actorId,
+    requestId: input.requestId,
+    themeKey: input.loaded.instance.themeKey,
+    featureFlags: input.loaded.instance.featureFlags,
+    mainserverConfigRef: input.loaded.instance.mainserverConfigRef,
+  });
+
+  input.loaded.authClientSecret = provisionedSecret;
+};
+
 const completeRun = async (
   deps: InstanceRegistryServiceDeps,
   input: {
     loaded: NonNullable<Awaited<ReturnType<typeof loadInstanceWithSecret>>>;
     runId: string;
     requestId?: string;
+    actorId?: string;
     intent: ExecuteInstanceKeycloakProvisioningInput['intent'];
     tenantAdminTemporaryPassword?: string;
   }
@@ -110,7 +197,20 @@ const completeRun = async (
     });
   }
 
-  const finalRunStatus = completionSteps.every((step) => step.ok) ? 'succeeded' : 'failed';
+  const finalRunStatus =
+    completionSteps.every((step) => step.ok) && areAllInstanceKeycloakRequirementsSatisfied(status)
+      ? 'succeeded'
+      : 'failed';
+
+  if (finalRunStatus === 'succeeded' && input.loaded.instance.status !== 'active') {
+    await deps.repository.setInstanceStatus({
+      instanceId: input.loaded.instance.instanceId,
+      status: 'provisioning',
+      actorId: input.actorId,
+      requestId: input.requestId,
+    });
+  }
+
   await deps.repository.updateKeycloakProvisioningRun({
     runId: input.runId,
     overallStatus: finalRunStatus,
@@ -244,7 +344,7 @@ export const processClaimedKeycloakProvisioningRun = async (
       requestId: run.requestId,
     });
 
-    if (!loaded.authClientSecret) {
+    if (run.mode === 'existing' && !loaded.authClientSecret) {
       throw new Error('tenant_auth_client_secret_missing');
     }
 
@@ -263,10 +363,25 @@ export const processClaimedKeycloakProvisioningRun = async (
       rotateClientSecret: run.intent === 'rotate_client_secret',
     });
 
+    if (run.intent === 'rotate_client_secret') {
+      await syncRotatedClientSecretToRegistry(deps, {
+        loaded,
+        requestId: run.requestId,
+        actorId: run.actorId,
+      });
+    } else {
+      await syncProvisionedClientSecretToRegistry(deps, {
+        loaded,
+        requestId: run.requestId,
+        actorId: run.actorId,
+      });
+    }
+
     const finalRunStatus = await completeRun(deps, {
       loaded,
       runId: run.id,
       requestId: run.requestId,
+      actorId: run.actorId,
       intent: run.intent,
       tenantAdminTemporaryPassword,
     });
@@ -342,7 +457,7 @@ export const createReconcileKeycloakHandler =
       return null;
     }
 
-    if (!loaded.authClientSecret) {
+    if (loaded.instance.realmMode === 'existing' && !loaded.authClientSecret) {
       throw new Error('tenant_auth_client_secret_missing');
     }
 

@@ -17,6 +17,7 @@ import {
   getStatusGuidance,
   INSTANCE_FIELD_HELP,
   INSTANCE_STATUS_LABELS,
+  isTenantSecretUserInputRequired,
   KeycloakStatusBadge,
   ProvisioningStepBadge,
   WorkflowStatusBadge,
@@ -53,6 +54,7 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
   }, [instanceId]);
 
   const selectedInstance = instancesApi.selectedInstance?.instanceId === instanceId ? instancesApi.selectedInstance : null;
+  const tenantSecretUserInputRequired = selectedInstance ? isTenantSecretUserInputRequired(selectedInstance.realmMode) : true;
 
   React.useEffect(() => {
     if (!selectedInstance) {
@@ -309,8 +311,11 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
                   <Input
                     id="detail-auth-client-secret"
                     type="password"
+                    disabled={!tenantSecretUserInputRequired}
                     placeholder={
-                      selectedInstance.authClientSecretConfigured
+                      !tenantSecretUserInputRequired
+                        ? t('admin.instances.form.authClientSecretGeneratedDuringProvisioning')
+                        : selectedInstance.authClientSecretConfigured
                         ? t('admin.instances.form.authClientSecretConfigured')
                         : t('admin.instances.form.authClientSecretMissing')
                     }
@@ -319,7 +324,11 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
                       setDetailFormValues((current) => (current ? { ...current, authClientSecret: event.target.value } : current))
                     }
                   />
-                  <p className="text-xs text-muted-foreground">{t('admin.instances.form.authClientSecretHint')}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {tenantSecretUserInputRequired
+                      ? t('admin.instances.form.authClientSecretHint')
+                      : t('admin.instances.form.authClientSecretGeneratedHint')}
+                  </p>
                 </div>
 
                 <div className="space-y-1">

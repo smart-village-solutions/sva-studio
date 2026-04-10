@@ -48,10 +48,10 @@ Abhängigkeiten des aktuellen Systems.
 9. Plugin Example (`packages/plugin-example`)
    - Beispielroute fuer Plugin-Erweiterbarkeit
 10. Instanz-Registry (`packages/core`, `packages/data`, `packages/auth`, `apps/sva-studio-react`)
-   - `packages/core`: Host-Klassifikation, Statusmodell und Validierung
-   - `packages/data`: Registry-Repositories, Migrationen und L1-Cache
-   - `packages/auth`: Plattformvertrag, Provisioning-Fassade und Root-Host-Guard
-   - `apps/sva-studio-react`: Admin-Control-Plane unter `/admin/instances`
+   - `packages/core`: Host-Klassifikation, Vertrags- und Run-Modell fuer Registry, Preflight, Plan und Provisioning-Protokoll
+   - `packages/data`: Registry-Repositories, Migrationen, persistente Provisioning-Runs und L1-Cache
+   - `packages/auth`: Plattformvertrag, Keycloak-Control-Plane, Provisioning-Fassade und Root-Host-Guard
+   - `apps/sva-studio-react`: gefuehrte Admin-Control-Plane unter `/admin/instances` mit Preflight, Plan, Ausfuehrung und Protokoll
 
 ### IAM-Bausteine und Package-Zuordnung
 
@@ -258,6 +258,19 @@ Neu hinzugekommene Bausteine im Change `add-iam-organization-management-hierarch
    - Stellt Liste sowie Create/Edit-Dialoge für fachliche Rechtstexte bereit und bindet einen App-spezifischen Rich-Text-Editor an.
 5. `apps/sva-studio-react/src/components/RichTextEditor.tsx`
    - Bleibt bewusst im App-Layer, damit keine Editor-Abhängigkeiten oder UI-Typen in `packages/core` oder `packages/auth` gelangen.
+
+### Ergänzung 2026-04: Vereinheitlichte Admin-CRUD-Routen
+
+1. `apps/sva-studio-react/src/routes/admin/users/*`
+   - Nutzerverwaltung trennt Liste, Anlage und Detailbearbeitung in eigene Seiten unter `/admin/users`, `/admin/users/new` und `/admin/users/$userId`.
+2. `apps/sva-studio-react/src/routes/admin/organizations/*`
+   - Organisationsverwaltung trennt Liste, Anlage und Detail/Mitgliedschaften in eigenständige Routen ohne modalbasierten CRUD-State.
+3. `apps/sva-studio-react/src/routes/admin/groups/*`
+   - Gruppenverwaltung trennt Liste, Anlage und Detail/Rollen/Mitgliedschaften in eigenständige Routen.
+4. `apps/sva-studio-react/src/routes/admin/legal-texts/*`
+   - Rechtstextverwaltung trennt Liste, Anlage und versionsbezogene Detailbearbeitung in eigenständige Routen.
+5. `packages/routing/src/account-ui.routes.ts`
+   - Enthält die kanonischen Guard-Pfade für Listen-, Create- und Detailrouten dieser CRUD-artigen Admin-Ressourcen.
 
 ### Ergänzung 2026-03: Manueller Keycloak-User-Import
 

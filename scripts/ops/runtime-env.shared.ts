@@ -6,10 +6,12 @@ import { getRuntimeProfileDefinition } from '../../packages/sdk/src/runtime-prof
 export type RemoteRuntimeProfile = Exclude<RuntimeProfile, 'local-builder' | 'local-keycloak'>;
 
 export type AcceptanceReleaseMode = 'app-only' | 'schema-and-app';
+export type RemoteMutationCommand = 'deploy' | 'down' | 'migrate' | 'reset';
 export type AcceptanceDeployStepName =
   | 'environment-precheck'
   | 'image-smoke'
   | 'migrate'
+  | 'bootstrap'
   | 'deploy'
   | 'internal-verify'
   | 'external-smoke'
@@ -19,6 +21,7 @@ export type AcceptanceFailureCategory =
   | 'config'
   | 'image'
   | 'migration'
+  | 'bootstrap'
   | 'startup'
   | 'health'
   | 'ingress'
@@ -68,6 +71,14 @@ export type AcceptanceProbeResult = {
   target: string;
 };
 
+export type ProdParityProbePlan = {
+  rootHost: string;
+  tenantHosts: ReadonlyArray<{
+    host: string;
+    instanceId: string;
+  }>;
+};
+
 export type AcceptanceReleaseManifest = {
   actor: string;
   commitSha?: string;
@@ -94,10 +105,13 @@ export type AcceptanceDeployStep = {
 export type AcceptanceDeployReport = {
   actor: string;
   artifacts: {
+    bootstrapJobPath: string;
+    bootstrapReportPath: string;
     externalSmokePath: string;
     internalVerifyPath: string;
     jsonPath: string;
     markdownPath: string;
+    migrationJobPath: string;
     migrationReportPath: string;
     phaseReportPath: string;
     releaseManifestPath: string;
@@ -115,6 +129,33 @@ export type AcceptanceDeployReport = {
     completedAt?: string;
     details?: Readonly<Record<string, unknown>>;
     errorMessage?: string;
+    job?: {
+      durationMs?: number;
+      exitCode?: number;
+      jobServiceName: string;
+      jobStackName: string;
+      logTail?: string;
+      state: string;
+      taskId?: string;
+      taskMessage?: string;
+    };
+    startedAt?: string;
+    status: 'error' | 'ok' | 'skipped';
+  };
+  bootstrapReport?: {
+    completedAt?: string;
+    details?: Readonly<Record<string, unknown>>;
+    errorMessage?: string;
+    job?: {
+      durationMs?: number;
+      exitCode?: number;
+      jobServiceName: string;
+      jobStackName: string;
+      logTail?: string;
+      state: string;
+      taskId?: string;
+      taskMessage?: string;
+    };
     startedAt?: string;
     status: 'error' | 'ok' | 'skipped';
   };
@@ -150,6 +191,43 @@ export type AcceptanceDeployReport = {
 
 export const getRuntimeStatusExecutionMode = (runtimeProfile: RuntimeProfile): 'local' | 'remote' =>
   getRuntimeProfileDefinition(runtimeProfile).isLocal ? 'local' : 'remote';
+
+export const buildProdParityProbePlan = (env: NodeJS.ProcessEnv): ProdParityProbePlan => {
+  const rootHost =
+    env.SVA_PUBLIC_HOST?.trim() ||
+    (() => {
+      const configuredBaseUrl = env.SVA_PUBLIC_BASE_URL?.trim();
+      if (!configuredBaseUrl) {
+        return 'localhost';
+      }
+
+      try {
+        return new URL(configuredBaseUrl).host;
+      } catch {
+        return configuredBaseUrl;
+      }
+    })();
+  const parentDomain = env.SVA_PARENT_DOMAIN?.trim() || rootHost;
+  const tenantHosts = (env.SVA_ALLOWED_INSTANCE_IDS ?? '')
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0)
+    .map((instanceId) => ({
+      host: `${instanceId}.${parentDomain}`,
+      instanceId,
+    }));
+
+  return {
+    rootHost,
+    tenantHosts,
+  };
+};
+
+export const buildTrustedForwardedHeaders = (host: string): Record<string, string> => ({
+  forwarded: `for=127.0.0.1;proto=https;host=${host}`,
+  'x-forwarded-host': host,
+  'x-forwarded-proto': 'https',
+});
 
 const takeOptionValue = (raw: string, all: readonly string[], index: number) => {
   const [flag, inlineValue] = raw.split('=', 2);
@@ -290,6 +368,35 @@ export const resolveAcceptanceDeployOptions = (
   };
 };
 
+export const isTruthyFlag = (value: string | undefined) =>
+  ['1', 'true', 'yes', 'on'].includes((value?.trim() || '').toLowerCase());
+
+export const hasLocalEmergencyRemoteMutationOverride = (env: NodeJS.ProcessEnv) =>
+  isTruthyFlag(env.SVA_ALLOW_LOCAL_REMOTE_MUTATIONS);
+
+export const assertDeterministicRemoteMutationContext = (
+  env: NodeJS.ProcessEnv,
+  runtimeProfile: RemoteRuntimeProfile,
+  command: RemoteMutationCommand,
+) => {
+  const operatorContext = env.SVA_REMOTE_OPERATOR_CONTEXT?.trim().toLowerCase() || '';
+  const hasCiRunnerContext =
+    operatorContext === 'ci-runner' ||
+    (isTruthyFlag(env.GITHUB_ACTIONS) &&
+      (env.GITHUB_WORKFLOW?.trim() || env.SVA_ACCEPTANCE_DEPLOY_WORKFLOW?.trim() || '').length > 0);
+  const allowLocalEmergency = hasLocalEmergencyRemoteMutationOverride(env);
+
+  if (hasCiRunnerContext || allowLocalEmergency) {
+    return {
+      mode: hasCiRunnerContext ? ('ci-runner' as const) : ('local-emergency' as const),
+    };
+  }
+
+  throw new Error(
+    `Remote-Mutation ${command} fuer ${runtimeProfile} ist nur im kanonischen CI-/Runner-Kontext erlaubt. Nutze den Workflow-Pfad oder setze SVA_ALLOW_LOCAL_REMOTE_MUTATIONS=true fuer einen dokumentierten Notfallpfad.`,
+  );
+};
+
 export const buildAcceptanceReportPaths = (
   artifactsDir: string,
   reportSlug: string,
@@ -304,6 +411,9 @@ export const buildAcceptanceReportPaths = (
     markdownPath: resolve(artifactsDir, `${reportId}.md`),
     releaseManifestPath: resolve(artifactsDir, `${reportId}.manifest.json`),
     phaseReportPath: resolve(artifactsDir, `${reportId}.phases.json`),
+    bootstrapJobPath: resolve(artifactsDir, `${reportId}.bootstrap-job.json`),
+    bootstrapReportPath: resolve(artifactsDir, `${reportId}.bootstrap.json`),
+    migrationJobPath: resolve(artifactsDir, `${reportId}.migration-job.json`),
     migrationReportPath: resolve(artifactsDir, `${reportId}.migration.json`),
     internalVerifyPath: resolve(artifactsDir, `${reportId}.internal-probes.json`),
     externalSmokePath: resolve(artifactsDir, `${reportId}.external-probes.json`),
@@ -348,6 +458,19 @@ export const formatAcceptanceDeployReportMarkdown = (report: AcceptanceDeployRep
     `- Migrationsstatus: \`${report.migrationReport?.status ?? 'skipped'}\``,
     report.migrationReport?.details?.gooseVersion
       ? `- Goose-Version: \`${String(report.migrationReport.details.gooseVersion)}\``
+      : null,
+    report.migrationReport?.job?.jobStackName
+      ? `- Migrationsjob: \`${report.migrationReport.job.jobStackName}/${report.migrationReport.job.jobServiceName}\``
+      : null,
+    typeof report.migrationReport?.job?.exitCode === 'number'
+      ? `- Job-Exit-Code: \`${String(report.migrationReport.job.exitCode)}\``
+      : null,
+    `- Bootstrap-Status: \`${report.bootstrapReport?.status ?? 'skipped'}\``,
+    report.bootstrapReport?.job?.jobStackName
+      ? `- Bootstrap-Job: \`${report.bootstrapReport.job.jobStackName}/${report.bootstrapReport.job.jobServiceName}\``
+      : null,
+    typeof report.bootstrapReport?.job?.exitCode === 'number'
+      ? `- Bootstrap-Exit-Code: \`${String(report.bootstrapReport.job.exitCode)}\``
       : null,
     '',
     '## Schritte',

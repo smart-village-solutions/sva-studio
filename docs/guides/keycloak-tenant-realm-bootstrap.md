@@ -1,5 +1,8 @@
 # Keycloak-Tenant-Realm-Bootstrap für Studio
 
+Hinweis:
+Die kanonische Betriebsbeschreibung für den Root-Host-Workflow liegt jetzt unter [Instanzverwaltung als Keycloak-Control-Plane](./instance-keycloak-provisioning.md). Dieses Dokument beschreibt den tenant-spezifischen Zielzustand im Realm selbst.
+
 ## Ziel
 
 Dieses Runbook beschreibt den minimalen Sollzustand eines tenant-spezifischen Keycloak-Realms für SVA Studio.
@@ -50,7 +53,7 @@ Die führende Quelle für die Realm- und Client-Zuordnung ist die Instanz-Regist
 - `iam.instances.authClientId`
 - optional `iam.instances.authIssuerUrl`
 
-Für den frühen Betriebsmodus wird dieser Vertrag am Root-Host `https://studio.smart-village.app/admin/instances` gepflegt.
+Für den operativen Pflegepfad wird dieser Vertrag am Root-Host `https://studio.smart-village.app/admin/instances` geführt.
 Die Instanzverwaltung ist damit die operative Control Plane für:
 
 - `authRealm`
@@ -63,24 +66,13 @@ Wichtige Regeln:
 - das Client-Secret ist write-only und wird in Studio nur verschlüsselt gespeichert
 - ein leeres Secret-Feld bedeutet "unverändert lassen"
 - temporäre Admin-Passwörter werden nur für den Bootstrap-/Reset-Vorgang verwendet und nicht gespeichert
-- Realm-, Client-, Mapper- und Tenant-Admin-Abgleich laufen idempotent über den expliziten Reconcile-Pfad
+- Realm-, Client-, Mapper- und Tenant-Admin-Abgleich laufen idempotent über den expliziten Provisioning-Pfad
 
 Für die App ist `instanceId` der fachliche Mandantenschlüssel. Der Keycloak-Realm muss diesen Schlüssel deshalb als OIDC-Claim an die App weitergeben.
 
 ## Studio-Workflow
 
-Für neue oder bestehende Instanzen ist der Sollpfad:
-
-1. Instanz am Root-Host unter `/admin/instances` öffnen oder anlegen
-2. Realm-Basisdaten pflegen:
-   - `authRealm`
-   - `authClientId`
-   - optional `authIssuerUrl`
-   - Client-Secret
-   - Tenant-Admin-Stammdaten
-3. Keycloak-Status prüfen
-4. Realm anwenden bzw. Reconcile ausführen
-5. Tenant-Login und `/auth/me` gegen den Tenant-Host validieren
+Der vollständige Root-Host-Workflow mit Preflight, Realm-Modus, Plan, Ausführung und Protokoll ist unter [Instanzverwaltung als Keycloak-Control-Plane](./instance-keycloak-provisioning.md) beschrieben.
 
 Direkte Änderungen in Keycloak bleiben für Notfälle möglich, gelten aber nicht als kanonischer Pflegepfad.
 

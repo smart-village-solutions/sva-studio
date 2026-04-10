@@ -19,10 +19,13 @@ const tempDirs: string[] = [];
 const createReport = (overrides: Partial<AcceptanceDeployReport> = {}): AcceptanceDeployReport => ({
   actor: 'gha',
   artifacts: {
+    bootstrapJobPath: '/tmp/a.bootstrap-job.json',
+    bootstrapReportPath: '/tmp/a.bootstrap.json',
     jsonPath: '/tmp/a.json',
     markdownPath: '/tmp/a.md',
     releaseManifestPath: '/tmp/a.manifest.json',
     phaseReportPath: '/tmp/a.phases.json',
+    migrationJobPath: '/tmp/a.migration-job.json',
     migrationReportPath: '/tmp/a.migration.json',
     internalVerifyPath: '/tmp/a.internal.json',
     externalSmokePath: '/tmp/a.external.json',

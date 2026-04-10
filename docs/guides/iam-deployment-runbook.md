@@ -9,8 +9,8 @@ Sicherer Rollout des Changes `add-account-user-management-ui` inklusive Datenban
 - Keycloak Service-Account `sva-studio-iam-service` ist eingerichtet.
 - Secrets für Keycloak-Admin-Zugang sind im Zielsystem hinterlegt.
 - Datenbankzugriff auf IAM-Schema ist vorhanden.
-- Für tenant-spezifische Realms ist der Sollzustand aus `./keycloak-tenant-realm-bootstrap.md` erfüllt.
-- Die Root-Host-Instanzverwaltung unter `/admin/instances` ist der führende Pflegepfad für `authRealm`, `authClientId`, tenant-spezifische Client-Secrets und den initialen Tenant-Admin-Bootstrap.
+- Für den operativen Root-Host-Pfad gilt `./instance-keycloak-provisioning.md`.
+- Für den tenant-spezifischen Zielzustand im Realm gilt `./keycloak-tenant-realm-bootstrap.md`.
 
 ## Rollout-Schritte
 
@@ -18,8 +18,10 @@ Sicherer Rollout des Changes `add-account-user-management-ui` inklusive Datenban
    - `0004_iam_account_profile.sql`
    - `0005_iam_idempotency_keys.sql`
    - `0006_iam_activity_log_archive.sql`
+   - produktionsnahe Remote-Profile führen diese Migrationen über `pnpm env:migrate:studio` oder `pnpm env:deploy:studio -- --release-mode=schema-and-app --maintenance-window="..."` als dedizierten Swarm-Migrationsjob aus
 2. **Migration validieren**
    - `pnpm nx run data:db:migrate:validate`
+   - im Remote-Report zusätzlich den Artefaktblock `*.migration-job.json` auf Job-Exit-Code, Task-State und Task-ID prüfen
 3. **Backend deployen (Flags aus)**
    - `IAM_UI_ENABLED=false`
    - `IAM_ADMIN_ENABLED=false`
@@ -39,6 +41,12 @@ Sicherer Rollout des Changes `add-account-user-management-ui` inklusive Datenban
 7. **Tenant-Realm-Status am Root-Host prüfen**
    - betroffene Instanz unter `/admin/instances` öffnen
    - `authClientSecretConfigured=true` prüfen
+   - Preflight prüfen:
+     - Plattformzugriff bereit
+     - technischer Keycloak-Zugang bereit
+   - Plan prüfen:
+     - Realm-Modus korrekt
+     - Drift verständlich
    - Keycloak-Status prüfen:
      - Realm vorhanden
      - Client vorhanden
@@ -46,7 +54,7 @@ Sicherer Rollout des Changes `add-account-user-management-ui` inklusive Datenban
      - Tenant-Admin vorhanden
      - Tenant-Admin hat `system_admin`
      - Tenant-Admin hat nicht `instance_registry_admin`
-   - bei Drift explizit "Realm anwenden / bootstrapen" ausführen
+   - bei Drift explizit `Provisioning ausführen` starten
 8. **Smoke/E2E ausführen**
    - `observability-readiness` im zugehörigen `env:doctor:studio` oder `env:precheck:studio` prüfen
    - in Loki nach `tenant_auth_resolution_summary`, `tenant_auth_callback_result` und `keycloak_reconcile_summary` für den betroffenen Tenant suchen
@@ -95,6 +103,7 @@ Sicherer Rollout des Changes `add-account-user-management-ui` inklusive Datenban
 
 ## Referenzen
 
+- `docs/guides/instance-keycloak-provisioning.md`
 - `docs/guides/keycloak-service-account-setup-iam.md`
 - `docs/guides/keycloak-tenant-realm-bootstrap.md`
 - `docs/guides/iam-acceptance-runbook.md`

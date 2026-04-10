@@ -27,6 +27,9 @@ SVA_MAINSERVER_CLIENT_ID=studio-mainserver
 KEYCLOAK_ADMIN_BASE_URL=https://keycloak.example.invalid
 KEYCLOAK_ADMIN_REALM=sva-studio
 KEYCLOAK_ADMIN_CLIENT_ID=sva-studio-iam-service
+KEYCLOAK_PROVISIONER_BASE_URL=https://keycloak.example.invalid
+KEYCLOAK_PROVISIONER_REALM=master
+KEYCLOAK_PROVISIONER_CLIENT_ID=sva-studio-provisioner
 IAM_PII_ACTIVE_KEY_ID=k1
 
 # ---------------------------------------------------------------------------
@@ -61,6 +64,7 @@ VITE_IAM_BULK_ENABLED=true
 # ---------------------------------------------------------------------------
 SVA_STACK_NAME=studio
 QUANTUM_ENDPOINT=sva
+QUANTUM_ENDPOINT_ID=64
 
 # ---------------------------------------------------------------------------
 # Image
@@ -87,6 +91,7 @@ SVA_AUTH_DEBUG_HEADERS=true
 # SVA_AUTH_CLIENT_SECRET=
 # SVA_AUTH_STATE_SECRET=
 # KEYCLOAK_ADMIN_CLIENT_SECRET=
+# KEYCLOAK_PROVISIONER_CLIENT_SECRET=
 # ENCRYPTION_KEY=
 # IAM_PII_KEYRING_JSON=
 # SVA_MAINSERVER_CLIENT_SECRET=

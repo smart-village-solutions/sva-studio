@@ -20,9 +20,13 @@ import {
   type SchemaGuardReport,
 } from '../../packages/auth/src/iam-account-management/schema-guard.ts';
 import {
+  assertDeterministicRemoteMutationContext,
   buildAcceptanceReportPaths,
+  buildProdParityProbePlan,
+  buildTrustedForwardedHeaders,
   formatAcceptanceDeployReportMarkdown,
   getRuntimeStatusExecutionMode,
+  hasLocalEmergencyRemoteMutationOverride,
   parseRuntimeCliOptions,
   resolveAcceptanceDeployOptions,
   type AcceptanceDeployOptions,
@@ -35,10 +39,12 @@ import {
 } from './runtime-env.shared.ts';
 import {
   commandExists as commandExistsForRoot,
+  filterRemoteOutputLines,
   run as runForRoot,
   runCapture as runCaptureForRoot,
   runCaptureDetailed as runCaptureDetailedForRoot,
   runQuantumExec as runQuantumExecForRoot,
+  spawnBackground as spawnBackgroundForRoot,
   summarizeProcessOutput,
   wait,
   withoutDebugEnv,
@@ -49,11 +55,26 @@ import {
   inspectImagePlatforms,
 } from './runtime/image-platform.ts';
 import {
+  assertComposeServiceIngressLabels,
+  assertComposeServiceNetworks,
+  buildQuantumDeployComposeDocument,
+  extractComposeServiceContract,
+  type ComposeDocument,
+} from './runtime/deploy-project.ts';
+import {
   getGooseConfiguredVersion as getGooseConfiguredVersionFromConfig,
   listGooseMigrationFiles as listGooseMigrationFilesFromDir,
-  runGooseAgainstAcceptance as runGooseAgainstAcceptanceWithDeps,
   runLocalGooseStatus as runLocalGooseStatusWithDeps,
 } from './runtime/goose.ts';
+import { runBootstrapJobAgainstAcceptance as runBootstrapJobAgainstAcceptanceWithDeps } from './runtime/bootstrap-job.ts';
+import {
+  collectQuantumTaskSnapshots,
+  extractQuantumJsonPayload,
+  runMigrationJobAgainstAcceptance as runMigrationJobAgainstAcceptanceWithDeps,
+  selectLatestMigrationTask,
+} from './runtime/migration-job.ts';
+import { inspectRemoteServiceContract } from './runtime/remote-service-spec.ts';
+import { formatRemoteStackSnapshot, inspectRemoteStack, type RemoteStackSnapshot } from './runtime/remote-stack-state.ts';
 
 type RuntimeCommand = 'deploy' | 'doctor' | 'down' | 'migrate' | 'precheck' | 'reset' | 'smoke' | 'status' | 'up' | 'update';
 type DoctorCheckStatus = 'error' | 'ok' | 'skipped' | 'warn';
@@ -93,7 +114,6 @@ const localStateFile = resolve(runtimeArtifactsDir, 'local-app-state.json');
 const appLogDir = resolve(runtimeArtifactsDir, 'logs');
 const deployReportDir = resolve(runtimeArtifactsDir, 'deployments');
 const gooseConfigPath = resolve(rootDir, 'packages/data/goose.config.json');
-const gooseWrapperPath = resolve(rootDir, 'packages/data/scripts/goosew.sh');
 const gooseMigrationsDir = resolve(rootDir, 'packages/data/migrations');
 const gooseConfig = JSON.parse(readFileSync(gooseConfigPath, 'utf8')) as { repo: string; version: string };
 const run = (commandName: string, args: readonly string[], env: NodeJS.ProcessEnv = process.env) =>
@@ -457,40 +477,36 @@ const parseLiveRuntimeFlags = (raw: string): LiveRuntimeFlags => {
   };
 };
 
-const readLiveRuntimeFlags = (env: NodeJS.ProcessEnv): LiveRuntimeFlags => {
-  const marker = '__SVA_RUNTIME_FLAGS__';
-  const commandScript = [
-    `printf '%s\\n' '${marker}_START'`,
-    'printf \'ENABLE_OTEL=%s\\n\' "$ENABLE_OTEL"',
-    'printf \'SVA_ENABLE_SERVER_CONSOLE_LOGS=%s\\n\' "$SVA_ENABLE_SERVER_CONSOLE_LOGS"',
-    'printf \'SVA_RUNTIME_PROFILE=%s\\n\' "$SVA_RUNTIME_PROFILE"',
-    `printf '%s\\n' '${marker}_END'`,
-  ].join('; ');
-  const output = runQuantumExec(
-    [
-      'exec',
-      '--endpoint',
-      getConfiguredQuantumEndpoint(env),
-      '--stack',
-      getConfiguredStackName(env),
-      '--service',
-      'app',
-      '--command',
-      `sh -lc ${shellEscape(commandScript)}`,
-    ],
+const readLiveRuntimeFlags = async (env: NodeJS.ProcessEnv): Promise<LiveRuntimeFlags> => {
+  const liveContract = await inspectRemoteServiceContract(
+    {
+      commandExists,
+      runCapture,
+    },
     env,
     {
-      marker,
-      failureMessage: 'Laufende Runtime-Umgebung des App-Containers konnte nicht gelesen werden.',
-    }
+      quantumEndpoint: getConfiguredQuantumEndpoint(env),
+      serviceName: env.SVA_ACCEPTANCE_APP_SERVICE ?? 'app',
+      stackName: getConfiguredStackName(env),
+    },
   );
 
-  return parseLiveRuntimeFlags(output);
+  if (!liveContract) {
+    throw new Error('Live-Service-Spec fuer den App-Container konnte nicht gelesen werden.');
+  }
+
+  const serializedEnv = Object.entries(liveContract.env)
+    .map(([key, value]) => `${key}=${value}`)
+    .join('\n');
+  return parseLiveRuntimeFlags(serializedEnv);
 };
 
-const buildLiveRuntimeEnvCheck = (runtimeProfile: RemoteRuntimeProfile, env: NodeJS.ProcessEnv): DoctorCheck => {
+const buildLiveRuntimeEnvCheck = async (
+  runtimeProfile: RemoteRuntimeProfile,
+  env: NodeJS.ProcessEnv
+): Promise<DoctorCheck> => {
   try {
-    const liveFlags = readLiveRuntimeFlags(env);
+    const liveFlags = await readLiveRuntimeFlags(env);
     const expectedFlags = {
       ENABLE_OTEL: env.ENABLE_OTEL?.trim() || '',
       SVA_ENABLE_SERVER_CONSOLE_LOGS: env.SVA_ENABLE_SERVER_CONSOLE_LOGS?.trim() || '',
@@ -525,6 +541,7 @@ const buildLiveRuntimeEnvCheck = (runtimeProfile: RemoteRuntimeProfile, env: Nod
       'runtime_env_live_match',
       'Die effektive Container-Umgebung entspricht den erwarteten Runtime-Flags.',
       {
+        channel: 'portainer-api',
         expectedFlags,
         liveFlags,
       }
@@ -536,6 +553,66 @@ const buildLiveRuntimeEnvCheck = (runtimeProfile: RemoteRuntimeProfile, env: Nod
       'runtime_env_live_unavailable',
       error instanceof Error ? error.message : String(error)
     );
+  }
+};
+
+type RemoteStackEvidence = {
+  channel: 'docker' | 'portainer-api' | 'quantum-cli';
+  hasRunningService: (serviceName: string) => boolean;
+  services?: string;
+  snapshot?: RemoteStackSnapshot;
+  summary: string;
+  tasks?: string;
+};
+
+const hasRunningQuantumService = (summary: string, serviceName: string) =>
+  summary.includes(`service ${serviceName}`) &&
+  new RegExp(`service ${serviceName}[\\s\\S]*?replicated\\s+1/1`, 'u').test(summary);
+
+const readRemoteStackEvidence = async (env: NodeJS.ProcessEnv): Promise<RemoteStackEvidence> => {
+  const stackName = getConfiguredStackName(env);
+
+  try {
+    const snapshot = await inspectRemoteStack(
+      {
+        commandExists,
+        runCapture,
+      },
+      env,
+      {
+        quantumEndpoint: getConfiguredQuantumEndpoint(env),
+        stackName,
+      },
+    );
+    const summary = formatRemoteStackSnapshot(snapshot);
+    return {
+      channel: 'portainer-api',
+      hasRunningService: (serviceName) => {
+        const service = snapshot.services.find((entry) => entry.shortName === serviceName);
+        return (service?.runningReplicas ?? 0) > 0;
+      },
+      services: summary,
+      snapshot,
+      summary,
+      tasks: summary,
+    };
+  } catch (portainerError) {
+    if (commandExists('quantum-cli')) {
+      const quantumSummary = runCapture(
+        'quantum-cli',
+        ['ps', '--endpoint', getConfiguredQuantumEndpoint(env), '--stack', stackName, '--all'],
+        withoutDebugEnv(env),
+      );
+      return {
+        channel: 'quantum-cli',
+        hasRunningService: (serviceName) => hasRunningQuantumService(quantumSummary, serviceName),
+        services: quantumSummary,
+        summary: quantumSummary,
+        tasks: quantumSummary,
+      };
+    }
+
+    throw portainerError;
   }
 };
 
@@ -1180,7 +1257,17 @@ const createDbSqlRunner = (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEn
   return (sql: string) => (isRemoteRuntimeProfile(runtimeProfile) ? runAcceptanceSql(sql) : runLocalSql(sql));
 };
 
+const shouldUseJobBasedRemoteDbAssertions = (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) =>
+  isRemoteRuntimeProfile(runtimeProfile) &&
+  (env.SVA_REMOTE_DB_ASSERTIONS_MODE?.trim().toLowerCase() ?? 'job') === 'job';
+
 const runSchemaGuard = (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv): SchemaGuardReport => {
+  if (shouldUseJobBasedRemoteDbAssertions(runtimeProfile, env)) {
+    return {
+      ok: true,
+      checks: [],
+    };
+  }
   const runSql = createDbSqlRunner(runtimeProfile, env);
   const output = runSql(`${CRITICAL_IAM_SCHEMA_GUARD_SQL}`);
   const fieldCount = CRITICAL_IAM_SCHEMA_GUARD_FIELDS.length;
@@ -1215,6 +1302,15 @@ const buildSchemaGuardCheck = (
   runtimeProfile: RuntimeProfile,
   env: NodeJS.ProcessEnv
 ): DoctorCheck => {
+  if (shouldUseJobBasedRemoteDbAssertions(runtimeProfile, env)) {
+    return toDoctorCheck(
+      'schema-guard',
+      'ok',
+      'schema_guard_verified_by_job',
+      'Kritische IAM-Schema-Pruefungen werden fuer Remote-Profile im dedizierten Bootstrap-Job ausgefuehrt.',
+    );
+  }
+
   try {
     const report = runSchemaGuard(runtimeProfile, env);
     if (report.ok) {
@@ -1400,6 +1496,18 @@ const buildInstanceAuthConfigCheck = (
   runtimeProfile: RuntimeProfile,
   env: NodeJS.ProcessEnv
 ): DoctorCheck => {
+  if (shouldUseJobBasedRemoteDbAssertions(runtimeProfile, env)) {
+    return toDoctorCheck(
+      'instance-auth-config',
+      'ok',
+      'instance_auth_config_verified_by_job',
+      'Aktive Instanz-Auth-Konfiguration wird fuer Remote-Profile ueber den dedizierten Bootstrap-Job sichergestellt.',
+      {
+        requiredFields: ['authRealm', 'authClientId'],
+      }
+    );
+  }
+
   const appDbUser = env.APP_DB_USER?.trim() || 'sva_app';
   const evaluateInstanceAuthPayload = (payload: {
     checked_active_instance_count?: number;
@@ -1500,6 +1608,15 @@ const buildInstanceHostnameMappingCheck = (
   runtimeProfile: RuntimeProfile,
   env: NodeJS.ProcessEnv
 ): DoctorCheck => {
+  if (shouldUseJobBasedRemoteDbAssertions(runtimeProfile, env)) {
+    return toDoctorCheck(
+      'instance-hostnames',
+      'ok',
+      'instance_hostnames_verified_by_job',
+      'Tenant-Hostname-Mappings werden fuer Remote-Profile im dedizierten Bootstrap-Job validiert.',
+    );
+  }
+
   const parentDomain = env.SVA_PARENT_DOMAIN?.trim();
   const instanceIds = (env.SVA_ALLOWED_INSTANCE_IDS ?? '')
     .split(',')
@@ -1630,28 +1747,63 @@ SELECT json_build_object(
   }
 };
 
-const buildAcceptanceServiceCheck = (env: NodeJS.ProcessEnv) => {
-  if (!commandExists('quantum-cli')) {
-    return toDoctorCheck(
-      'acceptance-services',
-      'skipped',
-      'quantum_unavailable',
-      'quantum-cli ist lokal nicht verfuegbar; Remote-Service-Status wird uebersprungen.'
-    );
-  }
-
+const buildAcceptanceServiceCheck = async (env: NodeJS.ProcessEnv): Promise<DoctorCheck> => {
   try {
-    const stackName = getConfiguredStackName(env);
-    const quantumEndpoint = getConfiguredQuantumEndpoint(env);
-    const output = runCapture('quantum-cli', ['ps', '--endpoint', quantumEndpoint, '--stack', stackName, '--all'], withoutDebugEnv(env));
+    const output = await readRemoteStackEvidence(env);
     return toDoctorCheck('acceptance-services', 'ok', 'remote_services_visible', 'Remote-Service-Status konnte abgefragt werden.', {
-      summary: output,
+      channel: output.channel,
+      summary: output.summary,
     });
   } catch (error) {
     return toDoctorCheck(
       'acceptance-services',
       'warn',
       'remote_service_status_failed',
+      error instanceof Error ? error.message : String(error)
+    );
+  }
+};
+
+const buildAcceptanceIngressConsistencyCheck = async (env: NodeJS.ProcessEnv): Promise<DoctorCheck> => {
+  try {
+    const evidence = await readRemoteStackEvidence(env);
+    const stackName = getConfiguredStackName(env);
+    const baseUrl = env.SVA_PUBLIC_BASE_URL ?? 'https://studio.smart-village.app';
+    const hasRunningAppTask = evidence.hasRunningService(env.SVA_ACCEPTANCE_APP_SERVICE ?? 'app');
+    const live = await checkHttpHealth(new URL('/health/live', baseUrl).toString());
+
+    if (hasRunningAppTask && !live.response.ok) {
+      return toDoctorCheck(
+        'acceptance-ingress-consistency',
+        'error',
+        'remote_app_ingress_inconsistent',
+        'Swarm meldet einen laufenden App-Task, aber der externe Live-Endpoint ist nicht gesund.',
+        {
+          baseUrl,
+          channel: evidence.channel,
+          liveStatus: live.response.status,
+          stackName,
+        }
+      );
+    }
+
+    return toDoctorCheck(
+      'acceptance-ingress-consistency',
+      'ok',
+      'remote_app_ingress_consistent',
+      'Swarm-Task-Status und externer Live-Endpoint sind konsistent.',
+      {
+        baseUrl,
+        channel: evidence.channel,
+        liveStatus: live.response.status,
+        stackName,
+      }
+    );
+  } catch (error) {
+    return toDoctorCheck(
+      'acceptance-ingress-consistency',
+      'warn',
+      'remote_app_ingress_probe_failed',
       error instanceof Error ? error.message : String(error)
     );
   }
@@ -1679,82 +1831,109 @@ const buildAcceptancePostgresCheck = (env: NodeJS.ProcessEnv) => {
   const postgresUser = env.POSTGRES_USER ?? 'sva';
   const postgresDb = env.POSTGRES_DB ?? 'sva_studio';
 
-  try {
-    if (commandExists('quantum-cli')) {
-      const summary = runAcceptanceServiceScript(
-        env,
-        env.SVA_ACCEPTANCE_POSTGRES_SERVICE ?? 'postgres',
-        `pg_isready -U ${shellEscape(postgresUser)} -d ${shellEscape(postgresDb)}`,
-        {
-          failureMessage: 'Remote-Postgres-Healthcheck fehlgeschlagen.',
-          slot: env.SVA_ACCEPTANCE_POSTGRES_SLOT ?? '1',
-        }
-      );
-
-      return toDoctorCheck(
-        'postgres-health',
-        'ok',
-        'postgres_ready',
-      'Remote-Postgres des Ziel-Stacks ist ueber den offiziellen Betriebsweg erreichbar.',
-        { summary }
-      );
-    }
-
-    const containerOutput = runCapture('docker', ['ps', '--filter', `name=${getConfiguredStackName(env)}_postgres`, '--format', '{{.Status}}'], env);
-    if (!containerOutput.trim()) {
-      throw new Error('Weder quantum-cli noch lokaler Postgres-Container verfuegbar.');
-    }
-
-    return toDoctorCheck(
-      'postgres-health',
-      'ok',
-      'postgres_visible',
-      'Lokaler Remote-Postgres-Container ist sichtbar.',
-      { summary: containerOutput }
-    );
-  } catch (error) {
-    return toDoctorCheck(
-      'postgres-health',
-      'error',
-      'postgres_unreachable',
-      error instanceof Error ? error.message : String(error)
-    );
-  }
+  return toDoctorCheck(
+    'postgres-health',
+    'skipped',
+    'postgres_health_deferred',
+    `Remote-Postgres wird im Standardpfad nicht mehr ueber quantum-cli exec geprueft; massgeblich sind Swarm-Service-Sicht, /health/ready und Bootstrap-/Schema-Evidenz (${postgresUser}@${postgresDb}).`,
+  );
 };
 
 const runLocalGooseStatus = (env: NodeJS.ProcessEnv) =>
   runLocalGooseStatusWithDeps({ rootDir, runCapture: runCaptureForRoot }, gooseConfig, env);
 
-const runGooseAgainstAcceptance = (
+const resolveRemoteInternalNetworkName = async (env: NodeJS.ProcessEnv) => {
+  const stackName = getConfiguredStackName(env);
+  const liveContract = await inspectRemoteServiceContract(
+    {
+      commandExists,
+      runCapture,
+    },
+    env,
+    {
+      quantumEndpoint: getConfiguredQuantumEndpoint(env),
+      serviceName: env.SVA_ACCEPTANCE_APP_SERVICE ?? 'app',
+      stackName,
+    },
+  );
+
+  const internalCandidates = (liveContract?.networkNames ?? []).filter((networkName) => networkName !== 'public');
+  const internalNetworkName = internalCandidates[0]?.trim();
+  if (internalNetworkName) {
+    return internalNetworkName;
+  }
+
+  throw new Error(
+    `Internes Overlay-Netz fuer ${stackName}_app konnte nicht aus der Live-Service-Spec abgeleitet werden.`,
+  );
+};
+
+const runMigrationJobAgainstAcceptance = async (
   env: NodeJS.ProcessEnv,
   runtimeProfile: RemoteRuntimeProfile,
-  gooseCommand: 'status' | 'up',
+  reportId: string,
 ) =>
-  runGooseAgainstAcceptanceWithDeps(
+  runMigrationJobAgainstAcceptanceWithDeps(
     {
       commandExists: commandExistsForRoot,
-      getConfiguredStackName,
       rootDir,
       run: runForRoot,
-      runAcceptanceServiceScript,
       runCapture: runCaptureForRoot,
-      shellEscape,
+      runCaptureDetailed: runCaptureDetailedForRoot,
+      spawnBackground: spawnBackgroundForRoot,
+      wait,
     },
-    gooseConfig,
-    gooseMigrationsDir,
-    gooseWrapperPath,
     env,
-    runtimeProfile,
-    gooseCommand,
+    {
+      internalNetworkName: await resolveRemoteInternalNetworkName(env),
+      quantumEndpoint: getConfiguredQuantumEndpoint(env),
+      remoteComposeFile: getRemoteComposeFile(env),
+      reportId,
+      runtimeProfile,
+      sourceStackName: getConfiguredStackName(env),
+    },
+  );
+
+const runBootstrapJobAgainstAcceptance = async (
+  env: NodeJS.ProcessEnv,
+  runtimeProfile: RemoteRuntimeProfile,
+  reportId: string,
+) =>
+  runBootstrapJobAgainstAcceptanceWithDeps(
+    {
+      commandExists: commandExistsForRoot,
+      rootDir,
+      run: runForRoot,
+      runCapture: runCaptureForRoot,
+      runCaptureDetailed: runCaptureDetailedForRoot,
+      spawnBackground: spawnBackgroundForRoot,
+      wait,
+    },
+    env,
+    {
+      internalNetworkName: await resolveRemoteInternalNetworkName(env),
+      quantumEndpoint: getConfiguredQuantumEndpoint(env),
+      remoteComposeFile: getRemoteComposeFile(env),
+      reportId,
+      runtimeProfile,
+      sourceStackName: getConfiguredStackName(env),
+    },
   );
 
 const buildMigrationStatusCheck = (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv): DoctorCheck => {
   const migrationStatusRequired = isMigrationStatusCheckRequired(runtimeProfile, env);
 
   try {
-    const result = isRemoteRuntimeProfile(runtimeProfile)
-      ? runGooseAgainstAcceptance(env, runtimeProfile, 'status')
-      : runLocalGooseStatus(env);
+    if (isRemoteRuntimeProfile(runtimeProfile)) {
+      return toDoctorCheck(
+        'migration-status',
+        migrationStatusRequired ? 'warn' : 'skipped',
+        'remote_goose_status_disabled',
+        'Remote-Goose-Status wird nicht mehr ueber quantum-cli exec abgefragt; Schema-Guard und Job-Exit-Codes sind autoritativ.',
+      );
+    }
+
+    const result = runLocalGooseStatus(env);
     return toDoctorCheck(
       'migration-status',
       'ok',
@@ -1830,8 +2009,10 @@ const precheckAcceptance = async (
   }
 
   checks.push(buildImagePlatformDoctorCheck(env, options));
-  checks.push(buildAcceptanceServiceCheck(env));
-  checks.push(buildLiveRuntimeEnvCheck(runtimeProfile, env));
+  checks.push(await buildAcceptanceServiceCheck(env));
+  checks.push(await buildAcceptanceIngressConsistencyCheck(env));
+  checks.push(await buildLiveRuntimeEnvCheck(runtimeProfile, env));
+  checks.push(await buildAppPrincipalReadinessCheck(env));
   checks.push(await buildObservabilityDoctorCheck(runtimeProfile, env));
   checks.push(await buildTenantAuthProofCheck(env));
   checks.push(buildAcceptancePostgresCheck(env));
@@ -1840,7 +2021,7 @@ const precheckAcceptance = async (
   checks.push(buildInstanceAuthConfigCheck(runtimeProfile, env));
   checks.push(buildInstanceHostnameMappingCheck(runtimeProfile, env));
   if (options) {
-    checks.push(buildAcceptanceLiveSpecCheck(runtimeProfile, env, options));
+    checks.push(await buildAcceptanceLiveSpecCheck(runtimeProfile, env, options));
   }
 
   return finalizeDoctorReport(runtimeProfile, checks);
@@ -1959,7 +2140,10 @@ const doctorRuntime = async (runtimeProfile: RuntimeProfile, env: NodeJS.Process
       checks.push(toDoctorCheck('otel', 'error', 'otel_failed', error instanceof Error ? error.message : String(error)));
     }
   } else {
-    checks.push(buildAcceptanceServiceCheck(env));
+    checks.push(await buildAcceptanceServiceCheck(env));
+  }
+  if (isRemoteRuntimeProfile(runtimeProfile)) {
+    checks.push(await buildAppPrincipalReadinessCheck(env));
   }
   checks.push(await buildObservabilityDoctorCheck(runtimeProfile, env));
   if (isRemoteRuntimeProfile(runtimeProfile)) {
@@ -2126,12 +2310,24 @@ const assertOtelLocal = async (env: NodeJS.ProcessEnv) => {
   throw lastError;
 };
 
-const assertAcceptanceContainerHealth = (env: NodeJS.ProcessEnv) => {
+const assertAcceptanceContainerHealth = async (env: NodeJS.ProcessEnv) => {
   const stackName = getConfiguredStackName(env);
   const services =
     (env.ENABLE_OTEL?.trim() || 'true').toLowerCase() === 'false'
       ? ['app', 'redis', 'postgres']
       : ['app', 'redis', 'postgres', 'otel-collector'];
+
+  try {
+    const evidence = await readRemoteStackEvidence(env);
+    for (const service of services) {
+      if (!evidence.hasRunningService(service)) {
+        throw new Error(`Remote-Service fuer ${service} nicht gefunden.`);
+      }
+    }
+    return;
+  } catch {
+    // Fallback below.
+  }
 
   if (commandExists('quantum-cli')) {
     const quantumEndpoint = getConfiguredQuantumEndpoint(env);
@@ -2175,7 +2371,7 @@ const smokeRuntime = async (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessE
   if (getRuntimeProfileDefinition(runtimeProfile).isLocal) {
     await assertOtelLocal(env);
   } else {
-    assertAcceptanceContainerHealth(env);
+    await assertAcceptanceContainerHealth(env);
   }
 
   const schemaGuard = runSchemaGuard(runtimeProfile, env);
@@ -2242,17 +2438,37 @@ const runLocalCommand = async (runtimeProfile: RuntimeProfile, runtimeCommand: R
   }
 };
 
-const migrateAcceptance = (runtimeProfile: RemoteRuntimeProfile, env: NodeJS.ProcessEnv) => {
+const migrateAcceptance = async (runtimeProfile: RemoteRuntimeProfile, env: NodeJS.ProcessEnv) => {
   const migrationFiles = listGooseMigrationFiles();
 
   if (migrationFiles.length === 0) {
     throw new Error('Keine Goose-Migrationen unter packages/data/migrations gefunden.');
   }
 
-  const result = runGooseAgainstAcceptance(env, runtimeProfile, 'up');
-  console.log(`Applying Goose migrations for ${runtimeProfile} with ${result.version}`);
-  console.log(result.summary);
-  ensureAcceptancePostMigrationState(runtimeProfile, env);
+  const migrationResult = await runMigrationJobAgainstAcceptance(env, runtimeProfile, `manual-${Date.now()}`);
+  try {
+    console.log(`Swarm-Migrationsjob fuer ${runtimeProfile}: ${migrationResult.jobStackName}/${migrationResult.jobServiceName}`);
+    if (migrationResult.logTail) {
+      console.log(migrationResult.logTail);
+    }
+  } finally {
+    await migrationResult.cleanup();
+  }
+
+  const bootstrapResult = await runBootstrapJobAgainstAcceptance(env, runtimeProfile, `manual-${Date.now()}`);
+  try {
+    console.log(`Swarm-Bootstrap-Job fuer ${runtimeProfile}: ${bootstrapResult.jobStackName}/${bootstrapResult.jobServiceName}`);
+    if (bootstrapResult.logTail) {
+      console.log(bootstrapResult.logTail);
+    }
+  } finally {
+    await bootstrapResult.cleanup();
+  }
+
+  const hostnameCheck = buildInstanceHostnameMappingCheck(runtimeProfile, env);
+  if (hostnameCheck.status !== 'ok') {
+    throw new Error(hostnameCheck.message);
+  }
 
   const schemaGuard = runSchemaGuard(runtimeProfile, env);
   if (!schemaGuard.ok) {
@@ -2330,117 +2546,7 @@ const runAcceptanceSqlAgainstDatabase = (
   });
 };
 
-const bootstrapAcceptanceAppUser = (env: NodeJS.ProcessEnv) => {
-  const appDbUser = env.APP_DB_USER?.trim() || 'sva_app';
-  const appDbPassword = env.APP_DB_PASSWORD?.trim();
-
-  if (!appDbPassword) {
-    throw new Error('APP_DB_PASSWORD fehlt fuer den Acceptance-Reset.');
-  }
-
-  const sql = `
-DO $bootstrap$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = ${sqlLiteral(appDbUser)}) THEN
-    EXECUTE format(
-      'CREATE ROLE ${sqlIdentifier(appDbUser)} LOGIN PASSWORD ${sqlLiteral(appDbPassword)} NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT'
-    );
-  ELSE
-    EXECUTE format(
-      'ALTER ROLE ${sqlIdentifier(appDbUser)} WITH LOGIN PASSWORD ${sqlLiteral(appDbPassword)} NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT'
-    );
-  END IF;
-END
-$bootstrap$;
-
-GRANT iam_app TO ${sqlIdentifier(appDbUser)};
-GRANT USAGE ON SCHEMA iam TO ${sqlIdentifier(appDbUser)};
-GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA iam TO ${sqlIdentifier(appDbUser)};
-GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA iam TO ${sqlIdentifier(appDbUser)};
-`;
-
-  runAcceptanceSqlAgainstDatabase(env, sql, env.POSTGRES_DB ?? 'sva_studio', 'Acceptance-App-DB-User-Bootstrap fehlgeschlagen.');
-};
-
-const seedAcceptanceInstances = (env: NodeJS.ProcessEnv) => {
-  const instanceIds = (env.SVA_ALLOWED_INSTANCE_IDS ?? '')
-    .split(',')
-    .map((entry) => entry.trim())
-    .filter((entry) => entry.length > 0);
-  const parentDomain = env.SVA_PARENT_DOMAIN?.trim();
-
-  if (instanceIds.length === 0 || !parentDomain) {
-    return;
-  }
-
-  const values = instanceIds
-    .map(
-      (instanceId) =>
-        `(${sqlLiteral(instanceId)}, ${sqlLiteral(instanceId)}, 'active', ${sqlLiteral(parentDomain)}, ${sqlLiteral(`${instanceId}.${parentDomain}`)}, ${sqlLiteral(instanceId)}, ${sqlLiteral('sva-studio')})`
-    )
-    .join(',\n');
-
-  const sql = `
-INSERT INTO iam.instances (id, display_name, status, parent_domain, primary_hostname, auth_realm, auth_client_id)
-VALUES
-${values}
-ON CONFLICT (id) DO UPDATE
-SET
-  status = EXCLUDED.status,
-  parent_domain = EXCLUDED.parent_domain,
-  primary_hostname = EXCLUDED.primary_hostname,
-  auth_realm = EXCLUDED.auth_realm,
-  auth_client_id = EXCLUDED.auth_client_id,
-  updated_at = NOW();
-
-INSERT INTO iam.instance_hostnames (hostname, instance_id, is_primary, created_by)
-VALUES
-${instanceIds
-  .map((instanceId) => `(${sqlLiteral(`${instanceId}.${parentDomain}`)}, ${sqlLiteral(instanceId)}, true, 'runtime-reset')`)
-  .join(',\n')}
-ON CONFLICT (hostname) DO UPDATE
-SET
-  instance_id = EXCLUDED.instance_id,
-  is_primary = EXCLUDED.is_primary;
-`;
-
-  runAcceptanceSqlAgainstDatabase(env, sql, env.POSTGRES_DB ?? 'sva_studio', 'Acceptance-Instanz-Seed fehlgeschlagen.');
-};
-
-const isRetryableAcceptanceMutationFailure = (error: unknown) => {
-  const message = error instanceof Error ? error.message : String(error);
-  const normalized = message.toLowerCase();
-  return (
-    normalized.includes('broken pipe') ||
-    normalized.includes('connection reset by peer') ||
-    normalized.includes('markierte ausgabe __sva_reset_status__ nicht gefunden')
-  );
-};
-
-const ensureAcceptancePostMigrationState = (runtimeProfile: RemoteRuntimeProfile, env: NodeJS.ProcessEnv) => {
-  try {
-    bootstrapAcceptanceAppUser(env);
-  } catch (error) {
-    if (!isRetryableAcceptanceMutationFailure(error)) {
-      throw error;
-    }
-  }
-
-  try {
-    seedAcceptanceInstances(env);
-  } catch (error) {
-    if (!isRetryableAcceptanceMutationFailure(error)) {
-      throw error;
-    }
-  }
-
-  const hostnameCheck = buildInstanceHostnameMappingCheck(runtimeProfile, env);
-  if (hostnameCheck.status !== 'ok') {
-    throw new Error(hostnameCheck.message);
-  }
-};
-
-const resetAcceptance = (runtimeProfile: RemoteRuntimeProfile, env: NodeJS.ProcessEnv) => {
+const resetAcceptance = async (runtimeProfile: RemoteRuntimeProfile, env: NodeJS.ProcessEnv) => {
   const postgresDb = env.POSTGRES_DB ?? 'sva_studio';
   const redisPassword = env.REDIS_PASSWORD?.trim();
 
@@ -2470,9 +2576,7 @@ const resetAcceptance = (runtimeProfile: RemoteRuntimeProfile, env: NodeJS.Proce
     failureMessage: 'Acceptance-Redis-Reset fehlgeschlagen.',
   });
 
-  migrateAcceptance(runtimeProfile, env);
-  bootstrapAcceptanceAppUser(env);
-  seedAcceptanceInstances(env);
+  await migrateAcceptance(runtimeProfile, env);
 
   const schemaGuard = runSchemaGuard(runtimeProfile, env);
   if (!schemaGuard.ok) {
@@ -2480,10 +2584,20 @@ const resetAcceptance = (runtimeProfile: RemoteRuntimeProfile, env: NodeJS.Proce
   }
 };
 
-const captureAcceptanceStackStatus = (env: NodeJS.ProcessEnv) => {
+const captureAcceptanceStackStatus = async (env: NodeJS.ProcessEnv) => {
   const stackName = getConfiguredStackName(env);
 
   try {
+    try {
+      const evidence = await readRemoteStackEvidence(env);
+      return {
+        services: evidence.services ?? evidence.summary,
+        tasks: evidence.tasks ?? evidence.summary,
+      };
+    } catch {
+      // Fallbacks below.
+    }
+
     if (commandExists('quantum-cli')) {
       try {
         const quantumEndpoint = getConfiguredQuantumEndpoint(env);
@@ -2547,19 +2661,17 @@ const writeJsonArtifact = (filePath: string, payload: unknown) => {
   writeFileSync(filePath, `${JSON.stringify(payload, null, 2)}\n`, 'utf8');
 };
 
-const normalizeRenderedComposeForQuantum = (value: string) =>
-  value
-    .replace(/^name:\s.*\n/imu, '')
-    .replace(/^(\s*cpus:\s*)([0-9.]+)$/gmu, '$1"$2"');
+const renderRemoteComposeDocument = (env: NodeJS.ProcessEnv): ComposeDocument =>
+  JSON.parse(runCapture('docker', ['compose', '-f', resolve(rootDir, getRemoteComposeFile(env)), 'config', '--format', 'json'], env)) as ComposeDocument;
 
 const renderQuantumDeployProject = (env: NodeJS.ProcessEnv) => {
   const runtimeProfile = env.SVA_RUNTIME_PROFILE?.trim() || 'acceptance-hb';
-  const sourceComposeFile = resolve(rootDir, getRemoteComposeFile(env));
-  const renderedCompose = normalizeRenderedComposeForQuantum(
-    runCapture('docker', ['compose', '-f', sourceComposeFile, 'config'], env)
-  );
+  const renderedComposeDocument = renderRemoteComposeDocument(env);
+  assertComposeServiceNetworks(renderedComposeDocument, 'app', ['internal', 'public']);
+  assertComposeServiceIngressLabels(renderedComposeDocument, 'app');
+  const renderedCompose = JSON.stringify(buildQuantumDeployComposeDocument(renderedComposeDocument), null, 2);
   const projectDir = mkdtempSync(resolve(tmpdir(), `sva-studio-${runtimeProfile}-deploy-`));
-  const renderedComposePath = resolve(projectDir, 'docker-compose.rendered.yml');
+  const renderedComposePath = resolve(projectDir, 'docker-compose.rendered.json');
   const quantumProjectPath = resolve(projectDir, '.quantum');
 
   writeFileSync(renderedComposePath, `${renderedCompose}\n`, 'utf8');
@@ -2568,10 +2680,10 @@ const renderQuantumDeployProject = (env: NodeJS.ProcessEnv) => {
     [
       '---',
       'version: "1.0"',
-      'compose: docker-compose.rendered.yml',
+      'compose: docker-compose.rendered.json',
       'environments:',
       `  - name: ${runtimeProfile}`,
-      '    compose: docker-compose.rendered.yml',
+      '    compose: docker-compose.rendered.json',
       '',
     ].join('\n'),
     'utf8'
@@ -2617,11 +2729,16 @@ const writeAcceptanceDeployReport = (report: AcceptanceDeployReport) => {
   writeFileSync(report.artifacts.markdownPath, `${formatAcceptanceDeployReportMarkdown(report)}\n`, 'utf8');
   writeJsonArtifact(report.artifacts.releaseManifestPath, report.releaseManifest);
   writeJsonArtifact(report.artifacts.phaseReportPath, {
+    bootstrapReport: report.bootstrapReport ?? { status: 'skipped' },
     failureCategory: report.failureCategory ?? null,
     generatedAt: report.generatedAt,
+    migrationReport: report.migrationReport ?? { status: 'skipped' },
     releaseDecision: report.releaseDecision,
     steps: report.steps,
   });
+  writeJsonArtifact(report.artifacts.bootstrapJobPath, report.bootstrapReport?.job ?? null);
+  writeJsonArtifact(report.artifacts.bootstrapReportPath, report.bootstrapReport ?? { status: 'skipped' });
+  writeJsonArtifact(report.artifacts.migrationJobPath, report.migrationReport?.job ?? null);
   writeJsonArtifact(report.artifacts.migrationReportPath, {
     migrationFiles: report.migrationFiles,
     migrationReport: report.migrationReport ?? { status: 'skipped' },
@@ -2682,10 +2799,13 @@ const createBaseAcceptanceDeployReport = (
     },
     steps: [],
     artifacts: {
+      bootstrapJobPath: reportPaths.bootstrapJobPath,
+      bootstrapReportPath: reportPaths.bootstrapReportPath,
       jsonPath: reportPaths.jsonPath,
       markdownPath: reportPaths.markdownPath,
       releaseManifestPath: reportPaths.releaseManifestPath,
       phaseReportPath: reportPaths.phaseReportPath,
+      migrationJobPath: reportPaths.migrationJobPath,
       migrationReportPath: reportPaths.migrationReportPath,
       internalVerifyPath: reportPaths.internalVerifyPath,
       externalSmokePath: reportPaths.externalSmokePath,
@@ -2693,33 +2813,53 @@ const createBaseAcceptanceDeployReport = (
   };
 };
 
-const buildAcceptanceLiveSpecCheck = (
+const buildAcceptanceLiveSpecCheck = async (
   runtimeProfile: RuntimeProfile,
   env: NodeJS.ProcessEnv,
   options: AcceptanceDeployOptions
-): DoctorCheck => {
+): Promise<DoctorCheck> => {
+  const renderedCompose = renderRemoteComposeDocument(env);
+  const expectedAppContract = assertComposeServiceNetworks(renderedCompose, 'app', ['internal', 'public']);
+  assertComposeServiceIngressLabels(renderedCompose, 'app');
   const expected = {
     derivedKeys: getRuntimeProfileDerivedEnvKeys(runtimeProfile),
     effectiveSummary: getRuntimeContractSummary(runtimeProfile, env),
     imageRef: options.imageRef,
+    expectedAppNetworks: expectedAppContract.networks,
+    expectedIngressLabels: Object.fromEntries(
+      Object.entries(expectedAppContract.labels).filter(([key]) => key.startsWith('traefik.')),
+    ),
     requiredKeys: getRuntimeProfileRequiredEnvKeys(runtimeProfile),
   };
 
   try {
     const stackName = getConfiguredStackName(env);
-    const dockerResult = runCaptureDetailed('docker', ['service', 'inspect', `${stackName}_app`, '--format', '{{.Spec.TaskTemplate.ContainerSpec.Image}}'], env);
-    const liveImage = dockerResult.status === 0 ? dockerResult.stdout.trim() : '';
-    const liveEnvResult = runCaptureDetailed(
-      'docker',
-      ['service', 'inspect', `${stackName}_app`, '--format', '{{json .Spec.TaskTemplate.ContainerSpec.Env}}'],
-      env
+    const quantumEndpoint = getConfiguredQuantumEndpoint(env);
+    const liveContractPromise = inspectRemoteServiceContract(
+      {
+        commandExists,
+        runCapture,
+      },
+      env,
+      {
+        quantumEndpoint,
+        serviceName: 'app',
+        stackName,
+      },
     );
-    const liveEnv =
-      liveEnvResult.status === 0
-        ? parseContainerEnv(liveEnvResult.stdout)
-        : ({} as Record<string, string>);
+    const liveContractResult = runCaptureDetailed('docker', ['service', 'inspect', `${stackName}_app`, '--format', '{{.Spec.TaskTemplate.ContainerSpec.Image}}'], env);
+    const fallbackLiveImage = liveContractResult.status === 0 ? liveContractResult.stdout.trim() : '';
+    const liveContract = await liveContractPromise;
+    const liveImage = liveContract?.image ?? fallbackLiveImage;
+    const liveEnv = liveContract?.env ?? ({} as Record<string, string>);
     const configDrift = RUNTIME_CONTRACT_COMPARISON_KEYS.filter((key) => (env[key]?.trim() || '') !== (liveEnv[key]?.trim() || ''));
     const missingSecretKeys = RUNTIME_CONTRACT_SECRET_PRESENCE_KEYS.filter((key) => (liveEnv[key]?.trim() || '').length === 0);
+    const liveNetworks = [...(liveContract?.networkNames ?? [])].sort();
+    const expectedNetworks = [...expectedAppContract.networks].sort();
+    const missingNetworks = expectedNetworks.filter((networkName) => !liveNetworks.includes(networkName));
+    const missingIngressLabels = Object.entries(expected.expectedIngressLabels).filter(
+      ([key, value]) => liveContract?.labels[key] !== value,
+    );
 
     if (!liveImage) {
       return toDoctorCheck(
@@ -2733,17 +2873,34 @@ const buildAcceptanceLiveSpecCheck = (
 
     return toDoctorCheck(
       'live-spec-drift',
-      liveImage === options.imageRef && configDrift.length === 0 && missingSecretKeys.length === 0 ? 'ok' : 'warn',
-      liveImage === options.imageRef && configDrift.length === 0 && missingSecretKeys.length === 0
+      liveImage === options.imageRef &&
+        configDrift.length === 0 &&
+        missingSecretKeys.length === 0 &&
+        missingNetworks.length === 0 &&
+        missingIngressLabels.length === 0
+        ? 'ok'
+        : 'warn',
+      liveImage === options.imageRef &&
+        configDrift.length === 0 &&
+        missingSecretKeys.length === 0 &&
+        missingNetworks.length === 0 &&
+        missingIngressLabels.length === 0
         ? 'live_spec_matches'
         : 'live_spec_differs',
-      liveImage === options.imageRef && configDrift.length === 0 && missingSecretKeys.length === 0
+      liveImage === options.imageRef &&
+        configDrift.length === 0 &&
+        missingSecretKeys.length === 0 &&
+        missingNetworks.length === 0 &&
+        missingIngressLabels.length === 0
         ? 'Live-Service-Spec entspricht dem Zielartefakt und dem Studio-Runtime-Contract.'
-        : 'Live-Service-Spec weicht vom Zielartefakt oder vom erwarteten Studio-Runtime-Contract ab.',
+        : 'Live-Service-Spec weicht beim Image, Runtime-Contract oder bei ingress-relevanten Service-Feldern ab.',
       {
         ...expected,
         configDrift,
         liveImage,
+        liveNetworks,
+        missingIngressLabels: missingIngressLabels.map(([key]) => key),
+        missingNetworks,
         missingSecretKeys,
       }
     );
@@ -2760,6 +2917,7 @@ const buildAcceptanceLiveSpecCheck = (
 
 const runHttpProbe = async (input: {
   expect: (response: Response, payload: unknown) => string | null;
+  headers?: HeadersInit;
   name: string;
   scope: AcceptanceProbeResult['scope'];
   target: string;
@@ -2767,7 +2925,11 @@ const runHttpProbe = async (input: {
   const startedAt = Date.now();
 
   try {
-    const response = await fetch(input.target, { redirect: 'manual', signal: AbortSignal.timeout(10_000) });
+    const response = await fetch(input.target, {
+      headers: input.headers,
+      redirect: 'manual',
+      signal: AbortSignal.timeout(10_000),
+    });
     const rawText = await response.text();
     let payload: unknown;
 
@@ -2800,13 +2962,249 @@ const runHttpProbe = async (input: {
   }
 };
 
+const buildAppPrincipalReadinessCheck = async (env: NodeJS.ProcessEnv): Promise<DoctorCheck> => {
+  const baseUrl = env.SVA_PUBLIC_BASE_URL ?? 'http://localhost:3000';
+  const appDbUser = env.APP_DB_USER?.trim() || 'sva_app';
+
+  try {
+    const ready = await checkHttpHealth(new URL('/health/ready', baseUrl).toString());
+    const payload = (ready.payload ?? {}) as {
+      checks?: {
+        auth?: { realm?: string };
+        db?: boolean;
+        errors?: Record<string, unknown>;
+        keycloak?: boolean;
+        redis?: boolean;
+      };
+    };
+    const checks = payload.checks ?? {};
+
+    if (ready.response.ok && checks.db === true && checks.redis === true && checks.keycloak === true) {
+      return toDoctorCheck(
+        'app-db-principal',
+        'ok',
+        'app_db_principal_ready',
+        'Die laufende App bestaetigt Registry-/Auth-Readiness aus Sicht des Runtime-DB-Users.',
+        {
+          appDbUser,
+          authRealm: checks.auth?.realm,
+          status: ready.response.status,
+        },
+      );
+    }
+
+    return toDoctorCheck(
+      'app-db-principal',
+      'error',
+      'app_db_principal_not_ready',
+      'Die laufende App meldet Registry-/Auth- oder Datenbank-Readiness nicht stabil.',
+      {
+        appDbUser,
+        payload,
+        status: ready.response.status,
+      },
+    );
+  } catch (error) {
+    return toDoctorCheck(
+      'app-db-principal',
+      'error',
+      'app_db_principal_check_failed',
+      error instanceof Error ? error.message : String(error),
+      {
+        appDbUser,
+      },
+    );
+  }
+};
+
+const tryReuseLiveParityEvidence = async (
+  runtimeProfile: RemoteRuntimeProfile,
+  env: NodeJS.ProcessEnv,
+  options: AcceptanceDeployOptions,
+): Promise<readonly AcceptanceProbeResult[] | null> => {
+  const liveContract = await inspectRemoteServiceContract(
+    {
+      commandExists,
+      runCapture,
+    },
+    env,
+    {
+      quantumEndpoint: getConfiguredQuantumEndpoint(env),
+      serviceName: env.SVA_ACCEPTANCE_APP_SERVICE ?? 'app',
+      stackName: getConfiguredStackName(env),
+    },
+  );
+
+  if (liveContract?.image !== options.imageRef) {
+    return null;
+  }
+
+  const reusedChecks = await collectRemoteParityChecks(runtimeProfile, env);
+  return buildRemoteParityReuseProbe(reusedChecks, liveContract.image, options.imageRef);
+};
+
+const collectRemoteParityChecks = async (runtimeProfile: RemoteRuntimeProfile, env: NodeJS.ProcessEnv) => {
+  const startedAt = Date.now();
+  const reusedChecks = await Promise.all([
+    buildAcceptanceIngressConsistencyCheck(env),
+    buildAppPrincipalReadinessCheck(env),
+    buildTenantAuthProofCheck(env),
+    buildLiveRuntimeEnvCheck(runtimeProfile, env),
+  ]);
+  const failingChecks = reusedChecks.filter((check) => check.status === 'error');
+  if (failingChecks.length > 0) {
+    throw new Error(
+      `Live-Paritaet fuer bereits laufenden Ziel-Digest ist nicht gesund: ${failingChecks.map((check) => `${check.name}: ${check.message}`).join('; ')}`,
+    );
+  }
+
+  return {
+    durationMs: Date.now() - startedAt,
+    checks: reusedChecks,
+  };
+};
+
+const buildRemoteParityReuseProbe = (
+  reusedChecks: Awaited<ReturnType<typeof collectRemoteParityChecks>>,
+  liveImage: string,
+  targetImage: string,
+  messagePrefix = 'Ziel-Digest laeuft bereits live; prod-nahe Root-/Tenant-/APP-Principal-Paritaet wird ueber den laufenden Stack wiederverwendet.',
+) => {
+  return [
+    createProbeResult({
+      details: {
+        liveImage,
+        reusedChecks: reusedChecks.checks.map((check) => ({
+          code: check.code,
+          name: check.name,
+          status: check.status,
+        })),
+      },
+      durationMs: reusedChecks.durationMs,
+      message: messagePrefix,
+      name: 'image-live-parity-reuse',
+      scope: 'image-smoke',
+      status: 'ok',
+      target: targetImage,
+    }),
+  ];
+};
+
+const runLocalEmergencyHybridImageSmoke = async (
+  runtimeProfile: RemoteRuntimeProfile,
+  env: NodeJS.ProcessEnv,
+  options: AcceptanceDeployOptions,
+  reportId: string,
+) => {
+  ensureDirs();
+  const smokePort = Number(env.SVA_IMAGE_SMOKE_PORT ?? '39080');
+  const containerName = `${reportId}-image-smoke`.replace(/[^a-z0-9-]/giu, '-').toLowerCase();
+  const envFilePath = resolve(runtimeArtifactsDir, `${containerName}.env`);
+  const runtimeEnvEntries = Object.entries(env)
+    .filter(([, value]) => typeof value === 'string' && value.trim().length > 0)
+    .map(([key, value]) => `${key}=${value as string}`);
+  writeFileSync(envFilePath, `${runtimeEnvEntries.join('\n')}\n`, 'utf8');
+
+  try {
+    runCaptureDetailed('docker', ['rm', '-f', containerName], env);
+  } catch {
+    // ignore stale container
+  }
+
+  try {
+    const runResult = runCaptureDetailed(
+      'docker',
+      [
+        'run',
+        '-d',
+        '--name',
+        containerName,
+        '--env-file',
+        envFilePath,
+        '-e',
+        `SVA_PUBLIC_BASE_URL=http://127.0.0.1:${smokePort}`,
+        '-p',
+        `127.0.0.1:${smokePort}:3000`,
+        options.imageRef,
+      ],
+      env
+    );
+
+    if (runResult.status !== 0) {
+      throw new Error(runResult.stderr?.trim() || runResult.stdout.trim() || 'Image-Smoke-Container konnte nicht gestartet werden.');
+    }
+
+    await waitForHttpOk(`http://127.0.0.1:${smokePort}/health/live`, 60_000);
+    const artifactProbe = await runHttpProbe({
+      name: 'image-live',
+      scope: 'image-smoke',
+      target: `http://127.0.0.1:${smokePort}/health/live`,
+      expect: (response) => (response.status === 200 ? null : `Erwartet HTTP 200, erhalten ${response.status}.`),
+    });
+    if (artifactProbe.status === 'error') {
+      const logResult = runCaptureDetailed('docker', ['logs', containerName], env);
+      const inspectResult = runCaptureDetailed('docker', ['inspect', containerName, '--format', '{{json .State}}'], env);
+      throw new Error(
+        `${artifactProbe.message}\nState: ${inspectResult.stdout.trim()}\n${logResult.stdout.trim() || logResult.stderr?.trim() || ''}`.trim(),
+      );
+    }
+
+    const reusedChecks = await collectRemoteParityChecks(runtimeProfile, env);
+    const hybridParityProbe = createProbeResult({
+      details: {
+        localEmergency: true,
+        reusedChecks: reusedChecks.checks.map((check) => ({
+          code: check.code,
+          name: check.name,
+          status: check.status,
+        })),
+      },
+      durationMs: reusedChecks.durationMs,
+      message:
+        'Lokaler Notfallpfad: Artefakt-Startup wurde lokal bestaetigt; DB-/Redis-/Tenant-Paritaet wird fuer das noch nicht live laufende Ziel-Digest ueber den gesunden Studio-Stack wiederverwendet.',
+      name: 'image-local-emergency-hybrid-parity',
+      scope: 'image-smoke',
+      status: 'ok',
+      target: options.imageRef,
+    });
+
+    return [artifactProbe, hybridParityProbe] as const;
+  } finally {
+    try {
+      runCaptureDetailed('docker', ['rm', '-f', containerName], env);
+    } catch {
+      // ignore cleanup failures
+    }
+
+    try {
+      unlinkSync(envFilePath);
+    } catch {
+      // ignore cleanup failures
+    }
+  }
+};
+
 const runImageSmoke = async (
   env: NodeJS.ProcessEnv,
   options: AcceptanceDeployOptions,
   reportId: string
 ): Promise<readonly AcceptanceProbeResult[]> => {
+  const runtimeProfile = parseRuntimeProfile(env.SVA_RUNTIME_PROFILE ?? 'acceptance-hb');
+  if (!isRemoteRuntimeProfile(runtimeProfile)) {
+    throw new Error('image-smoke ist nur fuer Remote-Profile verfuegbar.');
+  }
+
+  const reusedLiveEvidence = await tryReuseLiveParityEvidence(runtimeProfile, env, options);
+  if (reusedLiveEvidence) {
+    return reusedLiveEvidence;
+  }
+
   if (!commandExists('docker')) {
     throw new Error('docker ist fuer image-smoke nicht verfuegbar.');
+  }
+
+  if (hasLocalEmergencyRemoteMutationOverride(env)) {
+    return runLocalEmergencyHybridImageSmoke(runtimeProfile, env, options, reportId);
   }
 
   ensureDirs();
@@ -2848,6 +3246,8 @@ const runImageSmoke = async (
     }
 
     await waitForHttpOk(`http://127.0.0.1:${smokePort}/health/live`, 60_000);
+    const parityPlan = buildProdParityProbePlan(env);
+    const rootForwardedHeaders = buildTrustedForwardedHeaders(parityPlan.rootHost);
 
     const probes = await Promise.all([
       runHttpProbe({
@@ -2860,8 +3260,68 @@ const runImageSmoke = async (
         name: 'image-ready',
         scope: 'image-smoke',
         target: `http://127.0.0.1:${smokePort}/health/ready`,
-        expect: (response) => (response.status === 200 || response.status === 503 ? null : `Unerwarteter Ready-Status ${response.status}.`),
+        expect: (response, payload) =>
+          response.status === 200
+            ? null
+            : `Prod-naher Kandidat ist nicht ready (${response.status}): ${typeof payload === 'string' ? payload : JSON.stringify(payload)}`,
       }),
+      runHttpProbe({
+        headers: rootForwardedHeaders,
+        name: 'image-root-auth-login',
+        scope: 'image-smoke',
+        target: `http://127.0.0.1:${smokePort}/auth/login`,
+        expect: (response) => {
+          const location = response.headers.get('location') ?? '';
+          if (response.status !== 302) {
+            return `Erwartet Redirect fuer Root-Auth, erhalten ${response.status}.`;
+          }
+          if (!isExpectedOidcRedirect(location, env)) {
+            return `OIDC-Redirect stimmt nicht: ${location}`;
+          }
+          const configuredRedirectUri = env.SVA_AUTH_REDIRECT_URI?.trim();
+          if (configuredRedirectUri && !location.includes(`redirect_uri=${encodeURIComponent(configuredRedirectUri)}`)) {
+            return `Root-Redirect-URI stimmt nicht: ${location}`;
+          }
+          return null;
+        },
+      }),
+      runHttpProbe({
+        headers: rootForwardedHeaders,
+        name: 'image-root-iam-context',
+        scope: 'image-smoke',
+        target: `http://127.0.0.1:${smokePort}/api/v1/iam/me/context`,
+        expect: (response, payload) => {
+          if (![200, 401, 403].includes(response.status)) {
+            return `Unerwarteter IAM-Kontext-Status ${response.status}.`;
+          }
+          if (typeof payload === 'string' && payload.toLowerCase().includes('<html')) {
+            return 'IAM-Kontext lieferte HTML statt API-Vertrag.';
+          }
+          return null;
+        },
+      }),
+      ...parityPlan.tenantHosts.map(({ host, instanceId }) =>
+        runHttpProbe({
+          headers: buildTrustedForwardedHeaders(host),
+          name: `image-tenant-auth-login-${instanceId}`,
+          scope: 'image-smoke',
+          target: `http://127.0.0.1:${smokePort}/auth/login`,
+          expect: (response) => {
+            const location = response.headers.get('location') ?? '';
+            if (response.status !== 302) {
+              return `Erwartet Redirect fuer Tenant ${instanceId}, erhalten ${response.status}.`;
+            }
+            if (!location.includes(`/realms/${instanceId}/`)) {
+              return `Tenant-Realm stimmt nicht fuer ${instanceId}: ${location}`;
+            }
+            const expectedRedirectUri = `${new URL(env.SVA_PUBLIC_BASE_URL ?? 'https://studio.smart-village.app').protocol}//${host}/auth/callback`;
+            if (!location.includes(`redirect_uri=${encodeURIComponent(expectedRedirectUri)}`)) {
+              return `Tenant-Redirect-URI stimmt nicht fuer ${instanceId}: ${location}`;
+            }
+            return null;
+          },
+        }),
+      ),
     ]);
 
     const failingProbe = probes.find((probe) => probe.status === 'error');
@@ -2892,51 +3352,94 @@ const runImageSmoke = async (
   }
 };
 
+const buildSwarmAppTaskProbe = (env: NodeJS.ProcessEnv): AcceptanceProbeResult => {
+  const startedAt = Date.now();
+  const stackName = getConfiguredStackName(env);
+  const appService = env.SVA_ACCEPTANCE_APP_SERVICE ?? 'app';
+
+  try {
+    if (commandExists('quantum-cli')) {
+      const quantumEndpoint = getConfiguredQuantumEndpoint(env);
+      const result = runCaptureDetailed(
+        'quantum-cli',
+        ['ps', '--endpoint', quantumEndpoint, '--stack', stackName, '--service', appService, '--all', '-o', 'json'],
+        withoutDebugEnv(env),
+      );
+      const combined = filterRemoteOutputLines(`${result.stdout ?? ''}\n${result.stderr ?? ''}`);
+      const jsonPayload = extractQuantumJsonPayload(combined);
+      const latestTask = jsonPayload
+        ? selectLatestMigrationTask(collectQuantumTaskSnapshots(JSON.parse(jsonPayload) as unknown))
+        : null;
+      const normalizedState = latestTask?.state?.trim().toLowerCase();
+      const isOk =
+        normalizedState === 'running' &&
+        (latestTask?.desiredState?.trim().toLowerCase() === 'running' || !latestTask?.desiredState);
+
+      return createProbeResult({
+        details: latestTask ?? undefined,
+        durationMs: Date.now() - startedAt,
+        message: isOk
+          ? `Swarm-App-Task ist running (${latestTask?.taskId ?? 'n/a'}).`
+          : `Swarm-App-Task ist nicht stabil running (${normalizedState ?? 'unbekannt'}).`,
+        name: 'swarm-app-task',
+        scope: 'internal',
+        status: isOk ? 'ok' : 'error',
+        target: `${stackName}/${appService}`,
+      });
+    }
+
+    const serviceOutput = runCapture('docker', ['service', 'ps', `${stackName}_${appService}`, '--format', '{{.CurrentState}}']);
+    const firstState = serviceOutput
+      .split('\n')
+      .map((entry) => entry.trim())
+      .find((entry) => entry.length > 0);
+    const isOk = typeof firstState === 'string' && firstState.toLowerCase().startsWith('running');
+
+    return createProbeResult({
+      details: firstState ? { currentState: firstState } : undefined,
+      durationMs: Date.now() - startedAt,
+      message: isOk ? `Docker-Service ${stackName}_${appService} ist running.` : `Docker-Service-State: ${firstState ?? 'unbekannt'}.`,
+      name: 'swarm-app-task',
+      scope: 'internal',
+      status: isOk ? 'ok' : 'error',
+      target: `${stackName}/${appService}`,
+    });
+  } catch (error) {
+    return createProbeResult({
+      durationMs: Date.now() - startedAt,
+      message: error instanceof Error ? error.message : String(error),
+      name: 'swarm-app-task',
+      scope: 'internal',
+      status: 'error',
+      target: `${stackName}/${appService}`,
+    });
+  }
+};
+
+const buildSwarmServicePresenceProbe = (env: NodeJS.ProcessEnv): AcceptanceProbeResult => {
+  const startedAt = Date.now();
+  const requiredServices =
+    (env.ENABLE_OTEL?.trim() || 'true').toLowerCase() === 'false'
+      ? ['app', 'redis', 'postgres']
+      : ['app', 'redis', 'postgres', 'otel-collector'];
+
+  return createProbeResult({
+    durationMs: Date.now() - startedAt,
+    message: 'Swarm-Service-Praesenz wird im Acceptance-Deploy-Report separat erfasst.',
+    name: 'swarm-services',
+    scope: 'internal',
+    status: 'ok',
+    target: getConfiguredStackName(env),
+    details: {
+      requiredServices,
+    },
+  });
+};
+
 const runInternalVerify = async (runtimeProfile: RemoteRuntimeProfile, env: NodeJS.ProcessEnv): Promise<{
   doctorReport: DoctorReport;
   probes: readonly AcceptanceProbeResult[];
 }> => {
-  const appService = env.SVA_ACCEPTANCE_APP_SERVICE ?? 'app';
-  const marker = '__SVA_INTERNAL_HTTP__';
-  const buildServiceProbe = (name: string, path: string) => {
-    const startedAt = Date.now();
-
-    try {
-      const summary = runAcceptanceServiceScript(
-        env,
-        appService,
-        `node -e "fetch('http://127.0.0.1:3000${path}', { redirect: 'manual' }).then(async (response) => { const body = await response.text(); console.log('${marker}_START'); console.log(JSON.stringify({ status: response.status, body })); console.log('${marker}_END'); }).catch((error) => { console.error(error instanceof Error ? error.message : String(error)); process.exit(1); })"`,
-        {
-          failureMessage: `Interne Probe ${path} fehlgeschlagen.`,
-          marker,
-          slot: env.SVA_ACCEPTANCE_APP_SLOT ?? '1',
-        }
-      );
-      const payload = JSON.parse(summary) as { body?: string; status?: number };
-      return createProbeResult({
-        durationMs: Date.now() - startedAt,
-        httpStatus: payload.status,
-        message:
-          payload.status === 200 || (name === 'internal-ready' && payload.status === 503)
-            ? `Interne Probe ${path} antwortet deterministisch.`
-            : `Interne Probe ${path} antwortet mit ${payload.status}.`,
-        name,
-        scope: 'internal',
-        status: payload.status === 200 || (name === 'internal-ready' && payload.status === 503) ? 'ok' : 'error',
-        target: `http://127.0.0.1:3000${path}`,
-      });
-    } catch (error) {
-      return createProbeResult({
-        durationMs: Date.now() - startedAt,
-        message: error instanceof Error ? error.message : String(error),
-        name,
-        scope: 'internal',
-        status: 'error',
-        target: `http://127.0.0.1:3000${path}`,
-      });
-    }
-  };
-
   const maxAttempts = Number(env.SVA_INTERNAL_VERIFY_MAX_ATTEMPTS ?? '6');
   const retryDelayMs = Number(env.SVA_INTERNAL_VERIFY_RETRY_DELAY_MS ?? '5000');
   let lastDoctorReport: DoctorReport | null = null;
@@ -2944,10 +3447,7 @@ const runInternalVerify = async (runtimeProfile: RemoteRuntimeProfile, env: Node
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     const doctorReport = await doctorRuntime(runtimeProfile, env);
-    const probes = [
-      buildServiceProbe('internal-live', '/health/live'),
-      buildServiceProbe('internal-ready', '/health/ready'),
-    ];
+    const probes = [buildSwarmServicePresenceProbe(env), buildSwarmAppTaskProbe(env)];
 
     lastDoctorReport = doctorReport;
     lastProbes = probes;
@@ -2959,12 +3459,6 @@ const runInternalVerify = async (runtimeProfile: RemoteRuntimeProfile, env: Node
         typeof check.message === 'string' &&
         check.message.includes('404'),
       );
-    const hasRetriableProbeErrors =
-      probes.filter((probe) => probe.status === 'error').length > 0 &&
-      probes
-        .filter((probe) => probe.status === 'error')
-        .every((probe) => probe.message.includes('Markierte Ausgabe __SVA_INTERNAL_HTTP__ nicht gefunden.'));
-
     const probesFailed = probes.some((probe) => probe.status === 'error');
     const doctorFailed = doctorReport.status === 'error';
 
@@ -2975,7 +3469,7 @@ const runInternalVerify = async (runtimeProfile: RemoteRuntimeProfile, env: Node
       };
     }
 
-    if (attempt < maxAttempts && (( !probesFailed && hasExternalWarmupOnlyErrors) || hasRetriableProbeErrors)) {
+    if (attempt < maxAttempts && (hasExternalWarmupOnlyErrors || probesFailed)) {
       await wait(retryDelayMs);
       continue;
     }
@@ -3146,32 +3640,41 @@ const runAcceptanceDeploy = async (runtimeProfile: RemoteRuntimeProfile, env: No
     if (options.releaseMode === 'schema-and-app') {
       const migrateStartedAt = Date.now();
       try {
-        const migrationResult = runGooseAgainstAcceptance(env, runtimeProfile, 'up');
-        console.log(`Applying Goose migrations for ${runtimeProfile} with ${migrationResult.version}`);
-        console.log(migrationResult.summary);
-        ensureAcceptancePostMigrationState(runtimeProfile, env);
-        const schemaGuard = runSchemaGuard(runtimeProfile, env);
-        if (!schemaGuard.ok) {
-          throw new Error(`Kritische IAM-Schema-Drift nach Migration fuer ${runtimeProfile}: ${summarizeSchemaGuardFailures(schemaGuard)}`);
-        }
-        report = {
-          ...report,
-          migrationReport: {
-            status: 'ok',
-            startedAt: new Date(migrateStartedAt).toISOString(),
-            completedAt: new Date().toISOString(),
-            details: {
-              gooseVersion: migrationResult.version,
-              summary: migrationResult.summary,
+        const migrationResult = await runMigrationJobAgainstAcceptance(env, runtimeProfile, report.reportId);
+        try {
+          report = {
+            ...report,
+            migrationReport: {
+              status: 'ok',
+              startedAt: new Date(migrateStartedAt).toISOString(),
+              completedAt: new Date().toISOString(),
+              job: {
+                durationMs: migrationResult.durationMs,
+                exitCode: migrationResult.exitCode,
+                jobServiceName: migrationResult.jobServiceName,
+                jobStackName: migrationResult.jobStackName,
+                logTail: migrationResult.logTail,
+                state: migrationResult.state,
+                taskId: migrationResult.taskId,
+                taskMessage: migrationResult.taskMessage,
+              },
+              details: {
+                gooseVersion: getGooseConfiguredVersion(),
+                jobState: migrationResult.state,
+              },
             },
-          },
-        };
-        steps.push(
-          createStepResult('migrate', migrateStartedAt, 'ok', 'Acceptance-Migration erfolgreich abgeschlossen.', {
-            migrationFiles,
-            maintenanceWindow: options.maintenanceWindow,
-          })
-        );
+          };
+          steps.push(
+            createStepResult('migrate', migrateStartedAt, 'ok', 'Acceptance-Migration erfolgreich abgeschlossen.', {
+              jobServiceName: migrationResult.jobServiceName,
+              jobStackName: migrationResult.jobStackName,
+              maintenanceWindow: options.maintenanceWindow,
+              migrationFiles,
+            })
+          );
+        } finally {
+          await migrationResult.cleanup();
+        }
       } catch (error) {
         report = {
           ...report,
@@ -3196,8 +3699,8 @@ const runAcceptanceDeploy = async (runtimeProfile: RemoteRuntimeProfile, env: No
         };
         throw { category: 'migration' as const, report };
       }
-    } else {
-      const migrateStartedAt = Date.now();
+      } else {
+        const migrateStartedAt = Date.now();
       report = {
         ...report,
         migrationReport: {
@@ -3208,6 +3711,79 @@ const runAcceptanceDeploy = async (runtimeProfile: RemoteRuntimeProfile, env: No
         },
       };
       steps.push(createStepResult('migrate', migrateStartedAt, 'skipped', 'Migrationen fuer app-only ausgelassen.'));
+      const bootstrapStartedAt = Date.now();
+      report = {
+        ...report,
+        bootstrapReport: {
+          status: 'skipped',
+        },
+      };
+      steps.push(createStepResult('bootstrap', bootstrapStartedAt, 'skipped', 'Bootstrap fuer app-only ausgelassen.'));
+    }
+
+    if (options.releaseMode === 'schema-and-app') {
+      const bootstrapStartedAt = Date.now();
+      try {
+        const bootstrapResult = await runBootstrapJobAgainstAcceptance(env, runtimeProfile, report.reportId);
+        try {
+          const hostnameCheck = buildInstanceHostnameMappingCheck(runtimeProfile, env);
+          if (hostnameCheck.status !== 'ok') {
+            throw new Error(hostnameCheck.message);
+          }
+          const schemaGuard = runSchemaGuard(runtimeProfile, env);
+          if (!schemaGuard.ok) {
+            throw new Error(`Kritische IAM-Schema-Drift nach Bootstrap fuer ${runtimeProfile}: ${summarizeSchemaGuardFailures(schemaGuard)}`);
+          }
+          report = {
+            ...report,
+            bootstrapReport: {
+              status: 'ok',
+              startedAt: new Date(bootstrapStartedAt).toISOString(),
+              completedAt: new Date().toISOString(),
+              job: {
+                durationMs: bootstrapResult.durationMs,
+                exitCode: bootstrapResult.exitCode,
+                jobServiceName: bootstrapResult.jobServiceName,
+                jobStackName: bootstrapResult.jobStackName,
+                logTail: bootstrapResult.logTail,
+                state: bootstrapResult.state,
+                taskId: bootstrapResult.taskId,
+                taskMessage: bootstrapResult.taskMessage,
+              },
+              details: {
+                hostnameMapping: hostnameCheck.message,
+                jobState: bootstrapResult.state,
+              },
+            },
+          };
+          steps.push(
+            createStepResult('bootstrap', bootstrapStartedAt, 'ok', 'Acceptance-Bootstrap erfolgreich abgeschlossen.', {
+              jobServiceName: bootstrapResult.jobServiceName,
+              jobStackName: bootstrapResult.jobStackName,
+            }),
+          );
+        } finally {
+          await bootstrapResult.cleanup();
+        }
+      } catch (error) {
+        report = {
+          ...report,
+          bootstrapReport: {
+            status: 'error',
+            startedAt: new Date(bootstrapStartedAt).toISOString(),
+            completedAt: new Date().toISOString(),
+            errorMessage: error instanceof Error ? error.message : String(error),
+          },
+        };
+        steps.push(
+          createStepResult('bootstrap', bootstrapStartedAt, 'error', error instanceof Error ? error.message : String(error)),
+        );
+        report = {
+          ...report,
+          steps,
+        };
+        throw { category: 'bootstrap' as const, report };
+      }
     }
 
     const deployStartedAt = Date.now();
@@ -3306,7 +3882,7 @@ const runAcceptanceDeploy = async (runtimeProfile: RemoteRuntimeProfile, env: No
     report = {
       ...report,
       steps,
-      stackStatus: captureAcceptanceStackStatus(env),
+      stackStatus: await captureAcceptanceStackStatus(env),
     };
     writeAcceptanceDeployReport(report);
     printJsonIfRequested(report);
@@ -3334,7 +3910,7 @@ const runAcceptanceDeploy = async (runtimeProfile: RemoteRuntimeProfile, env: No
         technicalGatePassed: false,
         summary: `Technische Freigabe verweigert (${category}).`,
       },
-      stackStatus: captureAcceptanceStackStatus(env),
+      stackStatus: await captureAcceptanceStackStatus(env),
     };
     writeAcceptanceDeployReport(failedReport);
     printJsonIfRequested(failedReport);
@@ -3355,18 +3931,15 @@ const runAcceptanceCommand = async (runtimeProfile: RemoteRuntimeProfile, runtim
         `Direkte Remote-Deploys ueber ${runtimeCommand} sind gesperrt. Nutze den kanonischen Pfad pnpm env:deploy:${runtimeProfile}.`
       );
     case 'down':
+      assertDeterministicRemoteMutationContext(env, runtimeProfile, 'down');
       run('docker', ['stack', 'rm', stackName], env);
       console.log(`Stack ${stackName} entfernt.`);
       return;
     case 'status':
       assertRuntimeEnv(runtimeProfile, env);
       if (getRuntimeStatusExecutionMode(runtimeProfile) === 'remote') {
-        if (!commandExists('quantum-cli')) {
-          throw new Error('quantum-cli ist fuer Remote-Status nicht verfuegbar.');
-        }
-
-        const quantumEndpoint = getConfiguredQuantumEndpoint(env);
-        run('quantum-cli', ['ps', '--endpoint', quantumEndpoint, '--stack', stackName, '--all'], withoutDebugEnv(env));
+        const evidence = await readRemoteStackEvidence(env);
+        console.log(evidence.summary);
         return;
       }
 
@@ -3383,6 +3956,7 @@ const runAcceptanceCommand = async (runtimeProfile: RemoteRuntimeProfile, runtim
     }
     case 'deploy':
       assertRuntimeEnv(runtimeProfile, env);
+      assertDeterministicRemoteMutationContext(env, runtimeProfile, 'deploy');
       env.QUANTUM_ENVIRONMENT = env.QUANTUM_ENVIRONMENT?.trim() || runtimeProfile;
       await runAcceptanceDeploy(runtimeProfile, env);
       return;
@@ -3392,12 +3966,14 @@ const runAcceptanceCommand = async (runtimeProfile: RemoteRuntimeProfile, runtim
       console.log(`Smoke-Checks fuer ${runtimeProfile} erfolgreich.`);
       return;
     case 'migrate':
-      migrateAcceptance(runtimeProfile, env);
+      assertDeterministicRemoteMutationContext(env, runtimeProfile, 'migrate');
+      await migrateAcceptance(runtimeProfile, env);
       console.log(`Migrationen fuer ${runtimeProfile} abgeschlossen.`);
       return;
     case 'reset':
       assertRuntimeEnv(runtimeProfile, env);
-      resetAcceptance(runtimeProfile, env);
+      assertDeterministicRemoteMutationContext(env, runtimeProfile, 'reset');
+      await resetAcceptance(runtimeProfile, env);
       console.log(`Postgres und Redis fuer ${runtimeProfile} wurden zurueckgesetzt.`);
       return;
     case 'doctor': {

@@ -6,6 +6,7 @@ Diese Anleitung beschreibt die minimale Keycloak-Konfiguration für den IAM-Serv
 Sie deckt sowohl User-Management als auch den Studio-verwalteten Rollen-Katalog-Sync nach Keycloak ab.
 
 Der fachliche Sollzustand tenant-spezifischer Realms, inklusive `sva-studio`-Client, `instanceId`-Claim, Protocol Mappern und minimalen Tenant-Admin-Rollen, ist separat unter [Keycloak-Tenant-Realm-Bootstrap für Studio](./keycloak-tenant-realm-bootstrap.md) dokumentiert.
+Der vollständige Root-Host-Betriebspfad für Preflight, Plan und Provisioning-Läufe ist unter [Instanzverwaltung als Keycloak-Control-Plane](./instance-keycloak-provisioning.md) beschrieben.
 
 ## Unterstützte Keycloak-Version
 

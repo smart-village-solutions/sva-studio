@@ -103,6 +103,134 @@ services:
       retries: 5
       start_period: 20s
 
+  provisioner:
+    image: ${SVA_IMAGE_REF}
+    entrypoint:
+      - ./provisioner-entrypoint.sh
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 3000
+      SVA_DEPLOY_REVISION: "${SVA_DEPLOY_REVISION:-unset}"
+      SVA_RUNTIME_PROFILE: "${SVA_RUNTIME_PROFILE}"
+      SVA_AUTH_CLIENT_SECRET: "${SVA_AUTH_CLIENT_SECRET}"
+      SVA_AUTH_STATE_SECRET: "${SVA_AUTH_STATE_SECRET}"
+      ENCRYPTION_KEY: "${ENCRYPTION_KEY}"
+      IAM_PII_KEYRING_JSON: "${IAM_PII_KEYRING_JSON}"
+      APP_DB_PASSWORD: "${APP_DB_PASSWORD}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
+      REDIS_PASSWORD: "${REDIS_PASSWORD}"
+      ENABLE_OTEL: "false"
+      SVA_ENABLE_SERVER_CONSOLE_LOGS: "${SVA_ENABLE_SERVER_CONSOLE_LOGS:-false}"
+      POSTGRES_DB: sva_studio
+      APP_DB_USER: "${APP_DB_USER}"
+      IAM_PII_ACTIVE_KEY_ID: k1
+      KEYCLOAK_PROVISIONER_BASE_URL: "${KEYCLOAK_PROVISIONER_BASE_URL}"
+      KEYCLOAK_PROVISIONER_REALM: "${KEYCLOAK_PROVISIONER_REALM}"
+      KEYCLOAK_PROVISIONER_CLIENT_ID: "${KEYCLOAK_PROVISIONER_CLIENT_ID}"
+      KEYCLOAK_PROVISIONER_CLIENT_SECRET: "${KEYCLOAK_PROVISIONER_CLIENT_SECRET}"
+      SVA_KEYCLOAK_PROVISIONER_POLL_INTERVAL_MS: "${SVA_KEYCLOAK_PROVISIONER_POLL_INTERVAL_MS:-5000}"
+    labels:
+      com.sva-studio.component: "provisioner"
+      com.sva-studio.environment: "production"
+    networks:
+      - internal
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.hostname == node-005.sva
+      restart_policy:
+        condition: any
+        delay: 5s
+        max_attempts: 5
+        window: 120s
+      resources:
+        reservations:
+          memory: 128M
+        limits:
+          memory: 384M
+          cpus: '0.50'
+
+  migrate:
+    image: ${SVA_IMAGE_REF}
+    entrypoint:
+      - ./migrate-entrypoint.sh
+    environment:
+      NODE_ENV: production
+      SVA_RUNTIME_PROFILE: "${SVA_RUNTIME_PROFILE}"
+      SVA_DEPLOY_REVISION: "${SVA_DEPLOY_REVISION:-unset}"
+      POSTGRES_DB: sva_studio
+      POSTGRES_USER: sva
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
+      POSTGRES_HOST: "${SVA_STACK_NAME:-studio}_postgres"
+      POSTGRES_PORT: "5432"
+      SVA_MIGRATION_JOB_STACK: "${SVA_MIGRATION_JOB_STACK:-}"
+      SVA_MIGRATION_TARGET_STACK: "${SVA_MIGRATION_TARGET_STACK:-}"
+      GOOSE_WRAPPER: packages/data/scripts/goosew.sh
+      MIGRATIONS_DIR: packages/data/migrations
+      GOOSE_CONFIG_PATH: packages/data/goose.config.json
+    labels:
+      com.sva-studio.component: "migrate"
+      com.sva-studio.environment: "production"
+    networks:
+      - internal
+    deploy:
+      replicas: ${SVA_MIGRATE_REPLICAS:-0}
+      placement:
+        constraints:
+          - node.hostname == node-005.sva
+      restart_policy:
+        condition: none
+      resources:
+        reservations:
+          memory: 64M
+        limits:
+          memory: 256M
+          cpus: '0.50'
+
+  bootstrap:
+    image: ${SVA_IMAGE_REF}
+    entrypoint:
+      - ./bootstrap-entrypoint.sh
+    environment:
+      NODE_ENV: production
+      SVA_RUNTIME_PROFILE: "${SVA_RUNTIME_PROFILE}"
+      SVA_DEPLOY_REVISION: "${SVA_DEPLOY_REVISION:-unset}"
+      POSTGRES_DB: sva_studio
+      POSTGRES_USER: sva
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
+      POSTGRES_HOST: "${SVA_STACK_NAME:-studio}_postgres"
+      POSTGRES_PORT: "5432"
+      APP_DB_USER: "${APP_DB_USER}"
+      APP_DB_PASSWORD: "${APP_DB_PASSWORD}"
+      SVA_ALLOWED_INSTANCE_IDS: "${SVA_ALLOWED_INSTANCE_IDS}"
+      SVA_PARENT_DOMAIN: "${SVA_PARENT_DOMAIN}"
+      SVA_BOOTSTRAP_JOB_STACK: "${SVA_BOOTSTRAP_JOB_STACK:-}"
+      SVA_BOOTSTRAP_TARGET_STACK: "${SVA_BOOTSTRAP_TARGET_STACK:-}"
+      SVA_BOOTSTRAP_RECONCILE_APP_ROLE: "${SVA_BOOTSTRAP_RECONCILE_APP_ROLE:-true}"
+      SVA_BOOTSTRAP_ENABLE_SCHEMA_GUARD: "${SVA_BOOTSTRAP_ENABLE_SCHEMA_GUARD:-true}"
+      SVA_BOOTSTRAP_ENABLE_INSTANCE_RECONCILE: "${SVA_BOOTSTRAP_ENABLE_INSTANCE_RECONCILE:-true}"
+      SVA_BOOTSTRAP_ENABLE_HOSTNAME_GUARD: "${SVA_BOOTSTRAP_ENABLE_HOSTNAME_GUARD:-true}"
+    labels:
+      com.sva-studio.component: "bootstrap"
+      com.sva-studio.environment: "production"
+    networks:
+      - internal
+    deploy:
+      replicas: ${SVA_BOOTSTRAP_REPLICAS:-0}
+      placement:
+        constraints:
+          - node.hostname == node-005.sva
+      restart_policy:
+        condition: none
+      resources:
+        reservations:
+          memory: 64M
+        limits:
+          memory: 256M
+          cpus: '0.50'
+
   redis:
     image: redis:7-alpine
     environment:

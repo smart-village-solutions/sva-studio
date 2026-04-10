@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { Pool } from 'pg';
 
-import { isInstanceStatus, type InstanceStatus } from '../../packages/core/src/instances/registry.js';
+import { isInstanceStatus, type InstanceRealmMode, type InstanceStatus } from '../../packages/core/src/instances/registry.js';
 import { createInstanceRegistryService } from '../../packages/auth/src/iam-instance-registry/service.js';
 import { createInstanceRegistryRepository } from '../../packages/data/src/instance-registry/index.js';
 import { invalidateInstanceRegistryHost } from '../../packages/data/src/instance-registry/server.js';
@@ -25,6 +25,7 @@ type CliOptions = {
   readonly jsonOutput: boolean;
   readonly mainserverConfigRef?: string;
   readonly parentDomain?: string;
+  readonly realmMode: InstanceRealmMode;
   readonly search?: string;
   readonly status?: InstanceStatus;
   readonly themeKey?: string;
@@ -85,12 +86,14 @@ const parseCliOptions = (argv: readonly string[]): CliOptions => {
     jsonOutput: boolean;
     mainserverConfigRef?: string;
     parentDomain?: string;
+    realmMode?: InstanceRealmMode;
     search?: string;
     status?: string;
     themeKey?: string;
     idempotencyKey?: string;
   } = {
     jsonOutput: false,
+    realmMode: 'existing',
   };
 
   for (let index = 0; index < rawOptions.length; index += 1) {
@@ -124,6 +127,12 @@ const parseCliOptions = (argv: readonly string[]): CliOptions => {
         break;
       case '--parent-domain':
         parsed.parentDomain = value;
+        break;
+      case '--realm-mode':
+        if (value !== 'new' && value !== 'existing') {
+          throw new Error(`Ungültiger Realm-Modus: ${value}. Erlaubt: new, existing.`);
+        }
+        parsed.realmMode = value;
         break;
       case '--theme-key':
         parsed.themeKey = value;
@@ -161,6 +170,7 @@ const parseCliOptions = (argv: readonly string[]): CliOptions => {
     jsonOutput: parsed.jsonOutput,
     mainserverConfigRef: parsed.mainserverConfigRef,
     parentDomain: parsed.parentDomain,
+    realmMode: parsed.realmMode ?? 'existing',
     search: parsed.search,
     status: parseStatusOption(parsed.status),
     themeKey: parsed.themeKey,
@@ -285,6 +295,7 @@ const run = async () => {
             instanceId: assertRequired(options.instanceId, '--instance-id'),
             mainserverConfigRef: options.mainserverConfigRef,
             parentDomain: assertRequired(options.parentDomain, '--parent-domain'),
+            realmMode: options.realmMode,
             requestId: `cli-${options.idempotencyKey}`,
             themeKey: options.themeKey,
           });

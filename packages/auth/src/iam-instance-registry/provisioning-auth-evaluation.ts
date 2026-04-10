@@ -1,5 +1,5 @@
 import type { InstanceKeycloakPreflightCheck, InstanceRealmMode } from '@sva/core';
-import type { KeycloakTenantPlan, KeycloakTenantPreflight, KeycloakTenantStatus } from './keycloak-types.js';
+import type { KeycloakTenantPreflight, KeycloakTenantStatus } from './keycloak-types.js';
 import type { KeycloakProvisioningInput, KeycloakReadState, TenantAdminBootstrap } from './provisioning-auth-types.js';
 import { equalSets, INSTANCE_ID_MAPPER_NAME, readPostLogoutUris } from './provisioning-auth-utils.js';
 export { buildPlan } from './provisioning-auth-plan.js';
@@ -40,6 +40,75 @@ const createPreflightCheck = (
   details,
 });
 
+const buildRealmModeCheck = (input: {
+  realmMode: InstanceRealmMode;
+  realmExists: boolean;
+}): InstanceKeycloakPreflightCheck => {
+  const status: InstanceKeycloakPreflightCheck['status'] =
+    input.realmMode === 'new'
+      ? input.realmExists
+        ? 'blocked'
+        : 'ready'
+      : input.realmExists
+        ? 'ready'
+        : 'blocked';
+
+  const summary =
+    input.realmMode === 'new'
+      ? input.realmExists
+        ? 'Der Realm existiert bereits, obwohl "Neuer Realm" gewählt wurde.'
+        : 'Der Ziel-Realm fehlt und kann neu angelegt werden.'
+      : input.realmExists
+        ? 'Der bestehende Realm ist erreichbar.'
+        : 'Der gewählte Bestands-Realm wurde nicht gefunden.';
+
+  return createPreflightCheck('realm_mode', 'Realm-Modus', status, summary, {
+    realmExists: input.realmExists,
+    realmMode: input.realmMode,
+  });
+};
+
+const buildTenantSecretCheck = (input: {
+  realmMode: InstanceRealmMode;
+  authClientSecretConfigured: boolean;
+  authClientSecret?: string;
+}): InstanceKeycloakPreflightCheck => {
+  const hasReadableSecret = Boolean(input.authClientSecret);
+  const requiresTenantSecret = isTenantSecretRequired(input.realmMode);
+  const status: InstanceKeycloakPreflightCheck['status'] =
+    input.authClientSecretConfigured && hasReadableSecret
+      ? 'ready'
+      : requiresTenantSecret
+        ? 'blocked'
+        : 'warning';
+
+  const summary =
+    input.authClientSecretConfigured && hasReadableSecret
+      ? 'Ein lesbares Tenant-Client-Secret ist in der Registry vorhanden.'
+      : requiresTenantSecret
+        ? 'Für diese Instanz fehlt ein lesbares Tenant-Client-Secret in der Registry.'
+        : 'Das Tenant-Client-Secret wird beim Erstellen des neuen Realm automatisch erzeugt und anschließend gespeichert.';
+
+  return createPreflightCheck('tenant_secret', 'Tenant-Client-Secret', status, summary, {
+    configured: input.authClientSecretConfigured,
+    readable: hasReadableSecret,
+    generatedDuringProvisioning: input.realmMode === 'new',
+  });
+};
+
+const buildTenantAdminCheck = (tenantAdminBootstrap?: TenantAdminBootstrap): InstanceKeycloakPreflightCheck => {
+  const configured = Boolean(tenantAdminBootstrap?.username);
+  return createPreflightCheck(
+    'tenant_admin_profile',
+    'Tenant-Admin-Profil',
+    configured ? 'ready' : 'blocked',
+    configured
+      ? 'Die Stammdaten für den Tenant-Admin sind gepflegt.'
+      : 'Für den Tenant-Admin fehlen die erforderlichen Stammdaten.',
+    { configured }
+  );
+};
+
 export const buildPreflightChecks = (input: {
   realmMode: InstanceRealmMode;
   authClientSecretConfigured: boolean;
@@ -73,53 +142,13 @@ export const buildPreflightChecks = (input: {
       'ready',
       'Der technische Keycloak-Admin-Client kann den Ziel-Realm lesen.'
     ),
-    createPreflightCheck(
-      'realm_mode',
-      'Realm-Modus',
-      input.realmMode === 'new'
-        ? realmExists
-          ? 'blocked'
-          : 'ready'
-        : realmExists
-          ? 'ready'
-          : 'blocked',
-      input.realmMode === 'new'
-        ? realmExists
-          ? 'Der Realm existiert bereits, obwohl "Neuer Realm" gewählt wurde.'
-          : 'Der Ziel-Realm fehlt und kann neu angelegt werden.'
-        : realmExists
-          ? 'Der bestehende Realm ist erreichbar.'
-          : 'Der gewählte Bestands-Realm wurde nicht gefunden.',
-      { realmExists, realmMode: input.realmMode }
-    ),
-    createPreflightCheck(
-      'tenant_secret',
-      'Tenant-Client-Secret',
-      input.authClientSecretConfigured && input.authClientSecret
-        ? 'ready'
-        : isTenantSecretRequired(input.realmMode)
-          ? 'blocked'
-          : 'warning',
-      input.authClientSecretConfigured && input.authClientSecret
-        ? 'Ein lesbares Tenant-Client-Secret ist in der Registry vorhanden.'
-        : isTenantSecretRequired(input.realmMode)
-          ? 'Für diese Instanz fehlt ein lesbares Tenant-Client-Secret in der Registry.'
-          : 'Das Tenant-Client-Secret wird beim Erstellen des neuen Realm automatisch erzeugt und anschließend gespeichert.',
-      {
-        configured: input.authClientSecretConfigured,
-        readable: Boolean(input.authClientSecret),
-        generatedDuringProvisioning: input.realmMode === 'new',
-      }
-    ),
-    createPreflightCheck(
-      'tenant_admin_profile',
-      'Tenant-Admin-Profil',
-      input.tenantAdminBootstrap?.username ? 'ready' : 'blocked',
-      input.tenantAdminBootstrap?.username
-        ? 'Die Stammdaten für den Tenant-Admin sind gepflegt.'
-        : 'Für den Tenant-Admin fehlen die erforderlichen Stammdaten.',
-      { configured: Boolean(input.tenantAdminBootstrap?.username) }
-    )
+    buildRealmModeCheck({ realmMode: input.realmMode, realmExists }),
+    buildTenantSecretCheck({
+      realmMode: input.realmMode,
+      authClientSecretConfigured: input.authClientSecretConfigured,
+      authClientSecret: input.authClientSecret,
+    }),
+    buildTenantAdminCheck(input.tenantAdminBootstrap)
   );
 
   return checks;

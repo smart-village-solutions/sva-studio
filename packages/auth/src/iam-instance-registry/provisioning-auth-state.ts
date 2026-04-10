@@ -15,6 +15,26 @@ import {
 } from './provisioning-auth-utils.js';
 
 type KeycloakClientConfigResolver = (realm?: string) => KeycloakAdminClientConfig;
+type TenantAdminInput = {
+  instanceId: string;
+  username: string;
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+  temporaryPassword?: string;
+};
+type ProvisionInstanceAuthArtifactsInput = {
+  instanceId: string;
+  primaryHostname: string;
+  realmMode: 'new' | 'existing';
+  authRealm: string;
+  authClientId: string;
+  authIssuerUrl?: string;
+  authClientSecret?: string;
+  tenantAdminBootstrap?: TenantAdminBootstrap;
+  tenantAdminTemporaryPassword?: string;
+  rotateClientSecret?: boolean;
+};
 
 export const readKeycloakAccessError = (error: unknown): string => {
   if (error instanceof KeycloakAdminUnavailableError) {
@@ -26,14 +46,40 @@ export const readKeycloakAccessError = (error: unknown): string => {
   return error instanceof Error ? error.message : String(error);
 };
 
-const ensureTenantAdmin = async (client: KeycloakAdminClient, input: {
-  instanceId: string;
-  username: string;
-  email?: string;
-  firstName?: string;
-  lastName?: string;
-  temporaryPassword?: string;
-}): Promise<void> => {
+const ensureTenantAdmin = async (client: KeycloakAdminClient, input: TenantAdminInput): Promise<void> => {
+  const syncTenantAdminAccess = async (userId: string) => {
+    await client.syncRoles(userId, [SYSTEM_ADMIN_ROLE]);
+    if (!input.temporaryPassword) {
+      return;
+    }
+    await client.setUserPassword(userId, input.temporaryPassword, true);
+    await client.setUserRequiredActions(userId, ['UPDATE_PASSWORD']);
+  };
+
+  const buildAttributes = (attributes?: Readonly<Record<string, readonly string[]>>) => ({
+    ...Object.fromEntries(
+      Object.entries(attributes ?? {}).map(([key, value]) => [key, [...value]])
+    ),
+    instanceId: [input.instanceId],
+  });
+
+  const updateExisting = async (user: {
+    id: string;
+    email?: string;
+    enabled?: boolean;
+    attributes?: Readonly<Record<string, readonly string[]>>;
+  }) => {
+    await client.updateUser(user.id, {
+      username: input.username,
+      email: input.email ?? user.email ?? fallbackEmail,
+      firstName: input.firstName,
+      lastName: input.lastName,
+      enabled: user.enabled ?? true,
+      attributes: buildAttributes(user.attributes),
+    });
+    await syncTenantAdminAccess(user.id);
+  };
+
   const fallbackEmail = `${input.username}@tenant.invalid`;
   const resolvedEmail = input.email ?? fallbackEmail;
 
@@ -50,15 +96,9 @@ const ensureTenantAdmin = async (client: KeycloakAdminClient, input: {
         firstName: input.firstName,
         lastName: input.lastName,
         enabled: true,
-        attributes: {
-          instanceId: [input.instanceId],
-        },
+        attributes: buildAttributes(),
       });
-      await client.syncRoles(created.externalId, [SYSTEM_ADMIN_ROLE]);
-      if (input.temporaryPassword) {
-        await client.setUserPassword(created.externalId, input.temporaryPassword, true);
-        await client.setUserRequiredActions(created.externalId, ['UPDATE_PASSWORD']);
-      }
+      await syncTenantAdminAccess(created.externalId);
       return;
     } catch (error) {
       if (!(error instanceof KeycloakAdminRequestError) || error.statusCode !== 409) {
@@ -70,42 +110,16 @@ const ensureTenantAdmin = async (client: KeycloakAdminClient, input: {
         throw error;
       }
 
-      await client.updateUser(conflictingUser.id, {
-        username: input.username,
+      await updateExisting({
+        id: conflictingUser.id,
         email: resolvedEmail,
-        firstName: input.firstName,
-        lastName: input.lastName,
-        enabled: conflictingUser.enabled ?? true,
-        attributes: {
-          ...(conflictingUser.attributes ?? {}),
-          instanceId: [input.instanceId],
-        },
+        enabled: conflictingUser.enabled,
+        attributes: conflictingUser.attributes,
       });
-      await client.syncRoles(conflictingUser.id, [SYSTEM_ADMIN_ROLE]);
-      if (input.temporaryPassword) {
-        await client.setUserPassword(conflictingUser.id, input.temporaryPassword, true);
-        await client.setUserRequiredActions(conflictingUser.id, ['UPDATE_PASSWORD']);
-      }
       return;
     }
   }
-
-  await client.updateUser(existing.id, {
-    username: input.username,
-    email: input.email ?? existing.email ?? fallbackEmail,
-    firstName: input.firstName,
-    lastName: input.lastName,
-    enabled: existing.enabled ?? true,
-    attributes: {
-      ...(existing.attributes ?? {}),
-      instanceId: [input.instanceId],
-    },
-  });
-  await client.syncRoles(existing.id, [SYSTEM_ADMIN_ROLE]);
-  if (input.temporaryPassword) {
-    await client.setUserPassword(existing.id, input.temporaryPassword, true);
-    await client.setUserRequiredActions(existing.id, ['UPDATE_PASSWORD']);
-  }
+  await updateExisting(existing);
 };
 
 const readTenantAdminStatus = async (
@@ -194,18 +208,7 @@ export const readKeycloakStateViaProvisioner = async (input: KeycloakProvisionin
   readKeycloakStateWithResolver(input, getKeycloakProvisionerClientConfigFromEnv);
 
 const provisionInstanceAuthArtifactsWithResolver = async (
-  input: {
-  instanceId: string;
-  primaryHostname: string;
-  realmMode: 'new' | 'existing';
-  authRealm: string;
-  authClientId: string;
-  authIssuerUrl?: string;
-  authClientSecret?: string;
-  tenantAdminBootstrap?: TenantAdminBootstrap;
-  tenantAdminTemporaryPassword?: string;
-  rotateClientSecret?: boolean;
-},
+  input: ProvisionInstanceAuthArtifactsInput,
   resolveConfig: KeycloakClientConfigResolver
 ): Promise<void> => {
   const client = new KeycloakAdminClient(resolveConfig(input.authRealm));
@@ -244,28 +247,9 @@ const provisionInstanceAuthArtifactsWithResolver = async (
   }
 };
 
-export const provisionInstanceAuthArtifacts = async (input: {
-  instanceId: string;
-  primaryHostname: string;
-  realmMode: 'new' | 'existing';
-  authRealm: string;
-  authClientId: string;
-  authIssuerUrl?: string;
-  authClientSecret?: string;
-  tenantAdminBootstrap?: TenantAdminBootstrap;
-  tenantAdminTemporaryPassword?: string;
-  rotateClientSecret?: boolean;
-}): Promise<void> => provisionInstanceAuthArtifactsWithResolver(input, getKeycloakAdminClientConfigFromEnv);
+export const provisionInstanceAuthArtifacts = async (input: ProvisionInstanceAuthArtifactsInput): Promise<void> =>
+  provisionInstanceAuthArtifactsWithResolver(input, getKeycloakAdminClientConfigFromEnv);
 
-export const provisionInstanceAuthArtifactsViaProvisioner = async (input: {
-  instanceId: string;
-  primaryHostname: string;
-  realmMode: 'new' | 'existing';
-  authRealm: string;
-  authClientId: string;
-  authIssuerUrl?: string;
-  authClientSecret?: string;
-  tenantAdminBootstrap?: TenantAdminBootstrap;
-  tenantAdminTemporaryPassword?: string;
-  rotateClientSecret?: boolean;
-}): Promise<void> => provisionInstanceAuthArtifactsWithResolver(input, getKeycloakProvisionerClientConfigFromEnv);
+export const provisionInstanceAuthArtifactsViaProvisioner = async (
+  input: ProvisionInstanceAuthArtifactsInput
+): Promise<void> => provisionInstanceAuthArtifactsWithResolver(input, getKeycloakProvisionerClientConfigFromEnv);

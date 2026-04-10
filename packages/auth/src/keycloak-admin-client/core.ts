@@ -531,23 +531,23 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     }
 
     const searchParams = new URLSearchParams();
-    if (query?.first !== undefined) {
-      searchParams.set('first', String(query.first));
+    for (const [key, value] of [
+      ['first', query?.first],
+      ['max', query?.max],
+      ['enabled', query?.enabled],
+    ] as const) {
+      if (value !== undefined) {
+        searchParams.set(key, String(value));
+      }
     }
-    if (query?.max !== undefined) {
-      searchParams.set('max', String(query.max));
-    }
-    if (query?.search) {
-      searchParams.set('search', query.search);
-    }
-    if (query?.email) {
-      searchParams.set('email', query.email);
-    }
-    if (query?.username) {
-      searchParams.set('username', query.username);
-    }
-    if (query?.enabled !== undefined) {
-      searchParams.set('enabled', String(query.enabled));
+    for (const [key, value] of [
+      ['search', query?.search],
+      ['email', query?.email],
+      ['username', query?.username],
+    ] as const) {
+      if (value) {
+        searchParams.set(key, value);
+      }
     }
 
     const querySuffix = searchParams.size > 0 ? `?${searchParams.toString()}` : '';
@@ -850,110 +850,120 @@ export class KeycloakAdminClient implements IdentityProviderPort {
       adminUrl: input.rootUrl,
     };
 
+    await this.upsertOidcClient(existing, payload, input.clientId, input.postLogoutRedirectUris);
+    await this.syncOidcClientSecret(existing, input);
+  }
+
+  private async upsertOidcClient(
+    existing: KeycloakClientRepresentation | null,
+    payload: {
+      clientId: string;
+      name: string;
+      enabled: boolean;
+      protocol: string;
+      publicClient: boolean;
+      standardFlowEnabled: boolean;
+      directAccessGrantsEnabled: boolean;
+      serviceAccountsEnabled: boolean;
+      redirectUris: string[];
+      webOrigins: string[];
+      attributes: { 'post.logout.redirect.uris': string };
+      rootUrl: string;
+      baseUrl: string;
+      adminUrl: string;
+    },
+    clientId: string,
+    postLogoutRedirectUris: readonly string[]
+  ): Promise<void> {
     if (!existing) {
-      try {
-        await this.executeWithResilience<void>({
-          method: 'POST',
-          path: `/admin/realms/${encodePathSegment(this.realm)}/clients`,
-          operation: 'create_client',
-          body: JSON.stringify(payload),
-        });
-        logKeycloakWriteSuccess('create_client', {
-          operation: 'create_client',
-          realm: this.realm,
-          client_id: input.clientId,
-        });
-      } catch (error) {
-        logKeycloakWriteFailure(
-          'create_client_failed',
-          {
-            operation: 'create_client',
-            realm: this.realm,
-            client_id: input.clientId,
-          },
-          error
-        );
-        throw error;
-      }
-    } else {
-      const requiresUpdate =
-        existing.rootUrl !== payload.rootUrl ||
-        !areStringSetsEqual(existing.redirectUris, payload.redirectUris) ||
-        !areStringSetsEqual(existing.webOrigins, payload.webOrigins) ||
-        !areStringSetsEqual(readPostLogoutRedirectUris(existing.attributes), input.postLogoutRedirectUris);
-
-      if (requiresUpdate) {
-        try {
-          await this.executeWithResilience<void>({
-            method: 'PUT',
-            path: `/admin/realms/${encodePathSegment(this.realm)}/clients/${encodePathSegment(existing.id)}`,
-            operation: 'update_client',
-            body: JSON.stringify({
-              ...existing,
-              ...payload,
-            }),
-          });
-          logKeycloakWriteSuccess('update_client', {
-            operation: 'update_client',
-            realm: this.realm,
-            client_id: input.clientId,
-          });
-        } catch (error) {
-          logKeycloakWriteFailure(
-            'update_client_failed',
-            {
-              operation: 'update_client',
-              realm: this.realm,
-              client_id: input.clientId,
-            },
-            error
-          );
-          throw error;
-        }
-      }
+      await this.createOidcClient(payload, clientId);
+      return;
     }
+    const requiresUpdate =
+      existing.rootUrl !== payload.rootUrl ||
+      !areStringSetsEqual(existing.redirectUris, payload.redirectUris) ||
+      !areStringSetsEqual(existing.webOrigins, payload.webOrigins) ||
+      !areStringSetsEqual(readPostLogoutRedirectUris(existing.attributes), postLogoutRedirectUris);
+    if (requiresUpdate) {
+      await this.updateOidcClient(existing, payload, clientId);
+    }
+  }
 
-    if (input.clientSecret) {
-      const resolvedClient = existing ?? (await this.getOidcClientByClientId(input.clientId));
-      if (!resolvedClient) {
-        throw new KeycloakAdminRequestError({
-          message: 'Keycloak client secret could not be updated because the client is missing.',
-          statusCode: 404,
-          code: 'client_not_found',
-          retryable: false,
-        });
-      }
-      const currentSecret = await this.getOidcClientSecretValue(input.clientId);
-      const shouldUpdateSecret = input.rotateClientSecret || currentSecret !== input.clientSecret;
-      if (!shouldUpdateSecret) {
-        return;
-      }
-      const logEvent = input.rotateClientSecret ? 'rotate_client_secret' : 'sync_client_secret';
-      const logFailureEvent = input.rotateClientSecret ? 'rotate_client_secret_failed' : 'sync_client_secret_failed';
-      try {
-        await this.executeWithResilience<void>({
-          method: 'POST',
-          path: `/admin/realms/${encodePathSegment(this.realm)}/clients/${encodePathSegment(resolvedClient.id)}/client-secret`,
-          operation: 'rotate_client_secret',
-          body: JSON.stringify({ type: 'secret', value: input.clientSecret }),
-        });
-        logKeycloakWriteSuccess(logEvent, {
-          operation: 'rotate_client_secret',
-          realm: this.realm,
-          client_id: input.clientId,
-        });
-      } catch (error) {
-        logKeycloakWriteFailure(
-          logFailureEvent,
-          {
-            operation: 'rotate_client_secret',
-            realm: this.realm,
-            client_id: input.clientId,
-          },
-          error
-        );
-        throw error;
-      }
+  private async createOidcClient(payload: object, clientId: string): Promise<void> {
+    try {
+      await this.executeWithResilience<void>({
+        method: 'POST',
+        path: `/admin/realms/${encodePathSegment(this.realm)}/clients`,
+        operation: 'create_client',
+        body: JSON.stringify(payload),
+      });
+      logKeycloakWriteSuccess('create_client', { operation: 'create_client', realm: this.realm, client_id: clientId });
+    } catch (error) {
+      logKeycloakWriteFailure('create_client_failed', { operation: 'create_client', realm: this.realm, client_id: clientId }, error);
+      throw error;
+    }
+  }
+
+  private async updateOidcClient(
+    existing: KeycloakClientRepresentation,
+    payload: object,
+    clientId: string
+  ): Promise<void> {
+    try {
+      await this.executeWithResilience<void>({
+        method: 'PUT',
+        path: `/admin/realms/${encodePathSegment(this.realm)}/clients/${encodePathSegment(existing.id)}`,
+        operation: 'update_client',
+        body: JSON.stringify({
+          ...existing,
+          ...payload,
+        }),
+      });
+      logKeycloakWriteSuccess('update_client', { operation: 'update_client', realm: this.realm, client_id: clientId });
+    } catch (error) {
+      logKeycloakWriteFailure('update_client_failed', { operation: 'update_client', realm: this.realm, client_id: clientId }, error);
+      throw error;
+    }
+  }
+
+  private async syncOidcClientSecret(
+    existing: KeycloakClientRepresentation | null,
+    input: {
+      clientId: string;
+      clientSecret?: string;
+      rotateClientSecret?: boolean;
+    }
+  ): Promise<void> {
+    if (!input.clientSecret) {
+      return;
+    }
+    const resolvedClient = existing ?? (await this.getOidcClientByClientId(input.clientId));
+    if (!resolvedClient) {
+      throw new KeycloakAdminRequestError({
+        message: 'Keycloak client secret could not be updated because the client is missing.',
+        statusCode: 404,
+        code: 'client_not_found',
+        retryable: false,
+      });
+    }
+    const currentSecret = await this.getOidcClientSecretValue(input.clientId);
+    const shouldUpdateSecret = input.rotateClientSecret || currentSecret !== input.clientSecret;
+    if (!shouldUpdateSecret) {
+      return;
+    }
+    const logEvent = input.rotateClientSecret ? 'rotate_client_secret' : 'sync_client_secret';
+    const logFailureEvent = input.rotateClientSecret ? 'rotate_client_secret_failed' : 'sync_client_secret_failed';
+    try {
+      await this.executeWithResilience<void>({
+        method: 'POST',
+        path: `/admin/realms/${encodePathSegment(this.realm)}/clients/${encodePathSegment(resolvedClient.id)}/client-secret`,
+        operation: 'rotate_client_secret',
+        body: JSON.stringify({ type: 'secret', value: input.clientSecret }),
+      });
+      logKeycloakWriteSuccess(logEvent, { operation: 'rotate_client_secret', realm: this.realm, client_id: input.clientId });
+    } catch (error) {
+      logKeycloakWriteFailure(logFailureEvent, { operation: 'rotate_client_secret', realm: this.realm, client_id: input.clientId }, error);
+      throw error;
     }
   }
 

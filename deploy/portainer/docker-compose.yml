@@ -65,7 +65,7 @@ services:
       replicas: 1
       placement:
         constraints:
-          - node.hostname == node-005.sva
+          - node.hostname == ${SVA_TARGET_NODE_HOSTNAME:-node-005.sva}
       update_config:
         parallelism: 1
         delay: 10s
@@ -139,7 +139,7 @@ services:
       replicas: 1
       placement:
         constraints:
-          - node.hostname == node-005.sva
+          - node.hostname == ${SVA_TARGET_NODE_HOSTNAME:-node-005.sva}
       restart_policy:
         condition: on-failure
         delay: 5s
@@ -182,7 +182,7 @@ services:
       replicas: ${SVA_MIGRATE_REPLICAS:-0}
       placement:
         constraints:
-          - node.hostname == node-005.sva
+          - node.hostname == ${SVA_TARGET_NODE_HOSTNAME:-node-005.sva}
       restart_policy:
         condition: none
       resources:
@@ -260,7 +260,7 @@ services:
       replicas: 1
       placement:
         constraints:
-          - node.hostname == node-005.sva
+          - node.hostname == ${SVA_TARGET_NODE_HOSTNAME:-node-005.sva}
       restart_policy:
         condition: on-failure
         delay: 5s
@@ -303,7 +303,7 @@ services:
       replicas: 1
       placement:
         constraints:
-          - node.hostname == node-005.sva
+          - node.hostname == ${SVA_TARGET_NODE_HOSTNAME:-node-005.sva}
       restart_policy:
         condition: on-failure
         delay: 5s
@@ -338,7 +338,7 @@ services:
       replicas: 1
       placement:
         constraints:
-          - node.hostname == node-005.sva
+          - node.hostname == ${SVA_TARGET_NODE_HOSTNAME:-node-005.sva}
       restart_policy:
         condition: on-failure
         delay: 5s
@@ -401,7 +401,7 @@ services:
       replicas: 1
       placement:
         constraints:
-          - node.hostname == node-005.sva
+          - node.hostname == ${SVA_TARGET_NODE_HOSTNAME:-node-005.sva}
       restart_policy:
         condition: none
       resources:
@@ -427,7 +427,7 @@ services:
       replicas: 1
       placement:
         constraints:
-          - node.hostname == node-005.sva
+          - node.hostname == ${SVA_TARGET_NODE_HOSTNAME:-node-005.sva}
       restart_policy:
         condition: on-failure
         delay: 5s
@@ -463,7 +463,7 @@ services:
       replicas: 1
       placement:
         constraints:
-          - node.hostname == node-005.sva
+          - node.hostname == ${SVA_TARGET_NODE_HOSTNAME:-node-005.sva}
       restart_policy:
         condition: on-failure
         delay: 5s
@@ -503,7 +503,7 @@ services:
       replicas: 1
       placement:
         constraints:
-          - node.hostname == node-005.sva
+          - node.hostname == ${SVA_TARGET_NODE_HOSTNAME:-node-005.sva}
       restart_policy:
         condition: on-failure
         delay: 5s
@@ -544,7 +544,7 @@ services:
       replicas: 1
       placement:
         constraints:
-          - node.hostname == node-005.sva
+          - node.hostname == ${SVA_TARGET_NODE_HOSTNAME:-node-005.sva}
       restart_policy:
         condition: on-failure
         delay: 5s
@@ -579,7 +579,7 @@ services:
       replicas: 1
       placement:
         constraints:
-          - node.hostname == node-005.sva
+          - node.hostname == ${SVA_TARGET_NODE_HOSTNAME:-node-005.sva}
       restart_policy:
         condition: on-failure
         delay: 5s
@@ -611,7 +611,7 @@ services:
       replicas: 1
       placement:
         constraints:
-          - node.hostname == node-005.sva
+          - node.hostname == ${SVA_TARGET_NODE_HOSTNAME:-node-005.sva}
       restart_policy:
         condition: on-failure
         delay: 5s

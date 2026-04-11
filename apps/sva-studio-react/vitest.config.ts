@@ -2,7 +2,10 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
 import tsconfigPaths from 'vite-tsconfig-paths';
 
+const appRoot = fileURLToPath(new URL('.', import.meta.url));
+
 export default defineConfig({
+  root: appRoot,
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),

@@ -259,6 +259,49 @@ describe('useUsers', () => {
     expect(listUsersMock).toHaveBeenCalledTimes(2);
   });
 
+  it('does not block createUser on a slow follow-up list refresh', async () => {
+    listUsersMock
+      .mockResolvedValueOnce({
+        data: [],
+        pagination: { page: 1, pageSize: 25, total: 0 },
+      })
+      .mockImplementationOnce(() => new Promise(() => undefined));
+    createUserMock.mockResolvedValue({
+      data: {
+        id: 'user-2',
+        keycloakSubject: 'subject-2',
+        displayName: 'Second User',
+        status: 'pending',
+        roles: [],
+        mainserverUserApplicationSecretSet: false,
+      },
+    });
+
+    const { result } = renderHook(() => useUsers());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    let createResult:
+      | Awaited<ReturnType<typeof result.current.createUser>>
+      | undefined;
+    await act(async () => {
+      createResult = await result.current.createUser({ email: 'second@example.com' });
+    });
+
+    expect(createResult).toEqual({
+      id: 'user-2',
+      keycloakSubject: 'subject-2',
+      displayName: 'Second User',
+      status: 'pending',
+      roles: [],
+      mainserverUserApplicationSecretSet: false,
+    });
+    expect(createUserMock).toHaveBeenCalledTimes(1);
+    expect(listUsersMock).toHaveBeenCalledTimes(2);
+  });
+
   it('invalidates permissions on 403 during initial load', async () => {
     listUsersMock.mockRejectedValue({
       status: 403,

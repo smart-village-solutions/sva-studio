@@ -38,7 +38,9 @@ jobs:
     env:
       QUANTUM_API_KEY: ${{ secrets.QUANTUM_API_KEY }}
       QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT || 'sva' }}
+      QUANTUM_ENDPOINT_ID: ${{ vars.QUANTUM_ENDPOINT_ID || '64' }}
       QUANTUM_ENVIRONMENT: ${{ vars.QUANTUM_ENVIRONMENT || 'swarm-secrets' }}
+      SVA_REMOTE_OPERATOR_CONTEXT: ci-runner
       SVA_STACK_NAME: ${{ vars.SVA_STACK_NAME || 'sva-studio' }}
       SVA_PUBLIC_BASE_URL: ${{ vars.SVA_PUBLIC_BASE_URL }}
       SVA_PARENT_DOMAIN: ${{ vars.SVA_PARENT_DOMAIN }}

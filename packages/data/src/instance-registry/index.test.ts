@@ -34,6 +34,7 @@ describe('instance registry repository', () => {
           status: 'active',
           parent_domain: 'studio.example.org',
           primary_hostname: 'hb.studio.example.org',
+          realm_mode: 'existing',
           auth_realm: 'hb',
           auth_client_id: 'sva-studio',
           auth_issuer_url: null,
@@ -58,6 +59,7 @@ describe('instance registry repository', () => {
       status: 'active',
       parentDomain: 'studio.example.org',
       primaryHostname: 'hb.studio.example.org',
+      realmMode: 'existing',
       authRealm: 'hb',
       authClientId: 'sva-studio',
       authIssuerUrl: undefined,
@@ -290,6 +292,7 @@ describe('instance registry repository', () => {
               status: 'requested',
               parent_domain: 'studio.example.org',
               primary_hostname: 'demo.studio.example.org',
+              realm_mode: 'new',
               auth_realm: 'demo',
               auth_client_id: 'sva-studio',
               auth_issuer_url: null,
@@ -316,6 +319,7 @@ describe('instance registry repository', () => {
       instanceId: 'demo',
       displayName: 'Demo',
       status: 'requested',
+      realmMode: 'new',
       parentDomain: 'studio.example.org',
       primaryHostname: 'demo.studio.example.org',
       authRealm: 'demo',
@@ -326,6 +330,7 @@ describe('instance registry repository', () => {
       instanceId: 'demo',
       displayName: 'Demo',
       status: 'requested',
+      realmMode: 'new',
       parentDomain: 'studio.example.org',
       primaryHostname: 'demo.studio.example.org',
       authRealm: 'demo',
@@ -342,8 +347,8 @@ describe('instance registry repository', () => {
       updatedBy: 'system',
     });
     assert.equal(statements.length, 2);
-    assert.equal(statements[0]?.values[14], '{}');
-    assert.equal(statements[0]?.values[16], 'system');
+    assert.equal(statements[0]?.values[15], '{}');
+    assert.equal(statements[0]?.values[17], 'system');
     assert.equal(statements[1]?.values[2], 'system');
   });
 
@@ -408,6 +413,7 @@ describe('instance registry repository', () => {
               status: 'active',
               parent_domain: 'studio.smart-village.app',
               primary_hostname: 'bb-guben.studio.smart-village.app',
+              realm_mode: 'existing',
               auth_realm: 'bb-guben',
               auth_client_id: 'sva-studio',
               auth_issuer_url: 'https://keycloak.smart-village.app/realms/bb-guben',
@@ -438,6 +444,7 @@ describe('instance registry repository', () => {
     const instance = await repository.updateInstance({
       instanceId: 'bb-guben',
       displayName: 'BB Guben',
+      realmMode: 'existing',
       parentDomain: 'studio.smart-village.app',
       primaryHostname: 'bb-guben.studio.smart-village.app',
       authRealm: 'bb-guben',
@@ -460,6 +467,7 @@ describe('instance registry repository', () => {
       instanceId: 'bb-guben',
       displayName: 'BB Guben',
       status: 'active',
+      realmMode: 'existing',
       parentDomain: 'studio.smart-village.app',
       primaryHostname: 'bb-guben.studio.smart-village.app',
       authRealm: 'bb-guben',
@@ -480,9 +488,9 @@ describe('instance registry repository', () => {
       updatedAt: '2026-01-02T00:00:00.000Z',
       updatedBy: 'actor-1',
     });
-    assert.equal(statements[0]?.values[7], true);
-    assert.equal(statements[0]?.values[8], null);
-    assert.equal(statements[0]?.values[9], 'tenant-admin');
+    assert.equal(statements[0]?.values[8], true);
+    assert.equal(statements[0]?.values[9], null);
+    assert.equal(statements[0]?.values[10], 'tenant-admin');
     assert.equal(statements[1]?.values[0], 'bb-guben.studio.smart-village.app');
   });
 });

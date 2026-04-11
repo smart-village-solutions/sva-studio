@@ -8,15 +8,22 @@ import { AccountPrivacyPage } from './account/-account-privacy-page';
 import { Phase1TestPage } from './admin/api/-phase1-test-page';
 import { IamViewerPage } from './admin/-iam-page';
 import { normalizeIamTab } from './admin/-iam.models';
+import { GroupCreatePage } from './admin/groups/-group-create-page';
+import { GroupDetailPage } from './admin/groups/-group-detail-page';
 import { GroupsPage } from './admin/groups/-groups-page';
 import { InstanceCreatePage } from './admin/instances/-instance-create-page';
 import { InstanceDetailPage } from './admin/instances/-instance-detail-page';
 import { InstancesPage } from './admin/instances/-instances-page';
+import { LegalTextCreatePage } from './admin/legal-texts/-legal-text-create-page';
+import { LegalTextDetailPage } from './admin/legal-texts/-legal-text-detail-page';
 import { LegalTextsPage } from './admin/legal-texts/-legal-texts-page';
+import { OrganizationCreatePage } from './admin/organizations/-organization-create-page';
+import { OrganizationDetailPage } from './admin/organizations/-organization-detail-page';
 import { OrganizationsPage } from './admin/organizations/-organizations-page';
 import { RoleCreatePage } from './admin/roles/-role-create-page';
 import { normalizeRoleDetailTab, RoleDetailPage } from './admin/roles/-role-detail-page';
 import { RolesPage } from './admin/roles/-roles-page';
+import { UserCreatePage } from './admin/users/-user-create-page';
 import { UserEditPage } from './admin/users/-user-edit-page';
 import { UserListPage } from './admin/users/-user-list-page';
 import { ContentEditorPage } from './content/-content-editor-page';
@@ -31,12 +38,20 @@ type AccountUiGuardKey =
   | 'contentCreate'
   | 'contentDetail'
   | 'adminUsers'
+  | 'adminUserCreate'
   | 'adminUserDetail'
   | 'adminOrganizations'
+  | 'adminOrganizationCreate'
+  | 'adminOrganizationDetail'
   | 'adminInstances'
   | 'adminRoles'
   | 'adminRoleDetail'
   | 'adminGroups'
+  | 'adminGroupCreate'
+  | 'adminGroupDetail'
+  | 'adminLegalTexts'
+  | 'adminLegalTextCreate'
+  | 'adminLegalTextDetail'
   | 'adminIam';
 
 let accountUiGuardsPromise: Promise<typeof import('@sva/routing')> | null = null;
@@ -219,6 +234,13 @@ export const runtimeCoreRouteFactories = [
       beforeLoad: (options) => runAccountUiGuard('adminUsers', options),
       component: UserListPage,
     }),
+  (rootRoute: RootRoute) =>
+    createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/admin/users/new',
+      beforeLoad: (options) => runAccountUiGuard('adminUserCreate', options),
+      component: UserCreatePage,
+    }),
   (rootRoute: RootRoute) => {
     const userEditRoute = createRoute({
       getParentRoute: () => rootRoute,
@@ -235,6 +257,24 @@ export const runtimeCoreRouteFactories = [
       beforeLoad: (options) => runAccountUiGuard('adminOrganizations', options),
       component: OrganizationsPage,
     }),
+  (rootRoute: RootRoute) =>
+    createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/admin/organizations/new',
+      beforeLoad: (options) => runAccountUiGuard('adminOrganizationCreate', options),
+      component: OrganizationCreatePage,
+    }),
+  (rootRoute: RootRoute) => {
+    const organizationDetailRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/admin/organizations/$organizationId',
+      beforeLoad: (options) => runAccountUiGuard('adminOrganizationDetail', options),
+      component: () => (
+        <OrganizationDetailPage organizationId={organizationDetailRoute.useParams().organizationId} />
+      ),
+    });
+    return organizationDetailRoute;
+  },
   (rootRoute: RootRoute) =>
     createRoute({
       getParentRoute: () => rootRoute,
@@ -299,10 +339,44 @@ export const runtimeCoreRouteFactories = [
   (rootRoute: RootRoute) =>
     createRoute({
       getParentRoute: () => rootRoute,
+      path: '/admin/groups/new',
+      beforeLoad: (options) => runAccountUiGuard('adminGroupCreate', options),
+      component: GroupCreatePage,
+    }),
+  (rootRoute: RootRoute) => {
+    const groupDetailRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/admin/groups/$groupId',
+      beforeLoad: (options) => runAccountUiGuard('adminGroupDetail', options),
+      component: () => <GroupDetailPage groupId={groupDetailRoute.useParams().groupId} />,
+    });
+    return groupDetailRoute;
+  },
+  (rootRoute: RootRoute) =>
+    createRoute({
+      getParentRoute: () => rootRoute,
       path: '/admin/legal-texts',
-      beforeLoad: (options) => runAccountUiGuard('adminRoles', options),
+      beforeLoad: (options) => runAccountUiGuard('adminLegalTexts', options),
       component: LegalTextsPage,
     }),
+  (rootRoute: RootRoute) =>
+    createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/admin/legal-texts/new',
+      beforeLoad: (options) => runAccountUiGuard('adminLegalTextCreate', options),
+      component: LegalTextCreatePage,
+    }),
+  (rootRoute: RootRoute) => {
+    const legalTextDetailRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/admin/legal-texts/$legalTextVersionId',
+      beforeLoad: (options) => runAccountUiGuard('adminLegalTextDetail', options),
+      component: () => (
+        <LegalTextDetailPage legalTextVersionId={legalTextDetailRoute.useParams().legalTextVersionId} />
+      ),
+    });
+    return legalTextDetailRoute;
+  },
   (rootRoute: RootRoute) => {
     const iamRoute = createRoute({
       getParentRoute: () => rootRoute,

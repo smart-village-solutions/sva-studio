@@ -86,12 +86,12 @@ export const useUsers = (initial?: Partial<UserFilters>): UseUsersResult => {
       status: filters.status,
       role: filters.role || undefined,
     });
-    const timer = window.setTimeout(() => {
+    const timer = globalThis.setTimeout(() => {
       setDebouncedSearch(filters.search.trim());
     }, 300);
 
     return () => {
-      window.clearTimeout(timer);
+      globalThis.clearTimeout(timer);
     };
   }, [filters.search]);
 
@@ -150,10 +150,29 @@ export const useUsers = (initial?: Partial<UserFilters>): UseUsersResult => {
   }, [debouncedSearch, filters.page, filters.pageSize, filters.role, filters.status, invalidatePermissions]);
 
   React.useEffect(() => {
-    void loadUsers();
+    loadUsers().catch((cause) => {
+      const resolvedError = asIamError(cause);
+      usersLogger.error('background_user_list_refresh_failed', {
+        operation: 'list_users',
+        error_code: resolvedError.code,
+        status: resolvedError.status,
+      });
+    });
   }, [loadUsers]);
 
-  React.useEffect(() => subscribeIamUsersUpdated(() => void loadUsers()), [loadUsers]);
+  React.useEffect(
+    () =>
+      subscribeIamUsersUpdated(() =>
+        loadUsers().catch((cause) => {
+          const resolvedError = asIamError(cause);
+          usersLogger.error('background_user_list_refresh_failed_after_update', {
+            error_code: resolvedError.code,
+            status: resolvedError.status,
+          });
+        })
+      ),
+    [loadUsers]
+  );
 
   const mutate = React.useCallback(
     async <T,>(action: () => Promise<T>, operation = 'user_mutation'): Promise<T | null> => {
@@ -161,7 +180,16 @@ export const useUsers = (initial?: Partial<UserFilters>): UseUsersResult => {
       logBrowserOperationStart(usersLogger, `${operation}_started`, { operation });
       try {
         const result = await action();
-        await loadUsers();
+        // Do not block the visible mutation result on the follow-up list refresh.
+        // If the reload is slow, the create/edit/deactivate flow should still complete.
+        loadUsers().catch((cause) => {
+          const resolvedError = asIamError(cause);
+          usersLogger.error('background_user_list_refresh_failed_after_mutation', {
+            operation,
+            error_code: resolvedError.code,
+            status: resolvedError.status,
+          });
+        });
         logBrowserOperationSuccess(usersLogger, `${operation}_succeeded`, { operation });
         return result;
       } catch (cause) {
@@ -219,7 +247,15 @@ export const useUsers = (initial?: Partial<UserFilters>): UseUsersResult => {
         const response = await syncUsersFromKeycloakRequest();
         // Do not block the visible sync feedback on the follow-up list refresh.
         // The list reload keeps its own loading/error handling.
-        void loadUsers();
+        loadUsers().catch((cause: unknown) => {
+          const resolvedError = asIamError(cause);
+          usersLogger.warn('user_sync_keycloak_list_refresh_failed', {
+            operation: 'user_sync_keycloak',
+            code: resolvedError.code,
+            status: resolvedError.status,
+            requestId: resolvedError.requestId,
+          });
+        });
         if (response.data.importedCount === 0 && response.data.updatedCount === 0) {
           logBrowserOperationSuccess(
             usersLogger,

@@ -1,38 +1,14 @@
-import {
-  asApiItem,
-  asApiList,
-  createApiError,
-  parseRequestBody,
-  requireIdempotencyKey,
-} from '../iam-account-management/api-helpers.js';
+import { asApiItem, asApiList, createApiError, parseRequestBody, requireIdempotencyKey } from '../iam-account-management/api-helpers.js';
 import { validateCsrf } from '../iam-account-management/csrf.js';
 import { jsonResponse } from '../shared/db-helpers.js';
 import { buildLogContext } from '../shared/log-context.js';
 import { createSdkLogger, getWorkspaceContext } from '@sva/sdk/server';
-import {
-  buildPrimaryHostname,
-  isTrafficEnabledInstanceStatus,
-  normalizeHost,
-  type InstanceStatus,
-} from '@sva/core';
+import { buildPrimaryHostname, normalizeHost } from '@sva/core';
 
 import type { AuthenticatedRequestContext } from '../middleware.server.js';
-import { resolveEffectiveRequestHost } from '../request-hosts.js';
-import {
-  createInstanceSchema,
-  ensurePlatformAccess,
-  listQuerySchema,
-  readDetailInstanceId,
-  requireFreshReauth,
-  updateInstanceSchema,
-} from './http.js';
-import {
-  mapInstanceMutationError,
-  mutateInstanceStatus,
-  reconcileInstanceKeycloakMutation,
-} from './core-mutations.js';
+import { createInstanceSchema, ensurePlatformAccess, listQuerySchema, readDetailInstanceId, requireFreshReauth, updateInstanceSchema } from './http.js';
+import { mapInstanceMutationError, mutateInstanceStatus } from './core-mutations.js';
 import { withRegistryService } from './repository.js';
-import type { ResolveRuntimeInstanceResult } from './types.js';
 
 const logger = createSdkLogger({ component: 'iam-instance-registry', level: 'info' });
 
@@ -53,8 +29,10 @@ export const listInstancesInternal = async (request: Request, ctx: Authenticated
   }
 
   const enriched = await withRegistryService((service) => service.listInstances(parsed.data));
-
-  return jsonResponse(200, asApiList(enriched, { page: 1, pageSize: enriched.length, total: enriched.length }, getWorkspaceContext().requestId));
+  return jsonResponse(
+    200,
+    asApiList(enriched, { page: 1, pageSize: enriched.length, total: enriched.length }, getWorkspaceContext().requestId)
+  );
 };
 
 export const getInstanceInternal = async (request: Request, ctx: AuthenticatedRequestContext): Promise<Response> => {
@@ -73,10 +51,7 @@ export const getInstanceInternal = async (request: Request, ctx: AuthenticatedRe
     return createApiError(404, 'not_found', 'Instanz wurde nicht gefunden.', getWorkspaceContext().requestId);
   }
 
-  return jsonResponse(
-    200,
-    asApiItem(instance, getWorkspaceContext().requestId)
-  );
+  return jsonResponse(200, asApiItem(instance, getWorkspaceContext().requestId));
 };
 
 export const createInstanceInternal = async (request: Request, ctx: AuthenticatedRequestContext): Promise<Response> => {
@@ -111,6 +86,7 @@ export const createInstanceInternal = async (request: Request, ctx: Authenticate
       instanceId: payloadResult.data.instanceId,
       displayName: payloadResult.data.displayName,
       parentDomain: payloadResult.data.parentDomain,
+      realmMode: payloadResult.data.realmMode,
       authRealm: payloadResult.data.authRealm,
       authClientId: payloadResult.data.authClientId,
       authIssuerUrl: payloadResult.data.authIssuerUrl,
@@ -165,13 +141,13 @@ export const updateInstanceInternal = async (request: Request, ctx: Authenticate
     return createApiError(400, 'invalid_request', payloadResult.message, getWorkspaceContext().requestId);
   }
 
-  let updated;
   try {
-    updated = await withRegistryService((service) =>
+    const updated = await withRegistryService((service) =>
       service.updateInstance({
         instanceId,
         displayName: payloadResult.data.displayName,
         parentDomain: payloadResult.data.parentDomain,
+        realmMode: payloadResult.data.realmMode,
         authRealm: payloadResult.data.authRealm,
         authClientId: payloadResult.data.authClientId,
         authIssuerUrl: payloadResult.data.authIssuerUrl,
@@ -184,46 +160,16 @@ export const updateInstanceInternal = async (request: Request, ctx: Authenticate
         mainserverConfigRef: payloadResult.data.mainserverConfigRef,
       })
     );
-  } catch (error) {
-    return mapInstanceMutationError(error);
-  }
 
-  if (!updated) {
-    return createApiError(404, 'not_found', 'Instanz wurde nicht gefunden.', getWorkspaceContext().requestId);
-  }
-
-  return jsonResponse(200, asApiItem(updated, getWorkspaceContext().requestId));
-};
-
-export const getInstanceKeycloakStatusInternal = async (
-  request: Request,
-  ctx: AuthenticatedRequestContext
-): Promise<Response> => {
-  const accessError = ensurePlatformAccess(request, ctx);
-  if (accessError) {
-    return accessError;
-  }
-
-  const instanceId = readDetailInstanceId(request);
-  if (!instanceId) {
-    return createApiError(400, 'invalid_instance_id', 'Instanz-ID fehlt.', getWorkspaceContext().requestId);
-  }
-
-  try {
-    const status = await withRegistryService((service) => service.getKeycloakStatus(instanceId));
-    if (!status) {
+    if (!updated) {
       return createApiError(404, 'not_found', 'Instanz wurde nicht gefunden.', getWorkspaceContext().requestId);
     }
-    return jsonResponse(200, asApiItem(status, getWorkspaceContext().requestId));
+
+    return jsonResponse(200, asApiItem(updated, getWorkspaceContext().requestId));
   } catch (error) {
     return mapInstanceMutationError(error);
   }
 };
-
-export const reconcileInstanceKeycloakInternal = async (
-  request: Request,
-  ctx: AuthenticatedRequestContext
-): Promise<Response> => reconcileInstanceKeycloakMutation(request, ctx);
 
 export const activateInstanceInternal = async (request: Request, ctx: AuthenticatedRequestContext): Promise<Response> =>
   mutateInstanceStatus(request, ctx, 'active');
@@ -233,18 +179,3 @@ export const suspendInstanceInternal = async (request: Request, ctx: Authenticat
 
 export const archiveInstanceInternal = async (request: Request, ctx: AuthenticatedRequestContext): Promise<Response> =>
   mutateInstanceStatus(request, ctx, 'archived');
-
-export const resolveRuntimeInstanceFromRequest = async (request: Request): Promise<ResolveRuntimeInstanceResult> => {
-  const host = resolveEffectiveRequestHost(request);
-  const resolved = await withRegistryService((service) => service.resolveRuntimeInstance(host));
-  return {
-    hostClassification: resolved.hostClassification,
-    instance: resolved.instance,
-  };
-};
-
-export const createTenantForbiddenResponse = (): Response =>
-  createApiError(403, 'forbidden', 'Host not permitted for this operation', getWorkspaceContext().requestId);
-
-export const isInstanceTrafficAllowed = (status: InstanceStatus): boolean =>
-  isTrafficEnabledInstanceStatus(status);

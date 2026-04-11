@@ -6,14 +6,19 @@ import {
   archiveInstance,
   asIamError,
   createInstance,
+  executeInstanceKeycloakProvisioning,
   getInstanceKeycloakStatus,
+  getInstanceKeycloakPreflight,
+  getInstanceKeycloakProvisioningRun,
   getInstance,
   IamHttpError,
   listInstances,
+  planInstanceKeycloakProvisioning,
   reconcileInstanceKeycloak,
   suspendInstance,
   updateInstance,
   type CreateInstancePayload,
+  type ExecuteInstanceKeycloakProvisioningPayload,
   type ReconcileInstanceKeycloakPayload,
   type UpdateInstancePayload,
 } from '../lib/iam-api';
@@ -33,6 +38,34 @@ type InstanceFilters = {
 };
 
 const instancesLogger = createOperationLogger('instances-hook', 'debug');
+const passthroughWorkflowErrorCodes = new Set([
+  'unauthorized',
+  'forbidden',
+  'tenant_auth_client_secret_missing',
+  'encryption_not_configured',
+  'csrf_validation_failed',
+  'reauth_required',
+  'conflict',
+  'invalid_request',
+  'not_found',
+]);
+
+const normalizeKeycloakWorkflowError = (error: IamHttpError): IamHttpError => {
+  if (passthroughWorkflowErrorCodes.has(error.code)) {
+    return error;
+  }
+
+  if (error.code === 'keycloak_unavailable') {
+    return error;
+  }
+
+  return new IamHttpError({
+    status: 502,
+    code: 'keycloak_unavailable',
+    message: error.message,
+    requestId: error.requestId,
+  });
+};
 
 export const useInstances = () => {
   const { invalidatePermissions } = useAuth();
@@ -47,9 +80,30 @@ export const useInstances = () => {
   const [mutationError, setMutationError] = React.useState<IamHttpError | null>(null);
 
   React.useEffect(() => {
-    const timer = window.setTimeout(() => setDebouncedSearch(filters.search.trim()), 250);
-    return () => window.clearTimeout(timer);
+    const timer = globalThis.setTimeout(() => setDebouncedSearch(filters.search.trim()), 250);
+    return () => globalThis.clearTimeout(timer);
   }, [filters.search]);
+
+  const updateSelectedForInstance = React.useCallback(
+    (instanceId: string, updater: (current: IamInstanceDetail) => IamInstanceDetail) => {
+      setSelectedInstance((current) => (current?.instanceId === instanceId ? updater(current) : current));
+    },
+    []
+  );
+
+  const mergeProvisioningRuns = React.useCallback(
+    (
+      currentRuns: IamInstanceDetail['keycloakProvisioningRuns'],
+      nextRun: IamInstanceDetail['latestKeycloakProvisioningRun']
+    ) => {
+      if (!nextRun) {
+        return currentRuns;
+      }
+
+      return [nextRun, ...(currentRuns ?? []).filter((run) => run.id !== nextRun.id)];
+    },
+    []
+  );
 
   const refetch = React.useCallback(async () => {
     logBrowserOperationStart(instancesLogger, 'instance_list_refetch_started', {
@@ -107,6 +161,7 @@ export const useInstances = () => {
       setDetailLoading(true);
       setMutationError(null);
       try {
+        let statusError: IamHttpError | undefined;
         const [detailResponse, statusResponse] = await Promise.all([
           getInstance(instanceId),
           getInstanceKeycloakStatus(instanceId).catch(async (cause) => {
@@ -120,7 +175,7 @@ export const useInstances = () => {
                 instance_id: instanceId,
               });
             }
-            setMutationError(resolvedError);
+            statusError = resolvedError;
             logBrowserOperationFailure(instancesLogger, 'instance_keycloak_status_refresh_failed', resolvedError, {
               operation: 'get_instance_keycloak_status',
               instance_id: instanceId,
@@ -133,6 +188,8 @@ export const useInstances = () => {
           keycloakStatus: statusResponse?.data ?? detailResponse.data.keycloakStatus,
         };
         setSelectedInstance(nextInstance);
+        const nextMutationError = statusError ? normalizeKeycloakWorkflowError(statusError) : null;
+        setMutationError(nextMutationError);
         logBrowserOperationSuccess(instancesLogger, 'instance_detail_load_succeeded', {
           operation: 'get_instance_detail',
           instance_id: instanceId,
@@ -231,14 +288,10 @@ export const useInstances = () => {
       setMutationError(null);
       try {
         const response = await getInstanceKeycloakStatus(instanceId);
-        setSelectedInstance((current) =>
-          current && current.instanceId === instanceId
-            ? {
-                ...current,
-                keycloakStatus: response.data,
-              }
-            : current
-        );
+        updateSelectedForInstance(instanceId, (current) => ({
+          ...current,
+          keycloakStatus: response.data,
+        }));
         logBrowserOperationSuccess(instancesLogger, 'instance_keycloak_status_refresh_succeeded', {
           operation: 'get_instance_keycloak_status',
           instance_id: instanceId,
@@ -265,18 +318,92 @@ export const useInstances = () => {
         setStatusLoading(false);
       }
     },
+    refreshKeycloakPreflight: async (instanceId: string) => {
+      setStatusLoading(true);
+      setMutationError(null);
+      try {
+        const response = await getInstanceKeycloakPreflight(instanceId);
+        updateSelectedForInstance(instanceId, (current) => ({
+          ...current,
+          keycloakPreflight: response.data,
+        }));
+        return response.data;
+      } catch (cause) {
+        const resolvedError = normalizeKeycloakWorkflowError(asIamError(cause));
+        setMutationError(resolvedError);
+        return null;
+      } finally {
+        setStatusLoading(false);
+      }
+    },
+    planKeycloakProvisioning: async (instanceId: string) => {
+      setStatusLoading(true);
+      setMutationError(null);
+      try {
+        const response = await planInstanceKeycloakProvisioning(instanceId);
+        updateSelectedForInstance(instanceId, (current) => ({
+          ...current,
+          keycloakPlan: response.data,
+        }));
+        return response.data;
+      } catch (cause) {
+        const resolvedError = normalizeKeycloakWorkflowError(asIamError(cause));
+        setMutationError(resolvedError);
+        return null;
+      } finally {
+        setStatusLoading(false);
+      }
+    },
+    executeKeycloakProvisioning: async (instanceId: string, payload: ExecuteInstanceKeycloakProvisioningPayload) =>
+      mutate(
+        async () => {
+          const response = await executeInstanceKeycloakProvisioning(instanceId, payload);
+          updateSelectedForInstance(instanceId, (current) => {
+            const keycloakProvisioningRuns = mergeProvisioningRuns(
+              current.keycloakProvisioningRuns,
+              response.data ?? undefined
+            );
+
+            return {
+              ...current,
+              latestKeycloakProvisioningRun: response.data ?? undefined,
+              keycloakProvisioningRuns,
+            };
+          });
+          return response;
+        },
+        instanceId,
+        'execute_instance_keycloak_provisioning'
+      ),
+    loadKeycloakProvisioningRun: async (instanceId: string, runId: string) => {
+      setStatusLoading(true);
+      setMutationError(null);
+      try {
+        const response = await getInstanceKeycloakProvisioningRun(instanceId, runId);
+        if (response.data) {
+          updateSelectedForInstance(instanceId, (current) => ({
+            ...current,
+            latestKeycloakProvisioningRun: response.data,
+            keycloakProvisioningRuns: mergeProvisioningRuns(current.keycloakProvisioningRuns, response.data),
+          }));
+        }
+        return response.data;
+      } catch (cause) {
+        const resolvedError = asIamError(cause);
+        setMutationError(resolvedError);
+        return null;
+      } finally {
+        setStatusLoading(false);
+      }
+    },
     reconcileKeycloak: async (instanceId: string, payload: ReconcileInstanceKeycloakPayload) =>
       mutate(
         async () => {
           const response = await reconcileInstanceKeycloak(instanceId, payload);
-          setSelectedInstance((current) =>
-            current && current.instanceId === instanceId
-              ? {
-                  ...current,
-                  keycloakStatus: response.data,
-                }
-              : current
-          );
+          updateSelectedForInstance(instanceId, (current) => ({
+            ...current,
+            keycloakStatus: response.data,
+          }));
           return response;
         },
         instanceId,

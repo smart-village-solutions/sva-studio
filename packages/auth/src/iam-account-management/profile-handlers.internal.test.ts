@@ -215,6 +215,53 @@ describe('iam-account-management/profile-handlers internals', () => {
     );
   });
 
+  it('returns a synthetic platform profile for root-host system admins without instance scope', async () => {
+    const response = await getMyProfileInternal(
+      new Request('http://localhost/api/v1/iam/users/me/profile'),
+      {
+        user: {
+          id: 'kc-platform',
+          roles: ['system_admin', 'instance_registry_admin'],
+          username: 'studio-superuser',
+          email: 'studio@example.com',
+          firstName: 'Studio',
+          lastName: 'Superuser',
+          displayName: 'Studio Superuser',
+        },
+      } as never
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      data: {
+        id: 'platform:kc-platform',
+        keycloakSubject: 'kc-platform',
+        username: 'studio-superuser',
+        email: 'studio@example.com',
+        firstName: 'Studio',
+        lastName: 'Superuser',
+        displayName: 'Studio Superuser',
+        status: 'active',
+        roles: [
+          {
+            roleId: 'platform:system_admin',
+            roleKey: 'system_admin',
+            roleName: 'system_admin',
+            roleLevel: 0,
+          },
+          {
+            roleId: 'platform:instance_registry_admin',
+            roleKey: 'instance_registry_admin',
+            roleName: 'instance_registry_admin',
+            roleLevel: 0,
+          },
+        ],
+        mainserverUserApplicationSecretSet: false,
+      },
+      requestId: 'req-profile',
+    });
+  });
+
   it('returns keycloak_unavailable for write requests without an identity provider', async () => {
     state.parseResult = { ok: true, data: { email: 'new@example.com' } };
 

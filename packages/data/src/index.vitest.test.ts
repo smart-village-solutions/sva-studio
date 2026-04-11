@@ -10,10 +10,6 @@ const state = vi.hoisted(() => ({
   },
 }));
 
-vi.mock('@sva/sdk/server', () => ({
-  createSdkLogger: () => state.logger,
-}));
-
 import { createDataClient } from './index';
 
 describe('createDataClient', () => {
@@ -36,6 +32,7 @@ describe('createDataClient', () => {
     const client = createDataClient({
       baseUrl: 'https://data.example.invalid',
       cacheTtlMs: 10_000,
+      logger: state.logger,
     });
 
     const schema = z.object({ name: z.string(), age: z.number() });
@@ -83,12 +80,42 @@ describe('createDataClient', () => {
       }))
     );
 
-    const client = createDataClient({ baseUrl: 'https://data.example.invalid' });
+    const client = createDataClient({ baseUrl: 'https://data.example.invalid', logger: state.logger });
 
     await expect(client.get('/down')).rejects.toThrow('DataClient GET /down failed with 503');
     expect(state.logger.error).toHaveBeenCalledWith(
       'request_failed',
       expect.objectContaining({ operation: 'get', path: '/down', status: 503 })
+    );
+  });
+
+  it('returns cached payload without schema validation on cache hit', async () => {
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ health: 'ok' }),
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = createDataClient({ baseUrl: 'https://data.example.invalid', cacheTtlMs: 10_000 });
+
+    await expect(client.get('/health/raw')).resolves.toEqual({ health: 'ok' });
+    await expect(client.get('/health/raw')).resolves.toEqual({ health: 'ok' });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('handles non-ok responses without injected logger', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({
+        ok: false,
+        status: 500,
+      }))
+    );
+
+    const client = createDataClient({ baseUrl: 'https://data.example.invalid' });
+
+    await expect(client.get('/default-logger-failure')).rejects.toThrow(
+      'DataClient GET /default-logger-failure failed with 500'
     );
   });
 
@@ -101,7 +128,7 @@ describe('createDataClient', () => {
       }))
     );
 
-    const client = createDataClient({ baseUrl: 'https://data.example.invalid' });
+    const client = createDataClient({ baseUrl: 'https://data.example.invalid', logger: state.logger });
 
     await expect(client.get('/users/invalid', z.object({ age: z.number() }))).rejects.toThrow();
     expect(state.logger.error).toHaveBeenCalledWith(
@@ -126,6 +153,7 @@ describe('createDataClient', () => {
     const client = createDataClient({
       baseUrl: 'https://data.example.invalid',
       cacheTtlMs: 10_000,
+      logger: state.logger,
     });
     const schema = z.object({ age: z.number() });
 

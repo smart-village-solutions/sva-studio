@@ -24,10 +24,13 @@ import {
   createGroup,
   createOrganization,
   deleteGroup,
+  executeInstanceKeycloakProvisioning,
   getMyPendingLegalTexts,
   getMyProfile,
   getDataExportStatus,
   getInstance,
+  getInstanceKeycloakPreflight,
+  getInstanceKeycloakProvisioningRun,
   getInstanceKeycloakStatus,
   getRuntimeHealth,
   getMyDataSubjectRights,
@@ -41,6 +44,7 @@ import {
   listGroups,
   listInstances,
   listOrganizations,
+  planInstanceKeycloakProvisioning,
   reconcileRoles,
   reconcileInstanceKeycloak,
   removeGroupMembership,
@@ -345,7 +349,7 @@ describe('iam-api organization helpers', () => {
   it('wraps network failures in asIamError', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network down')));
 
-    const error = asIamError(await updateOrganization('org-1', { displayName: 'Alpha 2' }).catch((value) => value));
+    const error = asIamError(await updateOrganization('org-1', { displayName: 'Alpha 2' }).catch((error_) => error_));
 
     expect(error).toMatchObject({
       status: 500,
@@ -646,17 +650,26 @@ describe('iam-api instance helpers', () => {
       instanceId: 'demo',
       displayName: 'Demo',
       parentDomain: 'studio.example.org',
+      realmMode: 'new',
       authRealm: 'demo',
       authClientId: 'sva-studio',
     });
     await updateInstance('demo', {
       displayName: 'Demo Updated',
       parentDomain: 'studio.example.org',
+      realmMode: 'existing',
       authRealm: 'demo',
       authClientId: 'sva-studio',
     });
     await getRuntimeHealth();
     await getInstanceKeycloakStatus('demo');
+    await getInstanceKeycloakPreflight('demo');
+    await planInstanceKeycloakProvisioning('demo');
+    await executeInstanceKeycloakProvisioning('demo', {
+      intent: 'provision',
+      tenantAdminTemporaryPassword: 'test-temp-password',
+    });
+    await getInstanceKeycloakProvisioningRun('demo', 'run-1');
     await reconcileInstanceKeycloak('demo', {
       tenantAdminTemporaryPassword: 'test-temp-password',
       rotateClientSecret: true,
@@ -708,6 +721,37 @@ describe('iam-api instance helpers', () => {
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
       7,
+      '/api/v1/iam/instances/demo/keycloak/preflight',
+      expect.objectContaining({ credentials: 'include' })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      8,
+      '/api/v1/iam/instances/demo/keycloak/plan',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          'X-SVA-Reauth-Confirmed': 'true',
+        }),
+        body: JSON.stringify({}),
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      9,
+      '/api/v1/iam/instances/demo/keycloak/execute',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          'X-SVA-Reauth-Confirmed': 'true',
+        }),
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      10,
+      '/api/v1/iam/instances/demo/keycloak/runs/run-1',
+      expect.objectContaining({ credentials: 'include' })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      11,
       '/api/v1/iam/instances/demo/keycloak/reconcile',
       expect.objectContaining({
         method: 'POST',
@@ -717,7 +761,7 @@ describe('iam-api instance helpers', () => {
       })
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
-      8,
+      12,
       '/api/v1/iam/instances/demo/activate',
       expect.objectContaining({
         method: 'POST',
@@ -728,7 +772,7 @@ describe('iam-api instance helpers', () => {
       })
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
-      9,
+      13,
       '/api/v1/iam/instances/demo/suspend',
       expect.objectContaining({
         method: 'POST',
@@ -736,7 +780,7 @@ describe('iam-api instance helpers', () => {
       })
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
-      10,
+      14,
       '/api/v1/iam/instances/demo/archive',
       expect.objectContaining({
         method: 'POST',

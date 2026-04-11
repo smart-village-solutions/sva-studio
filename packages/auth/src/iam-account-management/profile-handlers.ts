@@ -1,5 +1,5 @@
 import { getWorkspaceContext } from '@sva/sdk/server';
-import type { ApiErrorCode } from '@sva/core';
+import type { ApiErrorCode, IamUserDetail, IamUserRoleAssignment } from '@sva/core';
 
 import type { UpdateIdentityUserInput } from '../identity-provider-port.js';
 import { KeycloakAdminRequestError, KeycloakAdminUnavailableError } from '../keycloak-admin-client.js';
@@ -54,6 +54,38 @@ type ProfileDiagnosticResponseBody = {
   };
   requestId?: string;
 };
+
+const PLATFORM_PROFILE_ROLES = new Set(['system_admin', 'instance_registry_admin']);
+
+const deriveSessionDisplayName = (ctx: AuthenticatedRequestContext): string =>
+  ctx.user.displayName?.trim() ||
+  [ctx.user.firstName?.trim(), ctx.user.lastName?.trim()].filter(Boolean).join(' ').trim() ||
+  ctx.user.username?.trim() ||
+  ctx.user.id;
+
+const buildPlatformRoleAssignments = (roles: readonly string[]): readonly IamUserRoleAssignment[] =>
+  [...new Set(roles.filter((role) => PLATFORM_PROFILE_ROLES.has(role)))].map((roleName) => ({
+    roleId: `platform:${roleName}`,
+    roleKey: roleName,
+    roleName,
+    roleLevel: 0,
+  }));
+
+const canUsePlatformSelfServiceProfile = (ctx: AuthenticatedRequestContext): boolean =>
+  !ctx.user.instanceId && ctx.user.roles.some((role) => PLATFORM_PROFILE_ROLES.has(role));
+
+const buildPlatformProfileFromSession = (ctx: AuthenticatedRequestContext): IamUserDetail => ({
+  id: `platform:${ctx.user.id}`,
+  keycloakSubject: ctx.user.id,
+  username: ctx.user.username,
+  email: ctx.user.email,
+  firstName: ctx.user.firstName,
+  lastName: ctx.user.lastName,
+  displayName: deriveSessionDisplayName(ctx),
+  status: 'active',
+  roles: buildPlatformRoleAssignments(ctx.user.roles),
+  mainserverUserApplicationSecretSet: false,
+});
 
 const isProfileDiagnosticsEnabled = (): boolean => process.env.IAM_DEBUG_PROFILE_ERRORS === 'true';
 
@@ -111,6 +143,25 @@ const enrichProfileDiagnosticResponse = async (
   } catch {
     return response;
   }
+};
+
+const resolvePlatformProfileRead = async (
+  ctx: AuthenticatedRequestContext
+): Promise<{ profile: IamUserDetail; requestId?: string } | null | Response> => {
+  if (!canUsePlatformSelfServiceProfile(ctx)) {
+    return null;
+  }
+
+  const requestContext = getWorkspaceContext();
+  const featureCheck = ensureFeature(getFeatureFlags(), 'iam_ui', requestContext.requestId);
+  if (featureCheck) {
+    return enrichProfileDiagnosticResponse(featureCheck, ctx, 'feature_gate');
+  }
+
+  return {
+    profile: buildPlatformProfileFromSession(ctx),
+    requestId: requestContext.requestId,
+  };
 };
 
 const resolveProfileActorContext = async (
@@ -479,6 +530,14 @@ export const getMyProfileInternal = async (
   request: Request,
   ctx: AuthenticatedRequestContext
 ): Promise<Response> => {
+  const platformProfile = await resolvePlatformProfileRead(ctx);
+  if (platformProfile instanceof Response) {
+    return platformProfile;
+  }
+  if (platformProfile) {
+    return jsonResponse(200, asApiItem(platformProfile.profile, platformProfile.requestId));
+  }
+
   const actorContext = await resolveProfileActorContext(request, ctx, 'read');
   if (actorContext instanceof Response) {
     return actorContext;

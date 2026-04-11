@@ -100,11 +100,16 @@ und Vorführungszwecke. Unterschiede zum Referenzprofil:
 - **Swarm Secrets:** Vertrauliche Werte als externe Docker-Swarm-Secrets mit Namenskonvention `sva_studio_<service>_<secret_name>`. Ein Shell-Entrypoint (`entrypoint.sh`) liest Secret-Dateien und exportiert sie als Env-Variablen.
 - **Versionierte Monitoring-Konfigurationen:** Prometheus-, Loki-, Grafana-, Promtail- und Alertmanager-Konfigurationen liegen versioniert im Repository und werden über ein dediziertes `monitoring-config-init`-Image einmalig in die Swarm-Volumes geschrieben.
 - **Rolling Updates:** `start-first` für Updates, `stop-first` für Rollbacks.
-- **Kanonischer Acceptance-Releasepfad:** `acceptance-hb` nutzt den orchestrierten Pfad `environment-precheck -> image-smoke -> optional migrate -> deploy -> internal-verify -> external-smoke -> release-decision -> Deploy-Report`.
+- **Kanonischer Acceptance-Releasepfad:** `acceptance-hb` nutzt den orchestrierten Pfad `environment-precheck -> image-smoke -> optional migrate-job -> optional bootstrap-job -> schema-assertions -> deploy -> internal-verify -> external-smoke -> release-decision -> Deploy-Report`.
 - **Release-Klassen:** Acceptance-Deploys unterscheiden `app-only` und `schema-and-app`; nur `schema-and-app` darf Migrationen auslösen.
-- **Gepinnter Goose-Pfad:** Schema-Rollouts laufen über einen repository-lokalen `goose`-Wrapper mit fixer Version; Zielsysteme benötigen keine permanente `goose`-Vorinstallation.
+- **Gepinnter Goose-Pfad:** Schema-Rollouts laufen über einen repository-lokalen `goose`-Wrapper mit fixer Version innerhalb eines dedizierten Swarm-One-off-Jobs; Zielsysteme benötigen keine permanente `goose`-Vorinstallation.
+- **Dedizierte Job-Services:** Die Stack-Compose-Dateien führen zusätzlich die Services `migrate` und `bootstrap` mit `replicas: 0`. Remote-Deploys rendern daraus ein temporäres Quantum-Projekt, das genau den benoetigten One-off-Job gegen das bestehende Overlay-Netz `<stack>_internal` startet.
+- **Gehärteter Live-Render:** Der für `quantum-cli stacks update` erzeugte Deploy-Render validiert vor dem Rollout die vollständige `app`-Service-Spec. Pflicht sind mindestens die Netzwerke `internal` und `public` sowie die ingressrelevanten Traefik-Labels.
+- **Prod-nahe Paritaet vor Mutationen:** Vor mutierenden `studio`-Rollouts prueft `image-smoke` Root-Host, Tenant-Hosts und OIDC-Verhalten gegen das Zielartefakt. Wenn dasselbe Digest bereits live laeuft, ist nur eine dokumentierte Live-Paritaets-Wiederverwendung fuer genau dieses Digest zulaessig.
+- **Strikte Stack-Trennung:** Temp-Job-Stacks für `migrate` und `bootstrap` enthalten keinen `app`-Service und dürfen keine Live-Service-Spec des eigentlichen Stacks ableiten oder überschreiben.
 - **Deploy-Evidenz:** Jeder Acceptance-Deploy schreibt JSON- und Markdown-Artefakte unter `artifacts/runtime/deployments/` mit Image-, Actor-, Workflow-, Stack- und Verifikationsdaten.
 - **Health-Modell:** `live` bleibt prozessnah und ohne schwere optionale Abhängigkeiten; `ready` bildet nur minimale Traffic-Voraussetzungen ab; öffentliche Freigabe erfolgt erst über externe Smoke-Probes.
+- **App-Principal als Betriebsvertrag:** `precheck`, `doctor` und Post-Deploy-Verifikation muessen Registry-, Auth- und RLS-relevante Readiness aus Sicht des laufenden `APP_DB_USER` bestaetigen. Eine rein administrative DB-Sicht reicht nicht als Freigabe.
 - **Persistenz:** Named Volumes für Postgres, Redis, Prometheus, Loki, Grafana und Alertmanager.
 - **Monitoring-Bootstrap:** Der Node-Prozess lädt OpenTelemetry vor dem Nitro-Entry per `--import`, statt erst beim ersten Root-Request.
 - **Ressourcenprofile:** Das Referenzprofil setzt CPU-Limits für App, Datenbank und Monitoring-Services, damit der Stack auf kleinen Swarm-Nodes kontrolliert bleibt.
@@ -121,13 +126,27 @@ und Vorführungszwecke. Unterschiede zum Referenzprofil:
 
 #### DB-Initialisierung
 
-Im Swarm-Stack sind keine automatischen Initialisierungsskripte enthalten. Die DB-Einrichtung bleibt ein bewusster Betriebsschritt, wird für `acceptance-hb` aber über den offiziellen `env:migrate`-/`env:deploy`-Pfad statt über ad-hoc SQL oder implizite Redeploys gesteuert. Details im [Swarm-Deployment-Runbook](../guides/swarm-deployment-runbook.md).
+Im Swarm-Stack sind keine automatischen Initialisierungsskripte enthalten. Die DB-Einrichtung bleibt ein bewusster Betriebsschritt, wird für `acceptance-hb` aber über den offiziellen `env:migrate`-/`env:deploy`-Pfad mit dediziertem Swarm-Migrationsjob und nachgelagertem Bootstrap-Job statt über ad-hoc SQL, `quantum-cli exec`-Streaming oder implizite Redeploys gesteuert. Details im [Swarm-Deployment-Runbook](../guides/swarm-deployment-runbook.md).
 
 Betriebliche Einordnung:
 
 - App läuft als Node-/Nitro-Server aus dem TanStack-Start-Build.
 - Für spätere Updates bestehender Datenbanken bleiben Migrationen ein bewusster separater Betriebsschritt.
 - Der kanonische Migrationspfad nutzt ein einzelnes `goose`-SQL-File pro Version mit `Up` und `Down`; ein getrennter `up`/`down`-Dateibaum ist kein Sollzustand mehr.
+- Ein reiner Job-Lauf für `migrate` oder `bootstrap` darf keinen vollständigen Stack-Reconcile auf `sva-studio_app` auslösen; der Live-Stack wird erst im expliziten `deploy`-Schritt aktualisiert.
+
+#### Rollout-Hardening und Recovery
+
+- Der Live-Precheck vergleicht den gerenderten Sollzustand der `app`-Service-Spec mit der Remote-Spec aus Portainer-/Swarm-Daten.
+- Read-only Runtime-Diagnostik fuer `status`, `doctor` und `precheck` nutzt bevorzugt die Portainer-API mit fester Endpoint-ID statt lokalem `quantum-cli`-Kontext.
+- Drift wird nicht nur über Image-Referenz und Env-Schlüssel bewertet, sondern auch über Netzwerknamen und ingressrelevante Traefik-Labels.
+- Der Fehlerzustand `app 1/1`, aber externer `502`, gilt als eigener Ingress-/Netz-Drift-Fall und nicht als unscharfer generischer Verify-Fehler.
+- Die Vertragsgrenze zwischen lokalem Development und `studio` bleibt hart: lokale Docker-Kandidaten koennen Private-DNS-, Swarm- und Ingress-Vertraege nur teilweise abbilden und sind deshalb kein alleiniger Freigabenachweis.
+- Der kanonische Recovery-Pfad lautet:
+  1. Ziel-Digest, Render-Compose und Live-Service-Spec verifizieren.
+  2. Kontrollierten `app-only`-Reconcile gegen denselben Ziel-Digest ausführen.
+  3. Danach `status`, `smoke` und `precheck` erneut pruefen.
+  4. Direkte Portainer-API-Eingriffe bleiben Incident-Recovery und sind kein Standardweg.
 
 Referenzen:
 
@@ -156,7 +175,7 @@ Referenzen:
 - Swarm-Stack: Root-Host rendert die globale Instanzverwaltung, Tenant-Hosts nicht
 - Swarm-Stack: Monitoring-UI und Storage bleiben intern; keine öffentliche Exponierung ohne zusätzliche Zugangskontrolle
 - Swarm-Stack: `monitoring-config-init` ist ein One-shot-Initialisierer und soll nach erfolgreicher Volume-Befüllung beendet sein
-- Swarm-Stack: `postgres-schema-bootstrap` ist nur noch ein Legacy-Übergangspfad; der reguläre Schemarollout erfolgt über `pnpm env:migrate:acceptance-hb` bzw. `pnpm env:deploy:acceptance-hb -- --release-mode=schema-and-app`
+- Swarm-Stack: `postgres-schema-bootstrap` ist nur noch ein Legacy-Übergangspfad; der reguläre Schemarollout erfolgt über `pnpm env:migrate:acceptance-hb` bzw. `pnpm env:deploy:acceptance-hb -- --release-mode=schema-and-app` mit `migrate`- und `bootstrap`-Job
 - Operative Zielwerte für das Referenzprofil: `RTO <= 2h` für App/Monitoring und Session-Store, `RTO <= 15 min` für den rekonstruierbaren Permission-Cache, `RPO <= 24h` für IAM-Daten in Postgres
 - Primäre betriebliche Eskalation via `operations@smart-village.app`, Sicherheits-/DSGVO-Eskalation via `security@smart-village.app`
 

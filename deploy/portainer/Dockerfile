@@ -98,11 +98,21 @@ ENV NODE_ENV=production
 ENV HOST=0.0.0.0
 ENV PORT=3000
 
+RUN apk add --no-cache bash curl ca-certificates postgresql-client
+RUN mkdir -p artifacts/tools/goose packages/data/scripts packages/data/migrations
+
 COPY --from=build --chown=node:node /workspace/.deploy/sva-studio-react/node_modules ./node_modules
 COPY --from=build --chown=node:node /workspace/apps/sva-studio-react/.output ./.output
 COPY --from=build --chown=node:node /workspace/deploy/portainer/entrypoint.sh ./entrypoint.sh
+COPY --from=build --chown=node:node /workspace/deploy/portainer/bootstrap-entrypoint.sh ./bootstrap-entrypoint.sh
+COPY --from=build --chown=node:node /workspace/deploy/portainer/migrate-entrypoint.sh ./migrate-entrypoint.sh
+COPY --from=build --chown=node:node /workspace/deploy/portainer/provisioner-entrypoint.sh ./provisioner-entrypoint.sh
 COPY --from=build --chown=node:node /workspace/deploy/portainer/otel-bootstrap.mjs ./otel-bootstrap.mjs
-RUN chmod +x entrypoint.sh
+COPY --from=build --chown=node:node /workspace/packages/data/goose.config.json ./packages/data/goose.config.json
+COPY --from=build --chown=node:node /workspace/packages/data/scripts/goosew.sh ./packages/data/scripts/goosew.sh
+COPY --from=build --chown=node:node /workspace/packages/data/migrations ./packages/data/migrations
+RUN chmod +x entrypoint.sh bootstrap-entrypoint.sh migrate-entrypoint.sh provisioner-entrypoint.sh packages/data/scripts/goosew.sh
+RUN chown -R node:node /app
 
 USER node
 

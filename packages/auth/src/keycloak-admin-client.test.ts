@@ -76,6 +76,7 @@ describe('KeycloakAdminClient', () => {
       createJsonResponse(200, []),
       createTextResponse(201, ''),
       createJsonResponse(200, [{ id: 'client-1', clientId: 'studio-client' }]),
+      createJsonResponse(200, { value: 'old-secret' }),
       createTextResponse(204, ''),
     ]);
 
@@ -94,6 +95,7 @@ describe('KeycloakAdminClient', () => {
       webOrigins: ['https://studio.example.com'],
       rootUrl: 'https://studio.example.com',
       clientSecret: 'super-secret',
+      rotateClientSecret: true,
     });
 
     expect(state.logger.info).toHaveBeenCalledWith(
@@ -1358,5 +1360,103 @@ describe('realm provisioning helpers', () => {
     });
 
     expect(calls).toHaveLength(2);
+  });
+
+  it('synchronizes the oidc client secret when the configured secret differs', async () => {
+    state.logger.info.mockClear();
+    const { fetchImpl, calls } = createFetchStub([
+      createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }),
+      createJsonResponse(200, [{
+        id: 'client-1',
+        clientId: 'sva-studio',
+        redirectUris: ['https://bb-guben.studio.smart-village.app/auth/callback'],
+        webOrigins: ['https://bb-guben.studio.smart-village.app'],
+        attributes: {
+          'post.logout.redirect.uris': 'https://bb-guben.studio.smart-village.app/',
+        },
+        rootUrl: 'https://bb-guben.studio.smart-village.app',
+      }]),
+      createJsonResponse(200, [{
+        id: 'client-1',
+        clientId: 'sva-studio',
+      }]),
+      createJsonResponse(200, { value: 'keycloak-secret' }),
+      createTextResponse(204, ''),
+    ]);
+
+    const client = new KeycloakAdminClient({
+      baseUrl: 'https://keycloak.example.com',
+      realm: 'bb-guben',
+      clientId: 'svc-client',
+      clientSecret: 'svc-secret',
+      fetchImpl,
+    });
+
+    await client.ensureOidcClient({
+      clientId: 'sva-studio',
+      redirectUris: ['https://bb-guben.studio.smart-village.app/auth/callback'],
+      postLogoutRedirectUris: ['https://bb-guben.studio.smart-village.app/'],
+      webOrigins: ['https://bb-guben.studio.smart-village.app'],
+      rootUrl: 'https://bb-guben.studio.smart-village.app',
+      clientSecret: 'registry-secret',
+    });
+
+    expect(calls).toHaveLength(5);
+    expect(String(calls[3]?.input)).toContain('/clients/client-1/client-secret');
+    expect(calls[4]?.init?.method).toBe('POST');
+    expect(calls[4]?.init?.body).toBe(JSON.stringify({ type: 'secret', value: 'registry-secret' }));
+    expect(state.logger.info).toHaveBeenCalledWith(
+      'sync_client_secret',
+      expect.objectContaining({ realm: 'bb-guben', client_id: 'sva-studio' })
+    );
+  });
+
+  it('skips client secret synchronization when the configured secret already matches', async () => {
+    state.logger.info.mockClear();
+    const { fetchImpl, calls } = createFetchStub([
+      createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }),
+      createJsonResponse(200, [{
+        id: 'client-1',
+        clientId: 'sva-studio',
+        redirectUris: ['https://bb-guben.studio.smart-village.app/auth/callback'],
+        webOrigins: ['https://bb-guben.studio.smart-village.app'],
+        attributes: {
+          'post.logout.redirect.uris': 'https://bb-guben.studio.smart-village.app/',
+        },
+        rootUrl: 'https://bb-guben.studio.smart-village.app',
+      }]),
+      createJsonResponse(200, [{
+        id: 'client-1',
+        clientId: 'sva-studio',
+      }]),
+      createJsonResponse(200, { value: 'registry-secret' }),
+    ]);
+
+    const client = new KeycloakAdminClient({
+      baseUrl: 'https://keycloak.example.com',
+      realm: 'bb-guben',
+      clientId: 'svc-client',
+      clientSecret: 'svc-secret',
+      fetchImpl,
+    });
+
+    await client.ensureOidcClient({
+      clientId: 'sva-studio',
+      redirectUris: ['https://bb-guben.studio.smart-village.app/auth/callback'],
+      postLogoutRedirectUris: ['https://bb-guben.studio.smart-village.app/'],
+      webOrigins: ['https://bb-guben.studio.smart-village.app'],
+      rootUrl: 'https://bb-guben.studio.smart-village.app',
+      clientSecret: 'registry-secret',
+    });
+
+    expect(calls).toHaveLength(4);
+    expect(
+      state.logger.info.mock.calls.some(
+        ([event, payload]) =>
+          event === 'sync_client_secret'
+          && (payload as { realm?: string; client_id?: string }).realm === 'bb-guben'
+          && (payload as { realm?: string; client_id?: string }).client_id === 'sva-studio'
+      )
+    ).toBe(false);
   });
 });

@@ -92,3 +92,62 @@ Das System SHALL neue Shell-Interaktionen auf wartbare, zugängliche Standardmus
 - **WHEN** die Shell an das Vorgängerprojekt angeglichen wird
 - **THEN** sind kollabierte Flyout-Submenüs, pixelgenaue Active-Indikatoren und umfangreiche Header-Sonderlogik nicht verpflichtender Bestandteil der ersten Umsetzung
 - **AND** diese Muster werden nur bei klarem Mehrwert in einem späteren Follow-up betrachtet
+
+### Requirement: Sichtbarer Runtime-Health-Indikator in der Shell
+Die Layout-Shell SHALL auf allen Studioseiten am unteren Ende eine dauerhaft sichtbare Runtime-Health-Anzeige für zentrale Plattformabhängigkeiten bereitstellen.
+
+#### Scenario: Health-Indikator wird auf regulären Studioseiten angezeigt
+- **WHEN** ein Benutzer eine reguläre Studioseite öffnet
+- **THEN** zeigt die Shell am Ende der Seite eine kompakte Health-Anzeige
+- **AND** die Anzeige ist nicht auf Admin-Unterseiten beschränkt
+- **AND** die Anzeige ist in allen Environments sichtbar
+
+#### Scenario: Mehrere Dienstzustände werden verständlich dargestellt
+- **WHEN** der Runtime-Healthcheck Zustände für Datenbank, Redis, Keycloak oder weitere relevante Dienste liefert
+- **THEN** zeigt die Shell jeden Dienst mit Label und Statuszustand an
+- **AND** Zustände wie `ready`, `degraded`, `not_ready` und `unknown` sind visuell unterscheidbar
+
+#### Scenario: Health-Abfrage schlägt fehl
+- **WHEN** die Shell den Runtime-Health-Status nicht laden kann
+- **THEN** bleibt die restliche Shell nutzbar
+- **AND** die Health-Anzeige wechselt in einen sichtbaren Fehler- oder `unknown`-Zustand
+- **AND** der Benutzer erhält keinen leeren oder irreführend grünen Zustand
+
+#### Scenario: Anzeige bleibt zugänglich und mobil nutzbar
+- **WHEN** die Shell auf kleinen oder großen Viewports gerendert wird
+- **THEN** bleibt die Health-Anzeige lesbar und erreichbar
+- **AND** Screenreader können Dienstname und Status semantisch erfassen
+- **AND** die Anzeige verursacht kein horizontales Layout-Breaking
+
+### Requirement: Standardisiertes Listen-Seiten-Template
+Das Studio SHALL für Verwaltungs- und Listenansichten ein gemeinsames Seiten-Template bereitstellen, das Breadcrumbs aus der Shell ergänzt und darunter Titel, Beschreibung, optionale Primäraktion sowie den Listeninhalt in konsistenter Struktur rendert.
+
+#### Scenario: Listen-Seite nutzt das Standard-Template
+- **WHEN** eine Verwaltungsseite des Studios gerendert wird
+- **THEN** zeigt die Seite unterhalb der bestehenden Breadcrumbs einen Titel und optionalen Beschreibungstext
+- **AND** eine optionale Primäraktion wie `Neu erstellen` steht auf Titelhöhe rechts
+- **AND** der Listeninhalt folgt einem gemeinsamen Layoutgerüst statt einer route-spezifischen Eigenstruktur
+
+### Requirement: Standardisierte Datentabelle für Verwaltungslisten
+Das Studio SHALL eine wiederverwendbare Datentabelle für Verwaltungslisten bereitstellen, die Auswahl, Sortierung, Toolbar-Aktionen und mobile Darstellung konsistent abbildet.
+
+#### Scenario: Tabelle mit Bulk-Aktionen und Sortierung
+- **WHEN** eine Studio-Verwaltungsseite tabellarische Daten anzeigt
+- **THEN** enthält die Tabelle optional eine Auswahlspalte als erste Spalte
+- **AND** sortierbare Spaltenköpfe zeigen ihren Sortierzustand zugänglich an
+- **AND** eine Aktionsspalte wird als letzte Spalte gerendert
+- **AND** eine Toolbar oberhalb der Tabelle kann Bulk-Aktionen, Filter und sekundäre Aktionen aufnehmen
+
+#### Scenario: Mobile Darstellung einer Verwaltungs-Tabelle
+- **WHEN** eine Studio-Verwaltungsseite auf kleinem Viewport geöffnet wird
+- **THEN** wird die Tabelle als mobile Kartenansicht mit denselben Kerndaten und Aktionen nutzbar dargestellt
+- **AND** Auswahl- und Aktionsmuster bleiben funktionsgleich erreichbar
+
+### Requirement: Tabs für mehrere Tabellenbereiche
+Das Studio SHALL bei mehreren gleichrangigen Tabellenbereichen auf einer Seite ein gemeinsames Tabs-Muster verwenden.
+
+#### Scenario: Seite mit mehreren Tabellenbereichen
+- **WHEN** eine Verwaltungsseite mehrere gleichrangige Tabellenbereiche enthält
+- **THEN** werden diese Bereiche über ein gemeinsames Tabs-Muster innerhalb des Seiten-Templates organisiert
+- **AND** jeder Tab rendert seinen eigenen Tabellen- oder Listeninhalt, ohne ein zweites konkurrierendes Seitenlayout einzuführen
+

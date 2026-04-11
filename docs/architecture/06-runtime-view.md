@@ -56,15 +56,17 @@ Fehlerpfad:
 
 1. Admin öffnet `/admin/instances` auf dem Root-Host.
 2. UI lädt `GET /iam/instances`.
-3. Mutationen senden CSRF-Header, Idempotency-Key und Reauth-Bestätigung.
-4. `packages/auth` delegiert an die gemeinsame Provisioning-Fassade.
-5. Die Fassade schreibt Registry-Daten, Provisioning-Run und Audit-Event.
-6. Der Host-Cache wird für betroffene Hostnamen invalidiert.
+3. Das Detail lädt zusaetzlich Preflight, Plan, Status und vorhandene Provisioning-Runs.
+4. `Instanzdaten speichern` sendet CSRF-Header, Idempotency-Key und Reauth-Bestaetigung und schreibt nur Registry-Daten.
+5. `Provisioning ausfuehren` startet einen expliziten Run mit Realm-Modus `new` oder `existing`.
+6. `packages/auth` delegiert an die gemeinsame Provisioning-Fassade.
+7. Die Fassade persistiert Run, Schritte und Audit-Event und invalidiert anschliessend betroffene Host-Caches.
 
 Fehlerpfad:
 
 - Tenant-Host statt Root-Host -> `403 forbidden`.
 - fehlende Re-Authentisierung -> `403 reauth_required`.
+- blockierter Preflight oder Plan -> kein Keycloak-Mutationslauf.
 
 ### Szenario 2a: Silent Session-Recovery nach `401`
 
@@ -118,6 +120,21 @@ Fehlerpfad:
 
 - Sind Header ungültig oder fehlen sie, bleiben `request_id` und `trace_id` leer; die Response bleibt trotzdem JSON.
 - Schlägt der Logger selbst fehl, schreibt die Routing-Schicht einen sanitisierten Minimal-Eintrag auf `stderr`.
+
+### Szenario 3b: Prod-naher Studio-Deploy mit Drift-Gates
+
+1. Ein Operator startet `pnpm env:deploy:studio` fuer einen konkreten Digest.
+2. `environment-precheck` liest den Live-Stack bevorzugt ueber die Portainer-API und vergleicht Soll-/Ist-Drift fuer `app`.
+3. `image-smoke` prueft Root-Host, Tenant-Hosts und OIDC-Verhalten prod-nah gegen das Zielartefakt.
+4. Wenn derselbe Digest bereits live laeuft, darf der Gate-Schritt die Live-Paritaet nur wiederverwenden, wenn Ingress-Konsistenz, Tenant-Auth-Proof, Runtime-Flags und `app-db-principal` fuer genau dieses Digest gruen sind.
+5. Erst danach folgen optional `migrate` und `bootstrap`, dann der eigentliche Live-Rollout.
+6. `internal-verify`, `smoke` und `precheck` bestaetigen den Zustand erneut aus Sicht der laufenden App.
+
+Fehlerpfad:
+
+- Weicht der Root-/Tenant-/OIDC-Vertrag ab, blockiert der Rollout vor jeder Live-Mutation.
+- Ist `/health/ready` aus Sicht von `APP_DB_USER` nicht stabil, gilt der Stack auch bei gruener Superuser-Sicht als nicht freigegeben.
+- Manueller Incident-Recovery ueber Portainer oder Quantum bleibt temporaer; abgeschlossen ist der Fall erst nach kanonischem `app-only`-Reconcile und erneut gruener Verifikation.
 
 ### Szenario 4: Initialer Shell-Ladezustand mit Skeleton UI
 

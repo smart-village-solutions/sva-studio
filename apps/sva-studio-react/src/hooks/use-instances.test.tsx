@@ -13,6 +13,10 @@ const browserLoggerMock = vi.hoisted(() => ({
 const listInstancesMock = vi.fn();
 const getInstanceMock = vi.fn();
 const getInstanceKeycloakStatusMock = vi.fn();
+const getInstanceKeycloakPreflightMock = vi.fn();
+const getInstanceKeycloakProvisioningRunMock = vi.fn();
+const planInstanceKeycloakProvisioningMock = vi.fn();
+const executeInstanceKeycloakProvisioningMock = vi.fn();
 const createInstanceMock = vi.fn();
 const updateInstanceMock = vi.fn();
 const reconcileInstanceKeycloakMock = vi.fn();
@@ -47,6 +51,10 @@ vi.mock('../lib/iam-api', () => ({
   listInstances: (...args: unknown[]) => listInstancesMock(...args),
   getInstance: (...args: unknown[]) => getInstanceMock(...args),
   getInstanceKeycloakStatus: (...args: unknown[]) => getInstanceKeycloakStatusMock(...args),
+  getInstanceKeycloakPreflight: (...args: unknown[]) => getInstanceKeycloakPreflightMock(...args),
+  getInstanceKeycloakProvisioningRun: (...args: unknown[]) => getInstanceKeycloakProvisioningRunMock(...args),
+  planInstanceKeycloakProvisioning: (...args: unknown[]) => planInstanceKeycloakProvisioningMock(...args),
+  executeInstanceKeycloakProvisioning: (...args: unknown[]) => executeInstanceKeycloakProvisioningMock(...args),
   createInstance: (...args: unknown[]) => createInstanceMock(...args),
   updateInstance: (...args: unknown[]) => updateInstanceMock(...args),
   reconcileInstanceKeycloak: (...args: unknown[]) => reconcileInstanceKeycloakMock(...args),
@@ -87,6 +95,7 @@ describe('useInstances', () => {
         primaryHostname: 'demo.studio.example.org',
         hostnames: [],
         provisioningRuns: [],
+        keycloakProvisioningRuns: [],
         auditEvents: [],
       },
     });
@@ -94,6 +103,24 @@ describe('useInstances', () => {
       data: {
         realmExists: true,
       },
+    });
+    getInstanceKeycloakPreflightMock.mockResolvedValue({
+      data: {
+        overallStatus: 'ready',
+        checks: [],
+      },
+    });
+    getInstanceKeycloakProvisioningRunMock.mockResolvedValue({
+      data: null,
+    });
+    planInstanceKeycloakProvisioningMock.mockResolvedValue({
+      data: {
+        overallStatus: 'ready',
+        steps: [],
+      },
+    });
+    executeInstanceKeycloakProvisioningMock.mockResolvedValue({
+      data: null,
     });
     createInstanceMock.mockResolvedValue({
       data: {
@@ -113,6 +140,7 @@ describe('useInstances', () => {
         primaryHostname: 'demo.studio.example.org',
         hostnames: [],
         provisioningRuns: [],
+        keycloakProvisioningRuns: [],
         auditEvents: [],
       },
     });
@@ -179,12 +207,14 @@ describe('useInstances', () => {
         instanceId: 'demo',
         displayName: 'Demo',
         parentDomain: 'studio.example.org',
+        realmMode: 'new',
         authRealm: 'demo',
         authClientId: 'sva-studio',
       });
       await result.current.updateInstance('demo', {
         displayName: 'Demo updated',
         parentDomain: 'studio.example.org',
+        realmMode: 'existing',
         authRealm: 'demo',
         authClientId: 'sva-studio',
       });
@@ -251,6 +281,7 @@ describe('useInstances', () => {
         instanceId: 'demo',
         displayName: 'Demo',
         parentDomain: 'studio.example.org',
+        realmMode: 'new',
         authRealm: 'demo',
         authClientId: 'sva-studio',
       });
@@ -261,6 +292,7 @@ describe('useInstances', () => {
       const updated = await result.current.updateInstance('demo', {
         displayName: 'Demo updated',
         parentDomain: 'studio.example.org',
+        realmMode: 'existing',
         authRealm: 'demo',
         authClientId: 'sva-studio',
       });
@@ -325,6 +357,27 @@ describe('useInstances', () => {
     expect(authMockValue.invalidatePermissions).toHaveBeenCalled();
   });
 
+  it('surfaces normalized non-keycloak detail warnings after the instance detail itself loads successfully', async () => {
+    getInstanceKeycloakStatusMock.mockRejectedValueOnce({
+      status: 500,
+      code: 'internal_error',
+      message: 'kaputt',
+    });
+
+    const { result } = renderHook(() => useInstances());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    await act(async () => {
+      await result.current.loadInstance('demo');
+    });
+
+    expect(result.current.selectedInstance?.instanceId).toBe('demo');
+    expect(result.current.mutationError).toEqual(expect.objectContaining({ status: 502, code: 'keycloak_unavailable' }));
+  });
+
   it('refreshes keycloak status in-place and handles forbidden refreshes', async () => {
     const { result } = renderHook(() => useInstances());
 
@@ -375,5 +428,138 @@ describe('useInstances', () => {
 
     expect(result.current.mutationError).toEqual(expect.objectContaining({ status: 403, code: 'forbidden' }));
     expect(authMockValue.invalidatePermissions).toHaveBeenCalled();
+  });
+
+  it('normalizes unexpected preflight and plan failures to keycloak_unavailable', async () => {
+    getInstanceKeycloakPreflightMock.mockRejectedValueOnce({
+      status: 500,
+      code: 'internal_error',
+      message: 'Authentifizierungsfehler.',
+    });
+    planInstanceKeycloakProvisioningMock.mockRejectedValueOnce({
+      status: 500,
+      code: 'internal_error',
+      message: 'kaputt',
+    });
+
+    const { result } = renderHook(() => useInstances());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    await act(async () => {
+      const preflight = await result.current.refreshKeycloakPreflight('demo');
+      expect(preflight).toBeNull();
+    });
+
+    expect(result.current.mutationError).toEqual(
+      expect.objectContaining({ status: 502, code: 'keycloak_unavailable' })
+    );
+
+    await act(async () => {
+      const plan = await result.current.planKeycloakProvisioning('demo');
+      expect(plan).toBeNull();
+    });
+
+    expect(result.current.mutationError).toEqual(
+      expect.objectContaining({ status: 502, code: 'keycloak_unavailable' })
+    );
+  });
+
+  it('stores provisioning runs returned by execute and load operations', async () => {
+    const { result } = renderHook(() => useInstances());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    await act(async () => {
+      await result.current.loadInstance('demo');
+    });
+
+    reconcileInstanceKeycloakMock.mockResolvedValueOnce({
+      data: {
+        realmExists: true,
+        clientExists: true,
+        runtimeSecretSource: 'tenant',
+      },
+    });
+
+    const queuedRun = {
+      id: 'run-2',
+      intent: 'provision',
+      mode: 'existing',
+      overallStatus: 'planned',
+      driftSummary: 'queued',
+      requestId: 'req-2',
+      steps: [],
+    };
+    const finishedRun = {
+      ...queuedRun,
+      overallStatus: 'succeeded',
+      driftSummary: 'done',
+    };
+
+    executeInstanceKeycloakProvisioningMock.mockResolvedValueOnce({
+      data: queuedRun,
+    });
+    getInstanceKeycloakProvisioningRunMock.mockResolvedValueOnce({
+      data: finishedRun,
+    });
+
+    await act(async () => {
+      const queued = await result.current.executeKeycloakProvisioning('demo', { intent: 'provision' });
+      expect(queued).toEqual(queuedRun);
+    });
+
+    await act(async () => {
+      const loaded = await result.current.loadKeycloakProvisioningRun('demo', 'run-2');
+      expect(loaded).toEqual(finishedRun);
+    });
+
+    expect(result.current.selectedInstance?.latestKeycloakProvisioningRun).toEqual(finishedRun);
+    expect(result.current.selectedInstance?.keycloakProvisioningRuns?.[0]).toEqual(finishedRun);
+
+    await act(async () => {
+      const reconciled = await result.current.reconcileKeycloak('demo', { rotateClientSecret: true });
+      expect(reconciled).toEqual(
+        expect.objectContaining({
+          clientExists: true,
+          runtimeSecretSource: 'tenant',
+        })
+      );
+    });
+  });
+
+  it('keeps selected instance unchanged when provisioning updates target a different instance', async () => {
+    const { result } = renderHook(() => useInstances());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    await act(async () => {
+      await result.current.loadInstance('demo');
+    });
+
+    executeInstanceKeycloakProvisioningMock.mockResolvedValueOnce({
+      data: {
+        id: 'run-3',
+        intent: 'provision',
+        mode: 'existing',
+        overallStatus: 'planned',
+        driftSummary: 'queued',
+        requestId: 'req-3',
+        steps: [],
+      },
+    });
+
+    await act(async () => {
+      await result.current.executeKeycloakProvisioning('other', { intent: 'provision' });
+      await result.current.loadKeycloakProvisioningRun('other', 'run-3');
+    });
+
+    expect(result.current.selectedInstance?.instanceId).toBe('demo');
   });
 });

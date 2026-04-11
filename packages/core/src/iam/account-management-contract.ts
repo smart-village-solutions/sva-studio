@@ -34,6 +34,8 @@ export type InstanceStatus =
   | 'suspended'
   | 'archived';
 
+export type InstanceRealmMode = 'new' | 'existing';
+
 export type ApiPagination = {
   readonly page: number;
   readonly pageSize: number;
@@ -292,6 +294,7 @@ export type IamInstanceListItem = {
   readonly status: InstanceStatus;
   readonly parentDomain: string;
   readonly primaryHostname: string;
+  readonly realmMode: InstanceRealmMode;
   readonly authRealm: string;
   readonly authClientId: string;
   readonly authIssuerUrl?: string;
@@ -317,6 +320,7 @@ export type IamInstanceKeycloakStatus = {
   readonly tenantAdminExists: boolean;
   readonly tenantAdminHasSystemAdmin: boolean;
   readonly tenantAdminHasInstanceRegistryAdmin: boolean;
+  readonly tenantAdminInstanceIdMatches: boolean;
   readonly redirectUrisMatch: boolean;
   readonly logoutUrisMatch: boolean;
   readonly webOriginsMatch: boolean;
@@ -324,6 +328,56 @@ export type IamInstanceKeycloakStatus = {
   readonly tenantClientSecretReadable: boolean;
   readonly clientSecretAligned: boolean;
   readonly runtimeSecretSource: 'tenant' | 'global';
+};
+
+export type IamInstanceKeycloakPreflight = {
+  readonly overallStatus: 'ready' | 'warning' | 'blocked';
+  readonly checkedAt: string;
+  readonly checks: readonly {
+    readonly checkKey: string;
+    readonly title: string;
+    readonly status: 'ready' | 'warning' | 'blocked';
+    readonly summary: string;
+    readonly details: Readonly<Record<string, unknown>>;
+  }[];
+};
+
+export type IamInstanceKeycloakPlan = {
+  readonly mode: InstanceRealmMode;
+  readonly overallStatus: 'ready' | 'blocked';
+  readonly generatedAt: string;
+  readonly driftSummary: string;
+  readonly steps: readonly {
+    readonly stepKey: string;
+    readonly title: string;
+    readonly action: 'create' | 'update' | 'verify' | 'skip';
+    readonly status: 'ready' | 'blocked';
+    readonly summary: string;
+    readonly details: Readonly<Record<string, unknown>>;
+  }[];
+};
+
+export type IamInstanceKeycloakProvisioningRun = {
+  readonly id: string;
+  readonly instanceId: string;
+  readonly mode: InstanceRealmMode;
+  readonly intent: 'provision' | 'reset_tenant_admin' | 'rotate_client_secret';
+  readonly overallStatus: 'planned' | 'running' | 'succeeded' | 'failed';
+  readonly driftSummary: string;
+  readonly requestId?: string;
+  readonly actorId?: string;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+  readonly steps: readonly {
+    readonly stepKey: string;
+    readonly title: string;
+    readonly status: 'pending' | 'running' | 'done' | 'failed' | 'skipped' | 'unchanged';
+    readonly startedAt?: string;
+    readonly finishedAt?: string;
+    readonly summary: string;
+    readonly details: Readonly<Record<string, unknown>>;
+    readonly requestId?: string;
+  }[];
 };
 
 export type IamInstanceDetail = IamInstanceListItem & {
@@ -335,6 +389,10 @@ export type IamInstanceDetail = IamInstanceListItem & {
   readonly provisioningRuns: readonly IamInstanceProvisioningRun[];
   readonly auditEvents: readonly IamInstanceAuditEvent[];
   readonly keycloakStatus?: IamInstanceKeycloakStatus;
+  readonly keycloakPreflight?: IamInstanceKeycloakPreflight;
+  readonly keycloakPlan?: IamInstanceKeycloakPlan;
+  readonly latestKeycloakProvisioningRun?: IamInstanceKeycloakProvisioningRun;
+  readonly keycloakProvisioningRuns: readonly IamInstanceKeycloakProvisioningRun[];
 };
 
 export type IamOrganizationChildItem = {

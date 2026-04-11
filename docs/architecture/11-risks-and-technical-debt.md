@@ -130,6 +130,16 @@ Schulden auf IST-Basis.
    - Wahrscheinlichkeit: mittel
    - Maßnahme: Digest-Promotion, Alertmanager-Receiver, Backup-Automation und HA-Schritte als explizite Folgearbeit getrennt nachziehen
 
+22. Lokaler Quantum-Hidden-State in Remote-Diagnosepfaden
+   - Impact: mittel bis hoch (falsch-negative Diagnosen trotz gesundem Stack)
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: Read-only Pfade auf Portainer-API mit fester Endpoint-ID begrenzen, `quantum-cli exec` nur als Fallback zulassen und Mutationen auf CI-/Runner-Kontexte fokussieren
+
+23. Begrenzte lokale Nachbildbarkeit des `studio`-Ingress- und Private-DNS-Vertrags
+   - Impact: hoch (lokale Kandidatencontainer koennen Root-/Tenant-/OIDC-Paritaet falsch negativ oder unvollstaendig abbilden)
+   - Wahrscheinlichkeit: hoch
+   - Maßnahme: prod-nahe Freigaben an Remote-Paritaet binden, identische Live-Digests nur ueber dokumentierte Live-Evidenz wiederverwenden und lokale Kandidaten explizit als Hilfssignal behandeln
+
 ### Technische Schulden (Auswahl)
 
 - Teilweise No-Op Testtargets in Libraries
@@ -145,6 +155,7 @@ Schulden auf IST-Basis.
 - Gruppen sind im ersten Schnitt reine Rollenbündel; direkte Gruppen-Permissions und ein separates Gruppen-Gültigkeitsmanagement pro UI-Flow bleiben Folgearbeit
 - Die Geo-Hierarchie ist intern bereits auswertbar, besitzt aber noch keine dedizierte Admin-Oberfläche oder externe Pflegepipeline
 - Der Releasevertrag ist im Repo gehärtet, aber produktive Randthemen wie Registry-Promotion, Receiver-Konfiguration und Multi-Node-Betrieb bleiben außerhalb dieses Changes
+- Die Live-Paritaets-Wiederverwendung fuer identische Digests reduziert Drift-Risiko, ersetzt aber keinen spaeteren echten Off-Cluster-Paritaets-Pfad fuer neue Digests
 
 ### Nachverfolgung
 

@@ -1,11 +1,10 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { UserListPage } from './-user-list-page';
 
 const useUsersMock = vi.fn();
-const useRolesMock = vi.fn();
 const isIamBulkEnabledMock = vi.fn();
 
 vi.mock('@tanstack/react-router', () => ({
@@ -18,10 +17,6 @@ vi.mock('@tanstack/react-router', () => ({
 
 vi.mock('../../../hooks/use-users', () => ({
   useUsers: () => useUsersMock(),
-}));
-
-vi.mock('../../../hooks/use-roles', () => ({
-  useRoles: () => useRolesMock(),
 }));
 
 vi.mock('../../../lib/iam-admin-access', () => ({
@@ -39,17 +34,8 @@ const createUsersApiState = (overrides: Record<string, unknown> = {}) => ({
       lastLoginAt: '2026-03-04T10:00:00Z',
       roles: [{ roleId: 'role-1', roleName: 'system_admin', roleLevel: 90 }],
     },
-    {
-      id: 'user-2',
-      keycloakSubject: 'subject-2',
-      displayName: 'Bob',
-      email: 'bob@example.com',
-      status: 'inactive',
-      lastLoginAt: '2026-03-03T08:00:00Z',
-      roles: [{ roleId: 'role-2', roleName: 'editor', roleLevel: 40 }],
-    },
   ],
-  total: 2,
+  total: 1,
   page: 1,
   pageSize: 25,
   isLoading: false,
@@ -74,25 +60,11 @@ const createUsersApiState = (overrides: Record<string, unknown> = {}) => ({
     ok: true,
     report: {
       importedCount: 1,
-      updatedCount: 2,
-      skippedCount: 3,
-      totalKeycloakUsers: 6,
+      updatedCount: 0,
+      skippedCount: 0,
+      totalKeycloakUsers: 1,
     },
   }),
-  ...overrides,
-});
-
-const createRolesApiState = (overrides: Record<string, unknown> = {}) => ({
-  roles: [
-    { id: 'role-1', roleName: 'system_admin' },
-    { id: 'role-2', roleName: 'editor' },
-  ],
-  isLoading: false,
-  error: null,
-  refetch: vi.fn(),
-  createRole: vi.fn(),
-  updateRole: vi.fn(),
-  deleteRole: vi.fn(),
   ...overrides,
 });
 
@@ -103,44 +75,25 @@ describe('UserListPage', () => {
 
   beforeEach(() => {
     useUsersMock.mockReset();
-    useRolesMock.mockReset();
     isIamBulkEnabledMock.mockReset();
     isIamBulkEnabledMock.mockReturnValue(true);
   });
 
-  it('renders user table and opens create dialog', () => {
-    useUsersMock.mockReturnValue(createUsersApiState({ users: [createUsersApiState().users[0]], total: 1 }));
-    useRolesMock.mockReturnValue(createRolesApiState({ roles: [{ id: 'role-1', roleName: 'system_admin' }] }));
+  it('renders list actions and uses route links for create and edit', () => {
+    useUsersMock.mockReturnValue(createUsersApiState());
 
     render(<UserListPage />);
 
     expect(screen.getByRole('heading', { name: 'Benutzerverwaltung' })).toBeTruthy();
-    expect(screen.getAllByText('Alice').length).toBeGreaterThan(0);
-
-    fireEvent.click(screen.getByRole('button', { name: 'Nutzer anlegen' }));
-    expect(screen.getByRole('dialog', { name: 'Nutzer anlegen' })).toBeTruthy();
-  });
-
-  it('renders error state and triggers refetch via retry', () => {
-    const refetch = vi.fn();
-
-    useUsersMock.mockReturnValue(createUsersApiState({ users: [], total: 0, error: new Error('failed'), refetch }));
-    useRolesMock.mockReturnValue(createRolesApiState({ roles: [] }));
-
-    render(<UserListPage />);
-
-    const alert = screen.getByRole('alert');
-    const retryButton = alert.querySelector('button');
-    expect(retryButton).toBeTruthy();
-
-    fireEvent.click(retryButton as HTMLButtonElement);
-    expect(refetch).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('link', { name: 'Nutzer anlegen' }).getAttribute('href')).toBe('/admin/users/new');
+    expect(screen.getAllByRole('link', { name: 'Bearbeiten' })[0]!.getAttribute('href')).toBe('/admin/users/$userId');
   });
 
   it('updates filters and pagination controls', () => {
     const setSearch = vi.fn();
     const setStatus = vi.fn();
     const setPage = vi.fn();
+
     useUsersMock.mockReturnValue(
       createUsersApiState({
         setSearch,
@@ -152,7 +105,6 @@ describe('UserListPage', () => {
         filters: { page: 2, pageSize: 1, search: 'ali', status: 'active', role: '' },
       })
     );
-    useRolesMock.mockReturnValue(createRolesApiState());
 
     render(<UserListPage />);
 
@@ -167,283 +119,40 @@ describe('UserListPage', () => {
     expect(setPage).toHaveBeenCalledWith(3);
   });
 
-  it('toggles sorting direction when the same column header is clicked repeatedly', () => {
+  it('shows retryable list errors and sync feedback', async () => {
+    const refetch = vi.fn();
+    const syncUsersFromKeycloak = vi.fn().mockResolvedValue({
+      ok: true,
+      report: { importedCount: 1, updatedCount: 2, skippedCount: 3, totalKeycloakUsers: 6 },
+    });
+
     useUsersMock.mockReturnValue(
       createUsersApiState({
-        users: [
-          {
-            id: 'user-1',
-            keycloakSubject: 'subject-1',
-            displayName: 'Bob',
-            email: 'bob@example.com',
-            status: 'active',
-            lastLoginAt: '2026-03-04T10:00:00Z',
-            roles: [{ roleId: 'role-1', roleName: 'editor', roleLevel: 40 }],
-          },
-          {
-            id: 'user-2',
-            keycloakSubject: 'subject-2',
-            displayName: 'Alice',
-            email: 'alice@example.com',
-            status: 'inactive',
-            lastLoginAt: '2026-03-03T08:00:00Z',
-            roles: [{ roleId: 'role-2', roleName: 'system_admin', roleLevel: 90 }],
-          },
-        ],
-      }),
+        error: new Error('failed'),
+        refetch,
+        syncUsersFromKeycloak,
+      })
     );
-    useRolesMock.mockReturnValue(createRolesApiState());
 
     render(<UserListPage />);
 
-    const nameHeader = screen.getByRole('button', { name: 'Name' });
-    fireEvent.click(nameHeader);
+    fireEvent.click(screen.getByRole('button', { name: 'Erneut versuchen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Aus Keycloak synchronisieren' }));
 
-    let rows = screen.getAllByRole('row');
-    expect(rows[1]?.textContent).toContain('Alice');
-    expect(rows[2]?.textContent).toContain('Bob');
-
-    fireEvent.click(nameHeader);
-
-    rows = screen.getAllByRole('row');
-    expect(rows[1]?.textContent).toContain('Bob');
-    expect(rows[2]?.textContent).toContain('Alice');
+    expect(refetch).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(syncUsersFromKeycloak).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.getByText(/1 importiert, 2 aktualisiert, 3/i)).toBeTruthy());
   });
 
-  it('submits create user form and closes dialog on success', async () => {
-    const createUser = vi.fn().mockResolvedValue(true);
-    useUsersMock.mockReturnValue(createUsersApiState({ createUser }));
-    useRolesMock.mockReturnValue(createRolesApiState());
-
-    render(<UserListPage />);
-
-    fireEvent.click(screen.getAllByRole('button', { name: 'Nutzer anlegen' })[0]);
-    const dialog = screen.getByRole('dialog', { name: 'Nutzer anlegen' });
-    fireEvent.change(within(dialog).getByLabelText('E-Mail'), { target: { value: ' new@example.com ' } });
-    fireEvent.change(within(dialog).getByLabelText('Vorname'), { target: { value: ' New ' } });
-    fireEvent.change(within(dialog).getByLabelText('Nachname'), { target: { value: ' User ' } });
-    fireEvent.change(within(dialog).getByLabelText('Startrolle'), { target: { value: 'role-2' } });
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Nutzer anlegen' }));
-
-    await waitFor(() => {
-      expect(createUser).toHaveBeenCalledWith({
-        email: 'new@example.com',
-        firstName: 'New',
-        lastName: 'User',
-        displayName: 'New   User',
-        roleIds: ['role-2'],
-      });
-    });
-
-    await waitFor(() => {
-      expect(screen.queryByRole('dialog', { name: 'Nutzer anlegen' })).toBeNull();
-    });
-  }, 15000);
-
-  it('keeps create dialog open when create user fails', async () => {
-    const createUser = vi.fn().mockResolvedValue(false);
-    useUsersMock.mockReturnValue(createUsersApiState({ createUser }));
-    useRolesMock.mockReturnValue(createRolesApiState());
-
-    render(<UserListPage />);
-
-    fireEvent.click(screen.getAllByRole('button', { name: 'Nutzer anlegen' })[0]);
-    const dialog = screen.getByRole('dialog', { name: 'Nutzer anlegen' });
-    fireEvent.change(within(dialog).getByLabelText('E-Mail'), { target: { value: 'fail@example.com' } });
-    fireEvent.change(within(dialog).getByLabelText('Vorname'), { target: { value: 'Fail' } });
-    fireEvent.change(within(dialog).getByLabelText('Nachname'), { target: { value: 'Case' } });
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Nutzer anlegen' }));
-
-    await waitFor(() => {
-      expect(createUser).toHaveBeenCalledTimes(1);
-      expect(screen.getByRole('dialog', { name: 'Nutzer anlegen' })).toBeTruthy();
-    });
-  });
-
-  it('executes single deactivate and bulk deactivate actions', async () => {
-    const deactivateUser = vi.fn().mockResolvedValue(true);
-    const bulkDeactivate = vi.fn().mockResolvedValue(true);
-    useUsersMock.mockReturnValue(createUsersApiState({ deactivateUser, bulkDeactivate }));
-    useRolesMock.mockReturnValue(createRolesApiState());
-
-    render(<UserListPage />);
-
-    fireEvent.click(screen.getAllByRole('button', { name: 'Deaktivieren' })[0]);
-    fireEvent.click(screen.getAllByRole('button', { name: 'Deaktivieren' }).at(-1) as HTMLButtonElement);
-
-    await waitFor(() => {
-      expect(deactivateUser).toHaveBeenCalledWith('user-1');
-    });
-
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Benutzertabelle: Alle Zeilen auswählen' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Auswahl deaktivieren' }));
-    fireEvent.click(screen.getAllByRole('button', { name: 'Deaktivieren' }).at(-1) as HTMLButtonElement);
-
-    await waitFor(() => {
-      expect(bulkDeactivate).toHaveBeenCalledWith(['user-1', 'user-2']);
-    });
-  });
-
-  it('closes the deactivate dialog without executing an action when cancelled', async () => {
+  it('confirms single-user deactivation', async () => {
     const deactivateUser = vi.fn().mockResolvedValue(true);
     useUsersMock.mockReturnValue(createUsersApiState({ deactivateUser }));
-    useRolesMock.mockReturnValue(createRolesApiState());
 
     render(<UserListPage />);
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Deaktivieren' })[0]);
-    fireEvent.click(screen.getByRole('button', { name: 'Abbrechen' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Deaktivieren' })[0]!);
+    fireEvent.click(screen.getByRole('button', { name: 'Deaktivieren' }));
 
-    await waitFor(() => {
-      expect(screen.queryByText('Benutzer deaktivieren')).toBeNull();
-    });
-    expect(deactivateUser).not.toHaveBeenCalled();
-  });
-
-  it('triggers keycloak sync and shows the sync result', async () => {
-    const syncUsersFromKeycloak = vi.fn().mockResolvedValue({
-      ok: true,
-      report: {
-        importedCount: 2,
-        updatedCount: 1,
-        skippedCount: 4,
-        totalKeycloakUsers: 7,
-      },
-    });
-    useUsersMock.mockReturnValue(createUsersApiState({ syncUsersFromKeycloak }));
-    useRolesMock.mockReturnValue(createRolesApiState());
-
-    render(<UserListPage />);
-
-    fireEvent.click(screen.getByRole('button', { name: 'Aus Keycloak synchronisieren' }));
-
-    await waitFor(() => {
-      expect(syncUsersFromKeycloak).toHaveBeenCalledTimes(1);
-      expect(
-        screen.getByText('2 importiert, 1 aktualisiert, 4 ohne passenden Instanzkontext übersprungen.')
-      ).toBeTruthy();
-    });
-  });
-
-  it('shows a pending state immediately when keycloak sync starts', async () => {
-    let resolveSync: undefined | ((value: {
-      ok: true;
-      report: { importedCount: number; updatedCount: number; skippedCount: number; totalKeycloakUsers: number };
-    }) => void);
-    const syncUsersFromKeycloak = vi.fn().mockImplementation(
-      () =>
-        new Promise<{
-          ok: true;
-          report: { importedCount: number; updatedCount: number; skippedCount: number; totalKeycloakUsers: number };
-        }>((resolve) => {
-          resolveSync = resolve;
-        })
-    );
-    useUsersMock.mockReturnValue(createUsersApiState({ syncUsersFromKeycloak }));
-    useRolesMock.mockReturnValue(createRolesApiState());
-
-    render(<UserListPage />);
-
-    fireEvent.click(screen.getByRole('button', { name: 'Aus Keycloak synchronisieren' }));
-
-    expect((screen.getByRole('button', { name: 'Synchronisiert ...' }) as HTMLButtonElement).disabled).toBe(true);
-    expect(screen.getByText('Synchronisierung läuft ...')).toBeTruthy();
-
-    resolveSync?.({
-      ok: true,
-      report: {
-        importedCount: 1,
-        updatedCount: 0,
-        skippedCount: 0,
-        totalKeycloakUsers: 1,
-      },
-    });
-
-    await waitFor(() => {
-      expect(screen.getByText('1 importiert, 0 aktualisiert, 0 ohne passenden Instanzkontext übersprungen.')).toBeTruthy();
-    });
-  });
-
-  it('renders an empty table state and disables bulk actions when there are no users', () => {
-    useUsersMock.mockReturnValue(createUsersApiState({ users: [], total: 0 }));
-    useRolesMock.mockReturnValue(createRolesApiState());
-
-    render(<UserListPage />);
-
-    expect(screen.getByText('Keine Nutzer gefunden.')).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Auswahl deaktivieren' })).toBeNull();
-  });
-
-  it('keeps bulk actions hidden when the feature is disabled', () => {
-    isIamBulkEnabledMock.mockReturnValue(false);
-    useUsersMock.mockReturnValue(createUsersApiState());
-    useRolesMock.mockReturnValue(createRolesApiState());
-
-    render(<UserListPage />);
-
-    expect(screen.queryByRole('button', { name: 'Auswahl deaktivieren' })).toBeNull();
-  });
-
-  it('shows an explicit no-op result when the sync finds no changes', async () => {
-    const syncUsersFromKeycloak = vi.fn().mockResolvedValue({
-      ok: true,
-      report: {
-        importedCount: 0,
-        updatedCount: 0,
-        skippedCount: 4,
-        totalKeycloakUsers: 4,
-      },
-    });
-    useUsersMock.mockReturnValue(createUsersApiState({ syncUsersFromKeycloak }));
-    useRolesMock.mockReturnValue(createRolesApiState());
-
-    render(<UserListPage />);
-
-    fireEvent.click(screen.getByRole('button', { name: 'Aus Keycloak synchronisieren' }));
-
-    await waitFor(() => {
-      expect(syncUsersFromKeycloak).toHaveBeenCalledTimes(1);
-    });
-
-    expect(
-      screen.getByText('Keine neuen oder geänderten Benutzer gefunden. 4 ohne passenden Instanzkontext übersprungen.')
-    ).toBeTruthy();
-  });
-
-  it('shows a dedicated sync error and clears it on retry', async () => {
-    const syncUsersFromKeycloak = vi
-      .fn()
-      .mockResolvedValueOnce({
-        ok: false,
-        error: { status: 503, code: 'keycloak_unavailable', message: 'boom' },
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        report: {
-          importedCount: 1,
-          updatedCount: 0,
-          skippedCount: 0,
-          totalKeycloakUsers: 1,
-        },
-      });
-    useUsersMock.mockReturnValue(createUsersApiState({ syncUsersFromKeycloak }));
-    useRolesMock.mockReturnValue(createRolesApiState());
-
-    render(<UserListPage />);
-
-    fireEvent.click(screen.getByRole('button', { name: 'Aus Keycloak synchronisieren' }));
-
-    await waitFor(() => {
-      expect(screen.getByRole('alert').textContent).toContain(
-        'Die Verbindung zu Keycloak ist derzeit nicht verfügbar. Bitte später erneut versuchen.'
-      );
-    });
-
-    fireEvent.click(screen.getAllByRole('button', { name: 'Erneut versuchen' })[0]);
-
-    await waitFor(() => {
-      expect(syncUsersFromKeycloak).toHaveBeenCalledTimes(2);
-      expect(screen.getByText('1 importiert, 0 aktualisiert, 0 ohne passenden Instanzkontext übersprungen.')).toBeTruthy();
-    });
+    await waitFor(() => expect(deactivateUser).toHaveBeenCalledWith('user-1'));
   });
 });

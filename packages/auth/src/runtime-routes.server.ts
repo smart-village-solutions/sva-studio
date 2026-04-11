@@ -74,14 +74,4 @@ export {
   optionalProcessingExecuteHandler,
   profileCorrectionHandler,
 } from './iam-data-subject-rights.server.js';
-export {
-  activateInstanceHandler,
-  archiveInstanceHandler,
-  createInstanceHandler,
-  getInstanceHandler,
-  getInstanceKeycloakStatusHandler,
-  listInstancesHandler,
-  reconcileInstanceKeycloakHandler,
-  suspendInstanceHandler,
-  updateInstanceHandler,
-} from './iam-instance-registry/index.js';
+export { instanceRegistryHandlers } from './iam-instance-registry/index.js';

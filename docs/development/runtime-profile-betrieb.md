@@ -34,6 +34,8 @@ Für `studio` gilt zusaetzlich ein pragmatischer Testphasen-Vertrag:
 - `IAM_DATABASE_URL` und `REDIS_URL` duerfen fuer Remote-Profile aus den vorhandenen DB-/Redis-Bausteinen abgeleitet werden
 - lokale Dev-Defaults aus `base.vars` duerfen Remote-Fehlkonfigurationen nicht still kaschieren
 - bei Quantum-Auth-Problemen muss ein lokaler Override durch `QUANTUM_API_KEY` mitgedacht werden; ein funktionierender Benutzerkontext kann lokal durch veraltete Shell-Umgebungen sabotiert werden
+- lokale gruene Unit-, Integrations- oder Docker-Laeufe sind kein Betriebsnachweis fuer `studio`
+- fuer produktionsnahe Freigaben zaehlen nur die Remote-Gates, die laufende App-Readiness und die dokumentierte Deploy-Evidenz
 
 Zusätzlich unterstützt der Diagnosepfad optionale Doctor-Overrides:
 
@@ -93,7 +95,8 @@ Nur produktionsnahe Registry-Profile:
 - `authRealm` und `authClientId` liegen pro Instanz in `iam.instances`
 - optional `authIssuerUrl`, wenn der Issuer nicht aus `KEYCLOAK_ADMIN_BASE_URL + /realms/<authRealm>` gebildet werden soll
 - `SVA_AUTH_ISSUER` und `SVA_AUTH_CLIENT_ID` bleiben nur lokale Fallbacks für nicht-registry-gesteuerte Pfade
-- der operative Sollzustand des fachlichen Tenant-Realm-Setups ist unter `../guides/keycloak-tenant-realm-bootstrap.md` dokumentiert
+- der operative Root-Host-Provisioning-Pfad ist unter `../guides/instance-keycloak-provisioning.md` dokumentiert
+- der tenant-spezifische Realm-Zielzustand selbst ist unter `../guides/keycloak-tenant-realm-bootstrap.md` dokumentiert
 
 Nur Builder:
 
@@ -164,6 +167,8 @@ pnpm env:migrate:studio
 pnpm env:down:studio
 ```
 
+Mutierende Remote-Kommandos (`deploy`, `migrate`, `reset`, `down`) sind standardmaessig nur im kanonischen CI-/Runner-Kontext erlaubt. Fuer einen dokumentierten lokalen Notfallpfad ist explizit `SVA_ALLOW_LOCAL_REMOTE_MUTATIONS=true` noetig.
+
 ### Lokale HB-Produktivsimulation in Docker
 
 ```bash
@@ -196,31 +201,39 @@ Dieser Pfad startet die App als Produktionscontainer lokal gegen `postgres-hb`, 
 ### `status`
 
 - lokale Profile geben lokalen App-Status plus `docker compose ps` aus
-- Remote-Profile geben `docker stack services` und `docker stack ps` aus
+- Remote-Profile geben einen zusammengefassten Stack-Status aus der Portainer-API aus
+- `quantum-cli ps` bleibt nur Fallback, wenn der Read-only-API-Pfad nicht verfuegbar ist
 
 ### `precheck`
 
 - lokal derzeit nicht belegt
 - Remote-Profile prüfen vor einem Release verbindlich:
   - effektive Runtime-Konfiguration und Pflichtvariablen
-  - Remote-Service-Sicht via `quantum-cli`
-  - Erreichbarkeit des Postgres des Ziel-Stacks
-  - offensichtliche kritische Schema-Drift
+  - Remote-Service-Sicht via Portainer-API statt ueber lokalen `quantum-cli`-Status
+  - Ingress-Konsistenz zwischen laufendem App-Service und externem `/health/live`
+  - Runtime-Flags aus der Live-Service-Spec des `app`-Service
+  - `app-db-principal` ueber `/health/ready` als Nachweis, dass `db`, `redis` und `keycloak` aus Sicht des laufenden `APP_DB_USER` stabil bereit sind
+  - kritische Schema-, Instanz- und Hostname-Assertions ueber dedizierte Job-Evidenz
+  - Soll-/Live-Drift der `app`-Service-Spec inklusive Image-Ref, Secrets/Env, Netzwerken (`internal`, `public`) und ingressrelevanten Traefik-Labels
+- Remote-Postgres wird im Standardpfad nicht mehr ueber `quantum-cli exec` geprueft; dafuer gelten `/health/ready`, laufender Postgres-Service und Bootstrap-/Schema-Evidenz als autoritative Signale
 - `pnpm env:precheck:<profil> --json` liefert die Prüfung maschinenlesbar
 
 ### `deploy`
 
 - nur für Remote-Profile (`acceptance-hb`, `studio`)
 - ist der kanonische Release-Einstiegspunkt für Serverdeploys
+- Remote-Mutationen sind standardmaessig nur mit `SVA_REMOTE_OPERATOR_CONTEXT=ci-runner` oder unter GitHub Actions zulaessig
+- lokale Shells duerfen denselben Pfad nur mit explizitem Notfall-Override `SVA_ALLOW_LOCAL_REMOTE_MUTATIONS=true` verwenden
 - Orchestrierung in fixer Reihenfolge:
   1. `environment-precheck` inklusive Soll-/Live-Spec-Drift und Pflichtvariablen
-  2. `image-smoke` gegen das auszurollende Digest-Artefakt
-  3. optional `migrate` bei `--release-mode=schema-and-app`
-  4. Stack-Rollout via `quantum-cli stacks update` oder `docker stack deploy`
-  5. `internal-verify` mit internen HTTP-Probes und `doctor`-Diagnostik
-  6. `external-smoke` gegen die öffentliche URL
-  7. `release-decision` auf Basis der technischen Gates
-  8. Deploy-Report unter `artifacts/runtime/deployments/`
+  2. `image-smoke` gegen das auszurollende Digest-Artefakt mit Root-Host-, Tenant-Host- und OIDC-Paritaet
+  3. optional `migrate` bei `--release-mode=schema-and-app` als dedizierter Swarm-One-off-Job
+  4. optional `bootstrap` bei `--release-mode=schema-and-app` als dedizierter Swarm-One-off-Job für App-User, Grants und Instanz-Seeding
+  5. gehärteter Live-Rollout des echten Ziel-Stacks via `quantum-cli stacks update` oder `docker stack deploy`
+  6. `internal-verify` über externe Healthchecks, `doctor`-Diagnostik und Swarm-Task-/Service-Status
+  7. `external-smoke` gegen die öffentliche URL
+  8. `release-decision` auf Basis der technischen Gates
+  9. Deploy-Report unter `artifacts/runtime/deployments/`
 - unterstützte Release-Modi:
   - `app-only`
   - `schema-and-app`
@@ -234,6 +247,9 @@ Dieser Pfad startet die App als Produktionscontainer lokal gegen `postgres-hb`, 
 - Acceptance-Releases sind nur mit `--image-digest=sha256:...` gültig; der Tag bleibt rein ergänzende Lesbarkeit
 - Remote-Releases sind nur mit `--image-digest=sha256:...` gültig; der Tag bleibt rein ergänzende Lesbarkeit
 - `--json` schreibt zusätzlich zur Artefakterzeugung den vollständigen Deploy-Report auf stdout
+- Vor dem eigentlichen Stack-Update validiert der gehärtete Renderpfad, dass `app` weiterhin die Netzwerke `internal` und `public` sowie die ingressrelevanten Traefik-Labels enthält. Fehlende Einträge blockieren den Rollout vor jedem Live-Mutationsschritt.
+- Wenn das Ziel-Digest bereits live auf `app` laeuft, darf das Parity-Gate die Live-Evidenz desselben Digests wiederverwenden. Voraussetzung sind gruene Nachweise fuer Ingress-Konsistenz, `app-db-principal`, Tenant-Auth-Proof und Live-Runtime-Flags.
+- Ein lokaler Kandidatencontainer ersetzt fuer `studio` keinen echten Swarm-/Ingress-/Private-DNS-Nachweis. Kann der Remote-Hostvertrag lokal nicht realistisch abgebildet werden, bleibt nur die dokumentierte Live-Paritaet desselben Digests oder ein echter Remote-Rollout im kanonischen Pfad.
 
 ### `smoke`
 
@@ -256,11 +272,12 @@ Zusatzprüfungen:
 
 - lokal: OTEL Collector `http://127.0.0.1:13133/healthz`
 - lokal im Multi-Tenant-Pfad: Root-Host `studio.lvh.me`, Tenant-Host `hb.studio.lvh.me` und fail-closed-Fall `blocked.studio.lvh.me`
-- Remote: Container-Status für `app`, `redis`, `postgres`
+- Remote: Service-/Task-Status für `app`, `redis`, `postgres` bevorzugt ueber Portainer-API
 - Remote: `otel-collector` nur dann zusätzlich, wenn `ENABLE_OTEL` im Zielprofil aktiviert ist
 - Remote: öffentliche Smoke-Probes gegen Root-Host `/`, `/health/live`, `/health/ready`, `/auth/login`, `/api/v1/iam/me/context`
 - Remote: zusätzlich `/api/v1/iam/instances`
 - Remote: mindestens ein aktiver Tenant-Host und ein negativer Host-Fall gegen dieselbe App-Instanz
+- Remote: `doctor` und `precheck` muessen `app-db-principal` fuer denselben Runtime-User wie die laufende App als `ok` ausweisen
 
 Im Profil `studio` pruefen die externen Smokes zusaetzlich die in `SVA_ALLOWED_INSTANCE_IDS` freigegebenen Tenant-Hosts auf tenant-spezifische OIDC-Redirects.
 
@@ -295,7 +312,7 @@ Prüfungen in Reihenfolge:
 - IAM-Feature-Flags (`IAM_*`, `VITE_IAM_*`)
 - kritischer IAM-Schema-Guard
 - optional Actor-/Membership-Diagnose über `SVA_DOCTOR_*`
-- Remote zusätzlich: Remote-Service-Zustand via `quantum-cli`
+- Remote zusätzlich: Remote-Service-Zustand bevorzugt via Portainer-API; `quantum-cli` ist nur Fallback fuer Mutationen oder Sonderdiagnosen
 
 Optional:
 
@@ -323,6 +340,8 @@ Beispiele für `details`:
 - `tenant_hostnames=["bb-guben.studio.smart-village.app"]`
 - `derived=["IAM_DATABASE_URL","REDIS_URL"]`
 - `configDrift=["SVA_PARENT_DOMAIN","APP_DB_USER"]`
+- `channel="portainer-api"`
+- `appDbUser="sva_app"`
 
 ## Deploy-Reports
 
@@ -333,6 +352,8 @@ Deploy-Reports unter `artifacts/runtime/deployments/` sind die primaere Diagnose
 - Runtime-Profil, Stack und Endpoint
 - Pflicht- und ableitbare Runtime-Schluessel
 - Gate-Ergebnisse fuer Precheck, Migration, Deploy, interne Verifikation und externe Smokes
+- explizite Evidenz fuer `app-db-principal`, Ingress-Konsistenz, Tenant-Auth-Proof und gegebenenfalls Live-Paritaets-Reuse bei bereits laufendem Ziel-Digest
+- Drift- und Ingress-Evidenz fuer die `app`-Service-Spec (Image, Netzwerke, Traefik-Labels, fehlende Env-/Secret-Schluessel)
 - Rollback-Hinweis
 
 Wichtig fuer die Interpretation:
@@ -343,12 +364,15 @@ Wichtig fuer die Interpretation:
 ### `migrate`
 
 - lokal: `pnpm nx run data:db:migrate`
-- Remote: führt den kanonischen `goose`-Migrationspfad aus `packages/data/migrations/*.sql` gegen den laufenden Swarm-Postgres aus
-  - bevorzugt automatisch per `quantum-cli exec --endpoint sva --stack sva-studio --service postgres`
-  - Fallback: lokaler `docker exec` nur dann, wenn der Acceptance-Stack über denselben Docker-Daemon sichtbar ist
-  - `goose` wird dabei mit gepinnter Version temporär bereitgestellt; eine Vorinstallation auf dem Zielsystem ist nicht erforderlich
+- Remote: führt den kanonischen `goose`-Migrationspfad aus `packages/data/migrations/*.sql` über einen dedizierten Swarm-Migrationsjob gegen den laufenden Swarm-Postgres aus
+- Remote: führt danach den dedizierten Swarm-Bootstrap-Job für App-DB-User, Grants und `iam.instances`-/`iam.instance_hostnames`-Seed aus
+  - der Job nutzt dasselbe Runtime-Image wie `app`, aber einen separaten Entrypoint `deploy/portainer/migrate-entrypoint.sh`
+  - die Runtime-CLI rendert dafür ein temporäres Quantum-Projekt mit genau einem Service `migrate`
+  - der Job hängt am bereits existierenden Overlay-Netzwerk `<stack>_internal` und spricht Postgres über `<stack>_postgres` an
+  - `goose` wird mit gepinnter Version aus `packages/data/scripts/goosew.sh` im Job-Container bereitgestellt; eine Vorinstallation auf dem Zielsystem ist nicht erforderlich
   - für `pnpm env:migrate:<profil>` werden keine Mainserver-Smoke-Werte benötigt; der Befehl validiert nur den für Migrationen relevanten Remote-Kontext
-  - nach dem `goose`-Lauf prüft ein verbindlicher Schema-Guard den kritischen IAM-Sollstand (`groups`, `group_roles`, `account_groups`, Schlüsselspalten, Indizes, RLS-Policies)
+  - nach dem Job-Lauf prüfen `ensureAcceptancePostMigrationState` und der verbindliche Schema-Guard den kritischen IAM-Sollstand (`groups`, `group_roles`, `account_groups`, Schlüsselspalten, Indizes, RLS-Policies)
+  - Deploy-Reports schreiben zusätzlich ein eigenes JSON-Artefakt für den Migrationsjob mit Stack-/Service-Namen, Exit-Code, Task-ID und Job-Dauer
 
 ## Rollback und Betriebsregeln
 
@@ -362,12 +386,16 @@ Wichtig fuer die Interpretation:
 Fuer den produktionsnahen `studio`-Betrieb gilt:
 
 - Grafana/Loki-Zugaenge koennen lokal ueber `~/.config/quantum/env` hinterlegt werden (`SVA_GRAFANA_URL`, `SVA_LOKI_URL`, `SVA_GRAFANA_TOKEN`)
+- Read-only Remote-Diagnostik nutzt bevorzugt die Portainer-API mit `QUANTUM_API_KEY` und fester `QUANTUM_ENDPOINT_ID`
+- `quantum-cli` bleibt im Regelbetrieb auf mutierende Rollouts (`stacks update`) sowie dedizierte Job-Stacks (`migrate`, `bootstrap`) begrenzt
 - Logs muessen weiterhin PII- und Secret-arm bleiben; Diagnostik nutzt den SDK-Logger
 - Wenn in Loki keine verwertbaren App-Diagnoselogs erscheinen, zuerst pruefen:
   - ob die aktuelle App-Version wirklich deployt ist
   - ob Runtime-Flags fuer Console-/Transport-Verhalten im Live-Service angekommen sind
   - ob der Log-Stream neue Container-Ausgaben ueberhaupt aufnimmt
 - `schema-and-app` führt Migrationen nur innerhalb des orchestrierten Deploypfads oder bewusst separat über `pnpm env:migrate:<profil>` aus
+- `env:migrate:<profil>` nutzt für Remote-Profile denselben Pfad `migrate-job -> bootstrap-job -> schema-guard` wie `schema-and-app`
+- `env:migrate:<profil>` und `schema-and-app` laufen für Remote-Profile in separaten Temp-Stacks; diese Jobs dürfen den Live-Stack `app`, `postgres` und `redis` nicht reconciliieren
 - jeder Remote-Deploy erzeugt einen maschinenlesbaren und menschenlesbaren Bericht unter `artifacts/runtime/deployments/`
 - jeder Remote-Deploy erzeugt zusätzlich Release-Manifest, Phasenreport, Migrationsreport, interne Probe-Ergebnisse und externe Probe-Ergebnisse als eigene JSON-Artefakte
 - nach jedem Remote-Deploy folgt `pnpm env:feedback:acceptance-hb` für den Acceptance-Feedback-Loop
@@ -375,6 +403,8 @@ Fuer den produktionsnahen `studio`-Betrieb gilt:
 - vor einer tieferen Fehlersuche immer zuerst `pnpm env:doctor:<profil>` ausführen; manuelles `psql` und Browser-Netzwerk sind nur Fallback
 - bei lokalen Profilwechseln nie zwei Profile parallel auf Port `3000` betreiben
 - für serverseitige Details, Secrets und Portainer-Bedienung bleibt `../guides/swarm-deployment-runbook.md` die Referenz
+- fuer `studio` ist `config/runtime/studio.local.vars` die bewusst freigegebene lokale Operator-Quelle fuer Ziel-Digest und Image-Ref; vor jedem `app-only`- oder `schema-and-app`-Rollout muss dieser Stand mit der beabsichtigten Live-Version konvergieren
+- Der kanonische Recovery-Pfad für `app 1/1`, aber externen `502`, lautet: Render-Compose prüfen, Live-Service-Spec prüfen, kontrollierten `app-only`-Reconcile ausführen, danach `status`, `smoke` und `precheck` wiederholen. Direkte Portainer-API-Eingriffe gelten nur als Incident-Recovery.
 
 ## Typische Fehlerbilder
 
@@ -388,8 +418,10 @@ Fuer den produktionsnahen `studio`-Betrieb gilt:
 - bei neuer lokaler Instanz-DB zuerst `pnpm env:bootstrap:local-instance-db -- ...` verwenden statt manuell Tabellen oder User aus einer anderen Instanz zu kopieren
 - `doctor` oder `/health/ready` melden `schema_drift`: zuerst `pnpm env:migrate:<profil>`, dann `pnpm env:doctor:<profil>`
 - Remote-Deploy scheitert: unvollständige Portainer-Variablen in `deploy/portainer/.env.example`
-- Remote-Migration findet keinen lokalen `postgres`-Container: erwartbar bei Remote-Swarm; der Befehl nutzt dann automatisch `quantum-cli exec`
+- Remote-Migration findet keinen lokalen `postgres`-Container: erwartbar bei Remote-Swarm; der Befehl startet stattdessen den dedizierten Swarm-Migrationsjob
+- Remote-Bootstrap läuft nicht oder hinterlässt `migrate`/`bootstrap` auf `replicas > 0`: Stack mit `pnpm env:status:<profil>` prüfen; die Job-Services müssen nach Erfolg wieder auf `0` stehen
 - `env:deploy:<profil> --release-mode=schema-and-app` scheitert sofort: Wartungsfenster fehlt oder `quantum-cli`/Stack-Zugriff ist nicht verfügbar
+- `status`, `doctor` oder `precheck` scheitern read-only trotz gesundem Stack: zuerst `QUANTUM_ENDPOINT_ID` und `QUANTUM_API_KEY` fuer den Portainer-Pfad pruefen, erst danach `quantum-cli` als Fallback debuggen
 - `env:deploy:<profil>` scheitert vor dem Rollout: `SVA_IMAGE_DIGEST` fehlt oder das Digest-Artefakt besteht den `image-smoke` nicht
 Für das frühe `studio`-Profil sind produktive Console-Logs bewusst per `SVA_ENABLE_SERVER_CONSOLE_LOGS=true` erlaubt, damit Loki die Serverdiagnostik auch ohne internen OTEL-Collector erfassen kann. Das Flag ist ein temporärer Testphasen-Hebel und soll in einer späteren Betriebsphase wieder deaktiviert werden, sobald die OTEL-Pipeline im Zielprofil stabil verfügbar ist.
 

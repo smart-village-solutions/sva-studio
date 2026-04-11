@@ -1,6 +1,7 @@
 import { createSdkLogger } from '@sva/sdk/server';
 import type { InstanceRegistryRepository } from '@sva/data';
-import type { CreateInstanceProvisioningInput, InstanceRegistryServiceDeps } from './types.js';
+import type { CreateInstanceProvisioningInput } from './mutation-types.js';
+import type { InstanceRegistryServiceDeps } from './service-types.js';
 import { createAuditDetails } from './service-helpers.js';
 
 const logger = createSdkLogger({ component: 'iam-instance-registry-provisioning', level: 'info' });
@@ -59,6 +60,7 @@ export const provisionInstanceAuth = async (
     await deps.provisionInstanceAuth({
       instanceId: instance.instanceId,
       primaryHostname: instance.primaryHostname,
+      realmMode: instance.realmMode,
       authRealm: instance.authRealm,
       authClientId: instance.authClientId,
       authIssuerUrl: instance.authIssuerUrl,

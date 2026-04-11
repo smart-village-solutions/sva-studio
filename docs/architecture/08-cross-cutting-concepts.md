@@ -74,6 +74,8 @@ gleichzeitig beeinflussen.
 - Inhalts-Schreibpfade folgen denselben Guardrails: CSRF-Header, Idempotency-Key bei Create, Rollen-Gate (`system_admin`, `app_manager`, `editor`) und revisionssichere History-Events
 - Globale Instanzmutationen verwenden die dedizierte Plattformrolle `instance_registry_admin`
 - Instanzverwaltung ist nur auf dem Root-Host zulässig; Tenant-Hosts rendern keine globale Control Plane
+- Keycloak-Provisioning fuer Instanzen ist ein expliziter mehrstufiger Root-Host-Workflow aus Preflight, Plan, Ausfuehrung und persistiertem Schrittprotokoll
+- Registry-Daten und Keycloak-Mutation sind getrennte Aktionen; ein Speichern von Instanzdaten fuehrt keine implizite Keycloak-Aenderung aus
 - Registry-Lookups verwenden einen kurzen In-Process-L1-Cache mit expliziter Invalidation, aber ohne Stale-Serve-Strategie
 
 ### Logging und Observability
@@ -84,6 +86,7 @@ gleichzeitig beeinflussen.
 - Development nutzt zusätzlich eine lokale Debug-Konsole im Frontend; sie zeigt Browser-Logs und redaktierte Server-Logs, ist aber kein produktiver Telemetriepfad
 - Operative Logs enthalten keine Tokens, keine tokenhaltigen Redirect- oder Logout-URLs und keine decodierbaren JWT-Strings; zulaessig sind nur sichere Summary-Felder
 - Runtime-Diagnostik folgt einem zweistufigen Modell: öffentliche Health-/API-Responses liefern knappe, nicht-sensitive `reason_code`s; OTEL liefert die tiefe technische Korrelation über Span-Attribute und Events
+- Fuer produktionsnahe Remote-Profile ist `app-db-principal` ein eigener Diagnosevertrag: `/health/ready` muss `db`, `redis` und `keycloak` aus Sicht des laufenden `APP_DB_USER` als bereit ausweisen
 - Die Studio-Root-Shell rendert in allen Environments einen sichtbaren Runtime-Health-Indikator auf Basis des bestehenden IAM-Readiness-Endpunkts; die UI zeigt nur sichere Statuszustände und `reason_code`s, keine rohen Provider- oder Stack-Details
 - Label-Whitelist und PII-Blockliste in OTEL/Promtail
 - IAM-Authorize/Cache-Logs nutzen strukturierte Operations (`cache_lookup`, `cache_invalidate`, `cache_stale_detected`, `cache_invalidate_failed`)
@@ -95,7 +98,7 @@ gleichzeitig beeinflussen.
 - IAM-v1-Fehlerantworten dürfen additive `details` tragen, enthalten dort aber nur nicht-sensitive Diagnosefelder wie `reason_code`, `dependency`, `schema_object`, `expected_migration`, `actor_resolution` und `instance_id`
 - Auth-, Resolver- und Audit-Fehler protokollieren redigiert nur `error_type`, `reason_code`, `dependency`, `scope_kind` und Korrelationsfelder; rohe Provider-/DB-Fehltexte bleiben außerhalb des Standard-Logs
 - IAM-Readiness und Diagnosepfade exponieren Schema-Drift bewusst knapp (`schema_drift`, `missing_table`, `missing_column`) statt rohe SQL-, Redis- oder Provider-Fehler an UI oder Browser weiterzugeben
-- Runtime-Doctor und Deploy-Report ergänzen den fachlichen Schema-Guard um `goose`-Status und die verwendete `goose`-Version, ohne Secrets oder Roh-SQL nach außen zu exponieren
+- Runtime-Doctor und Deploy-Report ergänzen den fachlichen Schema-Guard um die verwendete `goose`-Version sowie Metadaten des dedizierten Swarm-Migrations- und Bootstrap-Jobs, ohne Secrets oder Roh-SQL nach außen zu exponieren
 - Keycloak-User-Sync loggt übersprungene Benutzer nur begrenzt, auf Debug-Level und ohne Klartext-PII; Summary-Logs enthalten `skipped_count` und `sample_instance_ids`
 - Role-Sync- und Reconcile-Pfade verwenden ausschließlich den SDK-Logger; `console.*` ist serverseitig ausgeschlossen
 - Role-Sync-Audit nutzt ein einheitliches Schema mit `workspace_id`, `operation`, `result`, `error_code?`, `request_id`, `trace_id?`, `span_id?`
@@ -118,7 +121,8 @@ gleichzeitig beeinflussen.
 - Der Runtime-Doctor- und Migrationspfad emittiert eigene OTEL-Ereignisse für Schema-Guard, Actor-Diagnose und verifizierte Migrationsläufe, damit Betriebsfehler mit `request_id` und `trace_id` korrelierbar bleiben
 - Inhalts-Historie nutzt ein eigenes Read-Modell statt Roh-Logs; jede Erstellung, Aktualisierung und jeder Statuswechsel erzeugt zusätzlich Audit-Ereignisse im bestehenden IAM-Auditpfad
 - Acceptance-Deploys erzeugen zusätzlich strukturierte Release-Evidenz unter `artifacts/runtime/deployments/`; enthalten sind Release-Modus, Actor, Workflow, Image-Referenz, Schrittstatus und Stack-Zusammenfassung, jedoch keine Secrets oder PII
-- Produktionsnahe Releases erzeugen zusätzlich eigenständige Artefakte für Release-Manifest, Phasenstatus, Migration, interne Probes und externe Probes; diese Artefakte bleiben bewusst ohne Secrets oder PII
+- Produktionsnahe Releases erzeugen zusätzlich eigenständige Artefakte für Release-Manifest, Phasenstatus, Migration, Bootstrap, Migrationsjob, Bootstrap-Job, interne Probes und externe Probes; diese Artefakte bleiben bewusst ohne Secrets oder PII
+- Remote-Prechecks für `acceptance-hb` und `studio` vergleichen zusätzlich die Live-Service-Spec der App mit dem gerenderten Sollzustand aus dem Deploy-Compose; dabei sind Netzwerke und ingressrelevante Labels eigene Drift-Signale
 
 ### Fehlerbehandlung und Resilienz
 
@@ -129,10 +133,17 @@ gleichzeitig beeinflussen.
 - Silent Session-Recovery arbeitet ohne Retry-Schleifen und fällt bei Browser-/IdP-Limits deterministisch auf aktiven Login zurück
 - Root-Route nutzt ein zentrales `errorComponent` für unbehandelte Laufzeitfehler mit Retry-Option
 - Runtime-Profile verwenden einen verbindlichen Diagnosepfad `pnpm env:doctor:<profil>`; manuelle `psql`-/Browser-Netzwerkdiagnose ist nur Fallback
+- Read-only Remote-Diagnostik trennt strikt zwischen Portainer-API als Primaerkanal und `quantum-cli` als Mutations-/Fallback-Kanal
+- Mutierende Remote-Kommandos bleiben deterministisch auf den CI-/Runner-Kontext begrenzt; lokale Ausfuehrung ist nur ueber den expliziten Notfall-Override `SVA_ALLOW_LOCAL_REMOTE_MUTATIONS=true` zulaessig
 - `acceptance-hb` verwendet einen verbindlichen, fehlertoleranten Deploypfad `pnpm env:deploy:acceptance-hb`; direkte `up`-/`update`-Deploys sind für Serverrollouts gesperrt
-- Der produktionsnahe Releasevertrag klassifiziert Fehler verbindlich in `config`, `image`, `migration`, `startup`, `health`, `ingress` und `dependency`; spätere Phasen dürfen frühere Resultate nicht überschreiben
+- Der produktionsnahe Releasevertrag klassifiziert Fehler verbindlich in `config`, `image`, `migration`, `bootstrap`, `startup`, `health`, `ingress` und `dependency`; spätere Phasen dürfen frühere Resultate nicht überschreiben
 - Release-Modus `schema-and-app` arbeitet fail-closed: ohne dokumentiertes Wartungsfenster startet kein orchestrierter Acceptance-Deploy
+- Release-Modus `schema-and-app` arbeitet zusätzlich fail-closed auf Basis dedizierter Swarm-Jobs: ohne erfolgreichen Exit-Code von `migrate` und `bootstrap`, Post-Migration-Assertions und Schema-Guard startet kein App-Rollout
 - Acceptance-Releases arbeiten fail-closed ohne `SVA_IMAGE_DIGEST`; ein nicht bestehender `image-smoke` blockiert jeden Rollout vor dem Stack-Update
+- Prod-nahe Paritaet fuer `studio` muss Root-Host, Tenant-Host und OIDC-Verhalten bewerten. Wenn dasselbe Digest bereits live laeuft, darf nur die Live-Evidenz dieses Digests wiederverwendet werden.
+- Der Live-Rollout-Render validiert vor `quantum-cli stacks update`, dass `app` die Netzwerke `internal` und `public` sowie die benoetigten Traefik-Labels weiterhin enthält; fehlende Einträge blockieren den Rollout fail-fast
+- Temp-Job-Stacks für `migrate` und `bootstrap` sind von Live-Rollouts strikt getrennt. Sie nutzen nur `<stack>_internal`, enthalten keinen `app`-Service und dürfen die Live-Spec von `studio_app` nicht mutieren
+- Deploy-Reports unterscheiden explizit zwischen `migration`, `bootstrap`, `health`, `verify` und `ingress_consistency`; ein Zustand `app 1/1`, aber externer `502` wird als eigener Drift-/Ingress-Fehler ausgewiesen
 - IAM-Cache-Invalidierung folgt Event-first (Postgres NOTIFY) mit TTL/Recompute-Fallback
 - Redis-Lookup-, Snapshot-Write- und Recompute-Fehler im Autorisierungspfad enden fail-closed mit HTTP `503` und Fehlercode `database_unavailable`
 - Der Authorization-Cache gilt als `degraded`, wenn Redis-Latenz > `50 ms` oder die Recompute-Rate > `20/min` steigt; nach drei Redis-Fehlern wechselt der Zustand auf `failed`
@@ -170,6 +181,11 @@ gleichzeitig beeinflussen.
 - Rollen-Statusindikatoren in `/admin/roles` verwenden i18n-Labels für `synced`, `pending` und `failed`
 - Retry- und Reconcile-Aktionen bleiben über semantische Buttons und Testabdeckung tastatur- und screenreader-freundlich prüfbar
 - Die neue `/content`-Verwaltung verwendet ausschließlich bestehende `shadcn/ui`-Kompositionen und orientiert sich visuell an vorhandenen Admin-Tabellen statt eine parallele Tabellenbasis einzuführen
+- CRUD-artige Admin-Ressourcen folgen einer einheitlichen Navigationskonvention:
+  - Liste unter `/admin/<resource>`
+  - Erstellungsansicht unter `/admin/<resource>/new`
+  - Detail- und Bearbeitungsansicht unter `/admin/<resource>/$id`
+- Create- und Edit-Flows dieser Ressourcen werden nicht über lokalen Dialog-State der Listenansicht gesteuert; Listenaktionen navigieren immer auf die kanonische Zielroute
 
 ### UI-Theming, Design-Tokens und Shell-Verhalten
 

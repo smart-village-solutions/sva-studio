@@ -2,9 +2,23 @@ import { createPoolResolver } from '../shared/db-helpers.js';
 import { createInstanceRegistryRepository } from '@sva/data';
 import { invalidateInstanceRegistryHost } from '@sva/data/server';
 
-import { getInstanceKeycloakStatus, provisionInstanceAuthArtifacts } from './provisioning-auth.js';
 import { createInstanceRegistryService } from './service.js';
 import { getIamDatabaseUrl } from '../runtime-secrets.server.js';
+import {
+  getInstanceKeycloakPlanViaProvisioner,
+  getInstanceKeycloakPreflightViaProvisioner,
+  getInstanceKeycloakStatusViaProvisioner,
+  provisionInstanceAuthArtifactsViaProvisioner,
+} from './provisioning-auth.js';
+
+const getWorkerKeycloakPreflight = async (input: Parameters<typeof getInstanceKeycloakPreflightViaProvisioner>[0]) =>
+  getInstanceKeycloakPreflightViaProvisioner(input);
+
+const getWorkerKeycloakPlan = async (input: Parameters<typeof getInstanceKeycloakPlanViaProvisioner>[0]) =>
+  getInstanceKeycloakPlanViaProvisioner(input);
+
+const getWorkerKeycloakStatus = async (input: Parameters<typeof getInstanceKeycloakStatusViaProvisioner>[0]) =>
+  getInstanceKeycloakStatusViaProvisioner(input);
 
 const resolvePool = createPoolResolver(getIamDatabaseUrl);
 
@@ -21,6 +35,15 @@ const createExecutor = (client: QueryClient) => ({
       rows: result.rows,
     };
   },
+});
+
+const createProvisioningWorkerDeps = (repository: ReturnType<typeof createInstanceRegistryRepository>) => ({
+  repository,
+  invalidateHost: invalidateInstanceRegistryHost,
+  provisionInstanceAuth: provisionInstanceAuthArtifactsViaProvisioner,
+  getKeycloakPreflight: getWorkerKeycloakPreflight,
+  planKeycloakProvisioning: getWorkerKeycloakPlan,
+  getKeycloakStatus: getWorkerKeycloakStatus,
 });
 
 export const withRegistryRepository = async <T>(
@@ -45,8 +68,17 @@ export const withRegistryService = async <T>(work: (service: ReturnType<typeof c
       createInstanceRegistryService({
         repository,
         invalidateHost: invalidateInstanceRegistryHost,
-        provisionInstanceAuth: provisionInstanceAuthArtifacts,
-        getKeycloakStatus: getInstanceKeycloakStatus,
       })
     )
   );
+
+export const withRegistryProvisioningWorkerService = async <T>(
+  work: (service: ReturnType<typeof createInstanceRegistryService>) => Promise<T>
+): Promise<T> =>
+  withRegistryRepository((repository) =>
+    work(createInstanceRegistryService(createProvisioningWorkerDeps(repository)))
+  );
+
+export const withRegistryProvisioningWorkerDeps = async <T>(
+  work: (deps: ReturnType<typeof createProvisioningWorkerDeps>) => Promise<T>
+): Promise<T> => withRegistryRepository((repository) => work(createProvisioningWorkerDeps(repository)));

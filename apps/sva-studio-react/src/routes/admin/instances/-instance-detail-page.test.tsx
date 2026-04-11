@@ -18,42 +18,83 @@ vi.mock('../../../hooks/use-instances', () => ({
   useInstances: () => useInstancesMock(),
 }));
 
+const createSelectedInstance = (overrides: Record<string, unknown> = {}) => ({
+  instanceId: 'demo',
+  displayName: 'Demo',
+  status: 'requested',
+  parentDomain: 'studio.example.org',
+  primaryHostname: 'demo.studio.example.org',
+  realmMode: 'existing',
+  authRealm: 'demo',
+  authClientId: 'sva-studio',
+  authClientSecretConfigured: true,
+  hostnames: [],
+  provisioningRuns: [],
+  auditEvents: [],
+  keycloakPreflight: {
+    overallStatus: 'ready',
+    generatedAt: '2026-01-01T00:00:00.000Z',
+    checks: [
+      {
+        checkKey: 'keycloak_admin_access',
+        status: 'ready',
+        title: 'Keycloak erreichbar',
+        summary: 'Technischer Zugriff ist vorhanden.',
+      },
+    ],
+  },
+  keycloakPlan: {
+    mode: 'existing',
+    overallStatus: 'ready',
+    generatedAt: '2026-01-01T00:00:00.000Z',
+    driftSummary: 'Kein Drift.',
+    steps: [
+      {
+        stepKey: 'client',
+        action: 'noop',
+        title: 'Client prüfen',
+        summary: 'Keine Änderung erforderlich.',
+      },
+    ],
+  },
+  keycloakProvisioningRuns: [],
+  tenantAdminBootstrap: {
+    username: 'demo-admin',
+    email: 'demo@example.org',
+    firstName: 'Demo',
+    lastName: 'Admin',
+  },
+  keycloakStatus: {
+    realmExists: true,
+    clientExists: true,
+    instanceIdMapperExists: true,
+    tenantAdminExists: true,
+    tenantAdminHasSystemAdmin: true,
+    tenantAdminHasInstanceRegistryAdmin: false,
+    tenantAdminInstanceIdMatches: true,
+    redirectUrisMatch: true,
+    logoutUrisMatch: true,
+    webOriginsMatch: true,
+    clientSecretConfigured: true,
+    tenantClientSecretReadable: true,
+    clientSecretAligned: true,
+    runtimeSecretSource: 'tenant',
+  },
+  latestKeycloakProvisioningRun: {
+    id: 'run-1',
+    intent: 'provision',
+    mode: 'existing',
+    overallStatus: 'succeeded',
+    driftSummary: 'Kein Drift.',
+    requestId: 'req-1',
+    steps: [],
+  },
+  ...overrides,
+});
+
 const createInstancesApiState = (overrides: Record<string, unknown> = {}) => ({
   instances: [],
-  selectedInstance: {
-    instanceId: 'demo',
-    displayName: 'Demo',
-    status: 'active',
-    parentDomain: 'studio.example.org',
-    primaryHostname: 'demo.studio.example.org',
-    authRealm: 'demo',
-    authClientId: 'sva-studio',
-    authClientSecretConfigured: true,
-    hostnames: [],
-    provisioningRuns: [],
-    auditEvents: [],
-    tenantAdminBootstrap: {
-      username: 'demo-admin',
-      email: 'demo@example.org',
-      firstName: 'Demo',
-      lastName: 'Admin',
-    },
-    keycloakStatus: {
-      realmExists: true,
-      clientExists: true,
-      instanceIdMapperExists: true,
-      tenantAdminExists: true,
-      tenantAdminHasSystemAdmin: true,
-      tenantAdminHasInstanceRegistryAdmin: false,
-      redirectUrisMatch: true,
-      logoutUrisMatch: true,
-      webOriginsMatch: true,
-      clientSecretConfigured: true,
-      tenantClientSecretReadable: true,
-      clientSecretAligned: true,
-      runtimeSecretSource: 'tenant',
-    },
-  },
+  selectedInstance: createSelectedInstance(),
   isLoading: false,
   detailLoading: false,
   statusLoading: false,
@@ -71,6 +112,10 @@ const createInstancesApiState = (overrides: Record<string, unknown> = {}) => ({
   clearMutationError: vi.fn(),
   createInstance: vi.fn().mockResolvedValue(true),
   updateInstance: vi.fn().mockResolvedValue(true),
+  refreshKeycloakPreflight: vi.fn().mockResolvedValue(true),
+  planKeycloakProvisioning: vi.fn().mockResolvedValue(true),
+  executeKeycloakProvisioning: vi.fn().mockResolvedValue(true),
+  loadKeycloakProvisioningRun: vi.fn().mockResolvedValue(true),
   refreshKeycloakStatus: vi.fn().mockResolvedValue(true),
   reconcileKeycloak: vi.fn().mockResolvedValue(true),
   activateInstance: vi.fn().mockResolvedValue(true),
@@ -88,18 +133,24 @@ describe('InstanceDetailPage', () => {
     useInstancesMock.mockReset();
   });
 
-  it('loads the instance detail and updates keycloak-related actions', async () => {
+  it('loads the instance detail, shows workflow guidance, and executes actions', async () => {
     const loadInstance = vi.fn().mockResolvedValue(true);
     const updateInstance = vi.fn().mockResolvedValue(true);
+    const refreshKeycloakPreflight = vi.fn().mockResolvedValue(true);
+    const planKeycloakProvisioning = vi.fn().mockResolvedValue(true);
     const refreshKeycloakStatus = vi.fn().mockResolvedValue(true);
-    const reconcileKeycloak = vi.fn().mockResolvedValue(true);
+    const executeKeycloakProvisioning = vi.fn().mockResolvedValue(true);
+    const activateInstance = vi.fn().mockResolvedValue(true);
 
     useInstancesMock.mockReturnValue(
       createInstancesApiState({
         loadInstance,
         updateInstance,
+        refreshKeycloakPreflight,
+        planKeycloakProvisioning,
         refreshKeycloakStatus,
-        reconcileKeycloak,
+        executeKeycloakProvisioning,
+        activateInstance,
       })
     );
 
@@ -109,8 +160,10 @@ describe('InstanceDetailPage', () => {
       expect(loadInstance).toHaveBeenCalledWith('demo');
     });
 
-    expect(screen.getByText('Primärer Hostname: demo.studio.example.org')).toBeTruthy();
-    expect(screen.getByText('Status: Aktiv')).toBeTruthy();
+    expect(screen.getByText('Instanz gespeichert, aber noch nicht betriebsbereit')).toBeTruthy();
+    expect(screen.getByText('Was ist noch offen?')).toBeTruthy();
+    expect(screen.getByText('Provisioning ist erfolgreich. Die Instanz kann jetzt aktiviert werden.')).toBeTruthy();
+    expect(screen.getByText('Runtime nutzt Tenant-Secret')).toBeTruthy();
 
     fireEvent.change(screen.getByLabelText('Anzeigename', { selector: '#detail-display-name' }), {
       target: { value: ' Demo Updated ' },
@@ -136,13 +189,13 @@ describe('InstanceDetailPage', () => {
     fireEvent.change(screen.getByLabelText('Temporäres Admin-Passwort'), {
       target: { value: ' test-temp-password ' },
     });
-    fireEvent.click(screen.getByLabelText('Tenant-Client-Secret beim Reconcile erneut in Keycloak setzen'));
     fireEvent.click(screen.getByRole('button', { name: 'Instanz speichern' }));
 
     await waitFor(() => {
       expect(updateInstance).toHaveBeenCalledWith('demo', {
         displayName: 'Demo Updated',
         parentDomain: 'studio.example.org',
+        realmMode: 'existing',
         authRealm: 'demo-updated',
         authClientId: 'tenant-client',
         authIssuerUrl: 'https://issuer.example.org',
@@ -162,38 +215,119 @@ describe('InstanceDetailPage', () => {
       ).toBe('');
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Keycloak-Status prüfen' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Realm anwenden' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Tenant-Admin neu setzen' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Client-Secret rotieren' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Vorbedingungen prüfen' })[0]);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Keycloak-Status prüfen' })[0]);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Provisioning-Vorschau laden' })[0]);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Provisioning ausführen' }).at(-1)!);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Tenant-Admin neu setzen' }).at(-1)!);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Client-Secret rotieren' }).at(-1)!);
+    fireEvent.click(screen.getByRole('button', { name: 'Aktivieren' }));
 
+    expect(refreshKeycloakPreflight).toHaveBeenCalledWith('demo');
+    expect(planKeycloakProvisioning).toHaveBeenCalledWith('demo');
     expect(refreshKeycloakStatus).toHaveBeenCalledWith('demo');
+    expect(activateInstance).toHaveBeenCalledWith('demo');
     await waitFor(() => {
-      expect(reconcileKeycloak).toHaveBeenNthCalledWith(1, 'demo', {
-        rotateClientSecret: false,
-        tenantAdminTemporaryPassword: 'test-temp-password',
-      });
-      expect(reconcileKeycloak).toHaveBeenNthCalledWith(2, 'demo', {
-        rotateClientSecret: false,
-        tenantAdminTemporaryPassword: 'test-temp-password',
-      });
-      expect(reconcileKeycloak).toHaveBeenNthCalledWith(3, 'demo', {
-        rotateClientSecret: true,
-        tenantAdminTemporaryPassword: 'test-temp-password',
-      });
+      expect(executeKeycloakProvisioning.mock.calls).toEqual(
+        expect.arrayContaining([
+          [
+            'demo',
+            {
+              intent: 'provision',
+              tenantAdminTemporaryPassword: 'test-temp-password',
+            },
+          ],
+          [
+            'demo',
+            {
+              intent: 'reset_tenant_admin',
+              tenantAdminTemporaryPassword: 'test-temp-password',
+            },
+          ],
+          [
+            'demo',
+            {
+              intent: 'rotate_client_secret',
+              tenantAdminTemporaryPassword: 'test-temp-password',
+            },
+          ],
+        ])
+      );
     });
 
     await waitFor(() => {
       expect((screen.getByLabelText('Temporäres Admin-Passwort') as HTMLInputElement).value).toBe('');
-      expect(
-        (screen.getByLabelText('Tenant-Client-Secret beim Reconcile erneut in Keycloak setzen') as HTMLInputElement).checked
-      ).toBe(false);
     });
-
-    expect(screen.getByText('Runtime nutzt Tenant-Secret')).toBeTruthy();
   });
 
-  it('renders mutation errors', () => {
+  it('keeps the detail page usable when keycloak is unavailable', async () => {
+    const refreshKeycloakPreflight = vi.fn().mockResolvedValue(true);
+    useInstancesMock.mockReturnValue(
+      createInstancesApiState({
+        mutationError: { status: 502, code: 'keycloak_unavailable', message: 'kaputt' },
+        selectedInstance: createSelectedInstance({
+          keycloakStatus: undefined,
+          latestKeycloakProvisioningRun: undefined,
+          keycloakProvisioningRuns: [],
+        }),
+        refreshKeycloakPreflight,
+      })
+    );
+
+    render(<InstanceDetailPage instanceId="demo" />);
+
+    expect(screen.getByText('Die Detailseite bleibt bedienbar, aber Keycloak-Aktionen und Prüfungen sind aktuell blockiert. Prüfen Sie Erreichbarkeit und Credentials.')).toBeTruthy();
+    expect(screen.getByText('Technischer Keycloak-Zugriff')).toBeTruthy();
+    expect(screen.queryByText('Keycloak konnte nicht erreicht oder nicht abgeglichen werden.')).toBeNull();
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Vorbedingungen prüfen' })[0]);
+
+    await waitFor(() => {
+      expect(refreshKeycloakPreflight).toHaveBeenCalledWith('demo');
+    });
+  });
+
+  it('keeps the tenant secret field read-only for new realms and marks generation as pending', () => {
+    useInstancesMock.mockReturnValue(
+      createInstancesApiState({
+        selectedInstance: createSelectedInstance({
+          realmMode: 'new',
+          authClientSecretConfigured: false,
+          keycloakStatus: {
+            realmExists: false,
+            clientExists: false,
+            instanceIdMapperExists: false,
+            tenantAdminExists: false,
+            tenantAdminHasSystemAdmin: false,
+            tenantAdminHasInstanceRegistryAdmin: false,
+            tenantAdminInstanceIdMatches: false,
+            redirectUrisMatch: false,
+            logoutUrisMatch: false,
+            webOriginsMatch: false,
+            clientSecretConfigured: false,
+            tenantClientSecretReadable: false,
+            clientSecretAligned: false,
+            runtimeSecretSource: 'instance',
+          },
+          latestKeycloakProvisioningRun: undefined,
+        }),
+      })
+    );
+
+    render(<InstanceDetailPage instanceId="demo" />);
+
+    const secretInput = screen.getByLabelText('Tenant-Client-Secret', {
+      selector: '#detail-auth-client-secret',
+    }) as HTMLInputElement;
+    expect(secretInput.disabled).toBe(true);
+    expect(secretInput.placeholder).toBe('Wird beim Provisioning automatisch erzeugt');
+    expect(screen.getByText('Für neue Realms wird das Tenant-Client-Secret erst beim Provisioning erzeugt und danach gespeichert.')).toBeTruthy();
+    expect(
+      screen.getByText('Bei neuen Realms wird das Secret beim Provisioning automatisch erzeugt und danach in Studio gespeichert.')
+    ).toBeTruthy();
+  });
+
+  it('renders non-keycloak mutation errors', () => {
     useInstancesMock.mockReturnValue(
       createInstancesApiState({
         mutationError: { status: 409, code: 'conflict', message: 'conflict' },

@@ -1,4 +1,4 @@
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 
 const retryDelayBuffer = new Int32Array(new SharedArrayBuffer(4));
 
@@ -124,6 +124,18 @@ export const runCaptureDetailed = (
     cwd: rootDir,
     env,
     encoding: 'utf8',
+  });
+
+export const spawnBackground = (
+  rootDir: string,
+  commandName: string,
+  args: readonly string[],
+  env: NodeJS.ProcessEnv = process.env,
+) =>
+  spawn(commandName, args, {
+    cwd: rootDir,
+    env,
+    stdio: 'ignore',
   });
 
 export const commandExists = (rootDir: string, commandName: string) =>

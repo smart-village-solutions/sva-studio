@@ -45,7 +45,16 @@ const shouldRetryWithPrimaryHostname = (error: unknown): boolean => {
 const readErrorType = (error: unknown): string =>
   error instanceof Error && error.constructor?.name ? error.constructor.name : typeof error;
 
-const withErrorCause = (message: string, cause: unknown): Error => new Error(message, { cause });
+const withErrorCause = (message: string, cause: unknown): Error => {
+  const error = new Error(message);
+  Object.defineProperty(error, 'cause', {
+    value: cause,
+    configurable: true,
+    enumerable: false,
+    writable: true,
+  });
+  return error;
+};
 
 const ensureValidIamDatabaseUrl = (databaseUrl: string | undefined): string | null => {
   if (!databaseUrl) {

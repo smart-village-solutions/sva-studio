@@ -131,6 +131,8 @@ Pragmatische Betriebsregeln aus den letzten Rollouts:
 - wenn Runtime-Overrides im Live-Stack fehlen, nicht blind denselben `quantum-cli stacks update` wiederholen, sondern den kanonischen Runtime-Pfad mit vorgerenderter Compose nutzen
 - ein gruener Stack ersetzt nicht die Laufzeitpruefung des App-DB-Users; `sva_app` muss real existieren und sich anmelden koennen
 - fuer Tenant-Debugging externe und interne Host-Requests trennen, bevor Ingress-Komponenten verdaechtigt werden
+- fuer `studio` ist ein lokaler Kandidatencontainer nur Hilfssignal; Root-/Tenant-/Ingress-Paritaet bleibt ein Remote-Vertrag
+- wenn das Ziel-Digest bereits live laeuft, darf derselbe Digest nur ueber dokumentierte Live-Paritaet wiederverwendet werden, nicht ueber eine weaker lokale Ersatzprobe
 
 ### Adminer für Acceptance
 
@@ -264,18 +266,34 @@ pnpm env:deploy:acceptance-hb -- \
 Der Deploypfad führt verbindlich aus:
 
 1. `environment-precheck` inklusive Pflichtvariablen, Schema-Guard und Live-Spec-Drift
-2. `image-smoke` gegen das Digest-Artefakt
+2. `image-smoke` gegen das Digest-Artefakt inklusive Root-Host-, Tenant-Host- und OIDC-Paritaet
 3. `migrate` bei `schema-and-app`
-4. Stack-Rollout via `quantum-cli stacks update` oder `docker stack deploy`
-5. `internal-verify` mit internen Probes und `doctor`
-6. `external-smoke`
-7. `release-decision`
+4. `bootstrap` bei `schema-and-app`
+5. Stack-Rollout via `quantum-cli stacks update` oder `docker stack deploy`
+6. `internal-verify` mit `doctor`, Swarm-Task-Sicht und App-Principal-Evidenz
+7. `external-smoke`
+8. `release-decision`
 
 Interpretationshilfe:
 
 - wenn der Deploy-Report rot ist, aber Service-Spec, laufende Tasks und externe Smokes gruen sind, liegt wahrscheinlich ein False-Negative im Verify-/Transportpfad vor
 - in diesem Fall zuerst Live-Service und Smokes als Wahrheitsebene pruefen, dann den Reportpfad debuggen
 8. Schreiben eines Deploy-Reports unter `artifacts/runtime/deployments/`
+
+Read-only Betriebsregel:
+
+- `status`, `doctor` und `precheck` nutzen bevorzugt die Portainer-API mit `QUANTUM_API_KEY` und `QUANTUM_ENDPOINT_ID`
+- lokales `quantum-cli` ist fuer diese Pfade nicht mehr der primaere Wahrheitskanal
+- `quantum-cli` bleibt fuer Mutationen wie `stacks update` sowie fuer dedizierte Job-Stacks der kanonische Operator-Pfad
+- mutierende Remote-Kommandos aus `pnpm env:*:<profil>` sind standardmaessig nur im CI-/Runner-Kontext erlaubt; lokal ist dafuer explizit `SVA_ALLOW_LOCAL_REMOTE_MUTATIONS=true` als Notfallpfad noetig
+
+Fuer das produktionsnahe Profil `studio` gilt derselbe Netzwerk-/Ingress-Vertrag zusaetzlich gegen `config/runtime/studio.local.vars`:
+
+- `SVA_IMAGE_REF`, `SVA_IMAGE_DIGEST` und `SVA_IMAGE_TAG` in dieser lokalen Operator-Datei muessen den bewusst freigegebenen Zielstand repraesentieren
+- ein `app-only`-Reconcile dient als kanonischer, nicht destruktiver Recovery-Pfad fuer Netz-/Ingress-Drift
+- `env:migrate:studio` und `schema-and-app` duerfen nur die Temp-Job-Stacks `migrate` und `bootstrap` bewegen; Seiteneffekte auf `studio_app` ausserhalb des expliziten Deploy-Schritts sind kein akzeptierter Zustand
+- `precheck` und `doctor` muessen `app-db-principal` fuer `APP_DB_USER` als gesund bestaetigen; Superuser-only-Sicht ist kein Freigabenachweis
+- wenn das Ziel-Digest bereits auf `studio_app` laeuft, darf `image-smoke` die Live-Paritaet nur wiederverwenden, wenn Ingress-Konsistenz, `app-db-principal`, Tenant-Auth-Proof und Runtime-Flags fuer genau dieses Digest gruen sind
 
 ## Schritt 3a: Neue Instanz im Registry-Modell anlegen
 
@@ -347,7 +365,7 @@ Der kanonische Deploypfad erzeugt zusätzlich pro Lauf Artefakte unter `artifact
 - JSON-Report für CI-Weiterverarbeitung
 - Markdown-Report für Menschen
 - Release-Manifest mit Commit, Digest, Image-Ref, Actor und Workflow
-- Ergebnis von `environment-precheck`, `image-smoke`, `migrate`, `deploy`, `internal-verify`, `external-smoke` und `release-decision`
+- Ergebnis von `environment-precheck`, `image-smoke`, `migrate`, `bootstrap`, `deploy`, `internal-verify`, `external-smoke` und `release-decision`
 - separate JSON-Artefakte für Phasenstatus, Migration, interne Probes und externe Probes
 - referenzierbaren Stack-Status und optionale Grafana-/Loki-Links
 
@@ -369,7 +387,8 @@ Wenn der Deploy fehlgeschlagen ist oder nur mit manueller Nacharbeit stabil wurd
 - Schema-Drift-Erkennung für kritische IAM-Artefakte
 - Actor-/Membership-Diagnose über `SVA_DOCTOR_*`
 - nicht-sensitive `reason_code`s für DB-, Redis-, Keycloak- und IAM-Pfade
-- Remote-Service-Status via `quantum-cli`
+- Remote-Service-Status und Live-Service-Spec bevorzugt via Portainer-API
+- `quantum-cli exec` nur noch als dokumentierter Fallback fuer Sonderdiagnosen
 
 Stabile Diagnosecodes umfassen unter anderem:
 
@@ -384,13 +403,14 @@ Stabile Diagnosecodes umfassen unter anderem:
 | Prüfung | Erwartung |
 |---|---|
 | `GET https://<SVA_PARENT_DOMAIN>/health/live` | HTTP 200 |
-| `GET https://<SVA_PARENT_DOMAIN>/health/ready` | HTTP 200, Redis + DB bereit |
+| `GET https://<SVA_PARENT_DOMAIN>/health/ready` | HTTP 200, Redis + DB + Keycloak bereit |
 | `GET https://<SVA_PARENT_DOMAIN>/auth/login` | Redirect zum OIDC-Provider |
 | `GET https://<aktive-instance>.<SVA_PARENT_DOMAIN>/` | HTTP 200 ohne neues Deployment |
 | `GET https://unknown.<SVA_PARENT_DOMAIN>/` | fail-closed, ohne tenant-spezifische Detailoffenlegung |
 | `GET https://<suspendierte-instance>.<SVA_PARENT_DOMAIN>/auth/me` | gleiches fail-closed-Verhalten wie unbekannter Host |
 | App in Portainer | Status: `healthy` |
 | Monitoring-Services in Portainer | `otel-collector`, `loki`, `prometheus`, `grafana`, `promtail`, `alertmanager` laufen |
+| `app-db-principal` in `doctor`/`precheck` | `ok`, `APP_DB_USER` sieht `db=true`, `redis=true`, `keycloak=true` |
 
 Für IAM-Abnahmen zusätzlich:
 
@@ -410,6 +430,8 @@ Für ein reines App-Update ohne Schemaänderungen:
 2. `pnpm env:deploy:acceptance-hb -- --release-mode=app-only --image-tag=<tag>` ausführen
    - zusätzlich ist `--image-digest=<sha256:...>` verpflichtend
 3. Deploy-Report prüfen und archivieren
+
+Fuer `studio` gilt derselbe Pfad mit dem Unterschied, dass der Ziel-Digest vorab ueber `config/runtime/studio.local.vars` konvergiert und anschliessend mit `pnpm env:status:studio`, `pnpm env:smoke:studio` und `pnpm env:precheck:studio` bestaetigt wird.
 
 Für Schemaänderungen:
 
@@ -433,6 +455,18 @@ Ein Rollback über eine destruktive Migration hinweg erfordert einen DB-Restore 
 1. Postgres-Volume löschen
 2. Stack frisch deployen
 3. Datenbank neu initialisieren (Schritt 3)
+
+### Recovery bei Netzwerk-/Ingress-Drift
+
+Wenn `app` in Swarm gesund wirkt (`1/1`), extern aber `502` oder fehlendes Routing beobachtet wird, gilt folgende Reihenfolge:
+
+1. gerendertes Compose und erwartete `app`-Spec pruefen
+2. Live-Service-Spec ueber Portainer-/Swarm-Daten gegen Netzwerke `internal`, `public` und Traefik-Labels vergleichen
+3. kontrollierten `app-only`-Reconcile gegen denselben Digest ausfuehren
+4. danach `status`, `smoke` und `precheck` erneut laufen lassen
+5. Incident erst schliessen, wenn der kanonische Soll-/Ist-Abgleich wieder gruen ist
+
+Direkte Portainer-Eingriffe bleiben Incident-Recovery und sind nicht der kanonische Standardpfad.
 
 ## Persistenz
 

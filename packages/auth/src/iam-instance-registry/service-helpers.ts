@@ -1,11 +1,15 @@
 import type {
   InstanceStatus,
   IamInstanceDetail,
+  IamInstanceKeycloakPlan,
+  IamInstanceKeycloakPreflight,
+  IamInstanceKeycloakProvisioningRun,
   IamInstanceListItem,
 } from '@sva/core';
 
 import type { InstanceRegistryRepository } from '@sva/data';
-import type { ChangeInstanceStatusInput, KeycloakTenantStatus } from './types.js';
+import type { ChangeInstanceStatusInput } from './mutation-types.js';
+import type { KeycloakTenantStatus } from './keycloak-types.js';
 
 type InstanceRecord = Awaited<ReturnType<InstanceRegistryRepository['listInstances']>>[number];
 type ProvisioningRun = Awaited<ReturnType<InstanceRegistryRepository['listProvisioningRuns']>>[number];
@@ -20,6 +24,7 @@ export const toListItem = (
   status: item.status,
   parentDomain: item.parentDomain,
   primaryHostname: item.primaryHostname,
+  realmMode: item.realmMode,
   authRealm: item.authRealm,
   authClientId: item.authClientId,
   authIssuerUrl: item.authIssuerUrl,
@@ -37,7 +42,10 @@ export const buildInstanceDetail = (
   instance: Exclude<Awaited<ReturnType<InstanceRegistryRepository['getInstanceById']>>, null>,
   provisioningRuns: readonly ProvisioningRun[],
   auditEvents: readonly AuditEvent[],
-  keycloakStatus?: KeycloakTenantStatus
+  keycloakStatus?: KeycloakTenantStatus,
+  keycloakPreflight?: IamInstanceKeycloakPreflight,
+  keycloakPlan?: IamInstanceKeycloakPlan,
+  keycloakProvisioningRuns: readonly IamInstanceKeycloakProvisioningRun[] = []
 ): IamInstanceDetail => ({
   ...toListItem(instance, provisioningRuns[0]),
   hostnames: [
@@ -50,6 +58,10 @@ export const buildInstanceDetail = (
   provisioningRuns,
   auditEvents,
   keycloakStatus,
+  keycloakPreflight,
+  keycloakPlan,
+  latestKeycloakProvisioningRun: keycloakProvisioningRuns[0],
+  keycloakProvisioningRuns,
 });
 
 export const createAuditDetails = (

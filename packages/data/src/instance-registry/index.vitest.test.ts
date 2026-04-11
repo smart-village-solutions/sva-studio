@@ -33,6 +33,7 @@ describe('instance registry repository (vitest)', () => {
           status: 'active',
           parent_domain: 'studio.example.org',
           primary_hostname: 'hb.studio.example.org',
+          realm_mode: 'existing',
           auth_realm: 'hb',
           auth_client_id: 'sva-studio',
           auth_issuer_url: null,
@@ -56,6 +57,7 @@ describe('instance registry repository (vitest)', () => {
         status: 'active',
         parentDomain: 'studio.example.org',
         primaryHostname: 'hb.studio.example.org',
+        realmMode: 'existing',
         authRealm: 'hb',
         authClientId: 'sva-studio',
         authIssuerUrl: undefined,
@@ -82,6 +84,7 @@ describe('instance registry repository (vitest)', () => {
           status: 'active',
           parent_domain: 'studio.smart-village.app',
           primary_hostname: 'bb-guben.studio.smart-village.app',
+          realm_mode: 'existing',
           auth_realm: 'bb-guben',
           auth_client_id: 'sva-studio',
           auth_issuer_url: 'https://keycloak.smart-village.app/realms/bb-guben',
@@ -110,6 +113,7 @@ describe('instance registry repository (vitest)', () => {
         status: 'active',
         parentDomain: 'studio.smart-village.app',
         primaryHostname: 'bb-guben.studio.smart-village.app',
+        realmMode: 'existing',
         authRealm: 'bb-guben',
         authClientId: 'sva-studio',
         authIssuerUrl: 'https://keycloak.smart-village.app/realms/bb-guben',
@@ -158,6 +162,7 @@ describe('instance registry repository (vitest)', () => {
               status: 'active',
               parent_domain: 'studio.smart-village.app',
               primary_hostname: 'bb-guben.studio.smart-village.app',
+              realm_mode: 'existing',
               auth_realm: 'bb-guben',
               auth_client_id: 'sva-studio',
               auth_issuer_url: 'https://keycloak.smart-village.app/realms/bb-guben',
@@ -358,6 +363,7 @@ describe('instance registry repository (vitest)', () => {
               status: 'requested',
               parent_domain: 'studio.example.org',
               primary_hostname: 'demo.studio.example.org',
+              realm_mode: 'new',
               auth_realm: 'demo',
               auth_client_id: 'sva-studio',
               auth_issuer_url: null,
@@ -386,6 +392,7 @@ describe('instance registry repository (vitest)', () => {
         instanceId: 'demo',
         displayName: 'Demo',
         status: 'requested',
+        realmMode: 'new',
         parentDomain: 'studio.example.org',
         primaryHostname: 'demo.studio.example.org',
         authRealm: 'demo',
@@ -395,6 +402,7 @@ describe('instance registry repository (vitest)', () => {
       instanceId: 'demo',
       displayName: 'Demo',
       status: 'requested',
+      realmMode: 'new',
       parentDomain: 'studio.example.org',
       primaryHostname: 'demo.studio.example.org',
       authRealm: 'demo',
@@ -411,8 +419,8 @@ describe('instance registry repository (vitest)', () => {
       updatedBy: 'system',
     });
     expect(statements).toHaveLength(2);
-    expect(statements[0]?.values[14]).toBe('{}');
-    expect(statements[0]?.values[16]).toBe('system');
+    expect(statements[0]?.values[15]).toBe('{}');
+    expect(statements[0]?.values[17]).toBe('system');
     expect(statements[1]?.values[2]).toBe('system');
   });
 
@@ -429,6 +437,7 @@ describe('instance registry repository (vitest)', () => {
               status: 'active',
               parent_domain: 'studio.smart-village.app',
               primary_hostname: 'bb-guben.studio.smart-village.app',
+              realm_mode: 'existing',
               auth_realm: 'bb-guben',
               auth_client_id: 'sva-studio',
               auth_issuer_url: 'https://keycloak.smart-village.app/realms/bb-guben',
@@ -461,6 +470,7 @@ describe('instance registry repository (vitest)', () => {
       repository.updateInstance({
         instanceId: 'bb-guben',
         displayName: 'BB Guben',
+        realmMode: 'existing',
         parentDomain: 'studio.smart-village.app',
         primaryHostname: 'bb-guben.studio.smart-village.app',
         authRealm: 'bb-guben',
@@ -482,6 +492,7 @@ describe('instance registry repository (vitest)', () => {
       instanceId: 'bb-guben',
       displayName: 'BB Guben',
       status: 'active',
+      realmMode: 'existing',
       parentDomain: 'studio.smart-village.app',
       primaryHostname: 'bb-guben.studio.smart-village.app',
       authRealm: 'bb-guben',
@@ -502,9 +513,9 @@ describe('instance registry repository (vitest)', () => {
       updatedAt: '2026-01-02T00:00:00.000Z',
       updatedBy: 'actor-1',
     });
-    expect(statements[0]?.values[7]).toBe(true);
-    expect(statements[0]?.values[8]).toBeNull();
-    expect(statements[0]?.values[9]).toBe('tenant-admin');
+    expect(statements[0]?.values[8]).toBe(true);
+    expect(statements[0]?.values[9]).toBeNull();
+    expect(statements[0]?.values[10]).toBe('tenant-admin');
     expect(statements[1]?.values[0]).toBe('bb-guben.studio.smart-village.app');
   });
 

@@ -22,6 +22,7 @@ vi.mock('../iam-account-management/encryption.js', () => ({
 
 import { createInstanceRegistryService } from './service.js';
 
+import type { IamInstanceKeycloakProvisioningRun } from '@sva/core';
 import type { InstanceRegistryRepository } from '@sva/data';
 import type { InstanceAuditEvent, InstanceProvisioningRun, InstanceRegistryRecord } from '@sva/data';
 
@@ -32,6 +33,7 @@ const createRepository = (): InstanceRegistryRepository => {
   const provisioningRuns = new Map<string, InstanceProvisioningRun[]>();
   const auditEvents = new Map<string, InstanceAuditEvent[]>();
   const secretCiphertexts = new Map<string, string | null>();
+  const keycloakProvisioningRuns = new Map<string, IamInstanceKeycloakProvisioningRun[]>();
 
   return {
     async listInstances(input = {}) {
@@ -63,6 +65,34 @@ const createRepository = (): InstanceRegistryRepository => {
     async listAuditEvents(instanceId) {
       return auditEvents.get(instanceId) ?? [];
     },
+    async listKeycloakProvisioningRuns(instanceId) {
+      return keycloakProvisioningRuns.get(instanceId) ?? [];
+    },
+    async getKeycloakProvisioningRun(instanceId, runId) {
+      return (keycloakProvisioningRuns.get(instanceId) ?? []).find((run) => run.id === runId) ?? null;
+    },
+    async claimNextKeycloakProvisioningRun() {
+      for (const [instanceId, runs] of keycloakProvisioningRuns.entries()) {
+        const targetIndex = runs.findIndex((run) => run.overallStatus === 'planned');
+        if (targetIndex < 0) {
+          continue;
+        }
+        const current = runs[targetIndex];
+        if (!current) {
+          continue;
+        }
+        const updated: IamInstanceKeycloakProvisioningRun = {
+          ...current,
+          overallStatus: 'running',
+          updatedAt: now,
+        };
+        const nextRuns = [...runs];
+        nextRuns[targetIndex] = updated;
+        keycloakProvisioningRuns.set(instanceId, nextRuns);
+        return updated;
+      }
+      return null;
+    },
     async createInstance(input) {
       const record: InstanceRegistryRecord = {
         instanceId: input.instanceId,
@@ -70,6 +100,7 @@ const createRepository = (): InstanceRegistryRepository => {
         status: input.status,
         parentDomain: input.parentDomain,
         primaryHostname: input.primaryHostname,
+        realmMode: input.realmMode,
         authRealm: input.authRealm,
         authClientId: input.authClientId,
         authIssuerUrl: input.authIssuerUrl,
@@ -98,6 +129,7 @@ const createRepository = (): InstanceRegistryRepository => {
         displayName: input.displayName,
         parentDomain: input.parentDomain,
         primaryHostname: input.primaryHostname,
+        realmMode: input.realmMode,
         authRealm: input.authRealm,
         authClientId: input.authClientId,
         authIssuerUrl: input.authIssuerUrl,
@@ -150,6 +182,78 @@ const createRepository = (): InstanceRegistryRepository => {
       provisioningRuns.set(input.instanceId, [run, ...(provisioningRuns.get(input.instanceId) ?? [])]);
       return run;
     },
+    async createKeycloakProvisioningRun(input) {
+      const run: IamInstanceKeycloakProvisioningRun = {
+        id: `${input.instanceId}-${input.intent}-${input.overallStatus}`,
+        instanceId: input.instanceId,
+        mode: input.mode,
+        intent: input.intent,
+        overallStatus: input.overallStatus,
+        driftSummary: input.driftSummary,
+        requestId: input.requestId,
+        actorId: input.actorId,
+        createdAt: now,
+        updatedAt: now,
+        steps: [],
+      };
+      keycloakProvisioningRuns.set(input.instanceId, [run, ...(keycloakProvisioningRuns.get(input.instanceId) ?? [])]);
+      return run;
+    },
+    async updateKeycloakProvisioningRun(input) {
+      for (const [instanceId, runs] of keycloakProvisioningRuns.entries()) {
+        const targetIndex = runs.findIndex((run) => run.id === input.runId);
+        if (targetIndex < 0) {
+          continue;
+        }
+        const current = runs[targetIndex];
+        if (!current) {
+          return null;
+        }
+        const updated: IamInstanceKeycloakProvisioningRun = {
+          ...current,
+          overallStatus: input.overallStatus,
+          driftSummary: input.driftSummary,
+          updatedAt: now,
+        };
+        const nextRuns = [...runs];
+        nextRuns[targetIndex] = updated;
+        keycloakProvisioningRuns.set(instanceId, nextRuns);
+        return updated;
+      }
+      return null;
+    },
+    async appendKeycloakProvisioningStep(input) {
+      for (const [instanceId, runs] of keycloakProvisioningRuns.entries()) {
+        const targetIndex = runs.findIndex((run) => run.id === input.runId);
+        if (targetIndex < 0) {
+          continue;
+        }
+        const current = runs[targetIndex];
+        if (!current) {
+          throw new Error('run_not_found');
+        }
+        const step = {
+          stepKey: input.stepKey,
+          title: input.title,
+          status: input.status,
+          startedAt: input.startedAt,
+          finishedAt: input.finishedAt,
+          summary: input.summary,
+          details: input.details ?? {},
+          requestId: input.requestId,
+        } as const;
+        const updated: IamInstanceKeycloakProvisioningRun = {
+          ...current,
+          updatedAt: now,
+          steps: [...current.steps, step],
+        };
+        const nextRuns = [...runs];
+        nextRuns[targetIndex] = updated;
+        keycloakProvisioningRuns.set(instanceId, nextRuns);
+        return step;
+      }
+      throw new Error('run_not_found');
+    },
     async appendAuditEvent(input) {
       const event: InstanceAuditEvent = {
         id: `${input.instanceId}-${input.eventType}`,
@@ -184,6 +288,7 @@ describe('iam-instance-registry service', () => {
       instanceId: 'demo',
       displayName: 'Demo',
       parentDomain: 'studio.lvh.me',
+      realmMode: 'new',
       authRealm: 'demo',
       authClientId: 'sva-studio',
       requestId: 'req-1',
@@ -193,6 +298,7 @@ describe('iam-instance-registry service', () => {
       instanceId: 'demo',
       displayName: 'Demo',
       parentDomain: 'studio.lvh.me',
+      realmMode: 'new',
       authRealm: 'demo',
       authClientId: 'sva-studio',
       requestId: 'req-2',
@@ -212,7 +318,7 @@ describe('iam-instance-registry service', () => {
     );
   });
 
-  it('resolves a newly provisioned instance without requiring a redeploy', async () => {
+  it('resolves a newly registered instance without requiring a redeploy', async () => {
     const invalidateHost = vi.fn();
     const provisionInstanceAuth = vi.fn().mockResolvedValue(undefined);
     const service = createInstanceRegistryService({
@@ -226,6 +332,7 @@ describe('iam-instance-registry service', () => {
       instanceId: 'demo',
       displayName: 'Demo',
       parentDomain: 'studio.lvh.me',
+      realmMode: 'new',
       authRealm: 'demo',
       authClientId: 'sva-studio',
       actorId: 'actor-1',
@@ -243,20 +350,15 @@ describe('iam-instance-registry service', () => {
     expect(resolved.instance).toEqual(
       expect.objectContaining({
         instanceId: 'demo',
-        status: 'validated',
+        status: 'requested',
+        realmMode: 'new',
         primaryHostname: 'demo.studio.lvh.me',
         authRealm: 'demo',
         authClientId: 'sva-studio',
       })
     );
     expect(invalidateHost).toHaveBeenCalledWith('demo.studio.lvh.me');
-    expect(provisionInstanceAuth).toHaveBeenCalledWith(
-      expect.objectContaining({
-        instanceId: 'demo',
-        authRealm: 'demo',
-        authClientId: 'sva-studio',
-      })
-    );
+    expect(provisionInstanceAuth).not.toHaveBeenCalled();
   });
 
   it('passes tenant auth bootstrap values through the create provisioning path', async () => {
@@ -272,6 +374,7 @@ describe('iam-instance-registry service', () => {
       instanceId: 'demo',
       displayName: 'Demo',
       parentDomain: 'studio.lvh.me',
+      realmMode: 'new',
       authRealm: 'demo',
       authClientId: 'sva-studio',
       authClientSecret: 'tenant-client-secret',
@@ -286,16 +389,21 @@ describe('iam-instance-registry service', () => {
     });
 
     expect(created.ok).toBe(true);
-    expect(provisionInstanceAuth).toHaveBeenCalledWith(
+    expect(provisionInstanceAuth).not.toHaveBeenCalled();
+    expect(created).toEqual(
       expect.objectContaining({
-        instanceId: 'demo',
-        authClientSecret: 'tenant-client-secret',
-        tenantAdminBootstrap: {
-          username: 'tenant-admin',
-          email: 'tenant-admin@test.invalid',
-          firstName: 'Tenant',
-          lastName: 'Admin',
-        },
+        ok: true,
+        instance: expect.objectContaining({
+          instanceId: 'demo',
+          realmMode: 'new',
+          authClientSecretConfigured: true,
+          tenantAdminBootstrap: {
+            username: 'tenant-admin',
+            email: 'tenant-admin@test.invalid',
+            firstName: 'Tenant',
+            lastName: 'Admin',
+          },
+        }),
       })
     );
   });
@@ -318,6 +426,7 @@ describe('iam-instance-registry service', () => {
       status: 'provisioning',
       parentDomain: 'studio.lvh.me',
       primaryHostname: 'hb.studio.lvh.me',
+      realmMode: 'existing',
       authRealm: 'hb',
       authClientId: 'sva-studio',
       actorId: 'actor-1',
@@ -386,6 +495,7 @@ describe('iam-instance-registry service', () => {
       status: 'active',
       parentDomain: 'studio.lvh.me',
       primaryHostname: 'hb.studio.lvh.me',
+      realmMode: 'existing',
       authRealm: 'hb',
       authClientId: 'sva-studio',
     });
@@ -401,6 +511,7 @@ describe('iam-instance-registry service', () => {
       status: 'requested',
       parentDomain: 'studio.lvh.me',
       primaryHostname: 'demo.studio.lvh.me',
+      realmMode: 'new',
       authRealm: 'demo',
       authClientId: 'sva-studio',
     });
@@ -419,7 +530,7 @@ describe('iam-instance-registry service', () => {
     expect(items.map((item) => item.latestProvisioningRun?.id)).toEqual(['hb-activate-active', 'demo-create-requested']);
   });
 
-  it('marks the instance as failed when auth provisioning throws', async () => {
+  it('keeps instance creation in requested state until provisioning is explicitly executed', async () => {
     const service = createInstanceRegistryService({
       repository: createRepository(),
       invalidateHost: vi.fn(),
@@ -431,6 +542,7 @@ describe('iam-instance-registry service', () => {
       instanceId: 'failed-demo',
       displayName: 'Failed Demo',
       parentDomain: 'studio.lvh.me',
+      realmMode: 'new',
       authRealm: 'failed-demo',
       authClientId: 'sva-studio',
     });
@@ -440,25 +552,19 @@ describe('iam-instance-registry service', () => {
         ok: true,
         instance: expect.objectContaining({
           instanceId: 'failed-demo',
-          status: 'failed',
+          realmMode: 'new',
+          status: 'requested',
         }),
       })
     );
   });
 
-  it('updates instance details, normalizes the parent domain, and refreshes keycloak status', async () => {
+  it('updates instance details, normalizes the parent domain, and keeps keycloak status read-only', async () => {
     const repository = createRepository();
     const invalidateHost = vi.fn();
-    const getKeycloakStatus = vi.fn().mockResolvedValue({
-      realmExists: true,
-      clientExists: true,
-      instanceIdMapperExists: true,
-      tenantAdminExists: true,
-    });
     const service = createInstanceRegistryService({
       repository,
       invalidateHost,
-      getKeycloakStatus,
     });
 
     await repository.createInstance({
@@ -467,6 +573,7 @@ describe('iam-instance-registry service', () => {
       status: 'active',
       parentDomain: 'studio.lvh.me',
       primaryHostname: 'demo.studio.lvh.me',
+      realmMode: 'existing',
       authRealm: 'demo',
       authClientId: 'sva-studio',
       authClientSecretCiphertext: 'enc:old-secret',
@@ -482,6 +589,7 @@ describe('iam-instance-registry service', () => {
       instanceId: 'demo',
       displayName: 'Demo Updated',
       parentDomain: 'Studio.Example.org',
+      realmMode: 'existing',
       authRealm: 'demo-updated',
       authClientId: 'tenant-client',
       authIssuerUrl: 'https://issuer.example.org',
@@ -498,37 +606,59 @@ describe('iam-instance-registry service', () => {
         displayName: 'Demo Updated',
         parentDomain: 'studio.example.org',
         primaryHostname: 'demo.studio.example.org',
+        realmMode: 'existing',
         authRealm: 'demo-updated',
         authClientId: 'tenant-client',
         authClientSecretConfigured: true,
-        keycloakStatus: expect.objectContaining({
-          realmExists: true,
-          clientExists: true,
-        }),
+        keycloakStatus: undefined,
       })
     );
     expect(invalidateHost).toHaveBeenCalledWith('demo.studio.lvh.me');
     expect(invalidateHost).toHaveBeenCalledWith('demo.studio.example.org');
-    expect(getKeycloakStatus).toHaveBeenCalledWith(
+  });
+
+  it('keeps instance detail readable when no worker snapshots are available', async () => {
+    const repository = createRepository();
+    const service = createInstanceRegistryService({
+      repository,
+      invalidateHost: vi.fn(),
+    });
+
+    await repository.createInstance({
+      instanceId: 'demo',
+      displayName: 'Demo',
+      status: 'archived',
+      parentDomain: 'studio.example.org',
+      primaryHostname: 'demo.studio.example.org',
+      realmMode: 'existing',
+      authRealm: 'demo',
+      authClientId: 'sva-studio',
+      actorId: 'actor-1',
+      requestId: 'req-1',
+    });
+
+    const detail = await service.getInstanceDetail('demo');
+
+    expect(detail).toEqual(
       expect.objectContaining({
         instanceId: 'demo',
-        authRealm: 'demo-updated',
-        authClientId: 'tenant-client',
-        authClientSecretConfigured: true,
-        authClientSecret: 'old-secret',
-        tenantAdminBootstrap: { username: 'new-admin' },
+        keycloakStatus: undefined,
+        keycloakPreflight: expect.objectContaining({
+          overallStatus: 'warning',
+        }),
+        keycloakPlan: expect.objectContaining({
+          mode: 'existing',
+        }),
       })
     );
   });
 
-  it('reconciles keycloak using the decrypted tenant secret and returns refreshed status', async () => {
+  it('reconcile enqueues a keycloak worker run instead of executing synchronously', async () => {
     const repository = createRepository();
-    const getKeycloakStatus = vi.fn().mockResolvedValue({ realmExists: true, clientSecretAligned: true });
     const provisionInstanceAuth = vi.fn().mockResolvedValue(undefined);
     const service = createInstanceRegistryService({
       repository,
       invalidateHost: vi.fn(),
-      getKeycloakStatus,
       provisionInstanceAuth,
     });
 
@@ -538,6 +668,7 @@ describe('iam-instance-registry service', () => {
       status: 'validated',
       parentDomain: 'studio.example.org',
       primaryHostname: 'demo.studio.example.org',
+      realmMode: 'existing',
       authRealm: 'demo',
       authClientId: 'sva-studio',
       authClientSecretCiphertext: 'enc:test-client-secret',
@@ -556,21 +687,57 @@ describe('iam-instance-registry service', () => {
       tenantAdminTemporaryPassword: 'test-temp-password',
     });
 
-    expect(provisionInstanceAuth).toHaveBeenCalledWith(
+    expect(provisionInstanceAuth).not.toHaveBeenCalled();
+    expect(status).toBeNull();
+
+    const run = await repository.claimNextKeycloakProvisioningRun();
+    expect(run).toEqual(
       expect.objectContaining({
         instanceId: 'demo',
-        authClientSecret: 'test-client-secret',
-        rotateClientSecret: true,
-        tenantAdminTemporaryPassword: 'test-temp-password',
+        intent: 'rotate_client_secret',
+        overallStatus: 'running',
       })
     );
-    expect(getKeycloakStatus).toHaveBeenCalledWith(
-      expect.objectContaining({
-        instanceId: 'demo',
-        authClientSecret: 'test-client-secret',
-      })
-    );
-    expect(status).toEqual(expect.objectContaining({ realmExists: true, clientSecretAligned: true }));
+  });
+
+  it('returns not_found and invalid_transition for unsupported status operations', async () => {
+    const repository = createRepository();
+    const service = createInstanceRegistryService({
+      repository,
+      invalidateHost: vi.fn(),
+    });
+
+    const missing = await service.changeStatus({
+      idempotencyKey: 'idem-missing',
+      instanceId: 'missing',
+      nextStatus: 'active',
+      actorId: 'actor-1',
+      requestId: 'req-1',
+    });
+
+    await repository.createInstance({
+      instanceId: 'demo',
+      displayName: 'Demo',
+      status: 'requested',
+      parentDomain: 'studio.example.org',
+      primaryHostname: 'demo.studio.example.org',
+      realmMode: 'existing',
+      authRealm: 'demo',
+      authClientId: 'sva-studio',
+      actorId: 'actor-1',
+      requestId: 'req-1',
+    });
+
+    const invalid = await service.changeStatus({
+      idempotencyKey: 'idem-invalid',
+      instanceId: 'demo',
+      nextStatus: 'active',
+      actorId: 'actor-1',
+      requestId: 'req-1',
+    });
+
+    expect(missing).toEqual({ ok: false, reason: 'not_found' });
+    expect(invalid).toEqual({ ok: false, reason: 'invalid_transition', currentStatus: 'requested' });
   });
 
   it('fails keycloak reconcile when the tenant secret is missing and classifies unknown runtime hosts', async () => {
@@ -579,6 +746,18 @@ describe('iam-instance-registry service', () => {
       repository,
       invalidateHost: vi.fn(),
       provisionInstanceAuth: vi.fn(),
+      getKeycloakPreflight: vi.fn().mockResolvedValue({
+        overallStatus: 'ready',
+        generatedAt: now,
+        checks: [],
+      }),
+      planKeycloakProvisioning: vi.fn().mockResolvedValue({
+        mode: 'existing',
+        overallStatus: 'ready',
+        generatedAt: now,
+        driftSummary: 'Drift erkannt.',
+        steps: [],
+      }),
       getKeycloakStatus: vi.fn(),
     });
 
@@ -588,6 +767,7 @@ describe('iam-instance-registry service', () => {
       status: 'active',
       parentDomain: 'studio.example.org',
       primaryHostname: 'demo.studio.example.org',
+      realmMode: 'existing',
       authRealm: 'demo',
       authClientId: 'sva-studio',
       actorId: 'actor-1',

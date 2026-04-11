@@ -1,18 +1,15 @@
+import { Link } from '@tanstack/react-router';
 import type { IamOrganizationType } from '@sva/core';
 import React from 'react';
 
 import { ConfirmDialog } from '../../../components/ConfirmDialog';
-import { ModalDialog } from '../../../components/ModalDialog';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
-import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
-import { Checkbox } from '../../../components/ui/checkbox';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
 import { Select } from '../../../components/ui/select';
 import { useOrganizations } from '../../../hooks/use-organizations';
-import { useUsers } from '../../../hooks/use-users';
 import { t, type TranslationKey } from '../../../i18n';
 import type { IamHttpError } from '../../../lib/iam-api';
 
@@ -52,108 +49,11 @@ const organizationErrorMessage = (error: IamHttpError | null): string => {
 
 const typeOptions = Object.keys(ORGANIZATION_TYPE_KEYS) as IamOrganizationType[];
 
-type EditState = { mode: 'create' } | { mode: 'edit'; organizationId: string } | null;
-
 export const OrganizationsPage = () => {
   const organizationsApi = useOrganizations();
-  const usersApi = useUsers({ pageSize: 100 });
-
-  const [editState, setEditState] = React.useState<EditState>(null);
-  const [membershipOrganizationId, setMembershipOrganizationId] = React.useState<string | null>(null);
   const [deactivateOrganizationId, setDeactivateOrganizationId] = React.useState<string | null>(null);
-  const [membershipForm, setMembershipForm] = React.useState({
-    accountId: '',
-    visibility: 'internal' as 'internal' | 'external',
-    isDefaultContext: false,
-  });
-  const [formValues, setFormValues] = React.useState({
-    organizationKey: '',
-    displayName: '',
-    organizationType: 'other' as IamOrganizationType,
-    parentOrganizationId: '',
-    contentAuthorPolicy: 'org_only' as 'org_only' | 'org_or_personal',
-  });
 
   const pageCount = Math.max(1, Math.ceil(organizationsApi.total / organizationsApi.pageSize));
-
-  const openCreateDialog = () => {
-    organizationsApi.clearMutationError();
-    setFormValues({
-      organizationKey: '',
-      displayName: '',
-      organizationType: 'other',
-      parentOrganizationId: '',
-      contentAuthorPolicy: 'org_only',
-    });
-    setEditState({ mode: 'create' });
-  };
-
-  const openEditDialog = async (organizationId: string) => {
-    organizationsApi.clearMutationError();
-    const detail = await organizationsApi.loadOrganization(organizationId);
-    if (!detail) {
-      return;
-    }
-    setFormValues({
-      organizationKey: detail.organizationKey,
-      displayName: detail.displayName,
-      organizationType: detail.organizationType,
-      parentOrganizationId: detail.parentOrganizationId ?? '',
-      contentAuthorPolicy: detail.contentAuthorPolicy,
-    });
-    setEditState({ mode: 'edit', organizationId });
-  };
-
-  const openMembershipDialog = async (organizationId: string) => {
-    organizationsApi.clearMutationError();
-    const detail = await organizationsApi.loadOrganization(organizationId);
-    if (!detail) {
-      return;
-    }
-    setMembershipForm({ accountId: '', visibility: 'internal', isDefaultContext: false });
-    setMembershipOrganizationId(organizationId);
-  };
-
-  const onSubmitOrganization = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    const payload = {
-      organizationKey: formValues.organizationKey.trim(),
-      displayName: formValues.displayName.trim(),
-      organizationType: formValues.organizationType,
-      parentOrganizationId: formValues.parentOrganizationId || undefined,
-      contentAuthorPolicy: formValues.contentAuthorPolicy,
-    };
-
-    const success =
-      editState?.mode === 'edit'
-        ? await organizationsApi.updateOrganization(editState.organizationId, payload)
-        : await organizationsApi.createOrganization(payload);
-
-    if (!success) {
-      return;
-    }
-
-    setEditState(null);
-  };
-
-  const onAssignMembership = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!membershipOrganizationId) {
-      return;
-    }
-
-    const success = await organizationsApi.assignMembership(membershipOrganizationId, {
-      accountId: membershipForm.accountId,
-      visibility: membershipForm.visibility,
-      isDefaultContext: membershipForm.isDefaultContext,
-    });
-    if (!success) {
-      return;
-    }
-
-    setMembershipForm({ accountId: '', visibility: 'internal', isDefaultContext: false });
-  };
 
   const onConfirmDeactivate = async () => {
     if (!deactivateOrganizationId) {
@@ -164,11 +64,6 @@ export const OrganizationsPage = () => {
       setDeactivateOrganizationId(null);
     }
   };
-
-  const selectedOrganization =
-    membershipOrganizationId && organizationsApi.selectedOrganization?.id === membershipOrganizationId
-      ? organizationsApi.selectedOrganization
-      : null;
 
   return (
     <section className="space-y-5" aria-busy={organizationsApi.isLoading}>
@@ -217,8 +112,8 @@ export const OrganizationsPage = () => {
           </Select>
         </div>
         <div className="flex items-end justify-end">
-          <Button type="button" onClick={openCreateDialog}>
-            {t('admin.organizations.actions.create')}
+          <Button asChild type="button">
+            <Link to="/admin/organizations/new">{t('admin.organizations.actions.create')}</Link>
           </Button>
         </div>
       </Card>
@@ -281,20 +176,18 @@ export const OrganizationsPage = () => {
                 <td className="px-3 py-3">
                   <div className="flex justify-end gap-2">
                     <Button
-                      type="button"
+                      asChild
                       size="sm"
                       variant="outline"
-                      onClick={() => void openEditDialog(organization.id)}
                     >
-                      {t('admin.organizations.actions.edit')}
+                      <Link to="/admin/organizations/$organizationId" params={{ organizationId: organization.id }}>
+                        {t('admin.organizations.actions.edit')}
+                      </Link>
                     </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => void openMembershipDialog(organization.id)}
-                    >
-                      {t('admin.organizations.actions.memberships')}
+                    <Button asChild type="button" size="sm" variant="secondary">
+                      <Link to="/admin/organizations/$organizationId" params={{ organizationId: organization.id }}>
+                        {t('admin.organizations.actions.memberships')}
+                      </Link>
                     </Button>
                     <Button
                       type="button"
@@ -340,233 +233,6 @@ export const OrganizationsPage = () => {
           </Button>
         </div>
       </nav>
-
-      <ModalDialog
-        open={editState !== null}
-        onClose={() => setEditState(null)}
-        title={editState?.mode === 'edit' ? t('admin.organizations.editDialog.title') : t('admin.organizations.createDialog.title')}
-        description={
-          editState?.mode === 'edit'
-            ? t('admin.organizations.editDialog.description')
-            : t('admin.organizations.createDialog.description')
-        }
-      >
-        <form className="space-y-4" onSubmit={(event) => void onSubmitOrganization(event)}>
-          {organizationsApi.mutationError ? (
-            <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
-              <AlertDescription>{organizationErrorMessage(organizationsApi.mutationError)}</AlertDescription>
-            </Alert>
-          ) : null}
-          <div className="grid gap-1 text-sm text-foreground">
-            <Label htmlFor="organization-key">{t('admin.organizations.form.keyLabel')}</Label>
-            <Input
-              id="organization-key"
-              value={formValues.organizationKey}
-              onChange={(event) => setFormValues((current) => ({ ...current, organizationKey: event.target.value }))}
-            />
-          </div>
-          <div className="grid gap-1 text-sm text-foreground">
-            <Label htmlFor="organization-name">{t('admin.organizations.form.nameLabel')}</Label>
-            <Input
-              id="organization-name"
-              value={formValues.displayName}
-              onChange={(event) => setFormValues((current) => ({ ...current, displayName: event.target.value }))}
-            />
-          </div>
-          <div className="grid gap-1 text-sm text-foreground">
-            <Label htmlFor="organization-type">{t('admin.organizations.form.typeLabel')}</Label>
-            <Select
-              id="organization-type"
-              value={formValues.organizationType}
-              onChange={(event) =>
-                setFormValues((current) => ({ ...current, organizationType: event.target.value as IamOrganizationType }))
-              }
-              className="rounded-md border border-border bg-background px-3 py-2 text-foreground"
-            >
-              {typeOptions.map((type) => (
-                <option key={type} value={type}>
-                  {t(ORGANIZATION_TYPE_KEYS[type])}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div className="grid gap-1 text-sm text-foreground">
-            <Label htmlFor="organization-parent">{t('admin.organizations.form.parentLabel')}</Label>
-            <Select
-              id="organization-parent"
-              value={formValues.parentOrganizationId}
-              onChange={(event) => setFormValues((current) => ({ ...current, parentOrganizationId: event.target.value }))}
-            >
-              <option value="">{t('admin.organizations.form.parentNone')}</option>
-              {organizationsApi.organizations
-                .filter((organization) => organization.id !== (editState?.mode === 'edit' ? editState.organizationId : ''))
-                .map((organization) => (
-                  <option key={organization.id} value={organization.id}>
-                    {organization.displayName}
-                  </option>
-                ))}
-            </Select>
-          </div>
-          <div className="grid gap-1 text-sm text-foreground">
-            <Label htmlFor="organization-policy">{t('admin.organizations.form.policyLabel')}</Label>
-            <Select
-              id="organization-policy"
-              value={formValues.contentAuthorPolicy}
-              onChange={(event) =>
-                setFormValues((current) => ({
-                  ...current,
-                  contentAuthorPolicy: event.target.value as 'org_only' | 'org_or_personal',
-                }))
-              }
-              className="rounded-md border border-border bg-background px-3 py-2 text-foreground"
-            >
-              <option value="org_only">{t('admin.organizations.policies.orgOnly')}</option>
-              <option value="org_or_personal">{t('admin.organizations.policies.orgOrPersonal')}</option>
-            </Select>
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => setEditState(null)}>
-              {t('account.actions.cancel')}
-            </Button>
-            <Button type="submit">
-              {editState?.mode === 'edit' ? t('admin.organizations.actions.save') : t('admin.organizations.actions.create')}
-            </Button>
-          </div>
-        </form>
-      </ModalDialog>
-
-      <ModalDialog
-        open={membershipOrganizationId !== null}
-        onClose={() => {
-          setMembershipOrganizationId(null);
-          organizationsApi.clearSelectedOrganization();
-        }}
-        title={t('admin.organizations.membershipsDialog.title')}
-        description={selectedOrganization ? t('admin.organizations.membershipsDialog.description', { name: selectedOrganization.displayName }) : ''}
-      >
-        <div className="space-y-4">
-          {selectedOrganization ? (
-            <Card className="bg-background p-3 text-sm text-foreground shadow-none">
-              <p className="font-semibold">{selectedOrganization.displayName}</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {t('admin.organizations.messages.hierarchyPath', {
-                  value: (selectedOrganization.hierarchyPath ?? []).join(' > '),
-                })}
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {t('admin.organizations.messages.metadataCount', {
-                  value: Object.keys(selectedOrganization.metadata ?? {}).length,
-                })}
-              </p>
-            </Card>
-          ) : null}
-          {organizationsApi.mutationError ? (
-            <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
-              <AlertDescription>{organizationErrorMessage(organizationsApi.mutationError)}</AlertDescription>
-            </Alert>
-          ) : null}
-          <Card className="grid gap-3 p-4">
-            <form className="grid gap-3" onSubmit={(event) => void onAssignMembership(event)}>
-            <div className="grid gap-1 text-sm text-foreground">
-              <Label htmlFor="membership-account">{t('admin.organizations.membershipsDialog.accountLabel')}</Label>
-              <Select
-                id="membership-account"
-                value={membershipForm.accountId}
-                onChange={(event) => setMembershipForm((current) => ({ ...current, accountId: event.target.value }))}
-              >
-                <option value="">{t('admin.organizations.membershipsDialog.accountPlaceholder')}</option>
-                {usersApi.users.map((user) => (
-                  <option key={user.id} value={user.id}>
-                    {user.displayName}
-                  </option>
-                ))}
-              </Select>
-            </div>
-            <div className="grid gap-1 text-sm text-foreground">
-              <Label htmlFor="membership-visibility">{t('admin.organizations.membershipsDialog.visibilityLabel')}</Label>
-              <Select
-                id="membership-visibility"
-                value={membershipForm.visibility}
-                onChange={(event) =>
-                  setMembershipForm((current) => ({
-                    ...current,
-                    visibility: event.target.value as 'internal' | 'external',
-                  }))
-                }
-                className="rounded-md border border-border bg-background px-3 py-2 text-foreground"
-              >
-                <option value="internal">{t('admin.organizations.membershipsDialog.visibilityInternal')}</option>
-                <option value="external">{t('admin.organizations.membershipsDialog.visibilityExternal')}</option>
-              </Select>
-            </div>
-            <Label htmlFor="membership-default" className="flex items-center gap-2 text-sm text-foreground">
-              <Checkbox
-                id="membership-default"
-                checked={membershipForm.isDefaultContext}
-                onChange={(event) =>
-                  setMembershipForm((current) => ({ ...current, isDefaultContext: event.target.checked }))
-                }
-              />
-              <span>{t('admin.organizations.membershipsDialog.defaultLabel')}</span>
-            </Label>
-            <div className="flex justify-end">
-              <Button type="submit" disabled={!membershipForm.accountId}>
-                {t('admin.organizations.actions.assignMembership')}
-              </Button>
-            </div>
-            </form>
-          </Card>
-
-          <div className="space-y-3">
-            <h2 className="text-sm font-semibold text-foreground">{t('admin.organizations.membershipsDialog.membersTitle')}</h2>
-            {selectedOrganization?.memberships.length ? (
-              <ul className="space-y-2">
-                {selectedOrganization.memberships.map((membership) => (
-                  <li
-                    key={membership.accountId}
-                    className="flex flex-col gap-2 rounded-lg border border-border bg-card p-3 text-sm text-foreground shadow-shell md:flex-row md:items-center md:justify-between"
-                  >
-                    <div>
-                      <p className="font-medium">{membership.displayName}</p>
-                      <p className="text-xs text-muted-foreground">{membership.email ?? membership.keycloakSubject}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {t('admin.organizations.membershipsDialog.createdAt', { value: membership.createdAt })}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge className="rounded-full" variant="outline">
-                        {membership.visibility === 'internal'
-                          ? t('admin.organizations.membershipsDialog.visibilityInternal')
-                          : t('admin.organizations.membershipsDialog.visibilityExternal')}
-                      </Badge>
-                      {membership.isDefaultContext ? (
-                        <Badge className="rounded-full border-primary/40 bg-primary/10 text-primary" variant="outline">
-                          {t('admin.organizations.membershipsDialog.defaultBadge')}
-                        </Badge>
-                      ) : null}
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => {
-                          if (!membershipOrganizationId) {
-                            return;
-                          }
-                          void organizationsApi.removeMembership(membershipOrganizationId, membership.accountId);
-                        }}
-                      >
-                        {t('admin.organizations.actions.removeMembership')}
-                      </Button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-sm text-muted-foreground">{t('admin.organizations.membershipsDialog.empty')}</p>
-            )}
-          </div>
-        </div>
-      </ModalDialog>
 
       <ConfirmDialog
         open={deactivateOrganizationId !== null}

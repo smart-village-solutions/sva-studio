@@ -1,5 +1,8 @@
 # Keycloak-Tenant-Realm-Bootstrap für Studio
 
+Hinweis:
+Die kanonische Betriebsbeschreibung für den Root-Host-Workflow liegt jetzt unter [Instanzverwaltung als Keycloak-Control-Plane](./instance-keycloak-provisioning.md). Dieses Dokument beschreibt den tenant-spezifischen Zielzustand im Realm selbst.
+
 ## Ziel
 
 Dieses Runbook beschreibt den minimalen Sollzustand eines tenant-spezifischen Keycloak-Realms für SVA Studio.
@@ -50,37 +53,27 @@ Die führende Quelle für die Realm- und Client-Zuordnung ist die Instanz-Regist
 - `iam.instances.authClientId`
 - optional `iam.instances.authIssuerUrl`
 
-Für den frühen Betriebsmodus wird dieser Vertrag am Root-Host `https://studio.smart-village.app/admin/instances` gepflegt.
+Für den operativen Pflegepfad wird dieser Vertrag am Root-Host `https://studio.smart-village.app/admin/instances` geführt.
 Die Instanzverwaltung ist damit die operative Control Plane für:
 
 - `authRealm`
 - `authClientId`
-- tenant-spezifisches OIDC-Client-Secret
+- tenant-spezifisches OIDC-Client-Secret oder dessen Erzeugung bei `new`
 - initialen Tenant-Admin-Bootstrap
 
 Wichtige Regeln:
 
 - das Client-Secret ist write-only und wird in Studio nur verschlüsselt gespeichert
-- ein leeres Secret-Feld bedeutet "unverändert lassen"
+- bei `existing` bedeutet ein leeres Secret-Feld "unverändert lassen"
+- bei `new` wird kein Secret als Eingabe erwartet; es wird beim Provisioning erzeugt und danach in Studio gespeichert
 - temporäre Admin-Passwörter werden nur für den Bootstrap-/Reset-Vorgang verwendet und nicht gespeichert
-- Realm-, Client-, Mapper- und Tenant-Admin-Abgleich laufen idempotent über den expliziten Reconcile-Pfad
+- Realm-, Client-, Mapper- und Tenant-Admin-Abgleich laufen idempotent über den expliziten Provisioning-Pfad
 
 Für die App ist `instanceId` der fachliche Mandantenschlüssel. Der Keycloak-Realm muss diesen Schlüssel deshalb als OIDC-Claim an die App weitergeben.
 
 ## Studio-Workflow
 
-Für neue oder bestehende Instanzen ist der Sollpfad:
-
-1. Instanz am Root-Host unter `/admin/instances` öffnen oder anlegen
-2. Realm-Basisdaten pflegen:
-   - `authRealm`
-   - `authClientId`
-   - optional `authIssuerUrl`
-   - Client-Secret
-   - Tenant-Admin-Stammdaten
-3. Keycloak-Status prüfen
-4. Realm anwenden bzw. Reconcile ausführen
-5. Tenant-Login und `/auth/me` gegen den Tenant-Host validieren
+Der vollständige Root-Host-Workflow mit Preflight, Realm-Modus, Plan, Ausführung und Protokoll ist unter [Instanzverwaltung als Keycloak-Control-Plane](./instance-keycloak-provisioning.md) beschrieben.
 
 Direkte Änderungen in Keycloak bleiben für Notfälle möglich, gelten aber nicht als kanonischer Pflegepfad.
 
@@ -225,13 +218,42 @@ Vor Freigabe eines Tenant-Realm müssen mindestens diese Punkte erfüllt sein:
 
 1. `iam.instances.authRealm` zeigt auf den korrekten Realm
 2. `iam.instances.authClientId = sva-studio`
-3. Client `sva-studio` existiert im Realm
-4. `rootUrl`, `redirectUris`, `webOrigins` und `post.logout.redirect.uris` sind tenant-spezifisch
-5. Protocol Mapper `instanceId` existiert
-6. mindestens ein aktiver Tenant-Admin existiert
-7. Tenant-Admin hat `system_admin`
-8. Tenant-Admin hat nicht automatisch `instance_registry_admin`
-9. User-Attribut `instanceId` entspricht dem Tenant
+3. `rootUrl`, `redirectUris`, `webOrigins` und `post.logout.redirect.uris` passen exakt zum Tenant-Host
+4. der Protocol Mapper `instanceId` existiert
+5. ein Tenant-Admin existiert mit:
+   - Rolle `system_admin`
+   - ohne Rolle `instance_registry_admin`
+   - `attributes.instanceId = <instanceId>`
+6. das Tenant-Client-Secret ist bei `existing` mit der Registry abgeglichen oder wurde bei `new` erfolgreich erzeugt und zurückgeschrieben
+
+## Operativer Freigabehinweis
+
+Für den täglichen Betrieb gilt:
+
+- Die Realm-Existenz oder ein erfolgreiches Provisioning allein reichen nicht als Freigabe.
+- Eine Instanz ist erst dann betriebsbereit, wenn die Detailseite unter `/admin/instances/<instanceId>` alle fachlichen Prüfpunkte grün zeigt.
+- Bei bestehenden Realms ist Secret-Drift der häufigste verbleibende Fehler. Der Standard-Fix ist `Rotate client secret`.
+
+Die vollständige Root-Host-Bedienfolge steht unter [Instanzverwaltung als Keycloak-Control-Plane](./instance-keycloak-provisioning.md).
+
+## Traceability-Matrix für Studio-Felder und Keycloak-Artefakte
+
+Die folgende Matrix ist die schlanke Referenz dafür, welche Eingaben in Studio zu welchen Keycloak-Artefakten führen. Sie dient als gemeinsame Grundlage für UI, Registry, Worker und Statusanzeige.
+
+| Studio-/Registry-Feld | Keycloak-Ziel | Erwarteter Zustand |
+| --- | --- | --- |
+| `realmMode` + `authRealm` | Realm | `existing`: Realm existiert bereits. `new`: Realm darf angelegt werden. |
+| `authClientId` | OIDC-Client | Client existiert im Tenant-Realm. |
+| `instanceId` + `parentDomain` | `rootUrl`, `redirectUris`, `webOrigins`, `post.logout.redirect.uris` | Alle URLs zeigen ausschließlich auf den Tenant-Host. |
+| `instanceId` | Protocol Mapper `instanceId` | Claim `instanceId` wird in ID-, Access- und Userinfo-Token ausgegeben. |
+| `authClientSecret` | Client-Secret | `existing`: Das in der Registry gespeicherte Secret entspricht dem aktiven Keycloak-Secret. `new`: Das Secret wird beim Provisioning erzeugt und danach in der Registry gespeichert. |
+| `tenantAdminBootstrap.username` | Tenant-Admin-User | User existiert. |
+| `tenantAdminBootstrap.firstName`, `lastName`, `email` | Tenant-Admin-Userprofil | Stammdaten sind auf dem User gepflegt. |
+| `tenantAdminBootstrap.username` | Realm-Rolle `system_admin` | Rolle ist zugewiesen. |
+| `tenantAdminBootstrap.username` | Realm-Rolle `instance_registry_admin` | Rolle ist nicht zugewiesen. |
+| `instanceId` + `tenantAdminBootstrap.username` | User-Attribut `instanceId` | Attribut stimmt exakt mit der Instanz-ID überein. |
+
+Wenn einer dieser Punkte fehlt, darf der Provisioning-Status nicht als fachlich sauber bewertet werden.
 
 ## Smoke-Nachweis
 

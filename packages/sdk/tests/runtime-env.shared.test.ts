@@ -2,9 +2,14 @@ import { describe, expect, it } from 'vitest';
 
 // eslint-disable-next-line @nx/enforce-module-boundaries
 import {
+  assertDeterministicRemoteMutationContext,
   buildAcceptanceReportPaths,
+  buildProdParityProbePlan,
+  buildTrustedForwardedHeaders,
   formatAcceptanceDeployReportMarkdown,
   getRuntimeStatusExecutionMode,
+  hasLocalEmergencyRemoteMutationOverride,
+  isTruthyFlag,
   parseRuntimeCliOptions,
   resolveAcceptanceDeployOptions,
   type AcceptanceDeployReport,
@@ -102,6 +107,68 @@ describe('runtime-env.shared', () => {
     });
   });
 
+  it('accepts remote mutations in a deterministic CI runner context', () => {
+    expect(
+      assertDeterministicRemoteMutationContext(
+        {
+          GITHUB_ACTIONS: 'true',
+          GITHUB_WORKFLOW: 'Acceptance Deploy',
+        },
+        'acceptance-hb',
+        'deploy',
+      ),
+    ).toEqual({ mode: 'ci-runner' });
+  });
+
+  it('accepts a documented local emergency override for remote mutations', () => {
+    expect(
+      assertDeterministicRemoteMutationContext(
+        {
+          SVA_ALLOW_LOCAL_REMOTE_MUTATIONS: 'true',
+        },
+        'studio',
+        'migrate',
+      ),
+    ).toEqual({ mode: 'local-emergency' });
+  });
+
+  it('detects documented truthy flag values for local emergency overrides', () => {
+    expect(isTruthyFlag('true')).toBe(true);
+    expect(isTruthyFlag('On')).toBe(true);
+    expect(isTruthyFlag('0')).toBe(false);
+    expect(isTruthyFlag(undefined)).toBe(false);
+    expect(hasLocalEmergencyRemoteMutationOverride({ SVA_ALLOW_LOCAL_REMOTE_MUTATIONS: 'yes' })).toBe(true);
+    expect(hasLocalEmergencyRemoteMutationOverride({ SVA_ALLOW_LOCAL_REMOTE_MUTATIONS: 'false' })).toBe(false);
+  });
+
+  it('rejects remote mutations without runner or emergency context', () => {
+    expect(() => assertDeterministicRemoteMutationContext({}, 'studio', 'deploy')).toThrow(/CI-\/Runner-Kontext/);
+  });
+
+  it('builds a prod parity plan for root and tenant hosts from runtime env', () => {
+    expect(
+      buildProdParityProbePlan({
+        SVA_PUBLIC_BASE_URL: 'https://studio.smart-village.app',
+        SVA_ALLOWED_INSTANCE_IDS: 'bb-guben, de-musterhausen',
+        SVA_PARENT_DOMAIN: 'studio.smart-village.app',
+      }),
+    ).toEqual({
+      rootHost: 'studio.smart-village.app',
+      tenantHosts: [
+        { host: 'bb-guben.studio.smart-village.app', instanceId: 'bb-guben' },
+        { host: 'de-musterhausen.studio.smart-village.app', instanceId: 'de-musterhausen' },
+      ],
+    });
+  });
+
+  it('builds trusted forwarded headers for parity probes', () => {
+    expect(buildTrustedForwardedHeaders('bb-guben.studio.smart-village.app')).toEqual({
+      forwarded: 'for=127.0.0.1;proto=https;host=bb-guben.studio.smart-village.app',
+      'x-forwarded-host': 'bb-guben.studio.smart-village.app',
+      'x-forwarded-proto': 'https',
+    });
+  });
+
   it('renders a markdown report with the required evidence fields', () => {
     const paths = buildAcceptanceReportPaths('/tmp/artifacts', 'acceptance-deploy', '2026-03-20T12:00:00.000Z');
     const report: AcceptanceDeployReport = {
@@ -134,8 +201,25 @@ describe('runtime-env.shared', () => {
         status: 'ok',
         startedAt: '2026-03-20T11:59:50.000Z',
         completedAt: '2026-03-20T11:59:59.000Z',
+        job: {
+          jobServiceName: 'migrate',
+          jobStackName: 'sva-studio-migrate-acceptance',
+          exitCode: 0,
+          state: 'complete',
+        },
         details: {
           gooseVersion: 'v3.26.0',
+        },
+      },
+      bootstrapReport: {
+        status: 'ok',
+        startedAt: '2026-03-20T12:00:00.000Z',
+        completedAt: '2026-03-20T12:00:05.000Z',
+        job: {
+          jobServiceName: 'bootstrap',
+          jobStackName: 'sva-studio-bootstrap-acceptance',
+          exitCode: 0,
+          state: 'complete',
         },
       },
       stackName: 'sva-studio',
@@ -195,6 +279,9 @@ describe('runtime-env.shared', () => {
         markdownPath: paths.markdownPath,
         releaseManifestPath: paths.releaseManifestPath,
         phaseReportPath: paths.phaseReportPath,
+        bootstrapJobPath: paths.bootstrapJobPath,
+        bootstrapReportPath: paths.bootstrapReportPath,
+        migrationJobPath: paths.migrationJobPath,
         migrationReportPath: paths.migrationReportPath,
         internalVerifyPath: paths.internalVerifyPath,
         externalSmokePath: paths.externalSmokePath,
@@ -211,6 +298,11 @@ describe('runtime-env.shared', () => {
     expect(markdown).toContain('Rollback-Hinweis: Redeploy previous digest');
     expect(markdown).toContain('`packages/data/migrations/0001_init.sql`');
     expect(markdown).toContain('Goose-Version: `v3.26.0`');
+    expect(markdown).toContain('Migrationsjob: `sva-studio-migrate-acceptance/migrate`');
+    expect(markdown).toContain('Job-Exit-Code: `0`');
+    expect(markdown).toContain('Bootstrap-Status: `ok`');
+    expect(markdown).toContain('Bootstrap-Job: `sva-studio-bootstrap-acceptance/bootstrap`');
+    expect(markdown).toContain('Bootstrap-Exit-Code: `0`');
     expect(markdown).toContain('Grafana: https://grafana.internal');
     expect(markdown).toContain('service summary');
     expect(markdown).toContain('Image-Ref: `ghcr.io/example/sva-studio@sha256:abc`');

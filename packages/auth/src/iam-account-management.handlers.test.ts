@@ -5233,6 +5233,46 @@ describe('iam-account-management additional handlers', () => {
     );
   });
 
+  it('returns a platform self-service profile for root-host admins without tenant instance scope', async () => {
+    state.user = {
+      id: 'keycloak-platform-admin',
+      name: 'Platform Admin',
+      roles: ['system_admin', 'instance_registry_admin'],
+      username: 'studio-superuser',
+      email: 'studio@example.com',
+      firstName: 'Studio',
+      lastName: 'Superuser',
+      displayName: 'Studio Superuser',
+    };
+
+    const response = await getMyProfileHandler(
+      new Request('http://localhost/api/v1/iam/users/me/profile', { method: 'GET' })
+    );
+    const payload = (await response.json()) as {
+      data: {
+        id: string;
+        keycloakSubject: string;
+        status: string;
+        roles: Array<{ roleKey: string }>;
+      };
+      requestId?: string;
+    };
+
+    expect(response.status).toBe(200);
+    expect(payload.requestId).toBe('req-iam-handler');
+    expect(payload.data).toEqual(
+      expect.objectContaining({
+        id: 'platform:keycloak-platform-admin',
+        keycloakSubject: 'keycloak-platform-admin',
+        status: 'active',
+      })
+    );
+    expect(payload.data.roles.map((role) => role.roleKey)).toEqual([
+      'system_admin',
+      'instance_registry_admin',
+    ]);
+  });
+
   it('returns schema_drift details when profile loading fails with unexpected internal error and critical schema drift is present', async () => {
     state.user = {
       id: 'keycloak-self-schema-drift',

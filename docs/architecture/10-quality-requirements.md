@@ -42,6 +42,8 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
   - Release-Evidenz unter `artifacts/runtime/deployments/` muss Report, Release-Manifest und Probe-Artefakte enthalten
   - Migrations-Evidenz muss zusätzlich `goose`-Status und die verwendete `goose`-Version enthalten
   - `pnpm env:feedback:acceptance-hb` muss nach jedem Lauf eine Trend-Zusammenfassung und einen Review-Entwurf erzeugen
+  - fuer `studio` muessen `doctor` und `precheck` zusaetzlich `app-db-principal` als `ok` ausweisen; `db`, `redis` und `keycloak` muessen dabei aus Sicht des laufenden `APP_DB_USER` bereit sein
+  - wenn ein Rollout ein bereits live laufendes Ziel-Digest wiederverwendet, muss der Deploy-Report diese Live-Paritaet fuer dasselbe Digest explizit ausweisen
 - IAM Authorize Performance:
   - P95 für `POST /iam/authorize` < 50 ms (mindestens 100 RPS / 500 gleichzeitige Nutzer als Zielprofil)
 - IAM Gruppenverwaltung:
@@ -138,6 +140,7 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
 - Die neue modulare IAM-Fassade reduziert öffentliche Importflächen; vollständige Kernzerlegung bleibt für einzelne `core.ts`-Bausteine Folgearbeit
 - Performance-Nachweis für Routing-Startup-Guard und begrenztes Sync-Debug-Logging bleibt als Folgearbeit beobachtbar
 - Alertmanager-Receiver, automatisierte Backup-Automation und produktive Digest-Promotion bleiben trotz gehärtetem Releasevertrag externe Folgearbeit
+- Ein lokaler Kandidatencontainer kann fuer `studio` Private-DNS-, Ingress- und Swarm-Vertraege nicht vollstaendig abbilden; prod-nahe Freigaben bleiben deshalb bewusst an Remote-Evidenz gebunden
 
 Referenzen:
 

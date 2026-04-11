@@ -196,6 +196,31 @@ describe('provisionInstanceAuthArtifacts', () => {
     );
   });
 
+  it('rethrows non-recoverable user creation errors during tenant admin bootstrap', async () => {
+    state.createUser.mockRejectedValueOnce(
+      new KeycloakAdminRequestError({
+        message: 'upstream failed',
+        statusCode: 503,
+        code: 'service_unavailable',
+        retryable: true,
+      })
+    );
+
+    await expect(
+      provisionInstanceAuthArtifacts({
+        instanceId: 'bb-guben',
+        primaryHostname: 'bb-guben.studio.smart-village.app',
+        realmMode: 'new',
+        authRealm: 'bb-guben',
+        authClientId: 'sva-studio',
+        tenantAdminBootstrap: {
+          username: 'bootstrap-user',
+          email: 'bootstrap-user@test.invalid',
+        },
+      })
+    ).rejects.toThrow('upstream failed');
+  });
+
   it('bootstraps a tenant admin and writes password reset actions', async () => {
     await provisionInstanceAuthArtifacts({
       instanceId: 'bb-guben',

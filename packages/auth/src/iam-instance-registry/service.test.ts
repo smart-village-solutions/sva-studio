@@ -627,7 +627,7 @@ describe('iam-instance-registry service', () => {
     await repository.createInstance({
       instanceId: 'demo',
       displayName: 'Demo',
-      status: 'requested',
+      status: 'archived',
       parentDomain: 'studio.example.org',
       primaryHostname: 'demo.studio.example.org',
       realmMode: 'existing',
@@ -698,6 +698,46 @@ describe('iam-instance-registry service', () => {
         overallStatus: 'running',
       })
     );
+  });
+
+  it('returns not_found and invalid_transition for unsupported status operations', async () => {
+    const repository = createRepository();
+    const service = createInstanceRegistryService({
+      repository,
+      invalidateHost: vi.fn(),
+    });
+
+    const missing = await service.changeStatus({
+      idempotencyKey: 'idem-missing',
+      instanceId: 'missing',
+      nextStatus: 'active',
+      actorId: 'actor-1',
+      requestId: 'req-1',
+    });
+
+    await repository.createInstance({
+      instanceId: 'demo',
+      displayName: 'Demo',
+      status: 'requested',
+      parentDomain: 'studio.example.org',
+      primaryHostname: 'demo.studio.example.org',
+      realmMode: 'existing',
+      authRealm: 'demo',
+      authClientId: 'sva-studio',
+      actorId: 'actor-1',
+      requestId: 'req-1',
+    });
+
+    const invalid = await service.changeStatus({
+      idempotencyKey: 'idem-invalid',
+      instanceId: 'demo',
+      nextStatus: 'active',
+      actorId: 'actor-1',
+      requestId: 'req-1',
+    });
+
+    expect(missing).toEqual({ ok: false, reason: 'not_found' });
+    expect(invalid).toEqual({ ok: false, reason: 'invalid_transition', currentStatus: 'requested' });
   });
 
   it('fails keycloak reconcile when the tenant secret is missing and classifies unknown runtime hosts', async () => {

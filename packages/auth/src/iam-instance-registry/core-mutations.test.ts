@@ -212,6 +212,68 @@ describe('core-mutations', () => {
     expect(body.code).toBe('not_found');
   });
 
+  it('executeInstanceKeycloakProvisioningMutation returns guard errors in order', async () => {
+    state.ensurePlatformAccess.mockReturnValueOnce(new Response('forbidden', { status: 403 }));
+    const access = await executeInstanceKeycloakProvisioningMutation(
+      new Request('http://localhost'),
+      { user: { id: 'u-1' } } as never
+    );
+    expect(access.status).toBe(403);
+
+    state.ensurePlatformAccess.mockReturnValue(null);
+    state.validateCsrf.mockReturnValueOnce(new Response('csrf', { status: 419 }));
+    const csrf = await executeInstanceKeycloakProvisioningMutation(
+      new Request('http://localhost'),
+      { user: { id: 'u-1' } } as never
+    );
+    expect(csrf.status).toBe(419);
+
+    state.validateCsrf.mockReturnValue(null);
+    state.requireFreshReauth.mockReturnValueOnce(new Response('reauth', { status: 428 }));
+    const reauth = await executeInstanceKeycloakProvisioningMutation(
+      new Request('http://localhost'),
+      { user: { id: 'u-1' } } as never
+    );
+    expect(reauth.status).toBe(428);
+
+    state.requireFreshReauth.mockReturnValue(null);
+    state.requireIdempotencyKey.mockReturnValueOnce({ error: new Response('idem', { status: 400 }) });
+    const idem = await executeInstanceKeycloakProvisioningMutation(
+      new Request('http://localhost'),
+      { user: { id: 'u-1' } } as never
+    );
+    expect(idem.status).toBe(400);
+
+    state.requireIdempotencyKey.mockReturnValue({ key: 'idem-1' });
+    state.parseRequestBody.mockResolvedValueOnce({ ok: false, message: 'invalid' });
+    const invalid = await executeInstanceKeycloakProvisioningMutation(
+      new Request('http://localhost'),
+      { user: { id: 'u-1' } } as never
+    );
+    const invalidBody = await readBody(invalid);
+    expect(invalid.status).toBe(400);
+    expect(invalidBody.code).toBe('invalid_request');
+  });
+
+  it('executeInstanceKeycloakProvisioningMutation returns success payload when run is created', async () => {
+    state.parseRequestBody.mockResolvedValueOnce({
+      ok: true,
+      data: { intent: 'rotate_client_secret', tenantAdminTemporaryPassword: 'tmp-credential' },
+    });
+    state.withRegistryService.mockImplementationOnce(async (work: (service: any) => unknown) =>
+      work({ executeKeycloakProvisioning: vi.fn(async () => ({ id: 'run-2', overallStatus: 'planned' })) })
+    );
+
+    const response = await executeInstanceKeycloakProvisioningMutation(
+      new Request('http://localhost'),
+      { user: { id: 'u-1' } } as never
+    );
+    const body = await readBody(response);
+
+    expect(response.status).toBe(200);
+    expect(body).toMatchObject({ id: 'run-2', overallStatus: 'planned' });
+  });
+
   it('mutateInstanceStatus returns conflict when state transition is denied', async () => {
     state.parseRequestBody.mockResolvedValueOnce({ ok: true, data: { status: 'active' } });
     state.withRegistryService.mockImplementationOnce(async (work: (service: any) => unknown) =>

@@ -77,13 +77,17 @@ describe('iam-instance-registry server handlers', () => {
     expect((await instanceRegistryHandlers.createInstance(request)).status).toBe(201);
     expect((await instanceRegistryHandlers.updateInstance(request)).status).toBe(200);
     expect((await instanceRegistryHandlers.getInstanceKeycloakStatus(request)).status).toBe(200);
+    expect((await instanceRegistryHandlers.getInstanceKeycloakPreflight(request)).status).toBe(200);
+    expect((await instanceRegistryHandlers.planInstanceKeycloakProvisioning(request)).status).toBe(200);
+    expect((await instanceRegistryHandlers.executeInstanceKeycloakProvisioning(request)).status).toBe(200);
+    expect((await instanceRegistryHandlers.getInstanceKeycloakProvisioningRun(request)).status).toBe(200);
     expect((await instanceRegistryHandlers.reconcileInstanceKeycloak(request)).status).toBe(200);
     expect((await instanceRegistryHandlers.activateInstance(request)).status).toBe(200);
     expect((await instanceRegistryHandlers.suspendInstance(request)).status).toBe(200);
     expect((await instanceRegistryHandlers.archiveInstance(request)).status).toBe(200);
 
     expect(withRequestContextMock).toHaveBeenCalled();
-    expect(withAuthenticatedUserMock).toHaveBeenCalledTimes(9);
+    expect(withAuthenticatedUserMock).toHaveBeenCalledTimes(13);
     expect(coreHandlers.listInstancesInternal).toHaveBeenCalled();
     expect(coreHandlers.archiveInstanceInternal).toHaveBeenCalled();
   });

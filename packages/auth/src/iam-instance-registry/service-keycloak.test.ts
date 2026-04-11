@@ -281,6 +281,94 @@ describe('iam-instance-registry service-keycloak helpers', () => {
     );
   });
 
+  it('returns null preflight when the instance cannot be loaded', async () => {
+    const { createGetKeycloakPreflightHandler } = await import('./service-keycloak.js');
+    const repository = {
+      getInstanceById: vi.fn().mockResolvedValue(null),
+      getAuthClientSecretCiphertext: vi.fn().mockResolvedValue(null),
+      listKeycloakProvisioningRuns: vi.fn().mockResolvedValue([]),
+    };
+
+    const getPreflight = createGetKeycloakPreflightHandler({
+      repository: repository as never,
+      invalidateHost: vi.fn(),
+    });
+
+    await expect(getPreflight('missing')).resolves.toBeNull();
+  });
+
+  it('returns null plan when the instance cannot be loaded', async () => {
+    const { createPlanKeycloakProvisioningHandler } = await import('./service-keycloak.js');
+    const repository = {
+      getInstanceById: vi.fn().mockResolvedValue(null),
+      getAuthClientSecretCiphertext: vi.fn().mockResolvedValue(null),
+      listKeycloakProvisioningRuns: vi.fn().mockResolvedValue([]),
+    };
+
+    const plan = createPlanKeycloakProvisioningHandler({
+      repository: repository as never,
+      invalidateHost: vi.fn(),
+    });
+
+    await expect(plan('missing')).resolves.toBeNull();
+  });
+
+  it('returns a persisted worker plan snapshot when available', async () => {
+    state.revealField.mockReturnValue('tenant-secret-value');
+    const { createPlanKeycloakProvisioningHandler } = await import('./service-keycloak.js');
+    const repository = {
+      getInstanceById: vi.fn().mockResolvedValue({
+        instanceId: 'bb-guben',
+        primaryHostname: 'bb-guben.studio.smart-village.app',
+        realmMode: 'existing',
+        authRealm: 'bb-guben',
+        authClientId: 'sva-studio',
+        authIssuerUrl: 'https://keycloak.example.com/realms/bb-guben',
+        authClientSecretConfigured: true,
+        tenantAdminBootstrap: { username: 'bootstrap-user' },
+      }),
+      getAuthClientSecretCiphertext: vi.fn().mockResolvedValue('enc:value'),
+      listKeycloakProvisioningRuns: vi.fn().mockResolvedValue([
+        {
+          id: 'run-2',
+          instanceId: 'bb-guben',
+          mode: 'existing',
+          intent: 'provision',
+          overallStatus: 'succeeded',
+          driftSummary: 'ok',
+          steps: [
+            {
+              stepKey: 'worker_plan_snapshot',
+              title: 'Soll-Ist-Abgleich planen',
+              status: 'done',
+              summary: 'ok',
+              details: {
+                plan: {
+                  overallStatus: 'ready',
+                  checkedAt: '2026-01-01T00:00:00.000Z',
+                  driftSummary: 'snapshot',
+                  steps: [],
+                },
+              },
+            },
+          ],
+        },
+      ]),
+    };
+
+    const plan = createPlanKeycloakProvisioningHandler({
+      repository: repository as never,
+      invalidateHost: vi.fn(),
+    });
+
+    await expect(plan('bb-guben')).resolves.toEqual(
+      expect.objectContaining({
+        overallStatus: 'ready',
+        driftSummary: 'snapshot',
+      })
+    );
+  });
+
   it('returns an invalid unknown_host classification when no runtime instance matches', async () => {
     const { createRuntimeResolver } = await import('./service-keycloak.js');
     const resolveRuntimeInstance = createRuntimeResolver({

@@ -31,7 +31,7 @@ KEYCLOAK_STDOUT_PATH="${ARTIFACT_DIR}/${VERIFY_ID}.keycloak.stdout.log"
 KEYCLOAK_STDERR_PATH="${ARTIFACT_DIR}/${VERIFY_ID}.keycloak.stderr.log"
 
 SERVER_INDEX_PATH="${APP_DIR}/.output/server/index.mjs"
-SERVER_CHUNK_PATH="${APP_DIR}/.output/server/chunks/build/server.mjs"
+SERVER_CHUNK_PATH=""
 
 FAILURE_CLASS="none"
 FAILED_PHASE=""
@@ -116,13 +116,34 @@ assert_artifact_contract() {
     return 1
   fi
 
+  local server_chunk_import
+  server_chunk_import="$(
+    node -e "
+      const fs = require('node:fs');
+      const serverIndexPath = process.argv[1];
+      const serverIndex = fs.readFileSync(serverIndexPath, 'utf8');
+      const match = serverIndex.match(/\\.\\/chunks\\/build\\/server[^'\\\"\\s]*\\.mjs/);
+      if (!match) {
+        process.exit(1);
+      }
+      process.stdout.write(match[0]);
+    " "${SERVER_INDEX_PATH}" || true
+  )"
+
+  if [ -z "${server_chunk_import}" ]; then
+    echo "Finaler Server-Entry delegiert nicht an einen kanonischen Server-Chunk unter ./chunks/build/server*.mjs." >&2
+    return 1
+  fi
+
+  SERVER_CHUNK_PATH="${APP_DIR}/.output/server/${server_chunk_import#./}"
+
   if [ ! -f "${SERVER_CHUNK_PATH}" ]; then
     echo "Kanonischer Server-Chunk fehlt: ${SERVER_CHUNK_PATH}" >&2
     return 1
   fi
 
-  if ! grep -Fq './chunks/build/server.mjs' "${SERVER_INDEX_PATH}"; then
-    echo "Finaler Server-Entry delegiert nicht an ./chunks/build/server.mjs." >&2
+  if ! grep -Fq "${server_chunk_import}" "${SERVER_INDEX_PATH}"; then
+    echo "Finaler Server-Entry delegiert nicht an ${server_chunk_import}." >&2
     return 1
   fi
 

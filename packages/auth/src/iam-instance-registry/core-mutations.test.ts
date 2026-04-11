@@ -122,6 +122,81 @@ describe('core-mutations', () => {
     expect(body.code).toBe('invalid_request');
   });
 
+  it('reconcileInstanceKeycloakMutation returns csrf error before body parsing', async () => {
+    state.validateCsrf.mockReturnValueOnce(new Response('csrf', { status: 419 }));
+
+    const response = await reconcileInstanceKeycloakMutation(new Request('http://localhost'), { user: { id: 'u-1' } } as never);
+
+    expect(response.status).toBe(419);
+    expect(state.parseRequestBody).not.toHaveBeenCalled();
+  });
+
+  it('reconcileInstanceKeycloakMutation returns reauth error', async () => {
+    state.requireFreshReauth.mockReturnValueOnce(new Response('reauth', { status: 428 }));
+
+    const response = await reconcileInstanceKeycloakMutation(new Request('http://localhost'), { user: { id: 'u-1' } } as never);
+
+    expect(response.status).toBe(428);
+  });
+
+  it('reconcileInstanceKeycloakMutation returns idempotency error', async () => {
+    state.requireIdempotencyKey.mockReturnValueOnce({ error: new Response('idem', { status: 400 }) });
+
+    const response = await reconcileInstanceKeycloakMutation(new Request('http://localhost'), { user: { id: 'u-1' } } as never);
+
+    expect(response.status).toBe(400);
+  });
+
+  it('reconcileInstanceKeycloakMutation returns 400 when instance id is missing', async () => {
+    state.readDetailInstanceId.mockReturnValueOnce('');
+
+    const response = await reconcileInstanceKeycloakMutation(new Request('http://localhost'), { user: { id: 'u-1' } } as never);
+    const body = await readBody(response);
+
+    expect(response.status).toBe(400);
+    expect(body.code).toBe('invalid_instance_id');
+  });
+
+  it('reconcileInstanceKeycloakMutation returns 404 when service returns null', async () => {
+    state.withRegistryService.mockImplementationOnce(async (work: (service: any) => unknown) =>
+      work({ reconcileKeycloak: vi.fn(async () => null) })
+    );
+
+    const response = await reconcileInstanceKeycloakMutation(new Request('http://localhost'), { user: { id: 'u-1' } } as never);
+    const body = await readBody(response);
+
+    expect(response.status).toBe(404);
+    expect(body.code).toBe('not_found');
+  });
+
+  it('executeInstanceKeycloakProvisioningMutation returns invalid_instance_id when missing', async () => {
+    state.readDetailInstanceId.mockReturnValueOnce('');
+
+    const response = await executeInstanceKeycloakProvisioningMutation(
+      new Request('http://localhost'),
+      { user: { id: 'u-1' } } as never
+    );
+    const body = await readBody(response);
+
+    expect(response.status).toBe(400);
+    expect(body.code).toBe('invalid_instance_id');
+  });
+
+  it('executeInstanceKeycloakProvisioningMutation maps thrown errors via mutation mapper', async () => {
+    state.withRegistryService.mockImplementationOnce(async () => {
+      throw new Error('tenant_auth_client_secret_missing');
+    });
+
+    const response = await executeInstanceKeycloakProvisioningMutation(
+      new Request('http://localhost'),
+      { user: { id: 'u-1' } } as never
+    );
+    const body = await readBody(response);
+
+    expect(response.status).toBe(409);
+    expect(body.code).toBe('tenant_auth_client_secret_missing');
+  });
+
   it('executeInstanceKeycloakProvisioningMutation returns not_found when run is missing', async () => {
     state.withRegistryService.mockImplementationOnce(async (work: (service: any) => unknown) =>
       work({ executeKeycloakProvisioning: vi.fn(async () => null) })
@@ -169,5 +244,35 @@ describe('core-mutations', () => {
     const body = await readBody(response);
     expect(response.status).toBe(200);
     expect(body.status).toBe('suspended');
+  });
+
+  it('mutateInstanceStatus returns guard errors in order before mutation', async () => {
+    state.ensurePlatformAccess.mockReturnValueOnce(new Response('forbidden', { status: 403 }));
+    const responseAccess = await mutateInstanceStatus(new Request('http://localhost'), { user: { id: 'u-1' } } as never, 'active');
+    expect(responseAccess.status).toBe(403);
+
+    state.ensurePlatformAccess.mockReturnValue(null);
+    state.validateCsrf.mockReturnValueOnce(new Response('csrf', { status: 419 }));
+    const responseCsrf = await mutateInstanceStatus(new Request('http://localhost'), { user: { id: 'u-1' } } as never, 'active');
+    expect(responseCsrf.status).toBe(419);
+
+    state.validateCsrf.mockReturnValue(null);
+    state.requireFreshReauth.mockReturnValueOnce(new Response('reauth', { status: 428 }));
+    const responseReauth = await mutateInstanceStatus(new Request('http://localhost'), { user: { id: 'u-1' } } as never, 'active');
+    expect(responseReauth.status).toBe(428);
+  });
+
+  it('mutateInstanceStatus returns invalid_request for mismatched status payload', async () => {
+    state.parseRequestBody.mockResolvedValueOnce({ ok: true, data: { status: 'archived' } });
+
+    const response = await mutateInstanceStatus(
+      new Request('http://localhost'),
+      { user: { id: 'u-1' } } as never,
+      'active'
+    );
+    const body = await readBody(response);
+
+    expect(response.status).toBe(400);
+    expect(body.code).toBe('invalid_request');
   });
 });

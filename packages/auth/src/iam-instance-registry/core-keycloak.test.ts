@@ -95,6 +95,15 @@ describe('core-keycloak', () => {
     expect(body.realmExists).toBe(true);
   });
 
+  it('returns access error before keycloak reads when platform access is denied', async () => {
+    state.ensurePlatformAccess.mockReturnValueOnce(new Response('forbidden', { status: 403 }));
+
+    const response = await getInstanceKeycloakStatusInternal(new Request('http://localhost'), { user: { id: 'u-1' } } as never);
+
+    expect(response.status).toBe(403);
+    expect(state.withRegistryService).not.toHaveBeenCalled();
+  });
+
   it('returns 404 when preflight result is missing', async () => {
     state.withRegistryService.mockImplementationOnce(async (work: (service: any) => unknown) =>
       work({ getKeycloakPreflight: vi.fn(async () => null) })
@@ -111,6 +120,15 @@ describe('core-keycloak', () => {
 
     const response = await planInstanceKeycloakProvisioningInternal(new Request('http://localhost'), { user: { id: 'u-1' } } as never);
     expect(response.status).toBe(403);
+    expect(state.withRegistryService).not.toHaveBeenCalled();
+  });
+
+  it('requires fresh reauth for plan endpoint after csrf passed', async () => {
+    state.requireFreshReauth.mockReturnValueOnce(new Response('reauth', { status: 428 }));
+
+    const response = await planInstanceKeycloakProvisioningInternal(new Request('http://localhost'), { user: { id: 'u-1' } } as never);
+
+    expect(response.status).toBe(428);
     expect(state.withRegistryService).not.toHaveBeenCalled();
   });
 
@@ -132,6 +150,18 @@ describe('core-keycloak', () => {
     const response = await getInstanceKeycloakProvisioningRunInternal(new Request('http://localhost'), { user: { id: 'u-1' } } as never);
     expect(response.status).toBe(502);
     expect(state.mapMutationError).toHaveBeenCalledWith(thrown);
+  });
+
+  it('returns 404 when provisioning run lookup returns null', async () => {
+    state.withRegistryService.mockImplementationOnce(async (work: (service: any) => unknown) =>
+      work({ getKeycloakProvisioningRun: vi.fn(async () => null) })
+    );
+
+    const response = await getInstanceKeycloakProvisioningRunInternal(new Request('http://localhost'), { user: { id: 'u-1' } } as never);
+    const body = await readBody(response);
+
+    expect(response.status).toBe(404);
+    expect(body.code).toBe('not_found');
   });
 
   it('delegates execute and reconcile internals to mutation handlers', async () => {

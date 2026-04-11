@@ -35,7 +35,8 @@ export const isWorkerEntrypoint = (moduleUrl: string, argvEntry?: string) => {
 export const runKeycloakProvisioningWorkerLoop = async (input?: {
   pollIntervalMs?: number;
 }) => {
-  const pollIntervalMs = input?.pollIntervalMs ?? Number.parseInt(process.env.SVA_KEYCLOAK_PROVISIONER_POLL_INTERVAL_MS ?? '5000', 10);
+  const rawInterval = input?.pollIntervalMs ?? Number.parseInt(process.env.SVA_KEYCLOAK_PROVISIONER_POLL_INTERVAL_MS ?? '', 10);
+  const pollIntervalMs = Number.isNaN(rawInterval) || rawInterval <= 0 ? 5000 : rawInterval;
 
   const abortController = new AbortController();
   let shutdownRequested = false;
@@ -66,7 +67,7 @@ export const runKeycloakProvisioningWorkerLoop = async (input?: {
         });
         break;
       }
-      
+
       try {
         const run = await runKeycloakProvisioningWorkerIteration();
         if (!run) {

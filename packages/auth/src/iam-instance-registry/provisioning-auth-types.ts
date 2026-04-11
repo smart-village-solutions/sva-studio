@@ -1,7 +1,7 @@
 import type { InstanceRealmMode } from '@sva/core';
 
 import type { KeycloakAdminClient } from '../keycloak-admin-client.js';
-import type { buildExpectedClientConfig } from './provisioning-auth-utils.js';
+import { buildExpectedClientConfig } from './provisioning-auth-utils.js';
 
 export type KeycloakClientRepresentation = Awaited<ReturnType<KeycloakAdminClient['getOidcClientByClientId']>>;
 export type KeycloakRoleRepresentation = Awaited<ReturnType<KeycloakAdminClient['getRoleByName']>>;

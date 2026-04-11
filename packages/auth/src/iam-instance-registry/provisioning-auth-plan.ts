@@ -98,10 +98,10 @@ const buildRoleStep = (
 ): KeycloakTenantPlan['steps'][number] => ({
   stepKey: 'roles',
   title: 'Realm-Rollen sicherstellen',
-  action: state?.systemAdminRole && state.instanceRegistryAdminRole ? 'verify' : 'create',
+  action: state?.systemAdminRole && state?.instanceRegistryAdminRole ? 'verify' : 'create',
   status: blocked ? 'blocked' : 'ready',
   summary:
-    state?.systemAdminRole && state.instanceRegistryAdminRole
+    state?.systemAdminRole && state?.instanceRegistryAdminRole
       ? 'Die benötigten Realm-Rollen sind vorhanden.'
       : 'Die benötigten Realm-Rollen werden angelegt.',
   details: {

@@ -13,7 +13,7 @@ export const appendRunStep = async (deps: InstanceRegistryServiceDeps, input: {
 }) => {
   const now = new Date().toISOString();
   const isTerminal = ['done', 'failed', 'skipped', 'unchanged'].includes(input.status);
-  
+
   await deps.repository.appendKeycloakProvisioningStep({
     runId: input.runId,
     stepKey: input.stepKey,

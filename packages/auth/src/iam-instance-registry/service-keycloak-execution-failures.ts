@@ -7,7 +7,7 @@ const logger = createSdkLogger({ component: 'keycloak-provisioning-failures', le
 const classifyError = (error: unknown): { reasonCode: string; safeSummary: string } => {
   if (error instanceof Error) {
     const message = error.message || '';
-    
+
     if (message.includes('Keycloak') || message.includes('keycloak')) {
       return {
         reasonCode: 'KEYCLOAK_EXECUTION_FAILED',
@@ -27,7 +27,7 @@ const classifyError = (error: unknown): { reasonCode: string; safeSummary: strin
       };
     }
   }
-  
+
   return {
     reasonCode: 'UNKNOWN_EXECUTION_FAILED',
     safeSummary: 'Provisioning mit unbekanntem Fehler fehlgeschlagen.',
@@ -44,14 +44,15 @@ export const failRun = async (
 ) => {
   const rawMessage = input.error instanceof Error ? input.error.message : String(input.error);
   const { reasonCode, safeSummary } = classifyError(input.error);
-  
+
   // Log the detailed error for operators with structured context.
+  // rawErrorMessage is deliberately omitted to avoid leaking PII or secrets
+  // from upstream error messages (HTTP responses, Keycloak errors, etc.).
   logger.error('provisioning_run_failed', {
     runId: input.runId,
     reasonCode,
-    rawErrorMessage: rawMessage.substring(0, 500), // Truncate to avoid PII issues
   });
-  
+
   await appendRunStep(deps, {
     runId: input.runId,
     stepKey: 'execution',

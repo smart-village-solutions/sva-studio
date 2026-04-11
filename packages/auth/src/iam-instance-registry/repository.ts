@@ -2,11 +2,6 @@ import { createPoolResolver } from '../shared/db-helpers.js';
 import { createInstanceRegistryRepository } from '@sva/data';
 import { invalidateInstanceRegistryHost } from '@sva/data/server';
 
-import {
-  getInstanceKeycloakPlan,
-  getInstanceKeycloakPreflight,
-  getInstanceKeycloakStatus,
-} from './provisioning-auth.js';
 import { createInstanceRegistryService } from './service.js';
 import { getIamDatabaseUrl } from '../runtime-secrets.server.js';
 import {

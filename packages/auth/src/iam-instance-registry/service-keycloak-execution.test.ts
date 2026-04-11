@@ -522,4 +522,148 @@ describe('iam-instance-registry keycloak execution handlers', () => {
     );
     expect(result).toEqual({ id: 'run-blocked', overallStatus: 'failed' });
   });
+
+  it('processes the next claimed provisioning run from the queue repository helper', async () => {
+    const { processNextQueuedKeycloakProvisioningRun } = await import('./service-keycloak-execution.js');
+
+    const queuedRun = {
+      id: 'run-queued-next',
+      instanceId: 'demo',
+      mode: 'existing',
+      intent: 'provision',
+      overallStatus: 'planned',
+      driftSummary: '',
+      requestId: 'req-next',
+      actorId: 'actor-next',
+      createdAt: '',
+      updatedAt: '',
+      steps: [{ stepKey: 'queued', details: {} }],
+    };
+
+    const repository = {
+      claimNextKeycloakProvisioningRun: vi.fn().mockResolvedValue(queuedRun),
+      getInstanceById: vi.fn().mockResolvedValue({
+        instanceId: 'demo',
+        displayName: 'Demo',
+        parentDomain: 'example.org',
+        primaryHostname: 'demo.example.org',
+        realmMode: 'existing',
+        authRealm: 'demo',
+        authClientId: 'sva-studio',
+        authClientSecretConfigured: true,
+        tenantAdminBootstrap: { username: 'demo-admin' },
+        featureFlags: {},
+      }),
+      getAuthClientSecretCiphertext: vi.fn().mockResolvedValue('enc:registry-secret'),
+      appendKeycloakProvisioningStep: vi.fn().mockResolvedValue(undefined),
+      updateKeycloakProvisioningRun: vi.fn().mockResolvedValue(undefined),
+      getKeycloakProvisioningRun: vi.fn().mockResolvedValue({ id: 'run-queued-next', overallStatus: 'succeeded' }),
+      updateInstance: vi.fn().mockResolvedValue({}),
+      setInstanceStatus: vi.fn().mockResolvedValue({ status: 'provisioning' }),
+    };
+
+    const deps = {
+      repository: repository as never,
+      provisionInstanceAuth: vi.fn().mockResolvedValue(undefined),
+      getKeycloakPreflight: vi.fn().mockResolvedValue({ overallStatus: 'ready' }),
+      planKeycloakProvisioning: vi.fn().mockResolvedValue({ overallStatus: 'ready', driftSummary: 'ok' }),
+      getKeycloakStatus: vi.fn().mockResolvedValue({
+        realmExists: true,
+        clientExists: true,
+        instanceIdMapperExists: true,
+        tenantAdminExists: true,
+        tenantAdminHasSystemAdmin: true,
+        tenantAdminHasInstanceRegistryAdmin: false,
+        tenantAdminInstanceIdMatches: true,
+        redirectUrisMatch: true,
+        logoutUrisMatch: true,
+        webOriginsMatch: true,
+        clientSecretConfigured: true,
+        tenantClientSecretReadable: true,
+        clientSecretAligned: true,
+        runtimeSecretSource: 'tenant',
+      }),
+    } as never;
+
+    const result = await processNextQueuedKeycloakProvisioningRun(deps);
+
+    expect(repository.claimNextKeycloakProvisioningRun).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({ id: 'run-queued-next', overallStatus: 'succeeded' });
+  });
+
+  it('returns null in reconcile when enqueue handler cannot load the instance on the second lookup', async () => {
+    const { createReconcileKeycloakHandler } = await import('./service-keycloak-execution.js');
+    const repository = {
+      getInstanceById: vi
+        .fn()
+        .mockResolvedValueOnce({
+          instanceId: 'demo',
+          primaryHostname: 'demo.example.org',
+          realmMode: 'existing',
+          authRealm: 'demo',
+          authClientId: 'sva-studio',
+          authClientSecretConfigured: true,
+        })
+        .mockResolvedValueOnce(null),
+      getAuthClientSecretCiphertext: vi.fn().mockResolvedValue('enc:secret'),
+      createKeycloakProvisioningRun: vi.fn(),
+      appendKeycloakProvisioningStep: vi.fn(),
+      getKeycloakProvisioningRun: vi.fn(),
+    };
+
+    const handler = createReconcileKeycloakHandler({ repository: repository as never } as never);
+
+    await expect(handler({ instanceId: 'demo', actorId: 'admin-1', requestId: 'req-1' })).resolves.toBeNull();
+    expect(repository.createKeycloakProvisioningRun).not.toHaveBeenCalled();
+  });
+
+  it('fails the claimed run when existing mode has no decrypted tenant secret', async () => {
+    const { processClaimedKeycloakProvisioningRun } = await import('./service-keycloak-execution.js');
+    const repository = {
+      getInstanceById: vi.fn().mockResolvedValue({
+        instanceId: 'demo',
+        displayName: 'Demo',
+        parentDomain: 'example.org',
+        primaryHostname: 'demo.example.org',
+        realmMode: 'existing',
+        authRealm: 'demo',
+        authClientId: 'sva-studio',
+        authClientSecretConfigured: true,
+        tenantAdminBootstrap: { username: 'demo-admin' },
+        featureFlags: {},
+      }),
+      getAuthClientSecretCiphertext: vi.fn().mockResolvedValue(null),
+      appendKeycloakProvisioningStep: vi.fn().mockResolvedValue(undefined),
+      updateKeycloakProvisioningRun: vi.fn().mockResolvedValue(undefined),
+      getKeycloakProvisioningRun: vi.fn().mockResolvedValue({ id: 'run-missing-secret', overallStatus: 'failed' }),
+      setInstanceStatus: vi.fn().mockResolvedValue({ status: 'provisioning' }),
+    };
+
+    const deps = {
+      repository: repository as never,
+      provisionInstanceAuth: vi.fn().mockResolvedValue(undefined),
+      getKeycloakPreflight: vi.fn().mockResolvedValue({ overallStatus: 'ready' }),
+      planKeycloakProvisioning: vi.fn().mockResolvedValue({ overallStatus: 'ready', driftSummary: 'ok' }),
+      getKeycloakStatus: vi.fn().mockResolvedValue({ realmExists: false }),
+    } as never;
+
+    const result = await processClaimedKeycloakProvisioningRun(deps, {
+      id: 'run-missing-secret',
+      instanceId: 'demo',
+      mode: 'existing',
+      intent: 'provision',
+      overallStatus: 'running',
+      driftSummary: '',
+      requestId: 'req-6',
+      actorId: 'actor-6',
+      createdAt: '',
+      updatedAt: '',
+      steps: [{ stepKey: 'queued', details: {} }],
+    });
+
+    expect(repository.updateKeycloakProvisioningRun).toHaveBeenCalledWith(
+      expect.objectContaining({ runId: 'run-missing-secret', overallStatus: 'failed' })
+    );
+    expect(result).toEqual({ id: 'run-missing-secret', overallStatus: 'failed' });
+  });
 });

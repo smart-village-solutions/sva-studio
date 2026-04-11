@@ -24,7 +24,9 @@ on:
         required: true
         type: string
 
-permissions: {}
+permissions:
+  contents: read
+  packages: write
 
 jobs:
   build:

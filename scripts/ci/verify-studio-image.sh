@@ -170,7 +170,12 @@ wait_for_endpoint() {
     fi
 
     local status
-    status="$(curl --silent --show-error --max-time 5 --output "${output_file}" --write-out '%{http_code}' "http://127.0.0.1:${APP_PORT}${path}" || true)"
+    status="$(
+      docker exec "${APP_NAME}" sh -lc \
+        "curl --silent --show-error --max-time 5 --output /tmp/verify-response --write-out '%{http_code}' 'http://127.0.0.1:3000${path}'" \
+        2>/dev/null || true
+    )"
+    docker exec "${APP_NAME}" cat /tmp/verify-response > "${output_file}" 2>/dev/null || true
     if [ "${status}" = "${expected}" ]; then
       printf '%s\t%s\n' "${path}" "${status}" >> "${LOG_PATH}"
       return 0

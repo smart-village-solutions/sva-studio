@@ -167,7 +167,7 @@ export const useInstances = () => {
           keycloakStatus: statusResponse?.data ?? detailResponse.data.keycloakStatus,
         };
         setSelectedInstance(nextInstance);
-        const nextMutationError = statusError?.code === 'keycloak_unavailable' ? statusError : null;
+        const nextMutationError = statusError ? normalizeKeycloakWorkflowError(statusError) : null;
         setMutationError(nextMutationError);
         logBrowserOperationSuccess(instancesLogger, 'instance_detail_load_succeeded', {
           operation: 'get_instance_detail',
@@ -377,7 +377,7 @@ export const useInstances = () => {
                 latestKeycloakProvisioningRun: response.data,
                 keycloakProvisioningRuns: [
                   response.data,
-                  ...current.keycloakProvisioningRuns.filter((run) => run.id !== response.data?.id),
+                  ...(current.keycloakProvisioningRuns ?? []).filter((run) => run.id !== response.data?.id),
                 ],
               }
             : current

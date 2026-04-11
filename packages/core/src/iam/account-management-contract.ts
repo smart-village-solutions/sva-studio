@@ -343,7 +343,7 @@ export type IamInstanceKeycloakPreflight = {
 };
 
 export type IamInstanceKeycloakPlan = {
-  readonly mode: 'new' | 'existing';
+  readonly mode: InstanceRealmMode;
   readonly overallStatus: 'ready' | 'blocked';
   readonly generatedAt: string;
   readonly driftSummary: string;
@@ -360,7 +360,7 @@ export type IamInstanceKeycloakPlan = {
 export type IamInstanceKeycloakProvisioningRun = {
   readonly id: string;
   readonly instanceId: string;
-  readonly mode: 'new' | 'existing';
+  readonly mode: InstanceRealmMode;
   readonly intent: 'provision' | 'reset_tenant_admin' | 'rotate_client_secret';
   readonly overallStatus: 'planned' | 'running' | 'succeeded' | 'failed';
   readonly driftSummary: string;

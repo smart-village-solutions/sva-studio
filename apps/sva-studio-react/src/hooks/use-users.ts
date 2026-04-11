@@ -247,7 +247,12 @@ export const useUsers = (initial?: Partial<UserFilters>): UseUsersResult => {
         const response = await syncUsersFromKeycloakRequest();
         // Do not block the visible sync feedback on the follow-up list refresh.
         // The list reload keeps its own loading/error handling.
-        void loadUsers();
+        loadUsers().catch((cause: unknown) => {
+          usersLogger.warn('user_sync_keycloak_list_refresh_failed', {
+            operation: 'user_sync_keycloak',
+            error_code: cause instanceof Error ? cause.message : String(cause),
+          });
+        });
         if (response.data.importedCount === 0 && response.data.updatedCount === 0) {
           logBrowserOperationSuccess(
             usersLogger,

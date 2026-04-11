@@ -28,6 +28,17 @@ REPORT_PATH="${ARTIFACT_DIR}/${VERIFY_ID}.json"
 LOG_PATH="${ARTIFACT_DIR}/${VERIFY_ID}.log"
 SUMMARY_PATH="${ARTIFACT_DIR}/${VERIFY_ID}.md"
 ENV_FILE="${ARTIFACT_DIR}/${VERIFY_ID}.env"
+PHASE_LOG_PATH="${ARTIFACT_DIR}/${VERIFY_ID}.phases.log"
+
+POSTGRES_PHASE_STATUS="pending"
+POSTGRES_ROLE_PHASE_STATUS="pending"
+REDIS_PHASE_STATUS="pending"
+IMAGE_PULL_PHASE_STATUS="pending"
+APP_START_PHASE_STATUS="pending"
+HEALTH_LIVE_PHASE_STATUS="pending"
+HEALTH_READY_PHASE_STATUS="pending"
+ROOT_PHASE_STATUS="pending"
+FAILED_PHASE=""
 
 cleanup() {
   docker rm -f "${APP_NAME}" "${REDIS_NAME}" "${POSTGRES_NAME}" >/dev/null 2>&1 || true
@@ -46,6 +57,48 @@ fail_with_container_diagnostics() {
     docker inspect "${container}" > "${ARTIFACT_DIR}/${container}.inspect.json" 2>/dev/null || true
   done
   exit 1
+}
+
+mark_phase() {
+  local phase="$1"
+  local status="$2"
+  local detail="${3:-}"
+
+  printf '%s\t%s\t%s\n' "${phase}" "${status}" "${detail}" >> "${PHASE_LOG_PATH}"
+}
+
+begin_phase() {
+  local phase="$1"
+  echo "::group::${phase}"
+  mark_phase "${phase}" "started"
+}
+
+end_phase() {
+  local phase="$1"
+  local status="$2"
+  local detail="${3:-}"
+
+  mark_phase "${phase}" "${status}" "${detail}"
+  echo "::endgroup::"
+}
+
+set_phase_status_var() {
+  local phase_var="$1"
+  local status="$2"
+
+  printf -v "${phase_var}" '%s' "${status}"
+}
+
+register_failure() {
+  local phase="$1"
+  local status_var="$2"
+  local detail="$3"
+
+  set_phase_status_var "${status_var}" "error"
+  if [ -z "${FAILED_PHASE}" ]; then
+    FAILED_PHASE="${phase}"
+  fi
+  end_phase "${phase}" "error" "${detail}"
 }
 
 cat >"${ENV_FILE}" <<EOF
@@ -98,6 +151,7 @@ VITE_IAM_ADMIN_ENABLED=true
 VITE_IAM_BULK_ENABLED=true
 EOF
 
+begin_phase "postgres-ready"
 docker network create "${NETWORK_NAME}" >/dev/null
 
 docker run -d \
@@ -109,7 +163,7 @@ docker run -d \
   postgres:16-alpine >/dev/null
 
 for _ in $(seq 1 30); do
-  if docker exec "${POSTGRES_NAME}" pg_isready -U sva -d sva_studio >/dev/null 2>&1; then
+  if docker exec "${POSTGRES_NAME}" sh -lc "pg_isready -U sva -d postgres >/dev/null 2>&1 && psql -U sva -d postgres -tAc \"SELECT 1 FROM pg_database WHERE datname = 'sva_studio'\" | grep -q 1"; then
     postgres_ready="true"
     break
   fi
@@ -117,9 +171,13 @@ for _ in $(seq 1 30); do
 done
 
 if [ "${postgres_ready:-false}" != "true" ]; then
+  register_failure "postgres-ready" "POSTGRES_PHASE_STATUS" "Postgres wurde nicht bereit."
   fail_with_container_diagnostics "Postgres wurde im Artifact-Verify nicht bereit." "${POSTGRES_NAME}"
 fi
+set_phase_status_var "POSTGRES_PHASE_STATUS" "ok"
+end_phase "postgres-ready" "ok" "Postgres antwortet und die Datenbank sva_studio existiert."
 
+begin_phase "postgres-app-role"
 docker exec -i "${POSTGRES_NAME}" psql -v ON_ERROR_STOP=1 -U sva -d sva_studio <<EOF >/dev/null
 DO \$\$
 BEGIN
@@ -135,7 +193,10 @@ GRANT USAGE, CREATE ON SCHEMA public TO sva_app;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO sva_app;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO sva_app;
 EOF
+set_phase_status_var "POSTGRES_ROLE_PHASE_STATUS" "ok"
+end_phase "postgres-app-role" "ok" "Runtime-DB-User sva_app ist vorbereitet."
 
+begin_phase "redis-ready"
 docker run -d \
   --name "${REDIS_NAME}" \
   --network "${NETWORK_NAME}" \
@@ -150,22 +211,40 @@ for _ in $(seq 1 30); do
 done
 
 if [ "${redis_ready:-false}" != "true" ]; then
+  register_failure "redis-ready" "REDIS_PHASE_STATUS" "Redis wurde nicht bereit."
   fail_with_container_diagnostics "Redis wurde im Artifact-Verify nicht bereit." "${REDIS_NAME}"
 fi
+set_phase_status_var "REDIS_PHASE_STATUS" "ok"
+end_phase "redis-ready" "ok" "Redis antwortet auf PING."
 
+begin_phase "image-pull"
 docker pull "${IMAGE_REF}" >/dev/null
+set_phase_status_var "IMAGE_PULL_PHASE_STATUS" "ok"
+end_phase "image-pull" "ok" "Image wurde erfolgreich gezogen."
 
+begin_phase "app-start"
 docker run -d \
   --name "${APP_NAME}" \
   --network "${NETWORK_NAME}" \
   --env-file "${ENV_FILE}" \
   -p "127.0.0.1:${APP_PORT}:3000" \
   "${IMAGE_REF}" >/dev/null
+sleep 2
+
+if ! docker inspect -f '{{.State.Running}}' "${APP_NAME}" 2>/dev/null | grep -q true; then
+  register_failure "app-start" "APP_START_PHASE_STATUS" "App-Prozess läuft nicht."
+  fail_with_container_diagnostics "Die App ist direkt nach dem Start nicht mehr gelaufen." "${APP_NAME}"
+fi
+set_phase_status_var "APP_START_PHASE_STATUS" "ok"
+end_phase "app-start" "ok" "App-Container läuft."
 
 wait_for_endpoint() {
   local path="$1"
   local expected="$2"
-  local output_file="${ARTIFACT_DIR}/$(echo "${path}" | tr '/:' '__').txt"
+  local label="$3"
+  local output_file="${ARTIFACT_DIR}/${label}.body.txt"
+  local headers_file="${ARTIFACT_DIR}/${label}.headers.txt"
+  local trace_file="${ARTIFACT_DIR}/${label}.trace.log"
 
   for _ in $(seq 1 "${VERIFY_ATTEMPTS}"); do
     if ! docker inspect -f '{{.State.Running}}' "${APP_NAME}" 2>/dev/null | grep -q true; then
@@ -175,16 +254,19 @@ wait_for_endpoint() {
     local status
     status="$(
       docker exec "${APP_NAME}" sh -lc \
-        "curl --silent --show-error --max-time ${VERIFY_CURL_TIMEOUT_SECONDS} --output /tmp/verify-response --write-out '%{http_code}' 'http://127.0.0.1:3000${path}'" \
+        "curl --silent --show-error --max-time ${VERIFY_CURL_TIMEOUT_SECONDS} --dump-header /tmp/verify-headers --output /tmp/verify-response --write-out '%{http_code}' 'http://127.0.0.1:3000${path}'" \
         2>/dev/null || true
     )"
     docker exec "${APP_NAME}" cat /tmp/verify-response > "${output_file}" 2>/dev/null || true
+    docker exec "${APP_NAME}" cat /tmp/verify-headers > "${headers_file}" 2>/dev/null || true
     if [ "${status}" = "${expected}" ]; then
       printf '%s\t%s\n' "${path}" "${status}" >> "${LOG_PATH}"
+      printf 'attempt-status=%s\n' "${status}" >> "${trace_file}"
       return 0
     fi
 
     printf '%s\t%s\n' "${path}" "${status}" >> "${LOG_PATH}"
+    printf 'attempt-status=%s\n' "${status}" >> "${trace_file}"
     sleep "${VERIFY_SLEEP_SECONDS}"
   done
 
@@ -192,14 +274,33 @@ wait_for_endpoint() {
 }
 
 VERIFY_STATUS="ok"
-if ! wait_for_endpoint "/health/live" "200"; then
+begin_phase "health-live"
+if ! wait_for_endpoint "/health/live" "200" "health-live"; then
   VERIFY_STATUS="error"
+  register_failure "health-live" "HEALTH_LIVE_PHASE_STATUS" "/health/live liefert nicht 200."
+else
+  set_phase_status_var "HEALTH_LIVE_PHASE_STATUS" "ok"
+  end_phase "health-live" "ok" "/health/live liefert 200."
 fi
-if [ "${VERIFY_STATUS}" = "ok" ] && ! wait_for_endpoint "/health/ready" "200"; then
-  VERIFY_STATUS="error"
+if [ "${VERIFY_STATUS}" = "ok" ]; then
+  begin_phase "health-ready"
 fi
-if [ "${VERIFY_STATUS}" = "ok" ] && ! wait_for_endpoint "/" "200"; then
+if [ "${VERIFY_STATUS}" = "ok" ] && ! wait_for_endpoint "/health/ready" "200" "health-ready"; then
   VERIFY_STATUS="error"
+  register_failure "health-ready" "HEALTH_READY_PHASE_STATUS" "/health/ready liefert nicht 200."
+elif [ "${VERIFY_STATUS}" = "ok" ]; then
+  set_phase_status_var "HEALTH_READY_PHASE_STATUS" "ok"
+  end_phase "health-ready" "ok" "/health/ready liefert 200."
+fi
+if [ "${VERIFY_STATUS}" = "ok" ]; then
+  begin_phase "root-page"
+fi
+if [ "${VERIFY_STATUS}" = "ok" ] && ! wait_for_endpoint "/" "200" "root-page"; then
+  VERIFY_STATUS="error"
+  register_failure "root-page" "ROOT_PHASE_STATUS" "/ liefert nicht 200."
+elif [ "${VERIFY_STATUS}" = "ok" ]; then
+  set_phase_status_var "ROOT_PHASE_STATUS" "ok"
+  end_phase "root-page" "ok" "/ liefert 200."
 fi
 
 docker logs "${APP_NAME}" > "${LOG_PATH}.container" 2>&1 || true
@@ -209,10 +310,22 @@ cat >"${REPORT_PATH}" <<EOF
 {
   "imageRef": "${IMAGE_REF}",
   "status": "${VERIFY_STATUS}",
+  "failedPhase": "${FAILED_PHASE}",
   "reportId": "${VERIFY_ID}",
   "port": ${APP_PORT},
+  "phases": {
+    "postgresReady": "${POSTGRES_PHASE_STATUS}",
+    "postgresAppRole": "${POSTGRES_ROLE_PHASE_STATUS}",
+    "redisReady": "${REDIS_PHASE_STATUS}",
+    "imagePull": "${IMAGE_PULL_PHASE_STATUS}",
+    "appStart": "${APP_START_PHASE_STATUS}",
+    "healthLive": "${HEALTH_LIVE_PHASE_STATUS}",
+    "healthReady": "${HEALTH_READY_PHASE_STATUS}",
+    "rootPage": "${ROOT_PHASE_STATUS}"
+  },
   "artifacts": {
     "log": "$(basename "${LOG_PATH}")",
+    "phaseLog": "$(basename "${PHASE_LOG_PATH}")",
     "containerLog": "$(basename "${LOG_PATH}.container")",
     "inspect": "$(basename "${LOG_PATH}.inspect.json")"
   }
@@ -224,8 +337,21 @@ cat >"${SUMMARY_PATH}" <<EOF
 
 - Image-Ref: \`${IMAGE_REF}\`
 - Status: \`${VERIFY_STATUS}\`
+- Fehlphase: \`${FAILED_PHASE:-keine}\`
 - Port: \`${APP_PORT}\`
 - Report: \`$(basename "${REPORT_PATH}")\`
+- Phasenlog: \`$(basename "${PHASE_LOG_PATH}")\`
+
+## Phasen
+
+- `postgres-ready`: \`${POSTGRES_PHASE_STATUS}\`
+- `postgres-app-role`: \`${POSTGRES_ROLE_PHASE_STATUS}\`
+- `redis-ready`: \`${REDIS_PHASE_STATUS}\`
+- `image-pull`: \`${IMAGE_PULL_PHASE_STATUS}\`
+- `app-start`: \`${APP_START_PHASE_STATUS}\`
+- `health-live`: \`${HEALTH_LIVE_PHASE_STATUS}\`
+- `health-ready`: \`${HEALTH_READY_PHASE_STATUS}\`
+- `root-page`: \`${ROOT_PHASE_STATUS}\`
 EOF
 
 if [ "${VERIFY_STATUS}" != "ok" ]; then

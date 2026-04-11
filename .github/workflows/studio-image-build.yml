@@ -1,0 +1,112 @@
+name: Studio Image Build
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Optionaler unveraenderlicher Tag fuer das Studio-Image'
+        required: false
+        type: string
+  workflow_call:
+    inputs:
+      image_tag:
+        required: false
+        type: string
+    outputs:
+      image_digest:
+        description: 'Manifest-Digest des gebauten Studio-Images'
+        value: ${{ jobs.build.outputs.image_digest }}
+      image_ref:
+        description: 'Vollstaendige Digest-Referenz des gebauten Studio-Images'
+        value: ${{ jobs.build.outputs.image_ref }}
+      image_tag:
+        description: 'Verwendeter Image-Tag'
+        value: ${{ jobs.build.outputs.image_tag }}
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      image_digest: ${{ steps.inspect.outputs.image_digest }}
+      image_ref: ${{ steps.inspect.outputs.image_ref }}
+      image_tag: ${{ steps.meta.outputs.image_tag }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Resolve image metadata
+        id: meta
+        env:
+          IMAGE_TAG_INPUT: ${{ inputs.image_tag || github.event.inputs.image_tag || '' }}
+        run: |
+          set -euo pipefail
+          image_tag="${IMAGE_TAG_INPUT}"
+          if [ -z "${image_tag}" ]; then
+            image_tag="$(git rev-parse --short=12 HEAD)"
+          fi
+          image_name="ghcr.io/smart-village-solutions/sva-studio:${image_tag}"
+          echo "image_tag=${image_tag}" >> "${GITHUB_OUTPUT}"
+          echo "image_name=${image_name}" >> "${GITHUB_OUTPUT}"
+
+      - name: Build and push studio image
+        run: |
+          set -euo pipefail
+          docker buildx build \
+            --platform linux/amd64 \
+            --progress=plain \
+            --provenance=false \
+            --sbom=false \
+            -f deploy/portainer/Dockerfile \
+            -t "${{ steps.meta.outputs.image_name }}" \
+            --push \
+            .
+
+      - name: Inspect manifest digest
+        id: inspect
+        run: |
+          set -euo pipefail
+          digest="$(
+            docker buildx imagetools inspect "${{ steps.meta.outputs.image_name }}" \
+              | awk '/^Digest:/ { print $2; exit }'
+          )"
+          if ! printf '%s' "${digest}" | grep -Eq '^sha256:[a-f0-9]{64}$'; then
+            echo "Manifest-Digest konnte nicht ermittelt werden." >&2
+            exit 1
+          fi
+          image_ref="ghcr.io/smart-village-solutions/sva-studio@${digest}"
+          mkdir -p artifacts/runtime/image-build
+          cat > artifacts/runtime/image-build/studio-image-build.json <<EOF
+          {
+            "imageTag": "${{ steps.meta.outputs.image_tag }}",
+            "imageDigest": "${digest}",
+            "imageRef": "${image_ref}"
+          }
+          EOF
+          echo "image_digest=${digest}" >> "${GITHUB_OUTPUT}"
+          echo "image_ref=${image_ref}" >> "${GITHUB_OUTPUT}"
+
+      - name: Upload image build metadata
+        uses: actions/upload-artifact@v7
+        with:
+          name: studio-image-build-${{ github.run_id }}
+          path: artifacts/runtime/image-build
+          if-no-files-found: error
+          retention-days: 14

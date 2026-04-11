@@ -61,8 +61,8 @@ Wichtig:
    Für Serverprofile muss das Artefakt explizit `linux/amd64` unterstützen.
 2. Zielprofil auswählen.
 3. Zielumgebungsvariablen oder Secrets prüfen.
-4. Für das Ziel-Remoteprofil zuerst `pnpm env:precheck:<profil>` ausführen (z. B. `acceptance-hb` oder `studio`).
-5. Den kanonischen Serverdeploy über `pnpm env:deploy:<profil>` starten.
+4. Für `studio` zuerst `Studio Image Build` und `Studio Artifact Verify` oder den Orchestrator `Studio Release` ausführen.
+5. Den kanonischen Serverdeploy über `Studio Deploy` oder `pnpm env:deploy:studio` starten.
 6. Den erzeugten Deploy-Report unter `artifacts/runtime/deployments/` prüfen.
 7. Monitoring und Logs auf Fehler prüfen.
 8. Nicht-sensitive Folgearbeiten als GitHub Issues nachziehen.
@@ -101,12 +101,20 @@ Für tenant-spezifische Remote-Smokes ist zusätzlich verpflichtend:
 
 Migrationen sind ein bewusster Betriebsschritt und nicht implizit Teil jedes Redeployments.
 
-Für Remote-Profile (`acceptance-hb`, `studio`) gilt zusätzlich:
+Für das Remote-Profil `studio` gilt zusätzlich:
 
 - `app-only` und `schema-and-app` sind zwei explizite Release-Klassen
 - `schema-and-app` erfordert ein dokumentiertes Wartungsfenster
 - der kanonische Deploypfad führt Migrationen nur bei `schema-and-app` automatisch aus
 - Deploy-Evidenz wird immer als Report-Artefakt geschrieben
+
+Der offizielle CI/CD-Pfad fuer `studio` lautet:
+
+1. `Studio Image Build`
+2. `Studio Artifact Verify`
+3. `Studio Deploy`
+
+Optional verbindet `Studio Release` diese drei Stufen in einem manuellen Orchestrierungsworkflow.
 
 - Lokales Setup und SQL-Workflow: `../development/postgres-setup.md`
 - Swarm-Ausführung und Reihenfolge: `./swarm-deployment-runbook.md`

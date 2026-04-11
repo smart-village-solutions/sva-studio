@@ -6,7 +6,6 @@ Dieses Runbook definiert die offiziellen Betriebsprofile für SVA Studio und ver
 
 - `local-keycloak`: lokaler Betrieb auf `http://localhost:3000` mit globalem Test-Realm `svs-intern-studio-staging`
 - `local-builder`: lokaler Betrieb auf `http://localhost:3000` mit Builder.io und Mock-User
-- `acceptance-hb`: Serverbetrieb mit Root-Host `https://studio.smart-village.app` und registry-gesteuerten Tenant-Hosts unter `https://<instanceId>.studio.smart-village.app`
 - `studio`: produktionsnaher Serverbetrieb auf `https://studio.smart-village.app` mit dediziertem Swarm-Stack
 
 Die kanonischen Profildefinitionen liegen unter `config/runtime/`. Sensible oder standortspezifische Werte werden optional in `config/runtime/<profil>.local.vars` übersteuert.
@@ -68,7 +67,7 @@ Gemeinsam:
 - optional `SVA_MAINSERVER_REQUIRED=false`, wenn der Mainserver-Smoke in der fruehen Testphase bewusst nicht blockieren darf
 - optional `SVA_MIGRATION_STATUS_REQUIRED=false`, wenn der Remote-Goose-Status in der fruehen Studio-Testphase nur als Zusatzsignal und nicht als blockierendes Gate gewertet werden soll
 
-Remote (`acceptance-hb`, `studio`) verpflichtend:
+Remote (`studio`) verpflichtend:
 
 - `SVA_STACK_NAME`
 - `QUANTUM_ENDPOINT`
@@ -141,19 +140,6 @@ pnpm env:update:local-builder
 pnpm env:down:local-builder
 ```
 
-### HB-Abnahme
-
-```bash
-pnpm env:precheck:acceptance-hb
-pnpm env:deploy:acceptance-hb -- --release-mode=app-only
-pnpm env:deploy:acceptance-hb -- --release-mode=schema-and-app --maintenance-window="2026-03-20 19:00-19:15 CET"
-pnpm env:status:acceptance-hb
-pnpm env:doctor:acceptance-hb
-pnpm env:smoke:acceptance-hb
-pnpm env:migrate:acceptance-hb
-pnpm env:down:acceptance-hb
-```
-
 ### Studio (Remote)
 
 ```bash
@@ -165,9 +151,10 @@ pnpm env:doctor:studio
 pnpm env:smoke:studio
 pnpm env:migrate:studio
 pnpm env:down:studio
+pnpm env:feedback:studio
 ```
 
-Mutierende Remote-Kommandos (`deploy`, `migrate`, `reset`, `down`) sind standardmaessig nur im kanonischen CI-/Runner-Kontext erlaubt. Fuer einen dokumentierten lokalen Notfallpfad ist explizit `SVA_ALLOW_LOCAL_REMOTE_MUTATIONS=true` noetig.
+Mutierende Remote-Kommandos (`deploy`, `migrate`, `reset`, `down`) sind fuer `studio` ausschliesslich im kanonischen CI-/Runner-Kontext erlaubt. Lokale produktionsnahe Mutationen sind kein offizieller Betriebsweg mehr.
 
 ### Lokale HB-Produktivsimulation in Docker
 
@@ -186,12 +173,12 @@ Dieser Pfad startet die App als Produktionscontainer lokal gegen `postgres-hb`, 
 - lokale Profile starten Docker Compose für Redis/Postgres und optional den Monitoring-Stack
 - lokale Profile starten zusätzlich Adminer auf `http://127.0.0.1:8080`
 - lokale Profile starten danach den Dev-Server für `sva-studio-react`
-- Remote-Profile (`acceptance-hb`, `studio`) nutzen stattdessen den kanonischen Releasepfad `deploy`; direkte Remote-Deploys über `up` sind gesperrt
+- Remote-Profile (`studio`) nutzen stattdessen den kanonischen Releasepfad `deploy`; direkte Remote-Deploys über `up` sind gesperrt
 
 ### `update`
 
 - lokale Profile ziehen Compose-Images neu, starten Infrastruktur erneut und starten den Dev-Server kontrolliert neu
-- Remote-Profile (`acceptance-hb`, `studio`) nutzen stattdessen den kanonischen Releasepfad `deploy`; direkte Remote-Redeploys über `update` sind gesperrt
+- Remote-Profile (`studio`) nutzen stattdessen den kanonischen Releasepfad `deploy`; direkte Remote-Redeploys über `update` sind gesperrt
 
 ### `down`
 
@@ -220,10 +207,10 @@ Dieser Pfad startet die App als Produktionscontainer lokal gegen `postgres-hb`, 
 
 ### `deploy`
 
-- nur für Remote-Profile (`acceptance-hb`, `studio`)
+- nur für Remote-Profile (`studio`)
 - ist der kanonische Release-Einstiegspunkt für Serverdeploys
 - Remote-Mutationen sind standardmaessig nur mit `SVA_REMOTE_OPERATOR_CONTEXT=ci-runner` oder unter GitHub Actions zulaessig
-- lokale Shells duerfen denselben Pfad nur mit explizitem Notfall-Override `SVA_ALLOW_LOCAL_REMOTE_MUTATIONS=true` verwenden
+- lokale Shells sind fuer `studio` nur fuer Diagnose, `status`, `precheck` und `doctor` gedacht
 - Orchestrierung in fixer Reihenfolge:
   1. `environment-precheck` inklusive Soll-/Live-Spec-Drift und Pflichtvariablen
   2. `image-smoke` gegen das auszurollende Digest-Artefakt mit Root-Host-, Tenant-Host- und OIDC-Paritaet
@@ -317,7 +304,7 @@ Prüfungen in Reihenfolge:
 Optional:
 
 ```bash
-pnpm env:doctor:acceptance-hb --json
+pnpm env:doctor:studio --json
 ```
 
 ```bash
@@ -398,7 +385,7 @@ Fuer den produktionsnahen `studio`-Betrieb gilt:
 - `env:migrate:<profil>` und `schema-and-app` laufen für Remote-Profile in separaten Temp-Stacks; diese Jobs dürfen den Live-Stack `app`, `postgres` und `redis` nicht reconciliieren
 - jeder Remote-Deploy erzeugt einen maschinenlesbaren und menschenlesbaren Bericht unter `artifacts/runtime/deployments/`
 - jeder Remote-Deploy erzeugt zusätzlich Release-Manifest, Phasenreport, Migrationsreport, interne Probe-Ergebnisse und externe Probe-Ergebnisse als eigene JSON-Artefakte
-- nach jedem Remote-Deploy folgt `pnpm env:feedback:acceptance-hb` für den Acceptance-Feedback-Loop
+- nach jedem `studio`-Deploy folgt `pnpm env:feedback:studio` für den Review- und Feedback-Loop
 - fehlgeschlagene oder manuell stabilisierte Deploys muessen zusaetzlich als Review unter `docs/reports/` festgehalten werden
 - vor einer tieferen Fehlersuche immer zuerst `pnpm env:doctor:<profil>` ausführen; manuelles `psql` und Browser-Netzwerk sind nur Fallback
 - bei lokalen Profilwechseln nie zwei Profile parallel auf Port `3000` betreiben

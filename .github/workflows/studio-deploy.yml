@@ -1,10 +1,10 @@
-name: Acceptance Deploy
+name: Studio Deploy
 
 on:
   workflow_dispatch:
     inputs:
       release_mode:
-        description: 'Release-Modus fuer acceptance-hb'
+        description: 'Release-Modus fuer studio'
         required: true
         default: 'app-only'
         type: choice
@@ -12,11 +12,11 @@ on:
           - app-only
           - schema-and-app
       image_tag:
-        description: 'Unveraenderlicher Image-Tag fuer den Deploy'
+        description: 'Optionaler unveraenderlicher Image-Tag fuer Reports'
         required: false
         type: string
       image_digest:
-        description: 'Verbindlicher Image-Digest fuer den Acceptance-Deploy'
+        description: 'Verbindlicher Image-Digest fuer den Studio-Deploy'
         required: true
         type: string
       maintenance_window:
@@ -25,23 +25,52 @@ on:
         type: string
       rollback_hint:
         description: 'Rollback-Hinweis fuer den Deploy-Report'
+        required: true
+        type: string
+  workflow_call:
+    inputs:
+      release_mode:
+        required: true
+        type: string
+      image_tag:
         required: false
+        type: string
+      image_digest:
+        required: true
+        type: string
+      maintenance_window:
+        required: false
+        type: string
+      rollback_hint:
+        required: true
         type: string
 
 permissions:
   contents: read
+  packages: read
 
 jobs:
-  acceptance-deploy:
-    runs-on: ubuntu-latest
-    environment: acceptance-hb
+  verify_dispatch:
+    if: github.event_name == 'workflow_dispatch'
+    uses: ./.github/workflows/studio-artifact-verify.yml
+    secrets: inherit
+    with:
+      image_digest: ${{ github.event.inputs.image_digest }}
+      image_tag: ${{ github.event.inputs.image_tag }}
+
+  deploy:
+    if: github.event_name == 'workflow_call' || needs.verify_dispatch.result == 'success'
+    needs:
+      - verify_dispatch
+    runs-on: self-hosted
+    environment: studio
     env:
       QUANTUM_API_KEY: ${{ secrets.QUANTUM_API_KEY }}
       QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT || 'sva' }}
       QUANTUM_ENDPOINT_ID: ${{ vars.QUANTUM_ENDPOINT_ID || '64' }}
-      QUANTUM_ENVIRONMENT: ${{ vars.QUANTUM_ENVIRONMENT || 'swarm-secrets' }}
+      QUANTUM_ENVIRONMENT: ${{ vars.QUANTUM_ENVIRONMENT || 'studio' }}
       SVA_REMOTE_OPERATOR_CONTEXT: ci-runner
-      SVA_STACK_NAME: ${{ vars.SVA_STACK_NAME || 'sva-studio' }}
+      SVA_STACK_NAME: ${{ vars.SVA_STACK_NAME || 'studio' }}
       SVA_PUBLIC_BASE_URL: ${{ vars.SVA_PUBLIC_BASE_URL }}
       SVA_PARENT_DOMAIN: ${{ vars.SVA_PARENT_DOMAIN }}
       SVA_ALLOWED_INSTANCE_IDS: ${{ vars.SVA_ALLOWED_INSTANCE_IDS }}
@@ -55,15 +84,15 @@ jobs:
       KEYCLOAK_ADMIN_BASE_URL: ${{ vars.KEYCLOAK_ADMIN_BASE_URL }}
       KEYCLOAK_ADMIN_REALM: ${{ vars.KEYCLOAK_ADMIN_REALM }}
       KEYCLOAK_ADMIN_CLIENT_ID: ${{ vars.KEYCLOAK_ADMIN_CLIENT_ID }}
-      ENABLE_OTEL: ${{ vars.ENABLE_OTEL || 'true' }}
+      ENABLE_OTEL: ${{ vars.ENABLE_OTEL || 'false' }}
       OTEL_SERVICE_NAME: ${{ vars.OTEL_SERVICE_NAME || 'sva-studio' }}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${{ vars.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://otel-collector:4318' }}
-      IAM_UI_ENABLED: ${{ vars.IAM_UI_ENABLED || 'false' }}
-      IAM_ADMIN_ENABLED: ${{ vars.IAM_ADMIN_ENABLED || 'false' }}
-      IAM_BULK_ENABLED: ${{ vars.IAM_BULK_ENABLED || 'false' }}
-      VITE_IAM_UI_ENABLED: ${{ vars.VITE_IAM_UI_ENABLED || 'false' }}
-      VITE_IAM_ADMIN_ENABLED: ${{ vars.VITE_IAM_ADMIN_ENABLED || 'false' }}
-      VITE_IAM_BULK_ENABLED: ${{ vars.VITE_IAM_BULK_ENABLED || 'false' }}
+      IAM_UI_ENABLED: ${{ vars.IAM_UI_ENABLED || 'true' }}
+      IAM_ADMIN_ENABLED: ${{ vars.IAM_ADMIN_ENABLED || 'true' }}
+      IAM_BULK_ENABLED: ${{ vars.IAM_BULK_ENABLED || 'true' }}
+      VITE_IAM_UI_ENABLED: ${{ vars.VITE_IAM_UI_ENABLED || 'true' }}
+      VITE_IAM_ADMIN_ENABLED: ${{ vars.VITE_IAM_ADMIN_ENABLED || 'true' }}
+      VITE_IAM_BULK_ENABLED: ${{ vars.VITE_IAM_BULK_ENABLED || 'true' }}
       SVA_GRAFANA_URL: ${{ vars.SVA_GRAFANA_URL }}
       SVA_LOKI_URL: ${{ vars.SVA_LOKI_URL }}
       SVA_AUTH_CLIENT_SECRET: ${{ secrets.SVA_AUTH_CLIENT_SECRET }}
@@ -85,11 +114,11 @@ jobs:
       SVA_MAINSERVER_CLIENT_ID: ${{ vars.SVA_MAINSERVER_CLIENT_ID }}
       SVA_MAINSERVER_CLIENT_SECRET: ${{ secrets.SVA_MAINSERVER_CLIENT_SECRET }}
       SVA_IMAGE_REPOSITORY: ${{ vars.SVA_IMAGE_REPOSITORY || 'sva-studio' }}
-      SVA_IMAGE_TAG: ${{ github.event.inputs.image_tag || vars.SVA_IMAGE_TAG }}
-      SVA_IMAGE_DIGEST: ${{ github.event.inputs.image_digest }}
-      SVA_ACCEPTANCE_REPORT_SLUG: acceptance-deploy
-      SVA_ACCEPTANCE_DEPLOY_ACTOR: ${{ github.actor }}
-      SVA_ACCEPTANCE_DEPLOY_WORKFLOW: ${{ github.workflow }}
+      SVA_IMAGE_TAG: ${{ inputs.image_tag || github.event.inputs.image_tag || vars.SVA_IMAGE_TAG }}
+      SVA_IMAGE_DIGEST: ${{ inputs.image_digest || github.event.inputs.image_digest }}
+      SVA_REMOTE_REPORT_SLUG: studio-deploy
+      SVA_REMOTE_DEPLOY_ACTOR: ${{ github.actor }}
+      SVA_REMOTE_DEPLOY_WORKFLOW: ${{ github.workflow }}
 
     steps:
       - name: Checkout
@@ -122,7 +151,7 @@ jobs:
         run: |
           set -euo pipefail
           if [ -z "${SVA_IMAGE_DIGEST}" ]; then
-            echo "image_digest ist fuer Acceptance-Deploys verpflichtend."
+            echo "image_digest ist fuer Studio-Deploys verpflichtend."
             exit 1
           fi
           if ! printf '%s' "${SVA_IMAGE_DIGEST}" | grep -Eq '^sha256:[a-f0-9]{64}$'; then
@@ -133,42 +162,47 @@ jobs:
           echo "SVA_IMAGE_REF=${image_ref}" >> "${GITHUB_ENV}"
           docker pull "${image_ref}"
 
-      - name: Run canonical acceptance deploy
+      - name: Run studio precheck
+        run: pnpm env:precheck:studio -- --json
+
+      - name: Run canonical studio deploy
+        env:
+          RELEASE_MODE: ${{ inputs.release_mode || github.event.inputs.release_mode }}
+          MAINTENANCE_WINDOW: ${{ inputs.maintenance_window || github.event.inputs.maintenance_window || '' }}
+          ROLLBACK_HINT: ${{ inputs.rollback_hint || github.event.inputs.rollback_hint }}
+          IMAGE_TAG: ${{ inputs.image_tag || github.event.inputs.image_tag || '' }}
         run: |
           set -euo pipefail
           args=(
-            "--release-mode=${{ github.event.inputs.release_mode }}"
+            "--release-mode=${RELEASE_MODE}"
             "--actor=${GITHUB_ACTOR}"
             "--workflow=${GITHUB_WORKFLOW}"
+            "--rollback-hint=${ROLLBACK_HINT}"
+            "--image-digest=${SVA_IMAGE_DIGEST}"
           )
 
-          if [ -n "${{ github.event.inputs.maintenance_window }}" ]; then
-            args+=("--maintenance-window=${{ github.event.inputs.maintenance_window }}")
+          if [ -n "${MAINTENANCE_WINDOW}" ]; then
+            args+=("--maintenance-window=${MAINTENANCE_WINDOW}")
           fi
 
-          if [ -n "${{ github.event.inputs.rollback_hint }}" ]; then
-            args+=("--rollback-hint=${{ github.event.inputs.rollback_hint }}")
+          if [ -n "${IMAGE_TAG}" ]; then
+            args+=("--image-tag=${IMAGE_TAG}")
           fi
 
-          if [ -n "${{ github.event.inputs.image_tag }}" ]; then
-            args+=("--image-tag=${{ github.event.inputs.image_tag }}")
-          fi
+          pnpm env:deploy:studio -- --json "${args[@]}"
 
-          args+=("--image-digest=${{ github.event.inputs.image_digest }}")
-
-          pnpm env:deploy:acceptance-hb -- --json "${args[@]}"
+      - name: Run studio smoke
+        run: pnpm env:smoke:studio -- --json
 
       - name: Generate deploy feedback artifacts
         if: always()
-        run: |
-          set -euo pipefail
-          pnpm env:feedback:acceptance-hb
+        run: pnpm env:feedback:studio
 
-      - name: Upload acceptance deploy artifacts
+      - name: Upload studio deploy artifacts
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: acceptance-deploy-${{ github.run_id }}
+          name: studio-deploy-${{ github.run_id }}
           path: artifacts/runtime/deployments
           if-no-files-found: warn
           retention-days: 14

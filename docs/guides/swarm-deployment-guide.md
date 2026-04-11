@@ -10,7 +10,7 @@ Dieses Dokument beschreibt das Setup für den Deployment von sva-studio auf Plan
 Hinweis:
 
 - Für produktionsnahe Rollouts ist der kanonische Einstieg heute `pnpm env:deploy:<profil>`.
-- Neben `acceptance-hb` wird auch das Remoteprofil `studio` unterstützt.
+- Das offizielle Remoteprofil ist `studio`.
 - Für tenant-spezifische Realm- und Client-Vorgaben siehe zusätzlich `./keycloak-tenant-realm-bootstrap.md`.
 - Für Erkenntnisse aus der Recovery eines realen `studio`-Incidents siehe zusätzlich `../reports/studio-runtime-recovery-2026-04-05.md`.
 
@@ -319,10 +319,6 @@ Nach erfolgreichem Deploy:
 
 1. **Migrationen über den kanonischen Runtime-Pfad ausführen** (erste Ausführung oder Schema-Update):
     ```bash
-    # Acceptance-Profil
-    pnpm env:migrate:acceptance-hb
-
-    # Studio-Profil
     pnpm env:migrate:studio
     ```
 
@@ -341,13 +337,10 @@ Nach erfolgreichem Deploy:
 ### Kanonische Remote-Kommandos (kurz)
 
 ```bash
-# Acceptance
-pnpm env:precheck:acceptance-hb
-pnpm env:deploy:acceptance-hb -- --release-mode=app-only
-
 # Studio
 pnpm env:precheck:studio
 pnpm env:deploy:studio -- --release-mode=app-only
+pnpm env:feedback:studio
 ```
 
 Hinweis:

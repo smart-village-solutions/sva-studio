@@ -36,12 +36,14 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
   - Bericht mit JSON- und Markdown-Artefakt wird unter `docs/reports/` geschrieben
   - `/health/ready` sowie Login-, JIT-, Organisations- und Membership-Nachweise müssen im Bericht als `passed` erscheinen
 - Produktionsnahe Release-Validierung:
-  - `pnpm env:deploy:acceptance-hb` ist nur mit `--image-digest=sha256:...` gültig
+  - `Studio Image Build` muss genau einen Manifest-Digest für `linux/amd64` liefern
+  - `Studio Artifact Verify` muss denselben Digest gegen `/health/live`, `/health/ready` und `/` erfolgreich pruefen
+  - `pnpm env:deploy:studio` ist nur mit `--image-digest=sha256:...` gültig
   - `environment-precheck`, `image-smoke`, `internal-verify`, `external-smoke` und `release-decision` müssen im Deploy-Report als `ok` erscheinen
   - öffentliche Smoke-Probes gegen `/`, `/health/live`, `/health/ready`, `/auth/login` und `/api/v1/iam/me/context` dürfen keinen Timeout und keinen generischen HTML-Fehlerpfad liefern
   - Release-Evidenz unter `artifacts/runtime/deployments/` muss Report, Release-Manifest und Probe-Artefakte enthalten
   - Migrations-Evidenz muss zusätzlich `goose`-Status und die verwendete `goose`-Version enthalten
-  - `pnpm env:feedback:acceptance-hb` muss nach jedem Lauf eine Trend-Zusammenfassung und einen Review-Entwurf erzeugen
+  - `pnpm env:feedback:studio` muss nach jedem Lauf eine Trend-Zusammenfassung und einen Review-Entwurf erzeugen
   - fuer `studio` muessen `doctor` und `precheck` zusaetzlich `app-db-principal` als `ok` ausweisen; `db`, `redis` und `keycloak` muessen dabei aus Sicht des laufenden `APP_DB_USER` bereit sein
   - wenn ein Rollout ein bereits live laufendes Ziel-Digest wiederverwendet, muss der Deploy-Report diese Live-Paritaet fuer dasselbe Digest explizit ausweisen
 - IAM Authorize Performance:

@@ -22,7 +22,7 @@ docker compose exec redis redis-cli
 docker compose down
 ```
 
-Für die kanonischen Betriebsmodi `local-keycloak`, `local-builder` und `acceptance-hb` siehe `docs/development/runtime-profile-betrieb.md`.
+Für die kanonischen Betriebsmodi `local-keycloak`, `local-builder` und `studio` siehe `docs/development/runtime-profile-betrieb.md`.
 
 ## Konfiguration
 

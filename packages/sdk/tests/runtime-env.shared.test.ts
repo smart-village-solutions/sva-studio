@@ -120,8 +120,8 @@ describe('runtime-env.shared', () => {
     ).toEqual({ mode: 'ci-runner' });
   });
 
-  it('accepts a documented local emergency override for remote mutations', () => {
-    expect(
+  it('rejects local emergency overrides for studio mutations', () => {
+    expect(() =>
       assertDeterministicRemoteMutationContext(
         {
           SVA_ALLOW_LOCAL_REMOTE_MUTATIONS: 'true',
@@ -129,7 +129,7 @@ describe('runtime-env.shared', () => {
         'studio',
         'migrate',
       ),
-    ).toEqual({ mode: 'local-emergency' });
+    ).toThrow(/studio deaktiviert/);
   });
 
   it('detects documented truthy flag values for local emergency overrides', () => {

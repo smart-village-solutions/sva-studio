@@ -85,8 +85,7 @@ SVA Studio kennt drei offizielle Betriebsprofile:
 |--------|----------|--------|
 | `local-keycloak` | Lokale Entwicklung | `config/runtime/local-keycloak.vars` |
 | `local-builder` | Lokale Entwicklung (Builder.io) | `config/runtime/local-builder.vars` |
-| `acceptance-hb` | Production (Docker Swarm) | `config/runtime/acceptance-hb.vars` |
-| `studio` | Produktnahe Testphase (Docker Swarm) | `config/runtime/studio.vars` |
+| `studio` | Produktivnaher Rolloutpfad (Docker Swarm) | `config/runtime/studio.vars` |
 
 Jedes Profil hat optionale `.local.vars`-Overrides. Werte aus `*.local.vars` niemals committen oder ausgeben.
 
@@ -99,8 +98,6 @@ Jedes Profil hat optionale `.local.vars`-Overrides. Werte aus `*.local.vars` nie
 version: "1.0"
 compose: deploy/portainer/docker-compose.yml
 environments:
-  - name: acceptance-hb
-    compose: deploy/portainer/docker-compose.yml
   - name: demo
     compose: deploy/portainer/docker-compose.demo.yml
   - name: studio
@@ -154,7 +151,7 @@ Kurz notiert:
 | `QUANTUM_ENDPOINT` | Ziel-Endpoint (z.B. `sva`) |
 | `QUANTUM_STACK` | Ziel-Stack (z.B. `sva-studio`) |
 | `QUANTUM_SERVICE` | Einzelner Service im Stack |
-| `QUANTUM_ENVIRONMENT` | Environment-Selektor (`acceptance-hb`, `demo`) |
+| `QUANTUM_ENVIRONMENT` | Environment-Selektor (`studio`, `demo`) |
 
 Legacy-Aliase (`PORTAINER_*`) funktionieren, aber `QUANTUM_*` bevorzugen.
 
@@ -265,7 +262,7 @@ Wichtig für `studio`:
 
 ---
 
-## Standard-Workflow: Acceptance Rollout
+## Standard-Workflow: Studio Rollout
 
 ### Phase 0 – Voraussetzungen prüfen
 
@@ -301,7 +298,7 @@ docker manifest inspect -v ghcr.io/smart-village-solutions/sva-studio:$TAG
 ### Phase 2 – Precheck
 
 ```bash
-pnpm env:precheck:acceptance-hb
+pnpm env:precheck:studio
 ```
 
 Prüft:
@@ -315,18 +312,20 @@ Prüft:
 
 ```bash
 # App-only Release (Zero-Downtime, kein Schema-Change)
-pnpm env:deploy:acceptance-hb -- --release-mode=app-only \
+pnpm env:deploy:studio -- --release-mode=app-only \
   --image-digest=sha256:abc123... \
-  --actor="$USER"
+  --actor="$USER" \
+  --rollback-hint="Vorherigen Digest erneut deployen"
 
 # Schema-and-App Release (mit Maintenance-Window)
-pnpm env:deploy:acceptance-hb -- --release-mode=schema-and-app \
+pnpm env:deploy:studio -- --release-mode=schema-and-app \
   --image-digest=sha256:abc123... \
   --maintenance-window="2026-04-02 19:00-19:15 CET" \
-  --actor="$USER"
+  --actor="$USER" \
+  --rollback-hint="Vorherigen Digest erneut deployen"
 ```
 
-Alternativ via GitHub Actions Workflow `acceptance-deploy.yml` (empfohlen für Production).
+Alternativ via GitHub Actions Workflow `studio-deploy.yml` oder orchestriert über `studio-release.yml` (empfohlen fuer produktionsnahe Rollouts).
 
 ### Phase 4 – Post-Deploy-Verifikation
 
@@ -338,10 +337,10 @@ quantum-cli ps --endpoint "$QUANTUM_ENDPOINT" --stack "$QUANTUM_STACK" --all
 curl -sf https://$SVA_PUBLIC_HOST/health/live
 
 # Smoke-Tests
-pnpm env:smoke:acceptance-hb
+pnpm env:smoke:studio
 
 # Doctor-Check
-pnpm env:doctor:acceptance-hb
+pnpm env:doctor:studio
 
 # Monitoring-Gates (Loki: Fehlerrate, Prometheus: Metriken)
 # → Grafana-MCP-Tools nutzen für automatisierte Checks
@@ -386,7 +385,7 @@ Feature-Flags stufenweise aktivieren:
 
 ```bash
 # Feedback-Artefakte erzeugen
-pnpm env:feedback:acceptance-hb
+pnpm env:feedback:studio
 
 # Artefakte liegen unter: artifacts/runtime/deployments/
 ```
@@ -400,7 +399,7 @@ pnpm env:feedback:acceptance-hb
 docker service update --rollback "$SVA_STACK_NAME_app"
 
 # Oder: vorheriges Image-Digest erneut deployen
-pnpm env:deploy:acceptance-hb -- --release-mode=app-only \
+pnpm env:deploy:studio -- --release-mode=app-only \
   --image-digest=sha256:<previous-digest> \
   --rollback-hint="Rollback wegen <Grund>"
 ```
@@ -411,16 +410,16 @@ Bei Schema-Migrationen: Prüfe, ob die Migration rückwärtskompatibel ist, bevo
 
 ## GitHub Actions Integration
 
-Der Workflow `acceptance-deploy.yml` automatisiert den gesamten Ablauf:
+Die Workflows `studio-image-build.yml`, `studio-artifact-verify.yml`, `studio-deploy.yml` und optional `studio-release.yml` automatisieren den gesamten Ablauf:
 
 1. **Inputs**: `release_mode`, `image_tag`, `image_digest` (Pflicht), `maintenance_window`, `rollback_hint`
-2. **Steps**: Checkout → pnpm setup → quantum-cli verify → Image validate → canonical deploy → feedback artifacts → upload
-3. **Secrets**: Alle sensitiven Werte über GitHub Environment `acceptance-hb`
-4. **Artefakte**: Deploy-Reports werden als Workflow-Artifacts (14 Tage) gespeichert
+2. **Stages**: Image Build → Artifact Verify → Studio Deploy
+3. **Secrets**: Alle sensitiven Werte über GitHub Environment `studio`
+4. **Artefakte**: Image-Verify- und Deploy-Reports werden als Workflow-Artifacts gespeichert
 
 ```bash
 # Manuell auslösen via gh CLI
-gh workflow run acceptance-deploy.yml \
+gh workflow run studio-deploy.yml \
   --field release_mode=app-only \
   --field image_digest=sha256:abc123...
 ```
@@ -507,7 +506,7 @@ Pragmatische Hinweise fuer `studio`:
 | `config/runtime/*.vars` | Runtime-Profile |
 | `scripts/ops/runtime-env.ts` | Orchestrierungs-CLI |
 | `scripts/ops/create-secrets-portainer-api.sh` | Secrets via API |
-| `.github/workflows/acceptance-deploy.yml` | CI/CD Deploy-Workflow |
+| `.github/workflows/studio-deploy.yml` | CI/CD Deploy-Workflow fuer `studio` |
 | `docs/guides/swarm-deployment-guide.md` | Deployment-Handbuch |
 | `docs/guides/iam-deployment-runbook.md` | IAM-Rollout-Runbook |
 | `docs/guides/keycloak-rollen-sync-runbook.md` | Keycloak-Sync-Runbook |
@@ -634,5 +633,5 @@ Jeder Eintrag dokumentiert ein unerwartetes Verhalten, einen Workaround oder ein
 - **Problem**: Im laufenden `studio_postgres` existierte der dedizierte App-DB-User `sva_app` nicht, obwohl `APP_DB_USER`/`APP_DB_PASSWORD` im Stack gesetzt waren.
 - **Lösung/Workaround**: `sva_app` im `studio`-Postgres mit dem Stack-Passwort anlegen und Grants fuer `iam_app` sowie das `iam`-Schema setzen.
 - **Auswirkung**: Vor Tenant-/IAM-Debug immer verifizieren, dass sich `APP_DB_USER` gegen `POSTGRES_DB` anmelden kann.
-- **TODO**: App-User-Bootstrap fuer `studio` genauso robust machen wie fuer `acceptance-hb` oder den Reset-/Deploypfad explizit damit erweitern.
+- **TODO**: App-User-Bootstrap fuer `studio` dauerhaft in den kanonischen Studio-Reset-/Deploypfad integrieren, damit der Runtime-User reproduzierbar vorhanden ist.
 ```

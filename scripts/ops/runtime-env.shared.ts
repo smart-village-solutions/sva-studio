@@ -324,7 +324,7 @@ const sanitizeSlug = (value: string) =>
 export const resolveAcceptanceDeployOptions = (
   env: NodeJS.ProcessEnv,
   cliOptions: RuntimeCliOptions,
-  runtimeProfile: RemoteRuntimeProfile = 'acceptance-hb'
+  runtimeProfile: RemoteRuntimeProfile = 'studio'
 ): AcceptanceDeployOptions => {
   const releaseMode = cliOptions.releaseMode ?? (env.SVA_ACCEPTANCE_RELEASE_MODE as AcceptanceReleaseMode | undefined) ?? 'app-only';
   if (releaseMode !== 'app-only' && releaseMode !== 'schema-and-app') {
@@ -352,8 +352,18 @@ export const resolveAcceptanceDeployOptions = (
   const imageRef = env.SVA_IMAGE_REF?.trim() || `${imageRegistry}/${imageRepository}@${imageDigest}`;
 
   return {
-    actor: cliOptions.actor?.trim() || env.SVA_ACCEPTANCE_DEPLOY_ACTOR?.trim() || env.GITHUB_ACTOR?.trim() || 'local-operator',
-    workflow: cliOptions.workflow?.trim() || env.SVA_ACCEPTANCE_DEPLOY_WORKFLOW?.trim() || env.GITHUB_WORKFLOW?.trim() || 'manual',
+    actor:
+      cliOptions.actor?.trim() ||
+      env.SVA_REMOTE_DEPLOY_ACTOR?.trim() ||
+      env.SVA_ACCEPTANCE_DEPLOY_ACTOR?.trim() ||
+      env.GITHUB_ACTOR?.trim() ||
+      'local-operator',
+    workflow:
+      cliOptions.workflow?.trim() ||
+      env.SVA_REMOTE_DEPLOY_WORKFLOW?.trim() ||
+      env.SVA_ACCEPTANCE_DEPLOY_WORKFLOW?.trim() ||
+      env.GITHUB_WORKFLOW?.trim() ||
+      'manual',
     imageTag: cliOptions.imageTag?.trim() || env.SVA_IMAGE_TAG?.trim() || undefined,
     imageDigest,
     imageRef,
@@ -363,7 +373,9 @@ export const resolveAcceptanceDeployOptions = (
     maintenanceWindow,
     monitoringConfigImageTag: env.SVA_MONITORING_CONFIG_INIT_IMAGE_TAG?.trim() || undefined,
     releaseMode,
-    reportSlug: sanitizeSlug(cliOptions.reportSlug || env.SVA_ACCEPTANCE_REPORT_SLUG || `${runtimeProfile}-deploy`),
+    reportSlug: sanitizeSlug(
+      cliOptions.reportSlug || env.SVA_REMOTE_REPORT_SLUG || env.SVA_ACCEPTANCE_REPORT_SLUG || `${runtimeProfile}-deploy`
+    ),
     rollbackHint,
   };
 };
@@ -383,12 +395,29 @@ export const assertDeterministicRemoteMutationContext = (
   const hasCiRunnerContext =
     operatorContext === 'ci-runner' ||
     (isTruthyFlag(env.GITHUB_ACTIONS) &&
-      (env.GITHUB_WORKFLOW?.trim() || env.SVA_ACCEPTANCE_DEPLOY_WORKFLOW?.trim() || '').length > 0);
+      (
+        env.GITHUB_WORKFLOW?.trim() ||
+        env.SVA_REMOTE_DEPLOY_WORKFLOW?.trim() ||
+        env.SVA_ACCEPTANCE_DEPLOY_WORKFLOW?.trim() ||
+        ''
+      ).length > 0);
   const allowLocalEmergency = hasLocalEmergencyRemoteMutationOverride(env);
 
-  if (hasCiRunnerContext || allowLocalEmergency) {
+  if (hasCiRunnerContext) {
     return {
-      mode: hasCiRunnerContext ? ('ci-runner' as const) : ('local-emergency' as const),
+      mode: 'ci-runner' as const,
+    };
+  }
+
+  if (runtimeProfile === 'studio') {
+    throw new Error(
+      `Remote-Mutation ${command} fuer ${runtimeProfile} ist nur im kanonischen CI-/Runner-Kontext erlaubt. Lokale produktionsnahe Mutationen sind fuer studio deaktiviert.`,
+    );
+  }
+
+  if (allowLocalEmergency) {
+    return {
+      mode: 'local-emergency' as const,
     };
   }
 

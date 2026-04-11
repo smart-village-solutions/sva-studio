@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const createStartHandlerMock = vi.fn();
 const createSdkLoggerMock = vi.fn();
+const dispatchAuthRouteRequestMock = vi.fn();
 const getWorkspaceContextMock = vi.fn();
 const withRequestContextMock = vi.fn();
 const createServerFunctionRequestDiagnosticsMock = vi.fn();
@@ -13,10 +14,18 @@ vi.mock('@tanstack/react-start/server', () => ({
   defaultStreamHandler: {},
 }));
 
+vi.mock('@tanstack/react-start/server-entry', () => ({
+  createServerEntry: vi.fn((entry) => entry),
+}));
+
 vi.mock('@sva/sdk/server', () => ({
   createSdkLogger: createSdkLoggerMock,
   getWorkspaceContext: getWorkspaceContextMock,
   withRequestContext: withRequestContextMock,
+}));
+
+vi.mock('@sva/routing/server', () => ({
+  dispatchAuthRouteRequest: dispatchAuthRouteRequestMock,
 }));
 
 vi.mock('./lib/server-function-request-diagnostics.server', () => ({
@@ -32,6 +41,7 @@ describe('server transport', () => {
     vi.resetModules();
     createStartHandlerMock.mockReset();
     createSdkLoggerMock.mockReset();
+    dispatchAuthRouteRequestMock.mockReset();
     getWorkspaceContextMock.mockReset();
     withRequestContextMock.mockReset();
     createServerFunctionRequestDiagnosticsMock.mockReset();
@@ -39,24 +49,26 @@ describe('server transport', () => {
     resolveServerFunctionBranchDecisionMock.mockReset();
   });
 
-  it('routes auth requests through TanStack Start instead of a manual auth bypass', async () => {
+  it('bypasses auth requests before TanStack Start', async () => {
     vi.stubEnv('NODE_ENV', 'production');
 
     const startFetch = vi.fn().mockResolvedValue(new Response('ok', { status: 200 }));
+    dispatchAuthRouteRequestMock.mockResolvedValue(new Response('auth', { status: 200 }));
     createStartHandlerMock.mockReturnValue(startFetch);
 
     const mod = await import('./server');
     const response = await mod.default.fetch(new Request('http://localhost:3000/auth/login'));
 
-    expect(startFetch).toHaveBeenCalledTimes(1);
-    expect(startFetch).toHaveBeenCalledWith(expect.any(Request), undefined);
-    await expect(response.text()).resolves.toBe('ok');
+    expect(dispatchAuthRouteRequestMock).toHaveBeenCalledTimes(1);
+    expect(startFetch).not.toHaveBeenCalled();
+    await expect(response.text()).resolves.toBe('auth');
   });
 
   it('bypasses diagnostics for non server-function requests in development', async () => {
     vi.stubEnv('NODE_ENV', 'development');
 
     const startFetch = vi.fn().mockResolvedValue(new Response('plain', { status: 200 }));
+    dispatchAuthRouteRequestMock.mockResolvedValue(null);
     createStartHandlerMock.mockReturnValue(startFetch);
     withRequestContextMock.mockImplementation(async (_input, callback) => callback());
     getWorkspaceContextMock.mockReturnValue({ requestId: 'req-non-server' });
@@ -85,6 +97,7 @@ describe('server transport', () => {
       }),
     );
     const logger = { info: vi.fn() };
+    dispatchAuthRouteRequestMock.mockResolvedValue(null);
     createStartHandlerMock.mockReturnValue(startFetch);
     createSdkLoggerMock.mockReturnValue(logger);
     getWorkspaceContextMock.mockReturnValue({ requestId: 'req-server-fn' });

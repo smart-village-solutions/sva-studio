@@ -28,6 +28,9 @@ Die Runtime-Kommandos setzen daraus konsistent:
 
 Für `studio` gilt zusaetzlich ein pragmatischer Testphasen-Vertrag:
 
+- der verbindliche lokale Build-Nachweis vor jedem Image-Build ist `pnpm nx run sva-studio-react:verify:runtime-artifact`
+- dieser Check bewertet ausschliesslich den finalen Node-Output unter `apps/sva-studio-react/.output/server/**`
+- `.nitro/vite/services/ssr/**` bleibt Diagnosematerial und ist kein Release-Nachweis
 - kanonischer Pfad nur ueber `precheck -> deploy -> smoke`
 - `SVA_STACK_NAME=studio`, `QUANTUM_ENDPOINT=sva`, `SVA_RUNTIME_PROFILE=studio`
 - `IAM_DATABASE_URL` und `REDIS_URL` duerfen fuer Remote-Profile aus den vorhandenen DB-/Redis-Bausteinen abgeleitet werden
@@ -155,6 +158,11 @@ pnpm env:feedback:studio
 ```
 
 Mutierende Remote-Kommandos (`deploy`, `migrate`, `reset`, `down`) sind fuer `studio` ausschliesslich im kanonischen CI-/Runner-Kontext erlaubt. Lokale produktionsnahe Mutationen sind kein offizieller Betriebsweg mehr.
+
+Der Container-Entrypoint kennt zusaetzlich nur noch einen expliziten Legacy-Recovery-Pfad:
+
+- `SVA_ENABLE_RUNTIME_RECOVERY_PATCH=1` erlaubt im Incident-Fall den dokumentierten Runtime-Patch auf dem finalen Nitro-Entry
+- ohne dieses Flag bleibt jede Artefakt-Umschreibung deaktiviert; der Standardbetrieb muss mit dem unveraenderten Build-Output gesund starten
 
 ### Lokale HB-Produktivsimulation in Docker
 

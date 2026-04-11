@@ -15,6 +15,11 @@ Schulden auf IST-Basis.
 
 ### Priorisierte Risiken
 
+1. Drift zwischen Intermediate-SSR-Output und finaler Runtime
+   - Impact: hoch (ein scheinbar gruener Build kann im finalen `.output/server/**` dennoch einen anderen Server-Entry oder Dispatch-Pfad ausliefern)
+   - Wahrscheinlichkeit: hoch
+   - Maßnahme: finalen Runtime-Vertrag ueber `verify:runtime-artifact` und runner-basiertes Image-Verify erzwingen; `.nitro/vite/services/ssr/**` nur noch als Diagnosematerial behandeln
+
 1. Geheimnisse in lokalen Env-Dateien
    - Impact: hoch (Credential Leak Risiko)
    - Wahrscheinlichkeit: mittel

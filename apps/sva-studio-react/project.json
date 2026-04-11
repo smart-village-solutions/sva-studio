@@ -70,6 +70,19 @@
         "command": "pnpm exec node -e \"require('node:fs').mkdirSync('.output/server',{recursive:true})\" && pnpm exec vite build"
       }
     },
+    "verify:runtime-artifact": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": [
+        "build"
+      ],
+      "outputs": [
+        "{workspaceRoot}/artifacts/runtime/runtime-artifact-verify"
+      ],
+      "options": {
+        "command": "bash scripts/ci/verify-runtime-artifact.sh apps/sva-studio-react artifacts/runtime/runtime-artifact-verify"
+      }
+    },
     "preview": {
       "executor": "@nx/vite:preview-server",
       "continuous": true,

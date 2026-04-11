@@ -15,6 +15,9 @@ REDIS_NAME="${VERIFY_ID}-redis"
 APP_NAME="${VERIFY_ID}-app"
 APP_PORT="${SVA_IMAGE_VERIFY_PORT:-39080}"
 APP_INTERNAL_BASE_URL="http://127.0.0.1:3000"
+VERIFY_ATTEMPTS="${SVA_IMAGE_VERIFY_ATTEMPTS:-12}"
+VERIFY_SLEEP_SECONDS="${SVA_IMAGE_VERIFY_SLEEP_SECONDS:-1}"
+VERIFY_CURL_TIMEOUT_SECONDS="${SVA_IMAGE_VERIFY_CURL_TIMEOUT_SECONDS:-3}"
 POSTGRES_PASSWORD="verify-postgres-password"
 APP_DB_PASSWORD="verify-app-password"
 REDIS_PASSWORD="verify-redis-password"
@@ -164,7 +167,7 @@ wait_for_endpoint() {
   local expected="$2"
   local output_file="${ARTIFACT_DIR}/$(echo "${path}" | tr '/:' '__').txt"
 
-  for _ in $(seq 1 30); do
+  for _ in $(seq 1 "${VERIFY_ATTEMPTS}"); do
     if ! docker inspect -f '{{.State.Running}}' "${APP_NAME}" 2>/dev/null | grep -q true; then
       break
     fi
@@ -172,7 +175,7 @@ wait_for_endpoint() {
     local status
     status="$(
       docker exec "${APP_NAME}" sh -lc \
-        "curl --silent --show-error --max-time 5 --output /tmp/verify-response --write-out '%{http_code}' 'http://127.0.0.1:3000${path}'" \
+        "curl --silent --show-error --max-time ${VERIFY_CURL_TIMEOUT_SECONDS} --output /tmp/verify-response --write-out '%{http_code}' 'http://127.0.0.1:3000${path}'" \
         2>/dev/null || true
     )"
     docker exec "${APP_NAME}" cat /tmp/verify-response > "${output_file}" 2>/dev/null || true
@@ -182,7 +185,7 @@ wait_for_endpoint() {
     fi
 
     printf '%s\t%s\n' "${path}" "${status}" >> "${LOG_PATH}"
-    sleep 2
+    sleep "${VERIFY_SLEEP_SECONDS}"
   done
 
   return 1

@@ -1,6 +1,7 @@
 import type { Register } from '@tanstack/react-router';
 import { createStartHandler, defaultStreamHandler } from '@tanstack/react-start/server';
 import type { RequestHandler } from '@tanstack/react-start/server';
+import { dispatchAuthRouteRequest } from '@sva/routing/server';
 
 import {
   createServerFunctionRequestDiagnostics,
@@ -70,6 +71,11 @@ export function createServerEntry(entry: ServerEntry): ServerEntry {
 
 const instrumentedFetch: RequestHandler<Register> = async (...args) => {
   const [request, requestOptions] = args;
+  const authResponse = await dispatchAuthRouteRequest(request);
+
+  if (authResponse) {
+    return authResponse;
+  }
 
   if (!diagnosticsEnabled) {
     return startFetch(request, requestOptions);

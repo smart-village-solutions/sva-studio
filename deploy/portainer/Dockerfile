@@ -1,4 +1,4 @@
-FROM node:25-alpine AS build
+FROM node:22-alpine AS build
 
 WORKDIR /workspace
 
@@ -91,7 +91,7 @@ RUN find /workspace/.deploy/sva-studio-react/node_modules/.pnpm \
       fi; \
     done
 
-FROM node:25-alpine AS runtime
+FROM node:22-alpine AS runtime
 
 WORKDIR /app
 

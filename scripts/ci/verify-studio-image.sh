@@ -226,41 +226,15 @@ if [ "${VERIFY_STATUS}" = "ok" ]; then
 fi
 
 if [ "${VERIFY_STATUS}" = "ok" ]; then
+  KEYCLOAK_MOCK_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/keycloak-verify-mock.cjs"
   docker run -d \
     --name "${KEYCLOAK_NAME}" \
     --network "${NETWORK_NAME}" \
-    node:22-alpine sh -lc '
-      cat <<'"'"'\'"'"''"'"'NODE'"'"'\'"'"''"'"' > /tmp/keycloak-mock.js
-const http = require("node:http");
-const port = 38080;
-const realm = "sva-studio";
-const json = (res, status, body) => {
-  res.writeHead(status, { "content-type": "application/json" });
-  res.end(JSON.stringify(body));
-};
-const server = http.createServer((req, res) => {
-  const url = new URL(req.url || "/", `http://127.0.0.1:${port}`);
-  if (req.method === "POST" && url.pathname === `/realms/${realm}/protocol/openid-connect/token`) {
-    return json(res, 200, { access_token: "verify-token", token_type: "Bearer", expires_in: 300 });
-  }
-  if (req.method === "GET" && url.pathname === `/admin/realms/${realm}/roles`) {
-    return json(res, 200, []);
-  }
-  if (req.method === "GET" && url.pathname === `/realms/${realm}/.well-known/openid-configuration`) {
-    return json(res, 200, {
-      issuer: `http://keycloak-mock:${port}/realms/${realm}`,
-      token_endpoint: `http://keycloak-mock:${port}/realms/${realm}/protocol/openid-connect/token`,
-      authorization_endpoint: `http://keycloak-mock:${port}/realms/${realm}/protocol/openid-connect/auth`,
-      end_session_endpoint: `http://keycloak-mock:${port}/realms/${realm}/protocol/openid-connect/logout`,
-      jwks_uri: `http://keycloak-mock:${port}/realms/${realm}/protocol/openid-connect/certs`
-    });
-  }
-  return json(res, 404, { error: "not_found" });
-});
-server.listen(port, "0.0.0.0");
-NODE
-      node /tmp/keycloak-mock.js
-    ' >/dev/null
+    -e PORT=38080 \
+    -e KEYCLOAK_REALM=sva-studio \
+    -v "${KEYCLOAK_MOCK_SCRIPT}:/tmp/keycloak-verify-mock.cjs:ro" \
+    node:22-alpine \
+    node /tmp/keycloak-verify-mock.cjs >/dev/null
 
   if wait_for_container_http "${KEYCLOAK_NAME}" "http://127.0.0.1:38080/realms/sva-studio/.well-known/openid-configuration"; then
     set_phase_var KEYCLOAK_READY_STATUS ok

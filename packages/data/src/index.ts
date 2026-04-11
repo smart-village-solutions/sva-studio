@@ -12,10 +12,15 @@ type CacheEntry<T> = {
   expiresAt: number;
 };
 
+type DataClientLogger = {
+  debug: (event: string, context?: Record<string, unknown>) => void;
+  error: (event: string, context?: Record<string, unknown>) => void;
+};
+
 const inMemoryCache = new Map<string, CacheEntry<unknown>>();
 
-// Default no-op logger to avoid SDK dependency in universal module
-const defaultLogger = {
+// Default no-op logger to avoid SDK dependency in universal module.
+const defaultLogger: DataClientLogger = {
   debug: () => undefined,
   error: () => undefined,
 };
@@ -23,7 +28,7 @@ const defaultLogger = {
 export type DataClientOptions = {
   baseUrl: string;
   cacheTtlMs?: number;
-  logger?: typeof defaultLogger;
+  logger?: DataClientLogger;
 };
 
 export const createDataClient = (options: DataClientOptions) => {

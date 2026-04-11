@@ -353,11 +353,11 @@ describe('useInstances', () => {
 
     expect(result.current.selectedInstance?.instanceId).toBe('demo');
     expect(result.current.selectedInstance?.keycloakStatus).toBeUndefined();
-    expect(result.current.mutationError).toBeNull();
+    expect(result.current.mutationError).toEqual(expect.objectContaining({ status: 403, code: 'forbidden' }));
     expect(authMockValue.invalidatePermissions).toHaveBeenCalled();
   });
 
-  it('clears non-keycloak detail warnings after the instance detail itself loads successfully', async () => {
+  it('surfaces normalized non-keycloak detail warnings after the instance detail itself loads successfully', async () => {
     getInstanceKeycloakStatusMock.mockRejectedValueOnce({
       status: 500,
       code: 'internal_error',
@@ -375,7 +375,7 @@ describe('useInstances', () => {
     });
 
     expect(result.current.selectedInstance?.instanceId).toBe('demo');
-    expect(result.current.mutationError).toBeNull();
+    expect(result.current.mutationError).toEqual(expect.objectContaining({ status: 502, code: 'keycloak_unavailable' }));
   });
 
   it('refreshes keycloak status in-place and handles forbidden refreshes', async () => {

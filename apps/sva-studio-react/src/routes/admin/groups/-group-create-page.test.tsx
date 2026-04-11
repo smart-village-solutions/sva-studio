@@ -89,7 +89,7 @@ describe('GroupCreatePage', () => {
     });
   });
 
-  it('does not navigate when the created group is not yet in the list snapshot', async () => {
+  it('navigates to the group list when the created group is not yet in the list snapshot', async () => {
     const createGroup = vi.fn().mockResolvedValue(true);
     useGroupsMock.mockReturnValue(createGroupsState({ createGroup, groups: [] }));
 
@@ -106,7 +106,7 @@ describe('GroupCreatePage', () => {
     await waitFor(() => {
       expect(createGroup).toHaveBeenCalled();
     });
-    expect(navigateMock).not.toHaveBeenCalled();
+    expect(navigateMock).toHaveBeenCalledWith({ to: '/admin/groups' });
   });
 
   it('renders mutation errors', () => {

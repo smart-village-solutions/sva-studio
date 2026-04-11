@@ -245,6 +245,7 @@ wait_for_endpoint() {
   local output_file="${ARTIFACT_DIR}/${label}.body.txt"
   local headers_file="${ARTIFACT_DIR}/${label}.headers.txt"
   local trace_file="${ARTIFACT_DIR}/${label}.trace.log"
+  local stderr_file="${ARTIFACT_DIR}/${label}.stderr.log"
 
   for _ in $(seq 1 "${VERIFY_ATTEMPTS}"); do
     if ! docker inspect -f '{{.State.Running}}' "${APP_NAME}" 2>/dev/null | grep -q true; then
@@ -254,11 +255,12 @@ wait_for_endpoint() {
     local status
     status="$(
       docker exec "${APP_NAME}" sh -lc \
-        "curl --silent --show-error --max-time ${VERIFY_CURL_TIMEOUT_SECONDS} --dump-header /tmp/verify-headers --output /tmp/verify-response --write-out '%{http_code}' 'http://127.0.0.1:3000${path}'" \
+        "curl --silent --show-error --max-time ${VERIFY_CURL_TIMEOUT_SECONDS} --dump-header /tmp/verify-headers --output /tmp/verify-response --write-out '%{http_code}' 'http://127.0.0.1:3000${path}' 2>/tmp/verify-stderr" \
         2>/dev/null || true
     )"
     docker exec "${APP_NAME}" cat /tmp/verify-response > "${output_file}" 2>/dev/null || true
     docker exec "${APP_NAME}" cat /tmp/verify-headers > "${headers_file}" 2>/dev/null || true
+    docker exec "${APP_NAME}" cat /tmp/verify-stderr > "${stderr_file}" 2>/dev/null || true
     if [ "${status}" = "${expected}" ]; then
       printf '%s\t%s\n' "${path}" "${status}" >> "${LOG_PATH}"
       printf 'attempt-status=%s\n' "${status}" >> "${trace_file}"
@@ -344,14 +346,14 @@ cat >"${SUMMARY_PATH}" <<EOF
 
 ## Phasen
 
-- `postgres-ready`: \`${POSTGRES_PHASE_STATUS}\`
-- `postgres-app-role`: \`${POSTGRES_ROLE_PHASE_STATUS}\`
-- `redis-ready`: \`${REDIS_PHASE_STATUS}\`
-- `image-pull`: \`${IMAGE_PULL_PHASE_STATUS}\`
-- `app-start`: \`${APP_START_PHASE_STATUS}\`
-- `health-live`: \`${HEALTH_LIVE_PHASE_STATUS}\`
-- `health-ready`: \`${HEALTH_READY_PHASE_STATUS}\`
-- `root-page`: \`${ROOT_PHASE_STATUS}\`
+- \`postgres-ready\`: \`${POSTGRES_PHASE_STATUS}\`
+- \`postgres-app-role\`: \`${POSTGRES_ROLE_PHASE_STATUS}\`
+- \`redis-ready\`: \`${REDIS_PHASE_STATUS}\`
+- \`image-pull\`: \`${IMAGE_PULL_PHASE_STATUS}\`
+- \`app-start\`: \`${APP_START_PHASE_STATUS}\`
+- \`health-live\`: \`${HEALTH_LIVE_PHASE_STATUS}\`
+- \`health-ready\`: \`${HEALTH_READY_PHASE_STATUS}\`
+- \`root-page\`: \`${ROOT_PHASE_STATUS}\`
 EOF
 
 if [ "${VERIFY_STATUS}" != "ok" ]; then

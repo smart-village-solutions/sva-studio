@@ -15,7 +15,7 @@ Das System SHALL eine zentrale Registry für Studio-Instanzen bereitstellen, die
 - **THEN** existiert ein Registry-Eintrag mit `instanceId`, `status`, `primaryHostname` und den benötigten Basis-Metadaten
 - **AND** die Runtime kann daraus Tenant-Kontext und Tenant-Konfiguration ableiten
 
-#### Scenario: Registry ist die fuehrende Freigabequelle
+#### Scenario: Registry ist die führende Freigabequelle
 
 - **WHEN** die Runtime prüft, ob ein Tenant-Host gültig ist
 - **THEN** trifft sie die fachliche Freigabeentscheidung anhand der Registry
@@ -51,20 +51,20 @@ Das System SHALL neue Instanzen über einen idempotenten Provisioning-Workflow a
 #### Scenario: Wiederholung nach Teilfehler
 
 - **WHEN** ein Provisioning-Lauf nach einem technischen Teilfehler erneut gestartet wird
-- **THEN** fuehrt das System bereits erfolgreich abgeschlossene Schritte nicht unkontrolliert doppelt aus
-- **AND** bleibt der Lauf fuer Operatoren nachvollziehbar
+- **THEN** führt das System bereits erfolgreich abgeschlossene Schritte nicht unkontrolliert doppelt aus
+- **AND** bleibt der Lauf für Operatoren nachvollziehbar
 
-#### Scenario: Parallele Provisioning-Anforderung fuer dieselbe Instanz
+#### Scenario: Parallele Provisioning-Anforderung für dieselbe Instanz
 
-- **WHEN** zwei Provisioning-Anforderungen fuer dieselbe `instanceId` nahezu zeitgleich eingehen
-- **THEN** erlaubt das System hoechstens einen aktiven Lauf
-- **AND** liefert fuer weitere Anforderungen eine deterministische Konfliktbehandlung ohne Doppelanlage
+- **WHEN** zwei Provisioning-Anforderungen für dieselbe `instanceId` nahezu zeitgleich eingehen
+- **THEN** erlaubt das System höchstens einen aktiven Lauf
+- **AND** liefert für weitere Anforderungen eine deterministische Konfliktbehandlung ohne Doppelanlage
 
-### Requirement: Administrativer Steuerungspfad fuer neue Instanzen
+### Requirement: Administrativer Steuerungspfad für neue Instanzen
 
-Das System SHALL einen administrativen Steuerungspfad fuer die Anlage und Verwaltung neuer Instanzen bereitstellen.
+Das System SHALL einen administrativen Steuerungspfad für die Anlage und Verwaltung neuer Instanzen bereitstellen.
 
-#### Scenario: Instanzanlage ueber Studio-Control-Plane
+#### Scenario: Instanzanlage über Studio-Control-Plane
 
 - **WHEN** ein berechtigter Admin eine neue Instanz im Studio anlegt
 - **THEN** verwendet die UI denselben fachlichen Provisioning-Pfad wie automatisierte oder CLI-basierte Prozesse
@@ -72,12 +72,12 @@ Das System SHALL einen administrativen Steuerungspfad fuer die Anlage und Verwal
 - **AND** ist der Zugriff auf dedizierte Admin-Rollen mit Least-Privilege begrenzt
 - **AND** erfordern kritische Mutationen eine frische Re-Authentisierung
 
-#### Scenario: Instanzanlage ueber nicht-interaktiven Ops-Pfad
+#### Scenario: Instanzanlage über nicht-interaktiven Ops-Pfad
 
-- **WHEN** eine Instanz ueber einen CLI- oder Automationspfad angelegt wird
+- **WHEN** eine Instanz über einen CLI- oder Automationspfad angelegt wird
 - **THEN** nutzt dieser Pfad denselben fachlichen Provisioning-Vertrag
-- **AND** ist der Lauf auditierbar und fuer wiederholbare Automation geeignet
-- **AND** nutzt der Pfad kurzlebige Maschinenidentitaeten statt statischer Shared-Credentials
+- **AND** ist der Lauf auditierbar und für wiederholbare Automation geeignet
+- **AND** nutzt der Pfad kurzlebige Maschinenidentitäten statt statischer Shared-Credentials
 
 ### Requirement: Auditierbarkeit von Tenant-Mutationen
 
@@ -85,34 +85,34 @@ Das System SHALL jede Anlage, Aktivierung, Suspendierung, Archivierung und relev
 
 #### Scenario: Mutationen einer Instanz werden nachvollziehbar gespeichert
 
-- **WHEN** ein Operator den Zustand oder die Basis-Konfiguration einer Instanz aendert
+- **WHEN** ein Operator den Zustand oder die Basis-Konfiguration einer Instanz ändert
 - **THEN** speichert das System den fachlichen Vorgang mit Zeitbezug und Akteur-Kontext
-- **AND** koennen spaetere Betriebs- und Supportfaelle diese Aenderung nachvollziehen
+- **AND** können spätere Betriebs- und Supportfaelle diese Aenderung nachvollziehen
 - **AND** enthalten Audit-Ereignisse mindestens `instanceId`, Akteur, Aktion, Ergebnis und Korrelation (`requestId` oder gleichwertig)
 - **AND** werden Audit-Ereignisse append-only gespeichert
 
 ### Requirement: Tenant-Isolation bei Tenant-Mutationen
 
-Das System SHALL tenant-fremde Lese- und Schreiboperationen fuer Instanzverwaltung und Provisioning fail-closed ablehnen.
+Das System SHALL tenant-fremde Lese- und Schreiboperationen für Instanzverwaltung und Provisioning fail-closed ablehnen.
 
 #### Scenario: Tenant-fremde Mutation wird abgelehnt
 
-- **WHEN** ein Aufruf eine Mutation fuer eine Instanz ausserhalb des zulaessigen Tenant-Kontexts ausfuehren will
+- **WHEN** ein Aufruf eine Mutation für eine Instanz ausserhalb des zulaessigen Tenant-Kontexts ausführen will
 - **THEN** lehnt das System den Aufruf fail-closed ab
 - **AND** bleibt das Aussenverhalten ohne tenant-spezifische Detailoffenlegung
 
-### Requirement: Reproduzierbare lokale Test- und Seed-Pfade fuer Instanzen
+### Requirement: Reproduzierbare lokale Test- und Seed-Pfade für Instanzen
 
-Das System SHALL reproduzierbare lokale Seed- und Testpfade fuer Instanzen bereitstellen, damit Registry-Aufloesung und Provisioning ohne produktive Infrastruktur pruefbar bleiben.
+Das System SHALL reproduzierbare lokale Seed- und Testpfade für Instanzen bereitstellen, damit Registry-Aufloesung und Provisioning ohne produktive Infrastruktur prüfbar bleiben.
 
-#### Scenario: Lokale Seed-Instanzen stehen fuer Entwicklung bereit
+#### Scenario: Lokale Seed-Instanzen stehen für Entwicklung bereit
 
 - **WHEN** ein Teammitglied einen lokalen Standardmodus startet
-- **THEN** stehen mindestens zwei aktive Seed-Instanzen fuer Entwicklung und Tests reproduzierbar bereit
-- **AND** ist mindestens ein negativer Tenant-Fall fuer fail-closed-Tests definiert
+- **THEN** stehen mindestens zwei aktive Seed-Instanzen für Entwicklung und Tests reproduzierbar bereit
+- **AND** ist mindestens ein negativer Tenant-Fall für fail-closed-Tests definiert
 
 #### Scenario: Lokales Provisioning nutzt denselben fachlichen Vertrag
 
-- **WHEN** eine neue Instanz lokal ueber CLI, Test-Setup oder Admin-Pfad angelegt wird
+- **WHEN** eine neue Instanz lokal über CLI, Test-Setup oder Admin-Pfad angelegt wird
 - **THEN** nutzt dieser Pfad dieselben Validierungs- und Statusregeln wie der produktive Provisioning-Vertrag
 - **AND** kann die neue Instanz ohne neues App-Deployment im lokalen Multi-Tenant-Pfad getestet werden

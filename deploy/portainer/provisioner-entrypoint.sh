@@ -3,8 +3,7 @@ set -eu
 
 require_env() {
   key="$1"
-  eval "value=\${$key:-}"
-  if [ -z "$value" ]; then
+  if [ -z "$(printenv "$key")" ]; then
     printf '[provisioner-entrypoint] missing required environment variable: %s\n' "$key" >&2
     exit 1
   fi

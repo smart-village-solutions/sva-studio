@@ -34,6 +34,8 @@ export type InstanceStatus =
   | 'suspended'
   | 'archived';
 
+export type InstanceRealmMode = 'new' | 'existing';
+
 export type ApiPagination = {
   readonly page: number;
   readonly pageSize: number;
@@ -292,7 +294,7 @@ export type IamInstanceListItem = {
   readonly status: InstanceStatus;
   readonly parentDomain: string;
   readonly primaryHostname: string;
-  readonly realmMode: 'new' | 'existing';
+  readonly realmMode: InstanceRealmMode;
   readonly authRealm: string;
   readonly authClientId: string;
   readonly authIssuerUrl?: string;

@@ -1,51 +1,52 @@
 # instance-provisioning Specification
 
 ## Purpose
-TBD - created by archiving change add-instance-registry-provisioning. Update Purpose after archive.
+
+Spezifikation für den automatisierten Provisioning-Workflow neuer Studio-Instanzen, einschließlich Keycloak-Realm-Verwaltung, IAM-Basis-Konfiguration und idempotenter Fehlerbehandlung.
 
 ## Requirements
 ### Requirement: Zentrale Instanz-Registry
 
-Das System SHALL eine zentrale Registry fuer Studio-Instanzen bereitstellen, die Tenant-Identitaet, Hostnamen, Lebenszyklusstatus und Basis-Konfiguration fuehrt.
+Das System SHALL eine zentrale Registry für Studio-Instanzen bereitstellen, die Tenant-Identität, Hostnamen, Lebenszyklusstatus und Basis-Konfiguration führt.
 
 #### Scenario: Aktive Instanz ist in der Registry beschrieben
 
 - **WHEN** eine Studio-Instanz produktiv erreichbar sein soll
-- **THEN** existiert ein Registry-Eintrag mit `instanceId`, `status`, `primaryHostname` und den benoetigten Basis-Metadaten
+- **THEN** existiert ein Registry-Eintrag mit `instanceId`, `status`, `primaryHostname` und den benötigten Basis-Metadaten
 - **AND** die Runtime kann daraus Tenant-Kontext und Tenant-Konfiguration ableiten
 
 #### Scenario: Registry ist die fuehrende Freigabequelle
 
-- **WHEN** die Runtime prueft, ob ein Tenant-Host gueltig ist
+- **WHEN** die Runtime prüft, ob ein Tenant-Host gültig ist
 - **THEN** trifft sie die fachliche Freigabeentscheidung anhand der Registry
-- **AND** verwendet keine tenant-spezifischen App-Deployments als Ersatz fuer diese Entscheidung
+- **AND** verwendet keine tenant-spezifischen App-Deployments als Ersatz für diese Entscheidung
 
 ### Requirement: Gesteuerter Tenant-Lebenszyklus
 
-Das System SHALL den Lebenszyklus einer Instanz ueber explizite Statuswerte steuern.
+Das System SHALL den Lebenszyklus einer Instanz über explizite Statuswerte steuern.
 
 #### Scenario: Instanz wird aktiviert
 
 - **WHEN** eine neue Instanz erfolgreich provisioniert und freigegeben wurde
 - **THEN** wechselt ihr Status kontrolliert auf `active`
-- **AND** erst ab diesem Zeitpunkt darf produktiver Traffic fuer ihren Host zugelassen werden
+- **AND** erst ab diesem Zeitpunkt darf produktiver Traffic für ihren Host zugelassen werden
 
 #### Scenario: Instanz wird suspendiert oder archiviert
 
-- **WHEN** eine Instanz ausser Betrieb genommen oder temporaer gesperrt wird
+- **WHEN** eine Instanz außer Betrieb genommen oder temporär gesperrt wird
 - **THEN** wird ihr Status fachlich nachvollziehbar auf `suspended` oder `archived` gesetzt
 - **AND** produktiver Host-Traffic wird danach fail-closed abgelehnt
 
 ### Requirement: Idempotenter Provisioning-Workflow
 
-Das System SHALL neue Instanzen ueber einen idempotenten Provisioning-Workflow anlegen, der technische Teilaufgaben und Teilfehler kontrolliert behandelt.
+Das System SHALL neue Instanzen über einen idempotenten Provisioning-Workflow anlegen, der technische Teilaufgaben und Teilfehler kontrolliert behandelt.
 
 #### Scenario: Erfolgreiche Neuanlage einer Instanz
 
-- **WHEN** eine berechtigte Person eine neue Instanz mit gueltiger `instanceId` und gueltigem Ziel-Hostname anfordert
+- **WHEN** eine berechtigte Person eine neue Instanz mit gültiger `instanceId` und gültigem Ziel-Hostname anfordert
 - **THEN** legt das System einen Provisioning-Lauf an
-- **AND** erstellt oder reserviert die benoetigten Registry- und Basis-Konfigurationsartefakte
-- **AND** dokumentiert den Uebergang bis zum Status `active`
+- **AND** erstellt oder reserviert die benötigten Registry- und Basis-Konfigurationsartefakte
+- **AND** dokumentiert den Übergang bis zum Status `active`
 
 #### Scenario: Wiederholung nach Teilfehler
 

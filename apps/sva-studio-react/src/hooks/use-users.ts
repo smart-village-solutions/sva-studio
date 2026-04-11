@@ -150,10 +150,29 @@ export const useUsers = (initial?: Partial<UserFilters>): UseUsersResult => {
   }, [debouncedSearch, filters.page, filters.pageSize, filters.role, filters.status, invalidatePermissions]);
 
   React.useEffect(() => {
-    void loadUsers();
+    loadUsers().catch((cause) => {
+      const resolvedError = asIamError(cause);
+      usersLogger.error('background_user_list_refresh_failed', {
+        operation: 'list_users',
+        error_code: resolvedError.code,
+        status: resolvedError.status,
+      });
+    });
   }, [loadUsers]);
 
-  React.useEffect(() => subscribeIamUsersUpdated(() => void loadUsers()), [loadUsers]);
+  React.useEffect(
+    () =>
+      subscribeIamUsersUpdated(() =>
+        loadUsers().catch((cause) => {
+          const resolvedError = asIamError(cause);
+          usersLogger.error('background_user_list_refresh_failed_after_update', {
+            error_code: resolvedError.code,
+            status: resolvedError.status,
+          });
+        })
+      ),
+    [loadUsers]
+  );
 
   const mutate = React.useCallback(
     async <T,>(action: () => Promise<T>, operation = 'user_mutation'): Promise<T | null> => {
@@ -163,7 +182,14 @@ export const useUsers = (initial?: Partial<UserFilters>): UseUsersResult => {
         const result = await action();
         // Do not block the visible mutation result on the follow-up list refresh.
         // If the reload is slow, the create/edit/deactivate flow should still complete.
-        void loadUsers();
+        loadUsers().catch((cause) => {
+          const resolvedError = asIamError(cause);
+          usersLogger.error('background_user_list_refresh_failed_after_mutation', {
+            operation,
+            error_code: resolvedError.code,
+            status: resolvedError.status,
+          });
+        });
         logBrowserOperationSuccess(usersLogger, `${operation}_succeeded`, { operation });
         return result;
       } catch (cause) {

@@ -22,7 +22,7 @@ export const FieldHelp = ({ title, what, value, source, impact, defaultHint }: F
       return;
     }
 
-    const handlePointerDown = (event: MouseEvent) => {
+    const handlePointerDown = (event: PointerEvent) => {
       if (!containerRef.current?.contains(event.target as Node)) {
         setOpen(false);
       }
@@ -34,10 +34,10 @@ export const FieldHelp = ({ title, what, value, source, impact, defaultHint }: F
       }
     };
 
-    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('pointerdown', handlePointerDown);
     document.addEventListener('keydown', handleKeyDown);
     return () => {
-      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('pointerdown', handlePointerDown);
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, [open]);
@@ -59,6 +59,7 @@ export const FieldHelp = ({ title, what, value, source, impact, defaultHint }: F
       {open ? (
         <div
           role="dialog"
+          aria-modal="true"
           aria-label={title}
           className="absolute right-0 top-7 z-20 w-80 rounded-xl border border-border bg-card p-4 shadow-2xl"
         >

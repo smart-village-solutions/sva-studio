@@ -111,21 +111,6 @@ const buildLocalPreflight = (input: {
   };
 };
 
-const toProvisioningInput = (
-  instance: NonNullable<Awaited<ReturnType<InstanceRegistryRepository['getInstanceById']>>>,
-  authClientSecret?: string
-): KeycloakProvisioningInput => ({
-  instanceId: instance.instanceId,
-  primaryHostname: instance.primaryHostname,
-  realmMode: instance.realmMode,
-  authRealm: instance.authRealm,
-  authClientId: instance.authClientId,
-  authIssuerUrl: instance.authIssuerUrl,
-  authClientSecretConfigured: instance.authClientSecretConfigured,
-  authClientSecret,
-  tenantAdminBootstrap: instance.tenantAdminBootstrap,
-});
-
 export const decryptAuthClientSecret = (
   instanceId: string,
   ciphertext: string | null | undefined

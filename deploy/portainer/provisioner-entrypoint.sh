@@ -18,4 +18,8 @@ require_env KEYCLOAK_PROVISIONER_REALM
 require_env KEYCLOAK_PROVISIONER_CLIENT_ID
 require_env KEYCLOAK_PROVISIONER_CLIENT_SECRET
 
-exec node --import ./otel-bootstrap.mjs node_modules/@sva/auth/dist/iam-instance-registry/worker.js
+if [ "$#" -eq 0 ]; then
+  set -- node --import ./otel-bootstrap.mjs node_modules/@sva/auth/dist/iam-instance-registry/worker.js
+fi
+
+exec "$@"

@@ -11,14 +11,16 @@ export const appendRunStep = async (deps: InstanceRegistryServiceDeps, input: {
   details?: Readonly<Record<string, unknown>>;
   requestId?: string;
 }) => {
-  const timestamp = new Date().toISOString();
+  const now = new Date().toISOString();
+  const isTerminal = ['done', 'failed', 'skipped', 'unchanged'].includes(input.status);
+  
   await deps.repository.appendKeycloakProvisioningStep({
     runId: input.runId,
     stepKey: input.stepKey,
     title: input.title,
     status: input.status,
-    startedAt: timestamp,
-    finishedAt: timestamp,
+    startedAt: input.status === 'pending' ? undefined : now,
+    finishedAt: isTerminal ? now : undefined,
     summary: input.summary,
     details: input.details,
     requestId: input.requestId,
@@ -37,7 +39,7 @@ const buildRealmCompletionStep = (status: KeycloakTenantStatus): CompletionStep 
   stepKey: 'realm',
   title: 'Realm bearbeiten',
   summary: status.realmExists ? 'Der Realm ist vorhanden.' : 'Der Realm fehlt weiterhin.',
-  details: { realmExists: status.realmExists },
+  details: { realmExists: status.realmExists, titleKey: 'iam.provisioning.steps.realm.title' },
   ok: status.realmExists,
 });
 
@@ -53,6 +55,7 @@ const buildClientCompletionStep = (status: KeycloakTenantStatus): CompletionStep
     redirectUrisMatch: status.redirectUrisMatch,
     logoutUrisMatch: status.logoutUrisMatch,
     webOriginsMatch: status.webOriginsMatch,
+    titleKey: 'iam.provisioning.steps.client.title',
   },
   ok: status.clientExists && status.redirectUrisMatch && status.logoutUrisMatch && status.webOriginsMatch,
 });
@@ -63,7 +66,7 @@ const buildMapperCompletionStep = (status: KeycloakTenantStatus): CompletionStep
   summary: status.instanceIdMapperExists
     ? 'Der instanceId-Mapper ist vorhanden.'
     : 'Der instanceId-Mapper fehlt weiterhin.',
-  details: { instanceIdMapperExists: status.instanceIdMapperExists },
+  details: { instanceIdMapperExists: status.instanceIdMapperExists, titleKey: 'iam.provisioning.steps.mapper.title' },
   ok: status.instanceIdMapperExists,
 });
 
@@ -73,7 +76,7 @@ const buildSecretCompletionStep = (status: KeycloakTenantStatus): CompletionStep
   summary: status.clientSecretAligned
     ? 'Das Tenant-Secret ist mit Keycloak abgeglichen.'
     : 'Das Tenant-Secret ist weiterhin nicht mit Keycloak abgeglichen.',
-  details: { clientSecretAligned: status.clientSecretAligned },
+  details: { clientSecretAligned: status.clientSecretAligned, titleKey: 'iam.provisioning.steps.secret.title' },
   ok: status.clientSecretAligned,
 });
 
@@ -87,6 +90,7 @@ const buildRolesCompletionStep = (status: KeycloakTenantStatus): CompletionStep 
   details: {
     tenantAdminHasSystemAdmin: status.tenantAdminHasSystemAdmin,
     tenantAdminHasInstanceRegistryAdmin: status.tenantAdminHasInstanceRegistryAdmin,
+    titleKey: 'iam.provisioning.steps.roles.title',
   },
   ok: status.tenantAdminHasSystemAdmin && !status.tenantAdminHasInstanceRegistryAdmin,
 });
@@ -103,6 +107,7 @@ const buildTenantAdminCompletionStep = (status: KeycloakTenantStatus): Completio
   details: {
     tenantAdminExists: status.tenantAdminExists,
     tenantAdminInstanceIdMatches: status.tenantAdminInstanceIdMatches,
+    titleKey: 'iam.provisioning.steps.tenant_admin.title',
   },
   ok: status.tenantAdminExists && status.tenantAdminInstanceIdMatches,
 });
@@ -113,7 +118,7 @@ const buildTenantAdminPasswordStep = (usedTemporaryPassword: boolean): Completio
   summary: usedTemporaryPassword
     ? 'Das temporäre Passwort wurde gesetzt und UPDATE_PASSWORD markiert.'
     : 'Es wurde kein temporäres Passwort übergeben.',
-  details: { usedTemporaryPassword },
+  details: { usedTemporaryPassword, titleKey: 'iam.provisioning.steps.tenant_admin_password.title' },
   ok: usedTemporaryPassword,
 });
 

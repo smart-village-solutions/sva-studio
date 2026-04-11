@@ -934,6 +934,8 @@ export class KeycloakAdminClient implements IdentityProviderPort {
       rotateClientSecret?: boolean;
     }
   ): Promise<void> {
+    // If no clientSecret is provided, skip secret sync/rotation entirely.
+    // rotateClientSecret without clientSecret is not a valid operation.
     if (!input.clientSecret) {
       return;
     }

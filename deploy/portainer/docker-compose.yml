@@ -107,11 +107,6 @@ services:
     image: ${SVA_IMAGE_REF}
     entrypoint:
       - ./provisioner-entrypoint.sh
-    command:
-      - node
-      - --import
-      - ./otel-bootstrap.mjs
-      - node_modules/@sva/auth/dist/iam-instance-registry/worker.js
     environment:
       NODE_ENV: production
       SVA_RUNTIME_PROFILE: "${SVA_RUNTIME_PROFILE}"
@@ -123,7 +118,6 @@ services:
       APP_DB_PASSWORD: "${APP_DB_PASSWORD}"
       POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
       REDIS_PASSWORD: "${REDIS_PASSWORD}"
-      KEYCLOAK_ADMIN_CLIENT_SECRET: "${KEYCLOAK_ADMIN_CLIENT_SECRET}"
       POSTGRES_DB: sva_studio
       APP_DB_USER: "${APP_DB_USER}"
       IAM_PII_ACTIVE_KEY_ID: k1
@@ -209,7 +203,7 @@ services:
       POSTGRES_DB: sva_studio
       POSTGRES_USER: sva
       POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
-      POSTGRES_HOST: "${SVA_STACK_NAME:-studio}_postgres"
+      POSTGRES_HOST: "${SVA_STACK_NAME:-sva-studio}_postgres"
       POSTGRES_PORT: "5432"
       APP_DB_USER: "${APP_DB_USER}"
       APP_DB_PASSWORD: "${APP_DB_PASSWORD}"

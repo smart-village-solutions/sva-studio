@@ -38,11 +38,21 @@ export const getAuthStateSecret = (): string | undefined =>
 export const getKeycloakAdminClientSecret = (): string | undefined =>
   readEnvOrSecret(['KEYCLOAK_ADMIN_CLIENT_SECRET'], 'sva_studio_keycloak_admin_client_secret');
 
-export const getKeycloakProvisionerClientSecret = (): string | undefined =>
-  readEnvOrSecret(
-    ['KEYCLOAK_PROVISIONER_CLIENT_SECRET', 'KEYCLOAK_ADMIN_CLIENT_SECRET'],
+export const getKeycloakProvisionerClientSecret = (): string | undefined => {
+  // First try provisioner-specific secret (env or file).
+  const provisionerClientSecret = readEnvOrSecret(
+    ['KEYCLOAK_PROVISIONER_CLIENT_SECRET'],
     'sva_studio_keycloak_provisioner_client_secret'
   );
+
+  if (provisionerClientSecret !== undefined) {
+    return provisionerClientSecret;
+  }
+
+  // Fallback to admin client secret (env only, not admin secret file,
+  // because admin secret file is managed separately by deployment).
+  return readFirstEnv('KEYCLOAK_ADMIN_CLIENT_SECRET');
+};
 
 export const getAppDbPassword = (): string | undefined =>
   readEnvOrSecret(['APP_DB_PASSWORD', 'POSTGRES_PASSWORD'], 'sva_studio_app_db_password');

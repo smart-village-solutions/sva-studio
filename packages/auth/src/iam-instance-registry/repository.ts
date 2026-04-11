@@ -16,13 +16,13 @@ import {
   provisionInstanceAuthArtifactsViaProvisioner,
 } from './provisioning-auth.js';
 
-const getWorkerKeycloakPreflight = async (input: Parameters<typeof getInstanceKeycloakPreflight>[0]) =>
+const getWorkerKeycloakPreflight = async (input: Parameters<typeof getInstanceKeycloakPreflightViaProvisioner>[0]) =>
   getInstanceKeycloakPreflightViaProvisioner(input);
 
-const getWorkerKeycloakPlan = async (input: Parameters<typeof getInstanceKeycloakPlan>[0]) =>
+const getWorkerKeycloakPlan = async (input: Parameters<typeof getInstanceKeycloakPlanViaProvisioner>[0]) =>
   getInstanceKeycloakPlanViaProvisioner(input);
 
-const getWorkerKeycloakStatus = async (input: Parameters<typeof getInstanceKeycloakStatus>[0]) =>
+const getWorkerKeycloakStatus = async (input: Parameters<typeof getInstanceKeycloakStatusViaProvisioner>[0]) =>
   getInstanceKeycloakStatusViaProvisioner(input);
 
 const resolvePool = createPoolResolver(getIamDatabaseUrl);

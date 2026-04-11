@@ -37,24 +37,52 @@ export const runKeycloakProvisioningWorkerLoop = async (input?: {
 }) => {
   const pollIntervalMs = input?.pollIntervalMs ?? Number.parseInt(process.env.SVA_KEYCLOAK_PROVISIONER_POLL_INTERVAL_MS ?? '5000', 10);
 
+  const abortController = new AbortController();
+  let shutdownRequested = false;
+
+  const handleShutdownSignal = () => {
+    if (!shutdownRequested) {
+      shutdownRequested = true;
+      logger.info('keycloak_provisioner_worker_shutdown_requested', {
+        operation: 'keycloak_provisioner_worker_loop',
+      });
+      abortController.abort();
+    }
+  };
+
+  process.on('SIGTERM', handleShutdownSignal);
+  process.on('SIGINT', handleShutdownSignal);
+
   logger.info('keycloak_provisioner_worker_started', {
     operation: 'keycloak_provisioner_worker_loop',
     poll_interval_ms: pollIntervalMs,
   });
 
-  for (;;) {
-    try {
-      const run = await runKeycloakProvisioningWorkerIteration();
-      if (!run) {
+  try {
+    for (;;) {
+      if (abortController.signal.aborted) {
+        logger.info('keycloak_provisioner_worker_shutdown_completed', {
+          operation: 'keycloak_provisioner_worker_loop',
+        });
+        break;
+      }
+      
+      try {
+        const run = await runKeycloakProvisioningWorkerIteration();
+        if (!run) {
+          await sleep(pollIntervalMs);
+        }
+      } catch (error) {
+        logger.error('keycloak_provisioner_worker_iteration_failed', {
+          operation: 'keycloak_provisioner_worker_loop',
+          error: error instanceof Error ? error.message : String(error),
+        });
         await sleep(pollIntervalMs);
       }
-    } catch (error) {
-      logger.error('keycloak_provisioner_worker_iteration_failed', {
-        operation: 'keycloak_provisioner_worker_loop',
-        error: error instanceof Error ? error.message : String(error),
-      });
-      await sleep(pollIntervalMs);
     }
+  } finally {
+    process.removeListener('SIGTERM', handleShutdownSignal);
+    process.removeListener('SIGINT', handleShutdownSignal);
   }
 };
 

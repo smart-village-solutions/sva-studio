@@ -1,5 +1,38 @@
 import type { InstanceRegistryServiceDeps } from './service-types.js';
 import { appendRunStep } from './service-keycloak-run-steps.js';
+import { createSdkLogger } from '@sva/sdk/server';
+
+const logger = createSdkLogger({ component: 'keycloak-provisioning-failures', level: 'error' });
+
+const classifyError = (error: unknown): { reasonCode: string; safeSummary: string } => {
+  if (error instanceof Error) {
+    const message = error.message || '';
+    
+    if (message.includes('Keycloak') || message.includes('keycloak')) {
+      return {
+        reasonCode: 'KEYCLOAK_EXECUTION_FAILED',
+        safeSummary: 'Provisioning bei externer Abhängigkeit (Keycloak) fehlgeschlagen.',
+      };
+    }
+    if (message.includes('Postgres') || message.includes('postgres') || message.includes('database')) {
+      return {
+        reasonCode: 'DATABASE_EXECUTION_FAILED',
+        safeSummary: 'Provisioning bei Datenbankzugriff fehlgeschlagen.',
+      };
+    }
+    if (message.includes('timeout') || message.includes('Timeout')) {
+      return {
+        reasonCode: 'TIMEOUT_EXECUTION_FAILED',
+        safeSummary: 'Provisioning aufgrund von Timeout abgebrochen.',
+      };
+    }
+  }
+  
+  return {
+    reasonCode: 'UNKNOWN_EXECUTION_FAILED',
+    safeSummary: 'Provisioning mit unbekanntem Fehler fehlgeschlagen.',
+  };
+};
 
 export const failRun = async (
   deps: InstanceRegistryServiceDeps,
@@ -9,14 +42,23 @@ export const failRun = async (
     error: unknown;
   }
 ) => {
-  const message = input.error instanceof Error ? input.error.message : String(input.error);
+  const rawMessage = input.error instanceof Error ? input.error.message : String(input.error);
+  const { reasonCode, safeSummary } = classifyError(input.error);
+  
+  // Log the detailed error for operators with structured context.
+  logger.error('provisioning_run_failed', {
+    runId: input.runId,
+    reasonCode,
+    rawErrorMessage: rawMessage.substring(0, 500), // Truncate to avoid PII issues
+  });
+  
   await appendRunStep(deps, {
     runId: input.runId,
     stepKey: 'execution',
     title: 'Provisioning ausführen',
     status: 'failed',
-    summary: message,
-    details: { error: message },
+    summary: safeSummary,
+    details: { reasonCode },
     requestId: input.requestId,
   });
   await deps.repository.updateKeycloakProvisioningRun({

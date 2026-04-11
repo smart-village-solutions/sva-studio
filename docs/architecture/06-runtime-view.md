@@ -303,9 +303,9 @@ Fehlerpfad:
 
 ### Ergänzung 2026-03: Produktionsnahe Release-Validierung
 
-1. Der Operator startet `pnpm env:deploy:acceptance-hb` mit `--image-digest`.
-2. `environment-precheck` validiert Pflichtkonfiguration, Schema-Guard und Soll-/Live-Spec-Drift.
-3. `image-smoke` startet exakt das freizugebende Image isoliert und prüft `/health/live` und `/health/ready`.
+1. Ein Release-Workflow baut genau ein `linux/amd64`-Image und ermittelt den Manifest-Digest.
+2. `Studio Artifact Verify` startet exakt dieses Image isoliert im Runner und prüft `/health/live`, `/health/ready` und `/`.
+3. `Studio Deploy` führt danach `env:precheck:studio`, `env:deploy:studio` und `env:smoke:studio` gegen denselben Digest aus.
 4. Nach optionaler Migration wird der Stack aktualisiert.
 5. `internal-verify` kombiniert interne HTTP-Probes gegen den App-Service mit `doctor`-Diagnostik.
 6. `external-smoke` prüft öffentliche URL, Health-Pfade, Auth-Entry und IAM-Kontext.

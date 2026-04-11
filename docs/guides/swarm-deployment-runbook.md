@@ -4,12 +4,12 @@
 
 Diese Anleitung beschreibt den Rollout von SVA Studio auf einem Server mit Docker Swarm und Traefik, verwaltet über Portainer. Sie ersetzt den früheren Nicht-Swarm-Stack und folgt dem Referenz-Betriebsprofil aus [ADR-019](../adr/ADR-019-swarm-traefik-referenz-betriebsprofil.md).
 
-Im vereinheitlichten Betriebsmodell entspricht dieses Runbook dem Profil `acceptance-hb`. Die übergeordnete Bedienlogik für `precheck`, `deploy`, `down`, `status`, `smoke` und `migrate` ist unter `../development/runtime-profile-betrieb.md` dokumentiert.
+Im vereinheitlichten Betriebsmodell entspricht dieses Runbook dem Profil `studio`. Die übergeordnete Bedienlogik für `precheck`, `deploy`, `down`, `status`, `smoke` und `migrate` ist unter `../development/runtime-profile-betrieb.md` dokumentiert.
 
 Der Stack besteht aus:
 
 - `app` (TanStack Start / Nitro Node-Server, über Traefik exponiert)
-- `adminer` (geschützte DB-Admin-Oberfläche für Acceptance-Troubleshooting)
+- `adminer` (geschützte DB-Admin-Oberfläche für Studio-Troubleshooting)
 - `postgres` (IAM Core Data Layer)
 - `redis` (Session-/Cache-Store)
 - `otel-collector` (OTLP Hub für Logs und Metriken)
@@ -69,7 +69,7 @@ Regel:
 
 ## Schritt 1: Stack-Variablen konfigurieren
 
-Das Referenzprofil `acceptance-hb` wird env-only betrieben. Sowohl nicht-sensitive als auch vertrauliche Werte werden als Stack-Umgebungsvariablen in Portainer gepflegt. Referenzwerte: `.env.example`.
+Das Referenzprofil `studio` wird env-only betrieben. Sowohl nicht-sensitive als auch vertrauliche Werte werden als Stack-Umgebungsvariablen im CI-Environment und im Zielstack gepflegt. Referenzwerte: `config/runtime/studio.vars.example`.
 
 ### Pflicht-Variablen
 
@@ -110,7 +110,7 @@ Das Referenzprofil `acceptance-hb` wird env-only betrieben. Sowohl nicht-sensiti
 | `IAM_UI_ENABLED` | `false` | IAM-Account-UI |
 | `IAM_ADMIN_ENABLED` | `false` | IAM-Admin-UI |
 | `IAM_BULK_ENABLED` | `false` | IAM-Bulk-Operationen |
-| `SVA_DOCTOR_KEYCLOAK_SUBJECT` | leer | optionaler Actor-Override für `env:doctor:acceptance-hb` |
+| `SVA_DOCTOR_KEYCLOAK_SUBJECT` | leer | optionaler Actor-Override für `env:doctor:studio` |
 | `SVA_DOCTOR_INSTANCE_ID` | erster Wert aus `SVA_ALLOWED_INSTANCE_IDS` | überschreibt die Zielinstanz für den Doctor-Lauf |
 | `SVA_DOCTOR_SESSION_ROLES` | leer | kommagetrennte Session-Rollen für Rollen-Diagnose |
 | `SVA_DB_ADMIN_BASIC_AUTH` | kein Default | htpasswd-String für vorgeschalteten Adminer-Basic-Auth |
@@ -134,9 +134,9 @@ Pragmatische Betriebsregeln aus den letzten Rollouts:
 - fuer `studio` ist ein lokaler Kandidatencontainer nur Hilfssignal; Root-/Tenant-/Ingress-Paritaet bleibt ein Remote-Vertrag
 - wenn das Ziel-Digest bereits live laeuft, darf derselbe Digest nur ueber dokumentierte Live-Paritaet wiederverwendet werden, nicht ueber eine weaker lokale Ersatzprobe
 
-### Adminer für Acceptance
+### Adminer für Studio
 
-Für DB-Diagnose auf `acceptance-hb` wird Adminer intern über Traefik veröffentlicht:
+Für DB-Diagnose auf `studio` wird Adminer intern über Traefik veröffentlicht:
 
 - eigener Host über `SVA_DB_ADMIN_HOST`
 - zusätzliche Basic-Auth über `SVA_DB_ADMIN_BASIC_AUTH`
@@ -152,7 +152,7 @@ Der komplette Output muss unverändert als `SVA_DB_ADMIN_BASIC_AUTH` gesetzt wer
 
 ## Schritt 1a: DNS- und TLS-Vertrag prüfen
 
-Vor jedem Acceptance-Rollout und vor jeder neuen Instanzfreigabe muss der gemeinsame Plattformvertrag für Root- und Tenant-Hosts erfüllt sein:
+Vor jedem Studio-Rollout und vor jeder neuen Instanzfreigabe muss der gemeinsame Plattformvertrag für Root- und Tenant-Hosts erfüllt sein:
 
 - `studio.smart-village.app` zeigt auf den gemeinsamen Swarm-/Traefik-Ingress
 - `*.studio.smart-village.app` zeigt auf denselben Ingress
@@ -195,10 +195,10 @@ Bevorzugter Betriebsweg aus dem Repository heraus:
 
 ```bash
 cd "$(git rev-parse --show-toplevel)"
-pnpm env:migrate:acceptance-hb
+pnpm env:migrate:studio
 ```
 
-Der Befehl wendet die kanonischen `goose`-Migrationen aus `packages/data/migrations/*.sql` gegen den laufenden Acceptance-Postgres an:
+Der Befehl wendet die kanonischen `goose`-Migrationen aus `packages/data/migrations/*.sql` gegen den laufenden Studio-Postgres an:
 
 - bevorzugt remote via `quantum-cli exec --endpoint sva --stack sva-studio --service postgres`
 - nur als Fallback lokal via `docker exec`, wenn der Swarm-Postgres auf demselben Docker-Daemon sichtbar ist
@@ -208,7 +208,7 @@ Der Befehl wendet die kanonischen `goose`-Migrationen aus `packages/data/migrati
 
 Damit ist kein manuelles Paste-in-`psql` mehr erforderlich.
 
-Das Fallback über manuelle `psql`-Schleifen bleibt nur für Recovery-Sonderfälle reserviert; der kanonische Betriebsweg ist `pnpm env:migrate:acceptance-hb`.
+Das Fallback über manuelle `psql`-Schleifen bleibt nur für Recovery-Sonderfälle reserviert; der kanonische Betriebsweg ist `pnpm env:migrate:studio`.
 
 ### Runtime-User anlegen
 
@@ -233,9 +233,9 @@ Zusatz fuer den Betrieb:
 - nach dem Anlegen nicht nur Grants pruefen, sondern den Login des Laufzeit-Users aktiv verifizieren
 - wenn `Auth audit DB sink failed` oder `password authentication failed for user "sva_app"` auftaucht, zuerst diesen Pfad reparieren, bevor Auth-/Realm-Fehler an anderer Stelle vermutet werden
 
-## Schritt 3: Kanonischen Acceptance-Deploy ausführen
+## Schritt 3: Kanonischen Studio-Deploy ausführen
 
-Der reguläre Serverdeploy für `acceptance-hb` läuft nur noch über den orchestrierten Einstiegspunkt `pnpm env:deploy:acceptance-hb`. Direkte Acceptance-Redeploys über `up`/`update`, Portainer-Klickpfade oder Ad-hoc-`docker stack deploy` sind nicht mehr der verbindliche Standard.
+Der reguläre Serverdeploy für `studio` läuft über die Workflows `Studio Deploy` bzw. `Studio Release` oder den CI-gesteuerten Einstiegspunkt `pnpm env:deploy:studio`. Direkte Redeploys über `up`/`update`, Portainer-Klickpfade oder Ad-hoc-`docker stack deploy` sind nicht mehr der verbindliche Standard.
 
 ### Release-Klassen
 
@@ -247,8 +247,8 @@ Der reguläre Serverdeploy für `acceptance-hb` läuft nur noch über den orches
 ```bash
 cd "$(git rev-parse --show-toplevel)"
 
-pnpm env:precheck:acceptance-hb
-pnpm env:deploy:acceptance-hb -- --release-mode=app-only --image-tag=<unveraenderlicher-tag>
+pnpm env:precheck:studio
+pnpm env:deploy:studio -- --release-mode=app-only --image-digest=<sha256-digest> --rollback-hint="Vorherigen Digest erneut deployen"
 ```
 
 Für Schemaänderungen:
@@ -256,10 +256,10 @@ Für Schemaänderungen:
 ```bash
 cd "$(git rev-parse --show-toplevel)"
 
-pnpm env:deploy:acceptance-hb -- \
+pnpm env:deploy:studio -- \
   --release-mode=schema-and-app \
   --maintenance-window="2026-03-20 19:00-19:15 CET" \
-  --image-tag=<unveraenderlicher-tag> \
+  --image-digest=<sha256-digest> \
   --rollback-hint="Vorherigen Digest erneut deployen"
 ```
 
@@ -285,7 +285,7 @@ Read-only Betriebsregel:
 - `status`, `doctor` und `precheck` nutzen bevorzugt die Portainer-API mit `QUANTUM_API_KEY` und `QUANTUM_ENDPOINT_ID`
 - lokales `quantum-cli` ist fuer diese Pfade nicht mehr der primaere Wahrheitskanal
 - `quantum-cli` bleibt fuer Mutationen wie `stacks update` sowie fuer dedizierte Job-Stacks der kanonische Operator-Pfad
-- mutierende Remote-Kommandos aus `pnpm env:*:<profil>` sind standardmaessig nur im CI-/Runner-Kontext erlaubt; lokal ist dafuer explizit `SVA_ALLOW_LOCAL_REMOTE_MUTATIONS=true` als Notfallpfad noetig
+- mutierende Remote-Kommandos fuer `studio` sind ausschliesslich im CI-/Runner-Kontext erlaubt
 
 Fuer das produktionsnahe Profil `studio` gilt derselbe Netzwerk-/Ingress-Vertrag zusaetzlich gegen `config/runtime/studio.local.vars`:
 
@@ -335,7 +335,7 @@ Prüfkriterien:
 
 ### Fallback über Portainer oder CLI
 
-Dieser Pfad bleibt nur Fallback für Ausnahmefälle oder die initiale Stack-Anlage. Danach muss die Verifikation immer wieder über `pnpm env:doctor:acceptance-hb` und `pnpm env:smoke:acceptance-hb` abgesichert werden.
+Dieser Pfad bleibt nur Fallback für Ausnahmefälle oder die initiale Stack-Anlage. Danach muss die Verifikation immer wieder über `pnpm env:doctor:studio` und `pnpm env:smoke:studio` abgesichert werden.
 
 #### Über Portainer
 
@@ -353,11 +353,11 @@ quantum-cli stacks update --environment swarm-secrets --endpoint sva --stack sva
 
 ## Schritt 4: Diagnose, Smoke und Evidenz
 
-Verbindliche Reihenfolge nach jedem Acceptance-Deploy:
+Verbindliche Reihenfolge nach jedem Studio-Deploy:
 
 ```bash
-pnpm env:doctor:acceptance-hb
-pnpm env:smoke:acceptance-hb
+pnpm env:doctor:studio
+pnpm env:smoke:studio
 ```
 
 Der kanonische Deploypfad erzeugt zusätzlich pro Lauf Artefakte unter `artifacts/runtime/deployments/`:
@@ -372,7 +372,7 @@ Der kanonische Deploypfad erzeugt zusätzlich pro Lauf Artefakte unter `artifact
 Unmittelbar danach:
 
 ```bash
-pnpm env:feedback:acceptance-hb
+pnpm env:feedback:studio
 ```
 
 Der Befehl erzeugt:
@@ -427,8 +427,7 @@ Für IAM-Abnahmen zusätzlich:
 Für ein reines App-Update ohne Schemaänderungen:
 
 1. Neues Image mit unveränderlichem Tag oder Digest bereitstellen
-2. `pnpm env:deploy:acceptance-hb -- --release-mode=app-only --image-tag=<tag>` ausführen
-   - zusätzlich ist `--image-digest=<sha256:...>` verpflichtend
+2. `pnpm env:deploy:studio -- --release-mode=app-only --image-digest=<sha256:...> --rollback-hint="<hinweis>"` ausführen
 3. Deploy-Report prüfen und archivieren
 
 Fuer `studio` gilt derselbe Pfad mit dem Unterschied, dass der Ziel-Digest vorab ueber `config/runtime/studio.local.vars` konvergiert und anschliessend mit `pnpm env:status:studio`, `pnpm env:smoke:studio` und `pnpm env:precheck:studio` bestaetigt wird.
@@ -436,8 +435,7 @@ Fuer `studio` gilt derselbe Pfad mit dem Unterschied, dass der Ziel-Digest vorab
 Für Schemaänderungen:
 
 1. Wartungsfenster definieren
-2. `pnpm env:deploy:acceptance-hb -- --release-mode=schema-and-app --maintenance-window=...` ausführen
-   - zusätzlich ist `--image-digest=<sha256:...>` verpflichtend
+2. `pnpm env:deploy:studio -- --release-mode=schema-and-app --maintenance-window=... --image-digest=<sha256:...> --rollback-hint="<hinweis>"` ausführen
 3. Deploy-Report auf `migrate`, `internal-verify`, `external-smoke` und `release-decision` prüfen
 
 ## Rollback
@@ -445,7 +443,7 @@ Für Schemaänderungen:
 ### App-Rollback (ohne Schemaänderung)
 
 ```bash
-pnpm env:deploy:acceptance-hb -- --release-mode=app-only --image-tag=<vorheriger-unveraenderlicher-tag>
+pnpm env:deploy:studio -- --release-mode=app-only --image-digest=<vorheriger-sha256-digest> --rollback-hint="<hinweis>"
 ```
 
 ### Bei Schemaänderungen

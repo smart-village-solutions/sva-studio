@@ -1,0 +1,72 @@
+name: Studio Artifact Verify
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_digest:
+        description: 'Verbindlicher Digest des zu pruefenden Studio-Images'
+        required: true
+        type: string
+      image_tag:
+        description: 'Optionaler Tag fuer Report und Korrelation'
+        required: false
+        type: string
+  workflow_call:
+    inputs:
+      image_digest:
+        required: true
+        type: string
+      image_tag:
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Validate immutable image input
+        id: image
+        env:
+          IMAGE_DIGEST: ${{ inputs.image_digest || github.event.inputs.image_digest }}
+          IMAGE_TAG: ${{ inputs.image_tag || github.event.inputs.image_tag || '' }}
+        run: |
+          set -euo pipefail
+          if ! printf '%s' "${IMAGE_DIGEST}" | grep -Eq '^sha256:[a-f0-9]{64}$'; then
+            echo "image_digest muss ein sha256-Digest sein." >&2
+            exit 1
+          fi
+          image_ref="ghcr.io/smart-village-solutions/sva-studio@${IMAGE_DIGEST}"
+          echo "image_ref=${image_ref}" >> "${GITHUB_OUTPUT}"
+          echo "image_tag=${IMAGE_TAG}" >> "${GITHUB_OUTPUT}"
+          docker pull "${image_ref}"
+
+      - name: Verify studio image in runner
+        run: |
+          set -euo pipefail
+          bash scripts/ci/verify-studio-image.sh \
+            "${{ steps.image.outputs.image_ref }}" \
+            "artifacts/runtime/image-verify"
+
+      - name: Upload artifact verify reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: studio-artifact-verify-${{ github.run_id }}
+          path: artifacts/runtime/image-verify
+          if-no-files-found: warn
+          retention-days: 14

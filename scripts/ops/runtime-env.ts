@@ -2665,7 +2665,7 @@ const renderRemoteComposeDocument = (env: NodeJS.ProcessEnv): ComposeDocument =>
   JSON.parse(runCapture('docker', ['compose', '-f', resolve(rootDir, getRemoteComposeFile(env)), 'config', '--format', 'json'], env)) as ComposeDocument;
 
 const renderQuantumDeployProject = (env: NodeJS.ProcessEnv) => {
-  const runtimeProfile = env.SVA_RUNTIME_PROFILE?.trim() || 'acceptance-hb';
+  const runtimeProfile = env.SVA_RUNTIME_PROFILE?.trim() || 'studio';
   const renderedComposeDocument = renderRemoteComposeDocument(env);
   assertComposeServiceNetworks(renderedComposeDocument, 'app', ['internal', 'public']);
   assertComposeServiceIngressLabels(renderedComposeDocument, 'app');
@@ -3090,6 +3090,37 @@ const buildRemoteParityReuseProbe = (
   ];
 };
 
+const buildImageSmokeRuntimeEnvEntries = async (env: NodeJS.ProcessEnv) => {
+  const mergedEnv = { ...env } as Record<string, string | undefined>;
+  try {
+    const liveContract = await inspectRemoteServiceContract(
+      {
+        commandExists,
+        runCapture,
+      },
+      env,
+      {
+        quantumEndpoint: getConfiguredQuantumEndpoint(env),
+        serviceName: env.SVA_ACCEPTANCE_APP_SERVICE ?? 'app',
+        stackName: getConfiguredStackName(env),
+      },
+    );
+    if (liveContract) {
+      for (const [key, value] of Object.entries(liveContract.env)) {
+        if ((mergedEnv[key]?.trim() || '').length === 0 && value.trim().length > 0) {
+          mergedEnv[key] = value;
+        }
+      }
+    }
+  } catch {
+    // keep local env-only fallback if the live contract is unavailable
+  }
+
+  return Object.entries(mergedEnv)
+    .filter(([, value]) => typeof value === 'string' && value.trim().length > 0)
+    .map(([key, value]) => `${key}=${value}`);
+};
+
 const runLocalEmergencyHybridImageSmoke = async (
   runtimeProfile: RemoteRuntimeProfile,
   env: NodeJS.ProcessEnv,
@@ -3098,11 +3129,10 @@ const runLocalEmergencyHybridImageSmoke = async (
 ) => {
   ensureDirs();
   const smokePort = Number(env.SVA_IMAGE_SMOKE_PORT ?? '39080');
+  const smokeBaseUrl = `http://host.docker.internal:${smokePort}`;
   const containerName = `${reportId}-image-smoke`.replace(/[^a-z0-9-]/giu, '-').toLowerCase();
   const envFilePath = resolve(runtimeArtifactsDir, `${containerName}.env`);
-  const runtimeEnvEntries = Object.entries(env)
-    .filter(([, value]) => typeof value === 'string' && value.trim().length > 0)
-    .map(([key, value]) => `${key}=${value as string}`);
+  const runtimeEnvEntries = await buildImageSmokeRuntimeEnvEntries(env);
   writeFileSync(envFilePath, `${runtimeEnvEntries.join('\n')}\n`, 'utf8');
 
   try {
@@ -3119,10 +3149,12 @@ const runLocalEmergencyHybridImageSmoke = async (
         '-d',
         '--name',
         containerName,
+        '--add-host',
+        'host.docker.internal:host-gateway',
         '--env-file',
         envFilePath,
         '-e',
-        `SVA_PUBLIC_BASE_URL=http://127.0.0.1:${smokePort}`,
+        `SVA_PUBLIC_BASE_URL=${smokeBaseUrl}`,
         '-p',
         `127.0.0.1:${smokePort}:3000`,
         options.imageRef,
@@ -3134,11 +3166,11 @@ const runLocalEmergencyHybridImageSmoke = async (
       throw new Error(runResult.stderr?.trim() || runResult.stdout.trim() || 'Image-Smoke-Container konnte nicht gestartet werden.');
     }
 
-    await waitForHttpOk(`http://127.0.0.1:${smokePort}/health/live`, 60_000);
-    const artifactProbe = await runHttpProbe({
+    await waitForContainerHttpOk(containerName, '/health/live', 60_000, env);
+    const artifactProbe = await runContainerHttpProbe(containerName, '/health/live', {
       name: 'image-live',
       scope: 'image-smoke',
-      target: `http://127.0.0.1:${smokePort}/health/live`,
+      target: `docker://${containerName}/health/live`,
       expect: (response) => (response.status === 200 ? null : `Erwartet HTTP 200, erhalten ${response.status}.`),
     });
     if (artifactProbe.status === 'error') {
@@ -3184,15 +3216,112 @@ const runLocalEmergencyHybridImageSmoke = async (
   }
 };
 
+const waitForContainerHttpOk = async (
+  containerName: string,
+  path: string,
+  timeoutMs: number,
+  env: NodeJS.ProcessEnv,
+) => {
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < timeoutMs) {
+    const result = runCaptureDetailed(
+      'docker',
+      [
+        'exec',
+        containerName,
+        'node',
+        '-e',
+        `fetch('http://127.0.0.1:3000${path}').then((response)=>process.exit(response.ok?0:1)).catch(()=>process.exit(1))`,
+      ],
+      env,
+    );
+    if (result.status === 0) {
+      return;
+    }
+    await wait(1_000);
+  }
+
+  throw new Error(`Timeout waiting for container ${containerName} ${path}`);
+};
+
+const runContainerHttpProbe = async (
+  containerName: string,
+  path: string,
+  input: {
+    expect: (response: { ok: boolean; status: number }, payload: unknown) => string | null;
+    name: string;
+    scope: AcceptanceProbeResult['scope'];
+    target: string;
+  },
+): Promise<AcceptanceProbeResult> => {
+  const startedAt = Date.now();
+
+  try {
+    const script = [
+      "const url = process.argv[1];",
+      "fetch(url)",
+      "  .then(async (response) => {",
+      "    const text = await response.text();",
+      '    process.stdout.write(JSON.stringify({ ok: response.ok, status: response.status, text }));',
+      '  })',
+      "  .catch((error) => {",
+      "    console.error(error instanceof Error ? error.message : String(error));",
+      '    process.exit(1);',
+      '  });',
+    ].join('');
+    const result = runCaptureDetailed(
+      'docker',
+      ['exec', containerName, 'node', '-e', script, `http://127.0.0.1:3000${path}`],
+      process.env,
+    );
+
+    if (result.status !== 0) {
+      throw new Error(result.stderr?.trim() || result.stdout.trim() || 'Container-HTTP-Probe fehlgeschlagen.');
+    }
+
+    const rawPayload = result.stdout.trim();
+    const parsed = JSON.parse(rawPayload) as { ok: boolean; status: number; text: string };
+    let payload: unknown = parsed.text;
+
+    try {
+      payload = parsed.text.length > 0 ? JSON.parse(parsed.text) : null;
+    } catch {
+      payload = parsed.text;
+    }
+
+    const expectationError = input.expect({ ok: parsed.ok, status: parsed.status }, payload);
+    return createProbeResult({
+      durationMs: Date.now() - startedAt,
+      httpStatus: parsed.status,
+      message: expectationError ?? `Probe erfolgreich mit HTTP ${parsed.status}.`,
+      name: input.name,
+      scope: input.scope,
+      status: expectationError ? 'error' : 'ok',
+      target: input.target,
+      ...(expectationError ? { details: { payload } } : {}),
+    });
+  } catch (error) {
+    return createProbeResult({
+      durationMs: Date.now() - startedAt,
+      message: error instanceof Error ? error.message : String(error),
+      name: input.name,
+      scope: input.scope,
+      status: 'error',
+      target: input.target,
+    });
+  }
+};
+
 const runImageSmoke = async (
   env: NodeJS.ProcessEnv,
   options: AcceptanceDeployOptions,
   reportId: string
 ): Promise<readonly AcceptanceProbeResult[]> => {
-  const runtimeProfile = parseRuntimeProfile(env.SVA_RUNTIME_PROFILE ?? 'acceptance-hb');
-  if (!isRemoteRuntimeProfile(runtimeProfile)) {
+  const parsedRuntimeProfile = parseRuntimeProfile(env.SVA_RUNTIME_PROFILE ?? 'studio');
+  if (!parsedRuntimeProfile || !isRemoteRuntimeProfile(parsedRuntimeProfile)) {
     throw new Error('image-smoke ist nur fuer Remote-Profile verfuegbar.');
   }
+  const runtimeProfile = parsedRuntimeProfile;
 
   const reusedLiveEvidence = await tryReuseLiveParityEvidence(runtimeProfile, env, options);
   if (reusedLiveEvidence) {
@@ -3209,11 +3338,10 @@ const runImageSmoke = async (
 
   ensureDirs();
   const smokePort = Number(env.SVA_IMAGE_SMOKE_PORT ?? '39080');
+  const smokeBaseUrl = `http://host.docker.internal:${smokePort}`;
   const containerName = `${reportId}-image-smoke`.replace(/[^a-z0-9-]/giu, '-').toLowerCase();
   const envFilePath = resolve(runtimeArtifactsDir, `${containerName}.env`);
-  const runtimeEnvEntries = Object.entries(env)
-    .filter(([, value]) => typeof value === 'string' && value.trim().length > 0)
-    .map(([key, value]) => `${key}=${value as string}`);
+  const runtimeEnvEntries = await buildImageSmokeRuntimeEnvEntries(env);
   writeFileSync(envFilePath, `${runtimeEnvEntries.join('\n')}\n`, 'utf8');
 
   try {
@@ -3230,10 +3358,12 @@ const runImageSmoke = async (
         '-d',
         '--name',
         containerName,
+        '--add-host',
+        'host.docker.internal:host-gateway',
         '--env-file',
         envFilePath,
         '-e',
-        `SVA_PUBLIC_BASE_URL=http://127.0.0.1:${smokePort}`,
+        `SVA_PUBLIC_BASE_URL=${smokeBaseUrl}`,
         '-p',
         `127.0.0.1:${smokePort}:3000`,
         options.imageRef,
@@ -3245,21 +3375,21 @@ const runImageSmoke = async (
       throw new Error(runResult.stderr?.trim() || runResult.stdout.trim() || 'Image-Smoke-Container konnte nicht gestartet werden.');
     }
 
-    await waitForHttpOk(`http://127.0.0.1:${smokePort}/health/live`, 60_000);
+    await waitForContainerHttpOk(containerName, '/health/live', 60_000, env);
     const parityPlan = buildProdParityProbePlan(env);
     const rootForwardedHeaders = buildTrustedForwardedHeaders(parityPlan.rootHost);
 
     const probes = await Promise.all([
-      runHttpProbe({
+      runContainerHttpProbe(containerName, '/health/live', {
         name: 'image-live',
         scope: 'image-smoke',
-        target: `http://127.0.0.1:${smokePort}/health/live`,
+        target: `docker://${containerName}/health/live`,
         expect: (response) => (response.status === 200 ? null : `Erwartet HTTP 200, erhalten ${response.status}.`),
       }),
-      runHttpProbe({
+      runContainerHttpProbe(containerName, '/health/ready', {
         name: 'image-ready',
         scope: 'image-smoke',
-        target: `http://127.0.0.1:${smokePort}/health/ready`,
+        target: `docker://${containerName}/health/ready`,
         expect: (response, payload) =>
           response.status === 200
             ? null

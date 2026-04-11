@@ -1,0 +1,53 @@
+name: Studio Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_mode:
+        description: 'Release-Modus fuer den Studio-Release'
+        required: true
+        default: 'app-only'
+        type: choice
+        options:
+          - app-only
+          - schema-and-app
+      image_tag:
+        description: 'Optionaler unveraenderlicher Tag fuer das gebaute Image'
+        required: false
+        type: string
+      maintenance_window:
+        description: 'Pflicht fuer schema-and-app'
+        required: false
+        type: string
+      rollback_hint:
+        description: 'Rollback-Hinweis fuer den Studio-Release'
+        required: true
+        type: string
+
+jobs:
+  build:
+    uses: ./.github/workflows/studio-image-build.yml
+    secrets: inherit
+    with:
+      image_tag: ${{ github.event.inputs.image_tag }}
+
+  verify:
+    needs: build
+    uses: ./.github/workflows/studio-artifact-verify.yml
+    secrets: inherit
+    with:
+      image_digest: ${{ needs.build.outputs.image_digest }}
+      image_tag: ${{ needs.build.outputs.image_tag }}
+
+  deploy:
+    needs:
+      - build
+      - verify
+    uses: ./.github/workflows/studio-deploy.yml
+    secrets: inherit
+    with:
+      image_digest: ${{ needs.build.outputs.image_digest }}
+      image_tag: ${{ needs.build.outputs.image_tag }}
+      release_mode: ${{ github.event.inputs.release_mode }}
+      maintenance_window: ${{ github.event.inputs.maintenance_window }}
+      rollback_hint: ${{ github.event.inputs.rollback_hint }}

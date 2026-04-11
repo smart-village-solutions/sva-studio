@@ -120,9 +120,9 @@ gleichzeitig beeinflussen.
 - IAM-Request-Spans tragen konsistente Diagnoseattribute wie `iam.endpoint`, `iam.instance_id`, `iam.actor_resolution`, `iam.reason_code`, `iam.feature_flags`, `db.schema_guard_result`, `dependency.redis.status` und `dependency.keycloak.status`
 - Der Runtime-Doctor- und Migrationspfad emittiert eigene OTEL-Ereignisse für Schema-Guard, Actor-Diagnose und verifizierte Migrationsläufe, damit Betriebsfehler mit `request_id` und `trace_id` korrelierbar bleiben
 - Inhalts-Historie nutzt ein eigenes Read-Modell statt Roh-Logs; jede Erstellung, Aktualisierung und jeder Statuswechsel erzeugt zusätzlich Audit-Ereignisse im bestehenden IAM-Auditpfad
-- Acceptance-Deploys erzeugen zusätzlich strukturierte Release-Evidenz unter `artifacts/runtime/deployments/`; enthalten sind Release-Modus, Actor, Workflow, Image-Referenz, Schrittstatus und Stack-Zusammenfassung, jedoch keine Secrets oder PII
+- Studio-Deploys erzeugen zusätzlich strukturierte Release-Evidenz unter `artifacts/runtime/deployments/`; enthalten sind Release-Modus, Actor, Workflow, Image-Referenz, Schrittstatus und Stack-Zusammenfassung, jedoch keine Secrets oder PII
 - Produktionsnahe Releases erzeugen zusätzlich eigenständige Artefakte für Release-Manifest, Phasenstatus, Migration, Bootstrap, Migrationsjob, Bootstrap-Job, interne Probes und externe Probes; diese Artefakte bleiben bewusst ohne Secrets oder PII
-- Remote-Prechecks für `acceptance-hb` und `studio` vergleichen zusätzlich die Live-Service-Spec der App mit dem gerenderten Sollzustand aus dem Deploy-Compose; dabei sind Netzwerke und ingressrelevante Labels eigene Drift-Signale
+- Remote-Prechecks für `studio` vergleichen zusätzlich die Live-Service-Spec der App mit dem gerenderten Sollzustand aus dem Deploy-Compose; dabei sind Netzwerke und ingressrelevante Labels eigene Drift-Signale
 
 ### Fehlerbehandlung und Resilienz
 
@@ -134,12 +134,12 @@ gleichzeitig beeinflussen.
 - Root-Route nutzt ein zentrales `errorComponent` für unbehandelte Laufzeitfehler mit Retry-Option
 - Runtime-Profile verwenden einen verbindlichen Diagnosepfad `pnpm env:doctor:<profil>`; manuelle `psql`-/Browser-Netzwerkdiagnose ist nur Fallback
 - Read-only Remote-Diagnostik trennt strikt zwischen Portainer-API als Primaerkanal und `quantum-cli` als Mutations-/Fallback-Kanal
-- Mutierende Remote-Kommandos bleiben deterministisch auf den CI-/Runner-Kontext begrenzt; lokale Ausfuehrung ist nur ueber den expliziten Notfall-Override `SVA_ALLOW_LOCAL_REMOTE_MUTATIONS=true` zulaessig
-- `acceptance-hb` verwendet einen verbindlichen, fehlertoleranten Deploypfad `pnpm env:deploy:acceptance-hb`; direkte `up`-/`update`-Deploys sind für Serverrollouts gesperrt
+- Mutierende `studio`-Kommandos bleiben deterministisch auf den CI-/Runner-Kontext begrenzt; lokale produktionsnahe Ausfuehrung ist kein offizieller Pfad mehr
+- `studio` verwendet einen verbindlichen, fehlertoleranten Deploypfad ueber `Studio Image Build`, `Studio Artifact Verify`, `Studio Deploy` oder den Orchestrator `Studio Release`; direkte `up`-/`update`-Deploys sind für Serverrollouts gesperrt
 - Der produktionsnahe Releasevertrag klassifiziert Fehler verbindlich in `config`, `image`, `migration`, `bootstrap`, `startup`, `health`, `ingress` und `dependency`; spätere Phasen dürfen frühere Resultate nicht überschreiben
-- Release-Modus `schema-and-app` arbeitet fail-closed: ohne dokumentiertes Wartungsfenster startet kein orchestrierter Acceptance-Deploy
+- Release-Modus `schema-and-app` arbeitet fail-closed: ohne dokumentiertes Wartungsfenster startet kein orchestrierter Studio-Deploy
 - Release-Modus `schema-and-app` arbeitet zusätzlich fail-closed auf Basis dedizierter Swarm-Jobs: ohne erfolgreichen Exit-Code von `migrate` und `bootstrap`, Post-Migration-Assertions und Schema-Guard startet kein App-Rollout
-- Acceptance-Releases arbeiten fail-closed ohne `SVA_IMAGE_DIGEST`; ein nicht bestehender `image-smoke` blockiert jeden Rollout vor dem Stack-Update
+- Studio-Releases arbeiten fail-closed ohne `SVA_IMAGE_DIGEST`; ein nicht bestehender `image-smoke` blockiert jeden Rollout vor dem Stack-Update
 - Prod-nahe Paritaet fuer `studio` muss Root-Host, Tenant-Host und OIDC-Verhalten bewerten. Wenn dasselbe Digest bereits live laeuft, darf nur die Live-Evidenz dieses Digests wiederverwendet werden.
 - Der Live-Rollout-Render validiert vor `quantum-cli stacks update`, dass `app` die Netzwerke `internal` und `public` sowie die benoetigten Traefik-Labels weiterhin enthält; fehlende Einträge blockieren den Rollout fail-fast
 - Temp-Job-Stacks für `migrate` und `bootstrap` sind von Live-Rollouts strikt getrennt. Sie nutzen nur `<stack>_internal`, enthalten keinen `app`-Service und dürfen die Live-Spec von `studio_app` nicht mutieren
@@ -296,7 +296,7 @@ Referenzen:
 
 - **Instanz-Routing:** Eingehende Hosts werden über ein Subdomain-Modell (`<instanceId>.<SVA_PARENT_DOMAIN>`) auf `instanceId`s abgebildet. Die Env-Allowlist (`SVA_ALLOWED_INSTANCE_IDS`) ist die autoritative Freigabequelle. Ablehnungen liefern identische `403`-Antworten (kein Host-Enumeration-Vektor).
 - **Kanonischer Auth-Host:** OIDC-Flows laufen ausschließlich über die Root-Domain. Zielbild: Auth-Cookies werden auf die Parent-Domain gesetzt (`Domain=.<SVA_PARENT_DOMAIN>`) für SSO über Instanz-Subdomains. Aktuell ist das Cookie-Scoping host-only (siehe [ADR-020](../adr/ADR-020-kanonischer-auth-host-multi-host-grenze.md)).
-- **Kanonische Runtime-Profile:** Die Betriebsmodi `local-keycloak`, `local-builder` und `acceptance-hb` werden über `SVA_RUNTIME_PROFILE` sowie versionierte Profildefinitionen unter `config/runtime/` gesteuert. Die einheitliche Bedienoberfläche ist `pnpm env:*:<profil>`.
+- **Kanonische Runtime-Profile:** Die Betriebsmodi `local-keycloak`, `local-builder` und `studio` werden über `SVA_RUNTIME_PROFILE` sowie versionierte Profildefinitionen unter `config/runtime/` gesteuert. Die einheitliche Bedienoberfläche ist `pnpm env:*:<profil>`.
 - **Secrets-Klassifizierung:** Vertrauliche Werte (Auth-Secrets, DB-Passwörter, Encryption-Keys) werden im Acceptance-Swarm als geschützte Stack-Umgebungsvariablen betrieben. Das Entrypoint-Skript (`entrypoint.sh`) validiert und normalisiert diese Werte, protokolliert sie aber nie. Nicht-vertrauliche Konfiguration bleibt ebenfalls als Stack-Umgebungsvariable versioniert beschrieben.
 - **Startup-Validierung:** Die `instanceId`-Allowlist wird beim Startup gegen ein Regex validiert (fail-fast). Ungültige Einträge oder IDN/Punycode-Labels führen zum sofortigen Abbruch.
 

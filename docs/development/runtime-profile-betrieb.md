@@ -28,8 +28,10 @@ Die Runtime-Kommandos setzen daraus konsistent:
 
 Für `studio` gilt zusaetzlich ein pragmatischer Testphasen-Vertrag:
 
+- der verbindliche lokale Toolchain-Check vor jedem Runtime-Debugging ist `pnpm check:toolchain-consistency`; er bricht bei Drift zwischen `.nvmrc`, `packageManager`, `pnpm-lock.yaml` und installiertem `node_modules` fail-fast ab
 - der verbindliche lokale Build-Nachweis vor jedem Image-Build ist `pnpm nx run sva-studio-react:verify:runtime-artifact`
 - dieser Check bewertet ausschliesslich den finalen Node-Output unter `apps/sva-studio-react/.output/server/**`
+- der finale Build erzeugt zusaetzlich einen generierten `tanstack-server-entry.mjs` direkt unter `.output/server/chunks/build/`; dieser Build-time-Patch ist Teil des kanonischen Artefakts und ersetzt die fruehere Laufzeit-Umschreibung im Entrypoint
 - `.nitro/vite/services/ssr/**` bleibt Diagnosematerial und ist kein Release-Nachweis
 - kanonischer Pfad nur ueber `precheck -> deploy -> smoke`
 - `SVA_STACK_NAME=studio`, `QUANTUM_ENDPOINT=sva`, `SVA_RUNTIME_PROFILE=studio`

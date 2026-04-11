@@ -7,6 +7,8 @@ Der fragilste Teil des Systems liegt aktuell nicht in der Facharchitektur, sonde
 ## What Changes
 
 - fuehrt einen expliziten Final-Artifact-Check `sva-studio-react:verify:runtime-artifact` fuer `.output/server/**` ein
+- fuehrt einen deterministischen Build-time-Patch des finalen Runtime-Artefakts ein, der den funktionierenden TanStack-Server-Entry in das finale `.output/server/**` ueberfuehrt, statt ihn erst im Container zur Laufzeit umzuschreiben
+- fuehrt einen fail-fast-Toolchain-Check ein, der Drift zwischen `.nvmrc`, `packageManager`, `pnpm-lock.yaml` und installiertem `node_modules` vor Build und Runtime-Verify stoppt
 - verankert `apps/sva-studio-react/src/server.ts` als offiziellen Server-Entry ueber die TanStack-Start-Server-Entry-Integration
 - haertet den `Studio Image Build`-Workflow so, dass der finale Node-Output vor dem Docker-Build validiert wird
 - erweitert das runner-basierte `studio`-Image-Verify um Schema-Migrationen, Keycloak-Admin-Mock und phasenklassifizierte Fehlerdiagnostik

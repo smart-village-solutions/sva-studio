@@ -5,6 +5,8 @@
 - [x] 1.3 Runner-basiertes `studio`-Image-Verify auf Migrationen, Keycloak-Admin-Mock und phasenklassifizierte Diagnostik erweitern
 - [x] 1.4 Entrypoint-Patch hinter explizites Recovery-Flag stellen
 - [x] 1.5 `Studio Image Build` so aendern, dass der finale Runtime-Vertrag vor dem Docker-Build validiert wird
+- [x] 1.6 Fail-fast-Toolchain-Check einfuehren und vor dem App-Build ausfuehren
+- [x] 1.7 Finalen Build-Output deterministisch patchen, sodass der produktive Nitro-Entry an einen finalen generierten TanStack-Server-Entry delegiert statt den Recovery-Patch erst im Container zu brauchen
 
 ## 2. Dokumentation und Spezifikation
 

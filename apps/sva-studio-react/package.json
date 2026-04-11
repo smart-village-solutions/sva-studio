@@ -5,8 +5,8 @@
   "scripts": {
     "dev": "vite dev --port 3000",
     "builder:launch": "npx builder.io@latest launch -p 3000 -c \"pnpm nx run sva-studio-react:serve\" --no-open --workspace ./builder.workspace.json",
-    "check:i18n": "node --import tsx ../../scripts/ci/check-i18n-keys.ts",
-    "check:account-ui-foundation": "node --import tsx ../../scripts/ci/check-account-ui-foundation.ts",
+    "check:i18n": "bash ../../scripts/ci/run-workspace-node.sh --import tsx ../../scripts/ci/check-i18n-keys.ts",
+    "check:account-ui-foundation": "bash ../../scripts/ci/run-workspace-node.sh --import tsx ../../scripts/ci/check-account-ui-foundation.ts",
     "build": "pnpm run check:i18n && pnpm run check:account-ui-foundation && vite build",
     "preview": "vite preview",
     "test": "vitest run --passWithNoTests",

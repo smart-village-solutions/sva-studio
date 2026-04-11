@@ -7,14 +7,53 @@ ARTIFACT_DIR_INPUT="${2:-artifacts/runtime/runtime-artifact-verify}"
 VERIFY_ID="runtime-artifact-verify-$(date +%s)"
 POSTGRES_NAME="${VERIFY_ID}-postgres"
 REDIS_NAME="${VERIFY_ID}-redis"
-APP_PORT="${SVA_RUNTIME_ARTIFACT_VERIFY_PORT:-39180}"
-POSTGRES_PORT="${SVA_RUNTIME_ARTIFACT_POSTGRES_PORT:-35432}"
-REDIS_PORT="${SVA_RUNTIME_ARTIFACT_REDIS_PORT:-36379}"
-KEYCLOAK_PORT="${SVA_RUNTIME_ARTIFACT_KEYCLOAK_PORT:-38080}"
 POSTGRES_PASSWORD="verify-postgres-password"
 APP_DB_PASSWORD="verify-app-password"
 REDIS_PASSWORD="verify-redis-password"
 PII_KEYRING_JSON='{"k1":"MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDE="}'
+
+read -r APP_PORT POSTGRES_PORT REDIS_PORT KEYCLOAK_PORT <<EOF
+$(node <<'NODE'
+const net = require('node:net');
+
+const reservePort = () =>
+  new Promise((resolve, reject) => {
+    const server = net.createServer();
+    server.unref();
+    server.on('error', reject);
+    server.listen(0, '127.0.0.1', () => {
+      const address = server.address();
+      if (!address || typeof address === 'string') {
+        server.close(() => reject(new Error('Ephemerer Port konnte nicht bestimmt werden.')));
+        return;
+      }
+
+      const { port } = address;
+      server.close((error) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+        resolve(String(port));
+      });
+    });
+  });
+
+(async () => {
+  const ports = await Promise.all([reservePort(), reservePort(), reservePort(), reservePort()]);
+  process.stdout.write(`${ports.join(' ')}\n`);
+})().catch((error) => {
+  process.stderr.write(`${error instanceof Error ? error.stack ?? error.message : String(error)}\n`);
+  process.exit(1);
+});
+NODE
+)
+EOF
+
+APP_PORT="${SVA_RUNTIME_ARTIFACT_VERIFY_PORT:-${APP_PORT}}"
+POSTGRES_PORT="${SVA_RUNTIME_ARTIFACT_POSTGRES_PORT:-${POSTGRES_PORT}}"
+REDIS_PORT="${SVA_RUNTIME_ARTIFACT_REDIS_PORT:-${REDIS_PORT}}"
+KEYCLOAK_PORT="${SVA_RUNTIME_ARTIFACT_KEYCLOAK_PORT:-${KEYCLOAK_PORT}}"
 
 APP_DIR="$(cd "${APP_DIR_INPUT}" && pwd)"
 mkdir -p "${ARTIFACT_DIR_INPUT}"
@@ -32,6 +71,7 @@ KEYCLOAK_STDERR_PATH="${ARTIFACT_DIR}/${VERIFY_ID}.keycloak.stderr.log"
 
 SERVER_INDEX_PATH="${APP_DIR}/.output/server/index.mjs"
 SERVER_CHUNK_PATH=""
+PATCHED_SERVER_ENTRY_PATH="${APP_DIR}/.output/server/chunks/build/tanstack-server-entry.mjs"
 
 FAILURE_CLASS="none"
 FAILED_PHASE=""
@@ -116,49 +156,36 @@ assert_artifact_contract() {
     return 1
   fi
 
-  local server_chunk_import
-  server_chunk_import="$(
-    node -e "
-      const fs = require('node:fs');
-      const serverIndexPath = process.argv[1];
-      const serverIndex = fs.readFileSync(serverIndexPath, 'utf8');
-      const match = serverIndex.match(/\\.\\/chunks\\/build\\/server[^'\\\"\\s]*\\.mjs/);
-      if (!match) {
-        process.exit(1);
-      }
-      process.stdout.write(match[0]);
-    " "${SERVER_INDEX_PATH}" || true
+  if [ ! -f "${PATCHED_SERVER_ENTRY_PATH}" ]; then
+    echo "Finaler gepatchter Server-Entry fehlt: ${PATCHED_SERVER_ENTRY_PATH}" >&2
+    return 1
+  fi
+
+  if ! grep -Fq 'dispatchAuthRouteRequest' "${PATCHED_SERVER_ENTRY_PATH}"; then
+    echo "Finaler gepatchter Server-Entry enthaelt keinen Auth-Dispatch-Vertrag." >&2
+    return 1
+  fi
+
+  if ! grep -Fq 'server-entry-transport' "${PATCHED_SERVER_ENTRY_PATH}"; then
+    echo "Finaler gepatchter Server-Entry enthaelt keine explizite Server-Entry-Diagnostik." >&2
+    return 1
+  fi
+
+  if ! grep -Fq 'server-function-transport' "${PATCHED_SERVER_ENTRY_PATH}"; then
+    echo "Finaler gepatchter Server-Entry enthaelt keinen Server-Function-Transportvertrag." >&2
+    return 1
+  fi
+
+  if ! grep -Fq './chunks/build/tanstack-server-entry.mjs' "${SERVER_INDEX_PATH}"; then
+    echo 'Finaler Server-Entry delegiert nicht an den finalen gepatchten Server-Entry.' >&2
+    return 1
+  fi
+
+  SERVER_CHUNK_PATH="$(
+    find "${APP_DIR}/.output/server/chunks/build" -maxdepth 1 -type f -name 'server*.mjs' | head -n 1
   )"
-
-  if [ -z "${server_chunk_import}" ]; then
-    echo "Finaler Server-Entry delegiert nicht an einen kanonischen Server-Chunk unter ./chunks/build/server*.mjs." >&2
-    return 1
-  fi
-
-  SERVER_CHUNK_PATH="${APP_DIR}/.output/server/${server_chunk_import#./}"
-
-  if [ ! -f "${SERVER_CHUNK_PATH}" ]; then
-    echo "Kanonischer Server-Chunk fehlt: ${SERVER_CHUNK_PATH}" >&2
-    return 1
-  fi
-
-  if ! grep -Fq "${server_chunk_import}" "${SERVER_INDEX_PATH}"; then
-    echo "Finaler Server-Entry delegiert nicht an ${server_chunk_import}." >&2
-    return 1
-  fi
-
-  if ! grep -Fq 'dispatchAuthRouteRequest' "${SERVER_CHUNK_PATH}"; then
-    echo "Finaler Server-Chunk enthaelt keinen Auth-Dispatch-Vertrag." >&2
-    return 1
-  fi
-
-  if ! grep -Fq 'server-entry-transport' "${SERVER_CHUNK_PATH}"; then
-    echo "Finaler Server-Chunk enthaelt keine explizite Server-Entry-Diagnostik." >&2
-    return 1
-  fi
-
-  if ! grep -Fq 'server-function-transport' "${SERVER_CHUNK_PATH}"; then
-    echo "Finaler Server-Chunk enthaelt keinen Server-Function-Transportvertrag." >&2
+  if [ -z "${SERVER_CHUNK_PATH}" ]; then
+    echo "Finaler SSR-Chunk unter .output/server/chunks/build/server*.mjs fehlt." >&2
     return 1
   fi
 

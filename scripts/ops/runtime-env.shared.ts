@@ -395,7 +395,12 @@ export const assertDeterministicRemoteMutationContext = (
   const hasCiRunnerContext =
     operatorContext === 'ci-runner' ||
     (isTruthyFlag(env.GITHUB_ACTIONS) &&
-      (env.GITHUB_WORKFLOW?.trim() || env.SVA_ACCEPTANCE_DEPLOY_WORKFLOW?.trim() || '').length > 0);
+      (
+        env.GITHUB_WORKFLOW?.trim() ||
+        env.SVA_REMOTE_DEPLOY_WORKFLOW?.trim() ||
+        env.SVA_ACCEPTANCE_DEPLOY_WORKFLOW?.trim() ||
+        ''
+      ).length > 0);
   const allowLocalEmergency = hasLocalEmergencyRemoteMutationOverride(env);
 
   if (hasCiRunnerContext) {

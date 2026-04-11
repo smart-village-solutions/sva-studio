@@ -37,4 +37,21 @@ Das System SHALL fuer `studio` einen runner-basierten Artifact-Verify-Schritt vo
 - **WHEN** ein Studio-Release den gebauten Digest verifizieren will
 - **THEN** startet der CI-Runner genau dieses Image in einem isolierten Container-Kontext
 - **AND** prueft mindestens `GET /health/live`, `GET /health/ready` und `GET /`
+- **AND** verwendet fuer Datenbank-Readiness denselben dedizierten Runtime-Principal wie der produktionsnahe App-Betrieb
 - **AND** blockiert der Prozess den Remote-Deploy, wenn einer dieser Requests haengt, timeouted oder einen unerwarteten Status liefert
+
+#### Scenario: Manueller Studio-Deploy erzwingt das Verify-Gate
+
+- **WHEN** ein Operator den Studio-Deploy-Workflow manuell mit einem vorhandenen Digest startet
+- **THEN** fuehrt der Workflow vor jeder Remote-Mutation dasselbe runner-basierte Artifact-Verify gegen genau diesen Digest aus
+- **AND** startet der Deploy nur, wenn dieses Verify-Gate erfolgreich war
+
+### Requirement: Studio-Deploy benoetigt einen geeigneten Runner
+
+Das System SHALL mutierende `studio`-Deploys nur auf einem Runner ausfuehren, der die benoetigten Operator-Werkzeuge bereits bereitstellt.
+
+#### Scenario: Quantum-CLI ist Teil des Runner-Vertrags
+
+- **WHEN** ein mutierender Studio-Deploy gestartet wird
+- **THEN** laeuft der Job nicht auf einem generischen GitHub-hosted Standard-Runner ohne `quantum-cli`
+- **AND** verwendet stattdessen einen Runner-Vertrag, in dem `quantum-cli` und die benoetigten Deploy-Abhaengigkeiten verfuegbar sind

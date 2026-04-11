@@ -15,6 +15,7 @@ REDIS_NAME="${VERIFY_ID}-redis"
 APP_NAME="${VERIFY_ID}-app"
 APP_PORT="${SVA_IMAGE_VERIFY_PORT:-39080}"
 POSTGRES_PASSWORD="verify-postgres-password"
+APP_DB_PASSWORD="verify-app-password"
 REDIS_PASSWORD="verify-redis-password"
 PII_KEYRING_JSON='{"k1":"MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDE="}'
 
@@ -30,6 +31,18 @@ cleanup() {
   rm -f "${ENV_FILE}"
 }
 trap cleanup EXIT
+
+fail_with_container_diagnostics() {
+  local message="$1"
+  shift
+
+  echo "${message}" >&2
+  for container in "$@"; do
+    docker logs "${container}" > "${ARTIFACT_DIR}/${container}.log" 2>&1 || true
+    docker inspect "${container}" > "${ARTIFACT_DIR}/${container}.inspect.json" 2>/dev/null || true
+  done
+  exit 1
+}
 
 cat >"${ENV_FILE}" <<EOF
 HOST=0.0.0.0
@@ -63,10 +76,10 @@ SVA_MIGRATION_STATUS_REQUIRED=false
 POSTGRES_DB=sva_studio
 POSTGRES_USER=sva
 POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-APP_DB_USER=sva
-APP_DB_PASSWORD=${POSTGRES_PASSWORD}
+APP_DB_USER=sva_app
+APP_DB_PASSWORD=${APP_DB_PASSWORD}
 REDIS_PASSWORD=${REDIS_PASSWORD}
-IAM_DATABASE_URL=postgres://sva:${POSTGRES_PASSWORD}@${POSTGRES_NAME}:5432/sva_studio
+IAM_DATABASE_URL=postgres://sva_app:${APP_DB_PASSWORD}@${POSTGRES_NAME}:5432/sva_studio
 REDIS_URL=redis://:${REDIS_PASSWORD}@${REDIS_NAME}:6379
 SVA_STACK_NAME=studio
 QUANTUM_ENDPOINT=sva
@@ -93,10 +106,31 @@ docker run -d \
 
 for _ in $(seq 1 30); do
   if docker exec "${POSTGRES_NAME}" pg_isready -U sva -d sva_studio >/dev/null 2>&1; then
+    postgres_ready="true"
     break
   fi
   sleep 2
 done
+
+if [ "${postgres_ready:-false}" != "true" ]; then
+  fail_with_container_diagnostics "Postgres wurde im Artifact-Verify nicht bereit." "${POSTGRES_NAME}"
+fi
+
+docker exec -i "${POSTGRES_NAME}" psql -v ON_ERROR_STOP=1 -U sva -d sva_studio <<EOF >/dev/null
+DO \$\$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'sva_app') THEN
+    CREATE ROLE sva_app LOGIN PASSWORD '${APP_DB_PASSWORD}';
+  ELSE
+    ALTER ROLE sva_app WITH LOGIN PASSWORD '${APP_DB_PASSWORD}';
+  END IF;
+END
+\$\$;
+GRANT CONNECT ON DATABASE sva_studio TO sva_app;
+GRANT USAGE, CREATE ON SCHEMA public TO sva_app;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO sva_app;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO sva_app;
+EOF
 
 docker run -d \
   --name "${REDIS_NAME}" \
@@ -105,10 +139,15 @@ docker run -d \
 
 for _ in $(seq 1 30); do
   if docker exec "${REDIS_NAME}" redis-cli --no-auth-warning -a "${REDIS_PASSWORD}" ping | grep -q PONG; then
+    redis_ready="true"
     break
   fi
   sleep 2
 done
+
+if [ "${redis_ready:-false}" != "true" ]; then
+  fail_with_container_diagnostics "Redis wurde im Artifact-Verify nicht bereit." "${REDIS_NAME}"
+fi
 
 docker pull "${IMAGE_REF}" >/dev/null
 
@@ -164,7 +203,6 @@ cat >"${REPORT_PATH}" <<EOF
   "reportId": "${VERIFY_ID}",
   "port": ${APP_PORT},
   "artifacts": {
-    "envFile": "$(basename "${ENV_FILE}")",
     "log": "$(basename "${LOG_PATH}")",
     "containerLog": "$(basename "${LOG_PATH}.container")",
     "inspect": "$(basename "${LOG_PATH}.inspect.json")"

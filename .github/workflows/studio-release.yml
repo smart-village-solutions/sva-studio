@@ -24,6 +24,8 @@ on:
         required: true
         type: string
 
+permissions: {}
+
 jobs:
   build:
     uses: ./.github/workflows/studio-image-build.yml

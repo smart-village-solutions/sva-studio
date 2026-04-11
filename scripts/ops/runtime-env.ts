@@ -486,7 +486,7 @@ const readLiveRuntimeFlags = async (env: NodeJS.ProcessEnv): Promise<LiveRuntime
     env,
     {
       quantumEndpoint: getConfiguredQuantumEndpoint(env),
-      serviceName: env.SVA_ACCEPTANCE_APP_SERVICE ?? 'app',
+      serviceName: getRemoteAppServiceName(env),
       stackName: getConfiguredStackName(env),
     },
   );
@@ -1769,7 +1769,7 @@ const buildAcceptanceIngressConsistencyCheck = async (env: NodeJS.ProcessEnv): P
     const evidence = await readRemoteStackEvidence(env);
     const stackName = getConfiguredStackName(env);
     const baseUrl = env.SVA_PUBLIC_BASE_URL ?? 'https://studio.smart-village.app';
-    const hasRunningAppTask = evidence.hasRunningService(env.SVA_ACCEPTANCE_APP_SERVICE ?? 'app');
+    const hasRunningAppTask = evidence.hasRunningService(getRemoteAppServiceName(env));
     const live = await checkHttpHealth(new URL('/health/live', baseUrl).toString());
 
     if (hasRunningAppTask && !live.response.ok) {
@@ -1852,7 +1852,7 @@ const resolveRemoteInternalNetworkName = async (env: NodeJS.ProcessEnv) => {
     env,
     {
       quantumEndpoint: getConfiguredQuantumEndpoint(env),
-      serviceName: env.SVA_ACCEPTANCE_APP_SERVICE ?? 'app',
+      serviceName: getRemoteAppServiceName(env),
       stackName,
     },
   );
@@ -2695,6 +2695,9 @@ const renderQuantumDeployProject = (env: NodeJS.ProcessEnv) => {
   };
 };
 
+const getRemoteAppServiceName = (env: NodeJS.ProcessEnv) =>
+  env.SVA_REMOTE_APP_SERVICE?.trim() || env.SVA_ACCEPTANCE_APP_SERVICE?.trim() || 'app';
+
 const deployAcceptanceStack = (env: NodeJS.ProcessEnv) => {
   const stackName = getConfiguredStackName(env);
 
@@ -3030,7 +3033,7 @@ const tryReuseLiveParityEvidence = async (
     env,
     {
       quantumEndpoint: getConfiguredQuantumEndpoint(env),
-      serviceName: env.SVA_ACCEPTANCE_APP_SERVICE ?? 'app',
+      serviceName: getRemoteAppServiceName(env),
       stackName: getConfiguredStackName(env),
     },
   );
@@ -3101,7 +3104,7 @@ const buildImageSmokeRuntimeEnvEntries = async (env: NodeJS.ProcessEnv) => {
       env,
       {
         quantumEndpoint: getConfiguredQuantumEndpoint(env),
-        serviceName: env.SVA_ACCEPTANCE_APP_SERVICE ?? 'app',
+        serviceName: getRemoteAppServiceName(env),
         stackName: getConfiguredStackName(env),
       },
     );
@@ -3167,7 +3170,7 @@ const runLocalEmergencyHybridImageSmoke = async (
     }
 
     await waitForContainerHttpOk(containerName, '/health/live', 60_000, env);
-    const artifactProbe = await runContainerHttpProbe(containerName, '/health/live', {
+    const artifactProbe = await runContainerHttpProbe(containerName, '/health/live', env, {
       name: 'image-live',
       scope: 'image-smoke',
       target: `docker://${containerName}/health/live`,
@@ -3247,6 +3250,7 @@ const waitForContainerHttpOk = async (
 const runContainerHttpProbe = async (
   containerName: string,
   path: string,
+  env: NodeJS.ProcessEnv,
   input: {
     expect: (response: { ok: boolean; status: number }, payload: unknown) => string | null;
     name: string;
@@ -3272,7 +3276,7 @@ const runContainerHttpProbe = async (
     const result = runCaptureDetailed(
       'docker',
       ['exec', containerName, 'node', '-e', script, `http://127.0.0.1:3000${path}`],
-      process.env,
+      env,
     );
 
     if (result.status !== 0) {
@@ -3281,7 +3285,7 @@ const runContainerHttpProbe = async (
 
     const rawPayload = result.stdout.trim();
     const parsed = JSON.parse(rawPayload) as { ok: boolean; status: number; text: string };
-    let payload: unknown = parsed.text;
+    let payload: unknown;
 
     try {
       payload = parsed.text.length > 0 ? JSON.parse(parsed.text) : null;
@@ -3380,13 +3384,13 @@ const runImageSmoke = async (
     const rootForwardedHeaders = buildTrustedForwardedHeaders(parityPlan.rootHost);
 
     const probes = await Promise.all([
-      runContainerHttpProbe(containerName, '/health/live', {
+      runContainerHttpProbe(containerName, '/health/live', env, {
         name: 'image-live',
         scope: 'image-smoke',
         target: `docker://${containerName}/health/live`,
         expect: (response) => (response.status === 200 ? null : `Erwartet HTTP 200, erhalten ${response.status}.`),
       }),
-      runContainerHttpProbe(containerName, '/health/ready', {
+      runContainerHttpProbe(containerName, '/health/ready', env, {
         name: 'image-ready',
         scope: 'image-smoke',
         target: `docker://${containerName}/health/ready`,
@@ -3485,7 +3489,7 @@ const runImageSmoke = async (
 const buildSwarmAppTaskProbe = (env: NodeJS.ProcessEnv): AcceptanceProbeResult => {
   const startedAt = Date.now();
   const stackName = getConfiguredStackName(env);
-  const appService = env.SVA_ACCEPTANCE_APP_SERVICE ?? 'app';
+  const appService = getRemoteAppServiceName(env);
 
   try {
     if (commandExists('quantum-cli')) {

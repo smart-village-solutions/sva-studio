@@ -16,6 +16,7 @@ type FieldHelpProps = {
 export const FieldHelp = ({ title, what, value, source, impact, defaultHint }: FieldHelpProps) => {
   const [open, setOpen] = React.useState(false);
   const containerRef = React.useRef<HTMLDivElement | null>(null);
+  const popoverId = React.useId();
 
   React.useEffect(() => {
     if (!open) {
@@ -52,14 +53,16 @@ export const FieldHelp = ({ title, what, value, source, impact, defaultHint }: F
         )}
         aria-label={title}
         aria-expanded={open}
+        aria-controls={open ? popoverId : undefined}
+        aria-haspopup="dialog"
         onClick={() => setOpen((current) => !current)}
       >
         <CircleHelp className="h-3.5 w-3.5" />
       </button>
       {open ? (
         <div
-          role="dialog"
-          aria-modal="true"
+          id={popoverId}
+          role="tooltip"
           aria-label={title}
           className="absolute right-0 top-7 z-20 w-80 rounded-xl border border-border bg-card p-4 shadow-2xl"
         >

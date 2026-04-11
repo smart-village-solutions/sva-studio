@@ -42,7 +42,6 @@ export const failRun = async (
     error: unknown;
   }
 ) => {
-  const rawMessage = input.error instanceof Error ? input.error.message : String(input.error);
   const { reasonCode, safeSummary } = classifyError(input.error);
 
   // Log the detailed error for operators with structured context.

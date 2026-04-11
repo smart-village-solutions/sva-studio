@@ -76,3 +76,17 @@ export const instanceRegistryHandlers = {
   archiveInstance: async (request: Request): Promise<Response> =>
     withAuthenticatedRegistryHandler(request, archiveInstanceInternal),
 };
+
+export const listInstancesHandler = instanceRegistryHandlers.listInstances;
+export const getInstanceHandler = instanceRegistryHandlers.getInstance;
+export const createInstanceHandler = instanceRegistryHandlers.createInstance;
+export const updateInstanceHandler = instanceRegistryHandlers.updateInstance;
+export const getInstanceKeycloakStatusHandler = instanceRegistryHandlers.getInstanceKeycloakStatus;
+export const getInstanceKeycloakPreflightHandler = instanceRegistryHandlers.getInstanceKeycloakPreflight;
+export const planInstanceKeycloakProvisioningHandler = instanceRegistryHandlers.planInstanceKeycloakProvisioning;
+export const executeInstanceKeycloakProvisioningHandler = instanceRegistryHandlers.executeInstanceKeycloakProvisioning;
+export const getInstanceKeycloakProvisioningRunHandler = instanceRegistryHandlers.getInstanceKeycloakProvisioningRun;
+export const reconcileInstanceKeycloakHandler = instanceRegistryHandlers.reconcileInstanceKeycloak;
+export const activateInstanceHandler = instanceRegistryHandlers.activateInstance;
+export const suspendInstanceHandler = instanceRegistryHandlers.suspendInstance;
+export const archiveInstanceHandler = instanceRegistryHandlers.archiveInstance;

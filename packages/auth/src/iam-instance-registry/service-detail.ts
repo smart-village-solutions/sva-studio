@@ -26,7 +26,6 @@ const loadOptionalArtifact = async <T>(
       instance_id: instanceId,
       artifact_key: artifactKey,
       error_type: error instanceof Error ? error.constructor.name : typeof error,
-      error_message: error instanceof Error ? error.message : String(error),
     });
     return undefined;
   }

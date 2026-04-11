@@ -16,13 +16,7 @@ import type {
   KeycloakTenantStatus,
   ResolveRuntimeInstanceResult,
 } from './keycloak-types.js';
-
-type TenantAdminBootstrap = {
-  username: string;
-  email?: string;
-  firstName?: string;
-  lastName?: string;
-};
+import type { TenantAdminBootstrap } from './provisioning-auth-types.js';
 
 type KeycloakProvisioningContext = {
   instanceId: string;

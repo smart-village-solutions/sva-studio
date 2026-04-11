@@ -87,7 +87,7 @@ Das System SHALL jede Anlage, Aktivierung, Suspendierung, Archivierung und relev
 
 - **WHEN** ein Operator den Zustand oder die Basis-Konfiguration einer Instanz ändert
 - **THEN** speichert das System den fachlichen Vorgang mit Zeitbezug und Akteur-Kontext
-- **AND** können spätere Betriebs- und Supportfaelle diese Aenderung nachvollziehen
+- **AND** können spätere Betriebs- und SupportFälle diese Änderung nachvollziehen
 - **AND** enthalten Audit-Ereignisse mindestens `instanceId`, Akteur, Aktion, Ergebnis und Korrelation (`requestId` oder gleichwertig)
 - **AND** werden Audit-Ereignisse append-only gespeichert
 
@@ -97,13 +97,13 @@ Das System SHALL tenant-fremde Lese- und Schreiboperationen für Instanzverwaltu
 
 #### Scenario: Tenant-fremde Mutation wird abgelehnt
 
-- **WHEN** ein Aufruf eine Mutation für eine Instanz ausserhalb des zulaessigen Tenant-Kontexts ausführen will
+- **WHEN** ein Aufruf eine Mutation für eine Instanz außerhalb des zulässigen Tenant-Kontexts ausführen will
 - **THEN** lehnt das System den Aufruf fail-closed ab
-- **AND** bleibt das Aussenverhalten ohne tenant-spezifische Detailoffenlegung
+- **AND** bleibt das Außenverhalten ohne tenant-spezifische Detailoffenlegung
 
 ### Requirement: Reproduzierbare lokale Test- und Seed-Pfade für Instanzen
 
-Das System SHALL reproduzierbare lokale Seed- und Testpfade für Instanzen bereitstellen, damit Registry-Aufloesung und Provisioning ohne produktive Infrastruktur prüfbar bleiben.
+Das System SHALL reproduzierbare lokale Seed- und Testpfade für Instanzen bereitstellen, damit Registry-Auflösung und Provisioning ohne produktive Infrastruktur prüfbar bleiben.
 
 #### Scenario: Lokale Seed-Instanzen stehen für Entwicklung bereit
 

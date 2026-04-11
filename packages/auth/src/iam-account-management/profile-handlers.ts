@@ -64,7 +64,7 @@ const deriveSessionDisplayName = (ctx: AuthenticatedRequestContext): string =>
   ctx.user.id;
 
 const buildPlatformRoleAssignments = (roles: readonly string[]): readonly IamUserRoleAssignment[] =>
-  [...new Set(roles)].map((roleName) => ({
+  [...new Set(roles.filter((role) => PLATFORM_PROFILE_ROLES.has(role)))].map((roleName) => ({
     roleId: `platform:${roleName}`,
     roleKey: roleName,
     roleName,

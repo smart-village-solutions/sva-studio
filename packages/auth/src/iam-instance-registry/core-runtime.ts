@@ -17,7 +17,7 @@ export const resolveRuntimeInstanceFromRequest = async (request: Request): Promi
 };
 
 export const createTenantForbiddenResponse = (): Response =>
-  createApiError(403, 'forbidden', 'Host not permitted for this operation', getWorkspaceContext().requestId);
+  createApiError(403, 'forbidden', 'Host ist für diese Operation nicht erlaubt.', getWorkspaceContext().requestId);
 
 export const isInstanceTrafficAllowed = (status: InstanceStatus): boolean =>
   isTrafficEnabledInstanceStatus(status);

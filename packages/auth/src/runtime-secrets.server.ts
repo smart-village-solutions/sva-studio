@@ -49,9 +49,8 @@ export const getKeycloakProvisionerClientSecret = (): string | undefined => {
     return provisionerClientSecret;
   }
 
-  // Fallback to admin client secret (env only, not admin secret file,
-  // because admin secret file is managed separately by deployment).
-  return readFirstEnv('KEYCLOAK_ADMIN_CLIENT_SECRET');
+  // Fallback to admin client secret (env or secret file).
+  return getKeycloakAdminClientSecret();
 };
 
 export const getAppDbPassword = (): string | undefined =>

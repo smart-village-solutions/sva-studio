@@ -86,12 +86,12 @@ export const useUsers = (initial?: Partial<UserFilters>): UseUsersResult => {
       status: filters.status,
       role: filters.role || undefined,
     });
-    const timer = window.setTimeout(() => {
+    const timer = globalThis.setTimeout(() => {
       setDebouncedSearch(filters.search.trim());
     }, 300);
 
     return () => {
-      window.clearTimeout(timer);
+      globalThis.clearTimeout(timer);
     };
   }, [filters.search]);
 
@@ -250,7 +250,7 @@ export const useUsers = (initial?: Partial<UserFilters>): UseUsersResult => {
         loadUsers().catch((cause: unknown) => {
           usersLogger.warn('user_sync_keycloak_list_refresh_failed', {
             operation: 'user_sync_keycloak',
-            error_code: cause instanceof Error ? cause.message : String(cause),
+            error_type: cause instanceof Error ? cause.constructor.name : typeof cause,
           });
         });
         if (response.data.importedCount === 0 && response.data.updatedCount === 0) {

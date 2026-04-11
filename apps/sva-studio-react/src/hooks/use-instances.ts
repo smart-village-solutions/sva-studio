@@ -60,7 +60,7 @@ const normalizeKeycloakWorkflowError = (error: IamHttpError): IamHttpError => {
   }
 
   return new IamHttpError({
-    status: error.status >= 500 ? 502 : error.status,
+    status: 502,
     code: 'keycloak_unavailable',
     message: error.message,
     requestId: error.requestId,
@@ -80,9 +80,30 @@ export const useInstances = () => {
   const [mutationError, setMutationError] = React.useState<IamHttpError | null>(null);
 
   React.useEffect(() => {
-    const timer = window.setTimeout(() => setDebouncedSearch(filters.search.trim()), 250);
-    return () => window.clearTimeout(timer);
+    const timer = globalThis.setTimeout(() => setDebouncedSearch(filters.search.trim()), 250);
+    return () => globalThis.clearTimeout(timer);
   }, [filters.search]);
+
+  const updateSelectedForInstance = React.useCallback(
+    (instanceId: string, updater: (current: IamInstanceDetail) => IamInstanceDetail) => {
+      setSelectedInstance((current) => (current?.instanceId === instanceId ? updater(current) : current));
+    },
+    []
+  );
+
+  const mergeProvisioningRuns = React.useCallback(
+    (
+      currentRuns: IamInstanceDetail['keycloakProvisioningRuns'],
+      nextRun: IamInstanceDetail['latestKeycloakProvisioningRun']
+    ) => {
+      if (!nextRun) {
+        return currentRuns;
+      }
+
+      return [nextRun, ...(currentRuns ?? []).filter((run) => run.id !== nextRun.id)];
+    },
+    []
+  );
 
   const refetch = React.useCallback(async () => {
     logBrowserOperationStart(instancesLogger, 'instance_list_refetch_started', {
@@ -267,14 +288,10 @@ export const useInstances = () => {
       setMutationError(null);
       try {
         const response = await getInstanceKeycloakStatus(instanceId);
-        setSelectedInstance((current) =>
-          current && current.instanceId === instanceId
-            ? {
-                ...current,
-                keycloakStatus: response.data,
-              }
-            : current
-        );
+        updateSelectedForInstance(instanceId, (current) => ({
+          ...current,
+          keycloakStatus: response.data,
+        }));
         logBrowserOperationSuccess(instancesLogger, 'instance_keycloak_status_refresh_succeeded', {
           operation: 'get_instance_keycloak_status',
           instance_id: instanceId,
@@ -306,14 +323,10 @@ export const useInstances = () => {
       setMutationError(null);
       try {
         const response = await getInstanceKeycloakPreflight(instanceId);
-        setSelectedInstance((current) =>
-          current && current.instanceId === instanceId
-            ? {
-                ...current,
-                keycloakPreflight: response.data,
-              }
-            : current
-        );
+        updateSelectedForInstance(instanceId, (current) => ({
+          ...current,
+          keycloakPreflight: response.data,
+        }));
         return response.data;
       } catch (cause) {
         const resolvedError = normalizeKeycloakWorkflowError(asIamError(cause));
@@ -328,14 +341,10 @@ export const useInstances = () => {
       setMutationError(null);
       try {
         const response = await planInstanceKeycloakProvisioning(instanceId);
-        setSelectedInstance((current) =>
-          current && current.instanceId === instanceId
-            ? {
-                ...current,
-                keycloakPlan: response.data,
-              }
-            : current
-        );
+        updateSelectedForInstance(instanceId, (current) => ({
+          ...current,
+          keycloakPlan: response.data,
+        }));
         return response.data;
       } catch (cause) {
         const resolvedError = normalizeKeycloakWorkflowError(asIamError(cause));
@@ -349,17 +358,18 @@ export const useInstances = () => {
       mutate(
         async () => {
           const response = await executeInstanceKeycloakProvisioning(instanceId, payload);
-          setSelectedInstance((current) =>
-            current && current.instanceId === instanceId
-              ? {
-                  ...current,
-                  latestKeycloakProvisioningRun: response.data ?? undefined,
-                  keycloakProvisioningRuns: response.data
-                    ? [response.data, ...(current.keycloakProvisioningRuns ?? []).filter((run) => run.id !== response.data?.id)]
-                    : current.keycloakProvisioningRuns,
-                }
-              : current
-          );
+          updateSelectedForInstance(instanceId, (current) => {
+            const keycloakProvisioningRuns = mergeProvisioningRuns(
+              current.keycloakProvisioningRuns,
+              response.data ?? undefined
+            );
+
+            return {
+              ...current,
+              latestKeycloakProvisioningRun: response.data ?? undefined,
+              keycloakProvisioningRuns,
+            };
+          });
           return response;
         },
         instanceId,
@@ -370,18 +380,13 @@ export const useInstances = () => {
       setMutationError(null);
       try {
         const response = await getInstanceKeycloakProvisioningRun(instanceId, runId);
-        setSelectedInstance((current) =>
-          current && current.instanceId === instanceId && response.data
-            ? {
-                ...current,
-                latestKeycloakProvisioningRun: response.data,
-                keycloakProvisioningRuns: [
-                  response.data,
-                  ...(current.keycloakProvisioningRuns ?? []).filter((run) => run.id !== response.data?.id),
-                ],
-              }
-            : current
-        );
+        if (response.data) {
+          updateSelectedForInstance(instanceId, (current) => ({
+            ...current,
+            latestKeycloakProvisioningRun: response.data,
+            keycloakProvisioningRuns: mergeProvisioningRuns(current.keycloakProvisioningRuns, response.data),
+          }));
+        }
         return response.data;
       } catch (cause) {
         const resolvedError = asIamError(cause);
@@ -395,14 +400,10 @@ export const useInstances = () => {
       mutate(
         async () => {
           const response = await reconcileInstanceKeycloak(instanceId, payload);
-          setSelectedInstance((current) =>
-            current && current.instanceId === instanceId
-              ? {
-                  ...current,
-                  keycloakStatus: response.data,
-                }
-              : current
-          );
+          updateSelectedForInstance(instanceId, (current) => ({
+            ...current,
+            keycloakStatus: response.data,
+          }));
           return response;
         },
         instanceId,

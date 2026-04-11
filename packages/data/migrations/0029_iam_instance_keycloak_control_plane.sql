@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS iam.instance_keycloak_provisioning_runs (
   )
 );
 
-CREATE INDEX IF NOT EXISTS idx_instance_keycloak_provisioning_runs_instance_created
+CREATE INDEX IF NOT EXISTS iam.idx_instance_keycloak_provisioning_runs_instance_created
   ON iam.instance_keycloak_provisioning_runs(instance_id, created_at DESC);
 
 CREATE TABLE IF NOT EXISTS iam.instance_keycloak_provisioning_steps (
@@ -56,7 +56,7 @@ CREATE TABLE IF NOT EXISTS iam.instance_keycloak_provisioning_steps (
   )
 );
 
-CREATE INDEX IF NOT EXISTS idx_instance_keycloak_provisioning_steps_run_created
+CREATE INDEX IF NOT EXISTS iam.idx_instance_keycloak_provisioning_steps_run_created
   ON iam.instance_keycloak_provisioning_steps(run_id, created_at ASC);
 -- +goose StatementEnd
 

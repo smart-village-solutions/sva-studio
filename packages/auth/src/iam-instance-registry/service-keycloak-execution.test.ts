@@ -399,4 +399,127 @@ describe('iam-instance-registry keycloak execution handlers', () => {
       })
     );
   });
+
+  it('returns null when no claimed run is provided', async () => {
+    const { processClaimedKeycloakProvisioningRun } = await import('./service-keycloak-execution.js');
+
+    await expect(processClaimedKeycloakProvisioningRun({} as never, null)).resolves.toBeNull();
+  });
+
+  it('marks claimed run as failed when worker dependencies are missing', async () => {
+    const { processClaimedKeycloakProvisioningRun } = await import('./service-keycloak-execution.js');
+    const repository = {
+      updateKeycloakProvisioningRun: vi.fn().mockResolvedValue(undefined),
+      appendKeycloakProvisioningStep: vi.fn().mockResolvedValue(undefined),
+      getKeycloakProvisioningRun: vi.fn().mockResolvedValue({ id: 'run-missing', overallStatus: 'failed' }),
+    };
+
+    const result = await processClaimedKeycloakProvisioningRun(
+      {
+        repository: repository as never,
+      } as never,
+      {
+        id: 'run-missing',
+        instanceId: 'demo',
+        mode: 'existing',
+        intent: 'provision',
+        overallStatus: 'planned',
+        driftSummary: '',
+        requestId: 'req-3',
+        actorId: 'actor-3',
+        createdAt: '',
+        updatedAt: '',
+        steps: [{ stepKey: 'queued', details: {} }],
+      }
+    );
+
+    expect(repository.updateKeycloakProvisioningRun).toHaveBeenCalled();
+    expect(result).toEqual({ id: 'run-missing', overallStatus: 'failed' });
+  });
+
+  it('returns latest run when claimed instance cannot be loaded anymore', async () => {
+    const { processClaimedKeycloakProvisioningRun } = await import('./service-keycloak-execution.js');
+    const repository = {
+      getInstanceById: vi.fn().mockResolvedValue(null),
+      getAuthClientSecretCiphertext: vi.fn().mockResolvedValue(null),
+      updateKeycloakProvisioningRun: vi.fn().mockResolvedValue(undefined),
+      appendKeycloakProvisioningStep: vi.fn().mockResolvedValue(undefined),
+      getKeycloakProvisioningRun: vi.fn().mockResolvedValue({ id: 'run-not-found', overallStatus: 'failed' }),
+    };
+
+    const deps = {
+      repository: repository as never,
+      provisionInstanceAuth: vi.fn().mockResolvedValue(undefined),
+      getKeycloakPreflight: vi.fn().mockResolvedValue({ overallStatus: 'ready' }),
+      planKeycloakProvisioning: vi.fn().mockResolvedValue({ overallStatus: 'ready', driftSummary: 'ok' }),
+      getKeycloakStatus: vi.fn().mockResolvedValue({ realmExists: false }),
+    } as never;
+
+    const result = await processClaimedKeycloakProvisioningRun(deps, {
+      id: 'run-not-found',
+      instanceId: 'demo',
+      mode: 'existing',
+      intent: 'provision',
+      overallStatus: 'running',
+      driftSummary: '',
+      requestId: 'req-4',
+      actorId: 'actor-4',
+      createdAt: '',
+      updatedAt: '',
+      steps: [{ stepKey: 'queued', details: {} }],
+    });
+
+    expect(repository.updateKeycloakProvisioningRun).toHaveBeenCalled();
+    expect(result).toEqual({ id: 'run-not-found', overallStatus: 'failed' });
+  });
+
+  it('returns failed run when worker preflight is blocked', async () => {
+    const { processClaimedKeycloakProvisioningRun } = await import('./service-keycloak-execution.js');
+    const repository = {
+      getInstanceById: vi.fn().mockResolvedValue({
+        instanceId: 'demo',
+        displayName: 'Demo',
+        parentDomain: 'example.org',
+        primaryHostname: 'demo.example.org',
+        realmMode: 'existing',
+        authRealm: 'demo',
+        authClientId: 'sva-studio',
+        authClientSecretConfigured: true,
+        tenantAdminBootstrap: { username: 'demo-admin' },
+        featureFlags: {},
+      }),
+      getAuthClientSecretCiphertext: vi.fn().mockResolvedValue('enc:secret'),
+      appendKeycloakProvisioningStep: vi.fn().mockResolvedValue(undefined),
+      updateKeycloakProvisioningRun: vi.fn().mockResolvedValue(undefined),
+      getKeycloakProvisioningRun: vi.fn().mockResolvedValue({ id: 'run-blocked', overallStatus: 'failed' }),
+      setInstanceStatus: vi.fn().mockResolvedValue({ status: 'provisioning' }),
+    };
+
+    const deps = {
+      repository: repository as never,
+      provisionInstanceAuth: vi.fn().mockResolvedValue(undefined),
+      getKeycloakPreflight: vi.fn().mockResolvedValue({ overallStatus: 'blocked' }),
+      planKeycloakProvisioning: vi.fn().mockResolvedValue({ overallStatus: 'ready', driftSummary: 'ok' }),
+      getKeycloakStatus: vi.fn().mockResolvedValue({ realmExists: false }),
+    } as never;
+
+    const result = await processClaimedKeycloakProvisioningRun(deps, {
+      id: 'run-blocked',
+      instanceId: 'demo',
+      mode: 'existing',
+      intent: 'provision',
+      overallStatus: 'running',
+      driftSummary: '',
+      requestId: 'req-5',
+      actorId: 'actor-5',
+      createdAt: '',
+      updatedAt: '',
+      steps: [{ stepKey: 'queued', details: {} }],
+    });
+
+    expect(repository.updateKeycloakProvisioningRun).toHaveBeenCalledWith(
+      expect.objectContaining({ runId: 'run-blocked', overallStatus: 'failed' })
+    );
+    expect(result).toEqual({ id: 'run-blocked', overallStatus: 'failed' });
+  });
 });

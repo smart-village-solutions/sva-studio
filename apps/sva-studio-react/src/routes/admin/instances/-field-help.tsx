@@ -53,8 +53,7 @@ export const FieldHelp = ({ title, what, value, source, impact, defaultHint }: F
         )}
         aria-label={title}
         aria-expanded={open}
-        aria-controls={open ? popoverId : undefined}
-        aria-haspopup="dialog"
+        aria-describedby={open ? popoverId : undefined}
         onClick={() => setOpen((current) => !current)}
       >
         <CircleHelp className="h-3.5 w-3.5" />

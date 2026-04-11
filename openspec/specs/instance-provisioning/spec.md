@@ -87,7 +87,7 @@ Das System SHALL jede Anlage, Aktivierung, Suspendierung, Archivierung und relev
 
 - **WHEN** ein Operator den Zustand oder die Basis-Konfiguration einer Instanz ändert
 - **THEN** speichert das System den fachlichen Vorgang mit Zeitbezug und Akteur-Kontext
-- **AND** können spätere Betriebs- und SupportFälle diese Änderung nachvollziehen
+- **AND** können spätere Betriebs- und Support-Fälle diese Änderung nachvollziehen
 - **AND** enthalten Audit-Ereignisse mindestens `instanceId`, Akteur, Aktion, Ergebnis und Korrelation (`requestId` oder gleichwertig)
 - **AND** werden Audit-Ereignisse append-only gespeichert
 

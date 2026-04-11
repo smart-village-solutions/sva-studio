@@ -53,6 +53,7 @@
       "executor": "nx:run-commands",
       "cache": true,
       "dependsOn": [
+        "^build",
         "check:toolchain-consistency",
         "check:i18n",
         "check:account-ui-foundation"

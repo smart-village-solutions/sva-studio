@@ -43,6 +43,12 @@ const state: {
 };
 
 vi.mock('../keycloak-admin-client.js', () => ({
+  KeycloakAdminUnavailableError: class KeycloakAdminUnavailableError extends Error {
+    constructor(message: string) {
+      super(message);
+      this.name = 'KeycloakAdminUnavailableError';
+    }
+  },
   KeycloakAdminRequestError: class KeycloakAdminRequestError extends Error {
     readonly statusCode: number;
     readonly code: string;
@@ -84,7 +90,12 @@ vi.mock('../keycloak-admin-client.js', () => ({
   }),
 }));
 
-import { getInstanceKeycloakStatus, provisionInstanceAuthArtifacts } from './provisioning-auth.js';
+import {
+  getInstanceKeycloakPlan,
+  getInstanceKeycloakPreflight,
+  getInstanceKeycloakStatus,
+  provisionInstanceAuthArtifacts,
+} from './provisioning-auth.js';
 import { KeycloakAdminRequestError } from '../keycloak-admin-client.js';
 
 describe('provisionInstanceAuthArtifacts', () => {
@@ -458,5 +469,76 @@ describe('provisionInstanceAuthArtifacts', () => {
 
     expect(state.ensureRealm).not.toHaveBeenCalled();
     expect(state.ensureOidcClient).not.toHaveBeenCalled();
+  });
+});
+
+describe('provisioning-auth preflight and plan', () => {
+  beforeEach(() => {
+    state.getRealm.mockReset();
+    state.getRealm.mockResolvedValue({ realm: 'demo' });
+    state.getOidcClientByClientId.mockReset();
+    state.getOidcClientByClientId.mockResolvedValue(null);
+    state.listClientProtocolMappers.mockReset();
+    state.listClientProtocolMappers.mockResolvedValue([]);
+    state.listUserRoleNames.mockReset();
+    state.listUserRoleNames.mockResolvedValue([]);
+    state.getOidcClientSecretValue.mockReset();
+    state.getOidcClientSecretValue.mockResolvedValue(null);
+    state.getRoleByName.mockReset();
+    state.getRoleByName.mockImplementation(async (roleName: string) => ({ name: roleName }));
+  });
+
+  it('returns blocked preflight with keycloak access check when state read fails', async () => {
+    state.getRealm.mockRejectedValueOnce(
+      new KeycloakAdminRequestError({
+        message: 'realm read failed',
+        statusCode: 503,
+        code: 'service_unavailable',
+        retryable: true,
+      })
+    );
+
+    const preflight = await getInstanceKeycloakPreflight({
+      instanceId: 'de-test',
+      primaryHostname: 'de-test.studio.smart-village.app',
+      realmMode: 'existing',
+      authRealm: 'de-test',
+      authClientId: 'sva-studio',
+      authClientSecretConfigured: false,
+      authClientSecret: undefined,
+      tenantAdminBootstrap: undefined,
+    });
+
+    expect(preflight.overallStatus).toBe('blocked');
+    expect(preflight.checks.find((check) => check.checkKey === 'keycloak_admin_access')?.status).toBe('blocked');
+    expect(preflight.checks.find((check) => check.checkKey === 'keycloak_admin_access')?.details).toEqual(
+      expect.objectContaining({ error: expect.stringContaining('HTTP 503') })
+    );
+  });
+
+  it('returns fallback plan when read state fails but preflight is still available', async () => {
+    state.getRealm.mockRejectedValue(
+      new KeycloakAdminRequestError({
+        message: 'realm read failed',
+        statusCode: 503,
+        code: 'service_unavailable',
+        retryable: true,
+      })
+    );
+
+    const plan = await getInstanceKeycloakPlan({
+      instanceId: 'de-test',
+      primaryHostname: 'de-test.studio.smart-village.app',
+      realmMode: 'new',
+      authRealm: 'de-test',
+      authClientId: 'sva-studio',
+      authClientSecretConfigured: false,
+      authClientSecret: undefined,
+      tenantAdminBootstrap: undefined,
+    });
+
+    expect(plan.steps.length).toBeGreaterThan(0);
+    expect(plan.overallStatus).toBe('blocked');
+    expect(plan.steps.every((step) => step.status === 'blocked' || step.status === 'ready')).toBe(true);
   });
 });

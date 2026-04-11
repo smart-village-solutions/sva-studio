@@ -176,6 +176,23 @@ describe('iam-instance-registry core handlers', () => {
     });
   });
 
+  it('returns platform access errors for list and detail handlers', async () => {
+    ensurePlatformAccessMock.mockReturnValueOnce(new Response('forbidden', { status: 403 }));
+    const list = await listInstancesInternal(
+      new Request('https://studio.example.org/api/v1/iam/instances'),
+      ctx
+    );
+
+    ensurePlatformAccessMock.mockReturnValueOnce(new Response('forbidden', { status: 403 }));
+    const detail = await getInstanceInternal(
+      new Request('https://studio.example.org/api/v1/iam/instances/demo'),
+      ctx
+    );
+
+    expect(list.status).toBe(403);
+    expect(detail.status).toBe(403);
+  });
+
   it('returns detail responses and handles missing instances', async () => {
     service.getInstanceDetail.mockResolvedValueOnce({ instanceId: 'demo', status: 'active' }).mockResolvedValueOnce(null);
 
@@ -403,6 +420,66 @@ describe('iam-instance-registry core handlers', () => {
     await expect(status.json()).resolves.toMatchObject({ error: 'encryption_not_configured' });
     expect(reconcile.status).toBe(502);
     await expect(reconcile.json()).resolves.toMatchObject({ error: 'keycloak_unavailable' });
+  });
+
+  it('returns update guard errors in order and handles missing updates', async () => {
+    ensurePlatformAccessMock.mockReturnValueOnce(new Response('forbidden', { status: 403 }));
+    const access = await updateInstanceInternal(
+      new Request('https://studio.example.org/api/v1/iam/instances/demo', { method: 'PATCH' }),
+      ctx
+    );
+    expect(access.status).toBe(403);
+
+    ensurePlatformAccessMock.mockReturnValue(null);
+    validateCsrfMock.mockReturnValueOnce(new Response('csrf', { status: 403 }));
+    const csrf = await updateInstanceInternal(
+      new Request('https://studio.example.org/api/v1/iam/instances/demo', { method: 'PATCH' }),
+      ctx
+    );
+    expect(csrf.status).toBe(403);
+
+    validateCsrfMock.mockReturnValue(null);
+    requireFreshReauthMock.mockReturnValueOnce(new Response('reauth', { status: 403 }));
+    const reauth = await updateInstanceInternal(
+      new Request('https://studio.example.org/api/v1/iam/instances/demo', { method: 'PATCH' }),
+      ctx
+    );
+    expect(reauth.status).toBe(403);
+
+    requireFreshReauthMock.mockReturnValue(null);
+
+    parseRequestBodyMock.mockResolvedValueOnce({
+      ok: true,
+      data: {
+        displayName: 'Updated Demo',
+        parentDomain: 'studio.example.org',
+        authRealm: 'demo',
+        authClientId: 'sva-studio',
+      },
+    });
+    readDetailInstanceIdMock.mockReturnValueOnce(undefined);
+    const missingId = await updateInstanceInternal(
+      new Request('https://studio.example.org/api/v1/iam/instances/demo', { method: 'PATCH' }),
+      ctx
+    );
+    expect(missingId.status).toBe(400);
+
+    parseRequestBodyMock.mockResolvedValueOnce({
+      ok: true,
+      data: {
+        displayName: 'Updated Demo',
+        parentDomain: 'studio.example.org',
+        authRealm: 'demo',
+        authClientId: 'sva-studio',
+      },
+    });
+    readDetailInstanceIdMock.mockReturnValueOnce('missing');
+    service.updateInstance.mockResolvedValueOnce(null);
+    const notFound = await updateInstanceInternal(
+      new Request('https://studio.example.org/api/v1/iam/instances/missing', { method: 'PATCH' }),
+      ctx
+    );
+    expect(notFound.status).toBe(404);
   });
 
   it('resolves runtime instances and exposes helper responses', async () => {

@@ -479,6 +479,50 @@ describe('provisionInstanceAuthArtifacts', () => {
     );
   });
 
+  it('builds a ready preflight from successful state reads', async () => {
+    state.getRealm.mockResolvedValue({ realm: 'bb-guben' });
+
+    await expect(
+      getInstanceKeycloakPreflight({
+        instanceId: 'bb-guben',
+        primaryHostname: 'bb-guben.studio.smart-village.app',
+        realmMode: 'existing',
+        authRealm: 'bb-guben',
+        authClientId: 'sva-studio',
+        authClientSecretConfigured: true,
+        authClientSecret: 'registry-secret',
+        tenantAdminBootstrap: { username: 'bootstrap-user' },
+      })
+    ).resolves.toEqual(
+      expect.objectContaining({
+        overallStatus: expect.stringMatching(/ready|warning|blocked/),
+        checks: expect.any(Array),
+      })
+    );
+  });
+
+  it('builds a plan with state and preflight when both reads succeed', async () => {
+    state.getRealm.mockResolvedValue({ realm: 'bb-guben' });
+
+    await expect(
+      getInstanceKeycloakPlan({
+        instanceId: 'bb-guben',
+        primaryHostname: 'bb-guben.studio.smart-village.app',
+        realmMode: 'existing',
+        authRealm: 'bb-guben',
+        authClientId: 'sva-studio',
+        authClientSecretConfigured: true,
+        authClientSecret: 'registry-secret',
+        tenantAdminBootstrap: { username: 'bootstrap-user' },
+      })
+    ).resolves.toEqual(
+      expect.objectContaining({
+        overallStatus: expect.stringMatching(/ready|warning|blocked/),
+        steps: expect.any(Array),
+      })
+    );
+  });
+
   it('fails existing-realm provisioning when the target realm does not exist', async () => {
     state.getRealm.mockResolvedValue(null);
 

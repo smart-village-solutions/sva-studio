@@ -37,8 +37,7 @@ const tenantAdminClientSchema = z
   .object({
     clientId: z.string().trim().min(1),
     secret: z.string().trim().min(1).optional(),
-  })
-  .optional();
+  });
 
 export const listQuerySchema = z.object({
   search: z.string().trim().min(1).optional(),

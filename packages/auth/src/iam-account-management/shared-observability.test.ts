@@ -72,6 +72,7 @@ describe('shared-observability tenant admin drift metric', () => {
       instance_id: 'missing-secret',
       drift_reason: 'missing_secret',
     });
+    expect(state.query).toHaveBeenCalledWith(expect.stringContaining('id AS instance_id'));
   });
 
   it('logs and keeps the snapshot empty when the refresh query fails', async () => {

@@ -13,23 +13,27 @@ Dieses Runbook beschreibt den operativen Rollout des separaten `tenantAdminClien
 ## Rollout-Reihenfolge
 
 1. **Migration ausführen**
-   - `pnpm env:migrate:studio`
-   - Erwartung: Migrationen `0030_iam_tenant_admin_client_contract.sql` und `0031_iam_tenant_admin_client_not_null.sql` sind erfolgreich angewendet.
+   - zuerst nur bis zur additiven Vertragsmigration:
+     `pnpm env:migrate:studio -- --up-to 0030`
+   - Erwartung: `0030_iam_tenant_admin_client_contract.sql` ist erfolgreich angewendet.
 2. **Backfill ausführen**
    - `pnpm ops instance-registry backfill-admin-client`
    - Erwartung: alle aktiven Instanzen ohne `tenantAdminClient` erhalten einen separaten Tenant-Admin-Client inklusive Secret.
-3. **Datenbankzustand verifizieren**
-   - `SELECT instance_key, tenant_admin_client_id FROM iam.instances WHERE status = 'active';`
+3. **NOT-NULL-Verstärkung nachziehen**
+   - `pnpm env:migrate:studio`
+   - Erwartung: `0031_iam_tenant_admin_client_not_null.sql` laeuft jetzt ohne Guard-Fehler durch.
+4. **Datenbankzustand verifizieren**
+   - `SELECT id, tenant_admin_client_id FROM iam.instances WHERE status = 'active';`
    - Erwartung: keine `NULL`-Werte in `tenant_admin_client_id`.
-4. **Drift vor App-Deploy prüfen**
+5. **Drift vor App-Deploy prüfen**
    - `pnpm env:precheck:studio`
    - Erwartung:
      - kein `tenant_admin_client_cutover_blocked`
      - keine aktive Instanz ohne Tenant-Admin-Client
      - `sva_instance_admin_client_drift` ist für alle aktiven Instanzen `0`
-5. **App deployen**
+6. **App deployen**
    - `pnpm env:release:studio:local -- --image-digest=<sha256-digest> --release-mode=app-only --rollback-hint="vorherigen Digest erneut deployen"`
-6. **Doctor ausführen**
+7. **Doctor ausführen**
    - `pnpm env:doctor:studio`
    - Erwartung:
      - Login- und Tenant-Admin-Pfad sind getrennt sichtbar
@@ -52,6 +56,10 @@ Dieses Runbook beschreibt den operativen Rollout des separaten `tenantAdminClien
 - Wenn der Backfill einzelne Instanzen auslässt:
   - Status und Registry-Datensatz der Instanz prüfen
   - betroffene Instanz manuell über Reconcile auf `provision_admin_client` bringen
+- Wenn `0031_iam_tenant_admin_client_not_null.sql` mit einem Guard-Fehler abbricht:
+  - Backfill fuer alle aktiven Instanzen abschliessen
+  - `SELECT id FROM iam.instances WHERE status = 'active' AND NULLIF(BTRIM(tenant_admin_client_id), '') IS NULL;`
+  - danach die Migration erneut ausfuehren
 - Wenn `env:precheck:studio` blockiert:
   - fehlende `tenant_admin_client_id` oder fehlendes Secret in `iam.instances` identifizieren
   - danach Backfill oder Reconcile erneut ausführen

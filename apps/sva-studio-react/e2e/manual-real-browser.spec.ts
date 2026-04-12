@@ -1,5 +1,7 @@
 import { test } from '@playwright/test';
 
+test.skip(true, 'Manual browser inspection only');
+
 test.use({
   headless: true,
   channel: 'chrome',

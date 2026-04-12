@@ -59,7 +59,7 @@ const refreshInstanceAdminClientDriftSnapshotInternal = async (): Promise<void> 
 
   const query = await pool.query<InstanceAdminClientDriftRow>(`
     SELECT
-      instance_key AS instance_id,
+      id AS instance_id,
       CASE
         WHEN tenant_admin_client_id IS NULL OR btrim(tenant_admin_client_id) = '' THEN 1
         WHEN tenant_admin_client_secret_ciphertext IS NULL OR btrim(tenant_admin_client_secret_ciphertext) = '' THEN 1

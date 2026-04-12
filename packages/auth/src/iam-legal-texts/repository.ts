@@ -1,7 +1,14 @@
 import type { IamLegalTextListItem, IamPendingLegalTextItem } from '@sva/core';
 
-import { emitActivityLog, withInstanceScopedDb } from '../iam-account-management/shared.js';
+import { withInstanceScopedDb } from '../iam-account-management/shared.js';
 import { hashLegalTextHtml, sanitizeLegalTextHtml } from './html.js';
+import {
+  DeleteLegalTextInput,
+  emitLegalTextCreatedActivityLog,
+  emitLegalTextDeletedActivityLog,
+  emitLegalTextUpdatedActivityLog,
+  LegalTextDeleteConflictError,
+} from './repository-activity.js';
 import {
   LEGAL_TEXT_SELECT,
   collectUpdatedFields,
@@ -17,20 +24,8 @@ import {
 } from './repository-shared.js';
 
 type InstanceScopedClient = Parameters<Parameters<typeof withInstanceScopedDb>[1]>[0];
-type DeleteLegalTextInput = {
-  instanceId: string;
-  actorAccountId: string;
-  requestId?: string;
-  traceId?: string;
-  legalTextVersionId: string;
-};
 
-export class LegalTextDeleteConflictError extends Error {
-  constructor() {
-    super('legal_text_acceptances_exist');
-    this.name = 'LegalTextDeleteConflictError';
-  }
-}
+export { LegalTextDeleteConflictError } from './repository-activity.js';
 
 const loadLegalTextByIdWithClient = async (
   client: InstanceScopedClient,
@@ -160,15 +155,7 @@ RETURNING id;
       return undefined;
     }
 
-    await emitActivityLog(client, {
-      instanceId: input.instanceId,
-      accountId: input.actorAccountId,
-      eventType: 'iam.legal_text.created',
-      result: 'success',
-      payload: { legal_text_version_id: legalTextVersionId, name: input.name, legal_text_version: input.legalTextVersion, locale: input.locale, status: input.status },
-      requestId: input.requestId,
-      traceId: input.traceId,
-    });
+    await emitLegalTextCreatedActivityLog(client, input, legalTextVersionId);
 
     return legalTextVersionId;
   });
@@ -218,15 +205,7 @@ RETURNING id;
       return undefined;
     }
 
-    await emitActivityLog(client, {
-      instanceId: input.instanceId,
-      accountId: input.actorAccountId,
-      eventType: 'iam.legal_text.updated',
-      result: 'success',
-      payload: { legal_text_version_id: updatedLegalTextVersionId, updated_fields: collectUpdatedFields(input) },
-      requestId: input.requestId,
-      traceId: input.traceId,
-    });
+    await emitLegalTextUpdatedActivityLog(client, input, updatedLegalTextVersionId, collectUpdatedFields(input));
 
     return updatedLegalTextVersionId;
   });
@@ -262,15 +241,7 @@ RETURNING id;
       return undefined;
     }
 
-    await emitActivityLog(client, {
-      instanceId: input.instanceId,
-      accountId: input.actorAccountId,
-      eventType: 'iam.legal_text.deleted',
-      result: 'success',
-      payload: { legal_text_version_id: deletedLegalTextVersionId },
-      requestId: input.requestId,
-      traceId: input.traceId,
-    });
+    await emitLegalTextDeletedActivityLog(client, input, deletedLegalTextVersionId);
 
     return deletedLegalTextVersionId;
   });

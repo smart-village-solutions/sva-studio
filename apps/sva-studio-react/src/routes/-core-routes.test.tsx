@@ -299,7 +299,7 @@ describe('core routes', () => {
     expect(screen.getByText('IamViewerPage:governance')).toBeTruthy();
   });
 
-  it('renders the new placeholder routes and explicit page components', () => {
+  it('renders the new placeholder routes and explicit page components', async () => {
     const routes = buildRouteMap();
     const renderPath = (path: string) => {
       const route = readRouteOptions(routes.get(path));
@@ -338,13 +338,13 @@ describe('core routes', () => {
     expect(screen.getByText('AccountPrivacyPage')).toBeTruthy();
 
     renderPath('/admin/groups');
-    expect(screen.getByText('GroupsPage')).toBeTruthy();
+    expect(await screen.findByText('GroupsPage')).toBeTruthy();
 
     renderPath('/admin/groups/new');
     expect(screen.getByText('GroupCreatePage')).toBeTruthy();
 
     renderPath('/admin/groups/$groupId');
-    expect(screen.getByText('GroupDetailPage:group-1')).toBeTruthy();
+    expect(await screen.findByText('GroupDetailPage:group-1')).toBeTruthy();
 
     renderPath('/admin/users/new');
     expect(screen.getByText('UserCreatePage')).toBeTruthy();
@@ -353,7 +353,7 @@ describe('core routes', () => {
     expect(screen.getByText('OrganizationCreatePage')).toBeTruthy();
 
     renderPath('/admin/organizations/$organizationId');
-    expect(screen.getByText('OrganizationDetailPage:organization-1')).toBeTruthy();
+    expect(await screen.findByText('OrganizationDetailPage:organization-1')).toBeTruthy();
 
     renderPath('/admin/instances');
     expect(screen.getByText('InstancesPage')).toBeTruthy();
@@ -377,13 +377,13 @@ describe('core routes', () => {
     expect(screen.getByText('LegalTextDetailPage:legal-text-1')).toBeTruthy();
   });
 
-  it('keeps the user detail route param wiring and exports the composed factory list', () => {
+  it('keeps the user detail route param wiring and exports the composed factory list', async () => {
     const routes = buildRouteMap();
     const userDetailRoute = readRouteOptions(routes.get('/admin/users/$userId'));
 
     render(userDetailRoute.component?.());
 
-    expect(screen.getByText('UserEditPage:user-1')).toBeTruthy();
+    expect(await screen.findByText('UserEditPage:user-1')).toBeTruthy();
     expect(coreRouteFactoriesBase).toHaveLength(runtimeCoreRouteFactories.length + 1);
     expect(createRouteMock).toHaveBeenCalled();
   });

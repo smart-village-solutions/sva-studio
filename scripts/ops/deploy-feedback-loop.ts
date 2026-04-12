@@ -67,7 +67,13 @@ const isPrimaryDeployReport = (fileName: string) =>
   !fileName.endsWith('.external-probes.json') &&
   !fileName.startsWith('release-feedback-summary');
 
-const safeReadJson = <T>(filePath: string): T => JSON.parse(readFileSync(filePath, 'utf8')) as T;
+const safeReadJson = <T>(filePath: string): T | null => {
+  try {
+    return JSON.parse(readFileSync(filePath, 'utf8')) as T;
+  } catch {
+    return null;
+  }
+};
 
 export const listDeployReports = (reportDir: string): AcceptanceDeployReport[] => {
   if (!existsSync(reportDir)) {
@@ -77,7 +83,10 @@ export const listDeployReports = (reportDir: string): AcceptanceDeployReport[] =
   return readdirSync(reportDir)
     .filter(isPrimaryDeployReport)
     .map((fileName) => safeReadJson<AcceptanceDeployReport>(resolve(reportDir, fileName)))
-    .filter((report) => typeof report.reportId === 'string' && Array.isArray(report.steps))
+    .filter(
+      (report): report is AcceptanceDeployReport =>
+        report !== null && typeof report.reportId === 'string' && Array.isArray(report.steps)
+    )
     .sort((left, right) => left.generatedAt.localeCompare(right.generatedAt));
 };
 

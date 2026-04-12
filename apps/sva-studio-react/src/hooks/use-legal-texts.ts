@@ -2,6 +2,7 @@ import type { IamLegalTextListItem } from '@sva/core';
 
 import {
   createLegalText,
+  deleteLegalText,
   IamHttpError,
   listLegalTexts,
   updateLegalText,
@@ -18,8 +19,9 @@ type UseLegalTextsResult = {
   readonly mutationError: IamHttpError | null;
   readonly refetch: () => Promise<void>;
   readonly clearMutationError: () => void;
-  readonly createLegalText: (payload: CreateLegalTextPayload) => Promise<boolean>;
+  readonly createLegalText: (payload: CreateLegalTextPayload) => Promise<IamLegalTextListItem | null>;
   readonly updateLegalText: (legalTextVersionId: string, payload: UpdateLegalTextPayload) => Promise<boolean>;
+  readonly deleteLegalText: (legalTextVersionId: string) => Promise<boolean>;
 };
 
 export const useLegalTexts = (): UseLegalTextsResult => {
@@ -34,13 +36,21 @@ export const useLegalTexts = (): UseLegalTextsResult => {
     refetch: adminList.refetch,
     clearMutationError: adminList.clearMutationError,
     createLegalText: (payload) =>
-      adminList.runMutation(() => createLegalText(payload), {
-        operation: 'create_legal_text',
-        event: 'legal_text_mutation',
-      }),
+      adminList
+        .runMutationWithResult(() => createLegalText(payload), {
+          operation: 'create_legal_text',
+          event: 'legal_text_mutation',
+        })
+        .then((response) => response?.data ?? null),
     updateLegalText: (legalTextVersionId, payload) =>
       adminList.runMutation(() => updateLegalText(legalTextVersionId, payload), {
         operation: 'update_legal_text',
+        event: 'legal_text_mutation',
+        legal_text_version_id: legalTextVersionId,
+      }),
+    deleteLegalText: (legalTextVersionId) =>
+      adminList.runMutation(() => deleteLegalText(legalTextVersionId), {
+        operation: 'delete_legal_text',
         event: 'legal_text_mutation',
         legal_text_version_id: legalTextVersionId,
       }),

@@ -15,6 +15,11 @@ Schulden auf IST-Basis.
 
 ### Priorisierte Risiken
 
+1. Drift zwischen Intermediate-SSR-Output und finaler Runtime
+   - Impact: hoch (ein scheinbar gruener Build kann im finalen `.output/server/**` dennoch einen anderen Server-Entry oder Dispatch-Pfad ausliefern)
+   - Wahrscheinlichkeit: hoch
+   - Maßnahme: finalen Runtime-Vertrag ueber `verify:runtime-artifact` und runner-basiertes Image-Verify erzwingen; `.nitro/vite/services/ssr/**` nur noch als Diagnosematerial behandeln
+
 1. Geheimnisse in lokalen Env-Dateien
    - Impact: hoch (Credential Leak Risiko)
    - Wahrscheinlichkeit: mittel
@@ -133,7 +138,7 @@ Schulden auf IST-Basis.
 22. Lokaler Quantum-Hidden-State in Remote-Diagnosepfaden
    - Impact: mittel bis hoch (falsch-negative Diagnosen trotz gesundem Stack)
    - Wahrscheinlichkeit: mittel
-   - Maßnahme: Read-only Pfade auf Portainer-API mit fester Endpoint-ID begrenzen, `quantum-cli exec` nur als Fallback zulassen und Mutationen auf CI-/Runner-Kontexte fokussieren
+   - Maßnahme: Read-only Pfade auf Portainer-API mit fester Endpoint-ID begrenzen, `quantum-cli exec` nur als Fallback zulassen und produktionsnahe Mutationen auf den expliziten lokalen Operator-Pfad fokussieren
 
 23. Begrenzte lokale Nachbildbarkeit des `studio`-Ingress- und Private-DNS-Vertrags
    - Impact: hoch (lokale Kandidatencontainer koennen Root-/Tenant-/OIDC-Paritaet falsch negativ oder unvollstaendig abbilden)

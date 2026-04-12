@@ -38,7 +38,7 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
 - Produktionsnahe Release-Validierung:
   - `Studio Image Build` muss genau einen Manifest-Digest für `linux/amd64` liefern
   - `Studio Artifact Verify` muss denselben Digest gegen `/health/live`, `/health/ready` und `/` erfolgreich pruefen
-  - `pnpm env:deploy:studio` ist nur mit `--image-digest=sha256:...` gültig
+  - `pnpm env:release:studio:local` ist nur mit `--image-digest=sha256:...` gueltig
   - `environment-precheck`, `image-smoke`, `internal-verify`, `external-smoke` und `release-decision` müssen im Deploy-Report als `ok` erscheinen
   - öffentliche Smoke-Probes gegen `/`, `/health/live`, `/health/ready`, `/auth/login` und `/api/v1/iam/me/context` dürfen keinen Timeout und keinen generischen HTML-Fehlerpfad liefern
   - Release-Evidenz unter `artifacts/runtime/deployments/` muss Report, Release-Manifest und Probe-Artefakte enthalten

@@ -157,10 +157,66 @@ describe('useLegalTexts', () => {
         contentHtml: '<p>Text</p>',
         status: 'draft',
       });
-      expect(created).toBe(false);
+      expect(created).toBeNull();
     });
 
     expect(result.current.mutationError).toBe(conflictError);
     expect(authMockValue.invalidatePermissions).not.toHaveBeenCalled();
+  });
+
+  it('returns the created legal text from the mutation response', async () => {
+    asIamErrorMock.mockImplementation((cause: unknown) => cause);
+    listLegalTextsMock.mockResolvedValueOnce({
+      data: [],
+      pagination: { page: 1, pageSize: 0, total: 0 },
+    });
+    listLegalTextsMock.mockResolvedValueOnce({
+      data: [
+        {
+          id: 'lt-2',
+          name: 'Nutzungsbedingungen',
+          legalTextVersion: '2026-04',
+          locale: 'en-GB',
+          contentHtml: '<p>Terms</p>',
+          status: 'draft',
+          publishedAt: null,
+          createdAt: '2026-04-12T11:00:00.000Z',
+          updatedAt: '2026-04-12T11:00:00.000Z',
+          acceptanceCount: 0,
+          activeAcceptanceCount: 0,
+        },
+      ],
+      pagination: { page: 1, pageSize: 1, total: 1 },
+    });
+    createLegalTextMock.mockResolvedValue({
+      data: {
+        id: 'lt-2',
+        name: 'Nutzungsbedingungen',
+        legalTextVersion: '2026-04',
+        locale: 'en-GB',
+      },
+    });
+
+    const { result } = renderHook(() => useLegalTexts());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    await act(async () => {
+      const created = await result.current.createLegalText({
+        name: 'Nutzungsbedingungen',
+        legalTextVersion: '2026-04',
+        locale: 'en-GB',
+        contentHtml: '<p>Terms</p>',
+        status: 'draft',
+      });
+      expect(created).toEqual({
+        id: 'lt-2',
+        name: 'Nutzungsbedingungen',
+        legalTextVersion: '2026-04',
+        locale: 'en-GB',
+      });
+    });
   });
 });

@@ -42,6 +42,23 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v5
+        with:
+          version: 9.12.2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: '.nvmrc'
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify final runtime artifact
+        run: pnpm nx run sva-studio-react:verify:runtime-artifact
+
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -50,7 +67,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ secrets.GHCR_PUSH_TOKEN || secrets.GITHUB_TOKEN }}
 
       - name: Resolve image metadata
         id: meta
@@ -104,9 +121,19 @@ jobs:
           echo "image_ref=${image_ref}" >> "${GITHUB_OUTPUT}"
 
       - name: Upload image build metadata
+        if: always()
         uses: actions/upload-artifact@v7
         with:
           name: studio-image-build-${{ github.run_id }}
           path: artifacts/runtime/image-build
           if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload runtime artifact verify reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: studio-runtime-artifact-verify-${{ github.run_id }}
+          path: artifacts/runtime/runtime-artifact-verify
+          if-no-files-found: warn
           retention-days: 14

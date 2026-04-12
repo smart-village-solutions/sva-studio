@@ -39,7 +39,7 @@ const createState = (overrides: Record<string, unknown> = {}) => ({
   mutationError: null,
   refetch: vi.fn(),
   clearMutationError: vi.fn(),
-  createLegalText: vi.fn().mockResolvedValue(true),
+  createLegalText: vi.fn().mockResolvedValue({ id: 'legal-created' }),
   updateLegalText: vi.fn().mockResolvedValue(true),
   ...overrides,
 });
@@ -56,12 +56,11 @@ describe('LegalTextCreatePage', () => {
 
   it('creates a legal text and navigates to the created version', async () => {
     const apiState = createState();
-    const createLegalText = vi.fn().mockImplementation(async (payload) => {
-      apiState.legalTexts.push({
-        id: 'legal-1',
-        ...payload,
-      });
-      return true;
+    const createLegalText = vi.fn().mockResolvedValue({
+      id: 'legal-1',
+      name: 'Datenschutzhinweise',
+      legalTextVersion: '2026-04',
+      locale: 'de-DE',
     });
     apiState.createLegalText = createLegalText;
     useLegalTextsMock.mockReturnValue(apiState);
@@ -104,8 +103,8 @@ describe('LegalTextCreatePage', () => {
     });
   });
 
-  it('does not navigate when the created legal text is not in the local list yet', async () => {
-    const createLegalText = vi.fn().mockResolvedValue(true);
+  it('navigates using the created legal text response even when the local list is still stale', async () => {
+    const createLegalText = vi.fn().mockResolvedValue({ id: 'legal-2' });
     useLegalTextsMock.mockReturnValue(createState({ createLegalText }));
 
     render(<LegalTextCreatePage />);
@@ -121,7 +120,10 @@ describe('LegalTextCreatePage', () => {
     await waitFor(() => {
       expect(createLegalText).toHaveBeenCalled();
     });
-    expect(navigateMock).not.toHaveBeenCalled();
+    expect(navigateMock).toHaveBeenCalledWith({
+      to: '/admin/legal-texts/$legalTextVersionId',
+      params: { legalTextVersionId: 'legal-2' },
+    });
   });
 
   it('renders mutation errors', () => {

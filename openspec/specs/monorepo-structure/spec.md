@@ -333,7 +333,7 @@ Das System SHALL für jedes kanonische Runtime-Profil ein offizielles `doctor`-K
 #### Scenario: Root-Scripts bilden den Diagnosepfad ab
 
 - **WHEN** `package.json` im Repository geprüft wird
-- **THEN** existieren `env:doctor:<profil>`-Skripte für `local-keycloak`, `local-builder` und `acceptance-hb`
+- **THEN** existieren `env:doctor:<profil>`-Skripte für `local-keycloak`, `local-builder` und `studio`
 - **AND** die Skripte delegieren an eine gemeinsame Implementierung statt an profilindividuelle Ad-hoc-Debug-Kommandos
 
 #### Scenario: Doctor-Ausgabe ist maschinenlesbar
@@ -348,52 +348,53 @@ Das System SHALL für jedes kanonische Runtime-Profil ein offizielles `doctor`-K
 - **THEN** enthält die Diagnose einen separaten Check für `goose`-Verfügbarkeit und Migrationsstatus
 - **AND** `details` enthalten mindestens die verwendete `goose`-Version oder den Remote-Status
 
-### Requirement: Kanonischer Acceptance-Deploypfad
+### Requirement: Kanonischer Studio-Deploypfad
 
-Das System SHALL für das Runtime-Profil `acceptance-hb` einen offiziellen Deploypfad mit `precheck` und `deploy` bereitstellen, der Migration, Rollout und Verifikation in fixer Reihenfolge ausführt.
+Das System SHALL für das Runtime-Profil `studio` einen offiziellen zweigeteilten Releasepfad bereitstellen, der GitHub-basiertes Build/Verify und einen lokalen Operator-Deploy in fixer Reihenfolge verbindet.
 
-#### Scenario: Root-Scripts bilden den Acceptance-Releasepfad ab
+#### Scenario: Root-Scripts bilden den Studio-Releasepfad ab
 
 - **WHEN** `package.json` im Repository geprüft wird
-- **THEN** existieren `env:precheck:acceptance-hb` und `env:deploy:acceptance-hb`
-- **AND** beide delegieren an dieselbe gemeinsame `runtime-env`-Implementierung
+- **THEN** existieren `env:precheck:studio`, `env:deploy:studio` und `env:release:studio:local`
+- **AND** `env:release:studio:local` delegiert an dieselbe gemeinsame `runtime-env`-Implementierung für `precheck`, `deploy`, `smoke` und `feedback`
+- **AND** GitHub-Workflows `studio-image-build.yml`, `studio-artifact-verify.yml` und optional `studio-release.yml` bilden den vorbereitenden, nicht mutierenden Teil des Releasepfads ab
 
 #### Scenario: Schemaänderung erfordert Wartungsfenster
 
-- **WHEN** `env:deploy:acceptance-hb` mit `--release-mode=schema-and-app` ausgeführt wird
+- **WHEN** `env:release:studio:local` mit `--release-mode=schema-and-app` ausgeführt wird
 - **THEN** verlangt das System ein dokumentiertes Wartungsfenster
 - **AND** startet ohne dieses Wartungsfenster keinen Rollout
 
-### Requirement: Standardisierte Deploy-Evidenz für Acceptance
+### Requirement: Standardisierte Deploy-Evidenz für Studio
 
-Das System SHALL für jeden orchestrierten Acceptance-Deploy maschinenlesbare und menschenlesbare Evidenz erzeugen.
+Das System SHALL für jeden orchestrierten Studio-Deploy maschinenlesbare und menschenlesbare Evidenz erzeugen.
 
-#### Scenario: Deploy schreibt Evidenz-Artefakte
+#### Scenario: Lokaler Operator-Deploy schreibt Evidenz-Artefakte
 
-- **WHEN** `env:deploy:acceptance-hb` ausgeführt wird
+- **WHEN** `env:release:studio:local` ausgeführt wird
 - **THEN** schreibt das System JSON- und Markdown-Artefakte unter `artifacts/runtime/deployments/`
 - **AND** die Artefakte enthalten mindestens Image-Referenz, Actor, Workflow, Release-Modus, Schrittstatus und Stack-Zusammenfassung
 - **AND** die Artefakte enthalten keine Secrets oder PII
 
 #### Scenario: Migrations-Evidenz enthält Goose-Status
 
-- **WHEN** ein Acceptance-Deploy mit oder ohne Migrationsschritt dokumentiert wird
+- **WHEN** ein Studio-Deploy mit oder ohne Migrationsschritt dokumentiert wird
 - **THEN** enthalten die Artefakte den `goose`-Status der Migration
 - **AND** die Migrationsevidenz kann die verwendete `goose`-Version ausweisen
 
-### Requirement: Direkte Acceptance-`up`/`update`-Deploys sind gesperrt
+### Requirement: Direkte Studio-`up`/`update`-Deploys sind gesperrt
 
-Das System SHALL direkte Serverdeploys für `acceptance-hb` über die Kommandos `up` und `update` standardmäßig verhindern.
+Das System SHALL direkte Serverdeploys für `studio` über die Kommandos `up` und `update` standardmäßig verhindern.
 
 #### Scenario: Legacy-Deploypfad wird blockiert
 
-- **WHEN** `runtime-env.ts up acceptance-hb` oder `runtime-env.ts update acceptance-hb` ausgeführt wird
+- **WHEN** `runtime-env.ts up studio` oder `runtime-env.ts update studio` ausgeführt wird
 - **THEN** beendet das System den Lauf mit einer klaren Fehlermeldung
-- **AND** verweist auf `env:deploy:acceptance-hb` als einzigen kanonischen Einstiegspunkt
+- **AND** verweist auf `env:release:studio:local` als einzigen dokumentierten produktionsnahen Einstiegspunkt
 
 ### Requirement: Einheitliche Runtime-Profile für Entwicklungs- und Betriebsmodi
 
-Das System SHALL drei kanonische Runtime-Profile (`local-keycloak`, `local-builder`, `acceptance-hb`) bereitstellen und deren nicht-sensitive Konfiguration versioniert im Repository führen.
+Das System SHALL drei kanonische Runtime-Profile (`local-keycloak`, `local-builder`, `studio`) bereitstellen und deren nicht-sensitive Konfiguration versioniert im Repository führen.
 
 #### Scenario: Profildefinitionen sind versioniert
 
@@ -417,7 +418,7 @@ Das System SHALL für jedes Runtime-Profil standardisierte Befehle für `up`, `d
 - **WHEN** ein Runtime-`smoke`-Befehl ausgeführt wird
 - **THEN** prüft er mindestens Live-/Ready-Health, Auth-Verhalten und Mainserver-Basisfunktion
 - **AND** lokale Profile prüfen zusätzlich den OTEL-Collector
-- **AND** das Acceptance-Profil prüft den serverseitigen Stack-Zustand
+- **AND** das `studio`-Profil prüft den serverseitigen Stack-Zustand
 
 #### Scenario: Migrationspfad nutzt gepinnten Goose-Wrapper
 

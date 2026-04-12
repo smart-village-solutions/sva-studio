@@ -129,7 +129,19 @@ describe('runtime-env.shared', () => {
         'studio',
         'migrate',
       ),
-    ).toThrow(/studio deaktiviert/);
+    ).toThrow(/lokalen Operator-Pfad erlaubt/);
+  });
+
+  it('accepts explicit local operator context for studio mutations', () => {
+    expect(
+      assertDeterministicRemoteMutationContext(
+        {
+          SVA_REMOTE_OPERATOR_CONTEXT: 'local-operator',
+        },
+        'studio',
+        'deploy',
+      ),
+    ).toEqual({ mode: 'local-operator' });
   });
 
   it('detects documented truthy flag values for local emergency overrides', () => {
@@ -142,7 +154,9 @@ describe('runtime-env.shared', () => {
   });
 
   it('rejects remote mutations without runner or emergency context', () => {
-    expect(() => assertDeterministicRemoteMutationContext({}, 'studio', 'deploy')).toThrow(/CI-\/Runner-Kontext/);
+    expect(() => assertDeterministicRemoteMutationContext({}, 'studio', 'deploy')).toThrow(
+      /CI-\/Runner-Kontext oder ueber den expliziten lokalen Operator-Pfad/,
+    );
   });
 
   it('builds a prod parity plan for root and tenant hosts from runtime env', () => {

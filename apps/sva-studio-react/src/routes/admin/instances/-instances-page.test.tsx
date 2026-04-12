@@ -88,7 +88,10 @@ describe('InstancesPage', () => {
     expect(screen.getByRole('heading', { name: 'Instanzverwaltung' })).toBeTruthy();
     expect(screen.getByRole('table', { name: 'Instanzliste' })).toBeTruthy();
     expect(screen.getAllByText('Demo').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('demo.studio.example.org').length).toBeGreaterThan(0);
+    const hostnameLink = screen.getAllByRole('link', { name: 'demo.studio.example.org' })[0];
+    expect(hostnameLink.getAttribute('href')).toBe('https://demo.studio.example.org');
+    expect(hostnameLink.getAttribute('target')).toBe('_blank');
+    expect(hostnameLink.getAttribute('rel')).toBe('noopener noreferrer');
     expect(screen.getByRole('link', { name: 'Instanz anlegen' }).getAttribute('href')).toBe('/admin/instances/new');
     expect(screen.getAllByRole('link', { name: 'Bearbeiten' })[0]?.getAttribute('href')).toBe('/admin/instances/demo');
 

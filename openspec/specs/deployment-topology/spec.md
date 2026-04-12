@@ -16,7 +16,7 @@ Das System SHALL einen Portainer-Stack bereitstellen, der für Docker Swarm mit 
 
 #### Scenario: Live-Rollout validiert vollständige App-Netzwerke
 
-- **WHEN** der Live-Stack für `studio` oder `acceptance-hb` für `app-only` oder `schema-and-app` gerendert wird
+- **WHEN** der Live-Stack für `studio` für `app-only` oder `schema-and-app` gerendert wird
 - **THEN** validiert der Deploypfad vor dem Stack-Update, dass der Service `app` weiterhin die Netzwerke `internal` und `public` enthält
 - **AND** verwirft der Rollout den Renderpfad, wenn diese Netzwerke oder ingressrelevante Labels fehlen
 
@@ -116,7 +116,7 @@ Das System SHALL dokumentieren, wie stateful Services, Secrets, Configs, Migrati
 
 #### Scenario: Temp-Job-Stack verändert den Live-Stack nicht
 
-- **WHEN** `migrate` oder `bootstrap` für `studio` oder `acceptance-hb` in einem temporären Job-Stack ausgeführt werden
+- **WHEN** `migrate` oder `bootstrap` für `studio` in einem temporären Job-Stack ausgeführt werden
 - **THEN** enthält der temporäre Stack keinen `app`-Service
 - **AND** reconciled der Job-Lauf nicht den Live-Stack mit `app`, `postgres` oder `redis`
 - **AND** nutzt der Job-Stack nur das vorhandene Overlay-Netz `<stack>_internal`
@@ -174,12 +174,12 @@ Das System SHALL `quantum-cli` im Regelbetrieb auf mutierende Rollout- und Job-P
 
 Das System SHALL mutierende Remote-Operationen in einem deterministischen Operator-Kontext ausfuehren.
 
-#### Scenario: Lokaler Shell-Hidden-State bestimmt den Rollout nicht mehr
+#### Scenario: Lokaler Operator-Deploy bleibt auf verifizierte Digests begrenzt
 
-- **WHEN** ein mutierender Rollout fuer `studio` oder `acceptance-hb` ausgefuehrt wird
-- **THEN** erfolgt der bevorzugte Pfad ueber CI oder einen festen Runner-Kontext mit bekanntem Quantum-Zugang
+- **WHEN** ein mutierender Rollout fuer `studio` ausgefuehrt wird
+- **THEN** erfolgt die technische Freigabe zuvor ueber GitHub Build- und Verify-Gates fuer genau ein Digest-Artefakt
+- **AND** der mutierende Schritt laeuft lokal nur ueber den dokumentierten Operator-Einstieg `env:release:studio:local`
 - **AND** beliebige lokale Shell-Overlays wie `~/.config/quantum/env` gelten nicht als primaere Quelle der technischen Freigabe
-- **AND** lokale Mutationen bleiben dokumentierter Sonder- oder Notfallpfad
 
 ### Requirement: Prod-nahes Parity-Gate vor mutierenden Remote-Rollouts
 

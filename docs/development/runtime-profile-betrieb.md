@@ -28,6 +28,11 @@ Die Runtime-Kommandos setzen daraus konsistent:
 
 Für `studio` gilt zusaetzlich ein pragmatischer Testphasen-Vertrag:
 
+- der verbindliche lokale Toolchain-Check vor jedem Runtime-Debugging ist `pnpm check:toolchain-consistency`; er bricht bei Drift zwischen `.nvmrc`, `packageManager`, `pnpm-lock.yaml` und installiertem `node_modules` fail-fast ab
+- der verbindliche lokale Build-Nachweis vor jedem Image-Build ist `pnpm nx run sva-studio-react:verify:runtime-artifact`
+- dieser Check bewertet ausschliesslich den finalen Node-Output unter `apps/sva-studio-react/.output/server/**`
+- der finale Build erzeugt zusaetzlich einen generierten `tanstack-server-entry.mjs` direkt unter `.output/server/chunks/build/`; dieser Build-time-Patch ist Teil des kanonischen Artefakts und ersetzt die fruehere Laufzeit-Umschreibung im Entrypoint
+- `.nitro/vite/services/ssr/**` bleibt Diagnosematerial und ist kein Release-Nachweis
 - kanonischer Pfad nur ueber `precheck -> deploy -> smoke`
 - `SVA_STACK_NAME=studio`, `QUANTUM_ENDPOINT=sva`, `SVA_RUNTIME_PROFILE=studio`
 - `IAM_DATABASE_URL` und `REDIS_URL` duerfen fuer Remote-Profile aus den vorhandenen DB-/Redis-Bausteinen abgeleitet werden
@@ -143,18 +148,25 @@ pnpm env:down:local-builder
 ### Studio (Remote)
 
 ```bash
-pnpm env:precheck:studio
-pnpm env:deploy:studio -- --release-mode=app-only
-pnpm env:deploy:studio -- --release-mode=schema-and-app --maintenance-window="2026-03-20 19:00-19:15 CET"
+pnpm env:release:studio:local -- --image-digest=<sha256:...> --release-mode=app-only --rollback-hint="Vorherigen Digest erneut deployen"
+pnpm env:release:studio:local -- --image-digest=<sha256:...> --release-mode=schema-and-app --maintenance-window="2026-03-20 19:00-19:15 CET" --rollback-hint="Vorherigen Digest erneut deployen"
 pnpm env:status:studio
 pnpm env:doctor:studio
-pnpm env:smoke:studio
 pnpm env:migrate:studio
 pnpm env:down:studio
-pnpm env:feedback:studio
 ```
 
-Mutierende Remote-Kommandos (`deploy`, `migrate`, `reset`, `down`) sind fuer `studio` ausschliesslich im kanonischen CI-/Runner-Kontext erlaubt. Lokale produktionsnahe Mutationen sind kein offizieller Betriebsweg mehr.
+Der kanonische Pfad fuer `studio` ist jetzt geteilt:
+
+- GitHub Actions bereiten Digest und Verify vor
+- `pnpm env:release:studio:local` fuehrt lokal `precheck`, `deploy`, `smoke` und `feedback` fuer genau diesen Digest aus
+
+Direkte lokale Aufrufe von `env:deploy:studio` bleiben ein Low-Level-Pfad; der dokumentierte produktionsnahe Einstieg ist `env:release:studio:local`.
+
+Der Container-Entrypoint kennt zusaetzlich nur noch einen expliziten Legacy-Recovery-Pfad:
+
+- `SVA_ENABLE_RUNTIME_RECOVERY_PATCH=1` erlaubt im Incident-Fall den dokumentierten Runtime-Patch auf dem finalen Nitro-Entry
+- ohne dieses Flag bleibt jede Artefakt-Umschreibung deaktiviert; der Standardbetrieb muss mit dem unveraenderten Build-Output gesund starten
 
 ### Lokale HB-Produktivsimulation in Docker
 
@@ -209,8 +221,8 @@ Dieser Pfad startet die App als Produktionscontainer lokal gegen `postgres-hb`, 
 
 - nur für Remote-Profile (`studio`)
 - ist der kanonische Release-Einstiegspunkt für Serverdeploys
-- Remote-Mutationen sind standardmaessig nur mit `SVA_REMOTE_OPERATOR_CONTEXT=ci-runner` oder unter GitHub Actions zulaessig
-- lokale Shells sind fuer `studio` nur fuer Diagnose, `status`, `precheck` und `doctor` gedacht
+- Remote-Mutationen sind fuer `studio` entweder im expliziten lokalen Operator-Kontext oder im dokumentierten Legacy-CI-Fallback zulaessig
+- der dokumentierte Standardweg setzt `SVA_REMOTE_OPERATOR_CONTEXT=local-operator` nur ueber `env:release:studio:local`
 - Orchestrierung in fixer Reihenfolge:
   1. `environment-precheck` inklusive Soll-/Live-Spec-Drift und Pflichtvariablen
   2. `image-smoke` gegen das auszurollende Digest-Artefakt mit Root-Host-, Tenant-Host- und OIDC-Paritaet

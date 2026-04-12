@@ -7,42 +7,263 @@ if [ "${1:-}" = "" ]; then
 fi
 
 IMAGE_REF="$1"
-ARTIFACT_DIR="${2:-artifacts/runtime/image-verify}"
+ARTIFACT_DIR_INPUT="${2:-artifacts/runtime/image-verify}"
 VERIFY_ID="studio-image-verify-$(date +%s)"
 NETWORK_NAME="${VERIFY_ID}-net"
 POSTGRES_NAME="${VERIFY_ID}-postgres"
 REDIS_NAME="${VERIFY_ID}-redis"
+KEYCLOAK_NAME="${VERIFY_ID}-keycloak"
 APP_NAME="${VERIFY_ID}-app"
 APP_PORT="${SVA_IMAGE_VERIFY_PORT:-39080}"
+POSTGRES_PORT="${SVA_IMAGE_VERIFY_POSTGRES_PORT:-35433}"
 POSTGRES_PASSWORD="verify-postgres-password"
 APP_DB_PASSWORD="verify-app-password"
 REDIS_PASSWORD="verify-redis-password"
 PII_KEYRING_JSON='{"k1":"MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDE="}'
 
-mkdir -p "${ARTIFACT_DIR}"
+mkdir -p "${ARTIFACT_DIR_INPUT}"
+ARTIFACT_DIR="$(cd "${ARTIFACT_DIR_INPUT}" && pwd)"
 REPORT_PATH="${ARTIFACT_DIR}/${VERIFY_ID}.json"
-LOG_PATH="${ARTIFACT_DIR}/${VERIFY_ID}.log"
 SUMMARY_PATH="${ARTIFACT_DIR}/${VERIFY_ID}.md"
+PHASES_LOG_PATH="${ARTIFACT_DIR}/${VERIFY_ID}.phases.log"
 ENV_FILE="${ARTIFACT_DIR}/${VERIFY_ID}.env"
 
+FAILURE_CLASS="none"
+FAILED_PHASE=""
+VERIFY_STATUS="ok"
+
+POSTGRES_READY_STATUS="pending"
+POSTGRES_APP_ROLE_STATUS="pending"
+SCHEMA_MIGRATIONS_STATUS="pending"
+REDIS_READY_STATUS="pending"
+KEYCLOAK_READY_STATUS="pending"
+IMAGE_PULL_STATUS="pending"
+APP_START_STATUS="pending"
+HEALTH_LIVE_STATUS="pending"
+HEALTH_READY_STATUS="pending"
+ROOT_PAGE_STATUS="pending"
+
 cleanup() {
-  docker rm -f "${APP_NAME}" "${REDIS_NAME}" "${POSTGRES_NAME}" >/dev/null 2>&1 || true
+  docker rm -f "${APP_NAME}" "${KEYCLOAK_NAME}" "${REDIS_NAME}" "${POSTGRES_NAME}" >/dev/null 2>&1 || true
   docker network rm "${NETWORK_NAME}" >/dev/null 2>&1 || true
   rm -f "${ENV_FILE}"
 }
 trap cleanup EXIT
 
-fail_with_container_diagnostics() {
-  local message="$1"
-  shift
-
-  echo "${message}" >&2
-  for container in "$@"; do
-    docker logs "${container}" > "${ARTIFACT_DIR}/${container}.log" 2>&1 || true
-    docker inspect "${container}" > "${ARTIFACT_DIR}/${container}.inspect.json" 2>/dev/null || true
-  done
-  exit 1
+mark_phase() {
+  local phase="$1"
+  local status="$2"
+  printf '%s\t%s\n' "${phase}" "${status}" >> "${PHASES_LOG_PATH}"
 }
+
+set_phase_var() {
+  local variable_name="$1"
+  local status="$2"
+  printf -v "${variable_name}" '%s' "${status}"
+}
+
+fail_verify() {
+  local failure_class="$1"
+  local failed_phase="$2"
+  local message="$3"
+
+  FAILURE_CLASS="${failure_class}"
+  FAILED_PHASE="${failed_phase}"
+  VERIFY_STATUS="error"
+  printf '%s\t%s\t%s\n' "${failed_phase}" "${failure_class}" "${message}" >> "${PHASES_LOG_PATH}"
+  echo "${message}" >&2
+}
+
+wait_for_postgres() {
+  for _ in $(seq 1 20); do
+    if \
+      docker exec "${POSTGRES_NAME}" pg_isready -U sva -d postgres >/dev/null 2>&1 && \
+      docker exec "${POSTGRES_NAME}" psql -U sva -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname = 'sva_studio'" | grep -q 1
+    then
+      return 0
+    fi
+    sleep 1
+  done
+  return 1
+}
+
+wait_for_redis() {
+  for _ in $(seq 1 20); do
+    if docker exec "${REDIS_NAME}" redis-cli --no-auth-warning -a "${REDIS_PASSWORD}" ping | grep -q PONG; then
+      return 0
+    fi
+    sleep 1
+  done
+  return 1
+}
+
+wait_for_container_http() {
+  local container_name="$1"
+  local url="$2"
+
+  for _ in $(seq 1 12); do
+    if docker exec "${container_name}" sh -lc "wget -q -O /dev/null '${url}'" >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 1
+  done
+
+  return 1
+}
+
+probe_endpoint() {
+  local phase="$1"
+  local path="$2"
+  local expected_status="$3"
+  local body_path="${ARTIFACT_DIR}/${VERIFY_ID}${phase}.body.txt"
+  local headers_path="${ARTIFACT_DIR}/${VERIFY_ID}${phase}.headers.txt"
+  local stderr_path="${ARTIFACT_DIR}/${VERIFY_ID}${phase}.stderr.txt"
+
+  for _ in $(seq 1 12); do
+    if ! docker inspect -f '{{.State.Running}}' "${APP_NAME}" 2>/dev/null | grep -q true; then
+      return 2
+    fi
+
+    local status_code
+    status_code="$(
+      curl \
+        --silent \
+        --show-error \
+        --max-time 2 \
+        --dump-header "${headers_path}" \
+        --output "${body_path}" \
+        --write-out '%{http_code}' \
+        "http://127.0.0.1:${APP_PORT}${path}" \
+        2>"${stderr_path}" || true
+    )"
+
+    if [ "${status_code}" = "${expected_status}" ]; then
+      return 0
+    fi
+
+    printf '%s\t%s\t%s\n' "${phase}" "${path}" "${status_code}" >> "${PHASES_LOG_PATH}"
+    sleep 1
+  done
+
+  return 1
+}
+
+docker network create "${NETWORK_NAME}" >/dev/null
+
+docker run -d \
+  --name "${POSTGRES_NAME}" \
+  --network "${NETWORK_NAME}" \
+  -p "127.0.0.1:${POSTGRES_PORT}:5432" \
+  -e POSTGRES_DB=sva_studio \
+  -e POSTGRES_USER=sva \
+  -e POSTGRES_PASSWORD="${POSTGRES_PASSWORD}" \
+  postgres:16-alpine >/dev/null
+
+if wait_for_postgres; then
+  set_phase_var POSTGRES_READY_STATUS ok
+  mark_phase postgres-ready ok
+else
+  set_phase_var POSTGRES_READY_STATUS error
+  mark_phase postgres-ready error
+  docker logs "${POSTGRES_NAME}" > "${ARTIFACT_DIR}/${POSTGRES_NAME}.log" 2>&1 || true
+  fail_verify dependency-failed postgres-ready "Postgres wurde im Image-Verify nicht bereit."
+fi
+
+if [ "${VERIFY_STATUS}" = "ok" ]; then
+  if docker exec -i "${POSTGRES_NAME}" psql -v ON_ERROR_STOP=1 -U sva -d sva_studio <<EOF >/dev/null
+DO \$\$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'sva_app') THEN
+    CREATE ROLE sva_app LOGIN PASSWORD '${APP_DB_PASSWORD}';
+  ELSE
+    ALTER ROLE sva_app WITH LOGIN PASSWORD '${APP_DB_PASSWORD}';
+  END IF;
+END
+\$\$;
+GRANT CONNECT ON DATABASE sva_studio TO sva_app;
+GRANT USAGE, CREATE ON SCHEMA public TO sva_app;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO sva_app;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO sva_app;
+EOF
+  then
+    set_phase_var POSTGRES_APP_ROLE_STATUS ok
+    mark_phase postgres-app-role ok
+  else
+    set_phase_var POSTGRES_APP_ROLE_STATUS error
+    mark_phase postgres-app-role error
+    fail_verify dependency-failed postgres-app-role "Die temporaere App-Rolle fuer das Image-Verify konnte nicht vorbereitet werden."
+  fi
+fi
+
+if [ "${VERIFY_STATUS}" = "ok" ]; then
+  if env \
+    POSTGRES_HOST=127.0.0.1 \
+    POSTGRES_PORT="${POSTGRES_PORT}" \
+    POSTGRES_USER=sva \
+    POSTGRES_PASSWORD="${POSTGRES_PASSWORD}" \
+    POSTGRES_DB=sva_studio \
+    SVA_LOCAL_POSTGRES_CONTAINER_NAME="${POSTGRES_NAME}" \
+    bash packages/data/scripts/run-migrations.sh up >/dev/null
+  then
+    set_phase_var SCHEMA_MIGRATIONS_STATUS ok
+    mark_phase schema-migrations ok
+  else
+    set_phase_var SCHEMA_MIGRATIONS_STATUS error
+    mark_phase schema-migrations error
+    fail_verify dependency-failed schema-migrations "Die temporaeren IAM-Migrationen fuer das Image-Verify sind fehlgeschlagen."
+  fi
+fi
+
+docker run -d \
+  --name "${REDIS_NAME}" \
+  --network "${NETWORK_NAME}" \
+  redis:7-alpine redis-server --save "" --appendonly no --requirepass "${REDIS_PASSWORD}" >/dev/null
+
+if [ "${VERIFY_STATUS}" = "ok" ]; then
+  if wait_for_redis; then
+    set_phase_var REDIS_READY_STATUS ok
+    mark_phase redis-ready ok
+  else
+    set_phase_var REDIS_READY_STATUS error
+    mark_phase redis-ready error
+    docker logs "${REDIS_NAME}" > "${ARTIFACT_DIR}/${REDIS_NAME}.log" 2>&1 || true
+    fail_verify dependency-failed redis-ready "Redis wurde im Image-Verify nicht bereit."
+  fi
+fi
+
+if [ "${VERIFY_STATUS}" = "ok" ]; then
+  KEYCLOAK_MOCK_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/keycloak-verify-mock.cjs"
+  docker run -d \
+    --name "${KEYCLOAK_NAME}" \
+    --network "${NETWORK_NAME}" \
+    -e PORT=38080 \
+    -e KEYCLOAK_REALM=sva-studio \
+    -e KEYCLOAK_BASE_URL="http://${KEYCLOAK_NAME}:38080" \
+    -v "${KEYCLOAK_MOCK_SCRIPT}:/tmp/keycloak-verify-mock.cjs:ro" \
+    node:22-alpine \
+    node /tmp/keycloak-verify-mock.cjs >/dev/null
+
+  if wait_for_container_http "${KEYCLOAK_NAME}" "http://127.0.0.1:38080/realms/sva-studio/.well-known/openid-configuration"; then
+    set_phase_var KEYCLOAK_READY_STATUS ok
+    mark_phase keycloak-ready ok
+  else
+    set_phase_var KEYCLOAK_READY_STATUS error
+    mark_phase keycloak-ready error
+    docker logs "${KEYCLOAK_NAME}" > "${ARTIFACT_DIR}/${KEYCLOAK_NAME}.log" 2>&1 || true
+    fail_verify dependency-failed keycloak-ready "Der Keycloak-Admin-Mock wurde im Image-Verify nicht bereit."
+  fi
+fi
+
+if [ "${VERIFY_STATUS}" = "ok" ]; then
+  if docker pull "${IMAGE_REF}" >/dev/null; then
+    set_phase_var IMAGE_PULL_STATUS ok
+    mark_phase image-pull ok
+  else
+    set_phase_var IMAGE_PULL_STATUS error
+    mark_phase image-pull error
+    fail_verify dependency-failed image-pull "Das Studio-Image konnte fuer das Verify nicht gepullt werden."
+  fi
+fi
 
 cat >"${ENV_FILE}" <<EOF
 HOST=0.0.0.0
@@ -53,14 +274,14 @@ SVA_PARENT_DOMAIN=studio.example.invalid
 SVA_ALLOWED_INSTANCE_IDS=example-instance
 SVA_PUBLIC_BASE_URL=http://127.0.0.1:${APP_PORT}
 SVA_PUBLIC_HOST=127.0.0.1:${APP_PORT}
-SVA_AUTH_ISSUER=https://keycloak.example.invalid/realms/sva-studio
+SVA_AUTH_ISSUER=http://${KEYCLOAK_NAME}:38080/realms/sva-studio
 SVA_AUTH_CLIENT_ID=sva-studio
 SVA_AUTH_CLIENT_SECRET=verify-auth-client-secret
 SVA_AUTH_STATE_SECRET=verify-auth-state-secret
 SVA_AUTH_REDIRECT_URI=http://127.0.0.1:${APP_PORT}/auth/callback
 SVA_AUTH_POST_LOGOUT_REDIRECT_URI=http://127.0.0.1:${APP_PORT}/
 IAM_CSRF_ALLOWED_ORIGINS=http://127.0.0.1:${APP_PORT}
-KEYCLOAK_ADMIN_BASE_URL=https://keycloak.example.invalid
+KEYCLOAK_ADMIN_BASE_URL=http://${KEYCLOAK_NAME}:38080
 KEYCLOAK_ADMIN_REALM=sva-studio
 KEYCLOAK_ADMIN_CLIENT_ID=sva-studio-iam-service
 KEYCLOAK_ADMIN_CLIENT_SECRET=verify-keycloak-admin-secret
@@ -92,120 +313,108 @@ IAM_BULK_ENABLED=true
 VITE_IAM_UI_ENABLED=true
 VITE_IAM_ADMIN_ENABLED=true
 VITE_IAM_BULK_ENABLED=true
+SVA_SERVER_ENTRY_DEBUG=true
 EOF
 
-docker network create "${NETWORK_NAME}" >/dev/null
+if [ "${VERIFY_STATUS}" = "ok" ]; then
+  docker run -d \
+    --name "${APP_NAME}" \
+    --network "${NETWORK_NAME}" \
+    --env-file "${ENV_FILE}" \
+    -p "127.0.0.1:${APP_PORT}:3000" \
+    "${IMAGE_REF}" >/dev/null
 
-docker run -d \
-  --name "${POSTGRES_NAME}" \
-  --network "${NETWORK_NAME}" \
-  -e POSTGRES_DB=sva_studio \
-  -e POSTGRES_USER=sva \
-  -e POSTGRES_PASSWORD="${POSTGRES_PASSWORD}" \
-  postgres:16-alpine >/dev/null
-
-for _ in $(seq 1 30); do
-  if docker exec "${POSTGRES_NAME}" pg_isready -U sva -d sva_studio >/dev/null 2>&1; then
-    postgres_ready="true"
-    break
-  fi
-  sleep 2
-done
-
-if [ "${postgres_ready:-false}" != "true" ]; then
-  fail_with_container_diagnostics "Postgres wurde im Artifact-Verify nicht bereit." "${POSTGRES_NAME}"
-fi
-
-docker exec -i "${POSTGRES_NAME}" psql -v ON_ERROR_STOP=1 -U sva -d sva_studio <<EOF >/dev/null
-DO \$\$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'sva_app') THEN
-    CREATE ROLE sva_app LOGIN PASSWORD '${APP_DB_PASSWORD}';
-  ELSE
-    ALTER ROLE sva_app WITH LOGIN PASSWORD '${APP_DB_PASSWORD}';
-  END IF;
-END
-\$\$;
-GRANT CONNECT ON DATABASE sva_studio TO sva_app;
-GRANT USAGE, CREATE ON SCHEMA public TO sva_app;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO sva_app;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO sva_app;
-EOF
-
-docker run -d \
-  --name "${REDIS_NAME}" \
-  --network "${NETWORK_NAME}" \
-  redis:7-alpine redis-server --save "" --appendonly no --requirepass "${REDIS_PASSWORD}" >/dev/null
-
-for _ in $(seq 1 30); do
-  if docker exec "${REDIS_NAME}" redis-cli --no-auth-warning -a "${REDIS_PASSWORD}" ping | grep -q PONG; then
-    redis_ready="true"
-    break
-  fi
-  sleep 2
-done
-
-if [ "${redis_ready:-false}" != "true" ]; then
-  fail_with_container_diagnostics "Redis wurde im Artifact-Verify nicht bereit." "${REDIS_NAME}"
-fi
-
-docker pull "${IMAGE_REF}" >/dev/null
-
-docker run -d \
-  --name "${APP_NAME}" \
-  --network "${NETWORK_NAME}" \
-  --env-file "${ENV_FILE}" \
-  -p "127.0.0.1:${APP_PORT}:3000" \
-  "${IMAGE_REF}" >/dev/null
-
-wait_for_endpoint() {
-  local path="$1"
-  local expected="$2"
-  local output_file="${ARTIFACT_DIR}/$(echo "${path}" | tr '/:' '__').txt"
-
-  for _ in $(seq 1 30); do
+  for _ in $(seq 1 12); do
     if ! docker inspect -f '{{.State.Running}}' "${APP_NAME}" 2>/dev/null | grep -q true; then
       break
     fi
-
-    local status
-    status="$(curl --silent --show-error --max-time 5 --output "${output_file}" --write-out '%{http_code}' "http://127.0.0.1:${APP_PORT}${path}" || true)"
-    if [ "${status}" = "${expected}" ]; then
-      printf '%s\t%s\n' "${path}" "${status}" >> "${LOG_PATH}"
-      return 0
+    if docker exec "${APP_NAME}" sh -lc "wget -q -O /dev/null http://127.0.0.1:3000/health/live" >/dev/null 2>&1; then
+      break
     fi
-
-    printf '%s\t%s\n' "${path}" "${status}" >> "${LOG_PATH}"
-    sleep 2
+    sleep 1
   done
 
-  return 1
-}
-
-VERIFY_STATUS="ok"
-if ! wait_for_endpoint "/health/live" "200"; then
-  VERIFY_STATUS="error"
-fi
-if [ "${VERIFY_STATUS}" = "ok" ] && ! wait_for_endpoint "/health/ready" "200"; then
-  VERIFY_STATUS="error"
-fi
-if [ "${VERIFY_STATUS}" = "ok" ] && ! wait_for_endpoint "/" "200"; then
-  VERIFY_STATUS="error"
+  if docker inspect -f '{{.State.Running}}' "${APP_NAME}" 2>/dev/null | grep -q true; then
+    set_phase_var APP_START_STATUS ok
+    mark_phase app-start ok
+  else
+    set_phase_var APP_START_STATUS error
+    mark_phase app-start error
+    fail_verify runtime-start-failed app-start "Der Containerprozess des Studio-Images startete nicht stabil."
+  fi
 fi
 
-docker logs "${APP_NAME}" > "${LOG_PATH}.container" 2>&1 || true
-docker inspect "${APP_NAME}" > "${LOG_PATH}.inspect.json" 2>/dev/null || true
+if [ "${VERIFY_STATUS}" = "ok" ]; then
+  if probe_endpoint ".health-live" "/health/live" "200"; then
+    set_phase_var HEALTH_LIVE_STATUS ok
+    mark_phase health-live ok
+  else
+    set_phase_var HEALTH_LIVE_STATUS error
+    mark_phase health-live error
+    if docker inspect -f '{{.State.Running}}' "${APP_NAME}" 2>/dev/null | grep -q true; then
+      fail_verify http-dispatch-failed health-live "GET /health/live antwortet nicht stabil aus dem Studio-Image."
+    else
+      fail_verify runtime-start-failed health-live "Der Containerprozess beendete sich waehrend /health/live."
+    fi
+  fi
+fi
+
+if [ "${VERIFY_STATUS}" = "ok" ]; then
+  if probe_endpoint ".health-ready" "/health/ready" "200"; then
+    set_phase_var HEALTH_READY_STATUS ok
+    mark_phase health-ready ok
+  else
+    set_phase_var HEALTH_READY_STATUS error
+    mark_phase health-ready error
+    fail_verify http-dispatch-failed health-ready "GET /health/ready antwortet nicht stabil aus dem Studio-Image."
+  fi
+fi
+
+if [ "${VERIFY_STATUS}" = "ok" ]; then
+  if probe_endpoint ".root-page" "/" "200"; then
+    set_phase_var ROOT_PAGE_STATUS ok
+    mark_phase root-page ok
+  else
+    set_phase_var ROOT_PAGE_STATUS error
+    mark_phase root-page error
+    fail_verify http-dispatch-failed root-page "GET / liefert keine stabile HTTP-200-Antwort aus dem Studio-Image."
+  fi
+fi
+
+docker logs "${APP_NAME}" > "${ARTIFACT_DIR}/${APP_NAME}.log" 2>&1 || true
+docker inspect "${APP_NAME}" > "${ARTIFACT_DIR}/${APP_NAME}.inspect.json" 2>/dev/null || true
+docker logs "${POSTGRES_NAME}" > "${ARTIFACT_DIR}/${POSTGRES_NAME}.log" 2>&1 || true
+docker logs "${REDIS_NAME}" > "${ARTIFACT_DIR}/${REDIS_NAME}.log" 2>&1 || true
+docker logs "${KEYCLOAK_NAME}" > "${ARTIFACT_DIR}/${KEYCLOAK_NAME}.log" 2>&1 || true
 
 cat >"${REPORT_PATH}" <<EOF
 {
   "imageRef": "${IMAGE_REF}",
   "status": "${VERIFY_STATUS}",
+  "failureClass": "${FAILURE_CLASS}",
+  "failedPhase": "${FAILED_PHASE}",
   "reportId": "${VERIFY_ID}",
   "port": ${APP_PORT},
+  "phases": {
+    "postgres-ready": "${POSTGRES_READY_STATUS}",
+    "postgres-app-role": "${POSTGRES_APP_ROLE_STATUS}",
+    "schema-migrations": "${SCHEMA_MIGRATIONS_STATUS}",
+    "redis-ready": "${REDIS_READY_STATUS}",
+    "keycloak-ready": "${KEYCLOAK_READY_STATUS}",
+    "image-pull": "${IMAGE_PULL_STATUS}",
+    "app-start": "${APP_START_STATUS}",
+    "health-live": "${HEALTH_LIVE_STATUS}",
+    "health-ready": "${HEALTH_READY_STATUS}",
+    "root-page": "${ROOT_PAGE_STATUS}"
+  },
   "artifacts": {
-    "log": "$(basename "${LOG_PATH}")",
-    "containerLog": "$(basename "${LOG_PATH}.container")",
-    "inspect": "$(basename "${LOG_PATH}.inspect.json")"
+    "summary": "$(basename "${SUMMARY_PATH}")",
+    "phasesLog": "$(basename "${PHASES_LOG_PATH}")",
+    "appLog": "${APP_NAME}.log",
+    "appInspect": "${APP_NAME}.inspect.json",
+    "postgresLog": "${POSTGRES_NAME}.log",
+    "redisLog": "${REDIS_NAME}.log",
+    "keycloakLog": "${KEYCLOAK_NAME}.log"
   }
 }
 EOF
@@ -215,8 +424,23 @@ cat >"${SUMMARY_PATH}" <<EOF
 
 - Image-Ref: \`${IMAGE_REF}\`
 - Status: \`${VERIFY_STATUS}\`
+- Fehlerklasse: \`${FAILURE_CLASS}\`
+- Fehlerphase: \`${FAILED_PHASE:-none}\`
 - Port: \`${APP_PORT}\`
 - Report: \`$(basename "${REPORT_PATH}")\`
+
+## Phasen
+
+- \`postgres-ready\`: \`${POSTGRES_READY_STATUS}\`
+- \`postgres-app-role\`: \`${POSTGRES_APP_ROLE_STATUS}\`
+- \`schema-migrations\`: \`${SCHEMA_MIGRATIONS_STATUS}\`
+- \`redis-ready\`: \`${REDIS_READY_STATUS}\`
+- \`keycloak-ready\`: \`${KEYCLOAK_READY_STATUS}\`
+- \`image-pull\`: \`${IMAGE_PULL_STATUS}\`
+- \`app-start\`: \`${APP_START_STATUS}\`
+- \`health-live\`: \`${HEALTH_LIVE_STATUS}\`
+- \`health-ready\`: \`${HEALTH_READY_STATUS}\`
+- \`root-page\`: \`${ROOT_PAGE_STATUS}\`
 EOF
 
 if [ "${VERIFY_STATUS}" != "ok" ]; then

@@ -124,7 +124,9 @@ describe('useGroups', () => {
         id: 'group-1',
         assignedRoleIds: ['role-1'],
       });
-      await result.current.createGroup({ groupKey: 'team_editors', displayName: 'Team Editors' });
+      await expect(result.current.createGroup({ groupKey: 'team_editors', displayName: 'Team Editors' })).resolves.toBe(
+        'group-2'
+      );
       await result.current.updateGroup('group-1', { displayName: 'Editors' });
       await result.current.assignRole('group-1', 'role-2');
       await result.current.removeRole('group-1', 'role-1');
@@ -142,6 +144,60 @@ describe('useGroups', () => {
     expect(removeGroupMembershipMock).toHaveBeenCalledWith('group-1', 'user-123');
     expect(deleteGroupMock).toHaveBeenCalledTimes(1);
     expect(listGroupsMock).toHaveBeenCalledTimes(8);
+  });
+
+  it('normalizes legacy group detail payloads with roles and members', async () => {
+    asIamErrorMock.mockImplementation((cause: unknown) => cause);
+    listGroupsMock.mockResolvedValueOnce({
+      data: [],
+      pagination: {
+        page: 1,
+        pageSize: 1,
+        total: 0,
+      },
+    });
+    getGroupMock.mockResolvedValueOnce({
+      data: {
+        id: 'group-1',
+        groupKey: 'admins',
+        displayName: 'Admins',
+        description: 'Administrative Gruppe',
+        groupType: 'role_bundle',
+        isActive: true,
+        memberCount: 1,
+        roleCount: 1,
+        roles: [{ roleId: 'role-legacy' }],
+        members: [
+          {
+            accountId: 'account-1',
+            groupId: 'group-1',
+            displayName: 'Ada Admin',
+            validFrom: '2026-04-01T00:00:00.000Z',
+            validTo: '2026-05-01T00:00:00.000Z',
+          },
+        ],
+      },
+    });
+
+    const { result } = renderHook(() => useGroups());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    await act(async () => {
+      await expect(result.current.loadGroupDetail('group-1')).resolves.toMatchObject({
+        assignedRoleIds: ['role-legacy'],
+        memberships: [
+          expect.objectContaining({
+            accountId: 'account-1',
+            keycloakSubject: 'Ada Admin',
+            validFrom: '2026-04-01T00:00:00.000Z',
+            validUntil: '2026-05-01T00:00:00.000Z',
+          }),
+        ],
+      });
+    });
   });
 
   it('invalidates permissions when initial fetch returns 403', async () => {
@@ -220,7 +276,7 @@ describe('useGroups', () => {
 
     await act(async () => {
       const created = await result.current.createGroup({ groupKey: 'editors', displayName: 'Editors' });
-      expect(created).toBe(false);
+      expect(created).toBeNull();
     });
 
     expect(result.current.error).toBeNull();

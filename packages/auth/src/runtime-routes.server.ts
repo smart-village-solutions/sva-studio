@@ -51,6 +51,7 @@ export {
 } from './iam-contents.server.js';
 export {
   createLegalTextHandler,
+  deleteLegalTextHandler,
   listLegalTextsHandler,
   listPendingLegalTextsHandler,
   updateLegalTextHandler,

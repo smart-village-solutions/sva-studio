@@ -113,7 +113,7 @@ Kurz notiert:
 - Auf dem Endpoint `sva` läuft Traefik `v1.7.34`; daher nur Traefik-v1-Labels verwenden. `traefik.http.routers.*` wird ignoriert
 - Traefik ist als externe, nicht diesem Agenten zugeordnete Ingress-Komponente zu behandeln; Diagnosen sind erlaubt, Änderungen daran nicht
 - Für Let's Encrypt bei Instanz-Subdomains konkrete `Host:`-Einträge ergänzen; `HostRegexp` allein reicht auf Traefik v1 nicht für ACME
-- Fuer `studio` ist der kanonische Betriebsweg `pnpm env:precheck:studio`, `pnpm env:deploy:studio`, `pnpm env:smoke:studio`
+- Fuer `studio` ist der kanonische Betriebsweg `Studio Image Build` -> `Studio Artifact Verify` -> `pnpm env:release:studio:local`
 - `studio` mutiert ausschliesslich den Stack `studio` auf Endpoint `sva`; direkte Service-Updates oder Portainer-Handedits sind nur dokumentierter Notfallpfad
 
 ### Studio-spezifische Diagnose-Regeln
@@ -312,20 +312,20 @@ Prüft:
 
 ```bash
 # App-only Release (Zero-Downtime, kein Schema-Change)
-pnpm env:deploy:studio -- --release-mode=app-only \
+pnpm env:release:studio:local -- \
   --image-digest=sha256:abc123... \
-  --actor="$USER" \
+  --release-mode=app-only \
   --rollback-hint="Vorherigen Digest erneut deployen"
 
 # Schema-and-App Release (mit Maintenance-Window)
-pnpm env:deploy:studio -- --release-mode=schema-and-app \
+pnpm env:release:studio:local -- \
   --image-digest=sha256:abc123... \
+  --release-mode=schema-and-app \
   --maintenance-window="2026-04-02 19:00-19:15 CET" \
-  --actor="$USER" \
   --rollback-hint="Vorherigen Digest erneut deployen"
 ```
 
-Alternativ via GitHub Actions Workflow `studio-deploy.yml` oder orchestriert über `studio-release.yml` (empfohlen fuer produktionsnahe Rollouts).
+Der empfohlene und einzige dokumentierte produktionsnahe Standard ist `Studio Image Build` -> `Studio Artifact Verify` -> `pnpm env:release:studio:local`.
 
 ### Phase 4 – Post-Deploy-Verifikation
 
@@ -399,8 +399,9 @@ pnpm env:feedback:studio
 docker service update --rollback "$SVA_STACK_NAME_app"
 
 # Oder: vorheriges Image-Digest erneut deployen
-pnpm env:deploy:studio -- --release-mode=app-only \
+pnpm env:release:studio:local -- \
   --image-digest=sha256:<previous-digest> \
+  --release-mode=app-only \
   --rollback-hint="Rollback wegen <Grund>"
 ```
 
@@ -410,18 +411,16 @@ Bei Schema-Migrationen: Prüfe, ob die Migration rückwärtskompatibel ist, bevo
 
 ## GitHub Actions Integration
 
-Die Workflows `studio-image-build.yml`, `studio-artifact-verify.yml`, `studio-deploy.yml` und optional `studio-release.yml` automatisieren den gesamten Ablauf:
+Die Workflows `studio-image-build.yml`, `studio-artifact-verify.yml` und optional `studio-release.yml` automatisieren den vorbereitenden Ablauf:
 
-1. **Inputs**: `release_mode`, `image_tag`, `image_digest` (Pflicht), `maintenance_window`, `rollback_hint`
-2. **Stages**: Image Build → Artifact Verify → Studio Deploy
+1. **Inputs**: `image_tag`, `image_digest` (Pflicht für Verify/Preparation)
+2. **Stages**: Image Build → Artifact Verify
 3. **Secrets**: Alle sensitiven Werte über GitHub Environment `studio`
-4. **Artefakte**: Image-Verify- und Deploy-Reports werden als Workflow-Artifacts gespeichert
+4. **Artefakte**: Build- und Verify-Reports werden als Workflow-Artifacts gespeichert
 
 ```bash
-# Manuell auslösen via gh CLI
-gh workflow run studio-deploy.yml \
-  --field release_mode=app-only \
-  --field image_digest=sha256:abc123...
+# Vorbereitungsworkflow manuell auslösen
+gh workflow run studio-release.yml
 ```
 
 ---
@@ -506,7 +505,6 @@ Pragmatische Hinweise fuer `studio`:
 | `config/runtime/*.vars` | Runtime-Profile |
 | `scripts/ops/runtime-env.ts` | Orchestrierungs-CLI |
 | `scripts/ops/create-secrets-portainer-api.sh` | Secrets via API |
-| `.github/workflows/studio-deploy.yml` | CI/CD Deploy-Workflow fuer `studio` |
 | `docs/guides/swarm-deployment-guide.md` | Deployment-Handbuch |
 | `docs/guides/iam-deployment-runbook.md` | IAM-Rollout-Runbook |
 | `docs/guides/keycloak-rollen-sync-runbook.md` | Keycloak-Sync-Runbook |

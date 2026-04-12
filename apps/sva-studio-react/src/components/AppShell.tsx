@@ -8,8 +8,6 @@ import React from 'react';
 
 import { AppBreadcrumbs } from './AppBreadcrumbs';
 import Header from './Header';
-import { LegalTextAcceptanceDialog } from './LegalTextAcceptanceDialog';
-import Sidebar from './Sidebar';
 import { t } from '../i18n';
 import { useAuth } from '../providers/auth-provider';
 
@@ -26,6 +24,20 @@ const LazyRuntimeHealthIndicator = React.lazy(async () => {
   const module = await import('./RuntimeHealthIndicator');
   return {
     default: module.RuntimeHealthIndicator,
+  };
+});
+
+const LazySidebar = React.lazy(async () => {
+  const module = await import('./Sidebar');
+  return {
+    default: module.default,
+  };
+});
+
+const LazyLegalTextAcceptanceDialog = React.lazy(async () => {
+  const module = await import('./LegalTextAcceptanceDialog');
+  return {
+    default: module.LegalTextAcceptanceDialog,
   };
 });
 
@@ -48,18 +60,25 @@ export default function AppShell({
   sidebarSlot,
 }: AppShellProps) {
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
+  const [isHydrated, setIsHydrated] = React.useState(false);
   const showSidebar = isAuthenticated && !isAuthLoading;
   const showBreadcrumbs = currentPathname !== '/';
+
+  React.useEffect(() => {
+    setIsHydrated(true);
+  }, []);
 
   return (
     <div className="isolate flex min-h-screen w-full flex-1 flex-col bg-background lg:flex-row">
       {showSidebar
         ? (sidebarSlot ?? (
-        <Sidebar
-          isLoading={isLoading}
-          isMobileOpen={isMobileSidebarOpen}
-          onMobileOpenChange={onMobileSidebarOpenChange}
-        />
+        <React.Suspense fallback={null}>
+          <LazySidebar
+            isLoading={isLoading}
+            isMobileOpen={isMobileSidebarOpen}
+            onMobileOpenChange={onMobileSidebarOpenChange}
+          />
+        </React.Suspense>
           ))
         : null}
       <div className="relative z-0 flex min-h-screen min-w-0 flex-1 flex-col">
@@ -100,7 +119,11 @@ export default function AppShell({
             </div>
           )}
         </main>
-        <LegalTextAcceptanceDialog pathname={currentPathname} />
+        {isHydrated ? (
+          <React.Suspense fallback={null}>
+            <LazyLegalTextAcceptanceDialog pathname={currentPathname} />
+          </React.Suspense>
+        ) : null}
       </div>
     </div>
   );

@@ -38,7 +38,7 @@ const createGroupsState = (overrides: Record<string, unknown> = {}) => ({
   mutationError: null,
   refetch: vi.fn(),
   clearMutationError: vi.fn(),
-  createGroup: vi.fn().mockResolvedValue(true),
+  createGroup: vi.fn().mockResolvedValue('group-1'),
   updateGroup: vi.fn().mockResolvedValue(true),
   deleteGroup: vi.fn().mockResolvedValue(true),
   loadGroupDetail: vi.fn().mockResolvedValue(null),
@@ -60,7 +60,7 @@ describe('GroupCreatePage', () => {
   });
 
   it('creates a group with normalized key and navigates to the detail page', async () => {
-    const createGroup = vi.fn().mockResolvedValue(true);
+    const createGroup = vi.fn().mockResolvedValue('group-99');
     useGroupsMock.mockReturnValue(createGroupsState({ createGroup }));
 
     render(<GroupCreatePage />);
@@ -85,28 +85,8 @@ describe('GroupCreatePage', () => {
     });
     expect(navigateMock).toHaveBeenCalledWith({
       to: '/admin/groups/$groupId',
-      params: { groupId: 'group-1' },
+      params: { groupId: 'group-99' },
     });
-  });
-
-  it('navigates to the group list when the created group is not yet in the list snapshot', async () => {
-    const createGroup = vi.fn().mockResolvedValue(true);
-    useGroupsMock.mockReturnValue(createGroupsState({ createGroup, groups: [] }));
-
-    render(<GroupCreatePage />);
-
-    fireEvent.change(screen.getByLabelText('Technischer Gruppenschlüssel', { selector: '#create-group-key' }), {
-      target: { value: ' editors ' },
-    });
-    fireEvent.change(screen.getByLabelText('Anzeigename', { selector: '#create-group-name' }), {
-      target: { value: ' Editors ' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Gruppe anlegen' }));
-
-    await waitFor(() => {
-      expect(createGroup).toHaveBeenCalled();
-    });
-    expect(navigateMock).toHaveBeenCalledWith({ to: '/admin/groups' });
   });
 
   it('renders mutation errors', () => {

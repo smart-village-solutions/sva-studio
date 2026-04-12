@@ -1495,6 +1495,7 @@ export const i18nResources = {
         actions: {
           create: 'Rechtstext anlegen',
           edit: 'Bearbeiten',
+          delete: 'Löschen',
           save: 'Änderungen speichern',
           retry: 'Erneut versuchen',
         },
@@ -1531,6 +1532,11 @@ export const i18nResources = {
         detail: {
           backToList: 'Zur Rechtstextliste',
           notFound: 'Die angeforderte Rechtstext-Version wurde nicht gefunden.',
+        },
+        confirm: {
+          deleteTitle: 'Rechtstext-Version löschen?',
+          deleteDescription:
+            'Diese Rechtstext-Version wird dauerhaft entfernt. Bereits dokumentierte Akzeptanzen bleiben unverändert bestehen.',
         },
         fields: {
           name: 'Name',
@@ -3215,6 +3221,7 @@ export const i18nResources = {
         actions: {
           create: 'Create legal text',
           edit: 'Edit',
+          delete: 'Delete',
           save: 'Save changes',
           retry: 'Retry',
         },
@@ -3251,6 +3258,11 @@ export const i18nResources = {
         detail: {
           backToList: 'Back to legal texts',
           notFound: 'The requested legal text version could not be found.',
+        },
+        confirm: {
+          deleteTitle: 'Delete legal text version?',
+          deleteDescription:
+            'This legal text version will be removed permanently. Already recorded acceptances remain unchanged.',
         },
         fields: {
           name: 'Name',

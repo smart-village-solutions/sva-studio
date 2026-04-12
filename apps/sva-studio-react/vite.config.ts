@@ -14,12 +14,14 @@ const workspaceRoot = normalizeDirectory(new URL('../../', import.meta.url));
 const tanstackRouterBasepath = '/';
 const tanstackServerFnBase = '/_server';
 const tanstackServerFnTransportBase = `${tanstackServerFnBase}/`;
+const tanstackServerEntry = 'server.ts';
 const codecovEnabled = process.env.CODECOV_TOKEN !== undefined;
 const tanstackDevtoolsEnabled =
   process.env.VITE_ENABLE_TANSTACK_DEVTOOLS === 'true' &&
   process.env.CI !== 'true' &&
   process.env.PLAYWRIGHT_TEST !== 'true';
 const configuredParentDomain = process.env.SVA_PARENT_DOMAIN?.trim().toLowerCase();
+const configuredDevHost = process.env.HOST?.trim();
 const allowedHosts = [
   'localhost',
   '127.0.0.1',
@@ -59,6 +61,7 @@ if (process.cwd() !== appRoot) {
 const config = defineConfig({
   root: appRoot,
   server: {
+    host: configuredDevHost || '0.0.0.0',
     // Disable HMR in this TanStack Start SSR setup to avoid React preamble runtime crashes.
     hmr: false,
     allowedHosts,
@@ -130,6 +133,9 @@ const config = defineConfig({
     tanstackStartClientEnvCompatPlugin(),
     ...(tanstackDevtoolsEnabled ? [devtools()] : []),
     tanstackStart({
+      server: {
+        entry: tanstackServerEntry,
+      },
       serverFns: {
         base: tanstackServerFnBase,
       },

@@ -80,6 +80,17 @@ const toIsoDateTime = (value: string) => {
 export const GroupDetailPage = ({ groupId }: GroupDetailPageProps) => {
   const groupsApi = useGroups();
   const rolesApi = useRoles();
+  const {
+    isLoading,
+    mutationError,
+    loadGroupDetail,
+    updateGroup,
+    assignRole,
+    removeRole,
+    assignMembership,
+    removeMembership,
+    deleteGroup,
+  } = groupsApi;
   const [group, setGroup] = React.useState<IamAdminGroupDetail | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false);
   const [formValues, setFormValues] = React.useState<EditFormState>({
@@ -91,7 +102,7 @@ export const GroupDetailPage = ({ groupId }: GroupDetailPageProps) => {
   const [membershipForm, setMembershipForm] = React.useState<MembershipFormState>(emptyMembershipForm);
 
   const loadDetail = React.useCallback(async () => {
-    const detail = await groupsApi.loadGroupDetail(groupId);
+    const detail = await loadGroupDetail(groupId);
     if (!detail) {
       return null;
     }
@@ -104,7 +115,7 @@ export const GroupDetailPage = ({ groupId }: GroupDetailPageProps) => {
       isActive: detail.isActive,
     });
     return detail;
-  }, [groupId, groupsApi]);
+  }, [groupId, loadGroupDetail]);
 
   React.useEffect(() => {
     void loadDetail();
@@ -116,7 +127,7 @@ export const GroupDetailPage = ({ groupId }: GroupDetailPageProps) => {
       return;
     }
 
-    const updated = await groupsApi.updateGroup(groupId, {
+    const updated = await updateGroup(groupId, {
       displayName: formValues.displayName.trim(),
       description: formValues.description.trim() || undefined,
       isActive: formValues.isActive,
@@ -130,7 +141,7 @@ export const GroupDetailPage = ({ groupId }: GroupDetailPageProps) => {
 
     for (const roleId of nextRoleIds) {
       if (!currentRoleIds.has(roleId)) {
-        const assigned = await groupsApi.assignRole(groupId, roleId);
+        const assigned = await assignRole(groupId, roleId);
         if (!assigned) {
           return;
         }
@@ -139,7 +150,7 @@ export const GroupDetailPage = ({ groupId }: GroupDetailPageProps) => {
 
     for (const roleId of currentRoleIds) {
       if (!nextRoleIds.has(roleId)) {
-        const removed = await groupsApi.removeRole(groupId, roleId);
+        const removed = await removeRole(groupId, roleId);
         if (!removed) {
           return;
         }
@@ -151,7 +162,7 @@ export const GroupDetailPage = ({ groupId }: GroupDetailPageProps) => {
 
   const onAssignMembership = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const assigned = await groupsApi.assignMembership(groupId, {
+    const assigned = await assignMembership(groupId, {
       keycloakSubject: membershipForm.keycloakSubject.trim(),
       validFrom: toIsoDateTime(membershipForm.validFrom),
       validUntil: toIsoDateTime(membershipForm.validUntil),
@@ -165,7 +176,7 @@ export const GroupDetailPage = ({ groupId }: GroupDetailPageProps) => {
   };
 
   const onRemoveMembership = async (keycloakSubject: string) => {
-    const removed = await groupsApi.removeMembership(groupId, keycloakSubject);
+    const removed = await removeMembership(groupId, keycloakSubject);
     if (!removed) {
       return;
     }
@@ -174,14 +185,14 @@ export const GroupDetailPage = ({ groupId }: GroupDetailPageProps) => {
   };
 
   const onDelete = async () => {
-    const deleted = await groupsApi.deleteGroup(groupId);
+    const deleted = await deleteGroup(groupId);
     if (deleted) {
       setDeleteConfirmOpen(false);
     }
   };
 
   return (
-    <section className="space-y-5" aria-busy={groupsApi.isLoading}>
+    <section className="space-y-5" aria-busy={isLoading}>
       <header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-2">
           <h1 className="text-3xl font-semibold text-foreground">{group?.displayName ?? t('admin.groups.dialogs.editTitle')}</h1>
@@ -194,7 +205,7 @@ export const GroupDetailPage = ({ groupId }: GroupDetailPageProps) => {
         </Button>
       </header>
 
-      {!group && !groupsApi.isLoading ? (
+      {!group && !isLoading ? (
         <Card className="p-5 text-sm text-muted-foreground" role="status">
           {t('admin.groups.detail.notFound')}
         </Card>
@@ -362,9 +373,9 @@ export const GroupDetailPage = ({ groupId }: GroupDetailPageProps) => {
         </>
       ) : null}
 
-      {groupsApi.mutationError ? (
+      {mutationError ? (
         <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
-          <AlertDescription>{groupErrorMessage(groupsApi.mutationError, 'admin.groups.messages.error')}</AlertDescription>
+          <AlertDescription>{groupErrorMessage(mutationError, 'admin.groups.messages.error')}</AlertDescription>
         </Alert>
       ) : null}
 

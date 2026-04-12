@@ -16,6 +16,7 @@ const guardSpies = vi.hoisted(() => ({
   adminOrganizationDetail: vi.fn(async () => undefined),
   adminInstances: vi.fn(async () => undefined),
   adminRoles: vi.fn(async () => undefined),
+  adminRoleDetail: vi.fn(async () => undefined),
   adminGroups: vi.fn(async () => undefined),
   adminGroupCreate: vi.fn(async () => undefined),
   adminGroupDetail: vi.fn(async () => undefined),
@@ -26,6 +27,7 @@ const guardSpies = vi.hoisted(() => ({
 }));
 
 const normalizeIamTabMock = vi.hoisted(() => vi.fn((tab: unknown) => (tab === 'dsr' ? 'dsr' : 'governance')));
+const normalizeRoleDetailTabMock = vi.hoisted(() => vi.fn((tab: unknown) => (tab === 'permissions' ? 'permissions' : 'overview')));
 
 const createRouteMock = vi.hoisted(() =>
   vi.fn((options: Record<string, unknown>) => {
@@ -37,6 +39,7 @@ const createRouteMock = vi.hoisted(() =>
       useLoaderData: () => ['Rise Above'],
       useParams: () => ({
         userId: 'user-1',
+        roleId: 'role-1',
         contentId: 'content-1',
         instanceId: 'instance-1',
         organizationId: 'organization-1',
@@ -112,6 +115,13 @@ vi.mock('./admin/-iam-page', () => ({
 
 vi.mock('./admin/-iam.models', () => ({
   normalizeIamTab: (tab: unknown) => normalizeIamTabMock(tab),
+}));
+
+vi.mock('./admin/roles/-role-detail-page', () => ({
+  normalizeRoleDetailTab: (tab: unknown) => normalizeRoleDetailTabMock(tab),
+  RoleDetailPage: ({ roleId, activeTab }: { roleId: string; activeTab: string }) => (
+    <div>{`RoleDetailPage:${roleId}:${activeTab}`}</div>
+  ),
 }));
 
 vi.mock('./admin/legal-texts/-legal-texts-page', () => ({
@@ -196,7 +206,7 @@ vi.mock('./content/-content-editor-page', () => ({
   ),
 }));
 
-import { coreRouteFactoriesBase, runtimeCoreRouteFactories } from './-core-routes';
+import { coreRouteFactoriesBase, homeRouteFactory, runtimeCoreRouteFactories } from './-core-routes';
 
 type RouteOptionsUnderTest = {
   path?: string;
@@ -213,6 +223,7 @@ describe('core routes', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     normalizeIamTabMock.mockImplementation((tab: unknown) => (tab === 'dsr' ? 'dsr' : 'governance'));
+    normalizeRoleDetailTabMock.mockImplementation((tab: unknown) => (tab === 'permissions' ? 'permissions' : 'overview'));
   });
 
   afterEach(() => {
@@ -227,6 +238,7 @@ describe('core routes', () => {
 
   it('configures guarded account and admin routes, including IAM tab normalization', async () => {
     const routes = buildRouteMap();
+    const accountRoute = readRouteOptions(routes.get('/account'));
     const privacyRoute = readRouteOptions(routes.get('/account/privacy'));
     const contentRoute = readRouteOptions(routes.get('/content'));
     const contentCreateRoute = readRouteOptions(routes.get('/content/new'));
@@ -240,7 +252,9 @@ describe('core routes', () => {
     const instancesRoute = readRouteOptions(routes.get('/admin/instances'));
     const instanceCreateRoute = readRouteOptions(routes.get('/admin/instances/new'));
     const instanceDetailRoute = readRouteOptions(routes.get('/admin/instances/$instanceId'));
+    const rolesRoute = readRouteOptions(routes.get('/admin/roles'));
     const roleCreateRoute = readRouteOptions(routes.get('/admin/roles/new'));
+    const roleDetailRoute = readRouteOptions(routes.get('/admin/roles/$roleId'));
     const legalTextsRoute = readRouteOptions(routes.get('/admin/legal-texts'));
     const legalTextCreateRoute = readRouteOptions(routes.get('/admin/legal-texts/new'));
     const legalTextDetailRoute = readRouteOptions(routes.get('/admin/legal-texts/$legalTextVersionId'));
@@ -248,6 +262,7 @@ describe('core routes', () => {
     const modulesRoute = readRouteOptions(routes.get('/modules'));
     const monitoringRoute = readRouteOptions(routes.get('/monitoring'));
 
+    await accountRoute.beforeLoad?.({ href: '/account' });
     await privacyRoute.beforeLoad?.({ href: '/account/privacy' });
     await contentRoute.beforeLoad?.({ href: '/content' });
     await contentCreateRoute.beforeLoad?.({ href: '/content/new' });
@@ -261,7 +276,9 @@ describe('core routes', () => {
     await instancesRoute.beforeLoad?.({ href: '/admin/instances' });
     await instanceCreateRoute.beforeLoad?.({ href: '/admin/instances/new' });
     await instanceDetailRoute.beforeLoad?.({ href: '/admin/instances/instance-1' });
+    await rolesRoute.beforeLoad?.({ href: '/admin/roles' });
     await roleCreateRoute.beforeLoad?.({ href: '/admin/roles/new' });
+    await roleDetailRoute.beforeLoad?.({ href: '/admin/roles/role-1' });
     await legalTextsRoute.beforeLoad?.({ href: '/admin/legal-texts' });
     await legalTextCreateRoute.beforeLoad?.({ href: '/admin/legal-texts/new' });
     await legalTextDetailRoute.beforeLoad?.({ href: '/admin/legal-texts/legal-text-1' });
@@ -269,6 +286,7 @@ describe('core routes', () => {
     await modulesRoute.beforeLoad?.({ href: '/modules' });
     await monitoringRoute.beforeLoad?.({ href: '/monitoring' });
 
+    expect(guardSpies.account).toHaveBeenCalledWith({ href: '/account' });
     expect(guardSpies.accountPrivacy).toHaveBeenCalledWith({ href: '/account/privacy' });
     expect(guardSpies.content).toHaveBeenCalledWith({ href: '/content' });
     expect(guardSpies.contentCreate).toHaveBeenCalledWith({ href: '/content/new' });
@@ -282,7 +300,9 @@ describe('core routes', () => {
     expect(guardSpies.adminInstances).toHaveBeenCalledWith({ href: '/admin/instances' });
     expect(guardSpies.adminInstances).toHaveBeenCalledWith({ href: '/admin/instances/new' });
     expect(guardSpies.adminInstances).toHaveBeenCalledWith({ href: '/admin/instances/instance-1' });
+    expect(guardSpies.adminRoles).toHaveBeenCalledWith({ href: '/admin/roles' });
     expect(guardSpies.adminRoles).toHaveBeenCalledWith({ href: '/admin/roles/new' });
+    expect(guardSpies.adminRoleDetail).toHaveBeenCalledWith({ href: '/admin/roles/role-1' });
     expect(guardSpies.adminLegalTexts).toHaveBeenCalledWith({ href: '/admin/legal-texts' });
     expect(guardSpies.adminLegalTextCreate).toHaveBeenCalledWith({ href: '/admin/legal-texts/new' });
     expect(guardSpies.adminLegalTextDetail).toHaveBeenCalledWith({ href: '/admin/legal-texts/legal-text-1' });
@@ -295,11 +315,20 @@ describe('core routes', () => {
     });
     expect(normalizeIamTabMock).toHaveBeenCalledWith('bogus');
 
+    expect(roleDetailRoute.validateSearch?.({ tab: 'bogus' })).toEqual({
+      tab: 'overview',
+    });
+    expect(normalizeRoleDetailTabMock).toHaveBeenCalledWith('bogus');
+
     render(iamRoute.component?.());
     expect(screen.getByText('IamViewerPage:governance')).toBeTruthy();
+
+    cleanup();
+    render(roleDetailRoute.component?.());
+    expect(screen.getByText('RoleDetailPage:role-1:governance')).toBeTruthy();
   });
 
-  it('renders the new placeholder routes and explicit page components', () => {
+  it('renders the new placeholder routes and explicit page components', async () => {
     const routes = buildRouteMap();
     const renderPath = (path: string) => {
       const route = readRouteOptions(routes.get(path));
@@ -334,17 +363,28 @@ describe('core routes', () => {
     renderPath('/license');
     expect(screen.getByText('placeholder:shell.sidebar.license:shell.sidebar.license')).toBeTruthy();
 
+    renderPath('/account');
+    expect(screen.getByText('AccountProfilePage')).toBeTruthy();
+
     renderPath('/account/privacy');
     expect(screen.getByText('AccountPrivacyPage')).toBeTruthy();
 
+    renderPath('/interfaces');
+    expect(screen.getByText('interfaces.messages.loading')).toBeTruthy();
+    expect(await screen.findByText('InterfacesPage')).toBeTruthy();
+
+    renderPath('/admin/users');
+    expect(screen.getByText('interfaces.messages.loading')).toBeTruthy();
+    expect(await screen.findByText('UserListPage')).toBeTruthy();
+
     renderPath('/admin/groups');
-    expect(screen.getByText('GroupsPage')).toBeTruthy();
+    expect(await screen.findByText('GroupsPage')).toBeTruthy();
 
     renderPath('/admin/groups/new');
     expect(screen.getByText('GroupCreatePage')).toBeTruthy();
 
     renderPath('/admin/groups/$groupId');
-    expect(screen.getByText('GroupDetailPage:group-1')).toBeTruthy();
+    expect(await screen.findByText('GroupDetailPage:group-1')).toBeTruthy();
 
     renderPath('/admin/users/new');
     expect(screen.getByText('UserCreatePage')).toBeTruthy();
@@ -352,14 +392,25 @@ describe('core routes', () => {
     renderPath('/admin/organizations/new');
     expect(screen.getByText('OrganizationCreatePage')).toBeTruthy();
 
+    renderPath('/admin/organizations');
+    expect(screen.getByText('interfaces.messages.loading')).toBeTruthy();
+    expect(await screen.findByText('OrganizationsPage')).toBeTruthy();
+
     renderPath('/admin/organizations/$organizationId');
-    expect(screen.getByText('OrganizationDetailPage:organization-1')).toBeTruthy();
+    expect(await screen.findByText('OrganizationDetailPage:organization-1')).toBeTruthy();
 
     renderPath('/admin/instances');
     expect(screen.getByText('InstancesPage')).toBeTruthy();
 
     renderPath('/admin/roles/new');
     expect(screen.getByText('RoleCreatePage')).toBeTruthy();
+
+    renderPath('/admin/roles');
+    expect(screen.getByText('interfaces.messages.loading')).toBeTruthy();
+    expect(await screen.findByText('RolesPage')).toBeTruthy();
+
+    renderPath('/admin/roles/$roleId');
+    expect(screen.getByText('RoleDetailPage:role-1:governance')).toBeTruthy();
 
     renderPath('/admin/instances/new');
     expect(screen.getByText('InstanceCreatePage')).toBeTruthy();
@@ -375,16 +426,28 @@ describe('core routes', () => {
 
     renderPath('/admin/legal-texts/$legalTextVersionId');
     expect(screen.getByText('LegalTextDetailPage:legal-text-1')).toBeTruthy();
+
+    renderPath('/admin/api/phase1-test');
+    expect(screen.getByText('Phase1TestPage')).toBeTruthy();
   });
 
-  it('keeps the user detail route param wiring and exports the composed factory list', () => {
+  it('keeps the user detail route param wiring and exports the composed factory list', async () => {
     const routes = buildRouteMap();
     const userDetailRoute = readRouteOptions(routes.get('/admin/users/$userId'));
 
     render(userDetailRoute.component?.());
 
-    expect(screen.getByText('UserEditPage:user-1')).toBeTruthy();
+    expect(await screen.findByText('UserEditPage:user-1')).toBeTruthy();
     expect(coreRouteFactoriesBase).toHaveLength(runtimeCoreRouteFactories.length + 1);
     expect(createRouteMock).toHaveBeenCalled();
+  });
+
+  it('wires the dedicated home route factory', () => {
+    const rootRoute = { id: 'root' } as never;
+    const route = homeRouteFactory(rootRoute);
+
+    render(readRouteOptions(route).component?.());
+
+    expect(screen.getByText('HomePage')).toBeTruthy();
   });
 });

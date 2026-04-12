@@ -710,7 +710,7 @@ Das System MUST vor Acceptance-Smoke und nach Migrationen den kritischen IAM-Sol
 
 #### Scenario: Migration validiert den Sollstand
 
-- **WHEN** `env:migrate:acceptance-hb` erfolgreich alle SQL-Dateien angewendet hat
+- **WHEN** `env:migrate:studio` erfolgreich alle SQL-Dateien angewendet hat
 - **THEN** validiert ein Schema-Guard kritische Tabellen, Spalten, Indizes und RLS-Policies
 - **AND** der Befehl endet nicht erfolgreich, solange kritische Drift verbleibt
 

@@ -60,6 +60,10 @@ vi.mock('./RuntimeHealthIndicator', () => ({
   RuntimeHealthIndicator: () => <div data-testid="runtime-health-indicator" />,
 }));
 
+vi.mock('./Sidebar', () => ({
+  default: () => <aside aria-label="Seitenleiste">Sidebar</aside>,
+}));
+
 /**
  * Führt nach jedem Test ein DOM-Cleanup aus.
  */
@@ -103,7 +107,7 @@ describe('AppShell', () => {
       </AppShell>
     );
 
-    expect(screen.getByLabelText('Seitenleiste')).toBeTruthy();
+    expect(await screen.findByLabelText('Seitenleiste')).toBeTruthy();
     expect(screen.getByRole('main')).toBeTruthy();
     const breadcrumbNavigation = screen.getByRole('navigation', { name: 'Brotkrumen-Navigation' });
     expect(breadcrumbNavigation).toBeTruthy();

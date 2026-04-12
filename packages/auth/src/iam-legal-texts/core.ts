@@ -3,7 +3,7 @@ import { createSdkLogger, getWorkspaceContext } from '@sva/sdk/server';
 import { asApiList, createApiError } from '../iam-account-management/api-helpers.js';
 import type { AuthenticatedRequestContext } from '../middleware.server.js';
 import { withAuthenticatedUser } from '../middleware.server.js';
-import { createLegalTextResponse, updateLegalTextResponse } from './mutations.js';
+import { createLegalTextResponse, deleteLegalTextResponse, updateLegalTextResponse } from './mutations.js';
 import { loadLegalTextListItems, loadPendingLegalTexts } from './repository.js';
 import {
   resolveLegalTextsAdminActor,
@@ -62,6 +62,14 @@ export const updateLegalTextInternal = async (
   return 'error' in actorResolution ? actorResolution.error : updateLegalTextResponse(request, actorResolution.actor);
 };
 
+export const deleteLegalTextInternal = async (
+  request: Request,
+  ctx: AuthenticatedRequestContext
+): Promise<Response> => {
+  const actorResolution = await resolveLegalTextsAdminActor(request, ctx, { requireActorAccountId: true });
+  return 'error' in actorResolution ? actorResolution.error : deleteLegalTextResponse(request, actorResolution.actor);
+};
+
 export const listLegalTextsHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedLegalTextsHandler(request, listLegalTextsInternal);
 
@@ -98,3 +106,6 @@ export const createLegalTextHandler = async (request: Request): Promise<Response
 
 export const updateLegalTextHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedLegalTextsHandler(request, updateLegalTextInternal);
+
+export const deleteLegalTextHandler = async (request: Request): Promise<Response> =>
+  withAuthenticatedLegalTextsHandler(request, deleteLegalTextInternal);

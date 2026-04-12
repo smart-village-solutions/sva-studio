@@ -18,7 +18,7 @@
       "outputs": [],
       "options": {
         "cwd": "apps/sva-studio-react",
-        "command": "pnpm exec node --import tsx ../../scripts/ci/check-i18n-keys.ts"
+        "command": "bash ../../scripts/ci/run-workspace-node.sh --import tsx ../../scripts/ci/check-i18n-keys.ts"
       }
     },
     "check:account-ui-foundation": {
@@ -31,7 +31,7 @@
       "outputs": [],
       "options": {
         "cwd": "apps/sva-studio-react",
-        "command": "pnpm exec node --import tsx ../../scripts/ci/check-account-ui-foundation.ts"
+        "command": "bash ../../scripts/ci/run-workspace-node.sh --import tsx ../../scripts/ci/check-account-ui-foundation.ts"
       }
     },
     "serve": {
@@ -53,6 +53,8 @@
       "executor": "nx:run-commands",
       "cache": true,
       "dependsOn": [
+        "^build",
+        "check:toolchain-consistency",
         "check:i18n",
         "check:account-ui-foundation"
       ],
@@ -60,14 +62,37 @@
         "production",
         "^production",
         "frontendTooling",
-        "frontendEnvBuild"
+        "frontendEnvBuild",
+        "{workspaceRoot}/scripts/ci/patch-runtime-artifact.ts",
+        "{workspaceRoot}/scripts/ci/run-workspace-node.sh"
       ],
       "outputs": [
         "{projectRoot}/.output"
       ],
       "options": {
         "cwd": "apps/sva-studio-react",
-        "command": "pnpm exec node -e \"require('node:fs').mkdirSync('.output/server',{recursive:true})\" && pnpm exec vite build"
+        "command": "bash ../../scripts/ci/run-workspace-node.sh -e \"require('node:fs').mkdirSync('.output/server',{recursive:true})\" && pnpm exec vite build && bash ../../scripts/ci/run-workspace-node.sh --import tsx ../../scripts/ci/patch-runtime-artifact.ts ."
+      }
+    },
+    "check:toolchain-consistency": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "outputs": [],
+      "options": {
+        "command": "bash scripts/ci/run-workspace-node.sh --import tsx scripts/ci/check-toolchain-consistency.ts"
+      }
+    },
+    "verify:runtime-artifact": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": [
+        "build"
+      ],
+      "outputs": [
+        "{workspaceRoot}/artifacts/runtime/runtime-artifact-verify"
+      ],
+      "options": {
+        "command": "bash scripts/ci/verify-runtime-artifact.sh apps/sva-studio-react artifacts/runtime/runtime-artifact-verify"
       }
     },
     "preview": {
@@ -108,7 +133,7 @@
       ],
       "options": {
         "cwd": "apps/sva-studio-react",
-        "command": "pnpm exec vitest run --coverage --reporter=verbose --config vitest.config.ts"
+        "command": "mkdir -p coverage/.tmp && pnpm exec vitest run --coverage --reporter=verbose --config vitest.config.ts --pool forks"
       }
     },
     "test:integration": {
@@ -181,7 +206,7 @@
       "outputs": [],
       "options": {
         "cwd": "apps/sva-studio-react",
-        "command": "pnpm exec node --import tsx ../../scripts/ci/run-iam-acceptance.ts"
+        "command": "bash ../../scripts/ci/run-workspace-node.sh --import tsx ../../scripts/ci/run-iam-acceptance.ts"
       }
     }
   }

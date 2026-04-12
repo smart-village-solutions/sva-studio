@@ -263,7 +263,12 @@ if [ -z "${REDIS_URL:-}" ]; then
   export REDIS_URL="redis://redis:6379"
 fi
 
-patch_nitro_request_dispatch
+if [ "${SVA_ENABLE_RUNTIME_RECOVERY_PATCH:-0}" = "1" ]; then
+  echo "[entrypoint] legacy recovery patch explicitly enabled" >&2
+  patch_nitro_request_dispatch
+else
+  echo "[entrypoint] legacy recovery patch disabled; using final build artifact as-is" >&2
+fi
 
 if [ "${SVA_START_DIAGNOSTICS:-0}" = "1" ]; then
   write_start_diagnostics

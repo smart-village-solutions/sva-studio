@@ -44,9 +44,17 @@ install_goose() {
   local checksums_path="${bin_dir}/checksums.txt"
   local download_url="https://github.com/${GOOSE_REPO}/releases/download/${GOOSE_VERSION}/${asset}"
   local checksums_url="https://github.com/${GOOSE_REPO}/releases/download/${GOOSE_VERSION}/checksums.txt"
+  local -a curl_args=(
+    --fail
+    --show-error
+    --location
+    --retry 5
+    --retry-delay 2
+    --retry-all-errors
+  )
 
-  curl -fsSL "${checksums_url}" -o "${checksums_path}"
-  curl -fsSL "${download_url}" -o "${bin_path}"
+  curl "${curl_args[@]}" "${checksums_url}" -o "${checksums_path}"
+  curl "${curl_args[@]}" "${download_url}" -o "${bin_path}"
   chmod +x "${bin_path}"
 
   local expected_checksum

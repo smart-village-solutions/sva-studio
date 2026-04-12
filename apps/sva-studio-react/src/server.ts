@@ -1,6 +1,8 @@
 import type { Register } from '@tanstack/react-router';
 import { createStartHandler, defaultStreamHandler } from '@tanstack/react-start/server';
+import { createServerEntry } from '@tanstack/react-start/server-entry';
 import type { RequestHandler } from '@tanstack/react-start/server';
+import { dispatchAuthRouteRequest } from '@sva/routing/server';
 
 import {
   createServerFunctionRequestDiagnostics,
@@ -21,6 +23,8 @@ type ServerTransportLogger = {
   info: (message: string, meta: Record<string, unknown>) => void;
 };
 
+type ServerTransportComponent = 'server-entry-transport' | 'server-function-transport';
+
 type RequestContextSdk = {
   createSdkLogger: (options: {
     readonly component: string;
@@ -39,40 +43,65 @@ type RequestContextSdk = {
 };
 
 let sdkPromise: Promise<RequestContextSdk> | null = null;
-let loggerPromise: Promise<ServerTransportLogger> | null = null;
+const loggerPromises = new Map<ServerTransportComponent, Promise<ServerTransportLogger>>();
 const getSdk = async (): Promise<RequestContextSdk> => {
   sdkPromise ??= import('@sva/sdk/server') as Promise<RequestContextSdk>;
   return sdkPromise;
 };
 
-const getLogger = async (): Promise<ServerTransportLogger> => {
-  loggerPromise ??= getSdk().then((sdk) =>
-    sdk.createSdkLogger({
-      component: 'server-function-transport',
-      level: 'info',
-      enableConsole: true,
-      enableOtel: false,
-    })
-  );
+const getLogger = async (component: ServerTransportComponent): Promise<ServerTransportLogger> => {
+  let loggerPromise = loggerPromises.get(component);
+  if (!loggerPromise) {
+    loggerPromise = getSdk().then((sdk) =>
+      sdk.createSdkLogger({
+        component,
+        level: 'info',
+        enableConsole: true,
+        enableOtel: false,
+      })
+    );
+    loggerPromises.set(component, loggerPromise);
+  }
 
   return loggerPromise;
 };
 
-export type ServerEntry = { fetch: RequestHandler<Register> };
-
-export function createServerEntry(entry: ServerEntry): ServerEntry {
-  return {
-    async fetch(...args) {
-      return await entry.fetch(...args);
-    },
-  };
-}
-
 const instrumentedFetch: RequestHandler<Register> = async (...args) => {
   const [request, requestOptions] = args;
+  const serverEntryDebugEnabled = process.env.SVA_SERVER_ENTRY_DEBUG === 'true';
+  const logServerEntryDebug = async (message: string, meta: Record<string, unknown>) => {
+    if (!serverEntryDebugEnabled) {
+      return;
+    }
+
+    (await getLogger('server-entry-transport')).info(message, {
+      operation: 'server_entry_transport',
+      method: request.method,
+      path: new URL(request.url).pathname,
+      ...meta,
+    });
+  };
+
+  await logServerEntryDebug('Server entry request received', {});
+  const authResponse = await dispatchAuthRouteRequest(request);
+
+  if (authResponse) {
+    await logServerEntryDebug('Server entry auth route dispatched', {
+      status: authResponse.status,
+    });
+    return authResponse;
+  }
 
   if (!diagnosticsEnabled) {
-    return startFetch(request, requestOptions);
+    await logServerEntryDebug('Server entry delegated to start handler', {
+      diagnostics_enabled: false,
+    });
+    const response = await startFetch(request, requestOptions);
+    await logServerEntryDebug('Server entry response completed', {
+      status: response.status,
+      diagnostics_enabled: false,
+    });
+    return response;
   }
 
   const sdk = await getSdk();
@@ -86,10 +115,20 @@ const instrumentedFetch: RequestHandler<Register> = async (...args) => {
     });
 
     if (!diagnostics.isServerFnRequest) {
-      return startFetch(request, requestOptions);
+      await logServerEntryDebug('Server entry delegated to start handler', {
+        diagnostics_enabled: true,
+        server_fn_request: false,
+      });
+      const response = await startFetch(request, requestOptions);
+      await logServerEntryDebug('Server entry response completed', {
+        status: response.status,
+        diagnostics_enabled: true,
+        server_fn_request: false,
+      });
+      return response;
     }
 
-    (await getLogger()).info('Server function request received', {
+    (await getLogger('server-function-transport')).info('Server function request received', {
       operation: 'server_function_transport',
       request_id: diagnostics.requestId,
       method: diagnostics.method,
@@ -107,7 +146,14 @@ const instrumentedFetch: RequestHandler<Register> = async (...args) => {
       responseBody,
     });
 
-    (await getLogger()).info('Server function request routed', {
+    await logServerEntryDebug('Server entry response completed', {
+      status: response.status,
+      diagnostics_enabled: true,
+      server_fn_request: true,
+      branch_decision: branchDecision,
+    });
+
+    (await getLogger('server-function-transport')).info('Server function request routed', {
       operation: 'server_function_transport',
       request_id: diagnostics.requestId,
       method: diagnostics.method,

@@ -1,6 +1,7 @@
-import { Link } from '@tanstack/react-router';
+import { Link, useNavigate } from '@tanstack/react-router';
 import React from 'react';
 
+import { ConfirmDialog } from '../../../components/ConfirmDialog';
 import { RichTextEditor } from '../../../components/RichTextEditor';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Button } from '../../../components/ui/button';
@@ -90,10 +91,12 @@ const toIsoDateTime = (value: string): string | undefined => {
 
 export const LegalTextDetailPage = ({ legalTextVersionId }: LegalTextDetailPageProps) => {
   const legalTextsApi = useLegalTexts();
+  const navigate = useNavigate();
   const selectedLegalText = React.useMemo(
     () => legalTextsApi.legalTexts.find((entry) => entry.id === legalTextVersionId) ?? null,
     [legalTextVersionId, legalTextsApi.legalTexts]
   );
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false);
   const [formValues, setFormValues] = React.useState({
     name: '',
     legalTextVersion: '',
@@ -130,6 +133,16 @@ export const LegalTextDetailPage = ({ legalTextVersionId }: LegalTextDetailPageP
     };
 
     await legalTextsApi.updateLegalText(legalTextVersionId, payload);
+  };
+
+  const onDelete = async () => {
+    const deleted = await legalTextsApi.deleteLegalText(legalTextVersionId);
+    if (!deleted) {
+      return;
+    }
+
+    setDeleteConfirmOpen(false);
+    await navigate({ to: '/admin/legal-texts' });
   };
 
   return (
@@ -233,7 +246,10 @@ export const LegalTextDetailPage = ({ legalTextVersionId }: LegalTextDetailPageP
               />
             </div>
 
-            <div className="flex justify-end">
+            <div className="flex justify-end gap-3">
+              <Button type="button" variant="destructive" onClick={() => setDeleteConfirmOpen(true)}>
+                {t('admin.legalTexts.actions.delete')}
+              </Button>
               <Button type="submit">{t('admin.legalTexts.actions.save')}</Button>
             </div>
           </form>
@@ -245,6 +261,16 @@ export const LegalTextDetailPage = ({ legalTextVersionId }: LegalTextDetailPageP
           <AlertDescription>{legalTextErrorMessage(legalTextsApi.mutationError)}</AlertDescription>
         </Alert>
       ) : null}
+
+      <ConfirmDialog
+        open={deleteConfirmOpen}
+        title={t('admin.legalTexts.confirm.deleteTitle')}
+        description={t('admin.legalTexts.confirm.deleteDescription')}
+        confirmLabel={t('admin.legalTexts.actions.delete')}
+        cancelLabel={t('account.actions.cancel')}
+        onConfirm={() => void onDelete()}
+        onCancel={() => setDeleteConfirmOpen(false)}
+      />
     </section>
   );
 };

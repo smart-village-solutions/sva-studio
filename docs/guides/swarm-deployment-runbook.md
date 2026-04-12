@@ -235,7 +235,7 @@ Zusatz fuer den Betrieb:
 
 ## Schritt 3: Kanonischen Studio-Deploy ausführen
 
-Der reguläre Serverdeploy für `studio` läuft über die Workflows `Studio Deploy` bzw. `Studio Release` oder den CI-gesteuerten Einstiegspunkt `pnpm env:deploy:studio`. Direkte Redeploys über `up`/`update`, Portainer-Klickpfade oder Ad-hoc-`docker stack deploy` sind nicht mehr der verbindliche Standard.
+Der reguläre Serverdeploy für `studio` ist jetzt zweigeteilt: GitHub baut und verifiziert den Ziel-Digest, der finale mutierende Rollout läuft lokal über `pnpm env:release:studio:local`. Direkte Redeploys über `up`/`update`, Portainer-Klickpfade oder Ad-hoc-`docker stack deploy` sind nicht mehr der verbindliche Standard.
 
 ### Release-Klassen
 
@@ -247,8 +247,7 @@ Der reguläre Serverdeploy für `studio` läuft über die Workflows `Studio Depl
 ```bash
 cd "$(git rev-parse --show-toplevel)"
 
-pnpm env:precheck:studio
-pnpm env:deploy:studio -- --release-mode=app-only --image-digest=<sha256-digest> --rollback-hint="Vorherigen Digest erneut deployen"
+pnpm env:release:studio:local -- --image-digest=<sha256-digest> --release-mode=app-only --rollback-hint="Vorherigen Digest erneut deployen"
 ```
 
 Für Schemaänderungen:
@@ -256,7 +255,7 @@ Für Schemaänderungen:
 ```bash
 cd "$(git rev-parse --show-toplevel)"
 
-pnpm env:deploy:studio -- \
+pnpm env:release:studio:local -- \
   --release-mode=schema-and-app \
   --maintenance-window="2026-03-20 19:00-19:15 CET" \
   --image-digest=<sha256-digest> \
@@ -285,7 +284,7 @@ Read-only Betriebsregel:
 - `status`, `doctor` und `precheck` nutzen bevorzugt die Portainer-API mit `QUANTUM_API_KEY` und `QUANTUM_ENDPOINT_ID`
 - lokales `quantum-cli` ist fuer diese Pfade nicht mehr der primaere Wahrheitskanal
 - `quantum-cli` bleibt fuer Mutationen wie `stacks update` sowie fuer dedizierte Job-Stacks der kanonische Operator-Pfad
-- mutierende Remote-Kommandos fuer `studio` sind ausschliesslich im CI-/Runner-Kontext erlaubt
+- mutierende Remote-Kommandos fuer `studio` laufen regulaer ueber den expliziten lokalen Operator-Einstieg mit verifiziertem Digest
 
 Fuer das produktionsnahe Profil `studio` gilt derselbe Netzwerk-/Ingress-Vertrag zusaetzlich gegen `config/runtime/studio.local.vars`:
 
@@ -427,7 +426,7 @@ Für IAM-Abnahmen zusätzlich:
 Für ein reines App-Update ohne Schemaänderungen:
 
 1. Neues Image mit unveränderlichem Tag oder Digest bereitstellen
-2. `pnpm env:deploy:studio -- --release-mode=app-only --image-digest=<sha256:...> --rollback-hint="<hinweis>"` ausführen
+2. `pnpm env:release:studio:local -- --image-digest=<sha256:...> --release-mode=app-only --rollback-hint="<hinweis>"` ausfuehren
 3. Deploy-Report prüfen und archivieren
 
 Fuer `studio` gilt derselbe Pfad mit dem Unterschied, dass der Ziel-Digest vorab ueber `config/runtime/studio.local.vars` konvergiert und anschliessend mit `pnpm env:status:studio`, `pnpm env:smoke:studio` und `pnpm env:precheck:studio` bestaetigt wird.
@@ -435,7 +434,7 @@ Fuer `studio` gilt derselbe Pfad mit dem Unterschied, dass der Ziel-Digest vorab
 Für Schemaänderungen:
 
 1. Wartungsfenster definieren
-2. `pnpm env:deploy:studio -- --release-mode=schema-and-app --maintenance-window=... --image-digest=<sha256:...> --rollback-hint="<hinweis>"` ausführen
+2. `pnpm env:release:studio:local -- --image-digest=<sha256:...> --release-mode=schema-and-app --maintenance-window=... --rollback-hint="<hinweis>"` ausfuehren
 3. Deploy-Report auf `migrate`, `internal-verify`, `external-smoke` und `release-decision` prüfen
 
 ## Rollback
@@ -443,7 +442,7 @@ Für Schemaänderungen:
 ### App-Rollback (ohne Schemaänderung)
 
 ```bash
-pnpm env:deploy:studio -- --release-mode=app-only --image-digest=<vorheriger-sha256-digest> --rollback-hint="<hinweis>"
+pnpm env:release:studio:local -- --image-digest=<vorheriger-sha256-digest> --release-mode=app-only --rollback-hint="<hinweis>"
 ```
 
 ### Bei Schemaänderungen

@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { LegalTextDetailPage } from './-legal-text-detail-page';
 
 const useLegalTextsMock = vi.fn();
+const navigateMock = vi.fn();
 
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ to, children, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { to: string }) => (
@@ -12,6 +13,7 @@ vi.mock('@tanstack/react-router', () => ({
       {children}
     </a>
   ),
+  useNavigate: () => navigateMock,
 }));
 
 vi.mock('../../../hooks/use-legal-texts', () => ({
@@ -28,6 +30,38 @@ vi.mock('../../../components/RichTextEditor', () => ({
     value: string;
     onChange: (value: string) => void;
   }) => <textarea id={id} value={value} onChange={(event) => onChange(event.target.value)} />,
+}));
+
+vi.mock('../../../components/ConfirmDialog', () => ({
+  ConfirmDialog: ({
+    open,
+    title,
+    description,
+    confirmLabel,
+    cancelLabel,
+    onConfirm,
+    onCancel,
+  }: {
+    open: boolean;
+    title: string;
+    description: string;
+    confirmLabel: string;
+    cancelLabel: string;
+    onConfirm: () => void;
+    onCancel: () => void;
+  }) =>
+    open ? (
+      <div>
+        <div>{title}</div>
+        <div>{description}</div>
+        <button type="button" onClick={onConfirm}>
+          {confirmLabel}
+        </button>
+        <button type="button" onClick={onCancel}>
+          {cancelLabel}
+        </button>
+      </div>
+    ) : null,
 }));
 
 const legalTextFixture = {
@@ -51,6 +85,7 @@ const createState = (overrides: Record<string, unknown> = {}) => ({
   clearMutationError: vi.fn(),
   createLegalText: vi.fn().mockResolvedValue(true),
   updateLegalText: vi.fn().mockResolvedValue(true),
+  deleteLegalText: vi.fn().mockResolvedValue(true),
   ...overrides,
 });
 
@@ -61,6 +96,8 @@ describe('LegalTextDetailPage', () => {
 
   beforeEach(() => {
     useLegalTextsMock.mockReset();
+    navigateMock.mockReset();
+    navigateMock.mockResolvedValue(undefined);
   });
 
   it('loads form values from the selected legal text and saves updates', async () => {
@@ -119,5 +156,20 @@ describe('LegalTextDetailPage', () => {
 
     expect(screen.getAllByText('Die angeforderte Rechtstext-Version wurde nicht gefunden.')).toHaveLength(2);
     expect(screen.getByRole('alert')).toBeTruthy();
+  });
+
+  it('deletes the selected legal text after confirmation and navigates back to the list', async () => {
+    const deleteLegalText = vi.fn().mockResolvedValue(true);
+    useLegalTextsMock.mockReturnValue(createState({ deleteLegalText }));
+
+    render(<LegalTextDetailPage legalTextVersionId="legal-1" />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Löschen' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Löschen' })[1]!);
+
+    await waitFor(() => {
+      expect(deleteLegalText).toHaveBeenCalledWith('legal-1');
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/admin/legal-texts' });
+    });
   });
 });

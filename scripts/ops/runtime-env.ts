@@ -3095,6 +3095,9 @@ const buildRemoteParityReuseProbe = (
 
 const buildImageSmokeRuntimeEnvEntries = async (env: NodeJS.ProcessEnv) => {
   const mergedEnv = { ...env } as Record<string, string | undefined>;
+  delete mergedEnv.IAM_DATABASE_URL;
+  delete mergedEnv.REDIS_URL;
+
   try {
     const liveContract = await inspectRemoteServiceContract(
       {
@@ -3576,6 +3579,15 @@ const runInternalVerify = async (runtimeProfile: RemoteRuntimeProfile, env: Node
 }> => {
   const maxAttempts = Number(env.SVA_INTERNAL_VERIFY_MAX_ATTEMPTS ?? '6');
   const retryDelayMs = Number(env.SVA_INTERNAL_VERIFY_RETRY_DELAY_MS ?? '5000');
+  const retryableWarmupChecks = new Set([
+    'health-live',
+    'health-ready',
+    'auth-login',
+    'auth-me',
+    'tenant-auth-proof',
+    'app-db-principal',
+  ]);
+  const retryableWarmupSignals = ['404', '502', '503', '504', 'timeout', 'timed out', 'gateway'];
   let lastDoctorReport: DoctorReport | null = null;
   let lastProbes: AcceptanceProbeResult[] = [];
 
@@ -3586,13 +3598,16 @@ const runInternalVerify = async (runtimeProfile: RemoteRuntimeProfile, env: Node
     lastDoctorReport = doctorReport;
     lastProbes = probes;
 
-    const hasExternalWarmupOnlyErrors = doctorReport.checks
+    const hasRetryableWarmupOnlyErrors = doctorReport.checks
       .filter((check) => check.status === 'error')
-      .every((check) =>
-        ['health-live', 'health-ready', 'auth-login', 'auth-me'].includes(check.name) &&
-        typeof check.message === 'string' &&
-        check.message.includes('404'),
-      );
+      .every((check) => {
+        if (!retryableWarmupChecks.has(check.name)) {
+          return false;
+        }
+
+        const message = typeof check.message === 'string' ? check.message.toLowerCase() : '';
+        return retryableWarmupSignals.some((signal) => message.includes(signal));
+      });
     const probesFailed = probes.some((probe) => probe.status === 'error');
     const doctorFailed = doctorReport.status === 'error';
 
@@ -3603,7 +3618,7 @@ const runInternalVerify = async (runtimeProfile: RemoteRuntimeProfile, env: Node
       };
     }
 
-    if (attempt < maxAttempts && (hasExternalWarmupOnlyErrors || probesFailed)) {
+    if (attempt < maxAttempts && (hasRetryableWarmupOnlyErrors || probesFailed)) {
       await wait(retryDelayMs);
       continue;
     }
@@ -3721,6 +3736,7 @@ const runExternalSmoke = async (env: NodeJS.ProcessEnv): Promise<readonly Accept
 
 const runAcceptanceDeploy = async (runtimeProfile: RemoteRuntimeProfile, env: NodeJS.ProcessEnv) => {
   const options = resolveAcceptanceDeployOptions(env, cliOptions, runtimeProfile);
+  const mutationContext = assertDeterministicRemoteMutationContext(env, runtimeProfile, 'deploy');
   const migrationFiles = options.releaseMode === 'schema-and-app' ? listGooseMigrationFiles() : [];
 
   let report = createBaseAcceptanceDeployReport(runtimeProfile, env, options, migrationFiles);
@@ -3748,27 +3764,38 @@ const runAcceptanceDeploy = async (runtimeProfile: RemoteRuntimeProfile, env: No
       })
     );
 
-    const imageSmokeStartedAt = Date.now();
-    try {
-      const imageSmokeProbes = await runImageSmoke(env, options, report.reportId);
-      report = {
-        ...report,
-        internalProbes: [...report.internalProbes, ...imageSmokeProbes],
-      };
+    if (mutationContext.mode === 'local-operator') {
       steps.push(
-        createStepResult('image-smoke', imageSmokeStartedAt, 'ok', 'Artefakt-Smoke erfolgreich abgeschlossen.', {
-          probes: imageSmokeProbes,
-        })
+        createStepResult(
+          'image-smoke',
+          Date.now(),
+          'skipped',
+          'Lokaler Operator-Pfad verwendet den bereits in GitHub verifizierten Digest und ueberspringt den lokalen image-smoke.'
+        )
       );
-    } catch (error) {
-      steps.push(
-        createStepResult('image-smoke', imageSmokeStartedAt, 'error', error instanceof Error ? error.message : String(error))
-      );
-      report = {
-        ...report,
-        steps,
-      };
-      throw { category: 'image' as const, report };
+    } else {
+      const imageSmokeStartedAt = Date.now();
+      try {
+        const imageSmokeProbes = await runImageSmoke(env, options, report.reportId);
+        report = {
+          ...report,
+          internalProbes: [...report.internalProbes, ...imageSmokeProbes],
+        };
+        steps.push(
+          createStepResult('image-smoke', imageSmokeStartedAt, 'ok', 'Artefakt-Smoke erfolgreich abgeschlossen.', {
+            probes: imageSmokeProbes,
+          })
+        );
+      } catch (error) {
+        steps.push(
+          createStepResult('image-smoke', imageSmokeStartedAt, 'error', error instanceof Error ? error.message : String(error))
+        );
+        report = {
+          ...report,
+          steps,
+        };
+        throw { category: 'image' as const, report };
+      }
     }
 
     if (options.releaseMode === 'schema-and-app') {

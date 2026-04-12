@@ -40,9 +40,9 @@ Das System SHALL die Pflege der Architektur-Dokumentation als Teil des Delivery-
 - **THEN** enthält der PR eine Aktualisierung der relevanten arc42-Abschnitte
 - **AND** die Review-Checkliste prüft diese Aktualisierung
 
-#### Scenario: Acceptance-Deployvertrag wird geändert
+#### Scenario: Studio-Deployvertrag wird geändert
 
-- **WHEN** sich der verbindliche Serverdeploypfad für `acceptance-hb` ändert
+- **WHEN** sich der verbindliche Serverdeploypfad für `studio` ändert
 - **THEN** aktualisieren die arc42-Abschnitte `07-deployment-view` und `08-cross-cutting-concepts` den Releaseablauf, die Migrationsregeln und die Deploy-Evidenz
 - **AND** das zugehörige Runbook beschreibt dieselbe Reihenfolge wie die implementierten Ops-Kommandos
 
@@ -64,11 +64,11 @@ Das System SHALL die Vorgabe „Architektur-/Systemdoku erfolgt arc42-konform“
 
 ### Requirement: Architektur- und Betriebsdoku für Diagnosepfade
 
-Das System SHALL Runtime-Diagnosepfade, Acceptance-Betriebsregeln und OTEL-Diagnosekonventionen explizit in der Architektur- und Betriebsdokumentation verankern.
+Das System SHALL Runtime-Diagnosepfade, Studio-Betriebsregeln und OTEL-Diagnosekonventionen explizit in der Architektur- und Betriebsdokumentation verankern.
 
 #### Scenario: Runtime-Doctor ist dokumentiert
 
-- **WHEN** ein Teammitglied das Betriebsmodell für `local-keycloak`, `local-builder` oder `acceptance-hb` nachschlägt
+- **WHEN** ein Teammitglied das Betriebsmodell für `local-keycloak`, `local-builder` oder `studio` nachschlägt
 - **THEN** dokumentieren die Runbooks `doctor`, `smoke`, `migrate` und die kritischen Diagnose-Overrides konsistent
 - **AND** die Doku beschreibt, welche Diagnosefelder öffentlich stabil sind und welche nur OTEL-intern bleiben
 

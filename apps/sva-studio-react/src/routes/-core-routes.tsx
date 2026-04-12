@@ -9,8 +9,6 @@ import { Phase1TestPage } from './admin/api/-phase1-test-page';
 import { IamViewerPage } from './admin/-iam-page';
 import { normalizeIamTab } from './admin/-iam.models';
 import { GroupCreatePage } from './admin/groups/-group-create-page';
-import { GroupDetailPage } from './admin/groups/-group-detail-page';
-import { GroupsPage } from './admin/groups/-groups-page';
 import { InstanceCreatePage } from './admin/instances/-instance-create-page';
 import { InstanceDetailPage } from './admin/instances/-instance-detail-page';
 import { InstancesPage } from './admin/instances/-instances-page';
@@ -18,14 +16,9 @@ import { LegalTextCreatePage } from './admin/legal-texts/-legal-text-create-page
 import { LegalTextDetailPage } from './admin/legal-texts/-legal-text-detail-page';
 import { LegalTextsPage } from './admin/legal-texts/-legal-texts-page';
 import { OrganizationCreatePage } from './admin/organizations/-organization-create-page';
-import { OrganizationDetailPage } from './admin/organizations/-organization-detail-page';
-import { OrganizationsPage } from './admin/organizations/-organizations-page';
 import { RoleCreatePage } from './admin/roles/-role-create-page';
 import { normalizeRoleDetailTab, RoleDetailPage } from './admin/roles/-role-detail-page';
-import { RolesPage } from './admin/roles/-roles-page';
 import { UserCreatePage } from './admin/users/-user-create-page';
-import { UserEditPage } from './admin/users/-user-edit-page';
-import { UserListPage } from './admin/users/-user-list-page';
 import { ContentEditorPage } from './content/-content-editor-page';
 import { ContentListPage } from './content/-content-list-page';
 import { HomePage } from './-home-page';
@@ -137,6 +130,83 @@ const InterfacesRoutePage = () => (
   </React.Suspense>
 );
 
+const LazyGroupsPage = React.lazy(async () => {
+  const mod = await import('./admin/groups/-groups-page');
+  return { default: mod.GroupsPage };
+});
+
+const GroupsRoutePage = () => (
+  <React.Suspense fallback={<p className="text-sm text-muted-foreground">{t('interfaces.messages.loading')}</p>}>
+    <LazyGroupsPage />
+  </React.Suspense>
+);
+
+const LazyGroupDetailPage = React.lazy(async () => {
+  const mod = await import('./admin/groups/-group-detail-page');
+  return { default: mod.GroupDetailPage };
+});
+
+const GroupDetailRoutePage = ({ groupId }: Readonly<{ groupId: string }>) => (
+  <React.Suspense fallback={<p className="text-sm text-muted-foreground">{t('interfaces.messages.loading')}</p>}>
+    <LazyGroupDetailPage groupId={groupId} />
+  </React.Suspense>
+);
+
+const LazyOrganizationsPage = React.lazy(async () => {
+  const mod = await import('./admin/organizations/-organizations-page');
+  return { default: mod.OrganizationsPage };
+});
+
+const OrganizationsRoutePage = () => (
+  <React.Suspense fallback={<p className="text-sm text-muted-foreground">{t('interfaces.messages.loading')}</p>}>
+    <LazyOrganizationsPage />
+  </React.Suspense>
+);
+
+const LazyOrganizationDetailPage = React.lazy(async () => {
+  const mod = await import('./admin/organizations/-organization-detail-page');
+  return { default: mod.OrganizationDetailPage };
+});
+
+const OrganizationDetailRoutePage = ({ organizationId }: Readonly<{ organizationId: string }>) => (
+  <React.Suspense fallback={<p className="text-sm text-muted-foreground">{t('interfaces.messages.loading')}</p>}>
+    <LazyOrganizationDetailPage organizationId={organizationId} />
+  </React.Suspense>
+);
+
+const LazyRolesPage = React.lazy(async () => {
+  const mod = await import('./admin/roles/-roles-page');
+  return { default: mod.RolesPage };
+});
+
+const RolesRoutePage = () => (
+  <React.Suspense fallback={<p className="text-sm text-muted-foreground">{t('interfaces.messages.loading')}</p>}>
+    <LazyRolesPage />
+  </React.Suspense>
+);
+
+const LazyUserListPage = React.lazy(async () => {
+  const mod = await import('./admin/users/-user-list-page');
+  return { default: mod.UserListPage };
+});
+
+const UserListRoutePage = () => (
+  <React.Suspense fallback={<p className="text-sm text-muted-foreground">{t('interfaces.messages.loading')}</p>}>
+    <LazyUserListPage />
+  </React.Suspense>
+);
+
+const LazyUserEditPage = React.lazy(async () => {
+  const mod = await import('./admin/users/-user-edit-page');
+  return { default: mod.UserEditPage };
+});
+
+const UserEditRoutePage = ({ userId }: Readonly<{ userId: string }>) => (
+  <React.Suspense fallback={<p className="text-sm text-muted-foreground">{t('interfaces.messages.loading')}</p>}>
+    <LazyUserEditPage userId={userId} />
+  </React.Suspense>
+);
+
 export const homeRouteFactory = (rootRoute: RootRoute) =>
   createRoute({
     getParentRoute: () => rootRoute,
@@ -232,7 +302,7 @@ export const runtimeCoreRouteFactories = [
       getParentRoute: () => rootRoute,
       path: '/admin/users',
       beforeLoad: (options) => runAccountUiGuard('adminUsers', options),
-      component: UserListPage,
+      component: UserListRoutePage,
     }),
   (rootRoute: RootRoute) =>
     createRoute({
@@ -246,7 +316,7 @@ export const runtimeCoreRouteFactories = [
       getParentRoute: () => rootRoute,
       path: '/admin/users/$userId',
       beforeLoad: (options) => runAccountUiGuard('adminUserDetail', options),
-      component: () => <UserEditPage userId={userEditRoute.useParams().userId} />,
+      component: () => <UserEditRoutePage userId={userEditRoute.useParams().userId} />,
     });
     return userEditRoute;
   },
@@ -255,7 +325,7 @@ export const runtimeCoreRouteFactories = [
       getParentRoute: () => rootRoute,
       path: '/admin/organizations',
       beforeLoad: (options) => runAccountUiGuard('adminOrganizations', options),
-      component: OrganizationsPage,
+      component: OrganizationsRoutePage,
     }),
   (rootRoute: RootRoute) =>
     createRoute({
@@ -270,7 +340,7 @@ export const runtimeCoreRouteFactories = [
       path: '/admin/organizations/$organizationId',
       beforeLoad: (options) => runAccountUiGuard('adminOrganizationDetail', options),
       component: () => (
-        <OrganizationDetailPage organizationId={organizationDetailRoute.useParams().organizationId} />
+        <OrganizationDetailRoutePage organizationId={organizationDetailRoute.useParams().organizationId} />
       ),
     });
     return organizationDetailRoute;
@@ -303,7 +373,7 @@ export const runtimeCoreRouteFactories = [
       getParentRoute: () => rootRoute,
       path: '/admin/roles',
       beforeLoad: (options) => runAccountUiGuard('adminRoles', options),
-      component: RolesPage,
+      component: RolesRoutePage,
     }),
   (rootRoute: RootRoute) =>
     createRoute({
@@ -334,7 +404,7 @@ export const runtimeCoreRouteFactories = [
       getParentRoute: () => rootRoute,
       path: '/admin/groups',
       beforeLoad: (options) => runAccountUiGuard('adminGroups', options),
-      component: GroupsPage,
+      component: GroupsRoutePage,
     }),
   (rootRoute: RootRoute) =>
     createRoute({
@@ -348,7 +418,7 @@ export const runtimeCoreRouteFactories = [
       getParentRoute: () => rootRoute,
       path: '/admin/groups/$groupId',
       beforeLoad: (options) => runAccountUiGuard('adminGroupDetail', options),
-      component: () => <GroupDetailPage groupId={groupDetailRoute.useParams().groupId} />,
+      component: () => <GroupDetailRoutePage groupId={groupDetailRoute.useParams().groupId} />,
     });
     return groupDetailRoute;
   },

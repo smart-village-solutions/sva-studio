@@ -35,6 +35,7 @@ const state = vi.hoisted(() => ({
     members: [],
   } as Record<string, unknown> | undefined,
   completeIdempotency: vi.fn(),
+  emitActivityLog: vi.fn(),
 }));
 
 vi.mock('@sva/sdk/server', () => ({
@@ -88,7 +89,7 @@ vi.mock('./schemas.js', () => ({
 
 vi.mock('./shared.js', () => ({
   completeIdempotency: state.completeIdempotency,
-  emitActivityLog: vi.fn(),
+  emitActivityLog: state.emitActivityLog,
   iamUserOperationsCounter: { add: vi.fn() },
   logger: { error: vi.fn() },
   notifyPermissionInvalidation: vi.fn(),
@@ -162,6 +163,29 @@ describe('iam-account-management/groups-handlers internals', () => {
       roles: [],
       members: [],
     };
+  });
+
+  it('writes group activity logs without account-only subject ids', async () => {
+    const response = await createGroupInternal(new Request('http://localhost/api/v1/iam/groups', { method: 'POST' }), ctx);
+
+    expect(response.status).toBe(201);
+    expect(state.emitActivityLog).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        eventType: 'group.created',
+        accountId: 'account-1',
+        payload: expect.objectContaining({
+          groupId: '11111111-1111-1111-8111-111111111111',
+          groupKey: 'admins',
+        }),
+      })
+    );
+    expect(state.emitActivityLog).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        subjectId: '11111111-1111-1111-8111-111111111111',
+      })
+    );
   });
 
   it('returns replay and conflict responses for idempotent group creation', async () => {

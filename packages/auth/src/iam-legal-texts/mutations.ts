@@ -192,3 +192,43 @@ export const updateLegalTextResponse = async (
     return createApiError(503, 'database_unavailable', 'Rechtstext konnte nicht aktualisiert werden.', actor.requestId);
   }
 };
+
+export const deleteLegalTextResponse = async (
+  request: Request,
+  actor: ResolvedLegalTextsActor['actor']
+): Promise<Response> => {
+  const csrfError = validateCsrf(request, actor.requestId);
+  if (csrfError) {
+    return csrfError;
+  }
+
+  const legalTextVersionId = readPathSegment(request, 4);
+  if (!legalTextVersionId) {
+    return createApiError(400, 'invalid_request', 'Rechtstext-ID fehlt.', actor.requestId);
+  }
+
+  try {
+    const { deleteLegalTextVersion } = await import('./repository.js');
+    const deletedId = await deleteLegalTextVersion({
+      instanceId: actor.instanceId,
+      actorAccountId: actor.actorAccountId!,
+      requestId: actor.requestId,
+      traceId: actor.traceId,
+      legalTextVersionId,
+    });
+
+    return deletedId
+      ? jsonResponse(200, asApiItem({ id: deletedId }, actor.requestId))
+      : createApiError(404, 'not_found', 'Rechtstext-Version wurde nicht gefunden.', actor.requestId);
+  } catch (error) {
+    logger.error('Legal text delete failed', {
+      operation: 'legal_text_delete',
+      instance_id: actor.instanceId,
+      request_id: actor.requestId,
+      trace_id: actor.traceId,
+      legal_text_version_id: legalTextVersionId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return createApiError(503, 'database_unavailable', 'Rechtstext konnte nicht gelöscht werden.', actor.requestId);
+  }
+};

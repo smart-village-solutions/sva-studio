@@ -34,7 +34,16 @@ export const InstancesPage = () => {
       {
         id: 'primaryHostname',
         header: t('admin.instances.table.headerHost'),
-        cell: (instance) => instance.primaryHostname,
+        cell: (instance) => (
+          <a
+            href={`https://${instance.primaryHostname}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary underline-offset-4 hover:underline"
+          >
+            {instance.primaryHostname}
+          </a>
+        ),
         sortable: true,
         sortValue: (instance) => instance.primaryHostname.toLowerCase(),
       },

@@ -65,6 +65,22 @@ export const buildLocalStudioReleasePlan = (
   };
 
   const options = resolveAcceptanceDeployOptions(operatorEnv, cliOptions, 'studio');
+  const stepEnv: NodeJS.ProcessEnv = {
+    ...operatorEnv,
+    SVA_IMAGE_DIGEST: options.imageDigest,
+    SVA_IMAGE_REF: options.imageRef,
+  };
+  if (options.imageTag) {
+    stepEnv.SVA_IMAGE_TAG = options.imageTag;
+  } else {
+    delete stepEnv.SVA_IMAGE_TAG;
+  }
+
+  const precheckArgs = ['env:precheck:studio', '--', '--json', `--image-digest=${options.imageDigest}`];
+  if (options.imageTag) {
+    precheckArgs.push(`--image-tag=${options.imageTag}`);
+  }
+
   const deployArgs = [
     'env:deploy:studio',
     '--',
@@ -88,24 +104,24 @@ export const buildLocalStudioReleasePlan = (
   return {
     feedbackStep: {
       args: ['env:feedback:studio'],
-      env: operatorEnv,
+      env: stepEnv,
       name: 'feedback',
     },
     options,
     steps: [
       {
-        args: ['env:precheck:studio', '--', '--json'],
-        env: operatorEnv,
+        args: precheckArgs,
+        env: stepEnv,
         name: 'precheck',
       },
       {
         args: deployArgs,
-        env: operatorEnv,
+        env: stepEnv,
         name: 'deploy',
       },
       {
         args: ['env:smoke:studio', '--', '--json'],
-        env: operatorEnv,
+        env: stepEnv,
         name: 'smoke',
       },
     ],

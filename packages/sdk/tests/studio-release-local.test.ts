@@ -59,7 +59,13 @@ describe('studio-release-local', () => {
     expect(plan.steps).toHaveLength(3);
     expect(plan.steps[0]).toMatchObject({
       name: 'precheck',
-      args: ['env:precheck:studio', '--', '--json'],
+      args: [
+        'env:precheck:studio',
+        '--',
+        '--json',
+        '--image-digest=sha256:abc',
+        '--image-tag=ba0261f8fa33',
+      ],
     });
     expect(plan.steps[1]).toMatchObject({
       name: 'deploy',

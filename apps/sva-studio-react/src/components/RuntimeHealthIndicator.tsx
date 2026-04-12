@@ -80,7 +80,10 @@ export function RuntimeHealthIndicator() {
   const { error, health, isLoading } = useRuntimeHealth();
   const activeLocale = getActiveLocale();
   const overallStatus: RuntimeDependencyStatus = error || isLoading ? 'unknown' : health.status;
-  const keycloakRealm = health.checks.auth?.realm?.trim() || t('shell.runtimeHealth.notAvailable');
+  const keycloakRealm =
+    health.checks.auth?.activeRealm?.trim() ||
+    health.checks.auth?.realm?.trim() ||
+    t('shell.runtimeHealth.notAvailable');
 
   return (
     <section

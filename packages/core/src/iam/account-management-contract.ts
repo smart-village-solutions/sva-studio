@@ -158,6 +158,13 @@ export type IamUserImportSyncReport = {
   readonly updatedCount: number;
   readonly skippedCount: number;
   readonly totalKeycloakUsers: number;
+  readonly diagnostics?: {
+    readonly authRealm: string;
+    readonly providerSource: 'instance' | 'global' | 'fallback_global';
+    readonly executionMode?: 'platform_admin' | 'tenant_admin' | 'break_glass';
+    readonly matchedWithoutInstanceAttributeCount?: number;
+    readonly skippedInstanceIds?: readonly string[];
+  };
 };
 
 export type IamRoleListItem = {

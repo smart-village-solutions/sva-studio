@@ -85,7 +85,9 @@ export const requireUserId = (request: Request, requestId?: string): string | Re
 };
 
 export const requireUserMutationIdentityProvider = async (instanceId: string, requestId?: string) => {
-  const identityProvider = await resolveIdentityProviderForInstance(instanceId);
+  const identityProvider = await resolveIdentityProviderForInstance(instanceId, {
+    executionMode: 'tenant_admin',
+  });
   if (identityProvider) {
     return identityProvider;
   }
@@ -93,7 +95,13 @@ export const requireUserMutationIdentityProvider = async (instanceId: string, re
   return createApiError(
     503,
     'keycloak_unavailable',
-    'Keycloak Admin API ist nicht konfiguriert.',
-    requestId
+    'Tenant-lokale Keycloak-Administration ist nicht konfiguriert.',
+    requestId,
+    {
+      dependency: 'keycloak',
+      execution_mode: 'tenant_admin',
+      instance_id: instanceId,
+      reason_code: 'tenant_admin_not_configured',
+    }
   );
 };

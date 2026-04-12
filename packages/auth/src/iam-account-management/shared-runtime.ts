@@ -1,7 +1,5 @@
 import { createSdkLogger } from '@sva/sdk/server';
 import { metrics } from '@opentelemetry/api';
-import { getRuntimeProfileFromEnv } from '@sva/sdk';
-
 import type { IdentityProviderPort } from '../identity-provider-port.js';
 import {
   KeycloakAdminClient,
@@ -10,6 +8,7 @@ import {
 import { loadInstanceById } from '@sva/data/server';
 import { getIamDatabaseUrl } from '../runtime-secrets.server.js';
 import { createPoolResolver, type QueryClient, withInstanceDb } from '../shared/db-helpers.js';
+import { resolveTenantAuthClientSecret } from '../config-tenant-secret.js';
 
 export const resolvePool = createPoolResolver(getIamDatabaseUrl);
 
@@ -22,6 +21,11 @@ let identityProviderCache:
 
 export type IdentityProviderResolution = {
   provider: IdentityProviderPort;
+  realm: string;
+  source: 'global' | 'instance' | 'fallback_global';
+  clientId: string;
+  adminRealm: string;
+  executionMode: 'platform_admin' | 'tenant_admin' | 'break_glass';
   getCircuitBreakerState?: () => number;
 };
 
@@ -35,6 +39,11 @@ export const resolveIdentityProvider = () => {
     const client = new KeycloakAdminClient(config);
     identityProviderCache = {
       provider: client,
+      realm: config.realm,
+      source: 'global',
+      clientId: config.clientId,
+      adminRealm: config.adminRealm ?? config.realm,
+      executionMode: 'platform_admin',
       getCircuitBreakerState: () => client.getCircuitBreakerState(),
     };
   } catch {
@@ -44,47 +53,73 @@ export const resolveIdentityProvider = () => {
   return identityProviderCache;
 };
 
+const requireTenantAdminBaseUrl = (): string => {
+  const baseUrl = process.env.KEYCLOAK_ADMIN_BASE_URL?.trim();
+  if (!baseUrl) {
+    throw new Error('Missing required env: KEYCLOAK_ADMIN_BASE_URL');
+  }
+  return baseUrl;
+};
+
 export const resolveIdentityProviderForInstance = async (
-  instanceId: string
+  instanceId: string,
+  options: {
+    executionMode?: 'tenant_admin' | 'break_glass';
+  } = {}
 ): Promise<
   | IdentityProviderResolution
   | null
 > => {
-  const runtimeProfile = getRuntimeProfileFromEnv(process.env);
-  const isLocalRuntimeProfile = runtimeProfile === 'local-builder' || runtimeProfile === 'local-keycloak';
-  const allowGlobalFallback = runtimeProfile === null || isLocalRuntimeProfile || process.env.NODE_ENV === 'test';
+  const executionMode = options.executionMode ?? 'tenant_admin';
   const instance = await loadInstanceById(instanceId).catch(() => null);
   if (!instance) {
-    return allowGlobalFallback ? resolveIdentityProvider() : null;
+    return null;
   }
 
-  const globalRealm = process.env.KEYCLOAK_ADMIN_REALM;
-  const prefersGlobalRealmInLocalProfile =
-    isLocalRuntimeProfile &&
-    typeof globalRealm === 'string' &&
-    globalRealm.trim().length > 0 &&
-    instance.authRealm !== globalRealm;
-
-  if (prefersGlobalRealmInLocalProfile) {
-    logger.info('Using global Keycloak admin realm for local instance resolution', {
-      operation: 'resolve_identity_provider_for_instance',
-      instance_id: instanceId,
-      instance_auth_realm: instance.authRealm,
-      configured_admin_realm: globalRealm,
-      runtime_profile: runtimeProfile ?? 'unset',
-      reason_code: 'local_global_realm_fallback',
-    });
-    return resolveIdentityProvider();
+  if (executionMode === 'break_glass') {
+    try {
+      const config = getKeycloakAdminClientConfigFromEnv(instance.authRealm);
+      const client = new KeycloakAdminClient(config);
+      return {
+        provider: client,
+        realm: config.realm,
+        source: 'instance',
+        clientId: config.clientId,
+        adminRealm: config.adminRealm ?? config.realm,
+        executionMode,
+        getCircuitBreakerState: () => client.getCircuitBreakerState(),
+      };
+    } catch {
+      return null;
+    }
   }
 
   try {
-    const client = new KeycloakAdminClient(getKeycloakAdminClientConfigFromEnv(instance.authRealm));
+    const tenantSecret = await resolveTenantAuthClientSecret(instanceId, {
+      allowGlobalFallback: false,
+    });
+    if (!tenantSecret.secret) {
+      return null;
+    }
+    const config = {
+      baseUrl: requireTenantAdminBaseUrl(),
+      realm: instance.authRealm,
+      adminRealm: instance.authRealm,
+      clientId: instance.authClientId,
+      clientSecret: tenantSecret.secret,
+    } as const;
+    const client = new KeycloakAdminClient(config);
     return {
       provider: client,
+      realm: config.realm,
+      source: 'instance',
+      clientId: config.clientId,
+      adminRealm: config.adminRealm,
+      executionMode,
       getCircuitBreakerState: () => client.getCircuitBreakerState(),
     };
   } catch {
-    return allowGlobalFallback ? resolveIdentityProvider() : null;
+    return null;
   }
 };
 

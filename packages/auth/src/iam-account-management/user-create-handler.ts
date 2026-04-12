@@ -150,7 +150,9 @@ export const createUserInternal = async (
     return createApiError(409, 'idempotency_key_reuse', reserve.message, actorContext.actor.requestId);
   }
 
-  const identityProvider = await resolveIdentityProviderForInstance(actorContext.actor.instanceId);
+  const identityProvider = await resolveIdentityProviderForInstance(actorContext.actor.instanceId, {
+    executionMode: 'tenant_admin',
+  });
   if (!identityProvider) {
     return failCreateIdempotency(
       actorContext.actor,

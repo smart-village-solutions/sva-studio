@@ -321,8 +321,12 @@ describe('iam-account-management/roles-handlers internals', () => {
     await expect(validUrlResponse.json()).resolves.toEqual({
       error: {
         code: 'keycloak_unavailable',
-        message: 'Keycloak Admin API ist nicht konfiguriert.',
+        message: 'Tenant-lokale Keycloak-Administration ist nicht konfiguriert.',
         details: {
+          dependency: 'keycloak',
+          execution_mode: 'tenant_admin',
+          instance_id: 'de-musterhausen',
+          reason_code: 'tenant_admin_not_configured',
           syncState: 'failed',
           syncError: { code: 'IDP_UNAVAILABLE' },
         },

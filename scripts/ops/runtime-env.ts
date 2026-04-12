@@ -1,5 +1,5 @@
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, openSync, readFileSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -68,6 +68,10 @@ import {
 } from './runtime/goose.ts';
 import { runBootstrapJobAgainstAcceptance as runBootstrapJobAgainstAcceptanceWithDeps } from './runtime/bootstrap-job.ts';
 import {
+  buildLocalInstanceRegistryReconciliationInput,
+  buildLocalInstanceRegistryReconciliationSql,
+} from './runtime/local-instance-registry.ts';
+import {
   collectQuantumTaskSnapshots,
   extractQuantumJsonPayload,
   runMigrationJobAgainstAcceptance as runMigrationJobAgainstAcceptanceWithDeps,
@@ -95,6 +99,8 @@ type DoctorReport = {
 };
 
 type LocalState = {
+  command?: string;
+  launcher?: 'local-dev-server-runner';
   logFile: string;
   pid: number;
   profile: RuntimeProfile;
@@ -1019,7 +1025,8 @@ const clearLocalState = () => {
 
 const stopKnownLocalDevServers = () => {
   const patterns = [
-    'pnpm nx run sva-studio-react:serve',
+    'scripts/ops/runtime/local-dev-server-runner.ts',
+    'sva-studio-react:serve',
     'vite.js dev --port 3000',
   ] as const;
 
@@ -1073,14 +1080,24 @@ const startLocalApp = async (runtimeProfile: RuntimeProfile, env: NodeJS.Process
   }
 
   const logFile = resolve(appLogDir, `${runtimeProfile}.log`);
-  const logFd = openSync(logFile, 'a');
-
-  const child = spawn('pnpm', ['nx', 'run', 'sva-studio-react:serve'], {
+  writeFileSync(logFile, '', 'utf8');
+  const child = spawn(
+    process.execPath,
+    [
+      '--import',
+      'tsx',
+      'scripts/ops/runtime/local-dev-server-runner.ts',
+      `--profile=${runtimeProfile}`,
+      `--log-file=${logFile}`,
+      `--state-file=${localStateFile}`,
+    ],
+    {
     cwd: rootDir,
     env,
     detached: true,
-    stdio: ['ignore', logFd, logFd],
-  });
+      stdio: 'ignore',
+    }
+  );
 
   if (child.pid === undefined) {
     throw new Error(`Dev-Server fuer ${runtimeProfile} konnte nicht gestartet werden.`);
@@ -1092,6 +1109,8 @@ const startLocalApp = async (runtimeProfile: RuntimeProfile, env: NodeJS.Process
     localStateFile,
     `${JSON.stringify(
       {
+        command: 'pnpm nx run sva-studio-react:serve',
+        launcher: 'local-dev-server-runner',
         pid: child.pid,
         profile: runtimeProfile,
         startedAt: new Date().toISOString(),
@@ -1134,6 +1153,16 @@ const upLocalInfra = (env: NodeJS.ProcessEnv) => {
 
 const bootstrapLocalAppUser = (env: NodeJS.ProcessEnv) => {
   run('pnpm', ['nx', 'run', 'data:db:bootstrap-app-user'], env);
+};
+
+const reconcileLocalInstanceRegistry = (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => {
+  const input = buildLocalInstanceRegistryReconciliationInput(env);
+  if (!input) {
+    return;
+  }
+
+  const sql = buildLocalInstanceRegistryReconciliationSql(input);
+  createDbSqlRunner(runtimeProfile, env)(sql);
 };
 
 const downLocalInfra = (env: NodeJS.ProcessEnv) => {
@@ -2388,6 +2417,7 @@ const runLocalCommand = async (runtimeProfile: RuntimeProfile, runtimeCommand: R
       assertRuntimeEnv(runtimeProfile, env);
       upLocalInfra(env);
       bootstrapLocalAppUser(env);
+      reconcileLocalInstanceRegistry(runtimeProfile, env);
       await startLocalApp(runtimeProfile, env);
       console.log(`Profil ${runtimeProfile} gestartet.`);
       return;
@@ -2401,6 +2431,7 @@ const runLocalCommand = async (runtimeProfile: RuntimeProfile, runtimeCommand: R
       pullLocalInfra(env);
       upLocalInfra(env);
       bootstrapLocalAppUser(env);
+      reconcileLocalInstanceRegistry(runtimeProfile, env);
       stopLocalApp();
       await startLocalApp(runtimeProfile, env);
       console.log(`Profil ${runtimeProfile} aktualisiert.`);

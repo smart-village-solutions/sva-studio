@@ -4,6 +4,9 @@ import { IamSchemaDriftError } from './runtime-errors.js';
 const state = vi.hoisted(() => ({
   listUsersImpl: null as null | (() => unknown[]),
   withInstanceScopedDbImpl: null as null | ((instanceId: string, work: (client: unknown) => Promise<unknown>) => Promise<unknown>),
+  identityProviderRealm: 'de-musterhausen',
+  identityProviderSource: 'instance' as 'instance' | 'global' | 'fallback_global',
+  identityProviderExecutionMode: 'tenant_admin' as 'platform_admin' | 'tenant_admin' | 'break_glass',
   emitActivityLog: vi.fn(async () => undefined),
   logger: {
     isLevelEnabled: vi.fn(() => false),
@@ -25,11 +28,17 @@ vi.mock('./iam-account-management/shared.js', async () => {
       provider: {
         listUsers: async () => state.listUsersImpl?.() ?? [],
       },
+      realm: state.identityProviderRealm,
+      source: state.identityProviderSource,
+      executionMode: state.identityProviderExecutionMode,
     }),
     resolveIdentityProviderForInstance: async () => ({
       provider: {
         listUsers: async () => state.listUsersImpl?.() ?? [],
       },
+      realm: state.identityProviderRealm,
+      source: state.identityProviderSource,
+      executionMode: state.identityProviderExecutionMode,
     }),
     trackKeycloakCall: async (_operation: string, execute: () => Promise<unknown>) => execute(),
     withInstanceScopedDb: async (instanceId: string, work: (client: unknown) => Promise<unknown>) => {
@@ -63,6 +72,9 @@ describe('runKeycloakUserImportSync', () => {
   beforeEach(() => {
     state.listUsersImpl = null;
     state.withInstanceScopedDbImpl = null;
+    state.identityProviderRealm = 'de-musterhausen';
+    state.identityProviderSource = 'instance';
+    state.identityProviderExecutionMode = 'tenant_admin';
     state.emitActivityLog.mockReset();
     state.emitActivityLog.mockResolvedValue(undefined);
     state.logger.isLevelEnabled.mockReset();
@@ -148,6 +160,12 @@ describe('runKeycloakUserImportSync', () => {
       updatedCount: 1,
       skippedCount: 1,
       totalKeycloakUsers: 3,
+      diagnostics: {
+        authRealm: 'de-musterhausen',
+        providerSource: 'instance',
+        executionMode: 'tenant_admin',
+        skippedInstanceIds: ['other-instance'],
+      },
     });
     expect(state.logger.info).toHaveBeenCalledWith(
       'sync_keycloak_users_completed',
@@ -157,6 +175,58 @@ describe('runKeycloakUserImportSync', () => {
         updated_count: 1,
         skipped_count: 1,
         total_keycloak_users: 3,
+      })
+    );
+  });
+
+  it('matches users without instanceId attribute when the import already runs against an instance realm', async () => {
+    state.identityProviderRealm = 'de-musterhausen';
+    state.identityProviderSource = 'instance';
+    state.listUsersImpl = () => [
+      {
+        externalId: 'kc-tenant-user',
+        username: 'tenant.user',
+        email: 'tenant@example.com',
+        enabled: true,
+      },
+    ];
+
+    state.withInstanceScopedDbImpl = async (_instanceId, work) =>
+      work({
+        query: async (text: string) => {
+          if (text.includes('INSERT INTO iam.accounts')) {
+            return {
+              rows: [{ id: '11111111-1111-4111-8111-111111111111', created: true }],
+            };
+          }
+          return { rows: [] };
+        },
+      });
+
+    const { runKeycloakUserImportSync } = await import('./iam-account-management/user-import-sync-handler.js');
+
+    const result = await runKeycloakUserImportSync({
+      instanceId: 'de-musterhausen',
+    });
+
+    expect(result.report).toEqual({
+      importedCount: 1,
+      updatedCount: 0,
+      skippedCount: 0,
+      totalKeycloakUsers: 1,
+      diagnostics: {
+        authRealm: 'de-musterhausen',
+        providerSource: 'instance',
+        executionMode: 'tenant_admin',
+        matchedWithoutInstanceAttributeCount: 1,
+      },
+    });
+    expect(state.logger.info).toHaveBeenCalledWith(
+      'Keycloak user sync matched users by realm scope without instance attribute',
+      expect.objectContaining({
+        auth_realm: 'de-musterhausen',
+        matched_without_instance_attribute_count: 1,
+        provider_source: 'instance',
       })
     );
   });

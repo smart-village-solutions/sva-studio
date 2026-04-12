@@ -124,10 +124,11 @@ pnpm env:down:local-keycloak
 
 Wichtig für den lokalen `local-keycloak`-Pfad:
 
-- Der kanonische lokale Ziel-Realm ist `svs-intern-studio-staging`.
-- `KEYCLOAK_ADMIN_REALM`, `SVA_AUTH_ISSUER` und der lokale Instanzdatensatz für `de-musterhausen` müssen deshalb auf denselben Realm zeigen.
-- `de-musterhausen` ist im lokalen Standardpfad die fachliche Test-Instanz, nicht ein eigener lokaler Tenant-Realm.
-- User- und Rollen-Abgleich laufen lokal gegen den globalen Test-Realm; die Zuordnung zur Test-Instanz erfolgt über `instanceId`-Attribute und die lokale Registry.
+- `studio.localhost:3000` ist der Root-/Plattform-Host und authentifiziert gegen `svs-intern-studio-staging`.
+- `<instanceId>.studio.localhost:3000` ist ein Tenant-Host und authentifiziert gegen den in `iam.instances.auth_realm` hinterlegten Tenant-Realm, zum Beispiel `de-musterhausen`.
+- Normale Tenant-Mutationen für Nutzer, Rollen und Gruppen laufen im lokalen Standardpfad strikt gegen denselben Tenant-Realm wie der Login-Flow.
+- `KEYCLOAK_ADMIN_REALM` und `KEYCLOAK_ADMIN_CLIENT_ID` beschreiben im lokalen Profil nur noch den Plattform-/Break-Glass-Pfad. Sie sind kein impliziter Fallback für Tenant-Alltagsverwaltung mehr.
+- Fehlen tenantlokaler Admin-Client oder tenantlokales Secret im Instanzdatensatz, schlagen Tenant-Mutationen fail-closed mit `tenant_admin_not_configured` fehl.
 
 Für zusätzliche lokale Instanzen oder zweite lokale Datenbanken ist `../guides/lokale-instanz-db-initialisierung.md` der kanonische Bootstrap-Pfad.
 

@@ -217,6 +217,37 @@ describe('runtime auth config resolution', () => {
     );
   });
 
+  it('reuses the local public base url port for tenant redirects in local development', async () => {
+    process.env.SVA_TRUST_FORWARDED_HEADERS = 'false';
+    process.env.SVA_PUBLIC_BASE_URL = 'http://studio.localhost:3000';
+    state.instanceConfig = {
+      canonicalAuthHost: 'studio.localhost',
+      instanceId: 'de-musterhausen',
+      parentDomain: 'studio.localhost',
+    };
+    state.instanceByHostname = createActiveInstance({
+      instanceId: 'de-musterhausen',
+      primaryHostname: 'de-musterhausen.studio.localhost',
+      authIssuerUrl: 'https://keycloak.smart-village.app/realms/de-musterhausen',
+      authRealm: 'de-musterhausen',
+    });
+
+    const request = new Request('http://de-musterhausen.studio.localhost/auth/login', {
+      headers: {
+        host: 'de-musterhausen.studio.localhost',
+      },
+    });
+
+    await expect(resolveAuthConfigForRequest(request)).resolves.toEqual(
+      expect.objectContaining({
+        instanceId: 'de-musterhausen',
+        authRealm: 'de-musterhausen',
+        redirectUri: 'http://de-musterhausen.studio.localhost:3000/auth/callback',
+        postLogoutRedirectUri: 'http://de-musterhausen.studio.localhost:3000/',
+      })
+    );
+  });
+
   it('falls back to the global auth config when no instance config is active', async () => {
     state.instanceConfig = null;
 

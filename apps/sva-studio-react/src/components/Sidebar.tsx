@@ -30,6 +30,7 @@ import { Link, useRouterState } from '@tanstack/react-router';
 import React from 'react';
 
 import { t } from '../i18n';
+import { useContentAccess } from '../hooks/use-content-access';
 import {
   hasIamAdminRole,
   hasInstanceRegistryAdminRole,
@@ -626,7 +627,10 @@ const SidebarPanel = ({
  */
 export default function Sidebar({ isLoading = false, isMobileOpen = false, onMobileOpenChange }: SidebarProps) {
   const { user, isAuthenticated } = useAuth();
+  const contentAccessApi = useContentAccess();
   const canAccessWorkspace = isAuthenticated && isIamUiEnabled();
+  const canAccessContent =
+    canAccessWorkspace && (contentAccessApi.isLoading || contentAccessApi.access?.canRead === true);
   const canAccessAdminUsers = isAuthenticated && isIamAdminEnabled() && hasIamAdminRole(user);
   const canAccessAdminOrganizations = canAccessAdminUsers;
   const canAccessAdminInstances = isAuthenticated && isIamAdminEnabled() && hasInstanceRegistryAdminRole(user);
@@ -663,7 +667,7 @@ export default function Sidebar({ isLoading = false, isMobileOpen = false, onMob
         icon: IconLayoutDashboard,
         exact: true,
       },
-      ...(canAccessWorkspace
+      ...(canAccessContent
         ? [
             {
               kind: 'link' as const,

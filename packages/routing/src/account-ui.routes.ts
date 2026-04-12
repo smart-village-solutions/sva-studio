@@ -27,9 +27,9 @@ export const accountUiRoutePaths = {
 export const accountUiRouteGuards = {
   account: createProtectedRoute(),
   accountPrivacy: createProtectedRoute(),
-  content: createProtectedRoute({ requiredRoles: ['system_admin', 'app_manager', 'editor'] }),
-  contentCreate: createProtectedRoute({ requiredRoles: ['system_admin', 'app_manager', 'editor'] }),
-  contentDetail: createProtectedRoute({ requiredRoles: ['system_admin', 'app_manager', 'editor'] }),
+  content: createProtectedRoute(),
+  contentCreate: createProtectedRoute(),
+  contentDetail: createProtectedRoute(),
   adminUsers: createAdminRoute(),
   adminUserCreate: createAdminRoute(),
   adminUserDetail: createAdminRoute(),

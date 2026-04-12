@@ -1049,6 +1049,13 @@ export const i18nResources = {
           syncEmpty: 'Keine neuen oder geänderten Benutzer gefunden. {{skippedCount}} ohne passenden Instanzkontext übersprungen.',
           syncResult:
             '{{importedCount}} importiert, {{updatedCount}} aktualisiert, {{skippedCount}} ohne passenden Instanzkontext übersprungen.',
+          syncDiagnostics:
+            'Realm {{authRealm}}, Quelle {{providerSource}}. {{matchedWithoutInstanceAttributeCount}} Benutzer ohne `instanceId` wurden über den Realm-Kontext zugeordnet.',
+          syncProviderSource: {
+            instance: 'Instanz-Realm',
+            global: 'globaler Realm',
+            fallback_global: 'globaler Fallback-Realm',
+          },
         },
         errors: {
           forbidden: 'Unzureichende Berechtigungen für diese Nutzeraktion.',
@@ -2775,6 +2782,13 @@ export const i18nResources = {
           syncEmpty: 'No new or changed users found. {{skippedCount}} skipped without matching instance context.',
           syncResult:
             '{{importedCount}} imported, {{updatedCount}} updated, {{skippedCount}} skipped without matching instance context.',
+          syncDiagnostics:
+            'Realm {{authRealm}}, source {{providerSource}}. {{matchedWithoutInstanceAttributeCount}} users without `instanceId` were matched by realm scope.',
+          syncProviderSource: {
+            instance: 'instance realm',
+            global: 'global realm',
+            fallback_global: 'global fallback realm',
+          },
         },
         errors: {
           forbidden: 'Insufficient permissions for this user action.',

@@ -28,6 +28,59 @@ const normalizeTrustedProto = (value: string | null): string | null => {
   return null;
 };
 
+const normalizeAuthority = (value: string | null): string | null => {
+  const authority = value?.trim().toLowerCase() ?? null;
+  if (!authority) {
+    return null;
+  }
+
+  try {
+    const parsed = new URL(`http://${authority}`);
+    return parsed.port ? `${normalizeHost(parsed.hostname)}:${parsed.port}` : normalizeHost(parsed.hostname);
+  } catch {
+    return null;
+  }
+};
+
+const readPublicBaseUrlPort = (): { hostname: string; port: string; protocol: string } | null => {
+  const raw = process.env.SVA_PUBLIC_BASE_URL?.trim();
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    const parsed = new URL(raw);
+    if (!parsed.port) {
+      return null;
+    }
+
+    return {
+      hostname: normalizeHost(parsed.hostname),
+      port: parsed.port,
+      protocol: parsed.protocol.replace(/:$/, ''),
+    };
+  } catch {
+    return null;
+  }
+};
+
+const withLocalDevPortFallback = (authority: string, protocol: string): string => {
+  if (authority.includes(':')) {
+    return authority;
+  }
+
+  const publicBase = readPublicBaseUrlPort();
+  if (!publicBase || publicBase.protocol !== protocol) {
+    return authority;
+  }
+
+  if (authority === publicBase.hostname || authority.endsWith(`.${publicBase.hostname}`)) {
+    return `${authority}:${publicBase.port}`;
+  }
+
+  return authority;
+};
+
 const readForwardedPair = (forwarded: string | null, key: 'host' | 'proto'): string | null => {
   if (!forwarded) {
     return null;
@@ -66,6 +119,9 @@ export const parseForwardedHost = (value: string | null): string | null => {
   return host ? normalizeHost(host) : null;
 };
 
+export const parseForwardedAuthority = (value: string | null): string | null =>
+  normalizeAuthority(readForwardedPair(value, 'host'));
+
 export const parseForwardedProto = (value: string | null): string | null => {
   const proto = readForwardedPair(value, 'proto');
   return normalizeTrustedProto(proto);
@@ -75,6 +131,8 @@ const parseHostHeader = (value: string | null): string | null => {
   const host = value?.split(',')[0]?.trim() ?? null;
   return host ? normalizeHost(host) : null;
 };
+
+const parseHostAuthority = (value: string | null): string | null => normalizeAuthority(value?.split(',')[0]?.trim() ?? null);
 
 const parseProtoHeader = (value: string | null): string | null => {
   const proto = value?.split(',')[0]?.trim() ?? null;
@@ -95,6 +153,27 @@ export const resolveEffectiveRequestHost = (request: Request): string => {
   );
 };
 
+export const resolveEffectiveRequestAuthority = (request: Request): string => {
+  const url = new URL(request.url);
+  if (!shouldTrustForwardedHeaders()) {
+    const urlHost = normalizeHost(url.host);
+    const hostHeaderHost = parseHostHeader(request.headers.get('host'));
+    if (hostHeaderHost && hostHeaderHost === urlHost) {
+      return parseHostAuthority(request.headers.get('host')) ?? normalizeAuthority(url.host) ?? url.host;
+    }
+
+    return normalizeAuthority(url.host) ?? url.host;
+  }
+
+  return (
+    parseHostAuthority(request.headers.get('x-forwarded-host')) ??
+    parseForwardedAuthority(request.headers.get('forwarded')) ??
+    parseHostAuthority(request.headers.get('host')) ??
+    normalizeAuthority(url.host) ??
+    url.host
+  );
+};
+
 export const resolveEffectiveRequestProtocol = (request: Request): string => {
   const url = new URL(request.url);
   if (!shouldTrustForwardedHeaders()) {
@@ -109,4 +188,7 @@ export const resolveEffectiveRequestProtocol = (request: Request): string => {
 };
 
 export const buildRequestOriginFromHeaders = (request: Request): string =>
-  `${resolveEffectiveRequestProtocol(request)}://${resolveEffectiveRequestHost(request)}`;
+  `${resolveEffectiveRequestProtocol(request)}://${withLocalDevPortFallback(
+    resolveEffectiveRequestAuthority(request),
+    resolveEffectiveRequestProtocol(request)
+  )}`;

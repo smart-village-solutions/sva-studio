@@ -30,15 +30,19 @@ const buildGlobalFallback = (
   reason,
 });
 
-export const resolveTenantAuthClientSecret = async (instanceId: string): Promise<ResolvedTenantClientSecret> => {
+export const resolveTenantAuthClientSecret = async (
+  instanceId: string,
+  options: { allowGlobalFallback?: boolean } = {}
+): Promise<ResolvedTenantClientSecret> => {
+  const allowGlobalFallback = options.allowGlobalFallback ?? true;
   const globalSecret = getAuthClientSecret();
   let fallbackReason: ResolvedTenantClientSecret['reason'] = 'tenant_auth_client_secret_missing';
   const ciphertext = await loadInstanceAuthClientSecretCiphertext(instanceId).catch((error) => {
     fallbackReason = 'tenant_auth_client_secret_lookup_failed';
-    logger.warn('Tenant auth client secret lookup failed; falling back to global auth secret', {
+    logger.warn('Tenant auth client secret lookup failed', {
       operation: 'tenant_auth_secret_lookup',
-      auth_scope_kind: 'platform',
-      resolution_result: 'platform',
+      auth_scope_kind: allowGlobalFallback ? 'platform' : 'instance',
+      resolution_result: allowGlobalFallback ? 'platform' : 'tenant_secret_unavailable',
       instance_id: instanceId,
       reason_code: 'tenant_auth_client_secret_lookup_failed',
       dependency: 'database',
@@ -48,18 +52,34 @@ export const resolveTenantAuthClientSecret = async (instanceId: string): Promise
   });
 
   if (!ciphertext) {
+    if (!allowGlobalFallback) {
+      return {
+        configured: false,
+        readable: false,
+        source: 'tenant',
+        reason: fallbackReason,
+      };
+    }
     return buildGlobalFallback(globalSecret, fallbackReason);
   }
 
   const tenantSecret = revealField(ciphertext, buildAuthClientSecretAad(instanceId));
   if (!tenantSecret) {
-    logger.warn('Tenant auth client secret could not be decrypted; falling back to global auth secret', {
+    logger.warn('Tenant auth client secret could not be decrypted', {
       operation: 'tenant_auth_secret_lookup',
-      auth_scope_kind: 'platform',
-      resolution_result: 'platform',
+      auth_scope_kind: allowGlobalFallback ? 'platform' : 'instance',
+      resolution_result: allowGlobalFallback ? 'platform' : 'tenant_secret_unavailable',
       instance_id: instanceId,
       reason_code: 'tenant_auth_client_secret_unreadable',
     });
+    if (!allowGlobalFallback) {
+      return {
+        configured: true,
+        readable: false,
+        source: 'tenant',
+        reason: 'tenant_auth_client_secret_unreadable',
+      };
+    }
     return buildGlobalFallback(globalSecret, 'tenant_auth_client_secret_unreadable');
   }
 

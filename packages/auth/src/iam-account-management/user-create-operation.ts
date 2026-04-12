@@ -21,7 +21,9 @@ const deactivateCreatedExternalUser = async (input: {
   actor: CreateUserActorInfo;
   createdExternalId: string;
 }) => {
-  const fallbackIdentityProvider = await resolveIdentityProviderForInstance(input.actor.instanceId);
+  const fallbackIdentityProvider = await resolveIdentityProviderForInstance(input.actor.instanceId, {
+    executionMode: 'tenant_admin',
+  });
   if (!fallbackIdentityProvider) {
     return;
   }

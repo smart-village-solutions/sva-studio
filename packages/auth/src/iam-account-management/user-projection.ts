@@ -45,7 +45,9 @@ export const resolveKeycloakRoleNames = async (
   instanceId: string,
   keycloakSubject: string
 ): Promise<readonly string[] | null> => {
-  const identityProvider = await resolveIdentityProviderForInstance(instanceId);
+  const identityProvider = await resolveIdentityProviderForInstance(instanceId, {
+    executionMode: 'tenant_admin',
+  });
   if (!identityProvider) {
     return null;
   }

@@ -43,8 +43,18 @@ const readSingleAttribute = (
   return typeof value === 'string' && value.trim().length > 0 ? value : undefined;
 };
 
-const matchesInstanceId = (user: IdentityListedUser, instanceId: string): boolean =>
-  user.attributes?.instanceId?.includes(instanceId) ?? false;
+const matchesInstanceId = (
+  user: IdentityListedUser,
+  instanceId: string,
+  acceptUsersWithoutInstanceIdAttribute: boolean
+): boolean => {
+  const configuredInstanceIds = user.attributes?.instanceId;
+  if (!configuredInstanceIds || configuredInstanceIds.length === 0) {
+    return acceptUsersWithoutInstanceIdAttribute;
+  }
+
+  return configuredInstanceIds.includes(instanceId);
+};
 
 const resolveDisplayName = (user: IdentityListedUser): string => {
   const explicitDisplayName = readSingleAttribute(user.attributes, 'displayName');
@@ -174,10 +184,17 @@ const upsertIdentityUser = async (
   };
 };
 
-const listAllKeycloakUsers = async (instanceId: string): Promise<readonly IdentityListedUser[]> => {
-  const identityProvider = await resolveIdentityProviderForInstance(instanceId);
+const listAllKeycloakUsers = async (
+  instanceId: string
+): Promise<{
+  readonly resolution: NonNullable<Awaited<ReturnType<typeof resolveIdentityProviderForInstance>>>;
+  readonly users: readonly IdentityListedUser[];
+}> => {
+  const identityProvider = await resolveIdentityProviderForInstance(instanceId, {
+    executionMode: 'tenant_admin',
+  });
   if (!identityProvider) {
-    throw new KeycloakAdminUnavailableError('Keycloak Admin API ist nicht konfiguriert.');
+    throw new KeycloakAdminUnavailableError('Tenant-lokale Keycloak-Administration ist nicht konfiguriert.');
   }
 
   const users: IdentityListedUser[] = [];
@@ -190,7 +207,10 @@ const listAllKeycloakUsers = async (instanceId: string): Promise<readonly Identi
     );
     users.push(...page);
     if (page.length < KEYCLOAK_PAGE_SIZE) {
-      return users;
+      return {
+        resolution: identityProvider,
+        users,
+      };
     }
   }
 };
@@ -243,21 +263,32 @@ const resolveSyncActor = async (
 
 export const collectSyncCandidates = (
   listedUsers: readonly IdentityListedUser[],
-  expectedInstanceId: string
+  expectedInstanceId: string,
+  options?: {
+    readonly acceptUsersWithoutInstanceIdAttribute?: boolean;
+  }
 ): {
   matchingUsers: IdentityListedUser[];
+  matchedWithoutInstanceAttributeCount: number;
   skippedCount: number;
   skippedInstanceIds: ReadonlySet<string>;
 } => {
   const matchingUsers: IdentityListedUser[] = [];
+  let matchedWithoutInstanceAttributeCount = 0;
   const debugLoggingEnabled = logger.isLevelEnabled('debug');
   let skippedCount = 0;
   let debugLoggedCount = 0;
   const skippedInstanceIds = new Set<string>();
+  const acceptUsersWithoutInstanceIdAttribute =
+    options?.acceptUsersWithoutInstanceIdAttribute === true;
 
   for (const user of listedUsers) {
-    if (matchesInstanceId(user, expectedInstanceId)) {
+    const hasInstanceIdAttribute = (user.attributes?.instanceId?.length ?? 0) > 0;
+    if (matchesInstanceId(user, expectedInstanceId, acceptUsersWithoutInstanceIdAttribute)) {
       matchingUsers.push(user);
+      if (!hasInstanceIdAttribute && acceptUsersWithoutInstanceIdAttribute) {
+        matchedWithoutInstanceAttributeCount += 1;
+      }
       continue;
     }
 
@@ -278,7 +309,12 @@ export const collectSyncCandidates = (
     }
   }
 
-  return { matchingUsers, skippedCount, skippedInstanceIds };
+  return {
+    matchingUsers,
+    matchedWithoutInstanceAttributeCount,
+    skippedCount,
+    skippedInstanceIds,
+  };
 };
 
 const mapSyncErrorResponse = (error: unknown, requestId?: string): Response | undefined => {
@@ -334,11 +370,53 @@ export const runKeycloakUserImportSync = async (input: {
     request_id: input.requestId,
     trace_id: input.traceId,
   });
-  const listedUsers = await listAllKeycloakUsers(input.instanceId);
-  const { matchingUsers, skippedCount, skippedInstanceIds } = collectSyncCandidates(
-    listedUsers,
-    input.instanceId
-  );
+  const { resolution, users: listedUsers } = await listAllKeycloakUsers(input.instanceId);
+  const acceptUsersWithoutInstanceIdAttribute = resolution.source === 'instance';
+  const { matchingUsers, matchedWithoutInstanceAttributeCount, skippedCount, skippedInstanceIds } =
+    collectSyncCandidates(listedUsers, input.instanceId, {
+      acceptUsersWithoutInstanceIdAttribute,
+    });
+
+  if (matchedWithoutInstanceAttributeCount > 0) {
+    logger.info('Keycloak user sync matched users by realm scope without instance attribute', {
+      operation: 'sync_keycloak_users',
+      instance_id: input.instanceId,
+      auth_realm: resolution.realm,
+      provider_source: resolution.source,
+      matched_without_instance_attribute_count: matchedWithoutInstanceAttributeCount,
+      request_id: input.requestId,
+      trace_id: input.traceId,
+    });
+  }
+
+  if (skippedCount > 0) {
+    logger.info('Keycloak user sync skipped users because instance ids did not match', {
+      operation: 'sync_keycloak_users',
+      instance_id: input.instanceId,
+      auth_realm: resolution.realm,
+      provider_source: resolution.source,
+      skipped_count: skippedCount,
+      sample_instance_ids: [...skippedInstanceIds].join(','),
+      request_id: input.requestId,
+      trace_id: input.traceId,
+    });
+  }
+
+  const skippedInstanceIdSamples = [...skippedInstanceIds];
+  const diagnostics =
+    matchedWithoutInstanceAttributeCount > 0 || skippedInstanceIdSamples.length > 0
+      ? {
+          authRealm: resolution.realm,
+          providerSource: resolution.source,
+          executionMode: resolution.executionMode,
+          ...(matchedWithoutInstanceAttributeCount > 0
+            ? { matchedWithoutInstanceAttributeCount }
+            : {}),
+          ...(skippedInstanceIdSamples.length > 0
+            ? { skippedInstanceIds: skippedInstanceIdSamples }
+            : {}),
+        }
+      : undefined;
 
   const report = await withInstanceScopedDb(input.instanceId, async (client) => {
     let importedCount = 0;
@@ -361,6 +439,7 @@ export const runKeycloakUserImportSync = async (input: {
       updatedCount,
       skippedCount,
       totalKeycloakUsers: listedUsers.length,
+      ...(diagnostics ? { diagnostics } : {}),
     };
 
     if (input.actorAccountId) {

@@ -13,6 +13,32 @@ const state = vi.hoisted(() => ({
     requestId: 'req-iam-handler',
     traceId: 'trace-iam-handler',
   } as { workspaceId?: string; requestId?: string; traceId?: string },
+  instanceConfig: {
+    canonicalAuthHost: 'studio.smart-village.app',
+    parentDomain: 'studio.smart-village.app',
+  } as { canonicalAuthHost: string; parentDomain: string } | null,
+  instanceByHostname: null as null | {
+    instanceId: string;
+    primaryHostname: string;
+    status: string;
+    authRealm: string;
+    authClientId: string;
+    authIssuerUrl?: string;
+  },
+  instanceById: {
+    instanceId: 'de-musterhausen',
+    primaryHostname: 'de-musterhausen.studio.smart-village.app',
+    status: 'active',
+    authRealm: 'test',
+    authClientId: 'client',
+  } as null | {
+    instanceId: string;
+    primaryHostname: string;
+    status: string;
+    authRealm: string;
+    authClientId: string;
+    authIssuerUrl?: string;
+  },
   middlewareError: null as unknown,
   user: {
     id: 'keycloak-admin-1',
@@ -111,6 +137,15 @@ vi.mock('./middleware.server', () => ({
 
 vi.mock('@sva/sdk/server', () => ({
   createSdkLogger: () => state.logger,
+  getInstanceConfig: () => state.instanceConfig,
+  isCanonicalAuthHost: (host: string) => {
+    const canonicalAuthHost = state.instanceConfig?.canonicalAuthHost;
+    if (!canonicalAuthHost) {
+      return true;
+    }
+
+    return host.toLowerCase().replace(/:\d+$/, '').replace(/\.$/, '') === canonicalAuthHost;
+  },
   redactObject: (value: Record<string, unknown>) => value,
   getWorkspaceContext: () => state.workspaceContext,
   toJsonErrorResponse: (status: number, code: string, publicMessage?: string, options?: { requestId?: string }) =>
@@ -123,6 +158,24 @@ vi.mock('@sva/sdk/server', () => ({
       { status, headers: { 'Content-Type': 'application/json' } }
     ),
   withRequestContext: async (_opts: unknown, handler: () => Promise<Response> | Response) => handler(),
+}));
+
+vi.mock('@sva/data/server', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@sva/data/server')>();
+  return {
+    ...actual,
+    loadInstanceByHostname: vi.fn(async () => state.instanceByHostname),
+    loadInstanceById: vi.fn(async () => state.instanceById),
+  };
+});
+
+vi.mock('./config-tenant-secret.js', () => ({
+  resolveTenantAuthClientSecret: vi.fn(async () => ({
+    configured: true,
+    readable: true,
+    secret: 'tenant-secret',
+    source: 'tenant',
+  })),
 }));
 
 vi.mock('@opentelemetry/api', () => ({
@@ -500,9 +553,17 @@ describe('iam-account-management handlers (guards)', () => {
       recomputePerMinute: 0,
       consecutiveRedisFailures: 0,
     };
+    state.instanceById = {
+      instanceId: 'de-musterhausen',
+      primaryHostname: 'de-musterhausen.studio.smart-village.app',
+      status: 'active',
+      authRealm: 'test',
+      authClientId: 'client',
+    };
     state.keycloakConfigAvailable = true;
     state.runtimeAuthRealm = 'svs-intern-studio-staging';
     state.runtimeAuthIssuer = null;
+    process.env.KEYCLOAK_ADMIN_BASE_URL = 'http://keycloak.local';
     process.env.KEYCLOAK_ADMIN_REALM = 'svs-intern-studio-staging';
     process.env.SVA_AUTH_ISSUER = 'https://keycloak.local/realms/svs-intern-studio-staging';
     state.deactivateUserCalls = [];
@@ -710,16 +771,35 @@ describe('iam-account-management handlers (guards)', () => {
       })
     );
     const payload = (await response.json()) as {
-      data: { importedCount: number; updatedCount: number; skippedCount: number; totalKeycloakUsers: number };
+      data: {
+        importedCount: number;
+        updatedCount: number;
+        skippedCount: number;
+        totalKeycloakUsers: number;
+        diagnostics?: {
+          authRealm: string;
+          providerSource: 'instance' | 'global' | 'fallback_global';
+          executionMode?: 'platform_admin' | 'tenant_admin' | 'break_glass';
+          skippedInstanceIds?: readonly string[];
+        };
+      };
     };
 
     expect(response.status).toBe(200);
-    expect(payload.data).toEqual({
+    expect(payload.data).toMatchObject({
       importedCount: 1,
       updatedCount: 1,
       skippedCount: 1,
       totalKeycloakUsers: 3,
+      diagnostics: {
+        providerSource: 'instance',
+        executionMode: 'tenant_admin',
+      },
     });
+    expect(payload.data.diagnostics?.authRealm).toBe('test');
+    expect(payload.data.diagnostics?.skippedInstanceIds).toEqual([
+      '22222222-2222-2222-8222-222222222222',
+    ]);
   });
 
   it('skips sync logging when all keycloak users match the active instance', async () => {
@@ -1169,6 +1249,7 @@ describe('iam-account-management handlers (guards)', () => {
     const userDetailRow = buildUserDetailRow('active');
     vi.resetModules();
     state.keycloakConfigAvailable = false;
+    state.instanceById = null;
     state.queryHandler = (text) => {
       if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
         return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
@@ -1197,6 +1278,14 @@ describe('iam-account-management handlers (guards)', () => {
     expect(payload.data.roles).toEqual([
       expect.objectContaining({ roleId: 'role-editor', roleKey: 'editor' }),
     ]);
+
+    state.instanceById = {
+      instanceId: 'de-musterhausen',
+      primaryHostname: 'de-musterhausen.studio.smart-village.app',
+      status: 'active',
+      authRealm: 'test',
+      authClientId: 'client',
+    };
   });
 
   it('skips role writes when Keycloak returns no mapped roles', async () => {
@@ -5821,7 +5910,9 @@ describe('iam-account-management additional handlers', () => {
         status: 'ready',
         checks: expect.objectContaining({
           auth: {
+            activeRealm: 'svs-intern-studio-staging',
             realm: 'svs-intern-studio-staging',
+            scopeKind: 'platform',
           },
           db: true,
           redis: true,
@@ -5910,6 +6001,8 @@ describe('iam-account-management additional handlers', () => {
       expect.objectContaining({
         auth: {
           realm: 'svs-intern-studio-staging',
+          activeRealm: 'svs-intern-studio-staging',
+          scopeKind: 'platform',
         },
       })
     );
@@ -5978,11 +6071,83 @@ describe('iam-account-management additional handlers', () => {
       new Request('http://localhost/api/v1/iam/health/ready', { method: 'GET' })
     );
     const payload = (await response.json()) as {
-      checks: { auth: { realm?: string } };
+      checks: { auth: { realm?: string; activeRealm?: string; scopeKind?: string } };
     };
 
     expect(response.status).toBe(200);
     expect(payload.checks.auth.realm).toBe('platform-root');
+    expect(payload.checks.auth.activeRealm).toBe('platform-root');
+    expect(payload.checks.auth.scopeKind).toBe('platform');
+  });
+
+  it('reports the tenant realm as active realm on tenant hosts', async () => {
+    vi.resetModules();
+    state.redisAvailable = true;
+    process.env.KEYCLOAK_ADMIN_REALM = 'svs-intern-studio-staging';
+    process.env.SVA_AUTH_ISSUER = 'https://keycloak.local/realms/svs-intern-studio-staging';
+    state.instanceByHostname = {
+      instanceId: 'de-musterhausen',
+      primaryHostname: 'de-musterhausen.studio.smart-village.app',
+      status: 'active',
+      authRealm: 'de-musterhausen',
+      authClientId: 'sva-studio',
+    };
+    state.listRolesImpl = async () => [];
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT 1;')) {
+        return { rowCount: 1, rows: [{ '?column?': 1 }] };
+      }
+      if (text.includes("to_regclass('iam.groups')")) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              groups_exists: true,
+              group_roles_exists: true,
+              account_groups_exists: true,
+              account_groups_origin_column_exists: true,
+              activity_logs_exists: true,
+              platform_activity_logs_exists: true,
+              accounts_avatar_url_column_exists: true,
+              accounts_instance_id_column_exists: true,
+              accounts_username_ciphertext_column_exists: true,
+              accounts_notes_column_exists: true,
+              accounts_preferred_language_column_exists: true,
+              accounts_timezone_column_exists: true,
+              instance_hostnames_exists: true,
+              instance_hostnames_rls_disabled: true,
+              instances_primary_hostname_column_exists: true,
+              instances_auth_realm_column_exists: true,
+              instances_auth_client_id_column_exists: true,
+              instances_auth_issuer_url_column_exists: true,
+              instances_auth_client_secret_ciphertext_column_exists: true,
+              instances_rls_disabled: true,
+              instances_tenant_admin_username_column_exists: true,
+              instances_tenant_admin_email_column_exists: true,
+              instances_tenant_admin_first_name_column_exists: true,
+              instances_tenant_admin_last_name_column_exists: true,
+              idx_accounts_kc_subject_instance_exists: true,
+              accounts_isolation_policy_matches: true,
+              instance_memberships_isolation_policy_matches: true,
+            },
+          ],
+        };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const { healthReadyHandler: freshHealthReadyHandler } = await import('./iam-account-management.server');
+    const response = await freshHealthReadyHandler(
+      new Request('http://de-musterhausen.studio.smart-village.app/api/v1/iam/health/ready', { method: 'GET' })
+    );
+    const payload = (await response.json()) as {
+      checks: { auth: { realm?: string; activeRealm?: string; scopeKind?: string } };
+    };
+
+    expect(response.status).toBe(200);
+    expect(payload.checks.auth.realm).toBe('svs-intern-studio-staging');
+    expect(payload.checks.auth.activeRealm).toBe('de-musterhausen');
+    expect(payload.checks.auth.scopeKind).toBe('instance');
   });
 
   it('returns not_ready when dependencies fail', async () => {

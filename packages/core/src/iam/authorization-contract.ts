@@ -245,6 +245,8 @@ export type RuntimeHealthResponse = {
     };
     readonly auth: {
       readonly realm?: string;
+      readonly activeRealm?: string;
+      readonly scopeKind?: 'platform' | 'instance';
     };
     readonly db: boolean;
     readonly diagnostics?: Record<string, unknown>;

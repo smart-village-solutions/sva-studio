@@ -1,10 +1,13 @@
-import { createSdkLogger, getWorkspaceContext } from '@sva/sdk/server';
+import { createSdkLogger, getInstanceConfig, getWorkspaceContext, isCanonicalAuthHost } from '@sva/sdk/server';
 import type { RuntimeDependencyHealth, RuntimeHealthServices } from '@sva/core';
+import { classifyHost, isTrafficEnabledInstanceStatus } from '@sva/core';
+import { loadInstanceByHostname } from '@sva/data/server';
 
 import { getPermissionCacheHealth } from '../iam-authorization/shared.js';
 import { bootstrapAcceptanceAppDbUserIfNeeded } from '../postgres-app-user-bootstrap.server.js';
 import { getLastRedisError, isRedisAvailable } from '../redis.server.js';
 import { jsonResponse } from '../shared/db-helpers.js';
+import { resolveEffectiveRequestHost } from '../request-hosts.js';
 
 import {
   isKeycloakIdentityProvider,
@@ -61,11 +64,56 @@ const resolveRuntimeAuthRealm = (): string | undefined => {
   return extractRealmFromIssuer(issuer);
 };
 
+const resolveRuntimeAuthDisplay = async (
+  request: Request
+): Promise<{
+  realm?: string;
+  activeRealm?: string;
+  scopeKind: 'platform' | 'instance';
+}> => {
+  const technicalRealm = resolveRuntimeAuthRealm();
+  const instanceConfig = getInstanceConfig();
+  const host = resolveEffectiveRequestHost(request);
+  if (!instanceConfig || isCanonicalAuthHost(host)) {
+    return {
+      realm: technicalRealm,
+      activeRealm: technicalRealm,
+      scopeKind: 'platform',
+    };
+  }
+
+  const classification = classifyHost(host, instanceConfig.parentDomain);
+  if (classification.kind !== 'tenant') {
+    return {
+      realm: technicalRealm,
+      activeRealm: technicalRealm,
+      scopeKind: 'platform',
+    };
+  }
+
+  try {
+    const instance = await loadInstanceByHostname(host);
+    if (instance && isTrafficEnabledInstanceStatus(instance.status)) {
+      return {
+        realm: technicalRealm,
+        activeRealm: instance.authRealm,
+        scopeKind: 'instance',
+      };
+    }
+  } catch {
+    // Fall back to the technical runtime realm when tenant lookup is unavailable.
+  }
+
+  return {
+    realm: technicalRealm,
+    activeRealm: technicalRealm,
+    scopeKind: 'platform',
+  };
+};
+
 export const readyInternal = async (request: Request): Promise<Response> => {
   const requestContext = getWorkspaceContext();
-  const runtimeAuth = {
-    realm: resolveRuntimeAuthRealm(),
-  };
+  const runtimeAuth = await resolveRuntimeAuthDisplay(request);
   const dbStatus = await (async () => {
     try {
       const pool = resolvePool();

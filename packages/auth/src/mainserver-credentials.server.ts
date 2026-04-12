@@ -128,7 +128,9 @@ export const readIdentityUserAttributes = async (
   input: ReadIdentityUserAttributesInput
 ): Promise<IdentityUserAttributes | null> => {
   const identityProvider = input.instanceId
-    ? await resolveIdentityProviderForInstance(input.instanceId)
+    ? await resolveIdentityProviderForInstance(input.instanceId, {
+        executionMode: 'tenant_admin',
+      })
     : resolveIdentityProvider();
   if (!identityProvider) {
     return null;

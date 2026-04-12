@@ -10,6 +10,7 @@ import {
   getRuntimeStatusExecutionMode,
   hasLocalEmergencyRemoteMutationOverride,
   isTruthyFlag,
+  parseJsonFromCommandOutput,
   parseRuntimeCliOptions,
   resolveAcceptanceDeployOptions,
   type AcceptanceDeployReport,
@@ -46,6 +47,25 @@ describe('runtime-env.shared', () => {
 
     expect(result).toEqual({
       jsonOutput: true,
+    });
+  });
+
+  it('parses JSON command output after leading transport noise', () => {
+    expect(
+      parseJsonFromCommandOutput<{ invalid_instance_ids: string[] }>(`SET
+{"invalid_instance_ids":["de-musterhausen"]}`)
+    ).toEqual({
+      invalid_instance_ids: ['de-musterhausen'],
+    });
+  });
+
+  it('parses the trailing JSON line from multi-line command output', () => {
+    expect(
+      parseJsonFromCommandOutput<{ missing_hostnames: string[] }>(`NOTICE: bootstrap ok
+SET
+{"missing_hostnames":[]}`)
+    ).toEqual({
+      missing_hostnames: [],
     });
   });
 

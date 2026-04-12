@@ -19,6 +19,7 @@ import { OrganizationCreatePage } from './admin/organizations/-organization-crea
 import { RoleCreatePage } from './admin/roles/-role-create-page';
 import { normalizeRoleDetailTab, RoleDetailPage } from './admin/roles/-role-detail-page';
 import { UserCreatePage } from './admin/users/-user-create-page';
+import { UserListPage } from './admin/users/-user-list-page';
 import { ContentEditorPage } from './content/-content-editor-page';
 import { ContentListPage } from './content/-content-list-page';
 import { HomePage } from './-home-page';
@@ -185,16 +186,7 @@ const RolesRoutePage = () => (
   </React.Suspense>
 );
 
-const LazyUserListPage = React.lazy(async () => {
-  const mod = await import('./admin/users/-user-list-page');
-  return { default: mod.UserListPage };
-});
-
-const UserListRoutePage = () => (
-  <React.Suspense fallback={<p className="text-sm text-muted-foreground">{t('interfaces.messages.loading')}</p>}>
-    <LazyUserListPage />
-  </React.Suspense>
-);
+const UserListRoutePage = () => <UserListPage />;
 
 const LazyUserEditPage = React.lazy(async () => {
   const mod = await import('./admin/users/-user-edit-page');

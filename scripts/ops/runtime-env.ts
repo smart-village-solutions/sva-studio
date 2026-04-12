@@ -22,6 +22,7 @@ import {
 import {
   assertDeterministicRemoteMutationContext,
   buildAcceptanceReportPaths,
+  parseJsonFromCommandOutput,
   buildProdParityProbePlan,
   buildTrustedForwardedHeaders,
   formatAcceptanceDeployReportMarkdown,
@@ -1602,33 +1603,17 @@ SELECT json_build_object(
 `;
 
   try {
-    const payload = JSON.parse(createDbSqlRunner(runtimeProfile, env)(sql)) as {
+    const payload = parseJsonFromCommandOutput<{
       checked_active_instance_count?: number;
       invalid_instance_ids?: string[];
-    };
+    }>(createDbSqlRunner(runtimeProfile, env)(sql));
     return evaluateInstanceAuthPayload(payload);
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    const jsonMatch = message.match(/\{[\s\S]*\}/u);
-
-    if (jsonMatch) {
-      try {
-        const fallbackPayload = JSON.parse(jsonMatch[0]) as {
-          checked_active_instance_count?: number;
-          invalid_instance_ids?: string[];
-        };
-
-        return evaluateInstanceAuthPayload(fallbackPayload);
-      } catch {
-        // Keep original error below when fallback payload cannot be parsed.
-      }
-    }
-
     return toDoctorCheck(
       'instance-auth-config',
       'error',
       'instance_auth_config_check_failed',
-      message
+      error instanceof Error ? error.message : String(error)
     );
   }
 };
@@ -1719,32 +1704,17 @@ SELECT json_build_object(
 `;
 
   try {
-    const payload = JSON.parse(createDbSqlRunner(runtimeProfile, env)(sql)) as {
+    const payload = parseJsonFromCommandOutput<{
       checked_active_instance_count?: number;
       invalid_instance_ids?: string[];
-    };
+    }>(createDbSqlRunner(runtimeProfile, env)(sql));
     return evaluateTenantAdminPayload(payload);
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    const jsonMatch = message.match(/\{[\s\S]*\}/u);
-
-    if (jsonMatch) {
-      try {
-        const fallbackPayload = JSON.parse(jsonMatch[0]) as {
-          checked_active_instance_count?: number;
-          invalid_instance_ids?: string[];
-        };
-        return evaluateTenantAdminPayload(fallbackPayload);
-      } catch {
-        // Keep original error below when fallback payload cannot be parsed.
-      }
-    }
-
     return toDoctorCheck(
       'instance-tenant-admin-contract',
       'error',
       'instance_tenant_admin_contract_check_failed',
-      message,
+      error instanceof Error ? error.message : String(error),
       {
         cutoverRequired,
       }
@@ -1818,10 +1788,10 @@ SELECT json_build_object(
 `;
 
   try {
-    const payload = JSON.parse(createDbSqlRunner(runtimeProfile, env)(sql)) as {
+    const payload = parseJsonFromCommandOutput<{
       checked_hostnames?: string;
       missing_hostnames?: string[];
-    };
+    }>(createDbSqlRunner(runtimeProfile, env)(sql));
 
     const missingHostnames = Array.isArray(payload.missing_hostnames) ? payload.missing_hostnames : [];
     if (missingHostnames.length > 0) {
@@ -1848,47 +1818,7 @@ SELECT json_build_object(
       }
     );
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    const jsonMatch = message.match(/\{[\s\S]*\}/u);
-
-    if (jsonMatch) {
-      try {
-        const fallbackPayload = JSON.parse(jsonMatch[0]) as {
-          checked_hostnames?: string;
-          missing_hostnames?: string[];
-        };
-
-        const missingHostnames = Array.isArray(fallbackPayload.missing_hostnames) ? fallbackPayload.missing_hostnames : [];
-        if (missingHostnames.length > 0) {
-          return toDoctorCheck(
-            'instance-hostnames',
-            'error',
-            'tenant_instance_not_found',
-            'Mindestens ein erwartetes Tenant-Hostname-Mapping fehlt oder ist nicht primaer.',
-            {
-              missingHostnames,
-              parentDomain,
-            }
-          );
-        }
-
-        return toDoctorCheck(
-          'instance-hostnames',
-          'ok',
-          'tenant_hostnames_ready',
-          'Alle erwarteten Tenant-Hostname-Mappings sind vorhanden.',
-          {
-            hostnames: expectedHostnames.map(({ hostname }) => hostname),
-            parentDomain,
-            recoveredFromTransportNoise: true,
-          }
-        );
-      } catch {
-        // Keep original error below when fallback payload cannot be parsed.
-      }
-    }
-
-    return toDoctorCheck('instance-hostnames', 'error', 'tenant_host_resolution_failed', message, {
+    return toDoctorCheck('instance-hostnames', 'error', 'tenant_host_resolution_failed', error instanceof Error ? error.message : String(error), {
       hostnames: expectedHostnames.map(({ hostname }) => hostname),
       parentDomain,
     });

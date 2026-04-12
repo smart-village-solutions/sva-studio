@@ -229,6 +229,46 @@ export const buildTrustedForwardedHeaders = (host: string): Record<string, strin
   'x-forwarded-proto': 'https',
 });
 
+const parseJsonCandidate = <T>(value: string): T | null => {
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return null;
+  }
+};
+
+export const parseJsonFromCommandOutput = <T>(rawOutput: string): T => {
+  const normalized = rawOutput.trim();
+  if (normalized.length === 0) {
+    throw new Error('Leere JSON-Ausgabe.');
+  }
+
+  const direct = parseJsonCandidate<T>(normalized);
+  if (direct !== null) {
+    return direct;
+  }
+
+  const nonEmptyLines = normalized
+    .split(/\r?\n/u)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+
+  for (let index = nonEmptyLines.length - 1; index >= 0; index -= 1) {
+    const candidate = parseJsonCandidate<T>(nonEmptyLines[index] ?? '');
+    if (candidate !== null) {
+      return candidate;
+    }
+  }
+
+  const trailingJsonMatch = normalized.match(/(\{[\s\S]*\}|\[[\s\S]*\])\s*$/u);
+  const trailingCandidate = trailingJsonMatch?.[1] ? parseJsonCandidate<T>(trailingJsonMatch[1]) : null;
+  if (trailingCandidate !== null) {
+    return trailingCandidate;
+  }
+
+  throw new Error(`JSON-Ausgabe konnte nicht gelesen werden: ${normalized}`);
+};
+
 const takeOptionValue = (raw: string, all: readonly string[], index: number) => {
   const [flag, inlineValue] = raw.split('=', 2);
   if (inlineValue !== undefined) {

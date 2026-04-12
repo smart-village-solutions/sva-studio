@@ -17,6 +17,13 @@ import {
 } from './repository-shared.js';
 
 type InstanceScopedClient = Parameters<Parameters<typeof withInstanceScopedDb>[1]>[0];
+type DeleteLegalTextInput = {
+  instanceId: string;
+  actorAccountId: string;
+  requestId?: string;
+  traceId?: string;
+  legalTextVersionId: string;
+};
 
 const loadLegalTextByIdWithClient = async (
   client: InstanceScopedClient,
@@ -51,16 +58,10 @@ ORDER BY version.name ASC, version.locale ASC, version.published_at DESC NULLS L
     return result.rows.map(mapLegalTextListItem);
   });
 
-export const loadLegalTextById = async (
-  instanceId: string,
-  legalTextVersionId: string
-): Promise<IamLegalTextListItem | undefined> =>
+export const loadLegalTextById = async (instanceId: string, legalTextVersionId: string): Promise<IamLegalTextListItem | undefined> =>
   withInstanceScopedDb(instanceId, (client) => loadLegalTextByIdWithClient(client, instanceId, legalTextVersionId));
 
-export const loadPendingLegalTexts = async (
-  instanceId: string,
-  keycloakSubject: string
-): Promise<readonly IamPendingLegalTextItem[]> =>
+export const loadPendingLegalTexts = async (instanceId: string, keycloakSubject: string): Promise<readonly IamPendingLegalTextItem[]> =>
   withInstanceScopedDb(instanceId, async (client) => {
     const result = await client.query<PendingLegalTextRow>(
       `
@@ -157,13 +158,7 @@ RETURNING id;
       accountId: input.actorAccountId,
       eventType: 'iam.legal_text.created',
       result: 'success',
-      payload: {
-        legal_text_version_id: legalTextVersionId,
-        name: input.name,
-        legal_text_version: input.legalTextVersion,
-        locale: input.locale,
-        status: input.status,
-      },
+      payload: { legal_text_version_id: legalTextVersionId, name: input.name, legal_text_version: input.legalTextVersion, locale: input.locale, status: input.status },
       requestId: input.requestId,
       traceId: input.traceId,
     });
@@ -221,10 +216,7 @@ RETURNING id;
       accountId: input.actorAccountId,
       eventType: 'iam.legal_text.updated',
       result: 'success',
-      payload: {
-        legal_text_version_id: updatedLegalTextVersionId,
-        updated_fields: collectUpdatedFields(input),
-      },
+      payload: { legal_text_version_id: updatedLegalTextVersionId, updated_fields: collectUpdatedFields(input) },
       requestId: input.requestId,
       traceId: input.traceId,
     });
@@ -232,13 +224,7 @@ RETURNING id;
     return updatedLegalTextVersionId;
   });
 
-export const deleteLegalTextVersion = async (input: {
-  instanceId: string;
-  actorAccountId: string;
-  requestId?: string;
-  traceId?: string;
-  legalTextVersionId: string;
-}): Promise<string | undefined> =>
+export const deleteLegalTextVersion = async (input: DeleteLegalTextInput): Promise<string | undefined> =>
   withInstanceScopedDb(input.instanceId, async (client) => {
     const deleted = await client.query<{ id: string }>(
       `
@@ -260,9 +246,7 @@ RETURNING id;
       accountId: input.actorAccountId,
       eventType: 'iam.legal_text.deleted',
       result: 'success',
-      payload: {
-        legal_text_version_id: deletedLegalTextVersionId,
-      },
+      payload: { legal_text_version_id: deletedLegalTextVersionId },
       requestId: input.requestId,
       traceId: input.traceId,
     });

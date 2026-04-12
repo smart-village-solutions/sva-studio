@@ -44,6 +44,10 @@ describe('provisioning-auth-evaluation', () => {
       realmMode: 'new',
       authClientSecretConfigured: false,
       state: undefined,
+      tenantAdminClient: {
+        clientId: 'sva-studio-admin',
+        secretConfigured: false,
+      },
       tenantAdminBootstrap: { username: 'demo-admin' },
     });
 
@@ -59,6 +63,7 @@ describe('provisioning-auth-evaluation', () => {
     expect(newRealmChecks.find((check) => check.checkKey === 'realm_mode')?.status).toBe('ready');
     expect(newRealmChecks.find((check) => check.checkKey === 'tenant_secret')?.status).toBe('warning');
     expect(newRealmChecks.find((check) => check.checkKey === 'tenant_admin_profile')?.status).toBe('ready');
+    expect(newRealmChecks.find((check) => check.checkKey === 'tenant_admin_client')?.status).toBe('ready');
     expect(toOverallPreflightStatus(newRealmChecks)).toBe('warning');
 
     expect(existingRealmChecks.find((check) => check.checkKey === 'realm_mode')?.status).toBe('ready');

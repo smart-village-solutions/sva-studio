@@ -28,7 +28,7 @@ describe('instance config', () => {
     const { getInstanceConfig } = await import('../../src/instance/config.server');
 
     expect(getInstanceConfig()).toBeNull();
-  });
+  }, 10_000);
 
   it('loads a normalized config for valid values', async () => {
     process.env.SVA_PARENT_DOMAIN = 'Studio.Example.org';

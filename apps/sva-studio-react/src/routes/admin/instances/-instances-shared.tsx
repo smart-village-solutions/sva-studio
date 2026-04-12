@@ -553,6 +553,8 @@ export const getKeycloakStatusEntries = (selectedInstance: NonNullable<ReturnTyp
     ] as const),
     ['admin.instances.keycloakStatus.clientSecretConfigured', status.clientSecretConfigured],
     ['admin.instances.keycloakStatus.tenantClientSecretReadable', status.tenantClientSecretReadable],
+    ['admin.instances.keycloakStatus.tenantAdminClientSecretConfigured', status.tenantAdminClientSecretConfigured],
+    ['admin.instances.keycloakStatus.tenantAdminClientSecretReadable', status.tenantAdminClientSecretReadable],
     ['admin.instances.keycloakStatus.runtimeSecretSourceTenant', status.runtimeSecretSource === 'tenant'],
   ] as const;
 };

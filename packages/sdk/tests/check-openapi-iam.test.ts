@@ -45,7 +45,7 @@ describe('check-openapi-iam', () => {
     const errors = validateOpenApiDocument('openapi: 3.0.0\npaths:\n  /health/live:\ncomponents:\n  schemas:\n');
 
     expect(errors).toContain('OpenAPI-Version 3.1.0 fehlt.');
-    expect(errors).toContain('Pfad fehlt: /health/ready');
+    expect(errors).toContain('Pfad fehlt: /api/v1/iam/health/ready');
     expect(errors).toContain('Schema fehlt: ApiErrorResponse');
   });
 

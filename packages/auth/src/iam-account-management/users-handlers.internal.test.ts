@@ -183,8 +183,8 @@ describe('iam-account-management/users-handlers internals', () => {
       ctx
     );
 
-    expect(updateResponse.status).toBe(503);
-    expect(deactivateResponse.status).toBe(503);
+    expect(updateResponse.status).toBe(409);
+    expect(deactivateResponse.status).toBe(409);
   });
 
   it('maps idempotency replay and missing identity provider for bulk deactivation', async () => {
@@ -205,6 +205,6 @@ describe('iam-account-management/users-handlers internals', () => {
       new Request('http://localhost/api/v1/iam/users/bulk-deactivate', { method: 'POST' }),
       ctx
     );
-    expect(missingIdp.status).toBe(503);
+    expect(missingIdp.status).toBe(409);
   });
 });

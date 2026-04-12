@@ -215,7 +215,7 @@ describe('iam-account-management/roles-handlers internals', () => {
     });
   });
 
-  it('persists a failed idempotent response when the identity provider is unavailable', async () => {
+  it('persists a failed idempotent response when role creation cannot reach the admin API', async () => {
     const response = await createRoleInternal(new Request('http://localhost/api/v1/iam/roles', { method: 'POST' }), ctx);
 
     expect(response.status).toBe(503);
@@ -228,7 +228,7 @@ describe('iam-account-management/roles-handlers internals', () => {
     );
   });
 
-  it('rejects invalid role ids and returns keycloak_unavailable when no identity provider is configured', async () => {
+  it('rejects invalid role ids and returns tenant_admin_client_not_configured when no identity provider is configured', async () => {
     const invalidResponse = await updateRoleInternal(
       new Request('http://localhost/api/v1/iam/roles/not-a-uuid', { method: 'PATCH' }),
       ctx
@@ -317,16 +317,16 @@ describe('iam-account-management/roles-handlers internals', () => {
       new Request('http://localhost/api/v1/iam/roles/11111111-1111-1111-8111-111111111111', { method: 'PATCH' }),
       ctx
     );
-    expect(validUrlResponse.status).toBe(503);
+    expect(validUrlResponse.status).toBe(409);
     await expect(validUrlResponse.json()).resolves.toEqual({
       error: {
-        code: 'keycloak_unavailable',
+        code: 'tenant_admin_client_not_configured',
         message: 'Tenant-lokale Keycloak-Administration ist nicht konfiguriert.',
         details: {
           dependency: 'keycloak',
           execution_mode: 'tenant_admin',
           instance_id: 'de-musterhausen',
-          reason_code: 'tenant_admin_not_configured',
+          reason_code: 'tenant_admin_client_not_configured',
           syncState: 'failed',
           syncError: { code: 'IDP_UNAVAILABLE' },
         },

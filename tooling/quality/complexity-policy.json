@@ -498,6 +498,54 @@
       "status": "open",
       "summary": "Instance-Registry-Provisioning in Step-Orchestrierung, Keycloak-Provisioning und Fehlerbehandlung zerlegen"
     },
+    "iam-server:packages/auth/src/iam-instance-registry/provisioning-auth-state.ts:fileLines": {
+      "ticketId": "QUAL-119",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Instance-Registry-Provisioning in Step-Orchestrierung, Keycloak-Provisioning und Fehlerbehandlung zerlegen"
+    },
+    "iam-server:packages/auth/src/iam-instance-registry/service-keycloak-execution-shared.ts:fileLines": {
+      "ticketId": "QUAL-119",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Instance-Registry-Provisioning in Step-Orchestrierung, Keycloak-Provisioning und Fehlerbehandlung zerlegen"
+    },
+    "iam-server:packages/auth/src/iam-instance-registry/service-keycloak-execution.ts:fileLines": {
+      "ticketId": "QUAL-119",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Instance-Registry-Provisioning in Step-Orchestrierung, Keycloak-Provisioning und Fehlerbehandlung zerlegen"
+    },
+    "iam-server:packages/auth/src/iam-instance-registry/service-keycloak.ts:fileLines": {
+      "ticketId": "QUAL-119",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Instance-Registry-Provisioning in Step-Orchestrierung, Keycloak-Provisioning und Fehlerbehandlung zerlegen"
+    },
+    "iam-server:packages/auth/src/iam-instance-registry/service-keycloak.ts:functionLines": {
+      "ticketId": "QUAL-119",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Instance-Registry-Provisioning in Step-Orchestrierung, Keycloak-Provisioning und Fehlerbehandlung zerlegen"
+    },
+    "iam-server:packages/auth/src/iam-account-management/user-create-operation.ts:functionLines": {
+      "ticketId": "QUAL-112",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "IAM-Account-Management weiter in kleinere Handler-, Diagnose- und Mutationsbausteine zerlegen"
+    },
+    "iam-server:packages/auth/src/iam-account-management/user-import-sync-handler.ts:cyclomaticComplexity": {
+      "ticketId": "QUAL-112",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "IAM-Account-Management weiter in kleinere Handler-, Diagnose- und Mutationsbausteine zerlegen"
+    },
+    "iam-server:packages/auth/src/iam-legal-texts/repository.ts:fileLines": {
+      "ticketId": "QUAL-120",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "IAM-Legal-Texts-Repository in kleinere Query-, Create-, Update- und Delete-Bausteine zerlegen"
+    },
     "iam-data:packages/data/src/iam/repositories/statements.ts:fileLines": {
       "ticketId": "QUAL-116",
       "ticketSystem": "backlog",

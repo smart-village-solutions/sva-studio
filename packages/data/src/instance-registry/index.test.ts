@@ -64,6 +64,7 @@ describe('instance registry repository', () => {
       authClientId: 'sva-studio',
       authIssuerUrl: undefined,
       authClientSecretConfigured: false,
+      tenantAdminClient: undefined,
       tenantAdminBootstrap: undefined,
       themeKey: undefined,
       featureFlags: { provisioning: true },
@@ -337,6 +338,7 @@ describe('instance registry repository', () => {
       authClientId: 'sva-studio',
       authIssuerUrl: undefined,
       authClientSecretConfigured: false,
+      tenantAdminClient: undefined,
       tenantAdminBootstrap: undefined,
       themeKey: undefined,
       featureFlags: {},
@@ -347,8 +349,8 @@ describe('instance registry repository', () => {
       updatedBy: 'system',
     });
     assert.equal(statements.length, 2);
-    assert.equal(statements[0]?.values[15], '{}');
-    assert.equal(statements[0]?.values[17], 'system');
+    assert.equal(statements[0]?.values[17], '{}');
+    assert.equal(statements[0]?.values[19], 'system');
     assert.equal(statements[1]?.values[2], 'system');
   });
 
@@ -474,6 +476,7 @@ describe('instance registry repository', () => {
       authClientId: 'sva-studio',
       authIssuerUrl: 'https://keycloak.smart-village.app/realms/bb-guben',
       authClientSecretConfigured: true,
+      tenantAdminClient: undefined,
       tenantAdminBootstrap: {
         username: 'tenant-admin',
         email: 'tenant@example.org',
@@ -490,7 +493,7 @@ describe('instance registry repository', () => {
     });
     assert.equal(statements[0]?.values[8], true);
     assert.equal(statements[0]?.values[9], null);
-    assert.equal(statements[0]?.values[10], 'tenant-admin');
+    assert.equal(statements[0]?.values[13], 'tenant-admin');
     assert.equal(statements[1]?.values[0], 'bb-guben.studio.smart-village.app');
   });
 });

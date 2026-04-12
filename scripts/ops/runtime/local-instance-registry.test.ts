@@ -23,6 +23,7 @@ describe('buildLocalInstanceRegistryReconciliationInput', () => {
       allowedInstanceIds: ['de-musterhausen', 'hb-meinquartier'],
       parentDomain: 'studio.localhost',
       tenantAuthClientId: 'sva-studio',
+      tenantAdminClientId: 'sva-studio-admin',
       tenantAuthRealmMode: 'instance-id',
     });
   });
@@ -34,12 +35,14 @@ describe('buildLocalInstanceRegistryReconciliationSql', () => {
       allowedInstanceIds: ['de-musterhausen'],
       parentDomain: 'studio.localhost',
       tenantAuthClientId: 'sva-studio',
+      tenantAdminClientId: 'sva-studio-admin',
       tenantAuthRealmMode: 'instance-id',
     });
 
     expect(sql).toContain("parent_domain = 'studio.localhost'");
     expect(sql).toContain("primary_hostname = 'de-musterhausen.studio.localhost'");
     expect(sql).toContain("auth_realm = 'de-musterhausen'");
+    expect(sql).toContain("tenant_admin_client_id = COALESCE(NULLIF(tenant_admin_client_id, ''), 'sva-studio-admin')");
     expect(sql).toContain("VALUES ('de-musterhausen.studio.localhost', 'de-musterhausen', true, 'runtime-env-local')");
   });
 
@@ -48,6 +51,7 @@ describe('buildLocalInstanceRegistryReconciliationSql', () => {
       allowedInstanceIds: ['de-musterhausen'],
       parentDomain: 'studio.localhost',
       tenantAuthClientId: 'sva-studio',
+      tenantAdminClientId: 'sva-studio-admin',
       tenantAuthRealmMode: 'keep',
     });
 

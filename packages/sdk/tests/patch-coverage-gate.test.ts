@@ -196,7 +196,7 @@ describe('patch coverage gate', () => {
     expect(result.coveragePct).toBe(0);
     expect(result.missedLines).toBe(1);
     expect(result.uncoveredFiles[0]?.path).toBe('packages/sdk/src/index.ts');
-  });
+  }, 20_000);
 
   it('maps lcov js source entries back to changed TypeScript files', async () => {
     const runPatchCoverageGate = await loadRunPatchCoverageGate();

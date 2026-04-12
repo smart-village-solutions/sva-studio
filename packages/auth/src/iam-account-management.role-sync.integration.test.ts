@@ -53,6 +53,10 @@ const roleSyncIntegrationState = vi.hoisted(() => ({
         id: 'de-musterhausen',
         authRealm: 'de-musterhausen',
         authClientId: 'sva-studio',
+        tenantAdminClient: {
+          clientId: 'sva-studio-admin',
+          secretConfigured: true,
+        },
       },
     ],
   ]),
@@ -134,6 +138,12 @@ vi.mock('@sva/data/server', () => ({
 
 vi.mock('./config-tenant-secret.js', () => ({
   resolveTenantAuthClientSecret: vi.fn(async () => ({
+    configured: true,
+    readable: true,
+    secret: roleSyncIntegrationState.tenantSecret,
+    source: 'tenant',
+  })),
+  resolveTenantAdminClientSecret: vi.fn(async () => ({
     configured: true,
     readable: true,
     secret: roleSyncIntegrationState.tenantSecret,

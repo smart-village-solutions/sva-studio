@@ -198,6 +198,10 @@ const contractState = vi.hoisted(() => {
           id: instanceId,
           authRealm: instanceId,
           authClientId: 'sva-studio',
+          tenantAdminClient: {
+            clientId: 'sva-studio-admin',
+            secretConfigured: true,
+          },
         },
       ],
     ]),
@@ -295,6 +299,12 @@ vi.mock('@sva/data/server', () => ({
 
 vi.mock('./config-tenant-secret.js', () => ({
   resolveTenantAuthClientSecret: vi.fn(async () => ({
+    configured: true,
+    readable: true,
+    secret: contractState.tenantSecret,
+    source: 'tenant',
+  })),
+  resolveTenantAdminClientSecret: vi.fn(async () => ({
     configured: true,
     readable: true,
     secret: contractState.tenantSecret,

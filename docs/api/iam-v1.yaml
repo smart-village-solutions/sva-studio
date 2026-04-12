@@ -12,7 +12,21 @@ paths:
       responses:
         '200':
           description: Service lebt.
+  /api/v1/iam/health/live:
+    get:
+      summary: Prozess-Liveness
+      responses:
+        '200':
+          description: Service lebt.
   /health/ready:
+    get:
+      summary: Readiness (DB, Redis, Keycloak)
+      responses:
+        '200':
+          description: Service ist bereit.
+        '503':
+          description: Mindestens ein Dependency-Check ist fehlgeschlagen.
+  /api/v1/iam/health/ready:
     get:
       summary: Readiness (DB, Redis, Keycloak)
       responses:

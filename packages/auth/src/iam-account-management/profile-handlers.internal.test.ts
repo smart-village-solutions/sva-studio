@@ -262,7 +262,7 @@ describe('iam-account-management/profile-handlers internals', () => {
     });
   });
 
-  it('returns keycloak_unavailable for write requests without an identity provider', async () => {
+  it('returns tenant_admin_client_not_configured for write requests without an identity provider', async () => {
     state.parseResult = { ok: true, data: { email: 'new@example.com' } };
 
     const response = await updateMyProfileInternal(
@@ -270,16 +270,16 @@ describe('iam-account-management/profile-handlers internals', () => {
       ctx
     );
 
-    expect(response.status).toBe(503);
+    expect(response.status).toBe(409);
     await expect(response.json()).resolves.toEqual({
       error: {
-        code: 'keycloak_unavailable',
+        code: 'tenant_admin_client_not_configured',
         message: 'Tenant-lokale Keycloak-Administration ist nicht konfiguriert.',
         details: {
           dependency: 'keycloak',
           execution_mode: 'tenant_admin',
           instance_id: 'de-musterhausen',
-          reason_code: 'tenant_admin_not_configured',
+          reason_code: 'tenant_admin_client_not_configured',
         },
       },
       requestId: 'req-profile',

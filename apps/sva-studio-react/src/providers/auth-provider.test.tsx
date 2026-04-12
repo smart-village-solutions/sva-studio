@@ -86,7 +86,7 @@ describe('AuthProvider', () => {
     );
   });
 
-  it('falls back to unauthenticated user when /auth/me is not ok', async () => {
+  it('resolves to the signed-out state immediately while silent recovery still runs', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({
@@ -102,12 +102,25 @@ describe('AuthProvider', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByTestId('status').textContent).toBe('ready');
+      expect(screen.getByTestId('is-recovering-session').textContent).toBe('yes');
     });
 
+    expect(screen.getByTestId('status').textContent).toBe('ready');
     expect(screen.getByTestId('authenticated').textContent).toBe('no');
     expect(screen.getByTestId('has-resolved-session').textContent).toBe('yes');
     expect(screen.getByTestId('user-id').textContent).toBe('none');
+
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        origin: window.location.origin,
+        data: { type: 'sva-auth:silent-sso', status: 'failure' },
+      })
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('is-recovering-session').textContent).toBe('no');
+    });
+
     expect(browserLoggerMock.info).toHaveBeenCalledWith(
       'auth_session_unauthenticated',
       expect.objectContaining({
@@ -145,6 +158,9 @@ describe('AuthProvider', () => {
     await waitFor(() => {
       expect(screen.getByTestId('is-recovering-session').textContent).toBe('yes');
     });
+    expect(screen.getByTestId('status').textContent).toBe('ready');
+    expect(screen.getByTestId('authenticated').textContent).toBe('no');
+    expect(screen.getByTestId('has-resolved-session').textContent).toBe('yes');
 
     window.dispatchEvent(
       new MessageEvent('message', {
@@ -185,6 +201,9 @@ describe('AuthProvider', () => {
     await waitFor(() => {
       expect(screen.getByTestId('is-recovering-session').textContent).toBe('yes');
     });
+    expect(screen.getByTestId('status').textContent).toBe('ready');
+    expect(screen.getByTestId('authenticated').textContent).toBe('no');
+    expect(screen.getByTestId('has-resolved-session').textContent).toBe('yes');
 
     window.dispatchEvent(
       new MessageEvent('message', {

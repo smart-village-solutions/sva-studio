@@ -21,6 +21,10 @@ type UseIamAdminListResult<TItem> = {
   readonly refetch: () => Promise<void>;
   readonly clearMutationError: () => void;
   readonly setError: (error: IamHttpError | null) => void;
+  readonly runMutationWithResult: <TResult>(
+    action: () => Promise<TResult>,
+    meta?: BrowserOperationLogMeta
+  ) => Promise<TResult | null>;
   readonly runMutation: (action: () => Promise<unknown>, meta?: BrowserOperationLogMeta) => Promise<boolean>;
 };
 
@@ -73,15 +77,15 @@ export const useIamAdminList = <TItem>(
     void refetch();
   }, [refetch]);
 
-  const runMutation = React.useCallback(
-    async (action: () => Promise<unknown>, meta: BrowserOperationLogMeta = {}) => {
+  const runMutationWithResult = React.useCallback(
+    async <TResult>(action: () => Promise<TResult>, meta: BrowserOperationLogMeta = {}) => {
       logBrowserOperationStart(adminListLogger, 'mutation_started', meta);
       setMutationError(null);
       try {
-        await action();
+        const result = await action();
         await refetch();
         logBrowserOperationSuccess(adminListLogger, 'mutation_succeeded', meta);
-        return true;
+        return result;
       } catch (cause) {
         const resolvedError = asIamError(cause);
         if (resolvedError.status === 403) {
@@ -94,20 +98,34 @@ export const useIamAdminList = <TItem>(
         }
         setMutationError(resolvedError);
         logBrowserOperationFailure(adminListLogger, 'mutation_failed', resolvedError, meta);
-        return false;
+        return null;
       }
     },
     [invalidatePermissions, refetch]
   );
 
-  return {
-    items,
-    isLoading,
-    error,
-    mutationError,
-    refetch,
-    clearMutationError: () => setMutationError(null),
-    setError,
-    runMutation,
-  };
+  const runMutation = React.useCallback(
+    async (action: () => Promise<unknown>, meta: BrowserOperationLogMeta = {}) =>
+      (await runMutationWithResult(action, meta)) !== null,
+    [runMutationWithResult]
+  );
+
+  const clearMutationError = React.useCallback(() => {
+    setMutationError(null);
+  }, []);
+
+  return React.useMemo(
+    () => ({
+      items,
+      isLoading,
+      error,
+      mutationError,
+      refetch,
+      clearMutationError,
+      setError,
+      runMutationWithResult,
+      runMutation,
+    }),
+    [clearMutationError, error, isLoading, items, mutationError, refetch, runMutation, runMutationWithResult]
+  );
 };

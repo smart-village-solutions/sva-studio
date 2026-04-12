@@ -91,6 +91,7 @@ vi.mock('pg', () => ({
 
 import {
   createLegalTextHandler,
+  deleteLegalTextHandler,
   listLegalTextsHandler,
   listPendingLegalTextsHandler,
   updateLegalTextHandler,
@@ -448,6 +449,37 @@ describe('iam-legal-texts handlers', () => {
       status: 'archived',
       legalTextVersion: '2026-05',
     });
+  });
+
+  it('deletes an existing legal text version', async () => {
+    state.queryHandler = (text, values) => {
+      if (resolveActorAccountQuery(text)) {
+        return { rowCount: 1, rows: [{ account_id: 'account-1' }] };
+      }
+      if (text.includes('DELETE FROM iam.legal_text_versions')) {
+        expect(values).toEqual(['de-musterhausen', legalTextRow.id]);
+        return { rowCount: 1, rows: [{ id: legalTextRow.id }] };
+      }
+      if (text.includes('INSERT INTO iam.activity_log')) {
+        return { rowCount: 1, rows: [] };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await deleteLegalTextHandler(
+      new Request(`http://localhost:3000/api/v1/iam/legal-texts/${legalTextRow.id}`, {
+        method: 'DELETE',
+        headers: jsonHeaders,
+      })
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      data: { id: legalTextRow.id },
+      requestId: 'req-legal-texts',
+    });
+    expect(state.queryLog.some((entry) => entry.text.includes('DELETE FROM iam.legal_text_versions'))).toBe(true);
+    expect(state.queryLog.some((entry) => entry.text.includes('INSERT INTO iam.activity_log'))).toBe(true);
   });
 
   it('replays an idempotent create request without inserting another record', async () => {

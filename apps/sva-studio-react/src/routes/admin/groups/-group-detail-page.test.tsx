@@ -197,4 +197,24 @@ describe('GroupDetailPage', () => {
       expect(screen.getByText('Die angeforderte Gruppe wurde nicht gefunden.')).toBeTruthy();
     });
   });
+
+  it('loads the group detail only once during the initial render even when hook objects are recreated', async () => {
+    const loadGroupDetail = vi.fn().mockResolvedValue(detailFixture);
+
+    useGroupsMock.mockImplementation(() =>
+      createGroupsState({
+        loadGroupDetail,
+      })
+    );
+
+    render(<GroupDetailPage groupId="group-1" />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Admins' })).toBeTruthy();
+    });
+
+    await waitFor(() => {
+      expect(loadGroupDetail).toHaveBeenCalledTimes(1);
+    });
+  });
 });

@@ -178,6 +178,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       });
 
       if (!response.ok && response.status === 401) {
+        if (!silent && isMountedRef.current) {
+          setUser(null);
+          setHasResolvedSession(true);
+          setIsLoading(false);
+        }
+
         if (isMountedRef.current) {
           setIsRecoveringSession(true);
         }

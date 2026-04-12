@@ -871,6 +871,12 @@ export const deleteGroup = async (groupId: string): Promise<ApiItemResponse<{ id
     headers: IAM_HEADERS,
   });
 
+export const deleteLegalText = async (legalTextVersionId: string): Promise<ApiItemResponse<{ id: string }>> =>
+  requestJson<ApiItemResponse<{ id: string }>>(`/api/v1/iam/legal-texts/${legalTextVersionId}`, {
+    method: 'DELETE',
+    headers: IAM_HEADERS,
+  });
+
 export const assignGroupRole = async (
   groupId: string,
   payload: AssignGroupRolePayload

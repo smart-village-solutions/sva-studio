@@ -124,7 +124,9 @@ describe('useGroups', () => {
         id: 'group-1',
         assignedRoleIds: ['role-1'],
       });
-      await result.current.createGroup({ groupKey: 'team_editors', displayName: 'Team Editors' });
+      await expect(result.current.createGroup({ groupKey: 'team_editors', displayName: 'Team Editors' })).resolves.toBe(
+        'group-2'
+      );
       await result.current.updateGroup('group-1', { displayName: 'Editors' });
       await result.current.assignRole('group-1', 'role-2');
       await result.current.removeRole('group-1', 'role-1');
@@ -220,7 +222,7 @@ describe('useGroups', () => {
 
     await act(async () => {
       const created = await result.current.createGroup({ groupKey: 'editors', displayName: 'Editors' });
-      expect(created).toBe(false);
+      expect(created).toBeNull();
     });
 
     expect(result.current.error).toBeNull();

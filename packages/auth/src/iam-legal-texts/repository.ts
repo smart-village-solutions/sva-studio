@@ -231,3 +231,41 @@ RETURNING id;
 
     return updatedLegalTextVersionId;
   });
+
+export const deleteLegalTextVersion = async (input: {
+  instanceId: string;
+  actorAccountId: string;
+  requestId?: string;
+  traceId?: string;
+  legalTextVersionId: string;
+}): Promise<string | undefined> =>
+  withInstanceScopedDb(input.instanceId, async (client) => {
+    const deleted = await client.query<{ id: string }>(
+      `
+DELETE FROM iam.legal_text_versions
+WHERE instance_id = $1
+  AND id = $2::uuid
+RETURNING id;
+`,
+      [input.instanceId, input.legalTextVersionId]
+    );
+
+    const deletedLegalTextVersionId = deleted.rows[0]?.id;
+    if (deletedLegalTextVersionId === undefined) {
+      return undefined;
+    }
+
+    await emitActivityLog(client, {
+      instanceId: input.instanceId,
+      accountId: input.actorAccountId,
+      eventType: 'iam.legal_text.deleted',
+      result: 'success',
+      payload: {
+        legal_text_version_id: deletedLegalTextVersionId,
+      },
+      requestId: input.requestId,
+      traceId: input.traceId,
+    });
+
+    return deletedLegalTextVersionId;
+  });

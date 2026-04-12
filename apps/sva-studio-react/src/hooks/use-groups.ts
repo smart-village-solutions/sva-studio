@@ -34,7 +34,7 @@ type UseGroupsResult = {
   readonly mutationError: IamHttpError | null;
   readonly refetch: () => Promise<void>;
   readonly clearMutationError: () => void;
-  readonly createGroup: (payload: CreateGroupPayload) => Promise<boolean>;
+  readonly createGroup: (payload: CreateGroupPayload) => Promise<string | null>;
   readonly updateGroup: (groupId: string, payload: UpdateGroupPayload) => Promise<boolean>;
   readonly deleteGroup: (groupId: string) => Promise<boolean>;
   readonly loadGroupDetail: (groupId: string) => Promise<IamAdminGroupDetail | null>;
@@ -46,13 +46,62 @@ type UseGroupsResult = {
 
 const groupsLogger = createOperationLogger('groups-hook', 'debug');
 
+const normalizeGroupDetail = (detail: IamAdminGroupDetail): IamAdminGroupDetail => {
+  const detailRecord = detail as IamAdminGroupDetail & {
+    roles?: readonly { roleId: string }[];
+    members?: readonly {
+      accountId: string;
+      groupId: string;
+      displayName?: string;
+      validFrom?: string;
+      validTo?: string;
+    }[];
+  };
+
+  const assignedRoleIds =
+    Array.isArray(detailRecord.assignedRoleIds)
+      ? detailRecord.assignedRoleIds
+      : (detailRecord.roles ?? []).map((role) => role.roleId);
+
+  const memberships =
+    Array.isArray(detailRecord.memberships)
+      ? detailRecord.memberships
+      : (detailRecord.members ?? []).map((member) => ({
+          instanceId: '',
+          accountId: member.accountId,
+          groupId: member.groupId,
+          keycloakSubject: member.displayName ?? member.accountId,
+          displayName: member.displayName,
+          validFrom: member.validFrom,
+          validUntil: member.validTo,
+          assignedAt: '',
+        }));
+
+  return {
+    ...detail,
+    assignedRoleIds,
+    memberships,
+  };
+};
+
 export const useGroups = (): UseGroupsResult => {
   const { invalidatePermissions } = useAuth();
   const adminList = useIamAdminList(listGroups, invalidatePermissions);
+  const {
+    items,
+    isLoading,
+    error,
+    mutationError,
+    refetch,
+    clearMutationError,
+    setError,
+    runMutationWithResult,
+    runMutation,
+  } = adminList;
 
   const loadGroupDetail = React.useCallback(
     async (groupId: string) => {
-      adminList.setError(null);
+      setError(null);
       logBrowserOperationStart(groupsLogger, 'group_detail_load_started', {
         operation: 'get_group',
       });
@@ -63,7 +112,7 @@ export const useGroups = (): UseGroupsResult => {
           operation: 'get_group',
           group_id: groupId,
         });
-        return response.data;
+        return normalizeGroupDetail(response.data);
       } catch (cause) {
         const resolvedError = asIamError(cause);
         if (resolvedError.status === 403) {
@@ -75,7 +124,7 @@ export const useGroups = (): UseGroupsResult => {
             group_id: groupId,
           });
         }
-        adminList.setError(resolvedError);
+        setError(resolvedError);
         logBrowserOperationFailure(groupsLogger, 'group_detail_load_failed', resolvedError, {
           operation: 'get_group',
           group_id: groupId,
@@ -83,25 +132,79 @@ export const useGroups = (): UseGroupsResult => {
         return null;
       }
     },
-    [adminList, invalidatePermissions]
+    [invalidatePermissions, setError]
   );
 
-  return {
-    groups: adminList.items,
-    isLoading: adminList.isLoading,
-    error: adminList.error,
-    mutationError: adminList.mutationError,
-    refetch: adminList.refetch,
-    clearMutationError: adminList.clearMutationError,
-    createGroup: (payload) => adminList.runMutation(() => createGroup(payload), { operation: 'create_group' }),
-    updateGroup: (groupId, payload) => adminList.runMutation(() => updateGroup(groupId, payload), { operation: 'update_group' }),
-    deleteGroup: (groupId) => adminList.runMutation(() => deleteGroup(groupId), { operation: 'delete_group' }),
-    loadGroupDetail,
-    assignRole: (groupId, roleId) => adminList.runMutation(() => assignGroupRole(groupId, { roleId }), { operation: 'assign_group_role' }),
-    removeRole: (groupId, roleId) => adminList.runMutation(() => removeGroupRole(groupId, roleId), { operation: 'remove_group_role' }),
-    assignMembership: (groupId, payload) =>
-      adminList.runMutation(() => assignGroupMembership(groupId, payload), { operation: 'assign_group_membership' }),
-    removeMembership: (groupId, keycloakSubject) =>
-      adminList.runMutation(() => removeGroupMembership(groupId, keycloakSubject), { operation: 'remove_group_membership' }),
-  };
+  const createGroupWithResult = React.useCallback(
+    (payload: CreateGroupPayload) =>
+      runMutationWithResult(() => createGroup(payload), { operation: 'create_group' }).then((response) => response?.data.id ?? null),
+    [runMutationWithResult]
+  );
+
+  const updateGroupById = React.useCallback(
+    (groupId: string, payload: UpdateGroupPayload) => runMutation(() => updateGroup(groupId, payload), { operation: 'update_group' }),
+    [runMutation]
+  );
+
+  const deleteGroupById = React.useCallback(
+    (groupId: string) => runMutation(() => deleteGroup(groupId), { operation: 'delete_group' }),
+    [runMutation]
+  );
+
+  const assignRoleToGroup = React.useCallback(
+    (groupId: string, roleId: string) => runMutation(() => assignGroupRole(groupId, { roleId }), { operation: 'assign_group_role' }),
+    [runMutation]
+  );
+
+  const removeRoleFromGroup = React.useCallback(
+    (groupId: string, roleId: string) => runMutation(() => removeGroupRole(groupId, roleId), { operation: 'remove_group_role' }),
+    [runMutation]
+  );
+
+  const assignGroupMembershipToGroup = React.useCallback(
+    (groupId: string, payload: AssignGroupMembershipPayload) =>
+      runMutation(() => assignGroupMembership(groupId, payload), { operation: 'assign_group_membership' }),
+    [runMutation]
+  );
+
+  const removeGroupMembershipFromGroup = React.useCallback(
+    (groupId: string, keycloakSubject: string) =>
+      runMutation(() => removeGroupMembership(groupId, keycloakSubject), { operation: 'remove_group_membership' }),
+    [runMutation]
+  );
+
+  return React.useMemo(
+    () => ({
+      groups: items,
+      isLoading,
+      error,
+      mutationError,
+      refetch,
+      clearMutationError,
+      createGroup: createGroupWithResult,
+      updateGroup: updateGroupById,
+      deleteGroup: deleteGroupById,
+      loadGroupDetail,
+      assignRole: assignRoleToGroup,
+      removeRole: removeRoleFromGroup,
+      assignMembership: assignGroupMembershipToGroup,
+      removeMembership: removeGroupMembershipFromGroup,
+    }),
+    [
+      assignGroupMembershipToGroup,
+      assignRoleToGroup,
+      clearMutationError,
+      createGroupWithResult,
+      deleteGroupById,
+      error,
+      isLoading,
+      items,
+      loadGroupDetail,
+      mutationError,
+      refetch,
+      removeGroupMembershipFromGroup,
+      removeRoleFromGroup,
+      updateGroupById,
+    ]
+  );
 };

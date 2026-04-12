@@ -411,6 +411,10 @@ const authHandlerMap = {
       const mod = await import('@sva/auth/runtime-routes');
       return mod.updateLegalTextHandler(request);
     },
+    DELETE: async ({ request }) => {
+      const mod = await import('@sva/auth/runtime-routes');
+      return mod.deleteLegalTextHandler(request);
+    },
   },
   '/api/v1/iam/admin/reconcile': {
     POST: async ({ request }) => {

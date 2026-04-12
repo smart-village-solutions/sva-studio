@@ -86,17 +86,7 @@ export const LegalTextCreatePage = () => {
       publishedAt: toIsoDateTime(formValues.publishedAt),
     };
 
-    const success = await legalTextsApi.createLegalText(payload);
-    if (!success) {
-      return;
-    }
-
-    const created = legalTextsApi.legalTexts.find(
-      (entry) =>
-        entry.name === payload.name &&
-        entry.legalTextVersion === payload.legalTextVersion &&
-        entry.locale === payload.locale
-    );
+    const created = await legalTextsApi.createLegalText(payload);
     if (!created) {
       return;
     }

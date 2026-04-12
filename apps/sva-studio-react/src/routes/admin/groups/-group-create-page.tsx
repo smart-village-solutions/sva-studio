@@ -45,26 +45,19 @@ export const GroupCreatePage = () => {
   const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    const created = await groupsApi.createGroup({
+    const createdGroupId = await groupsApi.createGroup({
       groupKey: formValues.groupKey.trim().toLowerCase().replace(/\s+/g, '_'),
       displayName: formValues.displayName.trim(),
       description: formValues.description.trim() || undefined,
     });
-    if (!created) {
+    if (!createdGroupId) {
       return;
     }
 
-    const normalizedKey = formValues.groupKey.trim().toLowerCase().replace(/\s+/g, '_');
-    const matchedGroup = groupsApi.groups.find((group) => group.groupKey === normalizedKey);
-    if (matchedGroup) {
-      await navigate({
-        to: '/admin/groups/$groupId',
-        params: { groupId: matchedGroup.id },
-      });
-    } else {
-      // List snapshot not yet refreshed after create – navigate to list as fallback.
-      await navigate({ to: '/admin/groups' });
-    }
+    await navigate({
+      to: '/admin/groups/$groupId',
+      params: { groupId: createdGroupId },
+    });
   };
 
   return (

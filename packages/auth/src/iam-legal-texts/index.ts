@@ -1,5 +1,6 @@
 export {
   createLegalTextHandler,
+  deleteLegalTextHandler,
   listLegalTextsHandler,
   listPendingLegalTextsHandler,
   updateLegalTextHandler,

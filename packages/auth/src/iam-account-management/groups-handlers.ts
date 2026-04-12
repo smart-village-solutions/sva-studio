@@ -442,10 +442,10 @@ RETURNING id;
       await emitActivityLog(client, {
         instanceId: actorResolution.actor.instanceId,
         accountId: actorAccountId,
-        subjectId: groupId,
         eventType: 'group.created',
         result: 'success',
         payload: {
+          groupId,
           roleCount: parsed.data.roleIds.length,
           groupKey: parsed.data.groupKey,
         },
@@ -582,10 +582,10 @@ RETURNING id;
       await emitActivityLog(client, {
         instanceId: actorResolution.actor.instanceId,
         accountId: actorResolution.actor.actorAccountId,
-        subjectId: groupId.groupId,
         eventType: 'group.updated',
         result: 'success',
         payload: {
+          groupId: groupId.groupId,
           roleUpdate: Boolean(parsed.data.roleIds),
           isActive: parsed.data.isActive,
         },
@@ -666,9 +666,11 @@ RETURNING id;
       await emitActivityLog(client, {
         instanceId: actorResolution.actor.instanceId,
         accountId: actorResolution.actor.actorAccountId,
-        subjectId: groupId.groupId,
         eventType: 'group.deleted',
         result: 'success',
+        payload: {
+          groupId: groupId.groupId,
+        },
         requestId: actorResolution.actor.requestId,
         traceId: actorResolution.actor.traceId,
       });

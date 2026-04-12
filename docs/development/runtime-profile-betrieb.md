@@ -148,18 +148,20 @@ pnpm env:down:local-builder
 ### Studio (Remote)
 
 ```bash
-pnpm env:precheck:studio
-pnpm env:deploy:studio -- --release-mode=app-only
-pnpm env:deploy:studio -- --release-mode=schema-and-app --maintenance-window="2026-03-20 19:00-19:15 CET"
+pnpm env:release:studio:local -- --image-digest=<sha256:...> --release-mode=app-only --rollback-hint="Vorherigen Digest erneut deployen"
+pnpm env:release:studio:local -- --image-digest=<sha256:...> --release-mode=schema-and-app --maintenance-window="2026-03-20 19:00-19:15 CET" --rollback-hint="Vorherigen Digest erneut deployen"
 pnpm env:status:studio
 pnpm env:doctor:studio
-pnpm env:smoke:studio
 pnpm env:migrate:studio
 pnpm env:down:studio
-pnpm env:feedback:studio
 ```
 
-Mutierende Remote-Kommandos (`deploy`, `migrate`, `reset`, `down`) sind fuer `studio` ausschliesslich im kanonischen CI-/Runner-Kontext erlaubt. Lokale produktionsnahe Mutationen sind kein offizieller Betriebsweg mehr.
+Der kanonische Pfad fuer `studio` ist jetzt geteilt:
+
+- GitHub Actions bereiten Digest und Verify vor
+- `pnpm env:release:studio:local` fuehrt lokal `precheck`, `deploy`, `smoke` und `feedback` fuer genau diesen Digest aus
+
+Direkte lokale Aufrufe von `env:deploy:studio` bleiben ein Low-Level-Pfad; der dokumentierte produktionsnahe Einstieg ist `env:release:studio:local`.
 
 Der Container-Entrypoint kennt zusaetzlich nur noch einen expliziten Legacy-Recovery-Pfad:
 
@@ -219,8 +221,8 @@ Dieser Pfad startet die App als Produktionscontainer lokal gegen `postgres-hb`, 
 
 - nur für Remote-Profile (`studio`)
 - ist der kanonische Release-Einstiegspunkt für Serverdeploys
-- Remote-Mutationen sind standardmaessig nur mit `SVA_REMOTE_OPERATOR_CONTEXT=ci-runner` oder unter GitHub Actions zulaessig
-- lokale Shells sind fuer `studio` nur fuer Diagnose, `status`, `precheck` und `doctor` gedacht
+- Remote-Mutationen sind fuer `studio` entweder im expliziten lokalen Operator-Kontext oder im dokumentierten Legacy-CI-Fallback zulaessig
+- der dokumentierte Standardweg setzt `SVA_REMOTE_OPERATOR_CONTEXT=local-operator` nur ueber `env:release:studio:local`
 - Orchestrierung in fixer Reihenfolge:
   1. `environment-precheck` inklusive Soll-/Live-Spec-Drift und Pflichtvariablen
   2. `image-smoke` gegen das auszurollende Digest-Artefakt mit Root-Host-, Tenant-Host- und OIDC-Paritaet

@@ -53,7 +53,8 @@ Wichtig:
 - produktionsnahe Werte liegen lokal in `config/runtime/studio.vars` und `config/runtime/studio.local.vars`
 - im Repository liegt nur die Vorlage `config/runtime/studio.vars.example`
 - Tenant-Realms folgen dem operativen Vertrag aus `./keycloak-tenant-realm-bootstrap.md`
-- bei `studio` haben `pnpm env:precheck:studio`, `pnpm env:deploy:studio` und `pnpm env:smoke:studio` Vorrang vor manuellen `quantum-cli`- oder Portainer-Pfaden
+- fuer `studio` ist der kanonische Ablauf jetzt zweigeteilt: GitHub liefert Build und Verify, der finale mutierende Rollout laeuft lokal ueber `pnpm env:release:studio:local`
+- direkte `quantum-cli`-, Portainer- oder Ad-hoc-Shellpfade bleiben Notfall- oder Diagnosewerkzeuge und sind kein offizieller Standard
 
 ## Standardablauf für Releases
 
@@ -61,8 +62,8 @@ Wichtig:
    Für Serverprofile muss das Artefakt explizit `linux/amd64` unterstützen.
 2. Zielprofil auswählen.
 3. Zielumgebungsvariablen oder Secrets prüfen.
-4. Für `studio` zuerst `Studio Image Build` und `Studio Artifact Verify` oder den Orchestrator `Studio Release` ausführen.
-5. Den kanonischen Serverdeploy über `Studio Deploy` oder `pnpm env:deploy:studio` starten.
+4. Fuer `studio` zuerst `Studio Image Build` und `Studio Artifact Verify` oder den Vorbereitungsworkflow `Studio Release Preparation` ausfuehren.
+5. Den verifizierten Digest lokal ueber `pnpm env:release:studio:local -- --image-digest=<sha256:...> ...` ausrollen.
 6. Den erzeugten Deploy-Report unter `artifacts/runtime/deployments/` prüfen.
 7. Monitoring und Logs auf Fehler prüfen.
 8. Nicht-sensitive Folgearbeiten als GitHub Issues nachziehen.
@@ -108,13 +109,13 @@ Für das Remote-Profil `studio` gilt zusätzlich:
 - der kanonische Deploypfad führt Migrationen nur bei `schema-and-app` automatisch aus
 - Deploy-Evidenz wird immer als Report-Artefakt geschrieben
 
-Der offizielle CI/CD-Pfad fuer `studio` lautet:
+Der offizielle Vorbereitungs- und Releasepfad fuer `studio` lautet:
 
 1. `Studio Image Build`
 2. `Studio Artifact Verify`
-3. `Studio Deploy`
+3. lokaler Operator-Deploy ueber `pnpm env:release:studio:local`
 
-Optional verbindet `Studio Release` diese drei Stufen in einem manuellen Orchestrierungsworkflow.
+Optional verbindet `Studio Release Preparation` die GitHub-Stufen 1 und 2 in einem manuellen Vorbereitungsworkflow.
 
 - Lokales Setup und SQL-Workflow: `../development/postgres-setup.md`
 - Swarm-Ausführung und Reihenfolge: `./swarm-deployment-runbook.md`

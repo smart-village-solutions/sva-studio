@@ -100,7 +100,7 @@ und Vorführungszwecke. Unterschiede zum Referenzprofil:
 - **Swarm Secrets:** Vertrauliche Werte als externe Docker-Swarm-Secrets mit Namenskonvention `sva_studio_<service>_<secret_name>`. Ein Shell-Entrypoint (`entrypoint.sh`) liest Secret-Dateien und exportiert sie als Env-Variablen.
 - **Versionierte Monitoring-Konfigurationen:** Prometheus-, Loki-, Grafana-, Promtail- und Alertmanager-Konfigurationen liegen versioniert im Repository und werden über ein dediziertes `monitoring-config-init`-Image einmalig in die Swarm-Volumes geschrieben.
 - **Rolling Updates:** `start-first` für Updates, `stop-first` für Rollbacks.
-- **Kanonischer Studio-Releasepfad:** `studio` nutzt den orchestrierten CI-Pfad `Final Runtime Artifact Verify -> Studio Image Build -> Studio Artifact Verify -> Studio Deploy` mit `runtime-artifact-verify -> environment-precheck -> image-smoke -> optional migrate-job -> optional bootstrap-job -> deploy -> internal-verify -> external-smoke -> release-decision -> Deploy-Report`.
+- **Kanonischer Studio-Releasepfad:** `studio` nutzt den geteilten Pfad `Final Runtime Artifact Verify -> Studio Image Build -> Studio Artifact Verify -> lokaler Operator-Deploy` mit `runtime-artifact-verify -> environment-precheck -> image-smoke -> optional migrate-job -> optional bootstrap-job -> deploy -> internal-verify -> external-smoke -> release-decision -> Deploy-Report`.
 - **Finales Runtime-Artefakt als Release-Wahrheit:** Vor jedem Image-Build prueft der CI-Pfad den gebauten Node-Output `apps/sva-studio-react/.output/server/**` direkt. Intermediate-SSR-Artefakte unter `.nitro/vite/services/ssr/**` sind nur Diagnosematerial und kein Freigabenachweis.
 - **Release-Klassen:** Studio-Deploys unterscheiden `app-only` und `schema-and-app`; nur `schema-and-app` darf Migrationen auslösen.
 - **Gepinnter Goose-Pfad:** Schema-Rollouts laufen über einen repository-lokalen `goose`-Wrapper mit fixer Version innerhalb eines dedizierten Swarm-One-off-Jobs; Zielsysteme benötigen keine permanente `goose`-Vorinstallation.
@@ -128,7 +128,7 @@ und Vorführungszwecke. Unterschiede zum Referenzprofil:
 
 #### DB-Initialisierung
 
-Im Swarm-Stack sind keine automatischen Initialisierungsskripte enthalten. Die DB-Einrichtung bleibt ein bewusster Betriebsschritt und wird für `studio` über den offiziellen `env:migrate:studio`-/`env:deploy:studio`-Pfad mit dediziertem Swarm-Migrationsjob und nachgelagertem Bootstrap-Job statt über ad-hoc SQL, `quantum-cli exec`-Streaming oder implizite Redeploys gesteuert. Details im [Swarm-Deployment-Runbook](../guides/swarm-deployment-runbook.md).
+Im Swarm-Stack sind keine automatischen Initialisierungsskripte enthalten. Die DB-Einrichtung bleibt ein bewusster Betriebsschritt und wird fuer `studio` ueber den offiziellen `env:migrate:studio`-/`env:release:studio:local`-Pfad mit dediziertem Swarm-Migrationsjob und nachgelagertem Bootstrap-Job statt ueber ad-hoc SQL, `quantum-cli exec`-Streaming oder implizite Redeploys gesteuert. Details im [Swarm-Deployment-Runbook](../guides/swarm-deployment-runbook.md).
 
 Betriebliche Einordnung:
 
@@ -177,7 +177,7 @@ Referenzen:
 - Swarm-Stack: Root-Host rendert die globale Instanzverwaltung, Tenant-Hosts nicht
 - Swarm-Stack: Monitoring-UI und Storage bleiben intern; keine öffentliche Exponierung ohne zusätzliche Zugangskontrolle
 - Swarm-Stack: `monitoring-config-init` ist ein One-shot-Initialisierer und soll nach erfolgreicher Volume-Befüllung beendet sein
-- Swarm-Stack: `postgres-schema-bootstrap` ist nur noch ein Legacy-Übergangspfad; der reguläre Schemarollout erfolgt über `pnpm env:migrate:studio` bzw. `pnpm env:deploy:studio -- --release-mode=schema-and-app` mit `migrate`- und `bootstrap`-Job
+- Swarm-Stack: `postgres-schema-bootstrap` ist nur noch ein Legacy-Übergangspfad; der regulaere Schemarollout erfolgt ueber `pnpm env:migrate:studio` bzw. `pnpm env:release:studio:local -- --release-mode=schema-and-app` mit `migrate`- und `bootstrap`-Job
 - Operative Zielwerte für das Referenzprofil: `RTO <= 2h` für App/Monitoring und Session-Store, `RTO <= 15 min` für den rekonstruierbaren Permission-Cache, `RPO <= 24h` für IAM-Daten in Postgres
 - Primäre betriebliche Eskalation via `operations@smart-village.app`, Sicherheits-/DSGVO-Eskalation via `security@smart-village.app`
 

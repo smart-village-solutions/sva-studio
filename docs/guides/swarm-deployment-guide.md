@@ -338,9 +338,7 @@ Nach erfolgreichem Deploy:
 
 ```bash
 # Studio
-pnpm env:precheck:studio
-pnpm env:deploy:studio -- --release-mode=app-only
-pnpm env:feedback:studio
+pnpm env:release:studio:local -- --image-digest=<sha256:...> --release-mode=app-only --rollback-hint="Vorherigen Digest erneut deployen"
 ```
 
 Hinweis:
@@ -348,7 +346,7 @@ Hinweis:
 - `env:precheck:studio` failt bewusst, wenn kritische IAM-Schema-Artefakte fuer Tenant-Auth fehlen, insbesondere `iam.instance_hostnames` oder Spalten aus `0027_iam_instance_keycloak_bootstrap.sql`
 - `env:precheck:studio` prueft zusaetzlich die effektiven Runtime-Flags im laufenden `studio_app`; damit fallen Driftfaelle zwischen Profil-Dateien und wirklich ausgerolltem Stack frueh auf
 - fuer reine DB-Nachzuege ohne App-Rollout den kanonischen Pfad `pnpm env:migrate:studio` verwenden
-- nach manuellen Notfall-Rollbacks oder direkten `quantum-cli stack update`-Eingriffen immer einmal `pnpm env:deploy:studio -- --release-mode=app-only` nachziehen, damit Stack-Variablen wieder zum Profil passen
+- nach manuellen Notfall-Rollbacks oder direkten `quantum-cli stack update`-Eingriffen immer einmal `pnpm env:release:studio:local -- --image-digest=<sha256:...> --release-mode=app-only --rollback-hint="Reconcile nach Notfallpfad"` nachziehen, damit Stack-Variablen wieder zum Profil passen
 
 ### Zusätzliche Keycloak-Checks für Tenant-Realms
 

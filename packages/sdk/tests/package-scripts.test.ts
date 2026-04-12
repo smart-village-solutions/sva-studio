@@ -54,4 +54,10 @@ describe('workspace package scripts', () => {
       branches: 85,
     });
   });
+
+  it('exposes a dedicated local studio release command', () => {
+    const packageJson = loadRootPackageJson();
+
+    expect(packageJson.scripts?.['env:release:studio:local']).toBe('tsx scripts/ops/studio-release-local.ts');
+  });
 });

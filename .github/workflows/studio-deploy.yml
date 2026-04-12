@@ -1,4 +1,4 @@
-name: Studio Deploy
+name: Studio Deploy (Legacy Fallback)
 
 on:
   workflow_dispatch:

@@ -123,7 +123,7 @@ Fehlerpfad:
 
 ### Szenario 3b: Prod-naher Studio-Deploy mit Drift-Gates
 
-1. Ein Operator startet `pnpm env:deploy:studio` fuer einen konkreten Digest.
+1. Ein Operator startet `pnpm env:release:studio:local` fuer einen konkreten Digest.
 2. `environment-precheck` liest den Live-Stack bevorzugt ueber die Portainer-API und vergleicht Soll-/Ist-Drift fuer `app`.
 3. `image-smoke` prueft Root-Host, Tenant-Hosts und OIDC-Verhalten prod-nah gegen das Zielartefakt.
 4. Wenn derselbe Digest bereits live laeuft, darf der Gate-Schritt die Live-Paritaet nur wiederverwenden, wenn Ingress-Konsistenz, Tenant-Auth-Proof, Runtime-Flags und `app-db-principal` fuer genau dieses Digest gruen sind.
@@ -305,7 +305,7 @@ Fehlerpfad:
 
 1. Ein Release-Workflow baut genau ein `linux/amd64`-Image und ermittelt den Manifest-Digest.
 2. `Studio Artifact Verify` startet exakt dieses Image isoliert im Runner und prüft `/health/live`, `/health/ready` und `/`.
-3. `Studio Deploy` führt danach `env:precheck:studio`, `env:deploy:studio` und `env:smoke:studio` gegen denselben Digest aus.
+3. Der lokale Operator-Einstieg `env:release:studio:local` fuehrt danach `env:precheck:studio`, `env:deploy:studio` und `env:smoke:studio` gegen denselben Digest aus.
 4. Nach optionaler Migration wird der Stack aktualisiert.
 5. `internal-verify` kombiniert interne HTTP-Probes gegen den App-Service mit `doctor`-Diagnostik.
 6. `external-smoke` prüft öffentliche URL, Health-Pfade, Auth-Entry und IAM-Kontext.

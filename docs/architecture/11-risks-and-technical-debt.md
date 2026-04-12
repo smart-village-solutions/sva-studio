@@ -138,7 +138,7 @@ Schulden auf IST-Basis.
 22. Lokaler Quantum-Hidden-State in Remote-Diagnosepfaden
    - Impact: mittel bis hoch (falsch-negative Diagnosen trotz gesundem Stack)
    - Wahrscheinlichkeit: mittel
-   - Maßnahme: Read-only Pfade auf Portainer-API mit fester Endpoint-ID begrenzen, `quantum-cli exec` nur als Fallback zulassen und Mutationen auf CI-/Runner-Kontexte fokussieren
+   - Maßnahme: Read-only Pfade auf Portainer-API mit fester Endpoint-ID begrenzen, `quantum-cli exec` nur als Fallback zulassen und produktionsnahe Mutationen auf den expliziten lokalen Operator-Pfad fokussieren
 
 23. Begrenzte lokale Nachbildbarkeit des `studio`-Ingress- und Private-DNS-Vertrags
    - Impact: hoch (lokale Kandidatencontainer koennen Root-/Tenant-/OIDC-Paritaet falsch negativ oder unvollstaendig abbilden)

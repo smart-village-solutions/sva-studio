@@ -65,6 +65,7 @@
     "env:status:studio": "tsx scripts/ops/runtime-env.ts status studio",
     "env:precheck:studio": "tsx scripts/ops/runtime-env.ts precheck studio",
     "env:deploy:studio": "tsx scripts/ops/runtime-env.ts deploy studio",
+    "env:release:studio:local": "tsx scripts/ops/studio-release-local.ts",
     "env:feedback:studio": "tsx scripts/ops/deploy-feedback-loop.ts --latest",
     "env:smoke:studio": "tsx scripts/ops/runtime-env.ts smoke studio",
     "env:migrate:studio": "tsx scripts/ops/runtime-env.ts migrate studio",

@@ -135,8 +135,8 @@ gleichzeitig beeinflussen.
 - Root-Route nutzt ein zentrales `errorComponent` für unbehandelte Laufzeitfehler mit Retry-Option
 - Runtime-Profile verwenden einen verbindlichen Diagnosepfad `pnpm env:doctor:<profil>`; manuelle `psql`-/Browser-Netzwerkdiagnose ist nur Fallback
 - Read-only Remote-Diagnostik trennt strikt zwischen Portainer-API als Primaerkanal und `quantum-cli` als Mutations-/Fallback-Kanal
-- Mutierende `studio`-Kommandos bleiben deterministisch auf den CI-/Runner-Kontext begrenzt; lokale produktionsnahe Ausfuehrung ist kein offizieller Pfad mehr
-- `studio` verwendet einen verbindlichen, fehlertoleranten Deploypfad ueber `Studio Image Build`, `Studio Artifact Verify`, `Studio Deploy` oder den Orchestrator `Studio Release`; direkte `up`-/`update`-Deploys sind für Serverrollouts gesperrt
+- Mutierende `studio`-Kommandos laufen regulaer ueber den expliziten lokalen Operator-Kontext `local-operator`; der bisherige CI-/Runner-Deploypfad ist hoechstens noch Legacy-Fallback
+- `studio` verwendet einen verbindlichen, fehlertoleranten Deploypfad ueber `Studio Image Build`, `Studio Artifact Verify` und den lokalen Einstieg `env:release:studio:local`; direkte `up`-/`update`-Deploys sind fuer Serverrollouts gesperrt
 - Der produktionsnahe Releasevertrag klassifiziert Fehler verbindlich in `config`, `image`, `migration`, `bootstrap`, `startup`, `health`, `ingress` und `dependency`; spätere Phasen dürfen frühere Resultate nicht überschreiben
 - Release-Modus `schema-and-app` arbeitet fail-closed: ohne dokumentiertes Wartungsfenster startet kein orchestrierter Studio-Deploy
 - Release-Modus `schema-and-app` arbeitet zusätzlich fail-closed auf Basis dedizierter Swarm-Jobs: ohne erfolgreichen Exit-Code von `migrate` und `bootstrap`, Post-Migration-Assertions und Schema-Guard startet kein App-Rollout

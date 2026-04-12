@@ -401,6 +401,7 @@ export const assertDeterministicRemoteMutationContext = (
         env.SVA_ACCEPTANCE_DEPLOY_WORKFLOW?.trim() ||
         ''
       ).length > 0);
+  const hasLocalOperatorContext = operatorContext === 'local-operator';
   const allowLocalEmergency = hasLocalEmergencyRemoteMutationOverride(env);
 
   if (hasCiRunnerContext) {
@@ -409,9 +410,15 @@ export const assertDeterministicRemoteMutationContext = (
     };
   }
 
+  if (hasLocalOperatorContext) {
+    return {
+      mode: 'local-operator' as const,
+    };
+  }
+
   if (runtimeProfile === 'studio') {
     throw new Error(
-      `Remote-Mutation ${command} fuer ${runtimeProfile} ist nur im kanonischen CI-/Runner-Kontext erlaubt. Lokale produktionsnahe Mutationen sind fuer studio deaktiviert.`,
+      `Remote-Mutation ${command} fuer ${runtimeProfile} ist nur im kanonischen CI-/Runner-Kontext oder ueber den expliziten lokalen Operator-Pfad erlaubt.`,
     );
   }
 

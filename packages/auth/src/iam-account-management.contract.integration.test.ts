@@ -191,6 +191,21 @@ const contractState = vi.hoisted(() => {
       enabled?: boolean;
       attributes?: Readonly<Record<string, string | readonly string[]>>;
     },
+    instanceById: new Map([
+      [
+        instanceId,
+        {
+          id: instanceId,
+          authRealm: instanceId,
+          authClientId: 'sva-studio',
+          tenantAdminClient: {
+            clientId: 'sva-studio-admin',
+            secretConfigured: true,
+          },
+        },
+      ],
+    ]),
+    tenantSecret: 'tenant-secret',
   };
 });
 
@@ -276,6 +291,25 @@ vi.mock('./middleware.server', () => ({
       user: contractState.user,
     })
   ),
+}));
+
+vi.mock('@sva/data/server', () => ({
+  loadInstanceById: vi.fn(async (instanceId: string) => contractState.instanceById.get(instanceId) ?? null),
+}));
+
+vi.mock('./config-tenant-secret.js', () => ({
+  resolveTenantAuthClientSecret: vi.fn(async () => ({
+    configured: true,
+    readable: true,
+    secret: contractState.tenantSecret,
+    source: 'tenant',
+  })),
+  resolveTenantAdminClientSecret: vi.fn(async () => ({
+    configured: true,
+    readable: true,
+    secret: contractState.tenantSecret,
+    source: 'tenant',
+  })),
 }));
 
 vi.mock('@sva/sdk/server', async () => {
@@ -517,6 +551,7 @@ describe('iam-account-management stable contract integration', () => {
   beforeEach(() => {
     process.env.IAM_DATABASE_URL = 'postgres://iam-test';
     process.env.KEYCLOAK_BASE_URL = 'http://localhost:8080';
+    process.env.KEYCLOAK_ADMIN_BASE_URL = 'http://localhost:8080';
     process.env.KEYCLOAK_REALM = 'sva';
     process.env.KEYCLOAK_CLIENT_ID = 'admin-cli';
     process.env.KEYCLOAK_CLIENT_SECRET = 'secret';

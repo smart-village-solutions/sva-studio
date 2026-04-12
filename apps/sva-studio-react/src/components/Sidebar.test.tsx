@@ -13,6 +13,7 @@ const SUPPORT_ISSUES_URL = 'https://github.com/smart-village-solutions/sva-studi
 const COCKPIT_URL = 'https://cockpit.guben.de';
 
 const useAuthMock = vi.fn();
+const useContentAccessMock = vi.fn();
 const useRouterStateMock = vi.fn();
 const localStorageState = new Map<string, string>();
 
@@ -46,6 +47,10 @@ vi.mock('../providers/auth-provider', () => ({
   useAuth: () => useAuthMock(),
 }));
 
+vi.mock('../hooks/use-content-access', () => ({
+  useContentAccess: () => useContentAccessMock(),
+}));
+
 const unauthenticatedAuthState = {
   user: null,
   isAuthenticated: false,
@@ -58,6 +63,11 @@ const unauthenticatedAuthState = {
 
 beforeEach(() => {
   useRouterStateMock.mockReturnValue('/');
+  useContentAccessMock.mockReturnValue({
+    access: null,
+    isLoading: false,
+    error: null,
+  });
   localStorageState.clear();
   Object.defineProperty(window, 'localStorage', {
     configurable: true,
@@ -101,6 +111,18 @@ describe('Sidebar', () => {
       },
       isAuthenticated: true,
     });
+    useContentAccessMock.mockReturnValue({
+      access: {
+        state: 'editable',
+        canRead: true,
+        canCreate: true,
+        canUpdate: true,
+        organizationIds: [],
+        sourceKinds: ['direct_role'],
+      },
+      isLoading: false,
+      error: null,
+    });
 
     render(<Sidebar />);
 
@@ -141,6 +163,19 @@ describe('Sidebar', () => {
       },
       isAuthenticated: true,
     });
+    useContentAccessMock.mockReturnValue({
+      access: {
+        state: 'read_only',
+        canRead: true,
+        canCreate: false,
+        canUpdate: false,
+        reasonCode: 'content_update_missing',
+        organizationIds: [],
+        sourceKinds: ['direct_role'],
+      },
+      isLoading: false,
+      error: null,
+    });
 
     render(<Sidebar />);
 
@@ -163,6 +198,18 @@ describe('Sidebar', () => {
         roles: ['system_admin', 'instance_registry_admin'],
       },
       isAuthenticated: true,
+    });
+    useContentAccessMock.mockReturnValue({
+      access: {
+        state: 'editable',
+        canRead: true,
+        canCreate: true,
+        canUpdate: true,
+        organizationIds: [],
+        sourceKinds: ['direct_role'],
+      },
+      isLoading: false,
+      error: null,
     });
 
     render(<Sidebar />);
@@ -187,6 +234,18 @@ describe('Sidebar', () => {
         roles: ['system_admin'],
       },
       isAuthenticated: true,
+    });
+    useContentAccessMock.mockReturnValue({
+      access: {
+        state: 'editable',
+        canRead: true,
+        canCreate: true,
+        canUpdate: true,
+        organizationIds: [],
+        sourceKinds: ['direct_role'],
+      },
+      isLoading: false,
+      error: null,
     });
 
     render(<Sidebar />);
@@ -228,5 +287,34 @@ describe('Sidebar', () => {
     );
 
     expect(onMobileOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it('versteckt den Inhalte-Link ohne effektive Content-Leseberechtigung', () => {
+    useAuthMock.mockReturnValue({
+      ...unauthenticatedAuthState,
+      user: {
+        id: 'user-2',
+        name: 'Viewer',
+        roles: ['viewer'],
+      },
+      isAuthenticated: true,
+    });
+    useContentAccessMock.mockReturnValue({
+      access: {
+        state: 'blocked',
+        canRead: false,
+        canCreate: false,
+        canUpdate: false,
+        reasonCode: 'content_read_missing',
+        organizationIds: [],
+        sourceKinds: [],
+      },
+      isLoading: false,
+      error: null,
+    });
+
+    render(<Sidebar />);
+
+    expect(screen.queryByRole('link', { name: 'Inhalte' })).toBeNull();
   });
 });

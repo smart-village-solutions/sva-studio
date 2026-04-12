@@ -3,6 +3,7 @@ import type { AuthenticatedRequestContext } from '../middleware.server.js';
 import { jsonResponse } from '../shared/db-helpers.js';
 import { asApiItem, createApiError } from './api-helpers.js';
 import { buildRoleSyncFailure } from './role-audit.js';
+import { ensureManagedRealmRolesExist } from './shared-managed-role-sync.js';
 import { type ActorInfo } from './shared-actor-resolution.js';
 import { iamUserOperationsCounter, logger, trackKeycloakCall } from './shared-observability.js';
 import { resolveIdentityProvider, withInstanceScopedDb } from './shared-runtime.js';
@@ -15,6 +16,7 @@ import { resolveUpdatedIdentityState, persistUpdatedUserDetail } from './user-up
 import { resolveUpdateRequestContext } from './user-update-request-context.js';
 
 const syncUpdatedIdentityAndRoles = async (input: {
+  actor: ActorInfo;
   identityProvider: NonNullable<ReturnType<typeof resolveIdentityProvider>>;
   plan: UserUpdatePlan;
   payload: UpdateUserPayload;
@@ -37,6 +39,14 @@ const syncUpdatedIdentityAndRoles = async (input: {
 
   if (input.plan.nextRoleNames) {
     const nextRoleNames = input.plan.nextRoleNames;
+    await ensureManagedRealmRolesExist({
+      instanceId: input.actor.instanceId,
+      identityProvider: input.identityProvider,
+      externalRoleNames: nextRoleNames,
+      actorAccountId: input.actor.actorAccountId,
+      requestId: input.actor.requestId,
+      traceId: input.actor.traceId,
+    });
     await trackKeycloakCall('sync_roles', () =>
       input.identityProvider.provider.syncRoles(input.plan.existing.keycloakSubject, [...nextRoleNames])
     );
@@ -76,6 +86,7 @@ const executeUserUpdate = async (input: {
 
   try {
     await syncUpdatedIdentityAndRoles({
+      actor: input.actor,
       identityProvider: input.identityProvider,
       plan,
       payload: input.payload,

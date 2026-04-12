@@ -1,10 +1,13 @@
-import { createSdkLogger, getWorkspaceContext } from '@sva/sdk/server';
+import { createSdkLogger, getInstanceConfig, getWorkspaceContext, isCanonicalAuthHost } from '@sva/sdk/server';
 import type { RuntimeDependencyHealth, RuntimeHealthServices } from '@sva/core';
+import { classifyHost, isTrafficEnabledInstanceStatus } from '@sva/core';
+import { loadInstanceByHostname } from '@sva/data/server';
 
 import { getPermissionCacheHealth } from '../iam-authorization/shared.js';
 import { bootstrapAcceptanceAppDbUserIfNeeded } from '../postgres-app-user-bootstrap.server.js';
 import { getLastRedisError, isRedisAvailable } from '../redis.server.js';
 import { jsonResponse } from '../shared/db-helpers.js';
+import { resolveEffectiveRequestHost } from '../request-hosts.js';
 
 import {
   isKeycloakIdentityProvider,
@@ -61,11 +64,112 @@ const resolveRuntimeAuthRealm = (): string | undefined => {
   return extractRealmFromIssuer(issuer);
 };
 
+const resolveRuntimeAuthDisplay = async (
+  request: Request
+): Promise<{
+  realm?: string;
+  activeRealm?: string;
+  scopeKind: 'platform' | 'instance';
+  login?: {
+    realm?: string;
+    clientId?: string;
+    configured: boolean;
+  };
+  tenantAdmin?: {
+    realm?: string;
+    clientId?: string;
+    configured: boolean;
+    secretConfigured: boolean;
+    executionMode: 'tenant_admin';
+    fallbackToLoginClient: boolean;
+  };
+  platformAdmin: {
+    realm?: string;
+    clientId?: string;
+    configured: boolean;
+    executionMode: 'platform_admin';
+  };
+  breakGlass?: {
+    realm?: string;
+    clientId?: string;
+    configured: boolean;
+    executionMode: 'break_glass';
+  };
+}> => {
+  const technicalRealm = resolveRuntimeAuthRealm();
+  const platformAdminClientId = process.env.KEYCLOAK_ADMIN_CLIENT_ID?.trim();
+  const instanceConfig = getInstanceConfig();
+  const host = resolveEffectiveRequestHost(request);
+  const platformAdmin = {
+    realm: technicalRealm,
+    clientId: platformAdminClientId,
+    configured: Boolean(technicalRealm && platformAdminClientId),
+    executionMode: 'platform_admin' as const,
+  };
+  if (!instanceConfig || isCanonicalAuthHost(host)) {
+    return {
+      realm: technicalRealm,
+      activeRealm: technicalRealm,
+      scopeKind: 'platform',
+      platformAdmin,
+    };
+  }
+
+  const classification = classifyHost(host, instanceConfig.parentDomain);
+  if (classification.kind !== 'tenant') {
+    return {
+      realm: technicalRealm,
+      activeRealm: technicalRealm,
+      scopeKind: 'platform',
+      platformAdmin,
+    };
+  }
+
+  try {
+    const instance = await loadInstanceByHostname(host);
+    if (instance && isTrafficEnabledInstanceStatus(instance.status)) {
+      const tenantAdminClientId = instance.tenantAdminClient?.clientId;
+      return {
+        realm: technicalRealm,
+        activeRealm: instance.authRealm,
+        scopeKind: 'instance',
+        login: {
+          realm: instance.authRealm,
+          clientId: instance.authClientId,
+          configured: Boolean(instance.authRealm && instance.authClientId),
+        },
+        tenantAdmin: {
+          realm: instance.authRealm,
+          clientId: tenantAdminClientId,
+          configured: Boolean(tenantAdminClientId),
+          secretConfigured: instance.tenantAdminClient?.secretConfigured ?? false,
+          executionMode: 'tenant_admin',
+          fallbackToLoginClient: !tenantAdminClientId,
+        },
+        platformAdmin,
+        breakGlass: {
+          realm: instance.authRealm,
+          clientId: platformAdminClientId,
+          configured: Boolean(instance.authRealm && platformAdminClientId),
+          executionMode: 'break_glass',
+        },
+      };
+    }
+  } catch {
+    // Fall back to the technical runtime realm when tenant lookup is unavailable.
+  }
+
+  return {
+    realm: technicalRealm,
+    activeRealm: technicalRealm,
+    scopeKind: 'platform',
+    platformAdmin,
+  };
+};
+
 export const readyInternal = async (request: Request): Promise<Response> => {
   const requestContext = getWorkspaceContext();
-  const runtimeAuth = {
-    realm: resolveRuntimeAuthRealm(),
-  };
+  const runtimeAuth = await resolveRuntimeAuthDisplay(request);
   const dbStatus = await (async () => {
     try {
       const pool = resolvePool();

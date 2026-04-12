@@ -1,5 +1,5 @@
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, openSync, readFileSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -22,6 +22,7 @@ import {
 import {
   assertDeterministicRemoteMutationContext,
   buildAcceptanceReportPaths,
+  parseJsonFromCommandOutput,
   buildProdParityProbePlan,
   buildTrustedForwardedHeaders,
   formatAcceptanceDeployReportMarkdown,
@@ -68,6 +69,10 @@ import {
 } from './runtime/goose.ts';
 import { runBootstrapJobAgainstAcceptance as runBootstrapJobAgainstAcceptanceWithDeps } from './runtime/bootstrap-job.ts';
 import {
+  buildLocalInstanceRegistryReconciliationInput,
+  buildLocalInstanceRegistryReconciliationSql,
+} from './runtime/local-instance-registry.ts';
+import {
   collectQuantumTaskSnapshots,
   extractQuantumJsonPayload,
   runMigrationJobAgainstAcceptance as runMigrationJobAgainstAcceptanceWithDeps,
@@ -95,6 +100,8 @@ type DoctorReport = {
 };
 
 type LocalState = {
+  command?: string;
+  launcher?: 'local-dev-server-runner';
   logFile: string;
   pid: number;
   profile: RuntimeProfile;
@@ -1019,7 +1026,8 @@ const clearLocalState = () => {
 
 const stopKnownLocalDevServers = () => {
   const patterns = [
-    'pnpm nx run sva-studio-react:serve',
+    'scripts/ops/runtime/local-dev-server-runner.ts',
+    'sva-studio-react:serve',
     'vite.js dev --port 3000',
   ] as const;
 
@@ -1073,14 +1081,24 @@ const startLocalApp = async (runtimeProfile: RuntimeProfile, env: NodeJS.Process
   }
 
   const logFile = resolve(appLogDir, `${runtimeProfile}.log`);
-  const logFd = openSync(logFile, 'a');
-
-  const child = spawn('pnpm', ['nx', 'run', 'sva-studio-react:serve'], {
+  writeFileSync(logFile, '', 'utf8');
+  const child = spawn(
+    process.execPath,
+    [
+      '--import',
+      'tsx',
+      'scripts/ops/runtime/local-dev-server-runner.ts',
+      `--profile=${runtimeProfile}`,
+      `--log-file=${logFile}`,
+      `--state-file=${localStateFile}`,
+    ],
+    {
     cwd: rootDir,
     env,
     detached: true,
-    stdio: ['ignore', logFd, logFd],
-  });
+      stdio: 'ignore',
+    }
+  );
 
   if (child.pid === undefined) {
     throw new Error(`Dev-Server fuer ${runtimeProfile} konnte nicht gestartet werden.`);
@@ -1092,6 +1110,8 @@ const startLocalApp = async (runtimeProfile: RuntimeProfile, env: NodeJS.Process
     localStateFile,
     `${JSON.stringify(
       {
+        command: 'pnpm nx run sva-studio-react:serve',
+        launcher: 'local-dev-server-runner',
         pid: child.pid,
         profile: runtimeProfile,
         startedAt: new Date().toISOString(),
@@ -1134,6 +1154,16 @@ const upLocalInfra = (env: NodeJS.ProcessEnv) => {
 
 const bootstrapLocalAppUser = (env: NodeJS.ProcessEnv) => {
   run('pnpm', ['nx', 'run', 'data:db:bootstrap-app-user'], env);
+};
+
+const reconcileLocalInstanceRegistry = (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => {
+  const input = buildLocalInstanceRegistryReconciliationInput(env);
+  if (!input) {
+    return;
+  }
+
+  const sql = buildLocalInstanceRegistryReconciliationSql(input);
+  createDbSqlRunner(runtimeProfile, env)(sql);
 };
 
 const downLocalInfra = (env: NodeJS.ProcessEnv) => {
@@ -1573,33 +1603,121 @@ SELECT json_build_object(
 `;
 
   try {
-    const payload = JSON.parse(createDbSqlRunner(runtimeProfile, env)(sql)) as {
+    const payload = parseJsonFromCommandOutput<{
       checked_active_instance_count?: number;
       invalid_instance_ids?: string[];
-    };
+    }>(createDbSqlRunner(runtimeProfile, env)(sql));
     return evaluateInstanceAuthPayload(payload);
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    const jsonMatch = message.match(/\{[\s\S]*\}/u);
-
-    if (jsonMatch) {
-      try {
-        const fallbackPayload = JSON.parse(jsonMatch[0]) as {
-          checked_active_instance_count?: number;
-          invalid_instance_ids?: string[];
-        };
-
-        return evaluateInstanceAuthPayload(fallbackPayload);
-      } catch {
-        // Keep original error below when fallback payload cannot be parsed.
-      }
-    }
-
     return toDoctorCheck(
       'instance-auth-config',
       'error',
       'instance_auth_config_check_failed',
-      message
+      error instanceof Error ? error.message : String(error)
+    );
+  }
+};
+
+const buildTenantAdminClientContractCheck = (
+  runtimeProfile: RuntimeProfile,
+  env: NodeJS.ProcessEnv
+): DoctorCheck => {
+  if (shouldUseJobBasedRemoteDbAssertions(runtimeProfile, env)) {
+    return toDoctorCheck(
+      'instance-tenant-admin-contract',
+      'ok',
+      'instance_tenant_admin_contract_verified_by_job',
+      'Tenant-Admin-Client-Vertraege werden fuer Remote-Profile ueber den dedizierten Bootstrap-Job abgesichert.',
+      {
+        requiredFields: ['tenantAdminClient.clientId'],
+        cutoverRequired: (env.SVA_REQUIRE_TENANT_ADMIN_CLIENT_CUTOVER ?? 'false').trim().toLowerCase() === 'true',
+      }
+    );
+  }
+
+  const appDbUser = env.APP_DB_USER?.trim() || 'sva_app';
+  const cutoverRequired = (env.SVA_REQUIRE_TENANT_ADMIN_CLIENT_CUTOVER ?? 'false').trim().toLowerCase() === 'true';
+  const evaluateTenantAdminPayload = (payload: {
+    checked_active_instance_count?: number;
+    invalid_instance_ids?: string[];
+  }): DoctorCheck => {
+    const invalidInstanceIds = Array.isArray(payload.invalid_instance_ids) ? payload.invalid_instance_ids : [];
+    const checkedActiveInstanceCount =
+      typeof payload.checked_active_instance_count === 'number' ? payload.checked_active_instance_count : 0;
+
+    if (invalidInstanceIds.length === 0) {
+      return toDoctorCheck(
+        'instance-tenant-admin-contract',
+        'ok',
+        'instance_tenant_admin_contract_complete',
+        'Alle aktiven Instanzen besitzen einen Tenant-Admin-Client-Vertrag.',
+        {
+          checkedActiveInstanceCount,
+          cutoverRequired,
+          requiredFields: ['tenantAdminClient.clientId'],
+        }
+      );
+    }
+
+    return toDoctorCheck(
+      'instance-tenant-admin-contract',
+      cutoverRequired ? 'error' : 'warn',
+      cutoverRequired
+        ? 'instance_tenant_admin_cutover_blocked'
+        : 'instance_tenant_admin_contract_incomplete',
+      cutoverRequired
+        ? 'Runtime-Cutover ist blockiert: Mindestens eine aktive Instanz hat noch keinen Tenant-Admin-Client.'
+        : 'Mindestens eine aktive Instanz hat noch keinen Tenant-Admin-Client; Login bleibt moeglich, Tenant-Admin-Cutover aber noch nicht.',
+      {
+        checkedActiveInstanceCount,
+        invalidInstanceIds,
+        cutoverRequired,
+        requiredFields: ['tenantAdminClient.clientId'],
+      }
+    );
+  };
+
+  const sql = `
+SET ROLE ${sqlIdentifier(appDbUser)};
+
+SELECT json_build_object(
+  'invalid_instance_ids',
+  COALESCE(
+    (
+      SELECT json_agg(instance_id ORDER BY instance_id)
+      FROM (
+        SELECT id AS instance_id
+        FROM iam.instances
+        WHERE status = 'active'
+          AND NULLIF(BTRIM(tenant_admin_client_id), '') IS NULL
+      ) invalid_instances
+    ),
+    '[]'::json
+  ),
+  'checked_active_instance_count',
+  (
+    SELECT COUNT(*)
+    FROM iam.instances
+    WHERE status = 'active'
+  )
+)::text;
+`;
+
+  try {
+    const payload = parseJsonFromCommandOutput<{
+      checked_active_instance_count?: number;
+      invalid_instance_ids?: string[];
+    }>(createDbSqlRunner(runtimeProfile, env)(sql));
+    return evaluateTenantAdminPayload(payload);
+  } catch (error) {
+    return toDoctorCheck(
+      'instance-tenant-admin-contract',
+      'error',
+      'instance_tenant_admin_contract_check_failed',
+      error instanceof Error ? error.message : String(error),
+      {
+        cutoverRequired,
+      }
     );
   }
 };
@@ -1670,10 +1788,10 @@ SELECT json_build_object(
 `;
 
   try {
-    const payload = JSON.parse(createDbSqlRunner(runtimeProfile, env)(sql)) as {
+    const payload = parseJsonFromCommandOutput<{
       checked_hostnames?: string;
       missing_hostnames?: string[];
-    };
+    }>(createDbSqlRunner(runtimeProfile, env)(sql));
 
     const missingHostnames = Array.isArray(payload.missing_hostnames) ? payload.missing_hostnames : [];
     if (missingHostnames.length > 0) {
@@ -1700,47 +1818,7 @@ SELECT json_build_object(
       }
     );
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    const jsonMatch = message.match(/\{[\s\S]*\}/u);
-
-    if (jsonMatch) {
-      try {
-        const fallbackPayload = JSON.parse(jsonMatch[0]) as {
-          checked_hostnames?: string;
-          missing_hostnames?: string[];
-        };
-
-        const missingHostnames = Array.isArray(fallbackPayload.missing_hostnames) ? fallbackPayload.missing_hostnames : [];
-        if (missingHostnames.length > 0) {
-          return toDoctorCheck(
-            'instance-hostnames',
-            'error',
-            'tenant_instance_not_found',
-            'Mindestens ein erwartetes Tenant-Hostname-Mapping fehlt oder ist nicht primaer.',
-            {
-              missingHostnames,
-              parentDomain,
-            }
-          );
-        }
-
-        return toDoctorCheck(
-          'instance-hostnames',
-          'ok',
-          'tenant_hostnames_ready',
-          'Alle erwarteten Tenant-Hostname-Mappings sind vorhanden.',
-          {
-            hostnames: expectedHostnames.map(({ hostname }) => hostname),
-            parentDomain,
-            recoveredFromTransportNoise: true,
-          }
-        );
-      } catch {
-        // Keep original error below when fallback payload cannot be parsed.
-      }
-    }
-
-    return toDoctorCheck('instance-hostnames', 'error', 'tenant_host_resolution_failed', message, {
+    return toDoctorCheck('instance-hostnames', 'error', 'tenant_host_resolution_failed', error instanceof Error ? error.message : String(error), {
       hostnames: expectedHostnames.map(({ hostname }) => hostname),
       parentDomain,
     });
@@ -2019,6 +2097,7 @@ const precheckAcceptance = async (
   checks.push(buildMigrationStatusCheck(runtimeProfile, env));
   checks.push(buildSchemaGuardCheck(runtimeProfile, env));
   checks.push(buildInstanceAuthConfigCheck(runtimeProfile, env));
+  checks.push(buildTenantAdminClientContractCheck(runtimeProfile, env));
   checks.push(buildInstanceHostnameMappingCheck(runtimeProfile, env));
   if (options) {
     checks.push(await buildAcceptanceLiveSpecCheck(runtimeProfile, env, options));
@@ -2155,6 +2234,7 @@ const doctorRuntime = async (runtimeProfile: RuntimeProfile, env: NodeJS.Process
   checks.push(buildSchemaGuardCheck(runtimeProfile, env));
   if (runtimeProfile !== 'local-builder') {
     checks.push(buildInstanceAuthConfigCheck(runtimeProfile, env));
+    checks.push(buildTenantAdminClientContractCheck(runtimeProfile, env));
     checks.push(buildInstanceHostnameMappingCheck(runtimeProfile, env));
   }
   checks.push(buildActorDoctorCheck(runtimeProfile, env));
@@ -2388,6 +2468,7 @@ const runLocalCommand = async (runtimeProfile: RuntimeProfile, runtimeCommand: R
       assertRuntimeEnv(runtimeProfile, env);
       upLocalInfra(env);
       bootstrapLocalAppUser(env);
+      reconcileLocalInstanceRegistry(runtimeProfile, env);
       await startLocalApp(runtimeProfile, env);
       console.log(`Profil ${runtimeProfile} gestartet.`);
       return;
@@ -2401,6 +2482,7 @@ const runLocalCommand = async (runtimeProfile: RuntimeProfile, runtimeCommand: R
       pullLocalInfra(env);
       upLocalInfra(env);
       bootstrapLocalAppUser(env);
+      reconcileLocalInstanceRegistry(runtimeProfile, env);
       stopLocalApp();
       await startLocalApp(runtimeProfile, env);
       console.log(`Profil ${runtimeProfile} aktualisiert.`);

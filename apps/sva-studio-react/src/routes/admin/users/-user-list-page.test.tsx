@@ -123,7 +123,17 @@ describe('UserListPage', () => {
     const refetch = vi.fn();
     const syncUsersFromKeycloak = vi.fn().mockResolvedValue({
       ok: true,
-      report: { importedCount: 1, updatedCount: 2, skippedCount: 3, totalKeycloakUsers: 6 },
+      report: {
+        importedCount: 1,
+        updatedCount: 2,
+        skippedCount: 3,
+        totalKeycloakUsers: 6,
+        diagnostics: {
+          authRealm: 'de-musterhausen',
+          providerSource: 'instance',
+          matchedWithoutInstanceAttributeCount: 2,
+        },
+      },
     });
 
     useUsersMock.mockReturnValue(
@@ -142,6 +152,11 @@ describe('UserListPage', () => {
     expect(refetch).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(syncUsersFromKeycloak).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(screen.getByText(/1 importiert, 2 aktualisiert, 3/i)).toBeTruthy());
+    await waitFor(() =>
+      expect(
+        screen.getByText(/Realm de-musterhausen, Quelle Instanz-Realm\. 2 Benutzer ohne `instanceId`/i)
+      ).toBeTruthy()
+    );
   });
 
   it('confirms single-user deactivation', async () => {

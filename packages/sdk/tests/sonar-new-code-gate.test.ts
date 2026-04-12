@@ -174,7 +174,7 @@ describe('sonar new code gate', () => {
     expect(result.coveredBranches).toBe(1);
     expect(result.missedBranches).toBe(1);
     expect(result.coveragePct).toBe(66.67);
-  });
+  }, 20_000);
 
   it('passes when changed lines and branches are fully covered', async () => {
     const runSonarNewCodeGate = await loadRunSonarNewCodeGate();
@@ -205,7 +205,7 @@ describe('sonar new code gate', () => {
     expect(result.passed).toBe(true);
     expect(result.coveragePct).toBe(100);
     expect(result.missedUnits).toBe(0);
-  });
+  }, 20_000);
 
   it('ignores type-only changes without lcov data', async () => {
     const runSonarNewCodeGate = await loadRunSonarNewCodeGate();

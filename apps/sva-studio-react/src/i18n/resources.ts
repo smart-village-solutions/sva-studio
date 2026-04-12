@@ -860,6 +860,7 @@ export const i18nResources = {
           missing: 'Fehlt',
           realmExists: 'Realm vorhanden',
           clientExists: 'Client vorhanden',
+          tenantAdminClientExists: 'Tenant-Admin-Client vorhanden',
           instanceIdMapperExists: 'instanceId-Mapper vorhanden',
           tenantAdminExists: 'Tenant-Admin vorhanden',
           tenantAdminHasSystemAdmin: 'Tenant-Admin hat system_admin',
@@ -870,7 +871,10 @@ export const i18nResources = {
           webOriginsMatch: 'Web-Origins stimmen',
           clientSecretConfigured: 'Tenant-Client-Secret konfiguriert',
           tenantClientSecretReadable: 'Tenant-Client-Secret lesbar',
+          tenantAdminClientSecretConfigured: 'Tenant-Admin-Client-Secret konfiguriert',
+          tenantAdminClientSecretReadable: 'Tenant-Admin-Client-Secret lesbar',
           clientSecretAligned: 'Tenant-Client-Secret mit Keycloak abgeglichen',
+          tenantAdminClientSecretAligned: 'Tenant-Admin-Client-Secret mit Keycloak abgeglichen',
           runtimeSecretSourceTenant: 'Runtime nutzt Tenant-Secret',
         },
         status: {
@@ -1049,12 +1053,23 @@ export const i18nResources = {
           syncEmpty: 'Keine neuen oder geänderten Benutzer gefunden. {{skippedCount}} ohne passenden Instanzkontext übersprungen.',
           syncResult:
             '{{importedCount}} importiert, {{updatedCount}} aktualisiert, {{skippedCount}} ohne passenden Instanzkontext übersprungen.',
+          syncDiagnostics:
+            'Realm {{authRealm}}, Quelle {{providerSource}}. {{matchedWithoutInstanceAttributeCount}} Benutzer ohne `instanceId` wurden über den Realm-Kontext zugeordnet.',
+          syncProviderSource: {
+            instance: 'Instanz-Realm',
+            global: 'globaler Realm',
+            fallback_global: 'globaler Fallback-Realm',
+          },
         },
         errors: {
           forbidden: 'Unzureichende Berechtigungen für diese Nutzeraktion.',
           csrfValidationFailed: 'Sicherheitsprüfung fehlgeschlagen. Bitte Seite neu laden und erneut versuchen.',
           rateLimited: 'Zu viele Anfragen in kurzer Zeit. Bitte kurz warten und erneut versuchen.',
           conflict: 'Die Nutzeränderung steht in Konflikt mit dem aktuellen Zustand. Bitte aktualisieren und erneut versuchen.',
+          tenantAdminClientNotConfigured:
+            'Für diese Instanz ist noch kein Tenant-Admin-Client hinterlegt. Bitte zuerst den Instanzvertrag abgleichen.',
+          tenantAdminClientSecretMissing:
+            'Für diese Instanz fehlt noch das Tenant-Admin-Client-Secret. Bitte zuerst den Instanzvertrag abgleichen.',
           keycloakUnavailable: 'Die Verbindung zu Keycloak ist derzeit nicht verfügbar. Bitte später erneut versuchen.',
           databaseUnavailable: 'Die IAM-Datenbank ist derzeit nicht erreichbar. Bitte später erneut versuchen.',
           lastAdminProtection: 'Der letzte aktive System-Administrator kann nicht entfernt oder deaktiviert werden.',
@@ -2585,6 +2600,7 @@ export const i18nResources = {
           missing: 'Missing',
           realmExists: 'Realm exists',
           clientExists: 'Client exists',
+          tenantAdminClientExists: 'Tenant admin client exists',
           instanceIdMapperExists: 'instanceId mapper exists',
           tenantAdminExists: 'Tenant admin exists',
           tenantAdminHasSystemAdmin: 'Tenant admin has system_admin',
@@ -2595,7 +2611,10 @@ export const i18nResources = {
           webOriginsMatch: 'Web origins match',
           clientSecretConfigured: 'Tenant client secret configured',
           tenantClientSecretReadable: 'Tenant client secret readable',
+          tenantAdminClientSecretConfigured: 'Tenant admin client secret configured',
+          tenantAdminClientSecretReadable: 'Tenant admin client secret readable',
           clientSecretAligned: 'Tenant client secret aligned with Keycloak',
+          tenantAdminClientSecretAligned: 'Tenant admin client secret aligned with Keycloak',
           runtimeSecretSourceTenant: 'Runtime uses tenant secret',
         },
         status: {
@@ -2775,12 +2794,23 @@ export const i18nResources = {
           syncEmpty: 'No new or changed users found. {{skippedCount}} skipped without matching instance context.',
           syncResult:
             '{{importedCount}} imported, {{updatedCount}} updated, {{skippedCount}} skipped without matching instance context.',
+          syncDiagnostics:
+            'Realm {{authRealm}}, source {{providerSource}}. {{matchedWithoutInstanceAttributeCount}} users without `instanceId` were matched by realm scope.',
+          syncProviderSource: {
+            instance: 'instance realm',
+            global: 'global realm',
+            fallback_global: 'global fallback realm',
+          },
         },
         errors: {
           forbidden: 'Insufficient permissions for this user action.',
           csrfValidationFailed: 'Security validation failed. Reload the page and try again.',
           rateLimited: 'Too many requests in a short time. Please wait a moment and try again.',
           conflict: 'The user update conflicts with the current state. Refresh and try again.',
+          tenantAdminClientNotConfigured:
+            'No tenant admin client is configured for this instance yet. Reconcile the instance contract first.',
+          tenantAdminClientSecretMissing:
+            'The tenant admin client secret is still missing for this instance. Reconcile the instance contract first.',
           keycloakUnavailable: 'The connection to Keycloak is currently unavailable. Please try again later.',
           databaseUnavailable: 'The IAM database is currently unavailable. Please try again later.',
           lastAdminProtection: 'The last active system administrator cannot be removed or deactivated.',

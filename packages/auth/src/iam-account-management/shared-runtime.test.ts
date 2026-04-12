@@ -1,24 +1,22 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state: {
-  runtimeProfile: string | null;
-  instance: { authRealm: string } | null;
+  instance: { authRealm: string; authClientId: string; tenantAdminClient?: { clientId: string } } | null;
   loadInstanceError: Error | null;
   globalConfigError: Error | null;
   instanceConfigError: Error | null;
-  clients: Array<{ realm: string }>;
+  tenantSecret: string | null;
+  tenantSecretReadable: boolean;
+  clients: Array<{ realm: string; adminRealm?: string; clientId?: string; clientSecret?: string }>;
 } = {
-  runtimeProfile: null,
   instance: null,
   loadInstanceError: null,
   globalConfigError: null,
   instanceConfigError: null,
+  tenantSecret: 'tenant-secret',
+  tenantSecretReadable: true,
   clients: [],
 };
-
-vi.mock('@sva/sdk', () => ({
-  getRuntimeProfileFromEnv: vi.fn(() => state.runtimeProfile),
-}));
 
 vi.mock('@sva/data/server', () => ({
   loadInstanceById: vi.fn(async () => {
@@ -29,8 +27,20 @@ vi.mock('@sva/data/server', () => ({
   }),
 }));
 
+vi.mock('../config-tenant-secret.js', () => ({
+  resolveTenantAdminClientSecret: vi.fn(async () => ({
+    configured: state.tenantSecret !== null,
+    readable: state.tenantSecretReadable,
+    secret: state.tenantSecret ?? undefined,
+    source: 'tenant',
+  })),
+}));
+
 vi.mock('../keycloak-admin-client.js', () => ({
-  KeycloakAdminClient: vi.fn().mockImplementation(function (this: object, config: { realm: string }) {
+  KeycloakAdminClient: vi.fn().mockImplementation(function (
+    this: object,
+    config: { realm: string; adminRealm?: string; clientId?: string; clientSecret?: string }
+  ) {
     state.clients.push(config);
     return {
       getCircuitBreakerState: () => 0,
@@ -41,14 +51,24 @@ vi.mock('../keycloak-admin-client.js', () => ({
       if (state.globalConfigError) {
         throw state.globalConfigError;
       }
-      return { realm: 'global' };
+      return {
+        realm: 'global',
+        adminRealm: 'platform-root',
+        clientId: 'platform-admin',
+        clientSecret: 'global-secret',
+      };
     }
 
     if (state.instanceConfigError) {
       throw state.instanceConfigError;
     }
 
-    return { realm };
+    return {
+      realm,
+      adminRealm: 'platform-root',
+      clientId: 'platform-admin',
+      clientSecret: 'global-secret',
+    };
   }),
 }));
 
@@ -67,11 +87,13 @@ describe('resolveIdentityProviderForInstance', () => {
   beforeEach(() => {
     process.env.NODE_ENV = 'test';
     process.env.KEYCLOAK_ADMIN_REALM = 'global';
-    state.runtimeProfile = null;
+    process.env.KEYCLOAK_ADMIN_BASE_URL = 'https://keycloak.example.test';
     state.instance = null;
     state.loadInstanceError = null;
     state.globalConfigError = null;
     state.instanceConfigError = null;
+    state.tenantSecret = 'tenant-secret';
+    state.tenantSecretReadable = true;
     state.clients = [];
   });
 
@@ -80,65 +102,104 @@ describe('resolveIdentityProviderForInstance', () => {
   });
 
   it('builds an instance-specific keycloak client when auth realm metadata exists', async () => {
-    state.instance = { authRealm: 'bb-guben' };
+    state.instance = {
+      authRealm: 'bb-guben',
+      authClientId: 'sva-studio',
+      tenantAdminClient: { clientId: 'sva-studio-admin' },
+    };
     const { resolveIdentityProviderForInstance } = await importModule();
 
     const result = await resolveIdentityProviderForInstance('bb-guben');
 
     expect(result?.provider).toBeDefined();
-    expect(state.clients).toEqual([{ realm: 'bb-guben' }]);
+    expect(state.clients).toEqual([
+      expect.objectContaining({
+        realm: 'bb-guben',
+        adminRealm: 'bb-guben',
+        clientId: 'sva-studio-admin',
+        clientSecret: 'tenant-secret',
+      }),
+    ]);
     expect(result?.getCircuitBreakerState?.()).toBe(0);
+    expect(result?.realm).toBe('bb-guben');
+    expect(result?.source).toBe('instance');
+    expect(result?.executionMode).toBe('tenant_admin');
   });
 
-  it('falls back to the global provider in local profiles when the instance lookup fails', async () => {
-    state.runtimeProfile = 'local-keycloak';
+  it('returns null when the instance lookup fails for tenant admin resolution', async () => {
     state.loadInstanceError = new Error('db offline');
-    const { resolveIdentityProviderForInstance } = await importModule();
-
-    const result = await resolveIdentityProviderForInstance('bb-guben');
-
-    expect(result?.provider).toBeDefined();
-    expect(state.clients).toEqual([{ realm: 'global' }]);
-  });
-
-  it('falls back to the configured global realm in local profiles when the instance auth realm differs', async () => {
-    state.runtimeProfile = 'local-keycloak';
-    state.instance = { authRealm: 'de-musterhausen' };
-    process.env.KEYCLOAK_ADMIN_REALM = 'svs-intern-studio-staging';
-    const { resolveIdentityProviderForInstance } = await importModule();
-
-    const result = await resolveIdentityProviderForInstance('de-musterhausen');
-
-    expect(result?.provider).toBeDefined();
-    expect(state.clients).toEqual([{ realm: 'global' }]);
-  });
-
-  it('keeps the instance-specific realm in local profiles when it matches the configured admin realm', async () => {
-    state.runtimeProfile = 'local-keycloak';
-    state.instance = { authRealm: 'de-musterhausen' };
-    process.env.KEYCLOAK_ADMIN_REALM = 'de-musterhausen';
-    const { resolveIdentityProviderForInstance } = await importModule();
-
-    const result = await resolveIdentityProviderForInstance('de-musterhausen');
-
-    expect(result?.provider).toBeDefined();
-    expect(state.clients).toEqual([{ realm: 'de-musterhausen' }]);
-  });
-
-  it('returns null in non-local profiles when no instance auth config can be resolved', async () => {
-    state.runtimeProfile = 'acceptance-hb';
-    process.env.NODE_ENV = 'production';
     const { resolveIdentityProviderForInstance } = await importModule();
 
     await expect(resolveIdentityProviderForInstance('bb-guben')).resolves.toBeNull();
     expect(state.clients).toEqual([]);
   });
 
-  it('returns null in non-local profiles when realm-specific client creation fails', async () => {
-    state.runtimeProfile = 'acceptance-hb';
-    process.env.NODE_ENV = 'production';
-    state.instance = { authRealm: 'bb-guben' };
+  it('returns null when the tenant-local admin secret is missing', async () => {
+    state.instance = {
+      authRealm: 'de-musterhausen',
+      authClientId: 'sva-studio',
+      tenantAdminClient: { clientId: 'sva-studio-admin' },
+    };
+    state.tenantSecret = null;
+    const { resolveIdentityProviderForInstance } = await importModule();
+
+    await expect(resolveIdentityProviderForInstance('de-musterhausen')).resolves.toBeNull();
+    expect(state.clients).toEqual([]);
+  });
+
+  it('uses a break-glass platform admin client explicitly when requested', async () => {
+    state.instance = {
+      authRealm: 'de-musterhausen',
+      authClientId: 'sva-studio',
+      tenantAdminClient: { clientId: 'sva-studio-admin' },
+    };
+    process.env.KEYCLOAK_ADMIN_REALM = 'svs-intern-studio-staging';
+    const { resolveIdentityProviderForInstance } = await importModule();
+
+    const result = await resolveIdentityProviderForInstance('de-musterhausen', {
+      executionMode: 'break_glass',
+    });
+
+    expect(result?.provider).toBeDefined();
+    expect(state.clients).toEqual([
+      {
+        realm: 'de-musterhausen',
+        adminRealm: 'platform-root',
+        clientId: 'platform-admin',
+        clientSecret: 'global-secret',
+      },
+    ]);
+    expect(result?.realm).toBe('de-musterhausen');
+    expect(result?.source).toBe('instance');
+    expect(result?.executionMode).toBe('break_glass');
+  });
+
+  it('returns null when no instance auth config can be resolved', async () => {
+    const { resolveIdentityProviderForInstance } = await importModule();
+
+    await expect(resolveIdentityProviderForInstance('bb-guben')).resolves.toBeNull();
+    expect(state.clients).toEqual([]);
+  });
+
+  it('returns null when break-glass client creation fails', async () => {
+    state.instance = {
+      authRealm: 'bb-guben',
+      authClientId: 'sva-studio',
+      tenantAdminClient: { clientId: 'sva-studio-admin' },
+    };
     state.instanceConfigError = new Error('missing keycloak env');
+    const { resolveIdentityProviderForInstance } = await importModule();
+
+    await expect(
+      resolveIdentityProviderForInstance('bb-guben', {
+        executionMode: 'break_glass',
+      })
+    ).resolves.toBeNull();
+    expect(state.clients).toEqual([]);
+  });
+
+  it('returns null when the tenant admin client id is missing', async () => {
+    state.instance = { authRealm: 'bb-guben', authClientId: 'sva-studio' };
     const { resolveIdentityProviderForInstance } = await importModule();
 
     await expect(resolveIdentityProviderForInstance('bb-guben')).resolves.toBeNull();

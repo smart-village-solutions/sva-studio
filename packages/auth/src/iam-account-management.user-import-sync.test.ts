@@ -3,7 +3,21 @@ import { IamSchemaDriftError } from './runtime-errors.js';
 
 const state = vi.hoisted(() => ({
   listUsersImpl: null as null | (() => unknown[]),
+  updateUserCalls: [] as Array<{
+    externalId: string;
+    input: {
+      username?: string;
+      email?: string;
+      firstName?: string;
+      lastName?: string;
+      enabled?: boolean;
+      attributes?: Readonly<Record<string, string | readonly string[]>>;
+    };
+  }>,
   withInstanceScopedDbImpl: null as null | ((instanceId: string, work: (client: unknown) => Promise<unknown>) => Promise<unknown>),
+  identityProviderRealm: 'de-musterhausen',
+  identityProviderSource: 'instance' as 'instance' | 'global',
+  identityProviderExecutionMode: 'tenant_admin' as 'platform_admin' | 'tenant_admin' | 'break_glass',
   emitActivityLog: vi.fn(async () => undefined),
   logger: {
     isLevelEnabled: vi.fn(() => false),
@@ -24,12 +38,44 @@ vi.mock('./iam-account-management/shared.js', async () => {
     resolveIdentityProvider: () => ({
       provider: {
         listUsers: async () => state.listUsersImpl?.() ?? [],
+        updateUser: async (
+          externalId: string,
+          input: {
+            username?: string;
+            email?: string;
+            firstName?: string;
+            lastName?: string;
+            enabled?: boolean;
+            attributes?: Readonly<Record<string, string | readonly string[]>>;
+          }
+        ) => {
+          state.updateUserCalls.push({ externalId, input });
+        },
       },
+      realm: state.identityProviderRealm,
+      source: state.identityProviderSource,
+      executionMode: state.identityProviderExecutionMode,
     }),
     resolveIdentityProviderForInstance: async () => ({
       provider: {
         listUsers: async () => state.listUsersImpl?.() ?? [],
+        updateUser: async (
+          externalId: string,
+          input: {
+            username?: string;
+            email?: string;
+            firstName?: string;
+            lastName?: string;
+            enabled?: boolean;
+            attributes?: Readonly<Record<string, string | readonly string[]>>;
+          }
+        ) => {
+          state.updateUserCalls.push({ externalId, input });
+        },
       },
+      realm: state.identityProviderRealm,
+      source: state.identityProviderSource,
+      executionMode: state.identityProviderExecutionMode,
     }),
     trackKeycloakCall: async (_operation: string, execute: () => Promise<unknown>) => execute(),
     withInstanceScopedDb: async (instanceId: string, work: (client: unknown) => Promise<unknown>) => {
@@ -62,7 +108,11 @@ describe('runKeycloakUserImportSync', () => {
 
   beforeEach(() => {
     state.listUsersImpl = null;
+    state.updateUserCalls = [];
     state.withInstanceScopedDbImpl = null;
+    state.identityProviderRealm = 'de-musterhausen';
+    state.identityProviderSource = 'instance';
+    state.identityProviderExecutionMode = 'tenant_admin';
     state.emitActivityLog.mockReset();
     state.emitActivityLog.mockResolvedValue(undefined);
     state.logger.isLevelEnabled.mockReset();
@@ -148,6 +198,12 @@ describe('runKeycloakUserImportSync', () => {
       updatedCount: 1,
       skippedCount: 1,
       totalKeycloakUsers: 3,
+      diagnostics: {
+        authRealm: 'de-musterhausen',
+        providerSource: 'instance',
+        executionMode: 'tenant_admin',
+        skippedInstanceIds: ['other-instance'],
+      },
     });
     expect(state.logger.info).toHaveBeenCalledWith(
       'sync_keycloak_users_completed',
@@ -159,6 +215,124 @@ describe('runKeycloakUserImportSync', () => {
         total_keycloak_users: 3,
       })
     );
+  });
+
+  it('matches users without instanceId attribute when the import already runs against an instance realm', async () => {
+    state.identityProviderRealm = 'de-musterhausen';
+    state.identityProviderSource = 'instance';
+    state.listUsersImpl = () => [
+      {
+        externalId: 'kc-tenant-user',
+        username: 'tenant.user',
+        email: 'tenant@example.com',
+        enabled: true,
+      },
+    ];
+
+    state.withInstanceScopedDbImpl = async (_instanceId, work) =>
+      work({
+        query: async (text: string) => {
+          if (text.includes('INSERT INTO iam.accounts')) {
+            return {
+              rows: [{ id: '11111111-1111-4111-8111-111111111111', created: true }],
+            };
+          }
+          return { rows: [] };
+        },
+      });
+
+    const { runKeycloakUserImportSync } = await import('./iam-account-management/user-import-sync-handler.js');
+
+    const result = await runKeycloakUserImportSync({
+      instanceId: 'de-musterhausen',
+    });
+
+    expect(result.report).toEqual({
+      importedCount: 1,
+      updatedCount: 0,
+      skippedCount: 0,
+      totalKeycloakUsers: 1,
+      diagnostics: {
+        authRealm: 'de-musterhausen',
+        providerSource: 'instance',
+        executionMode: 'tenant_admin',
+        matchedWithoutInstanceAttributeCount: 1,
+      },
+    });
+    expect(state.logger.info).toHaveBeenCalledWith(
+      'Keycloak user sync matched users by realm scope without instance attribute',
+      expect.objectContaining({
+        auth_realm: 'de-musterhausen',
+        matched_without_instance_attribute_count: 1,
+        provider_source: 'instance',
+      })
+    );
+  });
+
+  it('repairs missing keycloak profile fields from local account data before importing', async () => {
+    state.identityProviderRealm = 'de-musterhausen';
+    state.identityProviderSource = 'instance';
+    state.listUsersImpl = () => [
+      {
+        externalId: 'kc-profile-gap',
+        username: 'legacy.user@example.com',
+        enabled: true,
+        attributes: {
+          instanceId: ['de-musterhausen'],
+        },
+      },
+    ];
+
+    state.withInstanceScopedDbImpl = async (_instanceId, work) =>
+      work({
+        query: async (text: string) => {
+          if (text.includes('FROM iam.accounts') && text.includes('keycloak_subject = $2')) {
+            return {
+              rows: [
+                {
+                  username_ciphertext: null,
+                  email_ciphertext: null,
+                  first_name_ciphertext: 'Philipp',
+                  last_name_ciphertext: 'Wilimzig',
+                },
+              ],
+            };
+          }
+          if (text.includes('INSERT INTO iam.accounts')) {
+            return {
+              rows: [{ id: '11111111-1111-4111-8111-111111111111', created: false }],
+            };
+          }
+          return { rows: [] };
+        },
+      });
+
+    const { runKeycloakUserImportSync } = await import('./iam-account-management/user-import-sync-handler.js');
+
+    const result = await runKeycloakUserImportSync({
+      instanceId: 'de-musterhausen',
+      requestId: 'req-sync',
+      traceId: 'trace-sync',
+    });
+
+    expect(state.updateUserCalls).toEqual([
+      {
+        externalId: 'kc-profile-gap',
+        input: {
+          username: 'legacy.user@example.com',
+          email: 'legacy.user@example.com',
+          firstName: 'Philipp',
+          lastName: 'Wilimzig',
+        },
+      },
+    ]);
+    expect(result.report).toEqual({
+      importedCount: 0,
+      updatedCount: 1,
+      repairedProfileCount: 1,
+      skippedCount: 0,
+      totalKeycloakUsers: 1,
+    });
   });
 
   it('does not fail a successful import when audit logging fails afterwards', async () => {

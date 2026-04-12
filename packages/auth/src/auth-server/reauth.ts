@@ -27,7 +27,9 @@ export const forceReauthUser = async (input: ForceReauthInput): Promise<void> =>
   await Promise.all(sessionIds.map(async (sessionId) => deleteSession(sessionId)));
 
   if (input.mode === 'app_and_idp' && input.instanceId) {
-    const identityProvider = await resolveIdentityProviderForInstance(input.instanceId);
+    const identityProvider = await resolveIdentityProviderForInstance(input.instanceId, {
+      executionMode: 'tenant_admin',
+    });
     const logoutUser =
       identityProvider?.provider &&
       'logoutUser' in identityProvider.provider &&

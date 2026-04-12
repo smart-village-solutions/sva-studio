@@ -38,6 +38,8 @@ type SchemaGuardRow = {
   instances_auth_realm_column_exists: boolean;
   instances_rls_disabled: boolean;
   instances_primary_hostname_column_exists: boolean;
+  instances_tenant_admin_client_id_column_exists: boolean;
+  instances_tenant_admin_client_secret_ciphertext_column_exists: boolean;
   instances_tenant_admin_email_column_exists: boolean;
   instances_tenant_admin_first_name_column_exists: boolean;
   instances_tenant_admin_last_name_column_exists: boolean;
@@ -67,6 +69,8 @@ export const CRITICAL_IAM_SCHEMA_GUARD_FIELDS = [
   'instances_auth_client_id_column_exists',
   'instances_auth_issuer_url_column_exists',
   'instances_auth_client_secret_ciphertext_column_exists',
+  'instances_tenant_admin_client_id_column_exists',
+  'instances_tenant_admin_client_secret_ciphertext_column_exists',
   'instances_tenant_admin_username_column_exists',
   'instances_tenant_admin_email_column_exists',
   'instances_tenant_admin_first_name_column_exists',
@@ -236,6 +240,22 @@ const REQUIRED_SCHEMA_CHECKS = [
     reasonCode: 'missing_column',
     expectedMigration: '0027_iam_instance_keycloak_bootstrap.sql',
     message: 'Kritische IAM-Spalte iam.instances.auth_client_secret_ciphertext fehlt.',
+  },
+  {
+    field: 'instances_tenant_admin_client_id_column_exists',
+    kind: 'column',
+    schemaObject: 'iam.instances.tenant_admin_client_id',
+    reasonCode: 'missing_column',
+    expectedMigration: '0030_iam_tenant_admin_client_contract.sql',
+    message: 'Kritische IAM-Spalte iam.instances.tenant_admin_client_id fehlt.',
+  },
+  {
+    field: 'instances_tenant_admin_client_secret_ciphertext_column_exists',
+    kind: 'column',
+    schemaObject: 'iam.instances.tenant_admin_client_secret_ciphertext',
+    reasonCode: 'missing_column',
+    expectedMigration: '0030_iam_tenant_admin_client_contract.sql',
+    message: 'Kritische IAM-Spalte iam.instances.tenant_admin_client_secret_ciphertext fehlt.',
   },
   {
     field: 'instances_tenant_admin_username_column_exists',
@@ -414,6 +434,20 @@ SELECT
       AND table_name = 'instances'
       AND column_name = 'auth_client_secret_ciphertext'
   ) AS instances_auth_client_secret_ciphertext_column_exists,
+  EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'iam'
+      AND table_name = 'instances'
+      AND column_name = 'tenant_admin_client_id'
+  ) AS instances_tenant_admin_client_id_column_exists,
+  EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'iam'
+      AND table_name = 'instances'
+      AND column_name = 'tenant_admin_client_secret_ciphertext'
+  ) AS instances_tenant_admin_client_secret_ciphertext_column_exists,
   EXISTS (
     SELECT 1
     FROM information_schema.columns

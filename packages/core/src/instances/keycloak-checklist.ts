@@ -5,11 +5,13 @@ type InstanceKeycloakBooleanStatusField = Exclude<keyof IamInstanceKeycloakStatu
 export type InstanceKeycloakRequirementKey =
   | 'realm'
   | 'client'
+  | 'tenant_admin_client'
   | 'redirect_uris'
   | 'logout_uris'
   | 'web_origins'
   | 'instance_id_mapper'
   | 'tenant_secret'
+  | 'tenant_admin_client_secret'
   | 'tenant_admin'
   | 'tenant_admin_system_admin'
   | 'tenant_admin_lacks_instance_registry_admin'
@@ -46,6 +48,16 @@ export const INSTANCE_KEYCLOAK_REQUIREMENTS: readonly InstanceKeycloakRequiremen
     keycloakArtifacts: ['client:<authClientId>'],
     workerStepKey: 'client',
     uiStepKey: 'client',
+  },
+  {
+    key: 'tenant_admin_client',
+    statusField: 'tenantAdminClientExists',
+    expectedValue: true,
+    sourceFields: ['tenantAdminClient.clientId'],
+    dbFields: ['iam.instances.tenant_admin_client_id'],
+    keycloakArtifacts: ['client:<tenantAdminClient.clientId>'],
+    workerStepKey: 'tenant_admin_client',
+    uiStepKey: 'tenantAdminClient',
   },
   {
     key: 'redirect_uris',
@@ -96,6 +108,16 @@ export const INSTANCE_KEYCLOAK_REQUIREMENTS: readonly InstanceKeycloakRequiremen
     keycloakArtifacts: ['client-secret:<authClientId>'],
     workerStepKey: 'secret',
     uiStepKey: 'tenantSecret',
+  },
+  {
+    key: 'tenant_admin_client_secret',
+    statusField: 'tenantAdminClientSecretAligned',
+    expectedValue: true,
+    sourceFields: ['tenantAdminClient.secretConfigured'],
+    dbFields: ['iam.instances.tenant_admin_client_secret_ciphertext'],
+    keycloakArtifacts: ['client-secret:<tenantAdminClient.clientId>'],
+    workerStepKey: 'tenant_admin_client_secret',
+    uiStepKey: 'tenantAdminClient',
   },
   {
     key: 'tenant_admin',

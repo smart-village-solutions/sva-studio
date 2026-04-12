@@ -310,3 +310,15 @@ export const loadInstanceAuthClientSecretCiphertext = async (
     },
     { getDatabaseUrl: options.getDatabaseUrl }
   );
+
+export const loadTenantAdminClientSecretCiphertext = async (
+  instanceId: string,
+  options: { readonly getDatabaseUrl?: () => string | undefined } = {}
+): Promise<string | null> =>
+  withClient(
+    async (client) => {
+      const repository = createInstanceRegistryRepository(createExecutor(client));
+      return repository.getTenantAdminClientSecretCiphertext(instanceId);
+    },
+    { getDatabaseUrl: options.getDatabaseUrl }
+  );

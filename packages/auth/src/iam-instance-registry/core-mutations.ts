@@ -16,6 +16,12 @@ import { withRegistryService } from './repository.js';
 
 export const mapInstanceMutationError = (error: unknown): Response => {
   const message = error instanceof Error ? error.message : String(error);
+  if (message.includes('tenant_admin_client_not_configured')) {
+    return createApiError(409, 'tenant_admin_client_not_configured', 'Für diese Instanz ist noch kein Tenant-Admin-Client hinterlegt.', getWorkspaceContext().requestId);
+  }
+  if (message.includes('tenant_admin_client_secret_missing')) {
+    return createApiError(409, 'tenant_admin_client_secret_missing', 'Für diese Instanz ist noch kein Tenant-Admin-Client-Secret hinterlegt.', getWorkspaceContext().requestId);
+  }
   if (message.includes('tenant_auth_client_secret_missing')) {
     return createApiError(409, 'tenant_auth_client_secret_missing', 'Für diese Instanz ist noch kein Tenant-Client-Secret hinterlegt.', getWorkspaceContext().requestId);
   }

@@ -4,6 +4,7 @@ import {
   trackKeycloakCall,
   withInstanceScopedDb,
 } from './shared.js';
+import { ensureManagedRealmRolesExist } from './shared-managed-role-sync.js';
 import type { IdentityProviderResolution } from './shared-runtime.js';
 import type { CreateUserPayload } from './user-create-persistence.js';
 import { persistCreatedUser } from './user-create-persistence.js';
@@ -21,7 +22,9 @@ const deactivateCreatedExternalUser = async (input: {
   actor: CreateUserActorInfo;
   createdExternalId: string;
 }) => {
-  const fallbackIdentityProvider = await resolveIdentityProviderForInstance(input.actor.instanceId);
+  const fallbackIdentityProvider = await resolveIdentityProviderForInstance(input.actor.instanceId, {
+    executionMode: 'tenant_admin',
+  });
   if (!fallbackIdentityProvider) {
     return;
   }
@@ -67,6 +70,14 @@ export const executeCreateUser = async (input: {
     );
 
     if (result.roleNames.length > 0) {
+      await ensureManagedRealmRolesExist({
+        instanceId: actor.instanceId,
+        identityProvider,
+        externalRoleNames: result.roleNames,
+        actorAccountId: actor.actorAccountId,
+        requestId: actor.requestId,
+        traceId: actor.traceId,
+      });
       await trackKeycloakCall('sync_roles', () =>
         identityProvider.provider.syncRoles(result.responseData.keycloakSubject, result.roleNames)
       );

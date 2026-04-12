@@ -48,6 +48,8 @@ describe('RuntimeHealthIndicator', () => {
           },
           auth: {
             realm: 'svs-intern-studio-staging',
+            activeRealm: 'de-musterhausen',
+            scopeKind: 'instance',
           },
           db: true,
           diagnostics: {},
@@ -88,7 +90,7 @@ describe('RuntimeHealthIndicator', () => {
     expect(screen.getByText('shell.runtimeHealth.reasons.redisPingFailed')).toBeTruthy();
     expect(screen.getByText('shell.runtimeHealth.overall.degraded')).toBeTruthy();
     expect(screen.getByText('shell.runtimeHealth.lastUpdated:formatted:en')).toBeTruthy();
-    expect(screen.getByText('shell.runtimeHealth.realmLabel:svs-intern-studio-staging')).toBeTruthy();
+    expect(screen.getByText('shell.runtimeHealth.realmLabel:de-musterhausen')).toBeTruthy();
   });
 
   it('renders loading and fetch error hints', () => {

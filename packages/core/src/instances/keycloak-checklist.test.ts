@@ -11,11 +11,13 @@ describe('instance keycloak checklist', () => {
     expect(INSTANCE_KEYCLOAK_REQUIREMENTS.map((requirement) => requirement.key)).toEqual([
       'realm',
       'client',
+      'tenant_admin_client',
       'redirect_uris',
       'logout_uris',
       'web_origins',
       'instance_id_mapper',
       'tenant_secret',
+      'tenant_admin_client_secret',
       'tenant_admin',
       'tenant_admin_system_admin',
       'tenant_admin_lacks_instance_registry_admin',
@@ -27,6 +29,7 @@ describe('instance keycloak checklist', () => {
     const status = {
       realmExists: true,
       clientExists: true,
+      tenantAdminClientExists: true,
       instanceIdMapperExists: true,
       tenantAdminExists: true,
       tenantAdminHasSystemAdmin: true,
@@ -38,6 +41,9 @@ describe('instance keycloak checklist', () => {
       clientSecretConfigured: true,
       tenantClientSecretReadable: true,
       clientSecretAligned: true,
+      tenantAdminClientSecretConfigured: true,
+      tenantAdminClientSecretReadable: true,
+      tenantAdminClientSecretAligned: true,
       runtimeSecretSource: 'tenant',
     } as const;
 

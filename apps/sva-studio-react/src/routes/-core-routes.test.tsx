@@ -377,8 +377,7 @@ describe('core routes', () => {
     expect(await screen.findByText('InterfacesPage')).toBeTruthy();
 
     renderPath('/admin/users');
-    expect(screen.getByText('interfaces.messages.loading')).toBeTruthy();
-    expect(await screen.findByText('UserListPage')).toBeTruthy();
+    expect(screen.getByText('UserListPage')).toBeTruthy();
 
     renderPath('/admin/groups');
     expect(await screen.findByText('GroupsPage')).toBeTruthy();

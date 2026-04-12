@@ -70,6 +70,22 @@ const buildClientStep = (input: {
   },
 });
 
+const buildTenantAdminClientStep = (input: {
+  blocked: boolean;
+  clientExists: boolean;
+}): KeycloakTenantPlan['steps'][number] => ({
+  stepKey: 'tenant_admin_client',
+  title: 'Tenant-Admin-Client abgleichen',
+  action: input.clientExists ? 'verify' : 'create',
+  status: input.blocked ? 'blocked' : 'ready',
+  summary: input.clientExists
+    ? 'Der Tenant-Admin-Client entspricht bereits dem Sollzustand.'
+    : 'Der technische Tenant-Admin-Client wird angelegt oder ergänzt.',
+  details: {
+    clientExists: input.clientExists,
+  },
+});
+
 const buildMapperStep = (blocked: boolean, mapperExists: boolean): KeycloakTenantPlan['steps'][number] => ({
   stepKey: 'mapper',
   title: 'instanceId-Mapper sicherstellen',
@@ -90,6 +106,23 @@ const buildSecretStep = (blocked: boolean, secretAligned: boolean): KeycloakTena
     ? 'Das gespeicherte Tenant-Secret ist bereits mit Keycloak abgeglichen.'
     : 'Das in der Registry gespeicherte Tenant-Secret wird gegen Keycloak abgeglichen.',
   details: { secretAligned },
+});
+
+const buildTenantAdminClientSecretStep = (
+  blocked: boolean,
+  tenantAdminClientConfigured: boolean,
+  secretAligned: boolean
+): KeycloakTenantPlan['steps'][number] => ({
+  stepKey: 'tenant_admin_client_secret',
+  title: 'Tenant-Admin-Client-Secret abgleichen',
+  action: !tenantAdminClientConfigured ? 'skip' : secretAligned ? 'verify' : 'update',
+  status: blocked ? 'blocked' : 'ready',
+  summary: !tenantAdminClientConfigured
+    ? 'Ohne Tenant-Admin-Client ist kein separates Admin-Secret zu prüfen.'
+    : secretAligned
+      ? 'Das Tenant-Admin-Client-Secret ist bereits mit Keycloak abgeglichen.'
+      : 'Das Tenant-Admin-Client-Secret wird gegen Keycloak abgeglichen.',
+  details: { tenantAdminClientConfigured, secretAligned },
 });
 
 const buildRoleStep = (
@@ -137,6 +170,11 @@ const buildTenantAdminStep = (
 export const buildPlan = (input: {
   realmMode: InstanceRealmMode;
   authClientSecret?: string;
+  tenantAdminClient?: {
+    clientId: string;
+    secretConfigured?: boolean;
+  };
+  tenantAdminClientSecret?: string;
   preflight: KeycloakTenantPreflight;
   state?: KeycloakReadState;
 }): KeycloakTenantPlan => {
@@ -146,6 +184,11 @@ export const buildPlan = (input: {
     input.authClientSecret &&
       input.state?.keycloakClientSecret &&
       input.authClientSecret === input.state.keycloakClientSecret
+  );
+  const tenantAdminClientSecretAligned = Boolean(
+    input.tenantAdminClientSecret &&
+      input.state?.tenantAdminClientSecret &&
+      input.tenantAdminClientSecret === input.state.tenantAdminClientSecret
   );
 
   const steps: KeycloakTenantPlan['steps'] = [
@@ -157,8 +200,17 @@ export const buildPlan = (input: {
       logoutUrisMatch: alignment.logoutUrisMatch,
       webOriginsMatch: alignment.webOriginsMatch,
     }),
+    buildTenantAdminClientStep({
+      blocked,
+      clientExists: Boolean(input.state?.tenantAdminClientRepresentation),
+    }),
     buildMapperStep(blocked, alignment.mapperExists),
     buildSecretStep(blocked, secretAligned),
+    buildTenantAdminClientSecretStep(
+      blocked,
+      Boolean(input.tenantAdminClient?.clientId),
+      tenantAdminClientSecretAligned
+    ),
     buildRoleStep(blocked, input.state),
     buildTenantAdminStep(blocked, input.state),
   ];

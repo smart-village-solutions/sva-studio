@@ -76,6 +76,10 @@ Zusätzlich muss der Ziel-Instanzdatensatz in `iam.instances` gepflegt sein:
 
 Wichtig:
 
+- `authRealm` in `iam.instances` ist der führende Ziel-Realm für Login, Rollen-CRUD und `POST /api/v1/iam/users/sync-keycloak`.
+- Der User-Sync arbeitet fail-closed gegen diesen Ziel-Realm. Läuft er gegen einen instanzspezifischen Realm, dürfen Benutzer auch ohne `instanceId`-Attribut importiert werden; die Zuordnung erfolgt dann über den Realm-Kontext.
+- Prüfe nach dem ersten Sync die Diagnosefelder des Sync-Reports oder des Summary-Logs: `authRealm`, `providerSource`, `matchedWithoutInstanceAttributeCount` und `skippedInstanceIds`.
+
 - pro Instanz eigener `SVA_AUTH_SESSION_COOKIE`
 - pro Instanz eigener `SVA_AUTH_LOGIN_STATE_COOKIE`
 - pro Instanz eigener `SVA_AUTH_REDIS_KEY_PREFIX`

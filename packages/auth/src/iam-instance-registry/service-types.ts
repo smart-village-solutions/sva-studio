@@ -27,6 +27,11 @@ type KeycloakProvisioningContext = {
   authIssuerUrl?: string;
   authClientSecretConfigured: boolean;
   authClientSecret?: string;
+  tenantAdminClient?: {
+    clientId: string;
+    secretConfigured?: boolean;
+  };
+  tenantAdminClientSecret?: string;
   tenantAdminBootstrap?: TenantAdminBootstrap;
 };
 
@@ -57,6 +62,11 @@ export type InstanceRegistryServiceDeps = {
     authClientId: string;
     authIssuerUrl?: string;
     authClientSecret?: string;
+    tenantAdminClient?: {
+      clientId: string;
+      secretConfigured?: boolean;
+      secret?: string;
+    };
     tenantAdminBootstrap?: TenantAdminBootstrap;
     tenantAdminTemporaryPassword?: string;
     rotateClientSecret?: boolean;

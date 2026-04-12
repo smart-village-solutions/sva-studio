@@ -33,6 +33,12 @@ const tenantAdminBootstrapSchema = z
   })
   .optional();
 
+const tenantAdminClientSchema = z
+  .object({
+    clientId: z.string().trim().min(1),
+    secret: z.string().trim().min(1).optional(),
+  });
+
 export const listQuerySchema = z.object({
   search: z.string().trim().min(1).optional(),
   status: z.enum(instanceStatuses).optional(),
@@ -47,6 +53,7 @@ export const createInstanceSchema = z.object({
   authClientId: z.string().trim().min(1),
   authIssuerUrl: optionalUrlSchema,
   authClientSecret: z.string().trim().min(1).optional(),
+  tenantAdminClient: tenantAdminClientSchema,
   tenantAdminBootstrap: tenantAdminBootstrapSchema,
   themeKey: z.string().trim().min(1).optional(),
   mainserverConfigRef: z.string().trim().min(1).optional(),
@@ -67,7 +74,7 @@ export const reconcileKeycloakSchema = z.object({
 });
 
 export const executeKeycloakProvisioningSchema = z.object({
-  intent: z.enum(['provision', 'reset_tenant_admin', 'rotate_client_secret']),
+  intent: z.enum(['provision', 'provision_admin_client', 'reset_tenant_admin', 'rotate_client_secret']),
   tenantAdminTemporaryPassword: z.string().min(1).optional(),
 });
 

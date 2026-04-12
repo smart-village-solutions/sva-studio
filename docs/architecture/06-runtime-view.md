@@ -60,13 +60,15 @@ Fehlerpfad:
 4. `Instanzdaten speichern` sendet CSRF-Header, Idempotency-Key und Reauth-Bestaetigung und schreibt nur Registry-Daten.
 5. `Provisioning ausfuehren` startet einen expliziten Run mit Realm-Modus `new` oder `existing`.
 6. `packages/auth` delegiert an die gemeinsame Provisioning-Fassade.
-7. Die Fassade persistiert Run, Schritte und Audit-Event und invalidiert anschliessend betroffene Host-Caches.
+7. Die Fassade provisioniert getrennt Login-Client (`authClientId`) und Tenant-Admin-Client (`tenantAdminClient.clientId`) inklusive separater Secret-Aufloesung.
+8. Die Fassade persistiert Run, Schritte und Audit-Event und invalidiert anschliessend betroffene Host-Caches.
 
 Fehlerpfad:
 
 - Tenant-Host statt Root-Host -> `403 forbidden`.
 - fehlende Re-Authentisierung -> `403 reauth_required`.
 - blockierter Preflight oder Plan -> kein Keycloak-Mutationslauf.
+- fehlt nur der Tenant-Admin-Client, darf Reconcile gezielt `provision_admin_client` nachziehen, ohne den Login-Pfad zu veraendern.
 
 ### Szenario 2a: Silent Session-Recovery nach `401`
 
@@ -234,26 +236,32 @@ Fehlerpfad:
 3. Bearbeitung erfolgt in `/admin/users/$userId` per Tabs und `PATCH /api/v1/iam/users/$userId`.
 4. Rollen-Änderungen triggern Permission-Invalidierung über `pg_notify`.
 5. `system_admin` verwaltet Custom-Rollen auf `/admin/roles` mit `POST/PATCH/DELETE /api/v1/iam/roles`.
-6. Der Backend-Service führt Rollen-CRUD Keycloak-First aus und schreibt danach das lokale Mapping.
-7. Bei Erfolg werden `role.sync_succeeded` und `role.created|updated|deleted` auditierbar protokolliert.
-8. Bei Fehlern werden `sync_state`, `last_error_code`, Metriken und `role.sync_failed` aktualisiert.
+6. Auf Tenant-Hosts löst der Backend-Service den Adminpfad strikt aus `iam.instances.authRealm` plus `tenantAdminClient.clientId` und tenantlokalem Admin-Secret auf und führt Rollen- und Nutzer-CRUD Keycloak-First innerhalb desselben Tenant-Realms aus.
+7. Root-/Plattform-Pfade verwenden einen separaten Plattform-Admin-Client nur für Instanz-Provisioning, Reconcile und explizites Break-Glass.
+8. Nach erfolgreichem Tenant-Sync schreibt der Service das lokale IAM-Mapping.
+9. Bei Erfolg werden `role.sync_succeeded` und `role.created|updated|deleted` auditierbar protokolliert.
+10. Bei Fehlern werden `sync_state`, `last_error_code`, Metriken und `role.sync_failed` aktualisiert.
 
 Fehlerpfad:
 
 - Nicht autorisierte Rollen werden via Route-Guard umgeleitet.
 - Last-Admin-/Self-Protection wird serverseitig mit Konfliktantwort geschützt.
+- Fehlen tenantlokaler Admin-Client oder tenantlokales Secret, schlagen Tenant-Mutationen fail-closed mit `tenant_admin_client_not_configured` oder `tenant_admin_client_secret_missing` fehl.
 - Schlägt der DB-Schritt nach erfolgreichem Keycloak-Write fehl, läuft eine Compensation; misslingt auch diese, bleibt der Vorgang als `COMPENSATION_FAILED` sichtbar.
 
-### Szenario 9a: Manueller Keycloak-User-Sync mit begrenzter Diagnostik
+### Szenario 9a: Manueller Keycloak-User-Sync mit Realm-gebundener Projektion
 
 1. Ein Admin ruft `POST /api/v1/iam/users/sync-keycloak` auf.
-2. Der Service lädt Keycloak-Benutzer seitenweise und filtert sie über `instanceId`.
-3. Nicht passende Benutzer werden nur bei aktivem Debug-Level begrenzt geloggt; das Log enthält `subject_ref`, `user_instance_id` und `expected_instance_id`.
-4. Nach Abschluss wird bei Überspringungen ein Summary-Log mit `skipped_count` und `sample_instance_ids` geschrieben.
+2. Der Service löst den fachlichen Ziel-Realm pro Instanz aus `iam.instances.authRealm` auf und verwendet fuer normale Tenant-Syncs ausschliesslich den tenantlokalen Adminpfad aus `tenantAdminClient`.
+3. Der Import lädt Keycloak-Benutzer seitenweise und projiziert sie deterministisch nach `iam.accounts` und `iam.instance_memberships`.
+4. Läuft der Import bereits gegen einen instanzspezifischen Realm, werden Benutzer ohne explizites `instanceId`-Attribut trotzdem dem aktiven Instanzkontext zugeordnet.
+5. Nicht passende Benutzer werden nur bei aktivem Debug-Level begrenzt geloggt; das Log enthält `subject_ref`, `user_instance_id` und `expected_instance_id`.
+6. Die API-Antwort und das Summary-Log enthalten knappe Diagnostik zum verwendeten Realm, zur Provider-Quelle, zum `executionMode` und zu übersprungenen Instanz-IDs.
 
 Fehlerpfad:
 
-- Bei großen Batches bleiben Detail-Logs gecappt; die Diagnose erfolgt dann primär über das Summary-Log.
+- Bei großen Batches bleiben Detail-Logs gecappt; die Diagnose erfolgt dann primär über das Summary-Log und die additiven Sync-Diagnosefelder.
+- Ein fehlender tenantlokaler Adminpfad wird nicht mehr durch einen globalen Fallback kaschiert.
 
 ### Szenario 10: Geplanter oder manueller Rollen-Reconcile-Lauf
 

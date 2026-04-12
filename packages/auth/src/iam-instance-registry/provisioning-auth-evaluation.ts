@@ -6,10 +6,13 @@ export { buildPlan } from './provisioning-auth-plan.js';
 
 export const buildMissingRealmStatus = (
   authClientSecretConfigured: boolean,
-  authClientSecret?: string
+  authClientSecret?: string,
+  tenantAdminClient?: KeycloakProvisioningInput['tenantAdminClient'],
+  tenantAdminClientSecret?: string
 ): KeycloakTenantStatus => ({
   realmExists: false,
   clientExists: false,
+  tenantAdminClientExists: false,
   instanceIdMapperExists: false,
   tenantAdminExists: false,
   tenantAdminHasSystemAdmin: false,
@@ -21,6 +24,9 @@ export const buildMissingRealmStatus = (
   clientSecretConfigured: authClientSecretConfigured,
   tenantClientSecretReadable: Boolean(authClientSecret),
   clientSecretAligned: false,
+  tenantAdminClientSecretConfigured: tenantAdminClient?.secretConfigured ?? false,
+  tenantAdminClientSecretReadable: Boolean(tenantAdminClientSecret),
+  tenantAdminClientSecretAligned: false,
   runtimeSecretSource: authClientSecret ? 'tenant' : 'global',
 });
 
@@ -109,10 +115,36 @@ const buildTenantAdminCheck = (tenantAdminBootstrap?: TenantAdminBootstrap): Ins
   );
 };
 
+const buildTenantAdminClientCheck = (input: {
+  tenantAdminClient?: KeycloakProvisioningInput['tenantAdminClient'];
+  tenantAdminClientSecret?: string;
+}): InstanceKeycloakPreflightCheck => {
+  const configured = Boolean(input.tenantAdminClient?.clientId);
+  const readable = Boolean(input.tenantAdminClientSecret);
+  return createPreflightCheck(
+    'tenant_admin_client',
+    'Tenant-Admin-Client',
+    configured ? 'ready' : 'blocked',
+    configured
+      ? readable
+        ? 'Der Tenant-Admin-Client und sein Secret sind konfiguriert.'
+        : 'Der Tenant-Admin-Client ist konfiguriert; das Secret wird beim Worker-Lauf gelesen oder erzeugt.'
+      : 'Für den technischen Tenant-Admin-Client fehlen die erforderlichen Vertragsdaten.',
+    {
+      configured,
+      clientId: input.tenantAdminClient?.clientId,
+      secretConfigured: input.tenantAdminClient?.secretConfigured ?? false,
+      readable,
+    }
+  );
+};
+
 export const buildPreflightChecks = (input: {
   realmMode: InstanceRealmMode;
   authClientSecretConfigured: boolean;
   authClientSecret?: string;
+  tenantAdminClient?: KeycloakProvisioningInput['tenantAdminClient'];
+  tenantAdminClientSecret?: string;
   tenantAdminBootstrap?: TenantAdminBootstrap;
   state?: KeycloakReadState;
   accessError?: string;
@@ -148,6 +180,10 @@ export const buildPreflightChecks = (input: {
       authClientSecretConfigured: input.authClientSecretConfigured,
       authClientSecret: input.authClientSecret,
     }),
+    buildTenantAdminClientCheck({
+      tenantAdminClient: input.tenantAdminClient,
+      tenantAdminClientSecret: input.tenantAdminClientSecret,
+    }),
     buildTenantAdminCheck(input.tenantAdminBootstrap)
   );
 
@@ -167,17 +203,33 @@ export const toOverallPreflightStatus = (
 };
 
 export const buildKeycloakStatus = (
-  input: Pick<KeycloakProvisioningInput, 'authClientSecretConfigured' | 'authClientSecret' | 'instanceId' | 'authRealm' | 'authClientId' | 'realmMode'> & {
+  input: Pick<
+    KeycloakProvisioningInput,
+    | 'authClientSecretConfigured'
+    | 'authClientSecret'
+    | 'instanceId'
+    | 'authRealm'
+    | 'authClientId'
+    | 'realmMode'
+    | 'tenantAdminClient'
+    | 'tenantAdminClientSecret'
+  > & {
     state: KeycloakReadState;
   }
 ): KeycloakTenantStatus => {
   const clientSecretAligned = Boolean(
     input.authClientSecret && input.state.keycloakClientSecret && input.authClientSecret === input.state.keycloakClientSecret
   );
+  const tenantAdminClientSecretAligned = Boolean(
+    input.tenantAdminClientSecret &&
+      input.state.tenantAdminClientSecret &&
+      input.tenantAdminClientSecret === input.state.tenantAdminClientSecret
+  );
 
   return {
     realmExists: true,
     clientExists: Boolean(input.state.clientRepresentation),
+    tenantAdminClientExists: Boolean(input.state.tenantAdminClientRepresentation),
     instanceIdMapperExists: input.state.protocolMappers.some((mapper) => mapper.name === INSTANCE_ID_MAPPER_NAME),
     ...input.state.tenantAdminStatus,
     redirectUrisMatch: equalSets(input.state.clientRepresentation?.redirectUris ?? [], input.state.expectedClient.redirectUris),
@@ -189,6 +241,9 @@ export const buildKeycloakStatus = (
     clientSecretConfigured: input.authClientSecretConfigured,
     tenantClientSecretReadable: Boolean(input.authClientSecret),
     clientSecretAligned,
+    tenantAdminClientSecretConfigured: input.tenantAdminClient?.secretConfigured ?? false,
+    tenantAdminClientSecretReadable: Boolean(input.tenantAdminClientSecret),
+    tenantAdminClientSecretAligned,
     runtimeSecretSource: input.authClientSecret ? 'tenant' : 'global',
   };
 };

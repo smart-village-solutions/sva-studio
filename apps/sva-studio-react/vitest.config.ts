@@ -13,6 +13,8 @@ export default defineConfig({
       '@sva/routing/server': fileURLToPath(new URL('../../packages/routing/src/index.server.ts', import.meta.url)),
       '@sva/routing/auth': fileURLToPath(new URL('../../packages/routing/src/auth.routes.ts', import.meta.url)),
       '@sva/routing': fileURLToPath(new URL('../../packages/routing/src/index.ts', import.meta.url)),
+      '@sva/auth/runtime-routes': fileURLToPath(new URL('../../packages/auth/src/runtime-routes.server.ts', import.meta.url)),
+      '@sva/auth/runtime-health': fileURLToPath(new URL('../../packages/auth/src/runtime-health.server.ts', import.meta.url)),
       '@sva/auth/server': fileURLToPath(new URL('../../packages/auth/src/index.server.ts', import.meta.url)),
       '@sva/auth': fileURLToPath(new URL('../../packages/auth/src/index.ts', import.meta.url)),
       '@sva/sva-mainserver/server': fileURLToPath(new URL('../../packages/sva-mainserver/src/index.server.ts', import.meta.url)),

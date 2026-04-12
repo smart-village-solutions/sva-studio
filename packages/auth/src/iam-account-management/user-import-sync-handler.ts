@@ -30,6 +30,7 @@ import {
   trackKeycloakCall,
   withInstanceScopedDb,
 } from './shared.js';
+import { revealField } from './encryption.js';
 
 const KEYCLOAK_PAGE_SIZE = 100;
 const SKIPPED_USER_DEBUG_LOG_CAP = 20;
@@ -43,8 +44,18 @@ const readSingleAttribute = (
   return typeof value === 'string' && value.trim().length > 0 ? value : undefined;
 };
 
-const matchesInstanceId = (user: IdentityListedUser, instanceId: string): boolean =>
-  user.attributes?.instanceId?.includes(instanceId) ?? false;
+const matchesInstanceId = (
+  user: IdentityListedUser,
+  instanceId: string,
+  acceptUsersWithoutInstanceIdAttribute: boolean
+): boolean => {
+  const configuredInstanceIds = user.attributes?.instanceId;
+  if (!configuredInstanceIds || configuredInstanceIds.length === 0) {
+    return acceptUsersWithoutInstanceIdAttribute;
+  }
+
+  return configuredInstanceIds.includes(instanceId);
+};
 
 const resolveDisplayName = (user: IdentityListedUser): string => {
   const explicitDisplayName = readSingleAttribute(user.attributes, 'displayName');
@@ -62,6 +73,25 @@ const resolveDisplayName = (user: IdentityListedUser): string => {
 
 const protectOptionalField = (value: string | undefined, context: string): string | null =>
   value ? protectField(value, context) : null;
+
+const normalizeOptionalText = (value: string | undefined | null): string | undefined => {
+  const trimmed = value?.trim();
+  return trimmed && trimmed.length > 0 ? trimmed : undefined;
+};
+
+const looksLikeEmail = (value: string | undefined): value is string => {
+  if (typeof value !== 'string') {
+    return false;
+  }
+
+  const atIndex = value.indexOf('@');
+  if (atIndex <= 0 || atIndex !== value.lastIndexOf('@')) {
+    return false;
+  }
+
+  const domain = value.slice(atIndex + 1);
+  return domain.length > 2 && !domain.includes(' ') && domain.includes('.');
+};
 
 const toSubjectRef = (value: string): string =>
   createHash('sha256').update(value).digest('hex').slice(0, 12);
@@ -174,10 +204,137 @@ const upsertIdentityUser = async (
   };
 };
 
-const listAllKeycloakUsers = async (instanceId: string): Promise<readonly IdentityListedUser[]> => {
-  const identityProvider = await resolveIdentityProviderForInstance(instanceId);
+type LocalProfileSeedRow = {
+  readonly username_ciphertext: string | null;
+  readonly email_ciphertext: string | null;
+  readonly first_name_ciphertext: string | null;
+  readonly last_name_ciphertext: string | null;
+};
+
+const loadLocalProfileSeed = async (
+  client: QueryClient,
+  input: { instanceId: string; keycloakSubject: string }
+): Promise<{
+  readonly username?: string;
+  readonly email?: string;
+  readonly firstName?: string;
+  readonly lastName?: string;
+} | null> => {
+  const result = await client.query<LocalProfileSeedRow>(
+    `
+SELECT
+  username_ciphertext,
+  email_ciphertext,
+  first_name_ciphertext,
+  last_name_ciphertext
+FROM iam.accounts
+WHERE instance_id = $1
+  AND keycloak_subject = $2
+LIMIT 1;
+`,
+    [input.instanceId, input.keycloakSubject]
+  );
+
+  const row = result.rows[0];
+  if (!row) {
+    return null;
+  }
+
+  return {
+    username: normalizeOptionalText(revealField(row.username_ciphertext, `iam.accounts.username:${input.keycloakSubject}`)),
+    email: normalizeOptionalText(revealField(row.email_ciphertext, `iam.accounts.email:${input.keycloakSubject}`)),
+    firstName: normalizeOptionalText(
+      revealField(row.first_name_ciphertext, `iam.accounts.first_name:${input.keycloakSubject}`)
+    ),
+    lastName: normalizeOptionalText(
+      revealField(row.last_name_ciphertext, `iam.accounts.last_name:${input.keycloakSubject}`)
+    ),
+  };
+};
+
+const repairIdentityUserProfileIfPossible = async (
+  client: QueryClient,
+  input: {
+    instanceId: string;
+    user: IdentityListedUser;
+    identityProvider: NonNullable<Awaited<ReturnType<typeof resolveIdentityProviderForInstance>>>;
+    requestId?: string;
+    traceId?: string;
+  }
+): Promise<{ user: IdentityListedUser; repaired: boolean }> => {
+  const localSeed = await loadLocalProfileSeed(client, {
+    instanceId: input.instanceId,
+    keycloakSubject: input.user.externalId,
+  });
+
+  const username = normalizeOptionalText(input.user.username) ?? localSeed?.username;
+  const email =
+    normalizeOptionalText(input.user.email) ??
+    localSeed?.email ??
+    (looksLikeEmail(username) ? username : undefined);
+  const firstName = normalizeOptionalText(input.user.firstName) ?? localSeed?.firstName;
+  const lastName = normalizeOptionalText(input.user.lastName) ?? localSeed?.lastName;
+
+  const needsRepair =
+    normalizeOptionalText(input.user.email) === undefined ||
+    normalizeOptionalText(input.user.firstName) === undefined ||
+    normalizeOptionalText(input.user.lastName) === undefined;
+
+  const canRepair =
+    needsRepair &&
+    (email !== normalizeOptionalText(input.user.email) ||
+      firstName !== normalizeOptionalText(input.user.firstName) ||
+      lastName !== normalizeOptionalText(input.user.lastName));
+
+  if (!canRepair) {
+    return { user: input.user, repaired: false };
+  }
+
+  await trackKeycloakCall('repair_imported_user_profile', () =>
+    input.identityProvider.provider.updateUser(input.user.externalId, {
+      ...(username ? { username } : {}),
+      ...(email ? { email } : {}),
+      ...(firstName ? { firstName } : {}),
+      ...(lastName ? { lastName } : {}),
+    })
+  );
+
+  logger.info('Keycloak user profile repaired during IAM sync', {
+    operation: 'sync_keycloak_users',
+    instance_id: input.instanceId,
+    auth_realm: input.identityProvider.realm,
+    provider_source: input.identityProvider.source,
+    request_id: input.requestId,
+    trace_id: input.traceId,
+    subject_ref: toSubjectRef(input.user.externalId),
+    repaired_email: email !== normalizeOptionalText(input.user.email),
+    repaired_first_name: firstName !== normalizeOptionalText(input.user.firstName),
+    repaired_last_name: lastName !== normalizeOptionalText(input.user.lastName),
+  });
+
+  return {
+    repaired: true,
+    user: {
+      ...input.user,
+      ...(username ? { username } : {}),
+      ...(email ? { email } : {}),
+      ...(firstName ? { firstName } : {}),
+      ...(lastName ? { lastName } : {}),
+    },
+  };
+};
+
+const listAllKeycloakUsers = async (
+  instanceId: string
+): Promise<{
+  readonly resolution: NonNullable<Awaited<ReturnType<typeof resolveIdentityProviderForInstance>>>;
+  readonly users: readonly IdentityListedUser[];
+}> => {
+  const identityProvider = await resolveIdentityProviderForInstance(instanceId, {
+    executionMode: 'tenant_admin',
+  });
   if (!identityProvider) {
-    throw new KeycloakAdminUnavailableError('Keycloak Admin API ist nicht konfiguriert.');
+    throw new KeycloakAdminUnavailableError('Tenant-lokale Keycloak-Administration ist nicht konfiguriert.');
   }
 
   const users: IdentityListedUser[] = [];
@@ -190,7 +347,10 @@ const listAllKeycloakUsers = async (instanceId: string): Promise<readonly Identi
     );
     users.push(...page);
     if (page.length < KEYCLOAK_PAGE_SIZE) {
-      return users;
+      return {
+        resolution: identityProvider,
+        users,
+      };
     }
   }
 };
@@ -243,21 +403,32 @@ const resolveSyncActor = async (
 
 export const collectSyncCandidates = (
   listedUsers: readonly IdentityListedUser[],
-  expectedInstanceId: string
+  expectedInstanceId: string,
+  options?: {
+    readonly acceptUsersWithoutInstanceIdAttribute?: boolean;
+  }
 ): {
   matchingUsers: IdentityListedUser[];
+  matchedWithoutInstanceAttributeCount: number;
   skippedCount: number;
   skippedInstanceIds: ReadonlySet<string>;
 } => {
   const matchingUsers: IdentityListedUser[] = [];
+  let matchedWithoutInstanceAttributeCount = 0;
   const debugLoggingEnabled = logger.isLevelEnabled('debug');
   let skippedCount = 0;
   let debugLoggedCount = 0;
   const skippedInstanceIds = new Set<string>();
+  const acceptUsersWithoutInstanceIdAttribute =
+    options?.acceptUsersWithoutInstanceIdAttribute === true;
 
   for (const user of listedUsers) {
-    if (matchesInstanceId(user, expectedInstanceId)) {
+    const hasInstanceIdAttribute = (user.attributes?.instanceId?.length ?? 0) > 0;
+    if (matchesInstanceId(user, expectedInstanceId, acceptUsersWithoutInstanceIdAttribute)) {
       matchingUsers.push(user);
+      if (!hasInstanceIdAttribute && acceptUsersWithoutInstanceIdAttribute) {
+        matchedWithoutInstanceAttributeCount += 1;
+      }
       continue;
     }
 
@@ -278,7 +449,12 @@ export const collectSyncCandidates = (
     }
   }
 
-  return { matchingUsers, skippedCount, skippedInstanceIds };
+  return {
+    matchingUsers,
+    matchedWithoutInstanceAttributeCount,
+    skippedCount,
+    skippedInstanceIds,
+  };
 };
 
 const mapSyncErrorResponse = (error: unknown, requestId?: string): Response | undefined => {
@@ -334,20 +510,73 @@ export const runKeycloakUserImportSync = async (input: {
     request_id: input.requestId,
     trace_id: input.traceId,
   });
-  const listedUsers = await listAllKeycloakUsers(input.instanceId);
-  const { matchingUsers, skippedCount, skippedInstanceIds } = collectSyncCandidates(
-    listedUsers,
-    input.instanceId
-  );
+  const { resolution, users: listedUsers } = await listAllKeycloakUsers(input.instanceId);
+  const acceptUsersWithoutInstanceIdAttribute = resolution.source === 'instance';
+  const { matchingUsers, matchedWithoutInstanceAttributeCount, skippedCount, skippedInstanceIds } =
+    collectSyncCandidates(listedUsers, input.instanceId, {
+      acceptUsersWithoutInstanceIdAttribute,
+    });
+
+  if (matchedWithoutInstanceAttributeCount > 0) {
+    logger.info('Keycloak user sync matched users by realm scope without instance attribute', {
+      operation: 'sync_keycloak_users',
+      instance_id: input.instanceId,
+      auth_realm: resolution.realm,
+      provider_source: resolution.source,
+      matched_without_instance_attribute_count: matchedWithoutInstanceAttributeCount,
+      request_id: input.requestId,
+      trace_id: input.traceId,
+    });
+  }
+
+  if (skippedCount > 0) {
+    logger.info('Keycloak user sync skipped users because instance ids did not match', {
+      operation: 'sync_keycloak_users',
+      instance_id: input.instanceId,
+      auth_realm: resolution.realm,
+      provider_source: resolution.source,
+      skipped_count: skippedCount,
+      sample_instance_ids: [...skippedInstanceIds].join(','),
+      request_id: input.requestId,
+      trace_id: input.traceId,
+    });
+  }
+
+  const skippedInstanceIdSamples = [...skippedInstanceIds];
+  const diagnostics =
+    matchedWithoutInstanceAttributeCount > 0 || skippedInstanceIdSamples.length > 0
+      ? {
+          authRealm: resolution.realm,
+          providerSource: resolution.source,
+          executionMode: resolution.executionMode,
+          ...(matchedWithoutInstanceAttributeCount > 0
+            ? { matchedWithoutInstanceAttributeCount }
+            : {}),
+          ...(skippedInstanceIdSamples.length > 0
+            ? { skippedInstanceIds: skippedInstanceIdSamples }
+            : {}),
+        }
+      : undefined;
 
   const report = await withInstanceScopedDb(input.instanceId, async (client) => {
     let importedCount = 0;
     let updatedCount = 0;
+    let repairedProfileCount = 0;
 
     for (const user of matchingUsers) {
-      const result = await upsertIdentityUser(client, {
+      const repaired = await repairIdentityUserProfileIfPossible(client, {
         instanceId: input.instanceId,
         user,
+        identityProvider: resolution,
+        requestId: input.requestId,
+        traceId: input.traceId,
+      });
+      if (repaired.repaired) {
+        repairedProfileCount += 1;
+      }
+      const result = await upsertIdentityUser(client, {
+        instanceId: input.instanceId,
+        user: repaired.user,
       });
       if (result.created) {
         importedCount += 1;
@@ -361,6 +590,8 @@ export const runKeycloakUserImportSync = async (input: {
       updatedCount,
       skippedCount,
       totalKeycloakUsers: listedUsers.length,
+      ...(diagnostics ? { diagnostics } : {}),
+      ...(repairedProfileCount > 0 ? { repairedProfileCount } : {}),
     };
 
     if (input.actorAccountId) {
@@ -376,6 +607,7 @@ export const runKeycloakUserImportSync = async (input: {
             updated_count: summary.updatedCount,
             skipped_count: summary.skippedCount,
             total_keycloak_users: summary.totalKeycloakUsers,
+            repaired_profile_count: repairedProfileCount,
           },
           requestId: input.requestId,
           traceId: input.traceId,

@@ -2,8 +2,10 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import {
   buildRequestOriginFromHeaders,
+  parseForwardedAuthority,
   parseForwardedHost,
   parseForwardedProto,
+  resolveEffectiveRequestAuthority,
   resolveEffectiveRequestHost,
   resolveEffectiveRequestProtocol,
 } from './request-hosts';
@@ -11,6 +13,7 @@ import {
 describe('request-hosts', () => {
   beforeEach(() => {
     process.env.NODE_ENV = 'test';
+    delete process.env.SVA_PUBLIC_BASE_URL;
     delete process.env.SVA_TRUST_FORWARDED_HEADERS;
   });
 
@@ -49,6 +52,7 @@ describe('request-hosts', () => {
     });
 
     expect(resolveEffectiveRequestHost(request)).toBe('bb-guben.studio.example.org');
+    expect(resolveEffectiveRequestAuthority(request)).toBe('bb-guben.studio.example.org');
     expect(resolveEffectiveRequestProtocol(request)).toBe('https');
     expect(buildRequestOriginFromHeaders(request)).toBe('https://bb-guben.studio.example.org');
   });
@@ -75,6 +79,7 @@ describe('request-hosts', () => {
     });
 
     expect(resolveEffectiveRequestHost(request)).toBe('bb-guben.studio.example.org');
+    expect(resolveEffectiveRequestAuthority(request)).toBe('bb-guben.studio.example.org');
     expect(resolveEffectiveRequestProtocol(request)).toBe('https');
     expect(buildRequestOriginFromHeaders(request)).toBe('https://bb-guben.studio.example.org');
   });
@@ -88,6 +93,7 @@ describe('request-hosts', () => {
     });
 
     expect(resolveEffectiveRequestHost(request)).toBe('bb-guben.studio.example.org');
+    expect(resolveEffectiveRequestAuthority(request)).toBe('bb-guben.studio.example.org');
     expect(resolveEffectiveRequestProtocol(request)).toBe('http');
   });
 
@@ -151,5 +157,36 @@ describe('request-hosts', () => {
 
     expect(resolveEffectiveRequestHost(request)).toBe('studio.example.org');
     expect(resolveEffectiveRequestProtocol(request)).toBe('https');
+  });
+
+  it('preserves the local dev port in the request origin', () => {
+    process.env.SVA_TRUST_FORWARDED_HEADERS = 'false';
+    process.env.SVA_PUBLIC_BASE_URL = 'http://studio.localhost:3000';
+    const request = new Request('http://de-musterhausen.studio.localhost/auth/login', {
+      headers: {
+        host: 'de-musterhausen.studio.localhost',
+      },
+    });
+
+    expect(resolveEffectiveRequestHost(request)).toBe('de-musterhausen.studio.localhost');
+    expect(resolveEffectiveRequestAuthority(request)).toBe('de-musterhausen.studio.localhost');
+    expect(buildRequestOriginFromHeaders(request)).toBe('http://de-musterhausen.studio.localhost:3000');
+  });
+
+  it('preserves a forwarded dev port in the request origin', () => {
+    process.env.SVA_TRUST_FORWARDED_HEADERS = 'true';
+    const request = new Request('http://internal:3000/auth/login', {
+      headers: {
+        'x-forwarded-host': 'de-musterhausen.studio.localhost:3000',
+        'x-forwarded-proto': 'http',
+      },
+    });
+
+    expect(parseForwardedAuthority('for=192.0.2.60;proto=http;host="de-musterhausen.studio.localhost:3000"')).toBe(
+      'de-musterhausen.studio.localhost:3000',
+    );
+    expect(resolveEffectiveRequestHost(request)).toBe('de-musterhausen.studio.localhost');
+    expect(resolveEffectiveRequestAuthority(request)).toBe('de-musterhausen.studio.localhost:3000');
+    expect(buildRequestOriginFromHeaders(request)).toBe('http://de-musterhausen.studio.localhost:3000');
   });
 });

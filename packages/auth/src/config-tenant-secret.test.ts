@@ -1,14 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
-  loadCiphertext: vi.fn(),
+  loadAuthCiphertext: vi.fn(),
+  loadAdminCiphertext: vi.fn(),
   revealField: vi.fn(),
   loggerWarn: vi.fn(),
   globalSecret: 'global-auth-secret',
 }));
 
 vi.mock('@sva/data/server', () => ({
-  loadInstanceAuthClientSecretCiphertext: (instanceId: string) => state.loadCiphertext(instanceId),
+  loadInstanceAuthClientSecretCiphertext: (instanceId: string) => state.loadAuthCiphertext(instanceId),
+  loadTenantAdminClientSecretCiphertext: (instanceId: string) => state.loadAdminCiphertext(instanceId),
 }));
 
 vi.mock('./iam-account-management/encryption.js', () => ({
@@ -33,12 +35,13 @@ describe('resolveTenantAuthClientSecret', () => {
     vi.clearAllMocks();
     vi.resetModules();
     state.globalSecret = 'global-auth-secret';
-    state.loadCiphertext.mockReset();
+    state.loadAuthCiphertext.mockReset();
+    state.loadAdminCiphertext.mockReset();
     state.revealField.mockReset();
   });
 
   it('returns a tenant-scoped secret when ciphertext can be decrypted', async () => {
-    state.loadCiphertext.mockResolvedValue('enc:test-client-secret');
+    state.loadAuthCiphertext.mockResolvedValue('enc:test-client-secret');
     state.revealField.mockReturnValue('tenant-secret-value');
 
     const { resolveTenantAuthClientSecret } = await import('./config-tenant-secret.js');
@@ -57,7 +60,7 @@ describe('resolveTenantAuthClientSecret', () => {
   });
 
   it('falls back to the global secret when no tenant ciphertext is configured', async () => {
-    state.loadCiphertext.mockResolvedValue(null);
+    state.loadAuthCiphertext.mockResolvedValue(null);
 
     const { resolveTenantAuthClientSecret } = await import('./config-tenant-secret.js');
     const result = await resolveTenantAuthClientSecret('bb-guben');
@@ -73,7 +76,7 @@ describe('resolveTenantAuthClientSecret', () => {
   });
 
   it('logs and falls back when tenant ciphertext lookup fails', async () => {
-    state.loadCiphertext.mockRejectedValue(new Error('db unavailable'));
+    state.loadAuthCiphertext.mockRejectedValue(new Error('db unavailable'));
 
     const { resolveTenantAuthClientSecret } = await import('./config-tenant-secret.js');
     const result = await resolveTenantAuthClientSecret('bb-guben');
@@ -86,7 +89,7 @@ describe('resolveTenantAuthClientSecret', () => {
       reason: 'tenant_auth_client_secret_lookup_failed',
     });
     expect(state.loggerWarn).toHaveBeenCalledWith(
-      'Tenant auth client secret lookup failed; falling back to global auth secret',
+      'Tenant auth client secret lookup failed',
       expect.objectContaining({
         auth_scope_kind: 'platform',
         dependency: 'database',
@@ -100,7 +103,7 @@ describe('resolveTenantAuthClientSecret', () => {
   });
 
   it('logs and falls back when tenant ciphertext cannot be decrypted', async () => {
-    state.loadCiphertext.mockResolvedValue('enc:test-client-secret');
+    state.loadAuthCiphertext.mockResolvedValue('enc:test-client-secret');
     state.revealField.mockReturnValue(undefined);
 
     const { resolveTenantAuthClientSecret } = await import('./config-tenant-secret.js');
@@ -114,13 +117,109 @@ describe('resolveTenantAuthClientSecret', () => {
       reason: 'tenant_auth_client_secret_unreadable',
     });
     expect(state.loggerWarn).toHaveBeenCalledWith(
-      'Tenant auth client secret could not be decrypted; falling back to global auth secret',
+      'Tenant auth client secret could not be decrypted',
       expect.objectContaining({
         auth_scope_kind: 'platform',
         operation: 'tenant_auth_secret_lookup',
         instance_id: 'bb-guben',
         reason_code: 'tenant_auth_client_secret_unreadable',
         resolution_result: 'platform',
+      })
+    );
+  });
+});
+
+describe('resolveTenantAdminClientSecret', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    state.globalSecret = 'global-auth-secret';
+    state.loadAuthCiphertext.mockReset();
+    state.loadAdminCiphertext.mockReset();
+    state.revealField.mockReset();
+  });
+
+  it('returns a tenant-scoped admin secret when ciphertext can be decrypted', async () => {
+    state.loadAdminCiphertext.mockResolvedValue('enc:test-admin-client-secret');
+    state.revealField.mockReturnValue('tenant-admin-secret-value');
+
+    const { resolveTenantAdminClientSecret } = await import('./config-tenant-secret.js');
+    const result = await resolveTenantAdminClientSecret('bb-guben');
+
+    expect(result).toEqual({
+      configured: true,
+      readable: true,
+      secret: 'tenant-admin-secret-value',
+      source: 'tenant',
+    });
+    expect(state.revealField).toHaveBeenCalledWith(
+      'enc:test-admin-client-secret',
+      'iam.instances.tenant_admin_client_secret:bb-guben'
+    );
+  });
+
+  it('returns a fail-closed result when no tenant admin ciphertext is configured', async () => {
+    state.loadAdminCiphertext.mockResolvedValue(null);
+
+    const { resolveTenantAdminClientSecret } = await import('./config-tenant-secret.js');
+    const result = await resolveTenantAdminClientSecret('bb-guben');
+
+    expect(result).toEqual({
+      configured: false,
+      readable: false,
+      source: 'tenant',
+      reason: 'tenant_admin_client_secret_missing',
+    });
+    expect(state.loggerWarn).not.toHaveBeenCalled();
+  });
+
+  it('logs and stays fail-closed when tenant admin ciphertext lookup fails', async () => {
+    state.loadAdminCiphertext.mockRejectedValue(new Error('db unavailable'));
+
+    const { resolveTenantAdminClientSecret } = await import('./config-tenant-secret.js');
+    const result = await resolveTenantAdminClientSecret('bb-guben');
+
+    expect(result).toEqual({
+      configured: false,
+      readable: false,
+      source: 'tenant',
+      reason: 'tenant_admin_client_secret_lookup_failed',
+    });
+    expect(state.loggerWarn).toHaveBeenCalledWith(
+      'Tenant admin client secret lookup failed',
+      expect.objectContaining({
+        auth_scope_kind: 'instance',
+        dependency: 'database',
+        error_type: 'Error',
+        operation: 'tenant_admin_client_secret_lookup',
+        instance_id: 'bb-guben',
+        reason_code: 'tenant_admin_client_secret_lookup_failed',
+        resolution_result: 'tenant_secret_unavailable',
+      })
+    );
+  });
+
+  it('logs and stays fail-closed when tenant admin ciphertext cannot be decrypted', async () => {
+    state.loadAdminCiphertext.mockResolvedValue('enc:test-admin-client-secret');
+    state.revealField.mockReturnValue(undefined);
+
+    const { resolveTenantAdminClientSecret } = await import('./config-tenant-secret.js');
+    const result = await resolveTenantAdminClientSecret('bb-guben');
+
+    expect(result).toEqual({
+      configured: true,
+      readable: false,
+      source: 'tenant',
+      reason: 'tenant_admin_client_secret_unreadable',
+    });
+    expect(state.loggerWarn).toHaveBeenCalledWith(
+      'Tenant admin client secret could not be decrypted',
+      expect.objectContaining({
+        auth_scope_kind: 'instance',
+        operation: 'tenant_admin_client_secret_lookup',
+        instance_id: 'bb-guben',
+        reason_code: 'tenant_admin_client_secret_unreadable',
+        resolution_result: 'tenant_secret_unavailable',
       })
     );
   });

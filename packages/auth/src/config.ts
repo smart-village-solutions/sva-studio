@@ -77,7 +77,46 @@ const buildIssuerUrl = (realm: string, explicitIssuerUrl?: string): string => {
   return `${normalizeBaseUrl(baseUrl)}/realms/${realm}`;
 };
 
-const buildRequestOrigin = (request: Request): string => buildRequestOriginFromHeaders(request);
+const applyLocalDevPortToOrigin = (origin: string, host: string): string => {
+  try {
+    const parsedOrigin = new URL(origin);
+    if (parsedOrigin.port) {
+      return origin;
+    }
+
+    const publicBaseUrl = process.env.SVA_PUBLIC_BASE_URL?.trim();
+    if (!publicBaseUrl) {
+      return origin;
+    }
+
+    const publicBase = new URL(publicBaseUrl);
+    if (!publicBase.port) {
+      return origin;
+    }
+
+    const normalizedOriginHost = normalizeHost(parsedOrigin.hostname);
+    const normalizedHost = normalizeHost(host);
+    const normalizedPublicBaseHost = normalizeHost(publicBase.hostname);
+    if (parsedOrigin.protocol !== publicBase.protocol) {
+      return origin;
+    }
+
+    if (
+      normalizedOriginHost !== normalizedHost ||
+      !(normalizedHost === normalizedPublicBaseHost || normalizedHost.endsWith(`.${normalizedPublicBaseHost}`))
+    ) {
+      return origin;
+    }
+
+    parsedOrigin.port = publicBase.port;
+    return normalizeBaseUrl(parsedOrigin.toString());
+  } catch {
+    return origin;
+  }
+};
+
+const buildRequestOrigin = (request: Request): string =>
+  applyLocalDevPortToOrigin(buildRequestOriginFromHeaders(request), resolveEffectiveRequestHost(request));
 const resolveRequestHost = (request: Request): string => resolveEffectiveRequestHost(request);
 const buildHostOrigin = (hostname: string, protocol = 'https'): string => `${protocol}://${normalizeHost(hostname)}`;
 

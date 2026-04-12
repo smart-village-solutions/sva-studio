@@ -427,6 +427,45 @@ describe('provisionInstanceAuthArtifacts', () => {
     );
   });
 
+  it('provisions login and tenant admin clients with separate secrets during dual-client bootstrap', async () => {
+    state.getOidcClientSecretValue.mockResolvedValueOnce('generated-login-secret').mockResolvedValueOnce('generated-admin-secret');
+
+    await provisionInstanceAuthArtifacts({
+      instanceId: 'bb-guben',
+      primaryHostname: 'bb-guben.studio.smart-village.app',
+      realmMode: 'new',
+      authRealm: 'bb-guben',
+      authClientId: 'sva-studio',
+      tenantAdminClient: {
+        clientId: 'sva-studio-admin',
+      },
+    });
+
+    expect(state.ensureOidcClient).toHaveBeenCalledTimes(2);
+    expect(state.ensureOidcClient).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        clientId: 'sva-studio',
+        clientSecret: undefined,
+        rotateClientSecret: undefined,
+      })
+    );
+    expect(state.ensureOidcClient).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        clientId: 'sva-studio-admin',
+        redirectUris: [],
+        postLogoutRedirectUris: [],
+        webOrigins: [],
+        rootUrl: 'https://bb-guben.studio.smart-village.app',
+        serviceAccountsEnabled: true,
+        standardFlowEnabled: false,
+        directAccessGrantsEnabled: false,
+        clientSecret: undefined,
+      })
+    );
+  });
+
   it('returns a global fallback status when the realm does not exist', async () => {
     state.getRealm.mockResolvedValue(null);
 

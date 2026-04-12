@@ -1127,8 +1127,8 @@ describe('KeycloakAdminClient', () => {
       createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }),
       createJsonResponse(200, [{ id: 'role-editor', name: 'editor' }]),
       createJsonResponse(200, [
-        { id: 'role-editor', name: 'editor' },
-        { id: 'role-reviewer', name: 'reviewer' },
+        { id: 'role-editor', name: 'editor', attributes: { managed_by: ['studio'] } },
+        { id: 'role-reviewer', name: 'reviewer', attributes: { managed_by: ['studio'] } },
       ]),
       createTextResponse(204, ''),
       createTextResponse(204, ''),
@@ -1153,6 +1153,76 @@ describe('KeycloakAdminClient', () => {
 
     expect(addCall).toBeDefined();
     expect(removeCall).toBeDefined();
+  });
+
+  it('preserves builtin and unmanaged realm roles during tenant role sync', async () => {
+    const { fetchImpl, calls } = createFetchStub([
+      createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }),
+      createJsonResponse(200, [
+        { id: 'role-system-admin', name: 'system_admin' },
+        { id: 'role-editor', name: 'editor' },
+        { id: 'role-offline', name: 'offline_access' },
+        { id: 'role-defaults', name: 'default-roles-demo' },
+        { id: 'role-external', name: 'external_support' },
+      ]),
+      createJsonResponse(200, [
+        {
+          id: 'role-system-admin',
+          name: 'system_admin',
+          attributes: {
+            managed_by: ['studio'],
+            instance_id: ['demo'],
+            role_key: ['system_admin'],
+          },
+        },
+        {
+          id: 'role-editor',
+          name: 'editor',
+          attributes: {
+            managed_by: ['studio'],
+            instance_id: ['demo'],
+            role_key: ['editor'],
+          },
+        },
+        { id: 'role-offline', name: 'offline_access' },
+        { id: 'role-defaults', name: 'default-roles-demo' },
+        { id: 'role-external', name: 'external_support', attributes: { managed_by: ['external'] } },
+        {
+          id: 'role-reviewer',
+          name: 'reviewer',
+          attributes: {
+            managed_by: ['studio'],
+            instance_id: ['demo'],
+            role_key: ['reviewer'],
+          },
+        },
+      ]),
+      createTextResponse(204, ''),
+      createTextResponse(204, ''),
+    ]);
+
+    const client = new KeycloakAdminClient({
+      baseUrl: 'https://keycloak.example.com',
+      realm: 'demo',
+      clientId: 'svc-client',
+      clientSecret: 'svc-secret',
+      fetchImpl,
+    });
+
+    await client.syncRoles('user-1', ['system_admin', 'reviewer']);
+
+    const addCall = calls.find((entry) =>
+      String(entry.input).includes('/users/user-1/role-mappings/realm') && entry.init?.method === 'POST'
+    );
+    const removeCall = calls.find((entry) =>
+      String(entry.input).includes('/users/user-1/role-mappings/realm') && entry.init?.method === 'DELETE'
+    );
+
+    expect(addCall).toBeDefined();
+    expect(removeCall).toBeDefined();
+    expect(JSON.parse(String(removeCall?.init?.body))).toEqual([
+      { id: 'role-editor', name: 'editor' },
+    ]);
   });
 
   it("lists a user's mapped realm role names", async () => {

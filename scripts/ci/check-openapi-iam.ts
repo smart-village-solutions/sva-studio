@@ -12,7 +12,9 @@ export const requiredPaths = authRoutePaths
 
 export const requiredOperations = {
   '/health/live': ['get'],
+  '/api/v1/iam/health/live': ['get'],
   '/health/ready': ['get'],
+  '/api/v1/iam/health/ready': ['get'],
   '/iam/me/permissions': ['get'],
   '/iam/authorize': ['post'],
   '/api/v1/iam/users': ['get', 'post'],

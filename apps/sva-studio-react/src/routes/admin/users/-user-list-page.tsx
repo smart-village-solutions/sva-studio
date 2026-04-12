@@ -39,6 +39,12 @@ export const UserListPage = () => {
     importedCount: number;
     updatedCount: number;
     skippedCount: number;
+    diagnostics?: {
+      authRealm: string;
+      providerSource: 'instance' | 'global' | 'fallback_global';
+      matchedWithoutInstanceAttributeCount?: number;
+      skippedInstanceIds?: readonly string[];
+    };
   } | null>(null);
   const [syncError, setSyncError] = React.useState<Parameters<typeof userErrorMessage>[0]>(null);
 
@@ -75,6 +81,7 @@ export const UserListPage = () => {
       importedCount: result.report.importedCount,
       updatedCount: result.report.updatedCount,
       skippedCount: result.report.skippedCount,
+      diagnostics: result.report.diagnostics,
     });
     setSyncStatus(result.report.importedCount === 0 && result.report.updatedCount === 0 ? 'empty' : 'success');
   };
@@ -238,6 +245,22 @@ export const UserListPage = () => {
               updatedCount: syncResult.updatedCount,
               skippedCount: syncResult.skippedCount,
             })}
+            {syncResult.diagnostics ? (
+              <span className="block text-xs text-muted-foreground">
+                {t('admin.users.messages.syncDiagnostics', {
+                  authRealm: syncResult.diagnostics.authRealm,
+                  providerSource:
+                    syncResult.diagnostics.providerSource === 'instance'
+                      ? t('admin.users.messages.syncProviderSource.instance')
+                      : syncResult.diagnostics.providerSource === 'fallback_global'
+                        ? t('admin.users.messages.syncProviderSource.fallback_global')
+                        : t('admin.users.messages.syncProviderSource.global'),
+                  matchedWithoutInstanceAttributeCount: String(
+                    syncResult.diagnostics.matchedWithoutInstanceAttributeCount ?? 0
+                  ),
+                })}
+              </span>
+            ) : null}
           </AlertDescription>
         </Alert>
       ) : null}

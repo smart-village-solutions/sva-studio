@@ -46,6 +46,21 @@ const roleSyncIntegrationState = vi.hoisted(() => ({
   failNextRoleInsert: false,
   failNextRoleUpdateWrite: false,
   failNextRoleDeleteWrite: false,
+  instanceById: new Map([
+    [
+      'de-musterhausen',
+      {
+        id: 'de-musterhausen',
+        authRealm: 'de-musterhausen',
+        authClientId: 'sva-studio',
+        tenantAdminClient: {
+          clientId: 'sva-studio-admin',
+          secretConfigured: true,
+        },
+      },
+    ],
+  ]),
+  tenantSecret: 'tenant-secret',
 }));
 
 const resetRoleState = (): void => {
@@ -115,6 +130,25 @@ vi.mock('./middleware.server', () => ({
       user: roleSyncIntegrationState.user,
     })
   ),
+}));
+
+vi.mock('@sva/data/server', () => ({
+  loadInstanceById: vi.fn(async (instanceId: string) => roleSyncIntegrationState.instanceById.get(instanceId) ?? null),
+}));
+
+vi.mock('./config-tenant-secret.js', () => ({
+  resolveTenantAuthClientSecret: vi.fn(async () => ({
+    configured: true,
+    readable: true,
+    secret: roleSyncIntegrationState.tenantSecret,
+    source: 'tenant',
+  })),
+  resolveTenantAdminClientSecret: vi.fn(async () => ({
+    configured: true,
+    readable: true,
+    secret: roleSyncIntegrationState.tenantSecret,
+    source: 'tenant',
+  })),
 }));
 
 vi.mock('@sva/sdk/server', async () => {
@@ -445,6 +479,7 @@ import { createRoleHandler, deleteRoleHandler, updateRoleHandler } from './iam-a
 describe('iam-account-management role sync integration', () => {
   beforeEach(() => {
     process.env.IAM_DATABASE_URL = 'postgres://iam-test';
+    process.env.KEYCLOAK_ADMIN_BASE_URL = 'http://keycloak.local';
     resetRoleState();
     roleSyncIntegrationState.user = {
       id: `keycloak-role-admin-${Date.now()}`,

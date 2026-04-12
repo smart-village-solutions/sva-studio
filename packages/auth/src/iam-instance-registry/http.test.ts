@@ -98,6 +98,19 @@ describe('iam-instance-registry http helpers', () => {
     expect(result.success).toBe(false);
   });
 
+  it('requires a tenant admin client contract on create requests', () => {
+    const result = createInstanceSchema.safeParse({
+      instanceId: 'de-test',
+      displayName: 'Demo',
+      parentDomain: 'studio.smart-village.app',
+      realmMode: 'new',
+      authRealm: 'de-test',
+      authClientId: 'sva-studio',
+    });
+
+    expect(result.success).toBe(false);
+  });
+
   it('extracts keycloak run ids from nested run routes', () => {
     const request = new Request(
       'https://studio.example.org/api/v1/iam/instances/de-test/keycloak/runs/run-42'

@@ -99,7 +99,7 @@ const executeClaimedRun = async (deps: InstanceRegistryServiceDeps, run: Instanc
   const preflight = await appendPreflightSnapshot(deps, run, provisioningInput);
   const plan = await appendPlanSnapshot(deps, run, provisioningInput);
 
-  if (run.mode === 'existing' && !loaded.authClientSecret) {
+  if (run.mode === 'existing' && run.intent !== 'provision_admin_client' && !loaded.authClientSecret) {
     throw new Error('tenant_auth_client_secret_missing');
   }
   if (preflight.overallStatus === 'blocked' || plan.overallStatus === 'blocked') {
@@ -223,6 +223,19 @@ export const createExecuteKeycloakProvisioningHandler =
     return deps.repository.getKeycloakProvisioningRun(loaded.instance.instanceId, run.id);
   };
 
+const shouldReconcileTenantAdminClient = (loaded: NonNullable<Awaited<ReturnType<typeof loadInstanceWithSecret>>>) => {
+  if (loaded.instance.realmMode !== 'existing') {
+    return false;
+  }
+
+  const clientId = loaded.instance.tenantAdminClient?.clientId?.trim();
+  if (!clientId) {
+    return true;
+  }
+
+  return !loaded.tenantAdminClientSecret;
+};
+
 export const createReconcileKeycloakHandler =
   (deps: InstanceRegistryServiceDeps) =>
   async (input: {
@@ -237,7 +250,13 @@ export const createReconcileKeycloakHandler =
       return null;
     }
 
-    if (loaded.instance.realmMode === 'existing' && !loaded.authClientSecret) {
+    const intent = input.rotateClientSecret
+      ? 'rotate_client_secret'
+      : shouldReconcileTenantAdminClient(loaded)
+        ? 'provision_admin_client'
+        : 'provision';
+
+    if (loaded.instance.realmMode === 'existing' && intent !== 'provision_admin_client' && !loaded.authClientSecret) {
       throw new Error('tenant_auth_client_secret_missing');
     }
 
@@ -246,7 +265,7 @@ export const createReconcileKeycloakHandler =
       actorId: input.actorId,
       requestId: input.requestId,
       tenantAdminTemporaryPassword: input.tenantAdminTemporaryPassword,
-      intent: input.rotateClientSecret ? 'rotate_client_secret' : 'provision',
+      intent,
     });
     if (!run) {
       return null;

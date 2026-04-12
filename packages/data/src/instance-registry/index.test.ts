@@ -76,6 +76,73 @@ describe('instance registry repository', () => {
     });
   });
 
+  it('maps list results with tenant admin client and bootstrap details', async () => {
+    const execute = createExecute({
+      rowCount: 1,
+      rows: [
+        {
+          instance_id: 'bb-guben',
+          display_name: 'BB Guben',
+          status: 'active',
+          parent_domain: 'studio.example.org',
+          primary_hostname: 'bb-guben.studio.example.org',
+          realm_mode: 'existing',
+          auth_realm: 'bb-guben',
+          auth_client_id: 'sva-studio',
+          auth_issuer_url: 'https://keycloak.example.org/realms/bb-guben',
+          auth_client_secret_ciphertext: 'enc:tenant',
+          tenant_admin_client_id: 'sva-studio-admin',
+          tenant_admin_client_secret_ciphertext: 'enc:tenant-admin',
+          tenant_admin_username: 'tenant-admin',
+          tenant_admin_email: 'tenant@example.org',
+          tenant_admin_first_name: 'Tenant',
+          tenant_admin_last_name: 'Admin',
+          theme_key: 'guben',
+          feature_flags: { provisioning: true },
+          mainserver_config_ref: 'mainserver-guben',
+          created_at: '2026-01-01T00:00:00.000Z',
+          created_by: 'seed',
+          updated_at: '2026-01-02T00:00:00.000Z',
+          updated_by: 'seed',
+        },
+      ],
+    });
+
+    const repository = createInstanceRegistryRepository({ execute });
+    const items = await repository.listInstances();
+
+    assert.equal(items.length, 1);
+    assert.deepEqual(items[0], {
+      instanceId: 'bb-guben',
+      displayName: 'BB Guben',
+      status: 'active',
+      parentDomain: 'studio.example.org',
+      primaryHostname: 'bb-guben.studio.example.org',
+      realmMode: 'existing',
+      authRealm: 'bb-guben',
+      authClientId: 'sva-studio',
+      authIssuerUrl: 'https://keycloak.example.org/realms/bb-guben',
+      authClientSecretConfigured: true,
+      tenantAdminClient: {
+        clientId: 'sva-studio-admin',
+        secretConfigured: true,
+      },
+      tenantAdminBootstrap: {
+        username: 'tenant-admin',
+        email: 'tenant@example.org',
+        firstName: 'Tenant',
+        lastName: 'Admin',
+      },
+      themeKey: 'guben',
+      featureFlags: { provisioning: true },
+      mainserverConfigRef: 'mainserver-guben',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      createdBy: 'seed',
+      updatedAt: '2026-01-02T00:00:00.000Z',
+      updatedBy: 'seed',
+    });
+  });
+
   it('creates provisioning runs with passed metadata', async () => {
     const execute = createExecute({
       rowCount: 1,
@@ -402,6 +469,17 @@ describe('instance registry repository', () => {
     assert.equal(await repository.getAuthClientSecretCiphertext('bb-guben'), 'enc:tenant-secret');
   });
 
+  it('loads stored tenant admin client secret ciphertext by instance id', async () => {
+    const execute = createExecute({
+      rowCount: 1,
+      rows: [{ tenant_admin_client_secret_ciphertext: 'enc:tenant-admin-secret' }],
+    });
+
+    const repository = createInstanceRegistryRepository({ execute });
+
+    assert.equal(await repository.getTenantAdminClientSecretCiphertext('bb-guben'), 'enc:tenant-admin-secret');
+  });
+
   it('updates instance auth bootstrap fields and can keep an existing tenant secret', async () => {
     const statements: SqlStatement[] = [];
     const execute = createSequencedExecutor(
@@ -495,5 +573,283 @@ describe('instance registry repository', () => {
     assert.equal(statements[0]?.values[9], null);
     assert.equal(statements[0]?.values[13], 'tenant-admin');
     assert.equal(statements[1]?.values[0], 'bb-guben.studio.smart-village.app');
+  });
+
+  it('returns an empty object when latest provisioning runs are requested for no instances', async () => {
+    const repository = createInstanceRegistryRepository({
+      execute: async () => {
+        throw new Error('execute should not be called');
+      },
+    });
+
+    assert.deepEqual(await repository.listLatestProvisioningRuns([]), {});
+  });
+
+  it('lists keycloak provisioning runs with mapped steps', async () => {
+    const execute = createSequencedExecutor([
+      {
+        rowCount: 1,
+        rows: [
+          {
+            id: 'run-1',
+            instance_id: 'hb',
+            mode: 'existing',
+            intent: 'provision_admin_client',
+            overall_status: 'running',
+            drift_summary: 'Tenant admin client missing.',
+            request_id: 'req-1',
+            actor_id: 'actor-1',
+            created_at: '2026-01-01T00:00:00.000Z',
+            updated_at: '2026-01-01T00:01:00.000Z',
+          },
+        ],
+      },
+      {
+        rowCount: 1,
+        rows: [
+          {
+            id: 'step-1',
+            run_id: 'run-1',
+            step_key: 'tenant_admin_client',
+            title: 'Tenant admin client anlegen',
+            status: 'running',
+            started_at: '2026-01-01T00:00:30.000Z',
+            finished_at: null,
+            summary: 'Client wird angelegt.',
+            details: { phase: 'create' },
+            request_id: 'req-1',
+            created_at: '2026-01-01T00:00:30.000Z',
+          },
+        ],
+      },
+    ]);
+
+    const repository = createInstanceRegistryRepository({ execute });
+
+    assert.deepEqual(await repository.listKeycloakProvisioningRuns('hb'), [
+      {
+        id: 'run-1',
+        instanceId: 'hb',
+        mode: 'existing',
+        intent: 'provision_admin_client',
+        overallStatus: 'running',
+        driftSummary: 'Tenant admin client missing.',
+        requestId: 'req-1',
+        actorId: 'actor-1',
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:01:00.000Z',
+        steps: [
+          {
+            stepKey: 'tenant_admin_client',
+            title: 'Tenant admin client anlegen',
+            status: 'running',
+            startedAt: '2026-01-01T00:00:30.000Z',
+            finishedAt: undefined,
+            summary: 'Client wird angelegt.',
+            details: { phase: 'create' },
+            requestId: 'req-1',
+          },
+        ],
+      },
+    ]);
+  });
+
+  it('returns null when the requested keycloak provisioning run does not exist', async () => {
+    const execute = createSequencedExecutor([
+      {
+        rowCount: 0,
+        rows: [],
+      },
+    ]);
+
+    const repository = createInstanceRegistryRepository({ execute });
+
+    assert.equal(await repository.getKeycloakProvisioningRun('hb', 'run-missing'), null);
+  });
+
+  it('claims the next keycloak provisioning run and returns null when none is queued', async () => {
+    const execute = createSequencedExecutor([
+      {
+        rowCount: 1,
+        rows: [
+          {
+            id: 'run-queued',
+            instance_id: 'hb',
+            mode: 'existing',
+            intent: 'provision',
+            overall_status: 'running',
+            drift_summary: 'Realm drift detected.',
+            request_id: null,
+            actor_id: null,
+            created_at: '2026-01-02T00:00:00.000Z',
+            updated_at: '2026-01-02T00:00:10.000Z',
+          },
+        ],
+      },
+      {
+        rowCount: 0,
+        rows: [],
+      },
+      {
+        rowCount: 0,
+        rows: [],
+      },
+    ]);
+
+    const repository = createInstanceRegistryRepository({ execute });
+
+    assert.deepEqual(await repository.claimNextKeycloakProvisioningRun(), {
+      id: 'run-queued',
+      instanceId: 'hb',
+      mode: 'existing',
+      intent: 'provision',
+      overallStatus: 'running',
+      driftSummary: 'Realm drift detected.',
+      requestId: undefined,
+      actorId: undefined,
+      createdAt: '2026-01-02T00:00:00.000Z',
+      updatedAt: '2026-01-02T00:00:10.000Z',
+      steps: [],
+    });
+    assert.equal(await repository.claimNextKeycloakProvisioningRun(), null);
+  });
+
+  it('creates, updates and appends keycloak provisioning records', async () => {
+    const execute = createSequencedExecutor([
+      {
+        rowCount: 1,
+        rows: [
+          {
+            id: 'run-created',
+            instance_id: 'hb',
+            mode: 'existing',
+            intent: 'provision_admin_client',
+            overall_status: 'planned',
+            drift_summary: 'Plan created.',
+            request_id: null,
+            actor_id: null,
+            created_at: '2026-01-03T00:00:00.000Z',
+            updated_at: '2026-01-03T00:00:00.000Z',
+          },
+        ],
+      },
+      {
+        rowCount: 1,
+        rows: [
+          {
+            id: 'run-created',
+            instance_id: 'hb',
+            mode: 'existing',
+            intent: 'provision_admin_client',
+            overall_status: 'succeeded',
+            drift_summary: 'Plan finished.',
+            request_id: 'req-2',
+            actor_id: 'actor-2',
+            created_at: '2026-01-03T00:00:00.000Z',
+            updated_at: '2026-01-03T00:02:00.000Z',
+          },
+        ],
+      },
+      {
+        rowCount: 0,
+        rows: [],
+      },
+      {
+        rowCount: 0,
+        rows: [],
+      },
+      {
+        rowCount: 1,
+        rows: [
+          {
+            id: 'step-created',
+            run_id: 'run-created',
+            step_key: 'finalize',
+            title: 'Abschluss',
+            status: 'done',
+            started_at: null,
+            finished_at: '2026-01-03T00:02:00.000Z',
+            summary: 'Provisioning abgeschlossen.',
+            details: null,
+            request_id: null,
+            created_at: '2026-01-03T00:02:00.000Z',
+          },
+        ],
+      },
+    ]);
+
+    const repository = createInstanceRegistryRepository({ execute });
+
+    assert.deepEqual(
+      await repository.createKeycloakProvisioningRun({
+        instanceId: 'hb',
+        mode: 'existing',
+        intent: 'provision_admin_client',
+        overallStatus: 'planned',
+        driftSummary: 'Plan created.',
+      }),
+      {
+        id: 'run-created',
+        instanceId: 'hb',
+        mode: 'existing',
+        intent: 'provision_admin_client',
+        overallStatus: 'planned',
+        driftSummary: 'Plan created.',
+        requestId: undefined,
+        actorId: undefined,
+        createdAt: '2026-01-03T00:00:00.000Z',
+        updatedAt: '2026-01-03T00:00:00.000Z',
+        steps: [],
+      }
+    );
+
+    assert.deepEqual(
+      await repository.updateKeycloakProvisioningRun({
+        runId: 'run-created',
+        overallStatus: 'succeeded',
+        driftSummary: 'Plan finished.',
+      }),
+      {
+        id: 'run-created',
+        instanceId: 'hb',
+        mode: 'existing',
+        intent: 'provision_admin_client',
+        overallStatus: 'succeeded',
+        driftSummary: 'Plan finished.',
+        requestId: 'req-2',
+        actorId: 'actor-2',
+        createdAt: '2026-01-03T00:00:00.000Z',
+        updatedAt: '2026-01-03T00:02:00.000Z',
+        steps: [],
+      }
+    );
+
+    assert.equal(
+      await repository.updateKeycloakProvisioningRun({
+        runId: 'run-missing',
+        overallStatus: 'failed',
+      }),
+      null
+    );
+
+    assert.deepEqual(
+      await repository.appendKeycloakProvisioningStep({
+        runId: 'run-created',
+        stepKey: 'finalize',
+        title: 'Abschluss',
+        status: 'done',
+        summary: 'Provisioning abgeschlossen.',
+      }),
+      {
+        stepKey: 'finalize',
+        title: 'Abschluss',
+        status: 'done',
+        startedAt: undefined,
+        finishedAt: '2026-01-03T00:02:00.000Z',
+        summary: 'Provisioning abgeschlossen.',
+        details: {},
+        requestId: undefined,
+      }
+    );
   });
 });

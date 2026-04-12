@@ -79,8 +79,19 @@ const normalizeOptionalText = (value: string | undefined | null): string | undef
   return trimmed && trimmed.length > 0 ? trimmed : undefined;
 };
 
-const looksLikeEmail = (value: string | undefined): value is string =>
-  typeof value === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+const looksLikeEmail = (value: string | undefined): value is string => {
+  if (typeof value !== 'string') {
+    return false;
+  }
+
+  const atIndex = value.indexOf('@');
+  if (atIndex <= 0 || atIndex !== value.lastIndexOf('@')) {
+    return false;
+  }
+
+  const domain = value.slice(atIndex + 1);
+  return domain.length > 2 && !domain.includes(' ') && domain.includes('.');
+};
 
 const toSubjectRef = (value: string): string =>
   createHash('sha256').update(value).digest('hex').slice(0, 12);

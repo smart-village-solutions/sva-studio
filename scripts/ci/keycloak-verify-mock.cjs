@@ -2,6 +2,7 @@ const http = require("node:http");
 
 const port = Number.parseInt(process.env.PORT || "38080", 10);
 const realm = process.env.KEYCLOAK_REALM || "sva-studio";
+const normalizeBaseUrl = (value) => value.replace(/\/+$/, "");
 
 const json = (res, status, body) => {
   res.writeHead(status, { "content-type": "application/json" });
@@ -24,12 +25,15 @@ const server = http.createServer((req, res) => {
   }
 
   if (req.method === "GET" && url.pathname === `/realms/${realm}/.well-known/openid-configuration`) {
+    const baseUrl = normalizeBaseUrl(
+      process.env.KEYCLOAK_BASE_URL || `http://${req.headers.host || `127.0.0.1:${port}`}`
+    );
     return json(res, 200, {
-      issuer: `http://keycloak-mock:${port}/realms/${realm}`,
-      token_endpoint: `http://keycloak-mock:${port}/realms/${realm}/protocol/openid-connect/token`,
-      authorization_endpoint: `http://keycloak-mock:${port}/realms/${realm}/protocol/openid-connect/auth`,
-      end_session_endpoint: `http://keycloak-mock:${port}/realms/${realm}/protocol/openid-connect/logout`,
-      jwks_uri: `http://keycloak-mock:${port}/realms/${realm}/protocol/openid-connect/certs`,
+      issuer: `${baseUrl}/realms/${realm}`,
+      token_endpoint: `${baseUrl}/realms/${realm}/protocol/openid-connect/token`,
+      authorization_endpoint: `${baseUrl}/realms/${realm}/protocol/openid-connect/auth`,
+      end_session_endpoint: `${baseUrl}/realms/${realm}/protocol/openid-connect/logout`,
+      jwks_uri: `${baseUrl}/realms/${realm}/protocol/openid-connect/certs`,
     });
   }
 

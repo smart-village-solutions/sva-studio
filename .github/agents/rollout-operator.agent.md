@@ -325,7 +325,7 @@ pnpm env:release:studio:local -- \
   --rollback-hint="Vorherigen Digest erneut deployen"
 ```
 
-`studio-deploy.yml` bleibt nur dokumentierter Legacy-Fallback. Der empfohlene produktionsnahe Standard ist `Studio Image Build` -> `Studio Artifact Verify` -> `pnpm env:release:studio:local`.
+Der empfohlene und einzige dokumentierte produktionsnahe Standard ist `Studio Image Build` -> `Studio Artifact Verify` -> `pnpm env:release:studio:local`.
 
 ### Phase 4 – Post-Deploy-Verifikation
 
@@ -505,7 +505,6 @@ Pragmatische Hinweise fuer `studio`:
 | `config/runtime/*.vars` | Runtime-Profile |
 | `scripts/ops/runtime-env.ts` | Orchestrierungs-CLI |
 | `scripts/ops/create-secrets-portainer-api.sh` | Secrets via API |
-| `.github/workflows/studio-deploy.yml` | Legacy-Fallback fuer einen nicht mehr kanonischen CI-Deploypfad |
 | `docs/guides/swarm-deployment-guide.md` | Deployment-Handbuch |
 | `docs/guides/iam-deployment-runbook.md` | IAM-Rollout-Runbook |
 | `docs/guides/keycloak-rollen-sync-runbook.md` | Keycloak-Sync-Runbook |

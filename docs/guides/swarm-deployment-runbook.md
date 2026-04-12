@@ -235,7 +235,7 @@ Zusatz fuer den Betrieb:
 
 ## Schritt 3: Kanonischen Studio-Deploy ausführen
 
-Der regulaere Serverdeploy fuer `studio` ist jetzt zweigeteilt: GitHub baut und verifiziert den Ziel-Digest, der finale mutierende Rollout laeuft lokal ueber `pnpm env:release:studio:local`. Direkte Redeploys ueber `up`/`update`, Portainer-Klickpfade oder Ad-hoc-`docker stack deploy` sind nicht mehr der verbindliche Standard.
+Der reguläre Serverdeploy für `studio` ist jetzt zweigeteilt: GitHub baut und verifiziert den Ziel-Digest, der finale mutierende Rollout läuft lokal über `pnpm env:release:studio:local`. Direkte Redeploys über `up`/`update`, Portainer-Klickpfade oder Ad-hoc-`docker stack deploy` sind nicht mehr der verbindliche Standard.
 
 ### Release-Klassen
 

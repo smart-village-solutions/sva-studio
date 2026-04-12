@@ -261,7 +261,7 @@ else
 fi
 
 if [ "${VERIFY_STATUS}" = "ok" ]; then
-  docker exec -i "${POSTGRES_NAME}" psql -v ON_ERROR_STOP=1 -U sva -d sva_studio <<EOF >/dev/null
+  if docker exec -i "${POSTGRES_NAME}" psql -v ON_ERROR_STOP=1 -U sva -d sva_studio <<EOF >/dev/null
 DO \$\$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'sva_app') THEN
@@ -276,8 +276,14 @@ GRANT USAGE, CREATE ON SCHEMA public TO sva_app;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO sva_app;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO sva_app;
 EOF
-  set_phase_var POSTGRES_APP_ROLE_STATUS ok
-  mark_phase postgres-app-role ok
+  then
+    set_phase_var POSTGRES_APP_ROLE_STATUS ok
+    mark_phase postgres-app-role ok
+  else
+    set_phase_var POSTGRES_APP_ROLE_STATUS error
+    mark_phase postgres-app-role error
+    fail_verify dependency-failed postgres-app-role "Die temporaere App-Rolle fuer den Final-Artifact-Check konnte nicht vorbereitet werden."
+  fi
 fi
 
 if [ "${VERIFY_STATUS}" = "ok" ]; then

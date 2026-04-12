@@ -172,7 +172,7 @@ export const runLocalStudioReleasePlan = (
   if (feedbackFailure) {
     throw feedbackFailure;
   }
-}
+};
 
 export const main = (rawArgs = process.argv.slice(2)) => {
   try {

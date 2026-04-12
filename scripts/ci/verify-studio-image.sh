@@ -170,7 +170,7 @@ else
 fi
 
 if [ "${VERIFY_STATUS}" = "ok" ]; then
-  docker exec -i "${POSTGRES_NAME}" psql -v ON_ERROR_STOP=1 -U sva -d sva_studio <<EOF >/dev/null
+  if docker exec -i "${POSTGRES_NAME}" psql -v ON_ERROR_STOP=1 -U sva -d sva_studio <<EOF >/dev/null
 DO \$\$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'sva_app') THEN
@@ -185,8 +185,14 @@ GRANT USAGE, CREATE ON SCHEMA public TO sva_app;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO sva_app;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO sva_app;
 EOF
-  set_phase_var POSTGRES_APP_ROLE_STATUS ok
-  mark_phase postgres-app-role ok
+  then
+    set_phase_var POSTGRES_APP_ROLE_STATUS ok
+    mark_phase postgres-app-role ok
+  else
+    set_phase_var POSTGRES_APP_ROLE_STATUS error
+    mark_phase postgres-app-role error
+    fail_verify dependency-failed postgres-app-role "Die temporaere App-Rolle fuer das Image-Verify konnte nicht vorbereitet werden."
+  fi
 fi
 
 if [ "${VERIFY_STATUS}" = "ok" ]; then
@@ -232,6 +238,7 @@ if [ "${VERIFY_STATUS}" = "ok" ]; then
     --network "${NETWORK_NAME}" \
     -e PORT=38080 \
     -e KEYCLOAK_REALM=sva-studio \
+    -e KEYCLOAK_BASE_URL="http://${KEYCLOAK_NAME}:38080" \
     -v "${KEYCLOAK_MOCK_SCRIPT}:/tmp/keycloak-verify-mock.cjs:ro" \
     node:22-alpine \
     node /tmp/keycloak-verify-mock.cjs >/dev/null
@@ -265,14 +272,14 @@ NODE_ENV=production
 SVA_RUNTIME_PROFILE=studio
 SVA_PARENT_DOMAIN=studio.example.invalid
 SVA_ALLOWED_INSTANCE_IDS=example-instance
-SVA_PUBLIC_BASE_URL=http://127.0.0.1:3000
-SVA_PUBLIC_HOST=127.0.0.1:3000
+SVA_PUBLIC_BASE_URL=http://127.0.0.1:${APP_PORT}
+SVA_PUBLIC_HOST=127.0.0.1:${APP_PORT}
 SVA_AUTH_ISSUER=http://${KEYCLOAK_NAME}:38080/realms/sva-studio
 SVA_AUTH_CLIENT_ID=sva-studio
 SVA_AUTH_CLIENT_SECRET=verify-auth-client-secret
 SVA_AUTH_STATE_SECRET=verify-auth-state-secret
-SVA_AUTH_REDIRECT_URI=http://127.0.0.1:3000/auth/callback
-SVA_AUTH_POST_LOGOUT_REDIRECT_URI=http://127.0.0.1:3000/
+SVA_AUTH_REDIRECT_URI=http://127.0.0.1:${APP_PORT}/auth/callback
+SVA_AUTH_POST_LOGOUT_REDIRECT_URI=http://127.0.0.1:${APP_PORT}/
 IAM_CSRF_ALLOWED_ORIGINS=http://127.0.0.1:${APP_PORT}
 KEYCLOAK_ADMIN_BASE_URL=http://${KEYCLOAK_NAME}:38080
 KEYCLOAK_ADMIN_REALM=sva-studio

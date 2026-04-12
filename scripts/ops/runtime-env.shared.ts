@@ -411,6 +411,12 @@ export const assertDeterministicRemoteMutationContext = (
   }
 
   if (hasLocalOperatorContext) {
+    if (runtimeProfile !== 'studio') {
+      throw new Error(
+        `Remote-Mutation ${command} fuer ${runtimeProfile} ist nicht fuer den lokalen Operator-Pfad freigegeben. Nutze den Workflow-Pfad. Der dokumentierte Notfallpfad mit SVA_ALLOW_LOCAL_REMOTE_MUTATIONS=true greift nur, wenn SVA_REMOTE_OPERATOR_CONTEXT nicht auf local-operator steht.`,
+      );
+    }
+
     return {
       mode: 'local-operator' as const,
     };

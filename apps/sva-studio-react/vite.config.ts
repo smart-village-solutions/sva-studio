@@ -61,7 +61,7 @@ if (process.cwd() !== appRoot) {
 const config = defineConfig({
   root: appRoot,
   server: {
-    host: configuredDevHost || '0.0.0.0',
+    host: configuredDevHost || '127.0.0.1',
     // Disable HMR in this TanStack Start SSR setup to avoid React preamble runtime crashes.
     hmr: false,
     allowedHosts,

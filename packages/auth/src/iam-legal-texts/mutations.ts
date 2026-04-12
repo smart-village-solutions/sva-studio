@@ -10,9 +10,10 @@ import {
 } from '../iam-account-management/api-helpers.js';
 import { validateCsrf } from '../iam-account-management/csrf.js';
 import { completeIdempotency, reserveIdempotency } from '../iam-account-management/shared.js';
+import { UUID_LIKE_PATTERN } from '../shared/validators.js';
 
 import type { ResolvedLegalTextsActor } from './request-context.js';
-import { createLegalTextVersion, loadLegalTextById, updateLegalTextVersion } from './repository.js';
+import { createLegalTextVersion, LegalTextDeleteConflictError, loadLegalTextById, updateLegalTextVersion } from './repository.js';
 import { createLegalTextSchema, updateLegalTextSchema } from './schemas.js';
 
 const logger = createSdkLogger({ component: 'iam-legal-texts', level: 'info' });
@@ -206,6 +207,9 @@ export const deleteLegalTextResponse = async (
   if (!legalTextVersionId) {
     return createApiError(400, 'invalid_request', 'Rechtstext-ID fehlt.', actor.requestId);
   }
+  if (!UUID_LIKE_PATTERN.test(legalTextVersionId)) {
+    return createApiError(400, 'invalid_request', 'Rechtstext-ID ist ungültig.', actor.requestId);
+  }
 
   try {
     const { deleteLegalTextVersion } = await import('./repository.js');
@@ -221,6 +225,14 @@ export const deleteLegalTextResponse = async (
       ? jsonResponse(200, asApiItem({ id: deletedId }, actor.requestId))
       : createApiError(404, 'not_found', 'Rechtstext-Version wurde nicht gefunden.', actor.requestId);
   } catch (error) {
+    if (error instanceof LegalTextDeleteConflictError) {
+      return createApiError(
+        409,
+        'conflict',
+        'Rechtstext-Version kann nicht gelöscht werden, weil bereits Zustimmungen vorliegen.',
+        actor.requestId
+      );
+    }
     logger.error('Legal text delete failed', {
       operation: 'legal_text_delete',
       instance_id: actor.instanceId,

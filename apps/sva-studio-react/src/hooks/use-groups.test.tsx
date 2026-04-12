@@ -162,6 +162,7 @@ describe('useGroups', () => {
         groupKey: 'admins',
         displayName: 'Admins',
         description: 'Administrative Gruppe',
+        instanceId: 'de-musterhausen',
         groupType: 'role_bundle',
         isActive: true,
         memberCount: 1,
@@ -190,10 +191,12 @@ describe('useGroups', () => {
         assignedRoleIds: ['role-legacy'],
         memberships: [
           expect.objectContaining({
+            instanceId: 'de-musterhausen',
             accountId: 'account-1',
-            keycloakSubject: 'Ada Admin',
+            keycloakSubject: '',
             validFrom: '2026-04-01T00:00:00.000Z',
             validUntil: '2026-05-01T00:00:00.000Z',
+            assignedAt: '2026-04-01T00:00:00.000Z',
           }),
         ],
       });

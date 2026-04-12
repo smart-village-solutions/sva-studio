@@ -13,7 +13,7 @@ REDIS_PASSWORD="verify-redis-password"
 PII_KEYRING_JSON='{"k1":"MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDE="}'
 
 read -r APP_PORT POSTGRES_PORT REDIS_PORT KEYCLOAK_PORT <<EOF
-$(node <<'NODE'
+$("${WORKSPACE_ROOT}/scripts/ci/run-workspace-node.sh" <<'NODE'
 const net = require('node:net');
 
 const reservePort = () =>
@@ -323,7 +323,7 @@ if [ "${VERIFY_STATUS}" = "ok" ]; then
 fi
 
 if [ "${VERIFY_STATUS}" = "ok" ]; then
-  KEYCLOAK_PORT="${KEYCLOAK_PORT}" node <<'NODE' >"${KEYCLOAK_STDOUT_PATH}" 2>"${KEYCLOAK_STDERR_PATH}" &
+  KEYCLOAK_PORT="${KEYCLOAK_PORT}" "${WORKSPACE_ROOT}/scripts/ci/run-workspace-node.sh" <<'NODE' >"${KEYCLOAK_STDOUT_PATH}" 2>"${KEYCLOAK_STDERR_PATH}" &
 const http = require('node:http');
 
 const port = Number(process.env.KEYCLOAK_PORT || '38080');

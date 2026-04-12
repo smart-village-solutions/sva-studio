@@ -1,7 +1,14 @@
 import type { IamLegalTextListItem, IamPendingLegalTextItem } from '@sva/core';
 
-import { emitActivityLog, withInstanceScopedDb } from '../iam-account-management/shared.js';
+import { withInstanceScopedDb } from '../iam-account-management/shared.js';
 import { hashLegalTextHtml, sanitizeLegalTextHtml } from './html.js';
+import {
+  DeleteLegalTextInput,
+  emitLegalTextCreatedActivityLog,
+  emitLegalTextDeletedActivityLog,
+  emitLegalTextUpdatedActivityLog,
+  LegalTextDeleteConflictError,
+} from './repository-activity.js';
 import {
   LEGAL_TEXT_SELECT,
   collectUpdatedFields,
@@ -17,13 +24,15 @@ import {
 } from './repository-shared.js';
 
 type InstanceScopedClient = Parameters<Parameters<typeof withInstanceScopedDb>[1]>[0];
-type DeleteLegalTextInput = {
-  instanceId: string;
-  actorAccountId: string;
-  requestId?: string;
-  traceId?: string;
-  legalTextVersionId: string;
-};
+
+export { LegalTextDeleteConflictError } from './repository-activity.js';
+
+const isForeignKeyConflict = (error: unknown): boolean =>
+  typeof error === 'object' &&
+  error !== null &&
+  'code' in error &&
+  typeof (error as { code?: unknown }).code === 'string' &&
+  (error as { code: string }).code === '23503';
 
 const loadLegalTextByIdWithClient = async (
   client: InstanceScopedClient,
@@ -153,15 +162,7 @@ RETURNING id;
       return undefined;
     }
 
-    await emitActivityLog(client, {
-      instanceId: input.instanceId,
-      accountId: input.actorAccountId,
-      eventType: 'iam.legal_text.created',
-      result: 'success',
-      payload: { legal_text_version_id: legalTextVersionId, name: input.name, legal_text_version: input.legalTextVersion, locale: input.locale, status: input.status },
-      requestId: input.requestId,
-      traceId: input.traceId,
-    });
+    await emitLegalTextCreatedActivityLog(client, input, legalTextVersionId);
 
     return legalTextVersionId;
   });
@@ -211,45 +212,57 @@ RETURNING id;
       return undefined;
     }
 
-    await emitActivityLog(client, {
-      instanceId: input.instanceId,
-      accountId: input.actorAccountId,
-      eventType: 'iam.legal_text.updated',
-      result: 'success',
-      payload: { legal_text_version_id: updatedLegalTextVersionId, updated_fields: collectUpdatedFields(input) },
-      requestId: input.requestId,
-      traceId: input.traceId,
-    });
+    await emitLegalTextUpdatedActivityLog(client, input, updatedLegalTextVersionId, collectUpdatedFields(input));
 
     return updatedLegalTextVersionId;
   });
 
 export const deleteLegalTextVersion = async (input: DeleteLegalTextInput): Promise<string | undefined> =>
   withInstanceScopedDb(input.instanceId, async (client) => {
-    const deleted = await client.query<{ id: string }>(
-      `
-DELETE FROM iam.legal_text_versions
-WHERE instance_id = $1
-  AND id = $2::uuid
-RETURNING id;
+    let deleted;
+    try {
+      deleted = await client.query<{ id: string }>(
+        `
+DELETE FROM iam.legal_text_versions version
+WHERE version.instance_id = $1
+  AND version.id = $2::uuid
+  AND NOT EXISTS (
+    SELECT 1
+    FROM iam.legal_text_acceptances acceptance
+    WHERE acceptance.instance_id = version.instance_id
+      AND acceptance.legal_text_version_id = version.id
+  )
+RETURNING version.id;
 `,
-      [input.instanceId, input.legalTextVersionId]
-    );
+        [input.instanceId, input.legalTextVersionId]
+      );
+    } catch (error) {
+      if (isForeignKeyConflict(error)) {
+        throw new LegalTextDeleteConflictError();
+      }
+      throw error;
+    }
 
     const deletedLegalTextVersionId = deleted.rows[0]?.id;
     if (deletedLegalTextVersionId === undefined) {
+      const acceptances = await client.query<{ has_acceptances: boolean }>(
+        `
+SELECT EXISTS (
+  SELECT 1
+  FROM iam.legal_text_acceptances
+  WHERE instance_id = $1
+    AND legal_text_version_id = $2::uuid
+) AS has_acceptances;
+`,
+        [input.instanceId, input.legalTextVersionId]
+      );
+      if (acceptances.rows[0]?.has_acceptances) {
+        throw new LegalTextDeleteConflictError();
+      }
       return undefined;
     }
 
-    await emitActivityLog(client, {
-      instanceId: input.instanceId,
-      accountId: input.actorAccountId,
-      eventType: 'iam.legal_text.deleted',
-      result: 'success',
-      payload: { legal_text_version_id: deletedLegalTextVersionId },
-      requestId: input.requestId,
-      traceId: input.traceId,
-    });
+    await emitLegalTextDeletedActivityLog(client, input, deletedLegalTextVersionId);
 
     return deletedLegalTextVersionId;
   });

@@ -46,16 +46,19 @@ type UseGroupsResult = {
 
 const groupsLogger = createOperationLogger('groups-hook', 'debug');
 
+type LegacyGroupMember = {
+  accountId: string;
+  groupId: string;
+  displayName?: string;
+  keycloakSubject?: string;
+  validFrom?: string;
+  validTo?: string;
+};
+
 const normalizeGroupDetail = (detail: IamAdminGroupDetail): IamAdminGroupDetail => {
   const detailRecord = detail as IamAdminGroupDetail & {
     roles?: readonly { roleId: string }[];
-    members?: readonly {
-      accountId: string;
-      groupId: string;
-      displayName?: string;
-      validFrom?: string;
-      validTo?: string;
-    }[];
+    members?: readonly LegacyGroupMember[];
   };
 
   const assignedRoleIds =
@@ -67,14 +70,14 @@ const normalizeGroupDetail = (detail: IamAdminGroupDetail): IamAdminGroupDetail 
     Array.isArray(detailRecord.memberships)
       ? detailRecord.memberships
       : (detailRecord.members ?? []).map((member) => ({
-          instanceId: '',
+          instanceId: detail.instanceId,
           accountId: member.accountId,
           groupId: member.groupId,
-          keycloakSubject: member.displayName ?? member.accountId,
+          keycloakSubject: member.keycloakSubject?.trim() || '',
           displayName: member.displayName,
           validFrom: member.validFrom,
           validUntil: member.validTo,
-          assignedAt: '',
+          assignedAt: member.validFrom ?? detail.updatedAt,
         }));
 
   return {

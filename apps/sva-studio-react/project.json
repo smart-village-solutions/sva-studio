@@ -133,7 +133,7 @@
       ],
       "options": {
         "cwd": "apps/sva-studio-react",
-        "command": "pnpm exec vitest run --coverage --reporter=verbose --config vitest.config.ts"
+        "command": "mkdir -p coverage/.tmp && pnpm exec vitest run --coverage --reporter=verbose --config vitest.config.ts --pool forks"
       }
     },
     "test:integration": {

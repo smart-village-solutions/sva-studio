@@ -325,7 +325,7 @@ pnpm env:release:studio:local -- \
   --rollback-hint="Vorherigen Digest erneut deployen"
 ```
 
-Alternativ via GitHub Actions Workflow `studio-deploy.yml` oder orchestriert über `studio-release.yml` (empfohlen fuer produktionsnahe Rollouts).
+`studio-deploy.yml` bleibt nur dokumentierter Legacy-Fallback. Der empfohlene produktionsnahe Standard ist `Studio Image Build` -> `Studio Artifact Verify` -> `pnpm env:release:studio:local`.
 
 ### Phase 4 – Post-Deploy-Verifikation
 
@@ -411,18 +411,16 @@ Bei Schema-Migrationen: Prüfe, ob die Migration rückwärtskompatibel ist, bevo
 
 ## GitHub Actions Integration
 
-Die Workflows `studio-image-build.yml`, `studio-artifact-verify.yml`, `studio-deploy.yml` und optional `studio-release.yml` automatisieren den gesamten Ablauf:
+Die Workflows `studio-image-build.yml`, `studio-artifact-verify.yml` und optional `studio-release.yml` automatisieren den vorbereitenden Ablauf:
 
-1. **Inputs**: `release_mode`, `image_tag`, `image_digest` (Pflicht), `maintenance_window`, `rollback_hint`
-2. **Stages**: Image Build → Artifact Verify → lokaler Studio-Deploy
+1. **Inputs**: `image_tag`, `image_digest` (Pflicht für Verify/Preparation)
+2. **Stages**: Image Build → Artifact Verify
 3. **Secrets**: Alle sensitiven Werte über GitHub Environment `studio`
-4. **Artefakte**: Image-Verify- und Deploy-Reports werden als Workflow-Artifacts gespeichert
+4. **Artefakte**: Build- und Verify-Reports werden als Workflow-Artifacts gespeichert
 
 ```bash
-# Manuell auslösen via gh CLI
-gh workflow run studio-deploy.yml \
-  --field release_mode=app-only \
-  --field image_digest=sha256:abc123...
+# Vorbereitungsworkflow manuell auslösen
+gh workflow run studio-release.yml
 ```
 
 ---
@@ -507,7 +505,7 @@ Pragmatische Hinweise fuer `studio`:
 | `config/runtime/*.vars` | Runtime-Profile |
 | `scripts/ops/runtime-env.ts` | Orchestrierungs-CLI |
 | `scripts/ops/create-secrets-portainer-api.sh` | Secrets via API |
-| `.github/workflows/studio-deploy.yml` | CI/CD Deploy-Workflow fuer `studio` |
+| `.github/workflows/studio-deploy.yml` | Legacy-Fallback fuer einen nicht mehr kanonischen CI-Deploypfad |
 | `docs/guides/swarm-deployment-guide.md` | Deployment-Handbuch |
 | `docs/guides/iam-deployment-runbook.md` | IAM-Rollout-Runbook |
 | `docs/guides/keycloak-rollen-sync-runbook.md` | Keycloak-Sync-Runbook |

@@ -112,8 +112,12 @@ describe('iam-legal-texts repository', () => {
 
   it('rejects deleting legal text versions that already have acceptances', async () => {
     state.client.query.mockResolvedValueOnce({
+      rowCount: 0,
+      rows: [],
+    });
+    state.client.query.mockResolvedValueOnce({
       rowCount: 1,
-      rows: [{ acceptance_count: 2 }],
+      rows: [{ has_acceptances: true }],
     });
 
     await expect(
@@ -124,8 +128,25 @@ describe('iam-legal-texts repository', () => {
       })
     ).rejects.toBeInstanceOf(LegalTextDeleteConflictError);
 
+    expect(state.client.query).toHaveBeenCalledTimes(2);
+    expect(state.client.query.mock.calls[0]?.[0]).toContain('DELETE FROM iam.legal_text_versions version');
+    expect(state.client.query.mock.calls[1]?.[0]).toContain('SELECT EXISTS');
+    expect(state.emitActivityLog).not.toHaveBeenCalled();
+  });
+
+  it('maps foreign-key violations during legal text deletion to a conflict error', async () => {
+    state.client.query.mockRejectedValueOnce({ code: '23503' });
+
+    await expect(
+      deleteLegalTextVersion({
+        instanceId: 'de-musterhausen',
+        actorAccountId: 'account-1',
+        legalTextVersionId: legalTextRow.id,
+      })
+    ).rejects.toBeInstanceOf(LegalTextDeleteConflictError);
+
     expect(state.client.query).toHaveBeenCalledTimes(1);
-    expect(state.client.query.mock.calls[0]?.[0]).toContain('FROM iam.legal_text_acceptances');
+    expect(state.client.query.mock.calls[0]?.[0]).toContain('DELETE FROM iam.legal_text_versions version');
     expect(state.emitActivityLog).not.toHaveBeenCalled();
   });
 });

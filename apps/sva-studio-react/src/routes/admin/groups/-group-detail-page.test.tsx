@@ -184,6 +184,35 @@ describe('GroupDetailPage', () => {
     });
   });
 
+  it('disables membership removal for legacy entries without a keycloak subject', async () => {
+    const loadGroupDetail = vi.fn().mockResolvedValue({
+      ...detailFixture,
+      memberships: [
+        {
+          ...detailFixture.memberships[0],
+          accountId: 'account-legacy-1',
+          keycloakSubject: '',
+        },
+      ],
+    });
+    const removeMembership = vi.fn().mockResolvedValue(true);
+    useGroupsMock.mockReturnValue(
+      createGroupsState({
+        loadGroupDetail,
+        removeMembership,
+      })
+    );
+
+    render(<GroupDetailPage groupId="group-1" />);
+
+    await waitFor(() => {
+      expect(loadGroupDetail).toHaveBeenCalledWith('group-1');
+    });
+
+    expect(screen.getByRole('button', { name: 'Entfernen' })).toHaveProperty('disabled', true);
+    expect(removeMembership).not.toHaveBeenCalled();
+  });
+
   it('renders the not-found state when the detail is missing', async () => {
     useGroupsMock.mockReturnValue(
       createGroupsState({

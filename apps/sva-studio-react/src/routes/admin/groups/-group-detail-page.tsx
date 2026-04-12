@@ -331,8 +331,8 @@ export const GroupDetailPage = ({ groupId }: GroupDetailPageProps) => {
                       <tr key={`${membership.groupId}-${membership.accountId}`} className="border-t border-border text-sm text-foreground">
                         <th scope="row" className="px-3 py-3 text-left font-medium">
                           <div className="space-y-1">
-                            <div>{membership.displayName ?? membership.keycloakSubject}</div>
-                            <div className="text-xs text-muted-foreground">{membership.keycloakSubject}</div>
+                            <div>{membership.displayName ?? (membership.keycloakSubject || membership.accountId)}</div>
+                            <div className="text-xs text-muted-foreground">{membership.keycloakSubject || membership.accountId}</div>
                           </div>
                         </th>
                         <td className="px-3 py-3">
@@ -352,7 +352,13 @@ export const GroupDetailPage = ({ groupId }: GroupDetailPageProps) => {
                         </td>
                         <td className="px-3 py-3">
                           <div className="flex justify-end">
-                            <Button type="button" size="sm" variant="outline" onClick={() => void onRemoveMembership(membership.keycloakSubject)}>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              disabled={!membership.keycloakSubject}
+                              onClick={() => void onRemoveMembership(membership.keycloakSubject)}
+                            >
                               {t('admin.groups.memberships.remove')}
                             </Button>
                           </div>

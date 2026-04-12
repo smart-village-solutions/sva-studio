@@ -27,6 +27,13 @@ type InstanceScopedClient = Parameters<Parameters<typeof withInstanceScopedDb>[1
 
 export { LegalTextDeleteConflictError } from './repository-activity.js';
 
+const isForeignKeyConflict = (error: unknown): boolean =>
+  typeof error === 'object' &&
+  error !== null &&
+  'code' in error &&
+  typeof (error as { code?: unknown }).code === 'string' &&
+  (error as { code: string }).code === '23503';
+
 const loadLegalTextByIdWithClient = async (
   client: InstanceScopedClient,
   instanceId: string,
@@ -212,32 +219,46 @@ RETURNING id;
 
 export const deleteLegalTextVersion = async (input: DeleteLegalTextInput): Promise<string | undefined> =>
   withInstanceScopedDb(input.instanceId, async (client) => {
-    const acceptances = await client.query<{ acceptance_count: number }>(
-      `
-SELECT COUNT(*)::int AS acceptance_count
-FROM iam.legal_text_acceptances
-WHERE instance_id = $1
-  AND legal_text_version_id = $2::uuid;
+    let deleted;
+    try {
+      deleted = await client.query<{ id: string }>(
+        `
+DELETE FROM iam.legal_text_versions version
+WHERE version.instance_id = $1
+  AND version.id = $2::uuid
+  AND NOT EXISTS (
+    SELECT 1
+    FROM iam.legal_text_acceptances acceptance
+    WHERE acceptance.instance_id = version.instance_id
+      AND acceptance.legal_text_version_id = version.id
+  )
+RETURNING version.id;
 `,
-      [input.instanceId, input.legalTextVersionId]
-    );
-
-    if ((acceptances.rows[0]?.acceptance_count ?? 0) > 0) {
-      throw new LegalTextDeleteConflictError();
+        [input.instanceId, input.legalTextVersionId]
+      );
+    } catch (error) {
+      if (isForeignKeyConflict(error)) {
+        throw new LegalTextDeleteConflictError();
+      }
+      throw error;
     }
-
-    const deleted = await client.query<{ id: string }>(
-      `
-DELETE FROM iam.legal_text_versions
-WHERE instance_id = $1
-  AND id = $2::uuid
-RETURNING id;
-`,
-      [input.instanceId, input.legalTextVersionId]
-    );
 
     const deletedLegalTextVersionId = deleted.rows[0]?.id;
     if (deletedLegalTextVersionId === undefined) {
+      const acceptances = await client.query<{ has_acceptances: boolean }>(
+        `
+SELECT EXISTS (
+  SELECT 1
+  FROM iam.legal_text_acceptances
+  WHERE instance_id = $1
+    AND legal_text_version_id = $2::uuid
+) AS has_acceptances;
+`,
+        [input.instanceId, input.legalTextVersionId]
+      );
+      if (acceptances.rows[0]?.has_acceptances) {
+        throw new LegalTextDeleteConflictError();
+      }
       return undefined;
     }
 

@@ -153,7 +153,7 @@ describe('runtime-env.shared', () => {
         'acceptance-hb',
         'deploy',
       ),
-    ).toThrow(/nicht fuer den lokalen Operator-Pfad freigegeben/);
+    ).toThrow(/greift nur, wenn SVA_REMOTE_OPERATOR_CONTEXT nicht auf local-operator steht/);
   });
 
   it('detects documented truthy flag values for local emergency overrides', () => {

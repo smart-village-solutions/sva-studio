@@ -15,6 +15,8 @@ export type ApiErrorCode =
   | 'idempotency_in_progress'
   | 'keycloak_unavailable'
   | 'tenant_auth_client_secret_missing'
+  | 'tenant_admin_client_not_configured'
+  | 'tenant_admin_client_secret_missing'
   | 'encryption_not_configured'
   | 'database_unavailable'
   | 'last_admin_protection'
@@ -156,11 +158,12 @@ export type IamUserDetail = IamUserListItem & {
 export type IamUserImportSyncReport = {
   readonly importedCount: number;
   readonly updatedCount: number;
+  readonly repairedProfileCount?: number;
   readonly skippedCount: number;
   readonly totalKeycloakUsers: number;
   readonly diagnostics?: {
     readonly authRealm: string;
-    readonly providerSource: 'instance' | 'global' | 'fallback_global';
+    readonly providerSource: 'instance' | 'global';
     readonly executionMode?: 'platform_admin' | 'tenant_admin' | 'break_glass';
     readonly matchedWithoutInstanceAttributeCount?: number;
     readonly skippedInstanceIds?: readonly string[];
@@ -306,6 +309,10 @@ export type IamInstanceListItem = {
   readonly authClientId: string;
   readonly authIssuerUrl?: string;
   readonly authClientSecretConfigured: boolean;
+  readonly tenantAdminClient?: {
+    readonly clientId: string;
+    readonly secretConfigured: boolean;
+  };
   readonly tenantAdminBootstrap?: {
     readonly username: string;
     readonly email?: string;
@@ -323,6 +330,7 @@ export type IamInstanceListItem = {
 export type IamInstanceKeycloakStatus = {
   readonly realmExists: boolean;
   readonly clientExists: boolean;
+  readonly tenantAdminClientExists: boolean;
   readonly instanceIdMapperExists: boolean;
   readonly tenantAdminExists: boolean;
   readonly tenantAdminHasSystemAdmin: boolean;
@@ -334,6 +342,9 @@ export type IamInstanceKeycloakStatus = {
   readonly clientSecretConfigured: boolean;
   readonly tenantClientSecretReadable: boolean;
   readonly clientSecretAligned: boolean;
+  readonly tenantAdminClientSecretConfigured: boolean;
+  readonly tenantAdminClientSecretReadable: boolean;
+  readonly tenantAdminClientSecretAligned: boolean;
   readonly runtimeSecretSource: 'tenant' | 'global';
 };
 
@@ -368,7 +379,7 @@ export type IamInstanceKeycloakProvisioningRun = {
   readonly id: string;
   readonly instanceId: string;
   readonly mode: InstanceRealmMode;
-  readonly intent: 'provision' | 'reset_tenant_admin' | 'rotate_client_secret';
+  readonly intent: 'provision' | 'provision_admin_client' | 'reset_tenant_admin' | 'rotate_client_secret';
   readonly overallStatus: 'planned' | 'running' | 'succeeded' | 'failed';
   readonly driftSummary: string;
   readonly requestId?: string;

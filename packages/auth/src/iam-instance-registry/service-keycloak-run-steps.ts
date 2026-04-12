@@ -60,6 +60,19 @@ const buildClientCompletionStep = (status: KeycloakTenantStatus): CompletionStep
   ok: status.clientExists && status.redirectUrisMatch && status.logoutUrisMatch && status.webOriginsMatch,
 });
 
+const buildTenantAdminClientCompletionStep = (status: KeycloakTenantStatus): CompletionStep => ({
+  stepKey: 'tenant_admin_client',
+  title: 'Tenant-Admin-Client abgleichen',
+  summary: status.tenantAdminClientExists
+    ? 'Der Tenant-Admin-Client ist vorhanden.'
+    : 'Der Tenant-Admin-Client fehlt weiterhin.',
+  details: {
+    tenantAdminClientExists: status.tenantAdminClientExists,
+    titleKey: 'iam.provisioning.steps.tenant_admin_client.title',
+  },
+  ok: status.tenantAdminClientExists,
+});
+
 const buildMapperCompletionStep = (status: KeycloakTenantStatus): CompletionStep => ({
   stepKey: 'mapper',
   title: 'instanceId-Mapper sicherstellen',
@@ -78,6 +91,19 @@ const buildSecretCompletionStep = (status: KeycloakTenantStatus): CompletionStep
     : 'Das Tenant-Secret ist weiterhin nicht mit Keycloak abgeglichen.',
   details: { clientSecretAligned: status.clientSecretAligned, titleKey: 'iam.provisioning.steps.secret.title' },
   ok: status.clientSecretAligned,
+});
+
+const buildTenantAdminClientSecretCompletionStep = (status: KeycloakTenantStatus): CompletionStep => ({
+  stepKey: 'tenant_admin_client_secret',
+  title: 'Tenant-Admin-Client-Secret abgleichen',
+  summary: status.tenantAdminClientSecretAligned
+    ? 'Das Tenant-Admin-Client-Secret ist mit Keycloak abgeglichen.'
+    : 'Das Tenant-Admin-Client-Secret ist weiterhin nicht mit Keycloak abgeglichen.',
+  details: {
+    tenantAdminClientSecretAligned: status.tenantAdminClientSecretAligned,
+    titleKey: 'iam.provisioning.steps.tenant_admin_client_secret.title',
+  },
+  ok: status.tenantAdminClientSecretAligned,
 });
 
 const buildRolesCompletionStep = (status: KeycloakTenantStatus): CompletionStep => ({
@@ -130,8 +156,10 @@ export const buildFinalRunSteps = (input: {
   const steps: CompletionStep[] = [
     buildRealmCompletionStep(input.status),
     buildClientCompletionStep(input.status),
+    buildTenantAdminClientCompletionStep(input.status),
     buildMapperCompletionStep(input.status),
     buildSecretCompletionStep(input.status),
+    buildTenantAdminClientSecretCompletionStep(input.status),
     buildRolesCompletionStep(input.status),
     buildTenantAdminCompletionStep(input.status),
   ];

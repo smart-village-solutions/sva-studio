@@ -419,8 +419,8 @@ describe('instance registry repository (vitest)', () => {
       updatedBy: 'system',
     });
     expect(statements).toHaveLength(2);
-    expect(statements[0]?.values[15]).toBe('{}');
-    expect(statements[0]?.values[17]).toBe('system');
+    expect(statements[0]?.values[17]).toBe('{}');
+    expect(statements[0]?.values[19]).toBe('system');
     expect(statements[1]?.values[2]).toBe('system');
   });
 
@@ -515,7 +515,7 @@ describe('instance registry repository (vitest)', () => {
     });
     expect(statements[0]?.values[8]).toBe(true);
     expect(statements[0]?.values[9]).toBeNull();
-    expect(statements[0]?.values[10]).toBe('tenant-admin');
+    expect(statements[0]?.values[13]).toBe('tenant-admin');
     expect(statements[1]?.values[0]).toBe('bb-guben.studio.smart-village.app');
   });
 

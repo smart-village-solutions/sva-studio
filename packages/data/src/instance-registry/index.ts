@@ -22,6 +22,8 @@ type InstanceListRow = {
   auth_client_id: string;
   auth_issuer_url: string | null;
   auth_client_secret_ciphertext: string | null;
+  tenant_admin_client_id: string | null;
+  tenant_admin_client_secret_ciphertext: string | null;
   tenant_admin_username: string | null;
   tenant_admin_email: string | null;
   tenant_admin_first_name: string | null;
@@ -98,6 +100,12 @@ const mapInstance = (row: InstanceListRow): InstanceRegistryRecord => ({
   authClientId: row.auth_client_id,
   authIssuerUrl: row.auth_issuer_url ?? undefined,
   authClientSecretConfigured: Boolean(row.auth_client_secret_ciphertext),
+  tenantAdminClient: row.tenant_admin_client_id
+    ? {
+        clientId: row.tenant_admin_client_id,
+        secretConfigured: Boolean(row.tenant_admin_client_secret_ciphertext),
+      }
+    : undefined,
   tenantAdminBootstrap: row.tenant_admin_username
     ? {
         username: row.tenant_admin_username,
@@ -172,6 +180,7 @@ export type InstanceRegistryRepository = {
   listInstances(input?: { search?: string; status?: InstanceStatus }): Promise<readonly InstanceRegistryRecord[]>;
   getInstanceById(instanceId: string): Promise<InstanceRegistryRecord | null>;
   getAuthClientSecretCiphertext(instanceId: string): Promise<string | null>;
+  getTenantAdminClientSecretCiphertext(instanceId: string): Promise<string | null>;
   resolveHostname(hostname: string): Promise<InstanceRegistryRecord | null>;
   resolvePrimaryHostname(hostname: string): Promise<InstanceRegistryRecord | null>;
   listProvisioningRuns(instanceId: string): Promise<readonly InstanceProvisioningRun[]>;
@@ -193,6 +202,10 @@ export type InstanceRegistryRepository = {
     authClientId: string;
     authIssuerUrl?: string;
     authClientSecretCiphertext?: string;
+    tenantAdminClient?: {
+      clientId: string;
+      secretCiphertext?: string;
+    };
     tenantAdminBootstrap?: {
       username: string;
       email?: string;
@@ -216,6 +229,11 @@ export type InstanceRegistryRepository = {
     authIssuerUrl?: string;
     authClientSecretCiphertext?: string;
     keepExistingAuthClientSecret?: boolean;
+    tenantAdminClient?: {
+      clientId: string;
+      secretCiphertext?: string;
+    };
+    keepExistingTenantAdminClientSecret?: boolean;
     tenantAdminBootstrap?: {
       username: string;
       email?: string;
@@ -345,6 +363,8 @@ SELECT
   auth_client_id,
   auth_issuer_url,
   auth_client_secret_ciphertext,
+  tenant_admin_client_id,
+  tenant_admin_client_secret_ciphertext,
   tenant_admin_username,
   tenant_admin_email,
   tenant_admin_first_name,
@@ -383,6 +403,8 @@ SELECT
   auth_client_id,
   auth_issuer_url,
   auth_client_secret_ciphertext,
+  tenant_admin_client_id,
+  tenant_admin_client_secret_ciphertext,
   tenant_admin_username,
   tenant_admin_email,
   tenant_admin_first_name,
@@ -420,6 +442,22 @@ LIMIT 1;
     return rows[0]?.auth_client_secret_ciphertext ?? null;
   },
 
+  async getTenantAdminClientSecretCiphertext(instanceId) {
+    const rows = await queryRows<{ tenant_admin_client_secret_ciphertext: string | null }>(
+      executor,
+      statement(
+        `
+SELECT tenant_admin_client_secret_ciphertext
+FROM iam.instances
+WHERE id = $1
+LIMIT 1;
+`,
+        [instanceId]
+      )
+    );
+    return rows[0]?.tenant_admin_client_secret_ciphertext ?? null;
+  },
+
   async resolveHostname(hostname) {
     const rows = await queryRows<InstanceListRow>(
       executor,
@@ -436,6 +474,8 @@ SELECT
   instance.auth_client_id,
   instance.auth_issuer_url,
   instance.auth_client_secret_ciphertext,
+  instance.tenant_admin_client_id,
+  instance.tenant_admin_client_secret_ciphertext,
   instance.tenant_admin_username,
   instance.tenant_admin_email,
   instance.tenant_admin_first_name,
@@ -475,6 +515,8 @@ SELECT
   auth_client_id,
   auth_issuer_url,
   auth_client_secret_ciphertext,
+  tenant_admin_client_id,
+  tenant_admin_client_secret_ciphertext,
   tenant_admin_username,
   tenant_admin_email,
   tenant_admin_first_name,
@@ -707,6 +749,8 @@ INSERT INTO iam.instances (
   auth_client_id,
   auth_issuer_url,
   auth_client_secret_ciphertext,
+  tenant_admin_client_id,
+  tenant_admin_client_secret_ciphertext,
   tenant_admin_username,
   tenant_admin_email,
   tenant_admin_first_name,
@@ -717,7 +761,7 @@ INSERT INTO iam.instances (
   created_by,
   updated_by
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16::jsonb, $17, $18, $18)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19::jsonb, $20, $20)
 ON CONFLICT (id) DO UPDATE
 SET
   display_name = EXCLUDED.display_name,
@@ -729,6 +773,8 @@ SET
   auth_client_id = EXCLUDED.auth_client_id,
   auth_issuer_url = EXCLUDED.auth_issuer_url,
   auth_client_secret_ciphertext = EXCLUDED.auth_client_secret_ciphertext,
+  tenant_admin_client_id = EXCLUDED.tenant_admin_client_id,
+  tenant_admin_client_secret_ciphertext = EXCLUDED.tenant_admin_client_secret_ciphertext,
   tenant_admin_username = EXCLUDED.tenant_admin_username,
   tenant_admin_email = EXCLUDED.tenant_admin_email,
   tenant_admin_first_name = EXCLUDED.tenant_admin_first_name,
@@ -749,6 +795,8 @@ RETURNING
   auth_client_id,
   auth_issuer_url,
   auth_client_secret_ciphertext,
+  tenant_admin_client_id,
+  tenant_admin_client_secret_ciphertext,
   tenant_admin_username,
   tenant_admin_email,
   tenant_admin_first_name,
@@ -772,6 +820,8 @@ RETURNING
           input.authClientId,
           input.authIssuerUrl ?? null,
           input.authClientSecretCiphertext ?? null,
+          input.tenantAdminClient?.clientId ?? null,
+          input.tenantAdminClient?.secretCiphertext ?? null,
           input.tenantAdminBootstrap?.username ?? null,
           input.tenantAdminBootstrap?.email ?? null,
           input.tenantAdminBootstrap?.firstName ?? null,
@@ -821,6 +871,8 @@ RETURNING
   auth_client_id,
   auth_issuer_url,
   auth_client_secret_ciphertext,
+  tenant_admin_client_id,
+  tenant_admin_client_secret_ciphertext,
   tenant_admin_username,
   tenant_admin_email,
   tenant_admin_first_name,
@@ -857,14 +909,19 @@ SET
     WHEN $9::boolean THEN auth_client_secret_ciphertext
     ELSE $10
   END,
-  tenant_admin_username = $11,
-  tenant_admin_email = $12,
-  tenant_admin_first_name = $13,
-  tenant_admin_last_name = $14,
-  theme_key = $15,
-  feature_flags = $16::jsonb,
-  mainserver_config_ref = $17,
-  updated_by = $18,
+  tenant_admin_client_id = $11,
+  tenant_admin_client_secret_ciphertext = CASE
+    WHEN $12::boolean THEN tenant_admin_client_secret_ciphertext
+    ELSE $13
+  END,
+  tenant_admin_username = $14,
+  tenant_admin_email = $15,
+  tenant_admin_first_name = $16,
+  tenant_admin_last_name = $17,
+  theme_key = $18,
+  feature_flags = $19::jsonb,
+  mainserver_config_ref = $20,
+  updated_by = $21,
   updated_at = NOW()
 WHERE id = $1
 RETURNING
@@ -878,6 +935,8 @@ RETURNING
   auth_client_id,
   auth_issuer_url,
   auth_client_secret_ciphertext,
+  tenant_admin_client_id,
+  tenant_admin_client_secret_ciphertext,
   tenant_admin_username,
   tenant_admin_email,
   tenant_admin_first_name,
@@ -901,6 +960,9 @@ RETURNING
           input.authIssuerUrl ?? null,
           input.keepExistingAuthClientSecret !== false && typeof input.authClientSecretCiphertext === 'undefined',
           input.authClientSecretCiphertext ?? null,
+          input.tenantAdminClient?.clientId ?? null,
+          input.keepExistingTenantAdminClientSecret !== false && typeof input.tenantAdminClient?.secretCiphertext === 'undefined',
+          input.tenantAdminClient?.secretCiphertext ?? null,
           input.tenantAdminBootstrap?.username ?? null,
           input.tenantAdminBootstrap?.email ?? null,
           input.tenantAdminBootstrap?.firstName ?? null,

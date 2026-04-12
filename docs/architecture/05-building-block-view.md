@@ -54,6 +54,7 @@ Abhängigkeiten des aktuellen Systems.
    - `packages/data`: Registry-Repositories, Migrationen, persistente Provisioning-Runs und L1-Cache
    - `packages/auth`: Plattformvertrag, Keycloak-Control-Plane, Provisioning-Fassade und Root-Host-Guard
    - `apps/sva-studio-react`: gefuehrte Admin-Control-Plane unter `/admin/instances` mit Preflight, Plan, Ausfuehrung und Protokoll
+   - der Instanzvertrag trennt `authClientId` fuer interaktive Logins von `tenantAdminClient.clientId` fuer tenant-lokale Admin-Mutationen und Reconcile
 
 ### IAM-Bausteine und Package-Zuordnung
 
@@ -69,6 +70,10 @@ Abhängigkeiten des aktuellen Systems.
   - `packages/data` (IAM-Migrationen, Seeds, SQL-Policies, `iam/repositories/*`)
 - Plattformkontext (`platform`) für Root-Host-Control-Plane, Root-Host-Auth und globale Readiness:
   - `packages/auth` (`scope.ts`, `config-request.ts`, `routes/handlers.ts`, `iam-instance-registry/*`, `iam-account-management/platform-handlers.ts`)
+- Tenant-Admin-Pfad pro Instanz:
+  - `packages/auth` (`config-tenant-secret.ts`, `iam-account-management/shared-runtime.ts`, `iam-account-management/*-handlers.ts`)
+  - `packages/data` (`instance-registry/*`, Migrationen `0030` und `0031`)
+  - `packages/core` (gemeinsame Registry-, Diagnose- und Health-Vertraege fuer `tenantAdminClient`)
 - Instanzgebundene Mainserver-Endpunkte:
   - `packages/data` (`integrations/instance-integrations.ts`, Migration `0013_iam_instance_integrations.sql`)
 - Auditierung und Nachvollziehbarkeit:
@@ -99,6 +104,7 @@ Abhängigkeiten des aktuellen Systems.
 - Keycloak ist führend für Authentifizierung, Token-Claims und IdP-nahe Admin-Operationen.
 - Postgres ist führend für Studio-verwaltete IAM-Fachdaten wie Accounts, Rollen, Permissions und Auditdaten.
 - `iam.instances` modelliert ausschließlich Tenant-Instanzen; der Root-Host ist ein separater Plattform-Scope.
+- `iam.instances` fuehrt fuer jede tenantfaehige Instanz getrennte Auth-Vertraege fuer Login (`authClientId`) und Tenant-Administration (`tenantAdminClient`) als kanonische Registry-Basisdaten.
 - Redis hält lediglich Permission-Snapshots zur Beschleunigung des Authorize-Pfads.
 - Der SVA-Mainserver bleibt fachliche Source of Truth für seine GraphQL-Daten; Studio hält nur Endpunktkonfiguration und kurzlebige Laufzeit-Caches für Credentials und Access-Tokens.
 - Fachmodule konsumieren zentrale IAM-Entscheidungen und duplizieren keine eigene Berechtigungsauflösung gegen IAM-Tabellen.

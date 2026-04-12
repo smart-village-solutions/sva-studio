@@ -37,6 +37,7 @@ mit Bezug auf die arc42-Abschnitte.
 - `ADR-028-iam-konfigurations-export-als-folgearbeit.md`
 - `ADR-029-goose-als-oss-standard-fuer-sql-migrationen.md`
 - `ADR-030-registry-basierte-instance-freigabe-und-provisioning.md`
+- `ADR-033-tenant-login-client-vs-tenant-admin-client.md`
 - `ADR-032-plattform-scope-vs-tenant-instanz.md`
 
 ### Zuordnung zu arc42-Abschnitten
@@ -52,6 +53,7 @@ mit Bezug auf die arc42-Abschnitte.
 - Abschnitt 04/05/06/08/10/11 (Strategie/Bausteine/Laufzeit/Querschnitt/Qualität/Risiken): ADR-022, ADR-024, ADR-025, ADR-026, ADR-027, ADR-028
 - Abschnitt 04/07/08/09/10/11 (Strategie/Deployment/Querschnitt/Entscheidungen/Qualität/Risiken): ADR-029
 - Abschnitt 04/05/06/07/08/09/10/11 (Strategie/Bausteine/Laufzeit/Deployment/Querschnitt/Entscheidungen/Qualität/Risiken): ADR-030
+- Abschnitt 04/05/06/08/09/10/11 (Strategie/Bausteine/Laufzeit/Querschnitt/Entscheidungen/Qualität/Risiken): ADR-033
 - Abschnitt 04/05/06/08/09/11 (Strategie/Bausteine/Laufzeit/Querschnitt/Entscheidungen/Risiken): ADR-032
 - Abschnitt 03/04/05/06/08 (Kontext/Strategie/Bausteine/Laufzeit/Querschnitt): ADR-021
 
@@ -81,6 +83,7 @@ mit Bezug auf die arc42-Abschnitte.
 - ADR-028: IAM-Konfigurations-Export bleibt dokumentierte Folgearbeit (Abschnitt 09, 11)
 - ADR-029: `goose` als OSS-Standard für SQL-Migrationen (Abschnitt 04, 07, 08, 09, 10, 11)
 - ADR-030: Registry-basierte Instance-Freigabe und gemeinsamer Provisioning-Vertrag (Abschnitt 04, 05, 06, 07, 08, 09, 10, 11)
+- ADR-033: Getrennter Tenant-Login-Client und Tenant-Admin-Client als kanonischer Instanzvertrag (Abschnitt 04, 05, 06, 08, 09, 10, 11)
 - ADR-032: Plattform-Scope vs. tenantgebundene Instanz als kanonische Runtime- und Audit-Trennung (Abschnitt 04, 05, 06, 08, 09, 11)
 
 ### Pflege-Regel
@@ -227,6 +230,22 @@ Zuordnung:
 - Abschnitt 08 (Querschnitt): ADR-029
 - Abschnitt 09 (Entscheidungen): ADR-029
 - Abschnitt 10/11 (Qualität/Risiken): ADR-029
+
+### Fortschreibung 2026-04: Getrennter Tenant-Login- und Tenant-Admin-Client
+
+- `ADR-033-tenant-login-client-vs-tenant-admin-client.md`
+  - trennt interaktive Login-Flows (`authClientId`) von tenant-lokalen Admin-Mutationen (`tenantAdminClient.clientId`)
+  - verankert fail-closed fuer normale Tenant-Mutationen bei fehlendem Admin-Client oder Secret
+  - koppelt Reconcile, Doctor und Runtime-Diagnostik an getrennte Login-/Admin-Vertraege pro Instanz
+
+Zuordnung:
+
+- Abschnitt 04 (Strategie): ADR-033
+- Abschnitt 05 (Bausteine): ADR-033
+- Abschnitt 06 (Laufzeit): ADR-033
+- Abschnitt 08 (Querschnitt): ADR-033
+- Abschnitt 09 (Entscheidungen): ADR-033
+- Abschnitt 10/11 (Qualität/Risiken): ADR-033
 
 ### Fortschreibung 2026-03: Direkte Nutzerrechte ohne neue ADR
 

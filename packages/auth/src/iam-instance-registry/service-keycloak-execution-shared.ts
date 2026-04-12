@@ -9,6 +9,8 @@ import { readKeycloakStateViaProvisioner } from './provisioning-auth-state.js';
 
 const buildTempPasswordAad = (runId: string): string => `iam.instances.keycloak_run_temp_password:${runId}`;
 const buildAuthClientSecretAad = (instanceId: string): string => `iam.instances.auth_client_secret:${instanceId}`;
+const buildTenantAdminClientSecretAad = (instanceId: string): string =>
+  `iam.instances.tenant_admin_client_secret:${instanceId}`;
 
 export const buildProvisioningInput = (
   loaded: NonNullable<Awaited<ReturnType<typeof loadInstanceWithSecret>>>
@@ -21,6 +23,8 @@ export const buildProvisioningInput = (
   authIssuerUrl: loaded.instance.authIssuerUrl,
   authClientSecretConfigured: loaded.instance.authClientSecretConfigured,
   authClientSecret: loaded.authClientSecret,
+  tenantAdminClient: loaded.instance.tenantAdminClient,
+  tenantAdminClientSecret: loaded.tenantAdminClientSecret,
   tenantAdminBootstrap: loaded.instance.tenantAdminBootstrap,
 });
 
@@ -81,6 +85,14 @@ const encryptAuthClientSecret = (instanceId: string, secret: string | undefined)
   return protectField(normalizedSecret, buildAuthClientSecretAad(instanceId)) ?? undefined;
 };
 
+const encryptTenantAdminClientSecret = (instanceId: string, secret: string | undefined): string | undefined => {
+  const normalizedSecret = secret?.trim();
+  if (!normalizedSecret) {
+    return undefined;
+  }
+  return protectField(normalizedSecret, buildTenantAdminClientSecretAad(instanceId)) ?? undefined;
+};
+
 export const syncRotatedClientSecretToRegistry = async (
   deps: InstanceRegistryServiceDeps,
   input: {
@@ -106,6 +118,16 @@ export const syncRotatedClientSecretToRegistry = async (
     authIssuerUrl: input.loaded.instance.authIssuerUrl,
     authClientSecretCiphertext: encryptAuthClientSecret(input.loaded.instance.instanceId, rotatedSecret),
     keepExistingAuthClientSecret: false,
+    tenantAdminClient: input.loaded.instance.tenantAdminClient
+      ? {
+          clientId: input.loaded.instance.tenantAdminClient.clientId,
+          secretCiphertext: encryptTenantAdminClientSecret(
+            input.loaded.instance.instanceId,
+            state.tenantAdminClientSecret ?? input.loaded.tenantAdminClientSecret
+          ),
+        }
+      : undefined,
+    keepExistingTenantAdminClientSecret: !state.tenantAdminClientSecret && !input.loaded.tenantAdminClientSecret,
     tenantAdminBootstrap: input.loaded.instance.tenantAdminBootstrap,
     actorId: input.actorId,
     requestId: input.requestId,
@@ -115,6 +137,7 @@ export const syncRotatedClientSecretToRegistry = async (
   });
 
   input.loaded.authClientSecret = rotatedSecret;
+  input.loaded.tenantAdminClientSecret = state.tenantAdminClientSecret ?? input.loaded.tenantAdminClientSecret;
 };
 
 export const syncProvisionedClientSecretToRegistry = async (
@@ -131,7 +154,8 @@ export const syncProvisionedClientSecretToRegistry = async (
 
   const state = await readKeycloakStateViaProvisioner(buildProvisioningInput(input.loaded));
   const provisionedSecret = state.keycloakClientSecret;
-  if (!provisionedSecret) {
+  const provisionedTenantAdminSecret = state.tenantAdminClientSecret;
+  if (!provisionedSecret && !provisionedTenantAdminSecret) {
     return;
   }
 
@@ -144,8 +168,18 @@ export const syncProvisionedClientSecretToRegistry = async (
     authRealm: input.loaded.instance.authRealm,
     authClientId: input.loaded.instance.authClientId,
     authIssuerUrl: input.loaded.instance.authIssuerUrl,
-    authClientSecretCiphertext: encryptAuthClientSecret(input.loaded.instance.instanceId, provisionedSecret),
+    authClientSecretCiphertext: encryptAuthClientSecret(input.loaded.instance.instanceId, provisionedSecret ?? undefined),
     keepExistingAuthClientSecret: false,
+    tenantAdminClient: input.loaded.instance.tenantAdminClient
+      ? {
+          clientId: input.loaded.instance.tenantAdminClient.clientId,
+          secretCiphertext: encryptTenantAdminClientSecret(
+            input.loaded.instance.instanceId,
+            provisionedTenantAdminSecret ?? undefined
+          ),
+        }
+      : undefined,
+    keepExistingTenantAdminClientSecret: !provisionedTenantAdminSecret,
     tenantAdminBootstrap: input.loaded.instance.tenantAdminBootstrap,
     actorId: input.actorId,
     requestId: input.requestId,
@@ -154,7 +188,8 @@ export const syncProvisionedClientSecretToRegistry = async (
     mainserverConfigRef: input.loaded.instance.mainserverConfigRef,
   });
 
-  input.loaded.authClientSecret = provisionedSecret;
+  input.loaded.authClientSecret = provisionedSecret ?? undefined;
+  input.loaded.tenantAdminClientSecret = provisionedTenantAdminSecret ?? undefined;
 };
 
 export const completeRun = async (
@@ -226,4 +261,3 @@ export const completeRun = async (
   });
   return finalRunStatus;
 };
-

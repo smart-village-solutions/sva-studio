@@ -15,6 +15,8 @@ import { toListItem } from './service-helpers.js';
 import { createExecuteKeycloakProvisioningHandler, createReconcileKeycloakHandler } from './service-keycloak-execution.js';
 
 const buildAuthClientSecretAad = (instanceId: string): string => `iam.instances.auth_client_secret:${instanceId}`;
+const buildTenantAdminClientSecretAad = (instanceId: string): string =>
+  `iam.instances.tenant_admin_client_secret:${instanceId}`;
 const logger = createSdkLogger({ component: 'iam-instance-registry-keycloak', level: 'info' });
 
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null;
@@ -41,6 +43,11 @@ const buildLocalPreflight = (input: {
   realmMode: 'new' | 'existing';
   authClientSecretConfigured: boolean;
   authClientSecret?: string;
+  tenantAdminClient?: {
+    clientId: string;
+    secretConfigured: boolean;
+  };
+  tenantAdminClientSecret?: string;
   tenantAdminBootstrap?: {
     username: string;
     email?: string;
@@ -102,6 +109,21 @@ const buildLocalPreflight = (input: {
         source: 'worker_pending',
       },
     },
+    {
+      checkKey: 'tenant_admin_client',
+      title: 'Tenant-Admin-Client',
+      status: input.tenantAdminClient?.clientId ? 'ready' : 'warning',
+      summary: input.tenantAdminClient?.clientId
+        ? 'Der technische Tenant-Admin-Client ist im Instanzvertrag gepflegt.'
+        : 'Der technische Tenant-Admin-Client wird beim nächsten Worker-Lauf angelegt oder ergänzt.',
+      details: {
+        configured: Boolean(input.tenantAdminClient?.clientId),
+        clientId: input.tenantAdminClient?.clientId,
+        secretConfigured: input.tenantAdminClient?.secretConfigured ?? false,
+        readable: Boolean(input.tenantAdminClientSecret),
+        source: 'worker_pending',
+      },
+    },
   ];
 
   return {
@@ -116,6 +138,11 @@ export const decryptAuthClientSecret = (
   ciphertext: string | null | undefined
 ): string | undefined => revealField(ciphertext, buildAuthClientSecretAad(instanceId));
 
+export const decryptTenantAdminClientSecret = (
+  instanceId: string,
+  ciphertext: string | null | undefined
+): string | undefined => revealField(ciphertext, buildTenantAdminClientSecretAad(instanceId));
+
 export const loadRepositoryAuthClientSecret = async (
   repository: InstanceRegistryRepository,
   instanceId: string
@@ -124,15 +151,28 @@ export const loadRepositoryAuthClientSecret = async (
   return decryptAuthClientSecret(instanceId, ciphertext);
 };
 
+export const loadRepositoryTenantAdminClientSecret = async (
+  repository: InstanceRegistryRepository,
+  instanceId: string
+): Promise<string | undefined> => {
+  if (typeof repository.getTenantAdminClientSecretCiphertext !== 'function') {
+    return undefined;
+  }
+  const ciphertext = await repository.getTenantAdminClientSecretCiphertext(instanceId);
+  return decryptTenantAdminClientSecret(instanceId, ciphertext);
+};
+
 export const loadInstanceWithSecret = async (deps: InstanceRegistryServiceDeps, instanceId: string) => {
   const instance = await deps.repository.getInstanceById(instanceId);
   if (!instance) {
     return null;
   }
   const authClientSecret = await loadRepositoryAuthClientSecret(deps.repository, instance.instanceId);
+  const tenantAdminClientSecret = await loadRepositoryTenantAdminClientSecret(deps.repository, instance.instanceId);
   return {
     instance,
     authClientSecret,
+    tenantAdminClientSecret,
   };
 };
 
@@ -170,6 +210,8 @@ export const createGetKeycloakPreflightHandler =
       realmMode: loaded.instance.realmMode,
       authClientSecretConfigured: loaded.instance.authClientSecretConfigured,
       authClientSecret: loaded.authClientSecret,
+      tenantAdminClient: loaded.instance.tenantAdminClient,
+      tenantAdminClientSecret: loaded.tenantAdminClientSecret,
       tenantAdminBootstrap: loaded.instance.tenantAdminBootstrap,
     });
 
@@ -200,11 +242,15 @@ export const createPlanKeycloakProvisioningHandler =
       realmMode: loaded.instance.realmMode,
       authClientSecretConfigured: loaded.instance.authClientSecretConfigured,
       authClientSecret: loaded.authClientSecret,
+      tenantAdminClient: loaded.instance.tenantAdminClient,
+      tenantAdminClientSecret: loaded.tenantAdminClientSecret,
       tenantAdminBootstrap: loaded.instance.tenantAdminBootstrap,
     });
     const plan = buildPlan({
       realmMode: loaded.instance.realmMode,
       authClientSecret: loaded.authClientSecret,
+      tenantAdminClient: loaded.instance.tenantAdminClient,
+      tenantAdminClientSecret: loaded.tenantAdminClientSecret,
       preflight,
     });
 

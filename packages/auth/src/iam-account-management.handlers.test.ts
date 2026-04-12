@@ -24,6 +24,10 @@ const state = vi.hoisted(() => ({
     authRealm: string;
     authClientId: string;
     authIssuerUrl?: string;
+    tenantAdminClient?: {
+      clientId: string;
+      secretConfigured: boolean;
+    };
   },
   instanceById: {
     instanceId: 'de-musterhausen',
@@ -31,6 +35,10 @@ const state = vi.hoisted(() => ({
     status: 'active',
     authRealm: 'test',
     authClientId: 'client',
+    tenantAdminClient: {
+      clientId: 'client-admin',
+      secretConfigured: true,
+    },
   } as null | {
     instanceId: string;
     primaryHostname: string;
@@ -38,6 +46,10 @@ const state = vi.hoisted(() => ({
     authRealm: string;
     authClientId: string;
     authIssuerUrl?: string;
+    tenantAdminClient?: {
+      clientId: string;
+      secretConfigured: boolean;
+    };
   },
   middlewareError: null as unknown,
   user: {
@@ -170,6 +182,12 @@ vi.mock('@sva/data/server', async (importOriginal) => {
 });
 
 vi.mock('./config-tenant-secret.js', () => ({
+  resolveTenantAdminClientSecret: vi.fn(async () => ({
+    configured: true,
+    readable: true,
+    secret: 'tenant-admin-secret',
+    source: 'tenant',
+  })),
   resolveTenantAuthClientSecret: vi.fn(async () => ({
     configured: true,
     readable: true,
@@ -559,12 +577,17 @@ describe('iam-account-management handlers (guards)', () => {
       status: 'active',
       authRealm: 'test',
       authClientId: 'client',
+      tenantAdminClient: {
+        clientId: 'client-admin',
+        secretConfigured: true,
+      },
     };
     state.keycloakConfigAvailable = true;
     state.runtimeAuthRealm = 'svs-intern-studio-staging';
     state.runtimeAuthIssuer = null;
     process.env.KEYCLOAK_ADMIN_BASE_URL = 'http://keycloak.local';
     process.env.KEYCLOAK_ADMIN_REALM = 'svs-intern-studio-staging';
+    process.env.KEYCLOAK_ADMIN_CLIENT_ID = 'platform-admin-client';
     process.env.SVA_AUTH_ISSUER = 'https://keycloak.local/realms/svs-intern-studio-staging';
     state.deactivateUserCalls = [];
     state.syncRolesImpl = null;
@@ -778,7 +801,7 @@ describe('iam-account-management handlers (guards)', () => {
         totalKeycloakUsers: number;
         diagnostics?: {
           authRealm: string;
-          providerSource: 'instance' | 'global' | 'fallback_global';
+          providerSource: 'instance' | 'global';
           executionMode?: 'platform_admin' | 'tenant_admin' | 'break_glass';
           skippedInstanceIds?: readonly string[];
         };
@@ -4785,6 +4808,13 @@ describe('iam-account-management handlers (guards)', () => {
   });
 
   it('syncs external role names when creating a user', async () => {
+    const createRoleCalls: Array<{ externalName: string; description?: string; attributes: Record<string, string> }> = [];
+    state.getRoleByNameImpl = async (externalName: string) =>
+      externalName === 'Admin' ? null : { id: `kc-${externalName}`, externalName };
+    state.createRoleImpl = async (input) => {
+      createRoleCalls.push(input);
+      return { id: `kc-${input.externalName}`, externalName: input.externalName, attributes: input.attributes };
+    };
     state.queryHandler = (text) => {
       if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
         return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
@@ -4794,7 +4824,24 @@ describe('iam-account-management handlers (guards)', () => {
         return { rowCount: 1, rows: [{ max_role_level: 90 }] };
       }
 
-      if (text.includes('SELECT id, role_key, role_name, display_name, external_role_name')) {
+      if (text.includes('SELECT id, role_key, role_name, display_name, external_role_name') && text.includes('AND id = ANY($2::uuid[])')) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              id: targetRoleId,
+              role_key: 'mainserver_admin',
+              role_name: 'mainserver_admin',
+              display_name: 'Admin',
+              external_role_name: 'Admin',
+              role_level: 90,
+              is_system_role: false,
+            },
+          ],
+        };
+      }
+
+      if (text.includes('FROM iam.roles') && text.includes('COALESCE(external_role_name, role_key) = ANY')) {
         return {
           rowCount: 1,
           rows: [
@@ -4853,6 +4900,18 @@ describe('iam-account-management handlers (guards)', () => {
       {
         keycloakSubject: 'mock-user-id',
         roleNames: ['Admin'],
+      },
+    ]);
+    expect(createRoleCalls).toEqual([
+      {
+        externalName: 'Admin',
+        description: undefined,
+        attributes: {
+          managedBy: 'studio',
+          instanceId: 'de-musterhausen',
+          roleKey: 'mainserver_admin',
+          displayName: 'Admin',
+        },
       },
     ]);
   });
@@ -5021,6 +5080,13 @@ describe('iam-account-management handlers (guards)', () => {
   });
 
   it('syncs external role names when updating a user', async () => {
+    const createRoleCalls: Array<{ externalName: string; description?: string; attributes: Record<string, string> }> = [];
+    state.getRoleByNameImpl = async (externalName: string) =>
+      externalName === 'Admin' ? null : { id: `kc-${externalName}`, externalName };
+    state.createRoleImpl = async (input) => {
+      createRoleCalls.push(input);
+      return { id: `kc-${input.externalName}`, externalName: input.externalName, attributes: input.attributes };
+    };
     state.queryHandler = (text) => {
       if (text.includes('SELECT a.id AS account_id') && text.includes('WHERE a.keycloak_subject = $2')) {
         return { rowCount: 1, rows: [{ account_id: 'aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa' }] };
@@ -5030,7 +5096,24 @@ describe('iam-account-management handlers (guards)', () => {
         return { rowCount: 1, rows: [{ max_role_level: 90 }] };
       }
 
-      if (text.includes('SELECT id, role_key, role_name, display_name, external_role_name')) {
+      if (text.includes('SELECT id, role_key, role_name, display_name, external_role_name') && text.includes('AND id = ANY($2::uuid[])')) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              id: targetRoleId,
+              role_key: 'mainserver_admin',
+              role_name: 'mainserver_admin',
+              display_name: 'Admin',
+              external_role_name: 'Admin',
+              role_level: 90,
+              is_system_role: false,
+            },
+          ],
+        };
+      }
+
+      if (text.includes('FROM iam.roles') && text.includes('COALESCE(external_role_name, role_key) = ANY')) {
         return {
           rowCount: 1,
           rows: [
@@ -5073,6 +5156,18 @@ describe('iam-account-management handlers (guards)', () => {
       {
         keycloakSubject: 'keycloak-target-2',
         roleNames: ['Admin'],
+      },
+    ]);
+    expect(createRoleCalls).toEqual([
+      {
+        externalName: 'Admin',
+        description: undefined,
+        attributes: {
+          managedBy: 'studio',
+          instanceId: 'de-musterhausen',
+          roleKey: 'mainserver_admin',
+          displayName: 'Admin',
+        },
       },
     ]);
   });
@@ -5405,6 +5500,8 @@ describe('iam-account-management additional handlers', () => {
               instances_tenant_admin_email_column_exists: true,
               instances_tenant_admin_first_name_column_exists: true,
               instances_tenant_admin_last_name_column_exists: true,
+              instances_tenant_admin_client_id_column_exists: true,
+              instances_tenant_admin_client_secret_ciphertext_column_exists: true,
               idx_accounts_kc_subject_instance_exists: true,
               accounts_isolation_policy_matches: true,
               instance_memberships_isolation_policy_matches: true,
@@ -5885,6 +5982,8 @@ describe('iam-account-management additional handlers', () => {
               instances_tenant_admin_email_column_exists: true,
               instances_tenant_admin_first_name_column_exists: true,
               instances_tenant_admin_last_name_column_exists: true,
+              instances_tenant_admin_client_id_column_exists: true,
+              instances_tenant_admin_client_secret_ciphertext_column_exists: true,
               idx_accounts_kc_subject_instance_exists: true,
               accounts_isolation_policy_matches: true,
               instance_memberships_isolation_policy_matches: true,
@@ -5913,6 +6012,12 @@ describe('iam-account-management additional handlers', () => {
             activeRealm: 'svs-intern-studio-staging',
             realm: 'svs-intern-studio-staging',
             scopeKind: 'platform',
+            platformAdmin: {
+              realm: 'svs-intern-studio-staging',
+              clientId: 'platform-admin-client',
+              configured: true,
+              executionMode: 'platform_admin',
+            },
           },
           db: true,
           redis: true,
@@ -5976,6 +6081,8 @@ describe('iam-account-management additional handlers', () => {
               instances_tenant_admin_email_column_exists: true,
               instances_tenant_admin_first_name_column_exists: true,
               instances_tenant_admin_last_name_column_exists: true,
+              instances_tenant_admin_client_id_column_exists: true,
+              instances_tenant_admin_client_secret_ciphertext_column_exists: true,
               idx_accounts_kc_subject_instance_exists: true,
               accounts_isolation_policy_matches: true,
               instance_memberships_isolation_policy_matches: true,
@@ -6003,6 +6110,12 @@ describe('iam-account-management additional handlers', () => {
           realm: 'svs-intern-studio-staging',
           activeRealm: 'svs-intern-studio-staging',
           scopeKind: 'platform',
+          platformAdmin: {
+            realm: 'svs-intern-studio-staging',
+            clientId: 'platform-admin-client',
+            configured: true,
+            executionMode: 'platform_admin',
+          },
         },
       })
     );
@@ -6056,6 +6169,8 @@ describe('iam-account-management additional handlers', () => {
               instances_tenant_admin_email_column_exists: true,
               instances_tenant_admin_first_name_column_exists: true,
               instances_tenant_admin_last_name_column_exists: true,
+              instances_tenant_admin_client_id_column_exists: true,
+              instances_tenant_admin_client_secret_ciphertext_column_exists: true,
               idx_accounts_kc_subject_instance_exists: true,
               accounts_isolation_policy_matches: true,
               instance_memberships_isolation_policy_matches: true,
@@ -6071,13 +6186,31 @@ describe('iam-account-management additional handlers', () => {
       new Request('http://localhost/api/v1/iam/health/ready', { method: 'GET' })
     );
     const payload = (await response.json()) as {
-      checks: { auth: { realm?: string; activeRealm?: string; scopeKind?: string } };
+      checks: {
+        auth: {
+          realm?: string;
+          activeRealm?: string;
+          scopeKind?: string;
+          platformAdmin?: {
+            realm?: string;
+            clientId?: string;
+            configured: boolean;
+            executionMode: 'platform_admin';
+          };
+        };
+      };
     };
 
     expect(response.status).toBe(200);
     expect(payload.checks.auth.realm).toBe('platform-root');
     expect(payload.checks.auth.activeRealm).toBe('platform-root');
     expect(payload.checks.auth.scopeKind).toBe('platform');
+    expect(payload.checks.auth.platformAdmin).toEqual({
+      realm: 'platform-root',
+      clientId: 'platform-admin-client',
+      configured: true,
+      executionMode: 'platform_admin',
+    });
   });
 
   it('reports the tenant realm as active realm on tenant hosts', async () => {
@@ -6091,6 +6224,10 @@ describe('iam-account-management additional handlers', () => {
       status: 'active',
       authRealm: 'de-musterhausen',
       authClientId: 'sva-studio',
+      tenantAdminClient: {
+        clientId: 'sva-studio-admin',
+        secretConfigured: true,
+      },
     };
     state.listRolesImpl = async () => [];
     state.queryHandler = (text) => {
@@ -6126,6 +6263,8 @@ describe('iam-account-management additional handlers', () => {
               instances_tenant_admin_email_column_exists: true,
               instances_tenant_admin_first_name_column_exists: true,
               instances_tenant_admin_last_name_column_exists: true,
+              instances_tenant_admin_client_id_column_exists: true,
+              instances_tenant_admin_client_secret_ciphertext_column_exists: true,
               idx_accounts_kc_subject_instance_exists: true,
               accounts_isolation_policy_matches: true,
               instance_memberships_isolation_policy_matches: true,
@@ -6141,13 +6280,69 @@ describe('iam-account-management additional handlers', () => {
       new Request('http://de-musterhausen.studio.smart-village.app/api/v1/iam/health/ready', { method: 'GET' })
     );
     const payload = (await response.json()) as {
-      checks: { auth: { realm?: string; activeRealm?: string; scopeKind?: string } };
+      checks: {
+        auth: {
+          realm?: string;
+          activeRealm?: string;
+          scopeKind?: string;
+          login?: {
+            realm?: string;
+            clientId?: string;
+            configured: boolean;
+          };
+          tenantAdmin?: {
+            realm?: string;
+            clientId?: string;
+            configured: boolean;
+            secretConfigured: boolean;
+            executionMode: 'tenant_admin';
+            fallbackToLoginClient: boolean;
+          };
+          platformAdmin?: {
+            realm?: string;
+            clientId?: string;
+            configured: boolean;
+            executionMode: 'platform_admin';
+          };
+          breakGlass?: {
+            realm?: string;
+            clientId?: string;
+            configured: boolean;
+            executionMode: 'break_glass';
+          };
+        };
+      };
     };
 
     expect(response.status).toBe(200);
     expect(payload.checks.auth.realm).toBe('svs-intern-studio-staging');
     expect(payload.checks.auth.activeRealm).toBe('de-musterhausen');
     expect(payload.checks.auth.scopeKind).toBe('instance');
+    expect(payload.checks.auth.login).toEqual({
+      realm: 'de-musterhausen',
+      clientId: 'sva-studio',
+      configured: true,
+    });
+    expect(payload.checks.auth.tenantAdmin).toEqual({
+      realm: 'de-musterhausen',
+      clientId: 'sva-studio-admin',
+      configured: true,
+      secretConfigured: true,
+      executionMode: 'tenant_admin',
+      fallbackToLoginClient: false,
+    });
+    expect(payload.checks.auth.platformAdmin).toEqual({
+      realm: 'svs-intern-studio-staging',
+      clientId: 'platform-admin-client',
+      configured: true,
+      executionMode: 'platform_admin',
+    });
+    expect(payload.checks.auth.breakGlass).toEqual({
+      realm: 'de-musterhausen',
+      clientId: 'platform-admin-client',
+      configured: true,
+      executionMode: 'break_glass',
+    });
   });
 
   it('returns not_ready when dependencies fail', async () => {

@@ -265,15 +265,15 @@ const ensureIdentityProvider = async (instanceId: string, requestId?: string) =>
   });
   if (!identityProvider) {
     return createApiError(
-      503,
-      'keycloak_unavailable',
+      409,
+      'tenant_admin_client_not_configured',
       'Tenant-lokale Keycloak-Administration ist nicht konfiguriert.',
       requestId,
       {
         dependency: 'keycloak',
         execution_mode: 'tenant_admin',
         instance_id: instanceId,
-        reason_code: 'tenant_admin_not_configured',
+        reason_code: 'tenant_admin_client_not_configured',
       }
     );
   }

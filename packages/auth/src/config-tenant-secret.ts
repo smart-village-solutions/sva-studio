@@ -1,4 +1,4 @@
-import { loadInstanceAuthClientSecretCiphertext } from '@sva/data/server';
+import { loadInstanceAuthClientSecretCiphertext, loadTenantAdminClientSecretCiphertext } from '@sva/data/server';
 import { createSdkLogger } from '@sva/sdk/server';
 import { revealField } from './iam-account-management/encryption.js';
 import { getAuthClientSecret } from './runtime-secrets.server.js';
@@ -14,10 +14,14 @@ export type ResolvedTenantClientSecret = {
     | 'tenant_auth_client_secret_lookup_failed'
     | 'tenant_auth_client_secret_missing'
     | 'tenant_auth_client_secret_unreadable'
+    | 'tenant_admin_client_secret_lookup_failed'
+    | 'tenant_admin_client_secret_missing'
+    | 'tenant_admin_client_secret_unreadable'
     | 'global_auth_client_secret';
 };
 
 const buildAuthClientSecretAad = (instanceId: string): string => `iam.instances.auth_client_secret:${instanceId}`;
+const buildTenantAdminClientSecretAad = (instanceId: string): string => `iam.instances.tenant_admin_client_secret:${instanceId}`;
 
 const buildGlobalFallback = (
   globalSecret: string | null | undefined,
@@ -81,6 +85,58 @@ export const resolveTenantAuthClientSecret = async (
       };
     }
     return buildGlobalFallback(globalSecret, 'tenant_auth_client_secret_unreadable');
+  }
+
+  return {
+    configured: true,
+    readable: true,
+    secret: tenantSecret,
+    source: 'tenant',
+  };
+};
+
+export const resolveTenantAdminClientSecret = async (
+  instanceId: string
+): Promise<ResolvedTenantClientSecret> => {
+  let missingReason: ResolvedTenantClientSecret['reason'] = 'tenant_admin_client_secret_missing';
+  const ciphertext = await loadTenantAdminClientSecretCiphertext(instanceId).catch((error: unknown) => {
+    missingReason = 'tenant_admin_client_secret_lookup_failed';
+    logger.warn('Tenant admin client secret lookup failed', {
+      operation: 'tenant_admin_client_secret_lookup',
+      auth_scope_kind: 'instance',
+      resolution_result: 'tenant_secret_unavailable',
+      instance_id: instanceId,
+      reason_code: 'tenant_admin_client_secret_lookup_failed',
+      dependency: 'database',
+      error_type: error instanceof Error ? error.name : typeof error,
+    });
+    return null;
+  });
+
+  if (!ciphertext) {
+    return {
+      configured: false,
+      readable: false,
+      source: 'tenant',
+      reason: missingReason,
+    };
+  }
+
+  const tenantSecret = revealField(ciphertext, buildTenantAdminClientSecretAad(instanceId));
+  if (!tenantSecret) {
+    logger.warn('Tenant admin client secret could not be decrypted', {
+      operation: 'tenant_admin_client_secret_lookup',
+      auth_scope_kind: 'instance',
+      resolution_result: 'tenant_secret_unavailable',
+      instance_id: instanceId,
+      reason_code: 'tenant_admin_client_secret_unreadable',
+    });
+    return {
+      configured: true,
+      readable: false,
+      source: 'tenant',
+      reason: 'tenant_admin_client_secret_unreadable',
+    };
   }
 
   return {

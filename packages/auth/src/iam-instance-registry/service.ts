@@ -41,6 +41,14 @@ const encryptAuthClientSecret = (instanceId: string, secret: string | undefined)
   return protectField(normalizedSecret, `iam.instances.auth_client_secret:${instanceId}`) ?? undefined;
 };
 
+const encryptTenantAdminClientSecret = (instanceId: string, secret: string | undefined): string | undefined => {
+  const normalizedSecret = secret?.trim();
+  if (!normalizedSecret) {
+    return undefined;
+  }
+  return protectField(normalizedSecret, `iam.instances.tenant_admin_client_secret:${instanceId}`) ?? undefined;
+};
+
 const createListInstances =
   (repository: InstanceRegistryRepository): InstanceRegistryService['listInstances'] =>
   async (input = {}) => {
@@ -84,6 +92,12 @@ const createProvisioningRequestHandler =
       authClientId: input.authClientId,
       authIssuerUrl: input.authIssuerUrl,
       authClientSecretCiphertext: encryptAuthClientSecret(input.instanceId, input.authClientSecret),
+      tenantAdminClient: input.tenantAdminClient
+        ? {
+            clientId: input.tenantAdminClient.clientId,
+            secretCiphertext: encryptTenantAdminClientSecret(input.instanceId, input.tenantAdminClient.secret),
+          }
+        : undefined,
       tenantAdminBootstrap: input.tenantAdminBootstrap,
       actorId: input.actorId,
       requestId: input.requestId,
@@ -171,6 +185,13 @@ const createUpdateInstanceHandler =
       authIssuerUrl: input.authIssuerUrl,
       authClientSecretCiphertext: encryptAuthClientSecret(input.instanceId, input.authClientSecret),
       keepExistingAuthClientSecret: !input.authClientSecret?.trim(),
+      tenantAdminClient: input.tenantAdminClient
+        ? {
+            clientId: input.tenantAdminClient.clientId,
+            secretCiphertext: encryptTenantAdminClientSecret(input.instanceId, input.tenantAdminClient.secret),
+          }
+        : undefined,
+      keepExistingTenantAdminClientSecret: !input.tenantAdminClient?.secret?.trim(),
       tenantAdminBootstrap: input.tenantAdminBootstrap,
       actorId: input.actorId,
       requestId: input.requestId,

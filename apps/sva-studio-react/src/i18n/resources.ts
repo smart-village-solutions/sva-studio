@@ -1062,6 +1062,10 @@ export const i18nResources = {
           csrfValidationFailed: 'Sicherheitsprüfung fehlgeschlagen. Bitte Seite neu laden und erneut versuchen.',
           rateLimited: 'Zu viele Anfragen in kurzer Zeit. Bitte kurz warten und erneut versuchen.',
           conflict: 'Die Nutzeränderung steht in Konflikt mit dem aktuellen Zustand. Bitte aktualisieren und erneut versuchen.',
+          tenantAdminClientNotConfigured:
+            'Für diese Instanz ist noch kein Tenant-Admin-Client hinterlegt. Bitte zuerst den Instanzvertrag abgleichen.',
+          tenantAdminClientSecretMissing:
+            'Für diese Instanz fehlt noch das Tenant-Admin-Client-Secret. Bitte zuerst den Instanzvertrag abgleichen.',
           keycloakUnavailable: 'Die Verbindung zu Keycloak ist derzeit nicht verfügbar. Bitte später erneut versuchen.',
           databaseUnavailable: 'Die IAM-Datenbank ist derzeit nicht erreichbar. Bitte später erneut versuchen.',
           lastAdminProtection: 'Der letzte aktive System-Administrator kann nicht entfernt oder deaktiviert werden.',
@@ -2795,6 +2799,10 @@ export const i18nResources = {
           csrfValidationFailed: 'Security validation failed. Reload the page and try again.',
           rateLimited: 'Too many requests in a short time. Please wait a moment and try again.',
           conflict: 'The user update conflicts with the current state. Refresh and try again.',
+          tenantAdminClientNotConfigured:
+            'No tenant admin client is configured for this instance yet. Reconcile the instance contract first.',
+          tenantAdminClientSecretMissing:
+            'The tenant admin client secret is still missing for this instance. Reconcile the instance contract first.',
           keycloakUnavailable: 'The connection to Keycloak is currently unavailable. Please try again later.',
           databaseUnavailable: 'The IAM database is currently unavailable. Please try again later.',
           lastAdminProtection: 'The last active system administrator cannot be removed or deactivated.',

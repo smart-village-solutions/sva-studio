@@ -192,3 +192,28 @@ groups:
         annotations:
           summary: "IAM Rollen-Drift über SLO-Grenze"
           description: "Für Instance {{ $labels.instance_id }} besteht seit mindestens 60 Minuten ein Drift-Backlog."
+
+  - name: iam_instance_registry_alerts
+    interval: 1m
+    rules:
+      - alert: TenantAdminClientDriftDetected
+        expr: |
+          max by (instance_id) (sva_instance_admin_client_drift) > 0
+        for: 10m
+        labels:
+          severity: warning
+          component: instance-registry
+        annotations:
+          summary: "Tenant-Admin-Client-Drift erkannt"
+          description: "Für die aktive Instanz {{ $labels.instance_id }} fehlt seit mindestens 10 Minuten der Tenant-Admin-Client oder dessen Secret."
+
+      - alert: TenantAdminClientDriftCritical
+        expr: |
+          max by (instance_id) (sva_instance_admin_client_drift) > 0
+        for: 30m
+        labels:
+          severity: critical
+          component: instance-registry
+        annotations:
+          summary: "Tenant-Admin-Client-Drift kritisch"
+          description: "Für die aktive Instanz {{ $labels.instance_id }} besteht seit mindestens 30 Minuten Tenant-Admin-Client-Drift. Reconcile, Backfill oder Rollback ist erforderlich."

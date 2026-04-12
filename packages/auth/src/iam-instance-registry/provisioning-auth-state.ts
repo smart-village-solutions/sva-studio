@@ -9,6 +9,7 @@ import {
 import type { KeycloakProvisioningInput, KeycloakReadState, TenantAdminBootstrap, TenantAdminStatus } from './provisioning-auth-types.js';
 import {
   buildExpectedClientConfig,
+  buildExpectedTenantAdminClientConfig,
   INSTANCE_ID_MAPPER_NAME,
   INSTANCE_REGISTRY_ADMIN_ROLE,
   SYSTEM_ADMIN_ROLE,
@@ -31,6 +32,11 @@ type ProvisionInstanceAuthArtifactsInput = {
   authClientId: string;
   authIssuerUrl?: string;
   authClientSecret?: string;
+  tenantAdminClient?: {
+    clientId: string;
+    secretConfigured?: boolean;
+  };
+  tenantAdminClientSecret?: string;
   tenantAdminBootstrap?: TenantAdminBootstrap;
   tenantAdminTemporaryPassword?: string;
   rotateClientSecret?: boolean;
@@ -155,14 +161,19 @@ const readKeycloakStateWithResolver = async (
 ): Promise<KeycloakReadState> => {
   const client = new KeycloakAdminClient(resolveConfig(input.authRealm));
   const expectedClient = buildExpectedClientConfig(input.primaryHostname);
+  const expectedTenantAdminClient = input.tenantAdminClient
+    ? buildExpectedTenantAdminClientConfig(input.primaryHostname)
+    : null;
   const realm = await client.getRealm();
 
   if (!realm) {
     return {
       client,
       expectedClient,
+      expectedTenantAdminClient,
       realm,
       clientRepresentation: null,
+      tenantAdminClientRepresentation: null,
       protocolMappers: [],
       tenantAdminStatus: {
         tenantAdminExists: false,
@@ -171,18 +182,25 @@ const readKeycloakStateWithResolver = async (
         tenantAdminInstanceIdMatches: false,
       },
       keycloakClientSecret: null,
+      tenantAdminClientSecret: null,
       systemAdminRole: null,
       instanceRegistryAdminRole: null,
     };
   }
 
   const clientRepresentation = await client.getOidcClientByClientId(input.authClientId);
+  const tenantAdminClientRepresentation = input.tenantAdminClient?.clientId
+    ? await client.getOidcClientByClientId(input.tenantAdminClient.clientId)
+    : null;
   const protocolMappers = clientRepresentation ? await client.listClientProtocolMappers(input.authClientId) : [];
   const tenantAdminStatus = await readTenantAdminStatus(client, {
     username: input.tenantAdminBootstrap?.username,
     instanceId: input.instanceId,
   });
   const keycloakClientSecret = clientRepresentation ? await client.getOidcClientSecretValue(input.authClientId) : null;
+  const tenantAdminClientSecret = input.tenantAdminClient?.clientId
+    ? await client.getOidcClientSecretValue(input.tenantAdminClient.clientId)
+    : null;
   const [systemAdminRole, instanceRegistryAdminRole] = await Promise.all([
     client.getRoleByName(SYSTEM_ADMIN_ROLE),
     client.getRoleByName(INSTANCE_REGISTRY_ADMIN_ROLE),
@@ -191,11 +209,14 @@ const readKeycloakStateWithResolver = async (
   return {
     client,
     expectedClient,
+    expectedTenantAdminClient,
     realm,
     clientRepresentation,
+    tenantAdminClientRepresentation,
     protocolMappers,
     tenantAdminStatus,
     keycloakClientSecret,
+    tenantAdminClientSecret,
     systemAdminRole,
     instanceRegistryAdminRole,
   };
@@ -231,6 +252,21 @@ const provisionInstanceAuthArtifactsWithResolver = async (
     clientSecret: input.authClientSecret,
     rotateClientSecret: input.rotateClientSecret,
   });
+
+  if (input.tenantAdminClient?.clientId) {
+    const expectedTenantAdminClient = buildExpectedTenantAdminClientConfig(input.primaryHostname);
+    await client.ensureOidcClient({
+      clientId: input.tenantAdminClient.clientId,
+      redirectUris: expectedTenantAdminClient.redirectUris,
+      postLogoutRedirectUris: expectedTenantAdminClient.postLogoutRedirectUris,
+      webOrigins: expectedTenantAdminClient.webOrigins,
+      rootUrl: expectedTenantAdminClient.rootUrl,
+      clientSecret: input.tenantAdminClientSecret,
+      standardFlowEnabled: expectedTenantAdminClient.standardFlowEnabled,
+      directAccessGrantsEnabled: expectedTenantAdminClient.directAccessGrantsEnabled,
+      serviceAccountsEnabled: expectedTenantAdminClient.serviceAccountsEnabled,
+    });
+  }
   await client.ensureUserAttributeProtocolMapper({
     clientId: input.authClientId,
     name: INSTANCE_ID_MAPPER_NAME,

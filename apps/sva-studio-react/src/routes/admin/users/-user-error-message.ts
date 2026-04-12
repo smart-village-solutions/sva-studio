@@ -22,6 +22,10 @@ export const userErrorMessage = (error: IamHttpError | null): string => {
       return t('admin.users.errors.rateLimited');
     case 'conflict':
       return t('admin.users.errors.conflict');
+    case 'tenant_admin_client_not_configured':
+      return t('admin.users.errors.tenantAdminClientNotConfigured');
+    case 'tenant_admin_client_secret_missing':
+      return t('admin.users.errors.tenantAdminClientSecretMissing');
     case 'keycloak_unavailable':
       return t('admin.users.errors.keycloakUnavailable');
     case 'database_unavailable':

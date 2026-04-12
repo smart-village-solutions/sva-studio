@@ -12,6 +12,11 @@ type TenantAdminBootstrap = {
   readonly lastName?: string;
 };
 
+type TenantAdminClient = {
+  readonly clientId: string;
+  readonly secret?: string;
+};
+
 export type CreateInstanceProvisioningInput = InstanceRegistryMutationActor & {
   readonly idempotencyKey: string;
   readonly instanceId: string;
@@ -22,6 +27,7 @@ export type CreateInstanceProvisioningInput = InstanceRegistryMutationActor & {
   readonly authClientId: string;
   readonly authIssuerUrl?: string;
   readonly authClientSecret?: string;
+  readonly tenantAdminClient?: TenantAdminClient;
   readonly tenantAdminBootstrap?: TenantAdminBootstrap;
   readonly themeKey?: string;
   readonly mainserverConfigRef?: string;
@@ -43,6 +49,7 @@ export type UpdateInstanceInput = InstanceRegistryMutationActor & {
   readonly authClientId: string;
   readonly authIssuerUrl?: string;
   readonly authClientSecret?: string;
+  readonly tenantAdminClient?: TenantAdminClient;
   readonly tenantAdminBootstrap?: TenantAdminBootstrap;
   readonly themeKey?: string;
   readonly mainserverConfigRef?: string;

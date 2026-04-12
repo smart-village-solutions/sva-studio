@@ -10,13 +10,15 @@ import { createSdkLogger } from '../../packages/sdk/src/logger/index.server.js';
 
 import type { SqlExecutor, SqlStatement } from '../../packages/data/src/iam/repositories/types.js';
 
-type Command = 'list' | 'create' | 'activate' | 'suspend' | 'archive';
+type Command = 'list' | 'create' | 'activate' | 'suspend' | 'archive' | 'backfill-admin-client';
 
 type CliOptions = {
   readonly actorId?: string;
   readonly authClientId?: string;
   readonly authIssuerUrl?: string;
   readonly authRealm?: string;
+  readonly tenantAdminClientId?: string;
+  readonly tenantAdminClientSecret?: string;
   readonly command: Command;
   readonly displayName?: string;
   readonly featureFlags?: Readonly<Record<string, boolean>>;
@@ -71,8 +73,8 @@ const parseFeatureFlags = (raw?: string): Readonly<Record<string, boolean>> | un
 
 const parseCliOptions = (argv: readonly string[]): CliOptions => {
   const [commandRaw, ...rawOptions] = argv;
-  if (!commandRaw || !['list', 'create', 'activate', 'suspend', 'archive'].includes(commandRaw)) {
-    throw new Error('Befehl fehlt oder ist ungültig. Erlaubt: list, create, activate, suspend, archive.');
+  if (!commandRaw || !['list', 'create', 'activate', 'suspend', 'archive', 'backfill-admin-client'].includes(commandRaw)) {
+    throw new Error('Befehl fehlt oder ist ungültig. Erlaubt: list, create, activate, suspend, archive, backfill-admin-client.');
   }
 
   const parsed: {
@@ -80,6 +82,8 @@ const parseCliOptions = (argv: readonly string[]): CliOptions => {
     authClientId?: string;
     authIssuerUrl?: string;
     authRealm?: string;
+    tenantAdminClientId?: string;
+    tenantAdminClientSecret?: string;
     displayName?: string;
     featureFlagsRaw?: string;
     instanceId?: string;
@@ -118,6 +122,12 @@ const parseCliOptions = (argv: readonly string[]): CliOptions => {
         break;
       case '--auth-realm':
         parsed.authRealm = value;
+        break;
+      case '--tenant-admin-client-id':
+        parsed.tenantAdminClientId = value;
+        break;
+      case '--tenant-admin-client-secret':
+        parsed.tenantAdminClientSecret = value;
         break;
       case '--instance-id':
         parsed.instanceId = value;
@@ -162,6 +172,8 @@ const parseCliOptions = (argv: readonly string[]): CliOptions => {
     authClientId: parsed.authClientId,
     authIssuerUrl: parsed.authIssuerUrl,
     authRealm: parsed.authRealm,
+    tenantAdminClientId: parsed.tenantAdminClientId,
+    tenantAdminClientSecret: parsed.tenantAdminClientSecret,
     command: commandRaw as Command,
     displayName: parsed.displayName,
     featureFlags: parseFeatureFlags(parsed.featureFlagsRaw),
@@ -211,6 +223,9 @@ const renderResult = (jsonOutput: boolean, payload: unknown) => {
 
   console.log(JSON.stringify(payload, null, 2));
 };
+
+const deriveTenantAdminClientId = (authClientId: string, explicitTenantAdminClientId?: string): string =>
+  explicitTenantAdminClientId?.trim() || `${authClientId.trim()}-admin`;
 
 const createExecutor = (pool: Pool): SqlExecutor => ({
   async execute(statement) {
@@ -297,8 +312,62 @@ const run = async () => {
             parentDomain: assertRequired(options.parentDomain, '--parent-domain'),
             realmMode: options.realmMode,
             requestId: `cli-${options.idempotencyKey}`,
+            tenantAdminClient: {
+              clientId: deriveTenantAdminClientId(
+                assertRequired(options.authClientId, '--auth-client-id'),
+                options.tenantAdminClientId
+              ),
+              ...(options.tenantAdminClientSecret ? { secret: options.tenantAdminClientSecret } : {}),
+            },
             themeKey: options.themeKey,
           });
+        case 'backfill-admin-client': {
+          const instances = await service.listInstances({ status: 'active' });
+          const updatedInstances = [];
+          for (const instance of instances) {
+            if (instance.tenantAdminClient?.clientId) {
+              continue;
+            }
+
+            const updated = await service.updateInstance({
+              actorId: options.actorId,
+              instanceId: instance.instanceId,
+              displayName: instance.displayName,
+              parentDomain: instance.parentDomain,
+              realmMode: instance.realmMode,
+              authRealm: instance.authRealm,
+              authClientId: instance.authClientId,
+              authIssuerUrl: instance.authIssuerUrl,
+              requestId: `cli-${options.idempotencyKey}`,
+              tenantAdminClient: {
+                clientId: deriveTenantAdminClientId(instance.authClientId, options.tenantAdminClientId),
+                ...(options.tenantAdminClientSecret ? { secret: options.tenantAdminClientSecret } : {}),
+              },
+              tenantAdminBootstrap: instance.tenantAdminBootstrap,
+              themeKey: instance.themeKey,
+              featureFlags: instance.featureFlags,
+              mainserverConfigRef: instance.mainserverConfigRef,
+            });
+            if (!updated) {
+              continue;
+            }
+
+            const run = await service.executeKeycloakProvisioning({
+              actorId: options.actorId,
+              instanceId: instance.instanceId,
+              intent: 'provision_admin_client',
+              requestId: `cli-${options.idempotencyKey}`,
+            });
+
+            updatedInstances.push({
+              instanceId: instance.instanceId,
+              tenantAdminClientId: deriveTenantAdminClientId(instance.authClientId, options.tenantAdminClientId),
+              provisioningRunId: run?.id,
+            });
+          }
+
+          return updatedInstances;
+        }
         case 'activate':
         case 'suspend':
         case 'archive':

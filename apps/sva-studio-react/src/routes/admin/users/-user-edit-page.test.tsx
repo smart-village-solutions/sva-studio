@@ -684,6 +684,14 @@ describe('UserEditPage', () => {
     ['csrf_validation_failed', 'Sicherheitsprüfung fehlgeschlagen. Bitte Seite neu laden und erneut versuchen.'],
     ['rate_limited', 'Zu viele Anfragen in kurzer Zeit. Bitte kurz warten und erneut versuchen.'],
     ['conflict', 'Die Nutzeränderung steht in Konflikt mit dem aktuellen Zustand. Bitte aktualisieren und erneut versuchen.'],
+    [
+      'tenant_admin_client_not_configured',
+      'Für diese Instanz ist noch kein Tenant-Admin-Client hinterlegt. Bitte zuerst den Instanzvertrag abgleichen.',
+    ],
+    [
+      'tenant_admin_client_secret_missing',
+      'Für diese Instanz fehlt noch das Tenant-Admin-Client-Secret. Bitte zuerst den Instanzvertrag abgleichen.',
+    ],
     ['keycloak_unavailable', 'Die Verbindung zu Keycloak ist derzeit nicht verfügbar. Bitte später erneut versuchen.'],
     ['database_unavailable', 'Die IAM-Datenbank ist derzeit nicht erreichbar. Bitte später erneut versuchen.'],
     ['last_admin_protection', 'Der letzte aktive System-Administrator kann nicht entfernt oder deaktiviert werden.'],

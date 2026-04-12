@@ -199,6 +199,22 @@ const normalizeManagedRoleAttributes = (
   attributes: Readonly<Record<string, readonly string[]> | Record<string, string | readonly string[]>>
 ): Record<string, readonly string[]> => normalizeAttributes(attributes as Readonly<Record<string, string | readonly string[]>>) ?? {};
 
+const BUILTIN_REALM_ROLE_NAMES = new Set(['offline_access', 'uma_authorization']);
+
+const readRoleAttribute = (
+  attributes: Readonly<Record<string, readonly string[]>> | undefined,
+  key: string
+): string | undefined => {
+  const values = attributes?.[key];
+  return Array.isArray(values) ? values[0] : undefined;
+};
+
+const isBuiltInRealmRole = (roleName: string): boolean =>
+  BUILTIN_REALM_ROLE_NAMES.has(roleName) || roleName.startsWith('default-roles-');
+
+const isStudioManagedRealmRole = (role: IdentityRole | undefined): boolean =>
+  role?.clientRole !== true && readRoleAttribute(role?.attributes, 'managed_by') === 'studio';
+
 const toSortedUniqueStrings = (values: readonly string[] | undefined): string[] =>
   [...new Set((values ?? []).map((value) => value.trim()).filter((value) => value.length > 0))].sort((left, right) =>
     left.localeCompare(right)
@@ -478,7 +494,18 @@ export class KeycloakAdminClient implements IdentityProviderPort {
         })
       );
 
-    const toRemove = currentRoleMappings.filter((role) => !expectedRoleNames.has(role.name));
+    // Keep Keycloak built-ins and any unmanaged realm roles untouched. Tenant sync only owns
+    // Studio-managed realm roles, otherwise tenant-local defaults like offline_access would
+    // be removed during ordinary user edits.
+    const toRemove = currentRoleMappings.filter((role) => {
+      if (expectedRoleNames.has(role.name)) {
+        return false;
+      }
+      if (isBuiltInRealmRole(role.name)) {
+        return false;
+      }
+      return isStudioManagedRealmRole(availableByName.get(role.name));
+    });
 
     if (toAdd.length > 0) {
       await this.executeWithResilience<void>({
@@ -828,6 +855,9 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     rootUrl: string;
     clientSecret?: string;
     rotateClientSecret?: boolean;
+    standardFlowEnabled?: boolean;
+    directAccessGrantsEnabled?: boolean;
+    serviceAccountsEnabled?: boolean;
   }): Promise<void> {
     await this.assertWriteAvailability();
     const existing = await this.getOidcClientByClientId(input.clientId);
@@ -837,9 +867,9 @@ export class KeycloakAdminClient implements IdentityProviderPort {
       enabled: true,
       protocol: 'openid-connect',
       publicClient: false,
-      standardFlowEnabled: true,
-      directAccessGrantsEnabled: false,
-      serviceAccountsEnabled: false,
+      standardFlowEnabled: input.standardFlowEnabled ?? true,
+      directAccessGrantsEnabled: input.directAccessGrantsEnabled ?? false,
+      serviceAccountsEnabled: input.serviceAccountsEnabled ?? false,
       redirectUris: [...toSortedUniqueStrings(input.redirectUris)],
       webOrigins: [...toSortedUniqueStrings(input.webOrigins)],
       attributes: {

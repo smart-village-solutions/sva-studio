@@ -247,6 +247,31 @@ export type RuntimeHealthResponse = {
       readonly realm?: string;
       readonly activeRealm?: string;
       readonly scopeKind?: 'platform' | 'instance';
+      readonly login?: {
+        readonly realm?: string;
+        readonly clientId?: string;
+        readonly configured: boolean;
+      };
+      readonly tenantAdmin?: {
+        readonly realm?: string;
+        readonly clientId?: string;
+        readonly configured: boolean;
+        readonly secretConfigured: boolean;
+        readonly executionMode: 'tenant_admin';
+        readonly fallbackToLoginClient: boolean;
+      };
+      readonly platformAdmin?: {
+        readonly realm?: string;
+        readonly clientId?: string;
+        readonly configured: boolean;
+        readonly executionMode: 'platform_admin';
+      };
+      readonly breakGlass?: {
+        readonly realm?: string;
+        readonly clientId?: string;
+        readonly configured: boolean;
+        readonly executionMode: 'break_glass';
+      };
     };
     readonly db: boolean;
     readonly diagnostics?: Record<string, unknown>;

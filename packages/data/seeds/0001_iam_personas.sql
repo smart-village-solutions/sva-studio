@@ -8,6 +8,7 @@ INSERT INTO iam.instances (
   primary_hostname,
   auth_realm,
   auth_client_id,
+  tenant_admin_client_id,
   feature_flags
 )
 VALUES (
@@ -18,6 +19,7 @@ VALUES (
   'de-musterhausen.studio.smart-village.app',
   'svs-intern-studio-staging',
   'sva-studio',
+  'sva-studio-admin',
   '{}'::jsonb
 )
 ON CONFLICT (id) DO UPDATE
@@ -28,6 +30,7 @@ SET
   primary_hostname = EXCLUDED.primary_hostname,
   auth_realm = EXCLUDED.auth_realm,
   auth_client_id = EXCLUDED.auth_client_id,
+  tenant_admin_client_id = EXCLUDED.tenant_admin_client_id,
   feature_flags = EXCLUDED.feature_flags,
   updated_at = NOW();
 

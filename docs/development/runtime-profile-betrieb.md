@@ -96,7 +96,7 @@ Nur Keycloak-Profile:
 
 Nur produktionsnahe Registry-Profile:
 
-- `authRealm` und `authClientId` liegen pro Instanz in `iam.instances`
+- `authRealm`, `authClientId` und `tenantAdminClient.clientId` liegen pro Instanz in `iam.instances`
 - optional `authIssuerUrl`, wenn der Issuer nicht aus `KEYCLOAK_ADMIN_BASE_URL + /realms/<authRealm>` gebildet werden soll
 - `SVA_AUTH_ISSUER` und `SVA_AUTH_CLIENT_ID` bleiben nur lokale Fallbacks für nicht-registry-gesteuerte Pfade
 - der operative Root-Host-Provisioning-Pfad ist unter `../guides/instance-keycloak-provisioning.md` dokumentiert
@@ -126,9 +126,9 @@ Wichtig für den lokalen `local-keycloak`-Pfad:
 
 - `studio.localhost:3000` ist der Root-/Plattform-Host und authentifiziert gegen `svs-intern-studio-staging`.
 - `<instanceId>.studio.localhost:3000` ist ein Tenant-Host und authentifiziert gegen den in `iam.instances.auth_realm` hinterlegten Tenant-Realm, zum Beispiel `de-musterhausen`.
-- Normale Tenant-Mutationen für Nutzer, Rollen und Gruppen laufen im lokalen Standardpfad strikt gegen denselben Tenant-Realm wie der Login-Flow.
+- Normale Tenant-Mutationen für Nutzer, Rollen und Gruppen laufen im lokalen Standardpfad strikt gegen denselben Tenant-Realm wie der Login-Flow, aber über den separaten `tenantAdminClient`.
 - `KEYCLOAK_ADMIN_REALM` und `KEYCLOAK_ADMIN_CLIENT_ID` beschreiben im lokalen Profil nur noch den Plattform-/Break-Glass-Pfad. Sie sind kein impliziter Fallback für Tenant-Alltagsverwaltung mehr.
-- Fehlen tenantlokaler Admin-Client oder tenantlokales Secret im Instanzdatensatz, schlagen Tenant-Mutationen fail-closed mit `tenant_admin_not_configured` fehl.
+- Fehlen tenantlokaler Admin-Client oder tenantlokales Secret im Instanzdatensatz, schlagen Tenant-Mutationen fail-closed mit `tenant_admin_client_not_configured` oder `tenant_admin_client_secret_missing` fehl.
 
 Für zusätzliche lokale Instanzen oder zweite lokale Datenbanken ist `../guides/lokale-instanz-db-initialisierung.md` der kanonische Bootstrap-Pfad.
 
@@ -290,9 +290,9 @@ Fuer `studio` gilt bei Tenant-Smokes zusaetzlich:
 Zusatzvertrag fuer den Root-Host:
 
 - `/admin/instances` ist die fuehrende Control Plane fuer tenant-spezifische Realm-Basisdaten
-- dort werden `authRealm`, `authClientId`, optional `authIssuerUrl`, das tenant-spezifische OIDC-Client-Secret und die Tenant-Admin-Stammdaten gepflegt
+- dort werden `authRealm`, `authClientId`, `tenantAdminClient.clientId`, optional `authIssuerUrl`, das tenant-spezifische OIDC-Client-Secret, das Tenant-Admin-Client-Secret und die Tenant-Admin-Stammdaten gepflegt
 - das Client-Secret ist write-only; im UI wird nur angezeigt, ob es bereits konfiguriert ist
-- Realm-/Client-/Mapper-/Tenant-Admin-Abgleich erfolgt explizit ueber den Keycloak-Reconcile-Pfad der Instanzverwaltung
+- Realm-/Login-Client-/Tenant-Admin-Client-/Mapper-/Tenant-Admin-Abgleich erfolgt explizit ueber den Keycloak-Reconcile-Pfad der Instanzverwaltung
 - tenant-lokale `system_admin`s duerfen diese globale Root-Host-Verwaltung nicht sehen oder mutieren
 
 `smoke` validiert zusätzlich den kritischen IAM-Schema-Stand. Fehlende Tabellen, Indizes oder RLS-Policies gelten als deterministischer Fehler und werden als maschinenlesbarer Drift gemeldet.

@@ -27,6 +27,19 @@ export const buildExpectedClientConfig = (primaryHostname: string) => {
   };
 };
 
+export const buildExpectedTenantAdminClientConfig = (primaryHostname: string) => {
+  const origin = buildOrigin(primaryHostname);
+  return {
+    rootUrl: origin,
+    redirectUris: [] as string[],
+    postLogoutRedirectUris: [] as string[],
+    webOrigins: [] as string[],
+    standardFlowEnabled: false,
+    directAccessGrantsEnabled: false,
+    serviceAccountsEnabled: true,
+  };
+};
+
 export const toSortedUnique = (values: readonly string[]): string[] =>
   [...new Set(values.map((value) => value.trim()).filter((value) => value.length > 0))].sort((left, right) =>
     left.localeCompare(right)

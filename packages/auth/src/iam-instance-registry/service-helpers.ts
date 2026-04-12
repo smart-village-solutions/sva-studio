@@ -29,6 +29,7 @@ export const toListItem = (
   authClientId: item.authClientId,
   authIssuerUrl: item.authIssuerUrl,
   authClientSecretConfigured: item.authClientSecretConfigured,
+  tenantAdminClient: item.tenantAdminClient,
   tenantAdminBootstrap: item.tenantAdminBootstrap,
   themeKey: item.themeKey,
   featureFlags: item.featureFlags,

@@ -237,6 +237,11 @@ Zusatz fuer den Betrieb:
 
 Der reguläre Serverdeploy für `studio` ist jetzt zweigeteilt: GitHub baut und verifiziert den Ziel-Digest, der finale mutierende Rollout läuft lokal über `pnpm env:release:studio:local`. Direkte Redeploys über `up`/`update`, Portainer-Klickpfade oder Ad-hoc-`docker stack deploy` sind nicht mehr der verbindliche Standard.
 
+Für den spezialisierten Rollout des separaten Tenant-Admin-Client-Vertrags gilt ergänzend:
+
+- Rollout: `./tenant-admin-client-swarm-rollout-runbook.md`
+- Rollback: `./tenant-admin-client-swarm-rollback-runbook.md`
+
 ### Release-Klassen
 
 - `app-only`: reiner Image-/Konfigurationsrollout ohne Schemaänderung

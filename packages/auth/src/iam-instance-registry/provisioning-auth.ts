@@ -30,6 +30,8 @@ const createInstanceKeycloakPreflightReader =
         realmMode: input.realmMode,
         authClientSecretConfigured: input.authClientSecretConfigured,
         authClientSecret: input.authClientSecret,
+        tenantAdminClient: input.tenantAdminClient,
+        tenantAdminClientSecret: input.tenantAdminClientSecret,
         tenantAdminBootstrap: input.tenantAdminBootstrap,
         state,
       });
@@ -43,6 +45,8 @@ const createInstanceKeycloakPreflightReader =
         realmMode: input.realmMode,
         authClientSecretConfigured: input.authClientSecretConfigured,
         authClientSecret: input.authClientSecret,
+        tenantAdminClient: input.tenantAdminClient,
+        tenantAdminClientSecret: input.tenantAdminClientSecret,
         tenantAdminBootstrap: input.tenantAdminBootstrap,
         accessError: readKeycloakAccessError(error),
       });
@@ -66,6 +70,8 @@ const createInstanceKeycloakPlanReader =
       return buildPlan({
         realmMode: input.realmMode,
         authClientSecret: input.authClientSecret,
+        tenantAdminClient: input.tenantAdminClient,
+        tenantAdminClientSecret: input.tenantAdminClientSecret,
         preflight,
         state,
       });
@@ -74,6 +80,8 @@ const createInstanceKeycloakPlanReader =
       return buildPlan({
         realmMode: input.realmMode,
         authClientSecret: input.authClientSecret,
+        tenantAdminClient: input.tenantAdminClient,
+        tenantAdminClientSecret: input.tenantAdminClientSecret,
         preflight,
       });
     }
@@ -90,7 +98,12 @@ const createInstanceKeycloakStatusReader =
   async (input: KeycloakProvisioningInput): Promise<KeycloakTenantStatus> => {
     const state = await readState(input);
   if (!state.realm) {
-    return buildMissingRealmStatus(input.authClientSecretConfigured, input.authClientSecret);
+    return buildMissingRealmStatus(
+      input.authClientSecretConfigured,
+      input.authClientSecret,
+      input.tenantAdminClient,
+      input.tenantAdminClientSecret
+    );
   }
 
   const status = buildKeycloakStatus({ ...input, state });
@@ -100,9 +113,11 @@ const createInstanceKeycloakStatusReader =
     instance_id: input.instanceId,
     auth_realm: input.authRealm,
     client_id: input.authClientId,
+    tenant_admin_client_id: input.tenantAdminClient?.clientId,
     realm_mode: input.realmMode,
     realm_exists: status.realmExists,
     client_exists: status.clientExists,
+    tenant_admin_client_exists: status.tenantAdminClientExists,
     mapper_exists: status.instanceIdMapperExists,
     admin_exists: status.tenantAdminExists,
     roles_ok:
@@ -111,6 +126,7 @@ const createInstanceKeycloakStatusReader =
       && status.tenantAdminInstanceIdMatches,
     tenant_admin_instance_id_matches: status.tenantAdminInstanceIdMatches,
     secret_aligned: status.clientSecretAligned,
+    tenant_admin_client_secret_aligned: status.tenantAdminClientSecretAligned,
     runtime_secret_source: status.runtimeSecretSource,
   });
 

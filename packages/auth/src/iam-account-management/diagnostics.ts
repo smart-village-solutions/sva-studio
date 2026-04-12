@@ -36,6 +36,8 @@ const SCHEMA_OBJECT_MIGRATION_HINTS: Record<string, string> = {
   'iam.instance_hostnames': '0025_iam_instance_registry_provisioning.sql',
   'iam.instances.auth_client_secret_ciphertext': '0027_iam_instance_keycloak_bootstrap.sql',
   'iam.instances.primary_hostname': '0025_iam_instance_registry_provisioning.sql',
+  'iam.instances.tenant_admin_client_id': '0030_iam_tenant_admin_client_contract.sql',
+  'iam.instances.tenant_admin_client_secret_ciphertext': '0030_iam_tenant_admin_client_contract.sql',
   'iam.instances.tenant_admin_email': '0027_iam_instance_keycloak_bootstrap.sql',
   'iam.instances.tenant_admin_first_name': '0027_iam_instance_keycloak_bootstrap.sql',
   'iam.instances.tenant_admin_last_name': '0027_iam_instance_keycloak_bootstrap.sql',

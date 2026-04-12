@@ -8,7 +8,7 @@ import {
 import { loadInstanceById } from '@sva/data/server';
 import { getIamDatabaseUrl } from '../runtime-secrets.server.js';
 import { createPoolResolver, type QueryClient, withInstanceDb } from '../shared/db-helpers.js';
-import { resolveTenantAuthClientSecret } from '../config-tenant-secret.js';
+import { resolveTenantAdminClientSecret } from '../config-tenant-secret.js';
 
 export const resolvePool = createPoolResolver(getIamDatabaseUrl);
 
@@ -22,7 +22,7 @@ let identityProviderCache:
 export type IdentityProviderResolution = {
   provider: IdentityProviderPort;
   realm: string;
-  source: 'global' | 'instance' | 'fallback_global';
+  source: 'global' | 'instance';
   clientId: string;
   adminRealm: string;
   executionMode: 'platform_admin' | 'tenant_admin' | 'break_glass';
@@ -95,18 +95,18 @@ export const resolveIdentityProviderForInstance = async (
   }
 
   try {
-    const tenantSecret = await resolveTenantAuthClientSecret(instanceId, {
-      allowGlobalFallback: false,
-    });
-    if (!tenantSecret.secret) {
+    const tenantSecret = await resolveTenantAdminClientSecret(instanceId);
+    const resolvedSecret = tenantSecret.secret;
+    const resolvedClientId = instance.tenantAdminClient?.clientId;
+    if (!resolvedSecret || !resolvedClientId) {
       return null;
     }
     const config = {
       baseUrl: requireTenantAdminBaseUrl(),
       realm: instance.authRealm,
       adminRealm: instance.authRealm,
-      clientId: instance.authClientId,
-      clientSecret: tenantSecret.secret,
+      clientId: resolvedClientId,
+      clientSecret: resolvedSecret,
     } as const;
     const client = new KeycloakAdminClient(config);
     return {

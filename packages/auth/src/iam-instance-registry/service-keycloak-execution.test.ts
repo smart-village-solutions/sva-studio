@@ -60,8 +60,13 @@ describe('iam-instance-registry keycloak execution handlers', () => {
         authRealm: 'demo',
         authClientId: 'sva-studio',
         authClientSecretConfigured: false,
+        tenantAdminClient: {
+          clientId: 'sva-studio-admin',
+          secretConfigured: true,
+        },
       }),
       getAuthClientSecretCiphertext: vi.fn().mockResolvedValue(null),
+      getTenantAdminClientSecretCiphertext: vi.fn().mockResolvedValue('enc:tenant-admin-secret'),
       createKeycloakProvisioningRun: vi.fn(),
       appendKeycloakProvisioningStep: vi.fn(),
       getKeycloakProvisioningRun: vi.fn(),
@@ -75,6 +80,80 @@ describe('iam-instance-registry keycloak execution handlers', () => {
       'tenant_auth_client_secret_missing'
     );
     expect(repository.createKeycloakProvisioningRun).not.toHaveBeenCalled();
+  });
+
+  it('enqueues an admin-client backfill reconcile when the tenant admin client is missing', async () => {
+    const { createReconcileKeycloakHandler } = await import('./service-keycloak-execution.js');
+    const repository = {
+      getInstanceById: vi.fn().mockResolvedValue({
+        instanceId: 'demo',
+        primaryHostname: 'demo.example.org',
+        realmMode: 'existing',
+        authRealm: 'demo',
+        authClientId: 'sva-studio',
+        authClientSecretConfigured: false,
+      }),
+      getAuthClientSecretCiphertext: vi.fn().mockResolvedValue(null),
+      getTenantAdminClientSecretCiphertext: vi.fn().mockResolvedValue(null),
+      createKeycloakProvisioningRun: vi.fn().mockResolvedValue({ id: 'run-admin-1' }),
+      appendKeycloakProvisioningStep: vi.fn().mockResolvedValue(undefined),
+      getKeycloakProvisioningRun: vi.fn().mockResolvedValue({
+        id: 'run-admin-1',
+        overallStatus: 'planned',
+      }),
+      listKeycloakProvisioningRuns: vi.fn().mockResolvedValue([]),
+    };
+
+    const handler = createReconcileKeycloakHandler({
+      repository: repository as never,
+    } as never);
+
+    await expect(handler({ instanceId: 'demo', actorId: 'admin-1', requestId: 'req-1' })).resolves.toBeNull();
+    expect(repository.createKeycloakProvisioningRun).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: 'demo',
+        intent: 'provision_admin_client',
+      })
+    );
+  });
+
+  it('enqueues an admin-client backfill reconcile when the tenant admin secret is unreadable', async () => {
+    const { createReconcileKeycloakHandler } = await import('./service-keycloak-execution.js');
+    const repository = {
+      getInstanceById: vi.fn().mockResolvedValue({
+        instanceId: 'demo',
+        primaryHostname: 'demo.example.org',
+        realmMode: 'existing',
+        authRealm: 'demo',
+        authClientId: 'sva-studio',
+        authClientSecretConfigured: false,
+        tenantAdminClient: {
+          clientId: 'sva-studio-admin',
+          secretConfigured: true,
+        },
+      }),
+      getAuthClientSecretCiphertext: vi.fn().mockResolvedValue(null),
+      getTenantAdminClientSecretCiphertext: vi.fn().mockResolvedValue(null),
+      createKeycloakProvisioningRun: vi.fn().mockResolvedValue({ id: 'run-admin-2' }),
+      appendKeycloakProvisioningStep: vi.fn().mockResolvedValue(undefined),
+      getKeycloakProvisioningRun: vi.fn().mockResolvedValue({
+        id: 'run-admin-2',
+        overallStatus: 'planned',
+      }),
+      listKeycloakProvisioningRuns: vi.fn().mockResolvedValue([]),
+    };
+
+    const handler = createReconcileKeycloakHandler({
+      repository: repository as never,
+    } as never);
+
+    await expect(handler({ instanceId: 'demo', actorId: 'admin-1', requestId: 'req-1' })).resolves.toBeNull();
+    expect(repository.createKeycloakProvisioningRun).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: 'demo',
+        intent: 'provision_admin_client',
+      })
+    );
   });
 
   it('allows enqueueing a new realm reconcile without a preconfigured tenant secret', async () => {
@@ -119,11 +198,16 @@ describe('iam-instance-registry keycloak execution handlers', () => {
         primaryHostname: 'demo.example.org',
         realmMode: 'existing',
         authRealm: 'demo',
-        authClientId: 'sva-studio',
-        authClientSecretConfigured: true,
-        tenantAdminBootstrap: { username: 'demo-admin' },
-      }),
+      authClientId: 'sva-studio',
+      authClientSecretConfigured: true,
+      tenantAdminClient: {
+        clientId: 'sva-studio-admin',
+        secretConfigured: true,
+      },
+      tenantAdminBootstrap: { username: 'demo-admin' },
+    }),
       getAuthClientSecretCiphertext: vi.fn().mockResolvedValue('enc:secret'),
+      getTenantAdminClientSecretCiphertext: vi.fn().mockResolvedValue('enc:tenant-admin-secret'),
       createKeycloakProvisioningRun: vi.fn().mockResolvedValue({ id: 'run-1' }),
       appendKeycloakProvisioningStep: vi.fn().mockResolvedValue(undefined),
       getKeycloakProvisioningRun: vi.fn().mockResolvedValue({
@@ -213,6 +297,7 @@ describe('iam-instance-registry keycloak execution handlers', () => {
       getKeycloakStatus: vi.fn().mockResolvedValue({
         realmExists: true,
         clientExists: true,
+        tenantAdminClientExists: true,
         instanceIdMapperExists: true,
         tenantAdminExists: true,
         tenantAdminHasSystemAdmin: true,
@@ -224,6 +309,9 @@ describe('iam-instance-registry keycloak execution handlers', () => {
         clientSecretConfigured: true,
         tenantClientSecretReadable: true,
         clientSecretAligned: true,
+        tenantAdminClientSecretConfigured: true,
+        tenantAdminClientSecretReadable: true,
+        tenantAdminClientSecretAligned: true,
         runtimeSecretSource: 'tenant',
       }),
     } as never;
@@ -338,11 +426,16 @@ describe('iam-instance-registry keycloak execution handlers', () => {
         authRealm: 'demo',
         authClientId: 'sva-studio',
         authClientSecretConfigured: true,
+        tenantAdminClient: {
+          clientId: 'sva-studio-admin',
+          secretConfigured: true,
+        },
         tenantAdminBootstrap: { username: 'demo-admin' },
         featureFlags: {},
         status: 'requested',
       }),
       getAuthClientSecretCiphertext: vi.fn().mockResolvedValue('enc:registry-secret'),
+      getTenantAdminClientSecretCiphertext: vi.fn().mockResolvedValue('enc:tenant-admin-secret'),
       appendKeycloakProvisioningStep: vi.fn().mockResolvedValue(undefined),
       updateKeycloakProvisioningRun: vi.fn().mockResolvedValue(undefined),
       getKeycloakProvisioningRun: vi.fn().mockResolvedValue({
@@ -361,6 +454,7 @@ describe('iam-instance-registry keycloak execution handlers', () => {
       getKeycloakStatus: vi.fn().mockResolvedValue({
         realmExists: true,
         clientExists: true,
+        tenantAdminClientExists: true,
         instanceIdMapperExists: true,
         tenantAdminExists: true,
         tenantAdminHasSystemAdmin: true,
@@ -372,6 +466,9 @@ describe('iam-instance-registry keycloak execution handlers', () => {
         clientSecretConfigured: true,
         tenantClientSecretReadable: true,
         clientSecretAligned: true,
+        tenantAdminClientSecretConfigured: true,
+        tenantAdminClientSecretReadable: true,
+        tenantAdminClientSecretAligned: true,
         runtimeSecretSource: 'tenant',
       }),
     } as never;

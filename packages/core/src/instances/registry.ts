@@ -28,6 +28,10 @@ export type InstanceRegistryRecord = {
   readonly authClientId: string;
   readonly authIssuerUrl?: string;
   readonly authClientSecretConfigured: boolean;
+  readonly tenantAdminClient?: {
+    readonly clientId: string;
+    readonly secretConfigured: boolean;
+  };
   readonly tenantAdminBootstrap?: {
     readonly username: string;
     readonly email?: string;
@@ -78,6 +82,7 @@ export type InstanceAuditEvent = {
 
 export type InstanceKeycloakProvisioningIntent =
   | 'provision'
+  | 'provision_admin_client'
   | 'reset_tenant_admin'
   | 'rotate_client_secret';
 

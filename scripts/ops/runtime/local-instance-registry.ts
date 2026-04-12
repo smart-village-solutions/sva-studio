@@ -2,6 +2,7 @@ export type LocalInstanceRegistryReconciliationInput = Readonly<{
   allowedInstanceIds: readonly string[];
   parentDomain: string;
   tenantAuthClientId: string;
+  tenantAdminClientId: string;
   tenantAuthRealmMode: 'instance-id' | 'keep';
 }>;
 
@@ -32,6 +33,7 @@ export const buildLocalInstanceRegistryReconciliationInput = (
     allowedInstanceIds,
     parentDomain,
     tenantAuthClientId: env.SVA_LOCAL_TENANT_AUTH_CLIENT_ID?.trim() || 'sva-studio',
+    tenantAdminClientId: env.SVA_LOCAL_TENANT_ADMIN_CLIENT_ID?.trim() || 'sva-studio-admin',
     tenantAuthRealmMode,
   };
 };
@@ -52,6 +54,7 @@ SET parent_domain = ${sqlLiteral(input.parentDomain)},
     primary_hostname = ${sqlLiteral(primaryHostname)},
     ${authRealmAssignment}
     auth_client_id = COALESCE(NULLIF(auth_client_id, ''), ${sqlLiteral(input.tenantAuthClientId)}),
+    tenant_admin_client_id = COALESCE(NULLIF(tenant_admin_client_id, ''), ${sqlLiteral(input.tenantAdminClientId)}),
     updated_at = NOW()
 WHERE id = ${sqlLiteral(instanceId)};`,
       `UPDATE iam.instance_hostnames

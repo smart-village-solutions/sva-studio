@@ -65,6 +65,7 @@ export const provisionInstanceAuth = async (
       authClientId: instance.authClientId,
       authIssuerUrl: instance.authIssuerUrl,
       authClientSecret: input.authClientSecret,
+      tenantAdminClient: input.tenantAdminClient,
       tenantAdminBootstrap: input.tenantAdminBootstrap,
     });
 

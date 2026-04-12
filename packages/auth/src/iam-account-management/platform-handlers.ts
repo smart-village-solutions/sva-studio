@@ -70,15 +70,48 @@ const resolveRuntimeAuthDisplay = async (
   realm?: string;
   activeRealm?: string;
   scopeKind: 'platform' | 'instance';
+  login?: {
+    realm?: string;
+    clientId?: string;
+    configured: boolean;
+  };
+  tenantAdmin?: {
+    realm?: string;
+    clientId?: string;
+    configured: boolean;
+    secretConfigured: boolean;
+    executionMode: 'tenant_admin';
+    fallbackToLoginClient: boolean;
+  };
+  platformAdmin: {
+    realm?: string;
+    clientId?: string;
+    configured: boolean;
+    executionMode: 'platform_admin';
+  };
+  breakGlass?: {
+    realm?: string;
+    clientId?: string;
+    configured: boolean;
+    executionMode: 'break_glass';
+  };
 }> => {
   const technicalRealm = resolveRuntimeAuthRealm();
+  const platformAdminClientId = process.env.KEYCLOAK_ADMIN_CLIENT_ID?.trim();
   const instanceConfig = getInstanceConfig();
   const host = resolveEffectiveRequestHost(request);
+  const platformAdmin = {
+    realm: technicalRealm,
+    clientId: platformAdminClientId,
+    configured: Boolean(technicalRealm && platformAdminClientId),
+    executionMode: 'platform_admin' as const,
+  };
   if (!instanceConfig || isCanonicalAuthHost(host)) {
     return {
       realm: technicalRealm,
       activeRealm: technicalRealm,
       scopeKind: 'platform',
+      platformAdmin,
     };
   }
 
@@ -88,16 +121,38 @@ const resolveRuntimeAuthDisplay = async (
       realm: technicalRealm,
       activeRealm: technicalRealm,
       scopeKind: 'platform',
+      platformAdmin,
     };
   }
 
   try {
     const instance = await loadInstanceByHostname(host);
     if (instance && isTrafficEnabledInstanceStatus(instance.status)) {
+      const tenantAdminClientId = instance.tenantAdminClient?.clientId;
       return {
         realm: technicalRealm,
         activeRealm: instance.authRealm,
         scopeKind: 'instance',
+        login: {
+          realm: instance.authRealm,
+          clientId: instance.authClientId,
+          configured: Boolean(instance.authRealm && instance.authClientId),
+        },
+        tenantAdmin: {
+          realm: instance.authRealm,
+          clientId: tenantAdminClientId,
+          configured: Boolean(tenantAdminClientId),
+          secretConfigured: instance.tenantAdminClient?.secretConfigured ?? false,
+          executionMode: 'tenant_admin',
+          fallbackToLoginClient: !tenantAdminClientId,
+        },
+        platformAdmin,
+        breakGlass: {
+          realm: instance.authRealm,
+          clientId: platformAdminClientId,
+          configured: Boolean(instance.authRealm && platformAdminClientId),
+          executionMode: 'break_glass',
+        },
       };
     }
   } catch {
@@ -108,6 +163,7 @@ const resolveRuntimeAuthDisplay = async (
     realm: technicalRealm,
     activeRealm: technicalRealm,
     scopeKind: 'platform',
+    platformAdmin,
   };
 };
 

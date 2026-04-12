@@ -740,7 +740,7 @@ describe('iam-instance-registry service', () => {
     expect(invalid).toEqual({ ok: false, reason: 'invalid_transition', currentStatus: 'requested' });
   });
 
-  it('fails keycloak reconcile when the tenant secret is missing and classifies unknown runtime hosts', async () => {
+  it('enqueues admin-client reconcile when the tenant admin contract is missing and classifies unknown runtime hosts', async () => {
     const repository = createRepository();
     const service = createInstanceRegistryService({
       repository,
@@ -780,7 +780,16 @@ describe('iam-instance-registry service', () => {
         actorId: 'actor-2',
         requestId: 'req-2',
       })
-    ).rejects.toThrow('tenant_auth_client_secret_missing');
+    ).resolves.toBeNull();
+
+    const run = await repository.claimNextKeycloakProvisioningRun();
+    expect(run).toEqual(
+      expect.objectContaining({
+        instanceId: 'demo',
+        intent: 'provision_admin_client',
+        overallStatus: 'running',
+      })
+    );
 
     await expect(service.getKeycloakStatus('missing')).resolves.toBeNull();
     await expect(service.resolveRuntimeInstance('missing.studio.example.org')).resolves.toEqual({

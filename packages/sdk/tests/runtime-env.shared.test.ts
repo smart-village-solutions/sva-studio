@@ -144,6 +144,18 @@ describe('runtime-env.shared', () => {
     ).toEqual({ mode: 'local-operator' });
   });
 
+  it('rejects explicit local operator context outside the studio profile', () => {
+    expect(() =>
+      assertDeterministicRemoteMutationContext(
+        {
+          SVA_REMOTE_OPERATOR_CONTEXT: 'local-operator',
+        },
+        'acceptance-hb',
+        'deploy',
+      ),
+    ).toThrow(/nicht fuer den lokalen Operator-Pfad freigegeben/);
+  });
+
   it('detects documented truthy flag values for local emergency overrides', () => {
     expect(isTruthyFlag('true')).toBe(true);
     expect(isTruthyFlag('On')).toBe(true);

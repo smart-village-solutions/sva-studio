@@ -456,6 +456,10 @@ describe('iam-legal-texts handlers', () => {
       if (resolveActorAccountQuery(text)) {
         return { rowCount: 1, rows: [{ account_id: 'account-1' }] };
       }
+      if (text.includes('FROM iam.legal_text_acceptances')) {
+        expect(values).toEqual(['de-musterhausen', legalTextRow.id]);
+        return { rowCount: 1, rows: [{ acceptance_count: 0 }] };
+      }
       if (text.includes('DELETE FROM iam.legal_text_versions')) {
         expect(values).toEqual(['de-musterhausen', legalTextRow.id]);
         return { rowCount: 1, rows: [{ id: legalTextRow.id }] };
@@ -480,6 +484,60 @@ describe('iam-legal-texts handlers', () => {
     });
     expect(state.queryLog.some((entry) => entry.text.includes('DELETE FROM iam.legal_text_versions'))).toBe(true);
     expect(state.queryLog.some((entry) => entry.text.includes('INSERT INTO iam.activity_log'))).toBe(true);
+  });
+
+  it('rejects deleting legal text versions with invalid ids before touching the delete query', async () => {
+    state.queryHandler = (text) => {
+      if (resolveActorAccountQuery(text)) {
+        return { rowCount: 1, rows: [{ account_id: 'account-1' }] };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await deleteLegalTextHandler(
+      new Request('http://localhost:3000/api/v1/iam/legal-texts/not-a-uuid', {
+        method: 'DELETE',
+        headers: jsonHeaders,
+      })
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        code: 'invalid_request',
+        message: 'Rechtstext-ID ist ungültig.',
+      },
+    });
+    expect(state.queryLog.some((entry) => entry.text.includes('DELETE FROM iam.legal_text_versions'))).toBe(false);
+  });
+
+  it('returns conflict when deleting a legal text version with recorded acceptances', async () => {
+    state.queryHandler = (text, values) => {
+      if (resolveActorAccountQuery(text)) {
+        return { rowCount: 1, rows: [{ account_id: 'account-1' }] };
+      }
+      if (text.includes('FROM iam.legal_text_acceptances')) {
+        expect(values).toEqual(['de-musterhausen', legalTextRow.id]);
+        return { rowCount: 1, rows: [{ acceptance_count: 2 }] };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const response = await deleteLegalTextHandler(
+      new Request(`http://localhost:3000/api/v1/iam/legal-texts/${legalTextRow.id}`, {
+        method: 'DELETE',
+        headers: jsonHeaders,
+      })
+    );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        code: 'conflict',
+        message: 'Rechtstext-Version kann nicht gelöscht werden, weil bereits Zustimmungen vorliegen.',
+      },
+    });
+    expect(state.queryLog.some((entry) => entry.text.includes('DELETE FROM iam.legal_text_versions'))).toBe(false);
   });
 
   it('replays an idempotent create request without inserting another record', async () => {

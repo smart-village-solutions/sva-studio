@@ -46,7 +46,10 @@ const createRouteMock = vi.hoisted(() =>
         groupId: 'group-1',
         legalTextVersionId: 'legal-text-1',
       }),
-      useSearch: () => ({ tab: 'governance' }),
+      useSearch: () =>
+        typeof options.validateSearch === 'function'
+          ? (options.validateSearch as (search: Record<string, unknown>) => unknown)({ tab: 'bogus' })
+          : { tab: 'governance' },
     };
     return route;
   })
@@ -325,7 +328,7 @@ describe('core routes', () => {
 
     cleanup();
     render(roleDetailRoute.component?.());
-    expect(screen.getByText('RoleDetailPage:role-1:governance')).toBeTruthy();
+    expect(screen.getByText('RoleDetailPage:role-1:overview')).toBeTruthy();
   });
 
   it('renders the new placeholder routes and explicit page components', async () => {
@@ -410,7 +413,7 @@ describe('core routes', () => {
     expect(await screen.findByText('RolesPage')).toBeTruthy();
 
     renderPath('/admin/roles/$roleId');
-    expect(screen.getByText('RoleDetailPage:role-1:governance')).toBeTruthy();
+    expect(screen.getByText('RoleDetailPage:role-1:overview')).toBeTruthy();
 
     renderPath('/admin/instances/new');
     expect(screen.getByText('InstanceCreatePage')).toBeTruthy();

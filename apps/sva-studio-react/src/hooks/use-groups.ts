@@ -67,14 +67,14 @@ const normalizeGroupDetail = (detail: IamAdminGroupDetail): IamAdminGroupDetail 
     Array.isArray(detailRecord.memberships)
       ? detailRecord.memberships
       : (detailRecord.members ?? []).map((member) => ({
-          instanceId: '',
+          instanceId: detail.instanceId,
           accountId: member.accountId,
           groupId: member.groupId,
-          keycloakSubject: member.displayName ?? member.accountId,
+          keycloakSubject: member.accountId,
           displayName: member.displayName,
           validFrom: member.validFrom,
           validUntil: member.validTo,
-          assignedAt: '',
+          assignedAt: member.validFrom ?? detail.updatedAt,
         }));
 
   return {

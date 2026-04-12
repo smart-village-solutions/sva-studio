@@ -85,7 +85,10 @@ export const listDeployReports = (reportDir: string): AcceptanceDeployReport[] =
     .map((fileName) => safeReadJson<AcceptanceDeployReport>(resolve(reportDir, fileName)))
     .filter(
       (report): report is AcceptanceDeployReport =>
-        report !== null && typeof report.reportId === 'string' && Array.isArray(report.steps)
+        report !== null &&
+        typeof report.reportId === 'string' &&
+        typeof report.generatedAt === 'string' &&
+        Array.isArray(report.steps)
     )
     .sort((left, right) => left.generatedAt.localeCompare(right.generatedAt));
 };

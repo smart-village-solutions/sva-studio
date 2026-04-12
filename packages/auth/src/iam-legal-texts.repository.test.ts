@@ -17,7 +17,12 @@ vi.mock('./iam-account-management/shared.js', () => ({
   withInstanceScopedDb: (...args: Parameters<typeof state.withInstanceScopedDb>) => state.withInstanceScopedDb(...args),
 }));
 
-import { loadPendingLegalTexts, updateLegalTextVersion } from './iam-legal-texts/repository.js';
+import {
+  deleteLegalTextVersion,
+  LegalTextDeleteConflictError,
+  loadPendingLegalTexts,
+  updateLegalTextVersion,
+} from './iam-legal-texts/repository.js';
 
 const legalTextRow = {
   id: '11111111-1111-1111-1111-111111111111',
@@ -103,5 +108,24 @@ describe('iam-legal-texts repository', () => {
         payload: expect.objectContaining({ legal_text_version_id: legalTextRow.id }),
       })
     );
+  });
+
+  it('rejects deleting legal text versions that already have acceptances', async () => {
+    state.client.query.mockResolvedValueOnce({
+      rowCount: 1,
+      rows: [{ acceptance_count: 2 }],
+    });
+
+    await expect(
+      deleteLegalTextVersion({
+        instanceId: 'de-musterhausen',
+        actorAccountId: 'account-1',
+        legalTextVersionId: legalTextRow.id,
+      })
+    ).rejects.toBeInstanceOf(LegalTextDeleteConflictError);
+
+    expect(state.client.query).toHaveBeenCalledTimes(1);
+    expect(state.client.query.mock.calls[0]?.[0]).toContain('FROM iam.legal_text_acceptances');
+    expect(state.emitActivityLog).not.toHaveBeenCalled();
   });
 });

@@ -100,6 +100,19 @@ describe('deploy-feedback-loop', () => {
     expect(reports[0]?.reportId).toBe('acceptance-deploy-2026-03-21T12-00-00-000Z');
   });
 
+  it('ignores malformed reports without a generated timestamp before sorting', () => {
+    const dir = mkdtempSync(resolve(tmpdir(), 'deploy-feedback-'));
+    tempDirs.push(dir);
+
+    writeFileSync(resolve(dir, 'report-invalid.json'), `${JSON.stringify({ reportId: 'broken', steps: [] })}\n`, 'utf8');
+    writeFileSync(resolve(dir, 'report-valid.json'), `${JSON.stringify(createReport())}\n`, 'utf8');
+
+    const reports = listDeployReports(dir);
+
+    expect(reports).toHaveLength(1);
+    expect(reports[0]?.reportId).toBe('acceptance-deploy-2026-03-21T12-00-00-000Z');
+  });
+
   it('summarizes failure categories, failed phases and success rate', () => {
     const success = createReport();
     const failed = createReport({

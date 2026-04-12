@@ -25,6 +25,13 @@ type DeleteLegalTextInput = {
   legalTextVersionId: string;
 };
 
+export class LegalTextDeleteConflictError extends Error {
+  constructor() {
+    super('legal_text_acceptances_exist');
+    this.name = 'LegalTextDeleteConflictError';
+  }
+}
+
 const loadLegalTextByIdWithClient = async (
   client: InstanceScopedClient,
   instanceId: string,
@@ -226,6 +233,20 @@ RETURNING id;
 
 export const deleteLegalTextVersion = async (input: DeleteLegalTextInput): Promise<string | undefined> =>
   withInstanceScopedDb(input.instanceId, async (client) => {
+    const acceptances = await client.query<{ acceptance_count: number }>(
+      `
+SELECT COUNT(*)::int AS acceptance_count
+FROM iam.legal_text_acceptances
+WHERE instance_id = $1
+  AND legal_text_version_id = $2::uuid;
+`,
+      [input.instanceId, input.legalTextVersionId]
+    );
+
+    if ((acceptances.rows[0]?.acceptance_count ?? 0) > 0) {
+      throw new LegalTextDeleteConflictError();
+    }
+
     const deleted = await client.query<{ id: string }>(
       `
 DELETE FROM iam.legal_text_versions

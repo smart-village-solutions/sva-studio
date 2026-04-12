@@ -2,7 +2,13 @@ const http = require("node:http");
 
 const port = Number.parseInt(process.env.PORT || "38080", 10);
 const realm = process.env.KEYCLOAK_REALM || "sva-studio";
-const normalizeBaseUrl = (value) => value.replace(/\/+$/, "");
+const normalizeBaseUrl = (value) => {
+  let normalized = value;
+  while (normalized.endsWith("/")) {
+    normalized = normalized.slice(0, -1);
+  }
+  return normalized;
+};
 
 const json = (res, status, body) => {
   res.writeHead(status, { "content-type": "application/json" });

@@ -1,3 +1,4 @@
+import type { IamInstanceListItem } from '@sva/core';
 import { Link } from '@tanstack/react-router';
 import React from 'react';
 
@@ -14,10 +15,27 @@ import { useInstances } from '../../../hooks/use-instances';
 import { t } from '../../../i18n';
 import { getErrorMessage, INSTANCE_STATUS_LABELS } from './-instances-shared';
 
+type InstanceRow = IamInstanceListItem;
+
+const PrimaryHostnameCell = ({ instance }: { instance: InstanceRow }) => (
+  <a
+    href={`https://${instance.primaryHostname}`}
+    target="_blank"
+    rel="noopener noreferrer"
+    className="text-primary underline-offset-4 hover:underline"
+  >
+    {instance.primaryHostname}
+  </a>
+);
+
+const InstanceStatusCell = ({ instance }: { instance: InstanceRow }) => (
+  <Badge variant="outline">{t(INSTANCE_STATUS_LABELS[instance.status])}</Badge>
+);
+
 export const InstancesPage = () => {
   const instancesApi = useInstances();
 
-  const instanceColumns = React.useMemo<readonly StudioColumnDef<(typeof instancesApi.instances)[number]>[]>(
+  const instanceColumns = React.useMemo<readonly StudioColumnDef<InstanceRow>[]>(
     () => [
       {
         id: 'displayName',
@@ -34,16 +52,7 @@ export const InstancesPage = () => {
       {
         id: 'primaryHostname',
         header: t('admin.instances.table.headerHost'),
-        cell: (instance) => (
-          <a
-            href={`https://${instance.primaryHostname}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-primary underline-offset-4 hover:underline"
-          >
-            {instance.primaryHostname}
-          </a>
-        ),
+        cell: (instance) => <PrimaryHostnameCell instance={instance} />,
         sortable: true,
         sortValue: (instance) => instance.primaryHostname.toLowerCase(),
       },
@@ -57,7 +66,7 @@ export const InstancesPage = () => {
       {
         id: 'status',
         header: t('admin.instances.table.headerStatus'),
-        cell: (instance) => <Badge variant="outline">{t(INSTANCE_STATUS_LABELS[instance.status])}</Badge>,
+        cell: (instance) => <InstanceStatusCell instance={instance} />,
         sortable: true,
         sortValue: (instance) => instance.status,
       },

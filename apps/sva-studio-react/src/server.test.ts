@@ -129,4 +129,78 @@ describe('server transport', () => {
     );
     await expect(response.json()).resolves.toEqual({ ok: false });
   });
+
+  it('delegates directly in production without request diagnostics', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('SVA_SERVER_ENTRY_DEBUG', 'true');
+
+    const startFetch = vi.fn().mockResolvedValue(new Response('prod', { status: 204 }));
+    const logger = { info: vi.fn() };
+    dispatchAuthRouteRequestMock.mockResolvedValue(null);
+    createStartHandlerMock.mockReturnValue(startFetch);
+    createSdkLoggerMock.mockReturnValue(logger);
+
+    const mod = await import('./server');
+    const response = await mod.default.fetch(new Request('http://localhost:3000/admin/users'));
+
+    expect(startFetch).toHaveBeenCalledTimes(1);
+    expect(withRequestContextMock).not.toHaveBeenCalled();
+    expect(createServerFunctionRequestDiagnosticsMock).not.toHaveBeenCalled();
+    expect(logger.info).toHaveBeenNthCalledWith(
+      1,
+      'Server entry request received',
+      expect.objectContaining({ path: '/admin/users' })
+    );
+    expect(logger.info).toHaveBeenNthCalledWith(
+      2,
+      'Server entry delegated to start handler',
+      expect.objectContaining({ diagnostics_enabled: false })
+    );
+    expect(logger.info).toHaveBeenNthCalledWith(
+      3,
+      'Server entry response completed',
+      expect.objectContaining({ diagnostics_enabled: false, status: 204 })
+    );
+    await expect(response.text()).resolves.toBe('prod');
+  });
+
+  it('logs debug completion for non-server-function requests in development', async () => {
+    vi.stubEnv('NODE_ENV', 'development');
+    vi.stubEnv('SVA_SERVER_ENTRY_DEBUG', 'true');
+
+    const startFetch = vi.fn().mockResolvedValue(new Response('plain', { status: 202 }));
+    const logger = { info: vi.fn() };
+    dispatchAuthRouteRequestMock.mockResolvedValue(null);
+    createStartHandlerMock.mockReturnValue(startFetch);
+    withRequestContextMock.mockImplementation(async (_input, callback) => callback());
+    getWorkspaceContextMock.mockReturnValue({ requestId: null });
+    createSdkLoggerMock.mockReturnValue(logger);
+    createServerFunctionRequestDiagnosticsMock.mockReturnValue({
+      isServerFnRequest: false,
+      requestId: 'unknown',
+    });
+
+    const mod = await import('./server');
+    const response = await mod.default.fetch(new Request('http://localhost:3000/admin/groups'));
+
+    expect(createServerFunctionRequestDiagnosticsMock).toHaveBeenCalledWith(
+      expect.objectContaining({ requestId: 'unknown' })
+    );
+    expect(logger.info).toHaveBeenNthCalledWith(
+      1,
+      'Server entry request received',
+      expect.objectContaining({ path: '/admin/groups' })
+    );
+    expect(logger.info).toHaveBeenNthCalledWith(
+      2,
+      'Server entry delegated to start handler',
+      expect.objectContaining({ diagnostics_enabled: true, server_fn_request: false })
+    );
+    expect(logger.info).toHaveBeenNthCalledWith(
+      3,
+      'Server entry response completed',
+      expect.objectContaining({ diagnostics_enabled: true, server_fn_request: false, status: 202 })
+    );
+    await expect(response.text()).resolves.toBe('plain');
+  });
 });

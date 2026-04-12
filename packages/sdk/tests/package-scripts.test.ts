@@ -35,6 +35,7 @@ describe('workspace package scripts', () => {
     const testPrScript = packageJson.scripts?.['test:pr'];
 
     expect(testPrScript).toContain('pnpm patch-coverage-gate --base=origin/main');
+    expect(testPrScript).toContain('pnpm sonar-new-code-gate --base=origin/main');
   });
 
   it('keeps the dedicated PR coverage command aligned with the patch gate', () => {
@@ -42,6 +43,7 @@ describe('workspace package scripts', () => {
     const testCoveragePrScript = packageJson.scripts?.['test:coverage:pr'];
 
     expect(testCoveragePrScript).toContain('pnpm patch-coverage-gate --base=origin/main');
+    expect(testCoveragePrScript).toContain('pnpm sonar-new-code-gate --base=origin/main');
   });
 
   it('requires 85 percent global coverage across all tracked metrics', () => {

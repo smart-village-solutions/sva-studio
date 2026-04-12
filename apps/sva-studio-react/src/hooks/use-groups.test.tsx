@@ -146,6 +146,60 @@ describe('useGroups', () => {
     expect(listGroupsMock).toHaveBeenCalledTimes(8);
   });
 
+  it('normalizes legacy group detail payloads with roles and members', async () => {
+    asIamErrorMock.mockImplementation((cause: unknown) => cause);
+    listGroupsMock.mockResolvedValueOnce({
+      data: [],
+      pagination: {
+        page: 1,
+        pageSize: 1,
+        total: 0,
+      },
+    });
+    getGroupMock.mockResolvedValueOnce({
+      data: {
+        id: 'group-1',
+        groupKey: 'admins',
+        displayName: 'Admins',
+        description: 'Administrative Gruppe',
+        groupType: 'role_bundle',
+        isActive: true,
+        memberCount: 1,
+        roleCount: 1,
+        roles: [{ roleId: 'role-legacy' }],
+        members: [
+          {
+            accountId: 'account-1',
+            groupId: 'group-1',
+            displayName: 'Ada Admin',
+            validFrom: '2026-04-01T00:00:00.000Z',
+            validTo: '2026-05-01T00:00:00.000Z',
+          },
+        ],
+      },
+    });
+
+    const { result } = renderHook(() => useGroups());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    await act(async () => {
+      await expect(result.current.loadGroupDetail('group-1')).resolves.toMatchObject({
+        assignedRoleIds: ['role-legacy'],
+        memberships: [
+          expect.objectContaining({
+            accountId: 'account-1',
+            keycloakSubject: 'Ada Admin',
+            validFrom: '2026-04-01T00:00:00.000Z',
+            validUntil: '2026-05-01T00:00:00.000Z',
+          }),
+        ],
+      });
+    });
+  });
+
   it('invalidates permissions when initial fetch returns 403', async () => {
     const forbiddenError = { status: 403, code: 'forbidden', message: 'Forbidden' };
     asIamErrorMock.mockReturnValue(forbiddenError);

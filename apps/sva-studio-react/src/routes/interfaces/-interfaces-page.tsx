@@ -159,6 +159,7 @@ export const InterfacesPage = () => {
   const [instanceId, setInstanceId] = React.useState<string>('');
   const [formValues, setFormValues] = React.useState<FormValues>(emptyFormValues);
   const didInitialRefreshRef = React.useRef(false);
+  const unauthorizedRetryRef = React.useRef(false);
 
   const refresh = React.useCallback(async () => {
     setIsLoading(true);
@@ -166,6 +167,24 @@ export const InterfacesPage = () => {
     setStatusMessage(null);
     try {
       const overview = await loadOverviewRef.current();
+
+      if (
+        overview.status.status === 'error' &&
+        overview.status.errorCode === 'unauthorized' &&
+        !unauthorizedRetryRef.current
+      ) {
+        unauthorizedRetryRef.current = true;
+        await new Promise((resolve) => {
+          globalThis.setTimeout(resolve, 300);
+        });
+        const recoveredOverview = await loadOverviewRef.current();
+        setInstanceId(recoveredOverview.instanceId);
+        setLastStatus(recoveredOverview.status);
+        setFormValues(toFormValues(recoveredOverview.config));
+        return;
+      }
+
+      unauthorizedRetryRef.current = false;
       setInstanceId(overview.instanceId);
       setLastStatus(overview.status);
       setFormValues(toFormValues(overview.config));
@@ -183,6 +202,12 @@ export const InterfacesPage = () => {
     didInitialRefreshRef.current = true;
     refresh().catch(() => undefined);
   }, [refresh]);
+
+  React.useEffect(() => {
+    if (lastStatus?.status === 'error' && lastStatus.errorCode === 'unauthorized') {
+      void refresh();
+    }
+  }, [lastStatus, refresh]);
 
   const handleSave = async () => {
     setIsSaving(true);

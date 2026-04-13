@@ -8,6 +8,7 @@ import { fileURLToPath, URL } from 'node:url';
 import tsconfigPaths from 'vite-tsconfig-paths';
 
 const normalizeDirectory = (url: URL) => fileURLToPath(url).replace(/[\\/]$/, '');
+const resolveAppPath = (relativePath: string) => fileURLToPath(new URL(relativePath, import.meta.url));
 
 const appRoot = normalizeDirectory(new URL('./', import.meta.url));
 const workspaceRoot = normalizeDirectory(new URL('../../', import.meta.url));
@@ -73,34 +74,40 @@ const config = defineConfig({
   },
   resolve: {
     alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url)),
+      '@': resolveAppPath('./src'),
       // React 19 + Vite resolves react-dom/server -> server.browser (no default export).
       // TanStack router imports a default export here, so provide a compat shim.
-      'react-dom/server': fileURLToPath(new URL('./src/lib/react-dom-server-compat.ts', import.meta.url)),
+      'react-dom/server': resolveAppPath('./src/lib/react-dom-server-compat.ts'),
+      // Force the ESM builds here. The CommonJS variants pull tslib through a broken SSR interop path.
+      'react-remove-scroll': resolveAppPath('../../node_modules/.pnpm/node_modules/react-remove-scroll/dist/es2015'),
+      'react-remove-scroll-bar': resolveAppPath('../../node_modules/.pnpm/node_modules/react-remove-scroll-bar/dist/es2015'),
+      'react-style-singleton': resolveAppPath('../../node_modules/.pnpm/node_modules/react-style-singleton/dist/es2015'),
+      tslib: resolveAppPath('../../node_modules/.pnpm/node_modules/tslib/tslib.es6.mjs'),
+      'use-callback-ref': resolveAppPath('../../node_modules/.pnpm/node_modules/use-callback-ref/dist/es2015'),
       // Workspace package subpath exports direkt auf Source files mappen (für Dev-SSR)
-      '@sva/routing/server': fileURLToPath(new URL('../../packages/routing/src/index.server.ts', import.meta.url)),
-      '@sva/routing/auth': fileURLToPath(new URL('../../packages/routing/src/auth.routes.ts', import.meta.url)),
-      '@sva/routing': fileURLToPath(new URL('../../packages/routing/src/index.ts', import.meta.url)),
-      '@sva/auth/runtime-routes': fileURLToPath(new URL('../../packages/auth/src/runtime-routes.server.ts', import.meta.url)),
-      '@sva/auth/runtime-health': fileURLToPath(new URL('../../packages/auth/src/runtime-health.server.ts', import.meta.url)),
-      '@sva/auth/server': fileURLToPath(new URL('../../packages/auth/src/index.server.ts', import.meta.url)),
-      '@sva/auth': fileURLToPath(new URL('../../packages/auth/src/index.ts', import.meta.url)),
-      '@sva/data/server': fileURLToPath(new URL('../../packages/data/src/server.ts', import.meta.url)),
-      '@sva/data': fileURLToPath(new URL('../../packages/data/src/index.ts', import.meta.url)),
-      '@sva/sva-mainserver/server': fileURLToPath(new URL('../../packages/sva-mainserver/src/index.server.ts', import.meta.url)),
-      '@sva/sva-mainserver': fileURLToPath(new URL('../../packages/sva-mainserver/src/index.ts', import.meta.url)),
-      '@sva/sdk/logging': fileURLToPath(new URL('../../packages/sdk/src/logging.ts', import.meta.url)),
-      '@sva/sdk/server': fileURLToPath(new URL('../../packages/sdk/src/server.ts', import.meta.url)),
-      '@sva/sdk/logger/index.server': fileURLToPath(new URL('../../packages/sdk/src/logger/index.server.ts', import.meta.url)),
-      '@sva/sdk/middleware/request-context.server': fileURLToPath(new URL('../../packages/sdk/src/middleware/request-context.server.ts', import.meta.url)),
-      '@sva/sdk/observability/context.server': fileURLToPath(new URL('../../packages/sdk/src/observability/context.server.ts', import.meta.url)),
-      '@sva/monitoring-client/server': fileURLToPath(new URL('../../packages/monitoring-client/src/server.ts', import.meta.url)),
-      '@sva/monitoring-client/logger-provider.server': fileURLToPath(
-        new URL('../../packages/monitoring-client/src/logger-provider.server.ts', import.meta.url)
+      '@sva/routing/server': resolveAppPath('../../packages/routing/src/index.server.ts'),
+      '@sva/routing/auth': resolveAppPath('../../packages/routing/src/auth.routes.ts'),
+      '@sva/routing': resolveAppPath('../../packages/routing/src/index.ts'),
+      '@sva/auth/runtime-routes': resolveAppPath('../../packages/auth/src/runtime-routes.server.ts'),
+      '@sva/auth/runtime-health': resolveAppPath('../../packages/auth/src/runtime-health.server.ts'),
+      '@sva/auth/server': resolveAppPath('../../packages/auth/src/index.server.ts'),
+      '@sva/auth': resolveAppPath('../../packages/auth/src/index.ts'),
+      '@sva/data/server': resolveAppPath('../../packages/data/src/server.ts'),
+      '@sva/data': resolveAppPath('../../packages/data/src/index.ts'),
+      '@sva/sva-mainserver/server': resolveAppPath('../../packages/sva-mainserver/src/index.server.ts'),
+      '@sva/sva-mainserver': resolveAppPath('../../packages/sva-mainserver/src/index.ts'),
+      '@sva/sdk/logging': resolveAppPath('../../packages/sdk/src/logging.ts'),
+      '@sva/sdk/server': resolveAppPath('../../packages/sdk/src/server.ts'),
+      '@sva/sdk/logger/index.server': resolveAppPath('../../packages/sdk/src/logger/index.server.ts'),
+      '@sva/sdk/middleware/request-context.server': resolveAppPath('../../packages/sdk/src/middleware/request-context.server.ts'),
+      '@sva/sdk/observability/context.server': resolveAppPath('../../packages/sdk/src/observability/context.server.ts'),
+      '@sva/monitoring-client/server': resolveAppPath('../../packages/monitoring-client/src/server.ts'),
+      '@sva/monitoring-client/logger-provider.server': resolveAppPath(
+        '../../packages/monitoring-client/src/logger-provider.server.ts'
       ),
-      '@sva/monitoring-client': fileURLToPath(new URL('../../packages/monitoring-client/src/index.ts', import.meta.url)),
-      '@sva/core/security': fileURLToPath(new URL('../../packages/core/src/security/index.ts', import.meta.url)),
-      '@sva/core': fileURLToPath(new URL('../../packages/core/src/index.ts', import.meta.url)),
+      '@sva/monitoring-client': resolveAppPath('../../packages/monitoring-client/src/index.ts'),
+      '@sva/core/security': resolveAppPath('../../packages/core/src/security/index.ts'),
+      '@sva/core': resolveAppPath('../../packages/core/src/index.ts'),
     },
   },
   ssr: {

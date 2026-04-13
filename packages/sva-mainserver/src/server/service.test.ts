@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+const state = vi.hoisted(() => ({
+  readSvaMainserverCredentialsWithStatus: vi.fn(),
+}));
+
 vi.mock('@opentelemetry/api', () => ({
   SpanStatusCode: {
     OK: 1,
@@ -23,6 +27,10 @@ vi.mock('@opentelemetry/api', () => ({
         }),
     }),
   },
+}));
+
+vi.mock('@sva/auth/server', () => ({
+  readSvaMainserverCredentialsWithStatus: state.readSvaMainserverCredentialsWithStatus,
 }));
 
 import { createSvaMainserverService, resetSvaMainserverServiceState } from './service';
@@ -58,6 +66,7 @@ const createDeferred = <TValue>() => {
 
 describe('createSvaMainserverService', () => {
   afterEach(() => {
+    state.readSvaMainserverCredentialsWithStatus.mockReset();
     resetSvaMainserverServiceState();
   });
 
@@ -183,6 +192,53 @@ describe('createSvaMainserverService', () => {
       status: 'error',
       errorCode: 'identity_provider_unavailable',
     });
+  });
+
+  it('passes the tenant instance id into credential loading', async () => {
+    const readCredentials = vi.fn().mockResolvedValue({
+      apiKey: 'key-1',
+      apiSecret: 'secret-1',
+    });
+
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readCredentials,
+      fetchImpl: vi
+        .fn()
+        .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+        .mockResolvedValueOnce(createJsonResponse(200, { data: { __typename: 'Query' } }))
+        .mockResolvedValueOnce(createJsonResponse(200, { data: { __typename: 'Mutation' } })),
+    });
+
+    await service.getConnectionStatus({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' });
+
+    expect(readCredentials).toHaveBeenCalledWith({
+      instanceId: 'de-musterhausen',
+      keycloakSubject: 'subject-1',
+    });
+  });
+
+  it('uses the default credential reader with keycloak subject and instance id', async () => {
+    state.readSvaMainserverCredentialsWithStatus.mockResolvedValue({
+      status: 'ok',
+      credentials: {
+        apiKey: 'key-1',
+        apiSecret: 'secret-1',
+      },
+    });
+
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      fetchImpl: vi
+        .fn()
+        .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+        .mockResolvedValueOnce(createJsonResponse(200, { data: { __typename: 'Query' } }))
+        .mockResolvedValueOnce(createJsonResponse(200, { data: { __typename: 'Mutation' } })),
+    });
+
+    await service.getConnectionStatus({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' });
+
+    expect(state.readSvaMainserverCredentialsWithStatus).toHaveBeenCalledWith('subject-1', 'de-musterhausen');
   });
 
   it('preserves typed identity provider errors from credential loading', async () => {

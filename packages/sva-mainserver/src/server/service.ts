@@ -50,7 +50,10 @@ type UpstreamRequestInput = {
 
 export type SvaMainserverServiceOptions = {
   readonly loadInstanceConfig?: (instanceId: string) => Promise<SvaMainserverInstanceConfig>;
-  readonly readCredentials?: (keycloakSubject: string) => Promise<CredentialValue | null>;
+  readonly readCredentials?: (input: {
+    readonly instanceId: string;
+    readonly keycloakSubject: string;
+  }) => Promise<CredentialValue | null>;
   readonly fetchImpl?: typeof fetch;
   readonly now?: () => number;
   readonly credentialCacheTtlMs?: number;
@@ -350,8 +353,8 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
   const loadInstanceConfig = options.loadInstanceConfig ?? loadSvaMainserverInstanceConfig;
   const readCredentials =
     options.readCredentials ??
-    (async (keycloakSubject: string) => {
-      const result = await readSvaMainserverCredentialsWithStatus(keycloakSubject);
+    (async (input: { instanceId: string; keycloakSubject: string }) => {
+      const result = await readSvaMainserverCredentialsWithStatus(input.keycloakSubject, input.instanceId);
       if (result.status === 'ok') {
         return result.credentials;
       }
@@ -476,7 +479,10 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
       async () => {
         let credentials: CredentialValue | null;
         try {
-          credentials = await readCredentials(input.keycloakSubject);
+          credentials = await readCredentials({
+            instanceId: input.instanceId,
+            keycloakSubject: input.keycloakSubject,
+          });
         } catch (error) {
           const normalizedError =
             error instanceof SvaMainserverError

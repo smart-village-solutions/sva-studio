@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { InterfacesPage } from './-interfaces-page';
@@ -41,6 +41,7 @@ describe('InterfacesPage', () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     cleanup();
   });
 
@@ -131,6 +132,117 @@ describe('InterfacesPage', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Kaputt')).toBeTruthy();
+    });
+  });
+
+  it('retries once after an unauthorized overview result', async () => {
+    state.loadOverview
+      .mockResolvedValueOnce({
+        instanceId: '',
+        config: null,
+        status: {
+          status: 'error',
+          checkedAt: '2026-03-15T20:00:00.000Z',
+          errorCode: 'unauthorized',
+        },
+      })
+      .mockResolvedValueOnce({
+        instanceId: 'hb-meinquartier',
+        config: {
+          instanceId: 'hb-meinquartier',
+          providerKey: 'sva_mainserver',
+          graphqlBaseUrl: 'https://hb-meinquartier.server.smart-village.app/graphql',
+          oauthTokenUrl: 'https://hb-meinquartier.server.smart-village.app/oauth/token',
+          enabled: true,
+        },
+        status: {
+          status: 'connected',
+          checkedAt: '2026-03-15T20:05:00.000Z',
+        },
+      });
+
+    render(<InterfacesPage />);
+
+    await waitFor(() => {
+      expect(state.loadOverview).toHaveBeenCalledTimes(1);
+    });
+
+    await act(async () => {
+      await new Promise((resolve) => {
+        globalThis.setTimeout(resolve, 350);
+      });
+    });
+
+    await waitFor(() => {
+      expect(state.loadOverview).toHaveBeenCalledTimes(2);
+      expect(screen.getByText('Verbunden')).toBeTruthy();
+    });
+  });
+
+  it('reloads after a persisted unauthorized status update', async () => {
+    state.loadOverview
+      .mockResolvedValueOnce({
+        instanceId: 'de-musterhausen',
+        config: {
+          instanceId: 'de-musterhausen',
+          providerKey: 'sva_mainserver',
+          graphqlBaseUrl: 'https://mainserver.example/graphql',
+          oauthTokenUrl: 'https://mainserver.example/oauth/token',
+          enabled: true,
+        },
+        status: {
+          status: 'connected',
+          checkedAt: '2026-03-15T20:00:00.000Z',
+        },
+      })
+      .mockResolvedValueOnce({
+        instanceId: 'de-musterhausen',
+        config: {
+          instanceId: 'de-musterhausen',
+          providerKey: 'sva_mainserver',
+          graphqlBaseUrl: 'https://mainserver.example/graphql',
+          oauthTokenUrl: 'https://mainserver.example/oauth/token',
+          enabled: true,
+        },
+        status: {
+          status: 'error',
+          checkedAt: '2026-03-15T20:05:00.000Z',
+          errorCode: 'unauthorized',
+        },
+      })
+      .mockResolvedValueOnce({
+        instanceId: 'de-musterhausen',
+        config: {
+          instanceId: 'de-musterhausen',
+          providerKey: 'sva_mainserver',
+          graphqlBaseUrl: 'https://mainserver.example/graphql',
+          oauthTokenUrl: 'https://mainserver.example/oauth/token',
+          enabled: true,
+        },
+        status: {
+          status: 'connected',
+          checkedAt: '2026-03-15T20:06:00.000Z',
+        },
+      });
+    state.saveSettings.mockResolvedValue({
+      instanceId: 'de-musterhausen',
+      providerKey: 'sva_mainserver',
+      graphqlBaseUrl: 'https://mainserver.example/graphql',
+      oauthTokenUrl: 'https://mainserver.example/oauth/token',
+      enabled: true,
+    });
+
+    render(<InterfacesPage />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Einstellungen speichern' })).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Einstellungen speichern' }));
+
+    await waitFor(() => {
+      expect(state.loadOverview).toHaveBeenCalledTimes(3);
+      expect(screen.getByText('Verbunden')).toBeTruthy();
     });
   });
 

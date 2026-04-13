@@ -179,6 +179,73 @@ describe('InterfacesPage', () => {
     });
   });
 
+  it('reloads after a persisted unauthorized status update', async () => {
+    state.loadOverview
+      .mockResolvedValueOnce({
+        instanceId: 'de-musterhausen',
+        config: {
+          instanceId: 'de-musterhausen',
+          providerKey: 'sva_mainserver',
+          graphqlBaseUrl: 'https://mainserver.example/graphql',
+          oauthTokenUrl: 'https://mainserver.example/oauth/token',
+          enabled: true,
+        },
+        status: {
+          status: 'connected',
+          checkedAt: '2026-03-15T20:00:00.000Z',
+        },
+      })
+      .mockResolvedValueOnce({
+        instanceId: 'de-musterhausen',
+        config: {
+          instanceId: 'de-musterhausen',
+          providerKey: 'sva_mainserver',
+          graphqlBaseUrl: 'https://mainserver.example/graphql',
+          oauthTokenUrl: 'https://mainserver.example/oauth/token',
+          enabled: true,
+        },
+        status: {
+          status: 'error',
+          checkedAt: '2026-03-15T20:05:00.000Z',
+          errorCode: 'unauthorized',
+        },
+      })
+      .mockResolvedValueOnce({
+        instanceId: 'de-musterhausen',
+        config: {
+          instanceId: 'de-musterhausen',
+          providerKey: 'sva_mainserver',
+          graphqlBaseUrl: 'https://mainserver.example/graphql',
+          oauthTokenUrl: 'https://mainserver.example/oauth/token',
+          enabled: true,
+        },
+        status: {
+          status: 'connected',
+          checkedAt: '2026-03-15T20:06:00.000Z',
+        },
+      });
+    state.saveSettings.mockResolvedValue({
+      instanceId: 'de-musterhausen',
+      providerKey: 'sva_mainserver',
+      graphqlBaseUrl: 'https://mainserver.example/graphql',
+      oauthTokenUrl: 'https://mainserver.example/oauth/token',
+      enabled: true,
+    });
+
+    render(<InterfacesPage />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Einstellungen speichern' })).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Einstellungen speichern' }));
+
+    await waitFor(() => {
+      expect(state.loadOverview).toHaveBeenCalledTimes(3);
+      expect(screen.getByText('Verbunden')).toBeTruthy();
+    });
+  });
+
   it('reloads the overview when the reload action is used', async () => {
     state.loadOverview
       .mockResolvedValueOnce({

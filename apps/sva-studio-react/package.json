@@ -24,7 +24,7 @@
     "@sva/routing": "workspace:*",
     "@sva/sdk": "workspace:*",
     "@sva/sva-mainserver": "workspace:*",
-    "@tabler/icons-react": "^3.40.0",
+    "@tabler/icons-react": "^3.41.1",
     "@tanstack/react-devtools": "^0.10.1",
     "@tanstack/react-router": "^1.168.10",
     "@tanstack/react-router-devtools": "^1.166.11",

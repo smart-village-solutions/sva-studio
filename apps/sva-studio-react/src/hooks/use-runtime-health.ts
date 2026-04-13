@@ -11,7 +11,6 @@ import {
 } from '../lib/browser-operation-logging';
 
 const runtimeHealthLogger = createOperationLogger('runtime-health-hook', 'debug');
-const RUNTIME_HEALTH_POLL_INTERVAL_MS = 30_000;
 
 const runtimeHealthServiceKeys: readonly RuntimeDependencyKey[] = ['database', 'redis', 'keycloak', 'authorizationCache'];
 
@@ -54,6 +53,7 @@ type RuntimeHealthState = Readonly<{
 
 export const useRuntimeHealth = () => {
   const abortControllersRef = React.useRef<Set<AbortController>>(new Set());
+  const inFlightRef = React.useRef<Promise<void> | null>(null);
   const [state, setState] = React.useState<RuntimeHealthState>({
     error: null,
     health: createUnknownRuntimeHealth(),
@@ -61,74 +61,105 @@ export const useRuntimeHealth = () => {
   });
 
   const refetch = React.useCallback(async () => {
+    if (inFlightRef.current) {
+      return inFlightRef.current;
+    }
+
     const controller = new AbortController();
     abortControllersRef.current.add(controller);
-    logBrowserOperationStart(runtimeHealthLogger, 'studio_runtime_health_started', {
-      operation: 'get_runtime_health',
-      path: '/api/v1/iam/health/ready',
-    });
-
-    setState((current) => ({
-      ...current,
-      isLoading: true,
-    }));
-
-    try {
-      const health = await getRuntimeHealth({ signal: controller.signal });
-      setState({
-        error: null,
-        health,
-        isLoading: false,
-      });
-      logBrowserOperationSuccess(
-        runtimeHealthLogger,
-        'studio_runtime_health_succeeded',
-        {
-          operation: 'get_runtime_health',
-          overall_status: health.status,
-        },
-        'debug'
-      );
-    } catch (error) {
-      if (controller.signal.aborted) {
-        logBrowserOperationAbort(runtimeHealthLogger, 'studio_runtime_health_aborted', {
-          operation: 'get_runtime_health',
-        });
-        return;
-      }
-
-      const resolvedError = asIamError(error);
-      setState((current) => ({
-        error: resolvedError,
-        health: {
-          ...current.health,
-          checks: {
-            ...current.health.checks,
-            services: createUnknownServices(),
-          },
-        },
-        isLoading: false,
-      }));
-      logBrowserOperationFailure(runtimeHealthLogger, 'studio_runtime_health_failed', resolvedError, {
+    const request = (async () => {
+      logBrowserOperationStart(runtimeHealthLogger, 'studio_runtime_health_started', {
         operation: 'get_runtime_health',
       });
+
+      setState((current) => ({
+        ...current,
+        isLoading: true,
+      }));
+
+      try {
+        const health = await getRuntimeHealth({ signal: controller.signal });
+        setState({
+          error: null,
+          health,
+          isLoading: false,
+        });
+        logBrowserOperationSuccess(
+          runtimeHealthLogger,
+          'studio_runtime_health_succeeded',
+          {
+            operation: 'get_runtime_health',
+            overall_status: health.status,
+          },
+          'debug'
+        );
+      } catch (error) {
+        if (controller.signal.aborted) {
+          logBrowserOperationAbort(runtimeHealthLogger, 'studio_runtime_health_aborted', {
+            operation: 'get_runtime_health',
+          });
+          return;
+        }
+
+        const resolvedError = asIamError(error);
+        setState((current) => ({
+          error: resolvedError,
+          health: {
+            ...current.health,
+            checks: {
+              ...current.health.checks,
+              services: createUnknownServices(),
+            },
+          },
+          isLoading: false,
+        }));
+        logBrowserOperationFailure(runtimeHealthLogger, 'studio_runtime_health_failed', resolvedError, {
+          operation: 'get_runtime_health',
+        });
+      } finally {
+        abortControllersRef.current.delete(controller);
+      }
+    })();
+
+    inFlightRef.current = request;
+
+    try {
+      await request;
     } finally {
-      abortControllersRef.current.delete(controller);
+      if (inFlightRef.current === request) {
+        inFlightRef.current = null;
+      }
     }
   }, []);
 
   React.useEffect(() => {
     void refetch();
-    const intervalId = window.setInterval(() => {
-      void refetch();
-    }, RUNTIME_HEALTH_POLL_INTERVAL_MS);
+
+    if (typeof document !== 'undefined') {
+      const handleVisibilityChange = () => {
+        if (document.visibilityState === 'visible') {
+          void refetch();
+        }
+      };
+
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+
+      return () => {
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+        for (const controller of abortControllersRef.current) {
+          controller.abort();
+        }
+        abortControllersRef.current.clear();
+        inFlightRef.current = null;
+      };
+    }
 
     return () => {
-      window.clearInterval(intervalId);
       for (const controller of abortControllersRef.current) {
         controller.abort();
       }
       abortControllersRef.current.clear();
+      inFlightRef.current = null;
     };
   }, [refetch]);
 

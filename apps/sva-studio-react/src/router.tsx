@@ -4,6 +4,7 @@ import { createIsomorphicFn } from '@tanstack/react-start';
 import type { RouteGuardUser } from '@sva/routing';
 
 import { studioPluginRoutes } from './lib/plugins';
+import { fetchWithRequestTimeout } from './lib/iam-api';
 import { coreRouteFactoriesBase } from './routes/-core-routes';
 import { rootRoute } from './routes/__root';
 
@@ -103,9 +104,11 @@ const getRouteGuardUser = createIsomorphicFn()
         return createMockRouteGuardUser();
       }
 
-      const response = await fetch(new URL('/auth/me', resolveBaseUrl()).toString(), {
-        credentials: 'include',
-      });
+      const response = await fetchWithRequestTimeout(
+        new URL('/auth/me', resolveBaseUrl()).toString(),
+        undefined,
+        { timeoutMs: 5_000 }
+      );
 
       if (!response.ok) {
         return null;

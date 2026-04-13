@@ -89,8 +89,7 @@ describe('useRuntimeHealth', () => {
     });
   });
 
-  it('polls the runtime health endpoint and exposes fetch errors', async () => {
-    vi.useFakeTimers();
+  it('reloads runtime health when the document becomes visible again and exposes fetch errors', async () => {
     getRuntimeHealthMock
       .mockResolvedValueOnce({
         checks: {
@@ -129,13 +128,64 @@ describe('useRuntimeHealth', () => {
 
     expect(screen.getByTestId('loading').textContent).toBe('false');
 
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(30_000);
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      value: 'visible',
     });
+    document.dispatchEvent(new Event('visibilitychange'));
 
     await flushRuntimeHealthUpdates();
 
     expect(screen.getByTestId('database-status').textContent).toBe('unknown');
     expect(screen.getByTestId('request-id').textContent).toBe('req-health');
+  });
+
+  it('deduplicates overlapping runtime health reloads', async () => {
+    let resolveRequest: ((value: Awaited<ReturnType<typeof getRuntimeHealthMock>>) => void) | undefined;
+    getRuntimeHealthMock.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveRequest = resolve;
+        })
+    );
+
+    render(<RuntimeHealthProbe />);
+
+    await waitFor(() => {
+      expect(getRuntimeHealthMock).toHaveBeenCalledTimes(1);
+    });
+
+    document.dispatchEvent(new Event('visibilitychange'));
+    document.dispatchEvent(new Event('visibilitychange'));
+
+    expect(getRuntimeHealthMock).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      resolveRequest?.({
+        checks: {
+          authorizationCache: {
+            coldStart: false,
+            consecutiveRedisFailures: 0,
+            recomputePerMinute: 0,
+            status: 'ready',
+          },
+          db: true,
+          diagnostics: {},
+          errors: {},
+          keycloak: true,
+          redis: true,
+          services: {
+            authorizationCache: { status: 'ready' },
+            database: { status: 'ready' },
+            keycloak: { status: 'ready' },
+            redis: { status: 'ready' },
+          },
+        },
+        path: '/api/v1/iam/health/ready',
+        status: 'ready',
+        timestamp: '2026-04-04T12:00:00.000Z',
+      });
+      await Promise.resolve();
+    });
   });
 });

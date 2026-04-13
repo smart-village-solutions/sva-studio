@@ -1,7 +1,7 @@
 import { summarizeContentAccess, withServerDeniedContentAccess, type IamContentAccessSummary, type MePermissionsResponse } from '@sva/core';
 import React from 'react';
 
-import { asIamError, IamHttpError } from '../lib/iam-api';
+import { asIamError, fetchWithRequestTimeout, IamHttpError } from '../lib/iam-api';
 import {
   createOperationLogger,
   logBrowserOperationAbort,
@@ -43,9 +43,9 @@ export const useContentAccess = (): UseContentAccessResult => {
     setIsLoading(true);
     setError(null);
 
-    void fetch(buildPermissionsPath(user.instanceId), {
-      credentials: 'include',
+    void fetchWithRequestTimeout(buildPermissionsPath(user.instanceId), undefined, {
       signal: controller.signal,
+      timeoutMs: 10_000,
     })
       .then(async (response) => {
         if (!response.ok) {

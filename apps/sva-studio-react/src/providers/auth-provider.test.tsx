@@ -314,8 +314,22 @@ describe('AuthProvider', () => {
     });
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(fetchMock).toHaveBeenNthCalledWith(1, '/auth/me', { credentials: 'include' });
-    expect(fetchMock).toHaveBeenNthCalledWith(2, '/auth/me', { credentials: 'include' });
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      '/auth/me',
+      expect.objectContaining({
+        credentials: 'include',
+        signal: expect.any(AbortSignal),
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      '/auth/me',
+      expect.objectContaining({
+        credentials: 'include',
+        signal: expect.any(AbortSignal),
+      })
+    );
   });
 
   it('invalidates permissions via silent auth refresh', async () => {
@@ -399,9 +413,14 @@ describe('AuthProvider', () => {
       expect(screen.getByTestId('authenticated').textContent).toBe('no');
     });
 
-    expect(fetchMock).toHaveBeenNthCalledWith(2, '/auth/logout', {
-      method: 'POST',
-      credentials: 'include',
-    });
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      '/auth/logout',
+      expect.objectContaining({
+        method: 'POST',
+        credentials: 'include',
+        signal: expect.any(AbortSignal),
+      })
+    );
   });
 });

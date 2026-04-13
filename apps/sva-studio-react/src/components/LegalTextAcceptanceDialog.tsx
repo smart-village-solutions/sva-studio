@@ -46,6 +46,7 @@ export const LegalTextAcceptanceDialog = ({ pathname }: LegalTextAcceptanceDialo
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const [isLoadingPending, setIsLoadingPending] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const inFlightLoadRef = React.useRef<Promise<Awaited<ReturnType<typeof getMyPendingLegalTexts>>['data']> | null>(null);
 
   const promptSuppressed = isPromptSuppressed(pathname);
 
@@ -58,51 +59,61 @@ export const LegalTextAcceptanceDialog = ({ pathname }: LegalTextAcceptanceDialo
         return [] as Awaited<ReturnType<typeof getMyPendingLegalTexts>>['data'];
       }
 
+      if (inFlightLoadRef.current) {
+        return inFlightLoadRef.current;
+      }
+
       if (!silent) {
         setIsLoadingPending(true);
       }
 
-      try {
-        logBrowserOperationStart(legalAcceptanceLogger, 'pending_legal_texts_load_started', {
-          operation: 'get_my_pending_legal_texts',
-          pathname,
-          silent,
-        });
-        const response = await getMyPendingLegalTexts();
-        setPendingTexts(response.data);
-        setLoadError(null);
-        if (response.data.length > 0) {
-          storeLegalAcceptanceReturnTo(pathname);
-        }
-        logBrowserOperationSuccess(
-          legalAcceptanceLogger,
-          'pending_legal_texts_load_succeeded',
-          {
+      const pendingLoad = (async () => {
+        try {
+          logBrowserOperationStart(legalAcceptanceLogger, 'pending_legal_texts_load_started', {
             operation: 'get_my_pending_legal_texts',
             pathname,
             silent,
-            pending_count: response.data.length,
-          },
-          'debug'
-        );
-        return response.data;
-      } catch (error) {
-        const iamError = asIamError(error);
-        if (iamError.code === 'unauthorized') {
-          setPendingTexts([]);
+          });
+          const response = await getMyPendingLegalTexts();
+          setPendingTexts(response.data);
           setLoadError(null);
-        } else {
-          setLoadError(t('admin.legalAcceptance.errorLoading'));
+          if (response.data.length > 0) {
+            storeLegalAcceptanceReturnTo(pathname);
+          }
+          logBrowserOperationSuccess(
+            legalAcceptanceLogger,
+            'pending_legal_texts_load_succeeded',
+            {
+              operation: 'get_my_pending_legal_texts',
+              pathname,
+              silent,
+              pending_count: response.data.length,
+            },
+            'debug'
+          );
+          return response.data;
+        } catch (error) {
+          const iamError = asIamError(error);
+          if (iamError.code === 'unauthorized') {
+            setPendingTexts([]);
+            setLoadError(null);
+          } else {
+            setLoadError(t('admin.legalAcceptance.errorLoading'));
+          }
+          logBrowserOperationFailure(legalAcceptanceLogger, 'pending_legal_texts_load_failed', iamError, {
+            operation: 'get_my_pending_legal_texts',
+            pathname,
+            silent,
+          });
+          return [] as Awaited<ReturnType<typeof getMyPendingLegalTexts>>['data'];
+        } finally {
+          inFlightLoadRef.current = null;
+          setIsLoadingPending(false);
         }
-        logBrowserOperationFailure(legalAcceptanceLogger, 'pending_legal_texts_load_failed', iamError, {
-          operation: 'get_my_pending_legal_texts',
-          pathname,
-          silent,
-        });
-        return [] as Awaited<ReturnType<typeof getMyPendingLegalTexts>>['data'];
-      } finally {
-        setIsLoadingPending(false);
-      }
+      })();
+
+      inFlightLoadRef.current = pendingLoad;
+      return pendingLoad;
     },
     [isAuthenticated, pathname, promptSuppressed, user?.instanceId]
   );
@@ -206,7 +217,11 @@ export const LegalTextAcceptanceDialog = ({ pathname }: LegalTextAcceptanceDialo
     return null;
   }
 
-  const isOpen = pendingTexts.length > 0 || loadError !== null;
+  const isOpen = pendingTexts.length > 0;
+
+  if (!isOpen) {
+    return null;
+  }
 
   return (
     <ModalDialog

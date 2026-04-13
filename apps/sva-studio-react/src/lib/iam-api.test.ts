@@ -25,6 +25,7 @@ import {
   createOrganization,
   deleteGroup,
   executeInstanceKeycloakProvisioning,
+  fetchWithRequestTimeout,
   getMyPendingLegalTexts,
   getMyProfile,
   getDataExportStatus,
@@ -356,6 +357,67 @@ describe('iam-api organization helpers', () => {
       code: 'internal_error',
       message: 'network down',
     });
+  });
+
+  it('maps timed out transport requests to timeout errors', async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((_input: string, init?: RequestInit) => {
+        return new Promise((_resolve, reject) => {
+          init?.signal?.addEventListener(
+            'abort',
+            () => {
+              reject(init.signal?.reason ?? new DOMException('Aborted', 'AbortError'));
+            },
+            { once: true }
+          );
+        });
+      })
+    );
+
+    const request = fetchWithRequestTimeout('/api/v1/iam/organizations', undefined, { timeoutMs: 50 });
+    const expectation = expect(request).rejects.toMatchObject({
+      status: 0,
+      code: 'timeout',
+      message: 'request_timeout',
+    });
+
+    await vi.advanceTimersByTimeAsync(50);
+
+    await expectation;
+  });
+
+  it('maps externally aborted requests to aborted errors', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((_input: string, init?: RequestInit) => {
+        return new Promise((_resolve, reject) => {
+          init?.signal?.addEventListener(
+            'abort',
+            () => {
+              reject(init.signal?.reason ?? new DOMException('Aborted', 'AbortError'));
+            },
+            { once: true }
+          );
+        });
+      })
+    );
+    const controller = new AbortController();
+
+    const request = fetchWithRequestTimeout('/api/v1/iam/organizations', undefined, {
+      signal: controller.signal,
+      timeoutMs: 5_000,
+    });
+    const expectation = expect(request).rejects.toMatchObject({
+      status: 0,
+      code: 'aborted',
+      message: 'request_aborted',
+    });
+
+    controller.abort();
+
+    await expectation;
   });
 
   it('uses crypto.randomUUID for idempotency keys', async () => {
@@ -921,12 +983,20 @@ describe('iam-api transparency helpers', () => {
     expect(fetchMock).toHaveBeenNthCalledWith(
       1,
       '/iam/governance/workflows?page=1&pageSize=12&type=delegation&status=open&search=alice',
-      expect.objectContaining({ signal: controller.signal, credentials: 'include' })
+      expect.objectContaining({
+        signal: expect.any(AbortSignal),
+        credentials: 'include',
+        headers: expect.objectContaining({ Accept: 'application/json' }),
+      })
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,
       '/iam/admin/data-subject-rights/cases?page=2&pageSize=20&type=request&status=queued&search=bob',
-      expect.objectContaining({ signal: controller.signal, credentials: 'include' })
+      expect.objectContaining({
+        signal: expect.any(AbortSignal),
+        credentials: 'include',
+        headers: expect.objectContaining({ Accept: 'application/json' }),
+      })
     );
     expect(fetchMock).toHaveBeenNthCalledWith(3, '/iam/me/data-subject-rights/requests', expect.any(Object));
     expect(fetchMock).toHaveBeenNthCalledWith(4, '/iam/me/data-export/status?jobId=job-1', expect.any(Object));

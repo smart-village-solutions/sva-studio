@@ -43,6 +43,9 @@ const browserLogger = createBrowserLogger({
 });
 
 export const LEGAL_ACCEPTANCE_REQUIRED_EVENT = 'sva:legal-acceptance-required';
+const DEFAULT_IAM_REQUEST_TIMEOUT_MS = 10_000;
+const HEALTH_REQUEST_TIMEOUT_MS = 5_000;
+const HEAVY_IAM_REQUEST_TIMEOUT_MS = 20_000;
 
 export class IamHttpError extends Error {
   readonly status: number;
@@ -404,7 +407,63 @@ export type ExecuteInstanceKeycloakProvisioningPayload = {
 
 type IamRequestOptions = Readonly<{
   signal?: AbortSignal;
+  timeoutMs?: number;
 }>;
+
+const isAbortLikeError = (error: unknown): boolean =>
+  error instanceof DOMException
+    ? error.name === 'AbortError' || error.name === 'TimeoutError'
+    : error instanceof Error && error.name === 'AbortError';
+
+const mergeAbortSignals = (
+  input: {
+    readonly signal?: AbortSignal;
+    readonly timeoutMs: number;
+  }
+): {
+  readonly signal: AbortSignal;
+  readonly cleanup: () => void;
+  readonly didTimeout: () => boolean;
+} => {
+  const controller = new AbortController();
+  let timeoutTriggered = false;
+  let timeoutId: ReturnType<typeof globalThis.setTimeout> | null = null;
+  let removeAbortListener: (() => void) | undefined;
+
+  const abortFromExternal = () => {
+    controller.abort(
+      input.signal?.reason ??
+        new DOMException('IAM-Anfrage wurde abgebrochen.', 'AbortError')
+    );
+  };
+
+  if (input.signal) {
+    if (input.signal.aborted) {
+      abortFromExternal();
+    } else {
+      input.signal.addEventListener('abort', abortFromExternal, { once: true });
+      removeAbortListener = () => {
+        input.signal?.removeEventListener('abort', abortFromExternal);
+      };
+    }
+  }
+
+  timeoutId = globalThis.setTimeout(() => {
+    timeoutTriggered = true;
+    controller.abort(new DOMException('IAM-Anfrage hat das Timeout erreicht.', 'TimeoutError'));
+  }, input.timeoutMs);
+
+  return {
+    signal: controller.signal,
+    cleanup: () => {
+      if (timeoutId !== null) {
+        globalThis.clearTimeout(timeoutId);
+      }
+      removeAbortListener?.();
+    },
+    didTimeout: () => timeoutTriggered,
+  };
+};
 
 const createIdempotencyKey = () => crypto.randomUUID();
 
@@ -428,13 +487,49 @@ const readErrorPayload = async (response: Response): Promise<IamHttpError> => {
   });
 };
 
-const requestJson = async <T>(input: string, init?: RequestInit): Promise<T> => {
-  const { headers: initHeaders, ...restInit } = init ?? {};
-  const response = await fetch(input, {
-    credentials: 'include',
-    ...restInit,
-    headers: { Accept: 'application/json', ...initHeaders },
+export const fetchWithRequestTimeout = async (
+  input: string,
+  init?: RequestInit,
+  options: IamRequestOptions = {}
+): Promise<Response> => {
+  const { headers: initHeaders, signal: initSignal, ...restInit } = init ?? {};
+  const mergedSignal = mergeAbortSignals({
+    signal: options.signal ?? initSignal ?? undefined,
+    timeoutMs: options.timeoutMs ?? DEFAULT_IAM_REQUEST_TIMEOUT_MS,
   });
+
+  try {
+    return await fetch(input, {
+      credentials: 'include',
+      ...restInit,
+      signal: mergedSignal.signal,
+      headers: initHeaders,
+    });
+  } catch (error) {
+    if (mergedSignal.signal.aborted || isAbortLikeError(error)) {
+      const didTimeout = mergedSignal.didTimeout();
+      throw new IamHttpError({
+        status: 0,
+        code: didTimeout ? 'timeout' : 'aborted',
+        message: didTimeout ? 'request_timeout' : 'request_aborted',
+      });
+    }
+    throw error;
+  } finally {
+    mergedSignal.cleanup();
+  }
+};
+
+const requestJson = async <T>(input: string, init?: RequestInit, options: IamRequestOptions = {}): Promise<T> => {
+  const { headers: initHeaders, ...restInit } = init ?? {};
+  const response = await fetchWithRequestTimeout(
+    input,
+    {
+      ...restInit,
+      headers: { Accept: 'application/json', ...initHeaders },
+    },
+    options
+  );
 
   // Guard: when the response is not JSON (e.g. HTML error page from the
   // dev-server), surface a clear message instead of a cryptic parse error.
@@ -470,14 +565,18 @@ const requestJson = async <T>(input: string, init?: RequestInit): Promise<T> => 
 
 const requestJsonOrText = async <T>(
   input: string,
-  init?: RequestInit
+  init?: RequestInit,
+  options: IamRequestOptions = {}
 ): Promise<T | { data: string }> => {
   const { headers: initHeaders, ...restInit } = init ?? {};
-  const response = await fetch(input, {
-    credentials: 'include',
-    ...restInit,
-    headers: { Accept: 'application/json, text/plain, text/csv, application/xml', ...initHeaders },
-  });
+  const response = await fetchWithRequestTimeout(
+    input,
+    {
+      ...restInit,
+      headers: { Accept: 'application/json, text/plain, text/csv, application/xml', ...initHeaders },
+    },
+    options
+  );
 
   const contentType = response.headers.get('content-type') ?? '';
   if (!response.ok) {
@@ -604,6 +703,8 @@ export const syncUsersFromKeycloak = async (): Promise<ApiItemResponse<IamUserIm
     method: 'POST',
     headers: IAM_HEADERS,
     body: JSON.stringify({}),
+  }, {
+    timeoutMs: HEAVY_IAM_REQUEST_TIMEOUT_MS,
   });
 
 export const getMyProfile = async (): Promise<ApiItemResponse<IamUserDetail>> =>
@@ -741,6 +842,9 @@ export const getInstanceKeycloakProvisioningRun = async (
 export const getRuntimeHealth = async (options: IamRequestOptions = {}): Promise<RuntimeHealthResponse> =>
   requestJson<RuntimeHealthResponse>('/api/v1/iam/health/ready', {
     signal: options.signal,
+  }, {
+    signal: options.signal,
+    timeoutMs: options.timeoutMs ?? HEALTH_REQUEST_TIMEOUT_MS,
   });
 
 export const reconcileInstanceKeycloak = async (
@@ -950,6 +1054,9 @@ export const listGovernanceCases = async (
 
   return requestJson<ApiListResponse<IamGovernanceCaseListItem>>(`/iam/governance/workflows?${params.toString()}`, {
     signal: options?.signal,
+  }, {
+    signal: options?.signal,
+    timeoutMs: HEAVY_IAM_REQUEST_TIMEOUT_MS,
   });
 };
 
@@ -957,7 +1064,9 @@ export const getMyDataSubjectRights = async (): Promise<ApiItemResponse<IamDsrSe
   requestJson<ApiItemResponse<IamDsrSelfServiceOverview>>('/iam/me/data-subject-rights/requests');
 
 export const getMyPendingLegalTexts = async (): Promise<ApiListResponse<IamPendingLegalTextItem>> =>
-  requestJson<ApiListResponse<IamPendingLegalTextItem>>('/iam/me/legal-texts/pending');
+  requestJson<ApiListResponse<IamPendingLegalTextItem>>('/iam/me/legal-texts/pending', undefined, {
+    timeoutMs: HEALTH_REQUEST_TIMEOUT_MS,
+  });
 
 export const acceptLegalText = async (payload: {
   readonly instanceId: string;
@@ -1013,13 +1122,17 @@ export const requestDataExport = async (input: {
       format: input.format,
       async: input.async,
     }),
+  }, {
+    timeoutMs: HEAVY_IAM_REQUEST_TIMEOUT_MS,
   });
 };
 
 export const getDataExportStatus = async (
   jobId: string
 ): Promise<ApiItemResponse<{ id: string; format: string; status: string; createdAt: string; completedAt?: string; errorMessage?: string }>> =>
-  requestJson(`/iam/me/data-export/status?jobId=${encodeURIComponent(jobId)}`);
+  requestJson(`/iam/me/data-export/status?jobId=${encodeURIComponent(jobId)}`, undefined, {
+    timeoutMs: HEAVY_IAM_REQUEST_TIMEOUT_MS,
+  });
 
 export const checkOptionalProcessing = async (): Promise<
   ApiItemResponse<{ status: 'ok'; executed: true }> | { error: string; blockedByRestriction?: boolean; blockedByObjection?: boolean }
@@ -1051,5 +1164,8 @@ export const listAdminDsrCases = async (
 
   return requestJson<ApiListResponse<IamDsrCaseListItem>>(`/iam/admin/data-subject-rights/cases?${params.toString()}`, {
     signal: options?.signal,
+  }, {
+    signal: options?.signal,
+    timeoutMs: HEAVY_IAM_REQUEST_TIMEOUT_MS,
   });
 };

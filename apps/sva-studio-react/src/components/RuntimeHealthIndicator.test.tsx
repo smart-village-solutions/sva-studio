@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { RuntimeHealthIndicator } from './RuntimeHealthIndicator';
@@ -79,6 +79,42 @@ describe('RuntimeHealthIndicator', () => {
   });
 
   it('renders the per-service runtime status', () => {
+    const refetch = vi.fn();
+    useRuntimeHealthMock.mockReturnValue({
+      error: null,
+      health: {
+        checks: {
+          authorizationCache: {
+            coldStart: false,
+            consecutiveRedisFailures: 0,
+            recomputePerMinute: 0,
+            status: 'ready',
+          },
+          auth: {
+            realm: 'svs-intern-studio-staging',
+            activeRealm: 'de-musterhausen',
+            scopeKind: 'instance',
+          },
+          db: true,
+          diagnostics: {},
+          errors: {},
+          keycloak: true,
+          redis: true,
+          services: {
+            authorizationCache: { status: 'ready' },
+            database: { status: 'ready' },
+            keycloak: { status: 'not_ready', reasonCode: 'keycloak_dependency_failed' },
+            redis: { status: 'degraded', reasonCode: 'redis_ping_failed' },
+          },
+        },
+        path: '/api/v1/iam/health/ready',
+        status: 'degraded',
+        timestamp: '2026-04-04T12:34:00.000Z',
+      },
+      isLoading: false,
+      refetch,
+    });
+
     render(<RuntimeHealthIndicator />);
 
     expect(screen.getByTestId('runtime-health-indicator')).toBeTruthy();
@@ -91,6 +127,8 @@ describe('RuntimeHealthIndicator', () => {
     expect(screen.getByText('shell.runtimeHealth.overall.degraded')).toBeTruthy();
     expect(screen.getByText('shell.runtimeHealth.lastUpdated:formatted:en')).toBeTruthy();
     expect(screen.getByText('shell.runtimeHealth.realmLabel:de-musterhausen')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'shell.runtimeHealth.refresh' }));
+    expect(refetch).toHaveBeenCalledTimes(1);
   });
 
   it('renders loading and fetch error hints', () => {

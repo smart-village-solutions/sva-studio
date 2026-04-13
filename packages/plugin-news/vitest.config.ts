@@ -15,8 +15,12 @@ export default mergeConfig(
     },
     test: {
       name: 'plugin-news',
-      environment: 'jsdom',
+      environment: 'happy-dom',
       include: ['tests/**/*.{test,spec}.{ts,tsx}', 'src/**/*.{test,spec}.{ts,tsx}'],
+      // Der Thread-Pool mit happy-dom vermeidet Instabilitäten aus der jsdom/undici-Kombination.
+      pool: 'threads',
+      fileParallelism: false,
+      maxWorkers: 1,
       coverage: {
         reportsDirectory: './coverage',
       },

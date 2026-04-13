@@ -5,93 +5,37 @@ import {
   createApiError,
   parseRequestBody,
   readPathSegment,
-  requireIdempotencyKey,
-  toPayloadHash,
 } from '../iam-account-management/api-helpers.js';
 import { validateCsrf } from '../iam-account-management/csrf.js';
-import { completeIdempotency, reserveIdempotency } from '../iam-account-management/shared.js';
 
-import type { ResolvedContentActor } from './request-context.js';
 import { validateContentTypePayload } from './content-type-registry.js';
+import {
+  createFailureResponse,
+  jsonResponse,
+  logCreateFailure,
+  parseCreateRequest,
+  reserveCreateIdempotency,
+  completeCreateIdempotency,
+} from './mutation-helpers.js';
+import type { ResolvedContentActor } from './request-context.js';
 import { resolveContentAccess } from './request-context.js';
 import { createContent, deleteContent, loadContentById, loadContentDetail, updateContent } from './repository.js';
-import { createContentSchema, updateContentSchema } from './schemas.js';
+import { updateContentSchema } from './schemas.js';
 
 const logger = createSdkLogger({ component: 'iam-contents', level: 'info' });
-
-const jsonResponse = (status: number, body: unknown) =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: { 'Content-Type': 'application/json' },
-  });
-
-const completeCreateIdempotency = async (
-  actor: ResolvedContentActor['actor'],
-  idempotencyKey: string,
-  responseStatus: number,
-  responseBody: Record<string, unknown>
-) =>
-  completeIdempotency({
-    instanceId: actor.instanceId,
-    actorAccountId: actor.actorAccountId!,
-    endpoint: 'POST:/api/v1/iam/contents',
-    idempotencyKey,
-    status: responseStatus >= 400 ? 'FAILED' : 'COMPLETED',
-    responseStatus,
-    responseBody,
-  });
-
-const createFailureResponse = async (
-  actor: ResolvedContentActor['actor'],
-  idempotencyKey: string,
-  status: number,
-  code: string,
-  message: string
-) => {
-  const responseBody = {
-    error: { code, message },
-    ...(actor.requestId ? { requestId: actor.requestId } : {}),
-  };
-  await completeCreateIdempotency(actor, idempotencyKey, status, responseBody);
-  return jsonResponse(status, responseBody);
-};
 
 export const createContentResponse = async (
   request: Request,
   actor: ResolvedContentActor['actor']
 ): Promise<Response> => {
-  const csrfError = validateCsrf(request, actor.requestId);
-  if (csrfError) {
-    return csrfError;
+  const prepared = await parseCreateRequest(request, actor);
+  if (prepared instanceof Response) {
+    return prepared;
   }
 
-  const idempotencyKey = requireIdempotencyKey(request, actor.requestId);
-  if ('error' in idempotencyKey) {
-    return idempotencyKey.error;
-  }
-
-  const parsed = await parseRequestBody(request, createContentSchema);
-  if (!parsed.ok) {
-    return createApiError(400, 'invalid_request', parsed.message, actor.requestId);
-  }
-
-  const payloadValidation = validateContentTypePayload(parsed.data.contentType, parsed.data.payload);
-  if (!payloadValidation.ok) {
-    return createApiError(400, 'invalid_request', payloadValidation.message, actor.requestId);
-  }
-
-  const reserve = await reserveIdempotency({
-    instanceId: actor.instanceId,
-    actorAccountId: actor.actorAccountId!,
-    endpoint: 'POST:/api/v1/iam/contents',
-    idempotencyKey: idempotencyKey.key,
-    payloadHash: toPayloadHash(parsed.rawBody),
-  });
-  if (reserve.status === 'replay') {
-    return jsonResponse(reserve.responseStatus, reserve.responseBody);
-  }
-  if (reserve.status === 'conflict') {
-    return createApiError(409, 'idempotency_key_reuse', reserve.message, actor.requestId);
+  const replayOrConflict = await reserveCreateIdempotency(actor, prepared.idempotencyKey, prepared.rawBody);
+  if (replayOrConflict) {
+    return replayOrConflict;
   }
 
   try {
@@ -101,8 +45,8 @@ export const createContentResponse = async (
       actorDisplayName: actor.actorDisplayName,
       requestId: actor.requestId,
       traceId: actor.traceId,
-      ...parsed.data,
-      payload: payloadValidation.payload,
+      ...prepared.parsedData,
+      payload: prepared.payload,
     });
     const item = await loadContentDetail(actor.instanceId, createdId);
     if (!item) {
@@ -111,29 +55,23 @@ export const createContentResponse = async (
 
     const access = await resolveContentAccess(actor);
     const responseBody = asApiItem({ ...item, access }, actor.requestId);
-    await completeCreateIdempotency(actor, idempotencyKey.key, 201, responseBody);
+    await completeCreateIdempotency(actor, prepared.idempotencyKey, 201, responseBody);
     return jsonResponse(201, responseBody);
   } catch (error) {
     if (error instanceof Error && error.message === 'content_published_at_required') {
       return createFailureResponse(
         actor,
-        idempotencyKey.key,
+        prepared.idempotencyKey,
         400,
         'invalid_request',
         'Veröffentlichungsdatum ist für veröffentlichte Inhalte erforderlich.'
       );
     }
-    logger.error('Content create failed', {
-      operation: 'content_create',
-      instance_id: actor.instanceId,
-      request_id: actor.requestId,
-      trace_id: actor.traceId,
-      error: error instanceof Error ? error.message : String(error),
-    });
+    logCreateFailure(actor, error);
 
     return createFailureResponse(
       actor,
-      idempotencyKey.key,
+      prepared.idempotencyKey,
       503,
       'database_unavailable',
       'Inhalt konnte nicht gespeichert werden.'

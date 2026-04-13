@@ -149,6 +149,20 @@ export const i18nResources = {
       nextStepTitle: 'Anschluss an echte Inhalte',
       nextStepBody: 'Definieren Sie für „{{area}}“ die konkreten Daten, Aktionen und Freigaben. Die Route und Navigation sind bereits vorbereitet.',
     },
+    example: {
+      navigation: {
+        title: 'Plugin-Beispiel',
+      },
+    },
+    news: {
+      navigation: {
+        title: 'News',
+      },
+      editor: {
+        createTitle: 'News-Eintrag anlegen',
+        editTitle: 'News-Eintrag bearbeiten',
+      },
+    },
     content: {
       page: {
         title: 'Inhalte',
@@ -1886,6 +1900,20 @@ export const i18nResources = {
       nextStepLabel: 'Next expansion',
       nextStepTitle: 'Connect real content',
       nextStepBody: 'Define the concrete data, actions, and access rules for "{{area}}". The route and navigation are already in place.',
+    },
+    example: {
+      navigation: {
+        title: 'Plugin Example',
+      },
+    },
+    news: {
+      navigation: {
+        title: 'News',
+      },
+      editor: {
+        createTitle: 'Create news entry',
+        editTitle: 'Edit news entry',
+      },
     },
     content: {
       page: {

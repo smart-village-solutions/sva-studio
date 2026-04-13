@@ -22,10 +22,9 @@ export const loadContentListItems = async (instanceId: string): Promise<readonly
       `${CONTENT_SELECT}
 WHERE content.instance_id = $1
 ORDER BY content.updated_at DESC, content.created_at DESC;
-`,
+      `,
       [instanceId]
     );
-
     return result.rows.map(mapContentListItem);
   });
 
@@ -39,10 +38,9 @@ export const loadContentById = async (
 WHERE content.instance_id = $1
   AND content.id = $2::uuid
 LIMIT 1;
-`,
+      `,
       [instanceId, contentId]
     );
-
     const row = result.rows[0];
     return row ? mapContentListItem(row) : undefined;
   });
@@ -68,10 +66,9 @@ FROM iam.content_history history
 WHERE history.instance_id = $1
   AND history.content_id = $2::uuid
 ORDER BY history.created_at DESC, history.id DESC;
-`,
+      `,
       [instanceId, contentId]
     );
-
     return result.rows.map(mapContentHistoryItem);
   });
 
@@ -127,12 +124,10 @@ RETURNING id;
         JSON.stringify(input.payload),
       ]
     );
-
     const contentId = insert.rows[0]?.id;
     if (!contentId) {
       throw new Error('content_create_failed');
     }
-
     await insertContentHistory(client, {
       instanceId: input.instanceId,
       contentId,
@@ -144,7 +139,6 @@ RETURNING id;
       summary: 'Inhalt erstellt',
       snapshot: input.payload,
     });
-
     await emitActivityLog(client, {
       instanceId: input.instanceId,
       accountId: input.actorAccountId,
@@ -159,7 +153,6 @@ RETURNING id;
       requestId: input.requestId,
       traceId: input.traceId,
     });
-
     return contentId;
   });
 
@@ -169,10 +162,8 @@ export const updateContent = async (input: UpdateContentInput): Promise<string |
     if (!current) {
       return undefined;
     }
-
     const { changedFields, nextPayload, nextPublishedAt, nextStatus, nextTitle } =
       resolveNextContentState(current, input);
-
     await client.query(
       `
 UPDATE iam.contents
@@ -198,12 +189,10 @@ WHERE instance_id = $1
         input.actorDisplayName,
       ]
     );
-
     const { activityEventType, historyAction, historySummary } = resolveContentMutationMetadata(
       current.status,
       nextStatus
     );
-
     await insertContentHistory(client, {
       instanceId: input.instanceId,
       contentId: input.contentId,
@@ -216,7 +205,6 @@ WHERE instance_id = $1
       summary: historySummary,
       snapshot: nextPayload,
     });
-
     await emitActivityLog(client, {
       instanceId: input.instanceId,
       accountId: input.actorAccountId,
@@ -233,7 +221,6 @@ WHERE instance_id = $1
       requestId: input.requestId,
       traceId: input.traceId,
     });
-
     return input.contentId;
   });
 
@@ -243,7 +230,6 @@ export const deleteContent = async (input: DeleteContentInput): Promise<string |
     if (!current) {
       return undefined;
     }
-
     await emitActivityLog(client, {
       instanceId: input.instanceId,
       accountId: input.actorAccountId,
@@ -257,15 +243,13 @@ export const deleteContent = async (input: DeleteContentInput): Promise<string |
       requestId: input.requestId,
       traceId: input.traceId,
     });
-
     await client.query(
       `
 DELETE FROM iam.contents
 WHERE instance_id = $1
   AND id = $2::uuid;
-`,
+      `,
       [input.instanceId, input.contentId]
     );
-
     return input.contentId;
   });

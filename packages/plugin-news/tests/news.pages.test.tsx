@@ -4,7 +4,7 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { registerPluginTranslationResolver } from '@sva/sdk';
 
 import { NewsCreatePage, NewsEditPage, NewsListPage } from '../src/news.pages.js';
-import { createNews, deleteNews, listNews } from '../src/news.api.js';
+import { createNews, deleteNews, getNews, listNews, updateNews } from '../src/news.api.js';
 
 vi.mock('../src/news.api.js', () => ({
   listNews: vi.fn(async () => []),
@@ -33,6 +33,16 @@ vi.mock('../src/news.api.js', () => ({
 
 const navigateMock = vi.fn();
 
+const stubConfirm = (result: boolean) => {
+  const confirmMock = vi.fn(() => result);
+  Object.defineProperty(window, 'confirm', {
+    configurable: true,
+    writable: true,
+    value: confirmMock,
+  });
+  return confirmMock;
+};
+
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
   useNavigate: () => navigateMock,
@@ -46,6 +56,7 @@ describe('NewsListPage', () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
+    vi.clearAllMocks();
     navigateMock.mockReset();
     window.sessionStorage.clear();
     registerPluginTranslationResolver((key) => {
@@ -132,6 +143,42 @@ describe('NewsListPage', () => {
     });
   });
 
+  it('renders fallback values for in-review status, missing category and invalid update timestamps', async () => {
+    vi.mocked(listNews).mockResolvedValueOnce([
+      {
+        id: 'news-2',
+        title: 'Prüfmeldung',
+        contentType: 'news',
+        payload: {
+          teaser: 'Wird geprüft',
+          body: '<p>Body</p>',
+        },
+        status: 'in_review',
+        author: 'Editor',
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: 'invalid-date',
+      },
+    ]);
+
+    render(<NewsListPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('In Prüfung')).toBeTruthy();
+      expect(screen.getByText('—')).toBeTruthy();
+      expect(screen.getByText('invalid-date')).toBeTruthy();
+    });
+  });
+
+  it('renders a load error when listing news fails', async () => {
+    vi.mocked(listNews).mockRejectedValueOnce(new Error('boom'));
+
+    render(<NewsListPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('News konnten nicht geladen werden.')).toBeTruthy();
+    });
+  });
+
   it('shows validation feedback before creating invalid news', async () => {
     render(<NewsCreatePage />);
 
@@ -177,8 +224,73 @@ describe('NewsListPage', () => {
     });
   });
 
+  it('shows a save error when creating news fails', async () => {
+    vi.mocked(createNews).mockRejectedValueOnce(new Error('create failed'));
+
+    render(<NewsCreatePage />);
+
+    fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Neue News' } });
+    fireEvent.change(screen.getByLabelText('Teaser'), { target: { value: 'Kurztext' } });
+    fireEvent.change(screen.getByLabelText('Inhalt (HTML)'), { target: { value: '<p>Body</p>' } });
+    fireEvent.click(screen.getByRole('button', { name: 'News anlegen' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('news.messages.saveError')).toBeTruthy();
+    });
+
+    expect(navigateMock).not.toHaveBeenCalled();
+  });
+
+  it('shows a load error when loading an existing news entry fails', async () => {
+    vi.mocked(getNews).mockRejectedValueOnce(new Error('load failed'));
+
+    render(<NewsEditPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('News konnten nicht geladen werden.')).toBeTruthy();
+      expect(screen.queryByText('News werden geladen.')).toBeNull();
+    });
+  });
+
+  it('shows an inline success message after updating an existing news entry', async () => {
+    render(<NewsEditPage />);
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('Bestehende News')).toBeTruthy();
+    });
+
+    fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Aktualisierte News' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Änderungen speichern' }));
+
+    await waitFor(() => {
+      expect(updateNews).toHaveBeenCalledWith(
+        'news-1',
+        expect.objectContaining({
+          title: 'Aktualisierte News',
+        }),
+      );
+      expect(screen.getByText('News-Eintrag wurde aktualisiert.')).toBeTruthy();
+    });
+  });
+
+  it('shows a save error when updating an existing news entry fails', async () => {
+    vi.mocked(updateNews).mockRejectedValueOnce(new Error('update failed'));
+
+    render(<NewsEditPage />);
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('Bestehende News')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Änderungen speichern' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('news.messages.saveError')).toBeTruthy();
+    });
+  });
+
   it('loads an existing news entry and deletes it after confirmation', async () => {
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const confirmSpy = stubConfirm(true);
 
     render(<NewsEditPage />);
 
@@ -193,8 +305,45 @@ describe('NewsListPage', () => {
       expect(window.sessionStorage.getItem('news-plugin-flash-message')).toBe('deleteSuccess');
       expect(navigateMock).toHaveBeenCalledWith({ to: '/plugins/news' });
     });
+  });
 
-    confirmSpy.mockRestore();
+  it('does not delete an entry when the user cancels the confirmation dialog', async () => {
+    const confirmSpy = stubConfirm(false);
+
+    render(<NewsEditPage />);
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('Bestehende News')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Löschen' }));
+
+    await waitFor(() => {
+      expect(confirmSpy).toHaveBeenCalledWith('Soll dieser News-Eintrag wirklich gelöscht werden?');
+    });
+
+    expect(deleteNews).not.toHaveBeenCalled();
+    expect(navigateMock).not.toHaveBeenCalled();
+  });
+
+  it('shows a delete error when deleting an existing news entry fails', async () => {
+    stubConfirm(true);
+    vi.mocked(deleteNews).mockRejectedValueOnce(new Error('delete failed'));
+
+    render(<NewsEditPage />);
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('Bestehende News')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Löschen' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('News-Eintrag konnte nicht gelöscht werden.')).toBeTruthy();
+    });
+
+    expect(navigateMock).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Löschen' }).getAttribute('disabled')).toBeNull();
   });
 
   it('renders and consumes a flash message on the list page', async () => {
@@ -206,6 +355,19 @@ describe('NewsListPage', () => {
       expect(screen.getByText('News-Eintrag wurde erstellt.')).toBeTruthy();
     });
 
+    expect(window.sessionStorage.getItem('news-plugin-flash-message')).toBeNull();
+  });
+
+  it('ignores unsupported flash messages on the list page', async () => {
+    window.sessionStorage.setItem('news-plugin-flash-message', 'unsupported');
+
+    render(<NewsListPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Noch keine News vorhanden')).toBeTruthy();
+    });
+
+    expect(screen.queryByText('News-Eintrag wurde erstellt.')).toBeNull();
     expect(window.sessionStorage.getItem('news-plugin-flash-message')).toBeNull();
   });
 });

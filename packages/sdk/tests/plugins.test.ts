@@ -56,6 +56,15 @@ describe('plugin registry', () => {
         },
       ])
     ).toThrow('invalid_plugin_definition');
+
+    expect(() =>
+      createPluginRegistry([
+        {
+          ...pluginA,
+          displayName: '   ',
+        },
+      ])
+    ).toThrow('invalid_plugin_definition');
   });
 
   it('merges route, navigation, content type and translations', () => {
@@ -63,6 +72,45 @@ describe('plugin registry', () => {
     expect(mergePluginNavigationItems([pluginA])).toHaveLength(1);
     expect(mergePluginContentTypes([pluginA])).toHaveLength(1);
     expect(mergePluginTranslations([pluginA])).toEqual(pluginA.translations);
+  });
+
+  it('merges nested translations and tolerates omitted optional plugin sections', () => {
+    const registry = createPluginRegistry([
+      pluginA,
+      {
+        id: 'example',
+        displayName: 'Example',
+        routes: [{ id: 'example.list', path: '/plugins/example', component: (() => null) as never }],
+      },
+      {
+        id: 'news-override',
+        displayName: 'News Override',
+        routes: [{ id: 'news.override', path: '/plugins/news/override', component: (() => null) as never }],
+        translations: {
+          de: {
+            news: {
+              navigation: {
+                subtitle: 'Redaktion',
+              },
+            },
+          },
+        },
+      },
+    ]);
+
+    expect(Array.from(registry.keys())).toEqual(['news', 'example', 'news-override']);
+    expect(mergePluginNavigationItems(Array.from(registry.values()))).toHaveLength(1);
+    expect(mergePluginContentTypes(Array.from(registry.values()))).toHaveLength(1);
+    expect(mergePluginTranslations(Array.from(registry.values()))).toEqual({
+      de: {
+        news: {
+          navigation: {
+            title: 'News',
+            subtitle: 'Redaktion',
+          },
+        },
+      },
+    });
   });
 
   it('exposes a typed public plugin contract', () => {

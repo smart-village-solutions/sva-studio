@@ -3816,6 +3816,60 @@ const runExternalSmoke = async (env: NodeJS.ProcessEnv): Promise<readonly Accept
   ]);
 };
 
+const retryableExternalWarmupProbeNames = new Set([
+  'public-home',
+  'public-live',
+  'public-ready',
+  'public-auth-login',
+  'public-auth-login-bb-guben',
+  'public-auth-login-de-musterhausen',
+]);
+
+const retryableExternalWarmupSignals = ['404', '502', '503', '504', 'timeout', 'timed out', 'gateway'];
+
+export const shouldRetryExternalSmoke = (probes: readonly AcceptanceProbeResult[]) => {
+  const failingProbes = probes.filter((probe) => probe.status === 'error');
+  if (failingProbes.length === 0) {
+    return false;
+  }
+
+  return failingProbes.every((probe) => {
+    if (!retryableExternalWarmupProbeNames.has(probe.name)) {
+      return false;
+    }
+
+    const message = probe.message.toLowerCase();
+    return retryableExternalWarmupSignals.some((signal) => message.includes(signal));
+  });
+};
+
+export const runExternalSmokeWithWarmup = async (
+  env: NodeJS.ProcessEnv,
+  options?: {
+    readonly maxAttempts?: number;
+    readonly retryDelayMs?: number;
+    readonly runner?: (env: NodeJS.ProcessEnv) => Promise<readonly AcceptanceProbeResult[]>;
+  }
+): Promise<readonly AcceptanceProbeResult[]> => {
+  const maxAttempts = options?.maxAttempts ?? Number(env.SVA_EXTERNAL_SMOKE_MAX_ATTEMPTS ?? '2');
+  const retryDelayMs = options?.retryDelayMs ?? Number(env.SVA_EXTERNAL_SMOKE_RETRY_DELAY_MS ?? '15000');
+  const runner = options?.runner ?? runExternalSmoke;
+  let lastProbes: readonly AcceptanceProbeResult[] = [];
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const probes = await runner(env);
+    lastProbes = probes;
+
+    if (!shouldRetryExternalSmoke(probes) || attempt >= maxAttempts) {
+      return probes;
+    }
+
+    await wait(retryDelayMs);
+  }
+
+  return lastProbes;
+};
+
 const runAcceptanceDeploy = async (runtimeProfile: RemoteRuntimeProfile, env: NodeJS.ProcessEnv) => {
   const options = resolveAcceptanceDeployOptions(env, cliOptions, runtimeProfile);
   const mutationContext = assertDeterministicRemoteMutationContext(env, runtimeProfile, 'deploy');
@@ -4083,7 +4137,7 @@ const runAcceptanceDeploy = async (runtimeProfile: RemoteRuntimeProfile, env: No
 
     const externalSmokeStartedAt = Date.now();
     try {
-      const externalProbes = await runExternalSmoke(env);
+      const externalProbes = await runExternalSmokeWithWarmup(env);
       report = {
         ...report,
         externalProbes,
@@ -4245,8 +4299,13 @@ const main = async () => {
   await runAcceptanceCommand(requireRemoteRuntimeProfile(runtimeProfile), runtimeCommand);
 };
 
-main().catch((error: unknown) => {
-  const message = error instanceof Error ? error.message : String(error);
-  console.error(`[runtime-env] ${message}`);
-  process.exit(1);
-});
+const entryScriptPath = process.argv[1] ? resolve(process.argv[1]) : null;
+const currentScriptPath = fileURLToPath(import.meta.url);
+
+if (entryScriptPath === currentScriptPath) {
+  main().catch((error: unknown) => {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`[runtime-env] ${message}`);
+    process.exit(1);
+  });
+}

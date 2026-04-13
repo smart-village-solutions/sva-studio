@@ -3851,8 +3851,10 @@ export const runExternalSmokeWithWarmup = async (
     readonly runner?: (env: NodeJS.ProcessEnv) => Promise<readonly AcceptanceProbeResult[]>;
   }
 ): Promise<readonly AcceptanceProbeResult[]> => {
-  const maxAttempts = options?.maxAttempts ?? Number(env.SVA_EXTERNAL_SMOKE_MAX_ATTEMPTS ?? '2');
   const retryDelayMs = options?.retryDelayMs ?? Number(env.SVA_EXTERNAL_SMOKE_RETRY_DELAY_MS ?? '15000');
+  const warmupWindowMs = Number(env.SVA_EXTERNAL_SMOKE_WARMUP_WINDOW_MS ?? '300000');
+  const derivedMaxAttempts = Math.max(1, Math.floor(warmupWindowMs / Math.max(retryDelayMs, 1)) + 1);
+  const maxAttempts = options?.maxAttempts ?? Number(env.SVA_EXTERNAL_SMOKE_MAX_ATTEMPTS ?? String(derivedMaxAttempts));
   const runner = options?.runner ?? runExternalSmoke;
   let lastProbes: readonly AcceptanceProbeResult[] = [];
 

@@ -11,6 +11,8 @@ type StatusMessage = {
   readonly text: string;
 };
 
+type FlashMessageCode = 'createSuccess' | 'deleteSuccess';
+
 const defaultPayload = (): NewsPayload => ({
   teaser: '',
   body: '<p></p>',
@@ -30,6 +32,37 @@ const buttonClassName =
 
 const secondaryButtonClassName =
   'inline-flex rounded-md border border-border px-4 py-2 text-sm font-medium text-foreground';
+
+const newsFlashStorageKey = 'news-plugin-flash-message';
+
+const flashMessageTranslationKeys: Record<FlashMessageCode, `messages.${FlashMessageCode}`> = {
+  createSuccess: 'messages.createSuccess',
+  deleteSuccess: 'messages.deleteSuccess',
+};
+
+const persistFlashMessage = (code: FlashMessageCode) => {
+  if (typeof globalThis.window === 'undefined') {
+    return;
+  }
+
+  globalThis.window.sessionStorage.setItem(newsFlashStorageKey, code);
+};
+
+const consumeFlashMessage = (): FlashMessageCode | null => {
+  if (typeof globalThis.window === 'undefined') {
+    return null;
+  }
+
+  const flashMessage = globalThis.window.sessionStorage.getItem(newsFlashStorageKey);
+  globalThis.window.sessionStorage.removeItem(newsFlashStorageKey);
+
+  return flashMessage === 'createSuccess' || flashMessage === 'deleteSuccess' ? flashMessage : null;
+};
+
+const buildDescribedBy = (...ids: readonly (string | undefined | false)[]) => {
+  const describedBy = ids.filter(Boolean).join(' ');
+  return describedBy.length > 0 ? describedBy : undefined;
+};
 
 const formatDate = (value?: string) => {
   if (!value) {
@@ -54,6 +87,7 @@ const NewsForm = ({
   const [fieldErrors, setFieldErrors] = React.useState<readonly string[]>([]);
   const [statusMessage, setStatusMessage] = React.useState<StatusMessage | null>(null);
   const [deletePending, setDeletePending] = React.useState(false);
+  const hasFieldError = React.useCallback((field: string) => fieldErrors.includes(field), [fieldErrors]);
 
   React.useEffect(() => {
     if (mode !== 'edit' || !contentId) {
@@ -104,7 +138,7 @@ const NewsForm = ({
     try {
       if (mode === 'create') {
         await createNews(form);
-        setStatusMessage({ kind: 'success', text: pt('messages.createSuccess') });
+        persistFlashMessage('createSuccess');
         await navigate({ to: '/plugins/news' });
         return;
       }
@@ -131,7 +165,7 @@ const NewsForm = ({
 
     try {
       await deleteNews(contentId);
-      setStatusMessage({ kind: 'success', text: pt('messages.deleteSuccess') });
+      persistFlashMessage('deleteSuccess');
       await navigate({ to: '/plugins/news' });
     } catch {
       setStatusMessage({ kind: 'error', text: pt('messages.deleteError') });
@@ -183,7 +217,8 @@ const NewsForm = ({
             id="news-teaser"
             className={inputClassName}
             required
-            aria-describedby="news-teaser-help"
+            aria-describedby={buildDescribedBy('news-teaser-help', hasFieldError('teaser') && 'news-teaser-error')}
+            aria-invalid={hasFieldError('teaser') || undefined}
             value={form.payload.teaser}
             onChange={(event) =>
               setForm((current) => ({
@@ -195,7 +230,11 @@ const NewsForm = ({
           <p id="news-teaser-help" className="mt-1 text-xs text-muted-foreground">
             {pt('fields.teaserHelp')}
           </p>
-          {fieldErrors.includes('teaser') ? <p className="mt-1 text-xs text-destructive">{pt('validation.teaser')}</p> : null}
+          {hasFieldError('teaser') ? (
+            <p id="news-teaser-error" className="mt-1 text-xs text-destructive">
+              {pt('validation.teaser')}
+            </p>
+          ) : null}
         </div>
 
         <div>
@@ -206,6 +245,8 @@ const NewsForm = ({
             id="news-body"
             className={`${inputClassName} min-h-48`}
             required
+            aria-describedby={buildDescribedBy(hasFieldError('body') && 'news-body-error')}
+            aria-invalid={hasFieldError('body') || undefined}
             value={form.payload.body}
             onChange={(event) =>
               setForm((current) => ({
@@ -214,7 +255,11 @@ const NewsForm = ({
               }))
             }
           />
-          {fieldErrors.includes('body') ? <p className="mt-1 text-xs text-destructive">{pt('validation.body')}</p> : null}
+          {hasFieldError('body') ? (
+            <p id="news-body-error" className="mt-1 text-xs text-destructive">
+              {pt('validation.body')}
+            </p>
+          ) : null}
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
@@ -226,6 +271,8 @@ const NewsForm = ({
               id="news-image-url"
               className={inputClassName}
               type="url"
+              aria-describedby={buildDescribedBy(hasFieldError('imageUrl') && 'news-image-url-error')}
+              aria-invalid={hasFieldError('imageUrl') || undefined}
               value={form.payload.imageUrl ?? ''}
               onChange={(event) =>
                 setForm((current) => ({
@@ -234,7 +281,11 @@ const NewsForm = ({
                 }))
               }
             />
-            {fieldErrors.includes('imageUrl') ? <p className="mt-1 text-xs text-destructive">{pt('validation.imageUrl')}</p> : null}
+            {hasFieldError('imageUrl') ? (
+              <p id="news-image-url-error" className="mt-1 text-xs text-destructive">
+                {pt('validation.imageUrl')}
+              </p>
+            ) : null}
           </div>
 
           <div>
@@ -245,6 +296,8 @@ const NewsForm = ({
               id="news-external-url"
               className={inputClassName}
               type="url"
+              aria-describedby={buildDescribedBy(hasFieldError('externalUrl') && 'news-external-url-error')}
+              aria-invalid={hasFieldError('externalUrl') || undefined}
               value={form.payload.externalUrl ?? ''}
               onChange={(event) =>
                 setForm((current) => ({
@@ -253,7 +306,11 @@ const NewsForm = ({
                 }))
               }
             />
-            {fieldErrors.includes('externalUrl') ? <p className="mt-1 text-xs text-destructive">{pt('validation.externalUrl')}</p> : null}
+            {hasFieldError('externalUrl') ? (
+              <p id="news-external-url-error" className="mt-1 text-xs text-destructive">
+                {pt('validation.externalUrl')}
+              </p>
+            ) : null}
           </div>
         </div>
 
@@ -340,6 +397,11 @@ export const NewsListPage = () => {
   const [items, setItems] = React.useState<readonly NewsContentItem[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  const [flashMessage, setFlashMessage] = React.useState<FlashMessageCode | null>(null);
+
+  React.useEffect(() => {
+    setFlashMessage(consumeFlashMessage());
+  }, []);
 
   React.useEffect(() => {
     let active = true;
@@ -385,6 +447,12 @@ export const NewsListPage = () => {
           {pt('actions.create')}
         </Link>
       </header>
+
+      {flashMessage ? (
+        <p role="status" aria-live="polite" className="text-primary">
+          {pt(flashMessageTranslationKeys[flashMessage])}
+        </p>
+      ) : null}
 
       {items.length === 0 ? (
         <div role="status" aria-live="polite" className="rounded-lg border border-border bg-card p-6">

@@ -1,6 +1,6 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { registerPluginTranslationResolver } from '@sva/sdk';
 
 import { NewsCreatePage, NewsEditPage, NewsListPage } from '../src/news.pages.js';
@@ -40,9 +40,14 @@ vi.mock('@tanstack/react-router', () => ({
 }));
 
 describe('NewsListPage', () => {
+  afterEach(() => {
+    cleanup();
+  });
+
   beforeEach(() => {
     vi.restoreAllMocks();
     navigateMock.mockReset();
+    window.sessionStorage.clear();
     registerPluginTranslationResolver((key) => {
       const labels: Record<string, string> = {
         'news.messages.loading': 'News werden geladen.',
@@ -141,7 +146,35 @@ describe('NewsListPage', () => {
       expect(screen.getByText('Der Inhalt ist erforderlich und darf maximal 50.000 Zeichen haben.')).toBeTruthy();
     });
 
+    expect(screen.getByLabelText('Teaser').getAttribute('aria-invalid')).toBe('true');
+    expect(screen.getByLabelText('Teaser').getAttribute('aria-describedby')).toBe('news-teaser-help news-teaser-error');
+    expect(screen.getByLabelText('Inhalt (HTML)').getAttribute('aria-invalid')).toBe('true');
+    expect(screen.getByLabelText('Inhalt (HTML)').getAttribute('aria-describedby')).toBe('news-body-error');
+
     expect(createNews).not.toHaveBeenCalled();
+  });
+
+  it('persists a create success flash before navigating back to the list', async () => {
+    render(<NewsCreatePage />);
+
+    fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Neue News' } });
+    fireEvent.change(screen.getByLabelText('Teaser'), { target: { value: 'Kurztext' } });
+    fireEvent.change(screen.getByLabelText('Inhalt (HTML)'), { target: { value: '<p>Body</p>' } });
+    fireEvent.click(screen.getByRole('button', { name: 'News anlegen' }));
+
+    await waitFor(() => {
+      expect(createNews).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Neue News',
+          payload: expect.objectContaining({
+            teaser: 'Kurztext',
+            body: '<p>Body</p>',
+          }),
+        })
+      );
+      expect(window.sessionStorage.getItem('news-plugin-flash-message')).toBe('createSuccess');
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/plugins/news' });
+    });
   });
 
   it('loads an existing news entry and deletes it after confirmation', async () => {
@@ -157,9 +190,22 @@ describe('NewsListPage', () => {
 
     await waitFor(() => {
       expect(deleteNews).toHaveBeenCalledWith('news-1');
+      expect(window.sessionStorage.getItem('news-plugin-flash-message')).toBe('deleteSuccess');
       expect(navigateMock).toHaveBeenCalledWith({ to: '/plugins/news' });
     });
 
     confirmSpy.mockRestore();
+  });
+
+  it('renders and consumes a flash message on the list page', async () => {
+    window.sessionStorage.setItem('news-plugin-flash-message', 'createSuccess');
+
+    render(<NewsListPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('News-Eintrag wurde erstellt.')).toBeTruthy();
+    });
+
+    expect(window.sessionStorage.getItem('news-plugin-flash-message')).toBeNull();
   });
 });

@@ -24,6 +24,7 @@ vi.mock('./iam-account-management/shared.js', () => ({
 
 import {
   createContent,
+  deleteContent,
   loadContentById,
   loadContentDetail,
   loadContentHistory,
@@ -262,6 +263,40 @@ describe('iam-contents repository', () => {
     expect(state.emitActivityLog).toHaveBeenCalledWith(
       state.client,
       expect.objectContaining({ eventType: 'iam.content.status_changed' })
+    );
+  });
+
+  it('returns undefined for missing content deletes and emits an activity log before deleting existing rows', async () => {
+    state.client.query.mockResolvedValueOnce({ rowCount: 0, rows: [] });
+
+    await expect(
+      deleteContent({
+        instanceId: 'de-musterhausen',
+        actorAccountId: '33333333-3333-4333-8333-333333333333',
+        actorDisplayName: 'Editor',
+        contentId: '22222222-2222-4222-8222-222222222222',
+      })
+    ).resolves.toBeUndefined();
+
+    state.client.query.mockReset();
+    state.client.query
+      .mockResolvedValueOnce({ rowCount: 1, rows: [contentRow] })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [] });
+
+    await expect(
+      deleteContent({
+        instanceId: 'de-musterhausen',
+        actorAccountId: '33333333-3333-4333-8333-333333333333',
+        actorDisplayName: 'Editor',
+        requestId: 'req-content',
+        traceId: 'trace-content',
+        contentId: '11111111-1111-4111-8111-111111111111',
+      })
+    ).resolves.toBe('11111111-1111-4111-8111-111111111111');
+
+    expect(state.emitActivityLog).toHaveBeenCalledWith(
+      state.client,
+      expect.objectContaining({ eventType: 'iam.content.deleted' })
     );
   });
 });

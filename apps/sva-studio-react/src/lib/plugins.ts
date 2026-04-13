@@ -24,3 +24,5 @@ export const initializePluginTranslations = () => {
   registerPluginTranslationResolver((key, variables) => t(key, variables));
   resetTranslatorCache();
 };
+
+initializePluginTranslations();

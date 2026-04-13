@@ -16,6 +16,7 @@ const state = vi.hoisted(() => ({
   reserveIdempotency: vi.fn(),
   completeIdempotency: vi.fn(),
   createContent: vi.fn(),
+  deleteContent: vi.fn(),
   updateContent: vi.fn(),
   loadContentById: vi.fn(),
   loadContentDetail: vi.fn(),
@@ -46,16 +47,22 @@ vi.mock('./iam-account-management/shared.js', () => ({
 
 vi.mock('./iam-contents/repository.js', () => ({
   createContent: (...args: Parameters<typeof state.createContent>) => state.createContent(...args),
+  deleteContent: (...args: Parameters<typeof state.deleteContent>) => state.deleteContent(...args),
   loadContentById: (...args: Parameters<typeof state.loadContentById>) => state.loadContentById(...args),
   loadContentDetail: (...args: Parameters<typeof state.loadContentDetail>) => state.loadContentDetail(...args),
   updateContent: (...args: Parameters<typeof state.updateContent>) => state.updateContent(...args),
+}));
+
+vi.mock('./iam-contents/content-type-registry.js', () => ({
+  validateContentTypePayload: vi.fn((contentType: string, payload: unknown) => ({ ok: true, payload, contentType })),
 }));
 
 vi.mock('./iam-contents/request-context.js', () => ({
   resolveContentAccess: (...args: Parameters<typeof state.resolveContentAccess>) => state.resolveContentAccess(...args),
 }));
 
-import { createContentResponse, updateContentResponse } from './iam-contents/mutations.js';
+import { validateContentTypePayload } from './iam-contents/content-type-registry.js';
+import { createContentResponse, deleteContentResponse, updateContentResponse } from './iam-contents/mutations.js';
 
 const actor = {
   instanceId: 'de-musterhausen',
@@ -89,6 +96,7 @@ describe('iam-contents mutations', () => {
     state.reserveIdempotency.mockReset();
     state.completeIdempotency.mockReset();
     state.createContent.mockReset();
+    state.deleteContent.mockReset();
     state.updateContent.mockReset();
     state.loadContentById.mockReset();
     state.loadContentDetail.mockReset();
@@ -218,6 +226,49 @@ describe('iam-contents mutations', () => {
     );
   });
 
+  it('rejects invalid create and update payloads before repository mutations run', async () => {
+    state.validateCsrf.mockReturnValue(null);
+    state.requireIdempotencyKey.mockReturnValue({ key: 'idem-1' });
+    state.parseRequestBody.mockResolvedValueOnce({
+      ok: true,
+      rawBody: '{}',
+      data: { title: 'Startseite', contentType: 'news', payload: { teaser: '' } },
+    });
+    vi.mocked(validateContentTypePayload).mockReturnValueOnce({
+      ok: false,
+      message: 'payload-invalid',
+    } as never);
+
+    const createInvalidPayload = await createContentResponse(createRequest(), actor);
+    expect(createInvalidPayload.status).toBe(400);
+    expect(state.createContent).not.toHaveBeenCalled();
+
+    state.readPathSegment.mockReturnValueOnce('content-1');
+    state.parseRequestBody.mockResolvedValueOnce({
+      ok: true,
+      rawBody: '{}',
+      data: { payload: { teaser: '' } },
+    });
+    state.loadContentById.mockResolvedValueOnce({
+      id: 'content-1',
+      contentType: 'news',
+      title: 'Alt',
+      payload: {},
+      status: 'draft',
+      author: 'Editor',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    });
+    vi.mocked(validateContentTypePayload).mockReturnValueOnce({
+      ok: false,
+      message: 'payload-invalid',
+    } as never);
+
+    const updateInvalidPayload = await updateContentResponse(updateRequest(), actor);
+    expect(updateInvalidPayload.status).toBe(400);
+    expect(state.updateContent).not.toHaveBeenCalled();
+  });
+
   it('covers update request validation and response branches', async () => {
     const csrfError = new Response('csrf', { status: 403 });
     state.validateCsrf.mockReturnValueOnce(csrfError);
@@ -273,6 +324,42 @@ describe('iam-contents mutations', () => {
     expect(failedResponse.status).toBe(503);
     expect(state.logger.error).toHaveBeenCalledWith(
       'Content update failed',
+      expect.objectContaining({ content_id: 'content-1', error: 'db down' })
+    );
+  });
+
+  it('covers delete request validation, not found, success and failure branches', async () => {
+    const csrfError = new Response('csrf', { status: 403 });
+    state.validateCsrf.mockReturnValueOnce(csrfError);
+    expect((await deleteContentResponse(new Request('http://localhost/api/v1/iam/contents/content-1', { method: 'DELETE' }), actor))
+      .status).toBe(403);
+
+    state.validateCsrf.mockReturnValue(null);
+    state.readPathSegment.mockReturnValueOnce('');
+    expect((await deleteContentResponse(new Request('http://localhost/api/v1/iam/contents/content-1', { method: 'DELETE' }), actor))
+      .status).toBe(400);
+
+    state.readPathSegment.mockReturnValue('content-1');
+    state.deleteContent.mockResolvedValueOnce(undefined);
+    expect((await deleteContentResponse(new Request('http://localhost/api/v1/iam/contents/content-1', { method: 'DELETE' }), actor))
+      .status).toBe(404);
+
+    state.readPathSegment.mockReset();
+    state.readPathSegment.mockReturnValue('content-1');
+    state.deleteContent.mockResolvedValueOnce('content-1');
+    expect((await deleteContentResponse(new Request('http://localhost/api/v1/iam/contents/content-1', { method: 'DELETE' }), actor))
+      .status).toBe(200);
+
+    state.readPathSegment.mockReset();
+    state.readPathSegment.mockReturnValue('content-1');
+    state.deleteContent.mockRejectedValueOnce(new Error('db down'));
+    const failedResponse = await deleteContentResponse(
+      new Request('http://localhost/api/v1/iam/contents/content-1', { method: 'DELETE' }),
+      actor
+    );
+    expect(failedResponse.status).toBe(503);
+    expect(state.logger.error).toHaveBeenCalledWith(
+      'Content delete failed',
       expect.objectContaining({ content_id: 'content-1', error: 'db down' })
     );
   });

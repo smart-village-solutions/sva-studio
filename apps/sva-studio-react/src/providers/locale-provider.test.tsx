@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { usePluginTranslation } from '@sva/sdk';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { t } from '../i18n';
@@ -6,6 +7,11 @@ import { LOCALE_STORAGE_KEY, LocaleProvider, useLocale } from './locale-provider
 
 const TranslationProbe = () => {
   return <span>{t('shell.sidebar.account')}</span>;
+};
+
+const PluginTranslationProbe = () => {
+  const pt = usePluginTranslation('news');
+  return <span>{pt('list.title')}</span>;
 };
 
 const LocaleSwitchProbe = () => {
@@ -68,5 +74,15 @@ describe('LocaleProvider', () => {
     await waitFor(() => {
       expect(window.localStorage.getItem(LOCALE_STORAGE_KEY)).toBe('en');
     });
+  });
+
+  it('resolves plugin translations on the first render', () => {
+    render(
+      <LocaleProvider>
+        <PluginTranslationProbe />
+      </LocaleProvider>
+    );
+
+    expect(screen.getByText('News')).toBeTruthy();
   });
 });

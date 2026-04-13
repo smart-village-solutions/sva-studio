@@ -1,5 +1,6 @@
 import type { RuntimeDependencyKey, RuntimeDependencyStatus } from '@sva/core';
 
+import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { useRuntimeHealth } from '../hooks/use-runtime-health';
 import { getActiveLocale, t } from '../i18n';
@@ -77,7 +78,7 @@ const toReasonLabel = (reasonCode: string | undefined): string | null => {
 };
 
 export function RuntimeHealthIndicator() {
-  const { error, health, isLoading } = useRuntimeHealth();
+  const { error, health, isLoading, refetch } = useRuntimeHealth();
   const activeLocale = getActiveLocale();
   const overallStatus: RuntimeDependencyStatus = error || isLoading ? 'unknown' : health.status;
   const keycloakRealm =
@@ -97,6 +98,9 @@ export function RuntimeHealthIndicator() {
           <p className="text-xs text-muted-foreground">{t('shell.runtimeHealth.description')}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <Button type="button" size="sm" variant="outline" onClick={() => void refetch()} disabled={isLoading}>
+            {t('shell.runtimeHealth.refresh')}
+          </Button>
           <Badge className={cn(statusBadgeClassNames[overallStatus])}>
             {overallStatusLabels[overallStatus]}
           </Badge>

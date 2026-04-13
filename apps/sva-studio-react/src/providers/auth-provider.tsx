@@ -6,6 +6,7 @@ import {
   logBrowserOperationSuccess,
 } from '../lib/browser-operation-logging';
 import { createLoginHref } from '../lib/auth-navigation';
+import { fetchWithRequestTimeout } from '../lib/iam-api';
 
 type SessionUser = {
   id: string;
@@ -170,7 +171,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         silent,
         pathname: globalThis.location?.pathname ?? null,
       });
-      let response = await fetch(AUTH_ME_ENDPOINT, { credentials: 'include' });
+      let response = await fetchWithRequestTimeout(AUTH_ME_ENDPOINT, undefined, { timeoutMs: 5_000 });
       logAuthDebug('auth_session_load_response', {
         silent,
         status: response.status,
@@ -196,7 +197,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         }
 
         if (recovered) {
-          response = await fetch(AUTH_ME_ENDPOINT, { credentials: 'include' });
+          response = await fetchWithRequestTimeout(AUTH_ME_ENDPOINT, undefined, { timeoutMs: 5_000 });
           logAuthDebug('auth_session_load_response_after_recovery', {
             status: response.status,
             ok: response.ok,
@@ -264,9 +265,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       operation: 'logout',
     });
     try {
-      await fetch(AUTH_LOGOUT_ENDPOINT, {
+      await fetchWithRequestTimeout(AUTH_LOGOUT_ENDPOINT, {
         method: 'POST',
-        credentials: 'include',
+      }, {
+        timeoutMs: 5_000,
       });
       logBrowserOperationSuccess(authLogger, 'auth_logout_completed', {
         operation: 'logout',

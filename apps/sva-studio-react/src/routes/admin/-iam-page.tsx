@@ -10,6 +10,7 @@ import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Select } from '../../components/ui/select';
 import {
+  fetchWithRequestTimeout,
   listAdminDsrCases,
   listGovernanceCases,
   type DsrAdminCasesQuery,
@@ -376,6 +377,7 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
     }
 
     let active = true;
+    const controller = new AbortController();
     const timer = window.setTimeout(async () => {
       logBrowserOperationStart(iamViewerLogger, 'iam_permissions_load_started', {
         operation: 'load_permissions',
@@ -387,16 +389,20 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
       setPermissionsError(null);
 
       try {
-        const response = await fetch(
+        const response = await fetchWithRequestTimeout(
           buildPermissionsPath({
             instanceId,
             organizationId: organizationId.trim() || undefined,
             actingAsUserId: actingAsUserId.trim() || undefined,
           }),
-          { credentials: 'include' }
+          undefined,
+          {
+            signal: controller.signal,
+            timeoutMs: 10_000,
+          }
         );
 
-        if (!active) {
+        if (!active || controller.signal.aborted) {
           return;
         }
 
@@ -434,7 +440,7 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
           'debug'
         );
       } catch (error) {
-        if (!active) {
+        if (!active || controller.signal.aborted) {
           logBrowserOperationAbort(iamViewerLogger, 'iam_permissions_load_aborted', {
             operation: 'load_permissions',
             instance_id: instanceId,
@@ -458,6 +464,7 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
     return () => {
       active = false;
       window.clearTimeout(timer);
+      controller.abort();
     };
   }, [actingAsUserId, activeTab, allowedTabs, canAccessCockpit, cockpitEnabled, instanceId, invalidatePermissions, organizationId]);
 
@@ -618,9 +625,8 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
     });
 
     try {
-      const response = await fetch('/iam/authorize', {
+      const response = await fetchWithRequestTimeout('/iam/authorize', {
         method: 'POST',
-        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           instanceId,
@@ -636,6 +642,8 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
             requestId: `iam-viewer-${Date.now()}`,
           },
         }),
+      }, {
+        timeoutMs: 10_000,
       });
 
       if (!response.ok) {

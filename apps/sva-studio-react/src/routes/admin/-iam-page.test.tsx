@@ -20,6 +20,7 @@ vi.mock('../../providers/auth-provider', () => ({
 }));
 
 vi.mock('../../lib/iam-api', () => ({
+  fetchWithRequestTimeout: (...args: Parameters<typeof fetch>) => fetch(...args),
   listGovernanceCases: (...args: unknown[]) => listGovernanceCasesMock(...args),
   listAdminDsrCases: (...args: unknown[]) => listAdminDsrCasesMock(...args),
 }));
@@ -165,7 +166,11 @@ describe('IamViewerPage', () => {
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
         expect.stringContaining('/iam/me/permissions?'),
-        expect.objectContaining({ credentials: 'include' })
+        undefined,
+        expect.objectContaining({
+          signal: expect.any(AbortSignal),
+          timeoutMs: 10_000,
+        })
       );
     });
 
@@ -174,7 +179,8 @@ describe('IamViewerPage', () => {
     await waitFor(() => {
       expect(fetchMock).toHaveBeenLastCalledWith(
         '/iam/authorize',
-        expect.objectContaining({ method: 'POST' })
+        expect.objectContaining({ method: 'POST' }),
+        expect.objectContaining({ timeoutMs: 10_000 })
       );
       expect(screen.getByText('Erlaubt')).toBeTruthy();
       expect(screen.getByText('policy_allow')).toBeTruthy();

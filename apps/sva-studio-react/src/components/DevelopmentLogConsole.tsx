@@ -22,7 +22,6 @@ type LogLevelFilter = 'all' | 'debug' | 'info' | 'warn' | 'error';
 type LogSourceFilter = 'all' | 'browser' | 'server';
 type DevelopmentLogRecord = BrowserDevelopmentLogEntry | DevelopmentLogEntry;
 
-const POLLING_INTERVAL_MS = 1500;
 const browserLogger = createBrowserLogger({
   component: 'development-log-console',
 });
@@ -107,7 +106,9 @@ export default function DevelopmentLogConsole() {
   const [isDocumentVisible, setIsDocumentVisible] = React.useState(() => {
     return typeof document === 'undefined' ? true : document.visibilityState === 'visible';
   });
+  const [isRefreshing, setIsRefreshing] = React.useState(false);
   const latestServerLogIdRef = React.useRef(0);
+  const inFlightRefreshRef = React.useRef<Promise<void> | null>(null);
 
   React.useEffect(() => {
     setBrowserLogs(getBrowserDevelopmentLogs());
@@ -142,14 +143,16 @@ export default function DevelopmentLogConsole() {
     };
   }, []);
 
-  React.useEffect(() => {
+  const refreshServerLogs = React.useCallback(async () => {
     if (!isOpen || !isDocumentVisible) {
-      return undefined;
+      return;
+    }
+    if (inFlightRefreshRef.current) {
+      return inFlightRefreshRef.current;
     }
 
-    let cancelled = false;
-
-    const refreshServerLogs = async () => {
+    const request = (async () => {
+      setIsRefreshing(true);
       try {
         const nextEntries = await loadServerLogs({
           data: {
@@ -157,30 +160,42 @@ export default function DevelopmentLogConsole() {
           },
         });
 
-        if (cancelled || nextEntries.length === 0) {
+        if (nextEntries.length === 0) {
           return;
         }
 
         applyServerLogUpdate(nextEntries, latestServerLogIdRef, setServerLogs);
       } catch (error) {
-        if (!cancelled) {
-          browserLogger.warn('Failed to load server logs', {
-            error,
-          });
-        }
+        browserLogger.warn('Failed to load server logs', {
+          error,
+        });
+      } finally {
+        setIsRefreshing(false);
       }
-    };
+    })();
+
+    inFlightRefreshRef.current = request;
+
+    try {
+      await request;
+    } finally {
+      if (inFlightRefreshRef.current === request) {
+        inFlightRefreshRef.current = null;
+      }
+    }
+  }, [isDocumentVisible, isOpen, loadServerLogs]);
+
+  React.useEffect(() => {
+    if (!isOpen || !isDocumentVisible) {
+      return undefined;
+    }
 
     void refreshServerLogs();
-    const intervalId = globalThis.setInterval(() => {
-      void refreshServerLogs();
-    }, POLLING_INTERVAL_MS);
 
     return () => {
-      cancelled = true;
-      globalThis.clearInterval(intervalId);
+      inFlightRefreshRef.current = null;
     };
-  }, [isDocumentVisible, isOpen, loadServerLogs]);
+  }, [isDocumentVisible, isOpen, refreshServerLogs]);
 
   const visibleEntries = React.useMemo(() => {
     return [...browserLogs, ...serverLogs]
@@ -233,6 +248,18 @@ export default function DevelopmentLogConsole() {
                   <option value="server">{t('shared.devLogConsole.sourceServer')}</option>
                 </Select>
               </label>
+            </div>
+
+            <div className="flex items-center justify-end">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => void refreshServerLogs()}
+                disabled={!isOpen || !isDocumentVisible || isRefreshing}
+              >
+                {t('shared.devLogConsole.refresh')}
+              </Button>
             </div>
 
             <div className="max-h-80 space-y-3 overflow-y-auto rounded-md border border-border/70 bg-background/80 p-3">

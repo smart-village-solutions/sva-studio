@@ -34,6 +34,7 @@ vi.mock('../../lib/iam-api', () => ({
     }
   },
   getMyProfile: (...args: unknown[]) => getMyProfileMock(...args),
+  fetchWithRequestTimeout: (...args: Parameters<typeof fetch>) => fetch(...args),
   updateMyProfile: (...args: unknown[]) => updateMyProfileMock(...args),
   asIamError: (...args: unknown[]) => asIamErrorMock(...args),
 }));
@@ -186,11 +187,16 @@ describe('AccountProfilePage', () => {
     render(<AccountProfilePage />);
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith('/auth/logout', {
-        method: 'POST',
-        credentials: 'include',
-        redirect: 'manual',
-      });
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/auth/logout',
+        expect.objectContaining({
+          method: 'POST',
+          redirect: 'manual',
+        }),
+        expect.objectContaining({
+          timeoutMs: 5_000,
+        })
+      );
     });
     expect(authMockValue.refetch).toHaveBeenCalledTimes(1);
     expect(screen.getByRole('link', { name: 'Login' }).getAttribute('href')).toBe('/auth/login?returnTo=%2F');

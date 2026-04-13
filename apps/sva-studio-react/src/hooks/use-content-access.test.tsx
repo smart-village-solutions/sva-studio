@@ -33,6 +33,7 @@ vi.mock('../lib/iam-api', () => ({
     }
   },
   asIamError: (...args: Parameters<typeof asIamErrorMock>) => asIamErrorMock(...args),
+  fetchWithRequestTimeout: (...args: Parameters<typeof fetch>) => fetch(...args),
 }));
 
 vi.mock('../providers/auth-provider', () => ({
@@ -123,10 +124,14 @@ describe('useContentAccess', () => {
       expect(result.current.error).toBeNull();
     });
 
-    expect(fetchMock).toHaveBeenCalledWith('/iam/me/permissions?instanceId=de-musterhausen', {
-      credentials: 'include',
-      signal: expect.any(AbortSignal),
-    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/iam/me/permissions?instanceId=de-musterhausen',
+      undefined,
+      {
+        signal: expect.any(AbortSignal),
+        timeoutMs: 10_000,
+      }
+    );
     expect(browserLoggerMock.debug).toHaveBeenCalledWith(
       'content_access_load_succeeded',
       expect.objectContaining({ operation: 'load_content_access', instance_id: 'de-musterhausen' })

@@ -2,7 +2,13 @@ import type { IamUserDetail } from '@sva/core';
 import { Link } from '@tanstack/react-router';
 import React from 'react';
 
-import { asIamError, getMyProfile, IamHttpError, updateMyProfile } from '../../lib/iam-api';
+import {
+  asIamError,
+  fetchWithRequestTimeout,
+  getMyProfile,
+  IamHttpError,
+  updateMyProfile,
+} from '../../lib/iam-api';
 import { Alert, AlertDescription, AlertTitle } from '../../components/ui/alert';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
@@ -119,11 +125,14 @@ export const AccountProfilePage = () => {
     } catch (cause) {
       const resolvedError = asIamError(cause);
       if (resolvedError.status === 401) {
-        await fetch('/auth/logout', {
-          method: 'POST',
-          credentials: 'include',
-          redirect: 'manual',
-        }).catch(() => undefined);
+        await fetchWithRequestTimeout(
+          '/auth/logout',
+          {
+            method: 'POST',
+            redirect: 'manual',
+          },
+          { timeoutMs: 5_000 }
+        ).catch(() => undefined);
         await refetch();
       }
       setLoadError(resolvedError);

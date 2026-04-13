@@ -415,7 +415,46 @@ describe('LegalTextAcceptanceDialog', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByRole('alert').textContent).toContain('Die offenen Rechtstexte konnten nicht geladen werden.');
+      expect(screen.queryByRole('alertdialog', { name: 'Bitte Rechtstexte akzeptieren' })).toBeNull();
+    });
+  });
+
+  it('deduplicates focus reloads while a pending legal text request is still running', async () => {
+    let resolvePendingTexts: undefined | ((value: {
+      data: [];
+      pagination: { page: number; pageSize: number; total: number };
+    }) => void);
+    getMyPendingLegalTextsMock.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolvePendingTexts = resolve;
+        })
+    );
+
+    render(
+      <AuthProvider>
+        <LegalTextAcceptanceDialog pathname="/" />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(getMyPendingLegalTextsMock).toHaveBeenCalledTimes(1);
+    });
+
+    window.dispatchEvent(new FocusEvent('focus'));
+    window.dispatchEvent(new FocusEvent('focus'));
+
+    await waitFor(() => {
+      expect(getMyPendingLegalTextsMock).toHaveBeenCalledTimes(1);
+    });
+
+    resolvePendingTexts?.({
+      data: [],
+      pagination: { page: 1, pageSize: 1, total: 0 },
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByRole('alertdialog', { name: 'Bitte Rechtstexte akzeptieren' })).toBeNull();
     });
   });
 

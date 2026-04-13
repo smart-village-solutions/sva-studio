@@ -136,7 +136,7 @@ describe('DevelopmentLogConsole', () => {
     }, { timeout: 10_000 });
   }, 15_000);
 
-  it('waits for document visibility before starting server polling', async () => {
+  it('waits for document visibility before loading server logs', async () => {
     Object.defineProperty(document, 'visibilityState', {
       configurable: true,
       value: 'hidden',
@@ -161,7 +161,7 @@ describe('DevelopmentLogConsole', () => {
     }, { timeout: 10_000 });
   }, 15_000);
 
-  it('shows the empty state and refreshes incrementally while open', async () => {
+  it('shows the empty state and refreshes manually while open', async () => {
     mockBrowserEntries = [];
 
     loadServerLogs.mockReset();
@@ -185,12 +185,53 @@ describe('DevelopmentLogConsole', () => {
 
     expect(await screen.findByText('Noch keine Log-Einträge vorhanden.')).toBeTruthy();
 
+    fireEvent.click(screen.getByRole('button', { name: 'Aktualisieren' }));
+
     await waitFor(() => {
       expect(screen.getByText('server recovered')).toBeTruthy();
     }, { timeout: 10_000 });
 
     expect(loadServerLogs).toHaveBeenNthCalledWith(1, { data: { afterId: undefined } });
     expect(loadServerLogs).toHaveBeenNthCalledWith(2, { data: { afterId: undefined } });
+  }, 15_000);
+
+  it('deduplicates overlapping refresh requests', async () => {
+    let resolveRequest: ((value: DevelopmentLogEntry[]) => void) | undefined;
+    loadServerLogs.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveRequest = resolve;
+        })
+    );
+
+    const DevelopmentLogConsole = (await import('./DevelopmentLogConsole')).default;
+
+    render(<DevelopmentLogConsole />);
+    fireEvent.click(screen.getByRole('button', { name: 'Öffnen' }));
+
+    await waitFor(() => {
+      expect(loadServerLogs).toHaveBeenCalledTimes(1);
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Aktualisieren' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Aktualisieren' }));
+
+    expect(loadServerLogs).toHaveBeenCalledTimes(1);
+
+    resolveRequest?.([
+      {
+        id: 2,
+        timestamp: '2026-03-25T12:00:02.000Z',
+        source: 'server',
+        level: 'info',
+        message: 'server recovered',
+        component: 'test-server',
+      },
+    ]);
+
+    await waitFor(() => {
+      expect(screen.getByText('server recovered')).toBeTruthy();
+    }, { timeout: 10_000 });
   }, 15_000);
 
   it('warns when polling fails while the panel is open', async () => {

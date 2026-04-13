@@ -61,6 +61,7 @@ coverage:
         - packages/sdk/
         - packages/routing/
         - packages/monitoring-client/
+        - packages/plugin-news/
         - packages/sva-mainserver/
 
 # Comment format optimized for PR reviews

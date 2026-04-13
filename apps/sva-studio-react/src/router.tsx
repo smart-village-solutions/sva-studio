@@ -1,9 +1,9 @@
-import type { RouteFactory } from '@sva/sdk';
-import { createRouter, type AnyRoute, type RootRoute } from '@tanstack/react-router';
+import type { PluginRouteGuard, RouteFactory } from '@sva/sdk';
+import { createRoute, createRouter, type AnyRoute, type RootRoute, type RouteComponent } from '@tanstack/react-router';
 import { createIsomorphicFn } from '@tanstack/react-start';
-import { pluginExampleRoutes } from '@sva/plugin-example';
 import type { RouteGuardUser } from '@sva/routing';
 
+import { studioPluginRoutes } from './lib/plugins';
 import { coreRouteFactoriesBase } from './routes/-core-routes';
 import { rootRoute } from './routes/__root';
 
@@ -149,6 +149,49 @@ const materializeRoutes = <TFactories extends readonly AppRouteFactory[]>(factor
   // Workaround bis TanStack Router dies nativ unterstützt.
   factories.map((factory) => factory(rootRoute as unknown as RootRoute)) as MaterializedRoutes<TFactories>;
 
+let accountUiGuardsPromise: Promise<typeof import('@sva/routing')> | null = null;
+
+const getAccountUiGuards = async () => {
+  accountUiGuardsPromise ??= import('@sva/routing');
+  return accountUiGuardsPromise;
+};
+
+export const mapPluginGuardToAccountGuard = (
+  guard?: PluginRouteGuard
+): 'content' | 'contentCreate' | 'contentDetail' | null => {
+  switch (guard) {
+    case 'content.read':
+      return 'content';
+    case 'content.create':
+      return 'contentCreate';
+    case 'content.write':
+      return 'contentDetail';
+    default:
+      return null;
+  }
+};
+
+const runPluginGuard = async (guard: PluginRouteGuard | undefined, options: unknown) => {
+  const accountGuardKey = mapPluginGuardToAccountGuard(guard);
+  if (!accountGuardKey) {
+    return;
+  }
+
+  const routing = await getAccountUiGuards();
+  const guards = routing.accountUiRouteGuards as Record<typeof accountGuardKey, (options: unknown) => Promise<void>>;
+  return guards[accountGuardKey](options);
+};
+
+const materializePluginRoutes = () =>
+  studioPluginRoutes.map((definition) =>
+    createRoute({
+      getParentRoute: () => rootRoute,
+      path: definition.path,
+      beforeLoad: (options) => runPluginGuard(definition.guard, options),
+      component: definition.component as RouteComponent,
+    })
+  );
+
 export const createRuntimeRouteTree = <
   TCoreRouteFactories extends readonly AppRouteFactory[],
   TAuthRouteFactories extends Awaited<ReturnType<typeof getAuthRouteFactories>> & readonly AppRouteFactory[],
@@ -156,13 +199,11 @@ export const createRuntimeRouteTree = <
   runtimeAuthRouteFactories: TAuthRouteFactories,
   runtimeCoreRouteFactories: TCoreRouteFactories = coreRouteFactoriesBase as unknown as TCoreRouteFactories,
 ) => {
-  const extensionRouteFactories = [
-    ...runtimeAuthRouteFactories,
-    ...pluginExampleRoutes,
-  ] as const;
+  const extensionRouteFactories = [...runtimeAuthRouteFactories] as const;
   const runtimeRoutes = [...materializeRoutes(runtimeCoreRouteFactories), ...materializeRoutes(extensionRouteFactories)] as const;
+  const pluginRoutes = materializePluginRoutes();
 
-  return rootRoute.addChildren(runtimeRoutes);
+  return rootRoute.addChildren([...runtimeRoutes, ...pluginRoutes]);
 };
 
 // Create a new router instance

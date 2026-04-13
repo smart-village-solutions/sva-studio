@@ -3,7 +3,7 @@ import { createSdkLogger } from '@sva/sdk/server';
 import { asApiItem, asApiList, createApiError, readPathSegment } from '../iam-account-management/api-helpers.js';
 import type { AuthenticatedRequestContext } from '../middleware.server.js';
 import { resolveContentAccess, resolveContentActor, withAuthenticatedContentHandler } from './request-context.js';
-import { createContentResponse, updateContentResponse } from './mutations.js';
+import { createContentResponse, deleteContentResponse, updateContentResponse } from './mutations.js';
 import { loadContentById, loadContentDetail, loadContentHistory, loadContentListItems } from './repository.js';
 
 const logger = createSdkLogger({ component: 'iam-contents', level: 'info' });
@@ -148,6 +148,14 @@ export const updateContentInternal = async (
   return 'error' in actorResolution ? actorResolution.error : updateContentResponse(request, actorResolution.actor);
 };
 
+export const deleteContentInternal = async (
+  request: Request,
+  ctx: AuthenticatedRequestContext
+): Promise<Response> => {
+  const actorResolution = await resolveContentActor(request, ctx, { requireActorAccountId: true });
+  return 'error' in actorResolution ? actorResolution.error : deleteContentResponse(request, actorResolution.actor);
+};
+
 export const listContentsHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedContentHandler(request, listContentsInternal);
 
@@ -162,3 +170,6 @@ export const createContentHandler = async (request: Request): Promise<Response> 
 
 export const updateContentHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedContentHandler(request, updateContentInternal);
+
+export const deleteContentHandler = async (request: Request): Promise<Response> =>
+  withAuthenticatedContentHandler(request, deleteContentInternal);

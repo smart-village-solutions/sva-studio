@@ -11,6 +11,7 @@ import AppShell from '../components/AppShell';
 import DevelopmentLogConsole from '../components/DevelopmentLogConsole';
 import ErrorFallback from '../components/ErrorFallback';
 import NotFound from '../components/NotFound';
+import { resolveBreadcrumbItems } from '../lib/breadcrumbs';
 import { AuthProvider } from '../providers/auth-provider';
 import { LocaleProvider } from '../providers/locale-provider';
 import { ThemeProvider } from '../providers/theme-provider';
@@ -99,6 +100,17 @@ export function RootDocument({ children }: Readonly<{ children: React.ReactNode 
 
   React.useEffect(() => {
     setIsMobileSidebarOpen(false);
+  }, [currentPathname]);
+
+  React.useEffect(() => {
+    const breadcrumbItems = resolveBreadcrumbItems(currentPathname);
+    const currentLabel = breadcrumbItems[breadcrumbItems.length - 1]?.label;
+    if (currentLabel) {
+      globalThis.document.title = `${currentLabel} | SVA Studio`;
+    }
+
+    const mainElement = globalThis.document.getElementById('main-content');
+    mainElement?.focus();
   }, [currentPathname]);
 
   const isShellLoading = isHydrated && isRouterPending;

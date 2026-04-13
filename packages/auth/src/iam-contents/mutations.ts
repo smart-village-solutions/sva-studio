@@ -12,8 +12,9 @@ import { validateCsrf } from '../iam-account-management/csrf.js';
 import { completeIdempotency, reserveIdempotency } from '../iam-account-management/shared.js';
 
 import type { ResolvedContentActor } from './request-context.js';
+import { validateContentTypePayload } from './content-type-registry.js';
 import { resolveContentAccess } from './request-context.js';
-import { createContent, loadContentDetail, updateContent } from './repository.js';
+import { createContent, deleteContent, loadContentById, loadContentDetail, updateContent } from './repository.js';
 import { createContentSchema, updateContentSchema } from './schemas.js';
 
 const logger = createSdkLogger({ component: 'iam-contents', level: 'info' });
@@ -74,6 +75,11 @@ export const createContentResponse = async (
     return createApiError(400, 'invalid_request', parsed.message, actor.requestId);
   }
 
+  const payloadValidation = validateContentTypePayload(parsed.data.contentType, parsed.data.payload);
+  if (!payloadValidation.ok) {
+    return createApiError(400, 'invalid_request', payloadValidation.message, actor.requestId);
+  }
+
   const reserve = await reserveIdempotency({
     instanceId: actor.instanceId,
     actorAccountId: actor.actorAccountId!,
@@ -96,6 +102,7 @@ export const createContentResponse = async (
       requestId: actor.requestId,
       traceId: actor.traceId,
       ...parsed.data,
+      payload: payloadValidation.payload,
     });
     const item = await loadContentDetail(actor.instanceId, createdId);
     if (!item) {
@@ -153,6 +160,20 @@ export const updateContentResponse = async (
     return createApiError(400, 'invalid_request', parsed.message, actor.requestId);
   }
 
+  const currentContent = await loadContentById(actor.instanceId, contentId);
+  if (!currentContent) {
+    return createApiError(404, 'not_found', 'Inhalt wurde nicht gefunden.', actor.requestId);
+  }
+
+  const payloadValidation =
+    parsed.data.payload === undefined
+      ? { ok: true as const, payload: undefined }
+      : validateContentTypePayload(currentContent.contentType, parsed.data.payload);
+
+  if (!payloadValidation.ok) {
+    return createApiError(400, 'invalid_request', payloadValidation.message, actor.requestId);
+  }
+
   try {
     const updatedId = await updateContent({
       instanceId: actor.instanceId,
@@ -161,6 +182,7 @@ export const updateContentResponse = async (
       requestId: actor.requestId,
       traceId: actor.traceId,
       contentId,
+      ...(payloadValidation.payload === undefined ? {} : { payload: payloadValidation.payload }),
       ...parsed.data,
     });
     if (!updatedId) {
@@ -190,5 +212,45 @@ export const updateContentResponse = async (
       error: error instanceof Error ? error.message : String(error),
     });
     return createApiError(503, 'database_unavailable', 'Inhalt konnte nicht aktualisiert werden.', actor.requestId);
+  }
+};
+
+export const deleteContentResponse = async (
+  request: Request,
+  actor: ResolvedContentActor['actor']
+): Promise<Response> => {
+  const csrfError = validateCsrf(request, actor.requestId);
+  if (csrfError) {
+    return csrfError;
+  }
+
+  const contentId = readPathSegment(request, 4);
+  if (!contentId) {
+    return createApiError(400, 'invalid_request', 'Inhalts-ID fehlt.', actor.requestId);
+  }
+
+  try {
+    const deletedId = await deleteContent({
+      instanceId: actor.instanceId,
+      actorAccountId: actor.actorAccountId!,
+      actorDisplayName: actor.actorDisplayName,
+      requestId: actor.requestId,
+      traceId: actor.traceId,
+      contentId,
+    });
+
+    return deletedId
+      ? jsonResponse(200, asApiItem({ id: deletedId }, actor.requestId))
+      : createApiError(404, 'not_found', 'Inhalt wurde nicht gefunden.', actor.requestId);
+  } catch (error) {
+    logger.error('Content delete failed', {
+      operation: 'content_delete',
+      instance_id: actor.instanceId,
+      request_id: actor.requestId,
+      trace_id: actor.traceId,
+      content_id: contentId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return createApiError(503, 'database_unavailable', 'Inhalt konnte nicht gelöscht werden.', actor.requestId);
   }
 };

@@ -17,6 +17,7 @@ const state = vi.hoisted(() => ({
   completeIdempotency: vi.fn(),
   createContent: vi.fn(),
   updateContent: vi.fn(),
+  loadContentById: vi.fn(),
   loadContentDetail: vi.fn(),
   resolveContentAccess: vi.fn(),
 }));
@@ -45,6 +46,7 @@ vi.mock('./iam-account-management/shared.js', () => ({
 
 vi.mock('./iam-contents/repository.js', () => ({
   createContent: (...args: Parameters<typeof state.createContent>) => state.createContent(...args),
+  loadContentById: (...args: Parameters<typeof state.loadContentById>) => state.loadContentById(...args),
   loadContentDetail: (...args: Parameters<typeof state.loadContentDetail>) => state.loadContentDetail(...args),
   updateContent: (...args: Parameters<typeof state.updateContent>) => state.updateContent(...args),
 }));
@@ -88,8 +90,19 @@ describe('iam-contents mutations', () => {
     state.completeIdempotency.mockReset();
     state.createContent.mockReset();
     state.updateContent.mockReset();
+    state.loadContentById.mockReset();
     state.loadContentDetail.mockReset();
     state.resolveContentAccess.mockReset();
+    state.loadContentById.mockResolvedValue({
+      id: 'content-1',
+      contentType: 'generic',
+      title: 'Alt',
+      payload: {},
+      status: 'draft',
+      author: 'Editor',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    });
     state.resolveContentAccess.mockResolvedValue({
       state: 'editable',
       canRead: true,

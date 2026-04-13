@@ -1,5 +1,6 @@
 export {
   createContentHandler,
+  deleteContentHandler,
   getContentHandler,
   getContentHistoryHandler,
   listContentsHandler,

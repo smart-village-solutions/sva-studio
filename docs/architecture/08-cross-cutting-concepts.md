@@ -39,6 +39,9 @@ gleichzeitig beeinflussen.
 - Rechtstext-HTML wird serverseitig vor Persistenz sanitisiert; erlaubte Statuswerte bleiben auf `draft`, `valid`, `archived` begrenzt
 - Inhaltsverwaltung bleibt im ersten Schnitt auf einen stabilen Core-Kern begrenzt: `title`, `contentType`, `publishedAt`, `createdAt`, `updatedAt`, `author`, `payload`, `status`, `history`
 - Inhaltstypen dürfen über das SDK zusätzliche Validierung, UI-Sektionen und Listenmetadaten registrieren, aber keine Core-Semantik oder das Statusmodell überschreiben
+- Plugin-Vertrag v1 bleibt statisch und bundlegebunden: Plugins deklarieren Metadaten über `PluginDefinition`, aber weder Runtime-Loading noch Plugin-eigene Sicherheits- oder Routing-Bypässe sind erlaubt
+- Plugin-Guards werden grundsätzlich hostseitig angewendet; ein Plugin deklariert nur die fachliche Guard-Anforderung und darf keine eigene Autorisierungsschicht am Host vorbei etablieren
+- News-Payloads werden serverseitig contentType-spezifisch validiert; HTML-Inhalte durchlaufen eine Allowlist-Sanitisierung, bevor sie persistiert werden
 - DataClient unterstützt optionale Runtime-Schema-Validierung (`get(path, schema)`) für API-Responses
 - IAM-Server-Fassaden bleiben bewusst dünn; fachliche Erweiterungen gehören in Unterordner und nicht zurück in Monolith-Dateien
 - Profil-Synchronisation mit Keycloak bleibt zulaessig, erfolgt aber ausschliesslich ueber dedizierte Profil-/Sync-Flows und nicht implizit ueber Session- oder Logging-Pfade
@@ -184,11 +187,12 @@ gleichzeitig beeinflussen.
 
 ### i18n und Accessibility
 
-- UI-Texte sind derzeit überwiegend direkt im Code und noch nicht durchgängig i18n-basiert
+- Core- und Plugin-UI-Texte werden über gemeinsame i18n-Ressourcen aufgelöst; Plugin-Namespaces folgen der Konvention `<pluginId>.*`
 - A11y wird pro Review/Template eingefordert, aber noch nicht zentral automatisiert
 - Rollen-Statusindikatoren in `/admin/roles` verwenden i18n-Labels für `synced`, `pending` und `failed`
 - Retry- und Reconcile-Aktionen bleiben über semantische Buttons und Testabdeckung tastatur- und screenreader-freundlich prüfbar
 - Die neue `/content`-Verwaltung verwendet ausschließlich bestehende `shadcn/ui`-Kompositionen und orientiert sich visuell an vorhandenen Admin-Tabellen statt eine parallele Tabellenbasis einzuführen
+- Plugin-Ansichten folgen denselben Shell-Konventionen für Fokus, Breadcrumbs, `document.title`, Heading-Hierarchie und `aria-live`-Feedback wie Core-Ansichten
 - CRUD-artige Admin-Ressourcen folgen einer einheitlichen Navigationskonvention:
   - Liste unter `/admin/<resource>`
   - Erstellungsansicht unter `/admin/<resource>/new`

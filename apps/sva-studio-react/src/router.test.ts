@@ -1,7 +1,13 @@
 import { createRouter } from '@tanstack/react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { areDemoRoutesEnabled, createRuntimeRouteTree, readRouteGuardUser, resolveBaseUrl } from './router';
+import {
+  areDemoRoutesEnabled,
+  createRuntimeRouteTree,
+  mapPluginGuardToAccountGuard,
+  readRouteGuardUser,
+  resolveBaseUrl,
+} from './router';
 import { createRouterDiagnosticsSnapshot } from './lib/router-diagnostics';
 
 describe('createRuntimeRouteTree', () => {
@@ -32,8 +38,25 @@ describe('createRuntimeRouteTree', () => {
     );
 
     expect(normalizedRoutePaths).toEqual(
-      expect.arrayContaining(['/', '/account', '/admin/users', '/demo', '/plugins/example', '/auth/login']),
+      expect.arrayContaining([
+        '/',
+        '/account',
+        '/admin/users',
+        '/demo',
+        '/plugins/example',
+        '/plugins/news',
+        '/plugins/news/new',
+        '/plugins/news/$contentId',
+        '/auth/login',
+      ]),
     );
+  });
+
+  it('maps plugin guards onto the host account-ui guard set', () => {
+    expect(mapPluginGuardToAccountGuard('content.read')).toBe('content');
+    expect(mapPluginGuardToAccountGuard('content.create')).toBe('contentCreate');
+    expect(mapPluginGuardToAccountGuard('content.write')).toBe('contentDetail');
+    expect(mapPluginGuardToAccountGuard(undefined)).toBeNull();
   });
 
   it('reads route guard roles defensively from mixed payloads', () => {

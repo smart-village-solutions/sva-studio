@@ -48,6 +48,12 @@
       "functions": 55,
       "branches": 40
     },
+    "plugin-news": {
+      "lines": 70,
+      "statements": 70,
+      "functions": 60,
+      "branches": 50
+    },
     "sva-mainserver": {
       "lines": 85,
       "statements": 85,

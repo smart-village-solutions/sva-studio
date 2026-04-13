@@ -21,7 +21,11 @@ Architektur und Betrieb.
 | Mandant | Isolierter Betriebs-/Datenkontext (Tenant); wird im Code u. a. ueber `workspace_id` abgebildet | `packages/sdk/src/observability/context.server.ts` |
 | workspace_id | Identifier zur Kontext-Korrelation (z. B. Tenant/Workspace) in Logs/Telemetry | `docs/architecture/logging-architecture.md` |
 | Core Route Factory | Funktion, die aus `rootRoute` eine Route erzeugt | `packages/core/src/routing/registry.ts` |
-| Plugin Route Factory | Route-Factory aus Plugins, die mit Core-Factories gemerged wird | `packages/plugin-example/src/routes.tsx` |
+| Plugin-Vertrag | Öffentlicher SDK-Vertrag, über den ein Plugin Routen, Navigation, Content-Typen und Übersetzungen beschreibt | `packages/sdk/src/plugins.ts` |
+| Plugin-Registrierung | Statische Zusammenführung aller `PluginDefinition`-Objekte im Host | `apps/sva-studio-react/src/lib/plugins.ts` |
+| PluginDefinition | Zentrales SDK-Typmodell eines Plugins mit `id`, `routes`, `navigation`, `contentTypes` und `translations` | `packages/sdk/src/plugins.ts` |
+| contentType | Fachlicher Typ eines Core-Inhalts, z. B. `news`; steuert Plugin-UI und serverseitige Payload-Validierung | `packages/auth/src/iam-contents/content-type-registry.ts` |
+| Plugin Route Factory | Historischer Begriff für lose Plugin-Route-Listen; in v1 durch `PluginDefinition.routes` ersetzt | `docs/architecture/routing-architecture.md` |
 | OIDC | OpenID Connect für Authentifizierung gegen externen IdP | `packages/auth/src/oidc.server.ts` |
 | IdP | Identity Provider (OIDC-Provider) für Authentifizierung, extern betrieben | `packages/auth/src/oidc.server.ts` |
 | PKCE | Security-Mechanismus im Authorization Code Flow | `packages/auth/src/auth.server.ts` |

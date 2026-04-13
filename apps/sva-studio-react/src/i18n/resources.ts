@@ -3478,6 +3478,40 @@ export const i18nResources = {
   },
 } as const;
 
+type TranslationNode = string | { [key: string]: TranslationNode };
+
+const isTranslationBranch = (value: unknown): value is Record<string, TranslationNode> =>
+  typeof value === 'object' && value !== null && Array.isArray(value) === false;
+
+const mergeTranslationBranch = (
+  target: Record<string, TranslationNode>,
+  source: Record<string, TranslationNode>
+): Record<string, TranslationNode> => {
+  for (const [key, value] of Object.entries(source)) {
+    if (isTranslationBranch(value) && isTranslationBranch(target[key])) {
+      target[key] = mergeTranslationBranch(
+        { ...(target[key] as Record<string, TranslationNode>) },
+        value
+      );
+      continue;
+    }
+
+    target[key] = value;
+  }
+
+  return target;
+};
+
+export const mergeI18nResources = (
+  resources: Readonly<Record<SupportedLocale, Readonly<Record<string, unknown>>>>
+) => {
+  for (const locale of Object.keys(resources) as SupportedLocale[]) {
+    const source = resources[locale];
+    const target = i18nResources[locale] as unknown as Record<string, TranslationNode>;
+    mergeTranslationBranch(target, source as Record<string, TranslationNode>);
+  }
+};
+
 export const DEFAULT_LOCALE = 'de';
 
 export type SupportedLocale = keyof typeof i18nResources;

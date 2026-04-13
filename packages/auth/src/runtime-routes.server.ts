@@ -44,6 +44,7 @@ export {
 } from './iam-groups.server.js';
 export {
   createContentHandler,
+  deleteContentHandler,
   getContentHandler,
   getContentHistoryHandler,
   listContentsHandler,

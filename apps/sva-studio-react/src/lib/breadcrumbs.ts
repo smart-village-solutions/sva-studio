@@ -66,6 +66,30 @@ const breadcrumbRoutes: ReadonlyArray<
     build: () => [overviewBreadcrumb(), { label: t('content.page.title') }],
   },
   {
+    pattern: /^\/plugins\/news\/new$/,
+    build: () => [
+      overviewBreadcrumb(),
+      { href: '/plugins/news', label: t('news.navigation.title') },
+      { label: t('news.editor.createTitle') },
+    ],
+  },
+  {
+    pattern: /^\/plugins\/news\/[^/]+$/,
+    build: () => [
+      overviewBreadcrumb(),
+      { href: '/plugins/news', label: t('news.navigation.title') },
+      { label: t('news.editor.editTitle') },
+    ],
+  },
+  {
+    pattern: /^\/plugins\/news$/,
+    build: () => [overviewBreadcrumb(), { label: t('news.navigation.title') }],
+  },
+  {
+    pattern: /^\/plugins\/example$/,
+    build: () => [overviewBreadcrumb(), { label: t('example.navigation.title') }],
+  },
+  {
     pattern: /^\/interfaces$/,
     build: () => [overviewBreadcrumb(), { label: t('interfaces.page.title') }],
   },

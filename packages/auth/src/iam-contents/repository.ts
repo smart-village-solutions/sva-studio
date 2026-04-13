@@ -6,6 +6,7 @@ import {
   type ContentHistoryRow,
   type ContentRow,
   type CreateContentInput,
+  type DeleteContentInput,
   type UpdateContentInput,
   insertContentHistory,
   loadCurrentContentRow,
@@ -232,6 +233,39 @@ WHERE instance_id = $1
       requestId: input.requestId,
       traceId: input.traceId,
     });
+
+    return input.contentId;
+  });
+
+export const deleteContent = async (input: DeleteContentInput): Promise<string | undefined> =>
+  withInstanceScopedDb(input.instanceId, async (client) => {
+    const current = await loadCurrentContentRow(client, input.instanceId, input.contentId);
+    if (!current) {
+      return undefined;
+    }
+
+    await emitActivityLog(client, {
+      instanceId: input.instanceId,
+      accountId: input.actorAccountId,
+      eventType: 'iam.content.deleted',
+      result: 'success',
+      payload: {
+        content_id: input.contentId,
+        content_type: current.content_type,
+        title: current.title,
+      },
+      requestId: input.requestId,
+      traceId: input.traceId,
+    });
+
+    await client.query(
+      `
+DELETE FROM iam.contents
+WHERE instance_id = $1
+  AND id = $2::uuid;
+`,
+      [input.instanceId, input.contentId]
+    );
 
     return input.contentId;
   });

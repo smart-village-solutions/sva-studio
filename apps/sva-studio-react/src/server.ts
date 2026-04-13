@@ -2,7 +2,6 @@ import type { Register } from '@tanstack/react-router';
 import { createStartHandler, defaultStreamHandler } from '@tanstack/react-start/server';
 import { createServerEntry } from '@tanstack/react-start/server-entry';
 import type { RequestHandler } from '@tanstack/react-start/server';
-import { dispatchAuthRouteRequest } from '@sva/routing/server';
 
 import {
   createServerFunctionRequestDiagnostics,
@@ -44,9 +43,15 @@ type RequestContextSdk = {
 
 let sdkPromise: Promise<RequestContextSdk> | null = null;
 const loggerPromises = new Map<ServerTransportComponent, Promise<ServerTransportLogger>>();
+let dispatchAuthRouteRequestPromise: Promise<typeof import('@sva/routing/server')['dispatchAuthRouteRequest']> | null = null;
 const getSdk = async (): Promise<RequestContextSdk> => {
   sdkPromise ??= import('@sva/sdk/server') as Promise<RequestContextSdk>;
   return sdkPromise;
+};
+
+const getDispatchAuthRouteRequest = async () => {
+  dispatchAuthRouteRequestPromise ??= import('@sva/routing/server').then((mod) => mod.dispatchAuthRouteRequest);
+  return dispatchAuthRouteRequestPromise;
 };
 
 const getLogger = async (component: ServerTransportComponent): Promise<ServerTransportLogger> => {
@@ -83,6 +88,7 @@ const instrumentedFetch: RequestHandler<Register> = async (...args) => {
   };
 
   await logServerEntryDebug('Server entry request received', {});
+  const dispatchAuthRouteRequest = await getDispatchAuthRouteRequest();
   const authResponse = await dispatchAuthRouteRequest(request);
 
   if (authResponse) {

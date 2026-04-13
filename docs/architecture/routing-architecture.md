@@ -9,7 +9,7 @@ Die Routing-Architektur ist auf folgende Ziele ausgelegt:
 1. **Type-safe Routing** mit TanStack Router.
 2. **Code-basierte Route-Komposition** (Core + Auth + Plugins).
 3. **Saubere Server/Client-Grenze**, damit server-only Module nicht in den Client-Bundle gelangen.
-4. **Erweiterbarkeit** durch Plugin-Route-Factories.
+4. **Erweiterbarkeit** durch statisch registrierte SDK-Plugins.
 
 ## Scope
 
@@ -42,11 +42,11 @@ apps/sva-studio-react
   routes/-core-routes.server.tsx    (+ auth server route factories)
   router.tsx                        (merge core + plugin routes, createRouter)
 
-packages/plugin-example
-  -> pluginExampleRoutes
+packages/plugin-example / packages/plugin-news
+  -> PluginDefinition
 
 Result:
-  rootRoute + merged route factories -> runtime route tree
+  rootRoute + core/auth route factories + plugin route definitions -> runtime route tree
 ```
 
 ## Komponenten im Detail
@@ -139,11 +139,13 @@ Export:
 
 Ablauf in `getRouter()`:
 
-1. `mergeRouteFactories(coreRouteFactories, pluginExampleRoutes)`
-2. `buildRouteTree(rootRoute, mergedFactories)`
-3. `createRouter({ routeTree, ... })`
+1. Core- und Auth-Route-Factories werden materialisiert.
+2. Der Host liest die statische Plugin-Liste aus `src/lib/plugins.ts`.
+3. Plugin-Routen werden aus `PluginDefinition.routes` als TanStack-Routen materialisiert.
+4. Der Host wendet Plugin-Guards vor dem Rendern an.
+5. `createRouter({ routeTree, ... })`
 
-Damit ist die Route-Komposition vollständig code-getrieben.
+Damit bleibt die Route-Komposition code-getrieben, aber Plugins liefern keine eigenen Route-Factories mehr.
 
 ### 7) Root Route (`apps/sva-studio-react/src/routes/__root.tsx`)
 
@@ -154,12 +156,13 @@ Damit ist die Route-Komposition vollständig code-getrieben.
 
 ## Plugin-Routing
 
-Beispiel in `packages/plugin-example/src/routes.tsx`:
+Beispiele in `packages/plugin-example/src/plugin.tsx` und `packages/plugin-news/src/plugin.tsx`:
 
-- exportiert `pluginExampleRoutes` als Route-Factory-Liste
-- wird in `apps/sva-studio-react/src/router.tsx` zusammen mit Core-Factories gemerged
+- exportieren jeweils ein `PluginDefinition`-Objekt
+- werden in `apps/sva-studio-react/src/lib/plugins.ts` statisch registriert
+- liefern Routen, Navigation und Übersetzungen über den SDK-Vertrag
 
-Damit kann jedes Plugin isoliert eigene Routen beitragen, ohne den App-Router direkt zu editieren.
+Damit kann jedes Plugin isoliert eigene Routen beitragen, ohne den App-Router mit plugin-spezifischer Sonderlogik zu erweitern.
 
 ## Request/Response Routing für Auth
 
@@ -217,7 +220,7 @@ Wichtig:
 1. Neue app-spezifische Routen in `-core-routes.tsx` als Factory ergänzen.
 2. Server-Handler nur in server-spezifischen Factories oder `createServerFn` kapseln.
 3. Shared Pfade als `const` + Typ in zentralen Modulen definieren.
-4. Plugin-Routen als eigene Factory-Liste exportieren und im Router mergen.
+4. Plugin-Routen ausschließlich über `PluginDefinition.routes` beschreiben und über die statische Host-Registry registrieren.
 
 ### Don't
 

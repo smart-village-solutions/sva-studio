@@ -16,13 +16,31 @@ Dieser Abschnitt beschreibt kritische Laufzeitszenarien und Interaktionen.
 
 1. App lädt `getRouter()` in `apps/sva-studio-react/src/router.tsx`
 2. Core-Route-Factories werden client- oder serverseitig geladen
-3. Plugin-Route-Factories werden mit Core-Factories gemerged
-4. `buildRouteTree(...)` erzeugt Runtime-RouteTree
+3. Der Host liest die statische Plugin-Liste und materialisiert Plugin-Routen aus `PluginDefinition`
+4. Core-/Auth-Routen und Plugin-Routen werden zu einem gemeinsamen Route-Tree kombiniert
 5. Router wird mit RouteTree und SSR-Kontext erstellt
 
 Fehlerpfad:
 
 - Fehlerhafte Route-Factory oder server-only Import im Client kann Build/Runtime brechen.
+
+### Szenario 4a: Plugin-Registrierung und News-CRUD
+
+1. Die App initialisiert `studioPlugins` und merged Plugin-Übersetzungen in die i18n-Ressourcen.
+2. Der Router materialisiert die Plugin-Routen `/plugins/news`, `/plugins/news/new` und `/plugins/news/$contentId`.
+3. Beim Aufruf der Route wendet der Host den passenden Content-Guard an.
+4. Die News-Liste lädt die generische Content-Liste und filtert clientseitig auf `contentType = news`.
+5. Der Editor sendet Create- oder Update-Requests an die bestehende IAM-Content-API.
+6. `packages/auth` validiert zuerst den generischen Content-Envelope und danach das registrierte News-Payload-Schema.
+7. Vor Persistenz sanitisiert der Server `body` allowlist-basiert und normalisiert `teaser` auf Plain Text.
+8. Repository, Historie und Audit-Logging bleiben unverändert Teil des generischen Content-Pfads.
+9. Nach erfolgreichem Speichern oder Löschen zeigt das Plugin Statusfeedback und navigiert zurück zur News-Liste.
+
+Fehlerpfad:
+
+- fehlt die Berechtigung, blockiert der Host die Plugin-Route vor dem Rendern.
+- ist der News-Payload ungültig, antwortet die Content-API mit HTTP `400`.
+- schlägt ein API-Call fehl, zeigt das Plugin eine verständliche Fehlermeldung und behält den Formzustand.
 
 ### Szenario 1a: Tenant-Request mit Registry-Lookup
 

@@ -29,8 +29,10 @@ vi.mock('@tanstack/react-router', () => ({
   }) => (
     (() => {
       const { activeOptions: _activeOptions, ...anchorProps } = props;
+      const pathname = useRouterStateMock();
+      const isActive = pathname === to || pathname.startsWith(`${to}/`);
       return (
-        <a href={to} {...anchorProps}>
+        <a href={to} aria-current={isActive ? 'page' : undefined} {...anchorProps}>
           {children}
         </a>
       );
@@ -316,5 +318,38 @@ describe('Sidebar', () => {
     render(<Sidebar />);
 
     expect(screen.queryByRole('link', { name: 'Inhalte' })).toBeNull();
+  });
+
+  it('rendert den News-Plugin-Navigationspunkt innerhalb der Datenverwaltung und markiert ihn als aktiv', () => {
+    useRouterStateMock.mockReturnValue('/plugins/news');
+    useAuthMock.mockReturnValue({
+      ...unauthenticatedAuthState,
+      user: {
+        id: 'user-1',
+        name: 'Editor',
+        roles: ['editor'],
+      },
+      isAuthenticated: true,
+    });
+    useContentAccessMock.mockReturnValue({
+      access: {
+        state: 'editable',
+        canRead: true,
+        canCreate: true,
+        canUpdate: true,
+        organizationIds: [],
+        sourceKinds: ['direct_role'],
+      },
+      isLoading: false,
+      error: null,
+    });
+
+    render(<Sidebar />);
+
+    const navigation = screen.getByRole('navigation', { name: 'Bereichsnavigation' });
+    const newsLink = within(navigation).getByRole('link', { name: 'News' });
+
+    expect(newsLink.getAttribute('href')).toBe('/plugins/news');
+    expect(newsLink.getAttribute('aria-current')).toBe('page');
   });
 });

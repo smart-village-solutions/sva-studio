@@ -1,6 +1,7 @@
 import React from 'react';
 
 import { DEFAULT_LOCALE, isSupportedLocale, setActiveLocale, type SupportedLocale } from '../i18n';
+import { initializePluginTranslations } from '../lib/plugins';
 
 type LocaleContextValue = Readonly<{
   locale: SupportedLocale;
@@ -54,6 +55,8 @@ export const LocaleProvider = ({ children }: LocaleProviderProps) => {
     if (globalThis.window) {
       globalThis.window.localStorage.setItem(LOCALE_STORAGE_KEY, locale);
     }
+
+    initializePluginTranslations();
   }, [locale]);
 
   const contextValue = React.useMemo<LocaleContextValue>(

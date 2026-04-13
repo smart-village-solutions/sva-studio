@@ -389,6 +389,10 @@ const authHandlerMap = {
       const mod = await import('@sva/auth/runtime-routes');
       return mod.updateContentHandler(request);
     },
+    DELETE: async ({ request }) => {
+      const mod = await import('@sva/auth/runtime-routes');
+      return mod.deleteContentHandler(request);
+    },
   },
   '/api/v1/iam/contents/$contentId/history': {
     GET: async ({ request }) => {

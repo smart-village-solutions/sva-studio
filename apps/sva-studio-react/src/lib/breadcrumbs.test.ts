@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import './plugins';
 import { resolveBreadcrumbItems } from './breadcrumbs';
 
 describe('resolveBreadcrumbItems', () => {
@@ -16,6 +17,22 @@ describe('resolveBreadcrumbItems', () => {
       { href: '/', label: 'Übersicht' },
       { href: '/admin/roles', label: 'Rollenverwaltung' },
       { label: 'Rolle bearbeiten' },
+    ]);
+  });
+
+  it('returns create breadcrumbs for the news plugin', () => {
+    expect(resolveBreadcrumbItems('/plugins/news/new')).toEqual([
+      { href: '/', label: 'Übersicht' },
+      { href: '/plugins/news', label: 'News' },
+      { label: 'News-Eintrag anlegen' },
+    ]);
+  });
+
+  it('returns edit breadcrumbs for dynamic news pages', () => {
+    expect(resolveBreadcrumbItems('/plugins/news/content-1')).toEqual([
+      { href: '/', label: 'Übersicht' },
+      { href: '/plugins/news', label: 'News' },
+      { label: 'News-Eintrag bearbeiten' },
     ]);
   });
 

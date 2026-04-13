@@ -185,6 +185,30 @@ describe('createSvaMainserverService', () => {
     });
   });
 
+  it('passes the tenant instance id into credential loading', async () => {
+    const readCredentials = vi.fn().mockResolvedValue({
+      apiKey: 'key-1',
+      apiSecret: 'secret-1',
+    });
+
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readCredentials,
+      fetchImpl: vi
+        .fn()
+        .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+        .mockResolvedValueOnce(createJsonResponse(200, { data: { __typename: 'Query' } }))
+        .mockResolvedValueOnce(createJsonResponse(200, { data: { __typename: 'Mutation' } })),
+    });
+
+    await service.getConnectionStatus({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' });
+
+    expect(readCredentials).toHaveBeenCalledWith({
+      instanceId: 'de-musterhausen',
+      keycloakSubject: 'subject-1',
+    });
+  });
+
   it('preserves typed identity provider errors from credential loading', async () => {
     const service = createSvaMainserverService({
       loadInstanceConfig: async () => baseConfig,

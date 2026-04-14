@@ -170,6 +170,8 @@ Aus der Referenzinstanz werden übernommen:
 - `iam.permissions`
 - `iam.role_permissions`
 
+Zusätzlich liegen unter `packages/data/seeds/` tenant-spezifische SQL-Seeds für bekannte Umgebungen. Aktuell sind dort der vollständige Referenz-Seed für `de-musterhausen` sowie ein dedizierter IAM-Katalog-Seed für `bb-guben` hinterlegt.
+
 Wichtig:
 
 - der Basiskatalog darf aus einer Referenzinstanz übernommen werden

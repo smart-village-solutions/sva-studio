@@ -1,6 +1,41 @@
 import type { NewsPayload } from './news.types.js';
 
-const stripHtml = (value: string): string => value.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+const getVisibleTextLength = (value: string): number => {
+  let inTag = false;
+  let previousWasWhitespace = true;
+  let visibleLength = 0;
+
+  for (const character of value) {
+    if (character === '<') {
+      inTag = true;
+      continue;
+    }
+
+    if (character === '>' && inTag) {
+      inTag = false;
+      previousWasWhitespace = true;
+      continue;
+    }
+
+    if (inTag) {
+      continue;
+    }
+
+    if (/\s/u.test(character)) {
+      previousWasWhitespace = true;
+      continue;
+    }
+
+    if (previousWasWhitespace && visibleLength > 0) {
+      visibleLength += 1;
+    }
+
+    visibleLength += 1;
+    previousWasWhitespace = false;
+  }
+
+  return visibleLength;
+};
 
 const isHttpsUrl = (value: string): boolean => {
   try {
@@ -18,7 +53,7 @@ export const validateNewsPayload = (payload: NewsPayload): readonly string[] => 
     errors.push('teaser');
   }
 
-  if (payload.body.trim().length === 0 || stripHtml(payload.body).length === 0 || payload.body.length > 50_000) {
+  if (payload.body.trim().length === 0 || getVisibleTextLength(payload.body) === 0 || payload.body.length > 50_000) {
     errors.push('body');
   }
 

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useNavigate, useParams } from '@tanstack/react-router';
-import { usePluginTranslation } from '@sva/sdk';
+import { translatePluginKey, usePluginTranslation } from '@sva/sdk';
 
 import { createNews, deleteNews, getNews, listNews, updateNews, type NewsFormInput } from './news.api.js';
 import type { NewsContentItem, NewsPayload, NewsStatus } from './news.types.js';
@@ -109,7 +109,7 @@ const NewsForm = ({
   contentId?: string;
 }>) => {
   const navigate = useNavigate();
-  const pt = React.useMemo(() => usePluginTranslation('news'), []);
+  const pt = usePluginTranslation('news');
   const [form, setForm] = React.useState<NewsFormInput>(defaultForm);
   const [isLoading, setIsLoading] = React.useState(mode === 'edit');
   const [fieldErrors, setFieldErrors] = React.useState<readonly string[]>([]);
@@ -157,7 +157,7 @@ const NewsForm = ({
     return () => {
       active = false;
     };
-  }, [contentId, mode, pt]);
+  }, [contentId, mode]);
 
   const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -427,7 +427,7 @@ const NewsForm = ({
 };
 
 export const NewsListPage = () => {
-  const pt = React.useMemo(() => usePluginTranslation('news'), []);
+  const pt = usePluginTranslation('news');
   const [items, setItems] = React.useState<readonly NewsContentItem[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -448,7 +448,7 @@ export const NewsListPage = () => {
       })
       .catch(() => {
         if (active) {
-          setError(pt('messages.loadError'));
+          setError(translatePluginKey('news', 'messages.loadError'));
         }
       })
       .finally(() => {
@@ -460,7 +460,7 @@ export const NewsListPage = () => {
     return () => {
       active = false;
     };
-  }, [pt]);
+  }, []);
 
   if (isLoading) {
     return <p role="status">{pt('messages.loading')}</p>;

@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { t } from '../../../i18n';
 import { InstanceDetailPage } from './-instance-detail-page';
 
 const useInstancesMock = vi.fn();
@@ -165,12 +166,19 @@ describe('InstanceDetailPage', () => {
     render(<InstanceDetailPage instanceId="demo" />);
 
     await waitFor(() => {
-    expect(loadInstance).toHaveBeenCalledWith('demo');
+      expect(loadInstance).toHaveBeenCalledWith('demo');
     });
 
-    expect(screen.getByText('Konfigurationsstatus')).toBeTruthy();
-    expect(screen.getByText('Konfiguration vollständig')).toBeTruthy();
-    expect(screen.getByText('13 / 13 Anforderungen erfüllt')).toBeTruthy();
+    expect(screen.getByText(t('admin.instances.configuration.title'))).toBeTruthy();
+    expect(screen.getByText(t('admin.instances.configuration.summary.complete.title'))).toBeTruthy();
+    expect(
+      screen.getByText(
+        t('admin.instances.configuration.labels.requirementsValue', {
+          satisfied: 13,
+          total: 13,
+        })
+      )
+    ).toBeTruthy();
     expect(screen.getByText('Instanz gespeichert, aber noch nicht betriebsbereit')).toBeTruthy();
     expect(screen.getByText('Was ist noch offen?')).toBeTruthy();
     expect(screen.getByText('Provisioning ist erfolgreich. Die Instanz kann jetzt aktiviert werden.')).toBeTruthy();

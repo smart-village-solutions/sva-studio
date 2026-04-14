@@ -48,7 +48,13 @@ export type SetupWorkflowStep = {
   readonly description: string;
   readonly status: WorkflowStepState;
   readonly actionLabel?: string;
-  readonly action?: 'check_preflight' | 'check_keycloak_status' | 'plan_provisioning' | 'execute_provisioning' | 'activate_instance';
+  readonly action?:
+    | 'check_preflight'
+    | 'check_keycloak_status'
+    | 'plan_provisioning'
+    | 'execute_provisioning'
+    | 'provision_admin_client'
+    | 'activate_instance';
 };
 
 export type InstanceConfigurationIssue = {
@@ -91,7 +97,11 @@ const KEYCLOAK_STATUS_LABELS = {
   redirectUrisMatch: 'admin.instances.keycloakStatus.redirectUrisMatch',
   logoutUrisMatch: 'admin.instances.keycloakStatus.logoutUrisMatch',
   webOriginsMatch: 'admin.instances.keycloakStatus.webOriginsMatch',
+  clientSecretConfigured: 'admin.instances.keycloakStatus.clientSecretConfigured',
+  tenantClientSecretReadable: 'admin.instances.keycloakStatus.tenantClientSecretReadable',
   clientSecretAligned: 'admin.instances.keycloakStatus.clientSecretAligned',
+  tenantAdminClientSecretConfigured: 'admin.instances.keycloakStatus.tenantAdminClientSecretConfigured',
+  tenantAdminClientSecretReadable: 'admin.instances.keycloakStatus.tenantAdminClientSecretReadable',
   tenantAdminClientSecretAligned: 'admin.instances.keycloakStatus.tenantAdminClientSecretAligned',
 } as const satisfies Record<InstanceKeycloakStatusField, string>;
 
@@ -587,8 +597,8 @@ export const getSetupWorkflowSteps = (
             : keycloakUnavailable
               ? 'blocked'
               : 'current',
-      actionLabel: t('admin.instances.actions.executeProvisioning'),
-      action: 'execute_provisioning',
+      actionLabel: t('admin.instances.actions.provisionAdminClient'),
+      action: 'provision_admin_client',
     }),
     createWorkflowStep({
       key: 'mapper',

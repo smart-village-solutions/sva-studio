@@ -128,7 +128,13 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
   };
 
   const triggerWorkflowAction = async (
-    action: 'check_preflight' | 'check_keycloak_status' | 'plan_provisioning' | 'execute_provisioning' | 'activate_instance'
+    action:
+      | 'check_preflight'
+      | 'check_keycloak_status'
+      | 'plan_provisioning'
+      | 'execute_provisioning'
+      | 'provision_admin_client'
+      | 'activate_instance'
   ) => {
     if (!selectedInstance) {
       return;
@@ -146,6 +152,9 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
         return;
       case 'execute_provisioning':
         await executeProvisioning('provision');
+        return;
+      case 'provision_admin_client':
+        await executeProvisioning('provision_admin_client');
         return;
       case 'activate_instance':
         await instancesApi.activateInstance(selectedInstance.instanceId);

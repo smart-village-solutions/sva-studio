@@ -280,9 +280,9 @@ describe('instances shared helpers', () => {
     );
 
     expect(assessment.overallStatus).toBe('incomplete');
-    expect(assessment.blockingIssues.map((issue) => issue.label)).toEqual([
-      'Tenant-Admin-Client vorhanden',
-      'Tenant-Admin-Client-Secret mit Keycloak abgeglichen',
+    expect(assessment.blockingIssues.map((issue) => issue.key)).toEqual([
+      'tenant_admin_client',
+      'tenant_admin_client_secret',
     ]);
   });
 });

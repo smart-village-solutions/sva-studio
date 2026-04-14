@@ -134,6 +134,7 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
       | 'plan_provisioning'
       | 'execute_provisioning'
       | 'provision_admin_client'
+      | 'reset_tenant_admin'
       | 'activate_instance'
   ) => {
     if (!selectedInstance) {
@@ -155,6 +156,9 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
         return;
       case 'provision_admin_client':
         await executeProvisioning('provision_admin_client');
+        return;
+      case 'reset_tenant_admin':
+        await executeProvisioning('reset_tenant_admin');
         return;
       case 'activate_instance':
         await instancesApi.activateInstance(selectedInstance.instanceId);

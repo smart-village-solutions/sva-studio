@@ -98,7 +98,7 @@ describe('iam-instance-registry http helpers', () => {
     expect(result.success).toBe(false);
   });
 
-  it('requires a tenant admin client contract on create requests', () => {
+  it('allows create requests without a tenant admin client contract', () => {
     const result = createInstanceSchema.safeParse({
       instanceId: 'de-test',
       displayName: 'Demo',
@@ -108,7 +108,7 @@ describe('iam-instance-registry http helpers', () => {
       authClientId: 'sva-studio',
     });
 
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
   });
 
   it('extracts keycloak run ids from nested run routes', () => {

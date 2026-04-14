@@ -54,6 +54,7 @@ export type SetupWorkflowStep = {
     | 'plan_provisioning'
     | 'execute_provisioning'
     | 'provision_admin_client'
+    | 'reset_tenant_admin'
     | 'activate_instance';
 };
 
@@ -511,6 +512,8 @@ export const getSetupWorkflowSteps = (
   const tenantAdminConfigured = Boolean(instance.tenantAdminBootstrap?.username);
   const tenantAdminClientConfigured = Boolean(instance.tenantAdminClient?.clientId);
   const tenantAdminClientSecretConfigured = instance.tenantAdminClient?.secretConfigured === true;
+  const tenantAdminClientReady =
+    instance.keycloakStatus !== undefined && readRequirementGroupSatisfied(instance.keycloakStatus, 'tenantAdminClient');
 
   return [
     createWorkflowStep({
@@ -581,7 +584,7 @@ export const getSetupWorkflowSteps = (
       title: t('admin.instances.workflow.tenantAdminClient.title'),
       description: !tenantAdminClientConfigured
         ? t('admin.instances.workflow.tenantAdminClient.notConfigured')
-        : readRequirementGroupSatisfied(instance.keycloakStatus, 'tenantAdminClient')
+        : tenantAdminClientReady
           ? t('admin.instances.workflow.tenantAdminClient.ready')
           : !tenantAdminClientSecretConfigured
             ? t('admin.instances.workflow.tenantAdminClient.secretMissing')
@@ -590,7 +593,7 @@ export const getSetupWorkflowSteps = (
               : t('admin.instances.workflow.tenantAdminClient.pending'),
       status: !tenantAdminClientConfigured
         ? 'blocked'
-        : readRequirementGroupSatisfied(instance.keycloakStatus, 'tenantAdminClient')
+        : tenantAdminClientReady
           ? 'done'
           : !tenantAdminClientSecretConfigured
             ? 'blocked'
@@ -654,7 +657,7 @@ export const getSetupWorkflowSteps = (
             ? 'blocked'
             : 'current',
       actionLabel: t('admin.instances.actions.resetTenantAdmin'),
-      action: 'execute_provisioning',
+      action: 'reset_tenant_admin',
     }),
     createWorkflowStep({
       key: 'provisioning',

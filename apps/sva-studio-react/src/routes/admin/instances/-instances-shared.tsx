@@ -69,6 +69,31 @@ export type InstanceConfigurationAssessment = {
 };
 
 type IamInstanceKeycloakStatus = NonNullable<IamInstanceDetail['keycloakStatus']>;
+type InstanceKeycloakRequirement = (typeof INSTANCE_KEYCLOAK_REQUIREMENTS)[number];
+type InstanceKeycloakStatusField = InstanceKeycloakRequirement['statusField'];
+
+const CONFIGURATION_STATUS_LABELS = {
+  complete: 'admin.instances.configuration.overall.complete',
+  degraded: 'admin.instances.configuration.overall.degraded',
+  incomplete: 'admin.instances.configuration.overall.incomplete',
+  unknown: 'admin.instances.configuration.overall.unknown',
+} as const satisfies Record<InstanceConfigurationOverallStatus, string>;
+
+const KEYCLOAK_STATUS_LABELS = {
+  realmExists: 'admin.instances.keycloakStatus.realmExists',
+  clientExists: 'admin.instances.keycloakStatus.clientExists',
+  tenantAdminClientExists: 'admin.instances.keycloakStatus.tenantAdminClientExists',
+  instanceIdMapperExists: 'admin.instances.keycloakStatus.instanceIdMapperExists',
+  tenantAdminExists: 'admin.instances.keycloakStatus.tenantAdminExists',
+  tenantAdminHasSystemAdmin: 'admin.instances.keycloakStatus.tenantAdminHasSystemAdmin',
+  tenantAdminHasInstanceRegistryAdmin: 'admin.instances.keycloakStatus.tenantAdminHasInstanceRegistryAdmin',
+  tenantAdminInstanceIdMatches: 'admin.instances.keycloakStatus.tenantAdminInstanceIdMatches',
+  redirectUrisMatch: 'admin.instances.keycloakStatus.redirectUrisMatch',
+  logoutUrisMatch: 'admin.instances.keycloakStatus.logoutUrisMatch',
+  webOriginsMatch: 'admin.instances.keycloakStatus.webOriginsMatch',
+  clientSecretAligned: 'admin.instances.keycloakStatus.clientSecretAligned',
+  tenantAdminClientSecretAligned: 'admin.instances.keycloakStatus.tenantAdminClientSecretAligned',
+} as const satisfies Record<InstanceKeycloakStatusField, string>;
 
 export const isTenantSecretUserInputRequired = (realmMode: 'new' | 'existing') => realmMode === 'existing';
 
@@ -368,7 +393,7 @@ const findPreflightCheck = (preflight: IamInstanceKeycloakPreflight | undefined,
 const createWorkflowStep = (input: SetupWorkflowStep): SetupWorkflowStep => input;
 
 const translateConfigurationStatus = (status: InstanceConfigurationOverallStatus) =>
-  t(`admin.instances.configuration.overall.${status}`);
+  t(CONFIGURATION_STATUS_LABELS[status]);
 
 const readRequirementGroupSatisfied = (
   keycloakStatus: IamInstanceKeycloakStatus | undefined,
@@ -402,7 +427,7 @@ export const evaluateInstanceConfiguration = (
       : [];
   const blockingIssues: InstanceConfigurationIssue[] = failingRequirements.map((requirement) => ({
     key: requirement.key,
-    label: t(`admin.instances.keycloakStatus.${requirement.statusField}` as never),
+    label: t(KEYCLOAK_STATUS_LABELS[requirement.statusField]),
     severity: 'blocking',
   }));
 
@@ -700,7 +725,7 @@ export const getKeycloakStatusEntries = (selectedInstance: NonNullable<ReturnTyp
 
   return [
     ...INSTANCE_KEYCLOAK_REQUIREMENTS.map((requirement) => [
-      `admin.instances.keycloakStatus.${requirement.statusField}`,
+      KEYCLOAK_STATUS_LABELS[requirement.statusField],
       isInstanceKeycloakRequirementSatisfied(status, requirement),
     ] as const),
     ['admin.instances.keycloakStatus.clientSecretConfigured', status.clientSecretConfigured],

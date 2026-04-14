@@ -830,6 +830,14 @@ export const i18nResources = {
             blocked: 'Der Client konnte wegen fehlendem Keycloak-Zugriff noch nicht geprüft werden.',
             pending: 'Der Tenant-Client sollte per Vorschau oder Statuslauf geprüft werden.',
           },
+          tenantAdminClient: {
+            title: 'Tenant-Admin-Client prüfen',
+            notConfigured: 'In der Registry ist noch kein Tenant-Admin-Client hinterlegt.',
+            secretMissing: 'Der Tenant-Admin-Client ist in der Registry vorhanden, aber der Secret-Vertrag ist noch unvollständig.',
+            ready: 'Tenant-Admin-Client und Secret-Vertrag entsprechen dem erwarteten Zustand.',
+            blocked: 'Der Tenant-Admin-Client konnte wegen fehlendem Keycloak-Zugriff noch nicht geprüft werden.',
+            pending: 'Der Tenant-Admin-Client sollte jetzt per Provisioning geprüft oder abgeglichen werden.',
+          },
           mapper: {
             title: 'instanceId-Mapper prüfen',
             ready: 'Der instanceId-Mapper ist vorhanden.',

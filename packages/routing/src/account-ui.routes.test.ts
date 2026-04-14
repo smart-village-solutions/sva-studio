@@ -19,7 +19,7 @@ const invoke = async (guard: Guard, roles: readonly string[] | null, href: strin
 describe('accountUiRouteGuards', () => {
   it('redirects account route to login when unauthenticated', async () => {
     await expect(invoke(accountUiRouteGuards.account, null, '/account')).rejects.toMatchObject(
-      redirect({ href: '/auth/login?redirect=%2Faccount' })
+      redirect({ href: '/auth/login?returnTo=%2Faccount' })
     );
   });
 

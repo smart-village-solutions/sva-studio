@@ -549,6 +549,14 @@ export const i18nResources = {
           authClientSecretHint: 'Leer lassen, um das bestehende Secret unverändert zu lassen.',
           authClientSecretGeneratedHint: 'Bei neuen Realms wird das Secret beim Provisioning automatisch erzeugt und danach in Studio gespeichert.',
           authClientSecretGeneratedDuringProvisioning: 'Wird beim Provisioning automatisch erzeugt',
+          tenantAdminClientTitle: 'Tenant-Admin-Client',
+          tenantAdminClientSubtitle: 'Client-Vertrag und Secret für tenant-spezifische Verwaltungsoperationen.',
+          tenantAdminClientId: 'Tenant-Admin-Client-ID',
+          tenantAdminClientSecret: 'Tenant-Admin-Client-Secret',
+          tenantAdminClientSecretConfigured: 'Secret bereits konfiguriert',
+          tenantAdminClientSecretMissing: 'Secret fehlt noch',
+          tenantAdminClientSecretHint:
+            'Leer lassen, um das bestehende Tenant-Admin-Client-Secret unverändert zu lassen.',
           tenantAdminTitle: 'Initialer Tenant-Admin',
           tenantAdminSubtitle: 'Diese Daten werden für den Bootstrap des Realm-Admins genutzt.',
           tenantAdminUsername: 'Admin-Benutzername',
@@ -599,6 +607,7 @@ export const i18nResources = {
           checkKeycloakStatus: 'Keycloak-Status prüfen',
           planProvisioning: 'Provisioning-Vorschau laden',
           executeProvisioning: 'Provisioning ausführen',
+          provisionAdminClient: 'Tenant-Admin-Client bereitstellen',
           reconcileKeycloak: 'Realm anwenden',
           resetTenantAdmin: 'Tenant-Admin neu setzen',
           rotateClientSecret: 'Client-Secret rotieren',
@@ -744,6 +753,22 @@ export const i18nResources = {
             impact:
               'Bei bestehenden Realms blockiert ein fehlendes Secret Secret-Checks und Teile des Provisioning-/Drift-Abgleichs. Bei neuen Realms wird es nach dem Provisioning automatisch gespeichert.',
           },
+          tenantAdminClientId: {
+            title: 'Tenant-Admin-Client-ID',
+            what: 'OIDC-Client für tenant-spezifische Verwaltungs- und Bootstrap-Vorgänge.',
+            value: 'Den erwarteten Client-Namen eintragen, z. B. "sva-studio-admin".',
+            source: 'Kommt aus dem Tenant-Realm in Keycloak oder aus dem vorgesehenen Provisioning-Vertrag.',
+            impact: 'Ohne korrekte Client-ID bleiben tenant-spezifische Verwaltungsaktionen und Teile der Benutzerverwaltung blockiert.',
+            defaultHint: 'Falls der Client noch nicht existiert, kann Studio ihn über das Provisioning bereitstellen.',
+          },
+          tenantAdminClientSecret: {
+            title: 'Tenant-Admin-Client-Secret',
+            what: 'Secret des Tenant-Admin-Clients, das Studio verschlüsselt speichert und für Verwaltungsoperationen nutzt.',
+            value: 'Bei bestehenden Realms das aktuelle Secret des Tenant-Admin-Clients eintragen.',
+            source: 'Kommt aus den Client-Credentials des Tenant-Admin-Clients in Keycloak.',
+            impact:
+              'Ein fehlendes oder falsches Secret blockiert Verwaltungsoperationen, Rollenpflege und den Abgleich des Tenant-Admin-Clients.',
+          },
           tenantAdminUsername: {
             title: 'Admin-Benutzername',
             what: 'Technischer Benutzername des Tenant-Admins für Bootstrap oder Reset.',
@@ -804,6 +829,14 @@ export const i18nResources = {
             ready: 'Der erwartete Tenant-Client wurde gefunden.',
             blocked: 'Der Client konnte wegen fehlendem Keycloak-Zugriff noch nicht geprüft werden.',
             pending: 'Der Tenant-Client sollte per Vorschau oder Statuslauf geprüft werden.',
+          },
+          tenantAdminClient: {
+            title: 'Tenant-Admin-Client prüfen',
+            notConfigured: 'In der Registry ist noch kein Tenant-Admin-Client hinterlegt.',
+            secretMissing: 'Der Tenant-Admin-Client ist in der Registry vorhanden, aber der Secret-Vertrag ist noch unvollständig.',
+            ready: 'Tenant-Admin-Client und Secret-Vertrag entsprechen dem erwarteten Zustand.',
+            blocked: 'Der Tenant-Admin-Client konnte wegen fehlendem Keycloak-Zugriff noch nicht geprüft werden.',
+            pending: 'Der Tenant-Admin-Client sollte jetzt per Provisioning geprüft oder abgeglichen werden.',
           },
           mapper: {
             title: 'instanceId-Mapper prüfen',
@@ -871,6 +904,42 @@ export const i18nResources = {
           },
           keycloakUnavailable: 'Die Detailseite bleibt bedienbar, aber Keycloak-Aktionen und Prüfungen sind aktuell blockiert. Prüfen Sie Erreichbarkeit und Credentials.',
         },
+        configuration: {
+          title: 'Konfigurationsstatus',
+          labels: {
+            lifecycle: 'Lifecycle',
+            requirements: 'Erfüllte Anforderungen',
+            requirementsValue: '{{satisfied}} / {{total}} Anforderungen erfüllt',
+            blockingIssues: 'Konkrete Blocker',
+            warnings: 'Hinweise',
+          },
+          overall: {
+            complete: 'Vollständig',
+            degraded: 'Mit Hinweisen',
+            incomplete: 'Unvollständig',
+            unknown: 'Ungeprüft',
+          },
+          summary: {
+            complete: {
+              title: 'Konfiguration vollständig',
+              body: 'Alle kanonischen Keycloak-Anforderungen für diese Instanz sind aktuell erfüllt.',
+            },
+            degraded: {
+              title: 'Konfiguration betriebsfähig mit Hinweisen',
+              body: 'Die Pflichtanforderungen sind erfüllt, aber es bestehen noch betriebliche Hinweise oder Abweichungen.',
+            },
+            incomplete: {
+              title: 'Konfiguration unvollständig',
+              body: 'Es sind noch {{count}} kanonische Anforderungen offen oder fehlerhaft.',
+            },
+            unknown: {
+              title: 'Konfigurationsstatus nicht verifiziert',
+              body: 'Die kanonischen Anforderungen wurden noch nicht vollständig gegen Keycloak geprüft.',
+              keycloakUnavailable:
+                'Die kanonischen Anforderungen konnten aktuell nicht zuverlässig gegen Keycloak geprüft werden.',
+            },
+          },
+        },
         keycloakStatus: {
           ok: 'OK',
           missing: 'Fehlt',
@@ -914,6 +983,10 @@ export const i18nResources = {
           conflict: 'Die gewünschte Änderung steht im Konflikt mit dem aktuellen Instanzstatus.',
           databaseUnavailable: 'Die Registry konnte wegen eines Datenbankproblems nicht verarbeitet werden.',
           tenantAuthClientSecretMissing: 'Für diese Instanz ist noch kein Tenant-Client-Secret hinterlegt.',
+          tenantAdminClientNotConfigured:
+            'Für diese Instanz ist noch kein Tenant-Admin-Client hinterlegt. Pflegen Sie den Client-Vertrag und speichern Sie die Instanz.',
+          tenantAdminClientSecretMissing:
+            'Für diese Instanz fehlt noch das Tenant-Admin-Client-Secret. Hinterlegen Sie es in der Detailseite und speichern Sie erneut.',
           keycloakUnavailable: 'Keycloak konnte nicht erreicht oder nicht abgeglichen werden.',
           encryptionNotConfigured: 'Die notwendige Feldverschlüsselung für Tenant-Secrets ist nicht konfiguriert.',
         },
@@ -2302,6 +2375,14 @@ export const i18nResources = {
           authClientSecretGeneratedHint:
             'For new realms, the secret is generated automatically during provisioning and stored in Studio afterwards.',
           authClientSecretGeneratedDuringProvisioning: 'Generated automatically during provisioning',
+          tenantAdminClientTitle: 'Tenant admin client',
+          tenantAdminClientSubtitle: 'Client contract and secret for tenant-specific administrative operations.',
+          tenantAdminClientId: 'Tenant admin client id',
+          tenantAdminClientSecret: 'Tenant admin client secret',
+          tenantAdminClientSecretConfigured: 'Secret already configured',
+          tenantAdminClientSecretMissing: 'Secret still missing',
+          tenantAdminClientSecretHint:
+            'Leave empty to keep the existing tenant admin client secret unchanged.',
           tenantAdminTitle: 'Initial tenant admin',
           tenantAdminSubtitle: 'These values are used for tenant realm bootstrap.',
           tenantAdminUsername: 'Admin username',
@@ -2352,6 +2433,7 @@ export const i18nResources = {
           checkKeycloakStatus: 'Check Keycloak status',
           planProvisioning: 'Load provisioning preview',
           executeProvisioning: 'Execute provisioning',
+          provisionAdminClient: 'Provision tenant admin client',
           reconcileKeycloak: 'Apply realm',
           resetTenantAdmin: 'Reset tenant admin',
           rotateClientSecret: 'Rotate client secret',
@@ -2499,6 +2581,22 @@ export const i18nResources = {
             impact:
               'For existing realms, missing the secret blocks secret checks and parts of provisioning/drift reconciliation. For new realms, it is stored automatically after provisioning.',
           },
+          tenantAdminClientId: {
+            title: 'Tenant admin client id',
+            what: 'OIDC client for tenant-specific administrative and bootstrap operations.',
+            value: 'Enter the expected client name, for example "sva-studio-admin".',
+            source: 'Comes from the tenant realm in Keycloak or from the intended provisioning contract.',
+            impact: 'Without the correct client id, tenant-specific administration and parts of user management stay blocked.',
+            defaultHint: 'If the client does not exist yet, Studio can provision it.',
+          },
+          tenantAdminClientSecret: {
+            title: 'Tenant admin client secret',
+            what: 'Secret of the tenant admin client that Studio stores encrypted and uses for administrative operations.',
+            value: 'For existing realms, enter the current secret of the tenant admin client.',
+            source: 'Comes from the client credentials of the tenant admin client in Keycloak.',
+            impact:
+              'A missing or wrong secret blocks administrative operations, role management, and reconciliation of the tenant admin client.',
+          },
           tenantAdminUsername: {
             title: 'Admin username',
             what: 'Technical username of the tenant admin for bootstrap or reset.',
@@ -2559,6 +2657,14 @@ export const i18nResources = {
             ready: 'The expected tenant client was found.',
             blocked: 'The client could not be checked yet because Keycloak access is blocked.',
             pending: 'The tenant client should be checked through preview or a status run.',
+          },
+          tenantAdminClient: {
+            title: 'Check tenant admin client',
+            notConfigured: 'No tenant admin client is stored in the registry yet.',
+            secretMissing: 'The tenant admin client exists in the registry, but its secret contract is still incomplete.',
+            ready: 'The tenant admin client and its secret contract match the expected state.',
+            blocked: 'The tenant admin client could not be checked yet because Keycloak access is blocked.',
+            pending: 'The tenant admin client should now be verified or reconciled through provisioning.',
           },
           mapper: {
             title: 'Check instanceId mapper',
@@ -2627,6 +2733,42 @@ export const i18nResources = {
           },
           keycloakUnavailable: 'The detail page remains usable, but Keycloak actions and checks are currently blocked. Verify reachability and credentials.',
         },
+        configuration: {
+          title: 'Configuration status',
+          labels: {
+            lifecycle: 'Lifecycle',
+            requirements: 'Satisfied requirements',
+            requirementsValue: '{{satisfied}} / {{total}} requirements satisfied',
+            blockingIssues: 'Blocking issues',
+            warnings: 'Warnings',
+          },
+          overall: {
+            complete: 'Complete',
+            degraded: 'Warnings',
+            incomplete: 'Incomplete',
+            unknown: 'Unchecked',
+          },
+          summary: {
+            complete: {
+              title: 'Configuration complete',
+              body: 'All canonical Keycloak requirements for this instance are currently satisfied.',
+            },
+            degraded: {
+              title: 'Configuration operational with warnings',
+              body: 'All required checks pass, but operational warnings or deviations remain.',
+            },
+            incomplete: {
+              title: 'Configuration incomplete',
+              body: '{{count}} canonical requirements are still missing or incorrect.',
+            },
+            unknown: {
+              title: 'Configuration status not verified',
+              body: 'The canonical requirements have not been checked against Keycloak completely yet.',
+              keycloakUnavailable:
+                'The canonical requirements could not be checked against Keycloak reliably at the moment.',
+            },
+          },
+        },
         keycloakStatus: {
           ok: 'OK',
           missing: 'Missing',
@@ -2670,6 +2812,10 @@ export const i18nResources = {
           conflict: 'The requested change conflicts with the current instance state.',
           databaseUnavailable: 'The registry could not be processed because of a database problem.',
           tenantAuthClientSecretMissing: 'No tenant client secret has been stored for this instance yet.',
+          tenantAdminClientNotConfigured:
+            'No tenant admin client has been stored for this instance yet. Enter the client contract and save the instance.',
+          tenantAdminClientSecretMissing:
+            'The tenant admin client secret is still missing for this instance. Enter it on the detail page and save again.',
           keycloakUnavailable: 'Keycloak could not be reached or reconciled.',
           encryptionNotConfigured: 'Field encryption required for tenant secrets is not configured.',
         },

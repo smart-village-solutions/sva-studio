@@ -374,7 +374,9 @@ export const loginHandler = async (request?: Request): Promise<Response> => {
       const authConfig = request ? await resolveAuthConfigForRequest(request) : getAuthConfig();
       const authScope = getScopeFromAuthConfig(authConfig);
       const { loginStateCookieName, loginStateSecret } = authConfig;
-      const returnTo = request ? await sanitizeReturnTo(request, url?.searchParams.get('returnTo')) : DEFAULT_POST_LOGIN_REDIRECT;
+      const returnTo = request
+        ? await sanitizeReturnTo(request, url?.searchParams.get('returnTo') ?? url?.searchParams.get('redirect'))
+        : DEFAULT_POST_LOGIN_REDIRECT;
       const { url: authorizationUrl, state, loginState } = await createLoginUrl({
         returnTo,
         silent: isSilent,

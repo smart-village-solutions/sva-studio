@@ -10,7 +10,9 @@ import { useInstances } from '../../../hooks/use-instances';
 import { t } from '../../../i18n';
 import { FieldHelp } from './-field-help';
 import {
+  ConfigurationStatusBadge,
   createDetailForm,
+  evaluateInstanceConfiguration,
   getErrorMessage,
   getKeycloakStatusEntries,
   getSetupWorkflowSteps,
@@ -55,6 +57,7 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
 
   const selectedInstance = instancesApi.selectedInstance?.instanceId === instanceId ? instancesApi.selectedInstance : null;
   const tenantSecretUserInputRequired = selectedInstance ? isTenantSecretUserInputRequired(selectedInstance.realmMode) : true;
+  const configurationAssessment = selectedInstance ? evaluateInstanceConfiguration(selectedInstance, instancesApi.mutationError) : null;
 
   React.useEffect(() => {
     if (!selectedInstance) {
@@ -79,6 +82,12 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
       authClientId: detailFormValues.authClientId.trim(),
       authIssuerUrl: detailFormValues.authIssuerUrl.trim() || undefined,
       authClientSecret: detailFormValues.authClientSecret.trim() || undefined,
+      tenantAdminClient: detailFormValues.tenantAdminClient.clientId.trim()
+        ? {
+            clientId: detailFormValues.tenantAdminClient.clientId.trim(),
+            secret: detailFormValues.tenantAdminClient.secret.trim() || undefined,
+          }
+        : undefined,
       tenantAdminBootstrap: detailFormValues.tenantAdminBootstrap.username.trim()
         ? {
             username: detailFormValues.tenantAdminBootstrap.username.trim(),
@@ -89,10 +98,23 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
         : undefined,
     });
 
-    setDetailFormValues((current) => (current ? { ...current, authClientSecret: '' } : current));
+    setDetailFormValues((current) =>
+      current
+        ? {
+            ...current,
+            authClientSecret: '',
+            tenantAdminClient: {
+              ...current.tenantAdminClient,
+              secret: '',
+            },
+          }
+        : current
+    );
   };
 
-  const executeProvisioning = async (intent: 'provision' | 'reset_tenant_admin' | 'rotate_client_secret') => {
+  const executeProvisioning = async (
+    intent: 'provision' | 'provision_admin_client' | 'reset_tenant_admin' | 'rotate_client_secret'
+  ) => {
     if (!selectedInstance || !detailFormValues) {
       return;
     }
@@ -106,7 +128,14 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
   };
 
   const triggerWorkflowAction = async (
-    action: 'check_preflight' | 'check_keycloak_status' | 'plan_provisioning' | 'execute_provisioning' | 'activate_instance'
+    action:
+      | 'check_preflight'
+      | 'check_keycloak_status'
+      | 'plan_provisioning'
+      | 'execute_provisioning'
+      | 'provision_admin_client'
+      | 'reset_tenant_admin'
+      | 'activate_instance'
   ) => {
     if (!selectedInstance) {
       return;
@@ -124,6 +153,12 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
         return;
       case 'execute_provisioning':
         await executeProvisioning('provision');
+        return;
+      case 'provision_admin_client':
+        await executeProvisioning('provision_admin_client');
+        return;
+      case 'reset_tenant_admin':
+        await executeProvisioning('reset_tenant_admin');
         return;
       case 'activate_instance':
         await instancesApi.activateInstance(selectedInstance.instanceId);
@@ -159,6 +194,63 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
                 <div>{t('admin.instances.detail.parentDomain', { value: selectedInstance.parentDomain })}</div>
                 <div>{t('admin.instances.detail.status', { value: t(INSTANCE_STATUS_LABELS[selectedInstance.status]) })}</div>
               </div>
+              {configurationAssessment ? (
+                <div className="rounded-lg border border-border p-3">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="space-y-1">
+                      <div className="font-medium text-foreground">{t('admin.instances.configuration.title')}</div>
+                      <p className="text-sm text-muted-foreground">{configurationAssessment.title}</p>
+                    </div>
+                    <ConfigurationStatusBadge status={configurationAssessment.overallStatus} />
+                  </div>
+                  <div className="mt-3 grid gap-2 text-sm md:grid-cols-2">
+                    <div className="rounded-md border border-border bg-muted/20 p-3">
+                      <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                        {t('admin.instances.configuration.labels.lifecycle')}
+                      </div>
+                      <div className="mt-1 font-medium text-foreground">
+                        {t(INSTANCE_STATUS_LABELS[selectedInstance.status])}
+                      </div>
+                    </div>
+                    <div className="rounded-md border border-border bg-muted/20 p-3">
+                      <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                        {t('admin.instances.configuration.labels.requirements')}
+                      </div>
+                      <div className="mt-1 font-medium text-foreground">
+                        {t('admin.instances.configuration.labels.requirementsValue', {
+                          satisfied: configurationAssessment.satisfiedRequirements,
+                          total: configurationAssessment.totalRequirements,
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                  <p className="mt-3 text-sm text-muted-foreground">{configurationAssessment.body}</p>
+                  {configurationAssessment.blockingIssues.length > 0 ? (
+                    <div className="mt-3 space-y-2">
+                      <div className="text-sm font-medium text-foreground">
+                        {t('admin.instances.configuration.labels.blockingIssues')}
+                      </div>
+                      <ul className="space-y-1 text-sm text-muted-foreground">
+                        {configurationAssessment.blockingIssues.map((issue) => (
+                          <li key={issue.key}>• {issue.label}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+                  {configurationAssessment.warningIssues.length > 0 ? (
+                    <div className="mt-3 space-y-2">
+                      <div className="text-sm font-medium text-foreground">
+                        {t('admin.instances.configuration.labels.warnings')}
+                      </div>
+                      <ul className="space-y-1 text-sm text-muted-foreground">
+                        {configurationAssessment.warningIssues.map((issue) => (
+                          <li key={issue.key}>• {issue.label}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
               <div className="rounded-lg border border-border bg-muted/30 p-3">
                 <div className="font-medium text-foreground">{getStatusGuidance(selectedInstance).title}</div>
                 <p className="mt-1 text-sm text-muted-foreground">{getStatusGuidance(selectedInstance).body}</p>
@@ -332,6 +424,62 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
                 </div>
 
                 <div className="space-y-1">
+                  <h2 className="text-sm font-medium text-foreground">{t('admin.instances.form.tenantAdminClientTitle')}</h2>
+                  <p className="text-xs text-muted-foreground">{t('admin.instances.form.tenantAdminClientSubtitle')}</p>
+                </div>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div className="space-y-1">
+                    <FormLabelWithHelp
+                      htmlFor="detail-tenant-admin-client-id"
+                      label={t('admin.instances.form.tenantAdminClientId')}
+                      helpKey="tenantAdminClientId"
+                    />
+                    <Input
+                      id="detail-tenant-admin-client-id"
+                      value={detailFormValues.tenantAdminClient.clientId}
+                      onChange={(event) =>
+                        setDetailFormValues((current) =>
+                          current
+                            ? {
+                                ...current,
+                                tenantAdminClient: { ...current.tenantAdminClient, clientId: event.target.value },
+                              }
+                            : current
+                        )
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <FormLabelWithHelp
+                      htmlFor="detail-tenant-admin-client-secret"
+                      label={t('admin.instances.form.tenantAdminClientSecret')}
+                      helpKey="tenantAdminClientSecret"
+                    />
+                    <Input
+                      id="detail-tenant-admin-client-secret"
+                      type="password"
+                      placeholder={
+                        selectedInstance.tenantAdminClient?.secretConfigured
+                          ? t('admin.instances.form.tenantAdminClientSecretConfigured')
+                          : t('admin.instances.form.tenantAdminClientSecretMissing')
+                      }
+                      value={detailFormValues.tenantAdminClient.secret}
+                      onChange={(event) =>
+                        setDetailFormValues((current) =>
+                          current
+                            ? {
+                                ...current,
+                                tenantAdminClient: { ...current.tenantAdminClient, secret: event.target.value },
+                              }
+                            : current
+                        )
+                      }
+                    />
+                    <p className="text-xs text-muted-foreground">{t('admin.instances.form.tenantAdminClientSecretHint')}</p>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
                   <h2 className="text-sm font-medium text-foreground">{t('admin.instances.form.tenantAdminTitle')}</h2>
                   <p className="text-xs text-muted-foreground">{t('admin.instances.form.tenantAdminSubtitle')}</p>
                 </div>
@@ -451,6 +599,9 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
               <div className="flex flex-wrap gap-2">
                 <Button type="button" onClick={() => void executeProvisioning('provision')}>
                   {t('admin.instances.actions.executeProvisioning')}
+                </Button>
+                <Button type="button" variant="outline" onClick={() => void executeProvisioning('provision_admin_client')}>
+                  {t('admin.instances.actions.provisionAdminClient')}
                 </Button>
                 <Button type="button" variant="outline" onClick={() => void executeProvisioning('reset_tenant_admin')}>
                   {t('admin.instances.actions.resetTenantAdmin')}

@@ -190,6 +190,36 @@ describe('routes/handlers', () => {
     );
   });
 
+  it('accepts legacy redirect query params for post-login navigation', async () => {
+    createLoginUrlMock.mockResolvedValue({
+      url: 'https://issuer.example/auth',
+      state: 'state-legacy-redirect',
+      loginState: {
+        codeVerifier: 'verifier-legacy-redirect',
+        nonce: 'nonce-legacy-redirect',
+        createdAt: Date.now(),
+        returnTo: '/admin/instances',
+        silent: false,
+      },
+    });
+
+    const { loginHandler } = await import('./handlers.js');
+
+    const response = await loginHandler(new Request('http://localhost/auth/login?redirect=%2Fadmin%2Finstances'));
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get('location')).toBe('https://issuer.example/auth');
+    const encodedCookie = (response.headers.get('set-cookie') ?? '').split(';')[0]?.split('=')[1];
+    const encodedPayload = encodedCookie?.split('.')[0];
+    const decodedPayload = encodedPayload ? JSON.parse(Buffer.from(encodedPayload, 'base64url').toString('utf8')) : null;
+
+    expect(decodedPayload).toEqual(
+      expect.objectContaining({
+        returnTo: '/admin/instances',
+      })
+    );
+  });
+
   it('logs the resolved auth config for login requests', async () => {
     resolvedAuthConfigState.kind = 'instance';
     resolvedAuthConfigState.instanceId = 'bb-guben';

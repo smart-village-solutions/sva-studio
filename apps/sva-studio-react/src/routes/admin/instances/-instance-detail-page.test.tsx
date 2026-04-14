@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { t } from '../../../i18n';
 import { InstanceDetailPage } from './-instance-detail-page';
 
 const useInstancesMock = vi.fn();
@@ -28,6 +29,10 @@ const createSelectedInstance = (overrides: Record<string, unknown> = {}) => ({
   authRealm: 'demo',
   authClientId: 'sva-studio',
   authClientSecretConfigured: true,
+  tenantAdminClient: {
+    clientId: 'sva-studio-admin',
+    secretConfigured: true,
+  },
   hostnames: [],
   provisioningRuns: [],
   auditEvents: [],
@@ -67,6 +72,7 @@ const createSelectedInstance = (overrides: Record<string, unknown> = {}) => ({
   keycloakStatus: {
     realmExists: true,
     clientExists: true,
+    tenantAdminClientExists: true,
     instanceIdMapperExists: true,
     tenantAdminExists: true,
     tenantAdminHasSystemAdmin: true,
@@ -78,6 +84,9 @@ const createSelectedInstance = (overrides: Record<string, unknown> = {}) => ({
     clientSecretConfigured: true,
     tenantClientSecretReadable: true,
     clientSecretAligned: true,
+    tenantAdminClientSecretConfigured: true,
+    tenantAdminClientSecretReadable: true,
+    tenantAdminClientSecretAligned: true,
     runtimeSecretSource: 'tenant',
   },
   latestKeycloakProvisioningRun: {
@@ -160,6 +169,16 @@ describe('InstanceDetailPage', () => {
       expect(loadInstance).toHaveBeenCalledWith('demo');
     });
 
+    expect(screen.getByText(t('admin.instances.configuration.title'))).toBeTruthy();
+    expect(screen.getByText(t('admin.instances.configuration.summary.complete.title'))).toBeTruthy();
+    expect(
+      screen.getByText(
+        t('admin.instances.configuration.labels.requirementsValue', {
+          satisfied: 13,
+          total: 13,
+        })
+      )
+    ).toBeTruthy();
     expect(screen.getByText('Instanz gespeichert, aber noch nicht betriebsbereit')).toBeTruthy();
     expect(screen.getByText('Was ist noch offen?')).toBeTruthy();
     expect(screen.getByText('Provisioning ist erfolgreich. Die Instanz kann jetzt aktiviert werden.')).toBeTruthy();
@@ -183,6 +202,12 @@ describe('InstanceDetailPage', () => {
     fireEvent.change(screen.getByLabelText('Tenant-Client-Secret', { selector: '#detail-auth-client-secret' }), {
       target: { value: ' test-client-secret ' },
     });
+    fireEvent.change(screen.getByLabelText('Tenant-Admin-Client-ID', { selector: '#detail-tenant-admin-client-id' }), {
+      target: { value: ' tenant-admin-client ' },
+    });
+    fireEvent.change(screen.getByLabelText('Tenant-Admin-Client-Secret', { selector: '#detail-tenant-admin-client-secret' }), {
+      target: { value: ' test-admin-client-secret ' },
+    });
     fireEvent.change(screen.getByLabelText('Admin-Benutzername', { selector: '#detail-admin-username' }), {
       target: { value: ' updated-admin ' },
     });
@@ -200,6 +225,10 @@ describe('InstanceDetailPage', () => {
         authClientId: 'tenant-client',
         authIssuerUrl: 'https://issuer.example.org',
         authClientSecret: 'test-client-secret',
+        tenantAdminClient: {
+          clientId: 'tenant-admin-client',
+          secret: 'test-admin-client-secret',
+        },
         tenantAdminBootstrap: {
           username: 'updated-admin',
           email: 'demo@example.org',
@@ -213,12 +242,17 @@ describe('InstanceDetailPage', () => {
       expect(
         (screen.getByLabelText('Tenant-Client-Secret', { selector: '#detail-auth-client-secret' }) as HTMLInputElement).value
       ).toBe('');
+      expect(
+        (screen.getByLabelText('Tenant-Admin-Client-Secret', { selector: '#detail-tenant-admin-client-secret' }) as HTMLInputElement)
+          .value
+      ).toBe('');
     });
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Vorbedingungen prüfen' })[0]);
     fireEvent.click(screen.getAllByRole('button', { name: 'Keycloak-Status prüfen' })[0]);
     fireEvent.click(screen.getAllByRole('button', { name: 'Provisioning-Vorschau laden' })[0]);
     fireEvent.click(screen.getAllByRole('button', { name: 'Provisioning ausführen' }).at(-1)!);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Tenant-Admin-Client bereitstellen' }).at(-1)!);
     fireEvent.click(screen.getAllByRole('button', { name: 'Tenant-Admin neu setzen' }).at(-1)!);
     fireEvent.click(screen.getAllByRole('button', { name: 'Client-Secret rotieren' }).at(-1)!);
     fireEvent.click(screen.getByRole('button', { name: 'Aktivieren' }));
@@ -234,6 +268,13 @@ describe('InstanceDetailPage', () => {
             'demo',
             {
               intent: 'provision',
+              tenantAdminTemporaryPassword: 'test-temp-password',
+            },
+          ],
+          [
+            'demo',
+            {
+              intent: 'provision_admin_client',
               tenantAdminTemporaryPassword: 'test-temp-password',
             },
           ],
@@ -296,6 +337,7 @@ describe('InstanceDetailPage', () => {
           keycloakStatus: {
             realmExists: false,
             clientExists: false,
+            tenantAdminClientExists: false,
             instanceIdMapperExists: false,
             tenantAdminExists: false,
             tenantAdminHasSystemAdmin: false,
@@ -307,7 +349,10 @@ describe('InstanceDetailPage', () => {
             clientSecretConfigured: false,
             tenantClientSecretReadable: false,
             clientSecretAligned: false,
-            runtimeSecretSource: 'instance',
+            tenantAdminClientSecretConfigured: false,
+            tenantAdminClientSecretReadable: false,
+            tenantAdminClientSecretAligned: false,
+            runtimeSecretSource: 'global',
           },
           latestKeycloakProvisioningRun: undefined,
         }),
@@ -325,6 +370,47 @@ describe('InstanceDetailPage', () => {
     expect(
       screen.getByText('Bei neuen Realms wird das Secret beim Provisioning automatisch erzeugt und danach in Studio gespeichert.')
     ).toBeTruthy();
+  });
+
+  it('shows blocking configuration issues when the tenant admin client contract is incomplete', () => {
+    useInstancesMock.mockReturnValue(
+      createInstancesApiState({
+        selectedInstance: createSelectedInstance({
+          status: 'active',
+          tenantAdminClient: {
+            clientId: 'demo-admin-client',
+            secretConfigured: false,
+          },
+          keycloakStatus: {
+            realmExists: true,
+            clientExists: true,
+            tenantAdminClientExists: false,
+            instanceIdMapperExists: true,
+            tenantAdminExists: true,
+            tenantAdminHasSystemAdmin: true,
+            tenantAdminHasInstanceRegistryAdmin: false,
+            tenantAdminInstanceIdMatches: true,
+            redirectUrisMatch: true,
+            logoutUrisMatch: true,
+            webOriginsMatch: true,
+            clientSecretConfigured: true,
+            tenantClientSecretReadable: true,
+            clientSecretAligned: true,
+            tenantAdminClientSecretConfigured: false,
+            tenantAdminClientSecretReadable: false,
+            tenantAdminClientSecretAligned: false,
+            runtimeSecretSource: 'tenant',
+          },
+        }),
+      })
+    );
+
+    render(<InstanceDetailPage instanceId="demo" />);
+
+    expect(screen.getByText('Konfiguration unvollständig')).toBeTruthy();
+    expect(screen.getByText('Konkrete Blocker')).toBeTruthy();
+    expect(screen.getByText('Tenant-Admin-Client vorhanden')).toBeTruthy();
+    expect(screen.getByText('Tenant-Admin-Client-Secret mit Keycloak abgeglichen')).toBeTruthy();
   });
 
   it('renders non-keycloak mutation errors', () => {

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   createEmptyCreateForm,
+  evaluateInstanceConfiguration,
   getCreateReadinessChecks,
   getErrorMessage,
   getCreateStepValidationMessages,
@@ -182,6 +183,7 @@ describe('instances shared helpers', () => {
       ['keycloakAccess', 'blocked'],
       ['realm', 'blocked'],
       ['client', 'blocked'],
+      ['tenantAdminClient', 'blocked'],
       ['mapper', 'blocked'],
       ['tenantSecret', 'blocked'],
       ['tenantAdmin', 'blocked'],
@@ -221,6 +223,123 @@ describe('instances shared helpers', () => {
     expect(entries).toContainEqual([
       'admin.instances.keycloakStatus.tenantAdminHasInstanceRegistryAdmin',
       true,
+    ]);
+  });
+
+  it('uses intent-specific workflow actions for tenant admin client and tenant admin steps', () => {
+    const workflow = getSetupWorkflowSteps(
+      {
+        instanceId: 'demo',
+        displayName: 'Demo',
+        status: 'requested',
+        featureFlags: {},
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+        parentDomain: 'studio.example.org',
+        primaryHostname: 'demo.studio.example.org',
+        realmMode: 'existing',
+        authRealm: 'demo',
+        authClientId: 'sva-studio',
+        authClientSecretConfigured: true,
+        tenantAdminClient: {
+          clientId: 'demo-admin-client',
+          secretConfigured: false,
+        },
+        hostnames: [],
+        provisioningRuns: [],
+        auditEvents: [],
+        keycloakPreflight: undefined,
+        keycloakPlan: undefined,
+        keycloakProvisioningRuns: [],
+        tenantAdminBootstrap: {
+          username: 'demo-admin',
+        },
+        keycloakStatus: {
+          realmExists: true,
+          clientExists: true,
+          tenantAdminClientExists: false,
+          instanceIdMapperExists: true,
+          tenantAdminExists: false,
+          tenantAdminHasSystemAdmin: false,
+          tenantAdminHasInstanceRegistryAdmin: false,
+          tenantAdminInstanceIdMatches: false,
+          redirectUrisMatch: true,
+          logoutUrisMatch: true,
+          webOriginsMatch: true,
+          clientSecretConfigured: true,
+          tenantClientSecretReadable: true,
+          clientSecretAligned: true,
+          tenantAdminClientSecretConfigured: false,
+          tenantAdminClientSecretReadable: false,
+          tenantAdminClientSecretAligned: false,
+          runtimeSecretSource: 'tenant',
+        },
+        latestKeycloakProvisioningRun: undefined,
+      } as const,
+      null
+    );
+
+    expect(workflow.find((step) => step.key === 'tenantAdminClient')?.action).toBe('provision_admin_client');
+    expect(workflow.find((step) => step.key === 'tenantAdmin')?.action).toBe('reset_tenant_admin');
+  });
+
+  it('evaluates the configuration as incomplete when canonical requirements are missing', () => {
+    const assessment = evaluateInstanceConfiguration(
+      {
+        instanceId: 'demo',
+        displayName: 'Demo',
+        status: 'active',
+        featureFlags: {},
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+        parentDomain: 'studio.example.org',
+        primaryHostname: 'demo.studio.example.org',
+        realmMode: 'existing',
+        authRealm: 'demo',
+        authClientId: 'sva-studio',
+        authClientSecretConfigured: true,
+        tenantAdminClient: {
+          clientId: 'demo-admin-client',
+          secretConfigured: false,
+        },
+        hostnames: [],
+        provisioningRuns: [],
+        auditEvents: [],
+        keycloakPreflight: undefined,
+        keycloakPlan: undefined,
+        keycloakProvisioningRuns: [],
+        tenantAdminBootstrap: {
+          username: 'demo-admin',
+        },
+        keycloakStatus: {
+          realmExists: true,
+          clientExists: true,
+          tenantAdminClientExists: false,
+          instanceIdMapperExists: true,
+          tenantAdminExists: true,
+          tenantAdminHasSystemAdmin: true,
+          tenantAdminHasInstanceRegistryAdmin: false,
+          tenantAdminInstanceIdMatches: true,
+          redirectUrisMatch: true,
+          logoutUrisMatch: true,
+          webOriginsMatch: true,
+          clientSecretConfigured: true,
+          tenantClientSecretReadable: true,
+          clientSecretAligned: true,
+          tenantAdminClientSecretConfigured: false,
+          tenantAdminClientSecretReadable: false,
+          tenantAdminClientSecretAligned: false,
+          runtimeSecretSource: 'tenant',
+        },
+        latestKeycloakProvisioningRun: undefined,
+      } as const,
+      null
+    );
+
+    expect(assessment.overallStatus).toBe('incomplete');
+    expect(assessment.blockingIssues.map((issue) => issue.key)).toEqual([
+      'tenant_admin_client',
+      'tenant_admin_client_secret',
     ]);
   });
 });

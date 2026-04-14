@@ -365,6 +365,10 @@ export type CreateInstancePayload = {
   readonly authClientId: string;
   readonly authIssuerUrl?: string;
   readonly authClientSecret?: string;
+  readonly tenantAdminClient?: {
+    readonly clientId: string;
+    readonly secret?: string;
+  };
   readonly tenantAdminBootstrap?: {
     readonly username: string;
     readonly email?: string;
@@ -384,6 +388,10 @@ export type UpdateInstancePayload = {
   readonly authClientId: string;
   readonly authIssuerUrl?: string;
   readonly authClientSecret?: string;
+  readonly tenantAdminClient?: {
+    readonly clientId: string;
+    readonly secret?: string;
+  };
   readonly tenantAdminBootstrap?: {
     readonly username: string;
     readonly email?: string;
@@ -401,7 +409,7 @@ export type ReconcileInstanceKeycloakPayload = {
 };
 
 export type ExecuteInstanceKeycloakProvisioningPayload = {
-  readonly intent: 'provision' | 'reset_tenant_admin' | 'rotate_client_secret';
+  readonly intent: 'provision' | 'provision_admin_client' | 'reset_tenant_admin' | 'rotate_client_secret';
   readonly tenantAdminTemporaryPassword?: string;
 };
 

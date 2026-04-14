@@ -30,6 +30,8 @@ export type InstanceFieldHelpKey =
   | 'authClientId'
   | 'authIssuerUrl'
   | 'authClientSecret'
+  | 'tenantAdminClientId'
+  | 'tenantAdminClientSecret'
   | 'tenantAdminUsername'
   | 'tenantAdminEmail'
   | 'tenantAdminFirstName'
@@ -38,6 +40,7 @@ export type InstanceFieldHelpKey =
 export type CreateFormValues = ReturnType<typeof createEmptyCreateForm>;
 
 export type WorkflowStepState = 'done' | 'current' | 'blocked' | 'pending';
+export type InstanceConfigurationOverallStatus = 'complete' | 'degraded' | 'incomplete' | 'unknown';
 
 export type SetupWorkflowStep = {
   readonly key: string;
@@ -46,6 +49,23 @@ export type SetupWorkflowStep = {
   readonly status: WorkflowStepState;
   readonly actionLabel?: string;
   readonly action?: 'check_preflight' | 'check_keycloak_status' | 'plan_provisioning' | 'execute_provisioning' | 'activate_instance';
+};
+
+export type InstanceConfigurationIssue = {
+  readonly key: string;
+  readonly label: string;
+  readonly severity: 'blocking' | 'warning';
+};
+
+export type InstanceConfigurationAssessment = {
+  readonly overallStatus: InstanceConfigurationOverallStatus;
+  readonly title: string;
+  readonly body: string;
+  readonly statusLabel: string;
+  readonly satisfiedRequirements: number;
+  readonly totalRequirements: number;
+  readonly blockingIssues: readonly InstanceConfigurationIssue[];
+  readonly warningIssues: readonly InstanceConfigurationIssue[];
 };
 
 type IamInstanceKeycloakStatus = NonNullable<IamInstanceDetail['keycloakStatus']>;
@@ -84,6 +104,10 @@ export const getErrorMessage = (error: IamHttpError | null) => {
       return t('admin.instances.errors.databaseUnavailable');
     case 'tenant_auth_client_secret_missing':
       return t('admin.instances.errors.tenantAuthClientSecretMissing');
+    case 'tenant_admin_client_not_configured':
+      return t('admin.instances.errors.tenantAdminClientNotConfigured');
+    case 'tenant_admin_client_secret_missing':
+      return t('admin.instances.errors.tenantAdminClientSecretMissing');
     case 'keycloak_unavailable':
       return t('admin.instances.errors.keycloakUnavailable');
     case 'encryption_not_configured':
@@ -120,6 +144,10 @@ export const createDetailForm = (instance: NonNullable<ReturnType<typeof useInst
   authClientId: instance.authClientId,
   authIssuerUrl: instance.authIssuerUrl ?? '',
   authClientSecret: '',
+  tenantAdminClient: {
+    clientId: instance.tenantAdminClient?.clientId ?? '',
+    secret: '',
+  },
   tenantAdminBootstrap: {
     username: instance.tenantAdminBootstrap?.username ?? '',
     email: instance.tenantAdminBootstrap?.email ?? '',
@@ -223,6 +251,21 @@ export const INSTANCE_FIELD_HELP: Record<
     source: t('admin.instances.help.authClientSecret.source'),
     impact: t('admin.instances.help.authClientSecret.impact'),
   },
+  tenantAdminClientId: {
+    title: t('admin.instances.help.tenantAdminClientId.title'),
+    what: t('admin.instances.help.tenantAdminClientId.what'),
+    value: t('admin.instances.help.tenantAdminClientId.value'),
+    source: t('admin.instances.help.tenantAdminClientId.source'),
+    impact: t('admin.instances.help.tenantAdminClientId.impact'),
+    defaultHint: t('admin.instances.help.tenantAdminClientId.defaultHint'),
+  },
+  tenantAdminClientSecret: {
+    title: t('admin.instances.help.tenantAdminClientSecret.title'),
+    what: t('admin.instances.help.tenantAdminClientSecret.what'),
+    value: t('admin.instances.help.tenantAdminClientSecret.value'),
+    source: t('admin.instances.help.tenantAdminClientSecret.source'),
+    impact: t('admin.instances.help.tenantAdminClientSecret.impact'),
+  },
   tenantAdminUsername: {
     title: t('admin.instances.help.tenantAdminUsername.title'),
     what: t('admin.instances.help.tenantAdminUsername.what'),
@@ -324,6 +367,9 @@ const findPreflightCheck = (preflight: IamInstanceKeycloakPreflight | undefined,
 
 const createWorkflowStep = (input: SetupWorkflowStep): SetupWorkflowStep => input;
 
+const translateConfigurationStatus = (status: InstanceConfigurationOverallStatus) =>
+  t(`admin.instances.configuration.overall.${status}`);
+
 const readRequirementGroupSatisfied = (
   keycloakStatus: IamInstanceKeycloakStatus | undefined,
   uiStepKey: string
@@ -334,6 +380,86 @@ const readRequirementGroupSatisfied = (
         isInstanceKeycloakRequirementSatisfied(keycloakStatus, requirement)
       )
   );
+
+export const evaluateInstanceConfiguration = (
+  instance: IamInstanceDetail,
+  mutationError: IamHttpError | null
+): InstanceConfigurationAssessment => {
+  const keycloakStatus = instance.keycloakStatus;
+  const keycloakUnavailable = mutationError?.code === 'keycloak_unavailable';
+  const failingRequirements = keycloakStatus
+    ? INSTANCE_KEYCLOAK_REQUIREMENTS.filter((requirement) => !isInstanceKeycloakRequirementSatisfied(keycloakStatus, requirement))
+    : [];
+  const warningIssues: InstanceConfigurationIssue[] =
+    keycloakStatus && keycloakStatus.runtimeSecretSource !== 'tenant'
+      ? [
+          {
+            key: 'runtime_secret_source',
+            label: t('admin.instances.keycloakStatus.runtimeSecretSourceTenant'),
+            severity: 'warning',
+          },
+        ]
+      : [];
+  const blockingIssues: InstanceConfigurationIssue[] = failingRequirements.map((requirement) => ({
+    key: requirement.key,
+    label: t(`admin.instances.keycloakStatus.${requirement.statusField}` as never),
+    severity: 'blocking',
+  }));
+
+  if (keycloakUnavailable || !keycloakStatus) {
+    return {
+      overallStatus: 'unknown',
+      title: t('admin.instances.configuration.summary.unknown.title'),
+      body: keycloakUnavailable
+        ? t('admin.instances.configuration.summary.unknown.keycloakUnavailable')
+        : t('admin.instances.configuration.summary.unknown.body'),
+      statusLabel: translateConfigurationStatus('unknown'),
+      satisfiedRequirements: keycloakStatus ? INSTANCE_KEYCLOAK_REQUIREMENTS.length - failingRequirements.length : 0,
+      totalRequirements: INSTANCE_KEYCLOAK_REQUIREMENTS.length,
+      blockingIssues,
+      warningIssues,
+    };
+  }
+
+  if (blockingIssues.length > 0) {
+    return {
+      overallStatus: 'incomplete',
+      title: t('admin.instances.configuration.summary.incomplete.title'),
+      body: t('admin.instances.configuration.summary.incomplete.body', {
+        count: blockingIssues.length,
+      }),
+      statusLabel: translateConfigurationStatus('incomplete'),
+      satisfiedRequirements: INSTANCE_KEYCLOAK_REQUIREMENTS.length - blockingIssues.length,
+      totalRequirements: INSTANCE_KEYCLOAK_REQUIREMENTS.length,
+      blockingIssues,
+      warningIssues,
+    };
+  }
+
+  if (warningIssues.length > 0) {
+    return {
+      overallStatus: 'degraded',
+      title: t('admin.instances.configuration.summary.degraded.title'),
+      body: t('admin.instances.configuration.summary.degraded.body'),
+      statusLabel: translateConfigurationStatus('degraded'),
+      satisfiedRequirements: INSTANCE_KEYCLOAK_REQUIREMENTS.length,
+      totalRequirements: INSTANCE_KEYCLOAK_REQUIREMENTS.length,
+      blockingIssues,
+      warningIssues,
+    };
+  }
+
+  return {
+    overallStatus: 'complete',
+    title: t('admin.instances.configuration.summary.complete.title'),
+    body: t('admin.instances.configuration.summary.complete.body'),
+    statusLabel: translateConfigurationStatus('complete'),
+    satisfiedRequirements: INSTANCE_KEYCLOAK_REQUIREMENTS.length,
+    totalRequirements: INSTANCE_KEYCLOAK_REQUIREMENTS.length,
+    blockingIssues,
+    warningIssues,
+  };
+};
 
 export const getSetupWorkflowSteps = (
   instance: IamInstanceDetail,
@@ -348,6 +474,8 @@ export const getSetupWorkflowSteps = (
   const provisioningFailed = latestKeycloakRun?.overallStatus === 'failed';
   const provisioningRunning = latestKeycloakRun?.overallStatus === 'running';
   const tenantAdminConfigured = Boolean(instance.tenantAdminBootstrap?.username);
+  const tenantAdminClientConfigured = Boolean(instance.tenantAdminClient?.clientId);
+  const tenantAdminClientSecretConfigured = instance.tenantAdminClient?.secretConfigured === true;
 
   return [
     createWorkflowStep({
@@ -412,6 +540,30 @@ export const getSetupWorkflowSteps = (
           : 'pending',
       actionLabel: t('admin.instances.actions.planProvisioning'),
       action: 'plan_provisioning',
+    }),
+    createWorkflowStep({
+      key: 'tenantAdminClient',
+      title: t('admin.instances.workflow.tenantAdminClient.title'),
+      description: !tenantAdminClientConfigured
+        ? t('admin.instances.workflow.tenantAdminClient.notConfigured')
+        : readRequirementGroupSatisfied(instance.keycloakStatus, 'tenantAdminClient')
+          ? t('admin.instances.workflow.tenantAdminClient.ready')
+          : !tenantAdminClientSecretConfigured
+            ? t('admin.instances.workflow.tenantAdminClient.secretMissing')
+            : keycloakUnavailable
+              ? t('admin.instances.workflow.tenantAdminClient.blocked')
+              : t('admin.instances.workflow.tenantAdminClient.pending'),
+      status: !tenantAdminClientConfigured
+        ? 'blocked'
+        : readRequirementGroupSatisfied(instance.keycloakStatus, 'tenantAdminClient')
+          ? 'done'
+          : !tenantAdminClientSecretConfigured
+            ? 'blocked'
+            : keycloakUnavailable
+              ? 'blocked'
+              : 'current',
+      actionLabel: t('admin.instances.actions.executeProvisioning'),
+      action: 'execute_provisioning',
     }),
     createWorkflowStep({
       key: 'mapper',
@@ -564,6 +716,11 @@ export const KeycloakStatusBadge = ({ ready }: { ready: boolean }) => (
     {ready ? t('admin.instances.keycloakStatus.ok') : t('admin.instances.keycloakStatus.missing')}
   </Badge>
 );
+
+export const ConfigurationStatusBadge = ({ status }: { status: InstanceConfigurationOverallStatus }) => {
+  const variant = status === 'complete' ? 'secondary' : 'outline';
+  return <Badge variant={variant}>{translateConfigurationStatus(status)}</Badge>;
+};
 
 export const WorkflowStatusBadge = ({ status }: { status: WorkflowStepState }) => {
   const labelMap: Record<WorkflowStepState, string> = {

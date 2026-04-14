@@ -40,7 +40,7 @@ const normalizeInternalPath = (value: string, fallbackPath: string): string => {
 
 const buildLoginHref = (loginPath: string, returnTo: string) => {
   const url = new URL(normalizeInternalPath(loginPath, DEFAULT_LOGIN_PATH), INTERNAL_REDIRECT_BASE);
-  url.searchParams.set('redirect', normalizeInternalPath(returnTo, DEFAULT_FALLBACK_PATH));
+  url.searchParams.set('returnTo', normalizeInternalPath(returnTo, DEFAULT_FALLBACK_PATH));
   return `${url.pathname}${url.search}`;
 };
 

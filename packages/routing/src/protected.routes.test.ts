@@ -27,7 +27,7 @@ describe('protected routes', () => {
     } catch (error) {
       expect(isRedirect(error)).toBe(true);
       if (isRedirect(error)) {
-        expect(error.options.href).toBe('/auth/login?redirect=%2Fadmin%2Fusers%3Fpage%3D2');
+        expect(error.options.href).toBe('/auth/login?returnTo=%2Fadmin%2Fusers%3Fpage%3D2');
       }
     }
   });
@@ -70,7 +70,7 @@ describe('protected routes', () => {
     } catch (error) {
       expect(isRedirect(error)).toBe(true);
       if (isRedirect(error)) {
-        expect(error.options.href).toBe('/auth/login?redirect=%2F');
+        expect(error.options.href).toBe('/auth/login?returnTo=%2F');
       }
     }
   });

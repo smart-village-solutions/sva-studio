@@ -712,7 +712,7 @@ test('direct access to admin users redirects unauthenticated clients to login', 
 
   expect([302, 303, 307, 308]).toContain(response.status());
   expect(response.headers().location).toMatch(
-    /(\/auth\/login\?redirect=%2Fadmin%2Fusers|\/protocol\/openid-connect\/auth\?|accounts\.google\.com\/(signin\/oauth\/error|o\/oauth2\/v2\/auth))/
+    /(\/auth\/login\?returnTo=%2Fadmin%2Fusers|\/protocol\/openid-connect\/auth\?|accounts\.google\.com\/(signin\/oauth\/error|o\/oauth2\/v2\/auth))/
   );
 });
 

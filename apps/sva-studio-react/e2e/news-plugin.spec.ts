@@ -327,7 +327,7 @@ test.describe('news plugin', () => {
     await page.goto('/');
     await navigateClientSide(page, '/plugins/news');
 
-    await expect(page).toHaveURL(/\/auth\/login\?redirect=%2Fplugins%2Fnews/);
+    await expect(page).toHaveURL(/\/auth\/login\?returnTo=%2Fplugins%2Fnews/);
   });
 
   test('stays free of serious accessibility violations on news views', async ({ page }) => {

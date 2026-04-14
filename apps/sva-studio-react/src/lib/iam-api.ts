@@ -745,6 +745,12 @@ export const updateContent = async (
 ): Promise<ApiItemResponse<IamContentDetail>> =>
   patchJson<ApiItemResponse<IamContentDetail>, UpdateContentPayload>(`/api/v1/iam/contents/${contentId}`, payload);
 
+export const deleteContent = async (contentId: string): Promise<ApiItemResponse<{ id: string }>> =>
+  requestJson<ApiItemResponse<{ id: string }>>(`/api/v1/iam/contents/${contentId}`, {
+    method: 'DELETE',
+    headers: IAM_HEADERS,
+  });
+
 export const listOrganizations = async (
   query: OrganizationsQuery
 ): Promise<ApiListResponse<IamOrganizationListItem>> => {

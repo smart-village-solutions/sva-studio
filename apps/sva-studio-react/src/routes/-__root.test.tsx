@@ -118,6 +118,31 @@ describe('root route document', () => {
     });
   });
 
+  it('updates the document title for plugin routes', async () => {
+    useRouterStateMock.mockImplementation(({ select }) =>
+      select({
+        status: 'idle',
+        isLoading: false,
+        location: { pathname: '/plugins/news' },
+      }),
+    );
+
+    const { RootDocument } = await import('./__root');
+
+    render(
+      <>
+        <main id="main-content" tabIndex={-1} />
+        <RootDocument>
+          <div>content</div>
+        </RootDocument>
+      </>,
+    );
+
+    await waitFor(() => {
+      expect(document.title).toBe('news.navigation.title | SVA Studio');
+    });
+  });
+
   it('marks the shell as loading after hydration when the router is pending', async () => {
     useRouterStateMock.mockImplementation(({ select }) =>
       select({

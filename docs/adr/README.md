@@ -61,6 +61,7 @@ Architecture Decision Records dokumentieren **wichtige technische Entscheidungen
 | 027 | Rechtstext-Fail-Closed und blockierter Session-Zustand | ✅ | 2026-03-31 | Auth / Legal / IAM |
 | 028 | IAM-Konfigurations-Export als dokumentierte Folgearbeit | ✅ | 2026-03-31 | IAM / Technical Debt |
 | 029 | `goose` als OSS-Standard für SQL-Migrationen | ✅ | 2026-04-01 | Data / Betrieb / Tooling |
+| 034 | Plugin-SDK-Vertrag v1 | ✅ | 2026-04-13 | Studio / Plugins / SDK |
 
 ### Kanonischer Ablageort
 

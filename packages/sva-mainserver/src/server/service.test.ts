@@ -2,6 +2,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
   readSvaMainserverCredentialsWithStatus: vi.fn(),
+  logger: {
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  },
 }));
 
 vi.mock('@opentelemetry/api', () => ({
@@ -32,6 +38,21 @@ vi.mock('@opentelemetry/api', () => ({
 vi.mock('@sva/auth/server', () => ({
   readSvaMainserverCredentialsWithStatus: state.readSvaMainserverCredentialsWithStatus,
 }));
+
+vi.mock('@sva/sdk/server', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@sva/sdk/server')>();
+
+  return {
+    ...actual,
+    createSdkLogger: () => state.logger,
+    getWorkspaceContext: () => ({
+      requestId: 'req-mainserver',
+      traceId: 'trace-mainserver',
+      workspaceId: 'de-musterhausen',
+    }),
+    initializeOtelSdk: async () => ({ status: 'ready' as const }),
+  };
+});
 
 import { createSvaMainserverService, resetSvaMainserverServiceState } from './service';
 import { SvaMainserverError } from './errors';
@@ -67,6 +88,10 @@ const createDeferred = <TValue>() => {
 describe('createSvaMainserverService', () => {
   afterEach(() => {
     state.readSvaMainserverCredentialsWithStatus.mockReset();
+    state.logger.debug.mockReset();
+    state.logger.info.mockReset();
+    state.logger.warn.mockReset();
+    state.logger.error.mockReset();
     resetSvaMainserverServiceState();
   });
 

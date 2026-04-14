@@ -1,55 +1,65 @@
 # @sva/plugin-example
 
-Beispiel-Plugin für SVA Studio. Demonstriert das Plugin-Pattern: Wie ein externes Paket eigene Routen in die Anwendung einbringt, ohne den Core-Code zu verändern.
+Beispiel-Plugin für SVA Studio. Demonstriert den Plugin-SDK-Vertrag v1: Ein externes Paket bringt eigene Routen, Navigation und Übersetzungen über ein einzelnes `PluginDefinition`-Objekt ein, ohne App-Interna zu importieren.
 
 ## Architektur-Rolle
 
-Dieses Paket dient als **Referenzimplementierung** für das Plugin-System (siehe ADR-002). Es zeigt:
+Dieses Paket dient als **Referenzimplementierung** für das Plugin-System. Es zeigt:
 
-- Wie Route-Factories als Plugin-Erweiterung exportiert werden
-- Wie ein Plugin `@sva/core` als einzige Workspace-Abhängigkeit nutzt
-- Wie `@tanstack/react-router`, `react` und `react-dom` als Peer-Dependencies deklariert werden
+- wie ein Plugin genau ein `PluginDefinition`-Objekt exportiert
+- wie ein Plugin `@sva/sdk` als öffentliche Boundary nutzt
+- wie Navigation, Routing und i18n ohne Host-Sonderlogik beschrieben werden
+- wie `@tanstack/react-router`, `react` und `react-dom` als Peer Dependencies deklariert werden
 
 ```
-@sva/core  ← Core-Version, Route-Registry
+@sva/sdk   ← öffentlicher Plugin-Vertrag
   ↑
 @sva/plugin-example
   ↑
-App (sva-studio-react) ← mergt Plugin-Routen in den Router
+App (sva-studio-react) ← registriert Plugins statisch im Host
 ```
 
 **Abhängigkeiten:**
-- `@sva/core` (workspace) – Core-Version
+- `@sva/sdk` (workspace) – öffentlicher Plugin-Vertrag
 - **Peer:** `@tanstack/react-router`, `react`, `react-dom`
 
 ## Export
 
 | Pfad | Beschreibung |
 | --- | --- |
-| `@sva/plugin-example` | Plugin-Version + Route-Factory-Array |
+| `@sva/plugin-example` | `pluginExample` + Plugin-Version |
 
 ## Verwendung
 
-### Plugin-Routen registrieren
+### Plugin registrieren
 
 ```ts
-import { pluginExampleRoutes } from '@sva/plugin-example';
-import { coreRouteFactories } from '@sva/routing';
-import { mergeRouteFactories, buildRouteTree } from '@sva/core';
+import { pluginExample } from '@sva/plugin-example';
+import {
+  createPluginRegistry,
+  mergePluginNavigationItems,
+  mergePluginRouteDefinitions,
+  mergePluginTranslations,
+} from '@sva/sdk';
 
-const allFactories = mergeRouteFactories(coreRouteFactories, pluginExampleRoutes);
-const routeTree = buildRouteTree(rootRoute, allFactories);
+const plugins = [pluginExample] as const;
+
+const registry = createPluginRegistry(plugins);
+const routes = mergePluginRouteDefinitions(plugins);
+const navigation = mergePluginNavigationItems(plugins);
+const translations = mergePluginTranslations(plugins);
 ```
 
-### Plugin-Route
+### Plugin-Objekt
 
-Das Plugin stellt eine Demo-Route unter `/plugins/example` bereit:
+Das Plugin stellt eine Demo-Route unter `/plugins/example` sowie eine Navigation und Übersetzungen bereit:
 
 ```tsx
-import { pluginExampleRoutes, pluginExampleVersion } from '@sva/plugin-example';
+import { pluginExample, pluginExampleVersion } from '@sva/plugin-example';
 
-// pluginExampleRoutes ist ein Array von Route-Factory-Funktionen
-// Jede Factory erhält die Root-Route und gibt eine konkrete Route zurück
+pluginExample.routes;
+pluginExample.navigation;
+pluginExample.translations;
 ```
 
 ## Eigenes Plugin erstellen
@@ -57,16 +67,16 @@ import { pluginExampleRoutes, pluginExampleVersion } from '@sva/plugin-example';
 Nimm dieses Paket als Vorlage:
 
 1. **Neues Package anlegen:** `packages/plugin-mein-feature/`
-2. **Abhängigkeiten:** `@sva/core` als Workspace-Dep, Router + React als Peer-Deps
-3. **Routen exportieren:** Array von `RouteFactory`-Funktionen
-4. **In der App registrieren:** Via `mergeRouteFactories()` einbinden
+2. **Abhängigkeiten:** `@sva/sdk` als Workspace-Dep, Router + React als Peer-Deps
+3. **Plugin exportieren:** genau ein `PluginDefinition`-Objekt
+4. **In der App registrieren:** in die statische Plugin-Liste des Hosts aufnehmen
 
 **`package.json`-Vorlage:**
 
 ```json
 {
   "name": "@sva/plugin-mein-feature",
-  "dependencies": { "@sva/core": "workspace:*" },
+  "dependencies": { "@sva/sdk": "workspace:*" },
   "peerDependencies": {
     "@tanstack/react-router": "^1.166.3",
     "react": "^19.2.0",
@@ -75,28 +85,49 @@ Nimm dieses Paket als Vorlage:
 }
 ```
 
-**Route-Factory-Vorlage:**
+**Plugin-Vorlage:**
 
 ```tsx
-import { createRoute, type RootRoute } from '@tanstack/react-router';
+import type { PluginDefinition } from '@sva/sdk';
 
-const MeinFeaturePage = () => <div>Mein Feature</div>;
+const MeinFeaturePage = () => <main>Mein Feature</main>;
 
-export const meinFeatureRoutes = [
-  (rootRoute: RootRoute) => createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/plugins/mein-feature',
-    component: MeinFeaturePage,
-  }),
-];
+export const meinFeaturePlugin: PluginDefinition = {
+  id: 'mein-feature',
+  displayName: 'Mein Feature',
+  routes: [
+    {
+      id: 'mein-feature.list',
+      path: '/plugins/mein-feature',
+      component: MeinFeaturePage,
+    },
+  ],
+  navigation: [
+    {
+      id: 'mein-feature.navigation',
+      to: '/plugins/mein-feature',
+      titleKey: 'mein-feature.navigation.title',
+      section: 'applications',
+    },
+  ],
+  translations: {
+    de: {
+      'mein-feature': {
+        navigation: {
+          title: 'Mein Feature',
+        },
+      },
+    },
+  },
+};
 ```
 
 ## Projektstruktur
 
 ```
 src/
-├── index.ts      # Plugin-Version + Route-Re-Export
-└── routes.tsx    # React-Komponente + Route-Factory
+├── index.ts      # Plugin-Re-Export
+└── plugin.tsx    # React-Komponente + PluginDefinition
 ```
 
 ## Nx-Konfiguration
@@ -109,5 +140,7 @@ src/
 ## Verwandte Dokumentation
 
 - [ADR-002: Plugin Architecture Pattern](../../docs/architecture/decisions/ADR-002-plugin-architecture-pattern.md)
+- [ADR-034: Plugin-SDK-Vertrag v1](../../docs/adr/ADR-034-plugin-sdk-vertrag-v1.md)
 - [Routing-Architektur](../../docs/architecture/routing-architecture.md)
 - [Bausteinsicht (arc42 §5)](../../docs/architecture/05-building-block-view.md)
+- [Plugin-Entwicklung](../../docs/guides/plugin-development.md)

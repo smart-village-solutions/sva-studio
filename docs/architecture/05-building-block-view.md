@@ -36,6 +36,7 @@ Abhängigkeiten des aktuellen Systems.
    - modulare Server-Fassaden und fachliche Unterordner für IAM- und Auth-Pfade
 5. SDK (`packages/sdk`)
    - Logger, Context-Propagation, OTEL-Bootstrap
+   - öffentlicher Plugin-Vertrag v1 (`PluginDefinition`, Navigation, Routen-, Content-Type- und Translation-Merge)
    - Instance-Config-Modul (`instance/config.server.ts`): Validierung der `instanceId`-Allowlist beim Startup, Host-Parsing und Mapping auf `instanceId`
    - deklarative Registries für erweiterbare Inhalts-Typen und typgebundene UI-/Validierungs-Metadaten
 6. Monitoring Client (`packages/monitoring-client`)
@@ -48,8 +49,11 @@ Abhängigkeiten des aktuellen Systems.
    - dedizierte Integrationsschicht für OAuth2, GraphQL-Transport, Fehlerabbildung und Fachadapter
    - trennt client-sichere Typen von serverseitigen Delegations- und Diagnostikfunktionen
 9. Plugin Example (`packages/plugin-example`)
-   - Beispielroute fuer Plugin-Erweiterbarkeit
-10. Instanz-Registry (`packages/core`, `packages/data`, `packages/auth`, `apps/sva-studio-react`)
+   - Minimalreferenz für den Plugin-SDK-Vertrag v1
+10. Plugin News (`packages/plugin-news`)
+   - produktives Fachplugin für `contentType = news`
+   - eigene Listen- und Editor-Ansichten, Plugin-Navigation und Plugin-Übersetzungen
+11. Instanz-Registry (`packages/core`, `packages/data`, `packages/auth`, `apps/sva-studio-react`)
    - `packages/core`: Host-Klassifikation, Vertrags- und Run-Modell fuer Registry, Preflight, Plan und Provisioning-Protokoll
    - `packages/data`: Registry-Repositories, Migrationen, persistente Provisioning-Runs und L1-Cache
    - `packages/auth`: Plattformvertrag, Keycloak-Control-Plane, Provisioning-Fassade und Root-Host-Guard
@@ -87,6 +91,7 @@ Abhängigkeiten des aktuellen Systems.
   - `packages/sdk` (`content-types.ts`) für Erweiterungspunkte
   - `packages/auth` (`iam-contents.server.ts`, `iam-contents/*`) für serverseitige Read-/Write-Pfade, Historie und Audit
   - `apps/sva-studio-react/src/routes/content/*` für Listen- und Editor-UI unter `/content`
+  - `packages/plugin-news` für plugin-spezifische News-Ansichten auf Basis derselben Core-Content-API
 - Externe Mainserver-Anbindung:
   - `packages/sva-mainserver` (`server/config-store.ts`, `server/service.ts`, `generated/*`)
 
@@ -111,12 +116,13 @@ Abhängigkeiten des aktuellen Systems.
 
 ### Abhängigkeiten (vereinfacht)
 
-- App -> `@sva/core`, `@sva/routing`, `@sva/auth`, `@sva/sva-mainserver`, `@sva/plugin-example`
+- App -> `@sva/core`, `@sva/routing`, `@sva/auth`, `@sva/sva-mainserver`, `@sva/plugin-example`, `@sva/plugin-news`
 - `@sva/routing` -> `@sva/auth`, `@sva/core`, `@sva/sdk`
 - `@sva/auth` -> `@sva/sdk`
 - `@sva/sva-mainserver` -> `@sva/auth`, `@sva/data`, `@sva/sdk`
 - `@sva/sdk` -> `@sva/core`, `@sva/monitoring-client`
 - `@sva/plugin-*` -> `@sva/sdk` (kein Direktimport aus `@sva/core`)
+- `@sva/plugin-news` bleibt absichtlich auf SDK + Peer Dependencies beschränkt; API-Aufrufe laufen über den öffentlichen HTTP-Vertrag statt über App-Module
 - `@sva/monitoring-client` -> OTEL Libraries, `@sva/sdk` Context API
 - `@sva/auth` -> `@sva/core` (IAM-Claims + Feldverschlüsselung), `pg`
 - `apps/sva-studio-react` -> `@sva/core` + `@sva/auth` für Inhaltsliste, Detail, Historie und Statuswechsel
@@ -132,6 +138,17 @@ flowchart LR
 ```
 
 Nicht erlaubt: `@sva/plugin-*` -> `@sva/core`
+
+### Erweiterung 2026-04: Plugin-SDK-Vertrag v1 und News-Plugin
+
+1. `packages/sdk/src/plugins.ts`
+   - definiert `PluginDefinition` und Merge-Helfer für Plugin-Routen, Navigation, Content-Typen und Übersetzungen
+2. `apps/sva-studio-react/src/lib/plugins.ts`
+   - registriert `pluginExample` und `pluginNews` statisch im Host und materialisiert daraus Route-, Navigations- und i18n-Metadaten
+3. `packages/auth/src/iam-contents/content-type-registry.ts`
+   - erweitert den generischen Content-Write-Pfad um contentType-spezifische Payload-Validierung und Sanitisierung
+4. `packages/plugin-news/src/*`
+   - kapselt News-Liste, Editor, Delete-Flow und plugin-eigene Übersetzungen unter der SDK-Boundary
 
 ### Schichtdefinition `scope:integration`
 

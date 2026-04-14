@@ -58,7 +58,7 @@ test('inspect real tenant login flow', async ({ page }) => {
   const snapshot = await page.evaluate(() => ({
     title: document.title,
     url: location.href,
-    buttons: Array.from(document.querySelectorAll('button, input[type=\"submit\"]'))
+    buttons: Array.from(document.querySelectorAll('button, input[type="submit"]'))
       .map((element) =>
         (element.textContent || element.getAttribute('value') || element.getAttribute('aria-label') || '').trim()
       )

@@ -16,6 +16,17 @@ const useAuthMock = vi.fn();
 const useContentAccessMock = vi.fn();
 const useRouterStateMock = vi.fn();
 const localStorageState = new Map<string, string>();
+const studioPluginNavigationMock = vi.hoisted(() => ({
+  items: [
+    {
+      id: 'news.navigation',
+      to: '/plugins/news',
+      titleKey: 'news.navigation.title',
+      section: 'dataManagement',
+      requiredAction: 'content.read',
+    },
+  ],
+}));
 
 vi.mock('@tanstack/react-router', () => ({
   Link: ({
@@ -29,8 +40,10 @@ vi.mock('@tanstack/react-router', () => ({
   }) => (
     (() => {
       const { activeOptions: _activeOptions, ...anchorProps } = props;
+      const pathname = useRouterStateMock();
+      const isActive = pathname === to || pathname.startsWith(`${to}/`);
       return (
-        <a href={to} {...anchorProps}>
+        <a href={to} aria-current={isActive ? 'page' : undefined} {...anchorProps}>
           {children}
         </a>
       );
@@ -51,6 +64,12 @@ vi.mock('../hooks/use-content-access', () => ({
   useContentAccess: () => useContentAccessMock(),
 }));
 
+vi.mock('../lib/plugins', () => ({
+  get studioPluginNavigation() {
+    return studioPluginNavigationMock.items;
+  },
+}));
+
 const unauthenticatedAuthState = {
   user: null,
   isAuthenticated: false,
@@ -68,6 +87,15 @@ beforeEach(() => {
     isLoading: false,
     error: null,
   });
+  studioPluginNavigationMock.items = [
+    {
+      id: 'news.navigation',
+      to: '/plugins/news',
+      titleKey: 'news.navigation.title',
+      section: 'dataManagement',
+      requiredAction: 'content.read',
+    },
+  ];
   localStorageState.clear();
   Object.defineProperty(window, 'localStorage', {
     configurable: true,
@@ -316,5 +344,75 @@ describe('Sidebar', () => {
     render(<Sidebar />);
 
     expect(screen.queryByRole('link', { name: 'Inhalte' })).toBeNull();
+  });
+
+  it('rendert den News-Plugin-Navigationspunkt innerhalb der Datenverwaltung und markiert ihn als aktiv', () => {
+    useRouterStateMock.mockReturnValue('/plugins/news');
+    useAuthMock.mockReturnValue({
+      ...unauthenticatedAuthState,
+      user: {
+        id: 'user-1',
+        name: 'Editor',
+        roles: ['editor'],
+      },
+      isAuthenticated: true,
+    });
+    useContentAccessMock.mockReturnValue({
+      access: {
+        state: 'editable',
+        canRead: true,
+        canCreate: true,
+        canUpdate: true,
+        organizationIds: [],
+        sourceKinds: ['direct_role'],
+      },
+      isLoading: false,
+      error: null,
+    });
+
+    render(<Sidebar />);
+
+    const navigation = screen.getByRole('navigation', { name: 'Bereichsnavigation' });
+    const newsLink = within(navigation).getByRole('link', { name: 'News' });
+
+    expect(newsLink.getAttribute('href')).toBe('/plugins/news');
+    expect(newsLink.getAttribute('aria-current')).toBe('page');
+  });
+
+  it('blendet Plugin-Navigation ohne passende content-write-Berechtigung aus', () => {
+    studioPluginNavigationMock.items = [
+      {
+        id: 'news.write',
+        to: '/plugins/news/review',
+        titleKey: 'news.navigation.title',
+        section: 'dataManagement',
+        requiredAction: 'content.write',
+      },
+    ];
+    useAuthMock.mockReturnValue({
+      ...unauthenticatedAuthState,
+      user: {
+        id: 'user-1',
+        name: 'Reader',
+        roles: ['editor'],
+      },
+      isAuthenticated: true,
+    });
+    useContentAccessMock.mockReturnValue({
+      access: {
+        state: 'read_only',
+        canRead: true,
+        canCreate: true,
+        canUpdate: false,
+        organizationIds: [],
+        sourceKinds: ['direct_role'],
+      },
+      isLoading: false,
+      error: null,
+    });
+
+    render(<Sidebar />);
+
+    expect(screen.queryByRole('link', { name: 'News' })).toBeNull();
   });
 });

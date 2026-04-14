@@ -145,6 +145,21 @@ Schulden auf IST-Basis.
    - Wahrscheinlichkeit: hoch
    - Maßnahme: prod-nahe Freigaben an Remote-Paritaet binden, identische Live-Digests nur ueber dokumentierte Live-Evidenz wiederverwenden und lokale Kandidaten explizit als Hilfssignal behandeln
 
+24. Generische IAM-Rechte ohne Content-Type-Qualifier
+   - Impact: mittel bis hoch (Plugins mit unterschiedlichen Content-Typen teilen sich denselben Rechtekanon und koennen nur begrenzt separat freigeschaltet werden)
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: `content.read|create|write` in v1 beibehalten, feingranulare Content-Type-Rechte als Folgearbeit getrennt bewerten
+
+25. Untypisiertes `payload_json` als persistente Core-Struktur
+   - Impact: mittel (Schema-Drift oder unvollständige Validierung kann erst im Write-Pfad auffallen)
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: serverseitige contentType-Registry und Zod-Validierung beibehalten, stärkere Persistenztypisierung nur kontrolliert und migrationsgestützt einführen
+
+26. Statische Bundle-Plugins statt Runtime-Loading
+   - Impact: mittel (geringere betriebliche Flexibilität, Host-Rebuild für neue Plugins erforderlich)
+   - Wahrscheinlichkeit: hoch
+   - Maßnahme: statische Registrierung als bewussten v1-Trade-off dokumentieren und später nur mit Versionierungs-, Signierungs- und Sicherheitskonzept erweitern
+
 ### Technische Schulden (Auswahl)
 
 - Teilweise No-Op Testtargets in Libraries
@@ -161,6 +176,8 @@ Schulden auf IST-Basis.
 - Die Geo-Hierarchie ist intern bereits auswertbar, besitzt aber noch keine dedizierte Admin-Oberfläche oder externe Pflegepipeline
 - Der Releasevertrag ist im Repo gehärtet, aber produktive Randthemen wie Registry-Promotion, Receiver-Konfiguration und Multi-Node-Betrieb bleiben außerhalb dieses Changes
 - Die Live-Paritaets-Wiederverwendung fuer identische Digests reduziert Drift-Risiko, ersetzt aber keinen spaeteren echten Off-Cluster-Paritaets-Pfad fuer neue Digests
+- Plugin-Registrierung ist jetzt metadatenbasiert, aber noch nicht runtime-dynamisch
+- Content-Payloads bleiben in Postgres generisch als JSON abgelegt; Typsicherheit wird aktuell im Serververtrag und nicht in der Datenbank erzwungen
 
 ### Nachverfolgung
 

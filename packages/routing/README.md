@@ -34,22 +34,21 @@ App (sva-studio-react)
 Das Routing folgt einem dualen Ansatz:
 
 1. **File-based Routes** (TanStack Start) – für App-spezifische Seiten
-2. **Code-based Route-Factories** – für Core- und Plugin-Routen
+2. **Code-based Route-Factories** – für Core- und Auth-Routen
+3. **Plugin-Route-Metadaten** – für statisch registrierte Studio-Plugins
 
-Route-Factories sind Funktionen, die eine Root-Route entgegennehmen und daraus konkrete Routen erzeugen. Dies ermöglicht Plugin-Erweiterbarkeit ohne Änderung des Core-Codes.
+Core- und Auth-Routen bleiben Route-Factories. Plugins liefern dagegen einen SDK-Vertrag, aus dem der Host konkrete Routen materialisiert.
 
 ### Client-Verwendung
 
 ```ts
 import { coreRouteFactories, authRoutePaths } from '@sva/routing';
-import { mergeRouteFactories, buildRouteTree } from '@sva/core';
-import { pluginExampleRoutes } from '@sva/plugin-example';
+import { createPluginRegistry, mergePluginRouteDefinitions } from '@sva/sdk';
+import { pluginExample } from '@sva/plugin-example';
 
-// Alle Route-Factories zusammenführen
-const allFactories = mergeRouteFactories(coreRouteFactories, pluginExampleRoutes);
-
-// Route-Tree aufbauen
-const routeTree = buildRouteTree(rootRoute, allFactories);
+const plugins = [pluginExample] as const;
+const pluginRegistry = createPluginRegistry(plugins);
+const pluginRoutes = mergePluginRouteDefinitions(plugins);
 ```
 
 ### Server-Verwendung
@@ -94,3 +93,4 @@ src/
 - [Bausteinsicht (arc42 §5)](../../docs/architecture/05-building-block-view.md)
 - [Laufzeitsicht (arc42 §6)](../../docs/architecture/06-runtime-view.md) – Szenario 1: App-Start + Route-Komposition
 - [ADR-002: Plugin Architecture Pattern](../../docs/architecture/decisions/ADR-002-plugin-architecture-pattern.md)
+- [ADR-034: Plugin-SDK-Vertrag v1](../../docs/adr/ADR-034-plugin-sdk-vertrag-v1.md)

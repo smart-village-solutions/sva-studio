@@ -101,6 +101,7 @@ const config = defineConfig({
       '@sva/sdk/logger/index.server': resolveAppPath('../../packages/sdk/src/logger/index.server.ts'),
       '@sva/sdk/middleware/request-context.server': resolveAppPath('../../packages/sdk/src/middleware/request-context.server.ts'),
       '@sva/sdk/observability/context.server': resolveAppPath('../../packages/sdk/src/observability/context.server.ts'),
+      '@sva/sdk': resolveAppPath('../../packages/sdk/src/index.ts'),
       '@sva/monitoring-client/server': resolveAppPath('../../packages/monitoring-client/src/server.ts'),
       '@sva/monitoring-client/logger-provider.server': resolveAppPath(
         '../../packages/monitoring-client/src/logger-provider.server.ts'

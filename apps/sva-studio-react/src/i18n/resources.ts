@@ -149,6 +149,20 @@ export const i18nResources = {
       nextStepTitle: 'Anschluss an echte Inhalte',
       nextStepBody: 'Definieren Sie für „{{area}}“ die konkreten Daten, Aktionen und Freigaben. Die Route und Navigation sind bereits vorbereitet.',
     },
+    example: {
+      navigation: {
+        title: 'Plugin-Beispiel',
+      },
+    },
+    news: {
+      navigation: {
+        title: 'News',
+      },
+      editor: {
+        createTitle: 'News-Eintrag anlegen',
+        editTitle: 'News-Eintrag bearbeiten',
+      },
+    },
     content: {
       page: {
         title: 'Inhalte',
@@ -1887,6 +1901,20 @@ export const i18nResources = {
       nextStepTitle: 'Connect real content',
       nextStepBody: 'Define the concrete data, actions, and access rules for "{{area}}". The route and navigation are already in place.',
     },
+    example: {
+      navigation: {
+        title: 'Plugin Example',
+      },
+    },
+    news: {
+      navigation: {
+        title: 'News',
+      },
+      editor: {
+        createTitle: 'Create news entry',
+        editTitle: 'Edit news entry',
+      },
+    },
     content: {
       page: {
         title: 'Content',
@@ -3481,6 +3509,40 @@ export const i18nResources = {
     },
   },
 } as const;
+
+type TranslationNode = string | { [key: string]: TranslationNode };
+
+const isTranslationBranch = (value: unknown): value is Record<string, TranslationNode> =>
+  typeof value === 'object' && value !== null && Array.isArray(value) === false;
+
+const mergeTranslationBranch = (
+  target: Record<string, TranslationNode>,
+  source: Record<string, TranslationNode>
+): Record<string, TranslationNode> => {
+  for (const [key, value] of Object.entries(source)) {
+    if (isTranslationBranch(value) && isTranslationBranch(target[key])) {
+      target[key] = mergeTranslationBranch(
+        { ...(target[key] as Record<string, TranslationNode>) },
+        value
+      );
+      continue;
+    }
+
+    target[key] = value;
+  }
+
+  return target;
+};
+
+export const mergeI18nResources = (
+  resources: Readonly<Record<SupportedLocale, Readonly<Record<string, unknown>>>>
+) => {
+  for (const locale of Object.keys(resources) as SupportedLocale[]) {
+    const source = resources[locale];
+    const target = i18nResources[locale] as unknown as Record<string, TranslationNode>;
+    mergeTranslationBranch(target, source as Record<string, TranslationNode>);
+  }
+};
 
 export const DEFAULT_LOCALE = 'de';
 

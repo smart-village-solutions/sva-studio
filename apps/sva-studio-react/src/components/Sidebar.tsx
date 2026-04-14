@@ -31,6 +31,7 @@ import React from 'react';
 
 import { t } from '../i18n';
 import { useContentAccess } from '../hooks/use-content-access';
+import { studioPluginNavigation } from '../lib/plugins';
 import {
   hasIamAdminRole,
   hasInstanceRegistryAdminRole,
@@ -63,6 +64,7 @@ type SidebarLeafItem = {
   readonly label: string;
   readonly icon: Icon;
   readonly exact?: boolean;
+  readonly section?: 'dataManagement' | 'applications' | 'system';
 };
 
 type SidebarGroupItem = {
@@ -107,6 +109,12 @@ const LICENSE_ISSUE_URL = 'https://github.com/smart-village-solutions/sva-studio
 const COCKPIT_URL = 'https://cockpit.guben.de';
 const sidebarLogger = createOperationLogger('sidebar', 'debug');
 
+const pluginIconBySection = {
+  dataManagement: IconArticle,
+  applications: IconAppWindow,
+  system: IconPlugConnected,
+} as const;
+
 const isSidebarDebugEnabled = () => {
   if (typeof process !== 'undefined' && typeof process.env?.NODE_ENV === 'string') {
     return process.env.NODE_ENV !== 'production';
@@ -129,6 +137,35 @@ const logSidebarDebug = (eventName: string, meta: Record<string, unknown>) => {
   }
 
   logBrowserOperationStart(sidebarLogger, eventName, meta);
+};
+
+const hasRequiredContentAccess = (
+  requiredAction: 'content.read' | 'content.create' | 'content.write' | undefined,
+  access: { readonly canRead?: boolean; readonly canCreate?: boolean; readonly canUpdate?: boolean } | null | undefined,
+  isLoading: boolean
+) => {
+  if (!requiredAction) {
+    return true;
+  }
+
+  if (isLoading) {
+    return true;
+  }
+
+  if (!access) {
+    return false;
+  }
+
+  switch (requiredAction) {
+    case 'content.read':
+      return access.canRead === true;
+    case 'content.create':
+      return access.canCreate === true;
+    case 'content.write':
+      return access.canUpdate === true;
+    default:
+      return false;
+  }
 };
 
 const isLeafActive = (pathname: string, item: SidebarLeafItem) => {
@@ -658,6 +695,20 @@ export default function Sidebar({ isLoading = false, isMobileOpen = false, onMob
   }, [hasLoadedCollapsePreference, isCollapsed]);
 
   const sections = React.useMemo<readonly SidebarSection[]>(() => {
+    const pluginNavigationItems = studioPluginNavigation
+      .filter((item) => hasRequiredContentAccess(item.requiredAction, contentAccessApi.access, contentAccessApi.isLoading))
+      .map((item) => ({
+        kind: 'link' as const,
+        id: `plugin-${item.id}`,
+        to: item.to,
+        label: t(item.titleKey),
+        icon: pluginIconBySection[item.section],
+        section: item.section,
+      }));
+    const pluginDataManagementItems = pluginNavigationItems.filter((item) => item.section === 'dataManagement');
+    const pluginApplicationItems = pluginNavigationItems.filter((item) => item.section === 'applications');
+    const pluginSystemItems = pluginNavigationItems.filter((item) => item.section === 'system');
+
     const dataManagementItems: SidebarItem[] = [
       {
         kind: 'link',
@@ -692,6 +743,7 @@ export default function Sidebar({ isLoading = false, isMobileOpen = false, onMob
             },
           ]
         : []),
+      ...pluginDataManagementItems,
     ];
 
     const applicationItems: SidebarItem[] = canAccessWorkspace
@@ -710,8 +762,9 @@ export default function Sidebar({ isLoading = false, isMobileOpen = false, onMob
             label: t('shell.sidebar.cockpit'),
             icon: IconGauge,
           },
+          ...pluginApplicationItems,
         ]
-      : [];
+      : [...pluginApplicationItems];
 
     const userChildren: SidebarLeafItem[] = [
       ...(canAccessAdminUsers
@@ -824,8 +877,9 @@ export default function Sidebar({ isLoading = false, isMobileOpen = false, onMob
               label: t('shell.sidebar.monitoring'),
               icon: IconActivityHeartbeat,
             },
+            ...pluginSystemItems,
           ]
-        : []),
+        : [...pluginSystemItems]),
     ];
 
     return [
@@ -862,6 +916,9 @@ export default function Sidebar({ isLoading = false, isMobileOpen = false, onMob
     canAccessInterfaces,
     canAccessSystemTools,
     canAccessWorkspace,
+    canAccessContent,
+    contentAccessApi.access,
+    contentAccessApi.isLoading,
   ]);
 
   const footerItems = React.useMemo<readonly SidebarLeafItem[]>(

@@ -20,6 +20,7 @@ const state = vi.hoisted(() => ({
   ),
   createContentResponse: vi.fn(),
   updateContentResponse: vi.fn(),
+  deleteContentResponse: vi.fn(),
   loadContentListItems: vi.fn(),
   loadContentById: vi.fn(),
   loadContentDetail: vi.fn(),
@@ -54,6 +55,7 @@ vi.mock('./iam-contents/request-context.js', () => ({
 
 vi.mock('./iam-contents/mutations.js', () => ({
   createContentResponse: (...args: Parameters<typeof state.createContentResponse>) => state.createContentResponse(...args),
+  deleteContentResponse: (...args: Parameters<typeof state.deleteContentResponse>) => state.deleteContentResponse(...args),
   updateContentResponse: (...args: Parameters<typeof state.updateContentResponse>) => state.updateContentResponse(...args),
 }));
 
@@ -72,6 +74,8 @@ import {
   getContentInternal,
   listContentsHandler,
   listContentsInternal,
+  deleteContentHandler,
+  deleteContentInternal,
   updateContentHandler,
   updateContentInternal,
 } from './iam-contents/core.js';
@@ -103,6 +107,7 @@ describe('iam-contents core', () => {
     state.withAuthenticatedContentHandler.mockClear();
     state.createContentResponse.mockReset();
     state.updateContentResponse.mockReset();
+    state.deleteContentResponse.mockReset();
     state.loadContentListItems.mockReset();
     state.loadContentById.mockReset();
     state.loadContentDetail.mockReset();
@@ -243,7 +248,7 @@ describe('iam-contents core', () => {
     expect((await getContentHistoryInternal(new Request('http://localhost/api/v1/iam/contents/content-1/history'), ctx)).status).toBe(503);
   });
 
-  it('delegates create and update internals to mutations only after actor resolution succeeds', async () => {
+  it('delegates create, update and delete internals to mutations only after actor resolution succeeds', async () => {
     const actorError = new Response('forbidden', { status: 403 });
     state.resolveContentActor.mockResolvedValueOnce({ error: actorError });
     expect(await createContentInternal(new Request('http://localhost/api/v1/iam/contents'), ctx)).toBe(actorError);
@@ -260,6 +265,18 @@ describe('iam-contents core', () => {
     state.resolveContentActor.mockResolvedValueOnce(actorResolution);
     state.updateContentResponse.mockResolvedValueOnce(updateResponse);
     expect(await updateContentInternal(new Request('http://localhost/api/v1/iam/contents/content-1'), ctx)).toBe(updateResponse);
+
+    state.resolveContentActor.mockResolvedValueOnce({ error: actorError });
+    expect(await deleteContentInternal(new Request('http://localhost/api/v1/iam/contents/content-1', { method: 'DELETE' }), ctx)).toBe(
+      actorError
+    );
+
+    const deleteResponse = new Response('deleted', { status: 200 });
+    state.resolveContentActor.mockResolvedValueOnce(actorResolution);
+    state.deleteContentResponse.mockResolvedValueOnce(deleteResponse);
+    expect(await deleteContentInternal(new Request('http://localhost/api/v1/iam/contents/content-1', { method: 'DELETE' }), ctx)).toBe(
+      deleteResponse
+    );
   });
 
   it('exposes handlers through the authenticated content wrapper', async () => {
@@ -274,13 +291,16 @@ describe('iam-contents core', () => {
     state.loadContentHistory.mockResolvedValue([]);
     state.createContentResponse.mockResolvedValue(new Response('created', { status: 201 }));
     state.updateContentResponse.mockResolvedValue(new Response('updated', { status: 200 }));
+    state.deleteContentResponse.mockResolvedValue(new Response('deleted', { status: 200 }));
 
     await listContentsHandler(new Request('http://localhost/api/v1/iam/contents'));
     await getContentHandler(new Request('http://localhost/api/v1/iam/contents/content-1'));
     await createContentHandler(new Request('http://localhost/api/v1/iam/contents', { method: 'POST' }));
     await updateContentHandler(new Request('http://localhost/api/v1/iam/contents/content-1', { method: 'PATCH' }));
+    await deleteContentHandler(new Request('http://localhost/api/v1/iam/contents/content-1', { method: 'DELETE' }));
 
     expect(state.createContentResponse).toHaveBeenCalledTimes(1);
     expect(state.updateContentResponse).toHaveBeenCalledTimes(1);
+    expect(state.deleteContentResponse).toHaveBeenCalledTimes(1);
   });
 });

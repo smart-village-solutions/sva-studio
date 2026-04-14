@@ -62,7 +62,7 @@ test('GET /plugins/example returns 200', async ({ page }) => {
     throw new Error('Antwort für GET /plugins/example erwartet.');
   }
   expect(response.status()).toBeLessThan(400);
-  await expect(page.getByRole('heading', { name: 'Plugin Example' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Plugin-Beispiel' })).toBeVisible();
 });
 
 test('GET /auth/login returns redirect response', async ({ request }) => {

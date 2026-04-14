@@ -1,16 +1,8 @@
 import { DEFAULT_LOCALE, i18nResources, type SupportedLocale } from './resources';
 
-type TranslationTree = (typeof i18nResources)[typeof DEFAULT_LOCALE];
-type Primitive = string;
 type TranslationResourceNode = string | undefined | { readonly [key: string]: TranslationResourceNode };
 
-type DotPath<T> = T extends Primitive
-  ? never
-  : {
-      [K in keyof T & string]: T[K] extends Primitive ? K : `${K}.${DotPath<T[K]>}`;
-    }[keyof T & string];
-
-export type TranslationKey = DotPath<TranslationTree>;
+export type TranslationKey = string;
 
 export type TranslationVariables = Readonly<Record<string, string | number>>;
 
@@ -18,6 +10,10 @@ type TranslationResources = Readonly<Record<SupportedLocale, TranslationResource
 
 let activeLocale: SupportedLocale = DEFAULT_LOCALE;
 const translatorCache = new Map<SupportedLocale, ReturnType<typeof createTranslatorFromResources>>();
+
+export const resetTranslatorCache = (): void => {
+  translatorCache.clear();
+};
 
 const readTranslationValue = (
   resources: TranslationResources,
@@ -67,6 +63,7 @@ export const setActiveLocale = (locale: SupportedLocale): void => {
   }
 
   activeLocale = locale;
+  resetTranslatorCache();
 };
 
 export const createTranslatorFromResources = (

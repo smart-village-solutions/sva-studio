@@ -114,6 +114,7 @@ const authServerMocks = vi.hoisted(() => {
     createContentHandler: vi.fn(async () => response('createContentHandler')),
     getContentHandler: vi.fn(async () => response('getContentHandler')),
     updateContentHandler: vi.fn(async () => response('updateContentHandler')),
+    deleteContentHandler: vi.fn(async () => response('deleteContentHandler')),
     getContentHistoryHandler: vi.fn(async () => response('getContentHistoryHandler')),
     listOrganizationsHandler: vi.fn(async () => response('listOrganizationsHandler')),
     createOrganizationHandler: vi.fn(async () => response('createOrganizationHandler')),
@@ -252,6 +253,7 @@ describe('auth.routes.server', () => {
     expect(authServerMocks.createContentHandler).toHaveBeenCalled();
     expect(authServerMocks.getContentHandler).toHaveBeenCalled();
     expect(authServerMocks.updateContentHandler).toHaveBeenCalled();
+    expect(authServerMocks.deleteContentHandler).toHaveBeenCalled();
     expect(authServerMocks.getContentHistoryHandler).toHaveBeenCalled();
     expect(authServerMocks.instanceRegistryHandlers.updateInstance).toHaveBeenCalled();
     expect(authServerMocks.instanceRegistryHandlers.getInstanceKeycloakStatus).toHaveBeenCalled();

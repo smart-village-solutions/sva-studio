@@ -18,6 +18,7 @@ Architekturprinzipien auf IST-Basis.
 - Monorepo mit klaren Paketgrenzen und Workspace-Abhängigkeiten (`workspace:*`)
 - Framework-agnostische Kernlogik in `@sva/core`, Integration in App-Ebene
 - Plugin-SDK-Boundary: Plugins greifen ausschließlich über `@sva/sdk` auf Host-APIs zu
+- Plugin-Vertrag v1: Routen, Navigation, Content-Typen und Übersetzungen werden als statische SDK-Metadaten beschrieben; Guard-Anwendung und Route-Materialisierung bleiben Host-Verantwortung
 - Trennung von client-sicheren und serverseitigen Routen/Handlern
 - Observability über OTEL-Standards statt vendor-spezifischer App-Anbindung
 - IAM folgt einer klaren Verantwortungsgrenze: Keycloak für Identity, Postgres für IAM-Fachdaten, Redis nur als Laufzeit-Cache
@@ -61,6 +62,7 @@ Architekturprinzipien auf IST-Basis.
 
 - Frontend-Framework: `ADR-001`
 - Plugin-Architektur: `ADR-002`
+- Plugin-SDK-Vertrag v1: `ADR-034`
 - Design-Token-Architektur: `ADR-003`
 - Monitoring-Stack: `ADR-004`
 - Logging-Pipeline und Label-Policy: `ADR-006`, `ADR-007`
@@ -85,6 +87,7 @@ Referenzen:
 - `./decisions/ADR-007-label-schema-and-pii-policy.md`
 - `./decisions/ADR-008-codecov-coverage-reporting-and-gates.md`
 - `./iam-service-architektur.md`
+- `../adr/ADR-034-plugin-sdk-vertrag-v1.md`
 - `../adr/ADR-019-swarm-traefik-referenz-betriebsprofil.md`
 - `../adr/ADR-020-kanonischer-auth-host-multi-host-grenze.md`
 - `../adr/ADR-017-modulare-iam-server-bausteine.md`

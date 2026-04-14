@@ -62,7 +62,7 @@ export default function AppShell({
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const [isHydrated, setIsHydrated] = React.useState(false);
   const showSidebar = isAuthenticated && !isAuthLoading;
-  const showBreadcrumbs = currentPathname !== '/';
+  const showBreadcrumbs = isHydrated && currentPathname !== '/';
 
   React.useEffect(() => {
     setIsHydrated(true);

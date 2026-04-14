@@ -39,6 +39,7 @@ mit Bezug auf die arc42-Abschnitte.
 - `ADR-030-registry-basierte-instance-freigabe-und-provisioning.md`
 - `ADR-033-tenant-login-client-vs-tenant-admin-client.md`
 - `ADR-032-plattform-scope-vs-tenant-instanz.md`
+- `ADR-034-plugin-sdk-vertrag-v1.md`
 
 ### Zuordnung zu arc42-Abschnitten
 
@@ -55,6 +56,7 @@ mit Bezug auf die arc42-Abschnitte.
 - Abschnitt 04/05/06/07/08/09/10/11 (Strategie/Bausteine/Laufzeit/Deployment/Querschnitt/Entscheidungen/Qualität/Risiken): ADR-030
 - Abschnitt 04/05/06/08/09/10/11 (Strategie/Bausteine/Laufzeit/Querschnitt/Entscheidungen/Qualität/Risiken): ADR-033
 - Abschnitt 04/05/06/08/09/11 (Strategie/Bausteine/Laufzeit/Querschnitt/Entscheidungen/Risiken): ADR-032
+- Abschnitt 04/05/06/08/09/11/12 (Strategie/Bausteine/Laufzeit/Querschnitt/Entscheidungen/Risiken/Glossar): ADR-034
 - Abschnitt 03/04/05/06/08 (Kontext/Strategie/Bausteine/Laufzeit/Querschnitt): ADR-021
 
 ### Zuordnung Swarm-Deployment-ADRs
@@ -85,6 +87,7 @@ mit Bezug auf die arc42-Abschnitte.
 - ADR-030: Registry-basierte Instance-Freigabe und gemeinsamer Provisioning-Vertrag (Abschnitt 04, 05, 06, 07, 08, 09, 10, 11)
 - ADR-033: Getrennter Tenant-Login-Client und Tenant-Admin-Client als kanonischer Instanzvertrag (Abschnitt 04, 05, 06, 08, 09, 10, 11)
 - ADR-032: Plattform-Scope vs. tenantgebundene Instanz als kanonische Runtime- und Audit-Trennung (Abschnitt 04, 05, 06, 08, 09, 11)
+- ADR-034: Statischer Plugin-SDK-Vertrag v1 für Routing, Navigation, Content-Typen und Übersetzungen (Abschnitt 04, 05, 06, 08, 09, 11, 12)
 
 ### Pflege-Regel
 
@@ -237,6 +240,13 @@ Zuordnung:
   - trennt interaktive Login-Flows (`authClientId`) von tenant-lokalen Admin-Mutationen (`tenantAdminClient.clientId`)
   - verankert fail-closed fuer normale Tenant-Mutationen bei fehlendem Admin-Client oder Secret
   - koppelt Reconcile, Doctor und Runtime-Diagnostik an getrennte Login-/Admin-Vertraege pro Instanz
+
+### Fortschreibung 2026-04: Plugin-SDK-Vertrag v1
+
+- `ADR-034-plugin-sdk-vertrag-v1.md`
+  - definiert `@sva/sdk` als einzige öffentliche Boundary für Studio-Plugins
+  - bündelt Routen, Navigation, Content-Typen und Übersetzungen in `PluginDefinition`
+  - hält die Registrierung in v1 bewusst statisch im App-Bundle und ordnet Guards dem Host zu
 
 Zuordnung:
 

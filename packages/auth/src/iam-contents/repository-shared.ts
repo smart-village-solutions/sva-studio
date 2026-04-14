@@ -57,6 +57,15 @@ export type UpdateContentInput = {
   publishedAt?: string;
 };
 
+export type DeleteContentInput = {
+  instanceId: string;
+  actorAccountId: string;
+  actorDisplayName: string;
+  requestId?: string;
+  traceId?: string;
+  contentId: string;
+};
+
 type InstanceScopedClient = Parameters<Parameters<typeof withInstanceScopedDb>[1]>[0];
 
 export const loadCurrentContentRow = async (

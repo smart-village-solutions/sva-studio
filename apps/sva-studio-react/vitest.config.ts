@@ -28,6 +28,7 @@ export default defineConfig({
       '@sva/sdk/observability/context.server': fileURLToPath(
         new URL('../../packages/sdk/src/observability/context.server.ts', import.meta.url)
       ),
+      '@sva/sdk': fileURLToPath(new URL('../../packages/sdk/src/index.ts', import.meta.url)),
       '@sva/monitoring-client/server': fileURLToPath(new URL('../../packages/monitoring-client/src/server.ts', import.meta.url)),
       '@sva/monitoring-client/logger-provider.server': fileURLToPath(
         new URL('../../packages/monitoring-client/src/logger-provider.server.ts', import.meta.url)

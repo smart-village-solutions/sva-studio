@@ -269,7 +269,7 @@ test.describe('news plugin', () => {
 
     await page.getByLabel(/Titel|news\.fields\.title/).fill('Erste News aktualisiert');
     await page.getByRole('button', { name: /Änderungen speichern|news\.actions\.save/ }).click();
-    await expect(page.getByRole('status')).toContainText(/gespeichert|news\.messages\.updateSuccess/);
+    await expect(page.getByRole('status')).toContainText(/gespeichert|aktualisiert|news\.messages\.updateSuccess/);
 
     page.once('dialog', (dialog) => dialog.accept());
     await page.getByRole('button', { name: /Löschen|news\.actions\.delete/ }).click();

@@ -16,7 +16,6 @@ export const pluginExample: PluginDefinition = {
     {
       id: 'example.list',
       path: '/plugins/example',
-      guard: 'content.read',
       component: PluginExamplePage,
     },
   ],

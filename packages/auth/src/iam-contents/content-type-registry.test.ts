@@ -41,6 +41,28 @@ describe('content type registry', () => {
     expect(result.message.length).toBeGreaterThan(0);
   });
 
+  it('rejects news bodies without visible text and returns localized validation messages', () => {
+    const result = validateContentTypePayload('news', {
+      teaser: '',
+      body: '<p><br></p>',
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      message: 'Der Teaser ist erforderlich.',
+    });
+
+    const emptyBodyResult = validateContentTypePayload('news', {
+      teaser: 'Kurzmeldung',
+      body: '<p><br></p>',
+    });
+
+    expect(emptyBodyResult).toEqual({
+      ok: false,
+      message: 'Der Inhalt ist erforderlich.',
+    });
+  });
+
   it('passes through unknown content types unchanged', () => {
     const payload = { title: 'Generic' };
 

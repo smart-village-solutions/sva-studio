@@ -1,10 +1,12 @@
-import type { PluginDefinition } from '@sva/sdk';
+import { usePluginTranslation, type PluginDefinition } from '@sva/sdk';
 
 const PluginExamplePage = () => {
+  const pt = usePluginTranslation('example');
+
   return (
     <div className="flex flex-col gap-4">
-      <h2 className="text-2xl font-semibold">Plugin Example</h2>
-      <p>Diese Route kommt aus @sva/plugin-example.</p>
+      <h2 className="text-2xl font-semibold">{pt('page.title')}</h2>
+      <p>{pt('page.description')}</p>
     </div>
   );
 };
@@ -34,12 +36,20 @@ export const pluginExample: PluginDefinition = {
         navigation: {
           title: 'Plugin-Beispiel',
         },
+        page: {
+          title: 'Plugin-Beispiel',
+          description: 'Diese Route kommt aus @sva/plugin-example.',
+        },
       },
     },
     en: {
       example: {
         navigation: {
           title: 'Plugin Example',
+        },
+        page: {
+          title: 'Plugin Example',
+          description: 'This route is provided by @sva/plugin-example.',
         },
       },
     },

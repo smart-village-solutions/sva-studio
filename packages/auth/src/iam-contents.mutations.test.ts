@@ -328,6 +328,43 @@ describe('iam-contents mutations', () => {
     );
   });
 
+  it('prefers the sanitized payload over the raw parsed payload during updates', async () => {
+    state.validateCsrf.mockReturnValue(null);
+    state.readPathSegment.mockReturnValue('content-1');
+    state.parseRequestBody.mockResolvedValue({
+      ok: true,
+      rawBody: '{}',
+      data: {
+        title: 'Neu',
+        payload: { body: '<script>alert(1)</script>' },
+      },
+    });
+    state.loadContentById.mockResolvedValueOnce({
+      id: 'content-1',
+      contentType: 'news',
+      title: 'Alt',
+      payload: {},
+      status: 'draft',
+      author: 'Editor',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    });
+    vi.mocked(validateContentTypePayload).mockReturnValueOnce({
+      ok: true,
+      payload: { body: '<p>Sanitized</p>' },
+    } as never);
+    state.updateContent.mockResolvedValueOnce('content-1');
+    state.loadContentDetail.mockResolvedValueOnce({ id: 'content-1', title: 'Neu', history: [] });
+
+    await updateContentResponse(updateRequest(), actor);
+
+    expect(state.updateContent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        payload: { body: '<p>Sanitized</p>' },
+      })
+    );
+  });
+
   it('covers delete request validation, not found, success and failure branches', async () => {
     const csrfError = new Response('csrf', { status: 403 });
     state.validateCsrf.mockReturnValueOnce(csrfError);

@@ -15,7 +15,7 @@ type FlashMessageCode = 'createSuccess' | 'deleteSuccess';
 
 const defaultPayload = (): NewsPayload => ({
   teaser: '',
-  body: '<p></p>',
+  body: '',
 });
 
 const defaultForm = (): NewsFormInput => ({
@@ -73,6 +73,34 @@ const formatDate = (value?: string) => {
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
 };
 
+const toDatetimeLocalValue = (value?: string) => {
+  if (!value) {
+    return '';
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+};
+
+const fromDatetimeLocalValue = (value: string): string | undefined => {
+  if (value.length === 0) {
+    return undefined;
+  }
+
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
+};
+
 const NewsForm = ({
   mode,
   contentId,
@@ -81,7 +109,7 @@ const NewsForm = ({
   contentId?: string;
 }>) => {
   const navigate = useNavigate();
-  const pt = usePluginTranslation('news');
+  const pt = React.useMemo(() => usePluginTranslation('news'), []);
   const [form, setForm] = React.useState<NewsFormInput>(defaultForm);
   const [isLoading, setIsLoading] = React.useState(mode === 'edit');
   const [fieldErrors, setFieldErrors] = React.useState<readonly string[]>([]);
@@ -90,7 +118,13 @@ const NewsForm = ({
   const hasFieldError = React.useCallback((field: string) => fieldErrors.includes(field), [fieldErrors]);
 
   React.useEffect(() => {
-    if (mode !== 'edit' || !contentId) {
+    if (mode !== 'edit') {
+      return;
+    }
+
+    if (!contentId) {
+      setIsLoading(false);
+      setStatusMessage({ kind: 'error', text: pt('messages.missingContent') });
       return;
     }
 
@@ -364,11 +398,11 @@ const NewsForm = ({
             id="news-published-at"
             className={inputClassName}
             type="datetime-local"
-            value={form.publishedAt ?? ''}
+            value={toDatetimeLocalValue(form.publishedAt)}
             onChange={(event) =>
               setForm((current) => ({
                 ...current,
-                publishedAt: event.target.value ? new Date(event.target.value).toISOString() : undefined,
+                publishedAt: fromDatetimeLocalValue(event.target.value),
               }))
             }
           />
@@ -393,7 +427,7 @@ const NewsForm = ({
 };
 
 export const NewsListPage = () => {
-  const pt = usePluginTranslation('news');
+  const pt = React.useMemo(() => usePluginTranslation('news'), []);
   const [items, setItems] = React.useState<readonly NewsContentItem[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);

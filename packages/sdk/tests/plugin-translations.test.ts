@@ -7,9 +7,7 @@ import {
 } from '../src/plugin-translations.js';
 
 describe('plugin translations', () => {
-  it('falls back to the fully qualified key without a registered resolver', () => {
-    registerPluginTranslationResolver((key) => key);
-
+  it('falls back to the fully qualified key with the default resolver', () => {
     expect(translatePluginKey('news', 'messages.loading')).toBe('news.messages.loading');
   });
 

@@ -1,5 +1,7 @@
 import type { NewsPayload } from './news.types.js';
 
+const stripHtml = (value: string): string => value.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+
 const isHttpsUrl = (value: string): boolean => {
   try {
     const url = new URL(value);
@@ -16,7 +18,7 @@ export const validateNewsPayload = (payload: NewsPayload): readonly string[] => 
     errors.push('teaser');
   }
 
-  if (payload.body.trim().length === 0 || payload.body.length > 50_000) {
+  if (payload.body.trim().length === 0 || stripHtml(payload.body).length === 0 || payload.body.length > 50_000) {
     errors.push('body');
   }
 

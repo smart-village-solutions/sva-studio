@@ -3,6 +3,11 @@ import sanitizeHtml from 'sanitize-html';
 import { z } from 'zod';
 
 const HTTPS_URL_ERROR = 'Es sind nur HTTPS-URLs erlaubt.';
+const NEWS_TEASER_REQUIRED_ERROR = 'Der Teaser ist erforderlich.';
+const NEWS_TEASER_LENGTH_ERROR = 'Der Teaser darf maximal 500 Zeichen enthalten.';
+const NEWS_BODY_REQUIRED_ERROR = 'Der Inhalt ist erforderlich.';
+const NEWS_BODY_LENGTH_ERROR = 'Der Inhalt darf maximal 50.000 Zeichen enthalten.';
+const NEWS_CATEGORY_LENGTH_ERROR = 'Die Kategorie darf maximal 128 Zeichen enthalten.';
 
 const httpsUrlSchema = z
   .string()
@@ -14,6 +19,8 @@ const sanitizePlainText = (value: string): string =>
     allowedTags: [],
     allowedAttributes: {},
   }).trim();
+
+const hasVisibleTextContent = (value: string): boolean => sanitizePlainText(value).length > 0;
 
 const NEWS_BODY_SANITIZER_OPTIONS: sanitizeHtml.IOptions = {
   allowedTags: ['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'a', 'strong', 'em', 'br', 'img'],
@@ -31,11 +38,16 @@ const NEWS_BODY_SANITIZER_OPTIONS: sanitizeHtml.IOptions = {
 };
 
 const newsPayloadSchema = z.object({
-  teaser: z.string().trim().min(1).max(500),
-  body: z.string().trim().min(1).max(50_000),
+  teaser: z.string().trim().min(1, NEWS_TEASER_REQUIRED_ERROR).max(500, NEWS_TEASER_LENGTH_ERROR),
+  body: z
+    .string()
+    .trim()
+    .min(1, NEWS_BODY_REQUIRED_ERROR)
+    .max(50_000, NEWS_BODY_LENGTH_ERROR)
+    .refine(hasVisibleTextContent, NEWS_BODY_REQUIRED_ERROR),
   imageUrl: httpsUrlSchema.optional(),
   externalUrl: httpsUrlSchema.optional(),
-  category: z.string().trim().max(128).optional(),
+  category: z.string().trim().max(128, NEWS_CATEGORY_LENGTH_ERROR).optional(),
 });
 
 type RegisteredContentTypeDefinition = {
@@ -50,7 +62,7 @@ const sanitizeNewsPayload = (payload: ContentJsonValue): ContentJsonValue => {
   return {
     ...parsed,
     teaser: sanitizePlainText(parsed.teaser),
-    body: sanitizedBody.length > 0 ? sanitizedBody : '<p></p>',
+    body: sanitizedBody,
   } satisfies ContentJsonValue;
 };
 

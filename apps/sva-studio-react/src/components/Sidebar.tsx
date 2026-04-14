@@ -139,6 +139,35 @@ const logSidebarDebug = (eventName: string, meta: Record<string, unknown>) => {
   logBrowserOperationStart(sidebarLogger, eventName, meta);
 };
 
+const hasRequiredContentAccess = (
+  requiredAction: 'content.read' | 'content.create' | 'content.write' | undefined,
+  access: { readonly canRead?: boolean; readonly canCreate?: boolean; readonly canUpdate?: boolean } | null | undefined,
+  isLoading: boolean
+) => {
+  if (!requiredAction) {
+    return true;
+  }
+
+  if (isLoading) {
+    return true;
+  }
+
+  if (!access) {
+    return false;
+  }
+
+  switch (requiredAction) {
+    case 'content.read':
+      return access.canRead === true;
+    case 'content.create':
+      return access.canCreate === true;
+    case 'content.write':
+      return access.canUpdate === true;
+    default:
+      return false;
+  }
+};
+
 const isLeafActive = (pathname: string, item: SidebarLeafItem) => {
   if (!item.to) {
     return false;
@@ -667,7 +696,7 @@ export default function Sidebar({ isLoading = false, isMobileOpen = false, onMob
 
   const sections = React.useMemo<readonly SidebarSection[]>(() => {
     const pluginNavigationItems = studioPluginNavigation
-      .filter((item) => item.requiredAction !== 'content.read' || canAccessContent)
+      .filter((item) => hasRequiredContentAccess(item.requiredAction, contentAccessApi.access, contentAccessApi.isLoading))
       .map((item) => ({
         kind: 'link' as const,
         id: `plugin-${item.id}`,
@@ -888,6 +917,8 @@ export default function Sidebar({ isLoading = false, isMobileOpen = false, onMob
     canAccessSystemTools,
     canAccessWorkspace,
     canAccessContent,
+    contentAccessApi.access,
+    contentAccessApi.isLoading,
   ]);
 
   const footerItems = React.useMemo<readonly SidebarLeafItem[]>(

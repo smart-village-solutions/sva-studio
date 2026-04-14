@@ -32,6 +32,7 @@ vi.mock('../src/news.api.js', () => ({
 }));
 
 const navigateMock = vi.fn();
+const paramsMock = vi.fn(() => ({ contentId: 'news-1' }));
 
 const stubConfirm = (result: boolean) => {
   const confirmMock = vi.fn(() => result);
@@ -46,7 +47,7 @@ const stubConfirm = (result: boolean) => {
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
   useNavigate: () => navigateMock,
-  useParams: () => ({ contentId: 'news-1' }),
+  useParams: () => paramsMock(),
 }));
 
 describe('NewsListPage', () => {
@@ -58,11 +59,15 @@ describe('NewsListPage', () => {
     vi.restoreAllMocks();
     vi.clearAllMocks();
     navigateMock.mockReset();
+    paramsMock.mockReset();
+    paramsMock.mockReturnValue({ contentId: 'news-1' });
     window.sessionStorage.clear();
     registerPluginTranslationResolver((key) => {
       const labels: Record<string, string> = {
         'news.messages.loading': 'News werden geladen.',
         'news.messages.loadError': 'News konnten nicht geladen werden.',
+        'news.messages.missingContent': 'Der angeforderte News-Eintrag konnte nicht geladen werden.',
+        'news.messages.saveError': 'News konnten nicht gespeichert werden.',
         'news.messages.validationError': 'Bitte korrigieren Sie die markierten Felder.',
         'news.messages.createSuccess': 'News-Eintrag wurde erstellt.',
         'news.messages.updateSuccess': 'News-Eintrag wurde aktualisiert.',
@@ -201,6 +206,21 @@ describe('NewsListPage', () => {
     expect(createNews).not.toHaveBeenCalled();
   });
 
+  it('rejects HTML-only body content before creating a news entry', async () => {
+    render(<NewsCreatePage />);
+
+    fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Neue News' } });
+    fireEvent.change(screen.getByLabelText('Teaser'), { target: { value: 'Kurztext' } });
+    fireEvent.change(screen.getByLabelText('Inhalt (HTML)'), { target: { value: '<p><br></p>' } });
+    fireEvent.click(screen.getByRole('button', { name: 'News anlegen' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Der Inhalt ist erforderlich und darf maximal 50.000 Zeichen haben.')).toBeTruthy();
+    });
+
+    expect(createNews).not.toHaveBeenCalled();
+  });
+
   it('persists a create success flash before navigating back to the list', async () => {
     render(<NewsCreatePage />);
 
@@ -235,7 +255,7 @@ describe('NewsListPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'News anlegen' }));
 
     await waitFor(() => {
-      expect(screen.getByText('news.messages.saveError')).toBeTruthy();
+      expect(screen.getByText('News konnten nicht gespeichert werden.')).toBeTruthy();
     });
 
     expect(navigateMock).not.toHaveBeenCalled();
@@ -250,6 +270,19 @@ describe('NewsListPage', () => {
       expect(screen.getByText('News konnten nicht geladen werden.')).toBeTruthy();
       expect(screen.queryByText('News werden geladen.')).toBeNull();
     });
+  });
+
+  it('shows a fallback error when editing without a content id', async () => {
+    paramsMock.mockReturnValue({});
+
+    render(<NewsEditPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Der angeforderte News-Eintrag konnte nicht geladen werden.')).toBeTruthy();
+      expect(screen.queryByText('News werden geladen.')).toBeNull();
+    });
+
+    expect(getNews).not.toHaveBeenCalled();
   });
 
   it('shows an inline success message after updating an existing news entry', async () => {
@@ -285,12 +318,12 @@ describe('NewsListPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Änderungen speichern' }));
 
     await waitFor(() => {
-      expect(screen.getByText('news.messages.saveError')).toBeTruthy();
+      expect(screen.getByText('News konnten nicht gespeichert werden.')).toBeTruthy();
     });
   });
 
   it('loads an existing news entry and deletes it after confirmation', async () => {
-    const confirmSpy = stubConfirm(true);
+    stubConfirm(true);
 
     render(<NewsEditPage />);
 
@@ -369,5 +402,30 @@ describe('NewsListPage', () => {
 
     expect(screen.queryByText('News-Eintrag wurde erstellt.')).toBeNull();
     expect(window.sessionStorage.getItem('news-plugin-flash-message')).toBeNull();
+  });
+
+  it('converts ISO timestamps into datetime-local field values during edit', async () => {
+    vi.mocked(getNews).mockResolvedValueOnce({
+      id: 'news-3',
+      title: 'Termin',
+      contentType: 'news',
+      payload: {
+        teaser: 'Kurztext',
+        body: '<p>Body</p>',
+      },
+      status: 'draft',
+      author: 'Editor',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-02T00:00:00.000Z',
+      publishedAt: '2026-04-14T09:30:00.000Z',
+    });
+
+    render(<NewsEditPage />);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Veröffentlichungsdatum').getAttribute('value')).toMatch(
+        /^2026-04-14T\d{2}:30$/
+      );
+    });
   });
 });

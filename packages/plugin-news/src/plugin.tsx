@@ -84,6 +84,7 @@ export const pluginNews: PluginDefinition = {
         messages: {
           loading: 'News werden geladen.',
           loadError: 'News konnten nicht geladen werden.',
+          missingContent: 'Der angeforderte News-Eintrag konnte nicht geladen werden.',
           saveError: 'News konnten nicht gespeichert werden.',
           validationError: 'Bitte korrigieren Sie die markierten Felder.',
           createSuccess: 'News-Eintrag wurde erstellt.',
@@ -149,6 +150,7 @@ export const pluginNews: PluginDefinition = {
         messages: {
           loading: 'Loading news.',
           loadError: 'Failed to load news.',
+          missingContent: 'The requested news entry could not be loaded.',
           saveError: 'Failed to save news.',
           validationError: 'Please fix the highlighted fields.',
           createSuccess: 'News entry created.',

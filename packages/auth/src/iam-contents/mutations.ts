@@ -120,8 +120,8 @@ export const updateContentResponse = async (
       requestId: actor.requestId,
       traceId: actor.traceId,
       contentId,
-      ...(payloadValidation.payload === undefined ? {} : { payload: payloadValidation.payload }),
       ...parsed.data,
+      ...(payloadValidation.payload === undefined ? {} : { payload: payloadValidation.payload }),
     });
     if (!updatedId) {
       return createApiError(404, 'not_found', 'Inhalt wurde nicht gefunden.', actor.requestId);

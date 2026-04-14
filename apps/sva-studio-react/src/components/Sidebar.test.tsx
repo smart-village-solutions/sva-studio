@@ -16,6 +16,17 @@ const useAuthMock = vi.fn();
 const useContentAccessMock = vi.fn();
 const useRouterStateMock = vi.fn();
 const localStorageState = new Map<string, string>();
+const studioPluginNavigationMock = vi.hoisted(() => ({
+  items: [
+    {
+      id: 'news.navigation',
+      to: '/plugins/news',
+      titleKey: 'news.navigation.title',
+      section: 'dataManagement',
+      requiredAction: 'content.read',
+    },
+  ],
+}));
 
 vi.mock('@tanstack/react-router', () => ({
   Link: ({
@@ -53,6 +64,12 @@ vi.mock('../hooks/use-content-access', () => ({
   useContentAccess: () => useContentAccessMock(),
 }));
 
+vi.mock('../lib/plugins', () => ({
+  get studioPluginNavigation() {
+    return studioPluginNavigationMock.items;
+  },
+}));
+
 const unauthenticatedAuthState = {
   user: null,
   isAuthenticated: false,
@@ -70,6 +87,15 @@ beforeEach(() => {
     isLoading: false,
     error: null,
   });
+  studioPluginNavigationMock.items = [
+    {
+      id: 'news.navigation',
+      to: '/plugins/news',
+      titleKey: 'news.navigation.title',
+      section: 'dataManagement',
+      requiredAction: 'content.read',
+    },
+  ];
   localStorageState.clear();
   Object.defineProperty(window, 'localStorage', {
     configurable: true,
@@ -351,5 +377,42 @@ describe('Sidebar', () => {
 
     expect(newsLink.getAttribute('href')).toBe('/plugins/news');
     expect(newsLink.getAttribute('aria-current')).toBe('page');
+  });
+
+  it('blendet Plugin-Navigation ohne passende content-write-Berechtigung aus', () => {
+    studioPluginNavigationMock.items = [
+      {
+        id: 'news.write',
+        to: '/plugins/news/review',
+        titleKey: 'news.navigation.title',
+        section: 'dataManagement',
+        requiredAction: 'content.write',
+      },
+    ];
+    useAuthMock.mockReturnValue({
+      ...unauthenticatedAuthState,
+      user: {
+        id: 'user-1',
+        name: 'Reader',
+        roles: ['editor'],
+      },
+      isAuthenticated: true,
+    });
+    useContentAccessMock.mockReturnValue({
+      access: {
+        state: 'read_only',
+        canRead: true,
+        canCreate: true,
+        canUpdate: false,
+        organizationIds: [],
+        sourceKinds: ['direct_role'],
+      },
+      isLoading: false,
+      error: null,
+    });
+
+    render(<Sidebar />);
+
+    expect(screen.queryByRole('link', { name: 'News' })).toBeNull();
   });
 });

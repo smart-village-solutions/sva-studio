@@ -11,6 +11,9 @@ describe('authRoutePaths', () => {
     expect(authRoutePaths).toContain('/api/v1/iam/groups/$groupId/roles');
     expect(authRoutePaths).toContain('/api/v1/iam/groups/$groupId/roles/$roleId');
     expect(authRoutePaths).toContain('/api/v1/iam/groups/$groupId/memberships');
+    expect(authRoutePaths).toContain('/api/v1/iam/instances');
+    expect(authRoutePaths).toContain('/api/v1/iam/instances/$instanceId');
+    expect(authRoutePaths).toContain('/api/v1/iam/instances/$instanceId/keycloak/status');
     expect(authRoutePaths).toContain('/api/v1/iam/organizations');
     expect(authRoutePaths).toContain('/api/v1/iam/organizations/$organizationId');
     expect(authRoutePaths).toContain('/api/v1/iam/organizations/$organizationId/memberships');

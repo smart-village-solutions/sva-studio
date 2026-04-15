@@ -4,11 +4,17 @@
 Die Routing-Capability definiert, wie Routen aus Core und Plugins typsicher zusammengeführt und zur Laufzeit registriert werden.
 ## Requirements
 ### Requirement: Code-Route-Registry
-Das System SHALL eine einzige, programmatische Route-Registry bereitstellen, die Core- und Plugin-Routen zusammenführt und für pfadspezifische Handler-Mappings in Teilbereichen wie Auth-Routing als Single Source of Truth dient. Parallele oder redundante Route-Registrierungen DÜRFEN NICHT existieren.
+Das System SHALL eine einzige öffentliche Routing-Schnittstelle in `@sva/routing` bereitstellen, die UI-, Auth- und Plugin-Routen zusammenführt und für pfadspezifische Handler-Mappings in Teilbereichen wie Auth-Routing als Single Source of Truth dient. App-lokale Parallel-Registrierungen DÜRFEN NICHT existieren.
 
-#### Scenario: Core und Plugin Routen kombiniert
+#### Scenario: App bezieht alle produktiven Routen aus dem Routing-Package
 - **WHEN** die App startet
-- **THEN** sind Core- und Plugin-Routen gemeinsam im Router registriert
+- **THEN** werden UI-, Auth- und Plugin-Routen gemeinsam im Router registriert
+- **AND** die App bezieht die Route-Factories ausschließlich aus `@sva/routing` oder `@sva/routing/server`
+
+#### Scenario: Produktive Seitenrouten sind code-based
+- **WHEN** die Codebasis nach produktiven Seitenrouten durchsucht wird
+- **THEN** liegen diese nicht in file-based Route-Dateien
+- **AND** file-based Routing bleibt auf `__root.tsx` und notwendige TanStack-Integrationsartefakte reduziert
 
 #### Scenario: Auth-Route-Handler exhaustiv aufgelöst
 - **WHEN** ein Auth-Route-Pfad zur Laufzeit aufgelöst wird
@@ -24,6 +30,11 @@ Das System SHALL eine einzige, programmatische Route-Registry bereitstellen, die
 - **WHEN** die Codebasis nach Route-Registrierungen durchsucht wird
 - **THEN** existiert genau eine Route-Registry (`@sva/routing`)
 - **AND** es gibt keine parallelen Pfad-Arrays oder Handler-Maps in anderen Packages
+
+#### Scenario: Demo-Routen sind kein Teil des Produkt-Routings
+- **WHEN** der produktive Route-Baum aufgebaut wird
+- **THEN** enthält er keine `/demo`-Routen
+- **AND** Demo- oder Sandbox-Routen benötigen einen separaten, expliziten Integrationseintrag
 
 #### Scenario: Startup-Guard erkennt Abweichungen
 - **WHEN** die Anwendung startet und das Routing-Modul importiert wird
@@ -138,4 +149,3 @@ Das System SHALL für den Auth-Router einen expliziten, kontrollierten Silent-SS
 - **THEN** antwortet der Handler mit einer iframe-sicheren HTML-Response statt mit einem normalen App-Redirect
 - **AND** die Response signalisiert Erfolg oder Fehler an den aufrufenden Browserkontext
 - **AND** normale interaktive Login-Callbacks behalten ihr Redirect-Verhalten bei
-

@@ -7,166 +7,127 @@ Dieses Dokument beschreibt die aktuelle Routing-Architektur im SVA Studio Monore
 Die Routing-Architektur ist auf folgende Ziele ausgelegt:
 
 1. **Type-safe Routing** mit TanStack Router.
-2. **Code-basierte Route-Komposition** (Core + Auth + Plugins).
-3. **Saubere Server/Client-Grenze**, damit server-only Module nicht in den Client-Bundle gelangen.
-4. **Erweiterbarkeit** durch statisch registrierte SDK-Plugins.
+2. **Eine öffentliche Routing-Schnittstelle** über `@sva/routing`.
+3. **Code-basierte produktive Seitenrouten** ohne app-lokale Parallel-Registrierung.
+4. **Saubere Server/Client-Grenze**, damit server-only Module nicht in den Client-Bundle gelangen.
+5. **Erweiterbarkeit** durch statisch registrierte SDK-Plugins.
 
 ## Scope
 
 Abgedeckt:
 
-- `packages/core` (generische Route-Registry Utilities)
-- `packages/routing` (zentraler Route-Katalog)
-- `apps/sva-studio-react` (konkrete Route-Komposition + Router-Instanz)
-- `packages/auth` (serverseitige Auth-Handler)
-- `packages/plugin-example` (Plugin-Route-Beispiel)
+- `packages/routing` als kanonische Routing-Library
+- `packages/auth` für Auth-/API-Pfade und Server-Handler
+- `apps/sva-studio-react` für Root-Shell, Router-Erzeugung und Seiten-Bindings
+- statisch registrierte Plugin-Routen über `PluginDefinition`
 
 Nicht abgedeckt:
 
 - UI-Design der einzelnen Seiten
-- Auth-Session-Interna (siehe auth-Doku)
+- Auth-Session-Interna (siehe Auth-Doku)
 
 ## High-Level Architektur
 
 ```text
-packages/core/routing/registry.ts
-  -> mergeRouteFactories(), buildRouteTree()
+packages/auth
+  -> authRoutePaths
+  -> runtime handlers
 
 packages/routing
-  -> coreRouteFactories
-  -> authRouteFactories        (client-safe)
-  -> authServerRouteFactories  (server handlers, lazy import)
+  -> getClientRouteFactories()
+  -> getServerRouteFactories()
+  -> getPluginRouteFactories()
+  -> routePaths / Guards / Search-Normalisierung
 
 apps/sva-studio-react
-  routes/-core-routes.tsx           (app core demos/pages)
-  routes/-core-routes.server.tsx    (+ auth server route factories)
-  router.tsx                        (merge core + plugin routes, createRouter)
+  routing/app-route-bindings.tsx
+  routes/__root.tsx
+  router.tsx
 
 packages/plugin-example / packages/plugin-news
   -> PluginDefinition
 
 Result:
-  rootRoute + core/auth route factories + plugin route definitions -> runtime route tree
+  rootRoute + route factories from @sva/routing -> runtime route tree
 ```
 
 ## Komponenten im Detail
 
-### 1) Registry Utilities (`packages/core/src/routing/registry.ts`)
-
-Kernfunktionen:
-
-- `mergeRouteFactories(core, plugins)`:
-  - kombiniert mehrere Factory-Listen in definierter Reihenfolge.
-- `buildRouteTree(rootRoute, factories)`:
-  - materialisiert Factories zu echten TanStack Routes
-  - ruft `rootRoute.addChildren(routes)` auf.
-
-Diese Utilities sind framework-agnostisch gehalten und kennen keine App-Details.
-
-### 2) Zentrale Routing-Library (`packages/routing/src/*`)
+### 1) Zentrale Routing-Library (`packages/routing/src/*`)
 
 Exports:
 
-- `@sva/routing` (client-safe):
-  - `authRouteFactories`
-  - `authRoutePaths`
-  - `coreRouteFactories`
-- `@sva/routing/server` (server-only):
-  - `authServerRouteFactories`
-  - `authRoutePaths`
-  - `coreRouteFactories`
+- `@sva/routing`:
+  - `getClientRouteFactories()`
+  - `getPluginRouteFactories()`
+  - `routePaths`
+  - Search-Normalisierung für routing-relevante Search-Params
+- `@sva/routing/server`:
+  - `getServerRouteFactories()`
+  - serverseitige Auth-Handler-Factories
 
 Warum diese Trennung:
 
 - Client-Bundles sollen keine Node-/Server-Abhängigkeiten laden.
-- Auth-Handler leben serverseitig in `@sva/auth/server`.
+- Auth-Handler leben serverseitig in `@sva/auth`.
+- Die App soll Routing konsumieren, nicht selbst zusammensetzen.
 
-### 3) Auth-Routen: Shared Paths + getrennte Factories
+### 2) Auth-Routen: Shared Paths + getrennte Factories
 
 Path-Single-Source:
 
 - `packages/auth/src/routes.shared.ts`
-- `packages/routing/src/auth.routes.ts`
+- Re-Export über `@sva/routing`
 
-Definierte Pfade:
+Client-safe Variante:
 
-- `/auth/login`
-- `/auth/callback`
-- `/auth/me`
-- `/auth/logout`
+- erzeugt TanStack-Routen ohne Handler
+- dient der vollständigen Route-Registrierung im Client
 
-#### Client-safe Variante (`auth.routes.ts`)
+Server-Variante:
 
-- erstellt Routen mit `component: () => null`
-- **keine** Server-Handler
-- geeignet für clientseitige Route-Struktur/Linkbarkeit
+- setzt `server.handlers`
+- resolved Handler lazy aus `@sva/auth/runtime-routes` bzw. `@sva/auth/runtime-health`
 
-#### Server-Variante (`auth.routes.server.ts`)
+### 3) App Route Bindings (`apps/sva-studio-react/src/routing/app-route-bindings.tsx`)
 
-- setzt `server.handlers` an den Routen
-- resolved Handler via lazy imports:
-  - `await import('@sva/auth/server')`
-- Vorteil:
-  - kein Top-Level-Import von server-only Code in clientnahen Modulen
-  - bessere Bundling-Sicherheit
+Die App hält nur noch die Bindung zwischen kanonischen Routen und React-Seiten-Komponenten:
 
-### 4) App-Core-Routen (`apps/sva-studio-react/src/routes/-core-routes.tsx`)
+- statische Seiten-Komponenten
+- Wrapper für parametrisierte Detailseiten
+- Lazy-Loading für größere Admin-Seiten
 
-Inhalt:
+Die Datei enthält **keine** Pfad- oder Guard-Definitionen.
 
-- Home-Route (`/`)
-- Demo-Route-Hierarchie (`/demo/...`)
-- SSR-/API-Demo-Routen
-- Einbindung von `authRouteFactories` (client-safe)
-
-Die Datei exportiert:
-
-- `coreRouteFactoriesBase`
-- `coreRouteFactories = [...coreRouteFactoriesBase, ...authRouteFactories]`
-
-### 5) App-Server-Routen (`apps/sva-studio-react/src/routes/-core-routes.server.tsx`)
-
-Server-Kombination:
-
-- importiert `coreRouteFactoriesBase`
-- ergänzt `authServerRouteFactories` aus `@sva/routing/server`
-
-Export:
-
-- `coreRouteFactories` (serverfähige Endfassung für die App)
-
-### 6) Router-Instanz (`apps/sva-studio-react/src/router.tsx`)
+### 4) Router-Instanz (`apps/sva-studio-react/src/router.tsx`)
 
 Ablauf in `getRouter()`:
 
-1. Core- und Auth-Route-Factories werden materialisiert.
-2. Der Host liest die statische Plugin-Liste aus `src/lib/plugins.ts`.
-3. Plugin-Routen werden aus `PluginDefinition.routes` als TanStack-Routen materialisiert.
-4. Der Host wendet Plugin-Guards vor dem Rendern an.
+1. Die App importiert `appRouteBindings`.
+2. Die App liest die statische Plugin-Liste aus `src/lib/plugins.ts`.
+3. Server und Client laden isomorph die passende Factory-Menge aus `@sva/routing`.
+4. Die App materialisiert diese Factories gegen `rootRoute`.
 5. `createRouter({ routeTree, ... })`
 
-Damit bleibt die Route-Komposition code-getrieben, aber Plugins liefern keine eigenen Route-Factories mehr.
+Damit bleibt die Route-Komposition zentralisiert, während die App weiterhin die Seiten selbst rendert.
 
-### 7) Root Route (`apps/sva-studio-react/src/routes/__root.tsx`)
+### 5) Root Route (`apps/sva-studio-react/src/routes/__root.tsx`)
 
 - erstellt `createRootRoute(...)`
-- definiert Shell, Head, NotFound
-- serverseitiger Loader initialisiert SDK nur im SSR-Kontext:
-  - `if (import.meta.env.SSR) { await import('../lib/init-sdk.server') ... }`
+- definiert Shell, Head, Error- und NotFound-Verhalten
+- initialisiert serverseitig benötigte SDK-Bausteine nur im SSR-Kontext
 
 ## Plugin-Routing
 
-Beispiele in `packages/plugin-example/src/plugin.tsx` und `packages/plugin-news/src/plugin.tsx`:
+Plugins exportieren `PluginDefinition`-Objekte.
 
-- exportieren jeweils ein `PluginDefinition`-Objekt
-- werden in `apps/sva-studio-react/src/lib/plugins.ts` statisch registriert
-- liefern Routen, Navigation und Übersetzungen über den SDK-Vertrag
-
-Damit kann jedes Plugin isoliert eigene Routen beitragen, ohne den App-Router mit plugin-spezifischer Sonderlogik zu erweitern.
+- Die Host-App registriert Plugins statisch.
+- `@sva/routing` materialisiert die Plugin-Routen zentral.
+- Plugin-Guards werden auf die kanonischen Guard-Regeln des Hosts gemappt.
 
 ## Request/Response Routing für Auth
 
-Auth-Endpunkte werden als TanStack Server Route Handler registriert und delegieren in `@sva/auth/server`:
+Auth-Endpunkte werden als TanStack Server Route Handler registriert und delegieren in `@sva/auth`:
 
 - `/auth/login` -> `loginHandler()`
 - `/auth/callback` -> `callbackHandler(request)`
@@ -180,73 +141,59 @@ Die eigentliche Business-Logik verbleibt im Auth-Package; das Routing-Package bl
 ### Type Safety
 
 - Routen werden als Factories mit `RootRoute`-Typen gebaut.
-- Path-Listen sind als `const` definiert und wiederverwendbar.
+- Pfade und Search-Normalisierung sind zentralisiert.
 - `@tanstack/react-router` stellt typed navigation/loader APIs bereit.
 
 ### Server/Client Separation
 
 Regeln:
 
-1. Server-Handler nur in `@sva/routing/server` und `.server.tsx` Pfaden verwenden.
+1. Server-Handler nur in `@sva/routing/server` und serverseitigen Auth-Factories verwenden.
 2. Keine server-only Imports in client-exponierten Route-Dateien.
 3. Lazy imports für Auth-Handler verhindern versehentliche Client-Bundle-Leaks.
 
 ## Beziehung zu `routeTree.gen.ts`
 
-`apps/sva-studio-react/src/routeTree.gen.ts` wird von TanStack Router generiert (File-based Typ-Artefakt).
+`apps/sva-studio-react/src/routeTree.gen.ts` bleibt ein generiertes Integrationsartefakt für TanStack Start.
 
 Wichtig:
 
-- Runtime-Komposition erfolgt hier primär code-basiert via `buildRouteTree(...)`.
-- Das generierte File bleibt relevant für TanStack Start Typ-Registrierung/Integration.
-- Bei refactors muss darauf geachtet werden, dass file-based und code-based Sicht konsistent bleiben.
-
-## Aktuelle Route-Sources (übersichtlich)
-
-1. File Routes:
-  - `routes/__root.tsx`
-  - `routes/index.tsx`
-  - `routes/admin/api/phase1-test.tsx` (Debug/Admin-Testroute)
-2. Code Route Factories:
-  - `routes/-core-routes.tsx`
-  - `routes/-core-routes.server.tsx`
-  - `@sva/routing`
-  - `@sva/plugin-example`
+- Produktive Seitenrouten werden nicht mehr file-based definiert.
+- Das generierte File dient nur noch der TanStack-Start-Integration.
+- Die fachliche Routing-Wahrheit liegt in `@sva/routing`.
 
 ## Konventionen für neue Routen
 
 ### Do
 
-1. Neue app-spezifische Routen in `-core-routes.tsx` als Factory ergänzen.
+1. Neue Seitenrouten ausschließlich in `@sva/routing` definieren.
 2. Server-Handler nur in server-spezifischen Factories oder `createServerFn` kapseln.
 3. Shared Pfade als `const` + Typ in zentralen Modulen definieren.
-4. Plugin-Routen ausschließlich über `PluginDefinition.routes` beschreiben und über die statische Host-Registry registrieren.
+4. Seiten-Komponenten nur über die App-Route-Bindings einspeisen.
+5. Plugin-Routen ausschließlich über `PluginDefinition.routes` beschreiben und zentral im Routing-Paket materialisieren.
 
 ### Don't
 
 1. Keine server-only Imports in client-safe Routing-Modulen.
 2. Keine duplizierten Auth-Path-Strings in App-Code.
-3. Keine direkte Kopplung von App-Router an interne Auth-Implementierungsdetails.
+3. Keine app-lokale Parallel-Registrierung produktiver Seitenrouten.
+4. Keine Demo- oder Sandbox-Routen in das Produkt-Routing mischen.
 
 ## Bekannte Trade-offs
 
-1. **Dualer Ansatz (file-based + code-based)** erhöht Flexibilität, aber auch Komplexität.
-2. Debug/Admin-Test-Routen können Route-Tree-Sicht erweitern, obwohl sie nicht Teil des Core-Flows sind.
-3. Strikte Import-Disziplin ist entscheidend; sonst drohen Bundling-/Hydration-Probleme.
+1. File-based Routing bleibt technisch vorhanden, ist aber nicht mehr die fachliche Quelle der Seitenrouten.
+2. Seiten-Bindings bleiben absichtlich in der App, damit UI-Komponenten nicht in das Routing-Paket gezogen werden.
+3. Strikte Import-Disziplin bleibt entscheidend; sonst drohen Bundling-/Hydration-Probleme.
 
 ## Referenzen
 
-- `docs/routing.md`
-- `packages/core/src/routing/registry.ts`
 - `packages/routing/src/index.ts`
 - `packages/routing/src/index.server.ts`
-- `packages/routing/src/core.routes.ts`
+- `packages/routing/src/app.routes.ts`
+- `packages/routing/src/route-paths.ts`
 - `packages/routing/src/auth.routes.ts`
 - `packages/routing/src/auth.routes.server.ts`
 - `apps/sva-studio-react/src/router.tsx`
-- `apps/sva-studio-react/src/routes/-core-routes.tsx`
-- `apps/sva-studio-react/src/routes/-core-routes.server.tsx`
+- `apps/sva-studio-react/src/routing/app-route-bindings.tsx`
 - `apps/sva-studio-react/src/routes/__root.tsx`
 - `apps/sva-studio-react/src/routeTree.gen.ts`
-- `packages/plugin-example/src/routes.tsx`
-- `docs/adr/README.md`

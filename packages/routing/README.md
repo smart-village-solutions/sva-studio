@@ -1,83 +1,68 @@
 # @sva/routing
 
-Typsicheres Routing-Paket für SVA Studio. Verbindet die framework-agnostische Route-Registry aus `@sva/core` mit konkreten TanStack Router-Implementierungen und Auth-Handlern.
+Typsicheres Routing-Paket für SVA Studio. `@sva/routing` ist die kanonische öffentliche Routing-Schnittstelle der Anwendung und bündelt UI-Routen, Auth-/HTTP-Routen, Guards, Search-Validierung und Plugin-Anknüpfung.
 
 ## Architektur-Rolle
 
-`@sva/routing` ist die Brücke zwischen Kernlogik und Framework. Es erzeugt aus den abstrakten Route-Factories konkrete TanStack Router-Routen und bindet dabei serverseitige Auth-Handler lazily ein – ohne den Client-Bundle aufzublähen.
+`@sva/routing` definiert die Route-API der App. Die Anwendung liefert nur noch Root-Shell, Context-Wiring, Plugin-Liste und Seiten-Bindings.
 
-```
-@sva/core    ← Route-Registry, IAM-Typen
-  ↑
-@sva/auth    ← Auth-Route-Pfade, Server-Handler
-  ↑
-@sva/routing ← Konkrete TanStack Router-Routen
-  ↑
-App (sva-studio-react)
+```text
+@sva/auth    <- kanonische Auth-/API-Pfade + Server-Handler
+  ^
+@sva/routing <- UI-/Auth-/Plugin-Routing API
+  ^
+App          <- Root, Context, Seiten-Bindings
 ```
 
-**Abhängigkeiten:**
-- `@sva/core` (workspace) – Route-Registry
-- `@sva/auth` (workspace) – Auth-Route-Pfade und Server-Handler
-- `@tanstack/react-router` – TanStack Router
-
-## Exports
+## Öffentliche API
 
 | Pfad | Beschreibung |
 | --- | --- |
-| `@sva/routing` | Client-safe Route-Factories und Route-Pfade |
-| `@sva/routing/server` | Server-side Route-Factories mit Handler-Implementierungen |
-| `@sva/routing/auth` | Auth-spezifische Route-Definitionen |
-
-## Konzept: Code-basierte Route-Komposition
-
-Das Routing folgt einem dualen Ansatz:
-
-1. **File-based Routes** (TanStack Start) – für App-spezifische Seiten
-2. **Code-based Route-Factories** – für Core- und Auth-Routen
-3. **Plugin-Route-Metadaten** – für statisch registrierte Studio-Plugins
-
-Core- und Auth-Routen bleiben Route-Factories. Plugins liefern dagegen einen SDK-Vertrag, aus dem der Host konkrete Routen materialisiert.
+| `@sva/routing` | `getClientRouteFactories()`, Plugin-Factories, Route-Pfade, Guards, Search-Normalisierung |
+| `@sva/routing/server` | `getServerRouteFactories()` plus serverseitige Auth-Handler-Factories |
 
 ### Client-Verwendung
 
 ```ts
-import { coreRouteFactories, authRoutePaths } from '@sva/routing';
-import { createPluginRegistry, mergePluginRouteDefinitions } from '@sva/sdk';
-import { pluginExample } from '@sva/plugin-example';
+import { getClientRouteFactories } from '@sva/routing';
 
-const plugins = [pluginExample] as const;
-const pluginRegistry = createPluginRegistry(plugins);
-const pluginRoutes = mergePluginRouteDefinitions(plugins);
+const routeFactories = getClientRouteFactories({
+  bindings: appRouteBindings,
+  plugins: studioPlugins,
+});
 ```
 
 ### Server-Verwendung
 
 ```ts
-import { authServerRouteFactories } from '@sva/routing/server';
+import { getServerRouteFactories } from '@sva/routing/server';
+
+const routeFactories = getServerRouteFactories({
+  bindings: appRouteBindings,
+  plugins: studioPlugins,
+});
 ```
 
-Server-Route-Factories laden Auth-Handler lazily via `import('@sva/auth/server')`, um Code-Splitting sicherzustellen.
+## Routing-Modell
 
-## Client/Server-Trennung
-
-Die strikte Trennung ist kritisch für korrektes Bundling:
-
-- **Client** (`@sva/routing`): Exportiert Route-Factories ohne Handler-Implementierungen. Nur Routing-Struktur und Pfade – kein Node.js-Code.
-- **Server** (`@sva/routing/server`): Exportiert Route-Factories mit lazily importierten Auth-Handlern. Exhaustive Handler-Map via `satisfies Record<AuthRoutePath, AuthHandlers>`.
-
-> **Wichtig:** Niemals `@sva/routing/server` im Client-Code importieren. Dies würde Node.js-Abhängigkeiten ins Browser-Bundle ziehen.
+- Produktive Seitenrouten sind vollständig code-based.
+- File-based Routing bleibt nur für `__root.tsx` und die TanStack-Start-Integration erhalten.
+- Demo-Routen sind kein Bestandteil des kanonischen Produkt-Routings.
+- Plugin-Routen werden zentral im Routing-Paket materialisiert.
 
 ## Projektstruktur
 
-```
+```text
 src/
-├── index.ts                       # Client-safe Exports
-├── index.server.ts                # Server-side Exports
-├── auth.routes.ts                 # Client-safe Auth-Route-Factories
-├── auth.routes.server.ts          # Server Auth-Routes mit Handler (167 Zeilen)
-├── auth.routes.server.test.ts     # Server-Route-Tests
-└── core.routes.ts                 # Route-Aggregation (Core + Auth)
+├── index.ts
+├── index.server.ts
+├── app.routes.ts
+├── route-paths.ts
+├── route-search.ts
+├── account-ui.routes.ts
+├── protected.routes.ts
+├── auth.routes.ts
+└── auth.routes.server.ts
 ```
 
 ## Nx-Konfiguration
@@ -91,6 +76,4 @@ src/
 
 - [Routing-Architektur](../../docs/architecture/routing-architecture.md)
 - [Bausteinsicht (arc42 §5)](../../docs/architecture/05-building-block-view.md)
-- [Laufzeitsicht (arc42 §6)](../../docs/architecture/06-runtime-view.md) – Szenario 1: App-Start + Route-Komposition
-- [ADR-002: Plugin Architecture Pattern](../../docs/architecture/decisions/ADR-002-plugin-architecture-pattern.md)
-- [ADR-034: Plugin-SDK-Vertrag v1](../../docs/adr/ADR-034-plugin-sdk-vertrag-v1.md)
+- [Laufzeitsicht (arc42 §6)](../../docs/architecture/06-runtime-view.md)

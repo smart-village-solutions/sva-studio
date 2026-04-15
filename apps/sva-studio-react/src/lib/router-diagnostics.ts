@@ -22,7 +22,7 @@ export interface RouterDiagnosticsSnapshot {
   routerRegistry: RouterRegistrySnapshot;
   routeFlags: {
     hasRootRoute: boolean;
-    hasDemoRoute: boolean;
+    hasContentRoute: boolean;
   };
 }
 
@@ -125,7 +125,7 @@ export const createRouterDiagnosticsSnapshot = ({
     },
     routeFlags: {
       hasRootRoute: knownPaths.has('/'),
-      hasDemoRoute: knownPaths.has('/demo'),
+      hasContentRoute: knownPaths.has('/content'),
     },
   };
 };

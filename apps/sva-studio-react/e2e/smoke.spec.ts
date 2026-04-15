@@ -1,36 +1,4 @@
 import { expect, test } from '@playwright/test';
-import type { Page } from '@playwright/test';
-
-type RecordedServerFnResponse = {
-  body: string;
-  readonly method: string;
-  readonly status: number;
-  readonly url: string;
-};
-
-const captureServerFnResponses = (page: Page) => {
-  const responses: RecordedServerFnResponse[] = [];
-
-  page.on('response', (response) => {
-    if (!response.url().includes('/_server/')) {
-      return;
-    }
-
-    const entry: RecordedServerFnResponse = {
-      body: '',
-      method: response.request().method(),
-      status: response.status(),
-      url: response.url(),
-    };
-    responses.push(entry);
-
-    void response.text().then((body) => {
-      entry.body = body;
-    }).catch(() => undefined);
-  });
-
-  return responses;
-};
 
 const isExternalAuthRedirect = (location: string | null | undefined) =>
   Boolean(location?.match(/(\/protocol\/openid-connect\/auth\?|accounts\.google\.com\/(signin\/oauth\/error|o\/oauth2\/v2\/auth))/));
@@ -45,14 +13,14 @@ test('GET / returns 200 and renders app shell', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'SVA Studio' })).toBeVisible();
 });
 
-test('GET /demo returns 200', async ({ page }) => {
-  const response = await page.goto('/demo');
+test('GET /interfaces returns 200', async ({ page }) => {
+  const response = await page.goto('/interfaces');
   expect(response).not.toBeNull();
   if (!response) {
-    throw new Error('Antwort für GET /demo erwartet.');
+    throw new Error('Antwort für GET /interfaces erwartet.');
   }
   expect(response.status()).toBeLessThan(400);
-  await expect(page.getByText('TanStack Start Demos')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Schnittstellen' })).toBeVisible();
 });
 
 test('GET /plugins/example returns 200', async ({ page }) => {
@@ -105,27 +73,17 @@ test('tenant-host login fails closed when canonical auth redirect prerequisites 
   });
 });
 
-test('demo server function uses the real /_server transport', async ({ page }) => {
+test('router keeps the shell active during client-side navigation', async ({ page }) => {
   const pageErrors: string[] = [];
-  const serverFnResponses = captureServerFnResponses(page);
 
   page.on('pageerror', (error) => {
     pageErrors.push(error.message);
   });
 
-  await page.goto('/demo/start/server-funcs');
+  await page.goto('/');
   await expect(page.locator('html')).toHaveAttribute('data-theme', /.+/);
-  await expect(page.getByPlaceholder('Dein Name')).toBeVisible();
-
-  await page.getByPlaceholder('Dein Name').fill('Debug');
-  await page.getByRole('button', { name: 'Server Function ausführen' }).click();
-  await expect(page.getByText('Hallo Debug!')).toBeVisible();
-  await expect
-    .poll(() => serverFnResponses.find((response) => response.method === 'POST')?.status)
-    .toBe(200);
-
-  const response = serverFnResponses.find((entry) => entry.method === 'POST');
-  expect(response?.url).toContain('/_server/');
-  expect(response?.body).not.toContain('Only HTML requests are supported here');
+  await page.getByRole('link', { name: 'Schnittstellen' }).click();
+  await expect(page).toHaveURL(/\/interfaces$/);
+  await expect(page.getByRole('heading', { name: 'Schnittstellen' })).toBeVisible();
   expect(pageErrors).toEqual([]);
 });

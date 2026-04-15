@@ -84,7 +84,7 @@ export const emitRouterModuleLoadDiagnosticsOnce = (routeTree: unknown): Promise
       diagnostics_file: diagnosticsFile,
       route_tree_node_count: snapshot.routeTreeNodeCount,
       has_root_route: snapshot.routeFlags.hasRootRoute,
-      has_demo_route: snapshot.routeFlags.hasDemoRoute,
+      has_content_route: snapshot.routeFlags.hasContentRoute,
     });
   })().catch(async (error: unknown) => {
     await logDiagnosticsError('Router-Modul-Diagnose konnte nicht geschrieben werden', error);
@@ -113,7 +113,7 @@ const writeRouterDiagnostics = async (router: AnyRouter, routeTree: unknown): Pr
     flat_route_ids: summarizeRoutes(snapshot.routerRegistry.flatRouteIds),
     flat_route_paths: summarizeRoutes(snapshot.routerRegistry.flatRoutePaths),
     has_root_route: snapshot.routeFlags.hasRootRoute,
-    has_demo_route: snapshot.routeFlags.hasDemoRoute,
+    has_content_route: snapshot.routeFlags.hasContentRoute,
   });
 
   if (!snapshot.routeFlags.hasRootRoute || snapshot.routerRegistry.routePaths.length === 0) {

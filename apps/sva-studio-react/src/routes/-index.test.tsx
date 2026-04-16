@@ -172,6 +172,8 @@ describe('HomePage', () => {
     render(<HomePage />);
 
     expect(screen.getByText('Login fehlgeschlagen. Bitte erneut versuchen.')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Bei Keycloak abmelden' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Erneut anmelden' }).getAttribute('href')).toBe('/auth/login?returnTo=%2F');
   });
 
   it('shows auth query error message for expired login state', () => {

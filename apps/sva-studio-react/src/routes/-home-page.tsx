@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from '@tanstack/react-router';
 
 import { t } from '../i18n';
+import { createLoginHref } from '../lib/auth-navigation';
 import { useAuth } from '../providers/auth-provider';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
@@ -10,6 +11,7 @@ export const HomePage = () => {
   const { isAuthenticated, isLoading, error } = useAuth();
   const [authStateError, setAuthStateError] = React.useState<string | null>(null);
   const [routeError, setRouteError] = React.useState<string | null>(null);
+  const authRetryHref = createLoginHref('/');
 
   React.useEffect(() => {
     const search = new URLSearchParams(window.location.search);
@@ -55,7 +57,17 @@ export const HomePage = () => {
             ) : null}
             {authError ? (
               <div className="max-w-2xl rounded-lg border border-secondary/40 bg-secondary/10 px-4 py-3 text-sm text-secondary">
-                {authError}
+                <p>{authError}</p>
+                <div className="mt-3 flex flex-wrap gap-3">
+                  <form action="/auth/logout" method="post">
+                    <Button type="submit" size="sm" variant="outline">
+                      {t('home.authError.logoutAction')}
+                    </Button>
+                  </form>
+                  <Button asChild size="sm" variant="secondary">
+                    <a href={authRetryHref}>{t('home.authError.retryLoginAction')}</a>
+                  </Button>
+                </div>
               </div>
             ) : null}
           </div>

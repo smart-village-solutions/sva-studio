@@ -358,6 +358,8 @@ export const i18nResources = {
         stateExpired: 'Login abgebrochen oder abgelaufen. Bitte erneut anmelden.',
         insufficientRole: 'Keine Berechtigung für diese Seite. Bitte wenden Sie sich an die Administration.',
         sessionLoadFailed: 'Fehler beim Laden der Session. Bitte erneut anmelden.',
+        logoutAction: 'Bei Keycloak abmelden',
+        retryLoginAction: 'Erneut anmelden',
       },
     },
     interfaces: {
@@ -2183,6 +2185,8 @@ export const i18nResources = {
         stateExpired: 'Login was cancelled or expired. Please sign in again.',
         insufficientRole: 'You do not have permission to access this page. Please contact an administrator.',
         sessionLoadFailed: 'Session could not be loaded. Please sign in again.',
+        logoutAction: 'Sign out from Keycloak',
+        retryLoginAction: 'Sign in again',
       },
     },
     interfaces: {

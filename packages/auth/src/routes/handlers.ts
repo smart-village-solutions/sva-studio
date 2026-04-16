@@ -10,7 +10,7 @@ import {
   withRequestContext,
 } from '@sva/sdk/server';
 
-import { createLoginUrl, handleCallback, logoutSession } from '../auth.server.js';
+import { buildLogoutUrl, createLoginUrl, handleCallback, logoutSession } from '../auth.server.js';
 import { emitAuthAuditEvent } from '../audit-events.server.js';
 import { getAuthConfig, resolveAuthConfigForRequest } from '../config.js';
 import { createMockSessionUser, isMockAuthEnabled } from '../mock-auth.server.js';
@@ -725,6 +725,7 @@ export const logoutHandler = async (request: Request): Promise<Response> => {
           });
         }
       } else {
+        logoutUrl = await buildLogoutUrl(authConfig);
         logger.debug('Logout without session', {
           endpoint: '/auth/logout',
           operation: 'logout',

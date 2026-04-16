@@ -16,6 +16,7 @@ const loggerMock = {
   debug: vi.fn(),
 };
 const getSessionMock = vi.fn();
+const buildLogoutUrlMock = vi.fn();
 const logoutSessionMock = vi.fn();
 const emitAuthAuditEventMock = vi.fn(async () => undefined);
 const createLoginUrlMock = vi.fn();
@@ -69,6 +70,7 @@ vi.mock('@sva/data/server', () => ({
 }));
 
 vi.mock('../auth.server', () => ({
+  buildLogoutUrl: buildLogoutUrlMock,
   createLoginUrl: createLoginUrlMock,
   handleCallback: handleCallbackMock,
   logoutSession: logoutSessionMock,
@@ -952,11 +954,14 @@ describe('routes/handlers', () => {
   });
 
   it('logs logout without session and still sets suppression cookie', async () => {
+    buildLogoutUrlMock.mockResolvedValue('https://issuer.example/logout?client_id=client-id');
     const { logoutHandler } = await import('./handlers.js');
 
     const response = await logoutHandler(new Request('http://localhost/auth/logout', { method: 'POST' }));
 
     expect(response.status).toBe(302);
+    expect(response.headers.get('location')).toBe('https://issuer.example/logout?client_id=client-id');
+    expect(buildLogoutUrlMock).toHaveBeenCalledWith(expect.objectContaining({ clientId: 'client-id' }));
     expect(loggerMock.debug).toHaveBeenCalledWith(
       'Logout without session',
       expect.objectContaining({ operation: 'logout', session_exists: false })

@@ -682,7 +682,7 @@ describe('getSessionUser', () => {
     expect(authorizationCodeGrantMock).toHaveBeenCalledTimes(1);
   });
 
-  it('logoutSession falls back to post logout redirect without id token', async () => {
+  it('logoutSession returns end session url without id token', async () => {
     getSessionMock.mockResolvedValue({
       id: 'session-logout-1',
       userId: 'user-1',
@@ -693,7 +693,11 @@ describe('getSessionUser', () => {
     const { logoutSession } = await import('./auth.server');
     const url = await logoutSession('session-logout-1');
 
-    expect(url).toBe('http://localhost:3000');
+    expect(url).toBe('https://issuer.example/logout');
+    expect(buildEndSessionUrlMock).toHaveBeenCalledWith(
+      { issuer: 'https://issuer.example' },
+      { post_logout_redirect_uri: 'http://localhost:3000' }
+    );
     expect(deleteSessionMock).toHaveBeenCalledWith('session-logout-1');
   });
 
@@ -735,7 +739,7 @@ describe('getSessionUser', () => {
     const { logoutSession } = await import('./auth.server');
     const url = await logoutSession('session-logout-3');
 
-    expect(url).toBe('https://bb-guben.studio.smart-village.app/');
+    expect(url).toBe('https://issuer.example/logout');
     expect(resolveAuthConfigFromSessionAuthMock).toHaveBeenCalledWith(
       expect.objectContaining({
         instanceId: 'bb-guben',

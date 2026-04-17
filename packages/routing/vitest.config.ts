@@ -15,7 +15,7 @@ export default defineConfig({
       { find: '@sva/core', replacement: resolve(__dirname, '../core/src/index.ts') },
       { find: '@sva/auth/runtime-routes', replacement: resolve(__dirname, '../auth/src/runtime-routes.server.ts') },
       { find: '@sva/auth/runtime-health', replacement: resolve(__dirname, '../auth/src/runtime-health.server.ts') },
-      { find: '@sva/auth/server', replacement: resolve(__dirname, '../auth/src/index.ts') },
+      { find: '@sva/auth/server', replacement: resolve(__dirname, '../auth/src/index.server.ts') },
       { find: /^@sva\/auth$/, replacement: resolve(__dirname, '../auth/src/routes.shared.ts') },
       { find: '@sva/sdk/server', replacement: resolve(__dirname, '../sdk/src/server.ts') },
     ],

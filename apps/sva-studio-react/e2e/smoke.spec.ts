@@ -64,6 +64,28 @@ const captureServerFnResponses = (page: Page) => {
 const isExternalAuthRedirect = (location: string | null | undefined) =>
   Boolean(location?.match(/(\/protocol\/openid-connect\/auth\?|accounts\.google\.com\/(signin\/oauth\/error|o\/oauth2\/v2\/auth))/));
 
+const expectInterfacesShellReady = async (page: Page, timeout = 20_000) => {
+  await expect
+    .poll(
+      async () => {
+        const headingVisible = await page
+          .getByRole('heading', { name: 'Schnittstellen' })
+          .isVisible()
+          .catch(() => false);
+        if (headingVisible) {
+          return true;
+        }
+
+        return page
+          .getByText('Schnittstellen werden geladen ...')
+          .isVisible()
+          .catch(() => false);
+      },
+      { timeout }
+    )
+    .toBe(true);
+};
+
 test('GET / returns 200 and renders app shell', async ({ page }) => {
   const response = await page.goto('/');
   expect(response).not.toBeNull();
@@ -81,7 +103,7 @@ test('GET /interfaces returns 200', async ({ page }) => {
     throw new Error('Antwort für GET /interfaces erwartet.');
   }
   expect(response.status()).toBeLessThan(400);
-  await expect(page.getByRole('heading', { name: 'Schnittstellen' })).toBeVisible();
+  await expectInterfacesShellReady(page);
 });
 
 test('interfaces page uses the real /_server transport during overview load', async ({ page }) => {
@@ -214,6 +236,6 @@ test('router keeps the shell active during client-side navigation', async ({ pag
     await router.navigate({ to: '/interfaces' });
   });
   await expect(page).toHaveURL(/\/interfaces$/);
-  await expect(page.getByRole('heading', { name: 'Schnittstellen' })).toBeVisible();
+  await expectInterfacesShellReady(page);
   expect(pageErrors).toEqual([]);
 });

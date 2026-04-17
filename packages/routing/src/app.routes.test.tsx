@@ -52,6 +52,7 @@ import { normalizeIamTab, normalizeRoleDetailTab } from './route-search';
 
 type RouteOptionsUnderTest = {
   path?: string;
+  getParentRoute?: () => unknown;
   beforeLoad?: (options: unknown) => Promise<void> | void;
   validateSearch?: (search: Record<string, unknown>) => unknown;
   component?: () => unknown;
@@ -146,6 +147,7 @@ describe('app.routes', () => {
     expect(routeMap.has('/auth/login')).toBe(true);
     expect(routeMap.has('/plugins/example')).toBe(true);
     expect(pluginFactories).toHaveLength(1);
+    expect(readRouteOptions(routeMap.get('/account')).getParentRoute?.()).toBe(rootRoute);
 
     await readRouteOptions(routeMap.get('/account')).beforeLoad?.({ href: '/account' });
     await readRouteOptions(routeMap.get('/admin/users')).beforeLoad?.({ href: '/admin/users' });
@@ -187,6 +189,7 @@ describe('app.routes', () => {
 
     const guardCallCount = Object.values(guardSpies).reduce((count, spy) => count + spy.mock.calls.length, 0);
 
+    expect(readRouteOptions(routeMap.get('/interfaces')).getParentRoute?.()).toBe(rootRoute);
     expect(readRouteOptions(routeMap.get('/interfaces')).beforeLoad).toBeUndefined();
     expect(readRouteOptions(routeMap.get('/help')).beforeLoad).toBeUndefined();
     expect(readRouteOptions(routeMap.get('/admin/api/phase1-test')).beforeLoad).toBeUndefined();
@@ -231,6 +234,7 @@ describe('app.routes', () => {
     const routes = routeFactories.map((factory) => factory(rootRoute as never));
     const routeMap = new Map(routes.map((route) => [String(readRouteOptions(route).path), route]));
 
+    expect(readRouteOptions(routeMap.get('/plugins/read')).getParentRoute?.()).toBe(rootRoute);
     await readRouteOptions(routeMap.get('/plugins/read')).beforeLoad?.({ href: '/plugins/read' });
     await readRouteOptions(routeMap.get('/plugins/create')).beforeLoad?.({ href: '/plugins/create' });
     await readRouteOptions(routeMap.get('/plugins/write')).beforeLoad?.({ href: '/plugins/write' });

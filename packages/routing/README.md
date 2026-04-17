@@ -57,6 +57,8 @@ src/
 ├── index.ts
 ├── index.server.ts
 ├── app.routes.ts
+├── app.routes.server.ts
+├── app.routes.shared.ts
 ├── route-paths.ts
 ├── route-search.ts
 ├── account-ui.routes.ts
@@ -68,9 +70,12 @@ src/
 ## Nx-Konfiguration
 
 - **Name:** `routing`
-- **Tags:** `type:core`, `scope:routing`
+- **Tags:** `type:lib`, `scope:routing`
 - **Build:** `pnpm nx run routing:build`
-- **Tests:** `pnpm nx run routing:test`
+- **Runtime-Check:** `pnpm nx run routing:check:runtime`
+- **Lint:** `pnpm nx run routing:lint`
+- **Unit-Tests:** `pnpm nx run routing:test:unit`
+- **Coverage:** `pnpm nx run routing:test:coverage`
 
 ## Verwandte Dokumentation
 

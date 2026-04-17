@@ -1,12 +1,12 @@
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
-import tsconfigPaths from 'vite-tsconfig-paths';
 
 const appRoot = fileURLToPath(new URL('.', import.meta.url));
 
 export default defineConfig({
   root: appRoot,
   resolve: {
+    tsconfigPaths: true,
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
       'react-dom/server': fileURLToPath(new URL('./src/lib/react-dom-server-compat.ts', import.meta.url)),
@@ -38,7 +38,6 @@ export default defineConfig({
       '@sva/core': fileURLToPath(new URL('../../packages/core/src/index.ts', import.meta.url)),
     },
   },
-  plugins: [tsconfigPaths()],
   test: {
     name: 'sva-studio-react',
     environment: 'happy-dom',

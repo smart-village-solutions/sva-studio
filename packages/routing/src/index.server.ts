@@ -16,6 +16,6 @@ export {
   mapPluginGuardToAccountGuard,
   type AppRouteBindings,
   type AppRouteFactory,
-} from './app.routes.js';
+} from './app.routes.server.js';
 export { normalizeIamTab, normalizeRoleDetailTab } from './route-search.js';
 export { routePaths, uiRoutePaths, type UiRoutePathKey } from './route-paths.js';

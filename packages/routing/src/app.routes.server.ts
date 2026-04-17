@@ -1,6 +1,6 @@
 import type { PluginDefinition } from '@sva/sdk';
 
-import { authRouteFactories } from './auth.routes.js';
+import { authServerRouteFactories } from './auth.routes.server.js';
 import {
   createUiRouteFactories,
   getPluginRouteFactories,
@@ -15,7 +15,7 @@ export {
   type AppRouteFactory,
 } from './app.routes.shared.js';
 
-export const getClientRouteFactories = ({
+export const getServerRouteFactories = ({
   bindings,
   plugins = [],
 }: {
@@ -23,6 +23,6 @@ export const getClientRouteFactories = ({
   readonly plugins?: readonly PluginDefinition[];
 }): readonly AppRouteFactory[] => [
   ...createUiRouteFactories(bindings),
-  ...authRouteFactories,
+  ...authServerRouteFactories,
   ...getPluginRouteFactories(plugins),
 ] as const;

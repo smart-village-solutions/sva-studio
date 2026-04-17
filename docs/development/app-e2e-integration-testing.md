@@ -40,6 +40,9 @@ docker compose -f docker-compose.yml -f docker-compose.monitoring.yml down
   - `/`
   - `/interfaces`
   - `/plugins/example`
+- Echter TanStack-Start-ServerFn-Transport:
+  - `/interfaces` lädt die Übersicht über einen echten Request auf `/_server/...`
+  - Die Smoke-Suite prüft explizit, dass keine HTML-Fallback-Antwort statt ServerFn-Transport zurückkommt
 - Clientseitige Router-Navigation:
   - Navigation von `/` nach `/interfaces` hält die Shell aktiv
   - Die Navigation erfolgt ohne Full Reload der gesamten App
@@ -55,7 +58,7 @@ Wenn ein Service fehlt, bricht der Test früh mit klarer Fehlermeldung ab.
 
 ## Abgrenzung zum IAM-Acceptance-Gate
 
-- Dieser Smoke prüft generische App-Routen und den echten `/_server`-Transport.
+- Dieser Smoke prüft generische App-Routen, clientseitige Navigation und den echten `/_server`-Transport.
 - Er ist bewusst von `pnpm nx run sva-studio-react:test:acceptance` getrennt.
 - Der IAM-Acceptance-Lauf benötigt eine vereinbarte Testumgebung mit Keycloak-Testrealm, Testbenutzern und direktem Datenbankzugang.
 

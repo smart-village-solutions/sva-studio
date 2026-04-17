@@ -45,9 +45,9 @@ vi.mock('./account-ui.routes', () => ({
 import {
   getClientRouteFactories,
   getPluginRouteFactories,
-  getServerRouteFactories,
   mapPluginGuardToAccountGuard,
 } from './app.routes';
+import { getServerRouteFactories } from './app.routes.server';
 
 type RouteOptionsUnderTest = {
   path?: string;

@@ -22,6 +22,9 @@ ignore:
   # Type definitions and declarations
   - "**/*.d.ts"
 
+  # Generated TanStack Router integration artifact
+  - "apps/sva-studio-react/src/routeTree.gen.ts"
+
   # Scripts and tooling
   - "**/scripts/**"
   - "**/tools/**"

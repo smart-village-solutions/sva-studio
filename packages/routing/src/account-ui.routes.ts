@@ -1,29 +1,5 @@
 import { createAdminRoute, createProtectedRoute } from './protected.routes.js';
 
-export const accountUiRoutePaths = {
-  account: '/account',
-  accountPrivacy: '/account/privacy',
-  content: '/content',
-  contentCreate: '/content/new',
-  contentDetail: '/content/$contentId',
-  adminUsers: '/admin/users',
-  adminUserCreate: '/admin/users/new',
-  adminUserDetail: '/admin/users/$userId',
-  adminOrganizations: '/admin/organizations',
-  adminOrganizationCreate: '/admin/organizations/new',
-  adminOrganizationDetail: '/admin/organizations/$organizationId',
-  adminInstances: '/admin/instances',
-  adminRoles: '/admin/roles',
-  adminRoleDetail: '/admin/roles/$roleId',
-  adminGroups: '/admin/groups',
-  adminGroupCreate: '/admin/groups/new',
-  adminGroupDetail: '/admin/groups/$groupId',
-  adminLegalTexts: '/admin/legal-texts',
-  adminLegalTextCreate: '/admin/legal-texts/new',
-  adminLegalTextDetail: '/admin/legal-texts/$legalTextVersionId',
-  adminIam: '/admin/iam',
-} as const;
-
 export const accountUiRouteGuards = {
   account: createProtectedRoute(),
   accountPrivacy: createProtectedRoute(),
@@ -49,5 +25,3 @@ export const accountUiRouteGuards = {
     requiredRoles: ['iam_admin', 'support_admin', 'system_admin', 'security_admin', 'compliance_officer'],
   }),
 } as const;
-
-export type AccountUiRouteKey = keyof typeof accountUiRoutePaths;

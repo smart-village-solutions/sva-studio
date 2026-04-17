@@ -72,8 +72,8 @@ Die Router-Erzeugung passiert in `apps/sva-studio-react/src/router.tsx`.
 Kurzübersicht:
 
 - Root/Shell: `src/routes/__root.tsx`
-- Core Route Factories: `src/routes/-core-routes.tsx`
-- Server Route Factories: `src/routes/-core-routes.server.tsx`
+- App Route Bindings: `src/routing/app-route-bindings.tsx`
+- Router-Komposition: `src/router.tsx` konsumiert ausschließlich `@sva/routing`
 - Plugin Example: `@sva/plugin-example`
 
 Weitere Details:

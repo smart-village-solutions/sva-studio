@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { RATE_WINDOW_MS, WRITE_RATE_LIMIT } from './iam-account-management/constants';
 import { consumeRateLimit } from './iam-account-management/rate-limit';
+import { createRateLimitConsumer } from './shared/rate-limit';
 
 describe('consumeRateLimit', () => {
   it('reports the configured window in seconds', async () => {
@@ -54,12 +55,13 @@ describe('consumeRateLimit', () => {
   });
 
   it('evicts the oldest bucket when the in-memory cap is exceeded', () => {
+    const consumeWithSmallCap = createRateLimitConsumer({ maxBuckets: 3 });
     const now = 30_000;
-    const oldestActor = `rate-limit-oldest-${Date.now()}`;
+    const oldestActor = 'rate-limit-oldest';
 
     for (let index = 0; index < WRITE_RATE_LIMIT; index += 1) {
       expect(
-        consumeRateLimit({
+        consumeWithSmallCap({
           instanceId: 'de-musterhausen',
           actorKeycloakSubject: oldestActor,
           scope: 'write',
@@ -68,11 +70,11 @@ describe('consumeRateLimit', () => {
       ).toBeNull();
     }
 
-    for (let index = 0; index < 10_000; index += 1) {
+    for (const actorKeycloakSubject of ['rate-limit-cap-a', 'rate-limit-cap-b', 'rate-limit-cap-c']) {
       expect(
-        consumeRateLimit({
+        consumeWithSmallCap({
           instanceId: 'de-musterhausen',
-          actorKeycloakSubject: `rate-limit-cap-${index}-${Date.now()}`,
+          actorKeycloakSubject,
           scope: 'read',
           now,
         })
@@ -81,7 +83,7 @@ describe('consumeRateLimit', () => {
 
     // Der älteste Bucket wird beim Überschreiten des Caps entfernt und beginnt wieder bei count=1.
     expect(
-      consumeRateLimit({
+      consumeWithSmallCap({
         instanceId: 'de-musterhausen',
         actorKeycloakSubject: oldestActor,
         scope: 'write',

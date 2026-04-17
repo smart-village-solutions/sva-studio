@@ -17,6 +17,14 @@
     "./auth": {
       "types": "./dist/auth.routes.d.ts",
       "default": "./dist/auth.routes.js"
+    },
+    "./guards": {
+      "types": "./dist/guards.d.ts",
+      "default": "./dist/guards.js"
+    },
+    "./plugins": {
+      "types": "./dist/plugins.d.ts",
+      "default": "./dist/plugins.js"
     }
   },
   "dependencies": {

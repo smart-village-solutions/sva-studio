@@ -2,23 +2,22 @@ import { createRouter } from '@tanstack/react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
-  areDemoRoutesEnabled,
   createRuntimeRouteTree,
-  mapPluginGuardToAccountGuard,
   readRouteGuardUser,
   resolveBaseUrl,
 } from './router';
 import { createRouterDiagnosticsSnapshot } from './lib/router-diagnostics';
+import { appRouteBindings } from './routing/app-route-bindings';
+import { studioPlugins } from './lib/plugins';
 
 describe('createRuntimeRouteTree', () => {
   afterEach(() => {
     vi.unstubAllEnvs();
   });
 
-  it('merges file routes with core, auth and plugin runtime routes', async () => {
-    const { authRouteFactories } = await import('@sva/routing');
-    const { demoRouteFactory } = await import('./routes/-demo-routes');
-    const routeTree = createRuntimeRouteTree(authRouteFactories, [...(await import('./routes/-core-routes')).coreRouteFactoriesBase, demoRouteFactory]);
+  it('builds the route tree solely from @sva/routing and the root route', async () => {
+    const { getClientRouteFactories } = await import('@sva/routing');
+    const routeTree = createRuntimeRouteTree(getClientRouteFactories({ bindings: appRouteBindings, plugins: studioPlugins }));
     const router = createRouter({
       routeTree,
       context: {
@@ -42,7 +41,7 @@ describe('createRuntimeRouteTree', () => {
         '/',
         '/account',
         '/admin/users',
-        '/demo',
+        '/content',
         '/plugins/example',
         '/plugins/news',
         '/plugins/news/new',
@@ -50,13 +49,6 @@ describe('createRuntimeRouteTree', () => {
         '/auth/login',
       ]),
     );
-  });
-
-  it('maps plugin guards onto the host account-ui guard set', () => {
-    expect(mapPluginGuardToAccountGuard('content.read')).toBe('content');
-    expect(mapPluginGuardToAccountGuard('content.create')).toBe('contentCreate');
-    expect(mapPluginGuardToAccountGuard('content.write')).toBe('contentDetail');
-    expect(mapPluginGuardToAccountGuard(undefined)).toBeNull();
   });
 
   it('reads route guard roles defensively from mixed payloads', () => {
@@ -99,14 +91,4 @@ describe('createRuntimeRouteTree', () => {
     }
   });
 
-  it('enables demo routes explicitly, disables them explicitly, and defaults to enabled in the dev/test runtime', () => {
-    vi.stubEnv('VITE_ENABLE_DEMO_ROUTES', 'true');
-    expect(areDemoRoutesEnabled()).toBe(true);
-
-    vi.stubEnv('VITE_ENABLE_DEMO_ROUTES', 'false');
-    expect(areDemoRoutesEnabled()).toBe(false);
-
-    vi.unstubAllEnvs();
-    expect(areDemoRoutesEnabled()).toBe(true);
-  });
 });

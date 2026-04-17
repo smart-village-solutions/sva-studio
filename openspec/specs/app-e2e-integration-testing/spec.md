@@ -16,7 +16,7 @@ Das System SHALL mindestens die Kernrouten und den Auth-Entry-Point im E2E-Smoke
 
 #### Scenario: Kernrouten verfügbar
 - **WHEN** der E2E-Smoketest läuft
-- **THEN** liefern `/`, `/demo` und `/plugins/example` erfolgreiche Antworten
+- **THEN** liefern `/`, `/interfaces` und `/plugins/example` erfolgreiche Antworten
 - **AND** `/auth/login` liefert den erwarteten Redirect-Flow
 
 ### Requirement: Service-Readiness als Testvoraussetzung
@@ -26,4 +26,3 @@ Das System SHALL vor dem eigentlichen E2E-Lauf die Verfügbarkeit der benötigte
 - **WHEN** Redis, Loki, OTEL oder Promtail nicht erreichbar/healthy ist
 - **THEN** bricht der E2E-Lauf frühzeitig mit klarer Fehlermeldung ab
 - **AND** der Fehler nennt den betroffenen Service explizit
-

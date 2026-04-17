@@ -88,6 +88,9 @@ Regeln:
 - Exempt-Projekte sind in der Policy explizit dokumentiert
 - Kritische Projekte können strengere `minimumFloors` erhalten als normale Projekt-Floors
 - Kritische Hotspots können über `hotspotFloors` auf Datei-Ebene aus `lcov.info` abgesichert werden
+- Dateien dürfen nur in gut begründbaren Ausnahmefällen aus Coverage- oder New-Code-Gates ausgenommen werden.
+- Zulässige Ausnahmefälle sind insbesondere generierte Artefakte oder ressourcenartige Dateien, bei denen Coverage- oder CPD-Metriken systematisch kein sinnvolles Qualitätssignal liefern.
+- „schwer testbar“, „zu groß“ oder „orchestriert nur andere Funktionen“ sind für sich allein keine ausreichenden Gründe für eine Exclusion; in diesen Fällen sind stattdessen Tests zu ergänzen oder die Datei gezielt zu refactoren.
 
 ## Kritische Module und Hotspots
 

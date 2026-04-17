@@ -102,6 +102,9 @@ Diese Strategie definiert nur die Leitplanken:
 - Coverage-Gates werden nicht durch Ausnahmeregeln umgangen.
 - Exemptions sind temporär und müssen aktiv zurückgebaut werden.
 - Kritische Hotspots brauchen gezielte Tests statt bloß global höherer Zahlen.
+- Dateien dürfen nur in gut begründbaren Ausnahmefällen von Coverage-, New-Code- oder CPD-Gates ausgenommen werden.
+- Zulässige Ausnahmefälle sind vor allem generierte Artefakte oder ressourcenartige Dateien ohne sinnvolles Qualitätssignal aus Coverage oder Duplikationsmessung.
+- Fehlende Testbarkeit ist kein Freifahrtschein für Exclusions; in solchen Fällen sind Tests nachzuziehen oder die betroffene Datei strukturell testbarer zu schneiden.
 
 ## Umgang mit Fehlern und Flakes
 

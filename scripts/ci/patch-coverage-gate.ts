@@ -334,7 +334,34 @@ function isLikelyTypeOnlyOrReexportLine(sourceLine: string): boolean {
   return false;
 }
 
-function isLikelyNonExecutableFile(sourceLines: readonly string[]): boolean {
+function isLikelyGeneratedFile(filePath: string, sourceLines: readonly string[]): boolean {
+  const normalizedPath = filePath.replace(/\\/g, '/');
+  if (
+    normalizedPath.endsWith('.gen.ts') ||
+    normalizedPath.endsWith('.gen.tsx') ||
+    normalizedPath.endsWith('.generated.ts') ||
+    normalizedPath.endsWith('.generated.tsx')
+  ) {
+    return true;
+  }
+
+  const leadingLines = sourceLines
+    .slice(0, 12)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .join('\n');
+
+  return (
+    leadingLines.includes('This file was automatically generated') ||
+    leadingLines.includes('You should NOT make any changes in this file')
+  );
+}
+
+function isLikelyNonExecutableFile(filePath: string, sourceLines: readonly string[]): boolean {
+  if (isLikelyGeneratedFile(filePath, sourceLines)) {
+    return true;
+  }
+
   const significantLines = sourceLines.map((line) => line.trim()).filter(Boolean);
   if (significantLines.length === 0) {
     return true;
@@ -370,7 +397,7 @@ export function runPatchCoverageGate(options: RunPatchCoverageGateOptions = {}):
   for (const changedFile of changedFiles) {
     const sourceLines = readSourceLines(rootDir, changedFile.path);
     const fileCoverage = coverageByFile.get(changedFile.path);
-    const ignoreFileWithoutCoverage = !fileCoverage && isLikelyNonExecutableFile(sourceLines);
+    const ignoreFileWithoutCoverage = !fileCoverage && isLikelyNonExecutableFile(changedFile.path, sourceLines);
     let fileCovered = 0;
     let fileMissed = 0;
 

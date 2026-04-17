@@ -48,6 +48,7 @@ import {
   mapPluginGuardToAccountGuard,
 } from './app.routes';
 import { getServerRouteFactories } from './app.routes.server';
+import { normalizeIamTab, normalizeRoleDetailTab } from './route-search';
 
 type RouteOptionsUnderTest = {
   path?: string;
@@ -163,6 +164,82 @@ describe('app.routes', () => {
     });
   });
 
+  it('keeps unguarded UI routes and unguarded plugin routes callable without account guard execution', async () => {
+    const routeFactories = getClientRouteFactories({
+      bindings,
+      plugins: [
+        {
+          id: 'public-plugin',
+          displayName: 'Public plugin',
+          routes: [
+            {
+              id: 'public-plugin.list',
+              path: '/plugins/public',
+              component: () => 'public',
+            },
+          ],
+        },
+      ],
+    });
+    const rootRoute = { id: 'root' };
+    const routes = routeFactories.map((factory) => factory(rootRoute as never));
+    const routeMap = new Map(routes.map((route) => [String(readRouteOptions(route).path), route]));
+
+    const guardCallCount = Object.values(guardSpies).reduce((count, spy) => count + spy.mock.calls.length, 0);
+
+    expect(readRouteOptions(routeMap.get('/interfaces')).beforeLoad).toBeUndefined();
+    expect(readRouteOptions(routeMap.get('/help')).beforeLoad).toBeUndefined();
+    expect(readRouteOptions(routeMap.get('/admin/api/phase1-test')).beforeLoad).toBeUndefined();
+
+    expect(await readRouteOptions(routeMap.get('/plugins/public')).beforeLoad?.({ href: '/plugins/public' })).toBeUndefined();
+
+    const nextGuardCallCount = Object.values(guardSpies).reduce((count, spy) => count + spy.mock.calls.length, 0);
+    expect(nextGuardCallCount).toBe(guardCallCount);
+  });
+
+  it('routes plugin guards to the canonical account-ui guards during beforeLoad', async () => {
+    const routeFactories = getClientRouteFactories({
+      bindings,
+      plugins: [
+        {
+          id: 'plugin-guards',
+          displayName: 'Plugin guards',
+          routes: [
+            {
+              id: 'plugin.read',
+              path: '/plugins/read',
+              guard: 'content.read',
+              component: () => 'read',
+            },
+            {
+              id: 'plugin.create',
+              path: '/plugins/create',
+              guard: 'content.create',
+              component: () => 'create',
+            },
+            {
+              id: 'plugin.write',
+              path: '/plugins/write',
+              guard: 'content.write',
+              component: () => 'write',
+            },
+          ],
+        },
+      ],
+    });
+    const rootRoute = { id: 'root' };
+    const routes = routeFactories.map((factory) => factory(rootRoute as never));
+    const routeMap = new Map(routes.map((route) => [String(readRouteOptions(route).path), route]));
+
+    await readRouteOptions(routeMap.get('/plugins/read')).beforeLoad?.({ href: '/plugins/read' });
+    await readRouteOptions(routeMap.get('/plugins/create')).beforeLoad?.({ href: '/plugins/create' });
+    await readRouteOptions(routeMap.get('/plugins/write')).beforeLoad?.({ href: '/plugins/write' });
+
+    expect(guardSpies.content).toHaveBeenCalledWith({ href: '/plugins/read' });
+    expect(guardSpies.contentCreate).toHaveBeenCalledWith({ href: '/plugins/create' });
+    expect(guardSpies.contentDetail).toHaveBeenCalledWith({ href: '/plugins/write' });
+  });
+
   it('builds server route factories without requiring app-local route composition', () => {
     const routeFactories = getServerRouteFactories({ bindings });
 
@@ -175,5 +252,16 @@ describe('app.routes', () => {
     expect(mapPluginGuardToAccountGuard('content.create')).toBe('contentCreate');
     expect(mapPluginGuardToAccountGuard('content.write')).toBe('contentDetail');
     expect(mapPluginGuardToAccountGuard(undefined)).toBeNull();
+  });
+
+  it('normalizes IAM and role detail tabs to canonical search values', () => {
+    expect(normalizeIamTab('governance')).toBe('governance');
+    expect(normalizeIamTab('dsr')).toBe('dsr');
+    expect(normalizeIamTab('anything-else')).toBe('rights');
+
+    expect(normalizeRoleDetailTab('permissions')).toBe('permissions');
+    expect(normalizeRoleDetailTab('assignments')).toBe('assignments');
+    expect(normalizeRoleDetailTab('sync')).toBe('sync');
+    expect(normalizeRoleDetailTab('anything-else')).toBe('general');
   });
 });

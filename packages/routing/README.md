@@ -18,18 +18,23 @@ App          <- Root, Context, Seiten-Bindings
 
 | Pfad | Beschreibung |
 | --- | --- |
-| `@sva/routing` | `getClientRouteFactories()`, Plugin-Factories, Route-Pfade, Guards, Search-Normalisierung |
+| `@sva/routing` | `getClientRouteFactories()`, Route-Pfade, Search-Normalisierung, zentrale Routing-Typen |
 | `@sva/routing/server` | `getServerRouteFactories()` plus serverseitige Auth-Handler-Factories |
+| `@sva/routing/guards` | Guard-Definitionen und Protected-Route-Helfer |
+| `@sva/routing/plugins` | Plugin-Guard-Mapping und Plugin-Route-Factories |
+| `@sva/routing/auth` | kanonische Auth-/HTTP-Pfade |
 
 ### Client-Verwendung
 
 ```ts
-import { getClientRouteFactories } from '@sva/routing';
+import { getClientRouteFactories, routePaths } from '@sva/routing';
 
 const routeFactories = getClientRouteFactories({
   bindings: appRouteBindings,
   plugins: studioPlugins,
 });
+
+routePaths.ui.interfaces;
 ```
 
 ### Server-Verwendung
@@ -41,6 +46,13 @@ const routeFactories = getServerRouteFactories({
   bindings: appRouteBindings,
   plugins: studioPlugins,
 });
+```
+
+### Guards und Plugins
+
+```ts
+import { createProtectedRoute } from '@sva/routing/guards';
+import { getPluginRouteFactories } from '@sva/routing/plugins';
 ```
 
 ## Routing-Modell

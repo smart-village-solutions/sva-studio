@@ -11,9 +11,7 @@ export {
   resolveAuthRoutePathForRequestPath,
 } from './auth.routes.server.js';
 export {
-  getPluginRouteFactories,
   getServerRouteFactories,
-  mapPluginGuardToAccountGuard,
   type AppRouteBindings,
   type AppRouteFactory,
 } from './app.routes.server.js';

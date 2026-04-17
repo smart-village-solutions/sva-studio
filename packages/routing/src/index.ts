@@ -12,7 +12,7 @@ export {
   type AppRouteBindings,
   type AppRouteFactory,
 } from './app.routes.js';
-export { accountUiRouteGuards, accountUiRoutePaths, type AccountUiRouteKey } from './account-ui.routes.js';
+export { accountUiRouteGuards } from './account-ui.routes.js';
 export { createAdminRoute, createProtectedRoute } from './protected.routes.js';
 export { normalizeIamTab, normalizeRoleDetailTab } from './route-search.js';
 export { routePaths, uiRoutePaths, type UiRoutePathKey } from './route-paths.js';

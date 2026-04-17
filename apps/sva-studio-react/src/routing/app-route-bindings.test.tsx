@@ -266,6 +266,51 @@ describe('appRouteBindings', () => {
     expect(screen.getByTestId('iam-viewer-page').textContent).toBe('iam:members');
   });
 
+  it('falls back to empty string route params when router params are not strings', async () => {
+    const { appRouteBindings } = await import('./app-route-bindings');
+
+    routeState.params = {
+      contentId: 123,
+      groupId: null,
+      instanceId: false,
+      legalTextVersionId: { value: 'legal-2' },
+      organizationId: ['org-4'],
+      roleId: undefined,
+      userId: 0,
+    };
+    routeState.search = {
+      tab: undefined,
+    };
+
+    render(<appRouteBindings.contentDetail />);
+    expect(screen.getByTestId('content-editor-page').textContent).toBe('edit:');
+    cleanup();
+
+    render(<appRouteBindings.adminInstanceDetail />);
+    expect(screen.getByTestId('instance-detail-page').textContent).toBe('');
+    cleanup();
+
+    render(<appRouteBindings.adminRoleDetail />);
+    expect(routeState.normalizeRoleDetailTab).toHaveBeenCalledWith(undefined);
+    expect(screen.getByTestId('role-detail-page').textContent).toBe(':role:');
+    cleanup();
+
+    render(<appRouteBindings.adminLegalTextDetail />);
+    expect(screen.getByTestId('legal-text-detail-page').textContent).toBe('');
+    cleanup();
+
+    render(<appRouteBindings.adminGroupDetail />);
+    await waitFor(() => expect(screen.getByTestId('group-detail-page').textContent).toBe(''));
+    cleanup();
+
+    render(<appRouteBindings.adminOrganizationDetail />);
+    await waitFor(() => expect(screen.getByTestId('organization-detail-page').textContent).toBe(''));
+    cleanup();
+
+    render(<appRouteBindings.adminUserDetail />);
+    await waitFor(() => expect(screen.getByTestId('user-edit-page').textContent).toBe(''));
+  });
+
   it('exposes the direct page bindings for the canonical route keys', async () => {
     const { appRouteBindings } = await import('./app-route-bindings');
 

@@ -28,7 +28,7 @@ const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
 
 const shouldAttachDebugAuthHeaders = (): boolean => process.env.SVA_AUTH_DEBUG_HEADERS === 'true';
 
-await initializeOtelSdk().catch((error: unknown) => {
+void initializeOtelSdk().catch((error: unknown) => {
   logger.error('Fehler bei OTEL SDK Initialisierung im Auth-Modul', {
     component: 'iam-auth',
     dependency: 'otel',

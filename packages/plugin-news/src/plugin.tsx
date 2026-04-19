@@ -2,39 +2,39 @@ import { definePluginActions, type PluginDefinition } from '@sva/sdk';
 
 import { NewsCreatePage, NewsEditPage, NewsListPage } from './news.pages.js';
 
+export const pluginNewsActionIds = {
+  create: 'news.create',
+  edit: 'news.edit',
+  update: 'news.update',
+  delete: 'news.delete',
+} as const;
+
 export const pluginNewsActionDefinitions = definePluginActions('news', [
   {
-    id: 'news.create',
+    id: pluginNewsActionIds.create,
     titleKey: 'news.actions.create',
     requiredAction: 'content.create',
     legacyAliases: ['create'],
   },
   {
-    id: 'news.edit',
+    id: pluginNewsActionIds.edit,
     titleKey: 'news.actions.edit',
     requiredAction: 'content.write',
     legacyAliases: ['edit'],
   },
   {
-    id: 'news.update',
+    id: pluginNewsActionIds.update,
     titleKey: 'news.actions.update',
     requiredAction: 'content.write',
     legacyAliases: ['save', 'update'],
   },
   {
-    id: 'news.delete',
+    id: pluginNewsActionIds.delete,
     titleKey: 'news.actions.delete',
     requiredAction: 'content.write',
     legacyAliases: ['delete'],
   },
 ] as const);
-
-export const pluginNewsActionIds = {
-  create: pluginNewsActionDefinitions[0].id,
-  edit: pluginNewsActionDefinitions[1].id,
-  update: pluginNewsActionDefinitions[2].id,
-  delete: pluginNewsActionDefinitions[3].id,
-} as const;
 
 export const getPluginNewsActionDefinition = (
   actionId: (typeof pluginNewsActionIds)[keyof typeof pluginNewsActionIds]

@@ -13,6 +13,11 @@ type RuntimeDiagnosticInput = {
   readonly details?: Readonly<Record<string, unknown>>;
 };
 
+type RuntimeDiagnosticSafeDetails = Readonly<{
+  input: RuntimeDiagnosticInput;
+  safeDetails?: IamRuntimeSafeDetails;
+}>;
+
 const readString = (value: unknown): string | undefined => (typeof value === 'string' ? value : undefined);
 
 const readSafeDetails = (details?: Readonly<Record<string, unknown>>): IamRuntimeSafeDetails | undefined => {
@@ -33,17 +38,20 @@ const readSafeDetails = (details?: Readonly<Record<string, unknown>>): IamRuntim
     actor_resolution: readString(details.actor_resolution),
     instance_id: readString(details.instance_id),
     return_to: readString(details.return_to),
-    sync_state: readString(details.syncState),
-    sync_error_code: readString(syncError?.code),
+    sync_state: readString(details.sync_state) ?? readString(details.syncState),
+    sync_error_code: readString(details.sync_error_code) ?? readString(details.syncErrorCode) ?? readString(syncError?.code),
   };
 
   return Object.values(safeDetails).some((value) => typeof value === 'string') ? safeDetails : undefined;
 };
 
-const classify = (input: RuntimeDiagnosticInput): IamRuntimeDiagnosticClassification => {
-  const safeDetails = readSafeDetails(input.details);
+const classify = ({ input, safeDetails }: RuntimeDiagnosticSafeDetails): IamRuntimeDiagnosticClassification => {
   const reasonCode = safeDetails?.reason_code;
   const syncErrorCode = safeDetails?.sync_error_code;
+
+  if (syncErrorCode === 'DB_WRITE_FAILED') {
+    return 'database_mapping_or_membership_inconsistency';
+  }
 
   if (syncErrorCode || safeDetails?.sync_state) {
     return 'keycloak_reconcile';
@@ -161,12 +169,13 @@ const resolveRecommendedAction = (
 };
 
 export const deriveIamRuntimeDiagnostics = (input: RuntimeDiagnosticInput): IamRuntimeDiagnostics => {
-  const classification = classify(input);
+  const safeDetails = readSafeDetails(input.details);
+  const classification = classify({ input, safeDetails });
 
   return {
     classification,
     status: resolveStatus(input, classification),
     recommendedAction: resolveRecommendedAction(input, classification),
-    ...(readSafeDetails(input.details) ? { safeDetails: readSafeDetails(input.details) } : {}),
+    ...(safeDetails ? { safeDetails } : {}),
   };
 };

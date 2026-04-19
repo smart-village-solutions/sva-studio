@@ -148,6 +148,46 @@ describe('deriveIamRuntimeDiagnostics', () => {
     });
   });
 
+  it('accepts snake_case reconcile details and keeps DB write failures out of reconcile classification', () => {
+    expect(
+      deriveIamRuntimeDiagnostics({
+        code: 'keycloak_unavailable',
+        status: 503,
+        details: {
+          sync_error_code: 'IDP_FORBIDDEN',
+          sync_state: 'failed',
+        },
+      })
+    ).toEqual({
+      classification: 'keycloak_reconcile',
+      recommendedAction: 'rollenabgleich_pruefen',
+      safeDetails: {
+        sync_error_code: 'IDP_FORBIDDEN',
+        sync_state: 'failed',
+      },
+      status: 'manuelle_pruefung_erforderlich',
+    });
+
+    expect(
+      deriveIamRuntimeDiagnostics({
+        code: 'keycloak_unavailable',
+        status: 503,
+        details: {
+          syncErrorCode: 'DB_WRITE_FAILED',
+          syncState: 'failed',
+        },
+      })
+    ).toEqual({
+      classification: 'database_mapping_or_membership_inconsistency',
+      recommendedAction: 'manuell_pruefen',
+      safeDetails: {
+        sync_error_code: 'DB_WRITE_FAILED',
+        sync_state: 'failed',
+      },
+      status: 'degradiert',
+    });
+  });
+
   it('classifies database mapping inconsistencies and unknown failures', () => {
     expect(
       deriveIamRuntimeDiagnostics({

@@ -35,7 +35,12 @@ import type {
   IamRuntimeSafeDetails,
   UpdateIamContentInput,
 } from '@sva/core';
-import { deriveIamRuntimeDiagnostics } from '@sva/core';
+import {
+  deriveIamRuntimeDiagnostics,
+  iamRuntimeDiagnosticClassifications,
+  iamRuntimeDiagnosticStatuses,
+  iamRuntimeRecommendedActions,
+} from '@sva/core';
 import { createBrowserLogger } from '@sva/sdk/logging';
 
 const IAM_HEADERS = {
@@ -153,6 +158,8 @@ const readSafeDiagnosticDetails = (payload: IamErrorPayload | null): IamRuntimeS
   }
 
   const source = details as Record<string, unknown>;
+  const syncError =
+    typeof source.syncError === 'object' && source.syncError !== null ? (source.syncError as Record<string, unknown>) : undefined;
   const safeDetails: IamRuntimeSafeDetails = {
     reason_code: typeof source.reason_code === 'string' ? source.reason_code : undefined,
     dependency: typeof source.dependency === 'string' ? source.dependency : undefined,
@@ -163,6 +170,20 @@ const readSafeDiagnosticDetails = (payload: IamErrorPayload | null): IamRuntimeS
       typeof source.actor_resolution === 'string' ? source.actor_resolution : undefined,
     instance_id: typeof source.instance_id === 'string' ? source.instance_id : undefined,
     return_to: typeof source.return_to === 'string' ? source.return_to : undefined,
+    sync_state:
+      typeof source.sync_state === 'string'
+        ? source.sync_state
+        : typeof source.syncState === 'string'
+          ? source.syncState
+          : undefined,
+    sync_error_code:
+      typeof source.sync_error_code === 'string'
+        ? source.sync_error_code
+        : typeof source.syncErrorCode === 'string'
+          ? source.syncErrorCode
+          : typeof syncError?.code === 'string'
+            ? syncError.code
+            : undefined,
   };
 
   return Object.values(safeDetails).some((value) => typeof value === 'string') ? safeDetails : undefined;
@@ -170,6 +191,30 @@ const readSafeDiagnosticDetails = (payload: IamErrorPayload | null): IamRuntimeS
 
 const readStructuredErrorPayload = (payload: IamErrorPayload | null) =>
   payload && typeof payload.error === 'object' && payload.error ? (payload.error as Record<string, unknown>) : undefined;
+
+const normalizeRuntimeDiagnosticClassification = (
+  value: unknown,
+  fallback: IamRuntimeDiagnosticClassification
+): IamRuntimeDiagnosticClassification =>
+  typeof value === 'string' && iamRuntimeDiagnosticClassifications.includes(value as IamRuntimeDiagnosticClassification)
+    ? (value as IamRuntimeDiagnosticClassification)
+    : fallback;
+
+const normalizeRuntimeDiagnosticStatus = (
+  value: unknown,
+  fallback: IamRuntimeDiagnosticStatus
+): IamRuntimeDiagnosticStatus =>
+  typeof value === 'string' && iamRuntimeDiagnosticStatuses.includes(value as IamRuntimeDiagnosticStatus)
+    ? (value as IamRuntimeDiagnosticStatus)
+    : fallback;
+
+const normalizeRuntimeRecommendedAction = (
+  value: unknown,
+  fallback: IamRuntimeRecommendedAction
+): IamRuntimeRecommendedAction =>
+  typeof value === 'string' && iamRuntimeRecommendedActions.includes(value as IamRuntimeRecommendedAction)
+    ? (value as IamRuntimeRecommendedAction)
+    : fallback;
 
 const readRuntimeDiagnostics = (
   payload: IamErrorPayload | null,
@@ -184,18 +229,15 @@ const readRuntimeDiagnostics = (
     details: safeDetails,
   });
 
-  const classification =
-    typeof structuredError?.classification === 'string'
-      ? (structuredError.classification as IamRuntimeDiagnosticClassification)
-      : fallbackDiagnostics.classification;
-  const diagnosticStatus =
-    typeof structuredError?.status === 'string'
-      ? (structuredError.status as IamRuntimeDiagnosticStatus)
-      : fallbackDiagnostics.status;
-  const recommendedAction =
-    typeof structuredError?.recommendedAction === 'string'
-      ? (structuredError.recommendedAction as IamRuntimeRecommendedAction)
-      : fallbackDiagnostics.recommendedAction;
+  const classification = normalizeRuntimeDiagnosticClassification(
+    structuredError?.classification,
+    fallbackDiagnostics.classification
+  );
+  const diagnosticStatus = normalizeRuntimeDiagnosticStatus(structuredError?.status, fallbackDiagnostics.status);
+  const recommendedAction = normalizeRuntimeRecommendedAction(
+    structuredError?.recommendedAction,
+    fallbackDiagnostics.recommendedAction
+  );
   const explicitSafeDetails =
     structuredError?.safeDetails && typeof structuredError.safeDetails === 'object'
       ? (structuredError.safeDetails as IamRuntimeSafeDetails)

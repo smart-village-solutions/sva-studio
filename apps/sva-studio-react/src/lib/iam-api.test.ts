@@ -385,6 +385,46 @@ describe('iam-api organization helpers', () => {
     });
   });
 
+  it('normalizes mixed-version diagnostic payloads and legacy sync detail keys', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            error: {
+              code: 'keycloak_unavailable',
+              message: 'boom',
+              classification: 'future_server_value',
+              status: 'unexpected_status',
+              recommendedAction: 'future_action',
+              details: {
+                syncState: 'failed',
+                syncError: {
+                  code: 'IDP_FORBIDDEN',
+                },
+              },
+            },
+            requestId: 'req-mixed-version',
+          }),
+          { status: 503, headers: { 'content-type': 'application/json' } }
+        )
+      )
+    );
+
+    await expect(reconcileRoles()).rejects.toMatchObject({
+      status: 503,
+      code: 'keycloak_unavailable',
+      classification: 'keycloak_reconcile',
+      diagnosticStatus: 'manuelle_pruefung_erforderlich',
+      recommendedAction: 'rollenabgleich_pruefen',
+      safeDetails: {
+        sync_error_code: 'IDP_FORBIDDEN',
+        sync_state: 'failed',
+      },
+      requestId: 'req-mixed-version',
+    });
+  });
+
   it('surfaces non-json success payloads as typed errors', async () => {
     vi.stubGlobal(
       'fetch',

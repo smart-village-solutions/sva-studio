@@ -27,6 +27,9 @@ const ACTION_LABEL_KEYS: Record<IamRuntimeRecommendedAction, string> = {
   support_kontaktieren: 'admin.shared.diagnostics.actions.supportKontaktieren',
 };
 
+const readLabelKey = <TKey extends string>(mapping: Readonly<Record<TKey, string>>, value?: string): string | undefined =>
+  value && Object.hasOwn(mapping, value) ? mapping[value as TKey] : undefined;
+
 type IamRuntimeDiagnosticDetailsProps = Readonly<{
   error: IamHttpError;
 }>;
@@ -36,19 +39,22 @@ export const IamRuntimeDiagnosticDetails = ({ error }: IamRuntimeDiagnosticDetai
     return null;
   }
 
+  const classificationLabelKey = readLabelKey(CLASSIFICATION_LABEL_KEYS, error.classification);
+  const actionLabelKey = readLabelKey(ACTION_LABEL_KEYS, error.recommendedAction);
+
   return (
     <div className="space-y-1 text-xs text-muted-foreground">
-      {error.classification ? (
+      {classificationLabelKey ? (
         <p>
           {t('admin.shared.diagnostics.classification', {
-            value: t(CLASSIFICATION_LABEL_KEYS[error.classification]),
+            value: t(classificationLabelKey),
           })}
         </p>
       ) : null}
-      {error.recommendedAction ? (
+      {actionLabelKey ? (
         <p>
           {t('admin.shared.diagnostics.recommendedAction', {
-            value: t(ACTION_LABEL_KEYS[error.recommendedAction]),
+            value: t(actionLabelKey),
           })}
         </p>
       ) : null}

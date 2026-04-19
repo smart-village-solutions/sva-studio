@@ -59,6 +59,9 @@ export interface RoutingDiagnosticsHook {
   (event: RoutingDiagnosticEvent): void;
 }
 
+const isPromiseLike = (value: unknown): value is PromiseLike<unknown> =>
+  typeof value === 'object' && value !== null && typeof Reflect.get(value, 'then') === 'function';
+
 export const emitRoutingDiagnostic = (
   diagnostics: RoutingDiagnosticsHook | undefined,
   event: RoutingDiagnosticEvent
@@ -68,7 +71,12 @@ export const emitRoutingDiagnostic = (
   }
 
   try {
-    diagnostics(event);
+    const maybePromise = diagnostics(event) as void | PromiseLike<unknown>;
+    if (isPromiseLike(maybePromise)) {
+      void Promise.resolve(maybePromise).catch(() => {
+        // Diagnostics hooks must never change routing behavior.
+      });
+    }
   } catch {
     // Diagnostics hooks must never change routing behavior.
   }

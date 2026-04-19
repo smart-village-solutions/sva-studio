@@ -1,7 +1,7 @@
 import type { PluginDefinition, PluginRouteGuard, RouteFactory } from '@sva/sdk';
 import { createRoute, type AnyRoute, type RootRoute, type RouteComponent } from '@tanstack/react-router';
 
-import { createAccountUiRouteGuards } from './account-ui.routes.js';
+import { createAccountUiRouteGuard } from './account-ui.routes.js';
 import { emitRoutingDiagnostic, type RoutingDiagnosticsHook } from './diagnostics.js';
 import { normalizeIamTab, normalizeRoleDetailTab } from './route-search.js';
 import { uiRoutePaths } from './route-paths.js';
@@ -46,7 +46,28 @@ export type AppRouteBindings = {
   readonly adminApiPhase1Test: RouteComponent;
 };
 
-type GuardKey = keyof ReturnType<typeof createAccountUiRouteGuards>;
+type GuardKey =
+  | 'account'
+  | 'accountPrivacy'
+  | 'content'
+  | 'contentCreate'
+  | 'contentDetail'
+  | 'adminUsers'
+  | 'adminUserCreate'
+  | 'adminUserDetail'
+  | 'adminOrganizations'
+  | 'adminOrganizationCreate'
+  | 'adminOrganizationDetail'
+  | 'adminInstances'
+  | 'adminRoles'
+  | 'adminRoleDetail'
+  | 'adminGroups'
+  | 'adminGroupCreate'
+  | 'adminGroupDetail'
+  | 'adminLegalTexts'
+  | 'adminLegalTextCreate'
+  | 'adminLegalTextDetail'
+  | 'adminIam';
 type BindingKey = keyof AppRouteBindings;
 
 type UiRouteDefinition = {
@@ -114,20 +135,18 @@ export const createUiRouteFactories = (
     readonly diagnostics?: RoutingDiagnosticsHook;
   } = {}
 ): readonly AppRouteFactory[] => {
-  const guards = createAccountUiRouteGuards(options.diagnostics);
-
   return uiRouteDefinitions.map((definition) => {
     if (definition.guard) {
-      const guard = guards[definition.guard];
+      const guard = createAccountUiRouteGuard(definition.guard, options.diagnostics, definition.path);
 
       return (rootRoute: RootRoute) =>
         createRoute({
           getParentRoute: () => rootRoute,
           path: definition.path,
-          beforeLoad: (options) => guard(options),
+          beforeLoad: (beforeLoadOptions) => guard(beforeLoadOptions),
           validateSearch: definition.validateSearch,
-        component: bindings[definition.binding],
-      });
+          component: bindings[definition.binding],
+        });
     }
 
     return (rootRoute: RootRoute) =>
@@ -161,11 +180,13 @@ export const getPluginRouteFactories = (
     readonly diagnostics?: RoutingDiagnosticsHook;
   } = {}
 ): readonly AppRouteFactory[] => {
-  const guards = createAccountUiRouteGuards(options.diagnostics);
-
   return pluginDefinitions.flatMap((pluginDefinition) =>
     pluginDefinition.routes.map((routeDefinition) => {
       const guardKey = mapPluginGuardToAccountGuard(routeDefinition.guard);
+      const guard = guardKey
+        ? createAccountUiRouteGuard(guardKey, options.diagnostics, routeDefinition.path)
+        : null;
+
       if (!guardKey && routeDefinition.guard) {
         emitRoutingDiagnostic(options.diagnostics, {
           level: 'warn',
@@ -182,11 +203,11 @@ export const getPluginRouteFactories = (
           getParentRoute: () => rootRoute,
           path: routeDefinition.path,
           beforeLoad: (options) => {
-            if (!guardKey) {
+            if (!guard) {
               return;
             }
 
-            return guards[guardKey](options);
+            return guard(options);
           },
           component: routeDefinition.component as RouteComponent,
         });

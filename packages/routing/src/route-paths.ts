@@ -1,4 +1,4 @@
-/* eslint-disable @nx/enforce-module-boundaries */
+/* eslint-disable-next-line @nx/enforce-module-boundaries */
 import { authRoutePaths } from '@sva/auth';
 
 export const uiRoutePaths = {

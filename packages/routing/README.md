@@ -57,7 +57,7 @@ import { getPluginRouteFactories } from '@sva/routing/plugins';
 
 ## Observability-Vertrag
 
-`@sva/routing` bietet einen kleinen, optional injizierten Diagnostics-Vertrag fuer routing-relevante Entscheidungen.
+`@sva/routing` bietet einen kleinen, optional injizierten Diagnostics-Vertrag für routing-relevante Entscheidungen.
 
 ### Exportierte Typen
 

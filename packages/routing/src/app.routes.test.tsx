@@ -24,6 +24,10 @@ const guardSpies = vi.hoisted(() => ({
   adminIam: vi.fn(async () => undefined),
 }));
 
+const createAccountUiRouteGuardMock = vi.hoisted(() =>
+  vi.fn((guardKey: keyof typeof guardSpies) => guardSpies[guardKey])
+);
+
 const createRouteMock = vi.hoisted(() =>
   vi.fn((options: Record<string, unknown>) => ({
     options,
@@ -41,6 +45,7 @@ vi.mock('@tanstack/react-router', () => ({
 vi.mock('./account-ui.routes', () => ({
   accountUiRouteGuards: guardSpies,
   createAccountUiRouteGuards: vi.fn(() => guardSpies),
+  createAccountUiRouteGuard: createAccountUiRouteGuardMock,
 }));
 
 import {
@@ -158,6 +163,9 @@ describe('app.routes', () => {
     expect(guardSpies.account).toHaveBeenCalledWith({ href: '/account' });
     expect(guardSpies.adminUsers).toHaveBeenCalledWith({ href: '/admin/users' });
     expect(guardSpies.content).toHaveBeenCalledWith({ href: '/plugins/news' });
+    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('account', undefined, '/account');
+    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('adminUsers', undefined, '/admin/users');
+    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('content', undefined, '/plugins/news');
 
     expect(readRouteOptions(routeMap.get('/admin/iam')).validateSearch?.({ tab: 'bogus' })).toEqual({
       tab: 'rights',
@@ -243,6 +251,9 @@ describe('app.routes', () => {
     expect(guardSpies.content).toHaveBeenCalledWith({ href: '/plugins/read' });
     expect(guardSpies.contentCreate).toHaveBeenCalledWith({ href: '/plugins/create' });
     expect(guardSpies.contentDetail).toHaveBeenCalledWith({ href: '/plugins/write' });
+    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('content', undefined, '/plugins/read');
+    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('contentCreate', undefined, '/plugins/create');
+    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('contentDetail', undefined, '/plugins/write');
   });
 
   it('emits one diagnostics event for unsupported plugin guards during factory creation', () => {

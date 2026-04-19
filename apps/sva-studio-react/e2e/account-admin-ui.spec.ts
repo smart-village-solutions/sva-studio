@@ -258,6 +258,11 @@ test('admin user list and edit page are reachable for system_admin', async ({ pa
       contentType: 'application/json',
       body: JSON.stringify({
         data: {
+          outcome: 'success',
+          checkedCount: 2,
+          correctedCount: 2,
+          failedCount: 0,
+          manualReviewCount: 0,
           importedCount: 1,
           updatedCount: 1,
           skippedCount: 0,
@@ -343,7 +348,7 @@ test('admin user list and edit page are reachable for system_admin', async ({ pa
   await expect(page.getByRole('heading', { name: 'Benutzerverwaltung' })).toBeVisible();
   await expect(page.getByRole('table', { name: 'Benutzertabelle' })).toContainText('User Two');
   await page.getByRole('button', { name: 'Aus Keycloak synchronisieren' }).dispatchEvent('click');
-  await expect(page.getByText('1 importiert, 1 aktualisiert, 0 ohne passenden Instanzkontext übersprungen.')).toBeVisible();
+  await expect(page.getByText(/2 geprüft: 2 korrigiert, 0 fehlgeschlagen, 0 manuell prüfen/)).toBeVisible();
 
   const userDetailResponsePromise = page.waitForResponse(
     (response) => response.url().includes('/api/v1/iam/users/account-2') && response.status() === 200

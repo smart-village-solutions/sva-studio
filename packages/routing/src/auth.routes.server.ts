@@ -2,12 +2,13 @@ import type { RootRoute } from '@tanstack/react-router';
 import { createRoute } from '@tanstack/react-router';
 import {
   createSdkLogger,
-  extractRequestIdFromHeaders,
-  extractTraceIdFromHeaders,
-  getHeadersFromRequest,
   toJsonErrorResponse,
 } from '@sva/sdk/server';
 import type { RoutingDiagnosticEvent } from './diagnostics.js';
+import {
+  defaultServerRoutingDiagnostics,
+  readRoutingDiagnosticsContextFromRequest,
+} from './diagnostics.server.js';
 import { authRoutePaths } from './auth.routes.js';
 
 type AuthHandlers = {
@@ -48,74 +49,12 @@ const methodNotAllowedJson = (allow: string, requestId?: string) =>
     }
   );
 
-const readWorkspaceIdFromRequest = (request: Request): string => {
-  const headers = getHeadersFromRequest(request);
-  const fromHeaders =
-    headers['x-workspace-id'] ??
-    headers['x-sva-workspace-id'] ??
-    headers['x-instance-id'];
-  if (typeof fromHeaders === 'string' && fromHeaders.trim().length > 0) {
-    return fromHeaders.trim();
-  }
-
-  const url = new URL(request.url);
-  const fromQuery = url.searchParams.get('instanceId');
-  if (typeof fromQuery === 'string' && fromQuery.trim().length > 0) {
-    return fromQuery.trim();
-  }
-
-  return 'default';
-};
-
-const logRoutingServerEvent = (event: RoutingDiagnosticEvent): void => {
-  switch (event.event) {
-    case 'routing.handler.error_caught':
-      logger.error('Unhandled exception in auth route handler', {
-        event: event.event,
-        method: event.method,
-        route: event.route,
-        workspace_id: event.workspace_id,
-        request_id: event.request_id,
-        trace_id: event.trace_id,
-        error_type: event.error_type,
-        error_message: event.error_message,
-      });
-      return;
-    case 'routing.handler.method_not_allowed':
-      logger.warn('Unsupported HTTP method for auth route handler', {
-        event: event.event,
-        reason: event.reason,
-        method: event.method,
-        route: event.route,
-        allow: event.allow,
-        workspace_id: event.workspace_id,
-        request_id: event.request_id,
-        trace_id: event.trace_id,
-      });
-      return;
-    case 'routing.logger.fallback_activated':
-      logger.error('Routing logger fallback activated', {
-        event: event.event,
-        method: event.method,
-        route: event.route,
-        workspace_id: event.workspace_id,
-        request_id: event.request_id,
-        trace_id: event.trace_id,
-        error_type: event.error_type,
-        error_message: event.error_message,
-      });
-      return;
-    default:
-      return;
-  }
-};
-
 const buildMethodNotAllowedEvent = (
   request: Request,
   route: string,
   allow: string
 ): Extract<RoutingDiagnosticEvent, { event: 'routing.handler.method_not_allowed' }> => {
-  const requestHeaders = getHeadersFromRequest(request);
+  const context = readRoutingDiagnosticsContextFromRequest(request);
 
   return {
     level: 'warn',
@@ -124,9 +63,7 @@ const buildMethodNotAllowedEvent = (
     reason: 'method-not-allowed',
     method: request.method.toUpperCase(),
     allow,
-    request_id: extractRequestIdFromHeaders(requestHeaders),
-    trace_id: extractTraceIdFromHeaders(requestHeaders),
-    workspace_id: readWorkspaceIdFromRequest(request),
+    ...context,
   };
 };
 
@@ -140,7 +77,7 @@ const createMethodNotAllowedResponse = (
 ): Response => {
   const event = buildMethodNotAllowedEvent(request, route, allow);
   if (options.log !== false) {
-    logRoutingServerEvent(event);
+    defaultServerRoutingDiagnostics(event);
   }
 
   return methodNotAllowedJson(allow, event.request_id);
@@ -736,26 +673,43 @@ export const wrapHandlersWithJsonErrorBoundary = (handlers: AuthHandlers, routeP
   const wrapped: AuthHandlers = {};
   for (const [method, handler] of Object.entries(handlers) as [string, NonNullable<AuthHandlers[keyof AuthHandlers]>][]) {
     (wrapped as Record<string, typeof handler>)[method] = async (ctx) => {
+      const context = readRoutingDiagnosticsContextFromRequest(ctx.request);
+      const route = routePath ?? new URL(ctx.request.url).pathname;
+      const startedAt = Date.now();
+      defaultServerRoutingDiagnostics({
+        level: 'info',
+        event: 'routing.handler.dispatched',
+        method,
+        route,
+        ...context,
+      });
+
       try {
-        return await handler(ctx);
+        const response = await handler(ctx);
+        defaultServerRoutingDiagnostics({
+          level: 'info',
+          event: 'routing.handler.completed',
+          method,
+          route,
+          status_code: response.status,
+          duration_ms: Date.now() - startedAt,
+          ...context,
+        });
+        return response;
       } catch (error) {
-        const requestHeaders = getHeadersFromRequest(ctx.request);
-        const requestId = extractRequestIdFromHeaders(requestHeaders);
-        const traceId = extractTraceIdFromHeaders(requestHeaders);
-        const route = routePath ?? new URL(ctx.request.url).pathname;
-        const workspaceId = readWorkspaceIdFromRequest(ctx.request);
         const errorType = getErrorType(error);
         const errorMessage = getErrorMessage(error);
+        const errorResponse = toJsonErrorResponse(500, 'internal_error', 'Ein unerwarteter Fehler ist aufgetreten.', {
+          requestId: context.request_id,
+        });
 
         try {
-          logRoutingServerEvent({
+          defaultServerRoutingDiagnostics({
             level: 'error',
             event: 'routing.handler.error_caught',
             method,
             route,
-            workspace_id: workspaceId,
-            request_id: requestId,
-            trace_id: traceId,
+            ...context,
             error_type: errorType,
             error_message: errorMessage,
           });
@@ -763,17 +717,24 @@ export const wrapHandlersWithJsonErrorBoundary = (handlers: AuthHandlers, routeP
           writeLoggerFallback({
             method,
             route,
-            workspaceId,
-            requestId,
-            traceId,
+            workspaceId: context.workspace_id ?? 'default',
+            requestId: context.request_id,
+            traceId: context.trace_id,
             errorType,
             errorMessage,
           });
         }
 
-        return toJsonErrorResponse(500, 'internal_error', 'Ein unerwarteter Fehler ist aufgetreten.', {
-          requestId,
+        defaultServerRoutingDiagnostics({
+          level: 'info',
+          event: 'routing.handler.completed',
+          method,
+          route,
+          status_code: errorResponse.status,
+          duration_ms: Date.now() - startedAt,
+          ...context,
         });
+        return errorResponse;
       }
     };
   }

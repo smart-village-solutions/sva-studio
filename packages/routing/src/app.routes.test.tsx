@@ -1,4 +1,11 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const browserRoutingLogger = vi.hoisted(() => ({
+  debug: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+}));
 
 const guardSpies = vi.hoisted(() => ({
   account: vi.fn(async () => undefined),
@@ -41,6 +48,15 @@ const createRouteMock = vi.hoisted(() =>
 vi.mock('@tanstack/react-router', () => ({
   createRoute: createRouteMock,
 }));
+
+vi.mock('@sva/sdk', async () => {
+  const actual = await vi.importActual<typeof import('@sva/sdk')>('@sva/sdk');
+
+  return {
+    ...actual,
+    createBrowserLogger: () => browserRoutingLogger,
+  };
+});
 
 vi.mock('./account-ui.routes', () => ({
   accountUiRouteGuards: guardSpies,
@@ -111,6 +127,10 @@ const readRouteOptions = (route: unknown): RouteOptionsUnderTest => {
 };
 
 describe('app.routes', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it('builds client route factories from the canonical UI definitions and plugin definitions', async () => {
     const newsPlugin = {
       id: 'news',
@@ -163,9 +183,9 @@ describe('app.routes', () => {
     expect(guardSpies.account).toHaveBeenCalledWith({ href: '/account' });
     expect(guardSpies.adminUsers).toHaveBeenCalledWith({ href: '/admin/users' });
     expect(guardSpies.content).toHaveBeenCalledWith({ href: '/plugins/news' });
-    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('account', undefined, '/account');
-    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('adminUsers', undefined, '/admin/users');
-    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('content', undefined, '/plugins/news');
+    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('account', expect.any(Function), '/account');
+    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('adminUsers', expect.any(Function), '/admin/users');
+    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('content', expect.any(Function), '/plugins/news');
 
     expect(readRouteOptions(routeMap.get('/admin/iam')).validateSearch?.({ tab: 'bogus' })).toEqual({
       tab: 'rights',
@@ -251,9 +271,9 @@ describe('app.routes', () => {
     expect(guardSpies.content).toHaveBeenCalledWith({ href: '/plugins/read' });
     expect(guardSpies.contentCreate).toHaveBeenCalledWith({ href: '/plugins/create' });
     expect(guardSpies.contentDetail).toHaveBeenCalledWith({ href: '/plugins/write' });
-    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('content', undefined, '/plugins/read');
-    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('contentCreate', undefined, '/plugins/create');
-    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('contentDetail', undefined, '/plugins/write');
+    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('content', expect.any(Function), '/plugins/read');
+    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('contentCreate', expect.any(Function), '/plugins/create');
+    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('contentDetail', expect.any(Function), '/plugins/write');
   });
 
   it('emits one diagnostics event for unsupported plugin guards during factory creation', () => {
@@ -287,6 +307,34 @@ describe('app.routes', () => {
       plugin: 'plugin-unsupported',
       unsupported_guard: 'unknown.guard',
     });
+  });
+
+  it('logs unsupported plugin guards through the default diagnostics logger when none is injected', () => {
+    const pluginFactories = getPluginRouteFactories([
+      {
+        id: 'default-logged-plugin',
+        displayName: 'Default logged plugin',
+        routes: [
+          {
+            id: 'default.logged',
+            path: '/plugins/default-logged',
+            guard: 'unsupported.guard' as never,
+            component: () => 'unsupported',
+          },
+        ],
+      },
+    ]);
+
+    expect(pluginFactories).toHaveLength(1);
+    expect(browserRoutingLogger.warn).toHaveBeenCalledWith(
+      'Unsupported plugin route guard',
+      expect.objectContaining({
+        event: 'routing.plugin.guard_unsupported',
+        route: '/plugins/default-logged',
+        plugin: 'default-logged-plugin',
+        unsupported_guard: 'unsupported.guard',
+      })
+    );
   });
 
   it('builds server route factories without requiring app-local route composition', () => {
@@ -343,5 +391,11 @@ describe('app.routes', () => {
         plugin: 'client-unsupported',
       })
     );
+  });
+
+  it('threads a default diagnostics hook through the server route factory entry point', () => {
+    getServerRouteFactories({ bindings });
+
+    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('account', expect.any(Function), '/account');
   });
 });

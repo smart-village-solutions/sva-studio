@@ -1,4 +1,4 @@
-import type { PluginDefinition } from '@sva/sdk';
+import { createBrowserLogger, type PluginDefinition } from '@sva/sdk';
 
 import { authRouteFactories } from './auth.routes.js';
 import {
@@ -7,6 +7,7 @@ import {
   type AppRouteBindings,
   type AppRouteFactory,
 } from './app.routes.shared.js';
+import { createRoutingDiagnosticsLogger } from './diagnostics.js';
 
 export {
   getPluginRouteFactories,
@@ -14,6 +15,10 @@ export {
   type AppRouteBindings,
   type AppRouteFactory,
 } from './app.routes.shared.js';
+
+const defaultClientRoutingDiagnostics = createRoutingDiagnosticsLogger(
+  createBrowserLogger({ component: 'routing', level: 'info' })
+);
 
 export const getClientRouteFactories = ({
   bindings,
@@ -24,7 +29,7 @@ export const getClientRouteFactories = ({
   readonly plugins?: readonly PluginDefinition[];
   readonly diagnostics?: import('./diagnostics.js').RoutingDiagnosticsHook;
 }): readonly AppRouteFactory[] => [
-  ...createUiRouteFactories(bindings, { diagnostics }),
+  ...createUiRouteFactories(bindings, { diagnostics: diagnostics ?? defaultClientRoutingDiagnostics }),
   ...authRouteFactories,
-  ...getPluginRouteFactories(plugins, { diagnostics }),
+  ...getPluginRouteFactories(plugins, { diagnostics: diagnostics ?? defaultClientRoutingDiagnostics }),
 ] as const;

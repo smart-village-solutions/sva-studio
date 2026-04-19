@@ -1,8 +1,12 @@
-import type { PluginDefinition, PluginRouteGuard, RouteFactory } from '@sva/sdk';
+import { createBrowserLogger, type PluginDefinition, type PluginRouteGuard, type RouteFactory } from '@sva/sdk';
 import { createRoute, type AnyRoute, type RootRoute, type RouteComponent } from '@tanstack/react-router';
 
 import { createAccountUiRouteGuard, type AccountUiRouteGuardKey } from './account-ui.routes.js';
-import { emitRoutingDiagnostic, type RoutingDiagnosticsHook } from './diagnostics.js';
+import {
+  createRoutingDiagnosticsLogger,
+  emitRoutingDiagnostic,
+  type RoutingDiagnosticsHook,
+} from './diagnostics.js';
 import { normalizeIamTab, normalizeRoleDetailTab } from './route-search.js';
 import { uiRoutePaths } from './route-paths.js';
 
@@ -107,15 +111,21 @@ const uiRouteDefinitions: readonly UiRouteDefinition[] = [
   { binding: 'adminApiPhase1Test', path: uiRoutePaths.adminApiPhase1Test },
 ] as const;
 
+const defaultRoutingDiagnostics = createRoutingDiagnosticsLogger(
+  createBrowserLogger({ component: 'routing', level: 'info' })
+);
+
 export const createUiRouteFactories = (
   bindings: AppRouteBindings,
   options: {
     readonly diagnostics?: RoutingDiagnosticsHook;
   } = {}
 ): readonly AppRouteFactory[] => {
+  const diagnostics = options.diagnostics ?? defaultRoutingDiagnostics;
+
   return uiRouteDefinitions.map((definition) => {
     if (definition.guard) {
-      const guard = createAccountUiRouteGuard(definition.guard, options.diagnostics, definition.path);
+      const guard = createAccountUiRouteGuard(definition.guard, diagnostics, definition.path);
 
       return (rootRoute: RootRoute) =>
         createRoute({
@@ -158,15 +168,15 @@ export const getPluginRouteFactories = (
     readonly diagnostics?: RoutingDiagnosticsHook;
   } = {}
 ): readonly AppRouteFactory[] => {
+  const diagnostics = options.diagnostics ?? defaultRoutingDiagnostics;
+
   return pluginDefinitions.flatMap((pluginDefinition) =>
     pluginDefinition.routes.map((routeDefinition) => {
       const guardKey = mapPluginGuardToAccountGuard(routeDefinition.guard);
-      const guard = guardKey
-        ? createAccountUiRouteGuard(guardKey, options.diagnostics, routeDefinition.path)
-        : null;
+      const guard = guardKey ? createAccountUiRouteGuard(guardKey, diagnostics, routeDefinition.path) : null;
 
       if (!guardKey && routeDefinition.guard) {
-        emitRoutingDiagnostic(options.diagnostics, {
+        emitRoutingDiagnostic(diagnostics, {
           level: 'warn',
           event: 'routing.plugin.guard_unsupported',
           route: routeDefinition.path,

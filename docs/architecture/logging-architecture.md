@@ -154,9 +154,10 @@ Pseudonyme technische IDs bleiben dennoch personenbeziehbar und duerfen nur bei 
 
 `@sva/routing` nutzt fuer routing-relevante Entscheidungen einen kleinen Diagnostics-Vertrag statt verteilter Logger-Zugriffe.
 
-- Client-shared Dateien emittieren Events nur ueber einen optional injizierten `RoutingDiagnosticsHook`.
-- Serverseitige Bindung an `createSdkLogger(...)` erfolgt nur in `packages/routing/src/auth.routes.server.ts`.
-- Standardfaelle bleiben still; geloggt werden nur Guard-Denials, Plugin-Guard-Anomalien, unbehandelte Handler-Fehler und `405 Method Not Allowed`.
+- Client- und Server-Route-Factories verdrahten standardmaessig einen Routing-Diagnostics-Adapter; ein expliziter `RoutingDiagnosticsHook` kann diesen Default ueberschreiben.
+- Die Event-zu-Logger-Zuordnung erfolgt zentral ueber `createRoutingDiagnosticsLogger(...)`.
+- Serverseitig binden Auth-Routen und allgemeine Routing-Factories denselben Adapter an `createSdkLogger(...)` und damit an den OTEL-Pfad.
+- Standardmaessig geloggt werden Guard-Denials, Plugin-Guard-Anomalien, Handler-Dispatch, Handler-Completion, unbehandelte Handler-Fehler und `405 Method Not Allowed`.
 
 ### Routing-Safe-Felder
 
@@ -164,8 +165,13 @@ Pseudonyme technische IDs bleiben dennoch personenbeziehbar und duerfen nur bei 
 - `route`
 - `reason`
 - `plugin`
+- `redirect_target`
+- `required_roles`
+- `unsupported_guard`
 - `method`
 - `allow`
+- `status_code`
+- `duration_ms`
 - `workspace_id`
 - `request_id`
 - `trace_id`

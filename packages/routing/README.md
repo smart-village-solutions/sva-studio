@@ -57,7 +57,7 @@ import { getPluginRouteFactories } from '@sva/routing/plugins';
 
 ## Observability-Vertrag
 
-`@sva/routing` bietet einen kleinen, optional injizierten Diagnostics-Vertrag für routing-relevante Entscheidungen.
+`@sva/routing` bietet einen kleinen, strukturierten Diagnostics-Vertrag für routing-relevante Entscheidungen.
 
 ### Exportierte Typen
 
@@ -73,8 +73,10 @@ import { getPluginRouteFactories } from '@sva/routing/plugins';
 | `route` | Template-Pfad, nie aufgelöste URL mit IDs |
 | `reason` | Fester `kebab-case`-Katalog |
 | `plugin` | Plugin-Kontext bei Plugin-Ereignissen |
+| `redirect_target` / `required_roles` / `unsupported_guard` | Zusatzfelder für Guard- und Plugin-Diagnostik |
 | `method` | HTTP-Methode bei Server-Ereignissen |
 | `allow` | Erlaubte Methoden bei `405` |
+| `status_code` / `duration_ms` | Laufzeit- und Ergebnisdaten bei Handler-Completion |
 | `workspace_id` | best effort Server-Kontext |
 | `request_id` / `trace_id` | best effort Korrelation im Server-Kontext |
 | `error_type` / `error_message` | minimaler Fehlerkontext ohne Stack-Trace |
@@ -99,13 +101,12 @@ const routeFactories = getClientRouteFactories({
 
 ### Browser-/Server-Split
 
-- Client-shared Dateien bleiben frei von `@sva/sdk`-Runtime-Imports.
-- Ohne Hook bleibt Browser-Routing standardmäßig still.
-- `auth.routes.server.ts` bindet serverseitige Routing-Ereignisse an den SDK-Logger.
+- Client- und Shared-Route-Factories verdrahten standardmäßig einen strukturierten Routing-Logger; ein expliziter `diagnostics`-Hook überschreibt diesen Default.
+- Browser-seitig läuft der Default über den SDK-Browser-Logger.
+- Serverseitig nutzen Auth-Routen und Server-Route-Factories denselben Adapter auf den SDK-/OTEL-Logger.
 
 ### Was bewusst nicht geloggt wird
 
-- erfolgreiche Standardnavigationen
 - Search-Param-Normalisierung ohne Diagnosewert
 - aufgelöste Pfade mit IDs
 - rohe Query-Strings, Token-URLs, Stack-Traces oder andere PII-/Secret-Felder

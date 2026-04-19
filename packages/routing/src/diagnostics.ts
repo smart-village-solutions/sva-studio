@@ -4,63 +4,136 @@ export type RoutingDenyReason =
   | 'unsupported-plugin-guard'
   | 'method-not-allowed';
 
+type RoutingDiagnosticBase = {
+  readonly route: string;
+  readonly request_id?: string;
+  readonly trace_id?: string;
+  readonly workspace_id?: string;
+};
+
 export type RoutingDiagnosticEvent =
-  | {
+  | (RoutingDiagnosticBase & {
       readonly level: 'info';
       readonly event: 'routing.guard.access_denied';
-      readonly route: string;
       readonly reason: 'unauthenticated' | 'insufficient-role';
       readonly redirect_target: string;
       readonly required_roles?: readonly string[];
-    }
-  | {
+    })
+  | (RoutingDiagnosticBase & {
       readonly level: 'warn';
       readonly event: 'routing.plugin.guard_unsupported';
-      readonly route: string;
       readonly reason: 'unsupported-plugin-guard';
       readonly plugin?: string;
       readonly unsupported_guard?: string;
-    }
-  | {
+    })
+  | (RoutingDiagnosticBase & {
+      readonly level: 'info';
+      readonly event: 'routing.handler.dispatched';
+      readonly method: string;
+      readonly handler_name?: string;
+    })
+  | (RoutingDiagnosticBase & {
+      readonly level: 'info';
+      readonly event: 'routing.handler.completed';
+      readonly method: string;
+      readonly status_code: number;
+      readonly duration_ms: number;
+      readonly handler_name?: string;
+    })
+  | (RoutingDiagnosticBase & {
       readonly level: 'warn';
       readonly event: 'routing.handler.method_not_allowed';
-      readonly route: string;
       readonly reason: 'method-not-allowed';
       readonly method: string;
       readonly allow: string;
-      readonly request_id?: string;
-      readonly trace_id?: string;
-      readonly workspace_id?: string;
-    }
-  | {
+    })
+  | (RoutingDiagnosticBase & {
       readonly level: 'error';
       readonly event: 'routing.handler.error_caught';
-      readonly route: string;
       readonly method: string;
-      readonly request_id?: string;
-      readonly trace_id?: string;
-      readonly workspace_id?: string;
       readonly error_type: string;
       readonly error_message: string;
-    }
-  | {
+      readonly handler_name?: string;
+    })
+  | (RoutingDiagnosticBase & {
       readonly level: 'error';
       readonly event: 'routing.logger.fallback_activated';
-      readonly route: string;
       readonly method: string;
-      readonly request_id?: string;
-      readonly trace_id?: string;
-      readonly workspace_id?: string;
       readonly error_type: string;
       readonly error_message: string;
-    };
+      readonly handler_name?: string;
+    });
 
 export interface RoutingDiagnosticsHook {
   (event: RoutingDiagnosticEvent): void;
 }
 
+export interface RoutingDiagnosticsLogger {
+  info: (message: string, meta: Record<string, unknown>) => void;
+  warn: (message: string, meta: Record<string, unknown>) => void;
+  error: (message: string, meta: Record<string, unknown>) => void;
+}
+
 const isPromiseLike = (value: unknown): value is PromiseLike<unknown> =>
   typeof value === 'object' && value !== null && typeof Reflect.get(value, 'then') === 'function';
+
+const getRoutingDiagnosticMessage = (event: RoutingDiagnosticEvent): string => {
+  switch (event.event) {
+    case 'routing.guard.access_denied':
+      return 'Routing guard denied access';
+    case 'routing.plugin.guard_unsupported':
+      return 'Unsupported plugin route guard';
+    case 'routing.handler.dispatched':
+      return 'Routing handler dispatched';
+    case 'routing.handler.completed':
+      return 'Routing handler completed';
+    case 'routing.handler.method_not_allowed':
+      return 'Unsupported HTTP method for route handler';
+    case 'routing.handler.error_caught':
+      return 'Unhandled exception in route handler';
+    case 'routing.logger.fallback_activated':
+      return 'Routing logger fallback activated';
+  }
+};
+
+const getRoutingDiagnosticMeta = (event: RoutingDiagnosticEvent): Record<string, unknown> => ({
+  event: event.event,
+  route: event.route,
+  reason: 'reason' in event ? event.reason : undefined,
+  request_id: event.request_id,
+  trace_id: event.trace_id,
+  workspace_id: event.workspace_id,
+  redirect_target: 'redirect_target' in event ? event.redirect_target : undefined,
+  required_roles: 'required_roles' in event ? event.required_roles : undefined,
+  plugin: 'plugin' in event ? event.plugin : undefined,
+  unsupported_guard: 'unsupported_guard' in event ? event.unsupported_guard : undefined,
+  method: 'method' in event ? event.method : undefined,
+  allow: 'allow' in event ? event.allow : undefined,
+  status_code: 'status_code' in event ? event.status_code : undefined,
+  duration_ms: 'duration_ms' in event ? event.duration_ms : undefined,
+  handler_name: 'handler_name' in event ? event.handler_name : undefined,
+  error_type: 'error_type' in event ? event.error_type : undefined,
+  error_message: 'error_message' in event ? event.error_message : undefined,
+});
+
+export const createRoutingDiagnosticsLogger = (logger: RoutingDiagnosticsLogger): RoutingDiagnosticsHook => {
+  return (event) => {
+    const message = getRoutingDiagnosticMessage(event);
+    const meta = getRoutingDiagnosticMeta(event);
+
+    switch (event.level) {
+      case 'info':
+        logger.info(message, meta);
+        return;
+      case 'warn':
+        logger.warn(message, meta);
+        return;
+      case 'error':
+        logger.error(message, meta);
+        return;
+    }
+  };
+};
 
 export const emitRoutingDiagnostic = (
   diagnostics: RoutingDiagnosticsHook | undefined,

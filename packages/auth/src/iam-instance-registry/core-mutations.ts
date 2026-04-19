@@ -26,8 +26,6 @@ export const mapInstanceMutationError = (error: unknown): Response => {
       {
         dependency: 'keycloak',
         reason_code: 'registry_or_provisioning_drift_blocked',
-        syncState: 'failed',
-        syncError: { code: 'DRIFT_BLOCKED' },
         drift_summary: driftSummary || undefined,
       }
     );

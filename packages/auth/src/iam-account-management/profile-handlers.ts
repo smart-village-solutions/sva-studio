@@ -27,7 +27,11 @@ import { runCriticalIamSchemaGuard } from './schema-guard.js';
 import { validateCsrf } from './csrf.js';
 import { updateMyProfileSchema } from './schemas.js';
 import type { ActorInfo } from './types.js';
-import { applyCanonicalUserDetailProjection } from './user-projection.js';
+import {
+  applyCanonicalUserDetailProjection,
+  resolveKeycloakRoleNames,
+  resolveProjectedMainserverCredentialState,
+} from './user-projection.js';
 
 type ProfileActorContext = {
   actor: ActorInfo;
@@ -259,6 +263,11 @@ const readProfileUpdatePayload = async (
 
 const createProfileNotFoundResponse = (requestId?: string): Response =>
   createApiError(404, 'not_found', 'Nutzerprofil nicht gefunden.', requestId);
+
+const DEFAULT_MAINSERVER_CREDENTIAL_STATE = {
+  mainserverUserApplicationId: undefined,
+  mainserverUserApplicationSecretSet: false,
+} as const;
 
 const ensureIdentityProvider = async (instanceId: string, requestId?: string) => {
   const identityProvider = await resolveIdentityProviderForInstance(instanceId, {
@@ -517,11 +526,21 @@ export const updateMyProfileInternal = async (
         return createProfileNotFoundResponse(actorContext.actor.requestId);
       }
 
+      const [keycloakRoleNamesResult, mainserverCredentialStateResult] = await Promise.allSettled([
+        resolveKeycloakRoleNames(actorContext.actor.instanceId, detail.keycloakSubject),
+        resolveProjectedMainserverCredentialState(detail.keycloakSubject, actorContext.actor.instanceId),
+      ]);
       const projectedDetail = await withInstanceScopedDb(actorContext.actor.instanceId, (client) =>
         applyCanonicalUserDetailProjection({
           client,
           instanceId: actorContext.actor.instanceId,
           user: detail,
+          keycloakRoleNames:
+            keycloakRoleNamesResult.status === 'fulfilled' ? keycloakRoleNamesResult.value : null,
+          mainserverCredentialState:
+            mainserverCredentialStateResult.status === 'fulfilled'
+              ? mainserverCredentialStateResult.value
+              : DEFAULT_MAINSERVER_CREDENTIAL_STATE,
         })
       );
 
@@ -579,11 +598,21 @@ export const getMyProfileInternal = async (
       return createProfileNotFoundResponse(actorContext.actor.requestId);
     }
 
+    const [keycloakRoleNamesResult, mainserverCredentialStateResult] = await Promise.allSettled([
+      resolveKeycloakRoleNames(actorContext.actor.instanceId, detail.keycloakSubject),
+      resolveProjectedMainserverCredentialState(detail.keycloakSubject, actorContext.actor.instanceId),
+    ]);
     const projectedDetail = await withInstanceScopedDb(actorContext.actor.instanceId, (client) =>
       applyCanonicalUserDetailProjection({
         client,
         instanceId: actorContext.actor.instanceId,
         user: detail,
+        keycloakRoleNames:
+          keycloakRoleNamesResult.status === 'fulfilled' ? keycloakRoleNamesResult.value : null,
+        mainserverCredentialState:
+          mainserverCredentialStateResult.status === 'fulfilled'
+            ? mainserverCredentialStateResult.value
+            : DEFAULT_MAINSERVER_CREDENTIAL_STATE,
       })
     );
 

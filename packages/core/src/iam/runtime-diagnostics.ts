@@ -49,6 +49,10 @@ const classify = ({ input, safeDetails }: RuntimeDiagnosticSafeDetails): IamRunt
   const reasonCode = safeDetails?.reason_code;
   const syncErrorCode = safeDetails?.sync_error_code;
 
+  if (reasonCode === 'registry_or_provisioning_drift_blocked') {
+    return 'registry_or_provisioning_drift';
+  }
+
   if (syncErrorCode === 'DB_WRITE_FAILED') {
     return 'database_mapping_or_membership_inconsistency';
   }

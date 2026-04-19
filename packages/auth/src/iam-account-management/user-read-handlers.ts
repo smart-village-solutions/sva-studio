@@ -56,29 +56,50 @@ export const listUsersInternal = async (
   }
 
   try {
-    const data = await withInstanceScopedDb(access.actor.instanceId, async (client) => {
-      const resolved = await resolveUsersWithPagination(client, {
+    const resolved = await withInstanceScopedDb(access.actor.instanceId, (client) =>
+      resolveUsersWithPagination(client, {
         instanceId: access.actor.instanceId,
         page,
         pageSize,
         status,
         role: role ?? undefined,
         search: search ?? undefined,
-      });
-
-      return {
-        ...resolved,
-        users: await applyCanonicalUserListProjection({
-          client,
-          instanceId: access.actor.instanceId,
-          users: resolved.users,
-        }),
-      };
-    });
+      })
+    );
+    const keycloakRoleNamesBySubject = new Map(
+      await Promise.all(
+        resolved.users.map(async (user) => {
+          try {
+            return [
+              user.keycloakSubject,
+              await resolveKeycloakRoleNames(access.actor.instanceId, user.keycloakSubject),
+            ] as const;
+          } catch (error) {
+            logger.warn('IAM user list role projection degraded', {
+              operation: 'list_users',
+              instance_id: access.actor.instanceId,
+              request_id: access.actor.requestId,
+              trace_id: access.actor.traceId,
+              user_id: user.id,
+              error: error instanceof Error ? error.message : String(error),
+            });
+            return [user.keycloakSubject, null] as const;
+          }
+        })
+      )
+    );
+    const users = await withInstanceScopedDb(access.actor.instanceId, (client) =>
+      applyCanonicalUserListProjection({
+        client,
+        instanceId: access.actor.instanceId,
+        users: resolved.users,
+        keycloakRoleNamesBySubject,
+      })
+    );
 
     return jsonResponse(
       200,
-      asApiList(data.users, { page, pageSize, total: data.total }, access.actor.requestId)
+      asApiList(users, { page, pageSize, total: resolved.total }, access.actor.requestId)
     );
   } catch (error) {
     logger.error('IAM user list failed', {

@@ -135,6 +135,15 @@ vi.mock('./schemas.js', () => ({
   updateMyProfileSchema: {},
 }));
 
+vi.mock('./user-projection.js', () => ({
+  applyCanonicalUserDetailProjection: vi.fn(async (input) => input.user),
+  resolveKeycloakRoleNames: vi.fn(async () => ['editor']),
+  resolveProjectedMainserverCredentialState: vi.fn(async () => ({
+    mainserverUserApplicationId: 'app-1',
+    mainserverUserApplicationSecretSet: true,
+  })),
+}));
+
 import { getMyProfileInternal, updateMyProfileInternal } from './profile-handlers';
 
 const ctx = {

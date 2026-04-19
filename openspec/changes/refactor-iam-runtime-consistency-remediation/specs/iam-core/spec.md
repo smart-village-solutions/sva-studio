@@ -1,11 +1,11 @@
 ## MODIFIED Requirements
 
 ### Requirement: Token Validation & User Identity
-Das System MUST von Keycloak ausgestellte JWT-Tokens validieren, nur die fuer Session- und Autorisierungspfad erforderlichen Identity-Claims extrahieren und die daraus abgeleitete fachliche User-Identität mit Membership-, Profil- und Rollenprojektion konsistent auflösen.
+Das System MUST von Keycloak ausgestellte JWT-Tokens validieren, nur die für Session- und Autorisierungspfad erforderlichen Identity-Claims extrahieren und die daraus abgeleitete fachliche User-Identität mit Membership-, Profil- und Rollenprojektion konsistent auflösen.
 
 #### Scenario: Technische Identität und fachliche Projektion bleiben konsistent
 
-- **WHEN** ein Token gueltig ist
+- **WHEN** ein Token gültig ist
 - **THEN** extrahiert das System mindestens die Claims `sub`, `instanceId` und Rollen-/Berechtigungsinformationen
 - **AND** die nachgelagerte fachliche Auflösung für User, Membership, Profil und Rollen verwendet denselben kanonischen Identitätsbezug
 - **AND** `/auth/me`, Self-Service-Profile und Admin-Listen widersprechen sich nicht in Status, Rollen oder Anzeigename

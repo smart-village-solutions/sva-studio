@@ -79,6 +79,11 @@ const normalizeOptionalText = (value: string | undefined | null): string | undef
   return trimmed && trimmed.length > 0 ? trimmed : undefined;
 };
 
+const hasRequiredProfileFields = (user: IdentityListedUser): boolean =>
+  normalizeOptionalText(user.email) !== undefined &&
+  normalizeOptionalText(user.firstName) !== undefined &&
+  normalizeOptionalText(user.lastName) !== undefined;
+
 const looksLikeEmail = (value: string | undefined): value is string => {
   if (typeof value !== 'string') {
     return false;
@@ -136,6 +141,26 @@ ON CONFLICT (instance_id, account_id) DO NOTHING;
 `;
 
 const USER_SYNC_SAVEPOINT = 'iam_keycloak_user_sync_item';
+
+class KeycloakUserSyncBlockedError extends Error {
+  readonly reason: 'tenant_admin_client_not_configured';
+
+  constructor(reason: 'tenant_admin_client_not_configured', message: string) {
+    super(message);
+    this.name = 'KeycloakUserSyncBlockedError';
+    this.reason = reason;
+  }
+}
+
+class KeycloakUserSyncManualReviewError extends Error {
+  readonly reason: 'identity_profile_incomplete';
+
+  constructor(reason: 'identity_profile_incomplete', message: string) {
+    super(message);
+    this.name = 'KeycloakUserSyncManualReviewError';
+    this.reason = reason;
+  }
+}
 
 const shouldRetryWithoutUsernameCiphertext = (error: unknown): boolean => {
   const message = error instanceof Error ? error.message : String(error);
@@ -336,7 +361,10 @@ const listAllKeycloakUsers = async (
     executionMode: 'tenant_admin',
   });
   if (!identityProvider) {
-    throw new KeycloakAdminUnavailableError('Tenant-lokale Keycloak-Administration ist nicht konfiguriert.');
+    throw new KeycloakUserSyncBlockedError(
+      'tenant_admin_client_not_configured',
+      'Tenant-lokale Keycloak-Administration ist nicht konfiguriert.'
+    );
   }
 
   const users: IdentityListedUser[] = [];
@@ -460,8 +488,7 @@ export const collectSyncCandidates = (
 };
 
 const mapSyncErrorResponse = (error: unknown, requestId?: string): Response | undefined => {
-  const errorMessage = error instanceof Error ? error.message : String(error);
-  if (errorMessage.includes('Tenant-lokale Keycloak-Administration ist nicht konfiguriert.')) {
+  if (error instanceof KeycloakUserSyncBlockedError) {
     return createApiError(
       409,
       'tenant_admin_client_not_configured',
@@ -476,6 +503,7 @@ const mapSyncErrorResponse = (error: unknown, requestId?: string): Response | un
       }
     );
   }
+  const errorMessage = error instanceof Error ? error.message : String(error);
   if (error instanceof KeycloakAdminRequestError || error instanceof KeycloakAdminUnavailableError) {
     return createApiError(
       503,
@@ -595,6 +623,12 @@ export const runKeycloakUserImportSync = async (input: {
         if (repaired.repaired) {
           repairedProfileCount += 1;
         }
+        if (!hasRequiredProfileFields(repaired.user)) {
+          throw new KeycloakUserSyncManualReviewError(
+            'identity_profile_incomplete',
+            'Keycloak-Benutzerprofil ist unvollständig und erfordert manuelle Prüfung.'
+          );
+        }
         const result = await upsertIdentityUser(client, {
           instanceId: input.instanceId,
           user: repaired.user,
@@ -609,7 +643,24 @@ export const runKeycloakUserImportSync = async (input: {
         await client.query(`ROLLBACK TO SAVEPOINT ${USER_SYNC_SAVEPOINT}`);
         await client.query(`RELEASE SAVEPOINT ${USER_SYNC_SAVEPOINT}`);
 
+        if (error instanceof KeycloakUserSyncManualReviewError) {
+          manualReviewCount += 1;
+          logger.warn('Keycloak user sync left a user in manual review', {
+            operation: 'sync_keycloak_users',
+            instance_id: input.instanceId,
+            auth_realm: resolution.realm,
+            provider_source: resolution.source,
+            request_id: input.requestId,
+            trace_id: input.traceId,
+            subject_ref: toSubjectRef(user.externalId),
+            reason: error.reason,
+            error: error.message,
+          });
+          continue;
+        }
+
         if (
+          error instanceof KeycloakUserSyncBlockedError ||
           error instanceof KeycloakAdminRequestError ||
           error instanceof KeycloakAdminUnavailableError ||
           error instanceof IamSchemaDriftError
@@ -617,18 +668,7 @@ export const runKeycloakUserImportSync = async (input: {
           throw error;
         }
 
-        failedCount += 1;
-        manualReviewCount += 1;
-        logger.warn('Keycloak user sync left a user in manual review', {
-          operation: 'sync_keycloak_users',
-          instance_id: input.instanceId,
-          auth_realm: resolution.realm,
-          provider_source: resolution.source,
-          request_id: input.requestId,
-          trace_id: input.traceId,
-          subject_ref: toSubjectRef(user.externalId),
-          error: error instanceof Error ? error.message : String(error),
-        });
+        throw error;
       }
     }
 

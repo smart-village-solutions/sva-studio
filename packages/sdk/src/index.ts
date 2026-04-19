@@ -3,6 +3,8 @@ import { coreVersion } from '@sva/core';
 export const sdkVersion = coreVersion;
 export type { RouteFactory } from '@sva/core';
 export type {
+  PluginActionDefinition,
+  PluginActionRegistryEntry,
   PluginDefinition,
   PluginNavigationItem,
   PluginNavigationSection,
@@ -23,7 +25,10 @@ export {
   getContentTypeDefinition,
 } from './content-types.js';
 export {
+  createPluginActionRegistry,
   createPluginRegistry,
+  definePluginActions,
+  mergePluginActions,
   mergePluginContentTypes,
   mergePluginNavigationItems,
   mergePluginRouteDefinitions,

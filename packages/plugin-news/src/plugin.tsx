@@ -1,4 +1,4 @@
-import type { PluginDefinition } from '@sva/sdk';
+import { definePluginActions, type PluginDefinition } from '@sva/sdk';
 
 import { NewsCreatePage, NewsEditPage, NewsListPage } from './news.pages.js';
 
@@ -34,6 +34,23 @@ export const pluginNews: PluginDefinition = {
       requiredAction: 'content.read',
     },
   ],
+  actions: definePluginActions('news', [
+    {
+      id: 'news.create',
+      titleKey: 'news.actions.create',
+      requiredAction: 'content.create',
+    },
+    {
+      id: 'news.edit',
+      titleKey: 'news.actions.edit',
+      requiredAction: 'content.write',
+    },
+    {
+      id: 'news.delete',
+      titleKey: 'news.actions.delete',
+      requiredAction: 'content.write',
+    },
+  ]),
   contentTypes: [
     {
       contentType: 'news',

@@ -18,11 +18,13 @@ export {
 export const getServerRouteFactories = ({
   bindings,
   plugins = [],
+  diagnostics,
 }: {
   readonly bindings: AppRouteBindings;
   readonly plugins?: readonly PluginDefinition[];
+  readonly diagnostics?: import('./diagnostics.js').RoutingDiagnosticsHook;
 }): readonly AppRouteFactory[] => [
-  ...createUiRouteFactories(bindings),
+  ...createUiRouteFactories(bindings, { diagnostics }),
   ...authServerRouteFactories,
-  ...getPluginRouteFactories(plugins),
+  ...getPluginRouteFactories(plugins, { diagnostics }),
 ] as const;

@@ -49,6 +49,14 @@ export const createDatabaseApiError = (error: unknown, requestId?: string) => {
   return createApiError(classified.status, classified.code, classified.message, requestId, classified.details);
 };
 
+const stringifySettledError = (result: PromiseSettledResult<unknown>): string | undefined => {
+  if (result.status !== 'rejected') {
+    return undefined;
+  }
+
+  return result.reason instanceof Error ? result.reason.message : String(result.reason);
+};
+
 export const logUserProjectionDegraded = (input: {
   actor: UserReadActor;
   userId: string;
@@ -71,17 +79,7 @@ export const logUserProjectionDegraded = (input: {
     user_id: input.userId,
     request_id: input.actor.requestId,
     trace_id: input.actor.traceId,
-    keycloak_roles_error:
-      input.keycloakRoleNamesResult.status === 'rejected'
-        ? input.keycloakRoleNamesResult.reason instanceof Error
-          ? input.keycloakRoleNamesResult.reason.message
-          : String(input.keycloakRoleNamesResult.reason)
-        : undefined,
-    mainserver_credentials_error:
-      input.mainserverCredentialStateResult.status === 'rejected'
-        ? input.mainserverCredentialStateResult.reason instanceof Error
-          ? input.mainserverCredentialStateResult.reason.message
-          : String(input.mainserverCredentialStateResult.reason)
-        : undefined,
+    keycloak_roles_error: stringifySettledError(input.keycloakRoleNamesResult),
+    mainserver_credentials_error: stringifySettledError(input.mainserverCredentialStateResult),
   });
 };

@@ -30,6 +30,7 @@ Abhängigkeiten des aktuellen Systems.
 3. Routing (`packages/routing`)
    - zentrale Route-Factories (client + server)
    - einzige Source of Truth für Auth-Handler-Mapping, Runtime-Guard und JSON-Error-Boundary
+   - eigener Observability-Vertrag für Guard-Denials, Plugin-Guard-Anomalien und serverseitige Dispatch-Fehler mit optionalem Diagnostics-Hook
    - der Startup-Guard in `auth.routes.server.ts` prüft ausschließlich das Auth-Route-Mapping gegen `authRoutePaths`; er ist keine allgemeine Plugin- oder Router-Vollständigkeitsprüfung
 4. Auth (`packages/auth`)
    - OIDC-Flows, Session-Store, auth HTTP-Handler

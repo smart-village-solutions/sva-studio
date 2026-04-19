@@ -11,6 +11,7 @@ Die Routing-Architektur ist auf folgende Ziele ausgelegt:
 3. **Code-basierte produktive Seitenrouten** ohne app-lokale Parallel-Registrierung.
 4. **Saubere Server/Client-Grenze**, damit server-only Module nicht in den Client-Bundle gelangen.
 5. **Erweiterbarkeit** durch statisch registrierte SDK-Plugins.
+6. **Gezielte Routing-Observability** für Guard-Denials, Plugin-Anomalien und serverseitige Dispatch-Fehler ohne Browser-Noise.
 
 ## Scope
 
@@ -25,6 +26,7 @@ Nicht abgedeckt:
 
 - UI-Design der einzelnen Seiten
 - Auth-Session-Interna (siehe Auth-Doku)
+- produktive Browser-Telemetrie für normale Navigationen
 
 ## High-Level Architektur
 
@@ -124,6 +126,7 @@ Plugins exportieren `PluginDefinition`-Objekte.
 - Die Host-App registriert Plugins statisch.
 - `@sva/routing` materialisiert die Plugin-Routen zentral.
 - Plugin-Guards werden auf die kanonischen Guard-Regeln des Hosts gemappt.
+- Nicht unterstützte Plugin-Guard-Mappings erzeugen genau ein `routing.plugin.guard_unsupported`-Ereignis bei der Factory-Erstellung. Erfolgreiche Guard-Mappings bleiben still.
 
 ## Request/Response Routing für Auth
 
@@ -135,6 +138,21 @@ Auth-Endpunkte werden als TanStack Server Route Handler registriert und delegier
 - `/auth/logout` -> `logoutHandler(request)`
 
 Die eigentliche Business-Logik verbleibt im Auth-Package; das Routing-Package bleibt ein Integrations-Layer.
+
+## Routing-Observability
+
+`@sva/routing` besitzt einen expliziten, optional injizierten Diagnostics-Hook für routing-relevante Entscheidungen und Anomalien.
+
+- Client-shared Routing-Dateien bleiben frei von SDK-Runtime-Imports.
+- Ohne Hook bleibt Browser-Routing standardmäßig still.
+- Guard-Denials emittieren `routing.guard.access_denied`.
+- Unbekannte Plugin-Guard-Mappings emittieren `routing.plugin.guard_unsupported`.
+- `auth.routes.server.ts` bindet serverseitige Ereignisse an den SDK-Logger und harmonisiert Fehler und `405`-Fälle auf:
+  - `routing.handler.error_caught`
+  - `routing.handler.method_not_allowed`
+  - `routing.logger.fallback_activated`
+
+Der Event-Vertrag nutzt nur Safe-Felder. Geloggt werden Template-Pfade statt aufgelöster IDs, keine Token-URLs, keine Stack-Traces und keine erfolgreichen Standardnavigationen.
 
 ## Typisierung und Sicherheit
 

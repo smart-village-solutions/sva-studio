@@ -16,6 +16,7 @@ Die Logging-Architektur verfolgt vier Kernziele:
 Abgedeckt sind:
 
 - Server-seitiges App-Logging (`@sva/sdk/server`).
+- Routing-Observability fuer `@sva/routing` inklusive Guard-, Plugin- und Auth-Dispatch-Ereignissen.
 - OTEL-Export von Logs und Metriken (`@sva/monitoring-client/server`).
 - OTEL Collector + Loki + Promtail im lokalen Monitoring-Stack.
 - Tenant-/Request-Kontext per AsyncLocalStorage.
@@ -148,6 +149,30 @@ Pseudonyme technische IDs bleiben dennoch personenbeziehbar und duerfen nur bei 
 - `info` -> 9
 - `debug` -> 5
 - `verbose` -> 1
+
+## Routing-Observability-Vertrag
+
+`@sva/routing` nutzt fuer routing-relevante Entscheidungen einen kleinen Diagnostics-Vertrag statt verteilter Logger-Zugriffe.
+
+- Client-shared Dateien emittieren Events nur ueber einen optional injizierten `RoutingDiagnosticsHook`.
+- Serverseitige Bindung an `createSdkLogger(...)` erfolgt nur in `packages/routing/src/auth.routes.server.ts`.
+- Standardfaelle bleiben still; geloggt werden nur Guard-Denials, Plugin-Guard-Anomalien, unbehandelte Handler-Fehler und `405 Method Not Allowed`.
+
+### Routing-Safe-Felder
+
+- `event`
+- `route`
+- `reason`
+- `plugin`
+- `method`
+- `allow`
+- `workspace_id`
+- `request_id`
+- `trace_id`
+- `error_type`
+- `error_message`
+
+Nicht zulaessig sind insbesondere aufgeloeste Pfade mit IDs, rohe Query-Strings, Token-URLs, `session_id`, `email`, `ip_address`, `user_agent` und Stack-Traces.
 
 ## PII- und Label-Policy
 

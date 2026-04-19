@@ -1,7 +1,7 @@
 import { redirect } from '@tanstack/react-router';
 import { describe, expect, it } from 'vitest';
 
-import { accountUiRouteGuards } from './account-ui.routes';
+import { accountUiRouteGuards, createAccountUiRouteGuards } from './account-ui.routes';
 
 type Guard = (typeof accountUiRouteGuards)[keyof typeof accountUiRouteGuards];
 
@@ -91,5 +91,13 @@ describe('accountUiRouteGuards', () => {
 
   it('allows admin iam route for security admin', async () => {
     await expect(invoke(accountUiRouteGuards.adminIam, ['security_admin'], '/admin/iam')).resolves.toBeUndefined();
+  });
+
+  it('creates a fresh guard set when diagnostics are injected', () => {
+    const diagnostics = () => undefined;
+    const guards = createAccountUiRouteGuards(diagnostics);
+
+    expect(guards.account).not.toBe(accountUiRouteGuards.account);
+    expect(typeof guards.adminIam).toBe('function');
   });
 });

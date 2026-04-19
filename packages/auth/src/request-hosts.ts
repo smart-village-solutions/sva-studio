@@ -70,7 +70,7 @@ const withLocalDevPortFallback = (authority: string, protocol: string): string =
   }
 
   const publicBase = readPublicBaseUrlPort();
-  if (!publicBase || publicBase.protocol !== protocol) {
+  if (publicBase?.protocol !== protocol) {
     return authority;
   }
 

@@ -9,6 +9,14 @@ const logger = createSdkLogger({ component: 'iam-auth-config', level: 'info' });
 
 type RegistryEntry = Awaited<ReturnType<typeof loadInstanceByHostname>>;
 
+const formatResolutionError = (error: unknown): string | undefined => {
+  if (error === undefined || error === null) {
+    return undefined;
+  }
+
+  return error instanceof Error ? error.message : String(error);
+};
+
 export const logGlobalAuthResolution = (request: Request, host: string, requestOrigin: string): void => {
   const instanceConfig = getInstanceConfig();
   logger.warn('tenant_auth_resolution_summary', {
@@ -54,7 +62,7 @@ export const logTenantAuthResolutionFailure = (
     canonical_auth_host: instanceConfig?.canonicalAuthHost,
     parent_domain: instanceConfig?.parentDomain,
     reason: input.reason,
-    error: input.error instanceof Error ? input.error.message : input.error ? String(input.error) : undefined,
+    error: formatResolutionError(input.error),
   });
 };
 

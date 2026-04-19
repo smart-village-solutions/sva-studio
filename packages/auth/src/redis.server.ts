@@ -128,7 +128,7 @@ const buildTlsOptions = (tlsEnabled: boolean): TlsConnectionOptions | null => {
  * Get or create the Redis client instance (singleton pattern).
  */
 export const getRedisClient = (): Redis => {
-  if (redisClient && redisClient.status === 'end') {
+  if (redisClient?.status === 'end') {
     redisClient = null;
   }
 

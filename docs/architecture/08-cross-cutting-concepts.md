@@ -132,6 +132,15 @@ gleichzeitig beeinflussen.
 - Produktionsnahe Releases erzeugen zusätzlich eigenständige Artefakte für Release-Manifest, Phasenstatus, Migration, Bootstrap, Migrationsjob, Bootstrap-Job, interne Probes und externe Probes; diese Artefakte bleiben bewusst ohne Secrets oder PII
 - Remote-Prechecks für `studio` vergleichen zusätzlich die Live-Service-Spec der App mit dem gerenderten Sollzustand aus dem Deploy-Compose; dabei sind Netzwerke und ingressrelevante Labels eigene Drift-Signale
 
+### Routing-Observability-Vertrag
+
+- `@sva/routing` verwendet einen optional injizierten `RoutingDiagnosticsHook` fuer client-shared Routing-Entscheidungen.
+- Browser-Produktion bleibt ohne expliziten Hook No-op; es entsteht kein implizites Tracking normaler Navigation.
+- Client-shared Routing-Dateien importieren kein `@sva/sdk` oder `@sva/sdk/server`.
+- Serverseitige Bindung an den SDK-Logger erfolgt nur in `packages/routing/src/auth.routes.server.ts`.
+- Guard-Denials, unbekannte Plugin-Guard-Mappings, unbehandelte Handler-Fehler und `405`-Dispatch-Anomalien nutzen einen gemeinsamen Safe-Feldsatz.
+- Health-Check-Routen sind explizit vom `routing.handler.method_not_allowed`-Logging ausgenommen.
+
 ### Fehlerbehandlung und Resilienz
 
 - OTEL-Init ist in Development fehlertolerant; in Production wird fehlende OTEL-Readiness fail-closed behandelt

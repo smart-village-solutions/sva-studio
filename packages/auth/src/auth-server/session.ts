@@ -1,5 +1,4 @@
-import type { Session, SessionUser } from '../types.js';
-import type { RuntimeScopeRef } from '../types.js';
+import type { RuntimeScopeRef, Session, SessionUser } from '../types.js';
 import { createSdkLogger } from '@sva/sdk/server';
 
 import { getAuthConfig, resolveAuthConfigFromSessionAuth } from '../config.js';
@@ -16,7 +15,7 @@ const shouldRefreshSession = (expiresAt: number | undefined): boolean =>
   typeof expiresAt === 'number' && expiresAt <= Date.now() + TOKEN_REFRESH_SKEW_MS;
 
 const needsSessionUserHydration = (user: SessionUser | null | undefined): boolean =>
-  !user || !user.instanceId || user.roles.length === 0;
+  !user?.instanceId || user.roles.length === 0;
 
 const isSessionAllowed = async (session: Session): Promise<boolean> => {
   const state = await getSessionControlState(session.userId);

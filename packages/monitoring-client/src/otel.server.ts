@@ -237,7 +237,7 @@ export const createOtelSdk = (config: OtelConfig): NodeSDK => {
 
 export const startOtelSdk = async (config: OtelConfig): Promise<NodeSDK> => {
   const sdk = createOtelSdk(config);
-  await sdk.start();
+  sdk.start();
 
   // Get global logger provider from OTEL API after SDK started
   // Note: Type casting needed as API logs and SDK logs use different LoggerProvider types at runtime

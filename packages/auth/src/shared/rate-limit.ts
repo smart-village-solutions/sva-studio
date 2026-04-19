@@ -19,6 +19,18 @@ type ConsumeRateLimitInput = {
   now?: number;
 };
 
+const resolveRateLimit = (scope: RateScope): number => {
+  if (scope === 'read') {
+    return READ_RATE_LIMIT;
+  }
+
+  if (scope === 'bulk') {
+    return BULK_RATE_LIMIT;
+  }
+
+  return WRITE_RATE_LIMIT;
+};
+
 const createRateLimitPruner = (
   rateLimiterStore: Map<string, RateBucket>,
   maxRateBuckets: number
@@ -49,12 +61,7 @@ export const createRateLimitConsumer = (
   return (
     consumeInput: ConsumeRateLimitInput
   ): Response | null => {
-    const limit =
-      consumeInput.scope === 'read'
-        ? READ_RATE_LIMIT
-        : consumeInput.scope === 'bulk'
-          ? BULK_RATE_LIMIT
-          : WRITE_RATE_LIMIT;
+    const limit = resolveRateLimit(consumeInput.scope);
     const now = consumeInput.now ?? Date.now();
     pruneExpiredBuckets(now);
     const key = `${consumeInput.instanceId}:${consumeInput.actorKeycloakSubject}:${consumeInput.scope}`;

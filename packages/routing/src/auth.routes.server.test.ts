@@ -330,6 +330,17 @@ describe('auth.routes.server', () => {
       message: 'HTTP-Methode nicht erlaubt.',
       requestId: 'req-method',
     });
+    expect(routingLogger.warn).toHaveBeenCalledWith(
+      'Unsupported HTTP method for auth route handler',
+      expect.objectContaining({
+        event: 'routing.handler.method_not_allowed',
+        reason: 'method-not-allowed',
+        route: '/auth/logout',
+        method: 'GET',
+        allow: 'POST',
+        request_id: 'req-method',
+      })
+    );
   });
 
   it('returns a JSON 500 response when a wrapped handler throws', async () => {
@@ -355,12 +366,13 @@ describe('auth.routes.server', () => {
     expect(response?.headers.get('X-Request-Id')).toBe('req-123');
     await expect(response?.json()).resolves.toEqual({
       error: 'internal_error',
-      message: 'Ein unerwarteter Server-Fehler ist aufgetreten.',
+      message: 'Ein unerwarteter Fehler ist aufgetreten.',
       requestId: 'req-123',
     });
     expect(routingLogger.error).toHaveBeenCalledWith(
       'Unhandled exception in auth route handler',
       expect.objectContaining({
+        event: 'routing.handler.error_caught',
         method: 'GET',
         route: '/auth/me',
         workspace_id: 'default',
@@ -393,6 +405,7 @@ describe('auth.routes.server', () => {
     expect(routingLogger.error).toHaveBeenCalledWith(
       'Unhandled exception in auth route handler',
       expect.objectContaining({
+        event: 'routing.handler.error_caught',
         workspace_id: 'default',
         request_id: undefined,
         trace_id: undefined,
@@ -424,6 +437,7 @@ describe('auth.routes.server', () => {
     expect(routingLogger.error).toHaveBeenCalledWith(
       'Unhandled exception in auth route handler',
       expect.objectContaining({
+        event: 'routing.handler.error_caught',
         workspace_id: 'default',
         trace_id: undefined,
       })
@@ -448,6 +462,7 @@ describe('auth.routes.server', () => {
     expect(routingLogger.error).toHaveBeenCalledWith(
       'Unhandled exception in auth route handler',
       expect.objectContaining({
+        event: 'routing.handler.error_caught',
         workspace_id: 'de-musterhausen',
       })
     );
@@ -471,6 +486,7 @@ describe('auth.routes.server', () => {
     expect(routingLogger.error).toHaveBeenCalledWith(
       'Unhandled exception in auth route handler',
       expect.objectContaining({
+        event: 'routing.handler.error_caught',
         workspace_id: 'de-alt-workspace',
       })
     );
@@ -488,6 +504,7 @@ describe('auth.routes.server', () => {
     expect(routingLogger.error).toHaveBeenCalledWith(
       'Unhandled exception in auth route handler',
       expect.objectContaining({
+        event: 'routing.handler.error_caught',
         workspace_id: 'de-instance-header',
       })
     );
@@ -507,6 +524,7 @@ describe('auth.routes.server', () => {
     expect(routingLogger.error).toHaveBeenCalledWith(
       'Unhandled exception in auth route handler',
       expect.objectContaining({
+        event: 'routing.handler.error_caught',
         workspace_id: 'de-musterhausen',
       })
     );
@@ -533,6 +551,7 @@ describe('auth.routes.server', () => {
 
     expect(response?.status).toBe(500);
     expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining('"workspace_id":"de-fallback"'));
+    expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining('"event":"routing.logger.fallback_activated"'));
     stderrSpy.mockRestore();
   });
 
@@ -558,6 +577,27 @@ describe('auth.routes.server', () => {
       message: 'HTTP-Methode nicht erlaubt.',
       requestId: 'req-route-factory',
     });
+    expect(routingLogger.warn).toHaveBeenCalledWith(
+      'Unsupported HTTP method for auth route handler',
+      expect.objectContaining({
+        event: 'routing.handler.method_not_allowed',
+        route: '/iam/me/data-export',
+      })
+    );
+  });
+
+  it('does not log method_not_allowed for health routes', async () => {
+    const response = await dispatchAuthRouteRequest(
+      new Request('http://localhost/health/live', {
+        method: 'POST',
+        headers: {
+          'X-Request-Id': 'req-health',
+        },
+      })
+    );
+
+    expect(response?.status).toBe(405);
+    expect(routingLogger.warn).not.toHaveBeenCalled();
   });
 
   it('warns when auth route mappings diverge from declared paths', () => {

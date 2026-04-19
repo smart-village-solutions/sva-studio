@@ -1,7 +1,8 @@
 import type { PluginDefinition, PluginRouteGuard, RouteFactory } from '@sva/sdk';
 import { createRoute, type AnyRoute, type RootRoute, type RouteComponent } from '@tanstack/react-router';
 
-import { accountUiRouteGuards } from './account-ui.routes.js';
+import { createAccountUiRouteGuards } from './account-ui.routes.js';
+import { emitRoutingDiagnostic, type RoutingDiagnosticsHook } from './diagnostics.js';
 import { normalizeIamTab, normalizeRoleDetailTab } from './route-search.js';
 import { uiRoutePaths } from './route-paths.js';
 
@@ -45,7 +46,7 @@ export type AppRouteBindings = {
   readonly adminApiPhase1Test: RouteComponent;
 };
 
-type GuardKey = keyof typeof accountUiRouteGuards;
+type GuardKey = keyof ReturnType<typeof createAccountUiRouteGuards>;
 type BindingKey = keyof AppRouteBindings;
 
 type UiRouteDefinition = {
@@ -107,10 +108,17 @@ const uiRouteDefinitions: readonly UiRouteDefinition[] = [
   { binding: 'adminApiPhase1Test', path: uiRoutePaths.adminApiPhase1Test },
 ] as const;
 
-export const createUiRouteFactories = (bindings: AppRouteBindings): readonly AppRouteFactory[] =>
-  uiRouteDefinitions.map((definition) => {
+export const createUiRouteFactories = (
+  bindings: AppRouteBindings,
+  options: {
+    readonly diagnostics?: RoutingDiagnosticsHook;
+  } = {}
+): readonly AppRouteFactory[] => {
+  const guards = createAccountUiRouteGuards(options.diagnostics);
+
+  return uiRouteDefinitions.map((definition) => {
     if (definition.guard) {
-      const guard = accountUiRouteGuards[definition.guard];
+      const guard = guards[definition.guard];
 
       return (rootRoute: RootRoute) =>
         createRoute({
@@ -118,8 +126,8 @@ export const createUiRouteFactories = (bindings: AppRouteBindings): readonly App
           path: definition.path,
           beforeLoad: (options) => guard(options),
           validateSearch: definition.validateSearch,
-          component: bindings[definition.binding],
-        });
+        component: bindings[definition.binding],
+      });
     }
 
     return (rootRoute: RootRoute) =>
@@ -130,6 +138,7 @@ export const createUiRouteFactories = (bindings: AppRouteBindings): readonly App
         component: bindings[definition.binding],
       });
   });
+};
 
 export const mapPluginGuardToAccountGuard = (
   guard?: PluginRouteGuard
@@ -147,22 +156,40 @@ export const mapPluginGuardToAccountGuard = (
 };
 
 export const getPluginRouteFactories = (
-  pluginDefinitions: readonly PluginDefinition[] = []
-): readonly AppRouteFactory[] =>
-  pluginDefinitions.flatMap((pluginDefinition) =>
-    pluginDefinition.routes.map((routeDefinition) => (rootRoute: RootRoute) =>
-      createRoute({
-        getParentRoute: () => rootRoute,
-        path: routeDefinition.path,
-        beforeLoad: (options) => {
-          const guardKey = mapPluginGuardToAccountGuard(routeDefinition.guard);
-          if (!guardKey) {
-            return;
-          }
+  pluginDefinitions: readonly PluginDefinition[] = [],
+  options: {
+    readonly diagnostics?: RoutingDiagnosticsHook;
+  } = {}
+): readonly AppRouteFactory[] => {
+  const guards = createAccountUiRouteGuards(options.diagnostics);
 
-          return accountUiRouteGuards[guardKey](options);
-        },
-        component: routeDefinition.component as RouteComponent,
-      })
-    )
+  return pluginDefinitions.flatMap((pluginDefinition) =>
+    pluginDefinition.routes.map((routeDefinition) => {
+      const guardKey = mapPluginGuardToAccountGuard(routeDefinition.guard);
+      if (!guardKey && routeDefinition.guard) {
+        emitRoutingDiagnostic(options.diagnostics, {
+          level: 'warn',
+          event: 'routing.plugin.guard_unsupported',
+          route: routeDefinition.path,
+          reason: 'unsupported-plugin-guard',
+          plugin: pluginDefinition.id,
+          unsupported_guard: routeDefinition.guard,
+        });
+      }
+
+      return (rootRoute: RootRoute) =>
+        createRoute({
+          getParentRoute: () => rootRoute,
+          path: routeDefinition.path,
+          beforeLoad: (options) => {
+            if (!guardKey) {
+              return;
+            }
+
+            return guards[guardKey](options);
+          },
+          component: routeDefinition.component as RouteComponent,
+        });
+    })
   );
+};

@@ -119,6 +119,23 @@ describe('core-mutations', () => {
     });
   });
 
+  it('preserves tenant auth secret blockers inside provisioning drift mapping', async () => {
+    const response = mapInstanceMutationError(
+      new Error(
+        'registry_or_provisioning_drift_blocked:Für diese Instanz fehlt ein lesbares Tenant-Client-Secret in der Registry.'
+      )
+    );
+    const body = await readBody(response);
+
+    expect(response.status).toBe(409);
+    expect(body.code).toBe('tenant_auth_client_secret_missing');
+    expect(body.details).toEqual({
+      dependency: 'keycloak',
+      reason_code: 'registry_or_provisioning_drift_blocked',
+      drift_summary: 'Für diese Instanz fehlt ein lesbares Tenant-Client-Secret in der Registry.',
+    });
+  });
+
   it('maps unknown mutation errors to keycloak_unavailable', async () => {
     const response = mapInstanceMutationError(new Error('boom'));
     const body = await readBody(response);

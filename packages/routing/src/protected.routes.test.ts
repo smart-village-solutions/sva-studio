@@ -113,4 +113,24 @@ describe('protected routes', () => {
 
     expect(diagnostics).not.toHaveBeenCalled();
   });
+
+  it('skips insufficient-role diagnostics when no explicit route is provided at runtime', async () => {
+    const diagnostics = vi.fn();
+    const guard = createProtectedRoute({
+      diagnostics,
+      requiredRoles: ['system_admin'],
+    });
+
+    try {
+      await invokeGuard(guard, { roles: ['editor'] }, '/admin/users');
+      expect.fail('Expected redirect');
+    } catch (error) {
+      expect(isRedirect(error)).toBe(true);
+      if (isRedirect(error)) {
+        expect(error.options.href).toBe('/?error=auth.insufficientRole');
+      }
+    }
+
+    expect(diagnostics).not.toHaveBeenCalled();
+  });
 });

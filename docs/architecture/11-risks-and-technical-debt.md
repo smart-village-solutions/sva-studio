@@ -175,6 +175,16 @@ Schulden auf IST-Basis.
    - Wahrscheinlichkeit: hoch
    - Maßnahme: vorbereitete Szenario-Matrix aus `docs/reports/iam-diagnostics-analysis-2026-04-19.md` gegen reale Dev-/Staging-Umgebung ausführen, bevor der Analysechange als abgeschlossen gilt
 
+30. Restrisiko verbleibender `manual_review`-Fälle im IAM-Abgleich
+   - Impact: mittel bis hoch (fachlich mehrdeutige Restfälle bleiben operatorpflichtig und können UI-seitig als unvollständig wahrgenommen werden)
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: nur deterministische Auto-Fixes zulassen, Restfälle explizit zählen und operatorseitig mit klaren Folgeaktionen dokumentieren
+
+31. Drift-Blocker und Basis-Health können betrieblich unterschiedlich gelesen werden
+   - Impact: hoch (ein grüner Plattformstatus kann weiterhin als fachliche Entwarnung fehlinterpretiert werden)
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: Drift-Blocker im Root-Host, in Sync-/Reconcile-Fehlern und in den Admin-Ansichten konsistent korrelieren; Diagnosevertrag nicht auf reine Readiness reduzieren
+
 ### Technische Schulden (Auswahl)
 
 - Teilweise No-Op Testtargets in Libraries

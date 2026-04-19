@@ -110,7 +110,17 @@ describe('useUsers', () => {
     deactivateUserMock.mockResolvedValue({ data: { id: 'user-1' } });
     bulkDeactivateUsersMock.mockResolvedValue({ data: { deactivatedUserIds: ['user-1'], count: 1 } });
     syncUsersFromKeycloakMock.mockResolvedValue({
-      data: { importedCount: 1, updatedCount: 0, skippedCount: 0, totalKeycloakUsers: 1 },
+      data: {
+        outcome: 'success',
+        checkedCount: 1,
+        correctedCount: 1,
+        failedCount: 0,
+        manualReviewCount: 0,
+        importedCount: 1,
+        updatedCount: 0,
+        skippedCount: 0,
+        totalKeycloakUsers: 1,
+      },
     });
 
     const { result } = renderHook(() => useUsers());
@@ -188,7 +198,17 @@ describe('useUsers', () => {
       pagination: { page: 1, pageSize: 25, total: 0 },
     });
     syncUsersFromKeycloakMock.mockResolvedValue({
-      data: { importedCount: 0, updatedCount: 0, skippedCount: 4, totalKeycloakUsers: 4 },
+      data: {
+        outcome: 'success',
+        checkedCount: 0,
+        correctedCount: 0,
+        failedCount: 0,
+        manualReviewCount: 0,
+        importedCount: 0,
+        updatedCount: 0,
+        skippedCount: 4,
+        totalKeycloakUsers: 4,
+      },
     });
 
     const { result } = renderHook(() => useUsers());
@@ -207,6 +227,11 @@ describe('useUsers', () => {
     expect(syncResult).toEqual({
       ok: true,
       report: {
+        outcome: 'success',
+        checkedCount: 0,
+        correctedCount: 0,
+        failedCount: 0,
+        manualReviewCount: 0,
         importedCount: 0,
         updatedCount: 0,
         skippedCount: 4,
@@ -230,7 +255,17 @@ describe('useUsers', () => {
       })
       .mockImplementationOnce(() => new Promise(() => undefined));
     syncUsersFromKeycloakMock.mockResolvedValue({
-      data: { importedCount: 2, updatedCount: 1, skippedCount: 0, totalKeycloakUsers: 3 },
+      data: {
+        outcome: 'success',
+        checkedCount: 3,
+        correctedCount: 3,
+        failedCount: 0,
+        manualReviewCount: 0,
+        importedCount: 2,
+        updatedCount: 1,
+        skippedCount: 0,
+        totalKeycloakUsers: 3,
+      },
     });
 
     const { result } = renderHook(() => useUsers());
@@ -249,6 +284,11 @@ describe('useUsers', () => {
     expect(syncResult).toEqual({
       ok: true,
       report: {
+        outcome: 'success',
+        checkedCount: 3,
+        correctedCount: 3,
+        failedCount: 0,
+        manualReviewCount: 0,
         importedCount: 2,
         updatedCount: 1,
         skippedCount: 0,

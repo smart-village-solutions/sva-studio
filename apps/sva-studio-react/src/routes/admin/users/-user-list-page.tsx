@@ -29,6 +29,13 @@ const statusTranslationKeyByValue = {
   pending: 'account.status.pending',
 } as const;
 
+const syncOutcomeTranslationKey = {
+  success: 'admin.users.messages.syncOutcome.success',
+  partial_failure: 'admin.users.messages.syncOutcome.partialFailure',
+  blocked: 'admin.users.messages.syncOutcome.blocked',
+  failed: 'admin.users.messages.syncOutcome.failed',
+} as const;
+
 export const UserListPage = () => {
   const usersApi = useUsers();
 
@@ -37,6 +44,11 @@ export const UserListPage = () => {
   );
   const [syncStatus, setSyncStatus] = React.useState<'idle' | 'pending' | 'success' | 'empty' | 'error'>('idle');
   const [syncResult, setSyncResult] = React.useState<{
+    outcome: 'success' | 'partial_failure' | 'blocked' | 'failed';
+    checkedCount: number;
+    correctedCount: number;
+    failedCount: number;
+    manualReviewCount: number;
     importedCount: number;
     updatedCount: number;
     skippedCount: number;
@@ -79,12 +91,24 @@ export const UserListPage = () => {
     }
 
     setSyncResult({
+      outcome: result.report.outcome,
+      checkedCount: result.report.checkedCount,
+      correctedCount: result.report.correctedCount,
+      failedCount: result.report.failedCount,
+      manualReviewCount: result.report.manualReviewCount,
       importedCount: result.report.importedCount,
       updatedCount: result.report.updatedCount,
       skippedCount: result.report.skippedCount,
       diagnostics: result.report.diagnostics,
     });
-    setSyncStatus(result.report.importedCount === 0 && result.report.updatedCount === 0 ? 'empty' : 'success');
+    setSyncStatus(
+      result.report.importedCount === 0 &&
+        result.report.updatedCount === 0 &&
+        result.report.failedCount === 0 &&
+        result.report.manualReviewCount === 0
+        ? 'empty'
+        : 'success'
+    );
   };
 
   const pageCount = Math.max(1, Math.ceil(usersApi.total / usersApi.pageSize));
@@ -242,10 +266,17 @@ export const UserListPage = () => {
         <Alert className="border-secondary/40 bg-secondary/10 text-secondary" role="status">
           <AlertDescription>
             {t('admin.users.messages.syncResult', {
+              checkedCount: syncResult.checkedCount,
+              correctedCount: syncResult.correctedCount,
+              failedCount: syncResult.failedCount,
+              manualReviewCount: syncResult.manualReviewCount,
               importedCount: syncResult.importedCount,
               updatedCount: syncResult.updatedCount,
               skippedCount: syncResult.skippedCount,
             })}
+            <span className="block text-xs text-muted-foreground">
+              {t(syncOutcomeTranslationKey[syncResult.outcome])}
+            </span>
             {syncResult.diagnostics ? (
               <span className="block text-xs text-muted-foreground">
                 {t('admin.users.messages.syncDiagnostics', {
@@ -272,6 +303,9 @@ export const UserListPage = () => {
             {t('admin.users.messages.syncEmpty', {
               skippedCount: syncResult.skippedCount,
             })}
+            <span className="block text-xs text-muted-foreground">
+              {t(syncOutcomeTranslationKey[syncResult.outcome])}
+            </span>
           </AlertDescription>
         </Alert>
       ) : null}

@@ -112,9 +112,11 @@ describe('useRoles', () => {
     deleteRoleMock.mockResolvedValue({ data: { id: 'role-1' } });
     reconcileRolesMock.mockResolvedValue({
       data: {
+        outcome: 'success',
         checkedCount: 1,
         correctedCount: 1,
         failedCount: 0,
+        manualReviewCount: 0,
         requiresManualActionCount: 0,
         roles: [],
       },

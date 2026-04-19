@@ -59,6 +59,11 @@ const createUsersApiState = (overrides: Record<string, unknown> = {}) => ({
   syncUsersFromKeycloak: vi.fn().mockResolvedValue({
     ok: true,
     report: {
+      outcome: 'success',
+      checkedCount: 1,
+      correctedCount: 1,
+      failedCount: 0,
+      manualReviewCount: 0,
       importedCount: 1,
       updatedCount: 0,
       skippedCount: 0,
@@ -124,6 +129,11 @@ describe('UserListPage', () => {
     const syncUsersFromKeycloak = vi.fn().mockResolvedValue({
       ok: true,
       report: {
+        outcome: 'partial_failure',
+        checkedCount: 6,
+        correctedCount: 3,
+        failedCount: 1,
+        manualReviewCount: 1,
         importedCount: 1,
         updatedCount: 2,
         skippedCount: 3,
@@ -151,12 +161,15 @@ describe('UserListPage', () => {
 
     expect(refetch).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(syncUsersFromKeycloak).toHaveBeenCalledTimes(1));
-    await waitFor(() => expect(screen.getByText(/1 importiert, 2 aktualisiert, 3/i)).toBeTruthy());
+    await waitFor(() =>
+      expect(screen.getByText(/6 geprüft: 3 korrigiert, 1 fehlgeschlagen, 1/i)).toBeTruthy()
+    );
     await waitFor(() =>
       expect(
         screen.getByText(/Realm de-musterhausen, Quelle Instanz-Realm\. 2 Benutzer ohne `instanceId`/i)
       ).toBeTruthy()
     );
+    expect(screen.getByText(/teilweisen Fehlern oder manuellem Nachlauf/i)).toBeTruthy();
   });
 
   it('renders diagnostic details for sync and list errors', async () => {

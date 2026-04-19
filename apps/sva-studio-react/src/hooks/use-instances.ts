@@ -41,6 +41,8 @@ const instancesLogger = createOperationLogger('instances-hook', 'debug');
 const passthroughWorkflowErrorCodes = new Set([
   'unauthorized',
   'forbidden',
+  'tenant_admin_client_not_configured',
+  'tenant_admin_client_secret_missing',
   'tenant_auth_client_secret_missing',
   'encryption_not_configured',
   'csrf_validation_failed',

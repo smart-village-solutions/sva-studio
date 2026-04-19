@@ -183,6 +183,14 @@ gleichzeitig beeinflussen.
 - Die zentrale Folgearbeit besteht nicht primär im Sammeln neuer Rohdaten, sondern im Vereinheitlichen dieser Signale zu einem sicheren, öffentlichen Diagnosekern.
 - Maßgeblicher Zwischenstand und offene Live-Triage sind in `../reports/iam-diagnostics-analysis-2026-04-19.md` dokumentiert.
 
+### Fortschreibung 2026-04: Kanonische IAM-Projektion und driftblockierter Reconcile
+
+- Read-Modelle für Profil, User-Liste und Rollenansicht werden fachlich aus demselben Projektionskern abgeleitet; UI-Hooks dürfen keinen separaten Identitäts- oder Rollenwahrheitskern aufbauen.
+- Ersatzbilder wie leere Rollen, UUID-Anzeigenamen oder `Ausstehend` sind nur zulässig, wenn der kanonische Projektionskern genau diesen Fachzustand liefert.
+- `IamHttpError` bleibt bis in die Browser-Schicht mit `classification`, `requestId` und `safeDetails` erhalten; relevante Klassen sind insbesondere `registry_or_provisioning_drift` und `keycloak_reconcile`.
+- Reconcile- und Sync-Berichte serialisieren deterministische Abschlusszustände und Aggregationen statt impliziter Erfolgssignale.
+- Tenant-Admin-abhängige Mutationen arbeiten fail-closed gegen blockerrelevanten Drift; ein grüner Basis-Health-Status überschreibt diesen Befund nicht.
+
 ### Build-, Test- und Cache-Konzept der Frontend-App
 
 - `apps/sva-studio-react` nutzt dedizierte Nx-Executor für Vite (`build`, `serve`, `preview`), Vitest (`test:unit`, `test:coverage`) und Playwright (`test:e2e`)

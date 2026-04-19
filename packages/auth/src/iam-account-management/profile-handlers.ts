@@ -27,6 +27,7 @@ import { runCriticalIamSchemaGuard } from './schema-guard.js';
 import { validateCsrf } from './csrf.js';
 import { updateMyProfileSchema } from './schemas.js';
 import type { ActorInfo } from './types.js';
+import { applyCanonicalUserDetailProjection } from './user-projection.js';
 
 type ProfileActorContext = {
   actor: ActorInfo;
@@ -516,8 +517,16 @@ export const updateMyProfileInternal = async (
         return createProfileNotFoundResponse(actorContext.actor.requestId);
       }
 
+      const projectedDetail = await withInstanceScopedDb(actorContext.actor.instanceId, (client) =>
+        applyCanonicalUserDetailProjection({
+          client,
+          instanceId: actorContext.actor.instanceId,
+          user: detail,
+        })
+      );
+
       iamUserOperationsCounter.add(1, { action: 'update_my_profile', result: 'success' });
-      return jsonResponse(200, asApiItem(detail, actorContext.actor.requestId));
+      return jsonResponse(200, asApiItem(projectedDetail, actorContext.actor.requestId));
     } catch (error) {
       if (shouldUpdateIdentity) {
         await restoreIdentityProfile(
@@ -570,8 +579,16 @@ export const getMyProfileInternal = async (
       return createProfileNotFoundResponse(actorContext.actor.requestId);
     }
 
+    const projectedDetail = await withInstanceScopedDb(actorContext.actor.instanceId, (client) =>
+      applyCanonicalUserDetailProjection({
+        client,
+        instanceId: actorContext.actor.instanceId,
+        user: detail,
+      })
+    );
+
     iamUserOperationsCounter.add(1, { action: 'get_my_profile', result: 'success' });
-    return jsonResponse(200, asApiItem(detail, actorContext.actor.requestId));
+    return jsonResponse(200, asApiItem(projectedDetail, actorContext.actor.requestId));
   } catch (error) {
     return await handleProfileFetchError(actorContext.actor, ctx, error);
   }

@@ -409,6 +409,35 @@ Die bisherige Live-Triage zeigt **keinen aktuellen harten IAM-Ausfall** auf `stu
   - der User-/Rollenabgleich mit Keycloak muss künftig als eigener Diagnose- und Folgechange-Arbeitsstrang behandelt werden
   - betroffen sind nicht nur Root-Host- oder Provisioning-Pfade, sondern konkrete Admin- und Self-Service-Flows in der produktnahen UI
 
+#### Retest nach neuem Online-Stand
+
+- Der nachgelagerte Retest gegen den neu ausgerollten Stand zeigt eine **klar verbesserte Fehlerdarstellung**, aber keinen durchgehenden fachlichen Fix des Keycloak-User-/Rollenabgleichs.
+- `de-musterhausen`
+  - `/admin/roles` lädt jetzt stabil; der Rollen-Reconcile ist in Browser-Logs und UI nachvollziehbar sichtbar
+  - Browser-Logs zeigen `roles_reconcile_started` und `roles_reconcile_succeeded`
+  - die UI meldet: `Reconcile abgeschlossen. Geprüft: 2, korrigiert: 0, fehlgeschlagen: 0, manuell prüfen: 2.`
+  - die Rollenliste bleibt trotzdem leer (`Keine Rollen gefunden.`)
+  - `/admin/users` ist gegenüber dem ersten Lauf deutlich verbessert: statt UUID-/`Ausstehend`-Befund werden zwei echte Benutzer mit Name und E-Mail angezeigt
+  - gleichzeitig bleibt die Rollenspalte leer (`-`), und der manuell ausgelöste User-Sync `Aus Keycloak synchronisieren` führt weiterhin in einen instabilen Pfad; nach `user_sync_keycloak_started` hing der Tab beziehungsweise der DevTools-Zugriff erneut auf Timeout
+- `bb-guben`
+  - `/admin/roles` bleibt fachlich deutlich degradiert, ist aber nun diagnostisch besser lesbar
+  - Browser-Logs zeigen auch hier `roles_reconcile_started` und `roles_reconcile_succeeded`
+  - die UI meldet: `Reconcile abgeschlossen. Geprüft: 17, korrigiert: 0, fehlgeschlagen: 16, manuell prüfen: 1.`
+  - die Rollen bleiben weitgehend im Status `Fehlgeschlagen`; konkrete Fehlercodes sind weiterhin `IDP_FORBIDDEN` und `IDP_UNAVAILABLE`
+  - zusätzlich bleibt die Diskrepanz bestehen, dass der allgemeine Systemstatus `Alles grün` meldet, während der fachliche Rollenabgleich massiv fehlschlägt
+- `hb-meinquartier`
+  - der frühere `503`-Zusammenbruch auf `/admin/roles` war im Retest nicht mehr reproduzierbar
+  - die Seite lädt stabil, der Systemstatus bleibt `Alles grün`, und der Rollen-Reconcile ist sichtbar instrumentiert
+  - Browser-Logs zeigen `roles_reconcile_started` und `roles_reconcile_succeeded`
+  - die UI meldet: `Reconcile abgeschlossen. Geprüft: 3, korrigiert: 0, fehlgeschlagen: 1, manuell prüfen: 2.`
+  - der fachliche Fehler bleibt aber bestehen: die vorhandene Rolle `admin` steht weiter auf `Fehlgeschlagen` mit `Synchronisierungsfehlercode: IDP_FORBIDDEN`
+- Retest-Einordnung:
+  - verbessert wurden vor allem Korrelation, Statussichtbarkeit und UI-taugliche Rückmeldung
+  - nicht behoben ist der eigentliche tenantübergreifende Keycloak-User-/Rollenabgleich
+  - `de-musterhausen` bleibt der Referenzfall für einen gemischten Befund aus verbesserter Benutzerprojektion, leerer Rollenprojektion und instabilem User-Sync
+  - `bb-guben` bleibt der Referenzfall für breit sichtbare Reconcile-Fehler mit konkreten IDP-Fehlercodes
+  - `hb-meinquartier` bleibt der Referenzfall dafür, dass frühere harte Laufzeitfehler in bessere Diagnose überführt wurden, der fachliche Rollenabgleich aber weiter fehlschlägt
+
 #### Aktueller Warnbefund
 
 - `observability-readiness` meldet in `doctor` und `precheck` den Status `warn` mit `observability_probe_empty`.
@@ -423,7 +452,7 @@ Die bisherige Live-Triage zeigt **keinen aktuellen harten IAM-Ausfall** auf `stu
 - Aktiver Teilbefund: `de-musterhausen` zeigt in der Root-Host-Control-Plane einen konkreten `registry_or_provisioning_drift` rund um Tenant-Admin-Client und Tenant-Admin-Client-Secret
 - Laufzeitnaher Zusatzbefund: `de-musterhausen` zeigt zusätzlich einen realen `actor_resolution_or_membership`- beziehungsweise `database_mapping_or_membership_inconsistency`-Symptompfad, weil technische Rollen vorhanden sind, die fachliche Profil- und Rollenauflösung in UI und Admin-Liste aber degradieren
 - Laufzeitnaher Zusatzbefund: `hb-meinquartier` zeigt keinen harten Ausfall, aber einen weicheren `database_mapping_or_membership_inconsistency`- oder Profilprojektionsbefund, weil Auth und Admin funktionieren, die Rollen-/Profildarstellung im Self-Service aber unvollständig bleibt
-- Eigenständiger Hauptbefund: der Keycloak-User- und Rollenabgleich zeigt tenantübergreifend reale `keycloak_dependency`, `registry_or_provisioning_drift` und `database_mapping_or_membership_inconsistency`-Symptome; die Fehlercodes reichen aktuell von `IDP_FORBIDDEN` über `IDP_UNAVAILABLE` bis `DB_WRITE_FAILED` und in `hb-meinquartier` bis zu echten `503` auf dem Reconcile-Endpunkt
+- Eigenständiger Hauptbefund: der Keycloak-User- und Rollenabgleich zeigt tenantübergreifend reale `keycloak_dependency`, `registry_or_provisioning_drift` und `database_mapping_or_membership_inconsistency`-Symptome; die Fehlercodes reichen aktuell von `IDP_FORBIDDEN` über `IDP_UNAVAILABLE` bis `DB_WRITE_FAILED`. Der neuere Online-Stand reduziert dabei harte Laufzeitabbrüche und macht Reconcile-Ergebnisse explizit sichtbar, behebt aber die fachlichen Sync-Probleme nicht.
 - Sekundäre Zuordnung: leichter Befund im Bereich `legacy_workaround_or_regression` bzw. Observability-Transport, weil die Evidenzschicht hinter der Laufzeitfunktion zurückbleibt
 - Zusätzlicher Konfigurationsbefund: `hb-meinquartier` ist beobachtbar gesund, ist aber im aktuellen `studio`-Profil nicht Teil von `SVA_ALLOWED_INSTANCE_IDS` und damit nicht automatisch Teil des vorhandenen `tenant-auth-proof`-Scopes
 - Struktureller Folgearbeitsbefund: `SVA_ALLOWED_INSTANCE_IDS` ist nicht mehr die führende Freigabequelle, beeinflusst aber weiterhin Fallback-Hostableitung und Triage-Scoping. Diese Doppelrolle sollte im Folgechange gezielt aufgelöst werden.
@@ -497,3 +526,17 @@ Der aktuelle Analysechange führt **noch keine neue ADR** ein. Dafür gibt es de
 getroffen wurde.
 
 Eine neue ADR wird erforderlich, wenn die Folgearbeit einen verbindlichen, cross-cutting Diagnosevertrag oder eine neue sichtbare Recovery-Policy dauerhaft festschreibt.
+
+## 12. Umsetzungsbefund zum Folgechange `refactor-iam-runtime-consistency-remediation`
+
+Stand dieses Folgechanges:
+
+- Reconcile- und User-Sync-Berichte liefern jetzt deterministische Abschlusszustände mit expliziten Zählwerten statt stillschweigender Teilergebnisse.
+- blockerrelevanter Tenant-Admin- oder Provisioning-Drift blockiert tenantlokale Reconcile-/Sync-Starts fail-closed.
+- Profil-, User- und Admin-Read-Pfade nutzen denselben kanonischen Projektionskern für Rollen- und Profildarstellung.
+- Browser- und UI-Pfade behalten `classification`, `requestId` und `safeDetails` für drift- und reconcile-nahe Fehler sichtbar.
+
+Verbleibende operatorpflichtige Restfälle:
+
+- fachlich mehrdeutige `manual_review`-Fälle werden bewusst nicht automatisch korrigiert
+- reale Tenant-Datenzustände aus `de-musterhausen`, `bb-guben` und `hb-meinquartier` bleiben als Referenzmatrix für weitere produktnahe Verifikation relevant

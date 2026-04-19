@@ -108,6 +108,14 @@ vi.mock('./user-projection.js', () => ({
   resolveKeycloakRoleNames: vi.fn(async () => state.keycloakRolesResult),
   resolveProjectedMainserverCredentialState: vi.fn(async () => state.mainserverCredentialResult),
   resolveProjectedUserDetail: vi.fn(async (input) => ({ ...input.user, roles: state.keycloakRolesResult })),
+  applyCanonicalUserDetailProjection: vi.fn(async (input) => ({
+    ...input.user,
+    roles: state.keycloakRolesResult,
+    credentials: state.mainserverCredentialResult,
+  })),
+  applyCanonicalUserListProjection: vi.fn(async ({ users }) =>
+    users.map((user: Record<string, unknown>) => ({ ...user, roles: state.keycloakRolesResult }))
+  ),
   mergeMainserverCredentialState: vi.fn((user, credentials) => ({ ...user, credentials })),
 }));
 
@@ -149,7 +157,7 @@ describe('user-read-handlers', () => {
       expect(response.status).toBe(200);
       const data = await response.json();
       expect(data.data.items).toHaveLength(2);
-      expect(data.data.items[0].username).toBe('alice');
+      expect(data.data.items[0].roles).toEqual(['admin', 'user']);
     });
 
     it('respects status filter parameter', async () => {

@@ -1,4 +1,4 @@
-import type { IamUserDetail, IamUserRoleAssignment } from '@sva/core';
+import type { IamUserDetail, IamUserListItem, IamUserRoleAssignment } from '@sva/core';
 
 import {
   KeycloakAdminRequestError,
@@ -98,3 +98,77 @@ export const isRecoverableUserProjectionError = (
   error: unknown
 ): error is KeycloakAdminRequestError | KeycloakAdminUnavailableError =>
   error instanceof KeycloakAdminRequestError || error instanceof KeycloakAdminUnavailableError;
+
+export const applyCanonicalUserDetailProjection = async (input: {
+  client: Parameters<typeof resolveRolesByExternalNames>[0];
+  instanceId: string;
+  user: IamUserDetail;
+  keycloakRoleNames?: readonly string[] | null;
+  mainserverCredentialState?: ReturnType<typeof resolveMainserverCredentialState>;
+}): Promise<IamUserDetail> => {
+  const resolvedKeycloakRoleNames =
+    input.keycloakRoleNames !== undefined
+      ? input.keycloakRoleNames
+      : await resolveKeycloakRoleNames(input.instanceId, input.user.keycloakSubject).catch((error: unknown) => {
+          if (!isRecoverableUserProjectionError(error)) {
+            throw error;
+          }
+          return null;
+        });
+  const resolvedMainserverCredentialState =
+    input.mainserverCredentialState ??
+    (await resolveProjectedMainserverCredentialState(input.user.keycloakSubject, input.instanceId).catch(() => ({
+      mainserverUserApplicationId: undefined,
+      mainserverUserApplicationSecretSet: false,
+    })));
+
+  const projectedUser = await resolveProjectedUserDetail({
+    client: input.client,
+    instanceId: input.instanceId,
+    user: input.user,
+    keycloakRoleNames: resolvedKeycloakRoleNames,
+  });
+
+  return mergeMainserverCredentialState(
+    projectedUser,
+    resolvedMainserverCredentialState
+  );
+};
+
+export const applyCanonicalUserListProjection = async (input: {
+  client: Parameters<typeof resolveRolesByExternalNames>[0];
+  instanceId: string;
+  users: readonly IamUserListItem[];
+}): Promise<readonly IamUserListItem[]> =>
+  Promise.all(
+    input.users.map(async (user) => {
+      try {
+        const keycloakRoleNames = await resolveKeycloakRoleNames(input.instanceId, user.keycloakSubject);
+        if (keycloakRoleNames === null) {
+          return user;
+        }
+
+        const mappedRoles = await resolveRolesByExternalNames(input.client, {
+          instanceId: input.instanceId,
+          externalRoleNames: keycloakRoleNames,
+        });
+        const projectedRoles = mapProjectedRoles(mappedRoles);
+        const currentRoleIds = new Set(user.roles.map((role) => role.roleId));
+        const changed =
+          currentRoleIds.size !== projectedRoles.length ||
+          projectedRoles.some((role) => !currentRoleIds.has(role.roleId));
+
+        return changed
+          ? {
+              ...user,
+              roles: projectedRoles,
+            }
+          : user;
+      } catch (error) {
+        if (!isRecoverableUserProjectionError(error)) {
+          throw error;
+        }
+        return user;
+      }
+    })
+  );

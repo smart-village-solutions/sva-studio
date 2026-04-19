@@ -107,3 +107,11 @@ Referenzen:
 - Strategisch führend ist nicht eine einzelne Fehlermeldung, sondern die Trennung zwischen Auth-, Session-, Actor-/Membership-, Keycloak-, Schema- und Registry-/Provisioning-Ursachen.
 - Öffentliche Diagnostik bleibt allowlist-basiert; tiefe Rohfehler bleiben weiterhin im OTEL- und Serverlog-Pfad.
 - Der aktuelle Analysebefund ist in `../reports/iam-diagnostics-analysis-2026-04-19.md` versioniert; der dort vorbereitete Folgechange ist der bevorzugte Ausgangspunkt für die eigentliche Umsetzung.
+
+### Fortschreibung 2026-04: Kanonischer IAM-Projektions- und Reconcile-Vertrag
+
+- User-Sync und Rollen-Reconcile werden als fachlich deterministische Laufzeitverträge behandelt und nicht mehr nur als technische Admin-Hilfsaktionen.
+- Führend ist ein gemeinsamer Projektionskern von Keycloak-Identität (`sub`, `instanceId`) über IAM-User und Membership bis zur Darstellung in `/auth/me`, `/account`, `/admin/users` und `/admin/roles`.
+- Tenant-Admin-abhängige Reconcile- und Sync-Pfade reagieren fail-closed, sobald blockerrelevanter Drift in Registry oder Provisioning erkannt wird.
+- `manual_review` bleibt bewusst ein fachlicher Restzustand für nicht deterministisch behebbaren Abgleich; technische Fehler wie `IDP_UNAVAILABLE` und `IDP_FORBIDDEN` bleiben getrennt sichtbar.
+- Browser- und UI-Verträge behalten `classification`, `requestId` und `safeDetails` vollständig, damit Diagnose, Operator-Handlung und Fachzustand nicht auseinanderlaufen.

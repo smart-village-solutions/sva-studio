@@ -194,6 +194,11 @@ describe('runKeycloakUserImportSync', () => {
     });
 
     expect(result.report).toEqual({
+      outcome: 'success',
+      checkedCount: 2,
+      correctedCount: 2,
+      failedCount: 0,
+      manualReviewCount: 0,
       importedCount: 1,
       updatedCount: 1,
       skippedCount: 1,
@@ -248,6 +253,11 @@ describe('runKeycloakUserImportSync', () => {
     });
 
     expect(result.report).toEqual({
+      outcome: 'success',
+      checkedCount: 1,
+      correctedCount: 1,
+      failedCount: 0,
+      manualReviewCount: 0,
       importedCount: 1,
       updatedCount: 0,
       skippedCount: 0,
@@ -327,6 +337,11 @@ describe('runKeycloakUserImportSync', () => {
       },
     ]);
     expect(result.report).toEqual({
+      outcome: 'success',
+      checkedCount: 1,
+      correctedCount: 1,
+      failedCount: 0,
+      manualReviewCount: 0,
       importedCount: 0,
       updatedCount: 1,
       repairedProfileCount: 1,
@@ -373,6 +388,11 @@ describe('runKeycloakUserImportSync', () => {
     });
 
     expect(result.report).toEqual({
+      outcome: 'success',
+      checkedCount: 1,
+      correctedCount: 1,
+      failedCount: 0,
+      manualReviewCount: 0,
       importedCount: 1,
       updatedCount: 0,
       skippedCount: 0,

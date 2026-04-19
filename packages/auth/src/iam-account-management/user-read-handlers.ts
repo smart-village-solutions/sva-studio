@@ -21,10 +21,10 @@ import { USER_STATUS } from './types.js';
 import { resolveUserDetail } from './user-detail-query.js';
 import { resolveUsersWithPagination } from './user-list-query.js';
 import {
-  mergeMainserverCredentialState,
+  applyCanonicalUserDetailProjection,
+  applyCanonicalUserListProjection,
   resolveKeycloakRoleNames,
   resolveProjectedMainserverCredentialState,
-  resolveProjectedUserDetail,
 } from './user-projection.js';
 import { resolveUserTimeline } from './user-timeline-query.js';
 
@@ -56,16 +56,25 @@ export const listUsersInternal = async (
   }
 
   try {
-    const data = await withInstanceScopedDb(access.actor.instanceId, (client) =>
-      resolveUsersWithPagination(client, {
+    const data = await withInstanceScopedDb(access.actor.instanceId, async (client) => {
+      const resolved = await resolveUsersWithPagination(client, {
         instanceId: access.actor.instanceId,
         page,
         pageSize,
         status,
         role: role ?? undefined,
         search: search ?? undefined,
-      })
-    );
+      });
+
+      return {
+        ...resolved,
+        users: await applyCanonicalUserListProjection({
+          client,
+          instanceId: access.actor.instanceId,
+          users: resolved.users,
+        }),
+      };
+    });
 
     return jsonResponse(
       200,
@@ -123,13 +132,6 @@ export const getUserInternal = async (
       resolveProjectedMainserverCredentialState(user.keycloakSubject, access.actor.instanceId),
     ]);
 
-    const keycloakRoleNames =
-      keycloakRoleNamesResult.status === 'fulfilled' ? keycloakRoleNamesResult.value : null;
-    const mainserverCredentialState =
-      mainserverCredentialStateResult.status === 'fulfilled'
-        ? mainserverCredentialStateResult.value
-        : { mainserverUserApplicationId: undefined, mainserverUserApplicationSecretSet: false };
-
     logUserProjectionDegraded({
       actor: access.actor,
       userId,
@@ -138,15 +140,19 @@ export const getUserInternal = async (
       logger,
     });
 
-    const projectedUserWithRoles = await withInstanceScopedDb(access.actor.instanceId, (client) =>
-      resolveProjectedUserDetail({
+    const projectedUser = await withInstanceScopedDb(access.actor.instanceId, (client) =>
+      applyCanonicalUserDetailProjection({
         client,
         instanceId: access.actor.instanceId,
         user,
-        keycloakRoleNames,
+        keycloakRoleNames:
+          keycloakRoleNamesResult.status === 'fulfilled' ? keycloakRoleNamesResult.value : null,
+        mainserverCredentialState:
+          mainserverCredentialStateResult.status === 'fulfilled'
+            ? mainserverCredentialStateResult.value
+            : { mainserverUserApplicationId: undefined, mainserverUserApplicationSecretSet: false },
       })
     );
-    const projectedUser = mergeMainserverCredentialState(projectedUserWithRoles, mainserverCredentialState);
 
     return jsonResponse(200, asApiItem(projectedUser, access.actor.requestId));
   } catch (error) {

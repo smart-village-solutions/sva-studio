@@ -16,6 +16,22 @@ import { withRegistryService } from './repository.js';
 
 export const mapInstanceMutationError = (error: unknown): Response => {
   const message = error instanceof Error ? error.message : String(error);
+  if (message.startsWith('registry_or_provisioning_drift_blocked:')) {
+    const driftSummary = message.slice('registry_or_provisioning_drift_blocked:'.length).trim();
+    return createApiError(
+      409,
+      'tenant_admin_client_not_configured',
+      'Blockerrelevanter Drift verhindert den Keycloak-Abgleich für diese Instanz.',
+      getWorkspaceContext().requestId,
+      {
+        dependency: 'keycloak',
+        reason_code: 'registry_or_provisioning_drift_blocked',
+        syncState: 'failed',
+        syncError: { code: 'DRIFT_BLOCKED' },
+        drift_summary: driftSummary || undefined,
+      }
+    );
+  }
   if (message.includes('tenant_admin_client_not_configured')) {
     return createApiError(409, 'tenant_admin_client_not_configured', 'Für diese Instanz ist noch kein Tenant-Admin-Client hinterlegt.', getWorkspaceContext().requestId);
   }

@@ -23,6 +23,7 @@ import type {
   IamOrganizationType,
   IamPermission,
   IamRoleListItem,
+  IamRoleReconcileReport,
   RuntimeHealthResponse,
   IamUserDirectPermissionAssignment,
   IamUserTimelineEvent,
@@ -359,6 +360,8 @@ export type UpdateRolePayload = {
   readonly retrySync?: boolean;
 };
 
+export type RoleReconcileReport = IamRoleReconcileReport;
+
 export type CreateGroupPayload = {
   readonly groupKey: string;
   readonly displayName: string;
@@ -404,23 +407,6 @@ export type UpdateLegalTextPayload = {
 export type CreateContentPayload = CreateIamContentInput;
 
 export type UpdateContentPayload = UpdateIamContentInput;
-
-export type RoleReconcileEntry = {
-  readonly roleId?: string;
-  readonly roleKey?: string;
-  readonly externalRoleName: string;
-  readonly action: 'noop' | 'create' | 'update' | 'report';
-  readonly status: 'synced' | 'corrected' | 'failed' | 'requires_manual_action';
-  readonly errorCode?: string;
-};
-
-export type RoleReconcileReport = {
-  readonly checkedCount: number;
-  readonly correctedCount: number;
-  readonly failedCount: number;
-  readonly requiresManualActionCount: number;
-  readonly roles: readonly RoleReconcileEntry[];
-};
 
 export type OrganizationsQuery = {
   readonly page: number;

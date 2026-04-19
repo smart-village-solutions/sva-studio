@@ -135,6 +135,8 @@ VALUES ($1, $2::uuid, 'member')
 ON CONFLICT (instance_id, account_id) DO NOTHING;
 `;
 
+const USER_SYNC_SAVEPOINT = 'iam_keycloak_user_sync_item';
+
 const shouldRetryWithoutUsernameCiphertext = (error: unknown): boolean => {
   const message = error instanceof Error ? error.message : String(error);
   return (
@@ -459,6 +461,21 @@ export const collectSyncCandidates = (
 
 const mapSyncErrorResponse = (error: unknown, requestId?: string): Response | undefined => {
   const errorMessage = error instanceof Error ? error.message : String(error);
+  if (errorMessage.includes('Tenant-lokale Keycloak-Administration ist nicht konfiguriert.')) {
+    return createApiError(
+      409,
+      'tenant_admin_client_not_configured',
+      'Tenant-lokale Keycloak-Administration ist nicht konfiguriert.',
+      requestId,
+      {
+        dependency: 'keycloak',
+        execution_mode: 'tenant_admin',
+        reason_code: 'tenant_admin_client_not_configured',
+        syncState: 'failed',
+        syncError: { code: 'IDP_UNAVAILABLE' },
+      }
+    );
+  }
   if (error instanceof KeycloakAdminRequestError || error instanceof KeycloakAdminUnavailableError) {
     return createApiError(
       503,
@@ -562,30 +579,73 @@ export const runKeycloakUserImportSync = async (input: {
     let importedCount = 0;
     let updatedCount = 0;
     let repairedProfileCount = 0;
+    let failedCount = 0;
+    let manualReviewCount = 0;
 
     for (const user of matchingUsers) {
-      const repaired = await repairIdentityUserProfileIfPossible(client, {
-        instanceId: input.instanceId,
-        user,
-        identityProvider: resolution,
-        requestId: input.requestId,
-        traceId: input.traceId,
-      });
-      if (repaired.repaired) {
-        repairedProfileCount += 1;
-      }
-      const result = await upsertIdentityUser(client, {
-        instanceId: input.instanceId,
-        user: repaired.user,
-      });
-      if (result.created) {
-        importedCount += 1;
-      } else {
-        updatedCount += 1;
+      await client.query(`SAVEPOINT ${USER_SYNC_SAVEPOINT}`);
+      try {
+        const repaired = await repairIdentityUserProfileIfPossible(client, {
+          instanceId: input.instanceId,
+          user,
+          identityProvider: resolution,
+          requestId: input.requestId,
+          traceId: input.traceId,
+        });
+        if (repaired.repaired) {
+          repairedProfileCount += 1;
+        }
+        const result = await upsertIdentityUser(client, {
+          instanceId: input.instanceId,
+          user: repaired.user,
+        });
+        if (result.created) {
+          importedCount += 1;
+        } else {
+          updatedCount += 1;
+        }
+        await client.query(`RELEASE SAVEPOINT ${USER_SYNC_SAVEPOINT}`);
+      } catch (error) {
+        await client.query(`ROLLBACK TO SAVEPOINT ${USER_SYNC_SAVEPOINT}`);
+        await client.query(`RELEASE SAVEPOINT ${USER_SYNC_SAVEPOINT}`);
+
+        if (
+          error instanceof KeycloakAdminRequestError ||
+          error instanceof KeycloakAdminUnavailableError ||
+          error instanceof IamSchemaDriftError
+        ) {
+          throw error;
+        }
+
+        failedCount += 1;
+        manualReviewCount += 1;
+        logger.warn('Keycloak user sync left a user in manual review', {
+          operation: 'sync_keycloak_users',
+          instance_id: input.instanceId,
+          auth_realm: resolution.realm,
+          provider_source: resolution.source,
+          request_id: input.requestId,
+          trace_id: input.traceId,
+          subject_ref: toSubjectRef(user.externalId),
+          error: error instanceof Error ? error.message : String(error),
+        });
       }
     }
 
+    const correctedCount = importedCount + updatedCount;
+    const outcome =
+      failedCount > 0 || manualReviewCount > 0
+        ? correctedCount > 0
+          ? 'partial_failure'
+          : 'failed'
+        : 'success';
+
     const summary: IamUserImportSyncReport = {
+      outcome,
+      checkedCount: matchingUsers.length,
+      correctedCount,
+      failedCount,
+      manualReviewCount,
       importedCount,
       updatedCount,
       skippedCount,
@@ -603,6 +663,10 @@ export const runKeycloakUserImportSync = async (input: {
           eventType: 'user.keycloak_import_synced',
           result: 'success',
           payload: {
+            checked_count: summary.checkedCount,
+            corrected_count: summary.correctedCount,
+            failed_count: summary.failedCount,
+            manual_review_count: summary.manualReviewCount,
             imported_count: summary.importedCount,
             updated_count: summary.updatedCount,
             skipped_count: summary.skippedCount,
@@ -633,6 +697,11 @@ export const runKeycloakUserImportSync = async (input: {
     actor_account_id: input.actorAccountId,
     request_id: input.requestId,
     trace_id: input.traceId,
+    outcome: report.outcome,
+    checked_count: report.checkedCount,
+    corrected_count: report.correctedCount,
+    failed_count: report.failedCount,
+    manual_review_count: report.manualReviewCount,
     imported_count: report.importedCount,
     updated_count: report.updatedCount,
     skipped_count: report.skippedCount,

@@ -29,9 +29,11 @@ type ReconcileRoleEntry = {
 };
 
 export type ReconcileReport = {
+  readonly outcome: 'success' | 'partial_failure' | 'blocked' | 'failed';
   readonly checkedCount: number;
   readonly correctedCount: number;
   readonly failedCount: number;
+  readonly manualReviewCount: number;
   readonly requiresManualActionCount: number;
   readonly roles: readonly ReconcileRoleEntry[];
   readonly debug?: {
@@ -739,9 +741,16 @@ ORDER BY role_level DESC, COALESCE(display_name, role_name) ASC;
   });
 
   const report = {
+    outcome:
+      entries.some((entry) => entry.status === 'failed' || entry.status === 'requires_manual_action')
+        ? entries.some((entry) => entry.status === 'corrected' || entry.status === 'synced')
+          ? 'partial_failure'
+          : 'failed'
+        : 'success',
     checkedCount: entries.length,
     correctedCount: entries.filter((entry) => entry.status === 'corrected').length,
     failedCount: entries.filter((entry) => entry.status === 'failed').length,
+    manualReviewCount: entries.filter((entry) => entry.status === 'requires_manual_action').length,
     requiresManualActionCount: entries.filter((entry) => entry.status === 'requires_manual_action').length,
     roles: entries,
     ...(input.includeDiagnostics

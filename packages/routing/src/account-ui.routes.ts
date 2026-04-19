@@ -2,7 +2,7 @@ import { createAdminRoute, createProtectedRoute, type ProtectedRouteOptions } fr
 import type { RoutingDiagnosticsHook } from './diagnostics.js';
 import { uiRoutePaths } from './route-paths.js';
 
-type AccountUiRouteGuardKey =
+export type AccountUiRouteGuardKey =
   | 'account'
   | 'accountPrivacy'
   | 'content'
@@ -31,7 +31,7 @@ type AccountUiRouteGuardDefinition = {
   readonly requiredRoles?: ProtectedRouteOptions['requiredRoles'];
 };
 
-const accountUiRouteGuardDefinitions: Record<AccountUiRouteGuardKey, AccountUiRouteGuardDefinition> = {
+export const accountUiRouteGuardDefinitions: Record<AccountUiRouteGuardKey, AccountUiRouteGuardDefinition> = {
   account: { kind: 'protected', route: uiRoutePaths.account },
   accountPrivacy: { kind: 'protected', route: uiRoutePaths.accountPrivacy },
   content: { kind: 'protected', route: uiRoutePaths.content },

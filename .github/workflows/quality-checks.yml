@@ -6,19 +6,13 @@ concurrency:
 
 on:
   pull_request:
-    paths-ignore:
-      - 'docs/**'
-      - '**/*.md'
-      - '.github/agents/**'
-      - '.github/prompts/**'
-      - '.github/ISSUE_TEMPLATE/**'
-      - '.github/PULL_REQUEST_TEMPLATE.md'
   push:
     branches:
       - main
 
 permissions:
   contents: read
+  pull-requests: read
 
 jobs:
   lint:
@@ -34,18 +28,39 @@ jobs:
         with:
           filter: tree:0
 
+      - name: Detect relevant PR changes
+        id: changes
+        if: github.event_name == 'pull_request'
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            relevant:
+              - '**'
+              - '!docs/**'
+              - '!**/*.md'
+              - '!.github/agents/**'
+              - '!.github/prompts/**'
+              - '!.github/ISSUE_TEMPLATE/**'
+              - '!.github/PULL_REQUEST_TEMPLATE.md'
+
       - name: Setup workspace
+        if: github.event_name != 'pull_request' || steps.changes.outputs.relevant == 'true'
         uses: ./.github/actions/setup-pnpm-workspace
         with:
           nx-cloud-encryption-key: ${{ secrets.NX_CLOUD_ENCRYPTION_KEY }}
 
       - name: Run lint gate
+        if: github.event_name != 'pull_request' || steps.changes.outputs.relevant == 'true'
         run: pnpm test:eslint
 
       - name: Publish lint summary
         if: always()
         run: |
           echo 'Lint-Gate abgeschlossen.' >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ github.event_name }}" = "pull_request" ] && [ "${{ steps.changes.outputs.relevant }}" != "true" ]; then
+            echo 'Scope: keine code-relevanten Änderungen im Pull Request, das Gate endet bewusst als No-op-Erfolg.' >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
           echo 'Command: `pnpm test:eslint`' >> "$GITHUB_STEP_SUMMARY"
 
   unit:
@@ -61,18 +76,39 @@ jobs:
         with:
           filter: tree:0
 
+      - name: Detect relevant PR changes
+        id: changes
+        if: github.event_name == 'pull_request'
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            relevant:
+              - '**'
+              - '!docs/**'
+              - '!**/*.md'
+              - '!.github/agents/**'
+              - '!.github/prompts/**'
+              - '!.github/ISSUE_TEMPLATE/**'
+              - '!.github/PULL_REQUEST_TEMPLATE.md'
+
       - name: Setup workspace
+        if: github.event_name != 'pull_request' || steps.changes.outputs.relevant == 'true'
         uses: ./.github/actions/setup-pnpm-workspace
         with:
           nx-cloud-encryption-key: ${{ secrets.NX_CLOUD_ENCRYPTION_KEY }}
 
       - name: Run unit gate
+        if: github.event_name != 'pull_request' || steps.changes.outputs.relevant == 'true'
         run: pnpm test:unit
 
       - name: Publish unit summary
         if: always()
         run: |
           echo 'Unit-Gate abgeschlossen.' >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ github.event_name }}" = "pull_request" ] && [ "${{ steps.changes.outputs.relevant }}" != "true" ]; then
+            echo 'Scope: keine code-relevanten Änderungen im Pull Request, das Gate endet bewusst als No-op-Erfolg.' >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
           echo 'Command: `pnpm test:unit`' >> "$GITHUB_STEP_SUMMARY"
 
   types:
@@ -88,16 +124,37 @@ jobs:
         with:
           filter: tree:0
 
+      - name: Detect relevant PR changes
+        id: changes
+        if: github.event_name == 'pull_request'
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            relevant:
+              - '**'
+              - '!docs/**'
+              - '!**/*.md'
+              - '!.github/agents/**'
+              - '!.github/prompts/**'
+              - '!.github/ISSUE_TEMPLATE/**'
+              - '!.github/PULL_REQUEST_TEMPLATE.md'
+
       - name: Setup workspace
+        if: github.event_name != 'pull_request' || steps.changes.outputs.relevant == 'true'
         uses: ./.github/actions/setup-pnpm-workspace
         with:
           nx-cloud-encryption-key: ${{ secrets.NX_CLOUD_ENCRYPTION_KEY }}
 
       - name: Run types gate
+        if: github.event_name != 'pull_request' || steps.changes.outputs.relevant == 'true'
         run: pnpm test:types
 
       - name: Publish types summary
         if: always()
         run: |
           echo 'Types-Gate abgeschlossen.' >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ github.event_name }}" = "pull_request" ] && [ "${{ steps.changes.outputs.relevant }}" != "true" ]; then
+            echo 'Scope: keine code-relevanten Änderungen im Pull Request, das Gate endet bewusst als No-op-Erfolg.' >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
           echo 'Command: `pnpm test:types`' >> "$GITHUB_STEP_SUMMARY"

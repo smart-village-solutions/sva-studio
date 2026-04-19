@@ -6,13 +6,6 @@ concurrency:
 
 on:
   pull_request:
-    paths-ignore:
-      - 'docs/**'
-      - '**/*.md'
-      - '.github/agents/**'
-      - '.github/prompts/**'
-      - '.github/ISSUE_TEMPLATE/**'
-      - '.github/PULL_REQUEST_TEMPLATE.md'
   push:
     branches:
       - main
@@ -21,6 +14,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
 
 jobs:
   coverage:
@@ -40,16 +34,34 @@ jobs:
           filter: tree:0
           fetch-depth: 0
 
+      - name: Detect relevant PR changes
+        id: changes
+        if: github.event_name == 'pull_request'
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            relevant:
+              - '**'
+              - '!docs/**'
+              - '!**/*.md'
+              - '!.github/agents/**'
+              - '!.github/prompts/**'
+              - '!.github/ISSUE_TEMPLATE/**'
+              - '!.github/PULL_REQUEST_TEMPLATE.md'
+
       - name: Setup workspace
+        if: github.event_name != 'pull_request' || steps.changes.outputs.relevant == 'true'
         uses: ./.github/actions/setup-pnpm-workspace
         with:
           nx-cloud-encryption-key: ${{ secrets.NX_CLOUD_ENCRYPTION_KEY }}
 
       - name: Start Redis for coverage tests
+        if: github.event_name != 'pull_request' || steps.changes.outputs.relevant == 'true'
         run: |
           docker run -d --name sva-studio-redis-coverage -p 6379:6379 redis:7-alpine
 
       - name: Wait for Redis readiness
+        if: github.event_name != 'pull_request' || steps.changes.outputs.relevant == 'true'
         run: |
           set -euo pipefail
           for i in {1..30}; do
@@ -65,11 +77,11 @@ jobs:
           exit 1
 
       - name: Ensure origin/main is available for affected
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && steps.changes.outputs.relevant == 'true'
         run: git fetch origin "${{ github.base_ref }}" --no-tags --prune --depth=1
 
       - name: Run affected coverage on PR
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && steps.changes.outputs.relevant == 'true'
         run: pnpm nx affected --target=test:coverage --base=origin/${{ github.base_ref }} --verbose --output-style=stream
 
       - name: Run full coverage on main/schedule
@@ -77,6 +89,7 @@ jobs:
         run: pnpm test:coverage
 
       - name: Evaluate coverage gates
+        if: github.event_name != 'pull_request' || steps.changes.outputs.relevant == 'true'
         env:
           COVERAGE_GATE_REQUIRE_SUMMARIES: ${{ github.event_name == 'pull_request' && '0' || '1' }}
         run: pnpm coverage-gate
@@ -86,7 +99,7 @@ jobs:
         run: pnpm nx run sva-studio-react:build
 
       - name: Upload to Codecov
-        if: always() && env.CODECOV_TOKEN != ''
+        if: always() && env.CODECOV_TOKEN != '' && (github.event_name != 'pull_request' || steps.changes.outputs.relevant == 'true')
         uses: codecov/codecov-action@v6
         with:
           token: ${{ env.CODECOV_TOKEN }}
@@ -97,7 +110,7 @@ jobs:
           name: coverage-${{ github.run_id }}
 
       - name: Upload coverage artifacts
-        if: always()
+        if: always() && (github.event_name != 'pull_request' || steps.changes.outputs.relevant == 'true')
         uses: actions/upload-artifact@v7
         with:
           name: coverage-reports-${{ github.run_id }}
@@ -128,21 +141,25 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
       - name: Stop Redis
-        if: always()
+        if: always() && (github.event_name != 'pull_request' || steps.changes.outputs.relevant == 'true')
         run: docker rm -f sva-studio-redis-coverage || true
 
       - name: Publish coverage summary
         if: always()
         run: |
           echo 'Coverage-Gate abgeschlossen.' >> "$GITHUB_STEP_SUMMARY"
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
+          if [ "${{ github.event_name }}" = "pull_request" ] && [ "${{ steps.changes.outputs.relevant }}" != "true" ]; then
+            echo 'Scope: keine code-relevanten Änderungen im Pull Request, Heavy-Checks wurden bewusst übersprungen.' >> "$GITHUB_STEP_SUMMARY"
+          elif [ "${{ github.event_name }}" = "pull_request" ]; then
             echo "Scope: affected gegen \`origin/${{ github.base_ref }}\`" >> "$GITHUB_STEP_SUMMARY"
           else
-            echo 'Scope: voller Coverage-Lauf fuer main/schedule' >> "$GITHUB_STEP_SUMMARY"
+            echo 'Scope: voller Coverage-Lauf für main/schedule' >> "$GITHUB_STEP_SUMMARY"
           fi
-          echo "Artifact: \`coverage-reports-${GITHUB_RUN_ID}\`" >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ github.event_name }}" != "pull_request" ] || [ "${{ steps.changes.outputs.relevant }}" = "true" ]; then
+            echo "Artifact: \`coverage-reports-${GITHUB_RUN_ID}\`" >> "$GITHUB_STEP_SUMMARY"
+          fi
           if [ "${{ github.event_name }}" != "pull_request" ]; then
-            echo 'Zusatz: Codecov- und Sonar-Schritte laufen nur ausserhalb von Pull Requests.' >> "$GITHUB_STEP_SUMMARY"
+            echo 'Zusatz: Codecov- und Sonar-Schritte laufen nur außerhalb von Pull Requests.' >> "$GITHUB_STEP_SUMMARY"
           fi
 
   complexity:
@@ -158,18 +175,39 @@ jobs:
         with:
           filter: tree:0
 
+      - name: Detect relevant PR changes
+        id: changes
+        if: github.event_name == 'pull_request'
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            relevant:
+              - '**'
+              - '!docs/**'
+              - '!**/*.md'
+              - '!.github/agents/**'
+              - '!.github/prompts/**'
+              - '!.github/ISSUE_TEMPLATE/**'
+              - '!.github/PULL_REQUEST_TEMPLATE.md'
+
       - name: Setup workspace
+        if: github.event_name != 'pull_request' || steps.changes.outputs.relevant == 'true'
         uses: ./.github/actions/setup-pnpm-workspace
         with:
           nx-cloud-encryption-key: ${{ secrets.NX_CLOUD_ENCRYPTION_KEY }}
 
       - name: Evaluate complexity gates
+        if: github.event_name != 'pull_request' || steps.changes.outputs.relevant == 'true'
         run: pnpm complexity-gate
 
       - name: Publish complexity summary
         if: always()
         run: |
-          echo 'Komplexitaets-Gate abgeschlossen.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Komplexitäts-Gate abgeschlossen.' >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ github.event_name }}" = "pull_request" ] && [ "${{ steps.changes.outputs.relevant }}" != "true" ]; then
+            echo 'Scope: keine code-relevanten Änderungen im Pull Request, das Gate endet bewusst als No-op-Erfolg.' >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
           echo 'Baseline und Policy stammen aus tooling/quality/complexity-*.json.' >> "$GITHUB_STEP_SUMMARY"
 
   integration-pr:
@@ -186,21 +224,42 @@ jobs:
         with:
           filter: tree:0
 
+      - name: Detect relevant PR changes
+        id: changes
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            relevant:
+              - '**'
+              - '!docs/**'
+              - '!**/*.md'
+              - '!.github/agents/**'
+              - '!.github/prompts/**'
+              - '!.github/ISSUE_TEMPLATE/**'
+              - '!.github/PULL_REQUEST_TEMPLATE.md'
+
       - name: Setup workspace
+        if: steps.changes.outputs.relevant == 'true'
         uses: ./.github/actions/setup-pnpm-workspace
         with:
           nx-cloud-encryption-key: ${{ secrets.NX_CLOUD_ENCRYPTION_KEY }}
 
       - name: Ensure origin/main is available for affected integration
+        if: steps.changes.outputs.relevant == 'true'
         run: git fetch origin "${{ github.base_ref }}" --no-tags --prune --depth=1
 
       - name: Run affected integration tests not covered by dedicated PR workflows
+        if: steps.changes.outputs.relevant == 'true'
         run: pnpm nx affected --target=test:integration --base=origin/${{ github.base_ref }} --exclude=monitoring-client --output-style=stream
 
       - name: Publish PR integration summary
         if: always()
         run: |
           echo 'PR-Integrations-Gate abgeschlossen.' >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ steps.changes.outputs.relevant }}" != "true" ]; then
+            echo 'Scope: keine code-relevanten Änderungen im Pull Request, das Gate endet bewusst als No-op-Erfolg.' >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
           echo "Scope: affected \`test:integration\` gegen \`origin/${{ github.base_ref }}\`, exklusive \`monitoring-client\`." >> "$GITHUB_STEP_SUMMARY"
           echo 'Monitoring-Checks laufen separat im Workflow `Monitoring Stack CI`.' >> "$GITHUB_STEP_SUMMARY"
 

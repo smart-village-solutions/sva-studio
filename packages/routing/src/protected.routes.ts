@@ -79,32 +79,36 @@ export const createProtectedRoute = <TContext extends RouteGuardContext = RouteG
     fallbackPath = DEFAULT_FALLBACK_PATH,
     insufficientRoleKey = DEFAULT_INSUFFICIENT_ROLE_KEY,
     diagnostics,
-    route = DEFAULT_FALLBACK_PATH,
   } = options;
+  const diagnosticsRoute = 'route' in options && typeof options.route === 'string' ? options.route : null;
 
   return async ({ context, location }: BeforeLoadOptions<TContext>) => {
     const user = await context.auth?.getUser();
 
     if (!user) {
-      emitRoutingDiagnostic(diagnostics, {
-        level: 'info',
-        event: 'routing.guard.access_denied',
-        route,
-        reason: 'unauthenticated',
-        redirect_target: sanitizePathForDiagnostics(loginPath, DEFAULT_LOGIN_PATH),
-      });
+      if (diagnosticsRoute) {
+        emitRoutingDiagnostic(diagnostics, {
+          level: 'info',
+          event: 'routing.guard.access_denied',
+          route: diagnosticsRoute,
+          reason: 'unauthenticated',
+          redirect_target: sanitizePathForDiagnostics(loginPath, DEFAULT_LOGIN_PATH),
+        });
+      }
       throw redirect({ href: buildLoginHref(loginPath, location.href) });
     }
 
     if (requiredRoles.length > 0 && !hasAnyRole(user, requiredRoles)) {
-      emitRoutingDiagnostic(diagnostics, {
-        level: 'info',
-        event: 'routing.guard.access_denied',
-        route,
-        reason: 'insufficient-role',
-        redirect_target: sanitizePathForDiagnostics(fallbackPath, DEFAULT_FALLBACK_PATH),
-        required_roles: sanitizeRequiredRoles(requiredRoles),
-      });
+      if (diagnosticsRoute) {
+        emitRoutingDiagnostic(diagnostics, {
+          level: 'info',
+          event: 'routing.guard.access_denied',
+          route: diagnosticsRoute,
+          reason: 'insufficient-role',
+          redirect_target: sanitizePathForDiagnostics(fallbackPath, DEFAULT_FALLBACK_PATH),
+          required_roles: sanitizeRequiredRoles(requiredRoles),
+        });
+      }
       throw redirect({ href: buildInsufficientRoleHref(fallbackPath, insufficientRoleKey) });
     }
   };

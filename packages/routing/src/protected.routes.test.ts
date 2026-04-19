@@ -99,4 +99,18 @@ describe('protected routes', () => {
       }
     }
   });
+
+  it('skips diagnostics when no explicit route is provided at runtime', async () => {
+    const diagnostics = vi.fn();
+    const guard = createProtectedRoute({ diagnostics } as never);
+
+    try {
+      await invokeGuard(guard, null, '/admin/users');
+      expect.fail('Expected redirect');
+    } catch (error) {
+      expect(isRedirect(error)).toBe(true);
+    }
+
+    expect(diagnostics).not.toHaveBeenCalled();
+  });
 });

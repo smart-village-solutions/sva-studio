@@ -121,8 +121,9 @@ Workflow: `.github/workflows/test-coverage.yml`
 
 - Pull Requests:
   - Job `Coverage Gate`: `nx affected --target=test:coverage` gegen den PR-Base-Branch
-  - Job `Complexity Gate`: separates, blockierendes Komplexitaets-Gate
+  - Job `Complexity Gate`: separates, blockierendes Komplexitäts-Gate
   - Job `PR Integration Gate`: `nx affected --target=test:integration`, exklusive `monitoring-client`
+  - Reine Doku-/Meta-PRs starten die Workflows weiterhin, beenden die betroffenen Jobs aber bewusst früh als erfolgreicher No-op, damit Required Checks nicht im Status `expected` hängen bleiben
 - Main + Nightly:
   - Job `Coverage Gate`: `test:coverage` (voll)
   - Job `Complexity Gate`: blockierend
@@ -132,32 +133,32 @@ Workflow: `.github/workflows/test-coverage.yml`
 
 | Workflow / Jobname in GitHub | Zweck | Trigger-Modell |
 | --- | --- | --- |
-| `Coverage and Quality Gates / Coverage Gate` | Coverage fuer affected/full + internes Coverage-Gate | alle code-relevanten PRs, `main`, nightly |
-| `Coverage and Quality Gates / Complexity Gate` | Repository-weites Komplexitaets-Gate | alle code-relevanten PRs, `main`, nightly |
-| `Coverage and Quality Gates / PR Integration Gate` | affected `test:integration` ausser Monitoring-Stack | Pull Requests |
-| `Coverage and Quality Gates / Integration Gate` | voller Integrationslauf | `main`, nightly |
-| `App E2E Smoke / App E2E Smoke` | Browser-Smoke fuer App-Routen | pfadbasiert |
-| `Monitoring Stack CI / monitoring-stack` | Monitoring-spezifische Docker-/Stack-Checks | pfadbasiert |
-| `SVA Mainserver Schema Gate / Schema Diff Gate` | Schema-Diff gegen Staging | pfadbasiert |
-| `File Placement / check-file-placement` | Dateiplatzierungs-Regeln | alle PRs und `main` |
+| `Coverage Gate` | Coverage für affected/full + internes Coverage-Gate | alle PRs, `main`, nightly |
+| `Complexity Gate` | Repository-weites Komplexitäts-Gate | alle PRs, `main`, nightly |
+| `PR Integration Gate` | affected `test:integration` außer Monitoring-Stack | Pull Requests |
+| `Integration Gate` | voller Integrationslauf | `main`, nightly |
+| `App E2E Smoke` | Browser-Smoke für App-Routen | pfadbasiert |
+| `monitoring-stack` | Monitoring-spezifische Docker-/Stack-Checks | pfadbasiert |
+| `Schema Diff Gate` | Schema-Diff gegen Staging | pfadbasiert |
+| `check-file-placement` | Dateiplatzierungs-Regeln | alle PRs und `main` |
 
 ### Recommended Branch-Protection-Checks
 
-Empfehlung fuer `main`:
+Empfehlung für `main`:
 
 - immer required:
   - `Lint / lint`
   - `Unit / unit`
   - `Types / types`
-  - `Coverage and Quality Gates / Coverage Gate`
-  - `Coverage and Quality Gates / Complexity Gate`
-  - `Coverage and Quality Gates / PR Integration Gate` fuer Pull Requests
-  - `Coverage and Quality Gates / Integration Gate` fuer `main`
-  - `File Placement / check-file-placement`
-- pfadabhaengig required:
-  - `App E2E Smoke / App E2E Smoke`
-  - `Monitoring Stack CI / monitoring-stack`
-  - `SVA Mainserver Schema Gate / Schema Diff Gate`
+  - `Coverage Gate`
+  - `Complexity Gate`
+  - `PR Integration Gate` für Pull Requests
+  - `Integration Gate` für `main`
+  - `check-file-placement`
+- pfadabhängig required:
+  - `App E2E Smoke`
+  - `monitoring-stack`
+  - `Schema Diff Gate`
 
 ### CI-Summaries und Artefakte
 
@@ -165,7 +166,7 @@ Die wichtigsten Workflows schreiben eine kurze `GITHUB_STEP_SUMMARY` mit Scope, 
 
 ## Nx-Remote-Cache: sichere Aktivierung vorbereiten
 
-Fuer Team- und CI-weite Wiederverwendung von Nx-Artefakten ist Nx Cloud der vorgesehene Standard. Laut offizieller Nx-Dokumentation wird ein bestehendes Workspace-Repo per `nx connect` angebunden; dabei wird ein `nxCloudId` in `nx.json` hinterlegt und im Repository committed. Fuer produktive Setups empfiehlt Nx ausserdem eine Ende-zu-Ende-Verschluesselung ueber `NX_CLOUD_ENCRYPTION_KEY`.
+Für Team- und CI-weite Wiederverwendung von Nx-Artefakten ist Nx Cloud der vorgesehene Standard. Laut offizieller Nx-Dokumentation wird ein bestehendes Workspace-Repo per `nx connect` angebunden; dabei wird ein `nxCloudId` in `nx.json` hinterlegt und im Repository committed. Für produktive Setups empfiehlt Nx außerdem eine Ende-zu-Ende-Verschlüsselung über `NX_CLOUD_ENCRYPTION_KEY`.
 
 Empfohlene Reihenfolge:
 

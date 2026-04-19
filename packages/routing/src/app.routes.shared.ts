@@ -1,7 +1,7 @@
 import type { PluginDefinition, PluginRouteGuard, RouteFactory } from '@sva/sdk';
 import { createRoute, type AnyRoute, type RootRoute, type RouteComponent } from '@tanstack/react-router';
 
-import { createAccountUiRouteGuard } from './account-ui.routes.js';
+import { createAccountUiRouteGuard, type AccountUiRouteGuardKey } from './account-ui.routes.js';
 import { emitRoutingDiagnostic, type RoutingDiagnosticsHook } from './diagnostics.js';
 import { normalizeIamTab, normalizeRoleDetailTab } from './route-search.js';
 import { uiRoutePaths } from './route-paths.js';
@@ -46,33 +46,11 @@ export type AppRouteBindings = {
   readonly adminApiPhase1Test: RouteComponent;
 };
 
-type GuardKey =
-  | 'account'
-  | 'accountPrivacy'
-  | 'content'
-  | 'contentCreate'
-  | 'contentDetail'
-  | 'adminUsers'
-  | 'adminUserCreate'
-  | 'adminUserDetail'
-  | 'adminOrganizations'
-  | 'adminOrganizationCreate'
-  | 'adminOrganizationDetail'
-  | 'adminInstances'
-  | 'adminRoles'
-  | 'adminRoleDetail'
-  | 'adminGroups'
-  | 'adminGroupCreate'
-  | 'adminGroupDetail'
-  | 'adminLegalTexts'
-  | 'adminLegalTextCreate'
-  | 'adminLegalTextDetail'
-  | 'adminIam';
 type BindingKey = keyof AppRouteBindings;
 
 type UiRouteDefinition = {
   readonly binding: BindingKey;
-  readonly guard?: GuardKey;
+  readonly guard?: AccountUiRouteGuardKey;
   readonly path: (typeof uiRoutePaths)[BindingKey];
   readonly validateSearch?: (search: Record<string, unknown>) => unknown;
 };

@@ -372,7 +372,7 @@ describe('app.routes', () => {
     expect(normalizeRoleDetailTab('anything-else')).toBe('general');
   });
 
-  it('threads diagnostics through the client route factory entry points', () => {
+  it('threads diagnostics through the client route factory entry points', async () => {
     const diagnostics = vi.fn();
 
     const routeFactories = getClientRouteFactories({
@@ -393,8 +393,15 @@ describe('app.routes', () => {
       ],
       diagnostics,
     });
+    const route = routeFactories
+      .map((factory) => factory({ id: 'root' } as never))
+      .find((candidate) => readRouteOptions(candidate).path === '/plugins/client-unsupported');
 
     expect(routeFactories.length).toBeGreaterThan(0);
+    expect(diagnostics).not.toHaveBeenCalled();
+
+    await readRouteOptions(route).beforeLoad?.({ href: '/plugins/client-unsupported' });
+
     expect(diagnostics).toHaveBeenCalledWith(
       expect.objectContaining({
         event: 'routing.plugin.guard_unsupported',

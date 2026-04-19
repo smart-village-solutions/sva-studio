@@ -1,0 +1,100 @@
+name: Quality Checks
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+on:
+  pull_request:
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
+      - '.github/agents/**'
+      - '.github/prompts/**'
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.github/PULL_REQUEST_TEMPLATE.md'
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NX_CLOUD_ENCRYPTION_KEY: ${{ secrets.NX_CLOUD_ENCRYPTION_KEY }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          filter: tree:0
+
+      - name: Setup workspace
+        uses: ./.github/actions/setup-pnpm-workspace
+        with:
+          nx-cloud-encryption-key: ${{ secrets.NX_CLOUD_ENCRYPTION_KEY }}
+
+      - name: Run lint gate
+        run: pnpm test:eslint
+
+      - name: Publish lint summary
+        if: always()
+        run: |
+          echo 'Lint-Gate abgeschlossen.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Command: `pnpm test:eslint`' >> "$GITHUB_STEP_SUMMARY"
+
+  unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      NX_CLOUD_ENCRYPTION_KEY: ${{ secrets.NX_CLOUD_ENCRYPTION_KEY }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          filter: tree:0
+
+      - name: Setup workspace
+        uses: ./.github/actions/setup-pnpm-workspace
+        with:
+          nx-cloud-encryption-key: ${{ secrets.NX_CLOUD_ENCRYPTION_KEY }}
+
+      - name: Run unit gate
+        run: pnpm test:unit
+
+      - name: Publish unit summary
+        if: always()
+        run: |
+          echo 'Unit-Gate abgeschlossen.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Command: `pnpm test:unit`' >> "$GITHUB_STEP_SUMMARY"
+
+  types:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      NX_CLOUD_ENCRYPTION_KEY: ${{ secrets.NX_CLOUD_ENCRYPTION_KEY }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          filter: tree:0
+
+      - name: Setup workspace
+        uses: ./.github/actions/setup-pnpm-workspace
+        with:
+          nx-cloud-encryption-key: ${{ secrets.NX_CLOUD_ENCRYPTION_KEY }}
+
+      - name: Run types gate
+        run: pnpm test:types
+
+      - name: Publish types summary
+        if: always()
+        run: |
+          echo 'Types-Gate abgeschlossen.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Command: `pnpm test:types`' >> "$GITHUB_STEP_SUMMARY"

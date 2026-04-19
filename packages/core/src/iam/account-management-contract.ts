@@ -27,32 +27,41 @@ export type ApiErrorCode =
   | 'reauth_required'
   | 'internal_error';
 
-export type IamRuntimeDiagnosticClassification =
-  | 'tenant_host_validation'
-  | 'session_store_or_session_hydration'
-  | 'actor_resolution_or_membership'
-  | 'keycloak_dependency'
-  | 'database_or_schema_drift'
-  | 'database_mapping_or_membership_inconsistency'
-  | 'registry_or_provisioning_drift'
-  | 'keycloak_reconcile'
-  | 'unknown';
+export const iamRuntimeDiagnosticClassifications = [
+  'tenant_host_validation',
+  'session_store_or_session_hydration',
+  'actor_resolution_or_membership',
+  'keycloak_dependency',
+  'database_or_schema_drift',
+  'database_mapping_or_membership_inconsistency',
+  'registry_or_provisioning_drift',
+  'keycloak_reconcile',
+  'unknown',
+] as const;
 
-export type IamRuntimeDiagnosticStatus =
-  | 'gesund'
-  | 'degradiert'
-  | 'recovery_laeuft'
-  | 'manuelle_pruefung_erforderlich';
+export type IamRuntimeDiagnosticClassification = (typeof iamRuntimeDiagnosticClassifications)[number];
 
-export type IamRuntimeRecommendedAction =
-  | 'erneut_anmelden'
-  | 'erneut_versuchen'
-  | 'keycloak_pruefen'
-  | 'migration_pruefen'
-  | 'provisioning_pruefen'
-  | 'rollenabgleich_pruefen'
-  | 'manuell_pruefen'
-  | 'support_kontaktieren';
+export const iamRuntimeDiagnosticStatuses = [
+  'gesund',
+  'degradiert',
+  'recovery_laeuft',
+  'manuelle_pruefung_erforderlich',
+] as const;
+
+export type IamRuntimeDiagnosticStatus = (typeof iamRuntimeDiagnosticStatuses)[number];
+
+export const iamRuntimeRecommendedActions = [
+  'erneut_anmelden',
+  'erneut_versuchen',
+  'keycloak_pruefen',
+  'migration_pruefen',
+  'provisioning_pruefen',
+  'rollenabgleich_pruefen',
+  'manuell_pruefen',
+  'support_kontaktieren',
+] as const;
+
+export type IamRuntimeRecommendedAction = (typeof iamRuntimeRecommendedActions)[number];
 
 export type IamRuntimeSafeDetails = Readonly<{
   reason_code?: string;

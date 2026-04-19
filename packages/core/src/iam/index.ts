@@ -102,4 +102,9 @@ export type {
   IamGroupMembership as IamAdminGroupMembership,
   IamGroupType as IamAdminGroupType,
 } from './authorization-contract.js';
+export {
+  iamRuntimeDiagnosticClassifications,
+  iamRuntimeDiagnosticStatuses,
+  iamRuntimeRecommendedActions,
+} from './account-management-contract.js';
 export { allowReasonCodes, denyReasonCodes, iamApiErrorCodes } from './authorization-contract.js';

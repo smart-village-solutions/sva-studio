@@ -136,6 +136,44 @@ pnpm test:types
 
 ---
 
+## 1.4 Action-ID-Namensmodell und Namespace-Ownership
+
+### ✅ REQUIRED
+- Alle autorisierbaren Action-IDs müssen langfristig das fully-qualified Format `<namespace>.<actionName>` verwenden.
+- Das gilt sowohl für Core-/interne Actions als auch für Plugin-Actions.
+- Neue Actions dürfen nicht als unqualifizierte Kurzformen wie `read`, `write`, `create`, `update` oder ähnliche freie Strings eingeführt werden.
+- Plugin-Actions dürfen ausschließlich im eigenen Plugin-Namespace definiert werden.
+- Reservierte Core-Namespaces dürfen nicht von Plugins verwendet werden.
+- Cross-Namespace-Verwendung darf nur über einen expliziten Bridge-, Alias- oder Migrationsvertrag eingeführt werden.
+
+### ❌ FORBIDDEN
+- Neue autorisierbare Actions ohne Namespace einführen.
+- Kurzformen implizit auf einen Namespace umdeuten, z. B. `read -> content.read` oder `create -> news.create`.
+- Plugin-Actions in reservierten Core-Namespaces deklarieren.
+- Core- und Plugin-Actions mit unterschiedlichen Namenskonventionen weiterentwickeln.
+
+**Warum diese Regel kritisch ist:**
+- Sie verhindert Namespace-Kollisionen und implizite Sicherheitsannahmen.
+- Sie macht IAM-, Audit- und Routing-Entscheidungen deterministisch nachvollziehbar.
+- Sie hält das Modell für Core und Plugins konsistent, statt zwei konkurrierende Action-Systeme zu pflegen.
+
+**Zielbeispiele:**
+```ts
+// ✅ Core / intern
+const readAction = 'content.read';
+const manageUsersAction = 'iam.users.manage';
+
+// ✅ Plugin
+const createNewsAction = 'news.create';
+const updateNewsAction = 'news.update';
+
+// ❌ Verbotene Kurzformen für neue autorisierbare Actions
+const invalidReadAction = 'read';
+const invalidCreateAction = 'create';
+```
+
+---
+
 ## 2. Translation System
 
 ### Process for UI Texts

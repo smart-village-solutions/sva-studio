@@ -33,7 +33,6 @@ jobs:
         with:
           filter: tree:0
           fetch-depth: 0
-          fetch-depth: 0
 
       - name: Detect relevant PR changes
         id: changes

@@ -338,6 +338,30 @@ describe('auth.routes.server', () => {
     );
   });
 
+  it('does not let dispatched diagnostics failures break successful auth handlers', async () => {
+    routingLogger.info.mockImplementationOnce(() => {
+      throw new Error('logger down');
+    });
+
+    const response = await dispatchAuthRouteRequest(new Request('http://localhost/health/live'));
+
+    expect(response?.status).toBe(200);
+    expect(authServerMocks.healthLiveHandler).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not let method-not-allowed diagnostics failures break the 405 response', async () => {
+    routingLogger.warn.mockImplementationOnce(() => {
+      throw new Error('logger down');
+    });
+
+    const response = await dispatchAuthRouteRequest(new Request('http://localhost/iam/me/data-export', { method: 'GET' }));
+
+    expect(response?.status).toBe(405);
+    await expect(response?.json()).resolves.toMatchObject({
+      error: 'method_not_allowed',
+    });
+  });
+
   it('returns null for requests outside the auth runtime route set', async () => {
     const response = await dispatchAuthRouteRequest(new Request('http://localhost/not-covered'));
 

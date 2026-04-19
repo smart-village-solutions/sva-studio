@@ -67,6 +67,33 @@ const buildMethodNotAllowedEvent = (
   };
 };
 
+const emitServerRoutingDiagnostic = (
+  event: RoutingDiagnosticEvent,
+  fallback?:
+    | {
+        readonly method: string;
+        readonly route: string;
+        readonly workspaceId: string;
+        readonly requestId?: string;
+        readonly traceId?: string;
+      }
+    | undefined
+): void => {
+  try {
+    defaultServerRoutingDiagnostics(event);
+  } catch (error) {
+    if (!fallback) {
+      return;
+    }
+
+    writeLoggerFallback({
+      ...fallback,
+      errorType: getErrorType(error),
+      errorMessage: getErrorMessage(error),
+    });
+  }
+};
+
 const createMethodNotAllowedResponse = (
   request: Request,
   route: string,
@@ -77,7 +104,13 @@ const createMethodNotAllowedResponse = (
 ): Response => {
   const event = buildMethodNotAllowedEvent(request, route, allow);
   if (options.log !== false) {
-    defaultServerRoutingDiagnostics(event);
+    emitServerRoutingDiagnostic(event, {
+      method: event.method,
+      route,
+      workspaceId: event.workspace_id ?? 'default',
+      requestId: event.request_id,
+      traceId: event.trace_id,
+    });
   }
 
   return methodNotAllowedJson(allow, event.request_id);
@@ -676,17 +709,27 @@ export const wrapHandlersWithJsonErrorBoundary = (handlers: AuthHandlers, routeP
       const context = readRoutingDiagnosticsContextFromRequest(ctx.request);
       const route = routePath ?? new URL(ctx.request.url).pathname;
       const startedAt = Date.now();
-      defaultServerRoutingDiagnostics({
-        level: 'info',
-        event: 'routing.handler.dispatched',
-        method,
-        route,
-        ...context,
-      });
+      emitServerRoutingDiagnostic(
+        {
+          level: 'info',
+          event: 'routing.handler.dispatched',
+          method,
+          route,
+          ...context,
+        },
+        {
+          method,
+          route,
+          workspaceId: context.workspace_id ?? 'default',
+          requestId: context.request_id,
+          traceId: context.trace_id,
+        }
+      );
 
       try {
         const response = await handler(ctx);
-        defaultServerRoutingDiagnostics({
+        emitServerRoutingDiagnostic(
+          {
           level: 'info',
           event: 'routing.handler.completed',
           method,
@@ -694,7 +737,15 @@ export const wrapHandlersWithJsonErrorBoundary = (handlers: AuthHandlers, routeP
           status_code: response.status,
           duration_ms: Date.now() - startedAt,
           ...context,
-        });
+          },
+          {
+            method,
+            route,
+            workspaceId: context.workspace_id ?? 'default',
+            requestId: context.request_id,
+            traceId: context.trace_id,
+          }
+        );
         return response;
       } catch (error) {
         const errorType = getErrorType(error);
@@ -703,8 +754,8 @@ export const wrapHandlersWithJsonErrorBoundary = (handlers: AuthHandlers, routeP
           requestId: context.request_id,
         });
 
-        try {
-          defaultServerRoutingDiagnostics({
+        emitServerRoutingDiagnostic(
+          {
             level: 'error',
             event: 'routing.handler.error_caught',
             method,
@@ -712,20 +763,18 @@ export const wrapHandlersWithJsonErrorBoundary = (handlers: AuthHandlers, routeP
             ...context,
             error_type: errorType,
             error_message: errorMessage,
-          });
-        } catch {
-          writeLoggerFallback({
+          },
+          {
             method,
             route,
             workspaceId: context.workspace_id ?? 'default',
             requestId: context.request_id,
             traceId: context.trace_id,
-            errorType,
-            errorMessage,
-          });
-        }
+          }
+        );
 
-        defaultServerRoutingDiagnostics({
+        emitServerRoutingDiagnostic(
+          {
           level: 'info',
           event: 'routing.handler.completed',
           method,
@@ -733,7 +782,15 @@ export const wrapHandlersWithJsonErrorBoundary = (handlers: AuthHandlers, routeP
           status_code: errorResponse.status,
           duration_ms: Date.now() - startedAt,
           ...context,
-        });
+          },
+          {
+            method,
+            route,
+            workspaceId: context.workspace_id ?? 'default',
+            requestId: context.request_id,
+            traceId: context.trace_id,
+          }
+        );
         return errorResponse;
       }
     };

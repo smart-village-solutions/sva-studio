@@ -174,23 +174,24 @@ export const getPluginRouteFactories = (
     pluginDefinition.routes.map((routeDefinition) => {
       const guardKey = mapPluginGuardToAccountGuard(routeDefinition.guard);
       const guard = guardKey ? createAccountUiRouteGuard(guardKey, diagnostics, routeDefinition.path) : null;
-
-      if (!guardKey && routeDefinition.guard) {
-        emitRoutingDiagnostic(diagnostics, {
-          level: 'warn',
-          event: 'routing.plugin.guard_unsupported',
-          route: routeDefinition.path,
-          reason: 'unsupported-plugin-guard',
-          plugin: pluginDefinition.id,
-          unsupported_guard: routeDefinition.guard,
-        });
-      }
+      const unsupportedGuard = !guardKey && routeDefinition.guard ? routeDefinition.guard : null;
 
       return (rootRoute: RootRoute) =>
         createRoute({
           getParentRoute: () => rootRoute,
           path: routeDefinition.path,
           beforeLoad: (options) => {
+            if (unsupportedGuard) {
+              emitRoutingDiagnostic(diagnostics, {
+                level: 'warn',
+                event: 'routing.plugin.guard_unsupported',
+                route: routeDefinition.path,
+                reason: 'unsupported-plugin-guard',
+                plugin: pluginDefinition.id,
+                unsupported_guard: unsupportedGuard,
+              });
+            }
+
             if (!guard) {
               return;
             }

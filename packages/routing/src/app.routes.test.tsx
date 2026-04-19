@@ -276,7 +276,7 @@ describe('app.routes', () => {
     expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('contentDetail', expect.any(Function), '/plugins/write');
   });
 
-  it('emits one diagnostics event for unsupported plugin guards during factory creation', () => {
+  it('emits one diagnostics event for unsupported plugin guards when the route is matched', async () => {
     const diagnostics = vi.fn();
 
     const pluginFactories = getPluginRouteFactories(
@@ -296,8 +296,13 @@ describe('app.routes', () => {
       ],
       { diagnostics }
     );
+    const route = pluginFactories[0]?.({ id: 'root' } as never);
 
     expect(pluginFactories).toHaveLength(1);
+    expect(diagnostics).not.toHaveBeenCalled();
+
+    await readRouteOptions(route).beforeLoad?.({ href: '/plugins/unsupported' });
+
     expect(diagnostics).toHaveBeenCalledTimes(1);
     expect(diagnostics).toHaveBeenCalledWith({
       level: 'warn',
@@ -309,7 +314,7 @@ describe('app.routes', () => {
     });
   });
 
-  it('logs unsupported plugin guards through the default diagnostics logger when none is injected', () => {
+  it('logs unsupported plugin guards through the default diagnostics logger when the route is matched', async () => {
     const pluginFactories = getPluginRouteFactories([
       {
         id: 'default-logged-plugin',
@@ -324,8 +329,13 @@ describe('app.routes', () => {
         ],
       },
     ]);
+    const route = pluginFactories[0]?.({ id: 'root' } as never);
 
     expect(pluginFactories).toHaveLength(1);
+    expect(browserRoutingLogger.warn).not.toHaveBeenCalled();
+
+    await readRouteOptions(route).beforeLoad?.({ href: '/plugins/default-logged' });
+
     expect(browserRoutingLogger.warn).toHaveBeenCalledWith(
       'Unsupported plugin route guard',
       expect.objectContaining({

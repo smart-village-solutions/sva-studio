@@ -12,15 +12,9 @@
       "@nx/vitest": "22.5.4"
     }
   },
-  "workspaceLayout": {
-    "appsDir": "apps",
-    "libsDir": "packages"
-  },
+  "workspaceLayout": { "appsDir": "apps", "libsDir": "packages" },
   "targetDefaults": {
-    "test:unit": {
-      "cache": true,
-      "inputs": ["default", "^production", "testing"]
-    },
+    "test:unit": { "cache": true, "inputs": ["default", "^production", "testing"] },
     "test:coverage": {
       "cache": true,
       "inputs": [
@@ -57,22 +51,11 @@
       "{projectRoot}/tsconfig.json",
       "{projectRoot}/package.json"
     ],
-    "frontendEnvBuild": [
-      {
-        "env": "CODECOV_TOKEN"
-      }
-    ],
-    "frontendEnvServe": [
-      {
-        "env": "TSS_DEV_SERVER"
-      }
-    ],
-    "frontendEnvE2E": [
-      {
-        "env": "CI"
-      }
-    ],
+    "frontendEnvBuild": [{ "env": "CODECOV_TOKEN" }],
+    "frontendEnvServe": [{ "env": "TSS_DEV_SERVER" }],
+    "frontendEnvE2E": [{ "env": "CI" }],
     "sharedGlobals": ["{workspaceRoot}/tsconfig.base.json", "{workspaceRoot}/pnpm-lock.yaml"]
   },
-  "analytics": false
+  "analytics": false,
+  "nxCloudId": "69e4e2584679d3b4b2845b37"
 }

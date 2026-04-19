@@ -15,6 +15,25 @@ const testEvent: RoutingDiagnosticEvent = {
 };
 
 describe('emitRoutingDiagnostic', () => {
+  it('returns early when no diagnostics hook is configured', () => {
+    expect(() => emitRoutingDiagnostic(undefined, testEvent)).not.toThrow();
+  });
+
+  it('swallows synchronous diagnostics hook failures', () => {
+    expect(() =>
+      emitRoutingDiagnostic(() => {
+        throw new Error('diagnostics failed');
+      }, testEvent)
+    ).not.toThrow();
+  });
+
+  it('supports synchronous diagnostics hooks without promise handling', () => {
+    const diagnostics = vi.fn();
+
+    expect(() => emitRoutingDiagnostic(diagnostics, testEvent)).not.toThrow();
+    expect(diagnostics).toHaveBeenCalledWith(testEvent);
+  });
+
   it('swallows rejected promises from async diagnostics hooks', async () => {
     expect(() =>
       emitRoutingDiagnostic((() => Promise.reject(new Error('diagnostics failed'))) as never, testEvent)
@@ -103,6 +122,89 @@ describe('createRoutingDiagnosticsLogger', () => {
         method: 'GET',
         error_type: 'Error',
         error_message: 'boom',
+      })
+    );
+  });
+
+  it('maps guard, dispatch, method-not-allowed, and fallback events with optional metadata', () => {
+    const logger = {
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+    };
+    const diagnostics = createRoutingDiagnosticsLogger(logger);
+
+    diagnostics({
+      level: 'info',
+      event: 'routing.guard.access_denied',
+      route: '/admin/users',
+      reason: 'insufficient-role',
+      redirect_target: '/',
+      required_roles: ['system_admin'],
+    });
+    diagnostics({
+      level: 'info',
+      event: 'routing.handler.dispatched',
+      route: '/auth/me',
+      method: 'GET',
+      handler_name: 'meHandler',
+    });
+    diagnostics({
+      level: 'warn',
+      event: 'routing.handler.method_not_allowed',
+      route: '/auth/logout',
+      reason: 'method-not-allowed',
+      method: 'GET',
+      allow: 'POST',
+    });
+    diagnostics({
+      level: 'error',
+      event: 'routing.logger.fallback_activated',
+      route: '/auth/me',
+      method: 'GET',
+      error_type: 'Error',
+      error_message: 'logger down',
+      handler_name: 'meHandler',
+    });
+
+    expect(logger.info).toHaveBeenCalledWith(
+      'Routing guard denied access',
+      expect.objectContaining({
+        event: 'routing.guard.access_denied',
+        route: '/admin/users',
+        reason: 'insufficient-role',
+        redirect_target: '/',
+        required_roles: ['system_admin'],
+      })
+    );
+    expect(logger.info).toHaveBeenCalledWith(
+      'Routing handler dispatched',
+      expect.objectContaining({
+        event: 'routing.handler.dispatched',
+        route: '/auth/me',
+        method: 'GET',
+        handler_name: 'meHandler',
+      })
+    );
+    expect(logger.warn).toHaveBeenCalledWith(
+      'Unsupported HTTP method for route handler',
+      expect.objectContaining({
+        event: 'routing.handler.method_not_allowed',
+        route: '/auth/logout',
+        reason: 'method-not-allowed',
+        method: 'GET',
+        allow: 'POST',
+      })
+    );
+    expect(logger.error).toHaveBeenCalledWith(
+      'Routing logger fallback activated',
+      expect.objectContaining({
+        event: 'routing.logger.fallback_activated',
+        route: '/auth/me',
+        method: 'GET',
+        error_type: 'Error',
+        error_message: 'logger down',
+        handler_name: 'meHandler',
       })
     );
   });

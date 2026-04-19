@@ -120,13 +120,69 @@ Wenn die Komplexität eines kritischen Hotspots steigt, darf der bestehende Floo
 Workflow: `.github/workflows/test-coverage.yml`
 
 - Pull Requests:
-  - `test:coverage:affected`
-  - Coverage-Gate (blockierend)
-  - Integrationstests separat, optional (`continue-on-error`)
+  - Job `Coverage Gate`: `nx affected --target=test:coverage` gegen den PR-Base-Branch
+  - Job `Complexity Gate`: separates, blockierendes Komplexitaets-Gate
+  - Job `PR Integration Gate`: `nx affected --target=test:integration`, exklusive `monitoring-client`
 - Main + Nightly:
-  - `test:coverage` (voll)
-  - Coverage-Gate (blockierend)
-  - Integrationstests separat und verpflichtend
+  - Job `Coverage Gate`: `test:coverage` (voll)
+  - Job `Complexity Gate`: blockierend
+  - Job `Integration Gate`: voller, verpflichtender Integrationslauf
+
+### PR-Workflow-Matrix
+
+| Workflow / Jobname in GitHub | Zweck | Trigger-Modell |
+| --- | --- | --- |
+| `Coverage and Quality Gates / Coverage Gate` | Coverage fuer affected/full + internes Coverage-Gate | alle code-relevanten PRs, `main`, nightly |
+| `Coverage and Quality Gates / Complexity Gate` | Repository-weites Komplexitaets-Gate | alle code-relevanten PRs, `main`, nightly |
+| `Coverage and Quality Gates / PR Integration Gate` | affected `test:integration` ausser Monitoring-Stack | Pull Requests |
+| `Coverage and Quality Gates / Integration Gate` | voller Integrationslauf | `main`, nightly |
+| `App E2E Smoke / App E2E Smoke` | Browser-Smoke fuer App-Routen | pfadbasiert |
+| `Monitoring Stack CI / monitoring-stack` | Monitoring-spezifische Docker-/Stack-Checks | pfadbasiert |
+| `SVA Mainserver Schema Gate / Schema Diff Gate` | Schema-Diff gegen Staging | pfadbasiert |
+| `File Placement / check-file-placement` | Dateiplatzierungs-Regeln | alle PRs und `main` |
+
+### Recommended Branch-Protection-Checks
+
+Empfehlung fuer `main`:
+
+- immer required:
+  - `Lint / lint`
+  - `Unit / unit`
+  - `Types / types`
+  - `Coverage and Quality Gates / Coverage Gate`
+  - `Coverage and Quality Gates / Complexity Gate`
+  - `Coverage and Quality Gates / PR Integration Gate` fuer Pull Requests
+  - `Coverage and Quality Gates / Integration Gate` fuer `main`
+  - `File Placement / check-file-placement`
+- pfadabhaengig required:
+  - `App E2E Smoke / App E2E Smoke`
+  - `Monitoring Stack CI / monitoring-stack`
+  - `SVA Mainserver Schema Gate / Schema Diff Gate`
+
+### CI-Summaries und Artefakte
+
+Die wichtigsten Workflows schreiben eine kurze `GITHUB_STEP_SUMMARY` mit Scope, Ergebnis und Artefaktname. Ziel ist, dass Reviews die relevanten Nachweise direkt im PR-UI finden, ohne zuerst in die kompletten Logs zu wechseln.
+
+## Nx-Remote-Cache: sichere Aktivierung vorbereiten
+
+Fuer Team- und CI-weite Wiederverwendung von Nx-Artefakten ist Nx Cloud der vorgesehene Standard. Laut offizieller Nx-Dokumentation wird ein bestehendes Workspace-Repo per `nx connect` angebunden; dabei wird ein `nxCloudId` in `nx.json` hinterlegt und im Repository committed. Fuer produktive Setups empfiehlt Nx ausserdem eine Ende-zu-Ende-Verschluesselung ueber `NX_CLOUD_ENCRYPTION_KEY`.
+
+Empfohlene Reihenfolge:
+
+1. Workspace mit Nx Cloud verbinden:
+   ```bash
+   pnpm nx connect
+   ```
+2. Den erzeugten `nxCloudId`-Patch nach `nx.json` uebernehmen.
+3. In GitHub Actions ein Secret `NX_CLOUD_ENCRYPTION_KEY` anlegen.
+4. Das Secret in den relevanten Workflows als Environment-Variable durchreichen.
+5. Fuer echte Deploy-Artefakte den Cache bewusst umgehen, wenn ein Lauf ein produktiv ausgerolltes Artefakt erzeugt.
+
+Wichtig:
+
+- Keine DIY-Bucket- oder Shared-FS-Remote-Caches fuer PR-Schreibzugriffe einfuehren. Nx weist aktuell explizit auf Cache-Poisoning-Risiken bei self-hosted Bucket-Loesungen hin.
+- Solange kein `nxCloudId` vorliegt, bleibt das Repository absichtlich bei lokalem Cache plus `affected`.
+- Die Aktivierung ist ein kleiner, separater Follow-up, weil dafuer ein echter Nx-Cloud-Workspace benoetigt wird.
 
 ### Codecov-Schwellenwerte
 

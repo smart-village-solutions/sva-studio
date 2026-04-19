@@ -1,4 +1,8 @@
-name: App E2E
+name: App E2E Smoke
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 on:
   pull_request:
@@ -8,8 +12,6 @@ on:
       - 'packages/routing/**'
       - 'packages/plugin-example/**'
       - 'docker-compose.yml'
-      - 'docker-compose.monitoring.yml'
-      - 'dev/monitoring/**'
       - '.github/workflows/app-e2e.yml'
   push:
     branches:
@@ -21,8 +23,11 @@ permissions:
 
 jobs:
   e2e:
+    name: App E2E Smoke
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     env:
+      NX_CLOUD_ENCRYPTION_KEY: ${{ secrets.NX_CLOUD_ENCRYPTION_KEY }}
       SVA_AUTH_ISSUER: https://accounts.google.com
       SVA_AUTH_CLIENT_ID: gha-e2e-client
       SVA_AUTH_CLIENT_SECRET: gha-e2e-secret
@@ -33,20 +38,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v5
         with:
-          version: 9.12.2
+          filter: tree:0
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
+      - name: Setup workspace
+        uses: ./.github/actions/setup-pnpm-workspace
         with:
-          node-version: '22'
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+          nx-cloud-encryption-key: ${{ secrets.NX_CLOUD_ENCRYPTION_KEY }}
 
       - name: Install Playwright browser
         run: pnpm --filter sva-studio-react exec playwright install --with-deps chromium
@@ -90,3 +88,10 @@ jobs:
         run: |
           docker compose -f docker-compose.monitoring.yml down
           docker rm -f sva-studio-redis-e2e || true
+
+      - name: Publish E2E summary
+        if: always()
+        run: |
+          echo 'App-E2E-Smoke abgeschlossen.' >> "$GITHUB_STEP_SUMMARY"
+          echo "Artifact: \`app-e2e-report-${GITHUB_RUN_ID}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo 'Services: Redis, Loki, OTEL Collector, Promtail.' >> "$GITHUB_STEP_SUMMARY"

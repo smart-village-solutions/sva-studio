@@ -1,4 +1,4 @@
-name: Studio Image Build
+name: Studio Image Build and Publish
 
 on:
   push:
@@ -32,7 +32,11 @@ permissions:
 
 jobs:
   build:
+    name: Build and Publish Studio Image
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      NX_CLOUD_ENCRYPTION_KEY: ${{ secrets.NX_CLOUD_ENCRYPTION_KEY }}
     outputs:
       image_digest: ${{ steps.inspect.outputs.image_digest }}
       image_ref: ${{ steps.inspect.outputs.image_ref }}
@@ -41,20 +45,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v5
         with:
-          version: 9.12.2
+          filter: tree:0
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
+      - name: Setup workspace
+        uses: ./.github/actions/setup-pnpm-workspace
         with:
-          node-version-file: '.nvmrc'
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+          nx-cloud-encryption-key: ${{ secrets.NX_CLOUD_ENCRYPTION_KEY }}
 
       - name: Verify final runtime artifact
         run: pnpm nx run sva-studio-react:verify:runtime-artifact
@@ -137,3 +134,11 @@ jobs:
           path: artifacts/runtime/runtime-artifact-verify
           if-no-files-found: warn
           retention-days: 14
+
+      - name: Publish image build summary
+        if: always()
+        run: |
+          echo 'Studio-Image-Build abgeschlossen.' >> "$GITHUB_STEP_SUMMARY"
+          echo "Image-Tag: \`${{ steps.meta.outputs.image_tag }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "Image-Ref: \`${{ steps.inspect.outputs.image_ref }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "Artifacts: \`studio-image-build-${GITHUB_RUN_ID}\`, \`studio-runtime-artifact-verify-${GITHUB_RUN_ID}\`" >> "$GITHUB_STEP_SUMMARY"

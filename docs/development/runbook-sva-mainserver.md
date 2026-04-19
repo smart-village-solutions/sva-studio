@@ -125,8 +125,8 @@ FROM (
 ## Schema-Snapshot und Drift
 
 - Der Snapshot unter `packages/sva-mainserver/src/generated/schema.snapshot.json` enthält ein vollständiges JSON-Introspection-Ergebnis.
-- Der CI-Workflow `SVA Mainserver Schema Diff` vergleicht Snapshot und Staging per `graphql-inspector diff`.
-- Der Workflow ist bewusst nicht blockierend und dient als Drift-Frühwarnung (Artifact: `sva-mainserver-schema-diff-*`).
+- Der CI-Workflow `SVA Mainserver Schema Gate` vergleicht Snapshot und Staging per `graphql-inspector diff`.
+- Der Workflow ist blockierend und veröffentlicht zusätzlich ein Drift-Artefakt (`sva-mainserver-schema-diff-*`).
 - Für die Ausführung in GitHub Actions müssen folgende Repository-Secrets gesetzt sein:
   - `SVA_MAINSERVER_SCHEMA_GRAPHQL_URL`
   - `SVA_MAINSERVER_SCHEMA_OAUTH_TOKEN_URL`

@@ -1,4 +1,8 @@
-name: SVA Mainserver Schema Diff
+name: SVA Mainserver Schema Gate
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 on:
   pull_request:
@@ -13,8 +17,11 @@ permissions:
 
 jobs:
   schema-diff:
+    name: Schema Diff Gate
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     env:
+      NX_CLOUD_ENCRYPTION_KEY: ${{ secrets.NX_CLOUD_ENCRYPTION_KEY }}
       SVA_MAINSERVER_SCHEMA_GRAPHQL_URL: ${{ secrets.SVA_MAINSERVER_SCHEMA_GRAPHQL_URL }}
       SVA_MAINSERVER_SCHEMA_OAUTH_TOKEN_URL: ${{ secrets.SVA_MAINSERVER_SCHEMA_OAUTH_TOKEN_URL }}
       SVA_MAINSERVER_SCHEMA_CLIENT_ID: ${{ secrets.SVA_MAINSERVER_SCHEMA_CLIENT_ID }}
@@ -23,20 +30,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v5
         with:
-          version: 9.12.2
+          filter: tree:0
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
+      - name: Setup workspace
+        uses: ./.github/actions/setup-pnpm-workspace
         with:
-          node-version-file: '.nvmrc'
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+          nx-cloud-encryption-key: ${{ secrets.NX_CLOUD_ENCRYPTION_KEY }}
 
       - name: Skip when schema diff secrets are missing
         if: env.SVA_MAINSERVER_SCHEMA_GRAPHQL_URL == '' || env.SVA_MAINSERVER_SCHEMA_OAUTH_TOKEN_URL == '' || env.SVA_MAINSERVER_SCHEMA_CLIENT_ID == '' || env.SVA_MAINSERVER_SCHEMA_CLIENT_SECRET == ''
@@ -72,3 +72,9 @@ jobs:
         run: |
           echo 'GraphQL Schema-Diff ausgeführt, keine Breaking Changes erkannt.' >> "$GITHUB_STEP_SUMMARY"
           echo 'Details siehe Artifact sva-mainserver-schema-diff-*.' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Fail when schema diff detects breaking changes or errors
+        if: steps.diff.outcome == 'failure'
+        run: |
+          echo 'Schema-Diff Gate fehlgeschlagen.' >&2
+          exit 1

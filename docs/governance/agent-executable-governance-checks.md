@@ -173,18 +173,20 @@ Governance Source: T4 - merge-review-gates.md
 Tool: `bash`
 Command:
 ```bash
-grep -E '`(Lint / lint|Unit / unit|Types / types|Test Coverage / coverage|App E2E / e2e)`' docs/governance/merge-review-gates.md
+grep -E '`(Lint / lint|Unit / unit|Types / types|Coverage and Quality Gates / Coverage Gate|Coverage and Quality Gates / Complexity Gate|Coverage and Quality Gates / PR Integration Gate|App E2E Smoke / App E2E Smoke)`' docs/governance/merge-review-gates.md
 ```
 Expected:
 ```
 `Lint / lint`
 `Unit / unit`
 `Types / types`
-`Test Coverage / coverage`
-`App E2E / e2e`
+`Coverage and Quality Gates / Coverage Gate`
+`Coverage and Quality Gates / Complexity Gate`
+`Coverage and Quality Gates / PR Integration Gate`
+`App E2E Smoke / App E2E Smoke`
 ```
 Failure:
-- Einer der fünf Check-Namen fehlt
+- Einer der dokumentierten Check-Namen fehlt
 - Check-Name ist umbenannt oder unspezifisch
 Frequency: per_PR
 
@@ -200,7 +202,7 @@ grep -F "nur bei Pfadtreffern" docs/governance/merge-review-gates.md && grep -F 
 ```
 Expected:
 ```
-`App E2E / e2e` ... nur bei Pfadtreffern
+`App E2E Smoke / App E2E Smoke` ... nur bei Pfadtreffern
 apps/sva-studio-react/**
 ```
 Failure:
@@ -323,14 +325,16 @@ gh api repos/smart-village-solutions/sva-studio/branches/main/protection | jq -r
 ```
 Expected:
 ```
-App E2E / e2e
+App E2E Smoke / App E2E Smoke
+Coverage and Quality Gates / Complexity Gate
+Coverage and Quality Gates / Coverage Gate
+Coverage and Quality Gates / PR Integration Gate
 Lint / lint
-Test Coverage / coverage
 Types / types
 Unit / unit
 ```
 Failure:
-- Einer der fünf Required Checks fehlt
+- Einer der dokumentierten Required Checks fehlt
 - Kontextliste ist `null`
 - Zusätzliche, nicht freigegebene Gate-Namen sind als required gesetzt
 Frequency: per_PR
@@ -748,13 +752,13 @@ Governance Source: T4/T10 - merge-review-gates.md + test-coverage.yml
 Tool: `bash`
 Command:
 ```bash
-grep -E "name: Test Coverage|jobs:|coverage:" .github/workflows/test-coverage.yml && grep -F "Workflow .github/workflows/test-coverage.yml, Job coverage" docs/governance/merge-review-gates.md
+grep -E "name: Coverage and Quality Gates|jobs:|coverage:" .github/workflows/test-coverage.yml && grep -F "Workflow .github/workflows/test-coverage.yml, Job \`coverage\`" docs/governance/merge-review-gates.md
 ```
 Expected:
 ```
-name: Test Coverage
+name: Coverage and Quality Gates
 coverage:
-Workflow .github/workflows/test-coverage.yml, Job coverage
+Workflow .github/workflows/test-coverage.yml, Job `coverage`
 ```
 Failure:
 - Coverage-Job ist in Workflow nicht vorhanden

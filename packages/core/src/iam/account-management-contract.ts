@@ -215,6 +215,10 @@ export type IamUserDetail = IamUserListItem & {
 };
 
 export type IamUserImportSyncReport = {
+  readonly outcome: 'success' | 'partial_failure' | 'failed';
+  readonly checkedCount: number;
+  readonly correctedCount: number;
+  readonly manualReviewCount: number;
   readonly importedCount: number;
   readonly updatedCount: number;
   readonly repairedProfileCount?: number;
@@ -222,7 +226,7 @@ export type IamUserImportSyncReport = {
   readonly totalKeycloakUsers: number;
   readonly diagnostics?: {
     readonly authRealm: string;
-    readonly providerSource: 'instance' | 'global';
+    readonly providerSource: 'instance' | 'global' | 'fallback_global';
     readonly executionMode?: 'platform_admin' | 'tenant_admin' | 'break_glass';
     readonly matchedWithoutInstanceAttributeCount?: number;
     readonly skippedInstanceIds?: readonly string[];
@@ -247,6 +251,25 @@ export type IamRoleListItem = {
     readonly permissionKey: string;
     readonly description?: string;
   }[];
+};
+
+export type IamRoleReconcileEntry = {
+  readonly roleId?: IamUuid;
+  readonly roleKey?: string;
+  readonly externalRoleName: string;
+  readonly action: 'noop' | 'create' | 'update' | 'report';
+  readonly status: 'synced' | 'corrected' | 'failed' | 'requires_manual_action';
+  readonly errorCode?: string;
+};
+
+export type IamRoleReconcileReport = {
+  readonly outcome: 'success' | 'partial_failure' | 'failed';
+  readonly checkedCount: number;
+  readonly correctedCount: number;
+  readonly failedCount: number;
+  readonly manualReviewCount: number;
+  readonly requiresManualActionCount: number;
+  readonly roles: readonly IamRoleReconcileEntry[];
 };
 
 export type IamGroupListItem = {

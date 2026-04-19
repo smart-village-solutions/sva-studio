@@ -27,6 +27,11 @@ import { runCriticalIamSchemaGuard } from './schema-guard.js';
 import { validateCsrf } from './csrf.js';
 import { updateMyProfileSchema } from './schemas.js';
 import type { ActorInfo } from './types.js';
+import {
+  applyCanonicalUserDetailProjection,
+  resolveKeycloakRoleNames,
+  resolveProjectedMainserverCredentialState,
+} from './user-projection.js';
 
 type ProfileActorContext = {
   actor: ActorInfo;
@@ -258,6 +263,35 @@ const readProfileUpdatePayload = async (
 
 const createProfileNotFoundResponse = (requestId?: string): Response =>
   createApiError(404, 'not_found', 'Nutzerprofil nicht gefunden.', requestId);
+
+const DEFAULT_MAINSERVER_CREDENTIAL_STATE = {
+  mainserverUserApplicationId: undefined,
+  mainserverUserApplicationSecretSet: false,
+} as const;
+
+const resolveProjectedProfileDetail = async (input: {
+  instanceId: string;
+  user: IamUserDetail;
+}): Promise<IamUserDetail> => {
+  const [keycloakRoleNamesResult, mainserverCredentialStateResult] = await Promise.allSettled([
+    resolveKeycloakRoleNames(input.instanceId, input.user.keycloakSubject),
+    resolveProjectedMainserverCredentialState(input.user.keycloakSubject, input.instanceId),
+  ]);
+
+  return withInstanceScopedDb(input.instanceId, (client) =>
+    applyCanonicalUserDetailProjection({
+      client,
+      instanceId: input.instanceId,
+      user: input.user,
+      keycloakRoleNames:
+        keycloakRoleNamesResult.status === 'fulfilled' ? keycloakRoleNamesResult.value : null,
+      mainserverCredentialState:
+        mainserverCredentialStateResult.status === 'fulfilled'
+          ? mainserverCredentialStateResult.value
+          : DEFAULT_MAINSERVER_CREDENTIAL_STATE,
+    })
+  );
+};
 
 const ensureIdentityProvider = async (instanceId: string, requestId?: string) => {
   const identityProvider = await resolveIdentityProviderForInstance(instanceId, {
@@ -516,8 +550,13 @@ export const updateMyProfileInternal = async (
         return createProfileNotFoundResponse(actorContext.actor.requestId);
       }
 
+      const projectedDetail = await resolveProjectedProfileDetail({
+        instanceId: actorContext.actor.instanceId,
+        user: detail,
+      });
+
       iamUserOperationsCounter.add(1, { action: 'update_my_profile', result: 'success' });
-      return jsonResponse(200, asApiItem(detail, actorContext.actor.requestId));
+      return jsonResponse(200, asApiItem(projectedDetail, actorContext.actor.requestId));
     } catch (error) {
       if (shouldUpdateIdentity) {
         await restoreIdentityProfile(
@@ -570,8 +609,13 @@ export const getMyProfileInternal = async (
       return createProfileNotFoundResponse(actorContext.actor.requestId);
     }
 
+    const projectedDetail = await resolveProjectedProfileDetail({
+      instanceId: actorContext.actor.instanceId,
+      user: detail,
+    });
+
     iamUserOperationsCounter.add(1, { action: 'get_my_profile', result: 'success' });
-    return jsonResponse(200, asApiItem(detail, actorContext.actor.requestId));
+    return jsonResponse(200, asApiItem(projectedDetail, actorContext.actor.requestId));
   } catch (error) {
     return await handleProfileFetchError(actorContext.actor, ctx, error);
   }

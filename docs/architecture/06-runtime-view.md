@@ -116,6 +116,21 @@ Fehlerpfad:
 - Recovery-Pfade wie Silent-Recovery, Session-Hydration oder Host-Fallbacks können Symptome kurzfristig überdecken; der degradierte Zustand muss daher für Diagnose und Folgeentscheidungen erhalten bleiben.
 - Runtime-IAM-Fehler und Instanz-/Provisioning-Drift dürfen nicht in getrennten Diagnosewelten landen.
 
+### Szenario 2e: Deterministischer User-Sync und Rollen-Reconcile
+
+1. Ein Administrator startet in `/admin/users` den Keycloak-User-Sync oder in `/admin/roles` den Rollen-Reconcile.
+2. Der Server lädt den Instanzkontext und prüft vor jeder tenantlokalen Admin-Mutation blockerrelevanten Drift aus Registry, Preflight und Provisioning-Plan.
+3. Liegt ein Blocker vor, endet der Lauf sofort fail-closed mit technischem Fehlervertrag inklusive `classification`, `requestId` und freigegebenen Safe-Details.
+4. Ohne Blocker führt `packages/auth` den Sync oder Reconcile deterministisch aus und trennt pro Eintrag zwischen korrigiert, fehlgeschlagen und fachlichem Restzustand `manual_review`.
+5. Die Handler antworten immer mit genau einem Abschlusszustand `success`, `partial_failure`, `blocked` oder `failed` sowie aggregierten Zählwerten.
+6. Read-Pfade für Profil, User-Liste und Rollenansicht laden anschließend denselben kanonischen Projektionskern nach, damit UI und Fachzustand übereinstimmen.
+
+Fehlerpfad:
+
+- fehlender Tenant-Admin-Client, Secret-Drift oder blockierter Provisioning-Plan verhindern den Start des Laufs vollständig.
+- `IDP_FORBIDDEN` und `IDP_UNAVAILABLE` bleiben als technische oder Berechtigungsfehler sichtbar und werden nicht als `manual_review` kaschiert.
+- einzelne fachlich mehrdeutige Fälle können in `manual_review` enden, ohne dass der Gesamt-Request hängen bleibt.
+
 ### Szenario 2b: Forced Reauth für einen Benutzer
 
 1. Ein interner Serverpfad ruft `forceReauthUser({ userId, mode, reason })` auf.

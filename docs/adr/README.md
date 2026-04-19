@@ -63,6 +63,7 @@ Architecture Decision Records dokumentieren **wichtige technische Entscheidungen
 | 029 | `goose` als OSS-Standard für SQL-Migrationen | ✅ | 2026-04-01 | Data / Betrieb / Tooling |
 | 034 | Plugin-SDK-Vertrag v1 | ✅ | 2026-04-13 | Studio / Plugins / SDK |
 | 035 | Routing-Observability über Diagnostics-Hook und Safe-Event-Vertrag | ✅ | 2026-04-19 | Routing / Observability |
+| 036 | Kanonischer IAM-Projektions- und Reconcile-Vertrag | ✅ | 2026-04-19 | IAM / Runtime / UI |
 
 ### Kanonischer Ablageort
 

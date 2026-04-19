@@ -37,6 +37,7 @@ Abhängigkeiten des aktuellen Systems.
    - OIDC-Flows, Session-Store, auth HTTP-Handler
    - modulare Server-Fassaden und fachliche Unterordner für IAM- und Auth-Pfade
    - Diagnosebausteine für Session-Hydration/-Refresh, Hostvalidierung, Schema-Guard, Runtime-Health und allowlist-basierte API-Fehlerdetails
+   - kanonischer IAM-Projektionskern für User-, Membership-, Profil- und Rollenauflösung sowie deterministische Reconcile-/Sync-Reports
 5. SDK (`packages/sdk`)
    - Logger, Context-Propagation, OTEL-Bootstrap
    - öffentlicher Plugin-Vertrag v1 (`PluginDefinition`, Navigation, Routen-, Content-Type- und Translation-Merge)
@@ -62,6 +63,7 @@ Abhängigkeiten des aktuellen Systems.
    - `packages/auth`: Plattformvertrag, Keycloak-Control-Plane, Provisioning-Fassade und Root-Host-Guard
    - `apps/sva-studio-react`: gefuehrte Admin-Control-Plane unter `/admin/instances` mit Preflight, Plan, Ausfuehrung und Protokoll
    - der Instanzvertrag trennt `authClientId` fuer interaktive Logins von `tenantAdminClient.clientId` fuer tenant-lokale Admin-Mutationen und Reconcile
+   - blockerrelevanter Drift aus Preflight, Provisioning-Plan oder fehlendem Tenant-Admin-Vertrag wird vor Reconcile-/Sync-Starts fail-closed durchgesetzt
 
 ### IAM-Bausteine und Package-Zuordnung
 
@@ -69,6 +71,8 @@ Abhängigkeiten des aktuellen Systems.
   - `packages/auth` (`routes.server.ts`, `routes/*`, `auth.server.ts`, `auth-server/*`, `oidc.server.ts`)
 - Account- und Rollenmanagement inkl. IdP-Synchronisation:
   - `packages/auth` (`iam-account-management.server.ts`, `iam-account-management/*`, `identity-provider-port.ts`, `keycloak-admin-client.ts`, `keycloak-admin-client/*`)
+  - `user-projection.ts` ist der gemeinsame Projektionskern für Self-Service-Profile und Admin-Reads; spezialisierte UI-Pfade dürfen darauf nur noch darstellerisch aufsetzen
+  - `reconcile-core.ts` und `user-import-sync-handler.ts` liefern deterministische Abschlusszustände (`success`, `partial_failure`, `blocked`, `failed`) mit Zählwerten für `checked`, `corrected`, `failed` und `manualReview`
 - Per-User-Credential-Lesen für Downstream-Integrationen:
   - `packages/auth` (`mainserver-credentials.server.ts`, `identity-provider-port.ts`, `keycloak-admin-client/*`)
 - Autorisierung (RBAC/ABAC) und Laufzeitentscheidungen:

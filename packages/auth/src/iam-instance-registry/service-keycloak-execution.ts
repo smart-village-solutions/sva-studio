@@ -236,6 +236,32 @@ const shouldReconcileTenantAdminClient = (loaded: NonNullable<Awaited<ReturnType
   return !loaded.tenantAdminClientSecret;
 };
 
+const ensureReconcilePreconditions = async (
+  deps: InstanceRegistryServiceDeps,
+  loaded: NonNullable<Awaited<ReturnType<typeof loadInstanceWithSecret>>>
+): Promise<void> => {
+  const provisioningInput = buildProvisioningInput(loaded);
+  const [preflight, plan] = await Promise.all([
+    deps.getKeycloakPreflight?.(provisioningInput),
+    deps.planKeycloakProvisioning?.(provisioningInput),
+  ]);
+
+  const blockingSummary =
+    preflight?.overallStatus === 'blocked'
+      ? preflight.checks
+          .filter((check) => check.status === 'blocked')
+          .map((check) => check.summary)
+          .filter((summary): summary is string => typeof summary === 'string' && summary.length > 0)
+          .join(' ')
+      : plan?.overallStatus === 'blocked'
+        ? plan.driftSummary
+        : '';
+
+  if (preflight?.overallStatus === 'blocked' || plan?.overallStatus === 'blocked') {
+    throw new Error(`registry_or_provisioning_drift_blocked:${blockingSummary || 'Provisioning blockiert.'}`);
+  }
+};
+
 export const createReconcileKeycloakHandler =
   (deps: InstanceRegistryServiceDeps) =>
   async (input: {
@@ -249,6 +275,8 @@ export const createReconcileKeycloakHandler =
     if (!loaded) {
       return null;
     }
+
+    await ensureReconcilePreconditions(deps, loaded);
 
     const intent = input.rotateClientSecret
       ? 'rotate_client_secret'

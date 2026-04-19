@@ -1193,9 +1193,15 @@ export const i18nResources = {
           syncRunning: 'Synchronisierung läuft ...',
           syncEmpty: 'Keine neuen oder geänderten Benutzer gefunden. {{skippedCount}} ohne passenden Instanzkontext übersprungen.',
           syncResult:
-            '{{importedCount}} importiert, {{updatedCount}} aktualisiert, {{skippedCount}} ohne passenden Instanzkontext übersprungen.',
+            '{{checkedCount}} geprüft: {{correctedCount}} korrigiert, {{manualReviewCount}} manuell prüfen. {{importedCount}} importiert, {{updatedCount}} aktualisiert, {{skippedCount}} ohne passenden Instanzkontext übersprungen.',
           syncDiagnostics:
             'Realm {{authRealm}}, Quelle {{providerSource}}. {{matchedWithoutInstanceAttributeCount}} Benutzer ohne `instanceId` wurden über den Realm-Kontext zugeordnet.',
+          syncOutcome: {
+            success: 'Der Sync wurde deterministisch ohne offenen Nachlauf abgeschlossen.',
+            partialFailure: 'Der Sync wurde mit teilweisen Fehlern oder manuellem Nachlauf abgeschlossen.',
+            blocked: 'Der Sync wurde durch Drift oder fehlende Laufzeitvoraussetzungen blockiert.',
+            failed: 'Der Sync endete ohne verwertbares Ergebnis.',
+          },
           syncProviderSource: {
             instance: 'Instanz-Realm',
             global: 'globaler Realm',
@@ -1437,6 +1443,12 @@ export const i18nResources = {
           roleLevel: 'Rollenlevel: {{value}}',
           reconcileSummary:
             'Reconcile abgeschlossen. Geprüft: {{checked}}, korrigiert: {{corrected}}, fehlgeschlagen: {{failed}}, manuell prüfen: {{manual}}.',
+          reconcileOutcome: {
+            success: 'Der Abgleich wurde deterministisch ohne offenen Nachlauf abgeschlossen.',
+            partialFailure: 'Der Abgleich wurde mit fehlgeschlagenen oder manuell zu prüfenden Einträgen abgeschlossen.',
+            blocked: 'Der Abgleich wurde durch Drift oder fehlende Laufzeitvoraussetzungen blockiert.',
+            failed: 'Der Abgleich endete ohne verwertbares Ergebnis.',
+          },
         },
         workspace: {
           title: 'Berechtigungsarbeitsbereich',
@@ -3081,9 +3093,15 @@ export const i18nResources = {
           syncRunning: 'Synchronization in progress ...',
           syncEmpty: 'No new or changed users found. {{skippedCount}} skipped without matching instance context.',
           syncResult:
-            '{{importedCount}} imported, {{updatedCount}} updated, {{skippedCount}} skipped without matching instance context.',
+            'Checked {{checkedCount}} users: {{correctedCount}} corrected, {{manualReviewCount}} require manual review. {{importedCount}} imported, {{updatedCount}} updated, {{skippedCount}} skipped without matching instance context.',
           syncDiagnostics:
             'Realm {{authRealm}}, source {{providerSource}}. {{matchedWithoutInstanceAttributeCount}} users without `instanceId` were matched by realm scope.',
+          syncOutcome: {
+            success: 'The sync completed deterministically without remaining follow-up.',
+            partialFailure: 'The sync completed with partial failures or manual follow-up items.',
+            blocked: 'The sync was blocked by provisioning or runtime prerequisites.',
+            failed: 'The sync ended without a usable result.',
+          },
           syncProviderSource: {
             instance: 'instance realm',
             global: 'global realm',
@@ -3325,6 +3343,12 @@ export const i18nResources = {
           roleLevel: 'Role level: {{value}}',
           reconcileSummary:
             'Reconcile finished. Checked: {{checked}}, corrected: {{corrected}}, failed: {{failed}}, manual review: {{manual}}.',
+          reconcileOutcome: {
+            success: 'The reconcile completed deterministically without remaining follow-up.',
+            partialFailure: 'The reconcile completed with failed or manually reviewable items.',
+            blocked: 'The reconcile was blocked by provisioning or runtime prerequisites.',
+            failed: 'The reconcile ended without a usable result.',
+          },
         },
         workspace: {
           title: 'Permission workspace',

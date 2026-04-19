@@ -13,7 +13,7 @@ import { Label } from '../../../components/ui/label';
 import { useRoles } from '../../../hooks/use-roles';
 import { t } from '../../../i18n';
 import type { TranslationKey } from '../../../i18n/translate';
-import type { IamHttpError } from '../../../lib/iam-api';
+import type { IamHttpError, RoleReconcileReport } from '../../../lib/iam-api';
 import { IamRuntimeDiagnosticDetails } from '../-iam-runtime-diagnostic-details';
 
 const statusTone = (syncState: 'synced' | 'pending' | 'failed'): string => {
@@ -31,6 +31,12 @@ const STATUS_LABEL_KEYS = {
   pending: 'admin.roles.sync.pending',
   failed: 'admin.roles.sync.failed',
 } as const;
+
+const RECONCILE_OUTCOME_LABEL_KEYS = {
+  success: 'admin.roles.messages.reconcileOutcome.success',
+  partial_failure: 'admin.roles.messages.reconcileOutcome.partialFailure',
+  failed: 'admin.roles.messages.reconcileOutcome.failed',
+} as const satisfies Record<RoleReconcileReport['outcome'], TranslationKey>;
 
 const statusLabel = (syncState: 'synced' | 'pending' | 'failed'): string => t(STATUS_LABEL_KEYS[syncState]);
 
@@ -249,13 +255,25 @@ export const RolesPage = () => {
       </StudioListPageTemplate>
 
       {rolesApi.reconcileReport ? (
-        <Alert className="border-secondary/40 bg-secondary/10 text-secondary" role="status">
-          <AlertDescription>{t('admin.roles.messages.reconcileSummary', {
-            checked: String(rolesApi.reconcileReport.checkedCount),
-            corrected: String(rolesApi.reconcileReport.correctedCount),
-            failed: String(rolesApi.reconcileReport.failedCount),
-            manual: String(rolesApi.reconcileReport.requiresManualActionCount),
-          })}</AlertDescription>
+        <Alert
+          className={
+            rolesApi.reconcileReport.outcome === 'success'
+              ? 'border-secondary/40 bg-secondary/10 text-secondary'
+              : 'border-destructive/40 bg-destructive/10 text-destructive'
+          }
+          role="status"
+        >
+          <AlertDescription className="flex flex-col gap-1">
+            <span>{t('admin.roles.messages.reconcileSummary', {
+              checked: String(rolesApi.reconcileReport.checkedCount),
+              corrected: String(rolesApi.reconcileReport.correctedCount),
+              failed: String(rolesApi.reconcileReport.failedCount),
+              manual: String(rolesApi.reconcileReport.manualReviewCount),
+            })}</span>
+            <span className="text-xs text-muted-foreground">
+              {t(RECONCILE_OUTCOME_LABEL_KEYS[rolesApi.reconcileReport.outcome])}
+            </span>
+          </AlertDescription>
         </Alert>
       ) : null}
 

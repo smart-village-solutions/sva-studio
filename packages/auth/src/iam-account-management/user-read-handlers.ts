@@ -1,4 +1,4 @@
-import type { IamUserDetail } from '@sva/core';
+import type { IamUserDetail, IamUserListItem } from '@sva/core';
 
 import type { AuthenticatedRequestContext } from '../middleware.server.js';
 import { jsonResponse } from '../shared/db-helpers.js';
@@ -21,12 +21,61 @@ import { USER_STATUS } from './types.js';
 import { resolveUserDetail } from './user-detail-query.js';
 import { resolveUsersWithPagination } from './user-list-query.js';
 import {
-  mergeMainserverCredentialState,
+  applyCanonicalUserDetailProjection,
+  applyCanonicalUserListProjection,
+  isRecoverableUserProjectionError,
   resolveKeycloakRoleNames,
   resolveProjectedMainserverCredentialState,
-  resolveProjectedUserDetail,
 } from './user-projection.js';
 import { resolveUserTimeline } from './user-timeline-query.js';
+
+const USER_LIST_ROLE_PROJECTION_CONCURRENCY = 5;
+
+const resolveListProjectionInputs = async (input: {
+  actor: {
+    instanceId: string;
+    requestId?: string;
+    traceId?: string;
+  };
+  users: readonly IamUserListItem[];
+}) =>
+  {
+    const keycloakRoleNamesBySubject = new Map<string, readonly string[] | null>();
+    const workers = Array.from(
+      { length: Math.min(USER_LIST_ROLE_PROJECTION_CONCURRENCY, input.users.length) },
+      async (_, workerIndex) => {
+        for (let index = workerIndex; index < input.users.length; index += USER_LIST_ROLE_PROJECTION_CONCURRENCY) {
+          const user = input.users[index];
+          if (!user) {
+            continue;
+          }
+          try {
+            keycloakRoleNamesBySubject.set(
+              user.keycloakSubject,
+              await resolveKeycloakRoleNames(input.actor.instanceId, user.keycloakSubject)
+            );
+          } catch (error) {
+            if (!isRecoverableUserProjectionError(error)) {
+              throw error;
+            }
+            logger.warn('IAM user list role projection degraded', {
+              operation: 'list_users',
+              instance_id: input.actor.instanceId,
+              request_id: input.actor.requestId,
+              trace_id: input.actor.traceId,
+              user_id: user.id,
+              error: error.message,
+            });
+            keycloakRoleNamesBySubject.set(user.keycloakSubject, null);
+          }
+        }
+      }
+    );
+
+    await Promise.all(workers);
+
+    return keycloakRoleNamesBySubject;
+  };
 
 export const listUsersInternal = async (
   request: Request,
@@ -56,7 +105,7 @@ export const listUsersInternal = async (
   }
 
   try {
-    const data = await withInstanceScopedDb(access.actor.instanceId, (client) =>
+    const resolved = await withInstanceScopedDb(access.actor.instanceId, (client) =>
       resolveUsersWithPagination(client, {
         instanceId: access.actor.instanceId,
         page,
@@ -66,10 +115,22 @@ export const listUsersInternal = async (
         search: search ?? undefined,
       })
     );
+    const keycloakRoleNamesBySubject = await resolveListProjectionInputs({
+      actor: access.actor,
+      users: resolved.users,
+    });
+    const users = await withInstanceScopedDb(access.actor.instanceId, (client) =>
+      applyCanonicalUserListProjection({
+        client,
+        instanceId: access.actor.instanceId,
+        users: resolved.users,
+        keycloakRoleNamesBySubject,
+      })
+    );
 
     return jsonResponse(
       200,
-      asApiList(data.users, { page, pageSize, total: data.total }, access.actor.requestId)
+      asApiList(users, { page, pageSize, total: resolved.total }, access.actor.requestId)
     );
   } catch (error) {
     logger.error('IAM user list failed', {
@@ -123,13 +184,6 @@ export const getUserInternal = async (
       resolveProjectedMainserverCredentialState(user.keycloakSubject, access.actor.instanceId),
     ]);
 
-    const keycloakRoleNames =
-      keycloakRoleNamesResult.status === 'fulfilled' ? keycloakRoleNamesResult.value : null;
-    const mainserverCredentialState =
-      mainserverCredentialStateResult.status === 'fulfilled'
-        ? mainserverCredentialStateResult.value
-        : { mainserverUserApplicationId: undefined, mainserverUserApplicationSecretSet: false };
-
     logUserProjectionDegraded({
       actor: access.actor,
       userId,
@@ -138,15 +192,19 @@ export const getUserInternal = async (
       logger,
     });
 
-    const projectedUserWithRoles = await withInstanceScopedDb(access.actor.instanceId, (client) =>
-      resolveProjectedUserDetail({
+    const projectedUser = await withInstanceScopedDb(access.actor.instanceId, (client) =>
+      applyCanonicalUserDetailProjection({
         client,
         instanceId: access.actor.instanceId,
         user,
-        keycloakRoleNames,
+        keycloakRoleNames:
+          keycloakRoleNamesResult.status === 'fulfilled' ? keycloakRoleNamesResult.value : null,
+        mainserverCredentialState:
+          mainserverCredentialStateResult.status === 'fulfilled'
+            ? mainserverCredentialStateResult.value
+            : { mainserverUserApplicationId: undefined, mainserverUserApplicationSecretSet: false },
       })
     );
-    const projectedUser = mergeMainserverCredentialState(projectedUserWithRoles, mainserverCredentialState);
 
     return jsonResponse(200, asApiItem(projectedUser, access.actor.requestId));
   } catch (error) {

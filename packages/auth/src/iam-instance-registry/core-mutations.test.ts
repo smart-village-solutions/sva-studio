@@ -23,8 +23,14 @@ vi.mock('@sva/sdk/server', () => ({
 
 vi.mock('../iam-account-management/api-helpers.js', () => ({
   asApiItem: (data: unknown) => data,
-  createApiError: (status: number, code: string, message: string, requestId?: string) =>
-    new Response(JSON.stringify({ code, message, requestId }), {
+  createApiError: (
+    status: number,
+    code: string,
+    message: string,
+    requestId?: string,
+    details?: Record<string, unknown>
+  ) =>
+    new Response(JSON.stringify({ code, message, requestId, ...(details ? { details } : {}) }), {
       status,
       headers: { 'Content-Type': 'application/json' },
     }),
@@ -96,6 +102,38 @@ describe('core-mutations', () => {
     const body = await readBody(response);
     expect(response.status).toBe(503);
     expect(body.code).toBe('encryption_not_configured');
+  });
+
+  it('maps provisioning drift blockers without reconcile sync metadata', async () => {
+    const response = mapInstanceMutationError(
+      new Error('registry_or_provisioning_drift_blocked:Tenant-Admin-Client fehlt')
+    );
+    const body = await readBody(response);
+
+    expect(response.status).toBe(409);
+    expect(body.code).toBe('tenant_admin_client_not_configured');
+    expect(body.details).toEqual({
+      dependency: 'keycloak',
+      reason_code: 'registry_or_provisioning_drift_blocked',
+      drift_summary: 'Tenant-Admin-Client fehlt',
+    });
+  });
+
+  it('preserves tenant auth secret blockers inside provisioning drift mapping', async () => {
+    const response = mapInstanceMutationError(
+      new Error(
+        'registry_or_provisioning_drift_blocked:Für diese Instanz fehlt ein lesbares Tenant-Client-Secret in der Registry.'
+      )
+    );
+    const body = await readBody(response);
+
+    expect(response.status).toBe(409);
+    expect(body.code).toBe('tenant_auth_client_secret_missing');
+    expect(body.details).toEqual({
+      dependency: 'keycloak',
+      reason_code: 'registry_or_provisioning_drift_blocked',
+      drift_summary: 'Für diese Instanz fehlt ein lesbares Tenant-Client-Secret in der Registry.',
+    });
   });
 
   it('maps unknown mutation errors to keycloak_unavailable', async () => {

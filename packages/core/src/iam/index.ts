@@ -37,6 +37,8 @@ export type {
   ApiListResponse,
   ApiPagination,
   IamRoleListItem,
+  IamRoleReconcileEntry,
+  IamRoleReconcileReport,
   IamRoleSyncError,
   IamRoleSyncState,
   InstanceStatus,

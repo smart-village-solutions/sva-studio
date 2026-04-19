@@ -75,6 +75,8 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
   - jede relevante IAM-Fehlerklasse muss mindestens einem Codepfad, einem UI- oder API-Signal und einer operativen Handlungsempfehlung zugeordnet sein
   - `requestId` und allowlist-basierte Safe-Details müssen für diagnosefähige IAM-Fehler browser- und UI-seitig erhalten bleiben
   - degradierte und Recovery-nahe Zustände dürfen nicht implizit als vollständig gesund dargestellt werden
+  - Reconcile- und Sync-Responses müssen deterministische Abschlusszustände und die Zählwerte `checked`, `corrected`, `failed`, `manualReview` stabil serialisieren
+  - blockerrelevanter Drift muss User-Sync und Rollen-Reconcile fail-closed blockieren und darf nicht als scheinbarer Erfolg in UI oder Audit erscheinen
 - IAM Redis-Betrieb:
   - Session-Store folgt dem Plattform-RTO `<= 2h`
   - Permission-Snapshots sind rekonstruierbar und müssen operativ innerhalb von `15 min` wieder in `ready|degraded` überführt werden
@@ -165,6 +167,12 @@ Referenzen:
 - IAM-Admin-Calls gegen Keycloak sollen bei Circuit-Breaker-Open deterministisch in den Degraded-Mode wechseln.
 - Mutierende IAM-Endpunkte müssen CSRF-Header validieren.
 - UI-Regressionen werden über Unit-Tests für Hooks und Seiten sowie E2E-Szenarien für Account/Admin abgesichert.
+
+### Ergänzung 2026-04: Qualitätsziele IAM-Laufzeitkonsistenz
+
+- `/auth/me`, `/account`, `/admin/users` und `/admin/roles` müssen bei identischer Identität und Membership denselben fachlichen Rollen-, Status- und Profilzustand ausweisen.
+- Ein gestarteter User-Sync oder Rollen-Reconcile darf nie ohne Abschlusszustand enden.
+- `IDP_FORBIDDEN`, `IDP_UNAVAILABLE` und fachliches `manual_review` müssen in API, Logs und UI getrennt nachweisbar bleiben.
 
 ### Ergänzung 2026-03: Qualitätsziele Organisationsverwaltung
 

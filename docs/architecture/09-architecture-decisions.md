@@ -41,6 +41,7 @@ mit Bezug auf die arc42-Abschnitte.
 - `ADR-032-plattform-scope-vs-tenant-instanz.md`
 - `ADR-034-plugin-sdk-vertrag-v1.md`
 - `ADR-035-routing-observability-diagnostics-hook.md`
+- `ADR-036-kanonischer-iam-projektions-und-reconcile-vertrag.md`
 
 ### Zuordnung zu arc42-Abschnitten
 
@@ -59,6 +60,7 @@ mit Bezug auf die arc42-Abschnitte.
 - Abschnitt 04/05/06/08/09/11 (Strategie/Bausteine/Laufzeit/Querschnitt/Entscheidungen/Risiken): ADR-032
 - Abschnitt 04/05/06/08/09/11/12 (Strategie/Bausteine/Laufzeit/Querschnitt/Entscheidungen/Risiken/Glossar): ADR-034
 - Abschnitt 04/05/06/08/09/10/11 (Strategie/Bausteine/Laufzeit/Querschnitt/Entscheidungen/Qualität/Risiken): ADR-035
+- Abschnitt 04/05/06/08/09/10/11 (Strategie/Bausteine/Laufzeit/Querschnitt/Entscheidungen/Qualität/Risiken): ADR-036
 - Abschnitt 03/04/05/06/08 (Kontext/Strategie/Bausteine/Laufzeit/Querschnitt): ADR-021
 
 ### Zuordnung Swarm-Deployment-ADRs
@@ -91,6 +93,7 @@ mit Bezug auf die arc42-Abschnitte.
 - ADR-032: Plattform-Scope vs. tenantgebundene Instanz als kanonische Runtime- und Audit-Trennung (Abschnitt 04, 05, 06, 08, 09, 11)
 - ADR-034: Statischer Plugin-SDK-Vertrag v1 für Routing, Navigation, Content-Typen und Übersetzungen (Abschnitt 04, 05, 06, 08, 09, 11, 12)
 - ADR-035: Routing-Observability über Diagnostics-Hook, Safe-Event-Vertrag und Browser-/Server-Split (Abschnitt 04, 05, 06, 08, 09, 10, 11)
+- ADR-036: Kanonischer IAM-Projektionskern, deterministischer Reconcile-/Sync-Vertrag und fail-closed Drift-Blocker (Abschnitt 04, 05, 06, 08, 09, 10, 11)
 
 ### Pflege-Regel
 
@@ -285,3 +288,14 @@ Zuordnung:
 Zuordnung:
 
 - Abschnitt 04/05/06/07/08/09/10/11: ADR-030
+
+### Fortschreibung 2026-04: Laufzeitkonsistenz im IAM
+
+- `ADR-036-kanonischer-iam-projektions-und-reconcile-vertrag.md`
+  - fixiert den gemeinsamen Projektionskern für `/auth/me`, `/account`, `/admin/users` und `/admin/roles`
+  - normiert deterministische Abschlusszustände für Reconcile und User-Sync
+  - verankert fail-closed Drift-Blocker für tenantlokale Admin-Pfade
+
+Zuordnung:
+
+- Abschnitt 04/05/06/08/09/10/11: ADR-036

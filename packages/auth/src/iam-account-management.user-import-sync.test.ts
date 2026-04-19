@@ -194,6 +194,10 @@ describe('runKeycloakUserImportSync', () => {
     });
 
     expect(result.report).toEqual({
+      outcome: 'success',
+      checkedCount: 2,
+      correctedCount: 2,
+      manualReviewCount: 0,
       importedCount: 1,
       updatedCount: 1,
       skippedCount: 1,
@@ -225,6 +229,8 @@ describe('runKeycloakUserImportSync', () => {
         externalId: 'kc-tenant-user',
         username: 'tenant.user',
         email: 'tenant@example.com',
+        firstName: 'Tenant',
+        lastName: 'User',
         enabled: true,
       },
     ];
@@ -248,6 +254,10 @@ describe('runKeycloakUserImportSync', () => {
     });
 
     expect(result.report).toEqual({
+      outcome: 'success',
+      checkedCount: 1,
+      correctedCount: 1,
+      manualReviewCount: 0,
       importedCount: 1,
       updatedCount: 0,
       skippedCount: 0,
@@ -327,6 +337,10 @@ describe('runKeycloakUserImportSync', () => {
       },
     ]);
     expect(result.report).toEqual({
+      outcome: 'success',
+      checkedCount: 1,
+      correctedCount: 1,
+      manualReviewCount: 0,
       importedCount: 0,
       updatedCount: 1,
       repairedProfileCount: 1,
@@ -373,6 +387,10 @@ describe('runKeycloakUserImportSync', () => {
     });
 
     expect(result.report).toEqual({
+      outcome: 'success',
+      checkedCount: 1,
+      correctedCount: 1,
+      manualReviewCount: 0,
       importedCount: 1,
       updatedCount: 0,
       skippedCount: 0,
@@ -388,6 +406,152 @@ describe('runKeycloakUserImportSync', () => {
         trace_id: 'trace-sync',
       })
     );
+  });
+
+  it('continues with manual review when a user profile stays incomplete after repair', async () => {
+    state.identityProviderRealm = 'de-musterhausen';
+    state.identityProviderSource = 'instance';
+    state.listUsersImpl = () => [
+      {
+        externalId: 'kc-complete',
+        username: 'complete.user',
+        email: 'complete@example.com',
+        firstName: 'Complete',
+        lastName: 'User',
+        enabled: true,
+        attributes: {
+          instanceId: ['de-musterhausen'],
+        },
+      },
+      {
+        externalId: 'kc-incomplete',
+        username: 'incomplete.user',
+        enabled: true,
+        attributes: {
+          instanceId: ['de-musterhausen'],
+        },
+      },
+    ];
+
+    let upsertCount = 0;
+    state.withInstanceScopedDbImpl = async (_instanceId, work) =>
+      work({
+        query: async (text: string) => {
+          if (text.includes('FROM iam.accounts') && text.includes('keycloak_subject = $2')) {
+            return { rows: [] };
+          }
+          if (text.includes('INSERT INTO iam.accounts')) {
+            upsertCount += 1;
+            return {
+              rows: [{ id: `11111111-1111-4111-8111-11111111111${upsertCount}`, created: true }],
+            };
+          }
+          return { rows: [] };
+        },
+      });
+
+    const { runKeycloakUserImportSync } = await import('./iam-account-management/user-import-sync-handler.js');
+
+    const result = await runKeycloakUserImportSync({
+      instanceId: 'de-musterhausen',
+      requestId: 'req-sync',
+      traceId: 'trace-sync',
+    });
+
+    expect(result.report).toEqual({
+      outcome: 'partial_failure',
+      checkedCount: 2,
+      correctedCount: 1,
+      manualReviewCount: 1,
+      importedCount: 1,
+      updatedCount: 0,
+      skippedCount: 0,
+      totalKeycloakUsers: 2,
+    });
+    expect(state.logger.warn).toHaveBeenCalledWith(
+      'Keycloak user sync left a user in manual review',
+      expect.objectContaining({
+        instance_id: 'de-musterhausen',
+        reason: 'identity_profile_incomplete',
+        subject_ref: expect.any(String),
+      })
+    );
+  });
+
+  it('fails with manual review outcome when all matched users stay incomplete', async () => {
+    state.identityProviderRealm = 'de-musterhausen';
+    state.identityProviderSource = 'instance';
+    state.listUsersImpl = () => [
+      {
+        externalId: 'kc-incomplete',
+        username: 'incomplete.user',
+        enabled: true,
+        attributes: {
+          instanceId: ['de-musterhausen'],
+        },
+      },
+    ];
+
+    state.withInstanceScopedDbImpl = async (_instanceId, work) =>
+      work({
+        query: async (text: string) => {
+          if (text.includes('FROM iam.accounts') && text.includes('keycloak_subject = $2')) {
+            return { rows: [] };
+          }
+          return { rows: [] };
+        },
+      });
+
+    const { runKeycloakUserImportSync } = await import('./iam-account-management/user-import-sync-handler.js');
+
+    const result = await runKeycloakUserImportSync({
+      instanceId: 'de-musterhausen',
+    });
+
+    expect(result.report).toEqual({
+      outcome: 'failed',
+      checkedCount: 1,
+      correctedCount: 0,
+      manualReviewCount: 1,
+      importedCount: 0,
+      updatedCount: 0,
+      skippedCount: 0,
+      totalKeycloakUsers: 1,
+    });
+  });
+
+  it('propagates non-recoverable write failures instead of downgrading them to manual review', async () => {
+    state.listUsersImpl = () => [
+      {
+        externalId: 'kc-created',
+        username: 'alice',
+        email: 'alice@example.com',
+        firstName: 'Alice',
+        lastName: 'Example',
+        enabled: true,
+        attributes: {
+          instanceId: ['hb-meinquartier'],
+        },
+      },
+    ];
+
+    state.withInstanceScopedDbImpl = async (_instanceId, work) =>
+      work({
+        query: async (text: string) => {
+          if (text.includes('INSERT INTO iam.accounts')) {
+            throw new Error('deadlock detected');
+          }
+          return { rows: [] };
+        },
+      });
+
+    const { runKeycloakUserImportSync } = await import('./iam-account-management/user-import-sync-handler.js');
+
+    await expect(
+      runKeycloakUserImportSync({
+        instanceId: 'hb-meinquartier',
+      })
+    ).rejects.toThrow('deadlock detected');
   });
 
   it('fails fast when username_ciphertext is missing in the schema', async () => {

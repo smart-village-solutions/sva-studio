@@ -148,6 +148,31 @@ describe('deriveIamRuntimeDiagnostics', () => {
     });
   });
 
+  it('prioritizes provisioning drift blockers over reconcile sync metadata', () => {
+    expect(
+      deriveIamRuntimeDiagnostics({
+        code: 'tenant_admin_client_not_configured',
+        status: 409,
+        details: {
+          reason_code: 'registry_or_provisioning_drift_blocked',
+          syncError: {
+            code: 'DRIFT_BLOCKED',
+          },
+          syncState: 'failed',
+        },
+      })
+    ).toEqual({
+      classification: 'registry_or_provisioning_drift',
+      recommendedAction: 'provisioning_pruefen',
+      safeDetails: {
+        reason_code: 'registry_or_provisioning_drift_blocked',
+        sync_error_code: 'DRIFT_BLOCKED',
+        sync_state: 'failed',
+      },
+      status: 'degradiert',
+    });
+  });
+
   it('accepts snake_case reconcile details and keeps DB write failures out of reconcile classification', () => {
     expect(
       deriveIamRuntimeDiagnostics({

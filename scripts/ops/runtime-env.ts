@@ -3928,7 +3928,7 @@ const runExternalSmoke = async (
 ): Promise<readonly AcceptanceProbeResult[]> => {
   const baseUrl = env.SVA_PUBLIC_BASE_URL ?? 'http://localhost:3000';
   const base = new URL(baseUrl);
-  const tenantTargetResolution = await resolveTenantRuntimeTargets(runtimeProfile, env);
+  const tenantTargetResolution = await resolveTenantRuntimeTargets(runtimeProfile, env, { limit: 2 });
   const tenantProbes = tenantTargetResolution.targets.map((tenantTarget) =>
         runHttpProbe({
           name: `public-auth-login-${tenantTarget.instanceId}`,

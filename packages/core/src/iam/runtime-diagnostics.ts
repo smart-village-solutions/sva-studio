@@ -102,8 +102,7 @@ const classify = ({ input, safeDetails }: RuntimeDiagnosticSafeDetails): IamRunt
   if (
     reasonCode === 'jit_provision_failed' ||
     reasonCode === 'foreign_key_violation' ||
-    reasonCode === 'rls_denied' ||
-    syncErrorCode === 'DB_WRITE_FAILED'
+    reasonCode === 'rls_denied'
   ) {
     return 'database_mapping_or_membership_inconsistency';
   }

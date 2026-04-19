@@ -35,7 +35,12 @@ import type {
   IamRuntimeSafeDetails,
   UpdateIamContentInput,
 } from '@sva/core';
-import { deriveIamRuntimeDiagnostics } from '@sva/core';
+import {
+  deriveIamRuntimeDiagnostics,
+  iamRuntimeDiagnosticClassifications,
+  iamRuntimeDiagnosticStatuses,
+  iamRuntimeRecommendedActions,
+} from '@sva/core';
 import { createBrowserLogger } from '@sva/sdk/logging';
 
 const IAM_HEADERS = {
@@ -51,33 +56,11 @@ export const LEGAL_ACCEPTANCE_REQUIRED_EVENT = 'sva:legal-acceptance-required';
 const DEFAULT_IAM_REQUEST_TIMEOUT_MS = 10_000;
 const HEALTH_REQUEST_TIMEOUT_MS = 5_000;
 const HEAVY_IAM_REQUEST_TIMEOUT_MS = 20_000;
-const KNOWN_RUNTIME_DIAGNOSTIC_CLASSIFICATIONS = new Set<IamRuntimeDiagnosticClassification>([
-  'tenant_host_validation',
-  'session_store_or_session_hydration',
-  'actor_resolution_or_membership',
-  'keycloak_dependency',
-  'database_or_schema_drift',
-  'database_mapping_or_membership_inconsistency',
-  'registry_or_provisioning_drift',
-  'keycloak_reconcile',
-  'unknown',
-]);
-const KNOWN_RUNTIME_DIAGNOSTIC_STATUSES = new Set<IamRuntimeDiagnosticStatus>([
-  'gesund',
-  'degradiert',
-  'recovery_laeuft',
-  'manuelle_pruefung_erforderlich',
-]);
-const KNOWN_RUNTIME_RECOMMENDED_ACTIONS = new Set<IamRuntimeRecommendedAction>([
-  'erneut_anmelden',
-  'erneut_versuchen',
-  'keycloak_pruefen',
-  'migration_pruefen',
-  'provisioning_pruefen',
-  'rollenabgleich_pruefen',
-  'manuell_pruefen',
-  'support_kontaktieren',
-]);
+const KNOWN_RUNTIME_DIAGNOSTIC_CLASSIFICATIONS = new Set<IamRuntimeDiagnosticClassification>(
+  iamRuntimeDiagnosticClassifications
+);
+const KNOWN_RUNTIME_DIAGNOSTIC_STATUSES = new Set<IamRuntimeDiagnosticStatus>(iamRuntimeDiagnosticStatuses);
+const KNOWN_RUNTIME_RECOMMENDED_ACTIONS = new Set<IamRuntimeRecommendedAction>(iamRuntimeRecommendedActions);
 
 export class IamHttpError extends Error {
   readonly status: number;

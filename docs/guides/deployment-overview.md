@@ -53,7 +53,7 @@ Wichtig:
 - produktionsnahe Werte liegen lokal in `config/runtime/studio.vars` und `config/runtime/studio.local.vars`
 - im Repository liegt nur die Vorlage `config/runtime/studio.vars.example`
 - Tenant-Realms folgen dem operativen Vertrag aus `./keycloak-tenant-realm-bootstrap.md`
-- fuer `studio` ist der kanonische Ablauf jetzt zweigeteilt: GitHub liefert Build und Verify, der finale mutierende Rollout laeuft lokal ueber `pnpm env:release:studio:local`
+- für `studio` ist der kanonische Ablauf jetzt zweigeteilt: GitHub liefert Build und Verify, der finale mutierende Rollout läuft lokal über `pnpm env:release:studio:local`
 - direkte `quantum-cli`-, Portainer- oder Ad-hoc-Shellpfade bleiben Notfall- oder Diagnosewerkzeuge und sind kein offizieller Standard
 
 ## Standardablauf für Releases
@@ -62,8 +62,8 @@ Wichtig:
    Für Serverprofile muss das Artefakt explizit `linux/amd64` unterstützen.
 2. Zielprofil auswählen.
 3. Zielumgebungsvariablen oder Secrets prüfen.
-4. Fuer `studio` zuerst `Studio Image Build` und `Studio Artifact Verify` oder den Vorbereitungsworkflow `Studio Release Preparation` ausfuehren.
-5. Den verifizierten Digest lokal ueber `pnpm env:release:studio:local -- --image-digest=<sha256:...> ...` ausrollen.
+4. Für `studio` zuerst `Studio Image Build and Publish` und `Studio Image Verify` oder den Vorbereitungsworkflow `Studio Build and Verify` ausführen.
+5. Den verifizierten Digest lokal über `pnpm env:release:studio:local -- --image-digest=<sha256:...> ...` ausrollen.
 6. Den erzeugten Deploy-Report unter `artifacts/runtime/deployments/` prüfen.
 7. Monitoring und Logs auf Fehler prüfen.
 8. Nicht-sensitive Folgearbeiten als GitHub Issues nachziehen.
@@ -111,11 +111,11 @@ Für das Remote-Profil `studio` gilt zusätzlich:
 
 Der offizielle Vorbereitungs- und Releasepfad fuer `studio` lautet:
 
-1. `Studio Image Build`
-2. `Studio Artifact Verify`
+1. `Studio Image Build and Publish`
+2. `Studio Image Verify`
 3. lokaler Operator-Deploy ueber `pnpm env:release:studio:local`
 
-Optional verbindet `Studio Release Preparation` die GitHub-Stufen 1 und 2 in einem manuellen Vorbereitungsworkflow.
+Optional verbindet `Studio Build and Verify` die GitHub-Stufen 1 und 2 in einem manuellen Vorbereitungsworkflow.
 
 - Lokales Setup und SQL-Workflow: `../development/postgres-setup.md`
 - Swarm-Ausführung und Reihenfolge: `./swarm-deployment-runbook.md`

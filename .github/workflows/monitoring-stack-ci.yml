@@ -1,5 +1,9 @@
 name: Monitoring Stack CI
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 on:
   pull_request:
     paths:
@@ -26,24 +30,19 @@ jobs:
   monitoring-stack:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      NX_CLOUD_ENCRYPTION_KEY: ${{ secrets.NX_CLOUD_ENCRYPTION_KEY }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v5
         with:
-          version: 9.12.2
+          filter: tree:0
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
+      - name: Setup workspace
+        uses: ./.github/actions/setup-pnpm-workspace
         with:
-          node-version-file: '.nvmrc'
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+          nx-cloud-encryption-key: ${{ secrets.NX_CLOUD_ENCRYPTION_KEY }}
 
       - name: Run monitoring stack CI checks
         run: bash scripts/ci/monitoring-stack-ci.sh
@@ -56,3 +55,9 @@ jobs:
           path: artifacts/monitoring
           if-no-files-found: warn
           retention-days: 7
+
+      - name: Publish monitoring summary
+        if: always()
+        run: |
+          echo 'Monitoring-Stack-CI abgeschlossen.' >> "$GITHUB_STEP_SUMMARY"
+          echo "Artifact: \`monitoring-stack-metrics-${GITHUB_RUN_ID}\`" >> "$GITHUB_STEP_SUMMARY"

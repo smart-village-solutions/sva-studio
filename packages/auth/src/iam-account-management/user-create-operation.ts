@@ -29,9 +29,8 @@ const deactivateCreatedExternalUser = async (input: {
     return;
   }
 
-  const { actor, createdExternalId } = input;
   await trackKeycloakCall('deactivate_user_compensation', () =>
-    fallbackIdentityProvider.provider.deactivateUser(createdExternalId)
+    fallbackIdentityProvider.provider.deactivateUser(input.createdExternalId)
   );
 };
 

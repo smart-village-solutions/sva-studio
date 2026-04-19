@@ -1,7 +1,11 @@
 import type { PluginDefinition, PluginRouteGuard, RouteFactory } from '@sva/sdk';
 import { createRoute, type AnyRoute, type RootRoute, type RouteComponent } from '@tanstack/react-router';
 
-import { accountUiRouteGuards } from './account-ui.routes.js';
+import { createAccountUiRouteGuard, type AccountUiRouteGuardKey } from './account-ui.routes.js';
+import {
+  emitRoutingDiagnostic,
+  type RoutingDiagnosticsHook,
+} from './diagnostics.js';
 import { normalizeIamTab, normalizeRoleDetailTab } from './route-search.js';
 import { uiRoutePaths } from './route-paths.js';
 
@@ -45,12 +49,11 @@ export type AppRouteBindings = {
   readonly adminApiPhase1Test: RouteComponent;
 };
 
-type GuardKey = keyof typeof accountUiRouteGuards;
 type BindingKey = keyof AppRouteBindings;
 
 type UiRouteDefinition = {
   readonly binding: BindingKey;
-  readonly guard?: GuardKey;
+  readonly guard?: AccountUiRouteGuardKey;
   readonly path: (typeof uiRoutePaths)[BindingKey];
   readonly validateSearch?: (search: Record<string, unknown>) => unknown;
 };
@@ -107,16 +110,23 @@ const uiRouteDefinitions: readonly UiRouteDefinition[] = [
   { binding: 'adminApiPhase1Test', path: uiRoutePaths.adminApiPhase1Test },
 ] as const;
 
-export const createUiRouteFactories = (bindings: AppRouteBindings): readonly AppRouteFactory[] =>
-  uiRouteDefinitions.map((definition) => {
+export const createUiRouteFactories = (
+  bindings: AppRouteBindings,
+  options: {
+    readonly diagnostics?: RoutingDiagnosticsHook;
+  } = {}
+): readonly AppRouteFactory[] => {
+  const diagnostics = options.diagnostics;
+
+  return uiRouteDefinitions.map((definition) => {
     if (definition.guard) {
-      const guard = accountUiRouteGuards[definition.guard];
+      const guard = createAccountUiRouteGuard(definition.guard, diagnostics, definition.path);
 
       return (rootRoute: RootRoute) =>
         createRoute({
           getParentRoute: () => rootRoute,
           path: definition.path,
-          beforeLoad: (options) => guard(options),
+          beforeLoad: (beforeLoadOptions) => guard(beforeLoadOptions),
           validateSearch: definition.validateSearch,
           component: bindings[definition.binding],
         });
@@ -130,6 +140,7 @@ export const createUiRouteFactories = (bindings: AppRouteBindings): readonly App
         component: bindings[definition.binding],
       });
   });
+};
 
 export const mapPluginGuardToAccountGuard = (
   guard?: PluginRouteGuard
@@ -147,22 +158,37 @@ export const mapPluginGuardToAccountGuard = (
 };
 
 export const getPluginRouteFactories = (
-  pluginDefinitions: readonly PluginDefinition[] = []
-): readonly AppRouteFactory[] =>
-  pluginDefinitions.flatMap((pluginDefinition) =>
-    pluginDefinition.routes.map((routeDefinition) => (rootRoute: RootRoute) =>
-      createRoute({
-        getParentRoute: () => rootRoute,
-        path: routeDefinition.path,
-        beforeLoad: (options) => {
-          const guardKey = mapPluginGuardToAccountGuard(routeDefinition.guard);
-          if (!guardKey) {
-            return;
-          }
+  pluginDefinitions: readonly PluginDefinition[] = [],
+  options: {
+    readonly diagnostics?: RoutingDiagnosticsHook;
+  } = {}
+): readonly AppRouteFactory[] => {
+  const diagnostics = options.diagnostics;
 
-          return accountUiRouteGuards[guardKey](options);
-        },
-        component: routeDefinition.component as RouteComponent,
-      })
-    )
+  return pluginDefinitions.flatMap((pluginDefinition) =>
+    pluginDefinition.routes.map((routeDefinition) => {
+      const guardKey = mapPluginGuardToAccountGuard(routeDefinition.guard);
+      const guard = guardKey ? createAccountUiRouteGuard(guardKey, diagnostics, routeDefinition.path) : null;
+      const unsupportedGuard = !guardKey && routeDefinition.guard ? routeDefinition.guard : null;
+
+      if (unsupportedGuard) {
+        emitRoutingDiagnostic(diagnostics, {
+          level: 'warn',
+          event: 'routing.plugin.guard_unsupported',
+          route: routeDefinition.path,
+          reason: 'unsupported-plugin-guard',
+          plugin: pluginDefinition.id,
+          unsupported_guard: unsupportedGuard,
+        });
+      }
+
+      return (rootRoute: RootRoute) =>
+        createRoute({
+          getParentRoute: () => rootRoute,
+          path: routeDefinition.path,
+          beforeLoad: guard ? (options) => guard(options) : undefined,
+          component: routeDefinition.component as RouteComponent,
+        });
+    })
   );
+};

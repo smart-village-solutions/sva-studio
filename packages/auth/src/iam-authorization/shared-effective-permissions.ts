@@ -149,19 +149,21 @@ const mergePermissionBucket = (
     appendUniqueString(existing.sourceGroupIds, normalized.groupId)
   );
   const nextSourceKinds = mergeSourceKinds(existing.provenance?.sourceKinds, row.source_kind);
+  const nextGroupName = normalized.groupKey ?? existing.groupName;
+  const nextProvenance = nextSourceKinds
+    ? {
+        ...(existing.provenance ?? {}),
+        sourceKinds: nextSourceKinds,
+      }
+    : existing.provenance;
 
   return {
     ...existing,
     ...(nextSourceUserIds ? { sourceUserIds: nextSourceUserIds } : {}),
     ...(nextSourceRoleIds ? { sourceRoleIds: nextSourceRoleIds } : {}),
     ...(nextSourceGroupIds ? { sourceGroupIds: nextSourceGroupIds } : {}),
-    ...((normalized.groupKey ?? existing.groupName) ? { groupName: normalized.groupKey ?? existing.groupName } : {}),
-    provenance: nextSourceKinds
-      ? {
-          ...(existing.provenance ?? {}),
-          sourceKinds: nextSourceKinds,
-        }
-      : existing.provenance,
+    ...(nextGroupName ? { groupName: nextGroupName } : {}),
+    provenance: nextProvenance,
   };
 };
 

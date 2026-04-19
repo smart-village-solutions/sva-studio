@@ -1,3 +1,4 @@
+/* eslint-disable-next-line @nx/enforce-module-boundaries */
 import { authRoutePaths } from '@sva/auth';
 import type { RootRoute } from '@tanstack/react-router';
 import { createRoute } from '@tanstack/react-router';

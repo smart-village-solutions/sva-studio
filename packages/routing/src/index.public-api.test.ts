@@ -19,7 +19,12 @@ describe('@sva/routing public API', () => {
   });
 
   it('moves guard helpers onto the dedicated guards subpath', () => {
-    expect(Object.keys(guardsApi).sort()).toEqual(['accountUiRouteGuards', 'createAdminRoute', 'createProtectedRoute']);
+    expect(Object.keys(guardsApi).sort()).toEqual([
+      'accountUiRouteGuards',
+      'createAccountUiRouteGuards',
+      'createAdminRoute',
+      'createProtectedRoute',
+    ]);
   });
 
   it('moves plugin helpers onto the dedicated plugins subpath', () => {

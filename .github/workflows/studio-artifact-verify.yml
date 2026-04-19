@@ -1,4 +1,4 @@
-name: Studio Artifact Verify
+name: Studio Image Verify
 
 on:
   workflow_dispatch:
@@ -19,6 +19,16 @@ on:
       image_tag:
         required: false
         type: string
+    outputs:
+      image_ref:
+        description: 'Verifizierte Digest-Referenz des Studio-Images'
+        value: ${{ jobs.verify.outputs.image_ref }}
+      image_tag:
+        description: 'Tag zur Korrelation des verifizierten Studio-Images'
+        value: ${{ jobs.verify.outputs.image_tag }}
+      verify_artifact_name:
+        description: 'Artifact-Name des Verify-Reports'
+        value: ${{ jobs.verify.outputs.verify_artifact_name }}
 
 permissions:
   contents: read
@@ -26,11 +36,19 @@ permissions:
 
 jobs:
   verify:
+    name: Verify Studio Image
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      image_ref: ${{ steps.image.outputs.image_ref }}
+      image_tag: ${{ steps.image.outputs.image_tag }}
+      verify_artifact_name: ${{ steps.image.outputs.verify_artifact_name }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          filter: tree:0
 
       - name: Login to GHCR
         uses: docker/login-action@v4
@@ -51,8 +69,17 @@ jobs:
             exit 1
           fi
           image_ref="ghcr.io/smart-village-solutions/sva-studio@${IMAGE_DIGEST}"
+          digest_short="$(printf '%s' "${IMAGE_DIGEST}" | cut -d: -f2 | cut -c1-12)"
+          artifact_suffix="${digest_short}"
+          if [ -n "${IMAGE_TAG}" ]; then
+            safe_tag="$(printf '%s' "${IMAGE_TAG}" | tr -cs '[:alnum:]._- ' '-' | tr ' ' '-' | sed 's/^-*//; s/-*$//')"
+            if [ -n "${safe_tag}" ]; then
+              artifact_suffix="${safe_tag}"
+            fi
+          fi
           echo "image_ref=${image_ref}" >> "${GITHUB_OUTPUT}"
           echo "image_tag=${IMAGE_TAG}" >> "${GITHUB_OUTPUT}"
+          echo "verify_artifact_name=studio-image-verify-${artifact_suffix}-${GITHUB_RUN_ID}" >> "${GITHUB_OUTPUT}"
           docker pull "${image_ref}"
 
       - name: Verify studio image in runner
@@ -62,11 +89,21 @@ jobs:
             "${{ steps.image.outputs.image_ref }}" \
             "artifacts/runtime/image-verify"
 
+      - name: Publish verify summary
+        if: always()
+        run: |
+          echo 'Studio-Image-Verifikation ausgeführt.' >> "$GITHUB_STEP_SUMMARY"
+          echo "Image-Ref: \`${{ steps.image.outputs.image_ref }}\`" >> "$GITHUB_STEP_SUMMARY"
+          if [ -n "${{ steps.image.outputs.image_tag }}" ]; then
+            echo "Image-Tag: \`${{ steps.image.outputs.image_tag }}\`" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          echo "Artifact: \`${{ steps.image.outputs.verify_artifact_name }}\`" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Upload artifact verify reports
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: studio-artifact-verify-${{ github.run_id }}
+          name: ${{ steps.image.outputs.verify_artifact_name }}
           path: artifacts/runtime/image-verify
           if-no-files-found: warn
           retention-days: 14

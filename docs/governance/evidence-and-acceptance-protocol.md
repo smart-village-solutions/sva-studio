@@ -82,8 +82,10 @@ destroy_ttl_days: 14
       "Lint / lint",
       "Unit / unit",
       "Types / types",
-      "Test Coverage / coverage",
-      "App E2E / e2e"
+      "Coverage and Quality Gates / Coverage Gate",
+      "Coverage and Quality Gates / Complexity Gate",
+      "Coverage and Quality Gates / PR Integration Gate",
+      "App E2E Smoke / App E2E Smoke"
     ]
   }
 }
@@ -311,7 +313,7 @@ done
 
 1. **Branch-Protection Required Checks vollständig**
    - Evidence: `.sisyphus/evidence/task-10-branch-protection.json`
-   - Muss: JSON enthält mindestens 5 Required Checks inkl. `Test Coverage / coverage`
+   - Muss: JSON enthält die konfigurierten Required Checks inkl. `Coverage and Quality Gates / Coverage Gate`
 
 2. **Merge-Queue Bypass-Regel dokumentiert**
    - Evidence: `.sisyphus/evidence/task-10-merge-queue-error.txt`

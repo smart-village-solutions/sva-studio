@@ -2,11 +2,13 @@ import type { RootRoute } from '@tanstack/react-router';
 import { createRoute } from '@tanstack/react-router';
 import {
   createSdkLogger,
-  extractRequestIdFromHeaders,
-  extractTraceIdFromHeaders,
-  getHeadersFromRequest,
   toJsonErrorResponse,
 } from '@sva/sdk/server';
+import type { RoutingDiagnosticEvent } from './diagnostics.js';
+import {
+  defaultServerRoutingDiagnostics,
+  readRoutingDiagnosticsContextFromRequest,
+} from './diagnostics.server.js';
 import { authRoutePaths } from './auth.routes.js';
 
 type AuthHandlers = {
@@ -23,6 +25,12 @@ type RouteGuardLogger = {
 };
 
 const logger = createSdkLogger({ component: 'auth-routing', level: 'info' });
+const healthCheckRoutes = new Set<AuthRoutePath>([
+  '/health/ready',
+  '/health/live',
+  '/api/v1/iam/health/ready',
+  '/api/v1/iam/health/live',
+]);
 
 const methodNotAllowedJson = (allow: string, requestId?: string) =>
   new Response(
@@ -41,24 +49,165 @@ const methodNotAllowedJson = (allow: string, requestId?: string) =>
     }
   );
 
-const readWorkspaceIdFromRequest = (request: Request): string => {
-  const headers = getHeadersFromRequest(request);
-  const fromHeaders =
-    headers['x-workspace-id'] ??
-    headers['x-sva-workspace-id'] ??
-    headers['x-instance-id'];
-  if (typeof fromHeaders === 'string' && fromHeaders.trim().length > 0) {
-    return fromHeaders.trim();
-  }
+const buildMethodNotAllowedEvent = (
+  request: Request,
+  route: string,
+  allow: string
+): Extract<RoutingDiagnosticEvent, { event: 'routing.handler.method_not_allowed' }> => {
+  const context = readRoutingDiagnosticsContextFromRequest(request);
 
-  const url = new URL(request.url);
-  const fromQuery = url.searchParams.get('instanceId');
-  if (typeof fromQuery === 'string' && fromQuery.trim().length > 0) {
-    return fromQuery.trim();
-  }
-
-  return 'default';
+  return {
+    level: 'warn',
+    event: 'routing.handler.method_not_allowed',
+    route,
+    reason: 'method-not-allowed',
+    method: request.method.toUpperCase(),
+    allow,
+    ...context,
+  };
 };
+
+const emitServerRoutingDiagnostic = (
+  event: RoutingDiagnosticEvent,
+  fallback?:
+    | {
+        readonly method: string;
+        readonly route: string;
+        readonly workspaceId: string;
+        readonly requestId?: string;
+        readonly traceId?: string;
+      }
+    | undefined
+): void => {
+  try {
+    defaultServerRoutingDiagnostics(event);
+  } catch (error) {
+    if (!fallback) {
+      return;
+    }
+
+    writeLoggerFallback({
+      ...fallback,
+      errorType: getErrorType(error),
+      errorMessage: getErrorMessage(error),
+    });
+  }
+};
+
+type AuthHandlerExecutionContext = {
+  readonly diagnosticsContext: ReturnType<typeof readRoutingDiagnosticsContextFromRequest>;
+  readonly fallback: {
+    readonly method: string;
+    readonly route: string;
+    readonly workspaceId: string;
+    readonly requestId?: string;
+    readonly traceId?: string;
+  };
+  readonly method: string;
+  readonly route: string;
+  readonly startedAt: number;
+};
+
+const createAuthHandlerExecutionContext = (
+  request: Request,
+  method: string,
+  route: string
+): AuthHandlerExecutionContext => {
+  const diagnosticsContext = readRoutingDiagnosticsContextFromRequest(request);
+
+  return {
+    diagnosticsContext,
+    fallback: {
+      method,
+      route,
+      workspaceId: diagnosticsContext.workspace_id ?? 'default',
+      requestId: diagnosticsContext.request_id,
+      traceId: diagnosticsContext.trace_id,
+    },
+    method,
+    route,
+    startedAt: Date.now(),
+  };
+};
+
+const emitAuthHandlerDispatched = (context: AuthHandlerExecutionContext): void => {
+  emitServerRoutingDiagnostic(
+    {
+      level: 'info',
+      event: 'routing.handler.dispatched',
+      method: context.method,
+      route: context.route,
+      ...context.diagnosticsContext,
+    },
+    context.fallback
+  );
+};
+
+const emitAuthHandlerCompleted = (context: AuthHandlerExecutionContext, response: Response): void => {
+  emitServerRoutingDiagnostic(
+    {
+      level: 'info',
+      event: 'routing.handler.completed',
+      method: context.method,
+      route: context.route,
+      status_code: response.status,
+      duration_ms: Date.now() - context.startedAt,
+      ...context.diagnosticsContext,
+    },
+    context.fallback
+  );
+};
+
+const createAuthHandlerErrorResponse = (context: AuthHandlerExecutionContext, error: unknown): Response => {
+  const errorType = getErrorType(error);
+  const errorMessage = getErrorMessage(error);
+  const response = toJsonErrorResponse(500, 'internal_error', 'Ein unerwarteter Fehler ist aufgetreten.', {
+    requestId: context.diagnosticsContext.request_id,
+  });
+
+  emitServerRoutingDiagnostic(
+    {
+      level: 'error',
+      event: 'routing.handler.error_caught',
+      method: context.method,
+      route: context.route,
+      ...context.diagnosticsContext,
+      error_type: errorType,
+      error_message: errorMessage,
+    },
+    context.fallback
+  );
+
+  emitAuthHandlerCompleted(context, response);
+  return response;
+};
+
+const createMethodNotAllowedResponse = (
+  request: Request,
+  route: string,
+  allow: string,
+  options: {
+    readonly log?: boolean;
+  } = {}
+): Response => {
+  const event = buildMethodNotAllowedEvent(request, route, allow);
+  if (options.log !== false) {
+    emitServerRoutingDiagnostic(event, {
+      method: event.method,
+      route,
+      workspaceId: event.workspace_id ?? 'default',
+      requestId: event.request_id,
+      traceId: event.trace_id,
+    });
+  }
+
+  return methodNotAllowedJson(allow, event.request_id);
+};
+
+const createMethodNotAllowedHandler =
+  (route: AuthRoutePath, allow: string) =>
+  async ({ request }: { request: Request }): Promise<Response> =>
+    createMethodNotAllowedResponse(request, route, allow);
 
 /**
  * Exhaustive handler mapping for all auth route paths.
@@ -443,9 +592,7 @@ const authHandlerMap = {
     },
   },
   '/iam/me/data-export': {
-    GET: async ({ request }) => {
-      return methodNotAllowedJson('POST', extractRequestIdFromHeaders(getHeadersFromRequest(request)));
-    },
+    GET: createMethodNotAllowedHandler('/iam/me/data-export', 'POST'),
     POST: async ({ request }) => {
       const mod = await import('@sva/auth/runtime-routes');
       return mod.dataExportHandler(request);
@@ -486,9 +633,7 @@ const authHandlerMap = {
     },
   },
   '/iam/admin/data-subject-rights/export': {
-    GET: async ({ request }) => {
-      return methodNotAllowedJson('POST', extractRequestIdFromHeaders(getHeadersFromRequest(request)));
-    },
+    GET: createMethodNotAllowedHandler('/iam/admin/data-subject-rights/export', 'POST'),
     POST: async ({ request }) => {
       const mod = await import('@sva/auth/runtime-routes');
       return mod.adminDataExportHandler(request);
@@ -567,7 +712,7 @@ const writeLoggerFallback = (input: {
   const payload = JSON.stringify({
     level: 'error',
     component: 'auth-routing',
-    message: 'Auth route error logging failed',
+    event: 'routing.logger.fallback_activated',
     method: input.method,
     route: input.route,
     workspace_id: input.workspaceId,
@@ -617,7 +762,7 @@ export const dispatchAuthRouteRequest = async (request: Request): Promise<Respon
     return null;
   }
 
-  const handlers = wrapHandlersWithJsonErrorBoundary(resolveAuthHandlers(matchedPath));
+  const handlers = wrapHandlersWithJsonErrorBoundary(resolveAuthHandlers(matchedPath), matchedPath);
   const method = request.method.toUpperCase() as keyof AuthHandlers;
   const handler = handlers[method];
 
@@ -625,7 +770,9 @@ export const dispatchAuthRouteRequest = async (request: Request): Promise<Respon
     const allowedMethods = Object.keys(handlers)
       .sort((left, right) => left.localeCompare(right))
       .join(', ');
-    return methodNotAllowedJson(allowedMethods, extractRequestIdFromHeaders(getHeadersFromRequest(request)));
+    return createMethodNotAllowedResponse(request, matchedPath, allowedMethods, {
+      log: !healthCheckRoutes.has(matchedPath),
+    });
   }
 
   return handler({ request });
@@ -643,46 +790,23 @@ export const dispatchAuthRouteRequest = async (request: Request): Promise<Respon
  * This wrapper catches any such exception at the outermost boundary (before
  * TanStack Start's middleware) and always returns a well-formed JSON 500.
  */
-export const wrapHandlersWithJsonErrorBoundary = (handlers: AuthHandlers): AuthHandlers => {
+export const wrapHandlersWithJsonErrorBoundary = (handlers: AuthHandlers, routePath?: string): AuthHandlers => {
   const wrapped: AuthHandlers = {};
   for (const [method, handler] of Object.entries(handlers) as [string, NonNullable<AuthHandlers[keyof AuthHandlers]>][]) {
     (wrapped as Record<string, typeof handler>)[method] = async (ctx) => {
+      const executionContext = createAuthHandlerExecutionContext(
+        ctx.request,
+        method,
+        routePath ?? new URL(ctx.request.url).pathname
+      );
+      emitAuthHandlerDispatched(executionContext);
+
       try {
-        return await handler(ctx);
+        const response = await handler(ctx);
+        emitAuthHandlerCompleted(executionContext, response);
+        return response;
       } catch (error) {
-        const requestHeaders = getHeadersFromRequest(ctx.request);
-        const requestId = extractRequestIdFromHeaders(requestHeaders);
-        const traceId = extractTraceIdFromHeaders(requestHeaders);
-        const route = new URL(ctx.request.url).pathname;
-        const workspaceId = readWorkspaceIdFromRequest(ctx.request);
-        const errorType = getErrorType(error);
-        const errorMessage = getErrorMessage(error);
-
-        try {
-          logger.error('Unhandled exception in auth route handler', {
-            method,
-            route,
-            workspace_id: workspaceId,
-            request_id: requestId,
-            trace_id: traceId,
-            error_type: errorType,
-            error_message: errorMessage,
-          });
-        } catch {
-          writeLoggerFallback({
-            method,
-            route,
-            workspaceId,
-            requestId,
-            traceId,
-            errorType,
-            errorMessage,
-          });
-        }
-
-        return toJsonErrorResponse(500, 'internal_error', 'Ein unerwarteter Server-Fehler ist aufgetreten.', {
-          requestId,
-        });
+        return createAuthHandlerErrorResponse(executionContext, error);
       }
     };
   }
@@ -700,7 +824,7 @@ const createAuthServerRouteFactory = (path: AuthRoutePath) => {
       path,
       component: () => null,
       server: {
-        handlers: wrapHandlersWithJsonErrorBoundary(resolveAuthHandlers(path)),
+        handlers: wrapHandlersWithJsonErrorBoundary(resolveAuthHandlers(path), path),
       },
       // TanStack router types do not currently model the `server` option in this context.
       // Keep the cast local until upstream types allow full inference here.

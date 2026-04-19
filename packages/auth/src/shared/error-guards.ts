@@ -14,6 +14,9 @@ export const isTokenErrorLike = (error: unknown): boolean => {
   );
 };
 
+const parseStatusCode = (status: unknown): number =>
+  typeof status === 'number' ? status : typeof status === 'string' ? Number.parseInt(status, 10) : Number.NaN;
+
 export const isRetryableTokenExchangeError = (error: unknown): boolean => {
   if (!error || typeof error !== 'object') {
     return false;
@@ -23,12 +26,7 @@ export const isRetryableTokenExchangeError = (error: unknown): boolean => {
   const name = typeof typed.name === 'string' ? typed.name.toLowerCase() : '';
   const code = typeof typed.code === 'string' ? typed.code.toLowerCase() : '';
   const oauthError = typeof typed.error === 'string' ? typed.error.toLowerCase() : '';
-  const status =
-    typeof typed.status === 'number'
-      ? typed.status
-      : typeof typed.status === 'string'
-        ? Number.parseInt(typed.status, 10)
-        : Number.NaN;
+  const status = parseStatusCode(typed.status);
 
   return (
     oauthError === 'invalid_client' ||

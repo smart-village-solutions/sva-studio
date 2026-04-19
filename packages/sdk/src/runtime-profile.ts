@@ -192,72 +192,99 @@ export const getRuntimeProfileDerivedEnvKeys = (profile: RuntimeProfile): readon
 export const isMockAuthRuntimeProfile = (profile: RuntimeProfile) =>
   PROFILE_DEFINITIONS[profile].authMode === 'mock';
 
-export const validateRuntimeProfileEnv = (
-  profile: RuntimeProfile,
+const collectRequiredEnvValidation = (
+  keys: readonly string[],
   env: NodeJS.ProcessEnv,
-): RuntimeProfileEnvValidationResult => {
-  const derived: string[] = [];
-  const invalid: string[] = [];
-  const missing: string[] = [];
-  const placeholders: string[] = [];
-
-  for (const key of PROFILE_DEFINITIONS[profile].requiredEnvKeys) {
+  result: RuntimeProfileEnvValidationResult
+): void => {
+  for (const key of keys) {
     const value = readEnvValue(env, key);
 
     if (value.length === 0) {
-      missing.push(key);
+      result.missing.push(key);
       continue;
     }
 
     if (isPlaceholderValue(value)) {
-      placeholders.push(key);
+      result.placeholders.push(key);
       continue;
     }
 
     if (isRuntimeEnvValueInvalid(key, value)) {
-      invalid.push(key);
+      result.invalid.push(key);
     }
   }
+};
+
+const collectOptionalOtelValidation = (
+  env: NodeJS.ProcessEnv,
+  result: RuntimeProfileEnvValidationResult
+): void => {
+  if (isDisabledFlag(readEnvValue(env, 'ENABLE_OTEL'))) {
+    return;
+  }
+
+  const otelEndpoint = readEnvValue(env, 'OTEL_EXPORTER_OTLP_ENDPOINT');
+  if (otelEndpoint.length === 0) {
+    result.missing.push('OTEL_EXPORTER_OTLP_ENDPOINT');
+    return;
+  }
+
+  if (isPlaceholderValue(otelEndpoint)) {
+    result.placeholders.push('OTEL_EXPORTER_OTLP_ENDPOINT');
+  }
+};
+
+const collectDerivedRemoteEnvValidation = (
+  env: NodeJS.ProcessEnv,
+  result: RuntimeProfileEnvValidationResult
+): void => {
+  const explicitIamDatabaseUrl = readEnvValue(env, 'IAM_DATABASE_URL');
+  if (explicitIamDatabaseUrl.length === 0) {
+    if (hasAllValues(env, ['APP_DB_USER', 'POSTGRES_DB']) && hasAnyValue(env, ['APP_DB_PASSWORD', 'POSTGRES_PASSWORD'])) {
+      result.derived.push('IAM_DATABASE_URL');
+    } else {
+      result.missing.push('IAM_DATABASE_URL');
+    }
+  } else if (isPlaceholderValue(explicitIamDatabaseUrl)) {
+    result.placeholders.push('IAM_DATABASE_URL');
+  }
+
+  const explicitRedisUrl = readEnvValue(env, 'REDIS_URL');
+  if (explicitRedisUrl.length === 0) {
+    if (hasAllValues(env, ['REDIS_PASSWORD'])) {
+      result.derived.push('REDIS_URL');
+    } else {
+      result.missing.push('REDIS_URL');
+    }
+  } else if (isPlaceholderValue(explicitRedisUrl)) {
+    result.placeholders.push('REDIS_URL');
+  }
+};
+
+export const validateRuntimeProfileEnv = (
+  profile: RuntimeProfile,
+  env: NodeJS.ProcessEnv,
+): RuntimeProfileEnvValidationResult => {
+  const result: RuntimeProfileEnvValidationResult = {
+    derived: [],
+    invalid: [],
+    missing: [],
+    placeholders: [],
+  };
 
   const definition = PROFILE_DEFINITIONS[profile];
-  const requireOtelEndpoint = !isDisabledFlag(readEnvValue(env, 'ENABLE_OTEL'));
-  if (requireOtelEndpoint) {
-    const otelEndpoint = readEnvValue(env, 'OTEL_EXPORTER_OTLP_ENDPOINT');
-    if (otelEndpoint.length === 0) {
-      missing.push('OTEL_EXPORTER_OTLP_ENDPOINT');
-    } else if (isPlaceholderValue(otelEndpoint)) {
-      placeholders.push('OTEL_EXPORTER_OTLP_ENDPOINT');
-    }
-  }
+  collectRequiredEnvValidation(definition.requiredEnvKeys, env, result);
+  collectOptionalOtelValidation(env, result);
 
   if (!definition.isLocal) {
-    const explicitIamDatabaseUrl = readEnvValue(env, 'IAM_DATABASE_URL');
-    if (explicitIamDatabaseUrl.length === 0) {
-      if (hasAllValues(env, ['APP_DB_USER', 'POSTGRES_DB']) && hasAnyValue(env, ['APP_DB_PASSWORD', 'POSTGRES_PASSWORD'])) {
-        derived.push('IAM_DATABASE_URL');
-      } else {
-        missing.push('IAM_DATABASE_URL');
-      }
-    } else if (isPlaceholderValue(explicitIamDatabaseUrl)) {
-      placeholders.push('IAM_DATABASE_URL');
-    }
-
-    const explicitRedisUrl = readEnvValue(env, 'REDIS_URL');
-    if (explicitRedisUrl.length === 0) {
-      if (hasAllValues(env, ['REDIS_PASSWORD'])) {
-        derived.push('REDIS_URL');
-      } else {
-        missing.push('REDIS_URL');
-      }
-    } else if (isPlaceholderValue(explicitRedisUrl)) {
-      placeholders.push('REDIS_URL');
-    }
+    collectDerivedRemoteEnvValidation(env, result);
   }
 
   return {
-    derived: [...new Set(derived)],
-    invalid: [...new Set(invalid)],
-    missing: [...new Set(missing)],
-    placeholders: [...new Set(placeholders)],
+    derived: [...new Set(result.derived)],
+    invalid: [...new Set(result.invalid)],
+    missing: [...new Set(result.missing)],
+    placeholders: [...new Set(result.placeholders)],
   };
 };

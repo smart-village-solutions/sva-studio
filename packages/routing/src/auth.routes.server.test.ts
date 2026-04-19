@@ -16,6 +16,18 @@ vi.mock('@sva/sdk/server', () => ({
     });
     return headers;
   },
+  extractWorkspaceIdFromHeaders: (
+    headers: Record<string, string>,
+    headerNames: string[] = ['x-workspace-id', 'x-sva-workspace-id']
+  ) => {
+    for (const headerName of headerNames) {
+      const value = headers[headerName];
+      if (typeof value === 'string' && value.length > 0) {
+        return value;
+      }
+    }
+    return undefined;
+  },
   extractRequestIdFromHeaders: (headers: Record<string, string>) => {
     const value = headers['x-request-id'];
     return typeof value === 'string' && value.length <= 128 ? value : undefined;
@@ -305,6 +317,49 @@ describe('auth.routes.server', () => {
 
     expect(response?.status).toBe(200);
     expect(authServerMocks.healthLiveHandler).toHaveBeenCalledTimes(1);
+    expect(routingLogger.info).toHaveBeenCalledWith(
+      'Routing handler dispatched',
+      expect.objectContaining({
+        event: 'routing.handler.dispatched',
+        route: '/health/live',
+        method: 'GET',
+        workspace_id: 'default',
+      })
+    );
+    expect(routingLogger.info).toHaveBeenCalledWith(
+      'Routing handler completed',
+      expect.objectContaining({
+        event: 'routing.handler.completed',
+        route: '/health/live',
+        method: 'GET',
+        status_code: 200,
+        workspace_id: 'default',
+      })
+    );
+  });
+
+  it('does not let dispatched diagnostics failures break successful auth handlers', async () => {
+    routingLogger.info.mockImplementationOnce(() => {
+      throw new Error('logger down');
+    });
+
+    const response = await dispatchAuthRouteRequest(new Request('http://localhost/health/live'));
+
+    expect(response?.status).toBe(200);
+    expect(authServerMocks.healthLiveHandler).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not let method-not-allowed diagnostics failures break the 405 response', async () => {
+    routingLogger.warn.mockImplementationOnce(() => {
+      throw new Error('logger down');
+    });
+
+    const response = await dispatchAuthRouteRequest(new Request('http://localhost/iam/me/data-export', { method: 'GET' }));
+
+    expect(response?.status).toBe(405);
+    await expect(response?.json()).resolves.toMatchObject({
+      error: 'method_not_allowed',
+    });
   });
 
   it('returns null for requests outside the auth runtime route set', async () => {
@@ -330,6 +385,17 @@ describe('auth.routes.server', () => {
       message: 'HTTP-Methode nicht erlaubt.',
       requestId: 'req-method',
     });
+    expect(routingLogger.warn).toHaveBeenCalledWith(
+      'Unsupported HTTP method for route handler',
+      expect.objectContaining({
+        event: 'routing.handler.method_not_allowed',
+        reason: 'method-not-allowed',
+        route: '/auth/logout',
+        method: 'GET',
+        allow: 'POST',
+        request_id: 'req-method',
+      })
+    );
   });
 
   it('returns a JSON 500 response when a wrapped handler throws', async () => {
@@ -355,12 +421,23 @@ describe('auth.routes.server', () => {
     expect(response?.headers.get('X-Request-Id')).toBe('req-123');
     await expect(response?.json()).resolves.toEqual({
       error: 'internal_error',
-      message: 'Ein unerwarteter Server-Fehler ist aufgetreten.',
+      message: 'Ein unerwarteter Fehler ist aufgetreten.',
       requestId: 'req-123',
     });
-    expect(routingLogger.error).toHaveBeenCalledWith(
-      'Unhandled exception in auth route handler',
+    expect(routingLogger.info).toHaveBeenCalledWith(
+      'Routing handler dispatched',
       expect.objectContaining({
+        event: 'routing.handler.dispatched',
+        route: '/auth/me',
+        method: 'GET',
+        request_id: 'req-123',
+        trace_id: '0123456789abcdef0123456789abcdef',
+      })
+    );
+    expect(routingLogger.error).toHaveBeenCalledWith(
+      'Unhandled exception in route handler',
+      expect.objectContaining({
+        event: 'routing.handler.error_caught',
         method: 'GET',
         route: '/auth/me',
         workspace_id: 'default',
@@ -368,6 +445,16 @@ describe('auth.routes.server', () => {
         trace_id: '0123456789abcdef0123456789abcdef',
         error_type: 'Error',
         error_message: 'boom',
+      })
+    );
+    expect(routingLogger.info).toHaveBeenCalledWith(
+      'Routing handler completed',
+      expect.objectContaining({
+        event: 'routing.handler.completed',
+        route: '/auth/me',
+        method: 'GET',
+        status_code: 500,
+        request_id: 'req-123',
       })
     );
     expect(consoleErrorSpy).not.toHaveBeenCalled();
@@ -391,8 +478,9 @@ describe('auth.routes.server', () => {
 
     expect(response?.status).toBe(500);
     expect(routingLogger.error).toHaveBeenCalledWith(
-      'Unhandled exception in auth route handler',
+      'Unhandled exception in route handler',
       expect.objectContaining({
+        event: 'routing.handler.error_caught',
         workspace_id: 'default',
         request_id: undefined,
         trace_id: undefined,
@@ -422,8 +510,9 @@ describe('auth.routes.server', () => {
 
     expect(response?.status).toBe(500);
     expect(routingLogger.error).toHaveBeenCalledWith(
-      'Unhandled exception in auth route handler',
+      'Unhandled exception in route handler',
       expect.objectContaining({
+        event: 'routing.handler.error_caught',
         workspace_id: 'default',
         trace_id: undefined,
       })
@@ -446,8 +535,9 @@ describe('auth.routes.server', () => {
     });
 
     expect(routingLogger.error).toHaveBeenCalledWith(
-      'Unhandled exception in auth route handler',
+      'Unhandled exception in route handler',
       expect.objectContaining({
+        event: 'routing.handler.error_caught',
         workspace_id: 'de-musterhausen',
       })
     );
@@ -469,8 +559,9 @@ describe('auth.routes.server', () => {
     });
 
     expect(routingLogger.error).toHaveBeenCalledWith(
-      'Unhandled exception in auth route handler',
+      'Unhandled exception in route handler',
       expect.objectContaining({
+        event: 'routing.handler.error_caught',
         workspace_id: 'de-alt-workspace',
       })
     );
@@ -486,8 +577,9 @@ describe('auth.routes.server', () => {
     });
 
     expect(routingLogger.error).toHaveBeenCalledWith(
-      'Unhandled exception in auth route handler',
+      'Unhandled exception in route handler',
       expect.objectContaining({
+        event: 'routing.handler.error_caught',
         workspace_id: 'de-instance-header',
       })
     );
@@ -505,8 +597,9 @@ describe('auth.routes.server', () => {
     });
 
     expect(routingLogger.error).toHaveBeenCalledWith(
-      'Unhandled exception in auth route handler',
+      'Unhandled exception in route handler',
       expect.objectContaining({
+        event: 'routing.handler.error_caught',
         workspace_id: 'de-musterhausen',
       })
     );
@@ -533,6 +626,7 @@ describe('auth.routes.server', () => {
 
     expect(response?.status).toBe(500);
     expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining('"workspace_id":"de-fallback"'));
+    expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining('"event":"routing.logger.fallback_activated"'));
     stderrSpy.mockRestore();
   });
 
@@ -558,6 +652,27 @@ describe('auth.routes.server', () => {
       message: 'HTTP-Methode nicht erlaubt.',
       requestId: 'req-route-factory',
     });
+    expect(routingLogger.warn).toHaveBeenCalledWith(
+      'Unsupported HTTP method for route handler',
+      expect.objectContaining({
+        event: 'routing.handler.method_not_allowed',
+        route: '/iam/me/data-export',
+      })
+    );
+  });
+
+  it('does not log method_not_allowed for health routes', async () => {
+    const response = await dispatchAuthRouteRequest(
+      new Request('http://localhost/health/live', {
+        method: 'POST',
+        headers: {
+          'X-Request-Id': 'req-health',
+        },
+      })
+    );
+
+    expect(response?.status).toBe(405);
+    expect(routingLogger.warn).not.toHaveBeenCalled();
   });
 
   it('warns when auth route mappings diverge from declared paths', () => {

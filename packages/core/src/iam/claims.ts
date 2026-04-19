@@ -57,40 +57,51 @@ const readAccessRoles = (value: unknown) => {
   return readRoles((value as AccessRoles).roles);
 };
 
+const addRole = (roles: Set<string>, role: string, allowAlias: boolean): void => {
+  roles.add(role);
+  if (!allowAlias) {
+    return;
+  }
+
+  for (const alias of ROLE_ALIASES[role] ?? []) {
+    roles.add(alias);
+  }
+};
+
+const addRoles = (roles: Set<string>, nextRoles: readonly string[], allowAlias: boolean): void => {
+  for (const role of nextRoles) {
+    addRole(roles, role, allowAlias);
+  }
+};
+
+const readResourceAccessEntries = (value: unknown, clientId?: string): readonly string[] => {
+  if (!value || typeof value !== 'object') {
+    return [];
+  }
+
+  const accessEntries = value as Record<string, unknown>;
+  if (clientId) {
+    return readAccessRoles(accessEntries[clientId]);
+  }
+
+  const roles: string[] = [];
+  for (const entry of Object.values(accessEntries)) {
+    roles.push(...readAccessRoles(entry));
+  }
+  return roles;
+};
+
 /**
  * Collect roles from access claims, optionally scoped to a client.
  */
 export const extractRoles = (claims: Record<string, unknown>, clientId?: string) => {
   const roles = new Set<string>();
-  const addRole = (role: string, allowAlias: boolean) => {
-    roles.add(role);
-    if (allowAlias) {
-      for (const alias of ROLE_ALIASES[role] ?? []) {
-        roles.add(alias);
-      }
-    }
-  };
 
-  for (const role of readRoles(claims.roles)) {
-    addRole(role, false);
-  }
+  addRoles(roles, readRoles(claims.roles), false);
   for (const role of readAccessRoles(claims.realm_access)) {
-    addRole(role, ROLE_ALIAS_REALM_ROLES.has(role));
+    addRole(roles, role, ROLE_ALIAS_REALM_ROLES.has(role));
   }
-  const resourceAccess = claims.resource_access;
-  if (resourceAccess && typeof resourceAccess === 'object') {
-    const accessEntries = resourceAccess as Record<string, unknown>;
-    if (clientId && accessEntries[clientId]) {
-      for (const role of readAccessRoles(accessEntries[clientId])) {
-        addRole(role, false);
-      }
-    } else if (!clientId) {
-      for (const entry of Object.values(accessEntries)) {
-        for (const role of readAccessRoles(entry)) {
-          addRole(role, false);
-        }
-      }
-    }
-  }
+  addRoles(roles, readResourceAccessEntries(claims.resource_access, clientId), false);
+
   return [...roles];
 };

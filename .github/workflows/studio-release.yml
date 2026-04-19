@@ -1,4 +1,4 @@
-name: Studio Release Preparation
+name: Studio Build and Verify
 
 on:
   workflow_dispatch:

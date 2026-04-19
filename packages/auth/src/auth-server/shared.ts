@@ -4,6 +4,9 @@ import type { SessionUser } from '../types.js';
 
 export const TOKEN_REFRESH_SKEW_MS = 60_000;
 
+const readClaimString = (claims: Record<string, unknown>, key: string): string | undefined =>
+  typeof claims[key] === 'string' ? claims[key] : undefined;
+
 export const buildSessionUser = (input: {
   accessToken?: string;
   claims: Record<string, unknown>;
@@ -12,26 +15,18 @@ export const buildSessionUser = (input: {
   const accessTokenClaims = input.accessToken ? parseJwtPayload(input.accessToken) : null;
   const claims = { ...accessTokenClaims, ...input.claims };
   const roleClaims = accessTokenClaims ?? input.claims;
+  const preferredUsername = readClaimString(claims, 'preferred_username');
+  const username = readClaimString(claims, 'username');
 
   return {
     id: String(claims.sub ?? ''),
     instanceId: resolveInstanceId(claims),
     roles: extractRoles(roleClaims, input.clientId),
-    username:
-      typeof claims.preferred_username === 'string'
-        ? claims.preferred_username
-        : typeof claims.username === 'string'
-          ? claims.username
-          : undefined,
-    email: typeof claims.email === 'string' ? claims.email : undefined,
-    firstName: typeof claims.given_name === 'string' ? claims.given_name : undefined,
-    lastName: typeof claims.family_name === 'string' ? claims.family_name : undefined,
-    displayName:
-      typeof claims.name === 'string'
-        ? claims.name
-        : typeof claims.preferred_username === 'string'
-          ? claims.preferred_username
-          : undefined,
+    username: preferredUsername ?? username,
+    email: readClaimString(claims, 'email'),
+    firstName: readClaimString(claims, 'given_name'),
+    lastName: readClaimString(claims, 'family_name'),
+    displayName: readClaimString(claims, 'name') ?? preferredUsername,
   };
 };
 

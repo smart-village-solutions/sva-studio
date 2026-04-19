@@ -55,6 +55,62 @@ import { createProtectedRoute } from '@sva/routing/guards';
 import { getPluginRouteFactories } from '@sva/routing/plugins';
 ```
 
+## Observability-Vertrag
+
+`@sva/routing` bietet einen kleinen, strukturierten Diagnostics-Vertrag für routing-relevante Entscheidungen.
+
+### Exportierte Typen
+
+- `RoutingDiagnosticsHook`
+- `RoutingDiagnosticEvent`
+- `RoutingDenyReason`
+
+### Safe-Feldsatz
+
+| Feld | Bedeutung |
+| --- | --- |
+| `event` | Kanonischer Routing-Eventname |
+| `route` | Template-Pfad, nie aufgelöste URL mit IDs |
+| `reason` | Fester `kebab-case`-Katalog |
+| `plugin` | Plugin-Kontext bei Plugin-Ereignissen |
+| `redirect_target` / `required_roles` / `unsupported_guard` | Zusatzfelder für Guard- und Plugin-Diagnostik |
+| `method` | HTTP-Methode bei Server-Ereignissen |
+| `allow` | Erlaubte Methoden bei `405` |
+| `status_code` / `duration_ms` | Laufzeit- und Ergebnisdaten bei Handler-Completion |
+| `workspace_id` | best effort Server-Kontext |
+| `request_id` / `trace_id` | best effort Korrelation im Server-Kontext |
+| `error_type` / `error_message` | minimaler Fehlerkontext ohne Stack-Trace |
+
+### Injektionsmuster
+
+```ts
+import { getClientRouteFactories, type RoutingDiagnosticsHook } from '@sva/routing';
+
+const diagnostics: RoutingDiagnosticsHook = (event) => {
+  if (event.event === 'routing.guard.access_denied') {
+    devLogger.info('routing denied', event);
+  }
+};
+
+const routeFactories = getClientRouteFactories({
+  bindings: appRouteBindings,
+  plugins: studioPlugins,
+  diagnostics,
+});
+```
+
+### Browser-/Server-Split
+
+- Client- und shared Routing-Dateien bleiben ohne expliziten `diagnostics`-Hook standardmäßig still.
+- Browser-seitig entsteht nur dann Routing-Diagnostik, wenn der Consumer bewusst einen Hook injiziert.
+- Serverseitig nutzen Auth-Routen und Server-Route-Factories denselben Adapter auf den SDK-/OTEL-Logger.
+
+### Was bewusst nicht geloggt wird
+
+- Search-Param-Normalisierung ohne Diagnosewert
+- aufgelöste Pfade mit IDs
+- rohe Query-Strings, Token-URLs, Stack-Traces oder andere PII-/Secret-Felder
+
 ## Routing-Modell
 
 - Produktive Seitenrouten sind vollständig code-based.

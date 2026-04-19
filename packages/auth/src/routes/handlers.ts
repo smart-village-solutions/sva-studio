@@ -28,7 +28,7 @@ const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
 
 const shouldAttachDebugAuthHeaders = (): boolean => process.env.SVA_AUTH_DEBUG_HEADERS === 'true';
 
-initializeOtelSdk().catch((error: unknown) => {
+void initializeOtelSdk().catch((error: unknown) => {
   logger.error('Fehler bei OTEL SDK Initialisierung im Auth-Modul', {
     component: 'iam-auth',
     dependency: 'otel',
@@ -309,7 +309,7 @@ const isTrustedAbsoluteReturnTo = async (request: Request, target: URL): Promise
   }
 
   const registryEntry = await loadInstanceByHostname(target.host).catch(() => null);
-  return Boolean(registryEntry && isTrafficEnabledInstanceStatus(registryEntry.status));
+  return registryEntry ? isTrafficEnabledInstanceStatus(registryEntry.status) : false;
 };
 
 const sanitizeReturnTo = async (request: Request, value: string | null | undefined): Promise<string> => {
@@ -336,7 +336,7 @@ const resolveCookieLoginState = async (request: Request, state: string) => {
   const { loginStateCookieName, loginStateSecret } = getAuthConfig();
   const payload = decodeLoginStateCookie(readCookieFromRequest(request, loginStateCookieName), loginStateSecret);
 
-  if (!payload || payload.state !== state) {
+  if (payload?.state !== state) {
     return null;
   }
 

@@ -16,6 +16,7 @@ Die Logging-Architektur verfolgt vier Kernziele:
 Abgedeckt sind:
 
 - Server-seitiges App-Logging (`@sva/sdk/server`).
+- Routing-Observability fuer `@sva/routing` inklusive Guard-, Plugin- und Auth-Dispatch-Ereignissen.
 - OTEL-Export von Logs und Metriken (`@sva/monitoring-client/server`).
 - OTEL Collector + Loki + Promtail im lokalen Monitoring-Stack.
 - Tenant-/Request-Kontext per AsyncLocalStorage.
@@ -148,6 +149,36 @@ Pseudonyme technische IDs bleiben dennoch personenbeziehbar und duerfen nur bei 
 - `info` -> 9
 - `debug` -> 5
 - `verbose` -> 1
+
+## Routing-Observability-Vertrag
+
+`@sva/routing` nutzt fuer routing-relevante Entscheidungen einen kleinen Diagnostics-Vertrag statt verteilter Logger-Zugriffe.
+
+- Client- und Server-Route-Factories verdrahten standardmaessig einen Routing-Diagnostics-Adapter; ein expliziter `RoutingDiagnosticsHook` kann diesen Default ueberschreiben.
+- Die Event-zu-Logger-Zuordnung erfolgt zentral ueber `createRoutingDiagnosticsLogger(...)`.
+- Serverseitig binden Auth-Routen und allgemeine Routing-Factories denselben Adapter an `createSdkLogger(...)` und damit an den OTEL-Pfad.
+- Standardmaessig geloggt werden Guard-Denials, Plugin-Guard-Anomalien, Handler-Dispatch, Handler-Completion, unbehandelte Handler-Fehler und `405 Method Not Allowed`.
+
+### Routing-Safe-Felder
+
+- `event`
+- `route`
+- `reason`
+- `plugin`
+- `redirect_target`
+- `required_roles`
+- `unsupported_guard`
+- `method`
+- `allow`
+- `status_code`
+- `duration_ms`
+- `workspace_id`
+- `request_id`
+- `trace_id`
+- `error_type`
+- `error_message`
+
+Nicht zulaessig sind insbesondere aufgeloeste Pfade mit IDs, rohe Query-Strings, Token-URLs, `session_id`, `email`, `ip_address`, `user_agent` und Stack-Traces.
 
 ## PII- und Label-Policy
 

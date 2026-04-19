@@ -1,5 +1,10 @@
 import { redirect } from '@tanstack/react-router';
 
+import {
+  emitRoutingDiagnostic,
+  type RoutingDiagnosticsHook,
+} from './diagnostics.js';
+
 export type RouteGuardUser = {
   readonly roles: readonly string[];
 };
@@ -22,6 +27,8 @@ export type ProtectedRouteOptions = {
   readonly loginPath?: string;
   readonly fallbackPath?: string;
   readonly insufficientRoleKey?: string;
+  readonly diagnostics?: RoutingDiagnosticsHook;
+  readonly route?: string;
 };
 
 const DEFAULT_LOGIN_PATH = '/auth/login';
@@ -50,6 +57,19 @@ const buildInsufficientRoleHref = (path: string, reasonKey: string) => {
   return `${url.pathname}${url.search}`;
 };
 
+const sanitizePathForDiagnostics = (value: string, fallbackPath: string): string => {
+  const url = new URL(normalizeInternalPath(value, fallbackPath), INTERNAL_REDIRECT_BASE);
+  return url.pathname;
+};
+
+const sanitizeRequiredRoles = (requiredRoles: readonly string[]): readonly string[] =>
+  requiredRoles
+    .map((requiredRole) => {
+      const segments = requiredRole.split(':').filter(Boolean);
+      return segments[segments.length - 1];
+    })
+    .filter((requiredRole): requiredRole is string => typeof requiredRole === 'string' && requiredRole.length > 0);
+
 const hasAnyRole = (user: RouteGuardUser, requiredRoles: readonly string[]) =>
   requiredRoles.some((requiredRole) => user.roles.includes(requiredRole));
 
@@ -61,16 +81,37 @@ export const createProtectedRoute = <TContext extends RouteGuardContext = RouteG
     loginPath = DEFAULT_LOGIN_PATH,
     fallbackPath = DEFAULT_FALLBACK_PATH,
     insufficientRoleKey = DEFAULT_INSUFFICIENT_ROLE_KEY,
+    diagnostics,
   } = options;
+  const diagnosticsRoute = 'route' in options && typeof options.route === 'string' ? options.route : null;
 
   return async ({ context, location }: BeforeLoadOptions<TContext>) => {
     const user = await context.auth?.getUser();
 
     if (!user) {
+      if (diagnosticsRoute) {
+        emitRoutingDiagnostic(diagnostics, {
+          level: 'info',
+          event: 'routing.guard.access_denied',
+          route: diagnosticsRoute,
+          reason: 'unauthenticated',
+          redirect_target: sanitizePathForDiagnostics(loginPath, DEFAULT_LOGIN_PATH),
+        });
+      }
       throw redirect({ href: buildLoginHref(loginPath, location.href) });
     }
 
     if (requiredRoles.length > 0 && !hasAnyRole(user, requiredRoles)) {
+      if (diagnosticsRoute) {
+        emitRoutingDiagnostic(diagnostics, {
+          level: 'info',
+          event: 'routing.guard.access_denied',
+          route: diagnosticsRoute,
+          reason: 'insufficient-role',
+          redirect_target: sanitizePathForDiagnostics(fallbackPath, DEFAULT_FALLBACK_PATH),
+          required_roles: sanitizeRequiredRoles(requiredRoles),
+        });
+      }
       throw redirect({ href: buildInsufficientRoleHref(fallbackPath, insufficientRoleKey) });
     }
   };

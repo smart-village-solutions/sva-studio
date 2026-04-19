@@ -17,8 +17,10 @@ Die folgenden Checks muessen in GitHub Branch Protection fuer `main` als `requir
 1. `Lint / lint`
 2. `Unit / unit`
 3. `Types / types`
-4. `Test Coverage / coverage`
-5. `App E2E / e2e`
+4. `Coverage and Quality Gates / Coverage Gate`
+5. `Coverage and Quality Gates / Complexity Gate`
+6. `Coverage and Quality Gates / PR Integration Gate`
+7. `App E2E Smoke / App E2E Smoke`
 
 Quellen:
 
@@ -26,7 +28,7 @@ Quellen:
 - E2E-Workflow: `.github/workflows/app-e2e.yml`
 - Gate-Baseline: `docs/governance/merge-review-gates.md`
 
-Enforcement-Hinweis fuer `App E2E / e2e`:
+Enforcement-Hinweis fuer `App E2E Smoke / App E2E Smoke`:
 
 - Zielmodell: Der Check ist in Branch Protection immer als `required` hinterlegt.
 - Technische Voraussetzung: `.github/workflows/app-e2e.yml` muss dafuer fuer alle PRs laufen und bei PRs ohne relevante Pfadtreffer fruehzeitig mit Status `success` enden.

@@ -71,8 +71,10 @@ Vor Aufhebung des Merge-Freeze müssen auf `main` grün sein:
 1. `Lint / lint`
 2. `Unit / unit`
 3. `Types / types`
-4. `Test Coverage / coverage`
-5. `App E2E / e2e` (wenn `apps/` betroffen ist)
+4. `Coverage and Quality Gates / Coverage Gate`
+5. `Coverage and Quality Gates / Complexity Gate`
+6. `Coverage and Quality Gates / PR Integration Gate` (wenn PR-bezogener Integrationsscope betroffen ist)
+7. `App E2E Smoke / App E2E Smoke` (wenn `apps/` betroffen ist)
 
 Zusätzlich verpflichtend:
 

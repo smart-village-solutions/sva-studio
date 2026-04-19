@@ -1,46 +1,58 @@
 {
   "projects": {
     "sva-studio-react": {
-      "lines": 61.22,
-      "statements": 59.78,
-      "functions": 47.1,
-      "branches": 47.84
+      "lines": 87.08,
+      "statements": 86.92,
+      "functions": 85.03,
+      "branches": 74.85
     },
     "auth": {
-      "lines": 46.4,
-      "statements": 46.43,
-      "functions": 51.03,
-      "branches": 32.36
+      "lines": 90.32,
+      "statements": 90.28,
+      "functions": 94.44,
+      "branches": 76.74
+    },
+    "core": {
+      "lines": 93.67,
+      "statements": 93.49,
+      "functions": 97.56,
+      "branches": 82.72
     },
     "data": {
-      "lines": 87.87,
-      "statements": 85.64,
-      "functions": 57.14,
-      "branches": 66.1
+      "lines": 94.01,
+      "statements": 93.86,
+      "functions": 95.52,
+      "branches": 86.22
     },
     "monitoring-client": {
-      "lines": 85.71,
-      "statements": 85.71,
-      "functions": 66.66,
+      "lines": 98.82,
+      "statements": 97.72,
+      "functions": 88.88,
       "branches": 100
+    },
+    "plugin-news": {
+      "lines": 90.82,
+      "statements": 89.27,
+      "functions": 81.03,
+      "branches": 80.5
     },
     "routing": {
-      "lines": 36.84,
-      "statements": 37.39,
-      "functions": 25,
-      "branches": 100
+      "lines": 98.38,
+      "statements": 98.42,
+      "functions": 98.02,
+      "branches": 97.87
     },
     "sdk": {
-      "lines": 78.6,
-      "statements": 77.92,
-      "functions": 78.72,
-      "branches": 62.7
+      "lines": 93.22,
+      "statements": 92.95,
+      "functions": 96.12,
+      "branches": 84.49
     },
     "sva-mainserver": {
-      "lines": 89.11,
-      "statements": 89,
-      "functions": 89.06,
-      "branches": 76.16
+      "lines": 91.39,
+      "statements": 91.25,
+      "functions": 90.62,
+      "branches": 81.34
     }
   }
 }

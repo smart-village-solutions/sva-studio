@@ -77,6 +77,31 @@ logger.info('User login', {
 - OTEL darf in Development ausfallen oder explizit deaktiviert werden, ohne den App-Start zu blockieren.
 - In Production ist dieses Verhalten nicht zulaessig; dort ist OTEL verpflichtend.
 
+### Routing-spezifisches Logging
+
+Routing-Ereignisse folgen einem eigenen Safe-Vertrag:
+
+- Guard-Denials, Plugin-Guard-Anomalien und serverseitige Dispatch-Fehler duerfen strukturiert geloggt werden.
+- Erfolgreiche Navigationen und Search-Param-Fallbacks ohne Diagnosewert bleiben still.
+- `route` meint immer den Template-Pfad, nie den konkret aufgeloesten URL-Pfad mit IDs.
+
+```typescript
+import type { RoutingDiagnosticsHook } from '@sva/routing';
+
+const diagnostics: RoutingDiagnosticsHook = (event) => {
+  if (event.event === 'routing.guard.access_denied') {
+    logger.info('Routing guard denied access', event);
+  }
+};
+```
+
+```typescript
+// ❌ BAD: aufgeloester Pfad mit IDs und Query-String
+logger.warn('Routing denied', {
+  route: '/admin/users/123?token=secret',
+});
+```
+
 ## PII-Redaction
 
 Das System redacted automatisch **sensible Labels** auf mehreren Ebenen:

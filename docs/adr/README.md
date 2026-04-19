@@ -62,6 +62,7 @@ Architecture Decision Records dokumentieren **wichtige technische Entscheidungen
 | 028 | IAM-Konfigurations-Export als dokumentierte Folgearbeit | ✅ | 2026-03-31 | IAM / Technical Debt |
 | 029 | `goose` als OSS-Standard für SQL-Migrationen | ✅ | 2026-04-01 | Data / Betrieb / Tooling |
 | 034 | Plugin-SDK-Vertrag v1 | ✅ | 2026-04-13 | Studio / Plugins / SDK |
+| 035 | Routing-Observability über Diagnostics-Hook und Safe-Event-Vertrag | ✅ | 2026-04-19 | Routing / Observability |
 
 ### Kanonischer Ablageort
 

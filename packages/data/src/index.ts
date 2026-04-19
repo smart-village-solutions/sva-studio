@@ -31,6 +31,49 @@ export type DataClientOptions = {
   logger?: DataClientLogger;
 };
 
+const isZodSchema = <T>(value: unknown): value is z.ZodType<T> =>
+  !!value && typeof value === 'object' && typeof (value as { parse?: unknown }).parse === 'function';
+
+const resolveGetArguments = <T>(
+  schemaOrInit?: z.ZodType<T> | RequestInit,
+  maybeInit?: RequestInit
+): {
+  init: RequestInit | undefined;
+  schema: z.ZodType<T> | undefined;
+} => {
+  const schema = isZodSchema<T>(schemaOrInit) ? schemaOrInit : undefined;
+  return {
+    init: schema ? maybeInit : (schemaOrInit as RequestInit | undefined),
+    schema,
+  };
+};
+
+const parsePayload = <T>(input: {
+  cacheKey?: string;
+  logger: DataClientLogger;
+  path: string;
+  rawPayload: unknown;
+  schema: z.ZodType<T> | undefined;
+  source: 'cache' | 'network';
+}): T => {
+  if (!input.schema) {
+    return input.rawPayload as T;
+  }
+
+  try {
+    return input.schema.parse(input.rawPayload);
+  } catch (error) {
+    input.logger.error('schema_validation_failed', {
+      operation: 'get',
+      path: input.path,
+      ...(input.cacheKey ? { cache_key: input.cacheKey } : {}),
+      source: input.source,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    throw error;
+  }
+};
+
 export const createDataClient = (options: DataClientOptions) => {
   const cacheTtlMs = options.cacheTtlMs ?? 30_000;
   const logger = options.logger ?? defaultLogger;
@@ -48,19 +91,12 @@ export const createDataClient = (options: DataClientOptions) => {
     }
   };
 
-  const isZodSchema = <T>(value: unknown): value is z.ZodType<T> => {
-    return !!value && typeof value === 'object' && typeof (value as { parse?: unknown }).parse === 'function';
-  };
-
   const get = async <T>(
     path: string,
     schemaOrInit?: z.ZodType<T> | RequestInit,
     maybeInit?: RequestInit
   ): Promise<T> => {
-    const schema = isZodSchema<T>(schemaOrInit) ? schemaOrInit : undefined;
-    const init: RequestInit | undefined = schema
-      ? maybeInit
-      : (schemaOrInit as RequestInit | undefined);
+    const { init, schema } = resolveGetArguments(schemaOrInit, maybeInit);
     if (!schema) {
       emitMissingSchemaWarning(path);
     }
@@ -74,20 +110,17 @@ export const createDataClient = (options: DataClientOptions) => {
         path,
         cache_key: cacheKey,
       });
-      if (!schema) {
-        return cached.value as T;
-      }
       try {
-        return schema.parse(cached.value);
+        return parsePayload({
+          cacheKey,
+          logger,
+          path,
+          rawPayload: cached.value,
+          schema,
+          source: 'cache',
+        });
       } catch (error) {
         inMemoryCache.delete(cacheKey);
-        logger.error('schema_validation_failed', {
-          operation: 'get',
-          path,
-          cache_key: cacheKey,
-          source: 'cache',
-          error: error instanceof Error ? error.message : String(error),
-        });
         throw error;
       }
     }
@@ -121,22 +154,13 @@ export const createDataClient = (options: DataClientOptions) => {
     }
 
     const rawPayload: unknown = await response.json();
-    let payload: T;
-    if (schema) {
-      try {
-        payload = schema.parse(rawPayload);
-      } catch (error) {
-        logger.error('schema_validation_failed', {
-          operation: 'get',
-          path,
-          source: 'network',
-          error: error instanceof Error ? error.message : String(error),
-        });
-        throw error;
-      }
-    } else {
-      payload = rawPayload as T;
-    }
+    const payload = parsePayload({
+      logger,
+      path,
+      rawPayload,
+      schema,
+      source: 'network',
+    });
     inMemoryCache.set(cacheKey, {
       value: payload,
       expiresAt: Date.now() + cacheTtlMs,

@@ -7,6 +7,7 @@ import {
   type AppRouteBindings,
   type AppRouteFactory,
 } from './app.routes.shared.js';
+import { defaultServerRoutingDiagnostics } from './diagnostics.server.js';
 
 export {
   getPluginRouteFactories,
@@ -18,11 +19,13 @@ export {
 export const getServerRouteFactories = ({
   bindings,
   plugins = [],
+  diagnostics,
 }: {
   readonly bindings: AppRouteBindings;
   readonly plugins?: readonly PluginDefinition[];
+  readonly diagnostics?: import('./diagnostics.js').RoutingDiagnosticsHook;
 }): readonly AppRouteFactory[] => [
-  ...createUiRouteFactories(bindings),
+  ...createUiRouteFactories(bindings, { diagnostics: diagnostics ?? defaultServerRoutingDiagnostics }),
   ...authServerRouteFactories,
-  ...getPluginRouteFactories(plugins),
+  ...getPluginRouteFactories(plugins, { diagnostics: diagnostics ?? defaultServerRoutingDiagnostics }),
 ] as const;

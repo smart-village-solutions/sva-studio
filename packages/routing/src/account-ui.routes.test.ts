@@ -1,7 +1,7 @@
 import { redirect } from '@tanstack/react-router';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-import { accountUiRouteGuards } from './account-ui.routes';
+import { accountUiRouteGuards, createAccountUiRouteGuard, createAccountUiRouteGuards } from './account-ui.routes';
 
 type Guard = (typeof accountUiRouteGuards)[keyof typeof accountUiRouteGuards];
 
@@ -91,5 +91,47 @@ describe('accountUiRouteGuards', () => {
 
   it('allows admin iam route for security admin', async () => {
     await expect(invoke(accountUiRouteGuards.adminIam, ['security_admin'], '/admin/iam')).resolves.toBeUndefined();
+  });
+
+  it('creates a fresh guard set when diagnostics are injected', () => {
+    const diagnostics = () => undefined;
+    const guards = createAccountUiRouteGuards(diagnostics);
+
+    expect(guards.account).not.toBe(accountUiRouteGuards.account);
+    expect(typeof guards.adminIam).toBe('function');
+  });
+
+  it('can override the diagnostics route for reused guards', async () => {
+    const diagnostics = vi.fn();
+    const guard = createAccountUiRouteGuard('account', diagnostics, '/media');
+
+    await expect(invoke(guard, null, '/media')).rejects.toMatchObject(
+      redirect({ href: '/auth/login?returnTo=%2Fmedia' })
+    );
+
+    expect(diagnostics).toHaveBeenCalledWith({
+      level: 'info',
+      event: 'routing.guard.access_denied',
+      route: '/media',
+      reason: 'unauthenticated',
+      redirect_target: '/auth/login',
+    });
+  });
+
+  it('supports plugin-specific route diagnostics when content guards are reused', async () => {
+    const diagnostics = vi.fn();
+    const guard = createAccountUiRouteGuard('content', diagnostics, '/plugins/news');
+
+    await expect(invoke(guard, null, '/plugins/news')).rejects.toMatchObject(
+      redirect({ href: '/auth/login?returnTo=%2Fplugins%2Fnews' })
+    );
+
+    expect(diagnostics).toHaveBeenCalledWith({
+      level: 'info',
+      event: 'routing.guard.access_denied',
+      route: '/plugins/news',
+      reason: 'unauthenticated',
+      redirect_target: '/auth/login',
+    });
   });
 });

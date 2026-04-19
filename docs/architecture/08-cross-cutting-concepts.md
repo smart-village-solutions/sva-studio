@@ -132,6 +132,15 @@ gleichzeitig beeinflussen.
 - Produktionsnahe Releases erzeugen zusätzlich eigenständige Artefakte für Release-Manifest, Phasenstatus, Migration, Bootstrap, Migrationsjob, Bootstrap-Job, interne Probes und externe Probes; diese Artefakte bleiben bewusst ohne Secrets oder PII
 - Remote-Prechecks für `studio` vergleichen zusätzlich die Live-Service-Spec der App mit dem gerenderten Sollzustand aus dem Deploy-Compose; dabei sind Netzwerke und ingressrelevante Labels eigene Drift-Signale
 
+### Routing-Observability-Vertrag
+
+- `@sva/routing` verwendet einen optional injizierten `RoutingDiagnosticsHook` fuer client-shared Routing-Entscheidungen.
+- Browser-Produktion bleibt ohne expliziten Hook No-op; es entsteht kein implizites Tracking normaler Navigation.
+- Client-shared Routing-Dateien importieren kein `@sva/sdk` oder `@sva/sdk/server`.
+- Serverseitige Bindung an den SDK-Logger erfolgt nur in `packages/routing/src/auth.routes.server.ts`.
+- Guard-Denials, unbekannte Plugin-Guard-Mappings, unbehandelte Handler-Fehler und `405`-Dispatch-Anomalien nutzen einen gemeinsamen Safe-Feldsatz.
+- Health-Check-Routen sind explizit vom `routing.handler.method_not_allowed`-Logging ausgenommen.
+
 ### Fehlerbehandlung und Resilienz
 
 - OTEL-Init ist in Development fehlertolerant; in Production wird fehlende OTEL-Readiness fail-closed behandelt
@@ -143,7 +152,7 @@ gleichzeitig beeinflussen.
 - Runtime-Profile verwenden einen verbindlichen Diagnosepfad `pnpm env:doctor:<profil>`; manuelle `psql`-/Browser-Netzwerkdiagnose ist nur Fallback
 - Read-only Remote-Diagnostik trennt strikt zwischen Portainer-API als Primaerkanal und `quantum-cli` als Mutations-/Fallback-Kanal
 - Mutierende `studio`-Kommandos laufen regulaer ueber den expliziten lokalen Operator-Kontext `local-operator`; der bisherige CI-/Runner-Deploypfad ist hoechstens noch Legacy-Fallback
-- `studio` verwendet einen verbindlichen, fehlertoleranten Deploypfad ueber `Studio Image Build`, `Studio Artifact Verify` und den lokalen Einstieg `env:release:studio:local`; direkte `up`-/`update`-Deploys sind fuer Serverrollouts gesperrt
+- `studio` verwendet einen verbindlichen, fehlertoleranten Deploypfad ueber `Studio Image Build and Publish`, `Studio Image Verify` und den lokalen Einstieg `env:release:studio:local`; direkte `up`-/`update`-Deploys sind fuer Serverrollouts gesperrt
 - Der produktionsnahe Releasevertrag klassifiziert Fehler verbindlich in `config`, `image`, `migration`, `bootstrap`, `startup`, `health`, `ingress` und `dependency`; spätere Phasen dürfen frühere Resultate nicht überschreiben
 - Release-Modus `schema-and-app` arbeitet fail-closed: ohne dokumentiertes Wartungsfenster startet kein orchestrierter Studio-Deploy
 - Release-Modus `schema-and-app` arbeitet zusätzlich fail-closed auf Basis dedizierter Swarm-Jobs: ohne erfolgreichen Exit-Code von `migrate` und `bootstrap`, Post-Migration-Assertions und Schema-Guard startet kein App-Rollout

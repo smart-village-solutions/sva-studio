@@ -247,4 +247,17 @@ describe('otel.server helpers', () => {
     await (sdk as NodeSDK).shutdown();
     expect(shutdownSpy).toHaveBeenCalled();
   });
+
+  it('startOtelSdk propagates startup failures instead of reporting ready too early', async () => {
+    const startupError = new Error('otel startup failed');
+    vi.spyOn(NodeSDK.prototype, 'start').mockRejectedValue(startupError);
+
+    await expect(
+      startOtelSdk({
+        serviceName: 'svc-test',
+        environment: 'production',
+        otlpEndpoint: 'http://localhost:4318',
+      })
+    ).rejects.toThrow('otel startup failed');
+  });
 });

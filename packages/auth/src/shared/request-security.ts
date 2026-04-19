@@ -52,7 +52,7 @@ export const isTrustedRequestOrigin = (
 
 export const validateCsrf = (request: Request, requestId?: string): Response | null => {
   const header = readString(request.headers.get('x-requested-with'));
-  if (!header || header.toLowerCase() !== 'xmlhttprequest') {
+  if (header?.toLowerCase() !== 'xmlhttprequest') {
     return createApiError(
       403,
       'csrf_validation_failed',

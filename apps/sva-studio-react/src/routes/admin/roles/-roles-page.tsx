@@ -35,7 +35,6 @@ const STATUS_LABEL_KEYS = {
 const RECONCILE_OUTCOME_LABEL_KEYS = {
   success: 'admin.roles.messages.reconcileOutcome.success',
   partial_failure: 'admin.roles.messages.reconcileOutcome.partialFailure',
-  blocked: 'admin.roles.messages.reconcileOutcome.blocked',
   failed: 'admin.roles.messages.reconcileOutcome.failed',
 } as const satisfies Record<RoleReconcileReport['outcome'], TranslationKey>;
 

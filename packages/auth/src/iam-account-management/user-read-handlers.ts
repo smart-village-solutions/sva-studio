@@ -1,4 +1,4 @@
-import type { IamUserDetail } from '@sva/core';
+import type { IamUserDetail, IamUserListItem } from '@sva/core';
 
 import type { AuthenticatedRequestContext } from '../middleware.server.js';
 import { jsonResponse } from '../shared/db-helpers.js';
@@ -27,6 +27,37 @@ import {
   resolveProjectedMainserverCredentialState,
 } from './user-projection.js';
 import { resolveUserTimeline } from './user-timeline-query.js';
+
+const resolveListProjectionInputs = async (input: {
+  actor: {
+    instanceId: string;
+    requestId?: string;
+    traceId?: string;
+  };
+  users: readonly IamUserListItem[];
+}) =>
+  new Map(
+    await Promise.all(
+      input.users.map(async (user) => {
+        try {
+          return [
+            user.keycloakSubject,
+            await resolveKeycloakRoleNames(input.actor.instanceId, user.keycloakSubject),
+          ] as const;
+        } catch (error) {
+          logger.warn('IAM user list role projection degraded', {
+            operation: 'list_users',
+            instance_id: input.actor.instanceId,
+            request_id: input.actor.requestId,
+            trace_id: input.actor.traceId,
+            user_id: user.id,
+            error: error instanceof Error ? error.message : String(error),
+          });
+          return [user.keycloakSubject, null] as const;
+        }
+      })
+    )
+  );
 
 export const listUsersInternal = async (
   request: Request,
@@ -66,28 +97,10 @@ export const listUsersInternal = async (
         search: search ?? undefined,
       })
     );
-    const keycloakRoleNamesBySubject = new Map(
-      await Promise.all(
-        resolved.users.map(async (user) => {
-          try {
-            return [
-              user.keycloakSubject,
-              await resolveKeycloakRoleNames(access.actor.instanceId, user.keycloakSubject),
-            ] as const;
-          } catch (error) {
-            logger.warn('IAM user list role projection degraded', {
-              operation: 'list_users',
-              instance_id: access.actor.instanceId,
-              request_id: access.actor.requestId,
-              trace_id: access.actor.traceId,
-              user_id: user.id,
-              error: error instanceof Error ? error.message : String(error),
-            });
-            return [user.keycloakSubject, null] as const;
-          }
-        })
-      )
-    );
+    const keycloakRoleNamesBySubject = await resolveListProjectionInputs({
+      actor: access.actor,
+      users: resolved.users,
+    });
     const users = await withInstanceScopedDb(access.actor.instanceId, (client) =>
       applyCanonicalUserListProjection({
         client,

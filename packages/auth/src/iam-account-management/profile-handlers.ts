@@ -269,6 +269,30 @@ const DEFAULT_MAINSERVER_CREDENTIAL_STATE = {
   mainserverUserApplicationSecretSet: false,
 } as const;
 
+const resolveProjectedProfileDetail = async (input: {
+  instanceId: string;
+  user: IamUserDetail;
+}): Promise<IamUserDetail> => {
+  const [keycloakRoleNamesResult, mainserverCredentialStateResult] = await Promise.allSettled([
+    resolveKeycloakRoleNames(input.instanceId, input.user.keycloakSubject),
+    resolveProjectedMainserverCredentialState(input.user.keycloakSubject, input.instanceId),
+  ]);
+
+  return withInstanceScopedDb(input.instanceId, (client) =>
+    applyCanonicalUserDetailProjection({
+      client,
+      instanceId: input.instanceId,
+      user: input.user,
+      keycloakRoleNames:
+        keycloakRoleNamesResult.status === 'fulfilled' ? keycloakRoleNamesResult.value : null,
+      mainserverCredentialState:
+        mainserverCredentialStateResult.status === 'fulfilled'
+          ? mainserverCredentialStateResult.value
+          : DEFAULT_MAINSERVER_CREDENTIAL_STATE,
+    })
+  );
+};
+
 const ensureIdentityProvider = async (instanceId: string, requestId?: string) => {
   const identityProvider = await resolveIdentityProviderForInstance(instanceId, {
     executionMode: 'tenant_admin',
@@ -526,23 +550,10 @@ export const updateMyProfileInternal = async (
         return createProfileNotFoundResponse(actorContext.actor.requestId);
       }
 
-      const [keycloakRoleNamesResult, mainserverCredentialStateResult] = await Promise.allSettled([
-        resolveKeycloakRoleNames(actorContext.actor.instanceId, detail.keycloakSubject),
-        resolveProjectedMainserverCredentialState(detail.keycloakSubject, actorContext.actor.instanceId),
-      ]);
-      const projectedDetail = await withInstanceScopedDb(actorContext.actor.instanceId, (client) =>
-        applyCanonicalUserDetailProjection({
-          client,
-          instanceId: actorContext.actor.instanceId,
-          user: detail,
-          keycloakRoleNames:
-            keycloakRoleNamesResult.status === 'fulfilled' ? keycloakRoleNamesResult.value : null,
-          mainserverCredentialState:
-            mainserverCredentialStateResult.status === 'fulfilled'
-              ? mainserverCredentialStateResult.value
-              : DEFAULT_MAINSERVER_CREDENTIAL_STATE,
-        })
-      );
+      const projectedDetail = await resolveProjectedProfileDetail({
+        instanceId: actorContext.actor.instanceId,
+        user: detail,
+      });
 
       iamUserOperationsCounter.add(1, { action: 'update_my_profile', result: 'success' });
       return jsonResponse(200, asApiItem(projectedDetail, actorContext.actor.requestId));
@@ -598,23 +609,10 @@ export const getMyProfileInternal = async (
       return createProfileNotFoundResponse(actorContext.actor.requestId);
     }
 
-    const [keycloakRoleNamesResult, mainserverCredentialStateResult] = await Promise.allSettled([
-      resolveKeycloakRoleNames(actorContext.actor.instanceId, detail.keycloakSubject),
-      resolveProjectedMainserverCredentialState(detail.keycloakSubject, actorContext.actor.instanceId),
-    ]);
-    const projectedDetail = await withInstanceScopedDb(actorContext.actor.instanceId, (client) =>
-      applyCanonicalUserDetailProjection({
-        client,
-        instanceId: actorContext.actor.instanceId,
-        user: detail,
-        keycloakRoleNames:
-          keycloakRoleNamesResult.status === 'fulfilled' ? keycloakRoleNamesResult.value : null,
-        mainserverCredentialState:
-          mainserverCredentialStateResult.status === 'fulfilled'
-            ? mainserverCredentialStateResult.value
-            : DEFAULT_MAINSERVER_CREDENTIAL_STATE,
-      })
-    );
+    const projectedDetail = await resolveProjectedProfileDetail({
+      instanceId: actorContext.actor.instanceId,
+      user: detail,
+    });
 
     iamUserOperationsCounter.add(1, { action: 'get_my_profile', result: 'success' });
     return jsonResponse(200, asApiItem(projectedDetail, actorContext.actor.requestId));

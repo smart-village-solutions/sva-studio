@@ -48,6 +48,14 @@ const roleErrorMessage = (error: IamHttpError | null, fallbackKey: TranslationKe
     return t(fallbackKey);
   }
 
+  if (error.diagnosticStatus === 'recovery_laeuft') {
+    return t('admin.roles.errors.recoveryRunning');
+  }
+
+  if (error.classification === 'keycloak_reconcile') {
+    return t('admin.roles.errors.keycloakReconcile');
+  }
+
   switch (error.code) {
     case 'forbidden':
       return t('admin.roles.errors.forbidden');

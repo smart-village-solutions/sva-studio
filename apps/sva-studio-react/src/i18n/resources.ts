@@ -450,6 +450,18 @@ export const i18nResources = {
         validationSummary: 'Bitte korrigieren Sie die markierten Felder.',
         keycloakRedirectHint: 'Sie werden zur Keycloak-Kontoverwaltung weitergeleitet.',
       },
+      diagnostics: {
+        sessionRecovery: 'Die Sitzung konnte nicht stabil wiederhergestellt werden. Bitte erneut anmelden.',
+        actorResolutionOrMembership:
+          'Ihr Konto ist technisch erreichbar, aber die fachliche Zuordnung oder Instanz-Mitgliedschaft ist unvollständig.',
+        databaseOrSchemaDrift:
+          'Die Kontodaten sind derzeit wegen einer Datenbank- oder Migrationsabweichung nur eingeschränkt verfügbar.',
+        registryOrProvisioningDrift:
+          'Die Kontodaten sind derzeit wegen eines Registry- oder Provisioning-Drifts nur eingeschränkt verfügbar.',
+        keycloakDependency:
+          'Die Kontoansicht kann derzeit nicht vollständig geladen werden, weil Keycloak oder ein nachgelagerter Rollenabgleich nicht stabil verfügbar ist.',
+        requestId: 'Request-ID: {{requestId}}',
+      },
       validation: {
         usernameInvalid: 'Bitte einen Benutzernamen ohne Leerzeichen eingeben.',
         emailInvalid: 'Bitte eine gültige E-Mail-Adresse eingeben.',
@@ -977,11 +989,17 @@ export const i18nResources = {
         },
         errors: {
           unauthorized: 'Die Sitzung ist nicht mehr gültig. Bitte erneut anmelden.',
+          recoveryRunning: 'Die Sitzung wird gerade wiederhergestellt oder ist instabil. Bitte erneut anmelden.',
           forbidden: 'Keine Berechtigung für die Instanzverwaltung.',
           csrfValidationFailed: 'Sicherheitsprüfung fehlgeschlagen. Bitte Seite neu laden und erneut versuchen.',
           reauthRequired: 'Für diese Aktion ist eine frische Re-Authentisierung erforderlich.',
           conflict: 'Die gewünschte Änderung steht im Konflikt mit dem aktuellen Instanzstatus.',
           databaseUnavailable: 'Die Registry konnte wegen eines Datenbankproblems nicht verarbeitet werden.',
+          databaseOrSchemaDrift: 'Die Instanzverwaltung ist derzeit wegen einer Datenbank- oder Migrationsabweichung eingeschränkt.',
+          registryOrProvisioningDrift:
+            'Für diese Instanz liegt ein Registry- oder Provisioning-Drift vor. Bitte Keycloak-Status, Preflight und letzten Run gemeinsam prüfen.',
+          keycloakReconcile:
+            'Der Keycloak-Abgleich ist fehlgeschlagen oder erfordert manuelle Nacharbeit. Bitte den Reconcile-Befund mit Request-ID prüfen.',
           tenantAuthClientSecretMissing: 'Für diese Instanz ist noch kein Tenant-Client-Secret hinterlegt.',
           tenantAdminClientNotConfigured:
             'Für diese Instanz ist noch kein Tenant-Admin-Client hinterlegt. Pflegen Sie den Client-Vertrag und speichern Sie die Instanz.',
@@ -1152,9 +1170,12 @@ export const i18nResources = {
         },
         errors: {
           forbidden: 'Unzureichende Berechtigungen für diese Nutzeraktion.',
+          recoveryRunning: 'Die Sitzung wird gerade wiederhergestellt oder ist instabil. Bitte erneut anmelden.',
           csrfValidationFailed: 'Sicherheitsprüfung fehlgeschlagen. Bitte Seite neu laden und erneut versuchen.',
           rateLimited: 'Zu viele Anfragen in kurzer Zeit. Bitte kurz warten und erneut versuchen.',
           conflict: 'Die Nutzeränderung steht in Konflikt mit dem aktuellen Zustand. Bitte aktualisieren und erneut versuchen.',
+          keycloakReconcile:
+            'Der Benutzerabgleich mit Keycloak ist fehlgeschlagen oder erfordert manuelle Nacharbeit. Bitte den Reconcile-Befund prüfen.',
           tenantAdminClientNotConfigured:
             'Für diese Instanz ist noch kein Tenant-Admin-Client hinterlegt. Bitte zuerst den Instanzvertrag abgleichen.',
           tenantAdminClientSecretMissing:
@@ -1481,9 +1502,12 @@ export const i18nResources = {
         },
         errors: {
           forbidden: 'Unzureichende Berechtigungen für diese Rollenaktion.',
+          recoveryRunning: 'Die Sitzung wird gerade wiederhergestellt oder ist instabil. Bitte erneut anmelden.',
           csrfValidationFailed: 'Sicherheitsprüfung fehlgeschlagen. Bitte Seite neu laden und erneut versuchen.',
           rateLimited: 'Zu viele Anfragen in kurzer Zeit. Bitte kurz warten und erneut versuchen.',
           conflict: 'Die Rollenänderung steht in Konflikt mit dem aktuellen Zustand. Bitte aktualisieren und erneut versuchen.',
+          keycloakReconcile:
+            'Der Rollenabgleich mit Keycloak ist fehlgeschlagen oder erfordert manuelle Nacharbeit. Bitte den Reconcile-Befund prüfen.',
           keycloakUnavailable: 'Die Verbindung zu Keycloak ist derzeit nicht verfügbar. Bitte später erneut versuchen.',
           databaseUnavailable: 'Die IAM-Datenbank ist derzeit nicht erreichbar. Bitte später erneut versuchen.',
         },
@@ -2275,6 +2299,18 @@ export const i18nResources = {
         validationSummary: 'Please correct the highlighted fields.',
         keycloakRedirectHint: 'You will be redirected to the Keycloak account console.',
       },
+      diagnostics: {
+        sessionRecovery: 'The session could not be restored reliably. Please sign in again.',
+        actorResolutionOrMembership:
+          'Your account is technically reachable, but the business mapping or instance membership is incomplete.',
+        databaseOrSchemaDrift:
+          'Account data is currently degraded because of a database or migration mismatch.',
+        registryOrProvisioningDrift:
+          'Account data is currently degraded because of registry or provisioning drift.',
+        keycloakDependency:
+          'The account view cannot be loaded completely because Keycloak or a downstream role sync is not stable.',
+        requestId: 'Request ID: {{requestId}}',
+      },
       validation: {
         usernameInvalid: 'Please enter a username without spaces.',
         emailInvalid: 'Please enter a valid email address.',
@@ -2806,11 +2842,17 @@ export const i18nResources = {
         },
         errors: {
           unauthorized: 'Your session is no longer valid. Please sign in again.',
+          recoveryRunning: 'The session is currently recovering or unstable. Please sign in again.',
           forbidden: 'You do not have permission to manage instances.',
           csrfValidationFailed: 'Security validation failed. Please reload the page and try again.',
           reauthRequired: 'A fresh re-authentication is required for this action.',
           conflict: 'The requested change conflicts with the current instance state.',
           databaseUnavailable: 'The registry could not be processed because of a database problem.',
+          databaseOrSchemaDrift: 'Instance management is currently degraded because of a database or migration mismatch.',
+          registryOrProvisioningDrift:
+            'Registry or provisioning drift was detected for this instance. Please review Keycloak status, preflight, and the latest run together.',
+          keycloakReconcile:
+            'The Keycloak reconcile failed or needs manual follow-up. Please inspect the reconcile finding with the request ID.',
           tenantAuthClientSecretMissing: 'No tenant client secret has been stored for this instance yet.',
           tenantAdminClientNotConfigured:
             'No tenant admin client has been stored for this instance yet. Enter the client contract and save the instance.',
@@ -2982,9 +3024,12 @@ export const i18nResources = {
         },
         errors: {
           forbidden: 'Insufficient permissions for this user action.',
+          recoveryRunning: 'The session is currently recovering or unstable. Please sign in again.',
           csrfValidationFailed: 'Security validation failed. Reload the page and try again.',
           rateLimited: 'Too many requests in a short time. Please wait a moment and try again.',
           conflict: 'The user update conflicts with the current state. Refresh and try again.',
+          keycloakReconcile:
+            'User sync with Keycloak failed or needs manual follow-up. Please inspect the reconcile finding.',
           tenantAdminClientNotConfigured:
             'No tenant admin client is configured for this instance yet. Reconcile the instance contract first.',
           tenantAdminClientSecretMissing:
@@ -3311,9 +3356,12 @@ export const i18nResources = {
         },
         errors: {
           forbidden: 'You do not have sufficient permissions for this role action.',
+          recoveryRunning: 'The session is currently recovering or unstable. Please sign in again.',
           csrfValidationFailed: 'Security validation failed. Please reload the page and try again.',
           rateLimited: 'Too many requests in a short time. Please wait and try again.',
           conflict: 'The role change conflicts with the current state. Please refresh and try again.',
+          keycloakReconcile:
+            'Role sync with Keycloak failed or needs manual follow-up. Please inspect the reconcile finding.',
           keycloakUnavailable: 'The Keycloak connection is currently unavailable. Please try again later.',
           databaseUnavailable: 'The IAM database is currently unavailable. Please try again later.',
         },

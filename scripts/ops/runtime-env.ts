@@ -3680,16 +3680,11 @@ const runInternalVerify = async (runtimeProfile: RemoteRuntimeProfile, env: Node
     lastDoctorReport = doctorReport;
     lastProbes = probes;
 
-    const hasRetryableWarmupOnlyErrors = doctorReport.checks
-      .filter((check) => check.status === 'error')
-      .every((check) => {
-        if (!retryableWarmupChecks.has(check.name)) {
-          return false;
-        }
-
-        const message = typeof check.message === 'string' ? check.message.toLowerCase() : '';
-        return retryableWarmupSignals.some((signal) => message.includes(signal));
-      });
+    const hasRetryableWarmupOnlyErrors = shouldRetryInternalVerify(
+      doctorReport,
+      retryableWarmupChecks,
+      retryableWarmupSignals,
+    );
     const probesFailed = probes.some((probe) => probe.status === 'error');
     const doctorFailed = doctorReport.status === 'error';
 
@@ -3715,6 +3710,52 @@ const runInternalVerify = async (runtimeProfile: RemoteRuntimeProfile, env: Node
     doctorReport: lastDoctorReport ?? (await doctorRuntime(runtimeProfile, env)),
     probes: lastProbes,
   };
+};
+
+const checkContainsRetryableWarmupSignal = (check: DoctorCheck, retryableWarmupSignals: readonly string[]) => {
+  const message = typeof check.message === 'string' ? check.message.toLowerCase() : '';
+  if (retryableWarmupSignals.some((signal) => message.includes(signal))) {
+    return true;
+  }
+
+  const details = check.details;
+  if (!details) {
+    return false;
+  }
+
+  const status = details.status;
+  if (typeof status === 'number' && [404, 502, 503, 504].includes(status)) {
+    return true;
+  }
+
+  const payload = details.payload;
+  return typeof payload === 'string' && retryableWarmupSignals.some((signal) => payload.toLowerCase().includes(signal));
+};
+
+export const shouldRetryInternalVerify = (
+  doctorReport: DoctorReport,
+  retryableWarmupChecks: ReadonlySet<string> = new Set([
+    'health-live',
+    'health-ready',
+    'auth-login',
+    'auth-me',
+    'tenant-auth-proof',
+    'app-db-principal',
+  ]),
+  retryableWarmupSignals: readonly string[] = ['404', '502', '503', '504', 'timeout', 'timed out', 'gateway'],
+) => {
+  const failingChecks = doctorReport.checks.filter((check) => check.status === 'error');
+  if (failingChecks.length === 0) {
+    return false;
+  }
+
+  return failingChecks.every((check) => {
+    if (!retryableWarmupChecks.has(check.name)) {
+      return false;
+    }
+
+    return checkContainsRetryableWarmupSignal(check, retryableWarmupSignals);
+  });
 };
 
 const runExternalSmoke = async (env: NodeJS.ProcessEnv): Promise<readonly AcceptanceProbeResult[]> => {

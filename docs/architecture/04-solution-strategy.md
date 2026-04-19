@@ -100,3 +100,10 @@ Referenzen:
 - Tenant-Freigabe wird nicht mehr strategisch über tenant-spezifische Env-Konfiguration modelliert, sondern über eine zentrale Registry in Postgres.
 - Root-Host bleibt die einzige globale Control-Plane-Oberfläche; Tenant-Hosts dienen nur dem instanzgebundenen Betrieb.
 - HTTP, Studio-UI und Ops-CLI verwenden denselben fachlichen Provisioning-Vertrag für Neuanlage und Statusmutationen.
+
+### Fortschreibung 2026-04: IAM-Diagnostik vor Refactoring
+
+- Größere IAM-Refactorings setzen künftig eine vorgelagerte Diagnose- und Analysephase voraus.
+- Strategisch führend ist nicht eine einzelne Fehlermeldung, sondern die Trennung zwischen Auth-, Session-, Actor-/Membership-, Keycloak-, Schema- und Registry-/Provisioning-Ursachen.
+- Öffentliche Diagnostik bleibt allowlist-basiert; tiefe Rohfehler bleiben weiterhin im OTEL- und Serverlog-Pfad.
+- Der aktuelle Analysebefund ist in `../reports/iam-diagnostics-analysis-2026-04-19.md` versioniert; der dort vorbereitete Folgechange ist der bevorzugte Ausgangspunkt für die eigentliche Umsetzung.

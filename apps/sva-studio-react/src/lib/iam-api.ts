@@ -29,8 +29,13 @@ import type {
   IamUserDetail,
   IamUserImportSyncReport,
   IamUserListItem,
+  IamRuntimeDiagnosticClassification,
+  IamRuntimeDiagnosticStatus,
+  IamRuntimeRecommendedAction,
+  IamRuntimeSafeDetails,
   UpdateIamContentInput,
 } from '@sva/core';
+import { deriveIamRuntimeDiagnostics } from '@sva/core';
 import { createBrowserLogger } from '@sva/sdk/logging';
 
 const IAM_HEADERS = {
@@ -51,13 +56,30 @@ export class IamHttpError extends Error {
   readonly status: number;
   readonly code: string;
   readonly requestId?: string;
+  readonly classification?: IamRuntimeDiagnosticClassification;
+  readonly diagnosticStatus?: IamRuntimeDiagnosticStatus;
+  readonly recommendedAction?: IamRuntimeRecommendedAction;
+  readonly safeDetails?: IamRuntimeSafeDetails;
 
-  constructor(input: { status: number; code: string; message: string; requestId?: string }) {
+  constructor(input: {
+    status: number;
+    code: string;
+    message: string;
+    requestId?: string;
+    classification?: IamRuntimeDiagnosticClassification;
+    diagnosticStatus?: IamRuntimeDiagnosticStatus;
+    recommendedAction?: IamRuntimeRecommendedAction;
+    safeDetails?: IamRuntimeSafeDetails;
+  }) {
     super(input.message);
     this.name = 'IamHttpError';
     this.status = input.status;
     this.code = input.code;
     this.requestId = input.requestId;
+    this.classification = input.classification;
+    this.diagnosticStatus = input.diagnosticStatus;
+    this.recommendedAction = input.recommendedAction;
+    this.safeDetails = input.safeDetails;
   }
 }
 
@@ -68,16 +90,6 @@ type IamErrorPayload =
       readonly message?: string;
       readonly requestId?: string;
     };
-
-type SafeDiagnosticDetails = Readonly<{
-  reason_code?: string;
-  dependency?: string;
-  schema_object?: string;
-  expected_migration?: string;
-  actor_resolution?: string;
-  instance_id?: string;
-  return_to?: string;
-}>;
 
 const hasTopLevelMessage = (
   payload: IamErrorPayload
@@ -130,7 +142,7 @@ const readErrorMessageFromPayload = (payload: IamErrorPayload | null, status: nu
   return `http_${status}`;
 };
 
-const readSafeDiagnosticDetails = (payload: IamErrorPayload | null): SafeDiagnosticDetails | undefined => {
+const readSafeDiagnosticDetails = (payload: IamErrorPayload | null): IamRuntimeSafeDetails | undefined => {
   if (!payload || typeof payload.error !== 'object' || !payload.error || !('details' in payload.error)) {
     return undefined;
   }
@@ -141,7 +153,7 @@ const readSafeDiagnosticDetails = (payload: IamErrorPayload | null): SafeDiagnos
   }
 
   const source = details as Record<string, unknown>;
-  const safeDetails: SafeDiagnosticDetails = {
+  const safeDetails: IamRuntimeSafeDetails = {
     reason_code: typeof source.reason_code === 'string' ? source.reason_code : undefined,
     dependency: typeof source.dependency === 'string' ? source.dependency : undefined,
     schema_object: typeof source.schema_object === 'string' ? source.schema_object : undefined,
@@ -156,11 +168,52 @@ const readSafeDiagnosticDetails = (payload: IamErrorPayload | null): SafeDiagnos
   return Object.values(safeDetails).some((value) => typeof value === 'string') ? safeDetails : undefined;
 };
 
+const readStructuredErrorPayload = (payload: IamErrorPayload | null) =>
+  payload && typeof payload.error === 'object' && payload.error ? (payload.error as Record<string, unknown>) : undefined;
+
+const readRuntimeDiagnostics = (
+  payload: IamErrorPayload | null,
+  status: number,
+  code: string,
+  safeDetails: IamRuntimeSafeDetails | undefined
+) => {
+  const structuredError = readStructuredErrorPayload(payload);
+  const fallbackDiagnostics = deriveIamRuntimeDiagnostics({
+    code,
+    status,
+    details: safeDetails,
+  });
+
+  const classification =
+    typeof structuredError?.classification === 'string'
+      ? (structuredError.classification as IamRuntimeDiagnosticClassification)
+      : fallbackDiagnostics.classification;
+  const diagnosticStatus =
+    typeof structuredError?.status === 'string'
+      ? (structuredError.status as IamRuntimeDiagnosticStatus)
+      : fallbackDiagnostics.status;
+  const recommendedAction =
+    typeof structuredError?.recommendedAction === 'string'
+      ? (structuredError.recommendedAction as IamRuntimeRecommendedAction)
+      : fallbackDiagnostics.recommendedAction;
+  const explicitSafeDetails =
+    structuredError?.safeDetails && typeof structuredError.safeDetails === 'object'
+      ? (structuredError.safeDetails as IamRuntimeSafeDetails)
+      : undefined;
+
+  return {
+    classification,
+    diagnosticStatus,
+    recommendedAction,
+    safeDetails: explicitSafeDetails ?? safeDetails ?? fallbackDiagnostics.safeDetails,
+  };
+};
+
 const logDevelopmentApiError = (input: {
   requestId?: string;
   status: number;
   code: string;
-  details?: SafeDiagnosticDetails;
+  details?: IamRuntimeSafeDetails;
 }) => {
   if (!isDevelopmentEnvironment()) {
     return;
@@ -177,11 +230,21 @@ const logDevelopmentApiError = (input: {
 export const asIamError = (error: unknown): IamHttpError =>
   error instanceof IamHttpError
     ? error
-    : new IamHttpError({
-        status: 500,
-        code: 'internal_error',
-        message: error instanceof Error ? error.message : String(error),
-      });
+    : (() => {
+        const diagnostics = deriveIamRuntimeDiagnostics({
+          code: 'internal_error',
+          status: 500,
+        });
+        return new IamHttpError({
+          status: 500,
+          code: 'internal_error',
+          message: error instanceof Error ? error.message : String(error),
+          classification: diagnostics.classification,
+          diagnosticStatus: diagnostics.status,
+          recommendedAction: diagnostics.recommendedAction,
+          safeDetails: diagnostics.safeDetails,
+        });
+      })();
 
 export type UserStatusFilter = 'active' | 'inactive' | 'pending' | 'all';
 
@@ -479,12 +542,13 @@ const readErrorPayload = async (response: Response): Promise<IamHttpError> => {
   const payload = (await response.json().catch(() => null)) as IamErrorPayload | null;
   const code = readErrorCodeFromPayload(payload) ?? 'internal_error';
   const requestId = readRequestIdFromResponse(response, payload ?? undefined);
-  const details = readSafeDiagnosticDetails(payload);
+  const safeDetails = readSafeDiagnosticDetails(payload);
+  const diagnostics = readRuntimeDiagnostics(payload, response.status, code, safeDetails);
 
-  logDevelopmentApiError({ requestId, status: response.status, code, details });
+  logDevelopmentApiError({ requestId, status: response.status, code, details: diagnostics.safeDetails });
 
   if (code === 'legal_acceptance_required' && globalThis.window !== undefined) {
-    globalThis.dispatchEvent(new CustomEvent(LEGAL_ACCEPTANCE_REQUIRED_EVENT, { detail: details }));
+    globalThis.dispatchEvent(new CustomEvent(LEGAL_ACCEPTANCE_REQUIRED_EVENT, { detail: diagnostics.safeDetails }));
   }
 
   return new IamHttpError({
@@ -492,6 +556,10 @@ const readErrorPayload = async (response: Response): Promise<IamHttpError> => {
     code,
     message: readErrorMessageFromPayload(payload, response.status),
     requestId,
+    classification: diagnostics.classification,
+    diagnosticStatus: diagnostics.diagnosticStatus,
+    recommendedAction: diagnostics.recommendedAction,
+    safeDetails: diagnostics.safeDetails,
   });
 };
 
@@ -520,6 +588,9 @@ export const fetchWithRequestTimeout = async (
         status: 0,
         code: didTimeout ? 'timeout' : 'aborted',
         message: didTimeout ? 'request_timeout' : 'request_aborted',
+        classification: 'unknown',
+        diagnosticStatus: 'degradiert',
+        recommendedAction: 'erneut_versuchen',
       });
     }
     throw error;
@@ -555,6 +626,9 @@ const requestJson = async <T>(input: string, init?: RequestInit, options: IamReq
         code: 'non_json_response',
         message: `Server antwortete mit ${response.status} (${contentType || 'unbekannter Content-Type'}) statt JSON.`,
         requestId,
+        classification: 'unknown',
+        diagnosticStatus: 'degradiert',
+        recommendedAction: 'erneut_versuchen',
       });
     }
     throw await readErrorPayload(response);
@@ -565,6 +639,9 @@ const requestJson = async <T>(input: string, init?: RequestInit, options: IamReq
       status: response.status,
       code: 'non_json_response',
       message: `Erwartete JSON-Antwort, erhielt ${contentType || 'unbekannten Content-Type'}.`,
+      classification: 'unknown',
+      diagnosticStatus: 'degradiert',
+      recommendedAction: 'erneut_versuchen',
     });
   }
 
@@ -600,6 +677,9 @@ const requestJsonOrText = async <T>(
         code: 'non_json_response',
         message: `Server antwortete mit ${response.status} (${contentType || 'unbekannter Content-Type'}) statt JSON.`,
         requestId,
+        classification: 'unknown',
+        diagnosticStatus: 'degradiert',
+        recommendedAction: 'erneut_versuchen',
       });
     }
     throw await readErrorPayload(response);

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { runExternalSmokeWithWarmup, shouldRetryExternalSmoke } from './runtime-env.ts';
+import { runExternalSmokeWithWarmup, shouldRetryExternalSmoke, shouldRetryInternalVerify } from './runtime-env.ts';
 import type { AcceptanceProbeResult } from './runtime-env.shared.ts';
 
 const createProbe = (overrides: Partial<AcceptanceProbeResult>): AcceptanceProbeResult => ({
@@ -42,6 +42,57 @@ describe('shouldRetryExternalSmoke', () => {
     ];
 
     expect(shouldRetryExternalSmoke(probes)).toBe(false);
+  });
+});
+
+describe('shouldRetryInternalVerify', () => {
+  it('retries warmup-only doctor failures when the retry signal is only present in details', () => {
+    const shouldRetry = shouldRetryInternalVerify({
+      checks: [
+        {
+          code: 'live_failed',
+          details: {
+            status: 404,
+          },
+          message: 'Live-Endpoint antwortet mit 404.',
+          name: 'health-live',
+          status: 'error',
+        },
+        {
+          code: 'app_db_principal_not_ready',
+          details: {
+            payload: '<html><body><h1>404 Not Found</h1></body></html>',
+            status: 404,
+          },
+          message: 'Die laufende App meldet Registry-/Auth- oder Datenbank-Readiness nicht stabil.',
+          name: 'app-db-principal',
+          status: 'error',
+        },
+      ],
+      generatedAt: '2026-04-19T17:02:12.142Z',
+      profile: 'studio',
+      status: 'error',
+    });
+
+    expect(shouldRetry).toBe(true);
+  });
+
+  it('does not retry non-warmup doctor failures', () => {
+    const shouldRetry = shouldRetryInternalVerify({
+      checks: [
+        {
+          code: 'schema_guard_failed',
+          message: 'Kritische IAM-Schema-Drift erkannt.',
+          name: 'schema-guard',
+          status: 'error',
+        },
+      ],
+      generatedAt: '2026-04-19T17:02:12.142Z',
+      profile: 'studio',
+      status: 'error',
+    });
+
+    expect(shouldRetry).toBe(false);
   });
 });
 

@@ -27,6 +27,52 @@ export type ApiErrorCode =
   | 'reauth_required'
   | 'internal_error';
 
+export type IamRuntimeDiagnosticClassification =
+  | 'tenant_host_validation'
+  | 'session_store_or_session_hydration'
+  | 'actor_resolution_or_membership'
+  | 'keycloak_dependency'
+  | 'database_or_schema_drift'
+  | 'database_mapping_or_membership_inconsistency'
+  | 'registry_or_provisioning_drift'
+  | 'keycloak_reconcile'
+  | 'unknown';
+
+export type IamRuntimeDiagnosticStatus =
+  | 'gesund'
+  | 'degradiert'
+  | 'recovery_laeuft'
+  | 'manuelle_pruefung_erforderlich';
+
+export type IamRuntimeRecommendedAction =
+  | 'erneut_anmelden'
+  | 'erneut_versuchen'
+  | 'keycloak_pruefen'
+  | 'migration_pruefen'
+  | 'provisioning_pruefen'
+  | 'rollenabgleich_pruefen'
+  | 'manuell_pruefen'
+  | 'support_kontaktieren';
+
+export type IamRuntimeSafeDetails = Readonly<{
+  reason_code?: string;
+  dependency?: string;
+  schema_object?: string;
+  expected_migration?: string;
+  actor_resolution?: string;
+  instance_id?: string;
+  return_to?: string;
+  sync_state?: string;
+  sync_error_code?: string;
+}>;
+
+export type IamRuntimeDiagnostics = {
+  readonly classification: IamRuntimeDiagnosticClassification;
+  readonly status: IamRuntimeDiagnosticStatus;
+  readonly recommendedAction: IamRuntimeRecommendedAction;
+  readonly safeDetails?: IamRuntimeSafeDetails;
+};
+
 export type InstanceStatus =
   | 'requested'
   | 'validated'
@@ -60,6 +106,10 @@ export type ApiErrorResponse = {
     readonly code: ApiErrorCode;
     readonly message: string;
     readonly details?: Readonly<Record<string, unknown>>;
+    readonly classification?: IamRuntimeDiagnosticClassification;
+    readonly status?: IamRuntimeDiagnosticStatus;
+    readonly recommendedAction?: IamRuntimeRecommendedAction;
+    readonly safeDetails?: IamRuntimeSafeDetails;
   };
   readonly requestId?: string;
 };

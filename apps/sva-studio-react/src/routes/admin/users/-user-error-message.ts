@@ -11,6 +11,14 @@ export const userErrorMessage = (error: IamHttpError | null): string => {
     return t('admin.users.messages.error');
   }
 
+  if (error.diagnosticStatus === 'recovery_laeuft') {
+    return t('admin.users.errors.recoveryRunning');
+  }
+
+  if (error.classification === 'keycloak_reconcile') {
+    return t('admin.users.errors.keycloakReconcile');
+  }
+
   switch (error.code) {
     case 'invalid_request':
       return t('admin.users.messages.error');

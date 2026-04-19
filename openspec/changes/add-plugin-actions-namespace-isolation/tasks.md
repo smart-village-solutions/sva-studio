@@ -22,4 +22,8 @@
 - [x] 5.1 Unit-Tests für Validator und Registry ergänzen.
 - [x] 5.2 Type-Tests für SDK-Inferenz und Namespace-Verstöße ergänzen.
 - [x] 5.3 Integrations-/E2E-Tests für erlaubte und verbotene Cross-Namespace-Aufrufe ergänzen.
-- [ ] 5.4 PR-Gate ausführen (`pnpm test:pr`) oder dokumentierte Mindest-Gates nachweisen.
+- [x] 5.4 PR-Gate ausführen (`pnpm test:pr`) oder dokumentierte Mindest-Gates nachweisen.
+
+Nachweis 2026-04-19:
+- `pnpm test:pr` aktuell rot wegen bestehendem Coverage-Gate-Blocker in `routing` (`branches dropped by 2.03pp`, erlaubt `0.50pp`), ohne neue Branch-Änderungen.
+- Dokumentierte Mindest-Gates erfolgreich: `pnpm nx run sdk:test:unit`, `pnpm nx run routing:test:unit`, `pnpm nx run sva-studio-react:typecheck`, `pnpm check:server-runtime`, `pnpm exec tsc -p tsconfig.scripts.json --noEmit`.

@@ -94,6 +94,94 @@ const emitServerRoutingDiagnostic = (
   }
 };
 
+type AuthHandlerExecutionContext = {
+  readonly diagnosticsContext: ReturnType<typeof readRoutingDiagnosticsContextFromRequest>;
+  readonly fallback: {
+    readonly method: string;
+    readonly route: string;
+    readonly workspaceId: string;
+    readonly requestId?: string;
+    readonly traceId?: string;
+  };
+  readonly method: string;
+  readonly route: string;
+  readonly startedAt: number;
+};
+
+const createAuthHandlerExecutionContext = (
+  request: Request,
+  method: string,
+  route: string
+): AuthHandlerExecutionContext => {
+  const diagnosticsContext = readRoutingDiagnosticsContextFromRequest(request);
+
+  return {
+    diagnosticsContext,
+    fallback: {
+      method,
+      route,
+      workspaceId: diagnosticsContext.workspace_id ?? 'default',
+      requestId: diagnosticsContext.request_id,
+      traceId: diagnosticsContext.trace_id,
+    },
+    method,
+    route,
+    startedAt: Date.now(),
+  };
+};
+
+const emitAuthHandlerDispatched = (context: AuthHandlerExecutionContext): void => {
+  emitServerRoutingDiagnostic(
+    {
+      level: 'info',
+      event: 'routing.handler.dispatched',
+      method: context.method,
+      route: context.route,
+      ...context.diagnosticsContext,
+    },
+    context.fallback
+  );
+};
+
+const emitAuthHandlerCompleted = (context: AuthHandlerExecutionContext, response: Response): void => {
+  emitServerRoutingDiagnostic(
+    {
+      level: 'info',
+      event: 'routing.handler.completed',
+      method: context.method,
+      route: context.route,
+      status_code: response.status,
+      duration_ms: Date.now() - context.startedAt,
+      ...context.diagnosticsContext,
+    },
+    context.fallback
+  );
+};
+
+const createAuthHandlerErrorResponse = (context: AuthHandlerExecutionContext, error: unknown): Response => {
+  const errorType = getErrorType(error);
+  const errorMessage = getErrorMessage(error);
+  const response = toJsonErrorResponse(500, 'internal_error', 'Ein unerwarteter Fehler ist aufgetreten.', {
+    requestId: context.diagnosticsContext.request_id,
+  });
+
+  emitServerRoutingDiagnostic(
+    {
+      level: 'error',
+      event: 'routing.handler.error_caught',
+      method: context.method,
+      route: context.route,
+      ...context.diagnosticsContext,
+      error_type: errorType,
+      error_message: errorMessage,
+    },
+    context.fallback
+  );
+
+  emitAuthHandlerCompleted(context, response);
+  return response;
+};
+
 const createMethodNotAllowedResponse = (
   request: Request,
   route: string,
@@ -706,92 +794,19 @@ export const wrapHandlersWithJsonErrorBoundary = (handlers: AuthHandlers, routeP
   const wrapped: AuthHandlers = {};
   for (const [method, handler] of Object.entries(handlers) as [string, NonNullable<AuthHandlers[keyof AuthHandlers]>][]) {
     (wrapped as Record<string, typeof handler>)[method] = async (ctx) => {
-      const context = readRoutingDiagnosticsContextFromRequest(ctx.request);
-      const route = routePath ?? new URL(ctx.request.url).pathname;
-      const startedAt = Date.now();
-      emitServerRoutingDiagnostic(
-        {
-          level: 'info',
-          event: 'routing.handler.dispatched',
-          method,
-          route,
-          ...context,
-        },
-        {
-          method,
-          route,
-          workspaceId: context.workspace_id ?? 'default',
-          requestId: context.request_id,
-          traceId: context.trace_id,
-        }
+      const executionContext = createAuthHandlerExecutionContext(
+        ctx.request,
+        method,
+        routePath ?? new URL(ctx.request.url).pathname
       );
+      emitAuthHandlerDispatched(executionContext);
 
       try {
         const response = await handler(ctx);
-        emitServerRoutingDiagnostic(
-          {
-          level: 'info',
-          event: 'routing.handler.completed',
-          method,
-          route,
-          status_code: response.status,
-          duration_ms: Date.now() - startedAt,
-          ...context,
-          },
-          {
-            method,
-            route,
-            workspaceId: context.workspace_id ?? 'default',
-            requestId: context.request_id,
-            traceId: context.trace_id,
-          }
-        );
+        emitAuthHandlerCompleted(executionContext, response);
         return response;
       } catch (error) {
-        const errorType = getErrorType(error);
-        const errorMessage = getErrorMessage(error);
-        const errorResponse = toJsonErrorResponse(500, 'internal_error', 'Ein unerwarteter Fehler ist aufgetreten.', {
-          requestId: context.request_id,
-        });
-
-        emitServerRoutingDiagnostic(
-          {
-            level: 'error',
-            event: 'routing.handler.error_caught',
-            method,
-            route,
-            ...context,
-            error_type: errorType,
-            error_message: errorMessage,
-          },
-          {
-            method,
-            route,
-            workspaceId: context.workspace_id ?? 'default',
-            requestId: context.request_id,
-            traceId: context.trace_id,
-          }
-        );
-
-        emitServerRoutingDiagnostic(
-          {
-          level: 'info',
-          event: 'routing.handler.completed',
-          method,
-          route,
-          status_code: errorResponse.status,
-          duration_ms: Date.now() - startedAt,
-          ...context,
-          },
-          {
-            method,
-            route,
-            workspaceId: context.workspace_id ?? 'default',
-            requestId: context.request_id,
-            traceId: context.trace_id,
-          }
-        );
-        return errorResponse;
+        return createAuthHandlerErrorResponse(executionContext, error);
       }
     };
   }

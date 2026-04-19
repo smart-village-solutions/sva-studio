@@ -245,10 +245,14 @@ const readRuntimeDiagnostics = (
   safeDetails: IamRuntimeSafeDetails | undefined
 ) => {
   const structuredError = readStructuredErrorPayload(payload);
+  const rawDetails =
+    structuredError?.details && typeof structuredError.details === 'object'
+      ? (structuredError.details as Readonly<Record<string, unknown>>)
+      : undefined;
   const fallbackDiagnostics = deriveIamRuntimeDiagnostics({
     code,
     status,
-    details: safeDetails,
+    details: rawDetails,
   });
 
   const classification = normalizeRuntimeDiagnosticClassification(

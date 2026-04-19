@@ -103,7 +103,7 @@ const InstanceRuntimeEvidence = ({
       {latestRun ? (
         <p>
           {t('admin.instances.diagnostics.latestRunEvidence', {
-            requestId: latestRun.requestId ?? 'n/a',
+            requestId: latestRun.requestId ?? t('shell.runtimeHealth.notAvailable'),
             status: latestRun.overallStatus,
           })}
         </p>
@@ -785,7 +785,7 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
                       <div>
                         <div className="font-medium text-foreground">{run.intent}</div>
                         <div className="text-xs text-muted-foreground">
-                          {run.mode} • {run.overallStatus} • {run.requestId ?? 'n/a'}
+                          {run.mode} • {run.overallStatus} • {run.requestId ?? t('shell.runtimeHealth.notAvailable')}
                         </div>
                       </div>
                       <Button

@@ -1289,6 +1289,20 @@ const createDbSqlRunner = (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEn
       }
     );
 
+    const markerStart = `${marker}_START`;
+    const markerEnd = `${marker}_END`;
+    const markerStartIndex = output.indexOf(markerStart);
+    const markerEndIndex = output.indexOf(markerEnd);
+
+    if (markerStartIndex >= 0 && markerEndIndex > markerStartIndex) {
+      const markerPayload = output
+        .slice(markerStartIndex + markerStart.length, markerEndIndex)
+        .trim();
+      if (markerPayload.length > 0) {
+        return markerPayload;
+      }
+    }
+
     const jsonMatches = Array.from(output.matchAll(/\{.*\}/gu)).map((match) => match[0]);
     if (jsonMatches.length > 0) {
       return jsonMatches.at(-1) ?? jsonMatches[0];

@@ -2242,13 +2242,13 @@ const precheckAcceptance = async (
   checks.push(await buildLiveRuntimeEnvCheck(runtimeProfile, env));
   checks.push(await buildAppPrincipalReadinessCheck(env));
   checks.push(await buildObservabilityDoctorCheck(runtimeProfile, env));
-  checks.push(await buildTenantAuthProofCheck(env));
+  checks.push(await buildTenantAuthProofCheck(runtimeProfile, env));
   checks.push(buildAcceptancePostgresCheck(env));
   checks.push(buildMigrationStatusCheck(runtimeProfile, env));
   checks.push(buildSchemaGuardCheck(runtimeProfile, env));
   checks.push(buildInstanceAuthConfigCheck(runtimeProfile, env));
   checks.push(buildTenantAdminClientContractCheck(runtimeProfile, env));
-  checks.push(buildInstanceHostnameMappingCheck(runtimeProfile, env));
+  checks.push(await buildInstanceHostnameMappingCheck(runtimeProfile, env));
   if (options) {
     checks.push(await buildAcceptanceLiveSpecCheck(runtimeProfile, env, options));
   }
@@ -2697,7 +2697,7 @@ const migrateAcceptance = async (runtimeProfile: RemoteRuntimeProfile, env: Node
     await bootstrapResult.cleanup();
   }
 
-  const hostnameCheck = buildInstanceHostnameMappingCheck(runtimeProfile, env);
+  const hostnameCheck = await buildInstanceHostnameMappingCheck(runtimeProfile, env);
   if (hostnameCheck.status !== 'ok') {
     throw new Error(hostnameCheck.message);
   }
@@ -3283,7 +3283,7 @@ const collectRemoteParityChecks = async (runtimeProfile: RemoteRuntimeProfile, e
   const reusedChecks = await Promise.all([
     buildAcceptanceIngressConsistencyCheck(env),
     buildAppPrincipalReadinessCheck(env),
-    buildTenantAuthProofCheck(env),
+    buildTenantAuthProofCheck(runtimeProfile, env),
     buildLiveRuntimeEnvCheck(runtimeProfile, env),
   ]);
   const failingChecks = reusedChecks.filter((check) => check.status === 'error');
@@ -4220,7 +4220,7 @@ const runAcceptanceDeploy = async (runtimeProfile: RemoteRuntimeProfile, env: No
       try {
         const bootstrapResult = await runBootstrapJobAgainstAcceptance(env, runtimeProfile, report.reportId);
         try {
-          const hostnameCheck = buildInstanceHostnameMappingCheck(runtimeProfile, env);
+          const hostnameCheck = await buildInstanceHostnameMappingCheck(runtimeProfile, env);
           if (hostnameCheck.status !== 'ok') {
             throw new Error(hostnameCheck.message);
           }

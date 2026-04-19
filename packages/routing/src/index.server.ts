@@ -17,4 +17,3 @@ export {
 } from './app.routes.server.js';
 export { normalizeIamTab, normalizeRoleDetailTab } from './route-search.js';
 export { routePaths, uiRoutePaths, type UiRoutePathKey } from './route-paths.js';
-export type { RoutingDiagnosticEvent, RoutingDiagnosticsHook, RoutingDenyReason } from './diagnostics.js';

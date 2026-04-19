@@ -62,7 +62,6 @@ const createUsersApiState = (overrides: Record<string, unknown> = {}) => ({
       outcome: 'success',
       checkedCount: 1,
       correctedCount: 1,
-      failedCount: 0,
       manualReviewCount: 0,
       importedCount: 1,
       updatedCount: 0,
@@ -132,7 +131,6 @@ describe('UserListPage', () => {
         outcome: 'partial_failure',
         checkedCount: 6,
         correctedCount: 3,
-        failedCount: 1,
         manualReviewCount: 1,
         importedCount: 1,
         updatedCount: 2,
@@ -161,9 +159,7 @@ describe('UserListPage', () => {
 
     expect(refetch).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(syncUsersFromKeycloak).toHaveBeenCalledTimes(1));
-    await waitFor(() =>
-      expect(screen.getByText(/6 geprüft: 3 korrigiert, 1 fehlgeschlagen, 1/i)).toBeTruthy()
-    );
+    await waitFor(() => expect(screen.getByText(/6 geprüft: 3 korrigiert, 1 manuell prüfen/i)).toBeTruthy());
     await waitFor(() =>
       expect(
         screen.getByText(/Realm de-musterhausen, Quelle Instanz-Realm\. 2 Benutzer ohne `instanceId`/i)

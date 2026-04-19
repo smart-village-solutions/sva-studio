@@ -261,7 +261,6 @@ test('admin user list and edit page are reachable for system_admin', async ({ pa
           outcome: 'success',
           checkedCount: 2,
           correctedCount: 2,
-          failedCount: 0,
           manualReviewCount: 0,
           importedCount: 1,
           updatedCount: 1,

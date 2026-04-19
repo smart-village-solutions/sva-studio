@@ -47,7 +47,6 @@ export const UserListPage = () => {
     outcome: 'success' | 'partial_failure' | 'blocked' | 'failed';
     checkedCount: number;
     correctedCount: number;
-    failedCount: number;
     manualReviewCount: number;
     importedCount: number;
     updatedCount: number;
@@ -94,7 +93,6 @@ export const UserListPage = () => {
       outcome: result.report.outcome,
       checkedCount: result.report.checkedCount,
       correctedCount: result.report.correctedCount,
-      failedCount: result.report.failedCount,
       manualReviewCount: result.report.manualReviewCount,
       importedCount: result.report.importedCount,
       updatedCount: result.report.updatedCount,
@@ -104,7 +102,6 @@ export const UserListPage = () => {
     setSyncStatus(
       result.report.importedCount === 0 &&
         result.report.updatedCount === 0 &&
-        result.report.failedCount === 0 &&
         result.report.manualReviewCount === 0
         ? 'empty'
         : 'success'
@@ -268,7 +265,6 @@ export const UserListPage = () => {
             {t('admin.users.messages.syncResult', {
               checkedCount: syncResult.checkedCount,
               correctedCount: syncResult.correctedCount,
-              failedCount: syncResult.failedCount,
               manualReviewCount: syncResult.manualReviewCount,
               importedCount: syncResult.importedCount,
               updatedCount: syncResult.updatedCount,

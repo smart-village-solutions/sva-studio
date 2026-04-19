@@ -23,6 +23,7 @@ import { resolveUsersWithPagination } from './user-list-query.js';
 import {
   applyCanonicalUserDetailProjection,
   applyCanonicalUserListProjection,
+  isRecoverableUserProjectionError,
   resolveKeycloakRoleNames,
   resolveProjectedMainserverCredentialState,
 } from './user-projection.js';
@@ -36,28 +37,33 @@ const resolveListProjectionInputs = async (input: {
   };
   users: readonly IamUserListItem[];
 }) =>
-  new Map(
-    await Promise.all(
-      input.users.map(async (user) => {
-        try {
-          return [
-            user.keycloakSubject,
-            await resolveKeycloakRoleNames(input.actor.instanceId, user.keycloakSubject),
-          ] as const;
-        } catch (error) {
-          logger.warn('IAM user list role projection degraded', {
-            operation: 'list_users',
-            instance_id: input.actor.instanceId,
-            request_id: input.actor.requestId,
-            trace_id: input.actor.traceId,
-            user_id: user.id,
-            error: error instanceof Error ? error.message : String(error),
-          });
-          return [user.keycloakSubject, null] as const;
+  {
+    const keycloakRoleNamesBySubject = new Map<string, readonly string[] | null>();
+
+    for (const user of input.users) {
+      try {
+        keycloakRoleNamesBySubject.set(
+          user.keycloakSubject,
+          await resolveKeycloakRoleNames(input.actor.instanceId, user.keycloakSubject)
+        );
+      } catch (error) {
+        if (!isRecoverableUserProjectionError(error)) {
+          throw error;
         }
-      })
-    )
-  );
+        logger.warn('IAM user list role projection degraded', {
+          operation: 'list_users',
+          instance_id: input.actor.instanceId,
+          request_id: input.actor.requestId,
+          trace_id: input.actor.traceId,
+          user_id: user.id,
+          error: error.message,
+        });
+        keycloakRoleNamesBySubject.set(user.keycloakSubject, null);
+      }
+    }
+
+    return keycloakRoleNamesBySubject;
+  };
 
 export const listUsersInternal = async (
   request: Request,

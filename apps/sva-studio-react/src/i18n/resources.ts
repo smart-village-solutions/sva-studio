@@ -1193,7 +1193,7 @@ export const i18nResources = {
           syncRunning: 'Synchronisierung läuft ...',
           syncEmpty: 'Keine neuen oder geänderten Benutzer gefunden. {{skippedCount}} ohne passenden Instanzkontext übersprungen.',
           syncResult:
-            '{{checkedCount}} geprüft: {{correctedCount}} korrigiert, {{failedCount}} fehlgeschlagen, {{manualReviewCount}} manuell prüfen. {{importedCount}} importiert, {{updatedCount}} aktualisiert, {{skippedCount}} ohne passenden Instanzkontext übersprungen.',
+            '{{checkedCount}} geprüft: {{correctedCount}} korrigiert, {{manualReviewCount}} manuell prüfen. {{importedCount}} importiert, {{updatedCount}} aktualisiert, {{skippedCount}} ohne passenden Instanzkontext übersprungen.',
           syncDiagnostics:
             'Realm {{authRealm}}, Quelle {{providerSource}}. {{matchedWithoutInstanceAttributeCount}} Benutzer ohne `instanceId` wurden über den Realm-Kontext zugeordnet.',
           syncOutcome: {
@@ -3093,7 +3093,7 @@ export const i18nResources = {
           syncRunning: 'Synchronization in progress ...',
           syncEmpty: 'No new or changed users found. {{skippedCount}} skipped without matching instance context.',
           syncResult:
-            'Checked {{checkedCount}} users: {{correctedCount}} corrected, {{failedCount}} failed, {{manualReviewCount}} require manual review. {{importedCount}} imported, {{updatedCount}} updated, {{skippedCount}} skipped without matching instance context.',
+            'Checked {{checkedCount}} users: {{correctedCount}} corrected, {{manualReviewCount}} require manual review. {{importedCount}} imported, {{updatedCount}} updated, {{skippedCount}} skipped without matching instance context.',
           syncDiagnostics:
             'Realm {{authRealm}}, source {{providerSource}}. {{matchedWithoutInstanceAttributeCount}} users without `instanceId` were matched by realm scope.',
           syncOutcome: {

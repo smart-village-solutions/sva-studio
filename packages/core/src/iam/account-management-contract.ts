@@ -218,7 +218,6 @@ export type IamUserImportSyncReport = {
   readonly outcome: 'success' | 'partial_failure' | 'blocked' | 'failed';
   readonly checkedCount: number;
   readonly correctedCount: number;
-  readonly failedCount: number;
   readonly manualReviewCount: number;
   readonly importedCount: number;
   readonly updatedCount: number;

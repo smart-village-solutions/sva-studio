@@ -607,7 +607,6 @@ export const runKeycloakUserImportSync = async (input: {
     let importedCount = 0;
     let updatedCount = 0;
     let repairedProfileCount = 0;
-    let failedCount = 0;
     let manualReviewCount = 0;
 
     for (const user of matchingUsers) {
@@ -674,7 +673,7 @@ export const runKeycloakUserImportSync = async (input: {
 
     const correctedCount = importedCount + updatedCount;
     const outcome =
-      failedCount > 0 || manualReviewCount > 0
+      manualReviewCount > 0
         ? correctedCount > 0
           ? 'partial_failure'
           : 'failed'
@@ -684,7 +683,6 @@ export const runKeycloakUserImportSync = async (input: {
       outcome,
       checkedCount: matchingUsers.length,
       correctedCount,
-      failedCount,
       manualReviewCount,
       importedCount,
       updatedCount,
@@ -705,7 +703,6 @@ export const runKeycloakUserImportSync = async (input: {
           payload: {
             checked_count: summary.checkedCount,
             corrected_count: summary.correctedCount,
-            failed_count: summary.failedCount,
             manual_review_count: summary.manualReviewCount,
             imported_count: summary.importedCount,
             updated_count: summary.updatedCount,
@@ -740,7 +737,6 @@ export const runKeycloakUserImportSync = async (input: {
     outcome: report.outcome,
     checked_count: report.checkedCount,
     corrected_count: report.correctedCount,
-    failed_count: report.failedCount,
     manual_review_count: report.manualReviewCount,
     imported_count: report.importedCount,
     updated_count: report.updatedCount,

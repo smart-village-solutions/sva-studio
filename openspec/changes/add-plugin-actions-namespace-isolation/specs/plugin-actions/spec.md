@@ -4,7 +4,7 @@
 Das System MUST Plugin-Aktionen ausschließlich mit vollständig qualifizierten Action-IDs im Format `<namespace>.<actionName>` akzeptieren.
 
 #### Scenario: Plugin registriert gültige Action-ID
-- **WHEN** ein Plugin mit Namespace `content` die Action `content.publish` registriert
+- **WHEN** ein Plugin mit Namespace `news` die Action `news.publish` registriert
 - **THEN** wird die Registrierung angenommen
 - **AND** die Action-ID ist eindeutig in der globalen Registry auflösbar
 
@@ -17,7 +17,7 @@ Das System MUST für autorisierbare Actions ein gemeinsames Namensmodell verwend
 
 #### Scenario: Core-Namespace ist reserviert
 - **WHEN** eine Core-Action wie `content.read` oder `iam.users.manage` definiert wird
-- **THEN** verwendet sie ebenfalls das Format `<namespace>.<actionName>`
+- **THEN** verwendet sie ebenfalls das Format `<namespace>.<action>`
 - **AND** ihr Namespace gilt als reservierter Core-Namespace
 
 #### Scenario: Plugin-Namespace bleibt plugin-eigen
@@ -58,6 +58,11 @@ Das System MUST Legacy-Kurzformen für Plugin-Actions nur als explizit deklarier
 - **WHEN** ein Plugin für `news.create` zusätzlich den Legacy-Alias `create` deklariert
 - **THEN** kann die Registry `create` auf die kanonische Action-ID `news.create` auflösen
 - **AND** der Registry-Eintrag markiert `create` als deprecated Alias und `news.create` als kanonische Action-ID
+
+#### Scenario: Legacy-Alias bleibt unqualifizierte Kurzform
+- **WHEN** ein Plugin einen Alias mit Namespace wie `events.publish` oder `content.read` deklarieren will
+- **THEN** wird die Registrierung mit einem Alias-Validierungsfehler abgewiesen
+- **AND** nur unqualifizierte Legacy-Kurzformen ohne Punkt sind zulässig
 
 #### Scenario: Impliziter Legacy-Alias ohne Deklaration ist unzulässig
 - **WHEN** eine unqualifizierte Kurzform wie `create` nicht explizit als Alias registriert wurde

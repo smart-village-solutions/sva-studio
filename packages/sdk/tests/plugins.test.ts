@@ -165,6 +165,19 @@ describe('plugin registry', () => {
   });
 
   it('enforces namespace isolation for plugin actions', () => {
+    expect(() => definePluginActions('   ', [])).toThrow('invalid_plugin_action_namespace');
+
+    expect(() => definePluginActions('core', [])).toThrow('reserved_plugin_action_namespace:core');
+
+    expect(() =>
+      definePluginActions('news', [
+        {
+          id: 'invalid',
+          titleKey: 'news.actions.publish',
+        },
+      ])
+    ).toThrow('invalid_plugin_action_id:invalid');
+
     expect(() =>
       definePluginActions('news', [
         {
@@ -189,5 +202,78 @@ describe('plugin registry', () => {
         },
       ])
     ).toThrow('invalid_plugin_action_id:publish');
+
+    expect(() =>
+      createPluginActionRegistry([
+        {
+          id: '   ',
+          displayName: 'News',
+          routes: [{ id: 'news.list', path: '/plugins/news', component: (() => null) as never }],
+        },
+      ])
+    ).toThrow('invalid_plugin_definition');
+
+    expect(() =>
+      createPluginActionRegistry([
+        {
+          id: 'core',
+          displayName: 'Core',
+          routes: [{ id: 'core.list', path: '/plugins/core', component: (() => null) as never }],
+        },
+      ])
+    ).toThrow('reserved_plugin_action_namespace:core');
+
+    expect(() =>
+      createPluginActionRegistry([
+        {
+          id: 'news',
+          displayName: 'News',
+          routes: [{ id: 'news.list', path: '/plugins/news', component: (() => null) as never }],
+          actions: [
+            {
+              id: 'news.publish',
+              titleKey: '   ',
+            },
+          ],
+        },
+      ])
+    ).toThrow('invalid_plugin_action_definition:news.publish');
+
+    expect(() =>
+      createPluginActionRegistry([
+        {
+          id: 'news',
+          displayName: 'News',
+          routes: [{ id: 'news.list', path: '/plugins/news', component: (() => null) as never }],
+          actions: [
+            {
+              id: 'events.publish',
+              titleKey: 'news.actions.publish',
+            },
+          ],
+        },
+      ])
+    ).toThrow('plugin_action_owner_mismatch:news:events.publish');
+  });
+
+  it('normalizes optional action metadata in the registry', () => {
+    const actions = createPluginActionRegistry([
+      {
+        id: 'news',
+        displayName: 'News',
+        routes: [{ id: 'news.list', path: '/plugins/news', component: (() => null) as never }],
+        actions: [
+          {
+            id: 'news.archive',
+            titleKey: 'news.actions.archive',
+            featureFlag: ' feature.news.archive ',
+          },
+        ],
+      },
+    ]);
+
+    expect(actions.get('news.archive')).toMatchObject({
+      featureFlag: 'feature.news.archive',
+    });
   });
 });

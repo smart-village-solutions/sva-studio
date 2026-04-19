@@ -58,9 +58,6 @@ const parseActionSegments = (actionId: string): { namespace: string; actionName:
   }
 
   const separatorIndex = actionId.indexOf('.');
-  if (separatorIndex <= 0 || separatorIndex >= actionId.length - 1) {
-    return undefined;
-  }
 
   return {
     namespace: actionId.slice(0, separatorIndex),

@@ -5,7 +5,7 @@
 
 ## 2. SDK- und Core-Design
 - [x] 2.1 Typsichere Action-Verträge im SDK definieren (`definePluginActions`, Metadaten, i18n-Key-Pflicht).
-- [x] 2.2 Namespace-Validator und reservierte Präfixe im Core implementieren.
+- [x] 2.2 Namespace-Validator und reservierte Präfixe im SDK implementieren.
 - [x] 2.3 Action-Registry mit deterministischem Konfliktverhalten (fail-fast) ausstatten.
 
 ## 3. Runtime-Integration
@@ -19,7 +19,7 @@
 - [ ] 4.3 Migrationsleitfaden in `docs/` ergänzen (inkl. Sunset-Plan).
 
 ## 5. Qualitätssicherung
-- [x] 5.1 Unit-Tests für Validator, Registry und Alias-Mapping ergänzen.
+- [x] 5.1 Unit-Tests für Validator und Registry ergänzen.
 - [x] 5.2 Type-Tests für SDK-Inferenz und Namespace-Verstöße ergänzen.
 - [ ] 5.3 Integrations-/E2E-Tests für erlaubte und verbotene Cross-Namespace-Aufrufe ergänzen.
 - [ ] 5.4 PR-Gate ausführen (`pnpm test:pr`) oder dokumentierte Mindest-Gates nachweisen.

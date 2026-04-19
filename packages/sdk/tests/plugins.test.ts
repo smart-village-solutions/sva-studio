@@ -145,6 +145,16 @@ describe('plugin registry', () => {
 
     expect(() =>
       createPluginActionRegistry([
+        pluginA,
+        {
+          ...pluginA,
+          displayName: 'News Duplicate Plugin',
+        },
+      ])
+    ).toThrow('duplicate_plugin:news');
+
+    expect(() =>
+      createPluginActionRegistry([
         {
           id: 'news-duplicate',
           displayName: 'News Duplicate',
@@ -177,6 +187,24 @@ describe('plugin registry', () => {
         },
       ])
     ).toThrow('invalid_plugin_action_id:invalid');
+
+    expect(() =>
+      definePluginActions('news', [
+        {
+          id: 'news.publish',
+          titleKey: '   ',
+        },
+      ])
+    ).toThrow('invalid_plugin_action_definition:news.publish');
+
+    expect(() =>
+      definePluginActions('news', [
+        {
+          id: 'news.publish.v2',
+          titleKey: 'news.actions.publish',
+        },
+      ])
+    ).toThrow('invalid_plugin_action_id:news.publish.v2');
 
     expect(() =>
       definePluginActions('news', [
@@ -268,12 +296,21 @@ describe('plugin registry', () => {
             titleKey: 'news.actions.archive',
             featureFlag: ' feature.news.archive ',
           },
+          {
+            id: 'news.preview',
+            titleKey: 'news.actions.preview',
+            featureFlag: '   ',
+          },
         ],
       },
     ]);
 
     expect(actions.get('news.archive')).toMatchObject({
       featureFlag: 'feature.news.archive',
+    });
+
+    expect(actions.get('news.preview')).toMatchObject({
+      featureFlag: undefined,
     });
   });
 });

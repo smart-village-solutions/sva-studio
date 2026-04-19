@@ -18,7 +18,7 @@ Das System MUST sicherstellen, dass Plugins nur Aktionen im eigenen Namespace re
 #### Scenario: Plugin nutzt fremden Namespace
 - **WHEN** ein Plugin mit Namespace `news` versucht `events.publish` zu registrieren
 - **THEN** wird die Registrierung abgewiesen
-- **AND** ein strukturierter Fehler mit `expectedNamespace` und `receivedNamespace` wird erzeugt
+- **AND** der Validierungsfehler enthält den deterministischen Fehlercode `plugin_action_namespace_mismatch:<expectedNamespace>:<receivedNamespace>:<actionId>`
 
 #### Scenario: Cross-Namespace-Ausführung ohne Freigabe
 - **WHEN** ein Plugin eine Action aus einem fremden Namespace ausführt

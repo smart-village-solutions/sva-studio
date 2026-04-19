@@ -39,7 +39,7 @@ export type PluginDefinition = {
 };
 
 const normalizeIdentifier = (value: string) => value.trim();
-const ACTION_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*(?:\.[a-z0-9]+(?:-[a-z0-9]+)*)+$/;
+const ACTION_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*\.[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const RESERVED_ACTION_NAMESPACES = ['core'] as const;
 
 export type PluginActionRegistryEntry = {
@@ -125,9 +125,13 @@ export const definePluginActions = <const TActions extends readonly PluginAction
 
   for (const action of actions) {
     const normalizedActionId = normalizeIdentifier(action.id);
+    const normalizedTitleKey = normalizeIdentifier(action.titleKey);
     const parsed = parseActionSegments(normalizedActionId);
     if (parsed === undefined) {
       throw new Error(`invalid_plugin_action_id:${normalizedActionId}`);
+    }
+    if (normalizedTitleKey.length === 0) {
+      throw new Error(`invalid_plugin_action_definition:${normalizedActionId}`);
     }
     if (parsed.namespace !== normalizedNamespace) {
       throw new Error(
@@ -143,6 +147,7 @@ export const createPluginActionRegistry = (
   plugins: readonly PluginDefinition[]
 ): ReadonlyMap<string, PluginActionRegistryEntry> => {
   const registry = new Map<string, PluginActionRegistryEntry>();
+  const pluginNamespaces = new Set<string>();
 
   for (const plugin of plugins) {
     const pluginNamespace = normalizeIdentifier(plugin.id);
@@ -152,6 +157,11 @@ export const createPluginActionRegistry = (
     if (isReservedNamespace(pluginNamespace)) {
       throw new Error(`reserved_plugin_action_namespace:${pluginNamespace}`);
     }
+    if (pluginNamespaces.has(pluginNamespace)) {
+      throw new Error(`duplicate_plugin:${pluginNamespace}`);
+    }
+
+    pluginNamespaces.add(pluginNamespace);
 
     for (const action of plugin.actions ?? []) {
       const actionId = normalizeIdentifier(action.id);
@@ -179,7 +189,7 @@ export const createPluginActionRegistry = (
         ownerPluginId: pluginNamespace,
         titleKey: actionTitleKey,
         requiredAction: action.requiredAction,
-        featureFlag: action.featureFlag ? normalizeIdentifier(action.featureFlag) : undefined,
+        featureFlag: normalizeIdentifier(action.featureFlag ?? '') || undefined,
       });
     }
   }

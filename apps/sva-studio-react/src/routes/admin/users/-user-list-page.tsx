@@ -32,7 +32,6 @@ const statusTranslationKeyByValue = {
 const syncOutcomeTranslationKey = {
   success: 'admin.users.messages.syncOutcome.success',
   partial_failure: 'admin.users.messages.syncOutcome.partialFailure',
-  blocked: 'admin.users.messages.syncOutcome.blocked',
   failed: 'admin.users.messages.syncOutcome.failed',
 } as const;
 
@@ -44,7 +43,7 @@ export const UserListPage = () => {
   );
   const [syncStatus, setSyncStatus] = React.useState<'idle' | 'pending' | 'success' | 'empty' | 'error'>('idle');
   const [syncResult, setSyncResult] = React.useState<{
-    outcome: 'success' | 'partial_failure' | 'blocked' | 'failed';
+    outcome: 'success' | 'partial_failure' | 'failed';
     checkedCount: number;
     correctedCount: number;
     manualReviewCount: number;

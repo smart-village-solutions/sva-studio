@@ -29,6 +29,8 @@ import {
 } from './user-projection.js';
 import { resolveUserTimeline } from './user-timeline-query.js';
 
+const USER_LIST_ROLE_PROJECTION_CONCURRENCY = 5;
+
 const resolveListProjectionInputs = async (input: {
   actor: {
     instanceId: string;
@@ -39,28 +41,38 @@ const resolveListProjectionInputs = async (input: {
 }) =>
   {
     const keycloakRoleNamesBySubject = new Map<string, readonly string[] | null>();
-
-    for (const user of input.users) {
-      try {
-        keycloakRoleNamesBySubject.set(
-          user.keycloakSubject,
-          await resolveKeycloakRoleNames(input.actor.instanceId, user.keycloakSubject)
-        );
-      } catch (error) {
-        if (!isRecoverableUserProjectionError(error)) {
-          throw error;
+    const workers = Array.from(
+      { length: Math.min(USER_LIST_ROLE_PROJECTION_CONCURRENCY, input.users.length) },
+      async (_, workerIndex) => {
+        for (let index = workerIndex; index < input.users.length; index += USER_LIST_ROLE_PROJECTION_CONCURRENCY) {
+          const user = input.users[index];
+          if (!user) {
+            continue;
+          }
+          try {
+            keycloakRoleNamesBySubject.set(
+              user.keycloakSubject,
+              await resolveKeycloakRoleNames(input.actor.instanceId, user.keycloakSubject)
+            );
+          } catch (error) {
+            if (!isRecoverableUserProjectionError(error)) {
+              throw error;
+            }
+            logger.warn('IAM user list role projection degraded', {
+              operation: 'list_users',
+              instance_id: input.actor.instanceId,
+              request_id: input.actor.requestId,
+              trace_id: input.actor.traceId,
+              user_id: user.id,
+              error: error.message,
+            });
+            keycloakRoleNamesBySubject.set(user.keycloakSubject, null);
+          }
         }
-        logger.warn('IAM user list role projection degraded', {
-          operation: 'list_users',
-          instance_id: input.actor.instanceId,
-          request_id: input.actor.requestId,
-          trace_id: input.actor.traceId,
-          user_id: user.id,
-          error: error.message,
-        });
-        keycloakRoleNamesBySubject.set(user.keycloakSubject, null);
       }
-    }
+    );
+
+    await Promise.all(workers);
 
     return keycloakRoleNamesBySubject;
   };

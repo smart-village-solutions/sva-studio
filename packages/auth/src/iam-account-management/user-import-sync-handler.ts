@@ -497,9 +497,7 @@ const mapSyncErrorResponse = (error: unknown, requestId?: string): Response | un
       {
         dependency: 'keycloak',
         execution_mode: 'tenant_admin',
-        reason_code: 'tenant_admin_client_not_configured',
-        syncState: 'failed',
-        syncError: { code: 'IDP_UNAVAILABLE' },
+        reason_code: 'registry_or_provisioning_drift_blocked',
       }
     );
   }

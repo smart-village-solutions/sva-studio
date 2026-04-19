@@ -215,7 +215,7 @@ export type IamUserDetail = IamUserListItem & {
 };
 
 export type IamUserImportSyncReport = {
-  readonly outcome: 'success' | 'partial_failure' | 'blocked' | 'failed';
+  readonly outcome: 'success' | 'partial_failure' | 'failed';
   readonly checkedCount: number;
   readonly correctedCount: number;
   readonly manualReviewCount: number;

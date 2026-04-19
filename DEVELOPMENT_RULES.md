@@ -139,7 +139,7 @@ pnpm test:types
 ## 1.4 Action-ID-Namensmodell und Namespace-Ownership
 
 ### ✅ REQUIRED
-- Alle autorisierbaren Action-IDs müssen langfristig das fully-qualified Format `<namespace>.<actionName>` verwenden.
+- Alle autorisierbaren Action-IDs müssen langfristig das fully-qualified Format `<namespace>.<action>` verwenden.
 - Das gilt sowohl für Core-/interne Actions als auch für Plugin-Actions.
 - Neue Actions dürfen nicht als unqualifizierte Kurzformen wie `read`, `write`, `create`, `update` oder ähnliche freie Strings eingeführt werden.
 - Plugin-Actions dürfen ausschließlich im eigenen Plugin-Namespace definiert werden.

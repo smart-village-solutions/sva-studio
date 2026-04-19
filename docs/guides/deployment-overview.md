@@ -53,7 +53,7 @@ Wichtig:
 - produktionsnahe Werte liegen lokal in `config/runtime/studio.vars` und `config/runtime/studio.local.vars`
 - im Repository liegt nur die Vorlage `config/runtime/studio.vars.example`
 - Tenant-Realms folgen dem operativen Vertrag aus `./keycloak-tenant-realm-bootstrap.md`
-- fuer `studio` ist der kanonische Ablauf jetzt zweigeteilt: GitHub liefert Build und Verify, der finale mutierende Rollout laeuft lokal ueber `pnpm env:release:studio:local`
+- für `studio` ist der kanonische Ablauf jetzt zweigeteilt: GitHub liefert Build und Verify, der finale mutierende Rollout läuft lokal über `pnpm env:release:studio:local`
 - direkte `quantum-cli`-, Portainer- oder Ad-hoc-Shellpfade bleiben Notfall- oder Diagnosewerkzeuge und sind kein offizieller Standard
 
 ## Standardablauf für Releases
@@ -62,8 +62,8 @@ Wichtig:
    Für Serverprofile muss das Artefakt explizit `linux/amd64` unterstützen.
 2. Zielprofil auswählen.
 3. Zielumgebungsvariablen oder Secrets prüfen.
-4. Fuer `studio` zuerst `Studio Image Build and Publish` und `Studio Image Verify` oder den Vorbereitungsworkflow `Studio Build and Verify` ausfuehren.
-5. Den verifizierten Digest lokal ueber `pnpm env:release:studio:local -- --image-digest=<sha256:...> ...` ausrollen.
+4. Für `studio` zuerst `Studio Image Build and Publish` und `Studio Image Verify` oder den Vorbereitungsworkflow `Studio Build and Verify` ausführen.
+5. Den verifizierten Digest lokal über `pnpm env:release:studio:local -- --image-digest=<sha256:...> ...` ausrollen.
 6. Den erzeugten Deploy-Report unter `artifacts/runtime/deployments/` prüfen.
 7. Monitoring und Logs auf Fehler prüfen.
 8. Nicht-sensitive Folgearbeiten als GitHub Issues nachziehen.

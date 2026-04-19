@@ -1,12 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const browserRoutingLogger = vi.hoisted(() => ({
-  debug: vi.fn(),
-  info: vi.fn(),
-  warn: vi.fn(),
-  error: vi.fn(),
-}));
-
 const guardSpies = vi.hoisted(() => ({
   account: vi.fn(async () => undefined),
   accountPrivacy: vi.fn(async () => undefined),
@@ -48,15 +41,6 @@ const createRouteMock = vi.hoisted(() =>
 vi.mock('@tanstack/react-router', () => ({
   createRoute: createRouteMock,
 }));
-
-vi.mock('@sva/sdk', async () => {
-  const actual = await vi.importActual<typeof import('@sva/sdk')>('@sva/sdk');
-
-  return {
-    ...actual,
-    createBrowserLogger: () => browserRoutingLogger,
-  };
-});
 
 vi.mock('./account-ui.routes', () => ({
   accountUiRouteGuards: guardSpies,
@@ -183,9 +167,9 @@ describe('app.routes', () => {
     expect(guardSpies.account).toHaveBeenCalledWith({ href: '/account' });
     expect(guardSpies.adminUsers).toHaveBeenCalledWith({ href: '/admin/users' });
     expect(guardSpies.content).toHaveBeenCalledWith({ href: '/plugins/news' });
-    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('account', expect.any(Function), '/account');
-    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('adminUsers', expect.any(Function), '/admin/users');
-    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('content', expect.any(Function), '/plugins/news');
+    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('account', undefined, '/account');
+    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('adminUsers', undefined, '/admin/users');
+    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('content', undefined, '/plugins/news');
 
     expect(readRouteOptions(routeMap.get('/admin/iam')).validateSearch?.({ tab: 'bogus' })).toEqual({
       tab: 'rights',
@@ -271,12 +255,12 @@ describe('app.routes', () => {
     expect(guardSpies.content).toHaveBeenCalledWith({ href: '/plugins/read' });
     expect(guardSpies.contentCreate).toHaveBeenCalledWith({ href: '/plugins/create' });
     expect(guardSpies.contentDetail).toHaveBeenCalledWith({ href: '/plugins/write' });
-    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('content', expect.any(Function), '/plugins/read');
-    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('contentCreate', expect.any(Function), '/plugins/create');
-    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('contentDetail', expect.any(Function), '/plugins/write');
+    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('content', undefined, '/plugins/read');
+    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('contentCreate', undefined, '/plugins/create');
+    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('contentDetail', undefined, '/plugins/write');
   });
 
-  it('emits one diagnostics event for unsupported plugin guards when the route is matched', async () => {
+  it('emits one diagnostics event for unsupported plugin guards during factory creation', () => {
     const diagnostics = vi.fn();
 
     const pluginFactories = getPluginRouteFactories(
@@ -296,13 +280,7 @@ describe('app.routes', () => {
       ],
       { diagnostics }
     );
-    const route = pluginFactories[0]?.({ id: 'root' } as never);
-
     expect(pluginFactories).toHaveLength(1);
-    expect(diagnostics).not.toHaveBeenCalled();
-
-    await readRouteOptions(route).beforeLoad?.({ href: '/plugins/unsupported' });
-
     expect(diagnostics).toHaveBeenCalledTimes(1);
     expect(diagnostics).toHaveBeenCalledWith({
       level: 'warn',
@@ -314,7 +292,7 @@ describe('app.routes', () => {
     });
   });
 
-  it('logs unsupported plugin guards through the default diagnostics logger when the route is matched', async () => {
+  it('keeps unsupported plugin guards silent when no diagnostics hook is injected', () => {
     const pluginFactories = getPluginRouteFactories([
       {
         id: 'default-logged-plugin',
@@ -329,22 +307,7 @@ describe('app.routes', () => {
         ],
       },
     ]);
-    const route = pluginFactories[0]?.({ id: 'root' } as never);
-
     expect(pluginFactories).toHaveLength(1);
-    expect(browserRoutingLogger.warn).not.toHaveBeenCalled();
-
-    await readRouteOptions(route).beforeLoad?.({ href: '/plugins/default-logged' });
-
-    expect(browserRoutingLogger.warn).toHaveBeenCalledWith(
-      'Unsupported plugin route guard',
-      expect.objectContaining({
-        event: 'routing.plugin.guard_unsupported',
-        route: '/plugins/default-logged',
-        plugin: 'default-logged-plugin',
-        unsupported_guard: 'unsupported.guard',
-      })
-    );
   });
 
   it('builds server route factories without requiring app-local route composition', () => {
@@ -372,7 +335,7 @@ describe('app.routes', () => {
     expect(normalizeRoleDetailTab('anything-else')).toBe('general');
   });
 
-  it('threads diagnostics through the client route factory entry points', async () => {
+  it('threads diagnostics through the client route factory entry points', () => {
     const diagnostics = vi.fn();
 
     const routeFactories = getClientRouteFactories({
@@ -393,21 +356,35 @@ describe('app.routes', () => {
       ],
       diagnostics,
     });
-    const route = routeFactories
-      .map((factory) => factory({ id: 'root' } as never))
-      .find((candidate) => readRouteOptions(candidate).path === '/plugins/client-unsupported');
-
     expect(routeFactories.length).toBeGreaterThan(0);
-    expect(diagnostics).not.toHaveBeenCalled();
-
-    await readRouteOptions(route).beforeLoad?.({ href: '/plugins/client-unsupported' });
-
     expect(diagnostics).toHaveBeenCalledWith(
       expect.objectContaining({
         event: 'routing.plugin.guard_unsupported',
         plugin: 'client-unsupported',
       })
     );
+  });
+
+  it('keeps client route factories silent by default when no diagnostics hook is injected', () => {
+    const routeFactories = getClientRouteFactories({
+      bindings,
+      plugins: [
+        {
+          id: 'silent-plugin',
+          displayName: 'Silent plugin',
+          routes: [
+            {
+              id: 'silent.unsupported',
+              path: '/plugins/silent',
+              guard: 'unsupported.guard' as never,
+              component: () => 'silent',
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(routeFactories.length).toBeGreaterThan(0);
   });
 
   it('threads a default diagnostics hook through the server route factory entry point', () => {

@@ -1,8 +1,6 @@
-import { createBrowserLogger } from '@sva/sdk';
 import { redirect } from '@tanstack/react-router';
 
 import {
-  createRoutingDiagnosticsLogger,
   emitRoutingDiagnostic,
   type RoutingDiagnosticsHook,
 } from './diagnostics.js';
@@ -38,9 +36,6 @@ const DEFAULT_FALLBACK_PATH = '/';
 const DEFAULT_INSUFFICIENT_ROLE_KEY = 'auth.insufficientRole';
 const ADMIN_ROLES = ['system_admin', 'app_manager'] as const;
 const INTERNAL_REDIRECT_BASE = 'https://local.invalid';
-const defaultRoutingDiagnostics = createRoutingDiagnosticsLogger(
-  createBrowserLogger({ component: 'routing', level: 'info' })
-);
 
 const isInternalPath = (value: string): boolean => value.startsWith('/') && value.startsWith('//') === false;
 
@@ -86,7 +81,7 @@ export const createProtectedRoute = <TContext extends RouteGuardContext = RouteG
     loginPath = DEFAULT_LOGIN_PATH,
     fallbackPath = DEFAULT_FALLBACK_PATH,
     insufficientRoleKey = DEFAULT_INSUFFICIENT_ROLE_KEY,
-    diagnostics = defaultRoutingDiagnostics,
+    diagnostics,
   } = options;
   const diagnosticsRoute = 'route' in options && typeof options.route === 'string' ? options.route : null;
 

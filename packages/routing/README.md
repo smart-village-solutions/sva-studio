@@ -101,8 +101,8 @@ const routeFactories = getClientRouteFactories({
 
 ### Browser-/Server-Split
 
-- Client- und Shared-Route-Factories verdrahten standardmäßig einen strukturierten Routing-Logger; ein expliziter `diagnostics`-Hook überschreibt diesen Default.
-- Browser-seitig läuft der Default über den SDK-Browser-Logger.
+- Client- und shared Routing-Dateien bleiben ohne expliziten `diagnostics`-Hook standardmäßig still.
+- Browser-seitig entsteht nur dann Routing-Diagnostik, wenn der Consumer bewusst einen Hook injiziert.
 - Serverseitig nutzen Auth-Routen und Server-Route-Factories denselben Adapter auf den SDK-/OTEL-Logger.
 
 ### Was bewusst nicht geloggt wird

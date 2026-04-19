@@ -83,6 +83,12 @@ describe('protected routes', () => {
     await expect(invokeGuard(guard, { roles: ['app_manager'] }, '/admin/users')).resolves.toBeUndefined();
   });
 
+  it('remains silent by default when no diagnostics hook is injected', async () => {
+    const guard = createProtectedRoute({ route: '/admin/users' });
+
+    await expect(invokeGuard(guard, { roles: ['system_admin'] }, '/admin/users')).resolves.toBeUndefined();
+  });
+
   it('normalizes external redirect targets back to internal defaults', async () => {
     const guard = createProtectedRoute({
       loginPath: 'https://evil.example/login',

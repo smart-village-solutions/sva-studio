@@ -33,6 +33,7 @@ jobs:
         with:
           filter: tree:0
           fetch-depth: 0
+          fetch-depth: 0
 
       - name: Detect relevant PR changes
         id: changes
@@ -246,7 +247,7 @@ jobs:
 
       - name: Ensure origin/main is available for affected integration
         if: steps.changes.outputs.relevant == 'true'
-        run: git fetch origin "${{ github.base_ref }}" --no-tags --prune --depth=1
+        run: git fetch origin "${{ github.base_ref }}" --no-tags --prune
 
       - name: Run affected integration tests not covered by dedicated PR workflows
         if: steps.changes.outputs.relevant == 'true'

@@ -1,9 +1,8 @@
-import { createBrowserLogger, type PluginDefinition, type PluginRouteGuard, type RouteFactory } from '@sva/sdk';
+import type { PluginDefinition, PluginRouteGuard, RouteFactory } from '@sva/sdk';
 import { createRoute, type AnyRoute, type RootRoute, type RouteComponent } from '@tanstack/react-router';
 
 import { createAccountUiRouteGuard, type AccountUiRouteGuardKey } from './account-ui.routes.js';
 import {
-  createRoutingDiagnosticsLogger,
   emitRoutingDiagnostic,
   type RoutingDiagnosticsHook,
 } from './diagnostics.js';
@@ -111,17 +110,13 @@ const uiRouteDefinitions: readonly UiRouteDefinition[] = [
   { binding: 'adminApiPhase1Test', path: uiRoutePaths.adminApiPhase1Test },
 ] as const;
 
-const defaultRoutingDiagnostics = createRoutingDiagnosticsLogger(
-  createBrowserLogger({ component: 'routing', level: 'info' })
-);
-
 export const createUiRouteFactories = (
   bindings: AppRouteBindings,
   options: {
     readonly diagnostics?: RoutingDiagnosticsHook;
   } = {}
 ): readonly AppRouteFactory[] => {
-  const diagnostics = options.diagnostics ?? defaultRoutingDiagnostics;
+  const diagnostics = options.diagnostics;
 
   return uiRouteDefinitions.map((definition) => {
     if (definition.guard) {
@@ -168,7 +163,7 @@ export const getPluginRouteFactories = (
     readonly diagnostics?: RoutingDiagnosticsHook;
   } = {}
 ): readonly AppRouteFactory[] => {
-  const diagnostics = options.diagnostics ?? defaultRoutingDiagnostics;
+  const diagnostics = options.diagnostics;
 
   return pluginDefinitions.flatMap((pluginDefinition) =>
     pluginDefinition.routes.map((routeDefinition) => {
@@ -176,28 +171,22 @@ export const getPluginRouteFactories = (
       const guard = guardKey ? createAccountUiRouteGuard(guardKey, diagnostics, routeDefinition.path) : null;
       const unsupportedGuard = !guardKey && routeDefinition.guard ? routeDefinition.guard : null;
 
+      if (unsupportedGuard) {
+        emitRoutingDiagnostic(diagnostics, {
+          level: 'warn',
+          event: 'routing.plugin.guard_unsupported',
+          route: routeDefinition.path,
+          reason: 'unsupported-plugin-guard',
+          plugin: pluginDefinition.id,
+          unsupported_guard: unsupportedGuard,
+        });
+      }
+
       return (rootRoute: RootRoute) =>
         createRoute({
           getParentRoute: () => rootRoute,
           path: routeDefinition.path,
-          beforeLoad: (options) => {
-            if (unsupportedGuard) {
-              emitRoutingDiagnostic(diagnostics, {
-                level: 'warn',
-                event: 'routing.plugin.guard_unsupported',
-                route: routeDefinition.path,
-                reason: 'unsupported-plugin-guard',
-                plugin: pluginDefinition.id,
-                unsupported_guard: unsupportedGuard,
-              });
-            }
-
-            if (!guard) {
-              return;
-            }
-
-            return guard(options);
-          },
+          beforeLoad: guard ? (options) => guard(options) : undefined,
           component: routeDefinition.component as RouteComponent,
         });
     })

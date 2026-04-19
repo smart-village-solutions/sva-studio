@@ -31,7 +31,7 @@ import React from 'react';
 
 import { t } from '../i18n';
 import { useContentAccess } from '../hooks/use-content-access';
-import { studioPluginNavigation } from '../lib/plugins';
+import { getStudioPluginAction, studioPluginNavigation } from '../lib/plugins';
 import {
   hasIamAdminRole,
   hasInstanceRegistryAdminRole,
@@ -696,12 +696,22 @@ export default function Sidebar({ isLoading = false, isMobileOpen = false, onMob
 
   const sections = React.useMemo<readonly SidebarSection[]>(() => {
     const pluginNavigationItems = studioPluginNavigation
-      .filter((item) => hasRequiredContentAccess(item.requiredAction, contentAccessApi.access, contentAccessApi.isLoading))
-      .map((item) => ({
+      .map((item) => {
+        const action = item.actionId ? getStudioPluginAction(item.actionId) : undefined;
+        return {
+          item,
+          resolvedTitleKey: action?.titleKey ?? item.titleKey,
+          resolvedRequiredAction: action?.requiredAction ?? item.requiredAction,
+        };
+      })
+      .filter(({ resolvedRequiredAction }) =>
+        hasRequiredContentAccess(resolvedRequiredAction, contentAccessApi.access, contentAccessApi.isLoading)
+      )
+      .map(({ item, resolvedTitleKey }) => ({
         kind: 'link' as const,
         id: `plugin-${item.id}`,
         to: item.to,
-        label: t(item.titleKey),
+        label: t(resolvedTitleKey),
         icon: pluginIconBySection[item.section],
         section: item.section,
       }));

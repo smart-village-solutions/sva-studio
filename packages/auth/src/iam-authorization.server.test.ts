@@ -66,6 +66,52 @@ describe('evaluateAuthorizeDecision', () => {
     expect(decision.reason).toBe('permission_missing');
   });
 
+  it('allows fully qualified plugin actions only on exact action match', () => {
+    const pluginRequest: AuthorizeRequest = {
+      ...baseRequest,
+      action: 'news.publish',
+      resource: {
+        type: 'news',
+        id: 'news-1',
+      },
+    };
+    const permissions: EffectivePermission[] = [
+      {
+        action: 'news.publish',
+        resourceType: 'news',
+        sourceRoleIds: ['role-news-publisher'],
+      },
+    ];
+
+    const decision = evaluateAuthorizeDecision(pluginRequest, permissions);
+    expect(decision.allowed).toBe(true);
+    expect(decision.reason).toBe('allowed_by_rbac');
+    expect(decision.action).toBe('news.publish');
+  });
+
+  it('denies fully qualified plugin actions from a foreign namespace', () => {
+    const pluginRequest: AuthorizeRequest = {
+      ...baseRequest,
+      action: 'news.publish',
+      resource: {
+        type: 'news',
+        id: 'news-1',
+      },
+    };
+    const permissions: EffectivePermission[] = [
+      {
+        action: 'events.publish',
+        resourceType: 'events',
+        sourceRoleIds: ['role-events-publisher'],
+      },
+    ];
+
+    const decision = evaluateAuthorizeDecision(pluginRequest, permissions);
+    expect(decision.allowed).toBe(false);
+    expect(decision.reason).toBe('permission_missing');
+    expect(decision.action).toBe('news.publish');
+  });
+
   it('allows inherited organization permission when hierarchy path includes parent', () => {
     const permissions: EffectivePermission[] = [
       {

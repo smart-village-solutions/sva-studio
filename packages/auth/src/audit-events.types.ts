@@ -11,7 +11,20 @@ export type AuthAuditEventType =
   | 'login_state_expired'
   | 'forced_reauth'
   | 'silent_reauth_success'
-  | 'silent_reauth_failed';
+  | 'silent_reauth_failed'
+  | 'plugin_action_authorized'
+  | 'plugin_action_denied'
+  | 'plugin_action_failed';
+
+export type PluginActionAuditPayload = {
+  actionId: string;
+  actionNamespace: string;
+  actionOwner: string;
+  result: 'success' | 'failure' | 'denied';
+  reasonCode?: string;
+  resourceType?: string;
+  resourceId?: string;
+};
 
 export type AuthAuditEvent = {
   eventType: AuthAuditEventType;
@@ -20,7 +33,8 @@ export type AuthAuditEvent = {
   actorDisplayName?: string;
   scope?: RuntimeScopeRef;
   workspaceId?: string;
-  outcome: 'success' | 'failure';
+  outcome: 'success' | 'failure' | 'denied';
   requestId?: string;
   traceId?: string;
+  pluginAction?: PluginActionAuditPayload;
 };

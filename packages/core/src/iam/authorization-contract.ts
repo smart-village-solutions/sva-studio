@@ -1,6 +1,16 @@
 export type IamUuid = string;
 export type IamInstanceId = string;
 
+/**
+ * Canonical IAM action identifier.
+ *
+ * Target model:
+ * - Authorizable actions use the fully-qualified format `<namespace>.<action>`.
+ * - This applies to both core actions (for example `content.read` or
+ *   `iam.users.manage`) and plugin actions (for example `news.create`).
+ * - Legacy short forms such as `read` or `write` may still exist during migration,
+ *   but callers must not rely on implicit namespace mapping.
+ */
 export type IamAction = string;
 
 export type IamResourceRef = {
@@ -12,6 +22,15 @@ export type IamResourceRef = {
 
 export type AuthorizeRequest = {
   readonly instanceId: IamInstanceId;
+  /**
+   * Action to authorize.
+   *
+   * Target format is `<namespace>.<action>` without implicit remapping.
+   * Examples:
+   * - `content.read`
+   * - `iam.users.manage`
+   * - `news.create`
+   */
   readonly action: IamAction;
   readonly resource: IamResourceRef;
   readonly context?: {

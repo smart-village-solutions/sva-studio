@@ -1,6 +1,44 @@
-import type { PluginDefinition } from '@sva/sdk';
+import { definePluginActions, type PluginDefinition } from '@sva/sdk';
 
 import { NewsCreatePage, NewsEditPage, NewsListPage } from './news.pages.js';
+
+export const pluginNewsActionIds = {
+  create: 'news.create',
+  edit: 'news.edit',
+  update: 'news.update',
+  delete: 'news.delete',
+} as const;
+
+export const pluginNewsActionDefinitions = definePluginActions('news', [
+  {
+    id: pluginNewsActionIds.create,
+    titleKey: 'news.actions.create',
+    requiredAction: 'content.create',
+    legacyAliases: ['create'],
+  },
+  {
+    id: pluginNewsActionIds.edit,
+    titleKey: 'news.actions.edit',
+    requiredAction: 'content.write',
+    legacyAliases: ['edit'],
+  },
+  {
+    id: pluginNewsActionIds.update,
+    titleKey: 'news.actions.update',
+    requiredAction: 'content.write',
+    legacyAliases: ['save', 'update'],
+  },
+  {
+    id: pluginNewsActionIds.delete,
+    titleKey: 'news.actions.delete',
+    requiredAction: 'content.write',
+    legacyAliases: ['delete'],
+  },
+] as const);
+
+export const getPluginNewsActionDefinition = (
+  actionId: (typeof pluginNewsActionIds)[keyof typeof pluginNewsActionIds]
+) => pluginNewsActionDefinitions.find((action) => action.id === actionId);
 
 export const pluginNews: PluginDefinition = {
   id: 'news',
@@ -16,12 +54,14 @@ export const pluginNews: PluginDefinition = {
       id: 'news.create',
       path: '/plugins/news/new',
       guard: 'content.create',
+      actionId: pluginNewsActionIds.create,
       component: NewsCreatePage,
     },
     {
       id: 'news.edit',
       path: '/plugins/news/$contentId',
       guard: 'content.write',
+      actionId: pluginNewsActionIds.edit,
       component: NewsEditPage,
     },
   ],
@@ -34,6 +74,7 @@ export const pluginNews: PluginDefinition = {
       requiredAction: 'content.read',
     },
   ],
+  actions: pluginNewsActionDefinitions,
   contentTypes: [
     {
       contentType: 'news',
@@ -71,7 +112,7 @@ export const pluginNews: PluginDefinition = {
         },
         actions: {
           create: 'News anlegen',
-          save: 'Änderungen speichern',
+          update: 'Änderungen speichern',
           back: 'Zurück zur Liste',
           edit: 'Bearbeiten',
           delete: 'Löschen',
@@ -137,7 +178,7 @@ export const pluginNews: PluginDefinition = {
         },
         actions: {
           create: 'Create news',
-          save: 'Save changes',
+          update: 'Save changes',
           back: 'Back to list',
           edit: 'Edit',
           delete: 'Delete',

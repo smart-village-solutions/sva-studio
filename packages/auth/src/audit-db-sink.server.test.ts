@@ -121,6 +121,46 @@ describe('persistAuthAuditEventWithClient', () => {
     expect(tenantInserts).toHaveLength(0);
   });
 
+  it('persists plugin action namespace metadata in tenant activity logs', async () => {
+    const { client, queries } = createMockClient();
+
+    const result = await persistAuthAuditEventWithClient(client, {
+      eventType: 'plugin_action_denied',
+      actorUserId: 'keycloak-sub-plugin-1',
+      workspaceId: 'de-musterhausen',
+      outcome: 'denied',
+      requestId: 'req-plugin-1',
+      traceId: 'trace-plugin-1',
+      pluginAction: {
+        actionId: 'news.publish',
+        actionNamespace: 'news',
+        actionOwner: 'news',
+        result: 'denied',
+        reasonCode: 'permission_missing',
+        resourceType: 'news',
+        resourceId: 'news-1',
+      },
+    });
+
+    expect(result.persisted).toBe(true);
+    expect(result.writtenEventTypes).toEqual(['plugin_action_denied']);
+
+    const insert = queries.find((entry) => entry.text.includes('INSERT INTO iam.activity_logs'));
+    expect(insert).toBeDefined();
+
+    const payload = JSON.parse(String(insert?.values?.[3] ?? '{}')) as Record<string, unknown>;
+    expect(payload).toMatchObject({
+      outcome: 'denied',
+      action_id: 'news.publish',
+      action_namespace: 'news',
+      action_owner: 'news',
+      result: 'denied',
+      reason_code: 'permission_missing',
+      resource_type: 'news',
+      resource_id: 'news-1',
+    });
+  });
+
   it('updates an existing account instead of attempting a conflicting insert on login', async () => {
     delete process.env.IAM_PII_ACTIVE_KEY_ID;
     delete process.env.IAM_PII_KEYRING_JSON;

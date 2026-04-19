@@ -49,16 +49,18 @@ const DEFAULT_SESSION_TTL = 60 * 60 * 24 * 7; // 7 days in seconds
 const DEFAULT_LOGIN_STATE_TTL = 60 * 10; // 10 minutes in seconds
 const DEFAULT_SESSION_CONTROL_TTL = 60 * 60 * 24 * 30; // 30 days in seconds
 
+// In-memory mirrors exist only for low-level tests that exercise session semantics
+// without relying on a real Redis instance. Production paths remain Redis-bound.
 const inMemorySessionControl = new Map<string, SessionControlState>();
 const inMemoryUserSessions = new Map<string, Set<string>>();
 
-const runWithSessionFallback = async <T>(input: {
+const runWithRequiredRedisSessionStore = async <T>(input: {
   operation: string;
-  redis: () => Promise<T>;
-  fallback: () => T | Promise<T>;
+  runAgainstRedis: () => Promise<T>;
+  runInMemoryForTests: () => T | Promise<T>;
 }): Promise<T> => {
   try {
-    return await input.redis();
+    return await input.runAgainstRedis();
   } catch (error) {
     logger.error('Redis session store unavailable', {
       operation: input.operation,
@@ -130,13 +132,13 @@ const removeInMemoryUserSession = (userId: string, sessionId: string) => {
 };
 
 const readStoredSessionForDeletion = async (sessionId: string): Promise<Session | undefined> => {
-  const data = await runWithSessionFallback({
+  const data = await runWithRequiredRedisSessionStore({
     operation: 'read_session_for_deletion',
-    redis: async () => {
+    runAgainstRedis: async () => {
       const redis = getRedisClient();
       return redis.get(sessionPrefix() + sessionId);
     },
-    fallback: () => {
+    runInMemoryForTests: () => {
       const session = getInMemorySession(sessionId);
       return session ? JSON.stringify(session) : null;
     },
@@ -200,9 +202,9 @@ export async function createSession(
   await trackSessionOperation('create_session', async () => {
     const encryptedSession = encryptSessionTokens(session);
     const resolvedTtl = ttl ?? resolveSessionRedisTtlSeconds(session);
-    await runWithSessionFallback({
+    await runWithRequiredRedisSessionStore({
       operation: 'create_session',
-      redis: async () => {
+      runAgainstRedis: async () => {
         const redis = getRedisClient();
         const key = sessionPrefix() + sessionId;
         await redis.set(key, JSON.stringify(encryptedSession), 'EX', resolvedTtl);
@@ -210,7 +212,7 @@ export async function createSession(
         await redis.sadd(userSessionKey, sessionId);
         await redis.expire(userSessionKey, resolvedTtl);
       },
-      fallback: () => {
+      runInMemoryForTests: () => {
         createInMemorySession(encryptedSession);
         addInMemoryUserSession(session.userId, sessionId);
       },
@@ -238,14 +240,14 @@ export async function createSession(
  */
 export async function getSession(sessionId: string): Promise<Session | undefined> {
   return trackSessionOperation('get_session', async () => {
-    const data = await runWithSessionFallback({
+    const data = await runWithRequiredRedisSessionStore({
       operation: 'get_session',
-      redis: async () => {
+      runAgainstRedis: async () => {
         const redis = getRedisClient();
         const key = sessionPrefix() + sessionId;
         return redis.get(key);
       },
-      fallback: () => {
+      runInMemoryForTests: () => {
         const session = getInMemorySession(sessionId);
         return session ? JSON.stringify(session) : null;
       },
@@ -297,9 +299,9 @@ export async function updateSession(
     const updatedSession: Session = { ...currentSession, ...updates };
     const encryptedSession = encryptSessionTokens(updatedSession);
     const resolvedTtl = resolveSessionRedisTtlSeconds(updatedSession);
-    const finalTtl = await runWithSessionFallback({
+    const finalTtl = await runWithRequiredRedisSessionStore({
       operation: 'update_session',
-      redis: async () => {
+      runAgainstRedis: async () => {
         const redis = getRedisClient();
         const key = sessionPrefix() + sessionId;
         await redis.set(key, JSON.stringify(encryptedSession), 'EX', resolvedTtl);
@@ -308,7 +310,7 @@ export async function updateSession(
         await redis.expire(userSessionKey, resolvedTtl);
         return resolvedTtl;
       },
-      fallback: () => {
+      runInMemoryForTests: () => {
         const nextSession = updateInMemorySession(sessionId, encryptedSession);
         if (!nextSession) {
           throw new Error(`Session not found: ${sessionId}`);
@@ -332,9 +334,9 @@ export async function updateSession(
 export async function deleteSession(sessionId: string): Promise<void> {
   await trackSessionOperation('delete_session', async () => {
     const existingSession = await readStoredSessionForDeletion(sessionId);
-    await runWithSessionFallback({
+    await runWithRequiredRedisSessionStore({
       operation: 'delete_session',
-      redis: async () => {
+      runAgainstRedis: async () => {
         const redis = getRedisClient();
         const key = sessionPrefix() + sessionId;
         await redis.del(key);
@@ -342,7 +344,7 @@ export async function deleteSession(sessionId: string): Promise<void> {
           await redis.srem(userSessionIndexPrefix() + existingSession.userId, sessionId);
         }
       },
-      fallback: () => {
+      runInMemoryForTests: () => {
         deleteInMemorySession(sessionId);
         if (existingSession?.userId) {
           removeInMemoryUserSession(existingSession.userId, sessionId);
@@ -367,8 +369,8 @@ export async function deleteSession(sessionId: string): Promise<void> {
 }
 
 /**
- * Clear all expired sessions (manual cleanup - Redis TTL handles this automatically).
- * This is mainly for compatibility with the in-memory implementation.
+ * Clear all expired sessions. Redis TTL remains the runtime source of truth, so
+ * this is intentionally a no-op outside low-level in-memory tests.
  */
 export async function clearExpiredSessions(): Promise<void> {
   logger.debug('Expired sessions cleanup skipped', {
@@ -386,14 +388,14 @@ export async function createLoginState(
   data: LoginState
 ): Promise<void> {
   await trackSessionOperation('create_login_state', async () => {
-    await runWithSessionFallback({
+    await runWithRequiredRedisSessionStore({
       operation: 'create_login_state',
-      redis: async () => {
+      runAgainstRedis: async () => {
         const redis = getRedisClient();
         const key = loginStatePrefix() + state;
         await redis.set(key, JSON.stringify(data), 'EX', DEFAULT_LOGIN_STATE_TTL);
       },
-      fallback: () => {
+      runInMemoryForTests: () => {
         createInMemoryLoginState(state, data);
       },
     });
@@ -428,9 +430,9 @@ export async function consumeLoginState(
   instanceId?: string;
 } | undefined> {
   return trackSessionOperation('consume_login_state', async () => {
-    const data = await runWithSessionFallback({
+    const data = await runWithRequiredRedisSessionStore({
       operation: 'consume_login_state',
-      redis: async () => {
+      runAgainstRedis: async () => {
         const redis = getRedisClient();
         const key = loginStatePrefix() + state;
         const stored = await redis.get(key);
@@ -439,7 +441,7 @@ export async function consumeLoginState(
         }
         return stored;
       },
-      fallback: () => {
+      runInMemoryForTests: () => {
         const stored = consumeInMemoryLoginState(state);
         return stored ? JSON.stringify(stored) : null;
       },
@@ -479,13 +481,13 @@ export async function consumeLoginState(
 }
 
 export async function getSessionControlState(userId: string): Promise<SessionControlState | undefined> {
-  const data = await runWithSessionFallback({
+  const data = await runWithRequiredRedisSessionStore({
     operation: 'get_session_control_state',
-    redis: async () => {
+    runAgainstRedis: async () => {
       const redis = getRedisClient();
       return redis.get(sessionControlPrefix() + userId);
     },
-    fallback: () => {
+    runInMemoryForTests: () => {
       const value = inMemorySessionControl.get(userId);
       return value ? JSON.stringify(value) : null;
     },
@@ -503,26 +505,26 @@ export async function setSessionControlState(
   state: SessionControlState,
   ttlSeconds: number = DEFAULT_SESSION_CONTROL_TTL
 ): Promise<void> {
-  await runWithSessionFallback({
+  await runWithRequiredRedisSessionStore({
     operation: 'set_session_control_state',
-    redis: async () => {
+    runAgainstRedis: async () => {
       const redis = getRedisClient();
       await redis.set(sessionControlPrefix() + userId, JSON.stringify(state), 'EX', ttlSeconds);
     },
-    fallback: () => {
+    runInMemoryForTests: () => {
       inMemorySessionControl.set(userId, state);
     },
   });
 }
 
 export async function listUserSessionIds(userId: string): Promise<string[]> {
-  return runWithSessionFallback({
+  return runWithRequiredRedisSessionStore({
     operation: 'list_user_sessions',
-    redis: async () => {
+    runAgainstRedis: async () => {
       const redis = getRedisClient();
       return redis.smembers(userSessionIndexPrefix() + userId);
     },
-    fallback: () => {
+    runInMemoryForTests: () => {
       return Array.from(inMemoryUserSessions.get(userId) ?? []);
     },
   });
@@ -532,15 +534,15 @@ export async function listUserSessionIds(userId: string): Promise<string[]> {
  * Get all session keys (for debugging/admin purposes).
  */
 export async function getAllSessionKeys(): Promise<string[]> {
-  return runWithSessionFallback({
+  return runWithRequiredRedisSessionStore({
     operation: 'get_all_session_keys',
-    redis: async () => {
+    runAgainstRedis: async () => {
       const redis = getRedisClient();
       const prefix = sessionPrefix();
       const keys = await redis.keys(prefix + '*');
       return keys.map((key) => key.replace(prefix, ''));
     },
-    fallback: () => {
+    runInMemoryForTests: () => {
       clearExpiredInMemoryLoginStates(Date.now(), DEFAULT_LOGIN_STATE_TTL * 1000);
       return [];
     },
@@ -551,14 +553,14 @@ export async function getAllSessionKeys(): Promise<string[]> {
  * Count active sessions.
  */
 export async function getSessionCount(): Promise<number> {
-  return runWithSessionFallback({
+  return runWithRequiredRedisSessionStore({
     operation: 'get_session_count',
-    redis: async () => {
+    runAgainstRedis: async () => {
       const redis = getRedisClient();
       const keys = await redis.keys(sessionPrefix() + '*');
       return keys.length;
     },
-    fallback: () => {
+    runInMemoryForTests: () => {
       clearExpiredInMemorySessions(Date.now(), DEFAULT_SESSION_TTL * 1000);
       return 0;
     },

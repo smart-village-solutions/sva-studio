@@ -1,12 +1,16 @@
-import type { AuthorizeResponse } from '@sva/core';
 import { evaluateAuthorizeDecision } from '@sva/core';
 import { getWorkspaceContext, withRequestContext } from '@sva/sdk/server';
 
 import { resolveImpersonationSubject } from '../iam-governance.server.js';
 import { withAuthenticatedUser } from '../middleware.server.js';
 import { jsonResponse } from '../shared/db-helpers.js';
-import { isUuid, readString } from '../shared/input-readers.js';
+import { readString } from '../shared/input-readers.js';
 import { resolveEffectivePermissions } from './permission-store.js';
+import {
+  denyAuthorizeRequest,
+  emitPluginActionAuditEvent,
+  resolveAuthorizeGeoContext,
+} from './authorize-runtime.js';
 import {
   buildRequestContext,
   type DeniedAuthorizeResponseInput,
@@ -15,85 +19,6 @@ import {
   loadAuthorizeRequest,
   logger,
 } from './shared.js';
-
-const MAX_GEO_HIERARCHY_LENGTH = 32;
-
-const readGeoUuid = (value: unknown): string | undefined | null => {
-  const normalized = readString(value);
-  if (!normalized) {
-    return undefined;
-  }
-  return isUuid(normalized) ? normalized : null;
-};
-
-const readGeoUuidArray = (value: unknown): readonly string[] | undefined | null => {
-  if (value === undefined) {
-    return undefined;
-  }
-  if (!Array.isArray(value)) {
-    return null;
-  }
-
-  const normalized = value
-    .map((entry) => readGeoUuid(entry))
-    .filter((entry): entry is string | null => entry !== undefined);
-
-  if (normalized.some((entry) => entry === null)) {
-    return null;
-  }
-
-  const deduplicated = [...new Set(normalized)].filter((entry): entry is string => entry !== null);
-  if (deduplicated.length > MAX_GEO_HIERARCHY_LENGTH) {
-    return null;
-  }
-
-  return deduplicated.length > 0 ? deduplicated : undefined;
-};
-
-const buildDeniedResponse = (input: DeniedAuthorizeResponseInput): AuthorizeResponse => ({
-  allowed: false,
-  reason: input.reason,
-  instanceId: input.instanceId,
-  action: input.action,
-  resourceType: input.resourceType,
-  resourceId: input.resourceId,
-  evaluatedAt: new Date().toISOString(),
-  requestId: input.requestId ?? getWorkspaceContext().requestId,
-  traceId: input.traceId ?? getWorkspaceContext().traceId,
-  diagnostics: input.diagnostics,
-});
-
-const denyAuthorizeRequest = (
-  input: DeniedAuthorizeResponseInput,
-  recordLatency: (allowed: boolean, reason: string) => void
-): Response => {
-  const denied = buildDeniedResponse(input);
-  recordLatency(false, denied.reason);
-  return jsonResponse(200, denied);
-};
-
-const resolveAuthorizeGeoContext = (
-  payload: Awaited<ReturnType<typeof loadAuthorizeRequest>>
-): { geoUnitId?: string; geoHierarchy?: readonly string[] } | null => {
-  const resourceGeoUnitId = readGeoUuid(payload?.resource.attributes?.geoUnitId);
-  const contextGeoUnitId = readGeoUuid(payload?.context?.attributes?.geoUnitId);
-  const resourceGeoHierarchy = readGeoUuidArray(payload?.resource.attributes?.geoHierarchy);
-  const contextGeoHierarchy = readGeoUuidArray(payload?.context?.attributes?.geoHierarchy);
-
-  if (
-    resourceGeoUnitId === null ||
-    contextGeoUnitId === null ||
-    resourceGeoHierarchy === null ||
-    contextGeoHierarchy === null
-  ) {
-    return null;
-  }
-
-  return {
-    geoUnitId: resourceGeoUnitId ?? contextGeoUnitId,
-    geoHierarchy: resourceGeoHierarchy ?? contextGeoHierarchy,
-  };
-};
 
 const validateAuthorizeImpersonation = async (
   payload: NonNullable<Awaited<ReturnType<typeof loadAuthorizeRequest>>>,
@@ -115,6 +40,8 @@ const validateAuthorizeImpersonation = async (
   }
 
   return denyAuthorizeRequest(
+    payload,
+    actorKeycloakSubject,
     {
       reason: 'context_attribute_missing',
       instanceId: payload.instanceId,
@@ -154,6 +81,8 @@ export const authorizeHandler = async (request: Request): Promise<Response> => {
 
       if (user.instanceId && user.instanceId !== payload.instanceId) {
         return denyAuthorizeRequest(
+          payload,
+          user.id,
           {
             reason: 'instance_scope_mismatch',
             instanceId: payload.instanceId,
@@ -176,6 +105,7 @@ export const authorizeHandler = async (request: Request): Promise<Response> => {
 
       const geoContext = resolveAuthorizeGeoContext(payload);
       if (geoContext === null) {
+        await emitPluginActionAuditEvent(payload, user.id, 'failure', 'invalid_request');
         recordLatency(false, 'invalid_request');
         return errorResponse(400, 'invalid_request');
       }
@@ -195,6 +125,7 @@ export const authorizeHandler = async (request: Request): Promise<Response> => {
           ...buildRequestContext(payload.instanceId),
         });
 
+        await emitPluginActionAuditEvent(payload, user.id, 'failure', 'database_unavailable');
         recordLatency(false, 'database_unavailable');
         return errorResponse(503, 'database_unavailable');
       }
@@ -210,6 +141,12 @@ export const authorizeHandler = async (request: Request): Promise<Response> => {
         ...buildRequestContext(payload.instanceId),
       });
 
+      await emitPluginActionAuditEvent(
+        payload,
+        user.id,
+        decision.allowed ? 'success' : 'denied',
+        decision.reason
+      );
       recordLatency(decision.allowed, decision.reason);
       return jsonResponse(200, {
         ...decision,

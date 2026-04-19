@@ -190,8 +190,7 @@ describe('redis.server', () => {
     expect(state.logger.warn).toHaveBeenCalledWith(
       'Redis max errors reached, disconnecting client',
       expect.objectContaining({
-        operation: 'redis_fallback',
-        fallback: 'in-memory',
+        operation: 'redis_disconnect_after_errors',
       })
     );
     expect(state.logger.info).toHaveBeenCalledWith(

@@ -35,12 +35,7 @@ import type {
   IamRuntimeSafeDetails,
   UpdateIamContentInput,
 } from '@sva/core';
-import {
-  deriveIamRuntimeDiagnostics,
-  iamRuntimeDiagnosticClassifications,
-  iamRuntimeDiagnosticStatuses,
-  iamRuntimeRecommendedActions,
-} from '@sva/core';
+import { deriveIamRuntimeDiagnostics } from '@sva/core';
 import { createBrowserLogger } from '@sva/sdk/logging';
 
 const IAM_HEADERS = {
@@ -56,6 +51,33 @@ export const LEGAL_ACCEPTANCE_REQUIRED_EVENT = 'sva:legal-acceptance-required';
 const DEFAULT_IAM_REQUEST_TIMEOUT_MS = 10_000;
 const HEALTH_REQUEST_TIMEOUT_MS = 5_000;
 const HEAVY_IAM_REQUEST_TIMEOUT_MS = 20_000;
+const KNOWN_RUNTIME_DIAGNOSTIC_CLASSIFICATIONS = new Set<IamRuntimeDiagnosticClassification>([
+  'tenant_host_validation',
+  'session_store_or_session_hydration',
+  'actor_resolution_or_membership',
+  'keycloak_dependency',
+  'database_or_schema_drift',
+  'database_mapping_or_membership_inconsistency',
+  'registry_or_provisioning_drift',
+  'keycloak_reconcile',
+  'unknown',
+]);
+const KNOWN_RUNTIME_DIAGNOSTIC_STATUSES = new Set<IamRuntimeDiagnosticStatus>([
+  'gesund',
+  'degradiert',
+  'recovery_laeuft',
+  'manuelle_pruefung_erforderlich',
+]);
+const KNOWN_RUNTIME_RECOMMENDED_ACTIONS = new Set<IamRuntimeRecommendedAction>([
+  'erneut_anmelden',
+  'erneut_versuchen',
+  'keycloak_pruefen',
+  'migration_pruefen',
+  'provisioning_pruefen',
+  'rollenabgleich_pruefen',
+  'manuell_pruefen',
+  'support_kontaktieren',
+]);
 
 export class IamHttpError extends Error {
   readonly status: number;
@@ -196,7 +218,7 @@ const normalizeRuntimeDiagnosticClassification = (
   value: unknown,
   fallback: IamRuntimeDiagnosticClassification
 ): IamRuntimeDiagnosticClassification =>
-  typeof value === 'string' && iamRuntimeDiagnosticClassifications.includes(value as IamRuntimeDiagnosticClassification)
+  typeof value === 'string' && KNOWN_RUNTIME_DIAGNOSTIC_CLASSIFICATIONS.has(value as IamRuntimeDiagnosticClassification)
     ? (value as IamRuntimeDiagnosticClassification)
     : fallback;
 
@@ -204,7 +226,7 @@ const normalizeRuntimeDiagnosticStatus = (
   value: unknown,
   fallback: IamRuntimeDiagnosticStatus
 ): IamRuntimeDiagnosticStatus =>
-  typeof value === 'string' && iamRuntimeDiagnosticStatuses.includes(value as IamRuntimeDiagnosticStatus)
+  typeof value === 'string' && KNOWN_RUNTIME_DIAGNOSTIC_STATUSES.has(value as IamRuntimeDiagnosticStatus)
     ? (value as IamRuntimeDiagnosticStatus)
     : fallback;
 
@@ -212,7 +234,7 @@ const normalizeRuntimeRecommendedAction = (
   value: unknown,
   fallback: IamRuntimeRecommendedAction
 ): IamRuntimeRecommendedAction =>
-  typeof value === 'string' && iamRuntimeRecommendedActions.includes(value as IamRuntimeRecommendedAction)
+  typeof value === 'string' && KNOWN_RUNTIME_RECOMMENDED_ACTIONS.has(value as IamRuntimeRecommendedAction)
     ? (value as IamRuntimeRecommendedAction)
     : fallback;
 

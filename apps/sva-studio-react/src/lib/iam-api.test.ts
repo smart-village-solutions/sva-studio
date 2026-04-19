@@ -65,6 +65,7 @@ describe('iam-api organization helpers', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
     vi.stubEnv('NODE_ENV', 'test');
     browserLoggerMock.debug.mockReset();
     browserLoggerMock.info.mockReset();
@@ -216,6 +217,7 @@ describe('iam-api organization helpers', () => {
 
   it('dispatches the legal acceptance event on the corresponding error code', async () => {
     const dispatchEvent = vi.fn();
+    vi.stubGlobal('window', {});
     vi.stubGlobal('dispatchEvent', dispatchEvent);
     vi.stubGlobal(
       'fetch',

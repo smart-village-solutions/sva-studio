@@ -1,9 +1,15 @@
+// @vitest-environment jsdom
+
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import { IamRuntimeDiagnosticDetails } from './-iam-runtime-diagnostic-details';
 
 describe('IamRuntimeDiagnosticDetails', () => {
+  afterEach(() => {
+    document.body.innerHTML = '';
+  });
+
   it('renders the known diagnostic labels and request metadata', () => {
     render(
       <IamRuntimeDiagnosticDetails

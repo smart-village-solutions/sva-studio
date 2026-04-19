@@ -279,7 +279,7 @@ Zusatzprüfungen:
 - Remote: mindestens ein aktiver Tenant-Host und ein negativer Host-Fall gegen dieselbe App-Instanz
 - Remote: `doctor` und `precheck` muessen `app-db-principal` fuer denselben Runtime-User wie die laufende App als `ok` ausweisen
 
-Im Profil `studio` pruefen die externen Smokes zusaetzlich die in `SVA_ALLOWED_INSTANCE_IDS` freigegebenen Tenant-Hosts auf tenant-spezifische OIDC-Redirects.
+Im Profil `studio` pruefen die externen Smokes zusaetzlich tenant-spezifische OIDC-Redirects. Der Scope kommt bevorzugt aus der Instanz-Registry; `SVA_ALLOWED_INSTANCE_IDS` bleibt nur lokaler oder migrationsbezogener Fallback, und `SVA_TENANT_SCOPE_INSTANCE_IDS` kann den Scope fuer gezielte Operator-Laeufe explizit uebersteuern.
 
 Fuer `studio` gilt bei Tenant-Smokes zusaetzlich:
 

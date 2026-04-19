@@ -466,4 +466,41 @@ describe('RoleDetailPage', () => {
     expect(screen.getByText('Berechtigungen der Rolle')).toBeTruthy();
     expect(screen.getByText('Benutzerzuweisungen zur Rolle')).toBeTruthy();
   });
+
+  it('renders runtime diagnostics on role detail errors', () => {
+    useRolesMock.mockReturnValue({
+      roles: [],
+      isLoading: false,
+      error: {
+        name: 'IamHttpError',
+        message: 'reconcile failed',
+        status: 503,
+        code: 'keycloak_unavailable',
+        classification: 'keycloak_reconcile',
+        diagnosticStatus: 'manuelle_pruefung_erforderlich',
+        recommendedAction: 'rollenabgleich_pruefen',
+        requestId: 'req-role-detail-3',
+      },
+      mutationError: null,
+      reconcileReport: null,
+      refetch: vi.fn(),
+      clearMutationError: vi.fn(),
+      createRole: vi.fn(),
+      updateRole: vi.fn(),
+      deleteRole: vi.fn(),
+      retryRoleSync: vi.fn(),
+      reconcile: vi.fn(),
+    });
+
+    render(<RoleDetailPage roleId="role-2" activeTab="general" />);
+
+    expect(
+      screen.getByText(
+        'Der Rollenabgleich mit Keycloak ist fehlgeschlagen oder erfordert manuelle Nacharbeit. Bitte den Reconcile-Befund prüfen.'
+      )
+    ).toBeTruthy();
+    expect(screen.getByText('Diagnose: Keycloak-Reconcile')).toBeTruthy();
+    expect(screen.getByText('Empfohlene Aktion: Rollenabgleich prüfen')).toBeTruthy();
+    expect(screen.getByText('Request-ID: req-role-detail-3')).toBeTruthy();
+  });
 });

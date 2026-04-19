@@ -14,6 +14,7 @@ import { useRoles } from '../../../hooks/use-roles';
 import { t } from '../../../i18n';
 import type { TranslationKey } from '../../../i18n/translate';
 import type { IamHttpError } from '../../../lib/iam-api';
+import { IamRuntimeDiagnosticDetails } from '../-iam-runtime-diagnostic-details';
 
 const statusTone = (syncState: 'synced' | 'pending' | 'failed'): string => {
   if (syncState === 'synced') {
@@ -262,6 +263,7 @@ export const RolesPage = () => {
         <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
           <AlertDescription className="flex flex-col gap-3">
             <span>{roleErrorMessage(rolesApi.error, 'admin.roles.messages.error')}</span>
+            <IamRuntimeDiagnosticDetails error={rolesApi.error} />
             <div>
               <Button type="button" size="sm" variant="outline" onClick={() => void rolesApi.refetch()}>
                 {t('admin.roles.actions.retry')}

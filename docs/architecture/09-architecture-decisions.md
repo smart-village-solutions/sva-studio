@@ -150,7 +150,7 @@ Zuordnung:
 - `ADR-019-swarm-traefik-referenz-betriebsprofil.md`
   - Definiert den Swarm-Stack mit Traefik-Ingress, Registry-Images, Swarm-Secrets und Rolling Updates als Referenz-Betriebsprofil.
 - `ADR-011` (Fortschreibung)
-  - Ergänzt den bestehenden `instanceId`-Scope um die Subdomain-Ableitung (`<instanceId>.<SVA_PARENT_DOMAIN>`), die Env-Allowlist als autoritative Freigabequelle und den IDN/Punycode-Ausschluss.
+  - Ergänzt den bestehenden `instanceId`-Scope um die Subdomain-Ableitung (`<instanceId>.<SVA_PARENT_DOMAIN>`), lokale bzw. migrationsbezogene Allowlist-Fallbacks und den IDN/Punycode-Ausschluss.
 - `ADR-020-kanonischer-auth-host-multi-host-grenze.md`
   - Definiert die Root-Domain als kanonischen Auth-Host für OIDC-Flows mit fail-closed-Grenze für Instanz-Hosts.
 

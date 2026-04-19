@@ -527,6 +527,35 @@ export const i18nResources = {
       },
     },
     admin: {
+      shared: {
+        diagnostics: {
+          classification: 'Diagnose: {{value}}',
+          recommendedAction: 'Empfohlene Aktion: {{value}}',
+          syncErrorCode: 'Sync-Fehlercode: {{code}}',
+          requestId: 'Request-ID: {{requestId}}',
+          classifications: {
+            tenantHostValidation: 'Tenant-Host-Validierung',
+            sessionStoreOrSessionHydration: 'Session-Store oder Session-Hydration',
+            actorResolutionOrMembership: 'Akteur-Auflösung oder Mitgliedschaft',
+            keycloakDependency: 'Keycloak-Abhängigkeit',
+            databaseOrSchemaDrift: 'Datenbank- oder Schema-Drift',
+            databaseMappingOrMembershipInconsistency: 'Datenbank-Mapping oder Mitgliedschaft inkonsistent',
+            registryOrProvisioningDrift: 'Registry- oder Provisioning-Drift',
+            keycloakReconcile: 'Keycloak-Reconcile',
+            unknown: 'Unbekannte Laufzeitdiagnose',
+          },
+          actions: {
+            erneutAnmelden: 'Erneut anmelden',
+            erneutVersuchen: 'Erneut versuchen',
+            keycloakPruefen: 'Keycloak prüfen',
+            migrationPruefen: 'Migration prüfen',
+            provisioningPruefen: 'Provisioning prüfen',
+            rollenabgleichPruefen: 'Rollenabgleich prüfen',
+            manuellPruefen: 'Manuell prüfen',
+            supportKontaktieren: 'Support kontaktieren',
+          },
+        },
+      },
       instances: {
         page: {
           title: 'Instanzverwaltung',
@@ -1007,6 +1036,11 @@ export const i18nResources = {
             'Für diese Instanz fehlt noch das Tenant-Admin-Client-Secret. Hinterlegen Sie es in der Detailseite und speichern Sie erneut.',
           keycloakUnavailable: 'Keycloak konnte nicht erreicht oder nicht abgeglichen werden.',
           encryptionNotConfigured: 'Die notwendige Feldverschlüsselung für Tenant-Secrets ist nicht konfiguriert.',
+        },
+        diagnostics: {
+          preflightEvidence: 'Vorbedingungen zuletzt geprüft: Status {{status}}, Zeitpunkt {{checkedAt}}',
+          planEvidence: 'Letzte Provisioning-Vorschau: {{summary}}',
+          latestRunEvidence: 'Letzter Keycloak-Run: Request-ID {{requestId}}, Status {{status}}',
         },
       },
       users: {
@@ -2376,6 +2410,35 @@ export const i18nResources = {
       },
     },
     admin: {
+      shared: {
+        diagnostics: {
+          classification: 'Diagnosis: {{value}}',
+          recommendedAction: 'Recommended action: {{value}}',
+          syncErrorCode: 'Sync error code: {{code}}',
+          requestId: 'Request ID: {{requestId}}',
+          classifications: {
+            tenantHostValidation: 'Tenant host validation',
+            sessionStoreOrSessionHydration: 'Session store or session hydration',
+            actorResolutionOrMembership: 'Actor resolution or membership',
+            keycloakDependency: 'Keycloak dependency',
+            databaseOrSchemaDrift: 'Database or schema drift',
+            databaseMappingOrMembershipInconsistency: 'Database mapping or membership inconsistency',
+            registryOrProvisioningDrift: 'Registry or provisioning drift',
+            keycloakReconcile: 'Keycloak reconcile',
+            unknown: 'Unknown runtime diagnosis',
+          },
+          actions: {
+            erneutAnmelden: 'Sign in again',
+            erneutVersuchen: 'Try again',
+            keycloakPruefen: 'Check Keycloak',
+            migrationPruefen: 'Check migrations',
+            provisioningPruefen: 'Check provisioning',
+            rollenabgleichPruefen: 'Check role reconciliation',
+            manuellPruefen: 'Review manually',
+            supportKontaktieren: 'Contact support',
+          },
+        },
+      },
       instances: {
         page: {
           title: 'Instance Management',
@@ -2860,6 +2923,11 @@ export const i18nResources = {
             'The tenant admin client secret is still missing for this instance. Enter it on the detail page and save again.',
           keycloakUnavailable: 'Keycloak could not be reached or reconciled.',
           encryptionNotConfigured: 'Field encryption required for tenant secrets is not configured.',
+        },
+        diagnostics: {
+          preflightEvidence: 'Latest preflight check: status {{status}}, checked at {{checkedAt}}',
+          planEvidence: 'Latest provisioning preview: {{summary}}',
+          latestRunEvidence: 'Latest Keycloak run: request ID {{requestId}}, status {{status}}',
         },
       },
       users: {

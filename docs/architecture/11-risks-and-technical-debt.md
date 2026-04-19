@@ -265,10 +265,10 @@ Referenzen:
    - Wahrscheinlichkeit: mittel
    - Maßnahme: Invalidation-Trigger auf Hierarchie-/Permission-Änderungen erweitern, Cache-Hit/Miss-Metriken überwachen und Performance-/Stale-Nachweis nachziehen
 
-24. Skalierungsschwellwert der Env-basierten `instanceId`-Allowlist
-   - Impact: mittel (Verwaltungsaufwand, Neustarts bei jeder Änderung)
-   - Wahrscheinlichkeit: mittel (bei Wachstum über 50 Instanzen)
-   - Maßnahme: DB-gestützte `instanceId`-Registry als Folgearbeit geplant; Schwellwert dokumentiert in ADR-011 und Swarm-Deployment-Runbook
+24. Verbleibende Doppelrolle der Env-basierten `instanceId`-Allowlist
+   - Impact: mittel (lokale/operative Scopes können ohne klare Abgrenzung von der produktiven Registry-Realität abweichen)
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: Registry bleibt führend; Env-Allowlist nur als lokaler oder migrationsbezogener Fallback dokumentieren und verbleibende SDK-/Bootstrap-Pfade schrittweise weiter reduzieren
 
 25. Drift zwischen Transparenz-Read-Models und zugrunde liegenden IAM-Quellen
    - Impact: hoch (Admin- und Compliance-Sichten zeigen unvollständige oder missverständlich normalisierte Daten)

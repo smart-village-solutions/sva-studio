@@ -14,6 +14,7 @@ import { Select } from '../../../components/ui/select';
 import { useUsers } from '../../../hooks/use-users';
 import { isIamBulkEnabled } from '../../../lib/iam-admin-access';
 import { t } from '../../../i18n';
+import { IamRuntimeDiagnosticDetails } from '../-iam-runtime-diagnostic-details';
 import { userErrorMessage } from './-user-error-message';
 
 const statusClassByValue: Record<'active' | 'inactive' | 'pending', string> = {
@@ -279,6 +280,7 @@ export const UserListPage = () => {
         <Alert className="border-destructive/40 bg-destructive/10 text-destructive" role="alert">
           <AlertDescription className="flex flex-col gap-3">
             <span>{userErrorMessage(syncError)}</span>
+            <IamRuntimeDiagnosticDetails error={syncError} />
             <div>
               <Button type="button" size="sm" variant="outline" onClick={() => void onSyncUsers()}>
                 {t('admin.users.actions.retry')}
@@ -292,6 +294,7 @@ export const UserListPage = () => {
         <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
           <AlertDescription className="flex flex-col gap-3">
             <span>{userErrorMessage(usersApi.error)}</span>
+            <IamRuntimeDiagnosticDetails error={usersApi.error} />
             <div>
               <Button type="button" size="sm" variant="outline" onClick={() => void usersApi.refetch()}>
                 {t('admin.users.actions.retry')}

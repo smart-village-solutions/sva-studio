@@ -181,4 +181,43 @@ describe('RolesPage', () => {
 
     expect(deleteRole).toHaveBeenCalledWith('role-custom');
   });
+
+  it('renders runtime diagnostics for role list errors', () => {
+    useRolesMock.mockReturnValue({
+      roles: [],
+      isLoading: false,
+      error: {
+        name: 'IamHttpError',
+        message: 'reconcile failed',
+        status: 503,
+        code: 'keycloak_unavailable',
+        classification: 'keycloak_reconcile',
+        diagnosticStatus: 'manuelle_pruefung_erforderlich',
+        recommendedAction: 'rollenabgleich_pruefen',
+        requestId: 'req-role-list-7',
+        safeDetails: { sync_error_code: 'IDP_UNAVAILABLE' },
+      },
+      mutationError: null,
+      reconcileReport: null,
+      refetch: vi.fn(),
+      clearMutationError: vi.fn(),
+      createRole: vi.fn(),
+      updateRole: vi.fn(),
+      deleteRole: vi.fn(),
+      retryRoleSync: vi.fn(),
+      reconcile: vi.fn(),
+    });
+
+    render(<RolesPage />);
+
+    expect(
+      screen.getByText(
+        'Der Rollenabgleich mit Keycloak ist fehlgeschlagen oder erfordert manuelle Nacharbeit. Bitte den Reconcile-Befund prüfen.'
+      )
+    ).toBeTruthy();
+    expect(screen.getByText('Diagnose: Keycloak-Reconcile')).toBeTruthy();
+    expect(screen.getByText('Empfohlene Aktion: Rollenabgleich prüfen')).toBeTruthy();
+    expect(screen.getByText('Sync-Fehlercode: IDP_UNAVAILABLE')).toBeTruthy();
+    expect(screen.getByText('Request-ID: req-role-list-7')).toBeTruthy();
+  });
 });

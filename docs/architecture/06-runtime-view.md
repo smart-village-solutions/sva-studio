@@ -486,7 +486,7 @@ Fehlerpfad:
 
 1. Eingehende Anfrage trifft Traefik, wird über `HostRegexp` an den App-Service geroutet.
 2. App extrahiert den Host-Header und normalisiert ihn (Lowercase, Port-Stripping, Trailing-Dot).
-3. Host wird gegen die Parent-Domain und Instanz-Allowlist geprüft:
+3. Host wird gegen die Parent-Domain und die zentrale Instanz-Registry geprüft:
    - Root-Domain → Kanonischer Auth-Host, `instanceId = null`
    - Gültige Instanz-Subdomain → `instanceId` aus Subdomain abgeleitet
    - Ungültiger oder unbekannter Host → `403` mit identischem Body (`{ error, message }` + `X-Request-Id`)
@@ -496,4 +496,4 @@ Fehlerpfad:
 Fehlerpfad:
 
 - Bei fehlender `SVA_PARENT_DOMAIN` (Entwicklungsmodus) wird die Host-Validierung übersprungen.
-- Bei ungültigen Einträgen in `SVA_ALLOWED_INSTANCE_IDS` bricht die App beim Startup ab (fail-fast).
+- Bei lokalen oder migrationsbezogenen Fallback-Pfaden bricht die App bei ungültigen Einträgen in `SVA_ALLOWED_INSTANCE_IDS` weiterhin fail-fast ab.

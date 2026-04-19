@@ -8,8 +8,11 @@ QUANTUM_ENVIRONMENT=studio
 # ---------------------------------------------------------------------------
 # Instance-Routing
 # ---------------------------------------------------------------------------
+# Legacy-/Migrations-Fallback fuer lokale oder uebergangsweise Profiles.
 SVA_PARENT_DOMAIN=studio.example.invalid
 SVA_ALLOWED_INSTANCE_IDS=example-instance
+# Optionaler Operator-Override fuer Tenant-Smokes/Doctor; Remote-Scope kommt sonst aus der Registry.
+# SVA_TENANT_SCOPE_INSTANCE_IDS=example-instance
 
 # Kanonischer Auth-Host (Root-Domain, Fallback fuer Nicht-Instanz-Hosts)
 SVA_PUBLIC_BASE_URL=https://studio.example.invalid

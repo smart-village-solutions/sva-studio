@@ -323,11 +323,11 @@ Referenzen:
 
 ### Ergänzung 2026-03: Multi-Host-Betrieb und Secrets-Handling
 
-- **Instanz-Routing:** Eingehende Hosts werden über ein Subdomain-Modell (`<instanceId>.<SVA_PARENT_DOMAIN>`) auf `instanceId`s abgebildet. Die Env-Allowlist (`SVA_ALLOWED_INSTANCE_IDS`) ist die autoritative Freigabequelle. Ablehnungen liefern identische `403`-Antworten (kein Host-Enumeration-Vektor).
+- **Instanz-Routing:** Eingehende Hosts werden über ein Subdomain-Modell (`<instanceId>.<SVA_PARENT_DOMAIN>`) auf `instanceId`s abgebildet. Im produktiven Multi-Tenant-Betrieb ist die zentrale Instanz-Registry die autoritative Freigabequelle; `SVA_ALLOWED_INSTANCE_IDS` bleibt nur als lokaler oder migrationsbezogener Fallback. Ablehnungen liefern identische `403`-Antworten (kein Host-Enumeration-Vektor).
 - **Kanonischer Auth-Host:** OIDC-Flows laufen ausschließlich über die Root-Domain. Zielbild: Auth-Cookies werden auf die Parent-Domain gesetzt (`Domain=.<SVA_PARENT_DOMAIN>`) für SSO über Instanz-Subdomains. Aktuell ist das Cookie-Scoping host-only (siehe [ADR-020](../adr/ADR-020-kanonischer-auth-host-multi-host-grenze.md)).
 - **Kanonische Runtime-Profile:** Die Betriebsmodi `local-keycloak`, `local-builder` und `studio` werden über `SVA_RUNTIME_PROFILE` sowie versionierte Profildefinitionen unter `config/runtime/` gesteuert. Die einheitliche Bedienoberfläche ist `pnpm env:*:<profil>`.
 - **Secrets-Klassifizierung:** Vertrauliche Werte (Auth-Secrets, DB-Passwörter, Encryption-Keys) werden im Acceptance-Swarm als geschützte Stack-Umgebungsvariablen betrieben. Das Entrypoint-Skript (`entrypoint.sh`) validiert und normalisiert diese Werte, protokolliert sie aber nie. Nicht-vertrauliche Konfiguration bleibt ebenfalls als Stack-Umgebungsvariable versioniert beschrieben.
-- **Startup-Validierung:** Die `instanceId`-Allowlist wird beim Startup gegen ein Regex validiert (fail-fast). Ungültige Einträge oder IDN/Punycode-Labels führen zum sofortigen Abbruch.
+- **Startup-Validierung:** Lokale oder migrationsbezogene Fallback-Scopes über `SVA_ALLOWED_INSTANCE_IDS` werden beim Startup gegen ein Regex validiert (fail-fast). Ungültige Einträge oder IDN/Punycode-Labels führen in diesen Pfaden zum sofortigen Abbruch.
 
 ### Ergänzung 2026-03: Per-User-SVA-Mainserver-Integration
 

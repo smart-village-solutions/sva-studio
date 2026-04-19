@@ -40,7 +40,7 @@ Abhängigkeiten des aktuellen Systems.
 5. SDK (`packages/sdk`)
    - Logger, Context-Propagation, OTEL-Bootstrap
    - öffentlicher Plugin-Vertrag v1 (`PluginDefinition`, Navigation, Routen-, Content-Type- und Translation-Merge)
-   - Instance-Config-Modul (`instance/config.server.ts`): Validierung der `instanceId`-Allowlist beim Startup, Host-Parsing und Mapping auf `instanceId`
+   - Instance-Config-Modul (`instance/config.server.ts`): lokaler und migrationsbezogener Fallback für Allowlist-Validierung, Host-Parsing und Mapping auf `instanceId`; produktiver Tenant-Traffic wird registrygeführt validiert
    - deklarative Registries für erweiterbare Inhalts-Typen und typgebundene UI-/Validierungs-Metadaten
 6. Monitoring Client (`packages/monitoring-client`)
    - OTEL SDK Setup, Exporter, Log-Redaction-Processor

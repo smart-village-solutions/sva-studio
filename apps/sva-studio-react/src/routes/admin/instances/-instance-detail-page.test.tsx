@@ -416,14 +416,27 @@ describe('InstanceDetailPage', () => {
   it('renders non-keycloak mutation errors', () => {
     useInstancesMock.mockReturnValue(
       createInstancesApiState({
-        mutationError: { status: 409, code: 'conflict', message: 'conflict' },
+        mutationError: {
+          status: 409,
+          code: 'conflict',
+          message: 'conflict',
+          classification: 'registry_or_provisioning_drift',
+          recommendedAction: 'provisioning_pruefen',
+          requestId: 'req-instance-9',
+        },
       })
     );
 
     render(<InstanceDetailPage instanceId="demo" />);
 
     expect(screen.getByRole('alert').textContent).toContain(
-      'Die gewünschte Änderung steht im Konflikt mit dem aktuellen Instanzstatus.'
+      'Für diese Instanz liegt ein Registry- oder Provisioning-Drift vor. Bitte Keycloak-Status, Preflight und letzten Run gemeinsam prüfen.'
     );
+    expect(screen.getByText('Diagnose: Registry- oder Provisioning-Drift')).toBeTruthy();
+    expect(screen.getByText('Empfohlene Aktion: Provisioning prüfen')).toBeTruthy();
+    expect(screen.getByText('Request-ID: req-instance-9')).toBeTruthy();
+    expect(screen.getByText(/Vorbedingungen zuletzt geprüft: Status ready/i)).toBeTruthy();
+    expect(screen.getByText('Letzte Provisioning-Vorschau: Kein Drift.')).toBeTruthy();
+    expect(screen.getByText('Letzter Keycloak-Run: Request-ID req-1, Status succeeded')).toBeTruthy();
   });
 });

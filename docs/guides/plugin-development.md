@@ -142,5 +142,5 @@ Vor einem Push bevorzugt:
 
 - [arc42 Bausteinsicht](../architecture/05-building-block-view.md)
 - [arc42 Laufzeitsicht](../architecture/06-runtime-view.md)
-- [Migration auf namespaceds Plugin-Action-IDs](./plugin-action-migration.md)
+- [Migration auf namespaced Plugin-Action-IDs](./plugin-action-migration.md)
 - [ADR-034: Plugin-SDK-Vertrag v1](../adr/ADR-034-plugin-sdk-vertrag-v1.md)

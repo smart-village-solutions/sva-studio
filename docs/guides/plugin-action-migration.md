@@ -1,4 +1,4 @@
-# Migration auf namespaceds Plugin-Action-IDs
+# Migration auf namespaced Plugin-Action-IDs
 
 Dieser Leitfaden beschreibt den verbindlichen Migrationspfad von Legacy-Kurzformen wie `create`, `edit`, `save` oder `delete` auf kanonische fully-qualified Plugin-Action-IDs im Format `<namespace>.<actionName>`.
 

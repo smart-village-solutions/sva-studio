@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
-const commandExistsMock = vi.hoisted(() => vi.fn(() => true));
-const runQuantumExecMock = vi.hoisted(() => vi.fn());
+const commandExistsMock = vi.hoisted(() => vi.fn<(...args: readonly unknown[]) => boolean>(() => true));
+const runQuantumExecMock = vi.hoisted(() => vi.fn<(...args: readonly unknown[]) => string>());
 
 vi.mock('./runtime/process.ts', async () => {
   const actual = await vi.importActual<typeof import('./runtime/process.ts')>('./runtime/process.ts');

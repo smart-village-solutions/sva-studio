@@ -14,6 +14,7 @@ import { useUsers } from '../../../hooks/use-users';
 import { t } from '../../../i18n';
 import type { TranslationKey } from '../../../i18n/translate';
 import type { IamHttpError } from '../../../lib/iam-api';
+import { IamRuntimeDiagnosticDetails } from '../-iam-runtime-diagnostic-details';
 
 type RoleDetailTab = 'general' | 'permissions' | 'assignments' | 'sync';
 
@@ -77,6 +78,14 @@ const roleTypeLabel = (role: { isSystemRole: boolean; managedBy: 'studio' | 'ext
 const roleErrorMessage = (error: IamHttpError | null, fallbackKey: TranslationKey): string => {
   if (!error) {
     return t(fallbackKey);
+  }
+
+  if (error.diagnosticStatus === 'recovery_laeuft') {
+    return t('admin.roles.errors.recoveryRunning');
+  }
+
+  if (error.classification === 'keycloak_reconcile') {
+    return t('admin.roles.errors.keycloakReconcile');
   }
 
   switch (error.code) {
@@ -313,7 +322,10 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
     return (
       <section className="space-y-4">
         <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
-          <AlertDescription>{roleErrorMessage(rolesApi.error, 'admin.roles.messages.error')}</AlertDescription>
+          <AlertDescription className="flex flex-col gap-3">
+            <span>{roleErrorMessage(rolesApi.error, 'admin.roles.messages.error')}</span>
+            <IamRuntimeDiagnosticDetails error={rolesApi.error} />
+          </AlertDescription>
         </Alert>
         <Button type="button" variant="outline" onClick={() => void rolesApi.refetch()}>
           {t('admin.roles.actions.retry')}
@@ -370,7 +382,10 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
 
       {rolesApi.mutationError ? (
         <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
-          <AlertDescription>{roleErrorMessage(rolesApi.mutationError, 'admin.roles.messages.error')}</AlertDescription>
+          <AlertDescription className="flex flex-col gap-3">
+            <span>{roleErrorMessage(rolesApi.mutationError, 'admin.roles.messages.error')}</span>
+            <IamRuntimeDiagnosticDetails error={rolesApi.mutationError} />
+          </AlertDescription>
         </Alert>
       ) : null}
 

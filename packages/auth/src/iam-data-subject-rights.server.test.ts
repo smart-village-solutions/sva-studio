@@ -254,10 +254,13 @@ describe('iam data subject rights handlers', () => {
 
     expect(response.status).toBe(403);
     expect(await response.json()).toEqual({
-      error: {
+      error: expect.objectContaining({
         code: 'csrf_validation_failed',
         message: "Ungültiger CSRF-Header. 'X-Requested-With: XMLHttpRequest' ist erforderlich.",
-      },
+        classification: 'unknown',
+        recommendedAction: 'erneut_versuchen',
+        status: 'manuelle_pruefung_erforderlich',
+      }),
       requestId: 'req-dsr-test',
     });
   });
@@ -277,10 +280,13 @@ describe('iam data subject rights handlers', () => {
 
     expect(response.status).toBe(400);
     expect(await response.json()).toEqual({
-      error: {
+      error: expect.objectContaining({
         code: 'idempotency_key_required',
         message: 'Header Idempotency-Key ist erforderlich.',
-      },
+        classification: 'unknown',
+        recommendedAction: 'erneut_versuchen',
+        status: 'degradiert',
+      }),
       requestId: 'req-dsr-test',
     });
   });
@@ -1085,10 +1091,13 @@ describe('iam data subject rights handlers', () => {
 
     expect(response.status).toBe(400);
     expect(await response.json()).toEqual({
-      error: {
+      error: expect.objectContaining({
         code: 'idempotency_key_required',
         message: 'Header Idempotency-Key ist erforderlich.',
-      },
+        classification: 'unknown',
+        recommendedAction: 'erneut_versuchen',
+        status: 'degradiert',
+      }),
       requestId: 'req-dsr-test',
     });
   });

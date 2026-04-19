@@ -52,14 +52,20 @@ describe('withLegalTextCompliance', () => {
 
     const body = await response.json();
     expect(body).toEqual({
-      error: {
+      error: expect.objectContaining({
         code: 'legal_acceptance_required',
         message: 'Vor der weiteren Nutzung müssen ausstehende Rechtstexte akzeptiert werden.',
+        classification: 'unknown',
+        recommendedAction: 'erneut_versuchen',
+        safeDetails: {
+          return_to: '/admin/users?tab=permissions',
+        },
+        status: 'degradiert',
         details: {
           pending_count: 2,
           return_to: '/admin/users?tab=permissions',
         },
-      },
+      }),
       requestId: 'req-x',
     });
   });
@@ -82,10 +88,13 @@ describe('withLegalTextCompliance', () => {
     expect(handler).not.toHaveBeenCalled();
     expect(response.status).toBe(503);
     expect(await response.json()).toEqual({
-      error: {
+      error: expect.objectContaining({
         code: 'database_unavailable',
         message: 'Rechtstext-Prüfung ist vorübergehend nicht verfügbar.',
-      },
+        classification: 'database_or_schema_drift',
+        recommendedAction: 'migration_pruefen',
+        status: 'degradiert',
+      }),
       requestId: 'req-x',
     });
   });
@@ -130,10 +139,13 @@ describe('withLegalTextCompliance — Non-Error-Throw', () => {
     expect(handler).not.toHaveBeenCalled();
     expect(response.status).toBe(503);
     expect(await response.json()).toEqual({
-      error: {
+      error: expect.objectContaining({
         code: 'database_unavailable',
         message: 'Rechtstext-Prüfung ist vorübergehend nicht verfügbar.',
-      },
+        classification: 'database_or_schema_drift',
+        recommendedAction: 'migration_pruefen',
+        status: 'degradiert',
+      }),
       requestId: 'req-x',
     });
   });

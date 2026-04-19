@@ -71,6 +71,10 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
   - `/health/ready` liefert `checks.authorizationCache`
   - `degraded` ab Redis-Latenz > `50 ms` oder Recompute-Rate > `20/min`
   - `failed` nach drei aufeinanderfolgenden Redis-Fehlern
+- IAM-Diagnosefähigkeit:
+  - jede relevante IAM-Fehlerklasse muss mindestens einem Codepfad, einem UI- oder API-Signal und einer operativen Handlungsempfehlung zugeordnet sein
+  - `requestId` und allowlist-basierte Safe-Details müssen für diagnosefähige IAM-Fehler browser- und UI-seitig erhalten bleiben
+  - degradierte und Recovery-nahe Zustände dürfen nicht implizit als vollständig gesund dargestellt werden
 - IAM Redis-Betrieb:
   - Session-Store folgt dem Plattform-RTO `<= 2h`
   - Permission-Snapshots sind rekonstruierbar und müssen operativ innerhalb von `15 min` wieder in `ready|degraded` überführt werden
@@ -143,6 +147,7 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
 - Performance-Nachweis für Routing-Startup-Guard und begrenztes Sync-Debug-Logging bleibt als Folgearbeit beobachtbar
 - Alertmanager-Receiver, automatisierte Backup-Automation und produktive Digest-Promotion bleiben trotz gehärtetem Releasevertrag externe Folgearbeit
 - Ein lokaler Kandidatencontainer kann fuer `studio` Private-DNS-, Ingress- und Swarm-Vertraege nicht vollstaendig abbilden; prod-nahe Freigaben bleiben deshalb bewusst an Remote-Evidenz gebunden
+- Auch bei starker Repo-Abdeckung bleibt IAM-Diagnostik ohne reale Dev-/Staging-Evidenz für Host-, Cookie-, Keycloak- und Datenzustandsprobleme unvollständig; ein vorbereiteter Live-Triage-Block ist daher Teil des Qualitätsziels
 
 Referenzen:
 
@@ -203,7 +208,7 @@ Referenzen:
 ### Ergänzung 2026-03: Qualitätsziele Swarm-Deployment und Multi-Host-Betrieb
 
 - `docker compose -f deploy/portainer/docker-compose.yml config` muss ohne Fehler durchlaufen (statische Stack-Validierung).
-- Startup-Validierung der `instanceId`-Allowlist ist ein harter Gate: ungültige Einträge führen zum sofortigen Abbruch.
+- Startup-Validierung lokaler oder migrationsbezogener `instanceId`-Fallback-Scopes bleibt ein harter Gate: ungültige Einträge in `SVA_ALLOWED_INSTANCE_IDS` führen in diesen Pfaden zum sofortigen Abbruch.
 - Host-Validierung liefert identische `403`-Antworten unabhängig vom Ablehnungsgrund (keine Informationspreisgabe).
 - Zielbild: Auth-Session-Cookies werden auf die Parent-Domain gesetzt, um SSO über Instanz-Subdomains zu ermöglichen; aktuell sind gemäß ADR-020 host-only-Cookies umgesetzt (Folgearbeit: Parent-Domain-Cookie-Scoping implementieren und verifizieren).
 - Entrypoint-basierte Secret-Injektion muss abwärtskompatibel sein (No-Op ohne `/run/secrets/`).

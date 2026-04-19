@@ -159,6 +159,53 @@ describe('UserListPage', () => {
     );
   });
 
+  it('renders diagnostic details for sync and list errors', async () => {
+    const syncUsersFromKeycloak = vi.fn().mockResolvedValue({
+      ok: false,
+      error: {
+        name: 'IamHttpError',
+        message: 'sync failed',
+        status: 503,
+        code: 'keycloak_unavailable',
+        classification: 'keycloak_reconcile',
+        diagnosticStatus: 'manuelle_pruefung_erforderlich',
+        recommendedAction: 'keycloak_pruefen',
+        requestId: 'req-sync-42',
+        safeDetails: { sync_error_code: 'IDP_UNAVAILABLE' },
+      },
+    });
+
+    useUsersMock.mockReturnValue(
+      createUsersApiState({
+        error: {
+          name: 'IamHttpError',
+          message: 'list failed',
+          status: 503,
+          code: 'keycloak_unavailable',
+          classification: 'keycloak_dependency',
+          diagnosticStatus: 'degradiert',
+          recommendedAction: 'erneut_versuchen',
+          requestId: 'req-list-24',
+        },
+        syncUsersFromKeycloak,
+      })
+    );
+
+    render(<UserListPage />);
+
+    expect(screen.getByText('Diagnose: Keycloak-Abhängigkeit')).toBeTruthy();
+    expect(screen.getByText('Empfohlene Aktion: Erneut versuchen')).toBeTruthy();
+    expect(screen.getByText('Request-ID: req-list-24')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Aus Keycloak synchronisieren' }));
+
+    await waitFor(() => expect(syncUsersFromKeycloak).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.getByText('Diagnose: Keycloak-Reconcile')).toBeTruthy());
+    expect(screen.getByText('Empfohlene Aktion: Keycloak prüfen')).toBeTruthy();
+    expect(screen.getByText('Sync-Fehlercode: IDP_UNAVAILABLE')).toBeTruthy();
+    expect(screen.getByText('Request-ID: req-sync-42')).toBeTruthy();
+  });
+
   it('confirms single-user deactivation', async () => {
     const deactivateUser = vi.fn().mockResolvedValue(true);
     useUsersMock.mockReturnValue(createUsersApiState({ deactivateUser }));

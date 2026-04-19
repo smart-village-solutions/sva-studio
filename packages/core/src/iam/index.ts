@@ -6,6 +6,11 @@ export type {
   ApiErrorCode,
   ApiErrorResponse,
   IamContentAuthorPolicy,
+  IamRuntimeDiagnosticClassification,
+  IamRuntimeDiagnosticStatus,
+  IamRuntimeDiagnostics,
+  IamRuntimeRecommendedAction,
+  IamRuntimeSafeDetails,
   IamGroupDetail,
   IamGroupListItem,
   IamGroupMembershipOrigin,
@@ -45,6 +50,7 @@ export type {
   IamUserPermissionTraceStatus,
   IamUserRoleAssignment,
 } from './account-management-contract.js';
+export { deriveIamRuntimeDiagnostics } from './runtime-diagnostics.js';
 export type {
   IamDsrCanonicalStatus,
   IamDsrCaseListItem,
@@ -96,4 +102,9 @@ export type {
   IamGroupMembership as IamAdminGroupMembership,
   IamGroupType as IamAdminGroupType,
 } from './authorization-contract.js';
+export {
+  iamRuntimeDiagnosticClassifications,
+  iamRuntimeDiagnosticStatuses,
+  iamRuntimeRecommendedActions,
+} from './account-management-contract.js';
 export { allowReasonCodes, denyReasonCodes, iamApiErrorCodes } from './authorization-contract.js';

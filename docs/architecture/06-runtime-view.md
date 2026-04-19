@@ -102,6 +102,20 @@ Fehlerpfad:
 - Browser-/IdP-Cookies verhindern Silent SSO -> Recovery endet ohne Schleife im ausgeloggten Zustand.
 - Ein expliziter Logout blockiert den automatischen Silent-Recovery-Pfad zeitlich begrenzt.
 
+### Szenario 2d: IAM-Diagnosepfad von Tenant-Host bis UI
+
+1. Ein Request trifft auf Tenant-Host oder Root-Host ein.
+2. Hostvalidierung und Registry-Auflösung entscheiden, ob der Request fail-closed abgewiesen oder weiterverarbeitet wird.
+3. Auth- und Session-Schicht prüfen Cookie, Session-Store, Session-Hydration und optional Token-Refresh.
+4. IAM-nahe Handler klassifizieren Actor-, Membership-, Keycloak-, DB- oder Schema-Probleme und erzeugen allowlist-basierte Details.
+5. Browserpfade lesen Fehlercode, `requestId` und freigegebene Detailfelder.
+6. UI und Betrieb sollen daraus künftig denselben Diagnosekern ableiten, auch wenn die konkrete Formulierung kontextabhängig bleibt.
+
+Fehlerpfad:
+
+- Recovery-Pfade wie Silent-Recovery, Session-Hydration oder Host-Fallbacks können Symptome kurzfristig überdecken; der degradierte Zustand muss daher für Diagnose und Folgeentscheidungen erhalten bleiben.
+- Runtime-IAM-Fehler und Instanz-/Provisioning-Drift dürfen nicht in getrennten Diagnosewelten landen.
+
 ### Szenario 2b: Forced Reauth für einen Benutzer
 
 1. Ein interner Serverpfad ruft `forceReauthUser({ userId, mode, reason })` auf.
@@ -472,7 +486,7 @@ Fehlerpfad:
 
 1. Eingehende Anfrage trifft Traefik, wird über `HostRegexp` an den App-Service geroutet.
 2. App extrahiert den Host-Header und normalisiert ihn (Lowercase, Port-Stripping, Trailing-Dot).
-3. Host wird gegen die Parent-Domain und Instanz-Allowlist geprüft:
+3. Host wird gegen die Parent-Domain und die zentrale Instanz-Registry geprüft:
    - Root-Domain → Kanonischer Auth-Host, `instanceId = null`
    - Gültige Instanz-Subdomain → `instanceId` aus Subdomain abgeleitet
    - Ungültiger oder unbekannter Host → `403` mit identischem Body (`{ error, message }` + `X-Request-Id`)
@@ -482,4 +496,4 @@ Fehlerpfad:
 Fehlerpfad:
 
 - Bei fehlender `SVA_PARENT_DOMAIN` (Entwicklungsmodus) wird die Host-Validierung übersprungen.
-- Bei ungültigen Einträgen in `SVA_ALLOWED_INSTANCE_IDS` bricht die App beim Startup ab (fail-fast).
+- Bei lokalen oder migrationsbezogenen Fallback-Pfaden bricht die App bei ungültigen Einträgen in `SVA_ALLOWED_INSTANCE_IDS` weiterhin fail-fast ab.

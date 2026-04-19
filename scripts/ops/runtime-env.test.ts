@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { runExternalSmokeWithWarmup, shouldRetryExternalSmoke } from './runtime-env.ts';
+import {
+  resolveTenantRuntimeTargets,
+  runExternalSmokeWithWarmup,
+  shouldRetryExternalSmoke,
+  shouldRetryInternalVerify,
+} from './runtime-env.ts';
 import type { AcceptanceProbeResult } from './runtime-env.shared.ts';
 
 const createProbe = (overrides: Partial<AcceptanceProbeResult>): AcceptanceProbeResult => ({
@@ -42,6 +47,57 @@ describe('shouldRetryExternalSmoke', () => {
     ];
 
     expect(shouldRetryExternalSmoke(probes)).toBe(false);
+  });
+});
+
+describe('shouldRetryInternalVerify', () => {
+  it('retries warmup-only doctor failures when the retry signal is only present in details', () => {
+    const shouldRetry = shouldRetryInternalVerify({
+      checks: [
+        {
+          code: 'live_failed',
+          details: {
+            status: 404,
+          },
+          message: 'Live-Endpoint antwortet mit 404.',
+          name: 'health-live',
+          status: 'error',
+        },
+        {
+          code: 'app_db_principal_not_ready',
+          details: {
+            payload: '<html><body><h1>404 Not Found</h1></body></html>',
+            status: 404,
+          },
+          message: 'Die laufende App meldet Registry-/Auth- oder Datenbank-Readiness nicht stabil.',
+          name: 'app-db-principal',
+          status: 'error',
+        },
+      ],
+      generatedAt: '2026-04-19T17:02:12.142Z',
+      profile: 'studio',
+      status: 'error',
+    });
+
+    expect(shouldRetry).toBe(true);
+  });
+
+  it('does not retry non-warmup doctor failures', () => {
+    const shouldRetry = shouldRetryInternalVerify({
+      checks: [
+        {
+          code: 'schema_guard_failed',
+          message: 'Kritische IAM-Schema-Drift erkannt.',
+          name: 'schema-guard',
+          status: 'error',
+        },
+      ],
+      generatedAt: '2026-04-19T17:02:12.142Z',
+      profile: 'studio',
+      status: 'error',
+    });
+
+    expect(shouldRetry).toBe(false);
   });
 });
 
@@ -100,5 +156,45 @@ describe('runExternalSmokeWithWarmup', () => {
 
     expect(runner).toHaveBeenCalledTimes(1);
     expect(probes[0]?.status).toBe('error');
+  });
+});
+
+describe('resolveTenantRuntimeTargets', () => {
+  it('prefers explicit tenant scope instance ids over the legacy allowlist', async () => {
+    const resolution = await resolveTenantRuntimeTargets('local-keycloak', {
+      SVA_PARENT_DOMAIN: 'studio.example.org',
+      SVA_TENANT_SCOPE_INSTANCE_IDS: 'bb-guben,de-musterhausen',
+      SVA_ALLOWED_INSTANCE_IDS: 'legacy-instance',
+    });
+
+    expect(resolution.source).toBe('explicit_env');
+    expect(resolution.targets).toEqual([
+      {
+        authRealm: 'bb-guben',
+        host: 'bb-guben.studio.example.org',
+        instanceId: 'bb-guben',
+      },
+      {
+        authRealm: 'de-musterhausen',
+        host: 'de-musterhausen.studio.example.org',
+        instanceId: 'de-musterhausen',
+      },
+    ]);
+  });
+
+  it('uses the local allowlist only as a local fallback when no explicit scope is configured', async () => {
+    const resolution = await resolveTenantRuntimeTargets('local-keycloak', {
+      SVA_PARENT_DOMAIN: 'studio.example.org',
+      SVA_ALLOWED_INSTANCE_IDS: 'hb-meinquartier',
+    });
+
+    expect(resolution.source).toBe('local_allowlist');
+    expect(resolution.targets).toEqual([
+      {
+        authRealm: 'hb-meinquartier',
+        host: 'hb-meinquartier.studio.example.org',
+        instanceId: 'hb-meinquartier',
+      },
+    ]);
   });
 });

@@ -99,6 +99,26 @@ const validateForm = (values: ProfileFormValues): ProfileErrors => {
   return errors;
 };
 
+const getLoadErrorDescription = (error: IamHttpError) => {
+  if (error.recommendedAction === 'erneut_anmelden' || error.status === 401) {
+    return t('account.diagnostics.sessionRecovery');
+  }
+
+  switch (error.classification) {
+    case 'actor_resolution_or_membership':
+      return t('account.diagnostics.actorResolutionOrMembership');
+    case 'database_or_schema_drift':
+      return t('account.diagnostics.databaseOrSchemaDrift');
+    case 'registry_or_provisioning_drift':
+      return t('account.diagnostics.registryOrProvisioningDrift');
+    case 'keycloak_dependency':
+    case 'keycloak_reconcile':
+      return t('account.diagnostics.keycloakDependency');
+    default:
+      return t('account.messages.loadError');
+  }
+};
+
 export const AccountProfilePage = () => {
   const { user, isAuthenticated, isLoading: isAuthLoading, hasResolvedSession, refetch } = useAuth();
 
@@ -248,16 +268,22 @@ export const AccountProfilePage = () => {
         <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
           <AlertTitle>{isUnauthorized ? t('account.messages.notAuthenticated') : t('account.messages.loadError')}</AlertTitle>
           <AlertDescription className="mt-3">
-            <div className="flex flex-wrap gap-3">
-              {isUnauthorized ? (
-                <Button asChild type="button" variant="outline">
-                  <a href={loginHref}>{t('shell.header.login')}</a>
-                </Button>
-              ) : (
-                <Button type="button" variant="outline" onClick={() => void loadProfile()}>
-                  {t('account.actions.retry')}
-                </Button>
-              )}
+            <div className="space-y-3">
+              <p>{getLoadErrorDescription(loadError)}</p>
+              {loadError.requestId ? (
+                <p className="text-xs text-muted-foreground">{t('account.diagnostics.requestId', { requestId: loadError.requestId })}</p>
+              ) : null}
+              <div className="flex flex-wrap gap-3">
+                {isUnauthorized ? (
+                  <Button asChild type="button" variant="outline">
+                    <a href={loginHref}>{t('shell.header.login')}</a>
+                  </Button>
+                ) : (
+                  <Button type="button" variant="outline" onClick={() => void loadProfile()}>
+                    {t('account.actions.retry')}
+                  </Button>
+                )}
+              </div>
             </div>
           </AlertDescription>
         </Alert>

@@ -1502,10 +1502,13 @@ describe('iam-account-management handlers (guards)', () => {
 
     expect(response.status).toBe(404);
     expect(await response.json()).toEqual({
-      error: {
+      error: expect.objectContaining({
         code: 'not_found',
         message: 'Nutzer nicht gefunden.',
-      },
+        classification: 'unknown',
+        recommendedAction: 'erneut_versuchen',
+        status: 'degradiert',
+      }),
       requestId: 'req-iam-handler',
     });
   });
@@ -2711,10 +2714,10 @@ describe('iam-account-management handlers (guards)', () => {
       status: 'FAILED',
       responseStatus: 409,
       responseBody: {
-        error: {
+        error: expect.objectContaining({
           code: 'conflict',
           message: 'Gruppe mit diesem Schlüssel existiert bereits.',
-        },
+        }),
         requestId: 'req-iam-handler',
       },
     });
@@ -5017,10 +5020,13 @@ describe('iam-account-management handlers (guards)', () => {
 
     expect(response.status).toBe(409);
     expect(await response.json()).toEqual({
-      error: {
+      error: expect.objectContaining({
         code: 'idempotency_key_reuse',
         message: 'Idempotency-Key wurde bereits mit anderem Payload verwendet.',
-      },
+        classification: 'unknown',
+        recommendedAction: 'erneut_versuchen',
+        status: 'degradiert',
+      }),
       requestId: 'req-iam-handler',
     });
   });
@@ -5071,10 +5077,13 @@ describe('iam-account-management handlers (guards)', () => {
 
     expect(response.status).toBe(409);
     expect(await response.json()).toEqual({
-      error: {
+      error: expect.objectContaining({
         code: 'idempotency_key_reuse',
         message: 'Idempotenter Request wird bereits verarbeitet.',
-      },
+        classification: 'unknown',
+        recommendedAction: 'erneut_versuchen',
+        status: 'degradiert',
+      }),
       requestId: 'req-iam-handler',
     });
   });
@@ -5231,14 +5240,21 @@ describe('iam-account-management handlers (guards)', () => {
 
     expect(response.status).toBe(503);
     expect(await response.json()).toEqual({
-      error: {
+      error: expect.objectContaining({
         code: 'keycloak_unavailable',
         message: 'Nutzerrollen konnten nicht mit Keycloak synchronisiert werden.',
+        classification: 'keycloak_reconcile',
+        recommendedAction: 'rollenabgleich_pruefen',
+        status: 'manuelle_pruefung_erforderlich',
+        safeDetails: {
+          sync_error_code: 'IDP_TIMEOUT',
+          sync_state: 'failed',
+        },
         details: {
           syncState: 'failed',
           syncError: { code: 'IDP_TIMEOUT' },
         },
-      },
+      }),
       requestId: 'req-iam-handler',
     });
   });
@@ -5936,10 +5952,13 @@ describe('iam-account-management additional handlers', () => {
 
     expect(response.status).toBe(409);
     expect(await response.json()).toEqual({
-      error: {
+      error: expect.objectContaining({
         code: 'self_protection',
         message: 'Eigener Nutzer kann nicht deaktiviert werden.',
-      },
+        classification: 'unknown',
+        recommendedAction: 'erneut_versuchen',
+        status: 'degradiert',
+      }),
       requestId: 'req-iam-handler',
     });
     expect(state.deactivateUserCalls).toEqual([]);
@@ -6541,10 +6560,13 @@ describe('iam-account-management additional handlers', () => {
 
     expect(response.status).toBe(503);
     await expect(response.json()).resolves.toEqual({
-      error: {
+      error: expect.objectContaining({
         code: 'database_unavailable',
         message: 'IAM-Historie ist nicht erreichbar.',
-      },
+        classification: 'database_or_schema_drift',
+        recommendedAction: 'migration_pruefen',
+        status: 'degradiert',
+      }),
       requestId: 'req-iam-handler',
     });
   });
@@ -6561,10 +6583,13 @@ describe('iam-account-management additional handlers', () => {
 
     expect(response.status).toBe(403);
     await expect(response.json()).resolves.toEqual({
-      error: {
+      error: expect.objectContaining({
         code: 'forbidden',
         message: 'Unzureichende Berechtigungen.',
-      },
+        classification: 'unknown',
+        recommendedAction: 'erneut_versuchen',
+        status: 'manuelle_pruefung_erforderlich',
+      }),
       requestId: 'req-iam-handler',
     });
   });

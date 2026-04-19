@@ -8,6 +8,7 @@ import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
 import { useInstances } from '../../../hooks/use-instances';
 import { t } from '../../../i18n';
+import { IamRuntimeDiagnosticDetails } from '../-iam-runtime-diagnostic-details';
 import { FieldHelp } from './-field-help';
 import {
   ConfigurationStatusBadge,
@@ -29,6 +30,15 @@ type InstanceDetailPageProps = {
   readonly instanceId: string;
 };
 
+const formatDateTime = (value?: string) => {
+  if (!value) {
+    return '—';
+  }
+
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+};
+
 const FormLabelWithHelp = ({
   htmlFor,
   label,
@@ -43,6 +53,61 @@ const FormLabelWithHelp = ({
     <div className="flex items-center gap-2">
       <Label htmlFor={htmlFor}>{label}</Label>
       <FieldHelp {...help} />
+    </div>
+  );
+};
+
+const InstanceRuntimeEvidence = ({
+  classification,
+  instance,
+}: {
+  classification?: string;
+  instance: ReturnType<typeof useInstances>['selectedInstance'];
+}) => {
+  if (!instance) {
+    return null;
+  }
+
+  if (classification !== 'registry_or_provisioning_drift' && classification !== 'keycloak_reconcile') {
+    return null;
+  }
+
+  const preflightTimestamp =
+    instance.keycloakPreflight && typeof instance.keycloakPreflight === 'object'
+      ? 'checkedAt' in instance.keycloakPreflight && typeof instance.keycloakPreflight.checkedAt === 'string'
+        ? instance.keycloakPreflight.checkedAt
+        : 'generatedAt' in instance.keycloakPreflight &&
+            typeof (instance.keycloakPreflight as { generatedAt?: string }).generatedAt === 'string'
+          ? (instance.keycloakPreflight as { generatedAt?: string }).generatedAt
+          : undefined
+      : undefined;
+  const latestRun = instance.latestKeycloakProvisioningRun ?? instance.keycloakProvisioningRuns[0];
+
+  if (!instance.keycloakPreflight && !instance.keycloakPlan && !latestRun) {
+    return null;
+  }
+
+  return (
+    <div className="space-y-1 text-xs text-muted-foreground">
+      {instance.keycloakPreflight ? (
+        <p>
+          {t('admin.instances.diagnostics.preflightEvidence', {
+            status: instance.keycloakPreflight.overallStatus,
+            checkedAt: formatDateTime(preflightTimestamp),
+          })}
+        </p>
+      ) : null}
+      {instance.keycloakPlan ? (
+        <p>{t('admin.instances.diagnostics.planEvidence', { summary: instance.keycloakPlan.driftSummary })}</p>
+      ) : null}
+      {latestRun ? (
+        <p>
+          {t('admin.instances.diagnostics.latestRunEvidence', {
+            requestId: latestRun.requestId ?? t('shell.runtimeHealth.notAvailable'),
+            status: latestRun.overallStatus,
+          })}
+        </p>
+      ) : null}
     </div>
   );
 };
@@ -179,7 +244,14 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
 
       {instancesApi.mutationError && instancesApi.mutationError.code !== 'keycloak_unavailable' ? (
         <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
-          <AlertDescription>{getErrorMessage(instancesApi.mutationError)}</AlertDescription>
+          <AlertDescription className="flex flex-col gap-3">
+            <span>{getErrorMessage(instancesApi.mutationError)}</span>
+            <IamRuntimeDiagnosticDetails error={instancesApi.mutationError} />
+            <InstanceRuntimeEvidence
+              classification={instancesApi.mutationError.classification}
+              instance={selectedInstance}
+            />
+          </AlertDescription>
         </Alert>
       ) : null}
 
@@ -713,7 +785,7 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
                       <div>
                         <div className="font-medium text-foreground">{run.intent}</div>
                         <div className="text-xs text-muted-foreground">
-                          {run.mode} • {run.overallStatus} • {run.requestId ?? 'n/a'}
+                          {run.mode} • {run.overallStatus} • {run.requestId ?? t('shell.runtimeHealth.notAvailable')}
                         </div>
                       </div>
                       <Button

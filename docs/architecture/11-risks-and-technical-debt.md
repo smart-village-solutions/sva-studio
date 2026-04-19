@@ -160,6 +160,21 @@ Schulden auf IST-Basis.
    - Wahrscheinlichkeit: hoch
    - Maßnahme: statische Registrierung als bewussten v1-Trade-off dokumentieren und später nur mit Versionierungs-, Signierungs- und Sicherheitskonzept erweitern
 
+27. Fragmentierter öffentlicher IAM-Diagnosevertrag
+   - Impact: hoch (gleiche Symptome werden in UI, Betrieb und Folgeanalyse unterschiedlich gelesen; Refactorings setzen auf unvollständiger Fehlertrennung auf)
+   - Wahrscheinlichkeit: hoch
+   - Maßnahme: classification-basierten Diagnosekern für Auth, IAM und Provisioning einführen; vorbereiteter Folgechange unter `openspec/changes/refactor-iam-runtime-diagnostics-contract/`
+
+28. Recovery-Pfade kaschieren degradierte IAM-Zustände
+   - Impact: hoch (Silent-Recovery, Session-Hydration oder Fallbacks können echte Drift und Teilfehler überdecken)
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: degradierte und recovery-nahe Zustände explizit modellieren und UI-/Ops-seitig sichtbar machen, statt nur Endzustände zu berichten
+
+29. Offener Live-Triage-Befund für IAM-Diagnostik
+   - Impact: mittel bis hoch (Repo-Analyse deckt reale Host-, Cookie-, Keycloak- und Datenzustandsprobleme nur teilweise ab)
+   - Wahrscheinlichkeit: hoch
+   - Maßnahme: vorbereitete Szenario-Matrix aus `docs/reports/iam-diagnostics-analysis-2026-04-19.md` gegen reale Dev-/Staging-Umgebung ausführen, bevor der Analysechange als abgeschlossen gilt
+
 ### Technische Schulden (Auswahl)
 
 - Teilweise No-Op Testtargets in Libraries
@@ -250,10 +265,10 @@ Referenzen:
    - Wahrscheinlichkeit: mittel
    - Maßnahme: Invalidation-Trigger auf Hierarchie-/Permission-Änderungen erweitern, Cache-Hit/Miss-Metriken überwachen und Performance-/Stale-Nachweis nachziehen
 
-24. Skalierungsschwellwert der Env-basierten `instanceId`-Allowlist
-   - Impact: mittel (Verwaltungsaufwand, Neustarts bei jeder Änderung)
-   - Wahrscheinlichkeit: mittel (bei Wachstum über 50 Instanzen)
-   - Maßnahme: DB-gestützte `instanceId`-Registry als Folgearbeit geplant; Schwellwert dokumentiert in ADR-011 und Swarm-Deployment-Runbook
+24. Verbleibende Doppelrolle der Env-basierten `instanceId`-Allowlist
+   - Impact: mittel (lokale/operative Scopes können ohne klare Abgrenzung von der produktiven Registry-Realität abweichen)
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: Registry bleibt führend; Env-Allowlist nur als lokaler oder migrationsbezogener Fallback dokumentieren und verbleibende SDK-/Bootstrap-Pfade schrittweise weiter reduzieren
 
 25. Drift zwischen Transparenz-Read-Models und zugrunde liegenden IAM-Quellen
    - Impact: hoch (Admin- und Compliance-Sichten zeigen unvollständige oder missverständlich normalisierte Daten)

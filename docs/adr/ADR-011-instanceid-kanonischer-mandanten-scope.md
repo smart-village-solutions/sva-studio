@@ -93,13 +93,13 @@ Die `instanceId` wird aus der Subdomain des eingehenden Hosts abgeleitet:
 - IDN/Punycode-Labels (`xn--`-Präfix) sind ausgeschlossen.
 - Die Root-Domain (`SVA_PARENT_DOMAIN`) liefert `null` als `instanceId` und dient als kanonischer Auth-Host.
 
-### Env-Allowlist als autoritative Freigabequelle
+### Env-Allowlist als lokaler oder migrationsbezogener Fallback
 
-Die Umgebungsvariable `SVA_ALLOWED_INSTANCE_IDS` (kommagetrennt) bildet die aktuelle autoritative Quelle gültiger `instanceId`s. Jeder Eintrag wird beim Startup gegen das `instanceId`-Regex validiert; ungültige Einträge führen zum Abbruch (fail-fast).
+Die Umgebungsvariable `SVA_ALLOWED_INSTANCE_IDS` (kommagetrennt) ist nicht mehr die autoritative Quelle gültiger `instanceId`s für produktiven Tenant-Traffic. Diese Rolle liegt bei der zentralen Instanz-Registry. Die Allowlist bleibt für lokale oder migrationsbezogene Fallback-Pfade bestehen und wird dort weiterhin beim Startup gegen das `instanceId`-Regex validiert; ungültige Einträge führen zum Abbruch (fail-fast).
 
-- Lookup erfolgt über `Set` (O(1)).
-- Hosts mit unbekannter oder ungültiger `instanceId` erhalten eine identische `403`-Antwort (kein erläuternder Ablehnungsgrund).
-- Skalierungsschwellwert: ≤ 50 Instanzen. Darüber hinaus ist eine DB-gestützte Registry geplant.
+- Lookup erfolgt in den verbleibenden Fallback-Pfaden weiter über `Set` (O(1)).
+- Hosts mit unbekannter oder ungültiger `instanceId` erhalten weiterhin eine identische `403`-Antwort (kein erläuternder Ablehnungsgrund).
+- Für den produktiven Multi-Tenant-Betrieb ist die DB-gestützte Registry die führende Datenquelle; die Allowlist dient nur noch der lokalen Reproduzierbarkeit oder dem kontrollierten Übergang.
 
 ### Bezug zu weiteren ADRs
 

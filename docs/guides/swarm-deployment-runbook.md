@@ -103,6 +103,7 @@ Das Referenzprofil `studio` wird env-only betrieben. Sowohl nicht-sensitive als 
 | `SVA_IMAGE_REF` | kein Default | Vollständige Image-Referenz `${SVA_REGISTRY}/${SVA_IMAGE_REPOSITORY}@${SVA_IMAGE_DIGEST}` |
 | `SVA_MONITORING_CONFIG_INIT_IMAGE_TAG` | `0.0.0-dev` | Image-Tag des Monitoring-Init-Images; für Produktion Digest oder unveränderlichen Tag verwenden |
 | `SVA_ALLOWED_INSTANCE_IDS` | leer | Nur lokaler oder migrierender Fallback; im Registry-Betrieb keine führende Freigabequelle |
+| `SVA_TENANT_SCOPE_INSTANCE_IDS` | leer | Optionaler Override für Tenant-Smokes und Doctor-Scopes; ohne Wert werden Remote-Scopes aus der Registry abgeleitet |
 | `ENABLE_OTEL` | `true` | OpenTelemetry für lokale Deaktivierungsfälle in Development; im produktionsnahen Betrieb bleibt OTEL verpflichtend |
 | `OTEL_SERVICE_NAME` | `sva-studio` | Service-Name für OTEL Resource Attributes |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | `http://otel-collector:4318` | Interner OTLP-HTTP-Endpoint |
@@ -111,7 +112,7 @@ Das Referenzprofil `studio` wird env-only betrieben. Sowohl nicht-sensitive als 
 | `IAM_ADMIN_ENABLED` | `false` | IAM-Admin-UI |
 | `IAM_BULK_ENABLED` | `false` | IAM-Bulk-Operationen |
 | `SVA_DOCTOR_KEYCLOAK_SUBJECT` | leer | optionaler Actor-Override für `env:doctor:studio` |
-| `SVA_DOCTOR_INSTANCE_ID` | erster Wert aus `SVA_ALLOWED_INSTANCE_IDS` | überschreibt die Zielinstanz für den Doctor-Lauf |
+| `SVA_DOCTOR_INSTANCE_ID` | kein Default | überschreibt die Zielinstanz für den Doctor-Lauf; für tiefe Actor-Diagnose explizit setzen |
 | `SVA_DOCTOR_SESSION_ROLES` | leer | kommagetrennte Session-Rollen für Rollen-Diagnose |
 | `SVA_DB_ADMIN_BASIC_AUTH` | kein Default | htpasswd-String für vorgeschalteten Adminer-Basic-Auth |
 

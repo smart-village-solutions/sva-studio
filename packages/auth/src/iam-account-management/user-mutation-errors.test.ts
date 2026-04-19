@@ -19,10 +19,13 @@ describe('iam-account-management/user-mutation-errors', () => {
     await expect(readErrorResponse(response!)).resolves.toEqual({
       status: 403,
       body: {
-        error: {
+        error: expect.objectContaining({
           code: 'forbidden',
           message: 'Target user cannot be modified.',
-        },
+          classification: 'unknown',
+          recommendedAction: 'erneut_versuchen',
+          status: 'manuelle_pruefung_erforderlich',
+        }),
         requestId: 'req-1',
       },
     });
@@ -39,10 +42,13 @@ describe('iam-account-management/user-mutation-errors', () => {
     await expect(readErrorResponse(response!)).resolves.toEqual({
       status: 409,
       body: {
-        error: {
+        error: expect.objectContaining({
           code: 'self_protection',
           message: 'Eigener Nutzer kann nicht deaktiviert werden.',
-        },
+          classification: 'unknown',
+          recommendedAction: 'erneut_versuchen',
+          status: 'degradiert',
+        }),
         requestId: 'req-2',
       },
     });

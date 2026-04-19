@@ -125,6 +125,21 @@ export const getErrorMessage = (error: IamHttpError | null) => {
     return t('admin.instances.messages.error');
   }
 
+  if (error.diagnosticStatus === 'recovery_laeuft') {
+    return t('admin.instances.errors.recoveryRunning');
+  }
+
+  switch (error.classification) {
+    case 'registry_or_provisioning_drift':
+      return t('admin.instances.errors.registryOrProvisioningDrift');
+    case 'keycloak_reconcile':
+      return t('admin.instances.errors.keycloakReconcile');
+    case 'database_or_schema_drift':
+      return t('admin.instances.errors.databaseOrSchemaDrift');
+    default:
+      break;
+  }
+
   switch (error.code) {
     case 'unauthorized':
       return t('admin.instances.errors.unauthorized');

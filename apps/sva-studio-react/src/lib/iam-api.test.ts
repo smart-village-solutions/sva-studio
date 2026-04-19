@@ -65,6 +65,7 @@ describe('iam-api organization helpers', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
     vi.stubEnv('NODE_ENV', 'test');
     browserLoggerMock.debug.mockReset();
     browserLoggerMock.info.mockReset();
@@ -207,12 +208,16 @@ describe('iam-api organization helpers', () => {
     await expect(updateOrganization('org-1', { displayName: 'Alpha 2' })).rejects.toMatchObject({
       status: 409,
       code: 'organization_inactive',
+      classification: 'unknown',
+      diagnosticStatus: 'degradiert',
+      recommendedAction: 'erneut_versuchen',
       requestId: 'req-1',
     });
   });
 
   it('dispatches the legal acceptance event on the corresponding error code', async () => {
     const dispatchEvent = vi.fn();
+    vi.stubGlobal('window', {});
     vi.stubGlobal('dispatchEvent', dispatchEvent);
     vi.stubGlobal(
       'fetch',
@@ -262,6 +267,9 @@ describe('iam-api organization helpers', () => {
     await expect(updateOrganization('org-1', { displayName: 'Alpha 2' })).rejects.toMatchObject({
       status: 409,
       code: 'organization_inactive',
+      classification: 'unknown',
+      diagnosticStatus: 'degradiert',
+      recommendedAction: 'erneut_versuchen',
       requestId: 'req-header-1',
     });
     expect(browserLoggerMock.error).toHaveBeenCalledWith(
@@ -301,6 +309,14 @@ describe('iam-api organization helpers', () => {
     await expect(updateOrganization('org-1', { displayName: 'Alpha 2' })).rejects.toMatchObject({
       status: 500,
       code: 'internal_error',
+      classification: 'database_or_schema_drift',
+      diagnosticStatus: 'degradiert',
+      recommendedAction: 'migration_pruefen',
+      safeDetails: {
+        reason_code: 'missing_column',
+        schema_object: 'iam.account_groups.origin',
+        expected_migration: '0019_iam_account_groups_origin_compat.sql',
+      },
       requestId: 'req-json-500',
     });
 
@@ -326,7 +342,88 @@ describe('iam-api organization helpers', () => {
     expect(resolved).toMatchObject({
       status: 500,
       code: 'internal_error',
+      classification: 'unknown',
+      diagnosticStatus: 'degradiert',
+      recommendedAction: 'support_kontaktieren',
       message: 'boom',
+    });
+  });
+
+  it('prefers explicit runtime diagnostics from API payloads', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            error: {
+              code: 'keycloak_unavailable',
+              message: 'boom',
+              classification: 'keycloak_reconcile',
+              status: 'manuelle_pruefung_erforderlich',
+              recommendedAction: 'rollenabgleich_pruefen',
+              safeDetails: {
+                sync_error_code: 'IDP_FORBIDDEN',
+                sync_state: 'failed',
+              },
+            },
+            requestId: 'req-reconcile',
+          }),
+          { status: 503, headers: { 'content-type': 'application/json' } }
+        )
+      )
+    );
+
+    await expect(reconcileRoles()).rejects.toMatchObject({
+      status: 503,
+      code: 'keycloak_unavailable',
+      classification: 'keycloak_reconcile',
+      diagnosticStatus: 'manuelle_pruefung_erforderlich',
+      recommendedAction: 'rollenabgleich_pruefen',
+      safeDetails: {
+        sync_error_code: 'IDP_FORBIDDEN',
+        sync_state: 'failed',
+      },
+      requestId: 'req-reconcile',
+    });
+  });
+
+  it('normalizes mixed-version diagnostic payloads and legacy sync detail keys', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            error: {
+              code: 'keycloak_unavailable',
+              message: 'boom',
+              classification: 'future_server_value',
+              status: 'unexpected_status',
+              recommendedAction: 'future_action',
+              details: {
+                syncState: 'failed',
+                syncError: {
+                  code: 'IDP_FORBIDDEN',
+                },
+              },
+            },
+            requestId: 'req-mixed-version',
+          }),
+          { status: 503, headers: { 'content-type': 'application/json' } }
+        )
+      )
+    );
+
+    await expect(reconcileRoles()).rejects.toMatchObject({
+      status: 503,
+      code: 'keycloak_unavailable',
+      classification: 'keycloak_reconcile',
+      diagnosticStatus: 'manuelle_pruefung_erforderlich',
+      recommendedAction: 'rollenabgleich_pruefen',
+      safeDetails: {
+        sync_error_code: 'IDP_FORBIDDEN',
+        sync_state: 'failed',
+      },
+      requestId: 'req-mixed-version',
     });
   });
 

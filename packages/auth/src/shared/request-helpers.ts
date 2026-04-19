@@ -6,6 +6,7 @@ import type {
   ApiItemResponse,
   ApiListResponse,
 } from '@sva/core';
+import { deriveIamRuntimeDiagnostics } from '@sva/core';
 import { z } from 'zod';
 
 import { jsonResponse } from './db-helpers.js';
@@ -17,19 +18,26 @@ export const createApiError = (
   message: string,
   requestId?: string,
   details?: Readonly<Record<string, unknown>>
-): Response =>
-  jsonResponse(
+): Response => {
+  const diagnostics = deriveIamRuntimeDiagnostics({ code, status, details });
+
+  return jsonResponse(
     status,
     {
       error: {
         code,
         message,
         ...(details ? { details } : {}),
+        classification: diagnostics.classification,
+        status: diagnostics.status,
+        recommendedAction: diagnostics.recommendedAction,
+        ...(diagnostics.safeDetails ? { safeDetails: diagnostics.safeDetails } : {}),
       },
       ...(requestId ? { requestId } : {}),
     } satisfies ApiErrorResponse,
     requestId ? { 'X-Request-Id': requestId } : undefined
   );
+};
 
 export const asApiItem = <T>(data: T, requestId?: string): ApiItemResponse<T> => ({
   data,

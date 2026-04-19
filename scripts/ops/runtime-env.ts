@@ -99,6 +99,17 @@ type DoctorReport = {
   status: 'error' | 'ok' | 'warn';
 };
 
+type TenantRuntimeTarget = Readonly<{
+  authRealm: string;
+  host: string;
+  instanceId: string;
+}>;
+
+type TenantRuntimeTargetResolution = Readonly<{
+  source: 'explicit_env' | 'legacy_allowlist_fallback' | 'local_allowlist' | 'none' | 'registry';
+  targets: readonly TenantRuntimeTarget[];
+}>;
+
 type LocalState = {
   command?: string;
   launcher?: 'local-dev-server-runner';
@@ -405,6 +416,12 @@ const getRuntimeContractSummary = (runtimeProfile: RuntimeProfile, env: NodeJS.P
     .filter((entry) => entry.length > 0)
     .map((instanceId) => `${instanceId}.${env.SVA_PARENT_DOMAIN?.trim() || '<missing-parent-domain>'}`),
 });
+
+const parseInstanceIdList = (value?: string) =>
+  (value ?? '')
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0);
 
 const isMainserverCheckRequired = (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => {
   const explicit = env.SVA_MAINSERVER_REQUIRED?.trim().toLowerCase();
@@ -744,36 +761,43 @@ const buildObservabilityDoctorCheck = async (runtimeProfile: RuntimeProfile, env
   }
 };
 
-const buildTenantAuthProofCheck = async (env: NodeJS.ProcessEnv): Promise<DoctorCheck> => {
-  const parentDomain = env.SVA_PARENT_DOMAIN?.trim();
-  const tenantInstanceIds = (env.SVA_ALLOWED_INSTANCE_IDS ?? '')
-    .split(',')
-    .map((entry) => entry.trim())
-    .filter((entry) => entry.length > 0);
+const buildTenantAuthProofCheck = async (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv): Promise<DoctorCheck> => {
+  const tenantTargetResolution = await resolveTenantRuntimeTargets(runtimeProfile, env, { limit: 2 });
 
-  if (!parentDomain || tenantInstanceIds.length === 0) {
+  if (tenantTargetResolution.targets.length === 0) {
     return toDoctorCheck('tenant-auth-proof', 'skipped', 'tenant_auth_optional', 'Kein Tenant-Auth-Proof konfiguriert.', {
-      parentDomain,
-      tenantInstanceIds,
+      source: tenantTargetResolution.source,
     });
   }
 
   const baseProtocol = new URL(env.SVA_PUBLIC_BASE_URL ?? 'https://studio.smart-village.app').protocol;
-  const probeResults: Array<{ instanceId: string; location: string }> = [];
-  for (const instanceId of tenantInstanceIds.slice(0, 2)) {
-    const target = `${baseProtocol}//${instanceId}.${parentDomain}/auth/login`;
+  const probeResults: Array<{ authRealm: string; host: string; instanceId: string; location: string }> = [];
+  for (const tenantTarget of tenantTargetResolution.targets.slice(0, 2)) {
+    const target = `${baseProtocol}//${tenantTarget.host}/auth/login`;
     const response = await fetch(target, { redirect: 'manual', signal: AbortSignal.timeout(10_000) });
     const location = response.headers.get('location') ?? '';
-    if (response.status !== 302 || !location.includes(`/realms/${instanceId}/`)) {
+    if (response.status !== 302 || !location.includes(`/realms/${tenantTarget.authRealm}/`)) {
       return toDoctorCheck(
         'tenant-auth-proof',
         'error',
         'tenant_auth_redirect_failed',
-        `Tenant-Login fuer ${instanceId} liefert keinen korrekten Realm-Redirect.`,
-        { instanceId, location, status: response.status }
+        `Tenant-Login fuer ${tenantTarget.instanceId} liefert keinen korrekten Realm-Redirect.`,
+        {
+          authRealm: tenantTarget.authRealm,
+          host: tenantTarget.host,
+          instanceId: tenantTarget.instanceId,
+          location,
+          source: tenantTargetResolution.source,
+          status: response.status,
+        }
       );
     }
-    probeResults.push({ instanceId, location });
+    probeResults.push({
+      authRealm: tenantTarget.authRealm,
+      host: tenantTarget.host,
+      instanceId: tenantTarget.instanceId,
+      location,
+    });
   }
 
   try {
@@ -796,7 +820,7 @@ const buildTenantAuthProofCheck = async (env: NodeJS.ProcessEnv): Promise<Doctor
         'warn',
         'tenant_auth_log_missing',
         'Tenant-Redirects sind korrekt, aber Loki enthaelt noch nicht fuer alle Tenant-Probes die passenden Resolution-Logs.',
-        { missingEvidence, probeResults }
+        { missingEvidence, probeResults, source: tenantTargetResolution.source }
       );
     }
 
@@ -805,7 +829,7 @@ const buildTenantAuthProofCheck = async (env: NodeJS.ProcessEnv): Promise<Doctor
       'ok',
       'tenant_auth_resolution_logged',
       'Tenant-Redirects und zugehoerige Resolution-Logs sind vorhanden.',
-      { probeResults }
+      { probeResults, source: tenantTargetResolution.source }
     );
   } catch (error) {
     return toDoctorCheck(
@@ -813,7 +837,7 @@ const buildTenantAuthProofCheck = async (env: NodeJS.ProcessEnv): Promise<Doctor
       'warn',
       'tenant_auth_log_probe_failed',
       error instanceof Error ? error.message : String(error),
-      { probeResults }
+      { probeResults, source: tenantTargetResolution.source }
     );
   }
 };
@@ -1265,6 +1289,20 @@ const createDbSqlRunner = (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEn
       }
     );
 
+    const markerStart = `${marker}_START`;
+    const markerEnd = `${marker}_END`;
+    const markerStartIndex = output.indexOf(markerStart);
+    const markerEndIndex = output.indexOf(markerEnd);
+
+    if (markerStartIndex >= 0 && markerEndIndex > markerStartIndex) {
+      const markerPayload = output
+        .slice(markerStartIndex + markerStart.length, markerEndIndex)
+        .trim();
+      if (markerPayload.length > 0) {
+        return markerPayload;
+      }
+    }
+
     const jsonMatches = Array.from(output.matchAll(/\{.*\}/gu)).map((match) => match[0]);
     if (jsonMatches.length > 0) {
       return jsonMatches.at(-1) ?? jsonMatches[0];
@@ -1285,6 +1323,126 @@ const createDbSqlRunner = (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEn
   };
 
   return (sql: string) => (isRemoteRuntimeProfile(runtimeProfile) ? runAcceptanceSql(sql) : runLocalSql(sql));
+};
+
+const buildTenantTargetsFromInstanceIds = (
+  instanceIds: readonly string[],
+  parentDomain: string | undefined
+): readonly TenantRuntimeTarget[] => {
+  if (!parentDomain) {
+    return [];
+  }
+
+  return instanceIds.map((instanceId) => ({
+    instanceId,
+    host: `${instanceId}.${parentDomain}`,
+    authRealm: instanceId,
+  }));
+};
+
+const loadRegistryTenantTargets = (
+  runtimeProfile: RuntimeProfile,
+  env: NodeJS.ProcessEnv,
+  options?: {
+    readonly limit?: number;
+  }
+): readonly TenantRuntimeTarget[] => {
+  if (!isRemoteRuntimeProfile(runtimeProfile)) {
+    return [];
+  }
+
+  const limit =
+    typeof options?.limit === 'number' && Number.isFinite(options.limit)
+      ? Math.max(1, Math.floor(options.limit))
+      : undefined;
+  const limitClause = limit ? `LIMIT ${limit}` : '';
+  const sql = `
+SELECT COALESCE(
+  json_agg(
+    json_build_object(
+      'instanceId', scoped.instance_id,
+      'host', scoped.primary_hostname,
+      'authRealm', scoped.auth_realm
+    )
+    ORDER BY scoped.instance_id
+  ),
+  '[]'::json
+)::text
+FROM (
+  SELECT
+    instance.id AS instance_id,
+    instance.primary_hostname,
+    COALESCE(NULLIF(instance.auth_realm, ''), instance.id) AS auth_realm
+  FROM iam.instances instance
+  WHERE instance.status = 'active'
+    AND NULLIF(instance.primary_hostname, '') IS NOT NULL
+  ORDER BY instance.id
+  ${limitClause}
+) scoped;
+`;
+
+  const payload = parseJsonFromCommandOutput<readonly TenantRuntimeTarget[]>(createDbSqlRunner(runtimeProfile, env)(sql));
+  if (!Array.isArray(payload)) {
+    return [];
+  }
+
+  return payload.filter(
+    (entry): entry is TenantRuntimeTarget =>
+      !!entry &&
+      typeof entry === 'object' &&
+      typeof entry.instanceId === 'string' &&
+      typeof entry.host === 'string' &&
+      typeof entry.authRealm === 'string'
+  );
+};
+
+export const resolveTenantRuntimeTargets = async (
+  runtimeProfile: RuntimeProfile,
+  env: NodeJS.ProcessEnv,
+  options?: {
+    readonly limit?: number;
+  }
+): Promise<TenantRuntimeTargetResolution> => {
+  const explicitTargets = buildTenantTargetsFromInstanceIds(
+    parseInstanceIdList(env.SVA_TENANT_SCOPE_INSTANCE_IDS),
+    env.SVA_PARENT_DOMAIN?.trim()
+  );
+  if (explicitTargets.length > 0) {
+    return {
+      source: 'explicit_env',
+      targets: explicitTargets,
+    };
+  }
+
+  if (isRemoteRuntimeProfile(runtimeProfile)) {
+    try {
+      const registryTargets = loadRegistryTenantTargets(runtimeProfile, env, options);
+      if (registryTargets.length > 0) {
+        return {
+          source: 'registry',
+          targets: registryTargets,
+        };
+      }
+    } catch {
+      // Fall back to the legacy env scope while remaining compatibility paths still exist.
+    }
+  }
+
+  const legacyTargets = buildTenantTargetsFromInstanceIds(
+    parseInstanceIdList(env.SVA_ALLOWED_INSTANCE_IDS),
+    env.SVA_PARENT_DOMAIN?.trim()
+  );
+  if (legacyTargets.length > 0) {
+    return {
+      source: isRemoteRuntimeProfile(runtimeProfile) ? 'legacy_allowlist_fallback' : 'local_allowlist',
+      targets: legacyTargets,
+    };
+  }
+
+  return {
+    source: 'none',
+    targets: [],
+  };
 };
 
 const shouldUseJobBasedRemoteDbAssertions = (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) =>
@@ -1394,7 +1552,7 @@ const buildActorDoctorCheck = (
   env: NodeJS.ProcessEnv
 ): DoctorCheck => {
   const keycloakSubject = env.SVA_DOCTOR_KEYCLOAK_SUBJECT?.trim();
-  const instanceId = env.SVA_DOCTOR_INSTANCE_ID?.trim() || env.SVA_ALLOWED_INSTANCE_IDS?.split(',')[0]?.trim();
+  const instanceId = env.SVA_DOCTOR_INSTANCE_ID?.trim();
   const sessionRoles = (env.SVA_DOCTOR_SESSION_ROLES ?? '')
     .split(',')
     .map((entry) => entry.trim())
@@ -1405,7 +1563,7 @@ const buildActorDoctorCheck = (
       'actor-diagnosis',
       'skipped',
       'actor_context_missing',
-      'Kein konkreter Actor-Kontext gesetzt. Fuer tiefe Actor-Diagnose SVA_DOCTOR_KEYCLOAK_SUBJECT und optional SVA_DOCTOR_INSTANCE_ID setzen.'
+      'Kein konkreter Actor-Kontext gesetzt. Fuer tiefe Actor-Diagnose SVA_DOCTOR_KEYCLOAK_SUBJECT und SVA_DOCTOR_INSTANCE_ID explizit setzen.'
     );
   }
 
@@ -1722,10 +1880,10 @@ SELECT json_build_object(
   }
 };
 
-const buildInstanceHostnameMappingCheck = (
+const buildInstanceHostnameMappingCheck = async (
   runtimeProfile: RuntimeProfile,
   env: NodeJS.ProcessEnv
-): DoctorCheck => {
+): Promise<DoctorCheck> => {
   if (shouldUseJobBasedRemoteDbAssertions(runtimeProfile, env)) {
     return toDoctorCheck(
       'instance-hostnames',
@@ -1735,24 +1893,24 @@ const buildInstanceHostnameMappingCheck = (
     );
   }
 
-  const parentDomain = env.SVA_PARENT_DOMAIN?.trim();
-  const instanceIds = (env.SVA_ALLOWED_INSTANCE_IDS ?? '')
-    .split(',')
-    .map((entry) => entry.trim())
-    .filter((entry) => entry.length > 0);
+  const tenantTargetResolution = await resolveTenantRuntimeTargets(runtimeProfile, env);
+  const tenantTargets = tenantTargetResolution.targets;
 
-  if (!parentDomain || instanceIds.length === 0) {
+  if (tenantTargets.length === 0) {
     return toDoctorCheck(
       'instance-hostnames',
       'skipped',
       'instance_hostname_scope_missing',
-      'Keine Tenant-Host-Pruefung konfiguriert; Parent-Domain oder erlaubte Instanz-IDs fehlen.'
+      'Keine Tenant-Host-Pruefung konfiguriert; Registry-Scope oder lokaler Fallback fehlen.',
+      {
+        source: tenantTargetResolution.source,
+      }
     );
   }
 
-  const expectedHostnames = instanceIds.map((instanceId) => ({
-    hostname: `${instanceId}.${parentDomain}`,
-    instanceId,
+  const expectedHostnames = tenantTargets.map((tenantTarget) => ({
+    hostname: tenantTarget.host,
+    instanceId: tenantTarget.instanceId,
   }));
   const appDbUser = env.APP_DB_USER?.trim() || 'sva_app';
 
@@ -1802,7 +1960,7 @@ SELECT json_build_object(
         'Mindestens ein erwartetes Tenant-Hostname-Mapping fehlt oder ist nicht primaer.',
         {
           missingHostnames,
-          parentDomain,
+          source: tenantTargetResolution.source,
         }
       );
     }
@@ -1814,14 +1972,20 @@ SELECT json_build_object(
       'Alle erwarteten Tenant-Hostname-Mappings sind vorhanden.',
       {
         hostnames: expectedHostnames.map(({ hostname }) => hostname),
-        parentDomain,
+        source: tenantTargetResolution.source,
       }
     );
   } catch (error) {
-    return toDoctorCheck('instance-hostnames', 'error', 'tenant_host_resolution_failed', error instanceof Error ? error.message : String(error), {
-      hostnames: expectedHostnames.map(({ hostname }) => hostname),
-      parentDomain,
-    });
+    return toDoctorCheck(
+      'instance-hostnames',
+      'error',
+      'tenant_host_resolution_failed',
+      error instanceof Error ? error.message : String(error),
+      {
+        hostnames: expectedHostnames.map(({ hostname }) => hostname),
+        source: tenantTargetResolution.source,
+      }
+    );
   }
 };
 
@@ -2092,13 +2256,13 @@ const precheckAcceptance = async (
   checks.push(await buildLiveRuntimeEnvCheck(runtimeProfile, env));
   checks.push(await buildAppPrincipalReadinessCheck(env));
   checks.push(await buildObservabilityDoctorCheck(runtimeProfile, env));
-  checks.push(await buildTenantAuthProofCheck(env));
+  checks.push(await buildTenantAuthProofCheck(runtimeProfile, env));
   checks.push(buildAcceptancePostgresCheck(env));
   checks.push(buildMigrationStatusCheck(runtimeProfile, env));
   checks.push(buildSchemaGuardCheck(runtimeProfile, env));
   checks.push(buildInstanceAuthConfigCheck(runtimeProfile, env));
   checks.push(buildTenantAdminClientContractCheck(runtimeProfile, env));
-  checks.push(buildInstanceHostnameMappingCheck(runtimeProfile, env));
+  checks.push(await buildInstanceHostnameMappingCheck(runtimeProfile, env));
   if (options) {
     checks.push(await buildAcceptanceLiveSpecCheck(runtimeProfile, env, options));
   }
@@ -2226,7 +2390,7 @@ const doctorRuntime = async (runtimeProfile: RuntimeProfile, env: NodeJS.Process
   }
   checks.push(await buildObservabilityDoctorCheck(runtimeProfile, env));
   if (isRemoteRuntimeProfile(runtimeProfile)) {
-    checks.push(await buildTenantAuthProofCheck(env));
+    checks.push(await buildTenantAuthProofCheck(runtimeProfile, env));
   }
 
   checks.push(buildFeatureFlagCheck(env));
@@ -2235,7 +2399,7 @@ const doctorRuntime = async (runtimeProfile: RuntimeProfile, env: NodeJS.Process
   if (runtimeProfile !== 'local-builder') {
     checks.push(buildInstanceAuthConfigCheck(runtimeProfile, env));
     checks.push(buildTenantAdminClientContractCheck(runtimeProfile, env));
-    checks.push(buildInstanceHostnameMappingCheck(runtimeProfile, env));
+    checks.push(await buildInstanceHostnameMappingCheck(runtimeProfile, env));
   }
   checks.push(buildActorDoctorCheck(runtimeProfile, env));
 
@@ -2547,7 +2711,7 @@ const migrateAcceptance = async (runtimeProfile: RemoteRuntimeProfile, env: Node
     await bootstrapResult.cleanup();
   }
 
-  const hostnameCheck = buildInstanceHostnameMappingCheck(runtimeProfile, env);
+  const hostnameCheck = await buildInstanceHostnameMappingCheck(runtimeProfile, env);
   if (hostnameCheck.status !== 'ok') {
     throw new Error(hostnameCheck.message);
   }
@@ -3133,7 +3297,7 @@ const collectRemoteParityChecks = async (runtimeProfile: RemoteRuntimeProfile, e
   const reusedChecks = await Promise.all([
     buildAcceptanceIngressConsistencyCheck(env),
     buildAppPrincipalReadinessCheck(env),
-    buildTenantAuthProofCheck(env),
+    buildTenantAuthProofCheck(runtimeProfile, env),
     buildLiveRuntimeEnvCheck(runtimeProfile, env),
   ]);
   const failingChecks = reusedChecks.filter((check) => check.status === 'error');
@@ -3680,16 +3844,11 @@ const runInternalVerify = async (runtimeProfile: RemoteRuntimeProfile, env: Node
     lastDoctorReport = doctorReport;
     lastProbes = probes;
 
-    const hasRetryableWarmupOnlyErrors = doctorReport.checks
-      .filter((check) => check.status === 'error')
-      .every((check) => {
-        if (!retryableWarmupChecks.has(check.name)) {
-          return false;
-        }
-
-        const message = typeof check.message === 'string' ? check.message.toLowerCase() : '';
-        return retryableWarmupSignals.some((signal) => message.includes(signal));
-      });
+    const hasRetryableWarmupOnlyErrors = shouldRetryInternalVerify(
+      doctorReport,
+      retryableWarmupChecks,
+      retryableWarmupSignals,
+    );
     const probesFailed = probes.some((probe) => probe.status === 'error');
     const doctorFailed = doctorReport.status === 'error';
 
@@ -3717,37 +3876,80 @@ const runInternalVerify = async (runtimeProfile: RemoteRuntimeProfile, env: Node
   };
 };
 
-const runExternalSmoke = async (env: NodeJS.ProcessEnv): Promise<readonly AcceptanceProbeResult[]> => {
+const checkContainsRetryableWarmupSignal = (check: DoctorCheck, retryableWarmupSignals: readonly string[]) => {
+  const message = typeof check.message === 'string' ? check.message.toLowerCase() : '';
+  if (retryableWarmupSignals.some((signal) => message.includes(signal))) {
+    return true;
+  }
+
+  const details = check.details;
+  if (!details) {
+    return false;
+  }
+
+  const status = details.status;
+  if (typeof status === 'number' && [404, 502, 503, 504].includes(status)) {
+    return true;
+  }
+
+  const payload = details.payload;
+  return typeof payload === 'string' && retryableWarmupSignals.some((signal) => payload.toLowerCase().includes(signal));
+};
+
+export const shouldRetryInternalVerify = (
+  doctorReport: DoctorReport,
+  retryableWarmupChecks: ReadonlySet<string> = new Set([
+    'health-live',
+    'health-ready',
+    'auth-login',
+    'auth-me',
+    'tenant-auth-proof',
+    'app-db-principal',
+  ]),
+  retryableWarmupSignals: readonly string[] = ['404', '502', '503', '504', 'timeout', 'timed out', 'gateway'],
+) => {
+  const failingChecks = doctorReport.checks.filter((check) => check.status === 'error');
+  if (failingChecks.length === 0) {
+    return false;
+  }
+
+  return failingChecks.every((check) => {
+    if (!retryableWarmupChecks.has(check.name)) {
+      return false;
+    }
+
+    return checkContainsRetryableWarmupSignal(check, retryableWarmupSignals);
+  });
+};
+
+const runExternalSmoke = async (
+  runtimeProfile: RuntimeProfile,
+  env: NodeJS.ProcessEnv
+): Promise<readonly AcceptanceProbeResult[]> => {
   const baseUrl = env.SVA_PUBLIC_BASE_URL ?? 'http://localhost:3000';
   const base = new URL(baseUrl);
-  const parentDomain = env.SVA_PARENT_DOMAIN?.trim();
-  const tenantInstanceIds = (env.SVA_ALLOWED_INSTANCE_IDS ?? '')
-    .split(',')
-    .map((entry) => entry.trim())
-    .filter((entry) => entry.length > 0);
-  const tenantProbes = parentDomain
-    ? tenantInstanceIds.map((instanceId) =>
+  const tenantTargetResolution = await resolveTenantRuntimeTargets(runtimeProfile, env, { limit: 2 });
+  const tenantProbes = tenantTargetResolution.targets.map((tenantTarget) =>
         runHttpProbe({
-          name: `public-auth-login-${instanceId}`,
+          name: `public-auth-login-${tenantTarget.instanceId}`,
           scope: 'external',
-          target: new URL('/auth/login', `${base.protocol}//${instanceId}.${parentDomain}`).toString(),
+          target: new URL('/auth/login', `${base.protocol}//${tenantTarget.host}`).toString(),
           expect: (response) => {
             const location = response.headers.get('location') ?? '';
             if (response.status !== 302) {
-              return `Erwartet Redirect fuer Tenant ${instanceId}, erhalten ${response.status}.`;
+              return `Erwartet Redirect fuer Tenant ${tenantTarget.instanceId}, erhalten ${response.status}.`;
             }
-            if (!location.includes(`/realms/${instanceId}/`)) {
-              return `Tenant-Realm stimmt nicht fuer ${instanceId}: ${location}`;
+            if (!location.includes(`/realms/${tenantTarget.authRealm}/`)) {
+              return `Tenant-Realm stimmt nicht fuer ${tenantTarget.instanceId}: ${location}`;
             }
-            const encodedRedirect = encodeURIComponent(`${base.protocol}//${instanceId}.${parentDomain}/auth/callback`);
+            const encodedRedirect = encodeURIComponent(`${base.protocol}//${tenantTarget.host}/auth/callback`);
             if (!location.includes(`redirect_uri=${encodedRedirect}`)) {
-              return `Tenant-Redirect-URI stimmt nicht fuer ${instanceId}: ${location}`;
+              return `Tenant-Redirect-URI stimmt nicht fuer ${tenantTarget.instanceId}: ${location}`;
             }
             return null;
           },
         })
-      )
-    : [];
+      );
 
   return await Promise.all([
     runHttpProbe({
@@ -3834,7 +4036,7 @@ export const shouldRetryExternalSmoke = (probes: readonly AcceptanceProbeResult[
   }
 
   return failingProbes.every((probe) => {
-    if (!retryableExternalWarmupProbeNames.has(probe.name)) {
+    if (!retryableExternalWarmupProbeNames.has(probe.name) && !probe.name.startsWith('public-auth-login-')) {
       return false;
     }
 
@@ -3848,6 +4050,7 @@ export const runExternalSmokeWithWarmup = async (
   options?: {
     readonly maxAttempts?: number;
     readonly retryDelayMs?: number;
+    readonly runtimeProfile?: RuntimeProfile;
     readonly runner?: (env: NodeJS.ProcessEnv) => Promise<readonly AcceptanceProbeResult[]>;
   }
 ): Promise<readonly AcceptanceProbeResult[]> => {
@@ -3855,7 +4058,13 @@ export const runExternalSmokeWithWarmup = async (
   const warmupWindowMs = Number(env.SVA_EXTERNAL_SMOKE_WARMUP_WINDOW_MS ?? '300000');
   const derivedMaxAttempts = Math.max(1, Math.floor(warmupWindowMs / Math.max(retryDelayMs, 1)) + 1);
   const maxAttempts = options?.maxAttempts ?? Number(env.SVA_EXTERNAL_SMOKE_MAX_ATTEMPTS ?? String(derivedMaxAttempts));
-  const runner = options?.runner ?? runExternalSmoke;
+  const runner =
+    options?.runner ??
+    ((currentEnv: NodeJS.ProcessEnv) =>
+      runExternalSmoke(
+        options?.runtimeProfile ?? parseRuntimeProfile(currentEnv.SVA_RUNTIME_PROFILE as RuntimeProfile | undefined) ?? 'local-keycloak',
+        currentEnv
+      ));
   let lastProbes: readonly AcceptanceProbeResult[] = [];
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
@@ -4025,7 +4234,7 @@ const runAcceptanceDeploy = async (runtimeProfile: RemoteRuntimeProfile, env: No
       try {
         const bootstrapResult = await runBootstrapJobAgainstAcceptance(env, runtimeProfile, report.reportId);
         try {
-          const hostnameCheck = buildInstanceHostnameMappingCheck(runtimeProfile, env);
+          const hostnameCheck = await buildInstanceHostnameMappingCheck(runtimeProfile, env);
           if (hostnameCheck.status !== 'ok') {
             throw new Error(hostnameCheck.message);
           }
@@ -4139,7 +4348,7 @@ const runAcceptanceDeploy = async (runtimeProfile: RemoteRuntimeProfile, env: No
 
     const externalSmokeStartedAt = Date.now();
     try {
-      const externalProbes = await runExternalSmokeWithWarmup(env);
+      const externalProbes = await runExternalSmokeWithWarmup(env, { runtimeProfile });
       report = {
         ...report,
         externalProbes,

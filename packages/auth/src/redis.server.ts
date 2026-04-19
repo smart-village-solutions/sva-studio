@@ -164,9 +164,8 @@ export const getRedisClient = (): Redis => {
       // Disconnect after max errors to prevent infinite loops
       if (connectionErrorCount >= MAX_CONNECTION_ERRORS) {
         logger.warn('Redis max errors reached, disconnecting client', {
-          operation: 'redis_fallback',
+          operation: 'redis_disconnect_after_errors',
           error_count: connectionErrorCount,
-          fallback: 'in-memory',
           action: 'disconnect',
         });
         redisClient?.disconnect();
@@ -216,7 +215,7 @@ export const closeRedis = async (): Promise<void> => {
 };
 
 /**
- * Check if Redis is available (fallback to in-memory if not).
+ * Check if Redis is available for the required session/cache store.
  */
 export const isRedisAvailable = async (): Promise<boolean> => {
   try {

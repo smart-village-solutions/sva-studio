@@ -38,7 +38,32 @@ describe('plugin registry', () => {
   } as const;
 
   it('registers valid plugins', () => {
-    const registry = createPluginRegistry([pluginA]);
+    const registry = createPluginRegistry([
+      {
+        ...pluginA,
+        routes: [
+          ...pluginA.routes,
+          {
+            id: 'news.create.route',
+            path: '/plugins/news/new',
+            guard: 'content.write',
+            actionId: 'news.publish',
+            component: (() => null) as never,
+          },
+        ],
+        navigation: [
+          ...(pluginA.navigation ?? []),
+          {
+            id: 'news.publish.nav',
+            to: '/plugins/news/publish',
+            titleKey: 'news.actions.publish',
+            section: 'dataManagement' as const,
+            actionId: 'news.publish',
+            requiredAction: 'content.write',
+          },
+        ],
+      },
+    ]);
 
     expect(registry.get('news')).toMatchObject({
       id: 'news',
@@ -75,6 +100,91 @@ describe('plugin registry', () => {
         },
       ])
     ).toThrow('invalid_plugin_definition');
+
+    expect(() =>
+      createPluginRegistry([
+        {
+          ...pluginA,
+          routes: [
+            {
+              id: 'news.invalid-route',
+              path: '/plugins/news/invalid',
+              guard: 'content.read',
+              actionId: 'events.publish',
+              component: (() => null) as never,
+            },
+          ],
+        },
+      ])
+    ).toThrow('plugin_route_action_owner_mismatch:news:news.invalid-route:events.publish');
+
+    expect(() =>
+      createPluginRegistry([
+        {
+          ...pluginA,
+          routes: [
+            {
+              id: 'news.missing-route-action',
+              path: '/plugins/news/missing',
+              actionId: 'news.archive',
+              component: (() => null) as never,
+            },
+          ],
+        },
+      ])
+    ).toThrow('plugin_route_action_missing:news:news.missing-route-action:news.archive');
+
+    expect(() =>
+      createPluginRegistry([
+        {
+          ...pluginA,
+          routes: [
+            {
+              id: 'news.mismatched-route-guard',
+              path: '/plugins/news/mismatch',
+              guard: 'content.read',
+              actionId: 'news.publish',
+              component: (() => null) as never,
+            },
+          ],
+        },
+      ])
+    ).toThrow('plugin_route_action_guard_mismatch:news:news.mismatched-route-guard:news.publish');
+
+    expect(() =>
+      createPluginRegistry([
+        {
+          ...pluginA,
+          navigation: [
+            {
+              id: 'news.invalid-nav',
+              to: '/plugins/news/invalid',
+              titleKey: 'news.navigation.title',
+              section: 'dataManagement' as const,
+              actionId: 'events.publish',
+            },
+          ],
+        },
+      ])
+    ).toThrow('plugin_navigation_action_owner_mismatch:news:news.invalid-nav:events.publish');
+
+    expect(() =>
+      createPluginRegistry([
+        {
+          ...pluginA,
+          navigation: [
+            {
+              id: 'news.mismatched-nav-guard',
+              to: '/plugins/news/mismatch',
+              titleKey: 'news.navigation.title',
+              section: 'dataManagement' as const,
+              actionId: 'news.publish',
+              requiredAction: 'content.read',
+            },
+          ],
+        },
+      ])
+    ).toThrow('plugin_navigation_action_guard_mismatch:news:news.mismatched-nav-guard:news.publish');
   });
 
   it('merges route, navigation, content type and translations', () => {
@@ -312,5 +422,77 @@ describe('plugin registry', () => {
     expect(actions.get('news.preview')).toMatchObject({
       featureFlag: undefined,
     });
+  });
+
+  it('registers legacy aliases and marks deprecated alias lookups', () => {
+    const actions = createPluginActionRegistry([
+      {
+        id: 'news',
+        displayName: 'News',
+        routes: [{ id: 'news.list', path: '/plugins/news', component: (() => null) as never }],
+        actions: [
+          {
+            id: 'news.publish',
+            titleKey: 'news.actions.publish',
+            legacyAliases: ['publish'],
+          },
+        ],
+      },
+    ]);
+
+    expect(actions.get('news.publish')).toMatchObject({
+      actionId: 'news.publish',
+      legacyAliases: ['publish'],
+    });
+
+    expect(actions.get('publish')).toMatchObject({
+      actionId: 'news.publish',
+      legacyAliases: ['publish'],
+      deprecatedAlias: 'publish',
+    });
+  });
+
+  it('rejects invalid or colliding legacy aliases', () => {
+    expect(() =>
+      definePluginActions('news', [
+        {
+          id: 'news.publish',
+          titleKey: 'news.actions.publish',
+          legacyAliases: ['   '],
+        },
+      ])
+    ).toThrow('invalid_plugin_action_alias:news.publish');
+
+    expect(() =>
+      definePluginActions('news', [
+        {
+          id: 'news.publish',
+          titleKey: 'news.actions.publish',
+          legacyAliases: ['news.publish'],
+        },
+      ])
+    ).toThrow('duplicate_plugin_action_alias:news.publish:news.publish');
+
+    expect(() =>
+      createPluginActionRegistry([
+        {
+          id: 'news',
+          displayName: 'News',
+          routes: [{ id: 'news.list', path: '/plugins/news', component: (() => null) as never }],
+          actions: [
+            {
+              id: 'news.publish',
+              titleKey: 'news.actions.publish',
+              legacyAliases: ['publish'],
+            },
+            {
+              id: 'news.archive',
+              titleKey: 'news.actions.archive',
+              legacyAliases: ['publish'],
+            },
+          ],
+        },
+      ])
+    ).toThrow('duplicate_plugin_action:publish');
   });
 });

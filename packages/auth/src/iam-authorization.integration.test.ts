@@ -121,6 +121,14 @@ describe('IAM authorization integration denials', () => {
       roles: [],
       instanceId: 'de-musterhausen',
     };
+    permissionSnapshotCache.invalidate({
+      instanceId: integrationState.user.instanceId,
+      keycloakSubject: integrationState.user.id,
+    });
+    permissionSnapshotCache.invalidate({
+      instanceId: integrationState.user.instanceId,
+      keycloakSubject: 'keycloak-sub-target',
+    });
     integrationState.queryHandler = null;
     integrationState.impersonationResult = { ok: true };
     integrationState.redisStore.clear();
@@ -232,6 +240,81 @@ describe('IAM authorization integration denials', () => {
     expect(response.status).toBe(200);
     expect(payload.allowed).toBe(false);
     expect(payload.reason).toBe('permission_missing');
+  });
+
+  it('allows authorize for fully qualified plugin action within the same namespace', async () => {
+    integrationState.queryHandler = () => ({
+      rowCount: 1,
+      rows: [
+        {
+          permission_key: 'news.publish',
+          action: 'news.publish',
+          resource_type: 'news',
+          effect: 'allow',
+          scope: {},
+          role_id: 'role-news-publisher',
+          organization_id: null,
+        },
+      ],
+    });
+
+    const request = new Request('http://localhost/iam/authorize', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        instanceId: 'de-musterhausen',
+        action: 'news.publish',
+        resource: {
+          type: 'news',
+          id: 'news-1',
+        },
+      }),
+    });
+
+    const response = await authorizeHandler(request);
+    const payload = (await response.json()) as { allowed: boolean; reason: string };
+
+    expect(response.status).toBe(200);
+    expect(payload.allowed).toBe(true);
+    expect(payload.reason).toBe('allowed_by_rbac');
+  });
+
+  it('denies authorize for foreign fully qualified plugin action despite same action name', async () => {
+    integrationState.queryHandler = () => ({
+      rowCount: 1,
+      rows: [
+        {
+          permission_key: 'events.publish',
+          action: 'events.publish',
+          resource_type: 'events',
+          effect: 'allow',
+          scope: {},
+          role_id: 'role-events-publisher',
+          organization_id: null,
+        },
+      ],
+    });
+
+    const request = new Request('http://localhost/iam/authorize', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        instanceId: 'de-musterhausen',
+        action: 'news.publish',
+        resource: {
+          type: 'news',
+          id: 'news-1',
+        },
+      }),
+    });
+
+    const response = await authorizeHandler(request);
+    const payload = (await response.json()) as { allowed: boolean; reason: string; action?: string };
+
+    expect(response.status).toBe(200);
+    expect(payload.allowed).toBe(false);
+    expect(payload.reason).toBe('permission_missing');
+    expect(payload.action).toBe('news.publish');
   });
 
   it('propagates request_id and trace_id in me/permissions response', async () => {

@@ -12,6 +12,7 @@ const testState = vi.hoisted(() => ({
   latencyMetrics: [] as Array<{ durationMs: number; attributes?: Record<string, unknown> }>,
   impersonationResult: { ok: true } as { ok: true } | { ok: false; reasonCode: string },
   redisStore: new Map<string, string>(),
+  auditEvents: [] as Array<Record<string, unknown>>,
 }));
 
 vi.mock('./middleware.server.js', () => ({
@@ -25,6 +26,12 @@ vi.mock('./middleware.server.js', () => ({
 
 vi.mock('./iam-governance.server.js', () => ({
   resolveImpersonationSubject: vi.fn(async () => testState.impersonationResult),
+}));
+
+vi.mock('./audit-events.server.js', () => ({
+  emitAuthAuditEvent: vi.fn(async (event: Record<string, unknown>) => {
+    testState.auditEvents.push(event);
+  }),
 }));
 
 vi.mock('@sva/sdk/server', () => ({
@@ -132,6 +139,7 @@ describe('authorizeHandler', () => {
     testState.latencyMetrics = [];
     testState.impersonationResult = { ok: true };
     testState.redisStore.clear();
+    testState.auditEvents = [];
     testState.user = {
       id: 'keycloak-sub-1',
       name: 'Test User',
@@ -467,6 +475,125 @@ describe('authorizeHandler', () => {
     expect(response.status).toBe(200);
     expect(payload.allowed).toBe(false);
     expect(payload.reason).toBe('hierarchy_restriction');
+  });
+
+  it('authorizes fully qualified plugin action ids without namespace remapping', async () => {
+    testState.user = {
+      ...testState.user,
+      id: 'keycloak-sub-plugin-action-allow',
+    };
+
+    testState.queryHandler = (text: string) => {
+      if (text.includes('p.permission_key')) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              permission_key: 'news.create',
+              action: 'news.create',
+              resource_type: 'news',
+              effect: 'allow',
+              role_id: 'role-news-author',
+              organization_id: null,
+            },
+          ],
+        };
+      }
+
+      return { rowCount: 0, rows: [] };
+    };
+
+    const request = new Request('http://localhost/iam/authorize', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        instanceId: 'de-musterhausen',
+        action: 'news.create',
+        resource: { type: 'news', id: 'news-1' },
+      }),
+    });
+
+    const response = await authorizeHandler(request);
+    const payload = (await response.json()) as { allowed: boolean; reason: string; action: string };
+
+    expect(response.status).toBe(200);
+    expect(payload.allowed).toBe(true);
+    expect(payload.reason).toBe('allowed_by_rbac');
+    expect(payload.action).toBe('news.create');
+    expect(testState.auditEvents).toContainEqual(
+      expect.objectContaining({
+        eventType: 'plugin_action_authorized',
+        outcome: 'success',
+        pluginAction: expect.objectContaining({
+          actionId: 'news.create',
+          actionNamespace: 'news',
+          actionOwner: 'news',
+          result: 'success',
+          resourceType: 'news',
+          resourceId: 'news-1',
+        }),
+      })
+    );
+  });
+
+  it('denies foreign fully qualified plugin action ids and keeps the requested action in diagnostics', async () => {
+    testState.user = {
+      ...testState.user,
+      id: 'keycloak-sub-plugin-action-deny',
+    };
+
+    testState.queryHandler = (text: string) => {
+      if (text.includes('p.permission_key')) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              permission_key: 'events.publish',
+              action: 'events.publish',
+              resource_type: 'events',
+              effect: 'allow',
+              role_id: 'role-events-publisher',
+              organization_id: null,
+            },
+          ],
+        };
+      }
+
+      return { rowCount: 0, rows: [] };
+    };
+
+    const request = new Request('http://localhost/iam/authorize', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        instanceId: 'de-musterhausen',
+        action: 'news.publish',
+        resource: { type: 'news', id: 'news-1' },
+      }),
+    });
+
+    const response = await authorizeHandler(request);
+    const payload = (await response.json()) as { allowed: boolean; reason: string; action: string };
+
+    expect(response.status).toBe(200);
+    expect(payload.allowed).toBe(false);
+    expect(payload.reason).toBe('permission_missing');
+    expect(payload.action).toBe('news.publish');
+    expect(testState.auditEvents).toContainEqual(
+      expect.objectContaining({
+        eventType: 'plugin_action_denied',
+        outcome: 'denied',
+        pluginAction: expect.objectContaining({
+          actionId: 'news.publish',
+          actionNamespace: 'news',
+          actionOwner: 'news',
+          result: 'denied',
+          reasonCode: 'permission_missing',
+          resourceType: 'news',
+          resourceId: 'news-1',
+        }),
+      })
+    );
   });
 
   it('denies acting-as authorize when impersonation session is not active', async () => {

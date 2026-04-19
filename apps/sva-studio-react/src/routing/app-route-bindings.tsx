@@ -84,9 +84,16 @@ const LicensePlaceholderRoutePage = () => (
   />
 );
 
-const renderLazyPage = (Component: React.ComponentType<Record<string, unknown>>, props: Record<string, unknown> = {}) => (
+type RenderableRouteComponent<TProps extends object> =
+  | React.ComponentType<TProps>
+  | React.LazyExoticComponent<React.ComponentType<TProps>>;
+
+const renderLazyPage = <TProps extends object>(
+  Component: RenderableRouteComponent<TProps>,
+  props?: TProps
+) => (
   <React.Suspense fallback={<p className="text-sm text-muted-foreground">{t('interfaces.messages.loading')}</p>}>
-    <Component {...props} />
+    <Component {...(props ?? ({} as TProps))} />
   </React.Suspense>
 );
 

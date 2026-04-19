@@ -205,6 +205,7 @@ const insertActivityLog = async (
     accountId?: string;
     actorUserId?: string;
     outcome: AuthAuditEvent['outcome'];
+    pluginAction?: AuthAuditEvent['pluginAction'];
     requestId?: string;
     traceId?: string;
   }
@@ -212,6 +213,17 @@ const insertActivityLog = async (
   const payload = {
     outcome: input.outcome,
     actor_user_id: input.actorUserId ?? null,
+    ...(input.pluginAction
+      ? {
+          action_id: input.pluginAction.actionId,
+          action_namespace: input.pluginAction.actionNamespace,
+          action_owner: input.pluginAction.actionOwner,
+          result: input.pluginAction.result,
+          reason_code: input.pluginAction.reasonCode ?? null,
+          resource_type: input.pluginAction.resourceType ?? null,
+          resource_id: input.pluginAction.resourceId ?? null,
+        }
+      : {}),
   };
 
   await client.query(
@@ -244,6 +256,7 @@ const insertPlatformActivityLog = async (
     accountId?: string;
     actorUserId?: string;
     outcome: AuthAuditEvent['outcome'];
+    pluginAction?: AuthAuditEvent['pluginAction'];
     requestId?: string;
     traceId?: string;
   }
@@ -251,6 +264,17 @@ const insertPlatformActivityLog = async (
   const payload = {
     outcome: input.outcome,
     actor_user_id: input.actorUserId ?? null,
+    ...(input.pluginAction
+      ? {
+          action_id: input.pluginAction.actionId,
+          action_namespace: input.pluginAction.actionNamespace,
+          action_owner: input.pluginAction.actionOwner,
+          result: input.pluginAction.result,
+          reason_code: input.pluginAction.reasonCode ?? null,
+          resource_type: input.pluginAction.resourceType ?? null,
+          resource_id: input.pluginAction.resourceId ?? null,
+        }
+      : {}),
   };
 
   await client.query(
@@ -344,6 +368,7 @@ const writeScopedAuditEvent = async (
     accountId?: string;
     actorUserId?: string;
     outcome: AuthAuditEvent['outcome'];
+    pluginAction?: AuthAuditEvent['pluginAction'];
     requestId?: string;
     traceId?: string;
   }
@@ -380,6 +405,7 @@ export const persistAuthAuditEventWithClient = async (
     accountId,
     actorUserId: event.actorUserId,
     outcome: event.outcome,
+    pluginAction: event.pluginAction,
     requestId: event.requestId,
     traceId: event.traceId,
   });

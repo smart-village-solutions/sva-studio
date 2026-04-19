@@ -2,6 +2,44 @@ import { definePluginActions, type PluginDefinition } from '@sva/sdk';
 
 import { NewsCreatePage, NewsEditPage, NewsListPage } from './news.pages.js';
 
+export const pluginNewsActionDefinitions = definePluginActions('news', [
+  {
+    id: 'news.create',
+    titleKey: 'news.actions.create',
+    requiredAction: 'content.create',
+    legacyAliases: ['create'],
+  },
+  {
+    id: 'news.edit',
+    titleKey: 'news.actions.edit',
+    requiredAction: 'content.write',
+    legacyAliases: ['edit'],
+  },
+  {
+    id: 'news.update',
+    titleKey: 'news.actions.update',
+    requiredAction: 'content.write',
+    legacyAliases: ['save', 'update'],
+  },
+  {
+    id: 'news.delete',
+    titleKey: 'news.actions.delete',
+    requiredAction: 'content.write',
+    legacyAliases: ['delete'],
+  },
+] as const);
+
+export const pluginNewsActionIds = {
+  create: pluginNewsActionDefinitions[0].id,
+  edit: pluginNewsActionDefinitions[1].id,
+  update: pluginNewsActionDefinitions[2].id,
+  delete: pluginNewsActionDefinitions[3].id,
+} as const;
+
+export const getPluginNewsActionDefinition = (
+  actionId: (typeof pluginNewsActionIds)[keyof typeof pluginNewsActionIds]
+) => pluginNewsActionDefinitions.find((action) => action.id === actionId);
+
 export const pluginNews: PluginDefinition = {
   id: 'news',
   displayName: 'News',
@@ -16,12 +54,14 @@ export const pluginNews: PluginDefinition = {
       id: 'news.create',
       path: '/plugins/news/new',
       guard: 'content.create',
+      actionId: pluginNewsActionIds.create,
       component: NewsCreatePage,
     },
     {
       id: 'news.edit',
       path: '/plugins/news/$contentId',
       guard: 'content.write',
+      actionId: pluginNewsActionIds.edit,
       component: NewsEditPage,
     },
   ],
@@ -34,23 +74,7 @@ export const pluginNews: PluginDefinition = {
       requiredAction: 'content.read',
     },
   ],
-  actions: definePluginActions('news', [
-    {
-      id: 'news.create',
-      titleKey: 'news.actions.create',
-      requiredAction: 'content.create',
-    },
-    {
-      id: 'news.edit',
-      titleKey: 'news.actions.edit',
-      requiredAction: 'content.write',
-    },
-    {
-      id: 'news.delete',
-      titleKey: 'news.actions.delete',
-      requiredAction: 'content.write',
-    },
-  ]),
+  actions: pluginNewsActionDefinitions,
   contentTypes: [
     {
       contentType: 'news',
@@ -88,7 +112,7 @@ export const pluginNews: PluginDefinition = {
         },
         actions: {
           create: 'News anlegen',
-          save: 'Änderungen speichern',
+          update: 'Änderungen speichern',
           back: 'Zurück zur Liste',
           edit: 'Bearbeiten',
           delete: 'Löschen',
@@ -154,7 +178,7 @@ export const pluginNews: PluginDefinition = {
         },
         actions: {
           create: 'Create news',
-          save: 'Save changes',
+          update: 'Save changes',
           back: 'Back to list',
           edit: 'Edit',
           delete: 'Delete',

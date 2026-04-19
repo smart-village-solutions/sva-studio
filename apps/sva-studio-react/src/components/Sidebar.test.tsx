@@ -16,6 +16,14 @@ const useAuthMock = vi.fn();
 const useContentAccessMock = vi.fn();
 const useRouterStateMock = vi.fn();
 const localStorageState = new Map<string, string>();
+type PluginNavigationItemMock = {
+  id: string;
+  to: string;
+  titleKey: string;
+  section: 'dataManagement' | 'applications' | 'system';
+  requiredAction?: 'content.read' | 'content.create' | 'content.write';
+  actionId?: string;
+};
 const studioPluginNavigationMock = vi.hoisted(() => ({
   items: [
     {
@@ -25,7 +33,10 @@ const studioPluginNavigationMock = vi.hoisted(() => ({
       section: 'dataManagement',
       requiredAction: 'content.read',
     },
-  ],
+  ] as PluginNavigationItemMock[],
+}));
+const studioPluginActionLookupMock = vi.hoisted(() => ({
+  get: vi.fn(),
 }));
 
 vi.mock('@tanstack/react-router', () => ({
@@ -68,6 +79,7 @@ vi.mock('../lib/plugins', () => ({
   get studioPluginNavigation() {
     return studioPluginNavigationMock.items;
   },
+  getStudioPluginAction: (actionId: string) => studioPluginActionLookupMock.get(actionId),
 }));
 
 const unauthenticatedAuthState = {
@@ -96,6 +108,8 @@ beforeEach(() => {
       requiredAction: 'content.read',
     },
   ];
+  studioPluginActionLookupMock.get.mockReset();
+  studioPluginActionLookupMock.get.mockReturnValue(undefined);
   localStorageState.clear();
   Object.defineProperty(window, 'localStorage', {
     configurable: true,
@@ -414,5 +428,51 @@ describe('Sidebar', () => {
     render(<Sidebar />);
 
     expect(screen.queryByRole('link', { name: 'News' })).toBeNull();
+  });
+
+  it('löst Plugin-Navigation über die Action-Registry auf, wenn actionId gesetzt ist', () => {
+    studioPluginNavigationMock.items = [
+      {
+        id: 'news.publish',
+        to: '/plugins/news/publish',
+        titleKey: 'news.navigation.title',
+        section: 'dataManagement',
+        actionId: 'news.publish',
+      },
+    ];
+    studioPluginActionLookupMock.get.mockReturnValue({
+      actionId: 'news.publish',
+      namespace: 'news',
+      actionName: 'publish',
+      ownerPluginId: 'news',
+      titleKey: 'news.actions.publish',
+      requiredAction: 'content.write',
+    });
+    useAuthMock.mockReturnValue({
+      ...unauthenticatedAuthState,
+      user: {
+        id: 'user-1',
+        name: 'Editor',
+        roles: ['editor'],
+      },
+      isAuthenticated: true,
+    });
+    useContentAccessMock.mockReturnValue({
+      access: {
+        state: 'editable',
+        canRead: true,
+        canCreate: true,
+        canUpdate: true,
+        organizationIds: [],
+        sourceKinds: ['direct_role'],
+      },
+      isLoading: false,
+      error: null,
+    });
+
+    render(<Sidebar />);
+
+    expect(screen.getByRole('link', { name: 'news.actions.publish' }).getAttribute('href')).toBe('/plugins/news/publish');
+    expect(studioPluginActionLookupMock.get).toHaveBeenCalledWith('news.publish');
   });
 });

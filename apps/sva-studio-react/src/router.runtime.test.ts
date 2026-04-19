@@ -1,5 +1,19 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+type RouterWithAuthContext = {
+  options: {
+    context: {
+      auth: {
+        getUser: () => Promise<unknown>;
+      };
+    };
+  };
+};
+
+const readRouteGuardGetUser = (router: unknown) => {
+  return (router as RouterWithAuthContext).options.context.auth.getUser;
+};
+
 const routerMocks = vi.hoisted(() => {
   const createRouterSpy = vi.fn((options: Record<string, unknown>) => ({
     __router: true,
@@ -200,7 +214,7 @@ describe('router runtime helpers', () => {
     const { getRouter } = await import('./router');
 
     const router = await getRouter();
-    const getUser = (router.options as { context: { auth: { getUser: () => Promise<unknown> } } }).context.auth.getUser;
+    const getUser = readRouteGuardGetUser(router);
 
     routerMocks.fetchWithRequestTimeoutSpy.mockResolvedValueOnce(
       new Response(JSON.stringify({ user: { roles: ['editor', 7, 'system_admin'] } }), {
@@ -240,7 +254,7 @@ describe('router runtime helpers', () => {
     const { getRouter } = await import('./router');
 
     const router = await getRouter();
-    const getUser = (router.options as { context: { auth: { getUser: () => Promise<unknown> } } }).context.auth.getUser;
+    const getUser = readRouteGuardGetUser(router);
 
     routerMocks.executionMode.current = 'server';
     routerMocks.withAuthenticatedUserSpy.mockImplementationOnce(

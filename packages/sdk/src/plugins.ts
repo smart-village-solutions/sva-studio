@@ -8,6 +8,7 @@ export type PluginRouteDefinition = {
   readonly id: string;
   readonly path: string;
   readonly guard?: PluginRouteGuard;
+  readonly actionId?: string;
   readonly component: (...args: never[]) => unknown;
 };
 
@@ -16,14 +17,23 @@ export type PluginNavigationItem = {
   readonly to: string;
   readonly titleKey: string;
   readonly section: PluginNavigationSection;
+  readonly actionId?: string;
   readonly requiredAction?: PluginRouteGuard;
 };
 
 export type PluginActionDefinition = {
+  /**
+   * Fully-qualified plugin action id in the format `<pluginNamespace>.<actionName>`.
+   *
+   * Plugins may only declare actions in their own namespace. Reserved core
+   * namespaces are not available to plugins unless an explicit bridge contract
+   * exists outside of this SDK contract.
+   */
   readonly id: string;
   readonly titleKey: string;
   readonly requiredAction?: PluginRouteGuard;
   readonly featureFlag?: string;
+  readonly legacyAliases?: readonly string[];
 };
 
 export type PluginTranslations = Readonly<Record<string, Readonly<Record<string, unknown>>>>;
@@ -40,6 +50,14 @@ export type PluginDefinition = {
 
 const normalizeIdentifier = (value: string) => value.trim();
 const ACTION_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*\.[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const LEGACY_ACTION_ALIAS_PATTERN = /^(?:[a-z0-9]+(?:-[a-z0-9]+)*)(?:\.[a-z0-9]+(?:-[a-z0-9]+)*)?$/;
+/**
+ * Reserved namespaces that are not owned by plugins.
+ *
+ * Plugin actions must use plugin-owned namespaces. Core/host actions follow the
+ * same fully-qualified naming model, but their namespaces are governed outside
+ * of the plugin SDK.
+ */
 const RESERVED_ACTION_NAMESPACES = ['core'] as const;
 
 export type PluginActionRegistryEntry = {
@@ -50,6 +68,8 @@ export type PluginActionRegistryEntry = {
   readonly titleKey: string;
   readonly requiredAction?: PluginRouteGuard;
   readonly featureFlag?: string;
+  readonly legacyAliases?: readonly string[];
+  readonly deprecatedAlias?: string;
 };
 
 const parseActionSegments = (actionId: string): { namespace: string; actionName: string } | undefined => {
@@ -68,6 +88,36 @@ const parseActionSegments = (actionId: string): { namespace: string; actionName:
 const isReservedNamespace = (namespace: string): boolean =>
   RESERVED_ACTION_NAMESPACES.includes(namespace as (typeof RESERVED_ACTION_NAMESPACES)[number]);
 
+const normalizeLegacyAliases = (
+  actionId: string,
+  aliases: readonly string[] | undefined
+): readonly string[] | undefined => {
+  if (!aliases || aliases.length === 0) {
+    return undefined;
+  }
+
+  const normalizedAliases = aliases.map((alias) => normalizeIdentifier(alias));
+  if (normalizedAliases.some((alias) => alias.length === 0 || LEGACY_ACTION_ALIAS_PATTERN.test(alias) === false)) {
+    throw new Error(`invalid_plugin_action_alias:${actionId}`);
+  }
+  if (normalizedAliases.some((alias) => alias === actionId)) {
+    throw new Error(`duplicate_plugin_action_alias:${actionId}:${actionId}`);
+  }
+
+  const uniqueAliases = [...new Set(normalizedAliases)];
+  if (uniqueAliases.length !== normalizedAliases.length) {
+    const duplicateAlias = normalizedAliases.find((alias, index) => normalizedAliases.indexOf(alias) !== index);
+    throw new Error(`duplicate_plugin_action_alias:${actionId}:${duplicateAlias}`);
+  }
+
+  return uniqueAliases;
+};
+
+const resolvePluginActionDefinition = (
+  plugin: PluginDefinition,
+  actionId: string
+): PluginActionDefinition | undefined => plugin.actions?.find((action) => normalizeIdentifier(action.id) === actionId);
+
 export const createPluginRegistry = (
   plugins: readonly PluginDefinition[]
 ): ReadonlyMap<string, PluginDefinition> => {
@@ -83,6 +133,56 @@ export const createPluginRegistry = (
 
     if (registry.has(id)) {
       throw new Error(`duplicate_plugin:${id}`);
+    }
+
+    for (const route of plugin.routes) {
+      const routeActionId = normalizeIdentifier(route.actionId ?? '');
+      if (!routeActionId) {
+        continue;
+      }
+
+      const parsed = parseActionSegments(routeActionId);
+      if (parsed === undefined) {
+        throw new Error(`invalid_plugin_route_action_id:${id}:${route.id}:${routeActionId}`);
+      }
+      if (parsed.namespace !== id) {
+        throw new Error(`plugin_route_action_owner_mismatch:${id}:${route.id}:${routeActionId}`);
+      }
+
+      const action = resolvePluginActionDefinition(plugin, routeActionId);
+      if (!action) {
+        throw new Error(`plugin_route_action_missing:${id}:${route.id}:${routeActionId}`);
+      }
+      if (route.guard && action.requiredAction && route.guard !== action.requiredAction) {
+        throw new Error(`plugin_route_action_guard_mismatch:${id}:${route.id}:${routeActionId}`);
+      }
+    }
+
+    for (const navigationItem of plugin.navigation ?? []) {
+      const navigationActionId = normalizeIdentifier(navigationItem.actionId ?? '');
+      if (!navigationActionId) {
+        continue;
+      }
+
+      const parsed = parseActionSegments(navigationActionId);
+      if (parsed === undefined) {
+        throw new Error(`invalid_plugin_navigation_action_id:${id}:${navigationItem.id}:${navigationActionId}`);
+      }
+      if (parsed.namespace !== id) {
+        throw new Error(`plugin_navigation_action_owner_mismatch:${id}:${navigationItem.id}:${navigationActionId}`);
+      }
+
+      const action = resolvePluginActionDefinition(plugin, navigationActionId);
+      if (!action) {
+        throw new Error(`plugin_navigation_action_missing:${id}:${navigationItem.id}:${navigationActionId}`);
+      }
+      if (
+        navigationItem.requiredAction &&
+        action.requiredAction &&
+        navigationItem.requiredAction !== action.requiredAction
+      ) {
+        throw new Error(`plugin_navigation_action_guard_mismatch:${id}:${navigationItem.id}:${navigationActionId}`);
+      }
     }
 
     registry.set(id, {
@@ -138,6 +238,7 @@ export const definePluginActions = <const TActions extends readonly PluginAction
         `plugin_action_namespace_mismatch:${normalizedNamespace}:${parsed.namespace}:${normalizedActionId}`
       );
     }
+    normalizeLegacyAliases(normalizedActionId, action.legacyAliases);
   }
 
   return actions;
@@ -166,6 +267,7 @@ export const createPluginActionRegistry = (
     for (const action of plugin.actions ?? []) {
       const actionId = normalizeIdentifier(action.id);
       const actionTitleKey = normalizeIdentifier(action.titleKey);
+      const legacyAliases = normalizeLegacyAliases(actionId, action.legacyAliases);
       if (actionTitleKey.length === 0) {
         throw new Error(`invalid_plugin_action_definition:${actionId}`);
       }
@@ -190,7 +292,26 @@ export const createPluginActionRegistry = (
         titleKey: actionTitleKey,
         requiredAction: action.requiredAction,
         featureFlag: normalizeIdentifier(action.featureFlag ?? '') || undefined,
+        legacyAliases,
       });
+
+      for (const legacyAlias of legacyAliases ?? []) {
+        if (registry.has(legacyAlias)) {
+          throw new Error(`duplicate_plugin_action:${legacyAlias}`);
+        }
+
+        registry.set(legacyAlias, {
+          actionId,
+          namespace: parsed.namespace,
+          actionName: parsed.actionName,
+          ownerPluginId: pluginNamespace,
+          titleKey: actionTitleKey,
+          requiredAction: action.requiredAction,
+          featureFlag: normalizeIdentifier(action.featureFlag ?? '') || undefined,
+          legacyAliases,
+          deprecatedAlias: legacyAlias,
+        });
+      }
     }
   }
 

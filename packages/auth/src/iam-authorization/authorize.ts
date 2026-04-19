@@ -2,6 +2,7 @@ import type { AuthorizeResponse } from '@sva/core';
 import { evaluateAuthorizeDecision } from '@sva/core';
 import { getWorkspaceContext, withRequestContext } from '@sva/sdk/server';
 
+import { emitAuthAuditEvent } from '../audit-events.server.js';
 import { resolveImpersonationSubject } from '../iam-governance.server.js';
 import { withAuthenticatedUser } from '../middleware.server.js';
 import { jsonResponse } from '../shared/db-helpers.js';
@@ -17,6 +18,8 @@ import {
 } from './shared.js';
 
 const MAX_GEO_HIERARCHY_LENGTH = 32;
+const ACTION_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*\.[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const RESERVED_CORE_ACTION_NAMESPACES = new Set(['content', 'iam', 'core']);
 
 const readGeoUuid = (value: unknown): string | undefined | null => {
   const normalized = readString(value);
@@ -63,11 +66,67 @@ const buildDeniedResponse = (input: DeniedAuthorizeResponseInput): AuthorizeResp
   diagnostics: input.diagnostics,
 });
 
-const denyAuthorizeRequest = (
+const derivePluginActionAuditPayload = (
+  payload: NonNullable<Awaited<ReturnType<typeof loadAuthorizeRequest>>>,
+  result: 'success' | 'failure' | 'denied',
+  reasonCode?: string
+) => {
+  if (ACTION_ID_PATTERN.test(payload.action) === false) {
+    return undefined;
+  }
+
+  const separatorIndex = payload.action.indexOf('.');
+  const actionNamespace = payload.action.slice(0, separatorIndex);
+  if (RESERVED_CORE_ACTION_NAMESPACES.has(actionNamespace)) {
+    return undefined;
+  }
+
+  return {
+    actionId: payload.action,
+    actionNamespace,
+    actionOwner: actionNamespace,
+    result,
+    reasonCode,
+    resourceType: payload.resource.type,
+    resourceId: payload.resource.id,
+  } as const;
+};
+
+const emitPluginActionAuditEvent = async (
+  payload: NonNullable<Awaited<ReturnType<typeof loadAuthorizeRequest>>>,
+  actorUserId: string,
+  result: 'success' | 'failure' | 'denied',
+  reasonCode?: string
+) => {
+  const pluginAction = derivePluginActionAuditPayload(payload, result, reasonCode);
+  if (!pluginAction) {
+    return;
+  }
+
+  await emitAuthAuditEvent({
+    eventType:
+      result === 'success'
+        ? 'plugin_action_authorized'
+        : result === 'denied'
+          ? 'plugin_action_denied'
+          : 'plugin_action_failed',
+    actorUserId,
+    workspaceId: payload.instanceId,
+    outcome: result,
+    requestId: payload.context?.requestId,
+    traceId: payload.context?.traceId,
+    pluginAction,
+  });
+};
+
+const denyAuthorizeRequest = async (
+  payload: NonNullable<Awaited<ReturnType<typeof loadAuthorizeRequest>>>,
+  actorUserId: string,
   input: DeniedAuthorizeResponseInput,
   recordLatency: (allowed: boolean, reason: string) => void
-): Response => {
+): Promise<Response> => {
   const denied = buildDeniedResponse(input);
+  await emitPluginActionAuditEvent(payload, actorUserId, 'denied', denied.reason);
   recordLatency(false, denied.reason);
   return jsonResponse(200, denied);
 };
@@ -115,6 +174,8 @@ const validateAuthorizeImpersonation = async (
   }
 
   return denyAuthorizeRequest(
+    payload,
+    actorKeycloakSubject,
     {
       reason: 'context_attribute_missing',
       instanceId: payload.instanceId,
@@ -154,6 +215,8 @@ export const authorizeHandler = async (request: Request): Promise<Response> => {
 
       if (user.instanceId && user.instanceId !== payload.instanceId) {
         return denyAuthorizeRequest(
+          payload,
+          user.id,
           {
             reason: 'instance_scope_mismatch',
             instanceId: payload.instanceId,
@@ -176,6 +239,7 @@ export const authorizeHandler = async (request: Request): Promise<Response> => {
 
       const geoContext = resolveAuthorizeGeoContext(payload);
       if (geoContext === null) {
+        await emitPluginActionAuditEvent(payload, user.id, 'failure', 'invalid_request');
         recordLatency(false, 'invalid_request');
         return errorResponse(400, 'invalid_request');
       }
@@ -195,6 +259,7 @@ export const authorizeHandler = async (request: Request): Promise<Response> => {
           ...buildRequestContext(payload.instanceId),
         });
 
+        await emitPluginActionAuditEvent(payload, user.id, 'failure', 'database_unavailable');
         recordLatency(false, 'database_unavailable');
         return errorResponse(503, 'database_unavailable');
       }
@@ -210,6 +275,12 @@ export const authorizeHandler = async (request: Request): Promise<Response> => {
         ...buildRequestContext(payload.instanceId),
       });
 
+      await emitPluginActionAuditEvent(
+        payload,
+        user.id,
+        decision.allowed ? 'success' : 'denied',
+        decision.reason
+      );
       recordLatency(decision.allowed, decision.reason);
       return jsonResponse(200, {
         ...decision,

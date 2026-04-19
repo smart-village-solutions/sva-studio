@@ -78,7 +78,7 @@ describe('NewsListPage', () => {
         'news.list.title': 'News',
         'news.list.description': 'Verwalten Sie News-Einträge über das Plugin.',
         'news.actions.create': 'News anlegen',
-        'news.actions.save': 'Änderungen speichern',
+        'news.actions.update': 'Änderungen speichern',
         'news.actions.back': 'Zurück zur Liste',
         'news.actions.delete': 'Löschen',
         'news.actions.deleteConfirm': 'Soll dieser News-Eintrag wirklich gelöscht werden?',

@@ -19,6 +19,15 @@ const getAuditLogContext = (input: {
   workspace_id: input.workspaceId,
   request_id: input.requestId,
   trace_id: input.traceId,
+  ...(input.event.pluginAction
+    ? {
+        action_id: input.event.pluginAction.actionId,
+        action_namespace: input.event.pluginAction.actionNamespace,
+        action_owner: input.event.pluginAction.actionOwner,
+        result: input.event.pluginAction.result,
+        reason_code: input.event.pluginAction.reasonCode,
+      }
+    : {}),
 });
 
 const getDbAuditReasonCode = (scope?: ReturnType<typeof getRuntimeScopeRef>) =>

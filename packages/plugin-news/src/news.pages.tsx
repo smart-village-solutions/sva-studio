@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from '@tanstack/react-router';
 import { translatePluginKey, usePluginTranslation } from '@sva/sdk';
 
 import { createNews, deleteNews, getNews, listNews, updateNews, type NewsFormInput } from './news.api.js';
+import { getPluginNewsActionDefinition, pluginNewsActionIds } from './plugin.js';
 import type { NewsContentItem, NewsPayload, NewsStatus } from './news.types.js';
 import { validateNewsPayload } from './news.validation.js';
 
@@ -38,6 +39,20 @@ const newsFlashStorageKey = 'news-plugin-flash-message';
 const flashMessageTranslationKeys: Record<FlashMessageCode, `messages.${FlashMessageCode}`> = {
   createSuccess: 'messages.createSuccess',
   deleteSuccess: 'messages.deleteSuccess',
+};
+
+const resolvePluginActionLabel = (
+  pt: ReturnType<typeof usePluginTranslation>,
+  actionId: (typeof pluginNewsActionIds)[keyof typeof pluginNewsActionIds]
+) => {
+  const definition = getPluginNewsActionDefinition(actionId);
+  const titleKey = definition?.titleKey;
+  if (!titleKey) {
+    return actionId;
+  }
+
+  const localTitleKey = titleKey.startsWith('news.') ? titleKey.slice('news.'.length) : undefined;
+  return localTitleKey ? pt(localTitleKey) : translatePluginKey('news', titleKey);
 };
 
 const persistFlashMessage = (code: FlashMessageCode) => {
@@ -110,6 +125,11 @@ const NewsForm = ({
 }>) => {
   const navigate = useNavigate();
   const pt = usePluginTranslation('news');
+  const submitLabel =
+    mode === 'create'
+      ? resolvePluginActionLabel(pt, pluginNewsActionIds.create)
+      : resolvePluginActionLabel(pt, pluginNewsActionIds.update);
+  const deleteLabel = resolvePluginActionLabel(pt, pluginNewsActionIds.delete);
   const [form, setForm] = React.useState<NewsFormInput>(defaultForm);
   const [isLoading, setIsLoading] = React.useState(mode === 'edit');
   const [fieldErrors, setFieldErrors] = React.useState<readonly string[]>([]);
@@ -410,14 +430,14 @@ const NewsForm = ({
 
         <div className="flex flex-wrap gap-3">
           <button className={buttonClassName} type="submit">
-            {mode === 'create' ? pt('actions.create') : pt('actions.save')}
+            {submitLabel}
           </button>
           <Link to="/plugins/news" className={secondaryButtonClassName}>
             {pt('actions.back')}
           </Link>
           {mode === 'edit' ? (
             <button className={secondaryButtonClassName} type="button" onClick={onDelete} disabled={deletePending}>
-              {pt('actions.delete')}
+              {deleteLabel}
             </button>
           ) : null}
         </div>
@@ -428,6 +448,8 @@ const NewsForm = ({
 
 export const NewsListPage = () => {
   const pt = usePluginTranslation('news');
+  const createLabel = resolvePluginActionLabel(pt, pluginNewsActionIds.create);
+  const editLabel = resolvePluginActionLabel(pt, pluginNewsActionIds.edit);
   const [items, setItems] = React.useState<readonly NewsContentItem[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -478,7 +500,7 @@ export const NewsListPage = () => {
           <p className="text-sm text-muted-foreground">{pt('list.description')}</p>
         </div>
         <Link to="/plugins/news/new" className={buttonClassName}>
-          {pt('actions.create')}
+          {createLabel}
         </Link>
       </header>
 
@@ -518,7 +540,7 @@ export const NewsListPage = () => {
                   <td className="px-4 py-3">{formatDate(item.updatedAt)}</td>
                   <td className="px-4 py-3">
                     <Link to="/plugins/news/$contentId" params={{ contentId: item.id }} className={secondaryButtonClassName}>
-                      {pt('actions.edit')}
+                      {editLabel}
                     </Link>
                   </td>
                 </tr>

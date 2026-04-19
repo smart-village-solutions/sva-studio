@@ -236,7 +236,9 @@ export const definePluginActions = <const TActions extends readonly PluginAction
     throw new Error(`reserved_plugin_action_namespace:${normalizedNamespace}`);
   }
 
-  const normalizedActions = actions.map((action) => normalizePluginActionDefinition(action)) as TActions;
+  const normalizedActions = actions.map((action) =>
+    normalizePluginActionDefinition(action)
+  ) as unknown as TActions;
 
   for (const action of normalizedActions) {
     const normalizedActionId = action.id;

@@ -51,6 +51,7 @@ jobs:
       - name: Setup workspace
         uses: ./.github/actions/setup-pnpm-workspace
         with:
+          disable-nx-cloud: "true"
           nx-cloud-encryption-key: ${{ secrets.NX_CLOUD_ENCRYPTION_KEY }}
 
       - name: Verify final runtime artifact

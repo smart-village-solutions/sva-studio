@@ -114,7 +114,7 @@ describe('config-request helpers', () => {
         instanceId: 'bb-guben',
         status: 'suspended',
       } as never)
-    ).toThrow('Tenant host bb-guben.studio.smart-village.app is not active');
+    ).toThrow('Tenant auth configuration for bb-guben.studio.smart-village.app is inactive');
 
     expect(state.loggerWarn).toHaveBeenCalledWith(
       'Tenant hostname resolved to non-active registry entry',

@@ -16,7 +16,8 @@ export class SessionStoreUnavailableError extends Error {
 export type TenantAuthResolutionFailureReason =
   | 'tenant_lookup_failed'
   | 'tenant_not_found'
-  | 'tenant_host_invalid';
+  | 'tenant_host_invalid'
+  | 'tenant_inactive';
 
 const buildTenantAuthResolutionMessage = (input: {
   host: string;
@@ -29,6 +30,8 @@ const buildTenantAuthResolutionMessage = (input: {
       return `Tenant auth configuration not found for ${input.host}`;
     case 'tenant_host_invalid':
       return `Tenant host ${input.host} is not valid for tenant auth resolution`;
+    case 'tenant_inactive':
+      return `Tenant auth configuration for ${input.host} is inactive`;
   }
 };
 
@@ -51,10 +54,25 @@ export class TenantAuthResolutionError extends Error {
     this.reason = input.reason;
     this.publicMessage =
       input.publicMessage ??
-      'Anmeldung ist für diesen Mandanten momentan nicht verfügbar. Bitte später erneut versuchen.';
+      (input.reason === 'tenant_inactive'
+        ? 'Anmeldung ist für diesen Mandanten derzeit nicht verfügbar, weil die Instanz nicht aktiv ist.'
+        : 'Anmeldung ist für diesen Mandanten momentan nicht verfügbar. Bitte später erneut versuchen.');
     if (input.cause !== undefined) {
       this.cause = input.cause;
     }
+  }
+}
+
+export class SessionUserHydrationError extends Error {
+  readonly requestHost?: string;
+  readonly reason: 'missing_instance_id';
+  readonly statusCode = 401;
+
+  constructor(input: { reason: 'missing_instance_id'; requestHost?: string }) {
+    super('Session user is missing required instance context');
+    this.name = 'SessionUserHydrationError';
+    this.reason = input.reason;
+    this.requestHost = input.requestHost;
   }
 }
 

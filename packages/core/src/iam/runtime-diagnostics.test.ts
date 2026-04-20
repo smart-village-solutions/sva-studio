@@ -98,6 +98,25 @@ describe('deriveIamRuntimeDiagnostics', () => {
       },
       status: 'degradiert',
     });
+
+    expect(
+      deriveIamRuntimeDiagnostics({
+        code: 'forbidden',
+        status: 403,
+        details: {
+          reason_code: 'tenant_inactive',
+          instance_id: 'hb-demo',
+        },
+      })
+    ).toEqual({
+      classification: 'registry_or_provisioning_drift',
+      recommendedAction: 'provisioning_pruefen',
+      safeDetails: {
+        instance_id: 'hb-demo',
+        reason_code: 'tenant_inactive',
+      },
+      status: 'manuelle_pruefung_erforderlich',
+    });
   });
 
   it('classifies schema drift diagnostics from safe details', () => {
@@ -231,6 +250,23 @@ describe('deriveIamRuntimeDiagnostics', () => {
         reason_code: 'jit_provision_failed',
       },
       status: 'degradiert',
+    });
+
+    expect(
+      deriveIamRuntimeDiagnostics({
+        code: 'unauthorized',
+        status: 401,
+        details: {
+          reason_code: 'missing_session_instance_id',
+        },
+      })
+    ).toEqual({
+      classification: 'session_store_or_session_hydration',
+      recommendedAction: 'erneut_anmelden',
+      safeDetails: {
+        reason_code: 'missing_session_instance_id',
+      },
+      status: 'recovery_laeuft',
     });
 
     expect(

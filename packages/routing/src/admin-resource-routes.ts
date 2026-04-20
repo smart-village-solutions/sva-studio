@@ -23,16 +23,7 @@ type AdminResourceBindingResolver = {
 
 type AdminResourceRouteKind = 'list' | 'create' | 'detail' | 'history';
 type AdminResourceViewKind = keyof AdminResourceDefinition['views'];
-type DetailBindingKey = Extract<
-  BindingKey,
-  | 'contentDetail'
-  | 'adminUserDetail'
-  | 'adminOrganizationDetail'
-  | 'adminInstanceDetail'
-  | 'adminRoleDetail'
-  | 'adminGroupDetail'
-  | 'adminLegalTextDetail'
->;
+type DetailBindingKey = Extract<BindingKey, 'contentDetail' | 'adminUserDetail' | 'adminOrganizationDetail' | 'adminInstanceDetail' | 'adminRoleDetail' | 'adminGroupDetail' | 'adminLegalTextDetail'>;
 
 const LEGACY_CONTENT_ALIAS_PREFIX = '/content';
 
@@ -91,21 +82,16 @@ const getDetailParamName = (bindingKey: BindingKey): string => {
   if (!(bindingKey in detailParamNameByBinding)) {
     throw new Error(`unsupported_admin_resource_detail_binding:${bindingKey}`);
   }
-
   return detailParamNameByBinding[bindingKey as DetailBindingKey];
 };
 
-const withCoreContentAdminResource = (
-  resources: readonly AdminResourceDefinition[]
-): readonly AdminResourceDefinition[] => {
+const withCoreContentAdminResource = (resources: readonly AdminResourceDefinition[]): readonly AdminResourceDefinition[] => {
   const containsCoreContent = resources.some(
     (resource) => resource.resourceId === coreContentAdminResource.resourceId || resource.basePath === coreContentAdminResource.basePath
   );
-
   if (containsCoreContent) {
     return resources;
   }
-
   return [coreContentAdminResource, ...resources];
 };
 

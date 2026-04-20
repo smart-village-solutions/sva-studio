@@ -31,14 +31,16 @@ const ACTION_LABEL_KEYS: Record<IamRuntimeRecommendedAction, string> = {
   support_kontaktieren: 'admin.shared.diagnostics.actions.supportKontaktieren',
 };
 
-const STATUS_LABEL_KEYS: Record<IamRuntimeDiagnosticStatus, string> = {
+const STATUS_LABEL_KEYS: Partial<Record<IamRuntimeDiagnosticStatus, string>> = {
   recovery_laeuft: 'admin.shared.diagnostics.statuses.recoveryLaeuft',
   degradiert: 'admin.shared.diagnostics.statuses.degradiert',
   manuelle_pruefung_erforderlich: 'admin.shared.diagnostics.statuses.manuellePruefungErforderlich',
 };
 
-const readLabelKey = <TKey extends string>(mapping: Readonly<Record<TKey, string>>, value?: string): string | undefined =>
-  value && Object.hasOwn(mapping, value) ? mapping[value as TKey] : undefined;
+const readLabelKey = <TKey extends string>(
+  mapping: Readonly<Partial<Record<TKey, string>>>,
+  value?: string
+): string | undefined => (value && Object.hasOwn(mapping, value) ? mapping[value as TKey] : undefined);
 
 type IamRuntimeDiagnosticDetailsProps = Readonly<{
   error: IamHttpError;

@@ -53,6 +53,30 @@ describe('news api', () => {
     ]);
   });
 
+  it('keeps legacy news records visible during the canonical content type rename', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        data: [
+          {
+            id: 'news-legacy',
+            title: 'Legacy News',
+            contentType: 'news',
+            payload: sampleInput.payload,
+            status: 'draft',
+            author: 'Editor',
+            createdAt: '2026-01-01',
+            updatedAt: '2026-01-02',
+          },
+        ],
+      }),
+    } as Response);
+
+    await expect(listNews()).resolves.toEqual([
+      expect.objectContaining({ id: 'news-legacy', contentType: 'news' }),
+    ]);
+  });
+
   it('creates news with idempotency header and the news content type', async () => {
     vi.mocked(fetch).mockResolvedValueOnce({
       ok: true,

@@ -1,8 +1,13 @@
 import type { AdminResourceDefinition, PluginDefinition, PluginRouteGuard, RouteFactory } from '@sva/sdk';
+import { mergeAdminResourceDefinitions } from '@sva/sdk';
 import { createRoute, type AnyRoute, type RootRoute, type RouteComponent } from '@tanstack/react-router';
 
 import { createAccountUiRouteGuard, type AccountUiRouteGuardKey } from './account-ui.routes.js';
-import { createAdminResourceRouteFactories, createLegacyContentAliasFactories } from './admin-resource-routes.js';
+import {
+  adminDetailParamNameByBinding,
+  createAdminResourceRouteFactories,
+  createLegacyContentAliasFactories,
+} from './admin-resource-routes.js';
 import {
   emitRoutingDiagnostic,
   type RoutingDiagnosticsHook,
@@ -53,17 +58,6 @@ export type AppRouteBindings = {
 export type AppRouteBindingKey = keyof AppRouteBindings;
 
 type BindingKey = AppRouteBindingKey;
-type AdminDetailBindingKey = Extract<
-  BindingKey,
-  | 'contentDetail'
-  | 'adminUserDetail'
-  | 'adminOrganizationDetail'
-  | 'adminInstanceDetail'
-  | 'adminRoleDetail'
-  | 'adminGroupDetail'
-  | 'adminLegalTextDetail'
->;
-
 type UiRouteDefinition = {
   readonly binding: BindingKey;
   readonly guard?: AccountUiRouteGuardKey;
@@ -120,19 +114,10 @@ const uiRouteDefinitions: readonly UiRouteDefinition[] = [
   { binding: 'adminApiPhase1Test', path: uiRoutePaths.adminApiPhase1Test },
 ] as const;
 
-const adminDetailParamNameByBinding = {
-  contentDetail: 'id',
-  adminUserDetail: 'userId',
-  adminOrganizationDetail: 'organizationId',
-  adminInstanceDetail: 'instanceId',
-  adminRoleDetail: 'roleId',
-  adminGroupDetail: 'groupId',
-  adminLegalTextDetail: 'legalTextVersionId',
-} as const satisfies Record<AdminDetailBindingKey, string>;
-
 export const getAdminDetailRoutePath = (basePath: string, bindingKey: string): string => {
   const detailParamName =
-    adminDetailParamNameByBinding[bindingKey as AdminDetailBindingKey] ?? adminDetailParamNameByBinding.contentDetail;
+    adminDetailParamNameByBinding[bindingKey as keyof typeof adminDetailParamNameByBinding] ??
+    adminDetailParamNameByBinding.contentDetail;
 
   return `${basePath}/$${detailParamName}`;
 };
@@ -163,7 +148,8 @@ export const createUiRouteFactories = (
   } = {}
 ): readonly AppRouteFactory[] => {
   const diagnostics = options.diagnostics;
-  const adminResourcePaths = collectAdminResourceRoutePaths(options.adminResources ?? []);
+  const adminResources = mergeAdminResourceDefinitions(options.adminResources ?? []);
+  const adminResourcePaths = collectAdminResourceRoutePaths(adminResources);
   const routeDefinitions = uiRouteDefinitions.filter((definition) => !adminResourcePaths.has(definition.path));
 
   return [
@@ -189,8 +175,8 @@ export const createUiRouteFactories = (
           component: bindings[definition.binding],
         });
     }),
-    ...createAdminResourceRouteFactories(bindings, options.adminResources ?? [], diagnostics),
-    ...createLegacyContentAliasFactories(),
+    ...createAdminResourceRouteFactories(bindings, adminResources, diagnostics),
+    ...createLegacyContentAliasFactories(adminResources),
   ];
 };
 

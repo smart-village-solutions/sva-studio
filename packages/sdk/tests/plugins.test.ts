@@ -105,6 +105,15 @@ describe('plugin registry', () => {
       createPluginRegistry([
         {
           ...pluginA,
+          id: 'News Plugin',
+        },
+      ])
+    ).toThrow('invalid_plugin_namespace:News Plugin');
+
+    expect(() =>
+      createPluginRegistry([
+        {
+          ...pluginA,
           displayName: '   ',
         },
       ])
@@ -396,6 +405,7 @@ describe('plugin registry', () => {
 
   it('enforces namespace isolation for plugin actions', () => {
     expect(() => definePluginActions('   ', [])).toThrow('invalid_plugin_action_namespace');
+    expect(() => definePluginActions('News', [])).toThrow('invalid_plugin_namespace:News');
 
     expect(() => definePluginActions('core', [])).toThrow('reserved_plugin_action_namespace:core');
     expect(() => definePluginActions('content', [])).toThrow('reserved_plugin_action_namespace:content');

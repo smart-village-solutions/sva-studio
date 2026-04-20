@@ -37,6 +37,10 @@ describe('content type registry', () => {
     ).toThrow('invalid_plugin_namespace');
 
     expect(() =>
+      definePluginContentTypes('News', [{ contentType: 'news.article', displayName: 'News' }])
+    ).toThrow('invalid_plugin_namespace:News');
+
+    expect(() =>
       definePluginContentTypes('content', [{ contentType: 'content.article', displayName: 'Content' }])
     ).toThrow('reserved_plugin_namespace:content');
 

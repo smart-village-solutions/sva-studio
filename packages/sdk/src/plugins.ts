@@ -3,6 +3,7 @@ import type { ContentTypeDefinition } from './content-types.js';
 import {
   isReservedPluginNamespace,
   normalizePluginIdentifier,
+  normalizePluginNamespace,
   parseNamespacedPluginIdentifier,
 } from './plugin-identifiers.js';
 
@@ -139,10 +140,12 @@ export const definePluginActions = <const TActions extends readonly PluginAction
   namespace: string,
   actions: TActions
 ): TActions => {
-  const normalizedNamespace = normalizePluginIdentifier(namespace);
-  if (normalizedNamespace.length === 0) {
+  const trimmedNamespace = namespace.trim();
+  if (trimmedNamespace.length === 0) {
     throw new Error('invalid_plugin_action_namespace');
   }
+
+  const normalizedNamespace = normalizePluginNamespace(trimmedNamespace);
   if (isReservedPluginNamespace(normalizedNamespace)) {
     throw new Error(`reserved_plugin_action_namespace:${normalizedNamespace}`);
   }
@@ -171,10 +174,7 @@ export const definePluginAuditEvents = <const TEvents extends readonly PluginAud
   namespace: string,
   events: TEvents
 ): TEvents => {
-  const normalizedNamespace = normalizePluginIdentifier(namespace);
-  if (normalizedNamespace.length === 0) {
-    throw new Error('invalid_plugin_namespace');
-  }
+  const normalizedNamespace = normalizePluginNamespace(namespace);
   if (isReservedPluginNamespace(normalizedNamespace)) {
     throw new Error(`reserved_plugin_namespace:${normalizedNamespace}`);
   }
@@ -202,7 +202,12 @@ export const createPluginRegistry = (
   const registry = new Map<string, PluginDefinition>();
 
   for (const plugin of plugins) {
-    const id = normalizePluginIdentifier(plugin.id);
+    const trimmedId = plugin.id.trim();
+    if (trimmedId.length === 0) {
+      throw new Error('invalid_plugin_definition');
+    }
+
+    const id = normalizePluginNamespace(trimmedId);
     const displayName = plugin.displayName.trim();
 
     if (id.length === 0 || displayName.length === 0) {

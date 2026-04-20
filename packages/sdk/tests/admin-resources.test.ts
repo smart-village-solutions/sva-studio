@@ -53,6 +53,22 @@ describe('admin resources', () => {
         },
       ])
     ).toThrow('invalid_admin_resource_base_path:news/articles');
+
+    expect(() =>
+      createAdminResourceRegistry([
+        {
+          resourceId: 'news.articles',
+          basePath: 'News Articles',
+          titleKey: 'news.articles.title',
+          guard: 'content',
+          views: {
+            list: { bindingKey: 'content' },
+            create: { bindingKey: 'contentCreate' },
+            detail: { bindingKey: 'contentDetail' },
+          },
+        },
+      ])
+    ).toThrow('invalid_admin_resource_base_path:News Articles');
   });
 
   it('enforces namespaced plugin admin resource ids and reserved namespaces', () => {
@@ -71,6 +87,22 @@ describe('admin resources', () => {
         },
       ])
     ).toThrow('invalid_plugin_namespace');
+
+    expect(() =>
+      definePluginAdminResources('News', [
+        {
+          resourceId: 'news.articles',
+          basePath: 'news',
+          titleKey: 'news.articles.title',
+          guard: 'content',
+          views: {
+            list: { bindingKey: 'content' },
+            create: { bindingKey: 'contentCreate' },
+            detail: { bindingKey: 'contentDetail' },
+          },
+        },
+      ])
+    ).toThrow('invalid_plugin_namespace:News');
 
     expect(() =>
       definePluginAdminResources('news', [

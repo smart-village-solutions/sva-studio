@@ -260,6 +260,24 @@ describe('admin resource routes', () => {
     ).toThrow('unknown_admin_resource_binding_key:news.entries:list:unknownListBinding');
   });
 
+  it('rejects prototype property binding keys before route creation', () => {
+    expect(() =>
+      createAdminResourceRouteFactories(bindings, [
+        {
+          resourceId: 'news.entries',
+          basePath: 'news',
+          titleKey: 'news.title',
+          guard: 'content',
+          views: {
+            list: { bindingKey: 'toString' as never },
+            create: { bindingKey: 'contentCreate' },
+            detail: { bindingKey: 'contentDetail' },
+          },
+        },
+      ])
+    ).toThrow('unknown_admin_resource_binding_key:news.entries:list:toString');
+  });
+
   it('rejects missing admin resource binding keys before route creation', () => {
     expect(() =>
       createAdminResourceRouteFactories(bindings, [
@@ -314,5 +332,34 @@ describe('admin resource routes', () => {
     const paths = routeFactories.map((factory) => String(readRouteOptions(factory(rootRoute as never)).path));
 
     expect(paths).toEqual(['/admin/content', '/admin/content/new', '/admin/content/$id']);
+  });
+
+  it('derives legacy content redirects from the registered content base path', () => {
+    const routeFactories = createLegacyContentAliasFactories([
+      {
+        resourceId: 'content',
+        basePath: 'editorial-content',
+        titleKey: 'content.title',
+        guard: 'content',
+        views: {
+          list: { bindingKey: 'content' },
+          create: { bindingKey: 'contentCreate' },
+          detail: { bindingKey: 'contentDetail' },
+        },
+      },
+    ]);
+    const rootRoute = { id: 'root' };
+    const routes = routeFactories.map((factory) => factory(rootRoute as never));
+    const routeMap = new Map(routes.map((route) => [String(readRouteOptions(route).path), route]));
+
+    expect(() => readRouteOptions(routeMap.get('/content')).beforeLoad?.({ href: '/content?page=1' })).toThrow(
+      expect.objectContaining({ href: '/admin/editorial-content?page=1', __redirect: true })
+    );
+    expect(() => readRouteOptions(routeMap.get('/content/new')).beforeLoad?.({ href: '/content/new?mode=copy' })).toThrow(
+      expect.objectContaining({ href: '/admin/editorial-content/new?mode=copy', __redirect: true })
+    );
+    expect(
+      () => readRouteOptions(routeMap.get('/content/$contentId')).beforeLoad?.({ href: '/content/content-7' })
+    ).toThrow(expect.objectContaining({ href: '/admin/editorial-content/content-7', __redirect: true }));
   });
 });

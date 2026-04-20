@@ -66,6 +66,8 @@ import {
 
 type ServerRouteOptionsUnderTest = {
   path: string;
+  getParentRoute: () => unknown;
+  component: () => unknown;
   server: {
     handlers: {
       GET: (ctx: { request: Request }) => Promise<Response>;

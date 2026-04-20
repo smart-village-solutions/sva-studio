@@ -4,7 +4,6 @@ import { createRoute, redirect, type RootRoute } from '@tanstack/react-router';
 import { createAccountUiRouteGuard, type AccountUiRouteGuardKey } from './account-ui.routes.js';
 import type { AppRouteBindings, AppRouteFactory } from './app.routes.shared.js';
 import type { RoutingDiagnosticsHook } from './diagnostics.js';
-import { uiRoutePaths } from './route-paths.js';
 
 type BindingKey = keyof AppRouteBindings;
 
@@ -41,7 +40,7 @@ const coreContentAdminResource = {
 
 const toAdminRoutePath = (basePath: string) => `/admin/${basePath}` as const;
 
-const detailParamNameByBinding = {
+export const adminDetailParamNameByBinding = {
   contentDetail: 'id',
   adminUserDetail: 'userId',
   adminOrganizationDetail: 'organizationId',
@@ -51,7 +50,8 @@ const detailParamNameByBinding = {
   adminLegalTextDetail: 'legalTextVersionId',
 } as const satisfies Record<DetailBindingKey, string>;
 
-const hasBindingKey = (bindings: AppRouteBindings, bindingKey: string): bindingKey is BindingKey => bindingKey in bindings;
+const hasBindingKey = (bindings: AppRouteBindings, bindingKey: string): bindingKey is BindingKey =>
+  Object.prototype.hasOwnProperty.call(bindings, bindingKey);
 
 const resolveBindingKey = (
   bindings: AppRouteBindings,
@@ -79,20 +79,29 @@ const getAdminResourceBindings = (
 });
 
 const getDetailParamName = (bindingKey: BindingKey): string => {
-  if (!(bindingKey in detailParamNameByBinding)) {
+  if (!Object.prototype.hasOwnProperty.call(adminDetailParamNameByBinding, bindingKey)) {
     throw new Error(`unsupported_admin_resource_detail_binding:${bindingKey}`);
   }
-  return detailParamNameByBinding[bindingKey as DetailBindingKey];
+  return adminDetailParamNameByBinding[bindingKey as DetailBindingKey];
 };
 
 const withCoreContentAdminResource = (resources: readonly AdminResourceDefinition[]): readonly AdminResourceDefinition[] => {
   const containsCoreContent = resources.some(
-    (resource) => resource.resourceId === coreContentAdminResource.resourceId || resource.basePath === coreContentAdminResource.basePath
+    (resource) =>
+      resource.resourceId === coreContentAdminResource.resourceId || resource.basePath === coreContentAdminResource.basePath
   );
   if (containsCoreContent) {
     return resources;
   }
   return [coreContentAdminResource, ...resources];
+};
+
+const resolveCanonicalContentAdminRoutePath = (resources: readonly AdminResourceDefinition[]): string => {
+  const contentResource = withCoreContentAdminResource(resources).find(
+    (resource) => resource.resourceId === coreContentAdminResource.resourceId
+  );
+
+  return toAdminRoutePath(contentResource?.basePath ?? coreContentAdminResource.basePath);
 };
 
 const adminResourceGuardMap = {
@@ -202,18 +211,18 @@ const readBeforeLoadHref = (options: unknown): string => {
   return LEGACY_CONTENT_ALIAS_PREFIX;
 };
 
-const normalizeLegacyContentHref = (href: string): string => {
+const normalizeLegacyContentHref = (href: string, canonicalContentPath: string): string => {
   if (href === LEGACY_CONTENT_ALIAS_PREFIX || href.startsWith(`${LEGACY_CONTENT_ALIAS_PREFIX}?`)) {
-    return href.replace(LEGACY_CONTENT_ALIAS_PREFIX, uiRoutePaths.content);
+    return href.replace(LEGACY_CONTENT_ALIAS_PREFIX, canonicalContentPath);
   }
-  if (href.startsWith(`${LEGACY_CONTENT_ALIAS_PREFIX}/new`)) {
-    return href.replace(`${LEGACY_CONTENT_ALIAS_PREFIX}/new`, uiRoutePaths.contentCreate);
+  if (href === `${LEGACY_CONTENT_ALIAS_PREFIX}/new` || href.startsWith(`${LEGACY_CONTENT_ALIAS_PREFIX}/new?`)) {
+    return href.replace(`${LEGACY_CONTENT_ALIAS_PREFIX}/new`, `${canonicalContentPath}/new`);
   }
   if (href.startsWith(`${LEGACY_CONTENT_ALIAS_PREFIX}/`)) {
-    return href.replace(`${LEGACY_CONTENT_ALIAS_PREFIX}/`, `${uiRoutePaths.content}/`);
+    return href.replace(`${LEGACY_CONTENT_ALIAS_PREFIX}/`, `${canonicalContentPath}/`);
   }
 
-  return uiRoutePaths.content;
+  return canonicalContentPath;
 };
 
 export const createAdminResourceRouteFactories = (
@@ -235,8 +244,11 @@ export const createAdminResourceRouteFactories = (
       }
   );
 
-export const createLegacyContentAliasFactories = (): readonly AppRouteFactory[] => {
+export const createLegacyContentAliasFactories = (
+  resources: readonly AdminResourceDefinition[] = []
+): readonly AppRouteFactory[] => {
   const aliasPaths = ['/content', '/content/new', '/content/$contentId'] as const;
+  const canonicalContentPath = resolveCanonicalContentAdminRoutePath(resources);
 
   return aliasPaths.map(
     (path) =>
@@ -245,7 +257,7 @@ export const createLegacyContentAliasFactories = (): readonly AppRouteFactory[] 
           getParentRoute: () => rootRoute,
           path,
           beforeLoad: (options) => {
-            throw redirect({ href: normalizeLegacyContentHref(readBeforeLoadHref(options)) });
+            throw redirect({ href: normalizeLegacyContentHref(readBeforeLoadHref(options), canonicalContentPath) });
           },
           component: () => null,
         })

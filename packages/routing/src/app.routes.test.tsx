@@ -442,6 +442,27 @@ describe('app.routes', () => {
     expect(paths.filter((path) => path === '/admin/legal-texts/$legalTextVersionId')).toHaveLength(1);
   });
 
+  it('fails fast when injected admin resources contain duplicate base paths', () => {
+    expect(() =>
+      createUiRouteFactories(bindings, {
+        adminResources: [
+          ...adminResources,
+          {
+            resourceId: 'news.content',
+            basePath: 'content',
+            titleKey: 'news.content.title',
+            guard: 'content',
+            views: {
+              list: { bindingKey: 'content' },
+              create: { bindingKey: 'contentCreate' },
+              detail: { bindingKey: 'contentDetail' },
+            },
+          },
+        ],
+      })
+    ).toThrow('admin_resource_base_path_conflict:content:news.content:content');
+  });
+
   it('emits one diagnostics event for unsupported plugin guards during factory creation', () => {
     const diagnostics = vi.fn();
 

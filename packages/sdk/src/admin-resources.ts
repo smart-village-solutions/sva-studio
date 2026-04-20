@@ -1,6 +1,7 @@
 import {
   isReservedPluginNamespace,
   normalizePluginIdentifier,
+  normalizePluginNamespace,
   parseNamespacedPluginIdentifier,
 } from './plugin-identifiers.js';
 
@@ -51,6 +52,9 @@ const normalizeBasePath = (value: string): string => {
   if (normalized.includes('/')) {
     throw new Error(`invalid_admin_resource_base_path:${normalized}`);
   }
+  if (/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(normalized) === false) {
+    throw new Error(`invalid_admin_resource_base_path:${normalized}`);
+  }
 
   return normalized;
 };
@@ -91,10 +95,7 @@ export const definePluginAdminResources = <const TResources extends readonly Adm
   namespace: string,
   resources: TResources
 ): TResources => {
-  const normalizedNamespace = normalizePluginIdentifier(namespace);
-  if (normalizedNamespace.length === 0) {
-    throw new Error('invalid_plugin_namespace');
-  }
+  const normalizedNamespace = normalizePluginNamespace(namespace);
   if (isReservedPluginNamespace(normalizedNamespace)) {
     throw new Error(`reserved_plugin_namespace:${normalizedNamespace}`);
   }

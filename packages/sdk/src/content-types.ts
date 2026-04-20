@@ -2,6 +2,7 @@ import { GENERIC_CONTENT_TYPE, type ContentJsonValue } from '@sva/core';
 import {
   isReservedPluginNamespace,
   normalizePluginIdentifier,
+  normalizePluginNamespace,
   parseNamespacedPluginIdentifier,
 } from './plugin-identifiers.js';
 
@@ -56,10 +57,7 @@ export const definePluginContentTypes = <const TDefinitions extends readonly Con
   namespace: string,
   definitions: TDefinitions
 ): TDefinitions => {
-  const normalizedNamespace = normalizePluginIdentifier(namespace);
-  if (normalizedNamespace.length === 0) {
-    throw new Error('invalid_plugin_namespace');
-  }
+  const normalizedNamespace = normalizePluginNamespace(namespace);
   if (isReservedPluginNamespace(normalizedNamespace)) {
     throw new Error(`reserved_plugin_namespace:${normalizedNamespace}`);
   }

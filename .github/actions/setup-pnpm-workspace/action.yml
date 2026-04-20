@@ -21,7 +21,7 @@ inputs:
   disable-nx-cloud:
     description: Disable Nx Cloud and force local Nx execution for this job
     required: false
-    default: "true"
+    default: "false"
 
 runs:
   using: composite
@@ -31,7 +31,6 @@ runs:
       shell: bash
       run: |
         echo "NX_NO_CLOUD=true" >> "$GITHUB_ENV"
-        echo "NX_CLOUD_ENCRYPTION_KEY=" >> "$GITHUB_ENV"
 
     - name: Setup pnpm
       uses: pnpm/action-setup@v5

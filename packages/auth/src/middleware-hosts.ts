@@ -13,7 +13,6 @@ const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
 const forbiddenTenantHost = (input: {
   code?: 'forbidden' | 'database_unavailable';
   dependency?: 'database';
-  host: string;
   instanceId?: string;
   reasonCode: string;
   requestId?: string;
@@ -93,7 +92,6 @@ export const validateTenantHost = async (request: Request): Promise<Response | n
     return forbiddenTenantHost({
       code: 'database_unavailable',
       dependency: 'database',
-      host,
       reasonCode: 'tenant_lookup_failed',
       requestId,
       status: 503,
@@ -112,7 +110,6 @@ export const validateTenantHost = async (request: Request): Promise<Response | n
       ...buildLogContext(undefined, { includeTraceId: true }),
     });
     return forbiddenTenantHost({
-      host,
       instanceId: registryEntry?.instanceId,
       reasonCode,
       requestId,

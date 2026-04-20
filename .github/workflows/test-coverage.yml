@@ -37,7 +37,7 @@ jobs:
       - name: Detect relevant PR changes
         id: changes
         if: github.event_name == 'pull_request'
-        uses: dorny/paths-filter@v3
+        uses: dorny/paths-filter@v4
         with:
           filters: |
             relevant:
@@ -178,7 +178,7 @@ jobs:
       - name: Detect relevant PR changes
         id: changes
         if: github.event_name == 'pull_request'
-        uses: dorny/paths-filter@v3
+        uses: dorny/paths-filter@v4
         with:
           filters: |
             relevant:
@@ -226,7 +226,7 @@ jobs:
 
       - name: Detect relevant PR changes
         id: changes
-        uses: dorny/paths-filter@v3
+        uses: dorny/paths-filter@v4
         with:
           filters: |
             relevant:

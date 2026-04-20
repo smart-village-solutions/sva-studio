@@ -10,6 +10,8 @@ import type { SessionUser } from './types.js';
 
 const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
 
+const IPV4_HOST_PATTERN = /^(?:\d{1,3}\.){3}\d{1,3}$/;
+
 const forbiddenTenantHost = (input: {
   code?: 'forbidden' | 'database_unavailable';
   dependency?: 'database';
@@ -38,10 +40,11 @@ export const resolveSessionUser = async (request: Request, user: SessionUser): P
   const host = resolveEffectiveRequestHost(request);
   const normalizedHost = host.toLowerCase().replace(/:\d+$/, '').replace(/\.$/, '');
   const hostSegmentCount = normalizedHost.split('.').filter(Boolean).length;
+  const isIpv4Host = IPV4_HOST_PATTERN.test(normalizedHost);
   const config = getInstanceConfig();
   const classification = config
     ? classifyHost(host, config.parentDomain)
-    : hostSegmentCount >= 4 && normalizedHost !== 'localhost'
+    : hostSegmentCount >= 4 && normalizedHost !== 'localhost' && !isIpv4Host
       ? { kind: 'tenant' as const }
       : { kind: 'root' as const };
   if (classification.kind !== 'tenant') {

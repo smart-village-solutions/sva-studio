@@ -63,6 +63,18 @@ describe('middleware-hosts', () => {
     });
   });
 
+  it('keeps IPv4 hosts in degraded mode on the platform path when instance config is unavailable', async () => {
+    instanceConfigState.value = null;
+    const { resolveSessionUser } = await import('./middleware-hosts.js');
+
+    const user = {
+      id: 'user-ipv4',
+      roles: ['iam_admin'],
+    } satisfies SessionUser;
+
+    await expect(resolveSessionUser(new Request('http://127.0.0.1/api/v1/iam/users'), user)).resolves.toEqual(user);
+  });
+
   it('includes the generated workspace request id in tenant host errors', async () => {
     loadInstanceByHostnameMock.mockResolvedValue({
       instanceId: 'hb-meinquartier',

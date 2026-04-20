@@ -53,6 +53,7 @@ jobs:
         if: github.event_name != 'pull_request' || steps.changes.outputs.relevant == 'true'
         uses: ./.github/actions/setup-pnpm-workspace
         with:
+          disable-nx-cloud: "true"
           nx-cloud-encryption-key: ${{ secrets.NX_CLOUD_ENCRYPTION_KEY }}
 
       - name: Start Redis for coverage tests
@@ -194,6 +195,7 @@ jobs:
         if: github.event_name != 'pull_request' || steps.changes.outputs.relevant == 'true'
         uses: ./.github/actions/setup-pnpm-workspace
         with:
+          disable-nx-cloud: "true"
           nx-cloud-encryption-key: ${{ secrets.NX_CLOUD_ENCRYPTION_KEY }}
 
       - name: Evaluate complexity gates
@@ -242,11 +244,12 @@ jobs:
         if: steps.changes.outputs.relevant == 'true'
         uses: ./.github/actions/setup-pnpm-workspace
         with:
+          disable-nx-cloud: "true"
           nx-cloud-encryption-key: ${{ secrets.NX_CLOUD_ENCRYPTION_KEY }}
 
       - name: Ensure origin/main is available for affected integration
         if: steps.changes.outputs.relevant == 'true'
-        run: git fetch origin "${{ github.base_ref }}" --no-tags --prune
+        run: git fetch origin "${{ github.base_ref }}" --no-tags --prune --depth=1
 
       - name: Run affected integration tests not covered by dedicated PR workflows
         if: steps.changes.outputs.relevant == 'true'
@@ -280,6 +283,7 @@ jobs:
       - name: Setup workspace
         uses: ./.github/actions/setup-pnpm-workspace
         with:
+          disable-nx-cloud: "true"
           nx-cloud-encryption-key: ${{ secrets.NX_CLOUD_ENCRYPTION_KEY }}
 
       - name: Run integration tests (required on main/schedule)

@@ -47,6 +47,7 @@ jobs:
         if: github.event_name != 'pull_request' || steps.changes.outputs.relevant == 'true'
         uses: ./.github/actions/setup-pnpm-workspace
         with:
+          disable-nx-cloud: "true"
           nx-cloud-encryption-key: ${{ secrets.NX_CLOUD_ENCRYPTION_KEY }}
 
       - name: Run lint gate
@@ -95,6 +96,7 @@ jobs:
         if: github.event_name != 'pull_request' || steps.changes.outputs.relevant == 'true'
         uses: ./.github/actions/setup-pnpm-workspace
         with:
+          disable-nx-cloud: "true"
           nx-cloud-encryption-key: ${{ secrets.NX_CLOUD_ENCRYPTION_KEY }}
 
       - name: Run unit gate
@@ -143,6 +145,7 @@ jobs:
         if: github.event_name != 'pull_request' || steps.changes.outputs.relevant == 'true'
         uses: ./.github/actions/setup-pnpm-workspace
         with:
+          disable-nx-cloud: "true"
           nx-cloud-encryption-key: ${{ secrets.NX_CLOUD_ENCRYPTION_KEY }}
 
       - name: Run types gate

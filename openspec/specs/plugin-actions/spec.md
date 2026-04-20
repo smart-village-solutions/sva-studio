@@ -1,7 +1,7 @@
 # plugin-actions Specification
 
 ## Purpose
-TBD - created by archiving change add-plugin-actions-namespace-isolation. Update Purpose after archive.
+Diese Spezifikation beschreibt den kanonischen Vertrag für vollständig qualifizierte Plugin-Action-IDs, Namespace-Isolation zwischen Core und Plugins sowie die deterministische Behandlung von Aliasen, Kollisionen, IAM-Prüfungen und Auditierung.
 ## Requirements
 ### Requirement: Namespaced Plugin-Action-IDs
 Das System MUST Plugin-Aktionen ausschließlich mit vollständig qualifizierten Action-IDs im Format `<namespace>.<actionName>` akzeptieren.
@@ -89,4 +89,3 @@ Das System MUST für Registrierung und Ausführung von Plugin-Aktionen Audit-Ere
 #### Scenario: Erfolgreiche Action-Ausführung
 - **WHEN** eine Plugin-Action erfolgreich ausgeführt wird
 - **THEN** enthält das Audit-Event mindestens `actionId`, `actionNamespace`, `actionOwner`, `result`, `requestId`, `traceId`
-

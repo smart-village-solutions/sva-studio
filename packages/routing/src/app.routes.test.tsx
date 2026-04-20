@@ -315,6 +315,49 @@ describe('app.routes', () => {
     expect(routeMap.has('/admin/content/$id')).toBe(true);
   });
 
+  it('deduplicates static admin routes when equivalent admin resources are injected', () => {
+    const routeFactories = getClientRouteFactories({
+      bindings,
+      adminResources: [
+        ...adminResources,
+        {
+          resourceId: 'iam.users',
+          basePath: 'users',
+          titleKey: 'iam.users.title',
+          guard: 'adminUsers',
+          views: {
+            list: { bindingKey: 'adminUsers' },
+            create: { bindingKey: 'adminUserCreate' },
+            detail: { bindingKey: 'adminUserDetail' },
+          },
+        },
+        {
+          resourceId: 'iam.roles',
+          basePath: 'roles',
+          titleKey: 'iam.roles.title',
+          guard: 'adminRoles',
+          views: {
+            list: { bindingKey: 'adminRoles' },
+            create: { bindingKey: 'adminRoleCreate' },
+            detail: { bindingKey: 'adminRoleDetail' },
+            history: { bindingKey: 'adminRoles' },
+          },
+        },
+      ],
+    });
+    const rootRoute = { id: 'root' };
+    const routes = routeFactories.map((factory) => factory(rootRoute as never));
+    const paths = routes.map((route) => String(readRouteOptions(route).path));
+
+    expect(paths.filter((path) => path === '/admin/users')).toHaveLength(1);
+    expect(paths.filter((path) => path === '/admin/users/new')).toHaveLength(1);
+    expect(paths.filter((path) => path === '/admin/users/$userId')).toHaveLength(1);
+    expect(paths.filter((path) => path === '/admin/roles')).toHaveLength(1);
+    expect(paths.filter((path) => path === '/admin/roles/new')).toHaveLength(1);
+    expect(paths.filter((path) => path === '/admin/roles/$roleId')).toHaveLength(1);
+    expect(paths.filter((path) => path === '/admin/roles/$roleId/history')).toHaveLength(1);
+  });
+
   it('emits one diagnostics event for unsupported plugin guards during factory creation', () => {
     const diagnostics = vi.fn();
 

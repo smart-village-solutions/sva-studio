@@ -25,6 +25,8 @@ const createAccountUiRouteGuardMock = vi.hoisted(() =>
   vi.fn((guardKey: keyof typeof guardSpies) => guardSpies[guardKey])
 );
 
+type GuardKey = keyof typeof guardSpies;
+
 const createRouteMock = vi.hoisted(() =>
   vi.fn((options: Record<string, unknown>) => ({
     options,
@@ -200,7 +202,7 @@ describe('admin resource routes', () => {
       resource.resourceId === 'content'
         ? resource.expectedPaths
         : ['/admin/content', '/admin/content/new', '/admin/content/$id', ...resource.expectedPaths];
-    const expectedGuards =
+    const expectedGuards: readonly GuardKey[] =
       resource.resourceId === 'content'
         ? resource.expectedGuards
         : ['content', 'contentCreate', 'contentDetail', ...resource.expectedGuards];

@@ -110,6 +110,36 @@ const uiRouteDefinitions: readonly UiRouteDefinition[] = [
   { binding: 'adminApiPhase1Test', path: uiRoutePaths.adminApiPhase1Test },
 ] as const;
 
+const collectAdminResourceRoutePaths = (resources: readonly AdminResourceDefinition[]): ReadonlySet<string> => {
+  const paths = new Set<string>();
+
+  for (const resource of resources) {
+    const basePath = `/admin/${resource.basePath}`;
+    const detailPath = resource.views.detail.bindingKey.startsWith('adminUser')
+      ? `${basePath}/$userId`
+      : resource.views.detail.bindingKey.startsWith('adminOrganization')
+        ? `${basePath}/$organizationId`
+        : resource.views.detail.bindingKey.startsWith('adminInstance')
+          ? `${basePath}/$instanceId`
+          : resource.views.detail.bindingKey.startsWith('adminRole')
+            ? `${basePath}/$roleId`
+            : resource.views.detail.bindingKey.startsWith('adminGroup')
+              ? `${basePath}/$groupId`
+              : resource.views.detail.bindingKey.startsWith('adminLegalText')
+                ? `${basePath}/$legalTextVersionId`
+                : `${basePath}/$id`;
+
+    paths.add(basePath);
+    paths.add(`${basePath}/new`);
+    paths.add(detailPath);
+    if (resource.views.history) {
+      paths.add(`${detailPath}/history`);
+    }
+  }
+
+  return paths;
+};
+
 export const createUiRouteFactories = (
   bindings: AppRouteBindings,
   options: {
@@ -118,7 +148,8 @@ export const createUiRouteFactories = (
   } = {}
 ): readonly AppRouteFactory[] => {
   const diagnostics = options.diagnostics;
-  const routeDefinitions = uiRouteDefinitions;
+  const adminResourcePaths = collectAdminResourceRoutePaths(options.adminResources ?? []);
+  const routeDefinitions = uiRouteDefinitions.filter((definition) => !adminResourcePaths.has(definition.path));
 
   return [
     ...routeDefinitions.map((definition) => {

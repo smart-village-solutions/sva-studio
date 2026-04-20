@@ -46,7 +46,7 @@ export const HomePage = () => {
             {isAuthenticated ? (
               <div className="flex flex-wrap gap-3">
                 <Button asChild>
-                  <Link to="/content">{t('home.hero.primaryAction')}</Link>
+                  <Link to="/admin/content">{t('home.hero.primaryAction')}</Link>
                 </Button>
                 <Button asChild variant="outline">
                   <Link to="/account">{t('home.hero.secondaryAction')}</Link>
@@ -81,7 +81,7 @@ export const HomePage = () => {
               </CardHeader>
               <CardContent>
                 <Button asChild variant="outline">
-                  <Link to="/content">{t('home.cards.content.action')}</Link>
+                  <Link to="/admin/content">{t('home.cards.content.action')}</Link>
                 </Button>
               </CardContent>
             </Card>

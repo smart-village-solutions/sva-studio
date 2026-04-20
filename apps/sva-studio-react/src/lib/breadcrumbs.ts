@@ -46,23 +46,23 @@ const breadcrumbRoutes: ReadonlyArray<
     build: () => [overviewBreadcrumb(), { label: t('account.profile.title') }],
   },
   {
-    pattern: /^\/content\/new$/,
+    pattern: /^\/admin\/content\/new$/,
     build: () => [
       overviewBreadcrumb(),
-      { href: '/content', label: t('content.page.title') },
+      { href: '/admin/content', label: t('content.page.title') },
       { label: t('content.editor.createTitle') },
     ],
   },
   {
-    pattern: /^\/content\/[^/]+$/,
+    pattern: /^\/admin\/content\/[^/]+$/,
     build: () => [
       overviewBreadcrumb(),
-      { href: '/content', label: t('content.page.title') },
+      { href: '/admin/content', label: t('content.page.title') },
       { label: t('content.editor.editTitle') },
     ],
   },
   {
-    pattern: /^\/content$/,
+    pattern: /^\/admin\/content$/,
     build: () => [overviewBreadcrumb(), { label: t('content.page.title') }],
   },
   {

@@ -68,7 +68,7 @@ const sanitizeNewsPayload = (payload: ContentJsonValue): ContentJsonValue => {
 
 const registry = new Map<string, RegisteredContentTypeDefinition>([
   [
-    'news',
+    'news.article',
     {
       payloadSchema: newsPayloadSchema as z.ZodType<ContentJsonValue>,
       sanitizePayload: sanitizeNewsPayload,

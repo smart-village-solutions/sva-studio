@@ -24,14 +24,26 @@ Fehlerpfad:
 
 - Fehlerhafte Route-Factory oder server-only Import im Client kann Build/Runtime brechen.
 
+### Szenario 1b: Materialisierung registrierter Admin-Ressourcen
+
+1. Die App lädt neben Seiten-Bindings auch die statische Liste `appAdminResources`.
+2. `@sva/routing` validiert die Admin-Ressourcen gegen den SDK-Vertrag und materialisiert daraus Listen-, Create- und Detailrouten.
+3. Der Host wendet den deklarativ referenzierten Guard auf alle Teilrouten der Ressource an.
+4. Legacy-Pfade wie `/content`, `/content/new` und `/content/$contentId` werden im Routing-Layer auf `/admin/content*` umgeleitet.
+
+Fehlerpfad:
+
+- Doppelte Ressourcen-IDs oder kollidierende Basispfade brechen die Registrierungsphase fail-fast ab.
+- Ohne gültige Ressourcendefinition wird kein teilweise inkonsistenter Admin-Route-Baum veröffentlicht.
+
 ### Szenario 4a: Plugin-Registrierung und News-CRUD
 
 1. Die App initialisiert `studioPlugins` und merged Plugin-Übersetzungen in die i18n-Ressourcen.
 2. Der Router materialisiert die Plugin-Routen `/plugins/news`, `/plugins/news/new` und `/plugins/news/$contentId`.
 3. Beim Aufruf der Route wendet der Host den passenden Content-Guard an.
-4. Die News-Liste lädt die generische Content-Liste und filtert clientseitig auf `contentType = news`.
+4. Die News-Liste lädt die generische Content-Liste und filtert clientseitig auf `contentType = news.article`.
 5. Der Editor sendet Create- oder Update-Requests an die bestehende IAM-Content-API.
-6. `packages/auth` validiert zuerst den generischen Content-Envelope und danach das registrierte News-Payload-Schema.
+6. `packages/auth` validiert zuerst den generischen Content-Envelope und danach das registrierte News-Payload-Schema für `news.article`.
 7. Vor Persistenz sanitisiert der Server `body` allowlist-basiert und normalisiert `teaser` auf Plain Text.
 8. Repository, Historie und Audit-Logging bleiben unverändert Teil des generischen Content-Pfads.
 9. Nach erfolgreichem Speichern oder Löschen zeigt das Plugin Statusfeedback und navigiert zurück zur News-Liste.

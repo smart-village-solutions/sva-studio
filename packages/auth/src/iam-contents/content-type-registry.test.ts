@@ -4,7 +4,7 @@ import { validateContentTypePayload } from './content-type-registry.js';
 
 describe('content type registry', () => {
   it('accepts and sanitizes valid news payloads', () => {
-    const result = validateContentTypePayload('news', {
+    const result = validateContentTypePayload('news.article', {
       teaser: '  <strong>Kurzmeldung</strong>  ',
       body: '<p>Hallo</p><script>alert(1)</script>',
       imageUrl: 'https://example.com/image.jpg',
@@ -27,7 +27,7 @@ describe('content type registry', () => {
   });
 
   it('rejects invalid news payloads', () => {
-    const result = validateContentTypePayload('news', {
+    const result = validateContentTypePayload('news.article', {
       teaser: '',
       body: '<p>Hallo</p>',
       externalUrl: 'javascript:alert(1)',
@@ -42,7 +42,7 @@ describe('content type registry', () => {
   });
 
   it('rejects news bodies without visible text and returns localized validation messages', () => {
-    const result = validateContentTypePayload('news', {
+    const result = validateContentTypePayload('news.article', {
       teaser: '',
       body: '<p><br></p>',
     });
@@ -52,7 +52,7 @@ describe('content type registry', () => {
       message: 'Der Teaser ist erforderlich.',
     });
 
-    const emptyBodyResult = validateContentTypePayload('news', {
+    const emptyBodyResult = validateContentTypePayload('news.article', {
       teaser: 'Kurzmeldung',
       body: '<p><br></p>',
     });

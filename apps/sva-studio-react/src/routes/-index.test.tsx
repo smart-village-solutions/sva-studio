@@ -54,7 +54,7 @@ describe('HomePage', () => {
     expect(
       screen
         .getAllByRole('link', { name: 'Inhalte öffnen' })
-        .some((link) => link.getAttribute('href') === '/content')
+        .some((link) => link.getAttribute('href') === '/admin/content')
     ).toBe(true);
   });
 
@@ -122,7 +122,7 @@ describe('HomePage', () => {
     expect(
       screen
         .getAllByRole('link', { name: 'Inhalte öffnen' })
-        .some((link) => link.getAttribute('href') === '/content')
+        .some((link) => link.getAttribute('href') === '/admin/content')
     ).toBe(true);
     expect(
       screen

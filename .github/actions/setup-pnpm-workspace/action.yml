@@ -18,10 +18,21 @@ inputs:
     description: Optional Nx Cloud end-to-end encryption key
     required: false
     default: ""
+  disable-nx-cloud:
+    description: Disable Nx Cloud and force local Nx execution for this job
+    required: false
+    default: "true"
 
 runs:
   using: composite
   steps:
+    - name: Configure Nx Cloud fallback
+      if: ${{ inputs.disable-nx-cloud == 'true' }}
+      shell: bash
+      run: |
+        echo "NX_NO_CLOUD=true" >> "$GITHUB_ENV"
+        echo "NX_CLOUD_ENCRYPTION_KEY=" >> "$GITHUB_ENV"
+
     - name: Setup pnpm
       uses: pnpm/action-setup@v5
       with:

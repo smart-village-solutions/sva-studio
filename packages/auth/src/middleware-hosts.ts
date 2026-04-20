@@ -75,7 +75,7 @@ export const validateTenantHost = async (request: Request): Promise<Response | n
   }
 
   const requestId = request.headers.get('x-request-id') ?? undefined;
-  let registryEntry: Awaited<ReturnType<typeof loadInstanceByHostname>> | null = null;
+  let registryEntry: Awaited<ReturnType<typeof loadInstanceByHostname>>;
   try {
     registryEntry = await loadInstanceByHostname(host);
   } catch (error) {

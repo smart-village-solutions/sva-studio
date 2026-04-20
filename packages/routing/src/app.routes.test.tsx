@@ -57,6 +57,7 @@ import {
   mapPluginGuardToAccountGuard,
 } from './app.routes';
 import { getServerRouteFactories } from './app.routes.server';
+import { createUiRouteFactories, getAdminDetailRoutePath } from './app.routes.shared';
 import { normalizeIamTab, normalizeRoleDetailTab } from './route-search';
 
 type RouteOptionsUnderTest = {
@@ -173,6 +174,8 @@ describe('app.routes', () => {
     expect(routeMap.has('/content')).toBe(true);
     expect(routeMap.has('/admin/users')).toBe(true);
     expect(routeMap.has('/admin/roles/$roleId')).toBe(true);
+    expect(routeMap.has('/modules')).toBe(true);
+    expect(routeMap.has('/monitoring')).toBe(true);
     expect(routeMap.has('/auth/login')).toBe(true);
     expect(routeMap.has('/plugins/example')).toBe(true);
     expect(pluginFactories).toHaveLength(1);
@@ -180,15 +183,21 @@ describe('app.routes', () => {
 
     await readRouteOptions(routeMap.get('/account')).beforeLoad?.({ href: '/account' });
     await readRouteOptions(routeMap.get('/admin/users')).beforeLoad?.({ href: '/admin/users' });
+    await readRouteOptions(routeMap.get('/modules')).beforeLoad?.({ href: '/modules' });
+    await readRouteOptions(routeMap.get('/monitoring')).beforeLoad?.({ href: '/monitoring' });
     await readRouteOptions(routeMap.get('/plugins/example')).beforeLoad?.({ href: '/plugins/example' });
     await readRouteOptions(routeMap.get('/plugins/news')).beforeLoad?.({ href: '/plugins/news' });
 
     expect(guardSpies.account).toHaveBeenCalledWith({ href: '/account' });
     expect(guardSpies.adminUsers).toHaveBeenCalledWith({ href: '/admin/users' });
+    expect(guardSpies.adminRoles).toHaveBeenCalledWith({ href: '/modules' });
+    expect(guardSpies.adminRoles).toHaveBeenCalledWith({ href: '/monitoring' });
     expect(guardSpies.content).toHaveBeenCalledWith({ href: '/plugins/news' });
     expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('account', undefined, '/account');
     expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('content', undefined, '/admin/content');
     expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('adminUsers', undefined, '/admin/users');
+    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('adminRoles', undefined, '/modules');
+    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('adminRoles', undefined, '/monitoring');
     expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('content', undefined, '/plugins/news');
 
     expect(readRouteOptions(routeMap.get('/admin/iam')).validateSearch?.({ tab: 'bogus' })).toEqual({
@@ -315,6 +324,25 @@ describe('app.routes', () => {
     expect(routeMap.has('/admin/content/$id')).toBe(true);
   });
 
+  it('defaults admin resources to an empty list when ui route factories are created without options', () => {
+    const routeFactories = createUiRouteFactories(bindings);
+    const rootRoute = { id: 'root' };
+    const routeMap = new Map(
+      routeFactories.map((factory) => {
+        const route = factory(rootRoute as never);
+        return [String(readRouteOptions(route).path), route];
+      })
+    );
+
+    expect(routeMap.has('/admin/content')).toBe(true);
+    expect(routeMap.has('/admin/content/new')).toBe(true);
+    expect(routeMap.has('/admin/content/$id')).toBe(true);
+  });
+
+  it('falls back to the generic id detail param for unmapped admin detail bindings', () => {
+    expect(getAdminDetailRoutePath('/admin/custom', 'help')).toBe('/admin/custom/$id');
+  });
+
   it('deduplicates static admin routes when equivalent admin resources are injected', () => {
     const routeFactories = getClientRouteFactories({
       bindings,
@@ -332,6 +360,28 @@ describe('app.routes', () => {
           },
         },
         {
+          resourceId: 'iam.organizations',
+          basePath: 'organizations',
+          titleKey: 'iam.organizations.title',
+          guard: 'adminOrganizations',
+          views: {
+            list: { bindingKey: 'adminOrganizations' },
+            create: { bindingKey: 'adminOrganizationCreate' },
+            detail: { bindingKey: 'adminOrganizationDetail' },
+          },
+        },
+        {
+          resourceId: 'iam.instances',
+          basePath: 'instances',
+          titleKey: 'iam.instances.title',
+          guard: 'adminInstances',
+          views: {
+            list: { bindingKey: 'adminInstances' },
+            create: { bindingKey: 'adminInstanceCreate' },
+            detail: { bindingKey: 'adminInstanceDetail' },
+          },
+        },
+        {
           resourceId: 'iam.roles',
           basePath: 'roles',
           titleKey: 'iam.roles.title',
@@ -343,6 +393,28 @@ describe('app.routes', () => {
             history: { bindingKey: 'adminRoles' },
           },
         },
+        {
+          resourceId: 'iam.groups',
+          basePath: 'groups',
+          titleKey: 'iam.groups.title',
+          guard: 'adminGroups',
+          views: {
+            list: { bindingKey: 'adminGroups' },
+            create: { bindingKey: 'adminGroupCreate' },
+            detail: { bindingKey: 'adminGroupDetail' },
+          },
+        },
+        {
+          resourceId: 'iam.legal_texts',
+          basePath: 'legal-texts',
+          titleKey: 'iam.legalTexts.title',
+          guard: 'adminLegalTexts',
+          views: {
+            list: { bindingKey: 'adminLegalTexts' },
+            create: { bindingKey: 'adminLegalTextCreate' },
+            detail: { bindingKey: 'adminLegalTextDetail' },
+          },
+        },
       ],
     });
     const rootRoute = { id: 'root' };
@@ -352,10 +424,22 @@ describe('app.routes', () => {
     expect(paths.filter((path) => path === '/admin/users')).toHaveLength(1);
     expect(paths.filter((path) => path === '/admin/users/new')).toHaveLength(1);
     expect(paths.filter((path) => path === '/admin/users/$userId')).toHaveLength(1);
+    expect(paths.filter((path) => path === '/admin/organizations')).toHaveLength(1);
+    expect(paths.filter((path) => path === '/admin/organizations/new')).toHaveLength(1);
+    expect(paths.filter((path) => path === '/admin/organizations/$organizationId')).toHaveLength(1);
+    expect(paths.filter((path) => path === '/admin/instances')).toHaveLength(1);
+    expect(paths.filter((path) => path === '/admin/instances/new')).toHaveLength(1);
+    expect(paths.filter((path) => path === '/admin/instances/$instanceId')).toHaveLength(1);
     expect(paths.filter((path) => path === '/admin/roles')).toHaveLength(1);
     expect(paths.filter((path) => path === '/admin/roles/new')).toHaveLength(1);
     expect(paths.filter((path) => path === '/admin/roles/$roleId')).toHaveLength(1);
     expect(paths.filter((path) => path === '/admin/roles/$roleId/history')).toHaveLength(1);
+    expect(paths.filter((path) => path === '/admin/groups')).toHaveLength(1);
+    expect(paths.filter((path) => path === '/admin/groups/new')).toHaveLength(1);
+    expect(paths.filter((path) => path === '/admin/groups/$groupId')).toHaveLength(1);
+    expect(paths.filter((path) => path === '/admin/legal-texts')).toHaveLength(1);
+    expect(paths.filter((path) => path === '/admin/legal-texts/new')).toHaveLength(1);
+    expect(paths.filter((path) => path === '/admin/legal-texts/$legalTextVersionId')).toHaveLength(1);
   });
 
   it('emits one diagnostics event for unsupported plugin guards during factory creation', () => {

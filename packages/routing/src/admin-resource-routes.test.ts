@@ -259,4 +259,60 @@ describe('admin resource routes', () => {
       ])
     ).toThrow('unknown_admin_resource_binding_key:news.entries:list:unknownListBinding');
   });
+
+  it('rejects missing admin resource binding keys before route creation', () => {
+    expect(() =>
+      createAdminResourceRouteFactories(bindings, [
+        {
+          resourceId: 'news.entries',
+          basePath: 'news',
+          titleKey: 'news.title',
+          guard: 'content',
+          views: {
+            list: { bindingKey: undefined as never },
+            create: { bindingKey: 'contentCreate' },
+            detail: { bindingKey: 'contentDetail' },
+          },
+        },
+      ])
+    ).toThrow('unknown_admin_resource_binding_key:news.entries:list:');
+  });
+
+  it('rejects unsupported admin detail bindings after key validation', () => {
+    expect(() =>
+      createAdminResourceRouteFactories(bindings, [
+        {
+          resourceId: 'news.entries',
+          basePath: 'news',
+          titleKey: 'news.title',
+          guard: 'content',
+          views: {
+            list: { bindingKey: 'content' },
+            create: { bindingKey: 'contentCreate' },
+            detail: { bindingKey: 'help' as never },
+          },
+        },
+      ])
+    ).toThrow('unsupported_admin_resource_detail_binding:help');
+  });
+
+  it('does not inject the core content admin resource twice when it is already provided', () => {
+    const routeFactories = createAdminResourceRouteFactories(bindings, [
+      {
+        resourceId: 'content',
+        basePath: 'content',
+        titleKey: 'content.title',
+        guard: 'content',
+        views: {
+          list: { bindingKey: 'content' },
+          create: { bindingKey: 'contentCreate' },
+          detail: { bindingKey: 'contentDetail' },
+        },
+      },
+    ]);
+    const rootRoute = { id: 'root' };
+    const paths = routeFactories.map((factory) => String(readRouteOptions(factory(rootRoute as never)).path));
+
+    expect(paths).toEqual(['/admin/content', '/admin/content/new', '/admin/content/$id']);
+  });
 });

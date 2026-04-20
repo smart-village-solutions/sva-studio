@@ -53,6 +53,16 @@ export type AppRouteBindings = {
 export type AppRouteBindingKey = keyof AppRouteBindings;
 
 type BindingKey = AppRouteBindingKey;
+type AdminDetailBindingKey = Extract<
+  BindingKey,
+  | 'contentDetail'
+  | 'adminUserDetail'
+  | 'adminOrganizationDetail'
+  | 'adminInstanceDetail'
+  | 'adminRoleDetail'
+  | 'adminGroupDetail'
+  | 'adminLegalTextDetail'
+>;
 
 type UiRouteDefinition = {
   readonly binding: BindingKey;
@@ -110,24 +120,29 @@ const uiRouteDefinitions: readonly UiRouteDefinition[] = [
   { binding: 'adminApiPhase1Test', path: uiRoutePaths.adminApiPhase1Test },
 ] as const;
 
+const adminDetailParamNameByBinding = {
+  contentDetail: 'id',
+  adminUserDetail: 'userId',
+  adminOrganizationDetail: 'organizationId',
+  adminInstanceDetail: 'instanceId',
+  adminRoleDetail: 'roleId',
+  adminGroupDetail: 'groupId',
+  adminLegalTextDetail: 'legalTextVersionId',
+} as const satisfies Record<AdminDetailBindingKey, string>;
+
+export const getAdminDetailRoutePath = (basePath: string, bindingKey: string): string => {
+  const detailParamName =
+    adminDetailParamNameByBinding[bindingKey as AdminDetailBindingKey] ?? adminDetailParamNameByBinding.contentDetail;
+
+  return `${basePath}/$${detailParamName}`;
+};
+
 const collectAdminResourceRoutePaths = (resources: readonly AdminResourceDefinition[]): ReadonlySet<string> => {
   const paths = new Set<string>();
 
   for (const resource of resources) {
     const basePath = `/admin/${resource.basePath}`;
-    const detailPath = resource.views.detail.bindingKey.startsWith('adminUser')
-      ? `${basePath}/$userId`
-      : resource.views.detail.bindingKey.startsWith('adminOrganization')
-        ? `${basePath}/$organizationId`
-        : resource.views.detail.bindingKey.startsWith('adminInstance')
-          ? `${basePath}/$instanceId`
-          : resource.views.detail.bindingKey.startsWith('adminRole')
-            ? `${basePath}/$roleId`
-            : resource.views.detail.bindingKey.startsWith('adminGroup')
-              ? `${basePath}/$groupId`
-              : resource.views.detail.bindingKey.startsWith('adminLegalText')
-                ? `${basePath}/$legalTextVersionId`
-                : `${basePath}/$id`;
+    const detailPath = getAdminDetailRoutePath(basePath, resource.views.detail.bindingKey);
 
     paths.add(basePath);
     paths.add(`${basePath}/new`);

@@ -398,6 +398,17 @@ describe('auth.routes.server', () => {
     );
   });
 
+  it('sorts allowed methods alphabetically for multi-method auth routes', async () => {
+    const response = await dispatchAuthRouteRequest(
+      new Request('http://localhost/api/v1/iam/users/test-user', {
+        method: 'PUT',
+      })
+    );
+
+    expect(response?.status).toBe(405);
+    expect(response?.headers.get('Allow')).toBe('DELETE, GET, PATCH');
+  });
+
   it('returns a JSON 500 response when a wrapped handler throws', async () => {
     const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     const handlers = wrapHandlersWithJsonErrorBoundary({
@@ -630,12 +641,35 @@ describe('auth.routes.server', () => {
     stderrSpy.mockRestore();
   });
 
+  it('derives the route path from the request URL when the error boundary wrapper gets no explicit route path', async () => {
+    const handlers = wrapHandlersWithJsonErrorBoundary({
+      GET: async ({ request }) => new Response(request.url, { status: 200 }),
+    });
+
+    const response = await handlers.GET?.({
+      request: new Request('http://localhost/api/v1/iam/users/url-derived', {
+        method: 'GET',
+      }),
+    });
+
+    expect(response?.status).toBe(200);
+    expect(routingLogger.info).toHaveBeenCalledWith(
+      'Routing handler dispatched',
+      expect.objectContaining({
+        event: 'routing.handler.dispatched',
+        route: '/api/v1/iam/users/url-derived',
+      })
+    );
+  });
+
   it('builds server route factories with wrapped handlers for declared auth paths', async () => {
     const rootRoute = { id: 'root' } as never;
     const dataExportIndex = authRoutePaths.indexOf('/iam/me/data-export');
     const route = readServerRouteOptions(authServerRouteFactories[dataExportIndex]?.(rootRoute));
 
     expect(route.path).toBe('/iam/me/data-export');
+    expect(route.getParentRoute()).toBe(rootRoute);
+    expect(route.component()).toBeNull();
 
     const response = await route.server.handlers.GET({
       request: new Request('http://localhost/iam/me/data-export', {

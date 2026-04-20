@@ -61,12 +61,21 @@ const classify = ({ input, safeDetails }: RuntimeDiagnosticSafeDetails): IamRunt
     return 'tenant_host_validation';
   }
 
+  if (reasonCode === 'tenant_host_invalid') {
+    return 'tenant_host_validation';
+  }
+
+  if (reasonCode === 'tenant_not_found' || reasonCode === 'tenant_inactive') {
+    return 'registry_or_provisioning_drift';
+  }
+
   if (
     input.code === 'unauthorized' ||
     input.code === 'reauth_required' ||
     reasonCode === 'token_refresh_failed' ||
     reasonCode === 'session_user_diagnostics' ||
-    reasonCode === 'session_store_unavailable'
+    reasonCode === 'session_store_unavailable' ||
+    reasonCode === 'missing_session_instance_id'
   ) {
     return 'session_store_or_session_hydration';
   }

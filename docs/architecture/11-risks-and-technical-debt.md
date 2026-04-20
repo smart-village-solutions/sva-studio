@@ -163,12 +163,12 @@ Schulden auf IST-Basis.
 27. Fragmentierter öffentlicher IAM-Diagnosevertrag
    - Impact: hoch (gleiche Symptome werden in UI, Betrieb und Folgeanalyse unterschiedlich gelesen; Refactorings setzen auf unvollständiger Fehlertrennung auf)
    - Wahrscheinlichkeit: hoch
-   - Maßnahme: classification-basierten Diagnosekern für Auth, IAM und Provisioning einführen; vorbereiteter Folgechange unter `openspec/changes/refactor-iam-runtime-diagnostics-contract/`
+   - Maßnahme: classification-basierten Diagnosekern für Auth, IAM und Provisioning durchziehen; Tenant-Host-, Registry- und Session-Hydration-Faelle liefern jetzt strukturierte Fehlerantworten bis ins Frontend, Restscope bleibt fuer weitere IAM-Hotspots und Folgechange unter `openspec/changes/refactor-iam-runtime-diagnostics-contract/`
 
 28. Recovery-Pfade kaschieren degradierte IAM-Zustände
    - Impact: hoch (Silent-Recovery, Session-Hydration oder Fallbacks können echte Drift und Teilfehler überdecken)
    - Wahrscheinlichkeit: mittel
-   - Maßnahme: degradierte und recovery-nahe Zustände explizit modellieren und UI-/Ops-seitig sichtbar machen, statt nur Endzustände zu berichten
+   - Maßnahme: degradierte und recovery-nahe Zustände explizit modellieren und UI-/Ops-seitig sichtbar machen, statt nur Endzustände zu berichten; tenantgebundene Sessions ohne `instanceId` sind jetzt fail-closed und werden nicht mehr still aus dem Host rekonstruiert, verbleibende Recovery-Pfade bleiben Folgearbeit
 
 29. Offener Live-Triage-Befund für IAM-Diagnostik
    - Impact: mittel bis hoch (Repo-Analyse deckt reale Host-, Cookie-, Keycloak- und Datenzustandsprobleme nur teilweise ab)

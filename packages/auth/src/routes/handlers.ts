@@ -74,7 +74,7 @@ const createAuthDependencyErrorResponse = (
       request_id: requestId,
       ...buildLogContext(),
     });
-    return toJsonErrorResponse(503, 'internal_error', error.publicMessage, { requestId });
+    return toJsonErrorResponse(error.statusCode, 'internal_error', error.publicMessage, { requestId });
   }
 
   if (error instanceof SessionStoreUnavailableError) {

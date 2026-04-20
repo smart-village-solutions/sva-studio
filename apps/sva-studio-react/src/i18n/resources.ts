@@ -530,6 +530,7 @@ export const i18nResources = {
       shared: {
         diagnostics: {
           classification: 'Diagnose: {{value}}',
+          status: 'Status: {{value}}',
           recommendedAction: 'Empfohlene Aktion: {{value}}',
           syncErrorCode: 'Sync-Fehlercode: {{code}}',
           requestId: 'Request-ID: {{requestId}}',
@@ -553,6 +554,11 @@ export const i18nResources = {
             rollenabgleichPruefen: 'Rollenabgleich prüfen',
             manuellPruefen: 'Manuell prüfen',
             supportKontaktieren: 'Support kontaktieren',
+          },
+          statuses: {
+            recoveryLaeuft: 'Recovery läuft',
+            degradiert: 'Degradiert',
+            manuellePruefungErforderlich: 'Manuelle Prüfung erforderlich',
           },
         },
       },
@@ -2413,6 +2419,7 @@ export const i18nResources = {
       shared: {
         diagnostics: {
           classification: 'Diagnosis: {{value}}',
+          status: 'Status: {{value}}',
           recommendedAction: 'Recommended action: {{value}}',
           syncErrorCode: 'Sync error code: {{code}}',
           requestId: 'Request ID: {{requestId}}',
@@ -2436,6 +2443,11 @@ export const i18nResources = {
             rollenabgleichPruefen: 'Check role reconciliation',
             manuellPruefen: 'Review manually',
             supportKontaktieren: 'Contact support',
+          },
+          statuses: {
+            recoveryLaeuft: 'Recovery in progress',
+            degradiert: 'Degraded',
+            manuellePruefungErforderlich: 'Manual review required',
           },
         },
       },

@@ -515,6 +515,29 @@ describe('routes/handlers', () => {
     );
   });
 
+  it('returns 503 JSON when tenant auth resolution fails because the tenant is inactive', async () => {
+    const { TenantAuthResolutionError: RuntimeTenantAuthResolutionError } = await import('../runtime-errors.js');
+    resolveAuthConfigForRequestMock.mockRejectedValueOnce(
+      new RuntimeTenantAuthResolutionError({
+        host: 'de-musterhausen.studio.example.org',
+        reason: 'tenant_inactive',
+      })
+    );
+
+    const { loginHandler } = await import('./handlers.js');
+    const response = await loginHandler(new Request('https://de-musterhausen.studio.example.org/auth/login'));
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toEqual(
+      expect.objectContaining({
+        error: expect.objectContaining({
+          code: 'internal_error',
+          message: 'Anmeldung ist für diesen Mandanten derzeit nicht verfügbar, weil die Instanz nicht aktiv ist.',
+        }),
+      })
+    );
+  });
+
   it('redirects the callback to the original page after login', async () => {
     handleCallbackMock.mockResolvedValue({
       sessionId: 'session-1',

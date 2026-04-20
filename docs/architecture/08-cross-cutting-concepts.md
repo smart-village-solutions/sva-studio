@@ -82,6 +82,7 @@ gleichzeitig beeinflussen.
 - Keycloak-Provisioning fuer Instanzen ist ein expliziter mehrstufiger Root-Host-Workflow aus Preflight, Plan, Ausfuehrung und persistiertem Schrittprotokoll
 - Registry-Daten und Keycloak-Mutation sind getrennte Aktionen; ein Speichern von Instanzdaten fuehrt keine implizite Keycloak-Aenderung aus
 - Registry-Lookups verwenden einen kurzen In-Process-L1-Cache mit expliziter Invalidation, aber ohne Stale-Serve-Strategie
+- Tenant-gebundene Requests arbeiten fail-closed, wenn der Session-User keinen gueltigen `instanceId`-Kontext mehr traegt; eine hostbasierte automatische Nachheilung dieses Pflichtfelds findet im IAM-Pfad nicht mehr statt
 
 ### Logging und Observability
 
@@ -100,9 +101,10 @@ gleichzeitig beeinflussen.
 - Korrelationsfelder `request_id` und `trace_id` sind im IAM-Pfad verpflichtend
 - Scope-aware Logs enthalten zusätzlich `scope_kind`, `workspace_id` und im Tenant-Scope `instance_id`
 - Außerhalb des `AsyncLocalStorage`-Kontexts werden `request_id` und `trace_id` best effort aus validierten Headern (`X-Request-Id`, `traceparent`) extrahiert
-- Serverseitige JSON-Fehlerantworten für Auth-/IAM-Hotspots nutzen den flachen Vertrag `{ error: string, message?: string }` und setzen best effort `X-Request-Id`
+- Serverseitige JSON-Fehlerantworten für Auth-/IAM-Hotspots nutzen einen strukturierten Fehlervertrag mit `error.code`, `error.message`, optionalen `details`, `classification`, `status`, `recommendedAction` und allowlist-basierten `safeDetails`; `X-Request-Id` bleibt best effort und API-v1-Antworten dürfen zusaetzlich `requestId` tragen
 - IAM-v1-Fehlerantworten dürfen additive `details` tragen, enthalten dort aber nur nicht-sensitive Diagnosefelder wie `reason_code`, `dependency`, `schema_object`, `expected_migration`, `actor_resolution` und `instance_id`
 - Für den Zielpfad der IAM-Diagnostik ist derselbe allowlist-basierte Feldsatz die Grundlage für einen classification-basierten öffentlichen Diagnosevertrag; tiefe Rohfehler bleiben weiterhin OTEL- und Serverlog-intern
+- Tenant-Host-Validierung unterscheidet oeffentlich zwischen `tenant_not_found`, `tenant_inactive`, `tenant_lookup_failed` und Session-Hydration-Defekten wie `missing_session_instance_id`; UI und Betrieb erhalten damit denselben sicheren Diagnosekern statt generischer `403`-/`401`-Faelle
 - Tenant-Admin-Fehler dürfen zusätzlich `execution_mode`, `auth_realm` und `provider_source` tragen, damit Realm- oder Control-Plane-Drift ohne Rohfehler analysierbar bleibt
 - Auth-, Resolver- und Audit-Fehler protokollieren redigiert nur `error_type`, `reason_code`, `dependency`, `scope_kind` und Korrelationsfelder; rohe Provider-/DB-Fehltexte bleiben außerhalb des Standard-Logs
 - IAM-Readiness und Diagnosepfade exponieren Schema-Drift bewusst knapp (`schema_drift`, `missing_table`, `missing_column`) statt rohe SQL-, Redis- oder Provider-Fehler an UI oder Browser weiterzugeben
@@ -150,6 +152,7 @@ gleichzeitig beeinflussen.
 - Auth-Flow mit klaren Redirect-Fehlerpfaden (`auth=error`, `auth=state-expired`)
 - Silent Session-Recovery arbeitet ohne Retry-Schleifen und fällt bei Browser-/IdP-Limits deterministisch auf aktiven Login zurück
 - Recovery-Pfade wie Silent-Recovery, Session-Hydration, Host-Fallbacks oder degradierte Projektionen gelten diagnostisch nicht automatisch als gesunder Zustand; ein erfolgreicher Workaround darf die zugrunde liegende Fehlerklasse nicht unsichtbar machen
+- Fehlende `instanceId` in tenantgebundenen Sessions gilt explizit als Defektklasse `session_store_or_session_hydration` mit empfohlener Aktion `erneut_anmelden`, nicht als automatisch reparierbarer Zwischenzustand
 - Root-Route nutzt ein zentrales `errorComponent` für unbehandelte Laufzeitfehler mit Retry-Option
 - Runtime-Profile verwenden einen verbindlichen Diagnosepfad `pnpm env:doctor:<profil>`; manuelle `psql`-/Browser-Netzwerkdiagnose ist nur Fallback
 - Read-only Remote-Diagnostik trennt strikt zwischen Portainer-API als Primaerkanal und `quantum-cli` als Mutations-/Fallback-Kanal

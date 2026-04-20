@@ -1,15 +1,11 @@
 import { pluginExample } from '@sva/plugin-example';
 import { pluginNews } from '@sva/plugin-news';
 import {
+  createBuildTimeRegistry,
   createBrowserLogger,
-  createPluginActionRegistry,
-  createPluginRegistry,
-  mergePluginContentTypes,
-  mergePluginNavigationItems,
-  mergePluginRouteDefinitions,
-  mergePluginTranslations,
   registerPluginTranslationResolver,
 } from '@sva/sdk';
+import { appAdminResources } from '../routing/admin-resources';
 
 import { mergeI18nResources, resetTranslatorCache, t } from '../i18n';
 
@@ -20,15 +16,20 @@ const pluginLogger = createBrowserLogger({
 
 const warnedDeprecatedPluginActionAliases = new Set<string>();
 
-export const studioPlugins = [pluginExample, pluginNews] as const;
+export const studioBuildTimeRegistry = createBuildTimeRegistry({
+  plugins: [pluginExample, pluginNews],
+  adminResources: appAdminResources,
+});
 
-mergeI18nResources(mergePluginTranslations(studioPlugins));
+mergeI18nResources(studioBuildTimeRegistry.translations);
 
-export const studioPluginRegistry = createPluginRegistry(studioPlugins);
-export const studioPluginActionRegistry = createPluginActionRegistry(studioPlugins);
-export const studioPluginRoutes = mergePluginRouteDefinitions(studioPlugins);
-export const studioPluginNavigation = mergePluginNavigationItems(studioPlugins);
-export const studioPluginContentTypes = mergePluginContentTypes(studioPlugins);
+export const studioPlugins = studioBuildTimeRegistry.plugins;
+export const studioPluginRegistry = studioBuildTimeRegistry.pluginRegistry;
+export const studioPluginActionRegistry = studioBuildTimeRegistry.pluginActionRegistry;
+export const studioPluginRoutes = studioBuildTimeRegistry.routes;
+export const studioPluginNavigation = studioBuildTimeRegistry.navigation;
+export const studioPluginContentTypes = studioBuildTimeRegistry.contentTypes;
+export const studioAdminResources = studioBuildTimeRegistry.adminResources;
 
 export const getStudioPluginAction = (actionId: string) => {
   const action = studioPluginActionRegistry.get(actionId);

@@ -159,7 +159,7 @@ const UserEditRoutePage = () => {
 
 const ContentDetailRoutePage = () => {
   const params = useParams({ strict: false });
-  return <ContentEditorPage mode="edit" contentId={readStringParam(params.contentId)} />;
+  return <ContentEditorPage mode="edit" contentId={readStringParam(params.id)} />;
 };
 
 const InstanceDetailRoutePage = () => {

@@ -8,7 +8,7 @@ import {
 } from './router';
 import { createRouterDiagnosticsSnapshot } from './lib/router-diagnostics';
 import { appRouteBindings } from './routing/app-route-bindings';
-import { studioPlugins } from './lib/plugins';
+import { studioAdminResources, studioPlugins } from './lib/plugins';
 
 describe('createRuntimeRouteTree', () => {
   afterEach(() => {
@@ -17,7 +17,9 @@ describe('createRuntimeRouteTree', () => {
 
   it('builds the route tree solely from @sva/routing and the root route', async () => {
     const { getClientRouteFactories } = await import('@sva/routing');
-    const routeTree = createRuntimeRouteTree(getClientRouteFactories({ bindings: appRouteBindings, plugins: studioPlugins }));
+    const routeTree = createRuntimeRouteTree(
+      getClientRouteFactories({ bindings: appRouteBindings, adminResources: studioAdminResources, plugins: studioPlugins })
+    );
     const router = createRouter({
       routeTree,
       context: {
@@ -41,6 +43,7 @@ describe('createRuntimeRouteTree', () => {
         '/',
         '/account',
         '/admin/users',
+        '/admin/content',
         '/content',
         '/plugins/example',
         '/plugins/news',

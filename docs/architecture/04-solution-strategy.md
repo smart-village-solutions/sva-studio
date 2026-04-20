@@ -19,6 +19,7 @@ Architekturprinzipien auf IST-Basis.
 - Framework-agnostische Kernlogik in `@sva/core`, Integration in App-Ebene
 - Plugin-SDK-Boundary: Plugins greifen ausschließlich über `@sva/sdk` auf Host-APIs zu
 - Plugin-Vertrag v1: Routen, Navigation, Content-Typen und Übersetzungen werden als statische SDK-Metadaten beschrieben; Guard-Anwendung und Route-Materialisierung bleiben Host-Verantwortung
+- Plugin-Governance folgt einem einheitlichen Namespace-Modell: plugin-beigestellte registrierte Host-Identifier verwenden `<pluginId>.<name>`, während Core-Identifier bewusst hosteigen und unqualifiziert bleiben dürfen
 - Trennung von client-sicheren und serverseitigen Routen/Handlern
 - Observability über OTEL-Standards statt vendor-spezifischer App-Anbindung
 - IAM folgt einer klaren Verantwortungsgrenze: Keycloak für Identity, Postgres für IAM-Fachdaten, Redis nur als Laufzeit-Cache
@@ -39,6 +40,7 @@ Architekturprinzipien auf IST-Basis.
 
 - Hohe Typsicherheit und Wartbarkeit bei wachsender Modulanzahl
 - Erweiterbarkeit durch Plugins und zentrale Route-Registry
+- Deterministische Ownership und Kollisionsvermeidung für plugin-beigestellte Host-Registrierungen
 - Reproduzierbarkeit über standardisierte Nx-/pnpm-Workflows
 - Frontend-App-Workflows werden als explizite Nx-Targets mit dedizierten Executor-Semantiken modelliert
 - Betriebsfaehigkeit mit strukturierter Telemetrie
@@ -115,3 +117,16 @@ Referenzen:
 - Tenant-Admin-abhängige Reconcile- und Sync-Pfade reagieren fail-closed, sobald blockerrelevanter Drift in Registry oder Provisioning erkannt wird.
 - `manual_review` bleibt bewusst ein fachlicher Restzustand für nicht deterministisch behebbaren Abgleich; technische Fehler wie `IDP_UNAVAILABLE` und `IDP_FORBIDDEN` bleiben getrennt sichtbar.
 - Browser- und UI-Verträge behalten `classification`, `requestId` und `safeDetails` vollständig, damit Diagnose, Operator-Handlung und Fachzustand nicht auseinanderlaufen.
+
+### Fortschreibung 2026-04: Registrierungsvertrag für Admin-Ressourcen
+
+- CRUD-artige Admin-Flächen werden strategisch nicht mehr als lose Einzelrouten im Host verdrahtet, sondern über einen deklarativen Admin-Ressourcenvertrag aus Workspace-Packages beschrieben.
+- Der Host bleibt führend für kanonische Routenbildung, Guard-Materialisierung, Konflikterkennung und Shell-Integration.
+- Die erste Referenzmigration nutzt diesen Vertrag für die Inhaltsverwaltung; kanonisch liegt sie unter `/admin/content`, während `/content*` nur noch als Kompatibilitätsalias dient.
+
+### Fortschreibung 2026-04: Namespace-Vertrag für plugin-beigestellte Host-Identifier
+
+- Plugin-Action-IDs bleiben nicht der einzige namespacete Vertrag; dieselbe technische Plugin-Identität steuert jetzt auch plugin-beigestellte `contentType`s, Admin-Ressourcen-IDs und Audit-Event-Typen.
+- Der Host validiert diese Identifier fail-fast gegen reservierte Core-Namespaces, fremde Namespace-Nutzung und globale Kollisionen.
+- Core-Identifier wie `generic`, `legal` oder die hosteigene Admin-Ressource `content` bleiben ausdrücklich außerhalb dieser Plugin-Namespace-Pflicht.
+- Die Referenzmigration in diesem Schritt stellt das News-Plugin hart auf `news.article` um; ein Kompatibilitätspfad für das alte unqualifizierte `news` wurde bewusst nicht eingeführt.

@@ -38,8 +38,11 @@ const createRouteMock = vi.hoisted(() =>
   }))
 );
 
+const redirectMock = vi.hoisted(() => vi.fn((options: Record<string, unknown>) => ({ ...options, __redirect: true })));
+
 vi.mock('@tanstack/react-router', () => ({
   createRoute: createRouteMock,
+  redirect: redirectMock,
 }));
 
 vi.mock('./account-ui.routes', () => ({
@@ -106,6 +109,20 @@ const bindings = Object.fromEntries(
   bindingKeys.map((key) => [key, () => key])
 );
 
+const adminResources = [
+  {
+    resourceId: 'content',
+    basePath: 'content',
+    titleKey: 'content.page.title',
+    guard: 'content',
+    views: {
+      list: { bindingKey: 'content' },
+      create: { bindingKey: 'contentCreate' },
+      detail: { bindingKey: 'contentDetail' },
+    },
+  },
+] as const;
+
 const readRouteOptions = (route: unknown): RouteOptionsUnderTest => {
   return (route as { options: unknown }).options as RouteOptionsUnderTest;
 };
@@ -131,6 +148,7 @@ describe('app.routes', () => {
     const pluginFactories = getPluginRouteFactories([newsPlugin]);
     const routeFactories = getClientRouteFactories({
       bindings,
+      adminResources,
       plugins: [
         newsPlugin,
         {
@@ -151,6 +169,7 @@ describe('app.routes', () => {
     const routeMap = new Map(routes.map((route) => [String(readRouteOptions(route).path), route]));
 
     expect(routeMap.has('/')).toBe(true);
+    expect(routeMap.has('/admin/content')).toBe(true);
     expect(routeMap.has('/content')).toBe(true);
     expect(routeMap.has('/admin/users')).toBe(true);
     expect(routeMap.has('/admin/roles/$roleId')).toBe(true);
@@ -168,6 +187,7 @@ describe('app.routes', () => {
     expect(guardSpies.adminUsers).toHaveBeenCalledWith({ href: '/admin/users' });
     expect(guardSpies.content).toHaveBeenCalledWith({ href: '/plugins/news' });
     expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('account', undefined, '/account');
+    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('content', undefined, '/admin/content');
     expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('adminUsers', undefined, '/admin/users');
     expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('content', undefined, '/plugins/news');
 
@@ -182,6 +202,7 @@ describe('app.routes', () => {
   it('keeps unguarded UI routes and unguarded plugin routes callable without account guard execution', async () => {
     const routeFactories = getClientRouteFactories({
       bindings,
+      adminResources,
       plugins: [
         {
           id: 'public-plugin',
@@ -216,6 +237,7 @@ describe('app.routes', () => {
   it('routes plugin guards to the canonical account-ui guards during beforeLoad', async () => {
     const routeFactories = getClientRouteFactories({
       bindings,
+      adminResources,
       plugins: [
         {
           id: 'plugin-guards',
@@ -258,6 +280,26 @@ describe('app.routes', () => {
     expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('content', undefined, '/plugins/read');
     expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('contentCreate', undefined, '/plugins/create');
     expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('contentDetail', undefined, '/plugins/write');
+  });
+
+  it('redirects legacy content aliases to the canonical admin content routes', () => {
+    const routeFactories = getClientRouteFactories({
+      bindings,
+      adminResources,
+    });
+    const rootRoute = { id: 'root' };
+    const routes = routeFactories.map((factory) => factory(rootRoute as never));
+    const routeMap = new Map(routes.map((route) => [String(readRouteOptions(route).path), route]));
+
+    expect(() => readRouteOptions(routeMap.get('/content')).beforeLoad?.({ href: '/content?page=2' })).toThrow(
+      expect.objectContaining({ href: '/admin/content?page=2', __redirect: true })
+    );
+    expect(() => readRouteOptions(routeMap.get('/content/new')).beforeLoad?.({ href: '/content/new' })).toThrow(
+      expect.objectContaining({ href: '/admin/content/new', __redirect: true })
+    );
+    expect(
+      () => readRouteOptions(routeMap.get('/content/$contentId')).beforeLoad?.({ href: '/content/content-7' })
+    ).toThrow(expect.objectContaining({ href: '/admin/content/content-7', __redirect: true }));
   });
 
   it('emits one diagnostics event for unsupported plugin guards during factory creation', () => {
@@ -311,7 +353,7 @@ describe('app.routes', () => {
   });
 
   it('builds server route factories without requiring app-local route composition', () => {
-    const routeFactories = getServerRouteFactories({ bindings, diagnostics: vi.fn() });
+    const routeFactories = getServerRouteFactories({ bindings, adminResources, diagnostics: vi.fn() });
 
     expect(routeFactories.some((factory) => readRouteOptions(factory({ id: 'root' } as never)).path === '/auth/login')).toBe(true);
     expect(routeFactories.some((factory) => readRouteOptions(factory({ id: 'root' } as never)).path === '/account')).toBe(true);

@@ -1,4 +1,5 @@
 import type { NewsContentItem, NewsPayload, NewsStatus } from './news.types.js';
+import { NEWS_CONTENT_TYPE } from './plugin.js';
 
 type ApiItemResponse<T> = {
   readonly data: T;
@@ -53,7 +54,7 @@ const toNewsContent = (item: {
 
 export const listNews = async (): Promise<readonly NewsContentItem[]> => {
   const response = await requestJson<ApiListResponse<NewsContentItem>>('/api/v1/iam/contents');
-  return response.data.filter((item) => item.contentType === 'news').map(toNewsContent);
+  return response.data.filter((item) => item.contentType === NEWS_CONTENT_TYPE).map(toNewsContent);
 };
 
 export const getNews = async (contentId: string): Promise<NewsContentItem> => {
@@ -70,7 +71,7 @@ export const createNews = async (input: NewsFormInput): Promise<NewsContentItem>
     },
     body: JSON.stringify({
       title: input.title,
-      contentType: 'news',
+      contentType: NEWS_CONTENT_TYPE,
       status: input.status,
       publishedAt: input.publishedAt,
       payload: input.payload,

@@ -1,4 +1,10 @@
+import type { AdminResourceDefinition } from './admin-resources.js';
 import type { ContentTypeDefinition } from './content-types.js';
+import {
+  isReservedPluginNamespace,
+  normalizePluginIdentifier,
+  parseNamespacedPluginIdentifier,
+} from './plugin-identifiers.js';
 
 export type PluginRouteGuard = 'content.read' | 'content.create' | 'content.write';
 
@@ -23,7 +29,7 @@ export type PluginNavigationItem = {
 
 export type PluginActionDefinition = {
   /**
- * Fully-qualified plugin action id in the format `<pluginNamespace>.<actionName>`.
+   * Fully-qualified plugin action id in the format `<pluginNamespace>.<actionName>`.
    *
    * Plugins may only declare actions in their own namespace. Reserved core
    * namespaces are not available to plugins unless an explicit bridge contract
@@ -36,7 +42,14 @@ export type PluginActionDefinition = {
   readonly legacyAliases?: readonly string[];
 };
 
+export type PluginAuditEventDefinition = {
+  readonly eventType: string;
+  readonly titleKey?: string;
+};
+
 export type PluginTranslations = Readonly<Record<string, Readonly<Record<string, unknown>>>>;
+
+export type PluginAdminResourceDefinition = AdminResourceDefinition;
 
 export type PluginDefinition = {
   readonly id: string;
@@ -45,20 +58,12 @@ export type PluginDefinition = {
   readonly navigation?: readonly PluginNavigationItem[];
   readonly actions?: readonly PluginActionDefinition[];
   readonly contentTypes?: readonly ContentTypeDefinition[];
+  readonly adminResources?: readonly PluginAdminResourceDefinition[];
+  readonly auditEvents?: readonly PluginAuditEventDefinition[];
   readonly translations?: PluginTranslations;
 };
 
-const normalizeIdentifier = (value: string) => value.trim();
-const ACTION_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*\.[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const LEGACY_ACTION_ALIAS_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-/**
- * Reserved namespaces that are not owned by plugins.
- *
- * Plugin actions must use plugin-owned namespaces. Core/host actions follow the
- * same fully-qualified naming model, but their namespaces are governed outside
- * of the plugin SDK.
- */
-const RESERVED_ACTION_NAMESPACES = ['content', 'iam', 'core'] as const;
 
 export type PluginActionRegistryEntry = {
   readonly actionId: string;
@@ -72,21 +77,13 @@ export type PluginActionRegistryEntry = {
   readonly deprecatedAlias?: string;
 };
 
-const parseActionSegments = (actionId: string): { namespace: string; actionName: string } | undefined => {
-  if (ACTION_ID_PATTERN.test(actionId) === false) {
-    return undefined;
-  }
-
-  const separatorIndex = actionId.indexOf('.');
-
-  return {
-    namespace: actionId.slice(0, separatorIndex),
-    actionName: actionId.slice(separatorIndex + 1),
-  };
+export type PluginAuditEventRegistryEntry = {
+  readonly eventType: string;
+  readonly namespace: string;
+  readonly eventName: string;
+  readonly ownerPluginId: string;
+  readonly titleKey?: string;
 };
-
-const isReservedNamespace = (namespace: string): boolean =>
-  RESERVED_ACTION_NAMESPACES.includes(namespace as (typeof RESERVED_ACTION_NAMESPACES)[number]);
 
 const normalizeLegacyAliases = (
   actionId: string,
@@ -96,7 +93,7 @@ const normalizeLegacyAliases = (
     return undefined;
   }
 
-  const normalizedAliases = aliases.map((alias) => normalizeIdentifier(alias));
+  const normalizedAliases = aliases.map((alias) => normalizePluginIdentifier(alias));
   if (normalizedAliases.some((alias) => alias.length === 0 || LEGACY_ACTION_ALIAS_PATTERN.test(alias) === false)) {
     throw new Error(`invalid_plugin_action_alias:${actionId}`);
   }
@@ -114,22 +111,90 @@ const normalizeLegacyAliases = (
 };
 
 const normalizePluginActionDefinition = (action: PluginActionDefinition): PluginActionDefinition => {
-  const actionId = normalizeIdentifier(action.id);
-  const titleKey = normalizeIdentifier(action.titleKey);
+  const actionId = normalizePluginIdentifier(action.id);
+  const titleKey = normalizePluginIdentifier(action.titleKey);
 
   return {
     ...action,
     id: actionId,
     titleKey,
-    featureFlag: normalizeIdentifier(action.featureFlag ?? '') || undefined,
+    featureFlag: normalizePluginIdentifier(action.featureFlag ?? '') || undefined,
     legacyAliases: normalizeLegacyAliases(actionId, action.legacyAliases),
   };
 };
 
+const normalizePluginAuditEventDefinition = (event: PluginAuditEventDefinition): PluginAuditEventDefinition => ({
+  ...event,
+  eventType: normalizePluginIdentifier(event.eventType),
+  titleKey: normalizePluginIdentifier(event.titleKey ?? '') || undefined,
+});
+
 const resolvePluginActionDefinition = (
   plugin: PluginDefinition,
   actionId: string
-): PluginActionDefinition | undefined => plugin.actions?.find((action) => normalizeIdentifier(action.id) === actionId);
+): PluginActionDefinition | undefined =>
+  plugin.actions?.find((action) => normalizePluginIdentifier(action.id) === actionId);
+
+export const definePluginActions = <const TActions extends readonly PluginActionDefinition[]>(
+  namespace: string,
+  actions: TActions
+): TActions => {
+  const normalizedNamespace = normalizePluginIdentifier(namespace);
+  if (normalizedNamespace.length === 0) {
+    throw new Error('invalid_plugin_action_namespace');
+  }
+  if (isReservedPluginNamespace(normalizedNamespace)) {
+    throw new Error(`reserved_plugin_action_namespace:${normalizedNamespace}`);
+  }
+
+  const normalizedActions = actions.map((action) =>
+    normalizePluginActionDefinition(action)
+  ) as unknown as TActions;
+
+  for (const action of normalizedActions) {
+    const parsed = parseNamespacedPluginIdentifier(action.id);
+    if (parsed === undefined) {
+      throw new Error(`invalid_plugin_action_id:${action.id}`);
+    }
+    if (action.titleKey.length === 0) {
+      throw new Error(`invalid_plugin_action_definition:${action.id}`);
+    }
+    if (parsed.namespace !== normalizedNamespace) {
+      throw new Error(`plugin_action_namespace_mismatch:${normalizedNamespace}:${parsed.namespace}:${action.id}`);
+    }
+  }
+
+  return normalizedActions;
+};
+
+export const definePluginAuditEvents = <const TEvents extends readonly PluginAuditEventDefinition[]>(
+  namespace: string,
+  events: TEvents
+): TEvents => {
+  const normalizedNamespace = normalizePluginIdentifier(namespace);
+  if (normalizedNamespace.length === 0) {
+    throw new Error('invalid_plugin_namespace');
+  }
+  if (isReservedPluginNamespace(normalizedNamespace)) {
+    throw new Error(`reserved_plugin_namespace:${normalizedNamespace}`);
+  }
+
+  const normalizedEvents = events.map((event) => normalizePluginAuditEventDefinition(event)) as unknown as TEvents;
+
+  for (const event of normalizedEvents) {
+    const parsed = parseNamespacedPluginIdentifier(event.eventType);
+    if (parsed === undefined) {
+      throw new Error(`invalid_plugin_audit_event_type:${event.eventType}`);
+    }
+    if (parsed.namespace !== normalizedNamespace) {
+      throw new Error(
+        `plugin_audit_event_namespace_mismatch:${normalizedNamespace}:${parsed.namespace}:${event.eventType}`
+      );
+    }
+  }
+
+  return normalizedEvents;
+};
 
 export const createPluginRegistry = (
   plugins: readonly PluginDefinition[]
@@ -137,24 +202,26 @@ export const createPluginRegistry = (
   const registry = new Map<string, PluginDefinition>();
 
   for (const plugin of plugins) {
-    const id = normalizeIdentifier(plugin.id);
+    const id = normalizePluginIdentifier(plugin.id);
     const displayName = plugin.displayName.trim();
 
     if (id.length === 0 || displayName.length === 0) {
       throw new Error('invalid_plugin_definition');
     }
-
+    if (isReservedPluginNamespace(id)) {
+      throw new Error(`reserved_plugin_namespace:${id}`);
+    }
     if (registry.has(id)) {
       throw new Error(`duplicate_plugin:${id}`);
     }
 
     for (const route of plugin.routes) {
-      const routeActionId = normalizeIdentifier(route.actionId ?? '');
+      const routeActionId = normalizePluginIdentifier(route.actionId ?? '');
       if (!routeActionId) {
         continue;
       }
 
-      const parsed = parseActionSegments(routeActionId);
+      const parsed = parseNamespacedPluginIdentifier(routeActionId);
       if (parsed === undefined) {
         throw new Error(`invalid_plugin_route_action_id:${id}:${route.id}:${routeActionId}`);
       }
@@ -172,12 +239,12 @@ export const createPluginRegistry = (
     }
 
     for (const navigationItem of plugin.navigation ?? []) {
-      const navigationActionId = normalizeIdentifier(navigationItem.actionId ?? '');
+      const navigationActionId = normalizePluginIdentifier(navigationItem.actionId ?? '');
       if (!navigationActionId) {
         continue;
       }
 
-      const parsed = parseActionSegments(navigationActionId);
+      const parsed = parseNamespacedPluginIdentifier(navigationActionId);
       if (parsed === undefined) {
         throw new Error(`invalid_plugin_navigation_action_id:${id}:${navigationItem.id}:${navigationActionId}`);
       }
@@ -195,6 +262,39 @@ export const createPluginRegistry = (
         navigationItem.requiredAction !== action.requiredAction
       ) {
         throw new Error(`plugin_navigation_action_guard_mismatch:${id}:${navigationItem.id}:${navigationActionId}`);
+      }
+    }
+
+    for (const contentTypeDefinition of plugin.contentTypes ?? []) {
+      const normalizedContentType = normalizePluginIdentifier(contentTypeDefinition.contentType);
+      const parsed = parseNamespacedPluginIdentifier(normalizedContentType);
+      if (parsed === undefined) {
+        throw new Error(`invalid_plugin_content_type:${normalizedContentType}`);
+      }
+      if (parsed.namespace !== id) {
+        throw new Error(`plugin_content_type_namespace_mismatch:${id}:${parsed.namespace}:${normalizedContentType}`);
+      }
+    }
+
+    for (const adminResource of plugin.adminResources ?? []) {
+      const normalizedResourceId = normalizePluginIdentifier(adminResource.resourceId);
+      const parsed = parseNamespacedPluginIdentifier(normalizedResourceId);
+      if (parsed === undefined) {
+        throw new Error(`invalid_plugin_admin_resource:${normalizedResourceId}`);
+      }
+      if (parsed.namespace !== id) {
+        throw new Error(`plugin_admin_resource_namespace_mismatch:${id}:${parsed.namespace}:${normalizedResourceId}`);
+      }
+    }
+
+    for (const eventDefinition of plugin.auditEvents ?? []) {
+      const normalizedEventType = normalizePluginIdentifier(eventDefinition.eventType);
+      const parsed = parseNamespacedPluginIdentifier(normalizedEventType);
+      if (parsed === undefined) {
+        throw new Error(`invalid_plugin_audit_event_type:${normalizedEventType}`);
+      }
+      if (parsed.namespace !== id) {
+        throw new Error(`plugin_audit_event_namespace_mismatch:${id}:${parsed.namespace}:${normalizedEventType}`);
       }
     }
 
@@ -224,41 +324,13 @@ export const mergePluginContentTypes = (
   plugins: readonly PluginDefinition[]
 ): readonly ContentTypeDefinition[] => plugins.flatMap((plugin) => plugin.contentTypes ?? []);
 
-export const definePluginActions = <const TActions extends readonly PluginActionDefinition[]>(
-  namespace: string,
-  actions: TActions
-): TActions => {
-  const normalizedNamespace = normalizeIdentifier(namespace);
-  if (normalizedNamespace.length === 0) {
-    throw new Error('invalid_plugin_action_namespace');
-  }
-  if (isReservedNamespace(normalizedNamespace)) {
-    throw new Error(`reserved_plugin_action_namespace:${normalizedNamespace}`);
-  }
+export const mergePluginAdminResourceDefinitions = (
+  plugins: readonly PluginDefinition[]
+): readonly PluginAdminResourceDefinition[] => plugins.flatMap((plugin) => plugin.adminResources ?? []);
 
-  const normalizedActions = actions.map((action) =>
-    normalizePluginActionDefinition(action)
-  ) as unknown as TActions;
-
-  for (const action of normalizedActions) {
-    const normalizedActionId = action.id;
-    const normalizedTitleKey = action.titleKey;
-    const parsed = parseActionSegments(normalizedActionId);
-    if (parsed === undefined) {
-      throw new Error(`invalid_plugin_action_id:${normalizedActionId}`);
-    }
-    if (normalizedTitleKey.length === 0) {
-      throw new Error(`invalid_plugin_action_definition:${normalizedActionId}`);
-    }
-    if (parsed.namespace !== normalizedNamespace) {
-      throw new Error(
-        `plugin_action_namespace_mismatch:${normalizedNamespace}:${parsed.namespace}:${normalizedActionId}`
-      );
-    }
-  }
-
-  return normalizedActions;
-};
+export const mergePluginAuditEventDefinitions = (
+  plugins: readonly PluginDefinition[]
+): readonly PluginAuditEventDefinition[] => plugins.flatMap((plugin) => plugin.auditEvents ?? []);
 
 export const createPluginActionRegistry = (
   plugins: readonly PluginDefinition[]
@@ -267,12 +339,12 @@ export const createPluginActionRegistry = (
   const pluginNamespaces = new Set<string>();
 
   for (const plugin of plugins) {
-    const pluginNamespace = normalizeIdentifier(plugin.id);
-    const pluginDisplayName = normalizeIdentifier(plugin.displayName);
+    const pluginNamespace = normalizePluginIdentifier(plugin.id);
+    const pluginDisplayName = normalizePluginIdentifier(plugin.displayName);
     if (pluginNamespace.length === 0 || pluginDisplayName.length === 0) {
       throw new Error('invalid_plugin_definition');
     }
-    if (isReservedNamespace(pluginNamespace)) {
+    if (isReservedPluginNamespace(pluginNamespace)) {
       throw new Error(`reserved_plugin_action_namespace:${pluginNamespace}`);
     }
     if (pluginNamespaces.has(pluginNamespace)) {
@@ -289,15 +361,14 @@ export const createPluginActionRegistry = (
       if (actionTitleKey.length === 0) {
         throw new Error(`invalid_plugin_action_definition:${actionId}`);
       }
-      const parsed = parseActionSegments(actionId);
+
+      const parsed = parseNamespacedPluginIdentifier(actionId);
       if (parsed === undefined) {
         throw new Error(`invalid_plugin_action_id:${actionId}`);
       }
-
       if (parsed.namespace !== pluginNamespace) {
         throw new Error(`plugin_action_namespace_mismatch:${pluginNamespace}:${parsed.namespace}:${actionId}`);
       }
-
       if (registry.has(actionId)) {
         throw new Error(`duplicate_plugin_action:${actionId}`);
       }
@@ -305,7 +376,7 @@ export const createPluginActionRegistry = (
       registry.set(actionId, {
         actionId,
         namespace: parsed.namespace,
-        actionName: parsed.actionName,
+        actionName: parsed.name,
         ownerPluginId: pluginNamespace,
         titleKey: actionTitleKey,
         requiredAction: normalizedAction.requiredAction,
@@ -321,7 +392,7 @@ export const createPluginActionRegistry = (
         registry.set(legacyAlias, {
           actionId,
           namespace: parsed.namespace,
-          actionName: parsed.actionName,
+          actionName: parsed.name,
           ownerPluginId: pluginNamespace,
           titleKey: actionTitleKey,
           requiredAction: normalizedAction.requiredAction,
@@ -330,6 +401,48 @@ export const createPluginActionRegistry = (
           deprecatedAlias: legacyAlias,
         });
       }
+    }
+  }
+
+  return registry;
+};
+
+export const createPluginAuditEventRegistry = (
+  plugins: readonly PluginDefinition[]
+): ReadonlyMap<string, PluginAuditEventRegistryEntry> => {
+  const registry = new Map<string, PluginAuditEventRegistryEntry>();
+
+  for (const plugin of plugins) {
+    const pluginNamespace = normalizePluginIdentifier(plugin.id);
+    if (pluginNamespace.length === 0) {
+      throw new Error('invalid_plugin_definition');
+    }
+    if (isReservedPluginNamespace(pluginNamespace)) {
+      throw new Error(`reserved_plugin_namespace:${pluginNamespace}`);
+    }
+
+    for (const eventDefinition of plugin.auditEvents ?? []) {
+      const normalizedEvent = normalizePluginAuditEventDefinition(eventDefinition);
+      const parsed = parseNamespacedPluginIdentifier(normalizedEvent.eventType);
+      if (parsed === undefined) {
+        throw new Error(`invalid_plugin_audit_event_type:${normalizedEvent.eventType}`);
+      }
+      if (parsed.namespace !== pluginNamespace) {
+        throw new Error(
+          `plugin_audit_event_namespace_mismatch:${pluginNamespace}:${parsed.namespace}:${normalizedEvent.eventType}`
+        );
+      }
+      if (registry.has(normalizedEvent.eventType)) {
+        throw new Error(`duplicate_plugin_audit_event:${normalizedEvent.eventType}`);
+      }
+
+      registry.set(normalizedEvent.eventType, {
+        eventType: normalizedEvent.eventType,
+        namespace: parsed.namespace,
+        eventName: parsed.name,
+        ownerPluginId: pluginNamespace,
+        titleKey: normalizedEvent.titleKey,
+      });
     }
   }
 
@@ -345,10 +458,7 @@ const mergeTranslationNode = (
 ): Record<string, unknown> => {
   for (const [key, value] of Object.entries(source)) {
     if (isRecord(value) && isRecord(target[key])) {
-      target[key] = mergeTranslationNode(
-        { ...(target[key] as Record<string, unknown>) },
-        value
-      );
+      target[key] = mergeTranslationNode({ ...(target[key] as Record<string, unknown>) }, value);
       continue;
     }
 

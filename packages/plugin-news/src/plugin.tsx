@@ -1,4 +1,9 @@
-import { definePluginActions, type PluginDefinition } from '@sva/sdk';
+import {
+  definePluginActions,
+  definePluginAuditEvents,
+  definePluginContentTypes,
+  type PluginDefinition,
+} from '@sva/sdk';
 
 import { NewsCreatePage, NewsEditPage, NewsListPage } from './news.pages.js';
 
@@ -8,6 +13,8 @@ export const pluginNewsActionIds = {
   update: 'news.update',
   delete: 'news.delete',
 } as const;
+
+export const NEWS_CONTENT_TYPE = 'news.article' as const;
 
 export const pluginNewsActionDefinitions = definePluginActions('news', [
   {
@@ -75,12 +82,13 @@ export const pluginNews: PluginDefinition = {
     },
   ],
   actions: pluginNewsActionDefinitions,
-  contentTypes: [
+  contentTypes: definePluginContentTypes('news', [
     {
-      contentType: 'news',
+      contentType: NEWS_CONTENT_TYPE,
       displayName: 'News',
     },
-  ],
+  ]),
+  auditEvents: definePluginAuditEvents('news', []),
   translations: {
     de: {
       news: {

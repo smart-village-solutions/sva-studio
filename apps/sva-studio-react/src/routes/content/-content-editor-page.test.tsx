@@ -95,7 +95,7 @@ describe('ContentEditorPage', () => {
         status: 'draft',
         publishedAt: undefined,
       });
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/content' });
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/admin/content' });
     });
   });
 

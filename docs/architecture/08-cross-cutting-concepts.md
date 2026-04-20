@@ -216,6 +216,12 @@ gleichzeitig beeinflussen.
 ### i18n und Accessibility
 
 - Core- und Plugin-UI-Texte werden über gemeinsame i18n-Ressourcen aufgelöst; Plugin-Namespaces folgen der Konvention `<pluginId>.*`
+- Plugin-beigestellte registrierte Host-Identifier folgen einem einheitlichen Namespace-Modell:
+  - `contentType` im Format `<pluginId>.<name>`
+  - plugin-spezifische Admin-Ressourcen-IDs im Format `<pluginId>.<name>`
+  - plugin-spezifische Audit-Event-Typen im Format `<pluginId>.<name>`
+- Die technische Ownership liegt bei `PluginDefinition.id`; Plugins dürfen keine fremden oder reservierten Core-Namespaces wie `content`, `iam`, `admin` oder `core` belegen
+- Core-Identifier wie `generic`, `legal` oder hosteigene Admin-Ressourcen wie `content` bleiben ausdrücklich außerhalb dieser Plugin-Namespace-Pflicht
 - A11y wird pro Review/Template eingefordert, aber noch nicht zentral automatisiert
 - Rollen-Statusindikatoren in `/admin/roles` verwenden i18n-Labels für `synced`, `pending` und `failed`
 - Retry- und Reconcile-Aktionen bleiben über semantische Buttons und Testabdeckung tastatur- und screenreader-freundlich prüfbar
@@ -226,6 +232,8 @@ gleichzeitig beeinflussen.
   - Erstellungsansicht unter `/admin/<resource>/new`
   - Detail- und Bearbeitungsansicht unter `/admin/<resource>/$id`
 - Create- und Edit-Flows dieser Ressourcen werden nicht über lokalen Dialog-State der Listenansicht gesteuert; Listenaktionen navigieren immer auf die kanonische Zielroute
+- Die technische Quelle dieser Navigationskonvention ist ein deklarativer Admin-Ressourcenvertrag im SDK; Packages liefern nur Bindings und Guard-Referenzen, keine eigene Admin-Shell oder abweichende Top-Level-Pfade
+- Legacy-Einstiege dürfen nur als explizite Host-Aliase bestehen bleiben; für die Inhaltsverwaltung redirectet der Host `/content*` kontrolliert auf `/admin/content*`
 
 ### UI-Theming, Design-Tokens und Shell-Verhalten
 

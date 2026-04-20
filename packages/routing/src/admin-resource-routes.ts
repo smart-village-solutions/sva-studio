@@ -22,17 +22,92 @@ type AdminResourceBindingResolver = {
 };
 
 type AdminResourceRouteKind = 'list' | 'create' | 'detail' | 'history';
+type AdminResourceViewKind = keyof AdminResourceDefinition['views'];
+type DetailBindingKey = Extract<
+  BindingKey,
+  | 'contentDetail'
+  | 'adminUserDetail'
+  | 'adminOrganizationDetail'
+  | 'adminInstanceDetail'
+  | 'adminRoleDetail'
+  | 'adminGroupDetail'
+  | 'adminLegalTextDetail'
+>;
 
 const LEGACY_CONTENT_ALIAS_PREFIX = '/content';
 
+const coreContentAdminResource = {
+  resourceId: 'content',
+  basePath: 'content',
+  titleKey: 'content.page.title',
+  guard: 'content',
+  views: {
+    list: { bindingKey: 'content' },
+    create: { bindingKey: 'contentCreate' },
+    detail: { bindingKey: 'contentDetail' },
+  },
+} as const satisfies AdminResourceDefinition;
+
 const toAdminRoutePath = (basePath: string) => `/admin/${basePath}` as const;
 
-const getAdminResourceBindings = (resource: AdminResourceDefinition): AdminResourceBindingResolver => ({
-  list: resource.views.list.bindingKey as BindingKey,
-  create: resource.views.create.bindingKey as BindingKey,
-  detail: resource.views.detail.bindingKey as BindingKey,
-  history: resource.views.history?.bindingKey as BindingKey | undefined,
+const detailParamNameByBinding = {
+  contentDetail: 'id',
+  adminUserDetail: 'userId',
+  adminOrganizationDetail: 'organizationId',
+  adminInstanceDetail: 'instanceId',
+  adminRoleDetail: 'roleId',
+  adminGroupDetail: 'groupId',
+  adminLegalTextDetail: 'legalTextVersionId',
+} as const satisfies Record<DetailBindingKey, string>;
+
+const hasBindingKey = (bindings: AppRouteBindings, bindingKey: string): bindingKey is BindingKey => bindingKey in bindings;
+
+const resolveBindingKey = (
+  bindings: AppRouteBindings,
+  resource: AdminResourceDefinition,
+  viewName: AdminResourceViewKind,
+  bindingKey: string | undefined
+): BindingKey => {
+  if (typeof bindingKey !== 'string' || !hasBindingKey(bindings, bindingKey)) {
+    throw new Error(`unknown_admin_resource_binding_key:${resource.resourceId}:${viewName}:${bindingKey ?? ''}`);
+  }
+
+  return bindingKey;
+};
+
+const getAdminResourceBindings = (
+  bindings: AppRouteBindings,
+  resource: AdminResourceDefinition
+): AdminResourceBindingResolver => ({
+  list: resolveBindingKey(bindings, resource, 'list', resource.views.list.bindingKey),
+  create: resolveBindingKey(bindings, resource, 'create', resource.views.create.bindingKey),
+  detail: resolveBindingKey(bindings, resource, 'detail', resource.views.detail.bindingKey),
+  history: resource.views.history
+    ? resolveBindingKey(bindings, resource, 'history', resource.views.history.bindingKey)
+    : undefined,
 });
+
+const getDetailParamName = (bindingKey: BindingKey): string => {
+  if (!(bindingKey in detailParamNameByBinding)) {
+    throw new Error(`unsupported_admin_resource_detail_binding:${bindingKey}`);
+  }
+
+  return detailParamNameByBinding[bindingKey as DetailBindingKey];
+};
+
+const withCoreContentAdminResource = (
+  resources: readonly AdminResourceDefinition[]
+): readonly AdminResourceDefinition[] => {
+  const containsCoreContent = resources.some(
+    (resource) => resource.resourceId === coreContentAdminResource.resourceId || resource.basePath === coreContentAdminResource.basePath
+  );
+
+  if (containsCoreContent) {
+    return resources;
+  }
+
+  return [coreContentAdminResource, ...resources];
+};
 
 const adminResourceGuardMap = {
   content: {
@@ -87,33 +162,38 @@ const resolveAdminResourceGuard = (
   routeKind: AdminResourceRouteKind
 ): AccountUiRouteGuardKey => adminResourceGuardMap[resource.guard][routeKind];
 
-const createAdminResourceRouteDefinitions = (resources: readonly AdminResourceDefinition[]): readonly UiRouteDefinition[] =>
-  resources.flatMap((resource) => {
-    const bindings = getAdminResourceBindings(resource);
+const createAdminResourceRouteDefinitions = (
+  bindings: AppRouteBindings,
+  resources: readonly AdminResourceDefinition[]
+): readonly UiRouteDefinition[] =>
+  withCoreContentAdminResource(resources).flatMap((resource) => {
+    const resolvedBindings = getAdminResourceBindings(bindings, resource);
     const basePath = toAdminRoutePath(resource.basePath);
+    const detailParamName = getDetailParamName(resolvedBindings.detail);
+    const detailPath = `${basePath}/$${detailParamName}`;
 
     return [
       {
-        binding: bindings.list,
+        binding: resolvedBindings.list,
         guard: resolveAdminResourceGuard(resource, 'list'),
         path: basePath,
       },
       {
-        binding: bindings.create,
+        binding: resolvedBindings.create,
         guard: resolveAdminResourceGuard(resource, 'create'),
         path: `${basePath}/new`,
       },
       {
-        binding: bindings.detail,
+        binding: resolvedBindings.detail,
         guard: resolveAdminResourceGuard(resource, 'detail'),
-        path: `${basePath}/$id`,
+        path: detailPath,
       },
-      ...(bindings.history
+      ...(resolvedBindings.history
         ? [
             {
-              binding: bindings.history,
+              binding: resolvedBindings.history,
               guard: resolveAdminResourceGuard(resource, 'history'),
-              path: `${basePath}/$id/history`,
+              path: `${detailPath}/history`,
             } satisfies UiRouteDefinition,
           ]
         : []),
@@ -155,7 +235,7 @@ export const createAdminResourceRouteFactories = (
   resources: readonly AdminResourceDefinition[],
   diagnostics?: RoutingDiagnosticsHook
 ): readonly AppRouteFactory[] =>
-  createAdminResourceRouteDefinitions(resources).map(
+  createAdminResourceRouteDefinitions(bindings, resources).map(
     (definition) =>
       (rootRoute: RootRoute) => {
         const guard = createAccountUiRouteGuard(definition.guard, diagnostics, definition.path);

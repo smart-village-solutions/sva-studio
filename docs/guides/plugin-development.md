@@ -2,7 +2,7 @@
 
 Dieser Guide beschreibt den verbindlichen Entwicklungsweg für Studio-Plugins ab Plugin-SDK-Vertrag v1.
 
-> TODO: Diesen Guide um eine eigene Schritt-fuer-Schritt-Anleitung zum Anlegen eines neuen Plugins im Monorepo erweitern, inklusive Workspace-Setup, Paketstruktur, Host-Registrierung und Abgrenzung zwischen verpflichtenden Regeln und optionalen Beispielen.
+Er beschreibt die verpflichtenden Regeln für Studio-Plugins. Eine ergänzende Schritt-für-Schritt-Anleitung zum Anlegen neuer Plugins im Monorepo wird separat dokumentiert und ist nicht Teil dieses verbindlichen Guides.
 
 ## Zielbild
 

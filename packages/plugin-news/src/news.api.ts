@@ -1,5 +1,5 @@
 import type { NewsContentItem, NewsPayload, NewsStatus } from './news.types.js';
-import { NEWS_CONTENT_TYPE } from './plugin.js';
+import { NEWS_CONTENT_TYPE } from './news.constants.js';
 
 type ApiItemResponse<T> = {
   readonly data: T;

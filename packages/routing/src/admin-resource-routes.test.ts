@@ -49,6 +49,7 @@ type RouteOptionsUnderTest = {
   path?: string;
   getParentRoute?: () => unknown;
   beforeLoad?: (options: unknown) => Promise<void> | void;
+  component?: () => unknown;
 };
 
 const bindings: AppRouteBindings = {
@@ -108,6 +109,7 @@ describe('admin resource routes', () => {
         create: { bindingKey: 'contentCreate' },
         detail: { bindingKey: 'contentDetail' },
       },
+      expectedPaths: ['/admin/content', '/admin/content/new', '/admin/content/$id'],
       expectedGuards: ['content', 'contentCreate', 'contentDetail'],
     },
     {
@@ -120,6 +122,7 @@ describe('admin resource routes', () => {
         create: { bindingKey: 'adminUserCreate' },
         detail: { bindingKey: 'adminUserDetail' },
       },
+      expectedPaths: ['/admin/users', '/admin/users/new', '/admin/users/$userId'],
       expectedGuards: ['adminUsers', 'adminUserCreate', 'adminUserDetail'],
     },
     {
@@ -132,6 +135,7 @@ describe('admin resource routes', () => {
         create: { bindingKey: 'adminOrganizationCreate' },
         detail: { bindingKey: 'adminOrganizationDetail' },
       },
+      expectedPaths: ['/admin/organizations', '/admin/organizations/new', '/admin/organizations/$organizationId'],
       expectedGuards: ['adminOrganizations', 'adminOrganizationCreate', 'adminOrganizationDetail'],
     },
     {
@@ -144,6 +148,7 @@ describe('admin resource routes', () => {
         create: { bindingKey: 'adminInstanceCreate' },
         detail: { bindingKey: 'adminInstanceDetail' },
       },
+      expectedPaths: ['/admin/instances', '/admin/instances/new', '/admin/instances/$instanceId'],
       expectedGuards: ['adminInstances', 'adminInstances', 'adminInstances'],
     },
     {
@@ -157,6 +162,7 @@ describe('admin resource routes', () => {
         detail: { bindingKey: 'adminRoleDetail' },
         history: { bindingKey: 'adminRoles' },
       },
+      expectedPaths: ['/admin/roles', '/admin/roles/new', '/admin/roles/$roleId', '/admin/roles/$roleId/history'],
       expectedGuards: ['adminRoles', 'adminRoles', 'adminRoleDetail', 'adminRoles'],
     },
     {
@@ -169,6 +175,7 @@ describe('admin resource routes', () => {
         create: { bindingKey: 'adminGroupCreate' },
         detail: { bindingKey: 'adminGroupDetail' },
       },
+      expectedPaths: ['/admin/groups', '/admin/groups/new', '/admin/groups/$groupId'],
       expectedGuards: ['adminGroups', 'adminGroupCreate', 'adminGroupDetail'],
     },
     {
@@ -181,6 +188,7 @@ describe('admin resource routes', () => {
         create: { bindingKey: 'adminLegalTextCreate' },
         detail: { bindingKey: 'adminLegalTextDetail' },
       },
+      expectedPaths: ['/admin/legal-texts', '/admin/legal-texts/new', '/admin/legal-texts/$legalTextVersionId'],
       expectedGuards: ['adminLegalTexts', 'adminLegalTextCreate', 'adminLegalTextDetail'],
     },
   ] as const)('maps %s routes to the expected account-ui guards', async (resource) => {
@@ -188,20 +196,24 @@ describe('admin resource routes', () => {
     const rootRoute = { id: 'root' };
     const routes = routeFactories.map((factory) => factory(rootRoute as never));
     const routeOptions = routes.map((route) => readRouteOptions(route));
+    const expectedPaths =
+      resource.resourceId === 'content'
+        ? resource.expectedPaths
+        : ['/admin/content', '/admin/content/new', '/admin/content/$id', ...resource.expectedPaths];
+    const expectedGuards =
+      resource.resourceId === 'content'
+        ? resource.expectedGuards
+        : ['content', 'contentCreate', 'contentDetail', ...resource.expectedGuards];
 
-    expect(routeOptions.map((route) => route.path)).toEqual(
-      resource.views.history
-        ? [`/admin/${resource.basePath}`, `/admin/${resource.basePath}/new`, `/admin/${resource.basePath}/$id`, `/admin/${resource.basePath}/$id/history`]
-        : [`/admin/${resource.basePath}`, `/admin/${resource.basePath}/new`, `/admin/${resource.basePath}/$id`]
-    );
-    expect(createAccountUiRouteGuardMock.mock.calls.map(([guardKey]) => guardKey)).toEqual(resource.expectedGuards);
+    expect(routeOptions.map((route) => route.path)).toEqual(expectedPaths);
+    expect(createAccountUiRouteGuardMock.mock.calls.map(([guardKey]) => guardKey)).toEqual(expectedGuards);
 
     for (const route of routeOptions) {
       await route.beforeLoad?.({ href: String(route.path) });
       expect(route.getParentRoute?.()).toBe(rootRoute);
     }
 
-    for (const guardKey of resource.expectedGuards) {
+    for (const guardKey of expectedGuards) {
       expect(guardSpies[guardKey]).toHaveBeenCalledWith({ href: expect.any(String) });
     }
   });
@@ -226,5 +238,23 @@ describe('admin resource routes', () => {
     );
     expect(readRouteOptions(routeMap.get('/content')).getParentRoute?.()).toBe(rootRoute);
     expect(readRouteOptions(routeMap.get('/content')).component?.()).toBeNull();
+  });
+
+  it('rejects unknown admin resource binding keys before route creation', () => {
+    expect(() =>
+      createAdminResourceRouteFactories(bindings, [
+        {
+          resourceId: 'news.entries',
+          basePath: 'news',
+          titleKey: 'news.title',
+          guard: 'content',
+          views: {
+            list: { bindingKey: 'unknownListBinding' },
+            create: { bindingKey: 'contentCreate' },
+            detail: { bindingKey: 'contentDetail' },
+          },
+        },
+      ])
+    ).toThrow('unknown_admin_resource_binding_key:news.entries:list:unknownListBinding');
   });
 });

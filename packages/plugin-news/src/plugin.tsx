@@ -5,7 +5,9 @@ import {
   type PluginDefinition,
 } from '@sva/sdk';
 
+import { NEWS_CONTENT_TYPE } from './news.constants.js';
 import { NewsCreatePage, NewsEditPage, NewsListPage } from './news.pages.js';
+export { NEWS_CONTENT_TYPE } from './news.constants.js';
 
 export const pluginNewsActionIds = {
   create: 'news.create',
@@ -13,8 +15,6 @@ export const pluginNewsActionIds = {
   update: 'news.update',
   delete: 'news.delete',
 } as const;
-
-export const NEWS_CONTENT_TYPE = 'news.article' as const;
 
 export const pluginNewsActionDefinitions = definePluginActions('news', [
   {

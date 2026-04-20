@@ -302,6 +302,19 @@ describe('app.routes', () => {
     ).toThrow(expect.objectContaining({ href: '/admin/content/content-7', __redirect: true }));
   });
 
+  it('keeps core content routes available when no admin resources are injected', () => {
+    const routeFactories = getClientRouteFactories({
+      bindings,
+    });
+    const rootRoute = { id: 'root' };
+    const routes = routeFactories.map((factory) => factory(rootRoute as never));
+    const routeMap = new Map(routes.map((route) => [String(readRouteOptions(route).path), route]));
+
+    expect(routeMap.has('/admin/content')).toBe(true);
+    expect(routeMap.has('/admin/content/new')).toBe(true);
+    expect(routeMap.has('/admin/content/$id')).toBe(true);
+  });
+
   it('emits one diagnostics event for unsupported plugin guards during factory creation', () => {
     const diagnostics = vi.fn();
 

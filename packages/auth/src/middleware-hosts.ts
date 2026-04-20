@@ -1,6 +1,6 @@
 import { classifyHost, isTrafficEnabledInstanceStatus } from '@sva/core';
 import { loadInstanceByHostname } from '@sva/data/server';
-import { createSdkLogger, getInstanceConfig } from '@sva/sdk/server';
+import { createSdkLogger, getInstanceConfig, getWorkspaceContext } from '@sva/sdk/server';
 
 import { buildLogContext } from './shared/log-context.js';
 import { resolveEffectiveRequestHost } from './request-hosts.js';
@@ -37,12 +37,14 @@ export const resolveSessionUser = async (request: Request, user: SessionUser): P
   }
 
   const host = resolveEffectiveRequestHost(request);
+  const normalizedHost = host.toLowerCase().replace(/:\d+$/, '').replace(/\.$/, '');
+  const hostSegmentCount = normalizedHost.split('.').filter(Boolean).length;
   const config = getInstanceConfig();
-  if (!config) {
-    return user;
-  }
-
-  const classification = classifyHost(host, config.parentDomain);
+  const classification = config
+    ? classifyHost(host, config.parentDomain)
+    : hostSegmentCount >= 4 && normalizedHost !== 'localhost'
+      ? { kind: 'tenant' as const }
+      : { kind: 'root' as const };
   if (classification.kind !== 'tenant') {
     return user;
   }
@@ -74,7 +76,7 @@ export const validateTenantHost = async (request: Request): Promise<Response | n
     return null;
   }
 
-  const requestId = request.headers.get('x-request-id') ?? undefined;
+  const requestId = getWorkspaceContext().requestId;
   let registryEntry: Awaited<ReturnType<typeof loadInstanceByHostname>>;
   try {
     registryEntry = await loadInstanceByHostname(host);

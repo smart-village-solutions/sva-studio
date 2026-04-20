@@ -16,9 +16,9 @@ Schulden auf IST-Basis.
 ### Priorisierte Risiken
 
 1. Drift zwischen Intermediate-SSR-Output und finaler Runtime
-   - Impact: hoch (ein scheinbar gruener Build kann im finalen `.output/server/**` dennoch einen anderen Server-Entry oder Dispatch-Pfad ausliefern)
+   - Impact: hoch (ein scheinbar grüner Build kann im finalen `.output/server/**` dennoch einen anderen Server-Entry oder Dispatch-Pfad ausliefern)
    - Wahrscheinlichkeit: hoch
-   - Maßnahme: finalen Runtime-Vertrag ueber `verify:runtime-artifact` und runner-basiertes Image-Verify erzwingen; `.nitro/vite/services/ssr/**` nur noch als Diagnosematerial behandeln
+   - Maßnahme: finalen Runtime-Vertrag über `verify:runtime-artifact` und runner-basiertes Image-Verify erzwingen; `.nitro/vite/services/ssr/**` nur noch als Diagnosematerial behandeln
 
 1. Geheimnisse in lokalen Env-Dateien
    - Impact: hoch (Credential Leak Risiko)
@@ -141,12 +141,12 @@ Schulden auf IST-Basis.
    - Maßnahme: Read-only Pfade auf Portainer-API mit fester Endpoint-ID begrenzen, `quantum-cli exec` nur als Fallback zulassen und produktionsnahe Mutationen auf den expliziten lokalen Operator-Pfad fokussieren
 
 23. Begrenzte lokale Nachbildbarkeit des `studio`-Ingress- und Private-DNS-Vertrags
-   - Impact: hoch (lokale Kandidatencontainer koennen Root-/Tenant-/OIDC-Paritaet falsch negativ oder unvollstaendig abbilden)
+   - Impact: hoch (lokale Kandidatencontainer können Root-/Tenant-/OIDC-Parität falsch negativ oder unvollständig abbilden)
    - Wahrscheinlichkeit: hoch
-   - Maßnahme: prod-nahe Freigaben an Remote-Paritaet binden, identische Live-Digests nur ueber dokumentierte Live-Evidenz wiederverwenden und lokale Kandidaten explizit als Hilfssignal behandeln
+   - Maßnahme: prod-nahe Freigaben an Remote-Parität binden, identische Live-Digests nur über dokumentierte Live-Evidenz wiederverwenden und lokale Kandidaten explizit als Hilfssignal behandeln
 
 24. Generische IAM-Rechte ohne Content-Type-Qualifier
-   - Impact: mittel bis hoch (Plugins mit unterschiedlichen Content-Typen teilen sich denselben Rechtekanon und koennen nur begrenzt separat freigeschaltet werden)
+   - Impact: mittel bis hoch (Plugins mit unterschiedlichen Content-Typen teilen sich denselben Rechtekanon und können nur begrenzt separat freigeschaltet werden)
    - Wahrscheinlichkeit: mittel
    - Maßnahme: `content.read|create|write` in v1 beibehalten, feingranulare Content-Type-Rechte als Folgearbeit getrennt bewerten
 
@@ -163,7 +163,7 @@ Schulden auf IST-Basis.
 27. Fragmentierter öffentlicher IAM-Diagnosevertrag
    - Impact: hoch (gleiche Symptome werden in UI, Betrieb und Folgeanalyse unterschiedlich gelesen; Refactorings setzen auf unvollständiger Fehlertrennung auf)
    - Wahrscheinlichkeit: hoch
-   - Maßnahme: classification-basierten Diagnosekern für Auth, IAM und Provisioning durchziehen; Tenant-Host-, Registry- und Session-Hydration-Faelle liefern jetzt strukturierte Fehlerantworten bis ins Frontend, Restscope bleibt fuer weitere IAM-Hotspots und Folgechange unter `openspec/changes/refactor-iam-runtime-diagnostics-contract/`
+   - Maßnahme: classification-basierten Diagnosekern für Auth, IAM und Provisioning durchziehen; Tenant-Host-, Registry- und Session-Hydration-Fälle liefern jetzt strukturierte Fehlerantworten bis ins Frontend, Restscope bleibt für weitere IAM-Hotspots und Folgechange unter `openspec/changes/refactor-iam-runtime-diagnostics-contract/`
 
 28. Recovery-Pfade kaschieren degradierte IAM-Zustände
    - Impact: hoch (Silent-Recovery, Session-Hydration oder Fallbacks können echte Drift und Teilfehler überdecken)
@@ -190,7 +190,7 @@ Schulden auf IST-Basis.
 - Gruppen sind im ersten Schnitt reine Rollenbündel; direkte Gruppen-Permissions und ein separates Gruppen-Gültigkeitsmanagement pro UI-Flow bleiben Folgearbeit
 - Die Geo-Hierarchie ist intern bereits auswertbar, besitzt aber noch keine dedizierte Admin-Oberfläche oder externe Pflegepipeline
 - Der Releasevertrag ist im Repo gehärtet, aber produktive Randthemen wie Registry-Promotion, Receiver-Konfiguration und Multi-Node-Betrieb bleiben außerhalb dieses Changes
-- Die Live-Paritaets-Wiederverwendung fuer identische Digests reduziert Drift-Risiko, ersetzt aber keinen spaeteren echten Off-Cluster-Paritaets-Pfad fuer neue Digests
+- Die Live-Paritäts-Wiederverwendung für identische Digests reduziert Drift-Risiko, ersetzt aber keinen späteren echten Off-Cluster-Paritäts-Pfad für neue Digests
 - Plugin-Registrierung ist jetzt metadatenbasiert, aber noch nicht runtime-dynamisch
 - Content-Payloads bleiben in Postgres generisch als JSON abgelegt; Typsicherheit wird aktuell im Serververtrag und nicht in der Datenbank erzwungen
 

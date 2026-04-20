@@ -3,6 +3,7 @@ import { classifyHost, isTrafficEnabledInstanceStatus } from '@sva/core';
 import { loadInstanceByHostname } from '@sva/data/server';
 import {
   createSdkLogger,
+  getWorkspaceContext,
   getInstanceConfig,
   initializeOtelSdk,
   isCanonicalAuthHost,
@@ -61,7 +62,7 @@ const createAuthDependencyErrorResponse = (
   operation: 'auth_callback' | 'auth_login' | 'auth_logout',
   error: unknown
 ): Response => {
-  const requestId = request.headers.get('x-request-id') ?? undefined;
+  const requestId = getWorkspaceContext().requestId;
 
   if (error instanceof TenantAuthResolutionError) {
     logger.error('Auth route failed during tenant auth resolution', {

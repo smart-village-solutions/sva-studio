@@ -152,7 +152,9 @@ describe('withAuthenticatedUser', () => {
           instance_id: 'hb-meinquartier',
         },
       },
+      requestId: 'req-middleware',
     });
+    expect(response.headers.get('x-request-id')).toBe('req-middleware');
     expect(getSessionUserMock).not.toHaveBeenCalled();
   });
 
@@ -184,7 +186,9 @@ describe('withAuthenticatedUser', () => {
           reason_code: 'tenant_lookup_failed',
         },
       },
+      requestId: 'req-middleware',
     });
+    expect(response.headers.get('x-request-id')).toBe('req-middleware');
     expect(getSessionUserMock).not.toHaveBeenCalled();
   });
 
@@ -735,7 +739,9 @@ describe('withAuthenticatedUser', () => {
           reason_code: 'tenant_not_found',
         },
       },
+      requestId: 'req-middleware',
     });
+    expect(response.headers.get('x-request-id')).toBe('req-middleware');
     expect(getSessionUserMock).not.toHaveBeenCalled();
   });
 
@@ -778,7 +784,9 @@ describe('withAuthenticatedUser', () => {
           instance_id: 'hb',
         },
       },
+      requestId: 'req-middleware',
     });
+    expect(response.headers.get('x-request-id')).toBe('req-middleware');
     expect(getSessionUserMock).not.toHaveBeenCalled();
   });
 });

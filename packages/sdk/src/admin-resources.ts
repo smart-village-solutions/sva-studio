@@ -33,7 +33,18 @@ export type AdminResourceDefinition = {
 };
 
 const normalizeBasePath = (value: string): string => {
-  const normalized = value.trim().replace(/^\/+|\/+$/g, '');
+  const trimmed = value.trim();
+  let start = 0;
+  let end = trimmed.length;
+
+  while (start < end && trimmed[start] === '/') {
+    start += 1;
+  }
+  while (end > start && trimmed[end - 1] === '/') {
+    end -= 1;
+  }
+
+  const normalized = trimmed.slice(start, end);
   if (normalized.length === 0) {
     throw new Error('invalid_admin_resource_base_path');
   }

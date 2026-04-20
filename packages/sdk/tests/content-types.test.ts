@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   createContentTypeRegistry,
+  definePluginContentTypes,
   genericContentTypeDefinition,
   getContentTypeDefinition,
 } from '../src/content-types.js';
@@ -28,5 +29,27 @@ describe('content type registry', () => {
     expect(() =>
       createContentTypeRegistry([{ ...genericContentTypeDefinition, contentType: '   ' }])
     ).toThrow('invalid_content_type_definition');
+  });
+
+  it('enforces namespace ownership for plugin content types', () => {
+    expect(() =>
+      definePluginContentTypes('', [{ contentType: 'news.article', displayName: 'News' }])
+    ).toThrow('invalid_plugin_namespace');
+
+    expect(() =>
+      definePluginContentTypes('content', [{ contentType: 'content.article', displayName: 'Content' }])
+    ).toThrow('reserved_plugin_namespace:content');
+
+    expect(() =>
+      definePluginContentTypes('news', [{ contentType: '   ', displayName: 'News' }])
+    ).toThrow('invalid_content_type_definition');
+
+    expect(() =>
+      definePluginContentTypes('news', [{ contentType: 'article', displayName: 'News' }])
+    ).toThrow('invalid_plugin_content_type:article');
+
+    expect(() =>
+      definePluginContentTypes('news', [{ contentType: 'events.article', displayName: 'News' }])
+    ).toThrow('plugin_content_type_namespace_mismatch:news:events:events.article');
   });
 });

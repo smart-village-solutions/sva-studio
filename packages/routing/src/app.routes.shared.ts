@@ -1,7 +1,8 @@
 import type { AdminResourceDefinition, PluginDefinition, PluginRouteGuard, RouteFactory } from '@sva/sdk';
-import { createRoute, redirect, type AnyRoute, type RootRoute, type RouteComponent } from '@tanstack/react-router';
+import { createRoute, type AnyRoute, type RootRoute, type RouteComponent } from '@tanstack/react-router';
 
 import { createAccountUiRouteGuard, type AccountUiRouteGuardKey } from './account-ui.routes.js';
+import { createAdminResourceRouteFactories, createLegacyContentAliasFactories } from './admin-resource-routes.js';
 import {
   emitRoutingDiagnostic,
   type RoutingDiagnosticsHook,
@@ -109,161 +110,6 @@ const uiRouteDefinitions: readonly UiRouteDefinition[] = [
   { binding: 'adminApiPhase1Test', path: uiRoutePaths.adminApiPhase1Test },
 ] as const;
 
-type AdminResourceBindingResolver = {
-  readonly list: BindingKey;
-  readonly create: BindingKey;
-  readonly detail: BindingKey;
-  readonly history?: BindingKey;
-};
-
-type AdminResourceRouteKind = 'list' | 'create' | 'detail' | 'history';
-
-const toAdminRoutePath = (basePath: string) => `/admin/${basePath}` as const;
-
-const getAdminResourceBindings = (resource: AdminResourceDefinition): AdminResourceBindingResolver => ({
-  list: resource.views.list.bindingKey as BindingKey,
-  create: resource.views.create.bindingKey as BindingKey,
-  detail: resource.views.detail.bindingKey as BindingKey,
-  history: resource.views.history?.bindingKey as BindingKey | undefined,
-});
-
-const resolveAdminResourceGuard = (
-  resource: AdminResourceDefinition,
-  routeKind: AdminResourceRouteKind
-): AccountUiRouteGuardKey => {
-  switch (resource.guard) {
-    case 'content':
-      if (routeKind === 'create') {
-        return 'contentCreate';
-      }
-      if (routeKind === 'detail') {
-        return 'contentDetail';
-      }
-      return 'content';
-    case 'adminUsers':
-      if (routeKind === 'create') {
-        return 'adminUserCreate';
-      }
-      if (routeKind === 'detail') {
-        return 'adminUserDetail';
-      }
-      return 'adminUsers';
-    case 'adminOrganizations':
-      if (routeKind === 'create') {
-        return 'adminOrganizationCreate';
-      }
-      if (routeKind === 'detail') {
-        return 'adminOrganizationDetail';
-      }
-      return 'adminOrganizations';
-    case 'adminInstances':
-      return 'adminInstances';
-    case 'adminRoles':
-      if (routeKind === 'detail') {
-        return 'adminRoleDetail';
-      }
-      return 'adminRoles';
-    case 'adminGroups':
-      if (routeKind === 'create') {
-        return 'adminGroupCreate';
-      }
-      if (routeKind === 'detail') {
-        return 'adminGroupDetail';
-      }
-      return 'adminGroups';
-    case 'adminLegalTexts':
-      if (routeKind === 'create') {
-        return 'adminLegalTextCreate';
-      }
-      if (routeKind === 'detail') {
-        return 'adminLegalTextDetail';
-      }
-      return 'adminLegalTexts';
-  }
-};
-
-const createAdminResourceRouteDefinitions = (resources: readonly AdminResourceDefinition[]): readonly UiRouteDefinition[] =>
-  resources.flatMap((resource) => {
-    const bindings = getAdminResourceBindings(resource);
-    const basePath = toAdminRoutePath(resource.basePath);
-
-    return [
-      {
-        binding: bindings.list,
-        guard: resolveAdminResourceGuard(resource, 'list'),
-        path: basePath,
-      },
-      {
-        binding: bindings.create,
-        guard: resolveAdminResourceGuard(resource, 'create'),
-        path: `${basePath}/new`,
-      },
-      {
-        binding: bindings.detail,
-        guard: resolveAdminResourceGuard(resource, 'detail'),
-        path: `${basePath}/$id`,
-      },
-      ...(bindings.history
-        ? [
-            {
-              binding: bindings.history,
-              guard: resolveAdminResourceGuard(resource, 'history'),
-              path: `${basePath}/$id/history`,
-            } satisfies UiRouteDefinition,
-          ]
-        : []),
-    ] as const;
-  });
-
-const LEGACY_CONTENT_ALIAS_PREFIX = '/content';
-
-const readBeforeLoadHref = (options: unknown): string => {
-  const candidate = options as {
-    href?: unknown;
-    location?: { href?: unknown };
-  };
-
-  if (typeof candidate.location?.href === 'string' && candidate.location.href.length > 0) {
-    return candidate.location.href;
-  }
-  if (typeof candidate.href === 'string' && candidate.href.length > 0) {
-    return candidate.href;
-  }
-
-  return LEGACY_CONTENT_ALIAS_PREFIX;
-};
-
-const normalizeLegacyContentHref = (href: string): string => {
-  if (href === LEGACY_CONTENT_ALIAS_PREFIX || href.startsWith(`${LEGACY_CONTENT_ALIAS_PREFIX}?`)) {
-    return href.replace(LEGACY_CONTENT_ALIAS_PREFIX, uiRoutePaths.content);
-  }
-  if (href.startsWith(`${LEGACY_CONTENT_ALIAS_PREFIX}/new`)) {
-    return href.replace(`${LEGACY_CONTENT_ALIAS_PREFIX}/new`, uiRoutePaths.contentCreate);
-  }
-  if (href.startsWith(`${LEGACY_CONTENT_ALIAS_PREFIX}/`)) {
-    return href.replace(`${LEGACY_CONTENT_ALIAS_PREFIX}/`, `${uiRoutePaths.content}/`);
-  }
-
-  return uiRoutePaths.content;
-};
-
-const createLegacyContentAliasFactories = (): readonly AppRouteFactory[] => {
-  const aliasPaths = ['/content', '/content/new', '/content/$contentId'] as const;
-
-  return aliasPaths.map(
-    (path) =>
-      (rootRoute: RootRoute) =>
-        createRoute({
-          getParentRoute: () => rootRoute,
-          path,
-          beforeLoad: (options) => {
-            throw redirect({ href: normalizeLegacyContentHref(readBeforeLoadHref(options)) });
-          },
-          component: () => null,
-        })
-  );
-};
-
 export const createUiRouteFactories = (
   bindings: AppRouteBindings,
   options: {
@@ -272,34 +118,32 @@ export const createUiRouteFactories = (
   } = {}
 ): readonly AppRouteFactory[] => {
   const diagnostics = options.diagnostics;
-  const routeDefinitions = [
-    ...uiRouteDefinitions,
-    ...createAdminResourceRouteDefinitions(options.adminResources ?? []),
-  ] as const;
+  const routeDefinitions = uiRouteDefinitions;
 
   return [
     ...routeDefinitions.map((definition) => {
-    if (definition.guard) {
-      const guard = createAccountUiRouteGuard(definition.guard, diagnostics, definition.path);
+      if (definition.guard) {
+        const guard = createAccountUiRouteGuard(definition.guard, diagnostics, definition.path);
+
+        return (rootRoute: RootRoute) =>
+          createRoute({
+            getParentRoute: () => rootRoute,
+            path: definition.path,
+            beforeLoad: (beforeLoadOptions) => guard(beforeLoadOptions),
+            validateSearch: definition.validateSearch,
+            component: bindings[definition.binding],
+          });
+      }
 
       return (rootRoute: RootRoute) =>
         createRoute({
           getParentRoute: () => rootRoute,
           path: definition.path,
-          beforeLoad: (beforeLoadOptions) => guard(beforeLoadOptions),
           validateSearch: definition.validateSearch,
           component: bindings[definition.binding],
         });
-    }
-
-    return (rootRoute: RootRoute) =>
-      createRoute({
-        getParentRoute: () => rootRoute,
-        path: definition.path,
-        validateSearch: definition.validateSearch,
-        component: bindings[definition.binding],
-      });
-  }),
+    }),
+    ...createAdminResourceRouteFactories(bindings, options.adminResources ?? [], diagnostics),
     ...createLegacyContentAliasFactories(),
   ];
 };

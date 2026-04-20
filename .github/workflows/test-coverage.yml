@@ -246,7 +246,7 @@ jobs:
 
       - name: Ensure origin/main is available for affected integration
         if: steps.changes.outputs.relevant == 'true'
-        run: git fetch origin "${{ github.base_ref }}" --no-tags --prune
+        run: git fetch origin "${{ github.base_ref }}" --no-tags --prune --depth=1
 
       - name: Run affected integration tests not covered by dedicated PR workflows
         if: steps.changes.outputs.relevant == 'true'
